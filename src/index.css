@@ -1,0 +1,290 @@
+@import "tailwindcss";
+
+@layer theme {
+  :root {
+    --bg-canvas: #06050a;
+    --bg-canvas-2: #0b0911;
+    --bg-panel: #12101a;
+    --bg-panel-2: #171422;
+    --bg-panel-3: #1d1829;
+    --bg-panel-soft: #0f0d15;
+    --border-subtle: #2c2639;
+    --border-strong: #4b2767;
+    --accent: #9b00ff;
+    --accent-soft: #d7a6ff;
+    --accent-muted: rgba(155, 0, 255, 0.16);
+    --accent-glow: rgba(155, 0, 255, 0.28);
+    --text-main: #f4efff;
+    --text-muted: #b8afca;
+    --text-soft: #8c82a4;
+  }
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    border-radius: 0;
+  }
+
+  html,
+  body,
+  #app {
+    min-height: 100%;
+    background:
+      radial-gradient(circle at top, rgba(155, 0, 255, 0.16), transparent 28%),
+      linear-gradient(180deg, var(--bg-canvas), var(--bg-canvas-2));
+    color: var(--text-main);
+  }
+
+  html,
+  body {
+    margin: 0;
+  }
+
+  body {
+    min-height: 100vh;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    line-height: 1.35;
+    letter-spacing: 0.01em;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  a {
+    color: inherit;
+  }
+
+  ::selection {
+    background: rgba(155, 0, 255, 0.35);
+    color: #ffffff;
+  }
+
+  input[type="search"]::-webkit-search-decoration,
+  input[type="search"]::-webkit-search-cancel-button,
+  input[type="search"]::-webkit-search-results-button,
+  input[type="search"]::-webkit-search-results-decoration {
+    appearance: none;
+  }
+}
+
+@layer components {
+  .surface-panel {
+    border: 1px solid var(--border-subtle);
+    background: linear-gradient(180deg, rgba(23, 20, 34, 0.96), rgba(10, 9, 15, 0.98));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.03),
+      0 12px 28px rgba(0, 0, 0, 0.28);
+  }
+
+  .surface-panel-strong {
+    border: 1px solid var(--border-strong);
+    background:
+      linear-gradient(180deg, rgba(155, 0, 255, 0.12), rgba(15, 13, 21, 0.96)),
+      linear-gradient(180deg, rgba(24, 20, 35, 0.98), rgba(10, 9, 15, 0.98));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 16px 36px rgba(0, 0, 0, 0.32),
+      0 0 0 1px rgba(155, 0, 255, 0.12);
+  }
+
+  .surface-panel-soft {
+    border: 1px solid var(--border-subtle);
+    background: linear-gradient(180deg, rgba(18, 16, 26, 0.9), rgba(13, 11, 19, 0.96));
+  }
+
+  .surface-card {
+    border: 1px solid var(--border-subtle);
+    background: linear-gradient(180deg, rgba(24, 21, 34, 0.88), rgba(11, 10, 16, 0.96));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  }
+
+  .condition-card {
+    transition:
+      border-color 160ms ease,
+      box-shadow 160ms ease,
+      background 160ms ease;
+  }
+
+  .condition-card:hover {
+    border-color: rgba(155, 0, 255, 0.34);
+  }
+
+  .condition-card:focus,
+  .condition-card:focus-within {
+    border-color: rgba(155, 0, 255, 0.72);
+    background:
+      linear-gradient(180deg, rgba(155, 0, 255, 0.08), rgba(24, 21, 34, 0.92)),
+      linear-gradient(180deg, rgba(24, 21, 34, 0.88), rgba(11, 10, 16, 0.96));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.03),
+      0 0 0 1px rgba(155, 0, 255, 0.16),
+      0 0 22px rgba(155, 0, 255, 0.1);
+  }
+
+  .surface-card-accent {
+    border: 1px solid rgba(155, 0, 255, 0.42);
+    background: linear-gradient(180deg, rgba(155, 0, 255, 0.14), rgba(19, 16, 28, 0.96));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 0 0 1px rgba(155, 0, 255, 0.08);
+  }
+
+  .app-button {
+    border: 1px solid var(--border-subtle);
+    background: linear-gradient(180deg, rgba(29, 24, 41, 0.92), rgba(15, 13, 21, 0.98));
+    color: var(--text-main);
+    transition:
+      border-color 160ms ease,
+      background 160ms ease,
+      color 160ms ease,
+      box-shadow 160ms ease,
+      transform 160ms ease;
+  }
+
+  .app-button:hover {
+    border-color: rgba(155, 0, 255, 0.55);
+    background: linear-gradient(180deg, rgba(38, 29, 53, 0.96), rgba(18, 15, 26, 1));
+    box-shadow: 0 0 0 1px rgba(155, 0, 255, 0.08);
+  }
+
+  .app-button:disabled {
+    opacity: 0.45;
+    cursor: default;
+    box-shadow: none;
+  }
+
+  .app-button-primary {
+    border-color: rgba(155, 0, 255, 0.66);
+    background:
+      linear-gradient(180deg, rgba(155, 0, 255, 0.28), rgba(36, 22, 52, 0.98)),
+      linear-gradient(180deg, rgba(29, 24, 41, 0.92), rgba(15, 13, 21, 0.98));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 0 24px rgba(155, 0, 255, 0.12);
+  }
+
+  .app-button-primary:hover {
+    border-color: var(--accent);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 0 32px rgba(155, 0, 255, 0.18);
+  }
+
+  .app-field {
+    border: 1px solid var(--border-subtle);
+    background: linear-gradient(180deg, rgba(10, 9, 15, 0.98), rgba(7, 6, 11, 1));
+    color: var(--text-main);
+    outline: none;
+    transition:
+      border-color 160ms ease,
+      box-shadow 160ms ease,
+      background 160ms ease;
+  }
+
+  select.app-field {
+    color-scheme: dark;
+  }
+
+  .app-field option,
+  .app-field optgroup {
+    background: #120f1b;
+    color: var(--text-main);
+  }
+
+  .app-field:focus {
+    border-color: rgba(155, 0, 255, 0.7);
+    box-shadow: 0 0 0 1px rgba(155, 0, 255, 0.16);
+  }
+
+  .app-chip {
+    border: 1px solid var(--border-subtle);
+    background: linear-gradient(180deg, rgba(20, 18, 29, 0.95), rgba(10, 9, 15, 0.98));
+    color: var(--text-muted);
+  }
+
+  .app-chip-accent {
+    border: 1px solid rgba(155, 0, 255, 0.46);
+    background: linear-gradient(180deg, rgba(155, 0, 255, 0.18), rgba(19, 16, 28, 0.96));
+    color: var(--text-main);
+  }
+
+  .app-tab-strip {
+    display: flex;
+    gap: 0.2rem;
+    align-items: end;
+    border-bottom: 1px solid var(--border-subtle);
+    padding-top: 0.2rem;
+  }
+
+  .app-tab {
+    position: relative;
+    border: 1px solid var(--border-subtle);
+    border-bottom: none;
+    clip-path: polygon(12px 0, calc(100% - 12px) 0, 100% 100%, 0 100%);
+    background: linear-gradient(180deg, rgba(28, 24, 39, 0.9), rgba(14, 12, 20, 0.98));
+    color: var(--text-muted);
+    padding: 0.42rem 1.05rem 0.38rem;
+    transform: translateY(1px);
+    transition:
+      color 160ms ease,
+      background 160ms ease,
+      border-color 160ms ease,
+      box-shadow 160ms ease;
+  }
+
+  .app-tab:hover {
+    color: var(--text-main);
+    border-color: rgba(155, 0, 255, 0.42);
+    background: linear-gradient(180deg, rgba(38, 30, 54, 0.94), rgba(17, 14, 25, 1));
+  }
+
+  .app-tab-active {
+    color: #ffffff;
+    border-color: rgba(155, 0, 255, 0.72);
+    background:
+      linear-gradient(180deg, rgba(155, 0, 255, 0.24), rgba(35, 22, 51, 0.98)),
+      linear-gradient(180deg, rgba(28, 24, 39, 0.9), rgba(14, 12, 20, 0.98));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 -8px 18px rgba(155, 0, 255, 0.12);
+  }
+
+  .app-kicker {
+    color: var(--accent-soft);
+  }
+
+  .app-muted {
+    color: var(--text-muted);
+  }
+
+  .app-soft {
+    color: var(--text-soft);
+  }
+
+  .details-toggle > summary {
+    list-style: none;
+  }
+
+  .details-toggle > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .details-toggle .details-arrow {
+    transition: transform 160ms ease;
+  }
+
+  .details-toggle[open] .details-arrow {
+    transform: rotate(90deg);
+  }
+}
