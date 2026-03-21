@@ -83,7 +83,7 @@ export function ResultsSection({ result, handSize }: ResultsSectionProps) {
                 </p>
               </div>
 
-              <div className="grid gap-1.5 min-[760px]:grid-cols-3 min-[1120px]:grid-cols-6">
+              <div className="grid grid-cols-2 gap-1.5 min-[760px]:grid-cols-3 min-[1120px]:grid-cols-6">
                 <MiniMetric label="Jugables con problemas" value={formatPercent(result.summary.overlapProbability)} />
                 <MiniMetric label="Malas" value={formatPercent(badOnlyProbability)} />
                 <MiniMetric label="Neutras" value={formatPercent(result.summary.neutralProbability)} />
@@ -162,9 +162,13 @@ interface MiniMetricProps {
 
 function MiniMetric({ label, value }: MiniMetricProps) {
   return (
-    <div className="surface-card px-2 py-1.25">
-      <small className="app-muted block text-[0.68rem] uppercase tracking-[0.08em]">{label}</small>
-      <strong className="text-[0.84rem] text-[var(--text-main)]">{value}</strong>
+    <div className="surface-card px-1.5 py-1 min-[760px]:px-2 min-[760px]:py-1.25">
+      <small className="app-muted block text-[0.62rem] uppercase tracking-[0.08em] min-[760px]:text-[0.68rem]">
+        {label}
+      </small>
+      <strong className="text-[0.78rem] text-[var(--text-main)] min-[760px]:text-[0.84rem]">
+        {value}
+      </strong>
     </div>
   )
 }
