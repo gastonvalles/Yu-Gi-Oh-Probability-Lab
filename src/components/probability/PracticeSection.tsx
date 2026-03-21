@@ -82,14 +82,9 @@ export function PracticeSection({
       ) : (
         <div className="grid gap-2">
           <div className="grid gap-2">
-            <div
-              className="grid gap-2"
-              style={{
-                gridTemplateColumns: `repeat(${Math.max(practiceHand.hand.length, 1)}, minmax(0, 1fr))`,
-              }}
-            >
+            <div className="grid w-full min-w-0 max-w-full grid-cols-3 gap-2 pr-1 min-[760px]:grid-cols-[repeat(auto-fit,minmax(90px,1fr))]">
               {practiceHand.hand.map((card) => (
-                <article key={card.drawId} className="surface-card p-1">
+                <article key={card.drawId} className="surface-card w-full p-1.5">
                   <CardArt
                     remoteUrl={card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null}
                     name={card.name}

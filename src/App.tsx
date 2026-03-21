@@ -122,6 +122,7 @@ export default function App() {
   const [hoverPreview, setHoverPreview] = useState<HoverPreviewState | null>(null)
   const [dragOverlay, setDragOverlay] = useState<DragOverlayState | null>(null)
   const [builderHeight, setBuilderHeight] = useState<number | null>(null)
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
 
   const builderRef = useRef<HTMLElement>(null)
   const dragOverlayRef = useRef<HTMLDivElement>(null)
@@ -808,7 +809,24 @@ export default function App() {
         onDeleteSnapshot={handleDeleteSnapshot}
       />
 
-      <section className="surface-panel mx-auto grid w-full max-w-[1240px] gap-3 p-2.5">
+      <nav className="surface-panel mx-auto w-full max-w-[1240px] p-2 max-[760px]:sticky max-[760px]:top-0 max-[760px]:z-40 min-[761px]:hidden">
+        <div className="grid grid-cols-4 gap-1">
+          <a className="app-button px-2 py-1 text-center text-[0.76rem]" href="#step1">
+            Paso 1
+          </a>
+          <a className="app-button px-2 py-1 text-center text-[0.76rem]" href="#step2">
+            Paso 2
+          </a>
+          <a className="app-button px-2 py-1 text-center text-[0.76rem]" href="#step3">
+            Paso 3
+          </a>
+          <a className="app-button px-2 py-1 text-center text-[0.76rem]" href="#step4">
+            Cierre
+          </a>
+        </div>
+      </nav>
+
+      <section id="step1" className="surface-panel mx-auto grid w-full max-w-[1240px] gap-3 p-2.5">
         <div className="surface-card grid gap-1 px-2 py-1.5">
           <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Paso 1</p>
           <div className="flex items-start justify-between gap-3 max-[760px]:flex-col max-[760px]:items-stretch">
@@ -828,6 +846,15 @@ export default function App() {
         <div className="grid items-start gap-3 min-[1101px]:grid-cols-[minmax(0,1fr)_320px]">
           <article ref={builderRef} className="surface-panel-soft self-start w-full min-h-0 p-2.5">
             <div className="grid gap-2.5">
+            <div className="min-[1101px]:hidden">
+              <button
+                type="button"
+                className="app-button app-button-primary w-full px-2 py-1 text-[0.86rem]"
+                onClick={() => setMobileSearchOpen(true)}
+              >
+                Buscar cartas
+              </button>
+            </div>
             <DeckZone
               zone="main"
               title="Main Deck"
@@ -896,7 +923,8 @@ export default function App() {
           </div>
           </article>
 
-          <SearchPanel
+          <div className="max-[1100px]:hidden">
+            <SearchPanel
             builderHeight={builderHeight}
             deckFormat={state.deckFormat}
             query={apiSearch.query}
@@ -944,11 +972,12 @@ export default function App() {
             }}
             onHoverStart={scheduleHoverPreview}
             onHoverEnd={clearHoverPreview}
-          />
+            />
+          </div>
         </div>
       </section>
 
-      <div className="mx-auto w-full max-w-[1240px]">
+      <div id="step2" className="mx-auto w-full max-w-[1240px]">
         <DeckRolesPanel
           cards={derivedMainCards}
           onToggleRole={(ygoprodeckId, role) => {
@@ -960,7 +989,8 @@ export default function App() {
         />
       </div>
 
-      <ProbabilityPanel
+      <div id="step3">
+        <ProbabilityPanel
             mode={state.mode}
             onModeChange={(mode) => {
               setState((current) => ({
@@ -1083,9 +1113,10 @@ export default function App() {
                 patterns: updateRequirementGroup(current.patterns, patternId, requirementId, value),
               }))
             }}
-      />
+        />
+      </div>
 
-      <div className="mx-auto w-full max-w-[1240px]">
+      <div id="step4" className="mx-auto w-full max-w-[1240px]">
         <ExportDeckPanel
           mainDeckCount={state.deckBuilder.main.length}
           onExport={handleExportDeckImage}
@@ -1135,6 +1166,74 @@ export default function App() {
 
         {state.mode === 'deck' ? renderDeckMode() : null}
       </main>
+
+      {mobileSearchOpen ? (
+        <div className="fixed inset-0 z-[140] grid place-items-center bg-black/80 px-3 py-6 min-[1101px]:hidden">
+          <div className="surface-panel w-full max-w-[620px] p-2.5">
+            <div className="flex items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-2">
+              <strong className="text-[0.95rem]">Buscar cartas</strong>
+              <button
+                type="button"
+                className="border-0 bg-transparent p-0 text-[1.05rem] text-[var(--text-soft)] hover:text-[#d04a57]"
+                onClick={() => setMobileSearchOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="mt-2">
+              <SearchPanel
+                builderHeight={null}
+                deckFormat={state.deckFormat}
+                query={apiSearch.query}
+                status={apiSearch.status}
+                results={visibleSearchResults}
+                errorMessage={apiSearch.errorMessage}
+                page={apiSearch.page}
+                hasMore={apiSearch.hasMore}
+                activeDragSearchCardId={activeDragSearchCardId}
+                typeFilter={searchTypeFilter}
+                archetypeFilter={searchArchetypeFilter}
+                onQueryChange={(value) => {
+                  setApiSearch((current) => ({
+                    ...current,
+                    query: value,
+                    page: 0,
+                  }))
+                }}
+                onTypeFilterChange={setSearchTypeFilter}
+                onArchetypeFilterChange={setSearchArchetypeFilter}
+                onPrevPage={() => handleSearchPage('prev')}
+                onNextPage={() => handleSearchPage('next')}
+                onResultClick={(apiCardId) => {
+                  if (suppressSearchClickRef.current) {
+                    suppressSearchClickRef.current = false
+                    return
+                  }
+
+                  setState((current) => ({
+                    ...current,
+                    deckBuilder: addSearchResultToDefaultZone(
+                      current.deckBuilder,
+                      apiSearch.results,
+                      apiCardId,
+                      current.deckFormat,
+                    ),
+                  }))
+                }}
+                onSearchCardPointerDown={(event, apiCardId) => {
+                  const draggedCard = apiSearch.results.find((card) => card.ygoprodeckId === apiCardId)
+
+                  if (draggedCard) {
+                    startPointerDrag(event, { type: 'search-result', apiCardId }, draggedCard.name, draggedCard)
+                  }
+                }}
+                onHoverStart={scheduleHoverPreview}
+                onHoverEnd={clearHoverPreview}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <HoverPreview preview={hoverPreview} />
 

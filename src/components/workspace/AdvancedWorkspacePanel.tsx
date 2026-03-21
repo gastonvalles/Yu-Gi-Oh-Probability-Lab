@@ -42,12 +42,12 @@ export function AdvancedWorkspacePanel({
         <div className="grid gap-1">
           <p className="app-kicker m-0 mb-0.5 text-[0.68rem] uppercase tracking-widest">Workspace</p>
           <h2 className="m-0 text-[1rem] leading-none">Herramientas avanzadas</h2>
-          <p className="app-muted m-0 max-w-[56ch] text-[0.76rem] leading-[1.18]">
+          <p className="app-muted m-0 max-w-[56ch] text-[0.76rem] leading-[1.18] max-[760px]:hidden">
             Opcional: cambiá formato y guardá versiones del deck sin tocar el flujo principal.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 max-[760px]:items-stretch">
           <span className="app-chip px-2 py-1 text-[0.74rem]">
             Formato: {getDeckFormatLabel(deckFormat)}
           </span>
@@ -56,7 +56,7 @@ export function AdvancedWorkspacePanel({
           </span>
           <button
             type="button"
-            className="app-button px-2 py-1 text-[0.8rem]"
+            className="app-button px-2 py-1 text-[0.8rem] max-[760px]:w-full"
             onClick={onToggleAdvanced}
           >
             {advancedOpen ? 'Ocultar herramientas' : 'Mostrar herramientas'}

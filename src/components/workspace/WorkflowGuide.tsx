@@ -112,13 +112,13 @@ export function WorkflowGuide({
             <h2 className="m-0 text-[1rem] leading-none">Cómo usar la app</h2>
           </div>
 
-          <div className="surface-card self-start px-2 py-1.5">
+          <div className="surface-card self-start px-2 py-1.5 max-[760px]:hidden">
             <small className="app-muted block text-[0.68rem] uppercase tracking-[0.08em]">Estado</small>
             <strong className="text-[0.84rem] text-[var(--text-main)]">{overallStatus}</strong>
           </div>
         </div>
 
-        <div className="grid gap-2 min-[980px]:grid-cols-4">
+        <div className="grid gap-2 max-[760px]:hidden min-[980px]:grid-cols-4">
           {steps.map((step, index) => (
             <article
               key={step.title}
@@ -145,10 +145,18 @@ export function WorkflowGuide({
           ))}
         </div>
 
-        <div className="surface-card grid gap-1 px-2 py-1.5">
+        <div className="surface-card grid gap-1 px-2 py-1.5 max-[760px]:hidden">
           <strong className="text-[0.78rem] uppercase tracking-[0.08em] text-[var(--accent-strong)]">
             {currentStepLabel}
           </strong>
+          <p className="m-0 text-[0.76rem] leading-[1.16] text-[var(--text-main)]">{currentMessage}</p>
+        </div>
+
+        <div className="surface-card grid gap-1.5 px-2 py-1.5 min-[761px]:hidden">
+          <div className="flex items-center justify-between gap-2">
+            <strong className="text-[0.82rem] text-[var(--text-main)]">{currentStepLabel}</strong>
+            <span className="app-chip px-2 py-0.5 text-[0.72rem]">{overallStatus}</span>
+          </div>
           <p className="m-0 text-[0.76rem] leading-[1.16] text-[var(--text-main)]">{currentMessage}</p>
         </div>
       </div>

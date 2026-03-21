@@ -80,9 +80,9 @@ export function DeckRolesPanel({ cards, onToggleRole }: DeckRolesPanelProps) {
               {sortedCards.map((card) => (
                 <article
                   key={card.id}
-                  className="surface-card grid gap-2 p-2 min-[900px]:grid-cols-[62px_minmax(0,1fr)]"
+                  className="surface-card grid gap-2 p-2 max-[760px]:grid-cols-[76px_minmax(0,1fr)] min-[761px]:grid-cols-[62px_minmax(0,1fr)]"
                 >
-                  <div className="max-w-[62px]">
+                  <div className="max-[760px]:w-[76px] min-[761px]:max-w-[62px]">
                     <CardArt
                       remoteUrl={card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null}
                       name={card.name}
@@ -92,19 +92,19 @@ export function DeckRolesPanel({ cards, onToggleRole }: DeckRolesPanelProps) {
 
                   <div className="grid gap-1.5">
                     <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div>
-                        <strong className="block">{card.name}</strong>
+                      <div className="min-w-0">
+                        <strong className="block truncate">{card.name}</strong>
                         <small className="app-muted text-[0.72rem]">
                           {formatInteger(card.copies)} copia{card.copies === 1 ? '' : 's'} en Main Deck
                         </small>
                       </div>
 
-                      <span className="app-chip px-2 py-1 text-[0.72rem]">
+                      <span className="app-chip px-2 py-1 text-[0.72rem] max-[760px]:hidden">
                         Podés marcar más de un rol
                       </span>
                     </div>
 
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="max-[760px]:hidden flex flex-wrap gap-1.5">
                       {CARD_ROLE_DEFINITIONS.map((definition) => {
                         const active = card.roles.includes(definition.key)
 
@@ -117,6 +117,26 @@ export function DeckRolesPanel({ cards, onToggleRole }: DeckRolesPanelProps) {
                               active
                                 ? 'app-button app-button-primary text-white'
                                 : 'app-button text-[var(--text-muted)]',
+                            ].join(' ')}
+                            onClick={() => onToggleRole(card.apiCard?.ygoprodeckId ?? 0, definition.key)}
+                          >
+                            {definition.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+
+                    <div className="min-[761px]:hidden grid grid-cols-2 gap-1.5">
+                      {CARD_ROLE_DEFINITIONS.map((definition) => {
+                        const active = card.roles.includes(definition.key)
+
+                        return (
+                          <button
+                            key={definition.key}
+                            type="button"
+                            className={[
+                              'app-button px-2 py-1 text-[0.78rem] text-left',
+                              active ? 'app-button-primary text-white' : 'text-[var(--text-muted)]',
                             ].join(' ')}
                             onClick={() => onToggleRole(card.apiCard?.ygoprodeckId ?? 0, definition.key)}
                           >

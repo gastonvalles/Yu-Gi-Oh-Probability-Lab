@@ -35,8 +35,7 @@ export function DeckZone({
   const zoneBreakdown = buildDeckZoneBreakdown(zone, cards)
   const zoneGridStyle = {
     background: ZONE_COLORS[zone],
-    gridTemplateColumns: 'repeat(10, minmax(0, 1fr))',
-    minHeight: 'clamp(120px, 12vw, 148px)',
+    minHeight: 'clamp(140px, 18vw, 220px)',
   } as CSSProperties
 
   return (
@@ -52,7 +51,7 @@ export function DeckZone({
       </div>
 
       <div
-        className="grid w-full content-start gap-[0.32rem] p-[0.35rem]"
+        className="grid w-full content-start gap-[0.32rem] p-[0.35rem] grid-cols-6 min-[520px]:grid-cols-8 min-[980px]:grid-cols-10"
         data-deck-zone={zone}
         data-deck-count={cards.length}
         style={zoneGridStyle}

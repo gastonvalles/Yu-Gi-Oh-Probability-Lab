@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 
 import { buildCalculatorState } from '../app/deck-utils'
 import type { CalculatorMode } from '../app/model'
@@ -66,6 +66,7 @@ export function ProbabilityPanel({
   onRequirementGroupChange,
 }: ProbabilityPanelProps) {
   const handSize = 5
+  const [mobilePatternsOpen, setMobilePatternsOpen] = useState(false)
   const result = useMemo(
     () =>
       calculateProbabilities(
@@ -94,6 +95,15 @@ export function ProbabilityPanel({
 
       <div className="grid min-h-0 items-start gap-3 min-[1180px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <section className="grid content-start gap-3 min-[1180px]:min-h-0">
+          <div className="min-[1180px]:hidden">
+            <button
+              type="button"
+              className="app-button app-button-primary w-full px-2 py-1 text-[0.86rem]"
+              onClick={() => setMobilePatternsOpen(true)}
+            >
+              Abrir aperturas y problemas
+            </button>
+          </div>
           <ResultsSection result={result} handSize={handSize} />
 
           <PracticeSection
@@ -103,7 +113,7 @@ export function ProbabilityPanel({
           />
         </section>
 
-        <section className="grid min-h-0 gap-2 min-[1180px]:h-full min-[1180px]:grid-rows-[minmax(0,1fr)]">
+        <section className="grid min-h-0 gap-2 max-[1179px]:hidden min-[1180px]:h-full min-[1180px]:grid-rows-[minmax(0,1fr)]">
           <PatternEditor
             patterns={patterns}
             derivedMainCards={derivedMainCards}
@@ -127,6 +137,46 @@ export function ProbabilityPanel({
           />
         </section>
       </div>
+
+      {mobilePatternsOpen ? (
+        <div className="fixed inset-0 z-[130] grid place-items-center bg-black/80 px-3 py-6 min-[1180px]:hidden">
+          <div className="surface-panel w-full max-w-[720px] p-2.5">
+            <div className="flex items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-2">
+              <strong className="text-[0.95rem]">Aperturas y problemas</strong>
+              <button
+                type="button"
+                className="border-0 bg-transparent p-0 text-[1.05rem] text-[var(--text-soft)] hover:text-[#d04a57]"
+                onClick={() => setMobilePatternsOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="mt-2 max-h-[78vh] overflow-y-auto pr-1">
+              <PatternEditor
+                patterns={patterns}
+                derivedMainCards={derivedMainCards}
+                derivedGroups={derivedGroups}
+                onAddPattern={onAddPattern}
+                onRemovePattern={onRemovePattern}
+                onPatternCategoryChange={onPatternCategoryChange}
+                onPatternNameChange={onPatternNameChange}
+                onPatternMatchModeChange={onPatternMatchModeChange}
+                onPatternMinimumMatchesChange={onPatternMinimumMatchesChange}
+                onPatternAllowSharedCardsChange={onPatternAllowSharedCardsChange}
+                onAddRequirement={onAddRequirement}
+                onRemoveRequirement={onRemoveRequirement}
+                onAddRequirementCard={onAddRequirementCard}
+                onRemoveRequirementCard={onRemoveRequirementCard}
+                onRequirementKindChange={onRequirementKindChange}
+                onRequirementDistinctChange={onRequirementDistinctChange}
+                onRequirementCountChange={onRequirementCountChange}
+                onRequirementSourceChange={onRequirementSourceChange}
+                onRequirementGroupChange={onRequirementGroupChange}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </article>
   )
 }
