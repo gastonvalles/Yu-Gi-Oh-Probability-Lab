@@ -68,13 +68,7 @@ export function PatternCard({
   }
 
   const handleNameChange = (value: string) => {
-    const shouldOpenAfterNaming = !trimmedName && value.trim().length > 0
-
     actions.setPatternName(pattern.id, value)
-
-    if (shouldOpenAfterNaming && !isOpen) {
-      onToggleOpen(pattern.id)
-    }
   }
 
   return (
@@ -100,51 +94,18 @@ export function PatternCard({
         }}
       >
         <div className="grid min-w-0 gap-0.5">
-          {trimmedName ? (
-            <>
-              <strong className="truncate text-[0.9rem] text-(--text-main)">{displayName}</strong>
-              <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-                <span className="pattern-card-meta text-[0.72rem]">{conditionLabel}</span>
-                {logicLabel ? (
-                  <span className="pattern-card-meta text-[0.72rem]">{logicLabel}</span>
-                ) : null}
-                {!pattern.allowSharedCards && includeRequirementCount > 1 ? (
-                  <span className="pattern-card-meta pattern-card-meta-muted text-[0.72rem]">
-                    No reutiliza carta
-                  </span>
-                ) : null}
-              </div>
-            </>
-          ) : (
-            <div
-              className="grid gap-1"
-              onClick={(event) => event.stopPropagation()}
-              onKeyDown={(event) => event.stopPropagation()}
-            >
-              <strong className="text-[0.9rem] text-(--text-main)">{displayName}</strong>
-              <input
-                type="text"
-                value={pattern.name}
-                autoFocus
-                placeholder={namePlaceholder}
-                onChange={(event) => handleNameChange(event.target.value)}
-                onBlur={(event) => {
-                  if (isPendingCreation && event.currentTarget.value.trim().length === 0) {
-                    onCancelPendingPattern(pattern.id)
-                  }
-                }}
-                onKeyDown={(event) => {
-                  event.stopPropagation()
-
-                  if (event.key === 'Escape') {
-                    event.preventDefault()
-                    onCancelPendingPattern(pattern.id)
-                  }
-                }}
-                className="app-field min-w-65 max-w-105 px-2 py-[0.45rem] text-[0.84rem] max-[760px]:min-w-0"
-              />
-            </div>
-          )}
+          <strong className="truncate text-[0.9rem] text-(--text-main)">{displayName}</strong>
+          <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+            <span className="pattern-card-meta text-[0.72rem]">{conditionLabel}</span>
+            {logicLabel ? (
+              <span className="pattern-card-meta text-[0.72rem]">{logicLabel}</span>
+            ) : null}
+            {!pattern.allowSharedCards && includeRequirementCount > 1 ? (
+              <span className="pattern-card-meta pattern-card-meta-muted text-[0.72rem]">
+                No reutiliza carta
+              </span>
+            ) : null}
+          </div>
         </div>
         <button
           type="button"
@@ -161,6 +122,29 @@ export function PatternCard({
       </summary>
 
       <div className="grid gap-2 px-2.5 py-2.5">
+        <label className="grid gap-1">
+          <span className="app-muted text-[0.68rem] uppercase tracking-widest">Nombre</span>
+          <input
+            type="text"
+            value={pattern.name}
+            autoFocus={isPendingCreation}
+            placeholder={namePlaceholder}
+            onChange={(event) => handleNameChange(event.target.value)}
+            onBlur={(event) => {
+              if (isPendingCreation && event.currentTarget.value.trim().length === 0) {
+                onCancelPendingPattern(pattern.id)
+              }
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault()
+                onCancelPendingPattern(pattern.id)
+              }
+            }}
+            className="app-field w-full px-2 py-[0.45rem] text-[0.84rem]"
+          />
+        </label>
+
         <div
           className={[
             'grid gap-2 min-[1040px]:items-end',

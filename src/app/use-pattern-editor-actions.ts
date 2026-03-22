@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 
 import { createPattern } from './pattern-factory'
 import { toNonNegativeInteger } from './utils'
-import type { CardEntry, CardGroupKey } from '../types'
+import type { CardAttribute, CardEntry, CardGroupKey } from '../types'
 import type { PatternEditorActions } from '../components/probability/pattern-editor-actions'
 import { useAppDispatch } from './store-hooks'
 import {
@@ -19,19 +19,34 @@ import {
   setPatternName,
   setRequirementCount,
   setRequirementDistinct,
+  setRequirementAtk,
+  setRequirementAttribute,
+  setRequirementDef,
   setRequirementGroup,
   setRequirementKind,
+  setRequirementLevel,
+  setRequirementMonsterType,
   setRequirementSource,
 } from './patterns-slice'
 
 interface UsePatternEditorActionsOptions {
+  defaultAtk: number | null
+  defaultAttribute: CardAttribute | null
+  defaultDef: number | null
   derivedMainCards: CardEntry[]
   defaultGroupKey: CardGroupKey | null
+  defaultLevel: number | null
+  defaultMonsterType: string | null
 }
 
 export function usePatternEditorActions({
+  defaultAtk,
+  defaultAttribute,
+  defaultDef,
   derivedMainCards,
   defaultGroupKey,
+  defaultLevel,
+  defaultMonsterType,
 }: UsePatternEditorActionsOptions): PatternEditorActions {
   const dispatch = useAppDispatch()
 
@@ -93,13 +108,54 @@ export function usePatternEditorActions({
           patternId,
           requirementId,
           value,
+          defaultAtk,
+          defaultAttribute,
+          defaultDef,
           defaultGroupKey,
+          defaultLevel,
+          defaultMonsterType,
         }))
       },
       setRequirementGroup(patternId, requirementId, value) {
         dispatch(setRequirementGroup({ patternId, requirementId, value }))
       },
+      setRequirementAttribute(patternId, requirementId, value) {
+        dispatch(setRequirementAttribute({ patternId, requirementId, value }))
+      },
+      setRequirementLevel(patternId, requirementId, value) {
+        dispatch(setRequirementLevel({
+          patternId,
+          requirementId,
+          value: value.trim().length === 0 ? null : Math.max(0, toNonNegativeInteger(value, 0)),
+        }))
+      },
+      setRequirementMonsterType(patternId, requirementId, value) {
+        dispatch(setRequirementMonsterType({ patternId, requirementId, value }))
+      },
+      setRequirementAtk(patternId, requirementId, value) {
+        dispatch(setRequirementAtk({
+          patternId,
+          requirementId,
+          value: value.trim().length === 0 ? null : Math.max(0, toNonNegativeInteger(value, 0)),
+        }))
+      },
+      setRequirementDef(patternId, requirementId, value) {
+        dispatch(setRequirementDef({
+          patternId,
+          requirementId,
+          value: value.trim().length === 0 ? null : Math.max(0, toNonNegativeInteger(value, 0)),
+        }))
+      },
     }),
-    [defaultGroupKey, derivedMainCards, dispatch],
+    [
+      defaultAtk,
+      defaultAttribute,
+      defaultDef,
+      defaultGroupKey,
+      defaultLevel,
+      defaultMonsterType,
+      derivedMainCards,
+      dispatch,
+    ],
   )
 }

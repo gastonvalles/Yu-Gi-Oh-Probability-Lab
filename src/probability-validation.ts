@@ -1,4 +1,5 @@
 import { buildDerivedDeckGroupMap, resolveRequirementCardIds } from './app/deck-groups'
+import { getMonsterRequirementSourceLabel, isMonsterRequirementSource } from './app/card-attributes'
 import { getRequiredMatches } from './app/pattern-engine'
 import { normalizeHandPatternCategory } from './app/patterns'
 import type { CardEntry, CalculatorState, ValidationIssue } from './types'
@@ -134,7 +135,15 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
         continue
       }
 
-      const uniqueCardIds = resolveRequirementCardIds(requirement, groupsByKey)
+      if (isMonsterRequirementSource(requirement.source) && !getMonsterRequirementSourceLabel(requirement)) {
+        issues.push({
+          level: 'error',
+          message: `El patrón "${patternName}" tiene una condición de monstruo sin valor seleccionado.`,
+        })
+        continue
+      }
+
+      const uniqueCardIds = resolveRequirementCardIds(requirement, groupsByKey, state.cards)
 
       if (uniqueCardIds.length === 0) {
         issues.push(
@@ -143,6 +152,11 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
                 level: 'warning',
                 message: `El patrón "${patternName}" usa un grupo vacío. Marcá roles en el deck o elegí otro grupo.`,
               }
+            : isMonsterRequirementSource(requirement.source)
+              ? {
+                  level: 'warning',
+                  message: `El patrón "${patternName}" no encuentra monstruos ${getMonsterRequirementSourceLabel(requirement) ?? 'con ese filtro'} en el Main Deck.`,
+                }
             : {
                 level: 'error',
                 message: `El patrón "${patternName}" tiene un requisito sin cartas seleccionadas.`,

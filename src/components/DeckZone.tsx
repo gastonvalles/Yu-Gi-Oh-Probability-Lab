@@ -4,12 +4,14 @@ import { buildDeckZoneBreakdown } from '../app/deck-presentation'
 import type { DeckCardInstance, DeckZone as DeckZoneType } from '../app/model'
 import { formatInteger } from '../app/utils'
 import { CardArt } from './CardArt'
+import { Button } from './ui/Button'
 
 interface DeckZoneProps {
   zone: DeckZoneType
   title: string
   cards: DeckCardInstance[]
   activeDragInstanceId: string | null
+  onClearZone: (zone: DeckZoneType) => void
   onDeckCardPointerDown: (event: ReactPointerEvent<HTMLElement>, instanceId: string) => void
   onRemoveCard: (instanceId: string) => void
   onHoverStart: (name: string, card: DeckCardInstance['apiCard'], anchor: HTMLElement) => void
@@ -36,6 +38,7 @@ export function DeckZone({
   title,
   cards,
   activeDragInstanceId,
+  onClearZone,
   onDeckCardPointerDown,
   onRemoveCard,
   onHoverStart,
@@ -51,7 +54,7 @@ export function DeckZone({
 
   return (
     <section className="w-full bg-transparent p-0">
-      <div className="mb-1.5">
+      <div className="mb-1.5 flex items-start justify-between gap-3">
         <div>
           <h3 className="m-0 text-[1.05rem] leading-none">{title}</h3>
           <p className="m-0 mt-[0.08rem] text-[0.82rem] leading-[1.12] text-[var(--text-muted)]">
@@ -59,6 +62,14 @@ export function DeckZone({
             {zoneBreakdown ? ` (${zoneBreakdown})` : ''}
           </p>
         </div>
+        <Button
+          variant="tertiary"
+          size="sm"
+          disabled={cards.length === 0}
+          onClick={() => onClearZone(zone)}
+        >
+          Vaciar
+        </Button>
       </div>
 
       <div

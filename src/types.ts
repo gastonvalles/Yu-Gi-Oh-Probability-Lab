@@ -3,10 +3,11 @@ export type DeckFormat = 'unlimited' | 'tcg' | 'ocg' | 'goat' | 'genesys'
 export type BanlistStatus = 'forbidden' | 'limited' | 'semi-limited' | 'unlimited'
 export type CardRole = 'starter' | 'extender' | 'brick' | 'handtrap' | 'boardbreaker' | 'floodgate'
 export type CardGroupKey = CardRole | 'engine' | 'non-engine'
+export type CardAttribute = 'DARK' | 'DIVINE' | 'EARTH' | 'FIRE' | 'LIGHT' | 'WATER' | 'WIND'
 export type PatternMatchMode = 'all' | 'any' | 'at-least'
 export type HandPatternCategory = 'good' | 'bad'
 export type RequirementKind = 'include' | 'exclude'
-export type RequirementSource = 'cards' | 'group'
+export type RequirementSource = 'cards' | 'group' | 'attribute' | 'level' | 'type' | 'atk' | 'def'
 
 export interface CardBanlistInfo {
   tcg: BanlistStatus | null
@@ -51,6 +52,11 @@ export interface PatternRequirement {
   source: RequirementSource
   cardIds: string[]
   groupKey: CardGroupKey | null
+  attribute: CardAttribute | null
+  level: number | null
+  monsterType: string | null
+  atk: number | null
+  def: number | null
   count: number
   kind: RequirementKind
   distinct: boolean

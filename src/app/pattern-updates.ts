@@ -1,4 +1,5 @@
 import type {
+  CardAttribute,
   CardEntry,
   CardGroupKey,
   HandPattern,
@@ -267,6 +268,11 @@ export function updateRequirementSource(
   requirementId: string,
   source: RequirementSource,
   defaultGroupKey: CardGroupKey | null,
+  defaultAttribute: CardAttribute | null,
+  defaultLevel: number | null,
+  defaultMonsterType: string | null,
+  defaultAtk: number | null,
+  defaultDef: number | null,
 ): HandPattern[] {
   return patterns.map((pattern) =>
     pattern.id !== patternId
@@ -280,6 +286,17 @@ export function updateRequirementSource(
                   ...requirement,
                   source,
                   groupKey: source === 'group' ? requirement.groupKey ?? defaultGroupKey : requirement.groupKey,
+                  attribute:
+                    source === 'attribute'
+                      ? requirement.attribute ?? defaultAttribute
+                      : requirement.attribute,
+                  level: source === 'level' ? requirement.level ?? defaultLevel : requirement.level,
+                  monsterType:
+                    source === 'type'
+                      ? requirement.monsterType ?? defaultMonsterType
+                      : requirement.monsterType,
+                  atk: source === 'atk' ? requirement.atk ?? defaultAtk : requirement.atk,
+                  def: source === 'def' ? requirement.def ?? defaultDef : requirement.def,
                 },
           ),
         },
@@ -304,6 +321,126 @@ export function updateRequirementGroup(
                   ...requirement,
                   source: 'group',
                   groupKey,
+                },
+          ),
+        },
+  )
+}
+
+export function updateRequirementAttribute(
+  patterns: HandPattern[],
+  patternId: string,
+  requirementId: string,
+  attribute: CardAttribute | null,
+): HandPattern[] {
+  return patterns.map((pattern) =>
+    pattern.id !== patternId
+      ? pattern
+      : {
+          ...pattern,
+          requirements: pattern.requirements.map((requirement) =>
+            requirement.id !== requirementId
+              ? requirement
+              : {
+                  ...requirement,
+                  source: 'attribute',
+                  attribute,
+                },
+          ),
+        },
+  )
+}
+
+export function updateRequirementLevel(
+  patterns: HandPattern[],
+  patternId: string,
+  requirementId: string,
+  level: number | null,
+): HandPattern[] {
+  return patterns.map((pattern) =>
+    pattern.id !== patternId
+      ? pattern
+      : {
+          ...pattern,
+          requirements: pattern.requirements.map((requirement) =>
+            requirement.id !== requirementId
+              ? requirement
+              : {
+                  ...requirement,
+                  source: 'level',
+                  level,
+                },
+          ),
+        },
+  )
+}
+
+export function updateRequirementMonsterType(
+  patterns: HandPattern[],
+  patternId: string,
+  requirementId: string,
+  monsterType: string | null,
+): HandPattern[] {
+  return patterns.map((pattern) =>
+    pattern.id !== patternId
+      ? pattern
+      : {
+          ...pattern,
+          requirements: pattern.requirements.map((requirement) =>
+            requirement.id !== requirementId
+              ? requirement
+              : {
+                  ...requirement,
+                  source: 'type',
+                  monsterType,
+                },
+          ),
+        },
+  )
+}
+
+export function updateRequirementAtk(
+  patterns: HandPattern[],
+  patternId: string,
+  requirementId: string,
+  atk: number | null,
+): HandPattern[] {
+  return patterns.map((pattern) =>
+    pattern.id !== patternId
+      ? pattern
+      : {
+          ...pattern,
+          requirements: pattern.requirements.map((requirement) =>
+            requirement.id !== requirementId
+              ? requirement
+              : {
+                  ...requirement,
+                  source: 'atk',
+                  atk,
+                },
+          ),
+        },
+  )
+}
+
+export function updateRequirementDef(
+  patterns: HandPattern[],
+  patternId: string,
+  requirementId: string,
+  def: number | null,
+): HandPattern[] {
+  return patterns.map((pattern) =>
+    pattern.id !== patternId
+      ? pattern
+      : {
+          ...pattern,
+          requirements: pattern.requirements.map((requirement) =>
+            requirement.id !== requirementId
+              ? requirement
+              : {
+                  ...requirement,
+                  source: 'def',
+                  def,
                 },
           ),
         },

@@ -1,20 +1,28 @@
 import { useCallback, useMemo, type PointerEvent as ReactPointerEvent } from 'react'
 
+import {
+  buildDerivedDeckAttributes,
+  buildDerivedDeckAttackValues,
+  buildDerivedDeckDefenseValues,
+  buildDerivedDeckLevels,
+  buildDerivedDeckMonsterTypes,
+} from '../../app/card-attributes'
 import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
 import { findDeckCard, getAddSearchResultIssue, getDefaultDeckZoneForCard } from '../../app/deck-builder'
 import {
   addSearchResultToDeckZone,
   addSearchResultToDefaultDeckZone,
+  clearDeckZone,
   moveDeckCardInBuilder,
   removeDeckCardFromBuilder,
   setDeckName,
   toggleDeckCardRole,
 } from '../../app/deck-builder-slice'
-import { buildDeckFormatIssues } from '../../app/deck-format'
+import { buildDeckFormatIssues, getDeckFormatLabel } from '../../app/deck-format'
 import { buildDerivedDeckGroups } from '../../app/deck-groups'
 import { GENESYS_POINT_CAP, calculateGenesysDeckPointTotal } from '../../app/genesys-format'
 import { exportDeckAssets } from '../../app/deck-image-export'
-import { type AppState } from '../../app/model'
+import { type AppState, type DeckZone } from '../../app/model'
 import { setDeckFormat, setMode } from '../../app/settings-slice'
 import type { RootState } from '../../app/store'
 import { useAppDispatch, useAppSelector } from '../../app/store-hooks'
@@ -58,15 +66,16 @@ export function useDeckModeController() {
 
   const {
     apiSearch,
-    searchTypeFilter,
-    searchArchetypeFilter,
+    searchFilters,
     visibleSearchResults,
-    setArchetypeFilter: setSearchArchetypeFilter,
+    activeFilterCount,
+    hasSearchCriteria,
+    clearFilters: clearSearchFilters,
     setQuery: setSearchQuery,
-    setSearchTypeFilter,
+    updateSearchFilters,
     showNextPage,
     showPreviousPage,
-  } = useApiCardSearch()
+  } = useApiCardSearch(settings.deckFormat)
   const { showToast } = useToastMessage()
   const {
     clearHoverPreview,
@@ -108,6 +117,7 @@ export function useDeckModeController() {
       )
     },
   })
+  const formatLabel = getDeckFormatLabel(settings.deckFormat)
 
   const derivedMainCards = useMemo(
     () => deriveMainDeckCardsFromZone(deckBuilder.main),
@@ -127,13 +137,6 @@ export function useDeckModeController() {
     () => (settings.deckFormat === 'genesys' ? calculateGenesysDeckPointTotal(deckBuilder) : null),
     [deckBuilder, settings.deckFormat],
   )
-  const formatVisibleSearchResults = useMemo(
-    () =>
-      settings.deckFormat === 'genesys'
-        ? visibleSearchResults.filter((card) => card.genesys.points !== null)
-        : visibleSearchResults,
-    [settings.deckFormat, visibleSearchResults],
-  )
   const derivedGroups = useMemo(
     () => buildDerivedDeckGroups(derivedMainCards),
     [derivedMainCards],
@@ -142,8 +145,33 @@ export function useDeckModeController() {
     () => derivedGroups.find((group) => group.copies > 0)?.key ?? null,
     [derivedGroups],
   )
+  const defaultAttribute = useMemo(
+    () => buildDerivedDeckAttributes(derivedMainCards).find((attribute) => attribute.copies > 0)?.key ?? null,
+    [derivedMainCards],
+  )
+  const defaultLevel = useMemo(
+    () => buildDerivedDeckLevels(derivedMainCards)[0]?.key ?? null,
+    [derivedMainCards],
+  )
+  const defaultMonsterType = useMemo(
+    () => buildDerivedDeckMonsterTypes(derivedMainCards)[0]?.key ?? null,
+    [derivedMainCards],
+  )
+  const defaultAtk = useMemo(
+    () => buildDerivedDeckAttackValues(derivedMainCards)[0]?.key ?? null,
+    [derivedMainCards],
+  )
+  const defaultDef = useMemo(
+    () => buildDerivedDeckDefenseValues(derivedMainCards)[0]?.key ?? null,
+    [derivedMainCards],
+  )
   const patternActions = usePatternEditorActions({
+    defaultAtk,
+    defaultAttribute,
+    defaultDef,
     defaultGroupKey,
+    defaultLevel,
+    defaultMonsterType,
     derivedMainCards,
   })
 
@@ -199,6 +227,23 @@ export function useDeckModeController() {
       dispatch(removeDeckCardFromBuilder(instanceId))
     },
     [dispatch],
+  )
+
+  const handleClearDeckZone = useCallback(
+    (zone: DeckZone) => {
+      const zoneCards = deckBuilder[zone]
+
+      if (zoneCards.length === 0) {
+        return
+      }
+
+      dispatch(clearDeckZone(zone))
+
+      const zoneLabel =
+        zone === 'main' ? 'Main Deck' : zone === 'extra' ? 'Extra Deck' : 'Side Deck'
+      showToast(`Vaciaste ${zoneLabel}${settings.deckFormat === 'genesys' ? ` para ${formatLabel}` : ''}.`)
+    },
+    [deckBuilder, dispatch, formatLabel, settings.deckFormat, showToast],
   )
 
   const handleToggleRole = useCallback(
@@ -259,14 +304,14 @@ export function useDeckModeController() {
   const handleSearchCardPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLElement>, apiCardId: number) => {
       const draggedCard = apiSearch.results.find((card) => card.ygoprodeckId === apiCardId)
-      const visibleDraggedCard = formatVisibleSearchResults.find((card) => card.ygoprodeckId === apiCardId)
+      const visibleDraggedCard = visibleSearchResults.find((card) => card.ygoprodeckId === apiCardId)
       const card = visibleDraggedCard ?? draggedCard
 
       if (card) {
         startPointerDrag(event, { type: 'search-result', apiCardId }, card.name, card)
       }
     },
-    [apiSearch.results, formatVisibleSearchResults, startPointerDrag],
+    [apiSearch.results, startPointerDrag, visibleSearchResults],
   )
 
   return {
@@ -277,24 +322,27 @@ export function useDeckModeController() {
       mode: settings.mode,
       query: apiSearch.query,
       status: apiSearch.status,
-      visibleSearchResults: formatVisibleSearchResults,
+      visibleSearchResults,
       errorMessage: apiSearch.errorMessage,
       page: apiSearch.page,
       hasMore: apiSearch.hasMore,
-      typeFilter: searchTypeFilter,
-      archetypeFilter: searchArchetypeFilter,
+      rawSearchResultCount: apiSearch.results.length,
+      searchFilters,
+      activeFilterCount,
+      hasSearchCriteria,
       activeDragInstanceId,
       activeDragSearchCardId,
       consumeSuppressedSearchClick,
       onAddSearchResult: handleAddSearchResult,
+      onClearDeckZone: handleClearDeckZone,
       onRemoveDeckCard: handleRemoveDeckCard,
       onDeckCardPointerDown: handleDeckCardPointerDown,
       onSearchCardPointerDown: handleSearchCardPointerDown,
       onQueryChange: setSearchQuery,
       onDeckNameChange: handleDeckNameChange,
       onDeckFormatChange: handleDeckFormatChange,
-      onTypeFilterChange: setSearchTypeFilter,
-      onArchetypeFilterChange: setSearchArchetypeFilter,
+      onSearchFiltersChange: updateSearchFilters,
+      onClearSearchFilters: clearSearchFilters,
       onPrevPage: showPreviousPage,
       onNextPage: showNextPage,
       onHoverStart: scheduleHoverPreview,

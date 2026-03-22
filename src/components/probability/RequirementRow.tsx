@@ -1,8 +1,26 @@
 import { useState } from 'react'
 
+import {
+  buildDerivedDeckAttackValues,
+  buildDerivedDeckAttributes,
+  buildDerivedDeckDefenseValues,
+  buildDerivedDeckLevels,
+  buildDerivedDeckMonsterTypes,
+  getMonsterRequirementSourceLabel,
+  isMonsterRequirementSource,
+  type DerivedDeckAttribute,
+  type DerivedDeckValueOption,
+} from '../../app/card-attributes'
 import { formatInteger } from '../../app/utils'
 import type { DerivedDeckGroup } from '../../app/deck-groups'
-import type { CardEntry, PatternRequirement, RequirementKind, RequirementSource, CardGroupKey } from '../../types'
+import type {
+  CardAttribute,
+  CardEntry,
+  CardGroupKey,
+  PatternRequirement,
+  RequirementKind,
+  RequirementSource,
+} from '../../types'
 import { Button } from '../ui/Button'
 import { buildRequirementSummary } from './pattern-helpers'
 import type { PatternEditorActions } from './pattern-editor-actions'
@@ -27,12 +45,42 @@ export function RequirementRow({
   const [nextCardId, setNextCardId] = useState('')
   const availableCards = derivedMainCards.filter((card) => !requirement.cardIds.includes(card.id))
   const availableGroups = derivedGroups.filter((group) => group.copies > 0 || group.key === requirement.groupKey)
+  const availableAttributes = buildDerivedDeckAttributes(derivedMainCards).filter(
+    (attribute) => attribute.copies > 0 || attribute.key === requirement.attribute,
+  )
+  const availableLevels = buildDerivedDeckLevels(derivedMainCards).filter(
+    (level) => level.copies > 0 || level.key === requirement.level,
+  )
+  const availableMonsterTypes = buildDerivedDeckMonsterTypes(derivedMainCards).filter(
+    (monsterType) => monsterType.copies > 0 || monsterType.key === requirement.monsterType,
+  )
+  const availableAtkValues = buildDerivedDeckAttackValues(derivedMainCards).filter(
+    (atk) => atk.copies > 0 || atk.key === requirement.atk,
+  )
+  const availableDefValues = buildDerivedDeckDefenseValues(derivedMainCards).filter(
+    (def) => def.copies > 0 || def.key === requirement.def,
+  )
   const selectedCards = requirement.cardIds
     .map((cardId) => derivedMainCards.find((card) => card.id === cardId))
     .filter((card): card is CardEntry => Boolean(card))
   const selectedGroup =
     requirement.source === 'group' && requirement.groupKey
       ? derivedGroups.find((group) => group.key === requirement.groupKey) ?? null
+      : null
+  const selectedMonsterFilterOption = getSelectedMonsterFilterOption(
+    requirement,
+    availableAttributes,
+    availableLevels,
+    availableMonsterTypes,
+    availableAtkValues,
+    availableDefValues,
+  )
+  const selectedMonsterFilter =
+    isMonsterRequirementSource(requirement.source) && selectedMonsterFilterOption
+      ? {
+          copies: selectedMonsterFilterOption.copies,
+          label: getMonsterRequirementSourceLabel(requirement) ?? selectedMonsterFilterOption.label,
+        }
       : null
   const showsDistinctToggle = requirement.count > 1
 
@@ -42,7 +90,7 @@ export function RequirementRow({
         <div className="grid gap-1">
           <strong className="text-[0.78rem] text-(--text-main)">Condición {index + 1}</strong>
           <p className="app-muted m-0 text-[0.76rem] leading-[1.16]">
-            {buildRequirementSummary(requirement, selectedCards, selectedGroup)}
+            {buildRequirementSummary(requirement, selectedCards, selectedGroup, selectedMonsterFilter)}
           </p>
         </div>
         <button
@@ -91,6 +139,11 @@ export function RequirementRow({
             className="app-field w-full px-2 py-[0.45rem] text-[0.84rem]"
           >
             <option value="group">Grupo</option>
+            <option value="attribute">Atributo</option>
+            <option value="level">Nivel</option>
+            <option value="type">Tipo</option>
+            <option value="atk">ATK</option>
+            <option value="def">DEF</option>
             <option value="cards">Cartas</option>
           </select>
         </label>
@@ -113,6 +166,79 @@ export function RequirementRow({
               {availableGroups.map((group) => (
                 <option key={group.key} value={group.key}>
                   {group.label} · {formatInteger(group.copies)}x
+                </option>
+              ))}
+            </select>
+          ) : requirement.source === 'attribute' ? (
+            <select
+              value={requirement.attribute ?? ''}
+              onChange={(event) =>
+                actions.setRequirementAttribute(
+                  patternId,
+                  requirement.id,
+                  (event.target.value || null) as CardAttribute | null,
+                )
+              }
+              className="app-field w-full px-2 py-[0.45rem] text-[0.84rem]"
+            >
+              <option value="">Elegir atributo</option>
+              {availableAttributes.map((attribute) => (
+                <option key={attribute.key} value={attribute.key}>
+                  {attribute.label} · {formatInteger(attribute.copies)}x
+                </option>
+              ))}
+            </select>
+          ) : requirement.source === 'level' ? (
+            <select
+              value={requirement.level ?? ''}
+              onChange={(event) => actions.setRequirementLevel(patternId, requirement.id, event.target.value)}
+              className="app-field w-full px-2 py-[0.45rem] text-[0.84rem]"
+            >
+              <option value="">Elegir nivel</option>
+              {availableLevels.map((level) => (
+                <option key={level.key} value={level.key}>
+                  Nivel {level.label} · {formatInteger(level.copies)}x
+                </option>
+              ))}
+            </select>
+          ) : requirement.source === 'type' ? (
+            <select
+              value={requirement.monsterType ?? ''}
+              onChange={(event) =>
+                actions.setRequirementMonsterType(patternId, requirement.id, event.target.value || null)
+              }
+              className="app-field w-full px-2 py-[0.45rem] text-[0.84rem]"
+            >
+              <option value="">Elegir tipo</option>
+              {availableMonsterTypes.map((monsterType) => (
+                <option key={monsterType.key} value={monsterType.key}>
+                  {monsterType.label} · {formatInteger(monsterType.copies)}x
+                </option>
+              ))}
+            </select>
+          ) : requirement.source === 'atk' ? (
+            <select
+              value={requirement.atk ?? ''}
+              onChange={(event) => actions.setRequirementAtk(patternId, requirement.id, event.target.value)}
+              className="app-field w-full px-2 py-[0.45rem] text-[0.84rem]"
+            >
+              <option value="">Elegir ATK</option>
+              {availableAtkValues.map((atk) => (
+                <option key={atk.key} value={atk.key}>
+                  {atk.label} ATK · {formatInteger(atk.copies)}x
+                </option>
+              ))}
+            </select>
+          ) : requirement.source === 'def' ? (
+            <select
+              value={requirement.def ?? ''}
+              onChange={(event) => actions.setRequirementDef(patternId, requirement.id, event.target.value)}
+              className="app-field w-full px-2 py-[0.45rem] text-[0.84rem]"
+            >
+              <option value="">Elegir DEF</option>
+              {availableDefValues.map((def) => (
+                <option key={def.key} value={def.key}>
+                  {def.label} DEF · {formatInteger(def.copies)}x
                 </option>
               ))}
             </select>
@@ -149,6 +275,18 @@ export function RequirementRow({
             Este grupo todavía está vacío. Volvé al paso 2 y marcá roles para llenarlo.
           </p>
         ) : null
+      ) : isMonsterRequirementSource(requirement.source) ? (
+        !selectedMonsterFilter ? (
+          <p className="surface-card-warning m-0 px-2 py-1.5 text-[0.78rem] text-(--warning)">
+            Este filtro no tiene monstruos cargados en el Main Deck.
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-1.5">
+            <span className="app-chip inline-flex items-center gap-1.5 px-2 py-1 text-[0.76rem]">
+              Monstruos {selectedMonsterFilter.label} · {formatInteger(selectedMonsterFilter.copies)}x
+            </span>
+          </div>
+        )
       ) : selectedCards.length === 0 ? (
         <p className="surface-card-danger m-0 px-2 py-1.5 text-[0.78rem] text-(--destructive)">
           Todavía no elegiste cartas para esta condición.
@@ -203,4 +341,28 @@ export function RequirementRow({
       ) : null}
     </article>
   )
+}
+
+function getSelectedMonsterFilterOption(
+  requirement: PatternRequirement,
+  availableAttributes: DerivedDeckAttribute[],
+  availableLevels: DerivedDeckValueOption<number>[],
+  availableMonsterTypes: DerivedDeckValueOption<string>[],
+  availableAtkValues: DerivedDeckValueOption<number>[],
+  availableDefValues: DerivedDeckValueOption<number>[],
+) {
+  switch (requirement.source) {
+    case 'attribute':
+      return availableAttributes.find((attribute) => attribute.key === requirement.attribute) ?? null
+    case 'level':
+      return availableLevels.find((level) => level.key === requirement.level) ?? null
+    case 'type':
+      return availableMonsterTypes.find((monsterType) => monsterType.key === requirement.monsterType) ?? null
+    case 'atk':
+      return availableAtkValues.find((atk) => atk.key === requirement.atk) ?? null
+    case 'def':
+      return availableDefValues.find((def) => def.key === requirement.def) ?? null
+    default:
+      return null
+  }
 }

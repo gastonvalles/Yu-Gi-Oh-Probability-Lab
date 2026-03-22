@@ -33,7 +33,7 @@ export function buildCalculationSummary(state: CalculatorState): CalculationSumm
 
   for (const pattern of state.patterns) {
     for (const requirement of pattern.requirements) {
-      for (const cardId of resolveRequirementCardIds(requirement, groupsByKey)) {
+      for (const cardId of resolveRequirementCardIds(requirement, groupsByKey, state.cards)) {
         referencedCardIds.add(cardId)
       }
     }

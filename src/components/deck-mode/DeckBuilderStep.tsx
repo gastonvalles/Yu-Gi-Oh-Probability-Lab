@@ -2,10 +2,11 @@ import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 
 import { getDeckFormatLabel } from '../../app/deck-format'
 import { useBuilderHeight } from '../../app/use-builder-height'
-import type { CalculatorMode, DeckBuilderState } from '../../app/model'
+import type { CalculatorMode, DeckBuilderState, DeckZone as DeckZoneType } from '../../app/model'
 import { formatInteger } from '../../app/utils'
 import type { DeckFormat, ApiCardReference } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
+import type { CardSearchFilters } from '../../app/card-search'
 import { DeckZone } from '../DeckZone'
 import { SearchPanel } from '../SearchPanel'
 import { StepHero } from '../StepHero'
@@ -24,20 +25,23 @@ interface DeckBuilderStepProps {
   errorMessage: string
   page: number
   hasMore: boolean
-  typeFilter: string
-  archetypeFilter: string
+  rawSearchResultCount: number
+  searchFilters: CardSearchFilters
+  activeFilterCount: number
+  hasSearchCriteria: boolean
   activeDragInstanceId: string | null
   activeDragSearchCardId: number | null
   consumeSuppressedSearchClick: () => boolean
   onAddSearchResult: (apiCardId: number) => void
+  onClearDeckZone: (zone: DeckZoneType) => void
   onRemoveDeckCard: (instanceId: string) => void
   onDeckCardPointerDown: (event: ReactPointerEvent<HTMLElement>, instanceId: string) => void
   onSearchCardPointerDown: (event: ReactPointerEvent<HTMLElement>, apiCardId: number) => void
   onQueryChange: (value: string) => void
   onDeckNameChange: (value: string) => void
   onDeckFormatChange: (format: DeckFormat) => void
-  onTypeFilterChange: (value: string) => void
-  onArchetypeFilterChange: (value: string) => void
+  onSearchFiltersChange: (updates: Partial<CardSearchFilters>) => void
+  onClearSearchFilters: () => void
   onPrevPage: () => void
   onNextPage: () => void
   onHoverStart: (name: string, card: ApiCardReference, anchor: HTMLElement) => void
@@ -66,20 +70,23 @@ export function DeckBuilderStep({
   errorMessage,
   page,
   hasMore,
-  typeFilter,
-  archetypeFilter,
+  rawSearchResultCount,
+  searchFilters,
+  activeFilterCount,
+  hasSearchCriteria,
   activeDragInstanceId,
   activeDragSearchCardId,
   consumeSuppressedSearchClick,
   onAddSearchResult,
+  onClearDeckZone,
   onRemoveDeckCard,
   onDeckCardPointerDown,
   onSearchCardPointerDown,
   onQueryChange,
   onDeckNameChange,
   onDeckFormatChange,
-  onTypeFilterChange,
-  onArchetypeFilterChange,
+  onSearchFiltersChange,
+  onClearSearchFilters,
   onPrevPage,
   onNextPage,
   onHoverStart,
@@ -123,13 +130,15 @@ export function DeckBuilderStep({
       errorMessage={errorMessage}
       page={page}
       hasMore={hasMore}
+      rawResultCount={rawSearchResultCount}
       activeDragSearchCardId={activeDragSearchCardId}
       dragEnabled={options.dragEnabled}
-      typeFilter={typeFilter}
-      archetypeFilter={archetypeFilter}
+      filters={searchFilters}
+      activeFilterCount={activeFilterCount}
+      hasSearchCriteria={hasSearchCriteria}
       onQueryChange={onQueryChange}
-      onTypeFilterChange={onTypeFilterChange}
-      onArchetypeFilterChange={onArchetypeFilterChange}
+      onFilterChange={onSearchFiltersChange}
+      onClearFilters={onClearSearchFilters}
       onPrevPage={onPrevPage}
       onNextPage={onNextPage}
       onResultClick={handleResultClick}
@@ -228,6 +237,7 @@ export function DeckBuilderStep({
                 title={title}
                 cards={deckBuilder[zone]}
                 activeDragInstanceId={activeDragInstanceId}
+                onClearZone={onClearDeckZone}
                 onDeckCardPointerDown={onDeckCardPointerDown}
                 onRemoveCard={onRemoveDeckCard}
                 onHoverStart={onHoverStart}

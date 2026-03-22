@@ -1,5 +1,6 @@
 import { normalizeHandPatternCategory } from './patterns'
 import { buildGenesysCardInfo } from './genesys-format'
+import { parseCardAttribute } from './card-attributes'
 import type {
   ApiCardReference,
   CardGroupKey,
@@ -28,7 +29,7 @@ import {
 
 export function toPortableConfig(state: AppState): PortableConfig {
   return {
-    version: 10,
+    version: 12,
     mode: state.mode,
     handSize: state.handSize,
     deckFormat: state.deckFormat,
@@ -108,10 +109,33 @@ export function fromPortableConfig(value: unknown): AppState {
         throw new Error(`El requisito #${requirementIndex + 1} del patrón #${index + 1} es inválido.`)
       }
 
-      const source: RequirementSource = rawRequirement.source === 'group' ? 'group' : 'cards'
+      const source: RequirementSource =
+        rawRequirement.source === 'group'
+          ? 'group'
+          : rawRequirement.source === 'attribute'
+            ? 'attribute'
+            : rawRequirement.source === 'level'
+              ? 'level'
+              : rawRequirement.source === 'type'
+                ? 'type'
+                : rawRequirement.source === 'atk'
+                  ? 'atk'
+                  : rawRequirement.source === 'def'
+                    ? 'def'
+            : 'cards'
       const groupKey = parseOptionalGroupKey(rawRequirement.groupKey)
+      const attribute = parseCardAttribute(rawRequirement.attribute)
+      const level = parseNullableInteger(rawRequirement.level)
+      const monsterType = parseNullableString(rawRequirement.monsterType)
+      const atk = parseNullableInteger(rawRequirement.atk)
+      const def = parseNullableInteger(rawRequirement.def)
       const cardNames =
-        source === 'group'
+        source === 'group' ||
+        source === 'attribute' ||
+        source === 'level' ||
+        source === 'type' ||
+        source === 'atk' ||
+        source === 'def'
           ? []
           : parseRequirementCardNames(rawRequirement, `patterns[${index}].requirements[${requirementIndex}]`)
       const cardIds = cardNames.map((cardName) => {
@@ -130,6 +154,11 @@ export function fromPortableConfig(value: unknown): AppState {
         source,
         cardIds,
         groupKey,
+        attribute,
+        level,
+        monsterType,
+        atk,
+        def,
         count: parseRequiredInteger(
           rawRequirement.count,
           `patterns[${index}].requirements[${requirementIndex}].count`,
@@ -304,6 +333,96 @@ function aggregateRequirementsForExport(pattern: HandPattern, state: AppState): 
         cards: [],
         source: 'group',
         groupKey: requirement.groupKey,
+        attribute: null,
+        level: null,
+        monsterType: null,
+        atk: null,
+        def: null,
+        count: requirement.count,
+        kind: requirement.kind,
+        distinct: requirement.distinct,
+      })
+      return exported
+    }
+
+    if (requirement.source === 'attribute' && requirement.attribute) {
+      exported.push({
+        cards: [],
+        source: 'attribute',
+        groupKey: null,
+        attribute: requirement.attribute,
+        level: null,
+        monsterType: null,
+        atk: null,
+        def: null,
+        count: requirement.count,
+        kind: requirement.kind,
+        distinct: requirement.distinct,
+      })
+      return exported
+    }
+
+    if (requirement.source === 'level' && requirement.level !== null) {
+      exported.push({
+        cards: [],
+        source: 'level',
+        groupKey: null,
+        attribute: null,
+        level: requirement.level,
+        monsterType: null,
+        atk: null,
+        def: null,
+        count: requirement.count,
+        kind: requirement.kind,
+        distinct: requirement.distinct,
+      })
+      return exported
+    }
+
+    if (requirement.source === 'type' && requirement.monsterType) {
+      exported.push({
+        cards: [],
+        source: 'type',
+        groupKey: null,
+        attribute: null,
+        level: null,
+        monsterType: requirement.monsterType,
+        atk: null,
+        def: null,
+        count: requirement.count,
+        kind: requirement.kind,
+        distinct: requirement.distinct,
+      })
+      return exported
+    }
+
+    if (requirement.source === 'atk' && requirement.atk !== null) {
+      exported.push({
+        cards: [],
+        source: 'atk',
+        groupKey: null,
+        attribute: null,
+        level: null,
+        monsterType: null,
+        atk: requirement.atk,
+        def: null,
+        count: requirement.count,
+        kind: requirement.kind,
+        distinct: requirement.distinct,
+      })
+      return exported
+    }
+
+    if (requirement.source === 'def' && requirement.def !== null) {
+      exported.push({
+        cards: [],
+        source: 'def',
+        groupKey: null,
+        attribute: null,
+        level: null,
+        monsterType: null,
+        atk: null,
+        def: requirement.def,
         count: requirement.count,
         kind: requirement.kind,
         distinct: requirement.distinct,
@@ -323,6 +442,11 @@ function aggregateRequirementsForExport(pattern: HandPattern, state: AppState): 
       cards: cardNames,
       source: 'cards',
       groupKey: null,
+      attribute: null,
+      level: null,
+      monsterType: null,
+      atk: null,
+      def: null,
       count: requirement.count,
       kind: requirement.kind,
       distinct: requirement.distinct,

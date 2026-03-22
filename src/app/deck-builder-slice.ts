@@ -79,6 +79,9 @@ const deckBuilderSlice = createSlice({
     removeDeckCardFromBuilder(state, action: PayloadAction<string>) {
       return removeDeckCard(state, action.payload)
     },
+    clearDeckZone(state, action: PayloadAction<DeckZone>) {
+      state[action.payload] = []
+    },
     replaceDeckBuilder(_state, action: PayloadAction<DeckBuilderState>) {
       return action.payload
     },
@@ -94,6 +97,7 @@ const deckBuilderSlice = createSlice({
 export const {
   addSearchResultToDeckZone,
   addSearchResultToDefaultDeckZone,
+  clearDeckZone,
   moveDeckCardInBuilder,
   removeDeckCardFromBuilder,
   replaceDeckBuilder,

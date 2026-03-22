@@ -1,3 +1,4 @@
+import { isMonsterRequirementSource, matchesMonsterRequirementCard } from './card-attributes'
 import type { CardEntry, CardGroupKey, CardRole, PatternRequirement } from '../types'
 
 export interface CardRoleDefinition {
@@ -122,6 +123,7 @@ export function buildDeckRoleSummary(cards: CardEntry[]): DerivedDeckGroup[] {
 export function resolveRequirementCardIds(
   requirement: PatternRequirement,
   groupsByKey: Map<CardGroupKey, DerivedDeckGroup>,
+  cards: Iterable<CardEntry>,
 ): string[] {
   if (requirement.source === 'group') {
     if (!requirement.groupKey) {
@@ -129,6 +131,16 @@ export function resolveRequirementCardIds(
     }
 
     return groupsByKey.get(requirement.groupKey)?.cardIds ?? []
+  }
+
+  if (isMonsterRequirementSource(requirement.source)) {
+    return [
+      ...new Set(
+        [...cards]
+          .filter((card) => matchesMonsterRequirementCard(card, requirement))
+          .map((card) => card.id),
+      ),
+    ]
   }
 
   return [...new Set(requirement.cardIds.filter(Boolean))]

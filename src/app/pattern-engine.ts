@@ -1,16 +1,21 @@
+import { getMonsterRequirementSourceLabel, isMonsterRequirementSource } from './card-attributes'
 import { resolveRequirementCardIds, type DerivedDeckGroup } from './deck-groups'
 import { normalizeHandPatternCategory } from './patterns'
 import type {
+  CardAttribute,
   CardEntry,
   CardGroupKey,
   HandPattern,
   HandPatternCategory,
   PatternMatchMode,
   RequirementKind,
+  RequirementSource,
 } from '../types'
 
 export interface ResolvedRequirement<Key extends string | number> {
+  attribute: CardAttribute | null
   sourceLabel: string
+  source: RequirementSource
   cardIds: string[]
   count: number
   kind: RequirementKind
@@ -66,7 +71,11 @@ export function resolvePattern<Counts, Key extends string | number>(
   context: PatternResolutionContext<Counts, Key>,
 ): ResolvedPattern<Key> {
   const requirements = pattern.requirements.map<ResolvedRequirement<Key>>((requirement) => {
-    const uniqueCardIds = resolveRequirementCardIds(requirement, context.groupsByKey)
+    const uniqueCardIds = resolveRequirementCardIds(
+      requirement,
+      context.groupsByKey,
+      context.cardById.values(),
+    )
     const cards = uniqueCardIds
       .map((cardId) => context.cardById.get(cardId))
       .filter((card): card is CardEntry => Boolean(card))
@@ -89,9 +98,13 @@ export function resolvePattern<Counts, Key extends string | number>(
       sourceLabel:
         requirement.source === 'group' && requirement.groupKey
           ? context.groupsByKey.get(requirement.groupKey)?.label ?? 'Grupo eliminado'
-          : cards.length === 1
-            ? cards[0].name.trim()
-            : `(${cards.length > 0 ? cards.map((card) => card.name.trim()).join(' / ') : 'Pool vacía'})`,
+          : isMonsterRequirementSource(requirement.source)
+            ? getMonsterRequirementSourceLabel(requirement) ?? 'Filtro de monstruos'
+            : cards.length === 1
+              ? cards[0].name.trim()
+              : `(${cards.length > 0 ? cards.map((card) => card.name.trim()).join(' / ') : 'Pool vacía'})`,
+      attribute: requirement.attribute,
+      source: requirement.source,
       cardIds: uniqueCardIds,
       count: requirement.count,
       kind: requirement.kind,
@@ -194,6 +207,10 @@ export function getMatchedRequirementCount<Counts, Key extends string | number>(
 }
 
 function formatRequirementPhrase<Key extends string | number>(requirement: ResolvedRequirement<Key>): string {
+  if (isMonsterRequirementSource(requirement.source)) {
+    return formatMonsterPropertyRequirementPhrase(requirement)
+  }
+
   if (requirement.kind === 'exclude') {
     if (requirement.distinct) {
       return requirement.count === 1
@@ -215,6 +232,34 @@ function formatRequirementPhrase<Key extends string | number>(requirement: Resol
   return requirement.count === 1
     ? `abrís 1 copia de ${requirement.sourceLabel}`
     : `abrís ${requirement.count} copias de ${requirement.sourceLabel}`
+}
+
+function formatMonsterPropertyRequirementPhrase<Key extends string | number>(
+  requirement: ResolvedRequirement<Key>,
+): string {
+  const sourceLabel = requirement.sourceLabel
+
+  if (requirement.kind === 'exclude') {
+    if (requirement.distinct) {
+      return requirement.count === 1
+        ? `no abrís ningún monstruo ${sourceLabel}`
+        : `no abrís ${requirement.count} o más nombres distintos de monstruos ${sourceLabel}`
+    }
+
+    return requirement.count === 1
+      ? `no abrís ningún monstruo ${sourceLabel}`
+      : `no abrís ${requirement.count} o más monstruos ${sourceLabel}`
+  }
+
+  if (requirement.distinct) {
+    return requirement.count === 1
+      ? `abrís 1 monstruo ${sourceLabel}`
+      : `abrís ${requirement.count} nombres distintos de monstruos ${sourceLabel}`
+  }
+
+  return requirement.count === 1
+    ? `abrís 1 monstruo ${sourceLabel}`
+    : `abrís ${requirement.count} monstruos ${sourceLabel}`
 }
 
 function buildMatchPrefix(requirementLabels: string[], allowSharedCards: boolean): string {

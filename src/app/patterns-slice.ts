@@ -1,6 +1,7 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
 
 import type {
+  CardAttribute,
   CardEntry,
   CardGroupKey,
   HandPattern,
@@ -22,8 +23,13 @@ import {
   updatePatternName,
   updateRequirementCount,
   updateRequirementDistinct,
+  updateRequirementAtk,
+  updateRequirementAttribute,
+  updateRequirementDef,
   updateRequirementGroup,
   updateRequirementKind,
+  updateRequirementLevel,
+  updateRequirementMonsterType,
   updateRequirementSource,
 } from './pattern-updates'
 
@@ -88,7 +94,12 @@ interface RequirementCountPayload {
 }
 
 interface RequirementSourcePayload {
+  defaultAtk: number | null
+  defaultAttribute: CardAttribute | null
+  defaultDef: number | null
   defaultGroupKey: CardGroupKey | null
+  defaultLevel: number | null
+  defaultMonsterType: string | null
   patternId: string
   requirementId: string
   value: RequirementSource
@@ -98,6 +109,36 @@ interface RequirementGroupPayload {
   patternId: string
   requirementId: string
   value: CardGroupKey | null
+}
+
+interface RequirementAttributePayload {
+  patternId: string
+  requirementId: string
+  value: CardAttribute | null
+}
+
+interface RequirementLevelPayload {
+  patternId: string
+  requirementId: string
+  value: number | null
+}
+
+interface RequirementMonsterTypePayload {
+  patternId: string
+  requirementId: string
+  value: string | null
+}
+
+interface RequirementAtkPayload {
+  patternId: string
+  requirementId: string
+  value: number | null
+}
+
+interface RequirementDefPayload {
+  patternId: string
+  requirementId: string
+  value: number | null
 }
 
 interface CompletePatternSeedingPayload {
@@ -222,6 +263,46 @@ const patternsSlice = createSlice({
         action.payload.value,
       )
     },
+    setRequirementAttribute(state, action: PayloadAction<RequirementAttributePayload>) {
+      state.patterns = updateRequirementAttribute(
+        state.patterns,
+        action.payload.patternId,
+        action.payload.requirementId,
+        action.payload.value,
+      )
+    },
+    setRequirementLevel(state, action: PayloadAction<RequirementLevelPayload>) {
+      state.patterns = updateRequirementLevel(
+        state.patterns,
+        action.payload.patternId,
+        action.payload.requirementId,
+        action.payload.value,
+      )
+    },
+    setRequirementMonsterType(state, action: PayloadAction<RequirementMonsterTypePayload>) {
+      state.patterns = updateRequirementMonsterType(
+        state.patterns,
+        action.payload.patternId,
+        action.payload.requirementId,
+        action.payload.value,
+      )
+    },
+    setRequirementAtk(state, action: PayloadAction<RequirementAtkPayload>) {
+      state.patterns = updateRequirementAtk(
+        state.patterns,
+        action.payload.patternId,
+        action.payload.requirementId,
+        action.payload.value,
+      )
+    },
+    setRequirementDef(state, action: PayloadAction<RequirementDefPayload>) {
+      state.patterns = updateRequirementDef(
+        state.patterns,
+        action.payload.patternId,
+        action.payload.requirementId,
+        action.payload.value,
+      )
+    },
     setRequirementKind(state, action: PayloadAction<RequirementKindPayload>) {
       state.patterns = updateRequirementKind(
         state.patterns,
@@ -237,6 +318,11 @@ const patternsSlice = createSlice({
         action.payload.requirementId,
         action.payload.value,
         action.payload.defaultGroupKey,
+        action.payload.defaultAttribute,
+        action.payload.defaultLevel,
+        action.payload.defaultMonsterType,
+        action.payload.defaultAtk,
+        action.payload.defaultDef,
       )
     },
     addRequirementCardToPattern(state, action: PayloadAction<RequirementCardPayload>) {
@@ -267,8 +353,13 @@ export const {
   setPatternName,
   setRequirementCount,
   setRequirementDistinct,
+  setRequirementAtk,
+  setRequirementAttribute,
+  setRequirementDef,
   setRequirementGroup,
   setRequirementKind,
+  setRequirementLevel,
+  setRequirementMonsterType,
   setRequirementSource,
 } = patternsSlice.actions
 export const patternsReducer = patternsSlice.reducer

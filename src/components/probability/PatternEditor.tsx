@@ -138,6 +138,9 @@ export function PatternEditor({
               ? 'Todavía no cargaste ninguna.'
               : `${formatInteger(visiblePatterns.length)} ${isOpeningView ? 'apertura' : 'problema'}${visiblePatterns.length === 1 ? '' : 's'} cargada${visiblePatterns.length === 1 ? '' : 's'}.`}
           </p>
+          <p className="app-muted m-[0.4rem_0_0] text-[0.72rem] leading-[1.16]">
+            Para cartas condicionales, armá varias condiciones en una misma apertura.
+          </p>
         </div>
       </div>
 

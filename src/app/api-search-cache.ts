@@ -1,4 +1,5 @@
 import { buildGenesysCardInfo } from './genesys-format'
+import type { CardSearchRequest } from './card-search'
 import type { SearchCacheEntry } from './model'
 import { SEARCH_CACHE_KEY, SEARCH_CACHE_LIMIT, SEARCH_CACHE_TTL_MS } from './model'
 import { isRecord, normalizeName } from './utils'
@@ -45,10 +46,10 @@ export function loadApiSearchCache(): Record<string, SearchCacheEntry<ApiCardSea
 
 export function getCachedApiSearch(
   cache: Record<string, SearchCacheEntry<ApiCardSearchResult>>,
-  query: string,
+  request: CardSearchRequest,
   page: number,
 ): SearchCacheEntry<ApiCardSearchResult> | null {
-  const normalizedQuery = buildSearchCacheKey(query, page)
+  const normalizedQuery = buildSearchCacheKey(request, page)
   const cachedEntry = cache[normalizedQuery]
 
   if (!cachedEntry) {
@@ -66,13 +67,13 @@ export function getCachedApiSearch(
 
 export function storeCachedApiSearch(
   cache: Record<string, SearchCacheEntry<ApiCardSearchResult>>,
-  query: string,
+  request: CardSearchRequest,
   page: number,
   results: SearchCacheEntry<ApiCardSearchResult>,
 ): Record<string, SearchCacheEntry<ApiCardSearchResult>> {
   const nextCache = {
     ...cache,
-    [buildSearchCacheKey(query, page)]: {
+    [buildSearchCacheKey(request, page)]: {
       savedAt: Date.now(),
       results: results.results,
       hasMore: results.hasMore,
@@ -96,8 +97,16 @@ export function saveApiSearchCache(cache: Record<string, SearchCacheEntry<ApiCar
   }
 }
 
-function buildSearchCacheKey(query: string, page: number): string {
-  return `${normalizeName(query)}::${page}`
+function buildSearchCacheKey(request: CardSearchRequest, page: number): string {
+  return [
+    normalizeName(request.query),
+    normalizeName(request.archetype),
+    normalizeName(request.exactType),
+    normalizeName(request.attribute),
+    normalizeName(request.race),
+    normalizeName(request.level),
+    String(page),
+  ].join('::')
 }
 
 function isApiCardSearchResult(value: unknown): value is ApiCardSearchResult {

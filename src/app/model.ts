@@ -1,5 +1,6 @@
 import type {
   ApiCardReference,
+  CardAttribute,
   CardGroupKey,
   CardRole,
   DeckFormat,
@@ -41,6 +42,11 @@ export interface PortableRequirement {
   cards: string[]
   source: RequirementSource
   groupKey: CardGroupKey | null
+  attribute: CardAttribute | null
+  level: number | null
+  monsterType: string | null
+  atk: number | null
+  def: number | null
   count: number
   kind: RequirementKind
   distinct: boolean

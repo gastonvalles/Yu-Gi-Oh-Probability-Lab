@@ -1,4 +1,5 @@
 import type {
+  CardAttribute,
   CardGroupKey,
   HandPatternCategory,
   PatternMatchMode,
@@ -23,4 +24,9 @@ export interface PatternEditorActions {
   setRequirementCount: (patternId: string, requirementId: string, value: string) => void
   setRequirementSource: (patternId: string, requirementId: string, value: RequirementSource) => void
   setRequirementGroup: (patternId: string, requirementId: string, value: CardGroupKey | null) => void
+  setRequirementAttribute: (patternId: string, requirementId: string, value: CardAttribute | null) => void
+  setRequirementLevel: (patternId: string, requirementId: string, value: string) => void
+  setRequirementMonsterType: (patternId: string, requirementId: string, value: string | null) => void
+  setRequirementAtk: (patternId: string, requirementId: string, value: string) => void
+  setRequirementDef: (patternId: string, requirementId: string, value: string) => void
 }

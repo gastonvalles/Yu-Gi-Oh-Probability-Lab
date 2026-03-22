@@ -50,14 +50,22 @@ export function getPatternCategoryShortLabel(
 }
 
 function getRequirementDefinitionKey(
-  requirement: Pick<PatternRequirement, 'source' | 'groupKey' | 'cardIds' | 'count' | 'kind' | 'distinct'>,
+  requirement: Pick<
+    PatternRequirement,
+    'source' | 'groupKey' | 'cardIds' | 'attribute' | 'level' | 'monsterType' | 'atk' | 'def' | 'count' | 'kind' | 'distinct'
+  >,
 ): string {
   return JSON.stringify({
+    attribute: requirement.attribute,
+    atk: requirement.atk,
     cardIds: [...requirement.cardIds].sort(),
     count: requirement.count,
+    def: requirement.def,
     distinct: requirement.distinct === true,
     groupKey: requirement.groupKey,
     kind: requirement.kind,
+    level: requirement.level,
+    monsterType: requirement.monsterType,
     source: requirement.source,
   })
 }

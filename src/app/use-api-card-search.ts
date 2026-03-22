@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { sortSearchResults } from './card-search'
+import {
+  applyLocalCardSearchFilters,
+  buildCardSearchActiveFilterCount,
+  buildRemoteCardSearchRequest,
+  DEFAULT_CARD_SEARCH_FILTERS,
+  hasCardSearchRequestCriteria,
+  sortSearchResults,
+  type CardSearchFilters,
+} from './card-search'
 import {
   createInitialSearchState,
   SEARCH_DEBOUNCE_MS,
-  SEARCH_MIN_QUERY_LENGTH,
   SEARCH_PAGE_SIZE,
   type ApiSearchState,
 } from './model'
@@ -13,63 +20,59 @@ import {
   getCachedApiSearch,
   storeCachedApiSearch,
 } from './api-search-cache'
-import { searchCardsByName, type ApiCardSearchResult } from '../ygoprodeck'
+import { searchCards, type ApiCardSearchResult } from '../ygoprodeck'
+import type { DeckFormat } from '../types'
 
 interface ApiCardSearchController {
   apiSearch: ApiSearchState<ApiCardSearchResult>
-  searchTypeFilter: string
-  searchArchetypeFilter: string
+  searchFilters: CardSearchFilters
   visibleSearchResults: ApiCardSearchResult[]
-  setArchetypeFilter: (value: string) => void
+  activeFilterCount: number
+  hasSearchCriteria: boolean
+  clearFilters: () => void
   setQuery: (value: string) => void
-  setSearchTypeFilter: (value: string) => void
+  updateSearchFilters: (updates: Partial<CardSearchFilters>) => void
   showNextPage: () => void
   showPreviousPage: () => void
 }
 
-export function useApiCardSearch(): ApiCardSearchController {
+export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchController {
   const [apiSearch, setApiSearch] = useState(() => createInitialSearchState<ApiCardSearchResult>())
-  const [searchTypeFilter, setSearchTypeFilter] = useState('all')
-  const [searchArchetypeFilter, setSearchArchetypeFilter] = useState('')
+  const [searchFilters, setSearchFilters] = useState<CardSearchFilters>(() => ({
+    ...DEFAULT_CARD_SEARCH_FILTERS,
+  }))
   const searchCacheRef = useRef(loadApiSearchCache())
   const searchDebounceTimerRef = useRef<number>(0)
   const searchRequestIdRef = useRef(0)
-
+  const remoteSearchRequest = useMemo(
+    () => buildRemoteCardSearchRequest(apiSearch.query, searchFilters),
+    [
+      apiSearch.query,
+      searchFilters.archetype,
+      searchFilters.attribute,
+      searchFilters.exactType,
+      searchFilters.level,
+      searchFilters.race,
+    ],
+  )
+  const hasSearchCriteria = useMemo(
+    () => hasCardSearchRequestCriteria(remoteSearchRequest),
+    [remoteSearchRequest],
+  )
+  const activeFilterCount = useMemo(
+    () => buildCardSearchActiveFilterCount(searchFilters, deckFormat),
+    [deckFormat, searchFilters],
+  )
   const visibleSearchResults = useMemo(
-    () =>
-      apiSearch.results.filter((card) => {
-        const cardType = card.cardType.toLowerCase()
-        const frameType = card.frameType.toLowerCase()
-
-        if (
-          (searchTypeFilter === 'monster' && !cardType.includes('monster')) ||
-          (searchTypeFilter === 'spell' && !cardType.includes('spell')) ||
-          (searchTypeFilter === 'trap' && !cardType.includes('trap')) ||
-          (searchTypeFilter === 'extra' &&
-            !frameType.includes('fusion') &&
-            !frameType.includes('synchro') &&
-            !frameType.includes('xyz') &&
-            !frameType.includes('link'))
-        ) {
-          return false
-        }
-
-        if (
-          searchArchetypeFilter.trim().length > 0 &&
-          !(card.archetype ?? '').toLowerCase().includes(searchArchetypeFilter.trim().toLowerCase())
-        ) {
-          return false
-        }
-
-        return true
-      }),
-    [apiSearch.results, searchArchetypeFilter, searchTypeFilter],
+    () => applyLocalCardSearchFilters(apiSearch.results, searchFilters, deckFormat),
+    [apiSearch.results, deckFormat, searchFilters],
   )
 
-  const runApiSearch = useCallback(async (query: string, page = 0) => {
-    const trimmedQuery = query.trim()
-
-    if (trimmedQuery.length < SEARCH_MIN_QUERY_LENGTH) {
+  const runApiSearch = useCallback(async (
+    request: ReturnType<typeof buildRemoteCardSearchRequest>,
+    page = 0,
+  ) => {
+    if (!hasCardSearchRequestCriteria(request)) {
       setApiSearch((current) => ({
         ...current,
         status: 'idle',
@@ -81,7 +84,7 @@ export function useApiCardSearch(): ApiCardSearchController {
       return
     }
 
-    const cachedResults = getCachedApiSearch(searchCacheRef.current, trimmedQuery, page)
+    const cachedResults = getCachedApiSearch(searchCacheRef.current, request, page)
 
     if (cachedResults) {
       setApiSearch((current) => ({
@@ -106,14 +109,25 @@ export function useApiCardSearch(): ApiCardSearchController {
     }))
 
     try {
-      const searchPage = await searchCardsByName(trimmedQuery, SEARCH_PAGE_SIZE, page * SEARCH_PAGE_SIZE)
+      const searchPage = await searchCards(
+        {
+          query: request.query,
+          archetype: request.archetype,
+          exactType: request.exactType,
+          attribute: request.attribute,
+          race: request.race,
+          level: request.level,
+        },
+        SEARCH_PAGE_SIZE,
+        page * SEARCH_PAGE_SIZE,
+      )
 
       if (searchRequestIdRef.current !== requestId) {
         return
       }
 
       const sortedResults = sortSearchResults(searchPage.results)
-      searchCacheRef.current = storeCachedApiSearch(searchCacheRef.current, trimmedQuery, page, {
+      searchCacheRef.current = storeCachedApiSearch(searchCacheRef.current, request, page, {
         savedAt: Date.now(),
         results: sortedResults,
         hasMore: searchPage.hasMore,
@@ -146,9 +160,7 @@ export function useApiCardSearch(): ApiCardSearchController {
   useEffect(() => {
     window.clearTimeout(searchDebounceTimerRef.current)
 
-    const trimmedQuery = apiSearch.query.trim()
-
-    if (trimmedQuery.length < SEARCH_MIN_QUERY_LENGTH) {
+    if (!hasSearchCriteria) {
       setApiSearch((current) =>
         current.status === 'idle' && current.results.length === 0 && current.page === 0
           ? current
@@ -176,13 +188,13 @@ export function useApiCardSearch(): ApiCardSearchController {
     )
 
     searchDebounceTimerRef.current = window.setTimeout(() => {
-      void runApiSearch(trimmedQuery, 0)
+      void runApiSearch(remoteSearchRequest, 0)
     }, SEARCH_DEBOUNCE_MS)
 
     return () => {
       window.clearTimeout(searchDebounceTimerRef.current)
     }
-  }, [apiSearch.query, runApiSearch])
+  }, [hasSearchCriteria, remoteSearchRequest, runApiSearch])
 
   useEffect(
     () => () => {
@@ -193,10 +205,15 @@ export function useApiCardSearch(): ApiCardSearchController {
 
   return {
     apiSearch,
-    searchTypeFilter,
-    searchArchetypeFilter,
+    searchFilters,
     visibleSearchResults,
-    setArchetypeFilter: setSearchArchetypeFilter,
+    activeFilterCount,
+    hasSearchCriteria,
+    clearFilters: () => {
+      setSearchFilters({
+        ...DEFAULT_CARD_SEARCH_FILTERS,
+      })
+    },
     setQuery: (value) => {
       setApiSearch((current) => ({
         ...current,
@@ -204,15 +221,20 @@ export function useApiCardSearch(): ApiCardSearchController {
         page: 0,
       }))
     },
-    setSearchTypeFilter,
+    updateSearchFilters: (updates) => {
+      setSearchFilters((current) => ({
+        ...current,
+        ...updates,
+      }))
+    },
     showNextPage: () => {
-      if (apiSearch.hasMore) {
-        void runApiSearch(apiSearch.query, apiSearch.page + 1)
+      if (apiSearch.hasMore && hasSearchCriteria) {
+        void runApiSearch(remoteSearchRequest, apiSearch.page + 1)
       }
     },
     showPreviousPage: () => {
-      if (apiSearch.page > 0) {
-        void runApiSearch(apiSearch.query, apiSearch.page - 1)
+      if (apiSearch.page > 0 && hasSearchCriteria) {
+        void runApiSearch(remoteSearchRequest, apiSearch.page - 1)
       }
     },
   }
