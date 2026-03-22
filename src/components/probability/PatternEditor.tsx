@@ -25,6 +25,17 @@ export function PatternEditor({
   const [openPatternId, setOpenPatternId] = useState<string | null>(null)
   const [pendingPatternIds, setPendingPatternIds] = useState<Set<string>>(() => new Set())
   const isOpeningView = activeCategory === 'good'
+  const mainDeckCount = useMemo(
+    () => derivedMainCards.reduce((total, card) => total + card.copies, 0),
+    [derivedMainCards],
+  )
+  const classifiedCardCount = useMemo(
+    () => derivedMainCards.filter((card) => card.roles.length > 0).length,
+    [derivedMainCards],
+  )
+  const unclassifiedCardCount = Math.max(0, derivedMainCards.length - classifiedCardCount)
+  const hasCompletedRoleStep =
+    derivedMainCards.length > 0 && classifiedCardCount === derivedMainCards.length
   const openingCount = useMemo(
     () => patterns.filter((pattern) => normalizeHandPatternCategory(pattern.category) === 'good').length,
     [patterns],
@@ -38,9 +49,19 @@ export function PatternEditor({
     [activeCategory, patterns],
   )
   const sectionEmptyMessage =
-    isOpeningView
-      ? 'Todavía no cargaste aperturas. Agregá una para marcar qué mano sí querés ver al robar.'
-      : 'Todavía no cargaste problemas. Agregá uno para marcar qué mano no querés ver al robar.'
+    mainDeckCount === 0
+      ? 'Primero cargá cartas en el Main Deck. Después vas a poder definir aperturas y problemas acá.'
+      : !hasCompletedRoleStep
+        ? `Terminá de marcar roles en el paso 2. Te faltan ${formatInteger(unclassifiedCardCount)} carta${unclassifiedCardCount === 1 ? '' : 's'} sin rol y ahí aparecen los chequeos sugeridos.`
+        : isOpeningView
+          ? 'Todavía no cargaste aperturas. Agregá una para marcar qué mano sí querés ver al robar.'
+          : 'Todavía no cargaste problemas. Agregá uno para marcar qué mano no querés ver al robar.'
+  const helperMessage =
+    mainDeckCount === 0
+      ? 'Empezá en el paso 1 armando el deck. El editor se activa de verdad cuando ya hay Main Deck.'
+      : !hasCompletedRoleStep
+        ? 'Cuando todas las cartas del Main Deck tengan rol, aparecen aperturas y problemas sugeridos automáticamente.'
+        : 'Para cartas condicionales, armá varias condiciones en una misma apertura.'
 
   const handleCategoryChange = (category: HandPatternCategory) => {
     setActiveCategory(category)
@@ -135,11 +156,15 @@ export function PatternEditor({
             Editá solo lo que querés medir en esta vista.
             {' '}
             {visiblePatterns.length === 0
-              ? 'Todavía no cargaste ninguna.'
+              ? mainDeckCount === 0
+                ? 'Todavía no hay base cargada.'
+                : !hasCompletedRoleStep
+                  ? 'Todavía faltan roles por marcar.'
+                  : 'Todavía no cargaste ninguna.'
               : `${formatInteger(visiblePatterns.length)} ${isOpeningView ? 'apertura' : 'problema'}${visiblePatterns.length === 1 ? '' : 's'} cargada${visiblePatterns.length === 1 ? '' : 's'}.`}
           </p>
           <p className="app-muted m-[0.4rem_0_0] text-[0.72rem] leading-[1.16]">
-            Para cartas condicionales, armá varias condiciones en una misma apertura.
+            {helperMessage}
           </p>
         </div>
       </div>

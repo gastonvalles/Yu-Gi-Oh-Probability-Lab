@@ -6,16 +6,26 @@ import { formatInteger, formatPercent } from '../../app/utils'
 
 interface ResultsSectionProps {
   result: CalculationOutput
+  handSize: number
+  mainDeckCount: number
+  patternCount: number
 }
 
 const CLEAN_HANDS_TOOLTIP = 'Cumplen al menos una apertura y no presentan ningún problema.'
 
-export function ResultsSection({ result }: ResultsSectionProps) {
+export function ResultsSection({
+  result,
+  handSize,
+  mainDeckCount,
+  patternCount,
+}: ResultsSectionProps) {
   const openingPatterns =
     result.summary?.patternResults.filter((pattern) => normalizeHandPatternCategory(pattern.category) === 'good') ?? []
   const problemPatterns =
     result.summary?.patternResults.filter((pattern) => normalizeHandPatternCategory(pattern.category) === 'bad') ?? []
   const [activeDetailTab, setActiveDetailTab] = useState<'good' | 'bad'>('good')
+  const isEmptyDeckState = mainDeckCount === 0
+  const isPristineProbabilityStep = isEmptyDeckState && patternCount === 0
   const cleanHands = result.summary ? Math.max(0, result.summary.goodHands - result.summary.overlapHands) : 0
   const cleanProbability = result.summary && result.summary.totalHands > 0 ? cleanHands / result.summary.totalHands : 0
   const badOnlyHands = result.summary ? Math.max(0, result.summary.badHands - result.summary.overlapHands) : 0
@@ -39,7 +49,9 @@ export function ResultsSection({ result }: ResultsSectionProps) {
       <div className="grid gap-2">
         <h3 className="m-0 text-[0.98rem] leading-none">Probabilidad exacta</h3>
 
-        {result.issues.length > 0 ? (
+        {isEmptyDeckState ? (
+          <EmptyProbabilityState handSize={handSize} isPristine={isPristineProbabilityStep} />
+        ) : result.issues.length > 0 ? (
           <div className="grid gap-1.5">
             {result.issues.map((issue, index) => (
               <p
@@ -58,11 +70,11 @@ export function ResultsSection({ result }: ResultsSectionProps) {
           </div>
         ) : null}
 
-        {!result.summary ? (
+        {!result.summary && !isEmptyDeckState ? (
           <div className="surface-card p-2 text-[0.8rem] text-[var(--text-muted)]">
             Ajustá el Main Deck y definí al menos una apertura o un problema para obtener la probabilidad exacta.
           </div>
-        ) : (
+        ) : result.summary ? (
           <>
             <div className="sticky top-0 z-20 grid gap-1.5 bg-[var(--bg-panel)] pb-2 shadow-[0_10px_18px_rgb(var(--background-rgb)/0.9)]">
               <div
@@ -145,9 +157,53 @@ export function ResultsSection({ result }: ResultsSectionProps) {
               </div>
             ) : null}
           </>
-        )}
+        ) : null}
       </div>
     </section>
+  )
+}
+
+interface EmptyProbabilityStateProps {
+  handSize: number
+  isPristine: boolean
+}
+
+function EmptyProbabilityState({ handSize, isPristine }: EmptyProbabilityStateProps) {
+  return (
+    <div className="surface-panel-strong grid gap-2.5 p-3">
+      <div className="grid gap-1">
+        <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Antes de medir</p>
+        <strong className="text-[0.92rem] leading-none text-(--text-main)">
+          {isPristine ? 'Arrancá cargando el Main Deck' : 'Volvé a cargar cartas para retomar la medición'}
+        </strong>
+        <p className="app-muted m-0 text-[0.78rem] leading-[1.16]">
+          Este panel muestra probabilidades exactas cuando ya tenés cartas en el Main Deck y al menos un chequeo activo.
+        </p>
+      </div>
+
+      <div className="grid gap-1.5 min-[760px]:grid-cols-3">
+        <article className="surface-card px-2 py-2">
+          <strong className="block text-[0.74rem] uppercase tracking-widest text-(--accent-strong)">1. Deck</strong>
+          <p className="m-[0.28rem_0_0] text-[0.76rem] leading-[1.14] text-(--text-muted)">
+            Cargá al menos 40 cartas en el Main Deck.
+          </p>
+        </article>
+
+        <article className="surface-card px-2 py-2">
+          <strong className="block text-[0.74rem] uppercase tracking-widest text-(--accent-strong)">2. Roles</strong>
+          <p className="m-[0.28rem_0_0] text-[0.76rem] leading-[1.14] text-(--text-muted)">
+            Marcá los roles en el paso 2 para habilitar chequeos sugeridos.
+          </p>
+        </article>
+
+        <article className="surface-card px-2 py-2">
+          <strong className="block text-[0.74rem] uppercase tracking-widest text-(--accent-strong)">3. Chequeos</strong>
+          <p className="m-[0.28rem_0_0] text-[0.76rem] leading-[1.14] text-(--text-muted)">
+            Definí aperturas o problemas. La práctica se habilita cuando haya al menos {formatInteger(handSize)} cartas.
+          </p>
+        </article>
+      </div>
+    </div>
   )
 }
 

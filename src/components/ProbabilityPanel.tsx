@@ -35,6 +35,10 @@ export function ProbabilityPanel({
   patternActions,
 }: ProbabilityPanelProps) {
   const [mobilePatternsOpen, setMobilePatternsOpen] = useState(false)
+  const mainDeckCount = useMemo(
+    () => derivedMainCards.reduce((total, card) => total + card.copies, 0),
+    [derivedMainCards],
+  )
   const deferredDerivedMainCards = useDeferredValue(derivedMainCards)
   const deferredPatterns = useDeferredValue(patterns)
   const result = useMemo(
@@ -72,7 +76,12 @@ export function ProbabilityPanel({
               Abrir aperturas y problemas
             </Button>
           </div>
-          <ResultsSection result={result} />
+          <ResultsSection
+            result={result}
+            handSize={handSize}
+            mainDeckCount={mainDeckCount}
+            patternCount={patterns.length}
+          />
         </section>
 
         <section className="surface-panel-soft grid min-h-0 gap-2 p-2.5 max-[1179px]:hidden min-[1180px]:h-full min-[1180px]:grid-rows-[minmax(0,1fr)]">

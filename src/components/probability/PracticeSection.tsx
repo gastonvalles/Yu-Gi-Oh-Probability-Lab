@@ -151,8 +151,11 @@ export function PracticeSection({
     () => evaluatePracticeHand(practiceHand?.hand ?? [], patterns, derivedMainCards, groupsByKey),
     [practiceHand, patterns, derivedMainCards, groupsByKey],
   )
+  const practiceDeckCount = practiceDeck.length
   const canDrawOpeningHand = practiceDeck.length >= handSize
   const canDrawNextCard = practiceHand !== null && practiceHand.remainingDeck.length > 0
+  const missingPracticeCards = Math.max(0, handSize - practiceDeckCount)
+  const isEmptyPracticeDeck = practiceDeckCount === 0
   const openingMatches = practiceResult.openingMatches
   const problemMatches = practiceResult.problemMatches
   const pairedMatchRows = useMemo(
@@ -211,9 +214,13 @@ export function PracticeSection({
         </div>
       </div>
 
-      {!canDrawOpeningHand ? (
-        <p className="surface-card-danger m-0 p-2.5 text-[0.8rem] text-(--destructive)">
-          Necesitás al menos {formatInteger(handSize)} cartas en el Main Deck para probar manos con esta apertura.
+      {isEmptyPracticeDeck ? (
+        <p className="surface-card m-0 p-2.5 text-[0.8rem] text-(--text-muted)">
+          Cargá cartas en el Main Deck para habilitar la práctica. Cuando llegues a {formatInteger(handSize)}, vas a poder robar manos y ver aperturas y problemas en vivo.
+        </p>
+      ) : !canDrawOpeningHand ? (
+        <p className="surface-card-warning m-0 p-2.5 text-[0.8rem] text-(--warning)">
+          Todavía no alcanza para robar una mano inicial. Sumá {formatInteger(missingPracticeCards)} carta{missingPracticeCards === 1 ? '' : 's'} más al Main Deck.
         </p>
       ) : (
         <>
