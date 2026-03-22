@@ -45,8 +45,9 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
   const searchDebounceTimerRef = useRef<number>(0)
   const searchRequestIdRef = useRef(0)
   const remoteSearchRequest = useMemo(
-    () => buildRemoteCardSearchRequest(apiSearch.query, searchFilters),
+    () => buildRemoteCardSearchRequest(apiSearch.query, searchFilters, deckFormat),
     [
+      deckFormat,
       apiSearch.query,
       searchFilters.archetype,
       searchFilters.attribute,
@@ -117,6 +118,7 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
           attribute: request.attribute,
           race: request.race,
           level: request.level,
+          format: request.format,
         },
         SEARCH_PAGE_SIZE,
         page * SEARCH_PAGE_SIZE,

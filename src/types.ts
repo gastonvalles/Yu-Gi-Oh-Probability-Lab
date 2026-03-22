@@ -1,5 +1,5 @@
 export type CardSource = 'manual' | 'ygoprodeck'
-export type DeckFormat = 'unlimited' | 'tcg' | 'ocg' | 'goat' | 'genesys'
+export type DeckFormat = 'unlimited' | 'tcg' | 'ocg' | 'goat' | 'edison' | 'genesys'
 export type BanlistStatus = 'forbidden' | 'limited' | 'semi-limited' | 'unlimited'
 export type CardRole = 'starter' | 'extender' | 'brick' | 'handtrap' | 'boardbreaker' | 'floodgate'
 export type CardGroupKey = CardRole | 'engine' | 'non-engine'

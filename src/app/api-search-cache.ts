@@ -105,6 +105,7 @@ function buildSearchCacheKey(request: CardSearchRequest, page: number): string {
     normalizeName(request.attribute),
     normalizeName(request.race),
     normalizeName(request.level),
+    normalizeName(request.format),
     String(page),
   ].join('::')
 }

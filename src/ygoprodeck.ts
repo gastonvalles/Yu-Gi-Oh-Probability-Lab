@@ -12,6 +12,7 @@ export interface SearchCardsOptions {
   attribute?: string
   race?: string
   level?: string
+  format?: string
 }
 
 export async function searchCards(
@@ -30,6 +31,7 @@ export async function searchCards(
   const trimmedAttribute = options.attribute?.trim() ?? ''
   const trimmedRace = options.race?.trim() ?? ''
   const trimmedLevel = options.level?.trim() ?? ''
+  const trimmedFormat = options.format?.trim() ?? ''
 
   if (trimmedQuery.length > 0) {
     params.set('fname', trimmedQuery)
@@ -53,6 +55,10 @@ export async function searchCards(
 
   if (trimmedLevel.length > 0) {
     params.set('level', trimmedLevel)
+  }
+
+  if (trimmedFormat.length > 0) {
+    params.set('format', trimmedFormat)
   }
 
   const payload = await requestCardInfo(params)

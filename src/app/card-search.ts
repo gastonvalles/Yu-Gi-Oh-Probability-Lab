@@ -24,6 +24,7 @@ export interface CardSearchRequest {
   attribute: string
   race: string
   level: string
+  format: string
 }
 
 export const DEFAULT_CARD_SEARCH_FILTERS: CardSearchFilters = {
@@ -73,6 +74,7 @@ export function sortSearchResults(results: ApiCardSearchResult[]): ApiCardSearch
 export function buildRemoteCardSearchRequest(
   query: string,
   filters: CardSearchFilters,
+  deckFormat: DeckFormat,
 ): CardSearchRequest {
   const trimmedQuery = query.trim()
   const hasRemoteFilters = hasRemoteCardSearchFilters(filters)
@@ -88,15 +90,23 @@ export function buildRemoteCardSearchRequest(
     attribute: filters.attribute.trim(),
     race: filters.race.trim(),
     level: filters.level.trim(),
+    format: deckFormat === 'edison' ? 'edison' : '',
   }
 }
 
-export function hasCardSearchCriteria(query: string, filters: CardSearchFilters): boolean {
-  return hasCardSearchRequestCriteria(buildRemoteCardSearchRequest(query, filters))
+export function hasCardSearchCriteria(query: string, filters: CardSearchFilters, deckFormat: DeckFormat): boolean {
+  return hasCardSearchRequestCriteria(buildRemoteCardSearchRequest(query, filters, deckFormat))
 }
 
 export function hasCardSearchRequestCriteria(request: CardSearchRequest): boolean {
-  return Object.values(request).some((value) => normalizeName(value).length > 0)
+  return [
+    request.query,
+    request.archetype,
+    request.exactType,
+    request.attribute,
+    request.race,
+    request.level,
+  ].some((value) => normalizeName(value).length > 0)
 }
 
 export function buildCardSearchActiveFilterCount(

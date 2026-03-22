@@ -42,7 +42,7 @@ Ejemplos:
 
 ### Resultado final de la mano
 
-- Jugable limpia: cumple apertura y no tiene problemas.
+- Jugable sin problemas: cumple apertura y no tiene problemas.
 - Jugable con problemas: cumple apertura y tiene problemas.
 - Mala: no cumple aperturas y sí tiene problemas.
 - Neutra: no cumple aperturas ni problemas.

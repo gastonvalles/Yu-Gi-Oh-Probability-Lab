@@ -1,6 +1,7 @@
 import type { ApiCardReference, CardRole, DeckFormat } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 import { getCardCopyLimit } from './deck-format'
+import { EDISON_FORMAT_LABEL, getEdisonCardStatus, isEdisonCardInPool } from './edison-format'
 import { GENESYS_POINT_CAP, calculateGenesysDeckPointTotal, isGenesysLegalCardName } from './genesys-format'
 import type { DeckBuilderState, DeckCardInstance, DeckZone } from './model'
 import { createId, formatInteger } from './utils'
@@ -67,13 +68,21 @@ export function getAddSearchResultIssue(
     return `${searchResult.name} no figura como carta legal en Genesys.`
   }
 
+  if (format === 'edison' && !isEdisonCardInPool(searchResult)) {
+    return `${searchResult.name} no es legal en ${EDISON_FORMAT_LABEL}.`
+  }
+
   if (deckBuilder[zone].length >= DECK_ZONE_LIMITS[zone]) {
     const zoneLabel = zone === 'extra' ? 'Extra Deck' : zone === 'side' ? 'Side Deck' : 'Main Deck'
     return `${zoneLabel} ya alcanzó su tamaño máximo.`
   }
 
-  if (countCardCopies(deckBuilder, searchResult.name) >= getCardCopyLimit(searchResult, format)) {
-    const limit = getCardCopyLimit(searchResult, format)
+  const limit = getCardCopyLimit(searchResult, format)
+
+  if (countCardCopies(deckBuilder, searchResult.name) >= limit) {
+    if (limit === 0 && format === 'edison' && getEdisonCardStatus(searchResult) === 'forbidden') {
+      return `${searchResult.name} está prohibida en ${EDISON_FORMAT_LABEL}.`
+    }
 
     return limit === 0
       ? `${searchResult.name} no se puede jugar en este formato.`

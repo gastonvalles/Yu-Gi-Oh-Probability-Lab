@@ -175,6 +175,7 @@ export function DeckBuilderStep({
               <option value="tcg">TCG</option>
               <option value="ocg">OCG</option>
               <option value="goat">GOAT</option>
+              <option value="edison">Edison</option>
               <option value="genesys">Genesys</option>
             </select>
           </>

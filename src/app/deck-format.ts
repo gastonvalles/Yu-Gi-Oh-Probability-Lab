@@ -1,6 +1,7 @@
 import type { ApiCardReference, BanlistStatus, DeckFormat } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 import { GENESYS_POINT_CAP, calculateGenesysDeckPointTotal } from './genesys-format'
+import { EDISON_FORMAT_LABEL, getEdisonCardCopyLimit, getEdisonCardStatus, isEdisonCardInPool } from './edison-format'
 import type { DeckBuilderState, DeckZone } from './model'
 import { formatInteger } from './utils'
 
@@ -14,6 +15,10 @@ export interface CardLimitIndicator {
 export function getCardCopyLimit(card: ApiCardReference | ApiCardSearchResult, format: DeckFormat): number {
   if (format === 'unlimited' || format === 'genesys') {
     return MAX_COPIES_PER_CARD
+  }
+
+  if (format === 'edison') {
+    return getEdisonCardCopyLimit(card)
   }
 
   const status =
@@ -37,6 +42,10 @@ export function getDeckFormatLabel(format: DeckFormat): string {
 
   if (format === 'goat') {
     return 'GOAT'
+  }
+
+  if (format === 'edison') {
+    return EDISON_FORMAT_LABEL
   }
 
   if (format === 'genesys') {
@@ -65,6 +74,13 @@ export function getCardLimitIndicator(
 
   if (format === 'unlimited') {
     return null
+  }
+
+  if (format === 'edison' && !isEdisonCardInPool(card)) {
+    return {
+      value: 0,
+      label: `${EDISON_FORMAT_LABEL}: fuera del formato`,
+    }
   }
 
   const limit = getCardCopyLimit(card, format)
@@ -119,6 +135,10 @@ export function buildDeckFormatIssues(deckBuilder: DeckBuilderState, format: Dec
   const copyIssues = [...countsByName.values()]
     .filter((entry) => entry.copies > getCardCopyLimit(entry.card, format))
     .map((entry) => {
+      if (format === 'edison' && getEdisonCardStatus(entry.card) === 'unavailable') {
+        return `${entry.name} no es legal en ${EDISON_FORMAT_LABEL}.`
+      }
+
       const limit = getCardCopyLimit(entry.card, format)
 
       if (limit === 0) {
