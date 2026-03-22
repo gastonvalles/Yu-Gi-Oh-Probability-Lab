@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useDeferredValue, useMemo, useState } from 'react'
 
 import { buildCalculatorState } from '../app/deck-utils'
 import type { CalculatorMode } from '../app/model'
@@ -67,15 +67,17 @@ export function ProbabilityPanel({
 }: ProbabilityPanelProps) {
   const handSize = 5
   const [mobilePatternsOpen, setMobilePatternsOpen] = useState(false)
+  const deferredDerivedMainCards = useDeferredValue(derivedMainCards)
+  const deferredPatterns = useDeferredValue(patterns)
   const result = useMemo(
     () =>
       calculateProbabilities(
-        buildCalculatorState(derivedMainCards, {
+        buildCalculatorState(deferredDerivedMainCards, {
           handSize,
-          patterns,
+          patterns: deferredPatterns,
         }),
       ),
-    [derivedMainCards, handSize, patterns],
+    [deferredDerivedMainCards, handSize, deferredPatterns],
   )
 
   return (

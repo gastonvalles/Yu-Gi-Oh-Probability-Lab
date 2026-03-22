@@ -25,6 +25,7 @@ interface SearchPanelProps {
   page: number
   hasMore: boolean
   activeDragSearchCardId: number | null
+  dragEnabled?: boolean
   typeFilter: string
   archetypeFilter: string
   onQueryChange: (value: string) => void
@@ -48,6 +49,7 @@ export function SearchPanel({
   page,
   hasMore,
   activeDragSearchCardId,
+  dragEnabled = true,
   typeFilter,
   archetypeFilter,
   onQueryChange,
@@ -65,7 +67,7 @@ export function SearchPanel({
 
   return (
     <article
-      className="self-start min-h-0 overflow-hidden border border-[#2f2f2f] bg-black p-2"
+      className="self-start h-full min-h-0 max-h-full overflow-hidden border border-[#2f2f2f] bg-black p-2"
       style={
         builderHeight
           ? { height: builderHeight, maxHeight: builderHeight }
@@ -199,13 +201,20 @@ export function SearchPanel({
                       <article
                         key={card.ygoprodeckId}
                         className={[
-                          'grid w-full min-w-0 cursor-grab select-none touch-none grid-cols-[42px_minmax(0,1fr)] items-center gap-2 border border-[#2f2f2f] bg-[#090909] p-1.5 transition-all duration-150 ease-out will-change-transform',
+                          'grid w-full min-w-0 select-none grid-cols-[42px_minmax(0,1fr)] items-center gap-2 border border-[#2f2f2f] bg-[#090909] p-1.5 transition-all duration-150 ease-out will-change-transform',
+                          dragEnabled ? 'cursor-grab touch-none' : '',
                           activeDragSearchCardId === card.ygoprodeckId
                             ? 'opacity-35'
                             : '',
                         ].join(' ')}
                         onClick={() => onResultClick(card.ygoprodeckId)}
-                        onPointerDown={(event) => onSearchCardPointerDown(event, card.ygoprodeckId)}
+                        onPointerDown={(event) => {
+                          if (!dragEnabled) {
+                            return
+                          }
+
+                          onSearchCardPointerDown(event, card.ygoprodeckId)
+                        }}
                         onMouseEnter={(event) => onHoverStart(card.name, card, event.currentTarget)}
                         onMouseLeave={onHoverEnd}
                       >

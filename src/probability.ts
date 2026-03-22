@@ -78,7 +78,14 @@ function validateState(state: CalculatorState): ValidationIssue[] {
     })
   }
 
-  if (Number.isInteger(state.deckSize) && (state.deckSize < 40 || state.deckSize > 60)) {
+  if (Number.isInteger(state.deckSize) && state.deckSize < 40) {
+    issues.push({
+      level: 'error',
+      message: 'El Main Deck debe tener al menos 40 cartas para calcular la probabilidad exacta.',
+    })
+  }
+
+  if (Number.isInteger(state.deckSize) && state.deckSize > 60) {
     issues.push({
       level: 'warning',
       message: 'En Yu-Gi-Oh! el Main Deck suele estar entre 40 y 60 cartas.',

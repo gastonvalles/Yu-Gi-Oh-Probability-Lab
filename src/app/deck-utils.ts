@@ -576,7 +576,7 @@ export function addSearchResultToZone(
     return deckBuilder
   }
 
-  const nextDeckBuilder = cloneDeckBuilder(deckBuilder)
+  const nextDeckBuilder = copyDeckBuilderForZones(deckBuilder, [zone])
 
   insertDeckCard(nextDeckBuilder[zone], targetIndex, {
     instanceId: createId('deck-card'),
@@ -642,7 +642,10 @@ export function moveDeckCard(
     return deckBuilder
   }
 
-  const nextDeckBuilder = cloneDeckBuilder(deckBuilder)
+  const nextDeckBuilder = copyDeckBuilderForZones(
+    deckBuilder,
+    location.zone === targetZone ? [location.zone] : [location.zone, targetZone],
+  )
   const [movedCard] = nextDeckBuilder[location.zone].splice(location.index, 1)
   let adjustedIndex = targetIndex
 
@@ -661,7 +664,7 @@ export function removeDeckCard(deckBuilder: DeckBuilderState, instanceId: string
     return deckBuilder
   }
 
-  const nextDeckBuilder = cloneDeckBuilder(deckBuilder)
+  const nextDeckBuilder = copyDeckBuilderForZones(deckBuilder, [location.zone])
   nextDeckBuilder[location.zone].splice(location.index, 1)
   return nextDeckBuilder
 }
@@ -724,6 +727,17 @@ function cloneDeckBuilder(deckBuilder: DeckBuilderState): DeckBuilderState {
     main: deckBuilder.main.map(cloneDeckCard),
     extra: deckBuilder.extra.map(cloneDeckCard),
     side: deckBuilder.side.map(cloneDeckCard),
+  }
+}
+
+function copyDeckBuilderForZones(deckBuilder: DeckBuilderState, zonesToCopy: DeckZone[]): DeckBuilderState {
+  const copiedZones = new Set(zonesToCopy)
+
+  return {
+    deckName: deckBuilder.deckName,
+    main: copiedZones.has('main') ? [...deckBuilder.main] : deckBuilder.main,
+    extra: copiedZones.has('extra') ? [...deckBuilder.extra] : deckBuilder.extra,
+    side: copiedZones.has('side') ? [...deckBuilder.side] : deckBuilder.side,
   }
 }
 

@@ -7,6 +7,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
+import { flushSync } from 'react-dom'
 
 import yugiohLogo from './assets/yugioh-logo.webp'
 import { DeckRolesPanel } from './components/DeckRolesPanel'
@@ -31,6 +32,7 @@ import {
   createPattern,
   deriveMainDeckCardsFromZone,
   findDeckCard,
+  getDefaultDeckZoneForCard,
   moveDeckCard,
   removeDeckCard,
   removePattern,
@@ -123,6 +125,10 @@ export default function App() {
   const [dragOverlay, setDragOverlay] = useState<DragOverlayState | null>(null)
   const [builderHeight, setBuilderHeight] = useState<number | null>(null)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const toastTimeoutRef = useRef<number | null>(null)
+  const saveStateTimerRef = useRef<number | null>(null)
+  const queuedStateRef = useRef(state)
 
   const builderRef = useRef<HTMLElement>(null)
   const dragOverlayRef = useRef<HTMLDivElement>(null)
@@ -183,7 +189,22 @@ export default function App() {
   )
 
   useEffect(() => {
-    saveState(state)
+    queuedStateRef.current = state
+
+    if (saveStateTimerRef.current) {
+      window.clearTimeout(saveStateTimerRef.current)
+    }
+
+    saveStateTimerRef.current = window.setTimeout(() => {
+      saveState(queuedStateRef.current)
+      saveStateTimerRef.current = null
+    }, 120)
+
+    return () => {
+      if (saveStateTimerRef.current) {
+        window.clearTimeout(saveStateTimerRef.current)
+      }
+    }
   }, [state])
 
   useEffect(() => {
@@ -450,6 +471,13 @@ export default function App() {
     return () => {
       window.clearTimeout(searchDebounceTimerRef.current)
       window.clearTimeout(hoverTimerRef.current)
+      if (saveStateTimerRef.current) {
+        window.clearTimeout(saveStateTimerRef.current)
+        saveState(queuedStateRef.current)
+      }
+      if (toastTimeoutRef.current) {
+        window.clearTimeout(toastTimeoutRef.current)
+      }
       window.cancelAnimationFrame(dragOverlayRafRef.current)
       pointerDragCleanupRef.current?.()
     }
@@ -468,7 +496,7 @@ export default function App() {
   }, [dragOverlay])
 
   const scheduleHoverPreview = useCallback((name: string, card: ApiCardReference, anchor: HTMLElement) => {
-    if (dragPayload) {
+    if (dragPayload || pointerDragSessionRef.current) {
       return
     }
 
@@ -486,6 +514,19 @@ export default function App() {
   const clearHoverPreview = useCallback(() => {
     window.clearTimeout(hoverTimerRef.current)
     setHoverPreview(null)
+  }, [])
+
+  const showToast = useCallback((message: string) => {
+    setToastMessage(message)
+
+    if (toastTimeoutRef.current) {
+      window.clearTimeout(toastTimeoutRef.current)
+    }
+
+    toastTimeoutRef.current = window.setTimeout(() => {
+      setToastMessage(null)
+      toastTimeoutRef.current = null
+    }, 1800)
   }, [])
 
   const resolveDropTarget = useCallback((clientX: number, clientY: number): { zone: DeckZoneType; index: number } | null => {
@@ -666,29 +707,14 @@ export default function App() {
       const handlePointerEnd = (endEvent: PointerEvent) => {
         const session = pointerDragSessionRef.current
         const target = session?.dragging ? resolveDropTarget(endEvent.clientX, endEvent.clientY) : null
-
-        if (session?.dragging && target) {
-          setState((current) => {
-            if (session.payload.type === 'search-result') {
-              return {
-                ...current,
-                deckBuilder: addSearchResultToZone(
-                  current.deckBuilder,
-                  apiSearch.results,
-                  session.payload.apiCardId,
-                  target.zone,
-                  target.index,
-                  current.deckFormat,
-                ),
+        const pendingDrop =
+          session?.dragging && target
+            ? {
+                payload: session.payload,
+                zone: target.zone,
+                index: target.index,
               }
-            }
-
-            return {
-              ...current,
-              deckBuilder: moveDeckCard(current.deckBuilder, session.payload.instanceId, target.zone, target.index),
-            }
-          })
-        }
+            : null
 
         if (session?.payload.type === 'search-result' && session.dragging) {
           window.setTimeout(() => {
@@ -696,7 +722,37 @@ export default function App() {
           }, 0)
         }
 
-        clearDragSession()
+        flushSync(() => {
+          if (pendingDrop) {
+            setState((current) => {
+              if (pendingDrop.payload.type === 'search-result') {
+                return {
+                  ...current,
+                  deckBuilder: addSearchResultToZone(
+                    current.deckBuilder,
+                    apiSearch.results,
+                    pendingDrop.payload.apiCardId,
+                    pendingDrop.zone,
+                    pendingDrop.index,
+                    current.deckFormat,
+                  ),
+                }
+              }
+
+              return {
+                ...current,
+                deckBuilder: moveDeckCard(
+                  current.deckBuilder,
+                  pendingDrop.payload.instanceId,
+                  pendingDrop.zone,
+                  pendingDrop.index,
+                ),
+              }
+            })
+          }
+
+          clearDragSession()
+        })
       }
 
       window.addEventListener('pointermove', handlePointerMove, { passive: false })
@@ -723,6 +779,32 @@ export default function App() {
       }
     },
     [apiSearch.hasMore, apiSearch.page, apiSearch.query, runApiSearch],
+  )
+
+  const handleAddSearchResult = useCallback(
+    (apiCardId: number) => {
+      const card = apiSearch.results.find((entry) => entry.ygoprodeckId === apiCardId)
+
+      if (!card) {
+        return
+      }
+
+      const zone = getDefaultDeckZoneForCard(card)
+      const zoneLabel = zone === 'extra' ? 'Extra Deck' : 'Main Deck'
+
+      setState((current) => ({
+        ...current,
+        deckBuilder: addSearchResultToDefaultZone(
+          current.deckBuilder,
+          apiSearch.results,
+          apiCardId,
+          current.deckFormat,
+        ),
+      }))
+
+      showToast(`Agregaste ${card.name} al ${zoneLabel}.`)
+    },
+    [apiSearch.results, showToast],
   )
 
   const replaceState = useCallback((nextState: AppState) => {
@@ -934,6 +1016,7 @@ export default function App() {
             page={apiSearch.page}
             hasMore={apiSearch.hasMore}
             activeDragSearchCardId={activeDragSearchCardId}
+            dragEnabled
             typeFilter={searchTypeFilter}
             archetypeFilter={searchArchetypeFilter}
             onQueryChange={(value) => {
@@ -952,16 +1035,7 @@ export default function App() {
                 suppressSearchClickRef.current = false
                 return
               }
-
-              setState((current) => ({
-                ...current,
-                deckBuilder: addSearchResultToDefaultZone(
-                  current.deckBuilder,
-                  apiSearch.results,
-                  apiCardId,
-                  current.deckFormat,
-                ),
-              }))
+              handleAddSearchResult(apiCardId)
             }}
             onSearchCardPointerDown={(event, apiCardId) => {
               const draggedCard = apiSearch.results.find((card) => card.ygoprodeckId === apiCardId)
@@ -1168,8 +1242,9 @@ export default function App() {
       </main>
 
       {mobileSearchOpen ? (
-        <div className="fixed inset-0 z-[140] grid place-items-center bg-black/80 px-3 py-6 min-[1101px]:hidden">
-          <div className="surface-panel w-full max-w-[620px] p-2.5">
+        <div className="fixed inset-0 z-[140] overflow-y-auto bg-black/80 px-3 py-3 min-[1101px]:hidden">
+          <div className="mx-auto flex h-[calc(100dvh-1.5rem)] w-full max-w-[620px] items-stretch">
+            <div className="surface-panel flex h-full min-h-0 max-h-full w-full flex-col overflow-hidden p-2.5">
             <div className="flex items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-2">
               <strong className="text-[0.95rem]">Buscar cartas</strong>
               <button
@@ -1180,7 +1255,7 @@ export default function App() {
                 ×
               </button>
             </div>
-            <div className="mt-2">
+            <div className="mt-2 min-h-0 flex-1 overflow-hidden">
               <SearchPanel
                 builderHeight={null}
                 deckFormat={state.deckFormat}
@@ -1191,6 +1266,7 @@ export default function App() {
                 page={apiSearch.page}
                 hasMore={apiSearch.hasMore}
                 activeDragSearchCardId={activeDragSearchCardId}
+                dragEnabled={false}
                 typeFilter={searchTypeFilter}
                 archetypeFilter={searchArchetypeFilter}
                 onQueryChange={(value) => {
@@ -1209,16 +1285,7 @@ export default function App() {
                     suppressSearchClickRef.current = false
                     return
                   }
-
-                  setState((current) => ({
-                    ...current,
-                    deckBuilder: addSearchResultToDefaultZone(
-                      current.deckBuilder,
-                      apiSearch.results,
-                      apiCardId,
-                      current.deckFormat,
-                    ),
-                  }))
+                  handleAddSearchResult(apiCardId)
                 }}
                 onSearchCardPointerDown={(event, apiCardId) => {
                   const draggedCard = apiSearch.results.find((card) => card.ygoprodeckId === apiCardId)
@@ -1232,10 +1299,19 @@ export default function App() {
               />
             </div>
           </div>
+          </div>
         </div>
       ) : null}
 
       <HoverPreview preview={hoverPreview} />
+
+      {toastMessage ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-[150] flex justify-center px-4">
+          <div className="surface-panel border border-[rgba(155,0,255,0.55)] bg-[rgba(20,10,34,0.96)] px-3 py-2 text-[0.82rem] text-[var(--text-main)] shadow-[0_10px_24px_rgba(0,0,0,0.35)]">
+            {toastMessage}
+          </div>
+        </div>
+      ) : null}
 
       {dragOverlay ? (
         <div
