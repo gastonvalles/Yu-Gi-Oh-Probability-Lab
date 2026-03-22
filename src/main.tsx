@@ -1,8 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { Provider } from 'react-redux'
 
 import faviconUrl from './assets/pngaaa.com-426342.png'
 import App from './App'
+import { store } from './app/store'
 import './index.css'
 
 const appRoot = document.querySelector<HTMLDivElement>('#app')
@@ -22,6 +24,8 @@ if (!faviconLink.isConnected) {
 
 createRoot(appRoot).render(
   <StrictMode>
-    <App />
+    <Provider store={store}>
+      <App />
+    </Provider>
   </StrictMode>,
 )

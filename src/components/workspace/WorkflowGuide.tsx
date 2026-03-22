@@ -26,7 +26,7 @@ export function WorkflowGuide({
   const currentMessage =
     activeStep === 1
       ? mainDeckCount === 0
-        ? 'Buscá cartas a la derecha. Click agrega al Main Deck, arrastrar mueve entre Main, Extra y Side, y click derecho quita.'
+        ? 'Buscá cartas en el buscador. Click agrega al Main Deck, arrastrar mueve entre Main, Extra y Side, y click derecho quita.'
         : `Seguí sumando cartas hasta llegar a 40 en el Main Deck. Te faltan ${formatInteger(missingMainDeckCards)}.`
         : activeStep === 2
           ? `En el paso 2 marcá qué hace cada carta. Te faltan ${formatInteger(missingRoleCount)} carta${missingRoleCount === 1 ? '' : 's'} sin rol.`
@@ -104,60 +104,68 @@ export function WorkflowGuide({
   ] as const
 
   return (
-    <article className="surface-panel-strong p-2">
+    <article className="surface-panel p-2.5">
       <div className="grid gap-2">
-        <div className="flex items-end justify-between gap-3 max-[820px]:flex-col max-[820px]:items-stretch">
-          <div>
+        <div className="flex items-start justify-between gap-3 max-[900px]:flex-col max-[900px]:items-stretch">
+          <div className="min-w-0">
             <p className="app-kicker m-0 mb-0.5 text-[0.68rem] uppercase tracking-widest">Ruta rápida</p>
-            <h2 className="m-0 text-[1rem] leading-none">Cómo usar la app</h2>
+            <h2 className="m-0 text-[0.98rem] leading-none">Qué te falta para terminar</h2>
           </div>
 
-          <div className="surface-card self-start px-2 py-1.5 max-[760px]:hidden">
-            <small className="app-muted block text-[0.68rem] uppercase tracking-[0.08em]">Estado</small>
-            <strong className="text-[0.84rem] text-[var(--text-main)]">{overallStatus}</strong>
-          </div>
+          <span className="app-chip-accent self-start px-2 py-1 text-[0.74rem] whitespace-nowrap">
+            Estado: {overallStatus}
+          </span>
         </div>
 
-        <div className="grid gap-2 max-[760px]:hidden min-[980px]:grid-cols-4">
+        <div className="surface-card flex items-start justify-between gap-3 px-2.5 py-2 max-[900px]:grid max-[900px]:gap-1.5">
+          <div className="min-w-0">
+            <strong className="block text-[0.76rem] uppercase tracking-widest text-(--accent-strong)">
+              {currentStepLabel}
+            </strong>
+            <p className="m-[0.18rem_0_0] text-[0.78rem] leading-[1.18] text-(--text-main)">
+              {currentMessage}
+            </p>
+          </div>
+
+          <span className="app-chip px-2 py-0.5 text-[0.72rem] whitespace-nowrap max-[900px]:justify-self-start">
+            Paso {activeStep} / 4
+          </span>
+        </div>
+
+        <div className="grid gap-1.5 min-[700px]:grid-cols-2 min-[1120px]:grid-cols-4">
           {steps.map((step, index) => (
             <article
               key={step.title}
               className={[
-                'grid gap-1 p-2',
-                step.state === 'done' || step.state === 'current'
-                  ? 'surface-card-accent'
-                  : 'surface-card',
+                'grid gap-1 px-2 py-1.5',
+                step.state === 'current'
+                  ? 'surface-panel-strong'
+                  : step.state === 'done'
+                    ? 'surface-card-accent'
+                    : 'surface-card',
               ].join(' ')}
             >
               <div className="flex items-center gap-2">
-                <span className="app-chip-accent grid h-6 w-6 place-items-center text-[0.78rem]">
+                <span
+                  className={[
+                    'grid h-5 w-5 place-items-center text-[0.72rem]',
+                    step.state === 'pending' ? 'app-chip' : 'app-chip-accent',
+                  ].join(' ')}
+                >
                   {index + 1}
                 </span>
-                <strong className="text-[0.86rem] text-[var(--text-main)]">{step.title}</strong>
-                <span className="app-muted ml-auto text-[0.68rem] uppercase tracking-[0.08em]">
-                  {step.state === 'done' ? 'Listo' : step.state === 'current' ? 'Ahora' : 'Pendiente'}
+                <strong className="text-[0.82rem] text-(--text-main)">{step.title}</strong>
+                <span className="app-muted ml-auto text-[0.64rem] uppercase tracking-widest">
+                  {step.state === 'done' ? 'Listo' : step.state === 'current' ? 'Ahora' : 'Pend.'}
                 </span>
               </div>
 
-              <strong className="text-[0.84rem] text-[var(--text-main)]">{step.metric}</strong>
-              <p className="app-muted m-0 text-[0.76rem] leading-[1.16]">{step.detail}</p>
+              <div className="flex items-end justify-between gap-2">
+                <strong className="text-[0.82rem] text-(--text-main)">{step.metric}</strong>
+                <small className="app-muted text-[0.68rem] leading-none">{step.detail}</small>
+              </div>
             </article>
           ))}
-        </div>
-
-        <div className="surface-card grid gap-1 px-2 py-1.5 max-[760px]:hidden">
-          <strong className="text-[0.78rem] uppercase tracking-[0.08em] text-[var(--accent-strong)]">
-            {currentStepLabel}
-          </strong>
-          <p className="m-0 text-[0.76rem] leading-[1.16] text-[var(--text-main)]">{currentMessage}</p>
-        </div>
-
-        <div className="surface-card grid gap-1.5 px-2 py-1.5 min-[761px]:hidden">
-          <div className="flex items-center justify-between gap-2">
-            <strong className="text-[0.82rem] text-[var(--text-main)]">{currentStepLabel}</strong>
-            <span className="app-chip px-2 py-0.5 text-[0.72rem]">{overallStatus}</span>
-          </div>
-          <p className="m-0 text-[0.76rem] leading-[1.16] text-[var(--text-main)]">{currentMessage}</p>
         </div>
       </div>
     </article>

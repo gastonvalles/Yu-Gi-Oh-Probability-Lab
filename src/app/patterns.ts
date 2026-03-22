@@ -1,4 +1,4 @@
-import type { HandPattern, HandPatternCategory } from '../types'
+import type { HandPattern, HandPatternCategory, PatternRequirement } from '../types'
 
 export function normalizeHandPatternCategory(
   category: HandPatternCategory | null | undefined,
@@ -15,14 +15,20 @@ export function normalizePatternName(name: string): string {
     .toLowerCase()
 }
 
-export function getPatternDedupKey(
-  pattern: Pick<HandPattern, 'id' | 'name' | 'category'>,
+export function getPatternDefinitionKey(
+  pattern: Pick<HandPattern, 'category' | 'matchMode' | 'minimumMatches' | 'allowSharedCards' | 'requirements'>,
 ): string {
-  const normalizedName = normalizePatternName(pattern.name)
+  const requirementKeys = pattern.requirements
+    .map((requirement) => getRequirementDefinitionKey(requirement))
+    .sort()
 
-  return normalizedName.length > 0
-    ? `${normalizeHandPatternCategory(pattern.category)}:${normalizedName}`
-    : `${normalizeHandPatternCategory(pattern.category)}:${pattern.id}`
+  return JSON.stringify({
+    allowSharedCards: pattern.allowSharedCards === true,
+    category: normalizeHandPatternCategory(pattern.category),
+    matchMode: pattern.matchMode,
+    minimumMatches: pattern.minimumMatches,
+    requirements: requirementKeys,
+  })
 }
 
 export function getPatternCategorySingular(
@@ -41,4 +47,17 @@ export function getPatternCategoryShortLabel(
   category: HandPatternCategory | null | undefined,
 ): string {
   return normalizeHandPatternCategory(category) === 'bad' ? 'Problema' : 'Apertura'
+}
+
+function getRequirementDefinitionKey(
+  requirement: Pick<PatternRequirement, 'source' | 'groupKey' | 'cardIds' | 'count' | 'kind' | 'distinct'>,
+): string {
+  return JSON.stringify({
+    cardIds: [...requirement.cardIds].sort(),
+    count: requirement.count,
+    distinct: requirement.distinct === true,
+    groupKey: requirement.groupKey,
+    kind: requirement.kind,
+    source: requirement.source,
+  })
 }

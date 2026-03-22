@@ -1,0 +1,306 @@
+import { useCallback, useMemo, type PointerEvent as ReactPointerEvent } from 'react'
+
+import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
+import { findDeckCard, getDefaultDeckZoneForCard } from '../../app/deck-builder'
+import {
+  addSearchResultToDeckZone,
+  addSearchResultToDefaultDeckZone,
+  moveDeckCardInBuilder,
+  removeDeckCardFromBuilder,
+  setDeckName,
+  toggleDeckCardRole,
+} from '../../app/deck-builder-slice'
+import { buildDeckFormatIssues } from '../../app/deck-format'
+import { buildDerivedDeckGroups } from '../../app/deck-groups'
+import { exportDeckAssets } from '../../app/deck-image-export'
+import { type AppState } from '../../app/model'
+import { setDeckFormat, setMode } from '../../app/settings-slice'
+import type { RootState } from '../../app/store'
+import { useAppDispatch, useAppSelector } from '../../app/store-hooks'
+import { useApiCardSearch } from '../../app/use-api-card-search'
+import { useDeckPointerDrag } from '../../app/use-deck-pointer-drag'
+import { useHoverPreview } from '../../app/use-hover-preview'
+import { usePatternEditorActions } from '../../app/use-pattern-editor-actions'
+import { usePatternMaintenance } from '../../app/use-pattern-maintenance'
+import { useToastMessage } from '../../app/use-toast-message'
+import { HOVER_PREVIEW_DELAY_MS } from '../../app/model'
+import type { ApiCardReference, CardRole } from '../../types'
+
+const DEFAULT_PATTERNS_VERSION = 2
+
+export function useDeckModeController() {
+  const dispatch = useAppDispatch()
+  const settings = useAppSelector((state: RootState) => state.settings)
+  const deckBuilder = useAppSelector((state: RootState) => state.deckBuilder)
+  const patternsState = useAppSelector((state: RootState) => state.patterns)
+
+  const appState = useMemo<AppState>(
+    () => ({
+      mode: settings.mode,
+      handSize: settings.handSize,
+      deckFormat: settings.deckFormat,
+      patternsSeeded: patternsState.patternsSeeded,
+      patternsSeedVersion: patternsState.patternsSeedVersion,
+      patterns: patternsState.patterns,
+      deckBuilder,
+    }),
+    [
+      deckBuilder,
+      patternsState.patterns,
+      patternsState.patternsSeedVersion,
+      patternsState.patternsSeeded,
+      settings.deckFormat,
+      settings.handSize,
+      settings.mode,
+    ],
+  )
+
+  const {
+    apiSearch,
+    searchTypeFilter,
+    searchArchetypeFilter,
+    visibleSearchResults,
+    setArchetypeFilter: setSearchArchetypeFilter,
+    setQuery: setSearchQuery,
+    setSearchTypeFilter,
+    showNextPage,
+    showPreviousPage,
+  } = useApiCardSearch()
+  const { showToast } = useToastMessage()
+  const {
+    clearHoverPreview,
+    hoverPreview,
+    scheduleHoverPreview: scheduleHoverPreviewWithDelay,
+  } = useHoverPreview({
+    delayMs: HOVER_PREVIEW_DELAY_MS,
+  })
+  const {
+    activeDragInstanceId,
+    activeDragSearchCardId,
+    consumeSuppressedSearchClick,
+    dragOverlay,
+    dragOverlayRef,
+    hasPendingPointerDrag,
+    startPointerDrag,
+  } = useDeckPointerDrag({
+    onClearHoverPreview: clearHoverPreview,
+    onDrop: (pendingDrop) => {
+      if (pendingDrop.payload.type === 'search-result') {
+        dispatch(
+          addSearchResultToDeckZone({
+            apiCardId: pendingDrop.payload.apiCardId,
+            deckFormat: settings.deckFormat,
+            index: pendingDrop.index,
+            results: apiSearch.results,
+            zone: pendingDrop.zone,
+          }),
+        )
+        return
+      }
+
+      dispatch(
+        moveDeckCardInBuilder({
+          instanceId: pendingDrop.payload.instanceId,
+          zone: pendingDrop.zone,
+          index: pendingDrop.index,
+        }),
+      )
+    },
+  })
+
+  const derivedMainCards = useMemo(
+    () => deriveMainDeckCardsFromZone(deckBuilder.main),
+    [deckBuilder.main],
+  )
+  const classifiedCardCount = useMemo(
+    () => derivedMainCards.filter((card) => card.roles.length > 0).length,
+    [derivedMainCards],
+  )
+  const hasCompletedRoleStep =
+    derivedMainCards.length > 0 && classifiedCardCount === derivedMainCards.length
+  const formatIssues = useMemo(
+    () => buildDeckFormatIssues(deckBuilder, settings.deckFormat),
+    [deckBuilder, settings.deckFormat],
+  )
+  const derivedGroups = useMemo(
+    () => buildDerivedDeckGroups(derivedMainCards),
+    [derivedMainCards],
+  )
+  const defaultGroupKey = useMemo(
+    () => derivedGroups.find((group) => group.copies > 0)?.key ?? null,
+    [derivedGroups],
+  )
+  const patternActions = usePatternEditorActions({
+    defaultGroupKey,
+    derivedMainCards,
+  })
+
+  usePatternMaintenance({
+    defaultPatternsVersion: DEFAULT_PATTERNS_VERSION,
+    hasCompletedRoleStep,
+    state: appState,
+  })
+
+  const scheduleHoverPreview = useCallback(
+    (name: string, card: ApiCardReference, anchor: HTMLElement) => {
+      if (hasPendingPointerDrag()) {
+        return
+      }
+
+      scheduleHoverPreviewWithDelay(name, card, anchor)
+    },
+    [hasPendingPointerDrag, scheduleHoverPreviewWithDelay],
+  )
+
+  const handleAddSearchResult = useCallback(
+    (apiCardId: number) => {
+      const card = apiSearch.results.find((entry) => entry.ygoprodeckId === apiCardId)
+
+      if (!card) {
+        return
+      }
+
+      const zone = getDefaultDeckZoneForCard(card)
+      const zoneLabel = zone === 'extra' ? 'Extra Deck' : 'Main Deck'
+
+      dispatch(
+        addSearchResultToDefaultDeckZone({
+          apiCardId,
+          deckFormat: settings.deckFormat,
+          results: apiSearch.results,
+        }),
+      )
+
+      showToast(`Agregaste ${card.name} al ${zoneLabel}.`)
+    },
+    [apiSearch.results, dispatch, settings.deckFormat, showToast],
+  )
+
+  const handleRemoveDeckCard = useCallback(
+    (instanceId: string) => {
+      dispatch(removeDeckCardFromBuilder(instanceId))
+    },
+    [dispatch],
+  )
+
+  const handleToggleRole = useCallback(
+    (ygoprodeckId: number, role: CardRole) => {
+      dispatch(toggleDeckCardRole({ ygoprodeckId, role }))
+    },
+    [dispatch],
+  )
+
+  const handleDeckFormatChange = useCallback(
+    (deckFormat: RootState['settings']['deckFormat']) => {
+      dispatch(setDeckFormat(deckFormat))
+    },
+    [dispatch],
+  )
+
+  const handleDeckNameChange = useCallback(
+    (deckName: string) => {
+      dispatch(setDeckName(deckName))
+    },
+    [dispatch],
+  )
+
+  const handleModeChange = useCallback(
+    (mode: RootState['settings']['mode']) => {
+      dispatch(setMode(mode))
+    },
+    [dispatch],
+  )
+
+  const handleExportDeckImage = useCallback(async () => {
+    const totalCards = deckBuilder.main.length + deckBuilder.extra.length + deckBuilder.side.length
+
+    if (totalCards === 0) {
+      showToast('No hay cartas cargadas para exportar.', 'error')
+      return
+    }
+
+    try {
+      await exportDeckAssets(deckBuilder)
+      showToast('Imagen y TXT del deck descargados.', 'success')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'No se pudo exportar el deck.', 'error')
+    }
+  }, [deckBuilder, showToast])
+
+  const handleDeckCardPointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLElement>, instanceId: string) => {
+      const draggedCard = findDeckCard(deckBuilder, instanceId)
+
+      if (draggedCard) {
+        startPointerDrag(event, { type: 'deck-card', instanceId }, draggedCard.name, draggedCard.apiCard)
+      }
+    },
+    [deckBuilder, startPointerDrag],
+  )
+
+  const handleSearchCardPointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLElement>, apiCardId: number) => {
+      const draggedCard = apiSearch.results.find((card) => card.ygoprodeckId === apiCardId)
+
+      if (draggedCard) {
+        startPointerDrag(event, { type: 'search-result', apiCardId }, draggedCard.name, draggedCard)
+      }
+    },
+    [apiSearch.results, startPointerDrag],
+  )
+
+  return {
+    deckBuilderStep: {
+      deckBuilder,
+      deckFormat: settings.deckFormat,
+      formatIssues,
+      mode: settings.mode,
+      query: apiSearch.query,
+      status: apiSearch.status,
+      visibleSearchResults,
+      errorMessage: apiSearch.errorMessage,
+      page: apiSearch.page,
+      hasMore: apiSearch.hasMore,
+      typeFilter: searchTypeFilter,
+      archetypeFilter: searchArchetypeFilter,
+      activeDragInstanceId,
+      activeDragSearchCardId,
+      consumeSuppressedSearchClick,
+      onAddSearchResult: handleAddSearchResult,
+      onRemoveDeckCard: handleRemoveDeckCard,
+      onDeckCardPointerDown: handleDeckCardPointerDown,
+      onSearchCardPointerDown: handleSearchCardPointerDown,
+      onQueryChange: setSearchQuery,
+      onDeckNameChange: handleDeckNameChange,
+      onDeckFormatChange: handleDeckFormatChange,
+      onTypeFilterChange: setSearchTypeFilter,
+      onArchetypeFilterChange: setSearchArchetypeFilter,
+      onPrevPage: showPreviousPage,
+      onNextPage: showNextPage,
+      onHoverStart: scheduleHoverPreview,
+      onHoverEnd: clearHoverPreview,
+    },
+    exportDeck: {
+      mainDeckCount: deckBuilder.main.length,
+      onExport: handleExportDeckImage,
+    },
+    feedback: {
+      dragOverlay,
+      dragOverlayRef,
+      hoverPreview,
+    },
+    probability: {
+      handSize: settings.handSize,
+      mode: settings.mode,
+      onModeChange: handleModeChange,
+      patterns: patternsState.patterns,
+      derivedMainCards,
+      derivedGroups,
+      patternActions,
+    },
+    roles: {
+      cards: derivedMainCards,
+      onToggleRole: handleToggleRole,
+    },
+  }
+}

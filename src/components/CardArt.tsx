@@ -61,7 +61,7 @@ export function CardArt({ remoteUrl, name, className = '' }: CardArtProps) {
   return (
     <div
       className={[
-        'grid place-items-center bg-[#1a1a1a] font-bold text-[#f2d077]',
+        'grid place-items-center bg-[var(--input)] font-bold text-[var(--warning)]',
         className,
       ].join(' ')}
       aria-hidden="true"

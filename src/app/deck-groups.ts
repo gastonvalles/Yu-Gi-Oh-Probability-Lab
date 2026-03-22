@@ -64,10 +64,16 @@ export const CARD_GROUP_DEFINITIONS: Array<{
 }> = [
   ...CARD_ROLE_DEFINITIONS,
   {
+    key: 'engine',
+    label: 'Engine',
+    shortLabel: 'Engine',
+    description: 'Starters, extenders y bricks juntos.',
+  },
+  {
     key: 'non-engine',
     label: 'Non-engine',
     shortLabel: 'Non-engine',
-    description: 'Handtraps, boardbreakers y floodgates juntas.',
+    description: 'Handtraps, boardbreakers, floodgates y bricks juntos.',
   },
 ]
 
@@ -129,8 +135,14 @@ export function resolveRequirementCardIds(
 }
 
 function cardMatchesGroup(card: CardEntry, groupKey: CardGroupKey): boolean {
+  if (groupKey === 'engine') {
+    return card.roles.some((role) => role === 'starter' || role === 'extender' || role === 'brick')
+  }
+
   if (groupKey === 'non-engine') {
-    return card.roles.some((role) => role === 'handtrap' || role === 'boardbreaker' || role === 'floodgate')
+    return card.roles.some(
+      (role) => role === 'handtrap' || role === 'boardbreaker' || role === 'floodgate' || role === 'brick',
+    )
   }
 
   return card.roles.includes(groupKey)

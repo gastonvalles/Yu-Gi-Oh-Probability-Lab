@@ -6,10 +6,9 @@ import { formatInteger, formatPercent } from '../../app/utils'
 
 interface ResultsSectionProps {
   result: CalculationOutput
-  handSize: number
 }
 
-export function ResultsSection({ result, handSize }: ResultsSectionProps) {
+export function ResultsSection({ result }: ResultsSectionProps) {
   const openingPatterns =
     result.summary?.patternResults.filter((pattern) => normalizeHandPatternCategory(pattern.category) === 'good') ?? []
   const problemPatterns =
@@ -36,12 +35,7 @@ export function ResultsSection({ result, handSize }: ResultsSectionProps) {
   return (
     <section className="surface-panel-soft min-h-0 p-2.5 min-[1180px]:overflow-y-auto min-[1180px]:pr-1">
       <div className="grid gap-2">
-        <div className="flex items-start justify-between gap-2.5 max-[760px]:flex-col max-[760px]:items-stretch">
-          <div>
-            <p className="app-kicker m-0 mb-0.5 text-[0.68rem] uppercase tracking-widest">Resultados</p>
-            <h3 className="m-0 text-[0.98rem] leading-none">Probabilidad exacta</h3>
-          </div>
-        </div>
+        <h3 className="m-0 text-[0.98rem] leading-none">Probabilidad exacta</h3>
 
         {result.issues.length > 0 ? (
           <div className="grid gap-1.5">
@@ -50,7 +44,9 @@ export function ResultsSection({ result, handSize }: ResultsSectionProps) {
                 key={`${issue.level}-${index}`}
                 className={[
                   'm-0 px-2 py-1.5 text-[0.76rem] leading-[1.16]',
-                  issue.level === 'error' ? 'surface-card text-[#ff9e9e]' : 'surface-card-accent text-[#f2d077]',
+                  issue.level === 'error'
+                    ? 'surface-card-danger text-[var(--destructive)]'
+                    : 'surface-card-warning text-[var(--warning)]',
                 ].join(' ')}
               >
                 <span className="mr-2 inline-block font-bold">{issue.level === 'error' ? 'Error' : 'Aviso'}</span>
@@ -66,7 +62,7 @@ export function ResultsSection({ result, handSize }: ResultsSectionProps) {
           </div>
         ) : (
           <>
-            <div className="sticky top-0 z-20 grid gap-1.5 bg-[var(--bg-panel)] pb-2 shadow-[0_10px_18px_rgba(6,5,10,0.9)]">
+            <div className="sticky top-0 z-20 grid gap-1.5 bg-[var(--bg-panel)] pb-2 shadow-[0_10px_18px_rgb(var(--background-rgb)/0.9)]">
               <div className="surface-card-accent flex min-h-[98px] flex-wrap items-end justify-between gap-3 px-3 py-1.75">
                 <div className="min-w-0">
                   <p className="app-muted m-0 text-[0.78rem] uppercase tracking-[0.08em]">Jugables limpias</p>
@@ -83,30 +79,16 @@ export function ResultsSection({ result, handSize }: ResultsSectionProps) {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-1.5 min-[760px]:grid-cols-3 min-[1120px]:grid-cols-6">
+              <div className="grid grid-cols-2 gap-1.5">
                 <MiniMetric label="Jugables con problemas" value={formatPercent(result.summary.overlapProbability)} />
                 <MiniMetric label="Malas" value={formatPercent(badOnlyProbability)} />
-                <MiniMetric label="Neutras" value={formatPercent(result.summary.neutralProbability)} />
-                <MiniMetric label="Mano inicial" value={formatInteger(handSize)} />
-                <MiniMetric label="Cartas relevantes" value={formatInteger(result.summary.relevantCardCount)} />
-                <MiniMetric label="Otras cartas" value={formatInteger(result.summary.otherCopies)} />
               </div>
             </div>
 
             {hasOpeningPatterns || hasProblemPatterns ? (
               <div className="mt-3 grid gap-1.5">
-                <div className="flex items-start justify-between gap-2 max-[760px]:flex-col max-[760px]:items-stretch">
-                  <div>
-                    <p className="app-kicker m-0 mb-0.5 text-[0.68rem] uppercase tracking-widest">Detalle</p>
-                    <h4 className="m-0 text-[0.9rem] leading-none">
-                      {activeDetailTab === 'bad' && hasProblemPatterns
-                        ? 'Qué tan seguido aparecen tus problemas'
-                        : 'Qué tan seguido salen tus aperturas'}
-                    </h4>
-                    <p className="app-muted m-[0.25rem_0_0] text-[0.74rem] leading-[1.14]">
-                      La app revisa todas las manos posibles de 5 cartas y mide en cuántas aparece cada apertura o cada problema por separado.
-                    </p>
-                  </div>
+                <div className="flex items-center justify-between gap-2 max-[760px]:flex-col max-[760px]:items-stretch">
+                  <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Detalle</p>
 
                   {hasOpeningPatterns && hasProblemPatterns ? (
                     <div className="app-tab-strip justify-end max-[760px]:justify-start">
@@ -144,10 +126,6 @@ export function ResultsSection({ result, handSize }: ResultsSectionProps) {
                 />
               </div>
             ) : null}
-
-            <p className="app-muted m-0 text-[0.72rem] leading-[1.14]">
-              Una misma mano puede activar una apertura y un problema al mismo tiempo. En ese caso se cuenta como jugable con problemas.
-            </p>
           </>
         )}
       </div>
@@ -187,18 +165,15 @@ function PatternResultSection({ patterns, compactHeader = false }: PatternResult
         </div>
       )}
 
-      {patterns.map((pattern, index) => (
+      {patterns.map((pattern) => (
         <article
           key={pattern.patternId}
           className={[
-            'grid items-center gap-2 px-2 py-1.5 min-[760px]:grid-cols-[auto_minmax(0,1fr)_auto]',
+            'grid items-center gap-2 px-2 py-1.5 min-[760px]:grid-cols-[minmax(0,1fr)_auto]',
             pattern.probability > 0 ? getPatternResultCardClass(pattern.category) : 'surface-panel-soft',
             pattern.possible ? '' : 'opacity-65',
           ].join(' ')}
         >
-          <div className="app-chip-accent grid h-5 w-5 place-items-center text-[0.7rem]">
-            {index + 1}
-          </div>
           <div className="grid min-w-0 gap-0.5">
             <div className="flex items-center gap-2">
               <strong>{pattern.name}</strong>
@@ -213,7 +188,7 @@ function PatternResultSection({ patterns, compactHeader = false }: PatternResult
               {formatInteger(pattern.matchingHands)} manos que cumplen esta regla.
             </small>
           </div>
-          <p className="m-0 text-[0.82rem] text-[#f0f0f0]">{formatPercent(pattern.probability)}</p>
+          <p className="m-0 text-[0.82rem] text-[var(--text-main)]">{formatPercent(pattern.probability)}</p>
         </article>
       ))}
     </div>
@@ -222,24 +197,24 @@ function PatternResultSection({ patterns, compactHeader = false }: PatternResult
 
 function getPatternResultCardClass(category: PatternProbability['category']): string {
   return normalizeHandPatternCategory(category) === 'good'
-    ? 'surface-card border border-[rgba(69,211,111,0.48)] shadow-[0_0_0_1px_rgba(69,211,111,0.08)]'
-    : 'surface-card border border-[rgba(139,13,24,0.52)] shadow-[0_0_0_1px_rgba(139,13,24,0.08)]'
+    ? 'surface-card-success'
+    : 'surface-card-danger'
 }
 
 function getProbabilityColor(probability: number): string {
   const percentage = probability * 100
 
   if (percentage > 70) {
-    return '#45d36f'
+    return 'var(--accent)'
   }
 
   if (percentage >= 40) {
-    return '#f2d35d'
+    return 'var(--primary)'
   }
 
   if (percentage > 20) {
-    return '#ff9736'
+    return 'var(--boardbreaker)'
   }
 
-  return '#8b0d18'
+  return 'var(--destructive)'
 }

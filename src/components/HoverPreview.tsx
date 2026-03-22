@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 
-import { buildHoverPreviewDetailLine, buildHoverPreviewStatLine, getHoverPreviewPosition } from '../app/deck-utils'
+import { buildHoverPreviewDetailLine, buildHoverPreviewStatLine, getHoverPreviewPosition } from '../app/deck-presentation'
 import type { HoverPreviewState } from '../app/model'
 import { CardArt } from './CardArt'
 
@@ -50,7 +50,7 @@ export function HoverPreview({ preview }: HoverPreviewProps) {
   return (
     <aside
       ref={previewRef}
-      className="pointer-events-none fixed z-50 w-[min(560px,calc(100vw-24px))] border border-[#8a4f1e] bg-[#2d2d2d] p-3"
+      className="app-popover pointer-events-none fixed z-50 w-[min(560px,calc(100vw-24px))] p-3"
       style={position ? { top: position.top, left: position.left } : undefined}
       aria-hidden="true"
     >
@@ -59,18 +59,18 @@ export function HoverPreview({ preview }: HoverPreviewProps) {
           <CardArt
             remoteUrl={preview.card.imageUrl}
             name={preview.name}
-            className="block aspect-[0.72] w-[116px] bg-[#1a1a1a] object-cover"
+            className="block aspect-[0.72] w-[116px] bg-[var(--input)] object-cover"
           />
         </div>
 
-        <div className="grid min-w-0 gap-1 text-[#f0f0f0]">
+        <div className="grid min-w-0 gap-1 text-[var(--text-main)]">
           <strong className="text-base">{preview.name}</strong>
           <p className="m-0 break-words leading-[1.35]">{buildHoverPreviewDetailLine(preview.card)}</p>
           {buildHoverPreviewStatLine(preview.card) ? (
             <p className="m-0 break-words leading-[1.35]">{buildHoverPreviewStatLine(preview.card)}</p>
           ) : null}
           {preview.card.description ? (
-            <p className="m-0 whitespace-pre-wrap break-words leading-[1.35] text-[#d8d8d8]">
+            <p className="m-0 whitespace-pre-wrap break-words leading-[1.35] text-[var(--text-muted)]">
               {preview.card.description}
             </p>
           ) : null}

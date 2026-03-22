@@ -1,11 +1,13 @@
 import type { PointerEvent as ReactPointerEvent } from 'react'
 
-import { buildCompactSearchDescription, buildFormatLimitLabel, formatSearchError } from '../app/deck-utils'
+import { buildCompactSearchDescription, formatSearchError } from '../app/card-search'
+import { buildFormatLimitLabel } from '../app/deck-format'
 import { SEARCH_MIN_QUERY_LENGTH, SEARCH_STICKY_TOP_PX } from '../app/model'
 import { formatInteger } from '../app/utils'
 import type { DeckFormat } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 import { CardArt } from './CardArt'
+import { Button } from './ui/Button'
 
 const TYPE_FILTER_OPTIONS = [
   { value: 'all', label: 'Todos' },
@@ -67,7 +69,7 @@ export function SearchPanel({
 
   return (
     <article
-      className="self-start h-full min-h-0 max-h-full overflow-hidden border border-[#2f2f2f] bg-black p-2"
+      className="surface-panel-soft self-start h-full min-h-0 max-h-full overflow-hidden p-2"
       style={
         builderHeight
           ? { height: builderHeight, maxHeight: builderHeight }
@@ -89,25 +91,25 @@ export function SearchPanel({
             placeholder="Buscar carta"
             autoComplete="off"
             spellCheck={false}
-            className="w-full border border-[#2f2f2f] bg-[#050505] px-2.5 py-2 pr-9 text-[0.84rem] text-[#f0f0f0] outline-none focus:border-[#7a7a7a]"
+            className="app-field w-full px-2.5 py-2 pr-9 text-[0.84rem]"
           />
           {status === 'loading' ? (
-            <span className="pointer-events-none absolute right-3 top-1/2 -mt-[0.475rem] h-[0.95rem] w-[0.95rem] animate-spin rounded-full border-2 border-white/20 border-t-white" />
+            <span className="pointer-events-none absolute right-3 top-1/2 -mt-[0.475rem] h-[0.95rem] w-[0.95rem] animate-spin rounded-full border-2 border-[rgb(var(--foreground-rgb)/0.18)] border-t-[var(--primary)]" />
           ) : null}
         </label>
 
-        <div className="border border-[#2f2f2f] bg-[#090909] p-2">
+        <div className="surface-card p-2">
           <div className="mb-2 flex items-center gap-2 whitespace-nowrap">
-            <strong className="text-[0.76rem] text-[#f0f0f0]">Filtros</strong>
+            <strong className="text-[0.76rem] text-[var(--text-main)]">Filtros</strong>
         </div>
 
           <div className="grid gap-2 min-[460px]:grid-cols-2">
             <label className="grid gap-1">
-              <span className="text-[0.66rem] uppercase tracking-[0.08em] text-[#b5b5b5]">Tipo</span>
+              <span className="text-[0.66rem] uppercase tracking-[0.08em] text-[var(--text-muted)]">Tipo</span>
               <select
                 value={typeFilter}
                 onChange={(event) => onTypeFilterChange(event.target.value)}
-                className="w-full border border-[#2f2f2f] bg-[#050505] px-2 py-[0.45rem] text-[0.78rem] text-[#f0f0f0] outline-none focus:border-[#7a7a7a]"
+                className="app-field w-full px-2 py-[0.45rem] text-[0.78rem]"
               >
                 {TYPE_FILTER_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -118,7 +120,7 @@ export function SearchPanel({
             </label>
 
             <label className="grid gap-1">
-              <span className="text-[0.66rem] uppercase tracking-[0.08em] text-[#b5b5b5]">Arquetipo</span>
+              <span className="text-[0.66rem] uppercase tracking-[0.08em] text-[var(--text-muted)]">Arquetipo</span>
               <input
                 type="text"
                 value={archetypeFilter}
@@ -126,7 +128,7 @@ export function SearchPanel({
                 placeholder="Ej: Yummy"
                 autoComplete="off"
                 spellCheck={false}
-                className="w-full border border-[#2f2f2f] bg-[#050505] px-2 py-[0.45rem] text-[0.78rem] text-[#f0f0f0] outline-none focus:border-[#7a7a7a]"
+                className="app-field w-full px-2 py-[0.45rem] text-[0.78rem]"
               />
             </label>
           </div>
@@ -140,31 +142,23 @@ export function SearchPanel({
             }}
           >
             {status === 'error' ? (
-              <p className="m-0 border border-[#653333] bg-[#090909] px-2.5 py-2 text-[0.82rem] leading-[1.16] text-[#ff9e9e]">
+              <p className="surface-card-danger m-0 px-2.5 py-2 text-[0.82rem] leading-[1.16] text-[var(--destructive)]">
                 {formatSearchError(errorMessage)}
               </p>
             ) : (
               <>
-                <div className="flex items-start justify-between gap-2 text-[#b5b5b5]">
+                <div className="flex items-start justify-between gap-2 text-[var(--text-muted)]">
                   <small className="text-[0.72rem]">{metaLabel}</small>
                   <div className="flex gap-2">
                     {page > 0 ? (
-                      <button
-                        type="button"
-                        className="border border-[#2f2f2f] bg-[#101010] px-2 py-1 text-[0.78rem] text-[#f0f0f0]"
-                        onClick={onPrevPage}
-                      >
+                      <Button variant="secondary" size="sm" onClick={onPrevPage}>
                         Anterior
-                      </button>
+                      </Button>
                     ) : null}
                     {hasMore ? (
-                      <button
-                        type="button"
-                        className="border border-[#2f2f2f] bg-[#101010] px-2 py-1 text-[0.78rem] text-[#f0f0f0]"
-                        onClick={onNextPage}
-                      >
+                      <Button variant="secondary" size="sm" onClick={onNextPage}>
                         Siguiente
-                      </button>
+                      </Button>
                     ) : null}
                   </div>
                 </div>
@@ -176,20 +170,20 @@ export function SearchPanel({
                     {Array.from({ length: 8 }, (_, index) => (
                       <article
                         key={index}
-                        className="grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2 border border-[#2f2f2f] bg-[#090909] p-1.5"
+                        className="app-list-item grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2 p-1.5"
                         aria-hidden="true"
                       >
-                        <div className="aspect-[0.72] w-[42px] animate-pulse bg-[#1a1a1a]" />
+                        <div className="aspect-[0.72] w-[42px] animate-pulse bg-[var(--input)]" />
                         <div className="grid gap-2">
-                          <span className="block h-3.5 w-[85%] animate-pulse bg-[#1a1a1a]" />
-                          <span className="block h-2.5 w-[62%] animate-pulse bg-[#1a1a1a]" />
+                          <span className="block h-3.5 w-[85%] animate-pulse bg-[var(--input)]" />
+                          <span className="block h-2.5 w-[62%] animate-pulse bg-[var(--input)]" />
                         </div>
                       </article>
                     ))}
                   </div>
                 ) : results.length === 0 ? (
                   <p
-                    className="m-0 min-h-0 overflow-y-auto border border-[#2f2f2f] bg-[#090909] px-2.5 py-2 text-[0.82rem] text-[#b5b5b5]"
+                    className="surface-card m-0 min-h-0 overflow-y-auto px-2.5 py-2 text-[0.82rem] text-[var(--text-muted)]"
                   >
                     No se encontraron cartas para esa búsqueda.
                   </p>
@@ -201,7 +195,7 @@ export function SearchPanel({
                       <article
                         key={card.ygoprodeckId}
                         className={[
-                          'grid w-full min-w-0 select-none grid-cols-[42px_minmax(0,1fr)] items-center gap-2 border border-[#2f2f2f] bg-[#090909] p-1.5 transition-all duration-150 ease-out will-change-transform',
+                          'app-list-item grid w-full min-w-0 select-none grid-cols-[42px_minmax(0,1fr)] items-center gap-2 p-1.5 transition-all duration-150 ease-out will-change-transform',
                           dragEnabled ? 'cursor-grab touch-none' : '',
                           activeDragSearchCardId === card.ygoprodeckId
                             ? 'opacity-35'
@@ -222,17 +216,21 @@ export function SearchPanel({
                           <CardArt
                             remoteUrl={card.imageUrlSmall}
                             name={card.name}
-                            className="block aspect-[0.72] w-[42px] bg-[#1a1a1a] object-cover"
+                            className="block aspect-[0.72] w-[42px] bg-[var(--input)] object-cover"
                           />
                         </div>
 
                         <div className="flex min-w-0 flex-col gap-[0.15rem]">
-                          <strong className="text-[0.8rem] leading-[1.08] break-words">{card.name}</strong>
-                          <p className="m-0 text-[0.72rem] leading-[1.12] break-words text-[#f0f0f0]">
+                          <strong className="text-[0.8rem] leading-[1.08] break-words text-[var(--text-main)]">
+                            {card.name}
+                          </strong>
+                          <p className="m-0 text-[0.72rem] leading-[1.12] break-words text-[var(--text-main)]">
                             {buildCompactSearchDescription(card)}
                           </p>
                           {buildFormatLimitLabel(card, deckFormat) ? (
-                            <small className="text-[0.68rem] text-[#b5b5b5]">{buildFormatLimitLabel(card, deckFormat)}</small>
+                            <small className="text-[0.68rem] text-[var(--text-muted)]">
+                              {buildFormatLimitLabel(card, deckFormat)}
+                            </small>
                           ) : null}
                         </div>
                       </article>
