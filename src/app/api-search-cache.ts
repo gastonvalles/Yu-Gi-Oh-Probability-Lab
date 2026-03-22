@@ -1,3 +1,4 @@
+import { buildGenesysCardInfo } from './genesys-format'
 import type { SearchCacheEntry } from './model'
 import { SEARCH_CACHE_KEY, SEARCH_CACHE_LIMIT, SEARCH_CACHE_TTL_MS } from './model'
 import { isRecord, normalizeName } from './utils'
@@ -31,7 +32,7 @@ export function loadApiSearchCache(): Record<string, SearchCacheEntry<ApiCardSea
 
       cache[key] = {
         savedAt: entry.savedAt,
-        results: entry.results.filter(isApiCardSearchResult),
+        results: entry.results.filter(isApiCardSearchResult).map(attachGenesysInfo),
         hasMore: entry.hasMore,
       }
     }
@@ -111,4 +112,11 @@ function isApiCardSearchResult(value: unknown): value is ApiCardSearchResult {
     typeof value.ygoprodeckId === 'number' &&
     isRecord(value.banlist)
   )
+}
+
+function attachGenesysInfo(card: ApiCardSearchResult): ApiCardSearchResult {
+  return {
+    ...card,
+    genesys: card.genesys ?? buildGenesysCardInfo(card.name),
+  }
 }

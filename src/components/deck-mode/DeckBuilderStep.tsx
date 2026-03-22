@@ -3,6 +3,7 @@ import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { getDeckFormatLabel } from '../../app/deck-format'
 import { useBuilderHeight } from '../../app/use-builder-height'
 import type { CalculatorMode, DeckBuilderState } from '../../app/model'
+import { formatInteger } from '../../app/utils'
 import type { DeckFormat, ApiCardReference } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { DeckZone } from '../DeckZone'
@@ -14,6 +15,8 @@ interface DeckBuilderStepProps {
   deckBuilder: DeckBuilderState
   deckFormat: DeckFormat
   formatIssues: string[]
+  genesysPointTotal: number | null
+  genesysPointCap: number | null
   mode: CalculatorMode
   query: string
   status: 'idle' | 'loading' | 'success' | 'error'
@@ -54,6 +57,8 @@ export function DeckBuilderStep({
   deckBuilder,
   deckFormat,
   formatIssues,
+  genesysPointTotal,
+  genesysPointCap,
   mode,
   query,
   status,
@@ -92,6 +97,8 @@ export function DeckBuilderStep({
   })
   const visibleFormatIssues = formatIssues.slice(0, 2)
   const hasHiddenIssues = formatIssues.length > visibleFormatIssues.length
+  const showGenesysPoints = deckFormat === 'genesys' && genesysPointTotal !== null && genesysPointCap !== null
+  const showFormatIssues = deckFormat !== 'genesys' && formatIssues.length > 0
 
   const handleResultClick = (apiCardId: number) => {
     if (consumeSuppressedSearchClick()) {
@@ -159,33 +166,51 @@ export function DeckBuilderStep({
               <option value="tcg">TCG</option>
               <option value="ocg">OCG</option>
               <option value="goat">GOAT</option>
+              <option value="genesys">Genesys</option>
             </select>
-            {formatIssues.length > 0 ? (
-              <div className="surface-card-warning mt-1 grid gap-1.5 px-2 py-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="app-soft text-[0.68rem] uppercase tracking-widest">
-                    Chequeo pendiente
-                  </span>
-                  <span className="builder-status-dot builder-status-dot-warning" />
-                </div>
-                <strong className="text-[0.92rem] leading-none text-(--text-main)">
-                  {formatIssues.length} ajuste{formatIssues.length === 1 ? '' : 's'} para {formatLabel}
-                </strong>
-                <div className="grid gap-1">
-                  {visibleFormatIssues.map((issue) => (
-                    <p key={issue} className="m-0 text-[0.74rem] leading-[1.18] text-(--text-muted)">
-                      {issue}
-                    </p>
-                  ))}
-                  {hasHiddenIssues ? (
-                    <p className="app-soft m-0 text-[0.72rem]">+ {formatIssues.length - visibleFormatIssues.length} más</p>
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
           </>
         }
       />
+
+      {showGenesysPoints ? (
+        <div className="grid gap-2 min-[1101px]:hidden">
+          <div className={[genesysPointTotal > genesysPointCap ? 'surface-card-warning' : 'surface-card', 'grid gap-1.5 px-2 py-2'].join(' ')}>
+            <span className="app-soft text-[0.68rem] uppercase tracking-widest">Puntos Genesys</span>
+            <strong className="text-[0.92rem] leading-none text-(--text-main)">
+              {formatInteger(genesysPointTotal)} / {formatInteger(genesysPointCap)} pts
+            </strong>
+            <p className="m-0 text-[0.72rem] leading-[1.18] text-(--text-muted)">
+              Cap estándar de 100 puntos y hasta 3 copias por carta.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      {showFormatIssues ? (
+        <div className="grid gap-2 min-[1101px]:hidden">
+          <div className="surface-card-warning grid gap-1.5 px-2 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="app-soft text-[0.68rem] uppercase tracking-widest">
+                Chequeo pendiente
+              </span>
+              <span className="builder-status-dot builder-status-dot-warning" />
+            </div>
+            <strong className="text-[0.92rem] leading-none text-(--text-main)">
+              {formatIssues.length} ajuste{formatIssues.length === 1 ? '' : 's'} para {formatLabel}
+            </strong>
+            <div className="grid gap-1">
+              {visibleFormatIssues.map((issue) => (
+                <p key={issue} className="m-0 text-[0.74rem] leading-[1.18] text-(--text-muted)">
+                  {issue}
+                </p>
+              ))}
+              {hasHiddenIssues ? (
+                <p className="app-soft m-0 text-[0.72rem]">+ {formatIssues.length - visibleFormatIssues.length} más</p>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid items-start gap-3 min-[1101px]:grid-cols-[minmax(0,1fr)_320px]">
         <article ref={builderRef} className="surface-panel-soft self-start w-full min-h-0 p-2.5">
@@ -213,10 +238,48 @@ export function DeckBuilderStep({
         </article>
 
         <div className="max-[1100px]:hidden">
-          {renderSearchPanel({
-            builderHeight,
-            dragEnabled: true,
-          })}
+          <div className="grid gap-2.5">
+            {showGenesysPoints ? (
+              <div className={[genesysPointTotal > genesysPointCap ? 'surface-card-warning' : 'surface-card', 'grid gap-1.5 px-2 py-2'].join(' ')}>
+                <span className="app-soft text-[0.68rem] uppercase tracking-widest">Puntos Genesys</span>
+                <strong className="text-[0.92rem] leading-none text-(--text-main)">
+                  {formatInteger(genesysPointTotal)} / {formatInteger(genesysPointCap)} pts
+                </strong>
+                <p className="m-0 text-[0.72rem] leading-[1.18] text-(--text-muted)">
+                  Cap estándar de 100 puntos y hasta 3 copias por carta.
+                </p>
+              </div>
+            ) : null}
+
+            {showFormatIssues ? (
+              <div className="surface-card-warning grid gap-1.5 px-2 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="app-soft text-[0.68rem] uppercase tracking-widest">
+                    Chequeo pendiente
+                  </span>
+                  <span className="builder-status-dot builder-status-dot-warning" />
+                </div>
+                <strong className="text-[0.92rem] leading-none text-(--text-main)">
+                  {formatIssues.length} ajuste{formatIssues.length === 1 ? '' : 's'} para {formatLabel}
+                </strong>
+                <div className="grid gap-1">
+                  {visibleFormatIssues.map((issue) => (
+                    <p key={issue} className="m-0 text-[0.74rem] leading-[1.18] text-(--text-muted)">
+                      {issue}
+                    </p>
+                  ))}
+                  {hasHiddenIssues ? (
+                    <p className="app-soft m-0 text-[0.72rem]">+ {formatIssues.length - visibleFormatIssues.length} más</p>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+
+            {renderSearchPanel({
+              builderHeight,
+              dragEnabled: true,
+            })}
+          </div>
         </div>
       </div>
 

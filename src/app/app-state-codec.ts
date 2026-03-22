@@ -1,4 +1,5 @@
 import { normalizeHandPatternCategory } from './patterns'
+import { buildGenesysCardInfo } from './genesys-format'
 import type {
   ApiCardReference,
   CardGroupKey,
@@ -27,7 +28,7 @@ import {
 
 export function toPortableConfig(state: AppState): PortableConfig {
   return {
-    version: 9,
+    version: 10,
     mode: state.mode,
     handSize: state.handSize,
     deckFormat: state.deckFormat,
@@ -168,16 +169,18 @@ function parseDeckZone(value: unknown, fieldName: string) {
       throw new Error(`"${fieldName}[${index}]" es inválido.`)
     }
 
+    const name = parseRequiredString(item.name, `${fieldName}[${index}].name`)
+
     return {
       instanceId: createId('deck-card'),
-      name: parseRequiredString(item.name, `${fieldName}[${index}].name`),
-      apiCard: parseApiCardReference(item.apiCard, `${fieldName}[${index}].apiCard`),
+      name,
+      apiCard: parseApiCardReference(item.apiCard, `${fieldName}[${index}].apiCard`, name),
       roles: parseCardRoles(item.roles),
     }
   })
 }
 
-function parseApiCardReference(value: unknown, fieldName: string): ApiCardReference {
+function parseApiCardReference(value: unknown, fieldName: string, cardName: string): ApiCardReference {
   if (!isRecord(value)) {
     throw new Error(`"${fieldName}" debe ser un objeto.`)
   }
@@ -198,6 +201,7 @@ function parseApiCardReference(value: unknown, fieldName: string): ApiCardRefere
     imageUrl: parseNullableString(value.imageUrl),
     imageUrlSmall: parseNullableString(value.imageUrlSmall),
     banlist: parseCardBanlistInfo(value.banlist),
+    genesys: parseGenesysInfo(value.genesys, cardName),
   }
 }
 
@@ -228,6 +232,16 @@ function parseBanlistStatus(value: unknown): ApiCardReference['banlist']['tcg'] 
   }
 
   return null
+}
+
+function parseGenesysInfo(value: unknown, cardName: string): ApiCardReference['genesys'] {
+  if (!isRecord(value)) {
+    return buildGenesysCardInfo(cardName)
+  }
+
+  return {
+    points: typeof value.points === 'number' && Number.isInteger(value.points) ? value.points : buildGenesysCardInfo(cardName).points,
+  }
 }
 
 function parseRequirementCardNames(value: Record<string, unknown>, fieldName: string): string[] {

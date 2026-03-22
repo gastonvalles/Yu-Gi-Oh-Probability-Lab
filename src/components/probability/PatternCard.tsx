@@ -226,7 +226,7 @@ export function PatternCard({
                 size="sm"
                 onClick={() => actions.setPatternAllowSharedCards(pattern.id, false)}
               >
-                Necesitas otra
+                Utilizar otra
               </Button>
             </div>
           </div>

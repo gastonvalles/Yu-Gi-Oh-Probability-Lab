@@ -1,5 +1,7 @@
+import { getCardLimitIndicator } from './deck-format'
 import type { DeckBuilderState, DeckCardInstance, DeckZone } from './model'
 import { buildDeckZoneBreakdown } from './deck-presentation'
+import type { DeckFormat } from '../types'
 
 interface ExportZone {
   key: DeckZone
@@ -23,7 +25,10 @@ const TEXT_MUTED = '#b7b7c6'
 const CARD_BORDER = '#1f1f2b'
 const CARD_BACKGROUND = '#12121a'
 
-export async function renderDeckAsCanvas(deckBuilder: DeckBuilderState): Promise<HTMLCanvasElement> {
+export async function renderDeckAsCanvas(
+  deckBuilder: DeckBuilderState,
+  deckFormat: DeckFormat,
+): Promise<HTMLCanvasElement> {
   const zones: ExportZone[] = [
     {
       key: 'main',
@@ -113,12 +118,56 @@ export async function renderDeckAsCanvas(deckBuilder: DeckBuilderState): Promise
       context.strokeStyle = CARD_BORDER
       context.lineWidth = 1
       context.strokeRect(x + 0.5, y + 0.5, cardWidth - 1, cardHeight - 1)
+
+      const indicator = getCardLimitIndicator(card.apiCard, deckFormat)
+
+      if (indicator) {
+        drawCardLimitBadge(context, x, y, indicator.value)
+      }
     })
 
     currentTop += zoneHeight + sectionGap
   }
 
   return canvas
+}
+
+function drawCardLimitBadge(
+  context: CanvasRenderingContext2D,
+  left: number,
+  top: number,
+  value: number,
+) {
+  const text = String(value)
+  const digitCount = text.length
+  const outerRadiusX = digitCount === 1 ? 11.5 : digitCount === 2 ? 15.5 : 18.5
+  const innerRadiusX = digitCount === 1 ? 8.4 : digitCount === 2 ? 12.25 : 15.15
+  const badgeWidth = outerRadiusX * 2
+  const centerX = left + badgeWidth / 2 - 0.5
+  const centerY = top + 11
+  const textOffsetX = digitCount === 1 ? (value === 1 ? -0.38 : value === 2 ? 0.15 : 0) : 0
+  const textOffsetY = digitCount === 1 ? (value === 1 ? 0.99 : 0.5) : 0.68
+  const fontSize = digitCount === 1 ? 14 : digitCount === 2 ? 11.5 : 9
+
+  context.fillStyle = '#e30e0e'
+  context.beginPath()
+  context.ellipse(centerX, centerY, outerRadiusX, 11.5, 0, 0, Math.PI * 2)
+  context.fill()
+
+  context.fillStyle = '#000000'
+  context.beginPath()
+  context.ellipse(centerX, centerY, innerRadiusX, 8.4, 0, 0, Math.PI * 2)
+  context.fill()
+
+  context.strokeStyle = '#000000'
+  context.lineWidth = 1.2
+  context.font = `900 ${fontSize}px "Arial Black", Impact, sans-serif`
+  context.textAlign = 'center'
+  context.textBaseline = 'middle'
+  context.lineJoin = 'round'
+  context.strokeText(text, centerX + textOffsetX, centerY + textOffsetY)
+  context.fillStyle = '#ffe15a'
+  context.fillText(text, centerX + textOffsetX, centerY + textOffsetY)
 }
 
 function drawPageBackground(context: CanvasRenderingContext2D, width: number, height: number) {

@@ -60,6 +60,8 @@ export function HoverPreview({ preview }: HoverPreviewProps) {
             remoteUrl={preview.card.imageUrl}
             name={preview.name}
             className="block aspect-[0.72] w-[116px] bg-[var(--input)] object-cover"
+            limitCard={preview.card}
+            limitBadgeSize="lg"
           />
         </div>
 

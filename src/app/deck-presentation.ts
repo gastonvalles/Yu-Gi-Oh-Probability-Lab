@@ -44,91 +44,10 @@ export function buildDeckZoneBreakdown(zone: DeckZone, cards: DeckCardInstance[]
       .join(' · ')
   }
 
-  if (zone === 'side') {
-    const counts = {
-      link: 0,
-      xyz: 0,
-      synchro: 0,
-      fusion: 0,
-      ritual: 0,
-      effect: 0,
-      vanilla: 0,
-      spells: 0,
-      traps: 0,
-      others: 0,
-    }
+  return buildMainOrSideDeckBreakdown(cards)
+}
 
-    for (const card of cards) {
-      const cardType = card.apiCard.cardType.toLowerCase()
-      const frameType = card.apiCard.frameType.toLowerCase()
-
-      if (cardType.includes('spell') || frameType.includes('spell')) {
-        counts.spells += 1
-        continue
-      }
-
-      if (cardType.includes('trap') || frameType.includes('trap')) {
-        counts.traps += 1
-        continue
-      }
-
-      if (frameType.includes('link')) {
-        counts.link += 1
-        continue
-      }
-
-      if (frameType.includes('xyz')) {
-        counts.xyz += 1
-        continue
-      }
-
-      if (frameType.includes('synchro')) {
-        counts.synchro += 1
-        continue
-      }
-
-      if (frameType.includes('fusion')) {
-        counts.fusion += 1
-        continue
-      }
-
-      if (frameType.includes('ritual') || cardType.includes('ritual')) {
-        counts.ritual += 1
-        continue
-      }
-
-      if (
-        frameType.includes('normal') ||
-        (cardType.includes('normal') && !cardType.includes('spell') && !cardType.includes('trap'))
-      ) {
-        counts.vanilla += 1
-        continue
-      }
-
-      if (frameType.includes('effect') || cardType.includes('effect')) {
-        counts.effect += 1
-        continue
-      }
-
-      counts.others += 1
-    }
-
-    return [
-      counts.link > 0 ? `${formatInteger(counts.link)} link` : '',
-      counts.xyz > 0 ? `${formatInteger(counts.xyz)} xyz` : '',
-      counts.synchro > 0 ? `${formatInteger(counts.synchro)} synchro` : '',
-      counts.fusion > 0 ? `${formatInteger(counts.fusion)} fusion` : '',
-      counts.ritual > 0 ? `${formatInteger(counts.ritual)} ritual` : '',
-      counts.effect > 0 ? `${formatInteger(counts.effect)} effect` : '',
-      counts.vanilla > 0 ? `${formatInteger(counts.vanilla)} vanilla` : '',
-      counts.spells > 0 ? `${formatInteger(counts.spells)} magias` : '',
-      counts.traps > 0 ? `${formatInteger(counts.traps)} trampas` : '',
-      counts.others > 0 ? `${formatInteger(counts.others)} otros` : '',
-    ]
-      .filter(Boolean)
-      .join(' · ')
-  }
-
+function buildMainOrSideDeckBreakdown(cards: DeckCardInstance[]): string {
   const counts = {
     monsters: 0,
     spells: 0,

@@ -1,7 +1,7 @@
 import { useCallback, useMemo, type PointerEvent as ReactPointerEvent } from 'react'
 
 import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
-import { findDeckCard, getDefaultDeckZoneForCard } from '../../app/deck-builder'
+import { findDeckCard, getAddSearchResultIssue, getDefaultDeckZoneForCard } from '../../app/deck-builder'
 import {
   addSearchResultToDeckZone,
   addSearchResultToDefaultDeckZone,
@@ -12,6 +12,7 @@ import {
 } from '../../app/deck-builder-slice'
 import { buildDeckFormatIssues } from '../../app/deck-format'
 import { buildDerivedDeckGroups } from '../../app/deck-groups'
+import { GENESYS_POINT_CAP, calculateGenesysDeckPointTotal } from '../../app/genesys-format'
 import { exportDeckAssets } from '../../app/deck-image-export'
 import { type AppState } from '../../app/model'
 import { setDeckFormat, setMode } from '../../app/settings-slice'
@@ -122,6 +123,17 @@ export function useDeckModeController() {
     () => buildDeckFormatIssues(deckBuilder, settings.deckFormat),
     [deckBuilder, settings.deckFormat],
   )
+  const genesysPointTotal = useMemo(
+    () => (settings.deckFormat === 'genesys' ? calculateGenesysDeckPointTotal(deckBuilder) : null),
+    [deckBuilder, settings.deckFormat],
+  )
+  const formatVisibleSearchResults = useMemo(
+    () =>
+      settings.deckFormat === 'genesys'
+        ? visibleSearchResults.filter((card) => card.genesys.points !== null)
+        : visibleSearchResults,
+    [settings.deckFormat, visibleSearchResults],
+  )
   const derivedGroups = useMemo(
     () => buildDerivedDeckGroups(derivedMainCards),
     [derivedMainCards],
@@ -162,6 +174,12 @@ export function useDeckModeController() {
 
       const zone = getDefaultDeckZoneForCard(card)
       const zoneLabel = zone === 'extra' ? 'Extra Deck' : 'Main Deck'
+      const addIssue = getAddSearchResultIssue(deckBuilder, card, zone, settings.deckFormat)
+
+      if (addIssue) {
+        showToast(addIssue, 'error')
+        return
+      }
 
       dispatch(
         addSearchResultToDefaultDeckZone({
@@ -173,7 +191,7 @@ export function useDeckModeController() {
 
       showToast(`Agregaste ${card.name} al ${zoneLabel}.`)
     },
-    [apiSearch.results, dispatch, settings.deckFormat, showToast],
+    [apiSearch.results, deckBuilder, dispatch, settings.deckFormat, showToast],
   )
 
   const handleRemoveDeckCard = useCallback(
@@ -220,12 +238,12 @@ export function useDeckModeController() {
     }
 
     try {
-      await exportDeckAssets(deckBuilder)
+      await exportDeckAssets(deckBuilder, settings.deckFormat)
       showToast('Imagen y TXT del deck descargados.', 'success')
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'No se pudo exportar el deck.', 'error')
     }
-  }, [deckBuilder, showToast])
+  }, [deckBuilder, settings.deckFormat, showToast])
 
   const handleDeckCardPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLElement>, instanceId: string) => {
@@ -241,12 +259,14 @@ export function useDeckModeController() {
   const handleSearchCardPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLElement>, apiCardId: number) => {
       const draggedCard = apiSearch.results.find((card) => card.ygoprodeckId === apiCardId)
+      const visibleDraggedCard = formatVisibleSearchResults.find((card) => card.ygoprodeckId === apiCardId)
+      const card = visibleDraggedCard ?? draggedCard
 
-      if (draggedCard) {
-        startPointerDrag(event, { type: 'search-result', apiCardId }, draggedCard.name, draggedCard)
+      if (card) {
+        startPointerDrag(event, { type: 'search-result', apiCardId }, card.name, card)
       }
     },
-    [apiSearch.results, startPointerDrag],
+    [apiSearch.results, formatVisibleSearchResults, startPointerDrag],
   )
 
   return {
@@ -257,7 +277,7 @@ export function useDeckModeController() {
       mode: settings.mode,
       query: apiSearch.query,
       status: apiSearch.status,
-      visibleSearchResults,
+      visibleSearchResults: formatVisibleSearchResults,
       errorMessage: apiSearch.errorMessage,
       page: apiSearch.page,
       hasMore: apiSearch.hasMore,
@@ -279,6 +299,8 @@ export function useDeckModeController() {
       onNextPage: showNextPage,
       onHoverStart: scheduleHoverPreview,
       onHoverEnd: clearHoverPreview,
+      genesysPointTotal,
+      genesysPointCap: settings.deckFormat === 'genesys' ? GENESYS_POINT_CAP : null,
     },
     exportDeck: {
       mainDeckCount: deckBuilder.main.length,

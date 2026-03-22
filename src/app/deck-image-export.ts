@@ -1,9 +1,10 @@
 import { downloadCanvasAsPng, downloadTextAsTxt } from './deck-image-export-download'
 import { renderDeckAsCanvas } from './deck-image-export-render'
 import type { DeckBuilderState, DeckCardInstance } from './model'
+import type { DeckFormat } from '../types'
 
-export async function exportDeckAssets(deckBuilder: DeckBuilderState): Promise<void> {
-  const canvas = await renderDeckAsCanvas(deckBuilder)
+export async function exportDeckAssets(deckBuilder: DeckBuilderState, deckFormat: DeckFormat): Promise<void> {
+  const canvas = await renderDeckAsCanvas(deckBuilder, deckFormat)
   const filenameBase = deckBuilder.deckName || 'ygo-probability-lab-deck'
 
   await downloadCanvasAsPng(canvas, filenameBase)

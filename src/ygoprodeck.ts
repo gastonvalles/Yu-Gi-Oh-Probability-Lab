@@ -1,3 +1,4 @@
+import { buildGenesysCardInfo } from './app/genesys-format'
 import { requestCardInfo } from './ygoprodeck/client'
 import { parseSearchResponse, readApiErrorMessage } from './ygoprodeck/parser'
 import type { ApiCardSearchResult, ApiSearchPage } from './ygoprodeck/types'
@@ -16,7 +17,7 @@ export async function searchCardsByName(
   })
 
   const payload = await requestCardInfo(params)
-  return parseSearchResponse(payload)
+  return attachGenesysInfo(parseSearchResponse(payload))
 }
 
 export async function fetchCardsByIds(ids: number[]): Promise<ApiCardSearchResult[]> {
@@ -29,7 +30,7 @@ export async function fetchCardsByIds(ids: number[]): Promise<ApiCardSearchResul
   })
 
   const payload = await requestCardInfo(params)
-  const parsedResponse = parseSearchResponse(payload)
+  const parsedResponse = attachGenesysInfo(parseSearchResponse(payload))
   const cardsById = new Map(parsedResponse.results.map((card) => [card.ygoprodeckId, card]))
 
   return ids.flatMap((id) => {
@@ -51,7 +52,7 @@ export async function fetchCardByExactName(name: string): Promise<ApiCardSearchR
 
   try {
     const payload = await requestCardInfo(params)
-    const parsedResponse = parseSearchResponse(payload)
+    const parsedResponse = attachGenesysInfo(parseSearchResponse(payload))
     return parsedResponse.results[0] ?? null
   } catch (error) {
     if (error instanceof Error && error.message.toLowerCase().includes('no card matching your query')) {
@@ -59,5 +60,15 @@ export async function fetchCardByExactName(name: string): Promise<ApiCardSearchR
     }
 
     throw error
+  }
+}
+
+function attachGenesysInfo(searchPage: ApiSearchPage): ApiSearchPage {
+  return {
+    ...searchPage,
+    results: searchPage.results.map((card) => ({
+      ...card,
+      genesys: buildGenesysCardInfo(card.name),
+    })),
   }
 }

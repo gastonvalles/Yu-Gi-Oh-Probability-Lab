@@ -49,6 +49,9 @@ function parseCard(entry: unknown, index: number): ApiCardSearchResult {
     imageUrl: readImageUrl(entry.card_images, 'image_url'),
     imageUrlSmall: readImageUrl(entry.card_images, 'image_url_small'),
     banlist: readBanlistInfo(entry.banlist_info),
+    genesys: {
+      points: null,
+    },
   }
 }
 

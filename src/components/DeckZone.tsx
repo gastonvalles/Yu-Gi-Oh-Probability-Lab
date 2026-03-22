@@ -90,6 +90,7 @@ export function DeckZone({
                 remoteUrl={card.apiCard.imageUrlSmall}
                 name={card.name}
                 className="block aspect-[0.72] w-full min-w-0 bg-[var(--input)] object-cover"
+                limitCard={card.apiCard}
               />
             </article>
         ))}

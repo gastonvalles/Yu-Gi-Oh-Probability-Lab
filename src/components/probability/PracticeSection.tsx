@@ -284,6 +284,8 @@ export function PracticeSection({
                       remoteUrl={card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null}
                       name={card.name}
                       className="block aspect-[0.72] w-full border border-(--border-subtle) bg-(--input) object-cover"
+                      limitCard={card.apiCard}
+                      limitBadgeSize="lg"
                     />
                   </article>
                 )

@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "sync:genesys": "node scripts/sync-genesys-card-data.mjs"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.11.2",

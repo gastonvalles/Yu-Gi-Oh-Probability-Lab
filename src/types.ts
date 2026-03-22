@@ -1,5 +1,5 @@
 export type CardSource = 'manual' | 'ygoprodeck'
-export type DeckFormat = 'unlimited' | 'tcg' | 'ocg' | 'goat'
+export type DeckFormat = 'unlimited' | 'tcg' | 'ocg' | 'goat' | 'genesys'
 export type BanlistStatus = 'forbidden' | 'limited' | 'semi-limited' | 'unlimited'
 export type CardRole = 'starter' | 'extender' | 'brick' | 'handtrap' | 'boardbreaker' | 'floodgate'
 export type CardGroupKey = CardRole | 'engine' | 'non-engine'
@@ -12,6 +12,10 @@ export interface CardBanlistInfo {
   tcg: BanlistStatus | null
   ocg: BanlistStatus | null
   goat: BanlistStatus | null
+}
+
+export interface CardGenesysInfo {
+  points: number | null
 }
 
 export interface ApiCardReference {
@@ -30,6 +34,7 @@ export interface ApiCardReference {
   imageUrl: string | null
   imageUrlSmall: string | null
   banlist: CardBanlistInfo
+  genesys: CardGenesysInfo
 }
 
 export interface CardEntry {

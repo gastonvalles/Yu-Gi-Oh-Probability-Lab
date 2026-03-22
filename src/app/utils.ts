@@ -89,7 +89,7 @@ export function parseMode(value: unknown): CalculatorMode {
 }
 
 export function parseDeckFormat(value: unknown): DeckFormat {
-  if (value === 'unlimited' || value === 'tcg' || value === 'ocg' || value === 'goat') {
+  if (value === 'unlimited' || value === 'tcg' || value === 'ocg' || value === 'goat' || value === 'genesys') {
     return value
   }
 

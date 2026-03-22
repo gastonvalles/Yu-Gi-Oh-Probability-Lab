@@ -1,8 +1,9 @@
 import type { ApiCardReference, CardRole, DeckFormat } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 import { getCardCopyLimit } from './deck-format'
+import { GENESYS_POINT_CAP, calculateGenesysDeckPointTotal, isGenesysLegalCardName } from './genesys-format'
 import type { DeckBuilderState, DeckCardInstance, DeckZone } from './model'
-import { createId } from './utils'
+import { createId, formatInteger } from './utils'
 
 const DECK_ZONE_LIMITS: Record<DeckZone, number> = {
   main: 60,
@@ -24,11 +25,7 @@ export function addSearchResultToZone(
     return deckBuilder
   }
 
-  if (deckBuilder[zone].length >= DECK_ZONE_LIMITS[zone]) {
-    return deckBuilder
-  }
-
-  if (countCardCopies(deckBuilder, searchResult.name) >= getCardCopyLimit(searchResult, format)) {
+  if (getAddSearchResultIssue(deckBuilder, searchResult, zone, format)) {
     return deckBuilder
   }
 
@@ -58,6 +55,40 @@ export function addSearchResultToDefaultZone(
 
   const zone = getDefaultDeckZoneForCard(searchResult)
   return addSearchResultToZone(deckBuilder, searchResults, apiCardId, zone, deckBuilder[zone].length, format)
+}
+
+export function getAddSearchResultIssue(
+  deckBuilder: DeckBuilderState,
+  searchResult: ApiCardSearchResult,
+  zone: DeckZone,
+  format: DeckFormat = 'unlimited',
+): string | null {
+  if (format === 'genesys' && !isGenesysLegalCardName(searchResult.name)) {
+    return `${searchResult.name} no figura como carta legal en Genesys.`
+  }
+
+  if (deckBuilder[zone].length >= DECK_ZONE_LIMITS[zone]) {
+    const zoneLabel = zone === 'extra' ? 'Extra Deck' : zone === 'side' ? 'Side Deck' : 'Main Deck'
+    return `${zoneLabel} ya alcanzó su tamaño máximo.`
+  }
+
+  if (countCardCopies(deckBuilder, searchResult.name) >= getCardCopyLimit(searchResult, format)) {
+    const limit = getCardCopyLimit(searchResult, format)
+
+    return limit === 0
+      ? `${searchResult.name} no se puede jugar en este formato.`
+      : `${searchResult.name} ya alcanzó el límite de ${formatInteger(limit)} copia${limit === 1 ? '' : 's'} en este formato.`
+  }
+
+  if (format === 'genesys') {
+    const nextPointTotal = calculateGenesysDeckPointTotal(deckBuilder) + (searchResult.genesys.points ?? 0)
+
+    if (nextPointTotal > GENESYS_POINT_CAP) {
+      return `${searchResult.name} llevaría el deck a ${formatInteger(nextPointTotal)} puntos y supera el cap estándar de ${formatInteger(GENESYS_POINT_CAP)} en Genesys.`
+    }
+  }
+
+  return null
 }
 
 export function addSearchResultCopiesToDefaultZone(
@@ -271,6 +302,9 @@ function cloneApiCardReference(card: ApiCardReference | ApiCardSearchResult): Ap
       tcg: card.banlist.tcg,
       ocg: card.banlist.ocg,
       goat: card.banlist.goat,
+    },
+    genesys: {
+      points: card.genesys.points,
     },
   }
 }
