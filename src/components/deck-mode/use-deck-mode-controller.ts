@@ -27,7 +27,7 @@ import { useToastMessage } from '../../app/use-toast-message'
 import { HOVER_PREVIEW_DELAY_MS } from '../../app/model'
 import type { ApiCardReference, CardRole } from '../../types'
 
-const DEFAULT_PATTERNS_VERSION = 2
+const DEFAULT_PATTERNS_VERSION = 3
 
 export function useDeckModeController() {
   const dispatch = useAppDispatch()

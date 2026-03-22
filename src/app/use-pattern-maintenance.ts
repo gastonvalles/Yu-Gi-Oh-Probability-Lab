@@ -1,8 +1,6 @@
 import { useEffect } from 'react'
 
-import { buildDerivedDeckGroups } from './deck-groups'
-import { deriveMainDeckCardsFromZone } from './calculator-state'
-import { buildDefaultPatternsFromGroups } from './pattern-defaults'
+import { buildDefaultPatterns } from './pattern-defaults'
 import { getPatternDefinitionKey, normalizeHandPatternCategory } from './patterns'
 import type { AppState } from './model'
 import { useAppDispatch } from './store-hooks'
@@ -26,9 +24,7 @@ export function usePatternMaintenance({
       return
     }
 
-    const currentDerivedMainCards = deriveMainDeckCardsFromZone(state.deckBuilder.main)
-    const currentDerivedGroups = buildDerivedDeckGroups(currentDerivedMainCards)
-    const defaultPatterns = buildDefaultPatternsFromGroups(currentDerivedGroups)
+    const defaultPatterns = buildDefaultPatterns()
     const existingPatternKeys = new Set(state.patterns.map((pattern) => getPatternDefinitionKey(pattern)))
     const missingDefaults = defaultPatterns.filter(
       (pattern) => !existingPatternKeys.has(getPatternDefinitionKey(pattern)),
