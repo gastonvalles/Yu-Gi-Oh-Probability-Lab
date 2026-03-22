@@ -228,7 +228,17 @@ interface PatternResultCardProps {
 }
 
 function PatternResultCard({ pattern }: PatternResultCardProps) {
-  const sentiment = normalizeHandPatternCategory(pattern.category) === 'good' ? 'positive' : 'negative'
+  const isProblemPattern = normalizeHandPatternCategory(pattern.category) === 'bad'
+  const sentiment = isProblemPattern ? 'negative' : 'positive'
+  const style =
+    pattern.probability > 0
+      ? isProblemPattern
+        ? getSemanticMetricSurfaceStyle('danger')
+        : getMetricSurfaceStyle(pattern.probability, sentiment)
+      : undefined
+  const valueColor = isProblemPattern
+    ? getSemanticMetricValueColor('danger')
+    : getMetricValueColor(pattern.probability, sentiment)
 
   return (
     <article
@@ -237,7 +247,7 @@ function PatternResultCard({ pattern }: PatternResultCardProps) {
         pattern.probability > 0 ? 'surface-card' : 'surface-panel-soft',
         pattern.possible ? '' : 'opacity-65',
       ].join(' ')}
-      style={pattern.probability > 0 ? getMetricSurfaceStyle(pattern.probability, sentiment) : undefined}
+      style={style}
     >
       <div className="grid min-w-0 gap-0.5">
         <div className="flex items-center gap-2">
@@ -255,7 +265,7 @@ function PatternResultCard({ pattern }: PatternResultCardProps) {
       </div>
       <p
         className="m-0 text-[0.82rem]"
-        style={{ color: getMetricValueColor(pattern.probability, sentiment) }}
+        style={{ color: valueColor }}
       >
         {formatPercent(pattern.probability)}
       </p>
