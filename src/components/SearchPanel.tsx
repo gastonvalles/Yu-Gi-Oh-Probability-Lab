@@ -348,7 +348,7 @@ export function SearchPanel({
                 type="text"
                 value={query}
                 onChange={(event) => onQueryChange(event.target.value)}
-                placeholder="Buscar por nombre parcial"
+                placeholder="Buscar por nombre parcial o texto en efecto"
                 autoComplete="off"
                 spellCheck={false}
                 className="app-field w-full px-2.5 py-2.5 pr-10 text-[0.86rem]"
@@ -651,7 +651,7 @@ export function SearchPanel({
                   </label>
 
                   <label className="grid gap-1">
-                    <span className="app-soft text-[0.64rem] uppercase tracking-[0.12em]">Texto en efecto (EN)</span>
+                    <span className="app-soft text-[0.64rem] uppercase tracking-[0.12em]">Texto en efecto (EN) - filtra resultados</span>
                     <input
                       type="text"
                       value={filters.description}

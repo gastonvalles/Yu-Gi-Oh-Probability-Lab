@@ -77,14 +77,19 @@ export function buildRemoteCardSearchRequest(
   deckFormat: DeckFormat,
 ): CardSearchRequest {
   const trimmedQuery = query.trim()
+  const trimmedDescription = filters.description.trim()
   const hasRemoteFilters = hasRemoteCardSearchFilters(filters)
 
+  // Si no hay query pero hay description, usar description como query para buscar
+  const effectiveQuery =
+    trimmedQuery.length >= SEARCH_MIN_QUERY_LENGTH ||
+    (trimmedQuery.length > 0 && hasRemoteFilters) ||
+    (trimmedQuery.length === 0 && trimmedDescription.length > 0)
+      ? trimmedQuery || trimmedDescription
+      : ''
+
   return {
-    query:
-      trimmedQuery.length >= SEARCH_MIN_QUERY_LENGTH ||
-      (trimmedQuery.length > 0 && hasRemoteFilters)
-        ? trimmedQuery
-        : '',
+    query: effectiveQuery,
     archetype: filters.archetype.trim(),
     exactType: filters.exactType.trim(),
     attribute: filters.attribute.trim(),
