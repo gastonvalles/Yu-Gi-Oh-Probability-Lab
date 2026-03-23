@@ -61,7 +61,7 @@ export function ProbabilityPanel({
   )
 
   return (
-    <article className="surface-panel mx-auto w-full max-w-screen min-[780px]:max-w-310 p-2.5 min-[1180px]:grid min-[1180px]:grid-rows-[auto_minmax(0,1fr)]">
+    <article className="surface-panel mx-auto w-full max-w-[1240px] min-[780px]:max-w-310 p-2.5 min-[1180px]:grid min-[1180px]:grid-rows-[auto_minmax(0,1fr)]">
       <StepHero
         step="Paso 3"
         pill="Probability Lab"

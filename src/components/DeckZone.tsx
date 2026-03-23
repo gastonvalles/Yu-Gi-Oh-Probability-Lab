@@ -73,7 +73,7 @@ export function DeckZone({
       </div>
 
       <div
-        className="deck-zone-surface grid w-full content-start gap-[0.32rem] p-[0.35rem] grid-cols-6 min-[520px]:grid-cols-8 min-[980px]:grid-cols-10"
+        className="deck-zone-surface grid w-full content-start gap-[0.32rem] p-[0.35rem] grid-cols-5 min-[520px]:grid-cols-8 min-[980px]:grid-cols-10"
         data-deck-zone={zone}
         data-deck-count={cards.length}
         style={zoneGridStyle}

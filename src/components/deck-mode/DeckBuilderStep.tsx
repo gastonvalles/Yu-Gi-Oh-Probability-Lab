@@ -161,7 +161,7 @@ export function DeckBuilderStep({
   )
 
   return (
-    <section id="step1" className="surface-panel mx-auto grid w-full max-w-screen min-[780px]:max-w-310 gap-3 p-2.5">
+    <section id="step1" className="surface-panel mx-auto grid w-full max-w-[1240px] min-[780px]:max-w-310 gap-3 p-2.5">
       <StepHero
         step="Paso 1"
         pill="Deck Builder"
@@ -307,9 +307,9 @@ export function DeckBuilderStep({
       </div>
 
       {mobileSearchOpen ? (
-        <div className="fixed inset-0 z-140 h-[100dvh] w-screen overflow-x-hidden bg-[rgb(var(--background-rgb)/0.82)] min-[1101px]:hidden">
-          <div className="h-full w-screen p-0">
-            <div className="surface-panel flex h-full w-screen flex-col overflow-hidden p-2.5">
+        <div className="fixed inset-0 z-140 h-[100dvh] w-full overflow-x-hidden bg-[rgb(var(--background-rgb)/0.82)] min-[1101px]:hidden">
+          <div className="h-full max-w-screen w-full p-0">
+            <div className="surface-panel flex h-full max-w-screen w-full flex-col overflow-hidden p-2.5">
               <div className="flex items-center justify-between gap-2 border-b border-(--border-subtle) pb-2">
                 <strong className="text-[0.95rem]">Buscar cartas</strong>
                 <button

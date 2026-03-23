@@ -31,7 +31,6 @@ const ROLE_THEME: Record<'all' | 'unclassified' | CardGroupKey, { color: string;
   handtrap: { color: 'var(--handtrap)', rgb: 'var(--handtrap-rgb)' },
   boardbreaker: { color: 'var(--boardbreaker)', rgb: 'var(--boardbreaker-rgb)' },
   floodgate: { color: 'var(--floodgate)', rgb: 'var(--floodgate-rgb)' },
-  draw: { color: 'var(--draw)', rgb: 'var(--draw-rgb)' },
   engine: { color: 'var(--primary)', rgb: 'var(--primary-rgb)' },
   'non-engine': { color: 'var(--accent)', rgb: 'var(--accent-rgb)' },
 }
@@ -66,12 +65,12 @@ function getRoleFilterCardStyle(
 
 function cardMatchesGroup(card: CardEntry, groupKey: CardGroupKey): boolean {
   if (groupKey === 'engine') {
-    return card.roles.some((role) => role === 'starter' || role === 'extender' || role === 'brick' || role === 'draw')
+    return card.roles.some((role) => role === 'starter' || role === 'extender' || role === 'brick')
   }
 
   if (groupKey === 'non-engine') {
     return card.roles.some(
-      (role) => role === 'handtrap' || role === 'boardbreaker' || role === 'floodgate' || role === 'brick' || role === 'draw',
+      (role) => role === 'handtrap' || role === 'boardbreaker' || role === 'floodgate' || role === 'brick',
     )
   }
 
@@ -227,17 +226,17 @@ export function DeckRolesPanel({ cards, onToggleRole }: DeckRolesPanelProps) {
     {
       key: 'engine' as const,
       label: 'Engine',
-      description: 'Son las cartas que forman el motor del deck: arrancan, extienden, dibujan o aparecen como piezas incómodas del propio engine.',
-      roles: ['starter', 'extender', 'brick', 'draw'] as const,
+      description: 'Son las cartas que forman el motor del deck: arrancan, extienden o aparecen como piezas incómodas del propio engine.',
+      roles: ['starter', 'extender', 'brick'] as const,
       styleKey: 'engine' as const,
     },
     {
       key: 'non-engine' as const,
       label: 'Non-engine',
-      description: 'Son las cartas de interacción, utilidad, dibujo o castigo al robo. Acá también entran los bricks porque no querés verlos solos.',
-      roles: ['handtrap', 'boardbreaker', 'floodgate', 'brick', 'draw'] as const,
+      description: 'Son las cartas de interacción, utilidad o castigo al robo. Acá también entran los bricks porque no querés verlos solos.',
+      roles: ['handtrap', 'boardbreaker', 'floodgate', 'brick'] as const,
       styleKey: 'non-engine' as const,
-    },
+    }
   ]
   const emptyStateCopy = getEmptyStateCopy(activeFilter)
   const scrollListClassName =
@@ -297,7 +296,7 @@ export function DeckRolesPanel({ cards, onToggleRole }: DeckRolesPanelProps) {
                         </div>
                         <p className="app-muted m-0 text-[0.72rem] leading-[1.14]">
                           {definition.description}
-                          {definition.key === 'brick' || definition.key === 'draw' ? ' Cuenta dentro de ambos grupos lógicos.' : ''}
+                          {definition.key === 'brick' ? ' Cuenta dentro de ambos grupos lógicos.' : ''}
                         </p>
                       </article>
                     )

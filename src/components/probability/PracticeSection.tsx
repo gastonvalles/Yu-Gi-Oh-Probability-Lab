@@ -30,7 +30,6 @@ const ROLE_THEME: Record<CardRole, { color: string; rgb: string }> = {
   handtrap: { color: 'var(--handtrap)', rgb: 'var(--handtrap-rgb)' },
   boardbreaker: { color: 'var(--boardbreaker)', rgb: 'var(--boardbreaker-rgb)' },
   floodgate: { color: 'var(--floodgate)', rgb: 'var(--floodgate-rgb)' },
-  draw: { color: 'var(--draw)', rgb: 'var(--draw-rgb)' },
 }
 
 function getRoleStyle(role: CardRole): CSSProperties {
@@ -199,6 +198,18 @@ export function PracticeSection({
     })
   }, [cardById, practiceHand])
 
+  const [isWide, setIsWide] = useState(true)
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 820px)')
+
+    const update = () => setIsWide(mediaQuery.matches)
+    update()
+
+    mediaQuery.addEventListener('change', update)
+    return () => mediaQuery.removeEventListener('change', update)
+  }, [])
+
   useEffect(() => {
     setPracticeHand(null)
   }, [derivedMainCards, handSize])
@@ -259,18 +270,26 @@ export function PracticeSection({
               </div>
             </div>
 
-            <div className="practice-stage flex min-h-[250px] items-start justify-center overflow-x-auto overflow-y-hidden px-4 py-4">
+            <div
+              className={isWide
+                ? 'practice-stage flex min-h-[250px] items-start justify-center overflow-x-auto overflow-y-hidden px-4 py-4'
+                : 'practice-stage grid grid-cols-5 gap-2 overflow-y-hidden px-4 py-4'
+              }
+            >
               {(practiceHand?.hand ?? Array.from({ length: handSize })).map((card, index, hand) => {
                 const cardCount = hand.length
-                const cardStyle = getPracticeStageCardStyle(index, cardCount)
+                const cardStyle = isWide ? getPracticeStageCardStyle(index, cardCount) : undefined
 
                 if (!practiceHand) {
                   return (
                     <div
                       key={`placeholder-${index}`}
                       className={[
-                        'practice-placeholder-card aspect-[0.72] w-[clamp(90px,16vw,128px)] shrink-0',
-                        index === 0 ? '' : '-ml-5 min-[820px]:-ml-7',
+                        'practice-placeholder-card aspect-[0.72] shrink-0',
+                        isWide
+                          ? 'w-[clamp(96px,16vw,132px)]'
+                          : 'w-full',
+                        isWide && index !== 0 ? '-ml-5 min-[820px]:-ml-7' : '',
                       ].join(' ')}
                       style={cardStyle}
                       aria-hidden="true"
@@ -283,8 +302,10 @@ export function PracticeSection({
                     key={card.drawId}
                     className={[
                       'surface-card shrink-0 overflow-hidden p-1.5 shadow-[0_18px_36px_rgba(0,0,0,0.35)]',
-                      'w-[clamp(96px,16vw,132px)]',
-                      index === 0 ? '' : '-ml-5 min-[820px]:-ml-7',
+                      isWide
+                        ? 'w-[clamp(96px,16vw,132px)]'
+                        : 'w-full',
+                      isWide && index !== 0 ? '-ml-5 min-[820px]:-ml-7' : '',
                     ].join(' ')}
                     style={cardStyle}
                   >
