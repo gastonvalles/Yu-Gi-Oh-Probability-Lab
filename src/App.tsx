@@ -10,7 +10,7 @@ export default function App() {
   const mode = useAppSelector((state: RootState) => state.settings.mode)
 
   return (
-    <main className="mx-auto min-h-screen w-[min(1760px,calc(100vw-1rem))] bg-transparent py-2">
+    <main className="mx-auto min-h-screen w-[min(1760px,100vw)] bg-transparent px-2 py-2 overflow-x-hidden">
       {mode === 'manual' ? (
         <PlaceholderPanel
           mode={mode}

@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 
 import { getDeckFormatLabel } from '../../app/deck-format'
 import { useBuilderHeight } from '../../app/use-builder-height'
@@ -102,6 +102,18 @@ export function DeckBuilderStep({
     mode,
     sideDeckCount: deckBuilder.side.length,
   })
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+
+    if (mobileSearchOpen) {
+      document.body.style.overflow = 'hidden'
+    }
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [mobileSearchOpen])
   const visibleFormatIssues = formatIssues.slice(0, 2)
   const hasHiddenIssues = formatIssues.length > visibleFormatIssues.length
   const showGenesysPoints = deckFormat === 'genesys' && genesysPointTotal !== null && genesysPointCap !== null
@@ -149,7 +161,7 @@ export function DeckBuilderStep({
   )
 
   return (
-    <section id="step1" className="surface-panel mx-auto grid w-full max-w-310 gap-3 p-2.5">
+    <section id="step1" className="surface-panel mx-auto grid w-full max-w-screen min-[780px]:max-w-310 gap-3 p-2.5">
       <StepHero
         step="Paso 1"
         pill="Deck Builder"
@@ -295,9 +307,9 @@ export function DeckBuilderStep({
       </div>
 
       {mobileSearchOpen ? (
-        <div className="fixed inset-0 z-140 overflow-y-auto bg-[rgb(var(--background-rgb)/0.82)] px-3 py-3 min-[1101px]:hidden">
-          <div className="mx-auto flex h-[calc(100dvh-1.5rem)] w-full max-w-155 items-stretch">
-            <div className="surface-panel flex h-full min-h-0 max-h-full w-full flex-col overflow-hidden p-2.5">
+        <div className="fixed inset-0 z-140 h-[100dvh] w-screen overflow-x-hidden bg-[rgb(var(--background-rgb)/0.82)] min-[1101px]:hidden">
+          <div className="h-full w-screen p-0">
+            <div className="surface-panel flex h-full w-screen flex-col overflow-hidden p-2.5">
               <div className="flex items-center justify-between gap-2 border-b border-(--border-subtle) pb-2">
                 <strong className="text-[0.95rem]">Buscar cartas</strong>
                 <button

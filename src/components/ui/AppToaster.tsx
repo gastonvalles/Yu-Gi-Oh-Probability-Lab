@@ -10,7 +10,7 @@ export function AppToaster() {
         right: 16,
       }}
       toastOptions={{
-        duration: 2200,
+        duration: 1300,
         style: {
           background: 'linear-gradient(180deg, rgb(var(--card-background-rgb) / 0.96), rgb(var(--background-rgb) / 0.98))',
           color: 'var(--text-main)',
@@ -24,12 +24,15 @@ export function AppToaster() {
         },
         success: {
           style: {
-            borderColor: 'rgb(var(--success-rgb) / 0.42)',
+            borderColor: 'rgb(var(--success-rgb) / 0.65)',
+            color: 'var(--success)',
+            fontSize: '0.75rem',
+            padding: '8px 10px',
             boxShadow:
               'inset 0 1px 0 rgba(255,255,255,0.03), 0 12px 28px rgba(0,0,0,0.34), 0 0 0 1px rgb(var(--success-rgb) / 0.12)',
           },
           iconTheme: {
-            primary: 'var(--accent)',
+            primary: 'var(--success)',
             secondary: 'var(--background)',
           },
         },

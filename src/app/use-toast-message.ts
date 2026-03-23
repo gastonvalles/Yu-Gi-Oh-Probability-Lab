@@ -7,6 +7,8 @@ export function useToastMessage(): {
   showToast: (message: string, tone?: ToastTone) => void
 } {
   const showToast = useCallback((message: string, tone: ToastTone = 'default') => {
+    toast.dismiss()
+
     if (tone === 'success') {
       toast.success(message)
       return

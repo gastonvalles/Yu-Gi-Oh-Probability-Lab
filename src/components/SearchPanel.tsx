@@ -542,12 +542,12 @@ export function SearchPanel({
 
       {drawerOpen ? (
         <div
-          className="fixed inset-0 z-160 bg-[rgb(var(--background-rgb)/0.76)] backdrop-blur-[2px]"
+          className="fixed inset-0 z-160 overflow-x-hidden bg-[rgb(var(--background-rgb)/0.76)] backdrop-blur-[2px]"
           onClick={() => setDrawerOpen(false)}
         >
-          <div className="absolute inset-y-0 right-0 flex w-full max-w-[25rem]">
+          <div className="absolute inset-0 flex w-screen max-w-screen min-[1101px]:inset-y-0 min-[1101px]:right-0 min-[1101px]:w-full min-[1101px]:max-w-[25rem]">
             <aside
-              className="surface-panel flex h-full w-full min-h-0 flex-col gap-3 overflow-hidden border-l border-[rgb(var(--primary-rgb)/0.22)] p-3"
+              className="surface-panel flex h-full w-screen min-h-0 flex-col gap-3 overflow-hidden border-l border-[rgb(var(--primary-rgb)/0.22)] p-3 min-[1101px]:w-80"
               onClick={(event) => event.stopPropagation()}
             >
               <div className="flex items-start justify-between gap-3 border-b border-(--border-subtle) pb-2">

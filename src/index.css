@@ -126,6 +126,8 @@
   body,
   #app {
     min-height: 100%;
+    overflow-x: hidden;
+    width: 100vw;
     background:
       radial-gradient(circle at top, var(--primary-muted), transparent 28%),
       linear-gradient(180deg, var(--bg-canvas), var(--bg-canvas-2));

@@ -217,7 +217,7 @@ export function useDeckModeController() {
         }),
       )
 
-      showToast(`Agregaste ${card.name} al ${zoneLabel}.`)
+      showToast('Carta añadida', 'success')
     },
     [apiSearch.results, deckBuilder, dispatch, settings.deckFormat, showToast],
   )
