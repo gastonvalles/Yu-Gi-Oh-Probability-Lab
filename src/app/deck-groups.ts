@@ -55,6 +55,12 @@ export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
     shortLabel: 'Floodgate',
     description: 'Carta que limita líneas del rival por presencia o efecto continuo.',
   },
+  {
+    key: 'draw',
+    label: 'Draw',
+    shortLabel: 'Draw',
+    description: 'Carta que ayuda a robar cartas adicionales.',
+  },
 ]
 
 export const CARD_GROUP_DEFINITIONS: Array<{
@@ -68,13 +74,13 @@ export const CARD_GROUP_DEFINITIONS: Array<{
     key: 'engine',
     label: 'Engine',
     shortLabel: 'Engine',
-    description: 'Starters, extenders y bricks juntos.',
+    description: 'Starters, extenders, bricks y draws juntos.',
   },
   {
     key: 'non-engine',
     label: 'Non-engine',
     shortLabel: 'Non-engine',
-    description: 'Handtraps, boardbreakers, floodgates y bricks juntos.',
+    description: 'Handtraps, boardbreakers, floodgates, bricks y draws juntos.',
   },
 ]
 
@@ -148,12 +154,12 @@ export function resolveRequirementCardIds(
 
 function cardMatchesGroup(card: CardEntry, groupKey: CardGroupKey): boolean {
   if (groupKey === 'engine') {
-    return card.roles.some((role) => role === 'starter' || role === 'extender' || role === 'brick')
+    return card.roles.some((role) => role === 'starter' || role === 'extender' || role === 'brick' || role === 'draw')
   }
 
   if (groupKey === 'non-engine') {
     return card.roles.some(
-      (role) => role === 'handtrap' || role === 'boardbreaker' || role === 'floodgate' || role === 'brick',
+      (role) => role === 'handtrap' || role === 'boardbreaker' || role === 'floodgate' || role === 'brick' || role === 'draw',
     )
   }
 

@@ -301,7 +301,8 @@ function isCardRole(value: unknown): value is CardRole {
     value === 'brick' ||
     value === 'handtrap' ||
     value === 'boardbreaker' ||
-    value === 'floodgate'
+    value === 'floodgate' ||
+    value === 'draw'
   )
 }
 
@@ -312,6 +313,7 @@ function parseOptionalGroupKey(value: unknown): CardGroupKey | null {
     value === 'handtrap' ||
     value === 'boardbreaker' ||
     value === 'floodgate' ||
+    value === 'draw' ||
     value === 'engine' ||
     value === 'non-engine'
     ? value

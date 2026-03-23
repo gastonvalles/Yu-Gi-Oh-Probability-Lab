@@ -30,6 +30,7 @@ const ROLE_THEME: Record<CardRole, { color: string; rgb: string }> = {
   handtrap: { color: 'var(--handtrap)', rgb: 'var(--handtrap-rgb)' },
   boardbreaker: { color: 'var(--boardbreaker)', rgb: 'var(--boardbreaker-rgb)' },
   floodgate: { color: 'var(--floodgate)', rgb: 'var(--floodgate-rgb)' },
+  draw: { color: 'var(--draw)', rgb: 'var(--draw-rgb)' },
 }
 
 function getRoleStyle(role: CardRole): CSSProperties {
