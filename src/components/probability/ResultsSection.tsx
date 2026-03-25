@@ -71,8 +71,9 @@ export function ResultsSection({
         ) : null}
 
         {!result.summary && !isEmptyDeckState ? (
-          <div className="surface-card p-2 text-[0.8rem] text-[var(--text-muted)]">
-            Ajustá el Main Deck y definí al menos una apertura o un problema para obtener la probabilidad exacta.
+          <div className="surface-card p-4 flex flex-col items-center justify-center gap-2 min-h-[100px]">
+            <div className="animate-spin w-6 h-6 border-2 border-[rgb(var(--foreground-rgb)/0.18)] border-t-[var(--primary)] rounded-full" />
+            <p className="m-0 text-[0.8rem] text-[var(--text-muted)]">Calculando probabilidades...</p>
           </div>
         ) : result.summary ? (
           <>

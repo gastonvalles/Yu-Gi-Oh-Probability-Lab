@@ -49,7 +49,7 @@ export function DeckZone({
   const zoneGridStyle = {
     '--zone-background': zoneStyle.background,
     '--zone-border': zoneStyle.border,
-    minHeight: 'clamp(140px, 18vw, 220px)',
+    minHeight: 'clamp(50px, 8vw, 90px)',
   } as CSSProperties
 
   return (

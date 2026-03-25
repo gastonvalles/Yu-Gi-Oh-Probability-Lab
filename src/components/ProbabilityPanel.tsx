@@ -23,6 +23,7 @@ interface ProbabilityPanelProps {
   derivedMainCards: CardEntry[]
   derivedGroups: DerivedDeckGroup[]
   patternActions: PatternEditorActions
+  isEditingDeck: boolean
 }
 
 export function ProbabilityPanel({
@@ -33,6 +34,7 @@ export function ProbabilityPanel({
   derivedMainCards,
   derivedGroups,
   patternActions,
+  isEditingDeck,
 }: ProbabilityPanelProps) {
   const [mobilePatternsOpen, setMobilePatternsOpen] = useState(false)
   const mainDeckCount = useMemo(
@@ -41,16 +43,22 @@ export function ProbabilityPanel({
   )
   const deferredDerivedMainCards = useDeferredValue(derivedMainCards)
   const deferredPatterns = useDeferredValue(patterns)
-  const result = useMemo(
-    () =>
-      calculateProbabilities(
-        buildCalculatorState(deferredDerivedMainCards, {
-          handSize,
-          patterns: deferredPatterns,
-        }),
-      ),
-    [deferredDerivedMainCards, handSize, deferredPatterns],
-  )
+  const deferredIsEditingDeck = useDeferredValue(isEditingDeck)
+  const result = useMemo(() => {
+    if (deferredIsEditingDeck) {
+      return {
+        issues: [],
+        blockingIssues: [],
+        summary: null,
+      }
+    }
+    return calculateProbabilities(
+      buildCalculatorState(deferredDerivedMainCards, {
+        handSize,
+        patterns: deferredPatterns,
+      }),
+    )
+  }, [deferredDerivedMainCards, handSize, deferredPatterns, deferredIsEditingDeck])
   const patternEditor = (
     <PatternEditor
       patterns={patterns}

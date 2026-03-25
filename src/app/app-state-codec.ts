@@ -83,6 +83,7 @@ export function fromPortableConfig(value: unknown): AppState {
     main: parseDeckZone(value.deckBuilder.main, 'deckBuilder.main'),
     extra: parseDeckZone(value.deckBuilder.extra, 'deckBuilder.extra'),
     side: parseDeckZone(value.deckBuilder.side, 'deckBuilder.side'),
+    isEditingDeck: true,
   }
 
   const derivedMainCards = deriveMainDeckCardsFromZone(deckBuilder.main)

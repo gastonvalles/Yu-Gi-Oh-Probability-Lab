@@ -41,6 +41,7 @@ const initialState: DeckBuilderState = {
   main: [],
   extra: [],
   side: [],
+  isEditingDeck: true,
 }
 
 const deckBuilderSlice = createSlice({
@@ -91,6 +92,9 @@ const deckBuilderSlice = createSlice({
     toggleDeckCardRole(state, action: PayloadAction<ToggleDeckCardRolePayload>) {
       return toggleRoleForCard(state, action.payload.ygoprodeckId, action.payload.role)
     },
+    setIsEditingDeck(state, action: PayloadAction<boolean>) {
+      state.isEditingDeck = action.payload
+    },
   },
 })
 
@@ -102,6 +106,7 @@ export const {
   removeDeckCardFromBuilder,
   replaceDeckBuilder,
   setDeckName,
+  setIsEditingDeck,
   toggleDeckCardRole,
 } = deckBuilderSlice.actions
 export const deckBuilderReducer = deckBuilderSlice.reducer

@@ -268,6 +268,7 @@ function cloneDeckBuilder(deckBuilder: DeckBuilderState): DeckBuilderState {
     main: deckBuilder.main.map(cloneDeckCard),
     extra: deckBuilder.extra.map(cloneDeckCard),
     side: deckBuilder.side.map(cloneDeckCard),
+    isEditingDeck: deckBuilder.isEditingDeck,
   }
 }
 
@@ -279,6 +280,7 @@ function copyDeckBuilderForZones(deckBuilder: DeckBuilderState, zonesToCopy: Dec
     main: copiedZones.has('main') ? [...deckBuilder.main] : deckBuilder.main,
     extra: copiedZones.has('extra') ? [...deckBuilder.extra] : deckBuilder.extra,
     side: copiedZones.has('side') ? [...deckBuilder.side] : deckBuilder.side,
+    isEditingDeck: deckBuilder.isEditingDeck,
   }
 }
 

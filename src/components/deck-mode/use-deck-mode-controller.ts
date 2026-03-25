@@ -1,4 +1,4 @@
-import { useCallback, useMemo, type PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useEffect, useMemo, type PointerEvent as ReactPointerEvent } from 'react'
 
 import {
   buildDerivedDeckAttributes,
@@ -16,6 +16,7 @@ import {
   moveDeckCardInBuilder,
   removeDeckCardFromBuilder,
   setDeckName,
+  setIsEditingDeck,
   toggleDeckCardRole,
 } from '../../app/deck-builder-slice'
 import { buildDeckFormatIssues, getDeckFormatLabel } from '../../app/deck-format'
@@ -274,6 +275,22 @@ export function useDeckModeController() {
     [dispatch],
   )
 
+  const handleFinishEditing = useCallback(() => {
+    dispatch(setIsEditingDeck(false))
+  }, [dispatch])
+
+  useEffect(() => {
+    if (!deckBuilder.isEditingDeck) {
+      return
+    }
+    const timer = window.setTimeout(() => {
+      dispatch(setIsEditingDeck(false))
+    }, 500)
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [deckBuilder.main, deckBuilder.extra, deckBuilder.side, deckBuilder.isEditingDeck, dispatch])
+
   const handleExportDeckImage = useCallback(async () => {
     const totalCards = deckBuilder.main.length + deckBuilder.extra.length + deckBuilder.side.length
 
@@ -367,6 +384,7 @@ export function useDeckModeController() {
       derivedMainCards,
       derivedGroups,
       patternActions,
+      isEditingDeck: deckBuilder.isEditingDeck,
     },
     roles: {
       cards: derivedMainCards,

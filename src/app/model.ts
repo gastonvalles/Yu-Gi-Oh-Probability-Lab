@@ -26,6 +26,7 @@ export interface DeckBuilderState {
   main: DeckCardInstance[]
   extra: DeckCardInstance[]
   side: DeckCardInstance[]
+  isEditingDeck: boolean
 }
 
 export interface AppState {
@@ -133,6 +134,7 @@ export function createInitialState(): AppState {
       main: [],
       extra: [],
       side: [],
+      isEditingDeck: true,
     },
   }
 }
