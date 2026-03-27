@@ -123,7 +123,7 @@
   body,
   #app {
     min-height: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
     min-width: 0;
     width: 100%;
     background:
@@ -241,6 +241,58 @@
     border: 1px solid rgb(var(--danger-rgb) / 0.5);
     background: linear-gradient(180deg, rgb(var(--danger-rgb) / 0.12), rgb(var(--card-background-rgb) / 0.96));
     box-shadow: 0 0 0 1px rgb(var(--danger-rgb) / 0.08);
+  }
+
+  .workflow-step-button {
+    border: 1px solid var(--border-subtle);
+    background:
+      linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.94), rgb(var(--background-rgb) / 0.98)),
+      linear-gradient(180deg, rgb(var(--card-background-rgb) / 0.94), rgb(var(--background-rgb) / 0.98));
+    transition:
+      border-color 160ms ease,
+      background 160ms ease,
+      box-shadow 160ms ease,
+      transform 160ms ease;
+  }
+
+  .workflow-step-button:hover {
+    border-color: rgb(var(--primary-rgb) / 0.42);
+    background:
+      linear-gradient(180deg, rgb(var(--primary-rgb) / 0.08), rgb(var(--background-rgb) / 0.98)),
+      linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.96), rgb(var(--background-rgb) / 0.98));
+    box-shadow: 0 0 0 1px rgb(var(--primary-rgb) / 0.08);
+  }
+
+  .workflow-step-button:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px rgb(var(--background-rgb) / 1),
+      0 0 0 4px rgb(var(--primary-rgb) / 0.32);
+  }
+
+  .workflow-step-button[data-tone='progress'] {
+    border-color: rgb(var(--primary-rgb) / 0.24);
+    background:
+      linear-gradient(180deg, rgb(var(--primary-rgb) / 0.08), rgb(var(--card-background-rgb) / 0.96)),
+      linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.94), rgb(var(--background-rgb) / 0.98));
+  }
+
+  .workflow-step-button[data-tone='complete'] {
+    border-color: rgb(var(--accent-rgb) / 0.34);
+    background:
+      linear-gradient(180deg, rgb(var(--accent-rgb) / 0.12), rgb(var(--card-background-rgb) / 0.96)),
+      linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.94), rgb(var(--background-rgb) / 0.98));
+    box-shadow: 0 0 0 1px rgb(var(--accent-rgb) / 0.06);
+  }
+
+  .workflow-step-button[data-active='true'] {
+    border-color: rgb(var(--primary-rgb) / 0.68);
+    background:
+      linear-gradient(180deg, rgb(var(--primary-rgb) / 0.16), rgb(var(--card-background-rgb) / 0.96)),
+      linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.96), rgb(var(--background-rgb) / 0.98));
+    box-shadow:
+      0 0 0 1px rgb(var(--primary-rgb) / 0.14),
+      0 18px 34px rgb(var(--primary-rgb) / 0.08);
   }
 
   .step-hero,

@@ -79,7 +79,7 @@ export function ProbabilityPanel({
   )
 
   return (
-    <article className="surface-panel mx-auto w-full max-w-[1240px] min-[780px]:max-w-310 p-2.5 min-[1180px]:grid min-[1180px]:grid-rows-[auto_minmax(0,1fr)]">
+    <article className="surface-panel grid h-full min-h-0 gap-3 p-2.5 min-[1180px]:grid-rows-[auto_minmax(0,1fr)]">
       <StepHero
         step="Paso 3"
         pill="Probability Lab"
@@ -87,7 +87,7 @@ export function ProbabilityPanel({
         description="Marcá qué manos sí querés ver al robar y qué problemas querés evitar. La app revisa todas las manos posibles y te muestra qué tan seguido pasa cada cosa."
       />
 
-      <div className="grid min-h-0 items-start gap-3 min-[1180px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="grid min-h-0 items-start gap-3 min-[1180px]:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
         <section className="grid content-start gap-3 min-[1180px]:min-h-0">
           <div className="min-[1180px]:hidden">
             <Button variant="primary" size="md" fullWidth onClick={() => setMobilePatternsOpen(true)}>

@@ -240,11 +240,11 @@ export function DeckRolesPanel({ cards, onToggleRole }: DeckRolesPanelProps) {
   ]
   const emptyStateCopy = getEmptyStateCopy(activeFilter)
   const scrollListClassName =
-    'grid gap-2 overflow-y-auto overflow-x-hidden pr-1 max-h-[68vh] min-[1180px]:max-h-[760px]'
+    'grid gap-2 overflow-y-auto overflow-x-hidden pr-1 max-h-[68vh] min-[1180px]:max-h-[760px] min-[1320px]:min-h-0 min-[1320px]:max-h-none min-[1680px]:grid-cols-2'
 
   return (
-    <section className="surface-panel p-2.5">
-      <div className="grid gap-3">
+    <section className="surface-panel grid h-full min-h-0 gap-3 p-2.5 min-[1320px]:grid-rows-[auto_auto_minmax(0,1fr)]">
+      <div className="grid h-full min-h-0 gap-3">
         <StepHero
           step="Paso 2"
           pill="Grouping"
@@ -312,8 +312,8 @@ export function DeckRolesPanel({ cards, onToggleRole }: DeckRolesPanelProps) {
             Primero armá o importá tu Main Deck. Después vas a poder clasificar cada carta.
           </p>
         ) : (
-          <>
-            <div className="surface-panel-soft grid gap-2.5 p-2.5">
+          <div className="grid min-h-0 gap-3 min-[1320px]:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)] min-[1320px]:items-start">
+            <div className="surface-panel-soft grid gap-2.5 p-2.5 min-[1320px]:h-full min-[1320px]:min-h-0 min-[1320px]:grid-rows-[auto_minmax(0,1fr)]">
               <div className="min-w-0">
                 <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Cola de clasificación</p>
                 <h3 className="m-[0.2rem_0_0] text-[1rem] leading-none">
@@ -382,11 +382,11 @@ export function DeckRolesPanel({ cards, onToggleRole }: DeckRolesPanelProps) {
               )}
             </div>
 
-            <details className="details-toggle section-disclosure surface-panel-soft p-2.5">
+            <details className="details-toggle section-disclosure surface-panel-soft self-start p-2.5">
               <DisclosureSummary pill="Grupos" title="" />
 
               <div className="mt-2 grid gap-2.5">
-                <div className="grid grid-cols-2 gap-2 min-[1180px]:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2 min-[1500px]:grid-cols-3">
                   {overviewItems.map((item) => {
                     const previewCards = item.cards.slice(0, 4)
                     const active = activeOverview?.key === item.key
@@ -458,7 +458,7 @@ export function DeckRolesPanel({ cards, onToggleRole }: DeckRolesPanelProps) {
                 </div>
               </div>
             </details>
-          </>
+          </div>
         )}
       </div>
     </section>

@@ -20,28 +20,26 @@ interface DeckBuilderStepProps {
   query: string
   status: 'idle' | 'loading' | 'success' | 'error'
   visibleSearchResults: ApiCardSearchResult[]
+  isLoadingMore: boolean
   errorMessage: string
-  page: number
   hasMore: boolean
-  rawSearchResultCount: number
+  loadedSearchResultCount: number
   searchFilters: CardSearchFilters
   activeFilterCount: number
   hasSearchCriteria: boolean
   activeDragInstanceId: string | null
   activeDragSearchCardId: number | null
-  consumeSuppressedSearchClick: () => boolean
-  onAddSearchResult: (apiCardId: number) => void
   onClearDeckZone: (zone: DeckZoneType) => void
   onRemoveDeckCard: (instanceId: string) => void
   onDeckCardPointerDown: (event: ReactPointerEvent<HTMLElement>, instanceId: string) => void
   onSearchCardPointerDown: (event: ReactPointerEvent<HTMLElement>, apiCardId: number) => void
+  onSearchResultClick: (apiCardId: number) => void
   onQueryChange: (value: string) => void
   onDeckNameChange: (value: string) => void
   onDeckFormatChange: (format: DeckFormat) => void
   onSearchFiltersChange: (updates: Partial<CardSearchFilters>) => void
   onClearSearchFilters: () => void
-  onPrevPage: () => void
-  onNextPage: () => void
+  onLoadMoreResults: () => void
   onHoverStart: (name: string, card: ApiCardReference, anchor: HTMLElement) => void
   onHoverEnd: () => void
 }
@@ -64,28 +62,26 @@ export function DeckBuilderStep({
   query,
   status,
   visibleSearchResults,
+  isLoadingMore,
   errorMessage,
-  page,
   hasMore,
-  rawSearchResultCount,
+  loadedSearchResultCount,
   searchFilters,
   activeFilterCount,
   hasSearchCriteria,
   activeDragInstanceId,
   activeDragSearchCardId,
-  consumeSuppressedSearchClick,
-  onAddSearchResult,
   onClearDeckZone,
   onRemoveDeckCard,
   onDeckCardPointerDown,
   onSearchCardPointerDown,
+  onSearchResultClick,
   onQueryChange,
   onDeckNameChange,
   onDeckFormatChange,
   onSearchFiltersChange,
   onClearSearchFilters,
-  onPrevPage,
-  onNextPage,
+  onLoadMoreResults,
   onHoverStart,
   onHoverEnd,
 }: DeckBuilderStepProps) {
@@ -108,14 +104,6 @@ export function DeckBuilderStep({
   const showGenesysPoints = deckFormat === 'genesys' && genesysPointTotal !== null && genesysPointCap !== null
   const showFormatIssues = deckFormat !== 'genesys' && formatIssues.length > 0
 
-  const handleResultClick = (apiCardId: number) => {
-    if (consumeSuppressedSearchClick()) {
-      return
-    }
-
-    onAddSearchResult(apiCardId)
-  }
-
   const handleSearchCardPointerDown = (
     event: ReactPointerEvent<HTMLElement>,
     apiCardId: number,
@@ -128,10 +116,10 @@ export function DeckBuilderStep({
       query={query}
       status={status}
       results={visibleSearchResults}
+      isLoadingMore={isLoadingMore}
       errorMessage={errorMessage}
-      page={page}
       hasMore={hasMore}
-      rawResultCount={rawSearchResultCount}
+      rawResultCount={loadedSearchResultCount}
       activeDragSearchCardId={activeDragSearchCardId}
       dragEnabled={options.dragEnabled}
       filters={searchFilters}
@@ -140,9 +128,8 @@ export function DeckBuilderStep({
       onQueryChange={onQueryChange}
       onFilterChange={onSearchFiltersChange}
       onClearFilters={onClearSearchFilters}
-      onPrevPage={onPrevPage}
-      onNextPage={onNextPage}
-      onResultClick={handleResultClick}
+      onLoadMore={onLoadMoreResults}
+      onResultClick={onSearchResultClick}
       onSearchCardPointerDown={handleSearchCardPointerDown}
       onHoverStart={onHoverStart}
       onHoverEnd={onHoverEnd}
@@ -150,7 +137,10 @@ export function DeckBuilderStep({
   )
 
   return (
-    <section id="step1" className="surface-panel mx-auto grid w-full max-w-[1240px] min-[780px]:max-w-310 gap-3 p-2.5">
+    <section
+      id="step1"
+      className="surface-panel grid w-full gap-3 p-2.5 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_minmax(0,1fr)] min-[1101px]:overflow-hidden"
+    >
       <StepHero
         step="Paso 1"
         pill="Deck Builder"
@@ -223,8 +213,8 @@ export function DeckBuilderStep({
         </div>
       ) : null}
 
-      <div className="grid items-start gap-3 min-[1101px]:grid-cols-[minmax(0,1fr)_320px]">
-        <article className="surface-panel-soft self-start w-full min-h-0 p-2.5">
+      <div className="grid items-start gap-3 min-[1101px]:min-h-0">
+        <article className="surface-panel-strong self-start w-full min-h-0 p-3 min-[1101px]:h-full min-[1101px]:overflow-y-auto">
           <div className="grid gap-2.5">
             <div className="min-[1101px]:hidden">
               <Button variant="primary" size="md" fullWidth onClick={() => setMobileSearchOpen(true)}>
@@ -248,51 +238,6 @@ export function DeckBuilderStep({
             ))}
           </div>
         </article>
-
-        <div className="max-[1100px]:hidden">
-          <div className="grid gap-2.5">
-            {showGenesysPoints ? (
-              <div className={[genesysPointTotal > genesysPointCap ? 'surface-card-warning' : 'surface-card', 'grid gap-1.5 px-2 py-2'].join(' ')}>
-                <span className="app-soft text-[0.68rem] uppercase tracking-widest">Puntos Genesys</span>
-                <strong className="text-[0.92rem] leading-none text-(--text-main)">
-                  {formatInteger(genesysPointTotal)} / {formatInteger(genesysPointCap)} pts
-                </strong>
-                <p className="m-0 text-[0.72rem] leading-[1.18] text-(--text-muted)">
-                  Cap estándar de 100 puntos y hasta 3 copias por carta.
-                </p>
-              </div>
-            ) : null}
-
-            {showFormatIssues ? (
-              <div className="surface-card-warning grid gap-1.5 px-2 py-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="app-soft text-[0.68rem] uppercase tracking-widest">
-                    Chequeo pendiente
-                  </span>
-                  <span className="builder-status-dot builder-status-dot-warning" />
-                </div>
-                <strong className="text-[0.92rem] leading-none text-(--text-main)">
-                  {formatIssues.length} ajuste{formatIssues.length === 1 ? '' : 's'} para {formatLabel}
-                </strong>
-                <div className="grid gap-1">
-                  {visibleFormatIssues.map((issue) => (
-                    <p key={issue} className="m-0 text-[0.74rem] leading-[1.18] text-(--text-muted)">
-                      {issue}
-                    </p>
-                  ))}
-                  {hasHiddenIssues ? (
-                    <p className="app-soft m-0 text-[0.72rem]">+ {formatIssues.length - visibleFormatIssues.length} más</p>
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
-
-            {renderSearchPanel({
-              layoutMode: 'desktop',
-              dragEnabled: true,
-            })}
-          </div>
-        </div>
       </div>
 
       {mobileSearchOpen ? (

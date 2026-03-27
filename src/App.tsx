@@ -8,9 +8,13 @@ import { useAppDispatch, useAppSelector } from './app/store-hooks'
 export default function App() {
   const dispatch = useAppDispatch()
   const mode = useAppSelector((state: RootState) => state.settings.mode)
+  const mainClassName =
+    mode === 'deck'
+      ? 'min-h-screen w-full bg-transparent px-2 py-2'
+      : 'mx-auto min-h-screen w-[min(1760px,100vw)] bg-transparent px-2 py-2'
 
   return (
-    <main className="mx-auto min-h-screen w-[min(1760px,100vw)] bg-transparent px-2 py-2 overflow-x-hidden">
+    <main className={mainClassName}>
       {mode === 'manual' ? (
         <PlaceholderPanel
           mode={mode}

@@ -29,11 +29,11 @@ interface ApiCardSearchController {
   visibleSearchResults: ApiCardSearchResult[]
   activeFilterCount: number
   hasSearchCriteria: boolean
+  isLoadingMore: boolean
   clearFilters: () => void
   setQuery: (value: string) => void
   updateSearchFilters: (updates: Partial<CardSearchFilters>) => void
-  showNextPage: () => void
-  showPreviousPage: () => void
+  loadMoreResults: () => void
 }
 
 export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchController {
@@ -41,6 +41,7 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
   const [searchFilters, setSearchFilters] = useState<CardSearchFilters>(() => ({
     ...DEFAULT_CARD_SEARCH_FILTERS,
   }))
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const searchCacheRef = useRef(loadApiSearchCache())
   const searchDebounceTimerRef = useRef<number>(0)
   const searchRequestIdRef = useRef(0)
@@ -72,8 +73,14 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
   const runApiSearch = useCallback(async (
     request: ReturnType<typeof buildRemoteCardSearchRequest>,
     page = 0,
+    options: { append?: boolean } = {},
   ) => {
+    const append = options.append ?? false
+    const requestId = searchRequestIdRef.current + 1
+    searchRequestIdRef.current = requestId
+
     if (!hasCardSearchRequestCriteria(request)) {
+      setIsLoadingMore(false)
       setApiSearch((current) => ({
         ...current,
         status: 'idle',
@@ -81,6 +88,7 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
         page: 0,
         hasMore: false,
         errorMessage: '',
+        requestId,
       }))
       return
     }
@@ -88,26 +96,35 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
     const cachedResults = getCachedApiSearch(searchCacheRef.current, request, page)
 
     if (cachedResults) {
+      setIsLoadingMore(false)
       setApiSearch((current) => ({
         ...current,
         status: 'success',
         errorMessage: '',
-        results: sortSearchResults(cachedResults.results),
+        results: append
+          ? mergeSearchResults(current.results, cachedResults.results)
+          : sortSearchResults(cachedResults.results),
+        requestId,
         page,
         hasMore: cachedResults.hasMore,
       }))
       return
     }
 
-    const requestId = searchRequestIdRef.current + 1
-    searchRequestIdRef.current = requestId
-
-    setApiSearch((current) => ({
-      ...current,
-      status: 'loading',
-      errorMessage: '',
-      page,
-    }))
+    if (append) {
+      setIsLoadingMore(true)
+    } else {
+      setIsLoadingMore(false)
+      setApiSearch((current) => ({
+        ...current,
+        status: 'loading',
+        results: [],
+        errorMessage: '',
+        requestId,
+        page: 0,
+        hasMore: false,
+      }))
+    }
 
     try {
       const searchPage = await searchCards(
@@ -134,12 +151,14 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
         results: sortedResults,
         hasMore: searchPage.hasMore,
       })
+      setIsLoadingMore(false)
 
       setApiSearch((current) => ({
         ...current,
         status: 'success',
-        results: sortedResults,
+        results: append ? mergeSearchResults(current.results, sortedResults) : sortedResults,
         errorMessage: '',
+        requestId,
         page,
         hasMore: searchPage.hasMore,
       }))
@@ -148,10 +167,21 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
         return
       }
 
+      setIsLoadingMore(false)
+
+      if (append) {
+        setApiSearch((current) => ({
+          ...current,
+          hasMore: false,
+        }))
+        return
+      }
+
       setApiSearch((current) => ({
         ...current,
         status: 'error',
         results: [],
+        requestId,
         page,
         hasMore: false,
         errorMessage: error instanceof Error ? error.message : 'No se pudo consultar YGOPRODeck.',
@@ -161,6 +191,8 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
 
   useEffect(() => {
     window.clearTimeout(searchDebounceTimerRef.current)
+    setIsLoadingMore(false)
+    searchRequestIdRef.current += 1
 
     if (!hasSearchCriteria) {
       setApiSearch((current) =>
@@ -178,16 +210,14 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
       return
     }
 
-    setApiSearch((current) =>
-      current.status === 'loading' && current.page === 0
-        ? current
-        : {
-            ...current,
-            status: 'loading',
-            errorMessage: '',
-            page: 0,
-          },
-    )
+    setApiSearch((current) => ({
+      ...current,
+      status: 'loading',
+      results: [],
+      hasMore: false,
+      errorMessage: '',
+      page: 0,
+    }))
 
     searchDebounceTimerRef.current = window.setTimeout(() => {
       void runApiSearch(remoteSearchRequest, 0)
@@ -196,7 +226,15 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
     return () => {
       window.clearTimeout(searchDebounceTimerRef.current)
     }
-  }, [hasSearchCriteria, remoteSearchRequest, runApiSearch])
+  }, [
+    deckFormat,
+    hasSearchCriteria,
+    remoteSearchRequest,
+    runApiSearch,
+    searchFilters.description,
+    searchFilters.legalOnly,
+    searchFilters.quickType,
+  ])
 
   useEffect(
     () => () => {
@@ -205,12 +243,34 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
     [],
   )
 
+  const loadMoreResults = useCallback(() => {
+    if (
+      apiSearch.status !== 'success' ||
+      isLoadingMore ||
+      !apiSearch.hasMore ||
+      !hasSearchCriteria
+    ) {
+      return
+    }
+
+    void runApiSearch(remoteSearchRequest, apiSearch.page + 1, { append: true })
+  }, [
+    apiSearch.hasMore,
+    apiSearch.page,
+    apiSearch.status,
+    hasSearchCriteria,
+    isLoadingMore,
+    remoteSearchRequest,
+    runApiSearch,
+  ])
+
   return {
     apiSearch,
     searchFilters,
     visibleSearchResults,
     activeFilterCount,
     hasSearchCriteria,
+    isLoadingMore,
     clearFilters: () => {
       setSearchFilters({
         ...DEFAULT_CARD_SEARCH_FILTERS,
@@ -229,15 +289,23 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
         ...updates,
       }))
     },
-    showNextPage: () => {
-      if (apiSearch.hasMore && hasSearchCriteria) {
-        void runApiSearch(remoteSearchRequest, apiSearch.page + 1)
-      }
-    },
-    showPreviousPage: () => {
-      if (apiSearch.page > 0 && hasSearchCriteria) {
-        void runApiSearch(remoteSearchRequest, apiSearch.page - 1)
-      }
-    },
+    loadMoreResults,
   }
+}
+
+function mergeSearchResults(
+  currentResults: ApiCardSearchResult[],
+  nextResults: ApiCardSearchResult[],
+): ApiCardSearchResult[] {
+  const mergedResults = new Map<number, ApiCardSearchResult>()
+
+  for (const card of currentResults) {
+    mergedResults.set(card.ygoprodeckId, card)
+  }
+
+  for (const card of nextResults) {
+    mergedResults.set(card.ygoprodeckId, card)
+  }
+
+  return sortSearchResults([...mergedResults.values()])
 }

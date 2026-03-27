@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
@@ -13,7 +14,7 @@ import {
   type SearchQuickTypeFilter,
 } from '../app/card-search'
 import { buildFormatLimitLabel, getDeckFormatLabel } from '../app/deck-format'
-import { SEARCH_MIN_QUERY_LENGTH, SEARCH_STICKY_TOP_PX } from '../app/model'
+import { SEARCH_MIN_QUERY_LENGTH } from '../app/model'
 import { formatInteger } from '../app/utils'
 import type { DeckFormat } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
@@ -45,14 +46,16 @@ interface ActiveFilterChip {
   updates: Partial<CardSearchFilters>
 }
 
+type SearchSortOrder = 'default' | 'name-asc' | 'name-desc'
+
 interface SearchPanelProps {
   layoutMode: 'desktop' | 'mobile'
   deckFormat: DeckFormat
   query: string
   status: 'idle' | 'loading' | 'success' | 'error'
   results: ApiCardSearchResult[]
+  isLoadingMore: boolean
   errorMessage: string
-  page: number
   hasMore: boolean
   rawResultCount: number
   activeDragSearchCardId: number | null
@@ -63,8 +66,7 @@ interface SearchPanelProps {
   onQueryChange: (value: string) => void
   onFilterChange: (updates: Partial<CardSearchFilters>) => void
   onClearFilters: () => void
-  onPrevPage: () => void
-  onNextPage: () => void
+  onLoadMore: () => void
   onResultClick: (apiCardId: number) => void
   onSearchCardPointerDown: (event: ReactPointerEvent<HTMLElement>, apiCardId: number) => void
   onHoverStart: (name: string, card: ApiCardSearchResult, anchor: HTMLElement) => void
@@ -124,6 +126,12 @@ const QUICK_TYPE_META: Record<SearchQuickTypeFilter, QuickTypeMeta> = {
     showLevel: true,
   },
 }
+
+const SEARCH_SORT_OPTIONS: Array<{ value: SearchSortOrder; label: string }> = [
+  { value: 'default', label: 'Orden base' },
+  { value: 'name-asc', label: 'Nombre A-Z' },
+  { value: 'name-desc', label: 'Nombre Z-A' },
+]
 
 const ATTRIBUTE_OPTIONS: FilterOption[] = [
   { value: '', label: 'Cualquiera' },
@@ -235,8 +243,8 @@ export function SearchPanel({
   query,
   status,
   results,
+  isLoadingMore,
   errorMessage,
-  page,
   hasMore,
   rawResultCount,
   activeDragSearchCardId,
@@ -247,14 +255,15 @@ export function SearchPanel({
   onQueryChange,
   onFilterChange,
   onClearFilters,
-  onPrevPage,
-  onNextPage,
+  onLoadMore,
   onResultClick,
   onSearchCardPointerDown,
   onHoverStart,
   onHoverEnd,
 }: SearchPanelProps) {
-  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(activeFilterCount > 0)
+  const [sortOrder, setSortOrder] = useState<SearchSortOrder>('default')
+  const resultsContainerRef = useRef<HTMLDivElement | null>(null)
   const formatLabel = getDeckFormatLabel(deckFormat)
   const formatAllowsLegalityFilter = deckFormat !== 'unlimited' && deckFormat !== 'genesys'
   const isDesktopLayout = layoutMode === 'desktop'
@@ -262,11 +271,7 @@ export function SearchPanel({
   const exactTypeGroups = useMemo(() => getExactTypeFilterGroups(filters.quickType), [filters.quickType])
   const raceGroups = useMemo(() => getRaceFilterGroups(filters.quickType), [filters.quickType])
   const shouldShowResults = hasSearchCriteria
-  const filteredCountLabel =
-    rawResultCount === results.length
-      ? `${formatInteger(results.length)} resultados`
-      : `${formatInteger(results.length)} de ${formatInteger(rawResultCount)} resultados`
-  const metaLabel = `Pagina ${formatInteger(page + 1)} · ${filteredCountLabel}`
+  const isInitialLoading = status === 'loading'
   const sanitizedFilterUpdates = useMemo(
     () =>
       buildSanitizedFilterUpdates({
@@ -296,7 +301,13 @@ export function SearchPanel({
       }),
     [filters, formatAllowsLegalityFilter, formatLabel, quickTypeMeta.raceLabel],
   )
-  const localFiltersAffectedPage = rawResultCount !== results.length
+  const sortedResults = useMemo(() => sortVisibleSearchResults(results, sortOrder), [results, sortOrder])
+  const localFiltersAffectedPage = rawResultCount !== sortedResults.length
+  const filteredCountLabel =
+    rawResultCount === sortedResults.length
+      ? `${formatInteger(sortedResults.length)} cargada${sortedResults.length === 1 ? '' : 's'}`
+      : `${formatInteger(sortedResults.length)} visibles de ${formatInteger(rawResultCount)} cargadas`
+  const metaLabel = hasMore ? filteredCountLabel : `${filteredCountLabel} · Fin de resultados`
 
   useEffect(() => {
     if (sanitizedFilterUpdates) {
@@ -305,159 +316,372 @@ export function SearchPanel({
   }, [onFilterChange, sanitizedFilterUpdates])
 
   useEffect(() => {
-    if (!drawerOpen) {
+    resultsContainerRef.current?.scrollTo({ top: 0, behavior: 'auto' })
+  }, [deckFormat, filters, query, sortOrder])
+
+  useEffect(() => {
+    const container = resultsContainerRef.current
+
+    if (
+      !container ||
+      !shouldShowResults ||
+      status !== 'success' ||
+      isLoadingMore ||
+      !hasMore
+    ) {
       return
     }
 
-    const previousOverflow = document.body.style.overflow
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setDrawerOpen(false)
+    const LOAD_MORE_THRESHOLD_PX = 180
+    const handleScroll = () => {
+      const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight
+
+      if (distanceToBottom <= LOAD_MORE_THRESHOLD_PX) {
+        onLoadMore()
       }
     }
 
-    document.body.style.overflow = 'hidden'
-    window.addEventListener('keydown', handleKeyDown)
+    container.addEventListener('scroll', handleScroll, { passive: true })
 
     return () => {
-      document.body.style.overflow = previousOverflow
-      window.removeEventListener('keydown', handleKeyDown)
+      container.removeEventListener('scroll', handleScroll)
     }
-  }, [drawerOpen])
+  }, [hasMore, isLoadingMore, onLoadMore, shouldShowResults, status])
+
+  useEffect(() => {
+    if (
+      !shouldShowResults ||
+      status !== 'success' ||
+      isLoadingMore ||
+      !hasMore ||
+      sortedResults.length > 0 ||
+      rawResultCount === 0
+    ) {
+      return
+    }
+
+    onLoadMore()
+  }, [hasMore, isLoadingMore, onLoadMore, rawResultCount, shouldShowResults, sortedResults.length, status])
+
+  useEffect(() => {
+    const container = resultsContainerRef.current
+
+    if (
+      !container ||
+      !shouldShowResults ||
+      status !== 'success' ||
+      isLoadingMore ||
+      !hasMore
+    ) {
+      return
+    }
+
+    if (container.scrollHeight <= container.clientHeight + 48) {
+      onLoadMore()
+    }
+  }, [advancedFiltersOpen, hasMore, isLoadingMore, onLoadMore, shouldShowResults, sortedResults.length, status])
 
   return (
-    <>
-      <article
-        className={[
-          'surface-panel-soft self-start min-h-0 overflow-hidden p-2',
-          isDesktopLayout ? 'sticky' : 'h-full',
-        ].join(' ')}
-        style={
-          isDesktopLayout
-            ? {
-                top: SEARCH_STICKY_TOP_PX,
-                height: `calc(100dvh - ${SEARCH_STICKY_TOP_PX}px)`,
-              }
-            : undefined
-        }
-      >
-        <div
-          className="grid h-full min-h-0 content-start gap-2"
-          style={{
-            gridTemplateRows: shouldShowResults ? 'auto auto minmax(0, 1fr)' : undefined,
-          }}
-        >
-          <div className="grid gap-1">
-            <span className="app-soft text-[0.66rem] uppercase tracking-[0.12em]">Buscar cartas</span>
-            <label className="relative block">
-              <input
-                type="text"
-                value={query}
-                onChange={(event) => onQueryChange(event.target.value)}
-                placeholder="Buscar por nombre parcial o texto en efecto"
-                autoComplete="off"
-                spellCheck={false}
-                className="app-field w-full px-2.5 py-2.5 pr-10 text-[0.86rem]"
-              />
-              {status === 'loading' ? (
-                <span className="pointer-events-none absolute right-3 top-1/2 -mt-[0.475rem] h-[0.95rem] w-[0.95rem] animate-spin rounded-full border-2 border-[rgb(var(--foreground-rgb)/0.18)] border-t-[var(--primary)]" />
-              ) : null}
-            </label>
-          </div>
+    <article
+      className={[
+        'surface-panel-soft flex h-full min-h-0 flex-col overflow-hidden',
+        isDesktopLayout ? 'min-[1101px]:h-full' : '',
+      ].join(' ')}
+    >
+      <div className="grid gap-1.5 border-b border-(--border-subtle) px-2.5 py-2.5">
+        <div className="flex items-center gap-2">
+          <label className="relative block min-w-0 flex-1">
+            <input
+              type="text"
+              value={query}
+              onChange={(event) => onQueryChange(event.target.value)}
+              placeholder="Buscar por nombre parcial o texto en efecto"
+              autoComplete="off"
+              spellCheck={false}
+              className="app-field w-full px-2.5 py-2 pr-10 text-[0.84rem]"
+            />
+            {status === 'loading' ? (
+              <span className="pointer-events-none absolute right-3 top-1/2 -mt-[0.475rem] h-[0.95rem] w-[0.95rem] animate-spin rounded-full border-2 border-[rgb(var(--foreground-rgb)/0.18)] border-t-[var(--primary)]" />
+            ) : null}
+          </label>
 
-          <div className="surface-card grid gap-2 p-2.5">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div className="grid gap-0.5">
-                <strong className="text-[0.8rem] text-[var(--text-main)]">Filtros</strong>
-                <span className="text-[0.7rem] leading-[1.15] text-[var(--text-muted)]">
-                  {activeFilterCount > 0
-                    ? `${formatInteger(activeFilterCount)} activo${activeFilterCount === 1 ? '' : 's'}`
-                    : `Escribi ${formatInteger(SEARCH_MIN_QUERY_LENGTH)} letras o usa opciones avanzadas.`}
+          <Button
+            variant={advancedFiltersOpen ? 'primary' : 'secondary'}
+            size="sm"
+            className="min-w-9 px-0 text-[0.98rem]"
+            aria-label={advancedFiltersOpen ? 'Ocultar filtros avanzados' : 'Mostrar filtros avanzados'}
+            aria-pressed={advancedFiltersOpen}
+            aria-controls="advanced-search-filters"
+            title="Filtros avanzados"
+            onClick={() => setAdvancedFiltersOpen((current) => !current)}
+          >
+            ⚙
+          </Button>
+        </div>
+
+        <div className="flex flex-wrap gap-1.5">
+          {QUICK_TYPE_OPTIONS.map((option) => (
+            <Button
+              key={option.value}
+              variant={filters.quickType === option.value ? 'primary' : 'secondary'}
+              size="sm"
+              onClick={() => onFilterChange({ quickType: option.value })}
+            >
+              {option.label}
+            </Button>
+          ))}
+        </div>
+
+        {activeFilterChips.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {activeFilterChips.map((chip) => (
+              <button
+                key={chip.key}
+                type="button"
+                className="search-active-chip"
+                onClick={() => onFilterChange(chip.updates)}
+                title={`Quitar ${chip.label.toLowerCase()}`}
+              >
+                <span className="truncate text-[var(--text-main)]">
+                  {chip.label}: {chip.value}
                 </span>
-              </div>
+                <span className="shrink-0 text-[var(--text-soft)]">x</span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
 
-              <div className="flex flex-wrap gap-1.5">
-                <Button
-                  variant={activeFilterCount > 0 ? 'primary' : 'secondary'}
-                  size="sm"
-                  onClick={() => setDrawerOpen(true)}
-                >
-                  {activeFilterCount > 0
-                    ? `Opciones avanzadas (${formatInteger(activeFilterCount)})`
-                    : 'Opciones avanzadas'}
-                </Button>
+      <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
+        {advancedFiltersOpen ? (
+          <div className="border-b border-(--border-subtle) px-2.5 py-2">
+            <div id="advanced-search-filters" className="surface-card grid gap-1.5 p-2">
+              <div className="grid gap-1.5 min-[380px]:grid-cols-[minmax(0,1fr)_auto] min-[380px]:items-end">
+                <label className="grid min-w-0 gap-1">
+                  <span className="app-soft text-[0.58rem] uppercase tracking-[0.12em]">Orden</span>
+                  <select
+                    value={sortOrder}
+                    onChange={(event) => setSortOrder(event.target.value as SearchSortOrder)}
+                    className="app-field w-full px-2 py-[0.45rem] text-[0.76rem]"
+                  >
+                    {SEARCH_SORT_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
                 {activeFilterCount > 0 ? (
                   <Button variant="tertiary" size="sm" onClick={onClearFilters}>
                     Limpiar
                   </Button>
                 ) : null}
               </div>
-            </div>
 
-            {activeFilterChips.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5">
-                {activeFilterChips.map((chip) => (
-                  <button
-                    key={chip.key}
-                    type="button"
-                    className="search-active-chip"
-                    onClick={() => onFilterChange(chip.updates)}
-                    title={`Quitar ${chip.label.toLowerCase()}`}
-                  >
-                    <span className="search-active-chip-label">{chip.label}</span>
-                    <span className="truncate text-[var(--text-main)]">{chip.value}</span>
-                    <span className="shrink-0 text-[var(--text-soft)]">x</span>
-                  </button>
-                ))}
+              <div className="grid gap-1.5 min-[1101px]:grid-cols-2 min-[1101px]:items-start">
+                <SearchFilterSection
+                  title="Texto y arquetipo"
+                  summary={buildSectionSummary([
+                    filters.archetype.trim().length > 0 ? filters.archetype.trim() : '',
+                    filters.description.trim().length > 0 ? `Texto: ${filters.description.trim()}` : '',
+                  ])}
+                  defaultOpen={
+                    filters.archetype.trim().length > 0 || filters.description.trim().length > 0
+                  }
+                >
+                  <div className="grid gap-1.5">
+                    <label className="grid gap-1">
+                      <span className="app-soft text-[0.58rem] uppercase tracking-[0.12em]">Arquetipo</span>
+                      <input
+                        type="text"
+                        value={filters.archetype}
+                        onChange={(event) => onFilterChange({ archetype: event.target.value })}
+                        placeholder="Blue-Eyes"
+                        autoComplete="off"
+                        spellCheck={false}
+                        className="app-field w-full px-2 py-[0.45rem] text-[0.76rem]"
+                      />
+                    </label>
+
+                    <label className="grid gap-1">
+                      <span className="app-soft text-[0.58rem] uppercase tracking-[0.12em]">Texto EN</span>
+                      <input
+                        type="text"
+                        value={filters.description}
+                        onChange={(event) => onFilterChange({ description: event.target.value })}
+                        placeholder="add 1"
+                        autoComplete="off"
+                        spellCheck={false}
+                        className="app-field w-full px-2 py-[0.45rem] text-[0.76rem]"
+                      />
+                    </label>
+                  </div>
+                </SearchFilterSection>
+
+                <SearchFilterSection
+                  title="Características"
+                  summary={buildSectionSummary([
+                    filters.exactType.trim().length > 0 ? filters.exactType.trim() : '',
+                    filters.race.trim().length > 0 ? filters.race.trim() : '',
+                    quickTypeMeta.showAttribute && filters.attribute.trim().length > 0
+                      ? filters.attribute.trim()
+                      : '',
+                    quickTypeMeta.showLevel && filters.level.trim().length > 0
+                      ? `${quickTypeMeta.levelLabel}: ${filters.level.trim()}`
+                      : '',
+                    formatAllowsLegalityFilter && filters.legalOnly ? `Sin prohibidas en ${formatLabel}` : '',
+                  ])}
+                  defaultOpen={
+                    filters.exactType.trim().length > 0 ||
+                    filters.race.trim().length > 0 ||
+                    filters.attribute.trim().length > 0 ||
+                    filters.level.trim().length > 0 ||
+                    filters.legalOnly
+                  }
+                >
+                  <div className="grid gap-1.5 min-[380px]:grid-cols-2">
+                    <label className="grid gap-1">
+                      <span className="app-soft text-[0.58rem] uppercase tracking-[0.12em]">
+                        {quickTypeMeta.exactTypeLabel}
+                      </span>
+                      <select
+                        value={filters.exactType}
+                        onChange={(event) => onFilterChange({ exactType: event.target.value })}
+                        className="app-field w-full px-2 py-[0.45rem] text-[0.76rem]"
+                      >
+                        <option value="">Cualquiera</option>
+                        {exactTypeGroups.map((group) => (
+                          <optgroup key={group.label} label={group.label}>
+                            {group.options.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="grid gap-1">
+                      <span className="app-soft text-[0.58rem] uppercase tracking-[0.12em]">
+                        {quickTypeMeta.raceLabel}
+                      </span>
+                      <select
+                        value={filters.race}
+                        onChange={(event) => onFilterChange({ race: event.target.value })}
+                        className="app-field w-full px-2 py-[0.45rem] text-[0.76rem]"
+                      >
+                        <option value="">Cualquiera</option>
+                        {raceGroups.map((group) => (
+                          <optgroup key={group.label} label={group.label}>
+                            {group.options.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                    </label>
+
+                    {quickTypeMeta.showAttribute ? (
+                      <label className="grid gap-1">
+                        <span className="app-soft text-[0.58rem] uppercase tracking-[0.12em]">Atributo</span>
+                        <select
+                          value={filters.attribute}
+                          onChange={(event) => onFilterChange({ attribute: event.target.value })}
+                          className="app-field w-full px-2 py-[0.45rem] text-[0.76rem]"
+                        >
+                          {ATTRIBUTE_OPTIONS.map((option) => (
+                            <option key={option.value || 'any'} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : null}
+
+                    {quickTypeMeta.showLevel ? (
+                      <label className="grid gap-1">
+                        <span className="app-soft text-[0.58rem] uppercase tracking-[0.12em]">
+                          {quickTypeMeta.levelLabel}
+                        </span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={13}
+                          value={filters.level}
+                          onChange={(event) => onFilterChange({ level: event.target.value })}
+                          placeholder="4"
+                          className="app-field w-full px-2 py-[0.45rem] text-[0.76rem]"
+                        />
+                      </label>
+                    ) : null}
+                  </div>
+
+                  {formatAllowsLegalityFilter ? (
+                    <label className="surface-panel-soft flex items-center gap-2 border border-(--border-subtle) px-2 py-1.5 text-[0.74rem]">
+                      <input
+                        type="checkbox"
+                        checked={filters.legalOnly}
+                        onChange={(event) => onFilterChange({ legalOnly: event.target.checked })}
+                        className="h-3.5 w-3.5 shrink-0 accent-[var(--primary)]"
+                      />
+                      <span className="min-w-0 truncate text-[var(--text-main)]">
+                        Ocultar prohibidas en {formatLabel}
+                      </span>
+                    </label>
+                  ) : null}
+                </SearchFilterSection>
               </div>
-            ) : (
-              <p className="m-0 text-[0.72rem] leading-[1.16] text-[var(--text-muted)]">
-                Abri el drawer para filtrar por vista, arquetipo, tipo, subtipo, atributo, nivel o legalidad.
-              </p>
-            )}
+            </div>
           </div>
+        ) : null}
 
+        <div className="grid min-h-0 content-start gap-1.5 overflow-hidden px-2.5 py-2.5">
           {shouldShowResults ? (
             <div
-              className="grid min-h-0 content-start gap-2 overflow-hidden"
+              className="grid min-h-0 content-start gap-1.5 overflow-hidden"
               style={{
                 gridTemplateRows: status === 'error' ? undefined : 'auto minmax(0, 1fr)',
               }}
             >
               {status === 'error' ? (
-                <p className="surface-card-danger m-0 px-2.5 py-2 text-[0.82rem] leading-[1.16] text-[var(--destructive)]">
+                <p className="surface-card-danger m-0 px-2 py-1.5 text-[0.78rem] leading-[1.16] text-[var(--destructive)]">
                   {formatSearchError(errorMessage)}
                 </p>
               ) : (
                 <>
-                  <div className="surface-card grid gap-1.5 px-2.5 py-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="grid gap-0.5">
-                        <span className="app-soft text-[0.62rem] uppercase tracking-[0.12em]">Resultados</span>
-                        <strong className="text-[0.78rem] text-[var(--text-main)]">{metaLabel}</strong>
-                      </div>
-                      <div className="flex gap-2">
-                        {page > 0 ? (
-                          <Button variant="secondary" size="sm" onClick={onPrevPage}>
-                            Anterior
-                          </Button>
+                  <div className="surface-card flex items-center justify-between gap-2 px-2 py-1.5">
+                    <strong className="min-w-0 text-[0.76rem] text-[var(--text-main)]">
+                      {metaLabel}
+                    </strong>
+                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+                      {localFiltersAffectedPage ? (
+                        <span className="app-chip px-2 py-1 text-[0.66rem] whitespace-nowrap">
+                          Filtrado local
+                        </span>
+                      ) : null}
+                      <div className="flex flex-wrap items-center justify-end gap-1.5">
+                        {isLoadingMore ? (
+                          <span className="app-chip px-2 py-1 text-[0.68rem] whitespace-nowrap">
+                            Cargando más...
+                          </span>
                         ) : null}
-                        {hasMore ? (
-                          <Button variant="secondary" size="sm" onClick={onNextPage}>
-                            Siguiente
-                          </Button>
-                        ) : null}
+                        <span
+                          className={[
+                            hasMore ? 'app-chip' : 'app-chip-accent',
+                            'px-2 py-1 text-[0.68rem] whitespace-nowrap',
+                          ].join(' ')}
+                        >
+                          {hasMore ? 'Scroll infinito' : 'Lista completa'}
+                        </span>
                       </div>
                     </div>
-
-                    <p className="m-0 text-[0.68rem] leading-[1.14] text-[var(--text-muted)]">
-                      {localFiltersAffectedPage
-                        ? 'Texto EN y/o legalidad redujeron esta pagina respecto del resultado remoto.'
-                        : 'Click agrega la carta. Si arrastras, la podes soltar directo en Main, Extra o Side.'}
-                    </p>
                   </div>
 
-                  {status === 'loading' ? (
+                  {isInitialLoading ? (
                     <div className="grid min-h-0 content-start gap-2 overflow-y-auto overflow-x-hidden pr-1">
                       {Array.from({ length: 8 }, (_, index) => (
                         <article
@@ -473,13 +697,25 @@ export function SearchPanel({
                         </article>
                       ))}
                     </div>
-                  ) : results.length === 0 ? (
-                    <p className="surface-card m-0 min-h-0 overflow-y-auto px-2.5 py-2 text-[0.82rem] leading-[1.18] text-[var(--text-muted)]">
-                      No se encontraron cartas con esos criterios.
-                    </p>
+                  ) : sortedResults.length === 0 ? (
+                    <div className="surface-card grid gap-1 px-2 py-2 text-[0.76rem] leading-[1.18] text-[var(--text-muted)]">
+                      <p className="m-0">
+                        {rawResultCount > 0
+                          ? 'Todavía no apareció una coincidencia dentro de lo ya cargado.'
+                          : 'No se encontraron cartas con esos criterios.'}
+                      </p>
+                      <p className="m-0 text-[0.68rem] leading-[1.14]">
+                        {hasMore
+                          ? 'Se cargarán más tandas automáticamente al seguir explorando.'
+                          : 'Ya no quedan más tandas disponibles.'}
+                      </p>
+                    </div>
                   ) : (
-                    <div className="grid min-h-0 content-start gap-2 overflow-y-auto overflow-x-hidden pr-1">
-                      {results.map((card) => {
+                    <div
+                      ref={resultsContainerRef}
+                      className="grid min-h-0 content-start gap-2 overflow-y-auto overflow-x-hidden pr-1"
+                    >
+                      {sortedResults.map((card) => {
                         const detailChips = buildSearchResultDetailChips(card)
                         const formatLimitLabel = buildFormatLimitLabel(card, deckFormat)
 
@@ -537,279 +773,49 @@ export function SearchPanel({
                           </article>
                         )
                       })}
+
+                      {isLoadingMore ? (
+                        <div
+                          className="surface-card grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2 p-1.5"
+                          aria-hidden="true"
+                        >
+                          <div className="aspect-[0.72] w-[42px] animate-pulse bg-[var(--input)]" />
+                          <div className="grid gap-2">
+                            <span className="block h-3.5 w-[85%] animate-pulse bg-[var(--input)]" />
+                            <span className="block h-2.5 w-[62%] animate-pulse bg-[var(--input)]" />
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {!hasMore ? (
+                        <div className="surface-card grid gap-1 px-2 py-1.5 text-center">
+                          <strong className="text-[0.72rem] text-[var(--text-main)]">
+                            Fin de resultados cargados
+                          </strong>
+                          <span className="text-[0.68rem] leading-[1.14] text-[var(--text-muted)]">
+                            Ya no quedan más coincidencias remotas para esta búsqueda.
+                          </span>
+                        </div>
+                      ) : null}
                     </div>
                   )}
                 </>
               )}
             </div>
-          ) : null}
+          ) : (
+            <div className="surface-card px-2 py-2 text-[0.76rem] leading-[1.16] text-[var(--text-muted)]">
+              <p className="m-0">
+                Escribí al menos {formatInteger(SEARCH_MIN_QUERY_LENGTH)} letras o abrí ⚙ para refinar la búsqueda.
+              </p>
+            </div>
+          )}
         </div>
-      </article>
-
-      {drawerOpen ? (
-        <div
-          className="fixed inset-0 z-160 overflow-x-hidden bg-[rgb(var(--background-rgb)/0.76)] backdrop-blur-[2px]"
-          onClick={() => setDrawerOpen(false)}
-        >
-          <div className="absolute inset-0 flex w-full max-w-screen min-[1101px]:inset-y-0 min-[1101px]:right-0 min-[1101px]:w-full min-[1101px]:max-w-[25rem]">
-            <aside
-              className="surface-panel flex h-full w-full min-h-0 flex-col gap-3 overflow-hidden border-l border-[rgb(var(--primary-rgb)/0.22)] p-3 min-[1101px]:w-80"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <div className="flex items-start justify-between gap-3 border-b border-(--border-subtle) pb-2">
-                <div className="grid gap-0.5">
-                  <strong className="text-[1rem] text-[var(--text-main)]">Opciones avanzadas</strong>
-                  <span className="text-[0.72rem] leading-[1.14] text-[var(--text-muted)]">
-                    Ajusta filtros sin recargar el layout principal.
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  className="app-icon-button text-[1.1rem]"
-                  onClick={() => setDrawerOpen(false)}
-                  aria-label="Cerrar opciones avanzadas"
-                >
-                  ×
-                </button>
-              </div>
-
-              <div className="surface-card grid gap-2 px-2.5 py-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="grid gap-0.5">
-                    <span className="app-soft text-[0.62rem] uppercase tracking-[0.12em]">Resumen</span>
-                    <strong className="text-[0.78rem] text-[var(--text-main)]">
-                      {activeFilterCount > 0
-                        ? `${formatInteger(activeFilterCount)} filtro${activeFilterCount === 1 ? '' : 's'} activo${activeFilterCount === 1 ? '' : 's'}`
-                        : 'Sin filtros activos'}
-                    </strong>
-                  </div>
-                  {activeFilterCount > 0 ? (
-                    <Button variant="tertiary" size="sm" onClick={onClearFilters}>
-                      Resetear
-                    </Button>
-                  ) : null}
-                </div>
-
-                {activeFilterChips.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {activeFilterChips.map((chip) => (
-                      <button
-                        key={chip.key}
-                        type="button"
-                        className="search-active-chip"
-                        onClick={() => onFilterChange(chip.updates)}
-                        title={`Quitar ${chip.label.toLowerCase()}`}
-                      >
-                        <span className="search-active-chip-label">{chip.label}</span>
-                        <span className="truncate text-[var(--text-main)]">{chip.value}</span>
-                        <span className="shrink-0 text-[var(--text-soft)]">x</span>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="m-0 text-[0.7rem] leading-[1.16] text-[var(--text-muted)]">
-                    Usa las secciones desplegables para combinar criterios.
-                  </p>
-                )}
-              </div>
-
-              <div className="grid min-h-0 flex-1 content-start gap-2 overflow-y-auto pr-1">
-                <FilterDrawerSection
-                  title="Vista rapida"
-                  summary={QUICK_TYPE_LABELS[filters.quickType]}
-                  defaultOpen={filters.quickType !== 'all' || activeFilterCount === 0}
-                >
-                  <div className="flex flex-wrap gap-1.5">
-                    {QUICK_TYPE_OPTIONS.map((option) => (
-                      <Button
-                        key={option.value}
-                        variant={filters.quickType === option.value ? 'primary' : 'secondary'}
-                        size="sm"
-                        onClick={() => onFilterChange({ quickType: option.value })}
-                      >
-                        {option.label}
-                      </Button>
-                    ))}
-                  </div>
-                </FilterDrawerSection>
-
-                <FilterDrawerSection
-                  title="Arquetipo y texto"
-                  summary={buildSectionSummary([
-                    filters.archetype.trim().length > 0 ? `Arquetipo: ${filters.archetype.trim()}` : '',
-                    filters.description.trim().length > 0 ? `Texto EN: ${filters.description.trim()}` : '',
-                  ])}
-                  defaultOpen={
-                    filters.archetype.trim().length > 0 || filters.description.trim().length > 0
-                  }
-                >
-                  <label className="grid gap-1">
-                    <span className="app-soft text-[0.64rem] uppercase tracking-[0.12em]">Arquetipo</span>
-                    <input
-                      type="text"
-                      value={filters.archetype}
-                      onChange={(event) => onFilterChange({ archetype: event.target.value })}
-                      placeholder="Ej: Blue-Eyes"
-                      autoComplete="off"
-                      spellCheck={false}
-                      className="app-field w-full px-2 py-[0.5rem] text-[0.8rem]"
-                    />
-                  </label>
-
-                  <label className="grid gap-1">
-                    <span className="app-soft text-[0.64rem] uppercase tracking-[0.12em]">Texto en efecto (EN) - filtra resultados</span>
-                    <input
-                      type="text"
-                      value={filters.description}
-                      onChange={(event) => onFilterChange({ description: event.target.value })}
-                      placeholder="Ej: add 1"
-                      autoComplete="off"
-                      spellCheck={false}
-                      className="app-field w-full px-2 py-[0.5rem] text-[0.8rem]"
-                    />
-                  </label>
-                </FilterDrawerSection>
-
-                <FilterDrawerSection
-                  title="Tipo y subtipo"
-                  summary={buildSectionSummary([
-                    filters.exactType.trim().length > 0 ? filters.exactType.trim() : '',
-                    filters.race.trim().length > 0 ? filters.race.trim() : '',
-                  ])}
-                  defaultOpen={filters.exactType.trim().length > 0 || filters.race.trim().length > 0}
-                >
-                  <label className="grid gap-1">
-                    <span className="app-soft text-[0.64rem] uppercase tracking-[0.12em]">
-                      {quickTypeMeta.exactTypeLabel}
-                    </span>
-                    <select
-                      value={filters.exactType}
-                      onChange={(event) => onFilterChange({ exactType: event.target.value })}
-                      className="app-field w-full px-2 py-[0.5rem] text-[0.8rem]"
-                    >
-                      <option value="">Cualquiera</option>
-                      {exactTypeGroups.map((group) => (
-                        <optgroup key={group.label} label={group.label}>
-                          {group.options.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="grid gap-1">
-                    <span className="app-soft text-[0.64rem] uppercase tracking-[0.12em]">
-                      {quickTypeMeta.raceLabel}
-                    </span>
-                    <select
-                      value={filters.race}
-                      onChange={(event) => onFilterChange({ race: event.target.value })}
-                      className="app-field w-full px-2 py-[0.5rem] text-[0.8rem]"
-                    >
-                      <option value="">Cualquiera</option>
-                      {raceGroups.map((group) => (
-                        <optgroup key={group.label} label={group.label}>
-                          {group.options.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
-                  </label>
-                </FilterDrawerSection>
-
-                {quickTypeMeta.showAttribute || quickTypeMeta.showLevel ? (
-                  <FilterDrawerSection
-                    title="Atributo y nivel"
-                    summary={buildSectionSummary([
-                      quickTypeMeta.showAttribute && filters.attribute.trim().length > 0
-                        ? `Atributo: ${filters.attribute.trim()}`
-                        : '',
-                      quickTypeMeta.showLevel && filters.level.trim().length > 0
-                        ? `${quickTypeMeta.levelLabel}: ${filters.level.trim()}`
-                        : '',
-                    ])}
-                    defaultOpen={
-                      filters.attribute.trim().length > 0 || filters.level.trim().length > 0
-                    }
-                  >
-                    {quickTypeMeta.showAttribute ? (
-                      <label className="grid gap-1">
-                        <span className="app-soft text-[0.64rem] uppercase tracking-[0.12em]">Atributo</span>
-                        <select
-                          value={filters.attribute}
-                          onChange={(event) => onFilterChange({ attribute: event.target.value })}
-                          className="app-field w-full px-2 py-[0.5rem] text-[0.8rem]"
-                        >
-                          {ATTRIBUTE_OPTIONS.map((option) => (
-                            <option key={option.value || 'any'} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    ) : null}
-
-                    {quickTypeMeta.showLevel ? (
-                      <label className="grid gap-1">
-                        <span className="app-soft text-[0.64rem] uppercase tracking-[0.12em]">
-                          {quickTypeMeta.levelLabel}
-                        </span>
-                        <input
-                          type="number"
-                          min={1}
-                          max={13}
-                          value={filters.level}
-                          onChange={(event) => onFilterChange({ level: event.target.value })}
-                          placeholder="Ej: 4"
-                          className="app-field w-full px-2 py-[0.5rem] text-[0.8rem]"
-                        />
-                      </label>
-                    ) : null}
-                  </FilterDrawerSection>
-                ) : null}
-
-                {formatAllowsLegalityFilter ? (
-                  <FilterDrawerSection
-                    title="Legalidad"
-                    summary={
-                      filters.legalOnly ? `Sin prohibidas en ${formatLabel}` : `Mostrar todas en ${formatLabel}`
-                    }
-                    defaultOpen={filters.legalOnly}
-                  >
-                    <label className="surface-panel-soft flex items-start gap-2 border border-(--border-subtle) px-2.5 py-2 text-[0.76rem]">
-                      <input
-                        type="checkbox"
-                        checked={filters.legalOnly}
-                        onChange={(event) => onFilterChange({ legalOnly: event.target.checked })}
-                        className="mt-[0.1rem] h-3.5 w-3.5 shrink-0 accent-[var(--primary)]"
-                      />
-                      <span className="grid gap-0.5">
-                        <span className="text-[var(--text-main)]">
-                          Ocultar cartas prohibidas en {formatLabel}
-                        </span>
-                        <span className="text-[0.68rem] leading-[1.14] text-[var(--text-muted)]">
-                          Este filtro refina la pagina de resultados ya cargada.
-                        </span>
-                      </span>
-                    </label>
-                  </FilterDrawerSection>
-                ) : null}
-              </div>
-            </aside>
-          </div>
-        </div>
-      ) : null}
-    </>
+      </div>
+    </article>
   )
 }
 
-function FilterDrawerSection({
+function SearchFilterSection({
   title,
   summary,
   defaultOpen,
@@ -824,26 +830,37 @@ function FilterDrawerSection({
 
   return (
     <details
-      className="details-toggle section-disclosure surface-panel-soft p-2"
+      className="details-toggle surface-panel-soft self-start grid gap-1 border border-(--border-subtle) p-1.5"
       open={open}
       onToggle={(event) => setOpen(event.currentTarget.open)}
     >
-      <summary className="section-disclosure-summary">
-        <span className="section-disclosure-title">
-          <span className="grid gap-0.5">
-            <strong className="text-[0.8rem] text-[var(--text-main)]">{title}</strong>
-            <span className="text-[0.68rem] leading-[1.14] text-[var(--text-muted)]">
-              {summary}
-            </span>
+      <summary className="flex cursor-pointer items-center justify-between gap-2 border border-(--border-subtle) bg-[linear-gradient(180deg,rgb(var(--secondary-rgb)/0.96),rgb(var(--background-rgb)/0.98))] px-2 py-1.5 transition-colors duration-150 hover:border-[rgb(var(--primary-rgb)/0.34)]">
+        <span className="min-w-0 grid gap-[0.1rem]">
+          <strong className="text-[0.74rem] text-[var(--text-main)]">{title}</strong>
+          <span className="truncate text-[0.64rem] leading-[1.14] text-[var(--text-muted)]">
+            {summary}
           </span>
         </span>
-        <span className="details-arrow section-disclosure-arrow text-[0.74rem] text-[var(--text-soft)]">
+        <span className="details-arrow grid h-5 w-5 shrink-0 place-items-center border border-[rgb(var(--primary-rgb)/0.3)] bg-[linear-gradient(180deg,rgb(var(--primary-rgb)/0.16),rgb(var(--secondary-rgb)/0.96))] text-[0.68rem] text-[var(--text-soft)]">
           ▶
         </span>
       </summary>
-      <div className="mt-2 grid gap-2">{children}</div>
+      <div className="grid gap-1.5 pt-0.5">{children}</div>
     </details>
   )
+}
+
+function sortVisibleSearchResults(
+  results: ApiCardSearchResult[],
+  sortOrder: SearchSortOrder,
+): ApiCardSearchResult[] {
+  if (sortOrder === 'default') {
+    return results
+  }
+
+  const sortedResults = [...results].sort((left, right) => left.name.localeCompare(right.name))
+
+  return sortOrder === 'name-desc' ? sortedResults.reverse() : sortedResults
 }
 
 function getExactTypeFilterGroups(quickType: SearchQuickTypeFilter): FilterOptionGroup[] {
@@ -961,15 +978,6 @@ function buildActiveFilterChips({
   raceLabel: string
 }): ActiveFilterChip[] {
   const chips: ActiveFilterChip[] = []
-
-  if (filters.quickType !== 'all') {
-    chips.push({
-      key: 'quick-type',
-      label: 'Vista',
-      value: QUICK_TYPE_LABELS[filters.quickType],
-      updates: { quickType: 'all' },
-    })
-  }
 
   if (filters.archetype.trim().length > 0) {
     chips.push({

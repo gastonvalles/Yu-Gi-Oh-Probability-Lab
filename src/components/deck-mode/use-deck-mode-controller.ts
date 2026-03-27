@@ -72,11 +72,11 @@ export function useDeckModeController() {
     visibleSearchResults,
     activeFilterCount,
     hasSearchCriteria,
+    isLoadingMore,
     clearFilters: clearSearchFilters,
     setQuery: setSearchQuery,
     updateSearchFilters,
-    showNextPage,
-    showPreviousPage,
+    loadMoreResults,
   } = useApiCardSearch(settings.deckFormat)
   const { showToast } = useToastMessage()
   const {
@@ -201,7 +201,6 @@ export function useDeckModeController() {
       }
 
       const zone = getDefaultDeckZoneForCard(card)
-      const zoneLabel = zone === 'extra' ? 'Extra Deck' : 'Main Deck'
       const addIssue = getAddSearchResultIssue(deckBuilder, card, zone, settings.deckFormat)
 
       if (addIssue) {
@@ -220,6 +219,17 @@ export function useDeckModeController() {
       showToast('Carta añadida', 'success')
     },
     [apiSearch.results, deckBuilder, dispatch, settings.deckFormat, showToast],
+  )
+
+  const handleSearchResultClick = useCallback(
+    (apiCardId: number) => {
+      if (consumeSuppressedSearchClick()) {
+        return
+      }
+
+      handleAddSearchResult(apiCardId)
+    },
+    [consumeSuppressedSearchClick, handleAddSearchResult],
   )
 
   const handleRemoveDeckCard = useCallback(
@@ -338,35 +348,38 @@ export function useDeckModeController() {
       query: apiSearch.query,
       status: apiSearch.status,
       visibleSearchResults,
+      isLoadingMore,
       errorMessage: apiSearch.errorMessage,
-      page: apiSearch.page,
       hasMore: apiSearch.hasMore,
-      rawSearchResultCount: apiSearch.results.length,
+      loadedSearchResultCount: apiSearch.results.length,
       searchFilters,
       activeFilterCount,
       hasSearchCriteria,
       activeDragInstanceId,
       activeDragSearchCardId,
-      consumeSuppressedSearchClick,
-      onAddSearchResult: handleAddSearchResult,
       onClearDeckZone: handleClearDeckZone,
       onRemoveDeckCard: handleRemoveDeckCard,
       onDeckCardPointerDown: handleDeckCardPointerDown,
       onSearchCardPointerDown: handleSearchCardPointerDown,
+      onSearchResultClick: handleSearchResultClick,
       onQueryChange: setSearchQuery,
       onDeckNameChange: handleDeckNameChange,
       onDeckFormatChange: handleDeckFormatChange,
       onSearchFiltersChange: updateSearchFilters,
       onClearSearchFilters: clearSearchFilters,
-      onPrevPage: showPreviousPage,
-      onNextPage: showNextPage,
+      onLoadMoreResults: loadMoreResults,
       onHoverStart: scheduleHoverPreview,
       onHoverEnd: clearHoverPreview,
       genesysPointTotal,
       genesysPointCap: settings.deckFormat === 'genesys' ? GENESYS_POINT_CAP : null,
     },
     exportDeck: {
+      deckName: deckBuilder.deckName,
+      deckFormatLabel: formatLabel,
       mainDeckCount: deckBuilder.main.length,
+      extraDeckCount: deckBuilder.extra.length,
+      sideDeckCount: deckBuilder.side.length,
+      totalCardCount: deckBuilder.main.length + deckBuilder.extra.length + deckBuilder.side.length,
       onExport: handleExportDeckImage,
     },
     feedback: {
