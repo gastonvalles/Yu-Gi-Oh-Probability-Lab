@@ -29,9 +29,9 @@ export function WorkflowGuide({
         ? 'Buscá cartas en el buscador. Click agrega al Main Deck, arrastrar mueve entre Main, Extra y Side, y click derecho quita.'
         : `Seguí sumando cartas hasta llegar a 40 en el Main Deck. Te faltan ${formatInteger(missingMainDeckCards)}.`
         : activeStep === 2
-          ? `En el paso 2 marcá qué hace cada carta. Te faltan ${formatInteger(missingRoleCount)} carta${missingRoleCount === 1 ? '' : 's'} sin rol.`
-        : activeStep === 3
-          ? 'En el paso 3 definí al menos un chequeo de apertura o problema para empezar a medir consistencia.'
+          ? `En el paso 2 definí origen y función de cada carta. Te faltan ${formatInteger(missingRoleCount)} carta${missingRoleCount === 1 ? '' : 's'} sin cerrar.`
+          : activeStep === 3
+            ? 'En el paso 3 definí al menos un chequeo de apertura o problema para empezar a medir consistencia.'
           : 'Ya podés leer resultados exactos y probar manos reales.'
 
   const overallStatus =
@@ -44,7 +44,7 @@ export function WorkflowGuide({
     activeStep === 1
       ? 'Paso actual: armá tu deck'
       : activeStep === 2
-        ? 'Paso actual: marcá roles'
+        ? 'Paso actual: categorizá cartas'
         : activeStep === 3
           ? 'Paso actual: definí chequeos'
           : 'Paso actual: leé estadísticas'
@@ -62,7 +62,7 @@ export function WorkflowGuide({
       state: mainDeckCount >= 40 ? 'done' : activeStep === 1 ? 'current' : 'pending',
     },
     {
-      title: 'Roles',
+      title: 'Categorization',
       metric:
         totalClassifiableCards === 0
           ? '0 / 0'
@@ -72,7 +72,7 @@ export function WorkflowGuide({
           ? 'Esperando Main Deck.'
           : classifiedCards === totalClassifiableCards
             ? 'Todo marcado.'
-            : `${formatInteger(missingRoleCount)} sin rol.`,
+            : `${formatInteger(missingRoleCount)} sin cerrar.`,
       state:
         totalClassifiableCards > 0 && classifiedCards === totalClassifiableCards
           ? 'done'

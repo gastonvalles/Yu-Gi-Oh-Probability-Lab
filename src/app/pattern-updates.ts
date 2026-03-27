@@ -4,29 +4,38 @@ import type {
   CardGroupKey,
   HandPattern,
   HandPatternCategory,
+  Matcher,
   PatternMatchMode,
   RequirementKind,
   RequirementSource,
 } from '../types'
 import { createPatternRequirement } from './pattern-factory'
+import {
+  buildReusePolicy,
+  createMatcherFromGroupKey,
+  createMatcherFromSource,
+  resolvePatternLogic,
+  updateConditionCardPool,
+} from './patterns'
 
 export function addRequirement(
   patterns: HandPattern[],
   patternId: string,
-  derivedMainCards: CardEntry[],
+  _derivedMainCards: CardEntry[],
 ): HandPattern[] {
   return patterns.map((pattern) => {
     if (pattern.id !== patternId) {
       return pattern
     }
 
-    const requirements = [...pattern.requirements, createPatternRequirement(derivedMainCards[0]?.id, pattern.category)]
+    const conditions = [...pattern.conditions, createPatternRequirement(undefined, pattern.kind)]
+    const nextLogic = resolvePatternLogic('all', conditions.length, pattern.minimumConditionMatches)
 
     return {
       ...pattern,
-      matchMode: 'all',
-      minimumMatches: Math.max(requirements.length, 1),
-      requirements,
+      ...nextLogic,
+      needsReview: false,
+      conditions,
     }
   })
 }
@@ -36,19 +45,20 @@ export function removeRequirement(
   patternId: string,
   requirementId: string,
 ): HandPattern[] {
-  return patterns.map((pattern) =>
-    pattern.id !== patternId
-      ? pattern
-      : {
-          ...pattern,
-          matchMode: 'all',
-          requirements: pattern.requirements.filter((requirement) => requirement.id !== requirementId),
-          minimumMatches: Math.max(
-            pattern.requirements.filter((requirement) => requirement.id !== requirementId).length,
-            1,
-          ),
-        },
-  )
+  return patterns.map((pattern) => {
+    if (pattern.id !== patternId) {
+      return pattern
+    }
+
+    const conditions = pattern.conditions.filter((condition) => condition.id !== requirementId)
+
+    return {
+      ...pattern,
+      ...resolvePatternLogic('all', conditions.length, pattern.minimumConditionMatches),
+      needsReview: false,
+      conditions,
+    }
+  })
 }
 
 export function updatePatternName(
@@ -76,7 +86,7 @@ export function updatePatternCategory(
       ? pattern
       : {
           ...pattern,
-          category,
+          kind: category,
         },
   )
 }
@@ -91,17 +101,10 @@ export function updatePatternMatchMode(
       return pattern
     }
 
-    const maxRequirementCount = Math.max(pattern.requirements.length, 1)
-
     return {
       ...pattern,
-      matchMode,
-      minimumMatches:
-        matchMode === 'all'
-          ? pattern.requirements.length
-          : matchMode === 'any'
-            ? 1
-            : Math.max(2, Math.min(Math.max(pattern.minimumMatches, 2), maxRequirementCount)),
+      ...resolvePatternLogic(matchMode, pattern.conditions.length, pattern.minimumConditionMatches),
+      needsReview: false,
     }
   })
 }
@@ -116,10 +119,11 @@ export function updatePatternMinimumMatches(
       ? pattern
       : {
           ...pattern,
-          minimumMatches:
-            pattern.matchMode === 'at-least'
-              ? Math.max(2, Math.min(minimumMatches, Math.max(pattern.requirements.length, 1)))
-              : Math.max(1, Math.min(minimumMatches, Math.max(pattern.requirements.length, 1))),
+          needsReview: false,
+          minimumConditionMatches:
+            pattern.logic === 'all'
+              ? Math.max(pattern.conditions.length, 1)
+              : Math.max(1, Math.min(minimumMatches, Math.max(pattern.conditions.length, 1))),
         },
   )
 }
@@ -134,7 +138,8 @@ export function updatePatternAllowSharedCards(
       ? pattern
       : {
           ...pattern,
-          allowSharedCards,
+          needsReview: false,
+          reusePolicy: buildReusePolicy(allowSharedCards),
         },
   )
 }
@@ -154,13 +159,13 @@ export function addRequirementCardToPool(
       ? pattern
       : {
           ...pattern,
-          requirements: pattern.requirements.map((requirement) =>
-            requirement.id !== requirementId
-              ? requirement
-              : {
-                  ...requirement,
-                  cardIds: requirement.cardIds.includes(cardId) ? requirement.cardIds : [...requirement.cardIds, cardId],
-                },
+          needsReview: false,
+          conditions: pattern.conditions.map((condition) =>
+            condition.id !== requirementId
+              ? condition
+              : updateConditionCardPool(condition, (cardIds) =>
+                  cardIds.includes(cardId) ? cardIds : [...cardIds, cardId],
+                ),
           ),
         },
   )
@@ -177,13 +182,11 @@ export function removeRequirementCardFromPool(
       ? pattern
       : {
           ...pattern,
-          requirements: pattern.requirements.map((requirement) =>
-            requirement.id !== requirementId
-              ? requirement
-              : {
-                  ...requirement,
-                  cardIds: requirement.cardIds.filter((entry) => entry !== cardId),
-                },
+          needsReview: false,
+          conditions: pattern.conditions.map((condition) =>
+            condition.id !== requirementId
+              ? condition
+              : updateConditionCardPool(condition, (cardIds) => cardIds.filter((entry) => entry !== cardId)),
           ),
         },
   )
@@ -200,11 +203,12 @@ export function updateRequirementKind(
       ? pattern
       : {
           ...pattern,
-          requirements: pattern.requirements.map((requirement) =>
-            requirement.id !== requirementId
-              ? requirement
+          needsReview: false,
+          conditions: pattern.conditions.map((condition) =>
+            condition.id !== requirementId
+              ? condition
               : {
-                  ...requirement,
+                  ...condition,
                   kind,
                 },
           ),
@@ -223,11 +227,12 @@ export function updateRequirementDistinct(
       ? pattern
       : {
           ...pattern,
-          requirements: pattern.requirements.map((requirement) =>
-            requirement.id !== requirementId
-              ? requirement
+          needsReview: false,
+          conditions: pattern.conditions.map((condition) =>
+            condition.id !== requirementId
+              ? condition
               : {
-                  ...requirement,
+                  ...condition,
                   distinct,
                 },
           ),
@@ -246,12 +251,37 @@ export function updateRequirementCount(
       ? pattern
       : {
           ...pattern,
-          requirements: pattern.requirements.map((requirement) =>
-            requirement.id !== requirementId
-              ? requirement
+          needsReview: false,
+          conditions: pattern.conditions.map((condition) =>
+            condition.id !== requirementId
+              ? condition
               : {
-                  ...requirement,
-                  count,
+                  ...condition,
+                  quantity: count,
+                },
+          ),
+        },
+  )
+}
+
+export function updateRequirementMatcher(
+  patterns: HandPattern[],
+  patternId: string,
+  requirementId: string,
+  matcher: Matcher | null,
+): HandPattern[] {
+  return patterns.map((pattern) =>
+    pattern.id !== patternId
+      ? pattern
+      : {
+          ...pattern,
+          needsReview: false,
+          conditions: pattern.conditions.map((condition) =>
+            condition.id !== requirementId
+              ? condition
+              : {
+                  ...condition,
+                  matcher,
                 },
           ),
         },
@@ -279,24 +309,24 @@ export function updateRequirementSource(
       ? pattern
       : {
           ...pattern,
-          requirements: pattern.requirements.map((requirement) =>
-            requirement.id !== requirementId
-              ? requirement
+          needsReview: false,
+          conditions: pattern.conditions.map((condition) =>
+            condition.id !== requirementId
+              ? condition
               : {
-                  ...requirement,
-                  source,
-                  groupKey: source === 'group' ? requirement.groupKey ?? defaultGroupKey : requirement.groupKey,
-                  attribute:
-                    source === 'attribute'
-                      ? requirement.attribute ?? defaultAttribute
-                      : requirement.attribute,
-                  level: source === 'level' ? requirement.level ?? defaultLevel : requirement.level,
-                  monsterType:
-                    source === 'type'
-                      ? requirement.monsterType ?? defaultMonsterType
-                      : requirement.monsterType,
-                  atk: source === 'atk' ? requirement.atk ?? defaultAtk : requirement.atk,
-                  def: source === 'def' ? requirement.def ?? defaultDef : requirement.def,
+                  ...condition,
+                  matcher: createMatcherFromSource(
+                    source,
+                    {
+                      defaultAtk,
+                      defaultAttribute,
+                      defaultDef,
+                      defaultGroupKey,
+                      defaultLevel,
+                      defaultMonsterType,
+                    },
+                    condition.matcher,
+                  ),
                 },
           ),
         },
@@ -314,13 +344,13 @@ export function updateRequirementGroup(
       ? pattern
       : {
           ...pattern,
-          requirements: pattern.requirements.map((requirement) =>
-            requirement.id !== requirementId
-              ? requirement
+          needsReview: false,
+          conditions: pattern.conditions.map((condition) =>
+            condition.id !== requirementId
+              ? condition
               : {
-                  ...requirement,
-                  source: 'group',
-                  groupKey,
+                  ...condition,
+                  matcher: groupKey ? createMatcherFromGroupKey(groupKey) : null,
                 },
           ),
         },
@@ -338,13 +368,13 @@ export function updateRequirementAttribute(
       ? pattern
       : {
           ...pattern,
-          requirements: pattern.requirements.map((requirement) =>
-            requirement.id !== requirementId
-              ? requirement
+          needsReview: false,
+          conditions: pattern.conditions.map((condition) =>
+            condition.id !== requirementId
+              ? condition
               : {
-                  ...requirement,
-                  source: 'attribute',
-                  attribute,
+                  ...condition,
+                  matcher: attribute ? { type: 'attribute', value: attribute } : null,
                 },
           ),
         },
@@ -362,13 +392,13 @@ export function updateRequirementLevel(
       ? pattern
       : {
           ...pattern,
-          requirements: pattern.requirements.map((requirement) =>
-            requirement.id !== requirementId
-              ? requirement
+          needsReview: false,
+          conditions: pattern.conditions.map((condition) =>
+            condition.id !== requirementId
+              ? condition
               : {
-                  ...requirement,
-                  source: 'level',
-                  level,
+                  ...condition,
+                  matcher: level !== null ? { type: 'level', value: level } : null,
                 },
           ),
         },
@@ -386,13 +416,13 @@ export function updateRequirementMonsterType(
       ? pattern
       : {
           ...pattern,
-          requirements: pattern.requirements.map((requirement) =>
-            requirement.id !== requirementId
-              ? requirement
+          needsReview: false,
+          conditions: pattern.conditions.map((condition) =>
+            condition.id !== requirementId
+              ? condition
               : {
-                  ...requirement,
-                  source: 'type',
-                  monsterType,
+                  ...condition,
+                  matcher: monsterType ? { type: 'monster_type', value: monsterType } : null,
                 },
           ),
         },
@@ -410,13 +440,13 @@ export function updateRequirementAtk(
       ? pattern
       : {
           ...pattern,
-          requirements: pattern.requirements.map((requirement) =>
-            requirement.id !== requirementId
-              ? requirement
+          needsReview: false,
+          conditions: pattern.conditions.map((condition) =>
+            condition.id !== requirementId
+              ? condition
               : {
-                  ...requirement,
-                  source: 'atk',
-                  atk,
+                  ...condition,
+                  matcher: atk !== null ? { type: 'atk', value: atk } : null,
                 },
           ),
         },
@@ -434,13 +464,13 @@ export function updateRequirementDef(
       ? pattern
       : {
           ...pattern,
-          requirements: pattern.requirements.map((requirement) =>
-            requirement.id !== requirementId
-              ? requirement
+          needsReview: false,
+          conditions: pattern.conditions.map((condition) =>
+            condition.id !== requirementId
+              ? condition
               : {
-                  ...requirement,
-                  source: 'def',
-                  def,
+                  ...condition,
+                  matcher: def !== null ? { type: 'def', value: def } : null,
                 },
           ),
         },

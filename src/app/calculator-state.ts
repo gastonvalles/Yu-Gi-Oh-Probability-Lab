@@ -1,4 +1,5 @@
 import type { CalculatorState, CardEntry } from '../types'
+import { mergeCardOrigins } from './deck-groups'
 import type { AppState, DeckCardInstance } from './model'
 
 export function buildCalculatorState(
@@ -25,7 +26,9 @@ export function deriveMainDeckCardsFromZone(mainDeck: DeckCardInstance[]): CardE
 
     if (existingCard) {
       existingCard.copies += 1
+      existingCard.origin = mergeCardOrigins(existingCard.origin, instance.origin)
       existingCard.roles = [...new Set([...existingCard.roles, ...instance.roles])]
+      existingCard.needsReview = existingCard.needsReview || instance.needsReview
       continue
     }
 
@@ -35,7 +38,9 @@ export function deriveMainDeckCardsFromZone(mainDeck: DeckCardInstance[]): CardE
       copies: 1,
       source: 'ygoprodeck',
       apiCard: instance.apiCard,
+      origin: instance.origin,
       roles: [...instance.roles],
+      needsReview: instance.needsReview,
     })
   }
 

@@ -1,14 +1,14 @@
 import type { HandPattern } from '../types'
-import { createGroupPattern } from './pattern-factory'
+import { createMatcherPattern } from './pattern-factory'
 
 export function buildDefaultPatterns(): HandPattern[] {
   return [
-    createGroupPattern(
+    createMatcherPattern(
       'Starter + Extender',
-      'good',
+      'opening',
       [
-        { groupKey: 'starter', count: 1, kind: 'include' },
-        { groupKey: 'extender', count: 1, kind: 'include' },
+        { matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' },
+        { matcher: { type: 'role', value: 'extender' }, quantity: 1, kind: 'include' },
       ],
       {
         allowSharedCards: false,
@@ -16,15 +16,15 @@ export function buildDefaultPatterns(): HandPattern[] {
         minimumMatches: 2,
       },
     ),
-    createGroupPattern('Mínimo 1 Starter', 'good', [
-      { groupKey: 'starter', count: 1, kind: 'include' },
+    createMatcherPattern('Mínimo 1 Starter', 'opening', [
+      { matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' },
     ]),
-    createGroupPattern(
+    createMatcherPattern(
       'Starter + Non-engine',
-      'good',
+      'opening',
       [
-        { groupKey: 'starter', count: 1, kind: 'include' },
-        { groupKey: 'non-engine', count: 1, kind: 'include' },
+        { matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' },
+        { matcher: { type: 'origin', value: 'non_engine' }, quantity: 1, kind: 'include' },
       ],
       {
         allowSharedCards: false,
@@ -32,18 +32,18 @@ export function buildDefaultPatterns(): HandPattern[] {
         minimumMatches: 2,
       },
     ),
-    createGroupPattern('Sin starter', 'bad', [
-      { groupKey: 'starter', count: 1, kind: 'exclude' },
+    createMatcherPattern('Sin starter', 'problem', [
+      { matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'exclude' },
     ]),
-    createGroupPattern('2 o más Bricks', 'bad', [
-      { groupKey: 'brick', count: 2, kind: 'include' },
+    createMatcherPattern('2 o más Bricks', 'problem', [
+      { matcher: { type: 'role', value: 'brick' }, quantity: 2, kind: 'include' },
     ]),
-    createGroupPattern(
+    createMatcherPattern(
       'Extender sin starter',
-      'bad',
+      'problem',
       [
-        { groupKey: 'extender', count: 1, kind: 'include' },
-        { groupKey: 'starter', count: 1, kind: 'exclude' },
+        { matcher: { type: 'role', value: 'extender' }, quantity: 1, kind: 'include' },
+        { matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'exclude' },
       ],
       {
         allowSharedCards: false,
@@ -51,14 +51,14 @@ export function buildDefaultPatterns(): HandPattern[] {
         minimumMatches: 2,
       },
     ),
-    createGroupPattern('3 o más HT en mano', 'bad', [
-      { groupKey: 'handtrap', count: 3, kind: 'include' },
+    createMatcherPattern('3 o más HT en mano', 'problem', [
+      { matcher: { type: 'role', value: 'handtrap' }, quantity: 3, kind: 'include' },
     ]),
-    createGroupPattern('3 o más BBs en mano', 'bad', [
-      { groupKey: 'boardbreaker', count: 3, kind: 'include' },
+    createMatcherPattern('3 o más BBs en mano', 'problem', [
+      { matcher: { type: 'role', value: 'boardbreaker' }, quantity: 3, kind: 'include' },
     ]),
-    createGroupPattern('4 o más Non-engine', 'bad', [
-      { groupKey: 'non-engine', count: 4, kind: 'include' },
+    createMatcherPattern('4 o más Non-engine', 'problem', [
+      { matcher: { type: 'origin', value: 'non_engine' }, quantity: 4, kind: 'include' },
     ]),
   ]
 }

@@ -1,14 +1,10 @@
 import type {
   ApiCardReference,
-  CardAttribute,
-  CardGroupKey,
+  CardOrigin,
   CardRole,
   DeckFormat,
-  HandPatternCategory,
   HandPattern,
-  PatternMatchMode,
-  RequirementKind,
-  RequirementSource,
+  Matcher,
 } from '../types'
 
 export type CalculatorMode = 'deck' | 'manual' | 'gambling'
@@ -18,7 +14,9 @@ export interface DeckCardInstance {
   instanceId: string
   name: string
   apiCard: ApiCardReference
+  origin: CardOrigin | null
   roles: CardRole[]
+  needsReview: boolean
 }
 
 export interface DeckBuilderState {
@@ -39,33 +37,29 @@ export interface AppState {
   deckBuilder: DeckBuilderState
 }
 
-export interface PortableRequirement {
-  cards: string[]
-  source: RequirementSource
-  groupKey: CardGroupKey | null
-  attribute: CardAttribute | null
-  level: number | null
-  monsterType: string | null
-  atk: number | null
-  def: number | null
-  count: number
-  kind: RequirementKind
+export interface PortableCondition {
+  matcher: Matcher | null
+  quantity: number
+  kind: HandPattern['conditions'][number]['kind']
   distinct: boolean
 }
 
 export interface PortablePattern {
   name: string
-  category: HandPatternCategory
-  matchMode: PatternMatchMode
-  minimumMatches: number
-  allowSharedCards: boolean
-  requirements: PortableRequirement[]
+  kind: HandPattern['kind']
+  logic: HandPattern['logic']
+  minimumConditionMatches: number
+  reusePolicy: HandPattern['reusePolicy']
+  needsReview: boolean
+  conditions: PortableCondition[]
 }
 
 export interface PortableDeckCard {
   name: string
   apiCard: ApiCardReference
+  origin: CardOrigin | null
   roles: CardRole[]
+  needsReview: boolean
 }
 
 export interface PortableConfig {

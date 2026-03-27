@@ -2,16 +2,17 @@ import { useMemo } from 'react'
 
 import { createPattern } from './pattern-factory'
 import { toNonNegativeInteger } from './utils'
-import type { CardAttribute, CardEntry, CardGroupKey } from '../types'
+import type { CardAttribute, CardEntry, CardGroupKey, HandPattern, Matcher } from '../types'
 import type { PatternEditorActions } from '../components/probability/pattern-editor-actions'
 import { useAppDispatch } from './store-hooks'
 import {
   addRequirementCardToPattern,
   addRequirementToPattern,
-  appendPattern,
+  appendPattern as appendPatternAction,
   removePatternFromState,
   removeRequirementCardFromPattern,
   removeRequirementFromPattern,
+  replacePatterns as replacePatternsAction,
   setPatternAllowSharedCards,
   setPatternCategory,
   setPatternMatchMode,
@@ -19,6 +20,7 @@ import {
   setPatternName,
   setRequirementCount,
   setRequirementDistinct,
+  setRequirementMatcher,
   setRequirementAtk,
   setRequirementAttribute,
   setRequirementDef,
@@ -54,11 +56,17 @@ export function usePatternEditorActions({
     () => ({
       addPattern(category) {
         const nextPattern = createPattern('', undefined, category)
-        dispatch(appendPattern(nextPattern))
+        dispatch(appendPatternAction(nextPattern))
         return nextPattern.id
+      },
+      appendPattern(pattern: HandPattern) {
+        dispatch(appendPatternAction(pattern))
       },
       removePattern(patternId) {
         dispatch(removePatternFromState(patternId))
+      },
+      replacePatterns(nextPatterns: HandPattern[]) {
+        dispatch(replacePatternsAction(nextPatterns))
       },
       setPatternCategory(patternId, value) {
         dispatch(setPatternCategory({ patternId, value }))
@@ -102,6 +110,9 @@ export function usePatternEditorActions({
           requirementId,
           value: Math.max(1, toNonNegativeInteger(value, 1)),
         }))
+      },
+      setRequirementMatcher(patternId, requirementId, value: Matcher | null) {
+        dispatch(setRequirementMatcher({ patternId, requirementId, value }))
       },
       setRequirementSource(patternId, requirementId, value) {
         dispatch(setRequirementSource({

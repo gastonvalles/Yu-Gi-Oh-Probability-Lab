@@ -1,11 +1,17 @@
 import { type CSSProperties } from 'react'
 
-import { getPatternCategorySingular, normalizeHandPatternCategory } from '../../app/patterns'
+import {
+  allowsSharedCards,
+  getPatternCategorySingular,
+  getPatternMatchMode,
+  normalizeHandPatternCategory,
+  normalizeMinimumConditionMatches,
+} from '../../app/patterns'
 import { formatInteger } from '../../app/utils'
-import type { DerivedDeckGroup } from '../../app/deck-groups'
 import type { CardEntry, HandPattern, PatternMatchMode } from '../../types'
 import { Button } from '../ui/Button'
 import type { PatternEditorActions } from './pattern-editor-actions'
+import { buildPatternPreview } from './pattern-helpers'
 import { RequirementRow } from './RequirementRow'
 
 interface PatternCardProps {
@@ -15,7 +21,6 @@ interface PatternCardProps {
   onToggleOpen: (patternId: string) => void
   onCancelPendingPattern: (patternId: string) => void
   derivedMainCards: CardEntry[]
-  derivedGroups: DerivedDeckGroup[]
   actions: PatternEditorActions
 }
 
@@ -44,20 +49,22 @@ export function PatternCard({
   onToggleOpen,
   onCancelPendingPattern,
   derivedMainCards,
-  derivedGroups,
   actions,
 }: PatternCardProps) {
-  const conditionCount = pattern.requirements.length
-  const categorySingular = getPatternCategorySingular(pattern.category)
-  const isOpening = normalizeHandPatternCategory(pattern.category) === 'good'
+  const conditionCount = pattern.conditions.length
+  const categorySingular = getPatternCategorySingular(pattern.kind)
+  const isOpening = normalizeHandPatternCategory(pattern.kind) === 'opening'
   const trimmedName = pattern.name.trim()
   const displayName = trimmedName || (isOpening ? 'Nueva apertura' : 'Nuevo problema')
-  const includeRequirementCount = pattern.requirements.filter((requirement) => requirement.kind === 'include').length
+  const includeRequirementCount = pattern.conditions.filter((condition) => condition.kind === 'include').length
   const namePlaceholder = isOpening ? 'Escribí el nombre de la apertura' : 'Escribí el nombre del problema'
   const canUseMinimumParts = conditionCount > 1
-  const minimumPartsValue = Math.max(2, Math.min(pattern.minimumMatches, Math.max(conditionCount, 2)))
-  const conditionLabel = `${formatInteger(conditionCount)} condicion${conditionCount === 1 ? '' : 'es'}`
-  const logicLabel = conditionCount > 1 ? getPatternMatchModeLabel(pattern.matchMode, minimumPartsValue) : null
+  const minimumPartsValue = Math.max(2, Math.min(normalizeMinimumConditionMatches(pattern), Math.max(conditionCount, 2)))
+  const patternMatchMode = getPatternMatchMode(pattern)
+  const patternPreview = buildPatternPreview(
+    pattern,
+    new Map(derivedMainCards.map((card) => [card.id, card])),
+  )
 
   const handleSummaryToggle = () => {
     if (!trimmedName) {
@@ -93,19 +100,21 @@ export function PatternCard({
           }
         }}
       >
-        <div className="grid min-w-0 gap-0.5">
-          <strong className="truncate text-[0.9rem] text-(--text-main)">{displayName}</strong>
-          <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-            <span className="pattern-card-meta text-[0.72rem]">{conditionLabel}</span>
-            {logicLabel ? (
-              <span className="pattern-card-meta text-[0.72rem]">{logicLabel}</span>
-            ) : null}
-            {!pattern.allowSharedCards && includeRequirementCount > 1 ? (
-              <span className="pattern-card-meta pattern-card-meta-muted text-[0.72rem]">
-                No reutiliza carta
+        <div className="grid min-w-0 gap-1">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="pattern-card-meta text-[0.68rem]">
+              {isOpening ? 'Apertura' : 'Problema'}
+            </span>
+            {!allowsSharedCards(pattern) && includeRequirementCount > 1 ? (
+              <span className="pattern-card-meta pattern-card-meta-muted text-[0.68rem]">
+                Sin reutilizar
               </span>
             ) : null}
           </div>
+          <strong className="truncate text-[0.9rem] text-(--text-main)">{displayName}</strong>
+          <p className="app-muted m-0 truncate text-[0.74rem] leading-[1.12]">
+            {patternPreview.summary}
+          </p>
         </div>
         <button
           type="button"
@@ -145,92 +154,117 @@ export function PatternCard({
           />
         </label>
 
-        <div
-          className={[
-            'grid gap-2 min-[1040px]:items-end',
-            conditionCount > 1
-              ? 'min-[1040px]:grid-cols-[minmax(0,1fr)_auto]'
-              : 'min-[1040px]:grid-cols-[auto]',
-          ].join(' ')}
-        >
-          {conditionCount > 1 ? (
+        <div className="surface-panel-soft grid gap-2 p-2.5">
+          <div className="grid gap-2 min-[1040px]:grid-cols-[minmax(0,160px)_minmax(0,1fr)]">
+            <div className="grid gap-1">
+              <span className="app-muted text-[0.68rem] uppercase tracking-widest">Tipo</span>
+              <div className="surface-card inline-flex w-fit items-center gap-1.5 px-2 py-1 text-[0.78rem] text-(--text-main)">
+                <strong>{isOpening ? 'Opening' : 'Problem'}</strong>
+                <span className="text-(--text-muted)">({isOpening ? 'Apertura' : 'Problema'})</span>
+              </div>
+            </div>
+
             <label className="grid gap-1">
               <span className="app-muted text-[0.68rem] uppercase tracking-widest">Lógica</span>
               <select
-                value={pattern.matchMode}
+                value={patternMatchMode}
                 onChange={(event) => actions.setPatternMatchMode(pattern.id, event.target.value as PatternMatchMode)}
                 className="app-field w-full px-2 py-[0.45rem] text-[0.84rem]"
               >
-                <option value="all">Se cumple con todo esto</option>
-                <option value="any">Se cumple con cualquiera de estas condiciones</option>
+                <option value="all">Todas las condiciones</option>
+                <option value="any">Al menos una condición</option>
                 {canUseMinimumParts ? (
                   <option value="at-least">
-                    Se cumple con al menos {formatInteger(minimumPartsValue)} de estas condiciones
+                    Al menos {formatInteger(minimumPartsValue)} condiciones
                   </option>
                 ) : null}
               </select>
             </label>
+          </div>
+
+          {patternMatchMode === 'at-least' && conditionCount > 2 ? (
+            <label className="grid max-w-45 gap-1">
+              <span className="app-muted text-[0.68rem] uppercase tracking-widest">Cantidad mínima de condiciones</span>
+              <input
+                type="number"
+                min={2}
+                max={Math.max(pattern.conditions.length, 1)}
+                value={pattern.minimumConditionMatches}
+                onChange={(event) => actions.setPatternMinimumMatches(pattern.id, event.target.value)}
+                className="app-field w-full px-2 py-[0.45rem] text-[0.84rem]"
+              />
+            </label>
           ) : null}
 
-          <div />
+          <div className="grid gap-1.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="grid gap-0.5">
+                <span className="app-muted text-[0.68rem] uppercase tracking-widest">Política de reutilización</span>
+                <span className="app-soft text-[0.74rem] leading-[1.14]">
+                  Define si una misma carta puede cubrir varias condiciones del patrón.
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <Button
+                  variant={allowsSharedCards(pattern) ? 'primary' : 'secondary'}
+                  size="sm"
+                  onClick={() => actions.setPatternAllowSharedCards(pattern.id, true)}
+                >
+                  Permitir reutilización
+                </Button>
+                <Button
+                  variant={allowsSharedCards(pattern) ? 'secondary' : 'primary'}
+                  size="sm"
+                  onClick={() => actions.setPatternAllowSharedCards(pattern.id, false)}
+                >
+                  Prohibir reutilización
+                </Button>
+              </div>
+            </div>
+            <p className="surface-card m-0 px-2 py-1.5 text-[0.74rem] text-(--text-muted)">
+              {patternPreview.reuse}
+            </p>
+          </div>
         </div>
 
-        {pattern.matchMode === 'at-least' && conditionCount > 2 ? (
-          <label className="grid max-w-45 gap-1">
-            <span className="app-muted text-[0.68rem] uppercase tracking-widest">Condiciones que deben cumplirse</span>
-            <input
-              type="number"
-              min={2}
-              max={Math.max(pattern.requirements.length, 1)}
-              value={pattern.minimumMatches}
-              onChange={(event) => actions.setPatternMinimumMatches(pattern.id, event.target.value)}
-              className="app-field w-full px-2 py-[0.45rem] text-[0.84rem]"
-            />
-          </label>
-        ) : null}
-
-        {includeRequirementCount > 1 ? (
-          <div className="surface-card flex flex-wrap items-center justify-between gap-2 px-2.5 py-2">
-            <div className="grid gap-0.5">
-              <span className="app-muted text-[0.68rem] uppercase tracking-widest">Reutilizar carta</span>
-              <span className="app-soft text-[0.74rem] leading-[1.14]">
-                Si una carta entra en dos grupos dentro de esta regla.
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              <Button
-                variant={pattern.allowSharedCards ? 'primary' : 'secondary'}
-                size="sm"
-                onClick={() => actions.setPatternAllowSharedCards(pattern.id, true)}
-              >
-                Reutilizar
-              </Button>
-              <Button
-                variant={pattern.allowSharedCards ? 'secondary' : 'primary'}
-                size="sm"
-                onClick={() => actions.setPatternAllowSharedCards(pattern.id, false)}
-              >
-                Utilizar otra
-              </Button>
-            </div>
+        <div className="surface-card grid gap-1.5 px-2.5 py-2.5">
+          <span className="app-muted text-[0.68rem] uppercase tracking-widest">Vista rápida</span>
+          <p className="m-0 text-[0.82rem] text-(--text-main)">{patternPreview.summary}</p>
+          <ul className="m-0 grid gap-1 pl-4 text-[0.78rem] text-(--text-muted)">
+            {patternPreview.items.map((item, index) => (
+              <li key={`${pattern.id}-preview-${index}`}>{item}</li>
+            ))}
+          </ul>
+          <div className="grid gap-1 min-[860px]:grid-cols-2">
+            <p className="surface-panel-soft m-0 px-2 py-1.5 text-[0.74rem] text-(--text-muted)">
+              <strong className="text-(--text-main)">Lógica:</strong> {patternPreview.logic}
+            </p>
+            <p className="surface-panel-soft m-0 px-2 py-1.5 text-[0.74rem] text-(--text-muted)">
+              <strong className="text-(--text-main)">Reutilización:</strong> {patternPreview.reuse}
+            </p>
           </div>
-        ) : null}
+        </div>
 
         <div className="grid gap-2">
-          {pattern.requirements.length === 0 ? (
+          {pattern.needsReview ? (
+            <p className="surface-card-warning m-0 px-2 py-1.5 text-[0.76rem] text-(--warning)">
+              Este patrón viene de una versión anterior. Revisá sus matchers y condiciones antes de volver a calcular.
+            </p>
+          ) : null}
+
+          {pattern.conditions.length === 0 ? (
             <p className="surface-card p-2 text-[0.76rem] text-(--text-muted)">
               Esta {categorySingular} todavía no tiene condiciones.
             </p>
           ) : (
             <div className="grid gap-1.5">
-              {pattern.requirements.map((requirement, requirementIndex) => (
+              {pattern.conditions.map((requirement, requirementIndex) => (
                 <RequirementRow
                   key={requirement.id}
                   index={requirementIndex}
                   patternId={pattern.id}
                   requirement={requirement}
                   derivedMainCards={derivedMainCards}
-                  derivedGroups={derivedGroups}
                   actions={actions}
                 />
               ))}

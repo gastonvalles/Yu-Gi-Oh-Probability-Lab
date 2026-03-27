@@ -1,23 +1,36 @@
-import { getMonsterRequirementSourceLabel, isMonsterRequirementSource } from './card-attributes'
-import { resolveRequirementCardIds, type DerivedDeckGroup } from './deck-groups'
-import { normalizeHandPatternCategory } from './patterns'
+import { getMonsterRequirementSourceLabel, isMonsterPropertyMatcher } from './card-attributes'
+import {
+  getConditionSource,
+  getPatternMatchMode,
+  normalizeHandPatternCategory,
+  resolveConditionCardIds,
+  allowsSharedCards,
+} from './patterns'
+import {
+  getConditionCardIds,
+  getConditionGroupKey,
+} from './patterns'
+import {
+  getQualifiedDeckGroupLabel,
+  serializeGroupKey,
+  type DerivedDeckGroup,
+} from './deck-groups'
 import type {
-  CardAttribute,
   CardEntry,
-  CardGroupKey,
   HandPattern,
   HandPatternCategory,
+  PatternCondition,
   PatternMatchMode,
   RequirementKind,
   RequirementSource,
 } from '../types'
 
 export interface ResolvedRequirement<Key extends string | number> {
-  attribute: CardAttribute | null
+  id: string
   sourceLabel: string
   source: RequirementSource
   cardIds: string[]
-  count: number
+  quantity: number
   kind: RequirementKind
   distinct: boolean
   keys: Key[]
@@ -28,13 +41,24 @@ export interface ResolvedRequirement<Key extends string | number> {
 export interface ResolvedPattern<Key extends string | number> {
   id: string
   name: string
-  category: HandPatternCategory
+  kind: HandPatternCategory
   requirementLabel: string
   requirements: ResolvedRequirement<Key>[]
   possible: boolean
   requiredMatches: number
   matchMode: PatternMatchMode
   allowSharedCards: boolean
+}
+
+export interface RequirementMatchWitness<Key extends string | number> {
+  requirementId: string
+  sourceLabel: string
+  kind: RequirementKind
+  usage: Array<[Key, number]>
+}
+
+export interface PatternMatchWitness<Key extends string | number> {
+  matchedRequirements: RequirementMatchWitness<Key>[]
 }
 
 export interface CountOperations<Counts, Key extends string | number> {
@@ -48,31 +72,31 @@ interface PatternResolutionContext<Counts, Key extends string | number> {
   availableCounts: Counts
   cardById: Map<string, CardEntry>
   countOperations: CountOperations<Counts, Key>
-  groupsByKey: Map<CardGroupKey, DerivedDeckGroup>
+  groupsByKey: Map<string, DerivedDeckGroup>
   mapCardIdToKey: (cardId: string) => Key | null
 }
 
 export function getRequiredMatches(
-  pattern: Pick<HandPattern, 'matchMode' | 'minimumMatches' | 'requirements'>,
+  pattern: Pick<HandPattern, 'logic' | 'minimumConditionMatches' | 'conditions'>,
 ): number {
-  if (pattern.matchMode === 'any') {
-    return 1
+  const conditionCount = pattern.conditions.length
+
+  if (conditionCount === 0) {
+    return 0
   }
 
-  if (pattern.matchMode === 'all') {
-    return pattern.requirements.length
-  }
-
-  return Math.max(1, Math.min(pattern.minimumMatches, Math.max(pattern.requirements.length, 1)))
+  return pattern.logic === 'all'
+    ? conditionCount
+    : Math.max(1, Math.min(pattern.minimumConditionMatches, conditionCount))
 }
 
 export function resolvePattern<Counts, Key extends string | number>(
   pattern: HandPattern,
   context: PatternResolutionContext<Counts, Key>,
 ): ResolvedPattern<Key> {
-  const requirements = pattern.requirements.map<ResolvedRequirement<Key>>((requirement) => {
-    const uniqueCardIds = resolveRequirementCardIds(
-      requirement,
+  const requirements = pattern.conditions.map<ResolvedRequirement<Key>>((condition) => {
+    const uniqueCardIds = resolveConditionCardIds(
+      condition,
       context.groupsByKey,
       context.cardById.values(),
     )
@@ -88,27 +112,20 @@ export function resolvePattern<Counts, Key extends string | number>(
     const possible =
       keys.length === 0
         ? false
-        : requirement.kind === 'exclude'
+        : condition.kind === 'exclude'
           ? true
-        : requirement.distinct
-          ? distinctAvailable >= requirement.count
-          : totalCopies >= requirement.count
+        : condition.distinct
+          ? distinctAvailable >= condition.quantity
+          : totalCopies >= condition.quantity
 
     return {
-      sourceLabel:
-        requirement.source === 'group' && requirement.groupKey
-          ? context.groupsByKey.get(requirement.groupKey)?.label ?? 'Grupo eliminado'
-          : isMonsterRequirementSource(requirement.source)
-            ? getMonsterRequirementSourceLabel(requirement) ?? 'Filtro de monstruos'
-            : cards.length === 1
-              ? cards[0].name.trim()
-              : `(${cards.length > 0 ? cards.map((card) => card.name.trim()).join(' / ') : 'Pool vacía'})`,
-      attribute: requirement.attribute,
-      source: requirement.source,
+      id: condition.id,
+      sourceLabel: buildConditionSourceLabel(condition, cards, context.groupsByKey),
+      source: getConditionSource(condition),
       cardIds: uniqueCardIds,
-      count: requirement.count,
-      kind: requirement.kind,
-      distinct: requirement.distinct,
+      quantity: condition.quantity,
+      kind: condition.kind,
+      distinct: condition.distinct,
       keys,
       names: cards.map((card) => card.name.trim()),
       possible,
@@ -118,25 +135,25 @@ export function resolvePattern<Counts, Key extends string | number>(
   const possibleRequirementCount = getMatchedRequirementCount(
     requirements,
     context.availableCounts,
-    pattern.allowSharedCards,
+    allowsSharedCards(pattern),
     context.countOperations,
   )
 
   return {
     id: pattern.id,
     name: pattern.name.trim() || 'Patrón sin nombre',
-    category: normalizeHandPatternCategory(pattern.category),
+    kind: normalizeHandPatternCategory(pattern.kind),
     requirementLabel: buildPatternRequirementLabel(
-      pattern.matchMode,
+      getPatternMatchMode(pattern),
       requiredMatches,
       requirements,
-      pattern.allowSharedCards,
+      allowsSharedCards(pattern),
     ),
     requirements,
     possible: possibleRequirementCount >= requiredMatches,
     requiredMatches,
-    matchMode: pattern.matchMode,
-    allowSharedCards: pattern.allowSharedCards,
+    matchMode: getPatternMatchMode(pattern),
+    allowSharedCards: allowsSharedCards(pattern),
   }
 }
 
@@ -176,6 +193,48 @@ export function matchesResolvedPattern<Counts, Key extends string | number>(
   ) >= pattern.requiredMatches
 }
 
+export function getResolvedPatternWitness<Counts, Key extends string | number>(
+  pattern: Pick<ResolvedPattern<Key>, 'requirements' | 'allowSharedCards' | 'requiredMatches'>,
+  counts: Counts,
+  countOperations: CountOperations<Counts, Key>,
+): PatternMatchWitness<Key> | null {
+  const matchedExcludeRequirements = pattern.requirements.filter(
+    (requirement) =>
+      requirement.kind === 'exclude' && matchesRequirement(requirement, counts, countOperations),
+  )
+  const includeRequirements = pattern.requirements.filter((requirement) => requirement.kind === 'include')
+  const includeWitness = pattern.allowSharedCards || includeRequirements.length <= 1
+    ? buildSharedCardWitness(includeRequirements, counts, countOperations)
+    : buildDistinctCardWitness(includeRequirements, counts, countOperations)
+  const totalMatches = matchedExcludeRequirements.length + includeWitness.count
+
+  if (totalMatches < pattern.requiredMatches) {
+    return null
+  }
+
+  const matchedRequirementIds = new Set<string>([
+    ...matchedExcludeRequirements.map((requirement) => requirement.id),
+    ...includeWitness.assignments.keys(),
+  ])
+
+  return {
+    matchedRequirements: pattern.requirements.flatMap((requirement) => {
+      if (!matchedRequirementIds.has(requirement.id)) {
+        return []
+      }
+
+      return [
+        {
+          requirementId: requirement.id,
+          sourceLabel: requirement.sourceLabel,
+          kind: requirement.kind,
+          usage: includeWitness.assignments.get(requirement.id) ?? [],
+        },
+      ]
+    }),
+  }
+}
+
 export function getMatchedRequirementCount<Counts, Key extends string | number>(
   requirements: ResolvedRequirement<Key>[],
   counts: Counts,
@@ -206,32 +265,57 @@ export function getMatchedRequirementCount<Counts, Key extends string | number>(
   return excludeMatched + getMaxMatchedIncludeRequirements(includeRequirements, counts, countOperations)
 }
 
+function buildConditionSourceLabel(
+  condition: PatternCondition,
+  cards: CardEntry[],
+  groupsByKey: Map<string, DerivedDeckGroup>,
+): string {
+  const groupKey = getConditionGroupKey(condition)
+
+  if (groupKey) {
+    const group = groupsByKey.get(serializeGroupKey(groupKey))
+    return group ? getQualifiedDeckGroupLabel(group) : 'Grupo eliminado'
+  }
+
+  if (isMonsterPropertyMatcher(condition.matcher)) {
+    return getMonsterRequirementSourceLabel(condition.matcher) ?? 'Filtro de monstruos'
+  }
+
+  const cardIds = getConditionCardIds(condition)
+
+  if (cardIds.length === 1 && cards.length === 1) {
+    return cards[0].name.trim()
+  }
+
+  return `(${cards.length > 0 ? cards.map((card) => card.name.trim()).join(' / ') : 'Pool vacía'})`
+}
+
 function formatRequirementPhrase<Key extends string | number>(requirement: ResolvedRequirement<Key>): string {
-  if (isMonsterRequirementSource(requirement.source)) {
+  if (requirement.source !== 'cards' && requirement.source !== 'group') {
     return formatMonsterPropertyRequirementPhrase(requirement)
   }
 
   if (requirement.kind === 'exclude') {
     if (requirement.distinct) {
-      return requirement.count === 1
+      return requirement.quantity === 1
         ? `no abrís ningún nombre de ${requirement.sourceLabel}`
-        : `no abrís ${requirement.count} o más nombres distintos de ${requirement.sourceLabel}`
+        : `no abrís ${requirement.quantity} o más nombres distintos de ${requirement.sourceLabel}`
     }
 
-    return requirement.count === 1
+    return requirement.quantity === 1
       ? `no abrís ninguna copia de ${requirement.sourceLabel}`
-      : `no abrís ${requirement.count} o más copias de ${requirement.sourceLabel}`
+      : `no abrís ${requirement.quantity} o más copias de ${requirement.sourceLabel}`
   }
 
   if (requirement.distinct) {
-    return requirement.count === 1
+    return requirement.quantity === 1
       ? `abrís 1 nombre distinto de ${requirement.sourceLabel}`
-      : `abrís ${requirement.count} nombres distintos de ${requirement.sourceLabel}`
+      : `abrís ${requirement.quantity} nombres distintos de ${requirement.sourceLabel}`
   }
 
-  return requirement.count === 1
+  return requirement.quantity === 1
     ? `abrís 1 copia de ${requirement.sourceLabel}`
-    : `abrís ${requirement.count} copias de ${requirement.sourceLabel}`
+    : `abrís ${requirement.quantity} copias de ${requirement.sourceLabel}`
 }
 
 function formatMonsterPropertyRequirementPhrase<Key extends string | number>(
@@ -241,25 +325,25 @@ function formatMonsterPropertyRequirementPhrase<Key extends string | number>(
 
   if (requirement.kind === 'exclude') {
     if (requirement.distinct) {
-      return requirement.count === 1
+      return requirement.quantity === 1
         ? `no abrís ningún monstruo ${sourceLabel}`
-        : `no abrís ${requirement.count} o más nombres distintos de monstruos ${sourceLabel}`
+        : `no abrís ${requirement.quantity} o más nombres distintos de monstruos ${sourceLabel}`
     }
 
-    return requirement.count === 1
+    return requirement.quantity === 1
       ? `no abrís ningún monstruo ${sourceLabel}`
-      : `no abrís ${requirement.count} o más monstruos ${sourceLabel}`
+      : `no abrís ${requirement.quantity} o más monstruos ${sourceLabel}`
   }
 
   if (requirement.distinct) {
-    return requirement.count === 1
+    return requirement.quantity === 1
       ? `abrís 1 monstruo ${sourceLabel}`
-      : `abrís ${requirement.count} nombres distintos de monstruos ${sourceLabel}`
+      : `abrís ${requirement.quantity} nombres distintos de monstruos ${sourceLabel}`
   }
 
-  return requirement.count === 1
+  return requirement.quantity === 1
     ? `abrís 1 monstruo ${sourceLabel}`
-    : `abrís ${requirement.count} monstruos ${sourceLabel}`
+    : `abrís ${requirement.quantity} monstruos ${sourceLabel}`
 }
 
 function buildMatchPrefix(requirementLabels: string[], allowSharedCards: boolean): string {
@@ -289,10 +373,10 @@ function matchesRequirement<Counts, Key extends string | number>(
   )
 
   if (requirement.kind === 'exclude') {
-    return requirement.distinct ? distinctMatched < requirement.count : copiesMatched < requirement.count
+    return requirement.distinct ? distinctMatched < requirement.quantity : copiesMatched < requirement.quantity
   }
 
-  return requirement.distinct ? distinctMatched >= requirement.count : copiesMatched >= requirement.count
+  return requirement.distinct ? distinctMatched >= requirement.quantity : copiesMatched >= requirement.quantity
 }
 
 function getMaxMatchedIncludeRequirements<Counts, Key extends string | number>(
@@ -312,7 +396,7 @@ function getMaxMatchedIncludeRequirements<Counts, Key extends string | number>(
       return left.distinct ? -1 : 1
     }
 
-    return right.count - left.count
+    return right.quantity - left.quantity
   })
   const memo = new Map<string, number>()
 
@@ -355,7 +439,7 @@ function getRequirementUsages<Counts, Key extends string | number>(
   const candidateKeys = requirement.keys.filter((key) => countOperations.getCount(counts, key) > 0)
 
   if (requirement.distinct) {
-    if (candidateKeys.length < requirement.count) {
+    if (candidateKeys.length < requirement.quantity) {
       return []
     }
 
@@ -378,7 +462,7 @@ function getRequirementUsages<Counts, Key extends string | number>(
       }
     }
 
-    collectDistinct(0, requirement.count, [])
+    collectDistinct(0, requirement.quantity, [])
     return usages
   }
 
@@ -387,7 +471,7 @@ function getRequirementUsages<Counts, Key extends string | number>(
     0,
   )
 
-  if (totalAvailable < requirement.count) {
+  if (totalAvailable < requirement.quantity) {
     return []
   }
 
@@ -430,6 +514,95 @@ function getRequirementUsages<Counts, Key extends string | number>(
     }
   }
 
-  collectCopies(0, requirement.count, [])
+  collectCopies(0, requirement.quantity, [])
   return usages
+}
+
+function buildSharedCardWitness<Counts, Key extends string | number>(
+  requirements: ResolvedRequirement<Key>[],
+  counts: Counts,
+  countOperations: CountOperations<Counts, Key>,
+): { count: number; assignments: Map<string, Array<[Key, number]>> } {
+  const assignments = new Map<string, Array<[Key, number]>>()
+
+  for (const requirement of requirements) {
+    if (!matchesRequirement(requirement, counts, countOperations)) {
+      continue
+    }
+
+    const usage = getRequirementUsages(requirement, counts, countOperations)[0]
+
+    if (usage) {
+      assignments.set(requirement.id, usage)
+    }
+  }
+
+  return {
+    count: assignments.size,
+    assignments,
+  }
+}
+
+function buildDistinctCardWitness<Counts, Key extends string | number>(
+  requirements: ResolvedRequirement<Key>[],
+  counts: Counts,
+  countOperations: CountOperations<Counts, Key>,
+): { count: number; assignments: Map<string, Array<[Key, number]>> } {
+  const orderedRequirements = [...requirements].sort((left, right) => {
+    const leftAvailable = left.keys.length
+    const rightAvailable = right.keys.length
+
+    if (leftAvailable !== rightAvailable) {
+      return leftAvailable - rightAvailable
+    }
+
+    if (left.distinct !== right.distinct) {
+      return left.distinct ? -1 : 1
+    }
+
+    return right.quantity - left.quantity
+  })
+  let bestCount = 0
+  let bestAssignments = new Map<string, Array<[Key, number]>>()
+
+  const visit = (
+    index: number,
+    availableCounts: Counts,
+    currentAssignments: Map<string, Array<[Key, number]>>,
+  ): void => {
+    if (currentAssignments.size + (orderedRequirements.length - index) <= bestCount) {
+      return
+    }
+
+    if (index >= orderedRequirements.length) {
+      if (currentAssignments.size > bestCount) {
+        bestCount = currentAssignments.size
+        bestAssignments = new Map(
+          [...currentAssignments.entries()].map(([requirementId, usage]) => [requirementId, [...usage]]),
+        )
+      }
+      return
+    }
+
+    visit(index + 1, availableCounts, currentAssignments)
+
+    for (const usage of getRequirementUsages(orderedRequirements[index], availableCounts, countOperations)) {
+      const nextCounts = countOperations.cloneCounts(availableCounts)
+
+      for (const [keyToConsume, usedCopies] of usage) {
+        countOperations.consumeCount(nextCounts, keyToConsume, usedCopies)
+      }
+
+      currentAssignments.set(orderedRequirements[index].id, usage)
+      visit(index + 1, nextCounts, currentAssignments)
+      currentAssignments.delete(orderedRequirements[index].id)
+    }
+  }
+
+  visit(0, counts, new Map())
+
+  return {
+    count: bestCount,
+    assignments: bestAssignments,
+  }
 }

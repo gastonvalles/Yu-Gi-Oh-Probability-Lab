@@ -1,9 +1,39 @@
 import type { CardEntry } from '../types'
 
-export function countUnclassifiedCards(cards: CardEntry[]): number {
-  return cards.filter((card) => card.roles.length === 0).length
+export function isCardMissingOrigin(card: CardEntry): boolean {
+  return card.origin === null
 }
 
-export function isRoleStepComplete(cards: CardEntry[]): boolean {
+export function isCardMissingRoles(card: CardEntry): boolean {
+  return card.roles.length === 0
+}
+
+export function isCardPendingReview(card: CardEntry): boolean {
+  return card.needsReview === true && card.origin !== null && card.roles.length > 0
+}
+
+export function isCardFullyClassified(card: CardEntry): boolean {
+  return !isCardMissingOrigin(card) && !isCardMissingRoles(card) && !isCardPendingReview(card)
+}
+
+export function countCardsMissingOrigin(cards: CardEntry[]): number {
+  return cards.filter(isCardMissingOrigin).length
+}
+
+export function countCardsMissingRoles(cards: CardEntry[]): number {
+  return cards.filter(isCardMissingRoles).length
+}
+
+export function countCardsPendingReview(cards: CardEntry[]): number {
+  return cards.filter(isCardPendingReview).length
+}
+
+export function countUnclassifiedCards(cards: CardEntry[]): number {
+  return cards.filter((card) => !isCardFullyClassified(card)).length
+}
+
+export function isClassificationStepComplete(cards: CardEntry[]): boolean {
   return cards.length > 0 && countUnclassifiedCards(cards) === 0
 }
+
+export const isRoleStepComplete = isClassificationStepComplete

@@ -1,13 +1,15 @@
 # Yu-Gi-Oh! Probability Lab
 
 Deck builder visual + calculadora exacta de probabilidades para Yu-Gi-Oh!.
-La idea central es ayudar a entender deck building con un flujo simple: armás el deck, marcás roles, definís aperturas/problemas y medís consistencia.
+La idea central es ayudar a entender deck building con un flujo simple: armás el deck, clasificás cada carta por origen y función, definís aperturas/problemas y medís consistencia.
 
 ## Qué hace la app
 
 - Builder visual con búsqueda de cartas por YGOPRODeck.
 - Drag & drop entre Main, Extra y Side.
-- Roles por carta: starter, extender, brick, handtrap, boardbreaker, floodgate.
+- Clasificación por carta en dos ejes independientes:
+- `origin`: `engine`, `non_engine`, `hybrid`.
+- `roles`: `starter`, `extender`, `enabler`, `searcher`, `draw`, `combo_piece`, `payoff`, `recovery`, `handtrap`, `disruption`, `boardbreaker`, `floodgate`, `removal`, `brick`, `garnet`, `tech`.
 - Aperturas y Problemas para medir consistencia real.
 - Probabilidad exacta (enumeración combinatoria).
 - Práctica de manos para ver ejemplos concretos.
@@ -17,9 +19,23 @@ La idea central es ayudar a entender deck building con un flujo simple: armás e
 ## Flujo recomendado
 
 1. Armá tu deck en el builder.
-2. Marcá roles de cada carta.
+2. Definí el origen y los roles de cada carta.
 3. Definí aperturas y problemas.
 4. Leé estadísticas y probá manos.
+
+## Modelo de clasificación
+
+La app separa explícitamente dos dimensiones:
+
+- `origin`: de qué espacio del deck viene la carta.
+- `roles`: qué función táctica cumple dentro de la mano, la línea o el plan.
+
+Eso evita mezclar pertenencia con función. Ejemplo:
+
+- `origin: engine` + `roles: [starter, extender]`
+- `origin: non_engine` + `roles: [handtrap, disruption]`
+- `origin: engine` + `roles: [brick]`
+- `origin: hybrid` + `roles: [extender, boardbreaker]`
 
 ## Conceptos clave
 

@@ -1,17 +1,29 @@
-import { normalizeHandPatternCategory } from './patterns'
 import { buildGenesysCardInfo } from './genesys-format'
 import { parseCardAttribute } from './card-attributes'
+import {
+  createMatcherFromGroupKey,
+  createCardPoolMatcher,
+  normalizeHandPatternCategory,
+  normalizePatternLogic,
+  normalizeReusePolicy,
+} from './patterns'
+import {
+  normalizeCardOriginKey,
+  normalizeCardRoleKey,
+  parseStoredGroupKey,
+} from './deck-groups'
 import type {
   ApiCardReference,
-  CardGroupKey,
+  CardOrigin,
   CardRole,
   HandPattern,
   HandPatternCategory,
-  PatternMatchMode,
+  Matcher,
+  PatternCondition,
   RequirementKind,
   RequirementSource,
 } from '../types'
-import type { AppState, PortableConfig, PortableRequirement } from './model'
+import type { AppState, PortableCondition, PortableConfig } from './model'
 import { deriveMainDeckCardsFromZone } from './calculator-state'
 import {
   createId,
@@ -29,7 +41,7 @@ import {
 
 export function toPortableConfig(state: AppState): PortableConfig {
   return {
-    version: 12,
+    version: 15,
     mode: state.mode,
     handSize: state.handSize,
     deckFormat: state.deckFormat,
@@ -40,26 +52,38 @@ export function toPortableConfig(state: AppState): PortableConfig {
       main: state.deckBuilder.main.map((card) => ({
         name: card.name,
         apiCard: { ...card.apiCard },
+        origin: card.origin,
         roles: [...card.roles],
+        needsReview: card.needsReview === true,
       })),
       extra: state.deckBuilder.extra.map((card) => ({
         name: card.name,
         apiCard: { ...card.apiCard },
+        origin: card.origin,
         roles: [...card.roles],
+        needsReview: card.needsReview === true,
       })),
       side: state.deckBuilder.side.map((card) => ({
         name: card.name,
         apiCard: { ...card.apiCard },
+        origin: card.origin,
         roles: [...card.roles],
+        needsReview: card.needsReview === true,
       })),
     },
     patterns: state.patterns.map((pattern) => ({
       name: pattern.name,
-      category: normalizeHandPatternCategory(pattern.category),
-      matchMode: pattern.matchMode,
-      minimumMatches: pattern.minimumMatches,
-      allowSharedCards: pattern.allowSharedCards,
-      requirements: aggregateRequirementsForExport(pattern, state),
+      kind: pattern.kind,
+      logic: pattern.logic,
+      minimumConditionMatches: pattern.minimumConditionMatches,
+      reusePolicy: pattern.reusePolicy,
+      needsReview: pattern.needsReview === true,
+      conditions: pattern.conditions.map<PortableCondition>((condition) => ({
+        matcher: condition.matcher,
+        quantity: condition.quantity,
+        kind: condition.kind,
+        distinct: condition.distinct,
+      })),
     })),
   }
 }
@@ -70,6 +94,7 @@ export function fromPortableConfig(value: unknown): AppState {
   }
 
   const mode = parseMode(value.mode)
+  const configVersion = parseOptionalInteger(value.version, 0)
   const handSize = parseRequiredInteger(value.handSize, 'handSize')
   const deckFormat = parseDeckFormat(value.deckFormat)
   const patternsSeedVersion = parseOptionalInteger(value.patternsSeedVersion, 0)
@@ -96,87 +121,49 @@ export function fromPortableConfig(value: unknown): AppState {
     }
 
     const patternName = parseRequiredString(rawPattern.name, `patterns[${index}].name`)
-    const category = parsePatternCategory(rawPattern.category)
-    const matchMode: PatternMatchMode =
-      rawPattern.matchMode === 'all' || rawPattern.matchMode === 'any' || rawPattern.matchMode === 'at-least'
-        ? rawPattern.matchMode
-        : 'all'
-    const minimumMatches = parseOptionalInteger(rawPattern.minimumMatches, 1)
-    const allowSharedCards = rawPattern.allowSharedCards === true
-    const requirementsRaw = parseArray(rawPattern.requirements, `patterns[${index}].requirements`)
+    const kind = parsePatternKind(rawPattern.kind ?? rawPattern.category)
+    const { logic, minimumConditionMatches } = parsePatternLogicFields(rawPattern)
+    const reusePolicy = parsePatternReusePolicy(rawPattern)
+    const conditionsRaw = parseArray(
+      rawPattern.conditions ?? rawPattern.requirements,
+      `patterns[${index}].conditions`,
+    )
+    let needsReview = rawPattern.needsReview === true
 
-    const requirements = requirementsRaw.map((rawRequirement, requirementIndex) => {
-      if (!isRecord(rawRequirement)) {
-        throw new Error(`El requisito #${requirementIndex + 1} del patrón #${index + 1} es inválido.`)
+    const conditions = conditionsRaw.map<PatternCondition>((rawCondition, conditionIndex) => {
+      if (!isRecord(rawCondition)) {
+        throw new Error(`La condición #${conditionIndex + 1} del patrón #${index + 1} es inválida.`)
       }
 
-      const source: RequirementSource =
-        rawRequirement.source === 'group'
-          ? 'group'
-          : rawRequirement.source === 'attribute'
-            ? 'attribute'
-            : rawRequirement.source === 'level'
-              ? 'level'
-              : rawRequirement.source === 'type'
-                ? 'type'
-                : rawRequirement.source === 'atk'
-                  ? 'atk'
-                  : rawRequirement.source === 'def'
-                    ? 'def'
-            : 'cards'
-      const groupKey = parseOptionalGroupKey(rawRequirement.groupKey)
-      const attribute = parseCardAttribute(rawRequirement.attribute)
-      const level = parseNullableInteger(rawRequirement.level)
-      const monsterType = parseNullableString(rawRequirement.monsterType)
-      const atk = parseNullableInteger(rawRequirement.atk)
-      const def = parseNullableInteger(rawRequirement.def)
-      const cardNames =
-        source === 'group' ||
-        source === 'attribute' ||
-        source === 'level' ||
-        source === 'type' ||
-        source === 'atk' ||
-        source === 'def'
-          ? []
-          : parseRequirementCardNames(rawRequirement, `patterns[${index}].requirements[${requirementIndex}]`)
-      const cardIds = cardNames.map((cardName) => {
-        const cardId = cardIdsByName.get(normalizeName(cardName))
-
-        if (!cardId) {
-          throw new Error(`El patrón "${patternName}" referencia "${cardName}", pero no existe en el Main Deck.`)
-        }
-
-        return cardId
-      })
-      const kind: RequirementKind = rawRequirement.kind === 'exclude' ? 'exclude' : 'include'
+      const { matcher, needsReview: matcherNeedsReview } = parseConditionMatcher(
+        rawCondition,
+        cardIdsByName,
+        patternName,
+        configVersion,
+      )
+      needsReview = needsReview || matcherNeedsReview
 
       return {
         id: createId('req'),
-        source,
-        cardIds,
-        groupKey,
-        attribute,
-        level,
-        monsterType,
-        atk,
-        def,
-        count: parseRequiredInteger(
-          rawRequirement.count,
-          `patterns[${index}].requirements[${requirementIndex}].count`,
+        matcher,
+        quantity: parseRequiredInteger(
+          rawCondition.quantity ?? rawCondition.count,
+          `patterns[${index}].conditions[${conditionIndex}].quantity`,
         ),
-        kind,
-        distinct: rawRequirement.distinct === true,
+        kind: rawCondition.kind === 'exclude' ? 'exclude' : 'include',
+        distinct: rawCondition.distinct === true,
       }
     })
 
     return {
       id: createId('pattern'),
       name: patternName,
-      category,
-      matchMode,
-      minimumMatches,
-      allowSharedCards,
-      requirements,
+      kind,
+      logic,
+      minimumConditionMatches,
+      reusePolicy,
+      needsReview,
+      conditions,
     }
   })
 
@@ -200,12 +187,16 @@ function parseDeckZone(value: unknown, fieldName: string) {
     }
 
     const name = parseRequiredString(item.name, `${fieldName}[${index}].name`)
+    const { roles, needsReview: hasRoleReviewPending } = parseCardRoles(item.roles)
+    const { origin, needsReview: hasOriginReviewPending } = parseCardOrigin(item.origin)
 
     return {
       instanceId: createId('deck-card'),
       name,
       apiCard: parseApiCardReference(item.apiCard, `${fieldName}[${index}].apiCard`, name),
-      roles: parseCardRoles(item.roles),
+      origin,
+      roles,
+      needsReview: item.needsReview === true || hasRoleReviewPending || hasOriginReviewPending,
     }
   })
 }
@@ -270,7 +261,10 @@ function parseGenesysInfo(value: unknown, cardName: string): ApiCardReference['g
   }
 
   return {
-    points: typeof value.points === 'number' && Number.isInteger(value.points) ? value.points : buildGenesysCardInfo(cardName).points,
+    points:
+      typeof value.points === 'number' && Number.isInteger(value.points)
+        ? value.points
+        : buildGenesysCardInfo(cardName).points,
   }
 }
 
@@ -287,171 +281,240 @@ function parseOptionalInteger(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isInteger(value) ? value : fallback
 }
 
-function parseCardRoles(value: unknown): CardRole[] {
+function parseCardRoles(value: unknown): { roles: CardRole[]; needsReview: boolean } {
   if (!Array.isArray(value)) {
-    return []
+    return {
+      roles: [],
+      needsReview: false,
+    }
   }
 
-  return value.filter(isCardRole)
+  const roles: CardRole[] = []
+  let needsReview = false
+
+  for (const entry of value) {
+    const normalizedRole = normalizeCardRoleKey(entry)
+
+    if (!normalizedRole) {
+      needsReview = true
+      continue
+    }
+
+    if (!roles.includes(normalizedRole)) {
+      roles.push(normalizedRole)
+    }
+  }
+
+  return {
+    roles,
+    needsReview,
+  }
 }
 
-function isCardRole(value: unknown): value is CardRole {
-  return (
-    value === 'starter' ||
-    value === 'extender' ||
-    value === 'brick' ||
-    value === 'handtrap' ||
-    value === 'boardbreaker' ||
-    value === 'floodgate'
-  )
+function parseCardOrigin(value: unknown): { origin: CardOrigin | null; needsReview: boolean } {
+  const origin = normalizeCardOriginKey(value)
+
+  return {
+    origin,
+    needsReview: origin === null,
+  }
 }
 
-function parseOptionalGroupKey(value: unknown): CardGroupKey | null {
-  return value === 'starter' ||
-    value === 'extender' ||
-    value === 'brick' ||
-    value === 'handtrap' ||
-    value === 'boardbreaker' ||
-    value === 'floodgate' ||
-    value === 'engine' ||
-    value === 'non-engine'
-    ? value
-    : null
+function parsePatternKind(value: unknown): HandPatternCategory {
+  return normalizeHandPatternCategory(value as HandPatternCategory | 'good' | 'bad' | null | undefined)
 }
 
-function parsePatternCategory(value: unknown): HandPatternCategory {
-  return value === 'bad' ? 'bad' : 'good'
+function parsePatternLogicFields(
+  pattern: Record<string, unknown>,
+): Pick<HandPattern, 'logic' | 'minimumConditionMatches'> {
+  const legacyMatchMode = pattern.matchMode
+  const logic =
+    legacyMatchMode === 'all'
+      ? 'all'
+      : legacyMatchMode === 'any' || legacyMatchMode === 'at-least'
+        ? 'any'
+        : normalizePatternLogic(pattern.logic)
+
+  if (legacyMatchMode === 'all') {
+    return {
+      logic,
+      minimumConditionMatches: parseOptionalInteger(pattern.minimumConditionMatches ?? pattern.minimumMatches, 1),
+    }
+  }
+
+  if (legacyMatchMode === 'at-least') {
+    return {
+      logic: 'any',
+      minimumConditionMatches: Math.max(2, parseOptionalInteger(pattern.minimumMatches, 2)),
+    }
+  }
+
+  if (legacyMatchMode === 'any') {
+    return {
+      logic: 'any',
+      minimumConditionMatches: 1,
+    }
+  }
+
+  return {
+    logic,
+    minimumConditionMatches: parseOptionalInteger(pattern.minimumConditionMatches, 1),
+  }
 }
 
-function aggregateRequirementsForExport(pattern: HandPattern, state: AppState): PortableRequirement[] {
-  const cardNameById = new Map(
-    deriveMainDeckCardsFromZone(state.deckBuilder.main).map((card) => [card.id, card.name]),
-  )
+function parsePatternReusePolicy(pattern: Record<string, unknown>): HandPattern['reusePolicy'] {
+  if (typeof pattern.reusePolicy === 'string') {
+    return normalizeReusePolicy(pattern.reusePolicy)
+  }
 
-  return pattern.requirements.reduce<PortableRequirement[]>((exported, requirement) => {
-    if (requirement.source === 'group' && requirement.groupKey) {
-      exported.push({
-        cards: [],
-        source: 'group',
-        groupKey: requirement.groupKey,
-        attribute: null,
-        level: null,
-        monsterType: null,
-        atk: null,
-        def: null,
-        count: requirement.count,
-        kind: requirement.kind,
-        distinct: requirement.distinct,
-      })
-      return exported
+  return pattern.allowSharedCards === true ? 'allow' : 'forbid'
+}
+
+function parseConditionMatcher(
+  rawCondition: Record<string, unknown>,
+  cardIdsByName: Map<string, string>,
+  patternName: string,
+  configVersion: number,
+): { matcher: Matcher | null; needsReview: boolean } {
+  const directMatcher = parseMatcher(rawCondition.matcher)
+
+  if (directMatcher) {
+    return {
+      matcher: directMatcher,
+      needsReview: false,
+    }
+  }
+
+  const source = parseRequirementSource(rawCondition.source)
+
+  if (source === 'group') {
+    const parsedGroupKey = parseStoredGroupKey(rawCondition.groupKey)
+
+    return {
+      matcher: parsedGroupKey.groupKey ? createMatcherFromGroupKey(parsedGroupKey.groupKey) : null,
+      needsReview: parsedGroupKey.isLegacy || configVersion < 15,
+    }
+  }
+
+  if (source === 'attribute') {
+    return {
+      matcher: parseCardAttribute(rawCondition.attribute)
+        ? { type: 'attribute', value: parseCardAttribute(rawCondition.attribute)! }
+        : null,
+      needsReview: false,
+    }
+  }
+
+  if (source === 'level') {
+    const level = parseNullableInteger(rawCondition.level)
+    return {
+      matcher: level !== null ? { type: 'level', value: level } : null,
+      needsReview: false,
+    }
+  }
+
+  if (source === 'type') {
+    const monsterType = parseNullableString(rawCondition.monsterType)
+    return {
+      matcher: monsterType ? { type: 'monster_type', value: monsterType } : null,
+      needsReview: false,
+    }
+  }
+
+  if (source === 'atk') {
+    const atk = parseNullableInteger(rawCondition.atk)
+    return {
+      matcher: atk !== null ? { type: 'atk', value: atk } : null,
+      needsReview: false,
+    }
+  }
+
+  if (source === 'def') {
+    const def = parseNullableInteger(rawCondition.def)
+    return {
+      matcher: def !== null ? { type: 'def', value: def } : null,
+      needsReview: false,
+    }
+  }
+
+  const cardNames = parseRequirementCardNames(rawCondition, `${patternName}.cards`)
+  const cardIds = cardNames.map((cardName) => {
+    const cardId = cardIdsByName.get(normalizeName(cardName))
+
+    if (!cardId) {
+      throw new Error(`El patrón "${patternName}" referencia "${cardName}", pero no existe en el Main Deck.`)
     }
 
-    if (requirement.source === 'attribute' && requirement.attribute) {
-      exported.push({
-        cards: [],
-        source: 'attribute',
-        groupKey: null,
-        attribute: requirement.attribute,
-        level: null,
-        monsterType: null,
-        atk: null,
-        def: null,
-        count: requirement.count,
-        kind: requirement.kind,
-        distinct: requirement.distinct,
-      })
-      return exported
-    }
+    return cardId
+  })
 
-    if (requirement.source === 'level' && requirement.level !== null) {
-      exported.push({
-        cards: [],
-        source: 'level',
-        groupKey: null,
-        attribute: null,
-        level: requirement.level,
-        monsterType: null,
-        atk: null,
-        def: null,
-        count: requirement.count,
-        kind: requirement.kind,
-        distinct: requirement.distinct,
-      })
-      return exported
-    }
+  return {
+    matcher: createCardPoolMatcher(cardIds),
+    needsReview: false,
+  }
+}
 
-    if (requirement.source === 'type' && requirement.monsterType) {
-      exported.push({
-        cards: [],
-        source: 'type',
-        groupKey: null,
-        attribute: null,
-        level: null,
-        monsterType: requirement.monsterType,
-        atk: null,
-        def: null,
-        count: requirement.count,
-        kind: requirement.kind,
-        distinct: requirement.distinct,
-      })
-      return exported
-    }
+function parseRequirementSource(value: unknown): RequirementSource {
+  return value === 'group'
+    ? 'group'
+    : value === 'attribute'
+      ? 'attribute'
+      : value === 'level'
+        ? 'level'
+        : value === 'type'
+          ? 'type'
+          : value === 'atk'
+            ? 'atk'
+            : value === 'def'
+              ? 'def'
+              : 'cards'
+}
 
-    if (requirement.source === 'atk' && requirement.atk !== null) {
-      exported.push({
-        cards: [],
-        source: 'atk',
-        groupKey: null,
-        attribute: null,
-        level: null,
-        monsterType: null,
-        atk: requirement.atk,
-        def: null,
-        count: requirement.count,
-        kind: requirement.kind,
-        distinct: requirement.distinct,
-      })
-      return exported
-    }
+function parseMatcher(value: unknown): Matcher | null {
+  if (!isRecord(value) || typeof value.type !== 'string') {
+    return null
+  }
 
-    if (requirement.source === 'def' && requirement.def !== null) {
-      exported.push({
-        cards: [],
-        source: 'def',
-        groupKey: null,
-        attribute: null,
-        level: null,
-        monsterType: null,
-        atk: null,
-        def: requirement.def,
-        count: requirement.count,
-        kind: requirement.kind,
-        distinct: requirement.distinct,
-      })
-      return exported
-    }
+  if (value.type === 'origin') {
+    const origin = normalizeCardOriginKey(value.value)
+    return origin ? { type: 'origin', value: origin } : null
+  }
 
-    const cardNames = requirement.cardIds
-      .map((cardId) => cardNameById.get(cardId))
-      .filter((cardName): cardName is string => Boolean(cardName))
+  if (value.type === 'role') {
+    const role = normalizeCardRoleKey(value.value)
+    return role ? { type: 'role', value: role } : null
+  }
 
-    if (cardNames.length === 0) {
-      return exported
-    }
+  if (value.type === 'card' && typeof value.value === 'string') {
+    return { type: 'card', value: value.value }
+  }
 
-    exported.push({
-      cards: cardNames,
-      source: 'cards',
-      groupKey: null,
-      attribute: null,
-      level: null,
-      monsterType: null,
-      atk: null,
-      def: null,
-      count: requirement.count,
-      kind: requirement.kind,
-      distinct: requirement.distinct,
-    })
-    return exported
-  }, [])
+  if (value.type === 'card_pool' && Array.isArray(value.value)) {
+    return createCardPoolMatcher(
+      value.value.filter((entry): entry is string => typeof entry === 'string'),
+    )
+  }
+
+  if (value.type === 'attribute') {
+    const attribute = parseCardAttribute(value.value)
+    return attribute ? { type: 'attribute', value: attribute } : null
+  }
+
+  if (value.type === 'level' && typeof value.value === 'number' && Number.isInteger(value.value)) {
+    return { type: 'level', value: value.value }
+  }
+
+  if (value.type === 'monster_type' && typeof value.value === 'string') {
+    return { type: 'monster_type', value: value.value }
+  }
+
+  if (value.type === 'atk' && typeof value.value === 'number' && Number.isInteger(value.value)) {
+    return { type: 'atk', value: value.value }
+  }
+
+  if (value.type === 'def' && typeof value.value === 'number' && Number.isInteger(value.value)) {
+    return { type: 'def', value: value.value }
+  }
+
+  return null
 }

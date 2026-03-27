@@ -6,6 +6,7 @@ import type {
   CardGroupKey,
   HandPattern,
   HandPatternCategory,
+  Matcher,
   PatternMatchMode,
   RequirementKind,
   RequirementSource,
@@ -23,6 +24,7 @@ import {
   updatePatternName,
   updateRequirementCount,
   updateRequirementDistinct,
+  updateRequirementMatcher,
   updateRequirementAtk,
   updateRequirementAttribute,
   updateRequirementDef,
@@ -91,6 +93,12 @@ interface RequirementCountPayload {
   patternId: string
   requirementId: string
   value: number
+}
+
+interface RequirementMatcherPayload {
+  patternId: string
+  requirementId: string
+  value: Matcher | null
 }
 
 interface RequirementSourcePayload {
@@ -247,6 +255,14 @@ const patternsSlice = createSlice({
         action.payload.value,
       )
     },
+    setRequirementMatcher(state, action: PayloadAction<RequirementMatcherPayload>) {
+      state.patterns = updateRequirementMatcher(
+        state.patterns,
+        action.payload.patternId,
+        action.payload.requirementId,
+        action.payload.value,
+      )
+    },
     setRequirementDistinct(state, action: PayloadAction<RequirementDistinctPayload>) {
       state.patterns = updateRequirementDistinct(
         state.patterns,
@@ -352,6 +368,7 @@ export const {
   setPatternMinimumMatches,
   setPatternName,
   setRequirementCount,
+  setRequirementMatcher,
   setRequirementDistinct,
   setRequirementAtk,
   setRequirementAttribute,

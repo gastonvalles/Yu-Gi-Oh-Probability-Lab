@@ -1,10 +1,10 @@
-import { buildDerivedDeckGroupMap, resolveRequirementCardIds } from './app/deck-groups'
+import { buildDerivedDeckGroupMap } from './app/deck-groups'
 import {
   matchesResolvedPattern,
   resolvePattern,
   type CountOperations,
 } from './app/pattern-engine'
-import { normalizeHandPatternCategory } from './app/patterns'
+import { normalizeHandPatternCategory, resolveConditionCardIds } from './app/patterns'
 import type {
   CalculationSummary,
   CalculatorState,
@@ -32,8 +32,8 @@ export function buildCalculationSummary(state: CalculatorState): CalculationSumm
   const referencedCardIds = new Set<string>()
 
   for (const pattern of state.patterns) {
-    for (const requirement of pattern.requirements) {
-      for (const cardId of resolveRequirementCardIds(requirement, groupsByKey, state.cards)) {
+    for (const condition of pattern.conditions) {
+      for (const cardId of resolveConditionCardIds(condition, groupsByKey, state.cards)) {
         referencedCardIds.add(cardId)
       }
     }
@@ -93,7 +93,7 @@ export function buildCalculationSummary(state: CalculatorState): CalculationSumm
         if (matchesResolvedPattern(pattern, counts, ARRAY_COUNT_OPERATIONS)) {
           patternHands[index] += weight
 
-          if (normalizeHandPatternCategory(pattern.category) === 'bad') {
+          if (normalizeHandPatternCategory(pattern.kind) === 'problem') {
             matchedBadPattern = true
           } else {
             matchedGoodPattern = true
@@ -118,7 +118,7 @@ export function buildCalculationSummary(state: CalculatorState): CalculationSumm
   const patternResults: PatternProbability[] = resolvedPatterns.map((pattern, index) => ({
     patternId: pattern.id,
     name: pattern.name,
-    category: normalizeHandPatternCategory(pattern.category),
+    kind: normalizeHandPatternCategory(pattern.kind),
     requirementLabel: pattern.requirementLabel,
     probability: totalHands === 0 ? 0 : patternHands[index] / totalHands,
     matchingHands: patternHands[index],

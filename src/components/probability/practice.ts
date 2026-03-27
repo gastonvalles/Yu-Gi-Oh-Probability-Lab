@@ -1,10 +1,14 @@
 import type { DerivedDeckGroup } from '../../app/deck-groups'
 import {
+  getMatchedRequirementCount,
+  getResolvedPatternWitness,
   matchesResolvedPattern,
   resolvePattern,
   type CountOperations,
+  type ResolvedPattern,
+  type ResolvedRequirement,
 } from '../../app/pattern-engine'
-import type { ApiCardReference, CardEntry, CardGroupKey, HandPattern, HandPatternCategory } from '../../types'
+import type { ApiCardReference, CardEntry, HandPattern, HandPatternCategory } from '../../types'
 
 const MAP_COUNT_OPERATIONS: CountOperations<Map<string, number>, string> = {
   cloneCounts: (counts) => new Map(counts),
@@ -34,8 +38,28 @@ export interface PracticeHandState {
 export interface PracticeHandMatch {
   patternId: string
   name: string
-  category: HandPatternCategory
+  kind: HandPatternCategory
   requirementLabel: string
+  assignments: PracticeHandRequirementAssignment[]
+}
+
+export interface PracticeHandRequirementAssignment {
+  requirementId: string
+  sourceLabel: string
+  kind: 'include' | 'exclude'
+  cards: Array<{
+    name: string
+    copies: number
+  }>
+}
+
+export interface PracticeHandNearMiss {
+  patternId: string
+  name: string
+  kind: HandPatternCategory
+  requirementLabel: string
+  missingConditions: number
+  notes: string[]
 }
 
 export function buildPracticeDeck(cards: CardEntry[]): PracticeHandCard[] {
@@ -91,8 +115,13 @@ export function evaluatePracticeHand(
   hand: PracticeHandCard[],
   patterns: HandPattern[],
   derivedMainCards: CardEntry[],
-  groupsByKey: Map<CardGroupKey, DerivedDeckGroup>,
-): { matches: PracticeHandMatch[]; openingMatches: PracticeHandMatch[]; problemMatches: PracticeHandMatch[] } {
+  groupsByKey: Map<string, DerivedDeckGroup>,
+): {
+  matches: PracticeHandMatch[]
+  openingMatches: PracticeHandMatch[]
+  problemMatches: PracticeHandMatch[]
+  openingNearMisses: PracticeHandNearMiss[]
+} {
   const counts = new Map<string, number>()
   const cardById = new Map(derivedMainCards.map((card) => [card.id, card]))
   const availableCounts = new Map(derivedMainCards.map((card) => [card.id, card.copies]))
@@ -116,19 +145,142 @@ export function evaluatePracticeHand(
       return []
     }
 
+    const witness = getResolvedPatternWitness(pattern, counts, MAP_COUNT_OPERATIONS)
+
     return [
       {
         patternId: pattern.id,
         name: pattern.name,
-        category: pattern.category,
+        kind: pattern.kind,
         requirementLabel: pattern.requirementLabel,
+        assignments:
+          witness?.matchedRequirements.map((requirement) => ({
+            requirementId: requirement.requirementId,
+            sourceLabel: requirement.sourceLabel,
+            kind: requirement.kind,
+            cards: requirement.usage
+              .map(([cardId, copies]) => ({
+                name: cardById.get(cardId)?.name.trim() ?? 'Carta eliminada',
+                copies,
+              }))
+              .filter((entry) => entry.copies > 0),
+          })) ?? [],
       },
     ]
   })
+  const openingNearMisses = resolvedPatterns.flatMap<PracticeHandNearMiss>((pattern) => {
+    if (pattern.kind !== 'opening' || matchesResolvedPattern(pattern, counts, MAP_COUNT_OPERATIONS)) {
+      return []
+    }
+
+    const nearMiss = buildPracticeNearMiss(pattern, counts)
+
+    return nearMiss ? [nearMiss] : []
+  })
+    .sort((left, right) => {
+      if (left.missingConditions !== right.missingConditions) {
+        return left.missingConditions - right.missingConditions
+      }
+
+      return left.name.localeCompare(right.name)
+    })
 
   return {
     matches,
-    openingMatches: matches.filter((match) => match.category === 'good'),
-    problemMatches: matches.filter((match) => match.category === 'bad'),
+    openingMatches: matches.filter((match) => match.kind === 'opening'),
+    problemMatches: matches.filter((match) => match.kind === 'problem'),
+    openingNearMisses,
   }
+}
+
+function buildPracticeNearMiss(
+  pattern: ResolvedPattern<string>,
+  counts: Map<string, number>,
+): PracticeHandNearMiss | null {
+  const individuallyMatchedRequirements = pattern.requirements.filter((requirement) =>
+    isRequirementMatchedIndividually(requirement, counts),
+  )
+  const matchedRequirementCount = getMatchedRequirementCount(
+    pattern.requirements,
+    counts,
+    pattern.allowSharedCards,
+    MAP_COUNT_OPERATIONS,
+  )
+  const missingConditions = Math.max(1, pattern.requiredMatches - matchedRequirementCount)
+  const unmetRequirements = pattern.requirements
+    .filter((requirement) => !isRequirementMatchedIndividually(requirement, counts))
+    .map((requirement) => describeRequirementGap(requirement, counts))
+    .sort((left, right) => left.distance - right.distance)
+
+  const notes =
+    !pattern.allowSharedCards && individuallyMatchedRequirements.length >= pattern.requiredMatches
+      ? [
+          'Las condiciones compiten por la misma carta. Hace falta otra carta que cubra una de ellas sin reutilizar.',
+        ]
+      : []
+
+  const neededNotes = pattern.matchMode === 'all'
+    ? unmetRequirements
+    : unmetRequirements.slice(0, Math.max(missingConditions, 1))
+
+  const mergedNotes = [
+    ...notes,
+    ...neededNotes.map((entry) => entry.summary),
+  ]
+
+  if (mergedNotes.length === 0) {
+    return null
+  }
+
+  return {
+    patternId: pattern.id,
+    name: pattern.name,
+    kind: pattern.kind,
+    requirementLabel: pattern.requirementLabel,
+    missingConditions,
+    notes: mergedNotes,
+  }
+}
+
+function isRequirementMatchedIndividually(
+  requirement: ResolvedRequirement<string>,
+  counts: Map<string, number>,
+): boolean {
+  return getMatchedRequirementCount([requirement], counts, true, MAP_COUNT_OPERATIONS) > 0
+}
+
+function describeRequirementGap(
+  requirement: ResolvedRequirement<string>,
+  counts: Map<string, number>,
+): { distance: number; summary: string } {
+  const currentAmount = getRequirementCurrentAmount(requirement, counts)
+
+  if (requirement.kind === 'exclude') {
+    return {
+      distance: Math.max(1, currentAmount - requirement.quantity + 1),
+      summary: `Bloquea: ${requirement.sourceLabel} ya aparece ${currentAmount} vez${currentAmount === 1 ? '' : 'veces'} en la mano.`,
+    }
+  }
+
+  const missingAmount = Math.max(1, requirement.quantity - currentAmount)
+  const label =
+    requirement.quantity === 1 && missingAmount === 1
+      ? requirement.sourceLabel
+      : `${requirement.sourceLabel} (${missingAmount} más)`
+
+  return {
+    distance: missingAmount,
+    summary: `Falta ${label}.`,
+  }
+}
+
+function getRequirementCurrentAmount(
+  requirement: ResolvedRequirement<string>,
+  counts: Map<string, number>,
+): number {
+  if (requirement.distinct) {
+    return requirement.keys.reduce((total, key) => total + ((counts.get(key) ?? 0) > 0 ? 1 : 0), 0)
+  }
+
+  return requirement.keys.reduce((total, key) => total + (counts.get(key) ?? 0), 0)
 }

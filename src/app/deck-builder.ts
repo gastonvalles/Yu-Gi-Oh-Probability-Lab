@@ -1,4 +1,4 @@
-import type { ApiCardReference, CardRole, DeckFormat } from '../types'
+import type { ApiCardReference, CardOrigin, CardRole, DeckFormat } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 import { getCardCopyLimit } from './deck-format'
 import { EDISON_FORMAT_LABEL, getEdisonCardStatus, isEdisonCardInPool } from './edison-format'
@@ -36,7 +36,9 @@ export function addSearchResultToZone(
     instanceId: createId('deck-card'),
     name: searchResult.name,
     apiCard: cloneApiCardReference(searchResult),
+    origin: null,
     roles: [],
+    needsReview: false,
   })
 
   return nextDeckBuilder
@@ -197,6 +199,36 @@ export function toggleRoleForCard(
       card.roles = shouldAddRole
         ? [...new Set([...card.roles, role])]
         : card.roles.filter((entry) => entry !== role)
+      card.needsReview = false
+    }
+
+    hasAnyChange = true
+  }
+
+  return hasAnyChange ? nextDeckBuilder : deckBuilder
+}
+
+export function setOriginForCard(
+  deckBuilder: DeckBuilderState,
+  ygoprodeckId: number,
+  origin: CardOrigin,
+): DeckBuilderState {
+  const nextDeckBuilder = cloneDeckBuilder(deckBuilder)
+  const zones: DeckZone[] = ['main', 'extra', 'side']
+  let hasAnyChange = false
+
+  for (const zone of zones) {
+    const matchingCards = nextDeckBuilder[zone].filter((card) => card.apiCard.ygoprodeckId === ygoprodeckId)
+
+    if (matchingCards.length === 0) {
+      continue
+    }
+
+    const nextOrigin = matchingCards.every((card) => card.origin === origin) ? null : origin
+
+    for (const card of matchingCards) {
+      card.origin = nextOrigin
+      card.needsReview = false
     }
 
     hasAnyChange = true
@@ -289,7 +321,9 @@ function cloneDeckCard(card: DeckCardInstance): DeckCardInstance {
     instanceId: card.instanceId,
     name: card.name,
     apiCard: card.apiCard,
+    origin: card.origin,
     roles: [...card.roles],
+    needsReview: card.needsReview === true,
   }
 }
 

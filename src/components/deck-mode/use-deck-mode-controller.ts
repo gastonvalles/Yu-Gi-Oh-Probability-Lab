@@ -15,6 +15,7 @@ import {
   clearDeckZone,
   moveDeckCardInBuilder,
   removeDeckCardFromBuilder,
+  setDeckCardOrigin,
   setDeckName,
   setIsEditingDeck,
   toggleDeckCardRole,
@@ -32,12 +33,12 @@ import { useDeckPointerDrag } from '../../app/use-deck-pointer-drag'
 import { useHoverPreview } from '../../app/use-hover-preview'
 import { usePatternEditorActions } from '../../app/use-pattern-editor-actions'
 import { usePatternMaintenance } from '../../app/use-pattern-maintenance'
-import { isRoleStepComplete } from '../../app/role-step'
+import { isClassificationStepComplete } from '../../app/role-step'
 import { useToastMessage } from '../../app/use-toast-message'
 import { HOVER_PREVIEW_DELAY_MS } from '../../app/model'
-import type { ApiCardReference, CardRole } from '../../types'
+import type { ApiCardReference, CardOrigin, CardRole } from '../../types'
 
-const DEFAULT_PATTERNS_VERSION = 3
+const DEFAULT_PATTERNS_VERSION = 4
 
 export function useDeckModeController() {
   const dispatch = useAppDispatch()
@@ -126,7 +127,7 @@ export function useDeckModeController() {
     [deckBuilder.main],
   )
   const hasCompletedRoleStep = useMemo(
-    () => isRoleStepComplete(derivedMainCards),
+    () => isClassificationStepComplete(derivedMainCards),
     [derivedMainCards],
   )
   const formatIssues = useMemo(
@@ -142,7 +143,10 @@ export function useDeckModeController() {
     [derivedMainCards],
   )
   const defaultGroupKey = useMemo(
-    () => derivedGroups.find((group) => group.copies > 0)?.key ?? null,
+    () =>
+      derivedGroups.find((group) => group.kind === 'role' && group.copies > 0)?.key ??
+      derivedGroups.find((group) => group.kind === 'origin' && group.copies > 0)?.key ??
+      null,
     [derivedGroups],
   )
   const defaultAttribute = useMemo(
@@ -259,6 +263,13 @@ export function useDeckModeController() {
   const handleToggleRole = useCallback(
     (ygoprodeckId: number, role: CardRole) => {
       dispatch(toggleDeckCardRole({ ygoprodeckId, role }))
+    },
+    [dispatch],
+  )
+
+  const handleSetOrigin = useCallback(
+    (ygoprodeckId: number, origin: CardOrigin) => {
+      dispatch(setDeckCardOrigin({ ygoprodeckId, origin }))
     },
     [dispatch],
   )
@@ -399,6 +410,7 @@ export function useDeckModeController() {
     },
     roles: {
       cards: derivedMainCards,
+      onSetOrigin: handleSetOrigin,
       onToggleRole: handleToggleRole,
     },
   }

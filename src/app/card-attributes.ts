@@ -1,4 +1,4 @@
-import type { CardAttribute, CardEntry, PatternRequirement, RequirementSource } from '../types'
+import type { CardAttribute, CardEntry, Matcher, RequirementSource } from '../types'
 
 export interface DerivedDeckAttribute {
   key: CardAttribute
@@ -16,9 +16,13 @@ export interface DerivedDeckValueOption<T extends number | string> {
   copies: number
 }
 
-type MonsterPropertyRequirement = Pick<
-  PatternRequirement,
-  'source' | 'attribute' | 'level' | 'monsterType' | 'atk' | 'def'
+type MonsterPropertyMatcher = Extract<
+  Matcher,
+  | { type: 'attribute' }
+  | { type: 'level' }
+  | { type: 'monster_type' }
+  | { type: 'atk' }
+  | { type: 'def' }
 >
 
 export const CARD_ATTRIBUTE_DEFINITIONS: Array<{
@@ -62,39 +66,49 @@ export function isMonsterRequirementSource(
   )
 }
 
-export function getMonsterRequirementSourceLabel(requirement: MonsterPropertyRequirement): string | null {
-  switch (requirement.source) {
+export function isMonsterPropertyMatcher(matcher: Matcher | null): matcher is MonsterPropertyMatcher {
+  return (
+    matcher?.type === 'attribute' ||
+    matcher?.type === 'level' ||
+    matcher?.type === 'monster_type' ||
+    matcher?.type === 'atk' ||
+    matcher?.type === 'def'
+  )
+}
+
+export function getMonsterRequirementSourceLabel(matcher: Matcher | null): string | null {
+  switch (matcher?.type) {
     case 'attribute':
-      return requirement.attribute ? getCardAttributeLabel(requirement.attribute) : null
+      return getCardAttributeLabel(matcher.value)
     case 'level':
-      return requirement.level !== null ? `de Nivel ${requirement.level}` : null
-    case 'type':
-      return requirement.monsterType ? `de tipo ${requirement.monsterType}` : null
+      return `de Nivel ${matcher.value}`
+    case 'monster_type':
+      return `de tipo ${matcher.value}`
     case 'atk':
-      return requirement.atk !== null ? `con ${requirement.atk} ATK` : null
+      return `con ${matcher.value} ATK`
     case 'def':
-      return requirement.def !== null ? `con ${requirement.def} DEF` : null
+      return `con ${matcher.value} DEF`
     default:
       return null
   }
 }
 
-export function matchesMonsterRequirementCard(card: CardEntry, requirement: MonsterPropertyRequirement): boolean {
+export function matchesMonsterRequirementCard(card: CardEntry, matcher: Matcher | null): boolean {
   if (!isMonsterCard(card)) {
     return false
   }
 
-  switch (requirement.source) {
+  switch (matcher?.type) {
     case 'attribute':
-      return requirement.attribute !== null && card.apiCard?.attribute === requirement.attribute
+      return card.apiCard?.attribute === matcher.value
     case 'level':
-      return requirement.level !== null && card.apiCard?.level === requirement.level
-    case 'type':
-      return requirement.monsterType !== null && card.apiCard?.race === requirement.monsterType
+      return card.apiCard?.level === matcher.value
+    case 'monster_type':
+      return card.apiCard?.race === matcher.value
     case 'atk':
-      return requirement.atk !== null && parseCombatStat(card.apiCard?.atk ?? null) === requirement.atk
+      return parseCombatStat(card.apiCard?.atk ?? null) === matcher.value
     case 'def':
-      return requirement.def !== null && parseCombatStat(card.apiCard?.def ?? null) === requirement.def
+      return parseCombatStat(card.apiCard?.def ?? null) === matcher.value
     default:
       return false
   }
@@ -102,14 +116,12 @@ export function matchesMonsterRequirementCard(card: CardEntry, requirement: Mons
 
 export function buildDerivedDeckAttributes(cards: CardEntry[]): DerivedDeckAttribute[] {
   return CARD_ATTRIBUTE_DEFINITIONS.map((definition) => {
-    const matchingCards = cards.filter((card) => matchesMonsterRequirementCard(card, {
-      source: 'attribute',
-      attribute: definition.key,
-      level: null,
-      monsterType: null,
-      atk: null,
-      def: null,
-    }))
+    const matchingCards = cards.filter((card) =>
+      matchesMonsterRequirementCard(card, {
+        type: 'attribute',
+        value: definition.key,
+      }),
+    )
 
     return {
       key: definition.key,

@@ -1,13 +1,46 @@
 export type CardSource = 'manual' | 'ygoprodeck'
 export type DeckFormat = 'unlimited' | 'tcg' | 'ocg' | 'goat' | 'edison' | 'genesys'
 export type BanlistStatus = 'forbidden' | 'limited' | 'semi-limited' | 'unlimited'
-export type CardRole = 'starter' | 'extender' | 'brick' | 'handtrap' | 'boardbreaker' | 'floodgate'
-export type CardGroupKey = CardRole | 'engine' | 'non-engine'
+export type CardOrigin = 'engine' | 'non_engine' | 'hybrid'
+export type CardRole =
+  | 'starter'
+  | 'extender'
+  | 'enabler'
+  | 'handtrap'
+  | 'disruption'
+  | 'boardbreaker'
+  | 'floodgate'
+  | 'removal'
+  | 'searcher'
+  | 'draw'
+  | 'recovery'
+  | 'combo_piece'
+  | 'payoff'
+  | 'brick'
+  | 'garnet'
+  | 'tech'
+export type GroupKey =
+  | { type: 'origin'; value: CardOrigin }
+  | { type: 'role'; value: CardRole }
+export type CardGroupKey = GroupKey
 export type CardAttribute = 'DARK' | 'DIVINE' | 'EARTH' | 'FIRE' | 'LIGHT' | 'WATER' | 'WIND'
+export type PatternKind = 'opening' | 'problem'
+export type PatternLogic = 'all' | 'any'
+export type ReusePolicy = 'allow' | 'forbid'
 export type PatternMatchMode = 'all' | 'any' | 'at-least'
-export type HandPatternCategory = 'good' | 'bad'
+export type HandPatternCategory = PatternKind
 export type RequirementKind = 'include' | 'exclude'
 export type RequirementSource = 'cards' | 'group' | 'attribute' | 'level' | 'type' | 'atk' | 'def'
+export type Matcher =
+  | { type: 'origin'; value: CardOrigin }
+  | { type: 'role'; value: CardRole }
+  | { type: 'card'; value: string }
+  | { type: 'card_pool'; value: string[] }
+  | { type: 'attribute'; value: CardAttribute }
+  | { type: 'level'; value: number }
+  | { type: 'monster_type'; value: string }
+  | { type: 'atk'; value: number }
+  | { type: 'def'; value: number }
 
 export interface CardBanlistInfo {
   tcg: BanlistStatus | null
@@ -44,33 +77,32 @@ export interface CardEntry {
   copies: number
   source: CardSource
   apiCard: ApiCardReference | null
+  origin: CardOrigin | null
   roles: CardRole[]
+  needsReview: boolean
 }
 
-export interface PatternRequirement {
+export interface PatternCondition {
   id: string
-  source: RequirementSource
-  cardIds: string[]
-  groupKey: CardGroupKey | null
-  attribute: CardAttribute | null
-  level: number | null
-  monsterType: string | null
-  atk: number | null
-  def: number | null
-  count: number
+  matcher: Matcher | null
+  quantity: number
   kind: RequirementKind
   distinct: boolean
 }
 
-export interface HandPattern {
+export interface Pattern {
   id: string
   name: string
-  category: HandPatternCategory
-  matchMode: PatternMatchMode
-  minimumMatches: number
-  allowSharedCards: boolean
-  requirements: PatternRequirement[]
+  kind: PatternKind
+  logic: PatternLogic
+  minimumConditionMatches: number
+  reusePolicy: ReusePolicy
+  needsReview: boolean
+  conditions: PatternCondition[]
 }
+
+export type PatternRequirement = PatternCondition
+export type HandPattern = Pattern
 
 export interface CalculatorState {
   deckSize: number
@@ -87,7 +119,7 @@ export interface ValidationIssue {
 export interface PatternProbability {
   patternId: string
   name: string
-  category: HandPatternCategory
+  kind: PatternKind
   requirementLabel: string
   probability: number
   matchingHands: number

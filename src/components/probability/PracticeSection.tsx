@@ -1,39 +1,40 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 
-import { buildDerivedDeckGroupMap, CARD_ROLE_DEFINITIONS } from '../../app/deck-groups'
-import { normalizeHandPatternCategory } from '../../app/patterns'
+import {
+  buildDerivedDeckGroupMap,
+  CARD_ROLE_DEFINITIONS,
+  createRoleGroupKey,
+  getDeckGroupTheme,
+} from '../../app/deck-groups'
 import { formatInteger } from '../../app/utils'
 import type { CardEntry, CardRole, HandPattern } from '../../types'
 import { CardArt } from '../CardArt'
 import { Button } from '../ui/Button'
-import { buildPracticeDeck, drawNextCard, drawRandomPracticeHand, evaluatePracticeHand, type PracticeHandState } from './practice'
+import {
+  buildPracticeDeck,
+  drawNextCard,
+  drawRandomPracticeHand,
+  evaluatePracticeHand,
+  type PracticeHandMatch,
+  type PracticeHandNearMiss,
+  type PracticeHandState,
+} from './practice'
 
 interface PracticeSectionProps {
   handSize: number
   derivedMainCards: CardEntry[]
   patterns: HandPattern[]
+  hasCompletedClassification: boolean
+  missingOriginCount: number
+  missingRoleCount: number
+  pendingReviewCount: number
+  reviewPendingPatternCount: number
 }
 
 type PracticeVerdict = 'clean' | 'bad' | 'mixed' | 'neutral'
 
-interface PracticeMatchSummary {
-  patternId: HandPattern['id']
-  name: string
-  requirementLabel: string
-  category: HandPattern['category']
-}
-
-const ROLE_THEME: Record<CardRole, { color: string; rgb: string }> = {
-  starter: { color: 'var(--starter)', rgb: 'var(--starter-rgb)' },
-  extender: { color: 'var(--extender)', rgb: 'var(--extender-rgb)' },
-  brick: { color: 'var(--brick)', rgb: 'var(--brick-rgb)' },
-  handtrap: { color: 'var(--handtrap)', rgb: 'var(--handtrap-rgb)' },
-  boardbreaker: { color: 'var(--boardbreaker)', rgb: 'var(--boardbreaker-rgb)' },
-  floodgate: { color: 'var(--floodgate)', rgb: 'var(--floodgate-rgb)' },
-}
-
 function getRoleStyle(role: CardRole): CSSProperties {
-  const theme = ROLE_THEME[role]
+  const theme = getDeckGroupTheme(createRoleGroupKey(role))
 
   return {
     '--role-color': theme.color,
@@ -139,25 +140,62 @@ function getPracticeVerdictDescription(
   return 'Esta mano no entra ni en tus aperturas ni en tus problemas.'
 }
 
+function formatPracticeAssignmentCards(
+  cards: Array<{
+    name: string
+    copies: number
+  }>,
+): string {
+  return cards
+    .map((card) => `${card.name}${card.copies > 1 ? ` x${formatInteger(card.copies)}` : ''}`)
+    .join(', ')
+}
+
 export function PracticeSection({
   handSize,
   derivedMainCards,
   patterns,
+  hasCompletedClassification,
+  missingOriginCount,
+  missingRoleCount,
+  pendingReviewCount,
+  reviewPendingPatternCount,
 }: PracticeSectionProps) {
   const practiceDeck = useMemo(() => buildPracticeDeck(derivedMainCards), [derivedMainCards])
   const groupsByKey = useMemo(() => buildDerivedDeckGroupMap(derivedMainCards), [derivedMainCards])
   const [practiceHand, setPracticeHand] = useState<PracticeHandState | null>(null)
-  const practiceResult = useMemo(
-    () => evaluatePracticeHand(practiceHand?.hand ?? [], patterns, derivedMainCards, groupsByKey),
-    [practiceHand, patterns, derivedMainCards, groupsByKey],
-  )
   const practiceDeckCount = practiceDeck.length
   const canDrawOpeningHand = practiceDeck.length >= handSize
   const canDrawNextCard = practiceHand !== null && practiceHand.remainingDeck.length > 0
   const missingPracticeCards = Math.max(0, handSize - practiceDeckCount)
   const isEmptyPracticeDeck = practiceDeckCount === 0
+  const practiceBlockedMessage =
+    !hasCompletedClassification
+      ? missingOriginCount > 0
+        ? 'Hay cartas sin clasificar (origen). Revisá el Paso 2 antes de probar manos.'
+        : missingRoleCount > 0
+          ? 'Hay cartas sin clasificar (roles). Revisá el Paso 2 antes de probar manos.'
+          : pendingReviewCount > 0
+            ? 'Hay cartas pendientes de revisión. Cerrá el Paso 2 antes de probar manos.'
+            : 'Todavía faltan clasificaciones por cerrar antes de probar manos.'
+      : reviewPendingPatternCount > 0
+        ? `Tenés ${formatInteger(reviewPendingPatternCount)} patrón${reviewPendingPatternCount === 1 ? '' : 'es'} heredado${reviewPendingPatternCount === 1 ? '' : 's'} pendiente${reviewPendingPatternCount === 1 ? '' : 's'} de revisión.`
+        : null
+  const practiceResult = useMemo(
+    () =>
+      practiceBlockedMessage
+        ? {
+            matches: [],
+            openingMatches: [],
+            problemMatches: [],
+            openingNearMisses: [],
+          }
+        : evaluatePracticeHand(practiceHand?.hand ?? [], patterns, derivedMainCards, groupsByKey),
+    [practiceBlockedMessage, practiceHand, patterns, derivedMainCards, groupsByKey],
+  )
   const openingMatches = practiceResult.openingMatches
   const problemMatches = practiceResult.problemMatches
+  const openingNearMisses = practiceResult.openingNearMisses
   const pairedMatchRows = useMemo(
     () =>
       Array.from({ length: Math.max(openingMatches.length, problemMatches.length) }, (_, index) => ({
@@ -183,13 +221,13 @@ export function PracticeSection({
       const copies = practiceHand.hand.reduce((total, drawnCard) => {
         const matchingCard = cardById.get(drawnCard.cardId)
 
-        return total + (matchingCard?.roles.includes(definition.key) ? 1 : 0)
+        return total + (matchingCard?.roles.includes(definition.key.value) ? 1 : 0)
       }, 0)
 
       return copies > 0
         ? [
             {
-              key: definition.key,
+              key: definition.key.value,
               label: definition.label,
               copies,
             },
@@ -229,6 +267,10 @@ export function PracticeSection({
       {isEmptyPracticeDeck ? (
         <p className="surface-card m-0 p-2.5 text-[0.8rem] text-(--text-muted)">
           Cargá cartas en el Main Deck para habilitar la práctica. Cuando llegues a {formatInteger(handSize)}, vas a poder robar manos y ver aperturas y problemas en vivo.
+        </p>
+      ) : practiceBlockedMessage ? (
+        <p className="surface-card-warning m-0 p-2.5 text-[0.8rem] text-(--warning)">
+          {practiceBlockedMessage}
         </p>
       ) : !canDrawOpeningHand ? (
         <p className="surface-card-warning m-0 p-2.5 text-[0.8rem] text-(--warning)">
@@ -392,6 +434,18 @@ export function PracticeSection({
                       </div>
                     ) : null}
 
+                    {openingMatches.length === 0 && openingNearMisses.length > 0 ? (
+                      <div className="grid gap-1.5">
+                        <PracticeMatchHeader
+                          title="Lo que le faltó a la mano para abrir"
+                          count={openingNearMisses.length}
+                        />
+                        {openingNearMisses.slice(0, 3).map((nearMiss) => (
+                          <PracticeNearMissCard key={nearMiss.patternId} nearMiss={nearMiss} />
+                        ))}
+                      </div>
+                    ) : null}
+
                     {problemMatches.length > 0 ? (
                       <div className="grid gap-1.5">
                         <PracticeMatchHeader
@@ -440,8 +494,32 @@ export function PracticeSection({
                         </div>
                       ))}
                     </div>
+
+                    {openingMatches.length === 0 && openingNearMisses.length > 0 ? (
+                      <div className="grid gap-2">
+                        <PracticeMatchHeader
+                          title="Lo que le faltó a la mano para abrir"
+                          count={openingNearMisses.length}
+                        />
+                        {openingNearMisses.slice(0, 3).map((nearMiss) => (
+                          <PracticeNearMissCard key={nearMiss.patternId} nearMiss={nearMiss} />
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 </>
+              ) : openingNearMisses.length > 0 ? (
+                <div className="grid gap-2.5">
+                  <PracticeMatchHeader
+                    title="Lo que le faltó a la mano para abrir"
+                    count={openingNearMisses.length}
+                  />
+                  <div className="grid gap-2">
+                    {openingNearMisses.slice(0, 3).map((nearMiss) => (
+                      <PracticeNearMissCard key={nearMiss.patternId} nearMiss={nearMiss} />
+                    ))}
+                  </div>
+                </div>
               ) : (
                 <p className="surface-card m-0 px-2.5 py-2 text-[0.78rem] text-(--text-muted)">
                   Esta mano no disparó aperturas ni problemas. Queda como referencia neutra para seguir probando.
@@ -474,7 +552,7 @@ function PracticeMatchCard({
   match,
   fillHeight = false,
 }: {
-  match: PracticeMatchSummary
+  match: PracticeHandMatch
   fillHeight?: boolean
 }) {
   return (
@@ -482,19 +560,72 @@ function PracticeMatchCard({
       className={[
         'px-2.5 py-2',
         fillHeight ? 'h-full' : '',
-        getPracticeMatchCardClass(match.category),
+        getPracticeMatchCardClass(match.kind),
       ].join(' ')}
     >
       <strong className="block text-[0.9rem] text-(--text-main)">{match.name}</strong>
       <small className="app-muted mt-[0.22rem] block text-[0.72rem] leading-[1.16]">
         {match.requirementLabel}
       </small>
+      {match.assignments.length > 0 ? (
+        <div className="mt-2 grid gap-1">
+          <small className="app-muted text-[0.68rem] uppercase tracking-widest">Asignación</small>
+          <div className="grid gap-1">
+            {match.assignments.map((assignment) => (
+              <span
+                key={assignment.requirementId}
+                className="surface-card inline-flex items-start gap-1.5 px-2 py-1 text-[0.72rem] text-(--text-main)"
+              >
+                <strong className="shrink-0 font-semibold">
+                  {assignment.sourceLabel}
+                </strong>
+                <span className="text-(--text-muted)">
+                  {assignment.kind === 'exclude'
+                    ? 'sin cartas en la mano'
+                    : assignment.cards.length > 0
+                      ? formatPracticeAssignmentCards(assignment.cards)
+                      : 'sin asignación visible'}
+                </span>
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </article>
   )
 }
 
-function getPracticeMatchCardClass(category: HandPattern['category']): string {
-  return normalizeHandPatternCategory(category) === 'good'
+function PracticeNearMissCard({ nearMiss }: { nearMiss: PracticeHandNearMiss }) {
+  return (
+    <article className="surface-card grid gap-2 px-2.5 py-2">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <strong className="block text-[0.88rem] text-(--text-main)">{nearMiss.name}</strong>
+          <small className="app-muted mt-[0.22rem] block text-[0.72rem] leading-[1.16]">
+            {nearMiss.requirementLabel}
+          </small>
+        </div>
+        <span className="app-chip shrink-0 px-2 py-0.5 text-[0.68rem]">
+          Falta {formatInteger(nearMiss.missingConditions)}
+        </span>
+      </div>
+
+      <div className="grid gap-1">
+        {nearMiss.notes.map((note, index) => (
+          <p
+            key={`${nearMiss.patternId}-note-${index}`}
+            className="surface-panel-soft m-0 px-2 py-1.5 text-[0.74rem] leading-[1.15] text-(--text-muted)"
+          >
+            {note}
+          </p>
+        ))}
+      </div>
+    </article>
+  )
+}
+
+function getPracticeMatchCardClass(kind: HandPattern['kind']): string {
+  return kind === 'opening'
     ? 'surface-card-success'
     : 'surface-card-danger'
 }

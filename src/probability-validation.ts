@@ -1,8 +1,16 @@
-import { buildDerivedDeckGroupMap, resolveRequirementCardIds } from './app/deck-groups'
-import { getMonsterRequirementSourceLabel, isMonsterRequirementSource } from './app/card-attributes'
+import { buildDerivedDeckGroupMap } from './app/deck-groups'
+import { getMonsterRequirementSourceLabel, isMonsterPropertyMatcher } from './app/card-attributes'
 import { getRequiredMatches } from './app/pattern-engine'
-import { normalizeHandPatternCategory } from './app/patterns'
-import { countUnclassifiedCards } from './app/role-step'
+import {
+  countCardsMissingOrigin,
+  countCardsMissingRoles,
+  countCardsPendingReview,
+} from './app/role-step'
+import {
+  getConditionSource,
+  normalizeHandPatternCategory,
+  resolveConditionCardIds,
+} from './app/patterns'
 import type { CardEntry, CalculatorState, ValidationIssue } from './types'
 
 export function validateCalculationState(state: CalculatorState): ValidationIssue[] {
@@ -49,12 +57,28 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
       message: 'Agregá al menos una carta o grupo de cartas.',
     })
   } else {
-    const unclassifiedCardCount = countUnclassifiedCards(state.cards)
+    const missingOriginCount = countCardsMissingOrigin(state.cards)
+    const missingRoleCount = countCardsMissingRoles(state.cards)
+    const pendingReviewCount = countCardsPendingReview(state.cards)
 
-    if (unclassifiedCardCount > 0) {
+    if (missingOriginCount > 0) {
       issues.push({
         level: 'error',
-        message: `Terminá de marcar roles en el paso 2. Faltan ${unclassifiedCardCount} carta${unclassifiedCardCount === 1 ? '' : 's'} sin clasificar en el Main Deck.`,
+        message: 'Hay cartas sin clasificar (origen). Revisá el Paso 2.',
+      })
+    }
+
+    if (missingRoleCount > 0) {
+      issues.push({
+        level: 'error',
+        message: 'Hay cartas sin clasificar (roles). Revisá el Paso 2.',
+      })
+    }
+
+    if (pendingReviewCount > 0) {
+      issues.push({
+        level: 'error',
+        message: 'Hay cartas con clasificación pendiente de revisión. Revisá el Paso 2.',
       })
     }
   }
@@ -117,7 +141,15 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
   const groupsByKey = buildDerivedDeckGroupMap(state.cards)
 
   for (const pattern of state.patterns) {
-    if (pattern.requirements.length === 0) {
+    if (pattern.needsReview) {
+      issues.push({
+        level: 'error',
+        message: `El patrón "${pattern.name || 'sin nombre'}" viene de una versión anterior y necesita revisión manual antes de calcular.`,
+      })
+      continue
+    }
+
+    if (pattern.conditions.length === 0) {
       issues.push({
         level: 'error',
         message: `El patrón "${pattern.name || 'sin nombre'}" no tiene requisitos.`,
@@ -127,17 +159,18 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
 
     const requiredMatches = getRequiredMatches(pattern)
 
-    if (requiredMatches > pattern.requirements.length) {
+    if (requiredMatches > pattern.conditions.length) {
       issues.push({
         level: 'error',
         message: `El patrón "${pattern.name || 'sin nombre'}" pide más requisitos de los que existen.`,
       })
     }
 
-    for (const requirement of pattern.requirements) {
+    for (const requirement of pattern.conditions) {
       const patternName = pattern.name || 'sin nombre'
+      const source = getConditionSource(requirement)
 
-      if (requirement.source === 'group' && !requirement.groupKey) {
+      if (source === 'group' && !requirement.matcher) {
         issues.push({
           level: 'error',
           message: `El patrón "${patternName}" tiene una condición sin grupo seleccionado.`,
@@ -145,7 +178,7 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
         continue
       }
 
-      if (isMonsterRequirementSource(requirement.source) && !getMonsterRequirementSourceLabel(requirement)) {
+      if (isMonsterPropertyMatcher(requirement.matcher) && !getMonsterRequirementSourceLabel(requirement.matcher)) {
         issues.push({
           level: 'error',
           message: `El patrón "${patternName}" tiene una condición de monstruo sin valor seleccionado.`,
@@ -153,19 +186,19 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
         continue
       }
 
-      const uniqueCardIds = resolveRequirementCardIds(requirement, groupsByKey, state.cards)
+      const uniqueCardIds = resolveConditionCardIds(requirement, groupsByKey, state.cards)
 
       if (uniqueCardIds.length === 0) {
         issues.push(
-          requirement.source === 'group'
+          source === 'group'
             ? {
                 level: 'warning',
-                message: `El patrón "${patternName}" usa un grupo vacío. Marcá roles en el deck o elegí otro grupo.`,
+                message: `El patrón "${patternName}" usa un grupo vacío. Ajustá origen/roles en el deck o elegí otro grupo.`,
               }
-            : isMonsterRequirementSource(requirement.source)
+            : isMonsterPropertyMatcher(requirement.matcher)
               ? {
                   level: 'warning',
-                  message: `El patrón "${patternName}" no encuentra monstruos ${getMonsterRequirementSourceLabel(requirement) ?? 'con ese filtro'} en el Main Deck.`,
+                  message: `El patrón "${patternName}" no encuentra monstruos ${getMonsterRequirementSourceLabel(requirement.matcher) ?? 'con ese filtro'} en el Main Deck.`,
                 }
             : {
                 level: 'error',
@@ -175,7 +208,7 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
         continue
       }
 
-      if (!Number.isInteger(requirement.count) || requirement.count < 1) {
+      if (!Number.isInteger(requirement.quantity) || requirement.quantity < 1) {
         issues.push({
           level: 'error',
           message: `El patrón "${patternName}" tiene una cantidad inválida en uno de sus requisitos.`,
@@ -199,21 +232,21 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
         const distinctAvailable = cards.filter((card) => card.copies > 0).length
 
         if (requirement.distinct) {
-          if (distinctAvailable < requirement.count) {
+          if (distinctAvailable < requirement.quantity) {
             issues.push({
               level: 'warning',
-              message: `El patrón "${patternName}" pide ${requirement.count} nombre${requirement.count === 1 ? '' : 's'} distinto${requirement.count === 1 ? '' : 's'} en una pool que solo tiene ${distinctAvailable}.`,
+              message: `El patrón "${patternName}" pide ${requirement.quantity} nombre${requirement.quantity === 1 ? '' : 's'} distinto${requirement.quantity === 1 ? '' : 's'} en una pool que solo tiene ${distinctAvailable}.`,
             })
           }
-        } else if (totalCopies < requirement.count) {
+        } else if (totalCopies < requirement.quantity) {
           issues.push({
             level: 'warning',
-            message: `El patrón "${patternName}" pide ${requirement.count} copias en una pool que solo suma ${totalCopies}.`,
+            message: `El patrón "${patternName}" pide ${requirement.quantity} copias en una pool que solo suma ${totalCopies}.`,
           })
         }
       }
 
-      if (requirement.count > state.handSize && requirement.kind === 'include') {
+      if (requirement.quantity > state.handSize && requirement.kind === 'include') {
         issues.push({
           level: 'warning',
           message: `El patrón "${patternName}" exige más cartas de las que entran en la mano inicial.`,

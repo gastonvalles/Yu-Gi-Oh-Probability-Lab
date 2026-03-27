@@ -1,13 +1,14 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
 
 import type { DeckBuilderState, DeckZone } from './model'
-import type { CardRole, DeckFormat } from '../types'
+import type { CardOrigin, CardRole, DeckFormat } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 import {
   addSearchResultToDefaultZone,
   addSearchResultToZone,
   moveDeckCard,
   removeDeckCard,
+  setOriginForCard,
   toggleRoleForCard,
 } from './deck-builder'
 
@@ -33,6 +34,11 @@ interface MoveDeckCardPayload {
 
 interface ToggleDeckCardRolePayload {
   role: CardRole
+  ygoprodeckId: number
+}
+
+interface SetDeckCardOriginPayload {
+  origin: CardOrigin
   ygoprodeckId: number
 }
 
@@ -89,6 +95,9 @@ const deckBuilderSlice = createSlice({
     setDeckName(state, action: PayloadAction<string>) {
       state.deckName = action.payload
     },
+    setDeckCardOrigin(state, action: PayloadAction<SetDeckCardOriginPayload>) {
+      return setOriginForCard(state, action.payload.ygoprodeckId, action.payload.origin)
+    },
     toggleDeckCardRole(state, action: PayloadAction<ToggleDeckCardRolePayload>) {
       return toggleRoleForCard(state, action.payload.ygoprodeckId, action.payload.role)
     },
@@ -105,6 +114,7 @@ export const {
   moveDeckCardInBuilder,
   removeDeckCardFromBuilder,
   replaceDeckBuilder,
+  setDeckCardOrigin,
   setDeckName,
   setIsEditingDeck,
   toggleDeckCardRole,

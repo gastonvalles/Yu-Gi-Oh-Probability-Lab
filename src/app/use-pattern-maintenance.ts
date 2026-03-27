@@ -1,7 +1,13 @@
 import { useEffect } from 'react'
 
 import { buildDefaultPatterns } from './pattern-defaults'
-import { getPatternDefinitionKey, normalizeHandPatternCategory } from './patterns'
+import {
+  buildReusePolicy,
+  getPatternDefinitionKey,
+  getPatternMatchMode,
+  normalizeHandPatternCategory,
+  resolvePatternLogic,
+} from './patterns'
 import type { AppState } from './model'
 import { useAppDispatch } from './store-hooks'
 import { completePatternSeeding, replacePatterns } from './patterns-slice'
@@ -38,17 +44,19 @@ export function usePatternMaintenance({
 
   useEffect(() => {
     const needsPatternMigration = state.patterns.some(
-      (pattern) => pattern.category !== 'good' && pattern.category !== 'bad',
+      (pattern) => pattern.kind !== 'opening' && pattern.kind !== 'problem',
     )
 
     const needsMatchModeMigration = state.patterns.some(
       (pattern) =>
-        (pattern.requirements.length <= 1 && pattern.matchMode !== 'all') ||
-        (pattern.matchMode === 'at-least' && pattern.requirements.length > 1 && pattern.minimumMatches < 2),
+        (pattern.conditions.length <= 1 && getPatternMatchMode(pattern) !== 'all') ||
+        (getPatternMatchMode(pattern) === 'at-least' &&
+          pattern.conditions.length > 1 &&
+          pattern.minimumConditionMatches < 2),
     )
 
     const needsSharedCardsMigration = state.patterns.some(
-      (pattern) => typeof pattern.allowSharedCards !== 'boolean',
+      (pattern) => pattern.reusePolicy !== 'allow' && pattern.reusePolicy !== 'forbid',
     )
 
     if (!needsPatternMigration && !needsMatchModeMigration && !needsSharedCardsMigration) {
@@ -57,20 +65,13 @@ export function usePatternMaintenance({
 
     dispatch(replacePatterns(state.patterns.map((pattern) => ({
         ...pattern,
-        category: normalizeHandPatternCategory(pattern.category),
-        matchMode:
-          pattern.requirements.length <= 1
-            ? 'all'
-            : pattern.matchMode,
-        allowSharedCards: pattern.allowSharedCards === true,
-        minimumMatches:
-          pattern.requirements.length <= 1
-            ? 1
-            : pattern.matchMode === 'all'
-              ? pattern.requirements.length
-              : pattern.matchMode === 'any'
-                ? 1
-                : Math.max(2, Math.min(pattern.minimumMatches, pattern.requirements.length)),
+        kind: normalizeHandPatternCategory(pattern.kind),
+        ...resolvePatternLogic(
+          pattern.conditions.length <= 1 ? 'all' : getPatternMatchMode(pattern),
+          pattern.conditions.length,
+          pattern.minimumConditionMatches,
+        ),
+        reusePolicy: buildReusePolicy(pattern.reusePolicy === 'allow'),
       }))))
   }, [dispatch, state.patterns])
 }

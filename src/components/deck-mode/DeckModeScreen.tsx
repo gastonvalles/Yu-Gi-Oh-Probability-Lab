@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { countUnclassifiedCards, isRoleStepComplete } from '../../app/role-step'
+import { countUnclassifiedCards, isClassificationStepComplete } from '../../app/role-step'
 import { formatInteger } from '../../app/utils'
 import { DeckRolesPanel } from '../DeckRolesPanel'
 import { ExportDeckPanel } from '../ExportDeckPanel'
@@ -50,7 +50,7 @@ export function DeckModeScreen() {
   const roleCards = controller.roles.cards
   const unclassifiedCardCount = useMemo(() => countUnclassifiedCards(roleCards), [roleCards])
   const classifiedCardCount = roleCards.length - unclassifiedCardCount
-  const hasCompletedRoleStep = useMemo(() => isRoleStepComplete(roleCards), [roleCards])
+  const hasCompletedRoleStep = useMemo(() => isClassificationStepComplete(roleCards), [roleCards])
   const patternCount = controller.probability.patterns.length
   const recommendedStep = useMemo(
     () => getRecommendedStep(mainDeckCount, hasCompletedRoleStep, patternCount),
@@ -129,7 +129,7 @@ export function DeckModeScreen() {
         key: 'categorization',
         step: '2',
         title: 'Categorization',
-        description: 'Asignación de roles reales sin tocar el deck builder.',
+        description: 'Separá origen y función sin tocar el deck builder.',
         metric:
           roleCards.length > 0
             ? `${formatInteger(classifiedCardCount)} / ${formatInteger(roleCards.length)}`
@@ -139,7 +139,7 @@ export function DeckModeScreen() {
             ? 'Necesita cartas en Main.'
             : hasCompletedRoleStep
               ? 'Todo clasificado.'
-              : `${formatInteger(unclassifiedCardCount)} sin rol.`,
+              : `${formatInteger(unclassifiedCardCount)} sin cerrar.`,
         tone:
           roleCards.length === 0
             ? 'pending'
@@ -160,7 +160,7 @@ export function DeckModeScreen() {
           ? patternCount > 0
             ? 'Listo para medir.'
             : 'Definí aperturas.'
-          : 'Completá roles primero.',
+          : 'Completá la categorización primero.',
         tone: patternCount > 0 ? 'complete' : hasCompletedRoleStep ? 'progress' : 'pending',
       },
       {
