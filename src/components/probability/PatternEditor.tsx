@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { normalizeHandPatternCategory } from '../../app/patterns'
+import { countUnclassifiedCards, isRoleStepComplete } from '../../app/role-step'
 import { formatInteger } from '../../app/utils'
 import type { DerivedDeckGroup } from '../../app/deck-groups'
 import type { CardEntry, HandPattern, HandPatternCategory } from '../../types'
@@ -29,13 +30,14 @@ export function PatternEditor({
     () => derivedMainCards.reduce((total, card) => total + card.copies, 0),
     [derivedMainCards],
   )
-  const classifiedCardCount = useMemo(
-    () => derivedMainCards.filter((card) => card.roles.length > 0).length,
+  const unclassifiedCardCount = useMemo(
+    () => countUnclassifiedCards(derivedMainCards),
     [derivedMainCards],
   )
-  const unclassifiedCardCount = Math.max(0, derivedMainCards.length - classifiedCardCount)
-  const hasCompletedRoleStep =
-    derivedMainCards.length > 0 && classifiedCardCount === derivedMainCards.length
+  const hasCompletedRoleStep = useMemo(
+    () => isRoleStepComplete(derivedMainCards),
+    [derivedMainCards],
+  )
   const openingCount = useMemo(
     () => patterns.filter((pattern) => normalizeHandPatternCategory(pattern.category) === 'good').length,
     [patterns],

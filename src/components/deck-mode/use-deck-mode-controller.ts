@@ -32,6 +32,7 @@ import { useDeckPointerDrag } from '../../app/use-deck-pointer-drag'
 import { useHoverPreview } from '../../app/use-hover-preview'
 import { usePatternEditorActions } from '../../app/use-pattern-editor-actions'
 import { usePatternMaintenance } from '../../app/use-pattern-maintenance'
+import { isRoleStepComplete } from '../../app/role-step'
 import { useToastMessage } from '../../app/use-toast-message'
 import { HOVER_PREVIEW_DELAY_MS } from '../../app/model'
 import type { ApiCardReference, CardRole } from '../../types'
@@ -124,12 +125,10 @@ export function useDeckModeController() {
     () => deriveMainDeckCardsFromZone(deckBuilder.main),
     [deckBuilder.main],
   )
-  const classifiedCardCount = useMemo(
-    () => derivedMainCards.filter((card) => card.roles.length > 0).length,
+  const hasCompletedRoleStep = useMemo(
+    () => isRoleStepComplete(derivedMainCards),
     [derivedMainCards],
   )
-  const hasCompletedRoleStep =
-    derivedMainCards.length > 0 && classifiedCardCount === derivedMainCards.length
   const formatIssues = useMemo(
     () => buildDeckFormatIssues(deckBuilder, settings.deckFormat),
     [deckBuilder, settings.deckFormat],
@@ -336,7 +335,6 @@ export function useDeckModeController() {
       deckBuilder,
       deckFormat: settings.deckFormat,
       formatIssues,
-      mode: settings.mode,
       query: apiSearch.query,
       status: apiSearch.status,
       visibleSearchResults,

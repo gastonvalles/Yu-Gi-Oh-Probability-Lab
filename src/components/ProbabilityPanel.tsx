@@ -1,9 +1,11 @@
-import { useDeferredValue, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { buildCalculatorState } from '../app/calculator-state'
 import type { CalculatorMode } from '../app/model'
+import { countUnclassifiedCards, isRoleStepComplete } from '../app/role-step'
 import { calculateProbabilities } from '../probability'
 import type {
+  CalculationOutput,
   CardEntry,
   HandPattern,
 } from '../types'
@@ -26,6 +28,12 @@ interface ProbabilityPanelProps {
   isEditingDeck: boolean
 }
 
+const IDLE_CALCULATION_RESULT: CalculationOutput = {
+  issues: [],
+  blockingIssues: [],
+  summary: null,
+}
+
 export function ProbabilityPanel({
   handSize,
   mode: _mode,
@@ -41,24 +49,26 @@ export function ProbabilityPanel({
     () => derivedMainCards.reduce((total, card) => total + card.copies, 0),
     [derivedMainCards],
   )
-  const deferredDerivedMainCards = useDeferredValue(derivedMainCards)
-  const deferredPatterns = useDeferredValue(patterns)
-  const deferredIsEditingDeck = useDeferredValue(isEditingDeck)
+  const unclassifiedCardCount = useMemo(
+    () => countUnclassifiedCards(derivedMainCards),
+    [derivedMainCards],
+  )
+  const hasCompletedRoleStep = useMemo(
+    () => isRoleStepComplete(derivedMainCards),
+    [derivedMainCards],
+  )
   const result = useMemo(() => {
-    if (deferredIsEditingDeck) {
-      return {
-        issues: [],
-        blockingIssues: [],
-        summary: null,
-      }
+    if (isEditingDeck || !hasCompletedRoleStep) {
+      return IDLE_CALCULATION_RESULT
     }
+
     return calculateProbabilities(
-      buildCalculatorState(deferredDerivedMainCards, {
+      buildCalculatorState(derivedMainCards, {
         handSize,
-        patterns: deferredPatterns,
+        patterns,
       }),
     )
-  }, [deferredDerivedMainCards, handSize, deferredPatterns, deferredIsEditingDeck])
+  }, [derivedMainCards, handSize, hasCompletedRoleStep, isEditingDeck, patterns])
   const patternEditor = (
     <PatternEditor
       patterns={patterns}
@@ -89,6 +99,8 @@ export function ProbabilityPanel({
             handSize={handSize}
             mainDeckCount={mainDeckCount}
             patternCount={patterns.length}
+            hasCompletedRoleStep={hasCompletedRoleStep}
+            unclassifiedCardCount={unclassifiedCardCount}
           />
         </section>
 

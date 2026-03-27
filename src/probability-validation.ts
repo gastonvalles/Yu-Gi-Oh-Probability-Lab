@@ -2,6 +2,7 @@ import { buildDerivedDeckGroupMap, resolveRequirementCardIds } from './app/deck-
 import { getMonsterRequirementSourceLabel, isMonsterRequirementSource } from './app/card-attributes'
 import { getRequiredMatches } from './app/pattern-engine'
 import { normalizeHandPatternCategory } from './app/patterns'
+import { countUnclassifiedCards } from './app/role-step'
 import type { CardEntry, CalculatorState, ValidationIssue } from './types'
 
 export function validateCalculationState(state: CalculatorState): ValidationIssue[] {
@@ -47,6 +48,15 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
       level: 'error',
       message: 'Agregá al menos una carta o grupo de cartas.',
     })
+  } else {
+    const unclassifiedCardCount = countUnclassifiedCards(state.cards)
+
+    if (unclassifiedCardCount > 0) {
+      issues.push({
+        level: 'error',
+        message: `Terminá de marcar roles en el paso 2. Faltan ${unclassifiedCardCount} carta${unclassifiedCardCount === 1 ? '' : 's'} sin clasificar en el Main Deck.`,
+      })
+    }
   }
 
   const normalizedNames = new Map<string, string>()

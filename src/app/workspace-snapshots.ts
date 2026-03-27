@@ -1,5 +1,6 @@
 import { buildCalculatorState, deriveMainDeckCardsFromZone } from './calculator-state'
 import type { AppState, DeckCardInstance, PortableConfig } from './model'
+import { isRoleStepComplete } from './role-step'
 import { createId } from './utils'
 import { calculateProbabilities } from '../probability'
 
@@ -105,6 +106,11 @@ export function buildSnapshotComparison(
 
 function calculateStateProbability(state: AppState): number | null {
   const derivedCards = deriveMainDeckCardsFromZone(state.deckBuilder.main)
+
+  if (!isRoleStepComplete(derivedCards)) {
+    return null
+  }
+
   const result = calculateProbabilities(
     buildCalculatorState(derivedCards, {
       handSize: state.handSize,

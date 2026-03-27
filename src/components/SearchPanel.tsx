@@ -46,7 +46,7 @@ interface ActiveFilterChip {
 }
 
 interface SearchPanelProps {
-  builderHeight: number | null
+  layoutMode: 'desktop' | 'mobile'
   deckFormat: DeckFormat
   query: string
   status: 'idle' | 'loading' | 'success' | 'error'
@@ -230,7 +230,7 @@ const EXTRA_EXACT_TYPE_VALUES = new Set([
 ])
 
 export function SearchPanel({
-  builderHeight,
+  layoutMode,
   deckFormat,
   query,
   status,
@@ -257,6 +257,7 @@ export function SearchPanel({
   const [drawerOpen, setDrawerOpen] = useState(false)
   const formatLabel = getDeckFormatLabel(deckFormat)
   const formatAllowsLegalityFilter = deckFormat !== 'unlimited' && deckFormat !== 'genesys'
+  const isDesktopLayout = layoutMode === 'desktop'
   const quickTypeMeta = QUICK_TYPE_META[filters.quickType]
   const exactTypeGroups = useMemo(() => getExactTypeFilterGroups(filters.quickType), [filters.quickType])
   const raceGroups = useMemo(() => getRaceFilterGroups(filters.quickType), [filters.quickType])
@@ -327,17 +328,22 @@ export function SearchPanel({
   return (
     <>
       <article
-        className="surface-panel-soft self-start h-full min-h-0 max-h-full overflow-hidden p-2"
+        className={[
+          'surface-panel-soft self-start min-h-0 overflow-hidden p-2',
+          isDesktopLayout ? 'sticky' : 'h-full',
+        ].join(' ')}
         style={
-          builderHeight
-            ? { height: builderHeight, maxHeight: builderHeight }
+          isDesktopLayout
+            ? {
+                top: SEARCH_STICKY_TOP_PX,
+                height: `calc(100dvh - ${SEARCH_STICKY_TOP_PX}px)`,
+              }
             : undefined
         }
       >
         <div
-          className="grid h-full min-h-0 content-start gap-2 min-[1101px]:sticky"
+          className="grid h-full min-h-0 content-start gap-2"
           style={{
-            top: SEARCH_STICKY_TOP_PX,
             gridTemplateRows: shouldShowResults ? 'auto auto minmax(0, 1fr)' : undefined,
           }}
         >
@@ -496,7 +502,7 @@ export function SearchPanel({
                             onMouseEnter={(event) => onHoverStart(card.name, card, event.currentTarget)}
                             onMouseLeave={onHoverEnd}
                           >
-                            <div className="w-[42px]">
+                            <div className="w-[42px]" data-drag-preview-source="true">
                               <CardArt
                                 remoteUrl={card.imageUrlSmall}
                                 name={card.name}

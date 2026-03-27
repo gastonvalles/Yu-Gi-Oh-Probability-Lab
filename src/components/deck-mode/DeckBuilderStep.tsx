@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useState, type PointerEvent as ReactPointerEvent } from 'react'
 
 import { getDeckFormatLabel } from '../../app/deck-format'
-import { useBuilderHeight } from '../../app/use-builder-height'
-import type { CalculatorMode, DeckBuilderState, DeckZone as DeckZoneType } from '../../app/model'
+import type { DeckBuilderState, DeckZone as DeckZoneType } from '../../app/model'
 import { formatInteger } from '../../app/utils'
 import type { DeckFormat, ApiCardReference } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
@@ -18,7 +17,6 @@ interface DeckBuilderStepProps {
   formatIssues: string[]
   genesysPointTotal: number | null
   genesysPointCap: number | null
-  mode: CalculatorMode
   query: string
   status: 'idle' | 'loading' | 'success' | 'error'
   visibleSearchResults: ApiCardSearchResult[]
@@ -63,7 +61,6 @@ export function DeckBuilderStep({
   formatIssues,
   genesysPointTotal,
   genesysPointCap,
-  mode,
   query,
   status,
   visibleSearchResults,
@@ -93,15 +90,7 @@ export function DeckBuilderStep({
   onHoverEnd,
 }: DeckBuilderStepProps) {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
-  const builderRef = useRef<HTMLElement>(null)
   const formatLabel = getDeckFormatLabel(deckFormat)
-  const builderHeight = useBuilderHeight({
-    builderRef,
-    extraDeckCount: deckBuilder.extra.length,
-    mainDeckCount: deckBuilder.main.length,
-    mode,
-    sideDeckCount: deckBuilder.side.length,
-  })
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
@@ -132,9 +121,9 @@ export function DeckBuilderStep({
     apiCardId: number,
   ) => onSearchCardPointerDown(event, apiCardId)
 
-  const renderSearchPanel = (options: { builderHeight: number | null; dragEnabled: boolean }) => (
+  const renderSearchPanel = (options: { layoutMode: 'desktop' | 'mobile'; dragEnabled: boolean }) => (
     <SearchPanel
-      builderHeight={options.builderHeight}
+      layoutMode={options.layoutMode}
       deckFormat={deckFormat}
       query={query}
       status={status}
@@ -235,7 +224,7 @@ export function DeckBuilderStep({
       ) : null}
 
       <div className="grid items-start gap-3 min-[1101px]:grid-cols-[minmax(0,1fr)_320px]">
-        <article ref={builderRef} className="surface-panel-soft self-start w-full min-h-0 p-2.5">
+        <article className="surface-panel-soft self-start w-full min-h-0 p-2.5">
           <div className="grid gap-2.5">
             <div className="min-[1101px]:hidden">
               <Button variant="primary" size="md" fullWidth onClick={() => setMobileSearchOpen(true)}>
@@ -299,7 +288,7 @@ export function DeckBuilderStep({
             ) : null}
 
             {renderSearchPanel({
-              builderHeight,
+              layoutMode: 'desktop',
               dragEnabled: true,
             })}
           </div>
@@ -322,7 +311,7 @@ export function DeckBuilderStep({
               </div>
               <div className="mt-2 min-h-0 flex-1 overflow-hidden">
                 {renderSearchPanel({
-                  builderHeight: null,
+                  layoutMode: 'mobile',
                   dragEnabled: false,
                 })}
               </div>

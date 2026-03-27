@@ -38,6 +38,13 @@ interface UseDeckPointerDragOptions {
   onDrop: (drop: { payload: DragPayload; zone: DeckZone; index: number }) => void
 }
 
+interface DragPreviewFrame {
+  width: number
+  height: number
+  offsetX: number
+  offsetY: number
+}
+
 interface DeckPointerDragController {
   activeDragInstanceId: string | null
   activeDragSearchCardId: number | null
@@ -51,6 +58,27 @@ interface DeckPointerDragController {
     name: string,
     card: ApiCardReference,
   ) => void
+}
+
+function resolveDragPreviewFrame(
+  sourceElement: HTMLElement,
+  clientX: number,
+  clientY: number,
+): DragPreviewFrame {
+  const previewElement =
+    sourceElement.querySelector<HTMLElement>('[data-drag-preview-source]') ?? sourceElement
+  const rect = previewElement.getBoundingClientRect()
+  const centerX = rect.width / 2
+  const centerY = rect.height / 2
+  const pointerInsideX = clientX >= rect.left && clientX <= rect.right
+  const pointerInsideY = clientY >= rect.top && clientY <= rect.bottom
+
+  return {
+    width: rect.width,
+    height: rect.height,
+    offsetX: pointerInsideX ? clientX - rect.left : centerX,
+    offsetY: pointerInsideY ? clientY - rect.top : centerY,
+  }
 }
 
 export function useDeckPointerDrag({
@@ -162,23 +190,19 @@ export function useDeckPointerDrag({
   }, [onClearHoverPreview])
 
   const startDragOverlay = useCallback(
-    (element: HTMLElement, name: string, card: ApiCardReference, clientX: number, clientY: number) => {
-      const rect = element.getBoundingClientRect()
-      const pointerX = clientX || rect.left + rect.width / 2
-      const pointerY = clientY || rect.top + rect.height / 2
-
+    (previewFrame: DragPreviewFrame, name: string, card: ApiCardReference, clientX: number, clientY: number) => {
       setDragOverlay({
         name,
         card,
-        width: rect.width,
-        height: rect.height,
-        offsetX: pointerX - rect.left,
-        offsetY: pointerY - rect.top,
+        width: previewFrame.width,
+        height: previewFrame.height,
+        offsetX: previewFrame.offsetX,
+        offsetY: previewFrame.offsetY,
       })
 
       dragOverlayPositionRef.current = {
-        x: pointerX,
-        y: pointerY,
+        x: clientX,
+        y: clientY,
       }
     },
     [],
@@ -197,15 +221,16 @@ export function useDeckPointerDrag({
       const rect = sourceElement.getBoundingClientRect()
       const pointerX = event.clientX || rect.left + rect.width / 2
       const pointerY = event.clientY || rect.top + rect.height / 2
+      const previewFrame = resolveDragPreviewFrame(sourceElement, pointerX, pointerY)
 
       pointerDragSessionRef.current = {
         payload,
         name,
         card,
-        width: rect.width,
-        height: rect.height,
-        offsetX: pointerX - rect.left,
-        offsetY: pointerY - rect.top,
+        width: previewFrame.width,
+        height: previewFrame.height,
+        offsetX: previewFrame.offsetX,
+        offsetY: previewFrame.offsetY,
         startX: pointerX,
         startY: pointerY,
         dragging: false,
@@ -236,7 +261,7 @@ export function useDeckPointerDrag({
             suppressSearchClickRef.current = true
           }
 
-          startDragOverlay(sourceElement, session.name, session.card, session.startX, session.startY)
+          startDragOverlay(previewFrame, session.name, session.card, session.startX, session.startY)
         }
 
         queueDragOverlayMove(moveEvent.clientX, moveEvent.clientY)

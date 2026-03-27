@@ -9,6 +9,8 @@ interface ResultsSectionProps {
   handSize: number
   mainDeckCount: number
   patternCount: number
+  hasCompletedRoleStep: boolean
+  unclassifiedCardCount: number
 }
 
 const CLEAN_HANDS_TOOLTIP = 'Cumplen al menos una apertura y no presentan ningún problema.'
@@ -18,6 +20,8 @@ export function ResultsSection({
   handSize,
   mainDeckCount,
   patternCount,
+  hasCompletedRoleStep,
+  unclassifiedCardCount,
 }: ResultsSectionProps) {
   const openingPatterns =
     result.summary?.patternResults.filter((pattern) => normalizeHandPatternCategory(pattern.category) === 'good') ?? []
@@ -32,6 +36,7 @@ export function ResultsSection({
   const badOnlyProbability = result.summary && result.summary.totalHands > 0 ? badOnlyHands / result.summary.totalHands : 0
   const hasOpeningPatterns = openingPatterns.length > 0
   const hasProblemPatterns = problemPatterns.length > 0
+  const isWaitingForRoleStep = !isEmptyDeckState && !hasCompletedRoleStep
 
   useEffect(() => {
     if (activeDetailTab === 'good' && !hasOpeningPatterns && hasProblemPatterns) {
@@ -51,6 +56,8 @@ export function ResultsSection({
 
         {isEmptyDeckState ? (
           <EmptyProbabilityState handSize={handSize} isPristine={isPristineProbabilityStep} />
+        ) : isWaitingForRoleStep ? (
+          <PendingRoleStepState unclassifiedCardCount={unclassifiedCardCount} />
         ) : result.issues.length > 0 ? (
           <div className="grid gap-1.5">
             {result.issues.map((issue, index) => (
@@ -70,7 +77,7 @@ export function ResultsSection({
           </div>
         ) : null}
 
-        {!result.summary && !isEmptyDeckState ? (
+        {!result.summary && !isEmptyDeckState && !isWaitingForRoleStep && result.issues.length === 0 ? (
           <div className="surface-card p-4 flex flex-col items-center justify-center gap-2 min-h-[100px]">
             <div className="animate-spin w-6 h-6 border-2 border-[rgb(var(--foreground-rgb)/0.18)] border-t-[var(--primary)] rounded-full" />
             <p className="m-0 text-[0.8rem] text-[var(--text-muted)]">Calculando probabilidades...</p>
@@ -203,6 +210,22 @@ function EmptyProbabilityState({ handSize, isPristine }: EmptyProbabilityStatePr
             Definí aperturas o problemas. La práctica se habilita cuando haya al menos {formatInteger(handSize)} cartas.
           </p>
         </article>
+      </div>
+    </div>
+  )
+}
+
+function PendingRoleStepState({ unclassifiedCardCount }: { unclassifiedCardCount: number }) {
+  return (
+    <div className="surface-panel-strong grid gap-2.5 p-3">
+      <div className="grid gap-1">
+        <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Paso 2 pendiente</p>
+        <strong className="text-[0.92rem] leading-none text-(--text-main)">
+          Terminá de clasificar todas las cartas primero
+        </strong>
+        <p className="app-muted m-0 text-[0.78rem] leading-[1.16]">
+          Faltan {formatInteger(unclassifiedCardCount)} carta{unclassifiedCardCount === 1 ? '' : 's'} sin rol en el Main Deck. La probabilidad exacta se habilita recién cuando la categorización del paso 2 termina completa.
+        </p>
       </div>
     </div>
   )
