@@ -743,6 +743,7 @@
   }
 
   .classification-queue-card {
+    cursor: pointer;
     border: 1px solid var(--border-subtle);
     background:
       linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.94), rgb(var(--background-rgb) / 0.98)),
@@ -761,6 +762,13 @@
       linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.96), rgb(var(--background-rgb) / 0.98));
     box-shadow: 0 0 0 1px rgb(var(--primary-rgb) / 0.08);
     transform: translateY(-1px);
+  }
+
+  .classification-queue-card:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px rgb(var(--background-rgb) / 1),
+      0 0 0 4px rgb(var(--primary-rgb) / 0.2);
   }
 
   .classification-queue-card-active {

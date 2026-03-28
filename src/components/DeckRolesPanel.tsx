@@ -419,6 +419,26 @@ function getCardStatusItems(card: CardEntry): Array<{ key: string; label: string
   return items
 }
 
+function getCardPrimaryStatus(card: CardEntry): { label: string; tone: StatusTone } {
+  if (isCardMissingOrigin(card) && isCardMissingRoles(card)) {
+    return { label: 'Sin origen y rol', tone: 'warning' }
+  }
+
+  if (isCardMissingOrigin(card)) {
+    return { label: 'Sin origen', tone: 'warning' }
+  }
+
+  if (isCardMissingRoles(card)) {
+    return { label: 'Sin rol', tone: 'warning' }
+  }
+
+  if (isCardPendingReview(card)) {
+    return { label: 'Revisión', tone: 'primary' }
+  }
+
+  return { label: '✓ Completa', tone: 'success' }
+}
+
 function getCardQueueSummary(card: CardEntry): string {
   const originSummary = card.origin === null ? 'Sin origen' : getCardOriginDefinition(card.origin).shortLabel
 
@@ -816,7 +836,7 @@ export function DeckRolesPanel({
             ) : (
               <div className="grid gap-1.5 overflow-y-auto pr-1">
                 {filteredCards.map((card) => {
-                  const statusItems = getCardStatusItems(card)
+                  const primaryStatus = getCardPrimaryStatus(card)
                   const active = selectedCard?.id === card.id
 
                   return (
@@ -825,34 +845,31 @@ export function DeckRolesPanel({
                       type="button"
                       aria-pressed={active}
                       className={[
-                        'classification-queue-card grid gap-2 p-2 text-left',
+                        'classification-queue-card app-list-item grid min-w-0 grid-cols-[42px_minmax(0,1fr)] items-center gap-2 p-1.5 text-left',
                         active ? 'classification-queue-card-active' : '',
                       ].join(' ')}
                       onClick={() => setSelectedCardId(card.id)}
                     >
-                      <div className="grid min-w-0 grid-cols-[42px_minmax(0,1fr)] gap-2">
-                        <div className="w-[42px]">
-                          <CardArt
-                            remoteUrl={card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null}
-                            name={card.name}
-                            className="block aspect-[0.72] w-full border border-(--border-subtle) bg-(--input) object-cover"
-                            limitCard={card.apiCard}
-                          />
+                      <div className="w-[42px]">
+                        <CardArt
+                          remoteUrl={card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null}
+                          name={card.name}
+                          className="block aspect-[0.72] w-full border border-(--border-subtle) bg-(--input) object-cover"
+                          limitCard={card.apiCard}
+                        />
+                      </div>
+
+                      <div className="grid min-w-0 gap-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <strong className="truncate text-[0.82rem] leading-[1.08] text-(--text-main)">{card.name}</strong>
+                          <span className="app-chip shrink-0 px-1.5 py-0.5 text-[0.64rem]">{formatInteger(card.copies)}x</span>
                         </div>
 
-                        <div className="grid min-w-0 gap-1">
-                          <div className="flex items-start justify-between gap-2">
-                            <strong className="truncate text-[0.82rem] leading-[1.08] text-(--text-main)">{card.name}</strong>
-                            <span className="app-chip shrink-0 px-1.5 py-0.5 text-[0.64rem]">{formatInteger(card.copies)}x</span>
-                          </div>
-                          <p className="app-muted m-0 truncate text-[0.68rem] leading-[1.1]">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <p className="app-muted m-0 min-w-0 text-[0.68rem] leading-[1.08]">
                             {getCardTypeLabel(card)} · {getCardQueueSummary(card)}
                           </p>
-                          <div className="flex flex-wrap gap-1">
-                            {statusItems.map((status) => (
-                              <ClassificationStatusChip key={status.key} label={status.label} tone={status.tone} />
-                            ))}
-                          </div>
+                          <ClassificationStatusChip label={primaryStatus.label} tone={primaryStatus.tone} />
                         </div>
                       </div>
                     </button>
