@@ -692,6 +692,12 @@
     font-size: 0.64rem;
     line-height: 1;
     color: var(--text-main);
+    white-space: nowrap;
+  }
+
+  .classification-status-chip-compact {
+    padding: 0.14rem 0.36rem;
+    font-size: 0.58rem;
   }
 
   .classification-status-chip-warning {
@@ -744,6 +750,7 @@
 
   .classification-queue-card {
     cursor: pointer;
+    min-height: 3.55rem;
     border: 1px solid var(--border-subtle);
     background:
       linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.94), rgb(var(--background-rgb) / 0.98)),
@@ -761,7 +768,6 @@
       linear-gradient(180deg, rgb(var(--primary-rgb) / 0.08), rgb(var(--card-background-rgb) / 0.98)),
       linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.96), rgb(var(--background-rgb) / 0.98));
     box-shadow: 0 0 0 1px rgb(var(--primary-rgb) / 0.08);
-    transform: translateY(-1px);
   }
 
   .classification-queue-card:focus-visible {
@@ -774,11 +780,11 @@
   .classification-queue-card-active {
     border-color: rgb(var(--primary-rgb) / 0.68);
     background:
-      linear-gradient(180deg, rgb(var(--primary-rgb) / 0.16), rgb(var(--card-background-rgb) / 0.98)),
+      linear-gradient(180deg, rgb(var(--primary-rgb) / 0.12), rgb(var(--card-background-rgb) / 0.98)),
       linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.96), rgb(var(--background-rgb) / 0.98));
     box-shadow:
-      0 0 0 1px rgb(var(--primary-rgb) / 0.12),
-      0 14px 30px rgb(var(--primary-rgb) / 0.08);
+      inset 3px 0 0 rgb(var(--primary-rgb) / 0.9),
+      0 0 0 1px rgb(var(--primary-rgb) / 0.12);
   }
 
   .classification-origin-option {

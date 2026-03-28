@@ -379,9 +379,11 @@ function DefinitionTooltip({
 function ClassificationStatusChip({
   label,
   tone,
+  className = '',
 }: {
   label: string
   tone: StatusTone
+  className?: string
 }) {
   return (
     <span className={[
@@ -391,6 +393,7 @@ function ClassificationStatusChip({
         : tone === 'primary'
           ? 'classification-status-chip-primary'
           : 'classification-status-chip-success',
+      className,
     ].join(' ')}>
       {label}
     </span>
@@ -834,7 +837,7 @@ export function DeckRolesPanel({
                 <span className="mt-1 block">{emptyStateCopy.description}</span>
               </p>
             ) : (
-              <div className="grid gap-1.5 overflow-y-auto pr-1">
+              <div className="flex min-h-0 flex-col gap-1 overflow-y-auto pr-1">
                 {filteredCards.map((card) => {
                   const primaryStatus = getCardPrimaryStatus(card)
                   const active = selectedCard?.id === card.id
@@ -845,12 +848,12 @@ export function DeckRolesPanel({
                       type="button"
                       aria-pressed={active}
                       className={[
-                        'classification-queue-card app-list-item grid min-w-0 grid-cols-[42px_minmax(0,1fr)] items-center gap-2 p-1.5 text-left',
+                        'classification-queue-card app-list-item grid min-w-0 shrink-0 grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-2 px-1.5 py-1.5 text-left',
                         active ? 'classification-queue-card-active' : '',
                       ].join(' ')}
                       onClick={() => setSelectedCardId(card.id)}
                     >
-                      <div className="w-[42px]">
+                      <div className="w-[36px]">
                         <CardArt
                           remoteUrl={card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null}
                           name={card.name}
@@ -860,18 +863,23 @@ export function DeckRolesPanel({
                       </div>
 
                       <div className="grid min-w-0 gap-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <strong className="truncate text-[0.82rem] leading-[1.08] text-(--text-main)">{card.name}</strong>
-                          <span className="app-chip shrink-0 px-1.5 py-0.5 text-[0.64rem]">{formatInteger(card.copies)}x</span>
-                        </div>
+                        <strong className="truncate text-[0.8rem] leading-[1.04] text-(--text-main)">{card.name}</strong>
 
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <p className="app-muted m-0 min-w-0 text-[0.68rem] leading-[1.08]">
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <p className="app-muted m-0 min-w-0 truncate text-[0.66rem] leading-none">
                             {getCardTypeLabel(card)} · {getCardQueueSummary(card)}
                           </p>
-                          <ClassificationStatusChip label={primaryStatus.label} tone={primaryStatus.tone} />
+                          <ClassificationStatusChip
+                            label={primaryStatus.label}
+                            tone={primaryStatus.tone}
+                            className="classification-status-chip-compact shrink-0"
+                          />
                         </div>
                       </div>
+
+                      <span className="app-chip shrink-0 px-1.5 py-0.5 text-[0.62rem]">
+                        {formatInteger(card.copies)}x
+                      </span>
                     </button>
                   )
                 })}
