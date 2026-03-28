@@ -16,8 +16,8 @@ export function DeckModeShell({
   mainScrollRef,
 }: DeckModeShellProps) {
   const mainAreaClassName = mainScrollable
-    ? 'min-w-0 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:overflow-y-auto min-[1101px]:pr-1'
-    : 'min-w-0 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:overflow-hidden'
+    ? 'min-w-0 overflow-x-hidden min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:overflow-y-auto min-[1101px]:pr-1'
+    : 'min-w-0 overflow-x-hidden min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:overflow-hidden'
 
   return (
     <section className="grid gap-3 min-[1101px]:h-[calc(100dvh-1rem)] min-[1101px]:min-h-0 min-[1101px]:grid-cols-[280px_minmax(0,1fr)] min-[1101px]:items-stretch min-[1101px]:overflow-hidden">
