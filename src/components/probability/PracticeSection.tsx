@@ -17,6 +17,7 @@ import {
   evaluatePracticeHand,
   type PracticeHandMatch,
   type PracticeHandNearMiss,
+  type PracticeHandRequirementAssignment,
   type PracticeHandState,
 } from './practice'
 
@@ -140,15 +141,39 @@ function getPracticeVerdictDescription(
   return 'Esta mano no entra ni en tus aperturas ni en tus problemas.'
 }
 
-function formatPracticeAssignmentCards(
-  cards: Array<{
-    name: string
-    copies: number
-  }>,
-): string {
-  return cards
-    .map((card) => `${card.name}${card.copies > 1 ? ` x${formatInteger(card.copies)}` : ''}`)
-    .join(', ')
+function getPracticeMatchStateLabel(kind: HandPattern['kind']): string {
+  return kind === 'opening' ? 'Cumplida' : 'Detectado'
+}
+
+function getPracticeMatchStateBadgeClass(kind: HandPattern['kind']): string {
+  return kind === 'opening'
+    ? 'surface-card-success text-(--accent)'
+    : 'surface-card-danger text-(--destructive)'
+}
+
+function getPracticeMatchExplanation(match: PracticeHandMatch): string {
+  return match.kind === 'opening'
+    ? 'La mano sí cumple este check con las cartas resumidas abajo.'
+    : 'La mano cae en este problema por la composición actual.'
+}
+
+function getAssignmentStateLabel(kind: PracticeHandRequirementAssignment['kind']): string {
+  return kind === 'exclude' ? 'Libre' : 'Usado'
+}
+
+function getVisibleAssignmentCards(
+  cards: PracticeHandRequirementAssignment['cards'],
+  limit = 2,
+): {
+  hiddenCount: number
+  visibleCards: PracticeHandRequirementAssignment['cards']
+} {
+  const visibleCards = cards.slice(0, limit)
+
+  return {
+    hiddenCount: Math.max(0, cards.length - visibleCards.length),
+    visibleCards,
+  }
 }
 
 export function PracticeSection({
@@ -196,14 +221,6 @@ export function PracticeSection({
   const openingMatches = practiceResult.openingMatches
   const problemMatches = practiceResult.problemMatches
   const openingNearMisses = practiceResult.openingNearMisses
-  const pairedMatchRows = useMemo(
-    () =>
-      Array.from({ length: Math.max(openingMatches.length, problemMatches.length) }, (_, index) => ({
-        opening: openingMatches[index] ?? null,
-        problem: problemMatches[index] ?? null,
-      })),
-    [openingMatches, problemMatches],
-  )
   const practiceVerdict = getPracticeVerdict(
     openingMatches.length,
     problemMatches.length,
@@ -253,7 +270,7 @@ export function PracticeSection({
   }, [derivedMainCards, handSize])
 
   return (
-    <section className="surface-panel-soft grid gap-3 p-3">
+    <section className="surface-panel-soft grid min-w-0 gap-3 overflow-x-hidden p-3 [overflow-wrap:anywhere] [word-break:break-word]">
       <div>
         <div>
           <p className="app-kicker m-0 mb-0.5 text-[0.68rem] uppercase tracking-widest">Práctica</p>
@@ -278,7 +295,7 @@ export function PracticeSection({
         </p>
       ) : (
         <>
-          <article className="surface-panel-strong grid gap-3 p-3">
+          <article className="surface-panel-strong grid min-w-0 gap-3 overflow-x-hidden p-3">
             <div className="flex items-start justify-between gap-3 max-[920px]:flex-col max-[920px]:items-stretch">
               <div className="min-w-0">
                 <p className="app-muted m-0 text-[0.68rem] uppercase tracking-widest">Simulador en vivo</p>
@@ -314,8 +331,8 @@ export function PracticeSection({
 
             <div
               className={isWide
-                ? 'practice-stage flex min-h-[250px] items-start justify-center overflow-x-auto overflow-y-hidden px-4 py-4'
-                : 'practice-stage grid grid-cols-5 gap-2 overflow-y-hidden px-4 py-4'
+                ? 'practice-stage flex min-h-[250px] min-w-0 items-start justify-center overflow-hidden px-4 py-4'
+                : 'practice-stage grid min-w-0 grid-cols-5 gap-2 overflow-hidden px-4 py-4'
               }
             >
               {(practiceHand?.hand ?? Array.from({ length: handSize })).map((card, index, hand) => {
@@ -371,7 +388,12 @@ export function PracticeSection({
           </article>
 
           {practiceHand ? (
-            <article className={[getPracticeVerdictCardClass(practiceVerdict), 'grid gap-3 p-3'].join(' ')}>
+            <article
+              className={[
+                getPracticeVerdictCardClass(practiceVerdict),
+                'grid min-w-0 gap-3 overflow-x-hidden p-3 [overflow-wrap:anywhere] [word-break:break-word]',
+              ].join(' ')}
+            >
               <div className="flex items-start justify-between gap-3 max-[900px]:flex-col max-[900px]:items-stretch">
                 <div className="min-w-0">
                   <p className="app-kicker m-0 mb-0.5 text-[0.68rem] uppercase tracking-widest">Resultado</p>
@@ -397,15 +419,32 @@ export function PracticeSection({
                     )}
                   </p>
                 </div>
+              </div>
 
+              <div className="grid min-w-0 gap-2 min-[860px]:grid-cols-3">
+                <PracticeResultStat
+                  label="Aperturas"
+                  tone="positive"
+                  value={openingMatches.length}
+                />
+                <PracticeResultStat
+                  label="Problemas"
+                  tone="negative"
+                  value={problemMatches.length}
+                />
+                <PracticeResultStat
+                  label="Cartas en mano"
+                  tone="neutral"
+                  value={practiceHand.hand.length}
+                />
               </div>
 
               {handRoleSummary.length > 0 ? (
-                <div className="grid gap-1.5">
+                <div className="grid min-w-0 gap-1.5">
                   <small className="app-muted text-[0.68rem] uppercase tracking-widest">
                     Qué salió en la mano
                   </small>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex min-w-0 flex-wrap gap-1.5">
                     {handRoleSummary.map((item) => (
                       <span
                         key={item.key}
@@ -420,101 +459,46 @@ export function PracticeSection({
               ) : null}
 
               {practiceResult.matches.length > 0 ? (
-                <>
-                  <div className="grid gap-3 min-[980px]:hidden">
-                    {openingMatches.length > 0 ? (
-                      <div className="grid gap-1.5">
-                        <PracticeMatchHeader
-                          title="Aperturas que cumplió esta mano"
-                          count={openingMatches.length}
-                        />
-                        {openingMatches.map((match) => (
-                          <PracticeMatchCard key={match.patternId} match={match} />
-                        ))}
-                      </div>
-                    ) : null}
+                <div className="grid min-w-0 gap-3">
+                  {openingMatches.length > 0 ? (
+                    <PracticeMatchGroup
+                      count={openingMatches.length}
+                      matches={openingMatches}
+                      title="Aperturas cumplidas"
+                    />
+                  ) : null}
 
-                    {openingMatches.length === 0 && openingNearMisses.length > 0 ? (
-                      <div className="grid gap-1.5">
-                        <PracticeMatchHeader
-                          title="Lo que le faltó a la mano para abrir"
-                          count={openingNearMisses.length}
-                        />
+                  {problemMatches.length > 0 ? (
+                    <PracticeMatchGroup
+                      count={problemMatches.length}
+                      matches={problemMatches}
+                      title="Problemas detectados"
+                    />
+                  ) : null}
+
+                  {openingMatches.length === 0 && openingNearMisses.length > 0 ? (
+                    <div className="grid min-w-0 gap-2.5">
+                      <PracticeMatchHeader
+                        title="Lo que le faltó a la mano para abrir"
+                        count={openingNearMisses.length}
+                      />
+                      <div className="grid min-w-0 gap-2">
                         {openingNearMisses.slice(0, 3).map((nearMiss) => (
                           <PracticeNearMissCard key={nearMiss.patternId} nearMiss={nearMiss} />
                         ))}
                       </div>
-                    ) : null}
-
-                    {problemMatches.length > 0 ? (
-                      <div className="grid gap-1.5">
-                        <PracticeMatchHeader
-                          title="Problemas que aparecieron en esta mano"
-                          count={problemMatches.length}
-                        />
-                        {problemMatches.map((match) => (
-                          <PracticeMatchCard key={match.patternId} match={match} />
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-
-                  <div className="hidden gap-3 min-[980px]:grid">
-                    <div className="grid gap-3 min-[980px]:grid-cols-2 min-[980px]:items-start">
-                      {openingMatches.length > 0 ? (
-                        <PracticeMatchHeader
-                          title="Aperturas que cumplió esta mano"
-                          count={openingMatches.length}
-                        />
-                      ) : (
-                        <div />
-                      )}
-                      {problemMatches.length > 0 ? (
-                        <PracticeMatchHeader
-                          title="Problemas que aparecieron en esta mano"
-                          count={problemMatches.length}
-                        />
-                      ) : (
-                        <div />
-                      )}
                     </div>
+                  ) : null}
 
-                    <div className="grid gap-3">
-                      {pairedMatchRows.map((row, index) => (
-                        <div
-                          key={`practice-match-row-${index}`}
-                          className="grid gap-3 min-[980px]:grid-cols-2 min-[980px]:items-stretch"
-                        >
-                          <div className="h-full">
-                            {row.opening ? <PracticeMatchCard match={row.opening} fillHeight /> : null}
-                          </div>
-                          <div className="h-full">
-                            {row.problem ? <PracticeMatchCard match={row.problem} fillHeight /> : null}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {openingMatches.length === 0 && openingNearMisses.length > 0 ? (
-                      <div className="grid gap-2">
-                        <PracticeMatchHeader
-                          title="Lo que le faltó a la mano para abrir"
-                          count={openingNearMisses.length}
-                        />
-                        {openingNearMisses.slice(0, 3).map((nearMiss) => (
-                          <PracticeNearMissCard key={nearMiss.patternId} nearMiss={nearMiss} />
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                </>
+                  <PracticeTechnicalDetails matches={practiceResult.matches} />
+                </div>
               ) : openingNearMisses.length > 0 ? (
-                <div className="grid gap-2.5">
+                <div className="grid min-w-0 gap-2.5">
                   <PracticeMatchHeader
                     title="Lo que le faltó a la mano para abrir"
                     count={openingNearMisses.length}
                   />
-                  <div className="grid gap-2">
+                  <div className="grid min-w-0 gap-2">
                     {openingNearMisses.slice(0, 3).map((nearMiss) => (
                       <PracticeNearMissCard key={nearMiss.patternId} nearMiss={nearMiss} />
                     ))}
@@ -541,52 +525,102 @@ function PracticeMatchHeader({
   count: number
 }) {
   return (
-    <div className="flex items-center justify-between gap-2">
-      <small className="app-muted text-[0.68rem] uppercase tracking-widest">{title}</small>
+    <div className="flex min-w-0 items-center justify-between gap-2">
+      <small className="app-muted min-w-0 text-[0.68rem] uppercase tracking-widest">{title}</small>
       <span className="app-chip px-2 py-0.5 text-[0.7rem]">{formatInteger(count)}</span>
     </div>
   )
 }
 
-function PracticeMatchCard({
-  match,
-  fillHeight = false,
+function PracticeResultStat({
+  label,
+  tone,
+  value,
 }: {
-  match: PracticeHandMatch
-  fillHeight?: boolean
+  label: string
+  tone: 'negative' | 'neutral' | 'positive'
+  value: number
 }) {
+  const toneClass = tone === 'positive'
+    ? 'surface-card-success'
+    : tone === 'negative'
+      ? 'surface-card-danger'
+      : 'surface-card'
+
   return (
     <article
       className={[
-        'px-2.5 py-2',
-        fillHeight ? 'h-full' : '',
-        getPracticeMatchCardClass(match.kind),
+        toneClass,
+        'grid min-w-0 gap-1 overflow-hidden px-2.5 py-2 [overflow-wrap:anywhere] [word-break:break-word]',
       ].join(' ')}
     >
-      <strong className="block text-[0.9rem] text-(--text-main)">{match.name}</strong>
-      <small className="app-muted mt-[0.22rem] block text-[0.72rem] leading-[1.16]">
-        {match.requirementLabel}
-      </small>
+      <small className="app-muted text-[0.68rem] uppercase tracking-widest">{label}</small>
+      <strong className="text-[1rem] leading-none text-(--text-main)">{formatInteger(value)}</strong>
+    </article>
+  )
+}
+
+function PracticeMatchGroup({
+  count,
+  matches,
+  title,
+}: {
+  count: number
+  matches: PracticeHandMatch[]
+  title: string
+}) {
+  return (
+    <section className="grid min-w-0 gap-2.5">
+      <PracticeMatchHeader title={title} count={count} />
+      <div className="grid min-w-0 gap-2">
+        {matches.map((match) => (
+          <PracticeMatchCard key={match.patternId} match={match} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function PracticeMatchCard({ match }: { match: PracticeHandMatch }) {
+  return (
+    <article
+      className={[
+        getPracticeMatchCardClass(match.kind),
+        'grid min-w-0 gap-2 overflow-hidden px-3 py-2.5 [overflow-wrap:anywhere] [word-break:break-word]',
+      ].join(' ')}
+    >
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
+        <div className="grid min-w-0 gap-0.5">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <strong className="min-w-0 text-[0.9rem] text-(--text-main)">{match.name}</strong>
+            <span
+              className={[
+                getPracticeMatchStateBadgeClass(match.kind),
+                'px-1.5 py-0.5 text-[0.65rem]',
+              ].join(' ')}
+            >
+              {getPracticeMatchStateLabel(match.kind)}
+            </span>
+          </div>
+          <small className="app-muted min-w-0 text-[0.72rem] leading-[1.16]">
+            {match.requirementLabel}
+          </small>
+        </div>
+      </div>
+
+      <p className="m-0 text-[0.76rem] leading-[1.16] text-(--text-main)">
+        {getPracticeMatchExplanation(match)}
+      </p>
+
       {match.assignments.length > 0 ? (
-        <div className="mt-2 grid gap-1">
-          <small className="app-muted text-[0.68rem] uppercase tracking-widest">Asignación</small>
-          <div className="grid gap-1">
+        <div className="grid min-w-0 gap-1.5">
+          <small className="app-muted text-[0.68rem] uppercase tracking-widest">Asignación resumida</small>
+          <div className="grid min-w-0 gap-1.5">
             {match.assignments.map((assignment) => (
-              <span
+              <PracticeAssignmentSummaryRow
                 key={assignment.requirementId}
-                className="surface-card inline-flex items-start gap-1.5 px-2 py-1 text-[0.72rem] text-(--text-main)"
-              >
-                <strong className="shrink-0 font-semibold">
-                  {assignment.sourceLabel}
-                </strong>
-                <span className="text-(--text-muted)">
-                  {assignment.kind === 'exclude'
-                    ? 'sin cartas en la mano'
-                    : assignment.cards.length > 0
-                      ? formatPracticeAssignmentCards(assignment.cards)
-                      : 'sin asignación visible'}
-                </span>
-              </span>
+                assignment={assignment}
+              />
             ))}
           </div>
         </div>
@@ -595,13 +629,158 @@ function PracticeMatchCard({
   )
 }
 
+function PracticeAssignmentSummaryRow({
+  assignment,
+}: {
+  assignment: PracticeHandRequirementAssignment
+}) {
+  const { hiddenCount, visibleCards } = getVisibleAssignmentCards(assignment.cards)
+
+  return (
+    <div className="grid min-w-0 gap-1 rounded-[16px] border border-(--border-subtle) bg-[rgb(var(--background-rgb)/0.24)] px-2.5 py-2">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <strong className="min-w-0 text-[0.74rem] text-(--text-main)">{assignment.sourceLabel}</strong>
+        <span className="surface-panel-soft px-1.5 py-0.5 text-[0.64rem] text-(--text-muted)">
+          {getAssignmentStateLabel(assignment.kind)}
+        </span>
+      </div>
+
+      {assignment.kind === 'exclude' ? (
+        <p className="app-muted m-0 text-[0.74rem] leading-[1.15]">Sin cartas en la mano.</p>
+      ) : assignment.cards.length > 0 ? (
+        <div className="flex min-w-0 flex-wrap gap-1">
+          {visibleCards.map((card) => (
+            <PracticeCardBadge
+              key={`${assignment.requirementId}-${card.name}`}
+              card={card}
+            />
+          ))}
+          {hiddenCount > 0 ? (
+            <span className="surface-panel-soft px-2 py-1 text-[0.7rem] text-(--text-muted)">
+              +{formatInteger(hiddenCount)} más
+            </span>
+          ) : null}
+        </div>
+      ) : (
+        <p className="app-muted m-0 text-[0.74rem] leading-[1.15]">Sin asignación visible.</p>
+      )}
+    </div>
+  )
+}
+
+function PracticeTechnicalDetails({ matches }: { matches: PracticeHandMatch[] }) {
+  if (matches.length === 0) {
+    return null
+  }
+
+  return (
+    <details className="details-toggle section-disclosure grid min-w-0 gap-1 overflow-hidden">
+      <summary className="section-disclosure-summary min-w-0">
+        <span className="section-disclosure-title">
+          <span className="grid min-w-0 gap-0.5">
+            <strong className="text-[0.84rem] text-(--text-main)">Ver asignación completa</strong>
+            <span className="app-muted text-[0.72rem] leading-[1.14]">
+              Detalle carta por carta de cada check cumplido.
+            </span>
+          </span>
+        </span>
+        <span className="section-disclosure-arrow details-arrow" aria-hidden="true">›</span>
+      </summary>
+
+      <div className="grid min-w-0 gap-2 px-2.5 pb-2.5">
+        {matches.map((match) => (
+          <article
+            key={`technical-${match.patternId}`}
+            className="surface-card grid min-w-0 gap-1.5 overflow-hidden px-2.5 py-2 [overflow-wrap:anywhere] [word-break:break-word]"
+          >
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+              <strong className="min-w-0 text-[0.82rem] text-(--text-main)">{match.name}</strong>
+              <span
+                className={[
+                  getPracticeMatchStateBadgeClass(match.kind),
+                  'px-1.5 py-0.5 text-[0.65rem]',
+                ].join(' ')}
+              >
+                {getPracticeMatchStateLabel(match.kind)}
+              </span>
+            </div>
+
+            <small className="app-muted min-w-0 text-[0.72rem] leading-[1.14]">
+              {match.requirementLabel}
+            </small>
+
+            <div className="grid min-w-0 gap-1.5">
+              {match.assignments.map((assignment) => (
+                <PracticeAssignmentDetailRow
+                  key={`technical-${match.patternId}-${assignment.requirementId}`}
+                  assignment={assignment}
+                />
+              ))}
+            </div>
+          </article>
+        ))}
+      </div>
+    </details>
+  )
+}
+
+function PracticeAssignmentDetailRow({
+  assignment,
+}: {
+  assignment: PracticeHandRequirementAssignment
+}) {
+  return (
+    <div className="grid min-w-0 gap-1 rounded-[14px] border border-(--border-subtle) bg-[rgb(var(--secondary-rgb)/0.16)] px-2 py-1.5">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <strong className="min-w-0 text-[0.73rem] text-(--text-main)">{assignment.sourceLabel}</strong>
+        <span className="surface-panel-soft px-1.5 py-0.5 text-[0.64rem] text-(--text-muted)">
+          {getAssignmentStateLabel(assignment.kind)}
+        </span>
+      </div>
+
+      {assignment.kind === 'exclude' ? (
+        <p className="app-muted m-0 text-[0.72rem] leading-[1.14]">Sin cartas en la mano.</p>
+      ) : assignment.cards.length > 0 ? (
+        <div className="flex min-w-0 flex-wrap gap-1">
+          {assignment.cards.map((card) => (
+            <PracticeCardBadge
+              key={`${assignment.requirementId}-detail-${card.name}`}
+              card={card}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="app-muted m-0 text-[0.72rem] leading-[1.14]">Sin asignación visible.</p>
+      )}
+    </div>
+  )
+}
+
+function PracticeCardBadge({
+  card,
+}: {
+  card: {
+    name: string
+    copies: number
+  }
+}) {
+  return (
+    <span className="surface-card inline-flex min-w-0 max-w-full items-center gap-1 px-2 py-1 text-[0.7rem] text-(--text-main) [overflow-wrap:anywhere] [word-break:break-word]">
+      <span className="min-w-0">{card.name}</span>
+      {card.copies > 1 ? (
+        <span className="app-muted shrink-0">x{formatInteger(card.copies)}</span>
+      ) : null}
+    </span>
+  )
+}
+
 function PracticeNearMissCard({ nearMiss }: { nearMiss: PracticeHandNearMiss }) {
   return (
-    <article className="surface-card grid gap-2 px-2.5 py-2">
-      <div className="flex items-start justify-between gap-2">
+    <article className="surface-card grid min-w-0 gap-2 overflow-hidden px-2.5 py-2 [overflow-wrap:anywhere] [word-break:break-word]">
+      <div className="flex min-w-0 items-start justify-between gap-2">
         <div className="min-w-0">
-          <strong className="block text-[0.88rem] text-(--text-main)">{nearMiss.name}</strong>
-          <small className="app-muted mt-[0.22rem] block text-[0.72rem] leading-[1.16]">
+          <strong className="block min-w-0 text-[0.88rem] text-(--text-main)">{nearMiss.name}</strong>
+          <small className="app-muted mt-[0.22rem] block min-w-0 text-[0.72rem] leading-[1.16]">
             {nearMiss.requirementLabel}
           </small>
         </div>
@@ -610,7 +789,7 @@ function PracticeNearMissCard({ nearMiss }: { nearMiss: PracticeHandNearMiss }) 
         </span>
       </div>
 
-      <div className="grid gap-1">
+      <div className="grid min-w-0 gap-1">
         {nearMiss.notes.map((note, index) => (
           <p
             key={`${nearMiss.patternId}-note-${index}`}

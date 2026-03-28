@@ -4,9 +4,7 @@ import { buildCalculatorState } from '../app/calculator-state'
 import type { DerivedDeckGroup } from '../app/deck-groups'
 import type { CalculatorMode } from '../app/model'
 import { curatePatterns } from '../app/pattern-curation'
-import { buildDefaultPatterns } from '../app/pattern-defaults'
 import { AUTO_BASE_PRESET_IDS, buildPatternPresets } from '../app/pattern-presets'
-import { getPatternDefinitionKey } from '../app/patterns'
 import {
   countCardsMissingOrigin,
   countCardsMissingRoles,
@@ -19,16 +17,13 @@ import { calculateProbabilities } from '../probability'
 import type { CalculationOutput, CardEntry, HandPattern } from '../types'
 import { StepHero } from './StepHero'
 import { ConfirmDialog } from './probability/ConfirmDialog'
-import { CausalChecksList } from './probability/CausalChecksList'
 import { DeckQualityHero } from './probability/DeckQualityHero'
-import { KeyInsightsSummary } from './probability/KeyInsightsSummary'
 import { PatternEditorDrawer, formatDrawerImpactLabel } from './probability/PatternEditorDrawer'
 import type { PatternEditorActions } from './probability/pattern-editor-actions'
 import { PracticeSection } from './probability/PracticeSection'
-import { ResultsDetailPanel } from './probability/ResultsDetailPanel'
 import {
-  buildProbabilityEntries,
-  buildProbabilityInsights,
+  buildDeterministicCheckSet,
+  buildProbabilityCheckPipeline,
 } from './probability/probability-lab-helpers'
 import { Button } from './ui/Button'
 
@@ -90,10 +85,6 @@ export function ProbabilityPanel({
     () => curatePatterns(patterns, derivedMainCards, { includeDefaults: false }),
     [derivedMainCards, patterns],
   )
-  const corePatternKeys = useMemo(
-    () => new Set(buildDefaultPatterns(derivedMainCards).map((pattern) => getPatternDefinitionKey(pattern))),
-    [derivedMainCards],
-  )
   const mainDeckCount = useMemo(
     () => derivedMainCards.reduce((total, card) => total + card.copies, 0),
     [derivedMainCards],
@@ -122,18 +113,6 @@ export function ProbabilityPanel({
     () => activePatterns.filter((pattern) => pattern.needsReview).length,
     [activePatterns],
   )
-  const result = useMemo(() => {
-    if (isEditingDeck || !hasCompletedClassification || activePatterns.length === 0) {
-      return IDLE_CALCULATION_RESULT
-    }
-
-    return calculateProbabilities(
-      buildCalculatorState(derivedMainCards, {
-        handSize,
-        patterns: activePatterns,
-      }),
-    )
-  }, [activePatterns, derivedMainCards, handSize, hasCompletedClassification, isEditingDeck])
   const readinessPresets = useMemo(
     () =>
       AUTO_BASE_PRESET_IDS.flatMap((presetId) => {
@@ -142,22 +121,29 @@ export function ProbabilityPanel({
       }),
     [presetById],
   )
-  const readinessResult = useMemo(() => {
-    if (isEditingDeck || !hasCompletedClassification || readinessPresets.length === 0) {
+  const readinessPatterns = useMemo(
+    () => buildDeterministicCheckSet(readinessPresets.map((preset) => preset.pattern)),
+    [readinessPresets],
+  )
+  const allChecks = useMemo(
+    () => buildDeterministicCheckSet(activePatterns.length > 0 ? activePatterns : readinessPatterns),
+    [activePatterns, readinessPatterns],
+  )
+  const isUsingActiveChecks = activePatterns.length > 0
+  const result = useMemo(() => {
+    if (isEditingDeck || !hasCompletedClassification || allChecks.length === 0) {
       return IDLE_CALCULATION_RESULT
     }
 
     return calculateProbabilities(
       buildCalculatorState(derivedMainCards, {
         handSize,
-        patterns: readinessPresets.map((preset) => preset.pattern),
+        patterns: allChecks,
       }),
     )
-  }, [derivedMainCards, handSize, hasCompletedClassification, isEditingDeck, readinessPresets])
+  }, [allChecks, derivedMainCards, handSize, hasCompletedClassification, isEditingDeck])
   const deckSummary = useMemo<DeckSummarySnapshot | null>(() => {
-    const activeSummary = result.summary
-    const fallbackSummary = readinessResult.summary
-    const summary = activeSummary ?? fallbackSummary
+    const summary = result.summary
 
     if (!summary) {
       return null
@@ -172,22 +158,29 @@ export function ProbabilityPanel({
       cleanProbability,
       cleanHands,
       totalHands: summary.totalHands,
-      basedOnActiveRules: Boolean(activeSummary),
+      basedOnActiveRules: isUsingActiveChecks,
     }
-  }, [readinessResult.summary, result.summary])
-  const { openingEntries, problemEntries } = useMemo(
-    () => buildProbabilityEntries(activePatterns, result.summary, derivedMainCards, corePatternKeys),
-    [activePatterns, corePatternKeys, derivedMainCards, result.summary],
+  }, [isUsingActiveChecks, result.summary])
+  const checkPipeline = useMemo(
+    () =>
+      buildProbabilityCheckPipeline({
+        allChecks,
+        availablePresets,
+        derivedMainCards,
+        summary: result.summary,
+      }),
+    [allChecks, availablePresets, derivedMainCards, result.summary],
   )
-  const { strengths, risks } = useMemo(
-    () => buildProbabilityInsights({ deckSummary, openingEntries, problemEntries }),
-    [deckSummary, openingEntries, problemEntries],
-  )
+  const {
+    allChecks: allCheckEntries,
+    detailOpeningEntries,
+    detailProblemEntries,
+  } = checkPipeline
   const [drawerMode, setDrawerMode] = useState<DrawerMode | null>(null)
   const [selectedPatternId, setSelectedPatternId] = useState<string | null>(null)
   const [pendingCreatedPatternId, setPendingCreatedPatternId] = useState<string | null>(null)
   const [practiceOpen, setPracticeOpen] = useState(false)
-  const [resultsDetailOpen, setResultsDetailOpen] = useState(false)
+  const [isAnalysisEditMode, setIsAnalysisEditMode] = useState(false)
   const [pendingDeletePatternId, setPendingDeletePatternId] = useState<string | null>(null)
   const [highlightedPatternId, setHighlightedPatternId] = useState<string | null>(null)
   const [recentlyChangedPatternId, setRecentlyChangedPatternId] = useState<string | null>(null)
@@ -457,7 +450,6 @@ export function ProbabilityPanel({
     selectedPatternId && recentlyChangedPatternId === selectedPatternId && kpiFeedback
       ? kpiFeedback.label
       : null
-  const activePatternCount = openingEntries.length + problemEntries.length
   const isEmptyDeckState = mainDeckCount === 0
   const isWaitingForRoleStep = !isEmptyDeckState && !hasCompletedClassification
 
@@ -504,7 +496,15 @@ export function ProbabilityPanel({
         </section>
       ) : (
         <div className="grid min-h-0 content-start gap-3">
-          <DeckQualityHero activePatternCount={activePatternCount} deckSummary={deckSummary} feedback={kpiFeedback} />
+          <DeckQualityHero
+            allCheckCount={allCheckEntries.length}
+            deckSummary={deckSummary}
+            feedback={kpiFeedback}
+            isEditingEnabled={isAnalysisEditMode && isUsingActiveChecks}
+            onEditPattern={handleEditPattern}
+            openingEntries={detailOpeningEntries}
+            problemEntries={detailProblemEntries}
+          />
 
           {result.blockingIssues.length > 0 ? (
             <div className="grid gap-1.5">
@@ -524,70 +524,39 @@ export function ProbabilityPanel({
             </div>
           ) : null}
 
-          <KeyInsightsSummary
-            highlightedPatternId={highlightedPatternId}
-            onHighlightPattern={setHighlightedPatternId}
-            risks={risks}
-            strengths={strengths}
-          />
-
-          {activePatternCount > 0 ? (
-            <CausalChecksList
-              highlightedPatternId={highlightedPatternId}
-              onEditPattern={handleEditPattern}
-              onHighlightPattern={setHighlightedPatternId}
-              openingEntries={openingEntries}
-              problemEntries={problemEntries}
-              recentlyChangedPatternId={recentlyChangedPatternId}
-            />
-          ) : null}
-
           <section className="surface-panel-soft grid gap-2.5 p-3">
             <div className="grid gap-0.5">
-              <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Ajustar analisis</p>
-              <h3 className="m-0 text-[1rem] leading-none text-(--text-main)">Que queres cambiar</h3>
+              <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Acciones</p>
+              <h3 className="m-0 text-[1rem] leading-none text-(--text-main)">
+                {isAnalysisEditMode ? 'Modo edición activo' : 'Vista de análisis'}
+              </h3>
               <p className="app-muted m-0 text-[0.78rem] leading-[1.16]">
-                Suma un chequeo recomendado o crea uno propio para ver el impacto en el KPI.
+                {isAnalysisEditMode
+                  ? 'Ahora podés editar los checks directamente desde Calidad del deck o sumar nuevos sin salir del flujo principal.'
+                  : 'Calidad del deck ya muestra el estado completo. Activá edición solo cuando quieras cambiar el análisis.'}
               </p>
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Button variant="primary" size="sm" onClick={handleOpenQuickAdd}>
-                Agregar chequeo recomendado
-              </Button>
-              <Button variant="secondary" size="sm" onClick={handleOpenCustomCreate}>
-                Crear chequeo propio
-              </Button>
+              {isAnalysisEditMode ? (
+                <>
+                  <Button variant="primary" size="sm" onClick={handleOpenQuickAdd}>
+                    Agregar chequeo recomendado
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={handleOpenCustomCreate}>
+                    Crear chequeo propio
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={() => setIsAnalysisEditMode(false)}>
+                    Cerrar edición
+                  </Button>
+                </>
+              ) : (
+                <Button variant="primary" size="sm" onClick={() => setIsAnalysisEditMode(true)}>
+                  Editar análisis
+                </Button>
+              )}
             </div>
           </section>
-
-          {activePatternCount > 0 ? (
-            <>
-              <section className="surface-panel-soft grid gap-2 p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="grid gap-0.5">
-                    <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Profundizar</p>
-                    <strong className="text-[0.92rem] text-(--text-main)">Ver detalle completo de aperturas y problemas</strong>
-                  </div>
-
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setResultsDetailOpen((current) => !current)}
-                  >
-                    {resultsDetailOpen ? 'Ocultar detalle' : 'Ver detalle'}
-                  </Button>
-                </div>
-              </section>
-
-              <ResultsDetailPanel
-                isOpen={resultsDetailOpen}
-                onClose={() => setResultsDetailOpen(false)}
-                openingEntries={openingEntries}
-                problemEntries={problemEntries}
-              />
-            </>
-          ) : null}
         </div>
       )}
 
@@ -616,9 +585,9 @@ export function ProbabilityPanel({
             onClick={() => setPracticeOpen(false)}
           />
 
-          <div className="surface-panel relative grid h-[min(92vh,980px)] w-full max-w-[78rem] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0">
-            <div className="flex items-center justify-between gap-2 border-b border-(--border-subtle) px-4 py-3">
-              <div className="grid gap-0.5">
+          <div className="surface-panel relative grid h-[min(92vh,980px)] w-full max-w-[78rem] min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0">
+            <div className="flex min-w-0 items-center justify-between gap-2 border-b border-(--border-subtle) px-4 py-3">
+              <div className="grid min-w-0 gap-0.5">
                 <strong className="text-[0.98rem] text-(--text-main)">Practica</strong>
                 <span className="app-muted text-[0.74rem]">Proba manos sin salir del analisis principal.</span>
               </div>
@@ -632,7 +601,7 @@ export function ProbabilityPanel({
               </button>
             </div>
 
-            <div className="min-h-0 overflow-y-auto p-4">
+            <div className="min-h-0 min-w-0 overflow-x-hidden overflow-y-auto p-4">
               <PracticeSection
                 handSize={handSize}
                 derivedMainCards={derivedMainCards}

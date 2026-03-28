@@ -2,6 +2,7 @@ import type { CardEntry, HandPattern, Matcher, PatternCondition } from '../types
 import { buildDerivedDeckGroupMap } from './deck-groups'
 import { getPatternDefinitionKey, getPatternMatchMode, normalizeHandPatternCategory, normalizeReusePolicy, resolveConditionCardIds, resolvePatternLogic } from './patterns'
 import { buildDefaultPatterns } from './pattern-defaults'
+import { buildPatternPresets, isObsoleteSystemPatternName } from './pattern-presets'
 
 interface CuratePatternsOptions {
   includeDefaults?: boolean
@@ -14,6 +15,9 @@ export function curatePatterns(
 ): HandPattern[] {
   const cardById = new Map(cards.map((card) => [card.id, card]))
   const groupsByKey = buildDerivedDeckGroupMap(cards)
+  const currentSystemPatternKeys = new Set(
+    buildPatternPresets(cards).map((preset) => getPatternDefinitionKey(preset.pattern)),
+  )
   const nextPatterns: HandPattern[] = []
   const seenPatternKeys = new Set<string>()
   const incomingPatterns = options.includeDefaults === false
@@ -21,7 +25,13 @@ export function curatePatterns(
     : [...patterns, ...buildDefaultPatterns(cards)]
 
   for (const pattern of incomingPatterns) {
-    const curatedPattern = curatePattern(pattern, cardById, groupsByKey, cards)
+    const curatedPattern = curatePattern(
+      pattern,
+      cardById,
+      groupsByKey,
+      cards,
+      currentSystemPatternKeys,
+    )
 
     if (!curatedPattern) {
       continue
@@ -64,6 +74,7 @@ function curatePattern(
   cardById: Map<string, CardEntry>,
   groupsByKey: ReturnType<typeof buildDerivedDeckGroupMap>,
   cards: CardEntry[],
+  currentSystemPatternKeys: Set<string>,
 ): HandPattern | null {
   if (pattern.needsReview) {
     return null
@@ -114,8 +125,7 @@ function curatePattern(
   const name = pattern.name.replace(/\s+/g, ' ').trim() || (kind === 'opening'
     ? 'Apertura sin nombre'
     : 'Problema sin nombre')
-
-  return {
+  const nextPattern: HandPattern = {
     ...pattern,
     name,
     kind,
@@ -125,6 +135,13 @@ function curatePattern(
     needsReview: false,
     conditions,
   }
+  const definitionKey = getPatternDefinitionKey(nextPattern)
+
+  if (isObsoleteSystemPatternName(name) && !currentSystemPatternKeys.has(definitionKey)) {
+    return null
+  }
+
+  return nextPattern
 }
 
 function curateCondition(

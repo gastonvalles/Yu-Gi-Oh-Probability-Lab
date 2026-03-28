@@ -45,7 +45,8 @@ Una mano posible o combinación de cartas que sí querés ver al robar.
 Ejemplos:
 - `Mínimo 1 Starter`
 - `Starter + Extender`
-- `Starter + Non-engine`
+- `Starter + protección`
+- `Engine + Interacción`
 
 ### Problema
 Una situación incómoda que querés evitar.
@@ -53,8 +54,9 @@ Una situación incómoda que querés evitar.
 Ejemplos:
 - `Sin starter`
 - `2 o más Bricks`
-- `3 o más HT en mano`
-- `4 o más Non-engine`
+- `3 o más Non-engine`
+- `Sin interacción`
+- `Extender sin starter`
 
 ### Resultado final de la mano
 
@@ -82,15 +84,17 @@ Cuando terminás el paso 2, la app genera presets base y se pueden editar:
 
 Aperturas:
 - `Mínimo 1 Starter`
+- `Mano jugable mínima`
 - `Starter + Extender`
-- `Starter + Non-engine`
+- `Al menos 1 interacción`
+- `Starter + protección`
+- `Engine + Interacción`
 
 Problemas:
 - `Sin starter`
 - `2 o más Bricks` (si hay bricks suficientes)
-- `3 o más HT en mano` (si hay HTs suficientes)
-- `3 o más BBs en mano` (si hay BBs suficientes)
-- `4 o más Non-engine` (si hay non-engine suficiente)
+- `3 o más Non-engine` (si hay non-engine suficiente)
+- `Sin interacción`
 - `Extender sin starter`
 
 Si ya existían reglas con el mismo nombre, no se duplican.

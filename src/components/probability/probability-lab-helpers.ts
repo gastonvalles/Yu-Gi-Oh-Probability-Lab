@@ -1,28 +1,29 @@
 import type {
   CalculationSummary,
-  CardEntry,
   HandPattern,
   PatternKind,
   PatternProbability,
 } from '../../types'
-import { getPatternDefinitionKey } from '../../app/patterns'
+import { PROBABILITY_MODEL_VISIBILITY, type PatternPreset } from '../../app/pattern-presets'
+import {
+  getPatternDefinitionKey,
+  normalizePatternName,
+} from '../../app/patterns'
+import type { CardEntry } from '../../types'
 import { buildPatternPreview } from './pattern-helpers'
-
-const MAX_VISIBLE_ENTRIES_PER_GROUP = 4
 
 export interface ProbabilityCausalEntry {
   definitionKey: string
-  directionLabel: string
-  effectLabel: string
-  impactLabel: string
-  impactSummary: string
+  description: string
+  id: string
   isCore: boolean
   kind: PatternKind
   name: string
   patternId: string
   possible: boolean
-  previewSummary: string
   probability: number
+  presetId: string | null
+  technicalSubtitle: string
 }
 
 export interface ProbabilityInsight {
@@ -35,105 +36,151 @@ export interface ProbabilityInsight {
   title: string
 }
 
-interface ProbabilityEntryCollections {
-  openingEntries: ProbabilityCausalEntry[]
+export interface ProbabilityCheckPipeline {
+  allChecks: ProbabilityCausalEntry[]
+  detailOpeningEntries: ProbabilityCausalEntry[]
+  detailProblemEntries: ProbabilityCausalEntry[]
   problemEntries: ProbabilityCausalEntry[]
+  relevantChecks: ProbabilityCausalEntry[]
+  risks: ProbabilityInsight[]
+  strengths: ProbabilityInsight[]
+  visibleChecks: ProbabilityCausalEntry[]
+  openingEntries: ProbabilityCausalEntry[]
 }
 
-interface ProbabilityDeckSummarySnapshot {
-  cleanHands: number
-  cleanProbability: number
-  totalHands: number
+const OPENING_PRIORITY_BY_PRESET_ID: Record<string, number> = {
+  starter_opening: 0,
+  minimal_playable_opening: 1,
+  starter_extender_opening: 2,
+  engine_interaction_opening: 3,
+  interaction_opening: 4,
+  starter_protection_opening: 5,
 }
 
-export function buildProbabilityEntries(
-  patterns: HandPattern[],
-  summary: CalculationSummary | null,
-  derivedMainCards: CardEntry[],
-  corePatternKeys: Set<string>,
-): ProbabilityEntryCollections {
+export function buildDeterministicCheckSet(patterns: HandPattern[]): HandPattern[] {
+  const seenIds = new Set<string>()
+  const seenDefinitionKeys = new Set<string>()
+
+  return [...patterns]
+    .sort(comparePatternsDeterministically)
+    .filter((pattern) => {
+      const definitionKey = getPatternDefinitionKey(pattern)
+      const isDuplicate =
+        seenIds.has(pattern.id) ||
+        seenDefinitionKeys.has(definitionKey)
+
+      if (isDuplicate) {
+        return false
+      }
+
+      seenIds.add(pattern.id)
+      seenDefinitionKeys.add(definitionKey)
+      return true
+    })
+}
+
+export function buildProbabilityCheckPipeline({
+  allChecks,
+  availablePresets,
+  derivedMainCards,
+  summary,
+}: {
+  allChecks: HandPattern[]
+  availablePresets: PatternPreset[]
+  derivedMainCards: CardEntry[]
+  summary: CalculationSummary | null
+}): ProbabilityCheckPipeline {
   const cardById = new Map(derivedMainCards.map((card) => [card.id, card]))
+  const presetByDefinitionKey = new Map(
+    availablePresets.map((preset) => [getPatternDefinitionKey(preset.pattern), preset]),
+  )
   const resultById = new Map(summary?.patternResults.map((result) => [result.patternId, result]) ?? [])
-  const openingEntries: ProbabilityCausalEntry[] = []
-  const problemEntries: ProbabilityCausalEntry[] = []
 
-  for (const pattern of patterns) {
-    const result = resultById.get(pattern.id) ?? null
+  const allEntries = allChecks.map((pattern) => {
+    const preset = presetByDefinitionKey.get(getPatternDefinitionKey(pattern)) ?? null
     const preview = buildPatternPreview(pattern, cardById)
-    const entry = buildProbabilityEntry(
-      pattern,
-      preview.summary,
-      result,
-      corePatternKeys.has(getPatternDefinitionKey(pattern)),
-    )
+    const result = resultById.get(pattern.id) ?? null
 
-    if (entry.kind === 'opening') {
-      openingEntries.push(entry)
-      continue
-    }
+    return buildProbabilityEntry(pattern, preview.summary, result, preset)
+  })
 
-    problemEntries.push(entry)
+  const rankedOpeningEntries = rankProbabilityEntries(
+    allEntries.filter((entry) => entry.kind === 'opening'),
+  )
+  const rankedProblemEntries = rankProbabilityEntries(
+    allEntries.filter((entry) => entry.kind === 'problem'),
+  )
+  const rankedAllChecks = [...rankedOpeningEntries, ...rankedProblemEntries]
+  const relevantChecks = rankedAllChecks.filter((entry) => entry.possible && entry.probability > 0)
+  const relevantOpeningEntries = relevantChecks.filter((entry) => entry.kind === 'opening')
+  const relevantProblemEntries = relevantChecks.filter((entry) => entry.kind === 'problem')
+  const openingEntries = selectVisibleEntries(relevantOpeningEntries)
+  const problemEntries = selectVisibleEntries(relevantProblemEntries)
+  const visibleChecks = [...openingEntries, ...problemEntries]
+  const strengths = buildEntryInsights(openingEntries)
+  const risks = buildEntryInsights(problemEntries)
+
+  if (summary) {
+    console.log('PROBABILITY DEBUG', {
+      totalChecks: rankedAllChecks.length,
+      relevantChecks: relevantChecks.length,
+      visibleChecks: visibleChecks.length,
+      checkIds: relevantChecks.map((check) => check.id),
+    })
   }
 
   return {
-    openingEntries: selectVisibleEntries(rankProbabilityEntries(openingEntries)),
-    problemEntries: selectVisibleEntries(rankProbabilityEntries(problemEntries)),
+    allChecks: rankedAllChecks,
+    detailOpeningEntries: rankedOpeningEntries,
+    detailProblemEntries: rankedProblemEntries,
+    openingEntries,
+    problemEntries,
+    relevantChecks,
+    risks,
+    strengths,
+    visibleChecks,
   }
-}
-
-export function buildProbabilityInsights({
-  deckSummary,
-  openingEntries,
-  problemEntries,
-}: ProbabilityEntryCollections & {
-  deckSummary: ProbabilityDeckSummarySnapshot | null
-}): {
-  risks: ProbabilityInsight[]
-  strengths: ProbabilityInsight[]
-} {
-  const strengths = finalizeInsights([
-    ...buildConsistencyStrengthInsights(deckSummary),
-    ...openingEntries.slice(0, 3).map((entry) => buildEntryInsight(entry)),
-  ])
-  const risks = finalizeInsights([
-    ...problemEntries.slice(0, 3).map((entry) => buildEntryInsight(entry)),
-    ...buildConsistencyRiskInsights(deckSummary),
-  ])
-
-  return { strengths, risks }
 }
 
 function buildProbabilityEntry(
   pattern: HandPattern,
   previewSummary: string,
   result: PatternProbability | null,
-  isCore: boolean,
+  preset: PatternPreset | null,
 ): ProbabilityCausalEntry {
   const kind = pattern.kind
   const probability = result?.probability ?? 0
   const possible = result?.possible ?? false
-  const name = pattern.name.trim() || (kind === 'opening' ? 'Nueva apertura' : 'Nuevo problema')
+  const fallbackName = kind === 'opening' ? 'Nueva apertura' : 'Nuevo problema'
+  const trimmedName = pattern.name.trim()
+  const name = preset?.title ?? (trimmedName || fallbackName)
 
   return {
     definitionKey: getPatternDefinitionKey(pattern),
-    directionLabel: kind === 'opening' ? 'Suma jugabilidad' : 'Introduce riesgo',
-    effectLabel: getEntryEffectLabel(kind, probability),
-    impactLabel: '',
-    impactSummary: '',
-    isCore,
+    description:
+      preset?.describeProbability(probability) ??
+      buildDefaultEntryDescription(kind, name, probability),
+    id: preset ? `preset:${preset.id}` : `pattern:${pattern.id}`,
+    isCore: preset?.recommended === true,
     kind,
     name,
     patternId: pattern.id,
     possible,
-    previewSummary,
     probability,
+    presetId: preset?.id ?? null,
+    technicalSubtitle: preset?.technicalSubtitle ?? previewSummary,
   }
 }
 
 function rankProbabilityEntries(entries: ProbabilityCausalEntry[]): ProbabilityCausalEntry[] {
-  const sortedEntries = [...entries].sort((left, right) => {
-    if (left.possible !== right.possible) {
-      return left.possible ? -1 : 1
+  return [...entries].sort((left, right) => {
+    if (left.kind === 'opening' && right.kind === 'opening') {
+      const leftPriority = getOpeningPriority(left)
+      const rightPriority = getOpeningPriority(right)
+
+      if (leftPriority !== rightPriority) {
+        return leftPriority - rightPriority
+      }
     }
 
     if (left.probability !== right.probability) {
@@ -146,253 +193,88 @@ function rankProbabilityEntries(entries: ProbabilityCausalEntry[]): ProbabilityC
 
     return left.name.localeCompare(right.name)
   })
-
-  return sortedEntries.map((entry, index) => ({
-    ...entry,
-    impactLabel: getEntryImpactLabel(entry.kind, entry.isCore, index),
-    impactSummary: getEntryImpactSummary(entry.kind, entry.isCore, index),
-  }))
 }
 
-function selectVisibleEntries(entries: ProbabilityCausalEntry[]): ProbabilityCausalEntry[] {
-  const positiveEntries = entries.filter((entry) => entry.possible && entry.probability > 0)
-
-  if (positiveEntries.length === 0) {
-    return []
-  }
-
-  const visibleEntries: ProbabilityCausalEntry[] = []
-  const visibleEntryIds = new Set<string>()
-
-  for (const entry of positiveEntries) {
-    if (!entry.isCore) {
-      continue
-    }
-
-    visibleEntries.push(entry)
-    visibleEntryIds.add(entry.patternId)
-
-    if (visibleEntries.length >= MAX_VISIBLE_ENTRIES_PER_GROUP) {
-      return visibleEntries
-    }
-  }
-
-  for (const entry of positiveEntries) {
-    if (visibleEntryIds.has(entry.patternId)) {
-      continue
-    }
-
-    visibleEntries.push(entry)
-    visibleEntryIds.add(entry.patternId)
-
-    if (visibleEntries.length >= MAX_VISIBLE_ENTRIES_PER_GROUP) {
-      break
-    }
-  }
-
-  return visibleEntries
+function selectVisibleEntries(
+  entries: ProbabilityCausalEntry[],
+): ProbabilityCausalEntry[] {
+  return [...entries]
+    .sort(compareVisibleEntriesByImpact)
+    .slice(0, PROBABILITY_MODEL_VISIBILITY.maxEntriesPerGroup)
 }
 
-function buildConsistencyStrengthInsights(
-  deckSummary: ProbabilityDeckSummarySnapshot | null,
-): ProbabilityInsight[] {
-  if (!deckSummary) {
-    return []
-  }
-
-  if (deckSummary.cleanProbability >= 0.72) {
-    return [
-      {
-        description: `El deck conserva ${formatProbability(deckSummary.cleanProbability)} de manos limpias sobre ${formatInteger(deckSummary.totalHands)} posibles.`,
-        emphasis: 'primary',
-        kind: 'opening',
-        patternId: null,
-        probability: deckSummary.cleanProbability,
-        sourceLabel: 'KPI principal',
-        title: 'Consistencia general alta',
-      },
-    ]
-  }
-
-  if (deckSummary.cleanProbability >= 0.58) {
-    return [
-      {
-        description: `La base del deck sigue sosteniendo ${formatProbability(deckSummary.cleanProbability)} de manos limpias.`,
-        emphasis: 'secondary',
-        kind: 'opening',
-        patternId: null,
-        probability: deckSummary.cleanProbability,
-        sourceLabel: 'KPI principal',
-        title: 'Consistencia general estable',
-      },
-    ]
-  }
-
-  return []
-}
-
-function buildConsistencyRiskInsights(
-  deckSummary: ProbabilityDeckSummarySnapshot | null,
-): ProbabilityInsight[] {
-  if (!deckSummary || deckSummary.cleanProbability >= 0.55) {
-    return []
-  }
-
-  return [
-    {
-      description: `Solo ${formatProbability(deckSummary.cleanProbability)} de las manos se mantiene limpia; hace falta recortar riesgos o subir aperturas.`,
-      emphasis: 'secondary',
-      kind: 'problem',
-      patternId: null,
-      probability: 1 - deckSummary.cleanProbability,
-      sourceLabel: 'KPI principal',
-      title: 'La consistencia general todavía es frágil',
-    },
-  ]
-}
-
-function buildEntryInsight(entry: ProbabilityCausalEntry): ProbabilityInsight {
-  return {
-    description: buildInsightDescription(entry),
-    emphasis: 'secondary',
+function buildEntryInsights(entries: ProbabilityCausalEntry[]): ProbabilityInsight[] {
+  return entries.map((entry, index) => ({
+    description: entry.description,
+    emphasis: index === 0 ? 'primary' : 'secondary',
     kind: entry.kind,
     patternId: entry.patternId,
     probability: entry.probability,
-    sourceLabel: entry.name,
-    title: buildInsightTitle(entry),
-  }
-}
-
-function finalizeInsights(insights: ProbabilityInsight[]): ProbabilityInsight[] {
-  const nextInsights: ProbabilityInsight[] = []
-  const seenInsightKeys = new Set<string>()
-
-  for (const insight of insights) {
-    const key = `${insight.kind}:${normalizeText(insight.title)}`
-
-    if (seenInsightKeys.has(key)) {
-      continue
-    }
-
-    seenInsightKeys.add(key)
-    nextInsights.push(insight)
-
-    if (nextInsights.length >= 3) {
-      break
-    }
-  }
-
-  return nextInsights.map((insight, index) => ({
-    ...insight,
-    emphasis: index === 0 ? 'primary' : 'secondary',
+    sourceLabel: entry.technicalSubtitle,
+    title: entry.name,
   }))
 }
 
-function buildInsightTitle(entry: ProbabilityCausalEntry): string {
-  const normalizedName = normalizeText(entry.name)
-
-  if (entry.kind === 'opening') {
-    if (normalizedName.includes('starter + extender')) {
-      return 'Starter + Extender aparece con frecuencia'
-    }
-
-    if (normalizedName.includes('engine + interaccion')) {
-      return 'Buen balance entre engine e interacción'
-    }
-
-    if (normalizedName.includes('starter')) {
-      return 'Alta probabilidad de abrir Starter'
-    }
-
-    return `${entry.name} sostiene la jugabilidad`
-  }
-
-  if (normalizedName.includes('sin starter')) {
-    return 'Alta probabilidad de manos sin Starter'
-  }
-
-  if (normalizedName.includes('brick')) {
-    return 'Las manos con demasiados Bricks siguen apareciendo'
-  }
-
-  if (normalizedName.includes('non-engine')) {
-    return 'Exceso de Non-engine en manos iniciales'
-  }
-
-  return `${entry.name} sigue presionando el resultado`
-}
-
-function buildInsightDescription(entry: ProbabilityCausalEntry): string {
-  if (entry.kind === 'opening') {
-    if (entry.isCore) {
-      return `${entry.name} aparece en ${formatProbability(entry.probability)} y marca una base sana para el deck.`
-    }
-
-    return `${entry.previewSummary} Hoy aparece en ${formatProbability(entry.probability)}.`
-  }
-
-  if (entry.isCore) {
-    return `${entry.name} aparece en ${formatProbability(entry.probability)} y hoy sí afecta la calidad de las manos.`
-  }
-
-  return `${entry.previewSummary} Hoy impacta en ${formatProbability(entry.probability)} de las manos.`
-}
-
-function getEntryEffectLabel(kind: PatternKind, probability: number): string {
+function buildDefaultEntryDescription(
+  kind: PatternKind,
+  name: string,
+  probability: number,
+): string {
   if (kind === 'opening') {
-    return probability >= 0.25
-      ? 'Sostiene una parte importante de las manos jugables.'
-      : 'Aporta manos jugables cuando aparece.'
+    return `${name} aparece en ${formatProbability(probability)} de las manos.`
   }
 
-  return probability >= 0.2
-    ? 'Está recortando una parte visible de las manos limpias.'
-    : 'Sigue apareciendo como riesgo en el análisis.'
-}
-
-function getEntryImpactLabel(kind: PatternKind, isCore: boolean, index: number): string {
-  if (index === 0) {
-    return kind === 'opening' ? 'Fortaleza clave' : 'Riesgo clave'
-  }
-
-  if (isCore) {
-    return 'Check core'
-  }
-
-  if (index === 1) {
-    return 'Impacto alto'
-  }
-
-  return 'Impacto puntual'
-}
-
-function getEntryImpactSummary(kind: PatternKind, isCore: boolean, index: number): string {
-  if (index === 0) {
-    return kind === 'opening'
-      ? 'Es el chequeo positivo que más sostiene el KPI ahora mismo.'
-      : 'Es el chequeo negativo que más le resta consistencia al deck.'
-  }
-
-  if (isCore) {
-    return 'Se mantiene visible porque forma parte de la base universal del análisis.'
-  }
-
-  return kind === 'opening'
-    ? 'Suma contexto útil sin ensuciar la lectura principal.'
-    : 'Marca un foco secundario que todavía conviene vigilar.'
+  return `El riesgo ${name} aparece en ${formatProbability(probability)} de las manos.`
 }
 
 function formatProbability(value: number): string {
-  return `${(value * 100).toFixed(1)}%`
+  return `${(value * 100).toFixed(3)}%`
 }
 
-function formatInteger(value: number): string {
-  return new Intl.NumberFormat('es-AR').format(value)
+function getOpeningPriority(entry: ProbabilityCausalEntry): number {
+  if (!entry.presetId) {
+    return Number.MAX_SAFE_INTEGER
+  }
+
+  return OPENING_PRIORITY_BY_PRESET_ID[entry.presetId] ?? Number.MAX_SAFE_INTEGER
 }
 
-function normalizeText(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
+function compareVisibleEntriesByImpact(
+  left: ProbabilityCausalEntry,
+  right: ProbabilityCausalEntry,
+): number {
+  if (left.probability !== right.probability) {
+    return right.probability - left.probability
+  }
+
+  if (left.isCore !== right.isCore) {
+    return left.isCore ? -1 : 1
+  }
+
+  return left.name.localeCompare(right.name)
+}
+
+function comparePatternsDeterministically(left: HandPattern, right: HandPattern): number {
+  const kindComparison = compareKinds(left.kind, right.kind)
+
+  if (kindComparison !== 0) {
+    return kindComparison
+  }
+
+  const leftName = normalizePatternName(left.name)
+  const rightName = normalizePatternName(right.name)
+
+  if (leftName !== rightName) {
+    return leftName.localeCompare(rightName)
+  }
+
+  return getPatternDefinitionKey(left).localeCompare(getPatternDefinitionKey(right))
+}
+
+function compareKinds(left: PatternKind, right: PatternKind): number {
+  if (left === right) {
+    return 0
+  }
+
+  return left === 'opening' ? -1 : 1
 }

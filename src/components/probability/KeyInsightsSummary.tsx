@@ -18,12 +18,12 @@ export function KeyInsightsSummary({
     <section className="grid gap-3">
       <div className="grid gap-0.5">
         <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Que esta pasando</p>
-        <h3 className="m-0 text-[1rem] leading-none text-(--text-main)">Por que da este resultado</h3>
+        <h3 className="m-0 text-[1rem] leading-none text-(--text-main)">Fortalezas y riesgos principales</h3>
       </div>
 
       <div className="grid gap-3 min-[980px]:grid-cols-2">
         <InsightColumn
-          emptyMessage="Todavia no aparece una fortaleza clara entre tus chequeos activos."
+          emptyMessage="No aparece una fortaleza clara con el threshold actual."
           highlightedPatternId={highlightedPatternId}
           insights={strengths}
           onHighlightPattern={onHighlightPattern}
@@ -31,7 +31,7 @@ export function KeyInsightsSummary({
           tone="positive"
         />
         <InsightColumn
-          emptyMessage="Todavia no aparece un riesgo claro entre tus chequeos activos."
+          emptyMessage="No aparece un riesgo dominante con el threshold actual."
           highlightedPatternId={highlightedPatternId}
           insights={risks}
           onHighlightPattern={onHighlightPattern}
@@ -108,9 +108,7 @@ function InsightColumn({
                   <p className="app-muted m-0 text-[0.76rem] leading-[1.14]">{insight.description}</p>
                 </div>
 
-                <small className="app-soft text-[0.72rem] leading-[1.14]">
-                  {insight.patternId ? `Chequeo: ${insight.sourceLabel}` : insight.sourceLabel}
-                </small>
+                <small className="app-soft text-[0.72rem] leading-[1.14]">{insight.sourceLabel}</small>
               </article>
             )
           })}

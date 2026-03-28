@@ -4,6 +4,7 @@ import { deriveMainDeckCardsFromZone } from './calculator-state'
 import { curatePatterns, getPatternCollectionSignature } from './pattern-curation'
 import type { AppState } from './model'
 import { getPatternMatchMode } from './patterns'
+import { isObsoleteSystemPatternName } from './pattern-presets'
 import { useAppDispatch } from './store-hooks'
 import { completePatternSeeding, replacePatterns } from './patterns-slice'
 
@@ -43,6 +44,7 @@ export function usePatternMaintenance({
     const needsPatternMigration = state.patterns.some(
       (pattern) =>
         pattern.needsReview ||
+        isObsoleteSystemPatternName(pattern.name) ||
         (pattern.kind !== 'opening' && pattern.kind !== 'problem'),
     )
 

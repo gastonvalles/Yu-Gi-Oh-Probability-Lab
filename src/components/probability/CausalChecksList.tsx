@@ -23,29 +23,29 @@ export function CausalChecksList({
     <section className="grid gap-3">
       <div className="grid gap-0.5">
         <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Que lo empuja</p>
-        <h3 className="m-0 text-[1rem] leading-none text-(--text-main)">Chequeos activos y su impacto</h3>
+        <h3 className="m-0 text-[1rem] leading-none text-(--text-main)">Chequeos relevantes del modelo</h3>
       </div>
 
       <div className="grid gap-3">
         <CausalChecksGroup
           entries={openingEntries}
-          emptyMessage="Todavia no hay aperturas activas."
+          emptyMessage="No aparece una fortaleza clara con el threshold actual."
           groupTone="positive"
           highlightedPatternId={highlightedPatternId}
           onEditPattern={onEditPattern}
           onHighlightPattern={onHighlightPattern}
           recentlyChangedPatternId={recentlyChangedPatternId}
-          title="Suma jugabilidad"
+          title="Fortalezas"
         />
         <CausalChecksGroup
           entries={problemEntries}
-          emptyMessage="Todavia no hay riesgos activos."
+          emptyMessage="No aparece un riesgo dominante con el threshold actual."
           groupTone="negative"
           highlightedPatternId={highlightedPatternId}
           onEditPattern={onEditPattern}
           onHighlightPattern={onHighlightPattern}
           recentlyChangedPatternId={recentlyChangedPatternId}
-          title="Introduce riesgo"
+          title="Riesgos"
         />
       </div>
     </section>
@@ -105,31 +105,32 @@ function CausalChecksGroup({
                 <div className="grid gap-1">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <strong className="text-[0.88rem] text-(--text-main)">{entry.name}</strong>
-                    <span
-                      className={[
-                        'px-1.5 py-0.5 text-[0.65rem]',
-                        groupTone === 'positive'
-                          ? 'surface-card-success text-(--accent)'
-                          : 'surface-card-danger text-(--destructive)',
-                      ].join(' ')}
-                    >
-                      {entry.impactLabel}
-                    </span>
+                    {entry.isCore ? (
+                      <span
+                        className={[
+                          'px-1.5 py-0.5 text-[0.65rem]',
+                          groupTone === 'positive'
+                            ? 'surface-card-success text-(--accent)'
+                            : 'surface-card-danger text-(--destructive)',
+                        ].join(' ')}
+                      >
+                        Modelo base
+                      </span>
+                    ) : null}
                     {isRecentlyChanged ? (
                       <span className="surface-panel-soft px-1.5 py-0.5 text-[0.65rem] text-(--text-muted)">
                         Actualizado
                       </span>
                     ) : null}
                   </div>
-                  <p className="app-muted m-0 text-[0.76rem] leading-[1.14]">{entry.previewSummary}</p>
+                  <p className="app-muted m-0 text-[0.76rem] leading-[1.14]">{entry.technicalSubtitle}</p>
                 </div>
 
                 <div className="grid gap-1">
-                  <p className="m-0 text-[0.78rem] text-(--text-main)">{entry.effectLabel}</p>
+                  <p className="m-0 text-[0.78rem] text-(--text-main)">{entry.description}</p>
                   <strong className="text-[0.9rem] leading-none text-(--text-main)">
                     {entry.possible ? formatPercent(entry.probability) : '0.0%'}
                   </strong>
-                  <small className="app-soft text-[0.72rem] leading-[1.14]">{entry.impactSummary}</small>
                 </div>
 
                 <div className="flex items-start justify-end">
