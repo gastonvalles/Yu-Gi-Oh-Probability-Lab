@@ -645,11 +645,26 @@ export function DeckRolesPanel({
   const filteredCards = activeOverview?.cards ?? []
   const emptyStateCopy = getEmptyStateCopy(activeFilter)
   const selectedCard = useMemo(
-    () => filteredCards.find((card) => card.id === selectedCardId) ?? filteredCards[0] ?? null,
-    [filteredCards, selectedCardId],
+    () =>
+      (selectedCardId ? sortedCards.find((card) => card.id === selectedCardId) : null) ??
+      filteredCards[0] ??
+      null,
+    [filteredCards, selectedCardId, sortedCards],
   )
+  const isSelectedCardInActiveFilter = useMemo(
+    () => (selectedCard ? filteredCards.some((card) => card.id === selectedCard.id) : false),
+    [filteredCards, selectedCard],
+  )
+  const visibleQueueCards = useMemo(() => {
+    if (!selectedCard || isSelectedCardInActiveFilter) {
+      return filteredCards
+    }
+
+    return [selectedCard, ...filteredCards.filter((card) => card.id !== selectedCard.id)]
+  }, [filteredCards, isSelectedCardInActiveFilter, selectedCard])
+  const hasPinnedSelectedCard = Boolean(selectedCard && !isSelectedCardInActiveFilter)
   const selectedCardIndex = selectedCard
-    ? filteredCards.findIndex((card) => card.id === selectedCard.id) + 1
+    ? visibleQueueCards.findIndex((card) => card.id === selectedCard.id) + 1
     : 0
   const filterItemMap = useMemo(
     () => new Map(overviewItems.map((item) => [getClassificationFilterReactKey(item.key), item])),
@@ -690,20 +705,26 @@ export function DeckRolesPanel({
   }, [activeFilter, defaultFilter, overviewItems])
 
   useEffect(() => {
-    if (filteredCards.length === 0) {
-      if (selectedCardId !== null) {
-        setSelectedCardId(null)
-      }
-
+    if (selectedCardId && sortedCards.some((card) => card.id === selectedCardId)) {
       return
     }
 
-    if (selectedCardId && filteredCards.some((card) => card.id === selectedCardId)) {
+    if (filteredCards.length === 0) {
+      setSelectedCardId(null)
       return
     }
 
     setSelectedCardId(filteredCards[0]?.id ?? null)
-  }, [filteredCards, selectedCardId])
+  }, [filteredCards, selectedCardId, sortedCards])
+
+  const handleFilterChange = (nextFilter: ClassificationFilterKey) => {
+    if (areClassificationFilterKeysEqual(activeFilter, nextFilter)) {
+      return
+    }
+
+    setSelectedCardId(null)
+    setActiveFilter(nextFilter)
+  }
 
   useEffect(() => {
     if (drawerMode === null) {
@@ -777,7 +798,7 @@ export function DeckRolesPanel({
                 type="button"
                 className="classification-view-chip classification-view-chip-active"
                 style={getClassificationStyle(activeAdvancedFilter.styleKey)}
-                onClick={() => setActiveFilter(defaultFilter)}
+                onClick={() => handleFilterChange(defaultFilter)}
               >
                 Filtrando: {activeAdvancedFilter.label} ×
               </button>
@@ -797,7 +818,7 @@ export function DeckRolesPanel({
                     active ? 'classification-view-chip-active' : '',
                   ].join(' ')}
                   style={getClassificationStyle(item.styleKey)}
-                  onClick={() => setActiveFilter(item.key)}
+                  onClick={() => handleFilterChange(item.key)}
                 >
                   <span>{item.label}</span>
                   <span className="app-soft text-[0.66rem]">{formatInteger(item.cards.length)}</span>
@@ -828,19 +849,29 @@ export function DeckRolesPanel({
                 <span className="app-chip px-2 py-0.5 text-[0.68rem]">{formatInteger(filteredCards.length)} cartas</span>
                 <span className="app-chip px-2 py-0.5 text-[0.68rem]">{formatInteger(activeOverview?.copies ?? 0)} copias</span>
                 <span className="app-chip px-2 py-0.5 text-[0.68rem]">{formatInteger(totalCopies)} total</span>
+                {hasPinnedSelectedCard ? (
+                  <span className="app-chip-accent px-2 py-0.5 text-[0.68rem]">Carta fijada en edición</span>
+                ) : null}
               </div>
+
+              {hasPinnedSelectedCard ? (
+                <p className="surface-card-warning m-0 px-2.5 py-2 text-[0.74rem] leading-[1.14] text-(--warning)">
+                  Esta carta ya salió de la cola activa, pero queda visible para que termines de revisarla sin tener que buscarla de nuevo.
+                </p>
+              ) : null}
             </div>
 
-            {filteredCards.length === 0 ? (
+            {visibleQueueCards.length === 0 ? (
               <p className={[emptyStateCopy.tone, 'm-0 px-2.5 py-2 text-[0.8rem]'].join(' ')}>
                 <strong className="block text-(--text-main)">{emptyStateCopy.title}</strong>
                 <span className="mt-1 block">{emptyStateCopy.description}</span>
               </p>
             ) : (
               <div className="flex min-h-0 flex-col gap-1 overflow-y-auto pr-1">
-                {filteredCards.map((card) => {
+                {visibleQueueCards.map((card) => {
                   const primaryStatus = getCardPrimaryStatus(card)
                   const active = selectedCard?.id === card.id
+                  const pinned = hasPinnedSelectedCard && selectedCard?.id === card.id
 
                   return (
                     <button
@@ -869,6 +900,11 @@ export function DeckRolesPanel({
                           <p className="app-muted m-0 min-w-0 truncate text-[0.66rem] leading-none">
                             {getCardTypeLabel(card)} · {getCardQueueSummary(card)}
                           </p>
+                          {pinned ? (
+                            <span className="app-chip-accent shrink-0 px-1.5 py-0.5 text-[0.58rem]">
+                              En edición
+                            </span>
+                          ) : null}
                           <ClassificationStatusChip
                             label={primaryStatus.label}
                             tone={primaryStatus.tone}
@@ -904,7 +940,7 @@ export function DeckRolesPanel({
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">
-                          Carta actual {selectedCardIndex > 0 ? `· ${formatInteger(selectedCardIndex)} / ${formatInteger(filteredCards.length)}` : ''}
+                          Carta actual {selectedCardIndex > 0 ? `· ${formatInteger(selectedCardIndex)} / ${formatInteger(visibleQueueCards.length)}` : ''}
                         </p>
                         <h3 className="m-[0.22rem_0_0] truncate text-[1.1rem] leading-none text-(--text-main)">{selectedCard.name}</h3>
                         <p className="app-muted m-[0.28rem_0_0] text-[0.76rem] leading-[1.14]">
@@ -916,6 +952,12 @@ export function DeckRolesPanel({
                         {activeOverview?.label ?? 'Vista actual'}
                       </span>
                     </div>
+
+                    {hasPinnedSelectedCard ? (
+                      <p className="surface-card m-0 px-2.5 py-2 text-[0.74rem] leading-[1.14] text-(--text-muted)">
+                        Estás editando una carta que ya no coincide con <strong className="text-(--text-main)">{activeOverview?.label ?? 'la vista activa'}</strong>. Queda fijada hasta que elijas otra.
+                      </p>
+                    ) : null}
 
                     <div className="flex flex-wrap gap-1">
                       {getCardStatusItems(selectedCard).map((status) => (
@@ -1114,7 +1156,7 @@ export function DeckRolesPanel({
                       ].join(' ')}
                       style={getClassificationFilterCardStyle(item.styleKey, active)}
                       onClick={() => {
-                        setActiveFilter(item.key)
+                        handleFilterChange(item.key)
                         setDrawerMode(null)
                       }}
                     >
