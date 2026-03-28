@@ -3,7 +3,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { buildCalculatorState } from '../app/calculator-state'
 import type { DerivedDeckGroup } from '../app/deck-groups'
 import type { CalculatorMode } from '../app/model'
-import { buildPatternPresets } from '../app/pattern-presets'
+import { curatePatterns } from '../app/pattern-curation'
+import { buildDefaultPatterns } from '../app/pattern-defaults'
+import { AUTO_BASE_PRESET_IDS, buildPatternPresets } from '../app/pattern-presets'
+import { getPatternDefinitionKey } from '../app/patterns'
 import {
   countCardsMissingOrigin,
   countCardsMissingRoles,
@@ -65,14 +68,6 @@ const IDLE_CALCULATION_RESULT: CalculationOutput = {
   summary: null,
 }
 
-const DECK_SUMMARY_READINESS_PRESET_IDS = [
-  'starter_opening',
-  'starter_extender_opening',
-  'no_starter_problem',
-  'double_brick_problem',
-  'triple_non_engine_problem',
-] as const
-
 export function ProbabilityPanel({
   handSize,
   mode: _mode,
@@ -91,7 +86,14 @@ export function ProbabilityPanel({
     () => new Map(availablePresets.map((preset) => [preset.id, preset])),
     [availablePresets],
   )
-  const activePatterns = patterns
+  const activePatterns = useMemo(
+    () => curatePatterns(patterns, derivedMainCards, { includeDefaults: false }),
+    [derivedMainCards, patterns],
+  )
+  const corePatternKeys = useMemo(
+    () => new Set(buildDefaultPatterns(derivedMainCards).map((pattern) => getPatternDefinitionKey(pattern))),
+    [derivedMainCards],
+  )
   const mainDeckCount = useMemo(
     () => derivedMainCards.reduce((total, card) => total + card.copies, 0),
     [derivedMainCards],
@@ -134,7 +136,7 @@ export function ProbabilityPanel({
   }, [activePatterns, derivedMainCards, handSize, hasCompletedClassification, isEditingDeck])
   const readinessPresets = useMemo(
     () =>
-      DECK_SUMMARY_READINESS_PRESET_IDS.flatMap((presetId) => {
+      AUTO_BASE_PRESET_IDS.flatMap((presetId) => {
         const preset = presetById.get(presetId)
         return preset ? [preset] : []
       }),
@@ -174,12 +176,12 @@ export function ProbabilityPanel({
     }
   }, [readinessResult.summary, result.summary])
   const { openingEntries, problemEntries } = useMemo(
-    () => buildProbabilityEntries(activePatterns, result.summary, derivedMainCards),
-    [activePatterns, derivedMainCards, result.summary],
+    () => buildProbabilityEntries(activePatterns, result.summary, derivedMainCards, corePatternKeys),
+    [activePatterns, corePatternKeys, derivedMainCards, result.summary],
   )
   const { strengths, risks } = useMemo(
-    () => buildProbabilityInsights({ openingEntries, problemEntries }),
-    [openingEntries, problemEntries],
+    () => buildProbabilityInsights({ deckSummary, openingEntries, problemEntries }),
+    [deckSummary, openingEntries, problemEntries],
   )
   const [drawerMode, setDrawerMode] = useState<DrawerMode | null>(null)
   const [selectedPatternId, setSelectedPatternId] = useState<string | null>(null)
@@ -455,7 +457,7 @@ export function ProbabilityPanel({
     selectedPatternId && recentlyChangedPatternId === selectedPatternId && kpiFeedback
       ? kpiFeedback.label
       : null
-  const activePatternCount = activePatterns.length
+  const activePatternCount = openingEntries.length + problemEntries.length
   const isEmptyDeckState = mainDeckCount === 0
   const isWaitingForRoleStep = !isEmptyDeckState && !hasCompletedClassification
 
@@ -502,15 +504,11 @@ export function ProbabilityPanel({
         </section>
       ) : (
         <div className="grid min-h-0 content-start gap-3">
-          <DeckQualityHero
-            activePatternCount={activePatternCount}
-            deckSummary={deckSummary}
-            feedback={kpiFeedback}
-          />
+          <DeckQualityHero activePatternCount={activePatternCount} deckSummary={deckSummary} feedback={kpiFeedback} />
 
-          {result.issues.length > 0 ? (
+          {result.blockingIssues.length > 0 ? (
             <div className="grid gap-1.5">
-              {result.issues.map((issue, index) => (
+              {result.blockingIssues.map((issue, index) => (
                 <p
                   key={`${issue.level}-${index}`}
                   className={[
@@ -533,14 +531,16 @@ export function ProbabilityPanel({
             strengths={strengths}
           />
 
-          <CausalChecksList
-            highlightedPatternId={highlightedPatternId}
-            onEditPattern={handleEditPattern}
-            onHighlightPattern={setHighlightedPatternId}
-            openingEntries={openingEntries}
-            problemEntries={problemEntries}
-            recentlyChangedPatternId={recentlyChangedPatternId}
-          />
+          {activePatternCount > 0 ? (
+            <CausalChecksList
+              highlightedPatternId={highlightedPatternId}
+              onEditPattern={handleEditPattern}
+              onHighlightPattern={setHighlightedPatternId}
+              openingEntries={openingEntries}
+              problemEntries={problemEntries}
+              recentlyChangedPatternId={recentlyChangedPatternId}
+            />
+          ) : null}
 
           <section className="surface-panel-soft grid gap-2.5 p-3">
             <div className="grid gap-0.5">
@@ -561,29 +561,33 @@ export function ProbabilityPanel({
             </div>
           </section>
 
-          <section className="surface-panel-soft grid gap-2 p-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="grid gap-0.5">
-                <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Profundizar</p>
-                <strong className="text-[0.92rem] text-(--text-main)">Ver detalle completo de aperturas y problemas</strong>
-              </div>
+          {activePatternCount > 0 ? (
+            <>
+              <section className="surface-panel-soft grid gap-2 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="grid gap-0.5">
+                    <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Profundizar</p>
+                    <strong className="text-[0.92rem] text-(--text-main)">Ver detalle completo de aperturas y problemas</strong>
+                  </div>
 
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setResultsDetailOpen((current) => !current)}
-              >
-                {resultsDetailOpen ? 'Ocultar detalle' : 'Ver detalle'}
-              </Button>
-            </div>
-          </section>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setResultsDetailOpen((current) => !current)}
+                  >
+                    {resultsDetailOpen ? 'Ocultar detalle' : 'Ver detalle'}
+                  </Button>
+                </div>
+              </section>
 
-          <ResultsDetailPanel
-            isOpen={resultsDetailOpen}
-            onClose={() => setResultsDetailOpen(false)}
-            openingEntries={openingEntries}
-            problemEntries={problemEntries}
-          />
+              <ResultsDetailPanel
+                isOpen={resultsDetailOpen}
+                onClose={() => setResultsDetailOpen(false)}
+                openingEntries={openingEntries}
+                problemEntries={problemEntries}
+              />
+            </>
+          ) : null}
         </div>
       )}
 

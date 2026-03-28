@@ -110,13 +110,13 @@ export function resolvePattern<Counts, Key extends string | number>(
     const totalCopies = cards.reduce((total, card) => total + card.copies, 0)
     const distinctAvailable = cards.filter((card) => card.copies > 0).length
     const possible =
-      keys.length === 0
-        ? false
-        : condition.kind === 'exclude'
-          ? true
-        : condition.distinct
-          ? distinctAvailable >= condition.quantity
-          : totalCopies >= condition.quantity
+      condition.kind === 'exclude'
+        ? true
+        : keys.length === 0
+          ? false
+          : condition.distinct
+            ? distinctAvailable >= condition.quantity
+            : totalCopies >= condition.quantity
 
     return {
       id: condition.id,
@@ -360,7 +360,7 @@ function matchesRequirement<Counts, Key extends string | number>(
   countOperations: CountOperations<Counts, Key>,
 ): boolean {
   if (requirement.keys.length === 0) {
-    return false
+    return requirement.kind === 'exclude'
   }
 
   const copiesMatched = requirement.keys.reduce(

@@ -43,7 +43,9 @@ export function DeckQualityHero({
           <h3 className="m-0 text-[1.08rem] leading-none text-(--text-main)">Jugable sin problemas</h3>
           <p className="app-muted m-0 text-[0.8rem] leading-[1.16]">
             {deckSummary.basedOnActiveRules
-              ? `Tus ${formatInteger(activePatternCount)} chequeos activos dejan este porcentaje de manos limpias.`
+              ? activePatternCount > 0
+                ? `Estos ${formatInteger(activePatternCount)} chequeos relevantes explican el porcentaje actual de manos limpias.`
+                : 'Los chequeos activos no están generando una señal útil ahora mismo; el KPI queda como referencia del deck.'
               : 'Todavia no hay chequeos activos; este valor muestra una referencia base del deck.'}
           </p>
         </div>

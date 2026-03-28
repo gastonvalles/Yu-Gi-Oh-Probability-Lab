@@ -94,7 +94,6 @@ export function fromPortableConfig(value: unknown): AppState {
   }
 
   const mode = parseMode(value.mode)
-  const configVersion = parseOptionalInteger(value.version, 0)
   const handSize = parseRequiredInteger(value.handSize, 'handSize')
   const deckFormat = parseDeckFormat(value.deckFormat)
   const patternsSeedVersion = parseOptionalInteger(value.patternsSeedVersion, 0)
@@ -139,7 +138,6 @@ export function fromPortableConfig(value: unknown): AppState {
         rawCondition,
         cardIdsByName,
         patternName,
-        configVersion,
       )
       needsReview = needsReview || matcherNeedsReview
 
@@ -374,7 +372,6 @@ function parseConditionMatcher(
   rawCondition: Record<string, unknown>,
   cardIdsByName: Map<string, string>,
   patternName: string,
-  configVersion: number,
 ): { matcher: Matcher | null; needsReview: boolean } {
   const directMatcher = parseMatcher(rawCondition.matcher)
 
@@ -392,7 +389,7 @@ function parseConditionMatcher(
 
     return {
       matcher: parsedGroupKey.groupKey ? createMatcherFromGroupKey(parsedGroupKey.groupKey) : null,
-      needsReview: parsedGroupKey.isLegacy || configVersion < 15,
+      needsReview: parsedGroupKey.groupKey === null,
     }
   }
 

@@ -1,14 +1,9 @@
 import { useEffect } from 'react'
 
-import { buildDefaultPatterns } from './pattern-defaults'
-import {
-  buildReusePolicy,
-  getPatternDefinitionKey,
-  getPatternMatchMode,
-  normalizeHandPatternCategory,
-  resolvePatternLogic,
-} from './patterns'
+import { deriveMainDeckCardsFromZone } from './calculator-state'
+import { curatePatterns, getPatternCollectionSignature } from './pattern-curation'
 import type { AppState } from './model'
+import { getPatternMatchMode } from './patterns'
 import { useAppDispatch } from './store-hooks'
 import { completePatternSeeding, replacePatterns } from './patterns-slice'
 
@@ -24,27 +19,31 @@ export function usePatternMaintenance({
   state,
 }: PatternMaintenanceOptions): void {
   const dispatch = useAppDispatch()
+  const derivedMainCards = deriveMainDeckCardsFromZone(state.deckBuilder.main)
 
   useEffect(() => {
-    if (!hasCompletedRoleStep || state.patternsSeedVersion >= defaultPatternsVersion) {
+    if (!hasCompletedRoleStep) {
       return
     }
 
-    const defaultPatterns = buildDefaultPatterns()
-    const existingPatternKeys = new Set(state.patterns.map((pattern) => getPatternDefinitionKey(pattern)))
-    const missingDefaults = defaultPatterns.filter(
-      (pattern) => !existingPatternKeys.has(getPatternDefinitionKey(pattern)),
-    )
+    if (state.patternsSeedVersion < defaultPatternsVersion) {
+      const nextPatterns = curatePatterns(state.patterns, derivedMainCards, {
+        includeDefaults: true,
+      })
+      const currentSignature = getPatternCollectionSignature(state.patterns)
+      const nextSignature = getPatternCollectionSignature(nextPatterns)
 
-    dispatch(completePatternSeeding({
-      version: defaultPatternsVersion,
-      patterns: [...state.patterns, ...missingDefaults],
-    }))
-  }, [defaultPatternsVersion, dispatch, hasCompletedRoleStep, state.deckBuilder.main, state.patterns, state.patternsSeedVersion])
+      dispatch(completePatternSeeding({
+        version: defaultPatternsVersion,
+        patterns: nextSignature === currentSignature ? state.patterns : nextPatterns,
+      }))
+      return
+    }
 
-  useEffect(() => {
     const needsPatternMigration = state.patterns.some(
-      (pattern) => pattern.kind !== 'opening' && pattern.kind !== 'problem',
+      (pattern) =>
+        pattern.needsReview ||
+        (pattern.kind !== 'opening' && pattern.kind !== 'problem'),
     )
 
     const needsMatchModeMigration = state.patterns.some(
@@ -63,15 +62,21 @@ export function usePatternMaintenance({
       return
     }
 
-    dispatch(replacePatterns(state.patterns.map((pattern) => ({
-        ...pattern,
-        kind: normalizeHandPatternCategory(pattern.kind),
-        ...resolvePatternLogic(
-          pattern.conditions.length <= 1 ? 'all' : getPatternMatchMode(pattern),
-          pattern.conditions.length,
-          pattern.minimumConditionMatches,
-        ),
-        reusePolicy: buildReusePolicy(pattern.reusePolicy === 'allow'),
-      }))))
-  }, [dispatch, state.patterns])
+    const nextPatterns = curatePatterns(state.patterns, derivedMainCards, {
+      includeDefaults: false,
+    })
+    const currentSignature = getPatternCollectionSignature(state.patterns)
+    const nextSignature = getPatternCollectionSignature(nextPatterns)
+
+    if (nextSignature !== currentSignature) {
+      dispatch(replacePatterns(nextPatterns))
+    }
+  }, [
+    defaultPatternsVersion,
+    derivedMainCards,
+    dispatch,
+    hasCompletedRoleStep,
+    state.patterns,
+    state.patternsSeedVersion,
+  ])
 }

@@ -35,6 +35,15 @@ export const QUICK_OVERVIEW_PRESET_IDS = [
   'triple_non_engine_problem',
 ] as const
 
+export const AUTO_BASE_PRESET_IDS = [
+  'starter_opening',
+  'starter_extender_opening',
+  'engine_interaction_opening',
+  'no_starter_problem',
+  'double_brick_problem',
+  'triple_non_engine_problem',
+] as const
+
 export const SIMPLE_MODE_DEFAULT_PRESET_IDS = [
   'starter_opening',
   'interaction_opening',

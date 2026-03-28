@@ -71,12 +71,12 @@ function InsightColumn({
         </p>
       ) : (
         <div className="grid gap-2">
-          {insights.map((insight) => {
-            const isHighlighted = highlightedPatternId === insight.patternId
+          {insights.map((insight, index) => {
+            const isHighlighted = insight.patternId !== null && highlightedPatternId === insight.patternId
 
             return (
               <article
-                key={insight.patternId}
+                key={insight.patternId ?? `${title}-${index}`}
                 className={[
                   insight.emphasis === 'primary' ? 'surface-panel-strong' : 'surface-card',
                   'grid gap-2 px-3 py-3 transition-[box-shadow,border-color,transform] duration-150',
@@ -109,7 +109,7 @@ function InsightColumn({
                 </div>
 
                 <small className="app-soft text-[0.72rem] leading-[1.14]">
-                  Chequeo: {insight.sourceLabel}
+                  {insight.patternId ? `Chequeo: ${insight.sourceLabel}` : insight.sourceLabel}
                 </small>
               </article>
             )
