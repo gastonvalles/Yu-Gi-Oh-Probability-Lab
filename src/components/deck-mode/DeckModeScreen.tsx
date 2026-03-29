@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { countUnclassifiedCards, isClassificationStepComplete } from '../../app/role-step'
-import { formatInteger } from '../../app/utils'
 import { DeckRolesPanel } from '../DeckRolesPanel'
 import { ExportDeckPanel } from '../ExportDeckPanel'
 import { HoverPreview } from '../HoverPreview'
@@ -10,12 +9,13 @@ import { SearchPanel } from '../SearchPanel'
 import { DeckBuilderStep } from './DeckBuilderStep'
 import { DeckModeDragOverlay } from './DeckModeDragOverlay'
 import {
-  DeckModeNavigation,
-  isDeckWorkflowStepKey,
-  type DeckModeNavigationItem,
+  buildDeckWorkflowNavigationItems,
   type DeckWorkflowStepKey,
-} from './DeckModeNavigation'
+  isDeckWorkflowStepKey,
+} from './deck-workflow-navigation'
+import { DeckModeNavigation } from './DeckModeNavigation'
 import { DeckModeShell } from './DeckModeShell'
+import { MobileBottomStepNav } from './MobileBottomStepNav'
 import { useDeckModeController } from './use-deck-mode-controller'
 
 function getStepFromHash(hash: string): DeckWorkflowStepKey | null {
@@ -109,70 +109,16 @@ export function DeckModeScreen() {
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
   }, [])
-  const navigationItems = useMemo<DeckModeNavigationItem[]>(
-    () => [
-      {
-        key: 'deck-builder',
-        step: '1',
-        title: 'Deck Builder',
-        description: 'Buscador, drag & drop y armado real de Main, Extra y Side.',
-        metric: `${formatInteger(mainDeckCount)} / 40`,
-        detail:
-          mainDeckCount >= 40
-            ? 'Base principal lista.'
-            : mainDeckCount > 0
-              ? `${formatInteger(Math.max(0, 40 - mainDeckCount))} para llegar a 40.`
-              : 'Empezá agregando cartas.',
-        tone: mainDeckCount >= 40 ? 'complete' : mainDeckCount > 0 ? 'progress' : 'pending',
-      },
-      {
-        key: 'categorization',
-        step: '2',
-        title: 'Categorization',
-        description: 'Separá origen y función sin tocar el deck builder.',
-        metric:
-          roleCards.length > 0
-            ? `${formatInteger(classifiedCardCount)} / ${formatInteger(roleCards.length)}`
-            : 'Esperando deck',
-        detail:
-          roleCards.length === 0
-            ? 'Necesita cartas en Main.'
-            : hasCompletedRoleStep
-              ? 'Todo clasificado.'
-              : `${formatInteger(unclassifiedCardCount)} sin cerrar.`,
-        tone:
-          roleCards.length === 0
-            ? 'pending'
-            : hasCompletedRoleStep
-              ? 'complete'
-              : 'progress',
-      },
-      {
-        key: 'probability-lab',
-        step: '3',
-        title: 'Probability Lab',
-        description: 'Chequeos, aperturas, resultados y simulaciones.',
-        metric:
-          patternCount > 0
-            ? `${formatInteger(patternCount)} chequeo${patternCount === 1 ? '' : 's'}`
-            : 'Sin chequeos',
-        detail: hasCompletedRoleStep
-          ? patternCount > 0
-            ? 'Listo para medir.'
-            : 'Definí aperturas.'
-          : 'Completá la categorización primero.',
-        tone: patternCount > 0 ? 'complete' : hasCompletedRoleStep ? 'progress' : 'pending',
-      },
-      {
-        key: 'export',
-        step: '4',
-        title: 'Export',
-        description: 'Descarga la imagen y el TXT del deck sin duplicar lógica.',
-        metric: mainDeckCount > 0 ? 'Descarga habilitada' : 'Sin deck',
-        detail: mainDeckCount > 0 ? 'Imagen + TXT.' : 'Necesitás cartas en Main.',
-        tone: mainDeckCount > 0 ? 'complete' : 'pending',
-      },
-    ],
+  const navigationItems = useMemo(
+    () =>
+      buildDeckWorkflowNavigationItems({
+        mainDeckCount,
+        roleCardCount: roleCards.length,
+        classifiedCardCount,
+        unclassifiedCardCount,
+        hasCompletedRoleStep,
+        patternCount,
+      }),
     [
       classifiedCardCount,
       hasCompletedRoleStep,
@@ -185,6 +131,13 @@ export function DeckModeScreen() {
   const deckBuilderStep = controller.deckBuilderStep
   const navigation = (
     <DeckModeNavigation
+      items={navigationItems}
+      activeStep={activeStep}
+      onStepChange={handleStepChange}
+    />
+  )
+  const mobileBottomNav = (
+    <MobileBottomStepNav
       items={navigationItems}
       activeStep={activeStep}
       onStepChange={handleStepChange}
@@ -246,6 +199,7 @@ export function DeckModeScreen() {
     <>
       <DeckModeShell
         sidebar={navigation}
+        mobileBottomNav={mobileBottomNav}
         main={mainContent}
         rail={isDeckBuilderStep ? deckBuilderRail : undefined}
         mainScrollable={!isDeckBuilderStep}

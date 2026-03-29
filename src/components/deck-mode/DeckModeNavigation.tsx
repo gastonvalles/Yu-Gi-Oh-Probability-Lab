@@ -1,37 +1,13 @@
-export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export'
-export type DeckWorkflowStepTone = 'complete' | 'progress' | 'pending'
-
-export interface DeckModeNavigationItem {
-  key: DeckWorkflowStepKey
-  step: string
-  title: string
-  description: string
-  metric: string
-  detail: string
-  tone: DeckWorkflowStepTone
-}
+import {
+  DECK_WORKFLOW_TONE_LABEL,
+  type DeckModeNavigationItem,
+  type DeckWorkflowStepKey,
+} from './deck-workflow-navigation'
 
 interface DeckModeNavigationProps {
   items: DeckModeNavigationItem[]
   activeStep: DeckWorkflowStepKey
   onStepChange: (step: DeckWorkflowStepKey) => void
-}
-
-const WORKFLOW_STEP_KEYS: readonly DeckWorkflowStepKey[] = [
-  'deck-builder',
-  'categorization',
-  'probability-lab',
-  'export',
-]
-
-const TONE_LABEL: Record<DeckWorkflowStepTone, string> = {
-  complete: 'Listo',
-  progress: 'En progreso',
-  pending: 'Pendiente',
-}
-
-export function isDeckWorkflowStepKey(value: string): value is DeckWorkflowStepKey {
-  return WORKFLOW_STEP_KEYS.some((stepKey) => stepKey === value)
 }
 
 export function DeckModeNavigation({
@@ -74,7 +50,7 @@ export function DeckModeNavigation({
                     <div className="flex items-start justify-between gap-2">
                       <strong className="text-[0.84rem] text-(--text-main)">{item.title}</strong>
                       <small className="app-muted shrink-0 text-[0.64rem] uppercase tracking-widest">
-                        {TONE_LABEL[item.tone]}
+                        {DECK_WORKFLOW_TONE_LABEL[item.tone]}
                       </small>
                     </div>
 
