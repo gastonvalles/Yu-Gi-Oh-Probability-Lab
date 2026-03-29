@@ -47,14 +47,16 @@ export function DeckZone({
 }: DeckZoneProps) {
   const zoneBreakdown = buildDeckZoneBreakdown(zone, cards)
   const visualLayout = buildDeckZoneVisualLayout(zone, cards)
+  const isMainDeckGrid = visualLayout !== null
   const zoneStyle = ZONE_STYLES[zone]
   const zoneGridStyle = {
     '--zone-background': zoneStyle.background,
     '--zone-border': zoneStyle.border,
+    '--deck-zone-card-gap': '0.32rem',
     minHeight: 'clamp(50px, 8vw, 90px)',
   } as CSSProperties
-  const zoneGridClassName = visualLayout
-    ? 'deck-zone-surface grid w-full content-start gap-[0.32rem] p-[0.35rem] grid-cols-5 min-[520px]:grid-cols-8 min-[980px]:grid-cols-1'
+  const zoneGridClassName = isMainDeckGrid
+    ? 'deck-zone-surface flex w-full flex-col gap-[0.32rem] overflow-x-hidden p-[0.35rem] min-[980px]:overflow-x-auto'
     : 'deck-zone-surface grid w-full content-start gap-[0.32rem] p-[0.35rem] grid-cols-5 min-[520px]:grid-cols-8 min-[980px]:grid-cols-10'
 
   const renderDeckCard = (card: DeckCardInstance, index: number) => (
@@ -115,10 +117,10 @@ export function DeckZone({
           ? visualLayout.rows.map((row) => (
               <div
                 key={`${zone}-row-${row.rowIndex}`}
-                className="contents min-[980px]:grid min-[980px]:gap-[0.32rem]"
+                className="main-deck-grid-row"
                 style={{
-                  gridTemplateColumns: `repeat(${visualLayout.columns}, minmax(0, 1fr))`,
-                }}
+                  '--main-deck-columns': String(visualLayout.columns),
+                } as CSSProperties}
               >
                 {row.cards.map(({ card, index }) => renderDeckCard(card, index))}
               </div>

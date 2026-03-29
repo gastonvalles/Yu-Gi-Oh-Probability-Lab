@@ -15,7 +15,10 @@ export interface DeckZoneVisualLayout {
   rows: DeckZoneRowLayout[]
 }
 
-const MAIN_DECK_FIXED_ROW_COUNT = 4
+export const MAIN_DECK_FIXED_ROW_COUNT = 4
+export const MAIN_DECK_BASE_COLUMNS = 10
+export const MAIN_DECK_MAX_COLUMNS = 15
+export const MAIN_DECK_EXPAND_THRESHOLD = 41
 
 export function buildDeckZoneVisualLayout(
   zone: DeckZone,
@@ -25,28 +28,28 @@ export function buildDeckZoneVisualLayout(
     return null
   }
 
-  return buildFixedRowDeckLayout(cards, MAIN_DECK_FIXED_ROW_COUNT)
+  return buildFixedRowDeckLayout(
+    cards,
+    MAIN_DECK_FIXED_ROW_COUNT,
+    getMainDeckColumnCount(cards.length),
+  )
 }
 
 export function buildFixedRowDeckLayout(
   cards: DeckCardInstance[],
   rowCount: number,
+  columnCount?: number,
 ): DeckZoneVisualLayout {
   const safeRowCount = Math.max(1, rowCount)
   const totalCards = cards.length
-  const columns = Math.max(1, Math.ceil(totalCards / safeRowCount))
-  const cardsPerRowBase = Math.floor(totalCards / safeRowCount)
-  const rowsWithExtraCard = totalCards % safeRowCount
-  let cursor = 0
+  const columns = columnCount ?? Math.max(1, Math.ceil(totalCards / safeRowCount))
 
   const rows = Array.from({ length: safeRowCount }, (_, rowIndex) => {
-    const rowSize = cardsPerRowBase + (rowIndex < rowsWithExtraCard ? 1 : 0)
-    const rowCards = cards.slice(cursor, cursor + rowSize).map((card, offset) => ({
+    const startIndex = rowIndex * columns
+    const rowCards = cards.slice(startIndex, startIndex + columns).map((card, offset) => ({
       card,
-      index: cursor + offset,
+      index: startIndex + offset,
     }))
-
-    cursor += rowSize
 
     return {
       rowIndex,
@@ -58,4 +61,15 @@ export function buildFixedRowDeckLayout(
     columns,
     rows,
   }
+}
+
+function getMainDeckColumnCount(totalCards: number): number {
+  if (totalCards < MAIN_DECK_EXPAND_THRESHOLD) {
+    return MAIN_DECK_BASE_COLUMNS
+  }
+
+  return Math.min(
+    MAIN_DECK_MAX_COLUMNS,
+    Math.max(MAIN_DECK_BASE_COLUMNS + 1, Math.ceil(totalCards / MAIN_DECK_FIXED_ROW_COUNT)),
+  )
 }

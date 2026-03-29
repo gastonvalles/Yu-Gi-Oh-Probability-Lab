@@ -1033,6 +1033,35 @@
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
   }
 
+  .main-deck-grid-row {
+    display: grid;
+    gap: var(--deck-zone-card-gap);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    width: 100%;
+    min-height: calc((100% - (var(--deck-zone-card-gap) * 4)) / 5 / 0.72);
+  }
+
+  @media (min-width: 520px) {
+    .main-deck-grid-row {
+      width: calc(
+        (((100% - (var(--deck-zone-card-gap) * 7)) / 8) * 5) +
+        (var(--deck-zone-card-gap) * 4)
+      );
+      min-height: calc((100% - (var(--deck-zone-card-gap) * 7)) / 8 / 0.72);
+    }
+  }
+
+  @media (min-width: 980px) {
+    .main-deck-grid-row {
+      grid-template-columns: repeat(var(--main-deck-columns), minmax(0, 1fr));
+      width: calc(
+        (((100% - (var(--deck-zone-card-gap) * 9)) / 10) * var(--main-deck-columns)) +
+        (var(--deck-zone-card-gap) * (var(--main-deck-columns) - 1))
+      );
+      min-height: calc((100% - (var(--deck-zone-card-gap) * 9)) / 10 / 0.72);
+    }
+  }
+
   .practice-stage {
     border: 1px dashed rgb(var(--border-rgb) / 0.92);
     background:
