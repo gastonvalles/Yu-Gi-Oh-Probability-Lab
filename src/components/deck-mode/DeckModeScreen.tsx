@@ -221,9 +221,9 @@ export function DeckModeScreen() {
       <DeckBuilderStep {...deckBuilderStep} />
     </div>
   ) : (
-    <section className="grid min-h-full content-start gap-3">
+    <section className="grid min-h-full content-start gap-3 min-[1101px]:h-full min-[1101px]:min-h-0">
       {activeStep === 'categorization' ? (
-        <div id="categorization" className="min-w-0 min-[1101px]:min-h-full">
+        <div id="categorization" className="min-w-0 min-[1101px]:h-full min-[1101px]:min-h-0">
           <DeckRolesPanel {...controller.roles} />
         </div>
       ) : null}
