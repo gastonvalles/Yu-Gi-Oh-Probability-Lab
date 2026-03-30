@@ -267,6 +267,12 @@ export function SearchPanel({
   const formatLabel = getDeckFormatLabel(deckFormat)
   const formatAllowsLegalityFilter = deckFormat !== 'unlimited' && deckFormat !== 'genesys'
   const isDesktopLayout = layoutMode === 'desktop'
+  const advancedFilterGridClass = isDesktopLayout
+    ? 'grid gap-1.5'
+    : 'grid gap-1.5 min-[720px]:grid-cols-2 min-[720px]:items-start'
+  const characteristicsGridClass = isDesktopLayout
+    ? 'grid gap-1.5'
+    : 'grid gap-1.5 min-[380px]:grid-cols-2'
   const quickTypeMeta = QUICK_TYPE_META[filters.quickType]
   const exactTypeGroups = useMemo(() => getExactTypeFilterGroups(filters.quickType), [filters.quickType])
   const raceGroups = useMemo(() => getRaceFilterGroups(filters.quickType), [filters.quickType])
@@ -479,7 +485,7 @@ export function SearchPanel({
                 ) : null}
               </div>
 
-              <div className="grid gap-1.5 min-[1101px]:grid-cols-2 min-[1101px]:items-start">
+              <div className={advancedFilterGridClass}>
                 <SearchFilterSection
                   title="Texto y arquetipo"
                   summary={buildSectionSummary([
@@ -491,7 +497,7 @@ export function SearchPanel({
                   }
                 >
                   <div className="grid gap-1.5">
-                    <label className="grid gap-1">
+                    <label className="grid min-w-0 gap-1">
                       <span className="app-soft text-[0.58rem] uppercase tracking-[0.12em]">Arquetipo</span>
                       <input
                         type="text"
@@ -504,7 +510,7 @@ export function SearchPanel({
                       />
                     </label>
 
-                    <label className="grid gap-1">
+                    <label className="grid min-w-0 gap-1">
                       <span className="app-soft text-[0.58rem] uppercase tracking-[0.12em]">Texto EN</span>
                       <input
                         type="text"
@@ -540,15 +546,15 @@ export function SearchPanel({
                     filters.legalOnly
                   }
                 >
-                  <div className="grid gap-1.5 min-[380px]:grid-cols-2">
-                    <label className="grid gap-1">
+                  <div className={characteristicsGridClass}>
+                    <label className="grid min-w-0 gap-1">
                       <span className="app-soft text-[0.58rem] uppercase tracking-[0.12em]">
                         {quickTypeMeta.exactTypeLabel}
                       </span>
                       <select
                         value={filters.exactType}
                         onChange={(event) => onFilterChange({ exactType: event.target.value })}
-                        className="app-field w-full px-2 py-[0.45rem] text-[0.76rem]"
+                        className="app-field min-w-0 w-full px-2 py-[0.45rem] text-[0.76rem]"
                       >
                         <option value="">Cualquiera</option>
                         {exactTypeGroups.map((group) => (
@@ -563,14 +569,14 @@ export function SearchPanel({
                       </select>
                     </label>
 
-                    <label className="grid gap-1">
+                    <label className="grid min-w-0 gap-1">
                       <span className="app-soft text-[0.58rem] uppercase tracking-[0.12em]">
                         {quickTypeMeta.raceLabel}
                       </span>
                       <select
                         value={filters.race}
                         onChange={(event) => onFilterChange({ race: event.target.value })}
-                        className="app-field w-full px-2 py-[0.45rem] text-[0.76rem]"
+                        className="app-field min-w-0 w-full px-2 py-[0.45rem] text-[0.76rem]"
                       >
                         <option value="">Cualquiera</option>
                         {raceGroups.map((group) => (
@@ -586,12 +592,12 @@ export function SearchPanel({
                     </label>
 
                     {quickTypeMeta.showAttribute ? (
-                      <label className="grid gap-1">
+                      <label className="grid min-w-0 gap-1">
                         <span className="app-soft text-[0.58rem] uppercase tracking-[0.12em]">Atributo</span>
                         <select
                           value={filters.attribute}
                           onChange={(event) => onFilterChange({ attribute: event.target.value })}
-                          className="app-field w-full px-2 py-[0.45rem] text-[0.76rem]"
+                          className="app-field min-w-0 w-full px-2 py-[0.45rem] text-[0.76rem]"
                         >
                           {ATTRIBUTE_OPTIONS.map((option) => (
                             <option key={option.value || 'any'} value={option.value}>
@@ -603,7 +609,7 @@ export function SearchPanel({
                     ) : null}
 
                     {quickTypeMeta.showLevel ? (
-                      <label className="grid gap-1">
+                      <label className="grid min-w-0 gap-1">
                         <span className="app-soft text-[0.58rem] uppercase tracking-[0.12em]">
                           {quickTypeMeta.levelLabel}
                         </span>
@@ -830,7 +836,7 @@ function SearchFilterSection({
 
   return (
     <details
-      className="details-toggle surface-panel-soft self-start grid gap-1 border border-(--border-subtle) p-1.5"
+      className="details-toggle surface-panel-soft self-start grid min-w-0 gap-1 border border-(--border-subtle) p-1.5"
       open={open}
       onToggle={(event) => setOpen(event.currentTarget.open)}
     >
@@ -845,7 +851,7 @@ function SearchFilterSection({
           ▶
         </span>
       </summary>
-      <div className="grid gap-1.5 pt-0.5">{children}</div>
+      <div className="grid min-w-0 gap-1.5 pt-0.5">{children}</div>
     </details>
   )
 }

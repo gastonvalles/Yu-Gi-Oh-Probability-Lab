@@ -2,7 +2,7 @@ import { buildGenesysCardInfo } from './genesys-format'
 import type { CardSearchRequest } from './card-search'
 import type { SearchCacheEntry } from './model'
 import { SEARCH_CACHE_KEY, SEARCH_CACHE_LIMIT, SEARCH_CACHE_TTL_MS } from './model'
-import { isRecord, normalizeName } from './utils'
+import { isRecord, normalizeSearchText } from './utils'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 
 export function loadApiSearchCache(): Record<string, SearchCacheEntry<ApiCardSearchResult>> {
@@ -99,13 +99,13 @@ export function saveApiSearchCache(cache: Record<string, SearchCacheEntry<ApiCar
 
 function buildSearchCacheKey(request: CardSearchRequest, page: number): string {
   return [
-    normalizeName(request.query),
-    normalizeName(request.archetype),
-    normalizeName(request.exactType),
-    normalizeName(request.attribute),
-    normalizeName(request.race),
-    normalizeName(request.level),
-    normalizeName(request.format),
+    normalizeSearchText(request.query),
+    normalizeSearchText(request.archetype),
+    normalizeSearchText(request.exactType),
+    normalizeSearchText(request.attribute),
+    normalizeSearchText(request.race),
+    normalizeSearchText(request.level),
+    normalizeSearchText(request.format),
     String(page),
   ].join('::')
 }

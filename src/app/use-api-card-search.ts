@@ -4,8 +4,10 @@ import {
   applyLocalCardSearchFilters,
   buildCardSearchActiveFilterCount,
   buildRemoteCardSearchRequest,
+  buildSearchableCardIndex,
   DEFAULT_CARD_SEARCH_FILTERS,
   hasCardSearchRequestCriteria,
+  searchCardCatalog,
   sortSearchResults,
   type CardSearchFilters,
 } from './card-search'
@@ -20,7 +22,7 @@ import {
   getCachedApiSearch,
   storeCachedApiSearch,
 } from './api-search-cache'
-import { searchCards, type ApiCardSearchResult } from '../ygoprodeck'
+import { loadCardCatalog, searchCards, type ApiCardSearchResult } from '../ygoprodeck'
 import type { DeckFormat } from '../types'
 
 interface ApiCardSearchController {
@@ -36,12 +38,16 @@ interface ApiCardSearchController {
   loadMoreResults: () => void
 }
 
+type CardCatalogStatus = 'idle' | 'loading' | 'success' | 'error'
+
 export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchController {
   const [apiSearch, setApiSearch] = useState(() => createInitialSearchState<ApiCardSearchResult>())
   const [searchFilters, setSearchFilters] = useState<CardSearchFilters>(() => ({
     ...DEFAULT_CARD_SEARCH_FILTERS,
   }))
   const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [cardCatalog, setCardCatalog] = useState<ApiCardSearchResult[] | null>(null)
+  const [cardCatalogStatus, setCardCatalogStatus] = useState<CardCatalogStatus>('idle')
   const searchCacheRef = useRef(loadApiSearchCache())
   const searchDebounceTimerRef = useRef<number>(0)
   const searchRequestIdRef = useRef(0)
@@ -52,6 +58,7 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
       apiSearch.query,
       searchFilters.archetype,
       searchFilters.attribute,
+      searchFilters.description,
       searchFilters.exactType,
       searchFilters.level,
       searchFilters.race,
@@ -65,9 +72,59 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
     () => buildCardSearchActiveFilterCount(searchFilters, deckFormat),
     [deckFormat, searchFilters],
   )
+  const searchableCardCatalog = useMemo(
+    () => (cardCatalog ? buildSearchableCardIndex(cardCatalog) : []),
+    [cardCatalog],
+  )
+  const localSearchPage = useMemo(() => {
+    if (cardCatalogStatus !== 'success' || !hasSearchCriteria) {
+      return null
+    }
+
+    const rankedResults = searchCardCatalog(
+      searchableCardCatalog,
+      apiSearch.query,
+      searchFilters,
+      deckFormat,
+    )
+    const visibleResultCount = Math.min(
+      rankedResults.length,
+      (apiSearch.page + 1) * SEARCH_PAGE_SIZE,
+    )
+
+    return {
+      results: rankedResults.slice(0, visibleResultCount),
+      hasMore: rankedResults.length > visibleResultCount,
+    }
+  }, [
+    apiSearch.page,
+    apiSearch.query,
+    cardCatalogStatus,
+    deckFormat,
+    hasSearchCriteria,
+    searchableCardCatalog,
+    searchFilters,
+  ])
+  const shouldUseLocalSearch = cardCatalogStatus === 'success' && localSearchPage !== null
+  const effectiveApiSearch = useMemo<ApiSearchState<ApiCardSearchResult>>(
+    () =>
+      shouldUseLocalSearch && localSearchPage
+        ? {
+            ...apiSearch,
+            status: 'success',
+            results: localSearchPage.results,
+            errorMessage: '',
+            hasMore: localSearchPage.hasMore,
+          }
+        : apiSearch,
+    [apiSearch, localSearchPage, shouldUseLocalSearch],
+  )
   const visibleSearchResults = useMemo(
-    () => applyLocalCardSearchFilters(apiSearch.results, searchFilters, deckFormat),
-    [apiSearch.results, deckFormat, searchFilters],
+    () =>
+      shouldUseLocalSearch
+        ? effectiveApiSearch.results
+        : applyLocalCardSearchFilters(apiSearch.results, searchFilters, deckFormat),
+    [apiSearch.results, deckFormat, effectiveApiSearch.results, searchFilters, shouldUseLocalSearch],
   )
 
   const runApiSearch = useCallback(async (
@@ -102,8 +159,8 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
         status: 'success',
         errorMessage: '',
         results: append
-          ? mergeSearchResults(current.results, cachedResults.results)
-          : sortSearchResults(cachedResults.results),
+          ? mergeSearchResults(current.results, cachedResults.results, request.query)
+          : sortSearchResults(cachedResults.results, request.query),
         requestId,
         page,
         hasMore: cachedResults.hasMore,
@@ -145,7 +202,7 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
         return
       }
 
-      const sortedResults = sortSearchResults(searchPage.results)
+      const sortedResults = sortSearchResults(searchPage.results, request.query)
       searchCacheRef.current = storeCachedApiSearch(searchCacheRef.current, request, page, {
         savedAt: Date.now(),
         results: sortedResults,
@@ -156,7 +213,9 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
       setApiSearch((current) => ({
         ...current,
         status: 'success',
-        results: append ? mergeSearchResults(current.results, sortedResults) : sortedResults,
+        results: append
+          ? mergeSearchResults(current.results, sortedResults, request.query)
+          : sortedResults,
         errorMessage: '',
         requestId,
         page,
@@ -190,6 +249,33 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
   }, [])
 
   useEffect(() => {
+    let cancelled = false
+
+    setCardCatalogStatus((current) => (current === 'success' ? current : 'loading'))
+
+    void loadCardCatalog()
+      .then((cards) => {
+        if (cancelled) {
+          return
+        }
+
+        setCardCatalog(cards)
+        setCardCatalogStatus('success')
+      })
+      .catch(() => {
+        if (cancelled) {
+          return
+        }
+
+        setCardCatalogStatus('error')
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
     window.clearTimeout(searchDebounceTimerRef.current)
     setIsLoadingMore(false)
     searchRequestIdRef.current += 1
@@ -210,6 +296,10 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
       return
     }
 
+    if (shouldUseLocalSearch) {
+      return
+    }
+
     setApiSearch((current) => ({
       ...current,
       status: 'loading',
@@ -227,13 +317,10 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
       window.clearTimeout(searchDebounceTimerRef.current)
     }
   }, [
-    deckFormat,
     hasSearchCriteria,
     remoteSearchRequest,
     runApiSearch,
-    searchFilters.description,
-    searchFilters.legalOnly,
-    searchFilters.quickType,
+    shouldUseLocalSearch,
   ])
 
   useEffect(
@@ -243,12 +330,42 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
     [],
   )
 
+  useEffect(() => {
+    if (!shouldUseLocalSearch) {
+      return
+    }
+
+    setApiSearch((current) =>
+      current.page === 0
+        ? current
+        : {
+            ...current,
+            page: 0,
+          },
+    )
+  }, [deckFormat, shouldUseLocalSearch])
+
   const loadMoreResults = useCallback(() => {
+    if (!hasSearchCriteria) {
+      return
+    }
+
+    if (shouldUseLocalSearch) {
+      if (!localSearchPage?.hasMore) {
+        return
+      }
+
+      setApiSearch((current) => ({
+        ...current,
+        page: current.page + 1,
+      }))
+      return
+    }
+
     if (
       apiSearch.status !== 'success' ||
       isLoadingMore ||
-      !apiSearch.hasMore ||
-      !hasSearchCriteria
+      !apiSearch.hasMore
     ) {
       return
     }
@@ -260,21 +377,27 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
     apiSearch.status,
     hasSearchCriteria,
     isLoadingMore,
+    localSearchPage?.hasMore,
     remoteSearchRequest,
     runApiSearch,
+    shouldUseLocalSearch,
   ])
 
   return {
-    apiSearch,
+    apiSearch: effectiveApiSearch,
     searchFilters,
     visibleSearchResults,
     activeFilterCount,
     hasSearchCriteria,
-    isLoadingMore,
+    isLoadingMore: shouldUseLocalSearch ? false : isLoadingMore,
     clearFilters: () => {
       setSearchFilters({
         ...DEFAULT_CARD_SEARCH_FILTERS,
       })
+      setApiSearch((current) => ({
+        ...current,
+        page: 0,
+      }))
     },
     setQuery: (value) => {
       setApiSearch((current) => ({
@@ -288,6 +411,10 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
         ...current,
         ...updates,
       }))
+      setApiSearch((current) => ({
+        ...current,
+        page: 0,
+      }))
     },
     loadMoreResults,
   }
@@ -296,6 +423,7 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
 function mergeSearchResults(
   currentResults: ApiCardSearchResult[],
   nextResults: ApiCardSearchResult[],
+  query: string,
 ): ApiCardSearchResult[] {
   const mergedResults = new Map<number, ApiCardSearchResult>()
 
@@ -307,5 +435,5 @@ function mergeSearchResults(
     mergedResults.set(card.ygoprodeckId, card)
   }
 
-  return sortSearchResults([...mergedResults.values()])
+  return sortSearchResults([...mergedResults.values()], query)
 }

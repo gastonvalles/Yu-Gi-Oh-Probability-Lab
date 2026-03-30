@@ -111,6 +111,15 @@ export function normalizeName(value: string): string {
   return value.trim().toLowerCase()
 }
 
+export function normalizeSearchText(value: string): string {
+  return value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+}
+
 export function formatPercent(value: number): string {
   return `${(value * 100).toFixed(3)}%`
 }

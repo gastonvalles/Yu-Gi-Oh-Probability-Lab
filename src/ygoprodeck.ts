@@ -5,6 +5,11 @@ import type { ApiCardSearchResult, ApiSearchPage } from './ygoprodeck/types'
 
 export type { ApiCardSearchResult, ApiSearchPage } from './ygoprodeck/types'
 
+const CARD_CATALOG_PAGE_SIZE = 1000
+
+let cardCatalogPromise: Promise<ApiCardSearchResult[]> | null = null
+let cardCatalogSnapshot: ApiCardSearchResult[] | null = null
+
 export interface SearchCardsOptions {
   query?: string
   archetype?: string
@@ -113,6 +118,44 @@ export async function fetchCardByExactName(name: string): Promise<ApiCardSearchR
     }
 
     throw error
+  }
+}
+
+export async function loadCardCatalog(): Promise<ApiCardSearchResult[]> {
+  if (cardCatalogSnapshot) {
+    return cardCatalogSnapshot
+  }
+
+  if (cardCatalogPromise) {
+    return cardCatalogPromise
+  }
+
+  cardCatalogPromise = fetchCardCatalog()
+
+  try {
+    cardCatalogSnapshot = await cardCatalogPromise
+    return cardCatalogSnapshot
+  } finally {
+    cardCatalogPromise = null
+  }
+}
+
+async function fetchCardCatalog(): Promise<ApiCardSearchResult[]> {
+  const cardsById = new Map<number, ApiCardSearchResult>()
+  let offset = 0
+
+  while (true) {
+    const page = await searchCards({}, CARD_CATALOG_PAGE_SIZE, offset)
+
+    for (const card of page.results) {
+      cardsById.set(card.ygoprodeckId, card)
+    }
+
+    if (!page.hasMore || page.results.length === 0) {
+      return [...cardsById.values()]
+    }
+
+    offset += page.results.length
   }
 }
 
