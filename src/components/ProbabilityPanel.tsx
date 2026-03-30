@@ -462,7 +462,7 @@ export function ProbabilityPanel({
         description="Mira el KPI, detecta las fortalezas y riesgos principales, y edita chequeos sin perder el contexto."
         side={(
           <Button variant="secondary" size="sm" onClick={() => setPracticeOpen(true)}>
-            Abrir practica
+            Abrir práctica
           </Button>
         )}
         sideVariant="inline"
@@ -580,7 +580,7 @@ export function ProbabilityPanel({
         <div className="fixed inset-0 z-140 grid place-items-center bg-[rgb(var(--background-rgb)/0.76)] px-3 py-4">
           <button
             type="button"
-            aria-label="Cerrar practica"
+            aria-label="Cerrar práctica"
             className="absolute inset-0 h-full w-full"
             onClick={() => setPracticeOpen(false)}
           />
@@ -588,13 +588,13 @@ export function ProbabilityPanel({
           <div className="surface-panel relative grid h-[min(92vh,980px)] w-full max-w-[78rem] min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0">
             <div className="flex min-w-0 items-center justify-between gap-2 border-b border-(--border-subtle) px-4 py-3">
               <div className="grid min-w-0 gap-0.5">
-                <strong className="text-[0.98rem] text-(--text-main)">Practica</strong>
+                <strong className="text-[0.98rem] text-(--text-main)">Práctica</strong>
                 <span className="app-muted text-[0.74rem]">Proba manos sin salir del analisis principal.</span>
               </div>
               <button
                 type="button"
                 className="app-icon-button text-[1rem] leading-none"
-                aria-label="Cerrar practica"
+                aria-label="Cerrar práctica"
                 onClick={() => setPracticeOpen(false)}
               >
                 ×
