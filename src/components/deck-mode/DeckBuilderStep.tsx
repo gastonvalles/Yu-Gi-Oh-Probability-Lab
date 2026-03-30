@@ -10,6 +10,7 @@ import { DeckZone } from '../DeckZone'
 import { SearchPanel } from '../SearchPanel'
 import { StepHero } from '../StepHero'
 import { Button } from '../ui/Button'
+import { DeckImportDrawer } from './DeckImportDrawer'
 
 interface DeckBuilderStepProps {
   deckBuilder: DeckBuilderState
@@ -37,6 +38,7 @@ interface DeckBuilderStepProps {
   onQueryChange: (value: string) => void
   onDeckNameChange: (value: string) => void
   onDeckFormatChange: (format: DeckFormat) => void
+  onImportDeck: (nextDeckBuilder: DeckBuilderState) => void
   onSearchFiltersChange: (updates: Partial<CardSearchFilters>) => void
   onClearSearchFilters: () => void
   onLoadMoreResults: () => void
@@ -79,6 +81,7 @@ export function DeckBuilderStep({
   onQueryChange,
   onDeckNameChange,
   onDeckFormatChange,
+  onImportDeck,
   onSearchFiltersChange,
   onClearSearchFilters,
   onLoadMoreResults,
@@ -86,19 +89,20 @@ export function DeckBuilderStep({
   onHoverEnd,
 }: DeckBuilderStepProps) {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+  const [importDrawerOpen, setImportDrawerOpen] = useState(false)
   const formatLabel = getDeckFormatLabel(deckFormat)
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
 
-    if (mobileSearchOpen) {
+    if (mobileSearchOpen || importDrawerOpen) {
       document.body.style.overflow = 'hidden'
     }
 
     return () => {
       document.body.style.overflow = previousOverflow
     }
-  }, [mobileSearchOpen])
+  }, [importDrawerOpen, mobileSearchOpen])
   const visibleFormatIssues = formatIssues.slice(0, 2)
   const hasHiddenIssues = formatIssues.length > visibleFormatIssues.length
   const showGenesysPoints = deckFormat === 'genesys' && genesysPointTotal !== null && genesysPointCap !== null
@@ -169,6 +173,9 @@ export function DeckBuilderStep({
               <option value="edison">Edison</option>
               <option value="genesys">Genesys</option>
             </select>
+            <Button variant="primary" size="md" fullWidth onClick={() => setImportDrawerOpen(true)}>
+              Importar deck
+            </Button>
           </>
         }
       />
@@ -264,6 +271,14 @@ export function DeckBuilderStep({
           </div>
         </div>
       ) : null}
+
+      <DeckImportDrawer
+        isOpen={importDrawerOpen}
+        deckBuilder={deckBuilder}
+        deckFormat={deckFormat}
+        onApplyImport={onImportDeck}
+        onClose={() => setImportDrawerOpen(false)}
+      />
     </section>
   )
 }

@@ -63,7 +63,7 @@ export async function renderDeckAsCanvas(
   const canvasWidth = pagePadding * 2 + gridWidth + zonePadding * 2
 
   const zoneHeights = zones.map((zone) => {
-    const rows = Math.max(1, Math.ceil(zone.cards.length / columns))
+    const rows = Math.max(1, buildZoneRows(zone.cards, columns).length)
     const gridHeight = rows * cardHeight + Math.max(0, rows - 1) * cardGap
     return sectionHeaderHeight + zonePadding * 2 + gridHeight
   })
@@ -96,34 +96,44 @@ export async function renderDeckAsCanvas(
     const images = await loadZoneImages(zone.cards)
     const gridTop = currentTop + sectionHeaderHeight + zonePadding
     const gridLeft = pagePadding + zonePadding
+    const zoneRows = buildZoneRows(zone.cards, columns)
 
-    zone.cards.forEach((card, index) => {
-      const row = Math.floor(index / columns)
-      const column = index % columns
-      const x = gridLeft + column * (cardWidth + cardGap)
-      const y = gridTop + row * (cardHeight + cardGap)
-      const image = images[index]
+    zoneRows.forEach((rowCards, rowIndex) => {
+      const rowLeft = getZoneRowLeft({
+        zone: zone.key,
+        gridLeft,
+        gridWidth,
+        rowCardCount: rowCards.length,
+        cardWidth,
+        cardGap,
+      })
+      const y = gridTop + rowIndex * (cardHeight + cardGap)
 
-      context.fillStyle = CARD_BACKGROUND
-      context.fillRect(x, y, cardWidth, cardHeight)
+      rowCards.forEach((card, column) => {
+        const x = rowLeft + column * (cardWidth + cardGap)
+        const image = images[card.index]
 
-      if (image) {
-        context.drawImage(image, x, y, cardWidth, cardHeight)
-      } else {
-        context.fillStyle = TEXT_MUTED
-        context.font = '12px sans-serif'
-        context.fillText(card.name, x + 6, y + 18, cardWidth - 12)
-      }
+        context.fillStyle = CARD_BACKGROUND
+        context.fillRect(x, y, cardWidth, cardHeight)
 
-      context.strokeStyle = CARD_BORDER
-      context.lineWidth = 1
-      context.strokeRect(x + 0.5, y + 0.5, cardWidth - 1, cardHeight - 1)
+        if (image) {
+          context.drawImage(image, x, y, cardWidth, cardHeight)
+        } else {
+          context.fillStyle = TEXT_MUTED
+          context.font = '12px sans-serif'
+          context.fillText(card.card.name, x + 6, y + 18, cardWidth - 12)
+        }
 
-      const indicator = getCardLimitIndicator(card.apiCard, deckFormat)
+        context.strokeStyle = CARD_BORDER
+        context.lineWidth = 1
+        context.strokeRect(x + 0.5, y + 0.5, cardWidth - 1, cardHeight - 1)
 
-      if (indicator) {
-        drawCardLimitBadge(context, x, y, indicator.value)
-      }
+        const indicator = getCardLimitIndicator(card.card.apiCard, deckFormat)
+
+        if (indicator) {
+          drawCardLimitBadge(context, x, y, indicator.value)
+        }
+      })
     })
 
     currentTop += zoneHeight + sectionGap
@@ -138,6 +148,8 @@ function drawCardLimitBadge(
   top: number,
   value: number,
 ) {
+  context.save()
+
   const text = String(value)
   const digitCount = text.length
   const outerRadiusX = digitCount === 1 ? 11.5 : digitCount === 2 ? 15.5 : 18.5
@@ -168,6 +180,8 @@ function drawCardLimitBadge(
   context.strokeText(text, centerX + textOffsetX, centerY + textOffsetY)
   context.fillStyle = '#ffe15a'
   context.fillText(text, centerX + textOffsetX, centerY + textOffsetY)
+
+  context.restore()
 }
 
 function drawPageBackground(context: CanvasRenderingContext2D, width: number, height: number) {
@@ -186,6 +200,8 @@ function drawZonePanel(
   width: number,
   height: number,
 ) {
+  context.save()
+
   context.fillStyle = PANEL_BACKGROUND
   context.fillRect(left, top, width, height)
   context.strokeStyle = PANEL_BORDER
@@ -201,9 +217,49 @@ function drawZonePanel(
 
   context.fillStyle = TEXT_MUTED
   context.font = '14px sans-serif'
+  context.textAlign = 'left'
+  context.textBaseline = 'alphabetic'
   const breakdown = buildDeckZoneBreakdown(zone.key, zone.cards)
   const detail = `${zone.cards.length} cartas${breakdown ? ` (${breakdown})` : ''}`
   context.fillText(detail, left + 140, top + 28)
+
+  context.restore()
+}
+
+function buildZoneRows(
+  cards: DeckCardInstance[],
+  columns: number,
+): Array<Array<{ card: DeckCardInstance; index: number }>> {
+  const rows: Array<Array<{ card: DeckCardInstance; index: number }>> = []
+
+  for (let startIndex = 0; startIndex < cards.length; startIndex += columns) {
+    rows.push(
+      cards.slice(startIndex, startIndex + columns).map((card, offset) => ({
+        card,
+        index: startIndex + offset,
+      })),
+    )
+  }
+
+  return rows.length > 0 ? rows : [[]]
+}
+
+function getZoneRowLeft(options: {
+  zone: DeckZone
+  gridLeft: number
+  gridWidth: number
+  rowCardCount: number
+  cardWidth: number
+  cardGap: number
+}): number {
+  if (options.zone === 'main' || options.rowCardCount <= 0) {
+    return options.gridLeft
+  }
+
+  const rowWidth =
+    options.rowCardCount * options.cardWidth + Math.max(0, options.rowCardCount - 1) * options.cardGap
+
+  return options.gridLeft + Math.max(0, Math.floor((options.gridWidth - rowWidth) / 2))
 }
 
 async function loadZoneImages(cards: DeckCardInstance[]): Promise<Array<HTMLImageElement | null>> {

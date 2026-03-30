@@ -15,6 +15,7 @@ import {
   clearDeckZone,
   moveDeckCardInBuilder,
   removeDeckCardFromBuilder,
+  replaceDeckBuilder,
   setDeckCardOrigin,
   setDeckName,
   setIsEditingDeck,
@@ -288,6 +289,14 @@ export function useDeckModeController() {
     [dispatch],
   )
 
+  const handleImportDeck = useCallback(
+    (nextDeckBuilder: AppState['deckBuilder']) => {
+      dispatch(replaceDeckBuilder(nextDeckBuilder))
+      showToast('Deck importado al builder.', 'success')
+    },
+    [dispatch, showToast],
+  )
+
   const handleModeChange = useCallback(
     (mode: RootState['settings']['mode']) => {
       dispatch(setMode(mode))
@@ -376,6 +385,7 @@ export function useDeckModeController() {
       onQueryChange: setSearchQuery,
       onDeckNameChange: handleDeckNameChange,
       onDeckFormatChange: handleDeckFormatChange,
+      onImportDeck: handleImportDeck,
       onSearchFiltersChange: updateSearchFilters,
       onClearSearchFilters: clearSearchFilters,
       onLoadMoreResults: loadMoreResults,
