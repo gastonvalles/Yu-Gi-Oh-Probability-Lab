@@ -1,6 +1,7 @@
 import { useEffect, useState, type PointerEvent as ReactPointerEvent } from 'react'
 
 import { getDeckFormatLabel } from '../../app/deck-format'
+import { getDesktopCompactDeckColumnCount } from '../../app/deck-zone-layout'
 import type { DeckBuilderState, DeckZone as DeckZoneType } from '../../app/model'
 import { formatInteger } from '../../app/utils'
 import type { DeckFormat, ApiCardReference } from '../../types'
@@ -11,6 +12,8 @@ import { SearchPanel } from '../SearchPanel'
 import { StepHero } from '../StepHero'
 import { Button } from '../ui/Button'
 import { DeckImportDrawer } from './DeckImportDrawer'
+
+const DESKTOP_DECK_BUILDER_MEDIA_QUERY = '(min-width: 1101px)'
 
 interface DeckBuilderStepProps {
   deckBuilder: DeckBuilderState
@@ -29,6 +32,7 @@ interface DeckBuilderStepProps {
   activeFilterCount: number
   hasSearchCriteria: boolean
   activeDragInstanceId: string | null
+  activeDropZone: DeckZoneType | null
   activeDragSearchCardId: number | null
   onClearDeckZone: (zone: DeckZoneType) => void
   onRemoveDeckCard: (instanceId: string) => void
@@ -72,6 +76,7 @@ export function DeckBuilderStep({
   activeFilterCount,
   hasSearchCriteria,
   activeDragInstanceId,
+  activeDropZone,
   activeDragSearchCardId,
   onClearDeckZone,
   onRemoveDeckCard,
@@ -90,6 +95,13 @@ export function DeckBuilderStep({
 }: DeckBuilderStepProps) {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const [importDrawerOpen, setImportDrawerOpen] = useState(false)
+  const [isDesktopDeckBuilder, setIsDesktopDeckBuilder] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false
+    }
+
+    return window.matchMedia(DESKTOP_DECK_BUILDER_MEDIA_QUERY).matches
+  })
   const formatLabel = getDeckFormatLabel(deckFormat)
 
   useEffect(() => {
@@ -103,10 +115,29 @@ export function DeckBuilderStep({
       document.body.style.overflow = previousOverflow
     }
   }, [importDrawerOpen, mobileSearchOpen])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const mediaQuery = window.matchMedia(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsDesktopDeckBuilder(event.matches)
+    }
+
+    setIsDesktopDeckBuilder(mediaQuery.matches)
+    mediaQuery.addEventListener('change', handleChange)
+
+    return () => {
+      mediaQuery.removeEventListener('change', handleChange)
+    }
+  }, [])
   const visibleFormatIssues = formatIssues.slice(0, 2)
   const hasHiddenIssues = formatIssues.length > visibleFormatIssues.length
   const showGenesysPoints = deckFormat === 'genesys' && genesysPointTotal !== null && genesysPointCap !== null
   const showFormatIssues = deckFormat !== 'genesys' && formatIssues.length > 0
+  const desktopCompactColumnCount = getDesktopCompactDeckColumnCount(deckBuilder.main.length)
 
   const handleSearchCardPointerDown = (
     event: ReactPointerEvent<HTMLElement>,
@@ -221,8 +252,8 @@ export function DeckBuilderStep({
       ) : null}
 
       <div className="grid items-start gap-3 min-[1101px]:min-h-0">
-        <article className="surface-panel-strong self-start w-full min-h-0 p-3 min-[1101px]:h-full min-[1101px]:overflow-y-auto">
-          <div className="grid gap-2.5">
+        <article className="surface-panel-strong self-start w-full min-h-0 p-3 min-[1101px]:h-full min-[1101px]:overflow-y-auto min-[1101px]:p-2.5">
+          <div className="grid gap-2.5 min-[1101px]:gap-2">
             <div className="min-[1101px]:hidden">
               <Button variant="primary" size="md" fullWidth onClick={() => setMobileSearchOpen(true)}>
                 Buscar cartas
@@ -236,6 +267,9 @@ export function DeckBuilderStep({
                 title={title}
                 cards={deckBuilder[zone]}
                 activeDragInstanceId={activeDragInstanceId}
+                isDropTargetActive={activeDropZone === zone}
+                desktopCompact={isDesktopDeckBuilder}
+                desktopCompactColumnCount={desktopCompactColumnCount}
                 onClearZone={onClearDeckZone}
                 onDeckCardPointerDown={onDeckCardPointerDown}
                 onRemoveCard={onRemoveDeckCard}

@@ -1136,11 +1136,16 @@
   }
 
   .deck-zone-surface {
+    position: relative;
     border: 1px solid var(--zone-border);
     background:
       linear-gradient(180deg, var(--zone-background), rgb(var(--background-rgb) / 0.88)),
       linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.94), rgb(var(--background-rgb) / 0.98));
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    transition:
+      border-color 150ms ease,
+      background 150ms ease,
+      box-shadow 150ms ease;
   }
 
   .main-deck-grid-row {
@@ -1169,6 +1174,54 @@
         (var(--deck-zone-card-gap) * (var(--main-deck-columns) - 1))
       );
       min-height: calc((100% - (var(--deck-zone-card-gap) * 9)) / 10 / 0.72);
+    }
+  }
+
+  @media (min-width: 1101px) {
+    .deck-zone-shell[data-deck-zone-layout='desktop-compact'] .deck-zone-header {
+      align-items: center;
+    }
+
+    .deck-zone-shell[data-deck-zone-layout='desktop-compact'] .deck-zone-surface {
+      gap: 0.22rem;
+      padding: 0.28rem;
+    }
+
+    .deck-zone-shell[data-deck-zone-layout='desktop-compact'][data-deck-zone-drop-active='true'] .deck-zone-surface {
+      border-color: rgb(var(--foreground-rgb) / 0.42);
+      box-shadow:
+        inset 0 0 0 1px var(--zone-border),
+        0 0 0 1px rgb(var(--foreground-rgb) / 0.06),
+        0 0 24px var(--zone-border);
+    }
+
+    .deck-zone-shell[data-deck-zone-layout='desktop-compact'][data-deck-zone-drop-active='true'] .deck-zone-header h3 {
+      color: var(--text-main);
+    }
+
+    .deck-zone-surface[data-deck-zone-layout='desktop-compact'][data-deck-zone='main'] {
+      overflow-x: hidden;
+    }
+
+    .deck-zone-surface[data-deck-zone-layout='desktop-compact'][data-deck-zone='extra'],
+    .deck-zone-surface[data-deck-zone-layout='desktop-compact'][data-deck-zone='side'] {
+      grid-template-columns: repeat(var(--deck-zone-desktop-columns), minmax(0, 1fr));
+      min-height: 6rem;
+    }
+
+    .deck-zone-surface[data-deck-zone-layout='desktop-compact'] .main-deck-grid-row {
+      grid-template-columns: repeat(var(--main-deck-columns), minmax(0, 1fr));
+      width: 100%;
+      min-height: calc(
+        (100% - (var(--deck-zone-card-gap) * (var(--main-deck-columns) - 1))) /
+        var(--main-deck-columns) /
+        0.72
+      );
+    }
+
+    .deck-zone-surface[data-deck-zone-layout='desktop-compact'] [data-card-limit] {
+      transform: scale(0.82);
+      transform-origin: top left;
     }
   }
 

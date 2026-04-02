@@ -11,6 +11,8 @@ import { flushSync } from 'react-dom'
 import type { ApiCardReference } from '../types'
 import type { DeckZone, DragPayload } from './model'
 
+const DESKTOP_DECK_BUILDER_MEDIA_QUERY = '(min-width: 1101px)'
+
 export interface DeckDragOverlayState {
   name: string
   card: ApiCardReference
@@ -47,6 +49,7 @@ interface DragPreviewFrame {
 
 interface DeckPointerDragController {
   activeDragInstanceId: string | null
+  activeDropZone: DeckZone | null
   activeDragSearchCardId: number | null
   consumeSuppressedSearchClick: () => boolean
   dragOverlay: DeckDragOverlayState | null
@@ -81,12 +84,21 @@ function resolveDragPreviewFrame(
   }
 }
 
+function isDesktopDeckBuilderViewport(): boolean {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  return window.matchMedia(DESKTOP_DECK_BUILDER_MEDIA_QUERY).matches
+}
+
 export function useDeckPointerDrag({
   onClearHoverPreview,
   onDrop,
 }: UseDeckPointerDragOptions): DeckPointerDragController {
   const [dragPayload, setDragPayload] = useState<DragPayload | null>(null)
   const [activeDragInstanceId, setActiveDragInstanceId] = useState<string | null>(null)
+  const [activeDropZone, setActiveDropZone] = useState<DeckZone | null>(null)
   const [activeDragSearchCardId, setActiveDragSearchCardId] = useState<number | null>(null)
   const [dragOverlay, setDragOverlay] = useState<DeckDragOverlayState | null>(null)
 
@@ -119,6 +131,35 @@ export function useDeckPointerDrag({
       return {
         zone,
         index: clientX > rect.left + rect.width / 2 ? index + 1 : index,
+      }
+    }
+
+    if (isDesktopDeckBuilderViewport()) {
+      const zoneContainers = Array.from(
+        document.querySelectorAll<HTMLElement>('[data-deck-zone-drop-target]'),
+      )
+
+      const matchedZoneContainer = zoneContainers.find((zoneContainer) => {
+        const rect = zoneContainer.getBoundingClientRect()
+
+        return (
+          clientX >= rect.left &&
+          clientX <= rect.right &&
+          clientY >= rect.top &&
+          clientY <= rect.bottom
+        )
+      })
+
+      if (matchedZoneContainer) {
+        const zone = matchedZoneContainer.dataset.deckZoneDropTarget as DeckZone | undefined
+        const count = Number.parseInt(matchedZoneContainer.dataset.deckZoneCount ?? '', 10)
+
+        if (zone) {
+          return {
+            zone,
+            index: Number.isNaN(count) ? 0 : count,
+          }
+        }
       }
     }
 
@@ -185,6 +226,7 @@ export function useDeckPointerDrag({
     onClearHoverPreview()
     setDragPayload(null)
     setActiveDragInstanceId(null)
+    setActiveDropZone(null)
     setActiveDragSearchCardId(null)
     setDragOverlay(null)
   }, [onClearHoverPreview])
@@ -264,6 +306,8 @@ export function useDeckPointerDrag({
           startDragOverlay(previewFrame, session.name, session.card, session.startX, session.startY)
         }
 
+        const nextDropZone = resolveDropTarget(moveEvent.clientX, moveEvent.clientY)?.zone ?? null
+        setActiveDropZone((currentZone) => (currentZone === nextDropZone ? currentZone : nextDropZone))
         queueDragOverlayMove(moveEvent.clientX, moveEvent.clientY)
         moveEvent.preventDefault()
       }
@@ -329,6 +373,7 @@ export function useDeckPointerDrag({
 
   return {
     activeDragInstanceId,
+    activeDropZone,
     activeDragSearchCardId,
     consumeSuppressedSearchClick: () => {
       if (!suppressSearchClickRef.current) {

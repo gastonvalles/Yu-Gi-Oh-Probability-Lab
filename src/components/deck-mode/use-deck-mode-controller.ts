@@ -8,7 +8,11 @@ import {
   buildDerivedDeckMonsterTypes,
 } from '../../app/card-attributes'
 import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
-import { findDeckCard, getAddSearchResultIssue, getDefaultDeckZoneForCard } from '../../app/deck-builder'
+import {
+  findDeckCard,
+  getAddSearchResultIssue,
+  getDefaultDeckZoneForCardInBuilder,
+} from '../../app/deck-builder'
 import {
   addSearchResultToDeckZone,
   addSearchResultToDefaultDeckZone,
@@ -90,6 +94,7 @@ export function useDeckModeController() {
   })
   const {
     activeDragInstanceId,
+    activeDropZone,
     activeDragSearchCardId,
     consumeSuppressedSearchClick,
     dragOverlay,
@@ -205,7 +210,7 @@ export function useDeckModeController() {
         return
       }
 
-      const zone = getDefaultDeckZoneForCard(card)
+      const zone = getDefaultDeckZoneForCardInBuilder(deckBuilder, card)
       const addIssue = getAddSearchResultIssue(deckBuilder, card, zone, settings.deckFormat)
 
       if (addIssue) {
@@ -376,6 +381,7 @@ export function useDeckModeController() {
       activeFilterCount,
       hasSearchCriteria,
       activeDragInstanceId,
+      activeDropZone,
       activeDragSearchCardId,
       onClearDeckZone: handleClearDeckZone,
       onRemoveDeckCard: handleRemoveDeckCard,

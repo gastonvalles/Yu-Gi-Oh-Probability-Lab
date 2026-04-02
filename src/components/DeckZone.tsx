@@ -1,6 +1,9 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 
-import { buildDeckZoneVisualLayout } from '../app/deck-zone-layout'
+import {
+  buildDeckZoneVisualLayout,
+  getDesktopCompactDeckColumnCount,
+} from '../app/deck-zone-layout'
 import { buildDeckZoneBreakdown } from '../app/deck-presentation'
 import type { DeckCardInstance, DeckZone as DeckZoneType } from '../app/model'
 import { formatInteger } from '../app/utils'
@@ -12,6 +15,9 @@ interface DeckZoneProps {
   title: string
   cards: DeckCardInstance[]
   activeDragInstanceId: string | null
+  isDropTargetActive?: boolean
+  desktopCompact?: boolean
+  desktopCompactColumnCount?: number
   onClearZone: (zone: DeckZoneType) => void
   onDeckCardPointerDown: (event: ReactPointerEvent<HTMLElement>, instanceId: string) => void
   onRemoveCard: (instanceId: string) => void
@@ -39,6 +45,9 @@ export function DeckZone({
   title,
   cards,
   activeDragInstanceId,
+  isDropTargetActive = false,
+  desktopCompact = false,
+  desktopCompactColumnCount,
   onClearZone,
   onDeckCardPointerDown,
   onRemoveCard,
@@ -46,13 +55,21 @@ export function DeckZone({
   onHoverEnd,
 }: DeckZoneProps) {
   const zoneBreakdown = buildDeckZoneBreakdown(zone, cards)
-  const visualLayout = buildDeckZoneVisualLayout(zone, cards)
+  const visualLayout = buildDeckZoneVisualLayout(
+    zone,
+    cards,
+    desktopCompact ? 'desktop-compact' : 'default',
+    desktopCompactColumnCount,
+  )
   const isMainDeckGrid = visualLayout !== null
+  const resolvedDesktopCompactColumnCount =
+    desktopCompactColumnCount ?? getDesktopCompactDeckColumnCount(cards.length)
   const zoneStyle = ZONE_STYLES[zone]
   const zoneGridStyle = {
     '--zone-background': zoneStyle.background,
     '--zone-border': zoneStyle.border,
     '--deck-zone-card-gap': '0.32rem',
+    '--deck-zone-desktop-columns': String(resolvedDesktopCompactColumnCount),
     minHeight: 'clamp(50px, 8vw, 90px)',
   } as CSSProperties
   const zoneGridClassName = isMainDeckGrid
@@ -88,29 +105,43 @@ export function DeckZone({
   )
 
   return (
-    <section className="w-full bg-transparent p-0">
-      <div className="mb-1.5 flex items-start justify-between gap-3">
-        <div>
-          <h3 className="m-0 text-[1.05rem] leading-none">{title}</h3>
+    <section
+      className="deck-zone-shell w-full bg-transparent p-0"
+      data-deck-zone-drop-target={zone}
+      data-deck-zone-count={cards.length}
+      data-deck-zone-layout={desktopCompact ? 'desktop-compact' : 'default'}
+      data-deck-zone-drop-active={isDropTargetActive ? 'true' : 'false'}
+    >
+      <div className="deck-zone-header mb-1.5 flex items-start justify-between gap-3 min-[1101px]:mb-1">
+        <div className="min-w-0">
+          <h3 className="m-0 text-[1.05rem] leading-none min-[1101px]:text-[1rem]">{title}</h3>
           <p className="m-0 mt-[0.08rem] text-[0.82rem] leading-[1.12] text-[var(--text-muted)]">
             {formatInteger(cards.length)} cartas
             {zoneBreakdown ? ` (${zoneBreakdown})` : ''}
           </p>
         </div>
-        <Button
-          variant="tertiary"
-          size="sm"
-          disabled={cards.length === 0}
-          onClick={() => onClearZone(zone)}
-        >
-          Vaciar
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          {isDropTargetActive ? (
+            <span className="hidden min-[1101px]:inline-flex app-chip-accent px-2 py-1 text-[0.66rem] whitespace-nowrap">
+              Soltá acá
+            </span>
+          ) : null}
+          <Button
+            variant="tertiary"
+            size="sm"
+            disabled={cards.length === 0}
+            onClick={() => onClearZone(zone)}
+          >
+            Vaciar
+          </Button>
+        </div>
       </div>
 
       <div
         className={zoneGridClassName}
         data-deck-zone={zone}
         data-deck-count={cards.length}
+        data-deck-zone-layout={desktopCompact ? 'desktop-compact' : 'default'}
         style={zoneGridStyle}
       >
         {visualLayout
