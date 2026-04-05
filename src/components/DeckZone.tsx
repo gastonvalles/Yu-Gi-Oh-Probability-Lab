@@ -20,6 +20,7 @@ interface DeckZoneProps {
   desktopCompactColumnCount?: number
   onClearZone: (zone: DeckZoneType) => void
   onDeckCardPointerDown: (event: ReactPointerEvent<HTMLElement>, instanceId: string) => void
+  onDeckCardClick: (instanceId: string) => void
   onRemoveCard: (instanceId: string) => void
   onHoverStart: (name: string, card: DeckCardInstance['apiCard'], anchor: HTMLElement) => void
   onHoverEnd: () => void
@@ -50,6 +51,7 @@ export function DeckZone({
   desktopCompactColumnCount,
   onClearZone,
   onDeckCardPointerDown,
+  onDeckCardClick,
   onRemoveCard,
   onHoverStart,
   onHoverEnd,
@@ -88,6 +90,7 @@ export function DeckZone({
           : '',
       ].join(' ')}
       onPointerDown={(event) => onDeckCardPointerDown(event, card.instanceId)}
+      onClick={() => onDeckCardClick(card.instanceId)}
       onContextMenu={(event) => {
         event.preventDefault()
         onRemoveCard(card.instanceId)
@@ -98,7 +101,7 @@ export function DeckZone({
       <CardArt
         remoteUrl={card.apiCard.imageUrlSmall}
         name={card.name}
-        className="block aspect-[0.72] w-full min-w-0 bg-[var(--input)] object-cover"
+        className="block h-auto w-full min-w-0 bg-[var(--input)]"
         limitCard={card.apiCard}
       />
     </article>

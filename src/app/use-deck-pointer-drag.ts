@@ -36,6 +36,7 @@ interface PointerDragSession {
 }
 
 interface UseDeckPointerDragOptions {
+  canDrop: (payload: DragPayload, zone: DeckZone) => boolean
   onClearHoverPreview: () => void
   onDrop: (drop: { payload: DragPayload; zone: DeckZone; index: number }) => void
 }
@@ -51,7 +52,7 @@ interface DeckPointerDragController {
   activeDragInstanceId: string | null
   activeDropZone: DeckZone | null
   activeDragSearchCardId: number | null
-  consumeSuppressedSearchClick: () => boolean
+  consumeSuppressedPointerClick: () => boolean
   dragOverlay: DeckDragOverlayState | null
   dragOverlayRef: React.RefObject<HTMLDivElement | null>
   hasPendingPointerDrag: () => boolean
@@ -93,6 +94,7 @@ function isDesktopDeckBuilderViewport(): boolean {
 }
 
 export function useDeckPointerDrag({
+  canDrop,
   onClearHoverPreview,
   onDrop,
 }: UseDeckPointerDragOptions): DeckPointerDragController {
@@ -107,9 +109,23 @@ export function useDeckPointerDrag({
   const dragOverlayPositionRef = useRef<{ x: number; y: number } | null>(null)
   const pointerDragSessionRef = useRef<PointerDragSession | null>(null)
   const pointerDragCleanupRef = useRef<(() => void) | null>(null)
-  const suppressSearchClickRef = useRef(false)
+  const suppressPointerClickRef = useRef(false)
 
-  const resolveDropTarget = useCallback((clientX: number, clientY: number): { zone: DeckZone; index: number } | null => {
+  const buildAllowedDropTarget = useCallback(
+    (
+      target: { zone: DeckZone; index: number } | null,
+      payload: DragPayload,
+    ): { zone: DeckZone; index: number } | null => {
+      if (!target) {
+        return null
+      }
+
+      return canDrop(payload, target.zone) ? target : null
+    },
+    [canDrop],
+  )
+
+  const resolveDropTarget = useCallback((clientX: number, clientY: number, payload: DragPayload): { zone: DeckZone; index: number } | null => {
     const hoveredElement = document.elementFromPoint(clientX, clientY)
 
     if (!(hoveredElement instanceof HTMLElement)) {
@@ -128,10 +144,10 @@ export function useDeckPointerDrag({
 
       const rect = cardElement.getBoundingClientRect()
 
-      return {
+      return buildAllowedDropTarget({
         zone,
         index: clientX > rect.left + rect.width / 2 ? index + 1 : index,
-      }
+      }, payload)
     }
 
     if (isDesktopDeckBuilderViewport()) {
@@ -155,10 +171,10 @@ export function useDeckPointerDrag({
         const count = Number.parseInt(matchedZoneContainer.dataset.deckZoneCount ?? '', 10)
 
         if (zone) {
-          return {
+          return buildAllowedDropTarget({
             zone,
             index: Number.isNaN(count) ? 0 : count,
-          }
+          }, payload)
         }
       }
     }
@@ -176,11 +192,11 @@ export function useDeckPointerDrag({
       return null
     }
 
-    return {
+    return buildAllowedDropTarget({
       zone,
       index: Number.isNaN(count) ? 0 : count,
-    }
-  }, [])
+    }, payload)
+  }, [buildAllowedDropTarget])
 
   const applyDragOverlayTransform = useCallback((x: number, y: number) => {
     const overlayElement = dragOverlayRef.current
@@ -257,7 +273,7 @@ export function useDeckPointerDrag({
       }
 
       onClearHoverPreview()
-      suppressSearchClickRef.current = false
+      suppressPointerClickRef.current = false
       const sourceElement = event.currentTarget
 
       const rect = sourceElement.getBoundingClientRect()
@@ -300,13 +316,15 @@ export function useDeckPointerDrag({
             setActiveDragInstanceId(session.payload.instanceId)
           } else {
             setActiveDragSearchCardId(session.payload.apiCardId)
-            suppressSearchClickRef.current = true
           }
+
+          suppressPointerClickRef.current = true
 
           startDragOverlay(previewFrame, session.name, session.card, session.startX, session.startY)
         }
 
-        const nextDropZone = resolveDropTarget(moveEvent.clientX, moveEvent.clientY)?.zone ?? null
+        const nextDropZone =
+          resolveDropTarget(moveEvent.clientX, moveEvent.clientY, session.payload)?.zone ?? null
         setActiveDropZone((currentZone) => (currentZone === nextDropZone ? currentZone : nextDropZone))
         queueDragOverlayMove(moveEvent.clientX, moveEvent.clientY)
         moveEvent.preventDefault()
@@ -314,7 +332,8 @@ export function useDeckPointerDrag({
 
       const handlePointerEnd = (endEvent: PointerEvent) => {
         const session = pointerDragSessionRef.current
-        const target = session?.dragging ? resolveDropTarget(endEvent.clientX, endEvent.clientY) : null
+        const target =
+          session?.dragging ? resolveDropTarget(endEvent.clientX, endEvent.clientY, session.payload) : null
         const pendingDrop =
           session?.dragging && target
             ? {
@@ -324,9 +343,9 @@ export function useDeckPointerDrag({
               }
             : null
 
-        if (session?.payload.type === 'search-result' && session.dragging) {
+        if (session?.dragging) {
           window.setTimeout(() => {
-            suppressSearchClickRef.current = false
+            suppressPointerClickRef.current = false
           }, 0)
         }
 
@@ -375,12 +394,12 @@ export function useDeckPointerDrag({
     activeDragInstanceId,
     activeDropZone,
     activeDragSearchCardId,
-    consumeSuppressedSearchClick: () => {
-      if (!suppressSearchClickRef.current) {
+    consumeSuppressedPointerClick: () => {
+      if (!suppressPointerClickRef.current) {
         return false
       }
 
-      suppressSearchClickRef.current = false
+      suppressPointerClickRef.current = false
       return true
     },
     dragOverlay,

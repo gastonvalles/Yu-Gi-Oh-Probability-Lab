@@ -24,6 +24,7 @@ import type { DeckFormat } from '../../types'
 import { loadCardCatalog } from '../../ygoprodeck'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { Button } from '../ui/Button'
+import { CloseButton } from '../ui/IconButton'
 
 interface DeckImportDrawerProps {
   deckBuilder: DeckBuilderState
@@ -275,14 +276,7 @@ export function DeckImportDrawer({
                 </p>
               </div>
 
-              <button
-                type="button"
-                className="app-icon-button text-[1rem] leading-none"
-                aria-label="Cerrar importador"
-                onClick={handleClose}
-              >
-                ×
-              </button>
+              <CloseButton size="sm" aria-label="Cerrar importador" onClick={handleClose} />
             </div>
           </div>
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, type PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react'
 
 import {
   buildDerivedDeckAttributes,
@@ -11,11 +11,10 @@ import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
 import {
   findDeckCard,
   getAddSearchResultIssue,
-  getDefaultDeckZoneForCardInBuilder,
+  isCardAllowedInDeckZone,
 } from '../../app/deck-builder'
 import {
   addSearchResultToDeckZone,
-  addSearchResultToDefaultDeckZone,
   clearDeckZone,
   moveDeckCardInBuilder,
   removeDeckCardFromBuilder,
@@ -29,7 +28,7 @@ import { buildDeckFormatIssues, getDeckFormatLabel } from '../../app/deck-format
 import { buildDerivedDeckGroups } from '../../app/deck-groups'
 import { GENESYS_POINT_CAP, calculateGenesysDeckPointTotal } from '../../app/genesys-format'
 import { exportDeckAssets } from '../../app/deck-image-export'
-import { type AppState, type DeckZone } from '../../app/model'
+import { type AppState, type DeckCardInstance, type DeckZone } from '../../app/model'
 import { setDeckFormat, setMode } from '../../app/settings-slice'
 import type { RootState } from '../../app/store'
 import { useAppDispatch, useAppSelector } from '../../app/store-hooks'
@@ -42,6 +41,7 @@ import { isClassificationStepComplete } from '../../app/role-step'
 import { useToastMessage } from '../../app/use-toast-message'
 import { HOVER_PREVIEW_DELAY_MS } from '../../app/model'
 import type { ApiCardReference, CardOrigin, CardRole } from '../../types'
+import type { ApiCardSearchResult } from '../../ygoprodeck'
 
 const DEFAULT_PATTERNS_VERSION = 6
 
@@ -50,6 +50,7 @@ export function useDeckModeController() {
   const settings = useAppSelector((state: RootState) => state.settings)
   const deckBuilder = useAppSelector((state: RootState) => state.deckBuilder)
   const patternsState = useAppSelector((state: RootState) => state.patterns)
+  const [selectedDetailCard, setSelectedDetailCard] = useState<ApiCardSearchResult | null>(null)
 
   const appState = useMemo<AppState>(
     () => ({
@@ -96,12 +97,41 @@ export function useDeckModeController() {
     activeDragInstanceId,
     activeDropZone,
     activeDragSearchCardId,
-    consumeSuppressedSearchClick,
+    consumeSuppressedPointerClick,
     dragOverlay,
     dragOverlayRef,
     hasPendingPointerDrag,
     startPointerDrag,
   } = useDeckPointerDrag({
+    canDrop: (payload, zone) => {
+      if (payload.type === 'search-result') {
+        const card = apiSearch.results.find((entry) => entry.ygoprodeckId === payload.apiCardId)
+
+        if (!card) {
+          return false
+        }
+
+        return getAddSearchResultIssue(deckBuilder, card, zone, settings.deckFormat) === null
+      }
+
+      const draggedCard = findDeckCard(deckBuilder, payload.instanceId)
+
+      if (!draggedCard) {
+        return false
+      }
+
+      const currentZone = findDeckCardZone(deckBuilder, payload.instanceId)
+
+      if (currentZone === zone) {
+        return true
+      }
+
+      if (!isCardAllowedInDeckZone(draggedCard.apiCard, zone)) {
+        return false
+      }
+
+      return deckBuilder[zone].length < (zone === 'main' ? 60 : 15)
+    },
     onClearHoverPreview: clearHoverPreview,
     onDrop: (pendingDrop) => {
       if (pendingDrop.payload.type === 'search-result') {
@@ -202,44 +232,101 @@ export function useDeckModeController() {
     [hasPendingPointerDrag, scheduleHoverPreviewWithDelay],
   )
 
-  const handleAddSearchResult = useCallback(
+  const resolveSearchResult = useCallback(
     (apiCardId: number) => {
-      const card = apiSearch.results.find((entry) => entry.ygoprodeckId === apiCardId)
+      const liveCard = apiSearch.results.find((entry) => entry.ygoprodeckId === apiCardId)
+
+      if (liveCard) {
+        return liveCard
+      }
+
+      return selectedDetailCard?.ygoprodeckId === apiCardId ? selectedDetailCard : null
+    },
+    [apiSearch.results, selectedDetailCard],
+  )
+
+  const openCardDetail = useCallback(
+    (apiCardId: number) => {
+      const card =
+        visibleSearchResults.find((entry) => entry.ygoprodeckId === apiCardId) ??
+        resolveSearchResult(apiCardId)
 
       if (!card) {
         return
       }
 
-      const zone = getDefaultDeckZoneForCardInBuilder(deckBuilder, card)
+      clearHoverPreview()
+      setSelectedDetailCard(card)
+    },
+    [clearHoverPreview, resolveSearchResult, visibleSearchResults],
+  )
+
+  const closeCardDetail = useCallback(() => {
+    setSelectedDetailCard(null)
+  }, [])
+
+  const handleDeckCardClick = useCallback(
+    (instanceId: string) => {
+      if (consumeSuppressedPointerClick()) {
+        return
+      }
+
+      const deckCard = findDeckCard(deckBuilder, instanceId)
+
+      if (!deckCard) {
+        return
+      }
+
+      clearHoverPreview()
+      setSelectedDetailCard(buildDetailCardFromDeckCard(deckCard))
+    },
+    [clearHoverPreview, consumeSuppressedPointerClick, deckBuilder],
+  )
+
+  const handleAddSearchResultToZone = useCallback(
+    (apiCardId: number, zone: DeckZone) => {
+      const card = resolveSearchResult(apiCardId)
+
+      if (!card) {
+        return false
+      }
+
       const addIssue = getAddSearchResultIssue(deckBuilder, card, zone, settings.deckFormat)
 
       if (addIssue) {
         showToast(addIssue, 'error')
-        return
+        return false
       }
 
+      const resultsForDispatch = apiSearch.results.some((entry) => entry.ygoprodeckId === apiCardId)
+        ? apiSearch.results
+        : [...apiSearch.results, card]
+
       dispatch(
-        addSearchResultToDefaultDeckZone({
+        addSearchResultToDeckZone({
           apiCardId,
           deckFormat: settings.deckFormat,
-          results: apiSearch.results,
+          index: deckBuilder[zone].length,
+          results: resultsForDispatch,
+          zone,
         }),
       )
 
       showToast('Carta añadida', 'success')
+      return true
     },
-    [apiSearch.results, deckBuilder, dispatch, settings.deckFormat, showToast],
+    [apiSearch.results, deckBuilder, dispatch, resolveSearchResult, settings.deckFormat, showToast],
   )
 
   const handleSearchResultClick = useCallback(
     (apiCardId: number) => {
-      if (consumeSuppressedSearchClick()) {
+      if (consumeSuppressedPointerClick()) {
         return
       }
 
-      handleAddSearchResult(apiCardId)
+      openCardDetail(apiCardId)
     },
-    [consumeSuppressedSearchClick, handleAddSearchResult],
+    [consumeSuppressedPointerClick, openCardDetail],
   )
 
   const handleRemoveDeckCard = useCallback(
@@ -308,10 +395,6 @@ export function useDeckModeController() {
     },
     [dispatch],
   )
-
-  const handleFinishEditing = useCallback(() => {
-    dispatch(setIsEditingDeck(false))
-  }, [dispatch])
 
   useEffect(() => {
     if (!deckBuilder.isEditingDeck) {
@@ -383,11 +466,15 @@ export function useDeckModeController() {
       activeDragInstanceId,
       activeDropZone,
       activeDragSearchCardId,
+      selectedDetailCard,
+      isCardDetailOpen: selectedDetailCard !== null,
       onClearDeckZone: handleClearDeckZone,
       onRemoveDeckCard: handleRemoveDeckCard,
       onDeckCardPointerDown: handleDeckCardPointerDown,
+      onDeckCardClick: handleDeckCardClick,
       onSearchCardPointerDown: handleSearchCardPointerDown,
       onSearchResultClick: handleSearchResultClick,
+      onAddSearchResultToZone: handleAddSearchResultToZone,
       onQueryChange: setSearchQuery,
       onDeckNameChange: handleDeckNameChange,
       onDeckFormatChange: handleDeckFormatChange,
@@ -395,6 +482,7 @@ export function useDeckModeController() {
       onSearchFiltersChange: updateSearchFilters,
       onClearSearchFilters: clearSearchFilters,
       onLoadMoreResults: loadMoreResults,
+      onCloseCardDetail: closeCardDetail,
       onHoverStart: scheduleHoverPreview,
       onHoverEnd: clearHoverPreview,
       genesysPointTotal,
@@ -430,4 +518,23 @@ export function useDeckModeController() {
       onToggleRole: handleToggleRole,
     },
   }
+}
+
+function buildDetailCardFromDeckCard(card: DeckCardInstance): ApiCardSearchResult {
+  return {
+    name: card.name,
+    ...card.apiCard,
+  }
+}
+
+function findDeckCardZone(deckBuilder: AppState['deckBuilder'], instanceId: string): DeckZone | null {
+  const zones: DeckZone[] = ['main', 'extra', 'side']
+
+  for (const zone of zones) {
+    if (deckBuilder[zone].some((card) => card.instanceId === instanceId)) {
+      return zone
+    }
+  }
+
+  return null
 }

@@ -5,6 +5,7 @@ import { getPatternDefinitionKey } from '../../app/patterns'
 import { formatPercent } from '../../app/utils'
 import type { CardEntry, HandPattern } from '../../types'
 import { Button } from '../ui/Button'
+import { CloseButton } from '../ui/IconButton'
 import type { PatternEditorActions } from './pattern-editor-actions'
 import { PatternEditorForm } from './PatternEditorForm'
 
@@ -95,14 +96,7 @@ export function PatternEditorDrawer({
               </p>
             </div>
 
-            <button
-              type="button"
-              className="app-icon-button text-[1rem] leading-none"
-              aria-label="Cerrar editor"
-              onClick={onClose}
-            >
-              ×
-            </button>
+            <CloseButton size="sm" aria-label="Cerrar editor" onClick={onClose} />
           </div>
 
           {!isQuickAdd ? (

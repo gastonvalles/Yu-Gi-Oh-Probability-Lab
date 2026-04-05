@@ -12,6 +12,18 @@ const DECK_ZONE_LIMITS: Record<DeckZone, number> = {
   side: 15,
 }
 
+export function isCardAllowedInDeckZone(
+  card: ApiCardReference | ApiCardSearchResult,
+  zone: DeckZone,
+): boolean {
+  if (zone === 'side') {
+    return true
+  }
+
+  const intrinsicZone = getDefaultDeckZoneForCard(card)
+  return zone === intrinsicZone
+}
+
 export function addSearchResultToZone(
   deckBuilder: DeckBuilderState,
   searchResults: ApiCardSearchResult[],
@@ -74,6 +86,12 @@ export function getAddSearchResultIssue(
     return `${searchResult.name} no es legal en ${EDISON_FORMAT_LABEL}.`
   }
 
+  if (!isCardAllowedInDeckZone(searchResult, zone)) {
+    return zone === 'main'
+      ? `${searchResult.name} solo puede ir al Extra Deck o Side Deck.`
+      : `${searchResult.name} solo puede ir al Main Deck o Side Deck.`
+  }
+
   if (deckBuilder[zone].length >= DECK_ZONE_LIMITS[zone]) {
     const zoneLabel = zone === 'extra' ? 'Extra Deck' : zone === 'side' ? 'Side Deck' : 'Main Deck'
     return `${zoneLabel} ya alcanzó su tamaño máximo.`
@@ -133,6 +151,16 @@ export function moveDeckCard(
   const location = findDeckCardLocation(deckBuilder, instanceId)
 
   if (!location) {
+    return deckBuilder
+  }
+
+  const sourceCard = deckBuilder[location.zone][location.index]
+
+  if (!sourceCard) {
+    return deckBuilder
+  }
+
+  if (location.zone !== targetZone && !isCardAllowedInDeckZone(sourceCard.apiCard, targetZone)) {
     return deckBuilder
   }
 

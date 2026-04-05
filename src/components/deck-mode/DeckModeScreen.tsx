@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { countUnclassifiedCards, isClassificationStepComplete } from '../../app/role-step'
+import { CardDetailDrawer } from '../card-detail/CardDetailDrawer'
+import { CardDetailModal } from '../card-detail/CardDetailModal'
 import { DeckRolesPanel } from '../DeckRolesPanel'
 import { ExportDeckPanel } from '../ExportDeckPanel'
 import { HoverPreview } from '../HoverPreview'
@@ -17,6 +19,8 @@ import { DeckModeNavigation } from './DeckModeNavigation'
 import { DeckModeShell } from './DeckModeShell'
 import { MobileBottomStepNav } from './MobileBottomStepNav'
 import { useDeckModeController } from './use-deck-mode-controller'
+
+const DESKTOP_DECK_BUILDER_MEDIA_QUERY = '(min-width: 1101px)'
 
 function getStepFromHash(hash: string): DeckWorkflowStepKey | null {
   const normalizedHash = hash.replace(/^#/, '')
@@ -46,6 +50,13 @@ function getRecommendedStep(
 
 export function DeckModeScreen() {
   const controller = useDeckModeController()
+  const [isDesktopDeckBuilder, setIsDesktopDeckBuilder] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false
+    }
+
+    return window.matchMedia(DESKTOP_DECK_BUILDER_MEDIA_QUERY).matches
+  })
   const mainDeckCount = controller.deckBuilderStep.deckBuilder.main.length
   const roleCards = controller.roles.cards
   const unclassifiedCardCount = useMemo(() => countUnclassifiedCards(roleCards), [roleCards])
@@ -101,6 +112,24 @@ export function DeckModeScreen() {
   useEffect(() => {
     contentScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' })
   }, [activeStep])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const mediaQuery = window.matchMedia(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsDesktopDeckBuilder(event.matches)
+    }
+
+    setIsDesktopDeckBuilder(mediaQuery.matches)
+    mediaQuery.addEventListener('change', handleChange)
+
+    return () => {
+      mediaQuery.removeEventListener('change', handleChange)
+    }
+  }, [])
 
   const handleStepChange = useCallback((nextStep: DeckWorkflowStepKey) => {
     setActiveStep(nextStep)
@@ -211,6 +240,37 @@ export function DeckModeScreen() {
         overlay={controller.feedback.dragOverlay}
         overlayRef={controller.feedback.dragOverlayRef}
       />
+      {isDesktopDeckBuilder ? (
+        <CardDetailModal
+          card={controller.deckBuilderStep.selectedDetailCard}
+          deckFormat={controller.deckBuilderStep.deckFormat}
+          isOpen={controller.deckBuilderStep.isCardDetailOpen}
+          onAddToZone={(zone) =>
+            controller.deckBuilderStep.selectedDetailCard
+              ? controller.deckBuilderStep.onAddSearchResultToZone(
+                  controller.deckBuilderStep.selectedDetailCard.ygoprodeckId,
+                  zone,
+                )
+              : false
+          }
+          onClose={controller.deckBuilderStep.onCloseCardDetail}
+        />
+      ) : (
+        <CardDetailDrawer
+          card={controller.deckBuilderStep.selectedDetailCard}
+          deckFormat={controller.deckBuilderStep.deckFormat}
+          isOpen={controller.deckBuilderStep.isCardDetailOpen}
+          onAddToZone={(zone) =>
+            controller.deckBuilderStep.selectedDetailCard
+              ? controller.deckBuilderStep.onAddSearchResultToZone(
+                  controller.deckBuilderStep.selectedDetailCard.ygoprodeckId,
+                  zone,
+                )
+              : false
+          }
+          onClose={controller.deckBuilderStep.onCloseCardDetail}
+        />
+      )}
     </>
   )
 }

@@ -360,7 +360,7 @@ export function PracticeSection({
                   <article
                     key={card.drawId}
                     className={[
-                      'surface-card shrink-0 overflow-hidden p-1.5 shadow-[0_18px_36px_rgba(0,0,0,0.35)]',
+                      'shrink-0 p-0 shadow-[0_18px_36px_rgba(0,0,0,0.35)]',
                       isWide
                         ? 'w-[clamp(96px,16vw,132px)]'
                         : 'w-full',
@@ -371,7 +371,7 @@ export function PracticeSection({
                     <CardArt
                       remoteUrl={card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null}
                       name={card.name}
-                      className="block aspect-[0.72] w-full border border-(--border-subtle) bg-(--input) object-cover"
+                      className="block h-auto w-full bg-(--input)"
                       limitCard={card.apiCard}
                       limitBadgeSize="lg"
                     />

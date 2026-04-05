@@ -11,6 +11,7 @@ import { DeckZone } from '../DeckZone'
 import { SearchPanel } from '../SearchPanel'
 import { StepHero } from '../StepHero'
 import { Button } from '../ui/Button'
+import { CloseButton } from '../ui/IconButton'
 import { DeckImportDrawer } from './DeckImportDrawer'
 
 const DESKTOP_DECK_BUILDER_MEDIA_QUERY = '(min-width: 1101px)'
@@ -37,6 +38,7 @@ interface DeckBuilderStepProps {
   onClearDeckZone: (zone: DeckZoneType) => void
   onRemoveDeckCard: (instanceId: string) => void
   onDeckCardPointerDown: (event: ReactPointerEvent<HTMLElement>, instanceId: string) => void
+  onDeckCardClick: (instanceId: string) => void
   onSearchCardPointerDown: (event: ReactPointerEvent<HTMLElement>, apiCardId: number) => void
   onSearchResultClick: (apiCardId: number) => void
   onQueryChange: (value: string) => void
@@ -81,6 +83,7 @@ export function DeckBuilderStep({
   onClearDeckZone,
   onRemoveDeckCard,
   onDeckCardPointerDown,
+  onDeckCardClick,
   onSearchCardPointerDown,
   onSearchResultClick,
   onQueryChange,
@@ -180,7 +183,7 @@ export function DeckBuilderStep({
         step="Paso 1"
         pill="Deck Builder"
         title="Armá tu deck en el builder"
-        description="Buscá cartas en el buscador, agregalas con click y reordená la lista arrastrando entre Main, Extra y Side. Click derecho quita la copia."
+        description="Buscá cartas en el buscador, abrí el detalle con click o tap y agregalas a Main, Extra o Side. El drag & drop sigue reordenando entre zonas y el click derecho quita la copia."
         side={
           <>
             <span className="app-soft text-[0.68rem] uppercase tracking-widest">Nombre del deck</span>
@@ -272,6 +275,7 @@ export function DeckBuilderStep({
                 desktopCompactColumnCount={desktopCompactColumnCount}
                 onClearZone={onClearDeckZone}
                 onDeckCardPointerDown={onDeckCardPointerDown}
+                onDeckCardClick={onDeckCardClick}
                 onRemoveCard={onRemoveDeckCard}
                 onHoverStart={onHoverStart}
                 onHoverEnd={onHoverEnd}
@@ -287,13 +291,7 @@ export function DeckBuilderStep({
             <div className="surface-panel flex h-full max-w-screen w-full flex-col overflow-hidden p-2.5">
               <div className="flex items-center justify-between gap-2 border-b border-(--border-subtle) pb-2">
                 <strong className="text-[0.95rem]">Buscar cartas</strong>
-                <button
-                  type="button"
-                  className="app-icon-button text-[1.05rem]"
-                  onClick={() => setMobileSearchOpen(false)}
-                >
-                  ×
-                </button>
+                <CloseButton size="sm" aria-label="Cerrar búsqueda" onClick={() => setMobileSearchOpen(false)} />
               </div>
               <div className="mt-2 min-h-0 flex-1 overflow-hidden">
                 {renderSearchPanel({

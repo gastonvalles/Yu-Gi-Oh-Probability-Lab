@@ -748,7 +748,7 @@ export function SearchPanel({
                               <CardArt
                                 remoteUrl={card.imageUrlSmall}
                                 name={card.name}
-                                className="block aspect-[0.72] w-[42px] bg-[var(--input)] object-cover"
+                                className="block h-auto w-full bg-[var(--input)]"
                                 limitCard={card}
                                 limitBadgeSize="sm"
                               />

@@ -550,12 +550,19 @@
     align-items: center;
     justify-content: center;
     gap: 0.45rem;
-    border-radius: 999px;
-    border: 1px solid var(--border-subtle);
-    background: linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.94), rgb(var(--background-rgb) / 0.98));
+    border-radius: 1.1rem;
+    border: 1px solid rgb(var(--foreground-rgb) / 0.12);
+    background:
+      linear-gradient(180deg, rgb(var(--foreground-rgb) / 0.06), transparent 42%),
+      linear-gradient(180deg, rgb(var(--card-background-rgb) / 0.98), rgb(var(--background-rgb) / 1));
     color: var(--text-main);
     font-weight: 600;
     line-height: 1;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.16),
+      0 0 0 1px rgb(var(--foreground-rgb) / 0.04),
+      0 10px 22px rgba(0, 0, 0, 0.18);
     transition:
       border-color 160ms ease,
       background 160ms ease,
@@ -565,28 +572,35 @@
   }
 
   .ui-button-sm {
-    min-height: 1.95rem;
-    padding: 0.42rem 0.9rem;
+    min-height: 2rem;
+    padding: 0.44rem 0.96rem;
     font-size: 0.78rem;
   }
 
   .ui-button-md {
-    min-height: 2.25rem;
-    padding: 0.54rem 1.05rem;
+    min-height: 2.36rem;
+    padding: 0.58rem 1.12rem;
     font-size: 0.84rem;
   }
 
   .ui-button-lg {
-    min-height: 2.65rem;
-    padding: 0.72rem 1.35rem;
+    min-height: 2.8rem;
+    padding: 0.76rem 1.42rem;
     font-size: 0.92rem;
   }
 
   .ui-button:hover,
   .app-button:hover {
-    border-color: rgb(var(--primary-rgb) / 0.55);
-    background: linear-gradient(180deg, rgb(var(--input-hover-rgb) / 0.96), rgb(var(--background-rgb) / 1));
-    box-shadow: 0 0 0 1px rgb(var(--primary-rgb) / 0.08);
+    border-color: rgb(var(--primary-rgb) / 0.5);
+    background:
+      linear-gradient(180deg, rgb(var(--foreground-rgb) / 0.08), transparent 42%),
+      linear-gradient(180deg, rgb(var(--input-hover-rgb) / 0.98), rgb(var(--background-rgb) / 1));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+      0 0 0 1px rgb(var(--primary-rgb) / 0.08),
+      0 14px 28px rgb(var(--primary-rgb) / 0.12);
+    transform: translateY(-1px);
   }
 
   .ui-button:focus-visible,
@@ -610,60 +624,78 @@
 
   .ui-button-primary,
   .app-button-primary {
-    border-color: rgb(var(--primary-rgb) / 0.68);
+    border-color: rgb(var(--primary-rgb) / 0.7);
     background:
-      linear-gradient(135deg, rgb(var(--primary-rgb) / 0.92), rgb(var(--primary-hover-rgb) / 0.88)),
-      linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.94), rgb(var(--background-rgb) / 0.98));
+      linear-gradient(180deg, rgb(255 255 255 / 0.14), transparent 42%),
+      linear-gradient(135deg, rgb(var(--primary-hover-rgb) / 0.96), rgb(var(--primary-rgb) / 0.88));
     color: var(--primary-foreground);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.05),
-      0 12px 24px rgb(var(--primary-rgb) / 0.16);
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.14),
+      0 0 0 1px rgb(var(--primary-rgb) / 0.18),
+      0 14px 28px rgb(var(--primary-rgb) / 0.18);
   }
 
   .ui-button-primary:hover,
   .app-button-primary:hover {
-    border-color: var(--primary-hover);
+    border-color: rgb(var(--primary-hover-rgb) / 0.9);
     background:
-      linear-gradient(135deg, rgb(var(--primary-hover-rgb) / 0.96), rgb(var(--primary-rgb) / 0.88)),
-      linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.94), rgb(var(--background-rgb) / 0.98));
+      linear-gradient(180deg, rgb(255 255 255 / 0.18), transparent 42%),
+      linear-gradient(135deg, rgb(var(--primary-hover-rgb) / 1), rgb(var(--primary-rgb) / 0.92));
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.05),
-      0 14px 28px rgb(var(--primary-rgb) / 0.2);
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.16),
+      0 0 0 1px rgb(var(--primary-rgb) / 0.2),
+      0 16px 30px rgb(var(--primary-rgb) / 0.22);
   }
 
   .ui-button-secondary {
-    border-color: rgb(var(--primary-rgb) / 0.52);
+    border-color: rgb(var(--primary-rgb) / 0.36);
     background:
-      linear-gradient(180deg, rgb(var(--primary-rgb) / 0.08), rgb(var(--card-background-rgb) / 0.96)),
-      linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.94), rgb(var(--background-rgb) / 0.98));
+      linear-gradient(180deg, rgb(var(--foreground-rgb) / 0.08), transparent 42%),
+      linear-gradient(180deg, rgb(var(--primary-rgb) / 0.14), rgb(var(--card-background-rgb) / 0.98));
     color: var(--text-main);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.04),
-      0 0 0 1px rgb(var(--primary-rgb) / 0.06);
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.14),
+      0 0 0 1px rgb(var(--primary-rgb) / 0.08),
+      0 10px 22px rgb(var(--primary-rgb) / 0.08);
   }
 
   .ui-button-secondary:hover {
-    border-color: rgb(var(--primary-rgb) / 0.72);
+    border-color: rgb(var(--primary-rgb) / 0.54);
     background:
-      linear-gradient(180deg, rgb(var(--primary-rgb) / 0.14), rgb(var(--card-background-rgb) / 0.98)),
-      linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.94), rgb(var(--background-rgb) / 0.98));
+      linear-gradient(180deg, rgb(var(--foreground-rgb) / 0.1), transparent 42%),
+      linear-gradient(180deg, rgb(var(--primary-rgb) / 0.18), rgb(var(--card-background-rgb) / 1));
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.04),
-      0 0 0 1px rgb(var(--primary-rgb) / 0.1);
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.16),
+      0 0 0 1px rgb(var(--primary-rgb) / 0.12),
+      0 12px 24px rgb(var(--primary-rgb) / 0.1);
   }
 
   .ui-button-tertiary {
-    border-color: transparent;
-    background: rgb(var(--primary-rgb) / 0.08);
+    border-color: rgb(var(--foreground-rgb) / 0.08);
+    background:
+      linear-gradient(180deg, rgb(var(--foreground-rgb) / 0.04), transparent 42%),
+      linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.94), rgb(var(--background-rgb) / 0.98));
     color: var(--text-muted);
-    box-shadow: none;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.14),
+      0 0 0 1px rgb(var(--foreground-rgb) / 0.03);
   }
 
   .ui-button-tertiary:hover {
-    border-color: rgb(var(--primary-rgb) / 0.16);
-    background: rgb(var(--primary-rgb) / 0.14);
+    border-color: rgb(var(--primary-rgb) / 0.3);
+    background:
+      linear-gradient(180deg, rgb(var(--foreground-rgb) / 0.06), transparent 42%),
+      linear-gradient(180deg, rgb(var(--primary-rgb) / 0.08), rgb(var(--card-background-rgb) / 0.98));
     color: var(--text-main);
-    box-shadow: none;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.16),
+      0 0 0 1px rgb(var(--primary-rgb) / 0.08);
   }
 
   .app-field {
@@ -1120,19 +1152,74 @@
       0 -8px 18px rgb(var(--primary-rgb) / 0.12);
   }
 
+  .ui-icon-button,
   .app-icon-button {
-    border: 0;
-    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    border: 1px solid rgb(var(--foreground-rgb) / 0.1);
+    background:
+      linear-gradient(180deg, rgb(var(--foreground-rgb) / 0.06), transparent 42%),
+      linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.98), rgb(var(--background-rgb) / 1));
     padding: 0;
     color: var(--text-soft);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.16),
+      0 0 0 1px rgb(var(--foreground-rgb) / 0.03),
+      0 10px 20px rgba(0, 0, 0, 0.14);
     transition:
+      border-color 150ms ease,
+      background 150ms ease,
       color 150ms ease,
+      box-shadow 150ms ease,
       transform 150ms ease;
   }
 
+  .ui-icon-button-sm {
+    height: 2rem;
+    width: 2rem;
+  }
+
+  .ui-icon-button-md {
+    height: 2.35rem;
+    width: 2.35rem;
+  }
+
+  .ui-icon-button-lg {
+    height: 2.7rem;
+    width: 2.7rem;
+  }
+
+  .ui-icon-button:hover,
   .app-icon-button:hover {
-    color: var(--destructive);
-    transform: scale(1.08);
+    border-color: rgb(var(--primary-rgb) / 0.4);
+    background:
+      linear-gradient(180deg, rgb(var(--foreground-rgb) / 0.08), transparent 42%),
+      linear-gradient(180deg, rgb(var(--primary-rgb) / 0.1), rgb(var(--card-background-rgb) / 0.98));
+    color: var(--text-main);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.16),
+      0 0 0 1px rgb(var(--primary-rgb) / 0.08),
+      0 12px 24px rgb(var(--primary-rgb) / 0.12);
+    transform: translateY(-1px);
+  }
+
+  .ui-icon-button:focus-visible,
+  .app-icon-button:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px rgb(var(--background-rgb) / 1),
+      0 0 0 4px rgb(var(--primary-rgb) / 0.32);
+  }
+
+  .ui-icon-button svg,
+  .app-icon-button svg {
+    display: block;
+    height: 0.92rem;
+    width: 0.92rem;
   }
 
   .deck-zone-surface {

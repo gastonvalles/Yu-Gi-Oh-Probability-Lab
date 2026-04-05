@@ -23,6 +23,7 @@ import type {
   RequirementKind,
 } from '../../types'
 import { Button } from '../ui/Button'
+import { CloseButton, CloseIcon } from '../ui/IconButton'
 import {
   buildRequirementSummary,
   getMatcherEditorLabel,
@@ -151,14 +152,12 @@ export function RequirementRow({
             {buildRequirementSummary(requirement, selectedCards)}
           </p>
         </div>
-        <button
-          type="button"
-          className="app-icon-button shrink-0 text-[1rem] leading-none"
+        <CloseButton
+          size="sm"
+          className="shrink-0"
           aria-label={`Borrar condición ${index + 1}`}
           onClick={() => actions.removeRequirement(patternId, requirement.id)}
-        >
-          ×
-        </button>
+        />
       </div>
 
       <div className="grid gap-2 min-[1080px]:grid-cols-[minmax(0,1fr)_100px] min-[1080px]:items-end">
@@ -403,10 +402,10 @@ export function RequirementRow({
                 {card.name}
                 <button
                   type="button"
-                  className="text-[0.72rem] text-(--text-soft) transition-colors hover:text-(--text-main)"
+                  className="inline-flex h-[0.9rem] w-[0.9rem] items-center justify-center text-(--text-soft) transition-colors hover:text-(--text-main)"
                   onClick={() => setMatcher(createCardPoolMatcher(selectedCardIds.filter((cardId) => cardId !== card.id)))}
                 >
-                  ×
+                  <CloseIcon className="h-[0.68rem] w-[0.68rem]" />
                 </button>
               </span>
             ))}

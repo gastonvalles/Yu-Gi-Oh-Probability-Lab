@@ -21,6 +21,7 @@ import type { CardEntry, CardGroupKey, CardOrigin, CardRole } from '../types'
 import { CardArt } from './CardArt'
 import { StepHero } from './StepHero'
 import { Button } from './ui/Button'
+import { CloseButton } from './ui/IconButton'
 
 interface DeckRolesPanelProps {
   cards: CardEntry[]
@@ -501,14 +502,7 @@ function ClassificationDrawer({
               <p className="app-muted m-[0.3rem_0_0] max-w-[38ch] text-[0.76rem] leading-[1.14]">{subtitle}</p>
             </div>
 
-            <button
-              type="button"
-              className="app-icon-button text-[1rem] leading-none"
-              aria-label="Cerrar panel"
-              onClick={onClose}
-            >
-              ×
-            </button>
+            <CloseButton size="sm" aria-label="Cerrar panel" onClick={onClose} />
           </div>
         </div>
 
@@ -557,14 +551,7 @@ function ClassificationModal({
               <p className="app-muted m-[0.28rem_0_0] text-[0.76rem] leading-[1.14]">{subtitle}</p>
             </div>
 
-            <button
-              type="button"
-              className="app-icon-button text-[1rem] leading-none"
-              aria-label="Cerrar detalle"
-              onClick={onClose}
-            >
-              ×
-            </button>
+            <CloseButton size="sm" aria-label="Cerrar detalle" onClick={onClose} />
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 min-[1101px]:px-4 min-[1101px]:py-4">
@@ -862,7 +849,7 @@ export function DeckRolesPanel({
             <CardArt
               remoteUrl={selectedCard.apiCard?.imageUrlSmall ?? selectedCard.apiCard?.imageUrl ?? null}
               name={selectedCard.name}
-              className="block aspect-[0.72] w-full border border-(--border-subtle) bg-(--input) object-cover"
+              className="block h-auto w-full bg-(--input)"
               limitCard={selectedCard.apiCard}
             />
           </div>
@@ -1176,7 +1163,7 @@ export function DeckRolesPanel({
                         <CardArt
                           remoteUrl={card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null}
                           name={card.name}
-                          className="block aspect-[0.72] w-full border border-(--border-subtle) bg-(--input) object-cover"
+                          className="block h-auto w-full bg-(--input)"
                           limitCard={card.apiCard}
                         />
                       </div>

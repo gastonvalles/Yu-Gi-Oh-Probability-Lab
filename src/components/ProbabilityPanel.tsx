@@ -26,6 +26,7 @@ import {
   buildProbabilityCheckPipeline,
 } from './probability/probability-lab-helpers'
 import { Button } from './ui/Button'
+import { CloseButton } from './ui/IconButton'
 
 interface ProbabilityPanelProps {
   handSize: number
@@ -591,14 +592,11 @@ export function ProbabilityPanel({
                 <strong className="text-[0.98rem] text-(--text-main)">Práctica</strong>
                 <span className="app-muted text-[0.74rem]">Proba manos sin salir del analisis principal.</span>
               </div>
-              <button
-                type="button"
-                className="app-icon-button text-[1rem] leading-none"
+              <CloseButton
+                size="sm"
                 aria-label="Cerrar práctica"
                 onClick={() => setPracticeOpen(false)}
-              >
-                ×
-              </button>
+              />
             </div>
 
             <div className="min-h-0 min-w-0 overflow-x-hidden overflow-y-auto p-4">

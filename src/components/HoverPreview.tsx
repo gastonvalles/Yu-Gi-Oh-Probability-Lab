@@ -59,7 +59,7 @@ export function HoverPreview({ preview }: HoverPreviewProps) {
           <CardArt
             remoteUrl={preview.card.imageUrl}
             name={preview.name}
-            className="block aspect-[0.72] w-[116px] bg-[var(--input)] object-cover"
+            className="block h-auto w-full bg-[var(--input)]"
             limitCard={preview.card}
             limitBadgeSize="lg"
           />

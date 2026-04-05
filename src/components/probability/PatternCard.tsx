@@ -10,6 +10,7 @@ import {
 import { formatInteger } from '../../app/utils'
 import type { CardEntry, HandPattern, PatternMatchMode } from '../../types'
 import { Button } from '../ui/Button'
+import { CloseButton } from '../ui/IconButton'
 import type { PatternEditorActions } from './pattern-editor-actions'
 import { buildPatternPreview } from './pattern-helpers'
 import { RequirementRow } from './RequirementRow'
@@ -116,18 +117,16 @@ export function PatternCard({
             {patternPreview.summary}
           </p>
         </div>
-        <button
-          type="button"
-          className="app-icon-button shrink-0 text-[1rem] leading-none"
+        <CloseButton
+          size="sm"
+          className="shrink-0"
           aria-label={`Quitar ${displayName}`}
           onClick={(event) => {
             event.preventDefault()
             event.stopPropagation()
             actions.removePattern(pattern.id)
           }}
-        >
-          ×
-        </button>
+        />
       </summary>
 
       <div className="grid gap-2 px-2.5 py-2.5">

@@ -30,7 +30,7 @@ export function DeckModeDragOverlay({
       <CardArt
         remoteUrl={overlay.card.imageUrlSmall ?? overlay.card.imageUrl}
         name={overlay.name}
-        className="block h-full w-full bg-[var(--input)] object-cover shadow-[0_12px_28px_rgba(0,0,0,0.42)]"
+        className="block h-full w-full bg-[var(--input)] object-contain shadow-[0_12px_28px_rgba(0,0,0,0.42)]"
         limitCard={overlay.card}
       />
     </div>
