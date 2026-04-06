@@ -134,7 +134,7 @@ function CausalChecksGroup({
                 </div>
 
                 <div className="flex items-start justify-end">
-                  <Button variant="secondary" size="sm" onClick={() => onEditPattern(entry.patternId)}>
+                  <Button variant="primary" size="sm" onClick={() => onEditPattern(entry.patternId)}>
                     Editar
                   </Button>
                 </div>

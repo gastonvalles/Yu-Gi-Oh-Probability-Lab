@@ -9,6 +9,7 @@ interface CardDetailModalProps {
   card: ApiCardSearchResult | null
   deckFormat: DeckFormat
   isOpen: boolean
+  showActions?: boolean
   onAddToZone: (zone: DeckZone) => boolean
   onClose: () => void
 }
@@ -17,6 +18,7 @@ export function CardDetailModal({
   card,
   deckFormat,
   isOpen,
+  showActions = true,
   onAddToZone,
   onClose,
 }: CardDetailModalProps) {
@@ -46,24 +48,20 @@ export function CardDetailModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[170] grid place-items-center bg-[rgb(var(--background-rgb)/0.76)] px-4 py-5">
-      <button
-        type="button"
-        aria-label="Cerrar detalle"
-        className="absolute inset-0 h-full w-full"
-        onClick={onClose}
-      />
+    <div className="fixed inset-0 z-[170] grid place-items-center bg-[rgb(var(--background-rgb)/0.76)] px-4 py-5" onClick={onClose}>
 
       <div
         role="dialog"
         aria-modal="true"
         aria-label={`Detalle de ${card.name}`}
-        className="relative z-10 flex w-full max-w-[70rem] max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden rounded-[1rem] border border-[#353840] bg-[#26272b] p-0 shadow-[0_32px_80px_rgba(0,0,0,0.48)]"
+        className="surface-panel relative z-10 flex w-full max-w-[70rem] max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden rounded-[1rem] border border-(--border-subtle) p-0 shadow-[0_32px_80px_rgba(0,0,0,0.48)]"
+        onClick={(event) => event.stopPropagation()}
       >
         <CardDetail
           card={card}
           deckFormat={deckFormat}
           layoutMode="desktop"
+          showActions={showActions}
           onAddToZone={onAddToZone}
           onClose={onClose}
         />

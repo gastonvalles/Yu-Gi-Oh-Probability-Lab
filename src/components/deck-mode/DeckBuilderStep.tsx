@@ -33,6 +33,7 @@ interface DeckBuilderStepProps {
   activeFilterCount: number
   hasSearchCriteria: boolean
   activeDragInstanceId: string | null
+  isBuilderRootDropActive: boolean
   activeDropZone: DeckZoneType | null
   activeDragSearchCardId: number | null
   onClearDeckZone: (zone: DeckZoneType) => void
@@ -41,6 +42,7 @@ interface DeckBuilderStepProps {
   onDeckCardClick: (instanceId: string) => void
   onSearchCardPointerDown: (event: ReactPointerEvent<HTMLElement>, apiCardId: number) => void
   onSearchResultClick: (apiCardId: number) => void
+  onAddSearchResultToDefaultZone: (apiCardId: number) => boolean
   onQueryChange: (value: string) => void
   onDeckNameChange: (value: string) => void
   onDeckFormatChange: (format: DeckFormat) => void
@@ -78,6 +80,7 @@ export function DeckBuilderStep({
   activeFilterCount,
   hasSearchCriteria,
   activeDragInstanceId,
+  isBuilderRootDropActive,
   activeDropZone,
   activeDragSearchCardId,
   onClearDeckZone,
@@ -86,6 +89,7 @@ export function DeckBuilderStep({
   onDeckCardClick,
   onSearchCardPointerDown,
   onSearchResultClick,
+  onAddSearchResultToDefaultZone,
   onQueryChange,
   onDeckNameChange,
   onDeckFormatChange,
@@ -167,7 +171,8 @@ export function DeckBuilderStep({
       onFilterChange={onSearchFiltersChange}
       onClearFilters={onClearSearchFilters}
       onLoadMore={onLoadMoreResults}
-      onResultClick={onSearchResultClick}
+      onResultClick={options.layoutMode === 'mobile' ? onAddSearchResultToDefaultZone : onSearchResultClick}
+      onResultLongPress={options.layoutMode === 'mobile' ? onSearchResultClick : undefined}
       onSearchCardPointerDown={handleSearchCardPointerDown}
       onHoverStart={onHoverStart}
       onHoverEnd={onHoverEnd}
@@ -255,8 +260,20 @@ export function DeckBuilderStep({
       ) : null}
 
       <div className="grid items-start gap-3 min-[1101px]:min-h-0">
-        <article className="surface-panel-strong self-start w-full min-h-0 p-3 min-[1101px]:h-full min-[1101px]:overflow-y-auto min-[1101px]:p-2.5">
-          <div className="grid gap-2.5 min-[1101px]:gap-2">
+        <article
+          className="surface-panel-strong deck-builder-root-drop-surface relative self-start w-full min-h-0 overflow-hidden min-[1101px]:h-full"
+          data-deck-builder-root="true"
+          data-deck-builder-root-drop-active={isBuilderRootDropActive ? 'true' : 'false'}
+        >
+          {isBuilderRootDropActive ? (
+            <div className="deck-builder-root-drop-overlay pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+              <span className="deck-builder-root-drop-plus" aria-hidden="true">
+                <span className="deck-builder-root-drop-plus-glyph" />
+              </span>
+            </div>
+          ) : null}
+
+          <div className="relative z-0 grid gap-2.5 p-3 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:overflow-y-auto min-[1101px]:p-2.5 min-[1101px]:gap-2">
             <div className="min-[1101px]:hidden">
               <Button variant="primary" size="md" fullWidth onClick={() => setMobileSearchOpen(true)}>
                 Buscar cartas

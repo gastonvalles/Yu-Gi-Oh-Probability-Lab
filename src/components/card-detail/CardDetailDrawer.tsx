@@ -9,6 +9,7 @@ interface CardDetailDrawerProps {
   card: ApiCardSearchResult | null
   deckFormat: DeckFormat
   isOpen: boolean
+  showActions?: boolean
   onAddToZone: (zone: DeckZone) => boolean
   onClose: () => void
 }
@@ -17,6 +18,7 @@ export function CardDetailDrawer({
   card,
   deckFormat,
   isOpen,
+  showActions = true,
   onAddToZone,
   onClose,
 }: CardDetailDrawerProps) {
@@ -46,32 +48,23 @@ export function CardDetailDrawer({
   }
 
   return (
-    <div className="fixed inset-0 z-[170]">
-      <button
-        type="button"
-        aria-label="Cerrar detalle"
-        className="absolute inset-0 h-full w-full bg-[rgb(var(--background-rgb)/0.8)]"
-        onClick={onClose}
-      />
-
-      <aside
+    <div className="fixed inset-0 z-[170] grid place-items-center bg-[rgb(var(--background-rgb)/0.8)] px-4 py-5" onClick={onClose}>
+      <div
         role="dialog"
         aria-modal="true"
         aria-label={`Detalle de ${card.name}`}
-        className="absolute inset-x-0 bottom-0 z-10 grid h-[min(90dvh,46rem)] max-h-[90dvh] grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-t-[1rem] border border-b-0 border-[#353840] bg-[#26272b] p-0 shadow-[0_-20px_48px_rgba(0,0,0,0.42)]"
+        className="surface-panel z-10 flex w-full max-w-[70rem] max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden rounded-[1rem] border border-(--border-subtle) p-0 shadow-none"
+        onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex justify-center pt-2">
-          <span className="h-1 w-12 rounded-full bg-[rgb(var(--foreground-rgb)/0.16)]" aria-hidden="true" />
-        </div>
-
         <CardDetail
           card={card}
           deckFormat={deckFormat}
           layoutMode="mobile"
+          showActions={showActions}
           onAddToZone={onAddToZone}
           onClose={onClose}
         />
-      </aside>
+      </div>
     </div>
   )
 }

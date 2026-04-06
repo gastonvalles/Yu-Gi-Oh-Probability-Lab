@@ -10,6 +10,7 @@ interface CardDetailProps {
   card: ApiCardSearchResult
   deckFormat: DeckFormat
   layoutMode: 'desktop' | 'mobile'
+  showActions?: boolean
   onAddToZone: (zone: DeckZone) => boolean
   onClose: () => void
 }
@@ -26,11 +27,12 @@ export function CardDetail({
   card,
   deckFormat,
   layoutMode,
+  showActions = true,
   onAddToZone,
   onClose,
 }: CardDetailProps) {
   const isMobileLayout = layoutMode === 'mobile'
-  const actionEntries = buildActionEntries(card)
+  const actionEntries = showActions ? buildActionEntries(card) : []
   const cardFacts = buildCardFacts(card)
   const formatTags = buildCardFormatTags(card, deckFormat)
 
@@ -41,27 +43,29 @@ export function CardDetail({
   }
 
   return (
-    <section className="relative flex min-h-0 flex-col bg-[#26272b] text-[#f3efe4]">
-      <CloseButton
-        size="md"
-        className="absolute right-3 top-3 z-10"
-        aria-label="Cerrar detalle"
-        onClick={onClose}
-      />
+    <section className="flex min-h-0 flex-col bg-[var(--card-background)] text-(--text-main)">
+      <div className="relative min-h-0 overflow-y-auto px-4 pb-4 pt-4 min-[860px]:px-6 min-[860px]:pb-5 min-[860px]:pt-5">
+        <div className="absolute right-4 top-4 z-10 min-[860px]:right-6 min-[860px]:top-5">
+          <CloseButton
+            size="md"
+            aria-label="Cerrar detalle"
+            onClick={onClose}
+          />
+        </div>
 
-      <div className="min-h-0 overflow-y-auto px-4 pb-4 pt-4 min-[860px]:px-6 min-[860px]:pb-5 min-[860px]:pt-5">
-        <div
-          className={[
-            'grid gap-4',
-            isMobileLayout
-              ? 'content-start'
-              : 'content-start min-[860px]:grid-cols-[18.75rem_minmax(0,1fr)] min-[860px]:items-start min-[860px]:gap-6',
-          ].join(' ')}
-        >
+        <div className="grid gap-4">
+          <div
+            className={[
+              'grid gap-4',
+              isMobileLayout
+                ? 'content-start'
+                : 'content-start min-[860px]:grid-cols-[18.75rem_minmax(0,1fr)] min-[860px]:items-start min-[860px]:gap-6',
+            ].join(' ')}
+          >
           <aside className="grid content-start gap-3">
             {isMobileLayout ? (
-              <header className="grid gap-1.5 pr-10">
-                <h2 className="m-0 text-[2.05rem] font-semibold leading-[0.96] tracking-[-0.03em] text-[#ece6d9] min-[860px]:text-[3.15rem]">
+              <header className="grid gap-1.5">
+                <h2 className="m-0 text-[2.05rem] font-semibold leading-[0.96] tracking-[-0.03em] text-(--text-main) min-[860px]:text-[3.15rem]">
                   {card.name}
                 </h2>
               </header>
@@ -94,8 +98,8 @@ export function CardDetail({
 
           <div className="grid content-start gap-5 min-w-0">
             {!isMobileLayout ? (
-              <header className="grid gap-1.5 pr-10">
-                <h2 className="m-0 text-[2.05rem] font-semibold leading-[0.96] tracking-[-0.03em] text-[#ece6d9] min-[860px]:text-[3.15rem]">
+              <header className="grid gap-1.5">
+                <h2 className="m-0 text-[2.05rem] font-semibold leading-[0.96] tracking-[-0.03em] text-(--text-main) min-[860px]:text-[3.15rem]">
                   {card.name}
                 </h2>
               </header>
@@ -106,13 +110,13 @@ export function CardDetail({
                 {cardFacts.map((fact) => (
                   <article
                     key={fact.label}
-                    className="rounded-[0.5rem] border border-[#30333b] bg-[#1f2024] px-4 py-3"
+                    className="surface-card rounded-[0.5rem] px-4 py-3"
                   >
-                    <small className="block text-[0.8rem] leading-none text-[#cbc4b6]">
+                    <small className="app-muted block text-[0.8rem] leading-none">
                       {fact.label}
                     </small>
-                    <strong className="mt-2 flex items-center gap-2 break-words text-[0.98rem] font-semibold leading-[1.15] text-[#f5efe2] min-[860px]:text-[1.02rem]">
-                      <span className="flex h-[1.1rem] w-[1.1rem] shrink-0 items-center justify-center text-[#f5efe2]">
+                    <strong className="mt-2 flex items-center gap-2 break-words text-[0.98rem] font-semibold leading-[1.15] text-(--text-main) min-[860px]:text-[1.02rem]">
+                      <span className="flex h-[1.1rem] w-[1.1rem] shrink-0 items-center justify-center text-(--text-main)">
                         <FactIconGlyph kind={fact.icon} />
                       </span>
                       <span>{fact.value}</span>
@@ -123,47 +127,50 @@ export function CardDetail({
             ) : null}
 
             <section className="grid gap-2.5">
-              <h3 className="m-0 text-[1.55rem] font-semibold leading-none tracking-[-0.02em] text-[#ece6d9] min-[860px]:text-[2rem]">
+              <h3 className="m-0 text-[1.55rem] font-semibold leading-none tracking-[-0.02em] text-(--text-main) min-[860px]:text-[2rem]">
                 Card Text
               </h3>
-              <p className="m-0 whitespace-pre-wrap break-words text-[1.02rem] leading-[1.42] text-[#f2ecdf]">
+              <p className="m-0 whitespace-pre-wrap break-words text-[1.02rem] leading-[1.42] text-(--text-main)">
                 {card.description?.trim().length ? card.description : 'No card text available.'}
               </p>
             </section>
           </div>
         </div>
+        </div>
       </div>
 
-      <footer className="border-t border-[#383a42] bg-[#232429] px-4 py-3 min-[860px]:px-6">
-        <div
-          className={[
-            'grid gap-2.5',
-            isMobileLayout && actionEntries.length > 1 ? 'grid-cols-2' : '',
-          ].join(' ')}
-          style={{
-            gridTemplateColumns: isMobileLayout
-              ? undefined
-              : `repeat(${actionEntries.length}, minmax(0, 1fr))`,
-          }}
-        >
-          {actionEntries.map((entry, index) => (
-            <Button
-              key={entry.zone}
-              variant={entry.variant}
-              size="sm"
-              fullWidth
-              className={
-                isMobileLayout && actionEntries.length % 2 === 1 && index === actionEntries.length - 1
-                  ? 'col-span-2'
-                  : ''
-              }
-              onClick={() => handleAddToZone(entry.zone)}
-            >
-              {entry.label}
-            </Button>
-          ))}
-        </div>
-      </footer>
+      {actionEntries.length > 0 ? (
+        <footer className="border-t border-(--border-subtle) bg-[linear-gradient(180deg,rgb(var(--secondary-rgb)/0.95),rgb(var(--background-rgb)/0.98))] px-4 py-3 min-[860px]:px-6">
+          <div
+            className={[
+              'grid gap-2.5',
+              isMobileLayout && actionEntries.length > 1 ? 'grid-cols-2' : '',
+            ].join(' ')}
+            style={{
+              gridTemplateColumns: isMobileLayout
+                ? undefined
+                : `repeat(${actionEntries.length}, minmax(0, 1fr))`,
+            }}
+          >
+            {actionEntries.map((entry, index) => (
+              <Button
+                key={entry.zone}
+                variant={entry.variant}
+                size="sm"
+                fullWidth
+                className={
+                  isMobileLayout && actionEntries.length % 2 === 1 && index === actionEntries.length - 1
+                    ? 'col-span-2'
+                    : ''
+                }
+                onClick={() => handleAddToZone(entry.zone)}
+              >
+                {entry.label}
+              </Button>
+            ))}
+          </div>
+        </footer>
+      ) : null}
     </section>
   )
 }

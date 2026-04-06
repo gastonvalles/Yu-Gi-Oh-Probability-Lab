@@ -462,7 +462,7 @@ export function ProbabilityPanel({
         title="Entende que tan jugable es tu deck y que lo esta causando"
         description="Mira el KPI, detecta las fortalezas y riesgos principales, y edita chequeos sin perder el contexto."
         side={(
-          <Button variant="secondary" size="sm" onClick={() => setPracticeOpen(true)}>
+          <Button variant="primary" size="sm" onClick={() => setPracticeOpen(true)}>
             Abrir práctica
           </Button>
         )}
@@ -544,10 +544,10 @@ export function ProbabilityPanel({
                   <Button variant="primary" size="sm" onClick={handleOpenQuickAdd}>
                     Agregar chequeo recomendado
                   </Button>
-                  <Button variant="secondary" size="sm" onClick={handleOpenCustomCreate}>
+                  <Button variant="primary" size="sm" onClick={handleOpenCustomCreate}>
                     Crear chequeo propio
                   </Button>
-                  <Button variant="secondary" size="sm" onClick={() => setIsAnalysisEditMode(false)}>
+                  <Button variant="primary" size="sm" onClick={() => setIsAnalysisEditMode(false)}>
                     Cerrar edición
                   </Button>
                 </>

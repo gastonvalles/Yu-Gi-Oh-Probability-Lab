@@ -10,6 +10,7 @@ import {
 import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
 import {
   findDeckCard,
+  getDefaultDeckZoneForCard,
   getAddSearchResultIssue,
   isCardAllowedInDeckZone,
 } from '../../app/deck-builder'
@@ -51,6 +52,7 @@ export function useDeckModeController() {
   const deckBuilder = useAppSelector((state: RootState) => state.deckBuilder)
   const patternsState = useAppSelector((state: RootState) => state.patterns)
   const [selectedDetailCard, setSelectedDetailCard] = useState<ApiCardSearchResult | null>(null)
+  const [selectedDetailSource, setSelectedDetailSource] = useState<'search' | 'deck' | null>(null)
 
   const appState = useMemo<AppState>(
     () => ({
@@ -101,6 +103,7 @@ export function useDeckModeController() {
     dragOverlay,
     dragOverlayRef,
     hasPendingPointerDrag,
+    isBuilderRootDropActive,
     startPointerDrag,
   } = useDeckPointerDrag({
     canDrop: (payload, zone) => {
@@ -147,6 +150,12 @@ export function useDeckModeController() {
         return
       }
 
+      const draggedCard = findDeckCard(deckBuilder, pendingDrop.payload.instanceId)
+
+      if (!draggedCard || !isCardAllowedInDeckZone(draggedCard.apiCard, pendingDrop.zone)) {
+        return
+      }
+
       dispatch(
         moveDeckCardInBuilder({
           instanceId: pendingDrop.payload.instanceId,
@@ -154,6 +163,19 @@ export function useDeckModeController() {
           index: pendingDrop.index,
         }),
       )
+    },
+    resolveSearchDrop: (payload) => {
+      const card = apiSearch.results.find((entry) => entry.ygoprodeckId === payload.apiCardId)
+
+      if (!card) {
+        return null
+      }
+
+      const zone = getDefaultDeckZoneForCard(card)
+
+      return getAddSearchResultIssue(deckBuilder, card, zone, settings.deckFormat) === null
+        ? { zone, index: deckBuilder[zone].length }
+        : null
     },
   })
   const formatLabel = getDeckFormatLabel(settings.deckFormat)
@@ -257,12 +279,14 @@ export function useDeckModeController() {
 
       clearHoverPreview()
       setSelectedDetailCard(card)
+      setSelectedDetailSource('search')
     },
     [clearHoverPreview, resolveSearchResult, visibleSearchResults],
   )
 
   const closeCardDetail = useCallback(() => {
     setSelectedDetailCard(null)
+    setSelectedDetailSource(null)
   }, [])
 
   const handleDeckCardClick = useCallback(
@@ -279,6 +303,7 @@ export function useDeckModeController() {
 
       clearHoverPreview()
       setSelectedDetailCard(buildDetailCardFromDeckCard(deckCard))
+      setSelectedDetailSource('deck')
     },
     [clearHoverPreview, consumeSuppressedPointerClick, deckBuilder],
   )
@@ -316,6 +341,19 @@ export function useDeckModeController() {
       return true
     },
     [apiSearch.results, deckBuilder, dispatch, resolveSearchResult, settings.deckFormat, showToast],
+  )
+
+  const handleAddSearchResultToDefaultZone = useCallback(
+    (apiCardId: number) => {
+      const card = resolveSearchResult(apiCardId)
+
+      if (!card) {
+        return false
+      }
+
+      return handleAddSearchResultToZone(apiCardId, getDefaultDeckZoneForCard(card))
+    },
+    [handleAddSearchResultToZone, resolveSearchResult],
   )
 
   const handleSearchResultClick = useCallback(
@@ -464,9 +502,11 @@ export function useDeckModeController() {
       activeFilterCount,
       hasSearchCriteria,
       activeDragInstanceId,
+      isBuilderRootDropActive,
       activeDropZone,
       activeDragSearchCardId,
       selectedDetailCard,
+      selectedDetailSource,
       isCardDetailOpen: selectedDetailCard !== null,
       onClearDeckZone: handleClearDeckZone,
       onRemoveDeckCard: handleRemoveDeckCard,
@@ -474,6 +514,7 @@ export function useDeckModeController() {
       onDeckCardClick: handleDeckCardClick,
       onSearchCardPointerDown: handleSearchCardPointerDown,
       onSearchResultClick: handleSearchResultClick,
+      onAddSearchResultToDefaultZone: handleAddSearchResultToDefaultZone,
       onAddSearchResultToZone: handleAddSearchResultToZone,
       onQueryChange: setSearchQuery,
       onDeckNameChange: handleDeckNameChange,

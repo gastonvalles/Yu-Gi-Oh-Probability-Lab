@@ -64,7 +64,7 @@ const PANEL_THEME: Record<ClassificationStateKey, { color: string; rgb: string }
 
 const ROLE_EDITOR_SECTIONS = [
   {
-    title: 'Flow del plan',
+    title: 'Plan de Juego',
     description: 'Inicio, conversión y continuidad de tu línea.',
     roles: ['starter', 'extender', 'enabler', 'searcher', 'draw', 'combo_piece', 'payoff', 'recovery'] as const,
   },
@@ -74,7 +74,7 @@ const ROLE_EDITOR_SECTIONS = [
     roles: ['handtrap', 'disruption', 'boardbreaker', 'floodgate', 'removal'] as const,
   },
   {
-    title: 'Riesgo y slots flex',
+    title: 'Utility',
     description: 'Cartas incómodas, dependientes o de metajuego.',
     roles: ['brick', 'garnet', 'tech'] as const,
   },
@@ -100,11 +100,9 @@ const ROLE_FILTER_ORDER: CardRole[] = [
 ]
 
 const PRIMARY_FILTER_KEYS: ClassificationStateKey[] = [
-  'all',
   'unclassified',
   'missing-origin',
   'missing-role',
-  'review',
   'complete',
 ]
 
@@ -383,31 +381,9 @@ function ClassificationStatusChip({
   )
 }
 
-function getCardStatusItems(card: CardEntry): Array<{ key: string; label: string; tone: StatusTone }> {
-  const items: Array<{ key: string; label: string; tone: StatusTone }> = []
-
-  if (isCardMissingOrigin(card)) {
-    items.push({ key: 'missing-origin', label: 'Sin origen', tone: 'warning' })
-  }
-
-  if (isCardMissingRoles(card)) {
-    items.push({ key: 'missing-role', label: 'Sin rol', tone: 'warning' })
-  }
-
-  if (isCardPendingReview(card)) {
-    items.push({ key: 'review', label: 'Revisión pendiente', tone: 'primary' })
-  }
-
-  if (items.length === 0) {
-    items.push({ key: 'complete', label: 'Completa', tone: 'success' })
-  }
-
-  return items
-}
-
-function getCardPrimaryStatus(card: CardEntry): { label: string; tone: StatusTone } {
+function getCardPrimaryStatus(card: CardEntry): { label: string; tone: StatusTone } | null {
   if (isCardMissingOrigin(card) && isCardMissingRoles(card)) {
-    return { label: 'Sin origen y rol', tone: 'warning' }
+    return null
   }
 
   if (isCardMissingOrigin(card)) {
@@ -422,17 +398,30 @@ function getCardPrimaryStatus(card: CardEntry): { label: string; tone: StatusTon
     return { label: 'Revisión', tone: 'primary' }
   }
 
-  return { label: '✓ Completa', tone: 'success' }
+  return null
 }
 
 function getCardQueueSummary(card: CardEntry): string {
-  const originSummary = card.origin === null ? 'Sin origen' : getCardOriginDefinition(card.origin).shortLabel
+  const items = [getCardTypeLabel(card)]
 
-  if (card.roles.length === 0) {
-    return `${originSummary} · sin rol`
+  if (card.origin === null) {
+    items.push('Sin origen')
+  } else {
+    const originLabel = getCardOriginDefinition(card.origin).label
+    items.push(card.origin === 'non_engine' ? 'Non-Engine' : originLabel)
   }
 
-  return `${originSummary} · ${formatInteger(card.roles.length)} rol${card.roles.length === 1 ? '' : 'es'}`
+  const roleLabels = ROLE_FILTER_ORDER
+    .filter((role) => card.roles.includes(role))
+    .map((role) => getCardRoleDefinition(role).label)
+
+  if (roleLabels.length === 0) {
+    items.push('Sin rol')
+  } else {
+    items.push(...roleLabels)
+  }
+
+  return items.join(' | ')
 }
 
 function renderReferenceRoles(roleKeys: readonly CardRole[]) {
@@ -493,21 +482,21 @@ function ClassificationDrawer({
         onClick={onClose}
       />
 
-      <aside className="surface-panel fixed inset-y-0 right-0 z-[130] grid h-[100dvh] w-full max-w-[30rem] grid-rows-[auto_minmax(0,1fr)] gap-0 border-l border-(--border-subtle) p-0 shadow-[-28px_0_54px_rgba(0,0,0,0.38)]">
-        <div className="grid gap-2 border-b border-(--border-subtle) px-4 py-3">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">{kicker}</p>
-              <h3 className="m-[0.2rem_0_0] text-[1rem] leading-none text-(--text-main)">{title}</h3>
-              <p className="app-muted m-[0.3rem_0_0] max-w-[38ch] text-[0.76rem] leading-[1.14]">{subtitle}</p>
+      <aside className="surface-panel fixed inset-y-0 right-0 z-[130] grid h-[100dvh] w-full max-w-[30rem] grid-rows-[minmax(0,1fr)] border-l border-(--border-subtle) p-0 shadow-[-28px_0_54px_rgba(0,0,0,0.38)]">
+        <div className="min-h-0 overflow-y-auto px-4 pb-4 pt-4">
+          <div className="grid gap-3">
+            <div className="flex justify-end">
+              <CloseButton size="sm" aria-label="Cerrar panel" onClick={onClose} />
             </div>
 
-            <CloseButton size="sm" aria-label="Cerrar panel" onClick={onClose} />
-          </div>
-        </div>
+            <header className="border-b border-(--border-subtle) pb-3">
+              <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">{kicker}</p>
+              <h3 className="m-[0.28rem_0_0] text-[1.6rem] leading-[0.98] tracking-[-0.02em] text-(--text-main)">{title}</h3>
+              <p className="app-muted m-[0.38rem_0_0] max-w-[40ch] text-[0.8rem] leading-[1.18]">{subtitle}</p>
+            </header>
 
-        <div className="min-h-0 overflow-y-auto px-4 py-4">
-          {children}
+            {children}
+          </div>
         </div>
       </aside>
     </>
@@ -519,6 +508,8 @@ function ClassificationModal({
   kicker = 'Categorization',
   title,
   subtitle,
+  headerActions,
+  hideHeader = false,
   onClose,
   children,
 }: {
@@ -526,6 +517,8 @@ function ClassificationModal({
   kicker?: string
   title: string
   subtitle: string
+  headerActions?: ReactNode
+  hideHeader?: boolean
   onClose: () => void
   children: ReactNode
 }) {
@@ -535,27 +528,38 @@ function ClassificationModal({
 
   return (
     <>
-      <button
-        type="button"
-        aria-label="Cerrar detalle"
-        className="fixed inset-0 z-[140] bg-[rgb(var(--background-rgb)/0.8)]"
-        onClick={onClose}
-      />
-
-      <div className="fixed inset-0 z-[150] grid place-items-center p-3 min-[1101px]:p-5">
-        <div className="surface-panel flex h-[min(100dvh-1.5rem,56rem)] w-full max-w-[48rem] min-h-0 flex-col overflow-hidden p-0 shadow-[0_28px_72px_rgba(0,0,0,0.48)] min-[1101px]:h-[min(100dvh-2.5rem,58rem)] min-[1101px]:max-w-[min(72rem,calc(100vw-5rem))]">
-          <div className="flex items-start justify-between gap-3 border-b border-(--border-subtle) px-3 py-3 min-[1101px]:px-4 min-[1101px]:py-4">
-            <div className="min-w-0">
-              <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">{kicker}</p>
-              <h3 className="m-[0.24rem_0_0] truncate text-[1rem] leading-none text-(--text-main) min-[1101px]:text-[1.1rem]">{title}</h3>
-              <p className="app-muted m-[0.28rem_0_0] text-[0.76rem] leading-[1.14]">{subtitle}</p>
-            </div>
-
-            <CloseButton size="sm" aria-label="Cerrar detalle" onClick={onClose} />
+      <div className="fixed inset-0 z-[150] grid place-items-center bg-[rgb(var(--background-rgb)/0.76)] px-4 py-5" onClick={onClose}>
+        <div
+          className="relative flex w-full max-w-[70rem] min-h-0 max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden rounded-[1rem] border border-(--border-subtle) bg-[var(--card-background)] p-0 shadow-none"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="absolute right-4 top-4 z-10 min-[1101px]:right-6 min-[1101px]:top-5">
+            <CloseButton size="md" aria-label="Cerrar detalle" onClick={onClose} />
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 min-[1101px]:px-4 min-[1101px]:py-4">
-            {children}
+          <div
+            className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-4 min-[1101px]:px-6 min-[1101px]:pb-5 min-[1101px]:pt-5"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="grid gap-2.5 min-[1101px]:gap-3">
+              {!hideHeader ? (
+                <header className="grid gap-2 border-b border-(--border-subtle) pb-2 min-[860px]:grid-cols-[minmax(0,1fr)_auto] min-[860px]:items-end">
+                  <div className="min-w-0">
+                    <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">{kicker}</p>
+                    <h3 className="m-[0.2rem_0_0] text-[1.45rem] leading-[0.98] tracking-[-0.03em] text-(--text-main) min-[1101px]:text-[1.72rem]">{title}</h3>
+                    <p className="app-muted m-[0.3rem_0_0] text-[0.76rem] leading-[1.14]">{subtitle}</p>
+                  </div>
+
+                  {headerActions ? (
+                    <div className="flex flex-wrap items-center gap-2 min-[860px]:justify-end">
+                      {headerActions}
+                    </div>
+                  ) : null}
+                </header>
+              ) : null}
+
+              {children}
+            </div>
           </div>
         </div>
       </div>
@@ -569,7 +573,7 @@ export function DeckRolesPanel({
   onToggleRole,
 }: DeckRolesPanelProps) {
   const [activeFilter, setActiveFilter] = useState<ClassificationFilterKey>(() =>
-    cards.some((card) => !isCardFullyClassified(card)) ? 'unclassified' : 'all',
+    cards.some((card) => !isCardFullyClassified(card)) ? 'unclassified' : 'complete',
   )
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
   const [drawerMode, setDrawerMode] = useState<ClassificationDrawerMode>(null)
@@ -604,7 +608,7 @@ export function DeckRolesPanel({
     () => sortedCards.filter((card) => isCardFullyClassified(card)),
     [sortedCards],
   )
-  const defaultFilter = unclassifiedCards.length > 0 ? 'unclassified' : 'all'
+  const defaultFilter = unclassifiedCards.length > 0 ? 'unclassified' : 'complete'
   const overviewItems = useMemo(() => {
     const stateItems = [
       buildOverviewItem(
@@ -699,14 +703,13 @@ export function DeckRolesPanel({
 
     return [selectedCard, ...filteredCards.filter((card) => card.id !== selectedCard.id)]
   }, [filteredCards, isSelectedCardInActiveFilter, selectedCard])
-  const hasPinnedSelectedCard = Boolean(selectedCard && !isSelectedCardInActiveFilter)
-  const selectedCardIndex = selectedCard
+  const selectedCardPosition = selectedCard
     ? visibleQueueCards.findIndex((card) => card.id === selectedCard.id) + 1
     : 0
-  const previousCard = selectedCardIndex > 1 ? visibleQueueCards[selectedCardIndex - 2] ?? null : null
+  const previousCard = selectedCardPosition > 1 ? visibleQueueCards[selectedCardPosition - 2] ?? null : null
   const nextCard =
-    selectedCardIndex > 0 && selectedCardIndex < visibleQueueCards.length
-      ? visibleQueueCards[selectedCardIndex] ?? null
+    selectedCardPosition > 0 && selectedCardPosition < visibleQueueCards.length
+      ? visibleQueueCards[selectedCardPosition] ?? null
       : null
   const filterItemMap = useMemo(
     () => new Map(overviewItems.map((item) => [getClassificationFilterReactKey(item.key), item])),
@@ -817,7 +820,7 @@ export function DeckRolesPanel({
     setIsDetailOpen(true)
   }
 
-  const renderSelectedCardDetail = (bodyClassName: string) => {
+  const renderSelectedCardDetail = () => {
     if (!selectedCard) {
       return (
         <p className={[emptyStateCopy.tone, 'm-0 px-2.5 py-2 text-[0.8rem]'].join(' ')}>
@@ -827,208 +830,150 @@ export function DeckRolesPanel({
       )
     }
 
-    return (
-      <div className="grid w-full min-w-0 gap-3">
-        <div className="surface-panel-soft flex flex-wrap items-center justify-between gap-2 px-3 py-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={handleSelectPreviousCard} disabled={!previousCard}>
-              Anterior
-            </Button>
-            <Button variant="secondary" size="sm" onClick={handleSelectNextCard} disabled={!nextCard}>
-              Siguiente
-            </Button>
-          </div>
-
-          <span className="app-chip px-2 py-1 text-[0.68rem]">
-            {selectedCardIndex > 0 ? `${formatInteger(selectedCardIndex)} / ${formatInteger(visibleQueueCards.length)}` : '0 / 0'}
-          </span>
+    const cardArtColumn = (
+      <div className="grid content-start gap-2">
+        <div className="w-full min-[1101px]:w-[18rem]">
+          <CardArt
+            remoteUrl={selectedCard.apiCard?.imageUrl ?? selectedCard.apiCard?.imageUrlSmall ?? null}
+            name={selectedCard.name}
+            className="block h-auto w-full bg-(--input)"
+            limitCard={selectedCard.apiCard}
+          />
         </div>
+      </div>
+    )
 
-        <article className="surface-panel-strong grid gap-3 p-3 min-[860px]:grid-cols-[88px_minmax(0,1fr)]">
-          <div className="w-[88px]">
-            <CardArt
-              remoteUrl={selectedCard.apiCard?.imageUrlSmall ?? selectedCard.apiCard?.imageUrl ?? null}
-              name={selectedCard.name}
-              className="block h-auto w-full bg-(--input)"
-              limitCard={selectedCard.apiCard}
-            />
+    const editorPanel = (
+      <div className="grid gap-3">
+        <section className="grid gap-2">
+          <div className="grid gap-0.5">
+            <p className="app-kicker m-0 text-[0.64rem] uppercase tracking-widest">¿Qué es?</p>
           </div>
 
-          <div className="grid min-w-0 gap-2">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">
-                  Carta actual {selectedCardIndex > 0 ? `· ${formatInteger(selectedCardIndex)} / ${formatInteger(visibleQueueCards.length)}` : ''}
-                </p>
-                <h3 className="m-[0.22rem_0_0] truncate text-[1.1rem] leading-none text-(--text-main)">{selectedCard.name}</h3>
-                <p className="app-muted m-[0.28rem_0_0] text-[0.76rem] leading-[1.14]">
-                  {formatInteger(selectedCard.copies)} copia{selectedCard.copies === 1 ? '' : 's'} en Main Deck · {getCardTypeLabel(selectedCard)}
-                </p>
-              </div>
+	          <div className="grid gap-1.5 min-[860px]:grid-cols-3">
+	            {CARD_ORIGIN_DEFINITIONS.map((definition) => {
+	              const active = selectedCard.origin === definition.key.value
+	              const muted = selectedCard.origin !== null && !active
 
-              <span className="step-hero-pill px-2 py-[0.26rem] text-[0.66rem] font-semibold uppercase tracking-widest">
-                {activeOverview?.label ?? 'Vista actual'}
-              </span>
-            </div>
-
-            {hasPinnedSelectedCard ? (
-              <p className="surface-card m-0 px-2.5 py-2 text-[0.74rem] leading-[1.14] text-(--text-muted)">
-                Estás editando una carta que ya no coincide con <strong className="text-(--text-main)">{activeOverview?.label ?? 'la vista activa'}</strong>. Queda fijada hasta que elijas otra.
-              </p>
-            ) : null}
-
-            <div className="flex flex-wrap gap-1">
-              {getCardStatusItems(selectedCard).map((status) => (
-                <ClassificationStatusChip key={status.key} label={status.label} tone={status.tone} />
-              ))}
-            </div>
-
-            <div className="grid gap-1">
-              <span className="app-soft text-[0.66rem] uppercase tracking-widest">Clasificación actual</span>
-              <div className="flex flex-wrap gap-1">
-                {selectedCard.origin ? (
-                  <span
-                    className="app-role-chip inline-flex px-2 py-0.5 text-[0.68rem]"
-                    style={getClassificationStyle(getCardOriginDefinition(selectedCard.origin).key)}
+	              return (
+	                <DefinitionTooltip
+                  key={serializeGroupKey(definition.key)}
+                  label={definition.label}
+                  description={getOriginHelpText(definition.key.value)}
+                  className="min-w-0"
+                >
+                  <button
+                    type="button"
+                    aria-pressed={active}
+                    title={getOriginHelpText(definition.key.value)}
+	                    className={[
+	                      'classification-origin-option grid gap-1 p-2 text-left',
+	                      active ? 'classification-origin-option-active' : '',
+	                      muted ? 'classification-origin-option-muted' : '',
+	                    ].join(' ')}
+	                    style={getClassificationStyle(definition.key)}
+	                    onClick={() => onSetOrigin(selectedCard.apiCard?.ygoprodeckId ?? 0, definition.key.value)}
                   >
-                    {getCardOriginDefinition(selectedCard.origin).label}
-                  </span>
-                ) : (
-                  <span className="app-chip px-2 py-0.5 text-[0.68rem]">Sin origen</span>
-                )}
+                    <div className="flex items-center gap-2">
+                      <span className="role-reference-mark shrink-0" />
+                      <strong className="text-[0.8rem] leading-none text-(--text-main)">{definition.label}</strong>
+                    </div>
+                    <span className="app-muted text-[0.66rem] leading-[1.08]">{ORIGIN_BLURB_TEXT[definition.key.value]}</span>
+                  </button>
+                </DefinitionTooltip>
+              )
+            })}
+          </div>
+        </section>
 
-                {selectedCard.roles.length > 0 ? (
-                  selectedCard.roles.map((role) => {
+        <section className="grid gap-2">
+          <div className="grid gap-1.5">
+            <p className="app-kicker m-0 text-[0.64rem] uppercase tracking-widest">¿Qué roles cumple?</p>
+          </div>
+
+          <div className="grid gap-2 min-[1101px]:grid-cols-3 min-[1101px]:items-stretch">
+          {ROLE_EDITOR_SECTIONS.map((section) => {
+            const selectedCount = section.roles.reduce(
+              (total, role) => total + (selectedCard.roles.includes(role) ? 1 : 0),
+              0,
+            )
+
+            return (
+              <article
+                key={section.title}
+                className="grid h-full grid-rows-[auto_minmax(0,1fr)] gap-1.5 border border-(--border-subtle) rounded-[0.7rem] p-2"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <strong className="text-[0.8rem] leading-none text-(--text-main)">{section.title}</strong>
+                  <span className="app-chip px-1.5 py-0.5 text-[0.62rem]">
+                    {formatInteger(selectedCount)} / {formatInteger(section.roles.length)}
+                  </span>
+                </div>
+
+                <div className="grid content-start gap-1.5 min-[720px]:grid-cols-2">
+                  {section.roles.map((role) => {
                     const definition = getCardRoleDefinition(role)
+                    const active = selectedCard.roles.includes(role)
 
                     return (
-                      <span
+                      <DefinitionTooltip
                         key={serializeGroupKey(definition.key)}
-                        className="app-role-chip inline-flex px-2 py-0.5 text-[0.68rem]"
-                        style={getClassificationStyle(definition.key)}
+                        label={definition.label}
+                        description={getRoleHelpText(role)}
+                        className="min-w-0"
                       >
-                        {definition.label}
-                      </span>
+                        <button
+                          type="button"
+                          aria-pressed={active}
+                          title={getRoleHelpText(role)}
+                          className={[
+                            'role-option-button min-w-0 w-full max-w-full px-2 py-[0.44rem] text-left text-[0.68rem] leading-[1.08] whitespace-normal',
+                            active ? 'role-option-button-active' : '',
+                          ].join(' ')}
+                          style={getClassificationStyle(definition.key)}
+                          onClick={() => onToggleRole(selectedCard.apiCard?.ygoprodeckId ?? 0, role)}
+                        >
+                          {definition.label}
+                        </button>
+                      </DefinitionTooltip>
                     )
-                  })
-                ) : (
-                  <span className="app-chip px-2 py-0.5 text-[0.68rem]">Sin roles</span>
-                )}
-              </div>
+                  })}
+                </div>
+              </article>
+            )
+          })}
+          </div>
+        </section>
+      </div>
+    )
+
+    return (
+      <div className="grid w-full min-w-0 gap-3">
+        <div className="grid gap-3 min-[1101px]:grid-cols-[18rem_minmax(0,1fr)] min-[1101px]:items-stretch">
+          {cardArtColumn}
+
+          <div className="flex min-h-full flex-col gap-2.5">
+            <div className="grid gap-1 pr-12">
+              <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-[0.12em]">Carta actual</p>
+              <h3 className="m-0 break-words text-[2rem] leading-[0.94] tracking-[-0.03em] text-(--text-main) min-[1101px]:text-[2.3rem]">
+                {selectedCard.name}
+              </h3>
+              <p className="app-muted m-0 text-[0.9rem] leading-[1.05] min-[1101px]:text-[0.98rem]">
+                {formatInteger(selectedCard.copies)} copia{selectedCard.copies === 1 ? '' : 's'} en Main Deck
+              </p>
+            </div>
+
+            {editorPanel}
+
+            <div className="mt-auto flex justify-end gap-2 pt-1">
+              <Button variant="primary" size="sm" onClick={handleSelectPreviousCard} disabled={!previousCard}>
+                Anterior
+              </Button>
+              <Button variant="primary" size="sm" onClick={handleSelectNextCard} disabled={!nextCard}>
+                Siguiente
+              </Button>
             </div>
           </div>
-        </article>
-
-        {isCardPendingReview(selectedCard) ? (
-          <p className="surface-card-warning m-0 px-3 py-2 text-[0.78rem] text-(--warning)">
-            <strong className="text-(--text-main)">Pendiente de revisión.</strong> Validá que esta clasificación siga representando la build actual.
-          </p>
-        ) : null}
-
-        <div className={bodyClassName}>
-          <section className="grid gap-2">
-            <div>
-              <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Origen</p>
-              <p className="app-muted m-[0.24rem_0_0] text-[0.75rem] leading-[1.16]">
-                Elegí de qué espacio del deck viene esta carta.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {CARD_ORIGIN_DEFINITIONS.map((definition) => {
-                const active = selectedCard.origin === definition.key.value
-
-                return (
-                  <DefinitionTooltip
-                    key={serializeGroupKey(definition.key)}
-                    label={definition.label}
-                    description={getOriginHelpText(definition.key.value)}
-                    className="min-w-0 grow basis-[11.5rem]"
-                  >
-                    <button
-                      type="button"
-                      aria-pressed={active}
-                      title={getOriginHelpText(definition.key.value)}
-                      className={[
-                        'classification-origin-option grid gap-1.5 p-2.5 text-left',
-                        active ? 'classification-origin-option-active' : '',
-                      ].join(' ')}
-                      style={getClassificationStyle(definition.key)}
-                      onClick={() => onSetOrigin(selectedCard.apiCard?.ygoprodeckId ?? 0, definition.key.value)}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="role-reference-mark shrink-0" />
-                        <strong className="text-[0.84rem] leading-none text-(--text-main)">{definition.label}</strong>
-                      </div>
-                      <span className="app-muted text-[0.71rem] leading-[1.12]">{ORIGIN_BLURB_TEXT[definition.key.value]}</span>
-                    </button>
-                  </DefinitionTooltip>
-                )
-              })}
-            </div>
-          </section>
-
-          <section className="grid gap-2">
-            <div>
-              <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Roles</p>
-              <p className="app-muted m-[0.24rem_0_0] text-[0.75rem] leading-[1.16]">
-                Marcá todas las funciones que cumple esta carta. La ayuda aparece al pasar el mouse o enfocar cada etiqueta.
-              </p>
-            </div>
-
-            <div className="grid gap-2">
-              {ROLE_EDITOR_SECTIONS.map((section) => {
-                const selectedCount = section.roles.reduce(
-                  (total, role) => total + (selectedCard.roles.includes(role) ? 1 : 0),
-                  0,
-                )
-
-                return (
-                  <article key={section.title} className="surface-card grid gap-2 p-2.5">
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div>
-                        <strong className="text-[0.84rem] leading-none text-(--text-main)">{section.title}</strong>
-                        <p className="app-muted m-[0.22rem_0_0] text-[0.72rem] leading-[1.14]">{section.description}</p>
-                      </div>
-                      <span className="app-chip px-1.5 py-0.5 text-[0.66rem]">
-                        {formatInteger(selectedCount)} / {formatInteger(section.roles.length)}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      {section.roles.map((role) => {
-                        const definition = getCardRoleDefinition(role)
-                        const active = selectedCard.roles.includes(role)
-
-                        return (
-                          <DefinitionTooltip
-                            key={serializeGroupKey(definition.key)}
-                            label={definition.label}
-                            description={getRoleHelpText(role)}
-                            className="min-w-0 max-w-full grow basis-[10.5rem]"
-                          >
-                            <button
-                              type="button"
-                              aria-pressed={active}
-                              title={getRoleHelpText(role)}
-                              className={[
-                                'role-option-button min-w-0 w-full max-w-full px-2 py-[0.5rem] text-left text-[0.7rem] leading-[1.12] whitespace-normal',
-                                active ? 'role-option-button-active' : '',
-                              ].join(' ')}
-                              style={getClassificationStyle(definition.key)}
-                              onClick={() => onToggleRole(selectedCard.apiCard?.ygoprodeckId ?? 0, role)}
-                            >
-                              {definition.label}
-                            </button>
-                          </DefinitionTooltip>
-                        )
-                      })}
-                    </div>
-                  </article>
-                )
-              })}
-            </div>
-          </section>
         </div>
       </div>
     )
@@ -1040,7 +985,7 @@ export function DeckRolesPanel({
         step="Paso 2"
         pill="Categorization"
         title="Clasificá cada carta sin perder el foco"
-        description="Separá dos decisiones distintas para el Main Deck: de qué espacio viene cada carta y qué función cumple cuando la robás."
+        description="Separá dos decisiones distintas para el Main Deck: a qué grupo pertenece cada carta y qué rol cumple cuando la robás."
         side={
           sortedCards.length > 0 ? (
             <div className="grid gap-2">
@@ -1060,7 +1005,7 @@ export function DeckRolesPanel({
               </div>
 
               <div className="flex flex-wrap justify-end gap-2">
-                <Button variant="secondary" size="sm" onClick={() => setDrawerMode('help')}>
+                <Button variant="primary" size="sm" onClick={() => setDrawerMode('help')}>
                   Ver modelo
                 </Button>
               </div>
@@ -1111,31 +1056,6 @@ export function DeckRolesPanel({
         </p>
       ) : (
         <section className="surface-panel-soft grid min-w-0 gap-2.5 p-2.5 max-[1100px]:max-h-[min(70dvh,48rem)] max-[1100px]:overflow-hidden min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_minmax(0,1fr)] min-[1101px]:overflow-hidden">
-            <div className="grid gap-2">
-              <div>
-                <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Cola de clasificación</p>
-                <h3 className="m-[0.2rem_0_0] text-[0.98rem] leading-none">{activeOverview?.label ?? 'Cartas del Main Deck'}</h3>
-                <p className="app-muted m-[0.28rem_0_0] text-[0.75rem] leading-[1.16]">
-                  {activeOverview?.description ?? 'Elegí una carta y resolvé origen y roles sin salir de la cola.'}
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-1.5">
-                <span className="app-chip px-2 py-0.5 text-[0.68rem]">{formatInteger(filteredCards.length)} cartas</span>
-                <span className="app-chip px-2 py-0.5 text-[0.68rem]">{formatInteger(activeOverview?.copies ?? 0)} copias</span>
-                <span className="app-chip px-2 py-0.5 text-[0.68rem]">{formatInteger(totalCopies)} total</span>
-                {hasPinnedSelectedCard ? (
-                  <span className="app-chip-accent px-2 py-0.5 text-[0.68rem]">Carta fijada en edición</span>
-                ) : null}
-              </div>
-
-              {hasPinnedSelectedCard ? (
-                <p className="surface-card-warning m-0 px-2.5 py-2 text-[0.74rem] leading-[1.14] text-(--warning)">
-                  Esta carta ya salió de la cola activa, pero queda visible para que termines de revisarla sin tener que buscarla de nuevo.
-                </p>
-              ) : null}
-            </div>
-
             {visibleQueueCards.length === 0 ? (
               <p className={[emptyStateCopy.tone, 'm-0 px-2.5 py-2 text-[0.8rem]'].join(' ')}>
                 <strong className="block text-(--text-main)">{emptyStateCopy.title}</strong>
@@ -1146,7 +1066,6 @@ export function DeckRolesPanel({
                 {visibleQueueCards.map((card) => {
                   const primaryStatus = getCardPrimaryStatus(card)
                   const active = selectedCard?.id === card.id
-                  const pinned = hasPinnedSelectedCard && selectedCard?.id === card.id
 
                   return (
                     <button
@@ -1159,12 +1078,18 @@ export function DeckRolesPanel({
                       ].join(' ')}
                       onClick={() => handleCardSelection(card.id)}
                     >
-                      <div className="w-[36px]">
+                      <div
+                        className={[
+                          'classification-queue-art w-[36px]',
+                          active ? 'classification-queue-art-active' : '',
+                        ].join(' ')}
+                      >
                         <CardArt
                           remoteUrl={card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null}
                           name={card.name}
                           className="block h-auto w-full bg-(--input)"
                           limitCard={card.apiCard}
+                          limitBadgeSize="sm"
                         />
                       </div>
 
@@ -1173,18 +1098,15 @@ export function DeckRolesPanel({
 
                         <div className="flex min-w-0 items-center gap-1.5">
                           <p className="app-muted m-0 min-w-0 truncate text-[0.66rem] leading-none">
-                            {getCardTypeLabel(card)} · {getCardQueueSummary(card)}
+                            {getCardQueueSummary(card)}
                           </p>
-                          {pinned ? (
-                            <span className="app-chip-accent shrink-0 px-1.5 py-0.5 text-[0.58rem]">
-                              En edición
-                            </span>
+                          {primaryStatus ? (
+                            <ClassificationStatusChip
+                              label={primaryStatus.label}
+                              tone={primaryStatus.tone}
+                              className="classification-status-chip-compact shrink-0"
+                            />
                           ) : null}
-                          <ClassificationStatusChip
-                            label={primaryStatus.label}
-                            tone={primaryStatus.tone}
-                            className="classification-status-chip-compact shrink-0"
-                          />
                         </div>
                       </div>
 
@@ -1202,11 +1124,12 @@ export function DeckRolesPanel({
       <ClassificationModal
         isOpen={isDetailOpen && selectedCard !== null}
         kicker={isDesktopLayout ? 'Clasificación' : 'Categorization'}
-        title={selectedCard?.name ?? 'Detalle de carta'}
-        subtitle="Resolvé origen y roles sin salir de la cola."
+        title="Origen y roles"
+        subtitle="Resolvé la carta seleccionada sin salir de la cola."
+        hideHeader
         onClose={() => setIsDetailOpen(false)}
       >
-        {renderSelectedCardDetail('grid gap-3')}
+        {renderSelectedCardDetail()}
       </ClassificationModal>
 
       <ClassificationDrawer

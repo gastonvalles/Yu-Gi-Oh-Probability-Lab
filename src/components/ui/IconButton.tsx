@@ -29,7 +29,7 @@ interface CloseButtonProps extends Omit<IconButtonProps, 'children'> {}
 
 export function CloseButton(props: CloseButtonProps) {
   return (
-    <IconButton {...props}>
+    <IconButton {...props} className={['ui-close-button', props.className ?? ''].join(' ').trim()}>
       <CloseIcon />
     </IconButton>
   )
@@ -37,7 +37,7 @@ export function CloseButton(props: CloseButtonProps) {
 
 export function CloseIcon(props: SVGProps<SVGSVGElement>) {
   return (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" {...props}>
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" aria-hidden="true" {...props}>
       <path d="m4 4 8 8" />
       <path d="m12 4-8 8" />
     </svg>

@@ -32,6 +32,8 @@ interface PointerDragSession {
   offsetY: number
   startX: number
   startY: number
+  pointerId: number
+  sourceElement: HTMLElement
   dragging: boolean
 }
 
@@ -39,6 +41,9 @@ interface UseDeckPointerDragOptions {
   canDrop: (payload: DragPayload, zone: DeckZone) => boolean
   onClearHoverPreview: () => void
   onDrop: (drop: { payload: DragPayload; zone: DeckZone; index: number }) => void
+  resolveSearchDrop: (
+    payload: Extract<DragPayload, { type: 'search-result' }>,
+  ) => { zone: DeckZone; index: number } | null
 }
 
 interface DragPreviewFrame {
@@ -55,6 +60,7 @@ interface DeckPointerDragController {
   consumeSuppressedPointerClick: () => boolean
   dragOverlay: DeckDragOverlayState | null
   dragOverlayRef: React.RefObject<HTMLDivElement | null>
+  isBuilderRootDropActive: boolean
   hasPendingPointerDrag: () => boolean
   startPointerDrag: (
     event: ReactPointerEvent<HTMLElement>,
@@ -62,6 +68,12 @@ interface DeckPointerDragController {
     name: string,
     card: ApiCardReference,
   ) => void
+}
+
+interface ResolvedDropTarget {
+  zone: DeckZone
+  index: number
+  targetKind: 'zone' | 'builder-root'
 }
 
 function resolveDragPreviewFrame(
@@ -97,12 +109,14 @@ export function useDeckPointerDrag({
   canDrop,
   onClearHoverPreview,
   onDrop,
+  resolveSearchDrop,
 }: UseDeckPointerDragOptions): DeckPointerDragController {
   const [dragPayload, setDragPayload] = useState<DragPayload | null>(null)
   const [activeDragInstanceId, setActiveDragInstanceId] = useState<string | null>(null)
   const [activeDropZone, setActiveDropZone] = useState<DeckZone | null>(null)
   const [activeDragSearchCardId, setActiveDragSearchCardId] = useState<number | null>(null)
   const [dragOverlay, setDragOverlay] = useState<DeckDragOverlayState | null>(null)
+  const [isBuilderRootDropActive, setIsBuilderRootDropActive] = useState(false)
 
   const dragOverlayRef = useRef<HTMLDivElement>(null)
   const dragOverlayRafRef = useRef<number>(0)
@@ -115,88 +129,125 @@ export function useDeckPointerDrag({
     (
       target: { zone: DeckZone; index: number } | null,
       payload: DragPayload,
-    ): { zone: DeckZone; index: number } | null => {
+      targetKind: ResolvedDropTarget['targetKind'] = 'zone',
+    ): ResolvedDropTarget | null => {
       if (!target) {
         return null
       }
 
-      return canDrop(payload, target.zone) ? target : null
+      return canDrop(payload, target.zone) ? { ...target, targetKind } : null
     },
     [canDrop],
   )
 
-  const resolveDropTarget = useCallback((clientX: number, clientY: number, payload: DragPayload): { zone: DeckZone; index: number } | null => {
-    const hoveredElement = document.elementFromPoint(clientX, clientY)
+  const resolveDropTarget = useCallback(
+    (clientX: number, clientY: number, payload: DragPayload): ResolvedDropTarget | null => {
+      const hoveredElement = document.elementFromPoint(clientX, clientY)
 
-    if (!(hoveredElement instanceof HTMLElement)) {
-      return null
-    }
-
-    const cardElement = hoveredElement.closest<HTMLElement>('[data-deck-card-index]')
-
-    if (cardElement) {
-      const zone = cardElement.dataset.deckZone as DeckZone | undefined
-      const index = Number.parseInt(cardElement.dataset.deckCardIndex ?? '', 10)
-
-      if (!zone || Number.isNaN(index)) {
+      if (!(hoveredElement instanceof HTMLElement)) {
         return null
       }
 
-      const rect = cardElement.getBoundingClientRect()
+      if (payload.type === 'search-result') {
+        const builderRoot = hoveredElement.closest<HTMLElement>('[data-deck-builder-root]')
 
-      return buildAllowedDropTarget({
-        zone,
-        index: clientX > rect.left + rect.width / 2 ? index + 1 : index,
-      }, payload)
-    }
+        if (!builderRoot) {
+          return null
+        }
 
-    if (isDesktopDeckBuilderViewport()) {
-      const zoneContainers = Array.from(
-        document.querySelectorAll<HTMLElement>('[data-deck-zone-drop-target]'),
-      )
+        const rootDropTarget = resolveSearchDrop(payload)
 
-      const matchedZoneContainer = zoneContainers.find((zoneContainer) => {
-        const rect = zoneContainer.getBoundingClientRect()
+        return rootDropTarget
+          ? {
+              ...rootDropTarget,
+              targetKind: 'builder-root',
+            }
+          : null
+      }
 
-        return (
-          clientX >= rect.left &&
-          clientX <= rect.right &&
-          clientY >= rect.top &&
-          clientY <= rect.bottom
-        )
-      })
+      const cardElement = hoveredElement.closest<HTMLElement>('[data-deck-card-index]')
 
-      if (matchedZoneContainer) {
-        const zone = matchedZoneContainer.dataset.deckZoneDropTarget as DeckZone | undefined
-        const count = Number.parseInt(matchedZoneContainer.dataset.deckZoneCount ?? '', 10)
+      if (cardElement) {
+        const zone = cardElement.dataset.deckZone as DeckZone | undefined
+        const index = Number.parseInt(cardElement.dataset.deckCardIndex ?? '', 10)
 
-        if (zone) {
-          return buildAllowedDropTarget({
+        if (!zone || Number.isNaN(index)) {
+          return null
+        }
+
+        const rect = cardElement.getBoundingClientRect()
+        const explicitTarget = buildAllowedDropTarget(
+          {
             zone,
-            index: Number.isNaN(count) ? 0 : count,
-          }, payload)
+            index: clientX > rect.left + rect.width / 2 ? index + 1 : index,
+          },
+          payload,
+        )
+
+        if (explicitTarget) {
+          return explicitTarget
         }
       }
-    }
 
-    const zoneElement = hoveredElement.closest<HTMLElement>('[data-deck-zone]')
+      if (isDesktopDeckBuilderViewport()) {
+        const zoneContainers = Array.from(
+          document.querySelectorAll<HTMLElement>('[data-deck-zone-drop-target]'),
+        )
 
-    if (!zoneElement) {
-      return null
-    }
+        const matchedZoneContainer = zoneContainers.find((zoneContainer) => {
+          const rect = zoneContainer.getBoundingClientRect()
 
-    const zone = zoneElement.dataset.deckZone as DeckZone | undefined
-    const count = Number.parseInt(zoneElement.dataset.deckCount ?? '', 10)
+          return (
+            clientX >= rect.left &&
+            clientX <= rect.right &&
+            clientY >= rect.top &&
+            clientY <= rect.bottom
+          )
+        })
 
-    if (!zone) {
-      return null
-    }
+        if (matchedZoneContainer) {
+          const zone = matchedZoneContainer.dataset.deckZoneDropTarget as DeckZone | undefined
+          const count = Number.parseInt(matchedZoneContainer.dataset.deckZoneCount ?? '', 10)
 
-    return buildAllowedDropTarget({
-      zone,
-      index: Number.isNaN(count) ? 0 : count,
-    }, payload)
-  }, [buildAllowedDropTarget])
+          if (zone) {
+            const matchedTarget = buildAllowedDropTarget(
+              {
+                zone,
+                index: Number.isNaN(count) ? 0 : count,
+              },
+              payload,
+            )
+
+            if (matchedTarget) {
+              return matchedTarget
+            }
+          }
+        }
+      }
+
+      const zoneElement = hoveredElement.closest<HTMLElement>('[data-deck-zone]')
+
+      if (!zoneElement) {
+        return null
+      }
+
+      const zone = zoneElement.dataset.deckZone as DeckZone | undefined
+      const count = Number.parseInt(zoneElement.dataset.deckCount ?? '', 10)
+
+      if (!zone) {
+        return null
+      }
+
+      return buildAllowedDropTarget(
+        {
+          zone,
+          index: Number.isNaN(count) ? 0 : count,
+        },
+        payload,
+      )
+    },
+    [buildAllowedDropTarget, resolveSearchDrop],
+  )
 
   const applyDragOverlayTransform = useCallback((x: number, y: number) => {
     const overlayElement = dragOverlayRef.current
@@ -245,6 +296,7 @@ export function useDeckPointerDrag({
     setActiveDropZone(null)
     setActiveDragSearchCardId(null)
     setDragOverlay(null)
+    setIsBuilderRootDropActive(false)
   }, [onClearHoverPreview])
 
   const startDragOverlay = useCallback(
@@ -291,7 +343,15 @@ export function useDeckPointerDrag({
         offsetY: previewFrame.offsetY,
         startX: pointerX,
         startY: pointerY,
+        pointerId: event.pointerId,
+        sourceElement,
         dragging: false,
+      }
+
+      try {
+        sourceElement.setPointerCapture(event.pointerId)
+      } catch {
+        // Ignore browsers that reject pointer capture for transient edge cases.
       }
 
       const handlePointerMove = (moveEvent: PointerEvent) => {
@@ -323,11 +383,15 @@ export function useDeckPointerDrag({
           startDragOverlay(previewFrame, session.name, session.card, session.startX, session.startY)
         }
 
-        const nextDropZone =
-          resolveDropTarget(moveEvent.clientX, moveEvent.clientY, session.payload)?.zone ?? null
+        const nextDropTarget = resolveDropTarget(moveEvent.clientX, moveEvent.clientY, session.payload)
+        const nextDropZone = nextDropTarget?.targetKind === 'zone' ? nextDropTarget.zone : null
         setActiveDropZone((currentZone) => (currentZone === nextDropZone ? currentZone : nextDropZone))
+        setIsBuilderRootDropActive(nextDropTarget?.targetKind === 'builder-root')
         queueDragOverlayMove(moveEvent.clientX, moveEvent.clientY)
-        moveEvent.preventDefault()
+
+        if (moveEvent.cancelable) {
+          moveEvent.preventDefault()
+        }
       }
 
       const handlePointerEnd = (endEvent: PointerEvent) => {
@@ -358,14 +422,42 @@ export function useDeckPointerDrag({
         })
       }
 
+      const handlePointerCancel = () => {
+        if (pointerDragSessionRef.current?.dragging) {
+          window.setTimeout(() => {
+            suppressPointerClickRef.current = false
+          }, 0)
+        }
+
+        flushSync(() => {
+          clearDragSession()
+        })
+      }
+
+      const handleWindowBlur = () => {
+        handlePointerCancel()
+      }
+
       window.addEventListener('pointermove', handlePointerMove, { passive: false })
       window.addEventListener('pointerup', handlePointerEnd)
       window.addEventListener('pointercancel', handlePointerEnd)
+      window.addEventListener('blur', handleWindowBlur)
+      sourceElement.addEventListener('lostpointercapture', handlePointerCancel)
 
       pointerDragCleanupRef.current = () => {
         window.removeEventListener('pointermove', handlePointerMove)
         window.removeEventListener('pointerup', handlePointerEnd)
         window.removeEventListener('pointercancel', handlePointerEnd)
+        window.removeEventListener('blur', handleWindowBlur)
+        sourceElement.removeEventListener('lostpointercapture', handlePointerCancel)
+
+        try {
+          if (sourceElement.hasPointerCapture(event.pointerId)) {
+            sourceElement.releasePointerCapture(event.pointerId)
+          }
+        } catch {
+          // Ignore release failures during teardown.
+        }
       }
     },
     [clearDragSession, onClearHoverPreview, onDrop, queueDragOverlayMove, resolveDropTarget, startDragOverlay],
@@ -404,6 +496,7 @@ export function useDeckPointerDrag({
     },
     dragOverlay,
     dragOverlayRef,
+    isBuilderRootDropActive,
     hasPendingPointerDrag: () => dragPayload !== null || pointerDragSessionRef.current !== null,
     startPointerDrag,
   }

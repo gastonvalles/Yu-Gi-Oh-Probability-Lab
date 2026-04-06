@@ -271,7 +271,7 @@ export function PatternCard({
           )}
 
           <Button
-            variant="secondary"
+            variant="primary"
             size="sm"
             className="justify-self-start"
             onClick={() => actions.addRequirement(pattern.id)}

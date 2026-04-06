@@ -57,12 +57,14 @@ export function DeckZone({
   onHoverEnd,
 }: DeckZoneProps) {
   const zoneBreakdown = buildDeckZoneBreakdown(zone, cards)
-  const visualLayout = buildDeckZoneVisualLayout(
-    zone,
-    cards,
-    desktopCompact ? 'desktop-compact' : 'default',
-    desktopCompactColumnCount,
-  )
+  const visualLayout = desktopCompact
+    ? buildDeckZoneVisualLayout(
+        zone,
+        cards,
+        'desktop-compact',
+        desktopCompactColumnCount,
+      )
+    : null
   const isMainDeckGrid = visualLayout !== null
   const resolvedDesktopCompactColumnCount =
     desktopCompactColumnCount ?? getDesktopCompactDeckColumnCount(cards.length)
@@ -84,7 +86,8 @@ export function DeckZone({
       data-deck-zone={zone}
       data-deck-card-index={index}
       className={[
-        'relative min-w-0 cursor-grab select-none bg-transparent p-0 touch-none',
+        'relative min-w-0 cursor-grab select-none bg-transparent p-0',
+        desktopCompact ? '' : 'touch-none',
         activeDragInstanceId === card.instanceId
           ? 'opacity-35'
           : '',

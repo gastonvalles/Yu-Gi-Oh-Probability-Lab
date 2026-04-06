@@ -16,12 +16,11 @@ export function isCardAllowedInDeckZone(
   card: ApiCardReference | ApiCardSearchResult,
   zone: DeckZone,
 ): boolean {
-  if (zone === 'side') {
-    return true
+  if (isExtraDeckCard(card)) {
+    return zone === 'extra' || zone === 'side'
   }
 
-  const intrinsicZone = getDefaultDeckZoneForCard(card)
-  return zone === intrinsicZone
+  return zone === 'main' || zone === 'side'
 }
 
 export function addSearchResultToZone(
@@ -68,7 +67,7 @@ export function addSearchResultToDefaultZone(
     return deckBuilder
   }
 
-  const zone = getDefaultDeckZoneForCardInBuilder(deckBuilder, searchResult)
+  const zone = getDefaultDeckZoneForCard(searchResult)
   return addSearchResultToZone(deckBuilder, searchResults, apiCardId, zone, deckBuilder[zone].length, format)
 }
 
@@ -266,31 +265,25 @@ export function setOriginForCard(
 }
 
 export function getDefaultDeckZoneForCard(card: ApiCardReference | ApiCardSearchResult): DeckZone {
+  return isExtraDeckCard(card) ? 'extra' : 'main'
+}
+
+export function getDefaultDeckZoneForCardInBuilder(
+  _deckBuilder: DeckBuilderState,
+  card: ApiCardReference | ApiCardSearchResult,
+): DeckZone {
+  return getDefaultDeckZoneForCard(card)
+}
+
+function isExtraDeckCard(card: ApiCardReference | ApiCardSearchResult): boolean {
   const frameType = card.frameType.toLowerCase()
 
-  if (
+  return (
     frameType.includes('fusion') ||
     frameType.includes('synchro') ||
     frameType.includes('xyz') ||
     frameType.includes('link')
-  ) {
-    return 'extra'
-  }
-
-  return 'main'
-}
-
-export function getDefaultDeckZoneForCardInBuilder(
-  deckBuilder: DeckBuilderState,
-  card: ApiCardReference | ApiCardSearchResult,
-): DeckZone {
-  const intrinsicZone = getDefaultDeckZoneForCard(card)
-
-  if (intrinsicZone === 'extra') {
-    return 'extra'
-  }
-
-  return deckBuilder.main.length >= DECK_ZONE_LIMITS.main ? 'side' : 'main'
+  )
 }
 
 function findDeckCardLocation(

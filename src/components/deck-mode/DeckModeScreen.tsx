@@ -245,6 +245,7 @@ export function DeckModeScreen() {
           card={controller.deckBuilderStep.selectedDetailCard}
           deckFormat={controller.deckBuilderStep.deckFormat}
           isOpen={controller.deckBuilderStep.isCardDetailOpen}
+          showActions={controller.deckBuilderStep.selectedDetailSource !== 'deck'}
           onAddToZone={(zone) =>
             controller.deckBuilderStep.selectedDetailCard
               ? controller.deckBuilderStep.onAddSearchResultToZone(
@@ -260,6 +261,7 @@ export function DeckModeScreen() {
           card={controller.deckBuilderStep.selectedDetailCard}
           deckFormat={controller.deckBuilderStep.deckFormat}
           isOpen={controller.deckBuilderStep.isCardDetailOpen}
+          showActions={controller.deckBuilderStep.selectedDetailSource !== 'deck'}
           onAddToZone={(zone) =>
             controller.deckBuilderStep.selectedDetailCard
               ? controller.deckBuilderStep.onAddSearchResultToZone(

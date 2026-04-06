@@ -55,7 +55,7 @@ export function buildDeckWorkflowNavigationItems({
       step: '1',
       title: 'Deck Builder',
       shortTitle: 'Builder',
-      description: 'Buscador, drag & drop y armado real de Main, Extra y Side.',
+      description: 'Buscador, drag & drop y armado de Main, Extra y Side.',
       metric: `${formatInteger(mainDeckCount)} / 40`,
       detail:
         mainDeckCount >= 40

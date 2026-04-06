@@ -377,7 +377,7 @@ export function DeckImportDrawer({
                     </div>
 
                     <Button
-                      variant="secondary"
+                      variant="primary"
                       size="sm"
                       onClick={() => setManualFallbackOpen((current) => !current)}
                     >
@@ -405,7 +405,7 @@ export function DeckImportDrawer({
 
                         <div className="flex flex-wrap gap-2">
                           <Button
-                            variant="secondary"
+                            variant="primary"
                             size="sm"
                             onClick={() => {
                               setInputValue('')
@@ -484,7 +484,7 @@ export function DeckImportDrawer({
                       </div>
 
                       <div className="flex flex-wrap justify-end gap-2">
-                        <Button variant="secondary" size="sm" onClick={handleClose}>
+                        <Button variant="primary" size="sm" onClick={handleClose}>
                           Cancelar
                         </Button>
                         <Button

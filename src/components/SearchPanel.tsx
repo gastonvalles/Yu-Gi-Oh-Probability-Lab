@@ -20,6 +20,7 @@ import type { DeckFormat } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 import { CardArt } from './CardArt'
 import { Button } from './ui/Button'
+import { CloseButton } from './ui/IconButton'
 
 interface FilterOption {
   value: string
@@ -68,6 +69,7 @@ interface SearchPanelProps {
   onClearFilters: () => void
   onLoadMore: () => void
   onResultClick: (apiCardId: number) => void
+  onResultLongPress?: (apiCardId: number) => void
   onSearchCardPointerDown: (event: ReactPointerEvent<HTMLElement>, apiCardId: number) => void
   onHoverStart: (name: string, card: ApiCardSearchResult, anchor: HTMLElement) => void
   onHoverEnd: () => void
@@ -257,6 +259,7 @@ export function SearchPanel({
   onClearFilters,
   onLoadMore,
   onResultClick,
+  onResultLongPress,
   onSearchCardPointerDown,
   onHoverStart,
   onHoverEnd,
@@ -264,6 +267,14 @@ export function SearchPanel({
   const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(activeFilterCount > 0)
   const [sortOrder, setSortOrder] = useState<SearchSortOrder>('default')
   const resultsContainerRef = useRef<HTMLDivElement | null>(null)
+  const longPressTimeoutRef = useRef<number | null>(null)
+  const longPressSessionRef = useRef<{
+    cardId: number
+    startX: number
+    startY: number
+    triggered: boolean
+  } | null>(null)
+  const suppressClickCardIdRef = useRef<number | null>(null)
   const formatLabel = getDeckFormatLabel(deckFormat)
   const formatAllowsLegalityFilter = deckFormat !== 'unlimited' && deckFormat !== 'genesys'
   const isDesktopLayout = layoutMode === 'desktop'
@@ -387,6 +398,71 @@ export function SearchPanel({
     }
   }, [advancedFiltersOpen, hasMore, isLoadingMore, onLoadMore, shouldShowResults, sortedResults.length, status])
 
+  useEffect(
+    () => () => {
+      if (longPressTimeoutRef.current !== null) {
+        window.clearTimeout(longPressTimeoutRef.current)
+      }
+    },
+    [],
+  )
+
+  const clearLongPressSession = () => {
+    if (longPressTimeoutRef.current !== null) {
+      window.clearTimeout(longPressTimeoutRef.current)
+      longPressTimeoutRef.current = null
+    }
+
+    longPressSessionRef.current = null
+  }
+
+  const startLongPress = (event: ReactPointerEvent<HTMLElement>, apiCardId: number) => {
+    if (dragEnabled || layoutMode !== 'mobile' || !onResultLongPress || event.button !== 0) {
+      return
+    }
+
+    clearLongPressSession()
+    longPressSessionRef.current = {
+      cardId: apiCardId,
+      startX: event.clientX,
+      startY: event.clientY,
+      triggered: false,
+    }
+    longPressTimeoutRef.current = window.setTimeout(() => {
+      const session = longPressSessionRef.current
+
+      if (!session || session.cardId !== apiCardId) {
+        return
+      }
+
+      session.triggered = true
+      suppressClickCardIdRef.current = apiCardId
+      onResultLongPress(apiCardId)
+    }, 300)
+  }
+
+  const handleLongPressMove = (event: ReactPointerEvent<HTMLElement>, apiCardId: number) => {
+    const session = longPressSessionRef.current
+
+    if (!session || session.cardId !== apiCardId || session.triggered) {
+      return
+    }
+
+    if (Math.hypot(event.clientX - session.startX, event.clientY - session.startY) > 8) {
+      clearLongPressSession()
+    }
+  }
+
+  const handleLongPressEnd = (apiCardId: number) => {
+    const session = longPressSessionRef.current
+
+    if (!session || session.cardId !== apiCardId) {
+      return
+    }
+
+    clearLongPressSession()
+  }
+
   return (
     <article
       className={[
@@ -404,10 +480,19 @@ export function SearchPanel({
               placeholder="Buscar por nombre parcial o texto en efecto"
               autoComplete="off"
               spellCheck={false}
-              className="app-field w-full px-2.5 py-2 pr-10 text-[0.84rem]"
+              className="app-field w-full px-2.5 py-2 pr-20 text-[0.84rem]"
             />
+            {query.trim().length > 0 ? (
+              <CloseButton
+                size="sm"
+                type="button"
+                aria-label="Limpiar búsqueda"
+                className="absolute right-2 top-1/2 -translate-y-1/2"
+                onClick={() => onQueryChange('')}
+              />
+            ) : null}
             {status === 'loading' ? (
-              <span className="pointer-events-none absolute right-3 top-1/2 -mt-[0.475rem] h-[0.95rem] w-[0.95rem] animate-spin rounded-full border-2 border-[rgb(var(--foreground-rgb)/0.18)] border-t-[var(--primary)]" />
+              <span className="pointer-events-none absolute right-10 top-1/2 -mt-[0.475rem] h-[0.95rem] w-[0.95rem] animate-spin rounded-full border-2 border-[rgb(var(--foreground-rgb)/0.18)] border-t-[var(--primary)]" />
             ) : null}
           </label>
 
@@ -730,16 +815,33 @@ export function SearchPanel({
                             key={card.ygoprodeckId}
                             className={[
                               'app-list-item grid w-full min-w-0 select-none grid-cols-[42px_minmax(0,1fr)] items-center gap-2 p-1.5 transition-all duration-150 ease-out will-change-transform',
-                              dragEnabled ? 'cursor-grab touch-none' : '',
+                              dragEnabled ? 'cursor-grab' : '',
                               activeDragSearchCardId === card.ygoprodeckId ? 'opacity-35' : '',
                             ].join(' ')}
-                            onClick={() => onResultClick(card.ygoprodeckId)}
-                            onPointerDown={(event) => {
-                              if (!dragEnabled) {
+                            onClick={() => {
+                              if (suppressClickCardIdRef.current === card.ygoprodeckId) {
+                                suppressClickCardIdRef.current = null
                                 return
                               }
 
-                              onSearchCardPointerDown(event, card.ygoprodeckId)
+                              onResultClick(card.ygoprodeckId)
+                            }}
+                            onPointerDown={(event) => {
+                              if (dragEnabled) {
+                                onSearchCardPointerDown(event, card.ygoprodeckId)
+                                return
+                              }
+
+                              startLongPress(event, card.ygoprodeckId)
+                            }}
+                            onPointerMove={(event) => handleLongPressMove(event, card.ygoprodeckId)}
+                            onPointerUp={() => handleLongPressEnd(card.ygoprodeckId)}
+                            onPointerCancel={() => handleLongPressEnd(card.ygoprodeckId)}
+                            onPointerLeave={() => handleLongPressEnd(card.ygoprodeckId)}
+                            onContextMenu={(event) => {
+                              if (layoutMode === 'mobile') {
+                                event.preventDefault()
+                              }
                             }}
                             onMouseEnter={(event) => onHoverStart(card.name, card, event.currentTarget)}
                             onMouseLeave={onHoverEnd}

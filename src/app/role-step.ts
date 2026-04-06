@@ -9,11 +9,12 @@ export function isCardMissingRoles(card: CardEntry): boolean {
 }
 
 export function isCardPendingReview(card: CardEntry): boolean {
-  return card.needsReview === true && card.origin !== null && card.roles.length > 0
+  void card
+  return false
 }
 
 export function isCardFullyClassified(card: CardEntry): boolean {
-  return !isCardMissingOrigin(card) && !isCardMissingRoles(card) && !isCardPendingReview(card)
+  return !isCardMissingOrigin(card) && !isCardMissingRoles(card)
 }
 
 export function countCardsMissingOrigin(cards: CardEntry[]): number {

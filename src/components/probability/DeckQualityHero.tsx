@@ -215,7 +215,7 @@ function CheckStateCard({
 
       {isEditingEnabled ? (
         <div className="pt-0.5">
-          <Button variant="secondary" size="sm" onClick={() => onEditPattern(entry.patternId)}>
+          <Button variant="primary" size="sm" onClick={() => onEditPattern(entry.patternId)}>
             Editar
           </Button>
         </div>
