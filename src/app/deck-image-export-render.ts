@@ -24,6 +24,7 @@ const TEXT_MAIN = '#ededed'
 const TEXT_MUTED = '#b7b7c6'
 const CARD_BORDER = '#1f1f2b'
 const CARD_BACKGROUND = '#12121a'
+const EXPORT_RESOLUTION_SCALE = 2
 
 export async function renderDeckAsCanvas(
   deckBuilder: DeckBuilderState,
@@ -75,14 +76,18 @@ export async function renderDeckAsCanvas(
     sectionGap * Math.max(zones.length - 1, 0)
 
   const canvas = document.createElement('canvas')
-  canvas.width = canvasWidth
-  canvas.height = canvasHeight
+  canvas.width = canvasWidth * EXPORT_RESOLUTION_SCALE
+  canvas.height = canvasHeight * EXPORT_RESOLUTION_SCALE
 
   const context = canvas.getContext('2d')
 
   if (!context) {
     throw new Error('No pude preparar la imagen del deck.')
   }
+
+  context.scale(EXPORT_RESOLUTION_SCALE, EXPORT_RESOLUTION_SCALE)
+  context.imageSmoothingEnabled = true
+  context.imageSmoothingQuality = 'high'
 
   drawPageBackground(context, canvasWidth, canvasHeight)
 
