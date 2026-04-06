@@ -265,17 +265,19 @@ function getZoneRowLeft(options: {
 async function loadZoneImages(cards: DeckCardInstance[]): Promise<Array<HTMLImageElement | null>> {
   return Promise.all(
     cards.map(async (card) => {
-      const source = card.apiCard.imageUrlSmall || card.apiCard.imageUrl
+      const sources = [card.apiCard.imageUrl, card.apiCard.imageUrlSmall].filter(
+        (source): source is string => Boolean(source),
+      )
 
-      if (!source) {
-        return null
+      for (const source of sources) {
+        try {
+          return await loadImage(toExportImageUrl(source))
+        } catch {
+          continue
+        }
       }
 
-      try {
-        return await loadImage(toExportImageUrl(source))
-      } catch {
-        return null
-      }
+      return null
     }),
   )
 }
