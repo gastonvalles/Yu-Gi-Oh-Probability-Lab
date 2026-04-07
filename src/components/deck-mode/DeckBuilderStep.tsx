@@ -3,6 +3,7 @@ import { useEffect, useState, type PointerEvent as ReactPointerEvent } from 'rea
 import { getDeckFormatLabel } from '../../app/deck-format'
 import { getDesktopCompactDeckColumnCount } from '../../app/deck-zone-layout'
 import type { DeckBuilderState, DeckZone as DeckZoneType } from '../../app/model'
+import type { DeckDropIndicatorState } from '../../app/use-deck-pointer-drag'
 import { formatInteger } from '../../app/utils'
 import type { DeckFormat, ApiCardReference } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
@@ -34,8 +35,9 @@ interface DeckBuilderStepProps {
   activeFilterCount: number
   hasSearchCriteria: boolean
   activeDragInstanceId: string | null
-  isBuilderRootDropActive: boolean
+  builderRootDropState: DeckDropIndicatorState
   activeDropZone: DeckZoneType | null
+  invalidDropZone: DeckZoneType | null
   activeDragSearchCardId: number | null
   onClearDeckZone: (zone: DeckZoneType) => void
   onRemoveDeckCard: (instanceId: string) => void
@@ -81,8 +83,9 @@ export function DeckBuilderStep({
   activeFilterCount,
   hasSearchCriteria,
   activeDragInstanceId,
-  isBuilderRootDropActive,
+  builderRootDropState,
   activeDropZone,
+  invalidDropZone,
   activeDragSearchCardId,
   onClearDeckZone,
   onRemoveDeckCard,
@@ -263,11 +266,14 @@ export function DeckBuilderStep({
         <article
           className="surface-panel-strong deck-builder-root-drop-surface relative self-start w-full min-h-0 overflow-hidden min-[1101px]:h-full"
           data-deck-builder-root="true"
-          data-deck-builder-root-drop-active={isBuilderRootDropActive ? 'true' : 'false'}
+          data-deck-builder-root-drop-state={builderRootDropState}
         >
-          {isBuilderRootDropActive ? (
-            <div className="deck-builder-root-drop-overlay pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-              <span className="deck-builder-root-drop-plus" aria-hidden="true">
+          {builderRootDropState !== 'idle' ? (
+            <div
+              className="deck-builder-root-drop-overlay pointer-events-none absolute inset-0 z-10 flex items-center justify-center"
+              data-drop-state={builderRootDropState}
+            >
+              <span className="deck-builder-root-drop-plus" data-drop-state={builderRootDropState} aria-hidden="true">
                 <span className="deck-builder-root-drop-plus-glyph" />
               </span>
             </div>
@@ -310,7 +316,13 @@ export function DeckBuilderStep({
                 title={title}
                 cards={deckBuilder[zone]}
                 activeDragInstanceId={activeDragInstanceId}
-                isDropTargetActive={activeDropZone === zone}
+                dropState={
+                  activeDropZone === zone
+                    ? 'valid'
+                    : invalidDropZone === zone
+                      ? 'invalid'
+                      : 'idle'
+                }
                 desktopCompact={isDesktopDeckBuilder}
                 desktopCompactColumnCount={desktopCompactColumnCount}
                 onClearZone={handleRequestClearDeckZone}

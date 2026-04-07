@@ -12,6 +12,7 @@ import type { ApiCardReference } from '../types'
 import type { DeckZone, DragPayload } from './model'
 
 const DESKTOP_DECK_BUILDER_MEDIA_QUERY = '(min-width: 1101px)'
+export type DeckDropIndicatorState = 'idle' | 'valid' | 'invalid'
 
 export interface DeckDragOverlayState {
   name: string
@@ -56,11 +57,12 @@ interface DragPreviewFrame {
 interface DeckPointerDragController {
   activeDragInstanceId: string | null
   activeDropZone: DeckZone | null
+  invalidDropZone: DeckZone | null
   activeDragSearchCardId: number | null
+  builderRootDropState: DeckDropIndicatorState
   consumeSuppressedPointerClick: () => boolean
   dragOverlay: DeckDragOverlayState | null
   dragOverlayRef: React.RefObject<HTMLDivElement | null>
-  isBuilderRootDropActive: boolean
   hasPendingPointerDrag: () => boolean
   startPointerDrag: (
     event: ReactPointerEvent<HTMLElement>,
@@ -74,6 +76,7 @@ interface ResolvedDropTarget {
   zone: DeckZone
   index: number
   targetKind: 'zone' | 'builder-root'
+  isAllowed: boolean
 }
 
 function resolveDragPreviewFrame(
@@ -114,9 +117,10 @@ export function useDeckPointerDrag({
   const [dragPayload, setDragPayload] = useState<DragPayload | null>(null)
   const [activeDragInstanceId, setActiveDragInstanceId] = useState<string | null>(null)
   const [activeDropZone, setActiveDropZone] = useState<DeckZone | null>(null)
+  const [invalidDropZone, setInvalidDropZone] = useState<DeckZone | null>(null)
   const [activeDragSearchCardId, setActiveDragSearchCardId] = useState<number | null>(null)
   const [dragOverlay, setDragOverlay] = useState<DeckDragOverlayState | null>(null)
-  const [isBuilderRootDropActive, setIsBuilderRootDropActive] = useState(false)
+  const [builderRootDropState, setBuilderRootDropState] = useState<DeckDropIndicatorState>('idle')
 
   const dragOverlayRef = useRef<HTMLDivElement>(null)
   const dragOverlayRafRef = useRef<number>(0)
@@ -125,7 +129,7 @@ export function useDeckPointerDrag({
   const pointerDragCleanupRef = useRef<(() => void) | null>(null)
   const suppressPointerClickRef = useRef(false)
 
-  const buildAllowedDropTarget = useCallback(
+  const buildResolvedDropTarget = useCallback(
     (
       target: { zone: DeckZone; index: number } | null,
       payload: DragPayload,
@@ -135,7 +139,11 @@ export function useDeckPointerDrag({
         return null
       }
 
-      return canDrop(payload, target.zone) ? { ...target, targetKind } : null
+      return {
+        ...target,
+        targetKind,
+        isAllowed: canDrop(payload, target.zone),
+      }
     },
     [canDrop],
   )
@@ -157,7 +165,7 @@ export function useDeckPointerDrag({
 
           if (zone === 'side' && !Number.isNaN(index)) {
             const rect = hoveredDeckCard.getBoundingClientRect()
-            const explicitSideTarget = buildAllowedDropTarget(
+            const explicitSideTarget = buildResolvedDropTarget(
               {
                 zone,
                 index: clientX > rect.left + rect.width / 2 ? index + 1 : index,
@@ -187,7 +195,7 @@ export function useDeckPointerDrag({
 
           if (sideDropContainer) {
             const count = Number.parseInt(sideDropContainer.dataset.deckZoneCount ?? '', 10)
-            const explicitSideTarget = buildAllowedDropTarget(
+            const explicitSideTarget = buildResolvedDropTarget(
               {
                 zone: 'side',
                 index: Number.isNaN(count) ? 0 : count,
@@ -205,7 +213,7 @@ export function useDeckPointerDrag({
 
         if (sideZone) {
           const count = Number.parseInt(sideZone.dataset.deckCount ?? '', 10)
-          const explicitSideTarget = buildAllowedDropTarget(
+          const explicitSideTarget = buildResolvedDropTarget(
             {
               zone: 'side',
               index: Number.isNaN(count) ? 0 : count,
@@ -226,12 +234,7 @@ export function useDeckPointerDrag({
 
         const rootDropTarget = resolveSearchDrop(payload)
 
-        return rootDropTarget
-          ? {
-              ...rootDropTarget,
-              targetKind: 'builder-root',
-            }
-          : null
+        return buildResolvedDropTarget(rootDropTarget, payload, 'builder-root')
       }
 
       const cardElement = hoveredElement.closest<HTMLElement>('[data-deck-card-index]')
@@ -245,7 +248,7 @@ export function useDeckPointerDrag({
         }
 
         const rect = cardElement.getBoundingClientRect()
-        const explicitTarget = buildAllowedDropTarget(
+        const explicitTarget = buildResolvedDropTarget(
           {
             zone,
             index: clientX > rect.left + rect.width / 2 ? index + 1 : index,
@@ -279,7 +282,7 @@ export function useDeckPointerDrag({
           const count = Number.parseInt(matchedZoneContainer.dataset.deckZoneCount ?? '', 10)
 
           if (zone) {
-            const matchedTarget = buildAllowedDropTarget(
+            const matchedTarget = buildResolvedDropTarget(
               {
                 zone,
                 index: Number.isNaN(count) ? 0 : count,
@@ -307,7 +310,7 @@ export function useDeckPointerDrag({
         return null
       }
 
-      return buildAllowedDropTarget(
+      return buildResolvedDropTarget(
         {
           zone,
           index: Number.isNaN(count) ? 0 : count,
@@ -315,7 +318,7 @@ export function useDeckPointerDrag({
         payload,
       )
     },
-    [buildAllowedDropTarget, resolveSearchDrop],
+    [buildResolvedDropTarget, resolveSearchDrop],
   )
 
   const applyDragOverlayTransform = useCallback((x: number, y: number) => {
@@ -363,9 +366,10 @@ export function useDeckPointerDrag({
     setDragPayload(null)
     setActiveDragInstanceId(null)
     setActiveDropZone(null)
+    setInvalidDropZone(null)
     setActiveDragSearchCardId(null)
     setDragOverlay(null)
-    setIsBuilderRootDropActive(false)
+    setBuilderRootDropState('idle')
   }, [onClearHoverPreview])
 
   const startDragOverlay = useCallback(
@@ -453,9 +457,22 @@ export function useDeckPointerDrag({
         }
 
         const nextDropTarget = resolveDropTarget(moveEvent.clientX, moveEvent.clientY, session.payload)
-        const nextDropZone = nextDropTarget?.targetKind === 'zone' ? nextDropTarget.zone : null
+        const nextDropZone =
+          nextDropTarget?.targetKind === 'zone' && nextDropTarget.isAllowed ? nextDropTarget.zone : null
+        const nextInvalidDropZone =
+          nextDropTarget?.targetKind === 'zone' && !nextDropTarget.isAllowed ? nextDropTarget.zone : null
+        const nextBuilderRootDropState =
+          nextDropTarget?.targetKind === 'builder-root'
+            ? (nextDropTarget.isAllowed ? 'valid' : 'invalid')
+            : 'idle'
+
         setActiveDropZone((currentZone) => (currentZone === nextDropZone ? currentZone : nextDropZone))
-        setIsBuilderRootDropActive(nextDropTarget?.targetKind === 'builder-root')
+        setInvalidDropZone((currentZone) =>
+          currentZone === nextInvalidDropZone ? currentZone : nextInvalidDropZone,
+        )
+        setBuilderRootDropState((currentState) =>
+          currentState === nextBuilderRootDropState ? currentState : nextBuilderRootDropState,
+        )
         queueDragOverlayMove(moveEvent.clientX, moveEvent.clientY)
 
         if (moveEvent.cancelable) {
@@ -468,7 +485,7 @@ export function useDeckPointerDrag({
         const target =
           session?.dragging ? resolveDropTarget(endEvent.clientX, endEvent.clientY, session.payload) : null
         const pendingDrop =
-          session?.dragging && target
+          session?.dragging && target?.isAllowed
             ? {
                 payload: session.payload,
                 zone: target.zone,
@@ -554,7 +571,9 @@ export function useDeckPointerDrag({
   return {
     activeDragInstanceId,
     activeDropZone,
+    invalidDropZone,
     activeDragSearchCardId,
+    builderRootDropState,
     consumeSuppressedPointerClick: () => {
       if (!suppressPointerClickRef.current) {
         return false
@@ -565,7 +584,6 @@ export function useDeckPointerDrag({
     },
     dragOverlay,
     dragOverlayRef,
-    isBuilderRootDropActive,
     hasPendingPointerDrag: () => dragPayload !== null || pointerDragSessionRef.current !== null,
     startPointerDrag,
   }

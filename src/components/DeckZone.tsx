@@ -6,6 +6,7 @@ import {
 } from '../app/deck-zone-layout'
 import { buildDeckZoneBreakdown } from '../app/deck-presentation'
 import type { DeckCardInstance, DeckZone as DeckZoneType } from '../app/model'
+import type { DeckDropIndicatorState } from '../app/use-deck-pointer-drag'
 import { formatInteger } from '../app/utils'
 import { CardArt } from './CardArt'
 import { IconButton } from './ui/IconButton'
@@ -15,7 +16,7 @@ interface DeckZoneProps {
   title: string
   cards: DeckCardInstance[]
   activeDragInstanceId: string | null
-  isDropTargetActive?: boolean
+  dropState?: DeckDropIndicatorState
   desktopCompact?: boolean
   desktopCompactColumnCount?: number
   onClearZone: (zone: DeckZoneType) => void
@@ -46,7 +47,7 @@ export function DeckZone({
   title,
   cards,
   activeDragInstanceId,
-  isDropTargetActive = false,
+  dropState = 'idle',
   desktopCompact = false,
   desktopCompactColumnCount,
   onClearZone,
@@ -123,7 +124,8 @@ export function DeckZone({
       data-deck-zone-drop-target={zone}
       data-deck-zone-count={cards.length}
       data-deck-zone-layout={desktopCompact ? 'desktop-compact' : 'default'}
-      data-deck-zone-drop-active={isDropTargetActive ? 'true' : 'false'}
+      data-deck-zone-drop-active={dropState === 'valid' ? 'true' : 'false'}
+      data-deck-zone-drop-state={dropState}
     >
       {desktopCompact ? (
         <div
@@ -140,7 +142,7 @@ export function DeckZone({
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              {isDropTargetActive ? (
+              {dropState === 'valid' ? (
                 <span className="hidden min-[1101px]:inline-flex app-chip-accent px-2 py-1 text-[0.66rem] whitespace-nowrap">
                   Soltá acá
                 </span>
@@ -190,7 +192,7 @@ export function DeckZone({
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              {isDropTargetActive ? (
+              {dropState === 'valid' ? (
                 <span className="hidden min-[1101px]:inline-flex app-chip-accent px-2 py-1 text-[0.66rem] whitespace-nowrap">
                   Soltá acá
                 </span>

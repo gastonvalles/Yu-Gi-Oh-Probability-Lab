@@ -98,12 +98,13 @@ export function useDeckModeController() {
   const {
     activeDragInstanceId,
     activeDropZone,
+    invalidDropZone,
     activeDragSearchCardId,
     consumeSuppressedPointerClick,
+    builderRootDropState,
     dragOverlay,
     dragOverlayRef,
     hasPendingPointerDrag,
-    isBuilderRootDropActive,
     startPointerDrag,
   } = useDeckPointerDrag({
     canDrop: (payload, zone) => {
@@ -173,9 +174,7 @@ export function useDeckModeController() {
 
       const zone = getDefaultDeckZoneForCardInBuilder(deckBuilder, card)
 
-      return getAddSearchResultIssue(deckBuilder, card, zone, settings.deckFormat) === null
-        ? { zone, index: deckBuilder[zone].length }
-        : null
+      return { zone, index: deckBuilder[zone].length }
     },
   })
   const formatLabel = getDeckFormatLabel(settings.deckFormat)
@@ -502,8 +501,9 @@ export function useDeckModeController() {
       activeFilterCount,
       hasSearchCriteria,
       activeDragInstanceId,
-      isBuilderRootDropActive,
+      builderRootDropState,
       activeDropZone,
+      invalidDropZone,
       activeDragSearchCardId,
       selectedDetailCard,
       selectedDetailSource,
