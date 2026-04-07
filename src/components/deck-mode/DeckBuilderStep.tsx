@@ -8,6 +8,7 @@ import type { DeckFormat, ApiCardReference } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import type { CardSearchFilters } from '../../app/card-search'
 import { DeckZone } from '../DeckZone'
+import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { SearchPanel } from '../SearchPanel'
 import { StepHero } from '../StepHero'
 import { Button } from '../ui/Button'
@@ -102,6 +103,7 @@ export function DeckBuilderStep({
 }: DeckBuilderStepProps) {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const [importDrawerOpen, setImportDrawerOpen] = useState(false)
+  const [pendingClearZone, setPendingClearZone] = useState<DeckZoneType | null>(null)
   const [isDesktopDeckBuilder, setIsDesktopDeckBuilder] = useState(() => {
     if (typeof window === 'undefined') {
       return false
@@ -145,11 +147,31 @@ export function DeckBuilderStep({
   const showGenesysPoints = deckFormat === 'genesys' && genesysPointTotal !== null && genesysPointCap !== null
   const showFormatIssues = deckFormat !== 'genesys' && formatIssues.length > 0
   const desktopCompactColumnCount = getDesktopCompactDeckColumnCount(deckBuilder.main.length)
+  const pendingClearZoneCardCount = pendingClearZone ? deckBuilder[pendingClearZone].length : 0
+  const pendingClearZoneLabel = pendingClearZone ? getDeckZoneLabel(pendingClearZone) : ''
 
   const handleSearchCardPointerDown = (
     event: ReactPointerEvent<HTMLElement>,
     apiCardId: number,
   ) => onSearchCardPointerDown(event, apiCardId)
+
+  const handleRequestClearDeckZone = (zone: DeckZoneType) => {
+    if (deckBuilder[zone].length === 0) {
+      return
+    }
+
+    setPendingClearZone(zone)
+  }
+
+  const handleConfirmClearDeckZone = () => {
+    if (!pendingClearZone || deckBuilder[pendingClearZone].length === 0) {
+      setPendingClearZone(null)
+      return
+    }
+
+    onClearDeckZone(pendingClearZone)
+    setPendingClearZone(null)
+  }
 
   const renderSearchPanel = (options: { layoutMode: 'desktop' | 'mobile'; dragEnabled: boolean }) => (
     <SearchPanel
@@ -251,7 +273,7 @@ export function DeckBuilderStep({
             </div>
           ) : null}
 
-          <div className="relative z-0 grid gap-2.5 p-3 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:overflow-y-auto min-[1101px]:p-2.5 min-[1101px]:gap-2">
+          <div className="relative z-0 grid content-start gap-2.5 p-3 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:overflow-y-auto min-[1101px]:p-2.5 min-[1101px]:gap-2">
             <div className="grid gap-2 min-[760px]:grid-cols-[minmax(0,1fr)_152px]">
               <input
                 type="text"
@@ -291,7 +313,7 @@ export function DeckBuilderStep({
                 isDropTargetActive={activeDropZone === zone}
                 desktopCompact={isDesktopDeckBuilder}
                 desktopCompactColumnCount={desktopCompactColumnCount}
-                onClearZone={onClearDeckZone}
+                onClearZone={handleRequestClearDeckZone}
                 onDeckCardPointerDown={onDeckCardPointerDown}
                 onDeckCardClick={onDeckCardClick}
                 onRemoveCard={onRemoveDeckCard}
@@ -329,6 +351,26 @@ export function DeckBuilderStep({
         onApplyImport={onImportDeck}
         onClose={() => setImportDrawerOpen(false)}
       />
+
+      <ConfirmDialog
+        isOpen={pendingClearZone !== null}
+        title={pendingClearZoneLabel ? `Vaciar ${pendingClearZoneLabel}` : 'Vaciar zona'}
+        description={
+          pendingClearZoneLabel
+            ? `Se van a quitar ${formatInteger(pendingClearZoneCardCount)} carta${pendingClearZoneCardCount === 1 ? '' : 's'} de ${pendingClearZoneLabel}. Esta acción no se puede deshacer.`
+            : ''
+        }
+        cancelLabel="Cancelar"
+        confirmLabel="Sí, vaciar"
+        confirmVariant="primary"
+        confirmColor="destructive"
+        onCancel={() => setPendingClearZone(null)}
+        onConfirm={handleConfirmClearDeckZone}
+      />
     </section>
   )
+}
+
+function getDeckZoneLabel(zone: DeckZoneType): string {
+  return zone === 'main' ? 'Main Deck' : zone === 'extra' ? 'Extra Deck' : 'Side Deck'
 }

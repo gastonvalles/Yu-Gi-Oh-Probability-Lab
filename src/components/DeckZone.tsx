@@ -133,7 +133,7 @@ export function DeckZone({
           style={zoneSurfaceStyle}
         >
           <div className="deck-zone-header flex items-center justify-between gap-3">
-            <div className="min-w-0">
+            <div className="min-w-0 pl-1.5">
               <h3 className="m-0 text-[1rem] leading-none">{title}</h3>
               <p className="deck-zone-header-breakdown m-0 mt-[0.12rem] truncate">
                 {headerSummary}
@@ -183,7 +183,7 @@ export function DeckZone({
       ) : (
         <>
           <div className="deck-zone-header mb-1.5 flex items-start justify-between gap-3 min-[1101px]:mb-1">
-            <div className="min-w-0">
+            <div className="min-w-0 pl-1.5">
               <h3 className="m-0 text-[1.05rem] leading-none min-[1101px]:text-[1rem]">{title}</h3>
               <p className="m-0 mt-[0.08rem] text-[0.82rem] leading-[1.12] text-[var(--text-muted)]">
                 {headerSummary}
