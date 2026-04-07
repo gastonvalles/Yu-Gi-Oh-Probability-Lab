@@ -8,6 +8,11 @@ export async function getCachedImageUrl(remoteUrl: string): Promise<string | nul
     return cachedUrl
   }
 
+  if (!shouldFetchForCache(remoteUrl)) {
+    inMemoryUrls.set(remoteUrl, remoteUrl)
+    return remoteUrl
+  }
+
   const pendingLoad = pendingLoads.get(remoteUrl)
   if (pendingLoad) {
     return pendingLoad
@@ -25,10 +30,6 @@ export async function getCachedImageUrl(remoteUrl: string): Promise<string | nul
 
 async function loadImage(remoteUrl: string): Promise<string | null> {
   try {
-    if (typeof caches === 'undefined') {
-      return remoteUrl
-    }
-
     const cache = await caches.open(IMAGE_CACHE_NAME)
     let response = await cache.match(remoteUrl)
 
@@ -48,5 +49,25 @@ async function loadImage(remoteUrl: string): Promise<string | null> {
     return localUrl
   } catch {
     return null
+  }
+}
+
+function shouldFetchForCache(remoteUrl: string): boolean {
+  if (
+    typeof window === 'undefined' ||
+    typeof caches === 'undefined' ||
+    remoteUrl.startsWith('blob:') ||
+    remoteUrl.startsWith('data:')
+  ) {
+    return false
+  }
+
+  try {
+    const url = new URL(remoteUrl, window.location.href)
+
+    // YGOPRODeck images load fine in <img>, but their host rejects fetch() from production with CORS.
+    return url.origin === window.location.origin
+  } catch {
+    return false
   }
 }
