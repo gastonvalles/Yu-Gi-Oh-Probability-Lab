@@ -63,6 +63,19 @@ export function CardArt({
     }
   }, [remoteUrl])
 
+  useEffect(() => {
+    const image = imageRef.current
+
+    if (
+      resolvedUrl &&
+      image &&
+      image.complete &&
+      image.naturalWidth > 0
+    ) {
+      setIsImageLoaded(true)
+    }
+  }, [resolvedUrl])
+
   if (resolvedUrl && !hasImageError) {
     return (
       <div className="relative block h-full w-full">
@@ -73,13 +86,7 @@ export function CardArt({
           />
         ) : null}
         <img
-          ref={(node) => {
-            imageRef.current = node
-
-            if (node?.complete && node.naturalWidth > 0) {
-              setIsImageLoaded(true)
-            }
-          }}
+          ref={imageRef}
           className={[
             'card-art-media transition-opacity duration-200',
             isImageLoaded ? 'opacity-100' : 'opacity-0',
