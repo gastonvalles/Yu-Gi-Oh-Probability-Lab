@@ -113,7 +113,7 @@ export function buildDeckWorkflowNavigationItems({
       step: '4',
       title: 'Export',
       shortTitle: 'Export',
-      description: 'Descarga la imagen y el TXT del deck sin duplicar lógica.',
+      description: 'Descarga la imagen y el TXT del deck.',
       metric: mainDeckCount > 0 ? 'Descarga habilitada' : 'Sin deck',
       detail: mainDeckCount > 0 ? 'Imagen + TXT.' : 'Necesitás cartas en Main.',
       tone: mainDeckCount > 0 ? 'complete' : 'pending',

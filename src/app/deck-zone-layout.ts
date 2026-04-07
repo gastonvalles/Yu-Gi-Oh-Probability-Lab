@@ -22,8 +22,8 @@ export const MAIN_DECK_BASE_COLUMNS = 10
 export const MAIN_DECK_MAX_COLUMNS = 15
 export const MAIN_DECK_EXPAND_THRESHOLD = 41
 export const DESKTOP_COMPACT_BASE_COLUMNS = 10
-export const DESKTOP_COMPACT_EXPANDED_COLUMNS = 12
-export const DESKTOP_COMPACT_EXPAND_THRESHOLD = 40
+export const DESKTOP_COMPACT_EXPANDED_COLUMNS = 10
+export const DESKTOP_COMPACT_EXPAND_THRESHOLD = 999
 
 export function buildDeckZoneVisualLayout(
   zone: DeckZone,

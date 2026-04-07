@@ -5,6 +5,7 @@ import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { CardArt } from '../CardArt'
 import { Button } from '../ui/Button'
 import { CloseButton } from '../ui/IconButton'
+import { Skeleton } from '../ui/Skeleton'
 
 interface CardDetailProps {
   card: ApiCardSearchResult
@@ -110,7 +111,7 @@ export function CardDetail({
                 {cardFacts.map((fact) => (
                   <article
                     key={fact.label}
-                    className="surface-card rounded-[0.5rem] px-4 py-3"
+                    className="surface-card px-4 py-3"
                   >
                     <small className="app-muted block text-[0.8rem] leading-none">
                       {fact.label}
@@ -167,6 +168,123 @@ export function CardDetail({
               >
                 {entry.label}
               </Button>
+            ))}
+          </div>
+        </footer>
+      ) : null}
+    </section>
+  )
+}
+
+interface CardDetailSkeletonProps {
+  layoutMode: 'desktop' | 'mobile'
+  showActions?: boolean
+  onClose: () => void
+}
+
+export function CardDetailSkeleton({
+  layoutMode,
+  showActions = true,
+  onClose,
+}: CardDetailSkeletonProps) {
+  const isMobileLayout = layoutMode === 'mobile'
+  const factCount = isMobileLayout ? 4 : 6
+  const actionCount = isMobileLayout ? 2 : 3
+
+  return (
+    <section className="flex min-h-0 flex-col bg-[var(--card-background)] text-(--text-main)">
+      <div className="relative min-h-0 overflow-y-auto px-4 pb-4 pt-4 min-[860px]:px-6 min-[860px]:pb-5 min-[860px]:pt-5">
+        <div className="absolute right-4 top-4 z-10 min-[860px]:right-6 min-[860px]:top-5">
+          <CloseButton
+            size="md"
+            aria-label="Cerrar detalle"
+            onClick={onClose}
+          />
+        </div>
+
+        <div className="grid gap-4">
+          <div
+            className={[
+              'grid gap-4',
+              isMobileLayout
+                ? 'content-start'
+                : 'content-start min-[860px]:grid-cols-[18.75rem_minmax(0,1fr)] min-[860px]:items-start min-[860px]:gap-6',
+            ].join(' ')}
+          >
+            <aside className="grid content-start gap-3">
+              {isMobileLayout ? (
+                <header className="grid gap-1.5">
+                  <Skeleton radius="none" className="h-12 max-w-full w-[17rem]" />
+                </header>
+              ) : null}
+
+              <div className="grid content-start gap-3">
+                <Skeleton radius="none" className="aspect-[421/614] w-full" />
+
+                <div className="flex flex-wrap justify-center gap-1.5">
+                  <Skeleton radius="chip" className="h-7 w-16" />
+                  <Skeleton radius="chip" className="h-7 w-16" />
+                  <Skeleton radius="chip" className="h-7 w-20" />
+                </div>
+              </div>
+            </aside>
+
+            <div className="grid min-w-0 content-start gap-5">
+              {!isMobileLayout ? (
+                <header className="grid gap-1.5">
+                  <Skeleton radius="none" className="h-14 max-w-full w-[26rem]" />
+                </header>
+              ) : null}
+
+              <section className="grid gap-2 min-[640px]:grid-cols-2 min-[860px]:grid-cols-3">
+                {Array.from({ length: factCount }).map((_, index) => (
+                  <article
+                    key={index}
+                    className="surface-card grid gap-2 px-4 py-3"
+                  >
+                    <Skeleton radius="none" className="h-3 w-20" />
+                    <Skeleton radius="none" className="h-6 w-full" />
+                  </article>
+                ))}
+              </section>
+
+              <section className="grid gap-2.5">
+                <Skeleton radius="none" className="h-10 w-40" />
+                <div className="grid gap-2">
+                  <Skeleton radius="none" className="h-5 w-full" />
+                  <Skeleton radius="none" className="h-5 w-full" />
+                  <Skeleton radius="none" className="h-5 w-[92%]" />
+                  <Skeleton radius="none" className="h-5 w-[88%]" />
+                  <Skeleton radius="none" className="h-5 w-[84%]" />
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {showActions ? (
+        <footer className="border-t border-(--border-subtle) bg-[linear-gradient(180deg,rgb(var(--secondary-rgb)/0.95),rgb(var(--background-rgb)/0.98))] px-4 py-3 min-[860px]:px-6">
+          <div
+            className={[
+              'grid gap-2.5',
+              isMobileLayout && actionCount > 1 ? 'grid-cols-2' : '',
+            ].join(' ')}
+            style={{
+              gridTemplateColumns: isMobileLayout
+                ? undefined
+                : `repeat(${actionCount}, minmax(0, 1fr))`,
+            }}
+          >
+            {Array.from({ length: actionCount }).map((_, index) => (
+              <Skeleton
+                key={index}
+                className={
+                  isMobileLayout && actionCount % 2 === 1 && index === actionCount - 1
+                    ? 'col-span-2 h-9'
+                    : 'h-9'
+                }
+              />
             ))}
           </div>
         </footer>

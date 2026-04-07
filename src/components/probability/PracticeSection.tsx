@@ -637,7 +637,7 @@ function PracticeAssignmentSummaryRow({
   const { hiddenCount, visibleCards } = getVisibleAssignmentCards(assignment.cards)
 
   return (
-    <div className="grid min-w-0 gap-1 rounded-[16px] border border-(--border-subtle) bg-[rgb(var(--background-rgb)/0.24)] px-2.5 py-2">
+    <div className="surface-panel-soft grid min-w-0 gap-1 px-2.5 py-2">
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <strong className="min-w-0 text-[0.74rem] text-(--text-main)">{assignment.sourceLabel}</strong>
         <span className="surface-panel-soft px-1.5 py-0.5 text-[0.64rem] text-(--text-muted)">
@@ -730,7 +730,7 @@ function PracticeAssignmentDetailRow({
   assignment: PracticeHandRequirementAssignment
 }) {
   return (
-    <div className="grid min-w-0 gap-1 rounded-[14px] border border-(--border-subtle) bg-[rgb(var(--secondary-rgb)/0.16)] px-2 py-1.5">
+    <div className="surface-panel-soft grid min-w-0 gap-1 px-2 py-1.5">
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <strong className="min-w-0 text-[0.73rem] text-(--text-main)">{assignment.sourceLabel}</strong>
         <span className="surface-panel-soft px-1.5 py-0.5 text-[0.64rem] text-(--text-muted)">

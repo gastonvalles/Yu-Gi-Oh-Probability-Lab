@@ -36,28 +36,17 @@ export function DeckModeNavigation({
                 className="workflow-step-button grid w-full gap-2 p-2.5 text-left"
                 onClick={() => onStepChange(item.key)}
               >
-                <div className="flex items-start gap-2">
-                  <span
-                    className={[
-                      'grid h-6 min-w-6 place-items-center px-1 text-[0.68rem] font-semibold leading-none',
-                      isActive || item.tone === 'complete' ? 'app-chip-accent' : 'app-chip',
-                    ].join(' ')}
-                  >
-                    {item.step}
-                  </span>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <strong className="text-[0.84rem] text-(--text-main)">{item.title}</strong>
-                      <small className="app-muted shrink-0 text-[0.64rem] uppercase tracking-widest">
-                        {DECK_WORKFLOW_TONE_LABEL[item.tone]}
-                      </small>
-                    </div>
-
-                    <p className="app-muted m-[0.2rem_0_0] text-[0.74rem] leading-[1.14]">
-                      {item.description}
-                    </p>
+                <div className="min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <strong className="text-[0.84rem] text-(--text-main)">{item.title}</strong>
+                    <small className="app-muted shrink-0 text-[0.64rem] uppercase tracking-widest">
+                      {DECK_WORKFLOW_TONE_LABEL[item.tone]}
+                    </small>
                   </div>
+
+                  <p className="app-muted m-[0.2rem_0_0] text-[0.74rem] leading-[1.14]">
+                    {item.description}
+                  </p>
                 </div>
 
                 <div className="flex items-end justify-between gap-3">

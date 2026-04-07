@@ -36,7 +36,9 @@ export function DeckModeShell({
         <div
           className={[
             'grid gap-3 min-[1101px]:h-full min-[1101px]:min-h-0',
-            rail ? 'min-[1101px]:grid-cols-[minmax(0,1fr)_360px]' : '',
+            rail
+              ? 'min-[1101px]:grid-cols-[minmax(0,1fr)_420px] min-[1480px]:grid-cols-[minmax(0,1fr)_460px]'
+              : '',
           ].join(' ').trim()}
         >
           <div ref={mainScrollRef} className={mainAreaClassName}>

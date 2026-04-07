@@ -5,7 +5,7 @@ import { getCardCopyLimit } from './deck-format'
 import { isEdisonCardInPool } from './edison-format'
 import { normalizeSearchText } from './utils'
 
-export type SearchQuickTypeFilter = 'all' | 'monster' | 'spell' | 'trap' | 'extra'
+export type SearchQuickTypeFilter = 'all' | 'monster' | 'spell' | 'trap'
 
 export interface CardSearchFilters {
   quickType: SearchQuickTypeFilter
@@ -457,8 +457,6 @@ function matchesQuickTypeFilter(
   }
 
   const cardType = typeof card.cardType === 'string' ? card.cardType.toLowerCase() : ''
-  const frameType = typeof card.frameType === 'string' ? card.frameType.toLowerCase() : ''
-
   if (quickType === 'monster') {
     return cardType.includes('monster')
   }
@@ -471,10 +469,5 @@ function matchesQuickTypeFilter(
     return cardType.includes('trap')
   }
 
-  return (
-    frameType.includes('fusion') ||
-    frameType.includes('synchro') ||
-    frameType.includes('xyz') ||
-    frameType.includes('link')
-  )
+  return false
 }

@@ -10,7 +10,6 @@ import {
   serializeGroupKey,
 } from '../app/deck-groups'
 import {
-  countCardsPendingReview,
   isCardFullyClassified,
   isCardMissingOrigin,
   isCardMissingRoles,
@@ -478,11 +477,14 @@ function ClassificationDrawer({
       <button
         type="button"
         aria-label="Cerrar panel"
-        className="fixed inset-0 z-[120] bg-[rgb(var(--background-rgb)/0.72)] min-[1180px]:hidden"
+        className="fixed inset-0 z-[120] bg-[rgb(var(--background-rgb)/0.72)] backdrop-blur-[2px]"
         onClick={onClose}
       />
 
-      <aside className="surface-panel fixed inset-y-0 right-0 z-[130] grid h-[100dvh] w-full max-w-[30rem] grid-rows-[minmax(0,1fr)] border-l border-(--border-subtle) p-0 shadow-[-28px_0_54px_rgba(0,0,0,0.38)]">
+      <aside
+        className="surface-panel fixed inset-y-0 right-0 z-[130] grid h-[100dvh] w-full max-w-[30rem] grid-rows-[minmax(0,1fr)] border-l border-(--border-subtle) p-0 shadow-[-28px_0_54px_rgba(0,0,0,0.38)]"
+        style={{ background: 'var(--card-background)' }}
+      >
         <div className="min-h-0 overflow-y-auto px-4 pb-4 pt-4">
           <div className="grid gap-3">
             <div className="flex justify-end">
@@ -530,7 +532,7 @@ function ClassificationModal({
     <>
       <div className="fixed inset-0 z-[150] grid place-items-center bg-[rgb(var(--background-rgb)/0.76)] px-4 py-5" onClick={onClose}>
         <div
-          className="relative flex w-full max-w-[70rem] min-h-0 max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden rounded-[1rem] border border-(--border-subtle) bg-[var(--card-background)] p-0 shadow-none"
+          className="surface-panel relative flex w-full max-w-[70rem] min-h-0 max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden p-0 shadow-none"
           onClick={(event) => event.stopPropagation()}
         >
           <div className="absolute right-4 top-4 z-10 min-[1101px]:right-6 min-[1101px]:top-5">
@@ -603,7 +605,6 @@ export function DeckRolesPanel({
     () => sortedCards.filter((card) => !isCardFullyClassified(card)),
     [sortedCards],
   )
-  const pendingReviewCount = useMemo(() => countCardsPendingReview(sortedCards), [sortedCards])
   const completeCards = useMemo(
     () => sortedCards.filter((card) => isCardFullyClassified(card)),
     [sortedCards],
@@ -901,7 +902,7 @@ export function DeckRolesPanel({
             return (
               <article
                 key={section.title}
-                className="grid h-full grid-rows-[auto_minmax(0,1fr)] gap-1.5 border border-(--border-subtle) rounded-[0.7rem] p-2"
+                className="surface-card grid h-full grid-rows-[auto_minmax(0,1fr)] gap-1.5 p-2"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <strong className="text-[0.8rem] leading-none text-(--text-main)">{section.title}</strong>
@@ -980,39 +981,19 @@ export function DeckRolesPanel({
   }
 
   return (
-    <section className="surface-panel grid min-w-0 content-start gap-3 overflow-x-hidden p-2.5 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_auto_minmax(0,1fr)] min-[1101px]:overflow-hidden">
+    <section className="surface-panel deck-mobile-step-shell grid min-w-0 content-start gap-2.5 overflow-x-hidden p-0 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_auto_minmax(0,1fr)] min-[1101px]:gap-3 min-[1101px]:overflow-hidden min-[1101px]:p-2.5">
       <StepHero
-        step="Paso 2"
-        pill="Categorization"
-        title="Clasificá cada carta sin perder el foco"
+        step="Categorización"
+        title="Clasificá cada carta con Origen y Roles"
         description="Separá dos decisiones distintas para el Main Deck: a qué grupo pertenece cada carta y qué rol cumple cuando la robás."
         side={
           sortedCards.length > 0 ? (
-            <div className="grid gap-2">
-              <div className="grid grid-cols-3 gap-2">
-                <div className="surface-card px-2 py-1.5">
-                  <span className="app-muted block text-[0.62rem] uppercase tracking-widest">Pendientes</span>
-                  <strong className="mt-1 block text-[0.94rem] leading-none text-(--text-main)">{formatInteger(unclassifiedCards.length)}</strong>
-                </div>
-                <div className="surface-card px-2 py-1.5">
-                  <span className="app-muted block text-[0.62rem] uppercase tracking-widest">Revisión</span>
-                  <strong className="mt-1 block text-[0.94rem] leading-none text-(--text-main)">{formatInteger(pendingReviewCount)}</strong>
-                </div>
-                <div className="surface-card-success px-2 py-1.5 text-(--accent)">
-                  <span className="block text-[0.62rem] uppercase tracking-widest">Completas</span>
-                  <strong className="mt-1 block text-[0.94rem] leading-none text-(--text-main)">{formatInteger(completeCards.length)}</strong>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap justify-end gap-2">
-                <Button variant="primary" size="sm" onClick={() => setDrawerMode('help')}>
-                  Ver modelo
-                </Button>
-              </div>
-            </div>
+            <Button variant="primary" size="sm" onClick={() => setDrawerMode('help')}>
+              Guia de Clasificación
+            </Button>
           ) : null
         }
-        sideClassName="min-[920px]:w-full"
+        sideVariant="inline"
       />
 
       {sortedCards.length > 0 ? (

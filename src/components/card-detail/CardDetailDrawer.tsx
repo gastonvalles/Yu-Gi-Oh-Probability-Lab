@@ -1,9 +1,9 @@
-import { useEffect } from 'react'
+import { startTransition, useEffect, useState } from 'react'
 
 import type { DeckZone } from '../../app/model'
 import type { DeckFormat } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
-import { CardDetail } from './CardDetail'
+import { CardDetail, CardDetailSkeleton } from './CardDetail'
 
 interface CardDetailDrawerProps {
   card: ApiCardSearchResult | null
@@ -22,6 +22,8 @@ export function CardDetailDrawer({
   onAddToZone,
   onClose,
 }: CardDetailDrawerProps) {
+  const [isReady, setIsReady] = useState(false)
+
   useEffect(() => {
     if (!isOpen) {
       return
@@ -43,6 +45,35 @@ export function CardDetailDrawer({
     }
   }, [isOpen, onClose])
 
+  useEffect(() => {
+    if (!isOpen || !card) {
+      setIsReady(false)
+      return
+    }
+
+    if (typeof window === 'undefined') {
+      setIsReady(true)
+      return
+    }
+
+    let frameA = 0
+    let frameB = 0
+
+    setIsReady(false)
+    frameA = window.requestAnimationFrame(() => {
+      frameB = window.requestAnimationFrame(() => {
+        startTransition(() => {
+          setIsReady(true)
+        })
+      })
+    })
+
+    return () => {
+      window.cancelAnimationFrame(frameA)
+      window.cancelAnimationFrame(frameB)
+    }
+  }, [card, isOpen])
+
   if (!isOpen || !card) {
     return null
   }
@@ -53,17 +84,25 @@ export function CardDetailDrawer({
         role="dialog"
         aria-modal="true"
         aria-label={`Detalle de ${card.name}`}
-        className="surface-panel z-10 flex w-full max-w-[70rem] max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden rounded-[1rem] border border-(--border-subtle) p-0 shadow-none"
+        className="surface-panel z-10 flex w-full max-w-[70rem] max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden p-0 shadow-none"
         onClick={(event) => event.stopPropagation()}
       >
-        <CardDetail
-          card={card}
-          deckFormat={deckFormat}
-          layoutMode="mobile"
-          showActions={showActions}
-          onAddToZone={onAddToZone}
-          onClose={onClose}
-        />
+        {isReady ? (
+          <CardDetail
+            card={card}
+            deckFormat={deckFormat}
+            layoutMode="mobile"
+            showActions={showActions}
+            onAddToZone={onAddToZone}
+            onClose={onClose}
+          />
+        ) : (
+          <CardDetailSkeleton
+            layoutMode="mobile"
+            showActions={showActions}
+            onClose={onClose}
+          />
+        )}
       </div>
     </div>
   )

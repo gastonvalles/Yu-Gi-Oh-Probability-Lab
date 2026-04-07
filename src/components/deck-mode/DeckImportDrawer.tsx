@@ -25,6 +25,7 @@ import { loadCardCatalog } from '../../ygoprodeck'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { Button } from '../ui/Button'
 import { CloseButton } from '../ui/IconButton'
+import { Skeleton } from '../ui/Skeleton'
 
 interface DeckImportDrawerProps {
   deckBuilder: DeckBuilderState
@@ -261,40 +262,35 @@ export function DeckImportDrawer({
         <aside
           className={[
             'surface-panel absolute right-0 top-0 grid h-[100dvh] w-full grid-rows-[auto_minmax(0,1fr)] gap-0 border-l border-(--border-subtle) p-0 shadow-[-28px_0_54px_rgba(0,0,0,0.38)]',
-            preview ? 'max-w-[62rem]' : 'max-w-[46rem]',
+            preview ? 'max-w-[48rem]' : 'max-w-[34rem]',
           ].join(' ')}
+          style={{ background: 'var(--card-background)' }}
         >
-          <div className="grid gap-2 border-b border-(--border-subtle) px-4 py-3">
+          <div className="grid gap-1.5 border-b border-(--border-subtle) px-3 py-2.5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Importacion de deck</p>
                 <h3 className="m-[0.18rem_0_0] text-[1.05rem] leading-none text-(--text-main)">
-                  Subir archivo y previsualizar antes de reemplazar
+                  Subí un archivo o pegá texto
                 </h3>
-                <p className="app-muted m-[0.35rem_0_0] max-w-[52ch] text-[0.78rem] leading-[1.16]">
-                  El camino principal es archivo. Soporta el TXT exportado por la app, JSON serializado del proyecto y YDK. Pegar texto manual queda como alternativa secundaria.
-                </p>
               </div>
 
               <CloseButton size="sm" aria-label="Cerrar importador" onClick={handleClose} />
             </div>
           </div>
 
-          <div className="min-h-0 overflow-y-auto px-4 py-4">
+          <div className="min-h-0 overflow-y-auto px-3 py-3">
             <div
               className={[
-                'grid gap-4',
+                'grid gap-3',
                 preview ? 'min-[980px]:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)]' : '',
               ].join(' ').trim()}
             >
               <section className="grid gap-3 self-start">
-                <article className="surface-card grid gap-3 px-3 py-3">
+                <article className="surface-card grid gap-2.5 px-3 py-3">
                   <div className="grid gap-0.5">
                     <small className="app-muted text-[0.68rem] uppercase tracking-widest">Archivo</small>
                     <strong className="text-[0.96rem] text-(--text-main)">Subí o arrastrá el deck</strong>
-                    <p className="app-muted m-0 text-[0.76rem] leading-[1.16]">
-                      Round-trip directo con el TXT que genera el Paso 4. También podés cargar `.json` y `.ydk`.
-                    </p>
                   </div>
 
                   <div
@@ -323,9 +319,6 @@ export function DeckImportDrawer({
                   >
                     <div className="grid gap-1">
                       <strong className="text-[0.9rem] text-(--text-main)">Arrastrá el archivo acá</strong>
-                      <p className="app-muted m-0 text-[0.74rem] leading-[1.14]">
-                        o elegilo manualmente para procesarlo y ver el preview.
-                      </p>
                     </div>
 
                     <div className="flex flex-wrap justify-center gap-2">
@@ -359,21 +352,14 @@ export function DeckImportDrawer({
                     <p className="surface-card-danger m-0 px-2.5 py-2 text-[0.76rem] leading-[1.16] text-(--text-main)">
                       {formError}
                     </p>
-                  ) : (
-                    <p className="app-muted m-0 text-[0.74rem] leading-[1.16]">
-                      Si el archivo ya estaba exportado por la app, el TXT debería reimportarse sin fricción.
-                    </p>
-                  )}
+                  ) : null}
                 </article>
 
-                <article className="surface-panel-soft grid gap-2 px-3 py-3">
-                  <div className="flex items-start justify-between gap-3 max-[620px]:grid">
+                <article className="surface-panel-soft grid gap-2 px-3 py-2.5">
+                  <div className="flex items-center justify-between gap-3">
                     <div className="grid gap-0.5">
-                      <small className="app-muted text-[0.68rem] uppercase tracking-widest">Fallback manual</small>
-                      <strong className="text-[0.88rem] text-(--text-main)">Pegar texto como alternativa</strong>
-                      <p className="app-muted m-0 text-[0.75rem] leading-[1.14]">
-                        Úsalo sólo si no tenés archivo o querés probar una lista copiada.
-                      </p>
+                      <small className="app-muted text-[0.68rem] uppercase tracking-widest">Texto manual</small>
+                      <strong className="text-[0.88rem] text-(--text-main)">Pegar lista</strong>
                     </div>
 
                     <Button
@@ -398,11 +384,7 @@ export function DeckImportDrawer({
                         className="app-field min-h-[13rem] w-full resize-y px-3 py-2 text-[0.82rem] leading-[1.25]"
                       />
 
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="app-muted m-0 text-[0.74rem] leading-[1.16]">
-                          Si no hay encabezados, todo entra a Main Deck por defecto.
-                        </p>
-
+                      <div className="flex flex-wrap items-center justify-end gap-2">
                         <div className="flex flex-wrap gap-2">
                           <Button
                             variant="primary"
@@ -432,7 +414,41 @@ export function DeckImportDrawer({
                 </article>
               </section>
 
-              {preview ? (
+              {isProcessing ? (
+                <section className="grid gap-3 self-start" aria-hidden="true">
+                  <article className="surface-card grid gap-2.5 px-3 py-3">
+                    <div className="grid gap-2">
+                      <Skeleton className="h-3 w-20" />
+                      <Skeleton className="h-5 w-56" />
+                      <Skeleton className="h-3 w-full max-w-[24rem]" />
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5">
+                      <Skeleton radius="chip" className="h-7 w-24" />
+                      <Skeleton radius="chip" className="h-7 w-40" />
+                    </div>
+
+                    <div className="grid gap-2 min-[620px]:grid-cols-3">
+                      <Skeleton radius="panel" className="h-[4.9rem] w-full" />
+                      <Skeleton radius="panel" className="h-[4.9rem] w-full" />
+                      <Skeleton radius="panel" className="h-[4.9rem] w-full" />
+                    </div>
+
+                    <div className="grid gap-2">
+                      {Array.from({ length: 5 }, (_, index) => (
+                        <div key={index} className="surface-panel-soft grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-2.5 py-2">
+                          <Skeleton radius="chip" className="h-5 w-11" />
+                          <div className="grid gap-1.5">
+                            <Skeleton className="h-3.5 w-[78%]" />
+                            <Skeleton className="h-2.5 w-[52%]" />
+                          </div>
+                          <Skeleton radius="chip" className="h-5 w-10" />
+                        </div>
+                      ))}
+                    </div>
+                  </article>
+                </section>
+              ) : preview ? (
                 <section className="grid gap-3 self-start">
                     <article className="surface-card grid gap-2.5 px-3 py-3">
                       <div className="flex flex-wrap items-start justify-between gap-2">

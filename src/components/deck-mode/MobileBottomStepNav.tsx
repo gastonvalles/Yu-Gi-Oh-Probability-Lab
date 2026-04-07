@@ -1,4 +1,4 @@
-import type { SVGProps } from 'react'
+import { useEffect, useState, type SVGProps } from 'react'
 
 import {
   DECK_WORKFLOW_TONE_LABEL,
@@ -15,32 +15,19 @@ interface MobileBottomStepNavProps {
 function DeckBuilderIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
-      <rect
-        x="2.75"
-        y="6.6"
-        width="8.2"
-        height="11.2"
-        rx="1.15"
-        transform="rotate(-18 2.75 6.6)"
-        strokeWidth="1.8"
-      />
-      <rect
-        x="7.9"
-        y="4.35"
-        width="8.2"
-        height="11.2"
-        rx="1.15"
-        strokeWidth="1.8"
-      />
-      <rect
-        x="12.85"
-        y="5.2"
-        width="8.2"
-        height="11.2"
-        rx="1.15"
-        transform="rotate(18 12.85 5.2)"
-        strokeWidth="1.8"
-      />
+      <g transform="rotate(-16 7.2 12)">
+        <rect x="4.2" y="6.1" width="6.6" height="10.5" rx="1.1" strokeWidth="1.55" />
+        <rect x="5" y="6.95" width="5" height="8.8" rx="0.82" strokeWidth="1.2" />
+      </g>
+      <g>
+        <rect x="8.7" y="4.65" width="6.8" height="11.2" rx="1.12" strokeWidth="1.65" />
+        <rect x="9.55" y="5.55" width="5.1" height="9.4" rx="0.86" strokeWidth="1.2" />
+        <ellipse cx="12.1" cy="10.25" rx="1.45" ry="2.45" strokeWidth="1.15" />
+      </g>
+      <g transform="rotate(16 16.8 12)">
+        <rect x="13.5" y="6.1" width="6.6" height="10.5" rx="1.1" strokeWidth="1.55" />
+        <rect x="14.3" y="6.95" width="5" height="8.8" rx="0.82" strokeWidth="1.2" />
+      </g>
     </svg>
   )
 }
@@ -97,11 +84,19 @@ export function MobileBottomStepNav({
   activeStep,
   onStepChange,
 }: MobileBottomStepNavProps) {
+  const [optimisticStep, setOptimisticStep] = useState<DeckWorkflowStepKey | null>(null)
+
+  useEffect(() => {
+    setOptimisticStep(null)
+  }, [activeStep])
+
+  const highlightedStep = optimisticStep ?? activeStep
+
   return (
     <nav aria-label="Pasos del workflow" className="mobile-step-nav">
       <div className="mobile-step-nav-grid">
         {items.map((item) => {
-          const isActive = item.key === activeStep
+          const isActive = item.key === highlightedStep
           const isDisabled = item.disabled && !isActive
           const statusLabel = DECK_WORKFLOW_TONE_LABEL[item.tone]
 
@@ -110,15 +105,19 @@ export function MobileBottomStepNav({
               key={item.key}
               type="button"
               aria-current={isActive ? 'step' : undefined}
+              aria-pressed={isActive}
               aria-disabled={isDisabled || undefined}
               aria-label={`${item.title}. ${statusLabel}. ${item.metric}.`}
               data-active={isActive ? 'true' : 'false'}
               data-tone={item.tone}
               data-disabled={isDisabled ? 'true' : 'false'}
-              className="mobile-step-nav-item"
+              className={['mobile-step-nav-item', isActive ? 'mobile-step-nav-item-active' : ''].join(' ').trim()}
               disabled={isDisabled}
               title={isDisabled ? `${item.title}: ${item.detail}` : item.title}
-              onClick={() => onStepChange(item.key)}
+              onClick={() => {
+                setOptimisticStep(item.key)
+                onStepChange(item.key)
+              }}
             >
               <span className="mobile-step-nav-icon" aria-hidden="true">
                 <StepIcon step={item.key} />

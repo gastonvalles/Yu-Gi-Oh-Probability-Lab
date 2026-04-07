@@ -149,6 +149,75 @@ export function useDeckPointerDrag({
       }
 
       if (payload.type === 'search-result') {
+        const hoveredDeckCard = hoveredElement.closest<HTMLElement>('[data-deck-card-index]')
+
+        if (hoveredDeckCard) {
+          const zone = hoveredDeckCard.dataset.deckZone as DeckZone | undefined
+          const index = Number.parseInt(hoveredDeckCard.dataset.deckCardIndex ?? '', 10)
+
+          if (zone === 'side' && !Number.isNaN(index)) {
+            const rect = hoveredDeckCard.getBoundingClientRect()
+            const explicitSideTarget = buildAllowedDropTarget(
+              {
+                zone,
+                index: clientX > rect.left + rect.width / 2 ? index + 1 : index,
+              },
+              payload,
+            )
+
+            if (explicitSideTarget) {
+              return explicitSideTarget
+            }
+          }
+        }
+
+        if (isDesktopDeckBuilderViewport()) {
+          const sideDropContainer = Array.from(
+            document.querySelectorAll<HTMLElement>('[data-deck-zone-drop-target="side"]'),
+          ).find((zoneContainer) => {
+            const rect = zoneContainer.getBoundingClientRect()
+
+            return (
+              clientX >= rect.left &&
+              clientX <= rect.right &&
+              clientY >= rect.top &&
+              clientY <= rect.bottom
+            )
+          })
+
+          if (sideDropContainer) {
+            const count = Number.parseInt(sideDropContainer.dataset.deckZoneCount ?? '', 10)
+            const explicitSideTarget = buildAllowedDropTarget(
+              {
+                zone: 'side',
+                index: Number.isNaN(count) ? 0 : count,
+              },
+              payload,
+            )
+
+            if (explicitSideTarget) {
+              return explicitSideTarget
+            }
+          }
+        }
+
+        const sideZone = hoveredElement.closest<HTMLElement>('[data-deck-zone="side"]')
+
+        if (sideZone) {
+          const count = Number.parseInt(sideZone.dataset.deckCount ?? '', 10)
+          const explicitSideTarget = buildAllowedDropTarget(
+            {
+              zone: 'side',
+              index: Number.isNaN(count) ? 0 : count,
+            },
+            payload,
+          )
+
+          if (explicitSideTarget) {
+            return explicitSideTarget
+          }
+        }
+
         const builderRoot = hoveredElement.closest<HTMLElement>('[data-deck-builder-root]')
 
         if (!builderRoot) {

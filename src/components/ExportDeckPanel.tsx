@@ -1,53 +1,32 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
+import { buildDecklistText } from '../app/deck-image-export'
+import { renderDeckAsCanvas } from '../app/deck-image-export-render'
+import type { DeckBuilderState } from '../app/model'
+import type { DeckFormat } from '../types'
 import { StepHero } from './StepHero'
 import { Button } from './ui/Button'
+import { Skeleton } from './ui/Skeleton'
 
 interface ExportDeckPanelProps {
+  deckBuilder: DeckBuilderState
+  deckFormat: DeckFormat
   deckName: string
-  deckFormatLabel: string
   mainDeckCount: number
-  extraDeckCount: number
-  sideDeckCount: number
-  totalCardCount: number
   onExport: () => Promise<void>
 }
 
-function ExportStatCard({
-  label,
-  value,
-  tone = 'neutral',
-}: {
-  label: string
-  value: string
-  tone?: 'neutral' | 'accent'
-}) {
-  return (
-    <article
-      className={[
-        'grid gap-1 rounded-none border px-3 py-2.5',
-        tone === 'accent'
-          ? 'border-(--primary) bg-[rgb(var(--primary-rgb)/0.12)]'
-          : 'border-(--border-subtle) bg-[rgb(var(--card-background-rgb)/0.86)]',
-      ].join(' ')}
-    >
-      <span className="app-soft text-[0.68rem] uppercase tracking-widest">{label}</span>
-      <strong className="text-[1.05rem] leading-none text-(--text-main)">{value}</strong>
-    </article>
-  )
-}
-
 export function ExportDeckPanel({
+  deckBuilder,
+  deckFormat,
   deckName,
-  deckFormatLabel,
   mainDeckCount,
-  extraDeckCount,
-  sideDeckCount,
-  totalCardCount,
   onExport,
 }: ExportDeckPanelProps) {
   const [busy, setBusy] = useState(false)
-  const hasDeck = totalCardCount > 0
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
+  const [previewState, setPreviewState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const textPreview = useMemo(() => buildDecklistText(deckBuilder), [deckBuilder])
 
   const handleExport = async () => {
     setBusy(true)
@@ -61,93 +40,55 @@ export function ExportDeckPanel({
     }
   }
 
+  useEffect(() => {
+    let disposed = false
+
+    if (mainDeckCount === 0) {
+      setImagePreviewUrl(null)
+      setPreviewState('idle')
+      return () => {
+        disposed = true
+      }
+    }
+
+    setPreviewState('loading')
+
+    void (async () => {
+      try {
+        const canvas = await renderDeckAsCanvas(deckBuilder, deckFormat)
+
+        if (disposed) {
+          return
+        }
+
+        setImagePreviewUrl(canvas.toDataURL('image/png'))
+        setPreviewState('ready')
+      } catch {
+        if (disposed) {
+          return
+        }
+
+        setImagePreviewUrl(null)
+        setPreviewState('error')
+      }
+    })()
+
+    return () => {
+      disposed = true
+    }
+  }, [deckBuilder, deckFormat, mainDeckCount])
+
   return (
-    <article className="surface-panel grid h-full min-h-0 gap-3 p-2.5 min-[1180px]:grid-rows-[auto_minmax(0,1fr)]">
+    <article className="surface-panel deck-mobile-step-shell grid h-full min-h-0 gap-2.5 p-0 min-[1101px]:gap-3 min-[1101px]:p-2.5 min-[1180px]:grid-rows-[auto_minmax(0,1fr)]">
       <StepHero
-        step="Paso 4"
-        pill="Export"
+        step="Descargá tu deck"
         title="Exportá tu deck"
-        description="Generá la salida final del deck actual sin moverte del workflow."
-      />
-
-      <div className="grid gap-3 min-[1180px]:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-        <section className="surface-panel-soft grid gap-3 p-3 min-[1180px]:min-h-[420px] content-start">
-          <div className="flex items-start justify-between gap-3 max-[620px]:grid">
-            <div className="grid gap-1">
-              <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Resumen del deck</p>
-              <h3 className="m-0 text-[1.1rem] leading-none">
-                {deckName.trim() || 'Deck sin nombre'}
-              </h3>
-              <p className="app-muted m-0 text-[0.76rem] leading-[1.18]">
-                Salida basada en la lista actual del builder.
-              </p>
-            </div>
-
-            <div className="grid content-start gap-1.5 max-[620px]:justify-items-start">
-              <span className="app-chip px-2 py-1 text-[0.72rem] whitespace-nowrap">
-                Formato {deckFormatLabel}
-              </span>
-              <span className="app-chip-accent px-2 py-1 text-[0.72rem] whitespace-nowrap">
-                {totalCardCount} cartas
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 min-[1420px]:grid-cols-4">
-            <ExportStatCard label="Main Deck" value={`${mainDeckCount}`} tone="accent" />
-            <ExportStatCard label="Extra Deck" value={`${extraDeckCount}`} />
-            <ExportStatCard label="Side Deck" value={`${sideDeckCount}`} />
-            <ExportStatCard label="Total" value={`${totalCardCount}`} />
-          </div>
-
-          <article className="surface-panel-strong grid gap-2.5 p-3">
-            <div className="flex items-start justify-between gap-3 max-[720px]:grid">
-              <div className="grid gap-1">
-                <strong className="text-[0.95rem] leading-none text-(--text-main)">
-                  Salida
-                </strong>
-                <p className="app-muted m-0 text-[0.76rem] leading-[1.18]">
-                  Se generan dos archivos desde el deck actual.
-                </p>
-              </div>
-
-              <span className="app-chip-accent self-start px-2 py-1 text-[0.72rem] whitespace-nowrap">
-                2 archivos
-              </span>
-            </div>
-
-            <div className="grid gap-2 min-[620px]:grid-cols-2">
-              <div className="surface-card grid gap-1 px-2.5 py-2.5">
-                <span className="app-soft text-[0.68rem] uppercase tracking-widest">PNG</span>
-                <strong className="text-[0.88rem] leading-none text-(--text-main)">Imagen del deck</strong>
-                <p className="app-muted m-0 text-[0.72rem] leading-[1.16]">
-                  Vista completa para compartir rápido.
-                </p>
-              </div>
-
-              <div className="surface-card grid gap-1 px-2.5 py-2.5">
-                <span className="app-soft text-[0.68rem] uppercase tracking-widest">TXT</span>
-                <strong className="text-[0.88rem] leading-none text-(--text-main)">Lista en inglés</strong>
-                <p className="app-muted m-0 text-[0.72rem] leading-[1.16]">
-                  Main, Extra y Side en texto plano.
-                </p>
-              </div>
-            </div>
-          </article>
-        </section>
-
-        <aside className="surface-panel-strong grid content-start gap-3 p-3 min-[1180px]:sticky min-[1180px]:top-0 min-[1180px]:self-start">
-          <div className="grid gap-1">
-            <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Acción principal</p>
-            <h3 className="m-0 text-[1.05rem] leading-none">Descargar</h3>
-            <p className="app-muted m-0 text-[0.76rem] leading-[1.18]">
-              Genera el PNG y el TXT del deck actual.
-            </p>
-          </div>
-
+        description={`Generá la salida final de ${deckName.trim() || 'tu deck'} sin moverte del workflow.`}
+        variant="compact"
+        side={(
           <Button
             variant="primary"
-            size="lg"
+            size="md"
             disabled={busy || mainDeckCount === 0}
             onClick={() => {
               void handleExport()
@@ -155,20 +96,71 @@ export function ExportDeckPanel({
           >
             {busy ? 'Generando archivos...' : 'Descargar Deck'}
           </Button>
+        )}
+        sideVariant="inline"
+      />
 
-          <div className="surface-card grid gap-1.5 px-2.5 py-2.5">
-            <span className="app-soft text-[0.68rem] uppercase tracking-widest">Estado</span>
-            <strong className="text-[0.9rem] leading-none text-(--text-main)">
-              {hasDeck ? 'Listo para exportar' : 'Esperando cartas'}
-            </strong>
-            <p className="app-muted m-0 text-[0.74rem] leading-[1.16]">
-              {hasDeck
-                ? 'La descarga usa exactamente la lista visible en el builder.'
-                : 'Volvé al Deck Builder y cargá cartas para habilitar la descarga.'}
+      <section className="grid min-h-0 gap-3 min-[1180px]:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]">
+        <article className="surface-panel-soft grid min-h-0 gap-2.5 overflow-hidden p-3 min-[1180px]:grid-rows-[auto_minmax(0,1fr)]">
+          <div className="grid gap-1">
+            <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Preview PNG</p>
+            <p className="app-muted m-0 text-[0.76rem] leading-[1.18]">
+              Vista previa estática de la imagen que se va a descargar.
             </p>
           </div>
-        </aside>
-      </div>
+
+          <div className="min-h-[20rem] overflow-y-auto overflow-x-hidden min-[1180px]:min-h-0">
+            {previewState === 'ready' && imagePreviewUrl ? (
+              <img
+                src={imagePreviewUrl}
+                alt="Vista previa del PNG del deck"
+                className="pointer-events-none block h-auto w-full select-none"
+                draggable={false}
+              />
+            ) : previewState === 'loading' ? (
+              <div className="grid gap-2 p-2" aria-hidden="true">
+                <Skeleton radius="panel" className="h-10 w-[42%]" />
+                <Skeleton radius="none" className="aspect-[0.74] w-full" />
+                <div className="grid grid-cols-4 gap-2">
+                  <Skeleton radius="none" className="aspect-[0.72] w-full" />
+                  <Skeleton radius="none" className="aspect-[0.72] w-full" />
+                  <Skeleton radius="none" className="aspect-[0.72] w-full" />
+                  <Skeleton radius="none" className="aspect-[0.72] w-full" />
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  <Skeleton radius="none" className="aspect-[0.72] w-full" />
+                  <Skeleton radius="none" className="aspect-[0.72] w-full" />
+                  <Skeleton radius="none" className="aspect-[0.72] w-full" />
+                  <Skeleton radius="none" className="aspect-[0.72] w-full" />
+                </div>
+              </div>
+            ) : (
+              <div className="grid h-full place-items-center text-center">
+                <p className="app-muted m-0 max-w-[28rem] text-[0.8rem] leading-[1.2]">
+                  {previewState === 'error'
+                    ? 'No pude generar la preview del PNG.'
+                    : 'Agregá cartas al Main Deck para habilitar la preview.'}
+                </p>
+              </div>
+            )}
+          </div>
+        </article>
+
+        <article className="surface-panel-soft grid min-h-0 gap-2.5 overflow-hidden p-3 min-[1180px]:grid-rows-[auto_minmax(0,1fr)]">
+          <div className="grid gap-1">
+            <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Preview TXT</p>
+            <p className="app-muted m-0 text-[0.76rem] leading-[1.18]">
+              Vista previa estática del archivo de texto exportado.
+            </p>
+          </div>
+
+          <div className="min-h-[20rem] overflow-y-auto overflow-x-hidden min-[1180px]:min-h-0">
+            <pre className="pointer-events-none m-0 min-h-full text-[0.76rem] leading-[1.36] whitespace-pre-wrap break-words text-(--text-main) select-none">
+              {textPreview}
+            </pre>
+          </div>
+        </article>
+      </section>
     </article>
   )
 }

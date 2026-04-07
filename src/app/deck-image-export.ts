@@ -11,7 +11,7 @@ export async function exportDeckAssets(deckBuilder: DeckBuilderState, deckFormat
   downloadTextAsTxt(buildDecklistText(deckBuilder), filenameBase)
 }
 
-function buildDecklistText(deckBuilder: DeckBuilderState): string {
+export function buildDecklistText(deckBuilder: DeckBuilderState): string {
   const lines = [
     'Main Deck',
     ...buildZoneDecklistLines(deckBuilder.main),

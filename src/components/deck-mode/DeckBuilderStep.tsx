@@ -182,41 +182,19 @@ export function DeckBuilderStep({
   return (
     <section
       id="step1"
-      className="surface-panel grid w-full gap-3 p-2.5 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_minmax(0,1fr)] min-[1101px]:overflow-hidden"
+      className="surface-panel deck-builder-step-shell grid w-full gap-2.5 p-0 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_minmax(0,1fr)] min-[1101px]:gap-3 min-[1101px]:overflow-hidden min-[1101px]:p-2.5"
     >
       <StepHero
-        step="Paso 1"
-        pill="Deck Builder"
+        step="Deck Builder"
         title="Armá tu deck en el builder"
         description="Buscá cartas en el buscador, abrí el detalle con click o tap y agregalas a Main, Extra o Side. El drag & drop sigue reordenando entre zonas y el click derecho quita la copia."
-        side={
-          <>
-            <span className="app-soft text-[0.68rem] uppercase tracking-widest">Nombre del deck</span>
-            <input
-              type="text"
-              value={deckBuilder.deckName}
-              onChange={(event) => onDeckNameChange(event.target.value)}
-              placeholder="Nombre del deck"
-              className="app-field w-full px-2 py-[0.55rem] text-[0.88rem] font-semibold"
-            />
-            <span className="app-soft text-[0.68rem] uppercase tracking-widest">Formato del deck</span>
-            <select
-              value={deckFormat}
-              onChange={(event) => onDeckFormatChange(event.target.value as DeckFormat)}
-              className="app-field w-full px-2 py-[0.55rem] text-[0.88rem] font-semibold"
-            >
-              <option value="unlimited">Sin límite</option>
-              <option value="tcg">TCG</option>
-              <option value="ocg">OCG</option>
-              <option value="goat">GOAT</option>
-              <option value="edison">Edison</option>
-              <option value="genesys">Genesys</option>
-            </select>
-            <Button variant="primary" size="md" fullWidth onClick={() => setImportDrawerOpen(true)}>
-              Importar deck
-            </Button>
-          </>
-        }
+        variant="compact"
+        side={(
+          <Button variant="primary" size="sm" onClick={() => setImportDrawerOpen(true)}>
+            Importar deck
+          </Button>
+        )}
+        sideVariant="inline"
       />
 
       {showGenesysPoints ? (
@@ -274,9 +252,32 @@ export function DeckBuilderStep({
           ) : null}
 
           <div className="relative z-0 grid gap-2.5 p-3 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:overflow-y-auto min-[1101px]:p-2.5 min-[1101px]:gap-2">
+            <div className="grid gap-2 min-[760px]:grid-cols-[minmax(0,1fr)_152px]">
+              <input
+                type="text"
+                value={deckBuilder.deckName}
+                onChange={(event) => onDeckNameChange(event.target.value)}
+                placeholder="Nombre del deck"
+                className="app-field deck-builder-meta-field w-full px-2.5 py-[0.52rem] text-[0.9rem] font-semibold"
+              />
+
+              <select
+                value={deckFormat}
+                onChange={(event) => onDeckFormatChange(event.target.value as DeckFormat)}
+                className="app-field deck-builder-meta-field deck-builder-meta-select w-full px-2.5 py-[0.52rem] text-[0.88rem] font-semibold"
+              >
+                <option value="unlimited">Sin límite</option>
+                <option value="tcg">TCG</option>
+                <option value="ocg">OCG</option>
+                <option value="goat">GOAT</option>
+                <option value="edison">Edison</option>
+                <option value="genesys">Genesys</option>
+              </select>
+            </div>
+
             <div className="min-[1101px]:hidden">
               <Button variant="primary" size="md" fullWidth onClick={() => setMobileSearchOpen(true)}>
-                Buscar cartas
+                Buscar
               </Button>
             </div>
 

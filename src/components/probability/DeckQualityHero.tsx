@@ -60,11 +60,8 @@ export function DeckQualityHero({
           <p className="app-muted m-0 text-[0.8rem] leading-[1.16]">{subtitle}</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="surface-card px-2 py-1 text-[0.7rem] text-(--text-muted)">
-            Calculado sobre {formatInteger(allCheckCount)} checks activos
-          </span>
-          {feedback ? (
+        {feedback ? (
+          <div className="flex flex-wrap items-center gap-2">
             <span
               className={[
                 'px-2 py-1 text-[0.72rem]',
@@ -77,8 +74,8 @@ export function DeckQualityHero({
             >
               {feedback.label}
             </span>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
@@ -90,7 +87,7 @@ export function DeckQualityHero({
         </p>
       </div>
 
-      <div className="grid gap-1.5 rounded-[18px] border border-(--border-subtle) bg-[rgb(var(--secondary-rgb)/0.16)] px-3 py-2.5">
+      <div className="surface-panel-soft grid gap-1.5 px-3 py-2.5">
         <CompactNarrativeLine
           emptyLabel="Sin fortalezas activas"
           entries={activeStrengths}
@@ -145,7 +142,7 @@ function CheckColumn({
       <strong className="text-[0.86rem] text-(--text-main)">{title}</strong>
 
       {entries.length === 0 ? (
-        <p className="m-0 rounded-[18px] border border-(--border-subtle) bg-[rgb(var(--background-rgb)/0.3)] px-3 py-2.5 text-[0.76rem] text-(--text-muted)">
+        <p className="surface-panel-soft m-0 px-3 py-2.5 text-[0.76rem] text-(--text-muted)">
           {emptyMessage}
         </p>
       ) : (
@@ -272,7 +269,7 @@ function orderEntriesForDisplay(entries: ProbabilityCausalEntry[]): ProbabilityC
 
 function getCheckStateCardClass(kind: 'opening' | 'problem', active: boolean): string {
   if (!active) {
-    return 'rounded-[18px] border border-(--border-subtle) bg-[rgb(var(--background-rgb)/0.24)]'
+    return 'surface-panel-soft'
   }
 
   return kind === 'opening'

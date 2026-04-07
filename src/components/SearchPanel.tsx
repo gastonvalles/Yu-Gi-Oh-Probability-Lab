@@ -21,6 +21,7 @@ import type { ApiCardSearchResult } from '../ygoprodeck'
 import { CardArt } from './CardArt'
 import { Button } from './ui/Button'
 import { CloseButton } from './ui/IconButton'
+import { Skeleton } from './ui/Skeleton'
 
 interface FilterOption {
   value: string
@@ -80,16 +81,7 @@ const QUICK_TYPE_OPTIONS: Array<{ value: SearchQuickTypeFilter; label: string }>
   { value: 'monster', label: 'Monstruos' },
   { value: 'spell', label: 'Magias' },
   { value: 'trap', label: 'Trampas' },
-  { value: 'extra', label: 'Extra' },
 ]
-
-const QUICK_TYPE_LABELS: Record<SearchQuickTypeFilter, string> = {
-  all: 'Todas',
-  monster: 'Monstruos',
-  spell: 'Magias',
-  trap: 'Trampas',
-  extra: 'Extra',
-}
 
 const QUICK_TYPE_META: Record<SearchQuickTypeFilter, QuickTypeMeta> = {
   all: {
@@ -119,13 +111,6 @@ const QUICK_TYPE_META: Record<SearchQuickTypeFilter, QuickTypeMeta> = {
     levelLabel: 'Nivel / rango',
     showAttribute: false,
     showLevel: false,
-  },
-  extra: {
-    exactTypeLabel: 'Tipo de Extra',
-    raceLabel: 'Raza',
-    levelLabel: 'Nivel / rango',
-    showAttribute: true,
-    showLevel: true,
   },
 }
 
@@ -228,17 +213,6 @@ const TRAP_RACE_OPTIONS: FilterOption[] = [
   { value: 'Counter', label: 'Counter' },
 ]
 
-const EXTRA_EXACT_TYPE_VALUES = new Set([
-  'Fusion Monster',
-  'Synchro Monster',
-  'Synchro Tuner Monster',
-  'Synchro Pendulum Effect Monster',
-  'XYZ Monster',
-  'XYZ Pendulum Effect Monster',
-  'Link Monster',
-  'Pendulum Effect Fusion Monster',
-])
-
 export function SearchPanel({
   layoutMode,
   deckFormat,
@@ -319,13 +293,6 @@ export function SearchPanel({
     [filters, formatAllowsLegalityFilter, formatLabel, quickTypeMeta.raceLabel],
   )
   const sortedResults = useMemo(() => sortVisibleSearchResults(results, sortOrder), [results, sortOrder])
-  const localFiltersAffectedPage = rawResultCount !== sortedResults.length
-  const filteredCountLabel =
-    rawResultCount === sortedResults.length
-      ? `${formatInteger(sortedResults.length)} cargada${sortedResults.length === 1 ? '' : 's'}`
-      : `${formatInteger(sortedResults.length)} visibles de ${formatInteger(rawResultCount)} cargadas`
-  const metaLabel = hasMore ? filteredCountLabel : `${filteredCountLabel} · Fin de resultados`
-
   useEffect(() => {
     if (sanitizedFilterUpdates) {
       onFilterChange(sanitizedFilterUpdates)
@@ -744,46 +711,14 @@ export function SearchPanel({
                 </p>
               ) : (
                 <>
-                  <div className="surface-card flex items-center justify-between gap-2 px-2 py-1.5">
-                    <strong className="min-w-0 text-[0.76rem] text-[var(--text-main)]">
-                      {metaLabel}
-                    </strong>
-                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
-                      {localFiltersAffectedPage ? (
-                        <span className="app-chip px-2 py-1 text-[0.66rem] whitespace-nowrap">
-                          Filtrado local
-                        </span>
-                      ) : null}
-                      <div className="flex flex-wrap items-center justify-end gap-1.5">
-                        {isLoadingMore ? (
-                          <span className="app-chip px-2 py-1 text-[0.68rem] whitespace-nowrap">
-                            Cargando más...
-                          </span>
-                        ) : null}
-                        <span
-                          className={[
-                            hasMore ? 'app-chip' : 'app-chip-accent',
-                            'px-2 py-1 text-[0.68rem] whitespace-nowrap',
-                          ].join(' ')}
-                        >
-                          {hasMore ? 'Scroll infinito' : 'Lista completa'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
                   {isInitialLoading ? (
                     <div className="grid min-h-0 content-start gap-2 overflow-y-auto overflow-x-hidden pr-1">
                       {Array.from({ length: 8 }, (_, index) => (
-                        <article
-                          key={index}
-                          className="app-list-item grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2 p-1.5"
-                          aria-hidden="true"
-                        >
-                          <div className="aspect-[0.72] w-[42px] animate-pulse bg-[var(--input)]" />
+                        <article key={index} className="app-list-item grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2 p-1.5" aria-hidden="true">
+                          <Skeleton radius="none" className="aspect-[0.72] w-[42px]" />
                           <div className="grid gap-2">
-                            <span className="block h-3.5 w-[85%] animate-pulse bg-[var(--input)]" />
-                            <span className="block h-2.5 w-[62%] animate-pulse bg-[var(--input)]" />
+                            <Skeleton className="h-3.5 w-[85%]" />
+                            <Skeleton className="h-2.5 w-[62%]" />
                           </div>
                         </article>
                       ))}
@@ -883,26 +818,12 @@ export function SearchPanel({
                       })}
 
                       {isLoadingMore ? (
-                        <div
-                          className="surface-card grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2 p-1.5"
-                          aria-hidden="true"
-                        >
-                          <div className="aspect-[0.72] w-[42px] animate-pulse bg-[var(--input)]" />
+                        <div className="surface-card grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2 p-1.5" aria-hidden="true">
+                          <Skeleton radius="none" className="aspect-[0.72] w-[42px]" />
                           <div className="grid gap-2">
-                            <span className="block h-3.5 w-[85%] animate-pulse bg-[var(--input)]" />
-                            <span className="block h-2.5 w-[62%] animate-pulse bg-[var(--input)]" />
+                            <Skeleton className="h-3.5 w-[85%]" />
+                            <Skeleton className="h-2.5 w-[62%]" />
                           </div>
-                        </div>
-                      ) : null}
-
-                      {!hasMore ? (
-                        <div className="surface-card grid gap-1 px-2 py-1.5 text-center">
-                          <strong className="text-[0.72rem] text-[var(--text-main)]">
-                            Fin de resultados cargados
-                          </strong>
-                          <span className="text-[0.68rem] leading-[1.14] text-[var(--text-muted)]">
-                            Ya no quedan más coincidencias remotas para esta búsqueda.
-                          </span>
                         </div>
                       ) : null}
                     </div>
@@ -994,17 +915,6 @@ function getExactTypeFilterGroups(quickType: SearchQuickTypeFilter): FilterOptio
     ]
   }
 
-  if (quickType === 'extra') {
-    return [
-      {
-        label: 'Extra Deck',
-        options: MONSTER_EXACT_TYPE_OPTIONS.filter((option) =>
-          EXTRA_EXACT_TYPE_VALUES.has(option.value),
-        ),
-      },
-    ]
-  }
-
   return [
     { label: 'Monstruos', options: MONSTER_EXACT_TYPE_OPTIONS },
     { label: 'Spell / Trap', options: SPELL_TRAP_EXACT_TYPE_OPTIONS },
@@ -1021,7 +931,7 @@ function getRaceFilterGroups(quickType: SearchQuickTypeFilter): FilterOptionGrou
     return [{ label: 'Trampas', options: TRAP_RACE_OPTIONS }]
   }
 
-  if (quickType === 'monster' || quickType === 'extra') {
+  if (quickType === 'monster') {
     return [{ label: 'Monstruos', options: MONSTER_RACE_OPTIONS }]
   }
 

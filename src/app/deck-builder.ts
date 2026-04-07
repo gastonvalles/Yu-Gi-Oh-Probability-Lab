@@ -67,7 +67,7 @@ export function addSearchResultToDefaultZone(
     return deckBuilder
   }
 
-  const zone = getDefaultDeckZoneForCard(searchResult)
+  const zone = getDefaultDeckZoneForCardInBuilder(deckBuilder, searchResult)
   return addSearchResultToZone(deckBuilder, searchResults, apiCardId, zone, deckBuilder[zone].length, format)
 }
 
@@ -269,10 +269,20 @@ export function getDefaultDeckZoneForCard(card: ApiCardReference | ApiCardSearch
 }
 
 export function getDefaultDeckZoneForCardInBuilder(
-  _deckBuilder: DeckBuilderState,
+  deckBuilder: DeckBuilderState,
   card: ApiCardReference | ApiCardSearchResult,
 ): DeckZone {
-  return getDefaultDeckZoneForCard(card)
+  const defaultZone = getDefaultDeckZoneForCard(card)
+
+  if (deckBuilder[defaultZone].length < DECK_ZONE_LIMITS[defaultZone]) {
+    return defaultZone
+  }
+
+  if (deckBuilder.side.length < DECK_ZONE_LIMITS.side) {
+    return 'side'
+  }
+
+  return defaultZone
 }
 
 function isExtraDeckCard(card: ApiCardReference | ApiCardSearchResult): boolean {

@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { getCachedImageUrl } from '../image-cache'
 import { buildInitials } from '../app/utils'
 import type { ApiCardReference } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 import { CardLimitBadge, type CardLimitBadgeSize } from './CardLimitBadge'
+import { Skeleton } from './ui/Skeleton'
 
 const resolvedImageUrls = new Map<string, string | null>()
 
@@ -24,10 +25,15 @@ export function CardArt({
   limitBadgeSize = 'md',
 }: CardArtProps) {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(remoteUrl)
+  const [isImageLoaded, setIsImageLoaded] = useState(false)
+  const [hasImageError, setHasImageError] = useState(false)
+  const imageRef = useRef<HTMLImageElement | null>(null)
 
   useEffect(() => {
     let cancelled = false
 
+    setIsImageLoaded(false)
+    setHasImageError(false)
     setResolvedUrl(remoteUrl)
 
     if (!remoteUrl) {
@@ -57,15 +63,34 @@ export function CardArt({
     }
   }, [remoteUrl])
 
-  if (resolvedUrl) {
+  if (resolvedUrl && !hasImageError) {
     return (
       <div className="relative block h-full w-full">
+        {!isImageLoaded ? (
+          <Skeleton
+            radius="none"
+            className={['absolute inset-0', className].join(' ').trim()}
+          />
+        ) : null}
         <img
-          className={className}
+          ref={(node) => {
+            imageRef.current = node
+
+            if (node?.complete && node.naturalWidth > 0) {
+              setIsImageLoaded(true)
+            }
+          }}
+          className={[
+            'card-art-media transition-opacity duration-200',
+            isImageLoaded ? 'opacity-100' : 'opacity-0',
+            className,
+          ].join(' ').trim()}
           src={resolvedUrl}
           alt={name}
           loading="lazy"
           draggable={false}
+          onLoad={() => setIsImageLoaded(true)}
+          onError={() => setHasImageError(true)}
         />
         <CardLimitBadge card={limitCard} size={limitBadgeSize} />
       </div>
@@ -76,6 +101,7 @@ export function CardArt({
     <div className="relative block h-full w-full">
       <div
         className={[
+          'card-art-media',
           'grid place-items-center bg-[var(--input)] font-bold text-[var(--warning)]',
           className,
         ].join(' ')}

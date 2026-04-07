@@ -10,7 +10,7 @@ import {
 import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
 import {
   findDeckCard,
-  getDefaultDeckZoneForCard,
+  getDefaultDeckZoneForCardInBuilder,
   getAddSearchResultIssue,
   isCardAllowedInDeckZone,
 } from '../../app/deck-builder'
@@ -171,7 +171,7 @@ export function useDeckModeController() {
         return null
       }
 
-      const zone = getDefaultDeckZoneForCard(card)
+      const zone = getDefaultDeckZoneForCardInBuilder(deckBuilder, card)
 
       return getAddSearchResultIssue(deckBuilder, card, zone, settings.deckFormat) === null
         ? { zone, index: deckBuilder[zone].length }
@@ -351,9 +351,9 @@ export function useDeckModeController() {
         return false
       }
 
-      return handleAddSearchResultToZone(apiCardId, getDefaultDeckZoneForCard(card))
+      return handleAddSearchResultToZone(apiCardId, getDefaultDeckZoneForCardInBuilder(deckBuilder, card))
     },
-    [handleAddSearchResultToZone, resolveSearchResult],
+    [deckBuilder, handleAddSearchResultToZone, resolveSearchResult],
   )
 
   const handleSearchResultClick = useCallback(
@@ -530,12 +530,10 @@ export function useDeckModeController() {
       genesysPointCap: settings.deckFormat === 'genesys' ? GENESYS_POINT_CAP : null,
     },
     exportDeck: {
+      deckBuilder,
+      deckFormat: settings.deckFormat,
       deckName: deckBuilder.deckName,
-      deckFormatLabel: formatLabel,
       mainDeckCount: deckBuilder.main.length,
-      extraDeckCount: deckBuilder.extra.length,
-      sideDeckCount: deckBuilder.side.length,
-      totalCardCount: deckBuilder.main.length + deckBuilder.extra.length + deckBuilder.side.length,
       onExport: handleExportDeckImage,
     },
     feedback: {

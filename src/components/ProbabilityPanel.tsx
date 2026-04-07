@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
 
 import { buildCalculatorState } from '../app/calculator-state'
 import type { DerivedDeckGroup } from '../app/deck-groups'
@@ -27,6 +27,7 @@ import {
 } from './probability/probability-lab-helpers'
 import { Button } from './ui/Button'
 import { CloseButton } from './ui/IconButton'
+import { Skeleton } from './ui/Skeleton'
 
 interface ProbabilityPanelProps {
   handSize: number
@@ -65,6 +66,60 @@ const IDLE_CALCULATION_RESULT: CalculationOutput = {
 }
 
 export function ProbabilityPanel({
+  handSize,
+  mode,
+  onModeChange,
+  patterns,
+  derivedMainCards,
+  derivedGroups,
+  patternActions,
+  isEditingDeck,
+}: ProbabilityPanelProps) {
+  const [isReady, setIsReady] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      setIsReady(true)
+      return
+    }
+
+    let frameA = 0
+    let frameB = 0
+
+    setIsReady(false)
+    frameA = window.requestAnimationFrame(() => {
+      frameB = window.requestAnimationFrame(() => {
+        startTransition(() => {
+          setIsReady(true)
+        })
+      })
+    })
+
+    return () => {
+      window.cancelAnimationFrame(frameA)
+      window.cancelAnimationFrame(frameB)
+    }
+  }, [])
+
+  if (!isReady) {
+    return <ProbabilityPanelSkeleton />
+  }
+
+  return (
+    <ProbabilityPanelContent
+      handSize={handSize}
+      mode={mode}
+      onModeChange={onModeChange}
+      patterns={patterns}
+      derivedMainCards={derivedMainCards}
+      derivedGroups={derivedGroups}
+      patternActions={patternActions}
+      isEditingDeck={isEditingDeck}
+    />
+  )
+}
+
+function ProbabilityPanelContent({
   handSize,
   mode: _mode,
   onModeChange: _onModeChange,
@@ -455,12 +510,11 @@ export function ProbabilityPanel({
   const isWaitingForRoleStep = !isEmptyDeckState && !hasCompletedClassification
 
   return (
-    <article className="surface-panel grid h-full min-h-0 gap-3 p-3 min-[1240px]:grid-rows-[auto_minmax(0,1fr)]">
+    <article className="surface-panel deck-mobile-step-shell grid h-full min-h-0 gap-2.5 p-0 min-[1101px]:gap-3 min-[1101px]:p-3 min-[1240px]:grid-rows-[auto_minmax(0,1fr)]">
       <StepHero
-        step="Paso 3"
-        pill="Probability Lab"
+        step="Probability Lab"
         title="Entende que tan jugable es tu deck y que lo esta causando"
-        description="Mira el KPI, detecta las fortalezas y riesgos principales, y edita chequeos sin perder el contexto."
+        description="Mira el KPI, detecta las fortalezas y riesgos principales, y edita chequeos."
         side={(
           <Button variant="primary" size="sm" onClick={() => setPracticeOpen(true)}>
             Abrir práctica
@@ -623,6 +677,78 @@ export function ProbabilityPanel({
         onConfirm={handleConfirmDelete}
         title="Eliminar chequeo"
       />
+    </article>
+  )
+}
+
+function ProbabilityPanelSkeleton() {
+  return (
+    <article className="surface-panel deck-mobile-step-shell grid h-full min-h-0 gap-2.5 p-0 min-[1101px]:gap-3 min-[1101px]:p-3 min-[1240px]:grid-rows-[auto_minmax(0,1fr)]">
+      <section className="step-hero grid gap-2.5 p-2.5">
+        <div className="grid items-start gap-2.5 min-[1101px]:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="grid gap-2">
+            <Skeleton radius="none" className="h-3 w-24" />
+            <Skeleton radius="none" className="h-8 max-w-full w-[20rem]" />
+            <div className="grid gap-1.5">
+              <Skeleton radius="none" className="h-4 max-w-full w-[95%]" />
+              <Skeleton radius="none" className="h-4 max-w-full w-[72%]" />
+            </div>
+          </div>
+          <Skeleton className="h-10 w-32 max-[1100px]:justify-self-start" />
+        </div>
+      </section>
+
+      <div className="grid min-h-0 content-start gap-3">
+        <section className="surface-panel-strong grid gap-3 px-4 py-4">
+          <div className="grid gap-1.5">
+            <Skeleton radius="none" className="h-3 w-28" />
+            <Skeleton radius="none" className="h-8 max-w-full w-[15rem]" />
+            <div className="grid gap-1.5">
+              <Skeleton radius="none" className="h-4 max-w-full w-[96%]" />
+              <Skeleton radius="none" className="h-4 max-w-full w-[68%]" />
+            </div>
+          </div>
+
+          <div className="grid gap-2">
+            <Skeleton radius="none" className="h-14 w-44 max-w-full" />
+            <Skeleton radius="none" className="h-4 w-64 max-w-full" />
+          </div>
+
+          <div className="surface-panel-soft grid gap-1.5 px-3 py-2.5">
+            <Skeleton radius="none" className="h-4 w-full" />
+            <Skeleton radius="none" className="h-4 w-[82%]" />
+          </div>
+
+          <div className="grid gap-2.5 min-[980px]:grid-cols-2">
+            <div className="grid gap-1.5">
+              <Skeleton radius="none" className="h-4 w-28" />
+              <Skeleton radius="panel" className="h-[6.4rem] w-full" />
+              <Skeleton radius="panel" className="h-[6.4rem] w-full" />
+            </div>
+            <div className="grid gap-1.5">
+              <Skeleton radius="none" className="h-4 w-24" />
+              <Skeleton radius="panel" className="h-[6.4rem] w-full" />
+              <Skeleton radius="panel" className="h-[6.4rem] w-full" />
+            </div>
+          </div>
+        </section>
+
+        <section className="surface-panel-soft grid gap-2.5 p-3">
+          <div className="grid gap-2">
+            <Skeleton radius="none" className="h-3 w-20" />
+            <Skeleton radius="none" className="h-7 max-w-full w-52" />
+            <div className="grid gap-1.5">
+              <Skeleton radius="none" className="h-4 max-w-full w-[96%]" />
+              <Skeleton radius="none" className="h-4 max-w-full w-[74%]" />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Skeleton className="h-9 w-40 max-w-full" />
+            <Skeleton className="h-9 w-36 max-w-full" />
+            <Skeleton className="h-9 w-28 max-w-full" />
+          </div>
+        </section>
+      </div>
     </article>
   )
 }
