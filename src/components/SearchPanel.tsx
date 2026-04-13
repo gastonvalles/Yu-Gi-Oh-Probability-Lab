@@ -1,4 +1,4 @@
-import {
+﻿import {
   useEffect,
   useMemo,
   useRef,
@@ -13,6 +13,10 @@ import {
   type CardSearchFilters,
   type SearchQuickTypeFilter,
 } from '../app/card-search'
+import {
+  buildClassicCardPrimaryLine,
+  buildClassicCardStatLine,
+} from '../app/deck-builder-classic'
 import { buildFormatLimitLabel, getDeckFormatLabel } from '../app/deck-format'
 import { SEARCH_MIN_QUERY_LENGTH } from '../app/model'
 import { formatInteger } from '../app/utils'
@@ -52,6 +56,7 @@ type SearchSortOrder = 'default' | 'name-asc' | 'name-desc'
 
 interface SearchPanelProps {
   layoutMode: 'desktop' | 'mobile'
+  variant?: 'modern' | 'classic-builder'
   deckFormat: DeckFormat
   query: string
   status: 'idle' | 'loading' | 'success' | 'error'
@@ -61,6 +66,7 @@ interface SearchPanelProps {
   hasMore: boolean
   rawResultCount: number
   activeDragSearchCardId: number | null
+  selectedCardId?: number | null
   dragEnabled?: boolean
   filters: CardSearchFilters
   activeFilterCount: number
@@ -215,6 +221,7 @@ const TRAP_RACE_OPTIONS: FilterOption[] = [
 
 export function SearchPanel({
   layoutMode,
+  variant = 'modern',
   deckFormat,
   query,
   status,
@@ -224,6 +231,7 @@ export function SearchPanel({
   hasMore,
   rawResultCount,
   activeDragSearchCardId,
+  selectedCardId = null,
   dragEnabled = true,
   filters,
   activeFilterCount,
@@ -252,6 +260,7 @@ export function SearchPanel({
   const formatLabel = getDeckFormatLabel(deckFormat)
   const formatAllowsLegalityFilter = deckFormat !== 'unlimited' && deckFormat !== 'genesys'
   const isDesktopLayout = layoutMode === 'desktop'
+  const isClassicBuilder = variant === 'classic-builder'
   const advancedFilterGridClass = isDesktopLayout
     ? 'grid gap-1.5'
     : 'grid gap-1.5 min-[720px]:grid-cols-2 min-[720px]:items-start'
@@ -433,27 +442,29 @@ export function SearchPanel({
   return (
     <article
       className={[
-        'surface-panel-soft flex h-full min-h-0 flex-col overflow-hidden',
+        isClassicBuilder
+          ? 'classic-builder-search-panel flex h-full min-h-0 flex-col overflow-hidden'
+          : 'surface-panel-soft flex h-full min-h-0 flex-col overflow-hidden',
         isDesktopLayout ? 'min-[1101px]:h-full' : '',
       ].join(' ')}
     >
-      <div className="grid gap-1.5 border-b border-(--border-subtle) px-2.5 py-2.5">
+      <div className={isClassicBuilder ? 'classic-builder-search-header' : 'grid gap-1.5 border-b border-(--border-subtle) px-2.5 py-2.5'}>
         <div className="flex items-center gap-2">
           <label className="relative block min-w-0 flex-1">
             <input
               type="text"
               value={query}
               onChange={(event) => onQueryChange(event.target.value)}
-              placeholder="Buscar por nombre parcial o texto en efecto"
+              placeholder={isClassicBuilder ? 'Buscar cartas' : 'Buscar por nombre parcial o texto en efecto'}
               autoComplete="off"
               spellCheck={false}
-              className="app-field w-full px-2.5 py-2 pr-20 text-[0.84rem]"
+              className={isClassicBuilder ? 'classic-builder-search-input' : 'app-field w-full px-2.5 py-2 pr-20 text-[0.84rem]'}
             />
             {query.trim().length > 0 ? (
               <CloseButton
                 size="sm"
                 type="button"
-                aria-label="Limpiar búsqueda"
+                aria-label="Limpiar bÃºsqueda"
                 className="absolute right-2 top-1/2 -translate-y-1/2"
                 onClick={() => onQueryChange('')}
               />
@@ -463,34 +474,38 @@ export function SearchPanel({
             ) : null}
           </label>
 
-          <Button
-            variant={advancedFiltersOpen ? 'primary' : 'secondary'}
-            size="sm"
-            className="min-w-9 px-0 text-[0.98rem]"
-            aria-label={advancedFiltersOpen ? 'Ocultar filtros avanzados' : 'Mostrar filtros avanzados'}
-            aria-pressed={advancedFiltersOpen}
-            aria-controls="advanced-search-filters"
-            title="Filtros avanzados"
-            onClick={() => setAdvancedFiltersOpen((current) => !current)}
-          >
-            ⚙
-          </Button>
-        </div>
-
-        <div className="flex flex-wrap gap-1.5">
-          {QUICK_TYPE_OPTIONS.map((option) => (
+          {isClassicBuilder ? null : (
             <Button
-              key={option.value}
-              variant={filters.quickType === option.value ? 'primary' : 'secondary'}
+              variant={advancedFiltersOpen ? 'primary' : 'secondary'}
               size="sm"
-              onClick={() => onFilterChange({ quickType: option.value })}
+              className="min-w-9 px-0 text-[0.98rem]"
+              aria-label={advancedFiltersOpen ? 'Ocultar filtros avanzados' : 'Mostrar filtros avanzados'}
+              aria-pressed={advancedFiltersOpen}
+              aria-controls="advanced-search-filters"
+              title="Filtros avanzados"
+              onClick={() => setAdvancedFiltersOpen((current) => !current)}
             >
-              {option.label}
+              âš™
             </Button>
-          ))}
+          )}
         </div>
 
-        {activeFilterChips.length > 0 ? (
+        {!isClassicBuilder ? (
+          <div className="flex flex-wrap gap-1.5">
+            {QUICK_TYPE_OPTIONS.map((option) => (
+              <Button
+                key={option.value}
+                variant={filters.quickType === option.value ? 'primary' : 'secondary'}
+                size="sm"
+                onClick={() => onFilterChange({ quickType: option.value })}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
+        ) : null}
+
+        {!isClassicBuilder && activeFilterChips.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {activeFilterChips.map((chip) => (
               <button
@@ -508,12 +523,24 @@ export function SearchPanel({
             ))}
           </div>
         ) : null}
+
+        {isClassicBuilder ? (
+          <button
+            type="button"
+            className="classic-builder-search-toggle"
+            aria-pressed={advancedFiltersOpen}
+            aria-controls="advanced-search-filters"
+            onClick={() => setAdvancedFiltersOpen((current) => !current)}
+          >
+            {advancedFiltersOpen ? '↑ Hide Filters ↑' : '↓ Show Filters ↓'}
+          </button>
+        ) : null}
       </div>
 
       <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
         {advancedFiltersOpen ? (
-          <div className="border-b border-(--border-subtle) px-2.5 py-2">
-            <div id="advanced-search-filters" className="surface-card grid gap-1.5 p-2">
+          <div className={isClassicBuilder ? 'classic-builder-search-filters-shell' : 'border-b border-(--border-subtle) px-2.5 py-2'}>
+            <div id="advanced-search-filters" className={isClassicBuilder ? 'classic-builder-search-filters' : 'surface-card grid gap-1.5 p-2'}>
               <div className="grid gap-1.5 min-[380px]:grid-cols-[minmax(0,1fr)_auto] min-[380px]:items-end">
                 <label className="grid min-w-0 gap-1">
                   <span className="app-soft text-[0.58rem] uppercase tracking-[0.12em]">Orden</span>
@@ -578,7 +605,7 @@ export function SearchPanel({
                 </SearchFilterSection>
 
                 <SearchFilterSection
-                  title="Características"
+                  title="CaracterÃ­sticas"
                   summary={buildSectionSummary([
                     filters.exactType.trim().length > 0 ? filters.exactType.trim() : '',
                     filters.race.trim().length > 0 ? filters.race.trim() : '',
@@ -697,7 +724,7 @@ export function SearchPanel({
           </div>
         ) : null}
 
-        <div className="grid min-h-0 content-start gap-1.5 overflow-hidden px-2.5 py-2.5">
+        <div className={isClassicBuilder ? 'classic-builder-search-results-shell' : 'grid min-h-0 content-start gap-1.5 overflow-hidden px-2.5 py-2.5'}>
           {shouldShowResults ? (
             <div
               className="grid min-h-0 content-start gap-1.5 overflow-hidden"
@@ -712,10 +739,18 @@ export function SearchPanel({
               ) : (
                 <>
                   {isInitialLoading ? (
-                    <div className="grid min-h-0 content-start gap-2 overflow-y-auto overflow-x-hidden pr-1">
-                      {Array.from({ length: 8 }, (_, index) => (
-                        <article key={index} className="app-list-item grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2 p-1.5" aria-hidden="true">
-                          <Skeleton radius="none" className="aspect-[0.72] w-[42px]" />
+                    <div className={isClassicBuilder ? 'classic-builder-search-results-grid' : 'grid min-h-0 content-start gap-2 overflow-y-auto overflow-x-hidden pr-1'}>
+                      {Array.from({ length: isClassicBuilder ? 12 : 8 }, (_, index) => (
+                        <article
+                          key={index}
+                          className={
+                            isClassicBuilder
+                              ? 'classic-builder-search-result-card'
+                              : 'app-list-item grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2 p-1.5'
+                          }
+                          aria-hidden="true"
+                        >
+                          <Skeleton radius="none" className={isClassicBuilder ? 'classic-builder-search-result-skeleton-art' : 'aspect-[0.72] w-[42px]'} />
                           <div className="grid gap-2">
                             <Skeleton className="h-3.5 w-[85%]" />
                             <Skeleton className="h-2.5 w-[62%]" />
@@ -727,19 +762,19 @@ export function SearchPanel({
                     <div className="surface-card grid gap-1 px-2 py-2 text-[0.76rem] leading-[1.18] text-[var(--text-muted)]">
                       <p className="m-0">
                         {rawResultCount > 0
-                          ? 'Todavía no apareció una coincidencia dentro de lo ya cargado.'
+                          ? 'TodavÃ­a no apareciÃ³ una coincidencia dentro de lo ya cargado.'
                           : 'No se encontraron cartas con esos criterios.'}
                       </p>
                       <p className="m-0 text-[0.68rem] leading-[1.14]">
                         {hasMore
-                          ? 'Se cargarán más tandas automáticamente al seguir explorando.'
-                          : 'Ya no quedan más tandas disponibles.'}
+                          ? 'Se cargarÃ¡n mÃ¡s tandas automÃ¡ticamente al seguir explorando.'
+                          : 'Ya no quedan mÃ¡s tandas disponibles.'}
                       </p>
                     </div>
                   ) : (
                     <div
                       ref={resultsContainerRef}
-                      className="grid min-h-0 content-start gap-2 overflow-y-auto overflow-x-hidden pr-1"
+                      className={isClassicBuilder ? 'classic-builder-search-results-grid' : 'grid min-h-0 content-start gap-2 overflow-y-auto overflow-x-hidden pr-1'}
                     >
                       {sortedResults.map((card) => {
                         const detailChips = buildSearchResultDetailChips(card)
@@ -748,8 +783,11 @@ export function SearchPanel({
                         return (
                           <article
                             key={card.ygoprodeckId}
+                            data-selected={selectedCardId !== null && selectedCardId === card.ygoprodeckId ? 'true' : 'false'}
                             className={[
-                              'app-list-item grid w-full min-w-0 select-none grid-cols-[42px_minmax(0,1fr)] items-center gap-2 p-1.5 transition-all duration-150 ease-out will-change-transform',
+                              isClassicBuilder
+                                ? 'classic-builder-search-result-card'
+                                : 'app-list-item grid w-full min-w-0 select-none grid-cols-[42px_minmax(0,1fr)] items-center gap-2 p-1.5 transition-all duration-150 ease-out will-change-transform',
                               dragEnabled ? 'cursor-grab' : '',
                               activeDragSearchCardId === card.ygoprodeckId ? 'opacity-35' : '',
                             ].join(' ')}
@@ -781,45 +819,68 @@ export function SearchPanel({
                             onMouseEnter={(event) => onHoverStart(card.name, card, event.currentTarget)}
                             onMouseLeave={onHoverEnd}
                           >
-                            <div className="w-[42px]" data-drag-preview-source="true">
+                            <div
+                              className={isClassicBuilder ? 'classic-builder-search-result-art-shell' : 'w-[42px]'}
+                              data-drag-preview-source="true"
+                            >
                               <CardArt
                                 remoteUrl={card.imageUrlSmall}
                                 name={card.name}
-                                className="block h-auto w-full bg-[var(--input)]"
-                                limitCard={card}
+                                className={isClassicBuilder ? 'classic-builder-search-result-art' : 'block h-auto w-full bg-[var(--input)]'}
+                                limitCard={isClassicBuilder ? null : card}
                                 limitBadgeSize="sm"
                               />
                             </div>
 
-                            <div className="flex min-w-0 flex-col gap-[0.28rem]">
+                            <div className={isClassicBuilder ? 'classic-builder-search-result-copy' : 'flex min-w-0 flex-col gap-[0.28rem]'}>
                               <strong className="text-[0.8rem] leading-[1.08] break-words text-[var(--text-main)]">
                                 {card.name}
                               </strong>
-                              <p className="m-0 text-[0.72rem] leading-[1.12] break-words text-[var(--text-main)]">
-                                {buildCompactSearchDescription(card)}
-                              </p>
-                              {detailChips.length > 0 ? (
-                                <div className="flex flex-wrap gap-1">
-                                  {detailChips.map((chip) => (
-                                    <span key={`${card.ygoprodeckId}-${chip}`} className="search-result-chip">
-                                      {chip}
-                                    </span>
-                                  ))}
-                                </div>
-                              ) : null}
-                              {formatLimitLabel ? (
-                                <small className="text-[0.68rem] text-[var(--text-muted)]">
-                                  {formatLimitLabel}
-                                </small>
-                              ) : null}
+                              {isClassicBuilder ? (
+                                <>
+                                  <p className="m-0 text-[0.72rem] leading-[1.08] break-words text-[var(--text-main)]">
+                                    {buildClassicCardPrimaryLine(card)}
+                                  </p>
+                                  <p className="m-0 text-[0.72rem] leading-[1.08] break-words text-[var(--text-main)]">
+                                    {buildClassicCardStatLine(card)}
+                                  </p>
+                                </>
+                              ) : (
+                                <>
+                                  <p className="m-0 text-[0.72rem] leading-[1.12] break-words text-[var(--text-main)]">
+                                    {buildCompactSearchDescription(card)}
+                                  </p>
+                                  {detailChips.length > 0 ? (
+                                    <div className="flex flex-wrap gap-1">
+                                      {detailChips.map((chip) => (
+                                        <span key={`${card.ygoprodeckId}-${chip}`} className="search-result-chip">
+                                          {chip}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  ) : null}
+                                  {formatLimitLabel ? (
+                                    <small className="text-[0.68rem] text-[var(--text-muted)]">
+                                      {formatLimitLabel}
+                                    </small>
+                                  ) : null}
+                                </>
+                              )}
                             </div>
                           </article>
                         )
                       })}
 
                       {isLoadingMore ? (
-                        <div className="surface-card grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2 p-1.5" aria-hidden="true">
-                          <Skeleton radius="none" className="aspect-[0.72] w-[42px]" />
+                        <div
+                          className={
+                            isClassicBuilder
+                              ? 'classic-builder-search-result-card'
+                              : 'surface-card grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2 p-1.5'
+                          }
+                          aria-hidden="true"
+                        >
+                          <Skeleton radius="none" className={isClassicBuilder ? 'classic-builder-search-result-skeleton-art' : 'aspect-[0.72] w-[42px]'} />
                           <div className="grid gap-2">
                             <Skeleton className="h-3.5 w-[85%]" />
                             <Skeleton className="h-2.5 w-[62%]" />
@@ -832,11 +893,13 @@ export function SearchPanel({
               )}
             </div>
           ) : (
-            <div className="surface-card px-2 py-2 text-[0.76rem] leading-[1.16] text-[var(--text-muted)]">
-              <p className="m-0">
-                Escribí al menos {formatInteger(SEARCH_MIN_QUERY_LENGTH)} letras o abrí ⚙ para refinar la búsqueda.
-              </p>
-            </div>
+            isClassicBuilder ? null : (
+              <div className="surface-card px-2 py-2 text-[0.76rem] leading-[1.16] text-[var(--text-muted)]">
+                <p className="m-0">
+                  {`EscribÃ­ al menos ${formatInteger(SEARCH_MIN_QUERY_LENGTH)} letras o abrÃ­ âš™ para refinar la bÃºsqueda.`}
+                </p>
+              </div>
+            )
           )}
         </div>
       </div>
@@ -871,7 +934,7 @@ function SearchFilterSection({
           </span>
         </span>
         <span className="details-arrow grid h-5 w-5 shrink-0 place-items-center border border-[rgb(var(--primary-rgb)/0.3)] bg-[linear-gradient(180deg,rgb(var(--primary-rgb)/0.16),rgb(var(--secondary-rgb)/0.96))] text-[0.68rem] text-[var(--text-soft)]">
-          ▶
+          â–¶
         </span>
       </summary>
       <div className="grid min-w-0 gap-1.5 pt-0.5">{children}</div>
@@ -1092,7 +1155,7 @@ function buildSearchResultDetailChips(card: ApiCardSearchResult): string[] {
 }
 
 function buildSectionSummary(parts: string[], emptyLabel = 'Sin filtros'): string {
-  const summary = parts.filter((part) => part.length > 0).join(' · ')
+  const summary = parts.filter((part) => part.length > 0).join(' Â· ')
   return summary.length > 0 ? summary : emptyLabel
 }
 

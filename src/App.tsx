@@ -10,7 +10,7 @@ export default function App() {
   const mode = useAppSelector((state: RootState) => state.settings.mode)
   const mainClassName =
     mode === 'deck'
-      ? 'min-h-screen w-full bg-transparent px-0 py-0 min-[1101px]:px-2 min-[1101px]:py-2'
+      ? 'min-h-screen w-full bg-transparent p-0'
       : 'mx-auto min-h-screen w-[min(1760px,100vw)] bg-transparent px-2 py-2'
 
   return (

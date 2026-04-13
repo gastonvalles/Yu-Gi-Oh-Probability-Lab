@@ -14,6 +14,7 @@ import { SearchPanel } from '../SearchPanel'
 import { StepHero } from '../StepHero'
 import { Button } from '../ui/Button'
 import { CloseButton } from '../ui/IconButton'
+import { DeckBuilderClassicPreview } from './DeckBuilderClassicPreview'
 import { DeckImportDrawer } from './DeckImportDrawer'
 
 const DESKTOP_DECK_BUILDER_MEDIA_QUERY = '(min-width: 1101px)'
@@ -39,6 +40,7 @@ interface DeckBuilderStepProps {
   activeDropZone: DeckZoneType | null
   invalidDropZone: DeckZoneType | null
   activeDragSearchCardId: number | null
+  selectedDetailCard: ApiCardSearchResult | null
   onClearDeckZone: (zone: DeckZoneType) => void
   onRemoveDeckCard: (instanceId: string) => void
   onDeckCardPointerDown: (event: ReactPointerEvent<HTMLElement>, instanceId: string) => void
@@ -87,6 +89,7 @@ export function DeckBuilderStep({
   activeDropZone,
   invalidDropZone,
   activeDragSearchCardId,
+  selectedDetailCard,
   onClearDeckZone,
   onRemoveDeckCard,
   onDeckCardPointerDown,
@@ -149,10 +152,12 @@ export function DeckBuilderStep({
   const hasHiddenIssues = formatIssues.length > visibleFormatIssues.length
   const showGenesysPoints = deckFormat === 'genesys' && genesysPointTotal !== null && genesysPointCap !== null
   const showFormatIssues = deckFormat !== 'genesys' && formatIssues.length > 0
-  const desktopCompactColumnCount = getDesktopCompactDeckColumnCount(deckBuilder.main.length)
+  const desktopCompactColumnCount = getDesktopCompactDeckColumnCount(
+    'main',
+    deckBuilder.main.length,
+  )
   const pendingClearZoneCardCount = pendingClearZone ? deckBuilder[pendingClearZone].length : 0
   const pendingClearZoneLabel = pendingClearZone ? getDeckZoneLabel(pendingClearZone) : ''
-
   const handleSearchCardPointerDown = (
     event: ReactPointerEvent<HTMLElement>,
     apiCardId: number,
@@ -176,9 +181,15 @@ export function DeckBuilderStep({
     setPendingClearZone(null)
   }
 
-  const renderSearchPanel = (options: { layoutMode: 'desktop' | 'mobile'; dragEnabled: boolean }) => (
+  const renderSearchPanel = (options: {
+    layoutMode: 'desktop' | 'mobile'
+    dragEnabled: boolean
+    variant?: 'modern' | 'classic-builder'
+    selectedCardId?: number | null
+  }) => (
     <SearchPanel
       layoutMode={options.layoutMode}
+      variant={options.variant}
       deckFormat={deckFormat}
       query={query}
       status={status}
@@ -188,6 +199,7 @@ export function DeckBuilderStep({
       hasMore={hasMore}
       rawResultCount={loadedSearchResultCount}
       activeDragSearchCardId={activeDragSearchCardId}
+      selectedCardId={options.selectedCardId}
       dragEnabled={options.dragEnabled}
       filters={searchFilters}
       activeFilterCount={activeFilterCount}
@@ -203,6 +215,151 @@ export function DeckBuilderStep({
       onHoverEnd={onHoverEnd}
     />
   )
+
+  const previewCard = selectedDetailCard
+  const selectedCardId = selectedDetailCard?.ygoprodeckId ?? null
+
+  if (isDesktopDeckBuilder) {
+    return (
+      <section
+        id="step1"
+        className="classic-builder-page"
+      >
+        <div className="classic-builder-layout">
+          <DeckBuilderClassicPreview card={previewCard} />
+
+          <article
+            className="classic-builder-workspace deck-builder-root-drop-surface"
+            data-deck-builder-root="true"
+            data-deck-builder-root-drop-state={builderRootDropState}
+          >
+            {builderRootDropState !== 'idle' ? (
+              <div
+                className="deck-builder-root-drop-overlay pointer-events-none absolute inset-0 z-10"
+                data-drop-state={builderRootDropState}
+              />
+            ) : null}
+
+            <div className="classic-builder-workspace-inner">
+              <div className="classic-builder-toolbar">
+                <div className="classic-builder-toolbar-fields">
+                  <input
+                    type="text"
+                    value={deckBuilder.deckName}
+                    onChange={(event) => onDeckNameChange(event.target.value)}
+                    placeholder="Nombre del deck"
+                    className="app-field deck-builder-meta-field classic-builder-toolbar-field"
+                  />
+
+                  <label className="classic-builder-toolbar-select-wrap">
+                    <select
+                      value={deckFormat}
+                      onChange={(event) => onDeckFormatChange(event.target.value as DeckFormat)}
+                      className="app-field deck-builder-meta-field deck-builder-meta-select classic-builder-toolbar-select"
+                    >
+                      <option value="unlimited">Sin límite</option>
+                      <option value="tcg">TCG</option>
+                      <option value="ocg">OCG</option>
+                      <option value="goat">GOAT</option>
+                      <option value="edison">Edison</option>
+                      <option value="genesys">Genesys</option>
+                    </select>
+                  </label>
+                </div>
+
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="classic-builder-import-button"
+                  onClick={() => setImportDrawerOpen(true)}
+                >
+                  Import deck
+                </Button>
+              </div>
+
+              {DECK_ZONE_ITEMS.map(({ zone, title }) => {
+                const zoneNode = (
+                  <DeckZone
+                    zone={zone}
+                    title={title}
+                    cards={deckBuilder[zone]}
+                    activeDragInstanceId={activeDragInstanceId}
+                    dropState={
+                      activeDropZone === zone
+                        ? 'valid'
+                        : invalidDropZone === zone
+                          ? 'invalid'
+                          : 'idle'
+                    }
+                    desktopCompact
+                    desktopCompactColumnCount={desktopCompactColumnCount}
+                    variant="classic-builder"
+                    selectedCardId={selectedCardId}
+                    onClearZone={handleRequestClearDeckZone}
+                    onDeckCardPointerDown={onDeckCardPointerDown}
+                    onDeckCardClick={onDeckCardClick}
+                    onRemoveCard={onRemoveDeckCard}
+                    onHoverStart={onHoverStart}
+                    onHoverEnd={onHoverEnd}
+                  />
+                )
+
+                if (zone !== 'main') {
+                  return zoneNode
+                }
+
+                return (
+                  <div key={zone} className="classic-builder-main-zone-wrap">
+                    {zoneNode}
+                    {builderRootDropState !== 'idle' ? (
+                      <div className="classic-builder-main-drop-anchor pointer-events-none" aria-hidden="true">
+                        <span className="deck-builder-root-drop-plus" data-drop-state={builderRootDropState}>
+                          <span className="deck-builder-root-drop-plus-glyph" />
+                        </span>
+                      </div>
+                    ) : null}
+                  </div>
+                )
+              })}
+            </div>
+          </article>
+
+          <aside className="classic-builder-search-column">
+            {renderSearchPanel({
+              layoutMode: 'desktop',
+              dragEnabled: true,
+              variant: 'classic-builder',
+              selectedCardId,
+            })}
+          </aside>
+        </div>
+
+        <DeckImportDrawer
+          isOpen={importDrawerOpen}
+          deckBuilder={deckBuilder}
+          deckFormat={deckFormat}
+          onApplyImport={onImportDeck}
+          onClose={() => setImportDrawerOpen(false)}
+        />
+
+        <ConfirmDialog
+          isOpen={pendingClearZone !== null}
+          title={pendingClearZoneLabel ? `Vaciar ${pendingClearZoneLabel}` : 'Vaciar zona'}
+          description={
+            pendingClearZoneLabel
+              ? `Se van a quitar ${formatInteger(pendingClearZoneCardCount)} carta${pendingClearZoneCardCount === 1 ? '' : 's'} de ${pendingClearZoneLabel}. Esta acción no se puede deshacer.`
+              : ''
+          }
+          cancelLabel="Cancelar"
+          confirmLabel="Sí, vaciar"
+          confirmVariant="primary"
+          confirmColor="destructive"
+          onCancel={() => setPendingClearZone(null)}
+          onConfirm={handleConfirmClearDeckZone}
+        />
+      </section>
+    )
+  }
 
   return (
     <section

@@ -2,12 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { countUnclassifiedCards, isClassificationStepComplete } from '../../app/role-step'
 import { CardDetailDrawer } from '../card-detail/CardDetailDrawer'
-import { CardDetailModal } from '../card-detail/CardDetailModal'
 import { DeckRolesPanel } from '../DeckRolesPanel'
 import { ExportDeckPanel } from '../ExportDeckPanel'
 import { HoverPreview } from '../HoverPreview'
 import { ProbabilityPanel } from '../ProbabilityPanel'
-import { SearchPanel } from '../SearchPanel'
 import { DeckBuilderStep } from './DeckBuilderStep'
 import { DeckModeDragOverlay } from './DeckModeDragOverlay'
 import {
@@ -17,7 +15,6 @@ import {
 } from './deck-workflow-navigation'
 import { DeckModeNavigation } from './DeckModeNavigation'
 import { DeckModeShell } from './DeckModeShell'
-import { MobileBottomStepNav } from './MobileBottomStepNav'
 import { useDeckModeController } from './use-deck-mode-controller'
 
 const DESKTOP_DECK_BUILDER_MEDIA_QUERY = '(min-width: 1101px)'
@@ -165,45 +162,12 @@ export function DeckModeScreen() {
       onStepChange={handleStepChange}
     />
   )
-  const mobileBottomNav = (
-    <MobileBottomStepNav
-      items={navigationItems}
-      activeStep={activeStep}
-      onStepChange={handleStepChange}
-    />
-  )
-  const deckBuilderRail = (
-    <SearchPanel
-      layoutMode="desktop"
-      deckFormat={deckBuilderStep.deckFormat}
-      query={deckBuilderStep.query}
-      status={deckBuilderStep.status}
-      results={deckBuilderStep.visibleSearchResults}
-      isLoadingMore={deckBuilderStep.isLoadingMore}
-      errorMessage={deckBuilderStep.errorMessage}
-      hasMore={deckBuilderStep.hasMore}
-      rawResultCount={deckBuilderStep.loadedSearchResultCount}
-      activeDragSearchCardId={deckBuilderStep.activeDragSearchCardId}
-      dragEnabled
-      filters={deckBuilderStep.searchFilters}
-      activeFilterCount={deckBuilderStep.activeFilterCount}
-      hasSearchCriteria={deckBuilderStep.hasSearchCriteria}
-      onQueryChange={deckBuilderStep.onQueryChange}
-      onFilterChange={deckBuilderStep.onSearchFiltersChange}
-      onClearFilters={deckBuilderStep.onClearSearchFilters}
-      onLoadMore={deckBuilderStep.onLoadMoreResults}
-      onResultClick={deckBuilderStep.onSearchResultClick}
-      onSearchCardPointerDown={deckBuilderStep.onSearchCardPointerDown}
-      onHoverStart={deckBuilderStep.onHoverStart}
-      onHoverEnd={deckBuilderStep.onHoverEnd}
-    />
-  )
   const mainContent = isDeckBuilderStep ? (
-    <div id="deck-builder" className="min-[1101px]:h-full min-[1101px]:min-h-0">
+    <div id="deck-builder" className="h-full min-h-0">
       <DeckBuilderStep {...deckBuilderStep} />
     </div>
   ) : (
-    <section className="grid min-h-full content-start gap-3 min-[1101px]:h-full min-[1101px]:min-h-0">
+    <section className="grid min-h-full content-start gap-3 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:p-4">
       {activeStep === 'categorization' ? (
         <div id="categorization" className="min-w-0 min-[1101px]:h-full min-[1101px]:min-h-0">
           <DeckRolesPanel {...controller.roles} />
@@ -227,36 +191,20 @@ export function DeckModeScreen() {
   return (
     <>
       <DeckModeShell
-        sidebar={navigation}
-        mobileBottomNav={mobileBottomNav}
-        main={mainContent}
-        rail={isDeckBuilderStep ? deckBuilderRail : undefined}
-        mainScrollable={!isDeckBuilderStep}
-        mainScrollRef={contentScrollRef}
+        navigation={navigation}
+        content={mainContent}
+        contentScrollable={!isDeckBuilderStep}
+        contentScrollRef={contentScrollRef}
       />
 
-      <HoverPreview preview={controller.feedback.hoverPreview} />
+      {!(isDesktopDeckBuilder && isDeckBuilderStep) ? (
+        <HoverPreview preview={controller.feedback.hoverPreview} />
+      ) : null}
       <DeckModeDragOverlay
         overlay={controller.feedback.dragOverlay}
         overlayRef={controller.feedback.dragOverlayRef}
       />
-      {isDesktopDeckBuilder ? (
-        <CardDetailModal
-          card={controller.deckBuilderStep.selectedDetailCard}
-          deckFormat={controller.deckBuilderStep.deckFormat}
-          isOpen={controller.deckBuilderStep.isCardDetailOpen}
-          showActions={controller.deckBuilderStep.selectedDetailSource !== 'deck'}
-          onAddToZone={(zone) =>
-            controller.deckBuilderStep.selectedDetailCard
-              ? controller.deckBuilderStep.onAddSearchResultToZone(
-                  controller.deckBuilderStep.selectedDetailCard.ygoprodeckId,
-                  zone,
-                )
-              : false
-          }
-          onClose={controller.deckBuilderStep.onCloseCardDetail}
-        />
-      ) : (
+      {!isDesktopDeckBuilder ? (
         <CardDetailDrawer
           card={controller.deckBuilderStep.selectedDetailCard}
           deckFormat={controller.deckBuilderStep.deckFormat}
@@ -272,7 +220,7 @@ export function DeckModeScreen() {
           }
           onClose={controller.deckBuilderStep.onCloseCardDetail}
         />
-      )}
+      ) : null}
     </>
   )
 }

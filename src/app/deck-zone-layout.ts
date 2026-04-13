@@ -21,9 +21,12 @@ export const MAIN_DECK_FIXED_ROW_COUNT = 4
 export const MAIN_DECK_BASE_COLUMNS = 10
 export const MAIN_DECK_MAX_COLUMNS = 15
 export const MAIN_DECK_EXPAND_THRESHOLD = 41
-export const DESKTOP_COMPACT_BASE_COLUMNS = 10
-export const DESKTOP_COMPACT_EXPANDED_COLUMNS = 10
-export const DESKTOP_COMPACT_EXPAND_THRESHOLD = 999
+export const DESKTOP_COMPACT_MAIN_BASE_COLUMNS = 10
+export const DESKTOP_COMPACT_MAIN_EXPANDED_COLUMNS = 15
+export const DESKTOP_COMPACT_MAIN_EXPAND_THRESHOLD = 40
+export const DESKTOP_COMPACT_EXTRA_MAX_COLUMNS = 15
+export const DESKTOP_COMPACT_SIDE_MAX_COLUMNS = 15
+export const DESKTOP_COMPACT_RAIL_MIN_COLUMNS = 8
 
 export function buildDeckZoneVisualLayout(
   zone: DeckZone,
@@ -31,15 +34,30 @@ export function buildDeckZoneVisualLayout(
   mode: DeckZoneVisualLayoutMode = 'default',
   desktopCompactColumnCount?: number,
 ): DeckZoneVisualLayout | null {
-  if (zone !== 'main' || cards.length === 0) {
+  if (cards.length === 0) {
     return null
   }
 
   if (mode === 'desktop-compact') {
+    if (zone === 'main') {
+      const columnCount =
+        desktopCompactColumnCount ?? getDesktopCompactDeckColumnCount(zone, cards.length)
+
+      if (cards.length > DESKTOP_COMPACT_MAIN_EXPAND_THRESHOLD) {
+        return buildFixedRowDeckLayout(cards, MAIN_DECK_FIXED_ROW_COUNT, columnCount)
+      }
+
+      return buildColumnLimitedDeckLayout(cards, columnCount)
+    }
+
     return buildColumnLimitedDeckLayout(
       cards,
-      desktopCompactColumnCount ?? getDesktopCompactDeckColumnCount(cards.length),
+      getDesktopCompactDeckColumnCount(zone, cards.length),
     )
+  }
+
+  if (zone !== 'main') {
+    return null
   }
 
   return buildFixedRowDeckLayout(
@@ -103,10 +121,24 @@ export function buildColumnLimitedDeckLayout(
   }
 }
 
-export function getDesktopCompactDeckColumnCount(totalCards: number): number {
-  return totalCards > DESKTOP_COMPACT_EXPAND_THRESHOLD
-    ? DESKTOP_COMPACT_EXPANDED_COLUMNS
-    : DESKTOP_COMPACT_BASE_COLUMNS
+export function getDesktopCompactDeckColumnCount(zone: DeckZone, totalCards: number): number {
+  if (zone === 'main') {
+    return totalCards > DESKTOP_COMPACT_MAIN_EXPAND_THRESHOLD
+      ? DESKTOP_COMPACT_MAIN_EXPANDED_COLUMNS
+      : DESKTOP_COMPACT_MAIN_BASE_COLUMNS
+  }
+
+  if (zone === 'extra') {
+    return Math.min(
+      DESKTOP_COMPACT_EXTRA_MAX_COLUMNS,
+      Math.max(DESKTOP_COMPACT_RAIL_MIN_COLUMNS, totalCards),
+    )
+  }
+
+  return Math.min(
+    DESKTOP_COMPACT_SIDE_MAX_COLUMNS,
+    Math.max(DESKTOP_COMPACT_RAIL_MIN_COLUMNS, totalCards),
+  )
 }
 
 function getMainDeckColumnCount(totalCards: number): number {
