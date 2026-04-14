@@ -1349,6 +1349,17 @@ function sortVisibleSearchResults(
 ): ApiCardSearchResult[] {
   if (sortOrder === 'default') {
     return results
+      .map((card, index) => ({ card, index }))
+      .sort((left, right) => {
+        const typeDifference = getSearchTypePriority(left.card) - getSearchTypePriority(right.card)
+
+        if (typeDifference !== 0) {
+          return typeDifference
+        }
+
+        return left.index - right.index
+      })
+      .map(({ card }) => card)
   }
 
   return [...results].sort((left, right) => {
