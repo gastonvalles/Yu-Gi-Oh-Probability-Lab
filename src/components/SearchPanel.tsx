@@ -302,6 +302,11 @@ export function SearchPanel({
     [filters, formatAllowsLegalityFilter, formatLabel, quickTypeMeta.raceLabel],
   )
   const sortedResults = useMemo(() => sortVisibleSearchResults(results, sortOrder), [results, sortOrder])
+  const filteredCountLabel =
+    rawResultCount === sortedResults.length
+      ? `${formatInteger(sortedResults.length)} resultados`
+      : `${formatInteger(sortedResults.length)} de ${formatInteger(rawResultCount)} resultados`
+  const localFiltersAffectedPage = rawResultCount !== sortedResults.length
   useEffect(() => {
     if (sanitizedFilterUpdates) {
       onFilterChange(sanitizedFilterUpdates)
@@ -437,6 +442,402 @@ export function SearchPanel({
     }
 
     clearLongPressSession()
+  }
+
+  if (!isClassicBuilder && layoutMode === 'mobile') {
+    return (
+      <article className="surface-panel-soft self-start flex h-full min-h-0 flex-col overflow-hidden p-2">
+        <div
+          className="grid h-full min-h-0 content-start gap-2"
+          style={{
+            gridTemplateRows: shouldShowResults ? 'auto auto minmax(0,1fr)' : undefined,
+          }}
+        >
+          <div className="grid gap-1">
+            <span className="app-soft text-[0.66rem] uppercase tracking-[0.12em]">Buscar cartas</span>
+            <label className="relative block">
+              <input
+                type="text"
+                value={query}
+                onChange={(event) => onQueryChange(event.target.value)}
+                placeholder="Buscar por nombre parcial o texto en efecto"
+                autoComplete="off"
+                spellCheck={false}
+                className="app-field w-full px-2.5 py-2.5 pr-10 text-[0.86rem]"
+              />
+              {status === 'loading' ? (
+                <span className="pointer-events-none absolute right-3 top-1/2 -mt-[0.475rem] h-[0.95rem] w-[0.95rem] animate-spin rounded-full border-2 border-[rgb(var(--foreground-rgb)/0.18)] border-t-[var(--primary)]" />
+              ) : null}
+            </label>
+          </div>
+
+          <div className="grid gap-1.5">
+            <button
+              type="button"
+              className="classic-builder-search-toggle justify-self-center"
+              aria-pressed={advancedFiltersOpen}
+              aria-controls="mobile-advanced-search-filters"
+              onClick={() => setAdvancedFiltersOpen((current) => !current)}
+            >
+              {advancedFiltersOpen ? '↑ Hide Filters ↑' : '↓ Show Filters ↓'}
+            </button>
+
+            {advancedFiltersOpen ? (
+              <div id="mobile-advanced-search-filters" className="surface-card grid gap-1.5 p-2">
+                <div className="grid gap-1.5 min-[380px]:grid-cols-[minmax(0,1fr)_auto] min-[380px]:items-end">
+                  <label className="grid min-w-0 gap-1">
+                    <span className="app-soft text-[0.58rem] uppercase tracking-[0.12em]">Orden</span>
+                    <select
+                      value={sortOrder}
+                      onChange={(event) => setSortOrder(event.target.value as SearchSortOrder)}
+                      className="app-field w-full px-2 py-[0.45rem] text-[0.76rem]"
+                    >
+                      {SEARCH_SORT_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  {activeFilterCount > 0 ? (
+                    <Button variant="tertiary" size="sm" onClick={onClearFilters}>
+                      Limpiar
+                    </Button>
+                  ) : null}
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {QUICK_TYPE_OPTIONS.map((option) => (
+                    <Button
+                      key={option.value}
+                      variant={filters.quickType === option.value ? 'primary' : 'secondary'}
+                      size="sm"
+                      onClick={() => onFilterChange({ quickType: option.value })}
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
+                </div>
+
+                <div className="grid gap-1.5">
+                  <SearchFilterSection
+                    title="Texto y arquetipo"
+                    summary={buildSectionSummary([
+                      filters.archetype.trim().length > 0 ? filters.archetype.trim() : '',
+                      filters.description.trim().length > 0 ? `Texto: ${filters.description.trim()}` : '',
+                    ])}
+                    defaultOpen={
+                      filters.archetype.trim().length > 0 || filters.description.trim().length > 0
+                    }
+                  >
+                    <div className="grid gap-1.5">
+                      <label className="grid min-w-0 gap-1">
+                        <span className="app-soft text-[0.58rem] uppercase tracking-[0.12em]">Arquetipo</span>
+                        <input
+                          type="text"
+                          value={filters.archetype}
+                          onChange={(event) => onFilterChange({ archetype: event.target.value })}
+                          placeholder="Blue-Eyes"
+                          autoComplete="off"
+                          spellCheck={false}
+                          className="app-field w-full px-2 py-[0.45rem] text-[0.76rem]"
+                        />
+                      </label>
+
+                      <label className="grid min-w-0 gap-1">
+                        <span className="app-soft text-[0.58rem] uppercase tracking-[0.12em]">Texto EN</span>
+                        <input
+                          type="text"
+                          value={filters.description}
+                          onChange={(event) => onFilterChange({ description: event.target.value })}
+                          placeholder="add 1"
+                          autoComplete="off"
+                          spellCheck={false}
+                          className="app-field w-full px-2 py-[0.45rem] text-[0.76rem]"
+                        />
+                      </label>
+                    </div>
+                  </SearchFilterSection>
+
+                  <SearchFilterSection
+                    title="Características"
+                    summary={buildSectionSummary([
+                      filters.exactType.trim().length > 0 ? filters.exactType.trim() : '',
+                      filters.race.trim().length > 0 ? filters.race.trim() : '',
+                      quickTypeMeta.showAttribute && filters.attribute.trim().length > 0
+                        ? filters.attribute.trim()
+                        : '',
+                      quickTypeMeta.showLevel && filters.level.trim().length > 0
+                        ? `${quickTypeMeta.levelLabel}: ${filters.level.trim()}`
+                        : '',
+                      formatAllowsLegalityFilter && filters.legalOnly ? `Sin prohibidas en ${formatLabel}` : '',
+                    ])}
+                    defaultOpen={
+                      filters.exactType.trim().length > 0 ||
+                      filters.race.trim().length > 0 ||
+                      filters.attribute.trim().length > 0 ||
+                      filters.level.trim().length > 0 ||
+                      filters.legalOnly
+                    }
+                  >
+                    <div className={characteristicsGridClass}>
+                      <label className="grid min-w-0 gap-1">
+                        <span className="app-soft text-[0.58rem] uppercase tracking-[0.12em]">
+                          {quickTypeMeta.exactTypeLabel}
+                        </span>
+                        <select
+                          value={filters.exactType}
+                          onChange={(event) => onFilterChange({ exactType: event.target.value })}
+                          className="app-field min-w-0 w-full px-2 py-[0.45rem] text-[0.76rem]"
+                        >
+                          <option value="">Cualquiera</option>
+                          {exactTypeGroups.map((group) => (
+                            <optgroup key={group.label} label={group.label}>
+                              {group.options.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="grid min-w-0 gap-1">
+                        <span className="app-soft text-[0.58rem] uppercase tracking-[0.12em]">
+                          {quickTypeMeta.raceLabel}
+                        </span>
+                        <select
+                          value={filters.race}
+                          onChange={(event) => onFilterChange({ race: event.target.value })}
+                          className="app-field min-w-0 w-full px-2 py-[0.45rem] text-[0.76rem]"
+                        >
+                          <option value="">Cualquiera</option>
+                          {raceGroups.map((group) => (
+                            <optgroup key={group.label} label={group.label}>
+                              {group.options.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ))}
+                        </select>
+                      </label>
+
+                      {quickTypeMeta.showAttribute ? (
+                        <label className="grid min-w-0 gap-1">
+                          <span className="app-soft text-[0.58rem] uppercase tracking-[0.12em]">Atributo</span>
+                          <select
+                            value={filters.attribute}
+                            onChange={(event) => onFilterChange({ attribute: event.target.value })}
+                            className="app-field min-w-0 w-full px-2 py-[0.45rem] text-[0.76rem]"
+                          >
+                            {ATTRIBUTE_OPTIONS.map((option) => (
+                              <option key={option.value || 'any'} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : null}
+
+                      {quickTypeMeta.showLevel ? (
+                        <label className="grid min-w-0 gap-1">
+                          <span className="app-soft text-[0.58rem] uppercase tracking-[0.12em]">
+                            {quickTypeMeta.levelLabel}
+                          </span>
+                          <input
+                            type="number"
+                            min={1}
+                            max={13}
+                            value={filters.level}
+                            onChange={(event) => onFilterChange({ level: event.target.value })}
+                            placeholder="4"
+                            className="app-field w-full px-2 py-[0.45rem] text-[0.76rem]"
+                          />
+                        </label>
+                      ) : null}
+
+                      {formatAllowsLegalityFilter ? (
+                        <label className="surface-panel-soft flex items-start gap-2 border border-(--border-subtle) px-2.5 py-2 text-[0.76rem] max-[379px]:col-span-full min-[380px]:col-span-2">
+                          <input
+                            type="checkbox"
+                            checked={filters.legalOnly}
+                            onChange={(event) => onFilterChange({ legalOnly: event.target.checked })}
+                            className="mt-[0.1rem] h-3.5 w-3.5 shrink-0 accent-[var(--primary)]"
+                          />
+                          <span className="grid gap-0.5">
+                            <span className="text-[var(--text-main)]">
+                              Ocultar prohibidas en {formatLabel}
+                            </span>
+                            <span className="text-[0.68rem] leading-[1.14] text-[var(--text-muted)]">
+                              Este filtro refina los resultados ya cargados.
+                            </span>
+                          </span>
+                        </label>
+                      ) : null}
+                    </div>
+                  </SearchFilterSection>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          {shouldShowResults ? (
+            <div
+              className="grid min-h-0 content-start gap-2 overflow-hidden"
+              style={{
+                gridTemplateRows: status === 'error' ? undefined : 'auto minmax(0, 1fr)',
+              }}
+            >
+              {status === 'error' ? (
+                <p className="surface-card-danger m-0 px-2.5 py-2 text-[0.82rem] leading-[1.16] text-[var(--destructive)]">
+                  {formatSearchError(errorMessage)}
+                </p>
+              ) : (
+                <>
+                  <div className="flex items-start justify-between gap-2 px-1">
+                    <div className="grid gap-0.5">
+                      <strong className="text-[0.78rem] text-[var(--text-main)]">{filteredCountLabel}</strong>
+                      <p className="m-0 text-[0.68rem] leading-[1.14] text-[var(--text-muted)]">
+                        {localFiltersAffectedPage
+                          ? 'Texto EN y/o legalidad redujeron los resultados ya cargados.'
+                          : 'Tap agrega la carta. Mantene presionado para abrir el detalle.'}
+                      </p>
+                    </div>
+                    {hasMore ? (
+                      <Button variant="secondary" size="sm" onClick={onLoadMore} disabled={isLoadingMore}>
+                        {isLoadingMore ? 'Cargando...' : 'Cargar mas'}
+                      </Button>
+                    ) : null}
+                  </div>
+
+                  {isInitialLoading ? (
+                    <div className="grid min-h-0 content-start gap-2 overflow-y-auto overflow-x-hidden pr-1">
+                      {Array.from({ length: 8 }, (_, index) => (
+                        <article
+                          key={index}
+                          className="app-list-item grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2 p-1.5"
+                          aria-hidden="true"
+                        >
+                          <Skeleton radius="none" className="aspect-[0.72] w-[42px]" />
+                          <div className="grid gap-2">
+                            <Skeleton className="h-3.5 w-[85%]" />
+                            <Skeleton className="h-2.5 w-[62%]" />
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : sortedResults.length === 0 ? (
+                    <p className="surface-card m-0 min-h-0 overflow-y-auto px-2.5 py-2 text-[0.82rem] leading-[1.18] text-[var(--text-muted)]">
+                      {rawResultCount > 0
+                        ? 'Todavia no aparecio una coincidencia dentro de lo ya cargado.'
+                        : 'No se encontraron cartas con esos criterios.'}
+                    </p>
+                  ) : (
+                    <div
+                      ref={resultsContainerRef}
+                      className="grid min-h-0 content-start gap-2 overflow-y-auto overflow-x-hidden pr-1"
+                    >
+                      {sortedResults.map((card) => {
+                        const detailChips = buildSearchResultDetailChips(card)
+                        const formatLimitLabel = buildFormatLimitLabel(card, deckFormat)
+
+                        return (
+                          <article
+                            key={card.ygoprodeckId}
+                            className={[
+                              'app-list-item grid w-full min-w-0 select-none grid-cols-[42px_minmax(0,1fr)] items-center gap-2 p-1.5 transition-all duration-150 ease-out will-change-transform',
+                              dragEnabled ? 'cursor-grab touch-none' : '',
+                              activeDragSearchCardId === card.ygoprodeckId ? 'opacity-35' : '',
+                            ].join(' ')}
+                            onClick={() => {
+                              if (suppressClickCardIdRef.current === card.ygoprodeckId) {
+                                suppressClickCardIdRef.current = null
+                                return
+                              }
+
+                              onResultClick(card.ygoprodeckId)
+                            }}
+                            onPointerDown={(event) => {
+                              if (dragEnabled) {
+                                onSearchCardPointerDown(event, card.ygoprodeckId)
+                                return
+                              }
+
+                              startLongPress(event, card.ygoprodeckId)
+                            }}
+                            onPointerMove={(event) => handleLongPressMove(event, card.ygoprodeckId)}
+                            onPointerUp={() => handleLongPressEnd(card.ygoprodeckId)}
+                            onPointerCancel={() => handleLongPressEnd(card.ygoprodeckId)}
+                            onPointerLeave={() => handleLongPressEnd(card.ygoprodeckId)}
+                            onContextMenu={(event) => {
+                              if (layoutMode === 'mobile') {
+                                event.preventDefault()
+                              }
+                            }}
+                            onMouseEnter={(event) => onHoverStart(card.name, card, event.currentTarget)}
+                            onMouseLeave={onHoverEnd}
+                          >
+                            <div className="w-[42px]" data-drag-preview-source="true">
+                              <CardArt
+                                remoteUrl={card.imageUrlSmall}
+                                name={card.name}
+                                className="block aspect-[0.72] w-[42px] bg-[var(--input)] object-cover"
+                                limitCard={card}
+                                limitBadgeSize="sm"
+                              />
+                            </div>
+
+                            <div className="flex min-w-0 flex-col gap-[0.28rem]">
+                              <strong className="text-[0.8rem] leading-[1.08] break-words text-[var(--text-main)]">
+                                {card.name}
+                              </strong>
+                              <p className="m-0 text-[0.72rem] leading-[1.12] break-words text-[var(--text-main)]">
+                                {buildCompactSearchDescription(card)}
+                              </p>
+                              {detailChips.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {detailChips.map((chip) => (
+                                    <span key={`${card.ygoprodeckId}-${chip}`} className="search-result-chip">
+                                      {chip}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : null}
+                              {formatLimitLabel ? (
+                                <small className="text-[0.68rem] text-[var(--text-muted)]">
+                                  {formatLimitLabel}
+                                </small>
+                              ) : null}
+                            </div>
+                          </article>
+                        )
+                      })}
+
+                      {isLoadingMore ? (
+                        <article
+                          className="app-list-item grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2 p-1.5"
+                          aria-hidden="true"
+                        >
+                          <Skeleton radius="none" className="aspect-[0.72] w-[42px]" />
+                          <div className="grid gap-2">
+                            <Skeleton className="h-3.5 w-[85%]" />
+                            <Skeleton className="h-2.5 w-[62%]" />
+                          </div>
+                        </article>
+                      ) : null}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ) : null}
+        </div>
+      </article>
+    )
   }
 
   return (
@@ -827,7 +1228,7 @@ export function SearchPanel({
                                 remoteUrl={card.imageUrlSmall}
                                 name={card.name}
                                 className={isClassicBuilder ? 'classic-builder-search-result-art' : 'block h-auto w-full bg-[var(--input)]'}
-                                limitCard={isClassicBuilder ? null : card}
+                                limitCard={card}
                                 limitBadgeSize="sm"
                               />
                             </div>
@@ -950,9 +1351,42 @@ function sortVisibleSearchResults(
     return results
   }
 
-  const sortedResults = [...results].sort((left, right) => left.name.localeCompare(right.name))
+  return [...results].sort((left, right) => {
+    const typeDifference = getSearchTypePriority(left) - getSearchTypePriority(right)
 
-  return sortOrder === 'name-desc' ? sortedResults.reverse() : sortedResults
+    if (typeDifference !== 0) {
+      return typeDifference
+    }
+
+    const nameDifference =
+      sortOrder === 'name-desc'
+        ? right.name.localeCompare(left.name)
+        : left.name.localeCompare(right.name)
+
+    if (nameDifference !== 0) {
+      return nameDifference
+    }
+
+    return left.ygoprodeckId - right.ygoprodeckId
+  })
+}
+
+function getSearchTypePriority(card: ApiCardSearchResult): number {
+  const cardType = typeof card.cardType === 'string' ? card.cardType.toLowerCase() : ''
+
+  if (cardType.includes('monster')) {
+    return 0
+  }
+
+  if (cardType.includes('spell')) {
+    return 1
+  }
+
+  if (cardType.includes('trap')) {
+    return 2
+  }
+
+  return 3
 }
 
 function getExactTypeFilterGroups(quickType: SearchQuickTypeFilter): FilterOptionGroup[] {

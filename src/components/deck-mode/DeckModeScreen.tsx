@@ -14,6 +14,7 @@ import {
   isDeckWorkflowStepKey,
 } from './deck-workflow-navigation'
 import { DeckModeNavigation } from './DeckModeNavigation'
+import { MobileBottomStepNav } from './MobileBottomStepNav'
 import { DeckModeShell } from './DeckModeShell'
 import { useDeckModeController } from './use-deck-mode-controller'
 
@@ -162,6 +163,13 @@ export function DeckModeScreen() {
       onStepChange={handleStepChange}
     />
   )
+  const mobileNavigation = (
+    <MobileBottomStepNav
+      items={navigationItems}
+      activeStep={activeStep}
+      onStepChange={handleStepChange}
+    />
+  )
   const mainContent = isDeckBuilderStep ? (
     <div id="deck-builder" className="h-full min-h-0">
       <DeckBuilderStep {...deckBuilderStep} />
@@ -192,6 +200,7 @@ export function DeckModeScreen() {
     <>
       <DeckModeShell
         navigation={navigation}
+        mobileNavigation={mobileNavigation}
         content={mainContent}
         contentScrollable={!isDeckBuilderStep}
         contentScrollRef={contentScrollRef}

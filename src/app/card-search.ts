@@ -2,7 +2,6 @@ import type { ApiCardReference, DeckFormat } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 import { SEARCH_MIN_QUERY_LENGTH } from './model'
 import { getCardCopyLimit } from './deck-format'
-import { isEdisonCardInPool } from './edison-format'
 import { normalizeSearchText } from './utils'
 
 export type SearchQuickTypeFilter = 'all' | 'monster' | 'spell' | 'trap'
@@ -87,10 +86,6 @@ export function searchCardCatalog(
 
   for (const entry of searchIndex) {
     const { card } = entry
-
-    if (!matchesDeckFormatFilter(card, deckFormat)) {
-      continue
-    }
 
     if (!matchesQuickTypeFilter(card, filters.quickType)) {
       continue
@@ -197,7 +192,7 @@ export function sortSearchResults(
 export function buildRemoteCardSearchRequest(
   query: string,
   filters: CardSearchFilters,
-  deckFormat: DeckFormat,
+  _deckFormat: DeckFormat,
 ): CardSearchRequest {
   const trimmedQuery = query.trim()
   const trimmedDescription = filters.description.trim()
@@ -218,7 +213,7 @@ export function buildRemoteCardSearchRequest(
     attribute: filters.attribute.trim(),
     race: filters.race.trim(),
     level: filters.level.trim(),
-    format: deckFormat === 'edison' ? 'edison' : '',
+    format: '',
   }
 }
 
@@ -286,10 +281,6 @@ export function applyLocalCardSearchFilters(
   const descriptionFilter = normalizeSearchText(filters.description)
 
   return results.filter((card) => {
-    if (!matchesDeckFormatFilter(card, deckFormat)) {
-      return false
-    }
-
     if (!matchesQuickTypeFilter(card, filters.quickType)) {
       return false
     }
@@ -351,18 +342,6 @@ function compareSearchResults(
   return left.ygoprodeckId - right.ygoprodeckId
 }
 
-function matchesDeckFormatFilter(card: ApiCardReference | ApiCardSearchResult, deckFormat: DeckFormat): boolean {
-  if (deckFormat === 'edison') {
-    return isEdisonCardInPool(card)
-  }
-
-  if (deckFormat === 'genesys') {
-    return card.genesys.points !== null
-  }
-
-  return true
-}
-
 function getCardSearchScore(
   card: ApiCardSearchResult | SearchableCardIndexEntry,
   normalizedQuery: string,
@@ -409,43 +388,19 @@ function getSearchTypeRank(card: ApiCardReference | ApiCardSearchResult): number
   const frameType = typeof card.frameType === 'string' ? card.frameType.toLowerCase() : ''
   const cardType = typeof card.cardType === 'string' ? card.cardType.toLowerCase() : ''
 
-  if (frameType.includes('link')) {
+  if (cardType.includes('monster') || frameType.includes('monster')) {
     return 0
   }
 
-  if (frameType.includes('fusion')) {
+  if (cardType.includes('spell') || frameType.includes('spell')) {
     return 1
   }
 
-  if (frameType.includes('xyz')) {
+  if (cardType.includes('trap') || frameType.includes('trap')) {
     return 2
   }
 
-  if (frameType.includes('synchro')) {
-    return 3
-  }
-
-  if (frameType.includes('ritual')) {
-    return 4
-  }
-
-  if (frameType.includes('effect') || cardType.includes('effect')) {
-    return 5
-  }
-
-  if (frameType.includes('normal') || cardType.includes('normal')) {
-    return 6
-  }
-
-  if (frameType.includes('spell') || cardType.includes('spell')) {
-    return 7
-  }
-
-  if (frameType.includes('trap') || cardType.includes('trap')) {
-    return 8
-  }
-
-  return 9
+  return 3
 }
 
 function matchesQuickTypeFilter(

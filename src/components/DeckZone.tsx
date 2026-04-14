@@ -10,6 +10,7 @@ import type { DeckCardInstance, DeckZone as DeckZoneType } from '../app/model'
 import type { DeckDropIndicatorState } from '../app/use-deck-pointer-drag'
 import { formatInteger } from '../app/utils'
 import { CardArt } from './CardArt'
+import { Button } from './ui/Button'
 import { IconButton } from './ui/IconButton'
 
 interface DeckZoneProps {
@@ -96,13 +97,19 @@ export function DeckZone({
   const classicZoneHeight = zone === 'main' ? '27.4rem' : '7rem'
   const classicBorderColor =
     dropState === 'valid'
-      ? 'rgb(255 255 255 / 0.82)'
+      ? 'rgb(var(--accent-rgb) / 0.82)'
       : dropState === 'invalid'
         ? 'rgb(var(--destructive-rgb) / 0.82)'
-        : 'rgb(255 255 255 / 0.62)'
+        : 'var(--classic-zone-accent)'
+  const classicZoneStyle = isClassicBuilder
+    ? ({
+        '--classic-zone-tint': zoneStyle.background,
+        '--classic-zone-accent': zoneStyle.border,
+      }) as CSSProperties
+    : undefined
   const classicSurfaceStyle = isClassicBuilder
     ? ({
-        '--zone-background': 'rgb(15 20 29 / 0.96)',
+        '--zone-background': 'var(--classic-zone-tint)',
         '--zone-border': classicBorderColor,
         '--deck-zone-card-gap': '0px',
         '--deck-zone-desktop-columns': String(resolvedDesktopCompactColumnCount),
@@ -112,10 +119,11 @@ export function DeckZone({
         padding: '0',
         border: `1px solid ${classicBorderColor}`,
         borderRadius: '0',
-        background: 'rgb(15 20 29 / 0.96)',
+        background:
+          'linear-gradient(180deg, var(--classic-zone-tint), rgb(var(--background-rgb) / 0.98)), linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.94), rgb(var(--background-rgb) / 0.98))',
         boxShadow:
           dropState === 'valid'
-            ? '0 0 0 1px rgb(255 255 255 / 0.1)'
+            ? '0 0 0 1px rgb(var(--accent-rgb) / 0.14)'
             : dropState === 'invalid'
               ? '0 0 0 1px rgb(var(--destructive-rgb) / 0.16)'
               : 'none',
@@ -160,7 +168,7 @@ export function DeckZone({
         remoteUrl={card.apiCard.imageUrlSmall}
         name={card.name}
         className="block h-auto w-full min-w-0 bg-[var(--input)]"
-        limitCard={isClassicBuilder ? null : card.apiCard}
+        limitCard={card.apiCard}
       />
     </article>
   )
@@ -175,6 +183,7 @@ export function DeckZone({
         data-deck-zone-drop-active={dropState === 'valid' ? 'true' : 'false'}
         data-deck-zone-drop-state={dropState}
         data-classic-zone={zone}
+        style={classicZoneStyle}
       >
         <div className="classic-builder-zone-label-row">
           <div className="classic-builder-zone-label">
@@ -241,123 +250,64 @@ export function DeckZone({
   }
 
   return (
-    <section
-      className="deck-zone-shell w-full bg-transparent p-0"
-      data-deck-zone-drop-target={zone}
-      data-deck-zone-count={cards.length}
-      data-deck-zone-layout={desktopCompact ? 'desktop-compact' : 'default'}
-      data-deck-zone-drop-active={dropState === 'valid' ? 'true' : 'false'}
-      data-deck-zone-drop-state={dropState}
-    >
-      {desktopCompact ? (
-        <div
-          className="deck-zone-surface deck-zone-compact-frame"
-          data-deck-zone={zone}
-          data-deck-zone-layout="desktop-compact"
-          style={zoneSurfaceStyle}
-        >
-          <div className="deck-zone-header flex items-center justify-between gap-3">
-            <div className="min-w-0 pl-1.5">
-              <h3 className="m-0 text-[1rem] leading-none">{title}</h3>
-              <p className="deck-zone-header-breakdown m-0 mt-[0.12rem] truncate">
-                {headerSummary}
-              </p>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {dropState === 'valid' ? (
-                <span className="hidden min-[1101px]:inline-flex app-chip-accent px-2 py-1 text-[0.66rem] whitespace-nowrap">
-                  Soltá acá
-                </span>
-              ) : null}
-              <IconButton
-                size="sm"
-                className="deck-zone-trash-button"
-                aria-label={`Vaciar ${title}`}
-                title={`Vaciar ${title}`}
-                disabled={cards.length === 0}
-                onClick={() => onClearZone(zone)}
-              >
-                <TrashIcon />
-              </IconButton>
-            </div>
-          </div>
-
-          <div
-            className={['deck-zone-compact-grid', zoneGridClassName].join(' ')}
-            data-deck-zone={zone}
-            data-deck-count={cards.length}
-            data-deck-zone-layout="desktop-compact"
-            style={zoneGridStyle}
-          >
-            {visualLayout
-              ? visualLayout.rows.map((row) => (
-                  <div
-                    key={`${zone}-row-${row.rowIndex}`}
-                    className="main-deck-grid-row"
-                    style={{
-                      '--main-deck-columns': String(visualLayout.columns),
-                    } as CSSProperties}
-                  >
-                    {row.cards.map(({ card, index }) => renderDeckCard(card, index))}
-                  </div>
-                ))
-              : cards.map((card, index) => renderDeckCard(card, index))}
-          </div>
+    <section className="deck-zone-shell w-full bg-transparent p-0">
+      <div className="mb-1.5 flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <h3 className="m-0 break-words text-[1.05rem] leading-none">{title}</h3>
+          <p className="m-0 mt-[0.08rem] break-words text-[0.82rem] leading-[1.12] text-[var(--text-muted)]">
+            {headerSummary}
+          </p>
         </div>
-      ) : (
-        <>
-          <div className="deck-zone-header mb-1.5 flex items-start justify-between gap-3 min-[1101px]:mb-1">
-            <div className="min-w-0 pl-1.5">
-              <h3 className="m-0 text-[1.05rem] leading-none min-[1101px]:text-[1rem]">{title}</h3>
-              <p className="m-0 mt-[0.08rem] text-[0.82rem] leading-[1.12] text-[var(--text-muted)]">
-                {headerSummary}
-              </p>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {dropState === 'valid' ? (
-                <span className="hidden min-[1101px]:inline-flex app-chip-accent px-2 py-1 text-[0.66rem] whitespace-nowrap">
-                  Soltá acá
-                </span>
-              ) : null}
-              <IconButton
-                size="sm"
-                className="deck-zone-trash-button"
-                aria-label={`Vaciar ${title}`}
-                title={`Vaciar ${title}`}
-                disabled={cards.length === 0}
-                onClick={() => onClearZone(zone)}
-              >
-                <TrashIcon />
-              </IconButton>
-            </div>
-          </div>
+        <Button
+          variant="tertiary"
+          size="sm"
+          className="shrink-0"
+          disabled={cards.length === 0}
+          onClick={() => onClearZone(zone)}
+        >
+          Vaciar
+        </Button>
+      </div>
 
-          <div
-            className={['deck-zone-surface', zoneGridClassName, 'p-[0.35rem]'].join(' ')}
+      <div
+        className="deck-zone-surface grid w-full content-start gap-[0.32rem] p-[0.35rem] grid-cols-5 min-[520px]:grid-cols-8 min-[980px]:grid-cols-10"
+        data-deck-zone={zone}
+        data-deck-count={cards.length}
+        style={{
+          '--zone-background': zoneStyle.background,
+          '--zone-border': zoneStyle.border,
+          minHeight: 'clamp(50px, 8vw, 90px)',
+        } as CSSProperties}
+      >
+        {cards.map((card, index) => (
+          <article
+            key={card.instanceId}
             data-deck-zone={zone}
-            data-deck-count={cards.length}
-            data-deck-zone-layout="default"
-            style={{
-              ...zoneSurfaceStyle,
-              ...zoneGridStyle,
+            data-deck-card-index={index}
+            className={[
+              'relative min-w-0 cursor-grab select-none bg-transparent p-0 touch-none',
+              activeDragInstanceId === card.instanceId
+                ? 'opacity-35'
+                : '',
+            ].join(' ')}
+            onPointerDown={(event) => onDeckCardPointerDown(event, card.instanceId)}
+            onClick={() => onDeckCardClick(card.instanceId)}
+            onContextMenu={(event) => {
+              event.preventDefault()
+              onRemoveCard(card.instanceId)
             }}
+            onMouseEnter={(event) => onHoverStart(card.name, card.apiCard, event.currentTarget)}
+            onMouseLeave={onHoverEnd}
           >
-            {visualLayout
-              ? visualLayout.rows.map((row) => (
-                  <div
-                    key={`${zone}-row-${row.rowIndex}`}
-                    className="main-deck-grid-row"
-                    style={{
-                      '--main-deck-columns': String(visualLayout.columns),
-                    } as CSSProperties}
-                  >
-                    {row.cards.map(({ card, index }) => renderDeckCard(card, index))}
-                  </div>
-                ))
-              : cards.map((card, index) => renderDeckCard(card, index))}
-          </div>
-        </>
-      )}
+            <CardArt
+              remoteUrl={card.apiCard.imageUrlSmall}
+              name={card.name}
+              className="block aspect-[0.72] w-full min-w-0 bg-[var(--input)] object-cover"
+              limitCard={card.apiCard}
+            />
+          </article>
+        ))}
+      </div>
     </section>
   )
 }

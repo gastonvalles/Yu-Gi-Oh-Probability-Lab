@@ -23,7 +23,13 @@ export function DeckBuilderClassicPreview({ card }: DeckBuilderClassicPreviewPro
       <div className="classic-builder-preview-art-shell">
         {card ? (
           <div className="classic-builder-preview-art-frame">
-            <CardArt remoteUrl={card.imageUrl} name={card.name} className="classic-builder-preview-art" />
+            <CardArt
+              remoteUrl={card.imageUrl}
+              name={card.name}
+              className="classic-builder-preview-art"
+              limitCard={card}
+              limitBadgeSize="lg"
+            />
           </div>
         ) : (
           <div className="classic-builder-preview-empty">No card selected</div>

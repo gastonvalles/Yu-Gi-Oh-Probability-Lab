@@ -36,6 +36,12 @@ export function CardDetail({
   const actionEntries = showActions ? buildActionEntries(card) : []
   const cardFacts = buildCardFacts(card)
   const formatTags = buildCardFormatTags(card, deckFormat)
+  const detailTags = card.archetype ? [...formatTags, card.archetype] : formatTags
+  const mobileSummary = isMobileLayout ? buildMobileSummary(card) : null
+  const mobileMetaParts = [
+    card.archetype,
+    deckFormat === 'genesys' || card.genesys.points !== null ? `${card.genesys.points ?? 0} Genesys` : null,
+  ].filter((value): value is string => Boolean(value))
 
   const handleAddToZone = (zone: DeckZone) => {
     if (onAddToZone(zone)) {
@@ -45,98 +51,145 @@ export function CardDetail({
 
   return (
     <section className="flex min-h-0 flex-col bg-[var(--card-background)] text-(--text-main)">
-      <div className="relative min-h-0 overflow-y-auto px-4 pb-4 pt-4 min-[860px]:px-6 min-[860px]:pb-5 min-[860px]:pt-5">
-        <div className="absolute right-4 top-4 z-10 min-[860px]:right-6 min-[860px]:top-5">
-          <CloseButton
-            size="md"
-            aria-label="Cerrar detalle"
-            onClick={onClose}
-          />
-        </div>
+      <div className="relative min-h-0 overflow-y-auto px-3 pb-3 pt-3 min-[860px]:px-6 min-[860px]:pb-5 min-[860px]:pt-5">
+        {!isMobileLayout ? (
+          <div className="absolute right-3 top-3 z-10 min-[860px]:right-6 min-[860px]:top-5">
+            <CloseButton
+              size="md"
+              aria-label="Cerrar detalle"
+              onClick={onClose}
+            />
+          </div>
+        ) : null}
 
-        <div className="grid gap-4">
+        <div className="grid gap-3 min-[860px]:gap-4">
           <div
             className={[
-              'grid gap-4',
+              'grid gap-3',
               isMobileLayout
                 ? 'content-start'
                 : 'content-start min-[860px]:grid-cols-[18.75rem_minmax(0,1fr)] min-[860px]:items-start min-[860px]:gap-6',
             ].join(' ')}
           >
-          <aside className="grid content-start gap-3">
             {isMobileLayout ? (
-              <header className="grid gap-1.5">
-                <h2 className="m-0 text-[2.05rem] font-semibold leading-[0.96] tracking-[-0.03em] text-(--text-main) min-[860px]:text-[3.15rem]">
-                  {card.name}
-                </h2>
-              </header>
-            ) : null}
+              <div className="grid gap-3">
+                <header className="surface-card relative px-10 py-1.5 text-center">
+                  <h2 className="m-0 break-words text-[1.1rem] font-semibold leading-none tracking-[-0.025em] text-(--text-main)">
+                    {card.name}
+                  </h2>
+                  <CloseButton
+                    size="sm"
+                    className="absolute right-2 top-1/2 -translate-y-1/2"
+                    aria-label="Cerrar detalle"
+                    onClick={onClose}
+                  />
+                </header>
 
-            <div className="grid content-start gap-3">
-              <CardArt
-                remoteUrl={card.imageUrl ?? card.imageUrlSmall}
-                name={card.name}
-                className="block h-auto w-full"
-                limitCard={card}
-                limitBadgeSize="lg"
-              />
-
-              {formatTags.length > 0 ? (
-                <div className="flex flex-wrap justify-center gap-1.5">
-                  {formatTags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="surface-card-success px-3 py-1 text-[0.66rem] font-semibold tracking-[0.01em] text-white"
-                    >
-                      {tag}
-                    </span>
-                  ))}
+                <div className="grid justify-items-center">
+                  <div className="w-full max-w-[15rem]">
+                    <CardArt
+                      remoteUrl={card.imageUrl ?? card.imageUrlSmall}
+                      name={card.name}
+                      className="block h-auto w-full"
+                      limitCard={card}
+                      limitBadgeSize="md"
+                    />
+                  </div>
                 </div>
-              ) : null}
-            </div>
 
-          </aside>
+                <section className="surface-card grid gap-2 px-3 py-2.5">
+                  <div className="grid gap-1">
+                    <p className="m-0 whitespace-pre-wrap break-words text-[0.94rem] font-semibold leading-[1.22] text-(--text-main)">
+                      {mobileSummary?.typeLine}
+                    </p>
 
-          <div className="grid content-start gap-5 min-w-0">
-            {!isMobileLayout ? (
-              <header className="grid gap-1.5">
-                <h2 className="m-0 text-[2.05rem] font-semibold leading-[0.96] tracking-[-0.03em] text-(--text-main) min-[860px]:text-[3.15rem]">
-                  {card.name}
-                </h2>
-              </header>
-            ) : null}
+                    {mobileSummary?.statLine ? (
+                      <p className="m-0 whitespace-pre-wrap break-words text-[0.92rem] font-semibold leading-[1.2] text-(--text-main)">
+                        {mobileSummary.statLine}
+                      </p>
+                    ) : null}
 
-            {cardFacts.length > 0 ? (
-              <section className="grid gap-2 min-[640px]:grid-cols-2 min-[860px]:grid-cols-3">
-                {cardFacts.map((fact) => (
-                  <article
-                    key={fact.label}
-                    className="surface-card px-4 py-3"
-                  >
-                    <small className="app-muted block text-[0.8rem] leading-none">
-                      {fact.label}
-                    </small>
-                    <strong className="mt-2 flex items-center gap-2 break-words text-[0.98rem] font-semibold leading-[1.15] text-(--text-main) min-[860px]:text-[1.02rem]">
-                      <span className="flex h-[1.1rem] w-[1.1rem] shrink-0 items-center justify-center text-(--text-main)">
-                        <FactIconGlyph kind={fact.icon} />
-                      </span>
-                      <span>{fact.value}</span>
-                    </strong>
-                  </article>
-                ))}
-              </section>
-            ) : null}
+                    {mobileMetaParts.length > 0 ? (
+                      <p className="app-muted m-0 whitespace-pre-wrap break-words text-[0.74rem] leading-[1.2]">
+                        {mobileMetaParts.join(' · ')}
+                      </p>
+                    ) : null}
+                  </div>
 
-            <section className="grid gap-2.5">
-              <h3 className="m-0 text-[1.55rem] font-semibold leading-none tracking-[-0.02em] text-(--text-main) min-[860px]:text-[2rem]">
-                Card Text
-              </h3>
-              <p className="m-0 whitespace-pre-wrap break-words text-[1.02rem] leading-[1.42] text-(--text-main)">
-                {card.description?.trim().length ? card.description : 'No card text available.'}
-              </p>
-            </section>
+                  <div className="h-px bg-[rgb(var(--border-rgb)/0.9)]" />
+
+                  <p className="m-0 whitespace-pre-wrap break-words text-[0.94rem] leading-[1.38] text-(--text-main)">
+                    {card.description?.trim().length ? card.description : 'No card text available.'}
+                  </p>
+                </section>
+              </div>
+            ) : (
+              <>
+                <aside className="grid content-start gap-3">
+                  <div className="grid content-start gap-3">
+                    <CardArt
+                      remoteUrl={card.imageUrl ?? card.imageUrlSmall}
+                      name={card.name}
+                      className="block h-auto w-full"
+                      limitCard={card}
+                      limitBadgeSize="lg"
+                    />
+
+                    {detailTags.length > 0 ? (
+                      <div className="flex flex-wrap justify-center gap-1.5">
+                        {detailTags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="surface-card-success px-3 py-1 text-[0.66rem] font-semibold tracking-[0.01em] text-white"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </aside>
+
+                <div className="grid min-w-0 content-start gap-5">
+                  <header className="grid gap-1.5">
+                    <h2 className="m-0 text-[2.05rem] font-semibold leading-[0.96] tracking-[-0.03em] text-(--text-main) min-[860px]:text-[3.15rem]">
+                      {card.name}
+                    </h2>
+                  </header>
+
+                  {cardFacts.length > 0 ? (
+                    <section className="grid gap-2 min-[640px]:grid-cols-2 min-[860px]:grid-cols-3">
+                      {cardFacts.map((fact) => (
+                        <article
+                          key={fact.label}
+                          className="surface-card px-4 py-3"
+                        >
+                          <small className="app-muted block text-[0.8rem] leading-none">
+                            {fact.label}
+                          </small>
+                          <strong className="mt-2 flex items-center gap-2 break-words text-[0.98rem] font-semibold leading-[1.15] text-(--text-main) min-[860px]:text-[1.02rem]">
+                            <span className="flex h-[1.1rem] w-[1.1rem] shrink-0 items-center justify-center text-(--text-main)">
+                              <FactIconGlyph kind={fact.icon} />
+                            </span>
+                            <span>{fact.value}</span>
+                          </strong>
+                        </article>
+                      ))}
+                    </section>
+                  ) : null}
+
+                  <section className="grid gap-2.5">
+                    <h3 className="m-0 text-[1.55rem] font-semibold leading-none tracking-[-0.02em] text-(--text-main) min-[860px]:text-[2rem]">
+                      Card Text
+                    </h3>
+                    <p className="m-0 whitespace-pre-wrap break-words text-[1.02rem] leading-[1.42] text-(--text-main)">
+                      {card.description?.trim().length ? card.description : 'No card text available.'}
+                    </p>
+                  </section>
+                </div>
+              </>
+            )}
           </div>
-        </div>
         </div>
       </div>
 
@@ -188,77 +241,109 @@ export function CardDetailSkeleton({
   onClose,
 }: CardDetailSkeletonProps) {
   const isMobileLayout = layoutMode === 'mobile'
-  const factCount = isMobileLayout ? 4 : 6
+  const factCount = 6
   const actionCount = isMobileLayout ? 2 : 3
 
   return (
     <section className="flex min-h-0 flex-col bg-[var(--card-background)] text-(--text-main)">
-      <div className="relative min-h-0 overflow-y-auto px-4 pb-4 pt-4 min-[860px]:px-6 min-[860px]:pb-5 min-[860px]:pt-5">
-        <div className="absolute right-4 top-4 z-10 min-[860px]:right-6 min-[860px]:top-5">
-          <CloseButton
-            size="md"
-            aria-label="Cerrar detalle"
-            onClick={onClose}
-          />
-        </div>
+      <div className="relative min-h-0 overflow-y-auto px-3 pb-3 pt-3 min-[860px]:px-6 min-[860px]:pb-5 min-[860px]:pt-5">
+        {!isMobileLayout ? (
+          <div className="absolute right-3 top-3 z-10 min-[860px]:right-6 min-[860px]:top-5">
+            <CloseButton
+              size="md"
+              aria-label="Cerrar detalle"
+              onClick={onClose}
+            />
+          </div>
+        ) : null}
 
-        <div className="grid gap-4">
+        <div className="grid gap-3 min-[860px]:gap-4">
           <div
             className={[
-              'grid gap-4',
+              'grid gap-3',
               isMobileLayout
                 ? 'content-start'
                 : 'content-start min-[860px]:grid-cols-[18.75rem_minmax(0,1fr)] min-[860px]:items-start min-[860px]:gap-6',
             ].join(' ')}
           >
-            <aside className="grid content-start gap-3">
-              {isMobileLayout ? (
-                <header className="grid gap-1.5">
-                  <Skeleton radius="none" className="h-12 max-w-full w-[17rem]" />
+            {isMobileLayout ? (
+              <div className="grid gap-3">
+                <header className="surface-card relative px-10 py-1.5 text-center">
+                  <Skeleton radius="none" className="mx-auto h-5 w-[11rem] max-w-full" />
+                  <CloseButton
+                    size="sm"
+                    className="absolute right-2 top-1/2 -translate-y-1/2"
+                    aria-label="Cerrar detalle"
+                    onClick={onClose}
+                  />
                 </header>
-              ) : null}
 
-              <div className="grid content-start gap-3">
-                <Skeleton radius="none" className="aspect-[421/614] w-full" />
-
-                <div className="flex flex-wrap justify-center gap-1.5">
-                  <Skeleton radius="chip" className="h-7 w-16" />
-                  <Skeleton radius="chip" className="h-7 w-16" />
-                  <Skeleton radius="chip" className="h-7 w-20" />
+                <div className="grid justify-items-center">
+                  <Skeleton radius="none" className="aspect-[421/614] w-full max-w-[15rem]" />
                 </div>
+
+                <section className="surface-card grid gap-2 px-3 py-2.5">
+                  <div className="grid gap-1">
+                    <Skeleton radius="none" className="h-4 w-full" />
+                    <Skeleton radius="none" className="h-4 w-[68%]" />
+                    <Skeleton radius="none" className="h-3 w-[42%]" />
+                  </div>
+
+                  <div className="h-px bg-[rgb(var(--border-rgb)/0.9)]" />
+
+                  <div className="grid gap-2">
+                    <Skeleton radius="none" className="h-4 w-full" />
+                    <Skeleton radius="none" className="h-4 w-full" />
+                    <Skeleton radius="none" className="h-4 w-[94%]" />
+                    <Skeleton radius="none" className="h-4 w-[88%]" />
+                    <Skeleton radius="none" className="h-4 w-[82%]" />
+                  </div>
+                </section>
               </div>
-            </aside>
+            ) : (
+              <>
+                <aside className="grid content-start gap-3">
+                  <div className="grid content-start gap-3">
+                    <Skeleton radius="none" className="aspect-[421/614] w-full" />
 
-            <div className="grid min-w-0 content-start gap-5">
-              {!isMobileLayout ? (
-                <header className="grid gap-1.5">
-                  <Skeleton radius="none" className="h-14 max-w-full w-[26rem]" />
-                </header>
-              ) : null}
+                    <div className="flex flex-wrap justify-center gap-1.5">
+                      <Skeleton radius="chip" className="h-7 w-16" />
+                      <Skeleton radius="chip" className="h-7 w-16" />
+                      <Skeleton radius="chip" className="h-7 w-20" />
+                    </div>
+                  </div>
+                </aside>
 
-              <section className="grid gap-2 min-[640px]:grid-cols-2 min-[860px]:grid-cols-3">
-                {Array.from({ length: factCount }).map((_, index) => (
-                  <article
-                    key={index}
-                    className="surface-card grid gap-2 px-4 py-3"
-                  >
-                    <Skeleton radius="none" className="h-3 w-20" />
-                    <Skeleton radius="none" className="h-6 w-full" />
-                  </article>
-                ))}
-              </section>
+                <div className="grid min-w-0 content-start gap-5">
+                  <header className="grid gap-1.5">
+                    <Skeleton radius="none" className="h-14 max-w-full w-[26rem]" />
+                  </header>
 
-              <section className="grid gap-2.5">
-                <Skeleton radius="none" className="h-10 w-40" />
-                <div className="grid gap-2">
-                  <Skeleton radius="none" className="h-5 w-full" />
-                  <Skeleton radius="none" className="h-5 w-full" />
-                  <Skeleton radius="none" className="h-5 w-[92%]" />
-                  <Skeleton radius="none" className="h-5 w-[88%]" />
-                  <Skeleton radius="none" className="h-5 w-[84%]" />
+                  <section className="grid gap-2 min-[640px]:grid-cols-2 min-[860px]:grid-cols-3">
+                    {Array.from({ length: factCount }).map((_, index) => (
+                      <article
+                        key={index}
+                        className="surface-card grid gap-2 px-4 py-3"
+                      >
+                        <Skeleton radius="none" className="h-3 w-20" />
+                        <Skeleton radius="none" className="h-6 w-full" />
+                      </article>
+                    ))}
+                  </section>
+
+                  <section className="grid gap-2.5">
+                    <Skeleton radius="none" className="h-10 w-40" />
+                    <div className="grid gap-2">
+                      <Skeleton radius="none" className="h-5 w-full" />
+                      <Skeleton radius="none" className="h-5 w-full" />
+                      <Skeleton radius="none" className="h-5 w-[92%]" />
+                      <Skeleton radius="none" className="h-5 w-[88%]" />
+                      <Skeleton radius="none" className="h-5 w-[84%]" />
+                    </div>
+                  </section>
                 </div>
-              </section>
-            </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -360,10 +445,12 @@ function buildCardFacts(card: ApiCardSearchResult): CardFact[] {
     facts.push({ label: 'ATK', value: card.atk, icon: 'atk' })
   }
 
-  if (card.archetype) {
-    facts.push({ label: 'Archetype', value: card.archetype, icon: 'archetype' })
-  } else if (card.def) {
+  if (card.def) {
     facts.push({ label: 'DEF', value: card.def, icon: 'def' })
+  }
+
+  if (card.archetype && facts.length < 6) {
+    facts.push({ label: 'Archetype', value: card.archetype, icon: 'archetype' })
   }
 
   if (facts.length < 4 && card.frameType.trim().length > 0) {
@@ -371,6 +458,39 @@ function buildCardFacts(card: ApiCardSearchResult): CardFact[] {
   }
 
   return facts.slice(0, 6)
+}
+
+function buildMobileSummary(card: ApiCardSearchResult): {
+  typeLine: string
+  statLine: string | null
+} {
+  const typeParts = [`[${card.cardType}]`]
+  const subtypeParts = [card.race, card.attribute].filter((value): value is string => Boolean(value))
+
+  if (subtypeParts.length > 0) {
+    typeParts.push(subtypeParts.join('/'))
+  }
+
+  const statParts: string[] = []
+
+  if (card.linkValue !== null) {
+    statParts.push(`[Link-${card.linkValue}]`)
+  } else if (card.level !== null) {
+    statParts.push(`[★${card.level}]`)
+  }
+
+  if (card.linkValue !== null) {
+    if (card.atk) {
+      statParts.push(`${card.atk}`)
+    }
+  } else if (card.atk || card.def) {
+    statParts.push(`${card.atk ?? '?'}/${card.def ?? '?'}`)
+  }
+
+  return {
+    typeLine: typeParts.join(' '),
+    statLine: statParts.length > 0 ? statParts.join(' / ') : null,
+  }
 }
 
 function FactIconGlyph({ kind }: { kind: FactIcon }) {
