@@ -6,6 +6,13 @@ import {
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { CardArt } from '../CardArt'
 
+const EMPTY_PREVIEW_GUIDE = {
+  step: 'PASO 1',
+  title: 'Armá tu deck en el builder',
+  description:
+    'Buscá cartas en el buscador, agregalas con tap y reordená la lista arrastrando entre Main, Extra y Side. Mantené presionado para ver o eliminar y tocá una vez la carta para ver el detalle.',
+} as const
+
 interface DeckBuilderClassicPreviewProps {
   card: ApiCardSearchResult | null
 }
@@ -18,6 +25,14 @@ export function DeckBuilderClassicPreview({ card }: DeckBuilderClassicPreviewPro
 
   return (
     <aside className="classic-builder-preview">
+      {!card ? (
+        <section className="classic-builder-preview-guide" aria-label="Guía inicial del deck builder">
+          <p className="classic-builder-preview-guide-step">{EMPTY_PREVIEW_GUIDE.step}</p>
+          <h3 className="classic-builder-preview-guide-heading">{EMPTY_PREVIEW_GUIDE.title}</h3>
+          <p className="classic-builder-preview-guide-description">{EMPTY_PREVIEW_GUIDE.description}</p>
+        </section>
+      ) : null}
+
       <div className="classic-builder-preview-title">{card ? card.name : 'Select a card'}</div>
 
       <div className="classic-builder-preview-art-shell">
