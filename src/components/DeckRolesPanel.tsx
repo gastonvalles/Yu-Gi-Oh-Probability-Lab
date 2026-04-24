@@ -9,12 +9,15 @@ import {
   getDeckGroupTheme,
   serializeGroupKey,
 } from '../app/deck-groups'
+import { reclassifyAllCards } from '../app/deck-builder-slice'
+import { getClassificationOverrides } from '../app/classification-overrides'
 import {
   isCardFullyClassified,
   isCardMissingOrigin,
   isCardMissingRoles,
   isCardPendingReview,
 } from '../app/role-step'
+import { useAppDispatch } from '../app/store-hooks'
 import { formatInteger } from '../app/utils'
 import type { CardEntry, CardGroupKey, CardOrigin, CardRole } from '../types'
 import { CardArt } from './CardArt'
@@ -574,6 +577,7 @@ export function DeckRolesPanel({
   onSetOrigin,
   onToggleRole,
 }: DeckRolesPanelProps) {
+  const dispatch = useAppDispatch()
   const [activeFilter, setActiveFilter] = useState<ClassificationFilterKey>(() =>
     cards.some((card) => !isCardFullyClassified(card)) ? 'unclassified' : 'complete',
   )
@@ -609,6 +613,11 @@ export function DeckRolesPanel({
     () => sortedCards.filter((card) => isCardFullyClassified(card)),
     [sortedCards],
   )
+  const hasCardsNeedingClassification = useMemo(
+    () => sortedCards.some((card) => card.origin === null || card.roles.length === 0 || card.needsReview),
+    [sortedCards],
+  )
+
   const defaultFilter = unclassifiedCards.length > 0 ? 'unclassified' : 'complete'
   const overviewItems = useMemo(() => {
     const stateItems = [
@@ -707,10 +716,20 @@ export function DeckRolesPanel({
   const selectedCardPosition = selectedCard
     ? visibleQueueCards.findIndex((card) => card.id === selectedCard.id) + 1
     : 0
-  const previousCard = selectedCardPosition > 1 ? visibleQueueCards[selectedCardPosition - 2] ?? null : null
+  // Stable navigation order (by name) so prev/next don't jump when a card's priority changes
+  const stableNavigationCards = useMemo(
+    () => [...cards].sort((left, right) =>
+      left.name.localeCompare(right.name) || right.copies - left.copies,
+    ),
+    [cards],
+  )
+  const selectedCardIndexInFullList = selectedCard
+    ? stableNavigationCards.findIndex((card) => card.id === selectedCard.id)
+    : -1
+  const previousCard = selectedCardIndexInFullList > 0 ? stableNavigationCards[selectedCardIndexInFullList - 1] ?? null : null
   const nextCard =
-    selectedCardPosition > 0 && selectedCardPosition < visibleQueueCards.length
-      ? visibleQueueCards[selectedCardPosition] ?? null
+    selectedCardIndexInFullList >= 0 && selectedCardIndexInFullList < stableNavigationCards.length - 1
+      ? stableNavigationCards[selectedCardIndexInFullList + 1] ?? null
       : null
   const filterItemMap = useMemo(
     () => new Map(overviewItems.map((item) => [getClassificationFilterReactKey(item.key), item])),
@@ -734,6 +753,12 @@ export function DeckRolesPanel({
 
   useEffect(() => {
     if (selectedCardId && sortedCards.some((card) => card.id === selectedCardId)) {
+      // Card still exists in deck — check if it left the active filter
+      if (!filteredCards.some((card) => card.id === selectedCardId) && filteredCards.length > 0) {
+        // Card left the filter (e.g., was classified while viewing "Sin completar")
+        // Auto-advance to the first card still in the filter
+        setSelectedCardId(filteredCards[0]?.id ?? null)
+      }
       return
     }
 
@@ -988,9 +1013,16 @@ export function DeckRolesPanel({
         description="Separá dos decisiones distintas para el Main Deck: a qué grupo pertenece cada carta y qué rol cumple cuando la robás."
         side={
           sortedCards.length > 0 ? (
-            <Button variant="primary" size="sm" onClick={() => setDrawerMode('help')}>
-              Guia de Clasificación
-            </Button>
+            <>
+              {hasCardsNeedingClassification ? (
+                <Button variant="primary" size="sm" onClick={() => dispatch(reclassifyAllCards({ overrides: getClassificationOverrides() }))}>
+                  Clasificar todo
+                </Button>
+              ) : null}
+              <Button variant="primary" size="sm" onClick={() => setDrawerMode('help')}>
+                Guia de Clasificación
+              </Button>
+            </>
           ) : null
         }
         sideVariant="inline"
@@ -1109,6 +1141,7 @@ export function DeckRolesPanel({
         subtitle="Resolvé la carta seleccionada sin salir de la cola."
         hideHeader
         onClose={() => setIsDetailOpen(false)}
+        key={selectedCard?.id ?? 'empty'}
       >
         {renderSelectedCardDetail()}
       </ClassificationModal>

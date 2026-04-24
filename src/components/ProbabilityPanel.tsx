@@ -2,7 +2,6 @@ import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
 
 import { buildCalculatorState } from '../app/calculator-state'
 import type { DerivedDeckGroup } from '../app/deck-groups'
-import type { CalculatorMode } from '../app/model'
 import { curatePatterns } from '../app/pattern-curation'
 import { AUTO_BASE_PRESET_IDS, buildPatternPresets } from '../app/pattern-presets'
 import {
@@ -31,8 +30,6 @@ import { Skeleton } from './ui/Skeleton'
 
 interface ProbabilityPanelProps {
   handSize: number
-  mode: CalculatorMode
-  onModeChange: (mode: CalculatorMode) => void
   patterns: HandPattern[]
   derivedMainCards: CardEntry[]
   derivedGroups: DerivedDeckGroup[]
@@ -67,8 +64,6 @@ const IDLE_CALCULATION_RESULT: CalculationOutput = {
 
 export function ProbabilityPanel({
   handSize,
-  mode,
-  onModeChange,
   patterns,
   derivedMainCards,
   derivedGroups,
@@ -108,8 +103,6 @@ export function ProbabilityPanel({
   return (
     <ProbabilityPanelContent
       handSize={handSize}
-      mode={mode}
-      onModeChange={onModeChange}
       patterns={patterns}
       derivedMainCards={derivedMainCards}
       derivedGroups={derivedGroups}
@@ -121,8 +114,6 @@ export function ProbabilityPanel({
 
 function ProbabilityPanelContent({
   handSize,
-  mode: _mode,
-  onModeChange: _onModeChange,
   patterns,
   derivedMainCards,
   derivedGroups: _derivedGroups,

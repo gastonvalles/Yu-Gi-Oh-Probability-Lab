@@ -30,7 +30,7 @@ import { buildDerivedDeckGroups } from '../../app/deck-groups'
 import { GENESYS_POINT_CAP, calculateGenesysDeckPointTotal } from '../../app/genesys-format'
 import { exportDeckAssets } from '../../app/deck-image-export'
 import { type AppState, type DeckCardInstance, type DeckZone } from '../../app/model'
-import { setDeckFormat, setMode } from '../../app/settings-slice'
+import { setDeckFormat } from '../../app/settings-slice'
 import type { RootState } from '../../app/store'
 import { useAppDispatch, useAppSelector } from '../../app/store-hooks'
 import { useApiCardSearch } from '../../app/use-api-card-search'
@@ -41,6 +41,7 @@ import { usePatternMaintenance } from '../../app/use-pattern-maintenance'
 import { isClassificationStepComplete } from '../../app/role-step'
 import { useToastMessage } from '../../app/use-toast-message'
 import { HOVER_PREVIEW_DELAY_MS } from '../../app/model'
+import { getClassificationOverrides } from '../../app/classification-overrides'
 import type { ApiCardReference, CardOrigin, CardRole } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 
@@ -56,7 +57,6 @@ export function useDeckModeController() {
 
   const appState = useMemo<AppState>(
     () => ({
-      mode: settings.mode,
       handSize: settings.handSize,
       deckFormat: settings.deckFormat,
       patternsSeeded: patternsState.patternsSeeded,
@@ -71,7 +71,6 @@ export function useDeckModeController() {
       patternsState.patternsSeeded,
       settings.deckFormat,
       settings.handSize,
-      settings.mode,
     ],
   )
 
@@ -146,6 +145,7 @@ export function useDeckModeController() {
             index: pendingDrop.index,
             results: apiSearch.results,
             zone: pendingDrop.zone,
+            overrides: getClassificationOverrides(),
           }),
         )
         return
@@ -333,6 +333,7 @@ export function useDeckModeController() {
           index: deckBuilder[zone].length,
           results: resultsForDispatch,
           zone,
+          overrides: getClassificationOverrides(),
         }),
       )
 
@@ -424,13 +425,6 @@ export function useDeckModeController() {
       showToast('Deck importado al builder.', 'success')
     },
     [dispatch, showToast],
-  )
-
-  const handleModeChange = useCallback(
-    (mode: RootState['settings']['mode']) => {
-      dispatch(setMode(mode))
-    },
-    [dispatch],
   )
 
   useEffect(() => {
@@ -543,8 +537,6 @@ export function useDeckModeController() {
     },
     probability: {
       handSize: settings.handSize,
-      mode: settings.mode,
-      onModeChange: handleModeChange,
       patterns: patternsState.patterns,
       derivedMainCards,
       derivedGroups,

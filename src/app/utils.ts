@@ -1,5 +1,4 @@
 import type { DeckFormat } from '../types'
-import type { CalculatorMode } from './model'
 
 export function createId(prefix: string): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -80,11 +79,7 @@ export function parseArray(value: unknown, fieldName: string): unknown[] {
   return value
 }
 
-export function parseMode(value: unknown): CalculatorMode {
-  if (value === 'deck' || value === 'manual' || value === 'gambling') {
-    return value
-  }
-
+export function parseMode(_value: unknown): 'deck' {
   return 'deck'
 }
 

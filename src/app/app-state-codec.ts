@@ -31,7 +31,6 @@ import {
   normalizeName,
   parseArray,
   parseDeckFormat,
-  parseMode,
   parseNullableDisplayString,
   parseNullableInteger,
   parseNullableString,
@@ -42,7 +41,6 @@ import {
 export function toPortableConfig(state: AppState): PortableConfig {
   return {
     version: 15,
-    mode: state.mode,
     handSize: state.handSize,
     deckFormat: state.deckFormat,
     patternsSeeded: state.patternsSeeded,
@@ -93,7 +91,6 @@ export function fromPortableConfig(value: unknown): AppState {
     throw new Error('La configuración debe ser un objeto JSON.')
   }
 
-  const mode = parseMode(value.mode)
   const handSize = parseRequiredInteger(value.handSize, 'handSize')
   const deckFormat = parseDeckFormat(value.deckFormat)
   const patternsSeedVersion = parseOptionalInteger(value.patternsSeedVersion, 0)
@@ -166,7 +163,6 @@ export function fromPortableConfig(value: unknown): AppState {
   })
 
   return {
-    mode,
     handSize,
     deckFormat,
     patternsSeeded: value.patternsSeeded === true || patternsSeedVersion > 0 || patterns.length > 0,

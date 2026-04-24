@@ -1,9 +1,11 @@
 import type { ApiCardReference, CardOrigin, CardRole, DeckFormat } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
+import { classifyCard, normalizeCardNameForLookup, type ClassificationSuggestion } from './classification-engine'
 import { getCardCopyLimit } from './deck-format'
 import { EDISON_FORMAT_LABEL, getEdisonCardStatus, isEdisonCardInPool } from './edison-format'
 import { GENESYS_POINT_CAP, calculateGenesysDeckPointTotal, isGenesysLegalCardName } from './genesys-format'
 import type { DeckBuilderState, DeckCardInstance, DeckZone } from './model'
+import { saveClassificationOverride } from './persistence'
 import { createId, formatInteger } from './utils'
 
 const DECK_ZONE_LIMITS: Record<DeckZone, number> = {
@@ -30,6 +32,7 @@ export function addSearchResultToZone(
   zone: DeckZone,
   targetIndex: number,
   format: DeckFormat = 'unlimited',
+  overrides?: ReadonlyMap<string, ClassificationSuggestion>,
 ): DeckBuilderState {
   const searchResult = searchResults.find((result) => result.ygoprodeckId === apiCardId)
 
@@ -42,14 +45,16 @@ export function addSearchResultToZone(
   }
 
   const nextDeckBuilder = copyDeckBuilderForZones(deckBuilder, [zone])
+  const suggestion = classifyCard(cloneApiCardReference(searchResult), searchResult.name, overrides)
+  const hasOverride = overrides ? overrides.has(normalizeCardNameForLookup(searchResult.name)) : false
 
   insertDeckCard(nextDeckBuilder[zone], targetIndex, {
     instanceId: createId('deck-card'),
     name: searchResult.name,
     apiCard: cloneApiCardReference(searchResult),
-    origin: null,
-    roles: [],
-    needsReview: false,
+    origin: suggestion.origin,
+    roles: [...suggestion.roles],
+    needsReview: !hasOverride,
   })
 
   return nextDeckBuilder
@@ -60,6 +65,7 @@ export function addSearchResultToDefaultZone(
   searchResults: ApiCardSearchResult[],
   apiCardId: number,
   format: DeckFormat = 'unlimited',
+  overrides?: ReadonlyMap<string, ClassificationSuggestion>,
 ): DeckBuilderState {
   const searchResult = searchResults.find((result) => result.ygoprodeckId === apiCardId)
 
@@ -68,7 +74,7 @@ export function addSearchResultToDefaultZone(
   }
 
   const zone = getDefaultDeckZoneForCardInBuilder(deckBuilder, searchResult)
-  return addSearchResultToZone(deckBuilder, searchResults, apiCardId, zone, deckBuilder[zone].length, format)
+  return addSearchResultToZone(deckBuilder, searchResults, apiCardId, zone, deckBuilder[zone].length, format, overrides)
 }
 
 export function getAddSearchResultIssue(
@@ -232,6 +238,18 @@ export function toggleRoleForCard(
     hasAnyChange = true
   }
 
+  if (hasAnyChange) {
+    // Persist override for cards that are fully classified
+    for (const zone of zones) {
+      for (const card of nextDeckBuilder[zone]) {
+        if (card.apiCard.ygoprodeckId === ygoprodeckId && !card.needsReview && card.origin !== null && card.roles.length > 0) {
+          saveClassificationOverride(card.name, { origin: card.origin, roles: [...card.roles] })
+          break
+        }
+      }
+    }
+  }
+
   return hasAnyChange ? nextDeckBuilder : deckBuilder
 }
 
@@ -261,7 +279,66 @@ export function setOriginForCard(
     hasAnyChange = true
   }
 
+  if (hasAnyChange) {
+    // Persist override for cards that are fully classified
+    for (const zone of zones) {
+      for (const card of nextDeckBuilder[zone]) {
+        if (card.apiCard.ygoprodeckId === ygoprodeckId && !card.needsReview && card.origin !== null && card.roles.length > 0) {
+          saveClassificationOverride(card.name, { origin: card.origin, roles: [...card.roles] })
+          break
+        }
+      }
+    }
+  }
+
   return hasAnyChange ? nextDeckBuilder : deckBuilder
+}
+
+export function classifyAllUnclassified(
+  deckBuilder: DeckBuilderState,
+  overrides?: ReadonlyMap<string, ClassificationSuggestion>,
+): DeckBuilderState {
+  const nextDeckBuilder = cloneDeckBuilder(deckBuilder)
+  const zones: DeckZone[] = ['main', 'extra', 'side']
+
+  for (const zone of zones) {
+    for (const card of nextDeckBuilder[zone]) {
+      if (card.origin === null && card.roles.length === 0) {
+        const suggestion = classifyCard(card.apiCard, card.name, overrides)
+        card.origin = suggestion.origin
+        card.roles = [...suggestion.roles]
+        const hasOverride = overrides ? overrides.has(normalizeCardNameForLookup(card.name)) : false
+        card.needsReview = !hasOverride
+      }
+    }
+  }
+
+  return nextDeckBuilder
+}
+
+export function reclassifyAll(
+  deckBuilder: DeckBuilderState,
+  overrides?: ReadonlyMap<string, ClassificationSuggestion>,
+): DeckBuilderState {
+  const nextDeckBuilder = cloneDeckBuilder(deckBuilder)
+  const zones: DeckZone[] = ['main', 'extra', 'side']
+
+  for (const zone of zones) {
+    for (const card of nextDeckBuilder[zone]) {
+      // Skip cards the user manually confirmed (needsReview === false with origin set)
+      if (!card.needsReview && card.origin !== null && card.roles.length > 0) {
+        continue
+      }
+
+      const suggestion = classifyCard(card.apiCard, card.name, overrides)
+      card.origin = suggestion.origin
+      card.roles = [...suggestion.roles]
+      const hasOverride = overrides ? overrides.has(normalizeCardNameForLookup(card.name)) : false
+      card.needsReview = !hasOverride
+    }
+  }
+
+  return nextDeckBuilder
 }
 
 export function getDefaultDeckZoneForCard(card: ApiCardReference | ApiCardSearchResult): DeckZone {

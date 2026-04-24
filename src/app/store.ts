@@ -41,7 +41,6 @@ export type AppDispatch = typeof store.dispatch
 
 export function selectAppState(state: RootState): AppState {
   return {
-    mode: state.settings.mode,
     handSize: state.settings.handSize,
     deckFormat: state.settings.deckFormat,
     patternsSeeded: state.patterns.patternsSeeded,
@@ -54,7 +53,6 @@ export function selectAppState(state: RootState): AppState {
 function buildRootState(state: AppState): RootStateSchema {
   return {
     settings: {
-      mode: state.mode,
       handSize: state.handSize,
       deckFormat: state.deckFormat,
     },

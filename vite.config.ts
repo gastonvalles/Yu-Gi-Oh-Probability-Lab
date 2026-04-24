@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'vite'
@@ -13,5 +14,9 @@ export default defineConfig({
           interval: 150,
         }
       : undefined,
+  },
+  test: {
+    globals: true,
+    environment: 'node',
   },
 })

@@ -1,6 +1,8 @@
 import type { DeckFormat } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 import { fromPortableConfig } from './app-state-codec'
+import { classifyCard, normalizeCardNameForLookup } from './classification-engine'
+import { getClassificationOverrides } from './classification-overrides'
 import { addSearchResultToZone, getAddSearchResultIssue } from './deck-builder'
 import type { AppState, DeckBuilderState, DeckZone, PortableConfig } from './model'
 import { createInitialState } from './model'
@@ -312,6 +314,22 @@ export function buildDeckImportPreviewFromDeckBuilder(options: {
   source?: Partial<DeckImportSource>
 }): DeckImportPreview {
   const importedDeck = cloneDeckBuilderForImport(options.deckBuilder)
+  const overrides = getClassificationOverrides()
+
+  for (const zone of DECK_ZONES) {
+    for (const card of importedDeck[zone]) {
+      if (card.origin !== null || card.roles.length > 0) {
+        card.needsReview = false
+      } else {
+        const suggestion = classifyCard(card.apiCard, card.name, overrides)
+        const hasOverride = overrides.has(normalizeCardNameForLookup(card.name))
+        card.origin = suggestion.origin
+        card.roles = [...suggestion.roles]
+        card.needsReview = !hasOverride
+      }
+    }
+  }
+
   const resolvedEntries = buildResolvedEntriesFromDeckBuilder(importedDeck)
   const parsedEntries = resolvedEntries.map<ImportedDeckEntry>((entry) => ({
     zone: entry.zone,
@@ -435,6 +453,7 @@ function appendResolvedEntryCopies(options: {
       entry.zone,
       nextDeckBuilder[entry.zone].length,
       deckFormat,
+      getClassificationOverrides(),
     )
     appliedCount += 1
   }
@@ -477,7 +496,6 @@ function buildPortableConfigFromDeckBuilderRecord(
 
   return {
     version: 15,
-    mode: initialState.mode,
     handSize: initialState.handSize,
     deckFormat: initialState.deckFormat,
     patternsSeeded: false,

@@ -9,8 +9,7 @@ export function isCardMissingRoles(card: CardEntry): boolean {
 }
 
 export function isCardPendingReview(card: CardEntry): boolean {
-  void card
-  return false
+  return card.needsReview === true
 }
 
 export function isCardFullyClassified(card: CardEntry): boolean {

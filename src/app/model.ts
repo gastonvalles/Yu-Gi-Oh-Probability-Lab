@@ -7,7 +7,7 @@ import type {
   Matcher,
 } from '../types'
 
-export type CalculatorMode = 'deck' | 'manual' | 'gambling'
+export type CalculatorMode = 'deck'
 export type DeckZone = 'main' | 'extra' | 'side'
 
 export interface DeckCardInstance {
@@ -28,7 +28,6 @@ export interface DeckBuilderState {
 }
 
 export interface AppState {
-  mode: CalculatorMode
   handSize: number
   deckFormat: DeckFormat
   patternsSeeded: boolean
@@ -64,7 +63,6 @@ export interface PortableDeckCard {
 
 export interface PortableConfig {
   version: number
-  mode: CalculatorMode
   handSize: number
   deckFormat: DeckFormat
   patternsSeeded: boolean
@@ -105,6 +103,7 @@ export type DragPayload =
   | { type: 'deck-card'; instanceId: string }
 
 export const STORAGE_KEY = 'ygo-probability-lab:v2'
+export const CLASSIFICATION_OVERRIDES_KEY = 'ygo-probability-lab:classification-overrides:v1'
 export const SEARCH_CACHE_KEY = 'ygo-probability-lab:api-cache:v2'
 export const SEARCH_CACHE_TTL_MS = 24 * 60 * 60 * 1000
 export const SEARCH_CACHE_LIMIT = 25
@@ -117,7 +116,6 @@ export const SEARCH_RESULTS_MAX_HEIGHT_CSS = 'calc(100vh - 112px)'
 
 export function createInitialState(): AppState {
   return {
-    mode: 'deck',
     handSize: 5,
     deckFormat: 'unlimited',
     patternsSeeded: false,

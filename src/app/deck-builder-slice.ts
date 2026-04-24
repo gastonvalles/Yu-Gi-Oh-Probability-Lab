@@ -3,9 +3,12 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
 import type { DeckBuilderState, DeckZone } from './model'
 import type { CardOrigin, CardRole, DeckFormat } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
+import type { ClassificationSuggestion } from './classification-engine'
 import {
   addSearchResultToDefaultZone,
   addSearchResultToZone,
+  classifyAllUnclassified,
+  reclassifyAll,
   moveDeckCard,
   removeDeckCard,
   setOriginForCard,
@@ -18,12 +21,14 @@ interface AddSearchResultToDeckZonePayload {
   index: number
   results: ApiCardSearchResult[]
   zone: DeckZone
+  overrides?: ReadonlyMap<string, ClassificationSuggestion>
 }
 
 interface AddSearchResultToDefaultDeckZonePayload {
   apiCardId: number
   deckFormat: DeckFormat
   results: ApiCardSearchResult[]
+  overrides?: ReadonlyMap<string, ClassificationSuggestion>
 }
 
 interface MoveDeckCardPayload {
@@ -63,6 +68,7 @@ const deckBuilderSlice = createSlice({
         action.payload.results,
         action.payload.apiCardId,
         action.payload.deckFormat,
+        action.payload.overrides,
       )
     },
     addSearchResultToDeckZone(state, action: PayloadAction<AddSearchResultToDeckZonePayload>) {
@@ -73,6 +79,7 @@ const deckBuilderSlice = createSlice({
         action.payload.zone,
         action.payload.index,
         action.payload.deckFormat,
+        action.payload.overrides,
       )
     },
     moveDeckCardInBuilder(state, action: PayloadAction<MoveDeckCardPayload>) {
@@ -104,12 +111,20 @@ const deckBuilderSlice = createSlice({
     setIsEditingDeck(state, action: PayloadAction<boolean>) {
       state.isEditingDeck = action.payload
     },
+    classifyAllUnclassifiedCards(state, action: PayloadAction<{ overrides?: ReadonlyMap<string, ClassificationSuggestion> } | undefined>) {
+      return classifyAllUnclassified(state, action.payload?.overrides)
+    },
+    reclassifyAllCards(state, action: PayloadAction<{ overrides?: ReadonlyMap<string, ClassificationSuggestion> } | undefined>) {
+      return reclassifyAll(state, action.payload?.overrides)
+    },
   },
 })
 
 export const {
   addSearchResultToDeckZone,
   addSearchResultToDefaultDeckZone,
+  classifyAllUnclassifiedCards,
+  reclassifyAllCards,
   clearDeckZone,
   moveDeckCardInBuilder,
   removeDeckCardFromBuilder,
