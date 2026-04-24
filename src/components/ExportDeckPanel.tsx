@@ -109,7 +109,7 @@ export function ExportDeckPanel({
             </p>
           </div>
 
-          <div className="min-h-[20rem] overflow-y-auto overflow-x-hidden min-[1180px]:min-h-0">
+          <div className="min-h-80 overflow-y-auto overflow-x-hidden min-[1180px]:min-h-0">
             {previewState === 'ready' && imagePreviewUrl ? (
               <img
                 src={imagePreviewUrl}
@@ -136,7 +136,7 @@ export function ExportDeckPanel({
               </div>
             ) : (
               <div className="grid h-full place-items-center text-center">
-                <p className="app-muted m-0 max-w-[28rem] text-[0.8rem] leading-[1.2]">
+                <p className="app-muted m-0 max-w-md text-[0.8rem] leading-[1.2]">
                   {previewState === 'error'
                     ? 'No pude generar la preview del PNG.'
                     : 'Agregá cartas al Main Deck para habilitar la preview.'}
@@ -154,8 +154,8 @@ export function ExportDeckPanel({
             </p>
           </div>
 
-          <div className="min-h-[20rem] overflow-y-auto overflow-x-hidden min-[1180px]:min-h-0">
-            <pre className="pointer-events-none m-0 min-h-full text-[0.76rem] leading-[1.36] whitespace-pre-wrap break-words text-(--text-main) select-none">
+          <div className="min-h-80 overflow-y-auto overflow-x-hidden min-[1180px]:min-h-0">
+            <pre className="pointer-events-none m-0 min-h-full text-[0.76rem] leading-[1.36] whitespace-pre-wrap wrap-break-word text-(--text-main) select-none">
               {textPreview}
             </pre>
           </div>

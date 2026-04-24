@@ -560,7 +560,7 @@ function ProbabilityPanelContent({
                   className={[
                     'm-0 px-3 py-2 text-[0.78rem] leading-[1.16]',
                     issue.level === 'error'
-                      ? 'surface-card-danger text-(--destructive)'
+                      ? 'surface-card-danger text-destructive'
                       : 'surface-card-warning text-(--warning)',
                   ].join(' ')}
                 >
@@ -631,7 +631,7 @@ function ProbabilityPanelContent({
             onClick={() => setPracticeOpen(false)}
           />
 
-          <div className="surface-panel relative grid h-[min(92vh,980px)] w-full max-w-[78rem] min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0">
+          <div className="surface-panel relative grid h-[min(92vh,980px)] w-full max-w-312 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0">
             <div className="flex min-w-0 items-center justify-between gap-2 border-b border-(--border-subtle) px-4 py-3">
               <div className="grid min-w-0 gap-0.5">
                 <strong className="text-[0.98rem] text-(--text-main)">Práctica</strong>
@@ -693,7 +693,7 @@ function ProbabilityPanelSkeleton() {
         <section className="surface-panel-strong grid gap-3 px-4 py-4">
           <div className="grid gap-1.5">
             <Skeleton radius="none" className="h-3 w-28" />
-            <Skeleton radius="none" className="h-8 max-w-full w-[15rem]" />
+            <Skeleton radius="none" className="h-8 max-w-full w-60" />
             <div className="grid gap-1.5">
               <Skeleton radius="none" className="h-4 max-w-full w-[96%]" />
               <Skeleton radius="none" className="h-4 max-w-full w-[68%]" />

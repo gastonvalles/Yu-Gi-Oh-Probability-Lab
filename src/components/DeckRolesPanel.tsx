@@ -480,12 +480,12 @@ function ClassificationDrawer({
       <button
         type="button"
         aria-label="Cerrar panel"
-        className="fixed inset-0 z-[120] bg-[rgb(var(--background-rgb)/0.72)] backdrop-blur-[2px]"
+        className="fixed inset-0 z-120 bg-[rgb(var(--background-rgb)/0.72)] backdrop-blur-[2px]"
         onClick={onClose}
       />
 
       <aside
-        className="surface-panel fixed inset-y-0 right-0 z-[130] grid h-[100dvh] w-full max-w-[30rem] grid-rows-[minmax(0,1fr)] border-l border-(--border-subtle) p-0 shadow-[-28px_0_54px_rgba(0,0,0,0.38)]"
+        className="surface-panel fixed inset-y-0 right-0 z-130 grid h-dvh w-full max-w-120 grid-rows-[minmax(0,1fr)] border-l border-(--border-subtle) p-0 shadow-[-28px_0_54px_rgba(0,0,0,0.38)]"
         style={{ background: 'var(--card-background)' }}
       >
         <div className="min-h-0 overflow-y-auto px-4 pb-4 pt-4">
@@ -533,9 +533,9 @@ function ClassificationModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-[150] grid place-items-center bg-[rgb(var(--background-rgb)/0.76)] px-4 py-5" onClick={onClose}>
+      <div className="fixed inset-0 z-150 grid place-items-center bg-[rgb(var(--background-rgb)/0.76)] px-4 py-5" onClick={onClose}>
         <div
-          className="surface-panel relative flex w-full max-w-[70rem] min-h-0 max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden p-0 shadow-none"
+          className="surface-panel relative flex w-full max-w-280 min-h-0 max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden p-0 shadow-none"
           onClick={(event) => event.stopPropagation()}
         >
           <div className="absolute right-4 top-4 z-10 min-[1101px]:right-6 min-[1101px]:top-5">
@@ -862,7 +862,7 @@ export function DeckRolesPanel({
           <CardArt
             remoteUrl={selectedCard.apiCard?.imageUrl ?? selectedCard.apiCard?.imageUrlSmall ?? null}
             name={selectedCard.name}
-            className="block h-auto w-full bg-(--input)"
+            className="block h-auto w-full bg-input"
             limitCard={selectedCard.apiCard}
           />
         </div>
@@ -981,7 +981,7 @@ export function DeckRolesPanel({
           <div className="flex min-h-full flex-col gap-2.5">
             <div className="grid gap-1 pr-12">
               <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-[0.12em]">Carta actual</p>
-              <h3 className="m-0 break-words text-[2rem] leading-[0.94] tracking-[-0.03em] text-(--text-main) min-[1101px]:text-[2.3rem]">
+              <h3 className="m-0 wrap-break-word text-[2rem] leading-[0.94] tracking-[-0.03em] text-(--text-main) min-[1101px]:text-[2.3rem]">
                 {selectedCard.name}
               </h3>
               <p className="app-muted m-0 text-[0.9rem] leading-[1.05] min-[1101px]:text-[0.98rem]">
@@ -1100,7 +1100,7 @@ export function DeckRolesPanel({
                         <CardArt
                           remoteUrl={card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null}
                           name={card.name}
-                          className="block h-auto w-full bg-(--input)"
+                          className="block h-auto w-full bg-input"
                           limitCard={card.apiCard}
                           limitBadgeSize="sm"
                         />

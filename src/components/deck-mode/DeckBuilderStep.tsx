@@ -476,7 +476,7 @@ export function DeckBuilderStep({
       </div>
 
       {mobileSearchOpen ? (
-        <div className="fixed inset-0 z-140 h-[100dvh] w-full overflow-x-hidden bg-[rgb(var(--background-rgb)/0.82)] min-[1101px]:hidden">
+        <div className="fixed inset-0 z-140 h-dvh w-full overflow-x-hidden bg-[rgb(var(--background-rgb)/0.82)] min-[1101px]:hidden">
           <div className="h-full max-w-screen w-full p-0">
             <div className="surface-panel flex h-full max-w-screen w-full flex-col overflow-hidden p-2.5">
               <div className="flex items-center justify-between gap-2 border-b border-(--border-subtle) pb-2">
