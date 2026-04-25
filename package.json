@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc -p src/tsconfig.json && vite build",
     "preview": "vite preview",
     "sync:genesys": "node scripts/sync-genesys-card-data.mjs",
     "test": "vitest --run"
