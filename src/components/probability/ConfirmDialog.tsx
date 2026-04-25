@@ -29,10 +29,10 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[160] grid place-items-center bg-[rgb(var(--background-rgb)/0.74)] px-4"
+      className="fixed inset-0 z-160 grid place-items-center bg-[rgb(var(--background-rgb)/0.74)] px-4"
       onClick={onCancel}
     >
-      <div className="surface-panel grid w-full max-w-xl gap-3 p-4" onClick={(event) => event.stopPropagation()}>
+      <div className="app-dialog-enter surface-panel grid w-full max-w-xl gap-3 p-4" onClick={(event) => event.stopPropagation()}>
         <div className="grid gap-1">
           <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Confirmacion</p>
           <h3 className="m-0 text-[1rem] leading-none text-(--text-main)">{title}</h3>

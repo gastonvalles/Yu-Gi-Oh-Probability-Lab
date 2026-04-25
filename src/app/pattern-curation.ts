@@ -80,6 +80,16 @@ function curatePattern(
     return null
   }
 
+  // Preserve freshly created patterns that haven't been configured yet.
+  // These have an empty name and all conditions have null matchers.
+  const isJustCreated = pattern.name.trim().length === 0
+    && pattern.conditions.length > 0
+    && pattern.conditions.every((c) => c.matcher === null)
+
+  if (isJustCreated) {
+    return pattern
+  }
+
   const conditions: PatternCondition[] = []
   const seenConditionKeys = new Set<string>()
 
@@ -123,7 +133,7 @@ function curatePattern(
   )
   const kind = normalizeHandPatternCategory(pattern.kind)
   const name = pattern.name.replace(/\s+/g, ' ').trim() || (kind === 'opening'
-    ? 'Apertura sin nombre'
+    ? 'Salida sin nombre'
     : 'Problema sin nombre')
   const nextPattern: HandPattern = {
     ...pattern,

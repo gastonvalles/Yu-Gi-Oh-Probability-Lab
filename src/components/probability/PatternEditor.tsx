@@ -97,17 +97,17 @@ export function PatternEditor({
   ).length
   const sectionEmptyMessage =
     mainDeckCount === 0
-      ? 'Primero cargá cartas en el Main Deck. Después vas a poder definir aperturas y problemas acá.'
+      ? 'Primero cargá cartas en el Main Deck. Después vas a poder definir salidas y problemas acá.'
       : !hasCompletedClassification
-        ? `Terminá la categorización del paso 2. Te faltan ${formatInteger(unclassifiedCardCount)} carta${unclassifiedCardCount === 1 ? '' : 's'} sin cerrar o pendientes de revisión; después aparecen los chequeos sugeridos.`
+        ? `Terminá la categorización del paso 2. Te faltan ${formatInteger(unclassifiedCardCount)} carta${unclassifiedCardCount === 1 ? '' : 's'} sin cerrar o pendientes de revisión; después aparecen las reglas sugeridas.`
         : isOpeningView
-          ? 'Todavía no cargaste aperturas. Agregá una para marcar qué mano sí querés ver al robar.'
+          ? 'Todavía no cargaste salidas. Agregá una para marcar qué mano sí querés ver al robar.'
           : 'Todavía no cargaste problemas. Agregá uno para marcar qué mano no querés ver al robar.'
   const helperMessage =
     mainDeckCount === 0
       ? 'Empezá en el paso 1 armando el deck. El editor se activa de verdad cuando ya hay Main Deck.'
       : !hasCompletedClassification
-        ? 'Cuando todas las cartas del Main Deck tengan origen, al menos un rol y no queden pendientes de revisión, aparecen presets y chequeos útiles automáticamente.'
+        ? 'Cuando todas las cartas del Main Deck tengan origen, al menos un rol y no queden pendientes de revisión, aparecen presets y reglas útiles automáticamente.'
         : reviewPendingPatternCount > 0
           ? `Tenés ${formatInteger(reviewPendingPatternCount)} patrón${reviewPendingPatternCount === 1 ? '' : 'es'} heredado${reviewPendingPatternCount === 1 ? '' : 's'} que necesitan revisión manual.`
           : editorMode === 'simple'
@@ -169,7 +169,7 @@ export function PatternEditor({
         <div className="flex items-start justify-between gap-2.5 max-[760px]:flex-col max-[760px]:items-stretch">
           <div>
             <p className="app-kicker m-0 mb-0.5 text-[0.68rem] uppercase tracking-widest">Editor</p>
-            <h3 className="m-0 text-[1rem] leading-none">Chequeos del Probability Lab</h3>
+            <h3 className="m-0 text-[1rem] leading-none">Reglas del Probability Lab</h3>
             <p className="app-muted m-[0.35rem_0_0] max-w-[48ch] text-[0.78rem] leading-[1.18]">
               {helperMessage}
             </p>
@@ -205,12 +205,12 @@ export function PatternEditor({
                   : !hasCompletedClassification
                     ? 'Todavía faltan clasificaciones por cerrar.'
                     : 'Todavía no cargaste ninguna regla en esta vista.'
-                : `${formatInteger(visiblePatterns.length)} ${isOpeningView ? 'apertura' : 'problema'}${visiblePatterns.length === 1 ? '' : 's'} cargada${visiblePatterns.length === 1 ? '' : 's'} en esta pestaña.`}
+                : `${formatInteger(visiblePatterns.length)} ${isOpeningView ? 'salida' : 'problema'}${visiblePatterns.length === 1 ? '' : 's'} cargada${visiblePatterns.length === 1 ? '' : 's'} en esta pestaña.`}
           </p>
           <p className="app-muted m-[0.4rem_0_0] text-[0.72rem] leading-[1.16]">
             {editorMode === 'simple'
               ? `El cálculo, el KPI y la práctica leen siempre el mismo conjunto de ${formatInteger(activePatternCount)} pattern${activePatternCount === 1 ? '' : 's'} activo${activePatternCount === 1 ? '' : 's'}.`
-              : `Editor avanzado: ${formatInteger(patterns.length)} pattern${patterns.length === 1 ? '' : 's'} total${patterns.length === 1 ? '' : 'es'} entre aperturas y problemas.`}
+              : `Editor avanzado: ${formatInteger(patterns.length)} pattern${patterns.length === 1 ? '' : 's'} total${patterns.length === 1 ? '' : 'es'} entre salidas y problemas.`}
           </p>
         </div>
       </div>
@@ -239,7 +239,7 @@ export function PatternEditor({
                   className={['app-tab text-[0.8rem]', activeCategory === 'opening' ? 'app-tab-active' : ''].join(' ')}
                   onClick={() => setActiveCategory('opening')}
                 >
-                  Aperturas {formatInteger(openingCount)}
+                  Salidas {formatInteger(openingCount)}
                 </button>
                 <button
                   type="button"
@@ -300,19 +300,19 @@ export function PatternEditor({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="grid gap-0.5">
               <strong className="text-[0.9rem] text-(--text-main)">
-                {isOpeningView ? 'Aperturas que querés ver' : 'Problemas que querés evitar'}
+                {isOpeningView ? 'Salidas que querés ver' : 'Problemas que querés evitar'}
               </strong>
               <span className="app-muted text-[0.72rem] leading-[1.12]">
                 Tocá una card para editar el detalle.
               </span>
             </div>
             <Button variant="primary" size="sm" onClick={handleAddPattern}>
-              {activeCategory === 'opening' ? 'Agregar apertura' : 'Agregar problema'}
+              {activeCategory === 'opening' ? 'Agregar salida' : 'Agregar problema'}
             </Button>
           </div>
 
           {visiblePatterns.length === 0 ? (
-            <p className="surface-card p-2.5 text-[0.82rem] text-[var(--text-muted)]">
+            <p className="surface-card p-2.5 text-[0.82rem] text-(--text-muted)">
               {sectionEmptyMessage}
             </p>
           ) : (
@@ -359,7 +359,7 @@ function SimplePatternEditor({
       <div className="surface-panel-soft grid gap-2.5 p-2.5">
         <div className="grid gap-0.5">
           <span className="app-muted text-[0.68rem] uppercase tracking-widest">Qué querés medir</span>
-          <h4 className="m-0 text-[0.94rem] leading-none text-(--text-main)">Chequeos rápidos</h4>
+          <h4 className="m-0 text-[0.94rem] leading-none text-(--text-main)">Reglas rápidas</h4>
           <p className="app-muted m-[0.35rem_0_0] max-w-[52ch] text-[0.76rem] leading-[1.15]">
             Marcá lo que te importa y medí al instante.
           </p>
@@ -382,7 +382,7 @@ function SimplePatternEditor({
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => onToggleSimplePreset(preset.id)}
-                    className="mt-[0.12rem] h-4 w-4 accent-[var(--primary)]"
+                    className="mt-[0.12rem] h-4 w-4 accent-primary"
                   />
                   <div className="min-w-0">
                     <strong className="block text-[0.84rem] text-(--text-main)">

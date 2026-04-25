@@ -726,11 +726,12 @@ export function DeckRolesPanel({
   const selectedCardIndexInFullList = selectedCard
     ? stableNavigationCards.findIndex((card) => card.id === selectedCard.id)
     : -1
-  const previousCard = selectedCardIndexInFullList > 0 ? stableNavigationCards[selectedCardIndexInFullList - 1] ?? null : null
-  const nextCard =
-    selectedCardIndexInFullList >= 0 && selectedCardIndexInFullList < stableNavigationCards.length - 1
-      ? stableNavigationCards[selectedCardIndexInFullList + 1] ?? null
-      : null
+  const previousCard = selectedCardIndexInFullList >= 0 && stableNavigationCards.length > 1
+    ? stableNavigationCards[(selectedCardIndexInFullList - 1 + stableNavigationCards.length) % stableNavigationCards.length] ?? null
+    : null
+  const nextCard = selectedCardIndexInFullList >= 0 && stableNavigationCards.length > 1
+    ? stableNavigationCards[(selectedCardIndexInFullList + 1) % stableNavigationCards.length] ?? null
+    : null
   const filterItemMap = useMemo(
     () => new Map(overviewItems.map((item) => [getClassificationFilterReactKey(item.key), item])),
     [overviewItems],

@@ -133,7 +133,7 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
   if (state.patterns.length === 0) {
     issues.push({
       level: 'error',
-      message: 'Agregá al menos un chequeo de apertura o problema.',
+      message: 'Agregá al menos una regla de salida o problema.',
     })
   }
 

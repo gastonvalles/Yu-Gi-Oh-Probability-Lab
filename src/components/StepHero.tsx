@@ -20,7 +20,7 @@ export function StepHero({
   variant = 'default',
 }: StepHeroProps) {
   return (
-    <div className={['step-hero grid', variant === 'compact' ? 'gap-2.5 p-2.5' : 'gap-3 p-3'].join(' ')}>
+    <div className={['step-hero grid', variant === 'compact' ? 'group gap-2.5 p-2.5' : 'gap-3 p-3'].join(' ')}>
       <div
         className={[
           'grid items-start',

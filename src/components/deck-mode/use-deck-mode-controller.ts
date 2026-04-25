@@ -45,7 +45,7 @@ import { getClassificationOverrides } from '../../app/classification-overrides'
 import type { ApiCardReference, CardOrigin, CardRole } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 
-const DEFAULT_PATTERNS_VERSION = 6
+const DEFAULT_PATTERNS_VERSION = 9
 
 export function useDeckModeController() {
   const dispatch = useAppDispatch()

@@ -95,15 +95,15 @@ export function buildDeckWorkflowNavigationItems({
       step: '3',
       title: 'Probability Lab',
       shortTitle: 'Lab',
-      description: 'Chequeos, aperturas, resultados y simulaciones.',
+      description: 'Reglas, salidas, resultados y simulaciones.',
       metric:
         patternCount > 0
-          ? `${formatInteger(patternCount)} chequeo${patternCount === 1 ? '' : 's'}`
-          : 'Sin chequeos',
+          ? `${formatInteger(patternCount)} regla${patternCount === 1 ? '' : 's'}`
+          : 'Sin reglas',
       detail: hasCompletedRoleStep
         ? patternCount > 0
           ? 'Listo para medir.'
-          : 'Definí aperturas.'
+          : 'Definí salidas.'
         : 'Entrá igual; categorizá para medir.',
       tone: patternCount > 0 ? 'complete' : hasCompletedRoleStep ? 'progress' : 'pending',
       disabled: false,

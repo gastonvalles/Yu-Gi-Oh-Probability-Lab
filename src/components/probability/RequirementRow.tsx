@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { toast } from 'react-hot-toast'
 
 import {
   buildDerivedDeckAttackValues,
@@ -131,6 +132,10 @@ export function RequirementRow({
       selectedCardIds,
     })
 
+    if (matcherType === 'card_pool' && nextType === 'card' && selectedCardIds.length > 1) {
+      toast('Solo se preservó la primera carta del pool')
+    }
+
     setMatcher(nextMatcher)
 
     if (nextType === 'card' && requirement.distinct) {
@@ -139,14 +144,12 @@ export function RequirementRow({
   }
 
   return (
-    <article tabIndex={0} className="condition-card surface-card grid gap-3 p-2.5 outline-none">
+    <article tabIndex={0} className="condition-card surface-card grid gap-2.5 px-3 py-3 outline-none">
       <div className="flex items-start justify-between gap-2">
         <div className="grid gap-1">
           <div className="flex flex-wrap items-center gap-1.5">
             <strong className="text-[0.78rem] text-(--text-main)">Condición {index + 1}</strong>
-            <span className="app-chip px-1.5 py-0.5 text-[0.68rem]">
-              {getMatcherEditorLabel(matcherType)}
-            </span>
+            <span className="text-[0.72rem] text-(--text-soft)">{getMatcherEditorLabel(matcherType)}</span>
           </div>
           <p className="app-muted m-0 text-[0.76rem] leading-[1.16]">
             {buildRequirementSummary(requirement, selectedCards)}
@@ -187,7 +190,7 @@ export function RequirementRow({
         </label>
       </div>
 
-      <div className="surface-panel-soft grid gap-2 p-2">
+      <div className="grid gap-2 border-t border-(--border-subtle) pt-2">
         <div className="grid gap-2 min-[1080px]:grid-cols-[180px_minmax(0,1fr)] min-[1080px]:items-end">
           <label className="grid gap-1">
             <span className="app-muted text-[0.68rem] uppercase tracking-widest">Tipo de matcher</span>
@@ -376,28 +379,17 @@ export function RequirementRow({
         </div>
 
         {matcherWarning ? (
-          <p className="surface-card-warning m-0 px-2 py-1.5 text-[0.78rem] text-(--warning)">
-            {matcherWarning}
-          </p>
+          <p className="pattern-editor-inline-warning m-0">{matcherWarning}</p>
         ) : matcherDetails.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
-            {matcherDetails.map((detail) => (
-              <span
-                key={detail}
-                className="app-chip inline-flex items-center gap-1.5 px-2 py-1 text-[0.76rem]"
-              >
-                {detail}
-              </span>
-            ))}
-          </div>
+          <p className="pattern-editor-inline-note m-0">{matcherDetails.join(' · ')}</p>
         ) : null}
 
         {matcherType === 'card_pool' && selectedCards.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="pattern-editor-pool-list">
             {selectedCards.map((card) => (
               <span
                 key={card.id}
-                className="app-chip inline-flex items-center gap-1.5 px-2 py-1 text-[0.76rem]"
+                className="pattern-editor-pool-tag"
               >
                 {card.name}
                 <button
@@ -414,7 +406,7 @@ export function RequirementRow({
       </div>
 
       {showsDistinctToggle ? (
-        <div className="surface-card flex flex-wrap items-center justify-between gap-2 px-2.5 py-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-(--border-subtle) pt-2">
           <div className="grid gap-0.5">
             <span className="app-muted text-[0.68rem] uppercase tracking-widest">Modo de conteo</span>
             <span className="app-soft text-[0.74rem] leading-[1.16]">

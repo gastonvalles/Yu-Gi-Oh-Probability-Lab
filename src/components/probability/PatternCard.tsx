@@ -56,9 +56,9 @@ export function PatternCard({
   const categorySingular = getPatternCategorySingular(pattern.kind)
   const isOpening = normalizeHandPatternCategory(pattern.kind) === 'opening'
   const trimmedName = pattern.name.trim()
-  const displayName = trimmedName || (isOpening ? 'Nueva apertura' : 'Nuevo problema')
+  const displayName = trimmedName || (isOpening ? 'Nueva salida' : 'Nuevo problema')
   const includeRequirementCount = pattern.conditions.filter((condition) => condition.kind === 'include').length
-  const namePlaceholder = isOpening ? 'Escribí el nombre de la apertura' : 'Escribí el nombre del problema'
+  const namePlaceholder = isOpening ? 'Escribí el nombre de la salida' : 'Escribí el nombre del problema'
   const canUseMinimumParts = conditionCount > 1
   const minimumPartsValue = Math.max(2, Math.min(normalizeMinimumConditionMatches(pattern), Math.max(conditionCount, 2)))
   const patternMatchMode = getPatternMatchMode(pattern)
@@ -104,7 +104,7 @@ export function PatternCard({
         <div className="grid min-w-0 gap-1">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="pattern-card-meta text-[0.68rem]">
-              {isOpening ? 'Apertura' : 'Problema'}
+              {isOpening ? 'Salida' : 'Problema'}
             </span>
             {!allowsSharedCards(pattern) && includeRequirementCount > 1 ? (
               <span className="pattern-card-meta pattern-card-meta-muted text-[0.68rem]">
@@ -158,8 +158,7 @@ export function PatternCard({
             <div className="grid gap-1">
               <span className="app-muted text-[0.68rem] uppercase tracking-widest">Tipo</span>
               <div className="surface-card inline-flex w-fit items-center gap-1.5 px-2 py-1 text-[0.78rem] text-(--text-main)">
-                <strong>{isOpening ? 'Opening' : 'Problem'}</strong>
-                <span className="text-(--text-muted)">({isOpening ? 'Apertura' : 'Problema'})</span>
+                <strong>{isOpening ? 'Salida' : 'Problema'}</strong>
               </div>
             </div>
 

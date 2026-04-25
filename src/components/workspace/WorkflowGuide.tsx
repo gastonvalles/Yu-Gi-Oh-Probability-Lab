@@ -31,7 +31,7 @@ export function WorkflowGuide({
         : activeStep === 2
           ? `En el paso 2 definí origen y función de cada carta. Te faltan ${formatInteger(missingRoleCount)} carta${missingRoleCount === 1 ? '' : 's'} sin cerrar.`
           : activeStep === 3
-            ? 'En el paso 3 definí al menos un chequeo de apertura o problema para empezar a medir consistencia.'
+            ? 'En el paso 3 definí al menos una regla de salida o problema para empezar a medir consistencia.'
           : 'Ya podés leer resultados exactos y probar manos reales.'
 
   const overallStatus =
@@ -46,7 +46,7 @@ export function WorkflowGuide({
       : activeStep === 2
         ? 'Paso actual: categorizá cartas'
         : activeStep === 3
-          ? 'Paso actual: definí chequeos'
+          ? 'Paso actual: definí reglas'
           : 'Paso actual: leé estadísticas'
 
   const steps = [
@@ -81,15 +81,15 @@ export function WorkflowGuide({
             : 'pending',
     },
     {
-      title: 'Chequeos',
+      title: 'Reglas',
       metric:
         patternCount > 0
           ? `${formatInteger(patternCount)} cargada${patternCount === 1 ? '' : 's'}`
           : '0 cargadas',
       detail:
         patternCount > 0
-          ? 'Ya hay chequeos activos.'
-          : 'Definí aperturas o problemas.',
+          ? 'Ya hay reglas activas.'
+          : 'Definí salidas o problemas.',
       state: patternCount > 0 ? 'done' : activeStep === 3 ? 'current' : 'pending',
     },
     {

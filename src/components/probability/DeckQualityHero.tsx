@@ -1,5 +1,10 @@
 import { formatInteger, formatPercent } from '../../app/utils'
 import type { ProbabilityCausalEntry } from './probability-lab-helpers'
+import {
+  getKpiContextualLabel,
+  isDescriptionRedundant,
+  isTechnicalSubtitleRedundant,
+} from './probability-lab-helpers'
 import { Button } from '../ui/Button'
 
 interface DeckSummarySnapshot {
@@ -16,8 +21,11 @@ interface DeckQualityHeroProps {
     label: string
     tone: 'negative' | 'neutral' | 'positive'
   } | null
-  isEditingEnabled: boolean
+  isEditMode: boolean
   onEditPattern: (patternId: string) => void
+  onToggleEditMode: () => void
+  onOpenQuickAdd: () => void
+  onOpenCustomCreate: () => void
   openingEntries: ProbabilityCausalEntry[]
   problemEntries: ProbabilityCausalEntry[]
 }
@@ -26,8 +34,11 @@ export function DeckQualityHero({
   allCheckCount,
   deckSummary,
   feedback,
-  isEditingEnabled,
+  isEditMode,
   onEditPattern,
+  onToggleEditMode,
+  onOpenQuickAdd,
+  onOpenCustomCreate,
   openingEntries,
   problemEntries,
 }: DeckQualityHeroProps) {
@@ -38,254 +49,348 @@ export function DeckQualityHero({
           <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Calidad del deck</p>
           <h3 className="m-0 text-[1.05rem] leading-none text-(--text-main)">Jugable sin problemas</h3>
           <p className="app-muted m-0 text-[0.8rem] leading-[1.16]">
-            Activa al menos un chequeo para ver el KPI principal.
+            Activa al menos una regla para ver el KPI principal.
           </p>
         </div>
       </section>
     )
   }
 
-  const orderedOpeningEntries = orderEntriesForDisplay(openingEntries)
-  const orderedProblemEntries = orderEntriesForDisplay(problemEntries)
-  const activeStrengths = orderedOpeningEntries.filter(isEntryActive).slice(0, 2)
-  const activeRisks = orderedProblemEntries.filter(isEntryActive).slice(0, 2)
-  const subtitle = `Este KPI se calcula con ${formatInteger(allCheckCount)} checks activos. A continuación se muestra el estado completo del deck.`
+  const orderedOpenings = orderEntries(openingEntries)
+  const orderedProblems = orderEntries(problemEntries)
+  const kpiLabel = getKpiContextualLabel(deckSummary.cleanProbability)
+  const primaryRisk = orderedProblems.find(isActive) ?? null
 
   return (
-    <section className="surface-panel-strong grid gap-3 px-4 py-4">
-      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-        <div className="grid gap-1">
+    <section className="surface-panel-strong probability-quality-hero grid gap-5 px-4 py-4 min-[980px]:gap-6 min-[980px]:px-5 min-[980px]:py-5">
+      <div className="grid gap-3 min-[980px]:grid-cols-[minmax(0,1fr)_auto] min-[980px]:items-start">
+        <div className="grid gap-0.5">
           <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Calidad del deck</p>
-          <h3 className="m-0 text-[1.08rem] leading-none text-(--text-main)">Jugable sin problemas</h3>
-          <p className="app-muted m-0 text-[0.8rem] leading-[1.16]">{subtitle}</p>
+          <h3 className="m-0 text-[1.08rem] leading-none text-(--text-main) min-[980px]:text-[1.16rem]">
+            Jugable sin problemas
+          </h3>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 min-[980px]:justify-end">
+          {isEditMode ? (
+            <>
+              <Button variant="primary" size="sm" onClick={onOpenQuickAdd}>
+                Agregar regla recomendada
+              </Button>
+              <Button variant="secondary" size="sm" onClick={onOpenCustomCreate}>
+                Crear regla propia
+              </Button>
+              <Button variant="tertiary" size="sm" onClick={onToggleEditMode}>
+                Cerrar edición
+              </Button>
+            </>
+          ) : (
+            <Button variant="secondary" size="sm" onClick={onToggleEditMode}>
+              Editar análisis
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <div className="probability-quality-main grid gap-3">
+        <div className="probability-kpi-shell grid gap-4 min-[960px]:grid-cols-[auto_minmax(0,1fr)] min-[960px]:items-end">
+          <div className="grid gap-1.5">
+            <strong className="probability-kpi-value text-(--text-main)">
+              {formatPercent(deckSummary.cleanProbability)}
+            </strong>
+            <p className="probability-kpi-reading m-0">
+              {buildKpiReading(deckSummary.cleanProbability)}
+            </p>
+          </div>
+
+          <div className="grid gap-2.5 min-[960px]:justify-items-end">
+            <div className="flex flex-wrap items-center gap-2 min-[960px]:justify-end">
+              <span className={['probability-kpi-tone', toneBadgeStyle(kpiLabel.tone)].join(' ')}>
+                {toneBadgeLabel(kpiLabel.tone)}
+              </span>
+              {feedback ? (
+                <span className={['px-2 py-0.5 text-[0.72rem]', feedbackStyle(feedback.tone)].join(' ')}>
+                  {feedback.label}
+                </span>
+              ) : null}
+            </div>
+
+            <p className="probability-kpi-message m-0">
+              {buildKpiMeaning(kpiLabel.tone)}
+            </p>
+            <p className="probability-kpi-note m-0">
+              {buildKpiFocus(primaryRisk)}
+            </p>
+          </div>
         </div>
 
-        {feedback ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              className={[
-                'px-2 py-1 text-[0.72rem]',
-                feedback.tone === 'positive'
-                  ? 'surface-card-success text-(--accent)'
-                  : feedback.tone === 'negative'
-                    ? 'surface-card-danger text-(--destructive)'
-                    : 'surface-panel-soft text-(--text-muted)',
-              ].join(' ')}
-            >
-              {feedback.label}
-            </span>
-          </div>
-        ) : null}
+        <div className="flex flex-wrap gap-2">
+          <span className="probability-kpi-stat">
+            <strong>{formatInteger(deckSummary.cleanHands)}</strong> manos limpias
+          </span>
+          <span className="probability-kpi-stat">
+            <strong>{formatInteger(deckSummary.totalHands)}</strong> manos posibles
+          </span>
+          <span className="probability-kpi-stat">
+            <strong>{formatInteger(allCheckCount)}</strong> {deckSummary.basedOnActiveRules ? 'checks activos' : 'checks base'}
+          </span>
+        </div>
       </div>
 
-      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
-        <strong className="text-[3.2rem] leading-none text-(--text-main) min-[760px]:text-[4rem]">
-          {formatPercent(deckSummary.cleanProbability)}
-        </strong>
-        <p className="app-muted m-0 max-w-[26rem] text-[0.8rem] leading-[1.16] min-[760px]:text-right">
-          {formatInteger(deckSummary.cleanHands)} manos limpias sobre {formatInteger(deckSummary.totalHands)} posibles.
-        </p>
-      </div>
-
-      <div className="surface-panel-soft grid gap-1.5 px-3 py-2.5">
-        <CompactNarrativeLine
-          emptyLabel="Sin fortalezas activas"
-          entries={activeStrengths}
-          label="Impulsan el resultado"
-        />
-        <CompactNarrativeLine
-          emptyLabel="Sin problemas activos"
-          entries={activeRisks}
-          label="Lo frenan"
-        />
-      </div>
-
-      <div className="grid gap-2.5 min-[980px]:grid-cols-2">
-        <CheckColumn
-          emptyMessage="No hay fortalezas para mostrar."
-          entries={orderedOpeningEntries}
-          isEditingEnabled={isEditingEnabled}
+      <div className="grid gap-5 min-[980px]:grid-cols-2">
+        <CardSection
+          title="Salidas"
+          entries={orderedOpenings}
           kind="opening"
-          onEditPattern={onEditPattern}
-          title={`Fortalezas (${formatInteger(orderedOpeningEntries.length)})`}
+          isEditMode={isEditMode}
+          onEdit={onEditPattern}
         />
-        <CheckColumn
-          emptyMessage="No hay riesgos para mostrar."
-          entries={orderedProblemEntries}
-          isEditingEnabled={isEditingEnabled}
+        <CardSection
+          title="Problemas"
+          entries={orderedProblems}
           kind="problem"
-          onEditPattern={onEditPattern}
-          title={`Riesgos (${formatInteger(orderedProblemEntries.length)})`}
+          isEditMode={isEditMode}
+          onEdit={onEditPattern}
         />
       </div>
     </section>
   )
 }
 
-function CheckColumn({
-  emptyMessage,
-  entries,
-  isEditingEnabled,
-  kind,
-  onEditPattern,
-  title,
-}: {
-  emptyMessage: string
-  entries: ProbabilityCausalEntry[]
-  isEditingEnabled: boolean
-  kind: 'opening' | 'problem'
-  onEditPattern: (patternId: string) => void
+function CardSection({ title, entries, kind, isEditMode, onEdit }: {
   title: string
+  entries: ProbabilityCausalEntry[]
+  kind: 'opening' | 'problem'
+  isEditMode: boolean
+  onEdit: (id: string) => void
 }) {
-  return (
-    <div className="grid content-start gap-1.5">
-      <strong className="text-[0.86rem] text-(--text-main)">{title}</strong>
+  if (entries.length === 0) {
+    return (
+      <div className="grid gap-3">
+        <SectionHeading title={title} count={0} kind={kind} />
+        <p className="app-muted m-0 text-[0.78rem]">Sin datos.</p>
+      </div>
+    )
+  }
 
-      {entries.length === 0 ? (
-        <p className="surface-panel-soft m-0 px-3 py-2.5 text-[0.76rem] text-(--text-muted)">
-          {emptyMessage}
-        </p>
-      ) : (
-        <div className="grid gap-1.5">
-          {entries.map((entry) => (
-            <CheckStateCard
-              key={entry.patternId}
-              entry={entry}
-              isEditingEnabled={isEditingEnabled}
-              kind={kind}
-              onEditPattern={onEditPattern}
-            />
+  return (
+    <div className="grid content-start gap-3">
+      <SectionHeading title={title} count={entries.length} kind={kind} />
+      <div className="probability-section-scroll">
+        <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">
+          {entries.map((e) => (
+            <Card key={e.patternId} entry={e} kind={kind} isEditMode={isEditMode} onEdit={onEdit} />
           ))}
         </div>
-      )}
+      </div>
     </div>
   )
 }
 
-function CheckStateCard({
-  entry,
-  isEditingEnabled,
+function SectionHeading({
+  title,
+  count,
   kind,
-  onEditPattern,
 }: {
-  entry: ProbabilityCausalEntry
-  isEditingEnabled: boolean
+  title: string
+  count: number
   kind: 'opening' | 'problem'
-  onEditPattern: (patternId: string) => void
 }) {
-  const active = isEntryActive(entry)
-  const stateLabel = kind === 'opening'
-    ? active ? 'Cumple' : 'No cumple'
-    : active ? 'Activo' : 'Sano'
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span
+        aria-hidden="true"
+        className={[
+          'h-2 w-2 rounded-full',
+          kind === 'opening' ? 'bg-accent' : 'bg-destructive',
+        ].join(' ')}
+      />
+      <strong className="text-[0.92rem] text-(--text-main)">
+        {title} ({formatInteger(count)})
+      </strong>
+    </div>
+  )
+}
+
+function Card({ entry, kind, isEditMode, onEdit }: {
+  entry: ProbabilityCausalEntry
+  kind: 'opening' | 'problem'
+  isEditMode: boolean
+  onEdit: (id: string) => void
+}) {
+  const active = isActive(entry)
+  const supportText = getSupportText(entry)
 
   return (
     <article
       className={[
-        getCheckStateCardClass(kind, active),
-        'grid gap-1.5 px-3 py-2.5',
+        'probability-check-card grid gap-1.5 outline-none',
+        isEditMode ? 'cursor-pointer' : 'cursor-default',
       ].join(' ')}
+      data-active={active ? 'true' : 'false'}
+      data-interactive={isEditMode ? 'true' : 'false'}
+      data-kind={kind}
+      onClick={isEditMode ? () => onEdit(entry.patternId) : undefined}
+      role={isEditMode ? 'button' : undefined}
+      tabIndex={isEditMode ? 0 : undefined}
+      onKeyDown={isEditMode ? (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onEdit(entry.patternId)
+        }
+      } : undefined}
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <strong className="text-[0.88rem] text-(--text-main)">{entry.name}</strong>
-          <span className={getCheckStateBadgeClass(kind, active)}>
-            {stateLabel}
-          </span>
+      <div className="flex items-start justify-between gap-3">
+        <div className="grid min-w-0 gap-1">
+          <strong className="text-[0.9rem] leading-[1.2] text-(--text-main)">{entry.name}</strong>
+          {supportText ? (
+            <p className="m-0 truncate text-[0.74rem] leading-[1.2] text-(--text-muted)">{supportText}</p>
+          ) : null}
         </div>
-        <strong className="text-[0.88rem] leading-none text-(--text-main)">
+        <span className="shrink-0 text-[0.9rem] font-semibold tabular-nums text-(--text-main)">
           {formatPercent(entry.probability)}
-        </strong>
+        </span>
       </div>
-
-      <p className={active
-        ? 'm-0 text-[0.77rem] leading-[1.16] text-(--text-main)'
-        : 'app-muted m-0 text-[0.75rem] leading-[1.14]'}
-      >
-        {entry.description}
-      </p>
-      <small className={active
-        ? 'app-soft text-[0.72rem] leading-[1.14]'
-        : 'app-soft text-[0.7rem] leading-[1.12] opacity-80'}
-      >
-        {entry.technicalSubtitle}
-      </small>
-
-      {isEditingEnabled ? (
-        <div className="pt-0.5">
-          <Button variant="primary" size="sm" onClick={() => onEditPattern(entry.patternId)}>
-            Editar
-          </Button>
-        </div>
-      ) : null}
     </article>
   )
 }
 
-function CompactNarrativeLine({
-  emptyLabel,
-  entries,
-  label,
-}: {
-  emptyLabel: string
-  entries: ProbabilityCausalEntry[]
-  label: string
-}) {
-  return (
-    <p className="m-0 text-[0.76rem] leading-[1.22] text-(--text-main)">
-      <span className="mr-1 font-medium text-(--text-muted)">{label}:</span>
-      {entries.length > 0 ? (
-        entries.map((entry, index) => (
-          <span key={`${label}-${entry.patternId}`}>
-            {index > 0 ? <span className="px-1 text-(--text-muted)">•</span> : null}
-            <span>{entry.name}</span>
-          </span>
-        ))
-      ) : (
-        <span className="text-(--text-muted)">{emptyLabel}</span>
-      )}
-    </p>
-  )
+function getSupportText(entry: ProbabilityCausalEntry): string {
+  if (!isTechnicalSubtitleRedundant(entry)) {
+    return compactSupportText(entry.technicalSubtitle, entry)
+  }
+
+  if (!isDescriptionRedundant(entry)) {
+    return compactSupportText(entry.description, entry)
+  }
+
+  return buildFallbackSupportText(entry)
 }
 
-function isEntryActive(entry: ProbabilityCausalEntry): boolean {
-  return entry.possible && entry.probability > 0
+function compactSupportText(value: string, entry: ProbabilityCausalEntry): string {
+  const text = value.trim()
+  const normalized = text.toLowerCase()
+
+  if (
+    normalized === '' ||
+    normalized === 'presente en las manos que sí arrancan.' ||
+    normalized === 'presente en las manos que frenan la salida.' ||
+    normalized === 'no aparece con la configuración actual.'
+  ) {
+    return buildFallbackSupportText(entry)
+  }
+
+  return text
 }
 
-function orderEntriesForDisplay(entries: ProbabilityCausalEntry[]): ProbabilityCausalEntry[] {
-  return [...entries].sort((left, right) => {
-    const activeComparison = Number(isEntryActive(right)) - Number(isEntryActive(left))
+function buildFallbackSupportText(entry: ProbabilityCausalEntry): string {
+  if (!entry.possible || entry.probability <= 0) {
+    return entry.kind === 'opening'
+      ? 'No entra en las aperturas del corte actual.'
+      : 'No aparece como riesgo en el corte actual.'
+  }
 
-    if (activeComparison !== 0) {
-      return activeComparison
+  if (entry.kind === 'opening') {
+    if (entry.probability >= 0.85) {
+      return 'Apertura base muy estable dentro del plan.'
     }
 
-    if (left.probability !== right.probability) {
-      return right.probability - left.probability
+    if (entry.probability >= 0.6) {
+      return 'Apertura frecuente dentro del plan principal.'
     }
 
-    return left.name.localeCompare(right.name)
+    if (entry.probability >= 0.3) {
+      return 'Línea secundaria que sigue sumando consistencia.'
+    }
+
+    return 'Apertura puntual, pero todavía relevante.'
+  }
+
+  if (entry.probability >= 0.3) {
+    return 'Riesgo principal que más recorta manos jugables.'
+  }
+
+  if (entry.probability >= 0.15) {
+    return 'Riesgo secundario que todavía aparece seguido.'
+  }
+
+  if (entry.probability >= 0.05) {
+    return 'Riesgo ocasional que conviene vigilar.'
+  }
+
+  return 'Riesgo menor, pero todavía presente.'
+}
+
+function isActive(e: ProbabilityCausalEntry): boolean { return e.possible && e.probability > 0 }
+
+function orderEntries(entries: ProbabilityCausalEntry[]): ProbabilityCausalEntry[] {
+  return [...entries].sort((a, b) => {
+    const d = Number(isActive(b)) - Number(isActive(a))
+    if (d !== 0) return d
+    if (a.probability !== b.probability) return b.probability - a.probability
+    return a.name.localeCompare(b.name)
   })
 }
 
-function getCheckStateCardClass(kind: 'opening' | 'problem', active: boolean): string {
-  if (!active) {
-    return 'surface-panel-soft'
-  }
-
-  return kind === 'opening'
-    ? 'surface-card-success'
-    : 'surface-card-danger'
+function feedbackStyle(tone: 'positive' | 'negative' | 'neutral'): string {
+  if (tone === 'positive') return 'surface-card-success text-accent'
+  if (tone === 'negative') return 'surface-card-danger text-destructive'
+  return 'surface-panel-soft text-(--text-muted)'
 }
 
-function getCheckStateBadgeClass(kind: 'opening' | 'problem', active: boolean): string {
-  if (!active) {
-    return 'surface-panel-soft px-1.5 py-0.5 text-[0.65rem] text-(--text-muted)'
+function toneBadgeLabel(tone: 'excellent' | 'good' | 'improvable' | 'critical'): string {
+  if (tone === 'excellent') return 'Excelente'
+  if (tone === 'good') return 'Sólido'
+  if (tone === 'improvable') return 'Mejorable'
+  return 'Crítico'
+}
+
+function toneBadgeStyle(tone: 'excellent' | 'good' | 'improvable' | 'critical'): string {
+  if (tone === 'excellent') return 'probability-kpi-tone-excellent'
+  if (tone === 'good') return 'probability-kpi-tone-good'
+  if (tone === 'improvable') return 'probability-kpi-tone-improvable'
+  return 'probability-kpi-tone-critical'
+}
+
+function buildKpiReading(probability: number): string {
+  if (probability >= 0.9) {
+    return 'Casi todas las manos quedan limpias.'
   }
 
-  return [
-    'px-1.5 py-0.5 text-[0.65rem]',
-    kind === 'opening'
-      ? 'surface-card-success text-(--accent)'
-      : 'surface-card-danger text-(--destructive)',
-  ].join(' ')
+  if (probability >= 0.7) {
+    return 'La mayoría de las manos supera el corte.'
+  }
+
+  if (probability >= 0.45) {
+    return 'Aproximadamente 1 de cada 2 manos supera el corte.'
+  }
+
+  if (probability >= 0.25) {
+    return 'Menos de 1 de cada 3 manos supera el corte.'
+  }
+
+  return 'Muy pocas manos superan el corte.'
+}
+
+function buildKpiMeaning(tone: 'excellent' | 'good' | 'improvable' | 'critical'): string {
+  if (tone === 'excellent') {
+    return 'El deck ya tiene una base muy estable y consistente.'
+  }
+
+  if (tone === 'good') {
+    return 'La salida es estable, pero todavía hay margen para afinar riesgos.'
+  }
+
+  if (tone === 'improvable') {
+    return 'Todavía aparecen demasiadas manos que no llegan a una salida mínima.'
+  }
+
+  return 'La estructura actual falla demasiado seguido y necesita ajustes fuertes.'
+}
+
+function buildKpiFocus(entry: ProbabilityCausalEntry | null): string {
+  if (!entry) {
+    return 'No hay un riesgo dominante detectado.'
+  }
+
+  return `Principal freno: ${entry.name}.`
 }

@@ -29,8 +29,7 @@ export function PatternEditorForm({
 }: PatternEditorFormProps) {
   const conditionCount = pattern.conditions.length
   const isOpening = pattern.kind === 'opening'
-  const includeRequirementCount = pattern.conditions.filter((condition) => condition.kind === 'include').length
-  const namePlaceholder = isOpening ? 'Escribí el nombre del chequeo' : 'Escribí el nombre del riesgo'
+  const namePlaceholder = isOpening ? 'Escribí el nombre de la salida' : 'Escribí el nombre del problema'
   const canUseMinimumParts = conditionCount > 1
   const minimumPartsValue = Math.max(
     2,
@@ -41,14 +40,19 @@ export function PatternEditorForm({
     () => buildPatternPreview(pattern, new Map(derivedMainCards.map((card) => [card.id, card]))),
     [derivedMainCards, pattern],
   )
-  const shouldOpenAdvancedTuning = patternMatchMode === 'at-least' || includeRequirementCount > 1 || pattern.needsReview
+  const shouldOpenAdvancedTuning = pattern.needsReview
 
   return (
-    <div className="grid gap-3">
-      <section className="surface-card grid gap-2.5 px-3 py-3">
-        <div className="grid gap-0.5">
-          <small className="app-muted text-[0.68rem] uppercase tracking-widest">Que queres medir</small>
-          <strong className="text-[0.92rem] text-(--text-main)">Defini el chequeo</strong>
+    <div className="pattern-editor-form">
+      <section className="pattern-editor-section">
+        <div className="grid gap-1.5">
+          <div className="grid gap-0.5">
+            <small className="app-muted text-[0.68rem] uppercase tracking-widest">Configuración básica</small>
+            <strong className="text-[0.92rem] text-(--text-main)">Definí la regla sin vueltas</strong>
+          </div>
+          <p className="pattern-editor-section-copy m-0">
+            Empezá por nombre, tipo y lógica. Las condiciones van abajo y los ajustes finos quedan aparte.
+          </p>
         </div>
 
         <div className="grid gap-2 min-[980px]:grid-cols-[minmax(0,1fr)_180px]">
@@ -71,58 +75,15 @@ export function PatternEditorForm({
               onChange={(event) => actions.setPatternCategory(pattern.id, event.target.value as HandPatternCategory)}
               className="app-field w-full px-2 py-[0.45rem] text-[0.84rem]"
             >
-              <option value="opening">Apertura</option>
+              <option value="opening">Salida</option>
               <option value="problem">Problema</option>
             </select>
           </label>
         </div>
 
-        <p className="surface-panel-soft m-0 px-2.5 py-2 text-[0.76rem] text-(--text-muted)">
-          {patternPreview.summary}
-        </p>
-      </section>
-
-      <section className="surface-card grid gap-2.5 px-3 py-3">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="grid gap-0.5">
-            <small className="app-muted text-[0.68rem] uppercase tracking-widest">Condiciones</small>
-            <strong className="text-[0.92rem] text-(--text-main)">Que tiene que pasar en la mano</strong>
-          </div>
-
-          <Button variant="secondary" size="sm" onClick={() => actions.addRequirement(pattern.id)}>
-            Agregar condicion
-          </Button>
-        </div>
-
-        {pattern.conditions.length === 0 ? (
-          <p className="surface-panel-soft m-0 px-2.5 py-2 text-[0.76rem] text-(--text-muted)">
-            Este chequeo todavia no tiene condiciones.
-          </p>
-        ) : (
-          <div className="grid gap-1.5">
-            {pattern.conditions.map((requirement, requirementIndex) => (
-              <RequirementRow
-                key={requirement.id}
-                index={requirementIndex}
-                patternId={pattern.id}
-                requirement={requirement}
-                derivedMainCards={derivedMainCards}
-                actions={actions}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="surface-card grid gap-2.5 px-3 py-3">
-        <div className="grid gap-0.5">
-          <small className="app-muted text-[0.68rem] uppercase tracking-widest">Como se evalua</small>
-          <strong className="text-[0.92rem] text-(--text-main)">Define la logica del chequeo</strong>
-        </div>
-
         <div className="grid gap-2 min-[980px]:grid-cols-[minmax(0,1fr)_240px] min-[980px]:items-end">
           <label className="grid gap-1">
-            <span className="app-muted text-[0.68rem] uppercase tracking-widest">Logica</span>
+            <span className="app-muted text-[0.68rem] uppercase tracking-widest">Lógica</span>
             <select
               value={patternMatchMode}
               onChange={(event) => actions.setPatternMatchMode(pattern.id, event.target.value as PatternMatchMode)}
@@ -151,30 +112,70 @@ export function PatternEditorForm({
           ) : null}
         </div>
 
-        <p className="surface-panel-soft m-0 px-2.5 py-2 text-[0.76rem] text-(--text-muted)">
-          {patternPreview.logic}
-        </p>
+        <div className="pattern-editor-summary">
+          <p className="pattern-editor-inline-note m-0">
+            {patternPreview.summary}
+          </p>
+          <p className="pattern-editor-inline-note m-0">
+            {patternPreview.logic}
+          </p>
+        </div>
       </section>
 
-      <details className="details-toggle section-disclosure" open={shouldOpenAdvancedTuning}>
+      <section className="pattern-editor-section">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="grid gap-0.5">
+            <small className="app-muted text-[0.68rem] uppercase tracking-widest">Condiciones</small>
+            <strong className="text-[0.92rem] text-(--text-main)">Qué tiene que pasar en la mano</strong>
+            <p className="pattern-editor-section-copy m-0">
+              Sumá solo las condiciones necesarias. Si una sobra, la regla se vuelve más difícil de entender.
+            </p>
+          </div>
+
+          <Button variant="secondary" size="sm" onClick={() => actions.addRequirement(pattern.id)}>
+            Agregar condición
+          </Button>
+        </div>
+
+        {pattern.conditions.length === 0 ? (
+          <p className="pattern-editor-inline-note m-0">
+            Esta regla todavía no tiene condiciones.
+          </p>
+        ) : (
+          <div className="grid gap-2">
+            {pattern.conditions.map((requirement, requirementIndex) => (
+              <RequirementRow
+                key={requirement.id}
+                index={requirementIndex}
+                patternId={pattern.id}
+                requirement={requirement}
+                derivedMainCards={derivedMainCards}
+                actions={actions}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <details className="details-toggle section-disclosure pattern-editor-disclosure" open={shouldOpenAdvancedTuning}>
         <summary className="section-disclosure-summary">
           <div className="section-disclosure-title">
             <div className="grid gap-0.5">
-              <strong className="text-[0.86rem] text-(--text-main)">Mas ajustes</strong>
+              <strong className="text-[0.86rem] text-(--text-main)">Ajustes avanzados</strong>
               <span className="app-muted text-[0.72rem] leading-[1.14]">
-                Reutilizacion y lectura rapida del chequeo.
+                Reutilización, vista rápida y afinado fino.
               </span>
             </div>
           </div>
           <span className="section-disclosure-arrow details-arrow">{'>'}</span>
         </summary>
 
-        <div className="grid gap-3 p-3">
-          <section className="surface-card grid gap-2.5 px-3 py-3">
+        <div className="grid gap-3 pt-3">
+          <section className="grid gap-2.5">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="grid gap-0.5">
-                <small className="app-muted text-[0.68rem] uppercase tracking-widest">Reutilizacion</small>
-                <strong className="text-[0.92rem] text-(--text-main)">Como comparte cartas entre condiciones</strong>
+                <small className="app-muted text-[0.68rem] uppercase tracking-widest">Reutilización</small>
+                <strong className="text-[0.92rem] text-(--text-main)">Cómo comparte cartas entre condiciones</strong>
               </div>
 
               <div className="flex flex-wrap gap-1.5">
@@ -183,49 +184,45 @@ export function PatternEditorForm({
                   size="sm"
                   onClick={() => actions.setPatternAllowSharedCards(pattern.id, true)}
                 >
-                  Permitir reutilizacion
+                  Permitir reutilización
                 </Button>
                 <Button
                   variant={allowsSharedCards(pattern) ? 'secondary' : 'primary'}
                   size="sm"
                   onClick={() => actions.setPatternAllowSharedCards(pattern.id, false)}
                 >
-                  Prohibir reutilizacion
+                  Prohibir reutilización
                 </Button>
               </div>
             </div>
 
-            <p className="surface-panel-soft m-0 px-2.5 py-2 text-[0.76rem] text-(--text-muted)">
-              {patternPreview.reuse}
+            <p className="pattern-editor-inline-note m-0">{patternPreview.reuse}</p>
+          </section>
+
+          <section className="grid gap-1.5 border-t border-(--border-subtle) pt-3">
+            <small className="app-muted text-[0.68rem] uppercase tracking-widest">Vista rápida</small>
+            <p className="m-0 text-[0.82rem] text-(--text-main)">{patternPreview.summary}</p>
+            <p className="pattern-editor-inline-note m-0">
+              {patternPreview.items.length > 0 ? patternPreview.items.join(' · ') : 'Todavía no hay una lectura rápida para esta regla.'}
             </p>
           </section>
 
-          <section className="surface-card grid gap-1.5 px-3 py-3">
-            <small className="app-muted text-[0.68rem] uppercase tracking-widest">Vista rapida</small>
-            <p className="m-0 text-[0.82rem] text-(--text-main)">{patternPreview.summary}</p>
-            <ul className="m-0 grid gap-1 pl-4 text-[0.78rem] text-(--text-muted)">
-              {patternPreview.items.map((item, index) => (
-                <li key={`${pattern.id}-preview-${index}`}>{item}</li>
-              ))}
-            </ul>
-          </section>
-
           {pattern.needsReview ? (
-            <p className="surface-card-warning m-0 px-3 py-2 text-[0.76rem] text-(--warning)">
+            <p className="pattern-editor-inline-warning m-0">
               Este patron viene de una version anterior. Revisalo antes de confiar en el resultado.
             </p>
           ) : null}
         </div>
       </details>
 
-      <section className="surface-card grid gap-1.5 border border-[rgb(var(--destructive-rgb)/0.18)] px-3 py-3">
+      <section className="pattern-editor-section pattern-editor-section-danger">
         <small className="app-muted text-[0.68rem] uppercase tracking-widest">Zona delicada</small>
-        <p className="m-0 text-[0.78rem] text-(--text-muted)">
-          Eliminar este chequeo lo saca del analisis y cambia el resultado inmediatamente.
+        <p className="pattern-editor-inline-note m-0">
+          Eliminar esta regla la saca del analisis y cambia el resultado inmediatamente.
         </p>
         <div>
           <Button variant="tertiary" size="sm" onClick={() => onRequestDelete(pattern.id)}>
-            Eliminar chequeo
+            Eliminar regla
           </Button>
         </div>
       </section>

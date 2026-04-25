@@ -23,29 +23,29 @@ export function CausalChecksList({
     <section className="grid gap-3">
       <div className="grid gap-0.5">
         <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Que lo empuja</p>
-        <h3 className="m-0 text-[1rem] leading-none text-(--text-main)">Chequeos relevantes del modelo</h3>
+        <h3 className="m-0 text-[1rem] leading-none text-(--text-main)">Reglas relevantes del modelo</h3>
       </div>
 
       <div className="grid gap-3">
         <CausalChecksGroup
           entries={openingEntries}
-          emptyMessage="No aparece una fortaleza clara con el threshold actual."
+          emptyMessage="No aparece una salida clara con el threshold actual."
           groupTone="positive"
           highlightedPatternId={highlightedPatternId}
           onEditPattern={onEditPattern}
           onHighlightPattern={onHighlightPattern}
           recentlyChangedPatternId={recentlyChangedPatternId}
-          title="Fortalezas"
+          title="Salidas"
         />
         <CausalChecksGroup
           entries={problemEntries}
-          emptyMessage="No aparece un riesgo dominante con el threshold actual."
+          emptyMessage="No aparece un problema dominante con el threshold actual."
           groupTone="negative"
           highlightedPatternId={highlightedPatternId}
           onEditPattern={onEditPattern}
           onHighlightPattern={onHighlightPattern}
           recentlyChangedPatternId={recentlyChangedPatternId}
-          title="Riesgos"
+          title="Problemas"
         />
       </div>
     </section>
@@ -110,8 +110,8 @@ function CausalChecksGroup({
                         className={[
                           'px-1.5 py-0.5 text-[0.65rem]',
                           groupTone === 'positive'
-                            ? 'surface-card-success text-(--accent)'
-                            : 'surface-card-danger text-(--destructive)',
+                            ? 'surface-card-success text-accent'
+                            : 'surface-card-danger text-destructive',
                         ].join(' ')}
                       >
                         Modelo base

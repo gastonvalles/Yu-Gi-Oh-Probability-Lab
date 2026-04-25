@@ -129,6 +129,18 @@
     }
   }
 
+  @keyframes app-dialog-enter {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
   *,
   *::before,
   *::after {
@@ -333,6 +345,336 @@
     border: 1px solid rgb(var(--danger-rgb) / 0.5);
     background: linear-gradient(180deg, rgb(var(--danger-rgb) / 0.12), rgb(var(--card-background-rgb) / 0.96));
     box-shadow: 0 0 0 1px rgb(var(--danger-rgb) / 0.08);
+  }
+
+  .probability-quality-hero {
+    position: relative;
+    overflow: hidden;
+    border-color: rgb(var(--primary-rgb) / 0.34);
+    background:
+      radial-gradient(circle at top right, rgb(var(--primary-rgb) / 0.12), transparent 34%),
+      radial-gradient(circle at bottom left, rgb(var(--accent-rgb) / 0.06), transparent 28%),
+      linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.98), rgb(var(--background-rgb) / 1));
+  }
+
+  .probability-quality-main {
+    border-bottom: 1px solid rgb(var(--border-rgb) / 0.88);
+    padding-bottom: 1rem;
+  }
+
+  .probability-kpi-shell {
+    align-items: end;
+  }
+
+  .probability-kpi-value {
+    font-size: clamp(3.1rem, 7vw, 4.75rem);
+    line-height: 0.9;
+    letter-spacing: -0.04em;
+    font-weight: 800;
+    text-wrap: balance;
+    text-shadow: 0 8px 24px rgb(var(--background-rgb) / 0.26);
+  }
+
+  .probability-kpi-reading {
+    max-width: 25rem;
+    font-size: 0.84rem;
+    line-height: 1.26;
+    color: var(--text-muted);
+  }
+
+  .probability-kpi-tone {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid rgb(var(--border-rgb) / 0.94);
+    border-radius: var(--radius-chip);
+    padding: 0.28rem 0.62rem;
+    font-size: 0.7rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .probability-kpi-tone-excellent {
+    border-color: rgb(var(--accent-rgb) / 0.28);
+    background: rgb(var(--accent-rgb) / 0.12);
+    color: var(--accent);
+  }
+
+  .probability-kpi-tone-good {
+    border-color: rgb(var(--foreground-rgb) / 0.12);
+    background: rgb(var(--foreground-rgb) / 0.08);
+    color: var(--text-main);
+  }
+
+  .probability-kpi-tone-improvable {
+    border-color: rgb(var(--warning-rgb) / 0.26);
+    background: rgb(var(--warning-rgb) / 0.12);
+    color: var(--warning);
+  }
+
+  .probability-kpi-tone-critical {
+    border-color: rgb(var(--danger-rgb) / 0.28);
+    background: rgb(var(--danger-rgb) / 0.12);
+    color: var(--destructive);
+  }
+
+  .probability-kpi-message {
+    max-width: 34rem;
+    font-size: 0.96rem;
+    font-weight: 700;
+    line-height: 1.28;
+    color: var(--text-main);
+  }
+
+  .probability-kpi-note {
+    max-width: 34rem;
+    font-size: 0.8rem;
+    line-height: 1.28;
+    color: var(--text-muted);
+  }
+
+  .probability-kpi-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.34rem;
+    min-height: 2rem;
+    border: 1px solid rgb(var(--border-rgb) / 0.92);
+    border-radius: 999px;
+    background:
+      linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.9), rgb(var(--background-rgb) / 0.98)),
+      linear-gradient(180deg, rgb(var(--card-background-rgb) / 0.92), rgb(var(--background-rgb) / 0.98));
+    padding: 0.32rem 0.74rem;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  .probability-kpi-stat strong {
+    color: var(--text-main);
+    font-weight: 700;
+  }
+
+  .probability-section-scroll {
+    max-height: 25.5rem;
+    overflow-y: auto;
+    padding-right: 0.3rem;
+    scrollbar-gutter: stable;
+    scrollbar-color: transparent transparent;
+    scrollbar-width: thin;
+    -ms-overflow-style: auto;
+  }
+
+  .probability-section-scroll::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .probability-section-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .probability-section-scroll::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: var(--radius-chip);
+    background: transparent;
+    background-clip: content-box;
+  }
+
+  .probability-section-scroll:is(:hover, :focus-within) {
+    scrollbar-color: var(--app-scrollbar-thumb) transparent;
+  }
+
+  .probability-section-scroll:is(:hover, :focus-within)::-webkit-scrollbar-thumb {
+    background: var(--app-scrollbar-thumb);
+    background-clip: content-box;
+  }
+
+  .probability-section-scroll:is(:hover, :focus-within)::-webkit-scrollbar-thumb:hover {
+    background: var(--app-scrollbar-thumb-hover);
+    background-clip: content-box;
+  }
+
+  @media (max-width: 979px) {
+    .probability-section-scroll {
+      max-height: 21rem;
+      padding-right: 0;
+    }
+  }
+
+  .pattern-editor-form {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .pattern-editor-section {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .pattern-editor-form > .pattern-editor-section + .pattern-editor-section,
+  .pattern-editor-form > .pattern-editor-disclosure,
+  .pattern-editor-form > .pattern-editor-section-danger {
+    border-top: 1px solid rgb(var(--border-rgb) / 0.88);
+    padding-top: 1rem;
+  }
+
+  .pattern-editor-section-copy {
+    max-width: 46rem;
+    font-size: 0.76rem;
+    line-height: 1.18;
+    color: var(--text-muted);
+  }
+
+  .pattern-editor-summary {
+    display: grid;
+    gap: 0.35rem;
+    border-top: 1px solid rgb(var(--border-rgb) / 0.82);
+    padding-top: 0.75rem;
+  }
+
+  .pattern-editor-inline-note {
+    font-size: 0.76rem;
+    line-height: 1.18;
+    color: var(--text-muted);
+  }
+
+  .pattern-editor-inline-warning {
+    padding-left: 0.75rem;
+    border-left: 2px solid rgb(var(--warning-rgb) / 0.72);
+    font-size: 0.76rem;
+    line-height: 1.18;
+    color: var(--warning);
+  }
+
+  .pattern-editor-disclosure {
+    border: none;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  .pattern-editor-disclosure .section-disclosure-summary {
+    padding: 0;
+    border: none;
+    background: none;
+    box-shadow: none;
+  }
+
+  .pattern-editor-disclosure .section-disclosure-summary:hover {
+    border: none;
+    background: none;
+    box-shadow: none;
+  }
+
+  .pattern-editor-disclosure .section-disclosure-arrow {
+    width: 1.4rem;
+    height: 1.4rem;
+    border-color: rgb(var(--border-rgb) / 0.9);
+    background:
+      linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.94), rgb(var(--background-rgb) / 0.98)),
+      linear-gradient(180deg, rgb(var(--card-background-rgb) / 0.95), rgb(var(--background-rgb) / 0.98));
+    box-shadow: none;
+  }
+
+  .pattern-editor-section-danger {
+    border-top-color: rgb(var(--danger-rgb) / 0.18);
+  }
+
+  .pattern-editor-pool-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .pattern-editor-pool-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 1.8rem;
+    border: 1px solid rgb(var(--border-rgb) / 0.92);
+    border-radius: var(--radius-chip);
+    background:
+      linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.92), rgb(var(--background-rgb) / 0.98)),
+      linear-gradient(180deg, rgb(var(--card-background-rgb) / 0.92), rgb(var(--background-rgb) / 0.98));
+    padding: 0.3rem 0.65rem;
+    font-size: 0.76rem;
+    line-height: 1;
+    color: var(--text-main);
+  }
+
+  .probability-check-card {
+    position: relative;
+    min-height: 5rem;
+    border-radius: calc(var(--radius-panel) - 0.14rem);
+    border: 1px solid rgb(var(--border-rgb) / 0.92);
+    background:
+      linear-gradient(180deg, rgb(var(--card-background-rgb) / 0.92), rgb(var(--background-rgb) / 0.98)),
+      linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.92), rgb(var(--background-rgb) / 0.98));
+    padding: 0.95rem 1rem;
+    transition:
+      transform 160ms ease,
+      border-color 160ms ease,
+      box-shadow 160ms ease,
+      background 160ms ease,
+      opacity 160ms ease;
+  }
+
+  .probability-check-card::before {
+    content: '';
+    position: absolute;
+    top: 0.9rem;
+    bottom: 0.9rem;
+    left: 0;
+    width: 3px;
+    border-radius: var(--radius-chip);
+    background: rgb(var(--border-rgb) / 1);
+  }
+
+  .probability-check-card[data-active='false'] {
+    opacity: 0.74;
+  }
+
+  .probability-check-card[data-kind='opening'][data-active='true'] {
+    border-color: rgb(var(--accent-rgb) / 0.28);
+    background:
+      linear-gradient(180deg, rgb(var(--accent-rgb) / 0.08), rgb(var(--background-rgb) / 0.98)),
+      linear-gradient(180deg, rgb(var(--card-background-rgb) / 0.92), rgb(var(--background-rgb) / 0.98));
+    box-shadow:
+      0 0 0 1px rgb(var(--accent-rgb) / 0.08),
+      0 12px 26px rgba(0, 0, 0, 0.14);
+  }
+
+  .probability-check-card[data-kind='opening'][data-active='true']::before {
+    background: rgb(var(--accent-rgb) / 0.96);
+  }
+
+  .probability-check-card[data-kind='problem'][data-active='true'] {
+    border-color: rgb(var(--danger-rgb) / 0.3);
+    background:
+      linear-gradient(180deg, rgb(var(--danger-rgb) / 0.08), rgb(var(--background-rgb) / 0.98)),
+      linear-gradient(180deg, rgb(var(--card-background-rgb) / 0.92), rgb(var(--background-rgb) / 0.98));
+    box-shadow:
+      0 0 0 1px rgb(var(--danger-rgb) / 0.08),
+      0 12px 26px rgba(0, 0, 0, 0.14);
+  }
+
+  .probability-check-card[data-kind='problem'][data-active='true']::before {
+    background: rgb(var(--danger-rgb) / 0.96);
+  }
+
+  .probability-check-card[data-interactive='true']:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 0 0 1px rgb(var(--primary-rgb) / 0.12),
+      0 16px 30px rgba(0, 0, 0, 0.18);
+  }
+
+  .probability-check-card:focus-visible {
+    outline: none;
+    border-color: rgb(var(--primary-rgb) / 0.42);
+    box-shadow:
+      0 0 0 1px rgb(var(--primary-rgb) / 0.14),
+      0 0 0 3px rgb(var(--primary-rgb) / 0.12);
   }
 
   .workflow-step-button {
@@ -881,6 +1223,10 @@
 
   .app-skeleton-none {
     border-radius: 0;
+  }
+
+  .app-dialog-enter {
+    animation: app-dialog-enter 180ms ease-out;
   }
 
   .deck-builder-meta-field {
@@ -2630,6 +2976,10 @@
       height: 100%;
       min-height: 0;
       overflow: hidden;
+    }
+
+    .deck-mode-content-shell.deck-mode-content-shell-scrollable {
+      overflow-y: auto;
     }
 
     .classic-builder-page,

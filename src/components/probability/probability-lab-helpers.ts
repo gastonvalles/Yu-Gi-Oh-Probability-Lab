@@ -10,6 +10,7 @@ import {
   normalizePatternName,
 } from '../../app/patterns'
 import type { CardEntry } from '../../types'
+import { formatPercent } from '../../app/utils'
 import { buildPatternPreview } from './pattern-helpers'
 
 export interface ProbabilityCausalEntry {
@@ -48,13 +49,71 @@ export interface ProbabilityCheckPipeline {
   openingEntries: ProbabilityCausalEntry[]
 }
 
+export interface KpiContextualLabel {
+  label: string
+  tone: 'excellent' | 'good' | 'improvable' | 'critical'
+}
+
+export function getKpiContextualLabel(probability: number): KpiContextualLabel {
+  const clamped = Math.max(0, Math.min(1, probability))
+
+  if (clamped >= 0.85) {
+    return {
+      label: 'Excelente — tu deck abre consistentemente',
+      tone: 'excellent',
+    }
+  }
+
+  if (clamped >= 0.60) {
+    return {
+      label: 'Bueno — la mayoría de las manos juegan',
+      tone: 'good',
+    }
+  }
+
+  if (clamped >= 0.40) {
+    return {
+      label: 'Mejorable — muchas manos no arrancan bien',
+      tone: 'improvable',
+    }
+  }
+
+  return {
+    label: 'Crítico — el deck necesita ajustes urgentes',
+    tone: 'critical',
+  }
+}
+
+export function isDescriptionRedundant(entry: ProbabilityCausalEntry): boolean {
+  const normalizedName = entry.name.toLowerCase().trim()
+  const normalizedDescription = entry.description.toLowerCase().trim()
+  const formattedProbability = formatPercent(entry.probability).toLowerCase()
+
+  return (
+    normalizedDescription.includes(normalizedName) ||
+    normalizedDescription.includes(formattedProbability)
+  )
+}
+
+export function isTechnicalSubtitleRedundant(entry: ProbabilityCausalEntry): boolean {
+  const subtitle = entry.technicalSubtitle.toLowerCase().trim()
+
+  if (subtitle === '') {
+    return true
+  }
+
+  const name = entry.name.toLowerCase().trim()
+  const description = entry.description.toLowerCase().trim()
+
+  return subtitle === name || subtitle === description || description.includes(subtitle)
+}
+
 const OPENING_PRIORITY_BY_PRESET_ID: Record<string, number> = {
   starter_opening: 0,
-  minimal_playable_opening: 1,
-  starter_extender_opening: 2,
-  engine_interaction_opening: 3,
-  interaction_opening: 4,
-  starter_protection_opening: 5,
+  starter_extender_opening: 1,
+  starter_protection_opening: 2,
+  minimal_playable_opening: 3,
+  engine_interaction_opening: 4,
 }
 
 export function buildDeterministicCheckSet(patterns: HandPattern[]): HandPattern[] {
@@ -120,15 +179,6 @@ export function buildProbabilityCheckPipeline({
   const strengths = buildEntryInsights(openingEntries)
   const risks = buildEntryInsights(problemEntries)
 
-  if (summary) {
-    console.log('PROBABILITY DEBUG', {
-      totalChecks: rankedAllChecks.length,
-      relevantChecks: relevantChecks.length,
-      visibleChecks: visibleChecks.length,
-      checkIds: relevantChecks.map((check) => check.id),
-    })
-  }
-
   return {
     allChecks: rankedAllChecks,
     detailOpeningEntries: rankedOpeningEntries,
@@ -151,7 +201,7 @@ function buildProbabilityEntry(
   const kind = pattern.kind
   const probability = result?.probability ?? 0
   const possible = result?.possible ?? false
-  const fallbackName = kind === 'opening' ? 'Nueva apertura' : 'Nuevo problema'
+  const fallbackName = kind === 'opening' ? 'Nueva salida' : 'Nuevo problema'
   const trimmedName = pattern.name.trim()
   const name = preset?.title ?? (trimmedName || fallbackName)
 
@@ -224,7 +274,7 @@ function buildDefaultEntryDescription(
     return `${name} aparece en ${formatProbability(probability)} de las manos.`
   }
 
-  return `El riesgo ${name} aparece en ${formatProbability(probability)} de las manos.`
+  return `El problema ${name} aparece en ${formatProbability(probability)} de las manos.`
 }
 
 function formatProbability(value: number): string {

@@ -419,7 +419,7 @@ export function DeckBuilderStep({
           <div className="surface-card-warning grid gap-1.5 px-2 py-2">
             <div className="flex items-center justify-between gap-2">
               <span className="app-soft text-[0.68rem] uppercase tracking-widest">
-                Chequeo pendiente
+                Regla pendiente
               </span>
               <span className="builder-status-dot builder-status-dot-warning" />
             </div>

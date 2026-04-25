@@ -115,7 +115,7 @@ export function buildPatternPreview(
   const matchMode = getPatternMatchMode(pattern)
 
   return {
-    heading: pattern.kind === 'problem' ? 'Este problema ocurre si:' : 'Esta apertura requiere:',
+    heading: pattern.kind === 'problem' ? 'Este problema ocurre si:' : 'Esta salida requiere:',
     summary: buildPatternCompactSummary(pattern, cardById),
     items,
     logic:

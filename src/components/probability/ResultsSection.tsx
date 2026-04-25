@@ -27,7 +27,7 @@ interface ResultsSectionProps {
   pendingReviewCount: number
 }
 
-const CLEAN_HANDS_TOOLTIP = 'Cumplen al menos una apertura activa y no presentan ningún problema activo.'
+  const CLEAN_HANDS_TOOLTIP = 'Cumplen al menos una salida activa y no presentan ningún problema activo.'
 
 export function ResultsSection({
   result,
@@ -90,8 +90,8 @@ export function ResultsSection({
                   className={[
                     'm-0 px-2 py-1.5 text-[0.76rem] leading-[1.16]',
                     issue.level === 'error'
-                      ? 'surface-card-danger text-[var(--destructive)]'
-                      : 'surface-card-warning text-[var(--warning)]',
+                      ? 'surface-card-danger text-destructive'
+                      : 'surface-card-warning text-(--warning)',
                   ].join(' ')}
                 >
                   <span className="mr-2 inline-block font-bold">{issue.level === 'error' ? 'Error' : 'Aviso'}</span>
@@ -103,19 +103,19 @@ export function ResultsSection({
 
           {!result.summary && result.issues.length === 0 && activePatternCount === 0 ? (
             <p className="surface-card m-0 px-2.5 py-2 text-[0.8rem] text-(--text-muted)">
-              Elegí al menos un chequeo en el editor para ver resultados detallados.
+              Elegí al menos una regla en el editor para ver resultados detallados.
             </p>
           ) : !result.summary && result.issues.length === 0 ? (
             <div className="surface-card flex min-h-[100px] flex-col items-center justify-center gap-2 p-4">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-[rgb(var(--foreground-rgb)/0.18)] border-t-[var(--primary)]" />
-              <p className="m-0 text-[0.8rem] text-[var(--text-muted)]">Calculando probabilidades...</p>
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-[rgb(var(--foreground-rgb)/0.18)] border-t-primary" />
+              <p className="m-0 text-[0.8rem] text-(--text-muted)">Calculando probabilidades...</p>
             </div>
           ) : result.summary ? (
             hasActiveDetails ? (
               <div className="grid gap-3 min-[980px]:grid-cols-2 min-[980px]:items-start">
                 <PatternResultSection
                   title="OPEN"
-                  emptyMessage="No hay aperturas activas."
+                  emptyMessage="No hay salidas activas."
                   patterns={openingPatterns}
                   patternById={patternById}
                   cardById={cardById}
@@ -130,7 +130,7 @@ export function ResultsSection({
               </div>
             ) : (
               <p className="surface-card m-0 px-2.5 py-2 text-[0.8rem] text-(--text-muted)">
-                Elegí al menos un chequeo para ver resultados detallados en este panel.
+                Elegí al menos una regla para ver resultados detallados en este panel.
               </p>
             )
           ) : null}
@@ -166,7 +166,7 @@ function DeckSummaryPanel({ deckSummary }: { deckSummary: DeckSummarySnapshot })
         >
           {formatPercent(deckSummary.cleanProbability)}
         </strong>
-        <p className="app-muted m-0 max-w-[22rem] text-[0.76rem] leading-[1.12] min-[760px]:text-right">
+        <p className="app-muted m-0 max-w-88 text-[0.76rem] leading-[1.12] min-[760px]:text-right">
           {formatInteger(deckSummary.cleanHands)} manos limpias sobre {formatInteger(deckSummary.totalHands)} posibles.
         </p>
       </div>
@@ -188,7 +188,7 @@ function EmptyProbabilityState({ handSize, isPristine }: EmptyProbabilityStatePr
           {isPristine ? 'Armá el Main Deck primero' : 'Volvé a cargar cartas para medir otra vez'}
         </strong>
         <p className="app-muted m-0 text-[0.78rem] leading-[1.16]">
-          Este panel muestra el KPI principal y las reglas activas cuando ya tenés cartas y al menos un chequeo encendido.
+          Este panel muestra el KPI principal y las reglas activas cuando ya tenés cartas y al menos una regla encendida.
         </p>
       </div>
       <p className="surface-card m-0 px-2.5 py-2 text-[0.76rem] text-(--text-muted)">
@@ -321,7 +321,7 @@ function InfoTooltip({ content }: { content: string }) {
     <span className="group/tooltip relative inline-flex items-center">
       <button
         type="button"
-        className="app-chip inline-flex h-[1rem] w-[1rem] items-center justify-center px-0 text-[0.62rem] leading-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--primary-rgb)/0.28)]"
+        className="app-chip inline-flex h-4 w-4 items-center justify-center px-0 text-[0.62rem] leading-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--primary-rgb)/0.28)]"
         aria-label={content}
         title={content}
       >
@@ -329,7 +329,7 @@ function InfoTooltip({ content }: { content: string }) {
       </button>
       <span
         role="tooltip"
-        className="app-popover pointer-events-none invisible absolute left-0 top-[calc(100%+0.35rem)] z-30 w-[min(18rem,calc(100vw-2.5rem))] p-2 text-[0.72rem] leading-[1.15] text-[var(--text-muted)] opacity-0 transition-[opacity,visibility] duration-150 group-hover/tooltip:visible group-hover/tooltip:opacity-100 group-focus-within/tooltip:visible group-focus-within/tooltip:opacity-100"
+        className="app-popover pointer-events-none invisible absolute left-0 top-[calc(100%+0.35rem)] z-30 w-[min(18rem,calc(100vw-2.5rem))] p-2 text-[0.72rem] leading-[1.15] text-(--text-muted) opacity-0 transition-[opacity,visibility] duration-150 group-hover/tooltip:visible group-hover/tooltip:opacity-100 group-focus-within/tooltip:visible group-focus-within/tooltip:opacity-100"
       >
         {content}
       </span>

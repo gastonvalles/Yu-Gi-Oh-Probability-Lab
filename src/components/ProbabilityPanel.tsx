@@ -1,6 +1,7 @@
 import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
 
 import { buildCalculatorState } from '../app/calculator-state'
+import { useToastMessage } from '../app/use-toast-message'
 import type { DerivedDeckGroup } from '../app/deck-groups'
 import { curatePatterns } from '../app/pattern-curation'
 import { AUTO_BASE_PRESET_IDS, buildPatternPresets } from '../app/pattern-presets'
@@ -173,10 +174,20 @@ function ProbabilityPanelContent({
     [readinessPresets],
   )
   const allChecks = useMemo(
-    () => buildDeterministicCheckSet(activePatterns.length > 0 ? activePatterns : readinessPatterns),
+    () => {
+      const calculablePatterns = activePatterns.filter((pattern) =>
+        pattern.conditions.some((condition) => condition.matcher !== null),
+      )
+
+      // The 3 universal rules (readinessPatterns) are ALWAYS included.
+      // User patterns are merged on top. buildDeterministicCheckSet deduplicates by definition key.
+      return buildDeterministicCheckSet([...readinessPatterns, ...calculablePatterns])
+    },
     [activePatterns, readinessPatterns],
   )
-  const isUsingActiveChecks = activePatterns.length > 0
+  const isUsingActiveChecks = activePatterns.filter((pattern) =>
+    pattern.conditions.some((condition) => condition.matcher !== null),
+  ).length > 0
   const result = useMemo(() => {
     if (isEditingDeck || !hasCompletedClassification || allChecks.length === 0) {
       return IDLE_CALCULATION_RESULT
@@ -232,9 +243,10 @@ function ProbabilityPanelContent({
   const [highlightedPatternId, setHighlightedPatternId] = useState<string | null>(null)
   const [recentlyChangedPatternId, setRecentlyChangedPatternId] = useState<string | null>(null)
   const [kpiFeedback, setKpiFeedback] = useState<KpiFeedbackState | null>(null)
+  const { showToast } = useToastMessage()
   const selectedPattern = useMemo(
-    () => patterns.find((pattern) => pattern.id === selectedPatternId) ?? null,
-    [patterns, selectedPatternId],
+    () => patterns.find((pattern) => pattern.id === selectedPatternId) ?? allChecks.find((check) => check.id === selectedPatternId) ?? null,
+    [patterns, allChecks, selectedPatternId],
   )
   const selectedPatternProbability = useMemo(
     () => result.summary?.patternResults.find((pattern) => pattern.patternId === selectedPatternId)?.probability ?? null,
@@ -247,6 +259,7 @@ function ProbabilityPanelContent({
   const pendingFeedbackRef = useRef<PendingFeedback | null>(null)
   const clearHighlightTimeoutRef = useRef<number | null>(null)
   const clearFeedbackTimeoutRef = useRef<number | null>(null)
+  const justCreatedPatternIdRef = useRef<string | null>(null)
 
   const trackedPatternActions = useMemo<PatternEditorActions>(
     () => ({
@@ -349,13 +362,24 @@ function ProbabilityPanelContent({
   )
 
   useEffect(() => {
-    if (!selectedPatternId || patterns.some((pattern) => pattern.id === selectedPatternId)) {
+    if (!selectedPatternId || patterns.some((pattern) => pattern.id === selectedPatternId) || allChecks.some((check) => check.id === selectedPatternId)) {
+      if (justCreatedPatternIdRef.current && patterns.some((pattern) => pattern.id === justCreatedPatternIdRef.current)) {
+        justCreatedPatternIdRef.current = null
+      }
+      return
+    }
+
+    if (pendingCreatedPatternId && selectedPatternId === pendingCreatedPatternId) {
+      return
+    }
+
+    if (justCreatedPatternIdRef.current && selectedPatternId === justCreatedPatternIdRef.current) {
       return
     }
 
     setSelectedPatternId(null)
     setDrawerMode((current) => (current === 'quick-add' ? current : null))
-  }, [patterns, selectedPatternId])
+  }, [patterns, pendingCreatedPatternId, selectedPatternId])
 
   useEffect(() => {
     if (!pendingCreatedPatternId) {
@@ -431,9 +455,16 @@ function ProbabilityPanelContent({
   }
 
   const handleOpenCustomCreate = () => {
+    if (pendingCreatedPatternId && patterns.some((pattern) => pattern.id === pendingCreatedPatternId)) {
+      setSelectedPatternId(pendingCreatedPatternId)
+      setDrawerMode('custom-create')
+      return
+    }
+
     pendingFeedbackRef.current = { patternId: null, skip: true }
     const patternId = patternActions.addPattern('opening')
 
+    justCreatedPatternIdRef.current = patternId
     setPendingCreatedPatternId(patternId)
     setSelectedPatternId(patternId)
     setDrawerMode('custom-create')
@@ -454,8 +485,6 @@ function ProbabilityPanelContent({
 
     pendingFeedbackRef.current = { patternId: preset.pattern.id, skip: false }
     patternActions.appendPattern(preset.pattern)
-    setDrawerMode(null)
-    setSelectedPatternId(null)
   }
 
   const handleCloseDrawer = () => {
@@ -465,6 +494,7 @@ function ProbabilityPanelContent({
       if (pendingPattern && pendingPattern.name.trim().length === 0) {
         pendingFeedbackRef.current = { patternId: null, skip: true }
         patternActions.removePattern(pendingCreatedPatternId)
+        showToast('Regla vacía descartada')
       }
 
       setPendingCreatedPatternId(null)
@@ -504,8 +534,9 @@ function ProbabilityPanelContent({
     <article className="surface-panel deck-mobile-step-shell grid h-full min-h-0 gap-2.5 p-0 min-[1101px]:gap-3 min-[1101px]:p-3 min-[1240px]:grid-rows-[auto_minmax(0,1fr)]">
       <StepHero
         step="Probability Lab"
-        title="Entende que tan jugable es tu deck y que lo esta causando"
-        description="Mira el KPI, detecta las fortalezas y riesgos principales, y edita chequeos."
+        title="Entendé qué tan jugable es tu deck y qué lo está causando"
+        description="KPI, fortalezas, riesgos y práctica de manos."
+        variant="compact"
         side={(
           <Button variant="primary" size="sm" onClick={() => setPracticeOpen(true)}>
             Abrir práctica
@@ -520,7 +551,7 @@ function ProbabilityPanelContent({
             <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Antes de medir</p>
             <h3 className="m-0 text-[1rem] leading-none text-(--text-main)">Carga el Main Deck primero</h3>
             <p className="app-muted m-0 text-[0.8rem] leading-[1.16]">
-              Cuando tengas cartas en el Main Deck, este panel te va a mostrar el KPI principal, las causas y los chequeos activos.
+              Cuando tengas cartas en el Main Deck, este panel te va a mostrar el KPI principal, las causas y las reglas activas.
             </p>
           </div>
         </section>
@@ -546,8 +577,11 @@ function ProbabilityPanelContent({
             allCheckCount={allCheckEntries.length}
             deckSummary={deckSummary}
             feedback={kpiFeedback}
-            isEditingEnabled={isAnalysisEditMode && isUsingActiveChecks}
+            isEditMode={isAnalysisEditMode}
             onEditPattern={handleEditPattern}
+            onToggleEditMode={() => setIsAnalysisEditMode((prev) => !prev)}
+            onOpenQuickAdd={handleOpenQuickAdd}
+            onOpenCustomCreate={handleOpenCustomCreate}
             openingEntries={detailOpeningEntries}
             problemEntries={detailProblemEntries}
           />
@@ -569,40 +603,6 @@ function ProbabilityPanelContent({
               ))}
             </div>
           ) : null}
-
-          <section className="surface-panel-soft grid gap-2.5 p-3">
-            <div className="grid gap-0.5">
-              <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Acciones</p>
-              <h3 className="m-0 text-[1rem] leading-none text-(--text-main)">
-                {isAnalysisEditMode ? 'Modo edición activo' : 'Vista de análisis'}
-              </h3>
-              <p className="app-muted m-0 text-[0.78rem] leading-[1.16]">
-                {isAnalysisEditMode
-                  ? 'Ahora podés editar los checks directamente desde Calidad del deck o sumar nuevos sin salir del flujo principal.'
-                  : 'Calidad del deck ya muestra el estado completo. Activá edición solo cuando quieras cambiar el análisis.'}
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {isAnalysisEditMode ? (
-                <>
-                  <Button variant="primary" size="sm" onClick={handleOpenQuickAdd}>
-                    Agregar chequeo recomendado
-                  </Button>
-                  <Button variant="primary" size="sm" onClick={handleOpenCustomCreate}>
-                    Crear chequeo propio
-                  </Button>
-                  <Button variant="primary" size="sm" onClick={() => setIsAnalysisEditMode(false)}>
-                    Cerrar edición
-                  </Button>
-                </>
-              ) : (
-                <Button variant="primary" size="sm" onClick={() => setIsAnalysisEditMode(true)}>
-                  Editar análisis
-                </Button>
-              )}
-            </div>
-          </section>
         </div>
       )}
 
@@ -618,8 +618,14 @@ function ProbabilityPanelContent({
         onCreateCustom={handleOpenCustomCreate}
         onRequestDelete={setPendingDeletePatternId}
         onSelectPreset={(preset) => handleSelectPreset(preset.id)}
+        onSwitchPattern={(newPatternId) => {
+          setSelectedPatternId(newPatternId)
+          setPendingCreatedPatternId(null)
+          setDrawerMode('edit')
+        }}
         pattern={selectedPattern}
         patterns={patterns}
+        probability={selectedPatternProbability}
       />
 
       {practiceOpen ? (
@@ -627,11 +633,11 @@ function ProbabilityPanelContent({
           <button
             type="button"
             aria-label="Cerrar práctica"
-            className="absolute inset-0 h-full w-full"
+            className="absolute inset-0 h-full w-full cursor-default"
             onClick={() => setPracticeOpen(false)}
           />
 
-          <div className="surface-panel relative grid h-[min(92vh,980px)] w-full max-w-312 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0">
+          <div className="surface-panel app-dialog-enter relative grid h-[min(92vh,980px)] w-full max-w-312 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0">
             <div className="flex min-w-0 items-center justify-between gap-2 border-b border-(--border-subtle) px-4 py-3">
               <div className="grid min-w-0 gap-0.5">
                 <strong className="text-[0.98rem] text-(--text-main)">Práctica</strong>
@@ -654,6 +660,7 @@ function ProbabilityPanelContent({
                 missingRoleCount={missingRoleCount}
                 pendingReviewCount={pendingReviewCount}
                 reviewPendingPatternCount={reviewPendingPatternCount}
+                onRedraw={() => {}}
               />
             </div>
           </div>
@@ -661,12 +668,12 @@ function ProbabilityPanelContent({
       ) : null}
 
       <ConfirmDialog
-        confirmLabel="Eliminar chequeo"
-        description="Se va a quitar este chequeo del analisis y el resultado se recalculara en el momento."
+        confirmLabel="Eliminar regla"
+        description="Se va a quitar esta regla del análisis y el resultado se recalculará en el momento."
         isOpen={pendingDeletePatternId !== null}
         onCancel={() => setPendingDeletePatternId(null)}
         onConfirm={handleConfirmDelete}
-        title="Eliminar chequeo"
+        title="Eliminar regla"
       />
     </article>
   )
@@ -724,21 +731,7 @@ function ProbabilityPanelSkeleton() {
           </div>
         </section>
 
-        <section className="surface-panel-soft grid gap-2.5 p-3">
-          <div className="grid gap-2">
-            <Skeleton radius="none" className="h-3 w-20" />
-            <Skeleton radius="none" className="h-7 max-w-full w-52" />
-            <div className="grid gap-1.5">
-              <Skeleton radius="none" className="h-4 max-w-full w-[96%]" />
-              <Skeleton radius="none" className="h-4 max-w-full w-[74%]" />
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Skeleton className="h-9 w-40 max-w-full" />
-            <Skeleton className="h-9 w-36 max-w-full" />
-            <Skeleton className="h-9 w-28 max-w-full" />
-          </div>
-        </section>
+
       </div>
     </article>
   )
@@ -755,10 +748,7 @@ function buildKpiFeedback(
   const delta = currentProbability - previousProbability
 
   if (Math.abs(delta) < 0.0005) {
-    return {
-      label: 'Sin impacto visible',
-      tone: 'neutral',
-    }
+    return null
   }
 
   const deltaLabel = `${delta > 0 ? '+' : ''}${(delta * 100).toFixed(1)} pp`

@@ -63,19 +63,19 @@ export function getPatternDefinitionKey(
 export function getPatternCategorySingular(
   kind: HandPatternCategory | 'good' | 'bad' | null | undefined,
 ): string {
-  return normalizeHandPatternCategory(kind) === 'problem' ? 'problema' : 'apertura'
+  return normalizeHandPatternCategory(kind) === 'problem' ? 'problema' : 'salida'
 }
 
 export function getPatternCategoryPlural(
   kind: HandPatternCategory | 'good' | 'bad' | null | undefined,
 ): string {
-  return normalizeHandPatternCategory(kind) === 'problem' ? 'problemas' : 'aperturas'
+  return normalizeHandPatternCategory(kind) === 'problem' ? 'problemas' : 'salidas'
 }
 
 export function getPatternCategoryShortLabel(
   kind: HandPatternCategory | 'good' | 'bad' | null | undefined,
 ): string {
-  return normalizeHandPatternCategory(kind) === 'problem' ? 'Problema' : 'Apertura'
+  return normalizeHandPatternCategory(kind) === 'problem' ? 'Problema' : 'Salida'
 }
 
 export function getPatternMatchMode(

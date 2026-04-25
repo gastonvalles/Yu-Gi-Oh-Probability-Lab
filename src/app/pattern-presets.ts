@@ -37,20 +37,26 @@ export const PROBABILITY_MODEL_VISIBILITY = {
 } as const
 
 export const QUICK_OVERVIEW_PRESET_IDS = [
+  // 5 salidas
   'starter_opening',
-  'minimal_playable_opening',
   'starter_extender_opening',
-  'interaction_opening',
   'starter_protection_opening',
+  'minimal_playable_opening',
   'engine_interaction_opening',
+  // 5 problemas
   'no_starter_problem',
   'double_brick_problem',
-  'triple_non_engine_problem',
   'no_interaction_problem',
+  'triple_non_engine_problem',
   'extender_without_starter_problem',
 ] as const
 
-export const AUTO_BASE_PRESET_IDS = [...QUICK_OVERVIEW_PRESET_IDS] as const
+/** Only the 3 truly universal rules are auto-activated. */
+export const AUTO_BASE_PRESET_IDS = [
+  'starter_opening',
+  'no_starter_problem',
+  'double_brick_problem',
+] as const
 
 export const SIMPLE_MODE_DEFAULT_PRESET_IDS = [...QUICK_OVERVIEW_PRESET_IDS] as const
 
@@ -79,20 +85,30 @@ const OBSOLETE_SYSTEM_PATTERN_NAMES = new Set([
   '3 o más boardbreaker',
   '4 o mas non-engine',
   '4 o más non-engine',
+  // v7: old preset names replaced by unified vocabulary
+  'al menos 1 interacción',
+  'al menos 1 starter',
+  'starter + extender',
+  'starter + protección',
+  'engine + interacción',
+  'sin starter',
+  '2 o más bricks',
+  '3 o más non-engine',
+  'sin interacción',
 ])
 
 export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
   {
     id: 'starter_opening',
     category: 'consistency',
-    title: 'Al menos 1 Starter',
-    description: 'Condición base de jugabilidad: la mano abre una carta que inicia la línea.',
+    title: 'Salida básica',
+    description: 'La condición mínima para que la mano juegue. Sin starter, no arrancás.',
     technicalSubtitle: 'con 1+ Starter',
     kind: 'opening',
-    simpleLabel: 'Abrir Starter',
+    simpleLabel: 'Salida básica',
     recommended: true,
     build: () =>
-      createMatcherPattern('Al menos 1 Starter', 'opening', [
+      createMatcherPattern('Salida básica', 'opening', [
         { matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' },
       ]),
     describeProbability: (probability) =>
@@ -102,7 +118,7 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
     id: 'minimal_playable_opening',
     category: 'consistency',
     title: 'Mano jugable mínima',
-    description: 'Detecta manos que juegan con Starter o con una pareja engine capaz de arrancar.',
+    description: 'Starter o combinación de piezas engine que te dejan jugar.',
     technicalSubtitle: 'Starter o 2 nombres engine de arranque',
     kind: 'opening',
     simpleLabel: 'Mano jugable mínima',
@@ -139,15 +155,15 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
   {
     id: 'starter_extender_opening',
     category: 'consistency',
-    title: 'Starter + Extender',
-    description: 'Mide continuidad de jugada con arranque y seguimiento real.',
+    title: 'Salida con seguimiento',
+    description: 'Arranque con seguimiento real para armar un board.',
     technicalSubtitle: 'Starter + Extender',
     kind: 'opening',
-    simpleLabel: 'Abrir Starter + Extender',
+    simpleLabel: 'Salida con seguimiento',
     recommended: true,
     build: () =>
       createMatcherPattern(
-        'Starter + Extender',
+        'Salida con seguimiento',
         'opening',
         [
           { matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' },
@@ -163,39 +179,13 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
       `La mano combina Starter y Extender en ${formatProbability(probability)} de los casos, lo que mejora la continuidad de la jugada.`,
   },
   {
-    id: 'interaction_opening',
-    category: 'interaction',
-    title: 'Al menos 1 interacción',
-    description: 'Mide capacidad de frenar al rival desde la mano o con una pieza defensiva.',
-    technicalSubtitle: 'con Handtrap o Disruption',
-    kind: 'opening',
-    simpleLabel: 'Tener interacción',
-    recommended: true,
-    build: () =>
-      createMatcherPattern(
-        'Al menos 1 interacción',
-        'opening',
-        [
-          { matcher: { type: 'role', value: 'handtrap' }, quantity: 1, kind: 'include' },
-          { matcher: { type: 'role', value: 'disruption' }, quantity: 1, kind: 'include' },
-        ],
-        {
-          allowSharedCards: true,
-          matchMode: 'any',
-          minimumMatches: 1,
-        },
-      ),
-    describeProbability: (probability) =>
-      `El deck abre al menos una interacción en ${formatProbability(probability)} de las manos.`,
-  },
-  {
     id: 'starter_protection_opening',
     category: 'interaction',
-    title: 'Starter + protección',
-    description: 'Mide si la mano no solo juega, sino que además puede resistir interacción.',
+    title: 'Salida con interacción',
+    description: 'Salir y poder frenar al rival en el mismo turno.',
     technicalSubtitle: 'Starter + (Handtrap o Disruption)',
     kind: 'opening',
-    simpleLabel: 'Starter + protección',
+    simpleLabel: 'Salida con interacción',
     recommended: true,
     build: (cards) => {
       const interactionPool = collectCardIdsByRoles(cards, INTERACTION_ROLES)
@@ -205,7 +195,7 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
       }
 
       return createMatcherPattern(
-        'Starter + protección',
+        'Salida con interacción',
         'opening',
         [
           { matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' },
@@ -224,11 +214,11 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
   {
     id: 'engine_interaction_opening',
     category: 'interaction',
-    title: 'Engine + Interacción',
-    description: 'Mide el balance entre avanzar el plan propio y defenderse.',
+    title: 'Engine + interacción',
+    description: 'Balance entre avanzar tu plan y defenderte.',
     technicalSubtitle: 'Engine + (Handtrap o Disruption)',
     kind: 'opening',
-    simpleLabel: 'Engine + Interacción',
+    simpleLabel: 'Engine + interacción',
     recommended: true,
     build: (cards) => {
       const interactionPool = collectCardIdsByRoles(cards, INTERACTION_ROLES)
@@ -238,7 +228,7 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
       }
 
       return createMatcherPattern(
-        'Engine + Interacción',
+        'Engine + interacción',
         'opening',
         [
           { matcher: { type: 'origin', value: 'engine' }, quantity: 1, kind: 'include' },
@@ -257,14 +247,14 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
   {
     id: 'no_starter_problem',
     category: 'problems',
-    title: 'Sin Starter',
+    title: 'Mano sin Starter',
     description: 'La mano no encuentra un arranque claro.',
     technicalSubtitle: 'sin Starter',
     kind: 'problem',
-    simpleLabel: 'Evitar manos sin Starter',
+    simpleLabel: 'Mano sin Starter',
     recommended: true,
     build: () =>
-      createMatcherPattern('Sin Starter', 'problem', [
+      createMatcherPattern('Mano sin Starter', 'problem', [
         { matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'exclude' },
       ]),
     describeProbability: (probability) =>
@@ -273,14 +263,14 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
   {
     id: 'double_brick_problem',
     category: 'problems',
-    title: '2 o más Bricks',
-    description: 'Mide manos pesadas o demasiado dependientes de acompañamiento.',
+    title: '2+ Bricks en mano',
+    description: 'Manos pesadas con cartas que no arrancan solas.',
     technicalSubtitle: 'con 2+ Brick',
     kind: 'problem',
-    simpleLabel: 'Evitar 2 o más Bricks',
+    simpleLabel: '2+ Bricks en mano',
     recommended: true,
     build: () =>
-      createMatcherPattern('2 o más Bricks', 'problem', [
+      createMatcherPattern('2+ Bricks en mano', 'problem', [
         { matcher: { type: 'role', value: 'brick' }, quantity: 2, kind: 'include' },
       ]),
     describeProbability: (probability) =>
@@ -289,14 +279,14 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
   {
     id: 'triple_non_engine_problem',
     category: 'problems',
-    title: '3 o más Non-engine',
-    description: 'Detecta exceso de cartas que no avanzan el plan principal.',
+    title: '3+ Non-engine en mano',
+    description: 'Exceso de cartas defensivas sin plan propio.',
     technicalSubtitle: 'con 3+ Non-engine',
     kind: 'problem',
-    simpleLabel: 'Evitar 3 o más Non-engine',
+    simpleLabel: '3+ Non-engine en mano',
     recommended: true,
     build: () =>
-      createMatcherPattern('3 o más Non-engine', 'problem', [
+      createMatcherPattern('3+ Non-engine en mano', 'problem', [
         { matcher: { type: 'origin', value: 'non_engine' }, quantity: 3, kind: 'include' },
       ]),
     describeProbability: (probability) =>
@@ -305,15 +295,15 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
   {
     id: 'no_interaction_problem',
     category: 'problems',
-    title: 'Sin interacción',
-    description: 'Detecta manos pasivas que no frenan al rival.',
+    title: 'Mano sin interacción',
+    description: 'Manos pasivas que no frenan al rival.',
     technicalSubtitle: 'sin Handtrap ni Disruption',
     kind: 'problem',
-    simpleLabel: 'Evitar manos sin interacción',
+    simpleLabel: 'Mano sin interacción',
     recommended: true,
     build: () =>
       createMatcherPattern(
-        'Sin interacción',
+        'Mano sin interacción',
         'problem',
         [
           { matcher: { type: 'role', value: 'handtrap' }, quantity: 1, kind: 'exclude' },
@@ -332,10 +322,10 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
     id: 'extender_without_starter_problem',
     category: 'problems',
     title: 'Extender sin Starter',
-    description: 'Marca manos engañosas: parecen jugables, pero no tienen punto real de arranque.',
+    description: 'Parece jugable pero no tiene punto de arranque real.',
     technicalSubtitle: 'Extender y 0 Starter',
     kind: 'problem',
-    simpleLabel: 'Evitar Extender sin Starter',
+    simpleLabel: 'Extender sin Starter',
     recommended: true,
     build: () =>
       createMatcherPattern(
