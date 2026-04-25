@@ -136,7 +136,7 @@ describe('RuleBuilder empty state logic', () => {
 
   it('existing pattern with conditions never triggers empty state', () => {
     fc.assert(
-      fc.property(arbExistingPattern(), (pattern) => {
+      fc.property(arbExistingPattern(), (_pattern) => {
         const isPendingCreation = false
         // Existing patterns are never in pending creation mode
         expect(isPendingCreation).toBe(false)

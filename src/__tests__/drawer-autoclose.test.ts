@@ -405,7 +405,7 @@ const arbNamedPattern: fc.Arbitrary<HandPattern> = fc
     kind: fc.constantFrom('opening' as const, 'problem' as const),
     cardIndex: fc.integer({ min: 1, max: 4 }),
   })
-  .map((def, i) => ({
+  .map((def) => ({
     id: `named-pattern-${def.cardIndex}-${def.name}`,
     name: def.name,
     kind: def.kind,

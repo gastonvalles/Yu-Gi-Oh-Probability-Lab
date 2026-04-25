@@ -30,7 +30,7 @@ export function RuleBuilder({
   onRequestDelete,
   onSwitchPattern,
   pattern,
-  probability,
+  probability: _probability,
 }: RuleBuilderProps) {
   const [templateDismissed, setTemplateDismissed] = useState(false)
 

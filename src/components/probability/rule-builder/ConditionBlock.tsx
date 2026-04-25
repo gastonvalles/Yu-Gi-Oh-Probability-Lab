@@ -21,7 +21,7 @@ export function ConditionBlock({
   index,
   patternId,
   condition,
-  patternKind,
+  patternKind: _patternKind,
   derivedMainCards,
   actions,
   onRemove,

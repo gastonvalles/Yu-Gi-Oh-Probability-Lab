@@ -30,7 +30,7 @@ const SHORTCUT_ROLES: readonly CardRole[] = ['starter', 'extender', 'brick']
 export function CategoryPicker({
   patternId,
   conditionId,
-  currentMatcher,
+  currentMatcher: _currentMatcher,
   derivedMainCards,
   actions,
   onClose,
