@@ -31,6 +31,31 @@ const ORIGIN_BLURB: Record<CardOrigin, string> = {
   hybrid: 'Cruza ambos espacios.',
 }
 
+const ORIGIN_HELP: Record<CardOrigin, string> = {
+  engine: 'Parte del core del deck: cartas que querés ver para ejecutar el plan principal.',
+  non_engine: 'Interacción o soporte que no pertenece al motor principal del deck.',
+  hybrid: 'Puede contar como motor o como slot flexible según la mano y la build.',
+}
+
+const ROLE_HELP: Record<CardRole, string> = {
+  starter: 'Carta que por sí sola inicia la línea principal.',
+  extender: 'Continúa la jugada una vez que la mano ya empezó.',
+  enabler: 'Habilita la condición o ventana que otra carta necesita.',
+  searcher: 'Encuentra piezas concretas del deck, GY o zonas visibles.',
+  draw: 'Aumenta la mano o mejora mucho la calidad del robo.',
+  combo_piece: 'Pieza necesaria dentro de una secuencia concreta.',
+  payoff: 'Convierte la línea en ventaja, presión o cierre.',
+  recovery: 'Recupera recursos después de gastar piezas o recibir interacción.',
+  handtrap: 'Interacción que frena al rival desde la mano.',
+  disruption: 'Interrumpe al rival durante su línea o una vez establecida la mesa.',
+  boardbreaker: 'Ayuda a desarmar un campo rival y abrir espacio para jugar.',
+  floodgate: 'Restringe líneas del rival de forma continua o persistente.',
+  removal: 'Quita cartas rivales por destrucción, banish, bounce o un efecto similar.',
+  brick: 'Carta incómoda de robar si no viene acompañada.',
+  garnet: 'Pieza que preferís dejar en el deck porque en mano empeora la línea.',
+  tech: 'Slot flexible para matchup o metajuego.',
+}
+
 const ROLE_SECTIONS = [
   {
     title: 'Plan de Juego',
@@ -75,15 +100,19 @@ export function BuildBCardEditor({ card, currentEdit, allCards, onSave, onNaviga
     onNavigate(next)
   }
 
-  const currentIndex = allCards.findIndex((c) => c.instanceId === card.instanceId)
-  const prevCard = allCards.length > 1
-    ? allCards[(currentIndex - 1 + allCards.length) % allCards.length]
+  // Deduplicate by ygoprodeckId for navigation (skip copies of the same card)
+  const uniqueCards = allCards.filter((c, i, arr) =>
+    arr.findIndex((x) => x.apiCard.ygoprodeckId === c.apiCard.ygoprodeckId) === i,
+  )
+  const currentIndex = uniqueCards.findIndex((c) => c.apiCard.ygoprodeckId === card.apiCard.ygoprodeckId)
+  const prevCard = uniqueCards.length > 1
+    ? uniqueCards[(currentIndex - 1 + uniqueCards.length) % uniqueCards.length]
     : null
-  const nextCard = allCards.length > 1
-    ? allCards[(currentIndex + 1) % allCards.length]
+  const nextCard = uniqueCards.length > 1
+    ? uniqueCards[(currentIndex + 1) % uniqueCards.length]
     : null
   const position = currentIndex + 1
-  const total = allCards.length
+  const total = uniqueCards.length
 
   return (
     <div
@@ -154,6 +183,7 @@ export function BuildBCardEditor({ card, currentEdit, allCards, onSave, onNaviga
                             key={serializeGroupKey(definition.key)}
                             type="button"
                             aria-pressed={active}
+                            title={`${definition.label}: ${ORIGIN_HELP[definition.key.value]}`}
                             className={[
                               'classification-origin-option grid gap-1 p-2 text-left',
                               active ? 'classification-origin-option-active' : '',
@@ -198,6 +228,7 @@ export function BuildBCardEditor({ card, currentEdit, allCards, onSave, onNaviga
                                     key={serializeGroupKey(definition.key)}
                                     type="button"
                                     aria-pressed={active}
+                                    title={`${definition.label}: ${ROLE_HELP[role]}`}
                                     className={[
                                       'role-option-button min-w-0 w-full max-w-full px-2 py-[0.44rem] text-left text-[0.68rem] leading-[1.08] whitespace-normal',
                                       active ? 'role-option-button-active' : '',
