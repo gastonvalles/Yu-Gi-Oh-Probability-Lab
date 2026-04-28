@@ -33,6 +33,7 @@ export function ComparisonScreen() {
   const [detailCard, setDetailCard] = useState<ApiCardSearchResult | null>(null)
   const [editsMap, _setEditsMap] = useState<CardEditMap>(_cachedEditsMap)
   const [editingCard, setEditingCard] = useState<DeckCardInstance | null>(null)
+  const [showCardList, setShowCardList] = useState(false)
 
   // Wrappers that sync module-level cache
   const setImportedDeckBuilder = useCallback((deck: DeckBuilderState | null) => {
@@ -216,10 +217,7 @@ export function ComparisonScreen() {
           <div
             className="comparison-kpi-card grid gap-1 px-2.5 py-2 cursor-pointer hover:brightness-125 transition-[filter] border-l-2 border-amber-400"
             style={{ background: 'rgb(var(--background-rgb))' }}
-            onClick={() => {
-              const first = editedDeckBuilder?.main.find(c => c.origin === null || c.roles.length === 0 || c.needsReview)
-              if (first) setEditingCard(first)
-            }}
+            onClick={() => setShowCardList(true)}
           >
             <strong className="text-[0.76rem] text-amber-300">Build B necesita revisión</strong>
             <p className="m-0 text-[0.68rem] text-(--text-muted)">{formatInteger(pendingCount)} carta{pendingCount === 1 ? '' : 's'} pendiente{pendingCount === 1 ? '' : 's'}. Click para categorizar.</p>
@@ -245,6 +243,15 @@ export function ComparisonScreen() {
           onSave={handleEditorSave}
           onNavigate={(card) => setEditingCard(card)}
           onClose={() => setEditingCard(null)}
+        />
+      ) : null}
+
+      {showCardList && editedDeckBuilder ? (
+        <BuildBCardListModal
+          cards={editedDeckBuilder.main}
+          editsMap={editsMap}
+          onSelectCard={(card) => { setShowCardList(false); setEditingCard(card) }}
+          onClose={() => setShowCardList(false)}
         />
       ) : null}
 
@@ -346,6 +353,98 @@ function DeckGridB({ cards, zone, onCardClick }: { cards: DeckCardInstance[]; zo
           </div>
         )
       })}
+    </div>
+  )
+}
+
+// ── Build B Card List Modal ──
+
+function BuildBCardListModal({ cards, editsMap, onSelectCard, onClose }: {
+  cards: DeckCardInstance[]
+  editsMap: CardEditMap
+  onSelectCard: (card: DeckCardInstance) => void
+  onClose: () => void
+}) {
+  // Deduplicate by ygoprodeckId, count copies
+  const uniqueCards = cards.reduce<{ card: DeckCardInstance; copies: number; needsReview: boolean }[]>((acc, c) => {
+    const existing = acc.find((x) => x.card.apiCard.ygoprodeckId === c.apiCard.ygoprodeckId)
+    if (existing) {
+      existing.copies++
+    } else {
+      const edit = editsMap.get(c.apiCard.ygoprodeckId)
+      const effectiveOrigin = edit?.origin ?? c.origin
+      const effectiveRoles = edit?.roles ?? c.roles
+      const nr = effectiveOrigin === null || effectiveRoles.length === 0 || (!edit && c.needsReview)
+      acc.push({ card: c, copies: 1, needsReview: nr })
+    }
+    return acc
+  }, [])
+
+  const pending = uniqueCards.filter((x) => x.needsReview)
+  const classified = uniqueCards.filter((x) => !x.needsReview)
+
+  return (
+    <div className="fixed inset-0 z-150 grid place-items-center bg-[rgb(var(--background-rgb)/0.76)] px-4 py-5" onClick={onClose}>
+      <div
+        className="surface-panel relative flex w-full max-w-lg min-h-0 max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden p-0 shadow-none"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="absolute right-4 top-4 z-10">
+          <button type="button" aria-label="Cerrar" className="grid h-8 w-8 place-items-center rounded-md text-(--text-muted) hover:text-(--text-main) hover:bg-[rgb(var(--foreground-rgb)/0.06)] transition-colors" onClick={onClose}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 4l8 8M12 4l-8 8" /></svg>
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-4">
+          <div className="grid gap-3">
+            <div className="grid gap-1 pr-10">
+              <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-[0.12em]">Build B</p>
+              <h3 className="m-0 text-[1.45rem] leading-[0.98] tracking-[-0.03em] text-(--text-main)">Cartas del deck</h3>
+              <p className="app-muted m-0 text-[0.76rem]">{formatInteger(uniqueCards.length)} cartas únicas · {formatInteger(pending.length)} pendiente{pending.length === 1 ? '' : 's'}</p>
+            </div>
+
+            {pending.length > 0 ? (
+              <section className="grid gap-1.5">
+                <span className="text-[0.68rem] font-semibold uppercase tracking-widest text-amber-300">Pendientes ({formatInteger(pending.length)})</span>
+                <div className="grid gap-px">
+                  {pending.map((x) => (
+                    <button key={x.card.apiCard.ygoprodeckId} type="button" className="app-list-item grid min-w-0 grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-2 px-1.5 py-1.5 text-left" onClick={() => onSelectCard(x.card)}>
+                      <div className="w-[36px]">
+                        <CardArt remoteUrl={x.card.apiCard.imageUrlSmall} name={x.card.name} className="block h-auto w-full bg-input" limitCard={x.card.apiCard} limitBadgeSize="sm" />
+                      </div>
+                      <div className="grid min-w-0 gap-0.5">
+                        <strong className="truncate text-[0.8rem] leading-[1.04] text-(--text-main)">{x.card.name}</strong>
+                        <p className="app-muted m-0 truncate text-[0.66rem] leading-none">Sin clasificar</p>
+                      </div>
+                      <span className="app-chip shrink-0 px-1.5 py-0.5 text-[0.62rem]">{formatInteger(x.copies)}x</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {classified.length > 0 ? (
+              <section className="grid gap-1.5">
+                <span className="text-[0.68rem] font-semibold uppercase tracking-widest text-(--text-muted)">Clasificadas ({formatInteger(classified.length)})</span>
+                <div className="grid gap-px">
+                  {classified.map((x) => (
+                    <button key={x.card.apiCard.ygoprodeckId} type="button" className="app-list-item grid min-w-0 grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-2 px-1.5 py-1.5 text-left" onClick={() => onSelectCard(x.card)}>
+                      <div className="w-[36px]">
+                        <CardArt remoteUrl={x.card.apiCard.imageUrlSmall} name={x.card.name} className="block h-auto w-full bg-input" limitCard={x.card.apiCard} limitBadgeSize="sm" />
+                      </div>
+                      <div className="grid min-w-0 gap-0.5">
+                        <strong className="truncate text-[0.8rem] leading-[1.04] text-(--text-main)">{x.card.name}</strong>
+                        <p className="app-muted m-0 truncate text-[0.66rem] leading-none">✓ Clasificada</p>
+                      </div>
+                      <span className="app-chip shrink-0 px-1.5 py-0.5 text-[0.62rem]">{formatInteger(x.copies)}x</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
