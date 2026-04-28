@@ -473,10 +473,30 @@ function portableConfigFromImport(deck: DeckBuilderState | null, app: AppState):
     name: c.name, apiCard: { ...c.apiCard }, origin: c.origin, roles: [...c.roles],
     needsReview: c.needsReview,
   }))
+
+  // Build a set of card names in Build B (normalized) for filtering card-specific matchers
+  const buildBCardNames = new Set(deck.main.map(c => c.name.trim().toLowerCase()))
+
+  // Filter patterns: remove conditions that reference specific cards not in Build B
+  const filteredPatterns = app.patterns
+    .filter(p => !p.needsReview)
+    .map(p => {
+      const filteredConditions = p.conditions.filter(c => {
+        if (!c.matcher) return true
+        if (c.matcher.type === 'card') return buildBCardNames.has(c.matcher.value.trim().toLowerCase())
+        if (c.matcher.type === 'card_pool') return c.matcher.value.some(name => buildBCardNames.has(name.trim().toLowerCase()))
+        // role, origin, attribute, level, etc. matchers are always valid
+        return true
+      })
+      return { ...p, conditions: filteredConditions }
+    })
+    // Remove patterns with no conditions left
+    .filter(p => p.conditions.length > 0)
+
   return {
     version: 15, handSize: app.handSize, deckFormat: app.deckFormat as PortableConfig['deckFormat'],
     patternsSeeded: app.patternsSeeded, patternsSeedVersion: app.patternsSeedVersion,
     deckBuilder: { deckName: deck.deckName, main: m(deck.main), extra: m(deck.extra), side: m(deck.side) },
-    patterns: app.patterns.map(p => ({ name: p.name, kind: p.kind, logic: p.logic, minimumConditionMatches: p.minimumConditionMatches, reusePolicy: p.reusePolicy, needsReview: p.needsReview, conditions: p.conditions.map(c => ({ matcher: c.matcher, quantity: c.quantity, kind: c.kind, distinct: c.distinct })) })),
+    patterns: filteredPatterns.map(p => ({ name: p.name, kind: p.kind, logic: p.logic, minimumConditionMatches: p.minimumConditionMatches, reusePolicy: p.reusePolicy, needsReview: false, conditions: p.conditions.map(c => ({ matcher: c.matcher, quantity: c.quantity, kind: c.kind, distinct: c.distinct })) })),
   }
 }
