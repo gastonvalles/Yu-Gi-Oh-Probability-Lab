@@ -45,7 +45,9 @@ export function normalizePatternName(name: string): string {
 }
 
 export function getPatternDefinitionKey(
-  pattern: Pick<HandPattern, 'kind' | 'logic' | 'minimumConditionMatches' | 'reusePolicy' | 'conditions'>,
+  pattern: Pick<HandPattern, 'kind' | 'logic' | 'minimumConditionMatches' | 'reusePolicy'> & {
+    conditions: Pick<PatternCondition, 'matcher' | 'quantity' | 'kind' | 'distinct'>[]
+  },
 ): string {
   const conditionKeys = pattern.conditions
     .map((condition) => getConditionDefinitionKey(condition))
