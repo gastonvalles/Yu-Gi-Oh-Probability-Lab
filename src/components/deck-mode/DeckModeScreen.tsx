@@ -6,6 +6,7 @@ import { DeckRolesPanel } from '../DeckRolesPanel'
 import { ExportDeckPanel } from '../ExportDeckPanel'
 import { HoverPreview } from '../HoverPreview'
 import { ProbabilityPanel } from '../ProbabilityPanel'
+import { ComparisonScreen } from '../comparison/ComparisonScreen'
 import { DeckBuilderStep } from './DeckBuilderStep'
 import { DeckModeDragOverlay } from './DeckModeDragOverlay'
 import {
@@ -191,6 +192,12 @@ export function DeckModeScreen() {
       {activeStep === 'export' ? (
         <div id="export" className="min-w-0 min-[1101px]:min-h-full">
           <ExportDeckPanel {...controller.exportDeck} />
+        </div>
+      ) : null}
+
+      {activeStep === 'workspace' ? (
+        <div id="workspace" className="min-w-0 min-[1101px]:min-h-full">
+          <ComparisonScreen />
         </div>
       ) : null}
     </section>

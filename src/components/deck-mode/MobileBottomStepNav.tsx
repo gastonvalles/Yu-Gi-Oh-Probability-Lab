@@ -63,6 +63,16 @@ function ExportIcon(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+function WorkspaceIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      <path d="M4.75 8.25v10.5h14.5V8.25" strokeWidth="1.8" />
+      <path d="M3.5 5.25h17v3h-17z" strokeWidth="1.8" />
+      <path d="M9.5 12.25h5" strokeWidth="1.8" strokeLinecap="square" />
+    </svg>
+  )
+}
+
 function StepIcon({ step }: { step: DeckWorkflowStepKey }) {
   if (step === 'deck-builder') {
     return <DeckBuilderIcon />
@@ -74,6 +84,10 @@ function StepIcon({ step }: { step: DeckWorkflowStepKey }) {
 
   if (step === 'probability-lab') {
     return <ProbabilityLabIcon />
+  }
+
+  if (step === 'workspace') {
+    return <WorkspaceIcon />
   }
 
   return <ExportIcon />

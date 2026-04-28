@@ -1,11 +1,15 @@
+import { useState } from 'react'
+import type { AppState } from '../../app/model'
 import type { SnapshotComparison, WorkspaceSnapshot } from '../../app/workspace'
 import { SnapshotSection } from './SnapshotSection'
+import { ComparisonView } from '../comparison/ComparisonView'
 
 interface AdvancedWorkspacePanelProps {
   advancedOpen: boolean
   snapshotName: string
   snapshots: WorkspaceSnapshot[]
   comparison: SnapshotComparison | null
+  currentAppState: AppState
   onToggleAdvanced: () => void
   onSnapshotNameChange: (value: string) => void
   onSaveSnapshot: () => void
@@ -19,6 +23,7 @@ export function AdvancedWorkspacePanel({
   snapshotName,
   snapshots,
   comparison,
+  currentAppState,
   onToggleAdvanced,
   onSnapshotNameChange,
   onSaveSnapshot,
@@ -27,6 +32,7 @@ export function AdvancedWorkspacePanel({
   onDeleteSnapshot,
 }: AdvancedWorkspacePanelProps) {
   const snapshotCount = snapshots.length
+  const [comparisonOpen, setComparisonOpen] = useState(false)
 
   if (!advancedOpen) {
     return (
@@ -105,6 +111,33 @@ export function AdvancedWorkspacePanel({
             onDeleteSnapshot={onDeleteSnapshot}
           />
         ) : null}
+
+        {comparisonOpen ? (
+          <article className="surface-panel-soft p-2">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <div>
+                <p className="app-kicker m-0 mb-0.5 text-[0.68rem] uppercase tracking-widest">Build Comparison</p>
+                <h3 className="m-0 text-[0.94rem] leading-none">Comparar builds</h3>
+              </div>
+              <button
+                type="button"
+                className="app-button px-2 py-1 text-[0.76rem]"
+                onClick={() => setComparisonOpen(false)}
+              >
+                Cerrar
+              </button>
+            </div>
+            <ComparisonView snapshots={snapshots} currentAppState={currentAppState} />
+          </article>
+        ) : (
+          <button
+            type="button"
+            className="app-button w-full px-2 py-1.5 text-[0.8rem]"
+            onClick={() => setComparisonOpen(true)}
+          >
+            Comparar builds
+          </button>
+        )}
       </div>
     </article>
   )

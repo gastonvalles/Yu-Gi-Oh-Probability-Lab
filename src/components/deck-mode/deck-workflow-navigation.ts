@@ -1,6 +1,6 @@
 import { formatInteger } from '../../app/utils'
 
-export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export'
+export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace'
 export type DeckWorkflowStepTone = 'complete' | 'progress' | 'pending'
 
 export interface DeckModeNavigationItem {
@@ -29,6 +29,7 @@ const WORKFLOW_STEP_KEYS: readonly DeckWorkflowStepKey[] = [
   'categorization',
   'probability-lab',
   'export',
+  'workspace',
 ]
 
 export const DECK_WORKFLOW_TONE_LABEL: Record<DeckWorkflowStepTone, string> = {
@@ -118,6 +119,17 @@ export function buildDeckWorkflowNavigationItems({
       detail: mainDeckCount > 0 ? 'Imagen + TXT.' : 'Necesitás cartas en Main.',
       tone: mainDeckCount > 0 ? 'complete' : 'pending',
       disabled: mainDeckCount === 0,
+    },
+    {
+      key: 'workspace',
+      step: '5',
+      title: 'Comparar',
+      shortTitle: 'Comparar',
+      description: 'Compará tu deck actual contra otra build.',
+      metric: 'A vs B',
+      detail: 'Importá y compará.',
+      tone: 'pending',
+      disabled: false,
     },
   ]
 }

@@ -704,7 +704,7 @@ function parseDeckSectionHeader(line: string): DeckZone | null {
 }
 
 function cleanupDeckEntryName(value: string): string {
-  const cleanedValue = normalizeImportPunctuation(value)
+  const cleanedValue = normalizeImportPunctuation(decodeHtmlEntities(value))
     .replace(/^[\s\-–—•·*|]+/, '')
     .replace(/[\s\-–—•·*|]+$/, '')
     .replace(/\s+/g, ' ')
@@ -749,8 +749,18 @@ function normalizeImportPunctuation(value: string): string {
     .replace(/／/g, '/')
 }
 
+function decodeHtmlEntities(value: string): string {
+  return value
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#39;/g, "'")
+}
+
 function normalizeImportedCardName(value: string): string {
-  return normalizeSearchText(normalizeImportPunctuation(value))
+  return normalizeSearchText(normalizeImportPunctuation(decodeHtmlEntities(value)))
 }
 
 function buildDeckImportCardIndex(cards: ApiCardSearchResult[]): Map<string, ApiCardSearchResult> {

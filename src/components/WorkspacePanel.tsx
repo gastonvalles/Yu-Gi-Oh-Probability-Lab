@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 
 import type { SnapshotComparison, WorkspaceSnapshot } from '../app/workspace'
+import { selectAppState } from '../app/store'
+import { useAppSelector } from '../app/store-hooks'
 import { AdvancedWorkspacePanel } from './workspace/AdvancedWorkspacePanel'
 
 interface WorkspacePanelProps {
@@ -29,6 +31,8 @@ export function WorkspacePanel({
     [snapshots],
   )
 
+  const currentAppState = useAppSelector(selectAppState)
+
   return (
     <section className="mx-auto grid w-full max-w-[1240px] gap-2.5">
       {statusMessage ? (
@@ -42,6 +46,7 @@ export function WorkspacePanel({
         snapshotName={snapshotName}
         snapshots={snapshotItems}
         comparison={comparison}
+        currentAppState={currentAppState}
         onToggleAdvanced={() => setAdvancedOpen((current) => !current)}
         onSnapshotNameChange={setSnapshotName}
         onSaveSnapshot={() => {
