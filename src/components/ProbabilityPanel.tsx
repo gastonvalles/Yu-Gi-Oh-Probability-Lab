@@ -798,17 +798,21 @@ function KpiDonutChart({ derivedCards }: { derivedCards: CardEntry[] }) {
 
   if (data.length === 0) return null
 
-  const total = data.reduce((s, d) => s + d.count, 0)
-  const cx = 50, cy = 50, r = 44, thickness = 14
+  const mainDeckSize = derivedCards.reduce((sum, c) => sum + c.copies, 0)
+  const segmentTotal = data.reduce((s, d) => s + d.count, 0)
+  const cx = 50, cy = 50, r = 46, innerR = 20
   const filterId = 'prob-pie-glow'
 
   let currentAngle = -90
   const segments = data.map((d) => {
-    const angle = (d.count / total) * 360
-    const seg = { ...d, startAngle: currentAngle, endAngle: currentAngle + angle }
+    const angle = (d.count / segmentTotal) * 360
+    const pct = mainDeckSize > 0 ? Math.round((d.count / mainDeckSize) * 100) : 0
+    const seg = { ...d, startAngle: currentAngle, endAngle: currentAngle + angle, pct }
     currentAngle += angle
     return seg
   })
+
+  const labelMap: Record<string, string> = { starter: 'Starters', handtrap: 'Handtraps', brick: 'Bricks', boardbreaker: 'Boardbreakers' }
 
   return (
     <svg viewBox="0 0 100 100" className="block w-full max-w-[100px] aspect-square" role="img" aria-label="Distribución de roles">
@@ -820,21 +824,36 @@ function KpiDonutChart({ derivedCards }: { derivedCards: CardEntry[] }) {
       </defs>
       {segments.map((seg, i) => {
         const angleDiff = seg.endAngle - seg.startAngle
-        const tooltip = `${seg.role === 'starter' ? 'Starters' : seg.role === 'handtrap' ? 'Handtraps' : seg.role === 'brick' ? 'Bricks' : 'Boardbreakers'}: ${seg.count}`
+        const tooltip = `${labelMap[seg.role] ?? seg.role}: ${seg.count}`
         if (angleDiff >= 359.99) {
           return (
-            <circle key={i} cx={cx} cy={cy} r={r - thickness / 2} fill="none" stroke={seg.color} strokeWidth={thickness} strokeOpacity="0.75" filter={`url(#${filterId})`} className="cursor-pointer transition-all hover:[stroke-opacity:1]">
+            <circle key={i} cx={cx} cy={cy} r={(r + innerR) / 2} fill="none" stroke={seg.color} strokeWidth={r - innerR} strokeOpacity="0.75" filter={`url(#${filterId})`} className="cursor-pointer transition-all hover:[stroke-opacity:1]">
               <title>{tooltip}</title>
             </circle>
           )
         }
         return (
-          <path key={i} d={describeDonutRing(cx, cy, r, seg.startAngle, seg.endAngle, thickness)} fill={seg.color} fillOpacity="0.75" filter={`url(#${filterId})`} className="cursor-pointer transition-all hover:[fill-opacity:1]">
+          <path key={i} d={describeDonutRing(cx, cy, r, seg.startAngle, seg.endAngle, r - innerR)} fill={seg.color} fillOpacity="0.75" filter={`url(#${filterId})`} className="cursor-pointer transition-all hover:[fill-opacity:1]">
             <title>{tooltip}</title>
           </path>
         )
       })}
-      <circle cx={cx} cy={cy} r={r - thickness} fill="rgb(var(--background-rgb))" fillOpacity="0.85" />
+      <circle cx={cx} cy={cy} r={innerR} fill="rgb(var(--background-rgb))" fillOpacity="0.85" />
+      {segments.map((seg, i) => {
+        const angleDiff = seg.endAngle - seg.startAngle
+        if (angleDiff < 15) return null
+        const midAngle = seg.startAngle + angleDiff / 2
+        const rad = (midAngle * Math.PI) / 180
+        const labelR = (r + innerR) / 2
+        const lx = cx + labelR * Math.cos(rad)
+        const ly = cy + labelR * Math.sin(rad)
+        const fontSize = angleDiff < 30 ? 5.5 : angleDiff < 60 ? 7 : 8
+        return (
+          <text key={`lbl-${i}`} x={lx} y={ly} textAnchor="middle" dominantBaseline="central" fill="white" fontSize={fontSize} fontWeight="700" style={{ pointerEvents: 'none', textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>
+            {seg.pct}%
+          </text>
+        )
+      })}
     </svg>
   )
 }

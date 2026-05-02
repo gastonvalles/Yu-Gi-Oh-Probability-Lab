@@ -134,17 +134,18 @@ export function ComparisonScreen() {
 
       {/* ── Left: Build A KPIs + Verdict ── */}
       <aside className="grid content-start gap-2 overflow-y-auto min-h-0 p-2">
-        <KpiCard label="Main Deck" value={formatInteger(kpiA.main)} tone="neutral" />
-        <KpiCard label="Starters" value={formatInteger(kpiA.starters)} tone="positive" clickable onClick={() => setKpiModalState({ role: 'starter', side: 'A' })} />
-        <KpiCard label="Handtraps" value={formatInteger(kpiA.handtraps)} tone="info" clickable onClick={() => setKpiModalState({ role: 'handtrap', side: 'A' })} />
-        <KpiCard label="Bricks" value={formatInteger(kpiA.bricks)} tone="negative" clickable onClick={() => setKpiModalState({ role: 'brick', side: 'A' })} />
-        {showBoardbreakerKpi ? <KpiCard label="Boardbreakers" value={formatInteger(boardbreakersA)} tone="boardbreaker" clickable onClick={() => setKpiModalState({ role: 'boardbreaker', side: 'A' })} /> : null}
+        <KpiCard label="Main Deck" value={`${formatInteger(kpiA.main)} (100%)`} tone="neutral" />
+        <KpiCard label="Starters" value={kpiWithPct(kpiA.starters, kpiA.main)} tone="positive" clickable onClick={() => setKpiModalState({ role: 'starter', side: 'A' })} />
+        <KpiCard label="Handtraps" value={kpiWithPct(kpiA.handtraps, kpiA.main)} tone="info" clickable onClick={() => setKpiModalState({ role: 'handtrap', side: 'A' })} />
+        <KpiCard label="Bricks" value={kpiWithPct(kpiA.bricks, kpiA.main)} tone="negative" clickable onClick={() => setKpiModalState({ role: 'brick', side: 'A' })} />
+        {showBoardbreakerKpi ? <KpiCard label="Boardbreakers" value={kpiWithPct(boardbreakersA, kpiA.main)} tone="boardbreaker" clickable onClick={() => setKpiModalState({ role: 'boardbreaker', side: 'A' })} /> : null}
 
         <KpiPieChart
           starters={kpiA.starters}
           handtraps={kpiA.handtraps}
           bricks={kpiA.bricks}
           boardbreakers={boardbreakersA}
+          mainDeckSize={kpiA.main}
           onSegmentClick={(role) => setKpiModalState({ role, side: 'A' })}
         />
 
@@ -228,11 +229,11 @@ export function ComparisonScreen() {
       <aside className="grid content-start gap-2 overflow-y-auto min-h-0 p-2">
         {kpiB ? (
           <>
-            <KpiCard label="Main Deck" value={formatInteger(kpiB.main)} tone="neutral" />
-            <KpiCard label="Starters" value={formatInteger(kpiB.starters)} tone="positive" clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'starter', side: 'B' })} />
-            <KpiCard label="Handtraps" value={formatInteger(kpiB.handtraps)} tone="info" clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'handtrap', side: 'B' })} />
-            <KpiCard label="Bricks" value={formatInteger(kpiB.bricks)} tone="negative" clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'brick', side: 'B' })} />
-            {showBoardbreakerKpi ? <KpiCard label="Boardbreakers" value={formatInteger(boardbreakersB)} tone="boardbreaker" clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'boardbreaker', side: 'B' })} /> : null}
+            <KpiCard label="Main Deck" value={`${formatInteger(kpiB.main)} (100%)`} tone="neutral" />
+            <KpiCard label="Starters" value={kpiWithPct(kpiB.starters, kpiB.main)} tone="positive" clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'starter', side: 'B' })} />
+            <KpiCard label="Handtraps" value={kpiWithPct(kpiB.handtraps, kpiB.main)} tone="info" clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'handtrap', side: 'B' })} />
+            <KpiCard label="Bricks" value={kpiWithPct(kpiB.bricks, kpiB.main)} tone="negative" clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'brick', side: 'B' })} />
+            {showBoardbreakerKpi ? <KpiCard label="Boardbreakers" value={kpiWithPct(boardbreakersB, kpiB.main)} tone="boardbreaker" clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'boardbreaker', side: 'B' })} /> : null}
           </>
         ) : (
           <KpiCard label="Esperando" value="—" tone="neutral" />
@@ -244,6 +245,7 @@ export function ComparisonScreen() {
             handtraps={kpiB.handtraps}
             bricks={kpiB.bricks}
             boardbreakers={boardbreakersB}
+            mainDeckSize={kpiB.main}
             onSegmentClick={(role) => setKpiModalState({ role, side: 'B' })}
           />
         ) : null}
@@ -570,11 +572,12 @@ function describeRing(cx: number, cy: number, r: number, startAngle: number, end
   ].join(' ')
 }
 
-function KpiPieChart({ starters, handtraps, bricks, boardbreakers, onSegmentClick }: {
+function KpiPieChart({ starters, handtraps, bricks, boardbreakers, mainDeckSize, onSegmentClick }: {
   starters: number
   handtraps: number
   bricks: number
   boardbreakers: number
+  mainDeckSize: number
   onSegmentClick?: (role: KpiRole) => void
 }) {
   const data = KPI_PIE_SEGMENTS
@@ -586,23 +589,24 @@ function KpiPieChart({ starters, handtraps, bricks, boardbreakers, onSegmentClic
 
   if (data.length === 0) return null
 
-  const total = data.reduce((s, d) => s + d.count, 0)
+  const segmentTotal = data.reduce((s, d) => s + d.count, 0)
   const cx = 50
   const cy = 50
-  const r = 44
-  const thickness = 14
+  const r = 46
+  const innerR = 20
   const filterId = `pie-glow-${Math.random().toString(36).slice(2, 6)}`
 
-  // Build segments
   let currentAngle = -90
   const segments = data.map((d) => {
-    const angle = (d.count / total) * 360
-    const seg = { ...d, startAngle: currentAngle, endAngle: currentAngle + angle }
+    const angle = (d.count / segmentTotal) * 360
+    // Percentage over main deck size (same as KPI cards)
+    const pct = mainDeckSize > 0 ? Math.round((d.count / mainDeckSize) * 100) : 0
+    const seg = { ...d, startAngle: currentAngle, endAngle: currentAngle + angle, pct }
     currentAngle += angle
     return seg
   })
 
-  // Single segment → full donut ring
+  // Single segment → full donut
   if (segments.length === 1) {
     const seg = segments[0]
     const tooltip = `${seg.label}: ${formatInteger(seg.count)}`
@@ -610,21 +614,15 @@ function KpiPieChart({ starters, handtraps, bricks, boardbreakers, onSegmentClic
       <svg viewBox="0 0 100 100" className="mx-auto block w-full max-w-[170px] aspect-square" role="img" aria-label="Distribución de roles">
         <defs>
           <filter id={filterId}>
-            <feGaussianBlur stdDeviation="3" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
+            <feGaussianBlur stdDeviation="2.5" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
-          <radialGradient id={`${filterId}-bg`} cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor={`rgba(${seg.rgb}, 0.06)`} />
-            <stop offset="100%" stopColor="rgba(0,0,0,0)" />
-          </radialGradient>
         </defs>
-        <circle cx={cx} cy={cy} r={r} fill={`url(#${filterId}-bg)`} />
-        <circle cx={cx} cy={cy} r={r - thickness / 2} fill="none" stroke={seg.color} strokeWidth={thickness} strokeOpacity="0.7" filter={`url(#${filterId})`} className="cursor-pointer transition-all hover:stroke-opacity-100" onClick={() => onSegmentClick?.(seg.role)}>
+        <circle cx={cx} cy={cy} r={(r + innerR) / 2} fill="none" stroke={seg.color} strokeWidth={r - innerR} strokeOpacity="0.75" filter={`url(#${filterId})`} className="cursor-pointer transition-all hover:[stroke-opacity:1]" onClick={() => onSegmentClick?.(seg.role)}>
           <title>{tooltip}</title>
         </circle>
+        <circle cx={cx} cy={cy} r={innerR} fill="rgb(var(--background-rgb))" fillOpacity="0.85" />
+        <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fill="white" fontSize="9" fontWeight="700">{seg.pct}%</text>
       </svg>
     )
   }
@@ -634,75 +632,50 @@ function KpiPieChart({ starters, handtraps, bricks, boardbreakers, onSegmentClic
       <defs>
         <filter id={filterId}>
           <feGaussianBlur stdDeviation="2.5" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
         </filter>
-        {segments.map((seg, i) => (
-          <radialGradient key={i} id={`${filterId}-g${i}`} cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor={`rgba(${seg.rgb}, 0.12)`} />
-            <stop offset="100%" stopColor="rgba(0,0,0,0)" />
-          </radialGradient>
-        ))}
       </defs>
 
-      {/* Subtle background glow per segment */}
-      {segments.map((seg, i) => {
-        const angleDiff = seg.endAngle - seg.startAngle
-        if (angleDiff < 1) return null
-        const midAngle = seg.startAngle + angleDiff / 2
-        const rad = (midAngle * Math.PI) / 180
-        const glowX = cx + (r - thickness / 2) * 0.6 * Math.cos(rad)
-        const glowY = cy + (r - thickness / 2) * 0.6 * Math.sin(rad)
-        return (
-          <circle key={`glow-${i}`} cx={glowX} cy={glowY} r="18" fill={`rgba(${seg.rgb}, 0.08)`} />
-        )
-      })}
-
-      {/* Donut ring segments */}
+      {/* Donut segments */}
       {segments.map((seg, i) => {
         const angleDiff = seg.endAngle - seg.startAngle
         const tooltip = `${seg.label}: ${formatInteger(seg.count)}`
+        const d = describeRing(cx, cy, r, seg.startAngle, seg.endAngle, r - innerR)
 
         if (angleDiff >= 359.99) {
           return (
-            <circle
-              key={i}
-              cx={cx}
-              cy={cy}
-              r={r - thickness / 2}
-              fill="none"
-              stroke={seg.color}
-              strokeWidth={thickness}
-              strokeOpacity="0.75"
-              filter={`url(#${filterId})`}
-              className="cursor-pointer transition-all hover:[stroke-opacity:1]"
-              onClick={() => onSegmentClick?.(seg.role)}
-            >
+            <circle key={i} cx={cx} cy={cy} r={(r + innerR) / 2} fill="none" stroke={seg.color} strokeWidth={r - innerR} strokeOpacity="0.75" filter={`url(#${filterId})`} className="cursor-pointer transition-all hover:[stroke-opacity:1]" onClick={() => onSegmentClick?.(seg.role)}>
               <title>{tooltip}</title>
             </circle>
           )
         }
 
-        const d = describeRing(cx, cy, r, seg.startAngle, seg.endAngle, thickness)
         return (
-          <path
-            key={i}
-            d={d}
-            fill={seg.color}
-            fillOpacity="0.75"
-            filter={`url(#${filterId})`}
-            className="cursor-pointer transition-all hover:[fill-opacity:1]"
-            onClick={() => onSegmentClick?.(seg.role)}
-          >
+          <path key={i} d={d} fill={seg.color} fillOpacity="0.75" filter={`url(#${filterId})`} className="cursor-pointer transition-all hover:[fill-opacity:1]" onClick={() => onSegmentClick?.(seg.role)}>
             <title>{tooltip}</title>
           </path>
         )
       })}
 
-      {/* Inner dark circle for donut hole */}
-      <circle cx={cx} cy={cy} r={r - thickness} fill="rgb(var(--background-rgb))" fillOpacity="0.85" />
+      {/* Inner dark circle */}
+      <circle cx={cx} cy={cy} r={innerR} fill="rgb(var(--background-rgb))" fillOpacity="0.85" />
+
+      {/* Percentage labels inside each segment */}
+      {segments.map((seg, i) => {
+        const angleDiff = seg.endAngle - seg.startAngle
+        if (angleDiff < 15) return null // too small for text
+        const midAngle = seg.startAngle + angleDiff / 2
+        const rad = (midAngle * Math.PI) / 180
+        const labelR = (r + innerR) / 2
+        const lx = cx + labelR * Math.cos(rad)
+        const ly = cy + labelR * Math.sin(rad)
+        const fontSize = angleDiff < 30 ? 5.5 : angleDiff < 60 ? 7 : 8
+        return (
+          <text key={`lbl-${i}`} x={lx} y={ly} textAnchor="middle" dominantBaseline="central" fill="white" fontSize={fontSize} fontWeight="700" style={{ pointerEvents: 'none', textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>
+            {seg.pct}%
+          </text>
+        )
+      })}
     </svg>
   )
 }
@@ -858,6 +831,12 @@ function ComparisonResultModal({ verdict, rolesA, rolesB, deckSizeA, deckSizeB, 
 }
 
 // ── Helpers ──
+
+function kpiWithPct(count: number, total: number): string {
+  if (total <= 0) return formatInteger(count)
+  const pct = ((count / total) * 100).toFixed(1)
+  return `${formatInteger(count)} (${pct}%)`
+}
 
 interface Kpi { main: number; starters: number; extenders: number; handtraps: number; bricks: number; openings: number | null; problems: number | null }
 
