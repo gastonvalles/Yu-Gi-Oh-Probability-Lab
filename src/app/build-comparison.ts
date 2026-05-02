@@ -68,7 +68,7 @@ export interface ComparisonResult {
 export type InsightPriority = 'critical' | 'high' | 'normal'
 
 /** Categoría de un Insight */
-export type InsightCategory = 'starters' | 'bricks' | 'extenders' | 'handtraps' | 'engine' | 'openings' | 'problems'
+export type InsightCategory = 'starters' | 'bricks' | 'extenders' | 'handtraps' | 'engine' | 'openings' | 'problems' | 'boardbreakers'
 
 /** Un Insight individual */
 export interface Insight {
@@ -498,6 +498,22 @@ export function interpretComparison(result: ComparisonResult): ComparisonInterpr
     })
   }
 
+  // Role deltas: boardbreakers
+  const boardbreakerDelta = result.rolesA.boardbreaker - result.rolesB.boardbreaker
+  if (Math.abs(boardbreakerDelta) >= 2) {
+    const change = -boardbreakerDelta
+    const sign = change > 0 ? '+' : ''
+    const effect = change > 0
+      ? 'mejor contra boards establecidos'
+      : 'menos respuesta contra boards establecidos'
+    candidates.push({
+      priority: 'high',
+      text: `${sign}${change} boardbreakers → ${effect}`,
+      delta: boardbreakerDelta,
+      category: 'boardbreakers',
+    })
+  }
+
   // Engine delta (count cards with origin 'engine' in each build)
   // We compute engine count from role distribution indirectly — but actually engine is an origin, not a role.
   // We need to compute it from the ComparisonResult. Since ComparisonResult doesn't have engine counts directly,
@@ -643,5 +659,188 @@ function computeVerdict(result: ComparisonResult, bricksDelta: number): Verdict 
     bricksDelta,
     tradeoffDetail: null,
     recommendation: 'Las diferencias son marginales; elegí por preferencia o match-up',
+  }
+}
+
+// ── Types: Role Density ──
+
+export interface RoleDensityEntry {
+  role: CardRole
+  count: number
+  density: number // count / deckSize, between 0 and 1
+}
+
+export interface GroupedRoleDensity {
+  visible: RoleDensityEntry[]
+  otherCount: number
+  otherDensity: number
+}
+
+// ── Types: Pros / Cons ──
+
+export interface ProConEntry {
+  text: string
+  priority: InsightPriority
+  category: InsightCategory
+  delta: number
+}
+
+export interface ProConResult {
+  prosA: ProConEntry[]
+  contrasA: ProConEntry[]
+  prosB: ProConEntry[]
+  contrasB: ProConEntry[]
+}
+
+// ── Pure function: computeRoleDensity ──
+
+export function computeRoleDensity(cards: CardEntry[], deckSize: number): RoleDensityEntry[] {
+  if (deckSize <= 0) return []
+
+  const counts = new Map<CardRole, number>()
+
+  for (const card of cards) {
+    for (const role of card.roles) {
+      counts.set(role, (counts.get(role) ?? 0) + card.copies)
+    }
+  }
+
+  const result: RoleDensityEntry[] = []
+
+  for (const [role, count] of counts) {
+    if (count > 0) {
+      result.push({ role, count, density: count / deckSize })
+    }
+  }
+
+  return result
+}
+
+// ── Pure function: sortAndGroupRoles ──
+
+export function sortAndGroupRoles(
+  densityA: RoleDensityEntry[],
+  densityB: RoleDensityEntry[] | null,
+  maxVisible: number,
+): { groupedA: GroupedRoleDensity; groupedB: GroupedRoleDensity | null } {
+  // Build a map of roles from A
+  const mapA = new Map<CardRole, RoleDensityEntry>(densityA.map((e) => [e.role, e]))
+
+  // Build a map of roles from B (if present)
+  const mapB = densityB ? new Map<CardRole, RoleDensityEntry>(densityB.map((e) => [e.role, e])) : null
+
+  // Unify roles present in either build (union of roles with count > 0)
+  const allRoles = new Set<CardRole>()
+  for (const entry of densityA) {
+    if (entry.count > 0) allRoles.add(entry.role)
+  }
+  if (densityB) {
+    for (const entry of densityB) {
+      if (entry.count > 0) allRoles.add(entry.role)
+    }
+  }
+
+  // Sort unified roles by density of Build A descending (roles not in A get density 0)
+  const sortedRoles = [...allRoles].sort((a, b) => {
+    const densA = mapA.get(a)?.density ?? 0
+    const densB = mapA.get(b)?.density ?? 0
+    return densB - densA
+  })
+
+  // Split into visible and "otros"
+  const visibleRoles = sortedRoles.slice(0, maxVisible)
+  const otherRoles = sortedRoles.slice(maxVisible)
+
+  // Build groupedA
+  const groupedA: GroupedRoleDensity = {
+    visible: visibleRoles.map((role) => mapA.get(role) ?? { role, count: 0, density: 0 }),
+    otherCount: otherRoles.reduce((sum, role) => sum + (mapA.get(role)?.count ?? 0), 0),
+    otherDensity: otherRoles.reduce((sum, role) => sum + (mapA.get(role)?.density ?? 0), 0),
+  }
+
+  // Build groupedB (same role order as A)
+  let groupedB: GroupedRoleDensity | null = null
+  if (mapB) {
+    groupedB = {
+      visible: visibleRoles.map((role) => mapB.get(role) ?? { role, count: 0, density: 0 }),
+      otherCount: otherRoles.reduce((sum, role) => sum + (mapB.get(role)?.count ?? 0), 0),
+      otherDensity: otherRoles.reduce((sum, role) => sum + (mapB.get(role)?.density ?? 0), 0),
+    }
+  }
+
+  return { groupedA, groupedB }
+}
+
+// ── Pure function: deriveProsCons ──
+
+/** Categories where "more is better" — positive delta favors Build A */
+const MORE_IS_BETTER: Set<InsightCategory> = new Set([
+  'starters',
+  'extenders',
+  'handtraps',
+  'boardbreakers',
+  'openings',
+])
+
+/** Categories where "less is better" — positive delta is bad for Build A */
+const LESS_IS_BETTER: Set<InsightCategory> = new Set([
+  'bricks',
+  'problems',
+])
+
+export function deriveProsCons(insights: Insight[]): ProConResult {
+  const prosA: ProConEntry[] = []
+  const contrasA: ProConEntry[] = []
+  const prosB: ProConEntry[] = []
+  const contrasB: ProConEntry[] = []
+
+  for (const insight of insights) {
+    if (insight.delta === 0) continue
+
+    const entry: ProConEntry = {
+      text: insight.text,
+      priority: insight.priority,
+      category: insight.category,
+      delta: insight.delta,
+    }
+
+    if (MORE_IS_BETTER.has(insight.category)) {
+      if (insight.delta > 0) {
+        // A has more of something good → pro A, contra B
+        prosA.push({ ...entry })
+        contrasB.push({ ...entry })
+      } else {
+        // B has more of something good → contra A, pro B
+        contrasA.push({ ...entry })
+        prosB.push({ ...entry })
+      }
+    } else if (LESS_IS_BETTER.has(insight.category)) {
+      if (insight.delta > 0) {
+        // A has more of something bad → contra A, pro B
+        contrasA.push({ ...entry })
+        prosB.push({ ...entry })
+      } else {
+        // B has more of something bad → pro A, contra B
+        prosA.push({ ...entry })
+        contrasB.push({ ...entry })
+      }
+    }
+  }
+
+  // Sort each list by priority descending
+  const sortByPriority = (a: ProConEntry, b: ProConEntry) =>
+    PRIORITY_ORDER[b.priority] - PRIORITY_ORDER[a.priority]
+
+  prosA.sort(sortByPriority)
+  contrasA.sort(sortByPriority)
+  prosB.sort(sortByPriority)
+  contrasB.sort(sortByPriority)
+
+  // Limit to max 3 entries each
+  return {
+    prosA: prosA.slice(0, 3),
+    contrasA: contrasA.slice(0, 3),
+    prosB: prosB.slice(0, 3),
+    contrasB: contrasB.slice(0, 3),
   }
 }

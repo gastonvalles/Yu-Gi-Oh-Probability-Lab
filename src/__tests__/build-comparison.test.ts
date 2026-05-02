@@ -1132,3 +1132,119 @@ describe('Build Comparison — interpretComparison', () => {
     })
   })
 })
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Property Test: Boardbreaker Insight (Property 8)
+// ══════════════════════════════════════════════════════════════════════════════
+
+describe('Build Comparison — Boardbreaker Insight', () => {
+  describe('Property 8: Umbral de insight de boardbreakers y formato', () => {
+    it('generates boardbreaker insight iff |boardbreakerDelta| >= 2, with correct format', () => {
+      /** Feature: comparison-insights-layer, Property 8: Umbral de insight de boardbreakers y formato
+       *  **Validates: Requirements 5.2, 5.3, 5.4, 8.1, 8.2** */
+      fc.assert(
+        fc.property(arbComparisonResult, (result) => {
+          const interpretation = interpretComparison(result)
+          const boardbreakerInsight = interpretation.insights.find(
+            (i) => i.category === 'boardbreakers',
+          )
+
+          const boardbreakerDelta = result.rolesA.boardbreaker - result.rolesB.boardbreaker
+
+          if (Math.abs(boardbreakerDelta) >= 2) {
+            // A boardbreaker insight SHOULD have been generated as a candidate.
+            // However, it may not appear in the final insights array (max 3, sorted by priority).
+            // We can only assert that IF it appears, it has the right format.
+            if (boardbreakerInsight) {
+              expect(boardbreakerInsight.priority).toBe('high')
+              expect(boardbreakerInsight.text).toContain('boardbreakers →')
+            }
+          } else {
+            // No boardbreaker insight should be generated
+            expect(boardbreakerInsight).toBeUndefined()
+          }
+        }),
+        { numRuns: 100 },
+      )
+    })
+  })
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Unit Tests: Boardbreaker Insight
+  // ══════════════════════════════════════════════════════════════════════════
+
+  describe('Unit tests: boardbreaker insight', () => {
+    function makeComparisonResult(overrides: Partial<ComparisonResult> = {}): ComparisonResult {
+      const roles = createEmptyRoleDistribution()
+      return {
+        cardDiffs: [],
+        deckSizeA: 40,
+        deckSizeB: 40,
+        rolesA: { ...roles },
+        rolesB: { ...roles },
+        patternComparisons: [],
+        totalOpeningProbabilityA: 0.5,
+        totalOpeningProbabilityB: 0.5,
+        totalProblemProbabilityA: 0.1,
+        totalProblemProbabilityB: 0.1,
+        openingDelta: 0,
+        problemDelta: 0,
+        buildsAreIdentical: false,
+        ...overrides,
+      }
+    }
+
+    it('boardbreaker delta = 1 does NOT generate insight', () => {
+      const rolesA = createEmptyRoleDistribution()
+      const rolesB = createEmptyRoleDistribution()
+      rolesA.boardbreaker = 3
+      rolesB.boardbreaker = 2 // delta = 1
+
+      const result = makeComparisonResult({ rolesA, rolesB })
+      const interpretation = interpretComparison(result)
+
+      const boardbreakerInsight = interpretation.insights.find(
+        (i) => i.category === 'boardbreakers',
+      )
+      expect(boardbreakerInsight).toBeUndefined()
+    })
+
+    it('boardbreaker delta = 2 generates insight with priority high', () => {
+      const rolesA = createEmptyRoleDistribution()
+      const rolesB = createEmptyRoleDistribution()
+      rolesA.boardbreaker = 4
+      rolesB.boardbreaker = 2 // delta = 2
+
+      const result = makeComparisonResult({ rolesA, rolesB })
+      const interpretation = interpretComparison(result)
+
+      const boardbreakerInsight = interpretation.insights.find(
+        (i) => i.category === 'boardbreakers',
+      )
+      expect(boardbreakerInsight).toBeDefined()
+      expect(boardbreakerInsight!.priority).toBe('high')
+      expect(boardbreakerInsight!.text).toContain('boardbreakers →')
+      expect(boardbreakerInsight!.text).toContain('menos respuesta contra boards establecidos')
+    })
+
+    it('boardbreaker delta = -3 generates insight with negative text', () => {
+      const rolesA = createEmptyRoleDistribution()
+      const rolesB = createEmptyRoleDistribution()
+      rolesA.boardbreaker = 1
+      rolesB.boardbreaker = 4 // delta = -3
+
+      const result = makeComparisonResult({ rolesA, rolesB })
+      const interpretation = interpretComparison(result)
+
+      const boardbreakerInsight = interpretation.insights.find(
+        (i) => i.category === 'boardbreakers',
+      )
+      expect(boardbreakerInsight).toBeDefined()
+      expect(boardbreakerInsight!.priority).toBe('high')
+      expect(boardbreakerInsight!.text).toContain('boardbreakers →')
+      expect(boardbreakerInsight!.text).toContain('+3')
+      expect(boardbreakerInsight!.text).toContain('mejor contra boards establecidos')
+    })
+  })
+})

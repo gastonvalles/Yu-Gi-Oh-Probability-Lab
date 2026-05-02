@@ -79,13 +79,13 @@ export function CardDetailModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[170] grid place-items-center bg-[rgb(var(--background-rgb)/0.76)] px-4 py-5" onClick={onClose}>
+    <div className="fixed inset-0 z-170 grid place-items-center bg-[rgb(var(--background-rgb)/0.76)] px-4 py-5" onClick={onClose}>
 
       <div
         role="dialog"
         aria-modal="true"
         aria-label={`Detalle de ${card.name}`}
-        className="surface-panel relative z-10 flex w-full max-w-[70rem] max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden p-0 shadow-[0_32px_80px_rgba(0,0,0,0.48)]"
+        className="surface-panel relative z-10 flex w-full max-w-280 max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden p-0 shadow-[0_32px_80px_rgba(0,0,0,0.48)]"
         onClick={(event) => event.stopPropagation()}
       >
         {isReady ? (

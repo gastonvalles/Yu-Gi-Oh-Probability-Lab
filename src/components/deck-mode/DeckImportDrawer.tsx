@@ -435,13 +435,16 @@ export function DeckImportDrawer({
     setIsProcessing(true)
     setSelectedFileName(file.name)
 
+    // Use file name (without extension) as deck name
+    const fileDeckName = file.name.replace(/\.[^.]+$/, '').trim() || deckBuilder.deckName
+
     try {
       const fileText = await file.text()
       let nextPreview: DeckImportPreview
 
       if (fileKind === 'json') {
         nextPreview = buildDeckImportPreviewFromJson({
-          deckName: deckBuilder.deckName,
+          deckName: fileDeckName,
           text: fileText,
           source: {
             kind: 'json',
@@ -457,7 +460,7 @@ export function DeckImportDrawer({
             ? buildDeckImportPreviewFromYdk({
                 cards,
                 deckFormat,
-                deckName: deckBuilder.deckName,
+                deckName: fileDeckName,
                 text: fileText,
                 source: {
                   kind: 'ydk',
@@ -468,7 +471,7 @@ export function DeckImportDrawer({
             : buildDeckImportPreview({
                 cards,
                 deckFormat,
-                deckName: deckBuilder.deckName,
+                deckName: fileDeckName,
                 text: fileText,
                 source: {
                   kind: 'txt',

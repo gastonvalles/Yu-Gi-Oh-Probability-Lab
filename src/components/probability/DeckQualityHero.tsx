@@ -28,6 +28,8 @@ interface DeckQualityHeroProps {
   onOpenCustomCreate: () => void
   openingEntries: ProbabilityCausalEntry[]
   problemEntries: ProbabilityCausalEntry[]
+  /** Optional pie chart element to render next to the KPI percentage */
+  pieChart?: React.ReactNode
 }
 
 export function DeckQualityHero({
@@ -41,6 +43,7 @@ export function DeckQualityHero({
   onOpenCustomCreate,
   openingEntries,
   problemEntries,
+  pieChart,
 }: DeckQualityHeroProps) {
   if (!deckSummary) {
     return (
@@ -92,7 +95,7 @@ export function DeckQualityHero({
       </div>
 
       <div className="probability-quality-main grid gap-3">
-        <div className="probability-kpi-shell grid gap-4 min-[960px]:grid-cols-[auto_minmax(0,1fr)] min-[960px]:items-end">
+        <div className="probability-kpi-shell grid gap-4 min-[960px]:grid-cols-[auto_1fr_auto] min-[960px]:items-center">
           <div className="grid gap-1.5">
             <strong className="probability-kpi-value text-(--text-main)">
               {formatPercent(deckSummary.cleanProbability)}
@@ -101,6 +104,8 @@ export function DeckQualityHero({
               {buildKpiReading(deckSummary.cleanProbability)}
             </p>
           </div>
+
+          {pieChart ? <div className="flex items-center justify-end" style={{ maxWidth: '120px' }}>{pieChart}</div> : null}
 
           <div className="grid gap-2.5 min-[960px]:justify-items-end">
             <div className="flex flex-wrap items-center gap-2 min-[960px]:justify-end">

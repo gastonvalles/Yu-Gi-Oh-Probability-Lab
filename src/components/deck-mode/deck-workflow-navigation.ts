@@ -28,8 +28,8 @@ const WORKFLOW_STEP_KEYS: readonly DeckWorkflowStepKey[] = [
   'deck-builder',
   'categorization',
   'probability-lab',
-  'export',
   'workspace',
+  'export',
 ]
 
 export const DECK_WORKFLOW_TONE_LABEL: Record<DeckWorkflowStepTone, string> = {
@@ -110,19 +110,8 @@ export function buildDeckWorkflowNavigationItems({
       disabled: false,
     },
     {
-      key: 'export',
-      step: '4',
-      title: 'Export',
-      shortTitle: 'Export',
-      description: 'Descarga la imagen y el TXT del deck.',
-      metric: mainDeckCount > 0 ? 'Descarga habilitada' : 'Sin deck',
-      detail: mainDeckCount > 0 ? 'Imagen + TXT.' : 'Necesitás cartas en Main.',
-      tone: mainDeckCount > 0 ? 'complete' : 'pending',
-      disabled: mainDeckCount === 0,
-    },
-    {
       key: 'workspace',
-      step: '5',
+      step: '4',
       title: 'Comparar',
       shortTitle: 'Comparar',
       description: 'Compará tu deck actual contra otra build.',
@@ -130,6 +119,17 @@ export function buildDeckWorkflowNavigationItems({
       detail: 'Importá y compará.',
       tone: 'pending',
       disabled: false,
+    },
+    {
+      key: 'export',
+      step: '5',
+      title: 'Export',
+      shortTitle: 'Export',
+      description: 'Descarga la imagen y el TXT del deck.',
+      metric: mainDeckCount > 0 ? 'Descarga habilitada' : 'Sin deck',
+      detail: mainDeckCount > 0 ? 'Imagen + TXT.' : 'Necesitás cartas en Main.',
+      tone: mainDeckCount > 0 ? 'complete' : 'pending',
+      disabled: mainDeckCount === 0,
     },
   ]
 }

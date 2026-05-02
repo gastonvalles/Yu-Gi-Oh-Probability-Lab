@@ -584,6 +584,7 @@ function ProbabilityPanelContent({
             onOpenCustomCreate={handleOpenCustomCreate}
             openingEntries={detailOpeningEntries}
             problemEntries={detailProblemEntries}
+            pieChart={hasCompletedClassification ? <KpiDonutChart derivedCards={derivedMainCards} /> : undefined}
           />
 
           {result.blockingIssues.length > 0 ? (
@@ -757,4 +758,83 @@ function buildKpiFeedback(
     label: deltaLabel,
     tone: delta > 0 ? 'positive' : 'negative',
   }
+}
+
+// ── KPI Donut Chart (same style as ComparisonScreen) ──
+
+const KPI_DONUT_COLORS: { role: string; color: string; rgb: string }[] = [
+  { role: 'starter', color: 'rgb(0, 255, 163)', rgb: '0, 255, 163' },
+  { role: 'handtrap', color: 'rgb(59, 130, 246)', rgb: '59, 130, 246' },
+  { role: 'brick', color: 'rgb(239, 68, 68)', rgb: '239, 68, 68' },
+  { role: 'boardbreaker', color: 'rgb(245, 158, 11)', rgb: '245, 158, 11' },
+]
+
+function describeDonutRing(cx: number, cy: number, r: number, startAngle: number, endAngle: number, thickness: number): string {
+  const rad = (deg: number) => (deg * Math.PI) / 180
+  const rO = r, rI = r - thickness
+  const x1o = cx + rO * Math.cos(rad(startAngle)), y1o = cy + rO * Math.sin(rad(startAngle))
+  const x2o = cx + rO * Math.cos(rad(endAngle)), y2o = cy + rO * Math.sin(rad(endAngle))
+  const x1i = cx + rI * Math.cos(rad(endAngle)), y1i = cy + rI * Math.sin(rad(endAngle))
+  const x2i = cx + rI * Math.cos(rad(startAngle)), y2i = cy + rI * Math.sin(rad(startAngle))
+  const la = endAngle - startAngle > 180 ? 1 : 0
+  return `M ${x1o} ${y1o} A ${rO} ${rO} 0 ${la} 1 ${x2o} ${y2o} L ${x1i} ${y1i} A ${rI} ${rI} 0 ${la} 0 ${x2i} ${y2i} Z`
+}
+
+function KpiDonutChart({ derivedCards }: { derivedCards: CardEntry[] }) {
+  let starters = 0, handtraps = 0, bricks = 0, boardbreakers = 0
+  for (const c of derivedCards) {
+    for (const r of c.roles) {
+      if (r === 'starter') starters += c.copies
+      if (r === 'handtrap') handtraps += c.copies
+      if (r === 'brick' || r === 'garnet') bricks += c.copies
+      if (r === 'boardbreaker') boardbreakers += c.copies
+    }
+  }
+
+  const data = KPI_DONUT_COLORS.map((seg) => ({
+    ...seg,
+    count: seg.role === 'starter' ? starters : seg.role === 'handtrap' ? handtraps : seg.role === 'brick' ? bricks : boardbreakers,
+  })).filter((d) => d.count > 0)
+
+  if (data.length === 0) return null
+
+  const total = data.reduce((s, d) => s + d.count, 0)
+  const cx = 50, cy = 50, r = 44, thickness = 14
+  const filterId = 'prob-pie-glow'
+
+  let currentAngle = -90
+  const segments = data.map((d) => {
+    const angle = (d.count / total) * 360
+    const seg = { ...d, startAngle: currentAngle, endAngle: currentAngle + angle }
+    currentAngle += angle
+    return seg
+  })
+
+  return (
+    <svg viewBox="0 0 100 100" className="block w-full max-w-[100px] aspect-square" role="img" aria-label="Distribución de roles">
+      <defs>
+        <filter id={filterId}>
+          <feGaussianBlur stdDeviation="2.5" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+      {segments.map((seg, i) => {
+        const angleDiff = seg.endAngle - seg.startAngle
+        const tooltip = `${seg.role === 'starter' ? 'Starters' : seg.role === 'handtrap' ? 'Handtraps' : seg.role === 'brick' ? 'Bricks' : 'Boardbreakers'}: ${seg.count}`
+        if (angleDiff >= 359.99) {
+          return (
+            <circle key={i} cx={cx} cy={cy} r={r - thickness / 2} fill="none" stroke={seg.color} strokeWidth={thickness} strokeOpacity="0.75" filter={`url(#${filterId})`} className="cursor-pointer transition-all hover:[stroke-opacity:1]">
+              <title>{tooltip}</title>
+            </circle>
+          )
+        }
+        return (
+          <path key={i} d={describeDonutRing(cx, cy, r, seg.startAngle, seg.endAngle, thickness)} fill={seg.color} fillOpacity="0.75" filter={`url(#${filterId})`} className="cursor-pointer transition-all hover:[fill-opacity:1]">
+            <title>{tooltip}</title>
+          </path>
+        )
+      })}
+      <circle cx={cx} cy={cy} r={r - thickness} fill="rgb(var(--background-rgb))" fillOpacity="0.85" />
+    </svg>
+  )
 }

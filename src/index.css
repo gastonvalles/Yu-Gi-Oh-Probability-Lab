@@ -716,6 +716,17 @@
     background: rgb(var(--handtrap-rgb) / 0.96);
   }
 
+  .comparison-kpi-boardbreaker {
+    border-color: rgb(var(--boardbreaker-rgb) / 0.28);
+    background:
+      linear-gradient(180deg, rgb(var(--boardbreaker-rgb) / 0.08), rgb(var(--background-rgb) / 0.98)),
+      linear-gradient(180deg, rgb(var(--card-background-rgb) / 0.92), rgb(var(--background-rgb) / 0.98));
+  }
+
+  .comparison-kpi-boardbreaker::before {
+    background: rgb(var(--boardbreaker-rgb) / 0.96);
+  }
+
   .comparison-kpi-neutral {
     border-color: rgb(var(--primary-rgb) / 0.24);
     background:

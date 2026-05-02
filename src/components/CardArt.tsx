@@ -109,7 +109,7 @@ export function CardArt({
       <div
         className={[
           'card-art-media',
-          'grid place-items-center bg-[var(--input)] font-bold text-[var(--warning)]',
+          'grid place-items-center bg-input font-bold text-(--warning)',
           className,
         ].join(' ')}
         aria-hidden="true"
