@@ -37,11 +37,10 @@ export const PROBABILITY_MODEL_VISIBILITY = {
 } as const
 
 export const QUICK_OVERVIEW_PRESET_IDS = [
-  // 5 salidas
+  // 4 salidas
   'starter_opening',
   'starter_extender_opening',
   'starter_protection_opening',
-  'minimal_playable_opening',
   'engine_interaction_opening',
   // 5 problemas
   'no_starter_problem',
@@ -59,15 +58,6 @@ export const AUTO_BASE_PRESET_IDS = [
 ] as const
 
 export const SIMPLE_MODE_DEFAULT_PRESET_IDS = [...QUICK_OVERVIEW_PRESET_IDS] as const
-
-const ENGINE_COMBO_ROLES: readonly CardRole[] = [
-  'starter',
-  'extender',
-  'enabler',
-  'searcher',
-  'draw',
-  'combo_piece',
-] as const
 
 const INTERACTION_ROLES: readonly CardRole[] = ['handtrap', 'disruption'] as const
 
@@ -95,6 +85,7 @@ const OBSOLETE_SYSTEM_PATTERN_NAMES = new Set([
   '2 o más bricks',
   '3 o más non-engine',
   'sin interacción',
+  'mano jugable mínima',
 ])
 
 export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
@@ -115,44 +106,6 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
       `El deck abre al menos un Starter en ${formatProbability(probability)} de las manos.`,
   },
   {
-    id: 'minimal_playable_opening',
-    category: 'consistency',
-    title: 'Mano jugable mínima',
-    description: 'Starter o combinación de piezas engine que te dejan jugar.',
-    technicalSubtitle: 'Starter o 2 nombres engine de arranque',
-    kind: 'opening',
-    simpleLabel: 'Mano jugable mínima',
-    recommended: true,
-    build: (cards) => {
-      const engineComboPool = collectEngineComboCardIds(cards)
-
-      if (engineComboPool.length < 2) {
-        return null
-      }
-
-      return createMatcherPattern(
-        'Mano jugable mínima',
-        'opening',
-        [
-          { matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' },
-          {
-            matcher: { type: 'card_pool', value: engineComboPool },
-            quantity: 2,
-            kind: 'include',
-            distinct: true,
-          },
-        ],
-        {
-          allowSharedCards: true,
-          matchMode: 'any',
-          minimumMatches: 1,
-        },
-      )
-    },
-    describeProbability: (probability) =>
-      `El deck encuentra una mano jugable mínima en ${formatProbability(probability)} de las manos, incluso cuando el arranque viene de 2 piezas engine.`,
-  },
-  {
     id: 'starter_extender_opening',
     category: 'consistency',
     title: 'Salida con seguimiento',
@@ -160,7 +113,7 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
     technicalSubtitle: 'Starter + Extender',
     kind: 'opening',
     simpleLabel: 'Salida con seguimiento',
-    recommended: true,
+    recommended: false,
     build: () =>
       createMatcherPattern(
         'Salida con seguimiento',
@@ -186,7 +139,7 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
     technicalSubtitle: 'Starter + (Handtrap o Disruption)',
     kind: 'opening',
     simpleLabel: 'Salida con interacción',
-    recommended: true,
+    recommended: false,
     build: (cards) => {
       const interactionPool = collectCardIdsByRoles(cards, INTERACTION_ROLES)
 
@@ -219,7 +172,7 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
     technicalSubtitle: 'Engine + (Handtrap o Disruption)',
     kind: 'opening',
     simpleLabel: 'Engine + interacción',
-    recommended: true,
+    recommended: false,
     build: (cards) => {
       const interactionPool = collectCardIdsByRoles(cards, INTERACTION_ROLES)
 
@@ -284,7 +237,7 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
     technicalSubtitle: 'con 3+ Non-engine',
     kind: 'problem',
     simpleLabel: '3+ Non-engine en mano',
-    recommended: true,
+    recommended: false,
     build: () =>
       createMatcherPattern('3+ Non-engine en mano', 'problem', [
         { matcher: { type: 'origin', value: 'non_engine' }, quantity: 3, kind: 'include' },
@@ -300,7 +253,7 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
     technicalSubtitle: 'sin Handtrap ni Disruption',
     kind: 'problem',
     simpleLabel: 'Mano sin interacción',
-    recommended: true,
+    recommended: false,
     build: () =>
       createMatcherPattern(
         'Mano sin interacción',
@@ -326,7 +279,7 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
     technicalSubtitle: 'Extender y 0 Starter',
     kind: 'problem',
     simpleLabel: 'Extender sin Starter',
-    recommended: true,
+    recommended: false,
     build: () =>
       createMatcherPattern(
         'Extender sin Starter',
@@ -411,18 +364,6 @@ function collectCardIdsByRoles(cards: CardEntry[], roles: readonly CardRole[]): 
 
   return cards
     .filter((card) => card.roles.some((role) => expectedRoles.has(role)))
-    .map((card) => card.id)
-}
-
-function collectEngineComboCardIds(cards: CardEntry[]): string[] {
-  const expectedRoles = new Set<CardRole>(ENGINE_COMBO_ROLES)
-
-  return cards
-    .filter(
-      (card) =>
-        (card.origin === 'engine' || card.origin === 'hybrid') &&
-        card.roles.some((role) => expectedRoles.has(role)),
-    )
     .map((card) => card.id)
 }
 

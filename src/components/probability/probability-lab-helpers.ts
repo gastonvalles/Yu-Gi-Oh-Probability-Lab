@@ -112,8 +112,7 @@ const OPENING_PRIORITY_BY_PRESET_ID: Record<string, number> = {
   starter_opening: 0,
   starter_extender_opening: 1,
   starter_protection_opening: 2,
-  minimal_playable_opening: 3,
-  engine_interaction_opening: 4,
+  engine_interaction_opening: 3,
 }
 
 export function buildDeterministicCheckSet(patterns: HandPattern[]): HandPattern[] {

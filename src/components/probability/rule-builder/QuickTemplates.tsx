@@ -16,12 +16,11 @@ interface QuickTemplatesProps {
   onTemplateApplied: (newPatternId: string) => void
 }
 
-/** 5 salidas universales, ordenadas por importancia. */
+/** 4 salidas universales, ordenadas por importancia. */
 const OPENING_TEMPLATE_IDS: readonly string[] = [
   'starter_opening',
   'starter_extender_opening',
   'starter_protection_opening',
-  'minimal_playable_opening',
   'engine_interaction_opening',
 ]
 
@@ -39,7 +38,6 @@ const TEMPLATE_LABELS: Record<string, string> = {
   starter_opening: 'Salida básica',
   starter_extender_opening: 'Salida con seguimiento',
   starter_protection_opening: 'Salida con interacción',
-  minimal_playable_opening: 'Mano jugable mínima',
   engine_interaction_opening: 'Engine + interacción',
   // Problemas
   no_starter_problem: 'Mano sin Starter',
@@ -54,7 +52,6 @@ const TEMPLATE_DESCRIPTIONS: Record<string, string> = {
   starter_opening: 'La condición mínima para que la mano juegue. Sin starter, no arrancás.',
   starter_extender_opening: 'Arranque con seguimiento real para armar un board.',
   starter_protection_opening: 'Salir y poder frenar al rival en el mismo turno.',
-  minimal_playable_opening: 'Starter o combinación de piezas engine que te dejan jugar.',
   engine_interaction_opening: 'Balance entre avanzar tu plan y defenderte.',
   // Problemas
   no_starter_problem: 'La mano no encuentra un arranque claro.',

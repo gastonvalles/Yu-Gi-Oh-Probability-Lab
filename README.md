@@ -84,7 +84,6 @@ Cuando terminás el paso 2, la app genera presets base y se pueden editar:
 
 Aperturas:
 - `Mínimo 1 Starter`
-- `Mano jugable mínima`
 - `Starter + Extender`
 - `Al menos 1 interacción`
 - `Starter + protección`
