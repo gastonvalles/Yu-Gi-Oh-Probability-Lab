@@ -183,7 +183,6 @@ describe('QuickTemplates preset application', () => {
       starter_opening: 'Salida básica',
       starter_extender_opening: 'Salida con seguimiento',
       starter_protection_opening: 'Salida con interacción',
-      engine_interaction_opening: 'Engine + interacción',
       no_starter_problem: 'Mano sin Starter',
       double_brick_problem: '2+ Bricks en mano',
       no_interaction_problem: 'Mano sin interacción',

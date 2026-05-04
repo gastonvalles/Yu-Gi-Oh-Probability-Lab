@@ -37,11 +37,10 @@ export const PROBABILITY_MODEL_VISIBILITY = {
 } as const
 
 export const QUICK_OVERVIEW_PRESET_IDS = [
-  // 4 salidas
+  // 3 salidas
   'starter_opening',
   'starter_extender_opening',
   'starter_protection_opening',
-  'engine_interaction_opening',
   // 5 problemas
   'no_starter_problem',
   'double_brick_problem',
@@ -86,6 +85,7 @@ const OBSOLETE_SYSTEM_PATTERN_NAMES = new Set([
   '3 o más non-engine',
   'sin interacción',
   'mano jugable mínima',
+  'engine + interacción',
 ])
 
 export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
@@ -163,39 +163,6 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
     },
     describeProbability: (probability) =>
       `La mano abre Starter con protección en ${formatProbability(probability)} de los casos.`,
-  },
-  {
-    id: 'engine_interaction_opening',
-    category: 'interaction',
-    title: 'Engine + interacción',
-    description: 'Balance entre avanzar tu plan y defenderte.',
-    technicalSubtitle: 'Engine + (Handtrap o Disruption)',
-    kind: 'opening',
-    simpleLabel: 'Engine + interacción',
-    recommended: false,
-    build: (cards) => {
-      const interactionPool = collectCardIdsByRoles(cards, INTERACTION_ROLES)
-
-      if (interactionPool.length === 0) {
-        return null
-      }
-
-      return createMatcherPattern(
-        'Engine + interacción',
-        'opening',
-        [
-          { matcher: { type: 'origin', value: 'engine' }, quantity: 1, kind: 'include' },
-          { matcher: { type: 'card_pool', value: interactionPool }, quantity: 1, kind: 'include' },
-        ],
-        {
-          allowSharedCards: false,
-          matchMode: 'all',
-          minimumMatches: 2,
-        },
-      )
-    },
-    describeProbability: (probability) =>
-      `El deck combina engine con interacción en ${formatProbability(probability)} de las manos.`,
   },
   {
     id: 'no_starter_problem',
