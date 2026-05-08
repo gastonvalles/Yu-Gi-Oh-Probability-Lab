@@ -51,6 +51,7 @@ export function DeckQualityHero({
         <div className="grid gap-1">
           <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Calidad del deck</p>
           <h3 className="m-0 text-[1.05rem] leading-none text-(--text-main)">Jugable sin problemas</h3>
+          <p className="app-muted m-0 text-[0.72rem] leading-[1.14]">Manos que cumplen al menos una salida activa y no tienen problemas activos.</p>
           <p className="app-muted m-0 text-[0.8rem] leading-[1.16]">
             Activa al menos una regla para ver el KPI principal.
           </p>
@@ -72,6 +73,7 @@ export function DeckQualityHero({
           <h3 className="m-0 text-[1.08rem] leading-none text-(--text-main) min-[980px]:text-[1.16rem]">
             Jugable sin problemas
           </h3>
+          <p className="app-muted m-0 text-[0.72rem] leading-[1.14]">Manos que cumplen al menos una salida activa y no tienen problemas activos.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 min-[980px]:justify-end">
           {isEditMode ? (
@@ -88,7 +90,7 @@ export function DeckQualityHero({
             </>
           ) : (
             <Button variant="secondary" size="sm" onClick={onToggleEditMode}>
-              Editar análisis
+              Editar reglas
             </Button>
           )}
         </div>

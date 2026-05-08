@@ -165,6 +165,9 @@ export function PracticeSection({
           <p className="app-muted m-[0.25rem_0_0] max-w-[58ch] text-[0.78rem] leading-[1.2]">
             El objetivo es ver la mano, leerla rápido y entender por qué juega o por qué se rompe.
           </p>
+          <p className="app-muted m-[0.35rem_0_0] max-w-[58ch] text-[0.72rem] leading-[1.2]">
+            Usá práctica para validar si tus roles y reglas representan cómo jugás realmente el deck.
+          </p>
         </div>
       </div>
 

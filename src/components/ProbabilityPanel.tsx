@@ -1,6 +1,7 @@
 import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
 
 import { buildCalculatorState } from '../app/calculator-state'
+import { getDeckModelStatus } from '../app/deck-model-status'
 import { useToastMessage } from '../app/use-toast-message'
 import type { DerivedDeckGroup } from '../app/deck-groups'
 import { curatePatterns } from '../app/pattern-curation'
@@ -15,6 +16,7 @@ import {
 import { formatInteger } from '../app/utils'
 import { calculateProbabilities } from '../probability'
 import type { CalculationOutput, CardEntry, HandPattern } from '../types'
+import { DeckModelStatusBadge } from './DeckModelStatusBadge'
 import { StepHero } from './StepHero'
 import { ConfirmDialog } from './probability/ConfirmDialog'
 import { DeckQualityHero } from './probability/DeckQualityHero'
@@ -132,6 +134,10 @@ function ProbabilityPanelContent({
   const activePatterns = useMemo(
     () => curatePatterns(patterns, derivedMainCards, { includeDefaults: false }),
     [derivedMainCards, patterns],
+  )
+  const modelStatus = useMemo(
+    () => getDeckModelStatus(derivedMainCards, activePatterns),
+    [derivedMainCards, activePatterns],
   )
   const mainDeckCount = useMemo(
     () => derivedMainCards.reduce((total, card) => total + card.copies, 0),
@@ -573,6 +579,14 @@ function ProbabilityPanelContent({
         </section>
       ) : (
         <div className="grid min-h-0 content-start gap-3">
+          {modelStatus.status === 'incomplete' ? (
+            <p className="m-0 px-3 py-2 text-[0.78rem] leading-[1.16] surface-card-warning text-(--warning)">
+              Hay cartas sin revisar. Los porcentajes pueden ser incompletos.
+            </p>
+          ) : null}
+
+          <DeckModelStatusBadge modelStatus={modelStatus} variant="full" />
+
           <DeckQualityHero
             allCheckCount={allCheckEntries.length}
             deckSummary={deckSummary}

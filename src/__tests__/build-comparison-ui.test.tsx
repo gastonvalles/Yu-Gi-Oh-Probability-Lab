@@ -9,7 +9,7 @@ import type { Verdict, Insight } from '../app/build-comparison'
 // ── 10.1: VerdictCard tests ──
 
 describe('VerdictCard', () => {
-  it('renders "Build A es mejor" for a_better verdict', () => {
+  it('renders "Según tu modelo, Build A es mejor" for a_better verdict', () => {
     const verdict: Verdict = {
       type: 'a_better',
       summary: 'Build A es más consistente',
@@ -20,12 +20,12 @@ describe('VerdictCard', () => {
     }
 
     render(<VerdictCard verdict={verdict} />)
-    expect(screen.getByText('Build A es mejor')).toBeInTheDocument()
+    expect(screen.getByText('Según tu modelo, Build A es mejor')).toBeInTheDocument()
     expect(screen.getByText(/\+5\.2%/)).toBeInTheDocument()
     expect(screen.getByText(/-1/)).toBeInTheDocument()
   })
 
-  it('renders "Build B es mejor" for b_better verdict', () => {
+  it('renders "Según tu modelo, Build B es mejor" for b_better verdict', () => {
     const verdict: Verdict = {
       type: 'b_better',
       summary: 'Build B es más consistente',
@@ -36,10 +36,10 @@ describe('VerdictCard', () => {
     }
 
     render(<VerdictCard verdict={verdict} />)
-    expect(screen.getByText('Build B es mejor')).toBeInTheDocument()
+    expect(screen.getByText('Según tu modelo, Build B es mejor')).toBeInTheDocument()
   })
 
-  it('renders "Equivalentes" for equivalent verdict', () => {
+  it('renders "Según tu modelo, equivalentes" for equivalent verdict', () => {
     const verdict: Verdict = {
       type: 'equivalent',
       summary: 'Las diferencias son marginales',
@@ -50,10 +50,10 @@ describe('VerdictCard', () => {
     }
 
     render(<VerdictCard verdict={verdict} />)
-    expect(screen.getByText('Equivalentes')).toBeInTheDocument()
+    expect(screen.getByText('Según tu modelo, equivalentes')).toBeInTheDocument()
   })
 
-  it('renders "Trade-off" and shows tradeoffDetail in a warning card', () => {
+  it('renders "Según tu modelo, trade-off" and shows tradeoffDetail in a warning card', () => {
     const verdict: Verdict = {
       type: 'tradeoff',
       summary: 'Build A mejora openings pero suma bricks',
@@ -64,7 +64,7 @@ describe('VerdictCard', () => {
     }
 
     render(<VerdictCard verdict={verdict} />)
-    expect(screen.getByText('Trade-off')).toBeInTheDocument()
+    expect(screen.getByText('Según tu modelo, trade-off')).toBeInTheDocument()
     expect(screen.getByText('Build A gana consistencia de apertura a costa de más manos muertas')).toBeInTheDocument()
   })
 

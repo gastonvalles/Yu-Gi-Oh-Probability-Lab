@@ -19,6 +19,7 @@ export function KeyInsightsSummary({
       <div className="grid gap-0.5">
         <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Que esta pasando</p>
         <h3 className="m-0 text-[1rem] leading-none text-(--text-main)">Salidas y problemas principales</h3>
+        <p className="app-muted m-0 text-[0.72rem] leading-[1.14]">Salidas = condiciones para que la mano juegue. Problemas = condiciones que la complican o la rompen.</p>
       </div>
 
       <div className="grid gap-3 min-[980px]:grid-cols-2">

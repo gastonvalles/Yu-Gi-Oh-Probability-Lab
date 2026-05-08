@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { compareBuild, interpretComparison } from '../../app/build-comparison'
 import type { Verdict, RoleDistribution } from '../../app/build-comparison'
 import { KpiDetailModal } from './KpiDetailModal'
+import { KpiCard, type KpiTone } from './KpiCard'
 import type { KpiRole } from './kpi-detail-helpers'
 import { applyEditsToConfig, isBuildBReady, type CardEditMap } from '../../app/build-comparison-edits'
 import { toPortableConfig } from '../../app/app-state-codec'
@@ -17,6 +18,9 @@ import { BuildBCardEditor } from './BuildBCardEditor'
 import { DeckImportDrawer } from '../deck-mode/DeckImportDrawer'
 import { Button } from '../ui/Button'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
+import { getDeckModelStatus } from '../../app/deck-model-status'
+import { DeckModelStatusBadge } from '../DeckModelStatusBadge'
+import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
 
 function createEmptyDeckBuilder(name: string): DeckBuilderState {
   return { deckName: name, main: [], extra: [], side: [], isEditingDeck: false }
@@ -90,6 +94,19 @@ export function ComparisonScreen() {
   const kpiA = useMemo(() => extractKpi(configA, result, 'A'), [configA, result])
   const kpiB = useMemo(() => (configB && result ? extractKpi(configB, result, 'B') : null), [configB, result])
 
+  // Model status for Build A and Build B
+  const modelStatusA = useMemo(() => {
+    const derived = deriveMainDeckCardsFromZone(currentAppState.deckBuilder.main)
+    return getDeckModelStatus(derived, currentAppState.patterns?.filter(p => !p.needsReview) ?? [])
+  }, [currentAppState])
+
+  const modelStatusB = useMemo(() => {
+    if (!editedDeckBuilder) return null
+    const derived = deriveMainDeckCardsFromZone(editedDeckBuilder.main)
+    const patterns = currentAppState.patterns?.filter(p => !p.needsReview) ?? []
+    return getDeckModelStatus(derived, patterns)
+  }, [editedDeckBuilder, currentAppState])
+
   // Auto-open comparison modal when interpretation first becomes available
   const prevBuildBReady = useRef(false)
   useEffect(() => {
@@ -134,11 +151,13 @@ export function ComparisonScreen() {
 
       {/* ── Left: Build A KPIs + Verdict ── */}
       <aside className="grid content-start gap-2 overflow-y-auto min-h-0 p-2">
+        <p className="m-0 text-[0.62rem] uppercase tracking-widest text-(--text-muted)">Tu deck actual</p>
+        <DeckModelStatusBadge modelStatus={modelStatusA} variant="compact" />
         <KpiCard label="Main Deck" value={`${formatInteger(kpiA.main)} (100%)`} tone="neutral" />
-        <KpiCard label="Starters" value={kpiWithPct(kpiA.starters, kpiA.main)} tone="positive" clickable onClick={() => setKpiModalState({ role: 'starter', side: 'A' })} />
-        <KpiCard label="Handtraps" value={kpiWithPct(kpiA.handtraps, kpiA.main)} tone="info" clickable onClick={() => setKpiModalState({ role: 'handtrap', side: 'A' })} />
-        <KpiCard label="Bricks" value={kpiWithPct(kpiA.bricks, kpiA.main)} tone="negative" clickable onClick={() => setKpiModalState({ role: 'brick', side: 'A' })} />
-        {showBoardbreakerKpi ? <KpiCard label="Boardbreakers" value={kpiWithPct(boardbreakersA, kpiA.main)} tone="boardbreaker" clickable onClick={() => setKpiModalState({ role: 'boardbreaker', side: 'A' })} /> : null}
+        <KpiCard label="Starters" value={kpiWithPct(kpiA.starters, kpiA.main)} tone="positive" hint="Cartas que vos marcaste como Starter." clickable onClick={() => setKpiModalState({ role: 'starter', side: 'A' })} />
+        <KpiCard label="Handtraps" value={kpiWithPct(kpiA.handtraps, kpiA.main)} tone="info" hint="Cartas que vos marcaste como Handtrap." clickable onClick={() => setKpiModalState({ role: 'handtrap', side: 'A' })} />
+        <KpiCard label="Bricks" value={kpiWithPct(kpiA.bricks, kpiA.main)} tone="negative" hint="Cartas que vos marcaste como Brick." clickable onClick={() => setKpiModalState({ role: 'brick', side: 'A' })} />
+        {showBoardbreakerKpi ? <KpiCard label="Boardbreakers" value={kpiWithPct(boardbreakersA, kpiA.main)} tone="boardbreaker" hint="Cartas que vos marcaste como Board Breaker." clickable onClick={() => setKpiModalState({ role: 'boardbreaker', side: 'A' })} /> : null}
 
         <KpiPieChart
           starters={kpiA.starters}
@@ -227,13 +246,15 @@ export function ComparisonScreen() {
 
       {/* ── Right: Build B KPIs + Changes ── */}
       <aside className="grid content-start gap-2 overflow-y-auto min-h-0 p-2">
+        <p className="m-0 text-[0.62rem] uppercase tracking-widest text-(--text-muted)">Deck importado</p>
+        {modelStatusB ? <DeckModelStatusBadge modelStatus={modelStatusB} variant="compact" /> : null}
         {kpiB ? (
           <>
             <KpiCard label="Main Deck" value={`${formatInteger(kpiB.main)} (100%)`} tone="neutral" />
-            <KpiCard label="Starters" value={kpiWithPct(kpiB.starters, kpiB.main)} tone="positive" clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'starter', side: 'B' })} />
-            <KpiCard label="Handtraps" value={kpiWithPct(kpiB.handtraps, kpiB.main)} tone="info" clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'handtrap', side: 'B' })} />
-            <KpiCard label="Bricks" value={kpiWithPct(kpiB.bricks, kpiB.main)} tone="negative" clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'brick', side: 'B' })} />
-            {showBoardbreakerKpi ? <KpiCard label="Boardbreakers" value={kpiWithPct(boardbreakersB, kpiB.main)} tone="boardbreaker" clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'boardbreaker', side: 'B' })} /> : null}
+            <KpiCard label="Starters" value={kpiWithPct(kpiB.starters, kpiB.main)} tone="positive" hint="Cartas que vos marcaste como Starter." clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'starter', side: 'B' })} />
+            <KpiCard label="Handtraps" value={kpiWithPct(kpiB.handtraps, kpiB.main)} tone="info" hint="Cartas que vos marcaste como Handtrap." clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'handtrap', side: 'B' })} />
+            <KpiCard label="Bricks" value={kpiWithPct(kpiB.bricks, kpiB.main)} tone="negative" hint="Cartas que vos marcaste como Brick." clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'brick', side: 'B' })} />
+            {showBoardbreakerKpi ? <KpiCard label="Boardbreakers" value={kpiWithPct(boardbreakersB, kpiB.main)} tone="boardbreaker" hint="Cartas que vos marcaste como Board Breaker." clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'boardbreaker', side: 'B' })} /> : null}
           </>
         ) : (
           <KpiCard label="Esperando" value="—" tone="neutral" />
@@ -258,6 +279,15 @@ export function ComparisonScreen() {
           >
             <strong className="text-[0.76rem] text-amber-300">Build B necesita revisión</strong>
             <p className="m-0 text-[0.68rem] text-(--text-muted)">{formatInteger(pendingCount)} carta{pendingCount === 1 ? '' : 's'} pendiente{pendingCount === 1 ? '' : 's'}. Click para categorizar.</p>
+          </div>
+        ) : null}
+
+        {importedDeckBuilder && pendingCount > 0 ? (
+          <div
+            className="comparison-kpi-card grid gap-1 px-2.5 py-2 border-l-2 border-amber-400"
+            style={{ background: 'rgb(var(--background-rgb))' }}
+          >
+            <p className="m-0 text-[0.68rem] text-amber-300">La comparación todavía no es confiable: Build B tiene cartas sin revisar.</p>
           </div>
         ) : null}
 
@@ -348,29 +378,7 @@ function SideLabel({ text, sub }: { text: string; sub: string }) {
 
 // ── KPI Card (styled like Probability Lab cards) ──
 
-export type KpiTone = 'positive' | 'negative' | 'info' | 'neutral' | 'boardbreaker'
-
-export function KpiCard({ label, value, tone, hint, clickable = false, onClick }: { label: string; value: string; tone: KpiTone; hint?: string | null; clickable?: boolean; onClick?: () => void }) {
-  const cls = `comparison-kpi-card comparison-kpi-${tone} grid gap-0.5 place-items-center px-2.5 py-2 text-center${clickable ? ' cursor-pointer hover:brightness-125 transition-[filter]' : ''}`
-
-  if (clickable) {
-    return (
-      <button type="button" className={cls} onClick={onClick}>
-        <span className="text-[0.66rem] uppercase tracking-widest text-(--text-muted)">{label}</span>
-        <strong className="text-[1rem] leading-none tabular-nums text-(--text-main)">{value}</strong>
-        {hint ? <span className="text-[0.6rem] leading-none text-(--text-muted)">{hint}</span> : null}
-      </button>
-    )
-  }
-
-  return (
-    <div className={cls}>
-      <span className="text-[0.66rem] uppercase tracking-widest text-(--text-muted)">{label}</span>
-      <strong className="text-[1rem] leading-none tabular-nums text-(--text-main)">{value}</strong>
-      {hint ? <span className="text-[0.6rem] leading-none text-(--text-muted)">{hint}</span> : null}
-    </div>
-  )
-}
+export { KpiCard, type KpiTone } from './KpiCard'
 
 // ── Deck Grid (Build A — no highlighting) ──
 
@@ -696,8 +704,8 @@ function buildVerdictSummary(
   rolesA: RoleDistribution,
   rolesB: RoleDistribution,
 ): string {
-  if (verdict.type === 'equivalent') return 'Ambos decks son equivalentes en composición.'
-  if (verdict.type === 'tradeoff') return verdict.tradeoffDetail ?? 'Cada deck tiene ventajas y desventajas.'
+  if (verdict.type === 'equivalent') return 'Con este modelo, las diferencias son marginales.'
+  if (verdict.type === 'tradeoff') return `Con estas categorías, ${verdict.tradeoffDetail ?? 'cada deck tiene ventajas y desventajas.'}`
 
   const isA = verdict.type === 'a_better'
   const w = isA ? rolesA : rolesB
@@ -716,7 +724,7 @@ function buildVerdictSummary(
     reasons.push('tiene mejor composición general')
   }
 
-  return `${winnerName} ${reasons.join(', ')}.`
+  return `Según tu clasificación, ${winnerName} ${reasons.join(', ')}.`
 }
 
 function ComparisonResultModal({ verdict, rolesA, rolesB, deckSizeA, deckSizeB, deckNameA, deckNameB, onClose }: {
@@ -745,10 +753,10 @@ function ComparisonResultModal({ verdict, rolesA, rolesB, deckSizeA, deckSizeB, 
   const bIsWinner = verdict.type === 'b_better'
   const winnerName = aIsWinner ? deckNameA : bIsWinner ? deckNameB : ''
 
-  const verdictLabel = aIsWinner ? `${deckNameA} es mejor`
-    : bIsWinner ? `${deckNameB} es mejor`
-    : verdict.type === 'tradeoff' ? 'Trade-off'
-    : 'Equivalentes'
+  const verdictLabel = aIsWinner ? `Según tu modelo, ${deckNameA} es mejor`
+    : bIsWinner ? `Según tu modelo, ${deckNameB} es mejor`
+    : verdict.type === 'tradeoff' ? 'Según tu modelo, trade-off'
+    : 'Según tu modelo, equivalentes'
 
   const summary = buildVerdictSummary(verdict, winnerName, rolesA, rolesB)
 

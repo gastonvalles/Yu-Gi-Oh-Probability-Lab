@@ -4,6 +4,9 @@ import type { WorkspaceSnapshot } from '../../app/workspace'
 import type { DeckSource } from '../../app/build-comparison'
 import { compareBuild, interpretComparison } from '../../app/build-comparison'
 import { toPortableConfig } from '../../app/app-state-codec'
+import { getDeckModelStatus } from '../../app/deck-model-status'
+import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
+import { DeckModelStatusBadge } from '../DeckModelStatusBadge'
 import { VerdictCard } from './VerdictCard'
 import { InsightList } from './InsightList'
 import { ProbabilityComparison } from './ProbabilityComparison'
@@ -29,6 +32,20 @@ export function ComparisonView({ snapshots, currentAppState }: ComparisonViewPro
 
   const comparisonResult = useMemo(() => compareBuild(configA, configB), [configA, configB])
   const interpretation = useMemo(() => interpretComparison(comparisonResult), [comparisonResult])
+
+  const modelStatusA = useMemo(() => {
+    const instances = configA.deckBuilder.main.map((c, i) => ({ ...c, instanceId: `a-${i}` }))
+    const derived = deriveMainDeckCardsFromZone(instances)
+    return getDeckModelStatus(derived, configA.patterns as any)
+  }, [configA])
+
+  const modelStatusB = useMemo(() => {
+    const instances = configB.deckBuilder.main.map((c, i) => ({ ...c, instanceId: `b-${i}` }))
+    const derived = deriveMainDeckCardsFromZone(instances)
+    return getDeckModelStatus(derived, configB.patterns as any)
+  }, [configB])
+
+  const buildBHasNeedsReview = modelStatusB.needsReviewCount > 0
 
   if (snapshots.length === 0) {
     return (
@@ -61,6 +78,19 @@ export function ComparisonView({ snapshots, currentAppState }: ComparisonViewPro
         <div className="surface-card-warning px-3 py-2">
           <p className="m-0 text-[0.8rem] text-(--text-main)">
             Ambas fuentes son iguales — las builds son idénticas.
+          </p>
+        </div>
+      ) : null}
+
+      <div className="grid gap-2 min-[720px]:grid-cols-2">
+        <DeckModelStatusBadge modelStatus={modelStatusA} variant="compact" />
+        <DeckModelStatusBadge modelStatus={modelStatusB} variant="compact" />
+      </div>
+
+      {buildBHasNeedsReview ? (
+        <div className="surface-card-warning px-3 py-2">
+          <p className="m-0 text-[0.8rem] text-(--text-main)">
+            La comparación todavía no es confiable: Build B tiene cartas sin revisar.
           </p>
         </div>
       ) : null}

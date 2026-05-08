@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { configureStore } from '@reduxjs/toolkit'
 import { Provider } from 'react-redux'
-import { KpiCard } from '../components/comparison/ComparisonScreen'
+import { KpiCard } from '../components/comparison/KpiCard'
 import { KpiDetailModal } from '../components/comparison/KpiDetailModal'
 import type { DeckCardInstance } from '../app/model'
 import type { CardEditMap } from '../app/build-comparison-edits'
@@ -195,7 +195,7 @@ describe('KpiDetailModal — close interactions', () => {
     )
 
     // Click on the modal content (the heading)
-    const heading = screen.getByText(/Handtraps/)
+    const heading = screen.getByText(/Handtrap\?/)
     fireEvent.click(heading)
     expect(onClose).not.toHaveBeenCalled()
   })

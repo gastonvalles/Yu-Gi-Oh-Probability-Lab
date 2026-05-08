@@ -36,9 +36,9 @@ export function VerdictCard({ verdict }: VerdictCardProps) {
 
 function getMainText(type: Verdict['type']): string {
   switch (type) {
-    case 'a_better': return 'Build A es mejor'
-    case 'b_better': return 'Build B es mejor'
-    case 'equivalent': return 'Equivalentes'
-    case 'tradeoff': return 'Trade-off'
+    case 'a_better': return 'Según tu modelo, Build A es mejor'
+    case 'b_better': return 'Según tu modelo, Build B es mejor'
+    case 'equivalent': return 'Según tu modelo, equivalentes'
+    case 'tradeoff': return 'Según tu modelo, trade-off'
   }
 }

@@ -9,6 +9,7 @@ import {
   getDeckGroupTheme,
   serializeGroupKey,
 } from '../app/deck-groups'
+import { getDeckModelStatus } from '../app/deck-model-status'
 import { reclassifyAllCards } from '../app/deck-builder-slice'
 import { getClassificationOverrides } from '../app/classification-overrides'
 import {
@@ -17,10 +18,11 @@ import {
   isCardMissingRoles,
   isCardPendingReview,
 } from '../app/role-step'
-import { useAppDispatch } from '../app/store-hooks'
+import { useAppDispatch, useAppSelector } from '../app/store-hooks'
 import { formatInteger } from '../app/utils'
 import type { CardEntry, CardGroupKey, CardOrigin, CardRole } from '../types'
 import { CardArt } from './CardArt'
+import { DeckModelStatusBadge } from './DeckModelStatusBadge'
 import { StepHero } from './StepHero'
 import { Button } from './ui/Button'
 import { CloseButton } from './ui/IconButton'
@@ -389,11 +391,11 @@ function getCardPrimaryStatus(card: CardEntry): { label: string; tone: StatusTon
   }
 
   if (isCardMissingOrigin(card)) {
-    return { label: 'Sin origen', tone: 'warning' }
+    return { label: 'Sin grupo definido', tone: 'warning' }
   }
 
   if (isCardMissingRoles(card)) {
-    return { label: 'Sin rol', tone: 'warning' }
+    return { label: 'Todavía sin función definida', tone: 'warning' }
   }
 
   if (isCardPendingReview(card)) {
@@ -407,7 +409,7 @@ function getCardQueueSummary(card: CardEntry): string {
   const items = [getCardTypeLabel(card)]
 
   if (card.origin === null) {
-    items.push('Sin origen')
+    items.push('Sin grupo definido')
   } else {
     const originLabel = getCardOriginDefinition(card.origin).label
     items.push(card.origin === 'non_engine' ? 'Non-Engine' : originLabel)
@@ -418,7 +420,7 @@ function getCardQueueSummary(card: CardEntry): string {
     .map((role) => getCardRoleDefinition(role).label)
 
   if (roleLabels.length === 0) {
-    items.push('Sin rol')
+    items.push('Todavía sin función definida')
   } else {
     items.push(...roleLabels)
   }
@@ -578,6 +580,11 @@ export function DeckRolesPanel({
   onToggleRole,
 }: DeckRolesPanelProps) {
   const dispatch = useAppDispatch()
+  const patterns = useAppSelector((state) => state.patterns.patterns)
+  const modelStatus = useMemo(
+    () => getDeckModelStatus(cards, patterns),
+    [cards, patterns],
+  )
   const [activeFilter, setActiveFilter] = useState<ClassificationFilterKey>(() =>
     cards.some((card) => !isCardFullyClassified(card)) ? 'unclassified' : 'complete',
   )
@@ -874,7 +881,7 @@ export function DeckRolesPanel({
       <div className="grid gap-3">
         <section className="grid gap-2">
           <div className="grid gap-0.5">
-            <p className="app-kicker m-0 text-[0.64rem] uppercase tracking-widest">¿Qué es?</p>
+            <p className="app-kicker m-0 text-[0.64rem] uppercase tracking-widest">¿Dónde encaja en tu plan?</p>
           </div>
 
 	          <div className="grid gap-1.5 min-[860px]:grid-cols-3">
@@ -915,7 +922,7 @@ export function DeckRolesPanel({
 
         <section className="grid gap-2">
           <div className="grid gap-1.5">
-            <p className="app-kicker m-0 text-[0.64rem] uppercase tracking-widest">¿Qué roles cumple?</p>
+            <p className="app-kicker m-0 text-[0.64rem] uppercase tracking-widest">¿Qué función cumple cuando la robás?</p>
           </div>
 
           <div className="grid gap-2 min-[1101px]:grid-cols-3 min-[1101px]:items-stretch">
@@ -1010,11 +1017,12 @@ export function DeckRolesPanel({
     <section className="surface-panel deck-mobile-step-shell grid min-w-0 content-start gap-2.5 overflow-x-hidden p-0 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_auto_minmax(0,1fr)] min-[1101px]:gap-3 min-[1101px]:overflow-hidden min-[1101px]:p-2.5">
       <StepHero
         step="Categorización"
-        title="Clasificá cada carta con Origen y Roles"
-        description="Separá dos decisiones distintas para el Main Deck: a qué grupo pertenece cada carta y qué rol cumple cuando la robás."
+        title="Definí cómo funciona cada carta en tu deck"
+        description="Estas decisiones forman tu modelo del deck. Los porcentajes se calculan a partir de esto."
         side={
           sortedCards.length > 0 ? (
             <>
+              <DeckModelStatusBadge modelStatus={modelStatus} variant="compact" />
               {hasCardsNeedingClassification ? (
                 <Button variant="primary" size="sm" onClick={() => dispatch(reclassifyAllCards({ overrides: getClassificationOverrides() }))}>
                   Clasificar todo

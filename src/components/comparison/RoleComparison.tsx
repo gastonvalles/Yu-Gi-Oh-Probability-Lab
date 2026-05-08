@@ -50,6 +50,7 @@ export function RoleComparison({ rolesA, rolesB }: RoleComparisonProps) {
           <div
             key={role}
             className="surface-card grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-2 px-2 py-1.5"
+            title={`Cartas que vos marcaste como ${ROLE_LABELS[role]}.`}
           >
             <span className="text-[0.84rem] text-(--text-main)">{ROLE_LABELS[role]}</span>
             <span className="w-[3rem] text-right text-[0.84rem] tabular-nums text-(--text-main)">{rolesA[role]}</span>
