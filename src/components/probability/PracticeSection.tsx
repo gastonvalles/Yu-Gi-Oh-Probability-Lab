@@ -98,7 +98,6 @@ export function PracticeSection({
   missingRoleCount,
   pendingReviewCount,
   reviewPendingPatternCount,
-  onRedraw,
 }: PracticeSectionProps) {
   const practiceDeck = useMemo(() => buildPracticeDeck(derivedMainCards), [derivedMainCards])
   const groupsByKey = useMemo(() => buildDerivedDeckGroupMap(derivedMainCards), [derivedMainCards])
@@ -157,23 +156,15 @@ export function PracticeSection({
   }, [derivedMainCards, handSize])
 
   return (
-    <section className="surface-panel-soft grid min-w-0 gap-3 overflow-x-hidden p-3 wrap-anywhere [word-break:break-word]">
-      <div>
-        <div>
-          <p className="app-kicker m-0 mb-0.5 text-[0.68rem] uppercase tracking-widest">Práctica</p>
-          <h3 className="m-0 text-[0.98rem] leading-none">Probar mano</h3>
-          <p className="app-muted m-[0.25rem_0_0] max-w-[58ch] text-[0.78rem] leading-[1.2]">
-            El objetivo es ver la mano, leerla rápido y entender por qué juega o por qué se rompe.
-          </p>
-          <p className="app-muted m-[0.35rem_0_0] max-w-[58ch] text-[0.72rem] leading-[1.2]">
-            Usá práctica para validar si tus roles y reglas representan cómo jugás realmente el deck.
-          </p>
-        </div>
+    <section className="grid min-w-0 min-h-0 h-full grid-rows-[auto_auto_minmax(0,1fr)] gap-3 overflow-hidden wrap-anywhere [word-break:break-word]">
+      <div className="flex items-center justify-between gap-3 px-1">
+        <h3 className="m-0 text-[0.98rem] leading-none">Probar mano</h3>
+        <span className="app-muted text-[0.68rem]">Validá tu modelo con manos reales</span>
       </div>
 
       {isEmptyPracticeDeck ? (
         <p className="surface-card m-0 p-2.5 text-[0.8rem] text-(--text-muted)">
-          Cargá cartas en el Main Deck para habilitar la práctica. Cuando llegues a {formatInteger(handSize)}, vas a poder robar manos y ver salidas y problemas en vivo.
+          Cargá cartas en el Main Deck para habilitar la práctica.
         </p>
       ) : practiceBlockedMessage ? (
         <p className="surface-card-warning m-0 p-2.5 text-[0.8rem] text-(--warning)">
@@ -181,28 +172,20 @@ export function PracticeSection({
         </p>
       ) : !canDrawOpeningHand ? (
         <p className="surface-card-warning m-0 p-2.5 text-[0.8rem] text-(--warning)">
-          Todavía no alcanza para robar una mano inicial. Sumá {formatInteger(missingPracticeCards)} carta{missingPracticeCards === 1 ? '' : 's'} más al Main Deck.
+          Sumá {formatInteger(missingPracticeCards)} carta{missingPracticeCards === 1 ? '' : 's'} más al Main Deck.
         </p>
       ) : (
         <>
+          {/* Card stage with header — fixed, no scroll */}
           <article className="surface-panel-strong grid min-w-0 gap-3 overflow-x-hidden p-3">
-            <div className="flex items-start justify-between gap-3 max-[920px]:flex-col max-[920px]:items-stretch">
-              <div className="min-w-0">
-                <p className="app-muted m-0 text-[0.68rem] uppercase tracking-widest">Simulador en vivo</p>
-                <h4 className="m-[0.22rem_0_0] text-[1.05rem] leading-none text-(--text-main)">
-                  {practiceHand ? `Mano de ${formatInteger(practiceHand.hand.length)} cartas` : 'Robá una mano inicial'}
-                </h4>
-                <p className="app-muted m-[0.3rem_0_0] max-w-[62ch] text-[0.76rem] leading-[1.16]">
-                  {practiceHand
-                    ? 'Podés sacar una carta extra para simular going second o volver a robar una mano nueva.'
-                    : 'Empezá con la mano de 5. Después podés sumar una sexta para revisar cómo cambia el panorama.'}
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
+            <div className="flex items-center justify-between gap-3">
+              <h4 className="m-0 text-[0.92rem] leading-none text-(--text-main)">
+                {practiceHand ? `Mano de ${formatInteger(practiceHand.hand.length)}` : 'Mano de ' + formatInteger(handSize)}
+              </h4>
+              <div className="flex gap-2">
                 <Button
                   variant="primary"
-                  size="md"
+                  size="sm"
                   disabled={!canDrawOpeningHand}
                   onClick={() => setPracticeHand(drawRandomPracticeHand(practiceDeck, handSize))}
                 >
@@ -210,7 +193,7 @@ export function PracticeSection({
                 </Button>
                 <Button
                   variant="secondary"
-                  size="md"
+                  size="sm"
                   disabled={!canDrawNextCard}
                   onClick={() => setPracticeHand((current) => (current ? drawNextCard(current) : current))}
                 >
@@ -221,8 +204,8 @@ export function PracticeSection({
 
             <div
               className={isWide
-                ? 'practice-stage flex min-h-[250px] min-w-0 items-start justify-center overflow-hidden px-4 py-4'
-                : 'practice-stage grid min-w-0 grid-cols-5 gap-2 overflow-hidden px-4 py-4'
+                ? 'flex min-h-[260px] min-w-0 items-start justify-center overflow-hidden px-4 pt-2 pb-4'
+                : 'grid min-w-0 grid-cols-5 gap-0.5 overflow-hidden py-3'
               }
             >
               {(practiceHand?.hand ?? Array.from({ length: handSize })).map((card, index, hand) => {
@@ -235,9 +218,7 @@ export function PracticeSection({
                       key={`placeholder-${index}`}
                       className={[
                         'practice-placeholder-card aspect-[0.72] shrink-0',
-                        isWide
-                          ? 'w-[clamp(96px,16vw,132px)]'
-                          : 'w-full',
+                        isWide ? 'w-[clamp(96px,16vw,132px)]' : 'w-full',
                         isWide && index !== 0 ? '-ml-5 min-[820px]:-ml-7' : '',
                       ].join(' ')}
                       style={cardStyle}
@@ -251,9 +232,7 @@ export function PracticeSection({
                     key={card.drawId}
                     className={[
                       'shrink-0 p-0 shadow-[0_18px_36px_rgba(0,0,0,0.35)]',
-                      isWide
-                        ? 'w-[clamp(96px,16vw,132px)]'
-                        : 'w-full',
+                      isWide ? 'w-[clamp(96px,16vw,132px)]' : 'w-full',
                       isWide && index !== 0 ? '-ml-5 min-[820px]:-ml-7' : '',
                     ].join(' ')}
                     style={cardStyle}
@@ -269,83 +248,47 @@ export function PracticeSection({
                 )
               })}
             </div>
-
-            {!practiceHand ? (
-              <p className="app-muted m-0 text-center text-[0.78rem] leading-[1.18]">
-                Cuando robes, la app va a evaluar la mano al instante y te va a mostrar salidas, problemas y composición real.
-              </p>
-            ) : null}
           </article>
 
+          {/* Results — scrollable area */}
           {practiceHand ? (
-            <article
-              className={[
-                getPracticeVerdictCardClass(practiceVerdict),
-                'grid min-w-0 gap-3 overflow-x-hidden p-3 wrap-anywhere [word-break:break-word]',
-              ].join(' ')}
-            >
-              {practiceResult.matches.length > 0 ? (
-                <div className="grid min-w-0 gap-3">
-                  {openingMatches.length > 0 ? (
-                    <PracticeMatchGroup
-                      count={openingMatches.length}
-                      matches={openingMatches}
-                      title="Salidas cumplidas"
-                    />
-                  ) : null}
-
-                  {problemMatches.length > 0 ? (
-                    <PracticeMatchGroup
-                      count={problemMatches.length}
-                      matches={problemMatches}
-                      title="Problemas detectados"
-                    />
-                  ) : null}
-
-                  {openingMatches.length === 0 && openingNearMisses.length > 0 ? (
-                    <div className="grid min-w-0 gap-2.5">
-                      <PracticeMatchHeader
-                        title="Lo que le faltó a la mano para abrir"
-                        count={openingNearMisses.length}
-                      />
-                      <div className="grid min-w-0 gap-2">
-                        {openingNearMisses.slice(0, 3).map((nearMiss) => (
-                          <PracticeNearMissCard key={nearMiss.patternId} nearMiss={nearMiss} />
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              ) : openingNearMisses.length > 0 ? (
-                <div className="grid min-w-0 gap-2.5">
-                  <PracticeMatchHeader
-                    title="Lo que le faltó a la mano para abrir"
-                    count={openingNearMisses.length}
-                  />
-                  <div className="grid min-w-0 gap-2">
-                    {openingNearMisses.slice(0, 3).map((nearMiss) => (
-                      <PracticeNearMissCard key={nearMiss.patternId} nearMiss={nearMiss} />
-                    ))}
+            <div className="min-h-0 overflow-y-auto overflow-x-hidden pt-3 px-1">
+              <div className="grid gap-3 min-[640px]:grid-cols-2">
+                {/* Salidas cumplidas */}
+                <div className="grid content-start gap-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <small className="app-muted text-[0.68rem] uppercase tracking-widest">Salidas cumplidas</small>
+                    <span className="app-chip px-2 py-0.5 text-[0.7rem]">{formatInteger(openingMatches.length)}</span>
                   </div>
+                  {openingMatches.length > 0 ? (
+                    <div className="grid gap-2">
+                      {openingMatches.map((match) => (
+                        <PracticeMatchCard key={match.patternId} match={match} />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="surface-card m-0 px-2.5 py-2 text-[0.76rem] text-(--text-muted)">Ninguna salida cumplida.</p>
+                  )}
                 </div>
-              ) : (
-              <div className="surface-card grid min-w-0 gap-2 px-2.5 py-2">
-                  <p className="m-0 text-[0.78rem] text-(--text-muted)">
-                    Probá robar otra mano o revisá tus reglas activas.
-                  </p>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      setPracticeHand(drawRandomPracticeHand(practiceDeck, handSize))
-                      onRedraw?.()
-                    }}
-                  >
-                    Robar otra mano
-                  </Button>
+
+                {/* Problemas detectados */}
+                <div className="grid content-start gap-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <small className="app-muted text-[0.68rem] uppercase tracking-widest">Problemas detectados</small>
+                    <span className="app-chip px-2 py-0.5 text-[0.7rem]">{formatInteger(problemMatches.length)}</span>
+                  </div>
+                  {problemMatches.length > 0 ? (
+                    <div className="grid gap-2">
+                      {problemMatches.map((match) => (
+                        <PracticeMatchCard key={match.patternId} match={match} />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="surface-card m-0 px-2.5 py-2 text-[0.76rem] text-(--text-muted)">Sin problemas detectados.</p>
+                  )}
                 </div>
-              )}
-            </article>
+              </div>
+            </div>
           ) : null}
         </>
       )}

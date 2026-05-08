@@ -105,11 +105,12 @@ export function MobileBottomStepNav({
   }, [activeStep])
 
   const highlightedStep = optimisticStep ?? activeStep
+  const mobileItems = items.filter((item) => item.key !== 'workspace')
 
   return (
     <nav aria-label="Pasos del workflow" className="mobile-step-nav">
       <div className="mobile-step-nav-grid">
-        {items.map((item) => {
+        {mobileItems.map((item) => {
           const isActive = item.key === highlightedStep
           const isDisabled = item.disabled && !isActive
           const statusLabel = DECK_WORKFLOW_TONE_LABEL[item.tone]

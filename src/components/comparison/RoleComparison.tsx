@@ -39,9 +39,9 @@ export function RoleComparison({ rolesA, rolesB }: RoleComparisonProps) {
     <div className="grid gap-1">
       <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-2 px-2 py-1">
         <span className="app-muted text-[0.68rem] uppercase tracking-[0.08em]">Rol</span>
-        <span className="app-muted w-[3rem] text-right text-[0.68rem] uppercase tracking-[0.08em]">A</span>
-        <span className="app-muted w-[3rem] text-right text-[0.68rem] uppercase tracking-[0.08em]">B</span>
-        <span className="app-muted w-[3rem] text-right text-[0.68rem] uppercase tracking-[0.08em]">Δ</span>
+        <span className="app-muted w-12 text-right text-[0.68rem] uppercase tracking-[0.08em]">A</span>
+        <span className="app-muted w-12 text-right text-[0.68rem] uppercase tracking-[0.08em]">B</span>
+        <span className="app-muted w-12 text-right text-[0.68rem] uppercase tracking-[0.08em]">Δ</span>
       </div>
 
       {visibleRoles.map((role) => {
@@ -52,9 +52,9 @@ export function RoleComparison({ rolesA, rolesB }: RoleComparisonProps) {
             className="surface-card grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-2 px-2 py-1.5"
           >
             <span className="text-[0.84rem] text-(--text-main)">{ROLE_LABELS[role]}</span>
-            <span className="w-[3rem] text-right text-[0.84rem] tabular-nums text-(--text-main)">{rolesA[role]}</span>
-            <span className="w-[3rem] text-right text-[0.84rem] tabular-nums text-(--text-main)">{rolesB[role]}</span>
-            <span className={`w-[3rem] text-right text-[0.84rem] tabular-nums ${getDeltaColor(delta)}`}>
+            <span className="w-12 text-right text-[0.84rem] tabular-nums text-(--text-main)">{rolesA[role]}</span>
+            <span className="w-12 text-right text-[0.84rem] tabular-nums text-(--text-main)">{rolesB[role]}</span>
+            <span className={`w-12 text-right text-[0.84rem] tabular-nums ${getDeltaColor(delta)}`}>
               {delta === 0 ? '—' : `${delta > 0 ? '+' : ''}${delta}`}
             </span>
           </div>

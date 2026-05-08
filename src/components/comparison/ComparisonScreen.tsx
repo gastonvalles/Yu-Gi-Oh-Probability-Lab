@@ -273,7 +273,7 @@ export function ComparisonScreen() {
 
         {importedDeckBuilder && pendingCount > 0 ? (
           <div
-            className="comparison-kpi-card grid gap-1 px-2.5 py-2 cursor-pointer hover:brightness-125 transition-[filter] border-l-2 border-(--primary)"
+            className="comparison-kpi-card grid gap-1 px-2.5 py-2 cursor-pointer hover:brightness-125 transition-[filter] border-l-2 border-primary"
             style={{ background: 'rgb(var(--background-rgb))' }}
             onClick={() => setShowCardList(true)}
           >

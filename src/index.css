@@ -843,7 +843,7 @@
   .mobile-step-nav-grid {
     display: grid;
     min-height: var(--deck-mobile-step-nav-height, 4.3rem);
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.1rem;
   }
 

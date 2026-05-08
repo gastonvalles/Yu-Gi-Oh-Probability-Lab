@@ -543,11 +543,7 @@ function ProbabilityPanelContent({
         title="Entendé qué tan jugable es tu deck y qué lo está causando"
         description="KPI, fortalezas, riesgos y práctica de manos."
         variant="compact"
-        side={(
-          <Button variant="primary" size="sm" onClick={() => setPracticeOpen(true)}>
-            Abrir práctica
-          </Button>
-        )}
+        side={<DeckModelStatusBadge modelStatus={modelStatus} variant="compact" />}
         sideVariant="inline"
       />
 
@@ -579,14 +575,6 @@ function ProbabilityPanelContent({
         </section>
       ) : (
         <div className="grid min-h-0 content-start gap-3">
-          {modelStatus.status === 'incomplete' ? (
-            <p className="m-0 px-3 py-2 text-[0.78rem] leading-[1.16] surface-card-warning text-(--warning)">
-              Hay cartas sin revisar. Los porcentajes pueden ser incompletos.
-            </p>
-          ) : null}
-
-          <DeckModelStatusBadge modelStatus={modelStatus} variant="full" />
-
           <DeckQualityHero
             allCheckCount={allCheckEntries.length}
             deckSummary={deckSummary}
@@ -652,7 +640,7 @@ function ProbabilityPanelContent({
             onClick={() => setPracticeOpen(false)}
           />
 
-          <div className="surface-panel app-dialog-enter relative grid h-[min(92vh,980px)] w-full max-w-312 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0">
+          <div className="surface-panel app-dialog-enter relative grid h-[min(88vh,820px)] w-full max-w-312 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0">
             <div className="flex min-w-0 items-center justify-between gap-2 border-b border-(--border-subtle) px-4 py-3">
               <div className="grid min-w-0 gap-0.5">
                 <strong className="text-[0.98rem] text-(--text-main)">Práctica</strong>
