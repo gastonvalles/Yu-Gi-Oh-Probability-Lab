@@ -115,13 +115,13 @@ const DESKTOP_CLASSIFICATION_MEDIA_QUERY = '(min-width: 1101px)'
 const ORIGIN_HELP_TEXT: Record<CardOrigin, string> = {
   engine: 'Parte del core del deck: cartas que querés ver para ejecutar el plan principal.',
   non_engine: 'Interacción o soporte que no pertenece al motor principal del deck.',
-  hybrid: 'Puede contar como motor o como slot flexible según la mano y la build.',
+  hybrid: 'Cuenta para checks de Engine y Non-engine. Si querés que no afecte un check, elegí uno de los dos.',
 }
 
 const ORIGIN_BLURB_TEXT: Record<CardOrigin, string> = {
   engine: 'Core y plan principal.',
   non_engine: 'Interacción y soporte externo.',
-  hybrid: 'Cruza ambos espacios.',
+  hybrid: 'Cuenta para ambos lados en los checks.',
 }
 
 const ROLE_HELP_TEXT: Record<CardRole, string> = {

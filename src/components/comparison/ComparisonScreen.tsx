@@ -154,10 +154,10 @@ export function ComparisonScreen() {
         <p className="m-0 text-[0.62rem] uppercase tracking-widest text-(--text-muted)">Tu deck actual</p>
         <DeckModelStatusBadge modelStatus={modelStatusA} variant="compact" />
         <KpiCard label="Main Deck" value={`${formatInteger(kpiA.main)} (100%)`} tone="neutral" />
-        <KpiCard label="Starters" value={kpiWithPct(kpiA.starters, kpiA.main)} tone="positive" hint="Cartas que vos marcaste como Starter." clickable onClick={() => setKpiModalState({ role: 'starter', side: 'A' })} />
-        <KpiCard label="Handtraps" value={kpiWithPct(kpiA.handtraps, kpiA.main)} tone="info" hint="Cartas que vos marcaste como Handtrap." clickable onClick={() => setKpiModalState({ role: 'handtrap', side: 'A' })} />
-        <KpiCard label="Bricks" value={kpiWithPct(kpiA.bricks, kpiA.main)} tone="negative" hint="Cartas que vos marcaste como Brick." clickable onClick={() => setKpiModalState({ role: 'brick', side: 'A' })} />
-        {showBoardbreakerKpi ? <KpiCard label="Boardbreakers" value={kpiWithPct(boardbreakersA, kpiA.main)} tone="boardbreaker" hint="Cartas que vos marcaste como Board Breaker." clickable onClick={() => setKpiModalState({ role: 'boardbreaker', side: 'A' })} /> : null}
+        <KpiCard label="Starters" value={kpiWithPct(kpiA.starters, kpiA.main)} tone="positive" clickable onClick={() => setKpiModalState({ role: 'starter', side: 'A' })} />
+        <KpiCard label="Handtraps" value={kpiWithPct(kpiA.handtraps, kpiA.main)} tone="info" clickable onClick={() => setKpiModalState({ role: 'handtrap', side: 'A' })} />
+        <KpiCard label="Bricks" value={kpiWithPct(kpiA.bricks, kpiA.main)} tone="negative" clickable onClick={() => setKpiModalState({ role: 'brick', side: 'A' })} />
+        {showBoardbreakerKpi ? <KpiCard label="Boardbreakers" value={kpiWithPct(boardbreakersA, kpiA.main)} tone="boardbreaker" clickable onClick={() => setKpiModalState({ role: 'boardbreaker', side: 'A' })} /> : null}
 
         <KpiPieChart
           starters={kpiA.starters}
@@ -251,10 +251,10 @@ export function ComparisonScreen() {
         {kpiB ? (
           <>
             <KpiCard label="Main Deck" value={`${formatInteger(kpiB.main)} (100%)`} tone="neutral" />
-            <KpiCard label="Starters" value={kpiWithPct(kpiB.starters, kpiB.main)} tone="positive" hint="Cartas que vos marcaste como Starter." clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'starter', side: 'B' })} />
-            <KpiCard label="Handtraps" value={kpiWithPct(kpiB.handtraps, kpiB.main)} tone="info" hint="Cartas que vos marcaste como Handtrap." clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'handtrap', side: 'B' })} />
-            <KpiCard label="Bricks" value={kpiWithPct(kpiB.bricks, kpiB.main)} tone="negative" hint="Cartas que vos marcaste como Brick." clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'brick', side: 'B' })} />
-            {showBoardbreakerKpi ? <KpiCard label="Boardbreakers" value={kpiWithPct(boardbreakersB, kpiB.main)} tone="boardbreaker" hint="Cartas que vos marcaste como Board Breaker." clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'boardbreaker', side: 'B' })} /> : null}
+            <KpiCard label="Starters" value={kpiWithPct(kpiB.starters, kpiB.main)} tone="positive" clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'starter', side: 'B' })} />
+            <KpiCard label="Handtraps" value={kpiWithPct(kpiB.handtraps, kpiB.main)} tone="info" clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'handtrap', side: 'B' })} />
+            <KpiCard label="Bricks" value={kpiWithPct(kpiB.bricks, kpiB.main)} tone="negative" clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'brick', side: 'B' })} />
+            {showBoardbreakerKpi ? <KpiCard label="Boardbreakers" value={kpiWithPct(boardbreakersB, kpiB.main)} tone="boardbreaker" clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'boardbreaker', side: 'B' })} /> : null}
           </>
         ) : (
           <KpiCard label="Esperando" value="—" tone="neutral" />
@@ -271,23 +271,14 @@ export function ComparisonScreen() {
           />
         ) : null}
 
-        {importedDeckBuilder && !buildBReady && pendingCount > 0 ? (
+        {importedDeckBuilder && pendingCount > 0 ? (
           <div
-            className="comparison-kpi-card grid gap-1 px-2.5 py-2 cursor-pointer hover:brightness-125 transition-[filter] border-l-2 border-amber-400"
+            className="comparison-kpi-card grid gap-1 px-2.5 py-2 cursor-pointer hover:brightness-125 transition-[filter] border-l-2 border-(--primary)"
             style={{ background: 'rgb(var(--background-rgb))' }}
             onClick={() => setShowCardList(true)}
           >
-            <strong className="text-[0.76rem] text-amber-300">Build B necesita revisión</strong>
-            <p className="m-0 text-[0.68rem] text-(--text-muted)">{formatInteger(pendingCount)} carta{pendingCount === 1 ? '' : 's'} pendiente{pendingCount === 1 ? '' : 's'}. Click para categorizar.</p>
-          </div>
-        ) : null}
-
-        {importedDeckBuilder && pendingCount > 0 ? (
-          <div
-            className="comparison-kpi-card grid gap-1 px-2.5 py-2 border-l-2 border-amber-400"
-            style={{ background: 'rgb(var(--background-rgb))' }}
-          >
-            <p className="m-0 text-[0.68rem] text-amber-300">La comparación todavía no es confiable: Build B tiene cartas sin revisar.</p>
+            <strong className="text-[0.76rem] text-(--text-muted)">{formatInteger(pendingCount)} carta{pendingCount === 1 ? '' : 's'} sin revisar</strong>
+            <p className="m-0 text-[0.68rem] text-(--text-muted)">La comparación puede no ser confiable. Click para categorizar.</p>
           </div>
         ) : null}
 
@@ -434,12 +425,12 @@ function DeckGridB({ cards, zone, onCardClick }: { cards: DeckCardInstance[]; zo
             key={`${card.instanceId}-${i}`}
             className={[
               'min-w-0 cursor-pointer relative',
-              needsReview ? 'rounded-sm' : '',
+              needsReview ? 'rounded-sm hover:brightness-125 transition-[filter]' : '',
             ].join(' ')}
             onClick={() => onCardClick?.(card)}
           >
             <CardArt remoteUrl={card.apiCard.imageUrlSmall} name={card.name} className="block aspect-[0.72] w-full min-w-0 bg-input object-cover" limitCard={card.apiCard} limitBadgeSize="sm" />
-            {needsReview ? <div className="absolute inset-0 rounded-sm bg-amber-400/30 pointer-events-none" /> : null}
+            {needsReview ? <div className="absolute inset-0 rounded-sm bg-[rgb(var(--primary-rgb)/0.25)] pointer-events-none ring-1 ring-inset ring-[rgb(var(--primary-rgb)/0.4)]" /> : null}
           </div>
         )
       })}
