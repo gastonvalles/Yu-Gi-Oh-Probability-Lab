@@ -49,7 +49,7 @@ export function buildYdkText(deckBuilder: DeckBuilderState): string {
     ...buildZoneYdkLines(deckBuilder.side),
   ]
 
-  return lines.join('\r\n')
+  return lines.join('\r\n') + '\r\n'
 }
 
 function buildZoneYdkLines(cards: DeckCardInstance[]): string[] {

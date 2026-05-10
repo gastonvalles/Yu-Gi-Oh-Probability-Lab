@@ -88,7 +88,7 @@ export function exportYdk(state: AppState): string {
     ...state.deckBuilder.side.map((card) => String(card.apiCard.ygoprodeckId)),
   ]
 
-  return lines.join('\n')
+  return lines.join('\n') + '\n'
 }
 
 export function parseYdk(text: string): { main: number[]; extra: number[]; side: number[] } {
