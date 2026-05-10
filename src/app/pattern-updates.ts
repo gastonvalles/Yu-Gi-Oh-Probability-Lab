@@ -14,6 +14,7 @@ import {
   buildReusePolicy,
   createMatcherFromGroupKey,
   createMatcherFromSource,
+  getPatternMatchMode,
   resolvePatternLogic,
   updateConditionCardPool,
 } from './patterns'
@@ -29,7 +30,8 @@ export function addRequirement(
     }
 
     const conditions = [...pattern.conditions, createPatternRequirement(undefined, pattern.kind)]
-    const nextLogic = resolvePatternLogic('all', conditions.length, pattern.minimumConditionMatches)
+    const currentMode = getPatternMatchMode(pattern)
+    const nextLogic = resolvePatternLogic(currentMode, conditions.length, pattern.minimumConditionMatches)
 
     return {
       ...pattern,
