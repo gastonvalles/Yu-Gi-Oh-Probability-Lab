@@ -114,7 +114,7 @@ export function DeckZone({
         '--deck-zone-card-gap': '0px',
         '--deck-zone-desktop-columns': String(resolvedDesktopCompactColumnCount),
         gap: classicRowGap,
-        minHeight: 0,
+        minHeight: cards.length === 0 ? '3.5rem' : 0,
         maxHeight: classicZoneMaxHeight,
         padding: '0',
         border: `1px solid ${classicBorderColor}`,

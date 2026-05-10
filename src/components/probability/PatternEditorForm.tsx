@@ -172,28 +172,29 @@ export function PatternEditorForm({
 
         <div className="grid gap-3 pt-3">
           <section className="grid gap-2.5">
-            <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="grid gap-0.5">
                 <small className="app-muted text-[0.68rem] uppercase tracking-widest">Reutilización</small>
-                <strong className="text-[0.92rem] text-(--text-main)">Cómo comparte cartas entre condiciones</strong>
+                <strong className="text-[0.92rem] text-(--text-main)">¿Una carta puede cubrir varias condiciones?</strong>
               </div>
 
-              <div className="flex flex-wrap gap-1.5">
-                <Button
-                  variant={allowsSharedCards(pattern) ? 'primary' : 'secondary'}
-                  size="sm"
-                  onClick={() => actions.setPatternAllowSharedCards(pattern.id, true)}
-                >
-                  Permitir reutilización
-                </Button>
-                <Button
-                  variant={allowsSharedCards(pattern) ? 'secondary' : 'primary'}
-                  size="sm"
-                  onClick={() => actions.setPatternAllowSharedCards(pattern.id, false)}
-                >
-                  Prohibir reutilización
-                </Button>
-              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={allowsSharedCards(pattern)}
+                className={[
+                  'relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors',
+                  allowsSharedCards(pattern) ? 'bg-(--primary)' : 'bg-(--border-subtle)',
+                ].join(' ')}
+                onClick={() => actions.setPatternAllowSharedCards(pattern.id, !allowsSharedCards(pattern))}
+              >
+                <span
+                  className={[
+                    'pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform',
+                    allowsSharedCards(pattern) ? 'translate-x-5' : 'translate-x-0.5',
+                  ].join(' ')}
+                />
+              </button>
             </div>
 
             <p className="pattern-editor-inline-note m-0">{patternPreview.reuse}</p>

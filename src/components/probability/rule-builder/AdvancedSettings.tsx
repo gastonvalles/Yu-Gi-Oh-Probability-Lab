@@ -34,22 +34,23 @@ export function AdvancedSettings({ pattern, actions }: AdvancedSettingsProps) {
         <span className="app-muted text-[0.72rem] leading-[1.14]">
           ¿Una carta puede cubrir varias condiciones?
         </span>
-        <div className="flex flex-wrap gap-1.5">
-          <Button
-            variant={allowsSharedCards(pattern) ? 'primary' : 'secondary'}
-            size="sm"
-            onClick={() => actions.setPatternAllowSharedCards(pattern.id, true)}
-          >
-            Sí
-          </Button>
-          <Button
-            variant={allowsSharedCards(pattern) ? 'secondary' : 'primary'}
-            size="sm"
-            onClick={() => actions.setPatternAllowSharedCards(pattern.id, false)}
-          >
-            No
-          </Button>
-        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={allowsSharedCards(pattern)}
+          className={[
+            'relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors',
+            allowsSharedCards(pattern) ? 'bg-(--primary)' : 'bg-(--border-subtle)',
+          ].join(' ')}
+          onClick={() => actions.setPatternAllowSharedCards(pattern.id, !allowsSharedCards(pattern))}
+        >
+          <span
+            className={[
+              'pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform',
+              allowsSharedCards(pattern) ? 'translate-x-5' : 'translate-x-0.5',
+            ].join(' ')}
+          />
+        </button>
       </div>
 
       {/* Minimum matches (at-least mode) */}
