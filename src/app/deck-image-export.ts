@@ -1,4 +1,4 @@
-import { downloadCanvasAsPng, downloadTextAsTxt } from './deck-image-export-download'
+import { downloadCanvasAsPng, downloadTextAsTxt, downloadTextAsYdk } from './deck-image-export-download'
 import { renderDeckAsCanvas } from './deck-image-export-render'
 import type { DeckBuilderState, DeckCardInstance } from './model'
 import type { DeckFormat } from '../types'
@@ -9,6 +9,7 @@ export async function exportDeckAssets(deckBuilder: DeckBuilderState, deckFormat
 
   await downloadCanvasAsPng(canvas, filenameBase)
   downloadTextAsTxt(buildDecklistText(deckBuilder), filenameBase)
+  downloadTextAsYdk(buildYdkText(deckBuilder), filenameBase)
 }
 
 export function buildDecklistText(deckBuilder: DeckBuilderState): string {
@@ -34,4 +35,23 @@ function buildZoneDecklistLines(cards: DeckCardInstance[]): string[] {
   }
 
   return [...counts.entries()].map(([name, count]) => `${count} ${name}`)
+}
+
+
+export function buildYdkText(deckBuilder: DeckBuilderState): string {
+  const lines = [
+    '#created by YGO Probability Lab',
+    '#main',
+    ...buildZoneYdkLines(deckBuilder.main),
+    '#extra',
+    ...buildZoneYdkLines(deckBuilder.extra),
+    '!side',
+    ...buildZoneYdkLines(deckBuilder.side),
+  ]
+
+  return lines.join('\r\n')
+}
+
+function buildZoneYdkLines(cards: DeckCardInstance[]): string[] {
+  return cards.map((card) => String(card.apiCard.ygoprodeckId))
 }

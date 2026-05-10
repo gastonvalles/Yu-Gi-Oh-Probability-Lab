@@ -94,7 +94,7 @@ export function DeckZone({
   const isClassicRailZone = isClassicBuilder && zone !== 'main'
   const isClassicMainOverlapZone =
     isClassicBuilder && zone === 'main' && cards.length > DESKTOP_COMPACT_MAIN_EXPAND_THRESHOLD
-  const classicZoneHeight = zone === 'main' ? '27.4rem' : '7rem'
+  const classicZoneMaxHeight = zone === 'main' ? '27.4rem' : '7rem'
   const classicBorderColor =
     dropState === 'valid'
       ? 'rgb(var(--accent-rgb) / 0.82)'
@@ -114,8 +114,8 @@ export function DeckZone({
         '--deck-zone-card-gap': '0px',
         '--deck-zone-desktop-columns': String(resolvedDesktopCompactColumnCount),
         gap: classicRowGap,
-        minHeight: classicZoneHeight,
-        height: classicZoneHeight,
+        minHeight: 0,
+        maxHeight: classicZoneMaxHeight,
         padding: '0',
         border: `1px solid ${classicBorderColor}`,
         borderRadius: '0',
@@ -167,7 +167,7 @@ export function DeckZone({
       <CardArt
         remoteUrl={card.apiCard.imageUrlSmall}
         name={card.name}
-        className="block h-auto w-full min-w-0 bg-[var(--input)]"
+        className="block h-auto w-full min-w-0 bg-input"
         limitCard={card.apiCard}
       />
     </article>
@@ -253,8 +253,8 @@ export function DeckZone({
     <section className="deck-zone-shell w-full bg-transparent p-0">
       <div className="mb-1.5 flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <h3 className="m-0 break-words text-[1.05rem] leading-none">{title}</h3>
-          <p className="m-0 mt-[0.08rem] break-words text-[0.82rem] leading-[1.12] text-[var(--text-muted)]">
+          <h3 className="m-0 wrap-break-word text-[1.05rem] leading-none">{title}</h3>
+          <p className="m-0 mt-[0.08rem] wrap-break-word text-[0.82rem] leading-[1.12] text-(--text-muted)">
             {headerSummary}
           </p>
         </div>
@@ -302,7 +302,7 @@ export function DeckZone({
             <CardArt
               remoteUrl={card.apiCard.imageUrlSmall}
               name={card.name}
-              className="block aspect-[0.72] w-full min-w-0 bg-[var(--input)] object-cover"
+              className="block aspect-[0.72] w-full min-w-0 bg-input object-cover"
               limitCard={card.apiCard}
             />
           </article>

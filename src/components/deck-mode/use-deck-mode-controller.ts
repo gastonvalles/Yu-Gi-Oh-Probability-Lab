@@ -449,7 +449,7 @@ export function useDeckModeController() {
 
     try {
       await exportDeckAssets(deckBuilder, settings.deckFormat)
-      showToast('Imagen y TXT del deck descargados.', 'success')
+      showToast('PNG, TXT y YDK del deck descargados.', 'success')
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'No se pudo exportar el deck.', 'error')
     }

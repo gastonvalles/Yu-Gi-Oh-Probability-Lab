@@ -388,7 +388,6 @@ function DeckGrid({ cards, zone, onCardClick }: { cards: DeckCardInstance[]; zon
       style={{
         background: `linear-gradient(180deg, ${t.bg}, rgb(var(--background-rgb) / 0.98))`,
         border: `1px solid ${t.border}`,
-        borderRadius: 'var(--radius-panel)',
       }}
     >
       {cards.map((card, i) => (
@@ -415,7 +414,6 @@ function DeckGridB({ cards, zone, onCardClick }: { cards: DeckCardInstance[]; zo
       style={{
         background: `linear-gradient(180deg, ${t.bg}, rgb(var(--background-rgb) / 0.98))`,
         border: `1px solid ${t.border}`,
-        borderRadius: 'var(--radius-panel)',
       }}
     >
       {cards.map((card, i) => {

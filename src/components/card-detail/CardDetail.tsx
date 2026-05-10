@@ -50,7 +50,7 @@ export function CardDetail({
   }
 
   return (
-    <section className="flex min-h-0 flex-col bg-[var(--card-background)] text-(--text-main)">
+    <section className="flex min-h-0 flex-col bg-card-background text-(--text-main)">
       <div className="relative min-h-0 overflow-y-auto px-3 pb-3 pt-3 min-[860px]:px-6 min-[860px]:pb-5 min-[860px]:pt-5">
         {!isMobileLayout ? (
           <div className="absolute right-3 top-3 z-10 min-[860px]:right-6 min-[860px]:top-5">
@@ -68,13 +68,13 @@ export function CardDetail({
               'grid gap-3',
               isMobileLayout
                 ? 'content-start'
-                : 'content-start min-[860px]:grid-cols-[18.75rem_minmax(0,1fr)] min-[860px]:items-start min-[860px]:gap-6',
+                : 'content-start min-[860px]:grid-cols-[22rem_minmax(0,1fr)] min-[860px]:items-start min-[860px]:gap-6',
             ].join(' ')}
           >
             {isMobileLayout ? (
               <div className="grid gap-3">
                 <header className="surface-card relative px-10 py-1.5 text-center">
-                  <h2 className="m-0 break-words text-[1.1rem] font-semibold leading-none tracking-[-0.025em] text-(--text-main)">
+                  <h2 className="m-0 wrap-break-word text-[1.1rem] font-semibold leading-none tracking-[-0.025em] text-(--text-main)">
                     {card.name}
                   </h2>
                   <CloseButton
@@ -86,7 +86,7 @@ export function CardDetail({
                 </header>
 
                 <div className="grid justify-items-center">
-                  <div className="w-full max-w-[15rem]">
+                  <div className="w-full max-w-60">
                     <CardArt
                       remoteUrl={card.imageUrl ?? card.imageUrlSmall}
                       name={card.name}
@@ -99,18 +99,18 @@ export function CardDetail({
 
                 <section className="surface-card grid gap-2 px-3 py-2.5">
                   <div className="grid gap-1">
-                    <p className="m-0 whitespace-pre-wrap break-words text-[0.94rem] font-semibold leading-[1.22] text-(--text-main)">
+                    <p className="m-0 whitespace-pre-wrap wrap-break-word text-[0.94rem] font-semibold leading-[1.22] text-(--text-main)">
                       {mobileSummary?.typeLine}
                     </p>
 
                     {mobileSummary?.statLine ? (
-                      <p className="m-0 whitespace-pre-wrap break-words text-[0.92rem] font-semibold leading-[1.2] text-(--text-main)">
+                      <p className="m-0 whitespace-pre-wrap wrap-break-word text-[0.92rem] font-semibold leading-[1.2] text-(--text-main)">
                         {mobileSummary.statLine}
                       </p>
                     ) : null}
 
                     {mobileMetaParts.length > 0 ? (
-                      <p className="app-muted m-0 whitespace-pre-wrap break-words text-[0.74rem] leading-[1.2]">
+                      <p className="app-muted m-0 whitespace-pre-wrap wrap-break-word text-[0.74rem] leading-[1.2]">
                         {mobileMetaParts.join(' · ')}
                       </p>
                     ) : null}
@@ -118,7 +118,7 @@ export function CardDetail({
 
                   <div className="h-px bg-[rgb(var(--border-rgb)/0.9)]" />
 
-                  <p className="m-0 whitespace-pre-wrap break-words text-[0.94rem] leading-[1.38] text-(--text-main)">
+                  <p className="m-0 whitespace-pre-wrap wrap-break-word text-[0.94rem] leading-[1.38] text-(--text-main)">
                     {card.description?.trim().length ? card.description : 'No card text available.'}
                   </p>
                 </section>
@@ -164,10 +164,10 @@ export function CardDetail({
                           key={fact.label}
                           className="surface-card px-4 py-3"
                         >
-                          <small className="app-muted block text-[0.8rem] leading-none">
+                          <small className="app-muted block text-[0.84rem] leading-none">
                             {fact.label}
                           </small>
-                          <strong className="mt-2 flex items-center gap-2 break-words text-[0.98rem] font-semibold leading-[1.15] text-(--text-main) min-[860px]:text-[1.02rem]">
+                          <strong className="mt-2 flex items-center gap-2 wrap-break-word text-[1.05rem] font-semibold leading-[1.15] text-(--text-main) min-[860px]:text-[1.1rem]">
                             <span className="flex h-[1.1rem] w-[1.1rem] shrink-0 items-center justify-center text-(--text-main)">
                               <FactIconGlyph kind={fact.icon} />
                             </span>
@@ -182,7 +182,7 @@ export function CardDetail({
                     <h3 className="m-0 text-[1.55rem] font-semibold leading-none tracking-[-0.02em] text-(--text-main) min-[860px]:text-[2rem]">
                       Card Text
                     </h3>
-                    <p className="m-0 whitespace-pre-wrap break-words text-[1.02rem] leading-[1.42] text-(--text-main)">
+                    <p className="m-0 whitespace-pre-wrap wrap-break-word text-[1.1rem] leading-[1.45] text-(--text-main)">
                       {card.description?.trim().length ? card.description : 'No card text available.'}
                     </p>
                   </section>
@@ -245,7 +245,7 @@ export function CardDetailSkeleton({
   const actionCount = isMobileLayout ? 2 : 3
 
   return (
-    <section className="flex min-h-0 flex-col bg-[var(--card-background)] text-(--text-main)">
+    <section className="flex min-h-0 flex-col bg-card-background text-(--text-main)">
       <div className="relative min-h-0 overflow-y-auto px-3 pb-3 pt-3 min-[860px]:px-6 min-[860px]:pb-5 min-[860px]:pt-5">
         {!isMobileLayout ? (
           <div className="absolute right-3 top-3 z-10 min-[860px]:right-6 min-[860px]:top-5">
@@ -263,13 +263,13 @@ export function CardDetailSkeleton({
               'grid gap-3',
               isMobileLayout
                 ? 'content-start'
-                : 'content-start min-[860px]:grid-cols-[18.75rem_minmax(0,1fr)] min-[860px]:items-start min-[860px]:gap-6',
+                : 'content-start min-[860px]:grid-cols-[22rem_minmax(0,1fr)] min-[860px]:items-start min-[860px]:gap-6',
             ].join(' ')}
           >
             {isMobileLayout ? (
               <div className="grid gap-3">
                 <header className="surface-card relative px-10 py-1.5 text-center">
-                  <Skeleton radius="none" className="mx-auto h-5 w-[11rem] max-w-full" />
+                  <Skeleton radius="none" className="mx-auto h-5 w-44 max-w-full" />
                   <CloseButton
                     size="sm"
                     className="absolute right-2 top-1/2 -translate-y-1/2"
@@ -279,7 +279,7 @@ export function CardDetailSkeleton({
                 </header>
 
                 <div className="grid justify-items-center">
-                  <Skeleton radius="none" className="aspect-[421/614] w-full max-w-[15rem]" />
+                  <Skeleton radius="none" className="aspect-421/614 w-full max-w-60" />
                 </div>
 
                 <section className="surface-card grid gap-2 px-3 py-2.5">
@@ -304,7 +304,7 @@ export function CardDetailSkeleton({
               <>
                 <aside className="grid content-start gap-3">
                   <div className="grid content-start gap-3">
-                    <Skeleton radius="none" className="aspect-[421/614] w-full" />
+                    <Skeleton radius="none" className="aspect-421/614 w-full" />
 
                     <div className="flex flex-wrap justify-center gap-1.5">
                       <Skeleton radius="chip" className="h-7 w-16" />
@@ -316,7 +316,7 @@ export function CardDetailSkeleton({
 
                 <div className="grid min-w-0 content-start gap-5">
                   <header className="grid gap-1.5">
-                    <Skeleton radius="none" className="h-14 max-w-full w-[26rem]" />
+                    <Skeleton radius="none" className="h-14 max-w-full w-104" />
                   </header>
 
                   <section className="grid gap-2 min-[640px]:grid-cols-2 min-[860px]:grid-cols-3">
