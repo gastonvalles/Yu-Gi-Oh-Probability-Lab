@@ -19,7 +19,7 @@ export interface KpiDetailResult {
   percentage: number
 }
 
-export type KpiRole = 'starter' | 'handtrap' | 'brick' | 'boardbreaker'
+export type KpiRole = 'starter' | 'extender' | 'handtrap' | 'brick' | 'boardbreaker'
 
 /**
  * Filters main deck cards by role category, deduplicates by ygoprodeckId,

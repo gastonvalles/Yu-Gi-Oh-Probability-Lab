@@ -31,11 +31,13 @@ export type PatternMatchMode = 'all' | 'any' | 'at-least'
 export type HandPatternCategory = PatternKind
 export type RequirementKind = 'include' | 'exclude'
 export type RequirementSource = 'cards' | 'group' | 'attribute' | 'level' | 'type' | 'atk' | 'def'
+export type CardType = 'monster' | 'spell' | 'trap'
 export type Matcher =
   | { type: 'origin'; value: CardOrigin }
   | { type: 'role'; value: CardRole }
   | { type: 'card'; value: string }
   | { type: 'card_pool'; value: string[] }
+  | { type: 'card_type'; value: CardType }
   | { type: 'attribute'; value: CardAttribute }
   | { type: 'level'; value: number }
   | { type: 'monster_type'; value: string }

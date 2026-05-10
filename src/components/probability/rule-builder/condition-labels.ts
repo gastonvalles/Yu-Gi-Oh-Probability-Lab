@@ -48,6 +48,8 @@ export function getConditionLabel(
       if (names.length === 1) return names[0]!
       return `${names[0]} +${formatInteger(names.length - 1)} más`
     }
+    case 'card_type':
+      return matcher.value === 'monster' ? 'Monstruo' : matcher.value === 'spell' ? 'Magia' : 'Trampa'
     case 'attribute':
       return `Atributo ${matcher.value}`
     case 'level':

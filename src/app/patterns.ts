@@ -2,6 +2,7 @@ import type {
   CardAttribute,
   CardGroupKey,
   CardEntry,
+  CardType,
   HandPattern,
   HandPatternCategory,
   Matcher,
@@ -152,6 +153,7 @@ export function getConditionSource(
       return 'attribute'
     case 'level':
       return 'level'
+    case 'card_type':
     case 'monster_type':
       return 'type'
     case 'atk':
@@ -354,6 +356,16 @@ export function resolveConditionCardIds(
     return [...new Set(matcher.value.filter(Boolean))]
   }
 
+  if (matcher.type === 'card_type') {
+    return [
+      ...new Set(
+        [...cards]
+          .filter((card) => matchesCardType(card, matcher.value))
+          .map((card) => card.id),
+      ),
+    ]
+  }
+
   return [
     ...new Set(
       [...cards]
@@ -378,4 +390,19 @@ function createMatcherGroupKey(matcher: Extract<Matcher, { type: 'origin' | 'rol
   return matcher.type === 'origin'
     ? createOriginGroupKey(matcher.value)
     : createRoleGroupKey(matcher.value)
+}
+
+function matchesCardType(card: CardEntry, cardType: CardType): boolean {
+  const ct = card.apiCard?.cardType.toLowerCase() ?? ''
+
+  switch (cardType) {
+    case 'monster':
+      return ct.includes('monster')
+    case 'spell':
+      return ct.includes('spell')
+    case 'trap':
+      return ct.includes('trap')
+    default:
+      return false
+  }
 }

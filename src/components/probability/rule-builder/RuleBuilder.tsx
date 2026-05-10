@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 
 import type { CardEntry, HandPattern } from '../../../types'
 import { getPatternMatchMode, normalizeMinimumConditionMatches } from '../../../app/patterns'
@@ -11,14 +11,12 @@ import { ConditionBlock } from './ConditionBlock'
 import { KindToggle } from './KindToggle'
 import { getConnectorWord, LogicSelector } from './LogicSelector'
 import { PatternNameInput } from './PatternNameInput'
-import { QuickTemplates } from './QuickTemplates'
 
 interface RuleBuilderProps {
   actions: PatternEditorActions
   derivedMainCards: CardEntry[]
   isPendingCreation: boolean
   onRequestDelete: (patternId: string) => void
-  onSwitchPattern?: (newPatternId: string) => void
   pattern: HandPattern
   probability: number | null
 }
@@ -28,12 +26,9 @@ export function RuleBuilder({
   derivedMainCards,
   isPendingCreation,
   onRequestDelete,
-  onSwitchPattern,
   pattern,
   probability: _probability,
 }: RuleBuilderProps) {
-  const [templateDismissed, setTemplateDismissed] = useState(false)
-
   const cardById = useMemo(
     () => new Map(derivedMainCards.map((card) => [card.id, card])),
     [derivedMainCards],
@@ -49,19 +44,9 @@ export function RuleBuilder({
   const conditionCount = pattern.conditions.length
   const connector = getConnectorWord(matchMode)
 
-  const hasDefinedMatchers = pattern.conditions.some((c) => c.matcher !== null)
-  const showEmptyState = isPendingCreation && !hasDefinedMatchers && !templateDismissed
-
-  const handleTemplateApplied = (newPatternId: string) => {
-    setTemplateDismissed(true)
-    onSwitchPattern?.(newPatternId)
-  }
-
-  const handleCreateFromScratch = () => {
-    if (conditionCount === 0) {
-      actions.addRequirement(pattern.id)
-    }
-    setTemplateDismissed(true)
+  // Auto-add first condition when creating from scratch
+  if (isPendingCreation && conditionCount === 0) {
+    actions.addRequirement(pattern.id)
   }
 
   return (
@@ -82,46 +67,8 @@ export function RuleBuilder({
         />
       </div>
 
-      {showEmptyState ? (
-        /* Guided empty state */
-        <section className="grid gap-3">
-          <div className="grid gap-1">
-            <h3 className="m-0 text-[0.96rem] leading-none text-(--text-main)">
-              {pattern.kind === 'opening'
-                ? '¿Con qué necesitás salir?'
-                : '¿Qué querés evitar en tu mano?'}
-            </h3>
-            <p className="app-muted m-0 text-[0.76rem] leading-[1.16]">
-              Elegí un punto de partida:
-            </p>
-          </div>
-
-          <QuickTemplates
-            derivedMainCards={derivedMainCards}
-            actions={actions}
-            patternId={pattern.id}
-            patternKind={pattern.kind}
-            onTemplateApplied={handleTemplateApplied}
-          />
-
-          <div className="flex items-center gap-3">
-            <span className="h-px flex-1 bg-(--border-subtle)" />
-            <span className="text-[0.72rem] text-(--text-soft)">o</span>
-            <span className="h-px flex-1 bg-(--border-subtle)" />
-          </div>
-
-          <Button
-            variant="secondary"
-            size="sm"
-            className="justify-self-center"
-            onClick={handleCreateFromScratch}
-          >
-            Crear desde cero
-          </Button>
-        </section>
-      ) : (
-        /* Full editor */
-        <div className="grid gap-3">
+      {/* Full editor */}
+      <div className="grid gap-3">
           {/* Logic selector (only when > 0 conditions) */}
           {conditionCount > 0 ? (
             <LogicSelector
@@ -135,7 +82,7 @@ export function RuleBuilder({
 
           {/* Conditions */}
           {conditionCount === 0 ? (
-            <p className="surface-card m-0 px-3 py-2.5 text-[0.78rem] text-(--text-muted)">
+            <p className="surface-card m-0 px-3 py-2.5 text-[0.88rem] text-(--text-muted)">
               Esta regla todavía no tiene condiciones.
             </p>
           ) : (
@@ -144,7 +91,7 @@ export function RuleBuilder({
                 <div key={condition.id} className="grid gap-0">
                   {index > 0 ? (
                     <div className="flex justify-center py-1">
-                      <span className="text-[0.7rem] font-medium uppercase tracking-widest text-(--text-soft)">
+                      <span className="text-[0.8rem] font-medium uppercase tracking-widest text-(--text-soft)">
                         {connector}
                       </span>
                     </div>
@@ -174,23 +121,23 @@ export function RuleBuilder({
           </Button>
 
           {/* Advanced settings */}
-          <AdvancedSettings pattern={pattern} actions={actions} />
+          <AdvancedSettings pattern={pattern} actions={actions} derivedMainCards={derivedMainCards} />
 
           {/* Delete */}
           <section className="border-t border-(--border-subtle) pt-3">
-            <p className="app-muted m-0 mb-2 text-[0.72rem] leading-[1.14]">
+            <p className="app-muted m-0 mb-2 text-[0.82rem] leading-[1.14]">
               Eliminar esta regla la saca del análisis y cambia el resultado inmediatamente.
             </p>
             <Button
               variant="tertiary"
               size="sm"
+              className="text-destructive hover:bg-[rgb(var(--danger-rgb)/0.1)]"
               onClick={() => onRequestDelete(pattern.id)}
             >
               Eliminar regla
             </Button>
           </section>
         </div>
-      )}
     </div>
   )
 }

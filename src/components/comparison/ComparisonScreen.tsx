@@ -128,6 +128,9 @@ export function ComparisonScreen() {
 
   const showBoardbreakerKpi = boardbreakersA > 0 || boardbreakersB > 0
 
+  const roleTotalA = kpiA.starters + kpiA.extenders + kpiA.handtraps + kpiA.bricks + boardbreakersA
+  const roleTotalB = kpiB ? kpiB.starters + kpiB.extenders + kpiB.handtraps + kpiB.bricks + boardbreakersB : 0
+
   // Handle import: reset editsMap
   const handleApplyImport = useCallback((deck: DeckBuilderState) => {
     setImportedDeckBuilder(deck)
@@ -154,13 +157,15 @@ export function ComparisonScreen() {
         <p className="m-0 text-[0.62rem] uppercase tracking-widest text-(--text-muted)">Tu deck actual</p>
         <DeckModelStatusBadge modelStatus={modelStatusA} variant="compact" />
         <KpiCard label="Main Deck" value={`${formatInteger(kpiA.main)} (100%)`} tone="neutral" />
-        <KpiCard label="Starters" value={kpiWithPct(kpiA.starters, kpiA.main)} tone="positive" clickable onClick={() => setKpiModalState({ role: 'starter', side: 'A' })} />
-        <KpiCard label="Handtraps" value={kpiWithPct(kpiA.handtraps, kpiA.main)} tone="info" clickable onClick={() => setKpiModalState({ role: 'handtrap', side: 'A' })} />
-        <KpiCard label="Bricks" value={kpiWithPct(kpiA.bricks, kpiA.main)} tone="negative" clickable onClick={() => setKpiModalState({ role: 'brick', side: 'A' })} />
-        {showBoardbreakerKpi ? <KpiCard label="Boardbreakers" value={kpiWithPct(boardbreakersA, kpiA.main)} tone="boardbreaker" clickable onClick={() => setKpiModalState({ role: 'boardbreaker', side: 'A' })} /> : null}
+        <KpiCard label="Starters" value={kpiWithPct(kpiA.starters, roleTotalA)} tone="positive" clickable onClick={() => setKpiModalState({ role: 'starter', side: 'A' })} />
+        <KpiCard label="Extenders" value={kpiWithPct(kpiA.extenders, roleTotalA)} tone="extender" clickable onClick={() => setKpiModalState({ role: 'extender', side: 'A' })} />
+        <KpiCard label="Handtraps" value={kpiWithPct(kpiA.handtraps, roleTotalA)} tone="info" clickable onClick={() => setKpiModalState({ role: 'handtrap', side: 'A' })} />
+        <KpiCard label="Bricks" value={kpiWithPct(kpiA.bricks, roleTotalA)} tone="negative" clickable onClick={() => setKpiModalState({ role: 'brick', side: 'A' })} />
+        {showBoardbreakerKpi ? <KpiCard label="Boardbreakers" value={kpiWithPct(boardbreakersA, roleTotalA)} tone="boardbreaker" clickable onClick={() => setKpiModalState({ role: 'boardbreaker', side: 'A' })} /> : null}
 
         <KpiPieChart
           starters={kpiA.starters}
+          extenders={kpiA.extenders}
           handtraps={kpiA.handtraps}
           bricks={kpiA.bricks}
           boardbreakers={boardbreakersA}
@@ -251,10 +256,11 @@ export function ComparisonScreen() {
         {kpiB ? (
           <>
             <KpiCard label="Main Deck" value={`${formatInteger(kpiB.main)} (100%)`} tone="neutral" />
-            <KpiCard label="Starters" value={kpiWithPct(kpiB.starters, kpiB.main)} tone="positive" clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'starter', side: 'B' })} />
-            <KpiCard label="Handtraps" value={kpiWithPct(kpiB.handtraps, kpiB.main)} tone="info" clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'handtrap', side: 'B' })} />
-            <KpiCard label="Bricks" value={kpiWithPct(kpiB.bricks, kpiB.main)} tone="negative" clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'brick', side: 'B' })} />
-            {showBoardbreakerKpi ? <KpiCard label="Boardbreakers" value={kpiWithPct(boardbreakersB, kpiB.main)} tone="boardbreaker" clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'boardbreaker', side: 'B' })} /> : null}
+            <KpiCard label="Starters" value={kpiWithPct(kpiB.starters, roleTotalB)} tone="positive" clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'starter', side: 'B' })} />
+            <KpiCard label="Extenders" value={kpiWithPct(kpiB.extenders, roleTotalB)} tone="extender" clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'extender', side: 'B' })} />
+            <KpiCard label="Handtraps" value={kpiWithPct(kpiB.handtraps, roleTotalB)} tone="info" clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'handtrap', side: 'B' })} />
+            <KpiCard label="Bricks" value={kpiWithPct(kpiB.bricks, roleTotalB)} tone="negative" clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'brick', side: 'B' })} />
+            {showBoardbreakerKpi ? <KpiCard label="Boardbreakers" value={kpiWithPct(boardbreakersB, roleTotalB)} tone="boardbreaker" clickable={!!importedDeckBuilder} onClick={() => setKpiModalState({ role: 'boardbreaker', side: 'B' })} /> : null}
           </>
         ) : (
           <KpiCard label="Esperando" value="—" tone="neutral" />
@@ -263,6 +269,7 @@ export function ComparisonScreen() {
         {kpiB ? (
           <KpiPieChart
             starters={kpiB.starters}
+            extenders={kpiB.extenders}
             handtraps={kpiB.handtraps}
             bricks={kpiB.bricks}
             boardbreakers={boardbreakersB}
@@ -532,6 +539,7 @@ function BuildBCardListModal({ cards, editsMap, onSelectCard, onClose }: {
 
 const KPI_PIE_SEGMENTS: { role: KpiRole; label: string; color: string; rgb: string }[] = [
   { role: 'starter', label: 'Starters', color: 'rgb(0, 255, 163)', rgb: '0, 255, 163' },
+  { role: 'extender', label: 'Extenders', color: 'rgb(168, 85, 247)', rgb: '168, 85, 247' },
   { role: 'handtrap', label: 'Handtraps', color: 'rgb(59, 130, 246)', rgb: '59, 130, 246' },
   { role: 'brick', label: 'Bricks', color: 'rgb(239, 68, 68)', rgb: '239, 68, 68' },
   { role: 'boardbreaker', label: 'Boardbreakers', color: 'rgb(245, 158, 11)', rgb: '245, 158, 11' },
@@ -569,8 +577,9 @@ function describeRing(cx: number, cy: number, r: number, startAngle: number, end
   ].join(' ')
 }
 
-function KpiPieChart({ starters, handtraps, bricks, boardbreakers, mainDeckSize, onSegmentClick }: {
+function KpiPieChart({ starters, extenders, handtraps, bricks, boardbreakers, mainDeckSize, onSegmentClick }: {
   starters: number
+  extenders: number
   handtraps: number
   bricks: number
   boardbreakers: number
@@ -580,7 +589,7 @@ function KpiPieChart({ starters, handtraps, bricks, boardbreakers, mainDeckSize,
   const data = KPI_PIE_SEGMENTS
     .map((seg) => ({
       ...seg,
-      count: seg.role === 'starter' ? starters : seg.role === 'handtrap' ? handtraps : seg.role === 'brick' ? bricks : boardbreakers,
+      count: seg.role === 'starter' ? starters : seg.role === 'extender' ? extenders : seg.role === 'handtrap' ? handtraps : seg.role === 'brick' ? bricks : boardbreakers,
     }))
     .filter((d) => d.count > 0)
 
@@ -596,8 +605,7 @@ function KpiPieChart({ starters, handtraps, bricks, boardbreakers, mainDeckSize,
   let currentAngle = -90
   const segments = data.map((d) => {
     const angle = (d.count / segmentTotal) * 360
-    // Percentage over main deck size (same as KPI cards)
-    const pct = mainDeckSize > 0 ? Math.round((d.count / mainDeckSize) * 100) : 0
+    const pct = segmentTotal > 0 ? Math.round((d.count / segmentTotal) * 100) : 0
     const seg = { ...d, startAngle: currentAngle, endAngle: currentAngle + angle, pct }
     currentAngle += angle
     return seg
@@ -829,9 +837,9 @@ function ComparisonResultModal({ verdict, rolesA, rolesB, deckSizeA, deckSizeB, 
 
 // ── Helpers ──
 
-function kpiWithPct(count: number, total: number): string {
-  if (total <= 0) return formatInteger(count)
-  const pct = ((count / total) * 100).toFixed(1)
+function kpiWithPct(count: number, roleTotal: number): string {
+  if (roleTotal <= 0) return formatInteger(count)
+  const pct = ((count / roleTotal) * 100).toFixed(1)
   return `${formatInteger(count)} (${pct}%)`
 }
 

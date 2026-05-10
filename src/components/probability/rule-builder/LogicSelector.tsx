@@ -59,7 +59,7 @@ export function LogicSelector({
           onClick={() => actions.setPatternMatchMode(patternId, 'at-least')}
         />
       </div>
-      <p className="app-muted m-0 text-[0.72rem] leading-[1.16]">
+      <p className="app-muted m-0 text-[0.82rem] leading-[1.16]">
         {getModeDescription(currentMode, minimumConditionMatches)}
       </p>
     </div>
@@ -85,7 +85,7 @@ function LogicOption({
       aria-disabled={disabled}
       disabled={disabled}
       className={[
-        'px-3 py-1.5 text-[0.78rem] font-medium transition-colors',
+        'px-3 py-1.5 text-[0.88rem] font-medium transition-colors',
         disabled
           ? 'cursor-not-allowed text-(--text-soft) opacity-40'
           : isActive

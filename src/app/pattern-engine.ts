@@ -281,6 +281,11 @@ function buildConditionSourceLabel(
     return getMonsterRequirementSourceLabel(condition.matcher) ?? 'Filtro de monstruos'
   }
 
+  if (condition.matcher?.type === 'card_type') {
+    const label = condition.matcher.value === 'monster' ? 'Monstruo' : condition.matcher.value === 'spell' ? 'Magia' : 'Trampa'
+    return `Tipo: ${label}`
+  }
+
   const cardIds = getConditionCardIds(condition)
 
   if (cardIds.length === 1 && cards.length === 1) {
@@ -292,6 +297,9 @@ function buildConditionSourceLabel(
 
 function formatRequirementPhrase<Key extends string | number>(requirement: ResolvedRequirement<Key>): string {
   if (requirement.source !== 'cards' && requirement.source !== 'group') {
+    if (requirement.sourceLabel.startsWith('Tipo:')) {
+      return formatCardTypeRequirementPhrase(requirement)
+    }
     return formatMonsterPropertyRequirementPhrase(requirement)
   }
 
@@ -344,6 +352,34 @@ function formatMonsterPropertyRequirementPhrase<Key extends string | number>(
   return requirement.quantity === 1
     ? `abrís 1 monstruo ${sourceLabel}`
     : `abrís ${requirement.quantity} monstruos ${sourceLabel}`
+}
+
+function formatCardTypeRequirementPhrase<Key extends string | number>(
+  requirement: ResolvedRequirement<Key>,
+): string {
+  const sourceLabel = requirement.sourceLabel
+
+  if (requirement.kind === 'exclude') {
+    if (requirement.distinct) {
+      return requirement.quantity === 1
+        ? `no abrís ninguna carta ${sourceLabel}`
+        : `no abrís ${requirement.quantity} o más nombres distintos de cartas ${sourceLabel}`
+    }
+
+    return requirement.quantity === 1
+      ? `no abrís ninguna carta ${sourceLabel}`
+      : `no abrís ${requirement.quantity} o más cartas ${sourceLabel}`
+  }
+
+  if (requirement.distinct) {
+    return requirement.quantity === 1
+      ? `abrís 1 carta ${sourceLabel}`
+      : `abrís ${requirement.quantity} nombres distintos de cartas ${sourceLabel}`
+  }
+
+  return requirement.quantity === 1
+    ? `abrís 1 carta ${sourceLabel}`
+    : `abrís ${requirement.quantity} cartas ${sourceLabel}`
 }
 
 function buildMatchPrefix(requirementLabels: string[], allowSharedCards: boolean): string {

@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 import type { PatternEditorActions } from '../pattern-editor-actions'
 
 interface PatternNameInputProps {
@@ -16,17 +18,37 @@ export function PatternNameInput({
   actions,
 }: PatternNameInputProps) {
   const placeholder = placeholderSummary || 'Nombre de la regla (opcional)'
+  const [localName, setLocalName] = useState(currentName)
+
+  // Sync from store when the external value changes (e.g. undo, preset applied)
+  useEffect(() => {
+    setLocalName(currentName)
+  }, [currentName])
+
+  const commitName = () => {
+    if (localName !== currentName) {
+      actions.setPatternName(patternId, localName)
+    }
+  }
 
   return (
     <label className="grid gap-1">
       <span className="app-muted text-[0.68rem] uppercase tracking-widest">Nombre</span>
       <input
         type="text"
-        value={currentName}
+        value={localName}
         autoFocus={isPendingCreation}
         placeholder={placeholder}
-        onChange={(event) => actions.setPatternName(patternId, event.target.value)}
-        className="app-field w-full px-2 py-[0.45rem] text-[0.84rem]"
+        onChange={(event) => setLocalName(event.target.value)}
+        onBlur={commitName}
+        onKeyDown={(event) => {
+          event.stopPropagation()
+          if (event.key === 'Enter') {
+            commitName()
+            ;(event.target as HTMLInputElement).blur()
+          }
+        }}
+        className="app-field w-full px-2 py-[0.45rem] text-[0.92rem]"
       />
     </label>
   )

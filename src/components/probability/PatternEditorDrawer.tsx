@@ -24,7 +24,6 @@ interface PatternEditorDrawerProps {
   onCreateCustom: () => void
   onRequestDelete: (patternId: string) => void
   onSelectPreset: (preset: PatternPreset) => void
-  onSwitchPattern?: (newPatternId: string) => void
   pattern: HandPattern | null
   patterns: HandPattern[]
   probability: number | null
@@ -49,7 +48,6 @@ export function PatternEditorDrawer({
   onCreateCustom,
   onRequestDelete,
   onSelectPreset,
-  onSwitchPattern,
   pattern,
   patterns,
   probability,
@@ -97,7 +95,7 @@ export function PatternEditorDrawer({
                 {isQuickAdd ? 'Agregar regla' : 'Editor de regla'}
               </p>
               <h3 className="m-[0.18rem_0_0] text-[1.05rem] leading-none text-(--text-main)">{drawerTitle}</h3>
-              <p className="app-muted m-[0.35rem_0_0] max-w-[48ch] text-[0.78rem] leading-[1.16]">
+              <p className="app-muted m-[0.35rem_0_0] text-[0.78rem] leading-[1.16]">
                 {drawerSubtitle}
               </p>
             </div>
@@ -117,8 +115,7 @@ export function PatternEditorDrawer({
           ) : (
             <div className="flex flex-wrap items-center gap-2">
               {currentImpactLabel ? (
-                <span className="surface-card px-2 py-1 text-[0.72rem] text-(--text-main)">
-                  <small className="app-muted mr-1 text-[0.65rem]">Impacto actual</small>
+                <span className="surface-card px-2 py-1 text-[0.78rem] font-medium text-(--text-main)">
                   {currentImpactLabel}
                 </span>
               ) : null}
@@ -218,7 +215,6 @@ export function PatternEditorDrawer({
               derivedMainCards={derivedMainCards}
               isPendingCreation={isPendingCreation}
               onRequestDelete={onRequestDelete}
-              onSwitchPattern={onSwitchPattern}
               pattern={pattern}
               probability={probability}
             />

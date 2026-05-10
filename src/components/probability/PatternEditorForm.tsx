@@ -175,7 +175,7 @@ export function PatternEditorForm({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="grid gap-0.5">
                 <small className="app-muted text-[0.68rem] uppercase tracking-widest">Reutilización</small>
-                <strong className="text-[0.92rem] text-(--text-main)">¿Una carta puede cubrir varias condiciones?</strong>
+                <strong className="text-[0.92rem] text-(--text-main)">¿La misma carta cuenta para más de una condición?</strong>
               </div>
 
               <button

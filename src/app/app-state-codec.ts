@@ -488,6 +488,14 @@ function parseMatcher(value: unknown): Matcher | null {
     )
   }
 
+  if (value.type === 'card_type' && typeof value.value === 'string') {
+    const cardType = value.value as string
+    if (cardType === 'monster' || cardType === 'spell' || cardType === 'trap') {
+      return { type: 'card_type', value: cardType }
+    }
+    return null
+  }
+
   if (value.type === 'attribute') {
     const attribute = parseCardAttribute(value.value)
     return attribute ? { type: 'attribute', value: attribute } : null

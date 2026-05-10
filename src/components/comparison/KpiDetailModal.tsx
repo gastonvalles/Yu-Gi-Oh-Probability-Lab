@@ -55,9 +55,6 @@ export function KpiDetailModal({
   if (!isOpen) return null
 
   const result = getKpiDetailCards(mainDeck, role, editsMap)
-  const pctStr = result.mainDeckSize > 0
-    ? `${(result.percentage * 100).toFixed(1)}%`
-    : '0%'
 
   return (
     <div
@@ -66,7 +63,7 @@ export function KpiDetailModal({
       onClick={onClose}
     >
       <div
-        className="surface-panel relative flex w-full max-w-lg min-h-0 max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden p-0 shadow-none"
+        className="surface-panel relative flex w-full max-w-2xl min-h-0 max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden p-0 shadow-none"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close button */}
@@ -94,7 +91,7 @@ export function KpiDetailModal({
                 ¿Qué cartas cuentan como {getRoleLabel(role)}?
               </h3>
               <p className="app-muted m-0 text-[0.76rem]">
-                {formatInteger(result.totalCopies)} carta{result.totalCopies === 1 ? '' : 's'} · {pctStr} del Main Deck
+                {formatInteger(result.totalCopies)} carta{result.totalCopies === 1 ? '' : 's'}
               </p>
             </div>
 
@@ -102,7 +99,7 @@ export function KpiDetailModal({
             {result.cards.length === 0 ? (
               <p className="app-muted m-0 py-6 text-center text-[0.84rem]">No hay cartas en esta categoría.</p>
             ) : (
-              <div className="grid gap-px">
+              <div className="grid grid-cols-1 gap-px min-[540px]:grid-cols-2">
                 {result.cards.map((card) => (
                   <button
                     key={card.ygoprodeckId}

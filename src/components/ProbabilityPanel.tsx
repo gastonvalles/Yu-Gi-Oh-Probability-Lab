@@ -621,11 +621,6 @@ function ProbabilityPanelContent({
         onCreateCustom={handleOpenCustomCreate}
         onRequestDelete={setPendingDeletePatternId}
         onSelectPreset={(preset) => handleSelectPreset(preset.id)}
-        onSwitchPattern={(newPatternId) => {
-          setSelectedPatternId(newPatternId)
-          setPendingCreatedPatternId(null)
-          setDrawerMode('edit')
-        }}
         pattern={selectedPattern}
         patterns={patterns}
         probability={selectedPatternProbability}
@@ -766,6 +761,7 @@ function buildKpiFeedback(
 
 const KPI_DONUT_COLORS: { role: string; color: string; rgb: string }[] = [
   { role: 'starter', color: 'rgb(0, 255, 163)', rgb: '0, 255, 163' },
+  { role: 'extender', color: 'rgb(168, 85, 247)', rgb: '168, 85, 247' },
   { role: 'handtrap', color: 'rgb(59, 130, 246)', rgb: '59, 130, 246' },
   { role: 'brick', color: 'rgb(239, 68, 68)', rgb: '239, 68, 68' },
   { role: 'boardbreaker', color: 'rgb(245, 158, 11)', rgb: '245, 158, 11' },
@@ -783,10 +779,11 @@ function describeDonutRing(cx: number, cy: number, r: number, startAngle: number
 }
 
 function KpiDonutChart({ derivedCards }: { derivedCards: CardEntry[] }) {
-  let starters = 0, handtraps = 0, bricks = 0, boardbreakers = 0
+  let starters = 0, extenders = 0, handtraps = 0, bricks = 0, boardbreakers = 0
   for (const c of derivedCards) {
     for (const r of c.roles) {
       if (r === 'starter') starters += c.copies
+      if (r === 'extender') extenders += c.copies
       if (r === 'handtrap') handtraps += c.copies
       if (r === 'brick' || r === 'garnet') bricks += c.copies
       if (r === 'boardbreaker') boardbreakers += c.copies
@@ -795,7 +792,7 @@ function KpiDonutChart({ derivedCards }: { derivedCards: CardEntry[] }) {
 
   const data = KPI_DONUT_COLORS.map((seg) => ({
     ...seg,
-    count: seg.role === 'starter' ? starters : seg.role === 'handtrap' ? handtraps : seg.role === 'brick' ? bricks : boardbreakers,
+    count: seg.role === 'starter' ? starters : seg.role === 'extender' ? extenders : seg.role === 'handtrap' ? handtraps : seg.role === 'brick' ? bricks : boardbreakers,
   })).filter((d) => d.count > 0)
 
   if (data.length === 0) return null
@@ -808,7 +805,7 @@ function KpiDonutChart({ derivedCards }: { derivedCards: CardEntry[] }) {
   let currentAngle = -90
   const segments = data.map((d) => {
     const angle = (d.count / segmentTotal) * 360
-    const pct = mainDeckSize > 0 ? Math.round((d.count / mainDeckSize) * 100) : 0
+    const pct = segmentTotal > 0 ? Math.round((d.count / segmentTotal) * 100) : 0
     const seg = { ...d, startAngle: currentAngle, endAngle: currentAngle + angle, pct }
     currentAngle += angle
     return seg

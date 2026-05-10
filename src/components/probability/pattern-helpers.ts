@@ -36,6 +36,11 @@ export const MATCHER_EDITOR_OPTIONS: Array<{
     description: 'Evalúa una lista manual de cartas.',
   },
   {
+    value: 'card_type',
+    label: 'Tipo de carta',
+    description: 'Evalúa por tipo general: Monstruo, Magia o Trampa.',
+  },
+  {
     value: 'attribute',
     label: 'Atributo',
     description: 'Evalúa monstruos por atributo.',
@@ -173,6 +178,13 @@ function buildConditionPreview(
       return buildSpecificCardPreview(requirement, selectedCards[0]?.name ?? 'la carta elegida')
     case 'card_pool':
       return buildCardPoolPreview(requirement, selectedCards)
+    case 'card_type':
+      return buildGenericCardPreview(
+        requirement,
+        requirement.matcher.value === 'monster' ? 'de tipo Monstruo'
+          : requirement.matcher.value === 'spell' ? 'de tipo Magia'
+          : 'de tipo Trampa',
+      )
     case 'role':
       return buildGenericCardPreview(
         requirement,
@@ -211,6 +223,8 @@ function buildMatcherSummaryLabel(
       return `Carta específica: ${selectedCards[0]?.name ?? 'sin seleccionar'}`
     case 'card_pool':
       return `Pool de cartas: ${selectedCards.length > 0 ? selectedCards.map((card) => card.name).join(', ') : 'vacío'}`
+    case 'card_type':
+      return `Tipo de carta: ${matcher.value === 'monster' ? 'Monstruo' : matcher.value === 'spell' ? 'Magia' : 'Trampa'}`
     case 'attribute':
       return `Filtro de monstruos: atributo ${matcher.value}`
     case 'level':
@@ -264,6 +278,8 @@ function buildCompactMatcherLabel(
       return selectedCards.length === 1
         ? selectedCards[0]?.name ?? 'pool'
         : 'pool manual'
+    case 'card_type':
+      return matcher.value === 'monster' ? 'Monstruo' : matcher.value === 'spell' ? 'Magia' : 'Trampa'
     case 'attribute':
       return `Atributo ${matcher.value}`
     case 'level':

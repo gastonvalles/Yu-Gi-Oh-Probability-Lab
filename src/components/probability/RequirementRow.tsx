@@ -279,6 +279,22 @@ export function RequirementRow({
                   </option>
                 ))}
               </select>
+            ) : matcherType === 'card_type' ? (
+              <select
+                value={requirement.matcher?.type === 'card_type' ? requirement.matcher.value : 'monster'}
+                onChange={(event) =>
+                  setMatcher(
+                    event.target.value
+                      ? { type: 'card_type', value: event.target.value as 'monster' | 'spell' | 'trap' }
+                      : null,
+                  )
+                }
+                className="app-field w-full px-2 py-[0.45rem] text-[0.84rem]"
+              >
+                <option value="monster">Monstruo</option>
+                <option value="spell">Magia</option>
+                <option value="trap">Trampa</option>
+              </select>
             ) : matcherType === 'attribute' ? (
               <select
                 value={selectedAttribute ?? ''}
@@ -494,6 +510,8 @@ function buildDefaultMatcherForType(
       }
 
       return createCardPoolMatcher(options.selectedCardIds)
+    case 'card_type':
+      return { type: 'card_type', value: 'monster' }
     case 'attribute':
       return options.attributeOptions[0] ? { type: 'attribute', value: options.attributeOptions[0].key } : null
     case 'level':
