@@ -866,11 +866,11 @@ export function DeckRolesPanel({
 
     const cardArtColumn = (
       <div className="grid content-start gap-2">
-        <div className="w-full min-[1101px]:w-[18rem]">
+        <div className="mx-auto max-h-[200px] w-auto min-[1101px]:mx-0 min-[1101px]:max-h-none min-[1101px]:w-[18rem]">
           <CardArt
             remoteUrl={selectedCard.apiCard?.imageUrl ?? selectedCard.apiCard?.imageUrlSmall ?? null}
             name={selectedCard.name}
-            className="block h-auto w-full bg-input"
+            className="block h-full max-h-[200px] w-auto min-[1101px]:h-auto min-[1101px]:max-h-none min-[1101px]:w-full bg-input"
             limitCard={selectedCard.apiCard}
           />
         </div>
@@ -884,7 +884,7 @@ export function DeckRolesPanel({
             <p className="app-kicker m-0 text-[0.64rem] uppercase tracking-widest">¿Dónde encaja en tu plan?</p>
           </div>
 
-	          <div className="grid gap-1.5 min-[860px]:grid-cols-3">
+	          <div className="grid grid-cols-3 gap-1.5">
 	            {CARD_ORIGIN_DEFINITIONS.map((definition) => {
 	              const active = selectedCard.origin === definition.key.value
 	              const muted = selectedCard.origin !== null && !active
@@ -901,7 +901,7 @@ export function DeckRolesPanel({
                     aria-pressed={active}
                     title={getOriginHelpText(definition.key.value)}
 	                    className={[
-	                      'classification-origin-option grid gap-1 p-2 text-left',
+	                      'classification-origin-option grid gap-0.5 p-1.5 text-left max-[1100px]:gap-0.5 max-[1100px]:p-1.5 min-[1101px]:gap-1 min-[1101px]:p-2',
 	                      active ? 'classification-origin-option-active' : '',
 	                      muted ? 'classification-origin-option-muted' : '',
 	                    ].join(' ')}
@@ -910,9 +910,9 @@ export function DeckRolesPanel({
                   >
                     <div className="flex items-center gap-2">
                       <span className="role-reference-mark shrink-0" />
-                      <strong className="text-[0.8rem] leading-none text-(--text-main)">{definition.label}</strong>
+                      <strong className="text-[0.72rem] leading-none text-(--text-main) min-[1101px]:text-[0.8rem]">{definition.label}</strong>
                     </div>
-                    <span className="app-muted text-[0.66rem] leading-[1.08]">{ORIGIN_BLURB_TEXT[definition.key.value]}</span>
+                    <span className="app-muted text-[0.6rem] leading-[1.08] max-[1100px]:hidden min-[1101px]:inline">{ORIGIN_BLURB_TEXT[definition.key.value]}</span>
                   </button>
                 </DefinitionTooltip>
               )
@@ -925,7 +925,7 @@ export function DeckRolesPanel({
             <p className="app-kicker m-0 text-[0.64rem] uppercase tracking-widest">¿Qué función cumple cuando la robás?</p>
           </div>
 
-          <div className="grid gap-2 min-[1101px]:grid-cols-3 min-[1101px]:items-stretch">
+          <div className="grid gap-1.5 max-[1100px]:grid-cols-1 max-[1100px]:gap-1 min-[1101px]:grid-cols-3 min-[1101px]:items-stretch">
           {ROLE_EDITOR_SECTIONS.map((section) => {
             const selectedCount = section.roles.reduce(
               (total, role) => total + (selectedCard.roles.includes(role) ? 1 : 0),
@@ -935,16 +935,16 @@ export function DeckRolesPanel({
             return (
               <article
                 key={section.title}
-                className="surface-card grid h-full grid-rows-[auto_minmax(0,1fr)] gap-1.5 p-2"
+                className="surface-card grid h-full grid-rows-[auto_minmax(0,1fr)] gap-1 p-1.5 max-[1100px]:gap-1 max-[1100px]:p-1.5 min-[1101px]:gap-1.5 min-[1101px]:p-2"
               >
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <strong className="text-[0.8rem] leading-none text-(--text-main)">{section.title}</strong>
-                  <span className="app-chip px-1.5 py-0.5 text-[0.62rem]">
+                <div className="flex flex-wrap items-start justify-between gap-1">
+                  <strong className="text-[0.72rem] leading-none text-(--text-main) min-[1101px]:text-[0.8rem]">{section.title}</strong>
+                  <span className="app-chip px-1 py-0.5 text-[0.58rem] min-[1101px]:px-1.5 min-[1101px]:text-[0.62rem]">
                     {formatInteger(selectedCount)} / {formatInteger(section.roles.length)}
                   </span>
                 </div>
 
-                <div className="grid content-start gap-1.5 min-[720px]:grid-cols-2">
+                <div className="grid content-start gap-1 grid-cols-2 max-[1100px]:gap-0.5 min-[720px]:grid-cols-2 min-[1101px]:gap-1.5">
                   {section.roles.map((role) => {
                     const definition = getCardRoleDefinition(role)
                     const active = selectedCard.roles.includes(role)
@@ -961,7 +961,7 @@ export function DeckRolesPanel({
                           aria-pressed={active}
                           title={getRoleHelpText(role)}
                           className={[
-                            'role-option-button min-w-0 w-full max-w-full px-2 py-[0.44rem] text-left text-[0.68rem] leading-[1.08] whitespace-normal',
+                            'role-option-button min-w-0 w-full max-w-full px-1.5 py-[0.3rem] text-left text-[0.62rem] leading-[1.08] whitespace-normal max-[1100px]:px-1.5 max-[1100px]:py-[0.3rem] max-[1100px]:text-[0.62rem] min-[1101px]:px-2 min-[1101px]:py-[0.44rem] min-[1101px]:text-[0.68rem]',
                             active ? 'role-option-button-active' : '',
                           ].join(' ')}
                           style={getClassificationStyle(definition.key)}
