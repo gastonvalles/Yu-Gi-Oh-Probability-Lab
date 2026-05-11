@@ -3,6 +3,7 @@ import type {
   HandPattern,
   PatternKind,
   PatternProbability,
+  TurnContext,
 } from '../../types'
 import { PROBABILITY_MODEL_VISIBILITY, type PatternPreset } from '../../app/pattern-presets'
 import {
@@ -25,6 +26,7 @@ export interface ProbabilityCausalEntry {
   probability: number
   presetId: string | null
   technicalSubtitle: string
+  turnContext: TurnContext
 }
 
 export interface ProbabilityInsight {
@@ -217,6 +219,7 @@ function buildProbabilityEntry(
     probability,
     presetId: preset?.id ?? null,
     technicalSubtitle: preset?.technicalSubtitle ?? previewSummary,
+    turnContext: pattern.turnContext,
   }
 }
 
@@ -276,7 +279,7 @@ function buildDefaultEntryDescription(
 }
 
 function formatProbability(value: number): string {
-  return `${(value * 100).toFixed(3)}%`
+  return `${(value * 100).toFixed(2)}%`
 }
 
 function getOpeningPriority(entry: ProbabilityCausalEntry): number {

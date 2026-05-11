@@ -12,6 +12,7 @@ import type {
   PatternMatchMode,
   RequirementSource,
   ReusePolicy,
+  TurnContext,
 } from '../types'
 import {
   createOriginGroupKey,
@@ -36,6 +37,10 @@ export function normalizeReusePolicy(value: unknown): ReusePolicy {
   return value === 'allow' ? 'allow' : value === 'forbid' ? 'forbid' : 'forbid'
 }
 
+export function normalizeTurnContext(value: unknown): TurnContext {
+  return value === 'first' || value === 'second' ? value : 'either'
+}
+
 export function normalizePatternName(name: string): string {
   return name
     .replace(/[\u200B-\u200D\uFEFF]/g, '')
@@ -46,7 +51,7 @@ export function normalizePatternName(name: string): string {
 }
 
 export function getPatternDefinitionKey(
-  pattern: Pick<HandPattern, 'kind' | 'logic' | 'minimumConditionMatches' | 'reusePolicy'> & {
+  pattern: Pick<HandPattern, 'kind' | 'turnContext' | 'logic' | 'minimumConditionMatches' | 'reusePolicy'> & {
     conditions: Pick<PatternCondition, 'matcher' | 'quantity' | 'kind' | 'distinct'>[]
   },
 ): string {
@@ -60,6 +65,7 @@ export function getPatternDefinitionKey(
     logic: normalizePatternLogic(pattern.logic),
     minimumConditionMatches: pattern.minimumConditionMatches,
     reusePolicy: pattern.reusePolicy,
+    turnContext: normalizeTurnContext(pattern.turnContext),
   })
 }
 

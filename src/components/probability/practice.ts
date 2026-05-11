@@ -116,6 +116,7 @@ export function evaluatePracticeHand(
   patterns: HandPattern[],
   derivedMainCards: CardEntry[],
   groupsByKey: Map<string, DerivedDeckGroup>,
+  baseHandSize: number = 5,
 ): {
   matches: PracticeHandMatch[]
   openingMatches: PracticeHandMatch[]
@@ -130,7 +131,19 @@ export function evaluatePracticeHand(
     counts.set(card.cardId, (counts.get(card.cardId) ?? 0) + 1)
   }
 
-  const resolvedPatterns = patterns.map((pattern) =>
+  // Filter patterns by turn context based on hand size:
+  // - 'first' rules: always evaluated (hand of 5 or 6)
+  // - 'either' rules: always evaluated
+  // - 'second' rules: only evaluated when hand has more cards than baseHandSize (drew extra)
+  const isGoingSecondHand = hand.length > baseHandSize
+  const applicablePatterns = patterns.filter((pattern) => {
+    if (pattern.turnContext === 'second') {
+      return isGoingSecondHand
+    }
+    return true
+  })
+
+  const resolvedPatterns = applicablePatterns.map((pattern) =>
     resolvePattern(pattern, {
       availableCounts,
       cardById,

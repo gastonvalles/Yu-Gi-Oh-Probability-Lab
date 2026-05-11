@@ -1,0 +1,46 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.5 [39m[90m/mnt/c/Users/aiaza/OneDrive/Documents/Workspace/Proyectos/YGO Probability Lab[39m
+
+ [32m✓[39m src/__tests__/turn-context-maintenance.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 146[2mms[22m[39m
+ [32m✓[39m src/__tests__/deck-model-status.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 181[2mms[22m[39m
+ [32m✓[39m src/__tests__/turn-context-curation.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 237[2mms[22m[39m
+ [32m✓[39m src/__tests__/rule-builder-rule-sentence.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 174[2mms[22m[39m
+ [32m✓[39m src/__tests__/comparison-insights.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 274[2mms[22m[39m
+ [32m✓[39m src/__tests__/rule-builder-templates-and-model.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 178[2mms[22m[39m
+ [32m✓[39m src/__tests__/rule-builder-assembly.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 230[2mms[22m[39m
+ [32m✓[39m src/__tests__/rule-builder-integration.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 241[2mms[22m[39m
+ [32m✓[39m src/__tests__/build-comparison.test.ts [2m([22m[2m31 tests[22m[2m)[22m[33m 609[2mms[22m[39m
+ [32m✓[39m src/__tests__/turn-context-aggregation.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 124[2mms[22m[39m
+ [32m✓[39m src/__tests__/drawer-autoclose.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 1613[2mms[22m[39m
+     [33m[2m✓[22m[39m Property 1: after adding a new pattern (custom-create) and running maintenance curation, the newly created pattern survives in the patterns array [33m 786[2mms[22m[39m
+     [33m[2m✓[22m[39m Property 1b: cleanup effect closes drawer when newly created pattern is missing and pendingCreatedPatternId is not yet set (race condition) [33m 736[2mms[22m[39m
+ [32m✓[39m src/__tests__/probability-engine.test.ts [2m([22m[2m26 tests[22m[2m)[22m[33m 2085[2mms[22m[39m
+       [33m[2m✓[22m[39m Property 4: partition identity and bounds hold for any valid state [33m 438[2mms[22m[39m
+       [33m[2m✓[22m[39m Property 5: probability ratios and bounds [33m 375[2mms[22m[39m
+       [33m[2m✓[22m[39m Property 6: per-pattern consistency [33m 387[2mms[22m[39m
+       [33m[2m✓[22m[39m Property 7: identical input produces identical output [33m 368[2mms[22m[39m
+       [33m[2m✓[22m[39m Property 10.3.1: calculateProbabilities(state) equals calculateProbabilities(stripTurnContext(state)) [33m 423[2mms[22m[39m
+ [32m✓[39m src/__tests__/turn-context-reducer.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 92[2mms[22m[39m
+ [32m✓[39m src/__tests__/kpi-detail-helpers.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 110[2mms[22m[39m
+ [32m✓[39m src/__tests__/rule-builder-condition-block.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 103[2mms[22m[39m
+ [32m✓[39m src/__tests__/turn-context-pipeline.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 85[2mms[22m[39m
+ [32m✓[39m src/__tests__/remove-dead-modes.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 116[2mms[22m[39m
+ [32m✓[39m src/__tests__/turn-context-model.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 112[2mms[22m[39m
+ [32m✓[39m src/__tests__/turn-context-selection.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 89[2mms[22m[39m
+ [32m✓[39m src/__tests__/rule-builder-live-result-badge.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 86[2mms[22m[39m
+ [32m✓[39m src/__tests__/turn-context-codec.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 46[2mms[22m[39m
+ [32m✓[39m src/__tests__/build-b-probability-fix.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 31[2mms[22m[39m
+ [32m✓[39m src/__tests__/turn-context-factories.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 41[2mms[22m[39m
+ [2m[90m↓[39m[22m src/__tests__/practice-compact-cards.test.ts [2m([22m[2m29 tests[22m[2m | [22m[33m29 skipped[39m[2m)[22m
+ [32m✓[39m src/__tests__/kpi-detail-modal.test.tsx [2m([22m[2m17 tests[22m[2m)[22m[32m 236[2mms[22m[39m
+ [32m✓[39m src/__tests__/turn-view-toggle.test.tsx [2m([22m[2m11 tests[22m[2m)[22m[33m 686[2mms[22m[39m
+ [32m✓[39m src/__tests__/role-density-chart.test.tsx [2m([22m[2m11 tests[22m[2m)[22m[32m 117[2mms[22m[39m
+ [32m✓[39m src/__tests__/turn-context-toggle.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 286[2mms[22m[39m
+ [32m✓[39m src/__tests__/build-comparison-ui.test.tsx [2m([22m[2m16 tests[22m[2m)[22m[32m 127[2mms[22m[39m
+ [32m✓[39m src/__tests__/deck-model-status-badge.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[32m 60[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m29 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (30)[39m
+[2m      Tests [22m [1m[32m281 passed[39m[22m[2m | [22m[33m29 skipped[39m[90m (310)[39m
+[2m   Start at [22m 01:35:55
+[2m   Duration [22m 41.92s[2m (transform 13.12s, setup 0ms, import 50.21s, tests 8.52s, environment 127.51s)[22m
+

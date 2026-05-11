@@ -11,6 +11,7 @@ import { ConditionBlock } from './ConditionBlock'
 import { KindToggle } from './KindToggle'
 import { getConnectorWord, LogicSelector } from './LogicSelector'
 import { PatternNameInput } from './PatternNameInput'
+import { TurnContextToggle } from './TurnContextToggle'
 
 interface RuleBuilderProps {
   actions: PatternEditorActions
@@ -60,11 +61,19 @@ export function RuleBuilder({
           isPendingCreation={isPendingCreation}
           actions={actions}
         />
-        <KindToggle
-          patternId={pattern.id}
-          currentKind={pattern.kind}
-          actions={actions}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <KindToggle
+            patternId={pattern.id}
+            currentKind={pattern.kind}
+            actions={actions}
+          />
+          <span className="h-5 w-px bg-(--border-subtle)" aria-hidden="true" />
+          <TurnContextToggle
+            patternId={pattern.id}
+            currentTurnContext={pattern.turnContext}
+            actions={actions}
+          />
+        </div>
       </div>
 
       {/* Full editor */}

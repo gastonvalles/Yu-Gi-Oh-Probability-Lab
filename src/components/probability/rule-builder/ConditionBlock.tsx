@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import type { CardEntry, PatternCondition, PatternKind, RequirementKind } from '../../../types'
 import { formatInteger } from '../../../app/utils'
@@ -115,15 +115,41 @@ function QuantitySegment({
   value: number
   onChange: (quantity: number) => void
 }) {
+  const [localValue, setLocalValue] = useState(value)
+  const timeoutRef = useRef<number | null>(null)
+
+  // Sync from parent when value changes externally
+  useEffect(() => {
+    setLocalValue(value)
+  }, [value])
+
+  // Cleanup on unmount
+  useEffect(() => () => {
+    if (timeoutRef.current !== null) {
+      window.clearTimeout(timeoutRef.current)
+    }
+  }, [])
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const parsed = Number.parseInt(event.target.value, 10)
+    const next = Number.isFinite(parsed) ? Math.max(1, parsed) : 1
+    setLocalValue(next)
+
+    if (timeoutRef.current !== null) {
+      window.clearTimeout(timeoutRef.current)
+    }
+
+    timeoutRef.current = window.setTimeout(() => {
+      onChange(next)
+    }, 300)
+  }
+
   return (
     <input
       type="number"
       min={1}
-      value={value}
-      onChange={(event) => {
-        const parsed = Number.parseInt(event.target.value, 10)
-        onChange(Number.isFinite(parsed) ? Math.max(1, parsed) : 1)
-      }}
+      value={localValue}
+      onChange={handleChange}
       className="condition-block-qty app-field w-12 border-x-0 rounded-none px-1.5 py-1.5 text-center text-[0.94rem] font-medium"
       aria-label="Cantidad"
     />

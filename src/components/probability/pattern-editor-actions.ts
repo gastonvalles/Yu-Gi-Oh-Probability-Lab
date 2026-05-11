@@ -7,6 +7,7 @@ import type {
   PatternMatchMode,
   RequirementKind,
   RequirementSource,
+  TurnContext,
 } from '../../types'
 
 export interface PatternEditorActions {
@@ -16,6 +17,7 @@ export interface PatternEditorActions {
   replacePatterns: (patterns: HandPattern[]) => void
   setPatternCategory: (patternId: string, value: HandPatternCategory) => void
   setPatternName: (patternId: string, value: string) => void
+  setPatternTurnContext: (patternId: string, value: TurnContext) => void
   setPatternMatchMode: (patternId: string, value: PatternMatchMode) => void
   setPatternMinimumMatches: (patternId: string, value: string) => void
   setPatternAllowSharedCards: (patternId: string, value: boolean) => void

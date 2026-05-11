@@ -1,6 +1,6 @@
 import type { CardEntry, HandPattern, Matcher, PatternCondition } from '../types'
 import { buildDerivedDeckGroupMap } from './deck-groups'
-import { getPatternDefinitionKey, getPatternMatchMode, normalizeHandPatternCategory, normalizeReusePolicy, resolveConditionCardIds, resolvePatternLogic } from './patterns'
+import { getPatternDefinitionKey, getPatternMatchMode, normalizeHandPatternCategory, normalizeReusePolicy, normalizeTurnContext, resolveConditionCardIds, resolvePatternLogic } from './patterns'
 import { buildDefaultPatterns } from './pattern-defaults'
 import { buildPatternPresets, isObsoleteSystemPatternName } from './pattern-presets'
 
@@ -55,6 +55,7 @@ export function getPatternCollectionSignature(patterns: HandPattern[]): string {
     id: pattern.id,
     name: pattern.name,
     kind: pattern.kind,
+    turnContext: pattern.turnContext,
     logic: pattern.logic,
     minimumConditionMatches: pattern.minimumConditionMatches,
     reusePolicy: pattern.reusePolicy,
@@ -139,6 +140,7 @@ function curatePattern(
     ...pattern,
     name,
     kind,
+    turnContext: normalizeTurnContext(pattern.turnContext),
     logic,
     minimumConditionMatches,
     reusePolicy: normalizeReusePolicy(pattern.reusePolicy),
@@ -213,7 +215,7 @@ function getConditionSignature(
 }
 
 function getPatternSignature(
-  pattern: Pick<HandPattern, 'kind' | 'logic' | 'minimumConditionMatches' | 'reusePolicy' | 'conditions'>,
+  pattern: Pick<HandPattern, 'kind' | 'turnContext' | 'logic' | 'minimumConditionMatches' | 'reusePolicy' | 'conditions'>,
 ): string {
   return getPatternDefinitionKey(pattern)
 }

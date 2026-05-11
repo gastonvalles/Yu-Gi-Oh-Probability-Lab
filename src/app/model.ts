@@ -5,6 +5,7 @@ import type {
   DeckFormat,
   HandPattern,
   Matcher,
+  TurnContext,
 } from '../types'
 
 export type CalculatorMode = 'deck'
@@ -46,6 +47,7 @@ export interface PortableCondition {
 export interface PortablePattern {
   name: string
   kind: HandPattern['kind']
+  turnContext?: TurnContext
   logic: HandPattern['logic']
   minimumConditionMatches: number
   reusePolicy: HandPattern['reusePolicy']

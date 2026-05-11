@@ -10,6 +10,7 @@ import type {
   PatternMatchMode,
   RequirementKind,
   RequirementSource,
+  TurnContext,
 } from '../types'
 import {
   addRequirement,
@@ -22,6 +23,7 @@ import {
   updatePatternMatchMode,
   updatePatternMinimumMatches,
   updatePatternName,
+  updatePatternTurnContext,
   updateRequirementCount,
   updateRequirementDistinct,
   updateRequirementMatcher,
@@ -49,6 +51,11 @@ interface UpdatePatternCategoryPayload {
 interface UpdatePatternNamePayload {
   patternId: string
   value: string
+}
+
+interface UpdatePatternTurnContextPayload {
+  patternId: string
+  value: TurnContext
 }
 
 interface UpdatePatternMatchModePayload {
@@ -247,6 +254,13 @@ const patternsSlice = createSlice({
         action.payload.value,
       )
     },
+    setPatternTurnContext(state, action: PayloadAction<UpdatePatternTurnContextPayload>) {
+      state.patterns = updatePatternTurnContext(
+        state.patterns,
+        action.payload.patternId,
+        action.payload.value,
+      )
+    },
     setRequirementCount(state, action: PayloadAction<RequirementCountPayload>) {
       state.patterns = updateRequirementCount(
         state.patterns,
@@ -367,6 +381,7 @@ export const {
   setPatternMatchMode,
   setPatternMinimumMatches,
   setPatternName,
+  setPatternTurnContext,
   setRequirementCount,
   setRequirementMatcher,
   setRequirementDistinct,

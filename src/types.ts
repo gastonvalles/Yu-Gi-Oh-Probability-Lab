@@ -27,6 +27,8 @@ export type CardAttribute = 'DARK' | 'DIVINE' | 'EARTH' | 'FIRE' | 'LIGHT' | 'WA
 export type PatternKind = 'opening' | 'problem'
 export type PatternLogic = 'all' | 'any'
 export type ReusePolicy = 'allow' | 'forbid'
+export type TurnContext = 'first' | 'second' | 'either'
+export type TurnView = 'first' | 'second' | 'average'
 export type PatternMatchMode = 'all' | 'any' | 'at-least'
 export type HandPatternCategory = PatternKind
 export type RequirementKind = 'include' | 'exclude'
@@ -96,6 +98,7 @@ export interface Pattern {
   id: string
   name: string
   kind: PatternKind
+  turnContext: TurnContext
   logic: PatternLogic
   minimumConditionMatches: number
   reusePolicy: ReusePolicy

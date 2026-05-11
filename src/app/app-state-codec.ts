@@ -6,6 +6,7 @@ import {
   normalizeHandPatternCategory,
   normalizePatternLogic,
   normalizeReusePolicy,
+  normalizeTurnContext,
 } from './patterns'
 import {
   normalizeCardOriginKey,
@@ -40,7 +41,7 @@ import {
 
 export function toPortableConfig(state: AppState): PortableConfig {
   return {
-    version: 15,
+    version: 16,
     handSize: state.handSize,
     deckFormat: state.deckFormat,
     patternsSeeded: state.patternsSeeded,
@@ -72,6 +73,7 @@ export function toPortableConfig(state: AppState): PortableConfig {
     patterns: state.patterns.map((pattern) => ({
       name: pattern.name,
       kind: pattern.kind,
+      turnContext: pattern.turnContext,
       logic: pattern.logic,
       minimumConditionMatches: pattern.minimumConditionMatches,
       reusePolicy: pattern.reusePolicy,
@@ -118,6 +120,7 @@ export function fromPortableConfig(value: unknown): AppState {
 
     const patternName = parseRequiredString(rawPattern.name, `patterns[${index}].name`)
     const kind = parsePatternKind(rawPattern.kind ?? rawPattern.category)
+    const turnContext = normalizeTurnContext(rawPattern.turnContext)
     const { logic, minimumConditionMatches } = parsePatternLogicFields(rawPattern)
     const reusePolicy = parsePatternReusePolicy(rawPattern)
     const conditionsRaw = parseArray(
@@ -154,6 +157,7 @@ export function fromPortableConfig(value: unknown): AppState {
       id: createId('pattern'),
       name: patternName,
       kind,
+      turnContext,
       logic,
       minimumConditionMatches,
       reusePolicy,

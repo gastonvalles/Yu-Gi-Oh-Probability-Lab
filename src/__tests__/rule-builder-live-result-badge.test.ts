@@ -12,7 +12,7 @@ describe('LiveResultBadge utilities', () => {
     fc.assert(
       fc.property(fc.double({ min: 0, max: 1, noNaN: true }), (probability) => {
         const result = formatPercent(probability)
-        expect(result).toMatch(/^\d+\.\d{3}%$/)
+        expect(result).toMatch(/^\d+\.\d{2}%$/)
       }),
       { numRuns: 200 },
     )

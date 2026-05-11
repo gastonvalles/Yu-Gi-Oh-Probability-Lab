@@ -7,6 +7,10 @@ import type { DerivedDeckGroup } from '../app/deck-groups'
 import { curatePatterns } from '../app/pattern-curation'
 import { AUTO_BASE_PRESET_IDS, buildPatternPresets } from '../app/pattern-presets'
 import {
+  hasAsymmetricRules as hasAsymmetricRulesFn,
+  selectPatternsForView,
+} from '../app/turn-context'
+import {
   countCardsMissingOrigin,
   countCardsMissingRoles,
   countCardsPendingReview,
@@ -15,7 +19,13 @@ import {
 } from '../app/role-step'
 import { formatInteger } from '../app/utils'
 import { calculateProbabilities } from '../probability'
-import type { CalculationOutput, CardEntry, HandPattern } from '../types'
+import type {
+  CalculationOutput,
+  CalculationSummary,
+  CardEntry,
+  HandPattern,
+  TurnView,
+} from '../types'
 import { DeckModelStatusBadge } from './DeckModelStatusBadge'
 import { StepHero } from './StepHero'
 import { ConfirmDialog } from './probability/ConfirmDialog'
@@ -27,6 +37,7 @@ import {
   buildDeterministicCheckSet,
   buildProbabilityCheckPipeline,
 } from './probability/probability-lab-helpers'
+import type { ProbabilityCausalEntry } from './probability/probability-lab-helpers'
 import { Button } from './ui/Button'
 import { CloseButton } from './ui/IconButton'
 import { Skeleton } from './ui/Skeleton'
@@ -194,18 +205,87 @@ function ProbabilityPanelContent({
   const isUsingActiveChecks = activePatterns.filter((pattern) =>
     pattern.conditions.some((condition) => condition.matcher !== null),
   ).length > 0
-  const result = useMemo(() => {
+  const [activeTurnView, setActiveTurnView] = useState<TurnView>('average')
+  const hasAsymmetricRules = useMemo(
+    () => hasAsymmetricRulesFn(activePatterns),
+    [activePatterns],
+  )
+  // Pre-compute results for all three views once when deck/patterns change.
+  // Switching the toggle then just picks from cache — no recalculation.
+  const cachedResults = useMemo<Record<TurnView, CalculationOutput>>(() => {
     if (isEditingDeck || !hasCompletedClassification || allChecks.length === 0) {
-      return IDLE_CALCULATION_RESULT
+      return {
+        first: IDLE_CALCULATION_RESULT,
+        second: IDLE_CALCULATION_RESULT,
+        average: IDLE_CALCULATION_RESULT,
+      }
     }
 
-    return calculateProbabilities(
-      buildCalculatorState(derivedMainCards, {
-        handSize,
-        patterns: allChecks,
-      }),
+    const deckSize = derivedMainCards.reduce((sum, card) => sum + card.copies, 0)
+
+    // Going first: base handSize, first+either patterns
+    const firstPatterns = selectPatternsForView(allChecks, 'first')
+    const firstResult = calculateProbabilities(
+      buildCalculatorState(derivedMainCards, { handSize, patterns: firstPatterns }),
     )
-  }, [allChecks, derivedMainCards, handSize, hasCompletedClassification, isEditingDeck])
+
+    // Going second: handSize + 1, second+either patterns
+    const secondPatterns = selectPatternsForView(allChecks, 'second')
+    const secondResult = calculateProbabilities(
+      buildCalculatorState(derivedMainCards, { handSize: handSize + 1, patterns: secondPatterns }),
+    )
+
+    // Average: blend or short-circuit
+    let averageResult: CalculationOutput
+    if (!hasAsymmetricRules) {
+      // All patterns are 'either' — single calculation with base handSize (backward compat)
+      averageResult = calculateProbabilities(
+        buildCalculatorState(derivedMainCards, { handSize, patterns: allChecks }),
+      )
+    } else {
+      // Blend first + second sub-views
+      const summaryFirst = firstResult.summary
+      const summarySecond = secondResult.summary
+      if (!summaryFirst || !summarySecond) {
+        averageResult = IDLE_CALCULATION_RESULT
+      } else {
+        const cleanFirst = Math.max(0, summaryFirst.goodHands - summaryFirst.overlapHands)
+        const cleanSecond = Math.max(0, summarySecond.goodHands - summarySecond.overlapHands)
+        const probFirst = summaryFirst.totalHands > 0 ? cleanFirst / summaryFirst.totalHands : 0
+        const probSecond = summarySecond.totalHands > 0 ? cleanSecond / summarySecond.totalHands : 0
+        const cleanProbability = (probFirst + probSecond) / 2
+        const totalHands = summaryFirst.totalHands
+        const cleanHands = Math.round(cleanProbability * totalHands)
+
+        // Merge patternResults
+        const merged = new Map<string, typeof summaryFirst.patternResults[number]>()
+        for (const r of summaryFirst.patternResults) merged.set(r.patternId, r)
+        for (const r of summarySecond.patternResults) { if (!merged.has(r.patternId)) merged.set(r.patternId, r) }
+
+        const syntheticSummary: CalculationSummary = {
+          ...summaryFirst,
+          goodHands: cleanHands,
+          overlapHands: 0,
+          overlapProbability: 0,
+          totalHands,
+          patternResults: Array.from(merged.values()),
+        }
+        averageResult = { issues: [], blockingIssues: [], summary: syntheticSummary }
+      }
+    }
+
+    return { first: firstResult, second: secondResult, average: averageResult }
+  }, [
+    allChecks,
+    derivedMainCards,
+    handSize,
+    hasAsymmetricRules,
+    hasCompletedClassification,
+    isEditingDeck,
+  ])
+
+  // Switching the toggle is now instant — just picks from the pre-computed cache.
+  const result = cachedResults[activeTurnView]
   const deckSummary = useMemo<DeckSummarySnapshot | null>(() => {
     const summary = result.summary
 
@@ -237,9 +317,20 @@ function ProbabilityPanelContent({
   )
   const {
     allChecks: allCheckEntries,
-    detailOpeningEntries,
-    detailProblemEntries,
+    detailOpeningEntries: rawDetailOpeningEntries,
+    detailProblemEntries: rawDetailProblemEntries,
   } = checkPipeline
+  // In single-view modes ('first' | 'second'), hide per-rule cards whose
+  // pattern does not contribute to that turn. 'average' shows every rule
+  // regardless of context so users can still inspect asymmetric rules.
+  const detailOpeningEntries = useMemo(
+    () => filterEntriesForView(rawDetailOpeningEntries, activeTurnView),
+    [rawDetailOpeningEntries, activeTurnView],
+  )
+  const detailProblemEntries = useMemo(
+    () => filterEntriesForView(rawDetailProblemEntries, activeTurnView),
+    [rawDetailProblemEntries, activeTurnView],
+  )
   const [drawerMode, setDrawerMode] = useState<DrawerMode | null>(null)
   const [selectedPatternId, setSelectedPatternId] = useState<string | null>(null)
   const [pendingCreatedPatternId, setPendingCreatedPatternId] = useState<string | null>(null)
@@ -290,6 +381,10 @@ function ProbabilityPanelContent({
       },
       setPatternName(patternId, value) {
         patternActions.setPatternName(patternId, value)
+      },
+      setPatternTurnContext(patternId, value) {
+        pendingFeedbackRef.current = { patternId, skip: false }
+        patternActions.setPatternTurnContext(patternId, value)
       },
       setPatternMatchMode(patternId, value) {
         pendingFeedbackRef.current = { patternId, skip: false }
@@ -587,6 +682,9 @@ function ProbabilityPanelContent({
             openingEntries={detailOpeningEntries}
             problemEntries={detailProblemEntries}
             pieChart={hasCompletedClassification ? <KpiDonutChart derivedCards={derivedMainCards} /> : undefined}
+            activeTurnView={activeTurnView}
+            onChangeTurnView={setActiveTurnView}
+            hasAsymmetricRules={hasAsymmetricRules}
           />
 
           {result.blockingIssues.length > 0 ? (
@@ -755,6 +853,22 @@ function buildKpiFeedback(
     label: deltaLabel,
     tone: delta > 0 ? 'positive' : 'negative',
   }
+}
+
+/**
+ * Hide per-rule cards whose source pattern does not contribute to the active
+ * turn view. `'average'` passes every entry through; `'first'` and `'second'`
+ * drop entries whose pattern is scoped to the opposite turn.
+ */
+function filterEntriesForView(
+  entries: ProbabilityCausalEntry[],
+  view: TurnView,
+): ProbabilityCausalEntry[] {
+  if (view === 'average') {
+    return entries
+  }
+
+  return entries.filter((entry) => entry.turnContext === view || entry.turnContext === 'either')
 }
 
 // ── KPI Donut Chart (same style as ComparisonScreen) ──

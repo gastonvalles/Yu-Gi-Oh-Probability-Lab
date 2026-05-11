@@ -577,7 +577,7 @@ function describeRing(cx: number, cy: number, r: number, startAngle: number, end
   ].join(' ')
 }
 
-function KpiPieChart({ starters, extenders, handtraps, bricks, boardbreakers, mainDeckSize, onSegmentClick }: {
+function KpiPieChart({ starters, extenders, handtraps, bricks, boardbreakers, mainDeckSize: _mainDeckSize, onSegmentClick }: {
   starters: number
   extenders: number
   handtraps: number

@@ -8,6 +8,7 @@ import type {
   PatternMatchMode,
   RequirementKind,
   RequirementSource,
+  TurnContext,
 } from '../types'
 import { createPatternRequirement } from './pattern-factory'
 import {
@@ -74,6 +75,22 @@ export function updatePatternName(
       : {
           ...pattern,
           name,
+        },
+  )
+}
+
+export function updatePatternTurnContext(
+  patterns: HandPattern[],
+  patternId: string,
+  turnContext: TurnContext,
+): HandPattern[] {
+  return patterns.map((pattern) =>
+    pattern.id !== patternId
+      ? pattern
+      : {
+          ...pattern,
+          needsReview: false,
+          turnContext,
         },
   )
 }

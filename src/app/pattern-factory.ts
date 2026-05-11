@@ -6,6 +6,7 @@ import type {
   PatternMatchMode,
   PatternRequirement,
   RequirementKind,
+  TurnContext,
 } from '../types'
 import {
   buildReusePolicy,
@@ -19,6 +20,7 @@ export function createPattern(
   name: string,
   firstCardId?: string,
   category: HandPatternCategory | 'good' | 'bad' = 'opening',
+  turnContext: TurnContext = 'either',
 ): HandPattern {
   const kind = normalizePatternKind(category)
   const condition = createPatternRequirement(firstCardId, kind)
@@ -27,6 +29,7 @@ export function createPattern(
     id: createId('pattern'),
     name,
     kind,
+    turnContext,
     logic: 'all',
     minimumConditionMatches: 1,
     reusePolicy: 'forbid',
@@ -63,6 +66,7 @@ export function createMatcherPattern(
     matchMode?: PatternMatchMode
     minimumMatches?: number
     allowSharedCards?: boolean
+    turnContext?: TurnContext
   },
 ): HandPattern {
   const kind = normalizePatternKind(category)
@@ -76,6 +80,7 @@ export function createMatcherPattern(
     id: createId('pattern'),
     name,
     kind,
+    turnContext: options?.turnContext ?? 'either',
     logic: patternLogic.logic,
     minimumConditionMatches: patternLogic.minimumConditionMatches,
     reusePolicy: buildReusePolicy(options?.allowSharedCards === true),
@@ -103,6 +108,7 @@ export function createGroupPattern(
     matchMode?: PatternMatchMode
     minimumMatches?: number
     allowSharedCards?: boolean
+    turnContext?: TurnContext
   },
 ): HandPattern {
   return createMatcherPattern(

@@ -10,6 +10,7 @@ import type {
   CardOrigin,
   CardRole,
   HandPattern,
+  TurnContext,
 } from '../types'
 
 // ---------------------------------------------------------------------------
@@ -85,6 +86,7 @@ const arbCardRole: fc.Arbitrary<CardRole> = fc.constantFrom(
   'boardbreaker', 'floodgate', 'removal', 'searcher', 'draw',
   'recovery', 'combo_piece', 'payoff', 'brick', 'garnet', 'tech',
 )
+const arbTurnContext: fc.Arbitrary<TurnContext> = fc.constantFrom('first', 'second', 'either')
 
 /**
  * Generates a valid CalculatorState with small deck/hand sizes for performance.
@@ -131,18 +133,19 @@ const arbValidCalculatorState: fc.Arbitrary<CalculatorState> = fc
                     fc.tuple(
                       fc.constantFrom('opening' as const, 'problem' as const),
                       fc.integer({ min: 1, max: Math.min(handSize, 3) }),
+                      arbTurnContext,
                     ),
                     { minLength: patternCount, maxLength: patternCount },
                   )
                   .map((patternDefs) => {
-                    const patterns: HandPattern[] = patternDefs.map(([kind, qty], pi) =>
+                    const patterns: HandPattern[] = patternDefs.map(([kind, qty, turnContext], pi) =>
                       createMatcherPattern(`Pattern ${pi + 1}`, kind, [
                         {
                           matcher: { type: 'card_pool', value: cardIds },
                           quantity: qty,
                           kind: 'include',
                         },
-                      ]),
+                      ], { turnContext }),
                     )
                     return { deckSize, handSize, cards, patterns } satisfies CalculatorState
                   })
@@ -867,6 +870,32 @@ describe('Probability Engine', () => {
       expect(s.goodHands).toBe(totalHands)
       expect(s.badHands).toBe(totalHands)
       expect(s.overlapHands).toBe(totalHands)
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // Task 10.3: Engine ignores turnContext (Req 10.3)
+  // -------------------------------------------------------------------------
+  describe('turnContext non-regression', () => {
+    it('Property 10.3.1: calculateProbabilities(state) equals calculateProbabilities(stripTurnContext(state))', () => {
+      /** Feature: turn-context-aware-rules, Property 10.3.1: Engine ignores turnContext
+       *  **Validates: Requirements 10.3** */
+      const stripTurnContext = (state: CalculatorState): CalculatorState => ({
+        ...state,
+        patterns: state.patterns.map((pattern) => ({
+          ...pattern,
+          turnContext: 'either' as const,
+        })),
+      })
+
+      fc.assert(
+        fc.property(arbValidCalculatorState, (state) => {
+          const original = calculateProbabilities(state)
+          const stripped = calculateProbabilities(stripTurnContext(state))
+          expect(original).toEqual(stripped)
+        }),
+        { numRuns: 100 },
+      )
     })
   })
 }) // end describe('Probability Engine')

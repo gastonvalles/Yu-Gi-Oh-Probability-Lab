@@ -264,6 +264,109 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
     describeProbability: (probability) =>
       `La mano abre Extender sin Starter en ${formatProbability(probability)} de los casos, un falso positivo de jugabilidad.`,
   },
+  // ── Advanced opt-in rules ────────────────────────────────────────────────
+  // These rules surface in the "Agregar regla recomendada" drawer but are
+  // never auto-activated. They cover situational game plans (going second,
+  // defensive hands) that don't apply universally.
+  {
+    id: 'starter_with_boardbreaker_opening',
+    category: 'advanced',
+    title: 'Salida con board breaker',
+    description: 'Starter + una herramienta para pasar por encima del rival (going second).',
+    technicalSubtitle: 'Starter + Board Breaker',
+    kind: 'opening',
+    recommended: false,
+    build: (cards) => {
+      const boardBreakerPool = collectCardIdsByRoles(cards, ['boardbreaker'])
+
+      if (boardBreakerPool.length === 0) {
+        return null
+      }
+
+      return createMatcherPattern(
+        'Salida con board breaker',
+        'opening',
+        [
+          { matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' },
+          { matcher: { type: 'card_pool', value: boardBreakerPool }, quantity: 1, kind: 'include' },
+        ],
+        {
+          allowSharedCards: false,
+          matchMode: 'all',
+          minimumMatches: 2,
+          turnContext: 'second',
+        },
+      )
+    },
+    describeProbability: (probability) =>
+      `La mano combina Starter con un board breaker en ${formatProbability(probability)} de los casos, útil going second.`,
+  },
+  {
+    id: 'dead_hand_problem',
+    category: 'advanced',
+    title: 'Mano muerta',
+    description: 'Sin starter y con exceso de non-engine: imposible jugar.',
+    technicalSubtitle: '0 Starter + 3+ Non-engine',
+    kind: 'problem',
+    recommended: false,
+    build: () =>
+      createMatcherPattern(
+        'Mano muerta',
+        'problem',
+        [
+          { matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'exclude' },
+          { matcher: { type: 'origin', value: 'non_engine' }, quantity: 3, kind: 'include' },
+        ],
+        {
+          allowSharedCards: true,
+          matchMode: 'all',
+          minimumMatches: 2,
+        },
+      ),
+    describeProbability: (probability) =>
+      `La mano no tiene Starter y carga 3+ non-engine en ${formatProbability(probability)} de los casos, imposible de jugar.`,
+  },
+  {
+    id: 'handtrap_flood_problem',
+    category: 'advanced',
+    title: '4+ Non-engine en mano',
+    description: 'Demasiadas cartas de interacción, te falta engine para atacar.',
+    technicalSubtitle: 'con 4+ Non-engine',
+    kind: 'problem',
+    recommended: false,
+    build: () =>
+      createMatcherPattern('4+ Non-engine en mano', 'problem', [
+        { matcher: { type: 'origin', value: 'non_engine' }, quantity: 4, kind: 'include' },
+      ]),
+    describeProbability: (probability) =>
+      `La mano se inunda de non-engine (4+) en ${formatProbability(probability)} de los casos, sin plan propio.`,
+  },
+  {
+    id: 'only_bricks_problem',
+    category: 'advanced',
+    title: 'Solo Brick/Garnet en engine',
+    description: 'La parte de engine de la mano son brick o garnet: no aportan.',
+    technicalSubtitle: '2+ Brick o Garnet',
+    kind: 'problem',
+    recommended: false,
+    build: (cards) => {
+      const brickGarnetPool = collectCardIdsByRoles(cards, ['brick', 'garnet'])
+
+      if (brickGarnetPool.length === 0) {
+        return null
+      }
+
+      return createMatcherPattern(
+        'Solo Brick/Garnet en engine',
+        'problem',
+        [
+          { matcher: { type: 'card_pool', value: brickGarnetPool }, quantity: 2, kind: 'include' },
+        ],
+      )
+    },
+    describeProbability: (probability) =>
+      `La mano abre 2+ cartas brick/garnet en ${formatProbability(probability)} de los casos.`,
+  },
 ] as const
 
 export function buildPatternPresets(cards: CardEntry[]): PatternPreset[] {
@@ -335,5 +438,5 @@ function collectCardIdsByRoles(cards: CardEntry[], roles: readonly CardRole[]): 
 }
 
 function formatProbability(value: number): string {
-  return `${(value * 100).toFixed(3)}%`
+  return `${(value * 100).toFixed(2)}%`
 }

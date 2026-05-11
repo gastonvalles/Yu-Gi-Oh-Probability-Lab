@@ -18,6 +18,7 @@ import {
   setPatternMatchMode,
   setPatternMinimumMatches,
   setPatternName,
+  setPatternTurnContext,
   setRequirementCount,
   setRequirementDistinct,
   setRequirementMatcher,
@@ -73,6 +74,9 @@ export function usePatternEditorActions({
       },
       setPatternName(patternId, value) {
         dispatch(setPatternName({ patternId, value }))
+      },
+      setPatternTurnContext(patternId, value) {
+        dispatch(setPatternTurnContext({ patternId, value }))
       },
       setPatternMatchMode(patternId, value) {
         dispatch(setPatternMatchMode({ patternId, value }))

@@ -3,7 +3,7 @@ import type { PortableConfig } from './model'
 import { deriveMainDeckCardsFromZone } from './calculator-state'
 import { buildCalculatorState } from './calculator-state'
 import { calculateProbabilities } from '../probability'
-import { getPatternDefinitionKey } from './patterns'
+import { getPatternDefinitionKey, normalizeTurnContext } from './patterns'
 import { normalizeName, createId } from './utils'
 import type { CardEntry, CalculationOutput, HandPattern } from '../types'
 
@@ -158,6 +158,7 @@ function reconstructPatterns(
     id: createId('pattern'),
     name: p.name,
     kind: p.kind,
+    turnContext: normalizeTurnContext(p.turnContext),
     logic: p.logic,
     minimumConditionMatches: p.minimumConditionMatches,
     reusePolicy: p.reusePolicy,
@@ -265,12 +266,18 @@ function computePatternComparisons(
   const keyMapB = new Map<string, { pattern: typeof patternsB[number]; index: number }>()
 
   for (let i = 0; i < patternsA.length; i++) {
-    const key = getPatternDefinitionKey(patternsA[i])
+    const key = getPatternDefinitionKey({
+      ...patternsA[i],
+      turnContext: normalizeTurnContext(patternsA[i].turnContext),
+    })
     keyMapA.set(key, { pattern: patternsA[i], index: i })
   }
 
   for (let i = 0; i < patternsB.length; i++) {
-    const key = getPatternDefinitionKey(patternsB[i])
+    const key = getPatternDefinitionKey({
+      ...patternsB[i],
+      turnContext: normalizeTurnContext(patternsB[i].turnContext),
+    })
     keyMapB.set(key, { pattern: patternsB[i], index: i })
   }
 

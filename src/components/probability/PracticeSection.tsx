@@ -128,8 +128,8 @@ export function PracticeSection({
             problemMatches: [],
             openingNearMisses: [],
           }
-        : evaluatePracticeHand(practiceHand?.hand ?? [], patterns, derivedMainCards, groupsByKey),
-    [practiceBlockedMessage, practiceHand, patterns, derivedMainCards, groupsByKey],
+        : evaluatePracticeHand(practiceHand?.hand ?? [], patterns, derivedMainCards, groupsByKey, handSize),
+    [practiceBlockedMessage, practiceHand, patterns, derivedMainCards, groupsByKey, handSize],
   )
   const openingMatches = practiceResult.openingMatches
   const problemMatches = practiceResult.problemMatches

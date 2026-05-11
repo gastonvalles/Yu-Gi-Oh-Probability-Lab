@@ -1,10 +1,12 @@
 import { formatInteger, formatPercent } from '../../app/utils'
+import type { TurnView } from '../../types'
 import type { ProbabilityCausalEntry } from './probability-lab-helpers'
 import {
   getKpiContextualLabel,
   isDescriptionRedundant,
   isTechnicalSubtitleRedundant,
 } from './probability-lab-helpers'
+import { TurnViewToggle } from './TurnViewToggle'
 import { Button } from '../ui/Button'
 
 interface DeckSummarySnapshot {
@@ -30,6 +32,12 @@ interface DeckQualityHeroProps {
   problemEntries: ProbabilityCausalEntry[]
   /** Optional pie chart element to render next to the KPI percentage */
   pieChart?: React.ReactNode
+  /** Current turn view lens; controls which patterns feed the KPI/cards. */
+  activeTurnView: TurnView
+  /** Dispatched when the user flips the turn-view toggle. */
+  onChangeTurnView: (view: TurnView) => void
+  /** `true` iff at least one pattern has a non-`'either'` turn context. */
+  hasAsymmetricRules: boolean
 }
 
 export function DeckQualityHero({
@@ -44,6 +52,9 @@ export function DeckQualityHero({
   openingEntries,
   problemEntries,
   pieChart,
+  activeTurnView,
+  onChangeTurnView,
+  hasAsymmetricRules,
 }: DeckQualityHeroProps) {
   if (!deckSummary) {
     return (
@@ -74,6 +85,11 @@ export function DeckQualityHero({
             Jugable sin problemas
           </h3>
           <p className="app-muted m-0 text-[0.72rem] leading-[1.14]">Manos que cumplen al menos una salida activa y no tienen problemas activos.</p>
+          {hasAsymmetricRules ? (
+            <div className="mt-2">
+              <TurnViewToggle activeView={activeTurnView} onChange={onChangeTurnView} />
+            </div>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2 min-[980px]:justify-end">
           {isEditMode ? (
@@ -122,10 +138,10 @@ export function DeckQualityHero({
             </div>
 
             <p className="probability-kpi-message m-0">
-              {buildKpiMeaning(kpiLabel.tone)}
+              {buildKpiMeaning(kpiLabel.tone, activeTurnView)}
             </p>
             <p className="probability-kpi-note m-0">
-              {buildKpiFocus(primaryRisk)}
+              {buildKpiFocus(primaryRisk, activeTurnView)}
             </p>
           </div>
         </div>
@@ -248,7 +264,10 @@ function Card({ entry, kind, isEditMode, onEdit }: {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="grid min-w-0 gap-1">
-          <strong className="text-[0.9rem] leading-[1.2] text-(--text-main)">{entry.name}</strong>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <strong className="truncate text-[0.9rem] leading-[1.2] text-(--text-main)">{entry.name}</strong>
+            <TurnContextBadge turnContext={entry.turnContext} />
+          </div>
           {supportText ? (
             <p className="m-0 truncate text-[0.74rem] leading-[1.2] text-(--text-muted)">{supportText}</p>
           ) : null}
@@ -258,6 +277,26 @@ function Card({ entry, kind, isEditMode, onEdit }: {
         </span>
       </div>
     </article>
+  )
+}
+
+function TurnContextBadge({ turnContext }: { turnContext: ProbabilityCausalEntry['turnContext'] }) {
+  if (turnContext === 'either') {
+    return null
+  }
+
+  const label = turnContext === 'first' ? '1º' : '2º'
+  const ariaLabel =
+    turnContext === 'first' ? 'Aplica al ir primero' : 'Aplica al ir segundo'
+
+  return (
+    <span
+      aria-label={ariaLabel}
+      title={ariaLabel}
+      className="shrink-0 rounded-sm bg-[rgb(245,158,11,0.14)] px-1 py-px text-[0.64rem] font-medium leading-none text-[rgb(245,158,11)]"
+    >
+      {label}
+    </span>
   )
 }
 
@@ -378,25 +417,39 @@ function buildKpiReading(probability: number): string {
   return 'Muy pocas manos superan el corte.'
 }
 
-function buildKpiMeaning(tone: 'excellent' | 'good' | 'improvable' | 'critical'): string {
-  if (tone === 'excellent') {
-    return 'El deck ya tiene una base muy estable y consistente.'
+function buildKpiMeaning(tone: 'excellent' | 'good' | 'improvable' | 'critical', view: TurnView): string {
+  if (view === 'first') {
+    if (tone === 'excellent') return 'Going first, el combo arranca consistentemente. Liger es alcanzable en la mayoría de las manos.'
+    if (tone === 'good') return 'Going first, la mayoría de las manos llegan a combo. Algunas aberturas dependen de 2 cartas.'
+    if (tone === 'improvable') return 'Going first, muchas manos no arrancan. Considerá más starters o extenders.'
+    return 'Going first, el deck no llega a combo con frecuencia suficiente. Revisá el engine.'
   }
 
-  if (tone === 'good') {
-    return 'La salida es estable, pero todavía hay margen para afinar riesgos.'
+  if (view === 'second') {
+    if (tone === 'excellent') return 'Going second, tenés herramientas para pasar boards y recursos para reconstruir.'
+    if (tone === 'good') return 'Going second, la mayoría de las manos tienen interacción o board breakers para frenar al rival.'
+    if (tone === 'improvable') return 'Going second, muchas manos no tienen forma de pasar el board rival. Considerá más board breakers.'
+    return 'Going second, el deck queda expuesto sin respuesta. Revisá el non-engine.'
   }
 
-  if (tone === 'improvable') {
-    return 'Todavía aparecen demasiadas manos que no llegan a una salida mínima.'
-  }
-
-  return 'La estructura actual falla demasiado seguido y necesita ajustes fuertes.'
+  // average / promedio
+  if (tone === 'excellent') return 'El deck es consistente sin importar quién arranca. Buena base para torneo.'
+  if (tone === 'good') return 'La salida es estable en promedio, pero hay asimetría entre ir primero y segundo.'
+  if (tone === 'improvable') return 'El promedio muestra debilidades. Revisá qué vista (first/second) está tirando el número abajo.'
+  return 'La estructura falla en ambos escenarios. Necesita ajustes fuertes en engine y non-engine.'
 }
 
-function buildKpiFocus(entry: ProbabilityCausalEntry | null): string {
+function buildKpiFocus(entry: ProbabilityCausalEntry | null, view: TurnView): string {
   if (!entry) {
     return 'No hay un riesgo dominante detectado.'
+  }
+
+  if (view === 'first') {
+    return `Principal freno going first: ${entry.name}.`
+  }
+
+  if (view === 'second') {
+    return `Principal freno going second: ${entry.name}.`
   }
 
   return `Principal freno: ${entry.name}.`

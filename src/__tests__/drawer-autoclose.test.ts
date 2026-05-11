@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import * as fc from 'fast-check'
 import { createPattern } from '../app/pattern-factory'
 import { curatePatterns } from '../app/pattern-curation'
-import type { CardEntry, HandPattern, CardOrigin, CardRole } from '../types'
+import type { CardEntry, HandPattern, CardOrigin, CardRole, TurnContext } from '../types'
 
 /**
  * Bug Condition Exploration Test
@@ -92,6 +92,7 @@ const arbCardRole: fc.Arbitrary<CardRole> = fc.constantFrom(
   'boardbreaker', 'floodgate', 'removal', 'searcher', 'draw',
   'recovery', 'combo_piece', 'payoff', 'brick', 'garnet', 'tech',
 )
+const arbTurnContext: fc.Arbitrary<TurnContext> = fc.constantFrom('first', 'second', 'either')
 
 
 /**
@@ -133,6 +134,7 @@ const arbMaintenanceTriggeringPatterns: fc.Arbitrary<HandPattern[]> = fc
         kind: fc.constantFrom('opening' as const, 'problem' as const),
         needsReview: fc.boolean(),
         cardIndex: fc.integer({ min: 0, max: 3 }),
+        turnContext: arbTurnContext,
       }),
       { minLength: count, maxLength: count },
     ),
@@ -147,6 +149,7 @@ const arbMaintenanceTriggeringPatterns: fc.Arbitrary<HandPattern[]> = fc
       id: `existing-pattern-${i}`,
       name: def.name,
       kind: def.kind,
+      turnContext: def.turnContext,
       logic: 'all' as const,
       minimumConditionMatches: 1,
       reusePolicy: 'forbid' as const,
@@ -404,11 +407,13 @@ const arbNamedPattern: fc.Arbitrary<HandPattern> = fc
     name: fc.stringMatching(/^[A-Z][a-z]{2,12}$/).filter((s) => s.trim().length > 0),
     kind: fc.constantFrom('opening' as const, 'problem' as const),
     cardIndex: fc.integer({ min: 1, max: 4 }),
+    turnContext: arbTurnContext,
   })
   .map((def) => ({
     id: `named-pattern-${def.cardIndex}-${def.name}`,
     name: def.name,
     kind: def.kind,
+    turnContext: def.turnContext,
     logic: 'all' as const,
     minimumConditionMatches: 1,
     reusePolicy: 'forbid' as const,
@@ -442,6 +447,7 @@ const arbPendingEmptyPattern: fc.Arbitrary<HandPattern> = fc
     id: `pending-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     name: '',
     kind: 'opening' as const,
+    turnContext: 'either' as const,
     logic: 'all' as const,
     minimumConditionMatches: 1,
     reusePolicy: 'forbid' as const,
@@ -467,11 +473,13 @@ const arbPresetPattern: fc.Arbitrary<HandPattern> = fc
     name: fc.stringMatching(/^[A-Z][a-z]{3,10}$/),
     kind: fc.constantFrom('opening' as const, 'problem' as const),
     role: arbCardRole,
+    turnContext: arbTurnContext,
   })
   .map((def) => ({
     id: `preset-${def.name}-${def.role}`,
     name: def.name,
     kind: def.kind,
+    turnContext: def.turnContext,
     logic: 'all' as const,
     minimumConditionMatches: 1,
     reusePolicy: 'forbid' as const,
