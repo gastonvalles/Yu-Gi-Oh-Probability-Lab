@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
+import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 
 import { buildCalculatorState } from '../app/calculator-state'
 import { getDeckModelStatus } from '../app/deck-model-status'
@@ -202,6 +202,9 @@ function ProbabilityPanelContent({
     },
     [activePatterns, readinessPatterns],
   )
+  // Defer the heavy calculation input so the UI (RuleBuilder, conditions list)
+  // updates immediately while the KPI recalculates in the background.
+  const deferredAllChecks = useDeferredValue(allChecks)
   const isUsingActiveChecks = activePatterns.filter((pattern) =>
     pattern.conditions.some((condition) => condition.matcher !== null),
   ).length > 0
@@ -212,8 +215,9 @@ function ProbabilityPanelContent({
   )
   // Pre-compute results for all three views once when deck/patterns change.
   // Switching the toggle then just picks from cache — no recalculation.
+  // Uses deferredAllChecks so the UI stays responsive during edits.
   const cachedResults = useMemo<Record<TurnView, CalculationOutput>>(() => {
-    if (isEditingDeck || !hasCompletedClassification || allChecks.length === 0) {
+    if (isEditingDeck || !hasCompletedClassification || deferredAllChecks.length === 0) {
       return {
         first: IDLE_CALCULATION_RESULT,
         second: IDLE_CALCULATION_RESULT,
@@ -224,13 +228,13 @@ function ProbabilityPanelContent({
     const deckSize = derivedMainCards.reduce((sum, card) => sum + card.copies, 0)
 
     // Going first: base handSize, first+either patterns
-    const firstPatterns = selectPatternsForView(allChecks, 'first')
+    const firstPatterns = selectPatternsForView(deferredAllChecks, 'first')
     const firstResult = calculateProbabilities(
       buildCalculatorState(derivedMainCards, { handSize, patterns: firstPatterns }),
     )
 
     // Going second: handSize + 1, second+either patterns
-    const secondPatterns = selectPatternsForView(allChecks, 'second')
+    const secondPatterns = selectPatternsForView(deferredAllChecks, 'second')
     const secondResult = calculateProbabilities(
       buildCalculatorState(derivedMainCards, { handSize: handSize + 1, patterns: secondPatterns }),
     )
@@ -240,7 +244,7 @@ function ProbabilityPanelContent({
     if (!hasAsymmetricRules) {
       // All patterns are 'either' — single calculation with base handSize (backward compat)
       averageResult = calculateProbabilities(
-        buildCalculatorState(derivedMainCards, { handSize, patterns: allChecks }),
+        buildCalculatorState(derivedMainCards, { handSize, patterns: deferredAllChecks }),
       )
     } else {
       // Blend first + second sub-views
@@ -276,7 +280,7 @@ function ProbabilityPanelContent({
 
     return { first: firstResult, second: secondResult, average: averageResult }
   }, [
-    allChecks,
+    deferredAllChecks,
     derivedMainCards,
     handSize,
     hasAsymmetricRules,
