@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 
 import {
   areGroupKeysEqual,
@@ -477,7 +478,7 @@ function ClassificationDrawer({
     return null
   }
 
-  return (
+  const drawer = (
     <>
       <button
         type="button"
@@ -508,6 +509,12 @@ function ClassificationDrawer({
       </aside>
     </>
   )
+
+  if (typeof document === 'undefined') {
+    return drawer
+  }
+
+  return createPortal(drawer, document.body)
 }
 
 function ClassificationModal({
@@ -533,9 +540,9 @@ function ClassificationModal({
     return null
   }
 
-  return (
+  const modal = (
     <>
-      <div className="fixed inset-0 z-150 grid place-items-center bg-[rgb(var(--background-rgb)/0.76)] px-4 py-5" onClick={onClose}>
+      <div className="classification-modal-root fixed inset-0 z-150 grid place-items-center bg-[rgb(var(--background-rgb)/0.76)] px-4 py-5" onClick={onClose}>
         <div
           className="surface-panel relative flex w-full max-w-280 min-h-0 max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden p-0 shadow-none"
           onClick={(event) => event.stopPropagation()}
@@ -572,6 +579,12 @@ function ClassificationModal({
       </div>
     </>
   )
+
+  if (typeof document === 'undefined') {
+    return modal
+  }
+
+  return createPortal(modal, document.body)
 }
 
 export function DeckRolesPanel({
@@ -1014,7 +1027,7 @@ export function DeckRolesPanel({
   }
 
   return (
-    <section className="surface-panel deck-mobile-step-shell grid min-w-0 content-start gap-2.5 overflow-x-hidden p-0 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_auto_minmax(0,1fr)] min-[1101px]:gap-3 min-[1101px]:overflow-hidden min-[1101px]:p-2.5">
+    <section className="surface-panel deck-mobile-step-shell classification-step-shell grid min-w-0 content-start gap-2.5 overflow-x-hidden p-0 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_auto_minmax(0,1fr)] min-[1101px]:gap-3 min-[1101px]:overflow-hidden min-[1101px]:p-2.5">
       <StepHero
         step="Categorización"
         title="Definí cómo funciona cada carta en tu deck"
@@ -1077,14 +1090,14 @@ export function DeckRolesPanel({
           Primero armá o importá tu Main Deck. Después vas a poder clasificar cada carta.
         </p>
       ) : (
-        <section className="surface-panel-soft grid min-w-0 gap-2.5 p-2.5 max-[1100px]:max-h-[min(70dvh,48rem)] max-[1100px]:overflow-hidden min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_minmax(0,1fr)] min-[1101px]:overflow-hidden">
+        <section className="surface-panel-soft classification-card-list-panel grid min-w-0 gap-2.5 p-2.5 max-[1100px]:overflow-hidden min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[minmax(0,1fr)] min-[1101px]:overflow-hidden">
             {visibleQueueCards.length === 0 ? (
               <p className={[emptyStateCopy.tone, 'm-0 px-2.5 py-2 text-[0.8rem]'].join(' ')}>
                 <strong className="block text-(--text-main)">{emptyStateCopy.title}</strong>
                 <span className="mt-1 block">{emptyStateCopy.description}</span>
               </p>
             ) : (
-              <div className="grid gap-1 pr-0 max-[1100px]:min-h-0 max-[1100px]:overflow-y-auto max-[1100px]:pr-1 min-[1101px]:min-h-0 min-[1101px]:overflow-y-auto min-[1101px]:pr-1">
+              <div className="classification-card-scroll grid gap-1 pr-0 max-[1100px]:min-h-0 max-[1100px]:overflow-y-auto max-[1100px]:pr-1 min-[1101px]:min-h-0 min-[1101px]:overflow-y-auto min-[1101px]:pr-1">
                 {visibleQueueCards.map((card) => {
                   const primaryStatus = getCardPrimaryStatus(card)
                   const active = selectedCard?.id === card.id

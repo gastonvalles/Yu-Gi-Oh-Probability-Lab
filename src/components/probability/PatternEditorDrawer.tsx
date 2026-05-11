@@ -1,4 +1,5 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 
 import type { PatternPreset, PatternPresetCategory } from '../../app/pattern-presets'
 import { AUTO_BASE_PRESET_IDS } from '../../app/pattern-presets'
@@ -58,6 +59,24 @@ export function PatternEditorDrawer({
     [patterns],
   )
 
+  useEffect(() => {
+    if (!isOpen || typeof window === 'undefined') {
+      return
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isOpen, onClose])
+
   if (!isOpen) {
     return null
   }
@@ -78,16 +97,20 @@ export function PatternEditorDrawer({
         ? 'Empezá por nombre, tipo y una condición. El resto puede ajustarse después.'
         : 'Editá la regla sin perder de vista su impacto en el resultado.'
 
-  return (
-    <div className="fixed inset-0 z-150">
+  const drawer = (
+    <div className="pattern-editor-drawer-root fixed z-150">
       <button
         type="button"
         aria-label="Cerrar editor"
-        className="absolute inset-0 h-full w-full bg-[rgb(var(--background-rgb)/0.76)]"
+        className="pattern-editor-drawer-backdrop absolute inset-0 h-full w-full bg-[rgb(var(--background-rgb)/0.76)]"
         onClick={onClose}
       />
 
-      <aside className="surface-panel absolute right-0 top-0 grid h-dvh w-full max-w-3xl grid-rows-[auto_minmax(0,1fr)] gap-0 border-l border-(--border-subtle) p-0 shadow-[-28px_0_54px_rgba(0,0,0,0.38)]">
+      <aside
+        role="dialog"
+        aria-label={drawerTitle}
+        className="surface-panel pattern-editor-drawer-panel absolute right-0 top-0 grid w-full max-w-3xl grid-rows-[auto_minmax(0,1fr)] gap-0 border-l border-(--border-subtle) p-0 shadow-[-28px_0_54px_rgba(0,0,0,0.38)]"
+      >
         <div className="grid gap-2 border-b border-(--border-subtle) px-4 py-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -231,6 +254,12 @@ export function PatternEditorDrawer({
       </aside>
     </div>
   )
+
+  if (typeof document === 'undefined') {
+    return drawer
+  }
+
+  return createPortal(drawer, document.body)
 }
 
 function groupPresetsForDrawer(

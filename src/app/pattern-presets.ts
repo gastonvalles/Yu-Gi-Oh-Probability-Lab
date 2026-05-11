@@ -266,14 +266,14 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
   },
   // ── Advanced opt-in rules ────────────────────────────────────────────────
   // These rules surface in the "Agregar regla recomendada" drawer but are
-  // never auto-activated. They cover situational game plans (going second,
+  // never auto-activated. They cover situational game plans (al ir segundo,
   // defensive hands) that don't apply universally.
   {
     id: 'starter_with_boardbreaker_opening',
     category: 'advanced',
-    title: 'Salida con board breaker',
-    description: 'Starter + una herramienta para pasar por encima del rival (going second).',
-    technicalSubtitle: 'Starter + Board Breaker',
+    title: 'Salida para romper campo',
+    description: 'Starter + una herramienta para romper campo al ir segundo.',
+    technicalSubtitle: 'Starter + rompe campo',
     kind: 'opening',
     recommended: false,
     build: (cards) => {
@@ -284,7 +284,7 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
       }
 
       return createMatcherPattern(
-        'Salida con board breaker',
+        'Salida para romper campo',
         'opening',
         [
           { matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' },
@@ -299,7 +299,7 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
       )
     },
     describeProbability: (probability) =>
-      `La mano combina Starter con un board breaker en ${formatProbability(probability)} de los casos, útil going second.`,
+      `La mano combina Starter con una herramienta para romper campo en ${formatProbability(probability)} de los casos, útil yendo segundo.`,
   },
   {
     id: 'dead_hand_problem',

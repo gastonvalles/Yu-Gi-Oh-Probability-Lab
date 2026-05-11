@@ -6,8 +6,8 @@ interface TurnViewToggleProps {
 }
 
 const OPTIONS: Array<{ value: TurnView; label: string }> = [
-  { value: 'first', label: 'Going First' },
-  { value: 'second', label: 'Going Second' },
+  { value: 'first', label: 'Primero' },
+  { value: 'second', label: 'Segundo' },
   { value: 'average', label: 'Promedio' },
 ]
 

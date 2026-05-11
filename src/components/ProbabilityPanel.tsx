@@ -2,6 +2,7 @@ import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState
 
 import { buildCalculatorState } from '../app/calculator-state'
 import { getDeckModelStatus } from '../app/deck-model-status'
+import type { DeckCardInstance } from '../app/model'
 import { useToastMessage } from '../app/use-toast-message'
 import type { DerivedDeckGroup } from '../app/deck-groups'
 import { curatePatterns } from '../app/pattern-curation'
@@ -20,12 +21,15 @@ import {
 import { formatInteger } from '../app/utils'
 import { calculateProbabilities } from '../probability'
 import type {
+  ApiCardReference,
   CalculationOutput,
   CalculationSummary,
   CardEntry,
   HandPattern,
   TurnView,
 } from '../types'
+import { KpiDetailModal } from './comparison/KpiDetailModal'
+import type { KpiRole } from './comparison/kpi-detail-helpers'
 import { DeckModelStatusBadge } from './DeckModelStatusBadge'
 import { StepHero } from './StepHero'
 import { ConfirmDialog } from './probability/ConfirmDialog'
@@ -341,6 +345,7 @@ function ProbabilityPanelContent({
   const [practiceOpen, setPracticeOpen] = useState(false)
   const [isAnalysisEditMode, setIsAnalysisEditMode] = useState(false)
   const [pendingDeletePatternId, setPendingDeletePatternId] = useState<string | null>(null)
+  const [kpiModalRole, setKpiModalRole] = useState<KpiRole | null>(null)
   const [highlightedPatternId, setHighlightedPatternId] = useState<string | null>(null)
   const [recentlyChangedPatternId, setRecentlyChangedPatternId] = useState<string | null>(null)
   const [kpiFeedback, setKpiFeedback] = useState<KpiFeedbackState | null>(null)
@@ -675,7 +680,6 @@ function ProbabilityPanelContent({
       ) : (
         <div className="grid min-h-0 content-start gap-3">
           <DeckQualityHero
-            allCheckCount={allCheckEntries.length}
             deckSummary={deckSummary}
             feedback={kpiFeedback}
             isEditMode={isAnalysisEditMode}
@@ -685,7 +689,11 @@ function ProbabilityPanelContent({
             onOpenCustomCreate={handleOpenCustomCreate}
             openingEntries={detailOpeningEntries}
             problemEntries={detailProblemEntries}
-            pieChart={hasCompletedClassification ? <KpiDonutChart derivedCards={derivedMainCards} /> : undefined}
+            pieChart={
+              hasCompletedClassification
+                ? <KpiDonutChart derivedCards={derivedMainCards} onSegmentClick={setKpiModalRole} />
+                : undefined
+            }
             activeTurnView={activeTurnView}
             onChangeTurnView={setActiveTurnView}
             hasAsymmetricRules={hasAsymmetricRules}
@@ -775,6 +783,17 @@ function ProbabilityPanelContent({
         onConfirm={handleConfirmDelete}
         title="Eliminar regla"
       />
+
+      {kpiModalRole !== null ? (
+        <KpiDetailModal
+          isOpen
+          role={kpiModalRole}
+          side="A"
+          mainDeck={cardEntriesToDeckInstances(derivedMainCards)}
+          onCardClick={() => setKpiModalRole(null)}
+          onClose={() => setKpiModalRole(null)}
+        />
+      ) : null}
     </article>
   )
 }
@@ -877,12 +896,12 @@ function filterEntriesForView(
 
 // ── KPI Donut Chart (same style as ComparisonScreen) ──
 
-const KPI_DONUT_COLORS: { role: string; color: string; rgb: string }[] = [
-  { role: 'starter', color: 'rgb(0, 255, 163)', rgb: '0, 255, 163' },
-  { role: 'extender', color: 'rgb(168, 85, 247)', rgb: '168, 85, 247' },
-  { role: 'handtrap', color: 'rgb(59, 130, 246)', rgb: '59, 130, 246' },
-  { role: 'brick', color: 'rgb(239, 68, 68)', rgb: '239, 68, 68' },
-  { role: 'boardbreaker', color: 'rgb(245, 158, 11)', rgb: '245, 158, 11' },
+const KPI_DONUT_COLORS: { role: KpiRole; color: string; rgb: string; label: string }[] = [
+  { role: 'starter', label: 'Starters', color: 'rgb(0, 255, 163)', rgb: '0, 255, 163' },
+  { role: 'extender', label: 'Extenders', color: 'rgb(168, 85, 247)', rgb: '168, 85, 247' },
+  { role: 'handtrap', label: 'Handtraps', color: 'rgb(59, 130, 246)', rgb: '59, 130, 246' },
+  { role: 'brick', label: 'Bricks', color: 'rgb(239, 68, 68)', rgb: '239, 68, 68' },
+  { role: 'boardbreaker', label: 'Boardbreakers', color: 'rgb(245, 158, 11)', rgb: '245, 158, 11' },
 ]
 
 function describeDonutRing(cx: number, cy: number, r: number, startAngle: number, endAngle: number, thickness: number): string {
@@ -896,7 +915,13 @@ function describeDonutRing(cx: number, cy: number, r: number, startAngle: number
   return `M ${x1o} ${y1o} A ${rO} ${rO} 0 ${la} 1 ${x2o} ${y2o} L ${x1i} ${y1i} A ${rI} ${rI} 0 ${la} 0 ${x2i} ${y2i} Z`
 }
 
-function KpiDonutChart({ derivedCards }: { derivedCards: CardEntry[] }) {
+function KpiDonutChart({
+  derivedCards,
+  onSegmentClick,
+}: {
+  derivedCards: CardEntry[]
+  onSegmentClick: (role: KpiRole) => void
+}) {
   let starters = 0, extenders = 0, handtraps = 0, bricks = 0, boardbreakers = 0
   for (const c of derivedCards) {
     for (const r of c.roles) {
@@ -915,7 +940,6 @@ function KpiDonutChart({ derivedCards }: { derivedCards: CardEntry[] }) {
 
   if (data.length === 0) return null
 
-  const mainDeckSize = derivedCards.reduce((sum, c) => sum + c.copies, 0)
   const segmentTotal = data.reduce((s, d) => s + d.count, 0)
   const cx = 50, cy = 50, r = 46, innerR = 20
   const filterId = 'prob-pie-glow'
@@ -929,8 +953,6 @@ function KpiDonutChart({ derivedCards }: { derivedCards: CardEntry[] }) {
     return seg
   })
 
-  const labelMap: Record<string, string> = { starter: 'Starters', handtrap: 'Handtraps', brick: 'Bricks', boardbreaker: 'Boardbreakers' }
-
   return (
     <svg viewBox="0 0 100 100" className="block w-full max-w-[100px] aspect-square" role="img" aria-label="Distribución de roles">
       <defs>
@@ -941,16 +963,36 @@ function KpiDonutChart({ derivedCards }: { derivedCards: CardEntry[] }) {
       </defs>
       {segments.map((seg, i) => {
         const angleDiff = seg.endAngle - seg.startAngle
-        const tooltip = `${labelMap[seg.role] ?? seg.role}: ${seg.count}`
+        const tooltip = `${seg.label}: ${formatInteger(seg.count)}`
         if (angleDiff >= 359.99) {
           return (
-            <circle key={i} cx={cx} cy={cy} r={(r + innerR) / 2} fill="none" stroke={seg.color} strokeWidth={r - innerR} strokeOpacity="0.75" filter={`url(#${filterId})`} className="cursor-pointer transition-all hover:[stroke-opacity:1]">
+            <circle
+              key={i}
+              cx={cx}
+              cy={cy}
+              r={(r + innerR) / 2}
+              fill="none"
+              stroke={seg.color}
+              strokeWidth={r - innerR}
+              strokeOpacity="0.75"
+              filter={`url(#${filterId})`}
+              className="cursor-pointer transition-all hover:[stroke-opacity:1]"
+              onClick={() => onSegmentClick(seg.role)}
+            >
               <title>{tooltip}</title>
             </circle>
           )
         }
         return (
-          <path key={i} d={describeDonutRing(cx, cy, r, seg.startAngle, seg.endAngle, r - innerR)} fill={seg.color} fillOpacity="0.75" filter={`url(#${filterId})`} className="cursor-pointer transition-all hover:[fill-opacity:1]">
+          <path
+            key={i}
+            d={describeDonutRing(cx, cy, r, seg.startAngle, seg.endAngle, r - innerR)}
+            fill={seg.color}
+            fillOpacity="0.75"
+            filter={`url(#${filterId})`}
+            className="cursor-pointer transition-all hover:[fill-opacity:1]"
+            onClick={() => onSegmentClick(seg.role)}
+          >
             <title>{tooltip}</title>
           </path>
         )
@@ -973,4 +1015,56 @@ function KpiDonutChart({ derivedCards }: { derivedCards: CardEntry[] }) {
       })}
     </svg>
   )
+}
+
+function cardEntriesToDeckInstances(cards: CardEntry[]): DeckCardInstance[] {
+  return cards.flatMap((card) => {
+    const apiCard = card.apiCard ?? buildFallbackApiCard(card)
+
+    return Array.from({ length: card.copies }, (_, index) => ({
+      instanceId: `${card.id}-kpi-${index}`,
+      name: card.name,
+      apiCard,
+      origin: card.origin,
+      roles: card.roles,
+      needsReview: card.needsReview,
+    }))
+  })
+}
+
+function buildFallbackApiCard(card: CardEntry): ApiCardReference {
+  return {
+    ygoprodeckId: fallbackCardId(card.id),
+    cardType: '',
+    frameType: '',
+    description: null,
+    race: null,
+    attribute: null,
+    level: null,
+    linkValue: null,
+    atk: null,
+    def: null,
+    archetype: null,
+    ygoprodeckUrl: null,
+    imageUrl: null,
+    imageUrlSmall: null,
+    banlist: {
+      tcg: null,
+      ocg: null,
+      goat: null,
+    },
+    genesys: {
+      points: null,
+    },
+  }
+}
+
+function fallbackCardId(id: string): number {
+  let hash = 0
+
+  for (let index = 0; index < id.length; index += 1) {
+    hash = (hash * 31 + id.charCodeAt(index)) | 0
+  }
+
+  return hash < 0 ? hash : -Math.max(1, hash)
 }

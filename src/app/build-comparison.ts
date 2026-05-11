@@ -469,7 +469,7 @@ export function interpretComparison(result: ComparisonResult): ComparisonInterpr
   if (Math.abs(handtrapDelta) >= 1) {
     const change = -handtrapDelta
     const sign = change > 0 ? '+' : ''
-    const effect = change > 0 ? 'más interacción going second' : 'menos interacción going second'
+    const effect = change > 0 ? 'más interacción yendo segundo' : 'menos interacción yendo segundo'
     candidates.push({
       priority: 'high',
       text: `${sign}${change} handtraps → ${effect}`,
@@ -511,8 +511,8 @@ export function interpretComparison(result: ComparisonResult): ComparisonInterpr
     const change = -boardbreakerDelta
     const sign = change > 0 ? '+' : ''
     const effect = change > 0
-      ? 'mejor contra boards establecidos'
-      : 'menos respuesta contra boards establecidos'
+      ? 'mejor contra campos establecidos'
+      : 'menos respuesta contra campos establecidos'
     candidates.push({
       priority: 'high',
       text: `${sign}${change} boardbreakers → ${effect}`,

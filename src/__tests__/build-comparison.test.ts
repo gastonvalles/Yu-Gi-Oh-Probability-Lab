@@ -1024,7 +1024,7 @@ describe('Build Comparison — interpretComparison', () => {
     })
 
     it('result with -2 handtraps → high insight with causa → efecto text', () => {
-      // handtrapDelta (A-B) = 2 → B lost 2 handtraps → text: "-2 handtraps → menos interacción going second"
+      // handtrapDelta (A-B) = 2 → B lost 2 handtraps → text: "-2 handtraps → menos interacción yendo segundo"
       const rolesA = createEmptyRoleDistribution()
       const rolesB = createEmptyRoleDistribution()
       rolesA.handtrap = 5
@@ -1039,7 +1039,7 @@ describe('Build Comparison — interpretComparison', () => {
       expect(handtrapInsight!.text).toContain('handtraps')
       expect(handtrapInsight!.text).toContain('→')
       expect(handtrapInsight!.text).toContain('-2')
-      expect(handtrapInsight!.text).toContain('menos interacción going second')
+      expect(handtrapInsight!.text).toContain('menos interacción yendo segundo')
     })
 
     it('result with trade-off (better openings, more bricks) → verdict tradeoff', () => {
@@ -1225,7 +1225,7 @@ describe('Build Comparison — Boardbreaker Insight', () => {
       expect(boardbreakerInsight).toBeDefined()
       expect(boardbreakerInsight!.priority).toBe('high')
       expect(boardbreakerInsight!.text).toContain('boardbreakers →')
-      expect(boardbreakerInsight!.text).toContain('menos respuesta contra boards establecidos')
+      expect(boardbreakerInsight!.text).toContain('menos respuesta contra campos establecidos')
     })
 
     it('boardbreaker delta = -3 generates insight with negative text', () => {
@@ -1244,7 +1244,7 @@ describe('Build Comparison — Boardbreaker Insight', () => {
       expect(boardbreakerInsight!.priority).toBe('high')
       expect(boardbreakerInsight!.text).toContain('boardbreakers →')
       expect(boardbreakerInsight!.text).toContain('+3')
-      expect(boardbreakerInsight!.text).toContain('mejor contra boards establecidos')
+      expect(boardbreakerInsight!.text).toContain('mejor contra campos establecidos')
     })
   })
 })

@@ -111,27 +111,30 @@ export function CategoryPicker({
   const isEmpty = shortcutRoles.length === 0 && remainingRoles.length === 0 && visibleOrigins.length === 0 && derivedMainCards.length === 0 && !hasMonsterProps
 
   return (
-    <div className="category-picker surface-panel-soft grid max-h-[min(60vh,420px)] gap-2.5 overflow-y-auto rounded-md p-3">
+    <div
+      className={[
+        'category-picker surface-panel-soft grid overflow-y-auto rounded-md p-3',
+        isPoolMode ? 'gap-1.5' : 'gap-2.5',
+      ].join(' ')}
+    >
       {/* Shortcuts + Pool toggle */}
       <div className="grid gap-1.5">
         <span className="app-muted text-[0.65rem] uppercase tracking-widest">Acceso rápido</span>
         <div className="flex flex-wrap items-center gap-1.5">
-          {shortcutRoles.map((role) => (
-            <ShortcutButton
-              key={role.value}
-              label={role.label}
-              copies={role.copies}
-              onClick={() => {
-                if (isPoolMode) return
-                select({ type: 'role', value: role.value })
-              }}
-              disabled={isPoolMode}
-            />
-          ))}
+          {!isPoolMode
+            ? shortcutRoles.map((role) => (
+                <ShortcutButton
+                  key={role.value}
+                  label={role.label}
+                  copies={role.copies}
+                  onClick={() => select({ type: 'role', value: role.value })}
+                />
+              ))
+            : null}
           <button
             type="button"
             className={[
-              'inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[0.8rem] font-medium transition-colors',
+              'inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[0.86rem] font-medium transition-colors',
               isPoolMode
                 ? 'bg-[rgb(var(--primary-rgb)/0.16)] text-accent ring-1 ring-accent/40'
                 : 'surface-card text-(--text-muted) hover:text-(--text-main) hover:bg-[rgb(var(--primary-rgb)/0.08)]',
@@ -145,7 +148,7 @@ export function CategoryPicker({
 
       {/* Pool confirmation bar */}
       {isPoolMode ? (
-        <div className="flex items-center justify-between gap-2 rounded-md bg-[rgb(var(--primary-rgb)/0.08)] px-3 py-2">
+        <div className="category-picker-pool-bar flex items-center justify-between gap-2 rounded-md bg-[rgb(var(--primary-rgb)/0.08)] px-3 py-2">
           <span className="text-[0.76rem] text-(--text-main)">
             {poolSelection.size > 0
               ? `${poolSelection.size} carta${poolSelection.size > 1 ? 's' : ''} seleccionada${poolSelection.size > 1 ? 's' : ''}`
@@ -164,54 +167,42 @@ export function CategoryPicker({
       ) : (
         <div className="grid gap-2.5">
           {/* Card type (Monster / Spell / Trap) */}
-          {cardTypeCounts.length > 0 ? (
+          {!isPoolMode && cardTypeCounts.length > 0 ? (
             <PickerGroup label="Tipo de carta">
               {cardTypeCounts.map((ct) => (
                 <PickerOption
                   key={ct.value}
                   label={ct.label}
                   detail={`${formatInteger(ct.copies)}x`}
-                  onClick={() => {
-                    if (isPoolMode) return
-                    select({ type: 'card_type', value: ct.value })
-                  }}
-                  disabled={isPoolMode}
+                  onClick={() => select({ type: 'card_type', value: ct.value })}
                 />
               ))}
             </PickerGroup>
           ) : null}
 
           {/* Roles */}
-          {remainingRoles.length > 0 ? (
+          {!isPoolMode && remainingRoles.length > 0 ? (
             <PickerGroup label="Roles">
               {remainingRoles.map((role) => (
                 <PickerOption
                   key={role.value}
                   label={role.label}
                   detail={`${formatInteger(role.copies)}x`}
-                  onClick={() => {
-                    if (isPoolMode) return
-                    select({ type: 'role', value: role.value })
-                  }}
-                  disabled={isPoolMode}
+                  onClick={() => select({ type: 'role', value: role.value })}
                 />
               ))}
             </PickerGroup>
           ) : null}
 
           {/* Origins */}
-          {visibleOrigins.length > 0 ? (
+          {!isPoolMode && visibleOrigins.length > 0 ? (
             <PickerGroup label="Origen">
               {visibleOrigins.map((origin) => (
                 <PickerOption
                   key={origin.value}
                   label={origin.label}
                   detail={`${formatInteger(origin.copies)}x`}
-                  onClick={() => {
-                    if (isPoolMode) return
-                    select({ type: 'origin', value: origin.value })
-                  }}
-                  disabled={isPoolMode}
+                  onClick={() => select({ type: 'origin', value: origin.value })}
                 />
               ))}
             </PickerGroup>
@@ -404,7 +395,7 @@ function ShortcutButton({
     <button
       type="button"
       className={[
-        'surface-card inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[0.8rem] font-medium transition-colors',
+        'surface-card inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[0.86rem] font-medium transition-colors',
         disabled
           ? 'opacity-40 cursor-not-allowed'
           : 'text-(--text-main) hover:bg-[rgb(var(--primary-rgb)/0.1)]',
@@ -413,19 +404,24 @@ function ShortcutButton({
       disabled={disabled}
     >
       {label}
-      <span className="text-[0.68rem] text-(--text-muted)">{formatInteger(copies)}x</span>
+      <span className="text-[0.74rem] text-(--text-muted)">{formatInteger(copies)}x</span>
     </button>
   )
 }
 
 function PickerGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  const [isOpen, setIsOpen] = useState(false)
+
   return (
-    <details className="group grid gap-1 rounded-md border border-transparent open:border-(--border-subtle) open:bg-[rgb(var(--card-background-rgb)/0.5)] open:p-2">
-      <summary className="app-muted flex cursor-pointer list-none items-center gap-1.5 rounded px-1 py-0.5 text-[0.65rem] uppercase tracking-widest transition-colors select-none hover:bg-[rgb(var(--primary-rgb)/0.06)] [&::-webkit-details-marker]:hidden">
-        <span className="text-[0.6rem] transition-transform group-open:rotate-90">›</span>
+    <details
+      className="group grid gap-1 rounded-md border border-transparent open:border-(--border-subtle) open:bg-[rgb(var(--card-background-rgb)/0.5)] open:p-2"
+      onToggle={(event) => setIsOpen(event.currentTarget.open)}
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded px-1 py-1 text-[0.72rem] font-semibold uppercase tracking-widest text-(--text-main) transition-colors select-none hover:bg-[rgb(var(--primary-rgb)/0.06)] [&::-webkit-details-marker]:hidden">
+        <span className="text-[0.72rem] transition-transform group-open:rotate-90">›</span>
         {label}
       </summary>
-      <div className="grid gap-0.5">{children}</div>
+      {isOpen ? <div className="grid gap-0.5">{children}</div> : null}
     </details>
   )
 }
@@ -445,7 +441,7 @@ function PickerOption({
     <button
       type="button"
       className={[
-        'flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left text-[0.78rem] transition-colors',
+        'flex w-full items-center justify-between gap-2 rounded px-2.5 py-1.5 text-left text-[0.88rem] transition-colors',
         disabled
           ? 'text-(--text-muted) opacity-40 cursor-not-allowed'
           : 'text-(--text-main) hover:bg-[rgb(var(--primary-rgb)/0.06)]',
@@ -453,8 +449,8 @@ function PickerOption({
       onClick={onClick}
       disabled={disabled}
     >
-      <span className="truncate">{label}</span>
-      <span className="shrink-0 text-[0.68rem] text-(--text-muted)">{detail}</span>
+      <span className="truncate text-(--text-main)">{label}</span>
+      <span className="shrink-0 text-[0.76rem] text-(--text-muted)">{detail}</span>
     </button>
   )
 }
@@ -474,7 +470,7 @@ function PoolCardOption({
     <button
       type="button"
       className={[
-        'flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left text-[0.78rem] transition-colors',
+        'flex w-full items-center justify-between gap-2 rounded px-2.5 py-1.5 text-left text-[0.88rem] transition-colors',
         isSelected
           ? 'bg-[rgb(var(--primary-rgb)/0.12)] text-accent'
           : 'text-(--text-main) hover:bg-[rgb(var(--primary-rgb)/0.06)]',
@@ -492,7 +488,7 @@ function PoolCardOption({
         </span>
         {label}
       </span>
-      <span className="shrink-0 text-[0.68rem] text-(--text-muted)">{formatInteger(copies)}x</span>
+      <span className="shrink-0 text-[0.76rem] text-(--text-muted)">{formatInteger(copies)}x</span>
     </button>
   )
 }
@@ -517,7 +513,7 @@ function PoolGroupOption({
     <button
       type="button"
       className={[
-        'flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left text-[0.78rem] transition-colors',
+        'flex w-full items-center justify-between gap-2 rounded px-2.5 py-1.5 text-left text-[0.88rem] transition-colors',
         allSelected
           ? 'bg-[rgb(var(--primary-rgb)/0.12)] text-accent'
           : selectedCount > 0
@@ -539,7 +535,7 @@ function PoolGroupOption({
         </span>
         {label}
       </span>
-      <span className="shrink-0 text-[0.68rem] text-(--text-muted)">
+      <span className="shrink-0 text-[0.76rem] text-(--text-muted)">
         {selectedCount > 0 ? `${selectedCount}/${cardIds.length}` : `${formatInteger(copies)}x`}
       </span>
     </button>

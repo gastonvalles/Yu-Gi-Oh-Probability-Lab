@@ -82,7 +82,6 @@ function HeroHarness({
 
   return (
     <DeckQualityHero
-      allCheckCount={allOpenings.length}
       deckSummary={{
         cleanProbability: probabilityByView[activeTurnView],
         cleanHands: Math.round(probabilityByView[activeTurnView] * 100),
@@ -122,12 +121,12 @@ function filterEntriesForTestView(
 // ══════════════════════════════════════════════════════════════════════════════
 
 describe('TurnViewToggle (isolation)', () => {
-  it('renders three radios with labels "Going First", "Going Second", "Promedio"', () => {
+  it('renders three radios with labels "Primero", "Segundo", "Promedio"', () => {
     /** **Validates: Requirements 3.2, 3.4** */
     render(<TurnViewToggle activeView="average" onChange={() => {}} />)
 
-    expect(screen.getByRole('radio', { name: 'Going First' })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'Going Second' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Primero' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Segundo' })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Promedio' })).toBeInTheDocument()
   })
 
@@ -135,10 +134,10 @@ describe('TurnViewToggle (isolation)', () => {
     const onChange = vi.fn()
     render(<TurnViewToggle activeView="average" onChange={onChange} />)
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Going First' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Primero' }))
     expect(onChange).toHaveBeenLastCalledWith('first')
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Going Second' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Segundo' }))
     expect(onChange).toHaveBeenLastCalledWith('second')
 
     fireEvent.click(screen.getByRole('radio', { name: 'Promedio' }))
@@ -148,11 +147,11 @@ describe('TurnViewToggle (isolation)', () => {
   it('marks the active view as aria-checked="true" and others as "false"', () => {
     const { rerender } = render(<TurnViewToggle activeView="first" onChange={() => {}} />)
 
-    expect(screen.getByRole('radio', { name: 'Going First' })).toHaveAttribute(
+    expect(screen.getByRole('radio', { name: 'Primero' })).toHaveAttribute(
       'aria-checked',
       'true',
     )
-    expect(screen.getByRole('radio', { name: 'Going Second' })).toHaveAttribute(
+    expect(screen.getByRole('radio', { name: 'Segundo' })).toHaveAttribute(
       'aria-checked',
       'false',
     )
@@ -184,8 +183,8 @@ describe('DeckQualityHero — turn view toggle wiring', () => {
       />,
     )
 
-    expect(screen.queryByRole('radio', { name: 'Going First' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('radio', { name: 'Going Second' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: 'Primero' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: 'Segundo' })).not.toBeInTheDocument()
     expect(screen.queryByRole('radio', { name: 'Promedio' })).not.toBeInTheDocument()
   })
 
@@ -202,8 +201,8 @@ describe('DeckQualityHero — turn view toggle wiring', () => {
       />,
     )
 
-    expect(screen.getByRole('radio', { name: 'Going First' })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'Going Second' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Primero' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Segundo' })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Promedio' })).toBeInTheDocument()
   })
 
@@ -221,17 +220,17 @@ describe('DeckQualityHero — turn view toggle wiring', () => {
       'aria-checked',
       'true',
     )
-    expect(screen.getByRole('radio', { name: 'Going First' })).toHaveAttribute(
+    expect(screen.getByRole('radio', { name: 'Primero' })).toHaveAttribute(
       'aria-checked',
       'false',
     )
-    expect(screen.getByRole('radio', { name: 'Going Second' })).toHaveAttribute(
+    expect(screen.getByRole('radio', { name: 'Segundo' })).toHaveAttribute(
       'aria-checked',
       'false',
     )
   })
 
-  it('7.6.4: clicking "Going First" switches the KPI display to the first-view probability', () => {
+  it('7.6.4: clicking "Primero" switches the KPI display to the first-view probability', () => {
     /** **Validates: Requirements 3.4, 4.1, 4.4** */
     render(
       <HeroHarness
@@ -247,16 +246,16 @@ describe('DeckQualityHero — turn view toggle wiring', () => {
     // Default view is 'average' → 37%.
     expect(screen.getByText('37.00%')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Going First' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Primero' }))
 
     expect(screen.getByText('12.00%')).toBeInTheDocument()
     expect(screen.queryByText('37.00%')).not.toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'Going First' })).toHaveAttribute(
+    expect(screen.getByRole('radio', { name: 'Primero' })).toHaveAttribute(
       'aria-checked',
       'true',
     )
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Going Second' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Segundo' }))
 
     expect(screen.getByText('88.00%')).toBeInTheDocument()
     expect(screen.queryByText('12.00%')).not.toBeInTheDocument()
@@ -278,8 +277,8 @@ describe('DeckQualityHero — turn view toggle wiring', () => {
     const { rerender } = render(<RemountWrapper mountKey={0} />)
 
     // Flip to a non-default view before the remount.
-    fireEvent.click(screen.getByRole('radio', { name: 'Going First' }))
-    expect(screen.getByRole('radio', { name: 'Going First' })).toHaveAttribute(
+    fireEvent.click(screen.getByRole('radio', { name: 'Primero' }))
+    expect(screen.getByRole('radio', { name: 'Primero' })).toHaveAttribute(
       'aria-checked',
       'true',
     )
@@ -317,13 +316,13 @@ describe('DeckQualityHero — turn view toggle wiring', () => {
     expect(screen.getByText('Rule First')).toBeInTheDocument()
     expect(screen.getByText('Rule Second')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Going First' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Primero' }))
 
     expect(screen.getByText('Rule Either')).toBeInTheDocument()
     expect(screen.getByText('Rule First')).toBeInTheDocument()
     expect(screen.queryByText('Rule Second')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Going Second' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Segundo' }))
 
     expect(screen.getByText('Rule Either')).toBeInTheDocument()
     expect(screen.queryByText('Rule First')).not.toBeInTheDocument()
@@ -374,7 +373,7 @@ describe('DeckQualityHero — turn view toggle wiring', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Going First' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Primero' }))
 
     expect(screen.getByLabelText('Aplica al ir primero')).toHaveTextContent('1º')
     // Either-context rules are not badged even when visible in a single-view

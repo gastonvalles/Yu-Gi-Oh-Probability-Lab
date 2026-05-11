@@ -30,7 +30,6 @@ export function DeckModeNavigation({
             className="deck-mode-topbar-step"
             onClick={() => onStepChange(item.key)}
           >
-            <span className="deck-mode-topbar-step-index">{item.step}</span>
             <span className="deck-mode-topbar-step-label">{item.title}</span>
           </button>
         )

@@ -17,7 +17,6 @@ interface DeckSummarySnapshot {
 }
 
 interface DeckQualityHeroProps {
-  allCheckCount: number
   deckSummary: DeckSummarySnapshot | null
   feedback: {
     label: string
@@ -41,7 +40,6 @@ interface DeckQualityHeroProps {
 }
 
 export function DeckQualityHero({
-  allCheckCount,
   deckSummary,
   feedback,
   isEditMode,
@@ -74,7 +72,6 @@ export function DeckQualityHero({
   const orderedOpenings = orderEntries(openingEntries)
   const orderedProblems = orderEntries(problemEntries)
   const kpiLabel = getKpiContextualLabel(deckSummary.cleanProbability)
-  const primaryRisk = orderedProblems.find(isActive) ?? null
 
   return (
     <section className="surface-panel-strong probability-quality-hero grid gap-5 px-4 py-4 min-[980px]:gap-6 min-[980px]:px-5 min-[980px]:py-5">
@@ -125,7 +122,7 @@ export function DeckQualityHero({
 
           {pieChart ? <div className="flex items-center justify-end" style={{ maxWidth: '120px' }}>{pieChart}</div> : null}
 
-          <div className="grid gap-2.5 min-[960px]:justify-items-end">
+          <div className="grid gap-1.5 min-[960px]:justify-items-end">
             <div className="flex flex-wrap items-center gap-2 min-[960px]:justify-end">
               <span className={['probability-kpi-tone', toneBadgeStyle(kpiLabel.tone)].join(' ')}>
                 {toneBadgeLabel(kpiLabel.tone)}
@@ -140,21 +137,15 @@ export function DeckQualityHero({
             <p className="probability-kpi-message m-0">
               {buildKpiMeaning(kpiLabel.tone, activeTurnView)}
             </p>
-            <p className="probability-kpi-note m-0">
-              {buildKpiFocus(primaryRisk, activeTurnView)}
-            </p>
           </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
           <span className="probability-kpi-stat">
-            <strong>{formatInteger(deckSummary.cleanHands)}</strong> manos limpias
-          </span>
-          <span className="probability-kpi-stat">
             <strong>{formatInteger(deckSummary.totalHands)}</strong> manos posibles
           </span>
           <span className="probability-kpi-stat">
-            <strong>{formatInteger(allCheckCount)}</strong> {deckSummary.basedOnActiveRules ? 'checks activos' : 'checks base'}
+            <strong>{formatInteger(deckSummary.cleanHands)}</strong> manos limpias
           </span>
         </div>
       </div>
@@ -417,40 +408,26 @@ function buildKpiReading(probability: number): string {
   return 'Muy pocas manos superan el corte.'
 }
 
-function buildKpiMeaning(tone: 'excellent' | 'good' | 'improvable' | 'critical', view: TurnView): string {
+function buildKpiMeaning(
+  tone: 'excellent' | 'good' | 'improvable' | 'critical',
+  view: TurnView,
+): string {
   if (view === 'first') {
-    if (tone === 'excellent') return 'Going first, el combo arranca consistentemente. Liger es alcanzable en la mayoría de las manos.'
-    if (tone === 'good') return 'Going first, la mayoría de las manos llegan a combo. Algunas aberturas dependen de 2 cartas.'
-    if (tone === 'improvable') return 'Going first, muchas manos no arrancan. Considerá más starters o extenders.'
-    return 'Going first, el deck no llega a combo con frecuencia suficiente. Revisá el engine.'
+    if (tone === 'excellent') return 'Excelente nota para ir primero. El deck convierte de forma confiable.'
+    if (tone === 'good') return 'Buena nota para ir primero. El deck es estable, con margen para pulir aperturas.'
+    if (tone === 'improvable') return 'Nota mejorable para ir primero. El deck necesita más acceso al plan inicial.'
+    return 'Nota baja para ir primero. El plan inicial todavía no es confiable.'
   }
 
   if (view === 'second') {
-    if (tone === 'excellent') return 'Going second, tenés herramientas para pasar boards y recursos para reconstruir.'
-    if (tone === 'good') return 'Going second, la mayoría de las manos tienen interacción o board breakers para frenar al rival.'
-    if (tone === 'improvable') return 'Going second, muchas manos no tienen forma de pasar el board rival. Considerá más board breakers.'
-    return 'Going second, el deck queda expuesto sin respuesta. Revisá el non-engine.'
+    if (tone === 'excellent') return 'Excelente nota para ir segundo. El deck responde bien bajo presión.'
+    if (tone === 'good') return 'Buena nota para ir segundo. Hay plan, aunque todavía se puede reforzar la respuesta.'
+    if (tone === 'improvable') return 'Nota mejorable para ir segundo. Falta más interacción o recuperación.'
+    return 'Nota baja para ir segundo. El deck queda demasiado expuesto.'
   }
 
-  // average / promedio
-  if (tone === 'excellent') return 'El deck es consistente sin importar quién arranca. Buena base para torneo.'
-  if (tone === 'good') return 'La salida es estable en promedio, pero hay asimetría entre ir primero y segundo.'
-  if (tone === 'improvable') return 'El promedio muestra debilidades. Revisá qué vista (first/second) está tirando el número abajo.'
-  return 'La estructura falla en ambos escenarios. Necesita ajustes fuertes en engine y non-engine.'
-}
-
-function buildKpiFocus(entry: ProbabilityCausalEntry | null, view: TurnView): string {
-  if (!entry) {
-    return 'No hay un riesgo dominante detectado.'
-  }
-
-  if (view === 'first') {
-    return `Principal freno going first: ${entry.name}.`
-  }
-
-  if (view === 'second') {
-    return `Principal freno going second: ${entry.name}.`
-  }
-
-  return `Principal freno: ${entry.name}.`
+  if (tone === 'excellent') return 'Excelente nota general. El deck se ve confiable y competitivo.'
+  if (tone === 'good') return 'Buena nota general. El deck es estable, con margen para optimizar.'
+  if (tone === 'improvable') return 'Nota mejorable. El deck todavía no es lo bastante estable.'
+  return 'Nota baja. El deck necesita ajustes estructurales.'
 }

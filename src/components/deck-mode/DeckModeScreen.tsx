@@ -23,6 +23,16 @@ import { DeckModeShell } from './DeckModeShell'
 import { useDeckModeController } from './use-deck-mode-controller'
 
 const DESKTOP_DECK_BUILDER_MEDIA_QUERY = '(min-width: 1101px)'
+const REDUCED_MOTION_MEDIA_QUERY = '(prefers-reduced-motion: reduce)'
+const WORKFLOW_STEP_ORDER: DeckWorkflowStepKey[] = [
+  'deck-builder',
+  'categorization',
+  'probability-lab',
+  'workspace',
+  'export',
+]
+
+type StepNavigationDirection = 'forward' | 'back'
 
 function getStepFromHash(hash: string): DeckWorkflowStepKey | null {
   const normalizedHash = hash.replace(/^#/, '')
@@ -48,6 +58,24 @@ function getRecommendedStep(
   }
 
   return 'export'
+}
+
+function getStepDirection(
+  currentStep: DeckWorkflowStepKey,
+  nextStep: DeckWorkflowStepKey,
+): StepNavigationDirection {
+  const currentIndex = WORKFLOW_STEP_ORDER.indexOf(currentStep)
+  const nextIndex = WORKFLOW_STEP_ORDER.indexOf(nextStep)
+
+  return nextIndex >= currentIndex ? 'forward' : 'back'
+}
+
+function shouldReduceMotion(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia(REDUCED_MOTION_MEDIA_QUERY).matches
+  )
 }
 
 export function DeckModeScreen() {
@@ -78,7 +106,14 @@ export function DeckModeScreen() {
     return getStepFromHash(window.location.hash) ?? recommendedStep
   })
   const isDeckBuilderStep = activeStep === 'deck-builder'
+  const isCategorizationStep = activeStep === 'categorization'
   const contentScrollRef = useRef<HTMLDivElement>(null)
+  const activeStepRef = useRef(activeStep)
+  const [stepDirection, setStepDirection] = useState<StepNavigationDirection>('forward')
+
+  useEffect(() => {
+    activeStepRef.current = activeStep
+  }, [activeStep])
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -89,6 +124,12 @@ export function DeckModeScreen() {
       const nextStep = getStepFromHash(window.location.hash)
 
       if (nextStep) {
+        const currentStep = activeStepRef.current
+
+        if (nextStep !== currentStep) {
+          setStepDirection(getStepDirection(currentStep, nextStep))
+        }
+
         setActiveStep(nextStep)
       }
     }
@@ -113,7 +154,10 @@ export function DeckModeScreen() {
   }, [activeStep])
 
   useEffect(() => {
-    contentScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' })
+    contentScrollRef.current?.scrollTo({
+      top: 0,
+      behavior: shouldReduceMotion() ? 'auto' : 'smooth',
+    })
   }, [activeStep])
 
   useEffect(() => {
@@ -135,10 +179,17 @@ export function DeckModeScreen() {
   }, [])
 
   const handleStepChange = useCallback((nextStep: DeckWorkflowStepKey) => {
+    const currentStep = activeStepRef.current
+
+    if (nextStep === currentStep) {
+      return
+    }
+
+    setStepDirection(getStepDirection(currentStep, nextStep))
     setActiveStep(nextStep)
 
     if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      window.scrollTo({ top: 0, behavior: shouldReduceMotion() ? 'auto' : 'smooth' })
     }
   }, [])
   const navigationItems = useMemo(
@@ -175,14 +226,21 @@ export function DeckModeScreen() {
       onStepChange={handleStepChange}
     />
   )
-  const mainContent = isDeckBuilderStep ? (
+  const stepContent = isDeckBuilderStep ? (
     <div id="deck-builder" className="h-full min-h-0">
       <DeckBuilderStep {...deckBuilderStep} />
     </div>
   ) : (
-    <section className="grid min-h-full content-start gap-3 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:p-4">
+    <section
+      className={[
+        'grid content-start gap-3 min-[1101px]:p-4',
+        isCategorizationStep
+          ? 'h-full min-h-0'
+          : 'min-h-full min-[1101px]:h-full min-[1101px]:min-h-0',
+      ].join(' ')}
+    >
       {activeStep === 'categorization' ? (
-        <div id="categorization" className="min-w-0 min-[1101px]:h-full min-[1101px]:min-h-0">
+        <div id="categorization" className="h-full min-h-0 min-w-0">
           <DeckRolesPanel {...controller.roles} />
         </div>
       ) : null}
@@ -205,6 +263,18 @@ export function DeckModeScreen() {
         </div>
       ) : null}
     </section>
+  )
+  const mainContent = (
+    <div
+      key={activeStep}
+      className={[
+        'deck-mode-step-transition',
+        isDeckBuilderStep || isCategorizationStep ? 'h-full min-h-0 min-w-0' : 'min-h-full min-w-0',
+      ].join(' ')}
+      data-direction={stepDirection}
+    >
+      {stepContent}
+    </div>
   )
 
   return (

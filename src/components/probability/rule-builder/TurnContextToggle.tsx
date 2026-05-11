@@ -8,8 +8,8 @@ interface TurnContextToggleProps {
 }
 
 const OPTIONS: Array<{ value: TurnContext; label: string }> = [
-  { value: 'first', label: 'Going First' },
-  { value: 'second', label: 'Going Second' },
+  { value: 'first', label: 'Primero' },
+  { value: 'second', label: 'Segundo' },
   { value: 'either', label: 'Ambos' },
 ]
 

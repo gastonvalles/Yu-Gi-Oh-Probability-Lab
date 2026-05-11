@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 
 import type { CardEntry, PatternCondition, PatternKind, RequirementKind } from '../../../types'
 import { formatInteger } from '../../../app/utils'
@@ -27,8 +28,90 @@ export function ConditionBlock({
   onRemove,
 }: ConditionBlockProps) {
   const [isPickerOpen, setIsPickerOpen] = useState(false)
+  const categoryButtonRef = useRef<HTMLButtonElement>(null)
+  const pickerPopoverRef = useRef<HTMLDivElement>(null)
+  const [pickerPosition, setPickerPosition] = useState<PickerPopoverPosition | null>(null)
   const categoryLabel = getConditionLabel(condition.matcher, derivedMainCards)
   const hasCategory = condition.matcher !== null
+
+  useLayoutEffect(() => {
+    if (!isPickerOpen || typeof window === 'undefined') {
+      setPickerPosition(null)
+      return
+    }
+
+    let frame = 0
+    const updatePosition = () => {
+      const rect = categoryButtonRef.current?.getBoundingClientRect()
+
+      if (!rect) {
+        return
+      }
+
+      const viewportWidth = window.innerWidth
+      const viewportHeight = window.innerHeight
+      const gutter = 12
+      const width = Math.min(Math.max(rect.width, 560), viewportWidth - gutter * 2)
+      const left = Math.min(Math.max(gutter, rect.left), viewportWidth - width - gutter)
+      const spaceBelow = viewportHeight - rect.bottom - gutter
+      const spaceAbove = rect.top - gutter
+      const preferredBelow = spaceBelow >= 280 || spaceBelow >= spaceAbove
+      const availableSpace = preferredBelow ? spaceBelow : spaceAbove
+      const maxHeight = Math.min(420, Math.max(240, availableSpace - 8))
+      const top = preferredBelow
+        ? rect.bottom + 6
+        : Math.max(gutter, rect.top - maxHeight - 6)
+
+      setPickerPosition({ left, top, width, maxHeight })
+    }
+    const requestUpdatePosition = () => {
+      window.cancelAnimationFrame(frame)
+      frame = window.requestAnimationFrame(updatePosition)
+    }
+
+    updatePosition()
+    window.addEventListener('resize', requestUpdatePosition)
+    window.addEventListener('scroll', requestUpdatePosition, true)
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener('resize', requestUpdatePosition)
+      window.removeEventListener('scroll', requestUpdatePosition, true)
+    }
+  }, [isPickerOpen])
+
+  useEffect(() => {
+    if (!isPickerOpen || typeof document === 'undefined') {
+      return
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target
+
+      if (!(target instanceof Node)) {
+        return
+      }
+
+      if (categoryButtonRef.current?.contains(target) || pickerPopoverRef.current?.contains(target)) {
+        return
+      }
+
+      setIsPickerOpen(false)
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsPickerOpen(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isPickerOpen])
 
   return (
     <article className="condition-block surface-card grid gap-2 px-3 py-2.5">
@@ -42,6 +125,7 @@ export function ConditionBlock({
           onChange={(qty) => actions.setRequirementCount(patternId, condition.id, String(Math.max(1, qty)))}
         />
         <button
+          ref={categoryButtonRef}
           type="button"
           className={[
             'condition-block-category px-3 py-1.5 text-[0.92rem] font-medium transition-colors rounded-r-md',
@@ -68,18 +152,39 @@ export function ConditionBlock({
         </p>
       ) : null}
 
-      {isPickerOpen ? (
-        <CategoryPicker
-          patternId={patternId}
-          conditionId={condition.id}
-          currentMatcher={condition.matcher}
-          derivedMainCards={derivedMainCards}
-          actions={actions}
-          onClose={() => setIsPickerOpen(false)}
-        />
-      ) : null}
+      {isPickerOpen && pickerPosition && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              ref={pickerPopoverRef}
+              className="category-picker-popover"
+              style={{
+                left: pickerPosition.left,
+                top: pickerPosition.top,
+                width: pickerPosition.width,
+                '--category-picker-max-height': `${pickerPosition.maxHeight}px`,
+              } as CSSProperties}
+            >
+              <CategoryPicker
+                patternId={patternId}
+                conditionId={condition.id}
+                currentMatcher={condition.matcher}
+                derivedMainCards={derivedMainCards}
+                actions={actions}
+                onClose={() => setIsPickerOpen(false)}
+              />
+            </div>,
+            document.body,
+          )
+        : null}
     </article>
   )
+}
+
+interface PickerPopoverPosition {
+  left: number
+  top: number
+  width: number
+  maxHeight: number
 }
 
 function KindSegment({
