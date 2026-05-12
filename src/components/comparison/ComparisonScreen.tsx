@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 
 import { compareBuild, interpretComparison } from '../../app/build-comparison'
-import type { Verdict, RoleDistribution } from '../../app/build-comparison'
+import type { Verdict, RoleDistribution, Insight } from '../../app/build-comparison'
 import { KpiDetailModal } from './KpiDetailModal'
 import { KpiCard, type KpiTone } from './KpiCard'
 import type { KpiRole } from './kpi-detail-helpers'
@@ -11,7 +11,7 @@ import { selectAppState } from '../../app/store'
 import { useAppSelector } from '../../app/store-hooks'
 import type { AppState, DeckBuilderState, DeckCardInstance, PortableConfig } from '../../app/model'
 import type { CardOrigin, CardRole } from '../../types'
-import { formatInteger } from '../../app/utils'
+import { formatInteger, formatPercent } from '../../app/utils'
 import { CardArt } from '../CardArt'
 import { CardDetailModal } from '../card-detail/CardDetailModal'
 import { BuildBCardEditor } from './BuildBCardEditor'
@@ -85,11 +85,25 @@ export function ComparisonScreen() {
     ).length
   }, [editedDeckBuilder])
 
-  const configA = useMemo(() => toPortableConfig(currentAppState), [currentAppState])
+  const configA = useMemo(() => {
+    const base = toPortableConfig(currentAppState)
+    // For comparison: only use patterns with generic matchers (role, origin, card_type, etc.)
+    // Exclude patterns that reference specific cards (card, card_pool matchers)
+    // because those are custom rules that don't apply universally.
+    return { ...base, patterns: filterToGenericPatterns(base.patterns) }
+  }, [currentAppState])
   const configB = useMemo(() => portableConfigFromImport(editedDeckBuilder, currentAppState), [editedDeckBuilder, currentAppState])
 
-  const result = useMemo(() => (configB ? compareBuild(configA, configB) : null), [configA, configB])
-  const interp = useMemo(() => (result ? interpretComparison(result) : null), [result])
+  // Single comparison: generic patterns, base handSize — fair evaluation for both decks
+  const resultGeneral = useMemo(() => {
+    if (!configB) return null
+    return compareBuild(configA, configB)
+  }, [configA, configB])
+  const interpGeneral = useMemo(() => (resultGeneral ? interpretComparison(resultGeneral) : null), [resultGeneral])
+
+  // Use general as the base result
+  const result = resultGeneral
+  const interp = interpGeneral
 
   const kpiA = useMemo(() => extractKpi(configA, result, 'A'), [configA, result])
   const kpiB = useMemo(() => (configB && result ? extractKpi(configB, result, 'B') : null), [configB, result])
@@ -312,13 +326,17 @@ export function ComparisonScreen() {
 
       {comparisonModalOpen && interp && result ? (
         <ComparisonResultModal
-          verdict={interp.verdict}
           rolesA={result.rolesA}
           rolesB={result.rolesB}
           deckSizeA={result.deckSizeA}
           deckSizeB={result.deckSizeB}
           deckNameA={currentAppState.deckBuilder.deckName || 'Build A'}
           deckNameB={importedDeckBuilder?.deckName || 'Build B'}
+          insights={interp.insights}
+          cleanProbA={result.cleanProbabilityA}
+          cleanProbB={result.cleanProbabilityB}
+          problemProbA={result.totalProblemProbabilityA}
+          problemProbB={result.totalProblemProbabilityB}
           onClose={() => setComparisonModalOpen(false)}
         />
       ) : null}
@@ -687,51 +705,100 @@ function KpiPieChart({ starters, extenders, handtraps, bricks, boardbreakers, ma
 
 // ── Comparison Result Modal (reuses KpiCard) ──
 
-const COMPARISON_STATS: { key: string; label: string; tone: KpiTone; getRoles: (r: RoleDistribution) => number; better: 'higher' | 'lower' }[] = [
-  { key: 'starters', label: 'Starters', tone: 'positive', getRoles: (r) => r.starter ?? 0, better: 'higher' },
-  { key: 'handtraps', label: 'Handtraps', tone: 'info', getRoles: (r) => r.handtrap ?? 0, better: 'higher' },
-  { key: 'bricks', label: 'Bricks', tone: 'negative', getRoles: (r) => (r.brick ?? 0) + (r.garnet ?? 0), better: 'lower' },
-  { key: 'boardbreakers', label: 'Boardbreakers', tone: 'boardbreaker', getRoles: (r) => r.boardbreaker ?? 0, better: 'higher' },
-  { key: 'extenders', label: 'Extenders', tone: 'positive', getRoles: (r) => r.extender ?? 0, better: 'higher' },
+const COMPARISON_STATS: { key: string; label: string; tone: KpiTone; getRoles: (r: RoleDistribution) => number; better: 'neutral' | 'higher' | 'lower' }[] = [
+  { key: 'starters', label: 'Starters', tone: 'positive', getRoles: (r) => r.starter ?? 0, better: 'neutral' },
+  { key: 'handtraps', label: 'Handtraps', tone: 'info', getRoles: (r) => r.handtrap ?? 0, better: 'neutral' },
+  { key: 'bricks', label: 'Bricks', tone: 'negative', getRoles: (r) => (r.brick ?? 0) + (r.garnet ?? 0), better: 'neutral' },
+  { key: 'boardbreakers', label: 'Boardbreakers', tone: 'boardbreaker', getRoles: (r) => r.boardbreaker ?? 0, better: 'neutral' },
+  { key: 'extenders', label: 'Extenders', tone: 'positive', getRoles: (r) => r.extender ?? 0, better: 'neutral' },
 ]
 
-function buildVerdictSummary(
+function buildComparisonVerdictMessage(
   verdict: Verdict,
   winnerName: string,
+  _loserName: string,
   rolesA: RoleDistribution,
   rolesB: RoleDistribution,
+  insights: Insight[],
+  openingProbA: number,
+  openingProbB: number,
 ): string {
-  if (verdict.type === 'equivalent') return 'Con este modelo, las diferencias son marginales.'
-  if (verdict.type === 'tradeoff') return `Con estas categorías, ${verdict.tradeoffDetail ?? 'cada deck tiene ventajas y desventajas.'}`
+  if (verdict.type === 'equivalent') {
+    return 'Las diferencias entre ambos builds son marginales. Elegí por preferencia o match-up.'
+  }
 
+  if (verdict.type === 'tradeoff') {
+    return verdict.tradeoffDetail ?? 'Cada build tiene ventajas y desventajas. La elección depende de qué priorizás.'
+  }
+
+  // Multi-dimensional analysis for a_better / b_better
   const isA = verdict.type === 'a_better'
   const w = isA ? rolesA : rolesB
   const l = isA ? rolesB : rolesA
+  const wOpenings = isA ? openingProbA : openingProbB
+  const lOpenings = isA ? openingProbB : openingProbA
 
-  const reasons: string[] = []
-  const starterDiff = (w.starter ?? 0) - (l.starter ?? 0)
-  const brickDiffW = ((w.brick ?? 0) + (w.garnet ?? 0))
-  const brickDiffL = ((l.brick ?? 0) + (l.garnet ?? 0))
-  const handtrapDiff = (w.handtrap ?? 0) - (l.handtrap ?? 0)
+  const advantages: string[] = []
 
-  if (starterDiff > 0) reasons.push('es más consistente en apertura')
-  if (brickDiffW < brickDiffL) reasons.push('brickea menos')
-  if (handtrapDiff > 0) reasons.push('tiene más interacción')
-  if (starterDiff <= 0 && brickDiffW >= brickDiffL && handtrapDiff <= 0) {
-    reasons.push('tiene mejor composición general')
+  // Consistency
+  const openingDiff = wOpenings - lOpenings
+  if (openingDiff >= 0.03) {
+    advantages.push('más consistente en apertura')
   }
 
-  return `Según tu clasificación, ${winnerName} ${reasons.join(', ')}.`
+  // Interaction (handtraps)
+  const handtrapDiff = (w.handtrap ?? 0) - (l.handtrap ?? 0)
+  if (handtrapDiff >= 2) {
+    advantages.push('mejor interacción yendo segundo')
+  }
+
+  // Bricks
+  const wBricks = (w.brick ?? 0) + (w.garnet ?? 0)
+  const lBricks = (l.brick ?? 0) + (l.garnet ?? 0)
+  if (lBricks - wBricks >= 2) {
+    advantages.push('menos riesgo de manos muertas')
+  }
+
+  // Extenders / resilience
+  const extenderDiff = (w.extender ?? 0) - (l.extender ?? 0)
+  if (extenderDiff >= 3) {
+    advantages.push('más resiliente tras interrupción')
+  }
+
+  // Boardbreakers
+  const bbDiff = (w.boardbreaker ?? 0) - (l.boardbreaker ?? 0)
+  if (bbDiff >= 2) {
+    advantages.push('mejor respuesta contra campos establecidos')
+  }
+
+  if (advantages.length === 0) {
+    // Fallback: use the insights text if available
+    if (insights.length > 0) {
+      return `${winnerName} tiene ventaja según tu modelo. Los motivos principales están detallados abajo.`
+    }
+    return `${winnerName} tiene mejor balance general según tu clasificación de cartas.`
+  }
+
+  if (advantages.length === 1) {
+    return `${winnerName} gana porque ${advantages[0]}.`
+  }
+
+  const last = advantages.pop()!
+  return `${winnerName} gana porque ${advantages.join(', ')} y ${last}.`
 }
 
-function ComparisonResultModal({ verdict, rolesA, rolesB, deckSizeA, deckSizeB, deckNameA, deckNameB, onClose }: {
-  verdict: Verdict
+function ComparisonResultModal({ rolesA, rolesB, deckSizeA, deckSizeB, deckNameA, deckNameB, insights, cleanProbA, cleanProbB, problemProbA, problemProbB, onClose }: {
   rolesA: RoleDistribution
   rolesB: RoleDistribution
   deckSizeA: number
   deckSizeB: number
   deckNameA: string
   deckNameB: string
+  insights: Insight[]
+  cleanProbA: number
+  cleanProbB: number
+  problemProbA: number
+  problemProbB: number
   onClose: () => void
 }) {
   useEffect(() => {
@@ -746,21 +813,31 @@ function ComparisonResultModal({ verdict, rolesA, rolesB, deckSizeA, deckSizeB, 
     return () => { document.body.style.overflow = prev }
   }, [])
 
-  const aIsWinner = verdict.type === 'a_better'
-  const bIsWinner = verdict.type === 'b_better'
+  // Derive the winner from the visible KPI (cleanProbability)
+  const cleanDiff = cleanProbA - cleanProbB
+  const aIsWinner = cleanDiff > 0.005
+  const bIsWinner = cleanDiff < -0.005
+  const isEquivalent = !aIsWinner && !bIsWinner
   const winnerName = aIsWinner ? deckNameA : bIsWinner ? deckNameB : ''
+  const loserName = aIsWinner ? deckNameB : bIsWinner ? deckNameA : ''
 
-  const verdictLabel = aIsWinner ? `Según tu modelo, ${deckNameA} es mejor`
-    : bIsWinner ? `Según tu modelo, ${deckNameB} es mejor`
-    : verdict.type === 'tradeoff' ? 'Según tu modelo, trade-off'
-    : 'Según tu modelo, equivalentes'
+  // Verdict badge
+  const verdictBadge = isEquivalent ? 'Equivalentes' : `${winnerName} gana`
 
-  const summary = buildVerdictSummary(verdict, winnerName, rolesA, rolesB)
+  const verdictToneClass = isEquivalent ? 'probability-kpi-tone-good' : 'probability-kpi-tone-excellent'
+
+  // Build contextual message based on the visible data
+  const verdictMessage = isEquivalent
+    ? 'Las diferencias entre ambos builds son marginales. Elegí por preferencia o match-up.'
+    : buildComparisonVerdictMessage(
+        { type: aIsWinner ? 'a_better' : 'b_better', summary: '', openingDeltaFormatted: '', bricksDelta: 0, tradeoffDetail: null, recommendation: null },
+        winnerName, loserName, rolesA, rolesB, insights, cleanProbA, cleanProbB,
+      )
 
   return (
-    <div className="fixed inset-0 z-150 grid place-items-center bg-[rgb(var(--background-rgb)/0.76)] px-4 py-5" onClick={onClose}>
+    <div className="fixed inset-0 z-150 grid items-start justify-center bg-[rgb(var(--background-rgb)/0.76)] px-4 pt-[10vh]" onClick={onClose}>
       <div
-        className="surface-panel relative flex w-full max-w-xl min-h-0 max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden p-0 shadow-none"
+        className="surface-panel-strong relative flex w-full max-w-lg min-h-0 max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden p-0"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close */}
@@ -770,66 +847,200 @@ function ComparisonResultModal({ verdict, rolesA, rolesB, deckSizeA, deckSizeB, 
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-4">
-          <div className="grid gap-4">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {/* Hero section — like Probability Lab */}
+          <div className="grid gap-4 px-5 pt-5 pb-4 border-b border-(--border-subtle)">
+            <div className="grid gap-2">
+              <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Comparación</p>
 
-            {/* Verdict */}
-            <div className="grid gap-1.5 text-center pr-8">
-              <strong className="text-[1.2rem] leading-tight tracking-[-0.02em] text-(--text-main)">{verdictLabel}</strong>
-              <p className="m-0 text-[0.72rem] text-(--text-muted)">{summary}</p>
-            </div>
-
-            {/* Column headers — winner gets accent color */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="text-center">
-                {aIsWinner ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1" style={{ background: 'rgba(0, 255, 163, 0.1)', border: '1px solid rgba(0, 255, 163, 0.25)' }}>
-                    <span className="text-[0.6rem]">👑</span>
-                    <strong className="text-[0.76rem] text-[rgb(0,255,163)]">{deckNameA}</strong>
-                  </span>
-                ) : (
-                  <strong className="text-[0.76rem] text-(--text-muted)">{deckNameA}</strong>
-                )}
+              {/* Badge + Verdict */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={['probability-kpi-tone', verdictToneClass].join(' ')}>
+                  {verdictBadge}
+                </span>
               </div>
-              <div className="text-center">
-                {bIsWinner ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1" style={{ background: 'rgba(0, 255, 163, 0.1)', border: '1px solid rgba(0, 255, 163, 0.25)' }}>
-                    <span className="text-[0.6rem]">👑</span>
-                    <strong className="text-[0.76rem] text-[rgb(0,255,163)]">{deckNameB}</strong>
-                  </span>
-                ) : (
-                  <strong className="text-[0.76rem] text-(--text-muted)">{deckNameB}</strong>
-                )}
-              </div>
-            </div>
 
-            {/* Main Deck row */}
-            <div className="grid grid-cols-2 gap-3">
-              <KpiCard label="Main Deck" value={formatInteger(deckSizeA)} tone="neutral" />
-              <KpiCard label="Main Deck" value={formatInteger(deckSizeB)} tone="neutral" />
-            </div>
-
-            {/* Stat rows using KpiCard */}
-            {COMPARISON_STATS.map((row) => {
-              const a = row.getRoles(rolesA)
-              const b = row.getRoles(rolesB)
-              if (a === 0 && b === 0) return null
-              return (
-                <div key={row.key} className="grid grid-cols-2 gap-3">
-                  <KpiCard label={row.label} value={formatInteger(a)} tone={row.tone} />
-                  <KpiCard label={row.label} value={formatInteger(b)} tone={row.tone} />
-                </div>
-              )
-            })}
-
-            {/* Tradeoff detail */}
-            {verdict.tradeoffDetail && verdict.type === 'tradeoff' ? (
-              <p className="m-0 rounded-lg px-3 py-2 text-[0.72rem] text-(--text-muted)" style={{ background: 'rgb(var(--foreground-rgb) / 0.04)', borderLeft: '3px solid rgb(245, 158, 11)' }}>
-                {verdict.tradeoffDetail}
+              {/* Main message */}
+              <p className="probability-kpi-message m-0 text-[0.96rem]">
+                {verdictMessage}
               </p>
+
+              {/* Recommendation */}
+              {!isEquivalent ? (
+                <p className="probability-kpi-note m-0">
+                  Recomendado si priorizás manos jugables sin problemas
+                </p>
+              ) : null}
+            </div>
+
+            {/* Insights — the "why", rewritten for clarity */}
+            {insights.length > 0 && !isEquivalent ? (
+              <div className="grid gap-1.5">
+                {insights.map((insight, i) => {
+                  // Rewrite insight text to be clear about who benefits.
+                  const moreIsBetter = insight.category === 'starters' || insight.category === 'extenders' || insight.category === 'handtraps' || insight.category === 'boardbreakers' || insight.category === 'openings'
+                  const advantageTo = moreIsBetter
+                    ? (insight.delta > 0 ? deckNameA : deckNameB)
+                    : (insight.delta > 0 ? deckNameB : deckNameA)
+                  const isAdvantageToWinner = advantageTo === winnerName
+
+                  const readableText = buildReadableInsight(insight, deckNameA, deckNameB)
+
+                  return (
+                    <div
+                      key={i}
+                      className="flex items-center gap-2.5 rounded-md px-3 py-2"
+                      style={{
+                        background: isAdvantageToWinner
+                          ? 'rgb(0, 255, 163, 0.06)'
+                          : 'rgb(239, 68, 68, 0.06)',
+                        borderLeft: `3px solid ${isAdvantageToWinner ? 'rgb(0, 255, 163, 0.5)' : 'rgb(239, 68, 68, 0.5)'}`,
+                      }}
+                    >
+                      <span className="text-[0.8rem] text-(--text-main)">{readableText}</span>
+                    </div>
+                  )
+                })}
+              </div>
             ) : null}
           </div>
+
+          {/* Probability KPI — the main comparison metric */}
+          <div className="grid gap-3 px-5 py-4 border-b border-(--border-subtle)">
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+              <div className="grid gap-0.5 text-center">
+                <strong className={['text-[1.8rem] font-extrabold leading-none tracking-tight', aIsWinner ? 'text-accent' : 'text-(--text-main)'].join(' ')}>
+                  {formatPercent(cleanProbA)}
+                </strong>
+                <span className="text-[0.66rem] text-(--text-muted)">Jugable</span>
+              </div>
+              <span className="text-[0.64rem] uppercase tracking-widest text-(--text-soft)">vs</span>
+              <div className="grid gap-0.5 text-center">
+                <strong className={['text-[1.8rem] font-extrabold leading-none tracking-tight', bIsWinner ? 'text-accent' : 'text-(--text-main)'].join(' ')}>
+                  {formatPercent(cleanProbB)}
+                </strong>
+                <span className="text-[0.66rem] text-(--text-muted)">Jugable</span>
+              </div>
+            </div>
+            {(problemProbA > 0 || problemProbB > 0) ? (
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                <div className="text-center">
+                  <span className="text-[0.8rem] font-semibold text-destructive">{formatPercent(problemProbA)}</span>
+                  <span className="text-[0.64rem] text-(--text-muted) ml-1">problemas</span>
+                </div>
+                <span className="text-[0.64rem] text-(--text-soft)">·</span>
+                <div className="text-center">
+                  <span className="text-[0.8rem] font-semibold text-destructive">{formatPercent(problemProbB)}</span>
+                  <span className="text-[0.64rem] text-(--text-muted) ml-1">problemas</span>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          {/* Stats section — compact role comparison */}
+          <div className="grid gap-3 px-5 py-4">
+            {/* Column headers */}
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+              <div className="text-center">
+                {aIsWinner ? (
+                  <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5" style={{ background: 'rgba(0, 255, 163, 0.1)', border: '1px solid rgba(0, 255, 163, 0.25)' }}>
+                    <span className="text-[0.58rem]">👑</span>
+                    <strong className="text-[0.74rem] text-[rgb(0,255,163)]">{deckNameA}</strong>
+                  </span>
+                ) : (
+                  <strong className="text-[0.74rem] text-(--text-muted)">{deckNameA}</strong>
+                )}
+              </div>
+              <span className="text-[0.64rem] uppercase tracking-widest text-(--text-soft)">vs</span>
+              <div className="text-center">
+                {bIsWinner ? (
+                  <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5" style={{ background: 'rgba(0, 255, 163, 0.1)', border: '1px solid rgba(0, 255, 163, 0.25)' }}>
+                    <span className="text-[0.58rem]">👑</span>
+                    <strong className="text-[0.74rem] text-[rgb(0,255,163)]">{deckNameB}</strong>
+                  </span>
+                ) : (
+                  <strong className="text-[0.74rem] text-(--text-muted)">{deckNameB}</strong>
+                )}
+              </div>
+            </div>
+
+            {/* Stat rows — compact inline format */}
+            <div className="grid gap-1.5">
+              <ComparisonStatRow label="Main Deck" valueA={deckSizeA} valueB={deckSizeB} better="neutral" />
+              {COMPARISON_STATS.map((row) => {
+                const a = row.getRoles(rolesA)
+                const b = row.getRoles(rolesB)
+                if (a === 0 && b === 0) return null
+                return (
+                  <ComparisonStatRow key={row.key} label={row.label} valueA={a} valueB={b} better={row.better} />
+                )
+              })}
+            </div>
+
+            {/* Opening probability comparison if available */}
+          </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function buildReadableInsight(insight: Insight, deckNameA: string, deckNameB: string): string {
+  const absDelta = Math.abs(insight.delta)
+  const moreIsBetter = insight.category === 'starters' || insight.category === 'extenders' || insight.category === 'handtraps' || insight.category === 'boardbreakers' || insight.category === 'openings'
+  const advantageTo = moreIsBetter
+    ? (insight.delta > 0 ? deckNameA : deckNameB)
+    : (insight.delta > 0 ? deckNameB : deckNameA)
+
+  switch (insight.category) {
+    case 'starters':
+      return `${advantageTo} tiene +${absDelta} ${absDelta === 1 ? 'starter' : 'starters'} → más acceso al plan principal`
+    case 'extenders':
+      return `${advantageTo} tiene +${absDelta} ${absDelta === 1 ? 'extender' : 'extenders'} → más recuperación tras interrupción`
+    case 'handtraps':
+      return `${advantageTo} tiene +${absDelta} handtraps → mejor interacción yendo segundo`
+    case 'boardbreakers':
+      return `${advantageTo} tiene +${absDelta} boardbreakers → mejor contra campos establecidos`
+    case 'bricks':
+      return `${advantageTo} tiene ${absDelta} ${absDelta === 1 ? 'brick' : 'bricks'} menos → menos manos muertas`
+    case 'openings':
+      return `${advantageTo} tiene +${(absDelta * 100).toFixed(1)}% consistencia de openings`
+    case 'problems':
+      return `${advantageTo} tiene ${(absDelta * 100).toFixed(1)}% menos manos problemáticas`
+    default:
+      return `${advantageTo} tiene ventaja en ${insight.category}`
+  }
+}
+
+function ComparisonStatRow({ label, valueA, valueB, better }: {
+  label: string
+  valueA: number
+  valueB: number
+  better: 'higher' | 'lower' | 'neutral'
+}) {
+  const diff = valueA - valueB
+  const aWins = better === 'neutral' ? false : better === 'higher' ? diff > 0 : diff < 0
+  const bWins = better === 'neutral' ? false : better === 'higher' ? diff < 0 : diff > 0
+  const isDraw = diff === 0
+
+  return (
+    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+      <div className="text-center">
+        <span className={[
+          'text-[0.88rem] font-semibold tabular-nums',
+          aWins ? 'text-accent' : isDraw ? 'text-(--text-main)' : 'text-(--text-muted)',
+        ].join(' ')}>
+          {formatInteger(valueA)}
+        </span>
+      </div>
+      <span className="text-[0.68rem] font-medium text-(--text-soft) min-w-22 text-center">{label}</span>
+      <div className="text-center">
+        <span className={[
+          'text-[0.88rem] font-semibold tabular-nums',
+          bWins ? 'text-accent' : isDraw ? 'text-(--text-main)' : 'text-(--text-muted)',
+        ].join(' ')}>
+          {formatInteger(valueB)}
+        </span>
       </div>
     </div>
   )
@@ -866,29 +1077,31 @@ function portableConfigFromImport(deck: DeckBuilderState | null, app: AppState):
     needsReview: c.needsReview,
   }))
 
-  // Build a set of card names in Build B (normalized) for filtering card-specific matchers
-  const buildBCardNames = new Set(deck.main.map(c => c.name.trim().toLowerCase()))
-
-  // Filter patterns: remove conditions that reference specific cards not in Build B
-  const filteredPatterns = app.patterns
+  // Use the same generic patterns as Build A (filtered from user's patterns)
+  const allPatterns: PortableConfig['patterns'] = app.patterns
     .filter(p => !p.needsReview)
-    .map(p => {
-      const filteredConditions = p.conditions.filter(c => {
-        if (!c.matcher) return true
-        if (c.matcher.type === 'card') return buildBCardNames.has(c.matcher.value.trim().toLowerCase())
-        if (c.matcher.type === 'card_pool') return c.matcher.value.some(name => buildBCardNames.has(name.trim().toLowerCase()))
-        // role, origin, attribute, level, etc. matchers are always valid
-        return true
-      })
-      return { ...p, conditions: filteredConditions }
-    })
-    // Remove patterns with no conditions left
-    .filter(p => p.conditions.length > 0)
+    .map(p => ({ name: p.name, kind: p.kind, turnContext: p.turnContext, logic: p.logic, minimumConditionMatches: p.minimumConditionMatches, reusePolicy: p.reusePolicy, needsReview: false, conditions: p.conditions.map(c => ({ matcher: c.matcher, quantity: c.quantity, kind: c.kind, distinct: c.distinct === true })) }))
 
   return {
     version: 15, handSize: app.handSize, deckFormat: app.deckFormat as PortableConfig['deckFormat'],
     patternsSeeded: app.patternsSeeded, patternsSeedVersion: app.patternsSeedVersion,
     deckBuilder: { deckName: deck.deckName, main: m(deck.main), extra: m(deck.extra), side: m(deck.side) },
-    patterns: filteredPatterns.map(p => ({ name: p.name, kind: p.kind, logic: p.logic, minimumConditionMatches: p.minimumConditionMatches, reusePolicy: p.reusePolicy, needsReview: false, conditions: p.conditions.map(c => ({ matcher: c.matcher, quantity: c.quantity, kind: c.kind, distinct: c.distinct })) })),
+    patterns: filterToGenericPatterns(allPatterns),
   }
+}
+
+/**
+ * Filters patterns to only those with generic matchers (role, origin, card_type,
+ * attribute, level, monster_type, atk, def). Removes patterns that have ANY
+ * condition with a card-specific matcher (card, card_pool) since those are
+ * custom rules that only apply to a specific deck.
+ */
+function filterToGenericPatterns(patterns: PortableConfig['patterns']): PortableConfig['patterns'] {
+  return patterns.filter(p => {
+    // Keep patterns where ALL conditions use generic matchers
+    return p.conditions.every(c => {
+      if (!c.matcher) return false // unconfigured conditions → skip
+      return c.matcher.type !== 'card' && c.matcher.type !== 'card_pool'
+    })
+  })
 }

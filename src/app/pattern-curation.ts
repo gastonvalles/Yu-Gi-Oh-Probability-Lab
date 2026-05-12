@@ -91,6 +91,10 @@ function curatePattern(
     return pattern
   }
 
+  // Detect active-editing state: pattern has a mix of configured and unconfigured conditions.
+  const isBeingEdited = pattern.conditions.some(c => c.matcher === null)
+    && pattern.conditions.some(c => c.matcher !== null)
+
   const conditions: PatternCondition[] = []
   const seenConditionKeys = new Set<string>()
 
@@ -98,6 +102,18 @@ function curatePattern(
     const curatedCondition = curateCondition(condition, cardById)
 
     if (!curatedCondition) {
+      // When actively editing, preserve unconfigured conditions (matcher === null) as-is.
+      if (isBeingEdited && condition.matcher === null) {
+        const conditionKey = getConditionSignature(condition)
+
+        if (seenConditionKeys.has(conditionKey)) {
+          continue
+        }
+
+        seenConditionKeys.add(conditionKey)
+        conditions.push(condition)
+      }
+
       continue
     }
 
@@ -133,9 +149,11 @@ function curatePattern(
     pattern.minimumConditionMatches,
   )
   const kind = normalizeHandPatternCategory(pattern.kind)
-  const name = pattern.name.replace(/\s+/g, ' ').trim() || (kind === 'opening'
-    ? 'Salida sin nombre'
-    : 'Problema sin nombre')
+  const name = isBeingEdited && pattern.name.trim().length === 0
+    ? ''
+    : pattern.name.replace(/\s+/g, ' ').trim() || (kind === 'opening'
+      ? 'Salida sin nombre'
+      : 'Problema sin nombre')
   const nextPattern: HandPattern = {
     ...pattern,
     name,

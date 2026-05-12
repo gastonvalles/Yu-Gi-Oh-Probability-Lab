@@ -1,3 +1,5 @@
+import { createPortal } from 'react-dom'
+
 import { Button, type ButtonColor, type ButtonVariant } from '../ui/Button'
 
 interface ConfirmDialogProps {
@@ -27,7 +29,7 @@ export function ConfirmDialog({
     return null
   }
 
-  return (
+  const dialog = (
     <div
       className="fixed inset-0 z-160 grid place-items-center bg-[rgb(var(--background-rgb)/0.74)] px-4"
       onClick={onCancel}
@@ -50,4 +52,10 @@ export function ConfirmDialog({
       </div>
     </div>
   )
+
+  if (typeof document === 'undefined') {
+    return dialog
+  }
+
+  return createPortal(dialog, document.body)
 }

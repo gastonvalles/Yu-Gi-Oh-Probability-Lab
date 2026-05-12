@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 
-import type { PatternPreset, PatternPresetCategory } from '../../app/pattern-presets'
+import type { PatternPreset, PatternPresetScope } from '../../app/pattern-presets'
 import { AUTO_BASE_PRESET_IDS } from '../../app/pattern-presets'
 import { getPatternDefinitionKey } from '../../app/patterns'
 import { formatInteger, formatPercent } from '../../app/utils'
@@ -30,11 +30,9 @@ interface PatternEditorDrawerProps {
   probability: number | null
 }
 
-const PRESET_CATEGORY_LABELS: Record<PatternPresetCategory, string> = {
-  consistency: 'Consistencia',
-  interaction: 'Interacción',
-  problems: 'Problemas',
-  advanced: 'Ideas extra',
+const PRESET_CATEGORY_LABELS: Record<PatternPresetScope, string> = {
+  universal: 'Universales',
+  generic: 'Genéricas',
 }
 
 export function PatternEditorDrawer({
@@ -265,14 +263,14 @@ export function PatternEditorDrawer({
 function groupPresetsForDrawer(
   availablePresets: PatternPreset[],
 ): Array<{
-  category: PatternPresetCategory
+  category: PatternPresetScope
   presets: PatternPreset[]
 }> {
-  const categoryOrder: PatternPresetCategory[] = ['consistency', 'interaction', 'problems', 'advanced']
+  const scopeOrder: PatternPresetScope[] = ['universal', 'generic']
 
-  return categoryOrder.flatMap((category) => {
+  return scopeOrder.flatMap((scope) => {
     const presets = availablePresets
-      .filter((preset) => preset.category === category)
+      .filter((preset) => preset.scope === scope)
       .sort((left, right) => {
         if (left.recommended !== right.recommended) {
           return left.recommended ? -1 : 1
@@ -285,7 +283,7 @@ function groupPresetsForDrawer(
       return []
     }
 
-    return [{ category, presets }]
+    return [{ category: scope, presets }]
   })
 }
 

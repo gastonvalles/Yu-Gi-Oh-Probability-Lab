@@ -57,6 +57,8 @@ export interface ComparisonResult {
   totalOpeningProbabilityB: number
   totalProblemProbabilityA: number
   totalProblemProbabilityB: number
+  cleanProbabilityA: number
+  cleanProbabilityB: number
   openingDelta: number
   problemDelta: number
   buildsAreIdentical: boolean
@@ -363,6 +365,14 @@ export function compareBuild(
   const totalProblemProbabilityA = outputA.summary?.badProbability ?? 0
   const totalProblemProbabilityB = outputB.summary?.badProbability ?? 0
 
+  // Clean probability: hands with at least one opening AND no problems
+  const cleanProbabilityA = outputA.summary
+    ? Math.max(0, outputA.summary.goodHands - outputA.summary.overlapHands) / Math.max(1, outputA.summary.totalHands)
+    : 0
+  const cleanProbabilityB = outputB.summary
+    ? Math.max(0, outputB.summary.goodHands - outputB.summary.overlapHands) / Math.max(1, outputB.summary.totalHands)
+    : 0
+
   const openingDelta = totalOpeningProbabilityA - totalOpeningProbabilityB
   const problemDelta = totalProblemProbabilityA - totalProblemProbabilityB
 
@@ -388,6 +398,8 @@ export function compareBuild(
     totalOpeningProbabilityB,
     totalProblemProbabilityA,
     totalProblemProbabilityB,
+    cleanProbabilityA,
+    cleanProbabilityB,
     openingDelta,
     problemDelta,
     buildsAreIdentical,

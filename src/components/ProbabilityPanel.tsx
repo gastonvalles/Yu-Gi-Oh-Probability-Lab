@@ -80,6 +80,38 @@ const IDLE_CALCULATION_RESULT: CalculationOutput = {
   summary: null,
 }
 
+// Module-level cache for probability calculations so results survive unmount/remount
+// when navigating between workflow steps.
+interface CalculationCache {
+  key: string
+  results: Record<TurnView, CalculationOutput>
+}
+
+let _calculationCache: CalculationCache | null = null
+
+function buildCacheKey(
+  checks: HandPattern[],
+  cards: CardEntry[],
+  handSize: number,
+  hasAsymmetric: boolean,
+): string {
+  // Use a lightweight fingerprint: pattern ids + condition count + card ids/copies + handSize
+  const patternPart = checks.map((p) => `${p.id}:${p.conditions.length}`).join(',')
+  const cardPart = cards.map((c) => `${c.id}:${c.copies}:${c.roles.join('.')}`).join(',')
+  return `${patternPart}|${cardPart}|${handSize}|${hasAsymmetric}`
+}
+
+function getCachedResults(key: string): Record<TurnView, CalculationOutput> | null {
+  if (_calculationCache && _calculationCache.key === key) {
+    return _calculationCache.results
+  }
+  return null
+}
+
+function setCachedResults(key: string, results: Record<TurnView, CalculationOutput>): void {
+  _calculationCache = { key, results }
+}
+
 export function ProbabilityPanel({
   handSize,
   patterns,
@@ -88,7 +120,10 @@ export function ProbabilityPanel({
   patternActions,
   isEditingDeck,
 }: ProbabilityPanelProps) {
-  const [isReady, setIsReady] = useState(false)
+  // Skip the skeleton entirely if we already have cached calculation results
+  // (i.e. user navigated away and came back without changing the deck).
+  const hasCachedData = _calculationCache !== null
+  const [isReady, setIsReady] = useState(hasCachedData)
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -220,6 +255,7 @@ function ProbabilityPanelContent({
   // Pre-compute results for all three views once when deck/patterns change.
   // Switching the toggle then just picks from cache — no recalculation.
   // Uses deferredAllChecks so the UI stays responsive during edits.
+  // Module-level cache ensures results survive unmount/remount on step navigation.
   const cachedResults = useMemo<Record<TurnView, CalculationOutput>>(() => {
     if (isEditingDeck || !hasCompletedClassification || deferredAllChecks.length === 0) {
       return {
@@ -227,6 +263,12 @@ function ProbabilityPanelContent({
         second: IDLE_CALCULATION_RESULT,
         average: IDLE_CALCULATION_RESULT,
       }
+    }
+
+    const cacheKey = buildCacheKey(deferredAllChecks, derivedMainCards, handSize, hasAsymmetricRules)
+    const cached = getCachedResults(cacheKey)
+    if (cached) {
+      return cached
     }
 
     const deckSize = derivedMainCards.reduce((sum, card) => sum + card.copies, 0)
@@ -282,7 +324,9 @@ function ProbabilityPanelContent({
       }
     }
 
-    return { first: firstResult, second: secondResult, average: averageResult }
+    const results = { first: firstResult, second: secondResult, average: averageResult }
+    setCachedResults(cacheKey, results)
+    return results
   }, [
     deferredAllChecks,
     derivedMainCards,

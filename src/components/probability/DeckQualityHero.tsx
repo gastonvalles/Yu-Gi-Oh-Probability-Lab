@@ -137,6 +137,12 @@ export function DeckQualityHero({
             <p className="probability-kpi-message m-0">
               {buildKpiMeaning(kpiLabel.tone, activeTurnView)}
             </p>
+
+            {orderedOpenings.length > 0 || orderedProblems.length > 0 ? (
+              <p className="probability-kpi-note m-0">
+                {buildKpiExplanation(orderedOpenings, orderedProblems)}
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -430,4 +436,64 @@ function buildKpiMeaning(
   if (tone === 'good') return 'Buena nota general. El deck es estable, con margen para optimizar.'
   if (tone === 'improvable') return 'Nota mejorable. El deck todavía no es lo bastante estable.'
   return 'Nota baja. El deck necesita ajustes estructurales.'
+}
+
+
+function buildKpiExplanation(
+  openings: ProbabilityCausalEntry[],
+  problems: ProbabilityCausalEntry[],
+): string {
+  const activeOpenings = openings.filter((e) => e.possible && e.probability > 0)
+  const activeProblems = problems.filter((e) => e.possible && e.probability > 0)
+
+  // No data → no explanation
+  if (activeOpenings.length === 0 && activeProblems.length === 0) {
+    return ''
+  }
+
+  // Analyze opening coverage
+  const topOpening = activeOpenings[0] ?? null
+  const hasBackupPlan = activeOpenings.length >= 2 && activeOpenings[1].probability >= 0.2
+  const openingIsStrong = topOpening !== null && topOpening.probability >= 0.6
+  const openingIsWeak = topOpening !== null && topOpening.probability < 0.35
+
+  // Analyze problem impact
+  const topProblem = activeProblems[0] ?? null
+  const problemIsHigh = topProblem !== null && topProblem.probability >= 0.2
+  const problemIsLow = topProblem === null || topProblem.probability < 0.08
+  const totalProblemImpact = activeProblems.reduce((sum, e) => sum + e.probability, 0)
+
+  // Build a conclusion based on the relationship between openings and problems
+  if (openingIsStrong && problemIsLow) {
+    if (hasBackupPlan) {
+      return 'Las aperturas cubren bien y los problemas no recortan demasiado. Hay plan B si la principal falla.'
+    }
+    return 'La apertura principal es sólida y los problemas no pesan mucho. Falta un plan alternativo si falla.'
+  }
+
+  if (openingIsStrong && problemIsHigh) {
+    return `Las aperturas son fuertes, pero "${topProblem!.name}" recorta manos que de otro modo serían jugables.`
+  }
+
+  if (openingIsWeak && problemIsLow) {
+    if (activeOpenings.length <= 1) {
+      return 'El deck depende de una sola línea de apertura que no aparece lo suficiente. Más starters o un plan B ayudarían.'
+    }
+    return 'Las aperturas no cubren lo suficiente. Más acceso al plan principal mejoraría la consistencia.'
+  }
+
+  if (openingIsWeak && problemIsHigh) {
+    return `Pocas manos arrancan bien y "${topProblem!.name}" agrava el problema. Hay que reforzar aperturas o reducir bricks.`
+  }
+
+  // Middle ground
+  if (totalProblemImpact > 0.25) {
+    return 'Los problemas acumulados recortan una porción importante de manos. Reducir bricks tendría más impacto que sumar aperturas.'
+  }
+
+  if (hasBackupPlan) {
+    return 'Hay varias líneas de apertura activas. La nota sube si se reduce el riesgo de manos muertas.'
+  }
+
+  return 'El balance entre aperturas y problemas define la nota. Ajustar cualquiera de los dos mueve el resultado.'
 }

@@ -561,7 +561,7 @@ export function DeckImportDrawer({
           role="dialog"
           aria-label="Importador de deck"
           className={[
-            'surface-panel absolute right-0 top-0 grid h-dvh w-full max-w-136 grid-rows-[auto_minmax(0,1fr)] gap-0 border-l border-(--border-subtle) p-0 shadow-[-28px_0_54px_rgba(0,0,0,0.38)]',
+            'surface-panel absolute right-0 top-0 grid h-full w-full max-w-136 grid-rows-[auto_minmax(0,1fr)] gap-0 border-l border-(--border-subtle) p-0 shadow-[-28px_0_54px_rgba(0,0,0,0.38)]',
           ].join(' ')}
           style={{ background: 'var(--card-background)' }}
         >

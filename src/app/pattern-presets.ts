@@ -4,9 +4,13 @@ import { getPatternDefinitionKey, normalizePatternName } from './patterns'
 
 export type PatternPresetCategory = 'consistency' | 'interaction' | 'problems' | 'advanced'
 
+/** Scope determines how a preset is used across the app */
+export type PatternPresetScope = 'universal' | 'generic'
+
 export interface PatternPresetDefinition {
   id: string
   category: PatternPresetCategory
+  scope: PatternPresetScope
   title: string
   description: string
   technicalSubtitle: string
@@ -20,6 +24,7 @@ export interface PatternPresetDefinition {
 export interface PatternPreset {
   id: string
   category: PatternPresetCategory
+  scope: PatternPresetScope
   title: string
   description: string
   technicalSubtitle: string
@@ -92,6 +97,7 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
   {
     id: 'starter_opening',
     category: 'consistency',
+    scope: 'universal',
     title: 'Salida básica',
     description: 'La condición mínima para que la mano juegue. Sin starter, no arrancás.',
     technicalSubtitle: 'con 1+ Starter',
@@ -108,6 +114,7 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
   {
     id: 'starter_extender_opening',
     category: 'consistency',
+    scope: 'generic',
     title: 'Salida con seguimiento',
     description: 'Arranque con seguimiento real para armar un board.',
     technicalSubtitle: 'Starter + Extender',
@@ -134,6 +141,7 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
   {
     id: 'starter_protection_opening',
     category: 'interaction',
+    scope: 'generic',
     title: 'Salida con interacción',
     description: 'Salir y poder frenar al rival en el mismo turno.',
     technicalSubtitle: 'Starter + (Handtrap o Disruption)',
@@ -167,6 +175,7 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
   {
     id: 'no_starter_problem',
     category: 'problems',
+    scope: 'universal',
     title: 'Mano sin Starter',
     description: 'La mano no encuentra un arranque claro.',
     technicalSubtitle: 'sin Starter',
@@ -183,6 +192,7 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
   {
     id: 'double_brick_problem',
     category: 'problems',
+    scope: 'universal',
     title: '2+ Bricks en mano',
     description: 'Manos pesadas con cartas que no arrancan solas.',
     technicalSubtitle: 'con 2+ Brick',
@@ -199,6 +209,7 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
   {
     id: 'triple_non_engine_problem',
     category: 'problems',
+    scope: 'generic',
     title: '3+ Non-engine en mano',
     description: 'Exceso de cartas defensivas sin plan propio.',
     technicalSubtitle: 'con 3+ Non-engine',
@@ -215,6 +226,7 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
   {
     id: 'no_interaction_problem',
     category: 'problems',
+    scope: 'generic',
     title: 'Mano sin interacción',
     description: 'Manos pasivas que no frenan al rival.',
     technicalSubtitle: 'sin Handtrap ni Disruption',
@@ -241,6 +253,7 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
   {
     id: 'extender_without_starter_problem',
     category: 'problems',
+    scope: 'generic',
     title: 'Extender sin Starter',
     description: 'Parece jugable pero no tiene punto de arranque real.',
     technicalSubtitle: 'Extender y 0 Starter',
@@ -264,13 +277,10 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
     describeProbability: (probability) =>
       `La mano abre Extender sin Starter en ${formatProbability(probability)} de los casos, un falso positivo de jugabilidad.`,
   },
-  // ── Advanced opt-in rules ────────────────────────────────────────────────
-  // These rules surface in the "Agregar regla recomendada" drawer but are
-  // never auto-activated. They cover situational game plans (al ir segundo,
-  // defensive hands) that don't apply universally.
   {
     id: 'starter_with_boardbreaker_opening',
     category: 'advanced',
+    scope: 'generic',
     title: 'Salida para romper campo',
     description: 'Starter + una herramienta para romper campo al ir segundo.',
     technicalSubtitle: 'Starter + rompe campo',
@@ -302,48 +312,9 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
       `La mano combina Starter con una herramienta para romper campo en ${formatProbability(probability)} de los casos, útil yendo segundo.`,
   },
   {
-    id: 'dead_hand_problem',
-    category: 'advanced',
-    title: 'Mano muerta',
-    description: 'Sin starter y con exceso de non-engine: imposible jugar.',
-    technicalSubtitle: '0 Starter + 3+ Non-engine',
-    kind: 'problem',
-    recommended: false,
-    build: () =>
-      createMatcherPattern(
-        'Mano muerta',
-        'problem',
-        [
-          { matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'exclude' },
-          { matcher: { type: 'origin', value: 'non_engine' }, quantity: 3, kind: 'include' },
-        ],
-        {
-          allowSharedCards: true,
-          matchMode: 'all',
-          minimumMatches: 2,
-        },
-      ),
-    describeProbability: (probability) =>
-      `La mano no tiene Starter y carga 3+ non-engine en ${formatProbability(probability)} de los casos, imposible de jugar.`,
-  },
-  {
-    id: 'handtrap_flood_problem',
-    category: 'advanced',
-    title: '4+ Non-engine en mano',
-    description: 'Demasiadas cartas de interacción, te falta engine para atacar.',
-    technicalSubtitle: 'con 4+ Non-engine',
-    kind: 'problem',
-    recommended: false,
-    build: () =>
-      createMatcherPattern('4+ Non-engine en mano', 'problem', [
-        { matcher: { type: 'origin', value: 'non_engine' }, quantity: 4, kind: 'include' },
-      ]),
-    describeProbability: (probability) =>
-      `La mano se inunda de non-engine (4+) en ${formatProbability(probability)} de los casos, sin plan propio.`,
-  },
-  {
     id: 'only_bricks_problem',
     category: 'advanced',
+    scope: 'generic',
     title: 'Solo Brick/Garnet en engine',
     description: 'La parte de engine de la mano son brick o garnet: no aportan.',
     technicalSubtitle: '2+ Brick o Garnet',
@@ -381,6 +352,7 @@ export function buildPatternPresets(cards: CardEntry[]): PatternPreset[] {
       {
         id: definition.id,
         category: definition.category,
+        scope: definition.scope,
         title: definition.title,
         description: definition.description,
         technicalSubtitle: definition.technicalSubtitle,
