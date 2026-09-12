@@ -9,14 +9,18 @@ import {
 } from '../../app/card-attributes'
 import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
 import {
+  DECK_ZONE_LIMITS,
   findDeckCard,
   getDefaultDeckZoneForCardInBuilder,
   getAddSearchResultIssue,
   isCardAllowedInDeckZone,
+  isCardAtCopyLimit,
 } from '../../app/deck-builder'
 import {
   addSearchResultToDeckZone,
+  clearAllDeckZones,
   clearDeckZone,
+  confirmDeckCardClassification,
   moveDeckCardInBuilder,
   removeDeckCardFromBuilder,
   replaceDeckBuilder,
@@ -35,14 +39,12 @@ import type { RootState } from '../../app/store'
 import { useAppDispatch, useAppSelector } from '../../app/store-hooks'
 import { useApiCardSearch } from '../../app/use-api-card-search'
 import { useDeckPointerDrag } from '../../app/use-deck-pointer-drag'
-import { useHoverPreview } from '../../app/use-hover-preview'
 import { usePatternEditorActions } from '../../app/use-pattern-editor-actions'
 import { usePatternMaintenance } from '../../app/use-pattern-maintenance'
 import { isClassificationStepComplete } from '../../app/role-step'
 import { useToastMessage } from '../../app/use-toast-message'
-import { HOVER_PREVIEW_DELAY_MS } from '../../app/model'
 import { getClassificationOverrides } from '../../app/classification-overrides'
-import type { ApiCardReference, CardOrigin, CardRole } from '../../types'
+import type { CardOrigin, CardRole } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 
 const DEFAULT_PATTERNS_VERSION = 10
@@ -86,14 +88,16 @@ export function useDeckModeController() {
     updateSearchFilters,
     loadMoreResults,
   } = useApiCardSearch(settings.deckFormat)
+  const maxedOutSearchResultIds = useMemo(
+    () =>
+      new Set(
+        visibleSearchResults
+          .filter((card) => isCardAtCopyLimit(deckBuilder, card, settings.deckFormat))
+          .map((card) => card.ygoprodeckId),
+      ),
+    [deckBuilder, settings.deckFormat, visibleSearchResults],
+  )
   const { showToast } = useToastMessage()
-  const {
-    clearHoverPreview,
-    hoverPreview,
-    scheduleHoverPreview: scheduleHoverPreviewWithDelay,
-  } = useHoverPreview({
-    delayMs: HOVER_PREVIEW_DELAY_MS,
-  })
   const {
     activeDragInstanceId,
     activeDropZone,
@@ -103,7 +107,6 @@ export function useDeckModeController() {
     builderRootDropState,
     dragOverlay,
     dragOverlayRef,
-    hasPendingPointerDrag,
     startPointerDrag,
   } = useDeckPointerDrag({
     canDrop: (payload, zone) => {
@@ -133,9 +136,8 @@ export function useDeckModeController() {
         return false
       }
 
-      return deckBuilder[zone].length < (zone === 'main' ? 60 : 15)
+      return deckBuilder[zone].length < DECK_ZONE_LIMITS[zone]
     },
-    onClearHoverPreview: clearHoverPreview,
     onDrop: (pendingDrop) => {
       if (pendingDrop.payload.type === 'search-result') {
         dispatch(
@@ -242,17 +244,6 @@ export function useDeckModeController() {
     state: appState,
   })
 
-  const scheduleHoverPreview = useCallback(
-    (name: string, card: ApiCardReference, anchor: HTMLElement) => {
-      if (hasPendingPointerDrag()) {
-        return
-      }
-
-      scheduleHoverPreviewWithDelay(name, card, anchor)
-    },
-    [hasPendingPointerDrag, scheduleHoverPreviewWithDelay],
-  )
-
   const resolveSearchResult = useCallback(
     (apiCardId: number) => {
       const liveCard = apiSearch.results.find((entry) => entry.ygoprodeckId === apiCardId)
@@ -276,11 +267,10 @@ export function useDeckModeController() {
         return
       }
 
-      clearHoverPreview()
       setSelectedDetailCard(card)
       setSelectedDetailSource('search')
     },
-    [clearHoverPreview, resolveSearchResult, visibleSearchResults],
+    [resolveSearchResult, visibleSearchResults],
   )
 
   const closeCardDetail = useCallback(() => {
@@ -300,11 +290,10 @@ export function useDeckModeController() {
         return
       }
 
-      clearHoverPreview()
       setSelectedDetailCard(buildDetailCardFromDeckCard(deckCard))
       setSelectedDetailSource('deck')
     },
-    [clearHoverPreview, consumeSuppressedPointerClick, deckBuilder],
+    [consumeSuppressedPointerClick, deckBuilder],
   )
 
   const handleAddSearchResultToZone = useCallback(
@@ -391,6 +380,15 @@ export function useDeckModeController() {
     [deckBuilder, dispatch, formatLabel, settings.deckFormat, showToast],
   )
 
+  const handleClearAllDeckZones = useCallback(() => {
+    if (deckBuilder.main.length === 0 && deckBuilder.extra.length === 0 && deckBuilder.side.length === 0) {
+      return
+    }
+
+    dispatch(clearAllDeckZones())
+    showToast(`Vaciaste todo el deck${settings.deckFormat === 'genesys' ? ` para ${formatLabel}` : ''}.`)
+  }, [deckBuilder, dispatch, formatLabel, settings.deckFormat, showToast])
+
   const handleToggleRole = useCallback(
     (ygoprodeckId: number, role: CardRole) => {
       dispatch(toggleDeckCardRole({ ygoprodeckId, role }))
@@ -401,6 +399,13 @@ export function useDeckModeController() {
   const handleSetOrigin = useCallback(
     (ygoprodeckId: number, origin: CardOrigin) => {
       dispatch(setDeckCardOrigin({ ygoprodeckId, origin }))
+    },
+    [dispatch],
+  )
+
+  const handleConfirmClassification = useCallback(
+    (ygoprodeckId: number) => {
+      dispatch(confirmDeckCardClassification(ygoprodeckId))
     },
     [dispatch],
   )
@@ -487,6 +492,7 @@ export function useDeckModeController() {
       query: apiSearch.query,
       status: apiSearch.status,
       visibleSearchResults,
+      maxedOutSearchResultIds,
       isLoadingMore,
       errorMessage: apiSearch.errorMessage,
       hasMore: apiSearch.hasMore,
@@ -503,6 +509,7 @@ export function useDeckModeController() {
       selectedDetailSource,
       isCardDetailOpen: selectedDetailCard !== null,
       onClearDeckZone: handleClearDeckZone,
+      onClearAllDeckZones: handleClearAllDeckZones,
       onRemoveDeckCard: handleRemoveDeckCard,
       onDeckCardPointerDown: handleDeckCardPointerDown,
       onDeckCardClick: handleDeckCardClick,
@@ -518,8 +525,6 @@ export function useDeckModeController() {
       onClearSearchFilters: clearSearchFilters,
       onLoadMoreResults: loadMoreResults,
       onCloseCardDetail: closeCardDetail,
-      onHoverStart: scheduleHoverPreview,
-      onHoverEnd: clearHoverPreview,
       genesysPointTotal,
       genesysPointCap: settings.deckFormat === 'genesys' ? GENESYS_POINT_CAP : null,
     },
@@ -533,7 +538,6 @@ export function useDeckModeController() {
     feedback: {
       dragOverlay,
       dragOverlayRef,
-      hoverPreview,
     },
     probability: {
       handSize: settings.handSize,
@@ -547,6 +551,7 @@ export function useDeckModeController() {
       cards: derivedMainCards,
       onSetOrigin: handleSetOrigin,
       onToggleRole: handleToggleRole,
+      onConfirm: handleConfirmClassification,
     },
   }
 }

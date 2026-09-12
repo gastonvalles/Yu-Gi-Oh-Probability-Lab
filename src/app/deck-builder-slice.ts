@@ -8,6 +8,7 @@ import {
   addSearchResultToDefaultZone,
   addSearchResultToZone,
   classifyAllUnclassified,
+  confirmClassificationForCard,
   reclassifyAll,
   moveDeckCard,
   removeDeckCard,
@@ -96,6 +97,11 @@ const deckBuilderSlice = createSlice({
     clearDeckZone(state, action: PayloadAction<DeckZone>) {
       state[action.payload] = []
     },
+    clearAllDeckZones(state) {
+      state.main = []
+      state.extra = []
+      state.side = []
+    },
     replaceDeckBuilder(_state, action: PayloadAction<DeckBuilderState>) {
       return action.payload
     },
@@ -107,6 +113,9 @@ const deckBuilderSlice = createSlice({
     },
     toggleDeckCardRole(state, action: PayloadAction<ToggleDeckCardRolePayload>) {
       return toggleRoleForCard(state, action.payload.ygoprodeckId, action.payload.role)
+    },
+    confirmDeckCardClassification(state, action: PayloadAction<number>) {
+      return confirmClassificationForCard(state, action.payload)
     },
     setIsEditingDeck(state, action: PayloadAction<boolean>) {
       state.isEditingDeck = action.payload
@@ -124,7 +133,9 @@ export const {
   addSearchResultToDeckZone,
   addSearchResultToDefaultDeckZone,
   classifyAllUnclassifiedCards,
+  confirmDeckCardClassification,
   reclassifyAllCards,
+  clearAllDeckZones,
   clearDeckZone,
   moveDeckCardInBuilder,
   removeDeckCardFromBuilder,

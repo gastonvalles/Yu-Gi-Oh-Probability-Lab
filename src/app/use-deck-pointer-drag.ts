@@ -40,7 +40,6 @@ interface PointerDragSession {
 
 interface UseDeckPointerDragOptions {
   canDrop: (payload: DragPayload, zone: DeckZone) => boolean
-  onClearHoverPreview: () => void
   onDrop: (drop: { payload: DragPayload; zone: DeckZone; index: number }) => void
   resolveSearchDrop: (
     payload: Extract<DragPayload, { type: 'search-result' }>,
@@ -100,17 +99,22 @@ function resolveDragPreviewFrame(
   }
 }
 
+let desktopDeckBuilderMediaQuery: MediaQueryList | null = null
+
 function isDesktopDeckBuilderViewport(): boolean {
   if (typeof window === 'undefined') {
     return false
   }
 
-  return window.matchMedia(DESKTOP_DECK_BUILDER_MEDIA_QUERY).matches
+  // Cached: this is checked on every dragged frame, and matchMedia() allocates a new
+  // MediaQueryList each call if not reused.
+  desktopDeckBuilderMediaQuery ??= window.matchMedia(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+
+  return desktopDeckBuilderMediaQuery.matches
 }
 
 export function useDeckPointerDrag({
   canDrop,
-  onClearHoverPreview,
   onDrop,
   resolveSearchDrop,
 }: UseDeckPointerDragOptions): DeckPointerDragController {
@@ -332,7 +336,43 @@ export function useDeckPointerDrag({
     overlayElement.style.transform = `translate3d(${x - session.offsetX}px, ${y - session.offsetY}px, 0)`
   }, [])
 
-  const queueDragOverlayMove = useCallback(
+  const flushDragFrame = useCallback(() => {
+    dragOverlayRafRef.current = 0
+
+    const position = dragOverlayPositionRef.current
+    const session = pointerDragSessionRef.current
+
+    if (!position || !session) {
+      return
+    }
+
+    // Overlay position and drop-target hit-testing are batched into a single rAF so that
+    // expensive getBoundingClientRect() reads in resolveDropTarget only run once per painted
+    // frame, not once per raw pointermove — pointermove can fire far faster than the display
+    // refreshes (high-poll-rate mice/trackpads), and doing this work unthrottled causes layout
+    // thrashing that shows up as visible stutter while dragging.
+    applyDragOverlayTransform(position.x, position.y)
+
+    const nextDropTarget = resolveDropTarget(position.x, position.y, session.payload)
+    const nextDropZone =
+      nextDropTarget?.targetKind === 'zone' && nextDropTarget.isAllowed ? nextDropTarget.zone : null
+    const nextInvalidDropZone =
+      nextDropTarget?.targetKind === 'zone' && !nextDropTarget.isAllowed ? nextDropTarget.zone : null
+    const nextBuilderRootDropState =
+      nextDropTarget?.targetKind === 'builder-root'
+        ? (nextDropTarget.isAllowed ? 'valid' : 'invalid')
+        : 'idle'
+
+    setActiveDropZone((currentZone) => (currentZone === nextDropZone ? currentZone : nextDropZone))
+    setInvalidDropZone((currentZone) =>
+      currentZone === nextInvalidDropZone ? currentZone : nextInvalidDropZone,
+    )
+    setBuilderRootDropState((currentState) =>
+      currentState === nextBuilderRootDropState ? currentState : nextBuilderRootDropState,
+    )
+  }, [applyDragOverlayTransform, resolveDropTarget])
+
+  const queueDragFrame = useCallback(
     (x: number, y: number) => {
       dragOverlayPositionRef.current = { x, y }
 
@@ -340,19 +380,9 @@ export function useDeckPointerDrag({
         return
       }
 
-      dragOverlayRafRef.current = window.requestAnimationFrame(() => {
-        dragOverlayRafRef.current = 0
-
-        const position = dragOverlayPositionRef.current
-
-        if (!position) {
-          return
-        }
-
-        applyDragOverlayTransform(position.x, position.y)
-      })
+      dragOverlayRafRef.current = window.requestAnimationFrame(flushDragFrame)
     },
-    [applyDragOverlayTransform],
+    [flushDragFrame],
   )
 
   const clearDragSession = useCallback(() => {
@@ -362,7 +392,6 @@ export function useDeckPointerDrag({
     pointerDragSessionRef.current = null
     pointerDragCleanupRef.current?.()
     pointerDragCleanupRef.current = null
-    onClearHoverPreview()
     setDragPayload(null)
     setActiveDragInstanceId(null)
     setActiveDropZone(null)
@@ -370,7 +399,7 @@ export function useDeckPointerDrag({
     setActiveDragSearchCardId(null)
     setDragOverlay(null)
     setBuilderRootDropState('idle')
-  }, [onClearHoverPreview])
+  }, [])
 
   const startDragOverlay = useCallback(
     (previewFrame: DragPreviewFrame, name: string, card: ApiCardReference, clientX: number, clientY: number) => {
@@ -397,7 +426,6 @@ export function useDeckPointerDrag({
         return
       }
 
-      onClearHoverPreview()
       suppressPointerClickRef.current = false
       const sourceElement = event.currentTarget
 
@@ -456,24 +484,7 @@ export function useDeckPointerDrag({
           startDragOverlay(previewFrame, session.name, session.card, session.startX, session.startY)
         }
 
-        const nextDropTarget = resolveDropTarget(moveEvent.clientX, moveEvent.clientY, session.payload)
-        const nextDropZone =
-          nextDropTarget?.targetKind === 'zone' && nextDropTarget.isAllowed ? nextDropTarget.zone : null
-        const nextInvalidDropZone =
-          nextDropTarget?.targetKind === 'zone' && !nextDropTarget.isAllowed ? nextDropTarget.zone : null
-        const nextBuilderRootDropState =
-          nextDropTarget?.targetKind === 'builder-root'
-            ? (nextDropTarget.isAllowed ? 'valid' : 'invalid')
-            : 'idle'
-
-        setActiveDropZone((currentZone) => (currentZone === nextDropZone ? currentZone : nextDropZone))
-        setInvalidDropZone((currentZone) =>
-          currentZone === nextInvalidDropZone ? currentZone : nextInvalidDropZone,
-        )
-        setBuilderRootDropState((currentState) =>
-          currentState === nextBuilderRootDropState ? currentState : nextBuilderRootDropState,
-        )
-        queueDragOverlayMove(moveEvent.clientX, moveEvent.clientY)
+        queueDragFrame(moveEvent.clientX, moveEvent.clientY)
 
         if (moveEvent.cancelable) {
           moveEvent.preventDefault()
@@ -546,20 +557,18 @@ export function useDeckPointerDrag({
         }
       }
     },
-    [clearDragSession, onClearHoverPreview, onDrop, queueDragOverlayMove, resolveDropTarget, startDragOverlay],
+    [clearDragSession, onDrop, queueDragFrame, resolveDropTarget, startDragOverlay],
   )
 
   useLayoutEffect(() => {
-    const overlayElement = dragOverlayRef.current
-    const overlay = dragOverlay
     const position = dragOverlayPositionRef.current
 
-    if (!overlayElement || !overlay || !position) {
+    if (!dragOverlay || !position) {
       return
     }
 
-    overlayElement.style.transform = `translate3d(${position.x - overlay.offsetX}px, ${position.y - overlay.offsetY}px, 0)`
-  }, [dragOverlay])
+    applyDragOverlayTransform(position.x, position.y)
+  }, [dragOverlay, applyDragOverlayTransform])
 
   useEffect(
     () => () => {

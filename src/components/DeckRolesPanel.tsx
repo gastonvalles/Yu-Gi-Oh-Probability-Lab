@@ -32,6 +32,7 @@ interface DeckRolesPanelProps {
   cards: CardEntry[]
   onSetOrigin: (ygoprodeckId: number, origin: CardOrigin) => void
   onToggleRole: (ygoprodeckId: number, role: CardRole) => void
+  onConfirm: (ygoprodeckId: number) => void
 }
 
 type ClassificationStateKey =
@@ -591,6 +592,7 @@ export function DeckRolesPanel({
   cards,
   onSetOrigin,
   onToggleRole,
+  onConfirm,
 }: DeckRolesPanelProps) {
   const dispatch = useAppDispatch()
   const patterns = useAppSelector((state) => state.patterns.patterns)
@@ -867,6 +869,36 @@ export function DeckRolesPanel({
     setIsDetailOpen(true)
   }
 
+  useEffect(() => {
+    if (!isDetailOpen) {
+      return
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target
+      if (target instanceof HTMLElement && ['INPUT', 'TEXTAREA'].includes(target.tagName)) {
+        return
+      }
+
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault()
+        handleSelectPreviousCard()
+        return
+      }
+
+      if (event.key === 'ArrowRight') {
+        event.preventDefault()
+        handleSelectNextCard()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isDetailOpen, previousCard, nextCard])
+
   const renderSelectedCardDetail = () => {
     if (!selectedCard) {
       return (
@@ -879,11 +911,11 @@ export function DeckRolesPanel({
 
     const cardArtColumn = (
       <div className="grid content-start gap-2">
-        <div className="mx-auto max-h-[200px] w-auto min-[1101px]:mx-0 min-[1101px]:max-h-none min-[1101px]:w-[18rem]">
+        <div className="mx-auto max-h-50 w-auto min-[1101px]:mx-0 min-[1101px]:max-h-none min-[1101px]:w-[18rem]">
           <CardArt
             remoteUrl={selectedCard.apiCard?.imageUrl ?? selectedCard.apiCard?.imageUrlSmall ?? null}
             name={selectedCard.name}
-            className="block h-full max-h-[200px] w-auto min-[1101px]:h-auto min-[1101px]:max-h-none min-[1101px]:w-full bg-input"
+            className="block h-full max-h-50 w-auto min-[1101px]:h-auto min-[1101px]:max-h-none min-[1101px]:w-full bg-input"
             limitCard={selectedCard.apiCard}
           />
         </div>
@@ -1010,15 +1042,35 @@ export function DeckRolesPanel({
               </p>
             </div>
 
+            {selectedCard.needsReview && selectedCard.origin !== null && selectedCard.roles.length > 0 ? (
+              <div className="surface-card-warning flex flex-wrap items-center justify-between gap-2 px-2.5 py-2">
+                <p className="m-0 text-[0.76rem] leading-[1.16] text-(--text-main)">
+                  Clasificación sugerida automáticamente. Confirmala si te parece correcta.
+                </p>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => onConfirm(selectedCard.apiCard?.ygoprodeckId ?? 0)}
+                >
+                  Confirmar sugerencia
+                </Button>
+              </div>
+            ) : null}
+
             {editorPanel}
 
-            <div className="mt-auto flex justify-end gap-2 pt-1">
-              <Button variant="primary" size="sm" onClick={handleSelectPreviousCard} disabled={!previousCard}>
-                Anterior
-              </Button>
-              <Button variant="primary" size="sm" onClick={handleSelectNextCard} disabled={!nextCard}>
-                Siguiente
-              </Button>
+            <div className="mt-auto flex items-center justify-between gap-2 pt-1">
+              <span className="app-muted hidden text-[0.66rem] min-[1101px]:inline">
+                Usá las flechas ← → del teclado para navegar
+              </span>
+              <div className="flex justify-end gap-2">
+                <Button variant="primary" size="sm" onClick={handleSelectPreviousCard} disabled={!previousCard}>
+                  Anterior
+                </Button>
+                <Button variant="primary" size="sm" onClick={handleSelectNextCard} disabled={!nextCard}>
+                  Siguiente
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -1052,12 +1104,30 @@ export function DeckRolesPanel({
 
       {sortedCards.length > 0 ? (
         <section className="surface-panel-soft grid gap-2 p-2.5">
-          <div className="min-w-0">
+          <div className="flex flex-wrap items-end justify-between gap-2.5 min-w-0">
             <div className="min-w-0">
               <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Vista activa</p>
               <p className="app-muted m-[0.22rem_0_0] text-[0.75rem] leading-[1.14]">
                 Priorizá el subconjunto que querés cerrar primero.
               </p>
+            </div>
+
+            <div className="grid min-w-36 gap-1 justify-items-end">
+              <span className="app-muted text-[0.7rem] leading-none tabular-nums">
+                {formatInteger(completeCards.length)} / {formatInteger(sortedCards.length)} clasificadas
+              </span>
+              <div
+                className="h-1.25 w-full min-w-36 overflow-hidden rounded-(--radius-chip) bg-[rgb(var(--border-rgb)/0.9)]"
+                role="progressbar"
+                aria-valuenow={completeCards.length}
+                aria-valuemin={0}
+                aria-valuemax={sortedCards.length}
+              >
+                <div
+                  className="h-full rounded-(--radius-chip) bg-accent transition-[width]"
+                  style={{ width: `${sortedCards.length > 0 ? Math.round((completeCards.length / sortedCards.length) * 100) : 0}%` }}
+                />
+              </div>
             </div>
           </div>
 
@@ -1115,12 +1185,12 @@ export function DeckRolesPanel({
                     >
                       <div
                         className={[
-                          'classification-queue-art w-[36px]',
+                          'classification-queue-art w-9',
                           active ? 'classification-queue-art-active' : '',
                         ].join(' ')}
                       >
                         <CardArt
-                          remoteUrl={card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null}
+                          remoteUrl={card.apiCard?.imageUrl ?? card.apiCard?.imageUrlSmall ?? null}
                           name={card.name}
                           className="block h-auto w-full bg-input"
                           limitCard={card.apiCard}

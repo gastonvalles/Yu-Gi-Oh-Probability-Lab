@@ -94,12 +94,6 @@ export interface ApiSearchState<Result> {
   hasMore: boolean
 }
 
-export interface HoverPreviewState {
-  name: string
-  card: ApiCardReference
-  anchor: HTMLElement
-}
-
 export type DragPayload =
   | { type: 'search-result'; apiCardId: number }
   | { type: 'deck-card'; instanceId: string }
@@ -112,7 +106,6 @@ export const SEARCH_CACHE_LIMIT = 25
 export const SEARCH_PAGE_SIZE = 15
 export const SEARCH_MIN_QUERY_LENGTH = 2
 export const SEARCH_DEBOUNCE_MS = 220
-export const HOVER_PREVIEW_DELAY_MS = 400
 export const SEARCH_STICKY_TOP_PX = 20
 export const SEARCH_RESULTS_MAX_HEIGHT_CSS = 'calc(100vh - 112px)'
 

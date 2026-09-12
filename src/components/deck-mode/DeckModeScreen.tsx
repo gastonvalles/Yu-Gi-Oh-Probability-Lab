@@ -5,7 +5,6 @@ import { curatePatterns } from '../../app/pattern-curation'
 import { CardDetailDrawer } from '../card-detail/CardDetailDrawer'
 import { DeckRolesPanel } from '../DeckRolesPanel'
 import { ExportDeckPanel } from '../ExportDeckPanel'
-import { HoverPreview } from '../HoverPreview'
 import { ProbabilityPanel } from '../ProbabilityPanel'
 import { PracticeSection } from '../probability/PracticeSection'
 import { ComparisonScreen } from '../comparison/ComparisonScreen'
@@ -287,9 +286,6 @@ export function DeckModeScreen() {
         contentScrollRef={contentScrollRef}
       />
 
-      {!(isDesktopDeckBuilder && isDeckBuilderStep) ? (
-        <HoverPreview preview={controller.feedback.hoverPreview} />
-      ) : null}
       <DeckModeDragOverlay
         overlay={controller.feedback.dragOverlay}
         overlayRef={controller.feedback.dragOverlayRef}

@@ -85,17 +85,13 @@ export function CardDetail({
                   />
                 </header>
 
-                <div className="grid justify-items-center">
-                  <div className="w-full max-w-60">
-                    <CardArt
-                      remoteUrl={card.imageUrl ?? card.imageUrlSmall}
-                      name={card.name}
-                      className="block h-auto w-full"
-                      limitCard={card}
-                      limitBadgeSize="md"
-                    />
-                  </div>
-                </div>
+                <CardArt
+                  remoteUrl={card.imageUrl ?? card.imageUrlSmall}
+                  name={card.name}
+                  className="block h-auto w-full"
+                  limitCard={card}
+                  limitBadgeSize="md"
+                />
 
                 <section className="surface-card grid gap-2 px-3 py-2.5">
                   <div className="grid gap-1">
@@ -278,9 +274,7 @@ export function CardDetailSkeleton({
                   />
                 </header>
 
-                <div className="grid justify-items-center">
-                  <Skeleton radius="none" className="aspect-421/614 w-full max-w-60" />
-                </div>
+                <Skeleton radius="none" className="aspect-421/614 w-full" />
 
                 <section className="surface-card grid gap-2 px-3 py-2.5">
                   <div className="grid gap-1">

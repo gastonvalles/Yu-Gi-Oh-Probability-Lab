@@ -8,10 +8,10 @@ import type { DeckBuilderState, DeckCardInstance, DeckZone } from './model'
 import { saveClassificationOverride } from './persistence'
 import { createId, formatInteger } from './utils'
 
-const DECK_ZONE_LIMITS: Record<DeckZone, number> = {
+export const DECK_ZONE_LIMITS: Record<DeckZone, number> = {
   main: 60,
-  extra: 15,
-  side: 15,
+  extra: Infinity,
+  side: Infinity,
 }
 
 export function isCardAllowedInDeckZone(
@@ -294,6 +294,30 @@ export function setOriginForCard(
   return hasAnyChange ? nextDeckBuilder : deckBuilder
 }
 
+/** Marks a suggested classification as confirmed without changing origin/roles. */
+export function confirmClassificationForCard(
+  deckBuilder: DeckBuilderState,
+  ygoprodeckId: number,
+): DeckBuilderState {
+  const nextDeckBuilder = cloneDeckBuilder(deckBuilder)
+  const zones: DeckZone[] = ['main', 'extra', 'side']
+  let hasAnyChange = false
+
+  for (const zone of zones) {
+    for (const card of nextDeckBuilder[zone]) {
+      if (card.apiCard.ygoprodeckId !== ygoprodeckId || !card.needsReview || card.origin === null || card.roles.length === 0) {
+        continue
+      }
+
+      card.needsReview = false
+      saveClassificationOverride(card.name, { origin: card.origin, roles: [...card.roles] })
+      hasAnyChange = true
+    }
+  }
+
+  return hasAnyChange ? nextDeckBuilder : deckBuilder
+}
+
 export function classifyAllUnclassified(
   deckBuilder: DeckBuilderState,
   overrides?: ReadonlyMap<string, ClassificationSuggestion>,
@@ -388,6 +412,15 @@ function findDeckCardLocation(
   }
 
   return null
+}
+
+/** True once the deck already holds the max legal copies of this card for the given format. */
+export function isCardAtCopyLimit(
+  deckBuilder: DeckBuilderState,
+  card: ApiCardSearchResult,
+  format: DeckFormat,
+): boolean {
+  return countCardCopies(deckBuilder, card.name) >= getCardCopyLimit(card, format)
 }
 
 function countCardCopies(deckBuilder: DeckBuilderState, cardName: string): number {

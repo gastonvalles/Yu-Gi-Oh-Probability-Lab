@@ -5,7 +5,7 @@ import { getDesktopCompactDeckColumnCount } from '../../app/deck-zone-layout'
 import type { DeckBuilderState, DeckZone as DeckZoneType } from '../../app/model'
 import type { DeckDropIndicatorState } from '../../app/use-deck-pointer-drag'
 import { formatInteger } from '../../app/utils'
-import type { DeckFormat, ApiCardReference } from '../../types'
+import type { DeckFormat } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import type { CardSearchFilters } from '../../app/card-search'
 import { DeckZone } from '../DeckZone'
@@ -28,6 +28,7 @@ interface DeckBuilderStepProps {
   query: string
   status: 'idle' | 'loading' | 'success' | 'error'
   visibleSearchResults: ApiCardSearchResult[]
+  maxedOutSearchResultIds: Set<number>
   isLoadingMore: boolean
   errorMessage: string
   hasMore: boolean
@@ -42,6 +43,7 @@ interface DeckBuilderStepProps {
   activeDragSearchCardId: number | null
   selectedDetailCard: ApiCardSearchResult | null
   onClearDeckZone: (zone: DeckZoneType) => void
+  onClearAllDeckZones: () => void
   onRemoveDeckCard: (instanceId: string) => void
   onDeckCardPointerDown: (event: ReactPointerEvent<HTMLElement>, instanceId: string) => void
   onDeckCardClick: (instanceId: string) => void
@@ -55,8 +57,6 @@ interface DeckBuilderStepProps {
   onSearchFiltersChange: (updates: Partial<CardSearchFilters>) => void
   onClearSearchFilters: () => void
   onLoadMoreResults: () => void
-  onHoverStart: (name: string, card: ApiCardReference, anchor: HTMLElement) => void
-  onHoverEnd: () => void
 }
 
 const DECK_ZONE_ITEMS: Array<{
@@ -77,6 +77,7 @@ export function DeckBuilderStep({
   query,
   status,
   visibleSearchResults,
+  maxedOutSearchResultIds,
   isLoadingMore,
   errorMessage,
   hasMore,
@@ -91,6 +92,7 @@ export function DeckBuilderStep({
   activeDragSearchCardId,
   selectedDetailCard,
   onClearDeckZone,
+  onClearAllDeckZones,
   onRemoveDeckCard,
   onDeckCardPointerDown,
   onDeckCardClick,
@@ -104,12 +106,10 @@ export function DeckBuilderStep({
   onSearchFiltersChange,
   onClearSearchFilters,
   onLoadMoreResults,
-  onHoverStart,
-  onHoverEnd,
 }: DeckBuilderStepProps) {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const [importDrawerOpen, setImportDrawerOpen] = useState(false)
-  const [pendingClearZone, setPendingClearZone] = useState<DeckZoneType | null>(null)
+  const [pendingClearZone, setPendingClearZone] = useState<DeckZoneType | 'all' | null>(null)
   const [isDesktopDeckBuilder, setIsDesktopDeckBuilder] = useState(() => {
     if (typeof window === 'undefined') {
       return false
@@ -156,8 +156,11 @@ export function DeckBuilderStep({
     'main',
     deckBuilder.main.length,
   )
-  const pendingClearZoneCardCount = pendingClearZone ? deckBuilder[pendingClearZone].length : 0
-  const pendingClearZoneLabel = pendingClearZone ? getDeckZoneLabel(pendingClearZone) : ''
+  const totalDeckCardCount = deckBuilder.main.length + deckBuilder.extra.length + deckBuilder.side.length
+  const pendingClearZoneCardCount =
+    pendingClearZone === 'all' ? totalDeckCardCount : pendingClearZone ? deckBuilder[pendingClearZone].length : 0
+  const pendingClearZoneLabel =
+    pendingClearZone === 'all' ? 'todo el deck' : pendingClearZone ? getDeckZoneLabel(pendingClearZone) : ''
   const handleSearchCardPointerDown = (
     event: ReactPointerEvent<HTMLElement>,
     apiCardId: number,
@@ -171,7 +174,21 @@ export function DeckBuilderStep({
     setPendingClearZone(zone)
   }
 
+  const handleRequestClearAllDeckZones = () => {
+    if (totalDeckCardCount === 0) {
+      return
+    }
+
+    setPendingClearZone('all')
+  }
+
   const handleConfirmClearDeckZone = () => {
+    if (pendingClearZone === 'all') {
+      onClearAllDeckZones()
+      setPendingClearZone(null)
+      return
+    }
+
     if (!pendingClearZone || deckBuilder[pendingClearZone].length === 0) {
       setPendingClearZone(null)
       return
@@ -194,6 +211,7 @@ export function DeckBuilderStep({
       query={query}
       status={status}
       results={visibleSearchResults}
+      maxedOutResultIds={maxedOutSearchResultIds}
       isLoadingMore={isLoadingMore}
       errorMessage={errorMessage}
       hasMore={hasMore}
@@ -211,8 +229,6 @@ export function DeckBuilderStep({
       onResultClick={options.layoutMode === 'mobile' ? onAddSearchResultToDefaultZone : onSearchResultClick}
       onResultLongPress={options.layoutMode === 'mobile' ? onSearchResultClick : undefined}
       onSearchCardPointerDown={handleSearchCardPointerDown}
-      onHoverStart={onHoverStart}
-      onHoverEnd={onHoverEnd}
     />
   )
 
@@ -267,14 +283,25 @@ export function DeckBuilderStep({
                   </label>
                 </div>
 
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="classic-builder-import-button"
-                  onClick={() => setImportDrawerOpen(true)}
-                >
-                  Import deck
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleRequestClearAllDeckZones}
+                    disabled={totalDeckCardCount === 0}
+                  >
+                    Vaciar todo
+                  </Button>
+
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="classic-builder-import-button"
+                    onClick={() => setImportDrawerOpen(true)}
+                  >
+                    Import deck
+                  </Button>
+                </div>
               </div>
 
               {DECK_ZONE_ITEMS.map(({ zone, title }) => {
@@ -299,8 +326,6 @@ export function DeckBuilderStep({
                     onDeckCardPointerDown={onDeckCardPointerDown}
                     onDeckCardClick={onDeckCardClick}
                     onRemoveCard={onRemoveDeckCard}
-                    onHoverStart={onHoverStart}
-                    onHoverEnd={onHoverEnd}
                   />
                 )
 
@@ -396,6 +421,15 @@ export function DeckBuilderStep({
             <Button variant="secondary" size="sm" fullWidth onClick={() => setImportDrawerOpen(true)}>
               Importar deck
             </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              fullWidth
+              onClick={handleRequestClearAllDeckZones}
+              disabled={totalDeckCardCount === 0}
+            >
+              Vaciar todo
+            </Button>
           </>
         }
       />
@@ -467,8 +501,6 @@ export function DeckBuilderStep({
                 onDeckCardPointerDown={onDeckCardPointerDown}
                 onDeckCardClick={onDeckCardClick}
                 onRemoveCard={onRemoveDeckCard}
-                onHoverStart={onHoverStart}
-                onHoverEnd={onHoverEnd}
               />
             ))}
           </div>

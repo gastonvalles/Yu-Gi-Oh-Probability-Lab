@@ -5,7 +5,7 @@ import {
   DESKTOP_COMPACT_MAIN_EXPAND_THRESHOLD,
   getDesktopCompactDeckColumnCount,
 } from '../app/deck-zone-layout'
-import { buildDeckZoneBreakdown } from '../app/deck-presentation'
+import { buildDeckZoneBreakdown, buildDeckZoneTypeCounts } from '../app/deck-presentation'
 import type { DeckCardInstance, DeckZone as DeckZoneType } from '../app/model'
 import type { DeckDropIndicatorState } from '../app/use-deck-pointer-drag'
 import { formatInteger } from '../app/utils'
@@ -27,8 +27,6 @@ interface DeckZoneProps {
   onDeckCardPointerDown: (event: ReactPointerEvent<HTMLElement>, instanceId: string) => void
   onDeckCardClick: (instanceId: string) => void
   onRemoveCard: (instanceId: string) => void
-  onHoverStart: (name: string, card: DeckCardInstance['apiCard'], anchor: HTMLElement) => void
-  onHoverEnd: () => void
 }
 
 const ZONE_STYLES: Record<DeckZoneType, { background: string; border: string }> = {
@@ -60,10 +58,9 @@ export function DeckZone({
   onDeckCardPointerDown,
   onDeckCardClick,
   onRemoveCard,
-  onHoverStart,
-  onHoverEnd,
 }: DeckZoneProps) {
   const zoneBreakdown = buildDeckZoneBreakdown(zone, cards)
+  const zoneTypeCounts = buildDeckZoneTypeCounts(zone, cards)
   const visualLayout = desktopCompact
     ? buildDeckZoneVisualLayout(
         zone,
@@ -77,7 +74,6 @@ export function DeckZone({
     zone === 'main'
       ? (desktopCompactColumnCount ?? getDesktopCompactDeckColumnCount(zone, cards.length))
       : getDesktopCompactDeckColumnCount(zone, cards.length)
-  const normalizedZoneBreakdown = zoneBreakdown.replaceAll('Â·', '·')
   const zoneStyle = ZONE_STYLES[zone]
   const classicRowGap = '0px'
   const zoneSurfaceStyle = {
@@ -94,7 +90,8 @@ export function DeckZone({
   const isClassicRailZone = isClassicBuilder && zone !== 'main'
   const isClassicMainOverlapZone =
     isClassicBuilder && zone === 'main' && cards.length > DESKTOP_COMPACT_MAIN_EXPAND_THRESHOLD
-  const classicZoneMaxHeight = zone === 'main' ? '27.4rem' : '7rem'
+  // 4 rows tall at the real card_small aspect ratio (268x391), plus the 2px surface border and a small safety margin.
+  const classicZoneMaxHeight = zone === 'main' ? '29rem' : 'none'
   const classicBorderColor =
     dropState === 'valid'
       ? 'rgb(var(--accent-rgb) / 0.82)'
@@ -128,7 +125,7 @@ export function DeckZone({
               ? '0 0 0 1px rgb(var(--destructive-rgb) / 0.16)'
               : 'none',
         overflowX: 'hidden',
-        overflowY: 'hidden',
+        overflowY: zone === 'main' ? 'hidden' : 'visible',
       }) as CSSProperties
     : null
   const zoneGridClassName = isMainDeckGrid
@@ -149,23 +146,17 @@ export function DeckZone({
       data-deck-zone={zone}
       data-deck-card-index={index}
       data-selected={selectedCardId !== null && card.apiCard.ygoprodeckId === selectedCardId ? 'true' : 'false'}
-      className={[
-        'deck-zone-card relative min-w-0 cursor-grab touch-none select-none bg-transparent p-0',
-        activeDragInstanceId === card.instanceId
-          ? 'opacity-35'
-          : '',
-      ].join(' ')}
+      data-dragging={activeDragInstanceId === card.instanceId ? 'true' : 'false'}
+      className="deck-zone-card relative min-w-0 cursor-pointer touch-none select-none bg-transparent p-0"
       onPointerDown={(event) => onDeckCardPointerDown(event, card.instanceId)}
       onClick={() => onDeckCardClick(card.instanceId)}
       onContextMenu={(event) => {
         event.preventDefault()
         onRemoveCard(card.instanceId)
       }}
-      onMouseEnter={(event) => onHoverStart(card.name, card.apiCard, event.currentTarget)}
-      onMouseLeave={onHoverEnd}
     >
       <CardArt
-        remoteUrl={card.apiCard.imageUrlSmall}
+        remoteUrl={card.apiCard.imageUrlSmall ?? card.apiCard.imageUrl}
         name={card.name}
         className="block h-auto w-full min-w-0 bg-input"
         limitCard={card.apiCard}
@@ -191,8 +182,20 @@ export function DeckZone({
               {title.replace(' Deck', '')} [{cardCountLabel}]
             </span>
             <div className="classic-builder-zone-label-actions">
-              {normalizedZoneBreakdown ? (
-                <span className="classic-builder-zone-label-breakdown">{normalizedZoneBreakdown}</span>
+              {zoneTypeCounts.length > 0 ? (
+                <div className="classic-builder-zone-type-counts">
+                  {zoneTypeCounts.map((entry) => (
+                    <span
+                      key={entry.kind}
+                      className="classic-builder-zone-type-chip"
+                      data-zone-type={entry.kind}
+                      title={`${formatInteger(entry.count)} ${entry.label}`}
+                    >
+                      <span className="classic-builder-zone-type-swatch" aria-hidden="true" />
+                      {formatInteger(entry.count)}
+                    </span>
+                  ))}
+                </div>
               ) : null}
               {cards.length > 0 ? (
                 <IconButton
@@ -285,7 +288,7 @@ export function DeckZone({
             data-deck-zone={zone}
             data-deck-card-index={index}
             className={[
-              'relative min-w-0 cursor-grab select-none bg-transparent p-0 touch-none',
+              'deck-zone-card relative min-w-0 cursor-grab select-none bg-transparent p-0 touch-none',
               activeDragInstanceId === card.instanceId
                 ? 'opacity-35'
                 : '',
@@ -296,11 +299,9 @@ export function DeckZone({
               event.preventDefault()
               onRemoveCard(card.instanceId)
             }}
-            onMouseEnter={(event) => onHoverStart(card.name, card.apiCard, event.currentTarget)}
-            onMouseLeave={onHoverEnd}
           >
             <CardArt
-              remoteUrl={card.apiCard.imageUrlSmall}
+              remoteUrl={card.apiCard.imageUrlSmall ?? card.apiCard.imageUrl}
               name={card.name}
               className="block aspect-[0.72] w-full min-w-0 bg-input object-cover"
               limitCard={card.apiCard}

@@ -61,6 +61,7 @@ interface SearchPanelProps {
   query: string
   status: 'idle' | 'loading' | 'success' | 'error'
   results: ApiCardSearchResult[]
+  maxedOutResultIds?: Set<number>
   isLoadingMore: boolean
   errorMessage: string
   hasMore: boolean
@@ -78,8 +79,6 @@ interface SearchPanelProps {
   onResultClick: (apiCardId: number) => void
   onResultLongPress?: (apiCardId: number) => void
   onSearchCardPointerDown: (event: ReactPointerEvent<HTMLElement>, apiCardId: number) => void
-  onHoverStart: (name: string, card: ApiCardSearchResult, anchor: HTMLElement) => void
-  onHoverEnd: () => void
 }
 
 const QUICK_TYPE_OPTIONS: Array<{ value: SearchQuickTypeFilter; label: string }> = [
@@ -226,6 +225,7 @@ export function SearchPanel({
   query,
   status,
   results,
+  maxedOutResultIds,
   isLoadingMore,
   errorMessage,
   hasMore,
@@ -243,8 +243,6 @@ export function SearchPanel({
   onResultClick,
   onResultLongPress,
   onSearchCardPointerDown,
-  onHoverStart,
-  onHoverEnd,
 }: SearchPanelProps) {
   const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(activeFilterCount > 0)
   const [sortOrder, setSortOrder] = useState<SearchSortOrder>('default')
@@ -466,7 +464,7 @@ export function SearchPanel({
                 className="app-field w-full px-2.5 py-2.5 pr-10 text-[0.86rem]"
               />
               {status === 'loading' ? (
-                <span className="pointer-events-none absolute right-3 top-1/2 -mt-[0.475rem] h-[0.95rem] w-[0.95rem] animate-spin rounded-full border-2 border-[rgb(var(--foreground-rgb)/0.18)] border-t-[var(--primary)]" />
+                <span className="pointer-events-none absolute right-3 top-1/2 -mt-[0.475rem] h-[0.95rem] w-[0.95rem] animate-spin rounded-full border-2 border-[rgb(var(--foreground-rgb)/0.18)] border-t-primary" />
               ) : null}
             </label>
           </div>
@@ -666,13 +664,13 @@ export function SearchPanel({
                             type="checkbox"
                             checked={filters.legalOnly}
                             onChange={(event) => onFilterChange({ legalOnly: event.target.checked })}
-                            className="mt-[0.1rem] h-3.5 w-3.5 shrink-0 accent-[var(--primary)]"
+                            className="mt-[0.1rem] h-3.5 w-3.5 shrink-0 accent-primary"
                           />
                           <span className="grid gap-0.5">
-                            <span className="text-[var(--text-main)]">
+                            <span className="text-(--text-main)">
                               Ocultar prohibidas en {formatLabel}
                             </span>
-                            <span className="text-[0.68rem] leading-[1.14] text-[var(--text-muted)]">
+                            <span className="text-[0.68rem] leading-[1.14] text-(--text-muted)">
                               Este filtro refina los resultados ya cargados.
                             </span>
                           </span>
@@ -693,15 +691,15 @@ export function SearchPanel({
               }}
             >
               {status === 'error' ? (
-                <p className="surface-card-danger m-0 px-2.5 py-2 text-[0.82rem] leading-[1.16] text-[var(--destructive)]">
+                <p className="surface-card-danger m-0 px-2.5 py-2 text-[0.82rem] leading-[1.16] text-destructive">
                   {formatSearchError(errorMessage)}
                 </p>
               ) : (
                 <>
                   <div className="flex items-start justify-between gap-2 px-1">
                     <div className="grid gap-0.5">
-                      <strong className="text-[0.78rem] text-[var(--text-main)]">{filteredCountLabel}</strong>
-                      <p className="m-0 text-[0.68rem] leading-[1.14] text-[var(--text-muted)]">
+                      <strong className="text-[0.78rem] text-(--text-main)">{filteredCountLabel}</strong>
+                      <p className="m-0 text-[0.68rem] leading-[1.14] text-(--text-muted)">
                         {localFiltersAffectedPage
                           ? 'Texto EN y/o legalidad redujeron los resultados ya cargados.'
                           : 'Tap agrega la carta. Mantene presionado para abrir el detalle.'}
@@ -722,7 +720,7 @@ export function SearchPanel({
                           className="app-list-item grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2 p-1.5"
                           aria-hidden="true"
                         >
-                          <Skeleton radius="none" className="aspect-[0.72] w-[42px]" />
+                          <Skeleton radius="none" className="aspect-[0.72] w-10.5" />
                           <div className="grid gap-2">
                             <Skeleton className="h-3.5 w-[85%]" />
                             <Skeleton className="h-2.5 w-[62%]" />
@@ -731,7 +729,7 @@ export function SearchPanel({
                       ))}
                     </div>
                   ) : sortedResults.length === 0 ? (
-                    <p className="surface-card m-0 min-h-0 overflow-y-auto px-2.5 py-2 text-[0.82rem] leading-[1.18] text-[var(--text-muted)]">
+                    <p className="surface-card m-0 min-h-0 overflow-y-auto px-2.5 py-2 text-[0.82rem] leading-[1.18] text-(--text-muted)">
                       {rawResultCount > 0
                         ? 'Todavia no aparecio una coincidencia dentro de lo ya cargado.'
                         : 'No se encontraron cartas con esos criterios.'}
@@ -744,13 +742,16 @@ export function SearchPanel({
                       {sortedResults.map((card) => {
                         const detailChips = buildSearchResultDetailChips(card)
                         const formatLimitLabel = buildFormatLimitLabel(card, deckFormat)
+                        const isMaxed = maxedOutResultIds?.has(card.ygoprodeckId) ?? false
 
                         return (
                           <article
                             key={card.ygoprodeckId}
+                            aria-disabled={isMaxed}
+                            title={isMaxed ? 'Ya alcanzaste el máximo de copias de esta carta.' : undefined}
                             className={[
                               'app-list-item grid w-full min-w-0 select-none grid-cols-[42px_minmax(0,1fr)] items-center gap-2 p-1.5 transition-all duration-150 ease-out will-change-transform',
-                              dragEnabled ? 'cursor-grab touch-none' : '',
+                              isMaxed ? 'grayscale opacity-45 cursor-not-allowed' : dragEnabled ? 'cursor-grab touch-none' : '',
                               activeDragSearchCardId === card.ygoprodeckId ? 'opacity-35' : '',
                             ].join(' ')}
                             onClick={() => {
@@ -759,11 +760,17 @@ export function SearchPanel({
                                 return
                               }
 
+                              if (isMaxed) {
+                                return
+                              }
+
                               onResultClick(card.ygoprodeckId)
                             }}
                             onPointerDown={(event) => {
                               if (dragEnabled) {
-                                onSearchCardPointerDown(event, card.ygoprodeckId)
+                                if (!isMaxed) {
+                                  onSearchCardPointerDown(event, card.ygoprodeckId)
+                                }
                                 return
                               }
 
@@ -778,24 +785,22 @@ export function SearchPanel({
                                 event.preventDefault()
                               }
                             }}
-                            onMouseEnter={(event) => onHoverStart(card.name, card, event.currentTarget)}
-                            onMouseLeave={onHoverEnd}
                           >
-                            <div className="w-[42px]" data-drag-preview-source="true">
+                            <div className="w-10.5" data-drag-preview-source="true">
                               <CardArt
-                                remoteUrl={card.imageUrlSmall}
+                                remoteUrl={card.imageUrlSmall ?? card.imageUrl}
                                 name={card.name}
-                                className="block aspect-[0.72] w-[42px] bg-[var(--input)] object-cover"
+                                className="block aspect-[0.72] w-10.5 bg-input object-cover"
                                 limitCard={card}
                                 limitBadgeSize="sm"
                               />
                             </div>
 
                             <div className="flex min-w-0 flex-col gap-[0.28rem]">
-                              <strong className="text-[0.8rem] leading-[1.08] break-words text-[var(--text-main)]">
+                              <strong className="text-[0.8rem] leading-[1.08] wrap-break-word text-(--text-main)">
                                 {card.name}
                               </strong>
-                              <p className="m-0 text-[0.72rem] leading-[1.12] break-words text-[var(--text-main)]">
+                              <p className="m-0 text-[0.72rem] leading-[1.12] wrap-break-word text-(--text-main)">
                                 {buildCompactSearchDescription(card)}
                               </p>
                               {detailChips.length > 0 ? (
@@ -808,7 +813,7 @@ export function SearchPanel({
                                 </div>
                               ) : null}
                               {formatLimitLabel ? (
-                                <small className="text-[0.68rem] text-[var(--text-muted)]">
+                                <small className="text-[0.68rem] text-(--text-muted)">
                                   {formatLimitLabel}
                                 </small>
                               ) : null}
@@ -822,7 +827,7 @@ export function SearchPanel({
                           className="app-list-item grid grid-cols-[42px_minmax(0,1fr)] items-center gap-2 p-1.5"
                           aria-hidden="true"
                         >
-                          <Skeleton radius="none" className="aspect-[0.72] w-[42px]" />
+                          <Skeleton radius="none" className="aspect-[0.72] w-10.5" />
                           <div className="grid gap-2">
                             <Skeleton className="h-3.5 w-[85%]" />
                             <Skeleton className="h-2.5 w-[62%]" />
@@ -871,7 +876,7 @@ export function SearchPanel({
               />
             ) : null}
             {status === 'loading' ? (
-              <span className="pointer-events-none absolute right-10 top-1/2 -mt-[0.475rem] h-[0.95rem] w-[0.95rem] animate-spin rounded-full border-2 border-[rgb(var(--foreground-rgb)/0.18)] border-t-[var(--primary)]" />
+              <span className="pointer-events-none absolute right-10 top-1/2 -mt-[0.475rem] h-[0.95rem] w-[0.95rem] animate-spin rounded-full border-2 border-[rgb(var(--foreground-rgb)/0.18)] border-t-primary" />
             ) : null}
           </label>
 
@@ -916,10 +921,10 @@ export function SearchPanel({
                 onClick={() => onFilterChange(chip.updates)}
                 title={`Quitar ${chip.label.toLowerCase()}`}
               >
-                <span className="truncate text-[var(--text-main)]">
+                <span className="truncate text-(--text-main)">
                   {chip.label}: {chip.value}
                 </span>
-                <span className="shrink-0 text-[var(--text-soft)]">x</span>
+                <span className="shrink-0 text-(--text-soft)">x</span>
               </button>
             ))}
           </div>
@@ -1112,9 +1117,9 @@ export function SearchPanel({
                         type="checkbox"
                         checked={filters.legalOnly}
                         onChange={(event) => onFilterChange({ legalOnly: event.target.checked })}
-                        className="h-3.5 w-3.5 shrink-0 accent-[var(--primary)]"
+                        className="h-3.5 w-3.5 shrink-0 accent-primary"
                       />
-                      <span className="min-w-0 truncate text-[var(--text-main)]">
+                      <span className="min-w-0 truncate text-(--text-main)">
                         Ocultar prohibidas en {formatLabel}
                       </span>
                     </label>
@@ -1134,7 +1139,7 @@ export function SearchPanel({
               }}
             >
               {status === 'error' ? (
-                <p className="surface-card-danger m-0 px-2 py-1.5 text-[0.78rem] leading-[1.16] text-[var(--destructive)]">
+                <p className="surface-card-danger m-0 px-2 py-1.5 text-[0.78rem] leading-[1.16] text-destructive">
                   {formatSearchError(errorMessage)}
                 </p>
               ) : (
@@ -1151,7 +1156,7 @@ export function SearchPanel({
                           }
                           aria-hidden="true"
                         >
-                          <Skeleton radius="none" className={isClassicBuilder ? 'classic-builder-search-result-skeleton-art' : 'aspect-[0.72] w-[42px]'} />
+                          <Skeleton radius="none" className={isClassicBuilder ? 'classic-builder-search-result-skeleton-art' : 'aspect-[0.72] w-10.5'} />
                           <div className="grid gap-2">
                             <Skeleton className="h-3.5 w-[85%]" />
                             <Skeleton className="h-2.5 w-[62%]" />
@@ -1160,7 +1165,7 @@ export function SearchPanel({
                       ))}
                     </div>
                   ) : sortedResults.length === 0 ? (
-                    <div className="surface-card grid gap-1 px-2 py-2 text-[0.76rem] leading-[1.18] text-[var(--text-muted)]">
+                    <div className="surface-card grid gap-1 px-2 py-2 text-[0.76rem] leading-[1.18] text-(--text-muted)">
                       <p className="m-0">
                         {rawResultCount > 0
                           ? 'TodavÃ­a no apareciÃ³ una coincidencia dentro de lo ya cargado.'
@@ -1180,16 +1185,21 @@ export function SearchPanel({
                       {sortedResults.map((card) => {
                         const detailChips = buildSearchResultDetailChips(card)
                         const formatLimitLabel = buildFormatLimitLabel(card, deckFormat)
+                        const isMaxed = maxedOutResultIds?.has(card.ygoprodeckId) ?? false
 
                         return (
                           <article
                             key={card.ygoprodeckId}
                             data-selected={selectedCardId !== null && selectedCardId === card.ygoprodeckId ? 'true' : 'false'}
+                            data-maxed={isMaxed ? 'true' : 'false'}
+                            aria-disabled={isMaxed}
+                            title={isMaxed ? 'Ya alcanzaste el máximo de copias de esta carta.' : undefined}
                             className={[
                               isClassicBuilder
                                 ? 'classic-builder-search-result-card'
                                 : 'app-list-item grid w-full min-w-0 select-none grid-cols-[42px_minmax(0,1fr)] items-center gap-2 p-1.5 transition-all duration-150 ease-out will-change-transform',
-                              dragEnabled ? 'cursor-grab' : '',
+                              !isClassicBuilder && isMaxed ? 'grayscale opacity-45 cursor-not-allowed' : '',
+                              !isClassicBuilder && !isMaxed && dragEnabled ? 'cursor-grab' : '',
                               activeDragSearchCardId === card.ygoprodeckId ? 'opacity-35' : '',
                             ].join(' ')}
                             onClick={() => {
@@ -1198,11 +1208,17 @@ export function SearchPanel({
                                 return
                               }
 
+                              if (isMaxed) {
+                                return
+                              }
+
                               onResultClick(card.ygoprodeckId)
                             }}
                             onPointerDown={(event) => {
                               if (dragEnabled) {
-                                onSearchCardPointerDown(event, card.ygoprodeckId)
+                                if (!isMaxed) {
+                                  onSearchCardPointerDown(event, card.ygoprodeckId)
+                                }
                                 return
                               }
 
@@ -1217,38 +1233,36 @@ export function SearchPanel({
                                 event.preventDefault()
                               }
                             }}
-                            onMouseEnter={(event) => onHoverStart(card.name, card, event.currentTarget)}
-                            onMouseLeave={onHoverEnd}
                           >
                             <div
-                              className={isClassicBuilder ? 'classic-builder-search-result-art-shell' : 'w-[42px]'}
+                              className={isClassicBuilder ? 'classic-builder-search-result-art-shell' : 'w-10.5'}
                               data-drag-preview-source="true"
                             >
                               <CardArt
-                                remoteUrl={card.imageUrlSmall}
+                                remoteUrl={card.imageUrlSmall ?? card.imageUrl}
                                 name={card.name}
-                                className={isClassicBuilder ? 'classic-builder-search-result-art' : 'block h-auto w-full bg-[var(--input)]'}
+                                className={isClassicBuilder ? 'classic-builder-search-result-art' : 'block h-auto w-full bg-input'}
                                 limitCard={card}
                                 limitBadgeSize="sm"
                               />
                             </div>
 
                             <div className={isClassicBuilder ? 'classic-builder-search-result-copy' : 'flex min-w-0 flex-col gap-[0.28rem]'}>
-                              <strong className="text-[0.8rem] leading-[1.08] break-words text-[var(--text-main)]">
+                              <strong className="text-[0.8rem] leading-[1.08] wrap-break-word text-(--text-main)">
                                 {card.name}
                               </strong>
                               {isClassicBuilder ? (
                                 <>
-                                  <p className="m-0 text-[0.72rem] leading-[1.08] break-words text-[var(--text-main)]">
+                                  <p className="m-0 text-[0.72rem] leading-[1.08] wrap-break-word text-(--text-main)">
                                     {buildClassicCardPrimaryLine(card)}
                                   </p>
-                                  <p className="m-0 text-[0.72rem] leading-[1.08] break-words text-[var(--text-main)]">
+                                  <p className="m-0 text-[0.72rem] leading-[1.08] wrap-break-word text-(--text-main)">
                                     {buildClassicCardStatLine(card)}
                                   </p>
                                 </>
                               ) : (
                                 <>
-                                  <p className="m-0 text-[0.72rem] leading-[1.12] break-words text-[var(--text-main)]">
+                                  <p className="m-0 text-[0.72rem] leading-[1.12] wrap-break-word text-(--text-main)">
                                     {buildCompactSearchDescription(card)}
                                   </p>
                                   {detailChips.length > 0 ? (
@@ -1261,7 +1275,7 @@ export function SearchPanel({
                                     </div>
                                   ) : null}
                                   {formatLimitLabel ? (
-                                    <small className="text-[0.68rem] text-[var(--text-muted)]">
+                                    <small className="text-[0.68rem] text-(--text-muted)">
                                       {formatLimitLabel}
                                     </small>
                                   ) : null}
@@ -1281,7 +1295,7 @@ export function SearchPanel({
                           }
                           aria-hidden="true"
                         >
-                          <Skeleton radius="none" className={isClassicBuilder ? 'classic-builder-search-result-skeleton-art' : 'aspect-[0.72] w-[42px]'} />
+                          <Skeleton radius="none" className={isClassicBuilder ? 'classic-builder-search-result-skeleton-art' : 'aspect-[0.72] w-10.5'} />
                           <div className="grid gap-2">
                             <Skeleton className="h-3.5 w-[85%]" />
                             <Skeleton className="h-2.5 w-[62%]" />
@@ -1295,7 +1309,7 @@ export function SearchPanel({
             </div>
           ) : (
             isClassicBuilder ? null : (
-              <div className="surface-card px-2 py-2 text-[0.76rem] leading-[1.16] text-[var(--text-muted)]">
+              <div className="surface-card px-2 py-2 text-[0.76rem] leading-[1.16] text-(--text-muted)">
                 <p className="m-0">
                   {`EscribÃ­ al menos ${formatInteger(SEARCH_MIN_QUERY_LENGTH)} letras o abrÃ­ âš™ para refinar la bÃºsqueda.`}
                 </p>
@@ -1329,12 +1343,12 @@ function SearchFilterSection({
     >
       <summary className="flex cursor-pointer items-center justify-between gap-2 border border-(--border-subtle) bg-[linear-gradient(180deg,rgb(var(--secondary-rgb)/0.96),rgb(var(--background-rgb)/0.98))] px-2 py-1.5 transition-colors duration-150 hover:border-[rgb(var(--primary-rgb)/0.34)]">
         <span className="min-w-0 grid gap-[0.1rem]">
-          <strong className="text-[0.74rem] text-[var(--text-main)]">{title}</strong>
-          <span className="truncate text-[0.64rem] leading-[1.14] text-[var(--text-muted)]">
+          <strong className="text-[0.74rem] text-(--text-main)">{title}</strong>
+          <span className="truncate text-[0.64rem] leading-[1.14] text-(--text-muted)">
             {summary}
           </span>
         </span>
-        <span className="details-arrow grid h-5 w-5 shrink-0 place-items-center border border-[rgb(var(--primary-rgb)/0.3)] bg-[linear-gradient(180deg,rgb(var(--primary-rgb)/0.16),rgb(var(--secondary-rgb)/0.96))] text-[0.68rem] text-[var(--text-soft)]">
+        <span className="details-arrow grid h-5 w-5 shrink-0 place-items-center border border-[rgb(var(--primary-rgb)/0.3)] bg-[linear-gradient(180deg,rgb(var(--primary-rgb)/0.16),rgb(var(--secondary-rgb)/0.96))] text-[0.68rem] text-(--text-soft)">
           â–¶
         </span>
       </summary>
@@ -1348,18 +1362,9 @@ function sortVisibleSearchResults(
   sortOrder: SearchSortOrder,
 ): ApiCardSearchResult[] {
   if (sortOrder === 'default') {
+    // Keep fetch order as-is: grouping by type here would re-shuffle already-visible
+    // cards every time a new page loads a card of a "higher" type, breaking scroll/click.
     return results
-      .map((card, index) => ({ card, index }))
-      .sort((left, right) => {
-        const typeDifference = getSearchTypePriority(left.card) - getSearchTypePriority(right.card)
-
-        if (typeDifference !== 0) {
-          return typeDifference
-        }
-
-        return left.index - right.index
-      })
-      .map(({ card }) => card)
   }
 
   return [...results].sort((left, right) => {
