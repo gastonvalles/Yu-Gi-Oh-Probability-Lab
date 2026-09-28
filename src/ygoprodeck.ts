@@ -20,6 +20,17 @@ export interface SearchCardsOptions {
   format?: string
 }
 
+// Nombre del parámetro de la API de YGOPRODeck para cada filtro de búsqueda.
+const SEARCH_PARAM_BY_OPTION: Record<keyof SearchCardsOptions, string> = {
+  query: 'fname',
+  archetype: 'archetype',
+  exactType: 'type',
+  attribute: 'attribute',
+  race: 'race',
+  level: 'level',
+  format: 'format',
+}
+
 export async function searchCards(
   options: SearchCardsOptions,
   limit = 24,
@@ -30,40 +41,12 @@ export async function searchCards(
     offset: String(offset),
   })
 
-  const trimmedQuery = options.query?.trim() ?? ''
-  const trimmedArchetype = options.archetype?.trim() ?? ''
-  const trimmedExactType = options.exactType?.trim() ?? ''
-  const trimmedAttribute = options.attribute?.trim() ?? ''
-  const trimmedRace = options.race?.trim() ?? ''
-  const trimmedLevel = options.level?.trim() ?? ''
-  const trimmedFormat = options.format?.trim() ?? ''
+  for (const [option, paramName] of Object.entries(SEARCH_PARAM_BY_OPTION)) {
+    const value = options[option as keyof SearchCardsOptions]?.trim()
 
-  if (trimmedQuery.length > 0) {
-    params.set('fname', trimmedQuery)
-  }
-
-  if (trimmedArchetype.length > 0) {
-    params.set('archetype', trimmedArchetype)
-  }
-
-  if (trimmedExactType.length > 0) {
-    params.set('type', trimmedExactType)
-  }
-
-  if (trimmedAttribute.length > 0) {
-    params.set('attribute', trimmedAttribute)
-  }
-
-  if (trimmedRace.length > 0) {
-    params.set('race', trimmedRace)
-  }
-
-  if (trimmedLevel.length > 0) {
-    params.set('level', trimmedLevel)
-  }
-
-  if (trimmedFormat.length > 0) {
-    params.set('format', trimmedFormat)
+    if (value) {
+      params.set(paramName, value)
+    }
   }
 
   const payload = await requestCardInfo(params)
