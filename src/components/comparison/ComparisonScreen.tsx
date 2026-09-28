@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
+import { useEffect, useId, useMemo, useState, useCallback, useRef } from 'react'
 
 import { compareBuild, interpretComparison } from '../../app/build-comparison'
 import type { Verdict, RoleDistribution, Insight } from '../../app/build-comparison'
@@ -583,6 +583,7 @@ function KpiPieChart({ starters, extenders, handtraps, bricks, boardbreakers, ma
   mainDeckSize: number
   onSegmentClick?: (role: KpiRole) => void
 }) {
+  const filterId = `pie-glow-${useId()}`
   const data = KPI_PIE_SEGMENTS
     .map((seg) => ({
       ...seg,
@@ -597,7 +598,6 @@ function KpiPieChart({ starters, extenders, handtraps, bricks, boardbreakers, ma
   const cy = 50
   const r = 46
   const innerR = 20
-  const filterId = `pie-glow-${Math.random().toString(36).slice(2, 6)}`
 
   let currentAngle = -90
   const segments = data.map((d) => {

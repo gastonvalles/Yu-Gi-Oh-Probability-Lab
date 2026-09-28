@@ -1,3 +1,7 @@
+// Firefox y Safari pueden leer el blob después del click: revocar la URL
+// en el mismo tick llega a cancelar la descarga.
+const OBJECT_URL_REVOKE_DELAY_MS = 30_000
+
 export async function downloadCanvasAsPng(
   canvas: HTMLCanvasElement,
   filenameBase: string,
@@ -37,11 +41,13 @@ function downloadBlob(blob: Blob, filename: string) {
   document.body.append(anchor)
   anchor.click()
   anchor.remove()
-  window.setTimeout(() => URL.revokeObjectURL(url), 0)
+  window.setTimeout(() => URL.revokeObjectURL(url), OBJECT_URL_REVOKE_DELAY_MS)
 }
 
-function sanitizeFilename(value: string): string {
+export function sanitizeFilename(value: string): string {
   const sanitized = value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
