@@ -1,19 +1,12 @@
 import type { CardSearchFilters } from '../../app/card-search'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
-import { collectFilterValues, type FilterOptionGroup, type QuickTypeMeta, type SearchSortOrder } from './search-options'
+import { collectFilterValues, type FilterOptionGroup, type SearchSortOrder } from './search-options'
 
 export interface ActiveFilterChip {
   key: string
   label: string
   value: string
   updates: Partial<CardSearchFilters>
-}
-
-export interface FilterSectionSummaries {
-  text: string
-  textOpen: boolean
-  characteristics: string
-  characteristicsOpen: boolean
 }
 
 export function sortVisibleSearchResults(
@@ -183,42 +176,4 @@ export function buildActiveFilterChips({
   }
 
   return chips
-}
-
-function buildSectionSummary(parts: string[], emptyLabel = 'Sin filtros'): string {
-  const summary = parts.filter((part) => part.length > 0).join(' · ')
-  return summary.length > 0 ? summary : emptyLabel
-}
-
-export function buildFilterSectionSummaries({
-  filters,
-  quickTypeMeta,
-  formatAllowsLegalityFilter,
-  formatLabel,
-}: {
-  filters: CardSearchFilters
-  quickTypeMeta: QuickTypeMeta
-  formatAllowsLegalityFilter: boolean
-  formatLabel: string
-}): FilterSectionSummaries {
-  const archetype = filters.archetype.trim()
-  const description = filters.description.trim()
-  const exactType = filters.exactType.trim()
-  const race = filters.race.trim()
-  const attribute = filters.attribute.trim()
-  const level = filters.level.trim()
-
-  return {
-    text: buildSectionSummary([archetype, description ? `Texto: ${description}` : '']),
-    textOpen: archetype.length > 0 || description.length > 0,
-    characteristics: buildSectionSummary([
-      exactType,
-      race,
-      quickTypeMeta.showAttribute ? attribute : '',
-      quickTypeMeta.showLevel && level ? `${quickTypeMeta.levelLabel}: ${level}` : '',
-      formatAllowsLegalityFilter && filters.legalOnly ? `Sin prohibidas en ${formatLabel}` : '',
-    ]),
-    characteristicsOpen:
-      exactType.length > 0 || race.length > 0 || attribute.length > 0 || level.length > 0 || filters.legalOnly,
-  }
 }

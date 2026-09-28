@@ -5,7 +5,8 @@ import { buildClassicCardPrimaryLine, buildClassicCardStatLine } from '../../app
 import { SEARCH_MIN_QUERY_LENGTH } from '../../app/model'
 import { useInfiniteScroll } from '../../app/use-infinite-scroll'
 import { CardArt } from '../CardArt'
-import { CloseButton } from '../ui/IconButton'
+import { CloseButton, CloseIcon } from '../ui/IconButton'
+import { CheckIcon, FilterIcon, PlusIcon } from '../ui/icons'
 import { Skeleton } from '../ui/Skeleton'
 import { SearchFiltersForm } from './SearchFiltersForm'
 import { sortVisibleSearchResults } from './search-model'
@@ -22,13 +23,6 @@ interface DesktopSearchPanelProps {
   onResultClick: (apiCardId: number) => void
   onAddCard: (apiCardId: number) => boolean
   onResultPointerDown: (event: ReactPointerEvent<HTMLElement>, apiCardId: number) => void
-}
-
-function isTypingTarget(target: EventTarget | null): boolean {
-  return (
-    target instanceof HTMLElement &&
-    (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
-  )
 }
 
 const SKELETON_COUNT = 12
@@ -72,22 +66,6 @@ export function DesktopSearchPanel({
     }
   }
 
-  // "/" enfoca el buscador desde cualquier parte del builder (como en GitHub o YouTube).
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey || isTypingTarget(event.target)) {
-        return
-      }
-
-      event.preventDefault()
-      inputRef.current?.focus()
-      inputRef.current?.select()
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
-
   useInfiniteScroll({
     containerRef: resultsRef,
     canLoadMore: search.hasSearchCriteria && status === 'success' && !search.isLoadingMore && search.hasMore,
@@ -110,8 +88,7 @@ export function DesktopSearchPanel({
                 actions.onQueryChange('')
               }
             }}
-            aria-keyshortcuts="/"
-            placeholder="Buscar cartas  ( / )"
+            placeholder="Buscar cartas"
             autoComplete="off"
             spellCheck={false}
             className="classic-builder-search-input"
@@ -141,6 +118,21 @@ export function DesktopSearchPanel({
               {option.label}
             </button>
           ))}
+
+          <button
+            type="button"
+            className="classic-builder-search-type-button classic-builder-search-filters-toggle"
+            aria-expanded={filtersOpen}
+            aria-controls="advanced-search-filters"
+            data-active={filtersOpen || search.activeFilterCount > 0 ? 'true' : 'false'}
+            onClick={() => setFiltersOpen((current) => !current)}
+          >
+            <FilterIcon width={14} height={14} />
+            Filtros
+            {search.activeFilterCount > 0 ? (
+              <span className="classic-builder-search-filters-badge">{search.activeFilterCount}</span>
+            ) : null}
+          </button>
         </div>
 
         {!filtersOpen && filterContext.activeFilterChips.length > 0 ? (
@@ -156,21 +148,11 @@ export function DesktopSearchPanel({
                 <span className="truncate text-(--text-main)">
                   {chip.label}: {chip.value}
                 </span>
-                <span aria-hidden="true" className="shrink-0 text-(--text-soft)">×</span>
+                <CloseIcon className="h-3 w-3 shrink-0 text-(--text-soft)" />
               </button>
             ))}
           </div>
         ) : null}
-
-        <button
-          type="button"
-          className="classic-builder-search-toggle"
-          aria-expanded={filtersOpen}
-          aria-controls="advanced-search-filters"
-          onClick={() => setFiltersOpen((current) => !current)}
-        >
-          {filtersOpen ? '↑ Ocultar filtros ↑' : `↓ Más filtros${search.activeFilterCount > 0 ? ` (${search.activeFilterCount})` : ''} ↓`}
-        </button>
       </div>
 
       <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
@@ -179,7 +161,6 @@ export function DesktopSearchPanel({
             <SearchFiltersForm
               id="advanced-search-filters"
               layout="desktop"
-              className="classic-builder-search-filters"
               filters={filters}
               context={filterContext}
               activeFilterCount={search.activeFilterCount}
@@ -285,7 +266,7 @@ export function DesktopSearchPanel({
                           handleAdd(card.ygoprodeckId)
                         }}
                       >
-                        {isMaxed ? 'MÁX' : lastAddedId === card.ygoprodeckId ? '✓' : '+'}
+                        {isMaxed ? 'MÁX' : lastAddedId === card.ygoprodeckId ? <CheckIcon width={16} height={16} /> : <PlusIcon width={16} height={16} />}
                       </button>
                     </article>
                   )
@@ -298,7 +279,7 @@ export function DesktopSearchPanel({
             <div className="grid gap-2 px-3 py-6 text-center text-[0.8rem] leading-snug text-(--text-muted)">
               <p className="m-0 text-[0.9rem] text-(--text-main)">¿Qué carta buscás?</p>
               <p className="m-0">
-                Escribí al menos {SEARCH_MIN_QUERY_LENGTH} letras del nombre, o elegí un tipo y usá “Más filtros” para
+                Escribí al menos {SEARCH_MIN_QUERY_LENGTH} letras del nombre, o elegí un tipo y abrí “Filtros” para
                 buscar por arquetipo, atributo o nivel.
               </p>
             </div>

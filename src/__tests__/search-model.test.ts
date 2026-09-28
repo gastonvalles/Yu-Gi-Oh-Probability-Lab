@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 import { DEFAULT_CARD_SEARCH_FILTERS } from '../app/card-search'
 import {
   buildActiveFilterChips,
-  buildFilterSectionSummaries,
   buildSanitizedFilterUpdates,
   sortVisibleSearchResults,
 } from '../components/search/search-model'
@@ -56,7 +55,7 @@ describe('buildSanitizedFilterUpdates', () => {
   })
 })
 
-describe('chips y resúmenes de filtros', () => {
+describe('chips de filtros activos', () => {
   const filters = { ...DEFAULT_CARD_SEARCH_FILTERS, archetype: ' Blue-Eyes ', legalOnly: true }
 
   it('cada chip sabe cómo quitarse', () => {
@@ -66,21 +65,5 @@ describe('chips y resúmenes de filtros', () => {
       ['archetype', 'Blue-Eyes', { archetype: '' }],
       ['legal-only', 'Sin prohibidas en TCG', { legalOnly: false }],
     ])
-  })
-
-  it('resume y abre las secciones con filtros activos', () => {
-    const summaries = buildFilterSectionSummaries({
-      filters,
-      quickTypeMeta: QUICK_TYPE_META.all,
-      formatAllowsLegalityFilter: true,
-      formatLabel: 'TCG',
-    })
-
-    expect(summaries).toEqual({
-      text: 'Blue-Eyes',
-      textOpen: true,
-      characteristics: 'Sin prohibidas en TCG',
-      characteristicsOpen: true,
-    })
   })
 })
