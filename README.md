@@ -157,6 +157,8 @@ npm run typecheck    # tipos de la app y de los tests
 npm run sync:genesys # actualiza los puntos de Genesys
 ```
 
+El CI (`.github/workflows/ci.yml`) corre `typecheck`, `test` y `build` en cada PR y push a `main`.
+
 ## Requisitos
 
 - Node.js `^20.19.0` o `>=22.12.0` (ver `.nvmrc`) + npm.
