@@ -3,21 +3,34 @@ import {
   buildClassicCardLevelLine,
   buildClassicCardStatLine,
 } from '../../app/deck-builder-classic'
+import type { DeckZone } from '../../app/model'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { CardArt } from '../CardArt'
+import { buildZoneActionEntries } from '../card-detail/card-zone-actions'
+import { DeckCopyControls, type DeckCopyActions } from '../card-detail/DeckCopyControls'
+import { Button } from '../ui/Button'
 
 const EMPTY_PREVIEW_GUIDE = {
   step: 'PASO 1',
   title: 'Armá tu deck en el builder',
   description:
-    'Arrastrá cartas del buscador al deck y reordenalas entre Main, Extra y Side. Clic para ver el detalle y clic derecho para quitar una copia.',
+    'Buscá una carta y agregala con + o doble clic, o arrastrala a la zona que quieras. Hacé clic en una carta para ver el detalle y sumar o quitar copias.',
 } as const
+
+const SHORTCUTS = [
+  { keys: '/', label: 'buscar' },
+  { keys: 'Doble clic', label: 'agregar' },
+  { keys: 'Clic derecho', label: 'quitar del deck' },
+] as const
 
 interface DeckBuilderClassicPreviewProps {
   card: ApiCardSearchResult | null
+  source: 'search' | 'deck' | null
+  deckCopy: DeckCopyActions | null
+  onAddToZone: (zone: DeckZone) => void
 }
 
-export function DeckBuilderClassicPreview({ card }: DeckBuilderClassicPreviewProps) {
+export function DeckBuilderClassicPreview({ card, source, deckCopy, onAddToZone }: DeckBuilderClassicPreviewProps) {
   const detailHeader = card ? buildClassicCardDetailHeader(card) : null
   const levelLine = card ? buildClassicCardLevelLine(card) : null
   const statLine = card ? buildClassicCardStatLine(card) : null
@@ -30,10 +43,17 @@ export function DeckBuilderClassicPreview({ card }: DeckBuilderClassicPreviewPro
           <p className="classic-builder-preview-guide-step">{EMPTY_PREVIEW_GUIDE.step}</p>
           <h3 className="classic-builder-preview-guide-heading">{EMPTY_PREVIEW_GUIDE.title}</h3>
           <p className="classic-builder-preview-guide-description">{EMPTY_PREVIEW_GUIDE.description}</p>
+          <ul className="classic-builder-shortcuts" aria-label="Atajos">
+            {SHORTCUTS.map((shortcut) => (
+              <li key={shortcut.keys}>
+                <kbd>{shortcut.keys}</kbd> {shortcut.label}
+              </li>
+            ))}
+          </ul>
         </section>
       ) : null}
 
-      <div className="classic-builder-preview-title">{card ? card.name : 'Select a card'}</div>
+      <div className="classic-builder-preview-title">{card ? card.name : 'Elegí una carta'}</div>
 
       <div className="classic-builder-preview-art-shell">
         <div className="classic-builder-preview-art-frame">
@@ -46,10 +66,26 @@ export function DeckBuilderClassicPreview({ card }: DeckBuilderClassicPreviewPro
               limitBadgeSize="lg"
             />
           ) : (
-            <div className="classic-builder-preview-empty">No card selected</div>
+            <div className="classic-builder-preview-empty">Sin carta seleccionada</div>
           )}
         </div>
       </div>
+
+      {card && source === 'deck' && deckCopy ? (
+        <div className="classic-builder-preview-actions">
+          <DeckCopyControls deckCopy={deckCopy} />
+        </div>
+      ) : null}
+
+      {card && source === 'search' ? (
+        <div className="classic-builder-preview-actions grid gap-2">
+          {buildZoneActionEntries(card).map((entry) => (
+            <Button key={entry.zone} variant={entry.variant} size="sm" fullWidth onClick={() => onAddToZone(entry.zone)}>
+              {entry.label}
+            </Button>
+          ))}
+        </div>
+      ) : null}
 
       <article className="classic-builder-preview-details">
         {card ? (
@@ -64,7 +100,7 @@ export function DeckBuilderClassicPreview({ card }: DeckBuilderClassicPreviewPro
           </>
         ) : (
           <p className="classic-builder-preview-description">
-            Pick a card from the deck or the search results to inspect it here.
+            Hacé clic en una carta del deck o del buscador para ver su detalle acá.
           </p>
         )}
       </article>

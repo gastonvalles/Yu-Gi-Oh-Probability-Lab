@@ -2,45 +2,91 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointer
 
 import { formatSearchError } from '../../app/card-search'
 import { buildClassicCardPrimaryLine, buildClassicCardStatLine } from '../../app/deck-builder-classic'
+import { SEARCH_MIN_QUERY_LENGTH } from '../../app/model'
 import { useInfiniteScroll } from '../../app/use-infinite-scroll'
 import { CardArt } from '../CardArt'
 import { CloseButton } from '../ui/IconButton'
 import { Skeleton } from '../ui/Skeleton'
 import { SearchFiltersForm } from './SearchFiltersForm'
 import { sortVisibleSearchResults } from './search-model'
-import type { SearchSortOrder } from './search-options'
+import { QUICK_TYPE_OPTIONS, type SearchSortOrder } from './search-options'
 import type { CardSearchActions, CardSearchViewState } from './search-types'
 import { useSearchFilterContext } from './use-search-filter-context'
 
 interface DesktopSearchPanelProps {
   search: CardSearchViewState
   actions: CardSearchActions
+  deckCopyCounts: ReadonlyMap<number, number>
   activeDragSearchCardId: number | null
   selectedCardId: number | null
   onResultClick: (apiCardId: number) => void
+  onAddCard: (apiCardId: number) => boolean
   onResultPointerDown: (event: ReactPointerEvent<HTMLElement>, apiCardId: number) => void
 }
 
+function isTypingTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+  )
+}
+
 const SKELETON_COUNT = 12
+const ADDED_FEEDBACK_MS = 900
 
 export function DesktopSearchPanel({
   search,
   actions,
+  deckCopyCounts,
   activeDragSearchCardId,
   selectedCardId,
   onResultClick,
+  onAddCard,
   onResultPointerDown,
 }: DesktopSearchPanelProps) {
   const { filters, query, status } = search
   const [filtersOpen, setFiltersOpen] = useState(search.activeFilterCount > 0)
   const [sortOrder, setSortOrder] = useState<SearchSortOrder>('default')
   const resultsRef = useRef<HTMLDivElement | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  const [lastAddedId, setLastAddedId] = useState<number | null>(null)
   const filterContext = useSearchFilterContext(filters, search.deckFormat, actions.onFilterChange)
   const sortedResults = useMemo(() => sortVisibleSearchResults(search.results, sortOrder), [search.results, sortOrder])
 
   useEffect(() => {
     resultsRef.current?.scrollTo({ top: 0, behavior: 'auto' })
   }, [search.deckFormat, filters, query, sortOrder])
+
+  useEffect(() => {
+    if (lastAddedId === null) {
+      return
+    }
+
+    const timer = window.setTimeout(() => setLastAddedId(null), ADDED_FEEDBACK_MS)
+    return () => window.clearTimeout(timer)
+  }, [lastAddedId])
+
+  const handleAdd = (apiCardId: number) => {
+    if (onAddCard(apiCardId)) {
+      setLastAddedId(apiCardId)
+    }
+  }
+
+  // "/" enfoca el buscador desde cualquier parte del builder (como en GitHub o YouTube).
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey || isTypingTarget(event.target)) {
+        return
+      }
+
+      event.preventDefault()
+      inputRef.current?.focus()
+      inputRef.current?.select()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   useInfiniteScroll({
     containerRef: resultsRef,
@@ -54,10 +100,18 @@ export function DesktopSearchPanel({
       <div className="classic-builder-search-header">
         <label className="relative block min-w-0 flex-1">
           <input
+            ref={inputRef}
             type="search"
             value={query}
             onChange={(event) => actions.onQueryChange(event.target.value)}
-            placeholder="Buscar cartas"
+            onKeyDown={(event) => {
+              if (event.key === 'Escape' && query.length > 0) {
+                event.stopPropagation()
+                actions.onQueryChange('')
+              }
+            }}
+            aria-keyshortcuts="/"
+            placeholder="Buscar cartas  ( / )"
             autoComplete="off"
             spellCheck={false}
             className="classic-builder-search-input"
@@ -75,6 +129,39 @@ export function DesktopSearchPanel({
           ) : null}
         </label>
 
+        <div className="classic-builder-search-type-row" role="group" aria-label="Tipo de carta">
+          {QUICK_TYPE_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className="classic-builder-search-type-button"
+              aria-pressed={filters.quickType === option.value}
+              onClick={() => actions.onFilterChange({ quickType: option.value })}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        {!filtersOpen && filterContext.activeFilterChips.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {filterContext.activeFilterChips.map((chip) => (
+              <button
+                key={chip.key}
+                type="button"
+                className="search-active-chip"
+                onClick={() => actions.onFilterChange(chip.updates)}
+                title={`Quitar filtro ${chip.label.toLowerCase()}`}
+              >
+                <span className="truncate text-(--text-main)">
+                  {chip.label}: {chip.value}
+                </span>
+                <span aria-hidden="true" className="shrink-0 text-(--text-soft)">×</span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+
         <button
           type="button"
           className="classic-builder-search-toggle"
@@ -82,7 +169,7 @@ export function DesktopSearchPanel({
           aria-controls="advanced-search-filters"
           onClick={() => setFiltersOpen((current) => !current)}
         >
-          {filtersOpen ? '↑ Ocultar filtros ↑' : '↓ Mostrar filtros ↓'}
+          {filtersOpen ? '↑ Ocultar filtros ↑' : `↓ Más filtros${search.activeFilterCount > 0 ? ` (${search.activeFilterCount})` : ''} ↓`}
         </button>
       </div>
 
@@ -133,6 +220,7 @@ export function DesktopSearchPanel({
               <div ref={resultsRef} className="classic-builder-search-results-grid">
                 {sortedResults.map((card) => {
                   const isMaxed = search.maxedOutResultIds.has(card.ygoprodeckId)
+                const copiesInDeck = deckCopyCounts.get(card.ygoprodeckId) ?? 0
 
                   return (
                     <article
@@ -145,9 +233,10 @@ export function DesktopSearchPanel({
                         'classic-builder-search-result-card',
                         activeDragSearchCardId === card.ygoprodeckId ? 'opacity-35' : '',
                       ].join(' ')}
-                      onClick={() => {
+                      onClick={() => onResultClick(card.ygoprodeckId)}
+                      onDoubleClick={() => {
                         if (!isMaxed) {
-                          onResultClick(card.ygoprodeckId)
+                          handleAdd(card.ygoprodeckId)
                         }
                       }}
                       onPointerDown={(event) => {
@@ -164,6 +253,11 @@ export function DesktopSearchPanel({
                           limitCard={card}
                           limitBadgeSize="sm"
                         />
+                        {copiesInDeck > 0 ? (
+                          <span className="classic-builder-search-copies" title={`${copiesInDeck} en el deck`}>
+                            ×{copiesInDeck}
+                          </span>
+                        ) : null}
                       </div>
 
                       <div className="classic-builder-search-result-copy">
@@ -177,6 +271,22 @@ export function DesktopSearchPanel({
                           {buildClassicCardStatLine(card)}
                         </p>
                       </div>
+
+                      <button
+                        type="button"
+                        className="classic-builder-search-add"
+                        data-state={lastAddedId === card.ygoprodeckId ? 'added' : 'idle'}
+                        disabled={isMaxed}
+                        aria-label={isMaxed ? `${card.name}: máximo de copias` : `Agregar ${card.name} al deck`}
+                        title={isMaxed ? 'Máximo de copias' : 'Agregar al deck'}
+                        onPointerDown={(event) => event.stopPropagation()}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          handleAdd(card.ygoprodeckId)
+                        }}
+                      >
+                        {isMaxed ? 'MÁX' : lastAddedId === card.ygoprodeckId ? '✓' : '+'}
+                      </button>
                     </article>
                   )
                 })}
@@ -184,7 +294,15 @@ export function DesktopSearchPanel({
                 {search.isLoadingMore ? <DesktopResultSkeleton /> : null}
               </div>
             )
-          ) : null}
+          ) : (
+            <div className="grid gap-2 px-3 py-6 text-center text-[0.8rem] leading-snug text-(--text-muted)">
+              <p className="m-0 text-[0.9rem] text-(--text-main)">¿Qué carta buscás?</p>
+              <p className="m-0">
+                Escribí al menos {SEARCH_MIN_QUERY_LENGTH} letras del nombre, o elegí un tipo y usá “Más filtros” para
+                buscar por arquetipo, atributo o nivel.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </article>

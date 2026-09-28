@@ -1,0 +1,159 @@
+@layer components {
+  /* ── Buscador desktop ── */
+
+  .classic-builder-search-type-button[aria-pressed='true'] {
+    border-color: rgb(var(--primary-rgb) / 0.48);
+    background:
+      linear-gradient(180deg, var(--selected-background), rgb(var(--secondary-rgb) / 0.96)),
+      var(--classic-builder-surface-soft);
+    box-shadow: 0 0 0 1px rgb(var(--primary-rgb) / 0.08);
+  }
+
+  .classic-builder-search-result-card {
+    position: relative;
+  }
+
+  .classic-builder-search-result-art-shell {
+    position: relative;
+  }
+
+  .classic-builder-search-copies {
+    position: absolute;
+    right: -0.3rem;
+    bottom: -0.3rem;
+    border-radius: 999px;
+    background: rgb(var(--accent-rgb));
+    padding: 0.05rem 0.32rem;
+    color: #06140e;
+    font-size: 0.66rem;
+    font-weight: 800;
+  }
+
+  .classic-builder-search-add {
+    position: absolute;
+    right: 0.4rem;
+    bottom: 0.4rem;
+    display: grid;
+    height: 1.9rem;
+    min-width: 1.9rem;
+    place-items: center;
+    border: 1px solid rgb(var(--primary-rgb) / 0.6);
+    border-radius: 999px;
+    background: rgb(var(--primary-rgb) / 0.85);
+    padding: 0 0.4rem;
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1;
+    opacity: 0;
+    transition:
+      opacity 120ms ease,
+      transform 120ms ease;
+  }
+
+  .classic-builder-search-add[data-state='added'] {
+    border-color: rgb(var(--accent-rgb) / 0.8);
+    background: rgb(var(--accent-rgb));
+    color: #06140e;
+    opacity: 1;
+  }
+
+  .classic-builder-search-add:disabled {
+    border-color: var(--border-subtle);
+    background: rgb(var(--secondary-rgb) / 0.95);
+    color: var(--text-soft);
+    font-size: 0.62rem;
+  }
+
+  .classic-builder-search-result-card:hover .classic-builder-search-add,
+  .classic-builder-search-result-card:focus-within .classic-builder-search-add,
+  .classic-builder-search-add:focus-visible {
+    opacity: 1;
+  }
+
+  .classic-builder-search-add:active:not(:disabled) {
+    transform: scale(0.92);
+  }
+
+  /* En pantallas táctiles grandes (tablet horizontal) no hay hover: el + siempre visible. */
+  @media (hover: none) {
+    .classic-builder-search-add {
+      opacity: 1;
+    }
+  }
+
+  /* ── Panel de detalle ── */
+
+  .classic-builder-preview-actions {
+    border: 1px solid var(--classic-builder-divider);
+    background: var(--classic-builder-surface-soft);
+    padding: 0.65rem;
+  }
+
+  .classic-builder-shortcuts {
+    display: grid;
+    gap: 0.3rem;
+    margin: 0.55rem 0 0;
+    padding: 0;
+    list-style: none;
+    color: var(--text-muted);
+    font-size: 0.74rem;
+  }
+
+  .classic-builder-shortcuts kbd {
+    display: inline-block;
+    min-width: 1.3rem;
+    border: 1px solid var(--border-subtle);
+    border-bottom-width: 2px;
+    border-radius: 0.3rem;
+    background: rgb(var(--secondary-rgb) / 0.95);
+    padding: 0.05rem 0.35rem;
+    color: var(--text-main);
+    font-family: inherit;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  /* ── Barra superior: en anchos chicos los botones bajan en vez de pisar el formato ── */
+
+  .classic-builder-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+  .classic-builder-toolbar-fields {
+    flex: 1 1 20rem;
+  }
+
+  .classic-builder-toolbar-field {
+    flex: 1 1 auto;
+    width: auto;
+  }
+
+  .classic-builder-toolbar-select-wrap {
+    flex: 0 0 auto;
+  }
+
+  /* ── Zonas vacías: indicar dónde soltar ── */
+
+  .classic-builder-zone-empty-hint {
+    grid-column: 1 / -1;
+    width: 100%;
+    display: grid;
+    min-height: 3.5rem;
+    place-items: center;
+    padding: 0.5rem;
+    color: var(--text-soft);
+    font-size: 0.78rem;
+    pointer-events: none;
+  }
+}
+
+/* Con acciones en el panel, la fila flexible sigue siendo la de la descripción. */
+@media (min-width: 1101px) {
+  .classic-builder-preview:has(.classic-builder-preview-actions) {
+    grid-template-rows: auto auto auto minmax(12rem, 1fr);
+  }
+}

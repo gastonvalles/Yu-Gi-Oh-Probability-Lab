@@ -46,8 +46,15 @@ import { useToastMessage } from '../../app/use-toast-message'
 import { getClassificationOverrides } from '../../app/classification-overrides'
 import type { CardOrigin, CardRole } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
+import type { DeckCopyActions } from '../card-detail/DeckCopyControls'
 
 const DEFAULT_PATTERNS_VERSION = 10
+
+const DECK_ZONE_LABELS: Record<DeckZone, string> = {
+  main: 'Main Deck',
+  extra: 'Extra Deck',
+  side: 'Side Deck',
+}
 
 export function useDeckModeController() {
   const dispatch = useAppDispatch()
@@ -416,6 +423,20 @@ export function useDeckModeController() {
     }
   }, [handleAddSearchResultToZone, selectedDeckCopy])
 
+  const selectedDeckCopyActions = useMemo<DeckCopyActions | null>(
+    () =>
+      selectedDeckCopy
+        ? {
+            zoneLabel: DECK_ZONE_LABELS[selectedDeckCopy.zone],
+            copies: selectedDeckCopy.copies,
+            canAddCopy: selectedDeckCopy.canAddCopy,
+            onRemoveCopy: handleRemoveSelectedDeckCopy,
+            onAddCopy: handleAddSelectedDeckCopy,
+          }
+        : null,
+    [handleAddSelectedDeckCopy, handleRemoveSelectedDeckCopy, selectedDeckCopy],
+  )
+
   const handleClearDeckZone = useCallback(
     (zone: DeckZone) => {
       const zoneCards = deckBuilder[zone]
@@ -426,9 +447,7 @@ export function useDeckModeController() {
 
       dispatch(clearDeckZone(zone))
 
-      const zoneLabel =
-        zone === 'main' ? 'Main Deck' : zone === 'extra' ? 'Extra Deck' : 'Side Deck'
-      showToast(`Vaciaste ${zoneLabel}${settings.deckFormat === 'genesys' ? ` para ${formatLabel}` : ''}.`)
+      showToast(`Vaciaste ${DECK_ZONE_LABELS[zone]}${settings.deckFormat === 'genesys' ? ` para ${formatLabel}` : ''}.`)
     },
     [deckBuilder, dispatch, formatLabel, settings.deckFormat, showToast],
   )
@@ -560,7 +579,7 @@ export function useDeckModeController() {
       activeDragSearchCardId,
       selectedDetailCard,
       selectedDetailSource,
-      selectedDeckCopy,
+      selectedDeckCopyActions,
       isCardDetailOpen: selectedDetailCard !== null,
       onClearDeckZone: handleClearDeckZone,
       onClearAllDeckZones: handleClearAllDeckZones,
@@ -579,8 +598,6 @@ export function useDeckModeController() {
       onClearSearchFilters: clearSearchFilters,
       onLoadMoreResults: loadMoreResults,
       onCloseCardDetail: closeCardDetail,
-      onRemoveSelectedDeckCopy: handleRemoveSelectedDeckCopy,
-      onAddSelectedDeckCopy: handleAddSelectedDeckCopy,
       genesysPointTotal,
       genesysPointCap: settings.deckFormat === 'genesys' ? GENESYS_POINT_CAP : null,
     },

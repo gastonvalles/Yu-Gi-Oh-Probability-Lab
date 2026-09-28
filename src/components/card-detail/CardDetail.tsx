@@ -1,4 +1,3 @@
-import { isCardAllowedInDeckZone } from '../../app/deck-builder'
 import type { DeckZone } from '../../app/model'
 import type { DeckFormat } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
@@ -6,15 +5,8 @@ import { CardArt } from '../CardArt'
 import { Button } from '../ui/Button'
 import { CloseButton } from '../ui/IconButton'
 import { Skeleton } from '../ui/Skeleton'
-
-/** Acciones sobre una carta que ya está en el deck (se abre tocándola en una zona). */
-export interface DeckCopyActions {
-  zoneLabel: string
-  copies: number
-  canAddCopy: boolean
-  onRemoveCopy: () => void
-  onAddCopy: () => void
-}
+import { buildZoneActionEntries } from './card-zone-actions'
+import { DeckCopyControls, type DeckCopyActions } from './DeckCopyControls'
 
 interface CardDetailProps {
   card: ApiCardSearchResult
@@ -44,7 +36,7 @@ export function CardDetail({
   onClose,
 }: CardDetailProps) {
   const isMobileLayout = layoutMode === 'mobile'
-  const actionEntries = showActions ? buildActionEntries(card) : []
+  const actionEntries = showActions ? buildZoneActionEntries(card) : []
   const cardFacts = buildCardFacts(card)
   const formatTags = buildCardFormatTags(card, deckFormat)
   const detailTags = card.archetype ? [...formatTags, card.archetype] : formatTags
@@ -240,19 +232,8 @@ export function CardDetail({
 
 function DeckCopyFooter({ deckCopy }: { deckCopy: DeckCopyActions }) {
   return (
-    <footer className="grid gap-2 border-t border-(--border-subtle) bg-[linear-gradient(180deg,rgb(var(--secondary-rgb)/0.95),rgb(var(--background-rgb)/0.98))] px-4 py-3">
-      <p className="m-0 text-center text-[0.86rem] text-(--text-muted)" aria-live="polite">
-        <strong className="text-(--text-main)">{deckCopy.copies}</strong>{' '}
-        {deckCopy.copies === 1 ? 'copia' : 'copias'} en {deckCopy.zoneLabel}
-      </p>
-      <div className="grid grid-cols-2 gap-2.5">
-        <Button variant="secondary" color="destructive" size="md" fullWidth onClick={deckCopy.onRemoveCopy}>
-          − Quitar una
-        </Button>
-        <Button variant="primary" size="md" fullWidth disabled={!deckCopy.canAddCopy} onClick={deckCopy.onAddCopy}>
-          + Sumar una
-        </Button>
-      </div>
+    <footer className="border-t border-(--border-subtle) bg-[linear-gradient(180deg,rgb(var(--secondary-rgb)/0.95),rgb(var(--background-rgb)/0.98))] px-4 py-3">
+      <DeckCopyControls deckCopy={deckCopy} />
     </footer>
   )
 }
@@ -402,42 +383,6 @@ export function CardDetailSkeleton({
       ) : null}
     </section>
   )
-}
-
-function buildActionEntries(card: ApiCardSearchResult): Array<{
-  zone: DeckZone
-  label: string
-  variant: 'primary' | 'secondary' | 'tertiary'
-}> {
-  const entries: Array<{
-    zone: DeckZone
-    label: string
-    variant: 'primary' | 'secondary' | 'tertiary'
-  }> = []
-
-  if (isCardAllowedInDeckZone(card, 'main')) {
-    entries.push({
-      zone: 'main',
-      label: 'Agregar al Main Deck',
-      variant: 'primary',
-    })
-  }
-
-  if (isCardAllowedInDeckZone(card, 'extra')) {
-    entries.push({
-      zone: 'extra',
-      label: 'Agregar al Extra Deck',
-      variant: 'primary',
-    })
-  }
-
-  entries.push({
-    zone: 'side',
-    label: 'Agregar al Side Deck',
-    variant: entries.length > 0 ? 'tertiary' : 'secondary',
-  })
-
-  return entries
 }
 
 function buildCardFormatTags(card: ApiCardSearchResult, deckFormat: DeckFormat): string[] {

@@ -4,7 +4,8 @@ import type { DeckZone } from '../../app/model'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import type { DeckFormat } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
-import { CardDetail, CardDetailSkeleton, type DeckCopyActions } from './CardDetail'
+import { CardDetail, CardDetailSkeleton } from './CardDetail'
+import type { DeckCopyActions } from './DeckCopyControls'
 
 type CardDetailLayoutMode = 'desktop' | 'mobile'
 
