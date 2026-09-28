@@ -217,10 +217,6 @@ export function buildRemoteCardSearchRequest(
   }
 }
 
-export function hasCardSearchCriteria(query: string, filters: CardSearchFilters, deckFormat: DeckFormat): boolean {
-  return hasCardSearchRequestCriteria(buildRemoteCardSearchRequest(query, filters, deckFormat))
-}
-
 export function hasCardSearchRequestCriteria(request: CardSearchRequest): boolean {
   return [
     request.query,

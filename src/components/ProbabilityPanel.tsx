@@ -42,7 +42,6 @@ import {
   buildProbabilityCheckPipeline,
 } from './probability/probability-lab-helpers'
 import type { ProbabilityCausalEntry } from './probability/probability-lab-helpers'
-import { Button } from './ui/Button'
 import { CloseButton } from './ui/IconButton'
 import { Skeleton } from './ui/Skeleton'
 
@@ -271,8 +270,6 @@ function ProbabilityPanelContent({
       return cached
     }
 
-    const deckSize = derivedMainCards.reduce((sum, card) => sum + card.copies, 0)
-
     // Going first: base handSize, first+either patterns
     const firstPatterns = selectPatternsForView(deferredAllChecks, 'first')
     const firstResult = calculateProbabilities(
@@ -368,7 +365,6 @@ function ProbabilityPanelContent({
     [allChecks, availablePresets, derivedMainCards, result.summary],
   )
   const {
-    allChecks: allCheckEntries,
     detailOpeningEntries: rawDetailOpeningEntries,
     detailProblemEntries: rawDetailProblemEntries,
   } = checkPipeline
@@ -390,7 +386,6 @@ function ProbabilityPanelContent({
   const [isAnalysisEditMode, setIsAnalysisEditMode] = useState(false)
   const [pendingDeletePatternId, setPendingDeletePatternId] = useState<string | null>(null)
   const [kpiModalRole, setKpiModalRole] = useState<KpiRole | null>(null)
-  const [highlightedPatternId, setHighlightedPatternId] = useState<string | null>(null)
   const [recentlyChangedPatternId, setRecentlyChangedPatternId] = useState<string | null>(null)
   const [kpiFeedback, setKpiFeedback] = useState<KpiFeedbackState | null>(null)
   const { showToast } = useToastMessage()
@@ -569,7 +564,6 @@ function ProbabilityPanelContent({
     previousCleanProbabilityRef.current = currentProbability
     setKpiFeedback(nextFeedback)
     setRecentlyChangedPatternId(pendingFeedback.patternId)
-    setHighlightedPatternId(pendingFeedback.patternId)
 
     if (clearFeedbackTimeoutRef.current !== null) {
       window.clearTimeout(clearFeedbackTimeoutRef.current)
@@ -583,9 +577,6 @@ function ProbabilityPanelContent({
       setKpiFeedback(null)
     }, 1800)
     clearHighlightTimeoutRef.current = window.setTimeout(() => {
-      setHighlightedPatternId((current) => (
-        current === pendingFeedback.patternId ? null : current
-      ))
       setRecentlyChangedPatternId(null)
     }, 1800)
   }, [deckSummary?.cleanProbability, patterns])
@@ -626,7 +617,6 @@ function ProbabilityPanelContent({
 
   const handleEditPattern = (patternId: string) => {
     setSelectedPatternId(patternId)
-    setHighlightedPatternId(patternId)
     setDrawerMode('edit')
   }
 

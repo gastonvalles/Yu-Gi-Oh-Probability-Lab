@@ -20,15 +20,11 @@ import {
 } from '../../app/deck-import'
 import {
   buildProblemSummary,
-  computeActiveStep,
-  computeImportStatus,
   formatSectionAriaLabel,
   formatZoneGroupHeader,
   groupResolvedByZone,
-  ZONE_LABELS,
-  type ImportStep,
 } from '../../app/deck-import-presentation'
-import type { DeckBuilderState, DeckZone } from '../../app/model'
+import type { DeckBuilderState } from '../../app/model'
 import { formatInteger } from '../../app/utils'
 import type { DeckFormat } from '../../types'
 import { loadCardCatalog } from '../../ygoprodeck'
@@ -46,107 +42,6 @@ interface DeckImportDrawerProps {
 }
 
 const FILE_ACCEPT = '.txt,.json,.ydk,application/json,text/plain'
-
-const STEP_LABELS: Record<ImportStep, string> = {
-  1: 'Subir archivo',
-  2: 'Revisar preview',
-  3: 'Aplicar import',
-}
-
-// --- Task 3.1: StepIndicator ---
-
-function StepIndicator({
-  hasPreview,
-  canApply,
-}: {
-  hasPreview: boolean
-  canApply: boolean
-}) {
-  const activeStep = computeActiveStep({ hasPreview, canApply })
-
-  return (
-    <div className="flex items-center gap-1.5">
-      {([1, 2, 3] as const).map((step) => {
-        const isActive = step === activeStep
-        const isCompleted = step < activeStep
-
-        return (
-          <div key={step} className="flex items-center gap-1.5">
-            {step > 1 ? (
-              <span
-                className={[
-                  'h-px w-3',
-                  isCompleted ? 'bg-primary' : 'bg-(--border-subtle)',
-                ].join(' ')}
-              />
-            ) : null}
-            <span
-              className={[
-                'flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.66rem] font-medium whitespace-nowrap',
-                isActive
-                  ? 'bg-[rgb(var(--primary-rgb)/0.18)] text-primary'
-                  : isCompleted
-                    ? 'bg-[rgb(var(--primary-rgb)/0.08)] text-primary opacity-70'
-                    : 'bg-[rgb(var(--background-rgb)/0.5)] text-(--text-muted)',
-              ].join(' ')}
-            >
-              <span
-                className={[
-                  'grid h-4 w-4 place-items-center rounded-full text-[0.58rem] font-bold',
-                  isActive
-                    ? 'bg-primary text-white'
-                    : isCompleted
-                      ? 'bg-[rgb(var(--primary-rgb)/0.3)] text-primary'
-                      : 'bg-[rgb(var(--background-rgb)/0.6)] text-(--text-muted)',
-                ].join(' ')}
-              >
-                {isCompleted ? '✓' : step}
-              </span>
-              {STEP_LABELS[step]}
-            </span>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-// --- Task 3.2: ImportStatusBadge ---
-
-function ImportStatusBadge({ preview }: { preview: DeckImportPreview }) {
-  const status = computeImportStatus(preview)
-
-  const config = {
-    success: {
-      icon: '✓',
-      label: 'Import completo',
-      className: 'bg-[rgb(var(--success-rgb,34,197,94)/0.15)] text-[rgb(var(--success-rgb,34,197,94))]',
-    },
-    warning: {
-      icon: '⚠',
-      label: 'Import parcial',
-      className: 'bg-[rgb(var(--warning-rgb,234,179,8)/0.15)] text-[rgb(var(--warning-rgb,234,179,8))]',
-    },
-    error: {
-      icon: '✕',
-      label: 'Sin cartas resueltas',
-      className: 'bg-[rgb(var(--danger-rgb,239,68,68)/0.15)] text-[rgb(var(--danger-rgb,239,68,68))]',
-    },
-  }[status]
-
-  return (
-    <span
-      role="status"
-      className={[
-        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.74rem] font-medium',
-        config.className,
-      ].join(' ')}
-    >
-      <span className="text-[0.82rem]">{config.icon}</span>
-      {config.label}
-    </span>
-  )
-}
 
 // --- Task 3.3: CollapsibleSection ---
 

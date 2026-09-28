@@ -5,7 +5,6 @@ import type { DeckBuilderState } from './model'
 const GENESYS_POINTS_BY_NAME = genesysCardData.cards as Record<string, number>
 
 export const GENESYS_POINT_CAP = genesysCardData.pointCap
-export const GENESYS_DATA_UPDATED_AT = genesysCardData.updatedAt
 
 export function normalizeGenesysCardName(value: string): string {
   return value

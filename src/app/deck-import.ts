@@ -4,7 +4,7 @@ import { fromPortableConfig } from './app-state-codec'
 import { classifyCard, normalizeCardNameForLookup } from './classification-engine'
 import { getClassificationOverrides } from './classification-overrides'
 import { addSearchResultToZone, getAddSearchResultIssue } from './deck-builder'
-import type { AppState, DeckBuilderState, DeckZone, PortableConfig } from './model'
+import type { DeckBuilderState, DeckZone, PortableConfig } from './model'
 import { createInitialState } from './model'
 import { isRecord, normalizeSearchText } from './utils'
 
@@ -77,20 +77,6 @@ interface DeckImportBuildOptions {
   source?: Partial<DeckImportSource>
 }
 
-export function exportYdk(state: AppState): string {
-  const lines = [
-    '#created by YGO Probability Lab',
-    '#main',
-    ...state.deckBuilder.main.map((card) => String(card.apiCard.ygoprodeckId)),
-    '#extra',
-    ...state.deckBuilder.extra.map((card) => String(card.apiCard.ygoprodeckId)),
-    '!side',
-    ...state.deckBuilder.side.map((card) => String(card.apiCard.ygoprodeckId)),
-  ]
-
-  return lines.join('\n') + '\n'
-}
-
 export function parseYdk(text: string): { main: number[]; extra: number[]; side: number[] } {
   const zones = {
     main: [] as number[],
@@ -147,53 +133,6 @@ export function getDeckImportFileKind(fileName: string): DeckImportSourceKind | 
   }
 
   return null
-}
-
-export function parseDecklistText(text: string): ImportedDeckEntry[] {
-  return aggregateImportedDeckEntries(parseDecklistTextDetails(text).entries)
-}
-
-export function assessDecklistText(text: string): DecklistTextAssessment {
-  const { entries, invalidLines } = parseDecklistTextDetails(text)
-  const parsedEntries = aggregateImportedDeckEntries(entries)
-  const normalizedLines = text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-
-  const noisyLines = invalidLines.length + normalizedLines.filter(isLikelyNoiseLine).length
-  const hasDeckBuilderNoise = /(cardmarket|tcgplayer|coolstuff|€|\$)/i.test(text)
-  const likelyDeckGridScreenshot =
-    parsedEntries.length < 4 &&
-    (hasDeckBuilderNoise || (normalizedLines.length > 0 && noisyLines / normalizedLines.length > 0.45))
-
-  if (parsedEntries.length === 0) {
-    return {
-      parsedEntries,
-      quality: 'poor',
-      likelyDeckGridScreenshot,
-      message: likelyDeckGridScreenshot
-        ? 'La captura parece una grilla de cartas del deck builder. Este importador hoy funciona con listas en texto o capturas donde los nombres se leen bien.'
-        : 'No pude detectar una lista legible. Probá con una captura de texto más nítida o pegá la lista manualmente.',
-    }
-  }
-
-  if (likelyDeckGridScreenshot || noisyLines > normalizedLines.length / 3) {
-    return {
-      parsedEntries,
-      quality: 'uncertain',
-      likelyDeckGridScreenshot,
-      message:
-        'La lectura salió dudosa. Revisá el texto antes de cargarlo. Si la captura es una grilla de cartas, lo más probable es que este importador no la resuelva bien.',
-    }
-  }
-
-  return {
-    parsedEntries,
-    quality: 'good',
-    likelyDeckGridScreenshot: false,
-    message: null,
-  }
 }
 
 export function buildDeckImportPreview(options: DeckImportBuildOptions & { text: string }): DeckImportPreview {

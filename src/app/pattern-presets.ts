@@ -1,6 +1,6 @@
 import type { CardEntry, CardRole, HandPattern, PatternKind } from '../types'
 import { createMatcherPattern } from './pattern-factory'
-import { getPatternDefinitionKey, normalizePatternName } from './patterns'
+import { normalizePatternName } from './patterns'
 
 export type PatternPresetCategory = 'consistency' | 'interaction' | 'problems' | 'advanced'
 
@@ -60,8 +60,6 @@ export const AUTO_BASE_PRESET_IDS = [
   'no_starter_problem',
   'double_brick_problem',
 ] as const
-
-export const SIMPLE_MODE_DEFAULT_PRESET_IDS = [...QUICK_OVERVIEW_PRESET_IDS] as const
 
 const INTERACTION_ROLES: readonly CardRole[] = ['handtrap', 'disruption'] as const
 
@@ -364,37 +362,6 @@ export function buildPatternPresets(cards: CardEntry[]): PatternPreset[] {
       },
     ]
   })
-}
-
-export function getSelectedSimplePresetIdsFromPatterns(
-  patterns: HandPattern[],
-  availablePresets: PatternPreset[],
-): string[] {
-  const activePatternKeys = new Set(patterns.map((pattern) => getPatternDefinitionKey(pattern)))
-
-  return availablePresets.flatMap((preset) =>
-    preset.simpleLabel && activePatternKeys.has(getPatternDefinitionKey(preset.pattern))
-      ? [preset.id]
-      : [],
-  )
-}
-
-export function toggleSimplePresetPattern(
-  patterns: HandPattern[],
-  preset: PatternPreset,
-): HandPattern[] {
-  const presetDefinitionKey = getPatternDefinitionKey(preset.pattern)
-  const hasMatchingPattern = patterns.some(
-    (pattern) => getPatternDefinitionKey(pattern) === presetDefinitionKey,
-  )
-
-  if (hasMatchingPattern) {
-    return patterns.filter(
-      (pattern) => getPatternDefinitionKey(pattern) !== presetDefinitionKey,
-    )
-  }
-
-  return [...patterns, preset.pattern]
 }
 
 export function isObsoleteSystemPatternName(value: string): boolean {

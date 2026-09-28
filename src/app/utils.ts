@@ -122,25 +122,3 @@ export function formatPercent(value: number): string {
 export function formatInteger(value: number): string {
   return new Intl.NumberFormat('es-ES').format(value)
 }
-
-export function encodeBase64Url(value: string): string {
-  const bytes = new TextEncoder().encode(value)
-  let binary = ''
-
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte)
-  }
-
-  const encodedValue = btoa(binary)
-
-  return encodedValue.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
-}
-
-export function decodeBase64Url(value: string): string {
-  const normalizedValue = value.replace(/-/g, '+').replace(/_/g, '/')
-  const paddedValue = normalizedValue.padEnd(Math.ceil(normalizedValue.length / 4) * 4, '=')
-  const binary = atob(paddedValue)
-  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0))
-
-  return new TextDecoder().decode(bytes)
-}

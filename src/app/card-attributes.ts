@@ -1,4 +1,4 @@
-import type { CardAttribute, CardEntry, Matcher, RequirementSource } from '../types'
+import type { CardAttribute, CardEntry, Matcher } from '../types'
 
 export interface DerivedDeckAttribute {
   key: CardAttribute
@@ -52,18 +52,6 @@ export function parseCardAttribute(value: unknown): CardAttribute | null {
 
 export function getCardAttributeLabel(attribute: CardAttribute): string {
   return ATTRIBUTE_LABEL_BY_KEY.get(attribute) ?? attribute
-}
-
-export function isMonsterRequirementSource(
-  source: RequirementSource,
-): source is Extract<RequirementSource, 'attribute' | 'level' | 'type' | 'atk' | 'def'> {
-  return (
-    source === 'attribute' ||
-    source === 'level' ||
-    source === 'type' ||
-    source === 'atk' ||
-    source === 'def'
-  )
 }
 
 export function isMonsterPropertyMatcher(matcher: Matcher | null): matcher is MonsterPropertyMatcher {

@@ -381,17 +381,6 @@ export function ComparisonScreen() {
   )
 }
 
-// ── Side Label ──
-
-function SideLabel({ text, sub }: { text: string; sub: string }) {
-  return (
-    <div className="grid gap-0.5 px-1">
-      <strong className="text-[0.82rem] text-(--text-main)">{text}</strong>
-      <span className="truncate text-[0.68rem] text-(--text-muted)">{sub}</span>
-    </div>
-  )
-}
-
 // ── KPI Card (styled like Probability Lab cards) ──
 
 export { KpiCard, type KpiTone } from './KpiCard'
@@ -562,16 +551,6 @@ const KPI_PIE_SEGMENTS: { role: KpiRole; label: string; color: string; rgb: stri
   { role: 'brick', label: 'Bricks', color: 'rgb(239, 68, 68)', rgb: '239, 68, 68' },
   { role: 'boardbreaker', label: 'Boardbreakers', color: 'rgb(245, 158, 11)', rgb: '245, 158, 11' },
 ]
-
-function describeArc(cx: number, cy: number, r: number, startAngle: number, endAngle: number): string {
-  const rad = (deg: number) => (deg * Math.PI) / 180
-  const x1 = cx + r * Math.cos(rad(startAngle))
-  const y1 = cy + r * Math.sin(rad(startAngle))
-  const x2 = cx + r * Math.cos(rad(endAngle))
-  const y2 = cy + r * Math.sin(rad(endAngle))
-  const largeArc = endAngle - startAngle > 180 ? 1 : 0
-  return `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`
-}
 
 function describeRing(cx: number, cy: number, r: number, startAngle: number, endAngle: number, thickness: number): string {
   const rad = (deg: number) => (deg * Math.PI) / 180

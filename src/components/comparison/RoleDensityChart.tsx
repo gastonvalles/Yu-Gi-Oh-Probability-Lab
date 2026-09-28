@@ -180,55 +180,6 @@ function PieChart({
   )
 }
 
-// ── PieLegend component ──
-
-function PieLegend({
-  segments,
-  variant,
-  onSegmentClick,
-}: {
-  segments: PieSegment[]
-  variant: 'full' | 'compact'
-  onSegmentClick?: (role: CardRole) => void
-}) {
-  const compact = variant === 'compact'
-
-  return (
-    <div role="list" className="grid gap-0.5">
-      {segments.map((seg, i) => {
-        const tooltipText = `${seg.label}: ${formatInteger(seg.count)}`
-        return (
-          <div
-            key={i}
-            role="listitem"
-            title={tooltipText}
-            className="flex items-center gap-1.5 cursor-pointer hover:brightness-125 transition-[filter]"
-            onClick={onSegmentClick ? () => onSegmentClick(seg.role) : undefined}
-          >
-            <span
-              className="inline-block h-2 w-2 shrink-0 rounded-full"
-              style={{ backgroundColor: seg.color }}
-            />
-            {compact ? (
-              <>
-                <span className="truncate text-[0.62rem] text-(--text-muted)">{seg.shortLabel}</span>
-                <span className="ml-auto shrink-0 text-[0.62rem] tabular-nums text-(--text-main)">{seg.pct}</span>
-              </>
-            ) : (
-              <>
-                <span className="truncate text-[0.68rem] text-(--text-muted)">{seg.label}</span>
-                <span className="ml-auto shrink-0 text-[0.66rem] tabular-nums text-(--text-main)">
-                  {formatInteger(seg.count)} · {seg.pct}
-                </span>
-              </>
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
 // ── Main export ──
 
 export function RoleDensityChart({ grouped, variant: _variant, label, onSegmentClick }: RoleDensityChartProps) {

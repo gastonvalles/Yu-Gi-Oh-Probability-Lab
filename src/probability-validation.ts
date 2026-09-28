@@ -8,7 +8,6 @@ import {
 } from './app/role-step'
 import {
   getConditionSource,
-  normalizeHandPatternCategory,
   resolveConditionCardIds,
 } from './app/patterns'
 import type { CardEntry, CalculatorState, ValidationIssue } from './types'

@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { createPortal } from 'react-dom'
 
 import type { CardEntry, PatternCondition, PatternKind, RequirementKind } from '../../../types'
-import { formatInteger } from '../../../app/utils'
 import { CloseButton } from '../../ui/IconButton'
 import type { PatternEditorActions } from '../pattern-editor-actions'
 import { CategoryPicker } from './CategoryPicker'

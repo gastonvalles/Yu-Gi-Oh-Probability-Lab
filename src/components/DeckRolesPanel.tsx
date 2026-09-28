@@ -297,10 +297,6 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
   }
 }
 
-function formatSharePercent(value: number): string {
-  return `${Math.round(value * 100)}%`
-}
-
 function getOriginHelpText(origin: CardOrigin): string {
   return ORIGIN_HELP_TEXT[origin]
 }
@@ -623,10 +619,6 @@ export function DeckRolesPanel({
       }),
     [cards],
   )
-  const totalCopies = useMemo(
-    () => sortedCards.reduce((total, card) => total + card.copies, 0),
-    [sortedCards],
-  )
   const unclassifiedCards = useMemo(
     () => sortedCards.filter((card) => !isCardFullyClassified(card)),
     [sortedCards],
@@ -735,9 +727,6 @@ export function DeckRolesPanel({
 
     return [selectedCard, ...filteredCards.filter((card) => card.id !== selectedCard.id)]
   }, [filteredCards, isSelectedCardInActiveFilter, selectedCard])
-  const selectedCardPosition = selectedCard
-    ? visibleQueueCards.findIndex((card) => card.id === selectedCard.id) + 1
-    : 0
   // Stable navigation order (by name) so prev/next don't jump when a card's priority changes
   const stableNavigationCards = useMemo(
     () => [...cards].sort((left, right) =>

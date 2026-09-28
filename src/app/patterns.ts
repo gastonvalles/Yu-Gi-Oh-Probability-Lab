@@ -7,7 +7,6 @@ import type {
   HandPatternCategory,
   Matcher,
   PatternCondition,
-  PatternKind,
   PatternLogic,
   PatternMatchMode,
   RequirementSource,
@@ -67,24 +66,6 @@ export function getPatternDefinitionKey(
     reusePolicy: pattern.reusePolicy,
     turnContext: normalizeTurnContext(pattern.turnContext),
   })
-}
-
-export function getPatternCategorySingular(
-  kind: HandPatternCategory | 'good' | 'bad' | null | undefined,
-): string {
-  return normalizeHandPatternCategory(kind) === 'problem' ? 'problema' : 'salida'
-}
-
-export function getPatternCategoryPlural(
-  kind: HandPatternCategory | 'good' | 'bad' | null | undefined,
-): string {
-  return normalizeHandPatternCategory(kind) === 'problem' ? 'problemas' : 'salidas'
-}
-
-export function getPatternCategoryShortLabel(
-  kind: HandPatternCategory | 'good' | 'bad' | null | undefined,
-): string {
-  return normalizeHandPatternCategory(kind) === 'problem' ? 'Problema' : 'Salida'
 }
 
 export function getPatternMatchMode(
@@ -211,36 +192,6 @@ export function getConditionCardIds(
   }
 
   return []
-}
-
-export function getConditionAttribute(
-  condition: Pick<PatternCondition, 'matcher'>,
-): CardAttribute | null {
-  return condition.matcher?.type === 'attribute' ? condition.matcher.value : null
-}
-
-export function getConditionLevel(
-  condition: Pick<PatternCondition, 'matcher'>,
-): number | null {
-  return condition.matcher?.type === 'level' ? condition.matcher.value : null
-}
-
-export function getConditionMonsterType(
-  condition: Pick<PatternCondition, 'matcher'>,
-): string | null {
-  return condition.matcher?.type === 'monster_type' ? condition.matcher.value : null
-}
-
-export function getConditionAtk(
-  condition: Pick<PatternCondition, 'matcher'>,
-): number | null {
-  return condition.matcher?.type === 'atk' ? condition.matcher.value : null
-}
-
-export function getConditionDef(
-  condition: Pick<PatternCondition, 'matcher'>,
-): number | null {
-  return condition.matcher?.type === 'def' ? condition.matcher.value : null
 }
 
 export function createMatcherFromGroupKey(groupKey: CardGroupKey): Matcher {
