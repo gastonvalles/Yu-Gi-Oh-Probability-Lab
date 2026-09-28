@@ -26,9 +26,11 @@ export function StepHero({
           'grid items-start',
           variant === 'compact' ? 'gap-2.5' : 'gap-3',
           side
-            ? variant === 'compact'
-              ? 'min-[1101px]:grid-cols-[minmax(0,1fr)_420px]'
-              : 'min-[920px]:grid-cols-[minmax(0,1fr)_320px]'
+            ? sideVariant === 'inline'
+              ? 'min-[920px]:grid-cols-[minmax(0,1fr)_auto]'
+              : variant === 'compact'
+                ? 'min-[1101px]:grid-cols-[minmax(0,1fr)_420px]'
+                : 'min-[920px]:grid-cols-[minmax(0,1fr)_320px]'
             : '',
         ].join(' ').trim()}
         >
@@ -62,7 +64,7 @@ export function StepHero({
                 ? variant === 'compact'
                   ? 'step-hero-sidecard grid gap-1.5 p-2'
                   : 'step-hero-sidecard grid gap-1.5 p-2.5'
-                : 'step-hero-inline-action flex items-center justify-end self-center max-[1100px]:w-full max-[1100px]:justify-stretch',
+                : 'step-hero-inline-action flex flex-wrap items-center justify-end gap-2 self-center max-[1100px]:w-full max-[1100px]:justify-stretch',
               sideClassName,
             ].join(' ').trim()}
           >

@@ -537,15 +537,12 @@
   }
 
   @media (max-width: 1100px) {
-    .classification-step-shell {
-      display: grid;
-      max-height: calc(100dvh - var(--deck-mode-topbar-height) - var(--deck-mobile-step-nav-height) - 0.75rem);
-      grid-template-rows: auto auto minmax(0, 1fr);
-      overflow: hidden;
-    }
-
-    .classification-card-list-panel {
+    /* En mobile la lista usa el scroll de la página: una caja con scroll
+       propio dentro de otra que también scrollea mostraba ~5 cartas. */
+    .classification-card-list-panel,
+    .classification-card-scroll {
       max-height: none;
+      overflow: visible;
     }
   }
 

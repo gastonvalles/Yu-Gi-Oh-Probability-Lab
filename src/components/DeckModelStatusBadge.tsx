@@ -20,7 +20,7 @@ function CompactBadge({ modelStatus }: { modelStatus: DeckModelStatus }) {
   const isComplete = modelStatus.status === 'complete'
 
   return (
-    <span className="inline-flex items-center gap-1.5">
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
       <span
         aria-hidden="true"
         className={[
