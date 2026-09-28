@@ -10,6 +10,22 @@ interface MobileBottomStepNavProps {
   items: DeckModeNavigationItem[]
   activeStep: DeckWorkflowStepKey
   onStepChange: (step: DeckWorkflowStepKey) => void
+  /** Acción "Probar mano": reemplaza en mobile al botón flotante, que tapaba contenido. */
+  onOpenPractice: (() => void) | null
+}
+
+// Pasos que llevan un punto de aviso mientras están a medio completar.
+const ATTENTION_STEPS = new Set<DeckWorkflowStepKey>(['deck-builder', 'categorization'])
+
+function PracticeIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      <rect x="8.5" y="2.5" width="7" height="11" rx="1.2" strokeWidth="1.8" />
+      <rect x="2.5" y="4.5" width="7" height="11" rx="1.2" strokeWidth="1.8" transform="rotate(-12 6 10)" />
+      <rect x="14.5" y="4.5" width="7" height="11" rx="1.2" strokeWidth="1.8" transform="rotate(12 18 10)" />
+      <path d="M8 19.5h8" strokeWidth="1.8" />
+    </svg>
+  )
 }
 
 function DeckBuilderIcon(props: SVGProps<SVGSVGElement>) {
@@ -97,6 +113,7 @@ export function MobileBottomStepNav({
   items,
   activeStep,
   onStepChange,
+  onOpenPractice,
 }: MobileBottomStepNavProps) {
   const [optimisticStep, setOptimisticStep] = useState<DeckWorkflowStepKey | null>(null)
 
@@ -105,42 +122,56 @@ export function MobileBottomStepNav({
   }, [activeStep])
 
   const highlightedStep = optimisticStep ?? activeStep
+  // El comparador todavía no está adaptado a mobile: queda fuera de la barra.
   const mobileItems = items.filter((item) => item.key !== 'workspace')
+  const renderStep = (item: DeckModeNavigationItem) => {
+    const isActive = item.key === highlightedStep
+    const isDisabled = item.disabled && !isActive
+    const statusLabel = DECK_WORKFLOW_TONE_LABEL[item.tone]
+    const needsAttention = !isActive && item.tone === 'progress' && ATTENTION_STEPS.has(item.key)
+
+    return (
+      <button
+        key={item.key}
+        type="button"
+        aria-current={isActive ? 'step' : undefined}
+        aria-disabled={isDisabled || undefined}
+        aria-label={`${item.title}. ${statusLabel}. ${item.metric}.`}
+        data-active={isActive ? 'true' : 'false'}
+        data-tone={item.tone}
+        data-disabled={isDisabled ? 'true' : 'false'}
+        className="mobile-step-nav-item"
+        disabled={isDisabled}
+        title={isDisabled ? `${item.title}: ${item.detail}` : item.title}
+        onClick={() => {
+          setOptimisticStep(item.key)
+          onStepChange(item.key)
+        }}
+      >
+        <span className="mobile-step-nav-icon" aria-hidden="true">
+          <StepIcon step={item.key} />
+          {needsAttention ? <span className="mobile-step-nav-dot" /> : null}
+        </span>
+        <span className="mobile-step-nav-label">{item.shortTitle}</span>
+      </button>
+    )
+  }
+  // "Probar" va al centro de la barra, entre Roles y Lab.
+  const splitIndex = Math.ceil(mobileItems.length / 2)
 
   return (
     <nav aria-label="Pasos del workflow" className="mobile-step-nav">
-      <div className="mobile-step-nav-grid">
-        {mobileItems.map((item) => {
-          const isActive = item.key === highlightedStep
-          const isDisabled = item.disabled && !isActive
-          const statusLabel = DECK_WORKFLOW_TONE_LABEL[item.tone]
-
-          return (
-            <button
-              key={item.key}
-              type="button"
-              aria-current={isActive ? 'step' : undefined}
-              aria-pressed={isActive}
-              aria-disabled={isDisabled || undefined}
-              aria-label={`${item.title}. ${statusLabel}. ${item.metric}.`}
-              data-active={isActive ? 'true' : 'false'}
-              data-tone={item.tone}
-              data-disabled={isDisabled ? 'true' : 'false'}
-              className={['mobile-step-nav-item', isActive ? 'mobile-step-nav-item-active' : ''].join(' ').trim()}
-              disabled={isDisabled}
-              title={isDisabled ? `${item.title}: ${item.detail}` : item.title}
-              onClick={() => {
-                setOptimisticStep(item.key)
-                onStepChange(item.key)
-              }}
-            >
-              <span className="mobile-step-nav-icon" aria-hidden="true">
-                <StepIcon step={item.key} />
-              </span>
-              <span className="mobile-step-nav-label">{item.shortTitle}</span>
-            </button>
-          )
-        })}
+      <div className="mobile-step-nav-grid" data-with-action={onOpenPractice ? 'true' : 'false'}>
+        {mobileItems.slice(0, splitIndex).map(renderStep)}
+        {onOpenPractice ? (
+          <button type="button" className="mobile-step-nav-action" aria-label="Abrir práctica" onClick={onOpenPractice}>
+            <span className="mobile-step-nav-action-icon" aria-hidden="true">
+              <PracticeIcon />
+            </span>
+            <span className="mobile-step-nav-label">Probar</span>
+          </button>
+        ) : null}
+        {mobileItems.slice(splitIndex).map(renderStep)}
       </div>
     </nav>
   )

@@ -200,6 +200,7 @@ export function DeckModeScreen() {
       items={navigationItems}
       activeStep={activeStep}
       onStepChange={handleStepChange}
+      onOpenPractice={mainDeckCount > 0 ? () => setGlobalPracticeOpen(true) : null}
     />
   )
   const stepContent = isDeckBuilderStep ? (
@@ -344,7 +345,7 @@ function PracticeFab({
         type="button"
         aria-label="Abrir práctica"
         title="Probar mano"
-        className="fixed right-4 bottom-20 z-100 grid h-12 w-12 place-items-center rounded-full bg-[rgb(var(--primary-rgb))] text-white shadow-lg transition-transform hover:scale-110 hover:brightness-110 active:scale-95 min-[1101px]:right-5 min-[1101px]:bottom-5 min-[1101px]:h-14 min-[1101px]:w-14"
+        className="fixed right-5 bottom-5 z-100 hidden h-14 w-14 place-items-center rounded-full min-[1101px]:grid bg-[rgb(var(--primary-rgb))] text-white shadow-lg transition-transform hover:scale-110 hover:brightness-110 active:scale-95"
         onClick={onOpen}
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

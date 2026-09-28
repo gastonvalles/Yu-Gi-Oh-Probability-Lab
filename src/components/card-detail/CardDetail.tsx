@@ -1,9 +1,12 @@
+import { useState } from 'react'
+
 import type { DeckZone } from '../../app/model'
 import type { DeckFormat } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { CardArt } from '../CardArt'
 import { Button } from '../ui/Button'
 import { CloseButton } from '../ui/IconButton'
+import { Modal } from '../ui/Modal'
 import { Skeleton } from '../ui/Skeleton'
 import { buildZoneActionEntries } from './card-zone-actions'
 import { DeckCopyControls, type DeckCopyActions } from './DeckCopyControls'
@@ -75,53 +78,13 @@ export function CardDetail({
             ].join(' ')}
           >
             {isMobileLayout ? (
-              <div className="grid gap-3">
-                <header className="surface-card relative px-10 py-1.5 text-center">
-                  <h2 className="m-0 wrap-anywhere text-[1.1rem] font-semibold leading-none tracking-[-0.025em] text-(--text-main)">
-                    {card.name}
-                  </h2>
-                  <CloseButton
-                    size="sm"
-                    className="absolute right-2 top-1/2 -translate-y-1/2"
-                    aria-label="Cerrar detalle"
-                    onClick={onClose}
-                  />
-                </header>
-
-                <CardArt
-                  remoteUrl={card.imageUrl ?? card.imageUrlSmall}
-                  name={card.name}
-                  className="block h-auto w-full"
-                  limitCard={card}
-                  limitBadgeSize="md"
-                />
-
-                <section className="surface-card grid gap-2 px-3 py-2.5">
-                  <div className="grid gap-1">
-                    <p className="m-0 whitespace-pre-wrap wrap-anywhere text-[0.94rem] font-semibold leading-[1.22] text-(--text-main)">
-                      {mobileSummary?.typeLine}
-                    </p>
-
-                    {mobileSummary?.statLine ? (
-                      <p className="m-0 whitespace-pre-wrap wrap-anywhere text-[0.92rem] font-semibold leading-[1.2] text-(--text-main)">
-                        {mobileSummary.statLine}
-                      </p>
-                    ) : null}
-
-                    {mobileMetaParts.length > 0 ? (
-                      <p className="app-muted m-0 whitespace-pre-wrap wrap-anywhere text-[0.74rem] leading-[1.2]">
-                        {mobileMetaParts.join(' · ')}
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <div className="h-px bg-[rgb(var(--border-rgb)/0.9)]" />
-
-                  <p className="m-0 whitespace-pre-wrap wrap-anywhere text-[0.94rem] leading-[1.38] text-(--text-main)">
-                    {card.description?.trim().length ? card.description : 'No card text available.'}
-                  </p>
-                </section>
-              </div>
+              <MobileCardSummary
+                card={card}
+                typeLine={mobileSummary?.typeLine ?? ''}
+                statLine={mobileSummary?.statLine ?? null}
+                metaParts={mobileMetaParts}
+                onClose={onClose}
+              />
             ) : (
               <>
                 <aside className="grid content-start gap-3">
@@ -230,6 +193,87 @@ export function CardDetail({
   )
 }
 
+// Mobile: miniatura + datos lado a lado y el texto debajo, para que entre sin scroll.
+// Tocar la imagen la abre en grande.
+function MobileCardSummary({
+  card,
+  typeLine,
+  statLine,
+  metaParts,
+  onClose,
+}: {
+  card: ApiCardSearchResult
+  typeLine: string
+  statLine: string | null
+  metaParts: string[]
+  onClose: () => void
+}) {
+  const [isArtZoomed, setIsArtZoomed] = useState(false)
+
+  return (
+    <div className="grid gap-2.5">
+      <header className="flex items-start justify-between gap-2">
+        <h2 className="m-0 wrap-anywhere pt-1 text-[1.12rem] font-semibold leading-[1.15] tracking-[-0.02em] text-(--text-main)">
+          {card.name}
+        </h2>
+        <CloseButton size="sm" aria-label="Cerrar detalle" onClick={onClose} />
+      </header>
+
+      <div className="grid grid-cols-[minmax(0,42%)_minmax(0,1fr)] items-start gap-3">
+        <button
+          type="button"
+          className="card-detail-thumb"
+          aria-label={`Ver ${card.name} en grande`}
+          onClick={() => setIsArtZoomed(true)}
+        >
+          <CardArt
+            remoteUrl={card.imageUrl ?? card.imageUrlSmall}
+            name={card.name}
+            className="block h-auto w-full"
+            limitCard={card}
+            limitBadgeSize="sm"
+          />
+          <span className="card-detail-thumb-hint" aria-hidden="true">
+            Ampliar
+          </span>
+        </button>
+
+        <div className="grid min-w-0 content-start gap-1.5">
+          <p className="m-0 wrap-anywhere text-[0.86rem] font-semibold leading-[1.25] text-(--text-main)">{typeLine}</p>
+          {statLine ? (
+            <p className="m-0 wrap-anywhere text-[0.84rem] font-semibold leading-[1.25] text-(--text-main)">{statLine}</p>
+          ) : null}
+          {metaParts.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {metaParts.map((part) => (
+                <span key={part} className="app-chip px-1.5 py-0.5 text-[0.66rem]">
+                  {part}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <p className="card-detail-effect m-0 whitespace-pre-wrap wrap-anywhere">
+        {card.description?.trim().length ? card.description : 'No card text available.'}
+      </p>
+
+      <Modal isOpen={isArtZoomed} onClose={() => setIsArtZoomed(false)} size="sm" bare flush ariaLabel={card.name}>
+        <button type="button" className="block w-full" aria-label="Cerrar imagen" onClick={() => setIsArtZoomed(false)}>
+          <CardArt
+            remoteUrl={card.imageUrl ?? card.imageUrlSmall}
+            name={card.name}
+            className="block h-auto w-full"
+            limitCard={card}
+            limitBadgeSize="lg"
+          />
+        </button>
+      </Modal>
+    </div>
+  )
+}
+
 function DeckCopyFooter({ deckCopy }: { deckCopy: DeckCopyActions }) {
   return (
     <footer className="border-t border-(--border-subtle) bg-[linear-gradient(180deg,rgb(var(--secondary-rgb)/0.95),rgb(var(--background-rgb)/0.98))] px-4 py-3">
@@ -287,24 +331,20 @@ export function CardDetailSkeleton({
                   />
                 </header>
 
-                <Skeleton radius="none" className="aspect-421/614 w-full" />
-
-                <section className="surface-card grid gap-2 px-3 py-2.5">
-                  <div className="grid gap-1">
+                <div className="grid grid-cols-[minmax(0,42%)_minmax(0,1fr)] gap-3">
+                  <Skeleton radius="none" className="aspect-421/614 w-full" />
+                  <div className="grid content-start gap-1.5">
                     <Skeleton radius="none" className="h-4 w-full" />
-                    <Skeleton radius="none" className="h-4 w-[68%]" />
-                    <Skeleton radius="none" className="h-3 w-[42%]" />
+                    <Skeleton radius="none" className="h-4 w-[70%]" />
+                    <Skeleton radius="chip" className="h-5 w-16" />
                   </div>
+                </div>
 
-                  <div className="h-px bg-[rgb(var(--border-rgb)/0.9)]" />
-
-                  <div className="grid gap-2">
-                    <Skeleton radius="none" className="h-4 w-full" />
-                    <Skeleton radius="none" className="h-4 w-full" />
-                    <Skeleton radius="none" className="h-4 w-[94%]" />
-                    <Skeleton radius="none" className="h-4 w-[88%]" />
-                    <Skeleton radius="none" className="h-4 w-[82%]" />
-                  </div>
+                <section className="grid gap-2">
+                  <Skeleton radius="none" className="h-4 w-full" />
+                  <Skeleton radius="none" className="h-4 w-full" />
+                  <Skeleton radius="none" className="h-4 w-[94%]" />
+                  <Skeleton radius="none" className="h-4 w-[88%]" />
                 </section>
               </div>
             ) : (
