@@ -3,6 +3,7 @@ import type { PortableConfig } from './model'
 import { deriveMainDeckCardsFromZone } from './calculator-state'
 import { buildCalculatorState } from './calculator-state'
 import { calculateProbabilities } from '../probability'
+import { getCleanProbability } from '../probability-summary'
 import { getPatternDefinitionKey, normalizeTurnContext } from './patterns'
 import { normalizeName, createId } from './utils'
 import type { CardEntry, CalculationOutput, HandPattern } from '../types'
@@ -268,19 +269,11 @@ function computePatternComparisons(
   const keyMapB = new Map<string, { pattern: typeof patternsB[number]; index: number }>()
 
   for (let i = 0; i < patternsA.length; i++) {
-    const key = getPatternDefinitionKey({
-      ...patternsA[i],
-      turnContext: normalizeTurnContext(patternsA[i].turnContext),
-    })
-    keyMapA.set(key, { pattern: patternsA[i], index: i })
+    keyMapA.set(getPatternDefinitionKey(patternsA[i]), { pattern: patternsA[i], index: i })
   }
 
   for (let i = 0; i < patternsB.length; i++) {
-    const key = getPatternDefinitionKey({
-      ...patternsB[i],
-      turnContext: normalizeTurnContext(patternsB[i].turnContext),
-    })
-    keyMapB.set(key, { pattern: patternsB[i], index: i })
+    keyMapB.set(getPatternDefinitionKey(patternsB[i]), { pattern: patternsB[i], index: i })
   }
 
   const allKeys = new Set([...keyMapA.keys(), ...keyMapB.keys()])
@@ -366,12 +359,8 @@ export function compareBuild(
   const totalProblemProbabilityB = outputB.summary?.badProbability ?? 0
 
   // Clean probability: hands with at least one opening AND no problems
-  const cleanProbabilityA = outputA.summary
-    ? Math.max(0, outputA.summary.goodHands - outputA.summary.overlapHands) / Math.max(1, outputA.summary.totalHands)
-    : 0
-  const cleanProbabilityB = outputB.summary
-    ? Math.max(0, outputB.summary.goodHands - outputB.summary.overlapHands) / Math.max(1, outputB.summary.totalHands)
-    : 0
+  const cleanProbabilityA = outputA.summary ? getCleanProbability(outputA.summary) : 0
+  const cleanProbabilityB = outputB.summary ? getCleanProbability(outputB.summary) : 0
 
   const openingDelta = totalOpeningProbabilityA - totalOpeningProbabilityB
   const problemDelta = totalProblemProbabilityA - totalProblemProbabilityB

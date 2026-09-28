@@ -7,14 +7,16 @@ La idea central es ayudar a entender deck building con un flujo simple: armás e
 
 - Builder visual con búsqueda de cartas por YGOPRODeck.
 - Drag & drop entre Main, Extra y Side.
+- Formatos: Sin límite, TCG, OCG, GOAT, Edison y Genesys (con banlist o puntos).
+- Importación de decks desde archivos `.ydk`, `.txt` o `.json`.
 - Clasificación por carta en dos ejes independientes:
-- `origin`: `engine`, `non_engine`, `hybrid`.
-- `roles`: `starter`, `extender`, `enabler`, `searcher`, `draw`, `combo_piece`, `payoff`, `recovery`, `handtrap`, `disruption`, `boardbreaker`, `floodgate`, `removal`, `brick`, `garnet`, `tech`.
+  - `origin`: `engine`, `non_engine`, `hybrid`.
+  - `roles`: `starter`, `extender`, `enabler`, `searcher`, `draw`, `combo_piece`, `payoff`, `recovery`, `handtrap`, `disruption`, `boardbreaker`, `floodgate`, `removal`, `brick`, `garnet`, `tech`.
 - Aperturas y Problemas para medir consistencia real.
-- Probabilidad exacta (enumeración combinatoria).
+- Probabilidad exacta (enumeración combinatoria), yendo primero, segundo o en promedio.
 - Práctica de manos para ver ejemplos concretos.
-- Exportación del deck armado como imagen.
-- Snapshots para comparar builds.
+- Comparación A vs B contra otra build importada.
+- Exportación del deck como imagen (PNG), lista (TXT) y `.ydk`.
 
 ## Flujo recomendado
 
@@ -100,7 +102,9 @@ Si ya existían reglas con el mismo nombre, no se duplican.
 
 ## Cálculo exacto
 
-La probabilidad exacta se calcula enumerando todas las manos posibles de 5 cartas.
+La probabilidad exacta se calcula enumerando todas las manos iniciales posibles:
+5 cartas yendo primero y 6 yendo segundo. Cada regla puede aplicar a un turno o a ambos;
+si alguna aplica a un solo turno, la vista "Promedio" pondera los dos casos 50/50.
 No es simulación, es cálculo combinatorio real.
 
 ## Práctica de manos
@@ -114,38 +118,55 @@ Permite robar una mano al azar y ver:
 
 ```
 src/
-  app/
-    deck-utils.ts        lógica de decks y presets
-    deck-groups.ts       roles y grupos
-    patterns.ts          helpers de patrones
-    persistence.ts       load/save del estado
+  probability.ts             motor exacto (valida y calcula)
+  probability-summary.ts     enumeración de manos y métricas
+  app/                       lógica sin UI
+    store.ts, *-slice.ts     estado global (Redux Toolkit)
+    persistence.ts           load/save en localStorage
+    deck-builder.ts          reglas del builder
+    deck-format.ts           límites por formato
+    deck-import.ts           importación .ydk / .txt / .json
+    classification-engine.ts sugerencias de origen y roles
+    pattern-*.ts, patterns.ts aperturas y problemas
+    turn-context.ts          ir primero / segundo / promedio
+    build-comparison.ts      comparación A vs B
+    use-*.ts                 hooks reutilizables
   components/
-    DeckZone.tsx         builder visual
-    SearchPanel.tsx      búsqueda
-    DeckRolesPanel.tsx   roles por carta
-    probability/
-      PatternEditor.tsx  aperturas/problemas
-      ResultsSection.tsx probabilidad exacta
-      PracticeSection.tsx práctica
-  probability.ts         motor exacto
+    deck-mode/               pantalla principal y navegación por pasos
+    DeckZone.tsx             zonas Main / Extra / Side
+    SearchPanel.tsx          búsqueda
+    DeckRolesPanel.tsx       clasificación por carta
+    ProbabilityPanel.tsx     Probability Lab
+    probability/             editor de reglas y práctica
+    comparison/              pantalla de comparación
+    card-detail/             detalle de carta
+    ui/                      botones y piezas básicas
+  ygoprodeck/                cliente y parser de la API
+  __tests__/                 tests (Vitest + fast-check)
 ```
 
 ## Scripts
 
 ```
 npm install
-npm run dev
-npm run build
+npm run dev          # servidor de desarrollo
+npm run build        # chequeo de tipos + build de producción
+npm run preview      # sirve el build
+npm test             # tests
+npm run typecheck    # tipos de la app y de los tests
+npm run sync:genesys # actualiza los puntos de Genesys
 ```
+
+El CI (`.github/workflows/ci.yml`) corre `typecheck`, `test` y `build` en cada PR y push a `main`.
 
 ## Requisitos
 
-- Node.js + npm
+- Node.js `^20.19.0` o `>=22.12.0` (ver `.nvmrc`) + npm.
 
 ## Limitaciones actuales
 
-- No hay importación desde imagen/lista (por decisión de UX).
-- El cálculo es exacto solo para la mano inicial de 5 cartas.
+- No hay importación desde imagen (por decisión de UX).
+- El cálculo es exacto solo para la mano inicial (no simula robos posteriores).
 - No hay simulación de líneas o interrupciones todavía.
 
 ## Próximos pasos sugeridos

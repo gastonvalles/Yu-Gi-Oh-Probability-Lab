@@ -543,7 +543,6 @@ export function useDeckModeController() {
       handSize: settings.handSize,
       patterns: patternsState.patterns,
       derivedMainCards,
-      derivedGroups,
       patternActions,
       isEditingDeck: deckBuilder.isEditingDeck,
     },

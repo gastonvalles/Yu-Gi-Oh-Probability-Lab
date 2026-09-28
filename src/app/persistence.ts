@@ -52,15 +52,3 @@ export function saveClassificationOverride(name: string, suggestion: Classificat
   saveClassificationOverrides(map)
   invalidateClassificationOverridesCache()
 }
-
-export function removeClassificationOverride(name: string): void {
-  const map = loadClassificationOverrides()
-  map.delete(normalizeCardNameForLookup(name))
-  saveClassificationOverrides(map)
-  invalidateClassificationOverridesCache()
-}
-
-export function clearClassificationOverrides(): void {
-  try { localStorage.removeItem(CLASSIFICATION_OVERRIDES_KEY) } catch { /* ignore */ }
-  invalidateClassificationOverridesCache()
-}

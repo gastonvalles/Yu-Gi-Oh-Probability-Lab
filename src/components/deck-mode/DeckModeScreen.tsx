@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { countUnclassifiedCards, countCardsMissingOrigin, countCardsMissingRoles, countCardsPendingReview, isClassificationStepComplete } from '../../app/role-step'
 import { curatePatterns } from '../../app/pattern-curation'
-import { CardDetailDrawer } from '../card-detail/CardDetailDrawer'
+import { CardDetailModal } from '../card-detail/CardDetailModal'
 import { DeckRolesPanel } from '../DeckRolesPanel'
 import { ExportDeckPanel } from '../ExportDeckPanel'
 import { ProbabilityPanel } from '../ProbabilityPanel'
@@ -21,7 +22,6 @@ import { MobileBottomStepNav } from './MobileBottomStepNav'
 import { DeckModeShell } from './DeckModeShell'
 import { useDeckModeController } from './use-deck-mode-controller'
 
-const DESKTOP_DECK_BUILDER_MEDIA_QUERY = '(min-width: 1101px)'
 const REDUCED_MOTION_MEDIA_QUERY = '(prefers-reduced-motion: reduce)'
 const WORKFLOW_STEP_ORDER: DeckWorkflowStepKey[] = [
   'deck-builder',
@@ -79,13 +79,7 @@ function shouldReduceMotion(): boolean {
 
 export function DeckModeScreen() {
   const controller = useDeckModeController()
-  const [isDesktopDeckBuilder, setIsDesktopDeckBuilder] = useState(() => {
-    if (typeof window === 'undefined') {
-      return false
-    }
-
-    return window.matchMedia(DESKTOP_DECK_BUILDER_MEDIA_QUERY).matches
-  })
+  const isDesktopDeckBuilder = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const mainDeckCount = controller.deckBuilderStep.deckBuilder.main.length
   const roleCards = controller.roles.cards
   const unclassifiedCardCount = useMemo(() => countUnclassifiedCards(roleCards), [roleCards])
@@ -158,24 +152,6 @@ export function DeckModeScreen() {
       behavior: shouldReduceMotion() ? 'auto' : 'smooth',
     })
   }, [activeStep])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return
-    }
-
-    const mediaQuery = window.matchMedia(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
-    const handleChange = (event: MediaQueryListEvent) => {
-      setIsDesktopDeckBuilder(event.matches)
-    }
-
-    setIsDesktopDeckBuilder(mediaQuery.matches)
-    mediaQuery.addEventListener('change', handleChange)
-
-    return () => {
-      mediaQuery.removeEventListener('change', handleChange)
-    }
-  }, [])
 
   const handleStepChange = useCallback((nextStep: DeckWorkflowStepKey) => {
     const currentStep = activeStepRef.current
@@ -291,10 +267,11 @@ export function DeckModeScreen() {
         overlayRef={controller.feedback.dragOverlayRef}
       />
       {!isDesktopDeckBuilder ? (
-        <CardDetailDrawer
+        <CardDetailModal
           card={controller.deckBuilderStep.selectedDetailCard}
           deckFormat={controller.deckBuilderStep.deckFormat}
           isOpen={controller.deckBuilderStep.isCardDetailOpen}
+          layoutMode="mobile"
           showActions={controller.deckBuilderStep.selectedDetailSource !== 'deck'}
           onAddToZone={(zone) =>
             controller.deckBuilderStep.selectedDetailCard

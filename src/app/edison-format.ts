@@ -1,7 +1,6 @@
 import type { ApiCardReference } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 import {
-  EDISON_BANLIST_DATE,
   EDISON_CARD_POOL_IDS,
   EDISON_FORBIDDEN_IDS,
   EDISON_LIMITED_IDS,
@@ -18,7 +17,6 @@ const EDISON_SEMI_LIMITED_ID_SET = new Set<number>(EDISON_SEMI_LIMITED_IDS)
 type EdisonCard = ApiCardReference | ApiCardSearchResult
 
 export const EDISON_FORMAT_LABEL = 'Edison'
-export const EDISON_FORMAT_DATE = EDISON_BANLIST_DATE
 
 export function getEdisonCardStatus(card: EdisonCard): EdisonCardStatus {
   const id = card.ygoprodeckId

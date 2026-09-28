@@ -3,8 +3,7 @@ import * as fc from 'fast-check'
 import { createPattern, createPatternRequirement } from '../app/pattern-factory'
 import { PATTERN_PRESET_DEFINITIONS } from '../app/pattern-presets'
 import { buildPatternCompactSummary } from '../components/probability/pattern-helpers'
-import { getConditionLabel, getKindLabel } from '../components/probability/rule-builder/condition-labels'
-import { getSemanticLabel } from '../components/probability/rule-builder/LiveResultBadge'
+import { getConditionLabel } from '../components/probability/rule-builder/condition-labels'
 import { getConnectorWord } from '../components/probability/rule-builder/LogicSelector'
 import type {
   CardEntry,
@@ -104,6 +103,7 @@ function arbExistingPattern(): fc.Arbitrary<HandPattern> {
     id,
     name,
     kind,
+    turnContext: 'either' as const,
     logic,
     minimumConditionMatches: Math.min(minMatches, conditions.length),
     reusePolicy,

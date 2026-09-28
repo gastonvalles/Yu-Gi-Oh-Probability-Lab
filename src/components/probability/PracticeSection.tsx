@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import {
   buildDerivedDeckGroupMap,
 } from '../../app/deck-groups'
+import { useMediaQuery } from '../../app/use-media-query'
 import { formatInteger } from '../../app/utils'
 import type { CardEntry, HandPattern } from '../../types'
 import { CardArt } from '../CardArt'
@@ -13,7 +14,6 @@ import {
   drawRandomPracticeHand,
   evaluatePracticeHand,
   type PracticeHandMatch,
-  type PracticeHandNearMiss,
   type PracticeHandState,
 } from './practice'
 
@@ -29,27 +29,6 @@ interface PracticeSectionProps {
   onRedraw?: () => void
 }
 
-type PracticeVerdict = 'clean' | 'bad' | 'mixed' | 'neutral'
-
-function getPracticeVerdict(
-  openingMatches: number,
-  problemMatches: number,
-): PracticeVerdict {
-  if (openingMatches > 0 && problemMatches > 0) {
-    return 'mixed'
-  }
-
-  if (openingMatches > 0) {
-    return 'clean'
-  }
-
-  if (problemMatches > 0) {
-    return 'bad'
-  }
-
-  return 'neutral'
-}
-
 function getPracticeStageCardStyle(index: number, total: number): CSSProperties {
   const midpoint = (total - 1) / 2
   const offset = index - midpoint
@@ -59,22 +38,6 @@ function getPracticeStageCardStyle(index: number, total: number): CSSProperties 
     transform: `translateY(${distance * 12}px) rotate(${offset * 4.5}deg)`,
     zIndex: Math.round(100 - distance * 10),
   }
-}
-
-function getPracticeVerdictCardClass(verdict: PracticeVerdict): string {
-  if (verdict === 'clean') {
-    return 'surface-card-success'
-  }
-
-  if (verdict === 'bad') {
-    return 'surface-card-danger'
-  }
-
-  if (verdict === 'mixed') {
-    return 'surface-panel-strong'
-  }
-
-  return 'surface-card'
 }
 
 function getPracticeMatchStateLabel(kind: HandPattern['kind']): string {
@@ -133,23 +96,8 @@ export function PracticeSection({
   )
   const openingMatches = practiceResult.openingMatches
   const problemMatches = practiceResult.problemMatches
-  const openingNearMisses = practiceResult.openingNearMisses
-  const practiceVerdict = getPracticeVerdict(
-    openingMatches.length,
-    problemMatches.length,
-  )
 
-  const [isWide, setIsWide] = useState(true)
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(min-width: 820px)')
-
-    const update = () => setIsWide(mediaQuery.matches)
-    update()
-
-    mediaQuery.addEventListener('change', update)
-    return () => mediaQuery.removeEventListener('change', update)
-  }, [])
+  const isWide = useMediaQuery('(min-width: 820px)')
 
   useEffect(() => {
     setPracticeHand(null)
@@ -296,42 +244,6 @@ export function PracticeSection({
   )
 }
 
-function PracticeMatchHeader({
-  title,
-  count,
-}: {
-  title: string
-  count: number
-}) {
-  return (
-    <div className="flex min-w-0 items-center justify-between gap-2">
-      <small className="app-muted min-w-0 text-[0.68rem] uppercase tracking-widest">{title}</small>
-      <span className="app-chip px-2 py-0.5 text-[0.7rem]">{formatInteger(count)}</span>
-    </div>
-  )
-}
-
-function PracticeMatchGroup({
-  count,
-  matches,
-  title,
-}: {
-  count: number
-  matches: PracticeHandMatch[]
-  title: string
-}) {
-  return (
-    <section className="grid min-w-0 gap-2.5">
-      <PracticeMatchHeader title={title} count={count} />
-      <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">
-        {matches.map((match) => (
-          <PracticeMatchCard key={match.patternId} match={match} />
-        ))}
-      </div>
-    </section>
-  )
-}
-
 function PracticeMatchCard({ match }: { match: PracticeHandMatch }) {
   return (
     <article
@@ -358,35 +270,3 @@ function PracticeMatchCard({ match }: { match: PracticeHandMatch }) {
     </article>
   )
 }
-
-
-function PracticeNearMissCard({ nearMiss }: { nearMiss: PracticeHandNearMiss }) {
-  return (
-    <article className="surface-card grid min-w-0 gap-2 overflow-hidden px-2.5 py-2 wrap-anywhere [word-break:break-word]">
-      <div className="flex min-w-0 items-start justify-between gap-2">
-        <div className="min-w-0">
-          <strong className="block min-w-0 text-[0.88rem] text-(--text-main)">{nearMiss.name}</strong>
-          <small className="app-muted mt-[0.22rem] block min-w-0 text-[0.72rem] leading-[1.16]">
-            {nearMiss.requirementLabel}
-          </small>
-        </div>
-        <span className="app-chip shrink-0 px-2 py-0.5 text-[0.68rem]">
-          Falta {formatInteger(nearMiss.missingConditions)}
-        </span>
-      </div>
-
-      <div className="grid min-w-0 gap-1">
-        {nearMiss.notes.map((note, index) => (
-          <p
-            key={`${nearMiss.patternId}-note-${index}`}
-            className="surface-panel-soft m-0 px-2 py-1.5 text-[0.74rem] leading-[1.15] text-(--text-muted)"
-          >
-            {note}
-          </p>
-        ))}
-      </div>
-    </article>
-  )
-}
-
-

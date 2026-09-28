@@ -4,12 +4,6 @@ import type {
   ResolvedImportedDeckEntry,
 } from './deck-import'
 
-/** Estado visual del import */
-export type ImportStatus = 'success' | 'warning' | 'error'
-
-/** Paso activo del flujo de importación */
-export type ImportStep = 1 | 2 | 3
-
 /** Grupo de cartas resueltas por zona */
 export interface ZoneGroup {
   zone: DeckZone
@@ -62,40 +56,6 @@ export function groupResolvedByZone(entries: ResolvedImportedDeckEntry[]): ZoneG
   }
 
   return groups
-}
-
-/** Calcula el estado visual del import basado en los datos del preview */
-export function computeImportStatus(preview: DeckImportPreview): ImportStatus {
-  if (preview.importedCardCount === 0) {
-    return 'error'
-  }
-
-  const hasNoProblems =
-    preview.missingEntries.length === 0 &&
-    preview.conflicts.length === 0 &&
-    preview.importedCardCount === preview.requestedCardCount
-
-  if (hasNoProblems) {
-    return 'success'
-  }
-
-  return 'warning'
-}
-
-/** Determina el paso activo del flujo de importación */
-export function computeActiveStep(options: {
-  hasPreview: boolean
-  canApply: boolean
-}): ImportStep {
-  if (!options.hasPreview) {
-    return 1
-  }
-
-  if (!options.canApply) {
-    return 2
-  }
-
-  return 3
 }
 
 /** Genera el resumen de problemas, o null si no hay problemas */

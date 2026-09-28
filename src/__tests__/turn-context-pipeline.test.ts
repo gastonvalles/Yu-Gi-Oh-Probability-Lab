@@ -8,7 +8,6 @@ import type {
   CardEntry,
   HandPattern,
   TurnContext,
-  TurnView,
 } from '../types'
 
 // ---------------------------------------------------------------------------
@@ -112,7 +111,6 @@ const arbRole: fc.Arbitrary<'starter' | 'extender' | 'handtrap'> = fc.constantFr
 )
 const arbPatternKind: fc.Arbitrary<'opening' | 'problem'> = fc.constantFrom('opening', 'problem')
 const arbMixedTurnContext: fc.Arbitrary<TurnContext> = fc.constantFrom('first', 'second', 'either')
-const arbView: fc.Arbitrary<TurnView> = fc.constantFrom('first', 'second', 'average')
 
 function arbPatterns(turnContextArb: fc.Arbitrary<TurnContext>): fc.Arbitrary<HandPattern[]> {
   return fc

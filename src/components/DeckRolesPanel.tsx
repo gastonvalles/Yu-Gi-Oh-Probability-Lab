@@ -112,7 +112,6 @@ const PRIMARY_FILTER_KEYS: ClassificationStateKey[] = [
   'complete',
 ]
 
-const DESKTOP_CLASSIFICATION_MEDIA_QUERY = '(min-width: 1101px)'
 
 const ORIGIN_HELP_TEXT: Record<CardOrigin, string> = {
   engine: 'Parte del core del deck: cartas que querés ver para ejecutar el plan principal.',
@@ -297,10 +296,6 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
   }
 }
 
-function formatSharePercent(value: number): string {
-  return `${Math.round(value * 100)}%`
-}
-
 function getOriginHelpText(origin: CardOrigin): string {
   return ORIGIN_HELP_TEXT[origin]
 }
@@ -452,14 +447,6 @@ function renderReferenceRoles(roleKeys: readonly CardRole[]) {
   })
 }
 
-function matchesMediaQuery(query: string): boolean {
-  if (typeof window === 'undefined') {
-    return false
-  }
-
-  return window.matchMedia(query).matches
-}
-
 function ClassificationDrawer({
   kicker,
   title,
@@ -520,7 +507,7 @@ function ClassificationDrawer({
 
 function ClassificationModal({
   isOpen,
-  kicker = 'Categorization',
+  kicker = 'Clasificación',
   title,
   subtitle,
   headerActions,
@@ -605,9 +592,6 @@ export function DeckRolesPanel({
   )
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
   const [drawerMode, setDrawerMode] = useState<ClassificationDrawerMode>(null)
-  const [isDesktopLayout, setIsDesktopLayout] = useState(() =>
-    matchesMediaQuery(DESKTOP_CLASSIFICATION_MEDIA_QUERY),
-  )
   const [isDetailOpen, setIsDetailOpen] = useState(false)
 
   const sortedCards = useMemo(
@@ -622,10 +606,6 @@ export function DeckRolesPanel({
         return right.copies - left.copies || getCardTypePriority(left) - getCardTypePriority(right) || left.name.localeCompare(right.name)
       }),
     [cards],
-  )
-  const totalCopies = useMemo(
-    () => sortedCards.reduce((total, card) => total + card.copies, 0),
-    [sortedCards],
   )
   const unclassifiedCards = useMemo(
     () => sortedCards.filter((card) => !isCardFullyClassified(card)),
@@ -735,9 +715,6 @@ export function DeckRolesPanel({
 
     return [selectedCard, ...filteredCards.filter((card) => card.id !== selectedCard.id)]
   }, [filteredCards, isSelectedCardInActiveFilter, selectedCard])
-  const selectedCardPosition = selectedCard
-    ? visibleQueueCards.findIndex((card) => card.id === selectedCard.id) + 1
-    : 0
   // Stable navigation order (by name) so prev/next don't jump when a card's priority changes
   const stableNavigationCards = useMemo(
     () => [...cards].sort((left, right) =>
@@ -801,21 +778,6 @@ export function DeckRolesPanel({
     setSelectedCardId(null)
     setActiveFilter(nextFilter)
   }
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia(DESKTOP_CLASSIFICATION_MEDIA_QUERY)
-
-    const handleChange = (event: MediaQueryListEvent) => {
-      setIsDesktopLayout(event.matches)
-    }
-
-    setIsDesktopLayout(mediaQuery.matches)
-    mediaQuery.addEventListener('change', handleChange)
-
-    return () => {
-      mediaQuery.removeEventListener('change', handleChange)
-    }
-  }, [])
 
   useEffect(() => {
     if (!selectedCard) {
@@ -1228,7 +1190,6 @@ export function DeckRolesPanel({
 
       <ClassificationModal
         isOpen={isDetailOpen && selectedCard !== null}
-        kicker={isDesktopLayout ? 'Clasificación' : 'Categorization'}
         title="Origen y roles"
         subtitle="Resolvé la carta seleccionada sin salir de la cola."
         hideHeader

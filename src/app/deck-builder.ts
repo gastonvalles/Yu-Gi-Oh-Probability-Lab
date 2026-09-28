@@ -125,28 +125,6 @@ export function getAddSearchResultIssue(
   return null
 }
 
-export function addSearchResultCopiesToDefaultZone(
-  deckBuilder: DeckBuilderState,
-  searchResults: ApiCardSearchResult[],
-  apiCardId: number,
-  copies: number,
-  format: DeckFormat = 'unlimited',
-): DeckBuilderState {
-  let nextDeckBuilder = deckBuilder
-
-  for (let index = 0; index < copies; index += 1) {
-    const updatedDeckBuilder = addSearchResultToDefaultZone(nextDeckBuilder, searchResults, apiCardId, format)
-
-    if (updatedDeckBuilder === nextDeckBuilder) {
-      break
-    }
-
-    nextDeckBuilder = updatedDeckBuilder
-  }
-
-  return nextDeckBuilder
-}
-
 export function moveDeckCard(
   deckBuilder: DeckBuilderState,
   instanceId: string,

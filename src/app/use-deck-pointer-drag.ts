@@ -10,8 +10,8 @@ import { flushSync } from 'react-dom'
 
 import type { ApiCardReference } from '../types'
 import type { DeckZone, DragPayload } from './model'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY } from './use-media-query'
 
-const DESKTOP_DECK_BUILDER_MEDIA_QUERY = '(min-width: 1101px)'
 export type DeckDropIndicatorState = 'idle' | 'valid' | 'invalid'
 
 export interface DeckDragOverlayState {

@@ -1,9 +1,10 @@
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { createPortal } from 'react-dom'
 
 import type { PatternPreset, PatternPresetScope } from '../../app/pattern-presets'
 import { AUTO_BASE_PRESET_IDS } from '../../app/pattern-presets'
 import { getPatternDefinitionKey } from '../../app/patterns'
+import { useEscapeKey } from '../../app/use-overlay'
 import { formatInteger, formatPercent } from '../../app/utils'
 import type { CardEntry, HandPattern } from '../../types'
 import { Button } from '../ui/Button'
@@ -27,7 +28,6 @@ interface PatternEditorDrawerProps {
   onSelectPreset: (preset: PatternPreset) => void
   pattern: HandPattern | null
   patterns: HandPattern[]
-  probability: number | null
 }
 
 const PRESET_CATEGORY_LABELS: Record<PatternPresetScope, string> = {
@@ -49,7 +49,6 @@ export function PatternEditorDrawer({
   onSelectPreset,
   pattern,
   patterns,
-  probability,
 }: PatternEditorDrawerProps) {
   const isOpen = drawerMode !== null
   const activePatternIdByDefinitionKey = useMemo(
@@ -57,23 +56,7 @@ export function PatternEditorDrawer({
     [patterns],
   )
 
-  useEffect(() => {
-    if (!isOpen || typeof window === 'undefined') {
-      return
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose()
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [isOpen, onClose])
+  useEscapeKey(onClose, isOpen)
 
   if (!isOpen) {
     return null
@@ -237,7 +220,6 @@ export function PatternEditorDrawer({
               isPendingCreation={isPendingCreation}
               onRequestDelete={onRequestDelete}
               pattern={pattern}
-              probability={probability}
             />
           ) : isWaitingForPendingPattern ? (
             <p className="surface-card m-0 px-3 py-3 text-[0.8rem] text-(--text-muted)">

@@ -3,9 +3,6 @@ import * as fc from 'fast-check'
 import { getDeckModelStatus } from '../app/deck-model-status'
 import type { CardEntry, HandPattern, CardOrigin, CardRole } from '../types'
 
-// ── Helpers ──
-
-const ALL_ORIGINS: CardOrigin[] = ['engine', 'non_engine', 'hybrid']
 const ALL_ROLES: CardRole[] = [
   'starter', 'extender', 'enabler', 'handtrap', 'disruption',
   'boardbreaker', 'floodgate', 'removal', 'searcher', 'draw',
@@ -31,6 +28,7 @@ function makePattern(overrides: Partial<HandPattern> = {}): HandPattern {
     id: 'pattern-1',
     name: 'Test Pattern',
     kind: 'opening',
+    turnContext: 'either',
     logic: 'all',
     minimumConditionMatches: 1,
     reusePolicy: 'forbid',

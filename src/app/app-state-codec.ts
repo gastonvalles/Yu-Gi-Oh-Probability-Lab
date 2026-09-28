@@ -21,7 +21,6 @@ import type {
   HandPatternCategory,
   Matcher,
   PatternCondition,
-  RequirementKind,
   RequirementSource,
 } from '../types'
 import type { AppState, PortableCondition, PortableConfig } from './model'

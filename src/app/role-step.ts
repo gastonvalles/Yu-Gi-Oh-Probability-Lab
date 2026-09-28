@@ -35,5 +35,3 @@ export function countUnclassifiedCards(cards: CardEntry[]): number {
 export function isClassificationStepComplete(cards: CardEntry[]): boolean {
   return cards.length > 0 && countUnclassifiedCards(cards) === 0
 }
-
-export const isRoleStepComplete = isClassificationStepComplete

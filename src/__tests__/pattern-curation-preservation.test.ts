@@ -425,7 +425,7 @@ describe('Preservation Property Tests: Non-Buggy Patterns Curate Correctly', () 
               }
             }),
           ),
-          ({ pattern, repeatCount }) => {
+          ({ pattern }) => {
             const result = curatePatterns([pattern], cards, { includeDefaults: false })
 
             // Pattern should exist

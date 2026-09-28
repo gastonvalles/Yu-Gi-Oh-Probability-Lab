@@ -255,39 +255,12 @@ export function areGroupKeysEqual(left: GroupKey | null | undefined, right: Grou
   return left.type === right.type && left.value === right.value
 }
 
-export function parseSerializedGroupKey(value: string): GroupKey | null {
-  const [type, rawValue] = value.split(':', 2)
-
-  if (type === 'origin') {
-    const normalizedOrigin = normalizeCardOriginKey(rawValue)
-    return normalizedOrigin ? createOriginGroupKey(normalizedOrigin) : null
-  }
-
-  if (type === 'role') {
-    const normalizedRole = normalizeCardRoleKey(rawValue)
-    return normalizedRole ? createRoleGroupKey(normalizedRole) : null
-  }
-
-  return null
-}
-
 export function getCardRoleDefinition(role: CardRole): CardRoleDefinition {
   return ROLE_DEFINITION_BY_KEY.get(role) ?? CARD_ROLE_DEFINITIONS[0]
 }
 
 export function getCardOriginDefinition(origin: CardOrigin): CardOriginDefinition {
   return ORIGIN_DEFINITION_BY_KEY.get(origin) ?? CARD_ORIGIN_DEFINITIONS[0]
-}
-
-export function getDeckGroupDefinition(groupKey: GroupKey): DerivedDeckGroup {
-  const definition = GROUP_DEFINITION_BY_KEY.get(serializeGroupKey(groupKey)) ?? CARD_GROUP_DEFINITIONS[0]
-
-  return {
-    ...definition,
-    cardIds: [],
-    cardNames: [],
-    copies: 0,
-  }
 }
 
 export function getDeckGroupTheme(groupKey: GroupKey): ClassificationTheme {
@@ -387,10 +360,6 @@ export function isCardOriginGroupKey(groupKey: GroupKey): groupKey is Extract<Gr
   return groupKey.type === 'origin'
 }
 
-export function isCardRoleGroupKey(groupKey: GroupKey): groupKey is Extract<GroupKey, { type: 'role' }> {
-  return groupKey.type === 'role'
-}
-
 export function mergeCardOrigins(
   currentOrigin: CardOrigin | null,
   nextOrigin: CardOrigin | null,
@@ -425,10 +394,6 @@ export function buildDerivedDeckGroups(cards: CardEntry[]): DerivedDeckGroup[] {
 
 export function buildDerivedDeckGroupMap(cards: CardEntry[]): Map<string, DerivedDeckGroup> {
   return new Map(buildDerivedDeckGroups(cards).map((group) => [serializeGroupKey(group.key), group]))
-}
-
-export function buildDeckRoleSummary(cards: CardEntry[]): DerivedDeckGroup[] {
-  return buildDerivedDeckGroups(cards).filter((group) => group.copies > 0)
 }
 
 export function cardMatchesGroup(card: CardEntry, groupKey: GroupKey): boolean {

@@ -19,7 +19,6 @@ interface RuleBuilderProps {
   isPendingCreation: boolean
   onRequestDelete: (patternId: string) => void
   pattern: HandPattern
-  probability: number | null
 }
 
 export function RuleBuilder({
@@ -28,7 +27,6 @@ export function RuleBuilder({
   isPendingCreation,
   onRequestDelete,
   pattern,
-  probability: _probability,
 }: RuleBuilderProps) {
   const cardById = useMemo(
     () => new Map(derivedMainCards.map((card) => [card.id, card])),
@@ -109,7 +107,6 @@ export function RuleBuilder({
                     index={index}
                     patternId={pattern.id}
                     condition={condition}
-                    patternKind={pattern.kind}
                     derivedMainCards={derivedMainCards}
                     actions={actions}
                     onRemove={() => actions.removeRequirement(pattern.id, condition.id)}

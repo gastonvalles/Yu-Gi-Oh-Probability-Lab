@@ -76,16 +76,6 @@ export function DeckZone({
       : getDesktopCompactDeckColumnCount(zone, cards.length)
   const zoneStyle = ZONE_STYLES[zone]
   const classicRowGap = '0px'
-  const zoneSurfaceStyle = {
-    '--zone-background': zoneStyle.background,
-    '--zone-border': zoneStyle.border,
-    '--deck-zone-card-gap': desktopCompact ? '0.2rem' : '0.32rem',
-    '--deck-zone-desktop-columns': String(resolvedDesktopCompactColumnCount),
-  } as CSSProperties
-  const zoneGridStyle = {
-    gap: 'var(--deck-zone-card-gap)',
-    minHeight: 'clamp(50px, 8vw, 90px)',
-  } as CSSProperties
   const isClassicBuilder = variant === 'classic-builder'
   const isClassicRailZone = isClassicBuilder && zone !== 'main'
   const isClassicMainOverlapZone =

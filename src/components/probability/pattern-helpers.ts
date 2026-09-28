@@ -75,39 +75,6 @@ export interface PatternPreview {
   reuse: string
 }
 
-export function getMatcherEditorType(matcher: Matcher | null): MatcherEditorType {
-  return matcher?.type ?? 'role'
-}
-
-export function getMatcherEditorLabel(type: MatcherEditorType): string {
-  return MATCHER_EDITOR_OPTIONS.find((option) => option.value === type)?.label ?? 'Matcher'
-}
-
-export function buildRequirementSummary(
-  requirement: PatternRequirement,
-  selectedCards: CardEntry[],
-): string {
-  if (!requirement.matcher) {
-    return 'Elegí el tipo de criterio y el valor que querés medir en esta condición.'
-  }
-
-  if ((requirement.matcher.type === 'card' || requirement.matcher.type === 'card_pool') && selectedCards.length === 0) {
-    return 'Elegí la carta o el pool de cartas que querés medir en esta condición.'
-  }
-
-  const matcherLabel = buildMatcherSummaryLabel(requirement.matcher, selectedCards)
-
-  if (requirement.kind === 'exclude') {
-    return requirement.distinct
-      ? `La mano no debe incluir ${formatInteger(requirement.quantity)} o más nombres distintos que cumplan: ${matcherLabel}.`
-      : `La mano no debe incluir ${formatInteger(requirement.quantity)} o más cartas que cumplan: ${matcherLabel}.`
-  }
-
-  return requirement.distinct
-    ? `La mano debe incluir al menos ${formatInteger(requirement.quantity)} nombres distintos que cumplan: ${matcherLabel}.`
-    : `La mano debe incluir al menos ${formatInteger(requirement.quantity)} cartas que cumplan: ${matcherLabel}.`
-}
-
 export function buildPatternPreview(
   pattern: HandPattern,
   cardById: Map<string, CardEntry>,
@@ -207,36 +174,6 @@ function buildConditionPreview(
       return buildGenericMonsterPreview(requirement, `con ${formatInteger(requirement.matcher.value)} DEF`)
     default:
       return 'definir el matcher y su valor'
-  }
-}
-
-function buildMatcherSummaryLabel(
-  matcher: Matcher,
-  selectedCards: CardEntry[],
-): string {
-  switch (matcher.type) {
-    case 'role':
-      return `Rol: ${getCardRoleDefinition(matcher.value).label}`
-    case 'origin':
-      return `Origen: ${getCardOriginDefinition(matcher.value).label}`
-    case 'card':
-      return `Carta específica: ${selectedCards[0]?.name ?? 'sin seleccionar'}`
-    case 'card_pool':
-      return `Pool de cartas: ${selectedCards.length > 0 ? selectedCards.map((card) => card.name).join(', ') : 'vacío'}`
-    case 'card_type':
-      return `Tipo de carta: ${matcher.value === 'monster' ? 'Monstruo' : matcher.value === 'spell' ? 'Magia' : 'Trampa'}`
-    case 'attribute':
-      return `Filtro de monstruos: atributo ${matcher.value}`
-    case 'level':
-      return `Filtro de monstruos: Nivel ${matcher.value}`
-    case 'monster_type':
-      return `Filtro de monstruos: tipo ${matcher.value}`
-    case 'atk':
-      return `Filtro de monstruos: ${formatInteger(matcher.value)} ATK`
-    case 'def':
-      return `Filtro de monstruos: ${formatInteger(matcher.value)} DEF`
-    default:
-      return 'Matcher sin definir'
   }
 }
 

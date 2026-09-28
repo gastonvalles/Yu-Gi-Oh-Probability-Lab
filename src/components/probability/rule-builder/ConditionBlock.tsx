@@ -1,8 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 
-import type { CardEntry, PatternCondition, PatternKind, RequirementKind } from '../../../types'
-import { formatInteger } from '../../../app/utils'
+import type { CardEntry, PatternCondition, RequirementKind } from '../../../types'
 import { CloseButton } from '../../ui/IconButton'
 import type { PatternEditorActions } from '../pattern-editor-actions'
 import { CategoryPicker } from './CategoryPicker'
@@ -12,7 +11,6 @@ interface ConditionBlockProps {
   index: number
   patternId: string
   condition: PatternCondition
-  patternKind: PatternKind
   derivedMainCards: CardEntry[]
   actions: PatternEditorActions
   onRemove: () => void
@@ -22,7 +20,6 @@ export function ConditionBlock({
   index,
   patternId,
   condition,
-  patternKind: _patternKind,
   derivedMainCards,
   actions,
   onRemove,

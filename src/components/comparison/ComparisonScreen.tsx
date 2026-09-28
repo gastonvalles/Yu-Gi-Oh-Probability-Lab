@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
+import { useEffect, useId, useMemo, useState, useCallback, useRef } from 'react'
 
 import { compareBuild, interpretComparison } from '../../app/build-comparison'
 import type { Verdict, RoleDistribution, Insight } from '../../app/build-comparison'
@@ -9,6 +9,7 @@ import { applyEditsToConfig, isBuildBReady, type CardEditMap } from '../../app/b
 import { toPortableConfig } from '../../app/app-state-codec'
 import { selectAppState } from '../../app/store'
 import { useAppSelector } from '../../app/store-hooks'
+import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import type { AppState, DeckBuilderState, DeckCardInstance, PortableConfig } from '../../app/model'
 import type { CardOrigin, CardRole } from '../../types'
 import { formatInteger, formatPercent } from '../../app/utils'
@@ -183,7 +184,6 @@ export function ComparisonScreen() {
           handtraps={kpiA.handtraps}
           bricks={kpiA.bricks}
           boardbreakers={boardbreakersA}
-          mainDeckSize={kpiA.main}
           onSegmentClick={(role) => setKpiModalState({ role, side: 'A' })}
         />
 
@@ -287,7 +287,6 @@ export function ComparisonScreen() {
             handtraps={kpiB.handtraps}
             bricks={kpiB.bricks}
             boardbreakers={boardbreakersB}
-            mainDeckSize={kpiB.main}
             onSegmentClick={(role) => setKpiModalState({ role, side: 'B' })}
           />
         ) : null}
@@ -377,17 +376,6 @@ export function ComparisonScreen() {
         onApplyImport={handleApplyImport}
         onClose={() => setIsImportDrawerOpen(false)}
       />
-    </div>
-  )
-}
-
-// ── Side Label ──
-
-function SideLabel({ text, sub }: { text: string; sub: string }) {
-  return (
-    <div className="grid gap-0.5 px-1">
-      <strong className="text-[0.82rem] text-(--text-main)">{text}</strong>
-      <span className="truncate text-[0.68rem] text-(--text-muted)">{sub}</span>
     </div>
   )
 }
@@ -563,16 +551,6 @@ const KPI_PIE_SEGMENTS: { role: KpiRole; label: string; color: string; rgb: stri
   { role: 'boardbreaker', label: 'Boardbreakers', color: 'rgb(245, 158, 11)', rgb: '245, 158, 11' },
 ]
 
-function describeArc(cx: number, cy: number, r: number, startAngle: number, endAngle: number): string {
-  const rad = (deg: number) => (deg * Math.PI) / 180
-  const x1 = cx + r * Math.cos(rad(startAngle))
-  const y1 = cy + r * Math.sin(rad(startAngle))
-  const x2 = cx + r * Math.cos(rad(endAngle))
-  const y2 = cy + r * Math.sin(rad(endAngle))
-  const largeArc = endAngle - startAngle > 180 ? 1 : 0
-  return `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`
-}
-
 function describeRing(cx: number, cy: number, r: number, startAngle: number, endAngle: number, thickness: number): string {
   const rad = (deg: number) => (deg * Math.PI) / 180
   const rOuter = r
@@ -595,15 +573,15 @@ function describeRing(cx: number, cy: number, r: number, startAngle: number, end
   ].join(' ')
 }
 
-function KpiPieChart({ starters, extenders, handtraps, bricks, boardbreakers, mainDeckSize: _mainDeckSize, onSegmentClick }: {
+function KpiPieChart({ starters, extenders, handtraps, bricks, boardbreakers, onSegmentClick }: {
   starters: number
   extenders: number
   handtraps: number
   bricks: number
   boardbreakers: number
-  mainDeckSize: number
   onSegmentClick?: (role: KpiRole) => void
 }) {
+  const filterId = `pie-glow-${useId()}`
   const data = KPI_PIE_SEGMENTS
     .map((seg) => ({
       ...seg,
@@ -618,7 +596,6 @@ function KpiPieChart({ starters, extenders, handtraps, bricks, boardbreakers, ma
   const cy = 50
   const r = 46
   const innerR = 20
-  const filterId = `pie-glow-${Math.random().toString(36).slice(2, 6)}`
 
   let currentAngle = -90
   const segments = data.map((d) => {
@@ -801,17 +778,8 @@ function ComparisonResultModal({ rolesA, rolesB, deckSizeA, deckSizeB, deckNameA
   problemProbB: number
   onClose: () => void
 }) {
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
-  }, [onClose])
-
-  useEffect(() => {
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prev }
-  }, [])
+  useEscapeKey(onClose)
+  useBodyScrollLock(true)
 
   // Derive the winner from the visible KPI (cleanProbability)
   const cleanDiff = cleanProbA - cleanProbB

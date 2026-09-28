@@ -4,10 +4,10 @@ import { buildCalculatorState } from '../app/calculator-state'
 import { getDeckModelStatus } from '../app/deck-model-status'
 import type { DeckCardInstance } from '../app/model'
 import { useToastMessage } from '../app/use-toast-message'
-import type { DerivedDeckGroup } from '../app/deck-groups'
 import { curatePatterns } from '../app/pattern-curation'
 import { AUTO_BASE_PRESET_IDS, buildPatternPresets } from '../app/pattern-presets'
 import {
+  blendViewSummaries,
   hasAsymmetricRules as hasAsymmetricRulesFn,
   selectPatternsForView,
 } from '../app/turn-context'
@@ -20,6 +20,7 @@ import {
 } from '../app/role-step'
 import { formatInteger } from '../app/utils'
 import { calculateProbabilities } from '../probability'
+import { getCleanHands, getCleanProbability } from '../probability-summary'
 import type {
   ApiCardReference,
   CalculationOutput,
@@ -42,7 +43,6 @@ import {
   buildProbabilityCheckPipeline,
 } from './probability/probability-lab-helpers'
 import type { ProbabilityCausalEntry } from './probability/probability-lab-helpers'
-import { Button } from './ui/Button'
 import { CloseButton } from './ui/IconButton'
 import { Skeleton } from './ui/Skeleton'
 
@@ -50,7 +50,6 @@ interface ProbabilityPanelProps {
   handSize: number
   patterns: HandPattern[]
   derivedMainCards: CardEntry[]
-  derivedGroups: DerivedDeckGroup[]
   patternActions: PatternEditorActions
   isEditingDeck: boolean
 }
@@ -116,7 +115,6 @@ export function ProbabilityPanel({
   handSize,
   patterns,
   derivedMainCards,
-  derivedGroups,
   patternActions,
   isEditingDeck,
 }: ProbabilityPanelProps) {
@@ -158,7 +156,6 @@ export function ProbabilityPanel({
       handSize={handSize}
       patterns={patterns}
       derivedMainCards={derivedMainCards}
-      derivedGroups={derivedGroups}
       patternActions={patternActions}
       isEditingDeck={isEditingDeck}
     />
@@ -169,7 +166,6 @@ function ProbabilityPanelContent({
   handSize,
   patterns,
   derivedMainCards,
-  derivedGroups: _derivedGroups,
   patternActions,
   isEditingDeck,
 }: ProbabilityPanelProps) {
@@ -271,8 +267,6 @@ function ProbabilityPanelContent({
       return cached
     }
 
-    const deckSize = derivedMainCards.reduce((sum, card) => sum + card.copies, 0)
-
     // Going first: base handSize, first+either patterns
     const firstPatterns = selectPatternsForView(deferredAllChecks, 'first')
     const firstResult = calculateProbabilities(
@@ -299,26 +293,14 @@ function ProbabilityPanelContent({
       if (!summaryFirst || !summarySecond) {
         averageResult = IDLE_CALCULATION_RESULT
       } else {
-        const cleanFirst = Math.max(0, summaryFirst.goodHands - summaryFirst.overlapHands)
-        const cleanSecond = Math.max(0, summarySecond.goodHands - summarySecond.overlapHands)
-        const probFirst = summaryFirst.totalHands > 0 ? cleanFirst / summaryFirst.totalHands : 0
-        const probSecond = summarySecond.totalHands > 0 ? cleanSecond / summarySecond.totalHands : 0
-        const cleanProbability = (probFirst + probSecond) / 2
-        const totalHands = summaryFirst.totalHands
-        const cleanHands = Math.round(cleanProbability * totalHands)
-
-        // Merge patternResults
-        const merged = new Map<string, typeof summaryFirst.patternResults[number]>()
-        for (const r of summaryFirst.patternResults) merged.set(r.patternId, r)
-        for (const r of summarySecond.patternResults) { if (!merged.has(r.patternId)) merged.set(r.patternId, r) }
-
+        const blended = blendViewSummaries(summaryFirst, summarySecond)
         const syntheticSummary: CalculationSummary = {
           ...summaryFirst,
-          goodHands: cleanHands,
+          goodHands: blended.cleanHands,
           overlapHands: 0,
           overlapProbability: 0,
-          totalHands,
-          patternResults: Array.from(merged.values()),
+          totalHands: blended.totalHands,
+          patternResults: blended.patternResults,
         }
         averageResult = { issues: [], blockingIssues: [], summary: syntheticSummary }
       }
@@ -345,14 +327,9 @@ function ProbabilityPanelContent({
       return null
     }
 
-    const cleanHands = Math.max(0, summary.goodHands - summary.overlapHands)
-    const cleanProbability = summary.totalHands > 0
-      ? cleanHands / summary.totalHands
-      : 0
-
     return {
-      cleanProbability,
-      cleanHands,
+      cleanProbability: getCleanProbability(summary),
+      cleanHands: getCleanHands(summary),
       totalHands: summary.totalHands,
       basedOnActiveRules: isUsingActiveChecks,
     }
@@ -368,7 +345,6 @@ function ProbabilityPanelContent({
     [allChecks, availablePresets, derivedMainCards, result.summary],
   )
   const {
-    allChecks: allCheckEntries,
     detailOpeningEntries: rawDetailOpeningEntries,
     detailProblemEntries: rawDetailProblemEntries,
   } = checkPipeline
@@ -390,7 +366,6 @@ function ProbabilityPanelContent({
   const [isAnalysisEditMode, setIsAnalysisEditMode] = useState(false)
   const [pendingDeletePatternId, setPendingDeletePatternId] = useState<string | null>(null)
   const [kpiModalRole, setKpiModalRole] = useState<KpiRole | null>(null)
-  const [highlightedPatternId, setHighlightedPatternId] = useState<string | null>(null)
   const [recentlyChangedPatternId, setRecentlyChangedPatternId] = useState<string | null>(null)
   const [kpiFeedback, setKpiFeedback] = useState<KpiFeedbackState | null>(null)
   const { showToast } = useToastMessage()
@@ -569,7 +544,6 @@ function ProbabilityPanelContent({
     previousCleanProbabilityRef.current = currentProbability
     setKpiFeedback(nextFeedback)
     setRecentlyChangedPatternId(pendingFeedback.patternId)
-    setHighlightedPatternId(pendingFeedback.patternId)
 
     if (clearFeedbackTimeoutRef.current !== null) {
       window.clearTimeout(clearFeedbackTimeoutRef.current)
@@ -583,9 +557,6 @@ function ProbabilityPanelContent({
       setKpiFeedback(null)
     }, 1800)
     clearHighlightTimeoutRef.current = window.setTimeout(() => {
-      setHighlightedPatternId((current) => (
-        current === pendingFeedback.patternId ? null : current
-      ))
       setRecentlyChangedPatternId(null)
     }, 1800)
   }, [deckSummary?.cleanProbability, patterns])
@@ -626,7 +597,6 @@ function ProbabilityPanelContent({
 
   const handleEditPattern = (patternId: string) => {
     setSelectedPatternId(patternId)
-    setHighlightedPatternId(patternId)
     setDrawerMode('edit')
   }
 
@@ -777,7 +747,6 @@ function ProbabilityPanelContent({
         onSelectPreset={(preset) => handleSelectPreset(preset.id)}
         pattern={selectedPattern}
         patterns={patterns}
-        probability={selectedPatternProbability}
       />
 
       {practiceOpen ? (
