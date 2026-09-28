@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { countUnclassifiedCards, countCardsMissingOrigin, countCardsMissingRoles, countCardsPendingReview, isClassificationStepComplete } from '../../app/role-step'
 import { curatePatterns } from '../../app/pattern-curation'
-import { CardDetailDrawer } from '../card-detail/CardDetailDrawer'
+import { CardDetailModal } from '../card-detail/CardDetailModal'
 import { DeckRolesPanel } from '../DeckRolesPanel'
 import { ExportDeckPanel } from '../ExportDeckPanel'
 import { ProbabilityPanel } from '../ProbabilityPanel'
@@ -267,10 +267,11 @@ export function DeckModeScreen() {
         overlayRef={controller.feedback.dragOverlayRef}
       />
       {!isDesktopDeckBuilder ? (
-        <CardDetailDrawer
+        <CardDetailModal
           card={controller.deckBuilderStep.selectedDetailCard}
           deckFormat={controller.deckBuilderStep.deckFormat}
           isOpen={controller.deckBuilderStep.isCardDetailOpen}
+          layoutMode="mobile"
           showActions={controller.deckBuilderStep.selectedDetailSource !== 'deck'}
           onAddToZone={(zone) =>
             controller.deckBuilderStep.selectedDetailCard

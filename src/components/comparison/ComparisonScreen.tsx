@@ -9,6 +9,7 @@ import { applyEditsToConfig, isBuildBReady, type CardEditMap } from '../../app/b
 import { toPortableConfig } from '../../app/app-state-codec'
 import { selectAppState } from '../../app/store'
 import { useAppSelector } from '../../app/store-hooks'
+import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import type { AppState, DeckBuilderState, DeckCardInstance, PortableConfig } from '../../app/model'
 import type { CardOrigin, CardRole } from '../../types'
 import { formatInteger, formatPercent } from '../../app/utils'
@@ -780,17 +781,8 @@ function ComparisonResultModal({ rolesA, rolesB, deckSizeA, deckSizeB, deckNameA
   problemProbB: number
   onClose: () => void
 }) {
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
-  }, [onClose])
-
-  useEffect(() => {
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prev }
-  }, [])
+  useEscapeKey(onClose)
+  useBodyScrollLock(true)
 
   // Derive the winner from the visible KPI (cleanProbability)
   const cleanDiff = cleanProbA - cleanProbB

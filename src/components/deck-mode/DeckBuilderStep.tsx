@@ -1,10 +1,11 @@
-import { useEffect, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useState, type PointerEvent as ReactPointerEvent } from 'react'
 
 import { getDeckFormatLabel } from '../../app/deck-format'
 import { getDesktopCompactDeckColumnCount } from '../../app/deck-zone-layout'
 import type { DeckBuilderState, DeckZone as DeckZoneType } from '../../app/model'
 import type { DeckDropIndicatorState } from '../../app/use-deck-pointer-drag'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
+import { useBodyScrollLock } from '../../app/use-overlay'
 import { formatInteger } from '../../app/utils'
 import type { DeckFormat } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
@@ -113,17 +114,7 @@ export function DeckBuilderStep({
   const isDesktopDeckBuilder = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const formatLabel = getDeckFormatLabel(deckFormat)
 
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow
-
-    if (mobileSearchOpen || importDrawerOpen) {
-      document.body.style.overflow = 'hidden'
-    }
-
-    return () => {
-      document.body.style.overflow = previousOverflow
-    }
-  }, [importDrawerOpen, mobileSearchOpen])
+  useBodyScrollLock(mobileSearchOpen || importDrawerOpen)
 
   const visibleFormatIssues = formatIssues.slice(0, 2)
   const hasHiddenIssues = formatIssues.length > visibleFormatIssues.length

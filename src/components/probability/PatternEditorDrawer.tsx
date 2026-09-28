@@ -1,9 +1,10 @@
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { createPortal } from 'react-dom'
 
 import type { PatternPreset, PatternPresetScope } from '../../app/pattern-presets'
 import { AUTO_BASE_PRESET_IDS } from '../../app/pattern-presets'
 import { getPatternDefinitionKey } from '../../app/patterns'
+import { useEscapeKey } from '../../app/use-overlay'
 import { formatInteger, formatPercent } from '../../app/utils'
 import type { CardEntry, HandPattern } from '../../types'
 import { Button } from '../ui/Button'
@@ -57,23 +58,7 @@ export function PatternEditorDrawer({
     [patterns],
   )
 
-  useEffect(() => {
-    if (!isOpen || typeof window === 'undefined') {
-      return
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose()
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [isOpen, onClose])
+  useEscapeKey(onClose, isOpen)
 
   if (!isOpen) {
     return null

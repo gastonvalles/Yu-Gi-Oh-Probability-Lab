@@ -1,10 +1,9 @@
-import { useEffect } from 'react'
-
 import { getKpiDetailCards } from './kpi-detail-helpers'
 import type { DeckCardInstance } from '../../app/model'
 import type { CardEditMap } from '../../app/build-comparison-edits'
 import type { ApiCardReference, CardRole } from '../../types'
 import { CardArt } from '../CardArt'
+import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import { formatInteger } from '../../app/utils'
 import { getCardRoleDefinition } from '../../app/deck-groups'
 
@@ -32,25 +31,8 @@ export function KpiDetailModal({
   onCardClick,
   onClose,
 }: KpiDetailModalProps) {
-  // Close on Escape
-  useEffect(() => {
-    if (!isOpen) return
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
-  }, [isOpen, onClose])
-
-  // Lock body scroll while open
-  useEffect(() => {
-    if (!isOpen) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = prev
-    }
-  }, [isOpen])
+  useEscapeKey(onClose, isOpen)
+  useBodyScrollLock(isOpen)
 
   if (!isOpen) return null
 
