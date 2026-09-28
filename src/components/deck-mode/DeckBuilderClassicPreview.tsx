@@ -18,7 +18,6 @@ const EMPTY_PREVIEW_GUIDE = {
 } as const
 
 const SHORTCUTS = [
-  { keys: '/', label: 'buscar' },
   { keys: 'Doble clic', label: 'agregar' },
   { keys: 'Clic derecho', label: 'quitar del deck' },
 ] as const

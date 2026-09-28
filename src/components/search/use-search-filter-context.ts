@@ -5,10 +5,8 @@ import { getDeckFormatLabel } from '../../app/deck-format'
 import type { DeckFormat } from '../../types'
 import {
   buildActiveFilterChips,
-  buildFilterSectionSummaries,
   buildSanitizedFilterUpdates,
   type ActiveFilterChip,
-  type FilterSectionSummaries,
 } from './search-model'
 import {
   getExactTypeFilterGroups,
@@ -25,7 +23,6 @@ export interface SearchFilterContext {
   formatLabel: string
   formatAllowsLegalityFilter: boolean
   activeFilterChips: ActiveFilterChip[]
-  sectionSummaries: FilterSectionSummaries
 }
 
 /**
@@ -74,11 +71,6 @@ export function useSearchFilterContext(
     [filters, formatAllowsLegalityFilter, formatLabel, quickTypeMeta.raceLabel],
   )
 
-  const sectionSummaries = useMemo(
-    () => buildFilterSectionSummaries({ filters, quickTypeMeta, formatAllowsLegalityFilter, formatLabel }),
-    [filters, formatAllowsLegalityFilter, formatLabel, quickTypeMeta],
-  )
-
   return {
     quickTypeMeta,
     exactTypeGroups,
@@ -86,6 +78,5 @@ export function useSearchFilterContext(
     formatLabel,
     formatAllowsLegalityFilter,
     activeFilterChips,
-    sectionSummaries,
   }
 }

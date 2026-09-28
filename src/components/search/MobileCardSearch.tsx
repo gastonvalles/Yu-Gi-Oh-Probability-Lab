@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type SVGProps } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import { buildCompactSearchDescription, formatSearchError } from '../../app/card-search'
@@ -10,6 +10,7 @@ import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { CardArt } from '../CardArt'
 import { Button } from '../ui/Button'
 import { CloseIcon, IconButton } from '../ui/IconButton'
+import { CheckIcon, ChevronLeftIcon, FilterIcon, PlusIcon } from '../ui/icons'
 import { Skeleton } from '../ui/Skeleton'
 import { SearchFiltersForm } from './SearchFiltersForm'
 import { sortVisibleSearchResults } from './search-model'
@@ -193,7 +194,6 @@ export function MobileCardSearch({
           <SearchFiltersForm
             id="mobile-search-filters"
             layout="mobile"
-            className="grid gap-2"
             filters={filters}
             context={filterContext}
             activeFilterCount={search.activeFilterCount}
@@ -371,40 +371,5 @@ function MobileResultSkeleton() {
         </span>
       </span>
     </li>
-  )
-}
-
-function ChevronLeftIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" width="18" height="18" {...props}>
-      <path d="m10 3-5 5 5 5" />
-    </svg>
-  )
-}
-
-function FilterIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true" width="18" height="18" {...props}>
-      <path d="M2.5 4h11" />
-      <path d="M4.5 8h7" />
-      <path d="M6.5 12h3" />
-    </svg>
-  )
-}
-
-function PlusIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" width="18" height="18" {...props}>
-      <path d="M8 3v10" />
-      <path d="M3 8h10" />
-    </svg>
-  )
-}
-
-function CheckIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" width="18" height="18" {...props}>
-      <path d="m3.5 8.5 3 3 6-7" />
-    </svg>
   )
 }

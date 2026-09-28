@@ -20,11 +20,7 @@ export function buildZoneActionEntries(card: ApiCardSearchResult): ZoneActionEnt
     entries.push({ zone: 'extra', label: 'Agregar al Extra Deck', variant: 'primary' })
   }
 
-  entries.push({
-    zone: 'side',
-    label: 'Agregar al Side Deck',
-    variant: entries.length > 0 ? 'tertiary' : 'secondary',
-  })
+  entries.push({ zone: 'side', label: 'Agregar al Side Deck', variant: 'secondary' })
 
   return entries
 }
