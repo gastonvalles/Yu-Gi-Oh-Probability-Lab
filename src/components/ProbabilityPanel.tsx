@@ -8,6 +8,7 @@ import type { DerivedDeckGroup } from '../app/deck-groups'
 import { curatePatterns } from '../app/pattern-curation'
 import { AUTO_BASE_PRESET_IDS, buildPatternPresets } from '../app/pattern-presets'
 import {
+  blendViewSummaries,
   hasAsymmetricRules as hasAsymmetricRulesFn,
   selectPatternsForView,
 } from '../app/turn-context'
@@ -20,6 +21,7 @@ import {
 } from '../app/role-step'
 import { formatInteger } from '../app/utils'
 import { calculateProbabilities } from '../probability'
+import { getCleanHands, getCleanProbability } from '../probability-summary'
 import type {
   ApiCardReference,
   CalculationOutput,
@@ -296,26 +298,14 @@ function ProbabilityPanelContent({
       if (!summaryFirst || !summarySecond) {
         averageResult = IDLE_CALCULATION_RESULT
       } else {
-        const cleanFirst = Math.max(0, summaryFirst.goodHands - summaryFirst.overlapHands)
-        const cleanSecond = Math.max(0, summarySecond.goodHands - summarySecond.overlapHands)
-        const probFirst = summaryFirst.totalHands > 0 ? cleanFirst / summaryFirst.totalHands : 0
-        const probSecond = summarySecond.totalHands > 0 ? cleanSecond / summarySecond.totalHands : 0
-        const cleanProbability = (probFirst + probSecond) / 2
-        const totalHands = summaryFirst.totalHands
-        const cleanHands = Math.round(cleanProbability * totalHands)
-
-        // Merge patternResults
-        const merged = new Map<string, typeof summaryFirst.patternResults[number]>()
-        for (const r of summaryFirst.patternResults) merged.set(r.patternId, r)
-        for (const r of summarySecond.patternResults) { if (!merged.has(r.patternId)) merged.set(r.patternId, r) }
-
+        const blended = blendViewSummaries(summaryFirst, summarySecond)
         const syntheticSummary: CalculationSummary = {
           ...summaryFirst,
-          goodHands: cleanHands,
+          goodHands: blended.cleanHands,
           overlapHands: 0,
           overlapProbability: 0,
-          totalHands,
-          patternResults: Array.from(merged.values()),
+          totalHands: blended.totalHands,
+          patternResults: blended.patternResults,
         }
         averageResult = { issues: [], blockingIssues: [], summary: syntheticSummary }
       }
@@ -342,14 +332,9 @@ function ProbabilityPanelContent({
       return null
     }
 
-    const cleanHands = Math.max(0, summary.goodHands - summary.overlapHands)
-    const cleanProbability = summary.totalHands > 0
-      ? cleanHands / summary.totalHands
-      : 0
-
     return {
-      cleanProbability,
-      cleanHands,
+      cleanProbability: getCleanProbability(summary),
+      cleanHands: getCleanHands(summary),
       totalHands: summary.totalHands,
       basedOnActiveRules: isUsingActiveChecks,
     }

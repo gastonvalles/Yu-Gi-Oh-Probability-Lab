@@ -6,6 +6,7 @@ import type {
   TurnView,
 } from '../types'
 import { calculateProbabilities } from '../probability'
+import { getCleanHands, getCleanProbability } from '../probability-summary'
 
 /**
  * Aggregated KPI data for the "Promedio" (average) view over asymmetric rules.
@@ -64,25 +65,12 @@ export function hasAsymmetricRules(patterns: HandPattern[]): boolean {
   return false
 }
 
-function cleanHandsOf(summary: CalculationSummary): number {
-  return Math.max(0, summary.goodHands - summary.overlapHands)
-}
-
-function cleanProbabilityOf(summary: CalculationSummary): number {
-  if (summary.totalHands <= 0) {
-    return 0
-  }
-  return cleanHandsOf(summary) / summary.totalHands
-}
-
 function buildAggregatedFromSingleSummary(
   summary: CalculationSummary,
 ): AggregatedKpi {
-  const cleanHands = cleanHandsOf(summary)
-  const cleanProbability = cleanProbabilityOf(summary)
   return {
-    cleanProbability,
-    cleanHands,
+    cleanProbability: getCleanProbability(summary),
+    cleanHands: getCleanHands(summary),
     totalHands: summary.totalHands,
     patternResults: summary.patternResults,
     summaryFirst: summary,
@@ -147,14 +135,27 @@ export function aggregateKpiAcrossViews(
     }
   }
 
-  const probFirst = cleanProbabilityOf(summaryFirst)
-  const probSecond = cleanProbabilityOf(summarySecond)
-  const cleanProbability = (probFirst + probSecond) / 2
+  return {
+    ...blendViewSummaries(summaryFirst, summarySecond),
+    summaryFirst,
+    summarySecond,
+  }
+}
 
-  // Sub-views now have different totalHands (C(n,5) vs C(n,6)).
+/**
+ * Blend the going-first and going-second summaries (50/50 coin flip).
+ * `cleanProbability` is the mean of both clean probabilities and per-rule
+ * `patternResults` are merged by `patternId`, keeping first-view order.
+ */
+export function blendViewSummaries(
+  summaryFirst: CalculationSummary,
+  summarySecond: CalculationSummary,
+): ViewKpi {
+  const cleanProbability = (getCleanProbability(summaryFirst) + getCleanProbability(summarySecond)) / 2
+
+  // Sub-views have different totalHands (C(n,5) vs C(n,6)).
   // Use the first-view's totalHands as the reference for display purposes.
   const totalHands = summaryFirst.totalHands
-  const cleanHands = Math.round(cleanProbability * totalHands)
 
   const merged = new Map<string, PatternProbability>()
   for (const result of summaryFirst.patternResults) {
@@ -168,11 +169,9 @@ export function aggregateKpiAcrossViews(
 
   return {
     cleanProbability,
-    cleanHands,
+    cleanHands: Math.round(cleanProbability * totalHands),
     totalHands,
     patternResults: Array.from(merged.values()),
-    summaryFirst,
-    summarySecond,
   }
 }
 
@@ -222,10 +221,9 @@ export function computeKpiForView(
     return null
   }
 
-  const cleanHands = cleanHandsOf(summary)
   return {
-    cleanProbability: cleanProbabilityOf(summary),
-    cleanHands,
+    cleanProbability: getCleanProbability(summary),
+    cleanHands: getCleanHands(summary),
     totalHands: summary.totalHands,
     patternResults: summary.patternResults,
   }

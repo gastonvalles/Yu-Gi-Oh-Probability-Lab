@@ -3,6 +3,7 @@ import type { PortableConfig } from './model'
 import { deriveMainDeckCardsFromZone } from './calculator-state'
 import { buildCalculatorState } from './calculator-state'
 import { calculateProbabilities } from '../probability'
+import { getCleanProbability } from '../probability-summary'
 import { getPatternDefinitionKey, normalizeTurnContext } from './patterns'
 import { normalizeName, createId } from './utils'
 import type { CardEntry, CalculationOutput, HandPattern } from '../types'
@@ -358,12 +359,8 @@ export function compareBuild(
   const totalProblemProbabilityB = outputB.summary?.badProbability ?? 0
 
   // Clean probability: hands with at least one opening AND no problems
-  const cleanProbabilityA = outputA.summary
-    ? Math.max(0, outputA.summary.goodHands - outputA.summary.overlapHands) / Math.max(1, outputA.summary.totalHands)
-    : 0
-  const cleanProbabilityB = outputB.summary
-    ? Math.max(0, outputB.summary.goodHands - outputB.summary.overlapHands) / Math.max(1, outputB.summary.totalHands)
-    : 0
+  const cleanProbabilityA = outputA.summary ? getCleanProbability(outputA.summary) : 0
+  const cleanProbabilityB = outputB.summary ? getCleanProbability(outputB.summary) : 0
 
   const openingDelta = totalOpeningProbabilityA - totalOpeningProbabilityB
   const problemDelta = totalProblemProbabilityA - totalProblemProbabilityB

@@ -143,6 +143,15 @@ export function buildCalculationSummary(state: CalculatorState): CalculationSumm
   }
 }
 
+/** Manos que cumplen alguna apertura y ningún problema ("jugables sin problemas"). */
+export function getCleanHands(summary: CalculationSummary): number {
+  return Math.max(0, summary.goodHands - summary.overlapHands)
+}
+
+export function getCleanProbability(summary: CalculationSummary): number {
+  return summary.totalHands > 0 ? getCleanHands(summary) / summary.totalHands : 0
+}
+
 function buildSuffixCopies(cards: CalculationCard[]): number[] {
   const suffix = new Array<number>(cards.length + 1).fill(0)
 
