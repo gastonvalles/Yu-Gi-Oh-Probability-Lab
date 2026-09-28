@@ -14,6 +14,46 @@ import { DESKTOP_DECK_BUILDER_MEDIA_QUERY } from './use-media-query'
 
 export type DeckDropIndicatorState = 'idle' | 'valid' | 'invalid'
 
+// Con el mouse el arrastre arranca al mover unos píxeles. Con el dedo hay que
+// mantener presionado sin moverse: así deslizar sobre las cartas scrollea la
+// página en vez de moverlas.
+const MOUSE_DRAG_THRESHOLD_PX = 6
+const TOUCH_DRAG_DELAY_MS = 350
+const TOUCH_SCROLL_SLOP_PX = 10
+// Al arrastrar cerca del borde de la zona scrolleable se desplaza sola, para
+// poder llevar una carta a una zona que está fuera de pantalla.
+const AUTO_SCROLL_EDGE_PX = 72
+const AUTO_SCROLL_MAX_STEP_PX = 14
+
+function findScrollParent(element: HTMLElement): HTMLElement {
+  let current = element.parentElement
+
+  while (current) {
+    const { overflowY } = window.getComputedStyle(current)
+
+    if ((overflowY === 'auto' || overflowY === 'scroll') && current.scrollHeight > current.clientHeight) {
+      return current
+    }
+
+    current = current.parentElement
+  }
+
+  return (document.scrollingElement as HTMLElement | null) ?? document.documentElement
+}
+
+/** Cuánto scrollear este frame según qué tan cerca del borde está el puntero (0 = nada). */
+export function getAutoScrollStep(pointerY: number, top: number, bottom: number): number {
+  if (pointerY < top + AUTO_SCROLL_EDGE_PX) {
+    return -Math.ceil(AUTO_SCROLL_MAX_STEP_PX * Math.min(1, (top + AUTO_SCROLL_EDGE_PX - pointerY) / AUTO_SCROLL_EDGE_PX))
+  }
+
+  if (pointerY > bottom - AUTO_SCROLL_EDGE_PX) {
+    return Math.ceil(AUTO_SCROLL_MAX_STEP_PX * Math.min(1, (pointerY - (bottom - AUTO_SCROLL_EDGE_PX)) / AUTO_SCROLL_EDGE_PX))
+  }
+
+  return 0
+}
+
 export interface DeckDragOverlayState {
   name: string
   card: ApiCardReference
@@ -35,7 +75,13 @@ interface PointerDragSession {
   startY: number
   pointerId: number
   sourceElement: HTMLElement
+  isTouch: boolean
+  /** Touch: el long-press ya habilitó el arrastre. Mouse: siempre true. */
+  armed: boolean
   dragging: boolean
+  /** Se movió después de empezar a arrastrar (un long-press sin mover no suelta nada). */
+  moved: boolean
+  scrollParent: HTMLElement | null
 }
 
 interface UseDeckPointerDragOptions {
@@ -353,6 +399,21 @@ export function useDeckPointerDrag({
     // thrashing that shows up as visible stutter while dragging.
     applyDragOverlayTransform(position.x, position.y)
 
+    if (session.isTouch) {
+      session.scrollParent ??= findScrollParent(session.sourceElement)
+      const isDocumentScroller = session.scrollParent === document.scrollingElement
+      const rect = isDocumentScroller
+        ? { top: 0, bottom: window.innerHeight }
+        : session.scrollParent.getBoundingClientRect()
+      const step = getAutoScrollStep(position.y, rect.top, rect.bottom)
+
+      if (step !== 0) {
+        session.scrollParent.scrollBy(0, step)
+        // Sigue scrolleando aunque el dedo quede quieto en el borde.
+        dragOverlayRafRef.current = window.requestAnimationFrame(flushDragFrame)
+      }
+    }
+
     const nextDropTarget = resolveDropTarget(position.x, position.y, session.payload)
     const nextDropZone =
       nextDropTarget?.targetKind === 'zone' && nextDropTarget.isAllowed ? nextDropTarget.zone : null
@@ -434,6 +495,8 @@ export function useDeckPointerDrag({
       const pointerY = event.clientY || rect.top + rect.height / 2
       const previewFrame = resolveDragPreviewFrame(sourceElement, pointerX, pointerY)
 
+      const isTouch = event.pointerType === 'touch'
+
       pointerDragSessionRef.current = {
         payload,
         name,
@@ -446,7 +509,11 @@ export function useDeckPointerDrag({
         startY: pointerY,
         pointerId: event.pointerId,
         sourceElement,
+        isTouch,
+        armed: !isTouch,
         dragging: false,
+        moved: false,
+        scrollParent: null,
       }
 
       try {
@@ -455,6 +522,36 @@ export function useDeckPointerDrag({
         // Ignore browsers that reject pointer capture for transient edge cases.
       }
 
+      const beginDrag = (session: PointerDragSession) => {
+        session.dragging = true
+        setDragPayload(session.payload)
+
+        if (session.payload.type === 'deck-card') {
+          setActiveDragInstanceId(session.payload.instanceId)
+        } else {
+          setActiveDragSearchCardId(session.payload.apiCardId)
+        }
+
+        suppressPointerClickRef.current = true
+
+        startDragOverlay(previewFrame, session.name, session.card, session.startX, session.startY)
+      }
+
+      const touchArmTimer = isTouch
+        ? window.setTimeout(() => {
+            const session = pointerDragSessionRef.current
+
+            if (!session || session.armed) {
+              return
+            }
+
+            session.armed = true
+            session.sourceElement.dataset.dragArmed = 'true'
+            navigator.vibrate?.(12)
+            beginDrag(session)
+          }, TOUCH_DRAG_DELAY_MS)
+        : 0
+
       const handlePointerMove = (moveEvent: PointerEvent) => {
         const session = pointerDragSessionRef.current
 
@@ -462,26 +559,29 @@ export function useDeckPointerDrag({
           return
         }
 
-        const deltaX = moveEvent.clientX - session.startX
-        const deltaY = moveEvent.clientY - session.startY
+        const distance = Math.hypot(moveEvent.clientX - session.startX, moveEvent.clientY - session.startY)
 
-        if (!session.dragging && Math.hypot(deltaX, deltaY) < 6) {
+        if (!session.armed) {
+          // El dedo se movió antes del long-press: es un scroll, no un arrastre.
+          if (distance > TOUCH_SCROLL_SLOP_PX) {
+            flushSync(() => {
+              clearDragSession()
+            })
+          }
+
           return
         }
 
         if (!session.dragging) {
-          session.dragging = true
-          setDragPayload(session.payload)
-
-          if (session.payload.type === 'deck-card') {
-            setActiveDragInstanceId(session.payload.instanceId)
-          } else {
-            setActiveDragSearchCardId(session.payload.apiCardId)
+          if (distance < MOUSE_DRAG_THRESHOLD_PX) {
+            return
           }
 
-          suppressPointerClickRef.current = true
+          beginDrag(session)
+        }
 
-          startDragOverlay(previewFrame, session.name, session.card, session.startX, session.startY)
+        if (distance >= MOUSE_DRAG_THRESHOLD_PX) {
+          session.moved = true
         }
 
         queueDragFrame(moveEvent.clientX, moveEvent.clientY)
@@ -496,7 +596,7 @@ export function useDeckPointerDrag({
         const target =
           session?.dragging ? resolveDropTarget(endEvent.clientX, endEvent.clientY, session.payload) : null
         const pendingDrop =
-          session?.dragging && target?.isAllowed
+          session?.dragging && session.moved && target?.isAllowed
             ? {
                 payload: session.payload,
                 zone: target.zone,
@@ -535,10 +635,18 @@ export function useDeckPointerDrag({
         handlePointerCancel()
       }
 
+      // Mientras se arrastra con el dedo, la página no debe scrollear.
+      const blockTouchScroll = (touchEvent: TouchEvent) => {
+        if (pointerDragSessionRef.current?.armed && touchEvent.cancelable) {
+          touchEvent.preventDefault()
+        }
+      }
+
       window.addEventListener('pointermove', handlePointerMove, { passive: false })
       window.addEventListener('pointerup', handlePointerEnd)
       window.addEventListener('pointercancel', handlePointerEnd)
       window.addEventListener('blur', handleWindowBlur)
+      window.addEventListener('touchmove', blockTouchScroll, { passive: false })
       sourceElement.addEventListener('lostpointercapture', handlePointerCancel)
 
       pointerDragCleanupRef.current = () => {
@@ -546,7 +654,10 @@ export function useDeckPointerDrag({
         window.removeEventListener('pointerup', handlePointerEnd)
         window.removeEventListener('pointercancel', handlePointerEnd)
         window.removeEventListener('blur', handleWindowBlur)
+        window.removeEventListener('touchmove', blockTouchScroll)
         sourceElement.removeEventListener('lostpointercapture', handlePointerCancel)
+        window.clearTimeout(touchArmTimer)
+        delete sourceElement.dataset.dragArmed
 
         try {
           if (sourceElement.hasPointerCapture(event.pointerId)) {

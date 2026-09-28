@@ -56,6 +56,7 @@ export function useDeckModeController() {
   const patternsState = useAppSelector((state: RootState) => state.patterns)
   const [selectedDetailCard, setSelectedDetailCard] = useState<ApiCardSearchResult | null>(null)
   const [selectedDetailSource, setSelectedDetailSource] = useState<'search' | 'deck' | null>(null)
+  const [selectedDeckInstanceId, setSelectedDeckInstanceId] = useState<string | null>(null)
 
   const appState = useMemo<AppState>(
     () => ({
@@ -276,6 +277,7 @@ export function useDeckModeController() {
   const closeCardDetail = useCallback(() => {
     setSelectedDetailCard(null)
     setSelectedDetailSource(null)
+    setSelectedDeckInstanceId(null)
   }, [])
 
   const handleDeckCardClick = useCallback(
@@ -292,12 +294,13 @@ export function useDeckModeController() {
 
       setSelectedDetailCard(buildDetailCardFromDeckCard(deckCard))
       setSelectedDetailSource('deck')
+      setSelectedDeckInstanceId(instanceId)
     },
     [consumeSuppressedPointerClick, deckBuilder],
   )
 
   const handleAddSearchResultToZone = useCallback(
-    (apiCardId: number, zone: DeckZone) => {
+    (apiCardId: number, zone: DeckZone, options: { silent?: boolean } = {}) => {
       const card = resolveSearchResult(apiCardId)
 
       if (!card) {
@@ -326,7 +329,10 @@ export function useDeckModeController() {
         }),
       )
 
-      showToast('Carta añadida', 'success')
+      if (!options.silent) {
+        showToast('Carta añadida', 'success')
+      }
+
       return true
     },
     [apiSearch.results, deckBuilder, dispatch, resolveSearchResult, settings.deckFormat, showToast],
@@ -340,7 +346,9 @@ export function useDeckModeController() {
         return false
       }
 
-      return handleAddSearchResultToZone(apiCardId, getDefaultDeckZoneForCardInBuilder(deckBuilder, card))
+      return handleAddSearchResultToZone(apiCardId, getDefaultDeckZoneForCardInBuilder(deckBuilder, card), {
+        silent: true,
+      })
     },
     [deckBuilder, handleAddSearchResultToZone, resolveSearchResult],
   )
@@ -362,6 +370,51 @@ export function useDeckModeController() {
     },
     [dispatch],
   )
+
+  const selectedDeckCopy = useMemo(() => {
+    const zone = selectedDeckInstanceId ? findDeckCardZone(deckBuilder, selectedDeckInstanceId) : null
+    const deckCard = selectedDeckInstanceId ? findDeckCard(deckBuilder, selectedDeckInstanceId) : null
+
+    if (!zone || !deckCard) {
+      return null
+    }
+
+    const cardId = deckCard.apiCard.ygoprodeckId
+
+    return {
+      zone,
+      cardId,
+      copies: deckBuilder[zone].filter((card) => card.apiCard.ygoprodeckId === cardId).length,
+      canAddCopy: getAddSearchResultIssue(deckBuilder, buildDetailCardFromDeckCard(deckCard), zone, settings.deckFormat) === null,
+    }
+  }, [deckBuilder, selectedDeckInstanceId, settings.deckFormat])
+
+  const handleRemoveSelectedDeckCopy = useCallback(() => {
+    if (!selectedDeckInstanceId || !selectedDeckCopy) {
+      return
+    }
+
+    dispatch(removeDeckCardFromBuilder(selectedDeckInstanceId))
+
+    // Si quedan copias en la zona, el detalle sigue abierto sobre otra de ellas.
+    const nextCopy = deckBuilder[selectedDeckCopy.zone].find(
+      (card) => card.apiCard.ygoprodeckId === selectedDeckCopy.cardId && card.instanceId !== selectedDeckInstanceId,
+    )
+
+    if (nextCopy) {
+      setSelectedDeckInstanceId(nextCopy.instanceId)
+      return
+    }
+
+    closeCardDetail()
+    showToast('Carta quitada del deck.')
+  }, [closeCardDetail, deckBuilder, dispatch, selectedDeckCopy, selectedDeckInstanceId, showToast])
+
+  const handleAddSelectedDeckCopy = useCallback(() => {
+    if (selectedDeckCopy) {
+      handleAddSearchResultToZone(selectedDeckCopy.cardId, selectedDeckCopy.zone, { silent: true })
+    }
+  }, [handleAddSearchResultToZone, selectedDeckCopy])
 
   const handleClearDeckZone = useCallback(
     (zone: DeckZone) => {
@@ -507,6 +560,7 @@ export function useDeckModeController() {
       activeDragSearchCardId,
       selectedDetailCard,
       selectedDetailSource,
+      selectedDeckCopy,
       isCardDetailOpen: selectedDetailCard !== null,
       onClearDeckZone: handleClearDeckZone,
       onClearAllDeckZones: handleClearAllDeckZones,
@@ -525,6 +579,8 @@ export function useDeckModeController() {
       onClearSearchFilters: clearSearchFilters,
       onLoadMoreResults: loadMoreResults,
       onCloseCardDetail: closeCardDetail,
+      onRemoveSelectedDeckCopy: handleRemoveSelectedDeckCopy,
+      onAddSelectedDeckCopy: handleAddSelectedDeckCopy,
       genesysPointTotal,
       genesysPointCap: settings.deckFormat === 'genesys' ? GENESYS_POINT_CAP : null,
     },

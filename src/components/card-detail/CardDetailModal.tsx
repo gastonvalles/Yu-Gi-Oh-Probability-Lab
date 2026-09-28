@@ -4,7 +4,7 @@ import type { DeckZone } from '../../app/model'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import type { DeckFormat } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
-import { CardDetail, CardDetailSkeleton } from './CardDetail'
+import { CardDetail, CardDetailSkeleton, type DeckCopyActions } from './CardDetail'
 
 type CardDetailLayoutMode = 'desktop' | 'mobile'
 
@@ -14,6 +14,7 @@ interface CardDetailModalProps {
   isOpen: boolean
   layoutMode?: CardDetailLayoutMode
   showActions?: boolean
+  deckCopy?: DeckCopyActions | null
   onAddToZone: (zone: DeckZone) => boolean
   onClose: () => void
 }
@@ -35,6 +36,7 @@ export function CardDetailModal({
   isOpen,
   layoutMode = 'desktop',
   showActions = true,
+  deckCopy = null,
   onAddToZone,
   onClose,
 }: CardDetailModalProps) {
@@ -95,6 +97,7 @@ export function CardDetailModal({
             deckFormat={deckFormat}
             layoutMode={layoutMode}
             showActions={showActions}
+            deckCopy={deckCopy}
             onAddToZone={onAddToZone}
             onClose={onClose}
           />

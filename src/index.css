@@ -3,6 +3,7 @@
 @import "./styles/ui-controls-and-classification.css";
 @import "./styles/deck-zone-and-shell.css";
 @import "./styles/classic-builder.css";
+@import "./styles/mobile-deck-builder.css";
 
 @theme inline {
   --color-background: var(--background);

@@ -10,7 +10,7 @@ const EMPTY_PREVIEW_GUIDE = {
   step: 'PASO 1',
   title: 'Armá tu deck en el builder',
   description:
-    'Buscá cartas en el buscador, agregalas con tap y reordená la lista arrastrando entre Main, Extra y Side. Mantené presionado para ver o eliminar y tocá una vez la carta para ver el detalle.',
+    'Arrastrá cartas del buscador al deck y reordenalas entre Main, Extra y Side. Clic para ver el detalle y clic derecho para quitar una copia.',
 } as const
 
 interface DeckBuilderClassicPreviewProps {

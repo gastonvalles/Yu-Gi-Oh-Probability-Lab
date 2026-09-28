@@ -1,4 +1,4 @@
-import { useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react'
 
 import { getDeckFormatLabel } from '../../app/deck-format'
 import { getDesktopCompactDeckColumnCount } from '../../app/deck-zone-layout'
@@ -12,10 +12,11 @@ import type { ApiCardSearchResult } from '../../ygoprodeck'
 import type { CardSearchFilters } from '../../app/card-search'
 import { DeckZone } from '../DeckZone'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
-import { SearchPanel } from '../SearchPanel'
+import { DesktopSearchPanel } from '../search/DesktopSearchPanel'
+import { MobileCardSearch } from '../search/MobileCardSearch'
+import type { CardSearchActions, CardSearchViewState } from '../search/search-types'
 import { StepHero } from '../StepHero'
 import { Button } from '../ui/Button'
-import { CloseButton } from '../ui/IconButton'
 import { DeckBuilderClassicPreview } from './DeckBuilderClassicPreview'
 import { DeckImportDrawer } from './DeckImportDrawer'
 
@@ -125,6 +126,7 @@ export function DeckBuilderStep({
     deckBuilder.main.length,
   )
   const totalDeckCardCount = deckBuilder.main.length + deckBuilder.extra.length + deckBuilder.side.length
+  const deckCopyCounts = useMemo(() => countDeckCopiesByCardId(deckBuilder), [deckBuilder])
   const pendingClearZoneCardCount =
     pendingClearZone === 'all' ? totalDeckCardCount : pendingClearZone ? deckBuilder[pendingClearZone].length : 0
   const pendingClearZoneLabel =
@@ -166,39 +168,26 @@ export function DeckBuilderStep({
     setPendingClearZone(null)
   }
 
-  const renderSearchPanel = (options: {
-    layoutMode: 'desktop' | 'mobile'
-    dragEnabled: boolean
-    variant?: 'modern' | 'classic-builder'
-    selectedCardId?: number | null
-  }) => (
-    <SearchPanel
-      layoutMode={options.layoutMode}
-      variant={options.variant}
-      deckFormat={deckFormat}
-      query={query}
-      status={status}
-      results={visibleSearchResults}
-      maxedOutResultIds={maxedOutSearchResultIds}
-      isLoadingMore={isLoadingMore}
-      errorMessage={errorMessage}
-      hasMore={hasMore}
-      rawResultCount={loadedSearchResultCount}
-      activeDragSearchCardId={activeDragSearchCardId}
-      selectedCardId={options.selectedCardId}
-      dragEnabled={options.dragEnabled}
-      filters={searchFilters}
-      activeFilterCount={activeFilterCount}
-      hasSearchCriteria={hasSearchCriteria}
-      onQueryChange={onQueryChange}
-      onFilterChange={onSearchFiltersChange}
-      onClearFilters={onClearSearchFilters}
-      onLoadMore={onLoadMoreResults}
-      onResultClick={options.layoutMode === 'mobile' ? onAddSearchResultToDefaultZone : onSearchResultClick}
-      onResultLongPress={options.layoutMode === 'mobile' ? onSearchResultClick : undefined}
-      onSearchCardPointerDown={handleSearchCardPointerDown}
-    />
-  )
+  const search: CardSearchViewState = {
+    deckFormat,
+    query,
+    status,
+    results: visibleSearchResults,
+    rawResultCount: loadedSearchResultCount,
+    errorMessage,
+    hasMore,
+    isLoadingMore,
+    filters: searchFilters,
+    activeFilterCount,
+    hasSearchCriteria,
+    maxedOutResultIds: maxedOutSearchResultIds,
+  }
+  const searchActions: CardSearchActions = {
+    onQueryChange,
+    onFilterChange: onSearchFiltersChange,
+    onClearFilters: onClearSearchFilters,
+    onLoadMore: onLoadMoreResults,
+  }
 
   const previewCard = selectedDetailCard
   const selectedCardId = selectedDetailCard?.ygoprodeckId ?? null
@@ -318,12 +307,14 @@ export function DeckBuilderStep({
           </article>
 
           <aside className="classic-builder-search-column">
-            {renderSearchPanel({
-              layoutMode: 'desktop',
-              dragEnabled: true,
-              variant: 'classic-builder',
-              selectedCardId,
-            })}
+            <DesktopSearchPanel
+              search={search}
+              actions={searchActions}
+              activeDragSearchCardId={activeDragSearchCardId}
+              selectedCardId={selectedCardId}
+              onResultClick={onSearchResultClick}
+              onResultPointerDown={handleSearchCardPointerDown}
+            />
           </aside>
         </div>
 
@@ -362,7 +353,7 @@ export function DeckBuilderStep({
       <StepHero
         step="Paso 1"
         title="Armá tu deck en el builder"
-        description="Buscá cartas en el buscador, agregalas con tap y reordená la lista arrastrando entre Main, Extra y Side. Mantené presionado para ver eliminar y tocá una vez la carta para ver el detalle."
+        description="Agregá cartas desde el buscador. Tocá una carta del deck para ver el detalle y sumar o quitar copias; para moverla entre Main, Extra y Side, mantenela presionada y arrastrala."
         side={
           <>
             <span className="app-soft text-[0.68rem] uppercase tracking-widest">Nombre del deck</span>
@@ -445,9 +436,9 @@ export function DeckBuilderStep({
       <div className="grid items-start gap-3">
         <article className="surface-panel-soft self-start w-full min-h-0 p-2.5">
           <div className="grid gap-2.5">
-            <div className="min-[1101px]:hidden">
-              <Button variant="primary" size="md" fullWidth onClick={() => setMobileSearchOpen(true)}>
-                Buscar cartas
+            <div className="sticky top-2 z-20 min-[1101px]:hidden">
+              <Button variant="primary" size="lg" fullWidth onClick={() => setMobileSearchOpen(true)}>
+                + Buscar y agregar cartas
               </Button>
             </div>
 
@@ -476,22 +467,19 @@ export function DeckBuilderStep({
       </div>
 
       {mobileSearchOpen ? (
-        <div className="fixed inset-0 z-140 h-dvh w-full overflow-x-hidden bg-[rgb(var(--background-rgb)/0.82)] min-[1101px]:hidden">
-          <div className="h-full max-w-screen w-full p-0">
-            <div className="surface-panel flex h-full max-w-screen w-full flex-col overflow-hidden p-2.5">
-              <div className="flex items-center justify-between gap-2 border-b border-(--border-subtle) pb-2">
-                <strong className="text-[0.95rem]">Buscar cartas</strong>
-                <CloseButton size="sm" aria-label="Cerrar búsqueda" onClick={() => setMobileSearchOpen(false)} />
-              </div>
-              <div className="mt-2 min-h-0 flex-1 overflow-hidden">
-                {renderSearchPanel({
-                  layoutMode: 'mobile',
-                  dragEnabled: false,
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
+        <MobileCardSearch
+          search={search}
+          actions={searchActions}
+          deckCopyCounts={deckCopyCounts}
+          zoneCounts={{
+            main: deckBuilder.main.length,
+            extra: deckBuilder.extra.length,
+            side: deckBuilder.side.length,
+          }}
+          onAddCard={onAddSearchResultToDefaultZone}
+          onOpenDetail={onSearchResultClick}
+          onClose={() => setMobileSearchOpen(false)}
+        />
       ) : null}
 
       <DeckImportDrawer
@@ -523,4 +511,14 @@ export function DeckBuilderStep({
 
 function getDeckZoneLabel(zone: DeckZoneType): string {
   return zone === 'main' ? 'Main Deck' : zone === 'extra' ? 'Extra Deck' : 'Side Deck'
+}
+
+function countDeckCopiesByCardId(deckBuilder: DeckBuilderState): Map<number, number> {
+  const counts = new Map<number, number>()
+
+  for (const card of [...deckBuilder.main, ...deckBuilder.extra, ...deckBuilder.side]) {
+    counts.set(card.apiCard.ygoprodeckId, (counts.get(card.apiCard.ygoprodeckId) ?? 0) + 1)
+  }
+
+  return counts
 }

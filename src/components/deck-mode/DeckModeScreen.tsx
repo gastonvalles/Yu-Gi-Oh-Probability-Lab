@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import type { DeckZone } from '../../app/model'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { countUnclassifiedCards, countCardsMissingOrigin, countCardsMissingRoles, countCardsPendingReview, isClassificationStepComplete } from '../../app/role-step'
 import { curatePatterns } from '../../app/pattern-curation'
@@ -75,6 +76,12 @@ function shouldReduceMotion(): boolean {
     typeof window.matchMedia === 'function' &&
     window.matchMedia(REDUCED_MOTION_MEDIA_QUERY).matches
   )
+}
+
+const DECK_ZONE_LABELS: Record<DeckZone, string> = {
+  main: 'Main Deck',
+  extra: 'Extra Deck',
+  side: 'Side Deck',
 }
 
 export function DeckModeScreen() {
@@ -273,6 +280,17 @@ export function DeckModeScreen() {
           isOpen={controller.deckBuilderStep.isCardDetailOpen}
           layoutMode="mobile"
           showActions={controller.deckBuilderStep.selectedDetailSource !== 'deck'}
+          deckCopy={
+            controller.deckBuilderStep.selectedDeckCopy
+              ? {
+                  zoneLabel: DECK_ZONE_LABELS[controller.deckBuilderStep.selectedDeckCopy.zone],
+                  copies: controller.deckBuilderStep.selectedDeckCopy.copies,
+                  canAddCopy: controller.deckBuilderStep.selectedDeckCopy.canAddCopy,
+                  onRemoveCopy: controller.deckBuilderStep.onRemoveSelectedDeckCopy,
+                  onAddCopy: controller.deckBuilderStep.onAddSelectedDeckCopy,
+                }
+              : null
+          }
           onAddToZone={(zone) =>
             controller.deckBuilderStep.selectedDetailCard
               ? controller.deckBuilderStep.onAddSearchResultToZone(
