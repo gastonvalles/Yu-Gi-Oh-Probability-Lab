@@ -11,7 +11,7 @@ import { ProbabilityPanel } from '../ProbabilityPanel'
 import { PracticeSection } from '../probability/PracticeSection'
 import { ComparisonScreen } from '../comparison/ComparisonScreen'
 import { DeckBuilderStep } from './DeckBuilderStep'
-import { CloseButton } from '../ui/IconButton'
+import { Modal } from '../ui/Modal'
 import { DeckModeDragOverlay } from './DeckModeDragOverlay'
 import {
   buildDeckWorkflowNavigationItems,
@@ -354,44 +354,25 @@ function PracticeFab({
         </svg>
       </button>
 
-      {isOpen ? (
-        <div className="fixed inset-0 z-140 grid place-items-center bg-[rgb(var(--background-rgb)/0.76)] px-3 py-4">
-          <button
-            type="button"
-            aria-label="Cerrar práctica"
-            className="absolute inset-0 h-full w-full cursor-default"
-            onClick={onClose}
-          />
-
-          <div className="surface-panel app-dialog-enter relative grid h-[min(88vh,820px)] w-full max-w-312 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0">
-            <div className="flex min-w-0 items-center justify-between gap-2 border-b border-(--border-subtle) px-4 py-3">
-              <div className="grid min-w-0 gap-0.5">
-                <strong className="text-[0.98rem] text-(--text-main)">Práctica</strong>
-                <span className="app-muted text-[0.74rem]">Proba manos sin salir de lo que estás haciendo.</span>
-              </div>
-              <CloseButton
-                size="sm"
-                aria-label="Cerrar práctica"
-                onClick={onClose}
-              />
-            </div>
-
-            <div className="min-h-0 min-w-0 overflow-x-hidden overflow-y-auto p-4">
-              <PracticeSection
-                handSize={handSize}
-                derivedMainCards={derivedMainCards}
-                patterns={activePatterns}
-                hasCompletedClassification={hasCompletedClassification}
-                missingOriginCount={missingOriginCount}
-                missingRoleCount={missingRoleCount}
-                pendingReviewCount={pendingReviewCount}
-                reviewPendingPatternCount={reviewPendingPatternCount}
-                onRedraw={() => {}}
-              />
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        size="xl"
+        title="Práctica"
+        subtitle="Probá manos sin salir de lo que estás haciendo."
+      >
+        <PracticeSection
+          handSize={handSize}
+          derivedMainCards={derivedMainCards}
+          patterns={activePatterns}
+          hasCompletedClassification={hasCompletedClassification}
+          missingOriginCount={missingOriginCount}
+          missingRoleCount={missingRoleCount}
+          pendingReviewCount={pendingReviewCount}
+          reviewPendingPatternCount={reviewPendingPatternCount}
+          onRedraw={() => {}}
+        />
+      </Modal>
     </>
   )
 }

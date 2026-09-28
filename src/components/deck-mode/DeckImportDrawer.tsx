@@ -6,6 +6,7 @@ import {
   type DragEvent as ReactDragEvent,
   type ReactNode,
 } from 'react'
+import { createPortal } from 'react-dom'
 
 import {
   buildDeckImportPreview,
@@ -30,6 +31,7 @@ import type { DeckFormat } from '../../types'
 import { loadCardCatalog } from '../../ygoprodeck'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { Button } from '../ui/Button'
+import { CopiesBadge } from '../ui/CopiesBadge'
 import { CloseButton } from '../ui/IconButton'
 import { Skeleton } from '../ui/Skeleton'
 
@@ -441,7 +443,8 @@ export function DeckImportDrawer({
     void processFile(file)
   }
 
-  return (
+  // Se monta en <body>: dentro de un paso animado (con transform) quedaría corrido.
+  return createPortal(
     <>
       <div className="fixed inset-0 z-150">
         <button
@@ -785,7 +788,8 @@ export function DeckImportDrawer({
         onCancel={() => setIsReplaceConfirmOpen(false)}
         onConfirm={applyImport}
       />
-    </>
+    </>,
+    document.body,
   )
 }
 
@@ -861,11 +865,13 @@ function ResolvedEntryCard({ entry }: { entry: ResolvedImportedDeckEntry }) {
   return (
     <article className="surface-panel-soft flex items-center justify-between gap-3 px-2.5 py-1.5">
       <strong className="min-w-0 truncate text-[0.8rem] text-(--text-main)">{entry.card.name}</strong>
-      <span className={isPartial ? 'app-chip shrink-0 px-2 py-0.5 text-[0.7rem]' : 'app-chip-accent shrink-0 px-2 py-0.5 text-[0.7rem]'}>
-        {isPartial
-          ? `${formatInteger(entry.appliedCount)} / ${formatInteger(entry.count)}`
-          : `${formatInteger(entry.count)}x`}
-      </span>
+      {isPartial ? (
+        <span className="app-chip shrink-0 px-2 py-0.5 text-[0.7rem]">
+          {formatInteger(entry.appliedCount)} / {formatInteger(entry.count)}
+        </span>
+      ) : (
+        <CopiesBadge copies={entry.count} />
+      )}
     </article>
   )
 }
@@ -879,7 +885,7 @@ function SimpleEntryCard({
   return (
     <article className="surface-panel-soft flex items-center justify-between gap-3 px-2.5 py-1.5">
       <strong className="min-w-0 truncate text-[0.8rem] text-(--text-main)">{entry.name}</strong>
-      <span className="app-chip shrink-0 px-2 py-0.5 text-[0.7rem]">{formatInteger(entry.count)}x</span>
+      <CopiesBadge copies={entry.count} />
     </article>
   )
 }
@@ -891,7 +897,7 @@ function ConflictEntryCard({ entry }: { entry: DeckImportConflict }) {
         <strong className="truncate text-[0.8rem] text-(--text-main)">{entry.name}</strong>
         <p className="app-muted m-0 text-[0.68rem] leading-[1.12]">{entry.reason}</p>
       </div>
-      <span className="app-chip shrink-0 px-2 py-0.5 text-[0.7rem]">{formatInteger(entry.count)}x</span>
+      <CopiesBadge copies={entry.count} />
     </article>
   )
 }

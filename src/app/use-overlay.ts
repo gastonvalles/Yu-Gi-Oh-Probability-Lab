@@ -31,7 +31,10 @@ export function useBodyScrollLock(active: boolean): void {
   }, [active])
 }
 
-/** Ejecuta `onEscape` al presionar Escape mientras `active` sea true. */
+// Pila de overlays abiertos (modales y paneles): Escape cierra sólo el de arriba.
+const openOverlays: symbol[] = []
+
+/** Ejecuta `onEscape` al presionar Escape si este overlay es el último abierto. */
 export function useEscapeKey(onEscape: () => void, active = true): void {
   const handleEscape = useEffectEvent(onEscape)
 
@@ -40,13 +43,19 @@ export function useEscapeKey(onEscape: () => void, active = true): void {
       return
     }
 
+    const overlayId = Symbol('overlay')
+    openOverlays.push(overlayId)
+
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key === 'Escape' && openOverlays[openOverlays.length - 1] === overlayId) {
         handleEscape()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      openOverlays.splice(openOverlays.indexOf(overlayId), 1)
+    }
   }, [active])
 }

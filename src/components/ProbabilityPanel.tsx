@@ -219,11 +219,11 @@ export function ProbabilityPanel({
             <LabFailureBreakdown result={currentResult} />
           </div>
           <div className="lab-column">
-            <LabSuggestions state={suggestions} />
             <LabRoleDistribution
               distributions={lab.roleDistributions[activeTurnView]}
               onOpenRole={(role) => setKpiModalRole(ROLE_TO_KPI[role])}
             />
+            <LabSuggestions state={suggestions} />
           </div>
           <LabRuleList
             groups={ruleGroups}

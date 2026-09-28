@@ -1,5 +1,6 @@
 import type { DeckSuggestion } from '../../app/deck-suggestions'
 import { formatPercentPoints, formatShortPercent } from '../../app/utils'
+import { InfoTip } from '../ui/InfoTip'
 import { Skeleton } from '../ui/Skeleton'
 import { LabSection } from './LabSection'
 import type { DeckSuggestionsState } from './use-deck-suggestions'
@@ -13,6 +14,25 @@ export function LabSuggestions({ state }: { state: DeckSuggestionsState }) {
       title="Cómo subir el %"
       summary={best ? `Hasta ${formatPercentPoints(best.delta)}` : state.status === 'loading' ? 'Simulando…' : undefined}
       className="lab-suggestions"
+      actions={
+        <InfoTip label="Cómo se eligen las sugerencias">
+          <span>
+            <strong>Qué prueba:</strong> sacar o sumar 1 copia de cada carta, y los mejores cambios de una carta por
+            otra, respetando el límite de copias de tu formato.
+          </span>
+          <span>
+            <strong>Qué mide:</strong> cuánto cambia el % de manos limpias promediando ir 1º (5 cartas) y 2º (6), con
+            tus reglas activas. Si el deck tiene 40, sacar una carta equivale a cambiarla por una que no esté en tus reglas.
+          </span>
+          <span>
+            <strong>Qué no mide:</strong> el poder de cada carta. Una handtrap o un rompe campo pueden valer más de lo
+            que muestra el %: tomalo como una pista, no como una orden.
+          </span>
+          <span>
+            <strong>Cartas clave:</strong> las que más bajan el % si cambiás una copia por una carta neutra.
+          </span>
+        </InfoTip>
+      }
     >
       {!report ? (
         <div className="grid gap-2" aria-label="Simulando cambios" aria-busy="true">
@@ -58,10 +78,6 @@ export function LabSuggestions({ state }: { state: DeckSuggestionsState }) {
             </div>
           ) : null}
 
-          <p className="lab-footnote">
-            Simula cambios de a una copia y mide el promedio 1º/2º según tus reglas. No evalúa el poder de cada
-            carta: una handtrap o un rompe campo pueden valer más de lo que muestra el %.
-          </p>
         </>
       )}
     </LabSection>
