@@ -35,12 +35,6 @@ export interface PatternPreset {
   describeProbability: (probability: number) => string
 }
 
-export const PROBABILITY_MODEL_VISIBILITY = {
-  maxEntriesPerGroup: 3,
-  riskThreshold: 0.1,
-  strengthThreshold: 0.85,
-} as const
-
 export const QUICK_OVERVIEW_PRESET_IDS = [
   // 3 salidas
   'starter_opening',

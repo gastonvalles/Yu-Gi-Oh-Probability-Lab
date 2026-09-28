@@ -754,13 +754,9 @@ export function DeckRolesPanel({
   }, [activeFilter, defaultFilter, overviewItems])
 
   useEffect(() => {
+    // Aunque la carta salga del filtro al clasificarla (p. ej. "Sin completar"),
+    // se queda seleccionada: el usuario avanza cuando termina, con "Siguiente".
     if (selectedCardId && sortedCards.some((card) => card.id === selectedCardId)) {
-      // Card still exists in deck — check if it left the active filter
-      if (!filteredCards.some((card) => card.id === selectedCardId) && filteredCards.length > 0) {
-        // Card left the filter (e.g., was classified while viewing "Sin completar")
-        // Auto-advance to the first card still in the filter
-        setSelectedCardId(filteredCards[0]?.id ?? null)
-      }
       return
     }
 

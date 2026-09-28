@@ -119,6 +119,14 @@ export function formatPercent(value: number): string {
   return `${(value * 100).toFixed(2)}%`
 }
 
+export function formatShortPercent(value: number): string {
+  return `${(value * 100).toFixed(1)}%`
+}
+
+export function formatPercentPoints(delta: number): string {
+  return `${delta > 0 ? '+' : ''}${(delta * 100).toFixed(1)} pp`
+}
+
 export function formatInteger(value: number): string {
   return new Intl.NumberFormat('es-ES').format(value)
 }

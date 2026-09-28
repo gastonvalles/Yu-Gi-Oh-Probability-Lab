@@ -1,11 +1,10 @@
 import type {
-  CalculationSummary,
   HandPattern,
   PatternKind,
   PatternProbability,
   TurnContext,
 } from '../../types'
-import { PROBABILITY_MODEL_VISIBILITY, type PatternPreset } from '../../app/pattern-presets'
+import type { PatternPreset } from '../../app/pattern-presets'
 import {
   getPatternDefinitionKey,
   normalizePatternName,
@@ -29,26 +28,9 @@ export interface ProbabilityCausalEntry {
   turnContext: TurnContext
 }
 
-export interface ProbabilityInsight {
-  description: string
-  emphasis: 'primary' | 'secondary'
-  kind: PatternKind
-  patternId: string | null
-  probability: number
-  sourceLabel: string
-  title: string
-}
-
-export interface ProbabilityCheckPipeline {
-  allChecks: ProbabilityCausalEntry[]
-  detailOpeningEntries: ProbabilityCausalEntry[]
-  detailProblemEntries: ProbabilityCausalEntry[]
-  problemEntries: ProbabilityCausalEntry[]
-  relevantChecks: ProbabilityCausalEntry[]
-  risks: ProbabilityInsight[]
-  strengths: ProbabilityInsight[]
-  visibleChecks: ProbabilityCausalEntry[]
-  openingEntries: ProbabilityCausalEntry[]
+export interface RuleEntries {
+  openings: ProbabilityCausalEntry[]
+  problems: ProbabilityCausalEntry[]
 }
 
 export interface KpiContextualLabel {
@@ -138,57 +120,32 @@ export function buildDeterministicCheckSet(patterns: HandPattern[]): HandPattern
     })
 }
 
-export function buildProbabilityCheckPipeline({
+export function buildRuleEntries({
   allChecks,
   availablePresets,
   derivedMainCards,
-  summary,
+  patternResults,
 }: {
   allChecks: HandPattern[]
   availablePresets: PatternPreset[]
   derivedMainCards: CardEntry[]
-  summary: CalculationSummary | null
-}): ProbabilityCheckPipeline {
+  patternResults: PatternProbability[]
+}): RuleEntries {
   const cardById = new Map(derivedMainCards.map((card) => [card.id, card]))
   const presetByDefinitionKey = new Map(
     availablePresets.map((preset) => [getPatternDefinitionKey(preset.pattern), preset]),
   )
-  const resultById = new Map(summary?.patternResults.map((result) => [result.patternId, result]) ?? [])
-
-  const allEntries = allChecks.map((pattern) => {
+  const resultById = new Map(patternResults.map((result) => [result.patternId, result]))
+  const entries = allChecks.map((pattern) => {
     const preset = presetByDefinitionKey.get(getPatternDefinitionKey(pattern)) ?? null
     const preview = buildPatternPreview(pattern, cardById)
-    const result = resultById.get(pattern.id) ?? null
 
-    return buildProbabilityEntry(pattern, preview.summary, result, preset)
+    return buildProbabilityEntry(pattern, preview.summary, resultById.get(pattern.id) ?? null, preset)
   })
 
-  const rankedOpeningEntries = rankProbabilityEntries(
-    allEntries.filter((entry) => entry.kind === 'opening'),
-  )
-  const rankedProblemEntries = rankProbabilityEntries(
-    allEntries.filter((entry) => entry.kind === 'problem'),
-  )
-  const rankedAllChecks = [...rankedOpeningEntries, ...rankedProblemEntries]
-  const relevantChecks = rankedAllChecks.filter((entry) => entry.possible && entry.probability > 0)
-  const relevantOpeningEntries = relevantChecks.filter((entry) => entry.kind === 'opening')
-  const relevantProblemEntries = relevantChecks.filter((entry) => entry.kind === 'problem')
-  const openingEntries = selectVisibleEntries(relevantOpeningEntries)
-  const problemEntries = selectVisibleEntries(relevantProblemEntries)
-  const visibleChecks = [...openingEntries, ...problemEntries]
-  const strengths = buildEntryInsights(openingEntries)
-  const risks = buildEntryInsights(problemEntries)
-
   return {
-    allChecks: rankedAllChecks,
-    detailOpeningEntries: rankedOpeningEntries,
-    detailProblemEntries: rankedProblemEntries,
-    openingEntries,
-    problemEntries,
-    relevantChecks,
-    risks,
-    strengths,
-    visibleChecks,
+    openings: rankProbabilityEntries(entries.filter((entry) => entry.kind === 'opening')),
+    problems: rankProbabilityEntries(entries.filter((entry) => entry.kind === 'problem')),
   }
 }
 
@@ -246,26 +203,6 @@ function rankProbabilityEntries(entries: ProbabilityCausalEntry[]): ProbabilityC
   })
 }
 
-function selectVisibleEntries(
-  entries: ProbabilityCausalEntry[],
-): ProbabilityCausalEntry[] {
-  return [...entries]
-    .sort(compareVisibleEntriesByImpact)
-    .slice(0, PROBABILITY_MODEL_VISIBILITY.maxEntriesPerGroup)
-}
-
-function buildEntryInsights(entries: ProbabilityCausalEntry[]): ProbabilityInsight[] {
-  return entries.map((entry, index) => ({
-    description: entry.description,
-    emphasis: index === 0 ? 'primary' : 'secondary',
-    kind: entry.kind,
-    patternId: entry.patternId,
-    probability: entry.probability,
-    sourceLabel: entry.technicalSubtitle,
-    title: entry.name,
-  }))
-}
-
 function buildDefaultEntryDescription(
   kind: PatternKind,
   name: string,
@@ -288,21 +225,6 @@ function getOpeningPriority(entry: ProbabilityCausalEntry): number {
   }
 
   return OPENING_PRIORITY_BY_PRESET_ID[entry.presetId] ?? Number.MAX_SAFE_INTEGER
-}
-
-function compareVisibleEntriesByImpact(
-  left: ProbabilityCausalEntry,
-  right: ProbabilityCausalEntry,
-): number {
-  if (left.probability !== right.probability) {
-    return right.probability - left.probability
-  }
-
-  if (left.isCore !== right.isCore) {
-    return left.isCore ? -1 : 1
-  }
-
-  return left.name.localeCompare(right.name)
 }
 
 function comparePatternsDeterministically(left: HandPattern, right: HandPattern): number {
