@@ -642,7 +642,16 @@ export function useDeckPointerDrag({
         }
       }
 
+      // Android abre el menú nativo de la imagen al mantener apretado (~500 ms) y eso
+      // cancela el arrastre: se bloquea mientras dure la sesión táctil.
+      const blockContextMenu = (menuEvent: Event) => {
+        if (pointerDragSessionRef.current?.isTouch) {
+          menuEvent.preventDefault()
+        }
+      }
+
       window.addEventListener('pointermove', handlePointerMove, { passive: false })
+      window.addEventListener('contextmenu', blockContextMenu)
       window.addEventListener('pointerup', handlePointerEnd)
       window.addEventListener('pointercancel', handlePointerEnd)
       window.addEventListener('blur', handleWindowBlur)
@@ -651,6 +660,7 @@ export function useDeckPointerDrag({
 
       pointerDragCleanupRef.current = () => {
         window.removeEventListener('pointermove', handlePointerMove)
+        window.removeEventListener('contextmenu', blockContextMenu)
         window.removeEventListener('pointerup', handlePointerEnd)
         window.removeEventListener('pointercancel', handlePointerEnd)
         window.removeEventListener('blur', handleWindowBlur)

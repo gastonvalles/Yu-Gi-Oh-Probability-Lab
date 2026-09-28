@@ -1,5 +1,6 @@
 import type { PatternKind } from '../../../types'
 import type { PatternEditorActions } from '../pattern-editor-actions'
+import { ChoiceCards } from './ChoiceCards'
 
 interface KindToggleProps {
   patternId: string
@@ -7,39 +8,19 @@ interface KindToggleProps {
   actions: PatternEditorActions
 }
 
-export function KindToggle({ patternId, currentKind, actions }: KindToggleProps) {
-  const isOpening = currentKind === 'opening'
+const KIND_OPTIONS = [
+  { value: 'opening', label: 'Salida', description: 'Si se cumple, la mano puede arrancar.' },
+  { value: 'problem', label: 'Problema', description: 'Si se cumple, la mano se frena aunque tenga salida.' },
+] as const
 
+export function KindToggle({ patternId, currentKind, actions }: KindToggleProps) {
   return (
-    <div className="inline-flex overflow-hidden rounded-md" role="radiogroup" aria-label="Tipo de regla">
-      <button
-        type="button"
-        role="radio"
-        aria-checked={isOpening}
-        className={[
-          'px-3 py-1.5 text-[0.8rem] font-medium transition-colors',
-          isOpening
-            ? 'bg-[rgb(var(--success-rgb)/0.18)] text-accent'
-            : 'surface-panel-soft text-(--text-muted) hover:text-(--text-main)',
-        ].join(' ')}
-        onClick={() => actions.setPatternCategory(patternId, 'opening')}
-      >
-        Salida
-      </button>
-      <button
-        type="button"
-        role="radio"
-        aria-checked={!isOpening}
-        className={[
-          'px-3 py-1.5 text-[0.8rem] font-medium transition-colors',
-          !isOpening
-            ? 'bg-[rgb(var(--danger-rgb)/0.18)] text-destructive'
-            : 'surface-panel-soft text-(--text-muted) hover:text-(--text-main)',
-        ].join(' ')}
-        onClick={() => actions.setPatternCategory(patternId, 'problem')}
-      >
-        Problema
-      </button>
-    </div>
+    <ChoiceCards
+      label="Tipo de regla"
+      value={currentKind}
+      options={KIND_OPTIONS}
+      tone={(kind) => (kind === 'opening' ? 'positive' : 'negative')}
+      onChange={(kind) => actions.setPatternCategory(patternId, kind)}
+    />
   )
 }

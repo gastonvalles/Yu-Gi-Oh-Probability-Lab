@@ -45,6 +45,7 @@ export function toPortableConfig(state: AppState): PortableConfig {
     deckFormat: state.deckFormat,
     patternsSeeded: state.patternsSeeded,
     patternsSeedVersion: state.patternsSeedVersion,
+    disabledGenericRuleIds: [...state.disabledGenericRuleIds],
     deckBuilder: {
       deckName: state.deckBuilder.deckName,
       main: state.deckBuilder.main.map((card) => ({
@@ -170,6 +171,9 @@ export function fromPortableConfig(value: unknown): AppState {
     deckFormat,
     patternsSeeded: value.patternsSeeded === true || patternsSeedVersion > 0 || patterns.length > 0,
     patternsSeedVersion,
+    disabledGenericRuleIds: Array.isArray(value.disabledGenericRuleIds)
+      ? value.disabledGenericRuleIds.filter((ruleId): ruleId is string => typeof ruleId === 'string')
+      : [],
     deckBuilder,
     patterns,
   }

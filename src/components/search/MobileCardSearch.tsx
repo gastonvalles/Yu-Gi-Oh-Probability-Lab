@@ -322,8 +322,8 @@ function MobileResultRow({
           ) : null}
         </span>
         <span className="grid min-w-0 gap-0.5 text-left">
-          <strong className="text-[0.9rem] leading-tight wrap-break-word text-(--text-main)">{card.name}</strong>
-          <span className="text-[0.76rem] leading-tight wrap-break-word text-(--text-muted)">
+          <strong className="text-[0.9rem] leading-tight wrap-anywhere text-(--text-main)">{card.name}</strong>
+          <span className="text-[0.76rem] leading-tight wrap-anywhere text-(--text-muted)">
             {buildCompactSearchDescription(card)}
           </span>
           {formatLimitLabel ? <span className="text-[0.72rem] text-(--text-soft)">{formatLimitLabel}</span> : null}

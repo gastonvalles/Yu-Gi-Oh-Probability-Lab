@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { countUnclassifiedCards, countCardsMissingOrigin, countCardsMissingRoles, countCardsPendingReview, isClassificationStepComplete } from '../../app/role-step'
 import { curatePatterns } from '../../app/pattern-curation'
+import { buildActiveRuleSet } from '../../app/pattern-presets'
 import { CardDetailModal } from '../card-detail/CardDetailModal'
 import { DeckRolesPanel } from '../DeckRolesPanel'
 import { ExportDeckPanel } from '../ExportDeckPanel'
@@ -295,6 +296,7 @@ export function DeckModeScreen() {
           handSize={controller.probability.handSize}
           derivedMainCards={controller.probability.derivedMainCards}
           patterns={controller.probability.patterns}
+          disabledGenericRuleIds={controller.probability.disabledGenericRuleIds}
           hasCompletedClassification={hasCompletedRoleStep}
         />
       ) : null}
@@ -312,6 +314,7 @@ function PracticeFab({
   handSize,
   derivedMainCards,
   patterns,
+  disabledGenericRuleIds,
   hasCompletedClassification,
 }: {
   isOpen: boolean
@@ -320,11 +323,12 @@ function PracticeFab({
   handSize: number
   derivedMainCards: import('../../types').CardEntry[]
   patterns: import('../../types').HandPattern[]
+  disabledGenericRuleIds: string[]
   hasCompletedClassification: boolean
 }) {
   const activePatterns = useMemo(
-    () => curatePatterns(patterns, derivedMainCards, { includeDefaults: false }),
-    [patterns, derivedMainCards],
+    () => buildActiveRuleSet(derivedMainCards, curatePatterns(patterns, derivedMainCards), disabledGenericRuleIds),
+    [patterns, derivedMainCards, disabledGenericRuleIds],
   )
   const missingOriginCount = useMemo(() => countCardsMissingOrigin(derivedMainCards), [derivedMainCards])
   const missingRoleCount = useMemo(() => countCardsMissingRoles(derivedMainCards), [derivedMainCards])

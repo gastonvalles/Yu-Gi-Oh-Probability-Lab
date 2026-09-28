@@ -33,7 +33,7 @@ export function PatternNameInput({
 
   return (
     <label className="grid gap-1">
-      <span className="app-muted text-[0.68rem] uppercase tracking-widest">Nombre</span>
+      <span className="sr-only">Nombre</span>
       <input
         type="text"
         value={localName}

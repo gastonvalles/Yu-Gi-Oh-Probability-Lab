@@ -34,6 +34,7 @@ import { buildDerivedDeckGroups } from '../../app/deck-groups'
 import { GENESYS_POINT_CAP, calculateGenesysDeckPointTotal } from '../../app/genesys-format'
 import { exportDeckAssets } from '../../app/deck-image-export'
 import { type AppState, type DeckCardInstance, type DeckZone } from '../../app/model'
+import { setGenericRuleEnabled } from '../../app/patterns-slice'
 import { setDeckFormat } from '../../app/settings-slice'
 import type { RootState } from '../../app/store'
 import { useAppDispatch, useAppSelector } from '../../app/store-hooks'
@@ -48,7 +49,8 @@ import type { CardOrigin, CardRole } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import type { DeckCopyActions } from '../card-detail/DeckCopyControls'
 
-const DEFAULT_PATTERNS_VERSION = 10
+// v11: las reglas del sistema dejan de copiarse a las reglas propias.
+const DEFAULT_PATTERNS_VERSION = 11
 
 const DECK_ZONE_LABELS: Record<DeckZone, string> = {
   main: 'Main Deck',
@@ -72,10 +74,12 @@ export function useDeckModeController() {
       patternsSeeded: patternsState.patternsSeeded,
       patternsSeedVersion: patternsState.patternsSeedVersion,
       patterns: patternsState.patterns,
+      disabledGenericRuleIds: patternsState.disabledGenericRuleIds,
       deckBuilder,
     }),
     [
       deckBuilder,
+      patternsState.disabledGenericRuleIds,
       patternsState.patterns,
       patternsState.patternsSeedVersion,
       patternsState.patternsSeeded,
@@ -245,6 +249,11 @@ export function useDeckModeController() {
     defaultMonsterType,
     derivedMainCards,
   })
+
+  const handleSetGenericRuleEnabled = useCallback(
+    (ruleId: string, enabled: boolean) => dispatch(setGenericRuleEnabled({ ruleId, enabled })),
+    [dispatch],
+  )
 
   usePatternMaintenance({
     defaultPatternsVersion: DEFAULT_PATTERNS_VERSION,
@@ -624,6 +633,8 @@ export function useDeckModeController() {
       handSize: settings.handSize,
       deckFormat: settings.deckFormat,
       patterns: patternsState.patterns,
+      disabledGenericRuleIds: patternsState.disabledGenericRuleIds,
+      onSetGenericRuleEnabled: handleSetGenericRuleEnabled,
       derivedMainCards,
       patternActions,
       isEditingDeck: deckBuilder.isEditingDeck,

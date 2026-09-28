@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import type { DeckCardInstance } from '../app/model'
+import { getSystemRuleId } from '../app/pattern-presets'
 import type { RoleDistributionKey } from '../app/role-distribution'
 import { useToastMessage } from '../app/use-toast-message'
 import { formatShortPercent } from '../app/utils'
@@ -10,6 +11,7 @@ import type { KpiRole } from './comparison/kpi-detail-helpers'
 import { DeckModelStatusBadge } from './DeckModelStatusBadge'
 import { StepHero } from './StepHero'
 import { ConfirmDialog } from './probability/ConfirmDialog'
+import { LabDisclaimerDialog, useLabDisclaimer } from './probability/LabDisclaimerDialog'
 import { LabFailureBreakdown } from './probability/LabFailureBreakdown'
 import { LabRoleDistribution } from './probability/LabRoleDistribution'
 import { LabRuleList } from './probability/LabRuleList'
@@ -17,7 +19,8 @@ import { LabScoreCard } from './probability/LabScoreCard'
 import { LabSuggestions } from './probability/LabSuggestions'
 import { PatternEditorDrawer, formatDrawerImpactLabel } from './probability/PatternEditorDrawer'
 import type { PatternEditorActions } from './probability/pattern-editor-actions'
-import { buildRuleEntries } from './probability/probability-lab-helpers'
+import { buildPatternCompactSummary } from './probability/pattern-helpers'
+import { buildRuleEntryGroups } from './probability/probability-lab-helpers'
 import { TurnViewToggle } from './probability/TurnViewToggle'
 import { useDeckSuggestions } from './probability/use-deck-suggestions'
 import { useKpiFeedback, withChangeTracking } from './probability/use-kpi-feedback'
@@ -27,12 +30,14 @@ interface ProbabilityPanelProps {
   handSize: number
   deckFormat: DeckFormat
   patterns: HandPattern[]
+  disabledGenericRuleIds: string[]
+  onSetGenericRuleEnabled: (ruleId: string, enabled: boolean) => void
   derivedMainCards: CardEntry[]
   patternActions: PatternEditorActions
   isEditingDeck: boolean
 }
 
-type DrawerMode = 'custom-create' | 'edit' | 'quick-add'
+type DrawerMode = 'custom-create' | 'edit'
 
 const ROLE_TO_KPI: Record<RoleDistributionKey, KpiRole> = {
   starter: 'starter',
@@ -45,11 +50,13 @@ export function ProbabilityPanel({
   handSize,
   deckFormat,
   patterns,
+  disabledGenericRuleIds,
+  onSetGenericRuleEnabled,
   derivedMainCards,
   patternActions,
   isEditingDeck,
 }: ProbabilityPanelProps) {
-  const lab = useProbabilityLab(derivedMainCards, patterns, handSize, isEditingDeck)
+  const lab = useProbabilityLab(derivedMainCards, patterns, disabledGenericRuleIds, handSize, isEditingDeck)
   const [activeTurnView, setActiveTurnView] = useState<TurnView>('average')
   const [drawerMode, setDrawerMode] = useState<DrawerMode | null>(null)
   const [selectedPatternId, setSelectedPatternId] = useState<string | null>(null)
@@ -57,6 +64,7 @@ export function ProbabilityPanel({
   const [pendingDeletePatternId, setPendingDeletePatternId] = useState<string | null>(null)
   const [kpiModalRole, setKpiModalRole] = useState<KpiRole | null>(null)
   const { showToast } = useToastMessage()
+  const disclaimer = useLabDisclaimer()
 
   const results = lab.computation?.status === 'ok' ? lab.computation.results : null
   const currentResult = results?.[activeTurnView] ?? null
@@ -64,26 +72,20 @@ export function ProbabilityPanel({
   const trackedActions = useMemo(() => withChangeTracking(patternActions, trackChange), [patternActions, trackChange])
   const suggestions = useDeckSuggestions(derivedMainCards, lab.allChecks, handSize, deckFormat, lab.canCalculate)
 
-  const ruleEntries = useMemo(() => {
-    const entries = buildRuleEntries({
-      allChecks: lab.allChecks,
-      availablePresets: lab.availablePresets,
-      derivedMainCards,
-      patternResults: currentResult?.patternResults ?? [],
-    })
-    const appliesToView = (turnContext: string) =>
-      activeTurnView === 'average' || turnContext === 'either' || turnContext === activeTurnView
+  const ruleGroups = useMemo(
+    () =>
+      buildRuleEntryGroups({
+        presets: lab.availablePresets,
+        customPatterns: lab.customPatterns,
+        disabledGenericRuleIds,
+        derivedMainCards,
+        patternResults: currentResult?.patternResults ?? [],
+        view: activeTurnView,
+      }),
+    [activeTurnView, currentResult, derivedMainCards, disabledGenericRuleIds, lab.availablePresets, lab.customPatterns],
+  )
 
-    return {
-      openings: entries.openings.filter((entry) => appliesToView(entry.turnContext)),
-      problems: entries.problems.filter((entry) => appliesToView(entry.turnContext)),
-    }
-  }, [activeTurnView, currentResult, derivedMainCards, lab.allChecks, lab.availablePresets])
-
-  const selectedPattern =
-    patterns.find((pattern) => pattern.id === selectedPatternId) ??
-    lab.allChecks.find((check) => check.id === selectedPatternId) ??
-    null
+  const selectedPattern = patterns.find((pattern) => pattern.id === selectedPatternId) ?? null
   const selectedProbability =
     currentResult?.patternResults.find((result) => result.patternId === selectedPatternId)?.probability ?? null
 
@@ -92,14 +94,13 @@ export function ProbabilityPanel({
     const exists =
       !selectedPatternId ||
       selectedPatternId === pendingCreatedPatternId ||
-      patterns.some((pattern) => pattern.id === selectedPatternId) ||
-      lab.allChecks.some((check) => check.id === selectedPatternId)
+      patterns.some((pattern) => pattern.id === selectedPatternId)
 
     if (!exists) {
       setSelectedPatternId(null)
-      setDrawerMode((current) => (current === 'quick-add' ? current : null))
+      setDrawerMode(null)
     }
-  }, [lab.allChecks, patterns, pendingCreatedPatternId, selectedPatternId])
+  }, [patterns, pendingCreatedPatternId, selectedPatternId])
 
   useEffect(() => {
     const pendingPattern = patterns.find((pattern) => pattern.id === pendingCreatedPatternId)
@@ -122,12 +123,21 @@ export function ProbabilityPanel({
     setDrawerMode('custom-create')
   }
 
+  // Al cerrar: una regla nueva sin condiciones se descarta; si tiene condiciones pero no
+  // nombre, se nombra sola con su resumen para no perder el trabajo.
   const handleCloseDrawer = () => {
     const pendingPattern = patterns.find((pattern) => pattern.id === pendingCreatedPatternId)
 
     if (pendingCreatedPatternId === selectedPatternId && pendingPattern && pendingPattern.name.trim().length === 0) {
-      patternActions.removePattern(pendingPattern.id)
-      showToast('Regla vacía descartada')
+      const hasConditions = pendingPattern.conditions.some((condition) => condition.matcher !== null)
+
+      if (hasConditions) {
+        const cardById = new Map(derivedMainCards.map((card) => [card.id, card]))
+        patternActions.setPatternName(pendingPattern.id, buildPatternCompactSummary(pendingPattern, cardById))
+      } else {
+        patternActions.removePattern(pendingPattern.id)
+        showToast('Regla vacía descartada')
+      }
     }
 
     setPendingCreatedPatternId(null)
@@ -193,6 +203,9 @@ export function ProbabilityPanel({
                 average: `50/50 · ${formatShortPercent(results.average.cleanProbability)}`,
               }}
             />
+            <button type="button" className="lab-help-link" onClick={disclaimer.open}>
+              ¿Cómo leer estos %?
+            </button>
           </div>
 
           <LabScoreCard
@@ -208,16 +221,15 @@ export function ProbabilityPanel({
             onOpenRole={(role) => setKpiModalRole(ROLE_TO_KPI[role])}
           />
           <LabRuleList
-            openings={ruleEntries.openings}
-            problems={ruleEntries.problems}
+            groups={ruleGroups}
             highlightedPatternId={feedback?.patternId ?? null}
             onEditRule={(patternId) => {
               setSelectedPatternId(patternId)
               setDrawerMode('edit')
             }}
-            onAddRecommended={() => {
-              setSelectedPatternId(null)
-              setDrawerMode('quick-add')
+            onToggleGenericRule={(ruleId, enabled) => {
+              trackChange(getSystemRuleId(ruleId))
+              onSetGenericRuleEnabled(ruleId, enabled)
             }}
             onCreateCustom={handleOpenCustomCreate}
           />
@@ -226,19 +238,17 @@ export function ProbabilityPanel({
 
       <PatternEditorDrawer
         actions={trackedActions}
-        availablePresets={lab.availablePresets}
         currentImpactLabel={selectedPattern ? formatDrawerImpactLabel(selectedProbability, selectedPattern.kind) : null}
         derivedMainCards={derivedMainCards}
         drawerMode={drawerMode}
         feedbackLabel={feedback && feedback.patternId === selectedPatternId ? feedback.label : null}
         isPendingCreation={selectedPatternId === pendingCreatedPatternId}
         onClose={handleCloseDrawer}
-        onCreateCustom={handleOpenCustomCreate}
         onRequestDelete={setPendingDeletePatternId}
-        onSelectPreset={(preset) => trackedActions.appendPattern(preset.pattern)}
         pattern={selectedPattern}
-        patterns={patterns}
       />
+
+      <LabDisclaimerDialog isOpen={disclaimer.isOpen} onAcknowledge={disclaimer.acknowledge} />
 
       <ConfirmDialog
         confirmLabel="Eliminar regla"

@@ -128,9 +128,9 @@ function arbPattern(): fc.Arbitrary<HandPattern> {
 describe('QuickTemplates preset application', () => {
   const TEMPLATE_IDS = [
     'starter_opening',
-    'double_brick_problem',
+    'dead_cards_problem',
     'starter_extender_opening',
-    'interaction_opening',
+    'starter_interaction_opening',
   ]
 
   it('Property 10: each template builds a valid pattern with correct structure', () => {
@@ -182,18 +182,16 @@ describe('QuickTemplates preset application', () => {
   it('templates have correct labels and descriptions', () => {
     const expectedLabels: Record<string, string> = {
       starter_opening: 'Salida básica',
+      dead_cards_problem: '2+ cartas muertas',
       starter_extender_opening: 'Salida con seguimiento',
-      starter_protection_opening: 'Salida con interacción',
-      no_starter_problem: 'Mano sin Starter',
-      double_brick_problem: '2+ Bricks en mano',
-      no_interaction_problem: 'Mano sin interacción',
-      triple_non_engine_problem: '3+ Non-engine en mano',
-      extender_without_starter_problem: 'Extender sin Starter',
+      starter_interaction_opening: 'Salida con interacción',
+      starter_boardbreaker_opening: 'Salida que rompe campo',
+      no_answer_second_problem: 'Sin respuesta yendo 2º',
+      non_engine_overload_problem: 'Exceso de non-engine yendo 1º',
     }
 
     for (const [presetId, expectedLabel] of Object.entries(expectedLabels)) {
-      expect(expectedLabel.length).toBeGreaterThan(0)
-      expect(PATTERN_PRESET_DEFINITIONS.some((d) => d.id === presetId)).toBe(true)
+      expect(PATTERN_PRESET_DEFINITIONS.find((d) => d.id === presetId)?.title).toBe(expectedLabel)
     }
   })
 })

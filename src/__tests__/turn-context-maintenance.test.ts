@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import * as fc from 'fast-check'
 import { curatePatterns } from '../app/pattern-curation'
-import { buildDefaultPatterns } from '../app/pattern-defaults'
+import { buildPatternPresets, isLegacySystemRule } from '../app/pattern-presets'
 import type {
   CardEntry,
   CardOrigin,
@@ -111,37 +111,17 @@ function arbLegacyPattern(): fc.Arbitrary<HandPattern> {
 // ---------------------------------------------------------------------------
 
 describe('Turn-context maintenance migration', () => {
-  it('9.5.1: curatePatterns with includeDefaults does not duplicate auto-seed patterns', () => {
-    /** Validates: Requirements 7.6, 9.3 */
-    fc.assert(
-      fc.property(
-        // Simulate the state held by v9 clients: the three auto-seed default
-        // patterns, each already normalized to turnContext === 'either'.
-        fc.constant(null),
-        () => {
-          const cards = makeFixedDeck()
-          const autoSeeds: HandPattern[] = buildDefaultPatterns(cards).map((p) => ({
-            ...p,
-            turnContext: 'either' as TurnContext,
-          }))
+  it('9.5.1: la migración reconoce las copias de reglas del sistema guardadas por versiones anteriores', () => {
+    const cards = makeFixedDeck()
+    const legacyCopies: HandPattern[] = buildPatternPresets(cards).map((preset) => ({
+      ...preset.pattern,
+      id: `legacy-${preset.id}`,
+    }))
+    const renamedLegacy = { ...legacyCopies[0]!, name: 'Mano sin Starter' }
 
-          const baselineCount = autoSeeds.length
-          expect(baselineCount).toBeGreaterThan(0)
-
-          // Maintenance flow when patternsSeedVersion bumps: curate existing
-          // patterns merged with the default set. After normalization, the
-          // existing auto-seeds must match the defaults and dedupe.
-          const result = curatePatterns(autoSeeds, cards, { includeDefaults: true })
-
-          expect(result).toHaveLength(baselineCount)
-          // Every seed's signature should appear exactly once.
-          const names = result.map((p) => p.name)
-          const uniqueNames = new Set(names)
-          expect(uniqueNames.size).toBe(names.length)
-        },
-      ),
-      { numRuns: 5 },
-    )
+    for (const pattern of [...legacyCopies, renamedLegacy]) {
+      expect(isLegacySystemRule(pattern, cards)).toBe(true)
+    }
   })
 
   it('9.5.2: after migration every pattern has a valid turnContext', () => {
@@ -153,7 +133,7 @@ describe('Turn-context maintenance migration', () => {
           const cards = makeFixedDeck()
           // Simulate the migration path: includeDefaults merges the auto-seeds,
           // curation normalizes turnContext for legacy and newly added items.
-          const result = curatePatterns(legacyPatterns, cards, { includeDefaults: true })
+          const result = curatePatterns(legacyPatterns, cards)
 
           for (const pattern of result) {
             expect(['first', 'second', 'either']).toContain(pattern.turnContext)

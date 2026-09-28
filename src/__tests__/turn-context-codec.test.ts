@@ -60,6 +60,7 @@ function makeAppState(patterns: Array<{ name: string; turnContext: TurnContext }
     patternsSeeded: true,
     patternsSeedVersion: 10,
     patterns: patterns.map((p) => buildPattern(p.name, p.turnContext)),
+    disabledGenericRuleIds: [],
     deckBuilder: {
       deckName: 'Test Deck',
       main: [makeDeckCardInstance('inst-1', 'Starter Card')],

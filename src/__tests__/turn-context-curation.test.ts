@@ -164,7 +164,7 @@ describe('Turn-context curation', () => {
         arbPatternsWithJunkTurnContext(),
         (patterns) => {
           const cards = makeFixedDeck()
-          const curated = curatePatterns(patterns, cards, { includeDefaults: false })
+          const curated = curatePatterns(patterns, cards)
           for (const p of curated) {
             expect(['first', 'second', 'either']).toContain(p.turnContext)
           }
@@ -180,8 +180,8 @@ describe('Turn-context curation', () => {
         arbPatternsWithJunkTurnContext(),
         (patterns) => {
           const cards = makeFixedDeck()
-          const once = curatePatterns(patterns, cards, { includeDefaults: false })
-          const twice = curatePatterns(once, cards, { includeDefaults: false })
+          const once = curatePatterns(patterns, cards)
+          const twice = curatePatterns(once, cards)
           expect(getPatternCollectionSignature(twice)).toBe(getPatternCollectionSignature(once))
         },
       ),
@@ -222,9 +222,7 @@ describe('Turn-context curation', () => {
             id: 'p-second',
             turnContext: 'second',
           }
-          const curated = curatePatterns([patternFirst, patternSecond], cards, {
-            includeDefaults: false,
-          })
+          const curated = curatePatterns([patternFirst, patternSecond], cards)
           const firstFound = curated.find((p) => p.turnContext === 'first')
           const secondFound = curated.find((p) => p.turnContext === 'second')
           expect(firstFound, 'first-context pattern should survive curation').toBeDefined()
