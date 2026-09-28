@@ -1,0 +1,5 @@
+# Commits de solo formato que "git blame" debe ignorar.
+# GitHub lo aplica solo; en local: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Normalizar saltos de línea a LF
+66ed17ae883d144a09982fb8f79e90ebaf0b4a05
