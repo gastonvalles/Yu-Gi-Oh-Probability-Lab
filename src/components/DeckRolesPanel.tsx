@@ -471,12 +471,12 @@ function ClassificationDrawer({
       <button
         type="button"
         aria-label="Cerrar panel"
-        className="fixed inset-0 z-120 bg-[rgb(var(--background-rgb)/0.72)] backdrop-blur-[2px]"
+        className="fixed inset-0 z-160 bg-[rgb(var(--background-rgb)/0.72)] backdrop-blur-[2px]"
         onClick={onClose}
       />
 
       <aside
-        className="surface-panel fixed inset-y-0 right-0 z-130 grid h-dvh w-full max-w-120 grid-rows-[minmax(0,1fr)] border-l border-(--border-subtle) p-0 shadow-[-28px_0_54px_rgba(0,0,0,0.38)]"
+        className="surface-panel fixed inset-y-0 right-0 z-165 grid h-dvh w-full max-w-120 grid-rows-[minmax(0,1fr)] border-l border-(--border-subtle) p-0 shadow-[-28px_0_54px_rgba(0,0,0,0.38)]"
         style={{ background: 'var(--card-background)' }}
       >
         <div className="min-h-0 overflow-y-auto px-4 pb-4 pt-4">
@@ -722,6 +722,8 @@ export function DeckRolesPanel({
     ),
     [cards],
   )
+  const pendingClassificationCount = sortedCards.length - completeCards.length
+  const classifiedPercent = sortedCards.length > 0 ? Math.round((completeCards.length / sortedCards.length) * 100) : 0
   const selectedCardIndexInFullList = selectedCard
     ? stableNavigationCards.findIndex((card) => card.id === selectedCard.id)
     : -1
@@ -872,7 +874,7 @@ export function DeckRolesPanel({
     }
 
     const cardArtColumn = (
-      <div className="grid content-start gap-2">
+      <div className="grid content-start gap-2 max-[1100px]:hidden">
         <div className="mx-auto max-h-50 w-auto min-[1101px]:mx-0 min-[1101px]:max-h-none min-[1101px]:w-[18rem]">
           <CardArt
             remoteUrl={selectedCard.apiCard?.imageUrl ?? selectedCard.apiCard?.imageUrlSmall ?? null}
@@ -908,7 +910,7 @@ export function DeckRolesPanel({
                     aria-pressed={active}
                     title={getOriginHelpText(definition.key.value)}
 	                    className={[
-	                      'classification-origin-option grid gap-0.5 p-1.5 text-left max-[1100px]:gap-0.5 max-[1100px]:p-1.5 min-[1101px]:gap-1 min-[1101px]:p-2',
+	                      'classification-origin-option grid min-h-11 content-center gap-0.5 p-1.5 text-left max-[1100px]:gap-0.5 max-[1100px]:px-2 min-[1101px]:min-h-0 min-[1101px]:gap-1 min-[1101px]:p-2',
 	                      active ? 'classification-origin-option-active' : '',
 	                      muted ? 'classification-origin-option-muted' : '',
 	                    ].join(' ')}
@@ -917,7 +919,7 @@ export function DeckRolesPanel({
                   >
                     <div className="flex items-center gap-2">
                       <span className="role-reference-mark shrink-0" />
-                      <strong className="text-[0.72rem] leading-none text-(--text-main) min-[1101px]:text-[0.8rem]">{definition.label}</strong>
+                      <strong className="text-[0.8rem] leading-none text-(--text-main)">{definition.label}</strong>
                     </div>
                     <span className="app-muted text-[0.6rem] leading-[1.08] max-[1100px]:hidden min-[1101px]:inline">{ORIGIN_BLURB_TEXT[definition.key.value]}</span>
                   </button>
@@ -951,7 +953,7 @@ export function DeckRolesPanel({
                   </span>
                 </div>
 
-                <div className="grid content-start gap-1 grid-cols-2 max-[1100px]:gap-0.5 min-[720px]:grid-cols-2 min-[1101px]:gap-1.5">
+                <div className="grid content-start grid-cols-2 gap-1.5">
                   {section.roles.map((role) => {
                     const definition = getCardRoleDefinition(role)
                     const active = selectedCard.roles.includes(role)
@@ -968,7 +970,7 @@ export function DeckRolesPanel({
                           aria-pressed={active}
                           title={getRoleHelpText(role)}
                           className={[
-                            'role-option-button min-w-0 w-full max-w-full px-1.5 py-[0.3rem] text-left text-[0.62rem] leading-[1.08] whitespace-normal max-[1100px]:px-1.5 max-[1100px]:py-[0.3rem] max-[1100px]:text-[0.62rem] min-[1101px]:px-2 min-[1101px]:py-[0.44rem] min-[1101px]:text-[0.68rem]',
+                            'role-option-button min-h-11 min-w-0 w-full max-w-full px-3 py-2 text-left text-[0.82rem] leading-[1.08] whitespace-normal min-[1101px]:min-h-0 min-[1101px]:px-2 min-[1101px]:py-[0.44rem] min-[1101px]:text-[0.68rem]',
                             active ? 'role-option-button-active' : '',
                           ].join(' ')}
                           style={getClassificationStyle(definition.key)}
@@ -984,6 +986,24 @@ export function DeckRolesPanel({
             )
           })}
           </div>
+
+          {selectedCard.roles.length > 0 ? (
+            <ul className="m-0 grid list-none gap-1 p-0" aria-label="Qué significan los roles elegidos">
+              {ROLE_FILTER_ORDER.filter((role) => selectedCard.roles.includes(role)).map((role) => (
+                <li key={role} className="text-[0.76rem] leading-snug text-(--text-muted)">
+                  <strong className="text-(--text-main)">{getCardRoleDefinition(role).label}:</strong> {getRoleHelpText(role)}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          <button
+            type="button"
+            className="justify-self-start text-[0.76rem] font-semibold text-(--text-main) underline underline-offset-2"
+            onClick={() => setDrawerMode('help')}
+          >
+            ¿Qué significa cada rol?
+          </button>
         </section>
       </div>
     )
@@ -994,14 +1014,50 @@ export function DeckRolesPanel({
           {cardArtColumn}
 
           <div className="flex min-h-full flex-col gap-2.5">
-            <div className="grid gap-1 pr-12">
-              <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-[0.12em]">Carta actual</p>
-              <h3 className="m-0 wrap-break-word text-[2rem] leading-[0.94] tracking-[-0.03em] text-(--text-main) min-[1101px]:text-[2.3rem]">
-                {selectedCard.name}
-              </h3>
-              <p className="app-muted m-0 text-[0.9rem] leading-[1.05] min-[1101px]:text-[0.98rem]">
-                {formatInteger(selectedCard.copies)} copia{selectedCard.copies === 1 ? '' : 's'} en Main Deck
-              </p>
+            <div className="flex items-start gap-3 pr-12">
+              <div className="w-16 shrink-0 min-[1101px]:hidden">
+                <CardArt
+                  remoteUrl={selectedCard.apiCard?.imageUrlSmall ?? selectedCard.apiCard?.imageUrl ?? null}
+                  name={selectedCard.name}
+                  className="block h-auto w-full bg-input"
+                  limitCard={selectedCard.apiCard}
+                  limitBadgeSize="sm"
+                />
+              </div>
+              <div className="grid min-w-0 gap-1">
+                <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-[0.12em]">
+                  Carta {formatInteger(selectedCardIndexInFullList + 1)} de {formatInteger(stableNavigationCards.length)}
+                </p>
+                <h3 className="m-0 wrap-break-word text-[1.5rem] leading-[1] tracking-[-0.02em] text-(--text-main) min-[1101px]:text-[2.3rem] min-[1101px]:leading-[0.94] min-[1101px]:tracking-[-0.03em]">
+                  {selectedCard.name}
+                </h3>
+                <p className="app-muted m-0 text-[0.86rem] leading-[1.1] min-[1101px]:text-[0.98rem]">
+                  {formatInteger(selectedCard.copies)} copia{selectedCard.copies === 1 ? '' : 's'} en Main Deck
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-1">
+              <div className="flex items-center justify-between gap-2 text-[0.74rem]">
+                <span className="app-muted">
+                  {pendingClassificationCount === 0
+                    ? 'Todas las cartas están clasificadas'
+                    : `Faltan ${formatInteger(pendingClassificationCount)} por clasificar`}
+                </span>
+                <span className="app-soft tabular-nums">
+                  {formatInteger(completeCards.length)} / {formatInteger(sortedCards.length)}
+                </span>
+              </div>
+              <div
+                className="h-1.25 w-full overflow-hidden rounded-(--radius-chip) bg-[rgb(var(--border-rgb)/0.9)]"
+                role="progressbar"
+                aria-label="Cartas clasificadas"
+                aria-valuenow={completeCards.length}
+                aria-valuemin={0}
+                aria-valuemax={sortedCards.length}
+              >
+                <div className="h-full rounded-(--radius-chip) bg-accent transition-[width]" style={{ width: `${classifiedPercent}%` }} />
+              </div>
             </div>
 
             {selectedCard.needsReview && selectedCard.origin !== null && selectedCard.roles.length > 0 ? (
@@ -1025,12 +1081,12 @@ export function DeckRolesPanel({
               <span className="app-muted hidden text-[0.66rem] min-[1101px]:inline">
                 Usá las flechas ← → del teclado para navegar
               </span>
-              <div className="flex justify-end gap-2">
-                <Button variant="primary" size="sm" onClick={handleSelectPreviousCard} disabled={!previousCard}>
-                  Anterior
+              <div className="grid flex-1 grid-cols-2 gap-2 min-[1101px]:flex min-[1101px]:flex-none min-[1101px]:justify-end">
+                <Button variant="secondary" size="md" onClick={handleSelectPreviousCard} disabled={!previousCard}>
+                  ← Anterior
                 </Button>
-                <Button variant="primary" size="sm" onClick={handleSelectNextCard} disabled={!nextCard}>
-                  Siguiente
+                <Button variant="primary" size="md" onClick={handleSelectNextCard} disabled={!nextCard}>
+                  Siguiente →
                 </Button>
               </div>
             </div>
@@ -1056,7 +1112,7 @@ export function DeckRolesPanel({
                 </Button>
               ) : null}
               <Button variant="primary" size="sm" onClick={() => setDrawerMode('help')}>
-                Guia de Clasificación
+                Guía de clasificación
               </Button>
             </>
           ) : null
@@ -1087,7 +1143,7 @@ export function DeckRolesPanel({
               >
                 <div
                   className="h-full rounded-(--radius-chip) bg-accent transition-[width]"
-                  style={{ width: `${sortedCards.length > 0 ? Math.round((completeCards.length / sortedCards.length) * 100) : 0}%` }}
+                  style={{ width: `${classifiedPercent}%` }}
                 />
               </div>
             </div>
@@ -1122,14 +1178,14 @@ export function DeckRolesPanel({
           Primero armá o importá tu Main Deck. Después vas a poder clasificar cada carta.
         </p>
       ) : (
-        <section className="surface-panel-soft classification-card-list-panel grid min-w-0 gap-2.5 p-2.5 max-[1100px]:overflow-hidden min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[minmax(0,1fr)] min-[1101px]:overflow-hidden">
+        <section className="surface-panel-soft classification-card-list-panel grid min-w-0 gap-2.5 p-2.5 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[minmax(0,1fr)] min-[1101px]:overflow-hidden">
             {visibleQueueCards.length === 0 ? (
               <p className={[emptyStateCopy.tone, 'm-0 px-2.5 py-2 text-[0.8rem]'].join(' ')}>
                 <strong className="block text-(--text-main)">{emptyStateCopy.title}</strong>
                 <span className="mt-1 block">{emptyStateCopy.description}</span>
               </p>
             ) : (
-              <div className="classification-card-scroll grid gap-1 pr-0 max-[1100px]:min-h-0 max-[1100px]:overflow-y-auto max-[1100px]:pr-1 min-[1101px]:min-h-0 min-[1101px]:overflow-y-auto min-[1101px]:pr-1">
+              <div className="classification-card-scroll grid gap-1.5 pr-0 min-[1101px]:gap-1 min-[1101px]:min-h-0 min-[1101px]:overflow-y-auto min-[1101px]:pr-1">
                 {visibleQueueCards.map((card) => {
                   const primaryStatus = getCardPrimaryStatus(card)
                   const active = selectedCard?.id === card.id
@@ -1140,7 +1196,7 @@ export function DeckRolesPanel({
                       type="button"
                       aria-pressed={active}
                       className={[
-                        'classification-queue-card app-list-item grid min-w-0 shrink-0 grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-2 px-1.5 py-1.5 text-left',
+                        'classification-queue-card app-list-item grid min-h-14 min-w-0 shrink-0 grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-2 px-1.5 py-1.5 text-left',
                         active ? 'classification-queue-card-active' : '',
                       ].join(' ')}
                       onClick={() => handleCardSelection(card.id)}
