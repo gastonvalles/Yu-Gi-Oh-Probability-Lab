@@ -1,4 +1,4 @@
-import type { CSSProperties, PointerEvent as ReactPointerEvent, SVGProps } from 'react'
+import { useRef, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type SVGProps } from 'react'
 
 import {
   buildDeckZoneVisualLayout,
@@ -59,6 +59,7 @@ export function DeckZone({
   onDeckCardClick,
   onRemoveCard,
 }: DeckZoneProps) {
+  const lastPointerTypeRef = useRef<string>('mouse')
   const zoneBreakdown = buildDeckZoneBreakdown(zone, cards)
   const zoneTypeCounts = buildDeckZoneTypeCounts(zone, cards)
   const visualLayout = desktopCompact
@@ -130,6 +131,21 @@ export function DeckZone({
     : undefined
   const renderedVisualRows = visualLayout?.rows.filter((row) => row.cards.length > 0) ?? []
 
+  const handleCardPointerDown = (event: ReactPointerEvent<HTMLElement>, instanceId: string) => {
+    lastPointerTypeRef.current = event.pointerType
+    onDeckCardPointerDown(event, instanceId)
+  }
+
+  // Clic derecho quita la carta. Con el dedo, el long-press dispara el mismo
+  // evento en Android: ahí sólo se bloquea el menú (quitar se hace desde el detalle).
+  const handleCardContextMenu = (event: ReactMouseEvent<HTMLElement>, instanceId: string) => {
+    event.preventDefault()
+
+    if (lastPointerTypeRef.current === 'mouse') {
+      onRemoveCard(instanceId)
+    }
+  }
+
   const renderDeckCard = (card: DeckCardInstance, index: number) => (
     <article
       key={card.instanceId}
@@ -137,13 +153,10 @@ export function DeckZone({
       data-deck-card-index={index}
       data-selected={selectedCardId !== null && card.apiCard.ygoprodeckId === selectedCardId ? 'true' : 'false'}
       data-dragging={activeDragInstanceId === card.instanceId ? 'true' : 'false'}
-      className="deck-zone-card relative min-w-0 cursor-pointer touch-none select-none bg-transparent p-0"
-      onPointerDown={(event) => onDeckCardPointerDown(event, card.instanceId)}
+      className="deck-zone-card relative min-w-0 cursor-pointer touch-pan-y select-none bg-transparent p-0"
+      onPointerDown={(event) => handleCardPointerDown(event, card.instanceId)}
       onClick={() => onDeckCardClick(card.instanceId)}
-      onContextMenu={(event) => {
-        event.preventDefault()
-        onRemoveCard(card.instanceId)
-      }}
+      onContextMenu={(event) => handleCardContextMenu(event, card.instanceId)}
     >
       <CardArt
         remoteUrl={card.apiCard.imageUrlSmall ?? card.apiCard.imageUrl}
@@ -278,17 +291,14 @@ export function DeckZone({
             data-deck-zone={zone}
             data-deck-card-index={index}
             className={[
-              'deck-zone-card relative min-w-0 cursor-grab select-none bg-transparent p-0 touch-none',
+              'deck-zone-card relative min-w-0 cursor-grab select-none bg-transparent p-0 touch-pan-y',
               activeDragInstanceId === card.instanceId
                 ? 'opacity-35'
                 : '',
             ].join(' ')}
-            onPointerDown={(event) => onDeckCardPointerDown(event, card.instanceId)}
+            onPointerDown={(event) => handleCardPointerDown(event, card.instanceId)}
             onClick={() => onDeckCardClick(card.instanceId)}
-            onContextMenu={(event) => {
-              event.preventDefault()
-              onRemoveCard(card.instanceId)
-            }}
+            onContextMenu={(event) => handleCardContextMenu(event, card.instanceId)}
           >
             <CardArt
               remoteUrl={card.apiCard.imageUrlSmall ?? card.apiCard.imageUrl}

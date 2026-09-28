@@ -4,7 +4,6 @@ import { createPattern, createMatcherPattern } from '../app/pattern-factory'
 import { buildPatternPresets } from '../app/pattern-presets'
 import { buildPatternCompactSummary } from '../components/probability/pattern-helpers'
 import { getConditionLabel, getKindLabel } from '../components/probability/rule-builder/condition-labels'
-import { getSemanticLabel } from '../components/probability/rule-builder/LiveResultBadge'
 import { getConnectorWord } from '../components/probability/rule-builder/LogicSelector'
 import { getPatternMatchMode, normalizeMinimumConditionMatches } from '../app/patterns'
 import type {
@@ -191,34 +190,6 @@ describe('Drawer integration: new pattern empty state', () => {
     expect(hasDefinedMatchers).toBe(false)
     expect(pattern.kind).toBe('problem')
     expect(pattern.conditions[0].kind).toBe('exclude')
-  })
-})
-
-// ---------------------------------------------------------------------------
-// Test 3: LiveResultBadge semantic labels for drawer context
-// ---------------------------------------------------------------------------
-
-describe('Drawer integration: LiveResultBadge in context', () => {
-  it('opening pattern with high probability shows "Alta consistencia"', () => {
-    const label = getSemanticLabel(0.90, 'opening')
-    expect(label.text).toBe('Alta consistencia')
-    expect(label.tone).toBe('positive')
-  })
-
-  it('problem pattern with high probability shows "Riesgo crítico"', () => {
-    const label = getSemanticLabel(0.35, 'problem')
-    expect(label.text).toBe('Problema crítico — revisá el deck')
-    expect(label.tone).toBe('critical')
-  })
-
-  it('null probability handled gracefully (no semantic label)', () => {
-    // LiveResultBadge shows "—" for null — tested in unit tests
-    // Here we verify the semantic function handles edge values
-    const label = getSemanticLabel(0, 'opening')
-    expect(label.text).toBe('Muy baja — revisá el deck')
-
-    const labelProblem = getSemanticLabel(0, 'problem')
-    expect(labelProblem.text).toBe('Problema mínimo')
   })
 })
 

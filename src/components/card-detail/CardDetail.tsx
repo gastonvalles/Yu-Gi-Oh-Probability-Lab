@@ -7,11 +7,21 @@ import { Button } from '../ui/Button'
 import { CloseButton } from '../ui/IconButton'
 import { Skeleton } from '../ui/Skeleton'
 
+/** Acciones sobre una carta que ya está en el deck (se abre tocándola en una zona). */
+export interface DeckCopyActions {
+  zoneLabel: string
+  copies: number
+  canAddCopy: boolean
+  onRemoveCopy: () => void
+  onAddCopy: () => void
+}
+
 interface CardDetailProps {
   card: ApiCardSearchResult
   deckFormat: DeckFormat
   layoutMode: 'desktop' | 'mobile'
   showActions?: boolean
+  deckCopy?: DeckCopyActions | null
   onAddToZone: (zone: DeckZone) => boolean
   onClose: () => void
 }
@@ -29,6 +39,7 @@ export function CardDetail({
   deckFormat,
   layoutMode,
   showActions = true,
+  deckCopy = null,
   onAddToZone,
   onClose,
 }: CardDetailProps) {
@@ -221,7 +232,28 @@ export function CardDetail({
           </div>
         </footer>
       ) : null}
+
+      {deckCopy ? <DeckCopyFooter deckCopy={deckCopy} /> : null}
     </section>
+  )
+}
+
+function DeckCopyFooter({ deckCopy }: { deckCopy: DeckCopyActions }) {
+  return (
+    <footer className="grid gap-2 border-t border-(--border-subtle) bg-[linear-gradient(180deg,rgb(var(--secondary-rgb)/0.95),rgb(var(--background-rgb)/0.98))] px-4 py-3">
+      <p className="m-0 text-center text-[0.86rem] text-(--text-muted)" aria-live="polite">
+        <strong className="text-(--text-main)">{deckCopy.copies}</strong>{' '}
+        {deckCopy.copies === 1 ? 'copia' : 'copias'} en {deckCopy.zoneLabel}
+      </p>
+      <div className="grid grid-cols-2 gap-2.5">
+        <Button variant="secondary" color="destructive" size="md" fullWidth onClick={deckCopy.onRemoveCopy}>
+          − Quitar una
+        </Button>
+        <Button variant="primary" size="md" fullWidth disabled={!deckCopy.canAddCopy} onClick={deckCopy.onAddCopy}>
+          + Sumar una
+        </Button>
+      </div>
+    </footer>
   )
 }
 

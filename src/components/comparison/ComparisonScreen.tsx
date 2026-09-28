@@ -380,10 +380,6 @@ export function ComparisonScreen() {
   )
 }
 
-// ── KPI Card (styled like Probability Lab cards) ──
-
-export { KpiCard, type KpiTone } from './KpiCard'
-
 // ── Deck Grid (Build A — no highlighting) ──
 
 const ZONE_TINTS: Record<string, { bg: string; border: string }> = {
