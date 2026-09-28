@@ -4,6 +4,7 @@ import { getDeckFormatLabel } from '../../app/deck-format'
 import { getDesktopCompactDeckColumnCount } from '../../app/deck-zone-layout'
 import type { DeckBuilderState, DeckZone as DeckZoneType } from '../../app/model'
 import type { DeckDropIndicatorState } from '../../app/use-deck-pointer-drag'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { formatInteger } from '../../app/utils'
 import type { DeckFormat } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
@@ -17,7 +18,6 @@ import { CloseButton } from '../ui/IconButton'
 import { DeckBuilderClassicPreview } from './DeckBuilderClassicPreview'
 import { DeckImportDrawer } from './DeckImportDrawer'
 
-const DESKTOP_DECK_BUILDER_MEDIA_QUERY = '(min-width: 1101px)'
 
 interface DeckBuilderStepProps {
   deckBuilder: DeckBuilderState
@@ -110,13 +110,7 @@ export function DeckBuilderStep({
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const [importDrawerOpen, setImportDrawerOpen] = useState(false)
   const [pendingClearZone, setPendingClearZone] = useState<DeckZoneType | 'all' | null>(null)
-  const [isDesktopDeckBuilder, setIsDesktopDeckBuilder] = useState(() => {
-    if (typeof window === 'undefined') {
-      return false
-    }
-
-    return window.matchMedia(DESKTOP_DECK_BUILDER_MEDIA_QUERY).matches
-  })
+  const isDesktopDeckBuilder = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const formatLabel = getDeckFormatLabel(deckFormat)
 
   useEffect(() => {
@@ -131,23 +125,6 @@ export function DeckBuilderStep({
     }
   }, [importDrawerOpen, mobileSearchOpen])
 
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return
-    }
-
-    const mediaQuery = window.matchMedia(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
-    const handleChange = (event: MediaQueryListEvent) => {
-      setIsDesktopDeckBuilder(event.matches)
-    }
-
-    setIsDesktopDeckBuilder(mediaQuery.matches)
-    mediaQuery.addEventListener('change', handleChange)
-
-    return () => {
-      mediaQuery.removeEventListener('change', handleChange)
-    }
-  }, [])
   const visibleFormatIssues = formatIssues.slice(0, 2)
   const hasHiddenIssues = formatIssues.length > visibleFormatIssues.length
   const showGenesysPoints = deckFormat === 'genesys' && genesysPointTotal !== null && genesysPointCap !== null

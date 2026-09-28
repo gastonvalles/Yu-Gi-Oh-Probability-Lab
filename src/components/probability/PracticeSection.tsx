@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import {
   buildDerivedDeckGroupMap,
 } from '../../app/deck-groups'
+import { useMediaQuery } from '../../app/use-media-query'
 import { formatInteger } from '../../app/utils'
 import type { CardEntry, HandPattern } from '../../types'
 import { CardArt } from '../CardArt'
@@ -96,17 +97,7 @@ export function PracticeSection({
   const openingMatches = practiceResult.openingMatches
   const problemMatches = practiceResult.problemMatches
 
-  const [isWide, setIsWide] = useState(true)
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(min-width: 820px)')
-
-    const update = () => setIsWide(mediaQuery.matches)
-    update()
-
-    mediaQuery.addEventListener('change', update)
-    return () => mediaQuery.removeEventListener('change', update)
-  }, [])
+  const isWide = useMediaQuery('(min-width: 820px)')
 
   useEffect(() => {
     setPracticeHand(null)
