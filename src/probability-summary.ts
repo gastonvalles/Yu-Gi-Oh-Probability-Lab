@@ -29,23 +29,47 @@ const ARRAY_COUNT_OPERATIONS: CountOperations<number[], number> = {
 export function buildCalculationSummary(state: CalculatorState): CalculationSummary {
   const cardById = new Map(state.cards.map((card) => [card.id, card]))
   const groupsByKey = buildDerivedDeckGroupMap(state.cards)
-  const referencedCardIds = new Set<string>()
+  const signatureByCardId = new Map<string, string[]>()
 
   for (const pattern of state.patterns) {
     for (const condition of pattern.conditions) {
       for (const cardId of resolveConditionCardIds(condition, groupsByKey, state.cards)) {
-        referencedCardIds.add(cardId)
+        const token = condition.distinct
+          ? `${pattern.id}/${condition.id}#${cardId}`
+          : `${pattern.id}/${condition.id}`
+        const signature = signatureByCardId.get(cardId) ?? []
+        signature.push(token)
+        signatureByCardId.set(cardId, signature)
       }
     }
   }
 
-  const relevantCards = state.cards
-    .filter((card) => referencedCardIds.has(card.id) && card.copies > 0)
-    .map<CalculationCard>((card) => ({
-      id: card.id,
-      name: card.name.trim(),
-      copies: card.copies,
-    }))
+  // Cartas que cumplen exactamente las mismas condiciones son intercambiables:
+  // se enumeran como una sola clase y el cálculo sigue siendo exacto.
+  const classIndexByCardId = new Map<string, number>()
+  const classIndexBySignature = new Map<string, number>()
+  const relevantCards: CalculationCard[] = []
+
+  for (const card of state.cards) {
+    const signature = signatureByCardId.get(card.id)
+
+    if (!signature || card.copies <= 0) {
+      continue
+    }
+
+    const signatureKey = signature.join('|')
+    const existingIndex = classIndexBySignature.get(signatureKey)
+
+    if (existingIndex !== undefined) {
+      relevantCards[existingIndex].copies += card.copies
+      classIndexByCardId.set(card.id, existingIndex)
+      continue
+    }
+
+    classIndexBySignature.set(signatureKey, relevantCards.length)
+    classIndexByCardId.set(card.id, relevantCards.length)
+    relevantCards.push({ id: signatureKey, name: card.name.trim(), copies: card.copies })
+  }
 
   const relevantCopies = relevantCards.reduce((total, card) => total + card.copies, 0)
   const otherCopies = Math.max(0, state.deckSize - relevantCopies)
@@ -58,7 +82,6 @@ export function buildCalculationSummary(state: CalculatorState): CalculationSumm
     })
   }
 
-  const relevantIndex = new Map(relevantCards.map((card, index) => [card.id, index]))
   const availableCounts = relevantCards.map((card) => card.copies)
   const resolvedPatterns = state.patterns.map((pattern) =>
     resolvePattern(pattern, {
@@ -66,7 +89,7 @@ export function buildCalculationSummary(state: CalculatorState): CalculationSumm
       cardById,
       countOperations: ARRAY_COUNT_OPERATIONS,
       groupsByKey,
-      mapCardIdToKey: (cardId) => relevantIndex.get(cardId) ?? null,
+      mapCardIdToKey: (cardId) => classIndexByCardId.get(cardId) ?? null,
     }),
   )
 
@@ -138,7 +161,7 @@ export function buildCalculationSummary(state: CalculatorState): CalculationSumm
     overlapHands,
     totalHands,
     patternResults,
-    relevantCardCount: referencedCardIds.size,
+    relevantCardCount: signatureByCardId.size,
     otherCopies,
   }
 }

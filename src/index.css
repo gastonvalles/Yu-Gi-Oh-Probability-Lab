@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./styles/probability-workflow.css";
+@import "./styles/probability-lab.css";
 @import "./styles/ui-controls-and-classification.css";
 @import "./styles/deck-zone-and-shell.css";
 @import "./styles/classic-builder.css";

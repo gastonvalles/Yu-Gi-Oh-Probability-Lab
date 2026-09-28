@@ -103,10 +103,15 @@ export function resolvePattern<Counts, Key extends string | number>(
     const cards = uniqueCardIds
       .map((cardId) => context.cardById.get(cardId))
       .filter((card): card is CardEntry => Boolean(card))
-    const keys = uniqueCardIds.flatMap((cardId) => {
-      const key = context.mapCardIdToKey(cardId)
-      return key === null ? [] : [key]
-    })
+    // Varias cartas pueden compartir clave (clases equivalentes): se cuenta una vez.
+    const keys = [
+      ...new Set(
+        uniqueCardIds.flatMap((cardId) => {
+          const key = context.mapCardIdToKey(cardId)
+          return key === null ? [] : [key]
+        }),
+      ),
+    ]
     const totalCopies = cards.reduce((total, card) => total + card.copies, 0)
     const distinctAvailable = cards.filter((card) => card.copies > 0).length
     const possible =

@@ -29,6 +29,13 @@ interface PracticeSectionProps {
   onRedraw?: () => void
 }
 
+type PracticeTurn = 'first' | 'second'
+
+const PRACTICE_TURNS: ReadonlyArray<{ value: PracticeTurn; label: string }> = [
+  { value: 'first', label: 'Primero' },
+  { value: 'second', label: 'Segundo' },
+]
+
 function getPracticeStageCardStyle(index: number, total: number): CSSProperties {
   const midpoint = (total - 1) / 2
   const offset = index - midpoint
@@ -65,34 +72,38 @@ export function PracticeSection({
   const practiceDeck = useMemo(() => buildPracticeDeck(derivedMainCards), [derivedMainCards])
   const groupsByKey = useMemo(() => buildDerivedDeckGroupMap(derivedMainCards), [derivedMainCards])
   const [practiceHand, setPracticeHand] = useState<PracticeHandState | null>(null)
+  const [turn, setTurn] = useState<PracticeTurn>('first')
+  // Ir segundo roba una carta más en el primer turno.
+  const openingHandSize = turn === 'second' ? handSize + 1 : handSize
   const practiceDeckCount = practiceDeck.length
-  const canDrawOpeningHand = practiceDeck.length >= handSize
+  const canDrawOpeningHand = practiceDeck.length >= openingHandSize
   const canDrawNextCard = practiceHand !== null && practiceHand.remainingDeck.length > 0
-  const missingPracticeCards = Math.max(0, handSize - practiceDeckCount)
+  const missingPracticeCards = Math.max(0, openingHandSize - practiceDeckCount)
   const isEmptyPracticeDeck = practiceDeckCount === 0
-  const practiceBlockedMessage =
+  // Robar manos no depende de la clasificación: sólo la evaluación de reglas la necesita.
+  const evaluationBlockedMessage =
     !hasCompletedClassification
       ? missingOriginCount > 0
-        ? 'Hay cartas sin clasificar (origen). Revisá el Paso 2 antes de probar manos.'
+        ? 'Hay cartas sin origen: clasificalas en el Paso 2 para ver qué reglas cumple la mano.'
         : missingRoleCount > 0
-          ? 'Hay cartas sin clasificar (roles). Revisá el Paso 2 antes de probar manos.'
+          ? 'Hay cartas sin roles: clasificalas en el Paso 2 para ver qué reglas cumple la mano.'
           : pendingReviewCount > 0
-            ? 'Hay cartas pendientes de revisión. Cerrá el Paso 2 antes de probar manos.'
-            : 'Todavía faltan clasificaciones por cerrar antes de probar manos.'
+            ? 'Hay cartas pendientes de revisión: cerrá el Paso 2 para ver qué reglas cumple la mano.'
+            : 'Terminá el Paso 2 para ver qué reglas cumple la mano.'
       : reviewPendingPatternCount > 0
         ? `Tenés ${formatInteger(reviewPendingPatternCount)} patrón${reviewPendingPatternCount === 1 ? '' : 'es'} heredado${reviewPendingPatternCount === 1 ? '' : 's'} pendiente${reviewPendingPatternCount === 1 ? '' : 's'} de revisión.`
         : null
   const practiceResult = useMemo(
     () =>
-      practiceBlockedMessage
+      evaluationBlockedMessage
         ? {
             matches: [],
             openingMatches: [],
             problemMatches: [],
             openingNearMisses: [],
           }
-        : evaluatePracticeHand(practiceHand?.hand ?? [], patterns, derivedMainCards, groupsByKey, handSize),
-    [practiceBlockedMessage, practiceHand, patterns, derivedMainCards, groupsByKey, handSize],
+        : evaluatePracticeHand(practiceHand?.hand ?? [], patterns, derivedMainCards, groupsByKey, turn),
+    [evaluationBlockedMessage, practiceHand, patterns, derivedMainCards, groupsByKey, turn],
   )
   const openingMatches = practiceResult.openingMatches
   const problemMatches = practiceResult.problemMatches
@@ -101,7 +112,7 @@ export function PracticeSection({
 
   useEffect(() => {
     setPracticeHand(null)
-  }, [derivedMainCards, handSize])
+  }, [derivedMainCards, openingHandSize])
 
   return (
     <section className="grid min-w-0 min-h-0 h-full grid-rows-[auto_auto_minmax(0,1fr)] gap-3 overflow-hidden wrap-anywhere [word-break:break-word]">
@@ -114,10 +125,6 @@ export function PracticeSection({
         <p className="surface-card m-0 p-2.5 text-[0.8rem] text-(--text-muted)">
           Cargá cartas en el Main Deck para habilitar la práctica.
         </p>
-      ) : practiceBlockedMessage ? (
-        <p className="surface-card-warning m-0 p-2.5 text-[0.8rem] text-(--warning)">
-          {practiceBlockedMessage}
-        </p>
       ) : !canDrawOpeningHand ? (
         <p className="surface-card-warning m-0 p-2.5 text-[0.8rem] text-(--warning)">
           Sumá {formatInteger(missingPracticeCards)} carta{missingPracticeCards === 1 ? '' : 's'} más al Main Deck.
@@ -128,16 +135,31 @@ export function PracticeSection({
           <article className="surface-panel-strong grid min-w-0 gap-3 overflow-x-hidden p-3">
             <div className="flex items-center justify-between gap-3">
               <h4 className="m-0 text-[0.92rem] leading-none text-(--text-main)">
-                {practiceHand ? `Mano de ${formatInteger(practiceHand.hand.length)}` : 'Mano de ' + formatInteger(handSize)}
+                {practiceHand ? `Mano de ${formatInteger(practiceHand.hand.length)}` : 'Mano de ' + formatInteger(openingHandSize)}
               </h4>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap justify-end gap-2">
+                <div className="lab-turn-toggle w-auto grid-cols-2 p-0.5" role="radiogroup" aria-label="Turno de la mano">
+                  {PRACTICE_TURNS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={turn === option.value}
+                      data-active={turn === option.value ? 'true' : 'false'}
+                      className="lab-turn-toggle-option min-h-0 px-2.5 py-1"
+                      onClick={() => setTurn(option.value)}
+                    >
+                      <span className="lab-turn-toggle-label text-[0.76rem]">{option.label}</span>
+                    </button>
+                  ))}
+                </div>
                 <Button
                   variant="primary"
                   size="sm"
                   disabled={!canDrawOpeningHand}
-                  onClick={() => setPracticeHand(drawRandomPracticeHand(practiceDeck, handSize))}
+                  onClick={() => setPracticeHand(drawRandomPracticeHand(practiceDeck, openingHandSize))}
                 >
-                  Robar {formatInteger(handSize)}
+                  Robar {formatInteger(openingHandSize)}
                 </Button>
                 <Button
                   variant="secondary"
@@ -156,7 +178,7 @@ export function PracticeSection({
                 : 'grid min-w-0 grid-cols-5 gap-0.5 overflow-hidden py-3'
               }
             >
-              {(practiceHand?.hand ?? Array.from({ length: handSize })).map((card, index, hand) => {
+              {(practiceHand?.hand ?? Array.from({ length: openingHandSize })).map((card, index, hand) => {
                 const cardCount = hand.length
                 const cardStyle = isWide ? getPracticeStageCardStyle(index, cardCount) : undefined
 
@@ -199,7 +221,9 @@ export function PracticeSection({
           </article>
 
           {/* Results — scrollable area */}
-          {practiceHand ? (
+          {practiceHand && evaluationBlockedMessage ? (
+            <p className="surface-card-warning m-0 self-start p-2.5 text-[0.8rem] text-(--warning)">{evaluationBlockedMessage}</p>
+          ) : practiceHand ? (
             <div className="min-h-0 overflow-y-auto overflow-x-hidden pt-3 px-1">
               <div className="grid gap-3 min-[640px]:grid-cols-2">
                 {/* Salidas cumplidas */}
