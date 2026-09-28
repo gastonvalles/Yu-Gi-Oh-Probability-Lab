@@ -525,8 +525,16 @@ export function useDeckModeController() {
     }
 
     try {
-      await exportDeckAssets(deckBuilder, settings.deckFormat)
-      showToast('PNG, TXT y YDK del deck descargados.', 'success')
+      const { decklistOverflow } = await exportDeckAssets(deckBuilder, settings.deckFormat)
+
+      if (decklistOverflow.length > 0) {
+        showToast(
+          `Descargado. En el PDF no entraron todas las cartas de: ${decklistOverflow.join(', ')}. Completalas a mano.`,
+          'default',
+        )
+      } else {
+        showToast('Imagen, decklist PDF y YDK descargados.', 'success')
+      }
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'No se pudo exportar el deck.', 'error')
     }
