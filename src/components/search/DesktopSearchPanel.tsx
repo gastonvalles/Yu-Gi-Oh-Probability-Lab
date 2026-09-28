@@ -242,13 +242,13 @@ export function DesktopSearchPanel({
                       </div>
 
                       <div className="classic-builder-search-result-copy">
-                        <strong className="text-[0.8rem] leading-[1.08] wrap-break-word text-(--text-main)">
+                        <strong className="text-[0.8rem] leading-[1.08] wrap-anywhere text-(--text-main)">
                           {card.name}
                         </strong>
-                        <p className="m-0 text-[0.72rem] leading-[1.08] wrap-break-word text-(--text-main)">
+                        <p className="m-0 text-[0.72rem] leading-[1.08] wrap-anywhere text-(--text-main)">
                           {buildClassicCardPrimaryLine(card)}
                         </p>
-                        <p className="m-0 text-[0.72rem] leading-[1.08] wrap-break-word text-(--text-main)">
+                        <p className="m-0 text-[0.72rem] leading-[1.08] wrap-anywhere text-(--text-main)">
                           {buildClassicCardStatLine(card)}
                         </p>
                       </div>

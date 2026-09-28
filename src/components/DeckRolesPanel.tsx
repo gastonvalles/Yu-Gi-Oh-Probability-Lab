@@ -479,7 +479,7 @@ function ClassificationDrawer({
         className="surface-panel fixed inset-y-0 right-0 z-165 grid h-dvh w-full max-w-120 grid-rows-[minmax(0,1fr)] border-l border-(--border-subtle) p-0 shadow-[-28px_0_54px_rgba(0,0,0,0.38)]"
         style={{ background: 'var(--card-background)' }}
       >
-        <div className="min-h-0 overflow-y-auto px-4 pb-4 pt-4">
+        <div className="min-h-0 overflow-x-hidden overflow-y-auto px-4 pb-4 pt-4">
           <div className="grid gap-3">
             <div className="flex justify-end">
               <CloseButton size="sm" aria-label="Cerrar panel" onClick={onClose} />
@@ -540,7 +540,7 @@ function ClassificationModal({
           </div>
 
           <div
-            className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-4 min-[1101px]:px-6 min-[1101px]:pb-5 min-[1101px]:pt-5"
+            className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-4 pb-4 pt-4 min-[1101px]:px-6 min-[1101px]:pb-5 min-[1101px]:pt-5"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="grid gap-2.5 min-[1101px]:gap-3">
@@ -1024,7 +1024,7 @@ export function DeckRolesPanel({
                 <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-[0.12em]">
                   Carta {formatInteger(selectedCardIndexInFullList + 1)} de {formatInteger(stableNavigationCards.length)}
                 </p>
-                <h3 className="m-0 wrap-break-word text-[1.5rem] leading-[1] tracking-[-0.02em] text-(--text-main) min-[1101px]:text-[2.3rem] min-[1101px]:leading-[0.94] min-[1101px]:tracking-[-0.03em]">
+                <h3 className="m-0 wrap-anywhere text-[1.5rem] leading-[1] tracking-[-0.02em] text-(--text-main) min-[1101px]:text-[2.3rem] min-[1101px]:leading-[0.94] min-[1101px]:tracking-[-0.03em]">
                   {selectedCard.name}
                 </h3>
                 <p className="app-muted m-0 text-[0.86rem] leading-[1.1] min-[1101px]:text-[0.98rem]">

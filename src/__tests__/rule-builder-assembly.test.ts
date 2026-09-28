@@ -169,7 +169,7 @@ describe('QuickTemplate from empty state', () => {
   it('all 4 templates produce patterns with non-empty summaries', () => {
     const deck = makeRealisticDeck()
     const cardById = new Map(deck.map((c) => [c.id, c]))
-    const templateIds = ['starter_opening', 'double_brick_problem', 'starter_extender_opening', 'interaction_opening']
+    const templateIds = ['starter_opening', 'dead_cards_problem', 'starter_extender_opening', 'starter_interaction_opening']
 
     for (const id of templateIds) {
       const definition = PATTERN_PRESET_DEFINITIONS.find((d) => d.id === id)

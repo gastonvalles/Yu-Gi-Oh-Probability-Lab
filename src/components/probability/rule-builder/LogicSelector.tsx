@@ -41,19 +41,19 @@ export function LogicSelector({
     <div className="grid gap-1.5">
       <div className="inline-flex overflow-hidden rounded-md" role="radiogroup" aria-label="Lógica de condiciones">
         <LogicOption
-          label="Cumplir todas"
+          label="Todas"
           isActive={currentMode === 'all'}
           disabled={false}
           onClick={() => actions.setPatternMatchMode(patternId, 'all')}
         />
         <LogicOption
-          label="Cumplir cualquiera"
+          label="Cualquiera"
           isActive={currentMode === 'any'}
           disabled={false}
           onClick={() => actions.setPatternMatchMode(patternId, 'any')}
         />
         <LogicOption
-          label={`Cumplir al menos ${formatInteger(minimumConditionMatches)}`}
+          label={`Al menos ${formatInteger(minimumConditionMatches)}`}
           isActive={currentMode === 'at-least'}
           disabled={!canUseAtLeast}
           onClick={() => actions.setPatternMatchMode(patternId, 'at-least')}

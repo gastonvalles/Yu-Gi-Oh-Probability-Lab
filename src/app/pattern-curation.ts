@@ -1,37 +1,16 @@
 import type { CardEntry, HandPattern, Matcher, PatternCondition } from '../types'
 import { buildDerivedDeckGroupMap } from './deck-groups'
 import { getPatternDefinitionKey, getPatternMatchMode, normalizeHandPatternCategory, normalizeReusePolicy, normalizeTurnContext, resolveConditionCardIds, resolvePatternLogic } from './patterns'
-import { buildDefaultPatterns } from './pattern-defaults'
-import { buildPatternPresets, isObsoleteSystemPatternName } from './pattern-presets'
 
-interface CuratePatternsOptions {
-  includeDefaults?: boolean
-}
-
-export function curatePatterns(
-  patterns: HandPattern[],
-  cards: CardEntry[],
-  options: CuratePatternsOptions = {},
-): HandPattern[] {
+/** Normaliza las reglas propias: descarta las rotas o duplicadas y ajusta la lógica. */
+export function curatePatterns(patterns: HandPattern[], cards: CardEntry[]): HandPattern[] {
   const cardById = new Map(cards.map((card) => [card.id, card]))
   const groupsByKey = buildDerivedDeckGroupMap(cards)
-  const currentSystemPatternKeys = new Set(
-    buildPatternPresets(cards).map((preset) => getPatternDefinitionKey(preset.pattern)),
-  )
   const nextPatterns: HandPattern[] = []
   const seenPatternKeys = new Set<string>()
-  const incomingPatterns = options.includeDefaults === false
-    ? patterns
-    : [...patterns, ...buildDefaultPatterns(cards)]
 
-  for (const pattern of incomingPatterns) {
-    const curatedPattern = curatePattern(
-      pattern,
-      cardById,
-      groupsByKey,
-      cards,
-      currentSystemPatternKeys,
-    )
+  for (const pattern of patterns) {
+    const curatedPattern = curatePattern(pattern, cardById, groupsByKey, cards)
 
     if (!curatedPattern) {
       continue
@@ -75,7 +54,6 @@ function curatePattern(
   cardById: Map<string, CardEntry>,
   groupsByKey: ReturnType<typeof buildDerivedDeckGroupMap>,
   cards: CardEntry[],
-  currentSystemPatternKeys: Set<string>,
 ): HandPattern | null {
   if (pattern.needsReview) {
     return null
@@ -154,7 +132,7 @@ function curatePattern(
     : pattern.name.replace(/\s+/g, ' ').trim() || (kind === 'opening'
       ? 'Salida sin nombre'
       : 'Problema sin nombre')
-  const nextPattern: HandPattern = {
+  return {
     ...pattern,
     name,
     kind,
@@ -165,13 +143,6 @@ function curatePattern(
     needsReview: false,
     conditions,
   }
-  const definitionKey = getPatternDefinitionKey(nextPattern)
-
-  if (isObsoleteSystemPatternName(name) && !currentSystemPatternKeys.has(definitionKey)) {
-    return null
-  }
-
-  return nextPattern
 }
 
 function curateCondition(

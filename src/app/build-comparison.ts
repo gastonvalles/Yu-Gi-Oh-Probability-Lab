@@ -5,6 +5,7 @@ import { buildCalculatorState } from './calculator-state'
 import { calculateProbabilities } from '../probability'
 import { getCleanProbability } from '../probability-summary'
 import { getPatternDefinitionKey, normalizeTurnContext } from './patterns'
+import { buildActiveRuleSet } from './pattern-presets'
 import { normalizeName, createId } from './utils'
 import type { CardEntry, CalculationOutput, HandPattern } from '../types'
 
@@ -181,7 +182,8 @@ function reconstructPatterns(
 function computeProbabilities(config: PortableConfig): CalculationOutput {
   const instances = reconstructDeckCardInstances(config.deckBuilder.main)
   const derivedCards = deriveMainDeckCardsFromZone(instances)
-  const patterns = reconstructPatterns(config.patterns)
+  // Cada build usa el mismo set de reglas del sistema, armado sobre sus propias cartas.
+  const patterns = buildActiveRuleSet(derivedCards, reconstructPatterns(config.patterns), config.disabledGenericRuleIds ?? [])
 
   const calculatorState = buildCalculatorState(derivedCards, {
     handSize: config.handSize,

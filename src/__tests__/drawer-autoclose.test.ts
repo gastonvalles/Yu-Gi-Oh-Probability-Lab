@@ -199,9 +199,7 @@ describe('Bug Condition Exploration: Drawer auto-closes after opening from DeckQ
 
           // Step 3: Run curatePatterns (simulating usePatternMaintenance)
           // This is what happens when maintenance detects needsReview patterns
-          const curatedPatterns = curatePatterns(patternsAfterAppend, deckCards, {
-            includeDefaults: false,
-          })
+          const curatedPatterns = curatePatterns(patternsAfterAppend, deckCards)
 
           // Step 4: Assert the newly created pattern survives curation
           const newPatternSurvived = curatedPatterns.some((p) => p.id === newPatternId)
@@ -255,9 +253,7 @@ describe('Bug Condition Exploration: Drawer auto-closes after opening from DeckQ
 
           // Append and curate (simulating the maintenance flow)
           const patternsAfterAppend = [...existingPatterns, newPattern]
-          const curatedPatterns = curatePatterns(patternsAfterAppend, deckCards, {
-            includeDefaults: false,
-          })
+          const curatedPatterns = curatePatterns(patternsAfterAppend, deckCards)
 
           // Simulate the race condition: pendingCreatedPatternId is null
           // (React hasn't batched the setState yet when the effect runs)

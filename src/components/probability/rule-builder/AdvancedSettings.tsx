@@ -9,6 +9,7 @@ import {
 import { buildDerivedDeckGroupMap } from '../../../app/deck-groups'
 import { formatInteger } from '../../../app/utils'
 import type { CardEntry, HandPattern } from '../../../types'
+import { Switch } from '../../ui/Switch'
 import { Button } from '../../ui/Button'
 import type { PatternEditorActions } from '../pattern-editor-actions'
 
@@ -62,23 +63,11 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
             <span className="text-[0.76rem] text-(--text-main) leading-[1.14]">
               ¿La misma carta cuenta para más de una condición?
             </span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={allowsSharedCards(pattern)}
-              className={[
-                'relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors',
-                allowsSharedCards(pattern) ? 'bg-(--primary)' : 'bg-(--border-subtle)',
-              ].join(' ')}
-              onClick={() => actions.setPatternAllowSharedCards(pattern.id, !allowsSharedCards(pattern))}
-            >
-              <span
-                className={[
-                  'pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform',
-                  allowsSharedCards(pattern) ? 'translate-x-5' : 'translate-x-0.5',
-                ].join(' ')}
-              />
-            </button>
+            <Switch
+              checked={allowsSharedCards(pattern)}
+              label="La misma carta cuenta para más de una condición"
+              onChange={(checked) => actions.setPatternAllowSharedCards(pattern.id, checked)}
+            />
           </div>
           <p className="m-0 text-[0.68rem] text-(--text-muted) leading-[1.2]">
             Hay cartas que aparecen en más de una condición.

@@ -152,9 +152,11 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* La imagen no recibe el toque: así el long-press no abre el menú nativo de imagen. */
   .deck-zone-card img {
     -webkit-user-drag: none;
     user-select: none;
+    pointer-events: none;
   }
 
   .deck-zone-card[data-drag-armed='true'] {

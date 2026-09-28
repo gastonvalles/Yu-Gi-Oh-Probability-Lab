@@ -7,7 +7,7 @@ import type { LabResults, LabViewResult } from '../app/probability-lab'
 import { LabRuleList } from '../components/probability/LabRuleList'
 import { LabScoreCard } from '../components/probability/LabScoreCard'
 import { TurnViewToggle } from '../components/probability/TurnViewToggle'
-import type { ProbabilityCausalEntry } from '../components/probability/probability-lab-helpers'
+import type { RuleEntry } from '../components/probability/probability-lab-helpers'
 
 function view(cleanProbability: number, handSize: number | null): LabViewResult {
   return {
@@ -23,20 +23,21 @@ function view(cleanProbability: number, handSize: number | null): LabViewResult 
 
 const RESULTS: LabResults = { first: view(0.41, 5), second: view(0.73, 6), average: view(0.57, null) }
 
-function entry(overrides: Partial<ProbabilityCausalEntry>): ProbabilityCausalEntry {
+function entry(overrides: Partial<RuleEntry>): RuleEntry {
   return {
-    definitionKey: 'k',
-    description: '',
-    id: 'id',
-    isCore: false,
+    patternId: 'p1',
+    presetId: null,
+    tier: 'custom',
     kind: 'opening',
     name: 'Regla',
-    patternId: 'p1',
-    possible: true,
-    probability: 0.5,
-    presetId: null,
-    technicalSubtitle: 'con 1+ Starter',
+    summary: '1+ Starter',
+    description: null,
     turnContext: 'either',
+    enabled: true,
+    appliesToView: true,
+    isComplete: true,
+    probability: 0.5,
+    possible: true,
     ...overrides,
   }
 }
@@ -105,20 +106,48 @@ describe('LabScoreCard', () => {
 })
 
 describe('LabRuleList', () => {
-  it('abre la edición con un toque en la regla, sin modo edición previo', () => {
+  const groups = {
+    universal: [entry({ patternId: 'u', tier: 'universal', presetId: 'starter_opening', name: 'Salida básica' })],
+    generic: [entry({ patternId: 'g', tier: 'generic', presetId: 'no_answer_second_problem', name: 'Sin respuesta', kind: 'problem' })],
+    custom: [entry({ patternId: 'c', name: 'Mi combo' })],
+  }
+
+  it('edita reglas propias con un toque y prende o apaga las genéricas', () => {
     const onEditRule = vi.fn()
+    const onToggleGenericRule = vi.fn()
     render(
       <LabRuleList
-        openings={[entry({ patternId: 'open', name: 'Salida básica' })]}
-        problems={[entry({ patternId: 'bad', name: 'Mano sin Starter', kind: 'problem' })]}
+        groups={groups}
         highlightedPatternId={null}
         onEditRule={onEditRule}
-        onAddRecommended={() => {}}
+        onToggleGenericRule={onToggleGenericRule}
         onCreateCustom={() => {}}
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /Editar regla Mano sin Starter/ }))
-    expect(onEditRule).toHaveBeenCalledWith('bad')
+    fireEvent.click(screen.getByRole('button', { name: /Editar regla Mi combo/ }))
+    expect(onEditRule).toHaveBeenCalledWith('c')
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Desactivar Sin respuesta' }))
+    expect(onToggleGenericRule).toHaveBeenCalledWith('no_answer_second_problem', false)
+
+    expect(screen.queryByRole('button', { name: /Editar regla Salida básica/ })).not.toBeInTheDocument()
+    expect(screen.getByText('Siempre activas')).toBeInTheDocument()
+  })
+
+  it('filtra por tipo de regla', () => {
+    render(
+      <LabRuleList
+        groups={groups}
+        highlightedPatternId={null}
+        onEditRule={() => {}}
+        onToggleGenericRule={() => {}}
+        onCreateCustom={() => {}}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Problemas' }))
+    expect(screen.queryByText('Mi combo')).not.toBeInTheDocument()
+    expect(screen.getByText('Sin respuesta')).toBeInTheDocument()
   })
 })

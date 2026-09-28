@@ -135,7 +135,7 @@ function buildConditionPreview(
   cardById: Map<string, CardEntry>,
 ): string {
   if (!requirement.matcher) {
-    return 'definir el matcher y su valor'
+    return '(elegí qué cartas contar)'
   }
 
   const selectedCards = resolveSelectedCards(requirement, cardById)
@@ -173,7 +173,7 @@ function buildConditionPreview(
     case 'def':
       return buildGenericMonsterPreview(requirement, `con ${formatInteger(requirement.matcher.value)} DEF`)
     default:
-      return 'definir el matcher y su valor'
+      return '(elegí qué cartas contar)'
   }
 }
 

@@ -146,6 +146,7 @@ const arbAppState: fc.Arbitrary<AppState> = fc.record({
   patternsSeeded: fc.boolean(),
   patternsSeedVersion: fc.integer({ min: 0, max: 10 }),
   patterns: fc.array(arbHandPattern, { minLength: 0, maxLength: 3 }),
+  disabledGenericRuleIds: fc.subarray(['starter_extender_opening', 'no_answer_second_problem']),
   deckBuilder: fc.record({
     deckName: fc.string({ minLength: 1, maxLength: 30 }).filter((s) => s.trim().length > 0),
     main: fc.array(arbDeckCardInstance, { minLength: 0, maxLength: 5 }),

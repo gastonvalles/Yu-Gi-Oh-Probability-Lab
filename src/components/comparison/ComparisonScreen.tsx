@@ -1049,6 +1049,7 @@ function portableConfigFromImport(deck: DeckBuilderState | null, app: AppState):
   return {
     version: 15, handSize: app.handSize, deckFormat: app.deckFormat as PortableConfig['deckFormat'],
     patternsSeeded: app.patternsSeeded, patternsSeedVersion: app.patternsSeedVersion,
+    disabledGenericRuleIds: [...app.disabledGenericRuleIds],
     deckBuilder: { deckName: deck.deckName, main: m(deck.main), extra: m(deck.extra), side: m(deck.side) },
     patterns: filterToGenericPatterns(allPatterns),
   }

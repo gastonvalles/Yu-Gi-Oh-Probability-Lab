@@ -41,6 +41,7 @@ export interface PatternsState {
   patternsSeeded: boolean
   patternsSeedVersion: number
   patterns: HandPattern[]
+  disabledGenericRuleIds: string[]
 }
 
 interface UpdatePatternCategoryPayload {
@@ -165,6 +166,7 @@ const initialState: PatternsState = {
   patternsSeeded: false,
   patternsSeedVersion: 0,
   patterns: [],
+  disabledGenericRuleIds: [],
 }
 
 const patternsSlice = createSlice({
@@ -185,6 +187,10 @@ const patternsSlice = createSlice({
       state.patterns = action.payload.patterns
       state.patternsSeeded = true
       state.patternsSeedVersion = action.payload.version
+    },
+    setGenericRuleEnabled(state, action: PayloadAction<{ ruleId: string; enabled: boolean }>) {
+      const others = state.disabledGenericRuleIds.filter((ruleId) => ruleId !== action.payload.ruleId)
+      state.disabledGenericRuleIds = action.payload.enabled ? others : [...others, action.payload.ruleId]
     },
     removePatternFromState(state, action: PayloadAction<string>) {
       state.patterns = removePattern(state.patterns, action.payload)
@@ -376,6 +382,7 @@ export const {
   removeRequirementFromPattern,
   replacePatterns,
   replacePatternsState,
+  setGenericRuleEnabled,
   setPatternAllowSharedCards,
   setPatternCategory,
   setPatternMatchMode,

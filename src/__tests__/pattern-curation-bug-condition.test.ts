@@ -156,7 +156,7 @@ describe('Bug Condition Exploration: Unconfigured conditions removed during acti
         makeBugConditionPattern(cardIds),
         ({ pattern, unconfiguredCount }) => {
           // Run through curatePatterns with includeDefaults: false to isolate our pattern
-          const result = curatePatterns([pattern], cards, { includeDefaults: false })
+          const result = curatePatterns([pattern], cards)
 
           // The pattern should not be removed entirely
           expect(result.length).toBe(1)
@@ -191,7 +191,7 @@ describe('Bug Condition Exploration: Unconfigured conditions removed during acti
           // Ensure the pattern has an empty name
           const patternWithEmptyName: HandPattern = { ...pattern, name: '' }
 
-          const result = curatePatterns([patternWithEmptyName], cards, { includeDefaults: false })
+          const result = curatePatterns([patternWithEmptyName], cards)
 
           // The pattern should not be removed entirely
           expect(result.length).toBe(1)

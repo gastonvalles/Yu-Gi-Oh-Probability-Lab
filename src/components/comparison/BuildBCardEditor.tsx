@@ -163,7 +163,7 @@ export function BuildBCardEditor({ card, currentEdit, allCards, onSave, onNaviga
                     <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-[0.12em]">
                       Build B — Carta {formatInteger(position)} de {formatInteger(total)}
                     </p>
-                    <h3 className="m-0 wrap-break-word text-[2rem] leading-[0.94] tracking-[-0.03em] text-(--text-main) min-[1101px]:text-[2.3rem]">
+                    <h3 className="m-0 wrap-anywhere text-[2rem] leading-[0.94] tracking-[-0.03em] text-(--text-main) min-[1101px]:text-[2.3rem]">
                       {card.name}
                     </h3>
                     <p className="app-muted m-0 text-[0.9rem] leading-[1.05] min-[1101px]:text-[0.98rem]">

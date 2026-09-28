@@ -262,8 +262,8 @@ export function DeckZone({
     <section className="deck-zone-shell w-full bg-transparent p-0">
       <div className="mb-1.5 flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <h3 className="m-0 wrap-break-word text-[1.05rem] leading-none">{title}</h3>
-          <p className="m-0 mt-[0.08rem] wrap-break-word text-[0.82rem] leading-[1.12] text-(--text-muted)">
+          <h3 className="m-0 wrap-anywhere text-[1.05rem] leading-none">{title}</h3>
+          <p className="m-0 mt-[0.08rem] wrap-anywhere text-[0.82rem] leading-[1.12] text-(--text-muted)">
             {headerSummary}
           </p>
         </div>

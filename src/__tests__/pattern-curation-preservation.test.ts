@@ -192,7 +192,7 @@ describe('Preservation Property Tests: Non-Buggy Patterns Curate Correctly', () 
         fc.property(
           makeFullyConfiguredPattern(cardIds),
           (pattern) => {
-            const result = curatePatterns([pattern], cards, { includeDefaults: false })
+            const result = curatePatterns([pattern], cards)
 
             // Pattern should not be removed (it has valid conditions)
             expect(result.length).toBe(1)
@@ -240,7 +240,7 @@ describe('Preservation Property Tests: Non-Buggy Patterns Curate Correctly', () 
         fc.property(
           makeFullyUnconfiguredPattern(),
           (pattern) => {
-            const result = curatePatterns([pattern], cards, { includeDefaults: false })
+            const result = curatePatterns([pattern], cards)
 
             // Pattern should be preserved
             expect(result.length).toBe(1)
@@ -274,7 +274,7 @@ describe('Preservation Property Tests: Non-Buggy Patterns Curate Correctly', () 
         fc.property(
           makeFullyConfiguredPattern(cardIds).map((p) => ({ ...p, needsReview: true })),
           (pattern) => {
-            const result = curatePatterns([pattern], cards, { includeDefaults: false })
+            const result = curatePatterns([pattern], cards)
 
             // Pattern should be removed
             expect(result.length).toBe(0)
@@ -317,7 +317,7 @@ describe('Preservation Property Tests: Non-Buggy Patterns Curate Correctly', () 
             conditions: invalidConditions,
           })),
           (pattern) => {
-            const result = curatePatterns([pattern], cards, { includeDefaults: false })
+            const result = curatePatterns([pattern], cards)
 
             // Pattern with only invalid conditions should be removed entirely
             expect(result.length).toBe(0)
@@ -361,7 +361,7 @@ describe('Preservation Property Tests: Non-Buggy Patterns Curate Correctly', () 
             validCount: validConditions.length,
           })),
           ({ pattern, validCount }) => {
-            const result = curatePatterns([pattern], cards, { includeDefaults: false })
+            const result = curatePatterns([pattern], cards)
 
             // Pattern should still exist (has valid conditions)
             expect(result.length).toBe(1)
@@ -426,7 +426,7 @@ describe('Preservation Property Tests: Non-Buggy Patterns Curate Correctly', () 
             }),
           ),
           ({ pattern }) => {
-            const result = curatePatterns([pattern], cards, { includeDefaults: false })
+            const result = curatePatterns([pattern], cards)
 
             // Pattern should exist
             expect(result.length).toBe(1)

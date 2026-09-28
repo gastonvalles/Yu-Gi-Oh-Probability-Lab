@@ -54,7 +54,7 @@ export function CardDetail({
 
   return (
     <section className="flex min-h-0 flex-col bg-card-background text-(--text-main)">
-      <div className="relative min-h-0 overflow-y-auto px-3 pb-3 pt-3 min-[860px]:px-6 min-[860px]:pb-5 min-[860px]:pt-5">
+      <div className="relative min-h-0 overflow-x-hidden overflow-y-auto px-3 pb-3 pt-3 min-[860px]:px-6 min-[860px]:pb-5 min-[860px]:pt-5">
         {!isMobileLayout ? (
           <div className="absolute right-3 top-3 z-10 min-[860px]:right-6 min-[860px]:top-5">
             <CloseButton
@@ -77,7 +77,7 @@ export function CardDetail({
             {isMobileLayout ? (
               <div className="grid gap-3">
                 <header className="surface-card relative px-10 py-1.5 text-center">
-                  <h2 className="m-0 wrap-break-word text-[1.1rem] font-semibold leading-none tracking-[-0.025em] text-(--text-main)">
+                  <h2 className="m-0 wrap-anywhere text-[1.1rem] font-semibold leading-none tracking-[-0.025em] text-(--text-main)">
                     {card.name}
                   </h2>
                   <CloseButton
@@ -98,18 +98,18 @@ export function CardDetail({
 
                 <section className="surface-card grid gap-2 px-3 py-2.5">
                   <div className="grid gap-1">
-                    <p className="m-0 whitespace-pre-wrap wrap-break-word text-[0.94rem] font-semibold leading-[1.22] text-(--text-main)">
+                    <p className="m-0 whitespace-pre-wrap wrap-anywhere text-[0.94rem] font-semibold leading-[1.22] text-(--text-main)">
                       {mobileSummary?.typeLine}
                     </p>
 
                     {mobileSummary?.statLine ? (
-                      <p className="m-0 whitespace-pre-wrap wrap-break-word text-[0.92rem] font-semibold leading-[1.2] text-(--text-main)">
+                      <p className="m-0 whitespace-pre-wrap wrap-anywhere text-[0.92rem] font-semibold leading-[1.2] text-(--text-main)">
                         {mobileSummary.statLine}
                       </p>
                     ) : null}
 
                     {mobileMetaParts.length > 0 ? (
-                      <p className="app-muted m-0 whitespace-pre-wrap wrap-break-word text-[0.74rem] leading-[1.2]">
+                      <p className="app-muted m-0 whitespace-pre-wrap wrap-anywhere text-[0.74rem] leading-[1.2]">
                         {mobileMetaParts.join(' · ')}
                       </p>
                     ) : null}
@@ -117,7 +117,7 @@ export function CardDetail({
 
                   <div className="h-px bg-[rgb(var(--border-rgb)/0.9)]" />
 
-                  <p className="m-0 whitespace-pre-wrap wrap-break-word text-[0.94rem] leading-[1.38] text-(--text-main)">
+                  <p className="m-0 whitespace-pre-wrap wrap-anywhere text-[0.94rem] leading-[1.38] text-(--text-main)">
                     {card.description?.trim().length ? card.description : 'No card text available.'}
                   </p>
                 </section>
@@ -151,7 +151,7 @@ export function CardDetail({
 
                 <div className="grid min-w-0 content-start gap-5">
                   <header className="grid gap-1.5">
-                    <h2 className="m-0 text-[2.05rem] font-semibold leading-[0.96] tracking-[-0.03em] text-(--text-main) min-[860px]:text-[3.15rem]">
+                    <h2 className="m-0 wrap-anywhere text-[2.05rem] font-semibold leading-[0.96] tracking-[-0.03em] text-(--text-main) min-[860px]:text-[3.15rem]">
                       {card.name}
                     </h2>
                   </header>
@@ -166,7 +166,7 @@ export function CardDetail({
                           <small className="app-muted block text-[0.84rem] leading-none">
                             {fact.label}
                           </small>
-                          <strong className="mt-2 flex items-center gap-2 wrap-break-word text-[1.05rem] font-semibold leading-[1.15] text-(--text-main) min-[860px]:text-[1.1rem]">
+                          <strong className="mt-2 flex items-center gap-2 wrap-anywhere text-[1.05rem] font-semibold leading-[1.15] text-(--text-main) min-[860px]:text-[1.1rem]">
                             <span className="flex h-[1.1rem] w-[1.1rem] shrink-0 items-center justify-center text-(--text-main)">
                               <FactIconGlyph kind={fact.icon} />
                             </span>
@@ -178,10 +178,10 @@ export function CardDetail({
                   ) : null}
 
                   <section className="grid gap-2.5">
-                    <h3 className="m-0 text-[1.55rem] font-semibold leading-none tracking-[-0.02em] text-(--text-main) min-[860px]:text-[2rem]">
+                    <h3 className="m-0 wrap-anywhere text-[1.55rem] font-semibold leading-none tracking-[-0.02em] text-(--text-main) min-[860px]:text-[2rem]">
                       Card Text
                     </h3>
-                    <p className="m-0 whitespace-pre-wrap wrap-break-word text-[1.1rem] leading-[1.45] text-(--text-main)">
+                    <p className="m-0 whitespace-pre-wrap wrap-anywhere text-[1.1rem] leading-[1.45] text-(--text-main)">
                       {card.description?.trim().length ? card.description : 'No card text available.'}
                     </p>
                   </section>
@@ -255,7 +255,7 @@ export function CardDetailSkeleton({
 
   return (
     <section className="flex min-h-0 flex-col bg-card-background text-(--text-main)">
-      <div className="relative min-h-0 overflow-y-auto px-3 pb-3 pt-3 min-[860px]:px-6 min-[860px]:pb-5 min-[860px]:pt-5">
+      <div className="relative min-h-0 overflow-x-hidden overflow-y-auto px-3 pb-3 pt-3 min-[860px]:px-6 min-[860px]:pb-5 min-[860px]:pt-5">
         {!isMobileLayout ? (
           <div className="absolute right-3 top-3 z-10 min-[860px]:right-6 min-[860px]:top-5">
             <CloseButton
