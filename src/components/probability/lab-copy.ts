@@ -42,21 +42,21 @@ export function buildVerdict(tone: KpiTone, view: TurnView): string {
   return `El plan inicial todavía no es confiable${context}.`
 }
 
-/** Qué conviene atacar primero según cómo fallan las manos. */
+/** Qué conviene mirar primero según cómo se reparten las manos que no son limpias. */
 export function buildFailureAdvice(result: LabViewResult): string {
-  const failing = result.noOpeningProbability + result.blockedOpeningProbability
+  const notClean = result.noOpeningProbability + result.withProblemProbability
 
-  if (failing < 0.05) {
-    return 'Casi no hay manos que fallen: el deck está muy afinado para tus reglas.'
+  if (notClean < 0.05) {
+    return 'Casi todas las manos son limpias: el deck está muy afinado para tus reglas.'
   }
 
-  if (result.noOpeningProbability >= result.blockedOpeningProbability * 2) {
-    return 'La mayoría de las manos que fallan no tienen salida: sumar starters o extenders tiene más impacto.'
+  if (result.noOpeningProbability >= result.withProblemProbability * 2) {
+    return 'La mayoría de las manos que no son limpias no tienen salida: sumar starters o extenders tiene más impacto.'
   }
 
-  if (result.blockedOpeningProbability >= result.noOpeningProbability * 2) {
-    return 'La mayoría de las manos que fallan tienen salida pero un problema las frena: reducir bricks o dependencias rinde más.'
+  if (result.withProblemProbability >= result.noOpeningProbability * 2) {
+    return 'La mayoría tiene salida pero también un problema. Revisá cuáles pesan más (pasá el mouse o tocá "Con problema"): quizás alguno no te impide jugar y conviene apagarlo o ajustarlo.'
   }
 
-  return 'Las fallas se reparten entre manos sin salida y manos frenadas por problemas.'
+  return 'Se reparten entre manos sin salida y manos con salida pero con algún problema.'
 }

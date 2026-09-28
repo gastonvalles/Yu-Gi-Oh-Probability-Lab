@@ -14,10 +14,11 @@ function view(cleanProbability: number, handSize: number | null): LabViewResult 
     handSize,
     cleanProbability,
     noOpeningProbability: 1 - cleanProbability,
-    blockedOpeningProbability: 0,
+    withProblemProbability: 0,
     cleanHands: handSize ? 100 : null,
     totalHands: handSize ? 1000 : null,
     patternResults: [],
+    segmentRules: { clean: [], withProblem: [], noOpening: [] },
   }
 }
 

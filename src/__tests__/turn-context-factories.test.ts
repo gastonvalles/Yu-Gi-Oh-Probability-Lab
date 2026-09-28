@@ -170,7 +170,6 @@ describe('Pattern factory turnContext defaults', () => {
     const PRESETS_WITH_EXPLICIT_TURN_CONTEXT = new Set<string>([
       'starter_boardbreaker_opening',
       'no_answer_second_problem',
-      'non_engine_overload_problem',
     ])
     const cards = makeCardsWithRoles()
     for (const def of PATTERN_PRESET_DEFINITIONS) {

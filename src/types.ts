@@ -131,6 +131,11 @@ export interface PatternProbability {
   possible: boolean
 }
 
+export type HandSegment = 'clean' | 'withProblem' | 'noOpening'
+
+/** Por grupo de manos, cuántas manos cumplen cada regla (mismo orden que patternResults). */
+export type HandSegmentCounts = Record<HandSegment, number[]>
+
 export interface CalculationSummary {
   totalProbability: number
   goodHands: number
@@ -142,6 +147,7 @@ export interface CalculationSummary {
   overlapHands: number
   totalHands: number
   patternResults: PatternProbability[]
+  segmentPatternHands: HandSegmentCounts
   relevantCardCount: number
   otherCopies: number
 }
