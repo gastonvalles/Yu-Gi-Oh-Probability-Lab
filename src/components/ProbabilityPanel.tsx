@@ -4,7 +4,6 @@ import { buildCalculatorState } from '../app/calculator-state'
 import { getDeckModelStatus } from '../app/deck-model-status'
 import type { DeckCardInstance } from '../app/model'
 import { useToastMessage } from '../app/use-toast-message'
-import type { DerivedDeckGroup } from '../app/deck-groups'
 import { curatePatterns } from '../app/pattern-curation'
 import { AUTO_BASE_PRESET_IDS, buildPatternPresets } from '../app/pattern-presets'
 import {
@@ -51,7 +50,6 @@ interface ProbabilityPanelProps {
   handSize: number
   patterns: HandPattern[]
   derivedMainCards: CardEntry[]
-  derivedGroups: DerivedDeckGroup[]
   patternActions: PatternEditorActions
   isEditingDeck: boolean
 }
@@ -117,7 +115,6 @@ export function ProbabilityPanel({
   handSize,
   patterns,
   derivedMainCards,
-  derivedGroups,
   patternActions,
   isEditingDeck,
 }: ProbabilityPanelProps) {
@@ -159,7 +156,6 @@ export function ProbabilityPanel({
       handSize={handSize}
       patterns={patterns}
       derivedMainCards={derivedMainCards}
-      derivedGroups={derivedGroups}
       patternActions={patternActions}
       isEditingDeck={isEditingDeck}
     />
@@ -170,7 +166,6 @@ function ProbabilityPanelContent({
   handSize,
   patterns,
   derivedMainCards,
-  derivedGroups: _derivedGroups,
   patternActions,
   isEditingDeck,
 }: ProbabilityPanelProps) {
@@ -752,7 +747,6 @@ function ProbabilityPanelContent({
         onSelectPreset={(preset) => handleSelectPreset(preset.id)}
         pattern={selectedPattern}
         patterns={patterns}
-        probability={selectedPatternProbability}
       />
 
       {practiceOpen ? (

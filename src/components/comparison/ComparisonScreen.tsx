@@ -184,7 +184,6 @@ export function ComparisonScreen() {
           handtraps={kpiA.handtraps}
           bricks={kpiA.bricks}
           boardbreakers={boardbreakersA}
-          mainDeckSize={kpiA.main}
           onSegmentClick={(role) => setKpiModalState({ role, side: 'A' })}
         />
 
@@ -288,7 +287,6 @@ export function ComparisonScreen() {
             handtraps={kpiB.handtraps}
             bricks={kpiB.bricks}
             boardbreakers={boardbreakersB}
-            mainDeckSize={kpiB.main}
             onSegmentClick={(role) => setKpiModalState({ role, side: 'B' })}
           />
         ) : null}
@@ -575,13 +573,12 @@ function describeRing(cx: number, cy: number, r: number, startAngle: number, end
   ].join(' ')
 }
 
-function KpiPieChart({ starters, extenders, handtraps, bricks, boardbreakers, mainDeckSize: _mainDeckSize, onSegmentClick }: {
+function KpiPieChart({ starters, extenders, handtraps, bricks, boardbreakers, onSegmentClick }: {
   starters: number
   extenders: number
   handtraps: number
   bricks: number
   boardbreakers: number
-  mainDeckSize: number
   onSegmentClick?: (role: KpiRole) => void
 }) {
   const filterId = `pie-glow-${useId()}`

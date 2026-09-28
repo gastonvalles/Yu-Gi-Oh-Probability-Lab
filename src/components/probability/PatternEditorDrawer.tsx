@@ -28,7 +28,6 @@ interface PatternEditorDrawerProps {
   onSelectPreset: (preset: PatternPreset) => void
   pattern: HandPattern | null
   patterns: HandPattern[]
-  probability: number | null
 }
 
 const PRESET_CATEGORY_LABELS: Record<PatternPresetScope, string> = {
@@ -50,7 +49,6 @@ export function PatternEditorDrawer({
   onSelectPreset,
   pattern,
   patterns,
-  probability,
 }: PatternEditorDrawerProps) {
   const isOpen = drawerMode !== null
   const activePatternIdByDefinitionKey = useMemo(
@@ -222,7 +220,6 @@ export function PatternEditorDrawer({
               isPendingCreation={isPendingCreation}
               onRequestDelete={onRequestDelete}
               pattern={pattern}
-              probability={probability}
             />
           ) : isWaitingForPendingPattern ? (
             <p className="surface-card m-0 px-3 py-3 text-[0.8rem] text-(--text-muted)">
