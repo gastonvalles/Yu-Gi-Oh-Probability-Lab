@@ -72,11 +72,7 @@
     }
   }
 
-  /* Deja lugar para el botón flotante de práctica. */
-  .lab-shell {
-    padding-bottom: 5.5rem;
-  }
-
+  /* Desktop: deja lugar para el botón flotante de práctica (en mobile vive en la barra). */
   @media (min-width: 1101px) {
     .lab-shell {
       padding-bottom: 5rem;
