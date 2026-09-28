@@ -34,7 +34,6 @@ function makeEntry(
     isCore: false,
     kind: 'opening',
     name: `Regla ${partial.patternId}`,
-    patternId: partial.patternId,
     possible: true,
     probability: 0.5,
     presetId: null,

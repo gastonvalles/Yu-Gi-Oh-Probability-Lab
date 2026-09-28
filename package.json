@@ -10,7 +10,8 @@
     "build": "tsc -p src/tsconfig.json && vite build",
     "preview": "vite preview",
     "sync:genesys": "node scripts/sync-genesys-card-data.mjs",
-    "test": "vitest --run"
+    "test": "vitest --run",
+    "typecheck": "tsc -p src/tsconfig.test.json"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.11.2",

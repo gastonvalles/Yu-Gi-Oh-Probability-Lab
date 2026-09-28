@@ -268,19 +268,11 @@ function computePatternComparisons(
   const keyMapB = new Map<string, { pattern: typeof patternsB[number]; index: number }>()
 
   for (let i = 0; i < patternsA.length; i++) {
-    const key = getPatternDefinitionKey({
-      ...patternsA[i],
-      turnContext: normalizeTurnContext(patternsA[i].turnContext),
-    })
-    keyMapA.set(key, { pattern: patternsA[i], index: i })
+    keyMapA.set(getPatternDefinitionKey(patternsA[i]), { pattern: patternsA[i], index: i })
   }
 
   for (let i = 0; i < patternsB.length; i++) {
-    const key = getPatternDefinitionKey({
-      ...patternsB[i],
-      turnContext: normalizeTurnContext(patternsB[i].turnContext),
-    })
-    keyMapB.set(key, { pattern: patternsB[i], index: i })
+    keyMapB.set(getPatternDefinitionKey(patternsB[i]), { pattern: patternsB[i], index: i })
   }
 
   const allKeys = new Set([...keyMapA.keys(), ...keyMapB.keys()])

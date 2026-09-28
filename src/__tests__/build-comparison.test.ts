@@ -90,21 +90,8 @@ function makePattern(
   }
 }
 
-// ── Arbitraries ──
-
-const arbCardRole: fc.Arbitrary<CardRole> = fc.constantFrom(...ALL_ROLES)
 const arbCardOrigin: fc.Arbitrary<CardOrigin> = fc.constantFrom('engine', 'non_engine', 'hybrid')
 const arbPatternKind: fc.Arbitrary<PatternKind> = fc.constantFrom('opening', 'problem')
-
-const arbPortableDeckCard: fc.Arbitrary<PortableDeckCard> = fc
-  .tuple(
-    fc.integer({ min: 1, max: 200 }),
-    fc.stringMatching(/^[A-Z][a-z]{2,8}$/),
-    fc.subarray(ALL_ROLES, { minLength: 1, maxLength: 3 }),
-    arbCardOrigin,
-  )
-  .map(([id, name, roles, origin]) => makeDeckCard(name, id, roles as CardRole[], origin))
-
 
 const arbPortablePattern: fc.Arbitrary<PortablePattern> = fc
   .tuple(
@@ -659,6 +646,8 @@ const arbComparisonResult: fc.Arbitrary<ComparisonResult> = fc
     totalOpeningProbabilityB: openB,
     totalProblemProbabilityA: probA,
     totalProblemProbabilityB: probB,
+    cleanProbabilityA: openA,
+    cleanProbabilityB: openB,
     openingDelta: openA - openB,
     problemDelta: probA - probB,
     buildsAreIdentical: false,
@@ -685,6 +674,8 @@ const arbComparisonResultBelowThreshold: fc.Arbitrary<ComparisonResult> = fc
       totalOpeningProbabilityB: openA, // same → delta = 0
       totalProblemProbabilityA: probA,
       totalProblemProbabilityB: probA, // same → delta = 0
+      cleanProbabilityA: openA,
+      cleanProbabilityB: openA,
       openingDelta: 0,
       problemDelta: 0,
       buildsAreIdentical: true,
@@ -726,6 +717,8 @@ const arbComparisonResultWithStartersOrBricks: fc.Arbitrary<ComparisonResult> = 
       totalOpeningProbabilityB: openA,
       totalProblemProbabilityA: probA,
       totalProblemProbabilityB: probA,
+      cleanProbabilityA: openA,
+      cleanProbabilityB: openA,
       openingDelta: 0,
       problemDelta: 0,
       buildsAreIdentical: false,
@@ -764,6 +757,8 @@ const arbComparisonResultWithExtendersOrHandtraps: fc.Arbitrary<ComparisonResult
       totalOpeningProbabilityB: openA,
       totalProblemProbabilityA: probA,
       totalProblemProbabilityB: probA,
+      cleanProbabilityA: openA,
+      cleanProbabilityB: openA,
       openingDelta: 0,
       problemDelta: 0,
       buildsAreIdentical: false,
@@ -796,6 +791,8 @@ const arbComparisonResultTradeoff: fc.Arbitrary<ComparisonResult> = fc
       totalOpeningProbabilityB: openB,
       totalProblemProbabilityA: 0.1,
       totalProblemProbabilityB: 0.1,
+      cleanProbabilityA: openA,
+      cleanProbabilityB: openB,
       openingDelta: openA - openB,
       problemDelta: 0,
       buildsAreIdentical: false,
@@ -998,6 +995,8 @@ describe('Build Comparison — interpretComparison', () => {
         totalOpeningProbabilityB: 0.5,
         totalProblemProbabilityA: 0.1,
         totalProblemProbabilityB: 0.1,
+        cleanProbabilityA: 0.5,
+        cleanProbabilityB: 0.5,
         openingDelta: 0,
         problemDelta: 0,
         buildsAreIdentical: false,
@@ -1188,6 +1187,8 @@ describe('Build Comparison — Boardbreaker Insight', () => {
         totalOpeningProbabilityB: 0.5,
         totalProblemProbabilityA: 0.1,
         totalProblemProbabilityB: 0.1,
+        cleanProbabilityA: 0.5,
+        cleanProbabilityB: 0.5,
         openingDelta: 0,
         problemDelta: 0,
         buildsAreIdentical: false,

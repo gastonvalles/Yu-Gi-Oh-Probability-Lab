@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import * as fc from 'fast-check'
 import { createPattern, createMatcherPattern } from '../app/pattern-factory'
-import { PATTERN_PRESET_DEFINITIONS, buildPatternPresets } from '../app/pattern-presets'
+import { buildPatternPresets } from '../app/pattern-presets'
 import { buildPatternCompactSummary } from '../components/probability/pattern-helpers'
 import { getConditionLabel, getKindLabel } from '../components/probability/rule-builder/condition-labels'
 import { getSemanticLabel } from '../components/probability/rule-builder/LiveResultBadge'
@@ -105,6 +105,7 @@ function arbExistingPattern(): fc.Arbitrary<HandPattern> {
     id,
     name,
     kind,
+    turnContext: 'either' as const,
     logic,
     minimumConditionMatches: Math.min(minMatches, conditions.length),
     reusePolicy,
@@ -231,6 +232,7 @@ describe('Drawer integration: legacy pattern compatibility', () => {
       id: 'legacy-1',
       name: 'Old Pattern',
       kind: 'opening',
+      turnContext: 'either',
       logic: 'all',
       minimumConditionMatches: 1,
       reusePolicy: 'allow',

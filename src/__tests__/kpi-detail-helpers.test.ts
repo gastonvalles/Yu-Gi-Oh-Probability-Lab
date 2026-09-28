@@ -56,20 +56,8 @@ function makeDeckCardInstance(
 // ── Arbitraries ──
 
 const arbKpiRole: fc.Arbitrary<KpiRole> = fc.constantFrom(...KPI_ROLES)
-const arbCardRole: fc.Arbitrary<CardRole> = fc.constantFrom(...ALL_ROLES)
-const arbCardOrigin: fc.Arbitrary<CardOrigin> = fc.constantFrom('engine', 'non_engine', 'hybrid')
 
-const arbDeckCardInstance: fc.Arbitrary<DeckCardInstance> = fc
-  .tuple(
-    fc.integer({ min: 1, max: 100 }),
-    fc.stringMatching(/^[A-Z][a-z]{2,8}$/),
-    fc.subarray(ALL_ROLES, { minLength: 1, maxLength: 3 }),
-    arbCardOrigin,
-    fc.boolean(),
-  )
-  .map(([id, name, roles, origin, needsReview]) =>
-    makeDeckCardInstance(name, id, roles as CardRole[], origin, needsReview),
-  )
+const arbCardOrigin: fc.Arbitrary<CardOrigin> = fc.constantFrom('engine', 'non_engine', 'hybrid')
 
 /**
  * Generates a main deck with 1-15 cards where some ygoprodeckIds may repeat

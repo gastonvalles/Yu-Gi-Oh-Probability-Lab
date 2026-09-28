@@ -132,6 +132,7 @@ const arbHandPattern: fc.Arbitrary<HandPattern> = fc.record({
   id: fc.string({ minLength: 3, maxLength: 15 }).map((s) => `pattern-${s.replace(/[^a-zA-Z0-9]/g, 'x')}`),
   name: fc.string({ minLength: 1, maxLength: 30 }).filter((s) => s.trim().length > 0),
   kind: fc.constantFrom('opening' as const, 'problem' as const),
+  turnContext: fc.constant('either' as const),
   logic: fc.constantFrom('all' as const, 'any' as const),
   minimumConditionMatches: fc.integer({ min: 1, max: 5 }),
   reusePolicy: fc.constantFrom('allow' as const, 'forbid' as const),

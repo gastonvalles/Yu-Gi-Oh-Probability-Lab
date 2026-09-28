@@ -7,8 +7,6 @@ import {
 } from '../app/build-comparison'
 import type {
   RoleDensityEntry,
-  GroupedRoleDensity,
-  ProConResult,
   InsightPriority,
   InsightCategory,
   Insight,
