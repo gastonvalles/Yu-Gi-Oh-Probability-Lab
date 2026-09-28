@@ -139,22 +139,6 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
       ),
     describeProbability: (probability) => `Yendo segundo, no tenés respuesta en ${formatProbability(probability)} de las manos.`,
   },
-  {
-    id: 'non_engine_overload_problem',
-    tier: 'generic',
-    kind: 'problem',
-    title: 'Exceso de non-engine yendo 1º',
-    description: 'Yendo primero, 3 o más cartas non-engine dejan poco motor para armar el campo.',
-    technicalSubtitle: '3+ Non-engine',
-    build: () =>
-      createMatcherPattern(
-        'Exceso de non-engine yendo 1º',
-        'problem',
-        [{ matcher: { type: 'origin', value: 'non_engine' }, quantity: 3, kind: 'include' }],
-        { turnContext: 'first' },
-      ),
-    describeProbability: (probability) => `Yendo primero, abrís 3+ non-engine en ${formatProbability(probability)} de las manos.`,
-  },
 ]
 
 // Reglas de sistema de versiones anteriores: se quitan de las reglas propias al migrar.

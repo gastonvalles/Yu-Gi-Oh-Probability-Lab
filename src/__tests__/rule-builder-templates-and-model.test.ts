@@ -187,7 +187,6 @@ describe('QuickTemplates preset application', () => {
       starter_interaction_opening: 'Salida con interacción',
       starter_boardbreaker_opening: 'Salida que rompe campo',
       no_answer_second_problem: 'Sin respuesta yendo 2º',
-      non_engine_overload_problem: 'Exceso de non-engine yendo 1º',
     }
 
     for (const [presetId, expectedLabel] of Object.entries(expectedLabels)) {

@@ -54,7 +54,7 @@ describe('computeLabResults', () => {
 
   it('manos limpias + sin salida + salida frenada suman 100%', () => {
     for (const view of Object.values(okResults(DECK, PATTERNS))) {
-      expect(view.cleanProbability + view.noOpeningProbability + view.blockedOpeningProbability).toBeCloseTo(1)
+      expect(view.cleanProbability + view.noOpeningProbability + view.withProblemProbability).toBeCloseTo(1)
     }
   })
 
@@ -89,6 +89,56 @@ describe('computeLabResults', () => {
 
     expect(threeNames?.totalProbability).toBeGreaterThan(0)
     expect(oneName?.totalProbability).toBe(0)
+  })
+
+  it('indica qué reglas aparecen en cada grupo de manos', () => {
+    const { first, second, average } = okResults(DECK, PATTERNS)
+
+    for (const view of [first, second, average]) {
+      const starterInClean = view.segmentRules.clean.find((rule) => rule.name === 'Starter')
+      const bricksWithProblem = view.segmentRules.withProblem.find((rule) => rule.name === '2 bricks')
+
+      // Toda mano limpia o con problema tiene la única salida; toda mano "con problema" tiene el único problema.
+      expect(starterInClean?.share).toBeCloseTo(1)
+      expect(bricksWithProblem?.share).toBeCloseTo(1)
+      expect(view.segmentRules.clean.some((rule) => rule.kind === 'problem')).toBe(false)
+      expect(view.segmentRules.noOpening.some((rule) => rule.kind === 'opening')).toBe(false)
+    }
+  })
+
+  it('las manos por grupo suman las manos de cada regla', () => {
+    const summary = calculateProbabilities({ deckSize: 40, handSize: 5, cards: DECK, patterns: PATTERNS }).summary!
+
+    summary.patternResults.forEach((result, index) => {
+      const bySegment =
+        summary.segmentPatternHands.clean[index]! +
+        summary.segmentPatternHands.withProblem[index]! +
+        summary.segmentPatternHands.noOpening[index]!
+      expect(bySegment).toBeCloseTo(result.matchingHands)
+    })
+  })
+
+  it('una carta con varios roles cuenta para cada uno, pero una sola copia no cubre dos condiciones', () => {
+    const multiRole = [card('x', 3, ['starter', 'extender', 'boardbreaker']), ...filler(37)]
+    const oneCopy = createMatcherPattern('Starter', 'opening', [
+      { matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' },
+    ])
+    const followUp = createMatcherPattern(
+      'Starter + Extender',
+      'opening',
+      [
+        { matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' },
+        { matcher: { type: 'role', value: 'extender' }, quantity: 1, kind: 'include' },
+      ],
+      { allowSharedCards: false, matchMode: 'all', minimumMatches: 2 },
+    )
+    const summary = calculateProbabilities({ deckSize: 40, handSize: 5, cards: multiRole, patterns: [oneCopy, followUp] }).summary!
+    const [starter, starterAndExtender] = summary.patternResults
+
+    expect(starter?.probability).toBeCloseTo(1 - hypergeometric(40, 3, 5, 0))
+    // Necesita dos copias: la misma carta no puede ser starter y extender a la vez.
+    expect(starterAndExtender?.probability).toBeCloseTo(1 - hypergeometric(40, 3, 5, 0) - hypergeometric(40, 3, 5, 1))
+    expect(buildRoleDistributions(multiRole, [5]).find((role) => role.key === 'extender')?.copies).toBe(3)
   })
 
   it('bloquea el cálculo con un deck inválido', () => {

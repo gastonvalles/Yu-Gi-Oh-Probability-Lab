@@ -7,6 +7,7 @@ import {
 import { normalizeHandPatternCategory, resolveConditionCardIds } from './app/patterns'
 import type {
   CalculationSummary,
+  HandSegmentCounts,
   CalculatorState,
   PatternProbability,
 } from './types'
@@ -95,6 +96,13 @@ export function buildCalculationSummary(state: CalculatorState): CalculationSumm
 
   const totalHands = combination(state.deckSize, state.handSize)
   const patternHands = new Array<number>(resolvedPatterns.length).fill(0)
+  // Manos de cada grupo (limpias / con problema / sin salida) en las que aparece cada regla.
+  const segmentPatternHands: HandSegmentCounts = {
+    clean: new Array<number>(resolvedPatterns.length).fill(0),
+    withProblem: new Array<number>(resolvedPatterns.length).fill(0),
+    noOpening: new Array<number>(resolvedPatterns.length).fill(0),
+  }
+  const matchedIndexes: number[] = []
   let goodHands = 0
   let badHands = 0
   let overlapHands = 0
@@ -111,10 +119,12 @@ export function buildCalculationSummary(state: CalculatorState): CalculationSumm
     (counts, weight) => {
       let matchedGoodPattern = false
       let matchedBadPattern = false
+      matchedIndexes.length = 0
 
       for (const [index, pattern] of resolvedPatterns.entries()) {
         if (matchesResolvedPattern(pattern, counts, ARRAY_COUNT_OPERATIONS)) {
           patternHands[index] += weight
+          matchedIndexes.push(index)
 
           if (normalizeHandPatternCategory(pattern.kind) === 'problem') {
             matchedBadPattern = true
@@ -134,6 +144,12 @@ export function buildCalculationSummary(state: CalculatorState): CalculationSumm
 
       if (matchedGoodPattern && matchedBadPattern) {
         overlapHands += weight
+      }
+
+      const segment = !matchedGoodPattern ? 'noOpening' : matchedBadPattern ? 'withProblem' : 'clean'
+
+      for (const index of matchedIndexes) {
+        segmentPatternHands[segment][index] += weight
       }
     },
   )
@@ -161,6 +177,7 @@ export function buildCalculationSummary(state: CalculatorState): CalculationSumm
     overlapHands,
     totalHands,
     patternResults,
+    segmentPatternHands,
     relevantCardCount: signatureByCardId.size,
     otherCopies,
   }
