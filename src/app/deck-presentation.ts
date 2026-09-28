@@ -1,4 +1,5 @@
 import type { DeckCardInstance, DeckZone } from './model'
+import type { ApiCardReference } from '../types'
 import { formatInteger } from './utils'
 
 export type DeckZoneTypeKind = 'monster' | 'spell' | 'trap' | 'fusion' | 'synchro' | 'xyz' | 'link'
@@ -7,6 +8,23 @@ export interface DeckZoneTypeCount {
   kind: DeckZoneTypeKind
   label: string
   count: number
+}
+
+export type MainDeckCardKind = 'monster' | 'spell' | 'trap'
+
+export function getMainDeckCardKind(card: Pick<ApiCardReference, 'cardType' | 'frameType'>): MainDeckCardKind {
+  const cardType = card.cardType.toLowerCase()
+  const frameType = card.frameType.toLowerCase()
+
+  if (cardType.includes('spell') || frameType.includes('spell')) {
+    return 'spell'
+  }
+
+  if (cardType.includes('trap') || frameType.includes('trap')) {
+    return 'trap'
+  }
+
+  return 'monster'
 }
 
 export function buildDeckZoneTypeCounts(zone: DeckZone, cards: DeckCardInstance[]): DeckZoneTypeCount[] {
@@ -40,16 +58,7 @@ export function buildDeckZoneTypeCounts(zone: DeckZone, cards: DeckCardInstance[
   const counts = { monster: 0, spell: 0, trap: 0 }
 
   for (const card of cards) {
-    const cardType = card.apiCard.cardType.toLowerCase()
-    const frameType = card.apiCard.frameType.toLowerCase()
-
-    if (cardType.includes('spell') || frameType.includes('spell')) {
-      counts.spell += 1
-    } else if (cardType.includes('trap') || frameType.includes('trap')) {
-      counts.trap += 1
-    } else {
-      counts.monster += 1
-    }
+    counts[getMainDeckCardKind(card.apiCard)] += 1
   }
 
   return (

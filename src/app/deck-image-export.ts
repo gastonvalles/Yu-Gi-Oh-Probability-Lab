@@ -1,42 +1,43 @@
-import { downloadCanvasAsPng, downloadTextAsTxt, downloadTextAsYdk } from './deck-image-export-download'
+import kdeTemplateUrl from '../assets/kde-decklist.pdf?url'
+import { canvasToJpegBlob, downloadBlob } from './deck-image-export-download'
 import { renderDeckAsCanvas } from './deck-image-export-render'
+import { buildKdeDecklist } from './kde-decklist'
 import type { DeckBuilderState, DeckCardInstance } from './model'
 import type { DeckFormat } from '../types'
 
-export async function exportDeckAssets(deckBuilder: DeckBuilderState, deckFormat: DeckFormat): Promise<void> {
-  const canvas = await renderDeckAsCanvas(deckBuilder, deckFormat)
+export interface DeckExportResult {
+  // Secciones del PDF oficial que no entraron completas.
+  decklistOverflow: string[]
+}
+
+export async function exportDeckAssets(deckBuilder: DeckBuilderState, deckFormat: DeckFormat): Promise<DeckExportResult> {
   const filenameBase = deckBuilder.deckName || 'ygo-probability-lab-deck'
+  const decklist = buildKdeDecklist(deckBuilder)
+  const [imageBlob, pdfBytes] = await Promise.all([
+    renderDeckAsCanvas(deckBuilder, deckFormat).then(canvasToJpegBlob),
+    buildDecklistPdf(decklist),
+  ])
 
-  await downloadCanvasAsPng(canvas, filenameBase)
-  downloadTextAsTxt(buildDecklistText(deckBuilder), filenameBase)
-  downloadTextAsYdk(buildYdkText(deckBuilder), filenameBase)
+  downloadBlob(imageBlob, filenameBase, 'jpg')
+  downloadBlob(new Blob([pdfBytes as BlobPart], { type: 'application/pdf' }), `${filenameBase}-decklist`, 'pdf')
+  downloadBlob(new Blob([buildYdkText(deckBuilder)], { type: 'text/plain;charset=utf-8' }), filenameBase, 'ydk')
+
+  return { decklistOverflow: decklist.overflow }
 }
 
-export function buildDecklistText(deckBuilder: DeckBuilderState): string {
-  const lines = [
-    'Main Deck',
-    ...buildZoneDecklistLines(deckBuilder.main),
-    '',
-    'Extra Deck',
-    ...buildZoneDecklistLines(deckBuilder.extra),
-    '',
-    'Side Deck',
-    ...buildZoneDecklistLines(deckBuilder.side),
-  ]
+// pdf-lib pesa bastante: se carga sólo al exportar.
+async function buildDecklistPdf(decklist: ReturnType<typeof buildKdeDecklist>): Promise<Uint8Array> {
+  const [{ fillKdeDecklistPdf }, templateResponse] = await Promise.all([
+    import('./kde-decklist-pdf'),
+    fetch(kdeTemplateUrl),
+  ])
 
-  return lines.join('\r\n')
-}
-
-function buildZoneDecklistLines(cards: DeckCardInstance[]): string[] {
-  const counts = new Map<string, number>()
-
-  for (const card of cards) {
-    counts.set(card.name, (counts.get(card.name) ?? 0) + 1)
+  if (!templateResponse.ok) {
+    throw new Error('No pude cargar la planilla oficial de decklist.')
   }
 
-  return [...counts.entries()].map(([name, count]) => `${count} ${name}`)
+  return fillKdeDecklistPdf(await templateResponse.arrayBuffer(), decklist)
 }
-
 
 export function buildYdkText(deckBuilder: DeckBuilderState): string {
   const lines = [
