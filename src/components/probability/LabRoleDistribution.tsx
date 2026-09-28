@@ -15,46 +15,54 @@ export function LabRoleDistribution({ distributions, onOpenRole }: LabRoleDistri
       title="Qué robás de cada rol"
       summary={starters ? `${formatShortPercent(starters.atLeastOne)} con 1+ starter` : undefined}
       defaultOpenOnMobile={false}
+      className="lab-roles"
     >
-      <div className="lab-distribution" role="table" aria-label="Probabilidad de robar cada rol">
-        <div className="lab-distribution-row lab-distribution-head" role="row">
-          <span role="columnheader">Rol</span>
-          {DISTRIBUTION_BUCKETS.map((bucket) => (
-            <span key={bucket} role="columnheader" className="text-center">
-              {bucket}
-            </span>
-          ))}
-          <span role="columnheader" className="text-right">
-            1+
+      <div className="lab-distribution-legend" aria-hidden="true">
+        <span>Copias robadas:</span>
+        {DISTRIBUTION_BUCKETS.map((bucket, index) => (
+          <span key={bucket} className="lab-distribution-legend-item">
+            <span className="lab-distribution-swatch" data-bucket={index} />
+            {bucket}
           </span>
-        </div>
-
-        {distributions.map((distribution) => (
-          <button
-            key={distribution.key}
-            type="button"
-            role="row"
-            className="lab-distribution-row"
-            data-role={distribution.key}
-            disabled={distribution.copies === 0}
-            onClick={() => onOpenRole(distribution.key)}
-          >
-            <span role="rowheader" className="lab-distribution-role">
-              <strong>{distribution.label}</strong>
-              <small>{formatInteger(distribution.copies)} copias</small>
-            </span>
-            {distribution.buckets.map((value, index) => (
-              <span key={DISTRIBUTION_BUCKETS[index]} role="cell" className="lab-distribution-cell">
-                <span className="lab-distribution-bar" style={{ height: `${Math.max(4, value * 100)}%` }} />
-                <span className="lab-distribution-value">{Math.round(value * 100)}%</span>
-              </span>
-            ))}
-            <span role="cell" className="lab-distribution-total">
-              {formatShortPercent(distribution.atLeastOne)}
-            </span>
-          </button>
         ))}
       </div>
+
+      <ul className="lab-distribution">
+        {distributions.map((distribution) => (
+          <li key={distribution.key}>
+            <button
+              type="button"
+              className="lab-distribution-row"
+              data-role={distribution.key}
+              disabled={distribution.copies === 0}
+              aria-label={`${distribution.label}: ${formatShortPercent(distribution.atLeastOne)} de robar al menos una. Ver cartas`}
+              onClick={() => onOpenRole(distribution.key)}
+            >
+              <span className="lab-distribution-role">
+                <strong>{distribution.label}</strong>
+                <small>{formatInteger(distribution.copies)} copias</small>
+              </span>
+              <span className="lab-distribution-bar" aria-hidden="true">
+                {distribution.buckets.map((value, index) => (
+                  <span
+                    key={DISTRIBUTION_BUCKETS[index]}
+                    className="lab-distribution-segment"
+                    data-bucket={index}
+                    style={{ width: `${value * 100}%` }}
+                    title={`${DISTRIBUTION_BUCKETS[index]} copias: ${formatShortPercent(value)}`}
+                  >
+                    {value >= 0.09 ? `${Math.round(value * 100)}%` : ''}
+                  </span>
+                ))}
+              </span>
+              <span className="lab-distribution-total">
+                <strong>{formatShortPercent(distribution.atLeastOne)}</strong>
+                <small>1 o más</small>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
       <p className="lab-footnote">Tocá un rol para ver qué cartas lo componen.</p>
     </LabSection>
   )

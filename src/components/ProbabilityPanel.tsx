@@ -208,18 +208,23 @@ export function ProbabilityPanel({
             </button>
           </div>
 
-          <LabScoreCard
-            results={results}
-            view={activeTurnView}
-            feedback={feedback}
-            isRecalculating={lab.isStale}
-          />
-          <LabSuggestions state={suggestions} />
-          <LabFailureBreakdown result={currentResult} />
-          <LabRoleDistribution
-            distributions={lab.roleDistributions[activeTurnView]}
-            onOpenRole={(role) => setKpiModalRole(ROLE_TO_KPI[role])}
-          />
+          {/* Dos columnas independientes en desktop: cada una apila sus tarjetas sin huecos. */}
+          <div className="lab-column">
+            <LabScoreCard
+              results={results}
+              view={activeTurnView}
+              feedback={feedback}
+              isRecalculating={lab.isStale}
+            />
+            <LabFailureBreakdown result={currentResult} />
+          </div>
+          <div className="lab-column">
+            <LabSuggestions state={suggestions} />
+            <LabRoleDistribution
+              distributions={lab.roleDistributions[activeTurnView]}
+              onOpenRole={(role) => setKpiModalRole(ROLE_TO_KPI[role])}
+            />
+          </div>
           <LabRuleList
             groups={ruleGroups}
             highlightedPatternId={feedback?.patternId ?? null}

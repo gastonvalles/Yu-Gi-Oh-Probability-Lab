@@ -63,68 +63,71 @@ export function LabRuleList({
         Una mano es <strong>limpia</strong> si cumple al menos una salida y ningún problema activo.
       </p>
 
+      {/* Desktop: universales + propias a la izquierda, genéricas a la derecha. */}
       <div className="lab-rule-tiers">
-        <RuleTier
-          title="Universales"
-          badge={
-            <span className="lab-tier-badge">
-              <LockIcon /> Siempre activas
-            </span>
-          }
-          description="Valen para cualquier deck de Yu-Gi-Oh!: definen la base de una mano jugable."
-          entries={visible(groups.universal)}
-          renderRow={(entry) => <RuleRow entry={entry} isHighlighted={false} />}
-        />
-
-        <RuleTier
-          title="Genéricas"
-          badge={<span className="lab-tier-badge">{formatInteger(enabledGeneric)} activas</span>}
-          description="Aplican a la mayoría de los decks. Apagá las que no tengan sentido para el tuyo."
-          entries={visible(groups.generic)}
-          renderRow={(entry) => (
-            <RuleRow
-              entry={entry}
-              isHighlighted={false}
-              trailing={
-                <Switch
-                  checked={entry.enabled}
-                  label={`${entry.enabled ? 'Desactivar' : 'Activar'} ${entry.name}`}
-                  onChange={(enabled) => entry.presetId && onToggleGenericRule(entry.presetId, enabled)}
-                />
-              }
-            />
-          )}
-        />
-
-        <RuleTier
-          title="Tus reglas"
-          badge={
-            <Button variant="secondary" size="sm" onClick={onCreateCustom}>
-              <PlusIcon width={14} height={14} /> Crear regla
-            </Button>
-          }
-          description="Combos, cartas clave o problemas propios de tu deck. Tocá una para editarla."
-          entries={visible(groups.custom)}
-          emptyState={
-            groups.custom.length === 0 ? (
-              <div className="lab-rule-empty">
-                <strong>Todavía no creaste reglas</strong>
-                <span>
-                  Ejemplos: “Abrir tu carta clave”, “Starter + pieza de combo” o “2+ Handtraps yendo 2º”.
-                </span>
-              </div>
-            ) : (
-              <p className="lab-empty-note">No hay reglas propias de este tipo.</p>
-            )
-          }
-          renderRow={(entry) => (
-            <RuleRow
-              entry={entry}
-              isHighlighted={highlightedPatternId === entry.patternId}
-              onClick={() => onEditRule(entry.patternId)}
-            />
-          )}
-        />
+        <div className="lab-rule-stack">
+          <RuleTier
+            title="Universales"
+            badge={
+              <span className="lab-tier-badge">
+                <LockIcon /> Siempre activas
+              </span>
+            }
+            description="Valen para cualquier deck de Yu-Gi-Oh!: definen la base de una mano jugable."
+            entries={visible(groups.universal)}
+            renderRow={(entry) => <RuleRow entry={entry} isHighlighted={false} />}
+          />
+          <RuleTier
+            title="Tus reglas"
+            badge={
+              <Button variant="secondary" size="sm" onClick={onCreateCustom}>
+                <PlusIcon width={14} height={14} /> Crear regla
+              </Button>
+            }
+            description="Combos, cartas clave o problemas propios de tu deck. Tocá una para editarla."
+            entries={visible(groups.custom)}
+            emptyState={
+              groups.custom.length === 0 ? (
+                <div className="lab-rule-empty">
+                  <strong>Todavía no creaste reglas</strong>
+                  <span>
+                    Ejemplos: “Abrir tu carta clave”, “Starter + pieza de combo” o “2+ Handtraps yendo 2º”.
+                  </span>
+                </div>
+              ) : (
+                <p className="lab-empty-note">No hay reglas propias de este tipo.</p>
+              )
+            }
+            renderRow={(entry) => (
+              <RuleRow
+                entry={entry}
+                isHighlighted={highlightedPatternId === entry.patternId}
+                onClick={() => onEditRule(entry.patternId)}
+              />
+            )}
+          />
+        </div>
+        <div className="lab-rule-stack">
+          <RuleTier
+            title="Genéricas"
+            badge={<span className="lab-tier-badge">{formatInteger(enabledGeneric)} activas</span>}
+            description="Aplican a la mayoría de los decks. Apagá las que no tengan sentido para el tuyo."
+            entries={visible(groups.generic)}
+            renderRow={(entry) => (
+              <RuleRow
+                entry={entry}
+                isHighlighted={false}
+                trailing={
+                  <Switch
+                    checked={entry.enabled}
+                    label={`${entry.enabled ? 'Desactivar' : 'Activar'} ${entry.name}`}
+                    onChange={(enabled) => entry.presetId && onToggleGenericRule(entry.presetId, enabled)}
+                  />
+                }
+              />
+            )}
+          />
+        </div>
       </div>
     </LabSection>
   )

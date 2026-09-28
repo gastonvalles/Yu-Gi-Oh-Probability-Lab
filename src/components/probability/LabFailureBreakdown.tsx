@@ -21,6 +21,7 @@ export function LabFailureBreakdown({ result }: { result: LabViewResult }) {
       title="Por qué fallan las manos"
       summary={`${formatShortPercent(values.noOpening)} sin salida · ${formatShortPercent(values.blocked)} frenadas`}
       defaultOpenOnMobile={false}
+      className="lab-breakdown"
     >
       <div className="lab-stack-bar" aria-hidden="true">
         {SEGMENTS.map((segment) => (
