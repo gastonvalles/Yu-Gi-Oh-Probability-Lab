@@ -9,6 +9,7 @@ import {
 } from '../../app/deck-groups'
 import { CardArt } from '../CardArt'
 import { Button } from '../ui/Button'
+import { Modal } from '../ui/Modal'
 import { formatInteger } from '../../app/utils'
 
 interface BuildBCardEditorProps {
@@ -115,33 +116,7 @@ export function BuildBCardEditor({ card, currentEdit, allCards, onSave, onNaviga
   const total = uniqueCards.length
 
   return (
-    <div
-      className="fixed inset-0 z-150 grid place-items-center bg-[rgb(var(--background-rgb)/0.76)] px-4 py-5"
-      onClick={autoSaveAndClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={`Editar ${card.name}`}
-        className="surface-panel relative flex w-full max-w-280 min-h-0 max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden p-0 shadow-none"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* X close button (same as ClassificationModal) */}
-        <div className="absolute right-4 top-4 z-10 min-[1101px]:right-6 min-[1101px]:top-5">
-          <button
-            type="button"
-            aria-label="Cerrar detalle"
-            className="grid h-8 w-8 place-items-center rounded-md text-(--text-muted) hover:text-(--text-main) hover:bg-[rgb(var(--foreground-rgb)/0.06)] transition-colors"
-            onClick={autoSaveAndClose}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 4l8 8M12 4l-8 8" /></svg>
-          </button>
-        </div>
-
-        <div
-          className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-4 min-[1101px]:px-6 min-[1101px]:pb-5 min-[1101px]:pt-5"
-          onClick={(e) => e.stopPropagation()}
-        >
+    <Modal isOpen onClose={autoSaveAndClose} size="xl" bare ariaLabel={`Editar ${card.name}`}>
           <div className="grid gap-2.5 min-[1101px]:gap-3">
             <div className="grid w-full min-w-0 gap-3">
               <div className="grid gap-3 min-[1101px]:grid-cols-[18rem_minmax(0,1fr)] min-[1101px]:items-stretch">
@@ -260,8 +235,6 @@ export function BuildBCardEditor({ card, currentEdit, allCards, onSave, onNaviga
               </div>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

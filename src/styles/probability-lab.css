@@ -36,15 +36,15 @@
     order: 1;
   }
 
-  .lab-suggestions {
+  .lab-breakdown {
     order: 2;
   }
 
-  .lab-breakdown {
+  .lab-roles {
     order: 3;
   }
 
-  .lab-roles {
+  .lab-suggestions {
     order: 4;
   }
 

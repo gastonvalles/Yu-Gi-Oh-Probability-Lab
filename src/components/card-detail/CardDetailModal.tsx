@@ -1,9 +1,9 @@
 import { startTransition, useEffect, useState } from 'react'
 
 import type { DeckZone } from '../../app/model'
-import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import type { DeckFormat } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
+import { Modal } from '../ui/Modal'
 import { CardDetail, CardDetailSkeleton } from './CardDetail'
 import type { DeckCopyActions } from './DeckCopyControls'
 
@@ -20,17 +20,6 @@ interface CardDetailModalProps {
   onClose: () => void
 }
 
-const LAYOUT_CLASSES: Record<CardDetailLayoutMode, { backdrop: string; panel: string }> = {
-  desktop: {
-    backdrop: 'bg-[rgb(var(--background-rgb)/0.76)]',
-    panel: 'relative shadow-[0_32px_80px_rgba(0,0,0,0.48)]',
-  },
-  mobile: {
-    backdrop: 'bg-[rgb(var(--background-rgb)/0.8)]',
-    panel: 'shadow-none',
-  },
-}
-
 export function CardDetailModal({
   card,
   deckFormat,
@@ -42,10 +31,6 @@ export function CardDetailModal({
   onClose,
 }: CardDetailModalProps) {
   const [isReady, setIsReady] = useState(false)
-  const layoutClasses = LAYOUT_CLASSES[layoutMode]
-
-  useBodyScrollLock(isOpen)
-  useEscapeKey(onClose, isOpen)
 
   useEffect(() => {
     if (!isOpen || !card) {
@@ -76,40 +61,33 @@ export function CardDetailModal({
     }
   }, [card, isOpen])
 
-  if (!isOpen || !card) {
+  if (!card) {
     return null
   }
 
   return (
-    <div
-      className={`fixed inset-0 z-170 grid place-items-center px-4 py-5 ${layoutClasses.backdrop}`}
-      onClick={onClose}
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="xl"
+      bare
+      flush
+      hideCloseButton
+      ariaLabel={`Detalle de ${card.name}`}
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={`Detalle de ${card.name}`}
-        className={`surface-panel z-10 flex w-full max-w-280 max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden p-0 ${layoutClasses.panel}`}
-        onClick={(event) => event.stopPropagation()}
-      >
-        {isReady ? (
-          <CardDetail
-            card={card}
-            deckFormat={deckFormat}
-            layoutMode={layoutMode}
-            showActions={showActions}
-            deckCopy={deckCopy}
-            onAddToZone={onAddToZone}
-            onClose={onClose}
-          />
-        ) : (
-          <CardDetailSkeleton
-            layoutMode={layoutMode}
-            showActions={showActions}
-            onClose={onClose}
-          />
-        )}
-      </div>
-    </div>
+      {isReady ? (
+        <CardDetail
+          card={card}
+          deckFormat={deckFormat}
+          layoutMode={layoutMode}
+          showActions={showActions}
+          deckCopy={deckCopy}
+          onAddToZone={onAddToZone}
+          onClose={onClose}
+        />
+      ) : (
+        <CardDetailSkeleton layoutMode={layoutMode} showActions={showActions} onClose={onClose} />
+      )}
+    </Modal>
   )
 }

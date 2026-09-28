@@ -176,7 +176,7 @@ describe('KpiDetailModal — close interactions', () => {
       />,
     )
 
-    const overlay = screen.getByTestId('kpi-detail-overlay')
+    const overlay = document.querySelector('.app-modal-root')!
     fireEvent.click(overlay)
     expect(onClose).toHaveBeenCalledOnce()
   })
@@ -213,7 +213,7 @@ describe('KpiDetailModal — close interactions', () => {
       />,
     )
 
-    const closeBtn = screen.getByTestId('kpi-detail-close')
+    const closeBtn = screen.getByRole('button', { name: 'Cerrar' })
     fireEvent.click(closeBtn)
     expect(onClose).toHaveBeenCalledOnce()
   })

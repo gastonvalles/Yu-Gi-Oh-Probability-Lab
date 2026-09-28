@@ -1,6 +1,5 @@
-import { createPortal } from 'react-dom'
-
 import { Button, type ButtonColor, type ButtonVariant } from '../ui/Button'
+import { Modal } from '../ui/Modal'
 
 interface ConfirmDialogProps {
   cancelLabel?: string
@@ -25,37 +24,26 @@ export function ConfirmDialog({
   onConfirm,
   title,
 }: ConfirmDialogProps) {
-  if (!isOpen) {
-    return null
-  }
-
-  const dialog = (
-    <div
-      className="fixed inset-0 z-160 grid place-items-center bg-[rgb(var(--background-rgb)/0.74)] px-4"
-      onClick={onCancel}
-    >
-      <div className="app-dialog-enter surface-panel grid w-full max-w-xl gap-3 p-4" onClick={(event) => event.stopPropagation()}>
-        <div className="grid gap-1">
-          <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Confirmacion</p>
-          <h3 className="m-0 text-[1rem] leading-none text-(--text-main)">{title}</h3>
-          <p className="app-muted m-0 text-[0.8rem] leading-[1.16]">{description}</p>
-        </div>
-
-        <div className="flex flex-wrap justify-end gap-2">
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onCancel}
+      size="sm"
+      role="alertdialog"
+      kicker="Confirmación"
+      title={title}
+      footer={
+        <>
           <Button variant="secondary" size="sm" onClick={onCancel}>
             {cancelLabel}
           </Button>
           <Button variant={confirmVariant} color={confirmColor} size="sm" onClick={onConfirm}>
             {confirmLabel}
           </Button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <p className="app-muted m-0 text-[0.86rem] leading-[1.4]">{description}</p>
+    </Modal>
   )
-
-  if (typeof document === 'undefined') {
-    return dialog
-  }
-
-  return createPortal(dialog, document.body)
 }

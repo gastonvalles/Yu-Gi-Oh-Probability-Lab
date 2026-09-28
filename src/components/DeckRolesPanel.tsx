@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
 
 import {
   areGroupKeysEqual,
@@ -26,7 +25,8 @@ import { CardArt } from './CardArt'
 import { DeckModelStatusBadge } from './DeckModelStatusBadge'
 import { StepHero } from './StepHero'
 import { Button } from './ui/Button'
-import { CloseButton } from './ui/IconButton'
+import { CopiesBadge } from './ui/CopiesBadge'
+import { Modal } from './ui/Modal'
 
 interface DeckRolesPanelProps {
   cards: CardEntry[]
@@ -462,47 +462,11 @@ function ClassificationDrawer({
   onClose: () => void
   children: ReactNode
 }) {
-  if (!isOpen) {
-    return null
-  }
-
-  const drawer = (
-    <>
-      <button
-        type="button"
-        aria-label="Cerrar panel"
-        className="fixed inset-0 z-160 bg-[rgb(var(--background-rgb)/0.72)] backdrop-blur-[2px]"
-        onClick={onClose}
-      />
-
-      <aside
-        className="surface-panel fixed inset-y-0 right-0 z-165 grid h-dvh w-full max-w-120 grid-rows-[minmax(0,1fr)] border-l border-(--border-subtle) p-0 shadow-[-28px_0_54px_rgba(0,0,0,0.38)]"
-        style={{ background: 'var(--card-background)' }}
-      >
-        <div className="min-h-0 overflow-x-hidden overflow-y-auto px-4 pb-4 pt-4">
-          <div className="grid gap-3">
-            <div className="flex justify-end">
-              <CloseButton size="sm" aria-label="Cerrar panel" onClick={onClose} />
-            </div>
-
-            <header className="border-b border-(--border-subtle) pb-3">
-              <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">{kicker}</p>
-              <h3 className="m-[0.28rem_0_0] text-[1.6rem] leading-[0.98] tracking-[-0.02em] text-(--text-main)">{title}</h3>
-              <p className="app-muted m-[0.38rem_0_0] max-w-[40ch] text-[0.8rem] leading-[1.18]">{subtitle}</p>
-            </header>
-
-            {children}
-          </div>
-        </div>
-      </aside>
-    </>
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} size="md" kicker={kicker} title={title} subtitle={subtitle}>
+      <div className="grid gap-3">{children}</div>
+    </Modal>
   )
-
-  if (typeof document === 'undefined') {
-    return drawer
-  }
-
-  return createPortal(drawer, document.body)
 }
 
 function ClassificationModal({
@@ -524,55 +488,21 @@ function ClassificationModal({
   onClose: () => void
   children: ReactNode
 }) {
-  if (!isOpen) {
-    return null
-  }
-
-  const modal = (
-    <>
-      <div className="classification-modal-root fixed inset-0 z-150 grid place-items-center bg-[rgb(var(--background-rgb)/0.76)] px-4 py-5" onClick={onClose}>
-        <div
-          className="surface-panel relative flex w-full max-w-280 min-h-0 max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden p-0 shadow-none"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <div className="absolute right-4 top-4 z-10 min-[1101px]:right-6 min-[1101px]:top-5">
-            <CloseButton size="md" aria-label="Cerrar detalle" onClick={onClose} />
-          </div>
-
-          <div
-            className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-4 pb-4 pt-4 min-[1101px]:px-6 min-[1101px]:pb-5 min-[1101px]:pt-5"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="grid gap-2.5 min-[1101px]:gap-3">
-              {!hideHeader ? (
-                <header className="grid gap-2 border-b border-(--border-subtle) pb-2 min-[860px]:grid-cols-[minmax(0,1fr)_auto] min-[860px]:items-end">
-                  <div className="min-w-0">
-                    <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">{kicker}</p>
-                    <h3 className="m-[0.2rem_0_0] text-[1.45rem] leading-[0.98] tracking-[-0.03em] text-(--text-main) min-[1101px]:text-[1.72rem]">{title}</h3>
-                    <p className="app-muted m-[0.3rem_0_0] text-[0.76rem] leading-[1.14]">{subtitle}</p>
-                  </div>
-
-                  {headerActions ? (
-                    <div className="flex flex-wrap items-center gap-2 min-[860px]:justify-end">
-                      {headerActions}
-                    </div>
-                  ) : null}
-                </header>
-              ) : null}
-
-              {children}
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="xl"
+      bare={hideHeader}
+      kicker={kicker}
+      title={title}
+      subtitle={subtitle}
+      headerActions={headerActions}
+      ariaLabel={title}
+    >
+      <div className="grid gap-2.5 min-[1101px]:gap-3">{children}</div>
+    </Modal>
   )
-
-  if (typeof document === 'undefined') {
-    return modal
-  }
-
-  return createPortal(modal, document.body)
 }
 
 export function DeckRolesPanel({
@@ -1229,9 +1159,7 @@ export function DeckRolesPanel({
                         </div>
                       </div>
 
-                      <span className="app-chip shrink-0 px-1.5 py-0.5 text-[0.62rem]">
-                        {formatInteger(card.copies)}x
-                      </span>
+                      <CopiesBadge copies={card.copies} />
                     </button>
                   )
                 })}

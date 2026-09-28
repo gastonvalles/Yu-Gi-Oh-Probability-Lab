@@ -13,7 +13,7 @@ import {
   buildDerivedDeckMonsterTypes,
 } from '../../../app/card-attributes'
 import { createCardPoolMatcher } from '../../../app/patterns'
-import { formatInteger } from '../../../app/utils'
+import { formatCopies } from '../../../app/utils'
 import { Button } from '../../ui/Button'
 import type { PatternEditorActions } from '../pattern-editor-actions'
 
@@ -173,7 +173,7 @@ export function CategoryPicker({
                 <PickerOption
                   key={ct.value}
                   label={ct.label}
-                  detail={`${formatInteger(ct.copies)}x`}
+                  detail={formatCopies(ct.copies)}
                   onClick={() => select({ type: 'card_type', value: ct.value })}
                 />
               ))}
@@ -187,7 +187,7 @@ export function CategoryPicker({
                 <PickerOption
                   key={role.value}
                   label={role.label}
-                  detail={`${formatInteger(role.copies)}x`}
+                  detail={formatCopies(role.copies)}
                   onClick={() => select({ type: 'role', value: role.value })}
                 />
               ))}
@@ -201,7 +201,7 @@ export function CategoryPicker({
                 <PickerOption
                   key={origin.value}
                   label={origin.label}
-                  detail={`${formatInteger(origin.copies)}x`}
+                  detail={formatCopies(origin.copies)}
                   onClick={() => select({ type: 'origin', value: origin.value })}
                 />
               ))}
@@ -224,7 +224,7 @@ export function CategoryPicker({
                   <PickerOption
                     key={card.id}
                     label={card.name}
-                    detail={`${formatInteger(card.copies)}x`}
+                    detail={formatCopies(card.copies)}
                     onClick={() => handleCardClick(card.id)}
                   />
                 )
@@ -249,7 +249,7 @@ export function CategoryPicker({
                   <PickerOption
                     key={attr.key}
                     label={attr.label}
-                    detail={`${formatInteger(attr.copies)}x`}
+                    detail={formatCopies(attr.copies)}
                     onClick={() => select({ type: 'attribute', value: attr.key })}
                   />
                 )
@@ -274,7 +274,7 @@ export function CategoryPicker({
                   <PickerOption
                     key={level.key}
                     label={`Nivel ${level.label}`}
-                    detail={`${formatInteger(level.copies)}x`}
+                    detail={formatCopies(level.copies)}
                     onClick={() => select({ type: 'level', value: level.key })}
                   />
                 )
@@ -299,7 +299,7 @@ export function CategoryPicker({
                   <PickerOption
                     key={mt.key}
                     label={mt.label}
-                    detail={`${formatInteger(mt.copies)}x`}
+                    detail={formatCopies(mt.copies)}
                     onClick={() => select({ type: 'monster_type', value: mt.key })}
                   />
                 )
@@ -324,7 +324,7 @@ export function CategoryPicker({
                   <PickerOption
                     key={atk.key}
                     label={`${atk.label} ATK`}
-                    detail={`${formatInteger(atk.copies)}x`}
+                    detail={formatCopies(atk.copies)}
                     onClick={() => select({ type: 'atk', value: atk.key })}
                   />
                 )
@@ -349,7 +349,7 @@ export function CategoryPicker({
                   <PickerOption
                     key={def.key}
                     label={`${def.label} DEF`}
-                    detail={`${formatInteger(def.copies)}x`}
+                    detail={formatCopies(def.copies)}
                     onClick={() => select({ type: 'def', value: def.key })}
                   />
                 )
@@ -404,7 +404,7 @@ function ShortcutButton({
       disabled={disabled}
     >
       {label}
-      <span className="text-[0.74rem] text-(--text-muted)">{formatInteger(copies)}x</span>
+      <span className="text-[0.74rem] text-(--text-muted)">{formatCopies(copies)}</span>
     </button>
   )
 }
@@ -488,7 +488,7 @@ function PoolCardOption({
         </span>
         {label}
       </span>
-      <span className="shrink-0 text-[0.76rem] text-(--text-muted)">{formatInteger(copies)}x</span>
+      <span className="shrink-0 text-[0.76rem] text-(--text-muted)">{formatCopies(copies)}</span>
     </button>
   )
 }
@@ -536,7 +536,7 @@ function PoolGroupOption({
         {label}
       </span>
       <span className="shrink-0 text-[0.76rem] text-(--text-muted)">
-        {selectedCount > 0 ? `${selectedCount}/${cardIds.length}` : `${formatInteger(copies)}x`}
+        {selectedCount > 0 ? `${selectedCount}/${cardIds.length}` : formatCopies(copies)}
       </span>
     </button>
   )
