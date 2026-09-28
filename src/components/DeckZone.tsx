@@ -250,6 +250,9 @@ export function DeckZone({
                 </div>
               ))
             : cards.map((card, index) => renderDeckCard(card, index))}
+          {cards.length === 0 ? (
+            <p className="classic-builder-zone-empty-hint m-0">Arrastrá cartas acá</p>
+          ) : null}
         </div>
       </section>
     )

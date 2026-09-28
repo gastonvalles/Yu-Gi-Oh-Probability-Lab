@@ -15,6 +15,7 @@ import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { DesktopSearchPanel } from '../search/DesktopSearchPanel'
 import { MobileCardSearch } from '../search/MobileCardSearch'
 import type { CardSearchActions, CardSearchViewState } from '../search/search-types'
+import type { DeckCopyActions } from '../card-detail/DeckCopyControls'
 import { StepHero } from '../StepHero'
 import { Button } from '../ui/Button'
 import { DeckBuilderClassicPreview } from './DeckBuilderClassicPreview'
@@ -44,6 +45,8 @@ interface DeckBuilderStepProps {
   invalidDropZone: DeckZoneType | null
   activeDragSearchCardId: number | null
   selectedDetailCard: ApiCardSearchResult | null
+  selectedDetailSource: 'search' | 'deck' | null
+  selectedDeckCopyActions: DeckCopyActions | null
   onClearDeckZone: (zone: DeckZoneType) => void
   onClearAllDeckZones: () => void
   onRemoveDeckCard: (instanceId: string) => void
@@ -52,6 +55,7 @@ interface DeckBuilderStepProps {
   onSearchCardPointerDown: (event: ReactPointerEvent<HTMLElement>, apiCardId: number) => void
   onSearchResultClick: (apiCardId: number) => void
   onAddSearchResultToDefaultZone: (apiCardId: number) => boolean
+  onAddSearchResultToZone: (apiCardId: number, zone: DeckZoneType) => boolean
   onQueryChange: (value: string) => void
   onDeckNameChange: (value: string) => void
   onDeckFormatChange: (format: DeckFormat) => void
@@ -93,6 +97,8 @@ export function DeckBuilderStep({
   invalidDropZone,
   activeDragSearchCardId,
   selectedDetailCard,
+  selectedDetailSource,
+  selectedDeckCopyActions,
   onClearDeckZone,
   onClearAllDeckZones,
   onRemoveDeckCard,
@@ -101,6 +107,7 @@ export function DeckBuilderStep({
   onSearchCardPointerDown,
   onSearchResultClick,
   onAddSearchResultToDefaultZone,
+  onAddSearchResultToZone,
   onQueryChange,
   onDeckNameChange,
   onDeckFormatChange,
@@ -199,7 +206,16 @@ export function DeckBuilderStep({
         className="classic-builder-page"
       >
         <div className="classic-builder-layout">
-          <DeckBuilderClassicPreview card={previewCard} />
+          <DeckBuilderClassicPreview
+            card={previewCard}
+            source={selectedDetailSource}
+            deckCopy={selectedDeckCopyActions}
+            onAddToZone={(zone) => {
+              if (previewCard) {
+                onAddSearchResultToZone(previewCard.ygoprodeckId, zone)
+              }
+            }}
+          />
 
           <article
             className="classic-builder-workspace deck-builder-root-drop-surface"
@@ -310,9 +326,11 @@ export function DeckBuilderStep({
             <DesktopSearchPanel
               search={search}
               actions={searchActions}
+              deckCopyCounts={deckCopyCounts}
               activeDragSearchCardId={activeDragSearchCardId}
               selectedCardId={selectedCardId}
               onResultClick={onSearchResultClick}
+              onAddCard={onAddSearchResultToDefaultZone}
               onResultPointerDown={handleSearchCardPointerDown}
             />
           </aside>
