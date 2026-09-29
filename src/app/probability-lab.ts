@@ -1,5 +1,5 @@
 import { calculateProbabilities } from '../probability'
-import { buildCalculationSummary, getCleanHands, getCleanProbability } from '../probability-summary'
+import { getCleanHands, getCleanProbability } from '../probability-summary'
 import type {
   CalculationSummary,
   CardEntry,
@@ -80,31 +80,6 @@ export function computeLabResults(
       average: averageViewResults(firstResult, secondResult, patterns),
     },
   }
-}
-
-/**
- * KPI promedio sin validar: lo usa el simulador de cambios sobre un deck que ya
- * pasó la validación. `deckSize` puede superar la suma de copias; la diferencia
- * se trata como cartas neutras que no aparecen en ninguna regla.
- */
-export function evaluateAverageCleanProbability(
-  cards: CardEntry[],
-  patterns: HandPattern[],
-  baseHandSize: number,
-  deckSize: number,
-): number {
-  const views = (['first', 'second'] as const).map((view) =>
-    getCleanProbability(
-      buildCalculationSummary({
-        deckSize,
-        handSize: getHandSizeForView(baseHandSize, view),
-        cards,
-        patterns: selectPatternsForView(patterns, view),
-      }),
-    ),
-  )
-
-  return mean(views)
 }
 
 function calculateView(

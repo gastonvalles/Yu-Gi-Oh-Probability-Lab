@@ -12,11 +12,10 @@ import {
 interface LabScoreCardProps {
   results: LabResults
   view: TurnView
-  feedback: { label: string; tone: 'positive' | 'negative' } | null
   isRecalculating: boolean
 }
 
-export function LabScoreCard({ results, view, feedback, isRecalculating }: LabScoreCardProps) {
+export function LabScoreCard({ results, view, isRecalculating }: LabScoreCardProps) {
   const current = results[view]
   const tone = getKpiTone(current.cleanProbability)
 
@@ -31,11 +30,6 @@ export function LabScoreCard({ results, view, feedback, isRecalculating }: LabSc
 
       <div className="lab-score-value-row">
         <strong className="lab-score-value">{formatPercent(current.cleanProbability)}</strong>
-        {feedback ? (
-          <span className="lab-feedback-chip" data-tone={feedback.tone}>
-            {feedback.label}
-          </span>
-        ) : null}
       </div>
 
       <ScoreGauge probability={current.cleanProbability} />

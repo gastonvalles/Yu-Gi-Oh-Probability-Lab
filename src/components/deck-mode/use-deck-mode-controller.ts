@@ -631,7 +631,6 @@ export function useDeckModeController() {
     },
     probability: {
       handSize: settings.handSize,
-      deckFormat: settings.deckFormat,
       patterns: patternsState.patterns,
       disabledGenericRuleIds: patternsState.disabledGenericRuleIds,
       onSetGenericRuleEnabled: handleSetGenericRuleEnabled,

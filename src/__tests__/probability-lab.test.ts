@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { createMatcherPattern } from '../app/pattern-factory'
-import { buildDeckSuggestions } from '../app/deck-suggestions'
-import { computeLabResults, evaluateAverageCleanProbability, type LabResults } from '../app/probability-lab'
+import { computeLabResults, type LabResults } from '../app/probability-lab'
 import { buildRoleDistributions, hypergeometric } from '../app/role-distribution'
 import { calculateProbabilities } from '../probability'
 import type { CardEntry, CardRole, HandPattern, TurnContext } from '../types'
@@ -154,32 +153,5 @@ describe('buildRoleDistributions', () => {
     expect(starters?.copies).toBe(8)
     expect(starters?.buckets.reduce((total, value) => total + value, 0)).toBeCloseTo(1)
     expect(starters?.atLeastOne).toBeCloseTo(1 - hypergeometric(40, 8, 5, 0))
-  })
-})
-
-describe('buildDeckSuggestions', () => {
-  const report = buildDeckSuggestions(DECK, PATTERNS, 5, { maxCopiesFor: () => 3 })
-
-  it('propone cambiar un brick por un starter manteniendo 40 cartas', () => {
-    const [best] = report.suggestions
-
-    expect(best?.change).toMatchObject({ type: 'swap', cutCardId: 'b1', addCardId: 's3' })
-    expect(best?.deckSize).toBe(40)
-    expect(best?.probability).toBeCloseTo(
-      evaluateAverageCleanProbability(
-        [card('s1', 3, ['starter']), card('s2', 3, ['starter']), card('s3', 3, ['starter']), card('b1', 2, ['brick']), ...filler(29)],
-        PATTERNS,
-        5,
-        40,
-      ),
-    )
-    expect(report.suggestions.every((suggestion) => suggestion.delta > 0)).toBe(true)
-  })
-
-  it('respeta el límite de copias y marca los starters como cartas clave', () => {
-    const limited = buildDeckSuggestions(DECK, PATTERNS, 5, { maxCopiesFor: (entry) => (entry.id === 's3' ? 2 : 3) })
-
-    expect(limited.suggestions.some((suggestion) => JSON.stringify(suggestion.change).includes('"addCardId":"s3"'))).toBe(false)
-    expect(report.keyCards[0]?.cardId).toMatch(/^s/)
   })
 })
