@@ -43,3 +43,12 @@ export function LockIcon(props: SVGProps<SVGSVGElement>) {
     </svg>
   )
 }
+
+export function SearchIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true" width="16" height="16" {...props}>
+      <circle cx="7" cy="7" r="4.5" />
+      <path d="m10.5 10.5 3 3" />
+    </svg>
+  )
+}

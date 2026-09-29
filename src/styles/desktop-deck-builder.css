@@ -236,15 +236,6 @@
     accent-color: rgb(var(--primary-rgb));
   }
 
-  .search-filters-footer {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: end;
-    gap: 0.6rem;
-    border-top: 1px solid var(--border-subtle);
-    padding-top: 0.8rem;
-  }
-
   .search-filters-clear {
     min-height: 2.25rem;
     border: 1px solid var(--border-subtle);
@@ -277,7 +268,7 @@
   }
 
   .search-filters-panel[data-layout='mobile'] .search-filters-clear {
-    min-height: 2.75rem;
+    min-height: 2.5rem;
   }
 
   @media (max-width: 379px) {

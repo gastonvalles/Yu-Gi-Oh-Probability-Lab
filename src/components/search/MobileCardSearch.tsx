@@ -3,16 +3,18 @@ import { createPortal } from 'react-dom'
 
 import { buildCompactSearchDescription, formatSearchError } from '../../app/card-search'
 import { buildFormatLimitLabel } from '../../app/deck-format'
-import { SEARCH_MIN_QUERY_LENGTH, type DeckZone } from '../../app/model'
+import type { DeckZone } from '../../app/model'
 import { useInfiniteScroll } from '../../app/use-infinite-scroll'
 import { formatInteger } from '../../app/utils'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { CardArt } from '../CardArt'
 import { Button } from '../ui/Button'
 import { CloseIcon, IconButton } from '../ui/IconButton'
-import { CheckIcon, ChevronLeftIcon, FilterIcon, PlusIcon } from '../ui/icons'
+import { CheckIcon, ChevronLeftIcon, FilterIcon, PlusIcon, SearchIcon } from '../ui/icons'
 import { Skeleton } from '../ui/Skeleton'
+import { SearchEmptyState, SearchResultsToolbar, SearchStart } from './SearchFeedback'
 import { SearchFiltersForm } from './SearchFiltersForm'
+import { useRecentSearches } from './recent-searches'
 import { sortVisibleSearchResults } from './search-model'
 import { QUICK_TYPE_OPTIONS, type SearchSortOrder } from './search-options'
 import type { CardSearchActions, CardSearchViewState } from './search-types'
@@ -49,6 +51,7 @@ export function MobileCardSearch({
   const filterContext = useSearchFilterContext(filters, search.deckFormat, actions.onFilterChange)
   const sortedResults = useMemo(() => sortVisibleSearchResults(search.results, sortOrder), [search.results, sortOrder])
   const showResults = search.hasSearchCriteria && !filtersOpen
+  const recentSearches = useRecentSearches()
 
   useEffect(() => {
     resultsRef.current?.scrollTo({ top: 0, behavior: 'auto' })
@@ -73,6 +76,7 @@ export function MobileCardSearch({
   const handleAdd = (card: ApiCardSearchResult) => {
     if (onAddCard(card.ygoprodeckId)) {
       setLastAdded({ id: card.ygoprodeckId, name: card.name })
+      recentSearches.remember(query)
     }
   }
 
@@ -107,6 +111,7 @@ export function MobileCardSearch({
 
           <label className="relative block min-w-0 flex-1">
             <span className="sr-only">Nombre o texto de la carta</span>
+            <SearchIcon className="search-input-icon" />
             <input
               ref={inputRef}
               type="search"
@@ -119,7 +124,7 @@ export function MobileCardSearch({
               autoCapitalize="none"
               spellCheck={false}
               autoFocus
-              className="app-field mobile-card-search-input h-11 w-full pl-3 pr-11 text-base"
+              className="app-field mobile-card-search-input h-11 w-full pl-9 pr-11 text-base"
             />
             {status === 'loading' ? (
               <span className="pointer-events-none absolute right-11 top-1/2 -mt-2 h-4 w-4 animate-spin rounded-full border-2 border-[rgb(var(--foreground-rgb)/0.18)] border-t-primary" />
@@ -197,8 +202,6 @@ export function MobileCardSearch({
             filters={filters}
             context={filterContext}
             activeFilterCount={search.activeFilterCount}
-            sortOrder={sortOrder}
-            onSortOrderChange={setSortOrder}
             onFilterChange={actions.onFilterChange}
             onClearFilters={actions.onClearFilters}
           />
@@ -210,7 +213,12 @@ export function MobileCardSearch({
           onTouchStart={dismissKeyboard}
         >
           {!search.hasSearchCriteria ? (
-            <SearchHint />
+            <SearchStart
+              layout="mobile"
+              recent={recentSearches.recent}
+              onPickRecent={actions.onQueryChange}
+              onClearRecent={recentSearches.clear}
+            />
           ) : status === 'error' ? (
             <p className="surface-card-danger m-0 px-3 py-2.5 text-[0.88rem] leading-[1.25] text-destructive">
               {formatSearchError(search.errorMessage)}
@@ -222,17 +230,26 @@ export function MobileCardSearch({
               ))}
             </ul>
           ) : sortedResults.length === 0 ? (
-            <p className="surface-card m-0 px-3 py-3 text-[0.88rem] leading-[1.25] text-(--text-muted)">
-              {search.rawResultCount > 0
-                ? 'Todavía no hay coincidencias en lo cargado. Seguimos buscando…'
-                : 'No encontramos cartas con esos criterios. Probá con menos letras o quitá filtros.'}
-            </p>
+            <SearchEmptyState
+              layout="mobile"
+              isStillLoading={search.rawResultCount > 0 && search.hasMore}
+              activeFilterCount={search.activeFilterCount}
+              hasQuery={query.trim().length > 0}
+              onClearFilters={actions.onClearFilters}
+              onClearQuery={() => {
+                actions.onQueryChange('')
+                inputRef.current?.focus()
+              }}
+            />
           ) : (
             <>
-              <p className="m-0 px-0.5 pb-2 text-[0.78rem] text-(--text-muted)">
-                {formatInteger(sortedResults.length)} resultado{sortedResults.length === 1 ? '' : 's'} · tocá una
-                carta para ver el detalle
-              </p>
+              <SearchResultsToolbar
+                count={sortedResults.length}
+                hasMore={search.hasMore}
+                sortOrder={sortOrder}
+                onSortOrderChange={setSortOrder}
+                hint="tocá para ver detalle"
+              />
               <ul className="m-0 grid list-none gap-2 p-0">
                 {sortedResults.map((card) => (
                   <MobileResultRow
@@ -341,22 +358,6 @@ function MobileResultRow({
         {isMaxed ? <span className="text-[0.66rem] font-semibold">MÁX</span> : justAdded ? <CheckIcon /> : <PlusIcon />}
       </button>
     </li>
-  )
-}
-
-function SearchHint() {
-  return (
-    <div className="grid gap-2 px-1 py-6 text-center text-(--text-muted)">
-      <p className="m-0 text-[0.95rem] text-(--text-main)">¿Qué carta buscás?</p>
-      <p className="m-0 text-[0.84rem] leading-snug">
-        Escribí al menos {formatInteger(SEARCH_MIN_QUERY_LENGTH)} letras del nombre, o usá los filtros para buscar
-        por arquetipo, tipo o atributo.
-      </p>
-      <p className="m-0 text-[0.78rem] leading-snug">
-        Con <strong className="text-(--text-main)">+</strong> agregás una copia al deck. Tocando la carta ves el
-        detalle y podés elegir Main, Extra o Side.
-      </p>
-    </div>
   )
 }
 
