@@ -1,10 +1,17 @@
 import type { ReactNode } from 'react'
 
 import type { CardSearchFilters } from '../../app/card-search'
-import { ATTRIBUTE_OPTIONS, SEARCH_SORT_OPTIONS, type FilterOptionGroup, type SearchSortOrder } from './search-options'
+import { Switch } from '../ui/Switch'
+import { ATTRIBUTE_OPTIONS, type FilterOption, type FilterOptionGroup } from './search-options'
 import type { SearchFilterContext } from './use-search-filter-context'
 
 type FiltersLayout = 'desktop' | 'mobile'
+
+const ATTRIBUTE_CHOICES = ATTRIBUTE_OPTIONS.filter((option) => option.value !== '')
+const LEVEL_CHOICES: FilterOption[] = Array.from({ length: 13 }, (_, index) => ({
+  value: String(index + 1),
+  label: String(index + 1),
+}))
 
 interface SearchFiltersFormProps {
   id: string
@@ -12,8 +19,6 @@ interface SearchFiltersFormProps {
   filters: CardSearchFilters
   context: SearchFilterContext
   activeFilterCount: number
-  sortOrder: SearchSortOrder
-  onSortOrderChange: (sortOrder: SearchSortOrder) => void
   onFilterChange: (updates: Partial<CardSearchFilters>) => void
   onClearFilters: () => void
 }
@@ -24,8 +29,6 @@ export function SearchFiltersForm({
   filters,
   context,
   activeFilterCount,
-  sortOrder,
-  onSortOrderChange,
   onFilterChange,
   onClearFilters,
 }: SearchFiltersFormProps) {
@@ -33,6 +36,17 @@ export function SearchFiltersForm({
 
   return (
     <div id={id} className="search-filters-panel" data-layout={layout}>
+      <div className="search-filters-head">
+        <span>
+          {activeFilterCount > 0
+            ? `${activeFilterCount} filtro${activeFilterCount === 1 ? '' : 's'} activo${activeFilterCount === 1 ? '' : 's'}`
+            : 'Sin filtros activos'}
+        </span>
+        <button type="button" className="search-filters-clear" disabled={activeFilterCount === 0} onClick={onClearFilters}>
+          Limpiar filtros
+        </button>
+      </div>
+
       <FilterGroup title="Búsqueda">
         <Field label="Arquetipo">
           <input
@@ -72,74 +86,75 @@ export function SearchFiltersForm({
           <GroupedSelect value={filters.race} groups={context.raceGroups} onChange={(race) => onFilterChange({ race })} />
         </Field>
 
-        {quickTypeMeta.showAttribute ? (
-          <Field label="Atributo">
-            <select
-              value={filters.attribute}
-              onChange={(event) => onFilterChange({ attribute: event.target.value })}
-              className="app-field search-filters-field"
-            >
-              {ATTRIBUTE_OPTIONS.map((option) => (
-                <option key={option.value || 'any'} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </Field>
-        ) : null}
-
-        {quickTypeMeta.showLevel ? (
-          <Field label={quickTypeMeta.levelLabel}>
-            <input
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={13}
-              value={filters.level}
-              onChange={(event) => onFilterChange({ level: event.target.value })}
-              placeholder="Cualquiera"
-              className="app-field search-filters-field"
-            />
-          </Field>
-        ) : null}
-
-        {context.formatAllowsLegalityFilter ? (
-          <label className="search-filters-check">
-            <input
-              type="checkbox"
-              checked={filters.legalOnly}
-              onChange={(event) => onFilterChange({ legalOnly: event.target.checked })}
-            />
-            <span>Ocultar prohibidas en {context.formatLabel}</span>
-          </label>
-        ) : null}
       </FilterGroup>
 
-      <div className="search-filters-footer">
-        <Field label="Orden">
-          <select
-            value={sortOrder}
-            onChange={(event) => onSortOrderChange(event.target.value as SearchSortOrder)}
-            className="app-field search-filters-field"
-          >
-            {SEARCH_SORT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </Field>
+      {quickTypeMeta.showAttribute ? (
+        <ChipGroup
+          title="Atributo"
+          options={ATTRIBUTE_CHOICES}
+          value={filters.attribute}
+          onChange={(attribute) => onFilterChange({ attribute })}
+        />
+      ) : null}
 
-        <button
-          type="button"
-          className="search-filters-clear"
-          disabled={activeFilterCount === 0}
-          onClick={onClearFilters}
-        >
-          Limpiar filtros
-        </button>
-      </div>
+      {quickTypeMeta.showLevel ? (
+        <ChipGroup
+          title={quickTypeMeta.levelLabel}
+          options={LEVEL_CHOICES}
+          value={filters.level}
+          onChange={(level) => onFilterChange({ level })}
+          dense
+        />
+      ) : null}
+
+      {context.formatAllowsLegalityFilter ? (
+        <div className="search-filters-switch">
+          <span>
+            <strong>Ocultar prohibidas</strong>
+            <small>Según la lista de {context.formatLabel}</small>
+          </span>
+          <Switch
+            checked={filters.legalOnly}
+            label={`Ocultar prohibidas en ${context.formatLabel}`}
+            onChange={(legalOnly) => onFilterChange({ legalOnly })}
+          />
+        </div>
+      ) : null}
     </div>
+  )
+}
+
+/** Opciones cortas como chips: un toque elige, otro toque sobre la elegida la quita. */
+function ChipGroup({
+  title,
+  options,
+  value,
+  onChange,
+  dense = false,
+}: {
+  title: string
+  options: FilterOption[]
+  value: string
+  onChange: (value: string) => void
+  dense?: boolean
+}) {
+  return (
+    <fieldset className="search-filters-group">
+      <legend>{title}</legend>
+      <div className="search-filters-chips" data-dense={dense ? 'true' : 'false'}>
+        {options.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            className="search-filters-chip"
+            aria-pressed={value === option.value}
+            onClick={() => onChange(value === option.value ? '' : option.value)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </fieldset>
   )
 }
 

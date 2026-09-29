@@ -8,6 +8,7 @@
 @import "./styles/classic-builder.css";
 @import "./styles/mobile-deck-builder.css";
 @import "./styles/desktop-deck-builder.css";
+@import "./styles/card-search.css";
 
 @theme inline {
   --color-background: var(--background);

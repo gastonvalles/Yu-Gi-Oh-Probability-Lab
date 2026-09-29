@@ -2,13 +2,14 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointer
 
 import { formatSearchError } from '../../app/card-search'
 import { buildClassicCardPrimaryLine, buildClassicCardStatLine } from '../../app/deck-builder-classic'
-import { SEARCH_MIN_QUERY_LENGTH } from '../../app/model'
 import { useInfiniteScroll } from '../../app/use-infinite-scroll'
 import { CardArt } from '../CardArt'
 import { CloseButton, CloseIcon } from '../ui/IconButton'
-import { CheckIcon, FilterIcon, PlusIcon } from '../ui/icons'
+import { CheckIcon, FilterIcon, PlusIcon, SearchIcon } from '../ui/icons'
 import { Skeleton } from '../ui/Skeleton'
+import { SearchEmptyState, SearchResultsToolbar, SearchStart } from './SearchFeedback'
 import { SearchFiltersForm } from './SearchFiltersForm'
+import { useRecentSearches } from './recent-searches'
 import { sortVisibleSearchResults } from './search-model'
 import { QUICK_TYPE_OPTIONS, type SearchSortOrder } from './search-options'
 import type { CardSearchActions, CardSearchViewState } from './search-types'
@@ -46,6 +47,7 @@ export function DesktopSearchPanel({
   const [lastAddedId, setLastAddedId] = useState<number | null>(null)
   const filterContext = useSearchFilterContext(filters, search.deckFormat, actions.onFilterChange)
   const sortedResults = useMemo(() => sortVisibleSearchResults(search.results, sortOrder), [search.results, sortOrder])
+  const recentSearches = useRecentSearches()
 
   useEffect(() => {
     resultsRef.current?.scrollTo({ top: 0, behavior: 'auto' })
@@ -63,6 +65,7 @@ export function DesktopSearchPanel({
   const handleAdd = (apiCardId: number) => {
     if (onAddCard(apiCardId)) {
       setLastAddedId(apiCardId)
+      recentSearches.remember(query)
     }
   }
 
@@ -77,6 +80,8 @@ export function DesktopSearchPanel({
     <article className="classic-builder-search-panel flex h-full min-h-0 flex-col overflow-hidden min-[1101px]:h-full">
       <div className="classic-builder-search-header">
         <label className="relative block min-w-0 flex-1">
+          <span className="sr-only">Buscar cartas por nombre</span>
+          <SearchIcon className="search-input-icon" />
           <input
             ref={inputRef}
             type="search"
@@ -88,7 +93,7 @@ export function DesktopSearchPanel({
                 actions.onQueryChange('')
               }
             }}
-            placeholder="Buscar cartas"
+            placeholder="Buscar cartas por nombre"
             autoComplete="off"
             spellCheck={false}
             className="classic-builder-search-input"
@@ -164,8 +169,6 @@ export function DesktopSearchPanel({
               filters={filters}
               context={filterContext}
               activeFilterCount={search.activeFilterCount}
-              sortOrder={sortOrder}
-              onSortOrderChange={setSortOrder}
               onFilterChange={actions.onFilterChange}
               onClearFilters={actions.onClearFilters}
             />
@@ -185,20 +188,23 @@ export function DesktopSearchPanel({
                 ))}
               </div>
             ) : sortedResults.length === 0 ? (
-              <div className="surface-card grid gap-1 px-2 py-2 text-[0.76rem] leading-[1.18] text-(--text-muted)">
-                <p className="m-0">
-                  {search.rawResultCount > 0
-                    ? 'Todavía no apareció una coincidencia dentro de lo ya cargado.'
-                    : 'No se encontraron cartas con esos criterios.'}
-                </p>
-                <p className="m-0 text-[0.68rem] leading-[1.14]">
-                  {search.hasMore
-                    ? 'Se cargarán más tandas automáticamente al seguir explorando.'
-                    : 'Ya no quedan más tandas disponibles.'}
-                </p>
-              </div>
+              <SearchEmptyState
+                layout="desktop"
+                isStillLoading={search.rawResultCount > 0 && search.hasMore}
+                activeFilterCount={search.activeFilterCount}
+                hasQuery={query.trim().length > 0}
+                onClearFilters={actions.onClearFilters}
+                onClearQuery={() => actions.onQueryChange('')}
+              />
             ) : (
-              <div ref={resultsRef} className="classic-builder-search-results-grid">
+              <div ref={resultsRef} className="classic-builder-search-results-scroll">
+              <SearchResultsToolbar
+                count={sortedResults.length}
+                hasMore={search.hasMore}
+                sortOrder={sortOrder}
+                onSortOrderChange={setSortOrder}
+              />
+              <div className="classic-builder-search-results-grid">
                 {sortedResults.map((card) => {
                   const isMaxed = search.maxedOutResultIds.has(card.ygoprodeckId)
                 const copiesInDeck = deckCopyCounts.get(card.ygoprodeckId) ?? 0
@@ -274,15 +280,18 @@ export function DesktopSearchPanel({
 
                 {search.isLoadingMore ? <DesktopResultSkeleton /> : null}
               </div>
+              </div>
             )
           ) : (
-            <div className="grid gap-2 px-3 py-6 text-center text-[0.8rem] leading-snug text-(--text-muted)">
-              <p className="m-0 text-[0.9rem] text-(--text-main)">¿Qué carta buscás?</p>
-              <p className="m-0">
-                Escribí al menos {SEARCH_MIN_QUERY_LENGTH} letras del nombre, o elegí un tipo y abrí “Filtros” para
-                buscar por arquetipo, atributo o nivel.
-              </p>
-            </div>
+            <SearchStart
+              layout="desktop"
+              recent={recentSearches.recent}
+              onPickRecent={(recentQuery) => {
+                actions.onQueryChange(recentQuery)
+                inputRef.current?.focus()
+              }}
+              onClearRecent={recentSearches.clear}
+            />
           )}
         </div>
       </div>
