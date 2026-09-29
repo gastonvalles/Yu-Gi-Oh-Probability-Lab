@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { buildDeckArchetypes, cardBelongsToArchetype } from '../app/card-archetypes'
 import { createMatcherPattern } from '../app/pattern-factory'
 import { computeLabResults } from '../app/probability-lab'
+import { computeDraftImpact } from '../components/probability/use-draft-impact'
 import { hypergeometric } from '../app/role-distribution'
 import type { CardEntry } from '../types'
 
@@ -46,5 +47,28 @@ describe('arquetipos', () => {
     // 6 copias del arquetipo en 40: P(al menos 2 en 5 cartas).
     const expected = 1 - hypergeometric(40, 6, 5, 0) - hypergeometric(40, 6, 5, 1)
     expect(computation.results.first.patternResults[0]?.probability).toBeCloseTo(expected)
+  })
+})
+
+describe('computeDraftImpact', () => {
+  const draft = (turnContext: 'first' | 'second' | 'either') =>
+    createMatcherPattern(
+      '2+ Mulcharmy',
+      'problem',
+      [{ matcher: { type: 'archetype', value: 'Mulcharmy' }, quantity: 2, kind: 'include' }],
+      { turnContext },
+    )
+  const base = { cards: [PURULIA, FUWALOS, SUPPORT, ...FILLER], customPatterns: [], disabledGenericRuleIds: [], handSize: 5, cleanBefore: null }
+
+  it('una regla "Solo 1º" muestra su % yendo 1º (no queda bloqueada)', () => {
+    const impact = computeDraftImpact({ ...base, draft: draft('first') })
+
+    expect(impact?.rule.second).toBeNull()
+    expect(impact?.rule.main).toBeCloseTo(1 - hypergeometric(40, 6, 5, 0) - hypergeometric(40, 6, 5, 1))
+  })
+
+  it('una regla incompleta no calcula nada', () => {
+    const incomplete = { ...draft('either'), conditions: [{ ...draft('either').conditions[0]!, matcher: null }] }
+    expect(computeDraftImpact({ ...base, draft: incomplete })).toBeNull()
   })
 })

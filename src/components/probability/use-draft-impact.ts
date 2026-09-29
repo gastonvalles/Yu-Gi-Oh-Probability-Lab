@@ -2,13 +2,22 @@ import { useDeferredValue, useMemo } from 'react'
 
 import { buildActiveRuleSet } from '../../app/pattern-presets'
 import { computeLabResults } from '../../app/probability-lab'
-import type { CardEntry, HandPattern } from '../../types'
+import type { CardEntry, HandPattern, TurnContext } from '../../types'
 
 export interface DraftImpact {
   /** % de manos en que se cumple la regla sola, por turno (null si no aplica a ese turno). */
-  rule: { first: number | null; second: number | null; average: number | null }
+  rule: { first: number | null; second: number | null; main: number | null; scope: TurnContext }
   /** Manos limpias del Lab (promedio) con la regla guardada vs. con el borrador. */
   clean: { before: number; after: number } | null
+}
+
+interface DraftImpactInput {
+  draft: HandPattern | null
+  cards: CardEntry[]
+  customPatterns: HandPattern[]
+  disabledGenericRuleIds: readonly string[]
+  handSize: number
+  cleanBefore: number | null
 }
 
 function isComplete(pattern: HandPattern): boolean {
@@ -19,55 +28,49 @@ function probabilityOf(results: { patternId: string; probability: number }[], pa
   return results.find((result) => result.patternId === patternId)?.probability ?? null
 }
 
-/**
- * Vista previa en vivo del borrador: cuánto se da la regla y cómo movería las manos
- * limpias. No toca el store: el Lab de fondo sólo cambia al guardar.
- */
-export function useDraftImpact({
+/** Cuánto se da la regla del borrador y cómo movería las manos limpias (sin tocar el store). */
+export function computeDraftImpact({
   draft,
   cards,
   customPatterns,
   disabledGenericRuleIds,
   handSize,
   cleanBefore,
-}: {
-  draft: HandPattern | null
-  cards: CardEntry[]
-  customPatterns: HandPattern[]
-  disabledGenericRuleIds: readonly string[]
-  handSize: number
-  cleanBefore: number | null
-}): DraftImpact | null {
-  const deferredDraft = useDeferredValue(draft)
+}: DraftImpactInput): DraftImpact | null {
+  if (!draft || !isComplete(draft)) {
+    return null
+  }
 
-  return useMemo(() => {
-    if (!deferredDraft || !isComplete(deferredDraft)) {
-      return null
-    }
+  // La regla sola se mide en ambos turnos: si fuera "Solo 1º", el turno 2º quedaría
+  // sin reglas y el cálculo se bloquearía. Después se oculta el turno que no aplica.
+  const alone = computeLabResults(cards, [{ ...draft, turnContext: 'either' }], handSize)
 
-    const alone = computeLabResults(cards, [deferredDraft], handSize)
+  if (alone.status !== 'ok') {
+    return null
+  }
 
-    if (alone.status !== 'ok') {
-      return null
-    }
+  const scope = draft.turnContext
+  const first = scope === 'second' ? null : probabilityOf(alone.results.first.patternResults, draft.id)
+  const second = scope === 'first' ? null : probabilityOf(alone.results.second.patternResults, draft.id)
+  const main = scope === 'either' ? probabilityOf(alone.results.average.patternResults, draft.id) : (first ?? second)
 
-    const { first, second, average } = alone.results
-    const rule = {
-      first: probabilityOf(first.patternResults, deferredDraft.id),
-      second: probabilityOf(second.patternResults, deferredDraft.id),
-      average: probabilityOf(average.patternResults, deferredDraft.id),
-    }
+  const withDraft = [...customPatterns.filter((pattern) => pattern.id !== draft.id), draft]
+  const full = computeLabResults(cards, buildActiveRuleSet(cards, withDraft, disabledGenericRuleIds), handSize)
+  const clean =
+    cleanBefore !== null && full.status === 'ok'
+      ? { before: cleanBefore, after: full.results.average.cleanProbability }
+      : null
 
-    const withDraft = [
-      ...customPatterns.filter((pattern) => pattern.id !== deferredDraft.id),
-      deferredDraft,
-    ]
-    const full = computeLabResults(cards, buildActiveRuleSet(cards, withDraft, disabledGenericRuleIds), handSize)
-    const clean =
-      cleanBefore !== null && full.status === 'ok'
-        ? { before: cleanBefore, after: full.results.average.cleanProbability }
-        : null
+  return { rule: { first, second, main, scope }, clean }
+}
 
-    return { rule, clean }
-  }, [cards, cleanBefore, customPatterns, deferredDraft, disabledGenericRuleIds, handSize])
+/** Vista previa en vivo del borrador, con valores diferidos para que escribir no se trabe. */
+export function useDraftImpact(input: DraftImpactInput): DraftImpact | null {
+  const deferredDraft = useDeferredValue(input.draft)
+  const { cards, cleanBefore, customPatterns, disabledGenericRuleIds, handSize } = input
+
+  return useMemo(
+    () => computeDraftImpact({ draft: deferredDraft, cards, cleanBefore, customPatterns, disabledGenericRuleIds, handSize }),
+    [cards, cleanBefore, customPatterns, deferredDraft, disabledGenericRuleIds, handSize],
+  )
 }

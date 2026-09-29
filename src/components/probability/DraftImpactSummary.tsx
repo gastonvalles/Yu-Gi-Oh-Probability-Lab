@@ -18,8 +18,11 @@ export function DraftImpactSummary({ impact, kind }: { impact: DraftImpact | nul
   return (
     <div className="draft-impact" data-kind={kind} aria-live="polite">
       <div className="draft-impact-main">
-        <strong>{rule.average === null ? '—' : formatShortPercent(rule.average)}</strong>
-        <span>de las manos {kind === 'opening' ? 'tienen esta salida' : 'tienen este problema'}</span>
+        <strong>{rule.main === null ? '—' : formatShortPercent(rule.main)}</strong>
+        <span>
+          de las manos {rule.scope === 'first' ? 'yendo 1º ' : rule.scope === 'second' ? 'yendo 2º ' : ''}
+          {kind === 'opening' ? 'tienen esta salida' : 'tienen este problema'}
+        </span>
       </div>
       <div className="draft-impact-turns">
         <span>1º {rule.first === null ? 'no aplica' : formatShortPercent(rule.first)}</span>
