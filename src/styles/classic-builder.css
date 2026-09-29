@@ -814,9 +814,20 @@
       max-height: 100%;
     }
 
+    /* Columna flex: el recuadro de texto llena el espacio libre y crece con textos
+       largos (el panel scrollea) en vez de desbordarse de una fila de alto fijo. */
     .classic-builder-preview {
-      grid-template-rows: auto auto minmax(12rem, 1fr);
-      align-content: stretch;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .classic-builder-preview > * {
+      flex-shrink: 0;
+    }
+
+    .classic-builder-preview > .classic-builder-preview-details {
+      flex: 1 0 auto;
+      min-height: 12rem;
     }
 
     .classic-builder-preview-art-frame {
