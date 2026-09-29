@@ -152,6 +152,8 @@ function buildConditionPreview(
           : requirement.matcher.value === 'spell' ? 'de tipo Magia'
           : 'de tipo Trampa',
       )
+    case 'archetype':
+      return buildGenericCardPreview(requirement, `del arquetipo ${requirement.matcher.value}`)
     case 'role':
       return buildGenericCardPreview(
         requirement,
@@ -222,6 +224,8 @@ function buildCompactMatcherLabel(
     case 'level':
       return `Nivel ${formatInteger(matcher.value)}`
     case 'monster_type':
+      return matcher.value
+    case 'archetype':
       return matcher.value
     case 'atk':
       return `${formatInteger(matcher.value)} ATK`

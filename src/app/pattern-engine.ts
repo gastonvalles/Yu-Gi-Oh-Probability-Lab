@@ -286,6 +286,10 @@ function buildConditionSourceLabel(
     return getMonsterRequirementSourceLabel(condition.matcher) ?? 'Filtro de monstruos'
   }
 
+  if (condition.matcher?.type === 'archetype') {
+    return `Arquetipo: ${condition.matcher.value}`
+  }
+
   if (condition.matcher?.type === 'card_type') {
     const label = condition.matcher.value === 'monster' ? 'Monstruo' : condition.matcher.value === 'spell' ? 'Magia' : 'Trampa'
     return `Tipo: ${label}`

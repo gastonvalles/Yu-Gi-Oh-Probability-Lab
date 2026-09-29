@@ -512,6 +512,10 @@ function parseMatcher(value: unknown): Matcher | null {
     return { type: 'level', value: value.value }
   }
 
+  if (value.type === 'archetype' && typeof value.value === 'string' && value.value.trim()) {
+    return { type: 'archetype', value: value.value }
+  }
+
   if (value.type === 'monster_type' && typeof value.value === 'string') {
     return { type: 'monster_type', value: value.value }
   }

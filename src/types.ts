@@ -43,6 +43,7 @@ export type Matcher =
   | { type: 'attribute'; value: CardAttribute }
   | { type: 'level'; value: number }
   | { type: 'monster_type'; value: string }
+  | { type: 'archetype'; value: string }
   | { type: 'atk'; value: number }
   | { type: 'def'; value: number }
 
