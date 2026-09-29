@@ -1,3 +1,4 @@
+import { detectTurnLean } from '../components/probability/probability-lab-helpers'
 import { describe, expect, it } from 'vitest'
 
 import { createMatcherPattern } from '../app/pattern-factory'
@@ -153,5 +154,14 @@ describe('buildRoleDistributions', () => {
     expect(starters?.copies).toBe(8)
     expect(starters?.buckets.reduce((total, value) => total + value, 0)).toBeCloseTo(1)
     expect(starters?.atLeastOne).toBeCloseTo(1 - hypergeometric(40, 8, 5, 0))
+  })
+})
+
+describe('detectTurnLean', () => {
+  it('avisa sólo cuando la diferencia entre turnos es relevante', () => {
+    expect(detectTurnLean(0.3, 0.32)).toBeNull()
+    expect(detectTurnLean(0.1, 0.25)).toEqual({ favored: 'second', first: 0.1, second: 0.25 })
+    expect(detectTurnLean(0.4, 0.2)?.favored).toBe('first')
+    expect(detectTurnLean(undefined, 0.5)).toBeNull()
   })
 })

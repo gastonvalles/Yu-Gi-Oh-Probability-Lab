@@ -12,6 +12,7 @@ import {
   buildDerivedDeckLevels,
   buildDerivedDeckMonsterTypes,
 } from '../../../app/card-attributes'
+import { buildDeckArchetypes } from '../../../app/card-archetypes'
 import { createCardPoolMatcher } from '../../../app/patterns'
 import { formatCopies } from '../../../app/utils'
 import { Button } from '../../ui/Button'
@@ -97,6 +98,7 @@ export function CategoryPicker({
   const defValues = useMemo(() => buildDerivedDeckDefenseValues(derivedMainCards).filter((d) => d.copies > 0), [derivedMainCards])
 
   const cardTypeCounts = useMemo(() => buildCardTypeCounts(derivedMainCards), [derivedMainCards])
+  const archetypes = useMemo(() => buildDeckArchetypes(derivedMainCards), [derivedMainCards])
 
   const shortcutRoles = SHORTCUT_ROLES
     .map((role) => roleCounts.find((r) => r.value === role))
@@ -177,6 +179,31 @@ export function CategoryPicker({
                   onClick={() => select({ type: 'card_type', value: ct.value })}
                 />
               ))}
+            </PickerGroup>
+          ) : null}
+
+          {/* Archetypes: una condición cuenta cualquier carta del arquetipo */}
+          {archetypes.length > 0 ? (
+            <PickerGroup label="Arquetipo">
+              {archetypes.map((archetype) =>
+                isPoolMode ? (
+                  <PoolGroupOption
+                    key={archetype.name}
+                    label={archetype.name}
+                    copies={archetype.copies}
+                    cardIds={archetype.cardIds}
+                    poolSelection={poolSelection}
+                    onToggleCards={handleToggleGroupCards}
+                  />
+                ) : (
+                  <PickerOption
+                    key={archetype.name}
+                    label={archetype.name}
+                    detail={formatCopies(archetype.copies)}
+                    onClick={() => select({ type: 'archetype', value: archetype.name })}
+                  />
+                ),
+              )}
             </PickerGroup>
           ) : null}
 

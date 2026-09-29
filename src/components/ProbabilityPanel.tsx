@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import type { DeckCardInstance } from '../app/model'
+import { createPattern } from '../app/pattern-factory'
 import type { RoleDistributionKey } from '../app/role-distribution'
 import { useToastMessage } from '../app/use-toast-message'
+import type { PatternEditorDefaults } from '../app/use-pattern-editor-actions'
 import { formatShortPercent } from '../app/utils'
 import type { ApiCardReference, CardEntry, HandPattern, TurnView } from '../types'
 import { KpiDetailModal } from './comparison/KpiDetailModal'
@@ -20,6 +22,7 @@ import type { PatternEditorActions } from './probability/pattern-editor-actions'
 import { buildPatternCompactSummary } from './probability/pattern-helpers'
 import { buildRuleEntryGroups } from './probability/probability-lab-helpers'
 import { TurnViewToggle } from './probability/TurnViewToggle'
+import { usePatternDraft } from './probability/use-pattern-draft'
 import { useProbabilityLab } from './probability/use-probability-lab'
 
 interface ProbabilityPanelProps {
@@ -29,6 +32,7 @@ interface ProbabilityPanelProps {
   onSetGenericRuleEnabled: (ruleId: string, enabled: boolean) => void
   derivedMainCards: CardEntry[]
   patternActions: PatternEditorActions
+  patternEditorDefaults: PatternEditorDefaults
   isEditingDeck: boolean
 }
 
@@ -48,13 +52,13 @@ export function ProbabilityPanel({
   onSetGenericRuleEnabled,
   derivedMainCards,
   patternActions,
+  patternEditorDefaults,
   isEditingDeck,
 }: ProbabilityPanelProps) {
   const lab = useProbabilityLab(derivedMainCards, patterns, disabledGenericRuleIds, handSize, isEditingDeck)
   const [activeTurnView, setActiveTurnView] = useState<TurnView>('average')
   const [drawerMode, setDrawerMode] = useState<DrawerMode | null>(null)
-  const [selectedPatternId, setSelectedPatternId] = useState<string | null>(null)
-  const [pendingCreatedPatternId, setPendingCreatedPatternId] = useState<string | null>(null)
+  const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false)
   const [pendingDeletePatternId, setPendingDeletePatternId] = useState<string | null>(null)
   const [kpiModalRole, setKpiModalRole] = useState<KpiRole | null>(null)
   const { showToast } = useToastMessage()
@@ -71,69 +75,83 @@ export function ProbabilityPanel({
         disabledGenericRuleIds,
         derivedMainCards,
         patternResults: currentResult?.patternResults ?? [],
+        viewPatternResults: {
+          first: results?.first.patternResults ?? [],
+          second: results?.second.patternResults ?? [],
+        },
         view: activeTurnView,
       }),
-    [activeTurnView, currentResult, derivedMainCards, disabledGenericRuleIds, lab.availablePresets, lab.customPatterns],
+    [activeTurnView, currentResult, results, derivedMainCards, disabledGenericRuleIds, lab.availablePresets, lab.customPatterns],
   )
 
-  const selectedPattern = patterns.find((pattern) => pattern.id === selectedPatternId) ?? null
-  const selectedProbability =
-    currentResult?.patternResults.find((result) => result.patternId === selectedPatternId)?.probability ?? null
+  const draft = usePatternDraft(patternEditorDefaults)
+  const draftPattern = draft.draft
+  const draftProbability =
+    drawerMode === 'edit'
+      ? (currentResult?.patternResults.find((result) => result.patternId === draftPattern?.id)?.probability ?? null)
+      : null
+  const draftHasConditions = draftPattern?.conditions.some((condition) => condition.matcher !== null) ?? false
+  const canSaveDraft = draftHasConditions && (drawerMode === 'custom-create' || draft.isDirty)
 
-  // Si la regla abierta desaparece (p. ej. la curaron), se cierra el editor.
+  const closeDrawer = () => {
+    draft.close()
+    setDrawerMode(null)
+    setConfirmDiscardOpen(false)
+  }
+
+  // Si la regla abierta desaparece del store (p. ej. la curaron), se cierra el editor.
   useEffect(() => {
-    const exists =
-      !selectedPatternId ||
-      selectedPatternId === pendingCreatedPatternId ||
-      patterns.some((pattern) => pattern.id === selectedPatternId)
-
-    if (!exists) {
-      setSelectedPatternId(null)
+    if (drawerMode === 'edit' && draftPattern && !patterns.some((pattern) => pattern.id === draftPattern.id)) {
+      draft.close()
       setDrawerMode(null)
     }
-  }, [patterns, pendingCreatedPatternId, selectedPatternId])
-
-  useEffect(() => {
-    const pendingPattern = patterns.find((pattern) => pattern.id === pendingCreatedPatternId)
-
-    if (pendingCreatedPatternId && pendingPattern && pendingPattern.name.trim().length > 0) {
-      setPendingCreatedPatternId(null)
-    }
-  }, [patterns, pendingCreatedPatternId])
+  }, [draft, draftPattern, drawerMode, patterns])
 
   const handleOpenCustomCreate = () => {
-    if (pendingCreatedPatternId && patterns.some((pattern) => pattern.id === pendingCreatedPatternId)) {
-      setSelectedPatternId(pendingCreatedPatternId)
-      setDrawerMode('custom-create')
-      return
-    }
-
-    const patternId = patternActions.addPattern('opening')
-    setPendingCreatedPatternId(patternId)
-    setSelectedPatternId(patternId)
+    draft.open(createPattern('', undefined, 'opening'))
     setDrawerMode('custom-create')
   }
 
-  // Al cerrar: una regla nueva sin condiciones se descarta; si tiene condiciones pero no
-  // nombre, se nombra sola con su resumen para no perder el trabajo.
-  const handleCloseDrawer = () => {
-    const pendingPattern = patterns.find((pattern) => pattern.id === pendingCreatedPatternId)
+  const handleEditRule = (patternId: string) => {
+    const pattern = patterns.find((candidate) => candidate.id === patternId)
 
-    if (pendingCreatedPatternId === selectedPatternId && pendingPattern && pendingPattern.name.trim().length === 0) {
-      const hasConditions = pendingPattern.conditions.some((condition) => condition.matcher !== null)
+    if (pattern) {
+      draft.open(pattern)
+      setDrawerMode('edit')
+    }
+  }
 
-      if (hasConditions) {
-        const cardById = new Map(derivedMainCards.map((card) => [card.id, card]))
-        patternActions.setPatternName(pendingPattern.id, buildPatternCompactSummary(pendingPattern, cardById))
-      } else {
-        patternActions.removePattern(pendingPattern.id)
-        showToast('Regla vacía descartada')
-      }
+  // Guardar es el único momento en que la regla llega al store (y se recalcula).
+  const handleSaveDraft = () => {
+    if (!draftPattern || !canSaveDraft) {
+      return
     }
 
-    setPendingCreatedPatternId(null)
-    setSelectedPatternId(null)
-    setDrawerMode(null)
+    const cardById = new Map(derivedMainCards.map((card) => [card.id, card]))
+    const saved =
+      draftPattern.name.trim().length > 0
+        ? draftPattern
+        : { ...draftPattern, name: buildPatternCompactSummary(draftPattern, cardById) }
+
+    if (drawerMode === 'custom-create') {
+      patternActions.appendPattern(saved)
+    } else {
+      patternActions.replacePatterns(patterns.map((pattern) => (pattern.id === saved.id ? saved : pattern)))
+    }
+
+    showToast(drawerMode === 'custom-create' ? 'Regla creada' : 'Regla guardada')
+    closeDrawer()
+  }
+
+  const handleRequestClose = () => {
+    const hasUnsavedWork = drawerMode === 'custom-create' ? draftHasConditions : draft.isDirty
+
+    if (hasUnsavedWork) {
+      setConfirmDiscardOpen(true)
+      return
+    }
+
+    closeDrawer()
   }
 
   const handleConfirmDelete = () => {
@@ -143,13 +161,8 @@ export function ProbabilityPanel({
 
     patternActions.removePattern(pendingDeletePatternId)
 
-    if (selectedPatternId === pendingDeletePatternId) {
-      setSelectedPatternId(null)
-      setDrawerMode(null)
-    }
-
-    if (pendingCreatedPatternId === pendingDeletePatternId) {
-      setPendingCreatedPatternId(null)
+    if (draftPattern?.id === pendingDeletePatternId) {
+      closeDrawer()
     }
 
     setPendingDeletePatternId(null)
@@ -208,10 +221,7 @@ export function ProbabilityPanel({
           />
           <LabRuleList
             groups={ruleGroups}
-            onEditRule={(patternId) => {
-              setSelectedPatternId(patternId)
-              setDrawerMode('edit')
-            }}
+            onEditRule={handleEditRule}
             onToggleGenericRule={onSetGenericRuleEnabled}
             onCreateCustom={handleOpenCustomCreate}
           />
@@ -219,14 +229,26 @@ export function ProbabilityPanel({
       ) : null}
 
       <PatternEditorDrawer
-        actions={patternActions}
-        currentImpactLabel={selectedPattern ? formatDrawerImpactLabel(selectedProbability, selectedPattern.kind) : null}
+        actions={draft.actions}
+        canSave={canSaveDraft}
+        currentImpactLabel={draftPattern ? formatDrawerImpactLabel(draftProbability, draftPattern.kind) : null}
         derivedMainCards={derivedMainCards}
         drawerMode={drawerMode}
-        isPendingCreation={selectedPatternId === pendingCreatedPatternId}
-        onClose={handleCloseDrawer}
+        isPendingCreation={drawerMode === 'custom-create'}
+        onClose={handleRequestClose}
         onRequestDelete={setPendingDeletePatternId}
-        pattern={selectedPattern}
+        onSave={handleSaveDraft}
+        pattern={draftPattern}
+      />
+
+      <ConfirmDialog
+        cancelLabel="Seguir editando"
+        confirmLabel="Descartar"
+        description="Los cambios de esta regla no se guardaron. Si salís ahora se pierden."
+        isOpen={confirmDiscardOpen}
+        onCancel={() => setConfirmDiscardOpen(false)}
+        onConfirm={closeDrawer}
+        title="¿Descartar cambios?"
       />
 
       <LabDisclaimerDialog isOpen={disclaimer.isOpen} onAcknowledge={disclaimer.acknowledge} />

@@ -6,7 +6,7 @@ import { Button } from '../ui/Button'
 import { LockIcon, PlusIcon } from '../ui/icons'
 import { Switch } from '../ui/Switch'
 import { LabSection } from './LabSection'
-import type { RuleEntry, RuleEntryGroups } from './probability-lab-helpers'
+import type { RuleEntry, RuleEntryGroups, TurnLean } from './probability-lab-helpers'
 
 type KindFilter = 'all' | PatternKind
 
@@ -188,6 +188,7 @@ function RuleRow({
           {entry.turnContext !== 'either' ? (
             <span className="lab-rule-turn">{entry.turnContext === 'first' ? 'Solo 1º' : 'Solo 2º'}</span>
           ) : null}
+          {entry.turnLean ? <TurnLeanBadge kind={entry.kind} lean={entry.turnLean} /> : null}
         </span>
         <span className="lab-rule-support">{entry.summary}</span>
         {entry.description ? <span className="lab-rule-description">{entry.description}</span> : null}
@@ -211,7 +212,7 @@ function RuleRow({
         type="button"
         className="lab-rule"
         {...state}
-        aria-label={`Editar regla ${entry.name}: ${formatRuleValue(entry)}`}
+        aria-label={`Editar regla ${entry.name}: ${formatRuleValue(entry)}${entry.turnLean ? `, más yendo ${entry.turnLean.favored === 'first' ? '1º' : '2º'}` : ''}`}
         onClick={onClick}
       >
         {body}
@@ -241,4 +242,21 @@ function formatRuleValue(entry: RuleEntry): string {
   }
 
   return entry.probability === null ? '—' : formatShortPercent(entry.probability)
+}
+
+/** Aviso automático: la regla se da claramente más en un turno (aunque valga para ambos). */
+function TurnLeanBadge({ kind, lean }: { kind: RuleEntry['kind']; lean: TurnLean }) {
+  const turn = lean.favored === 'first' ? '1º' : '2º'
+  const detail = `Yendo 1º: ${formatShortPercent(lean.first)} · yendo 2º: ${formatShortPercent(lean.second)}`
+  const meaning =
+    kind === 'opening'
+      ? `Esta salida aparece más yendo ${turn}.`
+      : `Este problema pesa más yendo ${turn}.`
+
+  return (
+    <span className="lab-rule-lean" data-kind={kind} title={`${meaning} ${detail}`}>
+      Más yendo {turn}
+      <span className="sr-only">. {meaning} {detail}</span>
+    </span>
+  )
 }

@@ -56,6 +56,8 @@ export function getConditionLabel(
       return `Nivel ${formatInteger(matcher.value)}`
     case 'monster_type':
       return matcher.value
+    case 'archetype':
+      return `Arquetipo ${matcher.value}`
     case 'atk':
       return `${formatInteger(matcher.value)} ATK`
     case 'def':

@@ -21,6 +21,7 @@ import {
   type DerivedDeckGroup,
 } from './deck-groups'
 import { matchesMonsterRequirementCard } from './card-attributes'
+import { cardBelongsToArchetype } from './card-archetypes'
 
 export function normalizeHandPatternCategory(
   kind: HandPatternCategory | 'good' | 'bad' | null | undefined,
@@ -312,6 +313,10 @@ export function resolveConditionCardIds(
 
   if (matcher.type === 'card_pool') {
     return [...new Set(matcher.value.filter(Boolean))]
+  }
+
+  if (matcher.type === 'archetype') {
+    return [...new Set([...cards].filter((card) => cardBelongsToArchetype(card, matcher.value)).map((card) => card.id))]
   }
 
   if (matcher.type === 'card_type') {
