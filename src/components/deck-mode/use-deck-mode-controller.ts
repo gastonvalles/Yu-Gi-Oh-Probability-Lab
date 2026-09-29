@@ -240,15 +240,19 @@ export function useDeckModeController() {
     () => buildDerivedDeckDefenseValues(derivedMainCards)[0]?.key ?? null,
     [derivedMainCards],
   )
-  const patternActions = usePatternEditorActions({
-    defaultAtk,
-    defaultAttribute,
-    defaultDef,
-    defaultGroupKey,
-    defaultLevel,
-    defaultMonsterType,
-    derivedMainCards,
-  })
+  const patternEditorDefaults = useMemo(
+    () => ({
+      defaultAtk,
+      defaultAttribute,
+      defaultDef,
+      defaultGroupKey,
+      defaultLevel,
+      defaultMonsterType,
+      derivedMainCards,
+    }),
+    [defaultAtk, defaultAttribute, defaultDef, defaultGroupKey, defaultLevel, defaultMonsterType, derivedMainCards],
+  )
+  const patternActions = usePatternEditorActions(patternEditorDefaults)
 
   const handleSetGenericRuleEnabled = useCallback(
     (ruleId: string, enabled: boolean) => dispatch(setGenericRuleEnabled({ ruleId, enabled })),
@@ -636,6 +640,7 @@ export function useDeckModeController() {
       onSetGenericRuleEnabled: handleSetGenericRuleEnabled,
       derivedMainCards,
       patternActions,
+      patternEditorDefaults,
       isEditingDeck: deckBuilder.isEditingDeck,
     },
     roles: {

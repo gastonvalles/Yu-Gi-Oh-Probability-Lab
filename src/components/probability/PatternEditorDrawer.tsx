@@ -12,24 +12,30 @@ type DrawerMode = 'custom-create' | 'edit'
 
 interface PatternEditorDrawerProps {
   actions: PatternEditorActions
+  canSave: boolean
   currentImpactLabel: string | null
   derivedMainCards: CardEntry[]
   drawerMode: DrawerMode | null
   isPendingCreation?: boolean
   onClose: () => void
   onRequestDelete: (patternId: string) => void
+  onSave: () => void
   pattern: HandPattern | null
 }
 
-/** Editor lateral de reglas propias (las del sistema se prenden y apagan desde la lista). */
+/**
+ * Editor lateral de reglas propias. Edita un borrador: el Lab sólo recalcula al guardar.
+ */
 export function PatternEditorDrawer({
   actions,
+  canSave,
   currentImpactLabel,
   derivedMainCards,
   drawerMode,
   isPendingCreation = false,
   onClose,
   onRequestDelete,
+  onSave,
   pattern,
 }: PatternEditorDrawerProps) {
   const isOpen = drawerMode !== null
@@ -97,11 +103,16 @@ export function PatternEditorDrawer({
               Eliminar regla
             </Button>
           ) : (
-            <span className="app-muted text-[0.74rem]">Los cambios se guardan solos.</span>
+            <span className="app-muted text-[0.74rem]">El % se recalcula al guardar.</span>
           )}
-          <Button variant="primary" size="sm" onClick={onClose}>
-            Listo
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button variant="primary" size="sm" disabled={!canSave} onClick={onSave}>
+              {isPendingCreation ? 'Crear regla' : 'Guardar cambios'}
+            </Button>
+          </div>
         </footer>
       </aside>
     </div>

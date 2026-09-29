@@ -39,6 +39,7 @@ function entry(overrides: Partial<RuleEntry>): RuleEntry {
     isComplete: true,
     probability: 0.5,
     possible: true,
+    turnLean: null,
     ...overrides,
   }
 }
