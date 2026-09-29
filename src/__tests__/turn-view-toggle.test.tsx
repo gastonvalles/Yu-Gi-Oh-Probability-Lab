@@ -94,13 +94,13 @@ describe('TurnViewToggle (isolation)', () => {
 
 describe('LabScoreCard', () => {
   it('muestra el KPI de la vista activa y, en promedio, el detalle por turno', () => {
-    const { rerender } = render(<LabScoreCard results={RESULTS} view="average" feedback={null} isRecalculating={false} />)
+    const { rerender } = render(<LabScoreCard results={RESULTS} view="average" isRecalculating={false} />)
 
     expect(screen.getByText('57.00%')).toBeInTheDocument()
     expect(screen.getByText('41.0%')).toBeInTheDocument()
     expect(screen.getByText('73.0%')).toBeInTheDocument()
 
-    rerender(<LabScoreCard results={RESULTS} view="second" feedback={null} isRecalculating={false} />)
+    rerender(<LabScoreCard results={RESULTS} view="second" isRecalculating={false} />)
     expect(screen.getByText('73.00%')).toBeInTheDocument()
     expect(screen.getByRole('meter', { name: 'Manos limpias' })).toHaveAttribute('aria-valuenow', '73')
   })
@@ -119,7 +119,6 @@ describe('LabRuleList', () => {
     render(
       <LabRuleList
         groups={groups}
-        highlightedPatternId={null}
         onEditRule={onEditRule}
         onToggleGenericRule={onToggleGenericRule}
         onCreateCustom={() => {}}
@@ -140,7 +139,6 @@ describe('LabRuleList', () => {
     render(
       <LabRuleList
         groups={groups}
-        highlightedPatternId={null}
         onEditRule={() => {}}
         onToggleGenericRule={() => {}}
         onCreateCustom={() => {}}

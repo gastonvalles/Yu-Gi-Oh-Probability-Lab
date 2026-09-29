@@ -18,7 +18,6 @@ const KIND_FILTERS: ReadonlyArray<{ value: KindFilter; label: string }> = [
 
 interface LabRuleListProps {
   groups: RuleEntryGroups
-  highlightedPatternId: string | null
   onEditRule: (patternId: string) => void
   onToggleGenericRule: (presetId: string, enabled: boolean) => void
   onCreateCustom: () => void
@@ -26,7 +25,6 @@ interface LabRuleListProps {
 
 export function LabRuleList({
   groups,
-  highlightedPatternId,
   onEditRule,
   onToggleGenericRule,
   onCreateCustom,
@@ -75,7 +73,7 @@ export function LabRuleList({
             }
             description="Valen para cualquier deck de Yu-Gi-Oh!: definen la base de una mano jugable."
             entries={visible(groups.universal)}
-            renderRow={(entry) => <RuleRow entry={entry} isHighlighted={false} />}
+            renderRow={(entry) => <RuleRow entry={entry} />}
           />
           <RuleTier
             title="Tus reglas"
@@ -101,7 +99,6 @@ export function LabRuleList({
             renderRow={(entry) => (
               <RuleRow
                 entry={entry}
-                isHighlighted={highlightedPatternId === entry.patternId}
                 onClick={() => onEditRule(entry.patternId)}
               />
             )}
@@ -116,7 +113,7 @@ export function LabRuleList({
             renderRow={(entry) => (
               <RuleRow
                 entry={entry}
-                isHighlighted={false}
+               
                 trailing={
                   <Switch
                     checked={entry.enabled}
@@ -173,12 +170,10 @@ function RuleTier({
 
 function RuleRow({
   entry,
-  isHighlighted,
   trailing,
   onClick,
 }: {
   entry: RuleEntry
-  isHighlighted: boolean
   trailing?: ReactNode
   onClick?: () => void
 }) {
@@ -208,7 +203,6 @@ function RuleRow({
   const state = {
     'data-kind': entry.kind,
     'data-enabled': entry.enabled && entry.appliesToView ? 'true' : 'false',
-    'data-highlighted': isHighlighted ? 'true' : 'false',
   }
 
   if (onClick) {

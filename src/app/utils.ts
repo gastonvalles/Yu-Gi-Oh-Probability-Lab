@@ -123,10 +123,6 @@ export function formatShortPercent(value: number): string {
   return `${(value * 100).toFixed(1)}%`
 }
 
-export function formatPercentPoints(delta: number): string {
-  return `${delta > 0 ? '+' : ''}${(delta * 100).toFixed(1)} pp`
-}
-
 /** Notación única de copias en la app: "×3". */
 export function formatCopies(copies: number): string {
   return `×${formatInteger(copies)}`

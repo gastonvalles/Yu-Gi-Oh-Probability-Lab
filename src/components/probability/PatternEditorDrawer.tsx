@@ -15,7 +15,6 @@ interface PatternEditorDrawerProps {
   currentImpactLabel: string | null
   derivedMainCards: CardEntry[]
   drawerMode: DrawerMode | null
-  feedbackLabel: string | null
   isPendingCreation?: boolean
   onClose: () => void
   onRequestDelete: (patternId: string) => void
@@ -28,7 +27,6 @@ export function PatternEditorDrawer({
   currentImpactLabel,
   derivedMainCards,
   drawerMode,
-  feedbackLabel,
   isPendingCreation = false,
   onClose,
   onRequestDelete,
@@ -68,20 +66,10 @@ export function PatternEditorDrawer({
             <CloseButton size="sm" aria-label="Cerrar editor" onClick={onClose} />
           </div>
 
-          {currentImpactLabel || feedbackLabel ? (
-            <div className="flex flex-wrap items-center gap-2">
-              {currentImpactLabel ? (
-                <span className="surface-card px-2 py-1 text-[0.78rem] font-medium text-(--text-main)">
-                  {currentImpactLabel}
-                </span>
-              ) : null}
-              {feedbackLabel ? (
-                <span className="surface-panel-soft px-2 py-1 text-[0.72rem] text-(--text-muted)">
-                  <small className="app-muted mr-1 text-[0.65rem]">Último cambio</small>
-                  {feedbackLabel}
-                </span>
-              ) : null}
-            </div>
+          {currentImpactLabel ? (
+            <span className="surface-card justify-self-start px-2 py-1 text-[0.78rem] font-medium text-(--text-main)">
+              {currentImpactLabel}
+            </span>
           ) : null}
         </header>
 
