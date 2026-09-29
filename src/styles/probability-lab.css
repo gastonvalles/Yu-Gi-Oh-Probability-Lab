@@ -1061,3 +1061,80 @@
     }
   }
 }
+
+@layer components {
+  /* ── Vista previa en vivo del borrador de regla ── */
+
+  .draft-impact {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0;
+    border: 1px solid var(--border-subtle);
+    border-radius: calc(var(--radius-panel) - 0.2rem);
+    background: rgb(var(--background-rgb) / 0.55);
+    padding: 0.55rem 0.7rem;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  .draft-impact[data-kind='opening'] {
+    border-color: rgb(var(--success-rgb) / 0.35);
+  }
+
+  .draft-impact[data-kind='problem'] {
+    border-color: rgb(var(--danger-rgb) / 0.35);
+  }
+
+  .draft-impact-empty {
+    color: var(--text-soft);
+  }
+
+  .draft-impact-main {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.4rem;
+  }
+
+  .draft-impact-main strong {
+    font-size: 1.25rem;
+    color: var(--text-main);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .draft-impact-turns {
+    display: flex;
+    gap: 0.9rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .draft-impact-clean {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 0.35rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .draft-impact-clean strong {
+    color: var(--text-main);
+  }
+
+  .draft-impact-delta {
+    border-radius: var(--radius-chip);
+    padding: 0.05rem 0.4rem;
+    font-weight: 700;
+  }
+
+  .draft-impact-delta[data-tone='positive'] {
+    background: rgb(var(--success-rgb) / 0.14);
+    color: var(--accent);
+  }
+
+  .draft-impact-delta[data-tone='negative'] {
+    background: rgb(var(--danger-rgb) / 0.14);
+    color: var(--destructive);
+  }
+}

@@ -41,6 +41,16 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
 
   return (
     <div className="rule-builder grid gap-5">
+      <RuleStep number={1} title="Nombre" hint="Opcional: si lo dejás vacío se usa el resumen.">
+        <PatternNameInput
+          patternId={pattern.id}
+          currentName={pattern.name}
+          placeholderSummary={preview.items.some((item) => item.startsWith('(')) ? 'Ej.: Mi combo principal' : summary}
+          isPendingCreation={isPendingCreation}
+          actions={actions}
+        />
+      </RuleStep>
+
       <section className="rule-preview" data-kind={pattern.kind} aria-live="polite">
         <span className="rule-preview-heading">{preview.heading}</span>
         <ul>
@@ -51,11 +61,11 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
         {conditionCount > 1 ? <span className="rule-preview-logic">{preview.logic}</span> : null}
       </section>
 
-      <RuleStep number={1} title="¿Qué representa?">
+      <RuleStep number={2} title="¿Qué representa?">
         <KindToggle patternId={pattern.id} currentKind={pattern.kind} actions={actions} />
       </RuleStep>
 
-      <RuleStep number={2} title="¿Qué tiene que tener la mano?">
+      <RuleStep number={3} title="¿Qué tiene que tener la mano?">
         {conditionCount > 1 ? (
           <LogicSelector
             patternId={pattern.id}
@@ -98,19 +108,10 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
         </Button>
       </RuleStep>
 
-      <RuleStep number={3} title="¿Cuándo cuenta?">
+      <RuleStep number={4} title="¿Cuándo cuenta?">
         <TurnContextToggle patternId={pattern.id} currentTurnContext={pattern.turnContext} actions={actions} />
       </RuleStep>
 
-      <RuleStep number={4} title="Nombre" hint="Opcional: si lo dejás vacío se usa el resumen.">
-        <PatternNameInput
-          patternId={pattern.id}
-          currentName={pattern.name}
-          placeholderSummary={preview.items.some((item) => item.startsWith('(')) ? 'Ej.: Mi combo principal' : summary}
-          isPendingCreation={false}
-          actions={actions}
-        />
-      </RuleStep>
 
       <AdvancedSettings pattern={pattern} actions={actions} derivedMainCards={derivedMainCards} />
     </div>

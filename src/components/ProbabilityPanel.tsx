@@ -17,11 +17,12 @@ import { LabFailureBreakdown } from './probability/LabFailureBreakdown'
 import { LabRoleDistribution } from './probability/LabRoleDistribution'
 import { LabRuleList } from './probability/LabRuleList'
 import { LabScoreCard } from './probability/LabScoreCard'
-import { PatternEditorDrawer, formatDrawerImpactLabel } from './probability/PatternEditorDrawer'
+import { PatternEditorDrawer } from './probability/PatternEditorDrawer'
 import type { PatternEditorActions } from './probability/pattern-editor-actions'
 import { buildPatternCompactSummary } from './probability/pattern-helpers'
 import { buildRuleEntryGroups } from './probability/probability-lab-helpers'
 import { TurnViewToggle } from './probability/TurnViewToggle'
+import { useDraftImpact } from './probability/use-draft-impact'
 import { usePatternDraft } from './probability/use-pattern-draft'
 import { useProbabilityLab } from './probability/use-probability-lab'
 
@@ -86,10 +87,14 @@ export function ProbabilityPanel({
 
   const draft = usePatternDraft(patternEditorDefaults)
   const draftPattern = draft.draft
-  const draftProbability =
-    drawerMode === 'edit'
-      ? (currentResult?.patternResults.find((result) => result.patternId === draftPattern?.id)?.probability ?? null)
-      : null
+  const draftImpact = useDraftImpact({
+    draft: draftPattern,
+    cards: derivedMainCards,
+    customPatterns: lab.customPatterns,
+    disabledGenericRuleIds,
+    handSize,
+    cleanBefore: results?.average.cleanProbability ?? null,
+  })
   const draftHasConditions = draftPattern?.conditions.some((condition) => condition.matcher !== null) ?? false
   const canSaveDraft = draftHasConditions && (drawerMode === 'custom-create' || draft.isDirty)
 
@@ -231,7 +236,7 @@ export function ProbabilityPanel({
       <PatternEditorDrawer
         actions={draft.actions}
         canSave={canSaveDraft}
-        currentImpactLabel={draftPattern ? formatDrawerImpactLabel(draftProbability, draftPattern.kind) : null}
+        impact={draftImpact}
         derivedMainCards={derivedMainCards}
         drawerMode={drawerMode}
         isPendingCreation={drawerMode === 'custom-create'}
