@@ -1,11 +1,12 @@
 import { createPortal } from 'react-dom'
 
 import { useEscapeKey } from '../../app/use-overlay'
-import { formatShortPercent } from '../../app/utils'
 import type { CardEntry, HandPattern } from '../../types'
 import { Button } from '../ui/Button'
+import { DraftImpactSummary } from './DraftImpactSummary'
 import { CloseButton } from '../ui/IconButton'
 import type { PatternEditorActions } from './pattern-editor-actions'
+import type { DraftImpact } from './use-draft-impact'
 import { RuleBuilder } from './rule-builder'
 
 type DrawerMode = 'custom-create' | 'edit'
@@ -13,7 +14,7 @@ type DrawerMode = 'custom-create' | 'edit'
 interface PatternEditorDrawerProps {
   actions: PatternEditorActions
   canSave: boolean
-  currentImpactLabel: string | null
+  impact: DraftImpact | null
   derivedMainCards: CardEntry[]
   drawerMode: DrawerMode | null
   isPendingCreation?: boolean
@@ -29,7 +30,7 @@ interface PatternEditorDrawerProps {
 export function PatternEditorDrawer({
   actions,
   canSave,
-  currentImpactLabel,
+  impact,
   derivedMainCards,
   drawerMode,
   isPendingCreation = false,
@@ -47,7 +48,7 @@ export function PatternEditorDrawer({
   }
 
   const isCreating = drawerMode === 'custom-create'
-  const title = isCreating ? 'Nueva regla' : pattern?.name.trim() || 'Editar regla'
+  const title = pattern?.name.trim() || (isCreating ? 'Nueva regla' : 'Editar regla')
 
   const drawer = (
     <div className="pattern-editor-drawer-root fixed z-150">
@@ -66,17 +67,13 @@ export function PatternEditorDrawer({
         <header className="grid gap-2 border-b border-(--border-subtle) px-4 py-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Regla propia</p>
-              <h3 className="m-[0.18rem_0_0] truncate text-[1.05rem] leading-tight text-(--text-main)">{title}</h3>
+              <h3 className="m-0 truncate text-[1.05rem] leading-tight text-(--text-main)">{title}</h3>
+              <p className="app-kicker m-[0.2rem_0_0] text-[0.68rem] uppercase tracking-widest">Regla propia</p>
             </div>
             <CloseButton size="sm" aria-label="Cerrar editor" onClick={onClose} />
           </div>
 
-          {currentImpactLabel ? (
-            <span className="surface-card justify-self-start px-2 py-1 text-[0.78rem] font-medium text-(--text-main)">
-              {currentImpactLabel}
-            </span>
-          ) : null}
+          {pattern ? <DraftImpactSummary impact={impact} kind={pattern.kind} /> : null}
         </header>
 
         <div className="min-h-0 overflow-y-auto px-4 py-4">
@@ -103,7 +100,7 @@ export function PatternEditorDrawer({
               Eliminar regla
             </Button>
           ) : (
-            <span className="app-muted text-[0.74rem]">El % se recalcula al guardar.</span>
+            <span className="app-muted text-[0.74rem]">El análisis se actualiza al guardar.</span>
           )}
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" onClick={onClose}>
@@ -123,18 +120,4 @@ export function PatternEditorDrawer({
   }
 
   return createPortal(drawer, document.body)
-}
-
-export function formatDrawerImpactLabel(probability: number | null, kind: 'opening' | 'problem'): string | null {
-  if (probability === null) {
-    return null
-  }
-
-  if (probability <= 0) {
-    return kind === 'opening' ? 'No aparece en ninguna mano con el deck actual' : 'No aparece como problema con el deck actual'
-  }
-
-  return kind === 'opening'
-    ? `Salida en ${formatShortPercent(probability)} de las manos`
-    : `Problema en ${formatShortPercent(probability)} de las manos`
 }

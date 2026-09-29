@@ -42,7 +42,10 @@ export function PatternNameInput({
         onChange={(event) => setLocalName(event.target.value)}
         onBlur={commitName}
         onKeyDown={(event) => {
-          event.stopPropagation()
+          // Escape sigue de largo para cerrar el editor.
+          if (event.key !== 'Escape') {
+            event.stopPropagation()
+          }
           if (event.key === 'Enter') {
             commitName()
             ;(event.target as HTMLInputElement).blur()
