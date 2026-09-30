@@ -122,8 +122,6 @@ export function MobileBottomStepNav({
   }, [activeStep])
 
   const highlightedStep = optimisticStep ?? activeStep
-  // El comparador todavía no está adaptado a mobile: queda fuera de la barra.
-  const mobileItems = items.filter((item) => item.key !== 'workspace')
   const renderStep = (item: DeckModeNavigationItem) => {
     const isActive = item.key === highlightedStep
     const isDisabled = item.disabled && !isActive
@@ -157,12 +155,12 @@ export function MobileBottomStepNav({
     )
   }
   // "Probar" va al centro de la barra, entre Roles y Lab.
-  const splitIndex = Math.ceil(mobileItems.length / 2)
+  const splitIndex = Math.ceil(items.length / 2)
 
   return (
     <nav aria-label="Pasos del workflow" className="mobile-step-nav">
       <div className="mobile-step-nav-grid" data-with-action={onOpenPractice ? 'true' : 'false'}>
-        {mobileItems.slice(0, splitIndex).map(renderStep)}
+        {items.slice(0, splitIndex).map(renderStep)}
         {onOpenPractice ? (
           <button type="button" className="mobile-step-nav-action" aria-label="Abrir práctica" onClick={onOpenPractice}>
             <span className="mobile-step-nav-action-icon" aria-hidden="true">
@@ -171,7 +169,7 @@ export function MobileBottomStepNav({
             <span className="mobile-step-nav-label">Probar</span>
           </button>
         ) : null}
-        {mobileItems.slice(splitIndex).map(renderStep)}
+        {items.slice(splitIndex).map(renderStep)}
       </div>
     </nav>
   )

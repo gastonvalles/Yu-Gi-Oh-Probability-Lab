@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import * as fc from 'fast-check'
 import { getKpiDetailCards, type KpiRole } from '../components/comparison/kpi-detail-helpers'
 import type { DeckCardInstance } from '../app/model'
-import type { CardEditMap } from '../app/build-comparison-edits'
+import type { CardEditMap } from '../components/comparison/kpi-detail-helpers'
 import type { ApiCardReference, CardRole, CardOrigin } from '../types'
 
 // ── Helpers ──

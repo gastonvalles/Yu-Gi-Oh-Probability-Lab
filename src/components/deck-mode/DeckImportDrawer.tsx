@@ -41,6 +41,12 @@ interface DeckImportDrawerProps {
   isOpen: boolean
   onApplyImport: (nextDeckBuilder: DeckBuilderState) => void
   onClose: () => void
+  /**
+   * Destino del import. 'builder' reemplaza el deck actual (pide confirmación);
+   * 'comparison' guarda una build aparte y usa el deck actual sólo para heredar
+   * la clasificación de las cartas que ya conocés.
+   */
+  target?: 'builder' | 'comparison'
 }
 
 const FILE_ACCEPT = '.txt,.json,.ydk,application/json,text/plain'
@@ -175,6 +181,7 @@ export function DeckImportDrawer({
   isOpen,
   onApplyImport,
   onClose,
+  target = 'builder',
 }: DeckImportDrawerProps) {
   const [inputValue, setInputValue] = useState('')
   const [preview, setPreview] = useState<DeckImportPreview | null>(null)
@@ -188,9 +195,10 @@ export function DeckImportDrawer({
   const asideRef = useRef<HTMLElement | null>(null)
   const currentDeckCardCount =
     deckBuilder.main.length + deckBuilder.extra.length + deckBuilder.side.length
-  const hasExistingDeck = currentDeckCardCount > 0
+  const hasExistingDeck = target === 'builder' && currentDeckCardCount > 0
   const canApplyPreview = Boolean(preview && preview.importedCardCount > 0)
-  const applyButtonLabel = hasExistingDeck ? 'Reemplazar deck actual' : 'Importar al builder'
+  const applyButtonLabel =
+    target === 'comparison' ? 'Guardar build para comparar' : hasExistingDeck ? 'Reemplazar deck actual' : 'Importar al builder'
 
   useEffect(() => {
     if (!isOpen) {
