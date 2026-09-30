@@ -11,8 +11,7 @@ import { DeckCopyControls, type DeckCopyActions } from '../card-detail/DeckCopyC
 import { Button } from '../ui/Button'
 
 const EMPTY_PREVIEW_GUIDE = {
-  step: 'PASO 1',
-  title: 'Armá tu deck en el builder',
+  title: 'Armá tu deck',
   description:
     'Buscá una carta y agregala con + o doble clic, o arrastrala a la zona que quieras. Hacé clic en una carta para ver el detalle y sumar o quitar copias.',
 } as const
@@ -39,7 +38,6 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, onAddToZone 
     <aside className="classic-builder-preview">
       {!card ? (
         <section className="classic-builder-preview-guide" aria-label="Guía inicial del deck builder">
-          <p className="classic-builder-preview-guide-step">{EMPTY_PREVIEW_GUIDE.step}</p>
           <h3 className="classic-builder-preview-guide-heading">{EMPTY_PREVIEW_GUIDE.title}</h3>
           <p className="classic-builder-preview-guide-description">{EMPTY_PREVIEW_GUIDE.description}</p>
           <ul className="classic-builder-shortcuts" aria-label="Atajos">

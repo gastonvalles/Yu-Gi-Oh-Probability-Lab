@@ -244,7 +244,7 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
   if (filterKey === 'unclassified') {
     return {
       title: 'No quedan cartas pendientes en esta cola.',
-      description: 'Podés repasar otros grupos desde la derecha o pasar al Paso 3 cuando termines de validar la build.',
+      description: 'Podés repasar otros grupos desde la derecha o pasar al Probability Lab cuando termines de validar la build.',
       tone: 'surface-card-success text-(--accent)',
     }
   }
@@ -330,7 +330,7 @@ function getOverviewDescription(filterKey: ClassificationFilterKey): string {
   }
 
   if (filterKey === 'complete') {
-    return 'Listas para pasar al Paso 3.'
+    return 'Listas para medir en el Probability Lab.'
   }
 
   return getGroupHelpText(filterKey)
@@ -1041,9 +1041,8 @@ export function DeckRolesPanel({
   return (
     <section className="surface-panel deck-mobile-step-shell classification-step-shell grid min-w-0 content-start gap-2.5 overflow-x-hidden p-0 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_auto_minmax(0,1fr)] min-[1101px]:gap-3 min-[1101px]:overflow-hidden min-[1101px]:p-2.5">
       <StepHero
-        step="Categorización"
-        title="Definí cómo funciona cada carta en tu deck"
-        description="Estas decisiones forman tu modelo del deck. Los porcentajes se calculan a partir de esto."
+        title="Clasificá tus cartas"
+        help="Para cada carta elegí dónde encaja en tu plan (Engine, Non-engine o Hybrid) y qué función cumple cuando la robás. Estas decisiones forman tu modelo del deck: el Probability Lab calcula los porcentajes a partir de acá."
         side={
           sortedCards.length > 0 ? (
             <>
@@ -1059,7 +1058,6 @@ export function DeckRolesPanel({
             </>
           ) : null
         }
-        sideVariant="inline"
       />
 
       {sortedCards.length > 0 ? (

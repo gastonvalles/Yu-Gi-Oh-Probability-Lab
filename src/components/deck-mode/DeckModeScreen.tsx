@@ -11,6 +11,7 @@ import { ProbabilityPanel } from '../ProbabilityPanel'
 import { PracticeSection } from '../probability/PracticeSection'
 import { ComparisonScreen } from '../comparison/ComparisonScreen'
 import { DeckBuilderStep } from './DeckBuilderStep'
+import { DraggableFab } from '../ui/DraggableFab'
 import { Modal } from '../ui/Modal'
 import { DeckModeDragOverlay } from './DeckModeDragOverlay'
 import {
@@ -200,7 +201,6 @@ export function DeckModeScreen() {
       items={navigationItems}
       activeStep={activeStep}
       onStepChange={handleStepChange}
-      onOpenPractice={mainDeckCount > 0 ? () => setGlobalPracticeOpen(true) : null}
     />
   )
   const stepContent = isDeckBuilderStep ? (
@@ -341,19 +341,13 @@ function PracticeFab({
 
   return (
     <>
-      <button
-        type="button"
-        aria-label="Abrir práctica"
-        title="Probar mano"
-        className="fixed right-5 bottom-5 z-100 hidden h-14 w-14 place-items-center rounded-full min-[1101px]:grid bg-[rgb(var(--primary-rgb))] text-white shadow-lg transition-transform hover:scale-110 hover:brightness-110 active:scale-95"
-        onClick={onOpen}
-      >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <DraggableFab label="Abrir práctica" storageKey="ygo-lab:practice-fab" onClick={onOpen}>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <rect x="8.5" y="2" width="7" height="11" rx="1.2" />
           <rect x="2.5" y="4" width="7" height="11" rx="1.2" transform="rotate(-12 6 9.5)" />
           <rect x="14.5" y="4" width="7" height="11" rx="1.2" transform="rotate(12 18 9.5)" />
         </svg>
-      </button>
+      </DraggableFab>
 
       <Modal
         isOpen={isOpen}

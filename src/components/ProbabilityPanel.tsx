@@ -179,12 +179,9 @@ export function ProbabilityPanel({
   return (
     <article className="surface-panel deck-mobile-step-shell lab-shell grid h-full min-h-0 content-start gap-3 p-0 min-[1101px]:p-3">
       <StepHero
-        step="Probability Lab"
-        title="Qué tan bien abre tu deck y por qué falla"
-        description="Cálculo exacto de todas las manos posibles, yendo primero (5 cartas) y segundo (6)."
-        variant="compact"
+        title="Qué tan bien abre tu deck"
+        help="Cálculo exacto de todas las manos posibles, yendo primero (5 cartas) y segundo (6), con las reglas de abajo: una mano es limpia si cumple alguna salida y ningún problema."
         side={<DeckModelStatusBadge modelStatus={lab.modelStatus} variant="compact" />}
-        sideVariant="inline"
       />
 
       {lab.readiness.status === 'empty-deck' ? (
@@ -192,7 +189,7 @@ export function ProbabilityPanel({
           Cuando tengas cartas en el Main Deck vas a ver el % de manos jugables y por qué fallan.
         </LabNotice>
       ) : lab.readiness.status === 'needs-classification' ? (
-        <LabNotice kicker="Paso 2 pendiente" title="Terminá de clasificar todas las cartas">
+        <LabNotice kicker="Falta clasificar" title="Terminá de clasificar todas las cartas">
           {lab.readiness.message} Mientras tanto podés robar manos de prueba con el botón de práctica.
         </LabNotice>
       ) : lab.computation?.status === 'blocked' ? (

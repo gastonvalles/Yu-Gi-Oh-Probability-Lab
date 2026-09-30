@@ -9,27 +9,6 @@
     padding: 0.9rem;
   }
 
-  .comparison-header {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 0.75rem;
-  }
-
-  .comparison-heading h2 {
-    margin: 0.2rem 0 0;
-    font-size: 1.1rem;
-    color: var(--text-main);
-  }
-
-  .comparison-heading p:last-child {
-    margin: 0.2rem 0 0;
-    font-size: 0.8rem;
-    color: var(--text-muted);
-  }
-
-  .comparison-header-actions,
   .comparison-start-actions {
     display: flex;
     flex-wrap: wrap;
@@ -532,12 +511,5 @@
       display: none;
     }
 
-    .comparison-header-actions {
-      width: 100%;
-    }
-
-    .comparison-header-actions > * {
-      flex: 1;
-    }
   }
 }
