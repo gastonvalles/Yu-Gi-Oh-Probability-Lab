@@ -517,6 +517,7 @@ function ClassificationModal({
       onClose={onClose}
       footer={footer}
       size="xl"
+      className="classification-modal"
       bare={hideHeader}
       kicker={kicker}
       title={title}
@@ -815,7 +816,6 @@ export function DeckRolesPanel({
 
   const detailNavigation = selectedCard ? (
     <div className="classification-detail-nav">
-      <span className="app-muted hidden text-[0.7rem] min-[1101px]:inline">Usá las flechas ← → del teclado para navegar</span>
       <Button variant="secondary" size="md" onClick={handleSelectPreviousCard} disabled={!previousCard}>
         ← Anterior
       </Button>
@@ -881,7 +881,10 @@ export function DeckRolesPanel({
                   >
                     <div className="flex items-center gap-2">
                       <span className="role-reference-mark shrink-0" />
-                      <strong className="text-[0.8rem] leading-none text-(--text-main)">{definition.label}</strong>
+                      <strong className="text-[0.8rem] leading-none text-(--text-main)">
+                        <span className="max-[1100px]:hidden">{definition.label}</span>
+                        <span className="min-[1101px]:hidden">{definition.shortLabel ?? definition.label}</span>
+                      </strong>
                     </div>
                     <span className="app-muted text-[0.6rem] leading-[1.08] max-[1100px]:hidden min-[1101px]:inline">{ORIGIN_BLURB_TEXT[definition.key.value]}</span>
                   </button>
@@ -896,7 +899,7 @@ export function DeckRolesPanel({
             <p className="app-kicker m-0 text-[0.64rem] uppercase tracking-widest">¿Qué función cumple cuando la robás?</p>
           </div>
 
-          <div className="grid gap-1.5 max-[1100px]:grid-cols-1 max-[1100px]:gap-1 min-[1101px]:grid-cols-3 min-[1101px]:items-stretch">
+          <div className="classification-role-sections grid gap-1.5 max-[1100px]:grid-cols-1 min-[1101px]:grid-cols-3 min-[1101px]:items-stretch">
           {ROLE_EDITOR_SECTIONS.map((section) => {
             const selectedCount = section.roles.reduce(
               (total, role) => total + (selectedCard.roles.includes(role) ? 1 : 0),
@@ -906,7 +909,7 @@ export function DeckRolesPanel({
             return (
               <article
                 key={section.title}
-                className="surface-card grid h-full grid-rows-[auto_minmax(0,1fr)] gap-1 p-1.5 max-[1100px]:gap-1 max-[1100px]:p-1.5 min-[1101px]:gap-1.5 min-[1101px]:p-2"
+                className="classification-role-section surface-card grid h-full grid-rows-[auto_minmax(0,1fr)] gap-1.5 p-2"
               >
                 <div className="flex flex-wrap items-start justify-between gap-1">
                   <strong className="text-[0.72rem] leading-none text-(--text-main) min-[1101px]:text-[0.8rem]">{section.title}</strong>
@@ -965,7 +968,7 @@ export function DeckRolesPanel({
         <div className="grid gap-3 min-[1101px]:grid-cols-[18rem_minmax(0,1fr)] min-[1101px]:items-stretch">
           {cardArtColumn}
 
-          <div className="flex min-h-full flex-col gap-2.5">
+          <div className="classification-editor flex min-h-full flex-col gap-2.5">
             <div className="flex items-start gap-3 pr-12">
               <div className="w-16 shrink-0 min-[1101px]:hidden">
                 <CardArt
