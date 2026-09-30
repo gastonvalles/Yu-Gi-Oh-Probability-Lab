@@ -195,7 +195,7 @@ export function ComparisonScreen() {
   }
 
   return (
-    <section className="comparison surface-panel" aria-label="Comparar builds">
+    <section className="comparison surface-panel deck-mobile-step-shell" aria-label="Comparar builds">
       <StepHero
         title="Compará builds"
         help="Guardá versiones de tu deck o importá otras listas y mirá cuál abre mejor yendo 1º y 2º, con tus mismas reglas y el mismo cálculo del Probability Lab."

@@ -101,8 +101,14 @@ function drawCard(
   image: HTMLImageElement | null,
   deckFormat: DeckFormat,
 ) {
+  // Sombra al costado: cuando las cartas se superponen (Extra/Side) se distingue cada una.
+  context.save()
+  context.shadowColor = 'rgba(0, 0, 0, 0.55)'
+  context.shadowBlur = 10
+  context.shadowOffsetX = -3
   context.fillStyle = CARD_BACKGROUND
   context.fillRect(rect.x, rect.y, rect.width, rect.height)
+  context.restore()
 
   if (image) {
     context.drawImage(image, rect.x, rect.y, rect.width, rect.height)
