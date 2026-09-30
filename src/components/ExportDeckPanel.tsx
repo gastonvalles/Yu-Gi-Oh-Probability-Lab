@@ -86,7 +86,7 @@ export function ExportDeckPanel({
   }, [deckBuilder, deckFormat, mainDeckCount])
 
   return (
-    <article className="surface-panel deck-mobile-step-shell grid h-full min-h-0 gap-2.5 p-0 min-[1101px]:gap-3 min-[1101px]:p-2.5 min-[1180px]:grid-rows-[auto_minmax(0,1fr)]">
+    <article className="surface-panel deck-mobile-step-shell grid h-full min-h-0 gap-3 p-0 min-[1101px]:gap-3 min-[1101px]:p-2.5 min-[1180px]:grid-rows-[auto_minmax(0,1fr)]">
       <StepHero
         title="Exportá tu deck"
         help={`Descargá ${deckName.trim() || 'tu deck'} como imagen, lista de texto, .ydk o planilla de torneo (KDE), sin moverte del workflow.`}

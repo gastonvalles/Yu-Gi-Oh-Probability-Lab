@@ -103,25 +103,31 @@ describe('buildKdeDecklist', () => {
 describe('computeDeckImageLayout', () => {
   const allCards = (layout: DeckImageLayout) => layout.zones.flatMap((zone) => zone.cards)
 
-  it('ubica Extra y Side lado a lado cuando ambos entran', () => {
+  it('apila Main, Extra y Side a todo el ancho, como en el builder', () => {
     const layout = computeDeckImageLayout({ main: 40, extra: 15, side: 15 })
     const [main, extra, side] = layout.zones
 
     expect(layout.zones.map((zone) => zone.zone)).toEqual(['main', 'extra', 'side'])
     expect(main?.cards).toHaveLength(40)
-    expect(extra?.panel.y).toBe(side?.panel.y)
-    expect(extra?.panel.height).toBe(side?.panel.height)
-    expect(side!.panel.x).toBeGreaterThan(extra!.panel.x + extra!.panel.width)
+    expect(extra?.panel.width).toBe(main?.panel.width)
+    expect(side!.panel.y).toBeGreaterThan(extra!.panel.y + extra!.panel.height)
   })
 
-  it('omite zonas vacías y apila cuando no hay pareja', () => {
+  it('Extra y Side van en una sola fila; si no entran, las cartas se superponen', () => {
+    const layout = computeDeckImageLayout({ main: 40, extra: 15, side: 5 })
+    const [, extra, side] = layout.zones
+
+    expect(new Set(extra!.cards.map((rect) => rect.y)).size).toBe(1)
+    expect(extra!.cards[1]!.x - extra!.cards[0]!.x).toBeLessThan(extra!.cards[0]!.width)
+    expect(side!.cards[1]!.x - side!.cards[0]!.x).toBeGreaterThanOrEqual(side!.cards[0]!.width)
+  })
+
+  it('omite zonas vacías', () => {
     const layout = computeDeckImageLayout({ main: 40, extra: 15, side: 0 })
-
     expect(layout.zones.map((zone) => zone.zone)).toEqual(['main', 'extra'])
-    expect(layout.zones[1]?.panel.width).toBe(layout.zones[0]?.panel.width)
   })
 
-  it('mantiene la proporción real y todas las cartas dentro del lienzo sin superponerse', () => {
+  it('mantiene la proporción real, todo dentro del lienzo y el Main sin superponerse', () => {
     const layout = computeDeckImageLayout({ main: 60, extra: 15, side: 15 })
     const cards = allCards(layout)
 
@@ -132,8 +138,9 @@ describe('computeDeckImageLayout', () => {
       expect(rect.x + rect.width).toBeLessThanOrEqual(layout.width)
     }
 
-    const overlaps = cards.some((a, i) =>
-      cards.some((b, j) => i < j && a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height),
+    const mainCards = layout.zones[0]!.cards
+    const overlaps = mainCards.some((a, i) =>
+      mainCards.some((b, j) => i < j && a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height),
     )
     expect(overlaps).toBe(false)
   })
