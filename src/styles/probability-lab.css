@@ -688,15 +688,6 @@
     display: contents;
   }
 
-  /* Mobile: universales, genéricas y después las propias. */
-  .lab-rule-tier[aria-label='Genéricas'] {
-    order: 2;
-  }
-
-  .lab-rule-tier[aria-label='Tus reglas'] {
-    order: 3;
-  }
-
   @media (min-width: 1101px) {
     .lab-rule-tiers {
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -737,6 +728,45 @@
     margin: 0;
     font-size: 0.9rem;
     color: var(--text-main);
+  }
+
+  .lab-rule-tier-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border: 0;
+    background: transparent;
+    padding: 0.2rem 0.3rem 0.2rem 0;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .lab-rule-tier-toggle:hover {
+    color: var(--primary);
+  }
+
+  .lab-rule-tier-chevron {
+    transform: rotate(180deg);
+    transition: transform 160ms ease;
+    color: var(--text-soft);
+  }
+
+  .lab-rule-tier-toggle[aria-expanded='true'] .lab-rule-tier-chevron {
+    transform: rotate(270deg);
+  }
+
+  .lab-rule-tier-count {
+    border-radius: 999px;
+    background: rgb(var(--secondary-rgb) / 0.9);
+    padding: 0.05rem 0.45rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-muted);
+  }
+
+  .lab-rule-tier[data-open='false'] .lab-rule-tier-head p {
+    display: none;
   }
 
   .lab-rule-tier-head p {

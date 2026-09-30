@@ -1,9 +1,9 @@
-import { useState, type ReactNode } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 
 import { formatInteger, formatShortPercent } from '../../app/utils'
 import type { PatternKind } from '../../types'
 import { Button } from '../ui/Button'
-import { LockIcon, PlusIcon } from '../ui/icons'
+import { ChevronLeftIcon, LockIcon, PlusIcon } from '../ui/icons'
 import { Switch } from '../ui/Switch'
 import { LabSection } from './LabSection'
 import type { RuleEntry, RuleEntryGroups, TurnLean } from './probability-lab-helpers'
@@ -61,11 +61,12 @@ export function LabRuleList({
         Una mano es <strong>limpia</strong> si cumple al menos una salida y ningún problema activo.
       </p>
 
-      {/* Desktop: universales + propias a la izquierda, genéricas a la derecha. */}
+      {/* Desktop: reglas del sistema (plegables) a la izquierda, las propias a la derecha. */}
       <div className="lab-rule-tiers">
         <div className="lab-rule-stack">
           <RuleTier
             title="Universales"
+            collapsible
             badge={
               <span className="lab-tier-badge">
                 <LockIcon /> Siempre activas
@@ -75,6 +76,27 @@ export function LabRuleList({
             entries={visible(groups.universal)}
             renderRow={(entry) => <RuleRow entry={entry} />}
           />
+          <RuleTier
+            title="Genéricas"
+            collapsible
+            badge={<span className="lab-tier-badge">{formatInteger(enabledGeneric)} activas</span>}
+            description="Aplican a la mayoría de los decks. Apagá las que no tengan sentido para el tuyo."
+            entries={visible(groups.generic)}
+            renderRow={(entry) => (
+              <RuleRow
+                entry={entry}
+                trailing={
+                  <Switch
+                    checked={entry.enabled}
+                    label={`${entry.enabled ? 'Desactivar' : 'Activar'} ${entry.name}`}
+                    onChange={(enabled) => entry.presetId && onToggleGenericRule(entry.presetId, enabled)}
+                  />
+                }
+              />
+            )}
+          />
+        </div>
+        <div className="lab-rule-stack">
           <RuleTier
             title="Tus reglas"
             badge={
@@ -104,27 +126,6 @@ export function LabRuleList({
             )}
           />
         </div>
-        <div className="lab-rule-stack">
-          <RuleTier
-            title="Genéricas"
-            badge={<span className="lab-tier-badge">{formatInteger(enabledGeneric)} activas</span>}
-            description="Aplican a la mayoría de los decks. Apagá las que no tengan sentido para el tuyo."
-            entries={visible(groups.generic)}
-            renderRow={(entry) => (
-              <RuleRow
-                entry={entry}
-               
-                trailing={
-                  <Switch
-                    checked={entry.enabled}
-                    label={`${entry.enabled ? 'Desactivar' : 'Activar'} ${entry.name}`}
-                    onChange={(enabled) => entry.presetId && onToggleGenericRule(entry.presetId, enabled)}
-                  />
-                }
-              />
-            )}
-          />
-        </div>
       </div>
     </LabSection>
   )
@@ -137,28 +138,50 @@ function RuleTier({
   entries,
   emptyState,
   renderRow,
+  collapsible = false,
 }: {
   title: string
+  collapsible?: boolean
   badge: ReactNode
   description: string
   entries: RuleEntry[]
   emptyState?: ReactNode
   renderRow: (entry: RuleEntry) => ReactNode
 }) {
+  // Las reglas del sistema arrancan plegadas: lo que el usuario edita son las propias.
+  const [isOpen, setIsOpen] = useState(!collapsible)
+  const listId = useId()
+
   return (
-    <section className="lab-rule-tier" aria-label={title}>
+    <section className="lab-rule-tier" aria-label={title} data-open={isOpen ? 'true' : 'false'}>
       <header className="lab-rule-tier-head">
         <div className="lab-rule-tier-title">
-          <h4>{title}</h4>
+          {collapsible ? (
+            <h4>
+              <button
+                type="button"
+                className="lab-rule-tier-toggle"
+                aria-expanded={isOpen}
+                aria-controls={listId}
+                onClick={() => setIsOpen((current) => !current)}
+              >
+                <ChevronLeftIcon className="lab-rule-tier-chevron" width={14} height={14} />
+                {title}
+                <span className="lab-rule-tier-count">{formatInteger(entries.length)}</span>
+              </button>
+            </h4>
+          ) : (
+            <h4>{title}</h4>
+          )}
           {badge}
         </div>
         <p>{description}</p>
       </header>
 
-      {entries.length === 0 ? (
+      {!isOpen ? null : entries.length === 0 ? (
         (emptyState ?? <p className="lab-empty-note">No hay reglas de este tipo.</p>)
       ) : (
-        <ul className="lab-rule-list">
+        <ul id={listId} className="lab-rule-list">
           {entries.map((entry) => (
             <li key={entry.patternId}>{renderRow(entry)}</li>
           ))}
