@@ -164,7 +164,7 @@ export function evaluatePracticeHand(
             kind: requirement.kind,
             cards: requirement.usage
               .map(([cardId, copies]) => ({
-                name: cardById.get(cardId)?.name.trim() ?? 'Carta eliminada',
+                name: cardById.get(cardId)?.name.trim() ?? 'Carta fuera del deck',
                 copies,
               }))
               .filter((entry) => entry.copies > 0),

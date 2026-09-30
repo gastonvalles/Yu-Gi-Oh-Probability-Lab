@@ -16,7 +16,6 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    width: 100%;
     max-height: calc(100dvh - 2rem);
     min-height: 0;
     overflow: hidden;
@@ -24,20 +23,43 @@
     box-shadow: 0 32px 80px rgba(0, 0, 0, 0.48);
   }
 
+  /*
+   * Tamaños fijos: el panel no crece ni se achica según el contenido (el cuerpo
+   * scrollea por dentro). 'sm' es para avisos y confirmaciones de contenido fijo.
+   */
   .app-modal-panel[data-size='sm'] {
-    max-width: 32rem;
+    width: min(32rem, 100%);
+    max-width: none;
   }
 
   .app-modal-panel[data-size='md'] {
-    max-width: 44rem;
+    width: min(44rem, 100%);
+    height: min(40rem, calc(100dvh - 2rem));
   }
 
   .app-modal-panel[data-size='lg'] {
-    max-width: 60rem;
+    width: min(60rem, 100%);
+    height: min(44rem, calc(100dvh - 2rem));
   }
 
   .app-modal-panel[data-size='xl'] {
-    max-width: 70rem;
+    width: min(70rem, 100%);
+    height: min(46rem, calc(100dvh - 2rem));
+  }
+
+  /* Mobile: los modales de contenido ocupan toda la pantalla disponible. */
+  @media (max-width: 639px) {
+    .app-modal-root {
+      padding: 0.5rem;
+    }
+
+    .app-modal-panel {
+      max-height: calc(100dvh - 1rem);
+    }
+
+    .app-modal-panel:is([data-size='md'], [data-size='lg'], [data-size='xl']) {
+      height: calc(100dvh - 1rem);
+    }
   }
 
   .app-modal-header {

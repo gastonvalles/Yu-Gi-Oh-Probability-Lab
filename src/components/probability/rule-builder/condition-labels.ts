@@ -37,7 +37,7 @@ export function getConditionLabel(
       return getCardOriginDefinition(matcher.value).label
     case 'card': {
       const card = derivedMainCards.find((c) => c.id === matcher.value)
-      return card?.name ?? 'Carta eliminada'
+      return card?.name ?? 'Carta fuera del deck'
     }
     case 'card_pool': {
       const names = matcher.value

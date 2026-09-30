@@ -142,7 +142,7 @@ function buildConditionPreview(
 
   switch (requirement.matcher.type) {
     case 'card':
-      return buildSpecificCardPreview(requirement, selectedCards[0]?.name ?? 'la carta elegida')
+      return buildSpecificCardPreview(requirement, selectedCards[0]?.name ?? 'una carta que ya no está en el deck')
     case 'card_pool':
       return buildCardPoolPreview(requirement, selectedCards)
     case 'card_type':
@@ -212,7 +212,7 @@ function buildCompactMatcherLabel(
     case 'origin':
       return getCardOriginDefinition(matcher.value).label
     case 'card':
-      return selectedCards[0]?.name ?? 'carta'
+      return selectedCards[0]?.name ?? 'carta fuera del deck'
     case 'card_pool':
       return selectedCards.length === 1
         ? selectedCards[0]?.name ?? 'pool'

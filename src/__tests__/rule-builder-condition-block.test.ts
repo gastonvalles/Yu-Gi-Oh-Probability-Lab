@@ -111,9 +111,9 @@ describe('getConditionLabel', () => {
     expect(getConditionLabel(matcher, cards)).toBe('Ash Blossom')
   })
 
-  it('returns "Carta eliminada" for card matcher when card is missing', () => {
+  it('returns "Carta fuera del deck" for card matcher when card is missing', () => {
     const matcher: Matcher = { type: 'card', value: 'nonexistent' }
-    expect(getConditionLabel(matcher, [])).toBe('Carta eliminada')
+    expect(getConditionLabel(matcher, [])).toBe('Carta fuera del deck')
   })
 
   it('returns "Sin definir" for null matcher', () => {

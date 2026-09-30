@@ -349,7 +349,7 @@ function DefinitionTooltip({
 }) {
   return (
     <span
-      className={['block min-w-0 max-w-full', className].join(' ').trim()}
+      className={className || 'block min-w-0 max-w-full'}
       title={`${label}: ${description}`}
       aria-label={`${label}: ${description}`}
     >
@@ -400,6 +400,27 @@ function getCardPrimaryStatus(card: CardEntry): { label: string; tone: StatusTon
   }
 
   return null
+}
+
+/** Tipo, origen y roles de la carta como chips de color (los mismos colores del editor). */
+function CardClassificationChips({ card }: { card: CardEntry }) {
+  const roles = ROLE_FILTER_ORDER.filter((role) => card.roles.includes(role))
+
+  return (
+    <div className="classification-chip-row" aria-label={getCardQueueSummary(card)}>
+      <span className="classification-type-chip">{getCardTypeLabel(card)}</span>
+      {card.origin ? (
+        <span className="classification-mini-chip" data-kind="origin" style={getClassificationStyle(getCardOriginDefinition(card.origin).key)}>
+          {card.origin === 'non_engine' ? 'Non-Engine' : getCardOriginDefinition(card.origin).label}
+        </span>
+      ) : null}
+      {roles.map((role) => (
+        <span key={role} className="classification-mini-chip" style={getClassificationStyle(getCardRoleDefinition(role).key)}>
+          {getCardRoleDefinition(role).label}
+        </span>
+      ))}
+    </div>
+  )
 }
 
 function getCardQueueSummary(card: CardEntry): string {
@@ -476,6 +497,7 @@ function ClassificationModal({
   subtitle,
   headerActions,
   hideHeader = false,
+  footer,
   onClose,
   children,
 }: {
@@ -485,6 +507,7 @@ function ClassificationModal({
   subtitle: string
   headerActions?: ReactNode
   hideHeader?: boolean
+  footer?: ReactNode
   onClose: () => void
   children: ReactNode
 }) {
@@ -492,6 +515,7 @@ function ClassificationModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
+      footer={footer}
       size="xl"
       bare={hideHeader}
       kicker={kicker}
@@ -789,6 +813,18 @@ export function DeckRolesPanel({
     }
   }, [isDetailOpen, previousCard, nextCard])
 
+  const detailNavigation = selectedCard ? (
+    <div className="classification-detail-nav">
+      <span className="app-muted hidden text-[0.7rem] min-[1101px]:inline">Usá las flechas ← → del teclado para navegar</span>
+      <Button variant="secondary" size="md" onClick={handleSelectPreviousCard} disabled={!previousCard}>
+        ← Anterior
+      </Button>
+      <Button variant="primary" size="md" onClick={handleSelectNextCard} disabled={!nextCard}>
+        Siguiente →
+      </Button>
+    </div>
+  ) : null
+
   const renderSelectedCardDetail = () => {
     if (!selectedCard) {
       return (
@@ -879,7 +915,7 @@ export function DeckRolesPanel({
                   </span>
                 </div>
 
-                <div className="grid content-start grid-cols-2 gap-1.5">
+                <div className="classification-role-options">
                   {section.roles.map((role) => {
                     const definition = getCardRoleDefinition(role)
                     const active = selectedCard.roles.includes(role)
@@ -889,14 +925,14 @@ export function DeckRolesPanel({
                         key={serializeGroupKey(definition.key)}
                         label={definition.label}
                         description={getRoleHelpText(role)}
-                        className="min-w-0"
+                        className="classification-role-option-wrap"
                       >
                         <button
                           type="button"
                           aria-pressed={active}
                           title={getRoleHelpText(role)}
                           className={[
-                            'role-option-button min-h-11 min-w-0 w-full max-w-full px-3 py-2 text-left text-[0.82rem] leading-[1.08] whitespace-normal min-[1101px]:min-h-0 min-[1101px]:px-2 min-[1101px]:py-[0.44rem] min-[1101px]:text-[0.68rem]',
+                            'role-option-button classification-role-option',
                             active ? 'role-option-button-active' : '',
                           ].join(' ')}
                           style={getClassificationStyle(definition.key)}
@@ -912,16 +948,6 @@ export function DeckRolesPanel({
             )
           })}
           </div>
-
-          {selectedCard.roles.length > 0 ? (
-            <ul className="m-0 grid list-none gap-1 p-0" aria-label="Qué significan los roles elegidos">
-              {ROLE_FILTER_ORDER.filter((role) => selectedCard.roles.includes(role)).map((role) => (
-                <li key={role} className="text-[0.76rem] leading-snug text-(--text-muted)">
-                  <strong className="text-(--text-main)">{getCardRoleDefinition(role).label}:</strong> {getRoleHelpText(role)}
-                </li>
-              ))}
-            </ul>
-          ) : null}
 
           <button
             type="button"
@@ -1003,19 +1029,6 @@ export function DeckRolesPanel({
 
             {editorPanel}
 
-            <div className="mt-auto flex items-center justify-between gap-2 pt-1">
-              <span className="app-muted hidden text-[0.66rem] min-[1101px]:inline">
-                Usá las flechas ← → del teclado para navegar
-              </span>
-              <div className="grid flex-1 grid-cols-2 gap-2 min-[1101px]:flex min-[1101px]:flex-none min-[1101px]:justify-end">
-                <Button variant="secondary" size="md" onClick={handleSelectPreviousCard} disabled={!previousCard}>
-                  ← Anterior
-                </Button>
-                <Button variant="primary" size="md" onClick={handleSelectNextCard} disabled={!nextCard}>
-                  Siguiente →
-                </Button>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -1087,6 +1100,7 @@ export function DeckRolesPanel({
                     'classification-view-chip',
                     active ? 'classification-view-chip-active' : '',
                   ].join(' ')}
+                  data-empty={item.cards.length === 0 && !active ? 'true' : 'false'}
                   style={getClassificationStyle(item.styleKey)}
                   onClick={() => handleFilterChange(item.key)}
                 >
@@ -1111,7 +1125,7 @@ export function DeckRolesPanel({
                 <span className="mt-1 block">{emptyStateCopy.description}</span>
               </p>
             ) : (
-              <div className="classification-card-scroll grid gap-1.5 pr-0 min-[1101px]:gap-1 min-[1101px]:min-h-0 min-[1101px]:overflow-y-auto min-[1101px]:pr-1">
+              <div className="classification-card-scroll">
                 {visibleQueueCards.map((card) => {
                   const primaryStatus = getCardPrimaryStatus(card)
                   const active = selectedCard?.id === card.id
@@ -1122,14 +1136,14 @@ export function DeckRolesPanel({
                       type="button"
                       aria-pressed={active}
                       className={[
-                        'classification-queue-card app-list-item grid min-h-14 min-w-0 shrink-0 grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-2 px-1.5 py-1.5 text-left',
+                        'classification-queue-card app-list-item grid min-h-14 min-w-0 shrink-0 grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-2.5 px-2 py-2 text-left',
                         active ? 'classification-queue-card-active' : '',
                       ].join(' ')}
                       onClick={() => handleCardSelection(card.id)}
                     >
                       <div
                         className={[
-                          'classification-queue-art w-9',
+                          'classification-queue-art w-10',
                           active ? 'classification-queue-art-active' : '',
                         ].join(' ')}
                       >
@@ -1145,18 +1159,14 @@ export function DeckRolesPanel({
                       <div className="grid min-w-0 gap-1">
                         <strong className="truncate text-[0.8rem] leading-[1.04] text-(--text-main)">{card.name}</strong>
 
-                        <div className="flex min-w-0 items-center gap-1.5">
-                          <p className="app-muted m-0 min-w-0 truncate text-[0.66rem] leading-none">
-                            {getCardQueueSummary(card)}
-                          </p>
-                          {primaryStatus ? (
-                            <ClassificationStatusChip
-                              label={primaryStatus.label}
-                              tone={primaryStatus.tone}
-                              className="classification-status-chip-compact shrink-0"
-                            />
-                          ) : null}
-                        </div>
+                        <CardClassificationChips card={card} />
+                        {primaryStatus ? (
+                          <ClassificationStatusChip
+                            label={primaryStatus.label}
+                            tone={primaryStatus.tone}
+                            className="classification-status-chip-compact justify-self-start"
+                          />
+                        ) : null}
                       </div>
 
                       <CopiesBadge copies={card.copies} />
@@ -1173,6 +1183,7 @@ export function DeckRolesPanel({
         title="Origen y roles"
         subtitle="Resolvé la carta seleccionada sin salir de la cola."
         hideHeader
+        footer={detailNavigation}
         onClose={() => setIsDetailOpen(false)}
         key={selectedCard?.id ?? 'empty'}
       >

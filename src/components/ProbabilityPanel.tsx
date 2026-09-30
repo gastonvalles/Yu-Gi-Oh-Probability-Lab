@@ -23,6 +23,7 @@ import { buildPatternCompactSummary } from './probability/pattern-helpers'
 import { buildRuleEntryGroups } from './probability/probability-lab-helpers'
 import { TurnViewToggle } from './probability/TurnViewToggle'
 import { useDraftImpact } from './probability/use-draft-impact'
+import { useLabelCards } from './probability/use-label-cards'
 import { usePatternDraft } from './probability/use-pattern-draft'
 import { useProbabilityLab } from './probability/use-probability-lab'
 
@@ -68,6 +69,7 @@ export function ProbabilityPanel({
   const results = lab.computation?.status === 'ok' ? lab.computation.results : null
   const currentResult = results?.[activeTurnView] ?? null
 
+  const labelCards = useLabelCards(patterns, derivedMainCards)
   const ruleGroups = useMemo(
     () =>
       buildRuleEntryGroups({
@@ -75,7 +77,7 @@ export function ProbabilityPanel({
         customPatterns: lab.customPatterns,
         unavailablePatterns: lab.unavailablePatterns,
         disabledGenericRuleIds,
-        derivedMainCards,
+        derivedMainCards: labelCards,
         patternResults: currentResult?.patternResults ?? [],
         viewPatternResults: {
           first: results?.first.patternResults ?? [],
@@ -83,7 +85,7 @@ export function ProbabilityPanel({
         },
         view: activeTurnView,
       }),
-    [activeTurnView, currentResult, results, lab.unavailablePatterns, derivedMainCards, disabledGenericRuleIds, lab.availablePresets, lab.customPatterns],
+    [activeTurnView, currentResult, results, lab.unavailablePatterns, labelCards, disabledGenericRuleIds, lab.availablePresets, lab.customPatterns],
   )
 
   const draft = usePatternDraft(patternEditorDefaults)
@@ -133,7 +135,7 @@ export function ProbabilityPanel({
       return
     }
 
-    const cardById = new Map(derivedMainCards.map((card) => [card.id, card]))
+    const cardById = new Map(labelCards.map((card) => [card.id, card]))
     const saved =
       draftPattern.name.trim().length > 0
         ? draftPattern
@@ -238,7 +240,7 @@ export function ProbabilityPanel({
         actions={draft.actions}
         canSave={canSaveDraft}
         impact={draftImpact}
-        derivedMainCards={derivedMainCards}
+        derivedMainCards={labelCards}
         drawerMode={drawerMode}
         isPendingCreation={drawerMode === 'custom-create'}
         onClose={handleRequestClose}
