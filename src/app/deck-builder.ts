@@ -45,7 +45,9 @@ export function addSearchResultToZone(
   }
 
   const nextDeckBuilder = copyDeckBuilderForZones(deckBuilder, [zone])
-  const suggestion = classifyCard(cloneApiCardReference(searchResult), searchResult.name, overrides)
+  // Una copia más de una carta que ya clasificaste hereda esa clasificación.
+  const knownCopy = findClassifiedCopy(deckBuilder, searchResult.ygoprodeckId)
+  const suggestion = knownCopy ?? classifyCard(cloneApiCardReference(searchResult), searchResult.name, overrides)
   const hasOverride = overrides ? overrides.has(normalizeCardNameForLookup(searchResult.name)) : false
 
   insertDeckCard(nextDeckBuilder[zone], targetIndex, {
@@ -54,10 +56,20 @@ export function addSearchResultToZone(
     apiCard: cloneApiCardReference(searchResult),
     origin: suggestion.origin,
     roles: [...suggestion.roles],
-    needsReview: !hasOverride,
+    needsReview: knownCopy ? false : !hasOverride,
   })
 
   return nextDeckBuilder
+}
+
+function findClassifiedCopy(
+  deckBuilder: DeckBuilderState,
+  ygoprodeckId: number,
+): { origin: DeckCardInstance['origin']; roles: DeckCardInstance['roles'] } | null {
+  const copy = [...deckBuilder.main, ...deckBuilder.extra, ...deckBuilder.side].find(
+    (card) => card.apiCard.ygoprodeckId === ygoprodeckId && !card.needsReview && card.origin !== null && card.roles.length > 0,
+  )
+  return copy ? { origin: copy.origin, roles: copy.roles } : null
 }
 
 export function addSearchResultToDefaultZone(

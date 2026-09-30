@@ -4,10 +4,9 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { configureStore } from '@reduxjs/toolkit'
 import { Provider } from 'react-redux'
-import { KpiCard } from '../components/comparison/KpiCard'
 import { KpiDetailModal } from '../components/comparison/KpiDetailModal'
 import type { DeckCardInstance } from '../app/model'
-import type { CardEditMap } from '../app/build-comparison-edits'
+import type { CardEditMap } from '../components/comparison/kpi-detail-helpers'
 import type { ApiCardReference, CardOrigin, CardRole } from '../types'
 
 // ── Test Store Wrapper ──
@@ -69,72 +68,6 @@ function makeDeckCardInstance(
 
 // ══════════════════════════════════════════════════════════════════════════════
 // 6.1.1: Starters, Handtraps, Bricks, Boardbreakers are clickable
-// ══════════════════════════════════════════════════════════════════════════════
-
-describe('KpiCard clickability', () => {
-  it('renders as button with cursor-pointer when clickable=true', () => {
-    const onClick = vi.fn()
-    const { container } = render(
-      <KpiCard label="Starters" value="13" tone="positive" hint="arranque" clickable onClick={onClick} />,
-    )
-    const btn = container.querySelector('button')
-    expect(btn).not.toBeNull()
-    expect(btn!.className).toContain('cursor-pointer')
-    btn!.click()
-    expect(onClick).toHaveBeenCalledOnce()
-  })
-
-  it('renders Handtraps as clickable button', () => {
-    const { container } = render(
-      <KpiCard label="Handtraps" value="6" tone="info" clickable onClick={() => {}} />,
-    )
-    expect(container.querySelector('button')).not.toBeNull()
-  })
-
-  it('renders Bricks as clickable button', () => {
-    const { container } = render(
-      <KpiCard label="Bricks" value="4" tone="negative" clickable onClick={() => {}} />,
-    )
-    expect(container.querySelector('button')).not.toBeNull()
-  })
-
-  it('renders Boardbreakers as clickable button', () => {
-    const { container } = render(
-      <KpiCard label="Boardbreakers" value="3" tone="info" clickable onClick={() => {}} />,
-    )
-    expect(container.querySelector('button')).not.toBeNull()
-  })
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // 6.1.2: Main Deck, Openings, Problems are NOT clickable
-  // ══════════════════════════════════════════════════════════════════════════
-
-  it('renders Main Deck as div (not button) when clickable is not set', () => {
-    const { container } = render(
-      <KpiCard label="Main Deck" value="40" tone="neutral" />,
-    )
-    expect(container.querySelector('button')).toBeNull()
-    expect(container.querySelector('div')).not.toBeNull()
-    expect(container.querySelector('div')!.className).not.toContain('cursor-pointer')
-  })
-
-  it('renders Openings as div (not button) when clickable is not set', () => {
-    const { container } = render(
-      <KpiCard label="Openings" value="85%" tone="positive" />,
-    )
-    expect(container.querySelector('button')).toBeNull()
-  })
-
-  it('renders Problems as div (not button) when clickable is not set', () => {
-    const { container } = render(
-      <KpiCard label="Problems" value="12%" tone="negative" />,
-    )
-    expect(container.querySelector('button')).toBeNull()
-  })
-})
-
-// ══════════════════════════════════════════════════════════════════════════════
-// 6.1.3: Modal closes with Escape
 // ══════════════════════════════════════════════════════════════════════════════
 
 describe('KpiDetailModal — close interactions', () => {

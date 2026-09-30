@@ -1,6 +1,8 @@
 import type { DeckCardInstance } from '../../app/model'
-import type { CardEditMap } from '../../app/build-comparison-edits'
-import type { ApiCardReference, CardRole } from '../../types'
+import type { ApiCardReference, CardOrigin, CardRole } from '../../types'
+
+/** Clasificación editada por carta (id de YGOPRODeck), aplicada encima de la del deck. */
+export type CardEditMap = Map<number, { origin: CardOrigin; roles: CardRole[] }>
 
 export interface KpiDetailCard {
   ygoprodeckId: number

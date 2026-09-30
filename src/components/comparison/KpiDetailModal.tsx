@@ -1,6 +1,6 @@
 import { getKpiDetailCards } from './kpi-detail-helpers'
 import type { DeckCardInstance } from '../../app/model'
-import type { CardEditMap } from '../../app/build-comparison-edits'
+import type { CardEditMap } from './kpi-detail-helpers'
 import type { ApiCardReference, CardRole } from '../../types'
 import { CardArt } from '../CardArt'
 import { formatInteger } from '../../app/utils'

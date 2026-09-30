@@ -10,6 +10,7 @@
 @import "./styles/desktop-deck-builder.css";
 @import "./styles/card-search.css";
 @import "./styles/practice.css";
+@import "./styles/comparison.css";
 
 @theme inline {
   --color-background: var(--background);
