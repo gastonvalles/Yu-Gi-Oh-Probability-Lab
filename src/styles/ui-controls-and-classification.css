@@ -879,3 +879,112 @@
   }
 
 }
+
+@layer components {
+  /* ── Clasificación: editor compacto y lista con chips ── */
+
+  .classification-role-options {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: start;
+    gap: 0.35rem;
+  }
+
+  .classification-role-option-wrap {
+    display: inline-flex;
+    min-width: 0;
+  }
+
+  .classification-role-option {
+    min-height: 2.25rem;
+    padding: 0.35rem 0.8rem;
+    font-size: 0.82rem;
+    line-height: 1.1;
+    text-align: left;
+  }
+
+  @media (min-width: 1101px) {
+    .classification-role-options {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .classification-role-option-wrap {
+      display: block;
+    }
+
+    .classification-role-option {
+      width: 100%;
+      min-height: 0;
+      padding: 0.44rem 0.55rem;
+      font-size: 0.72rem;
+    }
+  }
+
+  .classification-detail-nav {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+
+  .classification-detail-nav > span {
+    margin-right: auto;
+  }
+
+  @media (max-width: 1100px) {
+    .classification-detail-nav > button {
+      flex: 1;
+    }
+  }
+
+  .classification-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+
+  .classification-type-chip {
+    padding: 0.08rem 0.1rem;
+    font-size: 0.64rem;
+    font-weight: 600;
+    color: var(--text-soft);
+  }
+
+  .classification-mini-chip {
+    border: 1px solid rgb(var(--role-rgb) / 0.45);
+    border-radius: 999px;
+    background: rgb(var(--role-rgb) / 0.12);
+    padding: 0.06rem 0.45rem;
+    font-size: 0.64rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--text-main);
+    white-space: nowrap;
+  }
+
+  .classification-mini-chip[data-kind='origin'] {
+    border-style: dashed;
+  }
+
+  .classification-view-chip[data-empty='true'] {
+    opacity: 0.5;
+  }
+
+  .classification-card-scroll {
+    display: grid;
+    align-content: start;
+    gap: 0.4rem;
+  }
+
+  @media (min-width: 1101px) {
+    .classification-card-scroll {
+      grid-template-columns: repeat(auto-fill, minmax(24rem, 1fr));
+      min-height: 0;
+      overflow-y: auto;
+      padding-right: 0.25rem;
+    }
+  }
+}
