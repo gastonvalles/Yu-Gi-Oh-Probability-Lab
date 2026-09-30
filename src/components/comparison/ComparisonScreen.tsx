@@ -224,17 +224,9 @@ export function ComparisonScreen() {
           <strong>Elegí qué comparar</strong>
           <p>
             {savedBuilds.builds.length === 0
-              ? 'Todavía no guardaste builds. Guardá tu deck actual antes de probar cambios, o importá otra lista.'
+              ? 'Todavía no guardaste builds. Usá “Guardar deck actual” antes de probar cambios, o “Importar build” para traer otra lista.'
               : 'Elegí una build B arriba para compararla con A.'}
           </p>
-          <div className="comparison-start-actions">
-            <Button variant="secondary" size="md" onClick={handleSaveCurrent}>
-              Guardar deck actual
-            </Button>
-            <Button variant="primary" size="md" onClick={() => setIsImportOpen(true)}>
-              Importar build
-            </Button>
-          </div>
         </div>
       ) : (
         <>
