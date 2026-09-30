@@ -100,3 +100,13 @@ function attachGenesysInfo(searchPage: ApiSearchPage): ApiSearchPage {
     })),
   }
 }
+
+/** Nombres de cartas por id de YGOPRODeck (una sola consulta para varias). */
+export async function fetchCardNamesByIds(ids: number[]): Promise<Map<number, string>> {
+  if (ids.length === 0) {
+    return new Map()
+  }
+
+  const payload = await requestCardInfo(new URLSearchParams({ id: ids.join(',') }))
+  return new Map(parseSearchResponse(payload).results.map((card) => [card.ygoprodeckId, card.name]))
+}

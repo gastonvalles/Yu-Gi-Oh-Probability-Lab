@@ -40,10 +40,12 @@ export function CategoryPicker({
   patternId,
   conditionId,
   currentMatcher,
-  derivedMainCards,
+  derivedMainCards: allCards,
   actions,
   onClose,
 }: CategoryPickerProps) {
+  // Sólo se eligen cartas del deck (las ausentes llegan con 0 copias, para mostrar su nombre).
+  const derivedMainCards = useMemo(() => allCards.filter((card) => card.copies > 0), [allCards])
   const [poolSelection, setPoolSelection] = useState<Set<string>>(() => {
     if (currentMatcher?.type === 'card_pool') {
       return new Set(currentMatcher.value)
