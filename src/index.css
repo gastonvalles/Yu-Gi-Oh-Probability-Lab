@@ -9,6 +9,7 @@
 @import "./styles/mobile-deck-builder.css";
 @import "./styles/desktop-deck-builder.css";
 @import "./styles/card-search.css";
+@import "./styles/practice.css";
 
 @theme inline {
   --color-background: var(--background);

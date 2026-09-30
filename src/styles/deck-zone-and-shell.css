@@ -395,16 +395,6 @@
       0 10px 28px rgba(0, 0, 0, 0.16);
   }
 
-  .practice-placeholder-card {
-    border: 1px dashed rgb(var(--primary-rgb) / 0.26);
-    background:
-      linear-gradient(180deg, rgb(var(--primary-rgb) / 0.1), rgb(var(--secondary-rgb) / 0.92)),
-      linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.9), rgb(var(--background-rgb) / 0.98));
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.03),
-      0 12px 28px rgba(0, 0, 0, 0.2);
-  }
-
   .app-kicker {
     color: var(--accent);
   }

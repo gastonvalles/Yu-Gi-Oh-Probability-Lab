@@ -40,6 +40,7 @@ function entry(overrides: Partial<RuleEntry>): RuleEntry {
     probability: 0.5,
     possible: true,
     turnLean: null,
+    missingCards: false,
     ...overrides,
   }
 }

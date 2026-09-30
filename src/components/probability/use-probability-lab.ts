@@ -1,7 +1,7 @@
 import { useDeferredValue, useMemo } from 'react'
 
 import { getDeckModelStatus } from '../../app/deck-model-status'
-import { curatePatterns } from '../../app/pattern-curation'
+import { curatePatterns, hasMissingRequiredCards } from '../../app/pattern-curation'
 import { buildActiveRuleSet, buildPatternPresets } from '../../app/pattern-presets'
 import { computeLabResults, type LabComputation } from '../../app/probability-lab'
 import { buildRoleDistributions, type RoleDistribution } from '../../app/role-distribution'
@@ -29,6 +29,11 @@ export function useProbabilityLab(
 ) {
   const availablePresets = useMemo(() => buildPatternPresets(derivedMainCards), [derivedMainCards])
   const customPatterns = useMemo(() => curatePatterns(patterns, derivedMainCards), [derivedMainCards, patterns])
+  // Reglas que piden una carta que ya no está: no se evalúan, pero se muestran para editarlas.
+  const unavailablePatterns = useMemo(() => {
+    const cardById = new Map(derivedMainCards.map((card) => [card.id, card]))
+    return patterns.filter((pattern) => !pattern.needsReview && hasMissingRequiredCards(pattern, cardById))
+  }, [derivedMainCards, patterns])
   const readiness = useMemo(() => buildReadiness(derivedMainCards), [derivedMainCards])
 
   const allChecks = useMemo(
@@ -60,6 +65,7 @@ export function useProbabilityLab(
   return {
     allChecks,
     customPatterns,
+    unavailablePatterns,
     availablePresets,
     canCalculate,
     computation,

@@ -24,6 +24,8 @@ export interface RuleEntry {
   isComplete: boolean
   probability: number | null
   possible: boolean
+  /** Pide una carta que ya no está en el deck: no se evalúa hasta editarla o volver a sumarla. */
+  missingCards: boolean
   /** Turno en que la regla se da claramente más (sólo reglas que valen en ambos turnos). */
   turnLean: TurnLean | null
 }
@@ -56,6 +58,7 @@ export interface RuleEntryGroups {
 export function buildRuleEntryGroups({
   presets,
   customPatterns,
+  unavailablePatterns = [],
   disabledGenericRuleIds,
   derivedMainCards,
   patternResults,
@@ -64,6 +67,7 @@ export function buildRuleEntryGroups({
 }: {
   presets: PatternPreset[]
   customPatterns: HandPattern[]
+  unavailablePatterns?: HandPattern[]
   disabledGenericRuleIds: readonly string[]
   derivedMainCards: CardEntry[]
   patternResults: PatternProbability[]
@@ -77,7 +81,7 @@ export function buildRuleEntryGroups({
   const probabilityIn = (results: PatternProbability[], patternId: string) =>
     results.find((result) => result.patternId === patternId)?.probability
   const withResult = (
-    entry: Omit<RuleEntry, 'probability' | 'possible' | 'appliesToView' | 'turnLean'>,
+    entry: Omit<RuleEntry, 'probability' | 'possible' | 'appliesToView' | 'turnLean' | 'missingCards'>,
   ): RuleEntry => {
     const appliesToView = view === 'average' || entry.turnContext === 'either' || entry.turnContext === view
     const result = entry.enabled && appliesToView ? resultById.get(entry.patternId) : undefined
@@ -94,6 +98,7 @@ export function buildRuleEntryGroups({
       probability: result?.probability ?? null,
       possible: result?.possible ?? false,
       turnLean,
+      missingCards: false,
     }
   }
   const systemEntries = presets.map((preset) =>
@@ -130,9 +135,27 @@ export function buildRuleEntryGroups({
     })
   })
 
+  const unavailableEntries = unavailablePatterns.map<RuleEntry>((pattern) => ({
+    patternId: pattern.id,
+    presetId: null,
+    tier: 'custom',
+    kind: pattern.kind,
+    name: pattern.name.trim() || (pattern.kind === 'opening' ? 'Salida sin nombre' : 'Problema sin nombre'),
+    summary: buildPatternCompactSummary(pattern, cardById),
+    description: 'Usa una carta que ya no está en el deck, así que no se evalúa. Editala o volvé a sumar la carta.',
+    turnContext: pattern.turnContext,
+    enabled: true,
+    appliesToView: true,
+    isComplete: true,
+    probability: null,
+    possible: false,
+    turnLean: null,
+    missingCards: true,
+  }))
+
   return {
     universal: systemEntries.filter((entry) => entry.tier === 'universal'),
     generic: systemEntries.filter((entry) => entry.tier === 'generic'),
-    custom: customEntries,
+    custom: [...customEntries, ...unavailableEntries],
   }
 }

@@ -226,7 +226,7 @@ function RuleRow({
   )
   const state = {
     'data-kind': entry.kind,
-    'data-enabled': entry.enabled && entry.appliesToView ? 'true' : 'false',
+    'data-enabled': entry.enabled && entry.appliesToView && !entry.missingCards ? 'true' : 'false',
   }
 
   if (onClick) {
@@ -252,6 +252,10 @@ function RuleRow({
 }
 
 function formatRuleValue(entry: RuleEntry): string {
+  if (entry.missingCards) {
+    return 'Falta carta'
+  }
+
   if (!entry.enabled) {
     return 'Apagada'
   }

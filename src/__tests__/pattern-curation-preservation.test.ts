@@ -327,12 +327,14 @@ describe('Preservation Property Tests: Non-Buggy Patterns Curate Correctly', () 
       )
     })
 
-    it('Property 2e: mixed valid and invalid card conditions - invalid ones are removed, valid ones kept', () => {
+    it('Property 2e: a rule that requires a missing card is not evaluated, and is kept intact when storing', () => {
       /**
        * **Validates: Requirements 3.2**
        *
-       * When a fully configured pattern has a mix of valid and invalid card
-       * references, only the invalid ones are removed.
+       * If a rule requires (include) a card that is no longer in the deck, dropping
+       * that condition would change its meaning: the rule is left out of the
+       * evaluation. Missing cards only in exclude conditions are just removed.
+       * When storing, the rule is kept as-is so it works again if the card returns.
        */
       fc.assert(
         fc.property(
@@ -361,22 +363,23 @@ describe('Preservation Property Tests: Non-Buggy Patterns Curate Correctly', () 
             validCount: validConditions.length,
           })),
           ({ pattern, validCount }) => {
+            const requiresMissingCard = pattern.conditions.some(
+              (condition) => condition.kind === 'include' && String(JSON.stringify(condition.matcher)).includes('invalid-'),
+            )
             const result = curatePatterns([pattern], cards)
 
-            // Pattern should still exist (has valid conditions)
-            expect(result.length).toBe(1)
-
-            const curated = result[0]
-
-            // All remaining conditions should have non-null matchers
-            for (const condition of curated.conditions) {
-              expect(condition.matcher).not.toBeNull()
+            if (requiresMissingCard) {
+              expect(result).toHaveLength(0)
+              expect(curatePatterns([pattern], cards, { keepRulesWithMissingCards: true })).toEqual([pattern])
+              return
             }
 
-            // The number of conditions should be <= validCount
-            // (could be less due to deduplication)
-            expect(curated.conditions.length).toBeLessThanOrEqual(validCount)
-            expect(curated.conditions.length).toBeGreaterThanOrEqual(1)
+            expect(result.length).toBe(1)
+            for (const condition of result[0].conditions) {
+              expect(condition.matcher).not.toBeNull()
+            }
+            expect(result[0].conditions.length).toBeLessThanOrEqual(validCount)
+            expect(result[0].conditions.length).toBeGreaterThanOrEqual(1)
           },
         ),
         { numRuns: 100 },
