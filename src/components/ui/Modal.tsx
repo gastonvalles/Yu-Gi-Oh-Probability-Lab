@@ -26,6 +26,8 @@ interface ModalProps {
   dismissible?: boolean
   role?: 'dialog' | 'alertdialog'
   ariaLabel?: string
+  /** Ajuste puntual del panel (p. ej. un alto fijo propio para ese modal). */
+  className?: string
   children: ReactNode
 }
 
@@ -48,6 +50,7 @@ export function Modal({
   dismissible = true,
   role = 'dialog',
   ariaLabel,
+  className,
   children,
 }: ModalProps) {
   const id = useId()
@@ -69,7 +72,7 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={hasHeader && title ? titleId : undefined}
         aria-label={hasHeader && title ? undefined : ariaLabel}
-        className="app-modal-panel app-dialog-enter surface-panel"
+        className={['app-modal-panel app-dialog-enter surface-panel', className].filter(Boolean).join(' ')}
         data-size={size}
         onClick={(event) => event.stopPropagation()}
       >
