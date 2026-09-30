@@ -13,6 +13,7 @@ import { DeckImportDrawer } from '../deck-mode/DeckImportDrawer'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
+import { StepHero } from '../StepHero'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { BuildBCardEditor } from './BuildBCardEditor'
 import { BuildDeckView } from './BuildDeckView'
@@ -195,21 +196,20 @@ export function ComparisonScreen() {
 
   return (
     <section className="comparison surface-panel" aria-label="Comparar builds">
-      <header className="comparison-header">
-        <div className="comparison-heading">
-          <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Comparar</p>
-          <h2>Compará dos builds con tus reglas</h2>
-          <p>Guardá versiones de tu deck o importá otras y mirá cuál abre mejor, yendo 1º y 2º.</p>
-        </div>
-        <div className="comparison-header-actions">
-          <Button variant="secondary" size="sm" onClick={handleSaveCurrent}>
-            Guardar deck actual
-          </Button>
-          <Button variant="primary" size="sm" onClick={() => setIsImportOpen(true)}>
-            Importar build
-          </Button>
-        </div>
-      </header>
+      <StepHero
+        title="Compará builds"
+        help="Guardá versiones de tu deck o importá otras listas y mirá cuál abre mejor yendo 1º y 2º, con tus mismas reglas y el mismo cálculo del Probability Lab."
+        side={
+          <>
+            <Button variant="secondary" size="sm" onClick={handleSaveCurrent}>
+              Guardar deck actual
+            </Button>
+            <Button variant="primary" size="sm" onClick={() => setIsImportOpen(true)}>
+              Importar build
+            </Button>
+          </>
+        }
+      />
 
       <div className="comparison-pickers">
         {renderPicker('A', selection.a)}

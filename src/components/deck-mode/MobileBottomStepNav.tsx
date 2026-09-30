@@ -10,23 +10,10 @@ interface MobileBottomStepNavProps {
   items: DeckModeNavigationItem[]
   activeStep: DeckWorkflowStepKey
   onStepChange: (step: DeckWorkflowStepKey) => void
-  /** Acción "Probar mano": reemplaza en mobile al botón flotante, que tapaba contenido. */
-  onOpenPractice: (() => void) | null
 }
 
 // Pasos que llevan un punto de aviso mientras están a medio completar.
 const ATTENTION_STEPS = new Set<DeckWorkflowStepKey>(['deck-builder', 'categorization'])
-
-function PracticeIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
-      <rect x="8.5" y="2.5" width="7" height="11" rx="1.2" strokeWidth="1.8" />
-      <rect x="2.5" y="4.5" width="7" height="11" rx="1.2" strokeWidth="1.8" transform="rotate(-12 6 10)" />
-      <rect x="14.5" y="4.5" width="7" height="11" rx="1.2" strokeWidth="1.8" transform="rotate(12 18 10)" />
-      <path d="M8 19.5h8" strokeWidth="1.8" />
-    </svg>
-  )
-}
 
 function DeckBuilderIcon(props: SVGProps<SVGSVGElement>) {
   return (
@@ -113,7 +100,6 @@ export function MobileBottomStepNav({
   items,
   activeStep,
   onStepChange,
-  onOpenPractice,
 }: MobileBottomStepNavProps) {
   const [optimisticStep, setOptimisticStep] = useState<DeckWorkflowStepKey | null>(null)
 
@@ -154,22 +140,10 @@ export function MobileBottomStepNav({
       </button>
     )
   }
-  // "Probar" va al centro de la barra, entre Roles y Lab.
-  const splitIndex = Math.ceil(items.length / 2)
-
   return (
     <nav aria-label="Pasos del workflow" className="mobile-step-nav">
-      <div className="mobile-step-nav-grid" data-with-action={onOpenPractice ? 'true' : 'false'}>
-        {items.slice(0, splitIndex).map(renderStep)}
-        {onOpenPractice ? (
-          <button type="button" className="mobile-step-nav-action" aria-label="Abrir práctica" onClick={onOpenPractice}>
-            <span className="mobile-step-nav-action-icon" aria-hidden="true">
-              <PracticeIcon />
-            </span>
-            <span className="mobile-step-nav-label">Probar</span>
-          </button>
-        ) : null}
-        {items.slice(splitIndex).map(renderStep)}
+      <div className="mobile-step-nav-grid">
+        {items.map(renderStep)}
       </div>
     </nav>
   )

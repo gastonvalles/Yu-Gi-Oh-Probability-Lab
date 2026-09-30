@@ -12,6 +12,7 @@ import type { CardEntry, HandPattern } from '../../../types'
 import { Switch } from '../../ui/Switch'
 import { Button } from '../../ui/Button'
 import type { PatternEditorActions } from '../pattern-editor-actions'
+import { NumberField } from '../../ui/NumberField'
 
 interface AdvancedSettingsProps {
   pattern: HandPattern
@@ -84,12 +85,12 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
           <span className="app-muted text-[0.72rem] leading-[1.14]">
             Mínimo de condiciones a cumplir
           </span>
-          <input
-            type="number"
+          <NumberField
             min={2}
-            max={Math.max(conditionCount, 1)}
+            max={Math.max(conditionCount, 2)}
             value={minimumMatches}
-            onChange={(event) => actions.setPatternMinimumMatches(pattern.id, event.target.value)}
+            onChange={(value) => actions.setPatternMinimumMatches(pattern.id, String(value))}
+            aria-label="Mínimo de condiciones a cumplir"
             className="app-field w-16 px-2 py-[0.35rem] text-center text-[0.82rem]"
           />
         </div>

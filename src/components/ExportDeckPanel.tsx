@@ -88,10 +88,8 @@ export function ExportDeckPanel({
   return (
     <article className="surface-panel deck-mobile-step-shell grid h-full min-h-0 gap-2.5 p-0 min-[1101px]:gap-3 min-[1101px]:p-2.5 min-[1180px]:grid-rows-[auto_minmax(0,1fr)]">
       <StepHero
-        step="Descargá tu deck"
         title="Exportá tu deck"
-        description={`Generá la salida final de ${deckName.trim() || 'tu deck'} sin moverte del workflow.`}
-        variant="compact"
+        help={`Descargá ${deckName.trim() || 'tu deck'} como imagen, lista de texto, .ydk o planilla de torneo (KDE), sin moverte del workflow.`}
         side={(
           <Button
             variant="primary"
@@ -104,7 +102,6 @@ export function ExportDeckPanel({
             {busy ? 'Generando archivos...' : 'Descargar Deck'}
           </Button>
         )}
-        sideVariant="inline"
       />
 
       <section className="grid min-h-0 gap-3 min-[1180px]:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]">

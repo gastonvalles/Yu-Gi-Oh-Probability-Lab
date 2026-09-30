@@ -369,21 +369,21 @@ export function DeckBuilderStep({
       className="surface-panel deck-builder-step-shell grid w-full gap-3 p-2.5"
     >
       <StepHero
-        step="Paso 1"
-        title="Armá tu deck en el builder"
-        description="Agregá cartas desde el buscador. Tocá una carta del deck para ver el detalle y sumar o quitar copias; para moverla entre Main, Extra y Side, mantenela presionada y arrastrala."
+        title="Armá tu deck"
+        help="Agregá cartas desde el buscador. Tocá una carta del deck para ver el detalle y sumar o quitar copias; para moverla entre Main, Extra y Side, mantenela presionada y arrastrala."
+        sideVariant="form"
         side={
           <>
-            <span className="app-soft text-[0.68rem] uppercase tracking-widest">Nombre del deck</span>
             <input
+              aria-label="Nombre del deck"
               type="text"
               value={deckBuilder.deckName}
               onChange={(event) => onDeckNameChange(event.target.value)}
               placeholder="Nombre del deck"
               className="app-field deck-builder-meta-field w-full px-2 py-[0.55rem] text-[0.88rem] font-semibold"
             />
-            <span className="app-soft text-[0.68rem] uppercase tracking-widest">Formato del deck</span>
             <select
+              aria-label="Formato del deck"
               value={deckFormat}
               onChange={(event) => onDeckFormatChange(event.target.value as DeckFormat)}
               className="app-field deck-builder-meta-field deck-builder-meta-select w-full px-2 py-[0.55rem] text-[0.88rem] font-semibold"
@@ -396,7 +396,7 @@ export function DeckBuilderStep({
               <option value="genesys">Genesys</option>
             </select>
             <Button variant="secondary" size="sm" fullWidth onClick={() => setImportDrawerOpen(true)}>
-              Importar deck
+              Importar
             </Button>
             <Button
               variant="secondary"

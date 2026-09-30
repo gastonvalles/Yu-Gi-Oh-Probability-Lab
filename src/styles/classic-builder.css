@@ -129,16 +129,6 @@
     padding: 1rem;
   }
 
-  .classic-builder-preview-guide-step {
-    margin: 0;
-    font-size: 0.7rem;
-    line-height: 1;
-    font-weight: 800;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--accent);
-  }
-
   .classic-builder-preview-guide-heading {
     margin: 0;
     max-width: none;

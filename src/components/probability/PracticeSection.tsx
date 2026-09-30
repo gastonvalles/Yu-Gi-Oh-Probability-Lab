@@ -52,15 +52,15 @@ function getFanCardStyle(index: number, total: number): CSSProperties {
 function buildEvaluationBlockedMessage(props: PracticeSectionProps): string | null {
   if (!props.hasCompletedClassification) {
     if (props.missingOriginCount > 0) {
-      return 'Hay cartas sin origen: clasificalas en el Paso 2 para ver qué reglas cumple la mano.'
+      return 'Hay cartas sin origen: clasificalas en Categorización para ver qué reglas cumple la mano.'
     }
     if (props.missingRoleCount > 0) {
-      return 'Hay cartas sin roles: clasificalas en el Paso 2 para ver qué reglas cumple la mano.'
+      return 'Hay cartas sin roles: clasificalas en Categorización para ver qué reglas cumple la mano.'
     }
     if (props.pendingReviewCount > 0) {
-      return 'Hay cartas pendientes de revisión: cerrá el Paso 2 para ver qué reglas cumple la mano.'
+      return 'Hay cartas pendientes de revisión: revisalas en Categorización para ver qué reglas cumple la mano.'
     }
-    return 'Terminá el Paso 2 para ver qué reglas cumple la mano.'
+    return 'Terminá la Categorización para ver qué reglas cumple la mano.'
   }
 
   const pending = props.reviewPendingPatternCount

@@ -63,21 +63,21 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
     if (missingOriginCount > 0) {
       issues.push({
         level: 'error',
-        message: 'Hay cartas sin clasificar (origen). Revisá el Paso 2.',
+        message: 'Hay cartas sin clasificar (origen). Revisalas en Categorización.',
       })
     }
 
     if (missingRoleCount > 0) {
       issues.push({
         level: 'error',
-        message: 'Hay cartas sin clasificar (roles). Revisá el Paso 2.',
+        message: 'Hay cartas sin clasificar (roles). Revisalas en Categorización.',
       })
     }
 
     if (pendingReviewCount > 0) {
       issues.push({
         level: 'error',
-        message: 'Hay cartas con clasificación pendiente de revisión. Revisá el Paso 2.',
+        message: 'Hay cartas con clasificación pendiente de revisión. Revisalas en Categorización.',
       })
     }
   }
