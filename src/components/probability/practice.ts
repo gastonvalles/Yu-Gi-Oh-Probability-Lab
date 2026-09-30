@@ -288,3 +288,20 @@ function getRequirementCurrentAmount(
 
   return requirement.keys.reduce((total, key) => total + (counts.get(key) ?? 0), 0)
 }
+
+export type PracticeTurn = 'first' | 'second'
+export type PracticeVerdict = 'clean' | 'with-problem' | 'no-opening'
+
+/** Por mecánica de juego: con la mano inicial vas 1º; si robaste al menos una más, vas 2º. */
+export function getPracticeTurn(handLength: number, openingHandSize: number): PracticeTurn {
+  return handLength > openingHandSize ? 'second' : 'first'
+}
+
+/** Mismo criterio que el Lab: limpia = alguna salida y ningún problema. */
+export function getPracticeVerdict(openingCount: number, problemCount: number): PracticeVerdict {
+  if (openingCount === 0) {
+    return 'no-opening'
+  }
+
+  return problemCount > 0 ? 'with-problem' : 'clean'
+}

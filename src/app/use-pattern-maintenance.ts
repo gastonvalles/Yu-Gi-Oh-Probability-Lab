@@ -37,6 +37,7 @@ export function usePatternMaintenance({
       const nextPatterns = curatePatterns(
         state.patterns.filter((pattern) => !isLegacySystemRule(pattern, derivedMainCards)),
         derivedMainCards,
+        { keepRulesWithMissingCards: true },
       )
 
       dispatch(completePatternSeeding({
@@ -61,7 +62,7 @@ export function usePatternMaintenance({
       return
     }
 
-    const nextPatterns = curatePatterns(state.patterns, derivedMainCards)
+    const nextPatterns = curatePatterns(state.patterns, derivedMainCards, { keepRulesWithMissingCards: true })
 
     if (getPatternCollectionSignature(nextPatterns) !== currentSignature) {
       dispatch(replacePatterns(nextPatterns))

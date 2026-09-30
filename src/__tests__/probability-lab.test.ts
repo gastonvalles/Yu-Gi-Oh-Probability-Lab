@@ -1,3 +1,4 @@
+import { getPracticeTurn, getPracticeVerdict } from '../components/probability/practice'
 import { detectTurnLean } from '../components/probability/probability-lab-helpers'
 import { describe, expect, it } from 'vitest'
 
@@ -163,5 +164,20 @@ describe('detectTurnLean', () => {
     expect(detectTurnLean(0.1, 0.25)).toEqual({ favored: 'second', first: 0.1, second: 0.25 })
     expect(detectTurnLean(0.4, 0.2)?.favored).toBe('first')
     expect(detectTurnLean(undefined, 0.5)).toBeNull()
+  })
+})
+
+describe('práctica: turno y veredicto', () => {
+  it('5 cartas es ir 1º y robar la 6ª pasa a ir 2º', () => {
+    expect(getPracticeTurn(5, 5)).toBe('first')
+    expect(getPracticeTurn(6, 5)).toBe('second')
+    expect(getPracticeTurn(7, 5)).toBe('second')
+  })
+
+  it('usa el mismo criterio de mano limpia que el Lab', () => {
+    expect(getPracticeVerdict(1, 0)).toBe('clean')
+    expect(getPracticeVerdict(2, 1)).toBe('with-problem')
+    expect(getPracticeVerdict(0, 0)).toBe('no-opening')
+    expect(getPracticeVerdict(0, 2)).toBe('no-opening')
   })
 })

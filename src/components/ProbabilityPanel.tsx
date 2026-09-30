@@ -73,6 +73,7 @@ export function ProbabilityPanel({
       buildRuleEntryGroups({
         presets: lab.availablePresets,
         customPatterns: lab.customPatterns,
+        unavailablePatterns: lab.unavailablePatterns,
         disabledGenericRuleIds,
         derivedMainCards,
         patternResults: currentResult?.patternResults ?? [],
@@ -82,7 +83,7 @@ export function ProbabilityPanel({
         },
         view: activeTurnView,
       }),
-    [activeTurnView, currentResult, results, derivedMainCards, disabledGenericRuleIds, lab.availablePresets, lab.customPatterns],
+    [activeTurnView, currentResult, results, lab.unavailablePatterns, derivedMainCards, disabledGenericRuleIds, lab.availablePresets, lab.customPatterns],
   )
 
   const draft = usePatternDraft(patternEditorDefaults)

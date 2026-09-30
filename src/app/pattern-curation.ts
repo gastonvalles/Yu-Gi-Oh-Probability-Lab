@@ -3,13 +3,32 @@ import { buildDerivedDeckGroupMap } from './deck-groups'
 import { getPatternDefinitionKey, getPatternMatchMode, normalizeHandPatternCategory, normalizeReusePolicy, normalizeTurnContext, resolveConditionCardIds, resolvePatternLogic } from './patterns'
 
 /** Normaliza las reglas propias: descarta las rotas o duplicadas y ajusta la lógica. */
-export function curatePatterns(patterns: HandPattern[], cards: CardEntry[]): HandPattern[] {
+interface CuratePatternsOptions {
+  /**
+   * Al guardar (mantenimiento), una regla que pide una carta ausente se conserva intacta
+   * para que vuelva a funcionar si la carta vuelve al deck. Al evaluar, se deja afuera.
+   */
+  keepRulesWithMissingCards?: boolean
+}
+
+export function curatePatterns(
+  patterns: HandPattern[],
+  cards: CardEntry[],
+  { keepRulesWithMissingCards = false }: CuratePatternsOptions = {},
+): HandPattern[] {
   const cardById = new Map(cards.map((card) => [card.id, card]))
   const groupsByKey = buildDerivedDeckGroupMap(cards)
   const nextPatterns: HandPattern[] = []
   const seenPatternKeys = new Set<string>()
 
   for (const pattern of patterns) {
+    if (hasMissingRequiredCards(pattern, cardById)) {
+      if (keepRulesWithMissingCards) {
+        nextPatterns.push(pattern)
+      }
+      continue
+    }
+
     const curatedPattern = curatePattern(pattern, cardById, groupsByKey, cards)
 
     if (!curatedPattern) {
@@ -27,6 +46,26 @@ export function curatePatterns(patterns: HandPattern[], cards: CardEntry[]): Han
   }
 
   return nextPatterns
+}
+
+/**
+ * La regla pide (incluye) una carta que ya no está en el deck: una carta puntual ausente
+ * o un pool sin ninguna carta presente. Evaluarla sin esa condición cambiaría su sentido.
+ */
+export function hasMissingRequiredCards(pattern: HandPattern, cardById: ReadonlyMap<string, CardEntry>): boolean {
+  return pattern.conditions.some((condition) => {
+    const { matcher } = condition
+
+    if (condition.kind === 'exclude' || !matcher) {
+      return false
+    }
+
+    if (matcher.type === 'card') {
+      return !cardById.has(matcher.value)
+    }
+
+    return matcher.type === 'card_pool' && matcher.value.length > 0 && !matcher.value.some((cardId) => cardById.has(cardId))
+  })
 }
 
 export function getPatternCollectionSignature(patterns: HandPattern[]): string {

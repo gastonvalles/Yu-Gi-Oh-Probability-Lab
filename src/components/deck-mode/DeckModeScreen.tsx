@@ -360,7 +360,7 @@ function PracticeFab({
         onClose={onClose}
         size="xl"
         title="Práctica"
-        subtitle="Probá manos sin salir de lo que estás haciendo."
+        subtitle="Con 5 cartas vas 1º; robá la 6ª para ver la mano yendo 2º."
       >
         <PracticeSection
           handSize={handSize}
@@ -371,7 +371,6 @@ function PracticeFab({
           missingRoleCount={missingRoleCount}
           pendingReviewCount={pendingReviewCount}
           reviewPendingPatternCount={reviewPendingPatternCount}
-          onRedraw={() => {}}
         />
       </Modal>
     </>

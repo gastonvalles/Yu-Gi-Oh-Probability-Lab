@@ -1,20 +1,23 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 
-import {
-  buildDerivedDeckGroupMap,
-} from '../../app/deck-groups'
+import { buildDerivedDeckGroupMap } from '../../app/deck-groups'
 import { useMediaQuery } from '../../app/use-media-query'
 import { formatInteger } from '../../app/utils'
 import type { CardEntry, HandPattern } from '../../types'
 import { CardArt } from '../CardArt'
 import { Button } from '../ui/Button'
+import { buildPatternCompactSummary } from './pattern-helpers'
 import {
   buildPracticeDeck,
   drawNextCard,
   drawRandomPracticeHand,
   evaluatePracticeHand,
+  getPracticeTurn,
+  getPracticeVerdict,
   type PracticeHandMatch,
+  type PracticeHandNearMiss,
   type PracticeHandState,
+  type PracticeVerdict,
 } from './practice'
 
 interface PracticeSectionProps {
@@ -26,19 +29,18 @@ interface PracticeSectionProps {
   missingRoleCount: number
   pendingReviewCount: number
   reviewPendingPatternCount: number
-  onRedraw?: () => void
 }
 
-type PracticeTurn = 'first' | 'second'
+const VERDICT_COPY: Record<PracticeVerdict, { title: string; detail: string }> = {
+  clean: { title: 'Mano limpia', detail: 'Tiene salida y ningún problema activo.' },
+  'with-problem': { title: 'Salida con problema', detail: 'Arranca, pero algún problema la complica.' },
+  'no-opening': { title: 'Sin salida', detail: 'No cumple ninguna salida.' },
+}
 
-const PRACTICE_TURNS: ReadonlyArray<{ value: PracticeTurn; label: string }> = [
-  { value: 'first', label: 'Primero' },
-  { value: 'second', label: 'Segundo' },
-]
+const EMPTY_RESULT = { matches: [], openingMatches: [], problemMatches: [], openingNearMisses: [] }
 
-function getPracticeStageCardStyle(index: number, total: number): CSSProperties {
-  const midpoint = (total - 1) / 2
-  const offset = index - midpoint
+function getFanCardStyle(index: number, total: number): CSSProperties {
+  const offset = index - (total - 1) / 2
   const distance = Math.abs(offset)
 
   return {
@@ -47,250 +49,215 @@ function getPracticeStageCardStyle(index: number, total: number): CSSProperties 
   }
 }
 
-function getPracticeMatchStateLabel(kind: HandPattern['kind']): string {
-  return kind === 'opening' ? 'Cumplida' : 'Detectado'
+function buildEvaluationBlockedMessage(props: PracticeSectionProps): string | null {
+  if (!props.hasCompletedClassification) {
+    if (props.missingOriginCount > 0) {
+      return 'Hay cartas sin origen: clasificalas en el Paso 2 para ver qué reglas cumple la mano.'
+    }
+    if (props.missingRoleCount > 0) {
+      return 'Hay cartas sin roles: clasificalas en el Paso 2 para ver qué reglas cumple la mano.'
+    }
+    if (props.pendingReviewCount > 0) {
+      return 'Hay cartas pendientes de revisión: cerrá el Paso 2 para ver qué reglas cumple la mano.'
+    }
+    return 'Terminá el Paso 2 para ver qué reglas cumple la mano.'
+  }
+
+  const pending = props.reviewPendingPatternCount
+  return pending > 0
+    ? `Tenés ${formatInteger(pending)} regla${pending === 1 ? '' : 's'} heredada${pending === 1 ? '' : 's'} pendiente${pending === 1 ? '' : 's'} de revisión.`
+    : null
 }
 
-function getPracticeMatchStateBadgeClass(kind: HandPattern['kind']): string {
-  return kind === 'opening'
-    ? 'surface-card-success text-accent'
-    : 'surface-card-danger text-destructive'
-}
-
-
-
-export function PracticeSection({
-  handSize,
-  derivedMainCards,
-  patterns,
-  hasCompletedClassification,
-  missingOriginCount,
-  missingRoleCount,
-  pendingReviewCount,
-  reviewPendingPatternCount,
-}: PracticeSectionProps) {
+export function PracticeSection(props: PracticeSectionProps) {
+  const { handSize, derivedMainCards, patterns } = props
   const practiceDeck = useMemo(() => buildPracticeDeck(derivedMainCards), [derivedMainCards])
   const groupsByKey = useMemo(() => buildDerivedDeckGroupMap(derivedMainCards), [derivedMainCards])
-  const [practiceHand, setPracticeHand] = useState<PracticeHandState | null>(null)
-  const [turn, setTurn] = useState<PracticeTurn>('first')
-  // Ir segundo roba una carta más en el primer turno.
-  const openingHandSize = turn === 'second' ? handSize + 1 : handSize
-  const practiceDeckCount = practiceDeck.length
-  const canDrawOpeningHand = practiceDeck.length >= openingHandSize
-  const canDrawNextCard = practiceHand !== null && practiceHand.remainingDeck.length > 0
-  const missingPracticeCards = Math.max(0, openingHandSize - practiceDeckCount)
-  const isEmptyPracticeDeck = practiceDeckCount === 0
-  // Robar manos no depende de la clasificación: sólo la evaluación de reglas la necesita.
-  const evaluationBlockedMessage =
-    !hasCompletedClassification
-      ? missingOriginCount > 0
-        ? 'Hay cartas sin origen: clasificalas en el Paso 2 para ver qué reglas cumple la mano.'
-        : missingRoleCount > 0
-          ? 'Hay cartas sin roles: clasificalas en el Paso 2 para ver qué reglas cumple la mano.'
-          : pendingReviewCount > 0
-            ? 'Hay cartas pendientes de revisión: cerrá el Paso 2 para ver qué reglas cumple la mano.'
-            : 'Terminá el Paso 2 para ver qué reglas cumple la mano.'
-      : reviewPendingPatternCount > 0
-        ? `Tenés ${formatInteger(reviewPendingPatternCount)} patrón${reviewPendingPatternCount === 1 ? '' : 'es'} heredado${reviewPendingPatternCount === 1 ? '' : 's'} pendiente${reviewPendingPatternCount === 1 ? '' : 's'} de revisión.`
-        : null
-  const practiceResult = useMemo(
-    () =>
-      evaluationBlockedMessage
-        ? {
-            matches: [],
-            openingMatches: [],
-            problemMatches: [],
-            openingNearMisses: [],
-          }
-        : evaluatePracticeHand(practiceHand?.hand ?? [], patterns, derivedMainCards, groupsByKey, turn),
-    [evaluationBlockedMessage, practiceHand, patterns, derivedMainCards, groupsByKey, turn],
+  const canDraw = practiceDeck.length >= handSize
+  // Al abrir ya hay una mano en la mesa: probar es un toque, no dos.
+  const [practiceHand, setPracticeHand] = useState<PracticeHandState | null>(() =>
+    canDraw ? drawRandomPracticeHand(practiceDeck, handSize) : null,
   )
-  const openingMatches = practiceResult.openingMatches
-  const problemMatches = practiceResult.problemMatches
-
   const isWide = useMediaQuery('(min-width: 820px)')
+  const summaryById = useMemo(() => {
+    const cardById = new Map(derivedMainCards.map((card) => [card.id, card]))
+    return new Map(patterns.map((pattern) => [pattern.id, buildPatternCompactSummary(pattern, cardById)]))
+  }, [derivedMainCards, patterns])
 
   useEffect(() => {
-    setPracticeHand(null)
-  }, [derivedMainCards, openingHandSize])
+    setPracticeHand(practiceDeck.length >= handSize ? drawRandomPracticeHand(practiceDeck, handSize) : null)
+  }, [practiceDeck, handSize])
+
+  const hand = practiceHand?.hand ?? []
+  const turn = getPracticeTurn(hand.length, handSize)
+  const blockedMessage = buildEvaluationBlockedMessage(props)
+  const result = useMemo(
+    () =>
+      blockedMessage || hand.length === 0
+        ? EMPTY_RESULT
+        : evaluatePracticeHand(hand, patterns, derivedMainCards, groupsByKey, turn),
+    [blockedMessage, hand, patterns, derivedMainCards, groupsByKey, turn],
+  )
+  const canDrawNext = practiceHand !== null && practiceHand.remainingDeck.length > 0
+  const isOpeningHand = hand.length === handSize
+
+  if (practiceDeck.length === 0) {
+    return <p className="practice-notice">Cargá cartas en el Main Deck para habilitar la práctica.</p>
+  }
+
+  if (!canDraw) {
+    const missing = handSize - practiceDeck.length
+    return (
+      <p className="practice-notice" data-tone="warning">
+        Sumá {formatInteger(missing)} carta{missing === 1 ? '' : 's'} más al Main Deck.
+      </p>
+    )
+  }
 
   return (
-    <section className="grid min-w-0 min-h-0 h-full grid-rows-[auto_auto_minmax(0,1fr)] gap-3 overflow-hidden wrap-anywhere [word-break:break-word]">
-      <div className="flex items-center justify-between gap-3 px-1">
-        <h3 className="m-0 text-[0.98rem] leading-none">Probar mano</h3>
-        <span className="app-muted text-[0.68rem]">Validá tu modelo con manos reales</span>
+    <section className="practice" aria-label="Probar mano">
+      <div className="practice-toolbar">
+        <span className="practice-turn" data-turn={turn}>
+          <strong>{turn === 'first' ? 'Yendo 1º' : 'Yendo 2º'}</strong>
+          <span>{formatInteger(hand.length)} cartas</span>
+        </span>
+        <div className="practice-actions">
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={!canDrawNext}
+            onClick={() => setPracticeHand((current) => (current ? drawNextCard(current) : current))}
+          >
+            {isOpeningHand ? `Robar la ${formatInteger(handSize + 1)}ª (ir 2º)` : 'Robar 1 más'}
+          </Button>
+          <Button variant="primary" size="sm" onClick={() => setPracticeHand(drawRandomPracticeHand(practiceDeck, handSize))}>
+            Nueva mano
+          </Button>
+        </div>
       </div>
 
-      {isEmptyPracticeDeck ? (
-        <p className="surface-card m-0 p-2.5 text-[0.8rem] text-(--text-muted)">
-          Cargá cartas en el Main Deck para habilitar la práctica.
-        </p>
-      ) : !canDrawOpeningHand ? (
-        <p className="surface-card-warning m-0 p-2.5 text-[0.8rem] text-(--warning)">
-          Sumá {formatInteger(missingPracticeCards)} carta{missingPracticeCards === 1 ? '' : 's'} más al Main Deck.
+      <div
+        className="practice-hand"
+        data-layout={isWide ? 'fan' : 'grid'}
+        style={isWide ? undefined : { gridTemplateColumns: `repeat(${Math.min(hand.length, 6)}, minmax(0, 1fr))` }}
+      >
+        {hand.map((card, index) => (
+          <div
+            key={card.drawId}
+            className="practice-card"
+            data-new={index >= handSize ? 'true' : 'false'}
+            style={isWide ? getFanCardStyle(index, hand.length) : undefined}
+          >
+            <CardArt
+              remoteUrl={card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null}
+              name={card.name}
+              className="block h-auto w-full bg-input"
+              limitCard={card.apiCard}
+              limitBadgeSize={isWide ? 'lg' : 'sm'}
+            />
+          </div>
+        ))}
+      </div>
+
+      {blockedMessage ? (
+        <p className="practice-notice" data-tone="warning">
+          {blockedMessage}
         </p>
       ) : (
-        <>
-          {/* Card stage with header — fixed, no scroll */}
-          <article className="surface-panel-strong grid min-w-0 gap-3 overflow-x-hidden p-3">
-            <div className="flex items-center justify-between gap-3">
-              <h4 className="m-0 text-[0.92rem] leading-none text-(--text-main)">
-                {practiceHand ? `Mano de ${formatInteger(practiceHand.hand.length)}` : 'Mano de ' + formatInteger(openingHandSize)}
-              </h4>
-              <div className="flex flex-wrap justify-end gap-2">
-                <div className="lab-turn-toggle w-auto grid-cols-2 p-0.5" role="radiogroup" aria-label="Turno de la mano">
-                  {PRACTICE_TURNS.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      role="radio"
-                      aria-checked={turn === option.value}
-                      data-active={turn === option.value ? 'true' : 'false'}
-                      className="lab-turn-toggle-option min-h-0 px-2.5 py-1"
-                      onClick={() => setTurn(option.value)}
-                    >
-                      <span className="lab-turn-toggle-label text-[0.76rem]">{option.label}</span>
-                    </button>
-                  ))}
-                </div>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  disabled={!canDrawOpeningHand}
-                  onClick={() => setPracticeHand(drawRandomPracticeHand(practiceDeck, openingHandSize))}
-                >
-                  Robar {formatInteger(openingHandSize)}
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={!canDrawNextCard}
-                  onClick={() => setPracticeHand((current) => (current ? drawNextCard(current) : current))}
-                >
-                  Robar 1 más
-                </Button>
-              </div>
-            </div>
-
-            <div
-              className={isWide
-                ? 'flex min-h-[260px] min-w-0 items-start justify-center overflow-hidden px-4 pt-2 pb-4'
-                : 'grid min-w-0 grid-cols-5 gap-0.5 overflow-hidden py-3'
-              }
-            >
-              {(practiceHand?.hand ?? Array.from({ length: openingHandSize })).map((card, index, hand) => {
-                const cardCount = hand.length
-                const cardStyle = isWide ? getPracticeStageCardStyle(index, cardCount) : undefined
-
-                if (!practiceHand) {
-                  return (
-                    <div
-                      key={`placeholder-${index}`}
-                      className={[
-                        'practice-placeholder-card aspect-[0.72] shrink-0',
-                        isWide ? 'w-[clamp(96px,16vw,132px)]' : 'w-full',
-                        isWide && index !== 0 ? '-ml-5 min-[820px]:-ml-7' : '',
-                      ].join(' ')}
-                      style={cardStyle}
-                      aria-hidden="true"
-                    />
-                  )
-                }
-
-                return (
-                  <article
-                    key={card.drawId}
-                    className={[
-                      'shrink-0 p-0 shadow-[0_18px_36px_rgba(0,0,0,0.35)]',
-                      isWide ? 'w-[clamp(96px,16vw,132px)]' : 'w-full',
-                      isWide && index !== 0 ? '-ml-5 min-[820px]:-ml-7' : '',
-                    ].join(' ')}
-                    style={cardStyle}
-                  >
-                    <CardArt
-                      remoteUrl={card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null}
-                      name={card.name}
-                      className="block h-auto w-full bg-input"
-                      limitCard={card.apiCard}
-                      limitBadgeSize="lg"
-                    />
-                  </article>
-                )
-              })}
-            </div>
-          </article>
-
-          {/* Results — scrollable area */}
-          {practiceHand && evaluationBlockedMessage ? (
-            <p className="surface-card-warning m-0 self-start p-2.5 text-[0.8rem] text-(--warning)">{evaluationBlockedMessage}</p>
-          ) : practiceHand ? (
-            <div className="min-h-0 overflow-y-auto overflow-x-hidden pt-3 px-1">
-              <div className="grid gap-3 min-[640px]:grid-cols-2">
-                {/* Salidas cumplidas */}
-                <div className="grid content-start gap-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <small className="app-muted text-[0.68rem] uppercase tracking-widest">Salidas cumplidas</small>
-                    <span className="app-chip px-2 py-0.5 text-[0.7rem]">{formatInteger(openingMatches.length)}</span>
-                  </div>
-                  {openingMatches.length > 0 ? (
-                    <div className="grid gap-2">
-                      {openingMatches.map((match) => (
-                        <PracticeMatchCard key={match.patternId} match={match} />
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="surface-card m-0 px-2.5 py-2 text-[0.76rem] text-(--text-muted)">Ninguna salida cumplida.</p>
-                  )}
-                </div>
-
-                {/* Problemas detectados */}
-                <div className="grid content-start gap-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <small className="app-muted text-[0.68rem] uppercase tracking-widest">Problemas detectados</small>
-                    <span className="app-chip px-2 py-0.5 text-[0.7rem]">{formatInteger(problemMatches.length)}</span>
-                  </div>
-                  {problemMatches.length > 0 ? (
-                    <div className="grid gap-2">
-                      {problemMatches.map((match) => (
-                        <PracticeMatchCard key={match.patternId} match={match} />
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="surface-card m-0 px-2.5 py-2 text-[0.76rem] text-(--text-muted)">Sin problemas detectados.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </>
+        <PracticeReport
+          verdict={getPracticeVerdict(result.openingMatches.length, result.problemMatches.length)}
+          openingMatches={result.openingMatches}
+          problemMatches={result.problemMatches}
+          nearMisses={result.openingNearMisses}
+          summaryById={summaryById}
+        />
       )}
     </section>
   )
 }
 
-function PracticeMatchCard({ match }: { match: PracticeHandMatch }) {
+function PracticeReport({
+  verdict,
+  openingMatches,
+  problemMatches,
+  nearMisses,
+  summaryById,
+}: {
+  summaryById: ReadonlyMap<string, string>
+  verdict: PracticeVerdict
+  openingMatches: PracticeHandMatch[]
+  problemMatches: PracticeHandMatch[]
+  nearMisses: PracticeHandNearMiss[]
+}) {
+  const copy = VERDICT_COPY[verdict]
+
   return (
-    <article
-      className="probability-check-card grid gap-1.5 outline-none"
-      data-active="true"
-      data-kind={match.kind}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="grid min-w-0 gap-1">
-          <strong className="text-[0.9rem] leading-[1.2] text-(--text-main)">{match.name}</strong>
-          <p className="m-0 truncate text-[0.74rem] leading-[1.2] text-(--text-muted)">
-            {match.requirementLabel}
-          </p>
-        </div>
-        <span
-          className={[
-            getPracticeMatchStateBadgeClass(match.kind),
-            'shrink-0 px-1.5 py-0.5 text-[0.65rem]',
-          ].join(' ')}
-        >
-          {getPracticeMatchStateLabel(match.kind)}
+    <div className="practice-report" aria-live="polite">
+      <div className="practice-verdict" data-verdict={verdict}>
+        <strong>{copy.title}</strong>
+        <span>{copy.detail}</span>
+        <span className="practice-verdict-counts">
+          {formatInteger(openingMatches.length)} salida{openingMatches.length === 1 ? '' : 's'} ·{' '}
+          {formatInteger(problemMatches.length)} problema{problemMatches.length === 1 ? '' : 's'}
         </span>
       </div>
-    </article>
+
+      <div className="practice-columns">
+        <MatchList title="Salidas" kind="opening" matches={openingMatches} summaryById={summaryById} emptyText="Ninguna salida cumplida.">
+          {openingMatches.length === 0 && nearMisses.length > 0 ? (
+            <li className="practice-near-miss">
+              Casi: <strong>{nearMisses[0]!.name}</strong>
+              {nearMisses[0]!.missingConditions > 0
+                ? ` (falta ${formatInteger(nearMisses[0]!.missingConditions)} condición${nearMisses[0]!.missingConditions === 1 ? '' : 'es'})`
+                : ''}
+            </li>
+          ) : null}
+        </MatchList>
+        <MatchList title="Problemas" kind="problem" matches={problemMatches} summaryById={summaryById} emptyText="Sin problemas." />
+      </div>
+    </div>
   )
+}
+
+function MatchList({
+  title,
+  kind,
+  matches,
+  emptyText,
+  summaryById,
+  children,
+}: {
+  summaryById: ReadonlyMap<string, string>
+  title: string
+  kind: 'opening' | 'problem'
+  matches: PracticeHandMatch[]
+  emptyText: string
+  children?: React.ReactNode
+}) {
+  return (
+    <section className="practice-list" data-kind={kind} aria-label={title}>
+      <h4>
+        {title} <span>{formatInteger(matches.length)}</span>
+      </h4>
+      <ul>
+        {matches.length === 0 ? <li className="practice-empty">{emptyText}</li> : null}
+        {matches.map((match) => (
+          <li key={match.patternId} className="practice-match">
+            <strong>{match.name}</strong>
+            <span>{formatMatchCards(match, summaryById.get(match.patternId))}</span>
+          </li>
+        ))}
+        {children}
+      </ul>
+    </section>
+  )
+}
+
+/** Qué cartas de la mano la cumplen (o el resumen de la regla, si es por ausencia de cartas). */
+function formatMatchCards(match: PracticeHandMatch, summary: string | undefined): string {
+  const names = match.assignments
+    .filter((assignment) => assignment.kind === 'include')
+    .flatMap((assignment) => assignment.cards.map((card) => (card.copies > 1 ? `${card.name} ×${card.copies}` : card.name)))
+
+  return names.length > 0 ? [...new Set(names)].join(' · ') : (summary ?? match.requirementLabel)
 }

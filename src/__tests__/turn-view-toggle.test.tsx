@@ -40,6 +40,7 @@ function entry(overrides: Partial<RuleEntry>): RuleEntry {
     probability: 0.5,
     possible: true,
     turnLean: null,
+    missingCards: false,
     ...overrides,
   }
 }
@@ -129,6 +130,9 @@ describe('LabRuleList', () => {
     fireEvent.click(screen.getByRole('button', { name: /Editar regla Mi combo/ }))
     expect(onEditRule).toHaveBeenCalledWith('c')
 
+    // Las reglas del sistema arrancan plegadas.
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Genéricas/, expanded: false }))
     fireEvent.click(screen.getByRole('switch', { name: 'Desactivar Sin respuesta' }))
     expect(onToggleGenericRule).toHaveBeenCalledWith('no_answer_second_problem', false)
 
@@ -147,6 +151,7 @@ describe('LabRuleList', () => {
     )
 
     fireEvent.click(screen.getByRole('radio', { name: 'Problemas' }))
+    fireEvent.click(screen.getByRole('button', { name: /Genéricas/ }))
     expect(screen.queryByText('Mi combo')).not.toBeInTheDocument()
     expect(screen.getByText('Sin respuesta')).toBeInTheDocument()
   })
