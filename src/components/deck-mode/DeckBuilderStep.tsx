@@ -366,7 +366,7 @@ export function DeckBuilderStep({
   return (
     <section
       id="step1"
-      className="surface-panel deck-builder-step-shell grid w-full gap-3 p-0 min-[1101px]:p-2.5"
+      className="surface-panel deck-builder-step-shell grid w-full gap-3 px-4 pt-3 min-[1101px]:p-2.5"
     >
       <StepHero
         title="Armá tu deck"

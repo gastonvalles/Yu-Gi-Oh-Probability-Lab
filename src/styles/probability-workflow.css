@@ -577,7 +577,7 @@
   }
 
   /* Encabezado de vista: una línea con título + "i", acciones al costado. */
-  /* Mismo encabezado y mismo margen en todas las vistas (en mobile no hay marco alrededor). */
+  /* Mismo encabezado en todas las vistas; el margen lateral lo da el contenedor de la vista. */
   .step-hero {
     display: flex;
     flex-wrap: wrap;
@@ -585,7 +585,7 @@
     justify-content: space-between;
     gap: 0.6rem 1rem;
     min-width: 0;
-    padding: 0.35rem 0.75rem 0;
+    padding: 0;
   }
 
   @media (min-width: 1101px) {

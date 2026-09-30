@@ -177,7 +177,7 @@ export function ProbabilityPanel({
   }
 
   return (
-    <article className="surface-panel deck-mobile-step-shell lab-shell grid h-full min-h-0 content-start gap-3 p-0 min-[1101px]:p-3">
+    <article className="surface-panel deck-mobile-step-shell lab-shell grid h-full min-h-0 content-start gap-3 px-4 pt-3 min-[1101px]:p-3">
       <StepHero
         title="Qué tan bien abre tu deck"
         help="Cálculo exacto de todas las manos posibles, yendo primero (5 cartas) y segundo (6), con las reglas de abajo: una mano es limpia si cumple alguna salida y ningún problema."
