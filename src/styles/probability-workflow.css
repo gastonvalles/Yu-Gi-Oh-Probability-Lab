@@ -451,6 +451,35 @@
     }
   }
 
+  /* Halo tenue cada cinco segundos; sólo anima el halo para no interferir con el arrastre. */
+  .draggable-fab::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border: 1px solid rgb(var(--primary-hover-rgb) / 0.35);
+    border-radius: inherit;
+    box-shadow:
+      0 0 12px rgb(var(--primary-hover-rgb) / 0.2),
+      0 0 26px rgb(var(--primary-rgb) / 0.1);
+    opacity: 0;
+    animation: practice-fab-pulse 5s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes practice-fab-pulse {
+    0%,
+    76%,
+    100% {
+      opacity: 0;
+      transform: scale(0.98);
+    }
+
+    88% {
+      opacity: 0.55;
+      transform: scale(1.06);
+    }
+  }
+
   .draggable-fab[data-dragging='true'] {
     animation: none;
     cursor: grabbing;
@@ -458,9 +487,23 @@
     transition: none;
   }
 
+  .draggable-fab[data-dragging='true']::before {
+    animation: none;
+  }
+
   .draggable-fab:focus-visible {
     outline: none;
     box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 0.6);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .draggable-fab {
+      transition: none;
+    }
+
+    .draggable-fab::before {
+      animation: none;
+    }
   }
 
   .mobile-step-nav-dot {

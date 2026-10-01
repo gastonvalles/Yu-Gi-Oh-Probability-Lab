@@ -1,5 +1,5 @@
 import type { PatternKind } from '../../types'
-import { describeRuleCondition, type PracticeHandMatch, type PracticeVerdict } from './practice'
+import { describePracticeMatch, type PracticeHandMatch, type PracticeVerdict } from './practice'
 
 /** Id del chip "Mano no jugable" (no es una regla del Lab). */
 export const UNPLAYABLE_ID = 'unplayable'
@@ -60,7 +60,7 @@ export function PracticeBoard({ openings, problems, activeId, caseIndex, unplaya
  * botón apretado, y las cartas que el texto ya nombra no se repiten.
  */
 function RuleExplanation({ match, caseIndex }: { match: PracticeHandMatch; caseIndex: number }) {
-  const condition = describeRuleCondition(match.requirementLabel)
+  const condition = describePracticeMatch(match, caseIndex)
   const cards = (match.cases[caseIndex]?.cards ?? []).filter((card) => !condition.includes(card.name))
 
   return (

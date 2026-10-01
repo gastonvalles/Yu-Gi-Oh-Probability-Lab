@@ -152,7 +152,7 @@
   @media (hover: hover) and (pointer: fine) {
     .deck-zone-card:hover::after {
       opacity: 1;
-      animation: deck-zone-card-marching-ants 0.5s linear infinite;
+      animation: deck-zone-card-marching-ants var(--motion-duration) linear infinite;
     }
   }
 

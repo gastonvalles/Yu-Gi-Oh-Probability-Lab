@@ -12,7 +12,29 @@
 @import "./styles/practice.css";
 @import "./styles/comparison.css";
 
+/* La librería de avisos inyecta sus estilos fuera de las capas de Tailwind. */
+.app-toaster :where(*) {
+  animation-duration: var(--motion-duration) !important;
+  animation-delay: 0s !important;
+  transition-duration: var(--motion-duration) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-toaster :where(*) {
+    animation-duration: 1ms !important;
+    transition: none !important;
+  }
+
+  .app-skeleton,
+  .animate-spin {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 @theme inline {
+  --default-transition-duration: var(--motion-duration);
+  --animate-spin: spin var(--motion-duration) linear infinite;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card-background: var(--card-background);
