@@ -321,18 +321,24 @@ export function getPracticeVerdict(openingCount: number, problemCount: number): 
 
 const RULE_PREFIX = /^La regla(, sin reutilizar la misma carta entre condiciones,)? se cumple si /
 
-/** La condición de la regla sin el "La regla se cumple si" (queda: "Abrís 1 copia de …"). */
+/** Listas largas de cartas ("(A / B / C / D)") se resumen en cuántas son: las cartas de la mano ya se muestran aparte. */
+const CARD_POOL = /\(([^()]*\/[^()]*)\)/g
+
+/** La condición de la regla sin el "La regla se cumple si" y sin listas interminables. */
 export function describeRuleCondition(requirementLabel: string): string {
   const match = RULE_PREFIX.exec(requirementLabel)
+  const text = requirementLabel.replace(CARD_POOL, (_, pool: string) => {
+    const count = pool.split('/').length
+    return count > 3 ? `(${count} cartas)` : `(${pool})`
+  })
 
   if (!match) {
-    return requirementLabel
+    return text
   }
 
-  const rest = requirementLabel.slice(match[0].length)
-  const sentence = `${rest.charAt(0).toUpperCase()}${rest.slice(1)}`
+  const rest = text.slice(match[0].length)
 
-  return match[1] ? `Sin reutilizar la misma carta entre condiciones: ${rest}` : sentence
+  return match[1] ? `Sin repetir carta: ${rest}` : `${rest.charAt(0).toUpperCase()}${rest.slice(1)}`
 }
 
 /** Distingue las cartas que salieron en la mano del mínimo exigido por la regla. */
