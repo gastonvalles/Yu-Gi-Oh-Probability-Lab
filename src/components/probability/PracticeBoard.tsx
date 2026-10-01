@@ -30,11 +30,39 @@ interface PracticeBoardProps {
 
 /** Salidas y problemas: cada uno aparece en cuanto la mano cumple sus condiciones. */
 export function PracticeBoard({ openings, problems, activeId, onToggle }: PracticeBoardProps) {
+  const active = [...openings, ...problems].find((match) => match.patternId === activeId) ?? null
+
   return (
-    <div className="practice-groups">
-      <RuleGroup kind="opening" matches={openings} activeId={activeId} onToggle={onToggle} />
-      <RuleGroup kind="problem" matches={problems} activeId={activeId} onToggle={onToggle} />
-    </div>
+    <>
+      <div className="practice-groups">
+        <RuleGroup kind="opening" matches={openings} activeId={activeId} onToggle={onToggle} />
+        <RuleGroup kind="problem" matches={problems} activeId={activeId} onToggle={onToggle} />
+      </div>
+      {active ? <RuleExplanation key={active.patternId} match={active} /> : null}
+    </>
+  )
+}
+
+/** Qué significa la regla y con qué cartas de la mano se cumple. */
+function RuleExplanation({ match }: { match: PracticeHandMatch }) {
+  const cards = [
+    ...new Set(
+      match.assignments.filter((assignment) => assignment.kind === 'include').flatMap((assignment) => assignment.cards.map((card) => card.name)),
+    ),
+  ]
+
+  return (
+    <section className="practice-explain" data-kind={match.kind} aria-live="polite">
+      <h4>{match.name}</h4>
+      <p>{match.requirementLabel}</p>
+      {cards.length > 0 ? (
+        <ul aria-label="Cartas de tu mano">
+          {cards.map((name) => (
+            <li key={name}>{name}</li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
   )
 }
 

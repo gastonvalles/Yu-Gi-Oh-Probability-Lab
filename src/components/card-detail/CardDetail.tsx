@@ -8,6 +8,7 @@ import { Button } from '../ui/Button'
 import { CloseButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
 import { Skeleton } from '../ui/Skeleton'
+import { buildCardSummary } from './card-summary'
 import { buildZoneActionEntries } from './card-zone-actions'
 import { DeckCopyControls, type DeckCopyActions } from './DeckCopyControls'
 
@@ -43,7 +44,7 @@ export function CardDetail({
   const cardFacts = buildCardFacts(card)
   const formatTags = buildCardFormatTags(card, deckFormat)
   const detailTags = card.archetype ? [...formatTags, card.archetype] : formatTags
-  const mobileSummary = isMobileLayout ? buildMobileSummary(card) : null
+  const mobileSummary = isMobileLayout ? buildCardSummary(card) : null
   const mobileMetaParts = [
     card.archetype,
     deckFormat === 'genesys' || card.genesys.points !== null ? `${card.genesys.points ?? 0} Genesys` : null,
@@ -470,39 +471,6 @@ function buildCardFacts(card: ApiCardSearchResult): CardFact[] {
   }
 
   return facts.slice(0, 6)
-}
-
-function buildMobileSummary(card: ApiCardSearchResult): {
-  typeLine: string
-  statLine: string | null
-} {
-  const typeParts = [`[${card.cardType}]`]
-  const subtypeParts = [card.race, card.attribute].filter((value): value is string => Boolean(value))
-
-  if (subtypeParts.length > 0) {
-    typeParts.push(subtypeParts.join('/'))
-  }
-
-  const statParts: string[] = []
-
-  if (card.linkValue !== null) {
-    statParts.push(`[Link-${card.linkValue}]`)
-  } else if (card.level !== null) {
-    statParts.push(`[★${card.level}]`)
-  }
-
-  if (card.linkValue !== null) {
-    if (card.atk) {
-      statParts.push(`${card.atk}`)
-    }
-  } else if (card.atk || card.def) {
-    statParts.push(`${card.atk ?? '?'}/${card.def ?? '?'}`)
-  }
-
-  return {
-    typeLine: typeParts.join(' '),
-    statLine: statParts.length > 0 ? statParts.join(' / ') : null,
-  }
 }
 
 function FactIconGlyph({ kind }: { kind: FactIcon }) {

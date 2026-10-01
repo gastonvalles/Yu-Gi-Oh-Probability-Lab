@@ -15,6 +15,7 @@ import {
   type PracticeReveal,
 } from './practice'
 import { PracticeBoard, PracticeVerdictChip } from './PracticeBoard'
+import { PracticeCardFocus } from './PracticeCardFocus'
 import { PracticeDeckPile } from './PracticeDeckPile'
 import { PracticeHand } from './PracticeHand'
 import { usePracticeTable } from './use-practice-table'
@@ -70,6 +71,7 @@ export function PracticeSection(props: PracticeSectionProps) {
   const table = usePracticeTable({ deck, handSize, reveal, reducedMotion: prefersReducedMotion() })
 
   const [activeRuleId, setActiveRuleId] = useState<string | null>(null)
+  const [inspected, setInspected] = useState<{ card: PracticeHandCard; rect: DOMRect } | null>(null)
   const [flash, setFlash] = useState<ReadonlySet<string>>(EMPTY_IDS)
   const seenRules = useRef<ReadonlySet<string>>(EMPTY_IDS)
 
@@ -85,6 +87,7 @@ export function PracticeSection(props: PracticeSectionProps) {
 
   useEffect(() => {
     setActiveRuleId(null)
+    setInspected(null)
   }, [table.shuffleKey])
 
   // Cuando aparece una regla, las cartas que la completan brillan un instante.
@@ -122,9 +125,6 @@ export function PracticeSection(props: PracticeSectionProps) {
   return (
     <section className="practice-table" aria-label="Práctica">
       <header className="practice-topbar">
-        <IconButton size="lg" aria-label="Nueva mano" title="Nueva mano" onClick={table.deal}>
-          <RefreshIcon />
-        </IconButton>
         <PracticeVerdictChip verdict={verdict} />
       </header>
 
@@ -142,16 +142,6 @@ export function PracticeSection(props: PracticeSectionProps) {
       </div>
 
       <div className="practice-tray" data-verdict={verdict ?? 'none'}>
-        <div className="practice-tray-top">
-          <PracticeDeckPile
-            ref={pileRef}
-            canDraw={table.canDrawSecond}
-            isSecond={table.isSecond}
-            shuffleKey={table.shuffleKey}
-            dealt={table.dealt}
-            onDraw={table.drawSecond}
-          />
-        </div>
         <PracticeHand
           cards={table.cards}
           slots={table.isSecond ? handSize + 1 : handSize}
@@ -161,8 +151,26 @@ export function PracticeSection(props: PracticeSectionProps) {
           highlighted={highlighted}
           getDeckRect={getDeckRect}
           onReorder={table.reorder}
+          onInspect={(card, rect) => setInspected({ card, rect })}
         />
+        <div className="practice-dock">
+          <PracticeDeckPile
+            ref={pileRef}
+            canDraw={table.canDrawSecond}
+            isSecond={table.isSecond}
+            shuffleKey={table.shuffleKey}
+            dealt={table.dealt}
+            onDraw={table.drawSecond}
+          />
+          <IconButton size="lg" className="practice-flat-button" aria-label="Nueva mano" title="Nueva mano" onClick={table.deal}>
+            <RefreshIcon />
+          </IconButton>
+        </div>
       </div>
+
+      {inspected ? (
+        <PracticeCardFocus card={inspected.card} origin={inspected.rect} onClose={() => setInspected(null)} />
+      ) : null}
     </section>
   )
 }

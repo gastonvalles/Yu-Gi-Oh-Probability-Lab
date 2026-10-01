@@ -10,8 +10,8 @@ import {
 } from './practice'
 
 /** Pausa antes de repartir la primera carta (mientras el mazo se baraja) y entre carta y carta. */
-const FIRST_DEAL_MS = 420
-const NEXT_DEAL_MS = 200
+const FIRST_DEAL_MS = 90
+const NEXT_DEAL_MS = 55
 
 interface Table {
   hand: PracticeHandState

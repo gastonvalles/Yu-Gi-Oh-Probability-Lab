@@ -19,12 +19,12 @@ import { useElementWidth } from '../../app/use-element-width'
 import { CardArt } from '../CardArt'
 import type { PracticeHandCard } from './practice'
 
-/** Espacio sobre las cartas para que puedan levantarse sin recortarse. */
-const LIFT_ROOM = 30
+/** Espacio sobre las cartas: el abanico sube un poco en el centro. */
+const TOP_ROOM = 8
 /** Espacio bajo las cartas: el abanico baja en los extremos y las cartas inclinadas sobresalen. */
 const FAN_ROOM = 22
 const DRAG_THRESHOLD = 6
-const DEAL_MS = 460
+const DEAL_MS = 240
 
 interface PracticeHandProps {
   cards: PracticeHandCard[]
@@ -38,6 +38,8 @@ interface PracticeHandProps {
   /** Rect del mazo: de ahí salen las cartas al repartirse. */
   getDeckRect: () => DOMRect | null
   onReorder: (ids: string[]) => void
+  /** Toque sin arrastre: pide ver la carta en grande. */
+  onInspect: (card: PracticeHandCard, rect: DOMRect) => void
 }
 
 interface DragState {
@@ -50,13 +52,12 @@ function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
 }
 
-/** Mano en abanico: se reordena arrastrando, se levanta con un toque y se reparte desde el mazo. */
-export function PracticeHand({ cards, slots, sizeSlots, maxCardWidth, fanDegrees, highlighted, getDeckRect, onReorder }: PracticeHandProps) {
+/** Mano en abanico: se reordena arrastrando, un toque abre la carta y se reparte desde el mazo. */
+export function PracticeHand({ cards, slots, sizeSlots, maxCardWidth, fanDegrees, highlighted, getDeckRect, onReorder, onInspect }: PracticeHandProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const width = useElementWidth(containerRef)
   const layout = computeHandLayout(width, slots, maxCardWidth, sizeSlots)
   const [drag, setDrag] = useState<DragState | null>(null)
-  const [liftedId, setLiftedId] = useState<string | null>(null)
   const dragRef = useRef<{ id: string; pointerId: number; startX: number; startY: number; grabDx: number; moved: boolean } | null>(null)
   const cardsRef = useRef(cards)
   cardsRef.current = cards
@@ -96,7 +97,6 @@ export function PracticeHand({ cards, slots, sizeSlots, maxCardWidth, fanDegrees
     }
 
     state.moved = true
-    setLiftedId(null)
     const rect = containerRef.current.getBoundingClientRect()
     const current = layoutRef.current
     const x = event.clientX - rect.left - state.grabDx
@@ -122,8 +122,10 @@ export function PracticeHand({ cards, slots, sizeSlots, maxCardWidth, fanDegrees
     dragRef.current = null
     setDrag(null)
 
-    if (!state.moved && event.type === 'pointerup') {
-      setLiftedId((current) => (current === id ? null : id))
+    const tapped = cardsRef.current.find((card) => card.drawId === id)
+
+    if (!state.moved && event.type === 'pointerup' && tapped) {
+      onInspect(tapped, event.currentTarget.getBoundingClientRect())
     }
   }
 
@@ -138,7 +140,11 @@ export function PracticeHand({ cards, slots, sizeSlots, maxCardWidth, fanDegrees
       onReorder(moveItem(ids, from, from + 1))
     } else if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
-      setLiftedId((current) => (current === id ? null : id))
+      const card = cardsRef.current.find((entry) => entry.drawId === id)
+
+      if (card) {
+        onInspect(card, event.currentTarget.getBoundingClientRect())
+      }
     }
   }
 
@@ -148,19 +154,18 @@ export function PracticeHand({ cards, slots, sizeSlots, maxCardWidth, fanDegrees
       className="practice-hand"
       role="list"
       aria-label="Mano"
-      style={{ height: layout.cardHeight + LIFT_ROOM + FAN_ROOM }}
+      style={{ height: layout.cardHeight + TOP_ROOM + FAN_ROOM }}
     >
       {width > 0
         ? cards.map((card, index) => {
             const isDragged = drag?.id === card.drawId
-            const isLifted = liftedId === card.drawId
             const angle = fanAngle(index, slots, fanDegrees)
             const arch = Math.abs(index - (slots - 1) / 2) ** 2 * 1.6
             const x = isDragged ? drag.x : slotLeft(layout, index)
-            const y = LIFT_ROOM + (isDragged ? drag.y - 16 : isLifted ? -LIFT_ROOM + 4 : arch)
+            const y = TOP_ROOM + (isDragged ? drag.y - 16 : arch)
             const transform = isDragged
               ? `translate3d(${x}px, ${y}px, 0) rotate(0deg) scale(1.1)`
-              : `translate3d(${x}px, ${y}px, 0) rotate(${isLifted ? 0 : angle}deg) scale(${isLifted ? 1.12 : 1})`
+              : `translate3d(${x}px, ${y}px, 0) rotate(${angle}deg)`
 
             return (
               <HandCard
@@ -168,8 +173,8 @@ export function PracticeHand({ cards, slots, sizeSlots, maxCardWidth, fanDegrees
                 card={card}
                 layout={layout}
                 transform={transform}
-                zIndex={isDragged ? 100 : isLifted ? 60 : index + 1}
-                state={isDragged ? 'dragging' : isLifted ? 'lifted' : 'rest'}
+                zIndex={isDragged ? 100 : index + 1}
+                state={isDragged ? 'dragging' : 'rest'}
                 glow={highlighted.has(card.drawId)}
                 dim={hasHighlight && !highlighted.has(card.drawId)}
                 getDeckRect={getDeckRect}
@@ -191,7 +196,7 @@ interface HandCardProps {
   layout: HandLayout
   transform: string
   zIndex: number
-  state: 'rest' | 'lifted' | 'dragging'
+  state: 'rest' | 'dragging'
   glow: boolean
   dim: boolean
   getDeckRect: () => DOMRect | null
@@ -237,7 +242,7 @@ function HandCard({
     const area = container.getBoundingClientRect()
     const finalTransform = finalTransformRef.current
     const fromX = deck ? deck.left + deck.width / 2 - area.left - layout.cardWidth / 2 : layout.startX
-    const fromY = deck ? deck.top + deck.height / 2 - area.top - layout.cardHeight / 2 : LIFT_ROOM + 40
+    const fromY = deck ? deck.top + deck.height / 2 - area.top - layout.cardHeight / 2 : TOP_ROOM + 40
     const startScale = deck ? Math.max(0.3, deck.width / layout.cardWidth) : 0.6
     const target = /translate3d\((-?[\d.]+)px, (-?[\d.]+)px/.exec(finalTransform)
     const toX = target ? Number(target[1]) : fromX
