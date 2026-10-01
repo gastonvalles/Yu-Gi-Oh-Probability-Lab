@@ -170,7 +170,12 @@ describe('descripción de la regla', () => {
   it('conserva el aviso de no reutilizar cartas', () => {
     expect(
       describeRuleCondition('La regla, sin reutilizar la misma carta entre condiciones, se cumple si abrís 1 copia de A y abrís 1 copia de B.'),
-    ).toBe('Sin reutilizar la misma carta entre condiciones: abrís 1 copia de A y abrís 1 copia de B.')
+    ).toBe('Sin repetir carta: abrís 1 copia de A y abrís 1 copia de B.')
+  })
+
+  it('resume las listas largas de cartas', () => {
+    expect(describeRuleCondition('La regla se cumple si abrís 1 copia de (A / B / C / D / E).')).toBe('Abrís 1 copia de (5 cartas).')
+    expect(describeRuleCondition('La regla se cumple si abrís 1 copia de (A / B).')).toBe('Abrís 1 copia de (A / B).')
   })
 
   it('si el texto no tiene ese formato, lo deja igual', () => {
