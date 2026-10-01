@@ -3,6 +3,7 @@ import { useId, useState, type ReactNode } from 'react'
 import { formatInteger, formatShortPercent } from '../../app/utils'
 import type { PatternKind } from '../../types'
 import { Button } from '../ui/Button'
+import { IconButton } from '../ui/IconButton'
 import { ChevronLeftIcon, LockIcon, PencilIcon, PlusIcon } from '../ui/icons'
 import { Switch } from '../ui/Switch'
 import { LabSection } from './LabSection'
@@ -21,6 +22,8 @@ interface LabRuleListProps {
   groups: RuleEntryGroups
   onEditRule: (patternId: string) => void
   onToggleGenericRule: (presetId: string, enabled: boolean) => void
+  /** Abre una copia editable de una regla genérica (cantidades de copias, cartas, etc.). */
+  onCustomizeGenericRule: (presetId: string) => void
   /** Cambia el nombre de una regla universal (vacío = el original). */
   onRenameSystemRule: (presetId: string, name: string) => void
   onCreateCustom: () => void
@@ -30,6 +33,7 @@ export function LabRuleList({
   groups,
   onEditRule,
   onToggleGenericRule,
+  onCustomizeGenericRule,
   onRenameSystemRule,
   onCreateCustom,
 }: LabRuleListProps) {
@@ -88,17 +92,27 @@ export function LabRuleList({
             title="Genéricas"
             collapsible
             badge={<span className="lab-tier-badge">{formatInteger(enabledGeneric)} activas</span>}
-            description="Aplican a la mayoría de los decks. Apagá las que no tengan sentido para el tuyo."
+            description="Aplican a la mayoría de los decks. Apagalas o editá una copia para ajustar cantidades."
             entries={visible(groups.generic)}
             renderRow={(entry) => (
               <RuleRow
                 entry={entry}
                 trailing={
-                  <Switch
+                  <>
+                    <IconButton
+                      size="sm"
+                      aria-label={`Editar copia de ${entry.name}`}
+                      title="Editar una copia (copias de cartas, condiciones)"
+                      onClick={() => entry.presetId && onCustomizeGenericRule(entry.presetId)}
+                    >
+                      <PencilIcon />
+                    </IconButton>
+                    <Switch
                     checked={entry.enabled}
                     label={`${entry.enabled ? 'Desactivar' : 'Activar'} ${entry.name}`}
                     onChange={(enabled) => entry.presetId && onToggleGenericRule(entry.presetId, enabled)}
-                  />
+                    />
+                  </>
                 }
               />
             )}

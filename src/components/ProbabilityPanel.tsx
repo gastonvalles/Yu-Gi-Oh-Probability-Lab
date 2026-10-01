@@ -65,6 +65,7 @@ export function ProbabilityPanel({
   const lab = useProbabilityLab(derivedMainCards, patterns, disabledGenericRuleIds, handSize, isEditingDeck, systemRuleNames)
   const [activeTurnView, setActiveTurnView] = useState<TurnView>('average')
   const [drawerMode, setDrawerMode] = useState<DrawerMode | null>(null)
+  const [replacedGenericId, setReplacedGenericId] = useState<string | null>(null)
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false)
   const [pendingDeletePatternId, setPendingDeletePatternId] = useState<string | null>(null)
   const [kpiModalRole, setKpiModalRole] = useState<KpiRole | null>(null)
@@ -109,6 +110,7 @@ export function ProbabilityPanel({
   const closeDrawer = () => {
     draft.close()
     setDrawerMode(null)
+    setReplacedGenericId(null)
     setConfirmDiscardOpen(false)
   }
 
@@ -123,6 +125,21 @@ export function ProbabilityPanel({
   const handleOpenCustomCreate = () => {
     draft.open(createPattern('', undefined, 'opening'))
     setDrawerMode('custom-create')
+  }
+
+  // Editar una genérica = trabajar sobre una copia propia: al guardarla, la original se apaga.
+  const handleCustomizeGeneric = (presetId: string) => {
+    const preset = lab.availablePresets.find((candidate) => candidate.id === presetId)
+
+    if (preset) {
+      draft.open({
+        ...preset.pattern,
+        id: createPattern('').id,
+        conditions: preset.pattern.conditions.map((condition) => ({ ...condition })),
+      })
+      setReplacedGenericId(presetId)
+      setDrawerMode('custom-create')
+    }
   }
 
   const handleEditRule = (patternId: string) => {
@@ -148,11 +165,15 @@ export function ProbabilityPanel({
 
     if (drawerMode === 'custom-create') {
       patternActions.appendPattern(saved)
+
+      if (replacedGenericId) {
+        onSetGenericRuleEnabled(replacedGenericId, false)
+      }
     } else {
       patternActions.replacePatterns(patterns.map((pattern) => (pattern.id === saved.id ? saved : pattern)))
     }
 
-    showToast(drawerMode === 'custom-create' ? 'Regla creada' : 'Regla guardada')
+    showToast(replacedGenericId ? 'Copia guardada en Tus reglas' : drawerMode === 'custom-create' ? 'Regla creada' : 'Regla guardada')
     closeDrawer()
   }
 
@@ -233,6 +254,7 @@ export function ProbabilityPanel({
             groups={ruleGroups}
             onEditRule={handleEditRule}
             onToggleGenericRule={onSetGenericRuleEnabled}
+            onCustomizeGenericRule={handleCustomizeGeneric}
             onRenameSystemRule={onRenameSystemRule}
             onCreateCustom={handleOpenCustomCreate}
           />
