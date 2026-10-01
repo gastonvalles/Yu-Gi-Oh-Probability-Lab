@@ -74,6 +74,7 @@ export function CardDetailModal({
       flush
       hideCloseButton
       ariaLabel={`Detalle de ${card.name}`}
+      className={layoutMode === 'mobile' ? 'card-detail-modal-mobile' : undefined}
     >
       {isReady ? (
         <CardDetail

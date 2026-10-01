@@ -28,11 +28,83 @@
     color: var(--text-main);
   }
 
+  /* Ventana compacta anclada abajo (zona del pulgar): la X queda cerca y el texto scrollea adentro. */
+  .app-modal-panel.card-detail-modal-mobile {
+    align-self: end;
+    width: min(28rem, 100%);
+    height: min(31rem, calc(100dvh - 1rem));
+    margin-bottom: env(safe-area-inset-bottom, 0px);
+    border-radius: 1.1rem;
+  }
+
+  .card-detail-mobile {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    background: rgb(var(--card-background-rgb));
+    color: var(--text-main);
+  }
+
+  .card-detail-mobile-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.6rem;
+    min-height: 0;
+    padding: 0.5rem 0.75rem 0.7rem;
+  }
+
+  .card-detail-mobile-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .card-detail-mobile-top {
+    display: grid;
+    grid-template-columns: minmax(0, 34%) minmax(0, 1fr);
+    align-items: start;
+    gap: 0.75rem;
+  }
+
+  /* X más grande y con fondo: un blanco fácil de acertar con el pulgar. */
+  .ui-icon-button.ui-close-button.card-detail-close {
+    flex: none;
+    width: 2.9rem;
+    height: 2.9rem;
+    border: 1px solid var(--border-subtle);
+    background: rgb(var(--secondary-rgb) / 0.9);
+    color: var(--text-main);
+  }
+
+  .ui-icon-button.ui-close-button.card-detail-close svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
   .card-detail-effect {
-    border-top: 1px solid rgb(var(--border-rgb) / 0.9);
-    padding-top: 0.6rem;
+    flex: 1;
+    min-height: 4.5rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid var(--border-subtle);
+    border-radius: 0.6rem;
+    background: rgb(var(--background-rgb) / 0.55);
+    padding: 0.6rem 0.7rem;
     font-size: 0.86rem;
     line-height: 1.42;
     color: var(--text-main);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .card-detail-effect:focus-visible {
+    outline: 2px solid rgb(var(--primary-rgb) / 0.6);
+    outline-offset: 1px;
+  }
+
+  .card-detail-mobile .card-detail-footer {
+    padding: 0.6rem 0.75rem;
   }
 }
