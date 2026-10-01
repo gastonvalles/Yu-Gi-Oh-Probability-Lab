@@ -290,7 +290,7 @@
     height: 100%;
     border-radius: inherit;
     background: linear-gradient(90deg, rgb(var(--lab-tone-rgb) / 0.55), rgb(var(--lab-tone-rgb)));
-    transition: width 300ms ease;
+    transition: width var(--motion-duration) ease;
   }
 
   .lab-gauge-mark {
@@ -354,7 +354,7 @@
   .lab-stack-segment {
     height: 100%;
     cursor: pointer;
-    transition: width 300ms ease, filter 150ms ease, opacity 150ms ease;
+    transition: width var(--motion-duration) ease, filter 150ms ease, opacity 150ms ease;
   }
 
   .lab-stack-bar:has(.lab-stack-segment[data-active='true']) .lab-stack-segment:not([data-active='true']) {
@@ -608,7 +608,7 @@
     color: var(--text-main);
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
-    transition: width 300ms ease;
+    transition: width var(--motion-duration) ease;
   }
 
   .lab-distribution-segment[data-bucket='0'] {
@@ -963,7 +963,7 @@
     display: block;
     height: 100%;
     background: rgb(var(--lab-kind-rgb) / 0.85);
-    transition: width 300ms ease;
+    transition: width var(--motion-duration) ease;
   }
 
   .lab-rule-empty {

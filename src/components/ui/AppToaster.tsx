@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast'
 export function AppToaster() {
   return (
     <Toaster
+      containerClassName="app-toaster"
       position="bottom-right"
       gutter={10}
       containerStyle={{
