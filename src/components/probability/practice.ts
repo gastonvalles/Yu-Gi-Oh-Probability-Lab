@@ -1,4 +1,5 @@
 import type { DerivedDeckGroup } from '../../app/deck-groups'
+import { getSystemRuleId } from '../../app/pattern-presets'
 import {
   enumeratePatternCases,
   getMatchedRequirementCount,
@@ -332,6 +333,17 @@ export function describeRuleCondition(requirementLabel: string): string {
   const sentence = `${rest.charAt(0).toUpperCase()}${rest.slice(1)}`
 
   return match[1] ? `Sin reutilizar la misma carta entre condiciones: ${rest}` : sentence
+}
+
+/** Distingue las cartas que salieron en la mano del mínimo exigido por la regla. */
+export function describePracticeMatch(match: PracticeHandMatch, caseIndex: number): string {
+  if (match.patternId === getSystemRuleId('dead_cards_problem')) {
+    const cards = match.cases[caseIndex]?.cards ?? match.cases[0]?.cards ?? []
+    const total = cards.reduce((count, card) => count + card.copies, 0)
+    return `Abrís ${total} Bricks/Garnets.`
+  }
+
+  return describeRuleCondition(match.requirementLabel)
 }
 
 /**
