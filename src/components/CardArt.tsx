@@ -88,7 +88,7 @@ export function CardArt({
         <img
           ref={imageRef}
           className={[
-            'card-art-media transition-opacity duration-200',
+            'card-art-media transition-opacity duration-150',
             isImageLoaded ? 'opacity-100' : 'opacity-0',
             className,
           ].join(' ').trim()}

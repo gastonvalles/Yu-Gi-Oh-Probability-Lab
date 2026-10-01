@@ -1,6 +1,9 @@
 import type { PatternKind } from '../../types'
 import { describePracticeMatch, type PracticeHandMatch, type PracticeVerdict } from './practice'
 
+/** Id del chip "Mano no jugable" (no es una regla del Lab). */
+export const UNPLAYABLE_ID = 'unplayable'
+
 const VERDICT_WORD: Record<PracticeVerdict, string> = {
   clean: 'Limpia',
   'with-problem': 'Con problema',
@@ -27,19 +30,26 @@ interface PracticeBoardProps {
   activeId: string | null
   /** Qué caso (forma de cumplirla) de la regla activa se está mostrando. */
   caseIndex: number
+  /** Mano sin salida: con qué frecuencia pasa (ej. "23.3%"). null si la mano es jugable. */
+  unplayableOdds: string | null
   onToggle: (patternId: string) => void
 }
 
 /** Salidas y problemas: cada uno aparece en cuanto la mano cumple sus condiciones. */
-export function PracticeBoard({ openings, problems, activeId, caseIndex, onToggle }: PracticeBoardProps) {
+export function PracticeBoard({ openings, problems, activeId, caseIndex, unplayableOdds, onToggle }: PracticeBoardProps) {
   const active = [...openings, ...problems].find((match) => match.patternId === activeId) ?? null
 
   return (
     <>
       <div className="practice-groups">
         <RuleGroup kind="opening" matches={openings} activeId={activeId} onToggle={onToggle} />
-        <RuleGroup kind="problem" matches={problems} activeId={activeId} onToggle={onToggle} />
+        <RuleGroup kind="problem" matches={problems} activeId={activeId} unplayable={unplayableOdds !== null} onToggle={onToggle} />
       </div>
+      {activeId === UNPLAYABLE_ID && unplayableOdds ? (
+        <section className="practice-explain" data-kind="problem" aria-live="polite" aria-label="Mano no jugable">
+          <p>Puede pasar en el {unplayableOdds} de las manos.</p>
+        </section>
+      ) : null}
       {active ? <RuleExplanation key={active.patternId} match={active} caseIndex={caseIndex} /> : null}
     </>
   )
@@ -76,14 +86,16 @@ function RuleGroup({
   kind,
   matches,
   activeId,
+  unplayable = false,
   onToggle,
 }: {
   kind: PatternKind
   matches: PracticeHandMatch[]
   activeId: string | null
+  unplayable?: boolean
   onToggle: (patternId: string) => void
 }) {
-  if (matches.length === 0) {
+  if (matches.length === 0 && !(unplayable && kind === 'problem')) {
     return null
   }
 
@@ -91,6 +103,19 @@ function RuleGroup({
     <section className="practice-group" data-kind={kind} aria-label={kind === 'opening' ? 'Salidas' : 'Problemas'}>
       <h4>{kind === 'opening' ? 'Salidas' : 'Problemas'}</h4>
       <ul>
+        {unplayable && kind === 'problem' ? (
+          <li>
+            <button
+              type="button"
+              className="practice-rule"
+              data-kind="problem"
+              aria-pressed={activeId === UNPLAYABLE_ID}
+              onClick={() => onToggle(UNPLAYABLE_ID)}
+            >
+              Mano no jugable
+            </button>
+          </li>
+        ) : null}
         {matches.map((match) => (
           <li key={match.patternId}>
             <button

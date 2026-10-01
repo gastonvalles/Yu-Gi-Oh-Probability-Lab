@@ -34,7 +34,8 @@ function resultOf(ids: string[]) {
 
 function board(ids: string[]) {
   const result = resultOf(ids)
-  return <PracticeBoard openings={[]} problems={result.problemMatches} activeId={rule.id} caseIndex={0} onToggle={vi.fn()} />
+  return <PracticeBoard openings={[]} problems={result.problemMatches} activeId={rule.id} caseIndex={0}
+          unplayableOdds={null} onToggle={vi.fn()} />
 }
 
 describe('explicación de Bricks/Garnets en práctica', () => {

@@ -307,7 +307,7 @@
   }
 
   .app-dialog-enter {
-    animation: app-dialog-enter 180ms ease-out;
+    animation: app-dialog-enter 150ms ease-out;
   }
 
   .deck-builder-meta-field {

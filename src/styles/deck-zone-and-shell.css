@@ -586,7 +586,7 @@
 
   .deck-mode-step-transition {
     min-width: 0;
-    animation: deck-mode-step-enter-forward 180ms ease-out both;
+    animation: deck-mode-step-enter-forward 150ms ease-out both;
     will-change: opacity, transform;
   }
 
@@ -641,7 +641,7 @@
     overflow: hidden;
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
-    animation: pattern-editor-drawer-enter 190ms ease-out both;
+    animation: pattern-editor-drawer-enter 150ms ease-out both;
   }
 
   @media (min-width: 1101px) {
