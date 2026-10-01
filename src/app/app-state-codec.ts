@@ -80,6 +80,7 @@ export function toPortableConfig(state: AppState): PortableConfig {
       minimumConditionMatches: pattern.minimumConditionMatches,
       reusePolicy: pattern.reusePolicy,
       needsReview: pattern.needsReview === true,
+      ...(pattern.systemRuleId ? { systemRuleId: pattern.systemRuleId } : {}),
       conditions: pattern.conditions.map<PortableCondition>((condition) => ({
         matcher: condition.matcher,
         quantity: condition.quantity,
@@ -164,6 +165,7 @@ export function fromPortableConfig(value: unknown): AppState {
       minimumConditionMatches,
       reusePolicy,
       needsReview,
+      ...(typeof rawPattern.systemRuleId === 'string' && rawPattern.systemRuleId ? { systemRuleId: rawPattern.systemRuleId } : {}),
       conditions,
     }
   })

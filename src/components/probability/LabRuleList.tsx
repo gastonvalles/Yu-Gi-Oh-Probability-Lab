@@ -3,7 +3,6 @@ import { useId, useState, type ReactNode } from 'react'
 import { formatInteger, formatShortPercent } from '../../app/utils'
 import type { PatternKind } from '../../types'
 import { Button } from '../ui/Button'
-import { IconButton } from '../ui/IconButton'
 import { ChevronLeftIcon, LockIcon, PencilIcon, PlusIcon } from '../ui/icons'
 import { Switch } from '../ui/Switch'
 import { LabSection } from './LabSection'
@@ -22,8 +21,8 @@ interface LabRuleListProps {
   groups: RuleEntryGroups
   onEditRule: (patternId: string) => void
   onToggleGenericRule: (presetId: string, enabled: boolean) => void
-  /** Abre una copia editable de una regla genérica (cantidades de copias, cartas, etc.). */
-  onCustomizeGenericRule: (presetId: string) => void
+  /** Abre el editor de una regla genérica (cantidades de copias, cartas, etc.). */
+  onEditGenericRule: (entry: RuleEntry) => void
   /** Cambia el nombre de una regla universal (vacío = el original). */
   onRenameSystemRule: (presetId: string, name: string) => void
   onCreateCustom: () => void
@@ -33,7 +32,7 @@ export function LabRuleList({
   groups,
   onEditRule,
   onToggleGenericRule,
-  onCustomizeGenericRule,
+  onEditGenericRule,
   onRenameSystemRule,
   onCreateCustom,
 }: LabRuleListProps) {
@@ -92,27 +91,19 @@ export function LabRuleList({
             title="Genéricas"
             collapsible
             badge={<span className="lab-tier-badge">{formatInteger(enabledGeneric)} activas</span>}
-            description="Aplican a la mayoría de los decks. Apagalas o editá una copia para ajustar cantidades."
+            description="Aplican a la mayoría de los decks. Apagalas o editalas para ajustar cantidades de copias."
             entries={visible(groups.generic)}
             renderRow={(entry) => (
               <RuleRow
                 entry={entry}
+                showEditIcon
+                onClick={() => onEditGenericRule(entry)}
                 trailing={
-                  <>
-                    <IconButton
-                      size="sm"
-                      aria-label={`Editar copia de ${entry.name}`}
-                      title="Editar una copia (copias de cartas, condiciones)"
-                      onClick={() => entry.presetId && onCustomizeGenericRule(entry.presetId)}
-                    >
-                      <PencilIcon />
-                    </IconButton>
-                    <Switch
+                  <Switch
                     checked={entry.enabled}
                     label={`${entry.enabled ? 'Desactivar' : 'Activar'} ${entry.name}`}
                     onChange={(enabled) => entry.presetId && onToggleGenericRule(entry.presetId, enabled)}
-                    />
-                  </>
+                  />
                 }
               />
             )}
@@ -262,6 +253,31 @@ function RuleRow({
   const state = {
     'data-kind': entry.kind,
     'data-enabled': entry.enabled && entry.appliesToView && !entry.missingCards ? 'true' : 'false',
+  }
+
+  if (onClick && trailing) {
+    // El interruptor no puede ir dentro de un botón: la fila entera es el botón y el interruptor frena el toque.
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        className="lab-rule"
+        {...state}
+        aria-label={`${actionLabel} regla ${entry.name}: ${formatRuleValue(entry)}`}
+        onClick={onClick}
+        onKeyDown={(event) => {
+          if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+            event.preventDefault()
+            onClick()
+          }
+        }}
+      >
+        {body}
+        <span className="lab-rule-trailing" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+          {trailing}
+        </span>
+      </div>
+    )
   }
 
   if (onClick) {

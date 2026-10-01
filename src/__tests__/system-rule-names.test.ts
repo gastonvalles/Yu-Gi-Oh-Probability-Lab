@@ -58,3 +58,28 @@ describe('nombres propios de reglas universales', () => {
     expect(fromPortableConfig({ ...portable, systemRuleNames: { a: 5, b: '  ', c: 'ok' } }).systemRuleNames).toEqual({ c: 'ok' })
   })
 })
+
+describe('versión editada de una regla genérica', () => {
+  const generic = buildPatternPresets([]).find((preset) => preset.id === 'starter_extender_opening')!
+  const edited = { ...generic.pattern, id: 'edited', name: 'Mi seguimiento', systemRuleId: generic.id, conditions: generic.pattern.conditions.map((c, i) => ({ ...c, quantity: i === 0 ? 2 : 1 })) }
+
+  it('reemplaza a la genérica del catálogo (no cuenta las dos)', () => {
+    const names = buildActiveRuleSet([], [edited], []).map((pattern) => pattern.name)
+
+    expect(names).toContain('Mi seguimiento')
+    expect(names).not.toContain('Salida con seguimiento')
+  })
+
+  it('si la genérica se apaga, tampoco cuenta la editada', () => {
+    const names = buildActiveRuleSet([], [edited], [generic.id]).map((pattern) => pattern.name)
+
+    expect(names).not.toContain('Mi seguimiento')
+    expect(names).not.toContain('Salida con seguimiento')
+  })
+
+  it('se guarda y recupera con su vínculo al catálogo', () => {
+    const state = { ...createInitialState(), patterns: [edited] }
+
+    expect(fromPortableConfig(toPortableConfig(state)).patterns[0]!.systemRuleId).toBe(generic.id)
+  })
+})

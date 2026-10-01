@@ -220,11 +220,17 @@ export function buildActiveRuleSet(
   ruleNames: SystemRuleNames = {},
 ): HandPattern[] {
   const disabled = new Set(disabledGenericRuleIds)
+  const overriddenIds = new Set(customPatterns.flatMap((pattern) => (pattern.systemRuleId ? [pattern.systemRuleId] : [])))
   const systemPatterns = buildPatternPresets(cards, ruleNames)
-    .filter((preset) => preset.tier === 'universal' || !disabled.has(preset.id))
+    .filter((preset) => (preset.tier === 'universal' || !disabled.has(preset.id)) && !overriddenIds.has(preset.id))
     .map((preset) => preset.pattern)
   const seenKeys = new Set(systemPatterns.map(getPatternDefinitionKey))
   const calculableCustom = customPatterns.filter((pattern) => {
+    // La versión editada de una genérica apagada no cuenta.
+    if (pattern.systemRuleId && disabled.has(pattern.systemRuleId)) {
+      return false
+    }
+
     const key = getPatternDefinitionKey(pattern)
 
     if (seenKeys.has(key) || !pattern.conditions.some((condition) => condition.matcher !== null)) {

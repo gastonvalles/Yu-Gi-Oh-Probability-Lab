@@ -122,23 +122,25 @@ export function buildRuleEntryGroups({
   const customEntries = customPatterns.map((pattern) => {
     const isComplete = pattern.conditions.length > 0 && pattern.conditions.every((condition) => condition.matcher !== null)
     // Una regla propia idéntica a una del sistema no suma al cálculo: se avisa en vez de mostrar "—".
-    const duplicateOf = isComplete ? presetTitleByKey.get(getPatternDefinitionKey(pattern)) : undefined
+    const duplicateOf = isComplete && !pattern.systemRuleId ? presetTitleByKey.get(getPatternDefinitionKey(pattern)) : undefined
 
     return withResult({
       patternId: pattern.id,
-      presetId: null,
-      tier: 'custom',
+      // La versión editada de una genérica vive en la lista de genéricas, en su lugar.
+      presetId: pattern.systemRuleId ?? null,
+      tier: pattern.systemRuleId ? 'generic' : 'custom',
       kind: pattern.kind,
       name: pattern.name.trim() || (pattern.kind === 'opening' ? 'Salida sin nombre' : 'Problema sin nombre'),
       defaultName: null,
       summary: isComplete ? buildPatternCompactSummary(pattern, cardById) : 'Falta completar las condiciones',
       description: duplicateOf ? `Es igual a “${duplicateOf}”, que ya se cuenta: no cambia el resultado.` : null,
       turnContext: pattern.turnContext,
-      enabled: true,
+      enabled: !pattern.systemRuleId || !disabled.has(pattern.systemRuleId),
       isComplete,
     })
   })
 
+  const editedGenericIds = new Set(customPatterns.flatMap((pattern) => (pattern.systemRuleId ? [pattern.systemRuleId] : [])))
   const unavailableEntries = unavailablePatterns.map<RuleEntry>((pattern) => ({
     patternId: pattern.id,
     presetId: null,
@@ -160,7 +162,10 @@ export function buildRuleEntryGroups({
 
   return {
     universal: systemEntries.filter((entry) => entry.tier === 'universal'),
-    generic: systemEntries.filter((entry) => entry.tier === 'generic'),
-    custom: [...customEntries, ...unavailableEntries],
+    generic: [
+      ...systemEntries.filter((entry) => entry.tier === 'generic' && !editedGenericIds.has(entry.presetId ?? '')),
+      ...customEntries.filter((entry) => entry.tier === 'generic'),
+    ],
+    custom: [...customEntries.filter((entry) => entry.tier === 'custom'), ...unavailableEntries],
   }
 }
