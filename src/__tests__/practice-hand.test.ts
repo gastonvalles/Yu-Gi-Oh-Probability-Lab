@@ -10,7 +10,7 @@ import {
   slotIndexAtCenter,
   slotLeft,
 } from '../app/practice-hand-layout'
-import { buildPracticeDeck, computeRevealSteps, getMatchCardIds, type PracticeHandCard } from '../components/probability/practice'
+import { buildPracticeDeck, computeRevealSteps, describeRuleCondition, getMatchCardIds, type PracticeHandCard } from '../components/probability/practice'
 import type { CardEntry, CardRole } from '../types'
 
 function card(id: string, copies: number, roles: CardRole[]): CardEntry {
@@ -86,12 +86,81 @@ describe('reglas que aparecen mientras se reparte', () => {
     expect(second.steps.get(starterRule.id)).toBe(6)
   })
 
-  it('encuentra qué cartas de la mano cumplen una regla', () => {
+  it('encuentra qué cartas de la mano cumplen una regla (todas las copias sirven)', () => {
     const hand = pick(['f', 's', 'b', 's', 'f'])
     const { result } = computeRevealSteps(hand, [starterRule], cards, groups, 'first')
     const ids = getMatchCardIds(result.matches[0]!, hand)
 
-    expect(ids).toHaveLength(1)
-    expect(hand.find((entry) => entry.drawId === ids[0])!.cardId).toBe('s')
+    expect(ids).toHaveLength(2)
+    expect(ids.every((id) => hand.find((entry) => entry.drawId === id)!.cardId === 's')).toBe(true)
+  })
+})
+
+describe('casos de cumplimiento de una regla', () => {
+  const cards = [
+    card('s1', 3, ['starter']),
+    card('s2', 3, ['starter']),
+    card('e', 3, ['extender']),
+    card('f', 20, ['combo_piece']),
+  ]
+  const groups = buildDerivedDeckGroupMap(cards)
+  const deck = buildPracticeDeck(cards)
+  const pick = (ids: string[]): PracticeHandCard[] =>
+    ids.map((id, index) => ({ ...deck.find((entry) => entry.cardId === id)!, drawId: `${id}-${index}` }))
+  const starterRule = createMatcherPattern('Starter', 'opening', [{ matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' }])
+  const comboRule = createMatcherPattern('Starter + Extender', 'opening', [
+    { matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' },
+    { matcher: { type: 'role', value: 'extender' }, quantity: 1, kind: 'include' },
+  ])
+
+  const casesOf = (hand: PracticeHandCard[], rule: typeof starterRule) =>
+    computeRevealSteps(hand, [rule], cards, groups, 'first').result.matches[0]!
+
+  it('una regla con dos formas de cumplirse tiene dos casos y cada uno marca sus cartas', () => {
+    const hand = pick(['f', 's1', 's2', 'f', 'f'])
+    const match = casesOf(hand, starterRule)
+
+    expect(match.cases).toHaveLength(2)
+    const first = getMatchCardIds(match, hand, 0)
+    const second = getMatchCardIds(match, hand, 1)
+
+    expect(first).toHaveLength(1)
+    expect(second).toHaveLength(1)
+    expect(first).not.toEqual(second)
+    expect(getMatchCardIds(match, hand)).toHaveLength(2)
+  })
+
+  it('con condiciones combinadas, cada caso incluye las cartas de todas sus condiciones', () => {
+    const hand = pick(['s1', 's2', 'e', 'f', 'f'])
+    const match = casesOf(hand, comboRule)
+
+    expect(match.cases).toHaveLength(2)
+    expect(getMatchCardIds(match, hand, 0)).toHaveLength(2)
+    expect(getMatchCardIds(match, hand, 1)).toHaveLength(2)
+  })
+
+  it('una regla con una sola forma de cumplirse tiene un único caso', () => {
+    const hand = pick(['f', 's1', 'f', 'f', 'f'])
+
+    expect(casesOf(hand, starterRule).cases).toHaveLength(1)
+  })
+})
+
+describe('descripción de la regla', () => {
+  it('quita el "La regla se cumple si" y deja la condición', () => {
+    expect(describeRuleCondition('La regla se cumple si abrís 1 copia de Rol: Starter.')).toBe('Abrís 1 copia de Rol: Starter.')
+    expect(describeRuleCondition('La regla se cumple si pasa cualquiera de estas opciones: A o B.')).toBe(
+      'Pasa cualquiera de estas opciones: A o B.',
+    )
+  })
+
+  it('conserva el aviso de no reutilizar cartas', () => {
+    expect(
+      describeRuleCondition('La regla, sin reutilizar la misma carta entre condiciones, se cumple si abrís 1 copia de A y abrís 1 copia de B.'),
+    ).toBe('Sin reutilizar la misma carta entre condiciones: abrís 1 copia de A y abrís 1 copia de B.')
+  })
+
+  it('si el texto no tiene ese formato, lo deja igual', () => {
+    expect(describeRuleCondition('Sin requisitos')).toBe('Sin requisitos')
   })
 })

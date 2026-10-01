@@ -1,7 +1,7 @@
 import { CARD_ASPECT } from './deck-image-layout'
 
 /** Parte de cada carta que queda tapada por la siguiente (0 = una al lado de la otra). */
-const OVERLAP_STEP = 0.62
+const OVERLAP_STEP = 0.55
 
 export interface HandLayout {
   cardWidth: number

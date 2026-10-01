@@ -1,5 +1,6 @@
 import type { DerivedDeckGroup } from '../../app/deck-groups'
 import {
+  enumeratePatternCases,
   getMatchedRequirementCount,
   getResolvedPatternWitness,
   matchesResolvedPattern,
@@ -36,12 +37,19 @@ export interface PracticeHandState {
   remainingDeck: PracticeHandCard[]
 }
 
+/** Una forma de cumplir la regla con esta mano: las cartas que usa. */
+export interface PracticeHandMatchCase {
+  cards: Array<{ cardId: string; name: string; copies: number }>
+}
+
 export interface PracticeHandMatch {
   patternId: string
   name: string
   kind: HandPatternCategory
   requirementLabel: string
   assignments: PracticeHandRequirementAssignment[]
+  /** Todas las formas distintas de cumplirla con la mano (al menos una). */
+  cases: PracticeHandMatchCase[]
 }
 
 export interface PracticeHandRequirementAssignment {
@@ -150,6 +158,9 @@ export function evaluatePracticeHand(
     }
 
     const witness = getResolvedPatternWitness(pattern, counts, MAP_COUNT_OPERATIONS)
+    const cases = enumeratePatternCases(pattern, counts, MAP_COUNT_OPERATIONS).map<PracticeHandMatchCase>((usage) => ({
+      cards: usage.map(([cardId, copies]) => ({ cardId, name: cardById.get(cardId)?.name.trim() ?? 'Carta fuera del deck', copies })),
+    }))
 
     return [
       {
@@ -169,6 +180,7 @@ export function evaluatePracticeHand(
               }))
               .filter((entry) => entry.copies > 0),
           })) ?? [],
+        cases,
       },
     ]
   })
@@ -306,28 +318,31 @@ export function getPracticeVerdict(openingCount: number, problemCount: number): 
   return problemCount > 0 ? 'with-problem' : 'clean'
 }
 
-/** Cartas de la mano que cumplen una regla (por nombre y copias usadas). */
-export function getMatchCardIds(match: PracticeHandMatch, hand: readonly PracticeHandCard[]): string[] {
-  const picked = new Set<string>()
+const RULE_PREFIX = /^La regla(, sin reutilizar la misma carta entre condiciones,)? se cumple si /
 
-  for (const assignment of match.assignments) {
-    if (assignment.kind !== 'include') {
-      continue
-    }
+/** La condición de la regla sin el "La regla se cumple si" (queda: "Abrís 1 copia de …"). */
+export function describeRuleCondition(requirementLabel: string): string {
+  const match = RULE_PREFIX.exec(requirementLabel)
 
-    for (const { name, copies } of assignment.cards) {
-      let remaining = copies
-
-      for (const card of hand) {
-        if (remaining > 0 && !picked.has(card.drawId) && card.name.trim() === name) {
-          picked.add(card.drawId)
-          remaining -= 1
-        }
-      }
-    }
+  if (!match) {
+    return requirementLabel
   }
 
-  return [...picked]
+  const rest = requirementLabel.slice(match[0].length)
+  const sentence = `${rest.charAt(0).toUpperCase()}${rest.slice(1)}`
+
+  return match[1] ? `Sin reutilizar la misma carta entre condiciones: ${rest}` : sentence
+}
+
+/**
+ * Cartas de la mano que cumplen una regla. Con `caseIndex`, sólo las del caso elegido; sin él, las
+ * de todos los casos. Si hay varias copias de una carta usada, cualquiera sirve: se marcan todas.
+ */
+export function getMatchCardIds(match: PracticeHandMatch, hand: readonly PracticeHandCard[], caseIndex?: number): string[] {
+  const cases = caseIndex === undefined ? match.cases : match.cases.slice(caseIndex, caseIndex + 1)
+  const usedCardIds = new Set(cases.flatMap((matchCase) => matchCase.cards.map((card) => card.cardId)))
+
+  return hand.filter((card) => usedCardIds.has(card.cardId)).map((card) => card.drawId)
 }
 
 export interface PracticeReveal {

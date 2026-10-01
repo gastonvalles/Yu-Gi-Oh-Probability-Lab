@@ -33,8 +33,6 @@ interface PracticeSectionProps {
 
 const EMPTY_IDS: ReadonlySet<string> = new Set()
 const EMPTY_STEPS: ReadonlyMap<string, number> = new Map()
-/** Cuánto brillan las cartas que completan una regla recién aparecida. */
-const FLASH_MS = 1000
 
 const EMPTY_REVEAL: PracticeReveal = {
   result: { matches: [], openingMatches: [], problemMatches: [], openingNearMisses: [] },
@@ -72,45 +70,42 @@ export function PracticeSection(props: PracticeSectionProps) {
 
   const [activeRuleId, setActiveRuleId] = useState<string | null>(null)
   const [inspected, setInspected] = useState<{ card: PracticeHandCard; rect: DOMRect } | null>(null)
-  const [flash, setFlash] = useState<ReadonlySet<string>>(EMPTY_IDS)
-  const seenRules = useRef<ReadonlySet<string>>(EMPTY_IDS)
+  const [caseIndex, setCaseIndex] = useState(0)
 
   const isShown = (patternId: string) => (table.steps?.get(patternId) ?? Number.POSITIVE_INFINITY) <= table.dealt
   const openings = (table.result?.openingMatches ?? []).filter((match) => isShown(match.patternId))
   const problems = (table.result?.problemMatches ?? []).filter((match) => isShown(match.patternId))
   const shown = [...openings, ...problems]
-  const shownKey = shown.map((match) => match.patternId).join('|')
-  const shownRef = useRef(shown)
-  shownRef.current = shown
-  const handRef = useRef(table.allCards)
-  handRef.current = table.allCards
+  const activeMatch = shown.find((match) => match.patternId === activeRuleId) ?? null
+  const activeCase = activeMatch ? Math.min(caseIndex, Math.max(0, activeMatch.cases.length - 1)) : 0
 
   useEffect(() => {
     setActiveRuleId(null)
+    setCaseIndex(0)
     setInspected(null)
   }, [table.shuffleKey])
 
-  // Cuando aparece una regla, las cartas que la completan brillan un instante.
-  useEffect(() => {
-    const current = new Set(shownKey ? shownKey.split('|') : [])
-    const fresh = shownRef.current.filter((match) => !seenRules.current.has(match.patternId))
-    seenRules.current = current
-
-    if (fresh.length === 0) {
+  // Cada toque en la misma regla pasa al siguiente caso (otra forma de cumplirla); tras el último, se apaga.
+  const handleToggleRule = (patternId: string) => {
+    if (patternId !== activeRuleId) {
+      setActiveRuleId(patternId)
+      setCaseIndex(0)
       return
     }
 
-    setFlash(new Set(fresh.flatMap((match) => getMatchCardIds(match, handRef.current))))
-    const timer = window.setTimeout(() => setFlash(EMPTY_IDS), FLASH_MS)
-    return () => window.clearTimeout(timer)
-  }, [shownKey])
+    if (activeMatch && activeCase + 1 < activeMatch.cases.length) {
+      setCaseIndex(activeCase + 1)
+      return
+    }
 
-  const highlighted = useMemo<ReadonlySet<string>>(() => {
-    const active = shown.find((match) => match.patternId === activeRuleId)
-    return active ? new Set(getMatchCardIds(active, table.allCards)) : flash
-    // `shown` se deriva de table + dealt, que ya están en las dependencias.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeRuleId, flash, shownKey, table.allCards])
+    setActiveRuleId(null)
+    setCaseIndex(0)
+  }
+
+  const highlighted = useMemo<ReadonlySet<string>>(
+    () => (activeMatch ? new Set(getMatchCardIds(activeMatch, table.allCards, activeCase)) : EMPTY_IDS),
+    [activeMatch, activeCase, table.allCards],
+  )
 
   const verdict =
     table.isDealt && !blockedMessage && table.result
@@ -136,7 +131,8 @@ export function PracticeSection(props: PracticeSectionProps) {
             openings={openings}
             problems={problems}
             activeId={activeRuleId}
-            onToggle={(patternId) => setActiveRuleId((current) => (current === patternId ? null : patternId))}
+            caseIndex={activeCase}
+            onToggle={handleToggleRule}
           />
         )}
       </div>
@@ -146,7 +142,7 @@ export function PracticeSection(props: PracticeSectionProps) {
           cards={table.cards}
           slots={table.isSecond ? handSize + 1 : handSize}
           sizeSlots={handSize}
-          maxCardWidth={isWide ? 150 : 112}
+          maxCardWidth={isWide ? 164 : 124}
           fanDegrees={isWide ? 2.6 : 2.2}
           highlighted={highlighted}
           getDeckRect={getDeckRect}
@@ -154,6 +150,9 @@ export function PracticeSection(props: PracticeSectionProps) {
           onInspect={(card, rect) => setInspected({ card, rect })}
         />
         <div className="practice-dock">
+          <IconButton size="lg" className="practice-flat-button" aria-label="Nueva mano" title="Nueva mano" onClick={table.deal}>
+            <RefreshIcon />
+          </IconButton>
           <PracticeDeckPile
             ref={pileRef}
             canDraw={table.canDrawSecond}
@@ -162,9 +161,6 @@ export function PracticeSection(props: PracticeSectionProps) {
             dealt={table.dealt}
             onDraw={table.drawSecond}
           />
-          <IconButton size="lg" className="practice-flat-button" aria-label="Nueva mano" title="Nueva mano" onClick={table.deal}>
-            <RefreshIcon />
-          </IconButton>
         </div>
       </div>
 
