@@ -34,7 +34,7 @@ import { buildDerivedDeckGroups } from '../../app/deck-groups'
 import { GENESYS_POINT_CAP, calculateGenesysDeckPointTotal } from '../../app/genesys-format'
 import { exportDeckAssets } from '../../app/deck-image-export'
 import { type AppState, type DeckCardInstance, type DeckZone } from '../../app/model'
-import { setGenericRuleEnabled } from '../../app/patterns-slice'
+import { setGenericRuleEnabled, setSystemRuleName } from '../../app/patterns-slice'
 import { setDeckFormat } from '../../app/settings-slice'
 import type { RootState } from '../../app/store'
 import { useAppDispatch, useAppSelector } from '../../app/store-hooks'
@@ -75,11 +75,13 @@ export function useDeckModeController() {
       patternsSeedVersion: patternsState.patternsSeedVersion,
       patterns: patternsState.patterns,
       disabledGenericRuleIds: patternsState.disabledGenericRuleIds,
+      systemRuleNames: patternsState.systemRuleNames,
       deckBuilder,
     }),
     [
       deckBuilder,
       patternsState.disabledGenericRuleIds,
+      patternsState.systemRuleNames,
       patternsState.patterns,
       patternsState.patternsSeedVersion,
       patternsState.patternsSeeded,
@@ -256,6 +258,11 @@ export function useDeckModeController() {
 
   const handleSetGenericRuleEnabled = useCallback(
     (ruleId: string, enabled: boolean) => dispatch(setGenericRuleEnabled({ ruleId, enabled })),
+    [dispatch],
+  )
+
+  const handleRenameSystemRule = useCallback(
+    (ruleId: string, name: string) => dispatch(setSystemRuleName({ ruleId, name })),
     [dispatch],
   )
 
@@ -637,7 +644,9 @@ export function useDeckModeController() {
       handSize: settings.handSize,
       patterns: patternsState.patterns,
       disabledGenericRuleIds: patternsState.disabledGenericRuleIds,
+      systemRuleNames: patternsState.systemRuleNames,
       onSetGenericRuleEnabled: handleSetGenericRuleEnabled,
+      onRenameSystemRule: handleRenameSystemRule,
       derivedMainCards,
       patternActions,
       patternEditorDefaults,

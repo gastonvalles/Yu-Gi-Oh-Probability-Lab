@@ -16,6 +16,7 @@ import {
   type HandLayout,
 } from '../../app/practice-hand-layout'
 import { useElementWidth } from '../../app/use-element-width'
+import type { PatternKind } from '../../types'
 import { CardArt } from '../CardArt'
 import type { PracticeHandCard } from './practice'
 
@@ -35,6 +36,8 @@ interface PracticeHandProps {
   maxCardWidth: number
   fanDegrees: number
   highlighted: ReadonlySet<string>
+  /** Tipo de la regla que ilumina las cartas: las salidas brillan en verde y los problemas en rojo. */
+  highlightKind: PatternKind | null
   /** Rect del mazo: de ahí salen las cartas al repartirse. */
   getDeckRect: () => DOMRect | null
   onReorder: (ids: string[]) => void
@@ -53,7 +56,7 @@ function prefersReducedMotion(): boolean {
 }
 
 /** Mano en abanico: se reordena arrastrando, un toque abre la carta y se reparte desde el mazo. */
-export function PracticeHand({ cards, slots, sizeSlots, maxCardWidth, fanDegrees, highlighted, getDeckRect, onReorder, onInspect }: PracticeHandProps) {
+export function PracticeHand({ cards, slots, sizeSlots, maxCardWidth, fanDegrees, highlighted, highlightKind, getDeckRect, onReorder, onInspect }: PracticeHandProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const width = useElementWidth(containerRef)
   const layout = computeHandLayout(width, slots, maxCardWidth, sizeSlots)
@@ -176,6 +179,7 @@ export function PracticeHand({ cards, slots, sizeSlots, maxCardWidth, fanDegrees
                 zIndex={isDragged ? 100 : index + 1}
                 state={isDragged ? 'dragging' : 'rest'}
                 glow={highlighted.has(card.drawId)}
+                glowKind={highlightKind}
                 dim={hasHighlight && !highlighted.has(card.drawId)}
                 getDeckRect={getDeckRect}
                 containerRef={containerRef}
@@ -198,6 +202,7 @@ interface HandCardProps {
   zIndex: number
   state: 'rest' | 'dragging'
   glow: boolean
+  glowKind: PatternKind | null
   dim: boolean
   getDeckRect: () => DOMRect | null
   containerRef: React.RefObject<HTMLDivElement | null>
@@ -214,6 +219,7 @@ function HandCard({
   zIndex,
   state,
   glow,
+  glowKind,
   dim,
   getDeckRect,
   containerRef,
@@ -287,6 +293,7 @@ function HandCard({
       className="practice-card"
       data-state={state}
       data-glow={glow ? 'true' : 'false'}
+      data-glow-kind={glow ? (glowKind ?? 'opening') : undefined}
       data-dim={dim ? 'true' : 'false'}
       style={style}
       onPointerDown={onPointerDown}

@@ -36,6 +36,8 @@ export interface AppState {
   patterns: HandPattern[]
   /** Reglas genéricas que el usuario apagó (ids del catálogo). */
   disabledGenericRuleIds: string[]
+  /** Nombres que el usuario le puso a las reglas universales (id del catálogo → nombre). */
+  systemRuleNames: Record<string, string>
   deckBuilder: DeckBuilderState
 }
 
@@ -79,6 +81,7 @@ export interface PortableConfig {
   }
   patterns: PortablePattern[]
   disabledGenericRuleIds?: string[]
+  systemRuleNames?: Record<string, string>
 }
 
 export interface SearchCacheEntry<Result> {
@@ -118,6 +121,7 @@ export function createInitialState(): AppState {
     patternsSeedVersion: 0,
     patterns: [],
     disabledGenericRuleIds: [],
+    systemRuleNames: {},
     deckBuilder: {
       deckName: 'Nuevo Deck',
       main: [],

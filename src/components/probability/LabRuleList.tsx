@@ -3,9 +3,10 @@ import { useId, useState, type ReactNode } from 'react'
 import { formatInteger, formatShortPercent } from '../../app/utils'
 import type { PatternKind } from '../../types'
 import { Button } from '../ui/Button'
-import { ChevronLeftIcon, LockIcon, PlusIcon } from '../ui/icons'
+import { ChevronLeftIcon, LockIcon, PencilIcon, PlusIcon } from '../ui/icons'
 import { Switch } from '../ui/Switch'
 import { LabSection } from './LabSection'
+import { RuleRenameDialog } from './RuleRenameDialog'
 import type { RuleEntry, RuleEntryGroups, TurnLean } from './probability-lab-helpers'
 
 type KindFilter = 'all' | PatternKind
@@ -20,6 +21,8 @@ interface LabRuleListProps {
   groups: RuleEntryGroups
   onEditRule: (patternId: string) => void
   onToggleGenericRule: (presetId: string, enabled: boolean) => void
+  /** Cambia el nombre de una regla universal (vacío = el original). */
+  onRenameSystemRule: (presetId: string, name: string) => void
   onCreateCustom: () => void
 }
 
@@ -27,9 +30,12 @@ export function LabRuleList({
   groups,
   onEditRule,
   onToggleGenericRule,
+  onRenameSystemRule,
   onCreateCustom,
 }: LabRuleListProps) {
   const [kindFilter, setKindFilter] = useState<KindFilter>('all')
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const renaming = groups.universal.find((entry) => entry.patternId === renamingId) ?? null
   const visible = (entries: RuleEntry[]) =>
     kindFilter === 'all' ? entries : entries.filter((entry) => entry.kind === kindFilter)
   const enabledGeneric = groups.generic.filter((entry) => entry.enabled).length
@@ -72,9 +78,11 @@ export function LabRuleList({
                 <LockIcon /> Siempre activas
               </span>
             }
-            description="Valen para cualquier deck de Yu-Gi-Oh!: definen la base de una mano jugable."
+            description="Valen para cualquier deck de Yu-Gi-Oh!: definen la base de una mano jugable. Solo podés cambiarles el nombre."
             entries={visible(groups.universal)}
-            renderRow={(entry) => <RuleRow entry={entry} />}
+            renderRow={(entry) => (
+              <RuleRow entry={entry} actionLabel="Renombrar" showEditIcon onClick={() => setRenamingId(entry.patternId)} />
+            )}
           />
           <RuleTier
             title="Genéricas"
@@ -127,6 +135,13 @@ export function LabRuleList({
           />
         </div>
       </div>
+      {renaming?.presetId ? (
+        <RuleRenameDialog
+          entry={renaming}
+          onSave={(name) => onRenameSystemRule(renaming.presetId!, name)}
+          onClose={() => setRenamingId(null)}
+        />
+      ) : null}
     </LabSection>
   )
 }
@@ -195,10 +210,15 @@ function RuleRow({
   entry,
   trailing,
   onClick,
+  actionLabel = 'Editar',
+  showEditIcon = false,
 }: {
   entry: RuleEntry
   trailing?: ReactNode
   onClick?: () => void
+  /** Verbo del botón para lectores de pantalla ("Editar" / "Renombrar"). */
+  actionLabel?: string
+  showEditIcon?: boolean
 }) {
   const body = (
     <>
@@ -208,6 +228,7 @@ function RuleRow({
             {entry.kind === 'opening' ? 'Salida' : 'Problema'}
           </span>
           <span className="lab-rule-title">{entry.name}</span>
+          {showEditIcon ? <PencilIcon className="lab-rule-edit-icon" /> : null}
           {entry.turnContext !== 'either' ? (
             <span className="lab-rule-turn">{entry.turnContext === 'first' ? 'Solo 1º' : 'Solo 2º'}</span>
           ) : null}
@@ -235,7 +256,7 @@ function RuleRow({
         type="button"
         className="lab-rule"
         {...state}
-        aria-label={`Editar regla ${entry.name}: ${formatRuleValue(entry)}${entry.turnLean ? `, más yendo ${entry.turnLean.favored === 'first' ? '1º' : '2º'}` : ''}`}
+        aria-label={`${actionLabel} regla ${entry.name}: ${formatRuleValue(entry)}${entry.turnLean ? `, más yendo ${entry.turnLean.favored === 'first' ? '1º' : '2º'}` : ''}`}
         onClick={onClick}
       >
         {body}

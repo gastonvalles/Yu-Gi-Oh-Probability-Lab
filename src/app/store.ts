@@ -47,6 +47,7 @@ export function selectAppState(state: RootState): AppState {
     patternsSeedVersion: state.patterns.patternsSeedVersion,
     patterns: state.patterns.patterns,
     disabledGenericRuleIds: state.patterns.disabledGenericRuleIds,
+    systemRuleNames: state.patterns.systemRuleNames,
     deckBuilder: state.deckBuilder,
   }
 }
@@ -63,6 +64,7 @@ function buildRootState(state: AppState): RootStateSchema {
       patternsSeedVersion: state.patternsSeedVersion,
       patterns: state.patterns,
       disabledGenericRuleIds: state.disabledGenericRuleIds,
+      systemRuleNames: state.systemRuleNames,
     },
   }
 }

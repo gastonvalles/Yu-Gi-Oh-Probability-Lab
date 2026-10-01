@@ -2,7 +2,7 @@ import { useDeferredValue, useMemo } from 'react'
 
 import { getDeckModelStatus } from '../../app/deck-model-status'
 import { curatePatterns, hasMissingRequiredCards } from '../../app/pattern-curation'
-import { buildActiveRuleSet, buildPatternPresets } from '../../app/pattern-presets'
+import { buildActiveRuleSet, buildPatternPresets, type SystemRuleNames } from '../../app/pattern-presets'
 import { computeLabResults, type LabComputation } from '../../app/probability-lab'
 import { buildRoleDistributions, type RoleDistribution } from '../../app/role-distribution'
 import {
@@ -13,6 +13,8 @@ import {
   isClassificationStepComplete,
 } from '../../app/role-step'
 import type { CardEntry, HandPattern } from '../../types'
+
+const NO_RULE_NAMES: SystemRuleNames = {}
 
 export type LabReadiness =
   | { status: 'empty-deck' }
@@ -26,8 +28,9 @@ export function useProbabilityLab(
   disabledGenericRuleIds: readonly string[],
   handSize: number,
   isEditingDeck: boolean,
+  systemRuleNames: SystemRuleNames = NO_RULE_NAMES,
 ) {
-  const availablePresets = useMemo(() => buildPatternPresets(derivedMainCards), [derivedMainCards])
+  const availablePresets = useMemo(() => buildPatternPresets(derivedMainCards, systemRuleNames), [derivedMainCards, systemRuleNames])
   const customPatterns = useMemo(() => curatePatterns(patterns, derivedMainCards), [derivedMainCards, patterns])
   // Reglas que piden una carta que ya no está: no se evalúan, pero se muestran para editarlas.
   const unavailablePatterns = useMemo(() => {
@@ -37,8 +40,8 @@ export function useProbabilityLab(
   const readiness = useMemo(() => buildReadiness(derivedMainCards), [derivedMainCards])
 
   const allChecks = useMemo(
-    () => buildActiveRuleSet(derivedMainCards, customPatterns, disabledGenericRuleIds),
-    [customPatterns, derivedMainCards, disabledGenericRuleIds],
+    () => buildActiveRuleSet(derivedMainCards, customPatterns, disabledGenericRuleIds, systemRuleNames),
+    [customPatterns, derivedMainCards, disabledGenericRuleIds, systemRuleNames],
   )
   const modelStatus = useMemo(
     () => getDeckModelStatus(derivedMainCards, allChecks),

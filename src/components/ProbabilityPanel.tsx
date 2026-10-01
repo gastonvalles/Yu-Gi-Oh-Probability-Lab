@@ -32,6 +32,9 @@ interface ProbabilityPanelProps {
   patterns: HandPattern[]
   disabledGenericRuleIds: string[]
   onSetGenericRuleEnabled: (ruleId: string, enabled: boolean) => void
+  /** Nombres propios de las reglas universales (id del catálogo → nombre). */
+  systemRuleNames: Record<string, string>
+  onRenameSystemRule: (ruleId: string, name: string) => void
   derivedMainCards: CardEntry[]
   patternActions: PatternEditorActions
   patternEditorDefaults: PatternEditorDefaults
@@ -52,12 +55,14 @@ export function ProbabilityPanel({
   patterns,
   disabledGenericRuleIds,
   onSetGenericRuleEnabled,
+  systemRuleNames,
+  onRenameSystemRule,
   derivedMainCards,
   patternActions,
   patternEditorDefaults,
   isEditingDeck,
 }: ProbabilityPanelProps) {
-  const lab = useProbabilityLab(derivedMainCards, patterns, disabledGenericRuleIds, handSize, isEditingDeck)
+  const lab = useProbabilityLab(derivedMainCards, patterns, disabledGenericRuleIds, handSize, isEditingDeck, systemRuleNames)
   const [activeTurnView, setActiveTurnView] = useState<TurnView>('average')
   const [drawerMode, setDrawerMode] = useState<DrawerMode | null>(null)
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false)
@@ -228,6 +233,7 @@ export function ProbabilityPanel({
             groups={ruleGroups}
             onEditRule={handleEditRule}
             onToggleGenericRule={onSetGenericRuleEnabled}
+            onRenameSystemRule={onRenameSystemRule}
             onCreateCustom={handleOpenCustomCreate}
           />
         </div>

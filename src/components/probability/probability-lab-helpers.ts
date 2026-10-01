@@ -12,6 +12,8 @@ export interface RuleEntry {
   tier: RuleTier
   kind: PatternKind
   name: string
+  /** Nombre original del catálogo (sólo universales): permite restaurar un nombre propio. */
+  defaultName: string | null
   /** Condición en pocas palabras. */
   summary: string
   /** Qué mide y por qué importa (sólo reglas del sistema). */
@@ -108,6 +110,7 @@ export function buildRuleEntryGroups({
       tier: preset.tier,
       kind: preset.kind,
       name: preset.title,
+      defaultName: preset.defaultTitle,
       summary: preset.technicalSubtitle,
       description: preset.description,
       turnContext: preset.pattern.turnContext,
@@ -127,6 +130,7 @@ export function buildRuleEntryGroups({
       tier: 'custom',
       kind: pattern.kind,
       name: pattern.name.trim() || (pattern.kind === 'opening' ? 'Salida sin nombre' : 'Problema sin nombre'),
+      defaultName: null,
       summary: isComplete ? buildPatternCompactSummary(pattern, cardById) : 'Falta completar las condiciones',
       description: duplicateOf ? `Es igual a “${duplicateOf}”, que ya se cuenta: no cambia el resultado.` : null,
       turnContext: pattern.turnContext,
@@ -141,6 +145,7 @@ export function buildRuleEntryGroups({
     tier: 'custom',
     kind: pattern.kind,
     name: pattern.name.trim() || (pattern.kind === 'opening' ? 'Salida sin nombre' : 'Problema sin nombre'),
+    defaultName: null,
     summary: buildPatternCompactSummary(pattern, cardById),
     description: 'Usa una carta que ya no está en el deck, así que no se evalúa. Editala o volvé a sumar la carta.',
     turnContext: pattern.turnContext,

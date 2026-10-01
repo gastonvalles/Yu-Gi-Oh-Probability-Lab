@@ -57,6 +57,7 @@ export function ComparisonScreen() {
   const deckBuilder = useAppSelector((state) => state.deckBuilder)
   const patterns = useAppSelector((state) => state.patterns.patterns)
   const disabledGenericRuleIds = useAppSelector((state) => state.patterns.disabledGenericRuleIds)
+  const systemRuleNames = useAppSelector((state) => state.patterns.systemRuleNames)
   const handSize = useAppSelector((state) => state.settings.handSize)
   const deckFormat = useAppSelector((state) => state.settings.deckFormat)
   const isDesktop = useMediaQuery('(min-width: 1101px)')
@@ -106,9 +107,9 @@ export function ComparisonScreen() {
     return compareBuilds(
       { name: buildA.name, cards: deriveMainDeckCardsFromZone(buildA.zones.main) },
       { name: buildB.name, cards: deriveMainDeckCardsFromZone(buildB.zones.main) },
-      { patterns, disabledGenericRuleIds, handSize },
+      { patterns, disabledGenericRuleIds, systemRuleNames, handSize },
     )
-  }, [buildA, buildB, patterns, disabledGenericRuleIds, handSize])
+  }, [buildA, buildB, patterns, disabledGenericRuleIds, systemRuleNames, handSize])
 
   const deltaByCardId = useMemo(
     () => new Map((comparison?.cardDiffs ?? []).map((diff) => [diff.cardId, diff.delta])),
