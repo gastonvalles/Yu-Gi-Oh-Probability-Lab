@@ -1,14 +1,8 @@
 @layer components {
-  /* ── Práctica: probar manos ── */
-
-  .practice {
-    display: grid;
-    gap: 0.9rem;
-    min-width: 0;
-  }
+  /* ── Práctica: una mesa de juego (mobile primero) ── */
 
   .practice-notice {
-    margin: 0;
+    margin: 1rem;
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-control);
     padding: 0.6rem 0.75rem;
@@ -16,222 +10,548 @@
     color: var(--text-muted);
   }
 
-  .practice-notice[data-tone='warning'] {
-    border-color: rgb(var(--warning-rgb) / 0.45);
-    background: rgb(var(--warning-rgb) / 0.08);
-    color: var(--warning);
+  /* La X flotante del modal ocupa el tercer lugar de la barra superior. */
+  .practice-modal .app-modal-floating-close {
+    top: 0.75rem;
+    right: 1rem;
   }
 
-  .practice-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.6rem;
-  }
-
-  .practice-turn {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 0.45rem;
-    border-radius: 999px;
-    border: 1px solid rgb(var(--primary-rgb) / 0.45);
-    background: rgb(var(--primary-rgb) / 0.12);
-    padding: 0.3rem 0.8rem;
-    font-size: 0.8rem;
-    color: var(--text-muted);
-  }
-
-  .practice-turn strong {
-    font-size: 0.9rem;
-    color: var(--text-main);
-  }
-
-  .practice-turn[data-turn='second'] {
-    border-color: rgb(var(--warning-rgb) / 0.5);
-    background: rgb(var(--warning-rgb) / 0.1);
-  }
-
-  .practice-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  /* Mano: abanico en pantallas anchas, fila de cartas en mobile. */
-  .practice-hand {
-    min-width: 0;
-  }
-
-  .practice-hand[data-layout='fan'] {
-    display: flex;
-    min-height: 240px;
-    align-items: flex-start;
-    justify-content: center;
-    overflow: hidden;
-    padding: 0.5rem 1rem 1.2rem;
-  }
-
-  .practice-hand[data-layout='fan'] .practice-card {
-    width: clamp(92px, 13vw, 124px);
-    flex-shrink: 0;
-  }
-
-  .practice-hand[data-layout='fan'] .practice-card + .practice-card {
-    margin-left: -1.6rem;
-  }
-
-  .practice-hand[data-layout='grid'] {
-    display: grid;
-    gap: 0.25rem;
-  }
-
-  .practice-card {
-    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35);
-  }
-
-  .practice-card[data-new='true'] {
-    outline: 2px solid rgb(var(--warning-rgb) / 0.8);
-    outline-offset: 1px;
-  }
-
-  .practice-report {
-    display: grid;
-    gap: 0.75rem;
-  }
-
-  .practice-verdict {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: baseline;
-    gap: 0.3rem 0.7rem;
-    border: 1px solid var(--border-subtle);
-    border-left-width: 4px;
-    border-radius: var(--radius-control);
-    padding: 0.6rem 0.8rem;
-    font-size: 0.8rem;
-    color: var(--text-muted);
-  }
-
-  .practice-verdict strong {
-    font-size: 1rem;
-    color: var(--text-main);
-  }
-
-  .practice-verdict-counts {
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-  }
-
-  .practice-verdict[data-verdict='clean'] {
-    border-color: rgb(var(--success-rgb) / 0.55);
-    background: rgb(var(--success-rgb) / 0.08);
-  }
-
-  .practice-verdict[data-verdict='with-problem'] {
-    border-color: rgb(var(--warning-rgb) / 0.6);
-    background: rgb(var(--warning-rgb) / 0.08);
-  }
-
-  .practice-verdict[data-verdict='no-opening'] {
-    border-color: rgb(var(--danger-rgb) / 0.6);
-    background: rgb(var(--danger-rgb) / 0.08);
-  }
-
-  .practice-columns {
-    display: grid;
-    gap: 0.75rem;
-  }
-
-  @media (min-width: 640px) {
-    .practice-columns {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+  @media (min-width: 820px) {
+    .practice-modal .app-modal-floating-close {
+      top: 1rem;
+      right: 1.4rem;
     }
   }
 
-  .practice-list {
-    display: grid;
-    align-content: start;
-    gap: 0.4rem;
+  .practice-table {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-width: 0;
+    overflow: hidden;
+    background:
+      radial-gradient(120% 60% at 50% 0%, rgb(var(--primary-rgb) / 0.16), transparent 70%),
+      rgb(var(--background-rgb));
   }
 
-  .practice-list h4 {
+  /* Botón de nueva mano · veredicto · (lugar de la X del modal) */
+  .practice-topbar {
+    display: grid;
+    grid-template-columns: 2.7rem minmax(0, 1fr) 2.7rem;
+    align-items: center;
+    gap: 0.5rem;
+    flex: none;
+    padding: 0.75rem 1rem 0;
+  }
+
+  .practice-topbar > :first-child {
+    justify-self: start;
+  }
+
+  .practice-verdict-slot,
+  .practice-verdict-chip {
+    justify-self: center;
+  }
+
+  .practice-verdict-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.1rem;
+    border: 1px solid var(--verdict-color, var(--border-subtle));
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--verdict-color, transparent) 14%, transparent);
+    padding: 0 0.95rem 0 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-main);
+    box-shadow: 0 0 22px color-mix(in srgb, var(--verdict-color, transparent) 28%, transparent);
+    animation: practice-pop 420ms cubic-bezier(0.2, 1.3, 0.4, 1) both;
+  }
+
+  .practice-verdict-chip[data-verdict='clean'] {
+    --verdict-color: rgb(var(--success-rgb));
+  }
+
+  .practice-verdict-chip[data-verdict='with-problem'] {
+    --verdict-color: rgb(var(--warning-rgb));
+  }
+
+  .practice-verdict-chip[data-verdict='no-opening'] {
+    --verdict-color: rgb(var(--danger-rgb));
+  }
+
+  .practice-verdict-dot {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 999px;
+    background: var(--verdict-color);
+    box-shadow: 0 0 10px var(--verdict-color);
+  }
+
+  /* Salidas y problemas: aparecen en el centro de la mesa. */
+  .practice-board {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 0.5rem 1rem;
+  }
+
+  .practice-board > .practice-notice {
+    margin: auto 0;
+  }
+
+  .practice-groups {
+    display: grid;
+    gap: 1.1rem;
+    align-content: start;
+    width: 100%;
+    padding-top: 0.5rem;
+  }
+
+  .practice-group {
+    display: grid;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .practice-group h4 {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.45rem;
     margin: 0;
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     font-weight: 700;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-soft);
   }
 
-  .practice-list h4 span {
+  .practice-group h4::before {
+    content: '';
+    width: 0.4rem;
+    height: 0.4rem;
     border-radius: 999px;
-    background: rgb(var(--secondary-rgb) / 0.9);
-    padding: 0.02rem 0.45rem;
-    letter-spacing: 0;
-    color: var(--text-main);
+    background: var(--rule-color);
   }
 
-  .practice-list ul {
-    display: grid;
-    gap: 0.35rem;
+  .practice-group[data-kind='opening'] {
+    --rule-color: rgb(var(--success-rgb));
+  }
+
+  .practice-group[data-kind='problem'] {
+    --rule-color: rgb(var(--danger-rgb));
+  }
+
+  .practice-group ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
-  .practice-match {
+  .practice-rule {
+    max-width: 100%;
+    min-height: 2.4rem;
+    border: 1px solid color-mix(in srgb, var(--rule-color) 55%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--rule-color) 12%, transparent);
+    padding: 0 0.95rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-main);
+    text-align: left;
+    overflow-wrap: anywhere;
+    animation: practice-rule-in 460ms cubic-bezier(0.2, 1.3, 0.4, 1) both;
+    transition:
+      background 150ms ease,
+      box-shadow 150ms ease,
+      transform 150ms ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .practice-rule:active {
+    transform: scale(0.96);
+  }
+
+  .practice-rule[aria-pressed='true'] {
+    background: color-mix(in srgb, var(--rule-color) 32%, transparent);
+    box-shadow: 0 0 18px color-mix(in srgb, var(--rule-color) 45%, transparent);
+  }
+
+  .practice-rule:focus-visible {
+    outline: 2px solid rgb(var(--primary-hover-rgb));
+    outline-offset: 2px;
+  }
+
+  /* Abajo: el mazo y la mano, como en la mesa. */
+  .practice-tray {
+    position: relative;
+    z-index: 2;
     display: grid;
-    gap: 0.1rem;
-    border: 1px solid var(--border-subtle);
-    border-left-width: 3px;
+    flex: none;
+    gap: 0.15rem;
+    border-top: 1px solid var(--border-subtle);
+    background:
+      linear-gradient(180deg, rgb(var(--primary-rgb) / 0.1), transparent 55%),
+      rgb(var(--background-rgb) / 0.6);
+    padding: 0.55rem 0.5rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    transition:
+      border-color 400ms ease,
+      box-shadow 400ms ease;
+  }
+
+  .practice-tray[data-verdict='clean'] {
+    border-top-color: rgb(var(--success-rgb) / 0.65);
+    box-shadow: 0 -16px 36px -18px rgb(var(--success-rgb) / 0.4);
+  }
+
+  .practice-tray[data-verdict='with-problem'] {
+    border-top-color: rgb(var(--warning-rgb) / 0.65);
+    box-shadow: 0 -16px 36px -18px rgb(var(--warning-rgb) / 0.4);
+  }
+
+  .practice-tray[data-verdict='no-opening'] {
+    border-top-color: rgb(var(--danger-rgb) / 0.65);
+    box-shadow: 0 -16px 36px -18px rgb(var(--danger-rgb) / 0.4);
+  }
+
+  .practice-tray-top {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0 0.5rem 0.55rem;
+  }
+
+  /* Dorso de carta: lo comparten el mazo y las cartas que se están repartiendo. */
+  .practice-card-back {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    overflow: hidden;
+    border: 2px solid rgb(var(--primary-rgb) / 0.75);
+    border-radius: 0.3rem;
+    background:
+      radial-gradient(ellipse at 50% 50%, rgb(var(--primary-rgb) / 0.55), transparent 62%),
+      repeating-linear-gradient(45deg, rgb(var(--primary-rgb) / 0.2) 0 4px, transparent 4px 9px),
+      linear-gradient(160deg, #1d1033, #0b0614);
+  }
+
+  .practice-card-back::after {
+    content: '';
+    position: absolute;
+    inset: 24% 20%;
+    border: 2px solid rgb(var(--accent-rgb) / 0.75);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgb(var(--accent-rgb) / 0.35), transparent 70%);
+  }
+
+  /* Mazo */
+  .practice-pile {
+    position: relative;
+    width: 3.1rem;
+    aspect-ratio: 421 / 614;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .practice-pile:disabled {
+    cursor: default;
+  }
+
+  .practice-pile:focus-visible {
+    outline: 2px solid rgb(var(--primary-hover-rgb));
+    outline-offset: 4px;
+  }
+
+  .practice-pile-stack {
+    position: absolute;
+    inset: 0;
+    transition: transform 150ms ease;
+  }
+
+  .practice-pile:not(:disabled):active .practice-pile-stack {
+    transform: scale(0.94);
+  }
+
+  .practice-pile-card {
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.45);
+  }
+
+  .practice-pile-card:nth-child(1) {
+    transform: translate(-3px, 3px);
+  }
+
+  .practice-pile-card:nth-child(2) {
+    transform: translate(-1.5px, 1.5px);
+  }
+
+  .practice-pile-stack[data-shuffle='true'] .practice-pile-card:nth-child(1) {
+    animation: practice-riffle-left 520ms ease-in-out;
+  }
+
+  .practice-pile-stack[data-shuffle='true'] .practice-pile-card:nth-child(2) {
+    animation: practice-riffle-right 520ms ease-in-out 60ms;
+  }
+
+  /* Cada carta repartida le da un tirón a la de arriba. */
+  .practice-pile-top {
+    animation: practice-pile-draw 320ms ease-out;
+  }
+
+  .practice-pile[data-ready='true']::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
     border-radius: 0.5rem;
-    padding: 0.4rem 0.6rem;
-    min-width: 0;
+    box-shadow: 0 0 0 2px rgb(var(--accent-rgb) / 0.8);
+    animation: practice-pile-ring 1.6s ease-out infinite;
+    pointer-events: none;
   }
 
-  .practice-list[data-kind='opening'] .practice-match {
-    border-left-color: rgb(var(--success-rgb) / 0.8);
+  .practice-pile-label {
+    position: absolute;
+    left: 50%;
+    bottom: -0.55rem;
+    z-index: 2;
+    transform: translateX(-50%);
+    border-radius: 999px;
+    background: rgb(var(--accent-rgb));
+    padding: 0.1rem 0.6rem;
+    font-size: 0.82rem;
+    font-weight: 800;
+    line-height: 1.3;
+    color: #06140e;
+    box-shadow: 0 0 16px rgb(var(--accent-rgb) / 0.55);
+    pointer-events: none;
   }
 
-  .practice-list[data-kind='problem'] .practice-match {
-    border-left-color: rgb(var(--danger-rgb) / 0.8);
+  .practice-pile-badge {
+    position: absolute;
+    top: -0.45rem;
+    right: -0.45rem;
+    z-index: 2;
+    border-radius: 999px;
+    background: rgb(var(--warning-rgb));
+    padding: 0.05rem 0.4rem;
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #1a1204;
+    animation: practice-pop 380ms cubic-bezier(0.2, 1.3, 0.4, 1) both;
+    pointer-events: none;
   }
 
-  .practice-match strong {
-    font-size: 0.84rem;
-    line-height: 1.2;
-    color: var(--text-main);
+  /* Mano */
+  .practice-hand {
+    position: relative;
+    width: 100%;
   }
 
-  .practice-match span {
-    font-size: 0.74rem;
-    line-height: 1.25;
-    color: var(--text-muted);
+  .practice-card {
+    position: absolute;
+    top: 0;
+    left: 0;
+    overflow: hidden;
+    border-radius: 0.3rem;
+    box-shadow:
+      0 8px 18px rgba(0, 0, 0, 0.45),
+      0 0 0 1px rgb(var(--foreground-rgb) / 0.1);
+    outline: none;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    will-change: transform;
+    transition:
+      transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      width 260ms ease,
+      height 260ms ease,
+      filter 250ms ease,
+      box-shadow 250ms ease;
   }
 
-  .practice-empty,
-  .practice-near-miss {
-    padding: 0.2rem 0.1rem;
-    font-size: 0.78rem;
-    color: var(--text-soft);
+  /* El arte no debe capturar el toque ni arrancar el arrastre nativo de imágenes. */
+  .practice-card > :not(.practice-card-back) {
+    pointer-events: none;
+    -webkit-user-drag: none;
   }
 
-  .practice-near-miss strong {
-    color: var(--text-main);
+  .practice-card[data-state='dragging'] {
+    cursor: grabbing;
+    box-shadow:
+      0 24px 38px rgba(0, 0, 0, 0.55),
+      0 0 0 2px rgb(var(--primary-hover-rgb));
+    transition:
+      width 260ms ease,
+      height 260ms ease,
+      filter 250ms ease,
+      box-shadow 250ms ease;
   }
 
-  @media (max-width: 519px) {
-    .practice-verdict {
-      grid-template-columns: minmax(0, 1fr) auto;
+  .practice-card[data-state='lifted'] {
+    box-shadow:
+      0 18px 30px rgba(0, 0, 0, 0.5),
+      0 0 0 2px rgb(var(--primary-hover-rgb) / 0.85);
+  }
+
+  .practice-card:focus-visible {
+    box-shadow:
+      0 8px 18px rgba(0, 0, 0, 0.45),
+      0 0 0 2px rgb(var(--primary-hover-rgb));
+  }
+
+  .practice-card[data-dim='true'] {
+    filter: brightness(0.42) saturate(0.6);
+  }
+
+  .practice-card[data-glow='true'] {
+    box-shadow:
+      0 8px 18px rgba(0, 0, 0, 0.45),
+      0 0 0 2px rgb(var(--accent-rgb)),
+      0 0 22px rgb(var(--accent-rgb) / 0.6);
+    animation: practice-card-glow 1s ease-out;
+  }
+
+  @media (min-width: 820px) {
+    .practice-topbar {
+      padding: 1rem 1.4rem 0;
     }
 
-    .practice-verdict > span:not(.practice-verdict-counts) {
-      grid-column: 1 / -1;
-      grid-row: 2;
+    .practice-board {
+      padding: 0.75rem 1.4rem;
+    }
+
+    .practice-groups {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1.5rem 3rem;
+    }
+
+    .practice-group {
+      min-width: 12rem;
+      max-width: 28rem;
+    }
+
+    .practice-rule {
+      min-height: 2.6rem;
+      font-size: 0.95rem;
+    }
+
+    .practice-tray {
+      padding: 0.75rem 1.4rem 1.1rem;
+    }
+
+    .practice-pile {
+      width: 4rem;
+    }
+
+    .practice-card {
+      border-radius: 0.4rem;
+    }
+  }
+
+  @keyframes practice-pop {
+    from {
+      opacity: 0;
+      transform: scale(0.7);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes practice-rule-in {
+    from {
+      opacity: 0;
+      transform: translateY(14px) scale(0.8);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes practice-card-glow {
+    0%,
+    35% {
+      filter: brightness(1.35);
+    }
+
+    100% {
+      filter: brightness(1);
+    }
+  }
+
+  @keyframes practice-pile-draw {
+    0% {
+      transform: translate(0, 0) rotate(0deg);
+    }
+
+    40% {
+      transform: translate(-8px, -12px) rotate(-8deg);
+    }
+
+    100% {
+      transform: translate(0, 0) rotate(0deg);
+    }
+  }
+
+  @keyframes practice-pile-ring {
+    0% {
+      opacity: 0.9;
+      transform: scale(0.96);
+    }
+
+    100% {
+      opacity: 0;
+      transform: scale(1.35);
+    }
+  }
+
+  @keyframes practice-riffle-left {
+    0%,
+    100% {
+      transform: translate(-3px, 3px);
+    }
+
+    50% {
+      transform: translate(-14px, 3px) rotate(-6deg);
+    }
+  }
+
+  @keyframes practice-riffle-right {
+    0%,
+    100% {
+      transform: translate(-1.5px, 1.5px);
+    }
+
+    50% {
+      transform: translate(11px, 1.5px) rotate(6deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .practice-verdict-chip,
+    .practice-rule,
+    .practice-pile-badge,
+    .practice-pile-card,
+    .practice-pile-top,
+    .practice-pile[data-ready='true']::before,
+    .practice-card {
+      animation: none !important;
+      transition: none !important;
     }
   }
 }

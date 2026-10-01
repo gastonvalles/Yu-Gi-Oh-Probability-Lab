@@ -52,3 +52,12 @@ export function SearchIcon(props: SVGProps<SVGSVGElement>) {
     </svg>
   )
 }
+
+export function RefreshIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" width="18" height="18" {...props}>
+      <path d="M13 8a5 5 0 1 1-1.6-3.7" />
+      <path d="M13.2 2.3v2.6h-2.6" />
+    </svg>
+  )
+}

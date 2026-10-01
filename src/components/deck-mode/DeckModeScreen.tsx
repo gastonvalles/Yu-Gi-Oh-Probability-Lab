@@ -353,8 +353,10 @@ function PracticeFab({
         isOpen={isOpen}
         onClose={onClose}
         size="xl"
-        title="Práctica"
-        subtitle="Con 5 cartas vas 1º; robá la 6ª para ver la mano yendo 2º."
+        bare
+        flush
+        ariaLabel="Práctica"
+        className="practice-modal"
       >
         <PracticeSection
           handSize={handSize}
