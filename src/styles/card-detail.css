@@ -28,12 +28,10 @@
     color: var(--text-main);
   }
 
-  /* Ventana compacta anclada abajo (zona del pulgar): la X queda cerca y el texto scrollea adentro. */
+  /* Ventana compacta y centrada: la X queda cerca del centro y el texto scrollea adentro. */
   .app-modal-panel.card-detail-modal-mobile {
-    align-self: end;
     width: min(28rem, 100%);
     height: min(31rem, calc(100dvh - 1rem));
-    margin-bottom: env(safe-area-inset-bottom, 0px);
     border-radius: 1.1rem;
   }
 
