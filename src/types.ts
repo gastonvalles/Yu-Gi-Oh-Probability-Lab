@@ -104,6 +104,8 @@ export interface Pattern {
   minimumConditionMatches: number
   reusePolicy: ReusePolicy
   needsReview: boolean
+  /** Id del catálogo si esta regla es la versión editada por el usuario de una genérica. */
+  systemRuleId?: string | null
   conditions: PatternCondition[]
 }
 

@@ -20,7 +20,7 @@ import { LabScoreCard } from './probability/LabScoreCard'
 import { PatternEditorDrawer } from './probability/PatternEditorDrawer'
 import type { PatternEditorActions } from './probability/pattern-editor-actions'
 import { buildPatternCompactSummary } from './probability/pattern-helpers'
-import { buildRuleEntryGroups } from './probability/probability-lab-helpers'
+import { buildRuleEntryGroups, type RuleEntry } from './probability/probability-lab-helpers'
 import { TurnViewToggle } from './probability/TurnViewToggle'
 import { useDraftImpact } from './probability/use-draft-impact'
 import { useLabelCards } from './probability/use-label-cards'
@@ -105,7 +105,7 @@ export function ProbabilityPanel({
     cleanBefore: results?.average.cleanProbability ?? null,
   })
   const draftHasConditions = draftPattern?.conditions.some((condition) => condition.matcher !== null) ?? false
-  const canSaveDraft = draftHasConditions && (drawerMode === 'custom-create' || draft.isDirty)
+  const canSaveDraft = draftHasConditions && (drawerMode === 'custom-create' ? !replacedGenericId || draft.isDirty : draft.isDirty)
 
   const closeDrawer = () => {
     draft.close()
@@ -127,17 +127,24 @@ export function ProbabilityPanel({
     setDrawerMode('custom-create')
   }
 
-  // Editar una genérica = trabajar sobre una copia propia: al guardarla, la original se apaga.
-  const handleCustomizeGeneric = (presetId: string) => {
-    const preset = lab.availablePresets.find((candidate) => candidate.id === presetId)
+  // Editar una genérica = editar su versión propia: la primera vez se arma desde la del catálogo
+  // y, al guardar, reemplaza a la original en su lugar (sigue siendo genérica, con su interruptor).
+  const handleEditGeneric = (entry: RuleEntry) => {
+    if (patterns.some((pattern) => pattern.id === entry.patternId)) {
+      handleEditRule(entry.patternId)
+      return
+    }
+
+    const preset = lab.availablePresets.find((candidate) => candidate.id === entry.presetId)
 
     if (preset) {
       draft.open({
         ...preset.pattern,
         id: createPattern('').id,
+        systemRuleId: preset.id,
         conditions: preset.pattern.conditions.map((condition) => ({ ...condition })),
       })
-      setReplacedGenericId(presetId)
+      setReplacedGenericId(preset.id)
       setDrawerMode('custom-create')
     }
   }
@@ -165,20 +172,16 @@ export function ProbabilityPanel({
 
     if (drawerMode === 'custom-create') {
       patternActions.appendPattern(saved)
-
-      if (replacedGenericId) {
-        onSetGenericRuleEnabled(replacedGenericId, false)
-      }
     } else {
       patternActions.replacePatterns(patterns.map((pattern) => (pattern.id === saved.id ? saved : pattern)))
     }
 
-    showToast(replacedGenericId ? 'Copia guardada en Tus reglas' : drawerMode === 'custom-create' ? 'Regla creada' : 'Regla guardada')
+    showToast(drawerMode === 'custom-create' ? 'Regla creada' : 'Regla guardada')
     closeDrawer()
   }
 
   const handleRequestClose = () => {
-    const hasUnsavedWork = drawerMode === 'custom-create' ? draftHasConditions : draft.isDirty
+    const hasUnsavedWork = drawerMode === 'custom-create' && !replacedGenericId ? draftHasConditions : draft.isDirty
 
     if (hasUnsavedWork) {
       setConfirmDiscardOpen(true)
@@ -254,7 +257,7 @@ export function ProbabilityPanel({
             groups={ruleGroups}
             onEditRule={handleEditRule}
             onToggleGenericRule={onSetGenericRuleEnabled}
-            onCustomizeGenericRule={handleCustomizeGeneric}
+            onEditGenericRule={handleEditGeneric}
             onRenameSystemRule={onRenameSystemRule}
             onCreateCustom={handleOpenCustomCreate}
           />
@@ -268,6 +271,7 @@ export function ProbabilityPanel({
         derivedMainCards={labelCards}
         drawerMode={drawerMode}
         isPendingCreation={drawerMode === 'custom-create'}
+        saveLabel={replacedGenericId ? 'Guardar cambios' : undefined}
         onClose={handleRequestClose}
         onRequestDelete={setPendingDeletePatternId}
         onSave={handleSaveDraft}

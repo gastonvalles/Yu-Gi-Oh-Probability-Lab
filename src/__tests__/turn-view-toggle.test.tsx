@@ -124,7 +124,7 @@ describe('LabRuleList', () => {
         groups={groups}
         onEditRule={onEditRule}
         onToggleGenericRule={onToggleGenericRule}
-        onCustomizeGenericRule={() => {}}
+        onEditGenericRule={() => {}}
         onRenameSystemRule={() => {}}
         onCreateCustom={() => {}}
       />,
@@ -150,7 +150,7 @@ describe('LabRuleList', () => {
         groups={groups}
         onEditRule={() => {}}
         onToggleGenericRule={() => {}}
-        onCustomizeGenericRule={() => {}}
+        onEditGenericRule={() => {}}
         onRenameSystemRule={onRenameSystemRule}
         onCreateCustom={() => {}}
       />,
@@ -176,7 +176,7 @@ describe('LabRuleList', () => {
         groups={groups}
         onEditRule={() => {}}
         onToggleGenericRule={() => {}}
-        onCustomizeGenericRule={() => {}}
+        onEditGenericRule={() => {}}
         onRenameSystemRule={() => {}}
         onCreateCustom={() => {}}
       />,

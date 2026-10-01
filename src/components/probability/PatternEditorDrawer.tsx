@@ -18,6 +18,8 @@ interface PatternEditorDrawerProps {
   derivedMainCards: CardEntry[]
   drawerMode: DrawerMode | null
   isPendingCreation?: boolean
+  /** Texto del botón de guardar si no es el de crear una regla nueva. */
+  saveLabel?: string
   onClose: () => void
   onRequestDelete: (patternId: string) => void
   onSave: () => void
@@ -34,6 +36,7 @@ export function PatternEditorDrawer({
   derivedMainCards,
   drawerMode,
   isPendingCreation = false,
+  saveLabel,
   onClose,
   onRequestDelete,
   onSave,
@@ -107,7 +110,7 @@ export function PatternEditorDrawer({
               Cancelar
             </Button>
             <Button variant="primary" size="sm" disabled={!canSave} onClick={onSave}>
-              {isPendingCreation ? 'Crear regla' : 'Guardar cambios'}
+              {saveLabel ?? (isPendingCreation ? 'Crear regla' : 'Guardar cambios')}
             </Button>
           </div>
         </footer>
