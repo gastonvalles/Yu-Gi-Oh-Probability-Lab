@@ -139,6 +139,19 @@ describe('casos de cumplimiento de una regla', () => {
     expect(getMatchCardIds(match, hand, 1)).toHaveLength(2)
   })
 
+  it('una condición de "varias" cartas no se parte en combinaciones: un solo caso con todas las del grupo', () => {
+    const twoStarters = createMatcherPattern('2 starters', 'opening', [{ matcher: { type: 'role', value: 'starter' }, quantity: 2, kind: 'include' }])
+    const hand = pick(['s1', 's1', 's2', 'f', 'f'])
+    const match = casesOf(hand, twoStarters)
+
+    expect(match.cases).toHaveLength(1)
+    expect(getMatchCardIds(match, hand, 0)).toHaveLength(3)
+    expect(match.cases[0]!.cards).toEqual([
+      { cardId: 's1', name: 'Card s1', copies: 2 },
+      { cardId: 's2', name: 'Card s2', copies: 1 },
+    ])
+  })
+
   it('una regla con una sola forma de cumplirse tiene un único caso', () => {
     const hand = pick(['f', 's1', 'f', 'f', 'f'])
 

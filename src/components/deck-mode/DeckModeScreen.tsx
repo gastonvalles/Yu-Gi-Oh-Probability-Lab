@@ -298,6 +298,7 @@ export function DeckModeScreen() {
           derivedMainCards={controller.probability.derivedMainCards}
           patterns={controller.probability.patterns}
           disabledGenericRuleIds={controller.probability.disabledGenericRuleIds}
+          systemRuleNames={controller.probability.systemRuleNames}
           hasCompletedClassification={hasCompletedRoleStep}
         />
       ) : null}
@@ -316,6 +317,7 @@ function PracticeFab({
   derivedMainCards,
   patterns,
   disabledGenericRuleIds,
+  systemRuleNames,
   hasCompletedClassification,
 }: {
   isOpen: boolean
@@ -325,11 +327,12 @@ function PracticeFab({
   derivedMainCards: import('../../types').CardEntry[]
   patterns: import('../../types').HandPattern[]
   disabledGenericRuleIds: string[]
+  systemRuleNames: Record<string, string>
   hasCompletedClassification: boolean
 }) {
   const activePatterns = useMemo(
-    () => buildActiveRuleSet(derivedMainCards, curatePatterns(patterns, derivedMainCards), disabledGenericRuleIds),
-    [patterns, derivedMainCards, disabledGenericRuleIds],
+    () => buildActiveRuleSet(derivedMainCards, curatePatterns(patterns, derivedMainCards), disabledGenericRuleIds, systemRuleNames),
+    [patterns, derivedMainCards, disabledGenericRuleIds, systemRuleNames],
   )
   const missingOriginCount = useMemo(() => countCardsMissingOrigin(derivedMainCards), [derivedMainCards])
   const missingRoleCount = useMemo(() => countCardsMissingRoles(derivedMainCards), [derivedMainCards])

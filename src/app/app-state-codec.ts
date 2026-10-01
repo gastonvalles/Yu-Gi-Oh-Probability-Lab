@@ -1,4 +1,5 @@
 import { buildGenesysCardInfo } from './genesys-format'
+import { normalizeRuleName } from './pattern-presets'
 import { parseCardAttribute } from './card-attributes'
 import {
   createMatcherFromGroupKey,
@@ -46,6 +47,7 @@ export function toPortableConfig(state: AppState): PortableConfig {
     patternsSeeded: state.patternsSeeded,
     patternsSeedVersion: state.patternsSeedVersion,
     disabledGenericRuleIds: [...state.disabledGenericRuleIds],
+    systemRuleNames: { ...state.systemRuleNames },
     deckBuilder: {
       deckName: state.deckBuilder.deckName,
       main: state.deckBuilder.main.map((card) => ({
@@ -174,6 +176,7 @@ export function fromPortableConfig(value: unknown): AppState {
     disabledGenericRuleIds: Array.isArray(value.disabledGenericRuleIds)
       ? value.disabledGenericRuleIds.filter((ruleId): ruleId is string => typeof ruleId === 'string')
       : [],
+    systemRuleNames: parseSystemRuleNames(value.systemRuleNames),
     deckBuilder,
     patterns,
   }
@@ -529,4 +532,17 @@ function parseMatcher(value: unknown): Matcher | null {
   }
 
   return null
+}
+
+function parseSystemRuleNames(value: unknown): Record<string, string> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return {}
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).flatMap(([ruleId, name]) => {
+      const normalized = typeof name === 'string' ? normalizeRuleName(name) : ''
+      return normalized ? [[ruleId, normalized]] : []
+    }),
+  )
 }

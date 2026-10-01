@@ -22,7 +22,19 @@ export interface PatternPresetDefinition {
 }
 
 export interface PatternPreset extends Omit<PatternPresetDefinition, 'build'> {
+  /** Nombre original del catálogo (el `title` puede ser uno personalizado por el usuario). */
+  defaultTitle: string
   pattern: HandPattern
+}
+
+/** Nombres personalizados de reglas universales, por id del catálogo. */
+export type SystemRuleNames = Readonly<Record<string, string>>
+
+export const MAX_RULE_NAME_LENGTH = 60
+
+/** Nombre sin espacios de más y con el largo máximo; vacío si no queda nada. */
+export function normalizeRuleName(raw: string): string {
+  return raw.replace(/\s+/g, ' ').trim().slice(0, MAX_RULE_NAME_LENGTH).trim()
 }
 
 const INTERACTION_ROLES: readonly CardRole[] = ['handtrap', 'disruption']
@@ -180,12 +192,20 @@ const LEGACY_SYSTEM_RULE_NAMES = new Set(
   ].map(normalizePatternName),
 )
 
-export function buildPatternPresets(cards: CardEntry[]): PatternPreset[] {
-  return PATTERN_PRESET_DEFINITIONS.map(({ build, ...definition }) => ({
-    ...definition,
-    // Id estable: la selección y los resultados no cambian al recalcular.
-    pattern: { ...build(cards), id: getSystemRuleId(definition.id) },
-  }))
+/** Sólo las universales se pueden renombrar; la condición de la regla no cambia. */
+export function buildPatternPresets(cards: CardEntry[], ruleNames: SystemRuleNames = {}): PatternPreset[] {
+  return PATTERN_PRESET_DEFINITIONS.map(({ build, ...definition }) => {
+    const custom = definition.tier === 'universal' ? normalizeRuleName(ruleNames[definition.id] ?? '') : ''
+    const title = custom || definition.title
+
+    return {
+      ...definition,
+      title,
+      defaultTitle: definition.title,
+      // Id estable: la selección y los resultados no cambian al recalcular ni al renombrar.
+      pattern: { ...build(cards), id: getSystemRuleId(definition.id), name: title },
+    }
+  })
 }
 
 export function getSystemRuleId(presetId: string): string {
@@ -197,9 +217,10 @@ export function buildActiveRuleSet(
   cards: CardEntry[],
   customPatterns: HandPattern[],
   disabledGenericRuleIds: readonly string[],
+  ruleNames: SystemRuleNames = {},
 ): HandPattern[] {
   const disabled = new Set(disabledGenericRuleIds)
-  const systemPatterns = buildPatternPresets(cards)
+  const systemPatterns = buildPatternPresets(cards, ruleNames)
     .filter((preset) => preset.tier === 'universal' || !disabled.has(preset.id))
     .map((preset) => preset.pattern)
   const seenKeys = new Set(systemPatterns.map(getPatternDefinitionKey))

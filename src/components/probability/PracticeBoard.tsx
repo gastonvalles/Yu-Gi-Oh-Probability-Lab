@@ -45,25 +45,26 @@ export function PracticeBoard({ openings, problems, activeId, caseIndex, onToggl
   )
 }
 
-/** Qué significa la regla y, en el caso mostrado, con qué cartas de la mano se cumple. */
+/**
+ * Qué pide la regla y, si hace falta, con qué cartas de la mano se cumple. El nombre ya está en el
+ * botón apretado, y las cartas que el texto ya nombra no se repiten.
+ */
 function RuleExplanation({ match, caseIndex }: { match: PracticeHandMatch; caseIndex: number }) {
-  const cards = match.cases[caseIndex]?.cards ?? []
+  const condition = describeRuleCondition(match.requirementLabel)
+  const cards = (match.cases[caseIndex]?.cards ?? []).filter((card) => !condition.includes(card.name))
 
   return (
-    <section className="practice-explain" data-kind={match.kind} aria-live="polite">
-      <header>
-        <h4>{match.name}</h4>
-        {match.cases.length > 1 ? (
-          <span className="practice-explain-count" aria-label={`Caso ${caseIndex + 1} de ${match.cases.length}`}>
-            {caseIndex + 1}/{match.cases.length}
-          </span>
-        ) : null}
-      </header>
-      <p>{describeRuleCondition(match.requirementLabel)}</p>
+    <section className="practice-explain" data-kind={match.kind} aria-live="polite" aria-label={match.name}>
+      <p>{condition}</p>
+      {match.cases.length > 1 ? (
+        <span className="practice-explain-count" aria-label={`Caso ${caseIndex + 1} de ${match.cases.length}`}>
+          {caseIndex + 1}/{match.cases.length}
+        </span>
+      ) : null}
       {cards.length > 0 ? (
         <ul aria-label="Cartas de tu mano">
           {cards.map((card) => (
-            <li key={card.cardId}>{card.name}</li>
+            <li key={card.cardId}>{card.copies > 1 ? `${card.name} ×${card.copies}` : card.name}</li>
           ))}
         </ul>
       ) : null}

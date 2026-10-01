@@ -242,8 +242,10 @@ export function getResolvedPatternWitness<Counts, Key extends string | number>(
 
 /**
  * Todas las formas distintas de cumplir una regla con las cartas de la mano ("casos"), cada una
- * como las cartas que usa. Se elige el mínimo de condiciones necesarias y se prueban todas las
- * cartas que pueden cubrir cada una. Se corta en `limit` casos para no explotar con manos raras.
+ * como las cartas que usa. Se elige el mínimo de condiciones necesarias y, para las que piden una
+ * sola carta, se prueba cada carta que puede cubrirla. Una condición que pide varias ("2+ del
+ * arquetipo X") no se parte en combinaciones: cuenta como un único caso con todas las cartas de
+ * la mano que la cumplen. Se corta en `limit` casos para no explotar con manos raras.
  */
 export function enumeratePatternCases<Counts, Key extends string | number>(
   pattern: Pick<ResolvedPattern<Key>, 'requirements' | 'allowSharedCards' | 'requiredMatches'>,
@@ -264,22 +266,56 @@ export function enumeratePatternCases<Counts, Key extends string | number>(
   const shared = pattern.allowSharedCards || includeRequirements.length <= 1
   const cases = new Map<string, Array<[Key, number]>>()
 
-  const record = (usage: Map<Key, number>) => {
-    const entries = [...usage.entries()].sort(([left], [right]) => String(left).localeCompare(String(right)))
+  /** Suma a lo usado todas las cartas de la mano que también cumplen las condiciones de "varias". */
+  const record = (
+    usage: Map<Key, number>,
+    picked: ResolvedRequirement<Key>[],
+    remaining: Counts,
+  ) => {
+    const expanded = new Map(usage)
+    const leftover = shared ? counts : countOperations.cloneCounts(remaining)
+
+    for (const requirement of picked) {
+      if (requirement.quantity <= 1) {
+        continue
+      }
+
+      for (const key of requirement.keys) {
+        const inHand = countOperations.getCount(leftover, key)
+
+        if (inHand <= 0) {
+          continue
+        }
+
+        if (shared) {
+          expanded.set(key, Math.max(expanded.get(key) ?? 0, inHand))
+        } else {
+          expanded.set(key, (expanded.get(key) ?? 0) + inHand)
+          countOperations.consumeCount(leftover, key, inHand)
+        }
+      }
+    }
+
+    const entries = [...expanded.entries()].sort(([left], [right]) => String(left).localeCompare(String(right)))
     cases.set(entries.map(([key, copies]) => `${key}:${copies}`).join('|'), entries)
   }
 
-  const visit = (start: number, chosen: number, available: Counts, usage: Map<Key, number>): void => {
+  const visit = (
+    start: number,
+    available: Counts,
+    usage: Map<Key, number>,
+    picked: ResolvedRequirement<Key>[],
+  ): void => {
     if (cases.size >= limit) {
       return
     }
 
-    if (chosen === needed) {
-      record(usage)
+    if (picked.length === needed) {
+      record(usage, picked, available)
       return
     }
 
-    for (let index = start; index <= includeRequirements.length - (needed - chosen); index += 1) {
+    for (let index = start; index <= includeRequirements.length - (needed - picked.length); index += 1) {
       for (const option of getRequirementUsages(includeRequirements[index], available, countOperations)) {
         const nextUsage = new Map(usage)
         let nextAvailable = available
@@ -296,7 +332,7 @@ export function enumeratePatternCases<Counts, Key extends string | number>(
           }
         }
 
-        visit(index + 1, chosen + 1, nextAvailable, nextUsage)
+        visit(index + 1, nextAvailable, nextUsage, [...picked, includeRequirements[index]])
 
         if (cases.size >= limit) {
           return
@@ -305,7 +341,7 @@ export function enumeratePatternCases<Counts, Key extends string | number>(
     }
   }
 
-  visit(0, 0, counts, new Map())
+  visit(0, counts, new Map(), [])
   return [...cases.values()]
 }
 

@@ -61,3 +61,11 @@ export function RefreshIcon(props: SVGProps<SVGSVGElement>) {
     </svg>
   )
 }
+
+export function PencilIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" width="14" height="14" {...props}>
+      <path d="M10.6 2.9a1.5 1.5 0 0 1 2.1 2.1L5.4 12.3 2.5 13l.7-2.9Z" />
+    </svg>
+  )
+}

@@ -1,4 +1,5 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
+import { normalizeRuleName } from './pattern-presets'
 
 import type {
   CardAttribute,
@@ -42,6 +43,7 @@ export interface PatternsState {
   patternsSeedVersion: number
   patterns: HandPattern[]
   disabledGenericRuleIds: string[]
+  systemRuleNames: Record<string, string>
 }
 
 interface UpdatePatternCategoryPayload {
@@ -167,6 +169,7 @@ const initialState: PatternsState = {
   patternsSeedVersion: 0,
   patterns: [],
   disabledGenericRuleIds: [],
+  systemRuleNames: {},
 }
 
 const patternsSlice = createSlice({
@@ -191,6 +194,12 @@ const patternsSlice = createSlice({
     setGenericRuleEnabled(state, action: PayloadAction<{ ruleId: string; enabled: boolean }>) {
       const others = state.disabledGenericRuleIds.filter((ruleId) => ruleId !== action.payload.ruleId)
       state.disabledGenericRuleIds = action.payload.enabled ? others : [...others, action.payload.ruleId]
+    },
+    /** Nombre propio para una regla universal; vacío (o igual al original) vuelve al nombre del catálogo. */
+    setSystemRuleName(state, action: PayloadAction<{ ruleId: string; name: string }>) {
+      const name = normalizeRuleName(action.payload.name)
+      const { [action.payload.ruleId]: _previous, ...others } = state.systemRuleNames
+      state.systemRuleNames = name ? { ...others, [action.payload.ruleId]: name } : others
     },
     removePatternFromState(state, action: PayloadAction<string>) {
       state.patterns = removePattern(state.patterns, action.payload)
@@ -383,6 +392,7 @@ export const {
   replacePatterns,
   replacePatternsState,
   setGenericRuleEnabled,
+  setSystemRuleName,
   setPatternAllowSharedCards,
   setPatternCategory,
   setPatternMatchMode,

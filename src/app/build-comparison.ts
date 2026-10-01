@@ -1,6 +1,6 @@
 import type { CardEntry, HandPattern, PatternKind, TurnContext, TurnView } from '../types'
 import { curatePatterns } from './pattern-curation'
-import { buildActiveRuleSet, buildPatternPresets } from './pattern-presets'
+import { buildActiveRuleSet, buildPatternPresets, type SystemRuleNames } from './pattern-presets'
 import { computeLabResults, type LabResults } from './probability-lab'
 import { buildRoleDistributions, type RoleDistribution } from './role-distribution'
 
@@ -17,6 +17,8 @@ export interface ComparisonBuildInput {
 export interface ComparisonRules {
   patterns: HandPattern[]
   disabledGenericRuleIds: readonly string[]
+  /** Nombres propios de las reglas universales. */
+  systemRuleNames?: SystemRuleNames
   handSize: number
 }
 
@@ -102,7 +104,7 @@ export function compareBuilds(
 
 function buildActiveRules(cards: CardEntry[], rules: ComparisonRules): HandPattern[] {
   // Una regla que pide una carta ausente queda afuera: en esa build no puede cumplirse.
-  return buildActiveRuleSet(cards, curatePatterns(rules.patterns, cards), rules.disabledGenericRuleIds)
+  return buildActiveRuleSet(cards, curatePatterns(rules.patterns, cards), rules.disabledGenericRuleIds, rules.systemRuleNames)
 }
 
 function buildMetrics(build: ComparisonBuildInput, activeRules: HandPattern[], handSize: number): BuildMetrics {
@@ -168,7 +170,7 @@ function compareRules(
   resultsB: LabResults | null,
 ): RuleComparisonRow[] {
   const disabled = new Set(rules.disabledGenericRuleIds)
-  const systemRows = buildPatternPresets(cardsA)
+  const systemRows = buildPatternPresets(cardsA, rules.systemRuleNames)
     .filter((preset) => preset.tier === 'universal' || !disabled.has(preset.id))
     .map((preset) => ({ id: preset.pattern.id, name: preset.title, kind: preset.kind, turnContext: preset.pattern.turnContext, isSystem: true }))
   const customRows = rules.patterns

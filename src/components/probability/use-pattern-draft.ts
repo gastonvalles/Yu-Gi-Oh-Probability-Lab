@@ -9,6 +9,7 @@ const EMPTY_DRAFT_STATE: PatternsState = {
   patternsSeedVersion: 0,
   patterns: [],
   disabledGenericRuleIds: [],
+  systemRuleNames: {},
 }
 
 /**

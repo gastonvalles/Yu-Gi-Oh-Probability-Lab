@@ -145,6 +145,7 @@ export function PracticeSection(props: PracticeSectionProps) {
           maxCardWidth={isWide ? 164 : 124}
           fanDegrees={isWide ? 2.6 : 2.2}
           highlighted={highlighted}
+          highlightKind={activeMatch?.kind ?? null}
           getDeckRect={getDeckRect}
           onReorder={table.reorder}
           onInspect={(card, rect) => setInspected({ card, rect })}

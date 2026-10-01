@@ -31,6 +31,7 @@ function entry(overrides: Partial<RuleEntry>): RuleEntry {
     tier: 'custom',
     kind: 'opening',
     name: 'Regla',
+    defaultName: null,
     summary: '1+ Starter',
     description: null,
     turnContext: 'either',
@@ -110,7 +111,7 @@ describe('LabScoreCard', () => {
 
 describe('LabRuleList', () => {
   const groups = {
-    universal: [entry({ patternId: 'u', tier: 'universal', presetId: 'starter_opening', name: 'Salida básica' })],
+    universal: [entry({ patternId: 'u', tier: 'universal', presetId: 'starter_opening', name: 'Salida básica', defaultName: 'Salida básica' })],
     generic: [entry({ patternId: 'g', tier: 'generic', presetId: 'no_answer_second_problem', name: 'Sin respuesta', kind: 'problem' })],
     custom: [entry({ patternId: 'c', name: 'Mi combo' })],
   }
@@ -123,6 +124,7 @@ describe('LabRuleList', () => {
         groups={groups}
         onEditRule={onEditRule}
         onToggleGenericRule={onToggleGenericRule}
+        onRenameSystemRule={() => {}}
         onCreateCustom={() => {}}
       />,
     )
@@ -140,12 +142,39 @@ describe('LabRuleList', () => {
     expect(screen.getByText('Siempre activas')).toBeInTheDocument()
   })
 
+  it('las universales sólo permiten cambiar el nombre', () => {
+    const onRenameSystemRule = vi.fn()
+    render(
+      <LabRuleList
+        groups={groups}
+        onEditRule={() => {}}
+        onToggleGenericRule={() => {}}
+        onRenameSystemRule={onRenameSystemRule}
+        onCreateCustom={() => {}}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /Universales/, expanded: false }))
+    fireEvent.click(screen.getByRole('button', { name: /Renombrar regla Salida básica/ }))
+
+    const input = screen.getByRole('textbox')
+    const save = screen.getByRole('button', { name: 'Guardar' })
+    expect(save).toBeDisabled()
+
+    fireEvent.change(input, { target: { value: '  Arranque   mínimo ' } })
+    fireEvent.click(save)
+
+    expect(onRenameSystemRule).toHaveBeenCalledWith('starter_opening', 'Arranque mínimo')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   it('filtra por tipo de regla', () => {
     render(
       <LabRuleList
         groups={groups}
         onEditRule={() => {}}
         onToggleGenericRule={() => {}}
+        onRenameSystemRule={() => {}}
         onCreateCustom={() => {}}
       />,
     )
