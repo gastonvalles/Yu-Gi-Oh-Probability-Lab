@@ -1,3 +1,4 @@
+import { formatInteger, formatShortPercent } from '../../app/utils'
 import type { PatternKind } from '../../types'
 import { describePracticeMatch, type PracticeHandMatch, type PracticeVerdict } from './practice'
 
@@ -30,8 +31,8 @@ interface PracticeBoardProps {
   activeId: string | null
   /** Qué caso (forma de cumplirla) de la regla activa se está mostrando. */
   caseIndex: number
-  /** Mano sin salida: con qué frecuencia pasa (ej. "23.3%"). null si la mano es jugable. */
-  unplayableOdds: string | null
+  /** Mano sin salida: probabilidad (0-1) de que pase. null si la mano es jugable. */
+  unplayableOdds: number | null
   onToggle: (patternId: string) => void
 }
 
@@ -45,9 +46,9 @@ export function PracticeBoard({ openings, problems, activeId, caseIndex, unplaya
         <RuleGroup kind="opening" matches={openings} activeId={activeId} onToggle={onToggle} />
         <RuleGroup kind="problem" matches={problems} activeId={activeId} unplayable={unplayableOdds !== null} onToggle={onToggle} />
       </div>
-      {activeId === UNPLAYABLE_ID && unplayableOdds ? (
+      {activeId === UNPLAYABLE_ID && unplayableOdds !== null && unplayableOdds > 0 ? (
         <section className="practice-explain" data-kind="problem" aria-live="polite" aria-label="Mano no jugable">
-          <p>Puede pasar en el {unplayableOdds} de las manos.</p>
+          <p>Pasa en 1 de cada {formatInteger(Math.max(1, Math.round(1 / unplayableOdds)))} manos ({formatShortPercent(unplayableOdds)}).</p>
         </section>
       ) : null}
       {active ? <RuleExplanation key={active.patternId} match={active} caseIndex={caseIndex} /> : null}

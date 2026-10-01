@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { buildDerivedDeckGroupMap } from '../../app/deck-groups'
 import { computeLabResults } from '../../app/probability-lab'
-import { formatShortPercent } from '../../app/utils'
 import { useMediaQuery } from '../../app/use-media-query'
 import type { CardEntry, HandPattern } from '../../types'
 import { IconButton } from '../ui/IconButton'
@@ -125,7 +124,7 @@ export function PracticeSection(props: PracticeSectionProps) {
       : null
   }, [blockedMessage, deck.length, handSize, derivedMainCards, patterns])
   const isUnplayable = verdict === 'no-opening'
-  const unplayableOdds = isUnplayable && lab ? formatShortPercent(table.isSecond ? lab.second : lab.first) : null
+  const unplayableOdds = isUnplayable && lab ? (table.isSecond ? lab.second : lab.first) : null
 
   // Una mano no jugable arranca con su chip ya tocado, para mostrar de una cuánto pasa.
   useEffect(() => {
