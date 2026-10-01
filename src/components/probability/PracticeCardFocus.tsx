@@ -1,11 +1,11 @@
 import { useLayoutEffect, useRef } from 'react'
 
+import { UI_ANIMATION_MS } from '../../app/motion'
 import { useEscapeKey } from '../../app/use-overlay'
 import { buildCardSummary } from '../card-detail/card-summary'
 import { CardArt } from '../CardArt'
 import type { PracticeHandCard } from './practice'
 
-const OPEN_MS = 280
 const CLOSE_MS = 180
 const EASE = 'cubic-bezier(0.2, 0.9, 0.25, 1)'
 
@@ -50,11 +50,11 @@ export function PracticeCardFocus({ card, origin, onClose }: PracticeCardFocusPr
         { opacity: 0, transform: 'translateX(18px)' },
         { opacity: 1, transform: 'none' },
       ],
-      { duration: OPEN_MS, delay: 80, easing: EASE, fill: 'backwards' },
+      { duration: UI_ANIMATION_MS, easing: EASE, fill: 'backwards' },
     )
 
     if (origin) {
-      art.animate([{ transform: flightFrom(art, origin) }, { transform: 'none' }], { duration: OPEN_MS, easing: EASE })
+      art.animate([{ transform: flightFrom(art, origin) }, { transform: 'none' }], { duration: UI_ANIMATION_MS, easing: EASE })
     }
   }, [origin])
 

@@ -15,6 +15,7 @@ import {
   slotLeft,
   type HandLayout,
 } from '../../app/practice-hand-layout'
+import { UI_ANIMATION_MS } from '../../app/motion'
 import { useElementWidth } from '../../app/use-element-width'
 import type { PatternKind } from '../../types'
 import { CardArt } from '../CardArt'
@@ -25,7 +26,6 @@ const TOP_ROOM = 8
 /** Espacio bajo las cartas: el abanico baja en los extremos y las cartas inclinadas sobresalen. */
 const FAN_ROOM = 22
 const DRAG_THRESHOLD = 6
-const DEAL_MS = 240
 
 interface PracticeHandProps {
   cards: PracticeHandCard[]
@@ -262,11 +262,11 @@ function HandCard({
         { transform: mid, opacity: 1, offset: 0.5 },
         { transform: finalTransform, opacity: 1 },
       ],
-      { duration: DEAL_MS, easing: 'cubic-bezier(0.22, 0.9, 0.3, 1)', fill: 'backwards' },
+      { duration: UI_ANIMATION_MS, easing: 'cubic-bezier(0.22, 0.9, 0.3, 1)', fill: 'backwards' },
     )
     const flip = back.animate(
       [{ opacity: 1 }, { opacity: 1, offset: 0.49 }, { opacity: 0, offset: 0.5 }, { opacity: 0 }],
-      { duration: DEAL_MS, fill: 'both' },
+      { duration: UI_ANIMATION_MS, fill: 'both' },
     )
 
     return () => {

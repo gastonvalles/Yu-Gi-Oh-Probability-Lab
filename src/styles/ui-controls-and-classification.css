@@ -290,7 +290,7 @@
         rgb(var(--foreground-rgb) / 0.05) 100%
       );
     background-size: 200% 100%;
-    animation: app-skeleton-shimmer 1.15s linear infinite;
+    animation: app-skeleton-shimmer var(--motion-duration) linear infinite;
     border-radius: var(--radius-control);
   }
 
