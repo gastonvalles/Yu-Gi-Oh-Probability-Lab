@@ -87,7 +87,7 @@ export function PracticeSection(props: PracticeSectionProps) {
     setInspected(null)
   }, [table.shuffleKey])
 
-  // Cada toque en la misma regla pasa al siguiente caso (otra forma de cumplirla); tras el último, se apaga.
+  // Cada toque en la misma regla pasa al siguiente caso (otra forma de cumplirla); al llegar al último vuelve al primero.
   const handleToggleRule = (patternId: string) => {
     if (patternId !== activeRuleId) {
       setActiveRuleId(patternId)
@@ -95,8 +95,9 @@ export function PracticeSection(props: PracticeSectionProps) {
       return
     }
 
-    if (activeMatch && activeCase + 1 < activeMatch.cases.length) {
-      setCaseIndex(activeCase + 1)
+    // Con varios casos se da la vuelta (el último pasa al primero); con uno solo, el toque la apaga.
+    if (activeMatch && activeMatch.cases.length > 1) {
+      setCaseIndex((activeCase + 1) % activeMatch.cases.length)
       return
     }
 
