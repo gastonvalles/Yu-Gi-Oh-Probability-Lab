@@ -1,5 +1,5 @@
 import type { PatternKind } from '../../types'
-import type { PracticeHandMatch, PracticeVerdict } from './practice'
+import { describeRuleCondition, type PracticeHandMatch, type PracticeVerdict } from './practice'
 
 const VERDICT_WORD: Record<PracticeVerdict, string> = {
   clean: 'Limpia',
@@ -25,11 +25,13 @@ interface PracticeBoardProps {
   openings: PracticeHandMatch[]
   problems: PracticeHandMatch[]
   activeId: string | null
+  /** Qué caso (forma de cumplirla) de la regla activa se está mostrando. */
+  caseIndex: number
   onToggle: (patternId: string) => void
 }
 
 /** Salidas y problemas: cada uno aparece en cuanto la mano cumple sus condiciones. */
-export function PracticeBoard({ openings, problems, activeId, onToggle }: PracticeBoardProps) {
+export function PracticeBoard({ openings, problems, activeId, caseIndex, onToggle }: PracticeBoardProps) {
   const active = [...openings, ...problems].find((match) => match.patternId === activeId) ?? null
 
   return (
@@ -38,27 +40,30 @@ export function PracticeBoard({ openings, problems, activeId, onToggle }: Practi
         <RuleGroup kind="opening" matches={openings} activeId={activeId} onToggle={onToggle} />
         <RuleGroup kind="problem" matches={problems} activeId={activeId} onToggle={onToggle} />
       </div>
-      {active ? <RuleExplanation key={active.patternId} match={active} /> : null}
+      {active ? <RuleExplanation key={active.patternId} match={active} caseIndex={caseIndex} /> : null}
     </>
   )
 }
 
-/** Qué significa la regla y con qué cartas de la mano se cumple. */
-function RuleExplanation({ match }: { match: PracticeHandMatch }) {
-  const cards = [
-    ...new Set(
-      match.assignments.filter((assignment) => assignment.kind === 'include').flatMap((assignment) => assignment.cards.map((card) => card.name)),
-    ),
-  ]
+/** Qué significa la regla y, en el caso mostrado, con qué cartas de la mano se cumple. */
+function RuleExplanation({ match, caseIndex }: { match: PracticeHandMatch; caseIndex: number }) {
+  const cards = match.cases[caseIndex]?.cards ?? []
 
   return (
     <section className="practice-explain" data-kind={match.kind} aria-live="polite">
-      <h4>{match.name}</h4>
-      <p>{match.requirementLabel}</p>
+      <header>
+        <h4>{match.name}</h4>
+        {match.cases.length > 1 ? (
+          <span className="practice-explain-count" aria-label={`Caso ${caseIndex + 1} de ${match.cases.length}`}>
+            {caseIndex + 1}/{match.cases.length}
+          </span>
+        ) : null}
+      </header>
+      <p>{describeRuleCondition(match.requirementLabel)}</p>
       {cards.length > 0 ? (
         <ul aria-label="Cartas de tu mano">
-          {cards.map((name) => (
-            <li key={name}>{name}</li>
+          {cards.map((card) => (
+            <li key={card.cardId}>{card.name}</li>
           ))}
         </ul>
       ) : null}

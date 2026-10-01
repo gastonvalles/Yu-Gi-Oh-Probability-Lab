@@ -240,6 +240,75 @@ export function getResolvedPatternWitness<Counts, Key extends string | number>(
   }
 }
 
+/**
+ * Todas las formas distintas de cumplir una regla con las cartas de la mano ("casos"), cada una
+ * como las cartas que usa. Se elige el mínimo de condiciones necesarias y se prueban todas las
+ * cartas que pueden cubrir cada una. Se corta en `limit` casos para no explotar con manos raras.
+ */
+export function enumeratePatternCases<Counts, Key extends string | number>(
+  pattern: Pick<ResolvedPattern<Key>, 'requirements' | 'allowSharedCards' | 'requiredMatches'>,
+  counts: Counts,
+  countOperations: CountOperations<Counts, Key>,
+  limit = 24,
+): Array<Array<[Key, number]>> {
+  const excludeMatched = pattern.requirements.filter(
+    (requirement) => requirement.kind === 'exclude' && matchesRequirement(requirement, counts, countOperations),
+  ).length
+  const includeRequirements = pattern.requirements.filter((requirement) => requirement.kind === 'include')
+  const needed = Math.max(0, pattern.requiredMatches - excludeMatched)
+
+  if (needed > includeRequirements.length) {
+    return []
+  }
+
+  const shared = pattern.allowSharedCards || includeRequirements.length <= 1
+  const cases = new Map<string, Array<[Key, number]>>()
+
+  const record = (usage: Map<Key, number>) => {
+    const entries = [...usage.entries()].sort(([left], [right]) => String(left).localeCompare(String(right)))
+    cases.set(entries.map(([key, copies]) => `${key}:${copies}`).join('|'), entries)
+  }
+
+  const visit = (start: number, chosen: number, available: Counts, usage: Map<Key, number>): void => {
+    if (cases.size >= limit) {
+      return
+    }
+
+    if (chosen === needed) {
+      record(usage)
+      return
+    }
+
+    for (let index = start; index <= includeRequirements.length - (needed - chosen); index += 1) {
+      for (const option of getRequirementUsages(includeRequirements[index], available, countOperations)) {
+        const nextUsage = new Map(usage)
+        let nextAvailable = available
+
+        if (!shared) {
+          nextAvailable = countOperations.cloneCounts(available)
+        }
+
+        for (const [key, copies] of option) {
+          nextUsage.set(key, shared ? Math.max(nextUsage.get(key) ?? 0, copies) : (nextUsage.get(key) ?? 0) + copies)
+
+          if (!shared) {
+            countOperations.consumeCount(nextAvailable, key, copies)
+          }
+        }
+
+        visit(index + 1, chosen + 1, nextAvailable, nextUsage)
+
+        if (cases.size >= limit) {
+          return
+        }
+      }
+    }
+  }
+
+  visit(0, 0, counts, new Map())
+  return [...cases.values()]
+}
+
 export function getMatchedRequirementCount<Counts, Key extends string | number>(
   requirements: ResolvedRequirement<Key>[],
   counts: Counts,

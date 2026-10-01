@@ -213,15 +213,13 @@
     outline-offset: 2px;
   }
 
-  /* Abajo: la mano y, a la derecha, el mazo con la recarga. Sin línea: sólo un brillo suave. */
+  /* Abajo: la mano centrada y, debajo, la recarga a la izquierda y el mazo a la derecha. */
   .practice-tray {
     position: relative;
     z-index: 2;
     display: grid;
     flex: none;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: end;
-    gap: 0.5rem;
+    gap: 0.25rem;
     padding: 0 0.5rem calc(0.4rem + env(safe-area-inset-bottom, 0px));
   }
 
@@ -253,10 +251,10 @@
   }
 
   .practice-dock {
-    display: grid;
-    justify-items: center;
-    gap: 0.9rem;
-    padding-bottom: 0.1rem;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 0 0.25rem 0.55rem 0;
   }
 
   /* Dorso de carta: lo comparten el mazo y las cartas que se están repartiendo. */
@@ -516,6 +514,23 @@
 
   .practice-explain[data-kind='problem'] {
     --rule-color: rgb(var(--danger-rgb));
+  }
+
+  .practice-explain header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .practice-explain-count {
+    flex: none;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--rule-color) 22%, transparent);
+    padding: 0.1rem 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
   }
 
   .practice-explain h4 {
