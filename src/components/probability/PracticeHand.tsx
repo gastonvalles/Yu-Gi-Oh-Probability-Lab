@@ -38,6 +38,8 @@ interface PracticeHandProps {
   highlighted: ReadonlySet<string>
   /** Tipo de la regla que ilumina las cartas: las salidas brillan en verde y los problemas en rojo. */
   highlightKind: PatternKind | null
+  /** Mano no jugable: las cartas se ven grises. */
+  muted: boolean
   /** Rect del mazo: de ahí salen las cartas al repartirse. */
   getDeckRect: () => DOMRect | null
   onReorder: (ids: string[]) => void
@@ -56,7 +58,7 @@ function prefersReducedMotion(): boolean {
 }
 
 /** Mano en abanico: se reordena arrastrando, un toque abre la carta y se reparte desde el mazo. */
-export function PracticeHand({ cards, slots, sizeSlots, maxCardWidth, fanDegrees, highlighted, highlightKind, getDeckRect, onReorder, onInspect }: PracticeHandProps) {
+export function PracticeHand({ cards, slots, sizeSlots, maxCardWidth, fanDegrees, highlighted, highlightKind, muted, getDeckRect, onReorder, onInspect }: PracticeHandProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const width = useElementWidth(containerRef)
   const layout = computeHandLayout(width, slots, maxCardWidth, sizeSlots)
@@ -180,6 +182,7 @@ export function PracticeHand({ cards, slots, sizeSlots, maxCardWidth, fanDegrees
                 state={isDragged ? 'dragging' : 'rest'}
                 glow={highlighted.has(card.drawId)}
                 glowKind={highlightKind}
+                muted={muted}
                 dim={hasHighlight && !highlighted.has(card.drawId)}
                 getDeckRect={getDeckRect}
                 containerRef={containerRef}
@@ -203,6 +206,7 @@ interface HandCardProps {
   state: 'rest' | 'dragging'
   glow: boolean
   glowKind: PatternKind | null
+  muted: boolean
   dim: boolean
   getDeckRect: () => DOMRect | null
   containerRef: React.RefObject<HTMLDivElement | null>
@@ -220,6 +224,7 @@ function HandCard({
   state,
   glow,
   glowKind,
+  muted,
   dim,
   getDeckRect,
   containerRef,
@@ -295,6 +300,7 @@ function HandCard({
       data-glow={glow ? 'true' : 'false'}
       data-glow-kind={glow ? (glowKind ?? 'opening') : undefined}
       data-dim={dim ? 'true' : 'false'}
+      data-muted={muted ? 'true' : 'false'}
       style={style}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}

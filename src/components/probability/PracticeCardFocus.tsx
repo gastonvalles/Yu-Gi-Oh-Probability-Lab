@@ -5,8 +5,8 @@ import { buildCardSummary } from '../card-detail/card-summary'
 import { CardArt } from '../CardArt'
 import type { PracticeHandCard } from './practice'
 
-const OPEN_MS = 280
-const CLOSE_MS = 180
+const OPEN_MS = 220
+const CLOSE_MS = 150
 const EASE = 'cubic-bezier(0.2, 0.9, 0.25, 1)'
 
 interface PracticeCardFocusProps {

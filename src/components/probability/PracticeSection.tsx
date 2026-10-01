@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { buildDerivedDeckGroupMap } from '../../app/deck-groups'
+import { computeLabResults } from '../../app/probability-lab'
+import { formatShortPercent } from '../../app/utils'
 import { useMediaQuery } from '../../app/use-media-query'
 import type { CardEntry, HandPattern } from '../../types'
 import { IconButton } from '../ui/IconButton'
@@ -14,7 +16,7 @@ import {
   type PracticeHandCard,
   type PracticeReveal,
 } from './practice'
-import { PracticeBoard, PracticeVerdictChip } from './PracticeBoard'
+import { PracticeBoard, PracticeVerdictChip, UNPLAYABLE_ID } from './PracticeBoard'
 import { PracticeCardFocus } from './PracticeCardFocus'
 import { PracticeDeckPile } from './PracticeDeckPile'
 import { PracticeHand } from './PracticeHand'
@@ -111,6 +113,26 @@ export function PracticeSection(props: PracticeSectionProps) {
     table.isDealt && !blockedMessage && table.result
       ? getPracticeVerdict(table.result.openingMatches.length, table.result.problemMatches.length)
       : null
+  const lab = useMemo(() => {
+    if (blockedMessage || deck.length < handSize) {
+      return null
+    }
+
+    const computation = computeLabResults(derivedMainCards, patterns, handSize)
+    return computation.status === 'ok'
+      ? { first: computation.results.first.noOpeningProbability, second: computation.results.second.noOpeningProbability }
+      : null
+  }, [blockedMessage, deck.length, handSize, derivedMainCards, patterns])
+  const isUnplayable = verdict === 'no-opening'
+  const unplayableOdds = isUnplayable && lab ? formatShortPercent(table.isSecond ? lab.second : lab.first) : null
+
+  // Una mano no jugable arranca con su chip ya tocado, para mostrar de una cuánto pasa.
+  useEffect(() => {
+    if (isUnplayable) {
+      setActiveRuleId(UNPLAYABLE_ID)
+    }
+  }, [isUnplayable, table.shuffleKey])
+
   const getDeckRect = useCallback(() => pileRef.current?.getBoundingClientRect() ?? null, [])
 
   if (deck.length < handSize) {
@@ -132,6 +154,7 @@ export function PracticeSection(props: PracticeSectionProps) {
             problems={problems}
             activeId={activeRuleId}
             caseIndex={activeCase}
+            unplayableOdds={unplayableOdds}
             onToggle={handleToggleRule}
           />
         )}
@@ -146,6 +169,7 @@ export function PracticeSection(props: PracticeSectionProps) {
           fanDegrees={isWide ? 2.6 : 2.2}
           highlighted={highlighted}
           highlightKind={activeMatch?.kind ?? null}
+          muted={isUnplayable}
           getDeckRect={getDeckRect}
           onReorder={table.reorder}
           onInspect={(card, rect) => setInspected({ card, rect })}
