@@ -273,7 +273,6 @@ export function DeckModeScreen() {
           card={controller.deckBuilderStep.selectedDetailCard}
           deckFormat={controller.deckBuilderStep.deckFormat}
           isOpen={controller.deckBuilderStep.isCardDetailOpen}
-          layoutMode="mobile"
           showActions={controller.deckBuilderStep.selectedDetailSource !== 'deck'}
           deckCopy={controller.deckBuilderStep.selectedDeckCopyActions}
           onAddToZone={(zone) =>
