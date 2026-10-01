@@ -55,38 +55,36 @@ export function CardDetail({
     }
   }
 
+  if (isMobileLayout) {
+    return (
+      <section className="card-detail-mobile">
+        <MobileCardSummary
+          card={card}
+          typeLine={mobileSummary?.typeLine ?? ''}
+          statLine={mobileSummary?.statLine ?? null}
+          metaParts={mobileMetaParts}
+          onClose={onClose}
+        />
+        {actionEntries.length > 0 ? <ZoneActionsFooter entries={actionEntries} isMobile onAdd={handleAddToZone} /> : null}
+        {deckCopy ? <DeckCopyFooter deckCopy={deckCopy} /> : null}
+      </section>
+    )
+  }
+
   return (
     <section className="flex min-h-0 flex-col bg-card-background text-(--text-main)">
       <div className="relative min-h-0 overflow-x-hidden overflow-y-auto px-3 pb-3 pt-3 min-[860px]:px-6 min-[860px]:pb-5 min-[860px]:pt-5">
-        {!isMobileLayout ? (
-          <div className="absolute right-3 top-3 z-10 min-[860px]:right-6 min-[860px]:top-5">
-            <CloseButton
-              size="md"
-              aria-label="Cerrar detalle"
-              onClick={onClose}
-            />
-          </div>
-        ) : null}
+        <div className="absolute right-3 top-3 z-10 min-[860px]:right-6 min-[860px]:top-5">
+          <CloseButton
+            size="md"
+            aria-label="Cerrar detalle"
+            onClick={onClose}
+          />
+        </div>
 
         <div className="grid gap-3 min-[860px]:gap-4">
-          <div
-            className={[
-              'grid gap-3',
-              isMobileLayout
-                ? 'content-start'
-                : 'content-start min-[860px]:grid-cols-[22rem_minmax(0,1fr)] min-[860px]:items-start min-[860px]:gap-6',
-            ].join(' ')}
-          >
-            {isMobileLayout ? (
-              <MobileCardSummary
-                card={card}
-                typeLine={mobileSummary?.typeLine ?? ''}
-                statLine={mobileSummary?.statLine ?? null}
-                metaParts={mobileMetaParts}
-                onClose={onClose}
-              />
-            ) : (
-              <>
+          <div className="grid content-start gap-3 min-[860px]:grid-cols-[22rem_minmax(0,1fr)] min-[860px]:items-start min-[860px]:gap-6">
+            <>
                 <aside className="grid content-start gap-3">
                   <div className="grid content-start gap-3">
                     <CardArt
@@ -149,44 +147,12 @@ export function CardDetail({
                     </p>
                   </section>
                 </div>
-              </>
-            )}
+            </>
           </div>
         </div>
       </div>
 
-      {actionEntries.length > 0 ? (
-        <footer className="border-t border-(--border-subtle) bg-[linear-gradient(180deg,rgb(var(--secondary-rgb)/0.95),rgb(var(--background-rgb)/0.98))] px-4 py-3 min-[860px]:px-6">
-          <div
-            className={[
-              'grid gap-2.5',
-              isMobileLayout && actionEntries.length > 1 ? 'grid-cols-2' : '',
-            ].join(' ')}
-            style={{
-              gridTemplateColumns: isMobileLayout
-                ? undefined
-                : `repeat(${actionEntries.length}, minmax(0, 1fr))`,
-            }}
-          >
-            {actionEntries.map((entry, index) => (
-              <Button
-                key={entry.zone}
-                variant={entry.variant}
-                size="sm"
-                fullWidth
-                className={
-                  isMobileLayout && actionEntries.length % 2 === 1 && index === actionEntries.length - 1
-                    ? 'col-span-2'
-                    : ''
-                }
-                onClick={() => handleAddToZone(entry.zone)}
-              >
-                {entry.label}
-              </Button>
-            ))}
-          </div>
-        </footer>
-      ) : null}
+      {actionEntries.length > 0 ? <ZoneActionsFooter entries={actionEntries} isMobile={false} onAdd={handleAddToZone} /> : null}
 
       {deckCopy ? <DeckCopyFooter deckCopy={deckCopy} /> : null}
     </section>
@@ -211,15 +177,15 @@ function MobileCardSummary({
   const [isArtZoomed, setIsArtZoomed] = useState(false)
 
   return (
-    <div className="grid gap-2.5">
-      <header className="flex items-start justify-between gap-2">
-        <h2 className="m-0 wrap-anywhere pt-1 text-[1.12rem] font-semibold leading-[1.15] tracking-[-0.02em] text-(--text-main)">
+    <div className="card-detail-mobile-body">
+      <header className="card-detail-mobile-head">
+        <h2 className="m-0 wrap-anywhere text-[1.1rem] font-semibold leading-[1.15] tracking-[-0.02em] text-(--text-main)">
           {card.name}
         </h2>
-        <CloseButton size="sm" aria-label="Cerrar detalle" onClick={onClose} />
+        <CloseButton size="lg" className="card-detail-close" aria-label="Cerrar detalle" onClick={onClose} />
       </header>
 
-      <div className="grid grid-cols-[minmax(0,42%)_minmax(0,1fr)] items-start gap-3">
+      <div className="card-detail-mobile-top">
         <button
           type="button"
           className="card-detail-thumb"
@@ -255,9 +221,12 @@ function MobileCardSummary({
         </div>
       </div>
 
-      <p className="card-detail-effect m-0 whitespace-pre-wrap wrap-anywhere">
-        {card.description?.trim().length ? card.description : 'No card text available.'}
-      </p>
+      {/* El texto scrollea dentro de su casilla: la ventana no crece con textos largos. */}
+      <div className="card-detail-effect" tabIndex={0} role="region" aria-label="Texto de la carta">
+        <p className="m-0 whitespace-pre-wrap wrap-anywhere">
+          {card.description?.trim().length ? card.description : 'No card text available.'}
+        </p>
+      </div>
 
       <Modal isOpen={isArtZoomed} onClose={() => setIsArtZoomed(false)} size="sm" bare flush ariaLabel={card.name}>
         <button type="button" className="block w-full" aria-label="Cerrar imagen" onClick={() => setIsArtZoomed(false)}>
@@ -271,6 +240,38 @@ function MobileCardSummary({
         </button>
       </Modal>
     </div>
+  )
+}
+
+function ZoneActionsFooter({
+  entries,
+  isMobile,
+  onAdd,
+}: {
+  entries: ReturnType<typeof buildZoneActionEntries>
+  isMobile: boolean
+  onAdd: (zone: DeckZone) => void
+}) {
+  return (
+    <footer className="card-detail-footer border-t border-(--border-subtle) bg-[linear-gradient(180deg,rgb(var(--secondary-rgb)/0.95),rgb(var(--background-rgb)/0.98))] px-4 py-3 min-[860px]:px-6">
+      <div
+        className={['grid gap-2.5', isMobile && entries.length > 1 ? 'grid-cols-2' : ''].join(' ')}
+        style={{ gridTemplateColumns: isMobile ? undefined : `repeat(${entries.length}, minmax(0, 1fr))` }}
+      >
+        {entries.map((entry, index) => (
+          <Button
+            key={entry.zone}
+            variant={entry.variant}
+            size="sm"
+            fullWidth
+            className={isMobile && entries.length % 2 === 1 && index === entries.length - 1 ? 'col-span-2' : ''}
+            onClick={() => onAdd(entry.zone)}
+          >
+            {entry.label}
+          </Button>
+        ))}
+      </div>
+    </footer>
   )
 }
 
@@ -324,8 +325,8 @@ export function CardDetailSkeleton({
                 <header className="surface-card relative px-10 py-1.5 text-center">
                   <Skeleton radius="none" className="mx-auto h-5 w-44 max-w-full" />
                   <CloseButton
-                    size="sm"
-                    className="absolute right-2 top-1/2 -translate-y-1/2"
+                    size="lg"
+                    className="card-detail-close absolute right-1 top-1/2 -translate-y-1/2"
                     aria-label="Cerrar detalle"
                     onClick={onClose}
                   />

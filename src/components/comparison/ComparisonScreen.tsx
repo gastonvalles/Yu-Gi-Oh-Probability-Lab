@@ -5,6 +5,7 @@ import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
 import type { DeckBuilderState, DeckCardInstance } from '../../app/model'
 import { withReferenceClassification, type BuildZones } from '../../app/saved-builds'
 import { useAppSelector } from '../../app/store-hooks'
+import { useMediaQuery } from '../../app/use-media-query'
 import { useToastMessage } from '../../app/use-toast-message'
 import { formatInteger } from '../../app/utils'
 import type { CardOrigin, CardRole } from '../../types'
@@ -58,6 +59,7 @@ export function ComparisonScreen() {
   const disabledGenericRuleIds = useAppSelector((state) => state.patterns.disabledGenericRuleIds)
   const handSize = useAppSelector((state) => state.settings.handSize)
   const deckFormat = useAppSelector((state) => state.settings.deckFormat)
+  const isDesktop = useMediaQuery('(min-width: 1101px)')
   const savedBuilds = useSavedBuilds()
   const { showToast } = useToastMessage()
   const [selection, setSelection] = useState(readSelection)
@@ -311,6 +313,7 @@ export function ComparisonScreen() {
         card={detailCard}
         deckFormat={deckFormat}
         isOpen={detailCard !== null}
+        layoutMode={isDesktop ? 'desktop' : 'mobile'}
         showActions={false}
         onAddToZone={() => false}
         onClose={() => setDetailCard(null)}
