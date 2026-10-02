@@ -2,9 +2,19 @@ import { formatInteger, formatShortPercent } from '../../app/utils'
 import type { PatternKind } from '../../types'
 import { describePracticeMatch, type PracticeHandMatch, type PracticeVerdict } from './practice'
 
-/** "Pasa en 1 de cada x manos (p%)." */
-function formatOdds(probability: number): string {
-  return `Pasa en 1 de cada ${formatInteger(Math.max(1, Math.round(1 / probability)))} manos (${formatShortPercent(probability)}).`
+/** "Pasa en 1 de cada x manos (p%)"; si pasa en más de la mitad, "x de cada 10" (1 de cada 1 no tiene sentido). */
+export function formatOdds(probability: number): string {
+  const percent = formatShortPercent(probability)
+
+  if (probability >= 0.995) {
+    return `Pasa en casi todas las manos (${percent}).`
+  }
+
+  if (probability > 0.5) {
+    return `Pasa en ${Math.min(9, Math.max(6, Math.round(probability * 10)))} de cada 10 manos (${percent}).`
+  }
+
+  return `Pasa en 1 de cada ${formatInteger(Math.max(2, Math.round(1 / probability)))} manos (${percent}).`
 }
 
 /** Id del chip "Mano no jugable" (no es una regla del Lab). */
