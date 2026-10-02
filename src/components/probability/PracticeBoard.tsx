@@ -2,6 +2,11 @@ import { formatInteger, formatShortPercent } from '../../app/utils'
 import type { PatternKind } from '../../types'
 import { describePracticeMatch, type PracticeHandMatch, type PracticeVerdict } from './practice'
 
+/** "Pasa en 1 de cada x manos (p%)." */
+function formatOdds(probability: number): string {
+  return `Pasa en 1 de cada ${formatInteger(Math.max(1, Math.round(1 / probability)))} manos (${formatShortPercent(probability)}).`
+}
+
 /** Id del chip "Mano no jugable" (no es una regla del Lab). */
 export const UNPLAYABLE_ID = 'unplayable'
 
@@ -33,11 +38,13 @@ interface PracticeBoardProps {
   caseIndex: number
   /** Mano sin salida: probabilidad (0-1) de que pase. null si la mano es jugable. */
   unplayableOdds: number | null
+  /** Probabilidad (0-1) de cada regla en este turno, por id: se muestra como "1 de cada x manos". */
+  ruleOdds?: ReadonlyMap<string, number> | null
   onToggle: (patternId: string) => void
 }
 
 /** Salidas y problemas: cada uno aparece en cuanto la mano cumple sus condiciones. */
-export function PracticeBoard({ openings, problems, activeId, caseIndex, unplayableOdds, onToggle }: PracticeBoardProps) {
+export function PracticeBoard({ openings, problems, activeId, caseIndex, unplayableOdds, ruleOdds = null, onToggle }: PracticeBoardProps) {
   const active = [...openings, ...problems].find((match) => match.patternId === activeId) ?? null
 
   return (
@@ -48,10 +55,10 @@ export function PracticeBoard({ openings, problems, activeId, caseIndex, unplaya
       </div>
       {activeId === UNPLAYABLE_ID && unplayableOdds !== null && unplayableOdds > 0 ? (
         <section className="practice-explain" data-kind="problem" aria-live="polite" aria-label="Mano no jugable">
-          <p>Pasa en 1 de cada {formatInteger(Math.max(1, Math.round(1 / unplayableOdds)))} manos ({formatShortPercent(unplayableOdds)}).</p>
+          <p>{formatOdds(unplayableOdds)}</p>
         </section>
       ) : null}
-      {active ? <RuleExplanation key={active.patternId} match={active} caseIndex={caseIndex} /> : null}
+      {active ? <RuleExplanation key={active.patternId} match={active} caseIndex={caseIndex} odds={ruleOdds?.get(active.patternId) ?? null} /> : null}
     </>
   )
 }
@@ -60,7 +67,7 @@ export function PracticeBoard({ openings, problems, activeId, caseIndex, unplaya
  * Qué pide la regla y, si hace falta, con qué cartas de la mano se cumple. El nombre ya está en el
  * botón apretado, y las cartas que el texto ya nombra no se repiten.
  */
-function RuleExplanation({ match, caseIndex }: { match: PracticeHandMatch; caseIndex: number }) {
+function RuleExplanation({ match, caseIndex, odds }: { match: PracticeHandMatch; caseIndex: number; odds: number | null }) {
   const condition = describePracticeMatch(match, caseIndex)
   const cards = (match.cases[caseIndex]?.cards ?? []).filter((card) => !condition.includes(card.name))
 
@@ -72,6 +79,7 @@ function RuleExplanation({ match, caseIndex }: { match: PracticeHandMatch; caseI
           {caseIndex + 1}/{match.cases.length}
         </span>
       ) : null}
+      {odds !== null && odds > 0 ? <p className="practice-explain-odds">{formatOdds(odds)}</p> : null}
       {cards.length > 0 ? (
         <ul aria-label="Cartas de tu mano">
           {cards.map((card) => (

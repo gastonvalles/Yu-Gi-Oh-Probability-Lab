@@ -120,7 +120,14 @@ export function PracticeSection(props: PracticeSectionProps) {
 
     const computation = computeLabResults(derivedMainCards, patterns, handSize)
     return computation.status === 'ok'
-      ? { first: computation.results.first.noOpeningProbability, second: computation.results.second.noOpeningProbability }
+      ? {
+          first: computation.results.first.noOpeningProbability,
+          second: computation.results.second.noOpeningProbability,
+          rules: {
+            first: new Map(computation.results.first.patternResults.map((result) => [result.patternId, result.probability])),
+            second: new Map(computation.results.second.patternResults.map((result) => [result.patternId, result.probability])),
+          },
+        }
       : null
   }, [blockedMessage, deck.length, handSize, derivedMainCards, patterns])
   const isUnplayable = verdict === 'no-opening'
@@ -155,6 +162,7 @@ export function PracticeSection(props: PracticeSectionProps) {
             activeId={activeRuleId}
             caseIndex={activeCase}
             unplayableOdds={unplayableOdds}
+            ruleOdds={lab?.rules[table.isSecond ? 'second' : 'first'] ?? null}
             onToggle={handleToggleRule}
           />
         )}
