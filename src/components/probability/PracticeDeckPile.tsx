@@ -35,7 +35,11 @@ export const PracticeDeckPile = forwardRef<HTMLButtonElement, PracticeDeckPilePr
         <span key={dealt} className="practice-card-back practice-pile-card practice-pile-top" />
       </span>
       {canDraw ? <span className="practice-pile-label">+1</span> : null}
-      {isSecond ? <span className="practice-pile-badge">2º</span> : null}
+      {isSecond || canDraw ? (
+        <span key={isSecond ? 'second' : 'first'} className="practice-pile-badge" data-turn={isSecond ? 'second' : 'first'}>
+          {isSecond ? '2º' : '1º'}
+        </span>
+      ) : null}
     </button>
   )
 })
