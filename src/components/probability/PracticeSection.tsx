@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { buildDerivedDeckGroupMap } from '../../app/deck-groups'
 import { computeLabResults } from '../../app/probability-lab'
-import { useMediaQuery } from '../../app/use-media-query'
 import type { CardEntry, HandPattern } from '../../types'
 import { IconButton } from '../ui/IconButton'
 import { RefreshIcon } from '../ui/icons'
@@ -32,6 +31,12 @@ interface PracticeSectionProps {
   reviewPendingPatternCount: number
 }
 
+interface LabOdds {
+  first: number
+  second: number
+  rules: { first: ReadonlyMap<string, number>; second: ReadonlyMap<string, number> }
+}
+
 const EMPTY_IDS: ReadonlySet<string> = new Set()
 const EMPTY_STEPS: ReadonlyMap<string, number> = new Map()
 
@@ -54,7 +59,6 @@ function getBlockedMessage(props: PracticeSectionProps): string | null {
 
 export function PracticeSection(props: PracticeSectionProps) {
   const { handSize, derivedMainCards, patterns } = props
-  const isWide = useMediaQuery('(min-width: 820px)')
   const deck = useMemo(() => buildPracticeDeck(derivedMainCards), [derivedMainCards])
   const groupsByKey = useMemo(() => buildDerivedDeckGroupMap(derivedMainCards), [derivedMainCards])
   const blockedMessage = getBlockedMessage(props)
@@ -113,22 +117,32 @@ export function PracticeSection(props: PracticeSectionProps) {
     table.isDealt && !blockedMessage && table.result
       ? getPracticeVerdict(table.result.openingMatches.length, table.result.problemMatches.length)
       : null
-  const lab = useMemo(() => {
+  // El cálculo exacto del Lab es pesado: se hace después de pintar la mesa, sin trabar el reparto.
+  const [lab, setLab] = useState<LabOdds | null>(null)
+
+  useEffect(() => {
     if (blockedMessage || deck.length < handSize) {
-      return null
+      setLab(null)
+      return
     }
 
-    const computation = computeLabResults(derivedMainCards, patterns, handSize)
-    return computation.status === 'ok'
-      ? {
-          first: computation.results.first.noOpeningProbability,
-          second: computation.results.second.noOpeningProbability,
-          rules: {
-            first: new Map(computation.results.first.patternResults.map((result) => [result.patternId, result.probability])),
-            second: new Map(computation.results.second.patternResults.map((result) => [result.patternId, result.probability])),
-          },
-        }
-      : null
+    const timer = window.setTimeout(() => {
+      const computation = computeLabResults(derivedMainCards, patterns, handSize)
+      setLab(
+        computation.status === 'ok'
+          ? {
+              first: computation.results.first.noOpeningProbability,
+              second: computation.results.second.noOpeningProbability,
+              rules: {
+                first: new Map(computation.results.first.patternResults.map((result) => [result.patternId, result.probability])),
+                second: new Map(computation.results.second.patternResults.map((result) => [result.patternId, result.probability])),
+              },
+            }
+          : null,
+      )
+    }, 700)
+
+    return () => window.clearTimeout(timer)
   }, [blockedMessage, deck.length, handSize, derivedMainCards, patterns])
   const isUnplayable = verdict === 'no-opening'
   const unplayableOdds = isUnplayable && lab ? (table.isSecond ? lab.second : lab.first) : null
@@ -173,8 +187,8 @@ export function PracticeSection(props: PracticeSectionProps) {
           cards={table.cards}
           slots={table.isSecond ? handSize + 1 : handSize}
           sizeSlots={handSize}
-          maxCardWidth={isWide ? 164 : 124}
-          fanDegrees={isWide ? 2.6 : 2.2}
+          maxCardWidth={124}
+          fanDegrees={2.2}
           highlighted={highlighted}
           highlightKind={activeMatch?.kind ?? null}
           muted={isUnplayable}
