@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { buildDerivedDeckGroupMap } from '../app/deck-groups'
 import { buildPatternPresets } from '../app/pattern-presets'
-import { PracticeBoard } from '../components/probability/PracticeBoard'
+import { formatOdds, PracticeBoard } from '../components/probability/PracticeBoard'
 import { buildPracticeDeck, evaluatePracticeHand, getMatchCardIds } from '../components/probability/practice'
 import type { CardEntry, CardRole } from '../types'
 
@@ -67,5 +67,15 @@ describe('explicación de Bricks/Garnets en práctica', () => {
   it('activa la regla con dos Garnets y no la activa con una sola carta de ambos roles', () => {
     expect(resultOf(['Garnet B', 'Garnet B', 'Starter']).problemMatches).toHaveLength(1)
     expect(resultOf(['Brick/Garnet C', 'Starter', 'Starter']).problemMatches).toHaveLength(0)
+  })
+})
+
+describe('formatOdds', () => {
+  it('dice 1 de cada x si es poco frecuente y x de cada 10 si es frecuente', () => {
+    expect(formatOdds(0.0413)).toMatch(/^Pasa en 1 de cada 24 manos/)
+    expect(formatOdds(0.5)).toMatch(/^Pasa en 1 de cada 2 manos/)
+    expect(formatOdds(0.95)).toMatch(/^Pasa en 9 de cada 10 manos/)
+    expect(formatOdds(0.62)).toMatch(/^Pasa en 6 de cada 10 manos/)
+    expect(formatOdds(0.999)).toMatch(/casi todas las manos/)
   })
 })
