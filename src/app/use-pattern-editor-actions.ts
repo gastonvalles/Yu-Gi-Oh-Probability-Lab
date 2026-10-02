@@ -16,6 +16,7 @@ import {
   replacePatterns as replacePatternsAction,
   setPatternAllowSharedCards,
   setPatternIgnoresDraw,
+  setPatternRescuesCards,
   setPatternCategory,
   setPatternMatchMode,
   setPatternMinimumMatches,
@@ -100,6 +101,9 @@ export function createPatternEditorActions(
         patternId,
         value: Math.max(1, toNonNegativeInteger(value, 1)),
       }))
+    },
+    setPatternRescuesCards(patternId, value) {
+      dispatch(setPatternRescuesCards({ patternId, value }))
     },
     setPatternIgnoresDraw(patternId, value) {
       dispatch(setPatternIgnoresDraw({ patternId, value }))

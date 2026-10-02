@@ -21,6 +21,7 @@ import {
   removeRequirementCardFromPool,
   updatePatternAllowSharedCards,
   updatePatternIgnoresDraw,
+  updatePatternRescuesCards,
   updatePatternCategory,
   updatePatternMatchMode,
   updatePatternMinimumMatches,
@@ -239,6 +240,9 @@ const patternsSlice = createSlice({
         action.payload.value,
       )
     },
+    setPatternRescuesCards(state, action: PayloadAction<{ patternId: string; value: boolean }>) {
+      state.patterns = updatePatternRescuesCards(state.patterns, action.payload.patternId, action.payload.value)
+    },
     setPatternIgnoresDraw(state, action: PayloadAction<{ patternId: string; value: boolean }>) {
       state.patterns = updatePatternIgnoresDraw(state.patterns, action.payload.patternId, action.payload.value)
     },
@@ -399,6 +403,7 @@ export const {
   setSystemRuleName,
   setPatternAllowSharedCards,
   setPatternIgnoresDraw,
+  setPatternRescuesCards,
   setPatternCategory,
   setPatternMatchMode,
   setPatternMinimumMatches,

@@ -1,5 +1,6 @@
 import { buildDerivedDeckGroupMap } from './app/deck-groups'
 import {
+  getResolvedPatternWitness,
   matchesResolvedPattern,
   resolvePattern,
   type CountOperations,
@@ -112,13 +113,41 @@ export function buildCalculationSummary(state: CalculatorState): CalculationSumm
   const ignoresDraw = state.patterns.map((pattern) => pattern.ignoresDraw === true)
   const splitsDraw = state.drawnCards === 1 && ignoresDraw.some(Boolean)
 
+  const rescues = state.patterns.map((pattern) => pattern.rescuesCards === true && normalizeHandPatternCategory(pattern.kind) === 'opening')
+  const hasRescue = rescues.some(Boolean)
+
   const tally = (handCounts: number[], initialCounts: number[], weight: number) => {
     let matchedGoodPattern = false
     let matchedBadPattern = false
     matchedIndexes.length = 0
 
+    const countsFor = (index: number) => (ignoresDraw[index] ? initialCounts : handCounts)
+    // Cartas que una salida "rescatadora" usa: dejan de contar para los problemas.
+    let rescued: number[] | null = null
+
+    if (hasRescue) {
+      for (const [index, pattern] of resolvedPatterns.entries()) {
+        const witness = rescues[index] && matchesResolvedPattern(pattern, countsFor(index), ARRAY_COUNT_OPERATIONS)
+          ? getResolvedPatternWitness(pattern, countsFor(index), ARRAY_COUNT_OPERATIONS)
+          : null
+
+        for (const requirement of witness?.matchedRequirements ?? []) {
+          for (const [key, copies] of requirement.usage) {
+            rescued ??= new Array<number>(handCounts.length).fill(0)
+            rescued[key] = Math.max(rescued[key], copies)
+          }
+        }
+      }
+    }
+
     for (const [index, pattern] of resolvedPatterns.entries()) {
-      if (matchesResolvedPattern(pattern, ignoresDraw[index] ? initialCounts : handCounts, ARRAY_COUNT_OPERATIONS)) {
+      const base = countsFor(index)
+      const counts =
+        rescued && normalizeHandPatternCategory(pattern.kind) === 'problem'
+          ? base.map((copies, key) => Math.max(0, copies - rescued[key]))
+          : base
+
+      if (matchesResolvedPattern(pattern, counts, ARRAY_COUNT_OPERATIONS)) {
         patternHands[index] += weight
         matchedIndexes.push(index)
 
