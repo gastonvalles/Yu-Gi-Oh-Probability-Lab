@@ -49,6 +49,11 @@
     right: 0.35rem;
   }
 
+  /* En desktop la mesa es angosta, como en el celu: cartas de tamaño normal y todo a la vista. */
+  .app-modal-panel.practice-modal[data-size='xl'] {
+    width: min(34rem, 100%);
+  }
+
   @media (min-width: 820px) {
     .practice-modal .app-modal-floating-close.ui-close-button {
       top: 1rem;
@@ -464,22 +469,6 @@
       padding-top: 1rem;
     }
 
-    .practice-board {
-      padding: 0.75rem 1.4rem;
-    }
-
-    .practice-groups {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 1.5rem 3rem;
-    }
-
-    .practice-group {
-      min-width: 12rem;
-      max-width: 28rem;
-    }
-
     .practice-rule {
       min-height: 2.6rem;
       font-size: 0.95rem;
@@ -487,10 +476,6 @@
 
     .practice-tray {
       padding: 0 1.4rem 1rem;
-    }
-
-    .practice-pile {
-      width: 4rem;
     }
 
     .practice-card {
