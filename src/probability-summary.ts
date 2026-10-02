@@ -109,6 +109,46 @@ export function buildCalculationSummary(state: CalculatorState): CalculationSumm
 
   const suffixCopies = buildSuffixCopies(relevantCards)
 
+  const ignoresDraw = state.patterns.map((pattern) => pattern.ignoresDraw === true)
+  const splitsDraw = state.drawnCards === 1 && ignoresDraw.some(Boolean)
+
+  const tally = (handCounts: number[], initialCounts: number[], weight: number) => {
+    let matchedGoodPattern = false
+    let matchedBadPattern = false
+    matchedIndexes.length = 0
+
+    for (const [index, pattern] of resolvedPatterns.entries()) {
+      if (matchesResolvedPattern(pattern, ignoresDraw[index] ? initialCounts : handCounts, ARRAY_COUNT_OPERATIONS)) {
+        patternHands[index] += weight
+        matchedIndexes.push(index)
+
+        if (normalizeHandPatternCategory(pattern.kind) === 'problem') {
+          matchedBadPattern = true
+        } else {
+          matchedGoodPattern = true
+        }
+      }
+    }
+
+    if (matchedGoodPattern) {
+      goodHands += weight
+    }
+
+    if (matchedBadPattern) {
+      badHands += weight
+    }
+
+    if (matchedGoodPattern && matchedBadPattern) {
+      overlapHands += weight
+    }
+
+    const segment = !matchedGoodPattern ? 'noOpening' : matchedBadPattern ? 'withProblem' : 'clean'
+
+    for (const index of matchedIndexes) {
+      segmentPatternHands[segment][index] += weight
+    }
+  }
+
   enumerateHands(
     relevantCards,
     suffixCopies,
@@ -117,39 +157,18 @@ export function buildCalculationSummary(state: CalculatorState): CalculationSumm
     new Array<number>(relevantCards.length).fill(0),
     1,
     (counts, weight) => {
-      let matchedGoodPattern = false
-      let matchedBadPattern = false
-      matchedIndexes.length = 0
+      if (!splitsDraw) {
+        tally(counts, counts, weight)
+        return
+      }
 
-      for (const [index, pattern] of resolvedPatterns.entries()) {
-        if (matchesResolvedPattern(pattern, counts, ARRAY_COUNT_OPERATIONS)) {
-          patternHands[index] += weight
-          matchedIndexes.push(index)
-
-          if (normalizeHandPatternCategory(pattern.kind) === 'problem') {
-            matchedBadPattern = true
-          } else {
-            matchedGoodPattern = true
-          }
+      // La carta robada puede ser cualquiera de la mano: se promedia sobre cada clase posible.
+      for (const [classIndex, copies] of counts.entries()) {
+        if (copies > 0) {
+          const initial = [...counts]
+          initial[classIndex] -= 1
+          tally(counts, initial, (weight * copies) / state.handSize)
         }
-      }
-
-      if (matchedGoodPattern) {
-        goodHands += weight
-      }
-
-      if (matchedBadPattern) {
-        badHands += weight
-      }
-
-      if (matchedGoodPattern && matchedBadPattern) {
-        overlapHands += weight
-      }
-
-      const segment = !matchedGoodPattern ? 'noOpening' : matchedBadPattern ? 'withProblem' : 'clean'
-
-      for (const index of matchedIndexes) {
-        segmentPatternHands[segment][index] += weight
       }
     },
   )

@@ -19,6 +19,8 @@ export interface RuleEntry {
   /** Qué mide y por qué importa (sólo reglas del sistema). */
   description: string | null
   turnContext: TurnContext
+  /** Yendo 2º no cuenta la carta robada (se mira la mano inicial). */
+  ignoresDraw?: boolean
   enabled: boolean
   /** La vista de turno activa incluye esta regla (una "Solo 2º" no aplica yendo 1º). */
   appliesToView: boolean
@@ -135,6 +137,7 @@ export function buildRuleEntryGroups({
       summary: isComplete ? buildPatternCompactSummary(pattern, cardById) : 'Falta completar las condiciones',
       description: duplicateOf ? `Es igual a “${duplicateOf}”, que ya se cuenta: no cambia el resultado.` : null,
       turnContext: pattern.turnContext,
+      ignoresDraw: pattern.ignoresDraw === true,
       enabled: !pattern.systemRuleId || !disabled.has(pattern.systemRuleId),
       isComplete,
     })

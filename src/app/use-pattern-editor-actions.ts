@@ -15,6 +15,7 @@ import {
   removeRequirementFromPattern,
   replacePatterns as replacePatternsAction,
   setPatternAllowSharedCards,
+  setPatternIgnoresDraw,
   setPatternCategory,
   setPatternMatchMode,
   setPatternMinimumMatches,
@@ -99,6 +100,9 @@ export function createPatternEditorActions(
         patternId,
         value: Math.max(1, toNonNegativeInteger(value, 1)),
       }))
+    },
+    setPatternIgnoresDraw(patternId, value) {
+      dispatch(setPatternIgnoresDraw({ patternId, value }))
     },
     setPatternAllowSharedCards(patternId, value) {
       dispatch(setPatternAllowSharedCards({ patternId, value }))

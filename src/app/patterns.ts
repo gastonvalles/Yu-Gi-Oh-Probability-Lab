@@ -53,6 +53,7 @@ export function normalizePatternName(name: string): string {
 export function getPatternDefinitionKey(
   pattern: Pick<HandPattern, 'kind' | 'logic' | 'minimumConditionMatches' | 'reusePolicy'> & {
     turnContext?: HandPattern['turnContext']
+    ignoresDraw?: boolean
     conditions: Pick<PatternCondition, 'matcher' | 'quantity' | 'kind' | 'distinct'>[]
   },
 ): string {
@@ -67,6 +68,7 @@ export function getPatternDefinitionKey(
     minimumConditionMatches: pattern.minimumConditionMatches,
     reusePolicy: pattern.reusePolicy,
     turnContext: normalizeTurnContext(pattern.turnContext),
+    ...(pattern.ignoresDraw ? { ignoresDraw: true } : {}),
   })
 }
 

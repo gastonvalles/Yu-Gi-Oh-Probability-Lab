@@ -21,6 +21,7 @@ export interface PatternEditorActions {
   setPatternMatchMode: (patternId: string, value: PatternMatchMode) => void
   setPatternMinimumMatches: (patternId: string, value: string) => void
   setPatternAllowSharedCards: (patternId: string, value: boolean) => void
+  setPatternIgnoresDraw: (patternId: string, value: boolean) => void
   addRequirement: (patternId: string) => void
   removeRequirement: (patternId: string, requirementId: string) => void
   addRequirementCard: (patternId: string, requirementId: string, cardId: string) => void

@@ -109,7 +109,7 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
       </RuleStep>
 
       <RuleStep number={4} title="¿Cuándo cuenta?">
-        <TurnContextToggle patternId={pattern.id} currentTurnContext={pattern.turnContext} actions={actions} />
+        <TurnContextToggle patternId={pattern.id} currentTurnContext={pattern.turnContext} ignoresDraw={pattern.ignoresDraw === true} actions={actions} />
       </RuleStep>
 
 
