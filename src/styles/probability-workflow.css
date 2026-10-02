@@ -445,6 +445,11 @@
     }
   }
 
+  /* Con un modal abierto el pulso no se ve y sólo fuerza repintados. */
+  body:has(.app-modal-root) .draggable-fab {
+    animation: none;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .draggable-fab {
       animation: none;

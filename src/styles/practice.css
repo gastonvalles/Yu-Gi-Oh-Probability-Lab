@@ -51,10 +51,43 @@
 
   /* En desktop la mesa es angosta, como en el celu: cartas de tamaño normal y todo a la vista. */
   .app-modal-panel.practice-modal[data-size='xl'] {
-    width: min(34rem, 100%);
+    width: min(40rem, 100%);
+  }
+
+  /* Rendimiento: el desenfoque del fondo se repinta con todo lo que se anima detrás; acá no hace falta. */
+  .app-modal-root:has(.practice-modal) {
+    backdrop-filter: none;
   }
 
   @media (min-width: 820px) {
+    /* En desktop sobra ancho: recarga a la izquierda y mazo a la derecha, en la misma fila que la mano. */
+    .practice-table .practice-tray {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: end;
+      gap: 0.75rem;
+    }
+
+    .practice-table .practice-dock {
+      display: contents;
+    }
+
+    .practice-table .practice-tray > .practice-hand {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .practice-table .practice-dock > :first-child {
+      grid-column: 1;
+      grid-row: 1;
+      margin-bottom: 0.5rem;
+    }
+
+    .practice-table .practice-dock > .practice-pile {
+      grid-column: 3;
+      grid-row: 1;
+      margin-bottom: 1.4rem;
+    }
+
     .practice-modal .app-modal-floating-close.ui-close-button {
       top: 1rem;
       right: 1rem;
