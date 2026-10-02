@@ -529,6 +529,12 @@
     overflow-wrap: anywhere;
   }
 
+  .practice-explain .practice-explain-odds {
+    grid-column: 1 / -1;
+    font-size: 0.8rem;
+    color: rgb(255 255 255 / 0.62);
+  }
+
   .practice-explain-count {
     border-radius: 999px;
     background: color-mix(in srgb, var(--rule-color) 22%, transparent);
