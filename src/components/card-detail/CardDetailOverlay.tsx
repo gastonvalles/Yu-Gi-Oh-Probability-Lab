@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 import { UI_ANIMATION_MS } from '../../app/motion'
@@ -37,6 +37,8 @@ export function CardDetailOverlay({ name, card, origin = null, metadata, actions
   const infoRef = useRef<HTMLElement>(null)
   const textRef = useRef<HTMLDivElement>(null)
   const closingRef = useRef(false)
+  // Tocar la carta la agranda al máximo; tocarla de nuevo (o el fondo) vuelve al detalle.
+  const [zoomed, setZoomed] = useState(false)
   const animationsRef = useRef<Animation[]>([])
   const summary = card ? buildCardSummary(card) : null
 
@@ -108,7 +110,7 @@ export function CardDetailOverlay({ name, card, origin = null, metadata, actions
       role="dialog"
       aria-modal="true"
       aria-label={`Detalle de ${name}`}
-      onClick={close}
+      onClick={() => (zoomed ? setZoomed(false) : close())}
       onKeyDown={(event) => {
         if (event.key !== 'Tab') return
         const focusable = Array.from(rootRef.current?.querySelectorAll<HTMLElement>('*') ?? [])
@@ -125,8 +127,18 @@ export function CardDetailOverlay({ name, card, origin = null, metadata, actions
         }
       }}
     >
-      <div className="card-detail-stack">
-        <div ref={cardRef} className="card-detail-art" onClick={(event) => event.stopPropagation()}>
+      <div className="card-detail-stack" data-zoomed={zoomed ? 'true' : 'false'}>
+        <div
+          ref={cardRef}
+          className="card-detail-art"
+          role="button"
+          tabIndex={-1}
+          aria-label={zoomed ? 'Volver al detalle' : 'Ver la carta en grande'}
+          onClick={(event) => {
+            event.stopPropagation()
+            setZoomed((current) => !current)
+          }}
+        >
           <CardArt
             remoteUrl={card?.imageUrl ?? card?.imageUrlSmall ?? null}
             name={name}

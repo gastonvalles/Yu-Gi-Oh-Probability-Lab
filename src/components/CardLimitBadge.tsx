@@ -12,19 +12,19 @@ interface CardLimitBadgeProps {
 
 const BADGE_SIZE_CLASSNAME: Record<CardLimitBadgeSize, Record<'single' | 'double' | 'triple', string>> = {
   sm: {
-    single: 'left-[-0.08rem] top-[-0.08rem] h-[1.08rem] w-[1.08rem]',
-    double: 'left-[-0.08rem] top-[-0.08rem] h-[1.08rem] w-[1.42rem]',
-    triple: 'left-[-0.08rem] top-[-0.08rem] h-[1.08rem] w-[1.72rem]',
+    single: 'left-[-0.1rem] top-[-0.1rem] h-[1.4rem] w-[1.4rem]',
+    double: 'left-[-0.1rem] top-[-0.1rem] h-[1.4rem] w-[1.85rem]',
+    triple: 'left-[-0.1rem] top-[-0.1rem] h-[1.4rem] w-[2.25rem]',
   },
   md: {
-    single: 'left-[-0.1rem] top-[-0.1rem] h-[1.42rem] w-[1.42rem]',
-    double: 'left-[-0.1rem] top-[-0.1rem] h-[1.42rem] w-[1.84rem]',
-    triple: 'left-[-0.1rem] top-[-0.1rem] h-[1.42rem] w-[2.2rem]',
+    single: 'left-[-0.12rem] top-[-0.12rem] h-[1.8rem] w-[1.8rem]',
+    double: 'left-[-0.12rem] top-[-0.12rem] h-[1.8rem] w-[2.35rem]',
+    triple: 'left-[-0.12rem] top-[-0.12rem] h-[1.8rem] w-[2.8rem]',
   },
   lg: {
-    single: 'left-[-0.12rem] top-[-0.12rem] h-[1.7rem] w-[1.7rem]',
-    double: 'left-[-0.12rem] top-[-0.12rem] h-[1.7rem] w-[2.2rem]',
-    triple: 'left-[-0.12rem] top-[-0.12rem] h-[1.7rem] w-[2.6rem]',
+    single: 'left-[-0.15rem] top-[-0.15rem] h-[2.3rem] w-[2.3rem]',
+    double: 'left-[-0.15rem] top-[-0.15rem] h-[2.3rem] w-[3rem]',
+    triple: 'left-[-0.15rem] top-[-0.15rem] h-[2.3rem] w-[3.5rem]',
   },
 }
 
