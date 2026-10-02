@@ -363,6 +363,11 @@
     pointer-events: none;
   }
 
+  .practice-pile-badge[data-turn='first'] {
+    background: rgb(var(--primary-hover-rgb));
+    color: #fff;
+  }
+
   .practice-pile-badge {
     position: absolute;
     top: -0.45rem;
