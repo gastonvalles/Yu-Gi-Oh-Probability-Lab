@@ -237,6 +237,7 @@ function RuleRow({
           {entry.turnContext !== 'either' ? (
             <span className="lab-rule-turn">{entry.turnContext === 'first' ? 'Solo 1º' : 'Solo 2º'}</span>
           ) : null}
+          {entry.ignoresDraw && entry.turnContext !== 'first' ? <span className="lab-rule-turn" title="Yendo 2º no cuenta la carta robada">5 cartas</span> : null}
           {entry.turnLean ? <TurnLeanBadge kind={entry.kind} lean={entry.turnLean} /> : null}
         </span>
         <span className="lab-rule-support">{entry.summary}</span>

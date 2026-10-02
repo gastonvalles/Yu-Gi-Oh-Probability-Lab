@@ -35,6 +35,7 @@ function makeActions(): PatternEditorActions {
     setRequirementLevel: vi.fn(),
     setRequirementMonsterType: vi.fn(),
     setRequirementAtk: vi.fn(),
+    setPatternIgnoresDraw: vi.fn(),
     setRequirementDef: vi.fn(),
   }
 }

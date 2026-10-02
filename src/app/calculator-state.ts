@@ -4,13 +4,14 @@ import type { AppState, DeckCardInstance } from './model'
 
 export function buildCalculatorState(
   derivedMainCards: CardEntry[],
-  state: Pick<AppState, 'handSize' | 'patterns'>,
+  state: Pick<AppState, 'handSize' | 'patterns'> & { drawnCards?: number },
 ): CalculatorState {
   return {
     deckSize: derivedMainCards.reduce((total, card) => total + card.copies, 0),
     handSize: state.handSize,
     cards: derivedMainCards,
     patterns: state.patterns,
+    drawnCards: state.drawnCards ?? 0,
   }
 }
 

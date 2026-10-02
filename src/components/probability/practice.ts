@@ -127,18 +127,26 @@ export function evaluatePracticeHand(
   derivedMainCards: CardEntry[],
   groupsByKey: Map<string, DerivedDeckGroup>,
   turn: 'first' | 'second',
+  /** Cartas de la mano inicial: las reglas que ignoran el robo no ven las que vinieron después. */
+  openingSize = hand.length,
 ): {
   matches: PracticeHandMatch[]
   openingMatches: PracticeHandMatch[]
   problemMatches: PracticeHandMatch[]
   openingNearMisses: PracticeHandNearMiss[]
 } {
-  const counts = new Map<string, number>()
+  const allCounts = new Map<string, number>()
   const cardById = new Map(derivedMainCards.map((card) => [card.id, card]))
   const availableCounts = new Map(derivedMainCards.map((card) => [card.id, card.copies]))
 
   for (const card of hand) {
-    counts.set(card.cardId, (counts.get(card.cardId) ?? 0) + 1)
+    allCounts.set(card.cardId, (allCounts.get(card.cardId) ?? 0) + 1)
+  }
+
+  const openingCounts = new Map<string, number>()
+
+  for (const card of hand.slice(0, openingSize)) {
+    openingCounts.set(card.cardId, (openingCounts.get(card.cardId) ?? 0) + 1)
   }
 
   const applicablePatterns = selectPatternsForView(patterns, turn)
@@ -153,7 +161,9 @@ export function evaluatePracticeHand(
     }),
   )
 
-  const matches = resolvedPatterns.flatMap<PracticeHandMatch>((pattern) => {
+  const matches = resolvedPatterns.flatMap<PracticeHandMatch>((pattern, patternIndex) => {
+    const counts = applicablePatterns[patternIndex]?.ignoresDraw ? openingCounts : allCounts
+
     if (!matchesResolvedPattern(pattern, counts, MAP_COUNT_OPERATIONS)) {
       return []
     }
@@ -185,7 +195,9 @@ export function evaluatePracticeHand(
       },
     ]
   })
-  const openingNearMisses = resolvedPatterns.flatMap<PracticeHandNearMiss>((pattern) => {
+  const openingNearMisses = resolvedPatterns.flatMap<PracticeHandNearMiss>((pattern, patternIndex) => {
+    const counts = applicablePatterns[patternIndex]?.ignoresDraw ? openingCounts : allCounts
+
     if (pattern.kind !== 'opening' || matchesResolvedPattern(pattern, counts, MAP_COUNT_OPERATIONS)) {
       return []
     }
@@ -382,14 +394,15 @@ export function computeRevealSteps(
   groupsByKey: Map<string, DerivedDeckGroup>,
   turn: PracticeTurn,
   previous?: ReadonlyMap<string, number>,
+  openingSize?: number,
 ): PracticeReveal {
-  const result = evaluatePracticeHand(hand, patterns, derivedMainCards, groupsByKey, turn)
+  const result = evaluatePracticeHand(hand, patterns, derivedMainCards, groupsByKey, turn, openingSize)
   const finalIds = result.matches.map((match) => match.patternId)
   const stable = new Map<string, number>()
 
   for (let size = 1; size <= hand.length; size += 1) {
     const prefix = new Set(
-      evaluatePracticeHand(hand.slice(0, size), patterns, derivedMainCards, groupsByKey, turn).matches.map((match) => match.patternId),
+      evaluatePracticeHand(hand.slice(0, size), patterns, derivedMainCards, groupsByKey, turn, openingSize).matches.map((match) => match.patternId),
     )
 
     for (const id of finalIds) {

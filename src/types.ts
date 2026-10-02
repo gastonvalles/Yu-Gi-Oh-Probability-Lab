@@ -106,6 +106,8 @@ export interface Pattern {
   needsReview: boolean
   /** Id del catálogo si esta regla es la versión editada por el usuario de una genérica. */
   systemRuleId?: string | null
+  /** Yendo 2º, la regla se evalúa con la mano inicial (sin la carta robada): p. ej. interacción del turno rival. */
+  ignoresDraw?: boolean
   conditions: PatternCondition[]
 }
 
@@ -117,6 +119,8 @@ export interface CalculatorState {
   handSize: number
   cards: CardEntry[]
   patterns: HandPattern[]
+  /** Cuántas de las últimas cartas de la mano son robadas (0 o 1): las reglas que ignoran el robo no las ven. */
+  drawnCards?: number
 }
 
 export interface ValidationIssue {

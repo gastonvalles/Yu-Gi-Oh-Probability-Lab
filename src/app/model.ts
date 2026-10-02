@@ -53,6 +53,7 @@ export interface PortablePattern {
   kind: HandPattern['kind']
   turnContext?: TurnContext
   systemRuleId?: string
+  ignoresDraw?: boolean
   logic: HandPattern['logic']
   minimumConditionMatches: number
   reusePolicy: HandPattern['reusePolicy']

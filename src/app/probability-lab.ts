@@ -92,6 +92,8 @@ function calculateView(
     buildCalculatorState(cards, {
       handSize: getHandSizeForView(baseHandSize, view),
       patterns: selectPatternsForView(patterns, view),
+      // Yendo 2º la 6ª carta es robada: las reglas que la ignoran miran sólo las 5 iniciales.
+      drawnCards: view === 'second' ? 1 : 0,
     }),
   )
 }

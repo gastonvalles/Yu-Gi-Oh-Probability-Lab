@@ -64,7 +64,7 @@ export function PracticeSection(props: PracticeSectionProps) {
     (cards: PracticeHandCard[], previous?: ReadonlyMap<string, number>) =>
       blockedMessage
         ? EMPTY_REVEAL
-        : computeRevealSteps(cards, patterns, derivedMainCards, groupsByKey, getPracticeTurn(cards.length, handSize), previous),
+        : computeRevealSteps(cards, patterns, derivedMainCards, groupsByKey, getPracticeTurn(cards.length, handSize), previous, handSize),
     [blockedMessage, patterns, derivedMainCards, groupsByKey, handSize],
   )
   const table = usePracticeTable({ deck, handSize, reveal, reducedMotion: prefersReducedMotion() })
