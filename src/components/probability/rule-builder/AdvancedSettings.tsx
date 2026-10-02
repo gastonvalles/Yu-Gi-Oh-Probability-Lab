@@ -79,6 +79,25 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
         </div>
       ) : null}
 
+      {/* Una salida puede "rescatar" cartas que de otro modo cuentan como muertas en los problemas. */}
+      {pattern.kind === 'opening' ? (
+        <div className="surface-card flex items-center justify-between gap-3 rounded px-3 py-2.5">
+          <span className="grid gap-0.5">
+            <span className="text-[0.76rem] text-(--text-main)">Rescatar las cartas que usa</span>
+            <span className="text-[0.68rem] leading-[1.2] text-(--text-muted)">
+              {pattern.rescuesCards
+                ? 'Encendido: si la mano cumple esta salida, sus cartas no cuentan como muertas en los problemas.'
+                : 'Apagado: los problemas cuentan todas las cartas de la mano.'}
+            </span>
+          </span>
+          <Switch
+            checked={pattern.rescuesCards === true}
+            label="Rescatar las cartas que usa"
+            onChange={(checked) => actions.setPatternRescuesCards(pattern.id, checked)}
+          />
+        </div>
+      ) : null}
+
       {/* Minimum matches (at-least mode) */}
       {showMinimumMatches ? (
         <div className="flex flex-wrap items-center justify-between gap-2">

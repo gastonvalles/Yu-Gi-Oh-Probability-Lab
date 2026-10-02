@@ -54,6 +54,7 @@ export interface PortablePattern {
   turnContext?: TurnContext
   systemRuleId?: string
   ignoresDraw?: boolean
+  rescuesCards?: boolean
   logic: HandPattern['logic']
   minimumConditionMatches: number
   reusePolicy: HandPattern['reusePolicy']

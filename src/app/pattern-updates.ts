@@ -157,6 +157,16 @@ export function updatePatternIgnoresDraw(
   )
 }
 
+export function updatePatternRescuesCards(
+  patterns: HandPattern[],
+  patternId: string,
+  rescuesCards: boolean,
+): HandPattern[] {
+  return patterns.map((pattern) =>
+    pattern.id !== patternId ? pattern : { ...pattern, needsReview: false, rescuesCards },
+  )
+}
+
 export function updatePatternAllowSharedCards(
   patterns: HandPattern[],
   patternId: string,

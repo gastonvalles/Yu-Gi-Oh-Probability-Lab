@@ -36,6 +36,7 @@ function makeActions(): PatternEditorActions {
     setRequirementMonsterType: vi.fn(),
     setRequirementAtk: vi.fn(),
     setPatternIgnoresDraw: vi.fn(),
+    setPatternRescuesCards: vi.fn(),
     setRequirementDef: vi.fn(),
   }
 }

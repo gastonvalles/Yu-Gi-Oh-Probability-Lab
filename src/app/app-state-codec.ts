@@ -82,6 +82,7 @@ export function toPortableConfig(state: AppState): PortableConfig {
       needsReview: pattern.needsReview === true,
       ...(pattern.systemRuleId ? { systemRuleId: pattern.systemRuleId } : {}),
       ...(pattern.ignoresDraw ? { ignoresDraw: true } : {}),
+      ...(pattern.rescuesCards ? { rescuesCards: true } : {}),
       conditions: pattern.conditions.map<PortableCondition>((condition) => ({
         matcher: condition.matcher,
         quantity: condition.quantity,
@@ -167,6 +168,7 @@ export function fromPortableConfig(value: unknown): AppState {
       reusePolicy,
       needsReview,
       ...(rawPattern.ignoresDraw === true ? { ignoresDraw: true } : {}),
+      ...(rawPattern.rescuesCards === true ? { rescuesCards: true } : {}),
       ...(typeof rawPattern.systemRuleId === 'string' && rawPattern.systemRuleId ? { systemRuleId: rawPattern.systemRuleId } : {}),
       conditions,
     }

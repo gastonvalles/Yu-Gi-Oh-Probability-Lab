@@ -108,6 +108,8 @@ export interface Pattern {
   systemRuleId?: string | null
   /** Yendo 2º, la regla se evalúa con la mano inicial (sin la carta robada): p. ej. interacción del turno rival. */
   ignoresDraw?: boolean
+  /** Salida que "rescata" las cartas que usa: dejan de contar en los problemas (p. ej. un Garnet que sirve en este combo). */
+  rescuesCards?: boolean
   conditions: PatternCondition[]
 }
 

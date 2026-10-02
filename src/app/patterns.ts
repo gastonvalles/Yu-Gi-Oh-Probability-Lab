@@ -54,6 +54,7 @@ export function getPatternDefinitionKey(
   pattern: Pick<HandPattern, 'kind' | 'logic' | 'minimumConditionMatches' | 'reusePolicy'> & {
     turnContext?: HandPattern['turnContext']
     ignoresDraw?: boolean
+    rescuesCards?: boolean
     conditions: Pick<PatternCondition, 'matcher' | 'quantity' | 'kind' | 'distinct'>[]
   },
 ): string {
@@ -69,6 +70,7 @@ export function getPatternDefinitionKey(
     reusePolicy: pattern.reusePolicy,
     turnContext: normalizeTurnContext(pattern.turnContext),
     ...(pattern.ignoresDraw ? { ignoresDraw: true } : {}),
+    ...(pattern.rescuesCards ? { rescuesCards: true } : {}),
   })
 }
 

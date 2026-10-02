@@ -161,8 +161,32 @@ export function evaluatePracticeHand(
     }),
   )
 
+  const baseCountsOf = (patternIndex: number) => (applicablePatterns[patternIndex]?.ignoresDraw ? openingCounts : allCounts)
+  // Cartas que una salida "rescatadora" usa: dejan de contar para los problemas.
+  const rescued = new Map<string, number>()
+
+  for (const [patternIndex, pattern] of resolvedPatterns.entries()) {
+    if (applicablePatterns[patternIndex]?.rescuesCards && pattern.kind === 'opening') {
+      const witness = getResolvedPatternWitness(pattern, baseCountsOf(patternIndex), MAP_COUNT_OPERATIONS)
+
+      for (const requirement of witness?.matchedRequirements ?? []) {
+        for (const [key, copies] of requirement.usage) {
+          rescued.set(key, Math.max(rescued.get(key) ?? 0, copies))
+        }
+      }
+    }
+  }
+
+  const countsOf = (pattern: ResolvedPattern<string>, patternIndex: number) => {
+    const base = baseCountsOf(patternIndex)
+
+    return rescued.size > 0 && pattern.kind === 'problem'
+      ? new Map([...base].map(([key, copies]) => [key, Math.max(0, copies - (rescued.get(key) ?? 0))]))
+      : base
+  }
+
   const matches = resolvedPatterns.flatMap<PracticeHandMatch>((pattern, patternIndex) => {
-    const counts = applicablePatterns[patternIndex]?.ignoresDraw ? openingCounts : allCounts
+    const counts = countsOf(pattern, patternIndex)
 
     if (!matchesResolvedPattern(pattern, counts, MAP_COUNT_OPERATIONS)) {
       return []
@@ -196,7 +220,7 @@ export function evaluatePracticeHand(
     ]
   })
   const openingNearMisses = resolvedPatterns.flatMap<PracticeHandNearMiss>((pattern, patternIndex) => {
-    const counts = applicablePatterns[patternIndex]?.ignoresDraw ? openingCounts : allCounts
+    const counts = countsOf(pattern, patternIndex)
 
     if (pattern.kind !== 'opening' || matchesResolvedPattern(pattern, counts, MAP_COUNT_OPERATIONS)) {
       return []
