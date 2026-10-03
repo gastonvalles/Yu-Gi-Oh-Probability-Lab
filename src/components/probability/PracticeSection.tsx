@@ -119,6 +119,15 @@ export function PracticeSection(props: PracticeSectionProps) {
       : null
   // El cálculo exacto del Lab es pesado: se hace después de pintar la mesa, sin trabar el reparto.
   const [lab, setLab] = useState<LabOdds | null>(null)
+  // Las listas llegan como arrays nuevos en cada render: se compara por contenido, si no el temporizador
+  // se reinicia todo el tiempo y el cálculo nunca llega a correr.
+  const labKey = JSON.stringify([
+    handSize,
+    derivedMainCards.map((card) => [card.id, card.copies, card.roles, card.origin]),
+    patterns,
+  ])
+  const labInputsRef = useRef({ derivedMainCards, patterns })
+  labInputsRef.current = { derivedMainCards, patterns }
 
   useEffect(() => {
     if (blockedMessage || deck.length < handSize) {
@@ -127,7 +136,7 @@ export function PracticeSection(props: PracticeSectionProps) {
     }
 
     const timer = window.setTimeout(() => {
-      const computation = computeLabResults(derivedMainCards, patterns, handSize)
+      const computation = computeLabResults(labInputsRef.current.derivedMainCards, labInputsRef.current.patterns, handSize)
       setLab(
         computation.status === 'ok'
           ? {
@@ -143,7 +152,8 @@ export function PracticeSection(props: PracticeSectionProps) {
     }, 700)
 
     return () => window.clearTimeout(timer)
-  }, [blockedMessage, deck.length, handSize, derivedMainCards, patterns])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blockedMessage, deck.length, handSize, labKey])
   const isUnplayable = verdict === 'no-opening'
   const unplayableOdds = isUnplayable && lab ? (table.isSecond ? lab.second : lab.first) : null
 
