@@ -54,11 +54,6 @@
     width: min(40rem, 100%);
   }
 
-  /* Rendimiento: el desenfoque del fondo se repinta con todo lo que se anima detrás; acá no hace falta. */
-  .app-modal-root:has(.practice-modal) {
-    backdrop-filter: none;
-  }
-
   @media (min-width: 820px) {
     /* En desktop sobra ancho: recarga a la izquierda y mazo a la derecha, en la misma fila que la mano. */
     .practice-table .practice-tray {
