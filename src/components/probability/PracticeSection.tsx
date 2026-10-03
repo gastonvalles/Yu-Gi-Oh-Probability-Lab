@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { buildDerivedDeckGroupMap } from '../../app/deck-groups'
-import { computeLabResults } from '../../app/probability-lab'
+import { requestLabOdds } from '../../app/lab-odds-client'
+import type { LabOdds } from '../../app/lab-odds'
 import type { CardEntry, HandPattern } from '../../types'
 import { IconButton } from '../ui/IconButton'
 import { RefreshIcon } from '../ui/icons'
@@ -29,12 +30,6 @@ interface PracticeSectionProps {
   missingRoleCount: number
   pendingReviewCount: number
   reviewPendingPatternCount: number
-}
-
-interface LabOdds {
-  first: number
-  second: number
-  rules: { first: ReadonlyMap<string, number>; second: ReadonlyMap<string, number> }
 }
 
 const EMPTY_IDS: ReadonlySet<string> = new Set()
@@ -117,8 +112,16 @@ export function PracticeSection(props: PracticeSectionProps) {
     table.isDealt && !blockedMessage && table.result
       ? getPracticeVerdict(table.result.openingMatches.length, table.result.problemMatches.length)
       : null
-  // El cálculo exacto del Lab es pesado: se hace después de pintar la mesa, sin trabar el reparto.
+  // El cálculo exacto del Lab es pesado: corre en un hilo aparte (y se recuerda por contenido).
   const [lab, setLab] = useState<LabOdds | null>(null)
+  // Las listas llegan como arrays nuevos en cada render: se compara por contenido.
+  const labKey = JSON.stringify([
+    handSize,
+    derivedMainCards.map((card) => [card.id, card.copies, card.roles, card.origin]),
+    patterns,
+  ])
+  const labInputsRef = useRef({ derivedMainCards, patterns })
+  labInputsRef.current = { derivedMainCards, patterns }
 
   useEffect(() => {
     if (blockedMessage || deck.length < handSize) {
@@ -126,24 +129,19 @@ export function PracticeSection(props: PracticeSectionProps) {
       return
     }
 
-    const timer = window.setTimeout(() => {
-      const computation = computeLabResults(derivedMainCards, patterns, handSize)
-      setLab(
-        computation.status === 'ok'
-          ? {
-              first: computation.results.first.noOpeningProbability,
-              second: computation.results.second.noOpeningProbability,
-              rules: {
-                first: new Map(computation.results.first.patternResults.map((result) => [result.patternId, result.probability])),
-                second: new Map(computation.results.second.patternResults.map((result) => [result.patternId, result.probability])),
-              },
-            }
-          : null,
-      )
-    }, 700)
+    let cancelled = false
+    const { derivedMainCards: cards, patterns: rules } = labInputsRef.current
 
-    return () => window.clearTimeout(timer)
-  }, [blockedMessage, deck.length, handSize, derivedMainCards, patterns])
+    void requestLabOdds(labKey, { cards, patterns: rules, handSize }).then((odds) => {
+      if (!cancelled) {
+        setLab(odds)
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [blockedMessage, deck.length, handSize, labKey])
   const isUnplayable = verdict === 'no-opening'
   const unplayableOdds = isUnplayable && lab ? (table.isSecond ? lab.second : lab.first) : null
 
