@@ -123,21 +123,21 @@ export function ComparisonScreen() {
 
   const handleSaveCurrent = () => {
     if (deckBuilder.main.length === 0) {
-      showToast('Tu deck actual está vacío')
+      showToast('Tu deck actual está vacío', 'warning')
       return
     }
     const build = savedBuilds.save(deckBuilder.deckName || 'Deck actual', deckBuilder)
     if (selection.b === null || selection.b === CURRENT) {
       selectAsB(build.id)
     }
-    showToast(`Guardaste "${build.name}"`)
+    showToast(`Guardaste "${build.name}"`, 'success')
   }
 
   const handleImport = (deck: DeckBuilderState) => {
     const build = savedBuilds.save(deck.deckName || 'Build importada', deck)
     selectAsB(build.id)
     setIsImportOpen(false)
-    showToast(`Guardaste "${build.name}" y la elegiste como B`)
+    showToast(`Guardaste "${build.name}" y la elegiste como B`, 'success')
   }
 
   const handleCardClick = (build: ResolvedBuild) => (card: DeckCardInstance) => {
