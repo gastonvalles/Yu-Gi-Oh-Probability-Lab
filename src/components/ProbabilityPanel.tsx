@@ -176,7 +176,7 @@ export function ProbabilityPanel({
       patternActions.replacePatterns(patterns.map((pattern) => (pattern.id === saved.id ? saved : pattern)))
     }
 
-    showToast(drawerMode === 'custom-create' ? 'Regla creada' : 'Regla guardada')
+    showToast(drawerMode === 'custom-create' ? 'Regla creada' : 'Regla guardada', 'success')
     closeDrawer()
   }
 

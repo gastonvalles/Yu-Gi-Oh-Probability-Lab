@@ -434,7 +434,7 @@ export function useDeckModeController() {
     }
 
     closeCardDetail()
-    showToast('Carta quitada del deck.')
+    showToast('Carta quitada del deck.', 'warning')
   }, [closeCardDetail, deckBuilder, dispatch, selectedDeckCopy, selectedDeckInstanceId, showToast])
 
   const handleAddSelectedDeckCopy = useCallback(() => {
@@ -467,7 +467,7 @@ export function useDeckModeController() {
 
       dispatch(clearDeckZone(zone))
 
-      showToast(`Vaciaste ${DECK_ZONE_LABELS[zone]}${settings.deckFormat === 'genesys' ? ` para ${formatLabel}` : ''}.`)
+      showToast(`Vaciaste ${DECK_ZONE_LABELS[zone]}${settings.deckFormat === 'genesys' ? ` para ${formatLabel}` : ''}.`, 'warning')
     },
     [deckBuilder, dispatch, formatLabel, settings.deckFormat, showToast],
   )
@@ -478,7 +478,7 @@ export function useDeckModeController() {
     }
 
     dispatch(clearAllDeckZones())
-    showToast(`Vaciaste todo el deck${settings.deckFormat === 'genesys' ? ` para ${formatLabel}` : ''}.`)
+    showToast(`Vaciaste todo el deck${settings.deckFormat === 'genesys' ? ` para ${formatLabel}` : ''}.`, 'warning')
   }, [deckBuilder, dispatch, formatLabel, settings.deckFormat, showToast])
 
   const handleToggleRole = useCallback(
@@ -550,7 +550,7 @@ export function useDeckModeController() {
       if (decklistOverflow.length > 0) {
         showToast(
           `Descargado. En el PDF no entraron todas las cartas de: ${decklistOverflow.join(', ')}. Completalas a mano.`,
-          'default',
+          'warning',
         )
       } else {
         showToast('Imagen, decklist PDF y YDK descargados.', 'success')
