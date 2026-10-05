@@ -12,7 +12,9 @@ import { CardDetailModal } from '../card-detail/CardDetailModal'
 import { DeckImportDrawer } from '../deck-mode/DeckImportDrawer'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { Button } from '../ui/Button'
+import { cx } from '../ui/cx'
 import { Modal } from '../ui/Modal'
+import { SideBadge } from './SideBadge'
 import { StepHero } from '../StepHero'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { BuildBCardEditor } from './BuildBCardEditor'
@@ -22,6 +24,10 @@ import { useSavedBuilds } from './use-saved-builds'
 import { field, surface } from '../ui/surfaces'
 
 const CURRENT = 'current'
+const PICKER_LINK = 'border-0 bg-transparent p-0 text-[0.74rem] text-muted underline underline-offset-[0.15rem]'
+
+const PICKER_LINK_DANGER = 'border-0 bg-transparent p-0 text-[0.74rem] text-destructive underline underline-offset-[0.15rem]'
+
 const SELECTION_KEY = 'ygo-lab:comparison-selection'
 
 type Tab = 'report' | 'A' | 'B'
@@ -164,12 +170,11 @@ export function ComparisonScreen() {
   const renderPicker = (side: 'A' | 'B', value: string | null) => {
     const build = side === 'A' ? buildA : buildB
     return (
-      <div className="comparison-picker">
-        <label>
-          <span className="comparison-side-badge" data-side={side}>
-            {side}
-          </span>
+      <div className="grid min-w-0 gap-[0.35rem]">
+        <label className="flex min-w-0 items-center gap-2">
+          <SideBadge side={side} />
           <select
+            className="min-h-10 w-full min-w-0 rounded-control border border-border bg-secondary/90 px-[0.6rem] text-[0.85rem] text-foreground"
             value={value ?? ''}
             aria-label={`Build ${side}`}
             onChange={(event) => setSelection((current) => ({ ...current, [side.toLowerCase()]: event.target.value || null }))}
@@ -183,11 +188,11 @@ export function ComparisonScreen() {
           </select>
         </label>
         {build?.isSaved ? (
-          <div className="comparison-picker-actions">
-            <button type="button" onClick={() => setRenameTarget({ id: build.source, name: build.name })}>
+          <div className="flex gap-3 pl-[2.1rem]">
+            <button type="button" className={PICKER_LINK} onClick={() => setRenameTarget({ id: build.source, name: build.name })}>
               Renombrar
             </button>
-            <button type="button" data-tone="danger" onClick={() => setDeleteTarget({ id: build.source, name: build.name })}>
+            <button type="button" className={PICKER_LINK_DANGER} onClick={() => setDeleteTarget({ id: build.source, name: build.name })}>
               Borrar
             </button>
           </div>
@@ -197,7 +202,10 @@ export function ComparisonScreen() {
   }
 
   return (
-    <section className={`comparison ${surface.stepShell}`} aria-label="Comparar builds">
+    <section
+      className={`${surface.stepShell} grid min-w-0 content-start gap-3 px-4 pt-3 min-[1101px]:gap-[0.9rem] min-[1101px]:p-[0.9rem]`}
+      aria-label="Comparar builds"
+    >
       <StepHero
         title="Compará builds"
         help="Guardá versiones de tu deck o importá otras listas y mirá cuál abre mejor yendo 1º y 2º, con tus mismas reglas y el mismo cálculo del Probability Lab."
@@ -213,18 +221,18 @@ export function ComparisonScreen() {
         }
       />
 
-      <div className="comparison-pickers">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-[0.6rem] max-[519px]:grid-cols-[minmax(0,1fr)]">
         {renderPicker('A', selection.a)}
-        <span className="comparison-vs" aria-hidden="true">
+        <span className="pt-[0.55rem] text-[0.75rem] font-bold uppercase text-soft max-[519px]:hidden" aria-hidden="true">
           vs
         </span>
         {renderPicker('B', selection.b)}
       </div>
 
       {!buildB ? (
-        <div className="comparison-start">
-          <strong>Elegí qué comparar</strong>
-          <p>
+        <div className="grid justify-items-center gap-[0.6rem] rounded-panel border border-dashed border-border px-4 py-8 text-center">
+          <strong className="text-[1rem] text-foreground">Elegí qué comparar</strong>
+          <p className="m-0 max-w-[30rem] text-[0.84rem] text-muted">
             {savedBuilds.builds.length === 0
               ? 'Todavía no guardaste builds. Usá “Guardar deck actual” antes de probar cambios, o “Importar build” para traer otra lista.'
               : 'Elegí una build B arriba para compararla con A.'}
@@ -232,7 +240,7 @@ export function ComparisonScreen() {
         </div>
       ) : (
         <>
-          <div className="comparison-tabs" role="tablist" aria-label="Vista">
+          <div className="grid grid-cols-3 gap-1 rounded-full bg-secondary/80 p-[0.2rem] min-[1101px]:hidden" role="tablist" aria-label="Vista">
             {(
               [
                 ['report', 'Resumen'],
@@ -245,7 +253,10 @@ export function ComparisonScreen() {
                 type="button"
                 role="tab"
                 aria-selected={tab === key}
-                className="comparison-tab"
+                className={cx(
+                  'min-h-9 rounded-full border-0 text-[0.82rem] font-semibold',
+                  tab === key ? 'bg-primary/30 text-foreground' : 'bg-transparent text-muted',
+                )}
                 onClick={() => setTab(key)}
               >
                 {label}
@@ -253,17 +264,17 @@ export function ComparisonScreen() {
             ))}
           </div>
 
-          <div className="comparison-body">
-            <div className="comparison-panel" data-panel="report" data-active={tab === 'report' ? 'true' : 'false'}>
+          <div className="grid min-w-0 gap-[0.9rem] min-[1101px]:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] min-[1101px]:items-start">
+            <div className={cx(tab !== 'report' && 'hidden min-[1101px]:block')}>
               {comparison ? (
                 <ComparisonReport comparison={comparison} isCurrentDeck={{ A: !buildA.isSaved, B: !buildB.isSaved }} />
               ) : null}
             </div>
-            <div className="comparison-panel comparison-decks" data-panel="decks" data-active={tab !== 'report' ? 'true' : 'false'}>
-              <div data-side-panel="A" data-active={tab === 'A' ? 'true' : 'false'}>
+            <div className={cx(tab === 'report' ? 'hidden' : 'block', 'min-[1101px]:grid min-[1101px]:gap-[0.9rem]')}>
+              <div className={cx(tab !== 'A' && 'hidden min-[1101px]:block')}>
                 <BuildDeckView side="A" name={buildA.name} zones={buildA.zones} deltaByCardId={deltaByCardId} onCardClick={handleCardClick(buildA)} />
               </div>
-              <div data-side-panel="B" data-active={tab === 'B' ? 'true' : 'false'}>
+              <div className={cx(tab !== 'B' && 'hidden min-[1101px]:block')}>
                 <BuildDeckView side="B" name={buildB.name} zones={buildB.zones} deltaByCardId={deltaByCardId} onCardClick={handleCardClick(buildB)} />
               </div>
             </div>

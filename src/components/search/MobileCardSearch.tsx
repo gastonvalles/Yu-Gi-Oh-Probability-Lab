@@ -19,7 +19,7 @@ import { sortVisibleSearchResults } from './search-model'
 import { QUICK_TYPE_OPTIONS, type SearchSortOrder } from './search-options'
 import type { CardSearchActions, CardSearchViewState } from './search-types'
 import { useSearchFilterContext } from './use-search-filter-context'
-import { field, surface } from '../ui/surfaces'
+import { field, filterChip, surface } from '../ui/surfaces'
 
 interface MobileCardSearchProps {
   search: CardSearchViewState
@@ -181,7 +181,7 @@ export function MobileCardSearch({
               <button
                 key={chip.key}
                 type="button"
-                className="search-active-chip min-h-9"
+                className={`${filterChip} min-h-9`}
                 onClick={() => actions.onFilterChange(chip.updates)}
                 aria-label={`Quitar filtro ${chip.label}: ${chip.value}`}
               >
