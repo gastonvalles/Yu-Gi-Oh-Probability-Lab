@@ -1,9 +1,4 @@
 @import "tailwindcss";
-@import "./styles/deck-zone-and-shell.css";
-@import "./styles/classic-builder.css";
-@import "./styles/mobile-deck-builder.css";
-@import "./styles/desktop-deck-builder.css";
-@import "./styles/card-search.css";
 
 @theme {
   --radius-control: 0.82rem;
@@ -14,6 +9,11 @@
   --animate-toast-in: toast-in var(--motion-duration) ease-out both;
   --animate-toast-out: toast-out var(--motion-duration) ease-in both;
   --animate-fab-pulse: fab-pulse 5s ease-out infinite;
+  --animate-marching-ants: marching-ants var(--motion-duration) linear infinite;
+  --animate-card-armed: card-armed 160ms ease-out;
+  --animate-step-forward: step-forward 150ms ease-out both;
+  --animate-step-back: step-back 150ms ease-out both;
+  --animate-drawer-enter: drawer-enter 150ms ease-out both;
   --animate-pop: pop var(--motion-duration) cubic-bezier(0.2, 1.3, 0.4, 1) both;
   --animate-rule-in: rule-in var(--motion-duration) cubic-bezier(0.2, 1.3, 0.4, 1) both;
   --animate-sheet-in: sheet-in var(--motion-duration) ease-out both;
@@ -137,6 +137,58 @@
 
     50% {
       transform: translate(11px, 1.5px) rotate(6deg);
+    }
+  }
+
+  @keyframes step-forward {
+    from {
+      opacity: 0;
+      transform: translateX(0.85rem);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes step-back {
+    from {
+      opacity: 0;
+      transform: translateX(-0.85rem);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes drawer-enter {
+    from {
+      opacity: 0;
+      transform: translateX(1.35rem);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes marching-ants {
+    to {
+      background-position:
+        9px 0,
+        -9px 100%,
+        0 -9px,
+        100% 9px;
+    }
+  }
+
+  @keyframes card-armed {
+    50% {
+      transform: scale(1.06);
     }
   }
 
@@ -299,42 +351,6 @@
 }
 
 @layer base {
-
-  @keyframes deck-mode-step-enter-forward {
-    from {
-      opacity: 0;
-      transform: translateX(0.85rem);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-  @keyframes deck-mode-step-enter-back {
-    from {
-      opacity: 0;
-      transform: translateX(-0.85rem);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-  @keyframes pattern-editor-drawer-enter {
-    from {
-      opacity: 0;
-      transform: translateX(1.35rem);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
 
   *,
   *::before,

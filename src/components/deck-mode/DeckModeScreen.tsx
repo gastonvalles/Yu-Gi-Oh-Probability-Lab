@@ -11,6 +11,7 @@ import { ProbabilityPanel } from '../ProbabilityPanel'
 import { PracticeSection } from '../probability/PracticeSection'
 import { ComparisonScreen } from '../comparison/ComparisonScreen'
 import { DeckBuilderStep } from './DeckBuilderStep'
+import { cx } from '../ui/cx'
 import { DraggableFab } from '../ui/DraggableFab'
 import { Modal } from '../ui/Modal'
 import { DeckModeDragOverlay } from './DeckModeDragOverlay'
@@ -244,11 +245,11 @@ export function DeckModeScreen() {
   const mainContent = (
     <div
       key={activeStep}
-      className={[
-        'deck-mode-step-transition',
-        isDeckBuilderStep || isCategorizationStep ? 'h-full min-h-0 min-w-0' : 'min-h-full min-w-0',
-      ].join(' ')}
-      data-direction={stepDirection}
+      className={cx(
+        'min-w-0 will-change-[opacity,transform] motion-reduce:animate-none',
+        stepDirection === 'back' ? 'animate-step-back' : 'animate-step-forward',
+        isDeckBuilderStep || isCategorizationStep ? 'h-full min-h-0' : 'min-h-full',
+      )}
     >
       {stepContent}
     </div>
