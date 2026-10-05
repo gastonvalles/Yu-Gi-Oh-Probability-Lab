@@ -1,8 +1,11 @@
-export type ClassValue = string | false | null | undefined
+export type ClassValue = string | false | null | undefined | ClassValue[]
 
-/** Une clases descartando los valores vacíos (`cond && 'clase'`). */
+/** Une clases descartando los valores vacíos (`cond && 'clase'`); acepta listas anidadas. */
 export function cx(...values: ClassValue[]): string {
-  return values.filter(Boolean).join(' ')
+  return values
+    .flat(Infinity as 1)
+    .filter(Boolean)
+    .join(' ')
 }
 
 type VariantMap = Record<string, Record<string, string>>

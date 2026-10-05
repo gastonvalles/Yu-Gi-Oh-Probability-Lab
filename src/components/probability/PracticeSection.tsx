@@ -4,6 +4,7 @@ import { buildDerivedDeckGroupMap } from '../../app/deck-groups'
 import { requestLabOdds } from '../../app/lab-odds-client'
 import type { LabOdds } from '../../app/lab-odds'
 import type { CardEntry, HandPattern } from '../../types'
+import { cx } from '../ui/cx'
 import { IconButton } from '../ui/IconButton'
 import { RefreshIcon } from '../ui/icons'
 import {
@@ -18,6 +19,7 @@ import {
 import { PracticeBoard, PracticeVerdictChip, UNPLAYABLE_ID } from './PracticeBoard'
 import { PracticeCardFocus } from './PracticeCardFocus'
 import { PracticeDeckPile } from './PracticeDeckPile'
+import { PRACTICE_NOTICE, VERDICT_COLOR } from './practice-styles'
 import { PracticeHand } from './PracticeHand'
 import { usePracticeTable } from './use-practice-table'
 
@@ -155,18 +157,23 @@ export function PracticeSection(props: PracticeSectionProps) {
   const getDeckRect = useCallback(() => pileRef.current?.getBoundingClientRect() ?? null, [])
 
   if (deck.length < handSize) {
-    return <p className="practice-notice">Sumá cartas al Main Deck para practicar.</p>
+    return <p className={cx(PRACTICE_NOTICE, 'm-4')}>Sumá cartas al Main Deck para practicar.</p>
   }
 
   return (
-    <section className="practice-table" aria-label="Práctica">
-      <header className="practice-topbar">
+    <section
+      className="flex h-full min-w-0 flex-col overflow-hidden [background:radial-gradient(120%_60%_at_50%_0%,rgb(var(--primary-rgb)/0.16),transparent_70%),rgb(var(--background-rgb))]"
+      aria-label="Práctica"
+    >
+      {/* Veredicto centrado; a la derecha queda la X del modal. */}
+      <header className="flex min-h-12 flex-none items-center justify-center px-4 pt-3 min-[820px]:pt-4">
         <PracticeVerdictChip verdict={verdict} />
       </header>
 
-      <div className="practice-board">
+      {/* Salidas y problemas: aparecen en el centro de la mesa. */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-4 py-2">
         {blockedMessage ? (
-          <p className="practice-notice">{blockedMessage}</p>
+          <p className={cx(PRACTICE_NOTICE, 'my-auto')}>{blockedMessage}</p>
         ) : (
           <PracticeBoard
             openings={openings}
@@ -180,7 +187,13 @@ export function PracticeSection(props: PracticeSectionProps) {
         )}
       </div>
 
-      <div className="practice-tray" data-verdict={verdict ?? 'none'}>
+      {/* Abajo: la mano centrada y, debajo, la recarga a la izquierda y el mazo a la derecha (en desktop, en la misma fila). */}
+      <div
+        className={cx(
+          'relative z-2 grid flex-none gap-1 px-2 pb-[calc(0.4rem+env(safe-area-inset-bottom,0px))] before:pointer-events-none before:absolute before:inset-x-0 before:bottom-0 before:-top-20 before:-z-1 before:opacity-0 before:transition-opacity before:[background:radial-gradient(80%_100%_at_50%_100%,color-mix(in_srgb,var(--verdict-color)_24%,transparent),transparent_72%)] motion-reduce:before:transition-none min-[820px]:grid-cols-[auto_minmax(0,1fr)_auto] min-[820px]:items-end min-[820px]:gap-3 min-[820px]:px-[1.4rem] min-[820px]:pb-4',
+          verdict && ['before:opacity-100', VERDICT_COLOR[verdict]],
+        )}
+      >
         <PracticeHand
           cards={table.cards}
           slots={table.isSecond ? handSize + 1 : handSize}
@@ -193,9 +206,17 @@ export function PracticeSection(props: PracticeSectionProps) {
           getDeckRect={getDeckRect}
           onReorder={table.reorder}
           onInspect={(card, rect) => setInspected({ card, rect })}
+          className="min-[820px]:col-start-2 min-[820px]:row-start-1"
         />
-        <div className="practice-dock">
-          <IconButton tone="flat" size="md" aria-label="Nueva mano" title="Nueva mano" onClick={table.deal}>
+        <div className="flex items-end justify-between pb-[0.55rem] pl-0 pr-1 min-[820px]:contents">
+          <IconButton
+            tone="flat"
+            size="md"
+            aria-label="Nueva mano"
+            title="Nueva mano"
+            className="min-[820px]:col-start-1 min-[820px]:row-start-1 min-[820px]:mb-2"
+            onClick={table.deal}
+          >
             <RefreshIcon />
           </IconButton>
           <PracticeDeckPile
@@ -205,6 +226,7 @@ export function PracticeSection(props: PracticeSectionProps) {
             shuffleKey={table.shuffleKey}
             dealt={table.dealt}
             onDraw={table.drawSecond}
+            className="min-[820px]:col-start-3 min-[820px]:row-start-1 min-[820px]:mb-[1.4rem]"
           />
         </div>
       </div>

@@ -7,6 +7,7 @@ import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
 import { buildCardSummary } from './card-summary'
 
+const DETAIL_META = 'm-0 text-[0.8rem] leading-[1.35] text-white/66 [overflow-wrap:anywhere]'
 const CLOSE_MS = 180
 const EASE = 'cubic-bezier(0.2, 0.9, 0.25, 1)'
 
@@ -106,7 +107,7 @@ export function CardDetailOverlay({ name, card, origin = null, metadata, actions
   return createPortal(
     <div
       ref={rootRef}
-      className="card-detail-overlay"
+      className="fixed inset-0 z-240 grid place-items-center bg-background/90 pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-[8px] [--detail-art-height:min(36dvh,20rem)] [@media(max-height:540px)]:[--detail-art-height:28dvh] [@media(max-height:540px)]:py-3"
       role="dialog"
       aria-modal="true"
       aria-label={`Detalle de ${name}`}
@@ -127,10 +128,13 @@ export function CardDetailOverlay({ name, card, origin = null, metadata, actions
         }
       }}
     >
-      <div className="card-detail-stack" data-zoomed={zoomed ? 'true' : 'false'}>
+      <div
+        className="group pointer-events-none flex max-h-full w-[min(100%,32rem)] flex-col items-center gap-3 [@media(max-height:540px)]:gap-2"
+        data-zoomed={zoomed ? 'true' : 'false'}
+      >
         <div
           ref={cardRef}
-          className="card-detail-art"
+          className="pointer-events-auto aspect-[421/614] h-(--detail-art-height) max-w-full flex-none cursor-zoom-in overflow-hidden rounded-lg shadow-[0_24px_50px_rgb(0_0_0/0.6),0_0_0_1px_rgb(255_255_255/0.12),0_0_40px_rgb(var(--primary-rgb)/0.3)] transition-[height] duration-(--motion-duration) ease-[cubic-bezier(0.2,0.9,0.25,1)] group-data-[zoomed=true]:h-[min(94dvh,calc((100vw-2rem)*614/421))]"
           role="button"
           tabIndex={-1}
           aria-label={zoomed ? 'Volver al detalle' : 'Ver la carta en grande'}
@@ -147,21 +151,21 @@ export function CardDetailOverlay({ name, card, origin = null, metadata, actions
             limitBadgeSize="lg"
           />
         </div>
-        <section ref={infoRef} className="card-detail-info" aria-label="Texto de la carta" onClick={(event) => event.stopPropagation()}>
-          <header className="card-detail-heading">
-            <h2>{name}</h2>
+        <section ref={infoRef} className="pointer-events-auto flex h-[min(52dvh,28rem)] min-h-0 w-full flex-col gap-[0.4rem] rounded-[1.1rem] border border-primary/40 bg-linear-to-b from-card-background/98 to-background/98 px-4 py-[0.9rem] text-white group-data-[zoomed=true]:hidden [@media(max-height:540px)]:h-[calc(100dvh-var(--detail-art-height)-2rem)] [@media(max-height:540px)]:px-[0.85rem] [@media(max-height:540px)]:py-[0.65rem]" aria-label="Texto de la carta" onClick={(event) => event.stopPropagation()}>
+          <header className="grid flex-none gap-1">
+            <h2 className="m-0 text-[1.15rem] font-bold leading-[1.2] [overflow-wrap:anywhere]">{name}</h2>
             {summary ? (
-              <p className="card-detail-meta">
+              <p className={DETAIL_META}>
                 {summary.typeLine}
                 {summary.statLine ? ` · ${summary.statLine}` : ''}
               </p>
             ) : null}
-            {metadata ? <p className="card-detail-meta">{metadata}</p> : null}
+            {metadata ? <p className={DETAIL_META}>{metadata}</p> : null}
           </header>
-          <div ref={textRef} className="card-detail-text" tabIndex={0} role="region" aria-label="Efecto">
-            <p>{card?.description?.trim() || 'Sin texto disponible.'}</p>
+          <div ref={textRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-white/10 pr-[0.2rem] pt-[0.55rem] text-[0.95rem] leading-[1.5] text-white outline-none focus-visible:border-t-primary/65" tabIndex={0} role="region" aria-label="Efecto">
+            <p className="m-0 whitespace-pre-wrap [overflow-wrap:anywhere]">{card?.description?.trim() || 'Sin texto disponible.'}</p>
           </div>
-          {actions ? <footer className="card-detail-actions">{actions}</footer> : null}
+          {actions ? <footer className="grid flex-none gap-2 border-t border-white/10 pt-[0.65rem]">{actions}</footer> : null}
         </section>
       </div>
     </div>,

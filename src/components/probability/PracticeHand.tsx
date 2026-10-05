@@ -19,13 +19,34 @@ import { UI_ANIMATION_MS } from '../../app/motion'
 import { useElementWidth } from '../../app/use-element-width'
 import type { PatternKind } from '../../types'
 import { CardArt } from '../CardArt'
+import { cx } from '../ui/cx'
 import type { PracticeHandCard } from './practice'
+import { CARD_BACK } from './practice-styles'
 
 /** Espacio sobre las cartas: el abanico sube un poco en el centro. */
 const TOP_ROOM = 8
 /** Espacio bajo las cartas: el abanico baja en los extremos y las cartas inclinadas sobresalen. */
 const FAN_ROOM = 22
 const DRAG_THRESHOLD = 6
+
+/** Carta de la mano: el estado (arrastre, brillo, atenuada) llega por data-attributes. */
+const HAND_CARD = [
+  'absolute left-0 top-0 cursor-grab touch-none select-none overflow-hidden rounded-[0.3rem] outline-none will-change-transform min-[820px]:rounded-[0.4rem]',
+  '[-webkit-touch-callout:none] [-webkit-user-select:none]',
+  'shadow-[0_8px_18px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]',
+  '[transition:transform_var(--motion-duration)_cubic-bezier(0.2,0.8,0.2,1),width_var(--motion-duration)_ease,height_var(--motion-duration)_ease,filter_var(--motion-duration)_ease,box-shadow_var(--motion-duration)_ease]',
+  // El arte no debe capturar el toque ni arrancar el arrastre nativo de imágenes.
+  '[&>:not([data-back])]:pointer-events-none [&>:not([data-back])]:[-webkit-user-drag:none]',
+  'focus-visible:shadow-[0_8px_18px_rgba(0,0,0,0.45),0_0_0_2px_rgb(var(--primary-hover-rgb))]',
+  'data-[state=dragging]:cursor-grabbing data-[state=dragging]:shadow-[0_24px_38px_rgba(0,0,0,0.55),0_0_0_2px_rgb(var(--primary-hover-rgb))]',
+  'data-[state=dragging]:[transition:width_var(--motion-duration)_ease,height_var(--motion-duration)_ease,filter_var(--motion-duration)_ease,box-shadow_var(--motion-duration)_ease]',
+  'data-[muted=true]:grayscale data-[muted=true]:brightness-70',
+  'data-[dim=true]:brightness-[0.42] data-[dim=true]:saturate-[0.6]',
+  // Salidas en verde, problemas en rojo.
+  'data-[glow=true]:animate-card-glow data-[glow=true]:[--glow-rgb:var(--accent-rgb)] data-[glow-kind=problem]:[--glow-rgb:var(--danger-rgb)]',
+  'data-[glow=true]:shadow-[0_8px_18px_rgba(0,0,0,0.45),0_0_0_2px_rgb(var(--glow-rgb)),0_0_22px_rgb(var(--glow-rgb)/0.6)]',
+  'motion-reduce:animate-none motion-reduce:transition-none',
+].join(' ')
 
 interface PracticeHandProps {
   cards: PracticeHandCard[]
@@ -45,6 +66,7 @@ interface PracticeHandProps {
   onReorder: (ids: string[]) => void
   /** Toque sin arrastre: pide ver la carta en grande. */
   onInspect: (card: PracticeHandCard, rect: DOMRect) => void
+  className?: string
 }
 
 interface DragState {
@@ -58,7 +80,7 @@ function prefersReducedMotion(): boolean {
 }
 
 /** Mano en abanico: se reordena arrastrando, un toque abre la carta y se reparte desde el mazo. */
-export function PracticeHand({ cards, slots, sizeSlots, maxCardWidth, fanDegrees, highlighted, highlightKind, muted, getDeckRect, onReorder, onInspect }: PracticeHandProps) {
+export function PracticeHand({ cards, slots, sizeSlots, maxCardWidth, fanDegrees, highlighted, highlightKind, muted, getDeckRect, onReorder, onInspect, className }: PracticeHandProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const width = useElementWidth(containerRef)
   const layout = computeHandLayout(width, slots, maxCardWidth, sizeSlots)
@@ -156,7 +178,7 @@ export function PracticeHand({ cards, slots, sizeSlots, maxCardWidth, fanDegrees
   return (
     <div
       ref={containerRef}
-      className="practice-hand"
+      className={cx('relative w-full', className)}
       role="list"
       aria-label="Mano"
       style={{ height: layout.cardHeight + TOP_ROOM + FAN_ROOM }}
@@ -295,7 +317,7 @@ function HandCard({
       role="listitem"
       tabIndex={0}
       aria-label={card.name}
-      className="practice-card"
+      className={HAND_CARD}
       data-state={state}
       data-glow={glow ? 'true' : 'false'}
       data-glow-kind={glow ? (glowKind ?? 'opening') : undefined}
@@ -315,7 +337,7 @@ function HandCard({
         limitCard={card.apiCard}
         limitBadgeSize="sm"
       />
-      <div ref={backRef} className="practice-card-back" aria-hidden="true" />
+      <div ref={backRef} data-back className={CARD_BACK} aria-hidden="true" />
     </div>
   )
 }
