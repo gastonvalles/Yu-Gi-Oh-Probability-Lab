@@ -89,6 +89,7 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
               <ConditionBlock
                 index={index}
                 patternId={pattern.id}
+                pattern={pattern}
                 condition={condition}
                 derivedMainCards={derivedMainCards}
                 actions={actions}
