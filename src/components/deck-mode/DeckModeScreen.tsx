@@ -1,15 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { countUnclassifiedCards, countCardsMissingOrigin, countCardsMissingRoles, countCardsPendingReview, isClassificationStepComplete } from '../../app/role-step'
 import { curatePatterns } from '../../app/pattern-curation'
 import { buildActiveRuleSet } from '../../app/pattern-presets'
 import { CardDetailModal } from '../card-detail/CardDetailModal'
-import { DeckRolesPanel } from '../DeckRolesPanel'
-import { ExportDeckPanel } from '../ExportDeckPanel'
-import { ProbabilityPanel } from '../ProbabilityPanel'
-import { PracticeSection } from '../probability/PracticeSection'
-import { ComparisonScreen } from '../comparison/ComparisonScreen'
 import { DeckBuilderStep } from './DeckBuilderStep'
 import { cx } from '../ui/cx'
 import { DraggableFab } from '../ui/DraggableFab'
@@ -23,6 +18,14 @@ import {
 import { DeckModeNavigation } from './DeckModeNavigation'
 import { MobileBottomStepNav } from './MobileBottomStepNav'
 import { DeckModeShell } from './DeckModeShell'
+import {
+  LazyComparisonScreen,
+  LazyDeckRolesPanel,
+  LazyExportDeckPanel,
+  LazyPracticeSection,
+  LazyProbabilityPanel,
+  preloadHeavySteps,
+} from './lazy-steps'
 import { useDeckModeController } from './use-deck-mode-controller'
 
 const REDUCED_MOTION_MEDIA_QUERY = '(prefers-reduced-motion: reduce)'
@@ -204,6 +207,10 @@ export function DeckModeScreen() {
       onStepChange={handleStepChange}
     />
   )
+  useEffect(() => {
+    preloadHeavySteps()
+  }, [])
+
   const stepContent = isDeckBuilderStep ? (
     <div id="deck-builder" className="h-full min-h-0">
       <DeckBuilderStep {...deckBuilderStep} />
@@ -219,25 +226,25 @@ export function DeckModeScreen() {
     >
       {activeStep === 'categorization' ? (
         <div id="categorization" className="h-full min-h-0 min-w-0">
-          <DeckRolesPanel {...controller.roles} />
+          <LazyDeckRolesPanel {...controller.roles} />
         </div>
       ) : null}
 
       {activeStep === 'probability-lab' ? (
         <div id="probability-lab" className="min-w-0 min-[1101px]:min-h-full">
-          <ProbabilityPanel {...controller.probability} />
+          <LazyProbabilityPanel {...controller.probability} />
         </div>
       ) : null}
 
       {activeStep === 'export' ? (
         <div id="export" className="min-w-0 min-[1101px]:min-h-full">
-          <ExportDeckPanel {...controller.exportDeck} />
+          <LazyExportDeckPanel {...controller.exportDeck} />
         </div>
       ) : null}
 
       {activeStep === 'workspace' ? (
         <div id="workspace" className="min-w-0 min-[1101px]:min-h-full">
-          <ComparisonScreen />
+          <LazyComparisonScreen />
         </div>
       ) : null}
     </section>
@@ -251,7 +258,7 @@ export function DeckModeScreen() {
         isDeckBuilderStep || isCategorizationStep ? 'h-full min-h-0' : 'min-h-full',
       )}
     >
-      {stepContent}
+      <Suspense fallback={null}>{stepContent}</Suspense>
     </div>
   )
 
@@ -362,7 +369,8 @@ function PracticeFab({
         closeTone="flat"
         closeClassName="right-1.5 top-3 min-[820px]:right-4 min-[820px]:top-4"
       >
-        <PracticeSection
+        <Suspense fallback={null}>
+        <LazyPracticeSection
           handSize={handSize}
           derivedMainCards={derivedMainCards}
           patterns={activePatterns}
@@ -372,6 +380,7 @@ function PracticeFab({
           pendingReviewCount={pendingReviewCount}
           reviewPendingPatternCount={reviewPendingPatternCount}
         />
+        </Suspense>
       </Modal>
     </>
   )

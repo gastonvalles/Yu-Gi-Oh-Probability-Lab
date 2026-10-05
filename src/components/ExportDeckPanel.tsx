@@ -18,6 +18,10 @@ interface ExportDeckPanelProps {
   onExport: () => Promise<void>
 }
 
+/** La vista previa es chica: se dibuja a 1× y con menos calidad (el archivo descargado sigue a 2×). */
+const PREVIEW_SCALE = 1
+const PREVIEW_QUALITY = 0.8
+
 export function ExportDeckPanel({
   deckBuilder,
   deckFormat,
@@ -58,7 +62,7 @@ export function ExportDeckPanel({
 
     void (async () => {
       try {
-        const blob = await canvasToJpegBlob(await renderDeckAsCanvas(deckBuilder, deckFormat))
+        const blob = await canvasToJpegBlob(await renderDeckAsCanvas(deckBuilder, deckFormat, PREVIEW_SCALE), PREVIEW_QUALITY)
 
         if (disposed) {
           return

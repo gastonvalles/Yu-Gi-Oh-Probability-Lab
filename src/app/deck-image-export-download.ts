@@ -3,7 +3,7 @@
 const OBJECT_URL_REVOKE_DELAY_MS = 30_000
 const JPEG_QUALITY = 0.92
 
-export function canvasToJpegBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+export function canvasToJpegBlob(canvas: HTMLCanvasElement, quality: number = JPEG_QUALITY): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob(
       (blob) => {
@@ -15,7 +15,7 @@ export function canvasToJpegBlob(canvas: HTMLCanvasElement): Promise<Blob> {
         resolve(blob)
       },
       'image/jpeg',
-      JPEG_QUALITY,
+      quality,
     )
   })
 }

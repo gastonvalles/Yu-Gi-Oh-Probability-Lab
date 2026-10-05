@@ -96,6 +96,7 @@ export function CardArt({
           src={resolvedUrl}
           alt={name}
           loading="lazy"
+          decoding="async"
           draggable={false}
           onLoad={() => setIsImageLoaded(true)}
           onError={() => setHasImageError(true)}
