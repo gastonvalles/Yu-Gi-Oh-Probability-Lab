@@ -1,8 +1,9 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
-import { createPortal } from 'react-dom'
+import { useEffect, useMemo, useState } from 'react'
 
-import type { CardEntry, PatternCondition, RequirementKind } from '../../../types'
+import { getCopiesUsedByOtherConditions, getMaxConditionQuantity } from '../../../app/pattern-card-usage'
+import type { CardEntry, HandPattern, PatternCondition, RequirementKind } from '../../../types'
 import { CloseButton } from '../../ui/IconButton'
+import { Modal } from '../../ui/Modal'
 import type { PatternEditorActions } from '../pattern-editor-actions'
 import { CategoryPicker } from './CategoryPicker'
 import { getConditionLabel } from './condition-labels'
@@ -11,6 +12,8 @@ import { NumberField } from '../../ui/NumberField'
 interface ConditionBlockProps {
   index: number
   patternId: string
+  /** Regla completa: sirve para saber qué cartas ya usan las otras condiciones. */
+  pattern: Pick<HandPattern, 'reusePolicy' | 'conditions'>
   condition: PatternCondition
   derivedMainCards: CardEntry[]
   actions: PatternEditorActions
@@ -20,96 +23,31 @@ interface ConditionBlockProps {
 export function ConditionBlock({
   index,
   patternId,
+  pattern,
   condition,
   derivedMainCards,
   actions,
   onRemove,
 }: ConditionBlockProps) {
   const [isPickerOpen, setIsPickerOpen] = useState(false)
-  const categoryButtonRef = useRef<HTMLButtonElement>(null)
-  const pickerPopoverRef = useRef<HTMLDivElement>(null)
-  const [pickerPosition, setPickerPosition] = useState<PickerPopoverPosition | null>(null)
   const categoryLabel = getConditionLabel(condition.matcher, derivedMainCards)
   const hasCategory = condition.matcher !== null
+  const usedCopies = useMemo(
+    () => getCopiesUsedByOtherConditions(pattern, condition.id, derivedMainCards),
+    [pattern, condition.id, derivedMainCards],
+  )
+  // La cantidad no puede pasar de las copias que realmente hay en el deck.
+  const maxQuantity = useMemo(
+    () => getMaxConditionQuantity(condition, derivedMainCards, usedCopies),
+    [condition, derivedMainCards, usedCopies],
+  )
 
-  useLayoutEffect(() => {
-    if (!isPickerOpen || typeof window === 'undefined') {
-      setPickerPosition(null)
-      return
-    }
-
-    let frame = 0
-    const updatePosition = () => {
-      const rect = categoryButtonRef.current?.getBoundingClientRect()
-
-      if (!rect) {
-        return
-      }
-
-      const viewportWidth = window.innerWidth
-      const viewportHeight = window.innerHeight
-      const gutter = 12
-      const width = Math.min(Math.max(rect.width, 560), viewportWidth - gutter * 2)
-      const left = Math.min(Math.max(gutter, rect.left), viewportWidth - width - gutter)
-      const spaceBelow = viewportHeight - rect.bottom - gutter
-      const spaceAbove = rect.top - gutter
-      const preferredBelow = spaceBelow >= 280 || spaceBelow >= spaceAbove
-      const availableSpace = preferredBelow ? spaceBelow : spaceAbove
-      const maxHeight = Math.min(420, Math.max(240, availableSpace - 8))
-      const top = preferredBelow
-        ? rect.bottom + 6
-        : Math.max(gutter, rect.top - maxHeight - 6)
-
-      setPickerPosition({ left, top, width, maxHeight })
-    }
-    const requestUpdatePosition = () => {
-      window.cancelAnimationFrame(frame)
-      frame = window.requestAnimationFrame(updatePosition)
-    }
-
-    updatePosition()
-    window.addEventListener('resize', requestUpdatePosition)
-    window.addEventListener('scroll', requestUpdatePosition, true)
-
-    return () => {
-      window.cancelAnimationFrame(frame)
-      window.removeEventListener('resize', requestUpdatePosition)
-      window.removeEventListener('scroll', requestUpdatePosition, true)
-    }
-  }, [isPickerOpen])
-
+  // Si se elige algo que tiene menos copias que la cantidad pedida, la cantidad baja a lo que hay.
   useEffect(() => {
-    if (!isPickerOpen || typeof document === 'undefined') {
-      return
+    if (hasCategory && condition.quantity > maxQuantity) {
+      actions.setRequirementCount(patternId, condition.id, String(maxQuantity))
     }
-
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target
-
-      if (!(target instanceof Node)) {
-        return
-      }
-
-      if (categoryButtonRef.current?.contains(target) || pickerPopoverRef.current?.contains(target)) {
-        return
-      }
-
-      setIsPickerOpen(false)
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsPickerOpen(false)
-      }
-    }
-
-    document.addEventListener('pointerdown', handlePointerDown)
-    document.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [isPickerOpen])
+  }, [actions, condition.id, condition.quantity, hasCategory, maxQuantity, patternId])
 
   return (
     <article className="condition-block surface-card grid gap-2 px-3 py-2.5">
@@ -120,10 +58,10 @@ export function ConditionBlock({
         />
         <QuantitySegment
           value={condition.quantity}
+          max={maxQuantity}
           onChange={(qty) => actions.setRequirementCount(patternId, condition.id, String(qty))}
         />
         <button
-          ref={categoryButtonRef}
           type="button"
           className={[
             'condition-block-category px-3 py-1.5 text-[0.92rem] font-medium transition-colors rounded-r-md',
@@ -150,39 +88,27 @@ export function ConditionBlock({
         </p>
       ) : null}
 
-      {isPickerOpen && pickerPosition && typeof document !== 'undefined'
-        ? createPortal(
-            <div
-              ref={pickerPopoverRef}
-              className="category-picker-popover"
-              style={{
-                left: pickerPosition.left,
-                top: pickerPosition.top,
-                width: pickerPosition.width,
-                '--category-picker-max-height': `${pickerPosition.maxHeight}px`,
-              } as CSSProperties}
-            >
-              <CategoryPicker
-                patternId={patternId}
-                conditionId={condition.id}
-                currentMatcher={condition.matcher}
-                derivedMainCards={derivedMainCards}
-                actions={actions}
-                onClose={() => setIsPickerOpen(false)}
-              />
-            </div>,
-            document.body,
-          )
-        : null}
+      <Modal
+        isOpen={isPickerOpen}
+        onClose={() => setIsPickerOpen(false)}
+        size="md"
+        bare
+        flush
+        ariaLabel="Qué contar en esta condición"
+        className="cpick-modal"
+      >
+        <CategoryPicker
+          patternId={patternId}
+          conditionId={condition.id}
+          currentMatcher={condition.matcher}
+          derivedMainCards={derivedMainCards}
+          usedCopies={usedCopies}
+          actions={actions}
+          onClose={() => setIsPickerOpen(false)}
+        />
+      </Modal>
     </article>
   )
-}
-
-interface PickerPopoverPosition {
-  left: number
-  top: number
-  width: number
-  maxHeight: number
 }
 
 function KindSegment({
@@ -213,16 +139,18 @@ function KindSegment({
 
 function QuantitySegment({
   value,
+  max,
   onChange,
 }: {
   value: number
+  max: number
   onChange: (quantity: number) => void
 }) {
   return (
     <NumberField
       value={value}
       min={1}
-      max={60}
+      max={Math.max(max, value)}
       onChange={onChange}
       className="condition-block-qty app-field w-12 border-x-0 rounded-none px-1.5 py-1.5 text-center text-[0.94rem] font-medium"
       aria-label="Cantidad"
