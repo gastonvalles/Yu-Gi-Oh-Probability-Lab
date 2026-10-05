@@ -85,9 +85,8 @@
   /* ── Panel de detalle ── */
 
   .classic-builder-preview-actions {
-    border: 1px solid var(--classic-builder-divider);
-    background: var(--classic-builder-surface-soft);
-    padding: 0.65rem;
+    border-bottom: 1px solid var(--classic-builder-divider);
+    padding: 0.6rem 1rem;
   }
 
   .classic-builder-shortcuts {
@@ -148,13 +147,6 @@
     color: var(--text-soft);
     font-size: 0.78rem;
     pointer-events: none;
-  }
-}
-
-/* Con acciones en el panel, la fila flexible sigue siendo la de la descripción. */
-@media (min-width: 1101px) {
-  .classic-builder-preview:has(.classic-builder-preview-actions) {
-    grid-template-rows: auto auto auto minmax(12rem, 1fr);
   }
 }
 

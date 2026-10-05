@@ -50,8 +50,6 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, onAddToZone 
         </section>
       ) : null}
 
-      <div className="classic-builder-preview-title">{card ? card.name : 'Elegí una carta'}</div>
-
       <div className="classic-builder-preview-art-shell">
         <div className="classic-builder-preview-art-frame">
           {card ? (
