@@ -31,6 +31,7 @@ const FONT_STACK = '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
 export async function renderDeckAsCanvas(
   deckBuilder: DeckBuilderState,
   deckFormat: DeckFormat,
+  scale: number = EXPORT_RESOLUTION_SCALE,
 ): Promise<HTMLCanvasElement> {
   const layout = computeDeckImageLayout({
     main: deckBuilder.main.length,
@@ -40,8 +41,8 @@ export async function renderDeckAsCanvas(
   const imagesByZone = await Promise.all(layout.zones.map((zone) => loadZoneImages(deckBuilder[zone.zone])))
 
   const canvas = document.createElement('canvas')
-  canvas.width = Math.ceil(layout.width * EXPORT_RESOLUTION_SCALE)
-  canvas.height = Math.ceil(layout.height * EXPORT_RESOLUTION_SCALE)
+  canvas.width = Math.ceil(layout.width * scale)
+  canvas.height = Math.ceil(layout.height * scale)
 
   const context = canvas.getContext('2d')
 
@@ -49,7 +50,7 @@ export async function renderDeckAsCanvas(
     throw new Error('No pude preparar la imagen del deck.')
   }
 
-  context.scale(EXPORT_RESOLUTION_SCALE, EXPORT_RESOLUTION_SCALE)
+  context.scale(scale, scale)
   context.imageSmoothingEnabled = true
   context.imageSmoothingQuality = 'high'
 

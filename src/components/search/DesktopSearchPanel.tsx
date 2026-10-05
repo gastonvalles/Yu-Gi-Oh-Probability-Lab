@@ -48,7 +48,7 @@ const RESULTS_GRID =
 /** Tarjeta de resultado: la elegida y la que ya está al máximo cambian de aspecto. */
 function resultCard({ selected, maxed, dragging }: { selected: boolean; maxed: boolean; dragging: boolean }): string {
   return cx(
-    'group/card relative grid min-w-0 cursor-pointer grid-cols-[4.2rem_minmax(0,1fr)] items-start gap-[0.6rem] border-b border-r border-border/94 p-[0.42rem] outline-2 -outline-offset-2 outline-dashed outline-foreground/0 transition-[background,outline-color,border-color] duration-[140ms] nth-[2n]:border-r-0',
+    'group/card relative grid min-w-0 [contain-intrinsic-size:auto_6.9rem] [content-visibility:auto] cursor-pointer grid-cols-[4.2rem_minmax(0,1fr)] items-start gap-[0.6rem] border-b border-r border-border/94 p-[0.42rem] outline-2 -outline-offset-2 outline-dashed outline-foreground/0 transition-[background,outline-color,border-color] duration-[140ms] nth-[2n]:border-r-0',
     selected
       ? 'bg-linear-to-b from-primary/15 to-secondary/96 shadow-[inset_0_0_0_1px_rgb(var(--primary-rgb)/0.4)]'
       : SURFACE_GRADIENT,

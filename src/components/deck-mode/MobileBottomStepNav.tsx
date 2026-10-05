@@ -157,7 +157,7 @@ export function MobileBottomStepNav({
   return (
     <nav
       aria-label="Pasos del workflow"
-      className="fixed inset-x-0 bottom-0 z-120 border-t border-border/96 bg-linear-to-b from-secondary/92 to-background/98 pb-[calc(env(safe-area-inset-bottom,0px)+0.35rem)] pl-[calc(env(safe-area-inset-left,0px)+0.35rem)] pr-[calc(env(safe-area-inset-right,0px)+0.35rem)] pt-[0.24rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_-14px_32px_rgba(0,0,0,0.34)] backdrop-blur-[18px]"
+      className="fixed inset-x-0 bottom-0 z-120 border-t border-border/96 bg-linear-to-b from-secondary/92 to-background/98 pb-[calc(env(safe-area-inset-bottom,0px)+0.35rem)] pl-[calc(env(safe-area-inset-left,0px)+0.35rem)] pr-[calc(env(safe-area-inset-right,0px)+0.35rem)] pt-[0.24rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_-14px_32px_rgba(0,0,0,0.34)]"
     >
       <div className="grid min-h-[var(--deck-mobile-step-nav-height,4.3rem)] auto-cols-fr grid-flow-col gap-[0.1rem]">
         {items.map(renderStep)}

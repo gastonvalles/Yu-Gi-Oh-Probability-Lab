@@ -107,7 +107,7 @@ export function CardDetailOverlay({ name, card, origin = null, metadata, actions
   return createPortal(
     <div
       ref={rootRef}
-      className="fixed inset-0 z-240 grid place-items-center bg-background/90 pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-[8px] [--detail-art-height:min(36dvh,20rem)] [@media(max-height:540px)]:[--detail-art-height:28dvh] [@media(max-height:540px)]:py-3"
+      className="fixed inset-0 z-240 grid place-items-center bg-background/90 pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(1rem,env(safe-area-inset-top))] min-[1101px]:backdrop-blur-[8px] [--detail-art-height:min(36dvh,20rem)] [@media(max-height:540px)]:[--detail-art-height:28dvh] [@media(max-height:540px)]:py-3"
       role="dialog"
       aria-modal="true"
       aria-label={`Detalle de ${name}`}
