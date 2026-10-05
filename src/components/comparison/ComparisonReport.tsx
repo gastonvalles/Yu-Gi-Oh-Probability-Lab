@@ -8,7 +8,7 @@ import type {
 } from '../../app/build-comparison'
 import type { RoleDistribution } from '../../app/role-distribution'
 import { formatInteger, formatShortPercent } from '../../app/utils'
-import type { PatternKind } from '../../types'
+import { KindBadge } from '../probability/KindBadge'
 
 /** Nombre con el que el comparador muestra tu deck actual. */
 export const CURRENT_DECK_NAME = 'Deck actual'
@@ -260,13 +260,5 @@ function RuleTable({ rows }: { rows: RuleComparisonRow[] }) {
         ))}
       </ul>
     </ReportSection>
-  )
-}
-
-function KindBadge({ kind }: { kind: PatternKind }) {
-  return (
-    <span className="lab-kind-badge" data-kind={kind}>
-      {kind === 'opening' ? 'Salida' : 'Problema'}
-    </span>
   )
 }

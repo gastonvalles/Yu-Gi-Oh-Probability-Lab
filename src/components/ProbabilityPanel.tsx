@@ -207,7 +207,7 @@ export function ProbabilityPanel({
   }
 
   return (
-    <article className={`${surface.stepShell} lab-shell grid h-full min-h-0 content-start gap-3 px-4 pt-3 min-[1101px]:p-3`}>
+    <article className={`${surface.stepShell} grid h-full min-h-0 content-start gap-3 px-4 pt-3 min-[1101px]:p-3`}>
       <StepHero
         title="Qué tan bien abre tu deck"
         help="Cálculo exacto de todas las manos posibles, yendo primero (5 cartas) y segundo (6), con las reglas de abajo: una mano es limpia si cumple alguna salida y ningún problema."
@@ -231,8 +231,8 @@ export function ProbabilityPanel({
           ))}
         </div>
       ) : results && currentResult ? (
-        <div className="lab-layout">
-          <div className="lab-toolbar">
+        <div className="grid min-w-0 gap-3 min-[1101px]:grid-cols-2 min-[1101px]:items-stretch min-[1101px]:gap-[0.9rem]">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 min-[1101px]:col-span-full">
             <TurnViewToggle
               activeView={activeTurnView}
               onChange={setActiveTurnView}
@@ -242,7 +242,7 @@ export function ProbabilityPanel({
                 average: `50/50 · ${formatShortPercent(results.average.cleanProbability)}`,
               }}
             />
-            <button type="button" className="lab-help-link" onClick={disclaimer.open}>
+            <button type="button" className="text-[0.78rem] text-muted underline underline-offset-[3px] hover:text-foreground" onClick={disclaimer.open}>
               ¿Cómo leer estos %?
             </button>
           </div>

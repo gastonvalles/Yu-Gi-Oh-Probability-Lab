@@ -1,5 +1,6 @@
 import { useEffect, useState, type SVGProps } from 'react'
 
+import { cx } from '../ui/cx'
 import {
   DECK_WORKFLOW_TONE_LABEL,
   type DeckModeNavigationItem,
@@ -121,10 +122,10 @@ export function MobileBottomStepNav({
         aria-current={isActive ? 'step' : undefined}
         aria-disabled={isDisabled || undefined}
         aria-label={`${item.title}. ${statusLabel}. ${item.metric}.`}
-        data-active={isActive ? 'true' : 'false'}
-        data-tone={item.tone}
-        data-disabled={isDisabled ? 'true' : 'false'}
-        className="mobile-step-nav-item"
+        className={cx(
+          'group relative grid min-w-0 content-center justify-items-center gap-[0.18rem] border border-transparent bg-transparent px-[0.2rem] pb-[0.24rem] pt-[0.32rem] text-foreground/96 transition-[color,opacity] duration-160 hover:text-foreground focus-visible:shadow-[0_0_0_2px_rgb(var(--background-rgb)),0_0_0_4px_rgb(var(--accent-rgb)/0.24)] focus-visible:outline-none disabled:cursor-not-allowed',
+          isDisabled && 'text-soft opacity-42',
+        )}
         disabled={isDisabled}
         title={isDisabled ? `${item.title}: ${item.detail}` : item.title}
         onClick={() => {
@@ -132,17 +133,33 @@ export function MobileBottomStepNav({
           onStepChange(item.key)
         }}
       >
-        <span className="mobile-step-nav-icon" aria-hidden="true">
+        <span
+          className={cx(
+            'relative grid h-7 w-[3.1rem] place-items-center rounded-full transition-[color,background] duration-160 [&_svg]:size-full [&_svg]:max-w-[1.6rem] [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:[stroke-linecap:round] [&_svg]:[stroke-linejoin:round]',
+            isActive && 'bg-accent/14 text-accent [filter:drop-shadow(0_0_0.32rem_rgb(var(--accent-rgb)/0.18))]',
+          )}
+          aria-hidden="true"
+        >
           <StepIcon step={item.key} />
-          {needsAttention ? <span className="mobile-step-nav-dot" /> : null}
+          {needsAttention ? <span className="absolute right-[0.55rem] top-[0.1rem] size-2 rounded-full border-2 border-background bg-warning" /> : null}
         </span>
-        <span className="mobile-step-nav-label">{item.shortTitle}</span>
+        <span
+          className={cx(
+            'min-w-0 whitespace-nowrap text-center text-[0.69rem] font-bold leading-[1.1] tracking-[0.01em] transition-[color,text-shadow] duration-160',
+            isActive && 'text-accent [text-shadow:0_0_0.3rem_rgb(var(--accent-rgb)/0.14)]',
+          )}
+        >
+          {item.shortTitle}
+        </span>
       </button>
     )
   }
   return (
-    <nav aria-label="Pasos del workflow" className="mobile-step-nav">
-      <div className="mobile-step-nav-grid">
+    <nav
+      aria-label="Pasos del workflow"
+      className="fixed inset-x-0 bottom-0 z-120 border-t border-border/96 bg-linear-to-b from-secondary/92 to-background/98 pb-[calc(env(safe-area-inset-bottom,0px)+0.35rem)] pl-[calc(env(safe-area-inset-left,0px)+0.35rem)] pr-[calc(env(safe-area-inset-right,0px)+0.35rem)] pt-[0.24rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_-14px_32px_rgba(0,0,0,0.34)] backdrop-blur-[18px]"
+    >
+      <div className="grid min-h-[var(--deck-mobile-step-nav-height,4.3rem)] auto-cols-fr grid-flow-col gap-[0.1rem]">
         {items.map(renderStep)}
       </div>
     </nav>
