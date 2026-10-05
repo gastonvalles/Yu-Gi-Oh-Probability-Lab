@@ -4,6 +4,7 @@ import { MAX_RULE_NAME_LENGTH, normalizeRuleName } from '../../app/pattern-prese
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
 import type { RuleEntry } from './probability-lab-helpers'
+import { field } from '../ui/surfaces'
 
 interface RuleRenameDialogProps {
   entry: RuleEntry
@@ -75,7 +76,7 @@ export function RuleRenameDialog({ entry, onSave, onClose }: RuleRenameDialogPro
           autoFocus
           onFocus={(event) => event.target.select()}
           onChange={(event) => setValue(event.target.value)}
-          className="app-field w-full px-3 py-2 text-[0.95rem]"
+          className={`${field} w-full px-3 py-2 text-[0.95rem]`}
         />
       </form>
     </Modal>

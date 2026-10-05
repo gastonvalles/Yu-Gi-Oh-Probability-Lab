@@ -7,6 +7,7 @@ import { formatInteger } from '../../app/utils'
 import { getCardRoleDefinition } from '../../app/deck-groups'
 import { CopiesBadge } from '../ui/CopiesBadge'
 import { Modal } from '../ui/Modal'
+import { listItem } from '../ui/surfaces'
 
 export interface KpiDetailModalProps {
   isOpen: boolean
@@ -44,7 +45,7 @@ export function KpiDetailModal({
       subtitle={result ? `${formatInteger(result.totalCopies)} carta${result.totalCopies === 1 ? '' : 's'}` : undefined}
     >
       {!result || result.cards.length === 0 ? (
-        <p className="app-muted m-0 py-6 text-center text-[0.84rem]">No hay cartas en esta categoría.</p>
+        <p className="text-muted m-0 py-6 text-center text-[0.84rem]">No hay cartas en esta categoría.</p>
       ) : (
         <div className="grid grid-cols-1 gap-px min-[540px]:grid-cols-2">
           {result.cards.map((card) => (
@@ -52,7 +53,7 @@ export function KpiDetailModal({
               key={card.ygoprodeckId}
               type="button"
               data-testid="kpi-detail-card-row"
-              className="app-list-item grid min-w-0 grid-cols-[40px_minmax(0,1fr)] items-center gap-2.5 px-1.5 py-1.5 text-left"
+              className={`${listItem} grid min-w-0 grid-cols-[40px_minmax(0,1fr)] items-center gap-2.5 px-1.5 py-1.5 text-left`}
               onClick={() => onCardClick(card.apiCard, card.name)}
             >
               <span className="relative block w-[40px]">

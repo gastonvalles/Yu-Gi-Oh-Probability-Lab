@@ -1,4 +1,5 @@
 import type { DeckModelStatus } from '../app/deck-model-status'
+import { surface } from './ui/surfaces'
 
 interface DeckModelStatusBadgeProps {
   modelStatus: DeckModelStatus
@@ -40,7 +41,7 @@ function FullBadge({ modelStatus }: { modelStatus: DeckModelStatus }) {
 
   if (isComplete) {
     return (
-      <div className={['surface-card-success grid gap-2 px-3 py-2.5'].join(' ')}>
+      <div className={[`${surface.cardSuccess} grid gap-2 px-3 py-2.5`].join(' ')}>
         <div className="flex items-center gap-2">
           <span
             aria-hidden="true"
@@ -60,7 +61,7 @@ function FullBadge({ modelStatus }: { modelStatus: DeckModelStatus }) {
   const details = buildDetailMessages(modelStatus)
 
   return (
-    <div className={['surface-card-warning grid gap-2 px-3 py-2.5'].join(' ')}>
+    <div className={[`${surface.cardWarning} grid gap-2 px-3 py-2.5`].join(' ')}>
       <div className="flex items-center gap-2">
         <span
           aria-hidden="true"

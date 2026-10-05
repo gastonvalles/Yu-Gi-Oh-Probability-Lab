@@ -202,8 +202,8 @@ export function DeckZone({
               ) : null}
               {cards.length > 0 ? (
                 <IconButton
-                  size="sm"
-                  className="deck-zone-trash-button classic-builder-zone-trash-button"
+                  tone="ghost"
+                  size={isClassicBuilder ? 'sm' : 'md'}
                   aria-label={`Vaciar ${title}`}
                   title={`Vaciar ${title}`}
                   onClick={() => onClearZone(zone)}

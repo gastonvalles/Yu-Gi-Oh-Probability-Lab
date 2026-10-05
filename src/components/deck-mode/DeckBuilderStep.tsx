@@ -20,6 +20,7 @@ import { StepHero } from '../StepHero'
 import { Button } from '../ui/Button'
 import { DeckBuilderClassicPreview } from './DeckBuilderClassicPreview'
 import { DeckImportDrawer } from './DeckImportDrawer'
+import { fieldMeta, surface } from '../ui/surfaces'
 
 
 interface DeckBuilderStepProps {
@@ -237,14 +238,14 @@ export function DeckBuilderStep({
                     value={deckBuilder.deckName}
                     onChange={(event) => onDeckNameChange(event.target.value)}
                     placeholder="Nombre del deck"
-                    className="app-field deck-builder-meta-field classic-builder-toolbar-field"
+                    className={`${fieldMeta} classic-builder-toolbar-field`}
                   />
 
                   <label className="classic-builder-toolbar-select-wrap">
                     <select
                       value={deckFormat}
                       onChange={(event) => onDeckFormatChange(event.target.value as DeckFormat)}
-                      className="app-field deck-builder-meta-field deck-builder-meta-select classic-builder-toolbar-select"
+                      className={`${fieldMeta} text-left classic-builder-toolbar-select`}
                     >
                       <option value="unlimited">Sin límite</option>
                       <option value="tcg">TCG</option>
@@ -366,7 +367,7 @@ export function DeckBuilderStep({
   return (
     <section
       id="step1"
-      className="surface-panel deck-builder-step-shell grid w-full gap-3 px-4 pt-3 min-[1101px]:p-2.5"
+      className={`${surface.stepShell} grid w-full gap-3 px-4 pt-3 min-[1101px]:p-2.5`}
     >
       <StepHero
         title="Armá tu deck"
@@ -380,13 +381,13 @@ export function DeckBuilderStep({
               value={deckBuilder.deckName}
               onChange={(event) => onDeckNameChange(event.target.value)}
               placeholder="Nombre del deck"
-              className="app-field deck-builder-meta-field w-full px-2 py-[0.55rem] text-[0.88rem] font-semibold"
+              className={`${fieldMeta} w-full px-2 py-[0.55rem] text-[0.88rem] font-semibold`}
             />
             <select
               aria-label="Formato del deck"
               value={deckFormat}
               onChange={(event) => onDeckFormatChange(event.target.value as DeckFormat)}
-              className="app-field deck-builder-meta-field deck-builder-meta-select w-full px-2 py-[0.55rem] text-[0.88rem] font-semibold"
+              className={`${fieldMeta} text-left w-full px-2 py-[0.55rem] text-[0.88rem] font-semibold`}
             >
               <option value="unlimited">Sin límite</option>
               <option value="tcg">TCG</option>
@@ -413,8 +414,8 @@ export function DeckBuilderStep({
 
       {showGenesysPoints ? (
         <div className="grid gap-2 min-[1101px]:hidden">
-          <div className={[genesysPointTotal > genesysPointCap ? 'surface-card-warning' : 'surface-card', 'grid gap-1.5 px-2 py-2'].join(' ')}>
-            <span className="app-soft text-[0.68rem] uppercase tracking-widest">Puntos Genesys</span>
+          <div className={[genesysPointTotal > genesysPointCap ? `${surface.cardWarning}` : `${surface.card}`, 'grid gap-1.5 px-2 py-2'].join(' ')}>
+            <span className="text-soft text-[0.68rem] uppercase tracking-widest">Puntos Genesys</span>
             <strong className="text-[0.92rem] leading-none text-(--text-main)">
               {formatInteger(genesysPointTotal)} / {formatInteger(genesysPointCap)} pts
             </strong>
@@ -427,9 +428,9 @@ export function DeckBuilderStep({
 
       {showFormatIssues ? (
         <div className="grid gap-2 min-[1101px]:hidden">
-          <div className="surface-card-warning grid gap-1.5 px-2 py-2">
+          <div className={`${surface.cardWarning} grid gap-1.5 px-2 py-2`}>
             <div className="flex items-center justify-between gap-2">
-              <span className="app-soft text-[0.68rem] uppercase tracking-widest">
+              <span className="text-soft text-[0.68rem] uppercase tracking-widest">
                 Regla pendiente
               </span>
               <span className="builder-status-dot builder-status-dot-warning" />
@@ -444,7 +445,7 @@ export function DeckBuilderStep({
                 </p>
               ))}
               {hasHiddenIssues ? (
-                <p className="app-soft m-0 text-[0.72rem]">+ {formatIssues.length - visibleFormatIssues.length} más</p>
+                <p className="text-soft m-0 text-[0.72rem]">+ {formatIssues.length - visibleFormatIssues.length} más</p>
               ) : null}
             </div>
           </div>
@@ -452,7 +453,7 @@ export function DeckBuilderStep({
       ) : null}
 
       <div className="grid items-start gap-3">
-        <article className="surface-panel-soft self-start w-full min-h-0 p-2.5">
+        <article className={`${surface.panelSoft} self-start w-full min-h-0 p-2.5`}>
           <div className="grid gap-2.5">
             <div className="sticky top-2 z-20 min-[1101px]:hidden">
               <Button variant="primary" size="lg" fullWidth onClick={() => setMobileSearchOpen(true)}>

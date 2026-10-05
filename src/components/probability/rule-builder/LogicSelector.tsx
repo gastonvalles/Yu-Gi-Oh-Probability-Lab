@@ -1,6 +1,7 @@
 import type { PatternMatchMode } from '../../../types'
 import type { PatternEditorActions } from '../pattern-editor-actions'
 import { formatInteger } from '../../../app/utils'
+import { surface } from '../../ui/surfaces'
 
 interface LogicSelectorProps {
   patternId: string
@@ -59,7 +60,7 @@ export function LogicSelector({
           onClick={() => actions.setPatternMatchMode(patternId, 'at-least')}
         />
       </div>
-      <p className="app-muted m-0 text-[0.82rem] leading-[1.16]">
+      <p className="text-muted m-0 text-[0.82rem] leading-[1.16]">
         {getModeDescription(currentMode, minimumConditionMatches)}
       </p>
     </div>
@@ -90,7 +91,7 @@ function LogicOption({
           ? 'cursor-not-allowed text-(--text-soft) opacity-40'
           : isActive
             ? 'bg-[rgb(var(--primary-rgb)/0.16)] text-(--text-main)'
-            : 'surface-panel-soft text-(--text-muted) hover:text-(--text-main)',
+            : `${surface.panelSoft} text-(--text-muted) hover:text-(--text-main)`,
       ].join(' ')}
       onClick={disabled ? undefined : onClick}
     >

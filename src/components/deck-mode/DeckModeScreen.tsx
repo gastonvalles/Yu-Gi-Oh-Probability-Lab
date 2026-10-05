@@ -354,11 +354,12 @@ function PracticeFab({
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        size="xl"
+        size="table"
         bare
         flush
         ariaLabel="Práctica"
-        className="practice-modal"
+        closeTone="flat"
+        closeClassName="right-1.5 top-3 min-[820px]:right-4 min-[820px]:top-4"
       >
         <PracticeSection
           handSize={handSize}

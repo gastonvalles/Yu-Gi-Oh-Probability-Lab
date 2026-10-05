@@ -22,7 +22,7 @@ export function LabScoreCard({ results, view, isRecalculating }: LabScoreCardPro
   return (
     <section className="lab-score" data-tone={tone} aria-busy={isRecalculating}>
       <div className="lab-score-head">
-        <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Manos jugables sin problemas</p>
+        <p className="text-accent m-0 text-[0.68rem] uppercase tracking-widest">Manos jugables sin problemas</p>
         <span className="lab-tone-badge" data-tone={tone}>
           {KPI_TONE_LABELS[tone]}
         </span>

@@ -27,6 +27,7 @@ import { StepHero } from './StepHero'
 import { Button } from './ui/Button'
 import { CopiesBadge } from './ui/CopiesBadge'
 import { Modal } from './ui/Modal'
+import { chip, listItem, surface } from './ui/surfaces'
 
 interface DeckRolesPanelProps {
   cards: CardEntry[]
@@ -245,7 +246,7 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
     return {
       title: 'No quedan cartas pendientes en esta cola.',
       description: 'Podés repasar otros grupos desde la derecha o pasar al Probability Lab cuando termines de validar la build.',
-      tone: 'surface-card-success text-(--accent)',
+      tone: `${surface.cardSuccess} text-(--accent)`,
     }
   }
 
@@ -253,7 +254,7 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
     return {
       title: 'No hay cartas sin origen en esta vista.',
       description: 'El motor y los slots externos ya quedaron diferenciados.',
-      tone: 'surface-card-success text-(--accent)',
+      tone: `${surface.cardSuccess} text-(--accent)`,
     }
   }
 
@@ -261,7 +262,7 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
     return {
       title: 'No hay cartas sin roles en esta vista.',
       description: 'La función táctica de estas cartas ya quedó definida.',
-      tone: 'surface-card-success text-(--accent)',
+      tone: `${surface.cardSuccess} text-(--accent)`,
     }
   }
 
@@ -269,7 +270,7 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
     return {
       title: 'No hay cartas pendientes de revisión.',
       description: 'Las cartas cargadas en esta vista ya están validadas.',
-      tone: 'surface-card-success text-(--accent)',
+      tone: `${surface.cardSuccess} text-(--accent)`,
     }
   }
 
@@ -277,7 +278,7 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
     return {
       title: 'Todavía no hay cartas completas en esta vista.',
       description: 'Primero definí origen y roles para poblar este subconjunto.',
-      tone: 'surface-card text-(--text-muted)',
+      tone: `${surface.card} text-(--text-muted)`,
     }
   }
 
@@ -285,14 +286,14 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
     return {
       title: 'Todavía no hay cartas para clasificar.',
       description: 'Primero armá o importá tu Main Deck. Después vas a poder marcar origen y roles.',
-      tone: 'surface-card text-(--text-muted)',
+      tone: `${surface.card} text-(--text-muted)`,
     }
   }
 
   return {
     title: 'Este grupo está vacío por ahora.',
     description: 'Ajustá el filtro o seguí clasificando cartas para poblarlo.',
-    tone: 'surface-card text-(--text-muted)',
+    tone: `${surface.card} text-(--text-muted)`,
   }
 }
 
@@ -462,7 +463,7 @@ function renderReferenceRoles(roleKeys: readonly CardRole[]) {
             {definition.label}
           </strong>
         </div>
-        <p className="app-muted m-0 text-[0.72rem] leading-[1.14]">{getRoleHelpText(roleKey)}</p>
+        <p className="text-muted m-0 text-[0.72rem] leading-[1.14]">{getRoleHelpText(roleKey)}</p>
       </article>
     )
   })
@@ -516,8 +517,7 @@ function ClassificationModal({
       isOpen={isOpen}
       onClose={onClose}
       footer={footer}
-      size="xl"
-      className="classification-modal"
+      size="editor"
       bare={hideHeader}
       kicker={kicker}
       title={title}
@@ -852,7 +852,7 @@ export function DeckRolesPanel({
       <div className="grid gap-3">
         <section className="grid gap-2">
           <div className="grid gap-0.5">
-            <p className="app-kicker m-0 text-[0.64rem] uppercase tracking-widest">¿Dónde encaja en tu plan?</p>
+            <p className="text-accent m-0 text-[0.64rem] uppercase tracking-widest">¿Dónde encaja en tu plan?</p>
           </div>
 
 	          <div className="grid grid-cols-3 gap-1.5">
@@ -886,7 +886,7 @@ export function DeckRolesPanel({
                         <span className="min-[1101px]:hidden">{definition.shortLabel ?? definition.label}</span>
                       </strong>
                     </div>
-                    <span className="app-muted text-[0.6rem] leading-[1.08] max-[1100px]:hidden min-[1101px]:inline">{ORIGIN_BLURB_TEXT[definition.key.value]}</span>
+                    <span className="text-muted text-[0.6rem] leading-[1.08] max-[1100px]:hidden min-[1101px]:inline">{ORIGIN_BLURB_TEXT[definition.key.value]}</span>
                   </button>
                 </DefinitionTooltip>
               )
@@ -896,7 +896,7 @@ export function DeckRolesPanel({
 
         <section className="grid gap-2">
           <div className="grid gap-1.5">
-            <p className="app-kicker m-0 text-[0.64rem] uppercase tracking-widest">¿Qué función cumple cuando la robás?</p>
+            <p className="text-accent m-0 text-[0.64rem] uppercase tracking-widest">¿Qué función cumple cuando la robás?</p>
           </div>
 
           <div className="classification-role-sections grid gap-1.5 max-[1100px]:grid-cols-1 min-[1101px]:grid-cols-3 min-[1101px]:items-stretch">
@@ -909,11 +909,11 @@ export function DeckRolesPanel({
             return (
               <article
                 key={section.title}
-                className="classification-role-section surface-card grid h-full grid-rows-[auto_minmax(0,1fr)] gap-1.5 p-2"
+                className={`classification-role-section ${surface.card} grid h-full grid-rows-[auto_minmax(0,1fr)] gap-1.5 p-2`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-1">
                   <strong className="text-[0.72rem] leading-none text-(--text-main) min-[1101px]:text-[0.8rem]">{section.title}</strong>
-                  <span className="app-chip px-1 py-0.5 text-[0.58rem] min-[1101px]:px-1.5 min-[1101px]:text-[0.62rem]">
+                  <span className={`${chip.base} px-1 py-0.5 text-[0.58rem] min-[1101px]:px-1.5 min-[1101px]:text-[0.62rem]`}>
                     {formatInteger(selectedCount)} / {formatInteger(section.roles.length)}
                   </span>
                 </div>
@@ -980,13 +980,13 @@ export function DeckRolesPanel({
                 />
               </div>
               <div className="grid min-w-0 gap-1">
-                <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-[0.12em]">
+                <p className="text-accent m-0 text-[0.68rem] uppercase tracking-[0.12em]">
                   Carta {formatInteger(selectedCardIndexInFullList + 1)} de {formatInteger(stableNavigationCards.length)}
                 </p>
                 <h3 className="m-0 wrap-anywhere text-[1.5rem] leading-[1] tracking-[-0.02em] text-(--text-main) min-[1101px]:text-[2.3rem] min-[1101px]:leading-[0.94] min-[1101px]:tracking-[-0.03em]">
                   {selectedCard.name}
                 </h3>
-                <p className="app-muted m-0 text-[0.86rem] leading-[1.1] min-[1101px]:text-[0.98rem]">
+                <p className="text-muted m-0 text-[0.86rem] leading-[1.1] min-[1101px]:text-[0.98rem]">
                   {formatInteger(selectedCard.copies)} copia{selectedCard.copies === 1 ? '' : 's'} en Main Deck
                 </p>
               </div>
@@ -994,12 +994,12 @@ export function DeckRolesPanel({
 
             <div className="grid gap-1">
               <div className="flex items-center justify-between gap-2 text-[0.74rem]">
-                <span className="app-muted">
+                <span className="text-muted">
                   {pendingClassificationCount === 0
                     ? 'Todas las cartas están clasificadas'
                     : `Faltan ${formatInteger(pendingClassificationCount)} por clasificar`}
                 </span>
-                <span className="app-soft tabular-nums">
+                <span className="text-soft tabular-nums">
                   {formatInteger(completeCards.length)} / {formatInteger(sortedCards.length)}
                 </span>
               </div>
@@ -1016,7 +1016,7 @@ export function DeckRolesPanel({
             </div>
 
             {selectedCard.needsReview && selectedCard.origin !== null && selectedCard.roles.length > 0 ? (
-              <div className="surface-card-warning flex flex-wrap items-center justify-between gap-2 px-2.5 py-2">
+              <div className={`${surface.cardWarning} flex flex-wrap items-center justify-between gap-2 px-2.5 py-2`}>
                 <p className="m-0 text-[0.76rem] leading-[1.16] text-(--text-main)">
                   Clasificación sugerida automáticamente. Confirmala si te parece correcta.
                 </p>
@@ -1039,7 +1039,7 @@ export function DeckRolesPanel({
   }
 
   return (
-    <section className="surface-panel deck-mobile-step-shell classification-step-shell grid min-w-0 content-start gap-3 overflow-x-hidden px-4 pt-3 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_auto_minmax(0,1fr)] min-[1101px]:gap-3 min-[1101px]:overflow-hidden min-[1101px]:p-2.5">
+    <section className={`${surface.stepShell} classification-step-shell grid min-w-0 content-start gap-3 overflow-x-hidden px-4 pt-3 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_auto_minmax(0,1fr)] min-[1101px]:gap-3 min-[1101px]:overflow-hidden min-[1101px]:p-2.5`}>
       <StepHero
         title="Clasificá tus cartas"
         help="Para cada carta elegí dónde encaja en tu plan (Engine, Non-engine o Hybrid) y qué función cumple cuando la robás. Estas decisiones forman tu modelo del deck: el Probability Lab calcula los porcentajes a partir de acá."
@@ -1061,17 +1061,17 @@ export function DeckRolesPanel({
       />
 
       {sortedCards.length > 0 ? (
-        <section className="surface-panel-soft grid gap-2 p-2.5">
+        <section className={`${surface.panelSoft} grid gap-2 p-2.5`}>
           <div className="flex flex-wrap items-end justify-between gap-2.5 min-w-0">
             <div className="min-w-0">
-              <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Vista activa</p>
-              <p className="app-muted m-[0.22rem_0_0] text-[0.75rem] leading-[1.14]">
+              <p className="text-accent m-0 text-[0.68rem] uppercase tracking-widest">Vista activa</p>
+              <p className="text-muted m-[0.22rem_0_0] text-[0.75rem] leading-[1.14]">
                 Priorizá el subconjunto que querés cerrar primero.
               </p>
             </div>
 
             <div className="grid min-w-36 gap-1 justify-items-end">
-              <span className="app-muted text-[0.7rem] leading-none tabular-nums">
+              <span className="text-muted text-[0.7rem] leading-none tabular-nums">
                 {formatInteger(completeCards.length)} / {formatInteger(sortedCards.length)} clasificadas
               </span>
               <div
@@ -1106,7 +1106,7 @@ export function DeckRolesPanel({
                   onClick={() => handleFilterChange(item.key)}
                 >
                   <span>{item.label}</span>
-                  <span className="app-soft text-[0.66rem]">{formatInteger(item.cards.length)}</span>
+                  <span className="text-soft text-[0.66rem]">{formatInteger(item.cards.length)}</span>
                 </button>
               )
             })}
@@ -1115,11 +1115,11 @@ export function DeckRolesPanel({
       ) : null}
 
       {sortedCards.length === 0 ? (
-        <p className="surface-card m-0 px-2.5 py-2 text-[0.8rem] text-(--text-muted)">
+        <p className={`${surface.card} m-0 px-2.5 py-2 text-[0.8rem] text-(--text-muted)`}>
           Primero armá o importá tu Main Deck. Después vas a poder clasificar cada carta.
         </p>
       ) : (
-        <section className="surface-panel-soft classification-card-list-panel grid min-w-0 gap-2.5 p-2.5 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[minmax(0,1fr)] min-[1101px]:overflow-hidden">
+        <section className={`${surface.panelSoft} classification-card-list-panel grid min-w-0 gap-2.5 p-2.5 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[minmax(0,1fr)] min-[1101px]:overflow-hidden`}>
             {visibleQueueCards.length === 0 ? (
               <p className={[emptyStateCopy.tone, 'm-0 px-2.5 py-2 text-[0.8rem]'].join(' ')}>
                 <strong className="block text-(--text-main)">{emptyStateCopy.title}</strong>
@@ -1137,7 +1137,7 @@ export function DeckRolesPanel({
                       type="button"
                       aria-pressed={active}
                       className={[
-                        'classification-queue-card app-list-item grid min-h-14 min-w-0 shrink-0 grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-2.5 px-2 py-2 text-left',
+                        `classification-queue-card ${listItem} grid min-h-14 min-w-0 shrink-0 grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-2.5 px-2 py-2 text-left`,
                         active ? 'classification-queue-card-active' : '',
                       ].join(' ')}
                       onClick={() => handleCardSelection(card.id)}
@@ -1201,8 +1201,8 @@ export function DeckRolesPanel({
         <div className="grid gap-4">
           <section className="grid gap-2">
             <div>
-              <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Origen</p>
-              <p className="app-muted m-[0.22rem_0_0] text-[0.73rem] leading-[1.14]">
+              <p className="text-accent m-0 text-[0.68rem] uppercase tracking-widest">Origen</p>
+              <p className="text-muted m-[0.22rem_0_0] text-[0.73rem] leading-[1.14]">
                 Responde si la carta pertenece al motor principal o a un espacio externo/flexible.
               </p>
             </div>
@@ -1218,7 +1218,7 @@ export function DeckRolesPanel({
                     <span className="role-reference-mark shrink-0" />
                     <strong className="text-[0.84rem] leading-none text-(--text-main)">{definition.label}</strong>
                   </div>
-                  <p className="app-muted m-0 text-[0.72rem] leading-[1.14]">{getOriginHelpText(definition.key.value)}</p>
+                  <p className="text-muted m-0 text-[0.72rem] leading-[1.14]">{getOriginHelpText(definition.key.value)}</p>
                 </article>
               ))}
             </div>
@@ -1226,8 +1226,8 @@ export function DeckRolesPanel({
 
           <section className="grid gap-2">
             <div>
-              <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">Roles</p>
-              <p className="app-muted m-[0.22rem_0_0] text-[0.73rem] leading-[1.14]">
+              <p className="text-accent m-0 text-[0.68rem] uppercase tracking-widest">Roles</p>
+              <p className="text-muted m-[0.22rem_0_0] text-[0.73rem] leading-[1.14]">
                 Responden qué hace la carta dentro de tu mano, tu línea o tu plan de turno.
               </p>
             </div>
@@ -1237,7 +1237,7 @@ export function DeckRolesPanel({
                 <article key={section.title} className="role-reference-group grid gap-2 p-2.5">
                   <div className="grid gap-1">
                     <strong className="text-[0.82rem] leading-none text-(--text-main)">{section.title}</strong>
-                    <p className="app-muted m-0 text-[0.72rem] leading-[1.14]">{section.description}</p>
+                    <p className="text-muted m-0 text-[0.72rem] leading-[1.14]">{section.description}</p>
                   </div>
 
                   <div className="grid gap-1.5">{renderReferenceRoles(section.roles)}</div>

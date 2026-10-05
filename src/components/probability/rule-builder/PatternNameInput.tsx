@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import type { PatternEditorActions } from '../pattern-editor-actions'
+import { field } from '../../ui/surfaces'
 
 interface PatternNameInputProps {
   patternId: string
@@ -51,7 +52,7 @@ export function PatternNameInput({
             ;(event.target as HTMLInputElement).blur()
           }
         }}
-        className="app-field w-full px-2 py-[0.45rem] text-[0.92rem]"
+        className={`${field} w-full px-2 py-[0.45rem] text-[0.92rem]`}
       />
     </label>
   )

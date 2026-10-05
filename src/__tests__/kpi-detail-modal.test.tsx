@@ -109,7 +109,7 @@ describe('KpiDetailModal — close interactions', () => {
       />,
     )
 
-    const overlay = document.querySelector('.app-modal-root')!
+    const overlay = document.querySelector('[role="dialog"]')!.parentElement!
     fireEvent.click(overlay)
     expect(onClose).toHaveBeenCalledOnce()
   })

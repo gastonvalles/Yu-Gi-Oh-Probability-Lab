@@ -26,6 +26,7 @@ import { useDraftImpact } from './probability/use-draft-impact'
 import { useLabelCards } from './probability/use-label-cards'
 import { usePatternDraft } from './probability/use-pattern-draft'
 import { useProbabilityLab } from './probability/use-probability-lab'
+import { surface } from './ui/surfaces'
 
 interface ProbabilityPanelProps {
   handSize: number
@@ -206,7 +207,7 @@ export function ProbabilityPanel({
   }
 
   return (
-    <article className="surface-panel deck-mobile-step-shell lab-shell grid h-full min-h-0 content-start gap-3 px-4 pt-3 min-[1101px]:p-3">
+    <article className={`${surface.stepShell} lab-shell grid h-full min-h-0 content-start gap-3 px-4 pt-3 min-[1101px]:p-3`}>
       <StepHero
         title="Qué tan bien abre tu deck"
         help="Cálculo exacto de todas las manos posibles, yendo primero (5 cartas) y segundo (6), con las reglas de abajo: una mano es limpia si cumple alguna salida y ningún problema."
@@ -224,7 +225,7 @@ export function ProbabilityPanel({
       ) : lab.computation?.status === 'blocked' ? (
         <div className="grid gap-1.5">
           {lab.computation.issues.map((issue) => (
-            <p key={issue.message} className="surface-card-danger m-0 px-3 py-2 text-[0.8rem] text-destructive">
+            <p key={issue.message} className={`${surface.cardDanger} m-0 px-3 py-2 text-[0.8rem] text-destructive`}>
               {issue.message}
             </p>
           ))}
@@ -315,10 +316,10 @@ export function ProbabilityPanel({
 
 function LabNotice({ kicker, title, children }: { kicker: string; title: string; children: React.ReactNode }) {
   return (
-    <section className="surface-panel-strong grid gap-1 px-4 py-4">
-      <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">{kicker}</p>
+    <section className={`${surface.panelStrong} grid gap-1 px-4 py-4`}>
+      <p className="text-accent m-0 text-[0.68rem] uppercase tracking-widest">{kicker}</p>
       <h3 className="m-0 text-[1rem] leading-tight text-(--text-main)">{title}</h3>
-      <p className="app-muted m-0 text-[0.82rem] leading-[1.3]">{children}</p>
+      <p className="text-muted m-0 text-[0.82rem] leading-[1.3]">{children}</p>
     </section>
   )
 }

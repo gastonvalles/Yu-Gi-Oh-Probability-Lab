@@ -215,26 +215,9 @@
     font-size: 0.8rem;
   }
 
-  .search-filters-check {
-    grid-column: 1 / -1;
-    display: flex;
-    min-height: 2.25rem;
-    align-items: center;
-    gap: 0.55rem;
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-control);
-    padding: 0.4rem 0.65rem;
-    color: var(--text-main);
-    font-size: 0.78rem;
-    cursor: pointer;
-  }
+  
 
-  .search-filters-check input {
-    height: 1rem;
-    width: 1rem;
-    flex-shrink: 0;
-    accent-color: rgb(var(--primary-rgb));
-  }
+  
 
   .search-filters-clear {
     min-height: 2.25rem;
@@ -306,16 +289,7 @@
 
   /* ── Botones secundarios: el hover tiene que notarse ── */
 
-  .ui-button-secondary:hover:not(:disabled, .ui-button-color-destructive),
-  .ui-button-tertiary:hover:not(:disabled, .ui-button-color-destructive) {
-    border-color: rgb(var(--primary-rgb) / 0.6);
-    background: rgb(var(--primary-rgb) / 0.16);
-    color: var(--text-main);
-  }
+  
 
-  .ui-button-secondary.ui-button-color-destructive:hover:not(:disabled),
-  .ui-button-tertiary.ui-button-color-destructive:hover:not(:disabled) {
-    border-color: rgb(var(--destructive-rgb) / 0.6);
-    background: rgb(var(--destructive-rgb) / 0.14);
-  }
+  
 }

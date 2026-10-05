@@ -11,48 +11,18 @@
   }
 
   /* Botones planos: blancos, grandes y sin fondo (la X del modal y la recarga son iguales). */
-  .ui-icon-button.practice-flat-button,
-  .practice-modal .app-modal-floating-close.ui-close-button {
-    width: 3rem;
-    height: 3rem;
-    border: 0;
-    border-radius: 999px;
-    background: transparent;
-    color: #fff;
-    box-shadow: none;
-    -webkit-tap-highlight-color: transparent;
-  }
+  
 
-  .ui-icon-button.practice-flat-button svg,
-  .practice-modal .app-modal-floating-close.ui-close-button svg {
-    width: 1.7rem;
-    height: 1.7rem;
-    stroke-width: 1.3;
-  }
+  
 
-  .ui-icon-button.practice-flat-button:hover,
-  .practice-modal .app-modal-floating-close.ui-close-button:hover {
-    border: 0;
-    background: rgb(255 255 255 / 0.08);
-    color: #fff;
-    box-shadow: none;
-    transform: none;
-  }
+  
 
-  .ui-icon-button.practice-flat-button:active,
-  .practice-modal .app-modal-floating-close.ui-close-button:active {
-    background: rgb(255 255 255 / 0.16);
-  }
+  
 
-  .practice-modal .app-modal-floating-close.ui-close-button {
-    top: 0.75rem;
-    right: 0.35rem;
-  }
+  
 
   /* En desktop la mesa es angosta, como en el celu: cartas de tamaño normal y todo a la vista. */
-  .app-modal-panel.practice-modal[data-size='xl'] {
-    width: min(40rem, 100%);
-  }
+  
 
   @media (min-width: 820px) {
     /* En desktop sobra ancho: recarga a la izquierda y mazo a la derecha, en la misma fila que la mano. */
@@ -83,10 +53,7 @@
       margin-bottom: 1.4rem;
     }
 
-    .practice-modal .app-modal-floating-close.ui-close-button {
-      top: 1rem;
-      right: 1rem;
-    }
+    
   }
 
   .practice-table {
