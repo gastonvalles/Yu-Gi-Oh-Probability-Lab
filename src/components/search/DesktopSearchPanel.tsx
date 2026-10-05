@@ -14,7 +14,7 @@ import { sortVisibleSearchResults } from './search-model'
 import { QUICK_TYPE_OPTIONS, type SearchSortOrder } from './search-options'
 import type { CardSearchActions, CardSearchViewState } from './search-types'
 import { useSearchFilterContext } from './use-search-filter-context'
-import { surface } from '../ui/surfaces'
+import { filterChip, surface } from '../ui/surfaces'
 
 interface DesktopSearchPanelProps {
   search: CardSearchViewState
@@ -147,7 +147,7 @@ export function DesktopSearchPanel({
               <button
                 key={chip.key}
                 type="button"
-                className="search-active-chip"
+                className={filterChip}
                 onClick={() => actions.onFilterChange(chip.updates)}
                 title={`Quitar filtro ${chip.label.toLowerCase()}`}
               >

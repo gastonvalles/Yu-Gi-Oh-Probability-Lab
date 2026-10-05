@@ -11,6 +11,8 @@ import { CardArt } from '../CardArt'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
 import { formatInteger } from '../../app/utils'
+import { ROLE_REFERENCE_MARK, originOption, roleOptionButton } from '../classification-styles'
+import { cx } from '../ui/cx'
 import { chip, surface } from '../ui/surfaces'
 
 interface BuildBCardEditorProps {
@@ -160,16 +162,12 @@ export function BuildBCardEditor({ card, currentEdit, allCards, onSave, onNaviga
                             type="button"
                             aria-pressed={active}
                             title={`${definition.label}: ${ORIGIN_HELP[definition.key.value]}`}
-                            className={[
-                              'classification-origin-option grid gap-1 p-2 text-left',
-                              active ? 'classification-origin-option-active' : '',
-                              muted ? 'classification-origin-option-muted' : '',
-                            ].join(' ')}
+                            className={cx(originOption({ active, muted }), 'grid gap-1 p-2 text-left')}
                             style={getStyleVars(definition.key)}
                             onClick={() => setOrigin(definition.key.value)}
                           >
                             <div className="flex items-center gap-2">
-                              <span className="role-reference-mark shrink-0" />
+                              <span className={ROLE_REFERENCE_MARK} />
                               <strong className="text-[0.8rem] leading-none text-(--text-main)">{definition.label}</strong>
                             </div>
                             <span className="text-muted text-[0.66rem] leading-[1.08]">{ORIGIN_BLURB[definition.key.value]}</span>
@@ -205,10 +203,10 @@ export function BuildBCardEditor({ card, currentEdit, allCards, onSave, onNaviga
                                     type="button"
                                     aria-pressed={active}
                                     title={`${definition.label}: ${ROLE_HELP[role]}`}
-                                    className={[
-                                      'role-option-button min-w-0 w-full max-w-full px-2 py-[0.44rem] text-left text-[0.68rem] leading-[1.08] whitespace-normal',
-                                      active ? 'role-option-button-active' : '',
-                                    ].join(' ')}
+                                    className={cx(
+                                      roleOptionButton(active),
+                                      'w-full min-w-0 px-2 py-[0.44rem] text-[0.68rem] leading-[1.08]',
+                                    )}
                                     style={getStyleVars(definition.key)}
                                     onClick={() => toggleRole(role)}
                                   >

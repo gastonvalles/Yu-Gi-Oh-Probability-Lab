@@ -39,6 +39,10 @@ export const chip = {
   accent: 'rounded-full border border-accent/46 bg-linear-to-b from-accent/18 to-card-background/96 text-foreground',
 } as const
 
+/** Chip de un filtro activo del buscador: se toca para quitarlo. */
+export const filterChip =
+  'inline-flex max-w-full items-center gap-[0.45rem] rounded-full border border-primary/26 bg-linear-to-b from-primary/10 to-card-background/98 px-[0.58rem] py-[0.34rem] text-[0.68rem] leading-none text-foreground transition-[border-color,background,box-shadow] duration-150 hover:border-primary/48 hover:from-primary/16 hover:shadow-[0_0_0_1px_rgb(var(--primary-rgb)/0.08)] focus-visible:shadow-[0_0_0_2px_rgb(var(--background-rgb)),0_0_0_4px_rgb(var(--primary-rgb)/0.24)] focus-visible:outline-none'
+
 /** Fila clickeable de una lista (cartas, resultados). */
 export const listItem =
   'rounded-panel border border-border bg-linear-to-b from-secondary/94 to-background/98 transition-[border-color,background,box-shadow] duration-150 hover:border-primary/42 hover:from-primary/15 hover:to-secondary/96 hover:shadow-[0_0_0_1px_rgb(var(--primary-rgb)/0.08)]'
