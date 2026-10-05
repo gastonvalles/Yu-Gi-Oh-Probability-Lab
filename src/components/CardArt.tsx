@@ -88,10 +88,11 @@ export function CardArt({
         <img
           ref={imageRef}
           className={[
-            'card-art-media transition-opacity duration-150',
+            'rounded-none! [backface-visibility:hidden] [transform:translateZ(0)] transition-opacity duration-150',
             isImageLoaded ? 'opacity-100' : 'opacity-0',
             className,
           ].join(' ').trim()}
+          data-card-art
           src={resolvedUrl}
           alt={name}
           loading="lazy"
@@ -107,8 +108,9 @@ export function CardArt({
   return (
     <div className="relative block h-full w-full">
       <div
+        data-card-art
         className={[
-          'card-art-media',
+          'rounded-none! [backface-visibility:hidden] [transform:translateZ(0)]',
           'grid place-items-center bg-input font-bold text-(--warning)',
           className,
         ].join(' ')}

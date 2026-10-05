@@ -18,6 +18,7 @@ import type { CardSearchActions, CardSearchViewState } from '../search/search-ty
 import type { DeckCopyActions } from '../card-detail/DeckCopyControls'
 import { StepHero } from '../StepHero'
 import { Button } from '../ui/Button'
+import { cx } from '../ui/cx'
 import { DeckBuilderClassicPreview } from './DeckBuilderClassicPreview'
 import { DeckImportDrawer } from './DeckImportDrawer'
 import { fieldMeta, surface } from '../ui/surfaces'
@@ -64,6 +65,16 @@ interface DeckBuilderStepProps {
   onSearchFiltersChange: (updates: Partial<CardSearchFilters>) => void
   onClearSearchFilters: () => void
   onLoadMoreResults: () => void
+}
+
+/** Signo "+" (o "×" si no se puede soltar ahí) que aparece al arrastrar una carta sobre el builder. */
+function plusGlyph(invalid: boolean): string {
+  return cx(
+    'relative block size-[2.2rem] before:absolute before:left-1/2 before:top-1/2 before:h-[0.18rem] before:w-8 before:-translate-x-1/2 before:-translate-y-1/2 after:absolute after:left-1/2 after:top-1/2 after:h-8 after:w-[0.18rem] after:-translate-x-1/2 after:-translate-y-1/2',
+    invalid
+      ? 'before:rotate-45 before:bg-destructive after:-rotate-45 after:bg-destructive'
+      : 'before:bg-primary after:bg-primary',
+  )
 }
 
 const DECK_ZONE_ITEMS: Array<{
@@ -202,11 +213,8 @@ export function DeckBuilderStep({
 
   if (isDesktopDeckBuilder) {
     return (
-      <section
-        id="step1"
-        className="classic-builder-page"
-      >
-        <div className="classic-builder-layout">
+      <section id="step1" className="h-full max-h-full min-h-0 overflow-hidden">
+        <div className="grid h-full max-h-full min-h-0 grid-cols-[minmax(250px,24%)_minmax(0,1fr)_minmax(360px,30%)] items-stretch overflow-hidden bg-linear-to-b from-background to-secondary">
           <DeckBuilderClassicPreview
             card={previewCard}
             source={selectedDetailSource}
@@ -219,33 +227,42 @@ export function DeckBuilderStep({
           />
 
           <article
-            className="classic-builder-workspace deck-builder-root-drop-surface"
+            className={cx(
+              'relative h-full max-h-full min-h-0 min-w-0 overflow-hidden bg-linear-to-b from-secondary/98 to-background/99',
+              builderRootDropState === 'valid' &&
+                'shadow-[inset_0_0_0_1px_rgb(var(--primary-rgb)/0.14),0_0_0_1px_rgb(var(--primary-rgb)/0.08)]',
+              builderRootDropState === 'invalid' &&
+                'shadow-[inset_0_0_0_1px_rgb(var(--destructive-rgb)/0.16),0_0_0_1px_rgb(var(--destructive-rgb)/0.08)]',
+            )}
             data-deck-builder-root="true"
             data-deck-builder-root-drop-state={builderRootDropState}
           >
             {builderRootDropState !== 'idle' ? (
               <div
-                className="deck-builder-root-drop-overlay pointer-events-none absolute inset-0 z-10"
+                className={cx(
+                  'pointer-events-none absolute inset-0 z-10 backdrop-saturate-[0.82]',
+                  builderRootDropState === 'valid' ? 'bg-primary/26' : 'bg-destructive/22',
+                )}
                 data-drop-state={builderRootDropState}
               />
             ) : null}
 
-            <div className="classic-builder-workspace-inner">
-              <div className="classic-builder-toolbar">
-                <div className="classic-builder-toolbar-fields">
+            <div className="relative z-1 grid h-full min-h-0 content-start gap-[0.62rem] overflow-y-auto overflow-x-hidden px-[2.45rem] pb-[0.95rem] pt-[0.55rem] [scrollbar-gutter:stable] [scrollbar-width:thin] max-[1500px]:px-[1.7rem]">
+              <div className="flex flex-wrap items-center justify-between gap-[0.8rem]">
+                <div className="flex min-w-0 flex-[1_1_20rem] items-center gap-[0.8rem]">
                   <input
                     type="text"
                     value={deckBuilder.deckName}
                     onChange={(event) => onDeckNameChange(event.target.value)}
                     placeholder="Nombre del deck"
-                    className={`${fieldMeta} classic-builder-toolbar-field`}
+                    className={`${fieldMeta} min-w-0 flex-[1_1_auto] px-[0.8rem] py-[0.52rem] text-[0.92rem] font-semibold`}
                   />
 
-                  <label className="classic-builder-toolbar-select-wrap">
+                  <label className="inline-flex min-w-0 flex-none items-center gap-[0.45rem] whitespace-nowrap text-[0.88rem] font-bold text-foreground">
                     <select
                       value={deckFormat}
                       onChange={(event) => onDeckFormatChange(event.target.value as DeckFormat)}
-                      className={`${fieldMeta} text-left classic-builder-toolbar-select`}
+                      className={`${fieldMeta} w-[9.25rem] py-[0.52rem] pl-3 pr-8 text-left text-[0.88rem] font-bold`}
                     >
                       <option value="unlimited">Sin límite</option>
                       <option value="tcg">TCG</option>
@@ -270,7 +287,7 @@ export function DeckBuilderStep({
                   <Button
                     variant="secondary"
                     size="sm"
-                    className="classic-builder-import-button"
+                    className="whitespace-nowrap"
                     onClick={() => setImportDrawerOpen(true)}
                   >
                     Import deck
@@ -308,12 +325,22 @@ export function DeckBuilderStep({
                 }
 
                 return (
-                  <div key={zone} className="classic-builder-main-zone-wrap">
+                  <div key={zone} className="relative">
                     {zoneNode}
                     {builderRootDropState !== 'idle' ? (
-                      <div className="classic-builder-main-drop-anchor pointer-events-none" aria-hidden="true">
-                        <span className="deck-builder-root-drop-plus" data-drop-state={builderRootDropState}>
-                          <span className="deck-builder-root-drop-plus-glyph" />
+                      <div
+                        className="pointer-events-none sticky top-[calc(50%-2.625rem)] z-12 flex h-0 w-full justify-center overflow-visible"
+                        aria-hidden="true"
+                      >
+                        <span
+                          className={cx(
+                            'relative -top-48 grid size-[5.25rem] place-items-center rounded-full border-2 shadow-[0_0_0_1px_rgb(var(--primary-rgb)/0.16),0_12px_28px_rgb(0_0_0/0.28)]',
+                            builderRootDropState === 'invalid'
+                              ? 'border-destructive/38 bg-[rgb(28_10_13/0.94)]'
+                              : 'border-primary/34 bg-foreground/96',
+                          )}
+                        >
+                          <span className={plusGlyph(builderRootDropState === 'invalid')} />
                         </span>
                       </div>
                     ) : null}
@@ -323,7 +350,7 @@ export function DeckBuilderStep({
             </div>
           </article>
 
-          <aside className="classic-builder-search-column">
+          <aside className="min-h-0 overflow-hidden border-l border-border/94 bg-linear-to-b from-card-background/96 to-background/98 p-0 min-[1101px]:flex min-[1101px]:h-full min-[1101px]:max-h-full min-[1101px]:flex-col">
             <DesktopSearchPanel
               search={search}
               actions={searchActions}

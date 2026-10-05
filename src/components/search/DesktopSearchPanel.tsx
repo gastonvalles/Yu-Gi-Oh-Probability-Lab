@@ -4,6 +4,7 @@ import { formatSearchError } from '../../app/card-search'
 import { buildClassicCardPrimaryLine, buildClassicCardStatLine } from '../../app/deck-builder-classic'
 import { useInfiniteScroll } from '../../app/use-infinite-scroll'
 import { CardArt } from '../CardArt'
+import { cx } from '../ui/cx'
 import { CloseButton, CloseIcon } from '../ui/IconButton'
 import { CheckIcon, FilterIcon, PlusIcon, SearchIcon } from '../ui/icons'
 import { Skeleton } from '../ui/Skeleton'
@@ -25,6 +26,51 @@ interface DesktopSearchPanelProps {
   onResultClick: (apiCardId: number) => void
   onAddCard: (apiCardId: number) => boolean
   onResultPointerDown: (event: ReactPointerEvent<HTMLElement>, apiCardId: number) => void
+}
+
+const SURFACE_GRADIENT = 'bg-linear-to-b from-secondary/94 to-background/98'
+
+const TYPE_BUTTON = 'border px-[0.85rem] py-[0.44rem] text-[0.82rem] font-bold leading-none text-foreground'
+
+function typeButton(active: boolean): string {
+  return cx(
+    TYPE_BUTTON,
+    SURFACE_GRADIENT,
+    active
+      ? 'border-primary/48 from-primary/15 to-secondary/96 shadow-[0_0_0_1px_rgb(var(--primary-rgb)/0.08)]'
+      : 'border-border',
+  )
+}
+
+const RESULTS_GRID =
+  'grid min-h-0 grid-cols-2 content-start gap-0 border border-border/94 bg-linear-to-b from-secondary/94 to-background/98'
+
+/** Tarjeta de resultado: la elegida y la que ya está al máximo cambian de aspecto. */
+function resultCard({ selected, maxed, dragging }: { selected: boolean; maxed: boolean; dragging: boolean }): string {
+  return cx(
+    'group/card relative grid min-w-0 cursor-pointer grid-cols-[4.2rem_minmax(0,1fr)] items-start gap-[0.6rem] border-b border-r border-border/94 p-[0.42rem] outline-2 -outline-offset-2 outline-dashed outline-foreground/0 transition-[background,outline-color,border-color] duration-[140ms] nth-[2n]:border-r-0',
+    selected
+      ? 'bg-linear-to-b from-primary/15 to-secondary/96 shadow-[inset_0_0_0_1px_rgb(var(--primary-rgb)/0.4)]'
+      : SURFACE_GRADIENT,
+    maxed
+      ? 'cursor-not-allowed opacity-45 grayscale'
+      : selected
+        ? 'hover:outline-primary/85'
+        : 'hover:outline-foreground/75',
+    dragging && !maxed && 'opacity-35',
+  )
+}
+
+const ADD_REVEAL =
+  'opacity-0 group-hover/card:opacity-100 group-focus-within/card:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100'
+
+function addButton(state: 'idle' | 'added' | 'maxed'): string {
+  return cx(
+    'absolute bottom-[0.4rem] right-[0.4rem] grid h-[1.9rem] min-w-[1.9rem] place-items-center rounded-full border px-[0.4rem] font-bold leading-none transition-[opacity,transform] duration-120 enabled:active:scale-[0.92]',
+    state === 'added' && 'border-accent/80 bg-accent text-[1.05rem] text-[#06140e] opacity-100',
+    state === 'idle' && ['border-primary/60 bg-primary/85 text-[1.05rem] text-white', ADD_REVEAL],
+    state === 'maxed' && ['border-border bg-secondary/95 text-[0.62rem] text-soft', ADD_REVEAL],
+  )
 }
 
 const SKELETON_COUNT = 12
@@ -78,11 +124,11 @@ export function DesktopSearchPanel({
   })
 
   return (
-    <article className="classic-builder-search-panel flex h-full min-h-0 flex-col overflow-hidden min-[1101px]:h-full">
-      <div className="classic-builder-search-header">
+    <article className="flex h-full min-h-0 flex-col overflow-hidden min-[1101px]:h-full">
+      <div className="grid gap-[0.65rem] border-b border-border/94 p-[0.7rem]">
         <label className="relative block min-w-0 flex-1">
           <span className="sr-only">Buscar cartas por nombre</span>
-          <SearchIcon className="search-input-icon" />
+          <SearchIcon className="pointer-events-none absolute left-[0.7rem] top-1/2 z-1 -translate-y-1/2 text-soft" />
           <input
             ref={inputRef}
             type="search"
@@ -97,7 +143,7 @@ export function DesktopSearchPanel({
             placeholder="Buscar cartas por nombre"
             autoComplete="off"
             spellCheck={false}
-            className="classic-builder-search-input"
+            className="w-full rounded-none border border-border bg-linear-to-b from-input/98 to-background py-[0.66rem] pl-[2.1rem] pr-[2.8rem] text-foreground outline-none transition-[border-color,box-shadow,background] duration-160 hover:from-input-hover/98 focus:border-primary/72 focus:shadow-[0_0_0_1px_rgb(var(--primary-rgb)/0.16)] [&::-webkit-search-cancel-button]:hidden"
           />
           {query.trim().length > 0 ? (
             <CloseButton
@@ -112,12 +158,12 @@ export function DesktopSearchPanel({
           ) : null}
         </label>
 
-        <div className="classic-builder-search-type-row" role="group" aria-label="Tipo de carta">
+        <div className="flex flex-wrap gap-[0.45rem]" role="group" aria-label="Tipo de carta">
           {QUICK_TYPE_OPTIONS.map((option) => (
             <button
               key={option.value}
               type="button"
-              className="classic-builder-search-type-button"
+              className={typeButton(filters.quickType === option.value)}
               aria-pressed={filters.quickType === option.value}
               onClick={() => actions.onFilterChange({ quickType: option.value })}
             >
@@ -127,16 +173,15 @@ export function DesktopSearchPanel({
 
           <button
             type="button"
-            className="classic-builder-search-type-button classic-builder-search-filters-toggle"
+            className={cx(typeButton(filtersOpen || search.activeFilterCount > 0), 'ml-auto inline-flex items-center gap-[0.35rem]')}
             aria-expanded={filtersOpen}
             aria-controls="advanced-search-filters"
-            data-active={filtersOpen || search.activeFilterCount > 0 ? 'true' : 'false'}
             onClick={() => setFiltersOpen((current) => !current)}
           >
             <FilterIcon width={14} height={14} />
             Filtros
             {search.activeFilterCount > 0 ? (
-              <span className="classic-builder-search-filters-badge">{search.activeFilterCount}</span>
+              <span className="grid h-[1.1rem] min-w-[1.1rem] place-items-center rounded-full bg-primary px-1 text-[0.66rem] font-extrabold text-white">{search.activeFilterCount}</span>
             ) : null}
           </button>
         </div>
@@ -163,7 +208,7 @@ export function DesktopSearchPanel({
 
       <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
         {filtersOpen ? (
-          <div className="classic-builder-search-filters-shell">
+          <div className="max-h-[min(22rem,45vh)] overflow-y-auto border-b border-border/94 p-[0.7rem] [scrollbar-width:thin]">
             <SearchFiltersForm
               id="advanced-search-filters"
               layout="desktop"
@@ -176,14 +221,14 @@ export function DesktopSearchPanel({
           </div>
         ) : null}
 
-        <div className="classic-builder-search-results-shell">
+        <div className="grid min-h-0 grid-rows-[minmax(0,1fr)] overflow-hidden">
           {search.hasSearchCriteria ? (
             status === 'error' ? (
               <p className={`${surface.cardDanger} m-0 px-2 py-1.5 text-[0.78rem] leading-[1.16] text-destructive`}>
                 {formatSearchError(search.errorMessage)}
               </p>
             ) : status === 'loading' ? (
-              <div className="classic-builder-search-results-grid">
+              <div className={cx(RESULTS_GRID, 'h-full overflow-y-auto [scrollbar-gutter:stable] [scrollbar-width:thin]')}>
                 {Array.from({ length: SKELETON_COUNT }, (_, index) => (
                   <DesktopResultSkeleton key={index} />
                 ))}
@@ -198,14 +243,14 @@ export function DesktopSearchPanel({
                 onClearQuery={() => actions.onQueryChange('')}
               />
             ) : (
-              <div ref={resultsRef} className="classic-builder-search-results-scroll">
+              <div ref={resultsRef} className="h-full min-h-0 overflow-y-auto [scrollbar-width:thin]">
               <SearchResultsToolbar
                 count={sortedResults.length}
                 hasMore={search.hasMore}
                 sortOrder={sortOrder}
                 onSortOrderChange={setSortOrder}
               />
-              <div className="classic-builder-search-results-grid">
+              <div className={cx(RESULTS_GRID, 'h-auto overflow-visible')}>
                 {sortedResults.map((card) => {
                   const isMaxed = search.maxedOutResultIds.has(card.ygoprodeckId)
                 const copiesInDeck = deckCopyCounts.get(card.ygoprodeckId) ?? 0
@@ -213,14 +258,13 @@ export function DesktopSearchPanel({
                   return (
                     <article
                       key={card.ygoprodeckId}
-                      data-selected={selectedCardId === card.ygoprodeckId ? 'true' : 'false'}
-                      data-maxed={isMaxed ? 'true' : 'false'}
                       aria-disabled={isMaxed}
                       title={isMaxed ? 'Ya alcanzaste el máximo de copias de esta carta.' : undefined}
-                      className={[
-                        'classic-builder-search-result-card',
-                        activeDragSearchCardId === card.ygoprodeckId ? 'opacity-35' : '',
-                      ].join(' ')}
+                      className={resultCard({
+                        selected: selectedCardId === card.ygoprodeckId,
+                        maxed: isMaxed,
+                        dragging: activeDragSearchCardId === card.ygoprodeckId,
+                      })}
                       onClick={() => onResultClick(card.ygoprodeckId)}
                       onDoubleClick={() => {
                         if (!isMaxed) {
@@ -233,22 +277,24 @@ export function DesktopSearchPanel({
                         }
                       }}
                     >
-                      <div className="classic-builder-search-result-art-shell" data-drag-preview-source="true">
+                      <div className="relative w-[4.2rem]" data-drag-preview-source="true">
                         <CardArt
                           remoteUrl={card.imageUrlSmall ?? card.imageUrl}
                           name={card.name}
-                          className="classic-builder-search-result-art"
+                          className="aspect-[0.72] w-[4.2rem]"
                           limitCard={card}
                           limitBadgeSize="sm"
                         />
                         {copiesInDeck > 0 ? (
-                          <span className="classic-builder-search-copies" title={`${copiesInDeck} en el deck`}>
+                          <span
+                            className="absolute -bottom-[0.3rem] -right-[0.3rem] rounded-full bg-accent px-[0.32rem] py-[0.05rem] text-[0.66rem] font-extrabold text-[#06140e]"
+                            title={`${copiesInDeck} en el deck`}>
                             ×{copiesInDeck}
                           </span>
                         ) : null}
                       </div>
 
-                      <div className="classic-builder-search-result-copy">
+                      <div className="grid min-w-0 content-start gap-[0.2rem] pt-[0.08rem]">
                         <strong className="text-[0.8rem] leading-[1.08] wrap-anywhere text-(--text-main)">
                           {card.name}
                         </strong>
@@ -262,8 +308,7 @@ export function DesktopSearchPanel({
 
                       <button
                         type="button"
-                        className="classic-builder-search-add"
-                        data-state={lastAddedId === card.ygoprodeckId ? 'added' : 'idle'}
+                        className={addButton(isMaxed ? 'maxed' : lastAddedId === card.ygoprodeckId ? 'added' : 'idle')}
                         disabled={isMaxed}
                         aria-label={isMaxed ? `${card.name}: máximo de copias` : `Agregar ${card.name} al deck`}
                         title={isMaxed ? 'Máximo de copias' : 'Agregar al deck'}
@@ -302,8 +347,8 @@ export function DesktopSearchPanel({
 
 function DesktopResultSkeleton() {
   return (
-    <div className="classic-builder-search-result-card" aria-hidden="true">
-      <Skeleton radius="none" className="classic-builder-search-result-skeleton-art" />
+    <div className={resultCard({ selected: false, maxed: false, dragging: false })} aria-hidden="true">
+      <Skeleton radius="none" className="aspect-[0.72] w-[4.2rem]" />
       <div className="grid gap-2">
         <Skeleton className="h-3.5 w-[85%]" />
         <Skeleton className="h-2.5 w-[62%]" />

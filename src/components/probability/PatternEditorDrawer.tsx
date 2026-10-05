@@ -55,18 +55,18 @@ export function PatternEditorDrawer({
   const title = pattern?.name.trim() || (isCreating ? 'Nueva regla' : 'Editar regla')
 
   const drawer = (
-    <div className="pattern-editor-drawer-root fixed z-150">
+    <div className="fixed inset-0 isolate z-150 min-[1101px]:bottom-0 min-[1101px]:top-(--deck-mode-topbar-height) min-[1101px]:h-auto">
       <button
         type="button"
         aria-label="Cerrar editor"
-        className="pattern-editor-drawer-backdrop absolute inset-0 h-full w-full bg-[rgb(var(--background-rgb)/0.76)]"
+        className="absolute inset-0 h-full w-full bg-[rgb(var(--background-rgb)/0.76)] transition-[background] duration-160 motion-reduce:transition-none"
         onClick={onClose}
       />
 
       <aside
         role="dialog"
         aria-label={title}
-        className={`${surface.panel} pattern-editor-drawer-panel absolute right-0 top-0 grid w-full max-w-3xl grid-rows-[auto_minmax(0,1fr)_auto] gap-0 border-l border-(--border-subtle) p-0 shadow-[-28px_0_54px_rgba(0,0,0,0.38)]`}
+        className={`${surface.panel} absolute right-0 top-0 grid h-full max-h-full w-full animate-drawer-enter overflow-hidden rounded-r-none motion-reduce:animate-none max-w-3xl grid-rows-[auto_minmax(0,1fr)_auto] gap-0 border-l border-(--border-subtle) p-0 shadow-[-28px_0_54px_rgba(0,0,0,0.38)]`}
       >
         <header className="grid gap-2 border-b border-(--border-subtle) px-4 py-3">
           <div className="flex items-start justify-between gap-3">

@@ -3,7 +3,6 @@ import { useRef, type CSSProperties, type MouseEvent as ReactMouseEvent, type Po
 import {
   buildDeckZoneVisualLayout,
   DESKTOP_COMPACT_MAIN_EXPAND_THRESHOLD,
-  getDesktopCompactDeckColumnCount,
 } from '../app/deck-zone-layout'
 import { buildDeckZoneBreakdown, buildDeckZoneTypeCounts } from '../app/deck-presentation'
 import type { DeckCardInstance, DeckZone as DeckZoneType } from '../app/model'
@@ -12,6 +11,17 @@ import { formatInteger } from '../app/utils'
 import { CardArt } from './CardArt'
 import { Button } from './ui/Button'
 import { IconButton } from './ui/IconButton'
+import {
+  DECK_CARD_CLASSIC,
+  MAIN_ROW_GRID,
+  MAIN_ROW_OVERLAP,
+  RAIL_ROW,
+  RAIL_ROW_OVERLAP,
+  ZONE_SURFACE_MOBILE,
+  ZONE_TYPE_SWATCH,
+  deckCardMobile,
+} from './deck-zone-styles'
+import { cx } from './ui/cx'
 
 interface DeckZoneProps {
   zone: DeckZoneType
@@ -70,11 +80,6 @@ export function DeckZone({
         desktopCompactColumnCount,
       )
     : null
-  const isMainDeckGrid = visualLayout !== null
-  const resolvedDesktopCompactColumnCount =
-    zone === 'main'
-      ? (desktopCompactColumnCount ?? getDesktopCompactDeckColumnCount(zone, cards.length))
-      : getDesktopCompactDeckColumnCount(zone, cards.length)
   const zoneStyle = ZONE_STYLES[zone]
   const classicRowGap = '0px'
   const isClassicBuilder = variant === 'classic-builder'
@@ -97,10 +102,6 @@ export function DeckZone({
     : undefined
   const classicSurfaceStyle = isClassicBuilder
     ? ({
-        '--zone-background': 'var(--classic-zone-tint)',
-        '--zone-border': classicBorderColor,
-        '--deck-zone-card-gap': '0px',
-        '--deck-zone-desktop-columns': String(resolvedDesktopCompactColumnCount),
         gap: classicRowGap,
         minHeight: cards.length === 0 ? '3.5rem' : 0,
         maxHeight: classicZoneMaxHeight,
@@ -119,9 +120,6 @@ export function DeckZone({
         overflowY: zone === 'main' ? 'hidden' : 'visible',
       }) as CSSProperties
     : null
-  const zoneGridClassName = isMainDeckGrid
-    ? 'deck-zone-grid flex w-full flex-col overflow-hidden'
-    : 'deck-zone-grid grid w-full content-start grid-cols-5 min-[520px]:grid-cols-8 min-[980px]:grid-cols-10'
   const cardCountLabel = formatInteger(cards.length)
   const headerSummary = `${cardCountLabel} cartas${zoneBreakdown ? ` (${zoneBreakdown})` : ''}`
   const classicRailRowStyle = isClassicRailZone
@@ -153,7 +151,7 @@ export function DeckZone({
       data-deck-card-index={index}
       data-selected={selectedCardId !== null && card.apiCard.ygoprodeckId === selectedCardId ? 'true' : 'false'}
       data-dragging={activeDragInstanceId === card.instanceId ? 'true' : 'false'}
-      className="deck-zone-card relative min-w-0 cursor-pointer touch-pan-y select-none bg-transparent p-0"
+      className={DECK_CARD_CLASSIC}
       onPointerDown={(event) => handleCardPointerDown(event, card.instanceId)}
       onClick={() => onDeckCardClick(card.instanceId)}
       onContextMenu={(event) => handleCardContextMenu(event, card.instanceId)}
@@ -170,7 +168,7 @@ export function DeckZone({
   if (isClassicBuilder) {
     return (
       <section
-        className="deck-zone-shell classic-builder-zone-shell w-full bg-transparent p-0"
+        className="grid w-full gap-[0.46rem] bg-transparent p-0"
         data-deck-zone-drop-target={zone}
         data-deck-zone-count={cards.length}
         data-deck-zone-layout={desktopCompact ? 'desktop-compact' : 'default'}
@@ -179,22 +177,21 @@ export function DeckZone({
         data-classic-zone={zone}
         style={classicZoneStyle}
       >
-        <div className="classic-builder-zone-label-row">
-          <div className="classic-builder-zone-label">
-            <span className="classic-builder-zone-label-title">
+        <div>
+          <div className="grid w-[calc(100%-0.04rem)] max-w-[calc(100%-0.04rem)] min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-[0.8rem] rounded-[0.84rem] border border-(--classic-zone-accent) bg-linear-to-b from-(--classic-zone-tint) to-card-background/98 px-[0.95rem] py-[0.28rem] text-[0.98rem] font-bold leading-none text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+            <span className="min-w-0 whitespace-nowrap">
               {title.replace(' Deck', '')} [{cardCountLabel}]
             </span>
-            <div className="classic-builder-zone-label-actions">
+            <div className="flex min-w-0 items-center gap-[0.55rem]">
               {zoneTypeCounts.length > 0 ? (
-                <div className="classic-builder-zone-type-counts">
+                <div className="flex flex-none items-center gap-2">
                   {zoneTypeCounts.map((entry) => (
                     <span
                       key={entry.kind}
-                      className="classic-builder-zone-type-chip"
-                      data-zone-type={entry.kind}
+                      className="inline-flex items-center gap-[0.28rem] text-[0.82rem] font-bold text-foreground"
                       title={`${formatInteger(entry.count)} ${entry.label}`}
                     >
-                      <span className="classic-builder-zone-type-swatch" aria-hidden="true" />
+                      <span className={cx('size-[0.62rem] rounded-[0.15rem]', ZONE_TYPE_SWATCH[entry.kind])} aria-hidden="true" />
                       {formatInteger(entry.count)}
                     </span>
                   ))}
@@ -216,7 +213,7 @@ export function DeckZone({
         </div>
 
         <div
-          className={['deck-zone-surface deck-zone-compact-grid classic-builder-zone-surface', zoneGridClassName].join(' ')}
+          className="relative flex w-full flex-col overflow-hidden rounded-none transition-[border-color,background,box-shadow] duration-150"
           data-deck-zone={zone}
           data-deck-count={cards.length}
           data-deck-zone-layout="desktop-compact"
@@ -224,8 +221,7 @@ export function DeckZone({
         >
           {isClassicRailZone ? (
             <div
-              className="classic-builder-rail-row"
-              data-overlap={cards.length > 10 ? 'true' : 'false'}
+              className={cx(RAIL_ROW, cards.length > 10 && RAIL_ROW_OVERLAP)}
               style={classicRailRowStyle}
             >
               {cards.map((card, index) => renderDeckCard(card, index))}
@@ -234,8 +230,7 @@ export function DeckZone({
             ? renderedVisualRows.map((row) => (
                 <div
                   key={`${zone}-row-${row.rowIndex}`}
-                  className={isClassicMainOverlapZone ? 'classic-builder-main-overlap-row' : 'main-deck-grid-row'}
-                  data-overlap={isClassicMainOverlapZone ? 'true' : 'false'}
+                  className={isClassicMainOverlapZone ? MAIN_ROW_OVERLAP : MAIN_ROW_GRID}
                   style={
                     isClassicMainOverlapZone
                       ? ({
@@ -251,7 +246,9 @@ export function DeckZone({
               ))
             : cards.map((card, index) => renderDeckCard(card, index))}
           {cards.length === 0 ? (
-            <p className="classic-builder-zone-empty-hint m-0">Arrastrá cartas acá</p>
+            <p className="pointer-events-none m-0 col-span-full grid min-h-14 w-full place-items-center p-2 text-[0.78rem] text-soft">
+              Arrastrá cartas acá
+            </p>
           ) : null}
         </div>
       </section>
@@ -259,7 +256,7 @@ export function DeckZone({
   }
 
   return (
-    <section className="deck-zone-shell w-full bg-transparent p-0">
+    <section className="w-full bg-transparent p-0">
       <div className="mb-1.5 flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <h3 className="m-0 wrap-anywhere text-[1.05rem] leading-none">{title}</h3>
@@ -279,7 +276,7 @@ export function DeckZone({
       </div>
 
       <div
-        className="deck-zone-surface grid w-full content-start gap-[0.32rem] p-[0.35rem] grid-cols-5 min-[520px]:grid-cols-8 min-[980px]:grid-cols-10"
+        className={ZONE_SURFACE_MOBILE}
         data-deck-zone={zone}
         data-deck-count={cards.length}
         style={{
@@ -293,12 +290,7 @@ export function DeckZone({
             key={card.instanceId}
             data-deck-zone={zone}
             data-deck-card-index={index}
-            className={[
-              'deck-zone-card relative min-w-0 cursor-grab select-none bg-transparent p-0 touch-pan-y',
-              activeDragInstanceId === card.instanceId
-                ? 'opacity-35'
-                : '',
-            ].join(' ')}
+            className={deckCardMobile(activeDragInstanceId === card.instanceId)}
             onPointerDown={(event) => handleCardPointerDown(event, card.instanceId)}
             onClick={() => onDeckCardClick(card.instanceId)}
             onContextMenu={(event) => handleCardContextMenu(event, card.instanceId)}
