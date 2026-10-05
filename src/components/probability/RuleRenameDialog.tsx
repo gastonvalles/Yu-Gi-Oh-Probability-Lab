@@ -3,6 +3,7 @@ import { useId, useState, type FormEvent } from 'react'
 import { MAX_RULE_NAME_LENGTH, normalizeRuleName } from '../../app/pattern-presets'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
+import { KindBadge } from './KindBadge'
 import type { RuleEntry } from './probability-lab-helpers'
 import { field } from '../ui/surfaces'
 
@@ -60,11 +61,9 @@ export function RuleRenameDialog({ entry, onSave, onClose }: RuleRenameDialogPro
         </>
       }
     >
-      <form id={formId} className="lab-rename" onSubmit={handleSubmit}>
-        <label htmlFor={inputId} className="lab-rename-label">
-          <span className="lab-kind-badge" data-kind={entry.kind}>
-            {entry.kind === 'opening' ? 'Salida' : 'Problema'}
-          </span>
+      <form id={formId} className="grid gap-[0.6rem]" onSubmit={handleSubmit}>
+        <label htmlFor={inputId} className="flex items-center gap-[0.45rem] text-[0.8rem] font-semibold text-muted">
+          <KindBadge kind={entry.kind} />
           Nombre
         </label>
         <input

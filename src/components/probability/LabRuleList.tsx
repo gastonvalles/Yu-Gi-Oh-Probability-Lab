@@ -3,9 +3,12 @@ import { useId, useState, type ReactNode } from 'react'
 import { formatInteger, formatShortPercent } from '../../app/utils'
 import type { PatternKind } from '../../types'
 import { Button } from '../ui/Button'
+import { cx } from '../ui/cx'
 import { ChevronLeftIcon, LockIcon, PencilIcon, PlusIcon } from '../ui/icons'
 import { Switch } from '../ui/Switch'
+import { KindBadge } from './KindBadge'
 import { LabSection } from './LabSection'
+import { LAB_FOOTNOTE } from './lab-styles'
 import { RuleRenameDialog } from './RuleRenameDialog'
 import type { RuleEntry, RuleEntryGroups, TurnLean } from './probability-lab-helpers'
 
@@ -16,6 +19,19 @@ const KIND_FILTERS: ReadonlyArray<{ value: KindFilter; label: string }> = [
   { value: 'opening', label: 'Salidas' },
   { value: 'problem', label: 'Problemas' },
 ]
+
+const TIER_BADGE = 'inline-flex items-center gap-[0.3rem] rounded-full bg-foreground/6 px-[0.55rem] py-[0.2rem] text-[0.7rem] text-muted'
+
+const RULE_ROW =
+  'group relative grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 gap-y-1 overflow-hidden rounded-[calc(var(--radius-panel)-0.2rem)] border border-[rgb(var(--lab-kind-rgb)/0.22)] bg-[rgb(var(--lab-kind-rgb)/0.04)] px-3 pb-3 pt-[0.6rem] text-left transition-[border-color,background,opacity,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary/70'
+const RULE_ROW_INTERACTIVE =
+  'cursor-pointer hover:border-[rgb(var(--lab-kind-rgb)/0.55)] hover:bg-[rgb(var(--lab-kind-rgb)/0.08)] active:scale-[0.99]'
+const RULE_KIND_RGB: Record<PatternKind, string> = {
+  opening: '[--lab-kind-rgb:var(--accent-rgb)]',
+  problem: '[--lab-kind-rgb:var(--danger-rgb)]',
+}
+const RULE_STACK = 'contents min-[1101px]:grid min-[1101px]:min-w-0 min-[1101px]:content-start min-[1101px]:gap-5'
+const RULE_TURN_BADGE = 'flex-none rounded-[0.3rem] bg-warning/14 px-[0.3rem] py-[0.05rem] text-[0.64rem] font-semibold text-warning'
 
 interface LabRuleListProps {
   groups: RuleEntryGroups
@@ -47,17 +63,19 @@ export function LabRuleList({
     <LabSection
       title="Reglas del análisis"
       summary={`${formatInteger(groups.universal.length)} universales · ${formatInteger(enabledGeneric)}/${formatInteger(groups.generic.length)} genéricas · ${formatInteger(groups.custom.length)} propias`}
-      className="lab-rules"
+      className="order-5 min-[1101px]:col-span-full"
       actions={
-        <div className="lab-filter" role="radiogroup" aria-label="Filtrar reglas por tipo">
+        <div className="inline-flex gap-[0.2rem] rounded-full border border-border p-[0.2rem]" role="radiogroup" aria-label="Filtrar reglas por tipo">
           {KIND_FILTERS.map((filter) => (
             <button
               key={filter.value}
               type="button"
               role="radio"
               aria-checked={kindFilter === filter.value}
-              data-active={kindFilter === filter.value ? 'true' : 'false'}
-              className="lab-filter-option"
+              className={cx(
+                'rounded-full px-[0.7rem] py-[0.3rem] text-[0.76rem] font-semibold',
+                kindFilter === filter.value ? 'bg-primary/22 text-foreground' : 'text-muted',
+              )}
               onClick={() => setKindFilter(filter.value)}
             >
               {filter.label}
@@ -66,18 +84,18 @@ export function LabRuleList({
         </div>
       }
     >
-      <p className="lab-footnote m-0">
+      <p className={LAB_FOOTNOTE}>
         Una mano es <strong>limpia</strong> si cumple al menos una salida y ningún problema activo.
       </p>
 
       {/* Desktop: reglas del sistema (plegables) a la izquierda, las propias a la derecha. */}
-      <div className="lab-rule-tiers">
-        <div className="lab-rule-stack">
+      <div className="grid gap-[1.1rem] min-[1101px]:grid-cols-2 min-[1101px]:items-start min-[1101px]:gap-5">
+        <div className={RULE_STACK}>
           <RuleTier
             title="Universales"
             collapsible
             badge={
-              <span className="lab-tier-badge">
+              <span className={TIER_BADGE}>
                 <LockIcon /> Siempre activas
               </span>
             }
@@ -90,7 +108,7 @@ export function LabRuleList({
           <RuleTier
             title="Genéricas"
             collapsible
-            badge={<span className="lab-tier-badge">{formatInteger(enabledGeneric)} activas</span>}
+            badge={<span className={TIER_BADGE}>{formatInteger(enabledGeneric)} activas</span>}
             description="Aplican a la mayoría de los decks. Apagalas o editalas para ajustar cantidades de copias."
             entries={visible(groups.generic)}
             renderRow={(entry) => (
@@ -109,7 +127,7 @@ export function LabRuleList({
             )}
           />
         </div>
-        <div className="lab-rule-stack">
+        <div className={RULE_STACK}>
           <RuleTier
             title="Tus reglas"
             badge={
@@ -121,14 +139,14 @@ export function LabRuleList({
             entries={visible(groups.custom)}
             emptyState={
               groups.custom.length === 0 ? (
-                <div className="lab-rule-empty">
+                <div className="grid gap-1 rounded-[calc(var(--radius-panel)-0.2rem)] border border-dashed border-border p-3 text-[0.76rem] text-muted [&_strong]:text-[0.84rem] [&_strong]:text-foreground">
                   <strong>Todavía no creaste reglas</strong>
                   <span>
                     Ejemplos: “Abrir tu carta clave”, “Starter + pieza de combo” o “2+ Handtraps yendo 2º”.
                   </span>
                 </div>
               ) : (
-                <p className="lab-empty-note">No hay reglas propias de este tipo.</p>
+                <p className={LAB_FOOTNOTE}>No hay reglas propias de este tipo.</p>
               )
             }
             renderRow={(entry) => (
@@ -173,35 +191,39 @@ function RuleTier({
   const listId = useId()
 
   return (
-    <section className="lab-rule-tier" aria-label={title} data-open={isOpen ? 'true' : 'false'}>
-      <header className="lab-rule-tier-head">
-        <div className="lab-rule-tier-title">
+    <section className="grid min-w-0 content-start gap-[0.55rem]" aria-label={title}>
+      <header className="grid gap-[0.2rem]">
+        <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
           {collapsible ? (
-            <h4>
+            <h4 className="m-0 text-[0.9rem] text-foreground">
               <button
                 type="button"
-                className="lab-rule-tier-toggle"
+                className="inline-flex cursor-pointer items-center gap-[0.4rem] border-0 bg-transparent py-[0.2rem] pl-0 pr-[0.3rem] font-[inherit] text-inherit hover:text-primary"
                 aria-expanded={isOpen}
                 aria-controls={listId}
                 onClick={() => setIsOpen((current) => !current)}
               >
-                <ChevronLeftIcon className="lab-rule-tier-chevron" width={14} height={14} />
+                <ChevronLeftIcon
+                  className={cx('text-soft transition-transform duration-[160ms]', isOpen ? 'rotate-[270deg]' : 'rotate-180')}
+                  width={14}
+                  height={14}
+                />
                 {title}
-                <span className="lab-rule-tier-count">{formatInteger(entries.length)}</span>
+                <span className="rounded-full bg-secondary/90 px-[0.45rem] py-[0.05rem] text-[0.7rem] font-bold text-muted">{formatInteger(entries.length)}</span>
               </button>
             </h4>
           ) : (
-            <h4>{title}</h4>
+            <h4 className="m-0 text-[0.9rem] text-foreground">{title}</h4>
           )}
           {badge}
         </div>
-        <p>{description}</p>
+        <p className={cx('m-0 text-[0.74rem] leading-[1.3] text-muted', !isOpen && 'hidden')}>{description}</p>
       </header>
 
       {!isOpen ? null : entries.length === 0 ? (
-        (emptyState ?? <p className="lab-empty-note">No hay reglas de este tipo.</p>)
+        (emptyState ?? <p className={LAB_FOOTNOTE}>No hay reglas de este tipo.</p>)
       ) : (
-        <ul id={listId} className="lab-rule-list">
+        <ul id={listId} className="m-0 grid list-none gap-[0.4rem] p-0">
           {entries.map((entry) => (
             <li key={entry.patternId}>{renderRow(entry)}</li>
           ))}
@@ -227,34 +249,33 @@ function RuleRow({
 }) {
   const body = (
     <>
-      <span className="lab-rule-main">
-        <span className="lab-rule-name">
-          <span className="lab-kind-badge" data-kind={entry.kind}>
-            {entry.kind === 'opening' ? 'Salida' : 'Problema'}
-          </span>
-          <span className="lab-rule-title">{entry.name}</span>
-          {showEditIcon ? <PencilIcon className="lab-rule-edit-icon" /> : null}
+      <span className="grid min-w-0 gap-[0.15rem]">
+        <span className="flex min-w-0 flex-wrap items-center gap-[0.4rem] text-[0.88rem] font-bold text-foreground">
+          <KindBadge kind={entry.kind} />
+          <span className="min-w-0 [overflow-wrap:anywhere]">{entry.name}</span>
+          {showEditIcon ? <PencilIcon className="size-[0.8rem] flex-none text-soft group-hover:text-foreground" /> : null}
           {entry.turnContext !== 'either' ? (
-            <span className="lab-rule-turn">{entry.turnContext === 'first' ? 'Solo 1º' : 'Solo 2º'}</span>
+            <span className={RULE_TURN_BADGE}>{entry.turnContext === 'first' ? 'Solo 1º' : 'Solo 2º'}</span>
           ) : null}
-          {entry.ignoresDraw && entry.turnContext !== 'first' ? <span className="lab-rule-turn" title="Yendo 2º no cuenta la carta robada">5 cartas</span> : null}
+          {entry.ignoresDraw && entry.turnContext !== 'first' ? <span className={RULE_TURN_BADGE} title="Yendo 2º no cuenta la carta robada">5 cartas</span> : null}
           {entry.turnLean ? <TurnLeanBadge kind={entry.kind} lean={entry.turnLean} /> : null}
         </span>
-        <span className="lab-rule-support">{entry.summary}</span>
-        {entry.description ? <span className="lab-rule-description">{entry.description}</span> : null}
+        <span className="truncate text-[0.75rem] text-foreground opacity-85">{entry.summary}</span>
+        {entry.description ? <span className="text-[0.72rem] leading-[1.3] text-muted">{entry.description}</span> : null}
       </span>
-      <span className="lab-rule-value">{formatRuleValue(entry)}</span>
+      <span className="whitespace-nowrap text-[0.92rem] font-extrabold text-foreground tabular-nums">{formatRuleValue(entry)}</span>
       {entry.probability !== null ? (
-        <span className="lab-rule-bar" aria-hidden="true">
-          <span style={{ width: `${Math.min(100, entry.probability * 100)}%` }} />
+        <span className="absolute inset-x-0 bottom-0 h-[3px] bg-[rgb(var(--lab-kind-rgb)/0.1)]" aria-hidden="true">
+          <span
+            className="block h-full bg-[rgb(var(--lab-kind-rgb)/0.85)] transition-[width] motion-reduce:transition-none"
+            style={{ width: `${Math.min(100, entry.probability * 100)}%` }} />
         </span>
       ) : null}
     </>
   )
-  const state = {
-    'data-kind': entry.kind,
-    'data-enabled': entry.enabled && entry.appliesToView && !entry.missingCards ? 'true' : 'false',
-  }
+  const isActive = entry.enabled && entry.appliesToView && !entry.missingCards
+  const rowClass = (interactive: boolean) =>
+    cx(RULE_ROW, RULE_KIND_RGB[entry.kind], interactive && RULE_ROW_INTERACTIVE, !isActive && 'opacity-55')
 
   if (onClick && trailing) {
     // El interruptor no puede ir dentro de un botón: la fila entera es el botón y el interruptor frena el toque.
@@ -262,8 +283,7 @@ function RuleRow({
       <div
         role="button"
         tabIndex={0}
-        className="lab-rule"
-        {...state}
+        className={rowClass(true)}
         aria-label={`${actionLabel} regla ${entry.name}: ${formatRuleValue(entry)}`}
         onClick={onClick}
         onKeyDown={(event) => {
@@ -274,7 +294,7 @@ function RuleRow({
         }}
       >
         {body}
-        <span className="lab-rule-trailing" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+        <span className="flex" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
           {trailing}
         </span>
       </div>
@@ -285,8 +305,7 @@ function RuleRow({
     return (
       <button
         type="button"
-        className="lab-rule"
-        {...state}
+        className={rowClass(true)}
         aria-label={`${actionLabel} regla ${entry.name}: ${formatRuleValue(entry)}${entry.turnLean ? `, más yendo ${entry.turnLean.favored === 'first' ? '1º' : '2º'}` : ''}`}
         onClick={onClick}
       >
@@ -296,9 +315,9 @@ function RuleRow({
   }
 
   return (
-    <div className="lab-rule" {...state}>
+    <div className={rowClass(false)}>
       {body}
-      {trailing ? <span className="lab-rule-trailing">{trailing}</span> : null}
+      {trailing ? <span className="flex">{trailing}</span> : null}
     </div>
   )
 }
@@ -333,7 +352,7 @@ function TurnLeanBadge({ kind, lean }: { kind: RuleEntry['kind']; lean: TurnLean
       : `Este problema pesa más yendo ${turn}.`
 
   return (
-    <span className="lab-rule-lean" data-kind={kind} title={`${meaning} ${detail}`}>
+    <span className="flex-none cursor-help rounded-[0.3rem] border border-primary/40 px-[0.3rem] py-[0.02rem] text-[0.64rem] font-semibold text-foreground" title={`${meaning} ${detail}`}>
       Más yendo {turn}
       <span className="sr-only">. {meaning} {detail}</span>
     </span>

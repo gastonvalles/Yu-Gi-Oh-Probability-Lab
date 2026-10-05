@@ -5,6 +5,7 @@ import { getPatternMatchMode, normalizeMinimumConditionMatches } from '../../../
 import { buildPatternCompactSummary, buildPatternPreview } from '../pattern-helpers'
 import type { PatternEditorActions } from '../pattern-editor-actions'
 import { Button } from '../../ui/Button'
+import { cx } from '../../ui/cx'
 import { PlusIcon } from '../../ui/icons'
 
 import { AdvancedSettings } from './AdvancedSettings'
@@ -51,14 +52,20 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
         />
       </RuleStep>
 
-      <section className="rule-preview" data-kind={pattern.kind} aria-live="polite">
-        <span className="rule-preview-heading">{preview.heading}</span>
-        <ul>
+      <section
+        className={cx(
+          'grid gap-[0.35rem] rounded-panel border border-[rgb(var(--lab-kind-rgb)/0.35)] bg-[rgb(var(--lab-kind-rgb)/0.06)] px-[0.9rem] py-3',
+          pattern.kind === 'opening' ? '[--lab-kind-rgb:var(--accent-rgb)]' : '[--lab-kind-rgb:var(--danger-rgb)]',
+        )}
+        aria-live="polite"
+      >
+        <span className="text-[0.78rem] font-bold text-[rgb(var(--lab-kind-rgb))]">{preview.heading}</span>
+        <ul className="m-0 grid gap-[0.15rem] pl-[1.1rem] text-[0.86rem] text-foreground">
           {preview.items.map((item, index) => (
             <li key={`${index}-${item}`}>{item}</li>
           ))}
         </ul>
-        {conditionCount > 1 ? <span className="rule-preview-logic">{preview.logic}</span> : null}
+        {conditionCount > 1 ? <span className="text-[0.74rem] text-muted">{preview.logic}</span> : null}
       </section>
 
       <RuleStep number={2} title="¿Qué representa?">
@@ -131,15 +138,18 @@ function RuleStep({
   children: ReactNode
 }) {
   return (
-    <section className="rule-step">
-      <header className="rule-step-head">
-        <span className="rule-step-number" aria-hidden="true">
+    <section className="grid gap-[0.6rem]">
+      <header className="flex flex-wrap items-center gap-2">
+        <span
+          className="grid size-[1.35rem] place-items-center rounded-full bg-primary/22 text-[0.72rem] font-extrabold text-foreground"
+          aria-hidden="true"
+        >
           {number}
         </span>
-        <h4>{title}</h4>
-        {hint ? <small>{hint}</small> : null}
+        <h4 className="m-0 text-[0.9rem] text-foreground">{title}</h4>
+        {hint ? <small className="text-[0.72rem] text-muted">{hint}</small> : null}
       </header>
-      <div className="rule-step-body">{children}</div>
+      <div className="grid gap-[0.6rem]">{children}</div>
     </section>
   )
 }

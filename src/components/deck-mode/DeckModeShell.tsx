@@ -22,7 +22,9 @@ export function DeckModeShell({
         ref={contentScrollRef}
         className={[
           'deck-mode-content-shell',
-          mobileNavigation ? 'deck-mode-shell-mobile-nav-offset' : '',
+          mobileNavigation
+            ? 'max-[1100px]:pb-[calc(var(--deck-mobile-step-nav-height,4.3rem)+env(safe-area-inset-bottom,0px)+0.55rem)]'
+            : '',
           contentScrollable ? 'deck-mode-content-shell-scrollable' : '',
         ].join(' ').trim()}
       >

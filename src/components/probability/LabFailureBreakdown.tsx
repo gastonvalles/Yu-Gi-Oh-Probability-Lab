@@ -3,8 +3,23 @@ import { useState } from 'react'
 import type { LabViewResult, SegmentRule } from '../../app/probability-lab'
 import { formatShortPercent } from '../../app/utils'
 import type { HandSegment } from '../../types'
+import { cx } from '../ui/cx'
 import { buildFailureAdvice } from './lab-copy'
+import { LAB_FOOTNOTE } from './lab-styles'
 import { LabSection } from './LabSection'
+
+/** Color de cada grupo de manos (barra, leyenda) y variable de color de su caja de reglas. */
+const SEGMENT_BG: Record<HandSegment, string> = {
+  clean: 'bg-success/85',
+  withProblem: 'bg-warning/90',
+  noOpening: 'bg-danger/85',
+}
+
+const SEGMENT_RGB: Record<HandSegment, string> = {
+  clean: '[--lab-segment-rgb:var(--success-rgb)]',
+  withProblem: '[--lab-segment-rgb:var(--warning-rgb)]',
+  noOpening: '[--lab-segment-rgb:var(--danger-rgb)]',
+}
 
 const SEGMENTS: ReadonlyArray<{
   key: HandSegment
@@ -54,16 +69,18 @@ export function LabFailureBreakdown({ result }: { result: LabViewResult }) {
       title="Cómo se reparten tus manos"
       summary={`${formatShortPercent(values.withProblem)} con problema · ${formatShortPercent(values.noOpening)} sin salida`}
       defaultOpenOnMobile={false}
-      className="lab-breakdown"
+      className="order-2"
     >
-      <div className="lab-stack-bar">
+      <div className="flex h-4 overflow-hidden rounded-full bg-foreground/8">
         {SEGMENTS.map((segment) => (
           <button
             key={segment.key}
             type="button"
-            className="lab-stack-segment"
-            data-segment={segment.key}
-            data-active={activeSegment === segment.key ? 'true' : 'false'}
+            className={cx(
+              'h-full cursor-pointer [transition:width_var(--motion-duration)_ease,filter_150ms_ease,opacity_150ms_ease] motion-reduce:transition-none',
+              SEGMENT_BG[segment.key],
+              activeSegment === segment.key ? 'brightness-[1.15]' : 'opacity-45',
+            )}
             style={{ width: `${values[segment.key] * 100}%` }}
             aria-label={`${segment.label}: ${formatShortPercent(values[segment.key])}. Ver reglas`}
             onMouseEnter={() => setActiveSegment(segment.key)}
@@ -73,24 +90,28 @@ export function LabFailureBreakdown({ result }: { result: LabViewResult }) {
         ))}
       </div>
 
-      <div className="lab-breakdown-body">
-      <ul className="lab-legend">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] items-start gap-3">
+      <ul className="m-0 grid list-none gap-[0.45rem] p-0">
         {SEGMENTS.map((segment) => (
           <li key={segment.key}>
             <button
               type="button"
-              className="lab-legend-item"
-              data-active={activeSegment === segment.key ? 'true' : 'false'}
+              className={cx(
+                'grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-[0.6rem] rounded-[calc(var(--radius-panel)-0.3rem)] border px-[0.45rem] py-[0.3rem] text-left transition-[background,border-color] duration-150',
+                activeSegment === segment.key
+                  ? 'border-border bg-foreground/4'
+                  : 'border-transparent hover:border-border hover:bg-foreground/4',
+              )}
               aria-pressed={activeSegment === segment.key}
               onMouseEnter={() => setActiveSegment(segment.key)}
               onClick={() => setActiveSegment(segment.key)}
             >
-              <span className="lab-legend-swatch" data-segment={segment.key} aria-hidden="true" />
-              <span className="lab-legend-text">
-                <strong>{segment.label}</strong>
-                <small>{segment.description}</small>
+              <span className={cx('size-[0.7rem] rounded-[0.2rem]', SEGMENT_BG[segment.key])} aria-hidden="true" />
+              <span className="grid min-w-0">
+                <strong className="text-[0.82rem] text-foreground">{segment.label}</strong>
+                <small className="text-[0.72rem] text-muted">{segment.description}</small>
               </span>
-              <span className="lab-legend-value">{formatShortPercent(values[segment.key])}</span>
+              <span className="text-[0.9rem] font-bold text-foreground tabular-nums">{formatShortPercent(values[segment.key])}</span>
             </button>
           </li>
         ))}
@@ -106,7 +127,7 @@ export function LabFailureBreakdown({ result }: { result: LabViewResult }) {
       />
       </div>
 
-      <p className="lab-advice">{buildFailureAdvice(result)}</p>
+      <p className="m-0 border-l-[3px] border-primary/70 pl-[0.6rem] text-[0.76rem] leading-[1.35] text-foreground">{buildFailureAdvice(result)}</p>
     </LabSection>
   )
 }
@@ -123,24 +144,30 @@ function SegmentRules({
   rules: SegmentRule[]
 }) {
   return (
-    <div className="lab-segment-rules" data-segment={segment} aria-live="polite">
-      <span className="lab-segment-rules-title">{title}</span>
+    <div
+      className={cx(
+        'grid gap-[0.45rem] rounded-[calc(var(--radius-panel)-0.2rem)] border border-[rgb(var(--lab-segment-rgb)/0.35)] bg-[rgb(var(--lab-segment-rgb)/0.06)] px-3 py-[0.65rem]',
+        SEGMENT_RGB[segment],
+      )}
+      aria-live="polite"
+    >
+      <span className="text-[0.72rem] font-bold uppercase tracking-[0.06em] text-[rgb(var(--lab-segment-rgb))]">{title}</span>
       {rules.length === 0 ? (
-        <p className="lab-footnote m-0">{emptyText}</p>
+        <p className={LAB_FOOTNOTE}>{emptyText}</p>
       ) : (
-        <ul>
+        <ul className="m-0 grid list-none gap-[0.35rem] p-0">
           {rules.slice(0, MAX_RULES).map((rule) => (
-            <li key={rule.patternId}>
-              <span className="lab-segment-rule-name">{rule.name}</span>
-              <span className="lab-segment-rule-bar" aria-hidden="true">
-                <span style={{ width: `${Math.min(100, rule.share * 100)}%` }} />
+            <li key={rule.patternId} className="grid grid-cols-[minmax(0,1.4fr)_minmax(3rem,1fr)_auto] items-center gap-[0.6rem] text-[0.8rem]">
+              <span className="truncate text-foreground">{rule.name}</span>
+              <span className="h-[0.4rem] overflow-hidden rounded-full bg-foreground/8" aria-hidden="true">
+                <span className="block h-full bg-[rgb(var(--lab-segment-rgb)/0.85)]" style={{ width: `${Math.min(100, rule.share * 100)}%` }} />
               </span>
-              <span className="lab-segment-rule-value">{formatShortPercent(rule.share)}</span>
+              <span className="font-bold text-foreground tabular-nums">{formatShortPercent(rule.share)}</span>
             </li>
           ))}
         </ul>
       )}
-      <small className="lab-footnote">
+      <small className={LAB_FOOTNOTE}>
         % de las manos de este grupo que cumplen cada regla (una mano puede cumplir varias). Pasá el mouse o tocá otro
         grupo para cambiar.
       </small>

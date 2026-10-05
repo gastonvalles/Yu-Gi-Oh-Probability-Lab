@@ -433,7 +433,7 @@ export function DeckBuilderStep({
               <span className="text-soft text-[0.68rem] uppercase tracking-widest">
                 Regla pendiente
               </span>
-              <span className="builder-status-dot builder-status-dot-warning" />
+              <span className="inline-flex size-[0.65rem] rounded-full bg-warning shadow-[0_0_0_1px_rgb(var(--warning-rgb)/0.24),0_0_18px_rgb(var(--warning-rgb)/0.22)]" />
             </div>
             <strong className="text-[0.92rem] leading-none text-(--text-main)">
               {formatIssues.length} ajuste{formatIssues.length === 1 ? '' : 's'} para {formatLabel}
