@@ -52,7 +52,6 @@ interface PickerSection {
   items: PickerItem[]
   /** Se puede usar en selección múltiple (aporta cartas concretas). */
   poolable: boolean
-  defaultOpen: boolean
 }
 
 type SelectionState = 'none' | 'some' | 'all'
@@ -88,7 +87,10 @@ export function CategoryPicker({
     [cards, usedCopies],
   )
   const shortcuts = useMemo(
-    () => SHORTCUT_ROLES.flatMap((role) => buildRoleCounts(cards).filter((entry) => entry.value === role && entry.copies > 0)),
+    () => {
+      const counts = buildRoleCounts(cards)
+      return SHORTCUT_ROLES.flatMap((role) => counts.filter((entry) => entry.value === role && entry.copies > 0))
+    },
     [cards],
   )
 
@@ -105,6 +107,18 @@ export function CategoryPicker({
         }))
         .filter((section) => section.items.length > 0),
     [sections, isMulti, needle],
+  )
+
+  // Acordeón: una sola pestaña abierta a la vez. Al buscar se abre la primera con resultados.
+  const [openKey, setOpenKey] = useState<string | null>(null)
+  const activeKey = visibleSections.some((section) => section.key === openKey)
+    ? openKey
+    : needle !== ''
+      ? (visibleSections[0]?.key ?? null)
+      : null
+  const toggleSection = useCallback(
+    (key: string) => setOpenKey((current) => (current === key ? null : key)),
+    [],
   )
 
   const handleSelect = useCallback(
@@ -186,7 +200,7 @@ export function CategoryPicker({
           <p className="cpick-empty">{cards.length === 0 ? 'No hay cartas en el deck.' : 'Nada coincide con la búsqueda.'}</p>
         ) : (
           visibleSections.map((section) => (
-            <PickerGroup key={section.key} label={section.label} forceOpen={needle !== '' || isMulti || section.defaultOpen}>
+            <PickerGroup key={section.key} id={section.key} label={section.label} open={section.key === activeKey} onToggle={toggleSection}>
               {section.items.map((item) => (
                 <PickerRow
                   key={item.id}
@@ -243,12 +257,10 @@ function buildSections(cards: CardEntry[], used: ReadonlyMap<string, number>): P
     label: string,
     rows: Array<{ key: string | number; label: string; copies: number; cardIds?: string[] }>,
     toMatcher: ((row: { key: string | number }) => Matcher) | null,
-    defaultOpen = false,
   ): PickerSection => ({
     key,
     label,
     poolable: rows.every((row) => row.cardIds !== undefined),
-    defaultOpen,
     items: rows.map((row) => ({
       id: `${key}:${row.key}`,
       label: row.label,
@@ -264,7 +276,6 @@ function buildSections(cards: CardEntry[], used: ReadonlyMap<string, number>): P
       key: 'cards',
       label: 'Cartas',
       poolable: true,
-      defaultOpen: true,
       items: cards
         .filter((card) => available.has(card.id))
         .map((card) => ({
@@ -280,7 +291,6 @@ function buildSections(cards: CardEntry[], used: ReadonlyMap<string, number>): P
       'Arquetipo',
       buildDeckArchetypes(cards).map((archetype) => ({ key: archetype.name, label: archetype.name, copies: archetype.copies, cardIds: archetype.cardIds })),
       (row) => ({ type: 'archetype', value: String(row.key) }),
-      true,
     ),
     group(
       'card_type',
@@ -335,13 +345,22 @@ function buildSections(cards: CardEntry[], used: ReadonlyMap<string, number>): P
   return sections.filter((section) => section.items.length > 0)
 }
 
-function PickerGroup({ label, forceOpen, children }: { label: string; forceOpen: boolean; children: React.ReactNode }) {
-  const [isOpen, setIsOpen] = useState(false)
-  const open = forceOpen || isOpen
-
+function PickerGroup({
+  id,
+  label,
+  open,
+  onToggle,
+  children,
+}: {
+  id: string
+  label: string
+  open: boolean
+  onToggle: (id: string) => void
+  children: React.ReactNode
+}) {
   return (
     <section className="cpick-group" data-open={open ? 'true' : 'false'}>
-      <button type="button" className="cpick-group-head" aria-expanded={open} onClick={() => setIsOpen((current) => !current)}>
+      <button type="button" className="cpick-group-head" aria-expanded={open} onClick={() => onToggle(id)}>
         <span className="cpick-caret" aria-hidden="true">›</span>
         {label}
       </button>

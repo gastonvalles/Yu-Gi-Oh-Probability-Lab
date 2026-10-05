@@ -143,6 +143,8 @@
   }
 
   .cpick-row {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 44px;
     display: flex;
     align-items: center;
     gap: 0.65rem;
