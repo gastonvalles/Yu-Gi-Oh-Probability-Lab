@@ -6,23 +6,25 @@
 
   .classic-builder-layout {
     --classic-builder-divider: rgb(var(--border-rgb) / 0.94);
-    --classic-builder-surface: rgb(var(--background-rgb) / 1);
-    --classic-builder-surface-soft: rgb(var(--card-background-rgb) / 0.5);
+    --classic-builder-surface:
+      linear-gradient(180deg, rgb(var(--card-background-rgb) / 0.96), rgb(var(--background-rgb) / 0.98));
+    --classic-builder-surface-soft:
+      linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.94), rgb(var(--background-rgb) / 0.98));
     --classic-builder-elevated:
       linear-gradient(180deg, rgb(var(--input-rgb) / 0.98), rgb(var(--background-rgb) / 1));
     display: grid;
     height: 100%;
     min-height: 0;
-    grid-template-columns: minmax(260px, 23%) minmax(0, 1fr) minmax(340px, 28%);
-    background: rgb(var(--background-rgb) / 1);
+    grid-template-columns: minmax(250px, 24%) minmax(0, 1fr) minmax(360px, 30%);
+    background: linear-gradient(180deg, rgb(var(--background-rgb) / 1), rgb(var(--secondary-rgb) / 1));
   }
 
   .classic-builder-preview {
     min-height: 0;
-    padding: 0;
+    padding: 0.85rem 1.25rem 1rem;
     display: grid;
     align-content: start;
-    gap: 0;
+    gap: 0.72rem;
     border-right: 1px solid var(--classic-builder-divider);
     background: var(--classic-builder-surface);
     overflow-x: hidden;
@@ -53,6 +55,21 @@
     background-clip: content-box;
   }
 
+  .classic-builder-preview-title {
+    border: 1px solid rgb(var(--primary-rgb) / 0.24);
+    background:
+      linear-gradient(180deg, rgb(var(--primary-rgb) / 0.1), rgb(var(--card-background-rgb) / 0.98)),
+      var(--classic-builder-surface-soft);
+    color: var(--text-main);
+    border-radius: 0.72rem;
+    padding: 0.38rem 0.8rem;
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1.05;
+    box-shadow: 0 0 0 1px rgb(var(--primary-rgb) / 0.05);
+  }
+
   .classic-builder-preview-art-shell {
     display: grid;
     justify-items: center;
@@ -72,7 +89,6 @@
   }
 
   .classic-builder-preview-guide {
-    margin: 0.85rem 1rem 0;
     position: relative;
     display: grid;
     gap: 0.42rem;
@@ -132,10 +148,13 @@
 
   .classic-builder-preview-details {
     display: grid;
-    gap: 0.4rem;
+    gap: 0.52rem;
+    border: 1px solid var(--classic-builder-divider);
+    background: var(--classic-builder-surface-soft);
     color: var(--text-main);
-    padding: 0.8rem 1rem 1rem;
+    padding: 0.62rem 0.72rem 0.75rem;
     align-content: start;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
   }
 
   .classic-builder-preview-details p {
@@ -161,7 +180,7 @@
     min-width: 0;
     min-height: 0;
     overflow: hidden;
-    background: rgb(var(--secondary-rgb) / 0.4);
+    background: linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.98), rgb(var(--background-rgb) / 0.99));
   }
 
   .classic-builder-workspace::before {
@@ -179,8 +198,8 @@
     height: 100%;
     min-height: 0;
     align-content: start;
-    gap: 0.9rem;
-    padding: 0.8rem 1.6rem 1.2rem;
+    gap: 0.62rem;
+    padding: 0.55rem 2.45rem 0.95rem;
     overflow-x: hidden;
     overflow-y: auto;
     scrollbar-gutter: stable;
@@ -484,7 +503,7 @@
     --classic-zone-tint: var(--zone-main-background);
     --classic-zone-accent: var(--zone-main-border);
     display: grid;
-    gap: 0.5rem;
+    gap: 0.46rem;
   }
 
   .classic-builder-zone-shell[data-classic-zone='main'] {
@@ -514,15 +533,18 @@
     min-width: 0;
     width: calc(100% - 0.04rem);
     max-width: calc(100% - 0.04rem);
-    border: 0;
-    border-bottom: 1px solid var(--classic-zone-accent);
-    border-radius: 0;
-    background: transparent;
+    border: 1px solid var(--classic-zone-accent);
+    border-radius: 0.84rem;
+    background:
+      linear-gradient(180deg, var(--classic-zone-tint), rgb(var(--card-background-rgb) / 0.98)),
+      var(--classic-builder-surface);
     color: var(--text-main);
-    padding: 0.2rem 0.1rem 0.4rem;
-    font-size: 0.95rem;
+    padding: 0.28rem 0.95rem;
+    font-size: 0.98rem;
     font-weight: 700;
     line-height: 1;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
 
   .classic-builder-zone-label-actions {
@@ -739,6 +761,11 @@
     }
   }
 
+  @media (max-width: 1500px) {
+    .classic-builder-workspace-inner {
+      padding-inline: 1.7rem;
+    }
+  }
 
   @media (min-width: 1101px) {
     .deck-mode-app-shell {
@@ -788,24 +815,18 @@
       flex-shrink: 0;
     }
 
-    /* La carta ocupa todo el ancho de la columna (tope por alto de pantalla) y el texto
-       va debajo: sólo el efecto scrollea. */
     .classic-builder-preview > .classic-builder-preview-details {
-      flex: 1 1 0;
-      min-height: 0;
-      overflow-y: auto;
-      overscroll-behavior: contain;
-      scrollbar-width: thin;
-      scrollbar-color: var(--app-scrollbar-thumb) transparent;
-    }
-
-    .classic-builder-preview-art-shell {
-      justify-items: stretch;
+      flex: 1 0 auto;
+      min-height: 12rem;
     }
 
     .classic-builder-preview-art-frame {
-      width: min(100%, calc((100dvh - var(--deck-mode-topbar-height) - 9rem) * 0.72));
-      margin-inline: auto;
+      /* Reserves more room for the details/description block below (29rem instead of 22rem)
+         so longer card text doesn't push the panel into needing a scroll. */
+      width: min(
+        100%,
+        max(9rem, calc((100dvh - var(--deck-mode-topbar-height) - 29rem) * 0.72))
+      );
     }
 
     .classic-builder-search-column {
