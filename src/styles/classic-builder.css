@@ -240,9 +240,7 @@
     white-space: nowrap;
   }
 
-  .classic-builder-toolbar-select-label {
-    flex: 0 0 auto;
-  }
+  
 
   .classic-builder-toolbar-select {
     width: 9.25rem;
@@ -344,43 +342,16 @@
     box-shadow: 0 0 0 1px rgb(var(--primary-rgb) / 0.08);
   }
 
-  .classic-builder-search-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    min-width: 0;
-    border: 1px solid rgb(var(--primary-rgb) / 0.3);
-    background:
-      linear-gradient(180deg, rgb(var(--primary-rgb) / 0.14), rgb(var(--card-background-rgb) / 0.96));
-    padding: 0.26rem 0.52rem;
-    font-size: 0.72rem;
-    color: var(--text-main);
-  }
+  
 
-  .classic-builder-search-toggle {
-    border: 0;
-    background: transparent;
-    color: var(--text-main);
-    text-align: center;
-    font-size: 0.86rem;
-    font-weight: 600;
-    text-decoration: underline;
-    text-underline-offset: 0.18rem;
-  }
+  
 
   .classic-builder-search-filters-shell {
     border-bottom: 1px solid var(--classic-builder-divider);
     padding: 0.7rem;
   }
 
-  .classic-builder-search-filters {
-    display: grid;
-    gap: 0.75rem;
-    border: 1px solid var(--classic-builder-divider);
-    background: var(--classic-builder-surface-soft);
-    padding: 0.65rem;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
-  }
+  
 
   .classic-builder-search-results-shell {
     min-height: 0;
@@ -559,15 +530,7 @@
     white-space: nowrap;
   }
 
-  .classic-builder-zone-label-breakdown {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: var(--text-muted);
-  }
+  
 
   .classic-builder-zone-type-counts {
     display: flex;
@@ -614,17 +577,9 @@
     --zone-type-color: rgb(var(--handtrap-rgb));
   }
 
-  .classic-builder-zone-trash-button {
-    border-radius: 0 !important;
-    flex: 0 0 auto;
-    width: 1.9rem !important;
-    height: 1.9rem !important;
-  }
+  
 
-  .classic-builder-zone-trash-button svg {
-    width: 1rem !important;
-    height: 1rem !important;
-  }
+  
 
   .classic-builder-zone-surface {
     border-radius: 0 !important;
@@ -749,10 +704,7 @@
       overflow: visible;
     }
 
-    .deck-builder-step-shell {
-      width: 100%;
-      min-width: 0;
-    }
+    
   }
 
   @media (max-width: 479px) {

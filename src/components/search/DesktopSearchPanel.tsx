@@ -14,6 +14,7 @@ import { sortVisibleSearchResults } from './search-model'
 import { QUICK_TYPE_OPTIONS, type SearchSortOrder } from './search-options'
 import type { CardSearchActions, CardSearchViewState } from './search-types'
 import { useSearchFilterContext } from './use-search-filter-context'
+import { surface } from '../ui/surfaces'
 
 interface DesktopSearchPanelProps {
   search: CardSearchViewState
@@ -178,7 +179,7 @@ export function DesktopSearchPanel({
         <div className="classic-builder-search-results-shell">
           {search.hasSearchCriteria ? (
             status === 'error' ? (
-              <p className="surface-card-danger m-0 px-2 py-1.5 text-[0.78rem] leading-[1.16] text-destructive">
+              <p className={`${surface.cardDanger} m-0 px-2 py-1.5 text-[0.78rem] leading-[1.16] text-destructive`}>
                 {formatSearchError(search.errorMessage)}
               </p>
             ) : status === 'loading' ? (

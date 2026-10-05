@@ -8,6 +8,7 @@ import type { PatternEditorActions } from '../pattern-editor-actions'
 import { CategoryPicker } from './CategoryPicker'
 import { getConditionLabel } from './condition-labels'
 import { NumberField } from '../../ui/NumberField'
+import { field, surface } from '../../ui/surfaces'
 
 interface ConditionBlockProps {
   index: number
@@ -50,7 +51,7 @@ export function ConditionBlock({
   }, [actions, condition.id, condition.quantity, hasCategory, maxQuantity, patternId])
 
   return (
-    <article className="condition-block surface-card grid gap-2 px-3 py-2.5">
+    <article className={`condition-block ${surface.card} grid gap-2 px-3 py-2.5`}>
       <div className="flex items-center gap-0 flex-wrap">
         <KindSegment
           value={condition.kind}
@@ -66,8 +67,8 @@ export function ConditionBlock({
           className={[
             'condition-block-category px-3 py-1.5 text-[0.92rem] font-medium transition-colors rounded-r-md',
             hasCategory
-              ? 'surface-panel-soft text-(--text-main) hover:bg-[rgb(var(--primary-rgb)/0.08)]'
-              : 'surface-panel-soft text-(--text-muted) ring-1 ring-[rgb(var(--warning-rgb)/0.3)]',
+              ? `${surface.panelSoft} text-(--text-main) hover:bg-[rgb(var(--primary-rgb)/0.08)]`
+              : `${surface.panelSoft} text-(--text-muted) ring-1 ring-[rgb(var(--warning-rgb)/0.3)]`,
           ].join(' ')}
           onClick={() => setIsPickerOpen(true)}
         >
@@ -95,7 +96,9 @@ export function ConditionBlock({
         bare
         flush
         ariaLabel="Qué contar en esta condición"
-        className="cpick-modal"
+        closeTone="flat"
+        closeSize="sm"
+        closeClassName="right-2 top-[0.65rem]"
       >
         <CategoryPicker
           patternId={patternId}
@@ -152,7 +155,7 @@ function QuantitySegment({
       min={1}
       max={Math.max(max, value)}
       onChange={onChange}
-      className="condition-block-qty app-field w-12 border-x-0 rounded-none px-1.5 py-1.5 text-center text-[0.94rem] font-medium"
+      className={`condition-block-qty ${field} w-12 border-x-0 rounded-none px-1.5 py-1.5 text-center text-[0.94rem] font-medium`}
       aria-label="Cantidad"
     />
   )

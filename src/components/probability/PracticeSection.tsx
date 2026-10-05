@@ -195,7 +195,7 @@ export function PracticeSection(props: PracticeSectionProps) {
           onInspect={(card, rect) => setInspected({ card, rect })}
         />
         <div className="practice-dock">
-          <IconButton size="lg" className="practice-flat-button" aria-label="Nueva mano" title="Nueva mano" onClick={table.deal}>
+          <IconButton tone="flat" size="md" aria-label="Nueva mano" title="Nueva mano" onClick={table.deal}>
             <RefreshIcon />
           </IconButton>
           <PracticeDeckPile

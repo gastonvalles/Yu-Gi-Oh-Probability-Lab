@@ -2,9 +2,27 @@ import { useId, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
+import { cx } from './cx'
 import { CloseButton } from './IconButton'
+import { surface } from './surfaces'
 
-export type ModalSize = 'sm' | 'md' | 'lg' | 'xl'
+/**
+ * Tamaños fijos: el panel no crece ni se achica según el contenido (el cuerpo scrollea por dentro).
+ * 'sm' es para avisos y confirmaciones; en mobile los de contenido ocupan toda la pantalla.
+ * 'table' es la mesa de práctica (angosta, como en el celu) y 'editor' el de clasificación de una carta.
+ */
+export type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'table' | 'editor'
+
+const FULL_HEIGHT_MOBILE = 'max-sm:h-[calc(100dvh-1rem)]'
+
+const SIZE_CLASS: Record<ModalSize, string> = {
+  sm: 'w-[min(32rem,100%)]',
+  md: `w-[min(44rem,100%)] h-[min(40rem,calc(100dvh-2rem))] ${FULL_HEIGHT_MOBILE}`,
+  lg: `w-[min(60rem,100%)] h-[min(44rem,calc(100dvh-2rem))] ${FULL_HEIGHT_MOBILE}`,
+  xl: `w-[min(70rem,100%)] h-[min(46rem,calc(100dvh-2rem))] ${FULL_HEIGHT_MOBILE}`,
+  table: `w-[min(40rem,100%)] h-[min(46rem,calc(100dvh-2rem))] ${FULL_HEIGHT_MOBILE}`,
+  editor: `w-[min(70rem,100%)] h-[min(46rem,calc(100dvh-2rem))] min-[1101px]:h-[min(33rem,calc(100dvh-2rem))] ${FULL_HEIGHT_MOBILE}`,
+}
 
 interface ModalProps {
   isOpen: boolean
@@ -26,8 +44,11 @@ interface ModalProps {
   dismissible?: boolean
   role?: 'dialog' | 'alertdialog'
   ariaLabel?: string
-  /** Ajuste puntual del panel (p. ej. un alto fijo propio para ese modal). */
-  className?: string
+  /** Botón de cerrar flotante (sin encabezado): `flat` es el blanco y grande de la práctica. */
+  closeTone?: 'close' | 'flat'
+  closeSize?: 'sm' | 'md'
+  /** Posición de la X flotante; reemplaza a la estándar. */
+  closeClassName?: string
   children: ReactNode
 }
 
@@ -50,7 +71,9 @@ export function Modal({
   dismissible = true,
   role = 'dialog',
   ariaLabel,
-  className,
+  closeTone = 'close',
+  closeSize = 'md',
+  closeClassName,
   children,
 }: ModalProps) {
   const id = useId()
@@ -66,41 +89,60 @@ export function Modal({
   const hasHeader = !bare && (kicker || title || subtitle || headerActions)
 
   return createPortal(
-    <div className="app-modal-root" onClick={dismissible ? onClose : undefined}>
+    <div
+      className="fixed inset-0 z-180 grid place-items-center bg-background/78 p-2 backdrop-blur-[2px] sm:p-4"
+      onClick={dismissible ? onClose : undefined}
+    >
       <div
         role={role}
         aria-modal="true"
         aria-labelledby={hasHeader && title ? titleId : undefined}
         aria-label={hasHeader && title ? undefined : ariaLabel}
-        className={['app-modal-panel app-dialog-enter surface-panel', className].filter(Boolean).join(' ')}
-        data-size={size}
+        className={cx(
+          'relative flex max-h-[calc(100dvh-1rem)] min-h-0 flex-col overflow-hidden p-0 shadow-[0_32px_80px_rgba(0,0,0,0.48)] animate-dialog-enter motion-reduce:animate-none sm:max-h-[calc(100dvh-2rem)]',
+          surface.panel,
+          SIZE_CLASS[size],
+        )}
         onClick={(event) => event.stopPropagation()}
       >
         {hasHeader ? (
-          <header className="app-modal-header">
-            <div className="app-modal-heading">
-              {kicker ? <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-widest">{kicker}</p> : null}
+          <header className="flex items-start justify-between gap-3 border-b border-border px-4 pb-[0.8rem] pt-[0.9rem] min-[1101px]:px-[1.4rem] min-[1101px]:pb-[0.9rem] min-[1101px]:pt-[1.1rem]">
+            <div className="grid min-w-0 gap-[0.2rem]">
+              {kicker ? <p className="m-0 text-[0.68rem] uppercase tracking-widest text-accent">{kicker}</p> : null}
               {title ? (
-                <h3 id={titleId} className="app-modal-title">
+                <h3 id={titleId} className="m-0 text-[1.15rem] leading-[1.15] text-foreground [overflow-wrap:anywhere]">
                   {title}
                 </h3>
               ) : null}
-              {subtitle ? <p className="app-modal-subtitle">{subtitle}</p> : null}
+              {subtitle ? <p className="m-0 text-[0.8rem] leading-[1.3] text-muted">{subtitle}</p> : null}
             </div>
-            <div className="app-modal-header-actions">
+            <div className="flex flex-none items-center gap-[0.4rem]">
               {headerActions}
               {dismissible ? <CloseButton size="sm" aria-label="Cerrar" onClick={onClose} /> : null}
             </div>
           </header>
         ) : dismissible && !hideCloseButton ? (
-          <CloseButton size="md" aria-label="Cerrar" className="app-modal-floating-close" onClick={onClose} />
+          <CloseButton
+            size={closeSize}
+            tone={closeTone}
+            aria-label="Cerrar"
+            className={cx(
+              'absolute z-10',
+              closeClassName ?? 'right-[0.9rem] top-[0.9rem] min-[1101px]:right-[1.3rem] min-[1101px]:top-[1.1rem]',
+            )}
+            onClick={onClose}
+          />
         ) : null}
 
-        <div className="app-modal-body" data-flush={flush ? 'true' : 'false'}>
+        <div className={cx('min-h-0 flex-1 overflow-y-auto overflow-x-hidden', !flush && 'p-4 min-[1101px]:px-[1.4rem] min-[1101px]:py-5')}>
           {children}
         </div>
 
-        {footer ? <footer className="app-modal-footer">{footer}</footer> : null}
+        {footer ? (
+          <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-4 py-3 min-[1101px]:px-[1.4rem] min-[1101px]:py-[0.85rem]">
+            {footer}
+          </footer>
+        ) : null}
       </div>
     </div>,
     document.body,

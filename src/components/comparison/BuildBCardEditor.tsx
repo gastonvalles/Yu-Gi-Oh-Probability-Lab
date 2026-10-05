@@ -11,6 +11,7 @@ import { CardArt } from '../CardArt'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
 import { formatInteger } from '../../app/utils'
+import { chip, surface } from '../ui/surfaces'
 
 interface BuildBCardEditorProps {
   card: DeckCardInstance
@@ -135,20 +136,20 @@ export function BuildBCardEditor({ card, currentEdit, allCards, onSave, onNaviga
                 {/* Editor panel */}
                 <div className="flex min-h-full flex-col gap-2.5">
                   <div className="grid gap-1 pr-12">
-                    <p className="app-kicker m-0 text-[0.68rem] uppercase tracking-[0.12em]">
+                    <p className="text-accent m-0 text-[0.68rem] uppercase tracking-[0.12em]">
                       Build B — Carta {formatInteger(position)} de {formatInteger(total)}
                     </p>
                     <h3 className="m-0 wrap-anywhere text-[2rem] leading-[0.94] tracking-[-0.03em] text-(--text-main) min-[1101px]:text-[2.3rem]">
                       {card.name}
                     </h3>
-                    <p className="app-muted m-0 text-[0.9rem] leading-[1.05] min-[1101px]:text-[0.98rem]">
+                    <p className="text-muted m-0 text-[0.9rem] leading-[1.05] min-[1101px]:text-[0.98rem]">
                       Editar clasificación para Build B
                     </p>
                   </div>
 
                   {/* Origin selector — same as Step 2 */}
                   <section className="grid gap-2">
-                    <p className="app-kicker m-0 text-[0.64rem] uppercase tracking-widest">¿Qué es?</p>
+                    <p className="text-accent m-0 text-[0.64rem] uppercase tracking-widest">¿Qué es?</p>
                     <div className="grid gap-1.5 min-[860px]:grid-cols-3">
                       {CARD_ORIGIN_DEFINITIONS.map((definition) => {
                         const active = origin === definition.key.value
@@ -171,7 +172,7 @@ export function BuildBCardEditor({ card, currentEdit, allCards, onSave, onNaviga
                               <span className="role-reference-mark shrink-0" />
                               <strong className="text-[0.8rem] leading-none text-(--text-main)">{definition.label}</strong>
                             </div>
-                            <span className="app-muted text-[0.66rem] leading-[1.08]">{ORIGIN_BLURB[definition.key.value]}</span>
+                            <span className="text-muted text-[0.66rem] leading-[1.08]">{ORIGIN_BLURB[definition.key.value]}</span>
                           </button>
                         )
                       })}
@@ -180,17 +181,17 @@ export function BuildBCardEditor({ card, currentEdit, allCards, onSave, onNaviga
 
                   {/* Role toggles — same as Step 2 */}
                   <section className="grid gap-2">
-                    <p className="app-kicker m-0 text-[0.64rem] uppercase tracking-widest">¿Qué roles cumple?</p>
+                    <p className="text-accent m-0 text-[0.64rem] uppercase tracking-widest">¿Qué roles cumple?</p>
                     <div className="grid gap-2 min-[1101px]:grid-cols-3 min-[1101px]:items-stretch">
                       {ROLE_SECTIONS.map((section) => {
                         const selectedCount = section.roles.reduce(
                           (t, r) => t + (roles.includes(r) ? 1 : 0), 0,
                         )
                         return (
-                          <article key={section.title} className="surface-card grid h-full grid-rows-[auto_minmax(0,1fr)] gap-1.5 p-2">
+                          <article key={section.title} className={`${surface.card} grid h-full grid-rows-[auto_minmax(0,1fr)] gap-1.5 p-2`}>
                             <div className="flex flex-wrap items-start justify-between gap-2">
                               <strong className="text-[0.8rem] leading-none text-(--text-main)">{section.title}</strong>
-                              <span className="app-chip px-1.5 py-0.5 text-[0.62rem]">
+                              <span className={`${chip.base} px-1.5 py-0.5 text-[0.62rem]`}>
                                 {formatInteger(selectedCount)} / {formatInteger(section.roles.length)}
                               </span>
                             </div>

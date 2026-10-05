@@ -19,6 +19,7 @@ import { sortVisibleSearchResults } from './search-model'
 import { QUICK_TYPE_OPTIONS, type SearchSortOrder } from './search-options'
 import type { CardSearchActions, CardSearchViewState } from './search-types'
 import { useSearchFilterContext } from './use-search-filter-context'
+import { field, surface } from '../ui/surfaces'
 
 interface MobileCardSearchProps {
   search: CardSearchViewState
@@ -124,7 +125,7 @@ export function MobileCardSearch({
               autoCapitalize="none"
               spellCheck={false}
               autoFocus
-              className="app-field mobile-card-search-input h-11 w-full pl-9 pr-11 text-base"
+              className={`${field} mobile-card-search-input h-11 w-full pl-9 pr-11 text-base`}
             />
             {status === 'loading' ? (
               <span className="pointer-events-none absolute right-11 top-1/2 -mt-2 h-4 w-4 animate-spin rounded-full border-2 border-[rgb(var(--foreground-rgb)/0.18)] border-t-primary" />
@@ -220,7 +221,7 @@ export function MobileCardSearch({
               onClearRecent={recentSearches.clear}
             />
           ) : status === 'error' ? (
-            <p className="surface-card-danger m-0 px-3 py-2.5 text-[0.88rem] leading-[1.25] text-destructive">
+            <p className={`${surface.cardDanger} m-0 px-3 py-2.5 text-[0.88rem] leading-[1.25] text-destructive`}>
               {formatSearchError(search.errorMessage)}
             </p>
           ) : status === 'loading' ? (

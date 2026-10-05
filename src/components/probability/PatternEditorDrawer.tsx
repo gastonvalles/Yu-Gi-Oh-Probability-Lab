@@ -8,6 +8,7 @@ import { CloseButton } from '../ui/IconButton'
 import type { PatternEditorActions } from './pattern-editor-actions'
 import type { DraftImpact } from './use-draft-impact'
 import { RuleBuilder } from './rule-builder'
+import { surface } from '../ui/surfaces'
 
 type DrawerMode = 'custom-create' | 'edit'
 
@@ -65,13 +66,13 @@ export function PatternEditorDrawer({
       <aside
         role="dialog"
         aria-label={title}
-        className="surface-panel pattern-editor-drawer-panel absolute right-0 top-0 grid w-full max-w-3xl grid-rows-[auto_minmax(0,1fr)_auto] gap-0 border-l border-(--border-subtle) p-0 shadow-[-28px_0_54px_rgba(0,0,0,0.38)]"
+        className={`${surface.panel} pattern-editor-drawer-panel absolute right-0 top-0 grid w-full max-w-3xl grid-rows-[auto_minmax(0,1fr)_auto] gap-0 border-l border-(--border-subtle) p-0 shadow-[-28px_0_54px_rgba(0,0,0,0.38)]`}
       >
         <header className="grid gap-2 border-b border-(--border-subtle) px-4 py-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h3 className="m-0 truncate text-[1.05rem] leading-tight text-(--text-main)">{title}</h3>
-              <p className="app-kicker m-[0.2rem_0_0] text-[0.68rem] uppercase tracking-widest">Regla propia</p>
+              <p className="text-accent m-[0.2rem_0_0] text-[0.68rem] uppercase tracking-widest">Regla propia</p>
             </div>
             <CloseButton size="sm" aria-label="Cerrar editor" onClick={onClose} />
           </div>
@@ -88,7 +89,7 @@ export function PatternEditorDrawer({
               pattern={pattern}
             />
           ) : (
-            <p className="surface-card m-0 px-3 py-3 text-[0.8rem] text-(--text-muted)">Preparando el editor…</p>
+            <p className={`${surface.card} m-0 px-3 py-3 text-[0.8rem] text-(--text-muted)`}>Preparando el editor…</p>
           )}
         </div>
 
@@ -103,7 +104,7 @@ export function PatternEditorDrawer({
               Eliminar regla
             </Button>
           ) : (
-            <span className="app-muted text-[0.74rem]">El análisis se actualiza al guardar.</span>
+            <span className="text-muted text-[0.74rem]">El análisis se actualiza al guardar.</span>
           )}
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" onClick={onClose}>

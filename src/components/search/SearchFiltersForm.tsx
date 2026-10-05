@@ -4,6 +4,7 @@ import type { CardSearchFilters } from '../../app/card-search'
 import { Switch } from '../ui/Switch'
 import { ATTRIBUTE_OPTIONS, type FilterOption, type FilterOptionGroup } from './search-options'
 import type { SearchFilterContext } from './use-search-filter-context'
+import { field } from '../ui/surfaces'
 
 type FiltersLayout = 'desktop' | 'mobile'
 
@@ -56,7 +57,7 @@ export function SearchFiltersForm({
             placeholder="Blue-Eyes"
             autoComplete="off"
             spellCheck={false}
-            className="app-field search-filters-field"
+            className={`${field} search-filters-field`}
           />
         </Field>
 
@@ -68,7 +69,7 @@ export function SearchFiltersForm({
             placeholder="add 1"
             autoComplete="off"
             spellCheck={false}
-            className="app-field search-filters-field"
+            className={`${field} search-filters-field`}
           />
         </Field>
       </FilterGroup>
@@ -186,7 +187,7 @@ function GroupedSelect({
   onChange: (value: string) => void
 }) {
   return (
-    <select value={value} onChange={(event) => onChange(event.target.value)} className="app-field search-filters-field">
+    <select value={value} onChange={(event) => onChange(event.target.value)} className={`${field} search-filters-field`}>
       <option value="">Cualquiera</option>
       {groups.map((group) => (
         <optgroup key={group.label} label={group.label}>
