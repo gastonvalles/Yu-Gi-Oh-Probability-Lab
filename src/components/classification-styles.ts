@@ -22,10 +22,6 @@ export function statusChip(tone: StatusTone, compact = false): string {
   )
 }
 
-export const CLASSIFICATION_CHIP_ROW = 'flex min-w-0 flex-wrap gap-1'
-export const CLASSIFICATION_TYPE_CHIP = 'px-[0.1rem] py-[0.08rem] text-[0.64rem] font-semibold text-soft'
-export const CLASSIFICATION_MINI_CHIP =
-  'whitespace-nowrap rounded-full border border-[rgb(var(--role-rgb)/0.45)] bg-[rgb(var(--role-rgb)/0.12)] px-[0.45rem] py-[0.06rem] text-[0.64rem] font-semibold leading-[1.35] text-foreground'
 
 /** Referencias de la guía: tarjeta de rol, grupo y punto de color. */
 export const ROLE_REFERENCE_CARD =
