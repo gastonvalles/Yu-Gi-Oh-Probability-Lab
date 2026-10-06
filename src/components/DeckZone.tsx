@@ -1,4 +1,4 @@
-import { useRef, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type SVGProps } from 'react'
+import { memo, useRef, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type SVGProps } from 'react'
 
 import {
   buildDeckZoneVisualLayout,
@@ -54,7 +54,8 @@ const ZONE_STYLES: Record<DeckZoneType, { background: string; border: string }> 
   },
 }
 
-export function DeckZone({
+/** Memoizada: durante un arrastre sólo se re-renderiza la zona cuyo estado cambia. */
+export const DeckZone = memo(function DeckZone({
   zone,
   title,
   cards,
@@ -306,7 +307,7 @@ export function DeckZone({
       </div>
     </section>
   )
-}
+})
 
 function TrashIcon(props: SVGProps<SVGSVGElement>) {
   return (
