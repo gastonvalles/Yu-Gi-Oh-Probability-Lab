@@ -83,8 +83,8 @@ function ScoreGauge({ probability }: { probability: number }) {
       aria-valuenow={Math.round(percent)}
     >
       <div
-        className="h-full rounded-[inherit] bg-linear-to-r from-[rgb(var(--lab-tone-rgb)/0.55)] to-[rgb(var(--lab-tone-rgb))] transition-[width] motion-reduce:transition-none"
-        style={{ width: `${percent}%` }} />
+        className="h-full origin-left rounded-[inherit] bg-linear-to-r from-[rgb(var(--lab-tone-rgb)/0.55)] to-[rgb(var(--lab-tone-rgb))] transition-transform duration-[240ms] motion-reduce:transition-none"
+        style={{ transform: `scaleX(${percent / 100})` }} />
       {KPI_THRESHOLDS.map((threshold) => (
         <span
           key={threshold.value}

@@ -34,12 +34,12 @@ const HAND_CARD = [
   'absolute left-0 top-0 cursor-grab touch-none select-none overflow-hidden rounded-[0.3rem] outline-none will-change-transform min-[820px]:rounded-[0.4rem]',
   '[-webkit-touch-callout:none] [-webkit-user-select:none]',
   'shadow-[0_8px_18px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]',
-  '[transition:transform_var(--motion-duration)_cubic-bezier(0.2,0.8,0.2,1),width_var(--motion-duration)_ease,height_var(--motion-duration)_ease,filter_var(--motion-duration)_ease,box-shadow_var(--motion-duration)_ease]',
+  '[transition:transform_var(--motion-duration)_cubic-bezier(0.2,0.8,0.2,1),filter_var(--motion-duration)_ease,box-shadow_var(--motion-duration)_ease]',
   // El arte no debe capturar el toque ni arrancar el arrastre nativo de imágenes.
   '[&>:not([data-back])]:pointer-events-none [&>:not([data-back])]:[-webkit-user-drag:none]',
   'focus-visible:shadow-[0_8px_18px_rgba(0,0,0,0.45),0_0_0_2px_rgb(var(--primary-hover-rgb))]',
   'data-[state=dragging]:cursor-grabbing data-[state=dragging]:shadow-[0_24px_38px_rgba(0,0,0,0.55),0_0_0_2px_rgb(var(--primary-hover-rgb))]',
-  'data-[state=dragging]:[transition:width_var(--motion-duration)_ease,height_var(--motion-duration)_ease,filter_var(--motion-duration)_ease,box-shadow_var(--motion-duration)_ease]',
+  'data-[state=dragging]:[transition:filter_var(--motion-duration)_ease,box-shadow_var(--motion-duration)_ease]',
   'data-[muted=true]:grayscale data-[muted=true]:brightness-70',
   'data-[dim=true]:brightness-[0.42] data-[dim=true]:saturate-[0.6]',
   // Salidas en verde, problemas en rojo.

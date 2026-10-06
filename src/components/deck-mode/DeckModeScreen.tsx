@@ -253,7 +253,7 @@ export function DeckModeScreen() {
     <div
       key={activeStep}
       className={cx(
-        'min-w-0 will-change-[opacity,transform] motion-reduce:animate-none',
+        'min-w-0 motion-reduce:animate-none',
         stepDirection === 'back' ? 'animate-step-back' : 'animate-step-forward',
         isDeckBuilderStep || isCategorizationStep ? 'h-full min-h-0' : 'min-h-full',
       )}

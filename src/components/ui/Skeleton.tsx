@@ -22,7 +22,7 @@ export function Skeleton({
     <div
       aria-hidden="true"
       className={cx(
-        'animate-shimmer bg-linear-to-r from-foreground/5 via-foreground/11 to-foreground/5 bg-size-[200%_100%] motion-reduce:animate-none',
+        'relative overflow-hidden bg-foreground/6 before:absolute before:inset-0 before:animate-shimmer before:bg-linear-to-r before:from-transparent before:via-foreground/10 before:to-transparent motion-reduce:before:animate-none',
         RADIUS[radius],
         className,
       )}

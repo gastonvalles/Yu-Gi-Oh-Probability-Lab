@@ -90,7 +90,7 @@ export function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-180 grid place-items-center bg-background/78 p-2 backdrop-blur-[2px] sm:p-4"
+      className="fixed inset-0 z-180 grid place-items-center bg-background/78 p-2 sm:p-4"
       onClick={dismissible ? onClose : undefined}
     >
       <div
