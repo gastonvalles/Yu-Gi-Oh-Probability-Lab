@@ -1,4 +1,4 @@
-import { useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react'
 
 import { getDeckFormatLabel } from '../../app/deck-format'
 import { getDesktopCompactDeckColumnCount } from '../../app/deck-zone-layout'
@@ -155,13 +155,13 @@ export function DeckBuilderStep({
     apiCardId: number,
   ) => onSearchCardPointerDown(event, apiCardId)
 
-  const handleRequestClearDeckZone = (zone: DeckZoneType) => {
+  const handleRequestClearDeckZone = useCallback((zone: DeckZoneType) => {
     if (deckBuilder[zone].length === 0) {
       return
     }
 
     setPendingClearZone(zone)
-  }
+  }, [deckBuilder])
 
   const handleRequestClearAllDeckZones = () => {
     if (totalDeckCardCount === 0) {
@@ -207,6 +207,12 @@ export function DeckBuilderStep({
     onClearFilters: onClearSearchFilters,
     onLoadMore: onLoadMoreResults,
   }
+
+  // Cada zona recibe el id arrastrado sólo si la carta es suya: las demás conservan sus props y no se re-renderizan.
+  const dragIdFor = (zone: DeckZoneType) =>
+    activeDragInstanceId !== null && deckBuilder[zone].some((card) => card.instanceId === activeDragInstanceId)
+      ? activeDragInstanceId
+      : null
 
   const previewCard = selectedDetailCard
   const selectedCardId = selectedDetailCard?.ygoprodeckId ?? null
@@ -301,7 +307,7 @@ export function DeckBuilderStep({
                     zone={zone}
                     title={title}
                     cards={deckBuilder[zone]}
-                    activeDragInstanceId={activeDragInstanceId}
+                    activeDragInstanceId={dragIdFor(zone)}
                     dropState={
                       activeDropZone === zone
                         ? 'valid'
@@ -494,7 +500,7 @@ export function DeckBuilderStep({
                 zone={zone}
                 title={title}
                 cards={deckBuilder[zone]}
-                activeDragInstanceId={activeDragInstanceId}
+                activeDragInstanceId={dragIdFor(zone)}
                 dropState={
                   activeDropZone === zone
                     ? 'valid'

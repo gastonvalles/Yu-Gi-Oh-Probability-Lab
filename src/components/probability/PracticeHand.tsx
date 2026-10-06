@@ -112,6 +112,36 @@ export function PracticeHand({ cards, slots, sizeSlots, maxCardWidth, fanDegrees
     event.currentTarget.setPointerCapture(event.pointerId)
   }
 
+  // El movimiento se aplica una vez por cuadro (pointermove puede dispararse mucho más seguido
+  // que la pantalla) y se lee el rect del contenedor sólo ahí.
+  const pendingMoveRef = useRef<{ clientX: number; clientY: number } | null>(null)
+  const moveFrameRef = useRef(0)
+
+  const applyPendingMove = () => {
+    moveFrameRef.current = 0
+    const state = dragRef.current
+    const move = pendingMoveRef.current
+    pendingMoveRef.current = null
+
+    if (!state || !move || !containerRef.current) {
+      return
+    }
+
+    const rect = containerRef.current.getBoundingClientRect()
+    const current = layoutRef.current
+    const x = move.clientX - rect.left - state.grabDx
+    const y = Math.min(Math.max(move.clientY - state.startY, -110), 50)
+    setDrag({ id: state.id, x, y })
+
+    const currentIds = cardsRef.current.map((card) => card.drawId)
+    const from = currentIds.indexOf(state.id)
+    const to = slotIndexAtCenter(current, x + current.cardWidth / 2, currentIds.length)
+
+    if (from !== -1 && to !== from) {
+      onReorder(moveItem(currentIds, from, to))
+    }
+  }
+
   const handlePointerMove = (event: ReactPointerEvent<HTMLElement>) => {
     const state = dragRef.current
 
@@ -124,18 +154,10 @@ export function PracticeHand({ cards, slots, sizeSlots, maxCardWidth, fanDegrees
     }
 
     state.moved = true
-    const rect = containerRef.current.getBoundingClientRect()
-    const current = layoutRef.current
-    const x = event.clientX - rect.left - state.grabDx
-    const y = Math.min(Math.max(event.clientY - state.startY, -110), 50)
-    setDrag({ id: state.id, x, y })
+    pendingMoveRef.current = { clientX: event.clientX, clientY: event.clientY }
 
-    const currentIds = cardsRef.current.map((card) => card.drawId)
-    const from = currentIds.indexOf(state.id)
-    const to = slotIndexAtCenter(current, x + current.cardWidth / 2, currentIds.length)
-
-    if (from !== -1 && to !== from) {
-      onReorder(moveItem(currentIds, from, to))
+    if (!moveFrameRef.current) {
+      moveFrameRef.current = window.requestAnimationFrame(applyPendingMove)
     }
   }
 
@@ -147,6 +169,9 @@ export function PracticeHand({ cards, slots, sizeSlots, maxCardWidth, fanDegrees
     }
 
     dragRef.current = null
+    window.cancelAnimationFrame(moveFrameRef.current)
+    moveFrameRef.current = 0
+    pendingMoveRef.current = null
     setDrag(null)
 
     const tapped = cardsRef.current.find((card) => card.drawId === id)
