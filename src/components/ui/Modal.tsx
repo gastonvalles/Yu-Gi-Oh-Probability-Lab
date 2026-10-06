@@ -91,7 +91,7 @@ export function Modal({
 
   return createPortal(
     <div
-      className={cx('fixed inset-0 z-180 grid place-items-center bg-background/78 p-2 sm:p-4', size === 'sheet' && 'max-sm:place-items-end max-sm:p-0')}
+      className={cx('fixed inset-0 z-180 grid place-items-center overscroll-contain bg-background/78 p-2 sm:p-4', size === 'sheet' && 'max-sm:place-items-end max-sm:p-0')}
       onClick={dismissible ? onClose : undefined}
     >
       <div
@@ -137,7 +137,7 @@ export function Modal({
           />
         ) : null}
 
-        <div className={cx('min-h-0 flex-1 overflow-y-auto overflow-x-hidden', !flush && 'p-4 min-[1101px]:px-[1.4rem] min-[1101px]:py-5')}>
+        <div className={cx('min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain', !flush && 'p-4 min-[1101px]:px-[1.4rem] min-[1101px]:py-5')}>
           {children}
         </div>
 

@@ -1,12 +1,14 @@
 import { useEffect, useEffectEvent } from 'react'
 
 let activeScrollLocks = 0
-let overflowBeforeLock = ''
+let savedScrollY = 0
+let savedBodyStyle = { overflow: '', position: '', top: '', width: '' }
 
 /**
- * Bloquea el scroll del body mientras `active` sea true.
- * Lleva la cuenta de los bloqueos activos para que dos overlays abiertos a la
- * vez no se pisen: el overflow original se restaura cuando cierra el último.
+ * Bloquea el scroll de la página mientras `active` sea true.
+ * `overflow: hidden` solo no alcanza en iOS/Safari: se fija el body en su lugar (position fixed)
+ * y se restaura la posición al cerrar. Lleva la cuenta de los bloqueos activos para que dos
+ * overlays abiertos a la vez no se pisen: se restaura cuando cierra el último.
  */
 export function useBodyScrollLock(active: boolean): void {
   useEffect(() => {
@@ -14,9 +16,16 @@ export function useBodyScrollLock(active: boolean): void {
       return
     }
 
+    const { body, documentElement } = document
+
     if (activeScrollLocks === 0) {
-      overflowBeforeLock = document.body.style.overflow
-      document.body.style.overflow = 'hidden'
+      savedScrollY = window.scrollY
+      savedBodyStyle = { overflow: body.style.overflow, position: body.style.position, top: body.style.top, width: body.style.width }
+      documentElement.style.overflow = 'hidden'
+      body.style.overflow = 'hidden'
+      body.style.position = 'fixed'
+      body.style.top = `-${savedScrollY}px`
+      body.style.width = '100%'
     }
 
     activeScrollLocks += 1
@@ -25,7 +34,9 @@ export function useBodyScrollLock(active: boolean): void {
       activeScrollLocks -= 1
 
       if (activeScrollLocks === 0) {
-        document.body.style.overflow = overflowBeforeLock
+        documentElement.style.overflow = ''
+        Object.assign(body.style, savedBodyStyle)
+        window.scrollTo(0, savedScrollY)
       }
     }
   }, [active])

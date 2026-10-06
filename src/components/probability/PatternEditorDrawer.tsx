@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom'
 
-import { useEscapeKey } from '../../app/use-overlay'
+import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import type { CardEntry, HandPattern } from '../../types'
 import { Button } from '../ui/Button'
 import { DraftImpactSummary } from './DraftImpactSummary'
@@ -46,6 +46,7 @@ export function PatternEditorDrawer({
   const isOpen = drawerMode !== null
 
   useEscapeKey(onClose, isOpen)
+  useBodyScrollLock(isOpen)
 
   if (!isOpen) {
     return null

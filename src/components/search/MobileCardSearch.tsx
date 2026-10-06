@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
+import { useBodyScrollLock } from '../../app/use-overlay'
+
 import { buildCompactSearchDescription, formatSearchError } from '../../app/card-search'
 import { buildFormatLimitLabel } from '../../app/deck-format'
 import type { DeckZone } from '../../app/model'
@@ -47,6 +49,7 @@ export function MobileCardSearch({
   onOpenDetail,
   onClose,
 }: MobileCardSearchProps) {
+  useBodyScrollLock(true)
   const { filters, query, status } = search
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [sortOrder, setSortOrder] = useState<SearchSortOrder>('default')

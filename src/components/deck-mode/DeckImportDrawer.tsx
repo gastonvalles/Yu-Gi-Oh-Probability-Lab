@@ -26,6 +26,7 @@ import {
   groupResolvedByZone,
 } from '../../app/deck-import-presentation'
 import type { DeckBuilderState } from '../../app/model'
+import { useBodyScrollLock } from '../../app/use-overlay'
 import { formatInteger } from '../../app/utils'
 import type { DeckFormat } from '../../types'
 import { loadCardCatalog } from '../../ygoprodeck'
@@ -271,6 +272,8 @@ export function DeckImportDrawer({
       document.removeEventListener('keydown', handleKeyDown)
     }
   }, [isOpen, onClose])
+
+  useBodyScrollLock(isOpen)
 
   if (!isOpen) {
     return null
