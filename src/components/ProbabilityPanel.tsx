@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
+import { useAppSelector } from '../app/store-hooks'
 import type { DeckCardInstance } from '../app/model'
 import { createPattern } from '../app/pattern-factory'
 import type { RoleDistributionKey } from '../app/role-distribution'
@@ -7,6 +8,8 @@ import { useToastMessage } from '../app/use-toast-message'
 import type { PatternEditorDefaults } from '../app/use-pattern-editor-actions'
 import { formatShortPercent } from '../app/utils'
 import type { ApiCardReference, CardEntry, HandPattern, TurnView } from '../types'
+import type { ApiCardSearchResult } from '../ygoprodeck'
+import { CardDetailModal } from './card-detail/CardDetailModal'
 import { KpiDetailModal } from './comparison/KpiDetailModal'
 import type { KpiRole } from './comparison/kpi-detail-helpers'
 import { DeckModelStatusBadge } from './DeckModelStatusBadge'
@@ -70,6 +73,9 @@ export function ProbabilityPanel({
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false)
   const [pendingDeletePatternId, setPendingDeletePatternId] = useState<string | null>(null)
   const [kpiModalRole, setKpiModalRole] = useState<KpiRole | null>(null)
+  // Detalle de una carta tocada en la lista del KPI: se abre encima y la lista queda abierta.
+  const [kpiDetailCard, setKpiDetailCard] = useState<ApiCardSearchResult | null>(null)
+  const deckFormat = useAppSelector((state) => state.settings.deckFormat)
   const { showToast } = useToastMessage()
   const disclaimer = useLabDisclaimer()
 
@@ -306,10 +312,19 @@ export function ProbabilityPanel({
           role={kpiModalRole}
           side="A"
           mainDeck={cardEntriesToDeckInstances(derivedMainCards)}
-          onCardClick={() => setKpiModalRole(null)}
+          onCardClick={(card, name) => setKpiDetailCard({ ...card, name })}
           onClose={() => setKpiModalRole(null)}
         />
       ) : null}
+
+      <CardDetailModal
+        card={kpiDetailCard}
+        deckFormat={deckFormat}
+        isOpen={kpiDetailCard !== null}
+        showActions={false}
+        onAddToZone={() => false}
+        onClose={() => setKpiDetailCard(null)}
+      />
     </article>
   )
 }
