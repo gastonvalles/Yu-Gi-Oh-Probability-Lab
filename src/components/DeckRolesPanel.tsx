@@ -1015,7 +1015,7 @@ export function DeckRolesPanel({
                 aria-valuemin={0}
                 aria-valuemax={sortedCards.length}
               >
-                <div className="h-full rounded-(--radius-chip) bg-accent transition-[width]" style={{ width: `${classifiedPercent}%` }} />
+                <div className="h-full origin-left rounded-(--radius-chip) bg-accent transition-transform" style={{ transform: `scaleX(${classifiedPercent / 100})` }} />
               </div>
             </div>
 
@@ -1086,8 +1086,8 @@ export function DeckRolesPanel({
                 aria-valuemax={sortedCards.length}
               >
                 <div
-                  className="h-full rounded-(--radius-chip) bg-accent transition-[width]"
-                  style={{ width: `${classifiedPercent}%` }}
+                  className="h-full origin-left rounded-(--radius-chip) bg-accent transition-transform"
+                  style={{ transform: `scaleX(${classifiedPercent / 100})` }}
                 />
               </div>
             </div>

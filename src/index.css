@@ -4,7 +4,7 @@
   --radius-control: 0.82rem;
   --radius-panel: 0.95rem;
 
-  --animate-shimmer: shimmer var(--motion-duration) linear infinite;
+  --animate-shimmer: shimmer 1.2s ease-in-out infinite;
   --animate-dialog-enter: dialog-enter 150ms ease-out;
   --animate-toast-in: toast-in var(--motion-duration) ease-out both;
   --animate-toast-out: toast-out var(--motion-duration) ease-in both;
@@ -23,13 +23,14 @@
   --animate-riffle-left: riffle-left var(--motion-duration) ease-in-out;
   --animate-riffle-right: riffle-right var(--motion-duration) ease-in-out;
 
+  /* Brillo de carga: sólo se mueve un degradé con transform (compuesto en la GPU, sin repintar). */
   @keyframes shimmer {
     from {
-      background-position: 200% 0;
+      transform: translateX(-100%);
     }
 
     to {
-      background-position: -200% 0;
+      transform: translateX(100%);
     }
   }
 
@@ -221,8 +222,9 @@
 }
 
 @theme inline {
-  --default-transition-duration: var(--motion-duration);
-  --animate-spin: spin var(--motion-duration) linear infinite;
+  --default-transition-duration: 160ms;
+  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  --animate-spin: spin 700ms linear infinite;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card-background: var(--card-background);
@@ -379,6 +381,17 @@
 
   button {
     cursor: pointer;
+  }
+
+  /* Sin espera de doble toque ni destello gris al tocar: la respuesta es inmediata en mobile. */
+  button,
+  a,
+  [role='button'],
+  input,
+  select,
+  summary {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   a {

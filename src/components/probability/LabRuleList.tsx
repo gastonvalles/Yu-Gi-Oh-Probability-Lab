@@ -267,8 +267,8 @@ function RuleRow({
       {entry.probability !== null ? (
         <span className="absolute inset-x-0 bottom-0 h-[3px] bg-[rgb(var(--lab-kind-rgb)/0.1)]" aria-hidden="true">
           <span
-            className="block h-full bg-[rgb(var(--lab-kind-rgb)/0.85)] transition-[width] motion-reduce:transition-none"
-            style={{ width: `${Math.min(100, entry.probability * 100)}%` }} />
+            className="block h-full origin-left bg-[rgb(var(--lab-kind-rgb)/0.85)] transition-transform duration-[240ms] motion-reduce:transition-none"
+            style={{ transform: `scaleX(${Math.min(1, entry.probability)})` }} />
         </span>
       ) : null}
     </>
