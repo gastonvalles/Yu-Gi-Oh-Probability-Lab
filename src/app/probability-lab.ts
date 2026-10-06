@@ -55,7 +55,39 @@ export function getHandSizeForView(baseHandSize: number, view: Exclude<TurnView,
   return view === 'second' ? baseHandSize + 1 : baseHandSize
 }
 
+const MAX_CACHED_COMPUTATIONS = 24
+const computationCache = new Map<string, LabComputation>()
+
+/**
+ * Resultado del Lab recordado por contenido (mano + cartas + reglas): reabrir la pestaña o
+ * volver a una combinación ya vista no repite la enumeración exacta, aunque los arrays sean nuevos.
+ */
 export function computeLabResults(
+  cards: CardEntry[],
+  patterns: HandPattern[],
+  baseHandSize: number,
+): LabComputation {
+  const key = JSON.stringify([baseHandSize, cards, patterns])
+  const cached = computationCache.get(key)
+
+  if (cached) {
+    // Se reinserta para mantener el orden de uso (el más viejo es el primero del Map).
+    computationCache.delete(key)
+    computationCache.set(key, cached)
+    return cached
+  }
+
+  const computation = computeLabResultsUncached(cards, patterns, baseHandSize)
+  computationCache.set(key, computation)
+
+  if (computationCache.size > MAX_CACHED_COMPUTATIONS) {
+    computationCache.delete(computationCache.keys().next().value as string)
+  }
+
+  return computation
+}
+
+function computeLabResultsUncached(
   cards: CardEntry[],
   patterns: HandPattern[],
   baseHandSize: number,
