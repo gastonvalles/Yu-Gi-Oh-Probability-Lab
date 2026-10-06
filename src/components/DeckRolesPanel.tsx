@@ -276,7 +276,7 @@ function ClassificationModal({
       isOpen={isOpen}
       onClose={onClose}
       footer={footer}
-      size="editor"
+      size="sheet"
       bare={hideHeader}
       kicker={kicker}
       title={title}

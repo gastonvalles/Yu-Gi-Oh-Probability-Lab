@@ -51,7 +51,7 @@ export function ClassificationEditor({
 
       <div className="grid min-w-0 content-start gap-4">
         <header className="flex items-start gap-3 pr-10">
-          <div className="aspect-[268/391] w-[4.25rem] shrink-0 overflow-hidden rounded-[0.35rem] bg-input min-[1101px]:hidden">
+          <div className="aspect-[268/391] w-[5.25rem] shrink-0 overflow-hidden rounded-[0.35rem] bg-input min-[1101px]:hidden">
             <CardArt
               remoteUrl={card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null}
               name={card.name}
@@ -64,7 +64,7 @@ export function ClassificationEditor({
             <p className={KICKER}>
               Carta {formatInteger(position)} de {formatInteger(total)}
             </p>
-            <h3 className="m-0 text-[1.3rem] leading-[1.08] tracking-[-0.01em] text-foreground [overflow-wrap:anywhere] min-[1101px]:text-[1.9rem]">
+            <h3 className="m-0 text-[1.45rem] leading-[1.05] tracking-[-0.01em] text-foreground [overflow-wrap:anywhere] min-[1101px]:text-[1.9rem]">
               {card.name}
             </h3>
             <p className="m-0 text-[0.8rem] leading-tight text-muted min-[1101px]:text-[0.9rem]">
@@ -97,7 +97,7 @@ export function ClassificationEditor({
 
         <section className="grid gap-2" aria-label="Origen">
           <p className={KICKER}>¿Dónde encaja en tu plan?</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid gap-1.5 min-[1101px]:grid-cols-3 min-[1101px]:gap-2">
             {CARD_ORIGIN_DEFINITIONS.map((definition) => {
               const active = selectedOrigin === definition.key.value
               const muted = selectedOrigin !== null && !active
@@ -110,23 +110,20 @@ export function ClassificationEditor({
                   title={ORIGIN_HELP_TEXT[definition.key.value]}
                   className={cx(
                     originOption({ active, muted }),
-                    'grid min-h-12 content-center justify-items-start gap-1 rounded-panel px-2.5 py-2 text-left min-[1101px]:min-h-[4.25rem]',
+                    'grid min-h-12 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2.5 gap-y-0.5 rounded-panel px-3 py-2 text-left min-[1101px]:min-h-[4.25rem] min-[1101px]:grid-cols-1 min-[1101px]:content-center min-[1101px]:justify-items-start',
                   )}
                   style={getClassificationStyle(definition.key)}
                   onClick={() => onSetOrigin(ygoprodeckId, definition.key.value)}
                 >
-                  <span className="flex min-w-0 items-center gap-1.5">
+                  <span className="flex min-w-0 items-center gap-2 min-[1101px]:contents">
                     <span className={ROLE_REFERENCE_MARK} />
-                    <strong className="truncate text-[0.82rem] leading-none text-foreground">{definition.shortLabel ?? definition.label}</strong>
+                    <strong className="truncate text-[0.9rem] leading-none text-foreground min-[1101px]:text-[0.82rem]">{definition.shortLabel ?? definition.label}</strong>
                   </span>
-                  <span className="hidden text-[0.64rem] leading-[1.15] text-muted min-[1101px]:block">{ORIGIN_BLURB_TEXT[definition.key.value]}</span>
+                  <span className="min-w-0 text-[0.7rem] leading-[1.2] text-muted max-[1100px]:text-right min-[1101px]:text-[0.64rem]">{ORIGIN_BLURB_TEXT[definition.key.value]}</span>
                 </button>
               )
             })}
           </div>
-          <p className="m-0 min-h-[2.1em] text-[0.74rem] leading-[1.3] text-muted min-[1101px]:hidden">
-            {selectedOrigin ? ORIGIN_HELP_TEXT[selectedOrigin] : 'Elegí uno: define con qué checks cuenta esta carta.'}
-          </p>
         </section>
 
         <section className="grid gap-3" aria-label="Roles">

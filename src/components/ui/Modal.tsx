@@ -11,7 +11,7 @@ import { surface } from './surfaces'
  * 'sm' es para avisos y confirmaciones; en mobile los de contenido ocupan toda la pantalla.
  * 'table' es la mesa de práctica (angosta, como en el celu) y 'editor' el de clasificación de una carta.
  */
-export type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'table' | 'editor'
+export type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'table' | 'editor' | 'sheet'
 
 const FULL_HEIGHT_MOBILE = 'max-sm:h-[calc(100dvh-1rem)]'
 
@@ -21,6 +21,7 @@ const SIZE_CLASS: Record<ModalSize, string> = {
   lg: `w-[min(60rem,100%)] h-[min(44rem,calc(100dvh-2rem))] ${FULL_HEIGHT_MOBILE}`,
   xl: `w-[min(70rem,100%)] h-[min(46rem,calc(100dvh-2rem))] ${FULL_HEIGHT_MOBILE}`,
   table: `w-[min(40rem,100%)] h-[min(46rem,calc(100dvh-2rem))] ${FULL_HEIGHT_MOBILE}`,
+  sheet: 'w-[min(70rem,100%)] h-[min(46rem,calc(100dvh-2rem))] min-[1101px]:h-[min(33rem,calc(100dvh-2rem))] max-sm:h-[min(94dvh,52rem)] max-sm:w-full max-sm:rounded-b-none max-sm:border-b-0',
   editor: `w-[min(70rem,100%)] h-[min(46rem,calc(100dvh-2rem))] min-[1101px]:h-[min(33rem,calc(100dvh-2rem))] ${FULL_HEIGHT_MOBILE}`,
 }
 
@@ -90,7 +91,7 @@ export function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-180 grid place-items-center bg-background/78 p-2 sm:p-4"
+      className={cx('fixed inset-0 z-180 grid place-items-center bg-background/78 p-2 sm:p-4', size === 'sheet' && 'max-sm:place-items-end max-sm:p-0')}
       onClick={dismissible ? onClose : undefined}
     >
       <div
@@ -99,7 +100,9 @@ export function Modal({
         aria-labelledby={hasHeader && title ? titleId : undefined}
         aria-label={hasHeader && title ? undefined : ariaLabel}
         className={cx(
-          'relative flex max-h-[calc(100dvh-1rem)] min-h-0 flex-col overflow-hidden p-0 shadow-[0_32px_80px_rgba(0,0,0,0.48)] animate-dialog-enter motion-reduce:animate-none sm:max-h-[calc(100dvh-2rem)]',
+          'relative flex max-h-[calc(100dvh-1rem)] min-h-0 flex-col overflow-hidden p-0 shadow-[0_32px_80px_rgba(0,0,0,0.48)] motion-reduce:animate-none',
+          size === 'sheet' ? 'max-sm:animate-sheet-up sm:animate-dialog-enter' : 'animate-dialog-enter',
+          'sm:max-h-[calc(100dvh-2rem)]',
           surface.panel,
           SIZE_CLASS[size],
         )}
