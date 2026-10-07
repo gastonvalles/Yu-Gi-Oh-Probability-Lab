@@ -138,15 +138,19 @@ export function buildCandidates(culprit: Culprit, cards: CardEntry[], checks: Ha
   ]
 }
 
+/**
+ * Valor de la vista: 1º o 2º leen su lado; el promedio usa los turnos en los que la regla aplica
+ * (una regla "Solo 2º" no existe yendo 1º), igual que el resultado del Lab.
+ */
 const pick = (odds: LabOdds | null, view: TurnView, read: (side: 'first' | 'second') => number | undefined): number | null => {
-  const first = odds ? read('first') : undefined
-  const second = odds ? read('second') : undefined
-
-  if (first === undefined || second === undefined) {
+  if (!odds) {
     return null
   }
 
-  return view === 'first' ? first : view === 'second' ? second : (first + second) / 2
+  const sides = view === 'average' ? (['first', 'second'] as const) : ([view] as const)
+  const values = sides.map(read).filter((value): value is number => value !== undefined)
+
+  return values.length > 0 ? values.reduce((total, value) => total + value, 0) / values.length : null
 }
 
 export function toOutcomes(culprit: Culprit, view: TurnView, evaluated: Evaluation[]): Outcome[] {
