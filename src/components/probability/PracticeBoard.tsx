@@ -8,7 +8,7 @@ import { RULE_COLOR, VERDICT_COLOR } from './practice-styles'
 const RULE_BUTTON =
   'min-h-10 max-w-full rounded-full border border-[color-mix(in_srgb,var(--rule-color)_55%,transparent)] bg-[color-mix(in_srgb,var(--rule-color)_12%,transparent)] px-4 text-left text-body font-semibold text-foreground transition-[background,box-shadow,transform] duration-150 [overflow-wrap:anywhere] [-webkit-tap-highlight-color:transparent] animate-rule-in active:scale-[0.96] aria-pressed:bg-[color-mix(in_srgb,var(--rule-color)_32%,transparent)] aria-pressed:shadow-[0_0_18px_color-mix(in_srgb,var(--rule-color)_45%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-hover min-[820px]:min-h-11 min-[820px]:text-lead motion-reduce:animate-none motion-reduce:transition-none'
 const EXPLAIN_TEXT = 'm-0 text-body text-white/92 [overflow-wrap:anywhere]'
-const ODDS_TEXT = 'm-0 col-span-full text-small text-white/62 [overflow-wrap:anywhere]'
+const ODDS_TEXT = 'm-0 col-span-full text-body text-white/62 [overflow-wrap:anywhere]'
 
 /** Se exporta desde acá para quien ya lo importaba (vive en lab-copy). */
 export { formatOdds }
@@ -89,7 +89,7 @@ function RuleExplanation({ match, caseIndex, odds }: { match: PracticeHandMatch;
       <p className={EXPLAIN_TEXT}>{condition}</p>
       {match.cases.length > 1 ? (
         <span
-          className="rounded-full bg-[color-mix(in_srgb,var(--rule-color)_22%,transparent)] px-[0.6rem] py-[0.1rem] text-small font-extrabold tabular-nums"
+          className="rounded-full bg-[color-mix(in_srgb,var(--rule-color)_22%,transparent)] px-[0.6rem] py-[0.1rem] text-body font-extrabold tabular-nums"
           aria-label={`Caso ${caseIndex + 1} de ${match.cases.length}`}>
           {caseIndex + 1}/{match.cases.length}
         </span>
@@ -100,7 +100,7 @@ function RuleExplanation({ match, caseIndex, odds }: { match: PracticeHandMatch;
           {cards.map((card) => (
             <li
               key={card.cardId}
-              className="rounded-full bg-[color-mix(in_srgb,var(--rule-color)_18%,transparent)] px-[0.65rem] py-[0.15rem] text-caption font-semibold"
+              className="rounded-full bg-[color-mix(in_srgb,var(--rule-color)_18%,transparent)] px-[0.65rem] py-[0.15rem] text-micro font-semibold"
             >{card.copies > 1 ? `${card.name} ×${card.copies}` : card.name}</li>
           ))}
         </ul>

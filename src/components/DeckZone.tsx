@@ -193,7 +193,7 @@ export const DeckZone = memo(function DeckZone({
                 {zoneTypeCounts.map((entry) => (
                   <span
                     key={entry.kind}
-                    className="inline-flex items-center gap-1.5 text-small font-semibold text-muted tabular-nums"
+                    className="inline-flex items-center gap-1.5 text-body font-semibold text-muted tabular-nums"
                     title={`${formatInteger(entry.count)} ${entry.label}`}
                   >
                     <span className={cx('size-2.5 rounded-tag', ZONE_TYPE_SWATCH[entry.kind])} aria-hidden="true" />
@@ -244,7 +244,7 @@ export const DeckZone = memo(function DeckZone({
               ))
             : cards.map((card, index) => renderDeckCard(card, index))}
           {cards.length === 0 ? (
-            <p className="pointer-events-none m-0 col-span-full grid min-h-14 w-full place-items-center p-2 text-small text-soft">
+            <p className="pointer-events-none m-0 col-span-full grid min-h-14 w-full place-items-center p-2 text-body text-soft">
               Arrastrá cartas acá
             </p>
           ) : null}
@@ -260,7 +260,7 @@ export const DeckZone = memo(function DeckZone({
           <span className="size-2.5 shrink-0 rounded-full" style={{ background: zoneStyle.dot }} aria-hidden="true" />
           <div className="min-w-0">
             <h3 className="m-0 wrap-anywhere text-lead font-semibold leading-tight text-foreground">{title}</h3>
-            <p className="m-0 wrap-anywhere text-small text-muted">{headerSummary}</p>
+            <p className="m-0 wrap-anywhere text-body text-muted">{headerSummary}</p>
           </div>
         </div>
         <Button

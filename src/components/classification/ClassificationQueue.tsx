@@ -106,7 +106,7 @@ const QueueTile = memo(function QueueTile({
 
       <div className="grid min-w-0 gap-1.5">
         <div className="flex min-w-0 items-center justify-between gap-2">
-          <strong className="truncate text-small font-semibold leading-tight text-foreground">{card.name}</strong>
+          <strong className="truncate text-body font-semibold leading-tight text-foreground">{card.name}</strong>
           <CopiesBadge copies={card.copies} />
         </div>
 

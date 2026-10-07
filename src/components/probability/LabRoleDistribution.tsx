@@ -2,6 +2,7 @@ import { DISTRIBUTION_BUCKETS, type RoleDistribution, type RoleDistributionKey }
 import { formatInteger, formatShortPercent } from '../../app/utils'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
+import { ProgressRing } from '../ui/ProgressRing'
 import { LabSection } from './LabSection'
 import { LAB_FOOTNOTE } from './lab-styles'
 
@@ -11,6 +12,14 @@ const ROLE_RGB: Record<RoleDistributionKey, string> = {
   extender: '[--lab-role-rgb:var(--extender-rgb)]',
   interaction: '[--lab-role-rgb:var(--handtrap-rgb)]',
   brick: '[--lab-role-rgb:var(--brick-rgb)]',
+}
+
+/** Color del anillo de cada rol (los mismos que arriba). */
+const ROLE_RING: Record<RoleDistributionKey, string> = {
+  starter: 'var(--accent-rgb)',
+  extender: 'var(--extender-rgb)',
+  interaction: 'var(--handtrap-rgb)',
+  brick: 'var(--brick-rgb)',
 }
 
 /** Intensidad según cuántas copias se roban (0, 1, 2, 3+). */
@@ -38,14 +47,15 @@ export function LabRoleDistribution({ distributions, onOpenRole }: LabRoleDistri
       defaultOpenOnMobile={false}
       className="order-4 min-[1101px]:col-span-full"
     >
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-caption text-muted" aria-hidden="true">
-        <span>Copias robadas:</span>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-micro text-muted" aria-hidden="true">
+        <span>Barras: copias robadas</span>
         {DISTRIBUTION_BUCKETS.map((bucket, index) => (
           <span key={bucket} className="inline-flex items-center gap-1.5">
             <span className={cx('size-2.5 rounded-tag bg-foreground/80', BUCKET_SWATCH[index])} />
             {bucket}
           </span>
         ))}
+        <span className="min-[640px]:ml-auto">Anillo: robar 1 o más</span>
       </div>
 
       <ul className="m-0 grid list-none gap-1 p-0">
@@ -54,7 +64,7 @@ export function LabRoleDistribution({ distributions, onOpenRole }: LabRoleDistri
             <button
               type="button"
               className={cx(
-                'group grid w-full grid-cols-[minmax(5.5rem,8rem)_minmax(0,1fr)_minmax(3.6rem,auto)_auto] items-center gap-3 rounded-control border border-transparent px-3 py-2 text-left transition-[background-color,border-color] duration-150 focus-visible:outline-none focus-visible:shadow-focus enabled:hover:bg-white/4 disabled:opacity-50',
+                'group grid w-full grid-cols-[minmax(5.5rem,8rem)_minmax(0,1fr)_auto_auto] items-center gap-3 rounded-control border border-transparent px-3 py-2 text-left transition-[background-color,border-color] duration-150 focus-visible:outline-none focus-visible:shadow-focus enabled:hover:bg-white/4 disabled:opacity-50',
                 ROLE_RGB[distribution.key],
               )}
               disabled={distribution.copies === 0}
@@ -65,7 +75,7 @@ export function LabRoleDistribution({ distributions, onOpenRole }: LabRoleDistri
                 <span className="size-2.5 shrink-0 rounded-full bg-[rgb(var(--lab-role-rgb))]" aria-hidden="true" />
                 <span className="grid min-w-0">
                   <strong className="truncate text-body font-semibold text-foreground">{distribution.label}</strong>
-                  <small className="text-caption text-muted">{formatInteger(distribution.copies)} copias</small>
+                  <small className="text-micro text-muted">{formatInteger(distribution.copies)} copias</small>
                 </span>
               </span>
               <span className="flex h-6 gap-px overflow-hidden rounded-tag bg-white/6" aria-hidden="true">
@@ -83,10 +93,7 @@ export function LabRoleDistribution({ distributions, onOpenRole }: LabRoleDistri
                   </span>
                 ))}
               </span>
-              <span className="grid justify-items-end tabular-nums">
-                <strong className="text-lead font-bold text-foreground">{formatShortPercent(distribution.atLeastOne)}</strong>
-                <small className="text-caption text-muted">1 o más</small>
-              </span>
+              <ProgressRing value={distribution.atLeastOne} size={44} color={ROLE_RING[distribution.key]} label={`${distribution.label}: ${formatShortPercent(distribution.atLeastOne)} con 1 o más`} />
               <Icon name="chevron-right" size={16} className="text-soft transition-colors group-enabled:group-hover:text-foreground" />
             </button>
           </li>

@@ -60,7 +60,7 @@ export function LogicSelector({
           onClick={() => actions.setPatternMatchMode(patternId, 'at-least')}
         />
       </div>
-      <p className="text-muted m-0 text-small">
+      <p className="text-muted m-0 text-body">
         {getModeDescription(currentMode, minimumConditionMatches)}
       </p>
     </div>

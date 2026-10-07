@@ -99,7 +99,7 @@ export function PatternEditorDrawer({
               pattern={pattern}
             />
           ) : (
-            <p className={`${surface.card} m-0 px-3 py-3 text-small text-muted`}>Preparando el editor…</p>
+            <p className={`${surface.card} m-0 px-3 py-3 text-body text-muted`}>Preparando el editor…</p>
           )}
         </div>
 
@@ -109,7 +109,7 @@ export function PatternEditorDrawer({
               Eliminar regla
             </Button>
           ) : (
-            <span className="text-muted text-caption">El análisis se actualiza al guardar.</span>
+            <span className="text-muted text-micro">El análisis se actualiza al guardar.</span>
           )}
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" onClick={onClose}>

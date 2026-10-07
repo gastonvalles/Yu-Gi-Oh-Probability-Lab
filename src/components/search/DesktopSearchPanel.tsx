@@ -30,7 +30,7 @@ interface DesktopSearchPanelProps {
   onResultPointerDown: (event: ReactPointerEvent<HTMLElement>, apiCardId: number) => void
 }
 
-const TYPE_BUTTON = `${choiceChip} px-3.5 py-1.5 text-small leading-none`
+const TYPE_BUTTON = `${choiceChip} px-3.5 py-1.5 text-body leading-none`
 
 const RESULTS_GRID = 'grid min-h-0 grid-cols-2 content-start gap-2 p-2'
 
@@ -273,13 +273,13 @@ export function DesktopSearchPanel({
                       </div>
 
                       <div className="grid min-w-0 content-start gap-0.5">
-                        <strong className="text-small font-semibold leading-tight wrap-anywhere text-foreground">
+                        <strong className="text-body font-semibold leading-tight wrap-anywhere text-foreground">
                           {card.name}
                         </strong>
-                        <p className="m-0 text-caption wrap-anywhere text-muted">
+                        <p className="m-0 text-micro wrap-anywhere text-muted">
                           {buildClassicCardPrimaryLine(card)}
                         </p>
-                        <p className="m-0 text-caption wrap-anywhere text-muted">
+                        <p className="m-0 text-micro wrap-anywhere text-muted">
                           {buildClassicCardStatLine(card)}
                         </p>
                       </div>

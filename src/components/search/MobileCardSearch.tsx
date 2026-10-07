@@ -179,7 +179,7 @@ export function MobileCardSearch({
             <button
               key={option.value}
               type="button"
-              className={`${choiceChip} min-h-9 shrink-0 px-4 text-small`}
+              className={`${choiceChip} min-h-9 shrink-0 px-4 text-body`}
               aria-pressed={filters.quickType === option.value}
               onClick={() => actions.onFilterChange({ quickType: option.value })}
             >
@@ -289,7 +289,7 @@ export function MobileCardSearch({
       )}
 
       <footer className="flex items-center gap-3 border-t border-border-subtle px-3 pb-[max(0.6rem,env(safe-area-inset-bottom))] pt-2">
-        <p className="m-0 min-w-0 flex-1 text-small leading-tight text-muted" aria-live="polite">
+        <p className="m-0 min-w-0 flex-1 text-body leading-tight text-muted" aria-live="polite">
           {lastAdded ? (
             <span className="text-foreground">Agregaste {lastAdded.name}</span>
           ) : (
@@ -349,10 +349,10 @@ function MobileResultRow({
         </span>
         <span className="grid min-w-0 gap-0.5 text-left">
           <strong className="text-body font-semibold leading-tight wrap-anywhere text-foreground">{card.name}</strong>
-          <span className="text-caption leading-tight wrap-anywhere text-muted">
+          <span className="text-micro leading-tight wrap-anywhere text-muted">
             {buildCompactSearchDescription(card)}
           </span>
-          {formatLimitLabel ? <span className="text-caption text-soft">{formatLimitLabel}</span> : null}
+          {formatLimitLabel ? <span className="text-micro text-soft">{formatLimitLabel}</span> : null}
         </span>
       </button>
 

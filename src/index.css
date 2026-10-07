@@ -1,37 +1,63 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'Lexend Deca';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/lexend-deca-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Lexend Deca';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./fonts/lexend-deca-latin-600-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Lexend Deca';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/lexend-deca-latin-700-normal.woff2') format('woff2');
+}
+
 @theme {
-  /* Tipografía: 8 pasos, cada uno con su interlineado. Sin tamaños sueltos en los componentes. */
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /* Tipografía: Lexend Deca y 6 tamaños (11 · 14 · 19 · 24 · 33 · 44), cada uno con su interlineado. Sin tamaños sueltos en los componentes. */
+  --font-sans: 'Lexend Deca', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --text-micro: 0.6875rem;
   --text-micro--line-height: 1rem;
-  --text-caption: 0.75rem;
-  --text-caption--line-height: 1.0625rem;
-  --text-small: 0.8125rem;
-  --text-small--line-height: 1.25rem;
   --text-body: 0.875rem;
   --text-body--line-height: 1.375rem;
-  --text-lead: 1rem;
-  --text-lead--line-height: 1.5rem;
-  --text-heading: 1.125rem;
-  --text-heading--line-height: 1.5rem;
+  --text-lead: 1.1875rem;
+  --text-lead--line-height: 1.625rem;
   --text-title: 1.5rem;
-  --text-title--line-height: 1.75rem;
-  --text-display: 3rem;
+  --text-title--line-height: 1.875rem;
+  --text-stat: 2.0625rem;
+  --text-stat--line-height: 1.15;
+  --text-display: 2.75rem;
   --text-display--line-height: 1;
 
-  /* Radios: etiqueta · control (botones, campos) · tarjeta · panel (shell, modal) · píldora. */
-  --radius-tag: 0.375rem;
+  /* Radios: etiqueta (8) · control (12: chips, botones chicos, campos) · tarjeta (16) · panel (24: tarjeta destacada, barra inferior, diálogos) · píldora. */
+  --radius-tag: 0.5rem;
   --radius-control: 0.75rem;
   --radius-card: 1rem;
-  --radius-panel: 1.25rem;
+  --radius-panel: 1.5rem;
 
   /* Elevación: tres niveles (tarjeta, flotante, overlay) y el brillo de marca. */
   --shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 10px 28px rgb(0 0 0 / 0.26);
   --shadow-raised: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 14px 36px rgb(0 0 0 / 0.34);
   --shadow-overlay: 0 24px 64px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(255 255 255 / 0.06);
-  --shadow-brand: 0 0 0 1px rgb(var(--primary-rgb) / 0.4), 0 10px 32px rgb(var(--primary-rgb) / 0.22);
+  --shadow-brand: 0 10px 24px rgb(var(--primary-rgb) / 0.42);
   --shadow-focus: 0 0 0 2px var(--background), 0 0 0 4px rgb(var(--primary-rgb) / 0.6);
+
+  /* Margen lateral del contenido en mobile (22 px, como el diseño). */
+  --spacing-gutter: 1.375rem;
+
+  /* Lavanda clara del diseño: botón y anillo sobre una tarjeta violeta. */
+  --color-lavender-light: #eee9ff;
 
   /* Ancho máximo del contenido en pantallas grandes (el builder usa todo el ancho). */
   --container-content: 80rem;
@@ -301,6 +327,7 @@
   --color-surface-raised: var(--surface-raised);
   --color-surface-hover: var(--surface-hover);
   --color-primary-soft: var(--primary-soft);
+  --color-lavender: var(--lavender);
   --color-info: var(--info);
   --color-success-soft: var(--success-soft);
   --color-warning-soft: var(--warning-soft);
@@ -329,11 +356,11 @@
     --border-rgb: 31 31 43;
     --input: #1a1a24;
     --input-hover: #222232;
-    --ring: #9b00ff;
-    --primary: #9b00ff;
-    --primary-rgb: 155 0 255;
-    --primary-hover: #b026ff;
-    --primary-hover-rgb: 176 38 255;
+    --ring: #7a5cf0;
+    --primary: #5f33e1;
+    --primary-rgb: 95 51 225;
+    --primary-hover: #7452f0;
+    --primary-hover-rgb: 116 82 240;
     --primary-foreground: #ffffff;
     --accent: #00ffa3;
     --accent-rgb: 0 255 163;
@@ -342,36 +369,39 @@
     --destructive: #ef4444;
     --destructive-rgb: 239 68 68;
     --destructive-foreground: #ffffff;
-    --selected-background: rgba(155, 0, 255, 0.15);
+    --selected-background: rgba(95, 51, 225, 0.35);
 
     /* Superficies: lienzo < tarjeta < elevada < hover. */
     --surface-raised: #181824;
     --surface-hover: #212133;
     --border-subtle: rgb(255 255 255 / 0.07);
     /* Violeta legible como texto sobre fondo oscuro (el de marca queda para rellenos). */
-    --primary-soft: #c9a0ff;
-    --primary-soft-rgb: 201 160 255;
-    --info: #38bdf8;
-    --info-rgb: 56 189 248;
+    --primary-soft: #ab94ff;
+    --primary-soft-rgb: 171 148 255;
+    /* Lavanda oscura: el fondo de chips, botones secundarios y barras de navegación (la lavanda del diseño, sobre oscuro). */
+    --lavender: #1d1740;
+    --lavender-rgb: 29 23 64;
+    --info: #0087ff;
+    --info-rgb: 0 135 255;
     /* Variantes claras de cada tono: texto e íconos sobre fondos teñidos (más contraste que el color base). */
     --success-soft: #4df0b4;
-    --warning-soft: #fbbf24;
+    --warning-soft: #ffb37a;
     --danger-soft: #fca5a5;
-    --info-soft: #7dd3fc;
+    --info-soft: #7cc2ff;
 
-    --starter: #9b00ff;
+    --starter: #7452f0;
     --extender: #a855f7;
     --extender-rgb: 168 85 247;
     --brick: #ef4444;
     --brick-rgb: 239 68 68;
     --handtrap: #3b82f6;
     --handtrap-rgb: 59 130 246;
-    --boardbreaker: #f59e0b;
+    --boardbreaker: #ff9142;
     --floodgate: #a855f7;
     --success: #00ffa3;
     --success-rgb: 0 255 163;
-    --warning: #f59e0b;
-    --warning-rgb: 245 158 11;
+    --warning: #ff9142;
+    --warning-rgb: 255 145 66;
     --danger: #ef4444;
     --danger-rgb: 239 68 68;
 
@@ -382,11 +412,11 @@
     --bg-canvas: var(--background);
     --bg-canvas-2: var(--secondary);
     --border-strong: rgb(var(--primary-rgb) / 0.58);
-    --primary-muted: rgb(var(--primary-rgb) / 0.16);
-    --radius-tag: 0.375rem;
+    --primary-muted: rgb(var(--primary-rgb) / 0.3);
+    --radius-tag: 0.5rem;
     --radius-control: 0.75rem;
     --radius-card: 1rem;
-    --radius-panel: 1.25rem;
+    --radius-panel: 1.5rem;
     --radius-chip: 999px;
     --deck-mode-topbar-height: 3.85rem;
     --deck-mobile-step-nav-height: 4.3rem;
@@ -420,10 +450,23 @@
     overflow-x: clip;
     min-width: 0;
     width: 100%;
-    background:
-      radial-gradient(circle at top, var(--primary-muted), transparent 28%),
-      linear-gradient(180deg, var(--bg-canvas), var(--bg-canvas-2));
     color: var(--text-main);
+  }
+
+  /* El fondo se pinta una sola vez (en <html>, que se propaga al lienzo): manchas tenues de menta, amarillo y violeta sobre el negro. */
+  html {
+    background:
+      radial-gradient(46rem 26rem at -6% -8%, rgb(0 255 163 / 0.06), transparent 62%),
+      radial-gradient(44rem 24rem at 106% -6%, rgb(255 205 46 / 0.05), transparent 62%),
+      radial-gradient(60rem 22rem at 50% -8%, rgb(var(--primary-rgb) / 0.3), transparent 70%),
+      radial-gradient(56rem 30rem at 50% 118%, rgb(var(--primary-rgb) / 0.24), transparent 64%),
+      linear-gradient(180deg, var(--bg-canvas), #101018);
+    background-attachment: fixed;
+  }
+
+  body,
+  #app {
+    background: transparent;
   }
 
   html,

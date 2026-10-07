@@ -31,8 +31,8 @@ export function Callout({ tone = 'info', icon, title, children, action, classNam
         <Icon name={icon ?? DEFAULT_ICON[tone]} size={14} strokeWidth={2} />
       </span>
       <div className="grid min-w-0 flex-1 gap-0.5">
-        {title ? <strong className="text-small font-semibold text-foreground">{title}</strong> : null}
-        {children ? <div className="text-small text-muted [&_strong]:font-semibold [&_strong]:text-foreground">{children}</div> : null}
+        {title ? <strong className="text-body font-semibold text-foreground">{title}</strong> : null}
+        {children ? <div className="text-body text-muted [&_strong]:font-semibold [&_strong]:text-foreground">{children}</div> : null}
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
     </div>

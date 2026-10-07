@@ -38,7 +38,7 @@ export function LabScoreCard({ results, view, isRecalculating }: LabScoreCardPro
     <Card
       tone={tone}
       padding="lg"
-      className="order-1 flex flex-col gap-4 transition-opacity duration-150 aria-busy:opacity-75 min-[1101px]:col-span-5"
+      className="order-1 flex flex-col gap-4 transition-opacity duration-150 aria-busy:opacity-75 min-[1101px]:col-span-5 min-[1101px]:col-start-1"
       aria-busy={isRecalculating}
     >
       <div className="flex items-center justify-between gap-2">
@@ -48,7 +48,7 @@ export function LabScoreCard({ results, view, isRecalculating }: LabScoreCardPro
         </Badge>
       </div>
 
-      <strong className="text-[clamp(3rem,10vw,4.25rem)] font-extrabold leading-none tracking-[-0.04em] text-foreground tabular-nums">
+      <strong className="text-stat font-bold tracking-[-0.03em] min-[1101px]:text-display text-foreground tabular-nums">
         {formatPercent(current.cleanProbability)}
       </strong>
 
@@ -88,7 +88,7 @@ export function LabScoreCard({ results, view, isRecalculating }: LabScoreCardPro
 function Fact({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid gap-0.5 rounded-control border border-border-subtle bg-black/25 px-3 py-2">
-      <dt className="text-caption text-muted">{label}</dt>
+      <dt className="text-micro text-muted">{label}</dt>
       <dd className="m-0 text-lead font-bold text-foreground tabular-nums">{value}</dd>
     </div>
   )

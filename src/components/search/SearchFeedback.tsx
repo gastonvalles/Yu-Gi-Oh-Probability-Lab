@@ -9,15 +9,15 @@ type FeedbackLayout = 'desktop' | 'mobile'
 
 const EMPTY_TITLE = 'm-0 text-body font-semibold text-foreground'
 const EMPTY_TEXT: Record<FeedbackLayout, string> = {
-  desktop: 'm-0 max-w-[30rem] text-small text-muted [&_strong]:text-foreground',
+  desktop: 'm-0 max-w-[30rem] text-body text-muted [&_strong]:text-foreground',
   mobile: 'm-0 max-w-[30rem] text-body text-muted [&_strong]:text-foreground',
 }
 const EMPTY_ACTION: Record<FeedbackLayout, string> = {
-  desktop: 'min-h-9 text-small',
+  desktop: 'min-h-9 text-body',
   mobile: 'min-h-10 text-body',
 }
 const RECENT_CHIP: Record<FeedbackLayout, string> = {
-  desktop: 'min-h-8 text-small',
+  desktop: 'min-h-8 text-body',
   mobile: 'min-h-10 text-body',
 }
 const EMPTY_ACTION_BASE = `${choiceChip} px-4 text-foreground`
@@ -46,7 +46,7 @@ export function SearchResultsToolbar({
         layout === 'mobile' ? '-mx-3 -mt-2 mb-2 px-3 py-2' : 'px-3 py-2',
       )}
     >
-      <p className="m-0 min-w-0 truncate text-caption text-muted [&_strong]:text-foreground" aria-live="polite">
+      <p className="m-0 min-w-0 truncate text-micro text-muted [&_strong]:text-foreground" aria-live="polite">
         <strong>
           {formatInteger(count)}
           {hasMore ? '+' : ''}
@@ -59,7 +59,7 @@ export function SearchResultsToolbar({
         <select
           className={cx(
             'cursor-pointer rounded-full border border-border-subtle bg-white/5 px-3 font-semibold text-foreground [color-scheme:dark] focus-visible:outline-none focus-visible:shadow-focus',
-            layout === 'mobile' ? 'min-h-9 text-small' : 'min-h-8 text-caption',
+            layout === 'mobile' ? 'min-h-9 text-body' : 'min-h-8 text-micro',
           )}
           value={sortOrder} onChange={(event) => onSortOrderChange(event.target.value as SearchSortOrder)}>
           {SEARCH_SORT_OPTIONS.map((option) => (
@@ -162,7 +162,7 @@ export function SearchStart({
         <section className="grid w-full max-w-[30rem] gap-2" aria-label="Búsquedas recientes">
           <div className="flex items-center justify-between text-micro font-semibold uppercase tracking-[0.08em] text-soft">
             <span>Recientes</span>
-            <button type="button" className="rounded-tag border-0 bg-transparent px-1 text-caption normal-case tracking-normal text-muted hover:text-foreground focus-visible:outline-none focus-visible:shadow-focus" onClick={onClearRecent}>
+            <button type="button" className="rounded-tag border-0 bg-transparent px-1 text-micro normal-case tracking-normal text-muted hover:text-foreground focus-visible:outline-none focus-visible:shadow-focus" onClick={onClearRecent}>
               Borrar
             </button>
           </div>

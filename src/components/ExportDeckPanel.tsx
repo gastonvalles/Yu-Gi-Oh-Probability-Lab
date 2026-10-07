@@ -173,7 +173,7 @@ export function ExportDeckPanel({
                       <span className="text-foreground">{section.label}</span>
                       <span className="tabular-nums">{section.total}</span>
                     </h3>
-                    <ul className="m-0 grid list-none gap-0.5 p-0 text-small">
+                    <ul className="m-0 grid list-none gap-0.5 p-0 text-body">
                       {section.entries.map((entry) => (
                         <li key={entry.name} className="grid grid-cols-[1.5rem_minmax(0,1fr)] gap-1.5">
                           <span className="text-muted text-right tabular-nums">{entry.count}</span>

@@ -4,7 +4,7 @@ import { Badge } from '../ui/Badge'
 import { cx } from '../ui/cx'
 import type { DraftImpact } from './use-draft-impact'
 
-const DRAFT_BOX = 'm-0 grid gap-1.5 rounded-control border border-border-subtle bg-black/25 px-3 py-2.5 text-small text-muted'
+const DRAFT_BOX = 'm-0 grid gap-1.5 rounded-control border border-border-subtle bg-black/25 px-3 py-2.5 text-body text-muted'
 const MIN_VISIBLE_CHANGE = 0.0005
 
 /** Estadísticas en vivo del borrador (se actualizan mientras editás, antes de guardar). */
@@ -24,7 +24,7 @@ export function DraftImpactSummary({ impact, kind }: { impact: DraftImpact | nul
       aria-live="polite"
     >
       <div className="flex flex-wrap items-baseline gap-2">
-        <strong className="text-heading text-foreground tabular-nums">{rule.main === null ? '—' : formatShortPercent(rule.main)}</strong>
+        <strong className="text-lead text-foreground tabular-nums">{rule.main === null ? '—' : formatShortPercent(rule.main)}</strong>
         <span>
           de las manos {rule.scope === 'first' ? 'yendo 1º ' : rule.scope === 'second' ? 'yendo 2º ' : ''}
           {kind === 'opening' ? 'tienen esta salida' : 'tienen este problema'}

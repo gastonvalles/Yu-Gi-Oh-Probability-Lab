@@ -127,11 +127,11 @@ export function Modal({
               <div className="grid min-w-0 gap-0.5">
                 {kicker ? <p className={cx('m-0', overline)}>{kicker}</p> : null}
                 {title ? (
-                  <h3 id={titleId} className="m-0 text-lead font-semibold tracking-[-0.01em] text-foreground [overflow-wrap:anywhere] min-[1101px]:text-heading">
+                  <h3 id={titleId} className="m-0 text-lead font-semibold tracking-[-0.01em] text-foreground [overflow-wrap:anywhere] min-[1101px]:text-lead">
                     {title}
                   </h3>
                 ) : null}
-                {subtitle ? <p className="m-0 text-small text-muted">{subtitle}</p> : null}
+                {subtitle ? <p className="m-0 text-body text-muted">{subtitle}</p> : null}
               </div>
             </div>
             <div className="flex flex-none items-center gap-1">

@@ -16,7 +16,7 @@ const STATUS_DOT: Record<DeckWorkflowStepTone, string> = {
 }
 
 const TAB_BASE =
-  'group flex min-w-0 items-center gap-2.5 rounded-control px-2.5 py-1.5 text-left transition-[background-color,color] duration-150 focus-visible:outline-none focus-visible:shadow-focus motion-reduce:transition-none'
+  'group flex min-w-0 items-center gap-2.5 rounded-control px-3 py-1.5 text-left transition-[background-color,color] duration-150 focus-visible:outline-none focus-visible:shadow-focus motion-reduce:transition-none'
 
 export function DeckModeNavigation({ items, activeStep, onStepChange }: DeckModeNavigationProps) {
   return (
@@ -30,19 +30,17 @@ export function DeckModeNavigation({ items, activeStep, onStepChange }: DeckMode
             type="button"
             aria-current={isActive ? 'step' : undefined}
             title={`${item.title}: ${item.detail}`}
-            className={cx(TAB_BASE, isActive ? 'bg-primary/16 text-foreground' : 'text-muted hover:bg-white/5 hover:text-foreground')}
+            className={cx(TAB_BASE, isActive ? 'bg-lavender text-foreground' : 'text-muted hover:bg-white/5 hover:text-foreground')}
             onClick={() => onStepChange(item.key)}
           >
-            <span
-              className={cx(
-                'grid size-8 shrink-0 place-items-center rounded-control transition-colors duration-150',
-                isActive ? 'bg-primary text-primary-foreground' : 'bg-white/5 text-soft group-hover:text-foreground',
-              )}
-            >
-              <Icon name={item.icon} size={18} />
-            </span>
+            <Icon
+              name={item.icon}
+              size={24}
+              variant={isActive ? 'bold' : 'bulk'}
+              className={cx('shrink-0 transition-colors duration-150 [--icon-cut:var(--lavender)]', isActive ? 'text-primary-soft' : 'text-primary-soft/60 group-hover:text-primary-soft')}
+            />
             <span className="grid min-w-0 leading-tight">
-              <span className="truncate text-body font-semibold">{item.label}</span>
+              <span className={cx('truncate text-body', isActive ? 'font-semibold' : 'font-medium')}>{item.label}</span>
               <span className="flex items-center gap-1.5 text-micro tabular-nums text-soft">
                 <span className={cx('size-1.5 shrink-0 rounded-full', STATUS_DOT[item.tone])} aria-hidden="true" />
                 <span className="truncate">{item.metric}</span>

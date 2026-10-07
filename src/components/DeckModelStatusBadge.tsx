@@ -33,7 +33,7 @@ export function DeckModelStatusBadge({ modelStatus, variant }: DeckModelStatusBa
           <li key={message}>{message}</li>
         ))}
       </ul>
-      <span className="text-caption text-soft">Revisá antes de confiar en los porcentajes</span>
+      <span className="text-micro text-soft">Revisá antes de confiar en los porcentajes</span>
     </Callout>
   )
 }

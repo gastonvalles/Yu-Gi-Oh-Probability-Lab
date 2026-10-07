@@ -103,10 +103,10 @@ function CollapsibleSection({
         <div className="grid gap-0.5 min-w-0">
           <div className="flex items-center gap-2">
             <small className={overline}>{title}</small>
-            <Badge size="sm">{count}</Badge>
+            <Badge tone="brand" size="sm">{count}</Badge>
           </div>
           {!isExpanded ? (
-            <p className="m-0 text-caption text-muted truncate">{subtitle}</p>
+            <p className="m-0 text-micro text-muted truncate">{subtitle}</p>
           ) : null}
         </div>
         <Icon name="chevron-down" size={16} className={cx('shrink-0 text-soft transition-transform duration-150', isExpanded && 'rotate-180')} />
@@ -114,7 +114,7 @@ function CollapsibleSection({
 
       {isExpanded ? (
         <div className="grid gap-1.5 pt-2.5">
-          <p className="m-0 text-caption text-muted">{subtitle}</p>
+          <p className="m-0 text-micro text-muted">{subtitle}</p>
           <div className="grid gap-1.5">{children}</div>
         </div>
       ) : null}
@@ -135,7 +135,7 @@ function ZoneGroupSection({ entries }: { entries: ResolvedImportedDeckEntry[] })
     <div className="grid gap-2">
       {groups.map((group) => (
         <div key={group.zone} className="grid gap-1.5">
-          <h5 className="m-0 text-caption font-semibold text-foreground">
+          <h5 className="m-0 text-micro font-semibold text-foreground">
             {formatZoneGroupHeader(group.zone, group.totalCards)}
           </h5>
           <div className="grid gap-1.5">
@@ -544,7 +544,7 @@ export function DeckImportDrawer({
                     </div>
 
                     {selectedFileName ? (
-                      <span className={`${chip.accent} justify-self-center px-2 py-1 text-caption`}>
+                      <span className={`${chip.accent} justify-self-center px-2 py-1 text-micro`}>
                         Archivo seleccionado: {selectedFileName}
                       </span>
                     ) : null}
@@ -590,7 +590,7 @@ export function DeckImportDrawer({
                           setFormError(null)
                         }}
                         placeholder={'3 Ash Blossom & Joyous Spring\n3 Maxx "C"\n2 Called by the Grave\n\nExtra Deck:\n1 S:P Little Knight'}
-                        className={`${field} min-h-52 w-full resize-y px-3 py-2 text-small leading-tight`}
+                        className={`${field} min-h-52 w-full resize-y px-3 py-2 text-body leading-tight`}
                       />
 
                       <div className="flex flex-wrap items-center justify-end gap-2">
@@ -665,7 +665,7 @@ export function DeckImportDrawer({
                           <h4 className="m-0 mt-0.5 text-lead font-semibold leading-tight text-foreground">
                             {buildPreviewHeadline(preview)}
                           </h4>
-                          <p className="text-muted m-0 mt-1 text-caption">
+                          <p className="text-muted m-0 mt-1 text-micro">
                             {buildPreviewDescription(preview)}
                           </p>
                         </div>
@@ -673,8 +673,8 @@ export function DeckImportDrawer({
                       </div>
 
                       <div className="flex flex-wrap gap-1.5">
-                        <span className={`${chip.base} px-2 py-1 text-caption`}>{getPreviewSourceBadge(preview)}</span>
-                        <span className={`${chip.accent} px-2 py-1 text-caption whitespace-nowrap`}>
+                        <span className={`${chip.base} px-2 py-1 text-micro`}>{getPreviewSourceBadge(preview)}</span>
+                        <span className={`${chip.accent} px-2 py-1 text-micro whitespace-nowrap`}>
                           {formatInteger(preview.importedCardCount)} / {formatInteger(preview.requestedCardCount)} cartas
                         </span>
                       </div>
@@ -860,7 +860,7 @@ function ZoneTotalCard({
       <strong className="text-lead font-semibold leading-none text-foreground tabular-nums">
         {formatInteger(imported)} / {formatInteger(requested)}
       </strong>
-      <span className="text-muted text-caption leading-none">importadas / pedidas</span>
+      <span className="text-muted text-micro leading-none">importadas / pedidas</span>
     </div>
   )
 }
@@ -870,7 +870,7 @@ function ResolvedEntryCard({ entry }: { entry: ResolvedImportedDeckEntry }) {
 
   return (
     <article className={`${surface.panelSoft} flex items-center justify-between gap-3 px-2.5 py-1.5`}>
-      <strong className="min-w-0 truncate text-small text-foreground">{entry.card.name}</strong>
+      <strong className="min-w-0 truncate text-body text-foreground">{entry.card.name}</strong>
       {isPartial ? (
         <span className={`${chip.base} shrink-0 px-2 py-0.5 text-micro`}>
           {formatInteger(entry.appliedCount)} / {formatInteger(entry.count)}
@@ -890,7 +890,7 @@ function SimpleEntryCard({
 }) {
   return (
     <article className={`${surface.panelSoft} flex items-center justify-between gap-3 px-2.5 py-1.5`}>
-      <strong className="min-w-0 truncate text-small text-foreground">{entry.name}</strong>
+      <strong className="min-w-0 truncate text-body text-foreground">{entry.name}</strong>
       <CopiesBadge copies={entry.count} />
     </article>
   )
@@ -900,7 +900,7 @@ function ConflictEntryCard({ entry }: { entry: DeckImportConflict }) {
   return (
     <article className={`${surface.panelSoft} flex items-center justify-between gap-3 px-2.5 py-1.5`}>
       <div className="min-w-0">
-        <strong className="truncate text-small text-foreground">{entry.name}</strong>
+        <strong className="truncate text-body text-foreground">{entry.name}</strong>
         <p className="text-muted m-0 text-micro">{entry.reason}</p>
       </div>
       <CopiesBadge copies={entry.count} />
@@ -912,11 +912,11 @@ function InvalidLineCard({ entry }: { entry: ImportedDeckInvalidLine }) {
   return (
     <article className={`${surface.panelSoft} grid gap-1 px-2.5 py-2`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <strong className="text-small text-foreground">Línea {formatInteger(entry.lineNumber)}</strong>
+        <strong className="text-body text-foreground">Línea {formatInteger(entry.lineNumber)}</strong>
         <span className={`${chip.base} px-2 py-1 text-micro`}>Ignorada</span>
       </div>
-      <p className="m-0 text-caption text-foreground">{entry.rawLine.trim() || 'Línea vacía'}</p>
-      <p className="text-muted m-0 text-caption">{entry.reason}</p>
+      <p className="m-0 text-micro text-foreground">{entry.rawLine.trim() || 'Línea vacía'}</p>
+      <p className="text-muted m-0 text-micro">{entry.reason}</p>
     </article>
   )
 }

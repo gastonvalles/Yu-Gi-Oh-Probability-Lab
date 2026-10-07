@@ -52,7 +52,7 @@ export function originOption(state: { active: boolean; muted: boolean }): string
 /** Botón de rol (Starter, Extender…): normal o elegido. */
 export function roleOptionButton(active: boolean): string {
   return cx(
-    'rounded-full border text-left [overflow-wrap:anywhere] whitespace-normal transition-[border-color,background-color,color] duration-150 focus-visible:outline-none focus-visible:shadow-focus',
+    'rounded-control border text-left [overflow-wrap:anywhere] whitespace-normal transition-[border-color,background-color,color] duration-150 focus-visible:outline-none focus-visible:shadow-focus',
     active
       ? 'border-[rgb(var(--role-rgb)/0.65)] bg-[rgb(var(--role-rgb)/0.2)] text-foreground'
       : 'border-border-subtle bg-white/4 text-muted hover:border-[rgb(var(--role-rgb)/0.45)] hover:bg-[rgb(var(--role-rgb)/0.08)] hover:text-foreground',
@@ -62,7 +62,7 @@ export function roleOptionButton(active: boolean): string {
 /** Chip de vista de la cola ("Todas", "Starters"…). */
 export function viewChip(state: { active: boolean; empty: boolean }): string {
   return cx(
-    'inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-caption font-semibold leading-none transition-[border-color,background-color,color] duration-150 focus-visible:outline-none focus-visible:shadow-focus',
+    'inline-flex items-center gap-2 rounded-control border px-3.5 py-2 text-micro font-semibold leading-none transition-[border-color,background-color,color] duration-150 focus-visible:outline-none focus-visible:shadow-focus',
     state.active
       ? 'border-[rgb(var(--role-rgb)/0.65)] bg-[rgb(var(--role-rgb)/0.18)] text-foreground'
       : 'border-border-subtle bg-white/4 text-muted hover:border-[rgb(var(--role-rgb)/0.45)] hover:bg-[rgb(var(--role-rgb)/0.08)] hover:text-foreground',

@@ -54,13 +54,13 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
       </RuleStep>
 
       <section className={cx('grid gap-1.5 rounded-card border px-4 py-3', TONE[pattern.kind === 'opening' ? 'success' : 'danger'].tint)} aria-live="polite">
-        <span className={cx('text-small font-semibold', TONE[pattern.kind === 'opening' ? 'success' : 'danger'].text)}>{preview.heading}</span>
+        <span className={cx('text-body font-semibold', TONE[pattern.kind === 'opening' ? 'success' : 'danger'].text)}>{preview.heading}</span>
         <ul className="m-0 grid gap-0.5 pl-4 text-body text-foreground">
           {preview.items.map((item, index) => (
             <li key={`${index}-${item}`}>{item}</li>
           ))}
         </ul>
-        {conditionCount > 1 ? <span className="text-caption text-muted">{preview.logic}</span> : null}
+        {conditionCount > 1 ? <span className="text-micro text-muted">{preview.logic}</span> : null}
       </section>
 
       <RuleStep number={2} title="¿Qué representa?">
@@ -129,13 +129,13 @@ function RuleStep({
     <section className="grid gap-2.5">
       <header className="flex flex-wrap items-center gap-2.5">
         <span
-          className="grid size-6 place-items-center rounded-full border border-primary/40 bg-primary/16 text-caption font-bold text-primary-soft"
+          className="grid size-6 place-items-center rounded-full border border-primary/40 bg-primary/16 text-micro font-bold text-primary-soft"
           aria-hidden="true"
         >
           {number}
         </span>
         <h4 className="m-0 text-body font-semibold text-foreground">{title}</h4>
-        {hint ? <small className="text-caption text-muted">{hint}</small> : null}
+        {hint ? <small className="text-micro text-muted">{hint}</small> : null}
       </header>
       <div className="grid gap-2.5">{children}</div>
     </section>

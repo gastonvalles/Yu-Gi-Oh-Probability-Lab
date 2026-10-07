@@ -42,7 +42,7 @@ export function ChoiceCards<Value extends string>({ label, value, options, tone,
           onClick={() => onChange(option.value)}
         >
           <strong className="text-body font-semibold text-foreground">{option.label}</strong>
-          <small className="text-caption text-muted">{option.description}</small>
+          <small className="text-micro text-muted">{option.description}</small>
         </button>
       ))}
     </div>

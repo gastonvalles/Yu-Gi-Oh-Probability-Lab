@@ -18,5 +18,5 @@ const OPTIONS: ReadonlyArray<{ value: TurnView; label: string }> = [
 export function TurnViewToggle({ activeView, onChange, details }: TurnViewToggleProps) {
   const options: SegmentedOption<TurnView>[] = OPTIONS.map((option) => ({ ...option, detail: details?.[option.value] }))
 
-  return <Segmented label="Vista de turno" value={activeView} onChange={onChange} options={options} fullWidth className="max-w-[34rem]" />
+  return <Segmented label="Vista de turno" value={activeView} onChange={onChange} options={options} variant="cards" fullWidth className="max-w-[34rem]" />
 }

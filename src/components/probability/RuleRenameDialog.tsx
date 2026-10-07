@@ -63,7 +63,7 @@ export function RuleRenameDialog({ entry, onSave, onClose }: RuleRenameDialogPro
       }
     >
       <form id={formId} className="grid gap-2.5" onSubmit={handleSubmit}>
-        <label htmlFor={inputId} className="flex items-center gap-2 text-small font-semibold text-muted">
+        <label htmlFor={inputId} className="flex items-center gap-2 text-body font-semibold text-muted">
           <KindBadge kind={entry.kind} />
           Nombre
         </label>

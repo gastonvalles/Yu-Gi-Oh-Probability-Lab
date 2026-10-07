@@ -61,7 +61,7 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
       {hasOverlap ? (
         <div className={`${surface.panelSoft} grid gap-1.5 px-3 py-3`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-small font-medium text-foreground">
+            <span className="text-body font-medium text-foreground">
               ¿La misma carta cuenta para más de una condición?
             </span>
             <Switch
@@ -70,7 +70,7 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
               onChange={(checked) => actions.setPatternAllowSharedCards(pattern.id, checked)}
             />
           </div>
-          <p className="m-0 text-caption text-muted">
+          <p className="m-0 text-micro text-muted">
             Hay cartas que aparecen en más de una condición.
             {allowsSharedCards(pattern)
               ? ' Una misma carta puede satisfacer varias condiciones a la vez.'
@@ -83,8 +83,8 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
       {pattern.kind === 'opening' ? (
         <div className={`${surface.panelSoft} flex items-center justify-between gap-3 px-3 py-3`}>
           <span className="grid gap-0.5">
-            <span className="text-small font-medium text-foreground">Rescatar las cartas que usa</span>
-            <span className="text-caption text-muted">
+            <span className="text-body font-medium text-foreground">Rescatar las cartas que usa</span>
+            <span className="text-micro text-muted">
               {pattern.rescuesCards
                 ? 'Encendido: si la mano cumple esta salida, sus cartas no cuentan como muertas en los problemas.'
                 : 'Apagado: los problemas cuentan todas las cartas de la mano.'}
@@ -101,7 +101,7 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
       {/* Minimum matches (at-least mode) */}
       {showMinimumMatches ? (
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="text-muted text-caption">
+          <span className="text-muted text-micro">
             Mínimo de condiciones a cumplir
           </span>
           <NumberField
@@ -110,7 +110,7 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
             value={minimumMatches}
             onChange={(value) => actions.setPatternMinimumMatches(pattern.id, String(value))}
             aria-label="Mínimo de condiciones a cumplir"
-            className={`${field} h-9 w-16 px-2 text-center text-small`}
+            className={`${field} h-9 w-16 px-2 text-center text-body`}
           />
         </div>
       ) : null}
@@ -118,7 +118,7 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
       {/* Distinct toggle per condition */}
       {conditionsWithDistinct.length > 0 ? (
         <div className="grid gap-1.5">
-          <span className="text-muted text-caption">
+          <span className="text-muted text-micro">
             ¿Contar copias o nombres distintos?
           </span>
           {conditionsWithDistinct.map((condition) => {
@@ -126,7 +126,7 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
 
             return (
               <div key={condition.id} className={`flex flex-wrap items-center justify-between gap-2 ${surface.panelSoft} px-3 py-2`}>
-                <span className="text-small text-foreground">Condición {formatInteger(conditionIndex + 1)}</span>
+                <span className="text-body text-foreground">Condición {formatInteger(conditionIndex + 1)}</span>
                 <Segmented
                   size="sm"
                   label={`Contar copias o nombres de la condición ${formatInteger(conditionIndex + 1)}`}

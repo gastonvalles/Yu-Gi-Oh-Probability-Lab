@@ -228,7 +228,7 @@ export function DeckModeScreen() {
     >
       {activeStep === 'categorization' ? (
         <div id="categorization" className="h-full min-h-0 min-w-0">
-          <LazyDeckRolesPanel {...controller.roles} />
+          <LazyDeckRolesPanel {...controller.roles} onOpenLab={() => handleStepChange('probability-lab')} />
         </div>
       ) : null}
 

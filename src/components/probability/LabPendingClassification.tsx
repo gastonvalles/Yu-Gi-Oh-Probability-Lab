@@ -88,7 +88,7 @@ export function LabPendingClassification({ cards, message, onSetOrigin, onToggle
             <Button variant="secondary" size="md" icon="chevron-left" onClick={() => previous && setSelectedId(previous.id)} disabled={!previous}>
               Anterior
             </Button>
-            <span className="text-soft min-w-12 text-center text-caption tabular-nums min-[1101px]:hidden">
+            <span className="text-soft min-w-12 text-center text-micro tabular-nums min-[1101px]:hidden">
               {formatInteger(index + 1)} / {formatInteger(visible.length)}
             </span>
             <Button variant="primary" size="md" iconEnd="chevron-right" onClick={() => next && setSelectedId(next.id)} disabled={!next}>

@@ -38,7 +38,7 @@ import { StepHero } from './StepHero'
 import { Button } from './ui/Button'
 import { Card } from './ui/Card'
 import { EmptyState } from './ui/EmptyState'
-import { Meter } from './ui/Meter'
+import { ProgressRing } from './ui/ProgressRing'
 import { Modal } from './ui/Modal'
 import { overline, supportText } from './ui/typography'
 import {
@@ -55,6 +55,8 @@ interface DeckRolesPanelProps {
   onSetOrigin: (ygoprodeckId: number, origin: CardOrigin) => void
   onToggleRole: (ygoprodeckId: number, role: CardRole) => void
   onConfirm: (ygoprodeckId: number) => void
+  /** Pasa al Lab (el paso siguiente); lo usa la tarjeta destacada cuando ya está todo clasificado. */
+  onOpenLab?: () => void
 }
 
 type ClassificationFilterKey = ClassificationStateKey | CardGroupKey
@@ -222,11 +224,11 @@ function renderReferenceRoles(roleKeys: readonly CardRole[]) {
       >
         <div className="flex items-center gap-2">
           <span className={ROLE_REFERENCE_MARK} />
-          <strong className="block text-small leading-none text-foreground">
+          <strong className="block text-body leading-none text-foreground">
             {definition.label}
           </strong>
         </div>
-        <p className="text-muted m-0 text-caption">{getRoleHelpText(roleKey)}</p>
+        <p className="text-muted m-0 text-micro">{getRoleHelpText(roleKey)}</p>
       </article>
     )
   })
@@ -298,6 +300,7 @@ export function DeckRolesPanel({
   onSetOrigin,
   onToggleRole,
   onConfirm,
+  onOpenLab,
 }: DeckRolesPanelProps) {
   const dispatch = useAppDispatch()
   const patterns = useAppSelector((state) => state.patterns.patterns)
@@ -564,7 +567,7 @@ export function DeckRolesPanel({
       <Button variant="secondary" size="md" icon="chevron-left" onClick={handleSelectPreviousCard} disabled={!previousCard}>
         Anterior
       </Button>
-      <span className="text-soft min-w-12 text-center text-caption tabular-nums max-[1100px]:order-0 min-[1101px]:hidden">
+      <span className="text-soft min-w-12 text-center text-micro tabular-nums max-[1100px]:order-0 min-[1101px]:hidden">
         {formatInteger(selectedCardIndexInFullList + 1)} / {formatInteger(stableNavigationCards.length)}
       </span>
       <Button variant="primary" size="md" iconEnd="chevron-right" onClick={handleSelectNextCard} disabled={!nextCard}>
@@ -576,7 +579,7 @@ export function DeckRolesPanel({
   const renderSelectedCardDetail = () => {
     if (!selectedCard) {
       return (
-        <p className={[emptyStateCopy.tone, 'm-0 px-3 py-2.5 text-small'].join(' ')}>
+        <p className={[emptyStateCopy.tone, 'm-0 px-3 py-2.5 text-body'].join(' ')}>
           <strong className="block text-foreground">{emptyStateCopy.title}</strong>
           <span className="mt-1 block">{emptyStateCopy.description}</span>
         </p>
@@ -598,7 +601,7 @@ export function DeckRolesPanel({
   }
 
   return (
-    <section className="mx-auto grid w-full min-w-0 max-w-content content-start gap-4 overflow-x-hidden px-4 pb-6 pt-4 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_auto_minmax(0,1fr)] min-[1101px]:gap-5 min-[1101px]:overflow-hidden min-[1101px]:px-6 min-[1101px]:pb-6 min-[1101px]:pt-6">
+    <section className="mx-auto grid w-full min-w-0 max-w-content content-start gap-4 overflow-x-hidden px-gutter pb-6 pt-4 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_auto_minmax(0,1fr)] min-[1101px]:gap-5 min-[1101px]:overflow-hidden min-[1101px]:px-6 min-[1101px]:pb-6 min-[1101px]:pt-6">
       <StepHero
         title="Clasificá tus cartas"
         icon="tag"
@@ -608,11 +611,6 @@ export function DeckRolesPanel({
           sortedCards.length > 0 ? (
             <>
               <DeckModelStatusBadge modelStatus={modelStatus} variant="compact" />
-              {hasCardsNeedingClassification ? (
-                <Button variant="primary" size="sm" icon="sparkles" onClick={() => dispatch(reclassifyAllCards({ overrides: getClassificationOverrides() }))}>
-                  Clasificar todo
-                </Button>
-              ) : null}
               <Button variant="secondary" size="sm" icon="info" onClick={() => setDrawerMode('help')}>
                 Guía de clasificación
               </Button>
@@ -622,40 +620,56 @@ export function DeckRolesPanel({
       />
 
       {sortedCards.length > 0 ? (
-        <Card padding="sm" className="grid gap-3">
-          <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
-            <div className="min-w-0">
-              <p className={cx('m-0', overline)}>Vista activa</p>
-              <p className={cx(supportText, 'mt-0.5')}>Priorizá el subconjunto que querés cerrar primero.</p>
+        <div className="grid gap-4 min-[1101px]:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] min-[1101px]:items-center min-[1101px]:gap-6">
+          <Card level="hero" padding="lg" className="flex items-center justify-between gap-4">
+            <div className="grid min-w-0 gap-4">
+              <p className="m-0 max-w-[16rem] text-lead leading-snug">
+                {hasCardsNeedingClassification
+                  ? `Te faltan ${formatInteger(sortedCards.length - completeCards.length)} carta${sortedCards.length - completeCards.length === 1 ? '' : 's'} por clasificar`
+                  : 'Tu deck está clasificado y listo para medir'}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {hasCardsNeedingClassification ? (
+                  <Button variant="onBrand" size="sm" icon="sparkles" onClick={() => dispatch(reclassifyAllCards({ overrides: getClassificationOverrides() }))}>
+                    Clasificar todo
+                  </Button>
+                ) : onOpenLab ? (
+                  <Button variant="onBrand" size="sm" iconEnd="arrow-right" onClick={onOpenLab}>
+                    Ir al Lab
+                  </Button>
+                ) : null}
+              </div>
             </div>
+            <ProgressRing tone="onBrand" size={76} value={classifiedPercent / 100} label="Cartas clasificadas" />
+          </Card>
 
-            <div className="grid w-full min-w-36 justify-items-end gap-1.5 min-[640px]:w-auto">
-              <span className="text-caption text-muted tabular-nums">
+          <div className="grid gap-2">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <p className={cx('m-0', overline)}>Vista activa</p>
+              <span className="text-micro text-soft tabular-nums">
                 {formatInteger(completeCards.length)} / {formatInteger(sortedCards.length)} clasificadas
               </span>
-              <Meter value={classifiedPercent / 100} tone="success" size="sm" label="Cartas clasificadas" className="w-full min-w-36" />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {primaryFilterItems.map((item) => {
+                const active = areClassificationFilterKeysEqual(activeFilter, item.key)
+
+                return (
+                  <button
+                    key={getClassificationFilterReactKey(item.key)}
+                    type="button"
+                    className={viewChip({ active, empty: item.cards.length === 0 && !active })}
+                    style={getClassificationStyle(item.styleKey)}
+                    onClick={() => handleFilterChange(item.key)}
+                  >
+                    <span>{item.label}</span>
+                    <span className="text-soft text-micro tabular-nums">{formatInteger(item.cards.length)}</span>
+                  </button>
+                )
+              })}
             </div>
           </div>
-
-          <div className="flex flex-wrap gap-2">
-            {primaryFilterItems.map((item) => {
-              const active = areClassificationFilterKeysEqual(activeFilter, item.key)
-
-              return (
-                <button
-                  key={getClassificationFilterReactKey(item.key)}
-                  type="button"
-                  className={viewChip({ active, empty: item.cards.length === 0 && !active })}
-                  style={getClassificationStyle(item.styleKey)}
-                  onClick={() => handleFilterChange(item.key)}
-                >
-                  <span>{item.label}</span>
-                  <span className="text-soft text-micro tabular-nums">{formatInteger(item.cards.length)}</span>
-                </button>
-              )
-            })}
-          </div>
-        </Card>
+        </div>
       ) : null}
 
       {sortedCards.length === 0 ? (
@@ -665,7 +679,7 @@ export function DeckRolesPanel({
       ) : (
         <Card as="section" padding="sm" className="grid min-w-0 gap-3 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[minmax(0,1fr)] min-[1101px]:overflow-hidden">
             {visibleQueueCards.length === 0 ? (
-              <p className={[emptyStateCopy.tone, 'm-0 px-3 py-2.5 text-small'].join(' ')}>
+              <p className={[emptyStateCopy.tone, 'm-0 px-3 py-2.5 text-body'].join(' ')}>
                 <strong className="block text-foreground">{emptyStateCopy.title}</strong>
                 <span className="mt-1 block">{emptyStateCopy.description}</span>
               </p>
@@ -698,7 +712,7 @@ export function DeckRolesPanel({
           <section className="grid gap-2">
             <div>
               <p className={cx('m-0', overline)}>Origen</p>
-              <p className={cx(supportText, 'mt-0.5 text-caption')}>
+              <p className={cx(supportText, 'mt-0.5 text-micro')}>
                 Responde si la carta pertenece al motor principal o a un espacio externo/flexible.
               </p>
             </div>
@@ -712,9 +726,9 @@ export function DeckRolesPanel({
                 >
                   <div className="flex items-center gap-2">
                     <span className={ROLE_REFERENCE_MARK} />
-                    <strong className="text-small leading-none text-foreground">{definition.label}</strong>
+                    <strong className="text-body leading-none text-foreground">{definition.label}</strong>
                   </div>
-                  <p className="text-muted m-0 text-caption">{getOriginHelpText(definition.key.value)}</p>
+                  <p className="text-muted m-0 text-micro">{getOriginHelpText(definition.key.value)}</p>
                 </article>
               ))}
             </div>
@@ -723,7 +737,7 @@ export function DeckRolesPanel({
           <section className="grid gap-2">
             <div>
               <p className={cx('m-0', overline)}>Roles</p>
-              <p className={cx(supportText, 'mt-0.5 text-caption')}>
+              <p className={cx(supportText, 'mt-0.5 text-micro')}>
                 Responden qué hace la carta dentro de tu mano, tu línea o tu plan de turno.
               </p>
             </div>
@@ -732,8 +746,8 @@ export function DeckRolesPanel({
               {ROLE_EDITOR_SECTIONS.map((section) => (
                 <article key={section.title} className={cx(ROLE_REFERENCE_GROUP, 'grid gap-2 p-2.5')}>
                   <div className="grid gap-1">
-                    <strong className="text-small leading-none text-foreground">{section.title}</strong>
-                    <p className="text-muted m-0 text-caption">{section.description}</p>
+                    <strong className="text-body leading-none text-foreground">{section.title}</strong>
+                    <p className="text-muted m-0 text-micro">{section.description}</p>
                   </div>
 
                   <div className="grid gap-1.5">{renderReferenceRoles(section.roles)}</div>

@@ -174,7 +174,7 @@ export function ComparisonScreen() {
         <label className="flex min-w-0 items-center gap-2.5">
           <SideBadge side={side} />
           <select
-            className={`${field} h-10 w-full min-w-0 px-3 text-small`}
+            className={`${field} h-10 w-full min-w-0 px-3 text-body`}
             value={value ?? ''}
             aria-label={`Build ${side}`}
             onChange={(event) => setSelection((current) => ({ ...current, [side.toLowerCase()]: event.target.value || null }))}
@@ -222,7 +222,7 @@ export function ComparisonScreen() {
 
       <Card padding="sm" className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3 max-[519px]:grid-cols-[minmax(0,1fr)]">
         {renderPicker('A', selection.a)}
-        <span className="grid h-10 place-items-center text-caption font-bold uppercase text-soft max-[519px]:hidden" aria-hidden="true">
+        <span className="grid h-10 place-items-center text-micro font-bold uppercase text-soft max-[519px]:hidden" aria-hidden="true">
           vs
         </span>
         {renderPicker('B', selection.b)}
@@ -369,7 +369,7 @@ function RenameBuildDialog({
         }}
       >
         <label className="grid gap-1.5">
-          <span className="text-small text-muted">Nombre</span>
+          <span className="text-body text-muted">Nombre</span>
           <input
             value={name}
             autoFocus

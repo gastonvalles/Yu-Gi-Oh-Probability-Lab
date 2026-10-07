@@ -71,7 +71,7 @@ export function ClassificationEditor({
             <h3 className="m-0 text-title tracking-[-0.01em] text-foreground [overflow-wrap:anywhere] min-[1101px]:text-title">
               {card.name}
             </h3>
-            <p className="m-0 text-small leading-tight text-muted min-[1101px]:text-body">
+            <p className="m-0 text-body leading-tight text-muted min-[1101px]:text-body">
               {CARD_TYPE_LABEL[getCardType(card)].singular} · {formatInteger(card.copies)} copia{card.copies === 1 ? '' : 's'} en el Main
             </p>
           </div>
@@ -114,7 +114,7 @@ export function ClassificationEditor({
                 >
                   <span className="flex min-w-0 items-center gap-2 min-[1101px]:contents">
                     <span className={ROLE_REFERENCE_MARK} />
-                    <strong className="truncate text-body font-semibold leading-none text-foreground min-[1101px]:text-small">{definition.shortLabel ?? definition.label}</strong>
+                    <strong className="truncate text-body font-semibold leading-none text-foreground min-[1101px]:text-body">{definition.shortLabel ?? definition.label}</strong>
                   </span>
                   <span className="min-w-0 text-micro text-muted max-[1100px]:text-right min-[1101px]:text-micro">{ORIGIN_BLURB_TEXT[definition.key.value]}</span>
                 </button>
@@ -129,7 +129,7 @@ export function ClassificationEditor({
             {onOpenHelp ? (
               <button
                 type="button"
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-1 text-caption font-semibold text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:shadow-focus"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-1 text-micro font-semibold text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:shadow-focus"
                 onClick={onOpenHelp}
               >
                 <Icon name="info" size={14} />
@@ -145,7 +145,7 @@ export function ClassificationEditor({
               return (
                 <div key={section.title} className="grid content-start gap-2 min-[1101px]:rounded-card min-[1101px]:border min-[1101px]:border-border-subtle min-[1101px]:bg-white/3 min-[1101px]:p-3">
                   <div className="flex items-center justify-between gap-2">
-                    <strong className="text-small font-semibold leading-none text-foreground">{section.title}</strong>
+                    <strong className="text-body font-semibold leading-none text-foreground">{section.title}</strong>
                     <span className={cx(chip.base, 'px-1.5 py-0.5 text-micro leading-none tabular-nums')}>
                       {selectedCount} / {section.roles.length}
                     </span>
@@ -161,7 +161,7 @@ export function ClassificationEditor({
                           type="button"
                           aria-pressed={active}
                           title={ROLE_HELP_TEXT[role]}
-                          className={cx(roleOptionButton(active), 'min-h-10 px-3.5 py-1.5 text-small leading-none min-[1101px]:min-h-8 min-[1101px]:px-2.5 min-[1101px]:text-caption')}
+                          className={cx(roleOptionButton(active), 'min-h-10 px-3.5 py-1.5 text-body leading-none min-[1101px]:min-h-8 min-[1101px]:px-2.5 min-[1101px]:text-micro')}
                           style={getClassificationStyle(definition.key)}
                           onClick={() => onToggleRole(ygoprodeckId, role)}
                         >

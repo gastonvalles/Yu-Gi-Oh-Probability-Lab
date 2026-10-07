@@ -7,6 +7,7 @@ import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { EmptyState } from '../ui/EmptyState'
 import { Icon } from '../ui/Icon'
+import { ProgressRing } from '../ui/ProgressRing'
 import { Segmented, type SegmentedOption } from '../ui/Segmented'
 import { Switch } from '../ui/Switch'
 import { TONE } from '../ui/tone'
@@ -25,7 +26,7 @@ const KIND_FILTERS: ReadonlyArray<SegmentedOption<KindFilter>> = [
 ]
 
 const RULE_ROW =
-  'group relative grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 gap-y-1 overflow-hidden rounded-control border border-border-subtle bg-white/3 px-3 pb-3.5 pt-2.5 text-left transition-[border-color,background-color,opacity,transform] duration-150 focus-visible:outline-none focus-visible:shadow-focus'
+  'group relative grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 gap-y-1 overflow-hidden rounded-control border border-border-subtle bg-white/3 px-3 py-2.5 text-left transition-[border-color,background-color,opacity,transform] duration-150 focus-visible:outline-none focus-visible:shadow-focus'
 const RULE_ROW_INTERACTIVE = 'cursor-pointer hover:border-[rgb(var(--tone-rgb)/0.5)] hover:bg-white/5 active:scale-[0.99]'
 const RULE_KIND_RGB: Record<PatternKind, string> = {
   opening: TONE.success.rgb,
@@ -65,7 +66,7 @@ export function LabRuleList({
       icon="list"
       summary={`${formatInteger(groups.universal.length)} universales · ${formatInteger(enabledGeneric)}/${formatInteger(groups.generic.length)} genéricas · ${formatInteger(groups.custom.length)} propias`}
       className="order-5 min-[1101px]:col-span-full"
-      actions={<Segmented size="sm" label="Filtrar reglas por tipo" value={kindFilter} onChange={setKindFilter} options={KIND_FILTERS} />}
+      actions={<Segmented variant="chips" size="sm" label="Filtrar reglas por tipo" value={kindFilter} onChange={setKindFilter} options={KIND_FILTERS} />}
     >
       <p className={LAB_FOOTNOTE}>
         Una mano es <strong>limpia</strong> si cumple al menos una salida y ningún problema activo.
@@ -189,7 +190,7 @@ function RuleTier({
               >
                 <Icon name="chevron-right" size={14} className={cx('text-soft transition-transform duration-150', isOpen && 'rotate-90')} />
                 {title}
-                <Badge size="sm">{formatInteger(entries.length)}</Badge>
+                <Badge tone="brand" size="sm">{formatInteger(entries.length)}</Badge>
               </button>
             </h4>
           ) : (
@@ -197,7 +198,7 @@ function RuleTier({
           )}
           {badge}
         </div>
-        <p className={cx('m-0 text-caption text-muted', !isOpen && 'hidden')}>{description}</p>
+        <p className={cx('m-0 text-micro text-muted', !isOpen && 'hidden')}>{description}</p>
       </header>
 
       {!isOpen ? null : entries.length === 0 ? (
@@ -227,6 +228,7 @@ function RuleRow({
   actionLabel?: string
   showEditIcon?: boolean
 }) {
+  const isActive = entry.enabled && entry.appliesToView && !entry.missingCards
   const body = (
     <>
       <span className="grid min-w-0 gap-0.5">
@@ -240,21 +242,21 @@ function RuleRow({
           {entry.ignoresDraw && entry.turnContext !== 'first' ? <TurnBadge title="Yendo 2º no cuenta la carta robada">5 cartas</TurnBadge> : null}
           {entry.turnLean ? <TurnLeanBadge kind={entry.kind} lean={entry.turnLean} /> : null}
         </span>
-        <span className="truncate text-caption text-muted">{entry.summary}</span>
-        {entry.description ? <span className="text-caption text-muted">{entry.description}</span> : null}
+        <span className="truncate text-micro text-muted">{entry.summary}</span>
+        {entry.description ? <span className="text-micro text-muted">{entry.description}</span> : null}
       </span>
-      <span className="whitespace-nowrap text-lead font-bold text-foreground tabular-nums">{formatRuleValue(entry)}</span>
-      {entry.probability !== null ? (
-        <span className="absolute inset-x-0 bottom-0 h-1 bg-[rgb(var(--tone-rgb)/0.12)]" aria-hidden="true">
-          <span
-            className="block h-full origin-left bg-[rgb(var(--tone-rgb)/0.85)] transition-transform duration-[240ms] motion-reduce:transition-none"
-            style={{ transform: `scaleX(${Math.min(1, entry.probability)})` }}
-          />
-        </span>
-      ) : null}
+      {entry.probability !== null && isActive ? (
+        <ProgressRing
+          value={entry.probability}
+          size={42}
+          tone={entry.kind === 'opening' ? 'success' : 'danger'}
+          label={`${entry.name}: ${formatShortPercent(entry.probability)}`}
+        />
+      ) : (
+        <span className="whitespace-nowrap text-micro font-semibold text-soft">{formatRuleValue(entry)}</span>
+      )}
     </>
   )
-  const isActive = entry.enabled && entry.appliesToView && !entry.missingCards
   const rowClass = (interactive: boolean) =>
     cx(RULE_ROW, RULE_KIND_RGB[entry.kind], interactive && RULE_ROW_INTERACTIVE, !isActive && 'opacity-55')
 

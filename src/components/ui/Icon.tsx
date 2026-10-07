@@ -1,5 +1,7 @@
 import type { ReactNode, SVGProps } from 'react'
 
+import { cx } from './cx'
+
 /**
  * Íconos de la app: todos en la misma grilla de 24 px, trazo de 1.75, puntas redondeadas.
  * Se usan siempre con <Icon name="..." />: nada de SVG suelto en los componentes.
@@ -8,35 +10,35 @@ const PATHS = {
   // — Pasos de la app —
   cards: (
     <>
-      <rect x="7.5" y="3.5" width="12" height="16" rx="2.2" />
+      <rect data-fill x="7.5" y="3.5" width="12" height="16" rx="2.2" />
       <path d="M4.5 7.5v11a2.2 2.2 0 0 0 2.2 2.2h9.3" />
-      <ellipse cx="13.5" cy="11.5" rx="2.1" ry="3.1" />
+      <ellipse data-cut cx="13.5" cy="11.5" rx="2.1" ry="3.1" />
     </>
   ),
   tag: (
     <>
-      <path d="M3 5.5A2.5 2.5 0 0 1 5.5 3h6.2a2 2 0 0 1 1.4.6l7.3 7.3a2 2 0 0 1 0 2.8l-6.5 6.5a2 2 0 0 1-2.8 0L3.6 12.9A2 2 0 0 1 3 11.5z" />
-      <circle cx="7.6" cy="7.6" r="1.3" />
+      <path data-fill d="M3 5.5A2.5 2.5 0 0 1 5.5 3h6.2a2 2 0 0 1 1.4.6l7.3 7.3a2 2 0 0 1 0 2.8l-6.5 6.5a2 2 0 0 1-2.8 0L3.6 12.9A2 2 0 0 1 3 11.5z" />
+      <circle data-cut cx="7.6" cy="7.6" r="1.3" />
     </>
   ),
   flask: (
     <>
-      <path d="M10 2.5v7a2 2 0 0 1-.2.9L4.7 20.5a1 1 0 0 0 .9 1.5h12.8a1 1 0 0 0 .9-1.5l-5.1-10.1a2 2 0 0 1-.2-.9v-7" />
+      <path data-fill d="M10 2.5v7a2 2 0 0 1-.2.9L4.7 20.5a1 1 0 0 0 .9 1.5h12.8a1 1 0 0 0 .9-1.5l-5.1-10.1a2 2 0 0 1-.2-.9v-7" />
       <path d="M8.5 2.5h7" />
-      <path d="M7.2 16h9.6" />
+      <path data-cut d="M7.2 16h9.6" />
     </>
   ),
   columns: (
     <>
-      <rect x="3" y="4" width="7.5" height="16" rx="2.2" />
-      <rect x="13.5" y="4" width="7.5" height="16" rx="2.2" />
+      <rect data-fill x="3" y="4" width="7.5" height="16" rx="2.2" />
+      <rect data-fill x="13.5" y="4" width="7.5" height="16" rx="2.2" />
     </>
   ),
   download: (
     <>
       <path d="M12 3.5v11.5" />
       <path d="m7.5 10.5 4.5 4.5 4.5-4.5" />
-      <path d="M4.5 20h15" />
+      <path data-fill d="M4.5 16.5V19a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-2.5" />
     </>
   ),
   upload: (
@@ -194,14 +196,25 @@ const PATHS = {
 
 export type IconName = keyof typeof PATHS
 
+/** linear: sólo trazo (por defecto) · bulk: trazo + relleno suave en las formas cerradas · bold: relleno sólido (la pestaña activa). */
+type IconVariant = 'linear' | 'bulk' | 'bold'
+
 interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'name' | 'width' | 'height'> {
   name: IconName
   /** Lado en px (por defecto 18). */
   size?: number
   strokeWidth?: number
+  variant?: IconVariant
 }
 
-export function Icon({ name, size = 18, strokeWidth = 1.75, ...props }: IconProps) {
+const VARIANT_CLASS: Record<IconVariant, string> = {
+  linear: '',
+  bulk: '[&_[data-fill]]:fill-current/30',
+  // Los detalles recortados (ojos, puntos, líneas) toman el color del fondo del ícono: `--icon-cut`.
+  bold: '[&_[data-fill]]:fill-current [&_[data-cut]]:stroke-(--icon-cut,var(--card-background))',
+}
+
+export function Icon({ name, size = 18, strokeWidth = 1.75, variant = 'linear', className, ...props }: IconProps) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -209,11 +222,12 @@ export function Icon({ name, size = 18, strokeWidth = 1.75, ...props }: IconProp
       height={size}
       fill="none"
       stroke="currentColor"
-      strokeWidth={strokeWidth}
+      strokeWidth={variant === 'bold' ? strokeWidth + 0.35 : strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
       focusable="false"
+      className={cx(VARIANT_CLASS[variant], className)}
       {...props}
     >
       {PATHS[name]}

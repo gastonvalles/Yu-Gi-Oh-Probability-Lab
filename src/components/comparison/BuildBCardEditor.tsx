@@ -169,7 +169,7 @@ export function BuildBCardEditor({ card, currentEdit, allCards, onSave, onNaviga
                           >
                             <div className="flex items-center gap-2">
                               <span className={ROLE_REFERENCE_MARK} />
-                              <strong className="text-small font-semibold leading-none text-foreground">{definition.label}</strong>
+                              <strong className="text-body font-semibold leading-none text-foreground">{definition.label}</strong>
                             </div>
                             <span className="text-muted text-micro">{ORIGIN_BLURB[definition.key.value]}</span>
                           </button>
@@ -189,7 +189,7 @@ export function BuildBCardEditor({ card, currentEdit, allCards, onSave, onNaviga
                         return (
                           <article key={section.title} className={`${surface.panelSoft} grid h-full grid-rows-[auto_minmax(0,1fr)] gap-2 p-3`}>
                             <div className="flex flex-wrap items-start justify-between gap-2">
-                              <strong className="text-small font-semibold leading-none text-foreground">{section.title}</strong>
+                              <strong className="text-body font-semibold leading-none text-foreground">{section.title}</strong>
                               <span className={`${chip.base} px-1.5 py-0.5 text-micro`}>
                                 {formatInteger(selectedCount)} / {formatInteger(section.roles.length)}
                               </span>
@@ -206,7 +206,7 @@ export function BuildBCardEditor({ card, currentEdit, allCards, onSave, onNaviga
                                     title={`${definition.label}: ${ROLE_HELP[role]}`}
                                     className={cx(
                                       roleOptionButton(active),
-                                      'w-full min-w-0 px-2.5 py-2 text-caption',
+                                      'w-full min-w-0 px-2.5 py-2 text-micro',
                                     )}
                                     style={getStyleVars(definition.key)}
                                     onClick={() => toggleRole(role)}

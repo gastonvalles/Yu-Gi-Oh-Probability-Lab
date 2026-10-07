@@ -32,14 +32,14 @@ interface CategoryPickerProps {
 }
 
 const CHIP =
-  'inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border-subtle bg-white/5 px-3.5 text-body font-semibold text-foreground transition-[background-color,border-color] [-webkit-tap-highlight-color:transparent] focus-visible:outline-none focus-visible:shadow-focus active:scale-[0.97] data-[active=true]:border-primary/55 data-[active=true]:bg-primary/20 [&_span]:text-caption [&_span]:font-medium [&_span]:text-muted'
+  'inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border-subtle bg-white/5 px-3.5 text-body font-semibold text-foreground transition-[background-color,border-color] [-webkit-tap-highlight-color:transparent] focus-visible:outline-none focus-visible:shadow-focus active:scale-[0.97] data-[active=true]:border-primary/55 data-[active=true]:bg-primary/20 [&_span]:text-micro [&_span]:font-medium [&_span]:text-muted'
 
 /** Fila: el estado (ninguna / algunas / todas las cartas elegidas) llega por data-state. */
 const ROW =
   'group flex min-h-11 items-center gap-3 rounded-control border border-transparent bg-transparent px-3 text-left text-body text-foreground [-webkit-tap-highlight-color:transparent] [contain-intrinsic-size:auto_44px] [content-visibility:auto] hover:bg-white/5 focus-visible:outline-none focus-visible:shadow-focus active:bg-white/8 data-[state=all]:border-primary/50 data-[state=all]:bg-primary/14 data-[state=some]:border-primary/25'
 
 const CHECK =
-  'inline-grid size-5 flex-none place-items-center rounded-full border-[1.5px] border-border-strong text-caption font-bold leading-none group-data-[state=all]:border-primary group-data-[state=all]:bg-primary group-data-[state=all]:text-primary-foreground group-data-[state=some]:border-primary/70 group-data-[state=some]:text-primary-soft'
+  'inline-grid size-5 flex-none place-items-center rounded-full border-[1.5px] border-border-strong text-micro font-bold leading-none group-data-[state=all]:border-primary group-data-[state=all]:bg-primary group-data-[state=all]:text-primary-foreground group-data-[state=some]:border-primary/70 group-data-[state=some]:text-primary-soft'
 
 /** Roles fijados como atajo arriba del selector. */
 const SHORTCUT_ROLES: readonly CardRole[] = ['starter', 'extender', 'brick']
@@ -211,7 +211,7 @@ export function CategoryPicker({
 
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 pb-4 pt-2">
         {visibleSections.length === 0 ? (
-          <p className="m-0 mt-1 py-6 text-center text-small text-muted">{cards.length === 0 ? 'No hay cartas en el deck.' : 'Nada coincide con la búsqueda.'}</p>
+          <p className="m-0 mt-1 py-6 text-center text-body text-muted">{cards.length === 0 ? 'No hay cartas en el deck.' : 'Nada coincide con la búsqueda.'}</p>
         ) : (
           visibleSections.map((section) => (
             <PickerGroup key={section.key} id={section.key} label={section.label} open={section.key === activeKey} onToggle={toggleSection}>
@@ -225,7 +225,7 @@ export function CategoryPicker({
                 />
               ))}
               {section.key === 'cards' && hiddenCards.length > 0 ? (
-                <p className="m-0 mt-1 text-small text-muted">Ya usadas en otra condición: {hiddenCards.join(', ')}.</p>
+                <p className="m-0 mt-1 text-body text-muted">Ya usadas en otra condición: {hiddenCards.join(', ')}.</p>
               ) : null}
             </PickerGroup>
           ))
@@ -403,7 +403,7 @@ const PickerRow = memo(function PickerRow({
         </span>
       ) : null}
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
-      <span className="flex-none text-small tabular-nums text-muted">{formatCopies(item.copies)}</span>
+      <span className="flex-none text-body tabular-nums text-muted">{formatCopies(item.copies)}</span>
     </button>
   )
 })

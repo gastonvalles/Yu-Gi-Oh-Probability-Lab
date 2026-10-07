@@ -45,8 +45,8 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, onAddToZone 
       {!card ? (
         <Card tone="brand" padding="sm" className="grid gap-2" aria-label="Guía inicial del deck builder">
           <h3 className="m-0 text-lead font-semibold text-foreground">{EMPTY_PREVIEW_GUIDE.title}</h3>
-          <p className="m-0 text-small text-muted">{EMPTY_PREVIEW_GUIDE.description}</p>
-          <ul className="m-0 mt-1 grid list-none gap-1.5 p-0 text-caption text-muted" aria-label="Atajos">
+          <p className="m-0 text-body text-muted">{EMPTY_PREVIEW_GUIDE.description}</p>
+          <ul className="m-0 mt-1 grid list-none gap-1.5 p-0 text-micro text-muted" aria-label="Atajos">
             {SHORTCUTS.map((shortcut) => (
               <li key={shortcut.keys} className="flex items-center gap-2">
                 <kbd className="inline-block rounded-tag border border-b-2 border-border bg-secondary px-1.5 py-0.5 text-center font-[inherit] text-micro font-semibold text-foreground">
@@ -76,7 +76,7 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, onAddToZone 
               limitBadgeSize="lg"
             />
           ) : (
-            <div className="grid aspect-[0.72] w-full place-content-center justify-items-center gap-2 rounded-card border border-dashed border-border bg-black/20 p-4 text-center text-small text-soft">
+            <div className="grid aspect-[0.72] w-full place-content-center justify-items-center gap-2 rounded-card border border-dashed border-border bg-black/20 p-4 text-center text-body text-soft">
               <Icon name="image" size={24} />
               Sin carta seleccionada
             </div>

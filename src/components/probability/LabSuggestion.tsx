@@ -41,7 +41,7 @@ export function LabSuggestion({ cards, checks, deckFormat, handSize, view, resul
   const best = state.analysis.best
 
   return (
-    <Card className="order-2 grid gap-4 min-[1101px]:order-3 min-[1101px]:col-span-full" aria-label="Qué mejorar primero">
+    <Card className="order-2 grid content-start gap-4 min-[1101px]:order-3 min-[1101px]:col-span-5 min-[1101px]:col-start-1" aria-label="Qué mejorar primero">
       <header className="flex min-w-0 items-start gap-3">
         <span className={cx('grid size-10 shrink-0 place-items-center rounded-control border', TONE.danger.tint, TONE.danger.text)}>
           <Icon name="target" size={20} />
@@ -60,7 +60,7 @@ export function LabSuggestion({ cards, checks, deckFormat, handSize, view, resul
         </AdviceBox>
       ) : state.status === 'loading' ? (
         <div className="grid gap-2" role="status">
-          <p className="m-0 text-small text-muted motion-safe:animate-pulse">
+          <p className="m-0 text-body text-muted motion-safe:animate-pulse">
             Probando cambios en tu deck… ({state.progress.done}/{state.progress.total})
           </p>
           <Meter value={state.progress.total > 0 ? state.progress.done / state.progress.total : 0} size="sm" label="Cambios probados" />
@@ -79,7 +79,7 @@ function AdviceBox({ label, visual, children }: { label: string; visual?: ReactN
   return (
     <div className={cx('grid gap-3 rounded-control border p-3', TONE.success.tint)}>
       {visual}
-      <p className="m-0 text-small text-foreground">
+      <p className="m-0 text-body text-foreground">
         <strong>{label}: </strong>
         {children}
       </p>
@@ -100,7 +100,7 @@ function SwapSummary({ best, cleanBefore }: { best: Outcome; cleanBefore: number
         {to ? <SwapChip action="add" label={ROLE_GROUP_LABEL[to]} /> : null}
       </div>
       <div className="flex items-center gap-2 tabular-nums min-[1101px]:ml-auto">
-        <span className="text-caption text-muted">Manos limpias</span>
+        <span className="text-micro text-muted">Manos limpias</span>
         <span className="text-body text-muted">{formatShortPercent(cleanBefore)}</span>
         <Icon name="arrow-right" size={14} className="text-soft" />
         <strong className="text-lead font-bold text-foreground">{formatShortPercent(best.cleanProbability)}</strong>
@@ -118,7 +118,7 @@ function SwapChip({ action, label }: { action: 'remove' | 'add'; label: string }
   const tone = action === 'remove' ? TONE.danger : TONE.success
 
   return (
-    <span className={cx('inline-flex items-center gap-1.5 rounded-tag border px-2 py-1 text-caption font-semibold', tone.tint, tone.text)}>
+    <span className={cx('inline-flex items-center gap-1.5 rounded-tag border px-2 py-1 text-micro font-semibold', tone.tint, tone.text)}>
       <Icon name={action === 'remove' ? 'minus' : 'plus'} size={12} strokeWidth={2.5} />
       {action === 'remove' ? 'Sacar' : 'Meter'} 1 {label}
     </span>

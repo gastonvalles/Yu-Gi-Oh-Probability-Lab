@@ -48,7 +48,7 @@ const td = (emphasis = false, tone?: keyof typeof DELTA_COLOR) =>
     tone ? ['font-bold', DELTA_COLOR[tone]] : emphasis ? 'font-bold text-foreground' : 'text-muted',
   )
 
-const TABLE = 'w-full border-collapse text-small tabular-nums'
+const TABLE = 'w-full border-collapse text-body tabular-nums'
 
 /** Nombre con el que el comparador muestra tu deck actual. */
 export const CURRENT_DECK_NAME = 'Deck actual'
@@ -150,7 +150,7 @@ function VerdictBanner({ verdict }: { verdict: ComparisonVerdict }) {
       )}
       <div className="grid min-w-0 gap-0.5">
         <strong className="text-lead font-semibold text-foreground">{verdict.title}</strong>
-        <span className="text-small text-muted">{verdict.detail}</span>
+        <span className="text-body text-muted">{verdict.detail}</span>
       </div>
     </Card>
   )
@@ -161,7 +161,7 @@ function ReportSection({ title, hint, children }: { title: string; hint?: string
     <Card padding="sm" className="grid min-w-0 gap-3">
       <header className="grid gap-0.5">
         <h3 className={cx(sectionTitle, 'text-body')}>{title}</h3>
-        {hint ? <p className="m-0 text-caption text-soft">{hint}</p> : null}
+        {hint ? <p className="m-0 text-micro text-soft">{hint}</p> : null}
       </header>
       {children}
     </Card>
@@ -184,7 +184,7 @@ function CleanTable({ clean, nameA, nameB }: { clean: CleanComparison; nameA: st
           return (
             <li key={row.key} className="grid gap-2">
               <div className="flex items-center justify-between gap-2">
-                <strong className={cx('text-small text-foreground', row.key === 'average' ? 'font-bold' : 'font-semibold')}>{row.label}</strong>
+                <strong className={cx('text-body text-foreground', row.key === 'average' ? 'font-bold' : 'font-semibold')}>{row.label}</strong>
                 <Badge tone={DELTA_BADGE_TONE[tone]} size="sm" title="B vs A">
                   B vs A {formatDelta(row.data.delta)}
                 </Badge>
@@ -204,7 +204,7 @@ function CleanBar({ side, name, value }: { side: 'A' | 'B'; name: string; value:
     <div className="grid grid-cols-[1.25rem_minmax(0,1fr)_3.5rem] items-center gap-2" title={name}>
       <span className={cx('text-micro font-bold', side === 'A' ? 'text-primary-soft' : 'text-info-soft')}>{side}</span>
       <Meter value={value ?? 0} tone={side === 'A' ? 'brand' : 'info'} size="md" label={`Manos limpias de la build ${side}`} />
-      <span className="text-right text-small font-semibold text-foreground">{formatValue(value)}</span>
+      <span className="text-right text-body font-semibold text-foreground">{formatValue(value)}</span>
     </div>
   )
 }
@@ -218,17 +218,17 @@ function CardDiffList({ diffs, deckSizeA, deckSizeB }: { diffs: CardDiff[]; deck
       hint={`A tiene ${formatInteger(deckSizeA)} cartas y B ${formatInteger(deckSizeB)}${sizeDelta === 0 ? '' : ` (${sizeDelta > 0 ? '+' : '−'}${formatInteger(Math.abs(sizeDelta))})`}.`}
     >
       {diffs.length === 0 ? (
-        <p className="m-0 text-small text-soft">Las dos builds tienen las mismas cartas.</p>
+        <p className="m-0 text-body text-soft">Las dos builds tienen las mismas cartas.</p>
       ) : (
         <ul className="m-0 grid list-none gap-1.5 p-0">
           {diffs.map((diff) => (
-            <li key={diff.cardId} className="grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-center gap-2 text-small">
+            <li key={diff.cardId} className="grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-center gap-2 text-body">
               <Badge tone={diff.delta > 0 ? 'success' : 'danger'} size="sm" className="justify-center tabular-nums">
                 {diff.delta > 0 ? '+' : '−'}
                 {formatInteger(Math.abs(diff.delta))}
               </Badge>
               <span className="truncate text-foreground">{diff.name}</span>
-              <span className="text-caption tabular-nums text-soft">
+              <span className="text-micro tabular-nums text-soft">
                 {formatInteger(diff.copiesA)} → {formatInteger(diff.copiesB)}
               </span>
             </li>
@@ -303,7 +303,7 @@ function RuleTable({ rows }: { rows: RuleComparisonRow[] }) {
       <ul className="m-0 grid list-none gap-2 p-0">
         {rows.map((row) => (
           <li key={row.id} className="grid gap-1 border-t border-border-subtle pt-2 first:border-t-0 first:pt-0">
-            <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-small text-foreground">
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-body text-foreground">
               <KindBadge kind={row.kind} />
               <strong className="font-semibold">{row.name}</strong>
               {row.turnContext !== 'either' ? (
@@ -312,7 +312,7 @@ function RuleTable({ rows }: { rows: RuleComparisonRow[] }) {
                 </Badge>
               ) : null}
             </div>
-            <div className="flex items-baseline gap-2 text-small tabular-nums text-muted">
+            <div className="flex items-baseline gap-2 text-body tabular-nums text-muted">
               <span>{formatValue(row.a)}</span>
               <span aria-hidden="true">→</span>
               <span>{formatValue(row.b)}</span>
@@ -321,7 +321,7 @@ function RuleTable({ rows }: { rows: RuleComparisonRow[] }) {
               </span>
             </div>
             {row.missingCardsIn.length > 0 ? (
-              <p className="m-0 text-caption text-warning-soft">
+              <p className="m-0 text-micro text-warning-soft">
                 {row.missingCardsIn.length === 2 ? 'Ninguna build' : `La build ${row.missingCardsIn[0]}`} no tiene alguna carta
                 que pide esta regla: ahí no puede cumplirse.
               </p>

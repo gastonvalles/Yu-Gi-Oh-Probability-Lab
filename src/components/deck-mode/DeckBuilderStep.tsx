@@ -27,7 +27,8 @@ import { Meter } from '../ui/Meter'
 import { overline } from '../ui/typography'
 import { DeckBuilderClassicPreview } from './DeckBuilderClassicPreview'
 import { DeckImportDrawer } from './DeckImportDrawer'
-import { field, surface } from '../ui/surfaces'
+import { surface } from '../ui/surfaces'
+import { LabeledField, fieldInline } from '../ui/LabeledField'
 
 
 interface DeckBuilderStepProps {
@@ -259,21 +260,19 @@ export function DeckBuilderStep({
 
             <div className="relative z-1 grid h-full min-h-0 content-start gap-4 overflow-y-auto overflow-x-hidden px-8 pb-6 pt-4 [scrollbar-gutter:stable] [scrollbar-width:thin] max-[1500px]:px-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex min-w-0 flex-[1_1_16rem] items-center gap-3">
-                  <input
-                    type="text"
-                    value={deckBuilder.deckName}
-                    onChange={(event) => onDeckNameChange(event.target.value)}
-                    placeholder="Nombre del deck"
-                    className={`${field} h-10 min-w-0 flex-[1_1_auto] px-3 text-body font-semibold`}
-                  />
+                <div className="flex min-w-0 flex-[1_1_16rem] items-stretch gap-3">
+                  <LabeledField label="Nombre del deck" className="min-w-0 flex-[1_1_auto]">
+                    <input
+                      type="text"
+                      value={deckBuilder.deckName}
+                      onChange={(event) => onDeckNameChange(event.target.value)}
+                      placeholder="Nombre del deck"
+                      className={fieldInline}
+                    />
+                  </LabeledField>
 
-                  <label className="inline-flex min-w-0 flex-none items-center gap-2 whitespace-nowrap text-body font-semibold text-foreground">
-                    <select
-                      value={deckFormat}
-                      onChange={(event) => onDeckFormatChange(event.target.value as DeckFormat)}
-                      className={`${field} h-10 w-[9.25rem] pl-3 pr-8 text-left text-body font-semibold`}
-                    >
+                  <LabeledField label="Formato" className="w-[9.5rem] flex-none">
+                    <select value={deckFormat} onChange={(event) => onDeckFormatChange(event.target.value as DeckFormat)} className={cx(fieldInline, 'cursor-pointer')}>
                       <option value="unlimited">Sin límite</option>
                       <option value="tcg">TCG</option>
                       <option value="ocg">OCG</option>
@@ -281,7 +280,7 @@ export function DeckBuilderStep({
                       <option value="edison">Edison</option>
                       <option value="genesys">Genesys</option>
                     </select>
-                  </label>
+                  </LabeledField>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -399,7 +398,7 @@ export function DeckBuilderStep({
   }
 
   return (
-    <section id="step1" className="grid w-full gap-4 px-4 pb-6 pt-4">
+    <section id="step1" className="grid w-full gap-4 px-gutter pb-6 pt-4">
       <StepHero
         title="Armá tu deck"
         icon="cards"
@@ -408,27 +407,31 @@ export function DeckBuilderStep({
         sideVariant="form"
         side={
           <>
-            <input
-              aria-label="Nombre del deck"
-              type="text"
-              value={deckBuilder.deckName}
-              onChange={(event) => onDeckNameChange(event.target.value)}
-              placeholder="Nombre del deck"
-              className={`${field} h-10 w-full px-3 text-body font-semibold`}
-            />
-            <select
-              aria-label="Formato del deck"
-              value={deckFormat}
-              onChange={(event) => onDeckFormatChange(event.target.value as DeckFormat)}
-              className={`${field} h-10 w-full px-3 text-left text-body font-semibold`}
-            >
-              <option value="unlimited">Sin límite</option>
-              <option value="tcg">TCG</option>
-              <option value="ocg">OCG</option>
-              <option value="goat">GOAT</option>
-              <option value="edison">Edison</option>
-              <option value="genesys">Genesys</option>
-            </select>
+            <LabeledField label="Nombre del deck">
+              <input
+                aria-label="Nombre del deck"
+                type="text"
+                value={deckBuilder.deckName}
+                onChange={(event) => onDeckNameChange(event.target.value)}
+                placeholder="Nombre del deck"
+                className={fieldInline}
+              />
+            </LabeledField>
+            <LabeledField label="Formato">
+              <select
+                aria-label="Formato del deck"
+                value={deckFormat}
+                onChange={(event) => onDeckFormatChange(event.target.value as DeckFormat)}
+                className={cx(fieldInline, 'cursor-pointer')}
+              >
+                <option value="unlimited">Sin límite</option>
+                <option value="tcg">TCG</option>
+                <option value="ocg">OCG</option>
+                <option value="goat">GOAT</option>
+                <option value="edison">Edison</option>
+                <option value="genesys">Genesys</option>
+              </select>
+            </LabeledField>
             <Button variant="secondary" size="md" fullWidth icon="upload" onClick={() => setImportDrawerOpen(true)}>
               Importar
             </Button>
@@ -448,7 +451,7 @@ export function DeckBuilderStep({
             </strong>
           </div>
           <Meter value={genesysPointTotal / genesysPointCap} tone={genesysPointTotal > genesysPointCap ? 'warning' : 'brand'} size="sm" label="Puntos Genesys" />
-          <p className="m-0 text-caption text-muted">Cap estándar de 100 puntos y hasta 3 copias por carta.</p>
+          <p className="m-0 text-micro text-muted">Cap estándar de 100 puntos y hasta 3 copias por carta.</p>
         </Card>
       ) : null}
 

@@ -16,7 +16,7 @@ interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 
 const SIZE = {
   sm: 'h-5 gap-1 px-1.5 text-micro',
-  md: 'h-6 gap-1.5 px-2 text-caption',
+  md: 'h-6 gap-1.5 px-2 text-micro',
 } as const
 
 /** Etiqueta compacta de estado, conteo o tipo. Un solo estilo para toda la app. */

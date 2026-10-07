@@ -20,7 +20,7 @@ const BASE =
   'inline-flex shrink-0 items-center justify-center p-0 transition-[background-color,border-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus [&_svg]:block'
 
 const SIZES: Record<IconButtonTone, Record<IconButtonSize, string>> = {
-  raised: { sm: 'size-8 [&_svg]:size-4', md: 'size-9 [&_svg]:size-[1.125rem]', lg: 'size-11 [&_svg]:size-5' },
+  raised: { sm: 'size-9 [&_svg]:size-4', md: 'size-10 [&_svg]:size-[1.125rem]', lg: 'size-11 [&_svg]:size-5' },
   close: { sm: 'size-8 [&_svg]:size-4', md: 'size-9 [&_svg]:size-[1.125rem]', lg: 'size-10 [&_svg]:size-5' },
   ghost: { sm: 'size-8 [&_svg]:size-4', md: 'size-10 [&_svg]:size-5', lg: 'size-10 [&_svg]:size-5' },
   flat: { sm: 'size-11 [&_svg]:size-6', md: 'size-12 [&_svg]:size-7', lg: 'size-12 [&_svg]:size-7' },
@@ -30,7 +30,7 @@ const toneStyle = variants({
   base: BASE,
   variants: {
     tone: {
-      raised: 'rounded-control border border-border-subtle bg-surface-raised text-muted hover:bg-surface-hover hover:text-foreground',
+      raised: 'rounded-control bg-lavender text-primary-soft hover:bg-primary/28',
       close: 'rounded-control bg-transparent text-soft hover:bg-white/8 hover:text-foreground',
       ghost: 'rounded-control bg-transparent text-soft hover:bg-white/8 hover:text-foreground',
       flat: 'rounded-full bg-transparent text-white hover:bg-white/8 active:bg-white/16 [&_svg]:stroke-[1.3]',

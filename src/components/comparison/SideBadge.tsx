@@ -11,7 +11,7 @@ export function SideBadge({ side, size = 'md' }: SideBadgeProps) {
     <span
       className={cx(
         'inline-grid flex-none place-items-center rounded-full font-bold',
-        size === 'md' ? 'size-7 text-small' : 'size-10 text-lead',
+        size === 'md' ? 'size-7 text-body' : 'size-10 text-lead',
         side === 'A' ? 'bg-primary text-primary-foreground' : 'bg-info text-background',
       )}
     >

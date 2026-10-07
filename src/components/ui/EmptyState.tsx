@@ -19,7 +19,7 @@ export function EmptyState({ icon = 'layers', title, children, action, className
         <Icon name={icon} size={20} />
       </span>
       <strong className="text-body font-semibold text-foreground">{title}</strong>
-      {children ? <p className="m-0 max-w-md text-small text-muted">{children}</p> : null}
+      {children ? <p className="m-0 max-w-md text-body text-muted">{children}</p> : null}
       {action ? <div className="mt-1">{action}</div> : null}
     </div>
   )

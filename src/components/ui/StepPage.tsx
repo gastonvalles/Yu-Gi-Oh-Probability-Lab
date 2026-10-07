@@ -14,7 +14,7 @@ export function StepPage({ as: Component = 'section', className, ...props }: Ste
   return (
     <Component
       className={cx(
-        'mx-auto grid w-full min-w-0 max-w-content content-start gap-4 px-4 pb-6 pt-4 min-[1101px]:gap-5 min-[1101px]:px-6 min-[1101px]:pb-8 min-[1101px]:pt-6',
+        'mx-auto grid w-full min-w-0 max-w-content content-start gap-4 px-gutter pb-6 pt-4 min-[1101px]:gap-5 min-[1101px]:px-6 min-[1101px]:pb-8 min-[1101px]:pt-6',
         className,
       )}
       {...props}
