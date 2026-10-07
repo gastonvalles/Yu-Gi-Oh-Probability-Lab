@@ -2,8 +2,13 @@ import { useCallback, useMemo, type ReactNode } from 'react'
 
 import { formatShortPercent } from '../../app/utils'
 import { ROLE_GROUP_LABEL, type Culprit, type Outcome, type PerTurnResults } from '../../app/lab-suggestion'
+import { Badge } from '../ui/Badge'
+import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
-import { surface } from '../ui/surfaces'
+import { Icon } from '../ui/Icon'
+import { Meter } from '../ui/Meter'
+import { TONE } from '../ui/tone'
+import { overline, supportText } from '../ui/typography'
 import { formatOdds } from './lab-copy'
 import { useLabSuggestion } from './use-lab-suggestion'
 import type { LabViewResult } from '../../app/probability-lab'
@@ -33,36 +38,90 @@ export function LabSuggestion({ cards, checks, deckFormat, handSize, view, resul
     return null
   }
 
-  return (
-    <section className={cx(surface.card, 'order-2 grid min-w-0 gap-2 p-3 min-[1101px]:order-3 min-[1101px]:col-span-full')} aria-label="Qué mejorar primero">
-      <p className="m-0 text-micro font-semibold uppercase tracking-widest text-accent">Lo que más te frena</p>
-      <div className="grid gap-0.5">
-        <strong className="text-lead leading-tight text-foreground [overflow-wrap:anywhere]">{culprit.name}</strong>
-        <p className="m-0 text-small text-muted">{describeCulprit(culprit)}</p>
-      </div>
+  const best = state.analysis.best
 
-      {state.analysis.best ? (
-        <AdviceBox label="Sugerencia">{describeBest(culprit, state.analysis.best, result.cleanProbability)}{perTurnLine(state.analysis.best, perTurn)}</AdviceBox>
+  return (
+    <Card className="order-2 grid gap-4 min-[1101px]:order-3 min-[1101px]:col-span-full" aria-label="Qué mejorar primero">
+      <header className="flex min-w-0 items-start gap-3">
+        <span className={cx('grid size-10 shrink-0 place-items-center rounded-control border', TONE.danger.tint, TONE.danger.text)}>
+          <Icon name="target" size={20} />
+        </span>
+        <div className="grid min-w-0 gap-0.5">
+          <p className={cx('m-0', overline)}>Lo que más te frena</p>
+          <strong className="text-lead font-semibold leading-tight text-foreground [overflow-wrap:anywhere]">{culprit.name}</strong>
+          <p className={supportText}>{describeCulprit(culprit)}</p>
+        </div>
+      </header>
+
+      {best ? (
+        <AdviceBox label="Sugerencia" visual={<SwapSummary best={best} cleanBefore={result.cleanProbability} />}>
+          {describeBest(culprit, best, result.cleanProbability)}
+          {perTurnLine(best, perTurn)}
+        </AdviceBox>
       ) : state.status === 'loading' ? (
-        <p className="m-0 text-small text-muted motion-safe:animate-pulse">
-          Probando cambios en tu deck… ({state.progress.done}/{state.progress.total})
-        </p>
+        <div className="grid gap-2" role="status">
+          <p className="m-0 text-small text-muted motion-safe:animate-pulse">
+            Probando cambios en tu deck… ({state.progress.done}/{state.progress.total})
+          </p>
+          <Meter value={state.progress.total > 0 ? state.progress.done / state.progress.total : 0} size="sm" label="Cambios probados" />
+        </div>
       ) : (
         <AdviceBox label="Conclusión">
           {describeNoGain(culprit, state.analysis.tradeoff, result.cleanProbability, hint, causes, state.progress.total, state.analysis.compared)}
         </AdviceBox>
       )}
-    </section>
+    </Card>
   )
 }
 
 /** Recuadro verde del consejo (o de la conclusión cuando no hay un cambio que convenga). */
-function AdviceBox({ label, children }: { label: string; children: ReactNode }) {
+function AdviceBox({ label, visual, children }: { label: string; visual?: ReactNode; children: ReactNode }) {
   return (
-    <p className="m-0 rounded-control border border-accent/30 bg-accent/8 px-3 py-2 text-small text-foreground">
-      <strong>{label}: </strong>
-      {children}
-    </p>
+    <div className={cx('grid gap-3 rounded-control border p-3', TONE.success.tint)}>
+      {visual}
+      <p className="m-0 text-small text-foreground">
+        <strong>{label}: </strong>
+        {children}
+      </p>
+    </div>
+  )
+}
+
+/** El cambio de un vistazo: qué sacar, qué meter y cuánto suben las manos limpias. */
+function SwapSummary({ best, cleanBefore }: { best: Outcome; cleanBefore: number }) {
+  const { from, to } = best.swap
+  const points = (best.cleanProbability - cleanBefore) * 100
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {from ? <SwapChip action="remove" label={ROLE_GROUP_LABEL[from]} /> : null}
+        {from && to ? <Icon name="arrow-right" size={16} className="text-soft" /> : null}
+        {to ? <SwapChip action="add" label={ROLE_GROUP_LABEL[to]} /> : null}
+      </div>
+      <div className="flex items-center gap-2 tabular-nums min-[1101px]:ml-auto">
+        <span className="text-caption text-muted">Manos limpias</span>
+        <span className="text-body text-muted">{formatShortPercent(cleanBefore)}</span>
+        <Icon name="arrow-right" size={14} className="text-soft" />
+        <strong className="text-lead font-bold text-foreground">{formatShortPercent(best.cleanProbability)}</strong>
+        {points > 0.05 ? (
+          <Badge tone="success" size="sm">
+            +{points.toFixed(1)} pts
+          </Badge>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function SwapChip({ action, label }: { action: 'remove' | 'add'; label: string }) {
+  const tone = action === 'remove' ? TONE.danger : TONE.success
+
+  return (
+    <span className={cx('inline-flex items-center gap-1.5 rounded-tag border px-2 py-1 text-caption font-semibold', tone.tint, tone.text)}>
+      <Icon name={action === 'remove' ? 'minus' : 'plus'} size={12} strokeWidth={2.5} />
+      {action === 'remove' ? 'Sacar' : 'Meter'} 1 {label}
+    </span>
   )
 }
 

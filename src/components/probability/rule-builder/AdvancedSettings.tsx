@@ -10,7 +10,8 @@ import { buildDerivedDeckGroupMap } from '../../../app/deck-groups'
 import { formatInteger } from '../../../app/utils'
 import type { CardEntry, HandPattern } from '../../../types'
 import { Switch } from '../../ui/Switch'
-import { Button } from '../../ui/Button'
+import { Callout } from '../../ui/Callout'
+import { Segmented } from '../../ui/Segmented'
 import type { PatternEditorActions } from '../pattern-editor-actions'
 import { NumberField } from '../../ui/NumberField'
 import { field, surface } from '../../ui/surfaces'
@@ -53,16 +54,14 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
   return (
     <div className="grid gap-3">
       {pattern.needsReview ? (
-        <p className={`${surface.cardWarning} m-0 px-2.5 py-2 text-caption text-warning`}>
-          Esta regla viene de una versión anterior. Revisá estos ajustes antes de confiar en el resultado.
-        </p>
+        <Callout tone="warning">Esta regla viene de una versión anterior. Revisá estos ajustes antes de confiar en el resultado.</Callout>
       ) : null}
 
       {/* Reuse policy — only show when there's actual overlap between conditions */}
       {hasOverlap ? (
-        <div className={`${surface.card} grid gap-1.5 px-3 py-2.5 rounded`}>
+        <div className={`${surface.panelSoft} grid gap-1.5 px-3 py-3`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-caption text-foreground">
+            <span className="text-small font-medium text-foreground">
               ¿La misma carta cuenta para más de una condición?
             </span>
             <Switch
@@ -71,7 +70,7 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
               onChange={(checked) => actions.setPatternAllowSharedCards(pattern.id, checked)}
             />
           </div>
-          <p className="m-0 text-micro text-muted">
+          <p className="m-0 text-caption text-muted">
             Hay cartas que aparecen en más de una condición.
             {allowsSharedCards(pattern)
               ? ' Una misma carta puede satisfacer varias condiciones a la vez.'
@@ -82,10 +81,10 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
 
       {/* Una salida puede "rescatar" cartas que de otro modo cuentan como muertas en los problemas. */}
       {pattern.kind === 'opening' ? (
-        <div className={`${surface.card} flex items-center justify-between gap-3 rounded px-3 py-2.5`}>
+        <div className={`${surface.panelSoft} flex items-center justify-between gap-3 px-3 py-3`}>
           <span className="grid gap-0.5">
-            <span className="text-caption text-foreground">Rescatar las cartas que usa</span>
-            <span className="text-micro text-muted">
+            <span className="text-small font-medium text-foreground">Rescatar las cartas que usa</span>
+            <span className="text-caption text-muted">
               {pattern.rescuesCards
                 ? 'Encendido: si la mano cumple esta salida, sus cartas no cuentan como muertas en los problemas.'
                 : 'Apagado: los problemas cuentan todas las cartas de la mano.'}
@@ -111,7 +110,7 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
             value={minimumMatches}
             onChange={(value) => actions.setPatternMinimumMatches(pattern.id, String(value))}
             aria-label="Mínimo de condiciones a cumplir"
-            className={`${field} w-16 px-2 py-[0.35rem] text-center text-small`}
+            className={`${field} h-9 w-16 px-2 text-center text-small`}
           />
         </div>
       ) : null}
@@ -126,29 +125,18 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
             const conditionIndex = pattern.conditions.indexOf(condition)
 
             return (
-              <div
-                key={condition.id}
-                className={`flex flex-wrap items-center justify-between gap-2 ${surface.card} px-2.5 py-1.5 rounded`}
-              >
-                <span className="text-caption text-foreground">
-                  Condición {formatInteger(conditionIndex + 1)}
-                </span>
-                <div className="flex gap-1.5">
-                  <Button
-                    variant={condition.distinct ? 'secondary' : 'primary'}
-                    size="sm"
-                    onClick={() => actions.setRequirementDistinct(pattern.id, condition.id, false)}
-                  >
-                    Copias
-                  </Button>
-                  <Button
-                    variant={condition.distinct ? 'primary' : 'secondary'}
-                    size="sm"
-                    onClick={() => actions.setRequirementDistinct(pattern.id, condition.id, true)}
-                  >
-                    Nombres
-                  </Button>
-                </div>
+              <div key={condition.id} className={`flex flex-wrap items-center justify-between gap-2 ${surface.panelSoft} px-3 py-2`}>
+                <span className="text-small text-foreground">Condición {formatInteger(conditionIndex + 1)}</span>
+                <Segmented
+                  size="sm"
+                  label={`Contar copias o nombres de la condición ${formatInteger(conditionIndex + 1)}`}
+                  value={condition.distinct ? 'names' : 'copies'}
+                  onChange={(next) => actions.setRequirementDistinct(pattern.id, condition.id, next === 'names')}
+                  options={[
+                    { value: 'copies', label: 'Copias' },
+                    { value: 'names', label: 'Nombres' },
+                  ]}
+                />
               </div>
             )
           })}

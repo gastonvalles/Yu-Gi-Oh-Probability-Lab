@@ -35,6 +35,10 @@ export const chip = {
   accent: cx('rounded-full border text-foreground', TONE.brand.tint),
 } as const
 
+/** Pastilla de selección (tipo de carta, atributo, nivel): neutra en reposo, violeta si está elegida (aria-pressed). */
+export const choiceChip =
+  'inline-flex items-center justify-center rounded-full border border-border-subtle bg-white/4 font-semibold text-muted transition-[border-color,background-color,color] duration-150 hover:bg-white/8 hover:text-foreground focus-visible:outline-none focus-visible:shadow-focus aria-pressed:border-primary/55 aria-pressed:bg-primary/20 aria-pressed:text-foreground'
+
 /** Chip de un filtro activo del buscador: se toca para quitarlo. */
 export const filterChip =
   'inline-flex max-w-full items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-micro leading-none text-foreground transition-[border-color,background-color] duration-150 hover:border-primary/55 hover:bg-primary/18 focus-visible:outline-none focus-visible:shadow-focus'

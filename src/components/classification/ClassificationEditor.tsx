@@ -4,8 +4,12 @@ import type { CardEntry, CardOrigin, CardRole } from '../../types'
 import { originOption, roleOptionButton, ROLE_REFERENCE_MARK } from '../classification-styles'
 import { CardArt } from '../CardArt'
 import { Button } from '../ui/Button'
+import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
-import { chip, surface } from '../ui/surfaces'
+import { Icon } from '../ui/Icon'
+import { Meter } from '../ui/Meter'
+import { chip } from '../ui/surfaces'
+import { overline } from '../ui/typography'
 import { ORIGIN_BLURB_TEXT, ORIGIN_HELP_TEXT, ROLE_EDITOR_SECTIONS, ROLE_HELP_TEXT } from './classification-copy'
 import { CARD_TYPE_LABEL, getCardType, getClassificationStyle } from './classification-model'
 
@@ -20,7 +24,7 @@ interface ClassificationEditorProps {
   onOpenHelp?: () => void
 }
 
-const KICKER = 'm-0 text-micro font-semibold uppercase tracking-widest text-accent'
+const KICKER = `m-0 ${overline}`
 
 /** Edición de una carta: dónde encaja (origen) y qué función cumple (roles). */
 export function ClassificationEditor({
@@ -73,26 +77,19 @@ export function ClassificationEditor({
           </div>
         </header>
 
-        <div
-          className="h-1 w-full overflow-hidden rounded-full bg-[rgb(var(--border-rgb)/0.9)]"
-          role="progressbar"
-          aria-label="Cartas clasificadas"
-          aria-valuenow={completed}
-          aria-valuemin={0}
-          aria-valuemax={total}
-        >
-          <div className="h-full origin-left rounded-full bg-accent transition-transform" style={{ transform: `scaleX(${percent})` }} />
-        </div>
+        <Meter value={percent} tone="success" size="sm" label="Cartas clasificadas" />
 
         {needsConfirm ? (
-          <div className={cx(surface.cardWarning, 'flex flex-wrap items-center justify-between gap-2 px-3 py-2.5')}>
-            <p className="m-0 min-w-0 flex-1 text-small text-foreground">
-              Clasificación sugerida automáticamente. Confirmala si te parece correcta.
-            </p>
-            <Button variant="primary" size="sm" onClick={() => onConfirm(ygoprodeckId)}>
-              Confirmar
-            </Button>
-          </div>
+          <Callout
+            tone="warning"
+            action={
+              <Button variant="primary" size="sm" onClick={() => onConfirm(ygoprodeckId)}>
+                Confirmar
+              </Button>
+            }
+          >
+            Clasificación sugerida automáticamente. Confirmala si te parece correcta.
+          </Callout>
         ) : null}
 
         <section className="grid gap-2" aria-label="Origen">
@@ -117,7 +114,7 @@ export function ClassificationEditor({
                 >
                   <span className="flex min-w-0 items-center gap-2 min-[1101px]:contents">
                     <span className={ROLE_REFERENCE_MARK} />
-                    <strong className="truncate text-body leading-none text-foreground min-[1101px]:text-small">{definition.shortLabel ?? definition.label}</strong>
+                    <strong className="truncate text-body font-semibold leading-none text-foreground min-[1101px]:text-small">{definition.shortLabel ?? definition.label}</strong>
                   </span>
                   <span className="min-w-0 text-micro text-muted max-[1100px]:text-right min-[1101px]:text-micro">{ORIGIN_BLURB_TEXT[definition.key.value]}</span>
                 </button>
@@ -132,9 +129,10 @@ export function ClassificationEditor({
             {onOpenHelp ? (
               <button
                 type="button"
-                className="shrink-0 rounded-full px-1 text-caption font-semibold text-muted underline underline-offset-2 hover:text-foreground"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-1 text-caption font-semibold text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:shadow-focus"
                 onClick={onOpenHelp}
               >
+                <Icon name="info" size={14} />
                 ¿Qué significa cada rol?
               </button>
             ) : null}
@@ -145,9 +143,9 @@ export function ClassificationEditor({
               const selectedCount = section.roles.reduce((sum, role) => sum + (card.roles.includes(role) ? 1 : 0), 0)
 
               return (
-                <div key={section.title} className="grid content-start gap-2 min-[1101px]:rounded-card min-[1101px]:border min-[1101px]:border-border min-[1101px]:bg-secondary/40 min-[1101px]:p-2">
+                <div key={section.title} className="grid content-start gap-2 min-[1101px]:rounded-card min-[1101px]:border min-[1101px]:border-border-subtle min-[1101px]:bg-white/3 min-[1101px]:p-3">
                   <div className="flex items-center justify-between gap-2">
-                    <strong className="text-small leading-none text-foreground">{section.title}</strong>
+                    <strong className="text-small font-semibold leading-none text-foreground">{section.title}</strong>
                     <span className={cx(chip.base, 'px-1.5 py-0.5 text-micro leading-none tabular-nums')}>
                       {selectedCount} / {section.roles.length}
                     </span>

@@ -1,22 +1,19 @@
 import type { LabResults } from '../../app/probability-lab'
 import { formatInteger, formatPercent, formatShortPercent } from '../../app/utils'
 import type { TurnView } from '../../types'
+import { Badge } from '../ui/Badge'
+import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
+import { Meter } from '../ui/Meter'
+import { overline } from '../ui/typography'
 import {
   KPI_THRESHOLDS,
+  KPI_TONE,
   KPI_TONE_LABELS,
   buildHandsOutOfTen,
   buildVerdict,
   getKpiTone,
 } from './lab-copy'
-
-/** Color del resultado: lo heredan el borde, la etiqueta y la barra. */
-export const LAB_TONE_COLOR = {
-  excellent: '[--lab-tone-rgb:var(--accent-rgb)]',
-  good: '[--lab-tone-rgb:var(--foreground-rgb)]',
-  improvable: '[--lab-tone-rgb:var(--warning-rgb)]',
-  critical: '[--lab-tone-rgb:var(--danger-rgb)]',
-} as const
 
 interface LabScoreCardProps {
   results: LabResults
@@ -24,36 +21,42 @@ interface LabScoreCardProps {
   isRecalculating: boolean
 }
 
+const THRESHOLD_TICKS = KPI_THRESHOLDS.map((threshold) => ({
+  value: threshold.value,
+  label: `${KPI_TONE_LABELS[threshold.tone]} desde ${threshold.value * 100}%`,
+}))
+
+/** El resultado principal: % de manos limpias, su nota (con color) y el detalle por turno. */
 export function LabScoreCard({ results, view, isRecalculating }: LabScoreCardProps) {
   const current = results[view]
-  const tone = getKpiTone(current.cleanProbability)
+  const kpi = getKpiTone(current.cleanProbability)
+  const tone = KPI_TONE[kpi]
 
   return (
-    <section
-      className={cx(
-        'order-1 grid min-w-0 gap-[0.7rem] rounded-card border border-[rgb(var(--lab-tone-rgb)/0.35)] px-[1.1rem] pb-[1.1rem] pt-4 transition-opacity duration-150 [background:radial-gradient(circle_at_top_right,rgb(var(--lab-tone-rgb)/0.12),transparent_45%),linear-gradient(180deg,rgb(var(--secondary-rgb)/0.98),rgb(var(--background-rgb)/1))] aria-busy:opacity-75',
-        LAB_TONE_COLOR[tone],
-      )}
+    <Card
+      tone={tone}
+      padding="lg"
+      className="order-1 flex flex-col gap-4 transition-opacity duration-150 aria-busy:opacity-75 min-[1101px]:col-span-5"
       aria-busy={isRecalculating}
     >
       <div className="flex items-center justify-between gap-2">
-        <p className="text-accent m-0 text-micro uppercase tracking-widest">Manos jugables sin problemas</p>
-        <span className="rounded-full border border-[rgb(var(--lab-tone-rgb)/0.35)] bg-[rgb(var(--lab-tone-rgb)/0.12)] px-[0.6rem] py-1 text-micro font-extrabold uppercase tracking-[0.08em] text-[rgb(var(--lab-tone-rgb))]">
-          {KPI_TONE_LABELS[tone]}
-        </span>
+        <p className={cx('m-0', overline)}>Manos jugables sin problemas</p>
+        <Badge tone={tone} dot>
+          {KPI_TONE_LABELS[kpi]}
+        </Badge>
       </div>
 
-      <div className="flex flex-wrap items-center gap-[0.6rem]">
-        <strong className="text-[clamp(2.8rem,9vw,4.4rem)] font-extrabold leading-[0.95] tracking-[-0.04em] text-foreground tabular-nums">{formatPercent(current.cleanProbability)}</strong>
-      </div>
+      <strong className="text-[clamp(3rem,10vw,4.25rem)] font-extrabold leading-none tracking-[-0.04em] text-foreground tabular-nums">
+        {formatPercent(current.cleanProbability)}
+      </strong>
 
-      <ScoreGauge probability={current.cleanProbability} />
+      <Meter value={current.cleanProbability} tone={tone} size="lg" ticks={THRESHOLD_TICKS} label="Manos limpias" />
 
-      <p className="m-0 text-body text-muted [&_strong]:text-foreground">
-        <strong>{buildHandsOutOfTen(current.cleanProbability)}.</strong> {buildVerdict(tone, view)}
+      <p className="m-0 text-body text-muted [&_strong]:font-semibold [&_strong]:text-foreground">
+        <strong>{buildHandsOutOfTen(current.cleanProbability)}.</strong> {buildVerdict(kpi, view)}
       </p>
 
-      <dl className="m-0 grid grid-cols-2 gap-2">
+      <dl className="m-0 mt-auto grid grid-cols-2 gap-2">
         {view === 'average' ? (
           <>
             <Fact label="Yendo primero" value={formatShortPercent(results.first.cleanProbability)} />
@@ -66,41 +69,14 @@ export function LabScoreCard({ results, view, isRecalculating }: LabScoreCardPro
           </>
         )}
       </dl>
-    </section>
-  )
-}
-
-function ScoreGauge({ probability }: { probability: number }) {
-  const percent = Math.max(0, Math.min(1, probability)) * 100
-
-  return (
-    <div
-      className="relative h-[0.6rem] overflow-hidden rounded-full bg-foreground/8"
-      role="meter"
-      aria-label="Manos limpias"
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={Math.round(percent)}
-    >
-      <div
-        className="h-full origin-left rounded-[inherit] bg-linear-to-r from-[rgb(var(--lab-tone-rgb)/0.55)] to-[rgb(var(--lab-tone-rgb))] transition-transform duration-[240ms] motion-reduce:transition-none"
-        style={{ transform: `scaleX(${percent / 100})` }} />
-      {KPI_THRESHOLDS.map((threshold) => (
-        <span
-          key={threshold.value}
-          className="absolute inset-y-0 w-0.5 bg-background/90"
-          style={{ left: `${threshold.value * 100}%` }}
-          title={`${KPI_TONE_LABELS[threshold.tone]} desde ${threshold.value * 100}%`}
-        />
-      ))}
-    </div>
+    </Card>
   )
 }
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid gap-[0.1rem] rounded-control border border-border bg-background/50 px-[0.65rem] py-[0.45rem]">
-      <dt className="text-micro text-muted">{label}</dt>
+    <div className="grid gap-0.5 rounded-control border border-border-subtle bg-black/25 px-3 py-2">
+      <dt className="text-caption text-muted">{label}</dt>
       <dd className="m-0 text-lead font-bold text-foreground tabular-nums">{value}</dd>
     </div>
   )

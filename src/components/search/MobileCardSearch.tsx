@@ -22,7 +22,9 @@ import { sortVisibleSearchResults } from './search-model'
 import { QUICK_TYPE_OPTIONS, type SearchSortOrder } from './search-options'
 import type { CardSearchActions, CardSearchViewState } from './search-types'
 import { useSearchFilterContext } from './use-search-filter-context'
-import { field, filterChip, surface } from '../ui/surfaces'
+import { Callout } from '../ui/Callout'
+import { CopiesBadge } from '../ui/CopiesBadge'
+import { choiceChip, field, filterChip } from '../ui/surfaces'
 
 interface MobileCardSearchProps {
   search: CardSearchViewState
@@ -34,9 +36,9 @@ interface MobileCardSearchProps {
   onClose: () => void
 }
 
-const CHIP_ROW = '-mx-3 flex gap-[0.45rem] overflow-x-auto px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
-const ROW = '[contain-intrinsic-size:auto_4.9rem] [content-visibility:auto] flex items-center gap-2 rounded-control border border-border bg-secondary/55 py-[0.4rem] pl-[0.45rem] pr-[0.4rem]'
-const ROW_MAIN = 'flex min-w-0 flex-1 items-center gap-[0.65rem] border-0 bg-transparent p-0 text-inherit [-webkit-tap-highlight-color:transparent]'
+const CHIP_ROW = '-mx-3 flex gap-2 overflow-x-auto px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+const ROW = '[contain-intrinsic-size:auto_4.9rem] [content-visibility:auto] flex items-center gap-2 rounded-control border border-border-subtle bg-white/3 p-2'
+const ROW_MAIN = 'flex min-w-0 flex-1 items-center gap-3 border-0 bg-transparent p-0 text-inherit [-webkit-tap-highlight-color:transparent]'
 const ADDED_FEEDBACK_MS = 900
 const SKELETON_COUNT = 8
 
@@ -119,7 +121,7 @@ export function MobileCardSearch({
 
           <label className="relative block min-w-0 flex-1">
             <span className="sr-only">Nombre o texto de la carta</span>
-            <Icon name="search" size={16} className="pointer-events-none absolute left-[0.7rem] top-1/2 z-1 -translate-y-1/2 text-soft" />
+            <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 z-1 -translate-y-1/2 text-soft" />
             <input
               ref={inputRef}
               type="search"
@@ -135,7 +137,7 @@ export function MobileCardSearch({
               className={`${field} h-11 w-full pl-9 pr-11 text-base [-webkit-appearance:none] [appearance:none] [&::-webkit-search-cancel-button]:hidden`}
             />
             {status === 'loading' ? (
-              <span className="pointer-events-none absolute right-11 top-1/2 -mt-2 h-4 w-4 animate-spin rounded-full border-2 border-[rgb(var(--foreground-rgb)/0.18)] border-t-primary" />
+              <span className="pointer-events-none absolute right-11 top-1/2 -mt-2 size-4 animate-spin rounded-full border-2 border-foreground/20 border-t-primary" />
             ) : null}
             {query.length > 0 ? (
               <button
@@ -155,10 +157,10 @@ export function MobileCardSearch({
           <button
             type="button"
             className={cx(
-              'relative grid size-11 shrink-0 place-items-center rounded-control border text-foreground',
+              'relative grid size-11 shrink-0 place-items-center rounded-control border text-foreground focus-visible:outline-none focus-visible:shadow-focus',
               filtersOpen || search.activeFilterCount > 0
-                ? 'border-primary/70 bg-primary/18'
-                : 'border-border bg-secondary/90',
+                ? 'border-primary/55 bg-primary/20'
+                : 'border-border-subtle bg-surface-raised',
             )}
             aria-expanded={filtersOpen}
             aria-controls="mobile-search-filters"
@@ -167,7 +169,7 @@ export function MobileCardSearch({
             <Icon name="sliders" />
             <span className="sr-only">Filtros</span>
             {search.activeFilterCount > 0 ? (
-              <span className="absolute -right-[0.35rem] -top-[0.35rem] grid h-[1.15rem] min-w-[1.15rem] place-items-center rounded-full bg-primary px-1 text-micro font-bold text-white">{formatInteger(search.activeFilterCount)}</span>
+              <span className="absolute -right-1.5 -top-1.5 grid h-4.5 min-w-4.5 place-items-center rounded-full bg-primary px-1 text-micro font-bold text-white">{formatInteger(search.activeFilterCount)}</span>
             ) : null}
           </button>
         </form>
@@ -177,7 +179,7 @@ export function MobileCardSearch({
             <button
               key={option.value}
               type="button"
-              className="min-h-9 shrink-0 rounded-full border border-border bg-secondary/90 px-[0.95rem] text-small font-semibold text-muted aria-pressed:border-primary/80 aria-pressed:bg-primary/22 aria-pressed:text-foreground"
+              className={`${choiceChip} min-h-9 shrink-0 px-4 text-small`}
               aria-pressed={filters.quickType === option.value}
               onClick={() => actions.onFilterChange({ quickType: option.value })}
             >
@@ -232,9 +234,7 @@ export function MobileCardSearch({
               onClearRecent={recentSearches.clear}
             />
           ) : status === 'error' ? (
-            <p className={`${surface.cardDanger} m-0 px-3 py-2.5 text-body text-destructive`}>
-              {formatSearchError(search.errorMessage)}
-            </p>
+            <Callout tone="danger">{formatSearchError(search.errorMessage)}</Callout>
           ) : status === 'loading' ? (
             <ul className="m-0 grid list-none gap-2 p-0" aria-busy="true">
               {Array.from({ length: SKELETON_COUNT }, (_, index) => (
@@ -345,16 +345,10 @@ function MobileResultRow({
             limitCard={card}
             limitBadgeSize="sm"
           />
-          {copiesInDeck > 0 ? (
-            <span
-              className="absolute -bottom-[0.3rem] -right-[0.3rem] rounded-full bg-accent px-[0.32rem] py-[0.08rem] text-micro font-extrabold text-[#06140e]"
-              aria-label={`${copiesInDeck} en el deck`}>
-              ×{formatInteger(copiesInDeck)}
-            </span>
-          ) : null}
+          {copiesInDeck > 0 ? <CopiesBadge copies={copiesInDeck} placement="overlay" label={`${copiesInDeck} en el deck`} /> : null}
         </span>
         <span className="grid min-w-0 gap-0.5 text-left">
-          <strong className="text-body leading-tight wrap-anywhere text-foreground">{card.name}</strong>
+          <strong className="text-body font-semibold leading-tight wrap-anywhere text-foreground">{card.name}</strong>
           <span className="text-caption leading-tight wrap-anywhere text-muted">
             {buildCompactSearchDescription(card)}
           </span>
@@ -365,8 +359,8 @@ function MobileResultRow({
       <button
         type="button"
         className={cx(
-          'grid size-11 shrink-0 place-items-center rounded-full border text-foreground transition-[transform,background] duration-[120ms] [-webkit-tap-highlight-color:transparent] enabled:active:scale-[0.92] disabled:border-border disabled:bg-transparent disabled:text-soft',
-          justAdded ? 'border-accent/80 bg-accent/25' : 'border-primary/55 bg-primary/20',
+          'grid size-11 shrink-0 place-items-center rounded-full border text-foreground transition-[transform,background-color] duration-150 [-webkit-tap-highlight-color:transparent] focus-visible:outline-none focus-visible:shadow-focus enabled:active:scale-[0.92] disabled:border-border-subtle disabled:bg-transparent disabled:text-soft',
+          justAdded ? 'border-success/70 bg-success/25 text-success-soft' : 'border-primary/55 bg-primary/20',
         )}
         disabled={isMaxed}
         aria-label={isMaxed ? `${card.name}: máximo de copias alcanzado` : `Agregar ${card.name} al deck`}

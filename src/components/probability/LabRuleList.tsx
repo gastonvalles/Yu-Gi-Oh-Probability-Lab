@@ -2,10 +2,14 @@ import { useId, useState, type ReactNode } from 'react'
 
 import { formatInteger, formatShortPercent } from '../../app/utils'
 import type { PatternKind } from '../../types'
+import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
+import { EmptyState } from '../ui/EmptyState'
 import { Icon } from '../ui/Icon'
+import { Segmented, type SegmentedOption } from '../ui/Segmented'
 import { Switch } from '../ui/Switch'
+import { TONE } from '../ui/tone'
 import { KindBadge } from './KindBadge'
 import { LabSection } from './LabSection'
 import { LAB_FOOTNOTE } from './lab-styles'
@@ -14,24 +18,20 @@ import type { RuleEntry, RuleEntryGroups, TurnLean } from './probability-lab-hel
 
 type KindFilter = 'all' | PatternKind
 
-const KIND_FILTERS: ReadonlyArray<{ value: KindFilter; label: string }> = [
+const KIND_FILTERS: ReadonlyArray<SegmentedOption<KindFilter>> = [
   { value: 'all', label: 'Todas' },
   { value: 'opening', label: 'Salidas' },
   { value: 'problem', label: 'Problemas' },
 ]
 
-const TIER_BADGE = 'inline-flex items-center gap-[0.3rem] rounded-full bg-foreground/6 px-[0.55rem] py-[0.2rem] text-micro text-muted'
-
 const RULE_ROW =
-  'group relative grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 gap-y-1 overflow-hidden rounded-control border border-[rgb(var(--lab-kind-rgb)/0.22)] bg-[rgb(var(--lab-kind-rgb)/0.04)] px-3 pb-3 pt-[0.6rem] text-left transition-[border-color,background,opacity,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary/70'
-const RULE_ROW_INTERACTIVE =
-  'cursor-pointer hover:border-[rgb(var(--lab-kind-rgb)/0.55)] hover:bg-[rgb(var(--lab-kind-rgb)/0.08)] active:scale-[0.99]'
+  'group relative grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 gap-y-1 overflow-hidden rounded-control border border-border-subtle bg-white/3 px-3 pb-3.5 pt-2.5 text-left transition-[border-color,background-color,opacity,transform] duration-150 focus-visible:outline-none focus-visible:shadow-focus'
+const RULE_ROW_INTERACTIVE = 'cursor-pointer hover:border-[rgb(var(--tone-rgb)/0.5)] hover:bg-white/5 active:scale-[0.99]'
 const RULE_KIND_RGB: Record<PatternKind, string> = {
-  opening: '[--lab-kind-rgb:var(--accent-rgb)]',
-  problem: '[--lab-kind-rgb:var(--danger-rgb)]',
+  opening: TONE.success.rgb,
+  problem: TONE.danger.rgb,
 }
 const RULE_STACK = 'contents min-[1101px]:grid min-[1101px]:min-w-0 min-[1101px]:content-start min-[1101px]:gap-5'
-const RULE_TURN_BADGE = 'flex-none rounded-tag bg-warning/14 px-[0.3rem] py-[0.05rem] text-micro font-semibold text-warning'
 
 interface LabRuleListProps {
   groups: RuleEntryGroups
@@ -62,27 +62,10 @@ export function LabRuleList({
   return (
     <LabSection
       title="Reglas del análisis"
+      icon="list"
       summary={`${formatInteger(groups.universal.length)} universales · ${formatInteger(enabledGeneric)}/${formatInteger(groups.generic.length)} genéricas · ${formatInteger(groups.custom.length)} propias`}
       className="order-5 min-[1101px]:col-span-full"
-      actions={
-        <div className="inline-flex gap-[0.2rem] rounded-full border border-border p-[0.2rem]" role="radiogroup" aria-label="Filtrar reglas por tipo">
-          {KIND_FILTERS.map((filter) => (
-            <button
-              key={filter.value}
-              type="button"
-              role="radio"
-              aria-checked={kindFilter === filter.value}
-              className={cx(
-                'rounded-full px-[0.7rem] py-[0.3rem] text-caption font-semibold',
-                kindFilter === filter.value ? 'bg-primary/22 text-foreground' : 'text-muted',
-              )}
-              onClick={() => setKindFilter(filter.value)}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
-      }
+      actions={<Segmented size="sm" label="Filtrar reglas por tipo" value={kindFilter} onChange={setKindFilter} options={KIND_FILTERS} />}
     >
       <p className={LAB_FOOTNOTE}>
         Una mano es <strong>limpia</strong> si cumple al menos una salida y ningún problema activo.
@@ -95,9 +78,9 @@ export function LabRuleList({
             title="Universales"
             collapsible
             badge={
-              <span className={TIER_BADGE}>
-                <Icon name="lock" size={14} /> Siempre activas
-              </span>
+              <Badge icon="lock" size="sm">
+                Siempre activas
+              </Badge>
             }
             description="Valen para cualquier deck de Yu-Gi-Oh!: definen la base de una mano jugable. Solo podés cambiarles el nombre."
             entries={visible(groups.universal)}
@@ -108,7 +91,11 @@ export function LabRuleList({
           <RuleTier
             title="Genéricas"
             collapsible
-            badge={<span className={TIER_BADGE}>{formatInteger(enabledGeneric)} activas</span>}
+            badge={
+              <Badge size="sm" tone={enabledGeneric > 0 ? 'success' : 'neutral'}>
+                {formatInteger(enabledGeneric)} activas
+              </Badge>
+            }
             description="Aplican a la mayoría de los decks. Apagalas o editalas para ajustar cantidades de copias."
             entries={visible(groups.generic)}
             renderRow={(entry) => (
@@ -131,20 +118,17 @@ export function LabRuleList({
           <RuleTier
             title="Tus reglas"
             badge={
-              <Button variant="secondary" size="sm" onClick={onCreateCustom}>
-                <Icon name="plus" size={14} strokeWidth={2} /> Crear regla
+              <Button variant="secondary" size="sm" icon="plus" onClick={onCreateCustom}>
+                Crear regla
               </Button>
             }
             description="Combos, cartas clave o problemas propios de tu deck. Tocá una para editarla."
             entries={visible(groups.custom)}
             emptyState={
               groups.custom.length === 0 ? (
-                <div className="grid gap-1 rounded-control border border-dashed border-border p-3 text-caption text-muted [&_strong]:text-small [&_strong]:text-foreground">
-                  <strong>Todavía no creaste reglas</strong>
-                  <span>
-                    Ejemplos: “Abrir tu carta clave”, “Starter + pieza de combo” o “2+ Handtraps yendo 2º”.
-                  </span>
-                </div>
+                <EmptyState icon="sparkles" title="Todavía no creaste reglas" className="py-6">
+                  Ejemplos: “Abrir tu carta clave”, “Starter + pieza de combo” o “2+ Handtraps yendo 2º”.
+                </EmptyState>
               ) : (
                 <p className={LAB_FOOTNOTE}>No hay reglas propias de este tipo.</p>
               )
@@ -191,25 +175,25 @@ function RuleTier({
   const listId = useId()
 
   return (
-    <section className="grid min-w-0 content-start gap-[0.55rem]" aria-label={title}>
-      <header className="grid gap-[0.2rem]">
+    <section className="grid min-w-0 content-start gap-2" aria-label={title}>
+      <header className="grid gap-1">
         <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
           {collapsible ? (
-            <h4 className="m-0 text-body text-foreground">
+            <h4 className="m-0 text-body font-semibold text-foreground">
               <button
                 type="button"
-                className="inline-flex cursor-pointer items-center gap-[0.4rem] border-0 bg-transparent py-[0.2rem] pl-0 pr-[0.3rem] font-[inherit] text-inherit hover:text-primary"
+                className="inline-flex cursor-pointer items-center gap-2 rounded-control border-0 bg-transparent py-1 pr-2 font-[inherit] text-inherit hover:text-primary-soft focus-visible:outline-none focus-visible:shadow-focus"
                 aria-expanded={isOpen}
                 aria-controls={listId}
                 onClick={() => setIsOpen((current) => !current)}
               >
                 <Icon name="chevron-right" size={14} className={cx('text-soft transition-transform duration-150', isOpen && 'rotate-90')} />
                 {title}
-                <span className="rounded-full bg-secondary/90 px-[0.45rem] py-[0.05rem] text-micro font-bold text-muted">{formatInteger(entries.length)}</span>
+                <Badge size="sm">{formatInteger(entries.length)}</Badge>
               </button>
             </h4>
           ) : (
-            <h4 className="m-0 text-body text-foreground">{title}</h4>
+            <h4 className="m-0 text-body font-semibold text-foreground">{title}</h4>
           )}
           {badge}
         </div>
@@ -219,7 +203,7 @@ function RuleTier({
       {!isOpen ? null : entries.length === 0 ? (
         (emptyState ?? <p className={LAB_FOOTNOTE}>No hay reglas de este tipo.</p>)
       ) : (
-        <ul id={listId} className="m-0 grid list-none gap-[0.4rem] p-0">
+        <ul id={listId} className="m-0 grid list-none gap-2 p-0">
           {entries.map((entry) => (
             <li key={entry.patternId}>{renderRow(entry)}</li>
           ))}
@@ -245,26 +229,27 @@ function RuleRow({
 }) {
   const body = (
     <>
-      <span className="grid min-w-0 gap-[0.15rem]">
-        <span className="flex min-w-0 flex-wrap items-center gap-[0.4rem] text-body font-bold text-foreground">
+      <span className="grid min-w-0 gap-0.5">
+        <span className="flex min-w-0 flex-wrap items-center gap-1.5 text-body font-semibold text-foreground">
           <KindBadge kind={entry.kind} />
           <span className="min-w-0 [overflow-wrap:anywhere]">{entry.name}</span>
-          {showEditIcon ? <Icon name="pencil" size={13} className="size-[0.8rem] flex-none text-soft group-hover:text-foreground" /> : null}
+          {showEditIcon ? <Icon name="pencil" size={13} className="flex-none text-soft group-hover:text-foreground" /> : null}
           {entry.turnContext !== 'either' ? (
-            <span className={RULE_TURN_BADGE}>{entry.turnContext === 'first' ? 'Solo 1º' : 'Solo 2º'}</span>
+            <TurnBadge>{entry.turnContext === 'first' ? 'Solo 1º' : 'Solo 2º'}</TurnBadge>
           ) : null}
-          {entry.ignoresDraw && entry.turnContext !== 'first' ? <span className={RULE_TURN_BADGE} title="Yendo 2º no cuenta la carta robada">5 cartas</span> : null}
+          {entry.ignoresDraw && entry.turnContext !== 'first' ? <TurnBadge title="Yendo 2º no cuenta la carta robada">5 cartas</TurnBadge> : null}
           {entry.turnLean ? <TurnLeanBadge kind={entry.kind} lean={entry.turnLean} /> : null}
         </span>
-        <span className="truncate text-caption text-foreground opacity-85">{entry.summary}</span>
+        <span className="truncate text-caption text-muted">{entry.summary}</span>
         {entry.description ? <span className="text-caption text-muted">{entry.description}</span> : null}
       </span>
-      <span className="whitespace-nowrap text-body font-extrabold text-foreground tabular-nums">{formatRuleValue(entry)}</span>
+      <span className="whitespace-nowrap text-lead font-bold text-foreground tabular-nums">{formatRuleValue(entry)}</span>
       {entry.probability !== null ? (
-        <span className="absolute inset-x-0 bottom-0 h-[3px] bg-[rgb(var(--lab-kind-rgb)/0.1)]" aria-hidden="true">
+        <span className="absolute inset-x-0 bottom-0 h-1 bg-[rgb(var(--tone-rgb)/0.12)]" aria-hidden="true">
           <span
-            className="block h-full origin-left bg-[rgb(var(--lab-kind-rgb)/0.85)] transition-transform duration-[240ms] motion-reduce:transition-none"
-            style={{ transform: `scaleX(${Math.min(1, entry.probability)})` }} />
+            className="block h-full origin-left bg-[rgb(var(--tone-rgb)/0.85)] transition-transform duration-[240ms] motion-reduce:transition-none"
+            style={{ transform: `scaleX(${Math.min(1, entry.probability)})` }}
+          />
         </span>
       ) : null}
     </>
@@ -348,9 +333,19 @@ function TurnLeanBadge({ kind, lean }: { kind: RuleEntry['kind']; lean: TurnLean
       : `Este problema pesa más yendo ${turn}.`
 
   return (
-    <span className="flex-none cursor-help rounded-tag border border-primary/40 px-[0.3rem] py-[0.02rem] text-micro font-semibold text-foreground" title={`${meaning} ${detail}`}>
+    <Badge tone="brand" size="sm" shape="tag" className="cursor-help" title={`${meaning} ${detail}`}>
       Más yendo {turn}
-      <span className="sr-only">. {meaning} {detail}</span>
-    </span>
+      <span className="sr-only">
+        . {meaning} {detail}
+      </span>
+    </Badge>
+  )
+}
+
+function TurnBadge({ children, title }: { children: ReactNode; title?: string }) {
+  return (
+    <Badge tone="warning" size="sm" shape="tag" title={title}>
+      {children}
+    </Badge>
   )
 }

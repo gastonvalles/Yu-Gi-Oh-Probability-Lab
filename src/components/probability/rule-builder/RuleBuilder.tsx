@@ -6,7 +6,8 @@ import { buildPatternCompactSummary, buildPatternPreview } from '../pattern-help
 import type { PatternEditorActions } from '../pattern-editor-actions'
 import { Button } from '../../ui/Button'
 import { cx } from '../../ui/cx'
-import { Icon } from '../../ui/Icon'
+import { TONE } from '../../ui/tone'
+import { overline } from '../../ui/typography'
 
 import { AdvancedSettings } from './AdvancedSettings'
 import { ConditionBlock } from './ConditionBlock'
@@ -41,7 +42,7 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
   }, [actions, conditionCount, isPendingCreation, pattern.id])
 
   return (
-    <div className="rule-builder grid gap-5">
+    <div className="grid gap-6">
       <RuleStep number={1} title="Nombre" hint="Opcional: si lo dejás vacío se usa el resumen.">
         <PatternNameInput
           patternId={pattern.id}
@@ -52,15 +53,9 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
         />
       </RuleStep>
 
-      <section
-        className={cx(
-          'grid gap-[0.35rem] rounded-card border border-[rgb(var(--lab-kind-rgb)/0.35)] bg-[rgb(var(--lab-kind-rgb)/0.06)] px-[0.9rem] py-3',
-          pattern.kind === 'opening' ? '[--lab-kind-rgb:var(--accent-rgb)]' : '[--lab-kind-rgb:var(--danger-rgb)]',
-        )}
-        aria-live="polite"
-      >
-        <span className="text-small font-bold text-[rgb(var(--lab-kind-rgb))]">{preview.heading}</span>
-        <ul className="m-0 grid gap-[0.15rem] pl-[1.1rem] text-body text-foreground">
+      <section className={cx('grid gap-1.5 rounded-card border px-4 py-3', TONE[pattern.kind === 'opening' ? 'success' : 'danger'].tint)} aria-live="polite">
+        <span className={cx('text-small font-semibold', TONE[pattern.kind === 'opening' ? 'success' : 'danger'].text)}>{preview.heading}</span>
+        <ul className="m-0 grid gap-0.5 pl-4 text-body text-foreground">
           {preview.items.map((item, index) => (
             <li key={`${index}-${item}`}>{item}</li>
           ))}
@@ -88,9 +83,7 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
             <div key={condition.id} className="grid gap-0">
               {index > 0 ? (
                 <div className="flex justify-center py-1">
-                  <span className="text-small font-medium uppercase tracking-widest text-soft">
-                    {connector}
-                  </span>
+                  <span className={overline}>{connector}</span>
                 </div>
               ) : null}
               <ConditionBlock
@@ -106,13 +99,8 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
           ))}
         </div>
 
-        <Button
-          variant="secondary"
-          size="sm"
-          className="justify-self-start"
-          onClick={() => actions.addRequirement(pattern.id)}
-        >
-          <Icon name="plus" size={14} strokeWidth={2} /> Agregar condición
+        <Button variant="secondary" size="sm" icon="plus" className="justify-self-start" onClick={() => actions.addRequirement(pattern.id)}>
+          Agregar condición
         </Button>
       </RuleStep>
 
@@ -138,18 +126,18 @@ function RuleStep({
   children: ReactNode
 }) {
   return (
-    <section className="grid gap-[0.6rem]">
-      <header className="flex flex-wrap items-center gap-2">
+    <section className="grid gap-2.5">
+      <header className="flex flex-wrap items-center gap-2.5">
         <span
-          className="grid size-[1.35rem] place-items-center rounded-full bg-primary/22 text-caption font-extrabold text-foreground"
+          className="grid size-6 place-items-center rounded-full border border-primary/40 bg-primary/16 text-caption font-bold text-primary-soft"
           aria-hidden="true"
         >
           {number}
         </span>
-        <h4 className="m-0 text-body text-foreground">{title}</h4>
+        <h4 className="m-0 text-body font-semibold text-foreground">{title}</h4>
         {hint ? <small className="text-caption text-muted">{hint}</small> : null}
       </header>
-      <div className="grid gap-[0.6rem]">{children}</div>
+      <div className="grid gap-2.5">{children}</div>
     </section>
   )
 }

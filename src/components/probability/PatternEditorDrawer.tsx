@@ -3,6 +3,10 @@ import { createPortal } from 'react-dom'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import type { CardEntry, HandPattern } from '../../types'
 import { Button } from '../ui/Button'
+import { cx } from '../ui/cx'
+import { Icon } from '../ui/Icon'
+import { TONE } from '../ui/tone'
+import { overline } from '../ui/typography'
 import { DraftImpactSummary } from './DraftImpactSummary'
 import { CloseButton } from '../ui/IconButton'
 import type { PatternEditorActions } from './pattern-editor-actions'
@@ -60,20 +64,25 @@ export function PatternEditorDrawer({
       <button
         type="button"
         aria-label="Cerrar editor"
-        className="absolute inset-0 h-full w-full bg-[rgb(var(--background-rgb)/0.76)] transition-[background] duration-160 motion-reduce:transition-none"
+        className="absolute inset-0 h-full w-full bg-black/65"
         onClick={onClose}
       />
 
       <aside
         role="dialog"
         aria-label={title}
-        className={`${surface.panel} absolute right-0 top-0 grid h-full max-h-full w-full animate-drawer-enter overflow-hidden rounded-r-none motion-reduce:animate-none max-w-3xl grid-rows-[auto_minmax(0,1fr)_auto] gap-0 border-l border-border-subtle p-0 shadow-[-28px_0_54px_rgba(0,0,0,0.38)]`}
+        className="absolute right-0 top-0 grid h-full max-h-full w-full max-w-3xl animate-drawer-enter grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden border-l border-border-subtle bg-card-background p-0 shadow-overlay motion-reduce:animate-none"
       >
-        <header className="grid gap-2 border-b border-border-subtle px-4 py-3">
+        <header className="grid gap-3 border-b border-border-subtle px-4 py-3.5">
           <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h3 className="m-0 truncate text-lead leading-tight text-foreground">{title}</h3>
-              <p className="text-accent m-[0.2rem_0_0] text-micro uppercase tracking-widest">Regla propia</p>
+            <div className="flex min-w-0 items-start gap-3">
+              <span className={cx('mt-0.5 grid size-9 shrink-0 place-items-center rounded-control border', TONE.brand.tint, TONE.brand.text)}>
+                <Icon name={isCreating ? 'plus' : 'pencil'} size={18} />
+              </span>
+              <div className="grid min-w-0 gap-0.5">
+                <p className={cx('m-0', overline)}>Regla propia</p>
+                <h3 className="m-0 truncate text-lead font-semibold tracking-[-0.01em] text-foreground">{title}</h3>
+              </div>
             </div>
             <CloseButton size="sm" aria-label="Cerrar editor" onClick={onClose} />
           </div>
@@ -94,14 +103,9 @@ export function PatternEditorDrawer({
           )}
         </div>
 
-        <footer className="flex items-center justify-between gap-2 border-t border-border-subtle px-4 py-3">
+        <footer className="flex items-center justify-between gap-2 border-t border-border-subtle bg-black/20 px-4 py-3">
           {pattern && !isPendingCreation ? (
-            <Button
-              variant="tertiary"
-              size="sm"
-              className="text-destructive hover:bg-[rgb(var(--danger-rgb)/0.1)]"
-              onClick={() => onRequestDelete(pattern.id)}
-            >
+            <Button variant="tertiary" color="danger" size="sm" icon="trash" onClick={() => onRequestDelete(pattern.id)}>
               Eliminar regla
             </Button>
           ) : (

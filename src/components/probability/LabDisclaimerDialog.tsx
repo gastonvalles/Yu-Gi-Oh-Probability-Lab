@@ -26,6 +26,8 @@ export function LabDisclaimerDialog({ isOpen, onAcknowledge }: { isOpen: boolean
       size="sm"
       role="alertdialog"
       dismissible={false}
+      icon="info"
+      tone="info"
       kicker="Antes de empezar"
       title="Cómo leer estos porcentajes"
       footer={

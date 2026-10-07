@@ -394,11 +394,11 @@
     --app-scrollbar-thumb: #787880;
     --app-scrollbar-thumb-hover: #8c8c95;
 
-    --zone-main-background: rgb(var(--primary-rgb) / 0.14);
+    --zone-main-background: rgb(var(--primary-rgb) / 0.1);
     --zone-main-border: rgb(var(--primary-rgb) / 0.36);
-    --zone-extra-background: rgb(var(--handtrap-rgb) / 0.14);
+    --zone-extra-background: rgb(var(--handtrap-rgb) / 0.1);
     --zone-extra-border: rgb(var(--handtrap-rgb) / 0.34);
-    --zone-side-background: rgb(var(--accent-rgb) / 0.13);
+    --zone-side-background: rgb(var(--accent-rgb) / 0.08);
     --zone-side-border: rgb(var(--accent-rgb) / 0.34);
   }
 }

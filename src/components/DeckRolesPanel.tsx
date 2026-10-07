@@ -36,7 +36,11 @@ import {
 import { DeckModelStatusBadge } from './DeckModelStatusBadge'
 import { StepHero } from './StepHero'
 import { Button } from './ui/Button'
+import { Card } from './ui/Card'
+import { EmptyState } from './ui/EmptyState'
+import { Meter } from './ui/Meter'
 import { Modal } from './ui/Modal'
+import { overline, supportText } from './ui/typography'
 import {
   ROLE_REFERENCE_CARD,
   ROLE_REFERENCE_GROUP,
@@ -115,7 +119,7 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
     return {
       title: 'No quedan cartas pendientes en esta cola.',
       description: 'Podés repasar otros grupos desde la derecha o pasar al Probability Lab cuando termines de validar la build.',
-      tone: `${surface.cardSuccess} text-accent`,
+      tone: `${surface.cardSuccess} text-success-soft`,
     }
   }
 
@@ -123,7 +127,7 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
     return {
       title: 'No hay cartas sin origen en esta vista.',
       description: 'El motor y los slots externos ya quedaron diferenciados.',
-      tone: `${surface.cardSuccess} text-accent`,
+      tone: `${surface.cardSuccess} text-success-soft`,
     }
   }
 
@@ -131,7 +135,7 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
     return {
       title: 'No hay cartas sin roles en esta vista.',
       description: 'La función táctica de estas cartas ya quedó definida.',
-      tone: `${surface.cardSuccess} text-accent`,
+      tone: `${surface.cardSuccess} text-success-soft`,
     }
   }
 
@@ -139,7 +143,7 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
     return {
       title: 'No hay cartas pendientes de revisión.',
       description: 'Las cartas cargadas en esta vista ya están validadas.',
-      tone: `${surface.cardSuccess} text-accent`,
+      tone: `${surface.cardSuccess} text-success-soft`,
     }
   }
 
@@ -557,14 +561,14 @@ export function DeckRolesPanel({
 
   const detailNavigation = selectedCard ? (
     <div className="flex flex-1 items-center justify-end gap-2 max-[1100px]:[&>button]:flex-1">
-      <Button variant="secondary" size="md" onClick={handleSelectPreviousCard} disabled={!previousCard}>
-        ← Anterior
+      <Button variant="secondary" size="md" icon="chevron-left" onClick={handleSelectPreviousCard} disabled={!previousCard}>
+        Anterior
       </Button>
       <span className="text-soft min-w-12 text-center text-caption tabular-nums max-[1100px]:order-0 min-[1101px]:hidden">
         {formatInteger(selectedCardIndexInFullList + 1)} / {formatInteger(stableNavigationCards.length)}
       </span>
-      <Button variant="primary" size="md" onClick={handleSelectNextCard} disabled={!nextCard}>
-        Siguiente →
+      <Button variant="primary" size="md" iconEnd="chevron-right" onClick={handleSelectNextCard} disabled={!nextCard}>
+        Siguiente
       </Button>
     </div>
   ) : null
@@ -572,7 +576,7 @@ export function DeckRolesPanel({
   const renderSelectedCardDetail = () => {
     if (!selectedCard) {
       return (
-        <p className={[emptyStateCopy.tone, 'm-0 px-2.5 py-2 text-small'].join(' ')}>
+        <p className={[emptyStateCopy.tone, 'm-0 px-3 py-2.5 text-small'].join(' ')}>
           <strong className="block text-foreground">{emptyStateCopy.title}</strong>
           <span className="mt-1 block">{emptyStateCopy.description}</span>
         </p>
@@ -594,7 +598,7 @@ export function DeckRolesPanel({
   }
 
   return (
-    <section className={`${surface.stepShell} grid min-w-0 content-start gap-3 overflow-x-hidden px-4 pt-3 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_auto_minmax(0,1fr)] min-[1101px]:gap-3 min-[1101px]:overflow-hidden min-[1101px]:p-2.5`}>
+    <section className="mx-auto grid w-full min-w-0 max-w-content content-start gap-4 overflow-x-hidden px-4 pb-6 pt-4 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_auto_minmax(0,1fr)] min-[1101px]:gap-5 min-[1101px]:overflow-hidden min-[1101px]:px-6 min-[1101px]:pb-6 min-[1101px]:pt-6">
       <StepHero
         title="Clasificá tus cartas"
         icon="tag"
@@ -605,11 +609,11 @@ export function DeckRolesPanel({
             <>
               <DeckModelStatusBadge modelStatus={modelStatus} variant="compact" />
               {hasCardsNeedingClassification ? (
-                <Button variant="primary" size="sm" onClick={() => dispatch(reclassifyAllCards({ overrides: getClassificationOverrides() }))}>
+                <Button variant="primary" size="sm" icon="sparkles" onClick={() => dispatch(reclassifyAllCards({ overrides: getClassificationOverrides() }))}>
                   Clasificar todo
                 </Button>
               ) : null}
-              <Button variant="primary" size="sm" onClick={() => setDrawerMode('help')}>
+              <Button variant="secondary" size="sm" icon="info" onClick={() => setDrawerMode('help')}>
                 Guía de clasificación
               </Button>
             </>
@@ -618,31 +622,18 @@ export function DeckRolesPanel({
       />
 
       {sortedCards.length > 0 ? (
-        <section className={`${surface.panelSoft} grid gap-2 p-2.5`}>
-          <div className="flex flex-wrap items-end justify-between gap-2.5 min-w-0">
+        <Card padding="sm" className="grid gap-3">
+          <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-accent m-0 text-micro uppercase tracking-widest">Vista activa</p>
-              <p className="text-muted m-[0.22rem_0_0] text-caption">
-                Priorizá el subconjunto que querés cerrar primero.
-              </p>
+              <p className={cx('m-0', overline)}>Vista activa</p>
+              <p className={cx(supportText, 'mt-0.5')}>Priorizá el subconjunto que querés cerrar primero.</p>
             </div>
 
-            <div className="grid w-full min-w-36 gap-1 justify-items-end min-[640px]:w-auto">
-              <span className="text-muted text-micro leading-none tabular-nums">
+            <div className="grid w-full min-w-36 justify-items-end gap-1.5 min-[640px]:w-auto">
+              <span className="text-caption text-muted tabular-nums">
                 {formatInteger(completeCards.length)} / {formatInteger(sortedCards.length)} clasificadas
               </span>
-              <div
-                className="h-1.25 w-full min-w-36 overflow-hidden rounded-full bg-[rgb(var(--border-rgb)/0.9)]"
-                role="progressbar"
-                aria-valuenow={completeCards.length}
-                aria-valuemin={0}
-                aria-valuemax={sortedCards.length}
-              >
-                <div
-                  className="h-full origin-left rounded-full bg-accent transition-transform"
-                  style={{ transform: `scaleX(${classifiedPercent / 100})` }}
-                />
-              </div>
+              <Meter value={classifiedPercent / 100} tone="success" size="sm" label="Cartas clasificadas" className="w-full min-w-36" />
             </div>
           </div>
 
@@ -659,29 +650,29 @@ export function DeckRolesPanel({
                   onClick={() => handleFilterChange(item.key)}
                 >
                   <span>{item.label}</span>
-                  <span className="text-soft text-micro">{formatInteger(item.cards.length)}</span>
+                  <span className="text-soft text-micro tabular-nums">{formatInteger(item.cards.length)}</span>
                 </button>
               )
             })}
           </div>
-        </section>
+        </Card>
       ) : null}
 
       {sortedCards.length === 0 ? (
-        <p className={`${surface.card} m-0 px-2.5 py-2 text-small text-muted`}>
+        <EmptyState icon="cards" title="Todavía no hay cartas para clasificar">
           Primero armá o importá tu Main Deck. Después vas a poder clasificar cada carta.
-        </p>
+        </EmptyState>
       ) : (
-        <section className={`${surface.panelSoft} grid min-w-0 gap-2.5 p-2.5 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[minmax(0,1fr)] min-[1101px]:overflow-hidden`}>
+        <Card as="section" padding="sm" className="grid min-w-0 gap-3 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[minmax(0,1fr)] min-[1101px]:overflow-hidden">
             {visibleQueueCards.length === 0 ? (
-              <p className={[emptyStateCopy.tone, 'm-0 px-2.5 py-2 text-small'].join(' ')}>
+              <p className={[emptyStateCopy.tone, 'm-0 px-3 py-2.5 text-small'].join(' ')}>
                 <strong className="block text-foreground">{emptyStateCopy.title}</strong>
                 <span className="mt-1 block">{emptyStateCopy.description}</span>
               </p>
             ) : (
               <ClassificationQueue cards={visibleQueueCards} selectedId={selectedCard?.id ?? null} onSelect={handleCardSelection} />
             )}
-        </section>
+        </Card>
       )}
 
       <ClassificationModal
@@ -706,8 +697,8 @@ export function DeckRolesPanel({
         <div className="grid gap-4">
           <section className="grid gap-2">
             <div>
-              <p className="text-accent m-0 text-micro uppercase tracking-widest">Origen</p>
-              <p className="text-muted m-[0.22rem_0_0] text-caption">
+              <p className={cx('m-0', overline)}>Origen</p>
+              <p className={cx(supportText, 'mt-0.5 text-caption')}>
                 Responde si la carta pertenece al motor principal o a un espacio externo/flexible.
               </p>
             </div>
@@ -731,8 +722,8 @@ export function DeckRolesPanel({
 
           <section className="grid gap-2">
             <div>
-              <p className="text-accent m-0 text-micro uppercase tracking-widest">Roles</p>
-              <p className="text-muted m-[0.22rem_0_0] text-caption">
+              <p className={cx('m-0', overline)}>Roles</p>
+              <p className={cx(supportText, 'mt-0.5 text-caption')}>
                 Responden qué hace la carta dentro de tu mano, tu línea o tu plan de turno.
               </p>
             </div>

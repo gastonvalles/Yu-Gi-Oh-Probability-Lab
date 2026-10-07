@@ -1,12 +1,18 @@
 import { cx } from '../ui/cx'
 
-/** Círculo "A" / "B" que identifica cada build del comparador. */
-export function SideBadge({ side }: { side: 'A' | 'B' }) {
+interface SideBadgeProps {
+  side: 'A' | 'B'
+  size?: 'md' | 'lg'
+}
+
+/** Círculo "A" / "B" que identifica cada build del comparador: A violeta, B celeste (el verde y el rojo quedan para mejor/peor). */
+export function SideBadge({ side, size = 'md' }: SideBadgeProps) {
   return (
     <span
       className={cx(
-        'inline-grid size-[1.6rem] flex-none place-items-center rounded-full text-small font-extrabold',
-        side === 'A' ? 'bg-primary/85 text-white' : 'bg-success/85 text-[#06140e]',
+        'inline-grid flex-none place-items-center rounded-full font-bold',
+        size === 'md' ? 'size-7 text-small' : 'size-10 text-lead',
+        side === 'A' ? 'bg-primary text-primary-foreground' : 'bg-info text-background',
       )}
     >
       {side}

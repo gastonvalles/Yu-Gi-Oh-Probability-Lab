@@ -1,6 +1,7 @@
 import { formatInteger, formatShortPercent } from '../../app/utils'
 import type { TurnView } from '../../types'
 import type { LabViewResult } from '../../app/probability-lab'
+import type { Tone } from '../ui/tone'
 
 export type KpiTone = 'excellent' | 'good' | 'improvable' | 'critical'
 
@@ -16,6 +17,14 @@ export const KPI_TONE_LABELS: Record<KpiTone, string> = {
   good: 'Sólido',
   improvable: 'Mejorable',
   critical: 'Crítico',
+}
+
+/** Color de cada nota: rojo → ámbar → celeste → verde. El color siempre dice lo mismo en toda la app. */
+export const KPI_TONE: Record<KpiTone, Tone> = {
+  excellent: 'success',
+  good: 'info',
+  improvable: 'warning',
+  critical: 'danger',
 }
 
 export const TURN_VIEW_LABELS: Record<TurnView, string> = {

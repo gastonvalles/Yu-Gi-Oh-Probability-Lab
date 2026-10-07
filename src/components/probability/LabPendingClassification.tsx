@@ -7,8 +7,13 @@ import { ClassificationEditor } from '../classification/ClassificationEditor'
 import { ClassificationQueue } from '../classification/ClassificationQueue'
 import { compareCardsForQueue } from '../classification/classification-model'
 import { Button } from '../ui/Button'
+import { Card } from '../ui/Card'
+import { cx } from '../ui/cx'
+import { Icon } from '../ui/Icon'
+import { Meter } from '../ui/Meter'
 import { Modal } from '../ui/Modal'
-import { surface } from '../ui/surfaces'
+import { TONE } from '../ui/tone'
+import { overline, supportText } from '../ui/typography'
 
 interface LabPendingClassificationProps {
   cards: CardEntry[]
@@ -48,34 +53,27 @@ export function LabPendingClassification({ cards, message, onSetOrigin, onToggle
 
   return (
     <div className="grid min-w-0 content-start gap-3">
-      <section className={`${surface.cardWarning} grid gap-2 px-3 py-3`}>
-        <p className="m-0 text-micro font-semibold uppercase tracking-widest text-warning">
-          {pendingCount > 0 ? 'Falta clasificar' : 'Todo clasificado'}
-        </p>
-        <h3 className="m-0 text-lead leading-tight text-foreground">
-          {pendingCount > 0
-            ? `${formatInteger(pendingCount)} carta${pendingCount === 1 ? '' : 's'} por cerrar`
-            : 'Ya no falta ninguna carta'}
-        </h3>
-        <p className="m-0 text-small text-muted">
-          {pendingCount > 0
-            ? `${message} Tocá una carta, resolvela acá mismo y cuando termines el Lab calcula solo.`
-            : 'Cerrá el editor para ver el resultado.'}
-        </p>
-        <div
-          className="h-1 w-full overflow-hidden rounded-full bg-[rgb(var(--border-rgb)/0.9)]"
-          role="progressbar"
-          aria-label="Cartas clasificadas"
-          aria-valuenow={classified}
-          aria-valuemin={0}
-          aria-valuemax={cards.length}
-        >
-          <div
-            className="h-full origin-left rounded-full bg-accent transition-transform"
-            style={{ transform: `scaleX(${cards.length > 0 ? classified / cards.length : 0})` }}
-          />
+      <Card tone={pendingCount > 0 ? 'warning' : 'success'} className="grid gap-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className={cx('grid size-10 shrink-0 place-items-center rounded-control border', TONE[pendingCount > 0 ? 'warning' : 'success'].tint, TONE[pendingCount > 0 ? 'warning' : 'success'].text)}>
+            <Icon name={pendingCount > 0 ? 'tag' : 'check-circle'} size={20} />
+          </span>
+          <div className="grid min-w-0 gap-0.5">
+            <p className={cx('m-0', overline)}>{pendingCount > 0 ? 'Falta clasificar' : 'Todo clasificado'}</p>
+            <h3 className="m-0 text-lead font-semibold leading-tight text-foreground">
+              {pendingCount > 0
+                ? `${formatInteger(pendingCount)} carta${pendingCount === 1 ? '' : 's'} por cerrar`
+                : 'Ya no falta ninguna carta'}
+            </h3>
+            <p className={supportText}>
+              {pendingCount > 0
+                ? `${message} Tocá una carta, resolvela acá mismo y cuando termines el Lab calcula solo.`
+                : 'Cerrá el editor para ver el resultado.'}
+            </p>
+          </div>
         </div>
-      </section>
+        <Meter value={cards.length > 0 ? classified / cards.length : 0} tone={pendingCount > 0 ? 'warning' : 'success'} size="sm" label="Cartas clasificadas" />
+      </Card>
 
       <ClassificationQueue cards={visible} selectedId={selectedId} onSelect={setSelectedId} />
 
@@ -87,14 +85,14 @@ export function LabPendingClassification({ cards, message, onSetOrigin, onToggle
         ariaLabel="Clasificar carta"
         footer={
           <div className="flex flex-1 items-center justify-end gap-2 max-[1100px]:[&>button]:flex-1">
-            <Button variant="secondary" size="md" onClick={() => previous && setSelectedId(previous.id)} disabled={!previous}>
-              ← Anterior
+            <Button variant="secondary" size="md" icon="chevron-left" onClick={() => previous && setSelectedId(previous.id)} disabled={!previous}>
+              Anterior
             </Button>
             <span className="text-soft min-w-12 text-center text-caption tabular-nums min-[1101px]:hidden">
               {formatInteger(index + 1)} / {formatInteger(visible.length)}
             </span>
-            <Button variant="primary" size="md" onClick={() => next && setSelectedId(next.id)} disabled={!next}>
-              Siguiente →
+            <Button variant="primary" size="md" iconEnd="chevron-right" onClick={() => next && setSelectedId(next.id)} disabled={!next}>
+              Siguiente
             </Button>
           </div>
         }

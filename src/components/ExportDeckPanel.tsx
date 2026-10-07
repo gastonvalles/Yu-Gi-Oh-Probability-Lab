@@ -8,8 +8,12 @@ import type { DeckFormat } from '../types'
 import { StepHero } from './StepHero'
 import { StepPage } from './ui/StepPage'
 import { Button } from './ui/Button'
+import { Card } from './ui/Card'
+import { cx } from './ui/cx'
+import { EmptyState } from './ui/EmptyState'
+import { SectionHeader } from './ui/SectionHeader'
 import { Skeleton } from './ui/Skeleton'
-import { surface } from './ui/surfaces'
+import { overline } from './ui/typography'
 
 interface ExportDeckPanelProps {
   deckBuilder: DeckBuilderState
@@ -102,6 +106,7 @@ export function ExportDeckPanel({
           <Button
             variant="primary"
             size="md"
+            icon="download"
             disabled={busy || mainDeckCount === 0}
             onClick={() => {
               void handleExport()
@@ -112,14 +117,9 @@ export function ExportDeckPanel({
         )}
       />
 
-      <section className="grid min-h-0 gap-3 min-[1180px]:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]">
-        <article className={`${surface.panelSoft} grid min-h-0 gap-2.5 overflow-hidden p-3 min-[1180px]:grid-rows-[auto_minmax(0,1fr)]`}>
-          <div className="grid gap-1">
-            <p className="text-accent m-0 text-micro uppercase tracking-widest">Imagen del deck</p>
-            <p className="text-muted m-0 text-caption">
-              Se descarga en alta resolución (JPG) para compartir.
-            </p>
-          </div>
+      <section className="grid min-h-0 gap-4 min-[1180px]:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)] min-[1180px]:gap-5">
+        <Card as="article" className="grid min-h-0 gap-4 overflow-hidden min-[1180px]:grid-rows-[auto_minmax(0,1fr)]">
+          <SectionHeader icon="image" title="Imagen del deck" description="Se descarga en alta resolución (JPG) para compartir." />
 
           <div className="min-h-80 overflow-y-auto overflow-x-hidden min-[1180px]:min-h-0">
             {previewState === 'ready' && imagePreviewUrl ? (
@@ -147,24 +147,21 @@ export function ExportDeckPanel({
                 </div>
               </div>
             ) : (
-              <div className="grid h-full place-items-center text-center">
-                <p className="text-muted m-0 max-w-md text-small">
-                  {previewState === 'error'
-                    ? 'No pude generar la vista previa de la imagen.'
-                    : 'Agregá cartas al Main Deck para habilitar la preview.'}
-                </p>
-              </div>
+              <EmptyState icon="image" title={previewState === 'error' ? 'No pude generar la vista previa' : 'Todavía no hay vista previa'} className="h-full content-center">
+                {previewState === 'error'
+                  ? 'No pude generar la vista previa de la imagen.'
+                  : 'Agregá cartas al Main Deck para habilitar la preview.'}
+              </EmptyState>
             )}
           </div>
-        </article>
+        </Card>
 
-        <article className={`${surface.panelSoft} grid min-h-0 gap-2.5 overflow-hidden p-3 min-[1180px]:grid-rows-[auto_minmax(0,1fr)]`}>
-          <div className="grid gap-1">
-            <p className="text-accent m-0 text-micro uppercase tracking-widest">Decklist oficial (PDF)</p>
-            <p className="text-muted m-0 text-caption">
-              Planilla de Konami para torneos, lista para imprimir. Completá tus datos antes de entregarla.
-            </p>
-          </div>
+        <Card as="article" className="grid min-h-0 gap-4 overflow-hidden min-[1180px]:grid-rows-[auto_minmax(0,1fr)]">
+          <SectionHeader
+            icon="file"
+            title="Decklist oficial (PDF)"
+            description="Planilla de Konami para torneos, lista para imprimir. Completá tus datos antes de entregarla."
+          />
 
           <div className="min-h-80 overflow-y-auto overflow-x-hidden min-[1180px]:min-h-0">
             <div className="grid gap-3">
@@ -172,9 +169,9 @@ export function ExportDeckPanel({
                 .filter((section) => section.total > 0)
                 .map((section) => (
                   <section key={section.key} className="grid gap-1">
-                    <h3 className="m-0 flex items-baseline justify-between gap-2 border-b border-border-subtle pb-1 text-caption font-semibold uppercase tracking-wider text-foreground">
-                      <span>{section.label}</span>
-                      <span className="text-muted tabular-nums">{section.total}</span>
+                    <h3 className={cx('m-0 flex items-baseline justify-between gap-2 border-b border-border-subtle pb-1.5', overline)}>
+                      <span className="text-foreground">{section.label}</span>
+                      <span className="tabular-nums">{section.total}</span>
                     </h3>
                     <ul className="m-0 grid list-none gap-0.5 p-0 text-small">
                       {section.entries.map((entry) => (
@@ -188,7 +185,7 @@ export function ExportDeckPanel({
                 ))}
             </div>
           </div>
-        </article>
+        </Card>
       </section>
     </StepPage>
   )

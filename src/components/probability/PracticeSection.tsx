@@ -4,6 +4,7 @@ import { buildDerivedDeckGroupMap } from '../../app/deck-groups'
 import { requestLabOdds } from '../../app/lab-odds-client'
 import type { LabOdds } from '../../app/lab-odds'
 import type { CardEntry, HandPattern } from '../../types'
+import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
 import { IconButton } from '../ui/IconButton'
 import { Icon } from '../ui/Icon'
@@ -19,7 +20,7 @@ import {
 import { PracticeBoard, PracticeVerdictChip, UNPLAYABLE_ID } from './PracticeBoard'
 import { PracticeCardFocus } from './PracticeCardFocus'
 import { PracticeDeckPile } from './PracticeDeckPile'
-import { PRACTICE_NOTICE, VERDICT_COLOR } from './practice-styles'
+import { VERDICT_COLOR } from './practice-styles'
 import { PracticeHand } from './PracticeHand'
 import { usePracticeTable } from './use-practice-table'
 
@@ -157,7 +158,7 @@ export function PracticeSection(props: PracticeSectionProps) {
   const getDeckRect = useCallback(() => pileRef.current?.getBoundingClientRect() ?? null, [])
 
   if (deck.length < handSize) {
-    return <p className={cx(PRACTICE_NOTICE, 'm-4')}>Sumá cartas al Main Deck para practicar.</p>
+    return <Callout tone="info" className="m-4">Sumá cartas al Main Deck para practicar.</Callout>
   }
 
   return (
@@ -173,7 +174,7 @@ export function PracticeSection(props: PracticeSectionProps) {
       {/* Salidas y problemas: aparecen en el centro de la mesa. */}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-4 py-2">
         {blockedMessage ? (
-          <p className={cx(PRACTICE_NOTICE, 'my-auto')}>{blockedMessage}</p>
+          <Callout tone="warning" className="my-auto">{blockedMessage}</Callout>
         ) : (
           <PracticeBoard
             openings={openings}

@@ -27,10 +27,10 @@ export function TurnContextToggle({ patternId, currentTurnContext, ignoresDraw =
       onChange={(turnContext) => actions.setPatternTurnContext(patternId, turnContext)}
     />
     {currentTurnContext !== 'first' ? (
-      <div className={`${surface.card} flex items-center justify-between gap-3 rounded px-3 py-2.5`}>
+      <div className={`${surface.panelSoft} flex items-center justify-between gap-3 px-3 py-2.5`}>
         <span className="grid gap-0.5">
-          <span className="text-small text-foreground">Contar la carta que robás yendo 2º</span>
-          <span className="text-micro text-muted">
+          <span className="text-small font-medium text-foreground">Contar la carta que robás yendo 2º</span>
+          <span className="text-caption text-muted">
             {ignoresDraw
               ? 'Apagado: yendo 2º se mira la mano inicial de 5 (ej. interacción del turno rival).'
               : 'Encendido: yendo 2º se miran las 6 cartas.'}

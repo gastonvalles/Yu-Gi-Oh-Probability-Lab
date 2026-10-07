@@ -104,16 +104,13 @@ export function buildDeckWorkflowNavigationItems({
       title: 'Probability Lab',
       icon: 'flask',
       description: 'Reglas, salidas, resultados y simulaciones.',
-      metric:
-        patternCount > 0
-          ? `${formatInteger(patternCount)} regla${patternCount === 1 ? '' : 's'}`
-          : 'Sin reglas',
+      metric: hasCompletedRoleStep ? (patternCount > 0 ? `${formatInteger(patternCount)} propia${patternCount === 1 ? '' : 's'}` : 'Reglas base') : 'Sin medir',
       detail: hasCompletedRoleStep
         ? patternCount > 0
           ? 'Listo para medir.'
-          : 'Definí salidas.'
+          : 'Medí con las reglas base o sumá las tuyas.'
         : 'Entrá igual; categorizá para medir.',
-      tone: patternCount > 0 ? 'complete' : hasCompletedRoleStep ? 'progress' : 'pending',
+      tone: hasCompletedRoleStep ? 'complete' : 'pending',
       disabled: false,
     },
     {

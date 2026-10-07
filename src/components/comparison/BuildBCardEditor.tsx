@@ -14,6 +14,7 @@ import { formatInteger } from '../../app/utils'
 import { ROLE_REFERENCE_MARK, originOption, roleOptionButton } from '../classification-styles'
 import { cx } from '../ui/cx'
 import { chip, surface } from '../ui/surfaces'
+import { overline } from '../ui/typography'
 
 interface BuildBCardEditorProps {
   card: DeckCardInstance
@@ -138,10 +139,10 @@ export function BuildBCardEditor({ card, currentEdit, allCards, onSave, onNaviga
                 {/* Editor panel */}
                 <div className="flex min-h-full flex-col gap-2.5">
                   <div className="grid gap-1 pr-12">
-                    <p className="text-accent m-0 text-micro uppercase tracking-[0.12em]">
+                    <p className={cx('m-0', overline)}>
                       Build B — Carta {formatInteger(position)} de {formatInteger(total)}
                     </p>
-                    <h3 className="m-0 wrap-anywhere text-title leading-[0.94] tracking-[-0.03em] text-foreground min-[1101px]:text-title">
+                    <h3 className="m-0 wrap-anywhere text-title tracking-[-0.01em] text-foreground">
                       {card.name}
                     </h3>
                     <p className="text-muted m-0 text-body min-[1101px]:text-lead">
@@ -151,7 +152,7 @@ export function BuildBCardEditor({ card, currentEdit, allCards, onSave, onNaviga
 
                   {/* Origin selector — same as Step 2 */}
                   <section className="grid gap-2">
-                    <p className="text-accent m-0 text-micro uppercase tracking-widest">¿Qué es?</p>
+                    <p className={cx('m-0', overline)}>¿Qué es?</p>
                     <div className="grid gap-1.5 min-[860px]:grid-cols-3">
                       {CARD_ORIGIN_DEFINITIONS.map((definition) => {
                         const active = origin === definition.key.value
@@ -168,7 +169,7 @@ export function BuildBCardEditor({ card, currentEdit, allCards, onSave, onNaviga
                           >
                             <div className="flex items-center gap-2">
                               <span className={ROLE_REFERENCE_MARK} />
-                              <strong className="text-small leading-none text-foreground">{definition.label}</strong>
+                              <strong className="text-small font-semibold leading-none text-foreground">{definition.label}</strong>
                             </div>
                             <span className="text-muted text-micro">{ORIGIN_BLURB[definition.key.value]}</span>
                           </button>
@@ -179,16 +180,16 @@ export function BuildBCardEditor({ card, currentEdit, allCards, onSave, onNaviga
 
                   {/* Role toggles — same as Step 2 */}
                   <section className="grid gap-2">
-                    <p className="text-accent m-0 text-micro uppercase tracking-widest">¿Qué roles cumple?</p>
+                    <p className={cx('m-0', overline)}>¿Qué roles cumple?</p>
                     <div className="grid gap-2 min-[1101px]:grid-cols-3 min-[1101px]:items-stretch">
                       {ROLE_SECTIONS.map((section) => {
                         const selectedCount = section.roles.reduce(
                           (t, r) => t + (roles.includes(r) ? 1 : 0), 0,
                         )
                         return (
-                          <article key={section.title} className={`${surface.card} grid h-full grid-rows-[auto_minmax(0,1fr)] gap-1.5 p-2`}>
+                          <article key={section.title} className={`${surface.panelSoft} grid h-full grid-rows-[auto_minmax(0,1fr)] gap-2 p-3`}>
                             <div className="flex flex-wrap items-start justify-between gap-2">
-                              <strong className="text-small leading-none text-foreground">{section.title}</strong>
+                              <strong className="text-small font-semibold leading-none text-foreground">{section.title}</strong>
                               <span className={`${chip.base} px-1.5 py-0.5 text-micro`}>
                                 {formatInteger(selectedCount)} / {formatInteger(section.roles.length)}
                               </span>
@@ -205,7 +206,7 @@ export function BuildBCardEditor({ card, currentEdit, allCards, onSave, onNaviga
                                     title={`${definition.label}: ${ROLE_HELP[role]}`}
                                     className={cx(
                                       roleOptionButton(active),
-                                      'w-full min-w-0 px-2 py-[0.44rem] text-micro',
+                                      'w-full min-w-0 px-2.5 py-2 text-caption',
                                     )}
                                     style={getStyleVars(definition.key)}
                                     onClick={() => toggleRole(role)}
@@ -223,10 +224,10 @@ export function BuildBCardEditor({ card, currentEdit, allCards, onSave, onNaviga
 
                   {/* Navigation — right-aligned, same as Step 2 */}
                   <div className="mt-auto flex justify-end gap-2 pt-1">
-                    <Button variant="primary" size="sm" onClick={() => prevCard && handleSaveAndNavigate(prevCard)} disabled={!prevCard}>
+                    <Button variant="secondary" size="md" icon="chevron-left" onClick={() => prevCard && handleSaveAndNavigate(prevCard)} disabled={!prevCard}>
                       Anterior
                     </Button>
-                    <Button variant="primary" size="sm" onClick={() => nextCard && handleSaveAndNavigate(nextCard)} disabled={!nextCard}>
+                    <Button variant="primary" size="md" iconEnd="chevron-right" onClick={() => nextCard && handleSaveAndNavigate(nextCard)} disabled={!nextCard}>
                       Siguiente
                     </Button>
                   </div>

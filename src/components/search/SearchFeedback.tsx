@@ -1,11 +1,13 @@
 import { SEARCH_MIN_QUERY_LENGTH } from '../../app/model'
 import { formatInteger } from '../../app/utils'
 import { cx } from '../ui/cx'
+import { Icon } from '../ui/Icon'
+import { choiceChip } from '../ui/surfaces'
 import { SEARCH_SORT_OPTIONS, type SearchSortOrder } from './search-options'
 
 type FeedbackLayout = 'desktop' | 'mobile'
 
-const EMPTY_TITLE = 'm-0 text-body font-bold text-foreground'
+const EMPTY_TITLE = 'm-0 text-body font-semibold text-foreground'
 const EMPTY_TEXT: Record<FeedbackLayout, string> = {
   desktop: 'm-0 max-w-[30rem] text-small text-muted [&_strong]:text-foreground',
   mobile: 'm-0 max-w-[30rem] text-body text-muted [&_strong]:text-foreground',
@@ -18,8 +20,8 @@ const RECENT_CHIP: Record<FeedbackLayout, string> = {
   desktop: 'min-h-8 text-small',
   mobile: 'min-h-10 text-body',
 }
-const EMPTY_ACTION_BASE = 'rounded-full border bg-transparent px-[0.95rem] font-semibold text-foreground hover:border-primary/80'
-const EMPTY_BOX = 'grid content-start justify-items-center px-[0.9rem] py-[1.6rem] text-center'
+const EMPTY_ACTION_BASE = `${choiceChip} px-4 text-foreground`
+const EMPTY_BOX = 'grid content-start justify-items-center px-4 py-8 text-center'
 
 /** Barra sobre los resultados: cuántos hay y en qué orden se muestran. */
 export function SearchResultsToolbar({
@@ -40,8 +42,8 @@ export function SearchResultsToolbar({
   return (
     <div
       className={cx(
-        'sticky top-0 z-2 flex items-center justify-between gap-[0.6rem] bg-background',
-        layout === 'mobile' ? '-mx-3 -mt-2 mb-2 px-3 py-[0.45rem]' : 'px-[0.7rem] py-[0.4rem]',
+        'sticky top-0 z-2 flex items-center justify-between gap-2.5 bg-card-background',
+        layout === 'mobile' ? '-mx-3 -mt-2 mb-2 px-3 py-2' : 'px-3 py-2',
       )}
     >
       <p className="m-0 min-w-0 truncate text-caption text-muted [&_strong]:text-foreground" aria-live="polite">
@@ -56,8 +58,8 @@ export function SearchResultsToolbar({
         <span className="sr-only">Ordenar resultados</span>
         <select
           className={cx(
-            'cursor-pointer rounded-full border border-border bg-secondary/90 px-[0.6rem] font-semibold text-foreground',
-            layout === 'mobile' ? 'min-h-9 text-small' : 'min-h-[1.9rem] text-caption',
+            'cursor-pointer rounded-full border border-border-subtle bg-white/5 px-3 font-semibold text-foreground [color-scheme:dark] focus-visible:outline-none focus-visible:shadow-focus',
+            layout === 'mobile' ? 'min-h-9 text-small' : 'min-h-8 text-caption',
           )}
           value={sortOrder} onChange={(event) => onSortOrderChange(event.target.value as SearchSortOrder)}>
           {SEARCH_SORT_OPTIONS.map((option) => (
@@ -90,6 +92,7 @@ export function SearchEmptyState({
   if (isStillLoading) {
     return (
       <div className={cx(EMPTY_BOX, 'gap-2')}>
+        <EmptyIcon name="refresh" />
         <p className={EMPTY_TITLE}>Todavía no hay coincidencias en lo cargado</p>
         <p className={EMPTY_TEXT[layout]}>Seguimos trayendo más cartas…</p>
       </div>
@@ -98,24 +101,25 @@ export function SearchEmptyState({
 
   return (
     <div className={cx(EMPTY_BOX, 'gap-2')}>
+      <EmptyIcon name="search" />
       <p className={EMPTY_TITLE}>No encontramos cartas</p>
       <p className={EMPTY_TEXT[layout]}>
         {activeFilterCount > 0
           ? 'Puede que algún filtro sea demasiado estricto.'
           : 'Revisá cómo está escrito o probá con una parte del nombre (en inglés).'}
       </p>
-      <div className="mt-[0.3rem] flex flex-wrap items-center justify-center gap-[0.45rem]">
+      <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
         {activeFilterCount > 0 ? (
           <button
             type="button"
-            className={cx(EMPTY_ACTION_BASE, EMPTY_ACTION[layout], 'border-primary/70 bg-primary/20')}
+            className={cx(EMPTY_ACTION_BASE, EMPTY_ACTION[layout], 'border-primary/55 bg-primary/20')}
             onClick={onClearFilters}
           >
             Quitar filtros ({formatInteger(activeFilterCount)})
           </button>
         ) : null}
         {hasQuery ? (
-          <button type="button" className={cx(EMPTY_ACTION_BASE, EMPTY_ACTION[layout], 'border-border')} onClick={onClearQuery}>
+          <button type="button" className={cx(EMPTY_ACTION_BASE, EMPTY_ACTION[layout])} onClick={onClearQuery}>
             Borrar texto
           </button>
         ) : null}
@@ -137,8 +141,9 @@ export function SearchStart({
   onClearRecent: () => void
 }) {
   return (
-    <div className={cx(EMPTY_BOX, 'gap-[1.1rem]')}>
-      <div className="grid gap-1.5 text-center">
+    <div className={cx(EMPTY_BOX, 'gap-5')}>
+      <div className="grid justify-items-center gap-2 text-center">
+        <EmptyIcon name="search" />
         <p className={EMPTY_TITLE}>¿Qué carta buscás?</p>
         <p className={EMPTY_TEXT[layout]}>
           Escribí al menos {formatInteger(SEARCH_MIN_QUERY_LENGTH)} letras del nombre (en inglés), o elegí un tipo y
@@ -154,10 +159,10 @@ export function SearchStart({
       </div>
 
       {recent.length > 0 ? (
-        <section className="grid w-full max-w-[30rem] gap-[0.45rem]" aria-label="Búsquedas recientes">
-          <div className="flex items-center justify-between text-micro font-bold uppercase tracking-[0.12em] text-soft">
+        <section className="grid w-full max-w-[30rem] gap-2" aria-label="Búsquedas recientes">
+          <div className="flex items-center justify-between text-micro font-semibold uppercase tracking-[0.08em] text-soft">
             <span>Recientes</span>
-            <button type="button" className="border-0 bg-transparent text-caption normal-case tracking-normal text-muted underline underline-offset-[0.15rem]" onClick={onClearRecent}>
+            <button type="button" className="rounded-tag border-0 bg-transparent px-1 text-caption normal-case tracking-normal text-muted hover:text-foreground focus-visible:outline-none focus-visible:shadow-focus" onClick={onClearRecent}>
               Borrar
             </button>
           </div>
@@ -166,7 +171,7 @@ export function SearchStart({
               <button
                 key={query}
                 type="button"
-                className={cx('max-w-full truncate rounded-full border border-border bg-secondary/90 px-[0.8rem] text-foreground hover:border-primary/60', RECENT_CHIP[layout])}
+                className={cx(choiceChip, 'max-w-full truncate px-3.5 text-foreground', RECENT_CHIP[layout])}
                 onClick={() => onPickRecent(query)}>
                 {query}
               </button>
@@ -175,5 +180,13 @@ export function SearchStart({
         </section>
       ) : null}
     </div>
+  )
+}
+
+function EmptyIcon({ name }: { name: 'search' | 'refresh' }) {
+  return (
+    <span className="grid size-10 place-items-center rounded-full border border-border-subtle bg-white/5 text-soft">
+      <Icon name={name} size={20} />
+    </span>
   )
 }

@@ -1,7 +1,7 @@
 import type { PatternMatchMode } from '../../../types'
 import type { PatternEditorActions } from '../pattern-editor-actions'
 import { formatInteger } from '../../../app/utils'
-import { surface } from '../../ui/surfaces'
+import { cx } from '../../ui/cx'
 
 interface LogicSelectorProps {
   patternId: string
@@ -40,7 +40,7 @@ export function LogicSelector({
 
   return (
     <div className="grid gap-1.5">
-      <div className="inline-flex overflow-hidden rounded-md" role="radiogroup" aria-label="Lógica de condiciones">
+      <div className="inline-flex overflow-hidden rounded-control border border-border-subtle" role="radiogroup" aria-label="Lógica de condiciones">
         <LogicOption
           label="Todas"
           isActive={currentMode === 'all'}
@@ -85,14 +85,14 @@ function LogicOption({
       aria-checked={isActive}
       aria-disabled={disabled}
       disabled={disabled}
-      className={[
-        'px-3 py-1.5 text-body font-medium transition-colors',
+      className={cx(
+        'px-3 py-2 text-body font-medium transition-colors focus-visible:outline-none focus-visible:shadow-focus',
         disabled
-          ? 'cursor-not-allowed text-soft opacity-40'
+          ? 'cursor-not-allowed bg-white/3 text-soft opacity-40'
           : isActive
-            ? 'bg-[rgb(var(--primary-rgb)/0.16)] text-foreground'
-            : `${surface.panelSoft} text-muted hover:text-foreground`,
-      ].join(' ')}
+            ? 'bg-primary/20 text-foreground'
+            : 'bg-white/3 text-muted hover:bg-white/6 hover:text-foreground',
+      )}
       onClick={disabled ? undefined : onClick}
     >
       {label}
