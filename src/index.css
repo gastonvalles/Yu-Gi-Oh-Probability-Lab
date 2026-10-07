@@ -31,6 +31,7 @@
   --shadow-raised: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 14px 36px rgb(0 0 0 / 0.34);
   --shadow-overlay: 0 24px 64px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(255 255 255 / 0.06);
   --shadow-brand: 0 0 0 1px rgb(var(--primary-rgb) / 0.4), 0 10px 32px rgb(var(--primary-rgb) / 0.22);
+  --shadow-focus: 0 0 0 2px var(--background), 0 0 0 4px rgb(var(--primary-rgb) / 0.6);
 
   /* Ancho máximo del contenido en pantallas grandes (el builder usa todo el ancho). */
   --container-content: 80rem;

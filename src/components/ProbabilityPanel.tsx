@@ -14,6 +14,7 @@ import { KpiDetailModal } from './comparison/KpiDetailModal'
 import type { KpiRole } from './comparison/kpi-detail-helpers'
 import { DeckModelStatusBadge } from './DeckModelStatusBadge'
 import { StepHero } from './StepHero'
+import { StepPage } from './ui/StepPage'
 import { ConfirmDialog } from './probability/ConfirmDialog'
 import { LabDisclaimerDialog, useLabDisclaimer } from './probability/LabDisclaimerDialog'
 import { LabFailureBreakdown } from './probability/LabFailureBreakdown'
@@ -223,9 +224,11 @@ export function ProbabilityPanel({
   }
 
   return (
-    <article className={`${surface.stepShell} grid h-full min-h-0 content-start gap-3 px-4 pt-3 min-[1101px]:p-3`}>
+    <StepPage as="article">
       <StepHero
         title="Qué tan bien abre tu deck"
+        icon="flask"
+        subtitle="Probabilidad exacta de que tu mano de inicio salga bien, yendo primero o segundo."
         help="Cálculo exacto de todas las manos posibles, yendo primero (5 cartas) y segundo (6), con las reglas de abajo: una mano es limpia si cumple alguna salida y ningún problema."
         side={<DeckModelStatusBadge modelStatus={lab.modelStatus} variant="compact" />}
       />
@@ -343,7 +346,7 @@ export function ProbabilityPanel({
         onAddToZone={() => false}
         onClose={() => setKpiDetailCard(null)}
       />
-    </article>
+    </StepPage>
   )
 }
 

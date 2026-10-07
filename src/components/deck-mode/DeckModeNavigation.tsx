@@ -1,8 +1,6 @@
 import { cx } from '../ui/cx'
-import {
-  type DeckModeNavigationItem,
-  type DeckWorkflowStepKey,
-} from './deck-workflow-navigation'
+import { Icon } from '../ui/Icon'
+import { type DeckModeNavigationItem, type DeckWorkflowStepKey, type DeckWorkflowStepTone } from './deck-workflow-navigation'
 
 interface DeckModeNavigationProps {
   items: DeckModeNavigationItem[]
@@ -10,16 +8,19 @@ interface DeckModeNavigationProps {
   onStepChange: (step: DeckWorkflowStepKey) => void
 }
 
-const STEP_BASE =
-  'flex min-w-0 items-center justify-center border px-[0.85rem] py-[0.68rem] text-foreground transition-[border-color,background,box-shadow,opacity] duration-150 focus-visible:shadow-[0_0_0_2px_rgb(var(--background-rgb)),0_0_0_4px_rgb(var(--primary-rgb)/0.34)] focus-visible:outline-none motion-reduce:transition-none'
+/** Punto de estado de cada paso: verde = listo, ámbar = a medio hacer, sin punto = todavía no. */
+const STATUS_DOT: Record<DeckWorkflowStepTone, string> = {
+  complete: 'bg-success',
+  progress: 'bg-warning',
+  pending: 'bg-white/20',
+}
 
-export function DeckModeNavigation({
-  items,
-  activeStep,
-  onStepChange,
-}: DeckModeNavigationProps) {
+const TAB_BASE =
+  'group flex min-w-0 items-center gap-2.5 rounded-control px-2.5 py-1.5 text-left transition-[background-color,color] duration-150 focus-visible:outline-none focus-visible:shadow-focus motion-reduce:transition-none'
+
+export function DeckModeNavigation({ items, activeStep, onStepChange }: DeckModeNavigationProps) {
   return (
-    <nav aria-label="Pasos de la app" className="grid w-[min(100%,72rem)] min-w-0 grid-cols-5 gap-[0.55rem]">
+    <nav aria-label="Pasos de la app" className="flex min-w-0 items-center gap-1">
       {items.map((item) => {
         const isActive = item.key === activeStep
 
@@ -28,17 +29,25 @@ export function DeckModeNavigation({
             key={item.key}
             type="button"
             aria-current={isActive ? 'step' : undefined}
-            aria-pressed={isActive}
-            className={cx(
-              STEP_BASE,
-              isActive
-                ? 'border-primary/82 bg-linear-to-b from-primary/16 to-card-background/96 shadow-[inset_0_1px_0_rgb(255_255_255/0.04),0_0_0_1px_rgb(var(--primary-rgb)/0.14)]'
-                : 'border-border bg-linear-to-b from-secondary/94 to-background/98 hover:border-primary/42 hover:from-primary/8 hover:to-background/98',
-              item.disabled && 'opacity-76',
-            )}
+            title={`${item.title}: ${item.detail}`}
+            className={cx(TAB_BASE, isActive ? 'bg-primary/16 text-foreground' : 'text-muted hover:bg-white/5 hover:text-foreground')}
             onClick={() => onStepChange(item.key)}
           >
-            <span className="truncate text-body font-bold leading-none">{item.title}</span>
+            <span
+              className={cx(
+                'grid size-8 shrink-0 place-items-center rounded-control transition-colors duration-150',
+                isActive ? 'bg-primary text-primary-foreground' : 'bg-white/5 text-soft group-hover:text-foreground',
+              )}
+            >
+              <Icon name={item.icon} size={18} />
+            </span>
+            <span className="grid min-w-0 leading-tight">
+              <span className="truncate text-body font-semibold">{item.label}</span>
+              <span className="flex items-center gap-1.5 text-micro tabular-nums text-soft">
+                <span className={cx('size-1.5 shrink-0 rounded-full', STATUS_DOT[item.tone])} aria-hidden="true" />
+                <span className="truncate">{item.metric}</span>
+              </span>
+            </span>
           </button>
         )
       })}

@@ -12,7 +12,7 @@ import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { CardArt } from '../CardArt'
 import { Button } from '../ui/Button'
 import { CloseIcon, IconButton } from '../ui/IconButton'
-import { CheckIcon, ChevronLeftIcon, FilterIcon, PlusIcon, SearchIcon } from '../ui/icons'
+import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
 import { Skeleton } from '../ui/Skeleton'
 import { SearchEmptyState, SearchResultsToolbar, SearchStart } from './SearchFeedback'
@@ -114,12 +114,12 @@ export function MobileCardSearch({
           }}
         >
           <IconButton size="lg" aria-label="Volver al deck" onClick={onClose}>
-            <ChevronLeftIcon />
+            <Icon name="chevron-left" />
           </IconButton>
 
           <label className="relative block min-w-0 flex-1">
             <span className="sr-only">Nombre o texto de la carta</span>
-            <SearchIcon className="pointer-events-none absolute left-[0.7rem] top-1/2 z-1 -translate-y-1/2 text-soft" />
+            <Icon name="search" size={16} className="pointer-events-none absolute left-[0.7rem] top-1/2 z-1 -translate-y-1/2 text-soft" />
             <input
               ref={inputRef}
               type="search"
@@ -164,7 +164,7 @@ export function MobileCardSearch({
             aria-controls="mobile-search-filters"
             onClick={() => setFiltersOpen((current) => !current)}
           >
-            <FilterIcon />
+            <Icon name="sliders" />
             <span className="sr-only">Filtros</span>
             {search.activeFilterCount > 0 ? (
               <span className="absolute -right-[0.35rem] -top-[0.35rem] grid h-[1.15rem] min-w-[1.15rem] place-items-center rounded-full bg-primary px-1 text-micro font-bold text-white">{formatInteger(search.activeFilterCount)}</span>
@@ -372,7 +372,7 @@ function MobileResultRow({
         aria-label={isMaxed ? `${card.name}: máximo de copias alcanzado` : `Agregar ${card.name} al deck`}
         onClick={onAdd}
       >
-        {isMaxed ? <span className="text-micro font-semibold">MÁX</span> : justAdded ? <CheckIcon /> : <PlusIcon />}
+        {isMaxed ? <span className="text-micro font-semibold">MÁX</span> : justAdded ? <Icon name="check" strokeWidth={2} /> : <Icon name="plus" strokeWidth={2} />}
       </button>
     </li>
   )

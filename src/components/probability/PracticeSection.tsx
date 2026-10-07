@@ -6,7 +6,7 @@ import type { LabOdds } from '../../app/lab-odds'
 import type { CardEntry, HandPattern } from '../../types'
 import { cx } from '../ui/cx'
 import { IconButton } from '../ui/IconButton'
-import { RefreshIcon } from '../ui/icons'
+import { Icon } from '../ui/Icon'
 import {
   buildPracticeDeck,
   computeRevealSteps,
@@ -217,7 +217,7 @@ export function PracticeSection(props: PracticeSectionProps) {
             className="min-[820px]:col-start-1 min-[820px]:row-start-1 min-[820px]:mb-2"
             onClick={table.deal}
           >
-            <RefreshIcon />
+            <Icon name="refresh" />
           </IconButton>
           <PracticeDeckPile
             ref={pileRef}

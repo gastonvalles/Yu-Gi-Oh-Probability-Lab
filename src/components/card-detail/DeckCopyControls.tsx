@@ -17,7 +17,7 @@ export function DeckCopyControls({ deckCopy }: { deckCopy: DeckCopyActions }) {
         {deckCopy.copies === 1 ? 'copia' : 'copias'} en {deckCopy.zoneLabel}
       </p>
       <div className="grid grid-cols-2 gap-2.5">
-        <Button variant="secondary" color="destructive" size="md" fullWidth onClick={deckCopy.onRemoveCopy}>
+        <Button variant="secondary" color="danger" size="md" fullWidth onClick={deckCopy.onRemoveCopy}>
           − Quitar una
         </Button>
         <Button variant="primary" size="md" fullWidth disabled={!deckCopy.canAddCopy} onClick={deckCopy.onAddCopy}>

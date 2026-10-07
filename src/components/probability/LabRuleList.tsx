@@ -4,7 +4,7 @@ import { formatInteger, formatShortPercent } from '../../app/utils'
 import type { PatternKind } from '../../types'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
-import { ChevronLeftIcon, LockIcon, PencilIcon, PlusIcon } from '../ui/icons'
+import { Icon } from '../ui/Icon'
 import { Switch } from '../ui/Switch'
 import { KindBadge } from './KindBadge'
 import { LabSection } from './LabSection'
@@ -96,7 +96,7 @@ export function LabRuleList({
             collapsible
             badge={
               <span className={TIER_BADGE}>
-                <LockIcon /> Siempre activas
+                <Icon name="lock" size={14} /> Siempre activas
               </span>
             }
             description="Valen para cualquier deck de Yu-Gi-Oh!: definen la base de una mano jugable. Solo podés cambiarles el nombre."
@@ -132,7 +132,7 @@ export function LabRuleList({
             title="Tus reglas"
             badge={
               <Button variant="secondary" size="sm" onClick={onCreateCustom}>
-                <PlusIcon width={14} height={14} /> Crear regla
+                <Icon name="plus" size={14} strokeWidth={2} /> Crear regla
               </Button>
             }
             description="Combos, cartas clave o problemas propios de tu deck. Tocá una para editarla."
@@ -203,11 +203,7 @@ function RuleTier({
                 aria-controls={listId}
                 onClick={() => setIsOpen((current) => !current)}
               >
-                <ChevronLeftIcon
-                  className={cx('text-soft transition-transform duration-[160ms]', isOpen ? 'rotate-[270deg]' : 'rotate-180')}
-                  width={14}
-                  height={14}
-                />
+                <Icon name="chevron-right" size={14} className={cx('text-soft transition-transform duration-150', isOpen && 'rotate-90')} />
                 {title}
                 <span className="rounded-full bg-secondary/90 px-[0.45rem] py-[0.05rem] text-micro font-bold text-muted">{formatInteger(entries.length)}</span>
               </button>
@@ -253,7 +249,7 @@ function RuleRow({
         <span className="flex min-w-0 flex-wrap items-center gap-[0.4rem] text-body font-bold text-foreground">
           <KindBadge kind={entry.kind} />
           <span className="min-w-0 [overflow-wrap:anywhere]">{entry.name}</span>
-          {showEditIcon ? <PencilIcon className="size-[0.8rem] flex-none text-soft group-hover:text-foreground" /> : null}
+          {showEditIcon ? <Icon name="pencil" size={13} className="size-[0.8rem] flex-none text-soft group-hover:text-foreground" /> : null}
           {entry.turnContext !== 'either' ? (
             <span className={RULE_TURN_BADGE}>{entry.turnContext === 'first' ? 'Solo 1º' : 'Solo 2º'}</span>
           ) : null}

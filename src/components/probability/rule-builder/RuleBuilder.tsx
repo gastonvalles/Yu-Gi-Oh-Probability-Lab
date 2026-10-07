@@ -6,7 +6,7 @@ import { buildPatternCompactSummary, buildPatternPreview } from '../pattern-help
 import type { PatternEditorActions } from '../pattern-editor-actions'
 import { Button } from '../../ui/Button'
 import { cx } from '../../ui/cx'
-import { PlusIcon } from '../../ui/icons'
+import { Icon } from '../../ui/Icon'
 
 import { AdvancedSettings } from './AdvancedSettings'
 import { ConditionBlock } from './ConditionBlock'
@@ -112,7 +112,7 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
           className="justify-self-start"
           onClick={() => actions.addRequirement(pattern.id)}
         >
-          <PlusIcon width={14} height={14} /> Agregar condición
+          <Icon name="plus" size={14} strokeWidth={2} /> Agregar condición
         </Button>
       </RuleStep>
 

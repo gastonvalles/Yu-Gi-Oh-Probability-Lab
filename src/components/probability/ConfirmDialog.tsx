@@ -16,8 +16,8 @@ interface ConfirmDialogProps {
 export function ConfirmDialog({
   cancelLabel = 'Cancelar',
   confirmLabel = 'Confirmar',
-  confirmColor = 'foreground',
-  confirmVariant = 'tertiary',
+  confirmColor = 'brand',
+  confirmVariant = 'primary',
   description,
   isOpen,
   onCancel,

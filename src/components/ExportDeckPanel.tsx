@@ -6,6 +6,7 @@ import { buildKdeDecklistSections } from '../app/kde-decklist'
 import type { DeckBuilderState } from '../app/model'
 import type { DeckFormat } from '../types'
 import { StepHero } from './StepHero'
+import { StepPage } from './ui/StepPage'
 import { Button } from './ui/Button'
 import { Skeleton } from './ui/Skeleton'
 import { surface } from './ui/surfaces'
@@ -91,9 +92,11 @@ export function ExportDeckPanel({
   }, [deckBuilder, deckFormat, mainDeckCount])
 
   return (
-    <article className={`${surface.stepShell} grid h-full min-h-0 gap-3 px-4 pt-3 min-[1101px]:gap-3 min-[1101px]:p-2.5 min-[1180px]:grid-rows-[auto_minmax(0,1fr)]`}>
+    <StepPage as="article">
       <StepHero
         title="Exportá tu deck"
+        icon="download"
+        subtitle="Imagen, lista de texto, YDK o planilla de torneo."
         help={`Descargá ${deckName.trim() || 'tu deck'} como imagen, lista de texto, .ydk o planilla de torneo (KDE), sin moverte del workflow.`}
         side={(
           <Button
@@ -187,6 +190,6 @@ export function ExportDeckPanel({
           </div>
         </article>
       </section>
-    </article>
+    </StepPage>
   )
 }

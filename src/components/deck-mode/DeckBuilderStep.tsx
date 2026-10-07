@@ -21,7 +21,7 @@ import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { DeckBuilderClassicPreview } from './DeckBuilderClassicPreview'
 import { DeckImportDrawer } from './DeckImportDrawer'
-import { fieldMeta, surface } from '../ui/surfaces'
+import { field, surface } from '../ui/surfaces'
 
 
 interface DeckBuilderStepProps {
@@ -261,14 +261,14 @@ export function DeckBuilderStep({
                     value={deckBuilder.deckName}
                     onChange={(event) => onDeckNameChange(event.target.value)}
                     placeholder="Nombre del deck"
-                    className={`${fieldMeta} min-w-0 flex-[1_1_auto] px-[0.8rem] py-[0.52rem] text-body font-semibold`}
+                    className={`${field} min-w-0 flex-[1_1_auto] px-[0.8rem] py-[0.52rem] text-body font-semibold`}
                   />
 
                   <label className="inline-flex min-w-0 flex-none items-center gap-[0.45rem] whitespace-nowrap text-body font-bold text-foreground">
                     <select
                       value={deckFormat}
                       onChange={(event) => onDeckFormatChange(event.target.value as DeckFormat)}
-                      className={`${fieldMeta} w-[9.25rem] py-[0.52rem] pl-3 pr-8 text-left text-body font-bold`}
+                      className={`${field} w-[9.25rem] py-[0.52rem] pl-3 pr-8 text-left text-body font-bold`}
                     >
                       <option value="unlimited">Sin límite</option>
                       <option value="tcg">TCG</option>
@@ -389,7 +389,7 @@ export function DeckBuilderStep({
           cancelLabel="Cancelar"
           confirmLabel="Sí, vaciar"
           confirmVariant="primary"
-          confirmColor="destructive"
+          confirmColor="danger"
           onCancel={() => setPendingClearZone(null)}
           onConfirm={handleConfirmClearDeckZone}
         />
@@ -404,6 +404,8 @@ export function DeckBuilderStep({
     >
       <StepHero
         title="Armá tu deck"
+        icon="cards"
+        subtitle="Buscá cartas y armá Main, Extra y Side."
         help="Agregá cartas desde el buscador. Tocá una carta del deck para ver el detalle y sumar o quitar copias; para moverla entre Main, Extra y Side, mantenela presionada y arrastrala."
         sideVariant="form"
         side={
@@ -414,13 +416,13 @@ export function DeckBuilderStep({
               value={deckBuilder.deckName}
               onChange={(event) => onDeckNameChange(event.target.value)}
               placeholder="Nombre del deck"
-              className={`${fieldMeta} w-full px-2 py-[0.55rem] text-body font-semibold`}
+              className={`${field} w-full px-2 py-[0.55rem] text-body font-semibold`}
             />
             <select
               aria-label="Formato del deck"
               value={deckFormat}
               onChange={(event) => onDeckFormatChange(event.target.value as DeckFormat)}
-              className={`${fieldMeta} text-left w-full px-2 py-[0.55rem] text-body font-semibold`}
+              className={`${field} text-left w-full px-2 py-[0.55rem] text-body font-semibold`}
             >
               <option value="unlimited">Sin límite</option>
               <option value="tcg">TCG</option>
@@ -553,7 +555,7 @@ export function DeckBuilderStep({
         cancelLabel="Cancelar"
         confirmLabel="Sí, vaciar"
         confirmVariant="primary"
-        confirmColor="destructive"
+        confirmColor="danger"
         onCancel={() => setPendingClearZone(null)}
         onConfirm={handleConfirmClearDeckZone}
       />

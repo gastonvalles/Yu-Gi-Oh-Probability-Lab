@@ -220,12 +220,10 @@ export function DeckModeScreen() {
     </div>
   ) : (
     <section
-      className={[
-        'grid content-start gap-3 min-[1101px]:p-4',
-        isCategorizationStep
-          ? 'h-full min-h-0'
-          : 'min-h-full min-[1101px]:h-full min-[1101px]:min-h-0',
-      ].join(' ')}
+      className={cx(
+        'grid content-start',
+        isCategorizationStep ? 'h-full min-h-0' : 'min-h-full min-[1101px]:h-full min-[1101px]:min-h-0',
+      )}
     >
       {activeStep === 'categorization' ? (
         <div id="categorization" className="h-full min-h-0 min-w-0">

@@ -16,12 +16,13 @@ import { cx } from '../ui/cx'
 import { Modal } from '../ui/Modal'
 import { SideBadge } from './SideBadge'
 import { StepHero } from '../StepHero'
+import { StepPage } from '../ui/StepPage'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { BuildBCardEditor } from './BuildBCardEditor'
 import { BuildDeckView } from './BuildDeckView'
 import { ComparisonReport, CURRENT_DECK_NAME } from './ComparisonReport'
 import { useSavedBuilds } from './use-saved-builds'
-import { field, surface } from '../ui/surfaces'
+import { field } from '../ui/surfaces'
 
 const CURRENT = 'current'
 const PICKER_LINK = 'border-0 bg-transparent p-0 text-caption text-muted underline underline-offset-[0.15rem]'
@@ -202,12 +203,11 @@ export function ComparisonScreen() {
   }
 
   return (
-    <section
-      className={`${surface.stepShell} grid min-w-0 content-start gap-3 px-4 pt-3 min-[1101px]:gap-[0.9rem] min-[1101px]:p-[0.9rem]`}
-      aria-label="Comparar builds"
-    >
+    <StepPage aria-label="Comparar builds">
       <StepHero
         title="Compará builds"
+        icon="columns"
+        subtitle="Dos versiones del deck, mismas reglas, mismo cálculo."
         help="Guardá versiones de tu deck o importá otras listas y mirá cuál abre mejor yendo 1º y 2º, con tus mismas reglas y el mismo cálculo del Probability Lab."
         side={
           <>
@@ -339,7 +339,7 @@ export function ComparisonScreen() {
           onClose={() => setEditing(null)}
         />
       ) : null}
-    </section>
+    </StepPage>
   )
 }
 

@@ -6,7 +6,7 @@ import { useInfiniteScroll } from '../../app/use-infinite-scroll'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
 import { CloseButton, CloseIcon } from '../ui/IconButton'
-import { CheckIcon, FilterIcon, PlusIcon, SearchIcon } from '../ui/icons'
+import { Icon } from '../ui/Icon'
 import { Skeleton } from '../ui/Skeleton'
 import { SearchEmptyState, SearchResultsToolbar, SearchStart } from './SearchFeedback'
 import { SearchFiltersForm } from './SearchFiltersForm'
@@ -128,7 +128,7 @@ export function DesktopSearchPanel({
       <div className="grid gap-[0.65rem] border-b border-border/94 p-[0.7rem]">
         <label className="relative block min-w-0 flex-1">
           <span className="sr-only">Buscar cartas por nombre</span>
-          <SearchIcon className="pointer-events-none absolute left-[0.7rem] top-1/2 z-1 -translate-y-1/2 text-soft" />
+          <Icon name="search" size={16} className="pointer-events-none absolute left-[0.7rem] top-1/2 z-1 -translate-y-1/2 text-soft" />
           <input
             ref={inputRef}
             type="search"
@@ -178,7 +178,7 @@ export function DesktopSearchPanel({
             aria-controls="advanced-search-filters"
             onClick={() => setFiltersOpen((current) => !current)}
           >
-            <FilterIcon width={14} height={14} />
+            <Icon name="sliders" size={14} />
             Filtros
             {search.activeFilterCount > 0 ? (
               <span className="grid h-[1.1rem] min-w-[1.1rem] place-items-center rounded-full bg-primary px-1 text-micro font-extrabold text-white">{search.activeFilterCount}</span>
@@ -318,7 +318,7 @@ export function DesktopSearchPanel({
                           handleAdd(card.ygoprodeckId)
                         }}
                       >
-                        {isMaxed ? 'MÁX' : lastAddedId === card.ygoprodeckId ? <CheckIcon width={16} height={16} /> : <PlusIcon width={16} height={16} />}
+                        {isMaxed ? 'MÁX' : lastAddedId === card.ygoprodeckId ? <Icon name="check" size={16} strokeWidth={2} /> : <Icon name="plus" size={16} strokeWidth={2} />}
                       </button>
                     </article>
                   )
