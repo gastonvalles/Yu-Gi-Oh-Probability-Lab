@@ -651,6 +651,9 @@ export function useDeckModeController() {
       patternActions,
       patternEditorDefaults,
       isEditingDeck: deckBuilder.isEditingDeck,
+      onSetOrigin: handleSetOrigin,
+      onToggleRole: handleToggleRole,
+      onConfirmClassification: handleConfirmClassification,
     },
     roles: {
       cards: derivedMainCards,

@@ -17,7 +17,7 @@ interface ClassificationEditorProps {
   onSetOrigin: (ygoprodeckId: number, origin: CardOrigin) => void
   onToggleRole: (ygoprodeckId: number, role: CardRole) => void
   onConfirm: (ygoprodeckId: number) => void
-  onOpenHelp: () => void
+  onOpenHelp?: () => void
 }
 
 const KICKER = 'm-0 text-[0.66rem] font-semibold uppercase tracking-widest text-accent'
@@ -129,13 +129,15 @@ export function ClassificationEditor({
         <section className="grid gap-3" aria-label="Roles">
           <div className="flex items-center justify-between gap-2">
             <p className={KICKER}>¿Qué función cumple cuando la robás?</p>
-            <button
-              type="button"
-              className="shrink-0 rounded-full px-1 text-[0.72rem] font-semibold text-muted underline underline-offset-2 hover:text-foreground"
-              onClick={onOpenHelp}
-            >
-              ¿Qué significa cada rol?
-            </button>
+            {onOpenHelp ? (
+              <button
+                type="button"
+                className="shrink-0 rounded-full px-1 text-[0.72rem] font-semibold text-muted underline underline-offset-2 hover:text-foreground"
+                onClick={onOpenHelp}
+              >
+                ¿Qué significa cada rol?
+              </button>
+            ) : null}
           </div>
 
           <div className="grid gap-4 min-[1101px]:grid-cols-3 min-[1101px]:gap-2">
