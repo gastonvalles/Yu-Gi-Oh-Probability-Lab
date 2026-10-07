@@ -31,13 +31,13 @@ export function LabSuggestion({ cards, checks, handSize, view, result }: LabSugg
         <p className="m-0 text-[0.84rem] leading-[1.35] text-muted">{describeCulprit(culprit)}</p>
       </div>
 
-      {state.status === 'loading' ? (
-        <div className="h-9 animate-pulse rounded-control bg-secondary/60 motion-reduce:animate-none" aria-hidden="true" />
-      ) : state.analysis.best ? (
+      {state.analysis.best ? (
         <p className="m-0 rounded-control border border-accent/30 bg-accent/8 px-3 py-2 text-[0.84rem] leading-[1.4] text-foreground">
           <strong>Sugerencia: </strong>
           {describeBest(culprit, state.analysis.best, result.cleanProbability)}
         </p>
+      ) : state.status === 'loading' ? (
+        <p className="m-0 text-[0.82rem] leading-[1.4] text-muted motion-safe:animate-pulse">Probando cambios en tu deck…</p>
       ) : (
         <p className="m-0 text-[0.82rem] leading-[1.4] text-muted">
           {describeNoGain(culprit, state.analysis.tradeoff, result.cleanProbability, hint, causes)}

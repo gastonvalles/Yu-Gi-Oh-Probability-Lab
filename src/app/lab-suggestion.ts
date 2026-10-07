@@ -9,6 +9,8 @@ const MIN_CULPRIT_PROBABILITY = 0.02
 /** Mejora mínima de manos limpias (en puntos de probabilidad) para recomendar un cambio. */
 const MIN_CLEAN_GAIN = 0.003
 const MAX_COPIES = 3
+/** Tope de variantes a calcular: cada una enumera todas las manos, en celulares pesa. */
+const MAX_CANDIDATES = 8
 const OPENING_ROLES: readonly CardRole[] = ['starter', 'extender', 'enabler', 'searcher', 'draw', 'combo_piece']
 
 /** Qué le quita más manos limpias al deck en la vista activa. */
@@ -127,15 +129,19 @@ export function buildCandidates(culprit: Culprit, cards: CardEntry[], checks: Ha
   const missing = cards.filter((card) => excludeIds.has(card.id) && card.copies < MAX_COPIES).sort(byCopies(1)).slice(0, 2)
   const cut = cuttable(new Set([...excludeIds, ...openersPool.map((card) => card.id)]))[0]
 
-  return [
+  const withCut = (card: CardEntry) => candidateOf(cards, [...(cut ? [{ action: 'remove' as const, card: cut }] : []), { action: 'add', card }])
+  // En orden de prioridad (se recorta a MAX_CANDIDATES): lo que ataca el problema primero; subir salidas, al final.
+  const candidates = [
     ...causes.map((card) => candidateOf(cards, [{ action: 'remove', card }])),
+    ...missing.map(withCut),
+    // Si el problema en sí no se puede bajar sin perder más de lo que se gana, queda subir las salidas.
+    ...openersPool.map(withCut),
     ...causes.slice(0, 2).flatMap((cause) =>
       openersPool.filter((opener) => opener.id !== cause.id).map((opener) => candidateOf(cards, [{ action: 'remove', card: cause }, { action: 'add', card: opener }])),
     ),
-    ...missing.map((card) => candidateOf(cards, [...(cut ? [{ action: 'remove' as const, card: cut }] : []), { action: 'add', card }])),
-    // Si el problema en sí no se puede bajar sin perder más de lo que se gana, queda subir las salidas.
-    ...openersPool.map((card) => candidateOf(cards, [...(cut ? [{ action: 'remove' as const, card: cut }] : []), { action: 'add', card }])),
   ]
+
+  return candidates.slice(0, MAX_CANDIDATES)
 }
 
 /**
