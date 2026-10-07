@@ -7,7 +7,7 @@ import type { RoleDistributionKey } from '../app/role-distribution'
 import { useToastMessage } from '../app/use-toast-message'
 import type { PatternEditorDefaults } from '../app/use-pattern-editor-actions'
 import { formatShortPercent } from '../app/utils'
-import type { ApiCardReference, CardEntry, HandPattern, TurnView } from '../types'
+import type { ApiCardReference, CardEntry, CardOrigin, CardRole, HandPattern, TurnView } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 import { CardDetailModal } from './card-detail/CardDetailModal'
 import { KpiDetailModal } from './comparison/KpiDetailModal'
@@ -20,6 +20,7 @@ import { LabFailureBreakdown } from './probability/LabFailureBreakdown'
 import { LabRoleDistribution } from './probability/LabRoleDistribution'
 import { LabRuleList } from './probability/LabRuleList'
 import { LabScoreCard } from './probability/LabScoreCard'
+import { LabPendingClassification } from './probability/LabPendingClassification'
 import { PatternEditorDrawer } from './probability/PatternEditorDrawer'
 import type { PatternEditorActions } from './probability/pattern-editor-actions'
 import { buildPatternCompactSummary } from './probability/pattern-helpers'
@@ -43,6 +44,9 @@ interface ProbabilityPanelProps {
   patternActions: PatternEditorActions
   patternEditorDefaults: PatternEditorDefaults
   isEditingDeck: boolean
+  onSetOrigin: (ygoprodeckId: number, origin: CardOrigin) => void
+  onToggleRole: (ygoprodeckId: number, role: CardRole) => void
+  onConfirmClassification: (ygoprodeckId: number) => void
 }
 
 type DrawerMode = 'custom-create' | 'edit'
@@ -65,6 +69,9 @@ export function ProbabilityPanel({
   patternActions,
   patternEditorDefaults,
   isEditingDeck,
+  onSetOrigin,
+  onToggleRole,
+  onConfirmClassification,
 }: ProbabilityPanelProps) {
   const lab = useProbabilityLab(derivedMainCards, patterns, disabledGenericRuleIds, handSize, isEditingDeck, systemRuleNames)
   const [activeTurnView, setActiveTurnView] = useState<TurnView>('average')
@@ -225,9 +232,13 @@ export function ProbabilityPanel({
           Cuando tengas cartas en el Main Deck vas a ver el % de manos jugables y por qué fallan.
         </LabNotice>
       ) : lab.readiness.status === 'needs-classification' ? (
-        <LabNotice kicker="Falta clasificar" title="Terminá de clasificar todas las cartas">
-          {lab.readiness.message} Mientras tanto podés robar manos de prueba con el botón de práctica.
-        </LabNotice>
+        <LabPendingClassification
+          cards={derivedMainCards}
+          message={lab.readiness.message}
+          onSetOrigin={onSetOrigin}
+          onToggleRole={onToggleRole}
+          onConfirm={onConfirmClassification}
+        />
       ) : lab.computation?.status === 'blocked' ? (
         <div className="grid gap-1.5">
           {lab.computation.issues.map((issue) => (
