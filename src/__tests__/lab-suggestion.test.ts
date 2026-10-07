@@ -160,4 +160,18 @@ describe('lab-suggestion', () => {
     expect(swaps).toContain('starter>interaction')
     expect(swaps).toContain('filler>interaction')
   })
+
+  it('reconoce el problema por ausencia aunque la regla cuente un pool de cartas (como las reglas del sistema)', () => {
+    const cards = [
+      ...Array.from({ length: 12 }, (_, index) => card(`s${index}`, 2, ['starter'])),
+      card('ht', 1, ['handtrap'], 'non_engine'),
+      card('f', 1, ['tech'], 'non_engine'),
+    ]
+    const poolRule = createMatcherPattern('Sin interrupción', 'problem', [{ matcher: { type: 'card_pool', value: ['ht'] }, quantity: 1, kind: 'exclude' }], { turnContext: 'second' })
+    const culprit = { kind: 'problem' as const, patternId: poolRule.id, name: poolRule.name, probability: 0.6 }
+    const swaps = buildCandidates(culprit, cards, [opening, poolRule]).map((candidate) => `${candidate.swap.from}>${candidate.swap.to}`)
+
+    expect(swaps.length).toBeGreaterThan(0)
+    expect(swaps.every((swap) => swap.endsWith('>interaction'))).toBe(true)
+  })
 })

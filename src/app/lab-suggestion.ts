@@ -117,10 +117,6 @@ export function roleGroupOf(card: CardEntry): RoleGroup | null {
   return null
 }
 
-/** Familias que cuenta una condición "role" del problema (para saber qué le falta al deck). */
-const groupOfRole = (role: CardRole): RoleGroup | null =>
-  STARTER_ROLES.includes(role) ? 'starter' : INTERACTION_ROLES.includes(role) ? 'interaction' : role === 'brick' || role === 'garnet' ? 'brick' : null
-
 /**
  * Cambios que atacan al culpable, pensados como lo haría un jugador: mover un lugar del deck de una
  * familia a otra ("sacá un starter y meté una handtrap"), con el deck del mismo tamaño y respetando
@@ -153,12 +149,19 @@ export function buildCandidates(
 
   // A qué familia le falta cuota: lo que el problema por ausencia pide, o starters si no hay salida / hay bricks.
   const pattern = checks.find((check) => check.id === culprit.patternId)
+  const deckGroups = buildDerivedDeckGroupMap(cards)
+  const cardById = new Map(cards.map((card) => [card.id, card]))
+  // Las reglas del sistema cuentan "grupos" armados con ids de cartas (pool), no solo roles: se mira qué
+  // cartas son las que la regla pide NO tener y a qué familia pertenecen.
   const absentGroups = new Set(
     culprit.kind === 'problem'
       ? (pattern?.conditions ?? [])
-          .filter((condition) => condition.kind === 'exclude' && condition.matcher?.type === 'role')
-          .flatMap((condition) => (condition.matcher?.type === 'role' ? [groupOfRole(condition.matcher.value)] : []))
-          .filter((group): group is RoleGroup => group !== null)
+          .filter((condition) => condition.kind === 'exclude')
+          .flatMap((condition) => resolveConditionCardIds(condition, deckGroups, cards))
+          .flatMap((cardId) => {
+            const group = cardById.has(cardId) ? roleGroupOf(cardById.get(cardId)!) : null
+            return group ? [group] : []
+          })
       : [],
   )
   const wanted: RoleGroup[] = absentGroups.size > 0 ? [...absentGroups] : ['starter']
