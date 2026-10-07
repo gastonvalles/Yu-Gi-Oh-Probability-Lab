@@ -79,6 +79,8 @@ export function ProbabilityPanel({
   const [replacedGenericId, setReplacedGenericId] = useState<string | null>(null)
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false)
   const [pendingDeletePatternId, setPendingDeletePatternId] = useState<string | null>(null)
+  // Mientras hay una carta abierta en la lista de pendientes no se pasa a los resultados.
+  const [isClassifyingPending, setIsClassifyingPending] = useState(false)
   const [kpiModalRole, setKpiModalRole] = useState<KpiRole | null>(null)
   // Detalle de una carta tocada en la lista del KPI: se abre encima y la lista queda abierta.
   const [kpiDetailCard, setKpiDetailCard] = useState<ApiCardSearchResult | null>(null)
@@ -231,13 +233,14 @@ export function ProbabilityPanel({
         <LabNotice kicker="Antes de medir" title="Cargá el Main Deck primero">
           Cuando tengas cartas en el Main Deck vas a ver el % de manos jugables y por qué fallan.
         </LabNotice>
-      ) : lab.readiness.status === 'needs-classification' ? (
+      ) : lab.readiness.status === 'needs-classification' || isClassifyingPending ? (
         <LabPendingClassification
           cards={derivedMainCards}
-          message={lab.readiness.message}
+          message={lab.readiness.status === 'needs-classification' ? lab.readiness.message : ''}
           onSetOrigin={onSetOrigin}
           onToggleRole={onToggleRole}
           onConfirm={onConfirmClassification}
+          onEditingChange={setIsClassifyingPending}
         />
       ) : lab.computation?.status === 'blocked' ? (
         <div className="grid gap-1.5">
