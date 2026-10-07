@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { isCardFullyClassified } from '../../app/role-step'
 import { formatInteger } from '../../app/utils'
@@ -16,6 +16,8 @@ interface LabPendingClassificationProps {
   onSetOrigin: (ygoprodeckId: number, origin: CardOrigin) => void
   onToggleRole: (ygoprodeckId: number, role: CardRole) => void
   onConfirm: (ygoprodeckId: number) => void
+  /** Avisa si hay una carta abierta: el Lab mantiene esta vista hasta que se cierra, aunque ya no falte nada. */
+  onEditingChange: (editing: boolean) => void
 }
 
 const isPending = (card: CardEntry) => !isCardFullyClassified(card) || card.needsReview
@@ -24,8 +26,14 @@ const isPending = (card: CardEntry) => !isCardFullyClassified(card) || card.need
  * El Lab no calcula hasta que todas las cartas estén clasificadas: en vez de una pestaña vacía,
  * muestra las que faltan y se resuelven acá mismo. Al terminar, el Lab calcula solo.
  */
-export function LabPendingClassification({ cards, message, onSetOrigin, onToggleRole, onConfirm }: LabPendingClassificationProps) {
+export function LabPendingClassification({ cards, message, onSetOrigin, onToggleRole, onConfirm, onEditingChange }: LabPendingClassificationProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const isEditing = selectedId !== null
+
+  useEffect(() => {
+    onEditingChange(isEditing)
+  }, [isEditing, onEditingChange])
+
   const pendingCount = useMemo(() => cards.filter(isPending).length, [cards])
   // La carta abierta queda en la lista aunque ya esté resuelta: el usuario avanza con "Siguiente".
   const visible = useMemo(
@@ -41,12 +49,18 @@ export function LabPendingClassification({ cards, message, onSetOrigin, onToggle
   return (
     <div className="grid min-w-0 content-start gap-3">
       <section className={`${surface.cardWarning} grid gap-2 px-3 py-3`}>
-        <p className="m-0 text-[0.68rem] font-semibold uppercase tracking-widest text-warning">Falta clasificar</p>
+        <p className="m-0 text-[0.68rem] font-semibold uppercase tracking-widest text-warning">
+          {pendingCount > 0 ? 'Falta clasificar' : 'Todo clasificado'}
+        </p>
         <h3 className="m-0 text-[1rem] leading-tight text-foreground">
-          {formatInteger(pendingCount)} carta{pendingCount === 1 ? '' : 's'} por cerrar
+          {pendingCount > 0
+            ? `${formatInteger(pendingCount)} carta${pendingCount === 1 ? '' : 's'} por cerrar`
+            : 'Ya no falta ninguna carta'}
         </h3>
         <p className="m-0 text-[0.82rem] leading-[1.3] text-muted">
-          {message} Tocá una carta, resolvela acá mismo y cuando termines el Lab calcula solo.
+          {pendingCount > 0
+            ? `${message} Tocá una carta, resolvela acá mismo y cuando termines el Lab calcula solo.`
+            : 'Cerrá el editor para ver el resultado.'}
         </p>
         <div
           className="h-1 w-full overflow-hidden rounded-(--radius-chip) bg-[rgb(var(--border-rgb)/0.9)]"
