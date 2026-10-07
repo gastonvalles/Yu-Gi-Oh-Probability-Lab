@@ -14,13 +14,13 @@ vi.mock('../app/lab-odds-client', () => ({
   requestLabOdds: (_key: string, input: Parameters<typeof computeLabOdds>[0]) => Promise.resolve(computeLabOdds(input)),
 }))
 
-const card = (id: string, copies: number, roles: CardRole[]): CardEntry => ({
+const card = (id: string, copies: number, roles: CardRole[], origin: CardEntry['origin'] = 'engine'): CardEntry => ({
   id,
   name: `Card ${id}`,
   copies,
   source: 'manual',
   apiCard: null,
-  origin: 'engine',
+  origin,
   roles,
   needsReview: false,
 })
@@ -29,7 +29,7 @@ afterEach(cleanup)
 
 describe('LabSuggestion', () => {
   it('muestra la métrica del problema principal y una sugerencia concreta', async () => {
-    const cards = [card('starter', 1, ['starter']), ...Array.from({ length: 39 }, (_, index) => card(`f${index}`, 1, ['tech']))]
+    const cards = [card('starter', 1, ['starter']), ...Array.from({ length: 39 }, (_, index) => card(`f${index}`, 1, ['tech'], 'non_engine'))]
     const checks = [createMatcherPattern('Starter', 'opening', [{ matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' }])]
     const computation = computeLabResults(cards, checks, 5)
 
@@ -39,6 +39,6 @@ describe('LabSuggestion', () => {
 
     expect(screen.getByText('Lo que más te frena')).toBeInTheDocument()
     expect(screen.getByText(/Pasan en/)).toBeInTheDocument()
-    expect(await screen.findByText(/1 copia de Card starter/)).toBeInTheDocument()
+    expect(await screen.findByText(/Sacá 1 carta de relleno y meté 1 starter/)).toBeInTheDocument()
   })
 })
