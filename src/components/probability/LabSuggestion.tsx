@@ -1,3 +1,5 @@
+import { useCallback } from 'react'
+
 import { formatShortPercent } from '../../app/utils'
 import type { Change, Culprit, Outcome } from '../../app/lab-suggestion'
 import { cx } from '../ui/cx'
@@ -5,9 +7,11 @@ import { surface } from '../ui/surfaces'
 import { formatOdds } from './lab-copy'
 import { useLabSuggestion } from './use-lab-suggestion'
 import type { LabViewResult } from '../../app/probability-lab'
-import type { CardEntry, HandPattern, TurnView } from '../../types'
+import { getCardCopyLimit } from '../../app/deck-format'
+import type { CardEntry, DeckFormat, HandPattern, TurnView } from '../../types'
 
 interface LabSuggestionProps {
+  deckFormat: DeckFormat
   cards: CardEntry[]
   checks: HandPattern[]
   handSize: number
@@ -16,8 +20,10 @@ interface LabSuggestionProps {
 }
 
 /** "Lo que más te frena": la métrica del problema principal y un cambio concreto para mejorarlo. */
-export function LabSuggestion({ cards, checks, handSize, view, result }: LabSuggestionProps) {
-  const { culprit, state, hint, causes } = useLabSuggestion(cards, checks, handSize, view, result)
+export function LabSuggestion({ cards, checks, deckFormat, handSize, view, result }: LabSuggestionProps) {
+  // Un cambio que suma copias tiene que ser legal en el formato (banlist): la sugerencia no puede pedir lo imposible.
+  const maxCopiesOf = useCallback((card: CardEntry) => (card.apiCard ? getCardCopyLimit(card.apiCard, deckFormat) : 3), [deckFormat])
+  const { culprit, state, hint, causes } = useLabSuggestion(cards, checks, handSize, view, result, maxCopiesOf)
 
   if (!culprit) {
     return null
@@ -37,10 +43,12 @@ export function LabSuggestion({ cards, checks, handSize, view, result }: LabSugg
           {describeBest(culprit, state.analysis.best, result.cleanProbability)}
         </p>
       ) : state.status === 'loading' ? (
-        <p className="m-0 text-[0.82rem] leading-[1.4] text-muted motion-safe:animate-pulse">Probando cambios en tu deck…</p>
+        <p className="m-0 text-[0.82rem] leading-[1.4] text-muted motion-safe:animate-pulse">
+          Probando cambios en tu deck… ({state.progress.done}/{state.progress.total})
+        </p>
       ) : (
         <p className="m-0 text-[0.82rem] leading-[1.4] text-muted">
-          {describeNoGain(culprit, state.analysis.tradeoff, result.cleanProbability, hint, causes)}
+          {describeNoGain(culprit, state.analysis.tradeoff, result.cleanProbability, hint, causes, state.progress.total, state.analysis.compared)}
         </p>
       )}
     </section>
@@ -74,9 +82,25 @@ function describeBest(culprit: Culprit, best: Outcome, cleanBefore: number): str
 }
 
 /** Sin cambio que convenga: se explica por qué, con números, en vez de dejar un "no se puede". */
-function describeNoGain(culprit: Culprit, tradeoff: Outcome | null, cleanBefore: number, hint: string | null, causes: CardEntry[]): string {
+function describeNoGain(
+  culprit: Culprit,
+  tradeoff: Outcome | null,
+  cleanBefore: number,
+  hint: string | null,
+  causes: CardEntry[],
+  tried: number,
+  compared: number,
+): string {
   if (hint) {
     return hint
+  }
+
+  if (tried === 0) {
+    return 'No hay un cambio permitido por tu formato (copias máximas y banlist) que ataque esto directamente.'
+  }
+
+  if (compared === 0) {
+    return 'No se pudieron comparar cambios para esto con tu deck actual.'
   }
 
   if (tradeoff) {
