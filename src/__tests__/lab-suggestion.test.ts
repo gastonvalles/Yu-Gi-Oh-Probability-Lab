@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { computeLabOdds } from '../app/lab-odds'
-import { buildCandidates, findCulprit, pickBestSuggestion } from '../app/lab-suggestion'
+import { buildCandidates, findCulprit, pickBest, pickTradeoff, toOutcomes, type Evaluation } from '../app/lab-suggestion'
 import { createMatcherPattern } from '../app/pattern-factory'
 import { computeLabResults } from '../app/probability-lab'
 import type { CardEntry, CardRole, HandPattern } from '../types'
@@ -26,8 +26,11 @@ function averageOf(cards: CardEntry[], checks: HandPattern[]) {
   return computation.results.average
 }
 
+const evaluate = (candidates: ReturnType<typeof buildCandidates>, patterns: HandPattern[]): Evaluation[] =>
+  candidates.map((candidate) => ({ candidate, odds: computeLabOdds({ cards: candidate.cards, patterns, handSize: 5 }) }))
+
 describe('lab-suggestion', () => {
-  it('marca como culpable lo que más pesa y propone sacar copias de lo que causa el problema', () => {
+  it('ante un problema por presencia propone sacar o cambiar la carta que lo causa y mejora las limpias', () => {
     const cards = deck()
     const checks = [opening, problem]
     const result = averageOf(cards, checks)
@@ -36,12 +39,21 @@ describe('lab-suggestion', () => {
     expect(culprit?.kind).toBe('problem')
 
     const candidates = buildCandidates(culprit!, cards, checks)
-    expect(candidates.every((candidate) => candidate.action === 'remove')).toBe(true)
-    expect(candidates[0].card.id).toBe('brick')
-    expect(candidates[0].cards.find((entry) => entry.id === 'brick')?.copies).toBe(5)
+    // El motor exige 40 cartas: todo cambio mantiene el tamaño del deck (sacar = cambiar por una carta neutra).
+    expect(candidates.every((candidate) => candidate.cards.reduce((n, c) => n + c.copies, 0) === 40)).toBe(true)
+    expect(candidates.some((candidate) => candidate.changes.length === 1 && candidate.changes[0].card.id === 'brick')).toBe(true)
+    expect(candidates.some((candidate) => candidate.changes.length === 2)).toBe(true)
+
+    const outcomes = toOutcomes(culprit!, 'average', evaluate(candidates, checks))
+    const best = pickBest(outcomes, result.cleanProbability)
+
+    expect(best).not.toBeNull()
+    expect(best!.cleanProbability).toBeGreaterThan(result.cleanProbability)
+    expect(best!.culpritProbability).toBeLessThan(culprit!.probability)
+    expect(best!.changes.some((change) => change.action === 'remove' && change.card.id === 'brick')).toBe(true)
   })
 
-  it('sugiere sumar starters cuando el problema son las manos sin salida', () => {
+  it('si el problema son las manos sin salida cambia una carta que no abre por un starter', () => {
     const cards = [card('starter', 1, ['starter']), ...Array.from({ length: 39 }, (_, index) => card(`f${index}`, 1, ['tech']))]
     const result = averageOf(cards, [opening])
     const culprit = findCulprit(result)
@@ -49,23 +61,24 @@ describe('lab-suggestion', () => {
     expect(culprit?.kind).toBe('no-opening')
 
     const candidates = buildCandidates(culprit!, cards, [opening])
-    expect(candidates[0].action).toBe('add')
-    expect(candidates[0].cards.find((entry) => entry.id === 'starter')?.copies).toBe(2)
+    expect(candidates[0].changes.map((change) => change.action)).toEqual(['remove', 'add'])
+    expect(candidates[0].cards.reduce((n, c) => n + c.copies, 0)).toBe(40)
 
-    const evaluated = candidates.map((candidate) => ({ candidate, odds: computeLabOdds({ cards: candidate.cards, patterns: [opening], handSize: 5 }) }))
-    const best = pickBestSuggestion(culprit!, result.cleanProbability, 'average', evaluated)
+    const best = pickBest(toOutcomes(culprit!, 'average', evaluate(candidates, [opening])), result.cleanProbability)
 
-    expect(best?.action).toBe('add')
-    expect(best!.cleanProbability).toBeGreaterThan(result.cleanProbability)
+    expect(best?.changes.find((change) => change.action === 'add')?.card.id).toBe('starter')
     expect(best!.culpritProbability).toBeLessThan(culprit!.probability)
   })
 
-  it('no sugiere nada si ningún cambio mejora lo suficiente', () => {
-    const cards = deck()
-    const culprit = { kind: 'no-opening' as const, patternId: null, name: 'x', probability: 0.1 }
-    const candidate = { action: 'add' as const, card: cards[0], cards }
-    const odds = computeLabOdds({ cards, patterns: [opening], handSize: 5 })
+  it('si sacar la carta cuesta más salidas de las que ahorra, no recomienda y deja el costo a la vista', () => {
+    // Las cartas del problema también son las únicas que abren: sacarlas baja el problema pero hunde las salidas.
+    const cards = [card('both', 4, ['starter', 'brick']), ...Array.from({ length: 36 }, (_, index) => card(`f${index}`, 1, ['tech']))]
+    const checks = [opening, problem]
+    const result = averageOf(cards, checks)
+    const culprit = { kind: 'problem' as const, patternId: problem.id, name: problem.name, probability: result.patternResults.find((entry) => entry.patternId === problem.id)!.probability }
+    const outcomes = toOutcomes(culprit, 'average', evaluate(buildCandidates(culprit, cards, checks), checks))
 
-    expect(pickBestSuggestion(culprit, 1, 'average', [{ candidate, odds }])).toBeNull()
+    expect(pickBest(outcomes, result.cleanProbability)).toBeNull()
+    expect(pickTradeoff(outcomes, culprit.probability)?.cleanProbability).toBeLessThan(result.cleanProbability)
   })
 })
