@@ -197,13 +197,21 @@ export function buildPatternPresets(cards: CardEntry[], ruleNames: SystemRuleNam
   return PATTERN_PRESET_DEFINITIONS.map(({ build, ...definition }) => {
     const custom = definition.tier === 'universal' ? normalizeRuleName(ruleNames[definition.id] ?? '') : ''
     const title = custom || definition.title
+    const id = getSystemRuleId(definition.id)
+    const built = build(cards)
 
     return {
       ...definition,
       title,
       defaultTitle: definition.title,
-      // Id estable: la selección y los resultados no cambian al recalcular ni al renombrar.
-      pattern: { ...build(cards), id: getSystemRuleId(definition.id), name: title },
+      // Ids estables (regla y condiciones): la selección y los resultados no cambian al recalcular ni al
+      // renombrar, y la caché por contenido coincide aunque las reglas se armen de nuevo.
+      pattern: {
+        ...built,
+        id,
+        name: title,
+        conditions: built.conditions.map((condition, index) => ({ ...condition, id: `${id}-c${index}` })),
+      },
     }
   })
 }

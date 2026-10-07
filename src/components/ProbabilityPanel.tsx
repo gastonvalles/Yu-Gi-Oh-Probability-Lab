@@ -285,6 +285,8 @@ export function ProbabilityPanel({
             onCreateCustom={handleOpenCustomCreate}
           />
         </div>
+      ) : lab.canCalculate ? (
+        <LabSkeleton />
       ) : null}
 
       <PatternEditorDrawer
@@ -352,6 +354,20 @@ function LabNotice({ kicker, title, children }: { kicker: string; title: string;
       <h3 className="m-0 text-[1rem] leading-tight text-(--text-main)">{title}</h3>
       <p className="text-muted m-0 text-[0.82rem] leading-[1.3]">{children}</p>
     </section>
+  )
+}
+
+/** Mientras el cálculo exacto corre en segundo plano: bloques con la forma del resultado (sin saltos al llegar). */
+function LabSkeleton() {
+  const block = `${surface.card} animate-pulse motion-reduce:animate-none`
+
+  return (
+    <div className="grid min-w-0 gap-3 min-[1101px]:grid-cols-2" role="status" aria-busy="true" aria-label="Calculando las manos del deck">
+      <div className={`${block} h-11 min-[1101px]:col-span-full`} />
+      <div className={`${block} h-[17rem]`} />
+      <div className={`${block} h-[5.5rem] min-[1101px]:h-[17rem]`} />
+      <div className={`${block} h-[8rem] min-[1101px]:col-span-full`} />
+    </div>
   )
 }
 
