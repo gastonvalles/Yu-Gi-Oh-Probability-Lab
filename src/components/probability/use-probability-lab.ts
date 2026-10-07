@@ -84,7 +84,8 @@ function buildReadiness(cards: CardEntry[]): LabReadiness {
     return { status: 'empty-deck' }
   }
 
-  if (isClassificationStepComplete(cards)) {
+  // El motor también se niega a calcular con clasificaciones sin confirmar.
+  if (isClassificationStepComplete(cards) && countCardsPendingReview(cards) === 0) {
     return { status: 'ready' }
   }
 
