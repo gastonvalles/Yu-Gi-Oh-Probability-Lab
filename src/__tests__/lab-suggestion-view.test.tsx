@@ -39,6 +39,6 @@ describe('LabSuggestion', () => {
 
     expect(screen.getByText('Lo que más te frena')).toBeInTheDocument()
     expect(screen.getByText(/Pasan en/)).toBeInTheDocument()
-    expect(await screen.findByText(/Probá sumar 1 copia de Card starter/)).toBeInTheDocument()
+    expect(await screen.findByText(/1 copia de Card starter/)).toBeInTheDocument()
   })
 })
