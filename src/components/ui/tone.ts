@@ -1,0 +1,65 @@
+/**
+ * Tonos semánticos de la app. El color siempre significa algo:
+ * brand = lo tuyo (selección, acción principal) · success = bien/listo · warning = ojo ·
+ * danger = mal/peligro · info = dato destacado · neutral = sin énfasis.
+ * Los roles de las cartas (starter, handtrap…) tienen su propia paleta y no usan estos tonos.
+ */
+export type Tone = 'neutral' | 'brand' | 'success' | 'warning' | 'danger' | 'info'
+
+interface ToneStyle {
+  /** Texto e íconos del tono (versión clara: legible sobre fondos teñidos y sobre el fondo de la app). */
+  text: string
+  /** Borde + fondo suave: chips, avisos, filas destacadas. */
+  tint: string
+  /** Borde + fondo apenas visibles: tarjetas grandes teñidas. */
+  wash: string
+  /** Relleno sólido: puntos, barras, indicadores. */
+  fill: string
+  /** Publica `--tone-rgb` para componer degradés y brillos (`rgb(var(--tone-rgb)/0.3)`). */
+  rgb: string
+}
+
+export const TONE: Record<Tone, ToneStyle> = {
+  neutral: {
+    text: 'text-muted',
+    tint: 'border-border bg-foreground/5',
+    wash: 'border-border-subtle bg-foreground/3',
+    fill: 'bg-soft',
+    rgb: '[--tone-rgb:var(--foreground-rgb)]',
+  },
+  brand: {
+    text: 'text-primary-soft',
+    tint: 'border-primary/40 bg-primary/14',
+    wash: 'border-primary/28 bg-primary/8',
+    fill: 'bg-primary',
+    rgb: '[--tone-rgb:var(--primary-rgb)]',
+  },
+  success: {
+    text: 'text-success-soft',
+    tint: 'border-success/34 bg-success/12',
+    wash: 'border-success/24 bg-success/7',
+    fill: 'bg-success',
+    rgb: '[--tone-rgb:var(--success-rgb)]',
+  },
+  warning: {
+    text: 'text-warning-soft',
+    tint: 'border-warning/38 bg-warning/12',
+    wash: 'border-warning/26 bg-warning/7',
+    fill: 'bg-warning',
+    rgb: '[--tone-rgb:var(--warning-rgb)]',
+  },
+  danger: {
+    text: 'text-danger-soft',
+    tint: 'border-danger/40 bg-danger/12',
+    wash: 'border-danger/28 bg-danger/7',
+    fill: 'bg-danger',
+    rgb: '[--tone-rgb:var(--danger-rgb)]',
+  },
+  info: {
+    text: 'text-info-soft',
+    tint: 'border-info/38 bg-info/12',
+    wash: 'border-info/26 bg-info/7',
+    fill: 'bg-info',
+    rgb: '[--tone-rgb:var(--info-rgb)]',
+  },
+}

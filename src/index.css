@@ -301,6 +301,10 @@
   --color-surface-hover: var(--surface-hover);
   --color-primary-soft: var(--primary-soft);
   --color-info: var(--info);
+  --color-success-soft: var(--success-soft);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger-soft: var(--danger-soft);
+  --color-info-soft: var(--info-soft);
   --color-handtrap: var(--handtrap);
   --color-boardbreaker: var(--boardbreaker);
   --color-floodgate: var(--floodgate);
@@ -348,6 +352,11 @@
     --primary-soft-rgb: 201 160 255;
     --info: #38bdf8;
     --info-rgb: 56 189 248;
+    /* Variantes claras de cada tono: texto e íconos sobre fondos teñidos (más contraste que el color base). */
+    --success-soft: #4df0b4;
+    --warning-soft: #fbbf24;
+    --danger-soft: #fca5a5;
+    --info-soft: #7dd3fc;
 
     --starter: #9b00ff;
     --extender: #a855f7;
