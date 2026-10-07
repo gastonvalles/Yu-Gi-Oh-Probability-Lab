@@ -33,7 +33,7 @@ export function requestLabOdds(key: string, input: LabOddsInput): Promise<LabOdd
   }
   const reply = runInPool<OddsReply>((id) => ({ id, kind: 'odds', ...input }))
 
-  return reply
-    ? reply.then((data) => remember(fromReply(data)))
-    : new Promise((resolve) => window.setTimeout(() => resolve(remember(computeLabOdds(input))), 0))
+  const inMainThread = () => new Promise<LabOdds | null>((resolve) => window.setTimeout(() => resolve(remember(computeLabOdds(input))), 0))
+
+  return reply ? reply.then((data) => remember(fromReply(data)), inMainThread) : inMainThread()
 }

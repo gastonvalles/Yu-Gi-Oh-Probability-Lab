@@ -5,7 +5,7 @@ interface Slot {
 }
 
 const MAX_WORKERS = 3
-const pending = new Map<number, { resolve: (reply: unknown) => void; slot: Slot }>()
+const pending = new Map<number, { resolve: (reply: unknown) => void; reject: (reason: unknown) => void; slot: Slot }>()
 let pool: Slot[] | null | undefined
 let nextId = 1
 
@@ -35,6 +35,18 @@ function getPool(): Slot[] | null {
         entry?.resolve(event.data)
       })
 
+      // Si el worker no puede cargarse o falla, los pedidos pendientes se rechazan y el que llama calcula en el hilo principal.
+      slot.worker.addEventListener('error', () => {
+        for (const [id, entry] of pending) {
+          if (entry.slot === slot) {
+            pending.delete(id)
+            entry.reject(new Error('lab-worker-error'))
+          }
+        }
+
+        slot.load = 0
+      })
+
       return slot
     })
   } catch {
@@ -57,11 +69,11 @@ export function runInPool<TReply>(build: (id: number) => object): Promise<TReply
 
   const slot = slots.reduce((least, candidate) => (candidate.load < least.load ? candidate : least))
 
-  return new Promise<TReply>((resolve) => {
+  return new Promise<TReply>((resolve, reject) => {
     const id = nextId++
 
     slot.load += 1
-    pending.set(id, { resolve: resolve as (reply: unknown) => void, slot })
+    pending.set(id, { resolve: resolve as (reply: unknown) => void, reject, slot })
     slot.worker.postMessage(build(id))
   })
 }

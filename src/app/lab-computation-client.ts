@@ -104,10 +104,15 @@ export function requestLabComputation(input: LabComputationInput, key = labCompu
   const { cards, patterns, handSize } = input
   const first = runInPool<{ output: CalculationOutput }>((id) => ({ id, kind: 'view', cards, patterns, handSize, view: 'first' }))
   const second = runInPool<{ output: CalculationOutput }>((id) => ({ id, kind: 'view', cards, patterns, handSize, view: 'second' }))
+  const inMainThread = () =>
+    new Promise<LabComputation>((resolve) => window.setTimeout(() => resolve(computeLabResults(cards, patterns, handSize)), 0))
   const computation =
     first && second
-      ? Promise.all([first, second]).then(([a, b]) => assembleLabComputation(a.output, b.output, patterns, handSize))
-      : new Promise<LabComputation>((resolve) => window.setTimeout(() => resolve(computeLabResults(cards, patterns, handSize)), 0))
+      ? Promise.all([first, second])
+          .then(([a, b]) => assembleLabComputation(a.output, b.output, patterns, handSize))
+          // Sin workers utilizables (bloqueados o con error) se calcula igual, en el hilo principal.
+          .catch(inMainThread)
+      : inMainThread()
   const tracked = computation
     .then((result) => remember(key, result))
     .finally(() => {
