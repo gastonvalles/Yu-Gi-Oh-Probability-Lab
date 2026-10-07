@@ -81,4 +81,21 @@ describe('lab-suggestion', () => {
     expect(pickBest(outcomes, result.cleanProbability)).toBeNull()
     expect(pickTradeoff(outcomes, culprit.probability)?.cleanProbability).toBeLessThan(result.cleanProbability)
   })
+
+  it('si el problema no se puede bajar sin perder salidas, recomienda subir las salidas por otro lado', () => {
+    const cards = [
+      card('both', 4, ['starter', 'brick']),
+      card('pure', 1, ['starter']),
+      ...Array.from({ length: 35 }, (_, index) => card(`f${index}`, 1, ['tech'])),
+    ]
+    const checks = [opening, problem]
+    const result = averageOf(cards, checks)
+    const culprit = { kind: 'problem' as const, patternId: problem.id, name: problem.name, probability: result.patternResults.find((entry) => entry.patternId === problem.id)!.probability }
+    const outcomes = toOutcomes(culprit, 'average', evaluate(buildCandidates(culprit, cards, checks), checks))
+    const best = pickBest(outcomes, result.cleanProbability)
+
+    expect(best).not.toBeNull()
+    expect(best!.changes.find((change) => change.action === 'add')?.card.id).toBe('pure')
+    expect(best!.cleanProbability).toBeGreaterThan(result.cleanProbability)
+  })
 })

@@ -65,6 +65,11 @@ function describeChanges(changes: Change[]): string {
 function describeBest(culprit: Culprit, best: Outcome, cleanBefore: number): string {
   const target = culprit.kind === 'problem' ? 'el problema' : 'las manos sin salida'
 
+  // El cambio no baja el problema: sube las salidas (las manos limpias) por otro lado.
+  if (best.culpritProbability >= culprit.probability - 0.0005) {
+    return `Bajar este problema cuesta más salidas de las que ahorra, pero ${describeChanges(best.changes)} y las manos limpias pasarían de ${formatShortPercent(cleanBefore)} a ${formatShortPercent(best.cleanProbability)} (estimado, el resto del deck igual).`
+  }
+
   return `${capitalize(describeChanges(best.changes))}: ${target} bajaría a ${oddsOnly(best.culpritProbability)} y las manos limpias pasarían de ${formatShortPercent(cleanBefore)} a ${formatShortPercent(best.cleanProbability)} (estimado, el resto del deck igual).`
 }
 

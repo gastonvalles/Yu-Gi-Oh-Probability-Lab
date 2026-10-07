@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { requestLabOdds } from '../../app/lab-odds-client'
 import {
   buildCandidates,
+  buildMaxedHint,
   buildMissingRoleHint,
   findCulprit,
   listCauses,
@@ -71,7 +72,10 @@ export function useLabSuggestion(
     }
   }, [baseClean, cards, checks, culprit, handSize, view])
 
-  const hint = useMemo(() => (culprit ? buildMissingRoleHint(culprit, cards, checks) : null), [culprit, cards, checks])
+  const hint = useMemo(
+    () => (culprit ? (buildMissingRoleHint(culprit, cards, checks) ?? buildMaxedHint(culprit, cards, checks)) : null),
+    [culprit, cards, checks],
+  )
   const causes = useMemo(() => (culprit ? listCauses(culprit, cards, checks) : []), [culprit, cards, checks])
 
   return { culprit, state, hint, causes }
