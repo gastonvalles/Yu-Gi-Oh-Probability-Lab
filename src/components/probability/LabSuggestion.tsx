@@ -24,7 +24,7 @@ export function LabSuggestion({ cards, checks, handSize, view, result }: LabSugg
   }
 
   return (
-    <section className={cx(surface.card, 'grid min-w-0 gap-2 p-3 min-[1101px]:col-span-full')} aria-label="Qué mejorar primero">
+    <section className={cx(surface.card, 'order-3 grid min-w-0 gap-2 p-3 min-[1101px]:col-span-full')} aria-label="Qué mejorar primero">
       <p className="m-0 text-[0.68rem] font-semibold uppercase tracking-widest text-accent">Lo que más te frena</p>
       <div className="grid gap-0.5">
         <strong className="text-[0.95rem] leading-tight text-foreground [overflow-wrap:anywhere]">{culprit.name}</strong>
