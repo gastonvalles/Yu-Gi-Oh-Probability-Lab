@@ -259,7 +259,7 @@ export function DeckBuilderStep({
 
             <div className="relative z-1 grid h-full min-h-0 content-start gap-4 overflow-y-auto overflow-x-hidden px-8 pb-6 pt-4 [scrollbar-gutter:stable] [scrollbar-width:thin] max-[1500px]:px-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex min-w-0 flex-[1_1_20rem] items-center gap-3">
+                <div className="flex min-w-0 flex-[1_1_16rem] items-center gap-3">
                   <input
                     type="text"
                     value={deckBuilder.deckName}

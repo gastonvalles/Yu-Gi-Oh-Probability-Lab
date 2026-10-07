@@ -194,8 +194,6 @@ const PATHS = {
 
 export type IconName = keyof typeof PATHS
 
-export const ICON_NAMES = Object.keys(PATHS) as IconName[]
-
 interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'name' | 'width' | 'height'> {
   name: IconName
   /** Lado en px (por defecto 18). */

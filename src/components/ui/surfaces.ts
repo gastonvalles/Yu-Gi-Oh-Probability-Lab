@@ -12,14 +12,11 @@ import { TONE } from './tone'
 export const surface = {
   /** Contenedor flotante grande (modal, drawer). */
   panel: 'rounded-panel border border-border-subtle bg-card-background shadow-overlay',
-  /** Panel con énfasis de marca (el resultado principal de una pantalla). */
-  panelStrong: 'rounded-card border border-primary/30 bg-card-background bg-linear-to-b from-primary/12 to-transparent shadow-card',
   /** Bloque secundario dentro de una tarjeta o drawer: más claro que el fondo, sin sombra. */
   panelSoft: 'rounded-card border border-border-subtle bg-white/3',
   card: 'rounded-card border border-border-subtle bg-card-background bg-linear-to-b from-white/4 to-transparent shadow-card',
   /** Contenedor de cada paso: sólo ordena (las tarjetas de adentro son las que tienen fondo). */
   stepShell: '',
-  cardAccent: cx('rounded-card border shadow-card', TONE.brand.wash),
   cardSuccess: cx('rounded-card border shadow-card', TONE.success.wash),
   cardWarning: cx('rounded-card border shadow-card', TONE.warning.wash),
   cardDanger: cx('rounded-card border shadow-card', TONE.danger.wash),

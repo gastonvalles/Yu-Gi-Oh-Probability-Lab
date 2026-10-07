@@ -9,6 +9,3 @@ export const sectionTitle = 'm-0 text-lead font-semibold tracking-[-0.01em] text
 
 /** Texto de apoyo bajo un título. */
 export const supportText = 'm-0 text-small text-muted'
-
-/** Cifras: ancho fijo para que no salten al cambiar. */
-export const numeric = 'tabular-nums'

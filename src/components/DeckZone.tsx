@@ -40,18 +40,21 @@ interface DeckZoneProps {
   onRemoveCard: (instanceId: string) => void
 }
 
-const ZONE_STYLES: Record<DeckZoneType, { background: string; border: string }> = {
+const ZONE_STYLES: Record<DeckZoneType, { background: string; border: string; dot: string }> = {
   main: {
     background: 'var(--zone-main-background)',
     border: 'var(--zone-main-border)',
+    dot: 'rgb(var(--primary-rgb))',
   },
   extra: {
     background: 'var(--zone-extra-background)',
     border: 'var(--zone-extra-border)',
+    dot: 'rgb(var(--handtrap-rgb))',
   },
   side: {
     background: 'var(--zone-side-background)',
     border: 'var(--zone-side-border)',
+    dot: 'rgb(var(--accent-rgb))',
   },
 }
 
@@ -179,7 +182,7 @@ export const DeckZone = memo(function DeckZone({
       >
         <div className="flex min-w-0 items-center justify-between gap-3 px-0.5">
           <div className="flex min-w-0 items-center gap-2.5">
-            <span className="size-2.5 shrink-0 rounded-full bg-(--classic-zone-accent)" aria-hidden="true" />
+            <span className="size-2.5 shrink-0 rounded-full" style={{ background: zoneStyle.dot }} aria-hidden="true" />
             <h3 className="m-0 whitespace-nowrap text-lead font-semibold text-foreground">
               {title.replace(' Deck', '')} <span className="font-medium text-muted tabular-nums">[{cardCountLabel}]</span>
             </h3>
@@ -254,7 +257,7 @@ export const DeckZone = memo(function DeckZone({
     <section className="w-full bg-transparent p-0">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
-          <span className="size-2.5 shrink-0 rounded-full" style={{ background: zoneStyle.border }} aria-hidden="true" />
+          <span className="size-2.5 shrink-0 rounded-full" style={{ background: zoneStyle.dot }} aria-hidden="true" />
           <div className="min-w-0">
             <h3 className="m-0 wrap-anywhere text-lead font-semibold leading-tight text-foreground">{title}</h3>
             <p className="m-0 wrap-anywhere text-small text-muted">{headerSummary}</p>
