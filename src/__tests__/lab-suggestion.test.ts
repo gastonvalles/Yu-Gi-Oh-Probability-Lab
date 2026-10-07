@@ -174,4 +174,24 @@ describe('lab-suggestion', () => {
     expect(swaps.length).toBeGreaterThan(0)
     expect(swaps.every((swap) => swap.endsWith('>interaction'))).toBe(true)
   })
+
+  it('en el Promedio una regla "Solo 2º" pesa la mitad: el culpable global puede ser otro que el de 2º', () => {
+    const cards = [
+      card('ht', 6, ['handtrap'], 'non_engine'),
+      card('brick', 6, ['brick'], 'non_engine'),
+      ...Array.from({ length: 14 }, (_, index) => card(`s${index}`, 1, ['starter'])),
+      ...Array.from({ length: 14 }, (_, index) => card(`f${index}`, 1, ['tech'], 'non_engine')),
+    ]
+    const noAnswer = createMatcherPattern('Sin handtrap yendo 2º', 'problem', [{ matcher: { type: 'role', value: 'handtrap' }, quantity: 1, kind: 'exclude' }], {
+      turnContext: 'second',
+    })
+    const computation = computeLabResults(cards, [opening, problem, noAnswer], 5)
+
+    if (computation.status !== 'ok') throw new Error('no calculable')
+
+    const { first, second, average } = computation.results
+
+    expect(findCulprit(second)?.patternId).toBe(noAnswer.id)
+    expect(findCulprit(average, { first, second })?.patternId).toBe(problem.id)
+  })
 })

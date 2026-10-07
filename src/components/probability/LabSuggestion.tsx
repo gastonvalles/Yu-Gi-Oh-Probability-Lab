@@ -1,7 +1,7 @@
-import { useCallback } from 'react'
+import { useCallback, useMemo, type ReactNode } from 'react'
 
 import { formatShortPercent } from '../../app/utils'
-import { ROLE_GROUP_LABEL, type Culprit, type Outcome } from '../../app/lab-suggestion'
+import { ROLE_GROUP_LABEL, type Culprit, type Outcome, type PerTurnResults } from '../../app/lab-suggestion'
 import { cx } from '../ui/cx'
 import { surface } from '../ui/surfaces'
 import { formatOdds } from './lab-copy'
@@ -17,13 +17,17 @@ interface LabSuggestionProps {
   handSize: number
   view: TurnView
   result: LabViewResult
+  /** Resultados de 1º y 2º: el Promedio los usa para ponderar el culpable y mostrar el efecto por turno. */
+  first: LabViewResult
+  second: LabViewResult
 }
 
 /** "Lo que más te frena": la métrica del problema principal y un cambio concreto para mejorarlo. */
-export function LabSuggestion({ cards, checks, deckFormat, handSize, view, result }: LabSuggestionProps) {
+export function LabSuggestion({ cards, checks, deckFormat, handSize, view, result, first, second }: LabSuggestionProps) {
+  const perTurn = useMemo<PerTurnResults>(() => ({ first, second }), [first, second])
   // Un cambio que suma copias tiene que ser legal en el formato (banlist): la sugerencia no puede pedir lo imposible.
   const maxCopiesOf = useCallback((card: CardEntry) => (card.apiCard ? getCardCopyLimit(card.apiCard, deckFormat) : 3), [deckFormat])
-  const { culprit, state, hint, causes } = useLabSuggestion(cards, checks, handSize, view, result, maxCopiesOf)
+  const { culprit, state, hint, causes } = useLabSuggestion(cards, checks, handSize, view, result, maxCopiesOf, perTurn)
 
   if (!culprit) {
     return null
@@ -38,21 +42,35 @@ export function LabSuggestion({ cards, checks, deckFormat, handSize, view, resul
       </div>
 
       {state.analysis.best ? (
-        <p className="m-0 rounded-control border border-accent/30 bg-accent/8 px-3 py-2 text-[0.84rem] leading-[1.4] text-foreground">
-          <strong>Sugerencia: </strong>
-          {describeBest(culprit, state.analysis.best, result.cleanProbability)}
-        </p>
+        <AdviceBox label="Sugerencia">{describeBest(culprit, state.analysis.best, result.cleanProbability)}{perTurnLine(state.analysis.best, perTurn)}</AdviceBox>
       ) : state.status === 'loading' ? (
         <p className="m-0 text-[0.82rem] leading-[1.4] text-muted motion-safe:animate-pulse">
           Probando cambios en tu deck… ({state.progress.done}/{state.progress.total})
         </p>
       ) : (
-        <p className="m-0 text-[0.82rem] leading-[1.4] text-muted">
+        <AdviceBox label="Conclusión">
           {describeNoGain(culprit, state.analysis.tradeoff, result.cleanProbability, hint, causes, state.progress.total, state.analysis.compared)}
-        </p>
+        </AdviceBox>
       )}
     </section>
   )
+}
+
+/** Recuadro verde del consejo (o de la conclusión cuando no hay un cambio que convenga). */
+function AdviceBox({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <p className="m-0 rounded-control border border-accent/30 bg-accent/8 px-3 py-2 text-[0.84rem] leading-[1.4] text-foreground">
+      <strong>{label}: </strong>
+      {children}
+    </p>
+  )
+}
+
+/** En el Promedio se aclara qué pasa en cada turno: así el consejo global no se confunde con el de 1º o 2º. */
+function perTurnLine(best: Outcome, perTurn: PerTurnResults): string {
+  return best.cleanBySide
+    ? ` Por turno: yendo 1º ${formatShortPercent(perTurn.first.cleanProbability)} → ${formatShortPercent(best.cleanBySide.first)}, yendo 2º ${formatShortPercent(perTurn.second.cleanProbability)} → ${formatShortPercent(best.cleanBySide.second)}.`
+    : ''
 }
 
 function describeCulprit(culprit: Culprit): string {
@@ -109,7 +127,7 @@ function describeNoGain(
     return 'No se pudieron comparar cambios para esto con tu deck actual.'
   }
 
-  if (tradeoff) {
+  if (tradeoff && culprit.probability - tradeoff.culpritProbability >= 0.01) {
     return `${capitalize(describeSwap(tradeoff))} bajaría el problema a ${oddsOnly(tradeoff.culpritProbability)}, pero te cuesta más manos limpias de las que ahorra: quedarían en ${formatShortPercent(tradeoff.cleanProbability)} (hoy ${formatShortPercent(cleanBefore)}). Es el precio de ese plan, así que conviene dejarlo así salvo que este problema te moleste más que perder jugadas.`
   }
 
