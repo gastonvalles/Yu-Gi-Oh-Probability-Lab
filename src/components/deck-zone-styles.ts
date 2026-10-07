@@ -48,7 +48,7 @@ export const ZONE_TYPE_SWATCH: Record<string, string> = {
 
 /** Superficie de una zona en la vista mobile (grilla de cartas con el color de la zona). */
 export const ZONE_SURFACE_MOBILE =
-  'relative grid w-full grid-cols-5 content-start gap-[0.32rem] rounded-panel border border-(--zone-border) p-[0.35rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] transition-[border-color,background,box-shadow] duration-150 [background:linear-gradient(180deg,var(--zone-background),rgb(var(--background-rgb)/0.88)),linear-gradient(180deg,rgb(var(--secondary-rgb)/0.94),rgb(var(--background-rgb)/0.98))] min-[520px]:grid-cols-8 min-[980px]:grid-cols-10'
+  'relative grid w-full grid-cols-5 content-start gap-[0.32rem] rounded-card border border-(--zone-border) p-[0.35rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] transition-[border-color,background,box-shadow] duration-150 [background:linear-gradient(180deg,var(--zone-background),rgb(var(--background-rgb)/0.88)),linear-gradient(180deg,rgb(var(--secondary-rgb)/0.94),rgb(var(--background-rgb)/0.98))] min-[520px]:grid-cols-8 min-[980px]:grid-cols-10'
 
 /** Filas de cartas del Main en el builder clásico. */
 export const MAIN_ROW_GRID =

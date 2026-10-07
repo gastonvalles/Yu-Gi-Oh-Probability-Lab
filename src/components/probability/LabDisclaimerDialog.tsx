@@ -34,10 +34,10 @@ export function LabDisclaimerDialog({ isOpen, onAcknowledge }: { isOpen: boolean
         </Button>
       }
     >
-      <div className="grid gap-2 text-[0.88rem] leading-[1.45] text-(--text-muted)">
+      <div className="grid gap-2 text-body text-muted">
         <p className="m-0">
-          Los porcentajes que vas a ver <strong className="text-(--text-main)">no son una fuente irrefutable</strong> de
-          información. Son estadísticas basadas en <strong className="text-(--text-main)">tu</strong> entendimiento del
+          Los porcentajes que vas a ver <strong className="text-foreground">no son una fuente irrefutable</strong> de
+          información. Son estadísticas basadas en <strong className="text-foreground">tu</strong> entendimiento del
           deck y en la categorización que le diste a cada carta de la build.
         </p>
         <p className="m-0">Los resultados pueden variar de jugador en jugador.</p>

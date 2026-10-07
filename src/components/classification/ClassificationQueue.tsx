@@ -19,7 +19,7 @@ import {
 const MAX_VISIBLE_ROLES = 2
 
 const MINI_CHIP =
-  'whitespace-nowrap rounded-full border border-[rgb(var(--role-rgb)/0.45)] bg-[rgb(var(--role-rgb)/0.12)] px-[0.45rem] py-[0.08rem] text-[0.64rem] font-semibold leading-[1.35] text-foreground'
+  'whitespace-nowrap rounded-full border border-[rgb(var(--role-rgb)/0.45)] bg-[rgb(var(--role-rgb)/0.12)] px-[0.45rem] py-[0.08rem] text-micro font-semibold text-foreground'
 
 interface ClassificationQueueProps {
   cards: CardEntry[]
@@ -59,7 +59,7 @@ function GroupHeading({ type, cards }: { type: CardTypeKey; cards: CardEntry[] }
   const copies = cards.reduce((total, card) => total + card.copies, 0)
 
   return (
-    <h3 className="m-0 flex items-center gap-2 text-[0.68rem] font-semibold uppercase leading-none tracking-widest text-muted">
+    <h3 className="m-0 flex items-center gap-2 text-micro font-semibold uppercase leading-none tracking-widest text-muted">
       <span>{CARD_TYPE_LABEL[type].plural}</span>
       <span className="text-soft tabular-nums">
         {cards.length} · {copies} copias
@@ -90,10 +90,10 @@ const QueueTile = memo(function QueueTile({
       onClick={() => onSelect(card.id)}
       className={cx(
         queueCard(active),
-        'grid h-full w-full min-w-0 grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-2.5 rounded-panel p-1.5 text-left',
+        'grid h-full w-full min-w-0 grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-2.5 rounded-card p-1.5 text-left',
       )}
     >
-      <div className={cx(queueArt(active), 'aspect-[268/391] w-11 rounded-[0.3rem] bg-input')}>
+      <div className={cx(queueArt(active), 'aspect-[268/391] w-11 rounded-tag bg-input')}>
         <CardArt
           remoteUrl={card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null}
           name={card.name}
@@ -105,7 +105,7 @@ const QueueTile = memo(function QueueTile({
 
       <div className="grid min-w-0 gap-1.5">
         <div className="flex min-w-0 items-center justify-between gap-2">
-          <strong className="truncate text-[0.82rem] leading-tight text-foreground">{card.name}</strong>
+          <strong className="truncate text-small leading-tight text-foreground">{card.name}</strong>
           <CopiesBadge copies={card.copies} />
         </div>
 
@@ -124,7 +124,7 @@ const QueueTile = memo(function QueueTile({
           ))}
           {hiddenRoles > 0 ? (
             <span
-              className="rounded-full border border-border px-[0.4rem] py-[0.08rem] text-[0.64rem] font-semibold leading-[1.35] text-muted"
+              className="rounded-full border border-border px-[0.4rem] py-[0.08rem] text-micro font-semibold text-muted"
               title={roles.slice(MAX_VISIBLE_ROLES).map((role) => getCardRoleDefinition(role).label).join(', ')}
             >
               +{hiddenRoles}

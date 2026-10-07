@@ -31,14 +31,14 @@ export function LabScoreCard({ results, view, isRecalculating }: LabScoreCardPro
   return (
     <section
       className={cx(
-        'order-1 grid min-w-0 gap-[0.7rem] rounded-panel border border-[rgb(var(--lab-tone-rgb)/0.35)] px-[1.1rem] pb-[1.1rem] pt-4 transition-opacity duration-150 [background:radial-gradient(circle_at_top_right,rgb(var(--lab-tone-rgb)/0.12),transparent_45%),linear-gradient(180deg,rgb(var(--secondary-rgb)/0.98),rgb(var(--background-rgb)/1))] aria-busy:opacity-75',
+        'order-1 grid min-w-0 gap-[0.7rem] rounded-card border border-[rgb(var(--lab-tone-rgb)/0.35)] px-[1.1rem] pb-[1.1rem] pt-4 transition-opacity duration-150 [background:radial-gradient(circle_at_top_right,rgb(var(--lab-tone-rgb)/0.12),transparent_45%),linear-gradient(180deg,rgb(var(--secondary-rgb)/0.98),rgb(var(--background-rgb)/1))] aria-busy:opacity-75',
         LAB_TONE_COLOR[tone],
       )}
       aria-busy={isRecalculating}
     >
       <div className="flex items-center justify-between gap-2">
-        <p className="text-accent m-0 text-[0.68rem] uppercase tracking-widest">Manos jugables sin problemas</p>
-        <span className="rounded-full border border-[rgb(var(--lab-tone-rgb)/0.35)] bg-[rgb(var(--lab-tone-rgb)/0.12)] px-[0.6rem] py-1 text-[0.68rem] font-extrabold uppercase tracking-[0.08em] text-[rgb(var(--lab-tone-rgb))]">
+        <p className="text-accent m-0 text-micro uppercase tracking-widest">Manos jugables sin problemas</p>
+        <span className="rounded-full border border-[rgb(var(--lab-tone-rgb)/0.35)] bg-[rgb(var(--lab-tone-rgb)/0.12)] px-[0.6rem] py-1 text-micro font-extrabold uppercase tracking-[0.08em] text-[rgb(var(--lab-tone-rgb))]">
           {KPI_TONE_LABELS[tone]}
         </span>
       </div>
@@ -49,7 +49,7 @@ export function LabScoreCard({ results, view, isRecalculating }: LabScoreCardPro
 
       <ScoreGauge probability={current.cleanProbability} />
 
-      <p className="m-0 text-[0.86rem] leading-[1.35] text-muted [&_strong]:text-foreground">
+      <p className="m-0 text-body text-muted [&_strong]:text-foreground">
         <strong>{buildHandsOutOfTen(current.cleanProbability)}.</strong> {buildVerdict(tone, view)}
       </p>
 
@@ -99,9 +99,9 @@ function ScoreGauge({ probability }: { probability: number }) {
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid gap-[0.1rem] rounded-[calc(var(--radius-panel)-0.3rem)] border border-border bg-background/50 px-[0.65rem] py-[0.45rem]">
-      <dt className="text-[0.7rem] text-muted">{label}</dt>
-      <dd className="m-0 text-[1rem] font-bold text-foreground tabular-nums">{value}</dd>
+    <div className="grid gap-[0.1rem] rounded-control border border-border bg-background/50 px-[0.65rem] py-[0.45rem]">
+      <dt className="text-micro text-muted">{label}</dt>
+      <dd className="m-0 text-lead font-bold text-foreground tabular-nums">{value}</dd>
     </div>
   )
 }

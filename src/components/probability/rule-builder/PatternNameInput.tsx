@@ -52,7 +52,7 @@ export function PatternNameInput({
             ;(event.target as HTMLInputElement).blur()
           }
         }}
-        className={`${field} w-full px-2 py-[0.45rem] text-[0.92rem]`}
+        className={`${field} w-full px-2 py-[0.45rem] text-body`}
       />
     </label>
   )

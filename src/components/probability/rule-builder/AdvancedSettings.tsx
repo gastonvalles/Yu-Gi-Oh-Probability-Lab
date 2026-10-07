@@ -53,7 +53,7 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
   return (
     <div className="grid gap-3">
       {pattern.needsReview ? (
-        <p className={`${surface.cardWarning} m-0 px-2.5 py-2 text-[0.76rem] text-(--warning)`}>
+        <p className={`${surface.cardWarning} m-0 px-2.5 py-2 text-caption text-warning`}>
           Esta regla viene de una versión anterior. Revisá estos ajustes antes de confiar en el resultado.
         </p>
       ) : null}
@@ -62,7 +62,7 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
       {hasOverlap ? (
         <div className={`${surface.card} grid gap-1.5 px-3 py-2.5 rounded`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-[0.76rem] text-(--text-main) leading-[1.14]">
+            <span className="text-caption text-foreground">
               ¿La misma carta cuenta para más de una condición?
             </span>
             <Switch
@@ -71,7 +71,7 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
               onChange={(checked) => actions.setPatternAllowSharedCards(pattern.id, checked)}
             />
           </div>
-          <p className="m-0 text-[0.68rem] text-(--text-muted) leading-[1.2]">
+          <p className="m-0 text-micro text-muted">
             Hay cartas que aparecen en más de una condición.
             {allowsSharedCards(pattern)
               ? ' Una misma carta puede satisfacer varias condiciones a la vez.'
@@ -84,8 +84,8 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
       {pattern.kind === 'opening' ? (
         <div className={`${surface.card} flex items-center justify-between gap-3 rounded px-3 py-2.5`}>
           <span className="grid gap-0.5">
-            <span className="text-[0.76rem] text-(--text-main)">Rescatar las cartas que usa</span>
-            <span className="text-[0.68rem] leading-[1.2] text-(--text-muted)">
+            <span className="text-caption text-foreground">Rescatar las cartas que usa</span>
+            <span className="text-micro text-muted">
               {pattern.rescuesCards
                 ? 'Encendido: si la mano cumple esta salida, sus cartas no cuentan como muertas en los problemas.'
                 : 'Apagado: los problemas cuentan todas las cartas de la mano.'}
@@ -102,7 +102,7 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
       {/* Minimum matches (at-least mode) */}
       {showMinimumMatches ? (
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="text-muted text-[0.72rem] leading-[1.14]">
+          <span className="text-muted text-caption">
             Mínimo de condiciones a cumplir
           </span>
           <NumberField
@@ -111,7 +111,7 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
             value={minimumMatches}
             onChange={(value) => actions.setPatternMinimumMatches(pattern.id, String(value))}
             aria-label="Mínimo de condiciones a cumplir"
-            className={`${field} w-16 px-2 py-[0.35rem] text-center text-[0.82rem]`}
+            className={`${field} w-16 px-2 py-[0.35rem] text-center text-small`}
           />
         </div>
       ) : null}
@@ -119,7 +119,7 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
       {/* Distinct toggle per condition */}
       {conditionsWithDistinct.length > 0 ? (
         <div className="grid gap-1.5">
-          <span className="text-muted text-[0.72rem] leading-[1.14]">
+          <span className="text-muted text-caption">
             ¿Contar copias o nombres distintos?
           </span>
           {conditionsWithDistinct.map((condition) => {
@@ -130,7 +130,7 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
                 key={condition.id}
                 className={`flex flex-wrap items-center justify-between gap-2 ${surface.card} px-2.5 py-1.5 rounded`}
               >
-                <span className="text-[0.76rem] text-(--text-main)">
+                <span className="text-caption text-foreground">
                   Condición {formatInteger(conditionIndex + 1)}
                 </span>
                 <div className="flex gap-1.5">

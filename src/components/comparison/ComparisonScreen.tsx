@@ -24,9 +24,9 @@ import { useSavedBuilds } from './use-saved-builds'
 import { field, surface } from '../ui/surfaces'
 
 const CURRENT = 'current'
-const PICKER_LINK = 'border-0 bg-transparent p-0 text-[0.74rem] text-muted underline underline-offset-[0.15rem]'
+const PICKER_LINK = 'border-0 bg-transparent p-0 text-caption text-muted underline underline-offset-[0.15rem]'
 
-const PICKER_LINK_DANGER = 'border-0 bg-transparent p-0 text-[0.74rem] text-destructive underline underline-offset-[0.15rem]'
+const PICKER_LINK_DANGER = 'border-0 bg-transparent p-0 text-caption text-destructive underline underline-offset-[0.15rem]'
 
 const SELECTION_KEY = 'ygo-lab:comparison-selection'
 
@@ -174,7 +174,7 @@ export function ComparisonScreen() {
         <label className="flex min-w-0 items-center gap-2">
           <SideBadge side={side} />
           <select
-            className="min-h-10 w-full min-w-0 rounded-control border border-border bg-secondary/90 px-[0.6rem] text-[0.85rem] text-foreground"
+            className="min-h-10 w-full min-w-0 rounded-control border border-border bg-secondary/90 px-[0.6rem] text-small text-foreground"
             value={value ?? ''}
             aria-label={`Build ${side}`}
             onChange={(event) => setSelection((current) => ({ ...current, [side.toLowerCase()]: event.target.value || null }))}
@@ -223,16 +223,16 @@ export function ComparisonScreen() {
 
       <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-[0.6rem] max-[519px]:grid-cols-[minmax(0,1fr)]">
         {renderPicker('A', selection.a)}
-        <span className="pt-[0.55rem] text-[0.75rem] font-bold uppercase text-soft max-[519px]:hidden" aria-hidden="true">
+        <span className="pt-[0.55rem] text-caption font-bold uppercase text-soft max-[519px]:hidden" aria-hidden="true">
           vs
         </span>
         {renderPicker('B', selection.b)}
       </div>
 
       {!buildB ? (
-        <div className="grid justify-items-center gap-[0.6rem] rounded-panel border border-dashed border-border px-4 py-8 text-center">
-          <strong className="text-[1rem] text-foreground">Elegí qué comparar</strong>
-          <p className="m-0 max-w-[30rem] text-[0.84rem] text-muted">
+        <div className="grid justify-items-center gap-[0.6rem] rounded-card border border-dashed border-border px-4 py-8 text-center">
+          <strong className="text-lead text-foreground">Elegí qué comparar</strong>
+          <p className="m-0 max-w-[30rem] text-small text-muted">
             {savedBuilds.builds.length === 0
               ? 'Todavía no guardaste builds. Usá “Guardar deck actual” antes de probar cambios, o “Importar build” para traer otra lista.'
               : 'Elegí una build B arriba para compararla con A.'}
@@ -254,7 +254,7 @@ export function ComparisonScreen() {
                 role="tab"
                 aria-selected={tab === key}
                 className={cx(
-                  'min-h-9 rounded-full border-0 text-[0.82rem] font-semibold',
+                  'min-h-9 rounded-full border-0 text-small font-semibold',
                   tab === key ? 'bg-primary/30 text-foreground' : 'bg-transparent text-muted',
                 )}
                 onClick={() => setTab(key)}
@@ -384,7 +384,7 @@ function RenameBuildDialog({
         }}
       >
         <label className="grid gap-1.5">
-          <span className="text-[0.8rem] text-(--text-muted)">Nombre</span>
+          <span className="text-small text-muted">Nombre</span>
           <input
             value={name}
             autoFocus

@@ -261,14 +261,14 @@ export function DeckBuilderStep({
                     value={deckBuilder.deckName}
                     onChange={(event) => onDeckNameChange(event.target.value)}
                     placeholder="Nombre del deck"
-                    className={`${fieldMeta} min-w-0 flex-[1_1_auto] px-[0.8rem] py-[0.52rem] text-[0.92rem] font-semibold`}
+                    className={`${fieldMeta} min-w-0 flex-[1_1_auto] px-[0.8rem] py-[0.52rem] text-body font-semibold`}
                   />
 
-                  <label className="inline-flex min-w-0 flex-none items-center gap-[0.45rem] whitespace-nowrap text-[0.88rem] font-bold text-foreground">
+                  <label className="inline-flex min-w-0 flex-none items-center gap-[0.45rem] whitespace-nowrap text-body font-bold text-foreground">
                     <select
                       value={deckFormat}
                       onChange={(event) => onDeckFormatChange(event.target.value as DeckFormat)}
-                      className={`${fieldMeta} w-[9.25rem] py-[0.52rem] pl-3 pr-8 text-left text-[0.88rem] font-bold`}
+                      className={`${fieldMeta} w-[9.25rem] py-[0.52rem] pl-3 pr-8 text-left text-body font-bold`}
                     >
                       <option value="unlimited">Sin límite</option>
                       <option value="tcg">TCG</option>
@@ -414,13 +414,13 @@ export function DeckBuilderStep({
               value={deckBuilder.deckName}
               onChange={(event) => onDeckNameChange(event.target.value)}
               placeholder="Nombre del deck"
-              className={`${fieldMeta} w-full px-2 py-[0.55rem] text-[0.88rem] font-semibold`}
+              className={`${fieldMeta} w-full px-2 py-[0.55rem] text-body font-semibold`}
             />
             <select
               aria-label="Formato del deck"
               value={deckFormat}
               onChange={(event) => onDeckFormatChange(event.target.value as DeckFormat)}
-              className={`${fieldMeta} text-left w-full px-2 py-[0.55rem] text-[0.88rem] font-semibold`}
+              className={`${fieldMeta} text-left w-full px-2 py-[0.55rem] text-body font-semibold`}
             >
               <option value="unlimited">Sin límite</option>
               <option value="tcg">TCG</option>
@@ -448,11 +448,11 @@ export function DeckBuilderStep({
       {showGenesysPoints ? (
         <div className="grid gap-2 min-[1101px]:hidden">
           <div className={[genesysPointTotal > genesysPointCap ? `${surface.cardWarning}` : `${surface.card}`, 'grid gap-1.5 px-2 py-2'].join(' ')}>
-            <span className="text-soft text-[0.68rem] uppercase tracking-widest">Puntos Genesys</span>
-            <strong className="text-[0.92rem] leading-none text-(--text-main)">
+            <span className="text-soft text-micro uppercase tracking-widest">Puntos Genesys</span>
+            <strong className="text-body leading-none text-foreground">
               {formatInteger(genesysPointTotal)} / {formatInteger(genesysPointCap)} pts
             </strong>
-            <p className="m-0 text-[0.72rem] leading-[1.18] text-(--text-muted)">
+            <p className="m-0 text-caption text-muted">
               Cap estándar de 100 puntos y hasta 3 copias por carta.
             </p>
           </div>
@@ -463,22 +463,22 @@ export function DeckBuilderStep({
         <div className="grid gap-2 min-[1101px]:hidden">
           <div className={`${surface.cardWarning} grid gap-1.5 px-2 py-2`}>
             <div className="flex items-center justify-between gap-2">
-              <span className="text-soft text-[0.68rem] uppercase tracking-widest">
+              <span className="text-soft text-micro uppercase tracking-widest">
                 Regla pendiente
               </span>
               <span className="inline-flex size-[0.65rem] rounded-full bg-warning shadow-[0_0_0_1px_rgb(var(--warning-rgb)/0.24),0_0_18px_rgb(var(--warning-rgb)/0.22)]" />
             </div>
-            <strong className="text-[0.92rem] leading-none text-(--text-main)">
+            <strong className="text-body leading-none text-foreground">
               {formatIssues.length} ajuste{formatIssues.length === 1 ? '' : 's'} para {formatLabel}
             </strong>
             <div className="grid gap-1">
               {visibleFormatIssues.map((issue) => (
-                <p key={issue} className="m-0 text-[0.74rem] leading-[1.18] text-(--text-muted)">
+                <p key={issue} className="m-0 text-caption text-muted">
                   {issue}
                 </p>
               ))}
               {hasHiddenIssues ? (
-                <p className="text-soft m-0 text-[0.72rem]">+ {formatIssues.length - visibleFormatIssues.length} más</p>
+                <p className="text-soft m-0 text-caption">+ {formatIssues.length - visibleFormatIssues.length} más</p>
               ) : null}
             </div>
           </div>

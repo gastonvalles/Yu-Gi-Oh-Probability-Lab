@@ -30,7 +30,7 @@ export function LabSection({
   return (
     <section
       className={cx(
-        'grid min-w-0 rounded-panel border border-border bg-linear-to-b from-card-background/94 to-background/98 px-4 py-[0.95rem]',
+        'grid min-w-0 rounded-card border border-border bg-linear-to-b from-card-background/94 to-background/98 px-4 py-[0.95rem]',
         isOpen ? 'gap-3' : 'gap-0',
         className,
       )}
@@ -70,8 +70,8 @@ export function LabSection({
 function SectionHeading({ title, summary }: { title: string; summary?: ReactNode }) {
   return (
     <span className="grid min-w-0 gap-[0.15rem]">
-      <strong className="text-[0.95rem] text-foreground">{title}</strong>
-      {summary ? <span className="text-[0.76rem] tabular-nums text-muted">{summary}</span> : null}
+      <strong className="text-lead text-foreground">{title}</strong>
+      {summary ? <span className="text-caption tabular-nums text-muted">{summary}</span> : null}
     </span>
   )
 }

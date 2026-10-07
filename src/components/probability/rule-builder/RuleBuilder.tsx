@@ -54,18 +54,18 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
 
       <section
         className={cx(
-          'grid gap-[0.35rem] rounded-panel border border-[rgb(var(--lab-kind-rgb)/0.35)] bg-[rgb(var(--lab-kind-rgb)/0.06)] px-[0.9rem] py-3',
+          'grid gap-[0.35rem] rounded-card border border-[rgb(var(--lab-kind-rgb)/0.35)] bg-[rgb(var(--lab-kind-rgb)/0.06)] px-[0.9rem] py-3',
           pattern.kind === 'opening' ? '[--lab-kind-rgb:var(--accent-rgb)]' : '[--lab-kind-rgb:var(--danger-rgb)]',
         )}
         aria-live="polite"
       >
-        <span className="text-[0.78rem] font-bold text-[rgb(var(--lab-kind-rgb))]">{preview.heading}</span>
-        <ul className="m-0 grid gap-[0.15rem] pl-[1.1rem] text-[0.86rem] text-foreground">
+        <span className="text-small font-bold text-[rgb(var(--lab-kind-rgb))]">{preview.heading}</span>
+        <ul className="m-0 grid gap-[0.15rem] pl-[1.1rem] text-body text-foreground">
           {preview.items.map((item, index) => (
             <li key={`${index}-${item}`}>{item}</li>
           ))}
         </ul>
-        {conditionCount > 1 ? <span className="text-[0.74rem] text-muted">{preview.logic}</span> : null}
+        {conditionCount > 1 ? <span className="text-caption text-muted">{preview.logic}</span> : null}
       </section>
 
       <RuleStep number={2} title="¿Qué representa?">
@@ -88,7 +88,7 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
             <div key={condition.id} className="grid gap-0">
               {index > 0 ? (
                 <div className="flex justify-center py-1">
-                  <span className="text-[0.8rem] font-medium uppercase tracking-widest text-(--text-soft)">
+                  <span className="text-small font-medium uppercase tracking-widest text-soft">
                     {connector}
                   </span>
                 </div>
@@ -141,13 +141,13 @@ function RuleStep({
     <section className="grid gap-[0.6rem]">
       <header className="flex flex-wrap items-center gap-2">
         <span
-          className="grid size-[1.35rem] place-items-center rounded-full bg-primary/22 text-[0.72rem] font-extrabold text-foreground"
+          className="grid size-[1.35rem] place-items-center rounded-full bg-primary/22 text-caption font-extrabold text-foreground"
           aria-hidden="true"
         >
           {number}
         </span>
-        <h4 className="m-0 text-[0.9rem] text-foreground">{title}</h4>
-        {hint ? <small className="text-[0.72rem] text-muted">{hint}</small> : null}
+        <h4 className="m-0 text-body text-foreground">{title}</h4>
+        {hint ? <small className="text-caption text-muted">{hint}</small> : null}
       </header>
       <div className="grid gap-[0.6rem]">{children}</div>
     </section>

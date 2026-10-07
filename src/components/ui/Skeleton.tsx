@@ -8,7 +8,7 @@ interface SkeletonProps extends HTMLAttributes<HTMLDivElement> {
 
 const RADIUS = {
   control: 'rounded-control',
-  panel: 'rounded-panel',
+  panel: 'rounded-card',
   chip: 'rounded-full',
   none: 'rounded-none',
 } as const

@@ -65,10 +65,10 @@ export function ConditionBlock({
         <button
           type="button"
           className={[
-            'condition-block-category px-3 py-1.5 text-[0.92rem] font-medium transition-colors rounded-r-md',
+            'condition-block-category px-3 py-1.5 text-body font-medium transition-colors rounded-r-md',
             hasCategory
-              ? `${surface.panelSoft} text-(--text-main) hover:bg-[rgb(var(--primary-rgb)/0.08)]`
-              : `${surface.panelSoft} text-(--text-muted) ring-1 ring-[rgb(var(--warning-rgb)/0.3)]`,
+              ? `${surface.panelSoft} text-foreground hover:bg-[rgb(var(--primary-rgb)/0.08)]`
+              : `${surface.panelSoft} text-muted ring-1 ring-[rgb(var(--warning-rgb)/0.3)]`,
           ].join(' ')}
           onClick={() => setIsPickerOpen(true)}
         >
@@ -84,7 +84,7 @@ export function ConditionBlock({
       </div>
 
       {!hasCategory ? (
-        <p className="m-0 text-[0.82rem] text-(--warning)">
+        <p className="m-0 text-small text-warning">
           Elegí qué tipo de cartas querés contar en esta condición.
         </p>
       ) : null}
@@ -127,7 +127,7 @@ function KindSegment({
     <button
       type="button"
       className={[
-        'condition-block-kind px-3 py-1.5 text-[0.9rem] font-medium rounded-l-md transition-colors',
+        'condition-block-kind px-3 py-1.5 text-body font-medium rounded-l-md transition-colors',
         isInclude
           ? 'bg-[rgb(var(--success-rgb)/0.14)] text-accent'
           : 'bg-[rgb(var(--danger-rgb)/0.14)] text-destructive',
@@ -155,7 +155,7 @@ function QuantitySegment({
       min={1}
       max={Math.max(max, value)}
       onChange={onChange}
-      className={`condition-block-qty ${field} w-12 border-x-0 rounded-none px-1.5 py-1.5 text-center text-[0.94rem] font-medium`}
+      className={`condition-block-qty ${field} w-12 border-x-0 rounded-none px-1.5 py-1.5 text-center text-body font-medium`}
       aria-label="Cantidad"
     />
   )

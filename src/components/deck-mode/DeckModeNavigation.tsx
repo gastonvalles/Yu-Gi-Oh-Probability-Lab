@@ -38,7 +38,7 @@ export function DeckModeNavigation({
             )}
             onClick={() => onStepChange(item.key)}
           >
-            <span className="truncate text-[0.88rem] font-bold leading-none">{item.title}</span>
+            <span className="truncate text-body font-bold leading-none">{item.title}</span>
           </button>
         )
       })}

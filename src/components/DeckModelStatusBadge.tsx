@@ -26,10 +26,10 @@ function CompactBadge({ modelStatus }: { modelStatus: DeckModelStatus }) {
         aria-hidden="true"
         className={[
           'h-2 w-2 shrink-0 rounded-full',
-          isComplete ? 'bg-accent' : 'bg-(--warning)',
+          isComplete ? 'bg-accent' : 'bg-warning',
         ].join(' ')}
       />
-      <span className="text-[0.78rem] leading-none text-(--text-muted)">
+      <span className="text-small leading-none text-muted">
         {isComplete ? 'Modelo completo' : 'Modelo incompleto'}
       </span>
     </span>
@@ -47,11 +47,11 @@ function FullBadge({ modelStatus }: { modelStatus: DeckModelStatus }) {
             aria-hidden="true"
             className="h-2 w-2 shrink-0 rounded-full bg-accent"
           />
-          <strong className="text-[0.88rem] leading-none text-(--text-main)">
+          <strong className="text-body leading-none text-foreground">
             Modelo completo
           </strong>
         </div>
-        <p className="m-0 text-[0.78rem] leading-[1.3] text-(--text-muted)">
+        <p className="m-0 text-small text-muted">
           Toda carta tiene grupo, función y fue revisada.
         </p>
       </div>
@@ -65,20 +65,20 @@ function FullBadge({ modelStatus }: { modelStatus: DeckModelStatus }) {
       <div className="flex items-center gap-2">
         <span
           aria-hidden="true"
-          className="h-2 w-2 shrink-0 rounded-full bg-(--warning)"
+          className="h-2 w-2 shrink-0 rounded-full bg-warning"
         />
-        <strong className="text-[0.88rem] leading-none text-(--text-main)">
+        <strong className="text-body leading-none text-foreground">
           Modelo incompleto
         </strong>
       </div>
       <ul className="m-0 grid gap-1 p-0 list-none">
         {details.map((msg) => (
-          <li key={msg} className="text-[0.78rem] leading-[1.3] text-(--text-muted)">
+          <li key={msg} className="text-small text-muted">
             {msg}
           </li>
         ))}
       </ul>
-      <p className="m-0 text-[0.74rem] leading-none text-(--text-soft)">
+      <p className="m-0 text-caption leading-none text-soft">
         Revisá antes de confiar en los porcentajes
       </p>
     </div>

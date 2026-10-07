@@ -96,21 +96,21 @@ function CollapsibleSection({
       >
         <div className="grid gap-0.5 min-w-0">
           <div className="flex items-center gap-2">
-            <small className="text-muted text-[0.68rem] uppercase tracking-widest">{title}</small>
-            <span className={`${chip.base} px-1.5 py-0.5 text-[0.62rem] font-medium`}>{count}</span>
+            <small className="text-muted text-micro uppercase tracking-widest">{title}</small>
+            <span className={`${chip.base} px-1.5 py-0.5 text-micro font-medium`}>{count}</span>
           </div>
           {!isExpanded ? (
-            <p className="m-0 text-[0.72rem] leading-[1.16] text-(--text-muted) truncate">{subtitle}</p>
+            <p className="m-0 text-caption text-muted truncate">{subtitle}</p>
           ) : null}
         </div>
-        <span className="text-[0.7rem] text-(--text-muted) shrink-0">
+        <span className="text-micro text-muted shrink-0">
           {isExpanded ? '▲' : '▼'}
         </span>
       </button>
 
       {isExpanded ? (
         <div className="grid gap-1.5 pt-2.5">
-          <p className="m-0 text-[0.76rem] leading-[1.16] text-(--text-muted)">{subtitle}</p>
+          <p className="m-0 text-caption text-muted">{subtitle}</p>
           <div className="grid gap-1.5">{children}</div>
         </div>
       ) : null}
@@ -131,7 +131,7 @@ function ZoneGroupSection({ entries }: { entries: ResolvedImportedDeckEntry[] })
     <div className="grid gap-2">
       {groups.map((group) => (
         <div key={group.zone} className="grid gap-1.5">
-          <h5 className="m-0 text-[0.76rem] font-semibold text-(--text-main)">
+          <h5 className="m-0 text-caption font-semibold text-foreground">
             {formatZoneGroupHeader(group.zone, group.totalCards)}
           </h5>
           <div className="grid gap-1.5">
@@ -166,9 +166,9 @@ function ProblemSummaryBar({ preview }: { preview: DeckImportPreview }) {
   }
 
   return (
-    <div className={`${surface.cardWarning} flex items-center gap-2 px-3 py-2 text-[0.74rem]`}>
-      <span className="text-[0.82rem]">⚠</span>
-      <span className="text-(--text-main)">
+    <div className={`${surface.cardWarning} flex items-center gap-2 px-3 py-2 text-caption`}>
+      <span className="text-small">⚠</span>
+      <span className="text-foreground">
         {items.join(' · ')}
       </span>
     </div>
@@ -471,15 +471,15 @@ export function DeckImportDrawer({
           role="dialog"
           aria-label="Importador de deck"
           className={[
-            `${surface.panel} absolute right-0 top-0 grid h-full w-full max-w-136 grid-rows-[auto_minmax(0,1fr)] gap-0 border-l border-(--border-subtle) p-0 shadow-[-28px_0_54px_rgba(0,0,0,0.38)]`,
+            `${surface.panel} absolute right-0 top-0 grid h-full w-full max-w-136 grid-rows-[auto_minmax(0,1fr)] gap-0 border-l border-border-subtle p-0 shadow-[-28px_0_54px_rgba(0,0,0,0.38)]`,
           ].join(' ')}
           style={{ background: 'var(--card-background)' }}
         >
-          <div className="grid gap-1.5 border-b border-(--border-subtle) px-3 py-2.5">
+          <div className="grid gap-1.5 border-b border-border-subtle px-3 py-2.5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-accent m-0 text-[0.68rem] uppercase tracking-widest">Importacion de deck</p>
-                <h3 className="m-[0.18rem_0_0] text-[1.05rem] leading-none text-(--text-main)">
+                <p className="text-accent m-0 text-micro uppercase tracking-widest">Importacion de deck</p>
+                <h3 className="m-[0.18rem_0_0] text-lead leading-none text-foreground">
                   Subí un archivo o pegá texto
                 </h3>
               </div>
@@ -495,8 +495,8 @@ export function DeckImportDrawer({
                 <>
                 <article className={`${surface.card} grid gap-2.5 px-3 py-3`}>
                   <div className="grid gap-0.5">
-                    <small className="text-muted text-[0.68rem] uppercase tracking-widest">Archivo</small>
-                    <strong className="text-[0.96rem] text-(--text-main)">Subí o arrastrá el deck</strong>
+                    <small className="text-muted text-micro uppercase tracking-widest">Archivo</small>
+                    <strong className="text-lead text-foreground">Subí o arrastrá el deck</strong>
                   </div>
 
                   <div
@@ -504,7 +504,7 @@ export function DeckImportDrawer({
                       'grid gap-3 border border-dashed px-4 py-5 text-center transition-colors',
                       isDragActive
                         ? 'border-primary bg-[rgb(var(--primary-rgb)/0.12)]'
-                        : 'border-(--border-subtle) bg-[rgb(var(--background-rgb)/0.4)]',
+                        : 'border-border-subtle bg-[rgb(var(--background-rgb)/0.4)]',
                     ].join(' ')}
                     onDragEnter={(event) => {
                       event.preventDefault()
@@ -533,7 +533,7 @@ export function DeckImportDrawer({
                             : ''}
                     </span>
                     <div className="grid gap-1">
-                      <strong className="text-[0.9rem] text-(--text-main)">Arrastrá el archivo acá</strong>
+                      <strong className="text-body text-foreground">Arrastrá el archivo acá</strong>
                     </div>
 
                     <div className="flex flex-wrap justify-center gap-2">
@@ -543,13 +543,13 @@ export function DeckImportDrawer({
                     </div>
 
                     <div className="flex flex-wrap justify-center gap-1.5">
-                      <span className={`${chip.base} px-2 py-1 text-[0.7rem]`}>.txt</span>
-                      <span className={`${chip.base} px-2 py-1 text-[0.7rem]`}>.json</span>
-                      <span className={`${chip.base} px-2 py-1 text-[0.7rem]`}>.ydk</span>
+                      <span className={`${chip.base} px-2 py-1 text-micro`}>.txt</span>
+                      <span className={`${chip.base} px-2 py-1 text-micro`}>.json</span>
+                      <span className={`${chip.base} px-2 py-1 text-micro`}>.ydk</span>
                     </div>
 
                     {selectedFileName ? (
-                      <span className={`${chip.accent} justify-self-center px-2 py-1 text-[0.72rem]`}>
+                      <span className={`${chip.accent} justify-self-center px-2 py-1 text-caption`}>
                         Archivo seleccionado: {selectedFileName}
                       </span>
                     ) : null}
@@ -564,7 +564,7 @@ export function DeckImportDrawer({
                   </div>
 
                   {formError ? (
-                    <p className={`${surface.cardDanger} m-0 px-2.5 py-2 text-[0.76rem] leading-[1.16] text-(--text-main)`}>
+                    <p className={`${surface.cardDanger} m-0 px-2.5 py-2 text-caption text-foreground`}>
                       {formError}
                     </p>
                   ) : null}
@@ -573,8 +573,8 @@ export function DeckImportDrawer({
                 <article className={`${surface.panelSoft} grid gap-2 px-3 py-2.5`}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="grid gap-0.5">
-                      <small className="text-muted text-[0.68rem] uppercase tracking-widest">Texto manual</small>
-                      <strong className="text-[0.88rem] text-(--text-main)">Pegar lista</strong>
+                      <small className="text-muted text-micro uppercase tracking-widest">Texto manual</small>
+                      <strong className="text-body text-foreground">Pegar lista</strong>
                     </div>
 
                     <Button
@@ -596,7 +596,7 @@ export function DeckImportDrawer({
                           setFormError(null)
                         }}
                         placeholder={'3 Ash Blossom & Joyous Spring\n3 Maxx "C"\n2 Called by the Grave\n\nExtra Deck:\n1 S:P Little Knight'}
-                        className={`${field} min-h-52 w-full resize-y px-3 py-2 text-[0.82rem] leading-tight`}
+                        className={`${field} min-h-52 w-full resize-y px-3 py-2 text-small leading-tight`}
                       />
 
                       <div className="flex flex-wrap items-center justify-end gap-2">
@@ -667,11 +667,11 @@ export function DeckImportDrawer({
                     <article className={`${surface.card} grid gap-2.5 px-3 py-3`}>
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <small className="text-muted text-[0.68rem] uppercase tracking-widest">Preview</small>
-                          <h4 className="m-[0.22rem_0_0] text-[0.95rem] leading-none text-(--text-main)">
+                          <small className="text-muted text-micro uppercase tracking-widest">Preview</small>
+                          <h4 className="m-[0.22rem_0_0] text-lead leading-none text-foreground">
                             {buildPreviewHeadline(preview)}
                           </h4>
-                          <p className="text-muted m-[0.28rem_0_0] text-[0.76rem] leading-[1.16]">
+                          <p className="text-muted m-[0.28rem_0_0] text-caption">
                             {buildPreviewDescription(preview)}
                           </p>
                         </div>
@@ -679,8 +679,8 @@ export function DeckImportDrawer({
                       </div>
 
                       <div className="flex flex-wrap gap-1.5">
-                        <span className={`${chip.base} px-2 py-1 text-[0.72rem]`}>{getPreviewSourceBadge(preview)}</span>
-                        <span className={`${chip.accent} px-2 py-1 text-[0.72rem] whitespace-nowrap`}>
+                        <span className={`${chip.base} px-2 py-1 text-caption`}>{getPreviewSourceBadge(preview)}</span>
+                        <span className={`${chip.accent} px-2 py-1 text-caption whitespace-nowrap`}>
                           {formatInteger(preview.importedCardCount)} / {formatInteger(preview.requestedCardCount)} cartas
                         </span>
                       </div>
@@ -862,11 +862,11 @@ function ZoneTotalCard({
 }) {
   return (
     <div className={`${surface.panelSoft} grid gap-0.5 px-2.5 py-2`}>
-      <small className="text-muted text-[0.66rem] uppercase tracking-widest">{label}</small>
-      <strong className="text-[0.92rem] leading-none text-(--text-main)">
+      <small className="text-muted text-micro uppercase tracking-widest">{label}</small>
+      <strong className="text-body leading-none text-foreground">
         {formatInteger(imported)} / {formatInteger(requested)}
       </strong>
-      <span className="text-muted text-[0.72rem] leading-none">importadas / pedidas</span>
+      <span className="text-muted text-caption leading-none">importadas / pedidas</span>
     </div>
   )
 }
@@ -876,9 +876,9 @@ function ResolvedEntryCard({ entry }: { entry: ResolvedImportedDeckEntry }) {
 
   return (
     <article className={`${surface.panelSoft} flex items-center justify-between gap-3 px-2.5 py-1.5`}>
-      <strong className="min-w-0 truncate text-[0.8rem] text-(--text-main)">{entry.card.name}</strong>
+      <strong className="min-w-0 truncate text-small text-foreground">{entry.card.name}</strong>
       {isPartial ? (
-        <span className={`${chip.base} shrink-0 px-2 py-0.5 text-[0.7rem]`}>
+        <span className={`${chip.base} shrink-0 px-2 py-0.5 text-micro`}>
           {formatInteger(entry.appliedCount)} / {formatInteger(entry.count)}
         </span>
       ) : (
@@ -896,7 +896,7 @@ function SimpleEntryCard({
 }) {
   return (
     <article className={`${surface.panelSoft} flex items-center justify-between gap-3 px-2.5 py-1.5`}>
-      <strong className="min-w-0 truncate text-[0.8rem] text-(--text-main)">{entry.name}</strong>
+      <strong className="min-w-0 truncate text-small text-foreground">{entry.name}</strong>
       <CopiesBadge copies={entry.count} />
     </article>
   )
@@ -906,8 +906,8 @@ function ConflictEntryCard({ entry }: { entry: DeckImportConflict }) {
   return (
     <article className={`${surface.panelSoft} flex items-center justify-between gap-3 px-2.5 py-1.5`}>
       <div className="min-w-0">
-        <strong className="truncate text-[0.8rem] text-(--text-main)">{entry.name}</strong>
-        <p className="text-muted m-0 text-[0.68rem] leading-[1.12]">{entry.reason}</p>
+        <strong className="truncate text-small text-foreground">{entry.name}</strong>
+        <p className="text-muted m-0 text-micro">{entry.reason}</p>
       </div>
       <CopiesBadge copies={entry.count} />
     </article>
@@ -918,11 +918,11 @@ function InvalidLineCard({ entry }: { entry: ImportedDeckInvalidLine }) {
   return (
     <article className={`${surface.panelSoft} grid gap-1 px-2.5 py-2`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <strong className="text-[0.8rem] text-(--text-main)">Línea {formatInteger(entry.lineNumber)}</strong>
-        <span className={`${chip.base} px-2 py-1 text-[0.7rem]`}>Ignorada</span>
+        <strong className="text-small text-foreground">Línea {formatInteger(entry.lineNumber)}</strong>
+        <span className={`${chip.base} px-2 py-1 text-micro`}>Ignorada</span>
       </div>
-      <p className="m-0 text-[0.74rem] leading-[1.14] text-(--text-main)">{entry.rawLine.trim() || 'Línea vacía'}</p>
-      <p className="text-muted m-0 text-[0.72rem] leading-[1.12]">{entry.reason}</p>
+      <p className="m-0 text-caption text-foreground">{entry.rawLine.trim() || 'Línea vacía'}</p>
+      <p className="text-muted m-0 text-caption">{entry.reason}</p>
     </article>
   )
 }

@@ -14,7 +14,7 @@ const TONE_ICON: Record<ToastTone, string> = {
 }
 
 const toastStyle = variants({
-  base: 'flex max-w-[min(26rem,calc(100vw-2rem))] cursor-grab touch-pan-y select-none items-center gap-[0.6rem] rounded-[0.9rem] border border-[rgb(var(--toast-rgb)/0.55)] bg-card-background bg-[linear-gradient(rgb(var(--toast-rgb)/0.16),rgb(var(--toast-rgb)/0.16))] py-[0.7rem] pl-[0.8rem] pr-[0.95rem] text-[0.88rem] font-semibold leading-[1.3] text-white shadow-[0_12px_28px_rgba(0,0,0,0.4),0_0_18px_rgb(var(--toast-rgb)/0.22)] transition-[transform,opacity] animate-toast-in data-[dragging=true]:cursor-grabbing data-[dragging=true]:transition-none data-[visible=false]:animate-toast-out',
+  base: 'flex max-w-[min(26rem,calc(100vw-2rem))] cursor-grab touch-pan-y select-none items-center gap-[0.6rem] rounded-control border border-[rgb(var(--toast-rgb)/0.55)] bg-card-background bg-[linear-gradient(rgb(var(--toast-rgb)/0.16),rgb(var(--toast-rgb)/0.16))] py-[0.7rem] pl-[0.8rem] pr-[0.95rem] text-body font-semibold text-white shadow-[0_12px_28px_rgba(0,0,0,0.4),0_0_18px_rgb(var(--toast-rgb)/0.22)] transition-[transform,opacity] animate-toast-in data-[dragging=true]:cursor-grabbing data-[dragging=true]:transition-none data-[visible=false]:animate-toast-out',
   variants: {
     tone: {
       info: '[--toast-rgb:var(--primary-rgb)]',

@@ -20,7 +20,7 @@ interface ClassificationEditorProps {
   onOpenHelp?: () => void
 }
 
-const KICKER = 'm-0 text-[0.66rem] font-semibold uppercase tracking-widest text-accent'
+const KICKER = 'm-0 text-micro font-semibold uppercase tracking-widest text-accent'
 
 /** Edición de una carta: dónde encaja (origen) y qué función cumple (roles). */
 export function ClassificationEditor({
@@ -40,7 +40,7 @@ export function ClassificationEditor({
 
   return (
     <div className="grid gap-4 min-[1101px]:grid-cols-[15rem_minmax(0,1fr)] min-[1101px]:items-start min-[1101px]:gap-6">
-      <div className="hidden aspect-[268/391] overflow-hidden rounded-[0.5rem] bg-input min-[1101px]:block">
+      <div className="hidden aspect-[268/391] overflow-hidden rounded-tag bg-input min-[1101px]:block">
         <CardArt
           remoteUrl={card.apiCard?.imageUrl ?? card.apiCard?.imageUrlSmall ?? null}
           name={card.name}
@@ -51,7 +51,7 @@ export function ClassificationEditor({
 
       <div className="grid min-w-0 content-start gap-4">
         <header className="flex items-start gap-3 pr-10">
-          <div className="aspect-[268/391] w-[5.25rem] shrink-0 overflow-hidden rounded-[0.35rem] bg-input min-[1101px]:hidden">
+          <div className="aspect-[268/391] w-[5.25rem] shrink-0 overflow-hidden rounded-tag bg-input min-[1101px]:hidden">
             <CardArt
               remoteUrl={card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null}
               name={card.name}
@@ -64,29 +64,29 @@ export function ClassificationEditor({
             <p className={KICKER}>
               Carta {formatInteger(position)} de {formatInteger(total)}
             </p>
-            <h3 className="m-0 text-[1.45rem] leading-[1.05] tracking-[-0.01em] text-foreground [overflow-wrap:anywhere] min-[1101px]:text-[1.9rem]">
+            <h3 className="m-0 text-title tracking-[-0.01em] text-foreground [overflow-wrap:anywhere] min-[1101px]:text-title">
               {card.name}
             </h3>
-            <p className="m-0 text-[0.8rem] leading-tight text-muted min-[1101px]:text-[0.9rem]">
+            <p className="m-0 text-small leading-tight text-muted min-[1101px]:text-body">
               {CARD_TYPE_LABEL[getCardType(card)].singular} · {formatInteger(card.copies)} copia{card.copies === 1 ? '' : 's'} en el Main
             </p>
           </div>
         </header>
 
         <div
-          className="h-1 w-full overflow-hidden rounded-(--radius-chip) bg-[rgb(var(--border-rgb)/0.9)]"
+          className="h-1 w-full overflow-hidden rounded-full bg-[rgb(var(--border-rgb)/0.9)]"
           role="progressbar"
           aria-label="Cartas clasificadas"
           aria-valuenow={completed}
           aria-valuemin={0}
           aria-valuemax={total}
         >
-          <div className="h-full origin-left rounded-(--radius-chip) bg-accent transition-transform" style={{ transform: `scaleX(${percent})` }} />
+          <div className="h-full origin-left rounded-full bg-accent transition-transform" style={{ transform: `scaleX(${percent})` }} />
         </div>
 
         {needsConfirm ? (
           <div className={cx(surface.cardWarning, 'flex flex-wrap items-center justify-between gap-2 px-3 py-2.5')}>
-            <p className="m-0 min-w-0 flex-1 text-[0.78rem] leading-[1.25] text-foreground">
+            <p className="m-0 min-w-0 flex-1 text-small text-foreground">
               Clasificación sugerida automáticamente. Confirmala si te parece correcta.
             </p>
             <Button variant="primary" size="sm" onClick={() => onConfirm(ygoprodeckId)}>
@@ -110,16 +110,16 @@ export function ClassificationEditor({
                   title={ORIGIN_HELP_TEXT[definition.key.value]}
                   className={cx(
                     originOption({ active, muted }),
-                    'grid min-h-12 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2.5 gap-y-0.5 rounded-panel px-3 py-2 text-left min-[1101px]:min-h-[4.25rem] min-[1101px]:grid-cols-1 min-[1101px]:content-center min-[1101px]:justify-items-start',
+                    'grid min-h-12 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2.5 gap-y-0.5 rounded-card px-3 py-2 text-left min-[1101px]:min-h-[4.25rem] min-[1101px]:grid-cols-1 min-[1101px]:content-center min-[1101px]:justify-items-start',
                   )}
                   style={getClassificationStyle(definition.key)}
                   onClick={() => onSetOrigin(ygoprodeckId, definition.key.value)}
                 >
                   <span className="flex min-w-0 items-center gap-2 min-[1101px]:contents">
                     <span className={ROLE_REFERENCE_MARK} />
-                    <strong className="truncate text-[0.9rem] leading-none text-foreground min-[1101px]:text-[0.82rem]">{definition.shortLabel ?? definition.label}</strong>
+                    <strong className="truncate text-body leading-none text-foreground min-[1101px]:text-small">{definition.shortLabel ?? definition.label}</strong>
                   </span>
-                  <span className="min-w-0 text-[0.7rem] leading-[1.2] text-muted max-[1100px]:text-right min-[1101px]:text-[0.64rem]">{ORIGIN_BLURB_TEXT[definition.key.value]}</span>
+                  <span className="min-w-0 text-micro text-muted max-[1100px]:text-right min-[1101px]:text-micro">{ORIGIN_BLURB_TEXT[definition.key.value]}</span>
                 </button>
               )
             })}
@@ -132,7 +132,7 @@ export function ClassificationEditor({
             {onOpenHelp ? (
               <button
                 type="button"
-                className="shrink-0 rounded-full px-1 text-[0.72rem] font-semibold text-muted underline underline-offset-2 hover:text-foreground"
+                className="shrink-0 rounded-full px-1 text-caption font-semibold text-muted underline underline-offset-2 hover:text-foreground"
                 onClick={onOpenHelp}
               >
                 ¿Qué significa cada rol?
@@ -145,10 +145,10 @@ export function ClassificationEditor({
               const selectedCount = section.roles.reduce((sum, role) => sum + (card.roles.includes(role) ? 1 : 0), 0)
 
               return (
-                <div key={section.title} className="grid content-start gap-2 min-[1101px]:rounded-panel min-[1101px]:border min-[1101px]:border-border min-[1101px]:bg-secondary/40 min-[1101px]:p-2">
+                <div key={section.title} className="grid content-start gap-2 min-[1101px]:rounded-card min-[1101px]:border min-[1101px]:border-border min-[1101px]:bg-secondary/40 min-[1101px]:p-2">
                   <div className="flex items-center justify-between gap-2">
-                    <strong className="text-[0.82rem] leading-none text-foreground">{section.title}</strong>
-                    <span className={cx(chip.base, 'px-1.5 py-0.5 text-[0.62rem] leading-none tabular-nums')}>
+                    <strong className="text-small leading-none text-foreground">{section.title}</strong>
+                    <span className={cx(chip.base, 'px-1.5 py-0.5 text-micro leading-none tabular-nums')}>
                       {selectedCount} / {section.roles.length}
                     </span>
                   </div>
@@ -163,7 +163,7 @@ export function ClassificationEditor({
                           type="button"
                           aria-pressed={active}
                           title={ROLE_HELP_TEXT[role]}
-                          className={cx(roleOptionButton(active), 'min-h-10 px-3.5 py-1.5 text-[0.84rem] leading-none min-[1101px]:min-h-8 min-[1101px]:px-2.5 min-[1101px]:text-[0.74rem]')}
+                          className={cx(roleOptionButton(active), 'min-h-10 px-3.5 py-1.5 text-small leading-none min-[1101px]:min-h-8 min-[1101px]:px-2.5 min-[1101px]:text-caption')}
                           style={getClassificationStyle(definition.key)}
                           onClick={() => onToggleRole(ygoprodeckId, role)}
                         >

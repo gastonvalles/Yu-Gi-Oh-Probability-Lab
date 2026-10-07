@@ -102,9 +102,9 @@ export function MobileCardSearch({
       role="dialog"
       aria-modal="true"
       aria-label="Buscar cartas"
-      className="fixed inset-0 z-140 flex h-dvh w-full flex-col overflow-hidden bg-(--background) min-[1101px]:hidden"
+      className="fixed inset-0 z-140 flex h-dvh w-full flex-col overflow-hidden bg-background min-[1101px]:hidden"
     >
-      <header className="grid gap-2 border-b border-(--border-subtle) px-3 pb-2 pt-[max(0.6rem,env(safe-area-inset-top))]">
+      <header className="grid gap-2 border-b border-border-subtle px-3 pb-2 pt-[max(0.6rem,env(safe-area-inset-top))]">
         <form
           role="search"
           className="flex items-center gap-2"
@@ -141,7 +141,7 @@ export function MobileCardSearch({
               <button
                 type="button"
                 aria-label="Borrar texto"
-                className="absolute right-0 top-0 grid h-11 w-11 place-items-center text-(--text-muted)"
+                className="absolute right-0 top-0 grid h-11 w-11 place-items-center text-muted"
                 onClick={() => {
                   actions.onQueryChange('')
                   inputRef.current?.focus()
@@ -167,7 +167,7 @@ export function MobileCardSearch({
             <FilterIcon />
             <span className="sr-only">Filtros</span>
             {search.activeFilterCount > 0 ? (
-              <span className="absolute -right-[0.35rem] -top-[0.35rem] grid h-[1.15rem] min-w-[1.15rem] place-items-center rounded-full bg-primary px-1 text-[0.68rem] font-bold text-white">{formatInteger(search.activeFilterCount)}</span>
+              <span className="absolute -right-[0.35rem] -top-[0.35rem] grid h-[1.15rem] min-w-[1.15rem] place-items-center rounded-full bg-primary px-1 text-micro font-bold text-white">{formatInteger(search.activeFilterCount)}</span>
             ) : null}
           </button>
         </form>
@@ -177,7 +177,7 @@ export function MobileCardSearch({
             <button
               key={option.value}
               type="button"
-              className="min-h-9 shrink-0 rounded-full border border-border bg-secondary/90 px-[0.95rem] text-[0.84rem] font-semibold text-muted aria-pressed:border-primary/80 aria-pressed:bg-primary/22 aria-pressed:text-foreground"
+              className="min-h-9 shrink-0 rounded-full border border-border bg-secondary/90 px-[0.95rem] text-small font-semibold text-muted aria-pressed:border-primary/80 aria-pressed:bg-primary/22 aria-pressed:text-foreground"
               aria-pressed={filters.quickType === option.value}
               onClick={() => actions.onFilterChange({ quickType: option.value })}
             >
@@ -196,10 +196,10 @@ export function MobileCardSearch({
                 onClick={() => actions.onFilterChange(chip.updates)}
                 aria-label={`Quitar filtro ${chip.label}: ${chip.value}`}
               >
-                <span className="truncate text-(--text-main)">
+                <span className="truncate text-foreground">
                   {chip.label}: {chip.value}
                 </span>
-                <CloseIcon className="h-3 w-3 shrink-0 text-(--text-soft)" />
+                <CloseIcon className="h-3 w-3 shrink-0 text-soft" />
               </button>
             ))}
           </div>
@@ -232,7 +232,7 @@ export function MobileCardSearch({
               onClearRecent={recentSearches.clear}
             />
           ) : status === 'error' ? (
-            <p className={`${surface.cardDanger} m-0 px-3 py-2.5 text-[0.88rem] leading-[1.25] text-destructive`}>
+            <p className={`${surface.cardDanger} m-0 px-3 py-2.5 text-body text-destructive`}>
               {formatSearchError(search.errorMessage)}
             </p>
           ) : status === 'loading' ? (
@@ -288,15 +288,15 @@ export function MobileCardSearch({
         </div>
       )}
 
-      <footer className="flex items-center gap-3 border-t border-(--border-subtle) px-3 pb-[max(0.6rem,env(safe-area-inset-bottom))] pt-2">
-        <p className="m-0 min-w-0 flex-1 text-[0.8rem] leading-tight text-(--text-muted)" aria-live="polite">
+      <footer className="flex items-center gap-3 border-t border-border-subtle px-3 pb-[max(0.6rem,env(safe-area-inset-bottom))] pt-2">
+        <p className="m-0 min-w-0 flex-1 text-small leading-tight text-muted" aria-live="polite">
           {lastAdded ? (
-            <span className="text-(--text-main)">Agregaste {lastAdded.name}</span>
+            <span className="text-foreground">Agregaste {lastAdded.name}</span>
           ) : (
             <>
-              Main <strong className="text-(--text-main)">{formatInteger(zoneCounts.main)}</strong> · Extra{' '}
-              <strong className="text-(--text-main)">{formatInteger(zoneCounts.extra)}</strong> · Side{' '}
-              <strong className="text-(--text-main)">{formatInteger(zoneCounts.side)}</strong>
+              Main <strong className="text-foreground">{formatInteger(zoneCounts.main)}</strong> · Extra{' '}
+              <strong className="text-foreground">{formatInteger(zoneCounts.extra)}</strong> · Side{' '}
+              <strong className="text-foreground">{formatInteger(zoneCounts.side)}</strong>
             </>
           )}
         </p>
@@ -347,18 +347,18 @@ function MobileResultRow({
           />
           {copiesInDeck > 0 ? (
             <span
-              className="absolute -bottom-[0.3rem] -right-[0.3rem] rounded-full bg-accent px-[0.32rem] py-[0.08rem] text-[0.68rem] font-extrabold text-[#06140e]"
+              className="absolute -bottom-[0.3rem] -right-[0.3rem] rounded-full bg-accent px-[0.32rem] py-[0.08rem] text-micro font-extrabold text-[#06140e]"
               aria-label={`${copiesInDeck} en el deck`}>
               ×{formatInteger(copiesInDeck)}
             </span>
           ) : null}
         </span>
         <span className="grid min-w-0 gap-0.5 text-left">
-          <strong className="text-[0.9rem] leading-tight wrap-anywhere text-(--text-main)">{card.name}</strong>
-          <span className="text-[0.76rem] leading-tight wrap-anywhere text-(--text-muted)">
+          <strong className="text-body leading-tight wrap-anywhere text-foreground">{card.name}</strong>
+          <span className="text-caption leading-tight wrap-anywhere text-muted">
             {buildCompactSearchDescription(card)}
           </span>
-          {formatLimitLabel ? <span className="text-[0.72rem] text-(--text-soft)">{formatLimitLabel}</span> : null}
+          {formatLimitLabel ? <span className="text-caption text-soft">{formatLimitLabel}</span> : null}
         </span>
       </button>
 
@@ -372,7 +372,7 @@ function MobileResultRow({
         aria-label={isMaxed ? `${card.name}: máximo de copias alcanzado` : `Agregar ${card.name} al deck`}
         onClick={onAdd}
       >
-        {isMaxed ? <span className="text-[0.66rem] font-semibold">MÁX</span> : justAdded ? <CheckIcon /> : <PlusIcon />}
+        {isMaxed ? <span className="text-micro font-semibold">MÁX</span> : justAdded ? <CheckIcon /> : <PlusIcon />}
       </button>
     </li>
   )

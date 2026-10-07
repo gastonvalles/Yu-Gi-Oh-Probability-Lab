@@ -32,7 +32,7 @@ export function ChoiceCards<Value extends string>({ label, value, options, tone,
           aria-checked={value === option.value}
           aria-label={option.label}
           className={cx(
-            'grid gap-[0.15rem] rounded-[calc(var(--radius-panel)-0.2rem)] border px-[0.7rem] py-[0.55rem] text-left transition-[border-color,background] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary/70',
+            'grid gap-[0.15rem] rounded-control border px-[0.7rem] py-[0.55rem] text-left transition-[border-color,background] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary/70',
             CHOICE_RGB[tone?.(option.value) ?? 'neutral'],
             value === option.value
               ? 'border-[rgb(var(--lab-kind-rgb)/0.8)] bg-[rgb(var(--lab-kind-rgb)/0.12)]'
@@ -40,8 +40,8 @@ export function ChoiceCards<Value extends string>({ label, value, options, tone,
           )}
           onClick={() => onChange(option.value)}
         >
-          <strong className="text-[0.86rem] text-foreground">{option.label}</strong>
-          <small className="text-[0.72rem] leading-[1.25] text-muted">{option.description}</small>
+          <strong className="text-body text-foreground">{option.label}</strong>
+          <small className="text-caption text-muted">{option.description}</small>
         </button>
       ))}
     </div>

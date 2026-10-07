@@ -20,7 +20,7 @@ const DELTA_COLOR = {
 const CELL = 'whitespace-nowrap border-t border-border px-[0.3rem] py-[0.4rem]'
 
 /** Celda de encabezado de columna. */
-const TH_HEAD = 'whitespace-nowrap px-[0.3rem] py-[0.4rem] text-right text-[0.68rem] font-bold text-soft'
+const TH_HEAD = 'whitespace-nowrap px-[0.3rem] py-[0.4rem] text-right text-micro font-bold text-soft'
 
 /** Encabezado de fila (nombre del renglón). */
 const thRow = (emphasis = false) =>
@@ -34,8 +34,8 @@ const td = (emphasis = false, tone?: keyof typeof DELTA_COLOR) =>
     tone ? ['font-bold', DELTA_COLOR[tone]] : emphasis ? 'font-bold text-foreground' : 'text-muted',
   )
 
-const TABLE = 'w-full border-collapse text-[0.8rem] tabular-nums'
-const NOTE = 'm-0 rounded-control border border-warning/45 bg-warning/8 px-[0.7rem] py-2 text-[0.78rem] text-warning'
+const TABLE = 'w-full border-collapse text-small tabular-nums'
+const NOTE = 'm-0 rounded-control border border-warning/45 bg-warning/8 px-[0.7rem] py-2 text-small text-warning'
 
 /** Nombre con el que el comparador muestra tu deck actual. */
 export const CURRENT_DECK_NAME = 'Deck actual'
@@ -119,7 +119,7 @@ function VerdictBanner({ verdict }: { verdict: ComparisonVerdict }) {
   return (
     <section
       className={cx(
-        'grid gap-1 rounded-control border border-l-4 px-[0.9rem] py-[0.7rem] text-[0.82rem] text-muted',
+        'grid gap-1 rounded-control border border-l-4 px-[0.9rem] py-[0.7rem] text-small text-muted',
         verdict.kind === 'a' || verdict.kind === 'b'
           ? 'border-success/55 bg-success/7'
           : verdict.kind === 'split'
@@ -130,7 +130,7 @@ function VerdictBanner({ verdict }: { verdict: ComparisonVerdict }) {
       )}
       aria-live="polite"
     >
-      <strong className="text-[1rem] text-foreground">{verdict.title}</strong>
+      <strong className="text-lead text-foreground">{verdict.title}</strong>
       <span>{verdict.detail}</span>
     </section>
   )
@@ -138,10 +138,10 @@ function VerdictBanner({ verdict }: { verdict: ComparisonVerdict }) {
 
 function ReportSection({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
-    <section className="grid min-w-0 gap-2 rounded-panel border border-border bg-card-background/60 px-[0.85rem] py-3">
+    <section className="grid min-w-0 gap-2 rounded-card border border-border bg-card-background/60 px-[0.85rem] py-3">
       <header>
-        <h3 className="m-0 text-[0.9rem] text-foreground">{title}</h3>
-        {hint ? <p className="m-0 mt-[0.15rem] text-[0.72rem] text-soft">{hint}</p> : null}
+        <h3 className="m-0 text-body text-foreground">{title}</h3>
+        {hint ? <p className="m-0 mt-[0.15rem] text-caption text-soft">{hint}</p> : null}
       </header>
       {children}
     </section>
@@ -192,11 +192,11 @@ function CardDiffList({ diffs, deckSizeA, deckSizeB }: { diffs: CardDiff[]; deck
       hint={`A tiene ${formatInteger(deckSizeA)} cartas y B ${formatInteger(deckSizeB)}${sizeDelta === 0 ? '' : ` (${sizeDelta > 0 ? '+' : '−'}${formatInteger(Math.abs(sizeDelta))})`}.`}
     >
       {diffs.length === 0 ? (
-        <p className="m-0 text-[0.8rem] text-soft">Las dos builds tienen las mismas cartas.</p>
+        <p className="m-0 text-small text-soft">Las dos builds tienen las mismas cartas.</p>
       ) : (
         <ul className="m-0 grid list-none gap-[0.3rem] p-0">
           {diffs.map((diff) => (
-            <li key={diff.cardId} className="grid grid-cols-[2.4rem_minmax(0,1fr)_auto] items-center gap-2 text-[0.82rem]">
+            <li key={diff.cardId} className="grid grid-cols-[2.4rem_minmax(0,1fr)_auto] items-center gap-2 text-small">
               <span
                 className={cx(
                   'rounded-full py-[0.05rem] text-center font-extrabold tabular-nums',
@@ -207,7 +207,7 @@ function CardDiffList({ diffs, deckSizeA, deckSizeB }: { diffs: CardDiff[]; deck
                 {formatInteger(Math.abs(diff.delta))}
               </span>
               <span className="truncate text-foreground">{diff.name}</span>
-              <span className="text-[0.74rem] tabular-nums text-soft">
+              <span className="text-caption tabular-nums text-soft">
                 {formatInteger(diff.copiesA)} → {formatInteger(diff.copiesB)}
               </span>
             </li>
@@ -280,14 +280,14 @@ function RuleTable({ rows }: { rows: RuleComparisonRow[] }) {
       <ul className="m-0 grid list-none gap-[0.3rem] p-0">
         {rows.map((row) => (
           <li key={row.id} className="grid gap-1 border-t border-border pt-[0.4rem] first:border-t-0 first:pt-0">
-            <div className="flex min-w-0 flex-wrap items-center gap-[0.35rem] text-[0.82rem] text-foreground">
+            <div className="flex min-w-0 flex-wrap items-center gap-[0.35rem] text-small text-foreground">
               <KindBadge kind={row.kind} />
               <strong>{row.name}</strong>
               {row.turnContext !== 'either' ? (
-                <span className="rounded-[0.3rem] bg-warning/14 px-[0.3rem] py-[0.05rem] text-[0.64rem] font-semibold text-warning">{row.turnContext === 'first' ? 'Solo 1º' : 'Solo 2º'}</span>
+                <span className="rounded-tag bg-warning/14 px-[0.3rem] py-[0.05rem] text-micro font-semibold text-warning">{row.turnContext === 'first' ? 'Solo 1º' : 'Solo 2º'}</span>
               ) : null}
             </div>
-            <div className="flex items-baseline gap-[0.4rem] text-[0.8rem] tabular-nums text-muted">
+            <div className="flex items-baseline gap-[0.4rem] text-small tabular-nums text-muted">
               <span>{formatValue(row.a)}</span>
               <span aria-hidden="true">→</span>
               <span>{formatValue(row.b)}</span>
@@ -296,7 +296,7 @@ function RuleTable({ rows }: { rows: RuleComparisonRow[] }) {
               </span>
             </div>
             {row.missingCardsIn.length > 0 ? (
-              <p className="m-0 text-[0.72rem] text-warning">
+              <p className="m-0 text-caption text-warning">
                 {row.missingCardsIn.length === 2 ? 'Ninguna build' : `La build ${row.missingCardsIn[0]}`} no tiene alguna carta
                 que pide esta regla: ahí no puede cumplirse.
               </p>

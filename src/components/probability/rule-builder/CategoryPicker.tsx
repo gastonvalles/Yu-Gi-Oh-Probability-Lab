@@ -29,14 +29,14 @@ interface CategoryPickerProps {
 }
 
 const CHIP =
-  'inline-flex min-h-[2.3rem] items-center gap-[0.4rem] rounded-full border border-border bg-secondary/80 px-[0.85rem] text-[0.86rem] font-semibold text-foreground transition-[background,border-color] [-webkit-tap-highlight-color:transparent] active:scale-[0.97] data-[active=true]:border-success/65 data-[active=true]:bg-success/14 data-[active=true]:text-accent [&_span]:text-[0.74rem] [&_span]:font-medium [&_span]:text-muted'
+  'inline-flex min-h-[2.3rem] items-center gap-[0.4rem] rounded-full border border-border bg-secondary/80 px-[0.85rem] text-body font-semibold text-foreground transition-[background,border-color] [-webkit-tap-highlight-color:transparent] active:scale-[0.97] data-[active=true]:border-success/65 data-[active=true]:bg-success/14 data-[active=true]:text-accent [&_span]:text-caption [&_span]:font-medium [&_span]:text-muted'
 
 /** Fila: el estado (ninguna / algunas / todas las cartas elegidas) llega por data-state. */
 const ROW =
-  'group flex min-h-[2.8rem] items-center gap-[0.65rem] rounded-[0.9rem] border border-transparent bg-transparent px-3 text-left text-[0.92rem] text-white [-webkit-tap-highlight-color:transparent] [contain-intrinsic-size:auto_44px] [content-visibility:auto] hover:bg-primary/10 active:bg-primary/20 data-[state=all]:border-success/50 data-[state=all]:bg-success/12 data-[state=all]:text-accent data-[state=some]:border-success/25'
+  'group flex min-h-[2.8rem] items-center gap-[0.65rem] rounded-control border border-transparent bg-transparent px-3 text-left text-body text-white [-webkit-tap-highlight-color:transparent] [contain-intrinsic-size:auto_44px] [content-visibility:auto] hover:bg-primary/10 active:bg-primary/20 data-[state=all]:border-success/50 data-[state=all]:bg-success/12 data-[state=all]:text-accent data-[state=some]:border-success/25'
 
 const CHECK =
-  'inline-grid size-[1.35rem] flex-none place-items-center rounded-full border-[1.5px] border-border-strong text-[0.8rem] font-extrabold leading-none group-data-[state=all]:border-success group-data-[state=all]:bg-success group-data-[state=all]:text-[#06140e] group-data-[state=some]:border-success/70 group-data-[state=some]:text-accent'
+  'inline-grid size-[1.35rem] flex-none place-items-center rounded-full border-[1.5px] border-border-strong text-small font-extrabold leading-none group-data-[state=all]:border-success group-data-[state=all]:bg-success group-data-[state=all]:text-[#06140e] group-data-[state=some]:border-success/70 group-data-[state=some]:text-accent'
 
 /** Roles fijados como atajo arriba del selector. */
 const SHORTCUT_ROLES: readonly CardRole[] = ['starter', 'extender', 'brick']
@@ -171,10 +171,10 @@ export function CategoryPicker({
   return (
     <div className="flex h-full min-h-0 flex-col [background:radial-gradient(120%_50%_at_50%_0%,rgb(var(--primary-rgb)/0.16),transparent_70%),rgb(var(--background-rgb))]">
       <header className="grid flex-none gap-[0.65rem] pb-3 pl-4 pr-[3.4rem] pt-[0.9rem]">
-        <h3 className="m-0 text-[1.05rem] font-bold text-white">¿Qué querés contar?</h3>
+        <h3 className="m-0 text-lead font-bold text-white">¿Qué querés contar?</h3>
         <input
           type="search"
-          className="min-h-[2.6rem] w-full rounded-full border border-border bg-secondary/90 px-4 text-[0.92rem] text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary-hover"
+          className="min-h-[2.6rem] w-full rounded-full border border-border bg-secondary/90 px-4 text-body text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary-hover"
           value={query}
           placeholder="Buscar carta, rol, arquetipo…"
           aria-label="Buscar"
@@ -208,7 +208,7 @@ export function CategoryPicker({
 
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 pb-4">
         {visibleSections.length === 0 ? (
-          <p className="m-0 mt-1 py-6 text-center text-[0.78rem] text-muted">{cards.length === 0 ? 'No hay cartas en el deck.' : 'Nada coincide con la búsqueda.'}</p>
+          <p className="m-0 mt-1 py-6 text-center text-small text-muted">{cards.length === 0 ? 'No hay cartas en el deck.' : 'Nada coincide con la búsqueda.'}</p>
         ) : (
           visibleSections.map((section) => (
             <PickerGroup key={section.key} id={section.key} label={section.label} open={section.key === activeKey} onToggle={toggleSection}>
@@ -222,7 +222,7 @@ export function CategoryPicker({
                 />
               ))}
               {section.key === 'cards' && hiddenCards.length > 0 ? (
-                <p className="m-0 mt-1 text-[0.78rem] text-muted">Ya usadas en otra condición: {hiddenCards.join(', ')}.</p>
+                <p className="m-0 mt-1 text-small text-muted">Ya usadas en otra condición: {hiddenCards.join(', ')}.</p>
               ) : null}
             </PickerGroup>
           ))
@@ -231,7 +231,7 @@ export function CategoryPicker({
 
       {isMulti ? (
         <footer className="flex flex-none items-center gap-[0.6rem] border-t border-border bg-card-background/96 px-4 pb-[calc(0.7rem+env(safe-area-inset-bottom,0px))] pt-[0.7rem]">
-          <span className="min-w-0 flex-1 text-[0.86rem] font-semibold text-white">
+          <span className="min-w-0 flex-1 text-body font-semibold text-white">
             {selection.size > 0
               ? `${selection.size} carta${selection.size > 1 ? 's' : ''} seleccionada${selection.size > 1 ? 's' : ''}`
               : 'Tocá cartas de cualquier grupo para armar el pool'}
@@ -371,7 +371,7 @@ function PickerGroup({
 }) {
   return (
     <section className="border-t border-border">
-      <button type="button" className="flex min-h-[2.9rem] w-full items-center gap-2 border-0 bg-transparent p-0 text-left text-[0.74rem] font-bold uppercase tracking-[0.08em] text-soft" aria-expanded={open} onClick={() => onToggle(id)}>
+      <button type="button" className="flex min-h-[2.9rem] w-full items-center gap-2 border-0 bg-transparent p-0 text-left text-caption font-bold uppercase tracking-[0.08em] text-soft" aria-expanded={open} onClick={() => onToggle(id)}>
         <span className={cx('inline-block text-base transition-transform', open && 'rotate-90')} aria-hidden="true">
           ›
         </span>
@@ -402,7 +402,7 @@ const PickerRow = memo(function PickerRow({
         </span>
       ) : null}
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
-      <span className="flex-none text-[0.78rem] tabular-nums text-muted">{formatCopies(item.copies)}</span>
+      <span className="flex-none text-small tabular-nums text-muted">{formatCopies(item.copies)}</span>
     </button>
   )
 })

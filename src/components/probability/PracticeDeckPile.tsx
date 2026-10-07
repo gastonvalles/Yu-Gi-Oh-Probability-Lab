@@ -44,7 +44,7 @@ export const PracticeDeckPile = forwardRef<HTMLButtonElement, PracticeDeckPilePr
         <span key={dealt} className={cx(CARD_BACK, PILE_CARD, 'animate-pile-draw motion-reduce:animate-none')} />
       </span>
       {canDraw ? (
-        <span className="pointer-events-none absolute -bottom-[0.55rem] left-1/2 z-2 -translate-x-1/2 rounded-full bg-accent px-[0.6rem] py-[0.1rem] text-[0.82rem] font-extrabold leading-[1.3] text-[#06140e] shadow-[0_0_16px_rgb(var(--accent-rgb)/0.55)]">
+        <span className="pointer-events-none absolute -bottom-[0.55rem] left-1/2 z-2 -translate-x-1/2 rounded-full bg-accent px-[0.6rem] py-[0.1rem] text-small font-extrabold text-[#06140e] shadow-[0_0_16px_rgb(var(--accent-rgb)/0.55)]">
           +1
         </span>
       ) : null}
@@ -52,7 +52,7 @@ export const PracticeDeckPile = forwardRef<HTMLButtonElement, PracticeDeckPilePr
         <span
           key={isSecond ? 'second' : 'first'}
           className={cx(
-            'pointer-events-none absolute -right-[0.45rem] -top-[0.45rem] z-2 animate-pop rounded-full px-[0.4rem] py-[0.05rem] text-[0.72rem] font-extrabold motion-reduce:animate-none',
+            'pointer-events-none absolute -right-[0.45rem] -top-[0.45rem] z-2 animate-pop rounded-full px-[0.4rem] py-[0.05rem] text-caption font-extrabold motion-reduce:animate-none',
             isSecond ? 'bg-warning text-[#1a1204]' : 'bg-primary-hover text-white',
           )}
         >

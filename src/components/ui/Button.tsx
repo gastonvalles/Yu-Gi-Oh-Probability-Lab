@@ -30,9 +30,9 @@ const buttonStyle = variants({
       tertiary: 'border-border/90 bg-background text-muted hover:border-foreground/10 hover:bg-secondary hover:text-foreground',
     },
     size: {
-      sm: 'min-h-[1.95rem] px-[0.86rem] py-[0.42rem] text-[0.78rem]',
-      md: 'min-h-[2.2rem] px-4 py-[0.54rem] text-[0.84rem]',
-      lg: 'min-h-[2.55rem] px-[1.18rem] py-[0.68rem] text-[0.92rem]',
+      sm: 'min-h-[1.95rem] px-[0.86rem] py-[0.42rem] text-small',
+      md: 'min-h-[2.2rem] px-4 py-[0.54rem] text-small',
+      lg: 'min-h-[2.55rem] px-[1.18rem] py-[0.68rem] text-body',
     },
   },
   defaults: { variant: 'secondary', size: 'md' },

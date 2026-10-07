@@ -67,13 +67,13 @@ export function PatternEditorDrawer({
       <aside
         role="dialog"
         aria-label={title}
-        className={`${surface.panel} absolute right-0 top-0 grid h-full max-h-full w-full animate-drawer-enter overflow-hidden rounded-r-none motion-reduce:animate-none max-w-3xl grid-rows-[auto_minmax(0,1fr)_auto] gap-0 border-l border-(--border-subtle) p-0 shadow-[-28px_0_54px_rgba(0,0,0,0.38)]`}
+        className={`${surface.panel} absolute right-0 top-0 grid h-full max-h-full w-full animate-drawer-enter overflow-hidden rounded-r-none motion-reduce:animate-none max-w-3xl grid-rows-[auto_minmax(0,1fr)_auto] gap-0 border-l border-border-subtle p-0 shadow-[-28px_0_54px_rgba(0,0,0,0.38)]`}
       >
-        <header className="grid gap-2 border-b border-(--border-subtle) px-4 py-3">
+        <header className="grid gap-2 border-b border-border-subtle px-4 py-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h3 className="m-0 truncate text-[1.05rem] leading-tight text-(--text-main)">{title}</h3>
-              <p className="text-accent m-[0.2rem_0_0] text-[0.68rem] uppercase tracking-widest">Regla propia</p>
+              <h3 className="m-0 truncate text-lead leading-tight text-foreground">{title}</h3>
+              <p className="text-accent m-[0.2rem_0_0] text-micro uppercase tracking-widest">Regla propia</p>
             </div>
             <CloseButton size="sm" aria-label="Cerrar editor" onClick={onClose} />
           </div>
@@ -90,11 +90,11 @@ export function PatternEditorDrawer({
               pattern={pattern}
             />
           ) : (
-            <p className={`${surface.card} m-0 px-3 py-3 text-[0.8rem] text-(--text-muted)`}>Preparando el editor…</p>
+            <p className={`${surface.card} m-0 px-3 py-3 text-small text-muted`}>Preparando el editor…</p>
           )}
         </div>
 
-        <footer className="flex items-center justify-between gap-2 border-t border-(--border-subtle) px-4 py-3">
+        <footer className="flex items-center justify-between gap-2 border-t border-border-subtle px-4 py-3">
           {pattern && !isPendingCreation ? (
             <Button
               variant="tertiary"
@@ -105,7 +105,7 @@ export function PatternEditorDrawer({
               Eliminar regla
             </Button>
           ) : (
-            <span className="text-muted text-[0.74rem]">El análisis se actualiza al guardar.</span>
+            <span className="text-muted text-caption">El análisis se actualiza al guardar.</span>
           )}
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" onClick={onClose}>

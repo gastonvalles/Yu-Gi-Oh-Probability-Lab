@@ -246,7 +246,7 @@ export function ProbabilityPanel({
       ) : lab.computation?.status === 'blocked' ? (
         <div className="grid gap-1.5">
           {lab.computation.issues.map((issue) => (
-            <p key={issue.message} className={`${surface.cardDanger} m-0 px-3 py-2 text-[0.8rem] text-destructive`}>
+            <p key={issue.message} className={`${surface.cardDanger} m-0 px-3 py-2 text-small text-destructive`}>
               {issue.message}
             </p>
           ))}
@@ -263,7 +263,7 @@ export function ProbabilityPanel({
                 average: `50/50 · ${formatShortPercent(results.average.cleanProbability)}`,
               }}
             />
-            <button type="button" className="text-[0.78rem] text-muted underline underline-offset-[3px] hover:text-foreground" onClick={disclaimer.open}>
+            <button type="button" className="text-small text-muted underline underline-offset-[3px] hover:text-foreground" onClick={disclaimer.open}>
               ¿Cómo leer estos %?
             </button>
           </div>
@@ -350,9 +350,9 @@ export function ProbabilityPanel({
 function LabNotice({ kicker, title, children }: { kicker: string; title: string; children: React.ReactNode }) {
   return (
     <section className={`${surface.panelStrong} grid gap-1 px-4 py-4`}>
-      <p className="text-accent m-0 text-[0.68rem] uppercase tracking-widest">{kicker}</p>
-      <h3 className="m-0 text-[1rem] leading-tight text-(--text-main)">{title}</h3>
-      <p className="text-muted m-0 text-[0.82rem] leading-[1.3]">{children}</p>
+      <p className="text-accent m-0 text-micro uppercase tracking-widest">{kicker}</p>
+      <h3 className="m-0 text-lead leading-tight text-foreground">{title}</h3>
+      <p className="text-muted m-0 text-small">{children}</p>
     </section>
   )
 }

@@ -7,7 +7,7 @@ import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
 import { buildCardSummary } from './card-summary'
 
-const DETAIL_META = 'm-0 text-[0.8rem] leading-[1.35] text-white/66 [overflow-wrap:anywhere]'
+const DETAIL_META = 'm-0 text-small text-white/66 [overflow-wrap:anywhere]'
 const CLOSE_MS = 180
 const EASE = 'cubic-bezier(0.2, 0.9, 0.25, 1)'
 
@@ -151,9 +151,9 @@ export function CardDetailOverlay({ name, card, origin = null, metadata, actions
             limitBadgeSize="lg"
           />
         </div>
-        <section ref={infoRef} className="pointer-events-auto flex h-[min(52dvh,28rem)] min-h-0 w-full flex-col gap-[0.4rem] rounded-[1.1rem] border border-primary/40 bg-linear-to-b from-card-background/98 to-background/98 px-4 py-[0.9rem] text-white group-data-[zoomed=true]:hidden [@media(max-height:540px)]:h-[calc(100dvh-var(--detail-art-height)-2rem)] [@media(max-height:540px)]:px-[0.85rem] [@media(max-height:540px)]:py-[0.65rem]" aria-label="Texto de la carta" onClick={(event) => event.stopPropagation()}>
+        <section ref={infoRef} className="pointer-events-auto flex h-[min(52dvh,28rem)] min-h-0 w-full flex-col gap-[0.4rem] rounded-card border border-primary/40 bg-linear-to-b from-card-background/98 to-background/98 px-4 py-[0.9rem] text-white group-data-[zoomed=true]:hidden [@media(max-height:540px)]:h-[calc(100dvh-var(--detail-art-height)-2rem)] [@media(max-height:540px)]:px-[0.85rem] [@media(max-height:540px)]:py-[0.65rem]" aria-label="Texto de la carta" onClick={(event) => event.stopPropagation()}>
           <header className="grid flex-none gap-1">
-            <h2 className="m-0 text-[1.15rem] font-bold leading-[1.2] [overflow-wrap:anywhere]">{name}</h2>
+            <h2 className="m-0 text-heading font-bold [overflow-wrap:anywhere]">{name}</h2>
             {summary ? (
               <p className={DETAIL_META}>
                 {summary.typeLine}
@@ -162,7 +162,7 @@ export function CardDetailOverlay({ name, card, origin = null, metadata, actions
             ) : null}
             {metadata ? <p className={DETAIL_META}>{metadata}</p> : null}
           </header>
-          <div ref={textRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-white/10 pr-[0.2rem] pt-[0.55rem] text-[0.95rem] leading-[1.5] text-white outline-none focus-visible:border-t-primary/65" tabIndex={0} role="region" aria-label="Efecto">
+          <div ref={textRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-white/10 pr-[0.2rem] pt-[0.55rem] text-lead text-white outline-none focus-visible:border-t-primary/65" tabIndex={0} role="region" aria-label="Efecto">
             <p className="m-0 whitespace-pre-wrap [overflow-wrap:anywhere]">{card?.description?.trim() || 'Sin texto disponible.'}</p>
           </div>
           {actions ? <footer className="grid flex-none gap-2 border-t border-white/10 pt-[0.65rem]">{actions}</footer> : null}

@@ -145,7 +145,7 @@ export function MobileBottomStepNav({
         </span>
         <span
           className={cx(
-            'min-w-0 whitespace-nowrap text-center text-[0.69rem] font-bold leading-[1.1] tracking-[0.01em] transition-[color,text-shadow] duration-160',
+            'min-w-0 whitespace-nowrap text-center text-micro font-bold tracking-[0.01em] transition-[color,text-shadow] duration-160',
             isActive && 'text-accent [text-shadow:0_0_0.3rem_rgb(var(--accent-rgb)/0.14)]',
           )}
         >

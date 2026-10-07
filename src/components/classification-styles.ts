@@ -17,7 +17,7 @@ const STATUS_TONE: Record<StatusTone, string> = {
 export function statusChip(tone: StatusTone, compact = false): string {
   return cx(
     'inline-flex items-center whitespace-nowrap rounded-full border bg-linear-to-b to-card-background/96 leading-none text-foreground',
-    compact ? 'px-[0.36rem] py-[0.14rem] text-[0.58rem]' : 'px-[0.48rem] py-[0.18rem] text-[0.64rem]',
+    compact ? 'px-[0.36rem] py-[0.14rem] text-micro' : 'px-[0.48rem] py-[0.18rem] text-micro',
     STATUS_TONE[tone],
   )
 }
@@ -25,9 +25,9 @@ export function statusChip(tone: StatusTone, compact = false): string {
 
 /** Referencias de la guía: tarjeta de rol, grupo y punto de color. */
 export const ROLE_REFERENCE_CARD =
-  'rounded-panel border border-[rgb(var(--role-rgb)/0.24)] bg-linear-to-b from-[rgb(var(--role-rgb)/0.08)] to-card-background/96 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_0_0_1px_rgb(var(--role-rgb)/0.04)]'
+  'rounded-card border border-[rgb(var(--role-rgb)/0.24)] bg-linear-to-b from-[rgb(var(--role-rgb)/0.08)] to-card-background/96 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_0_0_1px_rgb(var(--role-rgb)/0.04)]'
 export const ROLE_REFERENCE_GROUP =
-  'rounded-panel border border-[rgb(var(--role-rgb)/0.22)] bg-linear-to-b from-[rgb(var(--role-rgb)/0.1)] to-card-background/98 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_0_0_1px_rgb(var(--role-rgb)/0.04)]'
+  'rounded-card border border-[rgb(var(--role-rgb)/0.22)] bg-linear-to-b from-[rgb(var(--role-rgb)/0.1)] to-card-background/98 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_0_0_1px_rgb(var(--role-rgb)/0.04)]'
 export const ROLE_REFERENCE_MARK =
   'size-[0.55rem] shrink-0 rounded-full bg-(--role-color) shadow-[0_0_0_1px_rgb(var(--role-rgb)/0.22),0_0_14px_rgb(var(--role-rgb)/0.14)]'
 
@@ -62,7 +62,7 @@ export function roleOptionButton(active: boolean): string {
 /** Chip de vista de la cola ("Todas", "Starters"…). */
 export function viewChip(state: { active: boolean; empty: boolean }): string {
   return cx(
-    'inline-flex items-center gap-[0.45rem] border bg-linear-to-b to-background/98 text-[0.74rem] leading-none text-foreground px-[0.78rem] py-[0.42rem] transition-[border-color,background,box-shadow,transform] duration-150 hover:-translate-y-px focus-visible:shadow-[0_0_0_2px_rgb(var(--background-rgb)),0_0_0_4px_rgb(var(--role-rgb)/0.22)] focus-visible:outline-none',
+    'inline-flex items-center gap-[0.45rem] border bg-linear-to-b to-background/98 text-caption leading-none text-foreground px-[0.78rem] py-[0.42rem] transition-[border-color,background,box-shadow,transform] duration-150 hover:-translate-y-px focus-visible:shadow-[0_0_0_2px_rgb(var(--background-rgb)),0_0_0_4px_rgb(var(--role-rgb)/0.22)] focus-visible:outline-none',
     state.active
       ? 'border-[rgb(var(--role-rgb)/0.62)] from-[rgb(var(--role-rgb)/0.18)] shadow-[0_0_0_1px_rgb(var(--role-rgb)/0.1),0_12px_24px_rgb(var(--role-rgb)/0.08)]'
       : 'border-[rgb(var(--role-rgb)/0.22)] from-secondary/94 hover:border-[rgb(var(--role-rgb)/0.42)] hover:from-[rgb(var(--role-rgb)/0.08)] hover:shadow-[0_0_0_1px_rgb(var(--role-rgb)/0.08)]',

@@ -45,7 +45,7 @@ export function KpiDetailModal({
       subtitle={result ? `${formatInteger(result.totalCopies)} carta${result.totalCopies === 1 ? '' : 's'}` : undefined}
     >
       {!result || result.cards.length === 0 ? (
-        <p className="text-muted m-0 py-6 text-center text-[0.84rem]">No hay cartas en esta categoría.</p>
+        <p className="text-muted m-0 py-6 text-center text-small">No hay cartas en esta categoría.</p>
       ) : (
         <div className="grid grid-cols-1 gap-px min-[540px]:grid-cols-2">
           {result.cards.map((card) => (
@@ -67,9 +67,9 @@ export function KpiDetailModal({
                 <CopiesBadge copies={card.copies} placement="overlay" />
               </span>
               <span className="grid min-w-0 gap-0.5">
-                <strong className="truncate text-[0.82rem] leading-[1.1] text-(--text-main)">{card.name}</strong>
+                <strong className="truncate text-small text-foreground">{card.name}</strong>
                 {card.needsReview ? (
-                  <span className="inline-flex w-fit items-center rounded bg-amber-400/20 px-1.5 py-0.5 text-[0.6rem] font-semibold text-amber-300">Revisar</span>
+                  <span className="inline-flex w-fit items-center rounded bg-amber-400/20 px-1.5 py-0.5 text-micro font-semibold text-amber-300">Revisar</span>
                 ) : null}
               </span>
             </button>

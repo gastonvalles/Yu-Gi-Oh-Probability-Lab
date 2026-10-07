@@ -5,18 +5,18 @@ import { SEARCH_SORT_OPTIONS, type SearchSortOrder } from './search-options'
 
 type FeedbackLayout = 'desktop' | 'mobile'
 
-const EMPTY_TITLE = 'm-0 text-[0.92rem] font-bold text-foreground'
+const EMPTY_TITLE = 'm-0 text-body font-bold text-foreground'
 const EMPTY_TEXT: Record<FeedbackLayout, string> = {
-  desktop: 'm-0 max-w-[30rem] text-[0.8rem] leading-[1.4] text-muted [&_strong]:text-foreground',
-  mobile: 'm-0 max-w-[30rem] text-[0.86rem] leading-[1.4] text-muted [&_strong]:text-foreground',
+  desktop: 'm-0 max-w-[30rem] text-small text-muted [&_strong]:text-foreground',
+  mobile: 'm-0 max-w-[30rem] text-body text-muted [&_strong]:text-foreground',
 }
 const EMPTY_ACTION: Record<FeedbackLayout, string> = {
-  desktop: 'min-h-9 text-[0.8rem]',
-  mobile: 'min-h-10 text-[0.88rem]',
+  desktop: 'min-h-9 text-small',
+  mobile: 'min-h-10 text-body',
 }
 const RECENT_CHIP: Record<FeedbackLayout, string> = {
-  desktop: 'min-h-8 text-[0.78rem]',
-  mobile: 'min-h-10 text-[0.88rem]',
+  desktop: 'min-h-8 text-small',
+  mobile: 'min-h-10 text-body',
 }
 const EMPTY_ACTION_BASE = 'rounded-full border bg-transparent px-[0.95rem] font-semibold text-foreground hover:border-primary/80'
 const EMPTY_BOX = 'grid content-start justify-items-center px-[0.9rem] py-[1.6rem] text-center'
@@ -44,7 +44,7 @@ export function SearchResultsToolbar({
         layout === 'mobile' ? '-mx-3 -mt-2 mb-2 px-3 py-[0.45rem]' : 'px-[0.7rem] py-[0.4rem]',
       )}
     >
-      <p className="m-0 min-w-0 truncate text-[0.76rem] text-muted [&_strong]:text-foreground" aria-live="polite">
+      <p className="m-0 min-w-0 truncate text-caption text-muted [&_strong]:text-foreground" aria-live="polite">
         <strong>
           {formatInteger(count)}
           {hasMore ? '+' : ''}
@@ -57,7 +57,7 @@ export function SearchResultsToolbar({
         <select
           className={cx(
             'cursor-pointer rounded-full border border-border bg-secondary/90 px-[0.6rem] font-semibold text-foreground',
-            layout === 'mobile' ? 'min-h-9 text-[0.84rem]' : 'min-h-[1.9rem] text-[0.74rem]',
+            layout === 'mobile' ? 'min-h-9 text-small' : 'min-h-[1.9rem] text-caption',
           )}
           value={sortOrder} onChange={(event) => onSortOrderChange(event.target.value as SearchSortOrder)}>
           {SEARCH_SORT_OPTIONS.map((option) => (
@@ -155,9 +155,9 @@ export function SearchStart({
 
       {recent.length > 0 ? (
         <section className="grid w-full max-w-[30rem] gap-[0.45rem]" aria-label="Búsquedas recientes">
-          <div className="flex items-center justify-between text-[0.66rem] font-bold uppercase tracking-[0.12em] text-soft">
+          <div className="flex items-center justify-between text-micro font-bold uppercase tracking-[0.12em] text-soft">
             <span>Recientes</span>
-            <button type="button" className="border-0 bg-transparent text-[0.72rem] normal-case tracking-normal text-muted underline underline-offset-[0.15rem]" onClick={onClearRecent}>
+            <button type="button" className="border-0 bg-transparent text-caption normal-case tracking-normal text-muted underline underline-offset-[0.15rem]" onClick={onClearRecent}>
               Borrar
             </button>
           </div>

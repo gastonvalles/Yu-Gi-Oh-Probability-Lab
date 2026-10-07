@@ -35,16 +35,16 @@ export function LabSuggestion({ cards, checks, deckFormat, handSize, view, resul
 
   return (
     <section className={cx(surface.card, 'order-2 grid min-w-0 gap-2 p-3 min-[1101px]:order-3 min-[1101px]:col-span-full')} aria-label="Qué mejorar primero">
-      <p className="m-0 text-[0.68rem] font-semibold uppercase tracking-widest text-accent">Lo que más te frena</p>
+      <p className="m-0 text-micro font-semibold uppercase tracking-widest text-accent">Lo que más te frena</p>
       <div className="grid gap-0.5">
-        <strong className="text-[0.95rem] leading-tight text-foreground [overflow-wrap:anywhere]">{culprit.name}</strong>
-        <p className="m-0 text-[0.84rem] leading-[1.35] text-muted">{describeCulprit(culprit)}</p>
+        <strong className="text-lead leading-tight text-foreground [overflow-wrap:anywhere]">{culprit.name}</strong>
+        <p className="m-0 text-small text-muted">{describeCulprit(culprit)}</p>
       </div>
 
       {state.analysis.best ? (
         <AdviceBox label="Sugerencia">{describeBest(culprit, state.analysis.best, result.cleanProbability)}{perTurnLine(state.analysis.best, perTurn)}</AdviceBox>
       ) : state.status === 'loading' ? (
-        <p className="m-0 text-[0.82rem] leading-[1.4] text-muted motion-safe:animate-pulse">
+        <p className="m-0 text-small text-muted motion-safe:animate-pulse">
           Probando cambios en tu deck… ({state.progress.done}/{state.progress.total})
         </p>
       ) : (
@@ -59,7 +59,7 @@ export function LabSuggestion({ cards, checks, deckFormat, handSize, view, resul
 /** Recuadro verde del consejo (o de la conclusión cuando no hay un cambio que convenga). */
 function AdviceBox({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <p className="m-0 rounded-control border border-accent/30 bg-accent/8 px-3 py-2 text-[0.84rem] leading-[1.4] text-foreground">
+    <p className="m-0 rounded-control border border-accent/30 bg-accent/8 px-3 py-2 text-small text-foreground">
       <strong>{label}: </strong>
       {children}
     </p>

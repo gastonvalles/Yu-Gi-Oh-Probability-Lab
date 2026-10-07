@@ -112,8 +112,8 @@ export function ExportDeckPanel({
       <section className="grid min-h-0 gap-3 min-[1180px]:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]">
         <article className={`${surface.panelSoft} grid min-h-0 gap-2.5 overflow-hidden p-3 min-[1180px]:grid-rows-[auto_minmax(0,1fr)]`}>
           <div className="grid gap-1">
-            <p className="text-accent m-0 text-[0.68rem] uppercase tracking-widest">Imagen del deck</p>
-            <p className="text-muted m-0 text-[0.76rem] leading-[1.18]">
+            <p className="text-accent m-0 text-micro uppercase tracking-widest">Imagen del deck</p>
+            <p className="text-muted m-0 text-caption">
               Se descarga en alta resolución (JPG) para compartir.
             </p>
           </div>
@@ -145,7 +145,7 @@ export function ExportDeckPanel({
               </div>
             ) : (
               <div className="grid h-full place-items-center text-center">
-                <p className="text-muted m-0 max-w-md text-[0.8rem] leading-[1.2]">
+                <p className="text-muted m-0 max-w-md text-small">
                   {previewState === 'error'
                     ? 'No pude generar la vista previa de la imagen.'
                     : 'Agregá cartas al Main Deck para habilitar la preview.'}
@@ -157,8 +157,8 @@ export function ExportDeckPanel({
 
         <article className={`${surface.panelSoft} grid min-h-0 gap-2.5 overflow-hidden p-3 min-[1180px]:grid-rows-[auto_minmax(0,1fr)]`}>
           <div className="grid gap-1">
-            <p className="text-accent m-0 text-[0.68rem] uppercase tracking-widest">Decklist oficial (PDF)</p>
-            <p className="text-muted m-0 text-[0.76rem] leading-[1.18]">
+            <p className="text-accent m-0 text-micro uppercase tracking-widest">Decklist oficial (PDF)</p>
+            <p className="text-muted m-0 text-caption">
               Planilla de Konami para torneos, lista para imprimir. Completá tus datos antes de entregarla.
             </p>
           </div>
@@ -169,15 +169,15 @@ export function ExportDeckPanel({
                 .filter((section) => section.total > 0)
                 .map((section) => (
                   <section key={section.key} className="grid gap-1">
-                    <h3 className="m-0 flex items-baseline justify-between gap-2 border-b border-(--border-subtle) pb-1 text-[0.76rem] font-semibold uppercase tracking-wider text-(--text-main)">
+                    <h3 className="m-0 flex items-baseline justify-between gap-2 border-b border-border-subtle pb-1 text-caption font-semibold uppercase tracking-wider text-foreground">
                       <span>{section.label}</span>
                       <span className="text-muted tabular-nums">{section.total}</span>
                     </h3>
-                    <ul className="m-0 grid list-none gap-0.5 p-0 text-[0.8rem] leading-[1.3]">
+                    <ul className="m-0 grid list-none gap-0.5 p-0 text-small">
                       {section.entries.map((entry) => (
                         <li key={entry.name} className="grid grid-cols-[1.5rem_minmax(0,1fr)] gap-1.5">
                           <span className="text-muted text-right tabular-nums">{entry.count}</span>
-                          <span className="truncate text-(--text-main)">{entry.name}</span>
+                          <span className="truncate text-foreground">{entry.name}</span>
                         </li>
                       ))}
                     </ul>

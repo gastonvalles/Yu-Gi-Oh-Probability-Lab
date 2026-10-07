@@ -20,10 +20,10 @@ const KIND_FILTERS: ReadonlyArray<{ value: KindFilter; label: string }> = [
   { value: 'problem', label: 'Problemas' },
 ]
 
-const TIER_BADGE = 'inline-flex items-center gap-[0.3rem] rounded-full bg-foreground/6 px-[0.55rem] py-[0.2rem] text-[0.7rem] text-muted'
+const TIER_BADGE = 'inline-flex items-center gap-[0.3rem] rounded-full bg-foreground/6 px-[0.55rem] py-[0.2rem] text-micro text-muted'
 
 const RULE_ROW =
-  'group relative grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 gap-y-1 overflow-hidden rounded-[calc(var(--radius-panel)-0.2rem)] border border-[rgb(var(--lab-kind-rgb)/0.22)] bg-[rgb(var(--lab-kind-rgb)/0.04)] px-3 pb-3 pt-[0.6rem] text-left transition-[border-color,background,opacity,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary/70'
+  'group relative grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 gap-y-1 overflow-hidden rounded-control border border-[rgb(var(--lab-kind-rgb)/0.22)] bg-[rgb(var(--lab-kind-rgb)/0.04)] px-3 pb-3 pt-[0.6rem] text-left transition-[border-color,background,opacity,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary/70'
 const RULE_ROW_INTERACTIVE =
   'cursor-pointer hover:border-[rgb(var(--lab-kind-rgb)/0.55)] hover:bg-[rgb(var(--lab-kind-rgb)/0.08)] active:scale-[0.99]'
 const RULE_KIND_RGB: Record<PatternKind, string> = {
@@ -31,7 +31,7 @@ const RULE_KIND_RGB: Record<PatternKind, string> = {
   problem: '[--lab-kind-rgb:var(--danger-rgb)]',
 }
 const RULE_STACK = 'contents min-[1101px]:grid min-[1101px]:min-w-0 min-[1101px]:content-start min-[1101px]:gap-5'
-const RULE_TURN_BADGE = 'flex-none rounded-[0.3rem] bg-warning/14 px-[0.3rem] py-[0.05rem] text-[0.64rem] font-semibold text-warning'
+const RULE_TURN_BADGE = 'flex-none rounded-tag bg-warning/14 px-[0.3rem] py-[0.05rem] text-micro font-semibold text-warning'
 
 interface LabRuleListProps {
   groups: RuleEntryGroups
@@ -73,7 +73,7 @@ export function LabRuleList({
               role="radio"
               aria-checked={kindFilter === filter.value}
               className={cx(
-                'rounded-full px-[0.7rem] py-[0.3rem] text-[0.76rem] font-semibold',
+                'rounded-full px-[0.7rem] py-[0.3rem] text-caption font-semibold',
                 kindFilter === filter.value ? 'bg-primary/22 text-foreground' : 'text-muted',
               )}
               onClick={() => setKindFilter(filter.value)}
@@ -139,7 +139,7 @@ export function LabRuleList({
             entries={visible(groups.custom)}
             emptyState={
               groups.custom.length === 0 ? (
-                <div className="grid gap-1 rounded-[calc(var(--radius-panel)-0.2rem)] border border-dashed border-border p-3 text-[0.76rem] text-muted [&_strong]:text-[0.84rem] [&_strong]:text-foreground">
+                <div className="grid gap-1 rounded-control border border-dashed border-border p-3 text-caption text-muted [&_strong]:text-small [&_strong]:text-foreground">
                   <strong>Todavía no creaste reglas</strong>
                   <span>
                     Ejemplos: “Abrir tu carta clave”, “Starter + pieza de combo” o “2+ Handtraps yendo 2º”.
@@ -195,7 +195,7 @@ function RuleTier({
       <header className="grid gap-[0.2rem]">
         <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
           {collapsible ? (
-            <h4 className="m-0 text-[0.9rem] text-foreground">
+            <h4 className="m-0 text-body text-foreground">
               <button
                 type="button"
                 className="inline-flex cursor-pointer items-center gap-[0.4rem] border-0 bg-transparent py-[0.2rem] pl-0 pr-[0.3rem] font-[inherit] text-inherit hover:text-primary"
@@ -209,15 +209,15 @@ function RuleTier({
                   height={14}
                 />
                 {title}
-                <span className="rounded-full bg-secondary/90 px-[0.45rem] py-[0.05rem] text-[0.7rem] font-bold text-muted">{formatInteger(entries.length)}</span>
+                <span className="rounded-full bg-secondary/90 px-[0.45rem] py-[0.05rem] text-micro font-bold text-muted">{formatInteger(entries.length)}</span>
               </button>
             </h4>
           ) : (
-            <h4 className="m-0 text-[0.9rem] text-foreground">{title}</h4>
+            <h4 className="m-0 text-body text-foreground">{title}</h4>
           )}
           {badge}
         </div>
-        <p className={cx('m-0 text-[0.74rem] leading-[1.3] text-muted', !isOpen && 'hidden')}>{description}</p>
+        <p className={cx('m-0 text-caption text-muted', !isOpen && 'hidden')}>{description}</p>
       </header>
 
       {!isOpen ? null : entries.length === 0 ? (
@@ -250,7 +250,7 @@ function RuleRow({
   const body = (
     <>
       <span className="grid min-w-0 gap-[0.15rem]">
-        <span className="flex min-w-0 flex-wrap items-center gap-[0.4rem] text-[0.88rem] font-bold text-foreground">
+        <span className="flex min-w-0 flex-wrap items-center gap-[0.4rem] text-body font-bold text-foreground">
           <KindBadge kind={entry.kind} />
           <span className="min-w-0 [overflow-wrap:anywhere]">{entry.name}</span>
           {showEditIcon ? <PencilIcon className="size-[0.8rem] flex-none text-soft group-hover:text-foreground" /> : null}
@@ -260,10 +260,10 @@ function RuleRow({
           {entry.ignoresDraw && entry.turnContext !== 'first' ? <span className={RULE_TURN_BADGE} title="Yendo 2º no cuenta la carta robada">5 cartas</span> : null}
           {entry.turnLean ? <TurnLeanBadge kind={entry.kind} lean={entry.turnLean} /> : null}
         </span>
-        <span className="truncate text-[0.75rem] text-foreground opacity-85">{entry.summary}</span>
-        {entry.description ? <span className="text-[0.72rem] leading-[1.3] text-muted">{entry.description}</span> : null}
+        <span className="truncate text-caption text-foreground opacity-85">{entry.summary}</span>
+        {entry.description ? <span className="text-caption text-muted">{entry.description}</span> : null}
       </span>
-      <span className="whitespace-nowrap text-[0.92rem] font-extrabold text-foreground tabular-nums">{formatRuleValue(entry)}</span>
+      <span className="whitespace-nowrap text-body font-extrabold text-foreground tabular-nums">{formatRuleValue(entry)}</span>
       {entry.probability !== null ? (
         <span className="absolute inset-x-0 bottom-0 h-[3px] bg-[rgb(var(--lab-kind-rgb)/0.1)]" aria-hidden="true">
           <span
@@ -352,7 +352,7 @@ function TurnLeanBadge({ kind, lean }: { kind: RuleEntry['kind']; lean: TurnLean
       : `Este problema pesa más yendo ${turn}.`
 
   return (
-    <span className="flex-none cursor-help rounded-[0.3rem] border border-primary/40 px-[0.3rem] py-[0.02rem] text-[0.64rem] font-semibold text-foreground" title={`${meaning} ${detail}`}>
+    <span className="flex-none cursor-help rounded-tag border border-primary/40 px-[0.3rem] py-[0.02rem] text-micro font-semibold text-foreground" title={`${meaning} ${detail}`}>
       Más yendo {turn}
       <span className="sr-only">. {meaning} {detail}</span>
     </span>

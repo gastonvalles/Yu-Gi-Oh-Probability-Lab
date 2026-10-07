@@ -179,7 +179,7 @@ export const DeckZone = memo(function DeckZone({
         style={classicZoneStyle}
       >
         <div>
-          <div className="grid w-[calc(100%-0.04rem)] max-w-[calc(100%-0.04rem)] min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-[0.8rem] rounded-[0.84rem] border border-(--classic-zone-accent) bg-linear-to-b from-(--classic-zone-tint) to-card-background/98 px-[0.95rem] py-[0.28rem] text-[0.98rem] font-bold leading-none text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+          <div className="grid w-[calc(100%-0.04rem)] max-w-[calc(100%-0.04rem)] min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-[0.8rem] rounded-control border border-(--classic-zone-accent) bg-linear-to-b from-(--classic-zone-tint) to-card-background/98 px-[0.95rem] py-[0.28rem] text-lead font-bold leading-none text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
             <span className="min-w-0 whitespace-nowrap">
               {title.replace(' Deck', '')} [{cardCountLabel}]
             </span>
@@ -189,10 +189,10 @@ export const DeckZone = memo(function DeckZone({
                   {zoneTypeCounts.map((entry) => (
                     <span
                       key={entry.kind}
-                      className="inline-flex items-center gap-[0.28rem] text-[0.82rem] font-bold text-foreground"
+                      className="inline-flex items-center gap-[0.28rem] text-small font-bold text-foreground"
                       title={`${formatInteger(entry.count)} ${entry.label}`}
                     >
-                      <span className={cx('size-[0.62rem] rounded-[0.15rem]', ZONE_TYPE_SWATCH[entry.kind])} aria-hidden="true" />
+                      <span className={cx('size-[0.62rem] rounded-tag', ZONE_TYPE_SWATCH[entry.kind])} aria-hidden="true" />
                       {formatInteger(entry.count)}
                     </span>
                   ))}
@@ -247,7 +247,7 @@ export const DeckZone = memo(function DeckZone({
               ))
             : cards.map((card, index) => renderDeckCard(card, index))}
           {cards.length === 0 ? (
-            <p className="pointer-events-none m-0 col-span-full grid min-h-14 w-full place-items-center p-2 text-[0.78rem] text-soft">
+            <p className="pointer-events-none m-0 col-span-full grid min-h-14 w-full place-items-center p-2 text-small text-soft">
               Arrastrá cartas acá
             </p>
           ) : null}
@@ -260,8 +260,8 @@ export const DeckZone = memo(function DeckZone({
     <section className="w-full bg-transparent p-0">
       <div className="mb-1.5 flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <h3 className="m-0 wrap-anywhere text-[1.05rem] leading-none">{title}</h3>
-          <p className="m-0 mt-[0.08rem] wrap-anywhere text-[0.82rem] leading-[1.12] text-(--text-muted)">
+          <h3 className="m-0 wrap-anywhere text-lead leading-none">{title}</h3>
+          <p className="m-0 mt-[0.08rem] wrap-anywhere text-small text-muted">
             {headerSummary}
           </p>
         </div>

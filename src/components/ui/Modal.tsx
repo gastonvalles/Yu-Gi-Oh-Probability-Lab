@@ -111,13 +111,13 @@ export function Modal({
         {hasHeader ? (
           <header className="flex items-start justify-between gap-3 border-b border-border px-4 pb-[0.8rem] pt-[0.9rem] min-[1101px]:px-[1.4rem] min-[1101px]:pb-[0.9rem] min-[1101px]:pt-[1.1rem]">
             <div className="grid min-w-0 gap-[0.2rem]">
-              {kicker ? <p className="m-0 text-[0.68rem] uppercase tracking-widest text-accent">{kicker}</p> : null}
+              {kicker ? <p className="m-0 text-micro uppercase tracking-widest text-accent">{kicker}</p> : null}
               {title ? (
-                <h3 id={titleId} className="m-0 text-[1.15rem] leading-[1.15] text-foreground [overflow-wrap:anywhere]">
+                <h3 id={titleId} className="m-0 text-heading text-foreground [overflow-wrap:anywhere]">
                   {title}
                 </h3>
               ) : null}
-              {subtitle ? <p className="m-0 text-[0.8rem] leading-[1.3] text-muted">{subtitle}</p> : null}
+              {subtitle ? <p className="m-0 text-small text-muted">{subtitle}</p> : null}
             </div>
             <div className="flex flex-none items-center gap-[0.4rem]">
               {headerActions}

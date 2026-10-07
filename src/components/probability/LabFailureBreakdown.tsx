@@ -97,7 +97,7 @@ export function LabFailureBreakdown({ result }: { result: LabViewResult }) {
             <button
               type="button"
               className={cx(
-                'grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-[0.6rem] rounded-[calc(var(--radius-panel)-0.3rem)] border px-[0.45rem] py-[0.3rem] text-left transition-[background,border-color] duration-150',
+                'grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-[0.6rem] rounded-control border px-[0.45rem] py-[0.3rem] text-left transition-[background,border-color] duration-150',
                 activeSegment === segment.key
                   ? 'border-border bg-foreground/4'
                   : 'border-transparent hover:border-border hover:bg-foreground/4',
@@ -106,12 +106,12 @@ export function LabFailureBreakdown({ result }: { result: LabViewResult }) {
               onMouseEnter={() => setActiveSegment(segment.key)}
               onClick={() => setActiveSegment(segment.key)}
             >
-              <span className={cx('size-[0.7rem] rounded-[0.2rem]', SEGMENT_BG[segment.key])} aria-hidden="true" />
+              <span className={cx('size-[0.7rem] rounded-tag', SEGMENT_BG[segment.key])} aria-hidden="true" />
               <span className="grid min-w-0">
-                <strong className="text-[0.82rem] text-foreground">{segment.label}</strong>
-                <small className="text-[0.72rem] text-muted">{segment.description}</small>
+                <strong className="text-small text-foreground">{segment.label}</strong>
+                <small className="text-caption text-muted">{segment.description}</small>
               </span>
-              <span className="text-[0.9rem] font-bold text-foreground tabular-nums">{formatShortPercent(values[segment.key])}</span>
+              <span className="text-body font-bold text-foreground tabular-nums">{formatShortPercent(values[segment.key])}</span>
             </button>
           </li>
         ))}
@@ -127,7 +127,7 @@ export function LabFailureBreakdown({ result }: { result: LabViewResult }) {
       />
       </div>
 
-      <p className="m-0 border-l-[3px] border-primary/70 pl-[0.6rem] text-[0.76rem] leading-[1.35] text-foreground">{buildFailureAdvice(result)}</p>
+      <p className="m-0 border-l-[3px] border-primary/70 pl-[0.6rem] text-caption text-foreground">{buildFailureAdvice(result)}</p>
     </LabSection>
   )
 }
@@ -146,18 +146,18 @@ function SegmentRules({
   return (
     <div
       className={cx(
-        'grid gap-[0.45rem] rounded-[calc(var(--radius-panel)-0.2rem)] border border-[rgb(var(--lab-segment-rgb)/0.35)] bg-[rgb(var(--lab-segment-rgb)/0.06)] px-3 py-[0.65rem]',
+        'grid gap-[0.45rem] rounded-control border border-[rgb(var(--lab-segment-rgb)/0.35)] bg-[rgb(var(--lab-segment-rgb)/0.06)] px-3 py-[0.65rem]',
         SEGMENT_RGB[segment],
       )}
       aria-live="polite"
     >
-      <span className="text-[0.72rem] font-bold uppercase tracking-[0.06em] text-[rgb(var(--lab-segment-rgb))]">{title}</span>
+      <span className="text-caption font-bold uppercase tracking-[0.06em] text-[rgb(var(--lab-segment-rgb))]">{title}</span>
       {rules.length === 0 ? (
         <p className={LAB_FOOTNOTE}>{emptyText}</p>
       ) : (
         <ul className="m-0 grid list-none gap-[0.35rem] p-0">
           {rules.slice(0, MAX_RULES).map((rule) => (
-            <li key={rule.patternId} className="grid grid-cols-[minmax(0,1.4fr)_minmax(3rem,1fr)_auto] items-center gap-[0.6rem] text-[0.8rem]">
+            <li key={rule.patternId} className="grid grid-cols-[minmax(0,1.4fr)_minmax(3rem,1fr)_auto] items-center gap-[0.6rem] text-small">
               <span className="truncate text-foreground">{rule.name}</span>
               <span className="h-[0.4rem] overflow-hidden rounded-full bg-foreground/8" aria-hidden="true">
                 <span className="block h-full bg-[rgb(var(--lab-segment-rgb)/0.85)]" style={{ width: `${Math.min(100, rule.share * 100)}%` }} />

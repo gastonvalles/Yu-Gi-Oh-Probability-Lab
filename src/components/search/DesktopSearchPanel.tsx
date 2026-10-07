@@ -30,7 +30,7 @@ interface DesktopSearchPanelProps {
 
 const SURFACE_GRADIENT = 'bg-linear-to-b from-secondary/94 to-background/98'
 
-const TYPE_BUTTON = 'border px-[0.85rem] py-[0.44rem] text-[0.82rem] font-bold leading-none text-foreground'
+const TYPE_BUTTON = 'border px-[0.85rem] py-[0.44rem] text-small font-bold leading-none text-foreground'
 
 function typeButton(active: boolean): string {
   return cx(
@@ -67,9 +67,9 @@ const ADD_REVEAL =
 function addButton(state: 'idle' | 'added' | 'maxed'): string {
   return cx(
     'absolute bottom-[0.4rem] right-[0.4rem] grid h-[1.9rem] min-w-[1.9rem] place-items-center rounded-full border px-[0.4rem] font-bold leading-none transition-[opacity,transform] duration-120 enabled:active:scale-[0.92]',
-    state === 'added' && 'border-accent/80 bg-accent text-[1.05rem] text-[#06140e] opacity-100',
-    state === 'idle' && ['border-primary/60 bg-primary/85 text-[1.05rem] text-white', ADD_REVEAL],
-    state === 'maxed' && ['border-border bg-secondary/95 text-[0.62rem] text-soft', ADD_REVEAL],
+    state === 'added' && 'border-accent/80 bg-accent text-lead text-[#06140e] opacity-100',
+    state === 'idle' && ['border-primary/60 bg-primary/85 text-lead text-white', ADD_REVEAL],
+    state === 'maxed' && ['border-border bg-secondary/95 text-micro text-soft', ADD_REVEAL],
   )
 }
 
@@ -181,7 +181,7 @@ export function DesktopSearchPanel({
             <FilterIcon width={14} height={14} />
             Filtros
             {search.activeFilterCount > 0 ? (
-              <span className="grid h-[1.1rem] min-w-[1.1rem] place-items-center rounded-full bg-primary px-1 text-[0.66rem] font-extrabold text-white">{search.activeFilterCount}</span>
+              <span className="grid h-[1.1rem] min-w-[1.1rem] place-items-center rounded-full bg-primary px-1 text-micro font-extrabold text-white">{search.activeFilterCount}</span>
             ) : null}
           </button>
         </div>
@@ -196,10 +196,10 @@ export function DesktopSearchPanel({
                 onClick={() => actions.onFilterChange(chip.updates)}
                 title={`Quitar filtro ${chip.label.toLowerCase()}`}
               >
-                <span className="truncate text-(--text-main)">
+                <span className="truncate text-foreground">
                   {chip.label}: {chip.value}
                 </span>
-                <CloseIcon className="h-3 w-3 shrink-0 text-(--text-soft)" />
+                <CloseIcon className="h-3 w-3 shrink-0 text-soft" />
               </button>
             ))}
           </div>
@@ -224,7 +224,7 @@ export function DesktopSearchPanel({
         <div className="grid min-h-0 grid-rows-[minmax(0,1fr)] overflow-hidden">
           {search.hasSearchCriteria ? (
             status === 'error' ? (
-              <p className={`${surface.cardDanger} m-0 px-2 py-1.5 text-[0.78rem] leading-[1.16] text-destructive`}>
+              <p className={`${surface.cardDanger} m-0 px-2 py-1.5 text-small text-destructive`}>
                 {formatSearchError(search.errorMessage)}
               </p>
             ) : status === 'loading' ? (
@@ -287,7 +287,7 @@ export function DesktopSearchPanel({
                         />
                         {copiesInDeck > 0 ? (
                           <span
-                            className="absolute -bottom-[0.3rem] -right-[0.3rem] rounded-full bg-accent px-[0.32rem] py-[0.05rem] text-[0.66rem] font-extrabold text-[#06140e]"
+                            className="absolute -bottom-[0.3rem] -right-[0.3rem] rounded-full bg-accent px-[0.32rem] py-[0.05rem] text-micro font-extrabold text-[#06140e]"
                             title={`${copiesInDeck} en el deck`}>
                             ×{copiesInDeck}
                           </span>
@@ -295,13 +295,13 @@ export function DesktopSearchPanel({
                       </div>
 
                       <div className="grid min-w-0 content-start gap-[0.2rem] pt-[0.08rem]">
-                        <strong className="text-[0.8rem] leading-[1.08] wrap-anywhere text-(--text-main)">
+                        <strong className="text-small wrap-anywhere text-foreground">
                           {card.name}
                         </strong>
-                        <p className="m-0 text-[0.72rem] leading-[1.08] wrap-anywhere text-(--text-main)">
+                        <p className="m-0 text-caption wrap-anywhere text-foreground">
                           {buildClassicCardPrimaryLine(card)}
                         </p>
-                        <p className="m-0 text-[0.72rem] leading-[1.08] wrap-anywhere text-(--text-main)">
+                        <p className="m-0 text-caption wrap-anywhere text-foreground">
                           {buildClassicCardStatLine(card)}
                         </p>
                       </div>

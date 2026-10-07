@@ -30,7 +30,7 @@ export function StepHero({ title, help, side, sideVariant = 'actions' }: StepHer
   return (
     <header className="relative flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-[0.6rem] p-0 min-[1101px]:px-1 min-[1101px]:py-[0.2rem]">
       <div className="flex min-w-0 items-center gap-2">
-        <h2 className="m-0 text-[1.15rem] leading-[1.15] text-foreground">{title}</h2>
+        <h2 className="m-0 text-heading text-foreground">{title}</h2>
         {/* La ayuda se ancla al encabezado (no al ícono): nunca se sale de pantalla. */}
         <InfoTip label={`Qué hace “${title}”`} anchor="parent">
           {help}

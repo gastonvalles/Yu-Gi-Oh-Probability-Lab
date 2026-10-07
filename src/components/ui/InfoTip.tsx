@@ -26,7 +26,7 @@ export function InfoTip({ label, children, anchor = 'self' }: InfoTipProps) {
     >
       <button
         type="button"
-        className="grid size-[1.35rem] place-items-center rounded-full border border-border bg-foreground/5 text-[0.72rem] font-extrabold italic text-muted transition-[color,border-color] duration-150 hover:border-primary/60 hover:text-foreground aria-expanded:border-primary/60 aria-expanded:text-foreground"
+        className="grid size-[1.35rem] place-items-center rounded-full border border-border bg-foreground/5 text-caption font-extrabold italic text-muted transition-[color,border-color] duration-150 hover:border-primary/60 hover:text-foreground aria-expanded:border-primary/60 aria-expanded:text-foreground"
         aria-label={label}
         aria-expanded={isOpen}
         aria-describedby={isOpen ? contentId : undefined}
@@ -57,7 +57,7 @@ export function InfoTip({ label, children, anchor = 'self' }: InfoTipProps) {
             anchor === 'self'
               ? 'right-0 top-[calc(100%+0.45rem)] w-[min(22rem,calc(100vw-2rem))]'
               : 'left-0 top-[calc(100%+0.25rem)] w-[min(26rem,100%)]',
-            'rounded-[calc(var(--radius-panel)-0.2rem)] border border-border-strong bg-card-background px-[0.8rem] py-[0.7rem] text-left text-[0.78rem] leading-[1.4] text-muted shadow-[0_18px_40px_rgba(0,0,0,0.45)] [&_strong]:text-foreground',
+            'rounded-control border border-border-strong bg-card-background px-[0.8rem] py-[0.7rem] text-left text-small text-muted shadow-[0_18px_40px_rgba(0,0,0,0.45)] [&_strong]:text-foreground',
           )}>
           {children}
         </span>

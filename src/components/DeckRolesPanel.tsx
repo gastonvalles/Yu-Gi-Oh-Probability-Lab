@@ -115,7 +115,7 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
     return {
       title: 'No quedan cartas pendientes en esta cola.',
       description: 'Podés repasar otros grupos desde la derecha o pasar al Probability Lab cuando termines de validar la build.',
-      tone: `${surface.cardSuccess} text-(--accent)`,
+      tone: `${surface.cardSuccess} text-accent`,
     }
   }
 
@@ -123,7 +123,7 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
     return {
       title: 'No hay cartas sin origen en esta vista.',
       description: 'El motor y los slots externos ya quedaron diferenciados.',
-      tone: `${surface.cardSuccess} text-(--accent)`,
+      tone: `${surface.cardSuccess} text-accent`,
     }
   }
 
@@ -131,7 +131,7 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
     return {
       title: 'No hay cartas sin roles en esta vista.',
       description: 'La función táctica de estas cartas ya quedó definida.',
-      tone: `${surface.cardSuccess} text-(--accent)`,
+      tone: `${surface.cardSuccess} text-accent`,
     }
   }
 
@@ -139,7 +139,7 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
     return {
       title: 'No hay cartas pendientes de revisión.',
       description: 'Las cartas cargadas en esta vista ya están validadas.',
-      tone: `${surface.cardSuccess} text-(--accent)`,
+      tone: `${surface.cardSuccess} text-accent`,
     }
   }
 
@@ -147,7 +147,7 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
     return {
       title: 'Todavía no hay cartas completas en esta vista.',
       description: 'Primero definí origen y roles para poblar este subconjunto.',
-      tone: `${surface.card} text-(--text-muted)`,
+      tone: `${surface.card} text-muted`,
     }
   }
 
@@ -155,14 +155,14 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
     return {
       title: 'Todavía no hay cartas para clasificar.',
       description: 'Primero armá o importá tu Main Deck. Después vas a poder marcar origen y roles.',
-      tone: `${surface.card} text-(--text-muted)`,
+      tone: `${surface.card} text-muted`,
     }
   }
 
   return {
     title: 'Este grupo está vacío por ahora.',
     description: 'Ajustá el filtro o seguí clasificando cartas para poblarlo.',
-    tone: `${surface.card} text-(--text-muted)`,
+    tone: `${surface.card} text-muted`,
   }
 }
 
@@ -218,11 +218,11 @@ function renderReferenceRoles(roleKeys: readonly CardRole[]) {
       >
         <div className="flex items-center gap-2">
           <span className={ROLE_REFERENCE_MARK} />
-          <strong className="block text-[0.8rem] leading-none text-(--text-main)">
+          <strong className="block text-small leading-none text-foreground">
             {definition.label}
           </strong>
         </div>
-        <p className="text-muted m-0 text-[0.72rem] leading-[1.14]">{getRoleHelpText(roleKey)}</p>
+        <p className="text-muted m-0 text-caption">{getRoleHelpText(roleKey)}</p>
       </article>
     )
   })
@@ -560,7 +560,7 @@ export function DeckRolesPanel({
       <Button variant="secondary" size="md" onClick={handleSelectPreviousCard} disabled={!previousCard}>
         ← Anterior
       </Button>
-      <span className="text-soft min-w-12 text-center text-[0.74rem] tabular-nums max-[1100px]:order-0 min-[1101px]:hidden">
+      <span className="text-soft min-w-12 text-center text-caption tabular-nums max-[1100px]:order-0 min-[1101px]:hidden">
         {formatInteger(selectedCardIndexInFullList + 1)} / {formatInteger(stableNavigationCards.length)}
       </span>
       <Button variant="primary" size="md" onClick={handleSelectNextCard} disabled={!nextCard}>
@@ -572,8 +572,8 @@ export function DeckRolesPanel({
   const renderSelectedCardDetail = () => {
     if (!selectedCard) {
       return (
-        <p className={[emptyStateCopy.tone, 'm-0 px-2.5 py-2 text-[0.8rem]'].join(' ')}>
-          <strong className="block text-(--text-main)">{emptyStateCopy.title}</strong>
+        <p className={[emptyStateCopy.tone, 'm-0 px-2.5 py-2 text-small'].join(' ')}>
+          <strong className="block text-foreground">{emptyStateCopy.title}</strong>
           <span className="mt-1 block">{emptyStateCopy.description}</span>
         </p>
       )
@@ -619,25 +619,25 @@ export function DeckRolesPanel({
         <section className={`${surface.panelSoft} grid gap-2 p-2.5`}>
           <div className="flex flex-wrap items-end justify-between gap-2.5 min-w-0">
             <div className="min-w-0">
-              <p className="text-accent m-0 text-[0.68rem] uppercase tracking-widest">Vista activa</p>
-              <p className="text-muted m-[0.22rem_0_0] text-[0.75rem] leading-[1.14]">
+              <p className="text-accent m-0 text-micro uppercase tracking-widest">Vista activa</p>
+              <p className="text-muted m-[0.22rem_0_0] text-caption">
                 Priorizá el subconjunto que querés cerrar primero.
               </p>
             </div>
 
             <div className="grid w-full min-w-36 gap-1 justify-items-end min-[640px]:w-auto">
-              <span className="text-muted text-[0.7rem] leading-none tabular-nums">
+              <span className="text-muted text-micro leading-none tabular-nums">
                 {formatInteger(completeCards.length)} / {formatInteger(sortedCards.length)} clasificadas
               </span>
               <div
-                className="h-1.25 w-full min-w-36 overflow-hidden rounded-(--radius-chip) bg-[rgb(var(--border-rgb)/0.9)]"
+                className="h-1.25 w-full min-w-36 overflow-hidden rounded-full bg-[rgb(var(--border-rgb)/0.9)]"
                 role="progressbar"
                 aria-valuenow={completeCards.length}
                 aria-valuemin={0}
                 aria-valuemax={sortedCards.length}
               >
                 <div
-                  className="h-full origin-left rounded-(--radius-chip) bg-accent transition-transform"
+                  className="h-full origin-left rounded-full bg-accent transition-transform"
                   style={{ transform: `scaleX(${classifiedPercent / 100})` }}
                 />
               </div>
@@ -657,7 +657,7 @@ export function DeckRolesPanel({
                   onClick={() => handleFilterChange(item.key)}
                 >
                   <span>{item.label}</span>
-                  <span className="text-soft text-[0.66rem]">{formatInteger(item.cards.length)}</span>
+                  <span className="text-soft text-micro">{formatInteger(item.cards.length)}</span>
                 </button>
               )
             })}
@@ -666,14 +666,14 @@ export function DeckRolesPanel({
       ) : null}
 
       {sortedCards.length === 0 ? (
-        <p className={`${surface.card} m-0 px-2.5 py-2 text-[0.8rem] text-(--text-muted)`}>
+        <p className={`${surface.card} m-0 px-2.5 py-2 text-small text-muted`}>
           Primero armá o importá tu Main Deck. Después vas a poder clasificar cada carta.
         </p>
       ) : (
         <section className={`${surface.panelSoft} grid min-w-0 gap-2.5 p-2.5 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[minmax(0,1fr)] min-[1101px]:overflow-hidden`}>
             {visibleQueueCards.length === 0 ? (
-              <p className={[emptyStateCopy.tone, 'm-0 px-2.5 py-2 text-[0.8rem]'].join(' ')}>
-                <strong className="block text-(--text-main)">{emptyStateCopy.title}</strong>
+              <p className={[emptyStateCopy.tone, 'm-0 px-2.5 py-2 text-small'].join(' ')}>
+                <strong className="block text-foreground">{emptyStateCopy.title}</strong>
                 <span className="mt-1 block">{emptyStateCopy.description}</span>
               </p>
             ) : (
@@ -704,8 +704,8 @@ export function DeckRolesPanel({
         <div className="grid gap-4">
           <section className="grid gap-2">
             <div>
-              <p className="text-accent m-0 text-[0.68rem] uppercase tracking-widest">Origen</p>
-              <p className="text-muted m-[0.22rem_0_0] text-[0.73rem] leading-[1.14]">
+              <p className="text-accent m-0 text-micro uppercase tracking-widest">Origen</p>
+              <p className="text-muted m-[0.22rem_0_0] text-caption">
                 Responde si la carta pertenece al motor principal o a un espacio externo/flexible.
               </p>
             </div>
@@ -719,9 +719,9 @@ export function DeckRolesPanel({
                 >
                   <div className="flex items-center gap-2">
                     <span className={ROLE_REFERENCE_MARK} />
-                    <strong className="text-[0.84rem] leading-none text-(--text-main)">{definition.label}</strong>
+                    <strong className="text-small leading-none text-foreground">{definition.label}</strong>
                   </div>
-                  <p className="text-muted m-0 text-[0.72rem] leading-[1.14]">{getOriginHelpText(definition.key.value)}</p>
+                  <p className="text-muted m-0 text-caption">{getOriginHelpText(definition.key.value)}</p>
                 </article>
               ))}
             </div>
@@ -729,8 +729,8 @@ export function DeckRolesPanel({
 
           <section className="grid gap-2">
             <div>
-              <p className="text-accent m-0 text-[0.68rem] uppercase tracking-widest">Roles</p>
-              <p className="text-muted m-[0.22rem_0_0] text-[0.73rem] leading-[1.14]">
+              <p className="text-accent m-0 text-micro uppercase tracking-widest">Roles</p>
+              <p className="text-muted m-[0.22rem_0_0] text-caption">
                 Responden qué hace la carta dentro de tu mano, tu línea o tu plan de turno.
               </p>
             </div>
@@ -739,8 +739,8 @@ export function DeckRolesPanel({
               {ROLE_EDITOR_SECTIONS.map((section) => (
                 <article key={section.title} className={cx(ROLE_REFERENCE_GROUP, 'grid gap-2 p-2.5')}>
                   <div className="grid gap-1">
-                    <strong className="text-[0.82rem] leading-none text-(--text-main)">{section.title}</strong>
-                    <p className="text-muted m-0 text-[0.72rem] leading-[1.14]">{section.description}</p>
+                    <strong className="text-small leading-none text-foreground">{section.title}</strong>
+                    <p className="text-muted m-0 text-caption">{section.description}</p>
                   </div>
 
                   <div className="grid gap-1.5">{renderReferenceRoles(section.roles)}</div>

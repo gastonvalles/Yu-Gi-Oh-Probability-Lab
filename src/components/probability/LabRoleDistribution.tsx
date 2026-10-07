@@ -36,11 +36,11 @@ export function LabRoleDistribution({ distributions, onOpenRole }: LabRoleDistri
       defaultOpenOnMobile={false}
       className="order-4 min-[1101px]:col-span-full"
     >
-      <div className="flex flex-wrap items-center gap-x-[0.8rem] gap-y-[0.35rem] text-[0.72rem] text-muted" aria-hidden="true">
+      <div className="flex flex-wrap items-center gap-x-[0.8rem] gap-y-[0.35rem] text-caption text-muted" aria-hidden="true">
         <span>Copias robadas:</span>
         {DISTRIBUTION_BUCKETS.map((bucket, index) => (
           <span key={bucket} className="inline-flex items-center gap-[0.3rem]">
-            <span className={cx('size-[0.7rem] rounded-[0.2rem] bg-foreground/80', BUCKET_SWATCH[index])} />
+            <span className={cx('size-[0.7rem] rounded-tag bg-foreground/80', BUCKET_SWATCH[index])} />
             {bucket}
           </span>
         ))}
@@ -52,7 +52,7 @@ export function LabRoleDistribution({ distributions, onOpenRole }: LabRoleDistri
             <button
               type="button"
               className={cx(
-                'grid w-full grid-cols-[minmax(5.5rem,7.5rem)_minmax(0,1fr)_minmax(3.6rem,auto)] items-center gap-3 rounded-[calc(var(--radius-panel)-0.3rem)] border border-transparent px-2 py-[0.4rem] text-left transition-[background,border-color] duration-150 enabled:hover:border-[rgb(var(--lab-role-rgb)/0.35)] enabled:hover:bg-[rgb(var(--lab-role-rgb)/0.06)] disabled:opacity-50',
+                'grid w-full grid-cols-[minmax(5.5rem,7.5rem)_minmax(0,1fr)_minmax(3.6rem,auto)] items-center gap-3 rounded-control border border-transparent px-2 py-[0.4rem] text-left transition-[background,border-color] duration-150 enabled:hover:border-[rgb(var(--lab-role-rgb)/0.35)] enabled:hover:bg-[rgb(var(--lab-role-rgb)/0.06)] disabled:opacity-50',
                 ROLE_RGB[distribution.key],
               )}
               disabled={distribution.copies === 0}
@@ -60,15 +60,15 @@ export function LabRoleDistribution({ distributions, onOpenRole }: LabRoleDistri
               onClick={() => onOpenRole(distribution.key)}
             >
               <span className="grid min-w-0">
-                <strong className="text-[0.82rem] text-[rgb(var(--lab-role-rgb))]">{distribution.label}</strong>
-                <small className="text-[0.68rem] text-muted">{formatInteger(distribution.copies)} copias</small>
+                <strong className="text-small text-[rgb(var(--lab-role-rgb))]">{distribution.label}</strong>
+                <small className="text-micro text-muted">{formatInteger(distribution.copies)} copias</small>
               </span>
-              <span className="flex h-[1.35rem] overflow-hidden rounded-[0.4rem] bg-foreground/6" aria-hidden="true">
+              <span className="flex h-[1.35rem] overflow-hidden rounded-tag bg-foreground/6" aria-hidden="true">
                 {distribution.buckets.map((value, index) => (
                   <span
                     key={DISTRIBUTION_BUCKETS[index]}
                     className={cx(
-                      'grid place-items-center overflow-hidden whitespace-nowrap text-[0.66rem] font-bold tabular-nums transition-[width]',
+                      'grid place-items-center overflow-hidden whitespace-nowrap text-micro font-bold tabular-nums transition-[width]',
                       BUCKET_SEGMENT[index],
                     )}
                     style={{ width: `${value * 100}%` }}
@@ -79,8 +79,8 @@ export function LabRoleDistribution({ distributions, onOpenRole }: LabRoleDistri
                 ))}
               </span>
               <span className="grid justify-items-end tabular-nums">
-                <strong className="text-[0.9rem] text-foreground">{formatShortPercent(distribution.atLeastOne)}</strong>
-                <small className="text-[0.68rem] text-muted">1 o más</small>
+                <strong className="text-body text-foreground">{formatShortPercent(distribution.atLeastOne)}</strong>
+                <small className="text-micro text-muted">1 o más</small>
               </span>
             </button>
           </li>

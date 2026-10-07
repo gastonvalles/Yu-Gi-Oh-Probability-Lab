@@ -34,12 +34,12 @@ export function BuildDeckView({ side, name, zones, deltaByCardId, onCardClick }:
     <section className="grid min-w-0 gap-2" aria-label={`Build ${side}: ${name}`}>
       <header className="flex min-w-0 items-center gap-2">
         <SideBadge side={side} />
-        <strong className="truncate text-[0.9rem] text-foreground">{name}</strong>
+        <strong className="truncate text-body text-foreground">{name}</strong>
       </header>
       {ZONES.map(({ key, label }) =>
         zones[key].length === 0 ? null : (
           <div key={key} className="grid gap-1">
-            <span className="text-[0.7rem] font-bold text-muted">
+            <span className="text-micro font-bold text-muted">
               {label} [{formatInteger(zones[key].length)}]
             </span>
             <div className={cx('grid grid-cols-8 gap-[0.2rem] border p-[0.2rem] sm:grid-cols-10', ZONE_STYLE[key])}>
@@ -58,7 +58,7 @@ export function BuildDeckView({ side, name, zones, deltaByCardId, onCardClick }:
                       change === 'added' && '-outline-offset-1 outline-2 outline-success/90',
                       change === 'removed' && '-outline-offset-1 outline-2 outline-danger/90',
                       pending &&
-                        "after:absolute after:right-[0.15rem] after:top-[0.15rem] after:grid after:size-4 after:place-items-center after:rounded-full after:bg-warning after:text-[0.66rem] after:font-extrabold after:text-[#1a1204] after:content-['?']",
+                        "after:absolute after:right-[0.15rem] after:top-[0.15rem] after:grid after:size-4 after:place-items-center after:rounded-full after:bg-warning after:text-micro after:font-extrabold after:text-[#1a1204] after:content-['?']",
                     )}
                     title={pending ? `${card.name}: sin clasificar` : card.name}
                     onClick={() => onCardClick(card)}
