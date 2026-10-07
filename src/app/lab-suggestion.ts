@@ -10,7 +10,7 @@ const MIN_CULPRIT_PROBABILITY = 0.02
 const MIN_CLEAN_GAIN = 0.003
 const MAX_COPIES = 3
 /** Tope de variantes a calcular: cada una enumera todas las manos, en celulares pesa. */
-const MAX_CANDIDATES = 8
+const MAX_CANDIDATES = 5
 const OPENING_ROLES: readonly CardRole[] = ['starter', 'extender', 'enabler', 'searcher', 'draw', 'combo_piece']
 
 /** Qué le quita más manos limpias al deck en la vista activa. */
@@ -94,24 +94,47 @@ const byCopies = (direction: 1 | -1) => (left: CardEntry, right: CardEntry) =>
   direction * (left.copies - right.copies) || left.name.localeCompare(right.name)
 const isOpener = (card: CardEntry) => card.roles.some((role) => OPENING_ROLES.includes(role))
 
+/** Roles que no se tocan salvo que no quede otra: son lo que el deck usa para jugar contra el rival. */
+const VALUABLE_ROLES: readonly CardRole[] = ['handtrap', 'disruption', 'boardbreaker', 'removal', 'floodgate']
+const SUPPORT_ROLES: readonly CardRole[] = ['payoff', 'recovery', 'draw', 'searcher']
+
 /**
- * Cambios que atacan al culpable, siempre con el deck del mismo tamaño cuando se suma algo:
- * - problema por presencia ("2+ Brick"): sacar una copia de lo que lo causa, o cambiarla por un opener;
- * - problema por ausencia ("0 Handtrap"): sumar lo que falta a costa de una carta de relleno;
- * - manos sin salida: cambiar una carta que no abre por un starter/extender.
+ * Cuánto cuesta sacar una carta (menor = más fácil de sacrificar): lo que el propio deck marcó como
+ * mala (Brick/Garnet) primero, después el relleno (Tech o sin roles), el soporte y, último, la interacción.
  */
-export function buildCandidates(culprit: Culprit, cards: CardEntry[], checks: HandPattern[]): Candidate[] {
-  const openers = (role: 'starter' | 'extender') => cards.filter((card) => card.roles.includes(role) && card.copies < MAX_COPIES).sort(byCopies(1))
+export function cutCost(card: CardEntry): number {
+  if (card.roles.some((role) => role === 'brick' || role === 'garnet')) return 0
+  if (card.roles.length === 0 || card.roles.every((role) => role === 'tech')) return 1
+  if (card.roles.some((role) => VALUABLE_ROLES.includes(role))) return 4
+  return card.roles.some((role) => SUPPORT_ROLES.includes(role)) ? 3 : 2
+}
+
+/**
+ * Cambios que atacan al culpable, siempre con el deck del mismo tamaño y respetando el límite de
+ * copias del formato (banlist):
+ * - problema por presencia ("2+ Brick"): sacar una copia de lo que lo causa, o cambiarla por un opener;
+ * - problema por ausencia ("0 Handtrap"): sumar lo que falta a costa de la carta más sacrificable;
+ * - manos sin salida: cambiar la carta más sacrificable por un starter/extender.
+ */
+export function buildCandidates(
+  culprit: Culprit,
+  cards: CardEntry[],
+  checks: HandPattern[],
+  maxCopiesOf: (card: CardEntry) => number = () => MAX_COPIES,
+): Candidate[] {
+  const hasRoom = (card: CardEntry) => card.copies < maxCopiesOf(card)
+  const room = (card: CardEntry) => maxCopiesOf(card) - card.copies
+  const openers = (role: 'starter' | 'extender') => cards.filter((card) => card.roles.includes(role) && hasRoom(card)).sort(byCopies(1))
   const openersPool = [...openers('starter'), ...openers('extender')].slice(0, 2)
   const cuttable = (excluded: Set<string>) =>
-    cards
-      .filter((card) => !excluded.has(card.id) && !isOpener(card))
-      .sort((left, right) => Number(right.roles.some((role) => role === 'brick' || role === 'garnet')) - Number(left.roles.some((role) => role === 'brick' || role === 'garnet')) || right.copies - left.copies || left.name.localeCompare(right.name))
+    cards.filter((card) => !excluded.has(card.id) && !isOpener(card)).sort((left, right) => cutCost(left) - cutCost(right) || right.copies - left.copies || left.name.localeCompare(right.name))
+  const withCut = (cut: CardEntry | undefined, card: CardEntry) =>
+    candidateOf(cards, [...(cut ? [{ action: 'remove' as const, card: cut }] : []), { action: 'add', card }])
 
   if (culprit.kind === 'no-opening') {
     const cut = cuttable(new Set(openersPool.map((card) => card.id)))[0]
 
-    return openersPool.map((card) => candidateOf(cards, [...(cut ? [{ action: 'remove' as const, card: cut }] : []), { action: 'add', card }]))
+    return openersPool.map((card) => withCut(cut, card))
   }
 
   const pattern = checks.find((check) => check.id === culprit.patternId)
@@ -124,21 +147,17 @@ export function buildCandidates(culprit: Culprit, cards: CardEntry[], checks: Ha
     )
   const includeIds = idsOf('include')
   const excludeIds = idsOf('exclude')
-  // Un problema por presencia baja sacando copias; uno por ausencia baja sumándolas.
-  const causes = cards.filter((card) => includeIds.has(card.id)).sort(byCopies(-1)).slice(0, 3)
-  const missing = cards.filter((card) => excludeIds.has(card.id) && card.copies < MAX_COPIES).sort(byCopies(1)).slice(0, 2)
+  // Un problema por presencia baja sacando copias; uno por ausencia baja sumándolas (solo las que la banlist permite).
+  const causes = cards.filter((card) => includeIds.has(card.id)).sort((l, r) => cutCost(l) - cutCost(r) || r.copies - l.copies).slice(0, 3)
+  const missing = cards.filter((card) => excludeIds.has(card.id) && hasRoom(card)).sort((l, r) => room(r) - room(l) || l.copies - r.copies).slice(0, 2)
   const cut = cuttable(new Set([...excludeIds, ...openersPool.map((card) => card.id)]))[0]
 
-  const withCut = (card: CardEntry) => candidateOf(cards, [...(cut ? [{ action: 'remove' as const, card: cut }] : []), { action: 'add', card }])
   // En orden de prioridad (se recorta a MAX_CANDIDATES): lo que ataca el problema primero; subir salidas, al final.
   const candidates = [
     ...causes.map((card) => candidateOf(cards, [{ action: 'remove', card }])),
-    ...missing.map(withCut),
+    ...missing.map((card) => withCut(cut, card)),
     // Si el problema en sí no se puede bajar sin perder más de lo que se gana, queda subir las salidas.
-    ...openersPool.map(withCut),
-    ...causes.slice(0, 2).flatMap((cause) =>
-      openersPool.filter((opener) => opener.id !== cause.id).map((opener) => candidateOf(cards, [{ action: 'remove', card: cause }, { action: 'add', card: opener }])),
-    ),
+    ...openersPool.map((card) => withCut(cut, card)),
   ]
 
   return candidates.slice(0, MAX_CANDIDATES)
@@ -201,7 +220,12 @@ export function buildMissingRoleHint(culprit: Culprit, cards: CardEntry[], check
 }
 
 /** Problema por ausencia cuyas cartas "salvadoras" ya están al máximo de copias: hay que sumar cartas distintas. */
-export function buildMaxedHint(culprit: Culprit, cards: CardEntry[], checks: HandPattern[]): string | null {
+export function buildMaxedHint(
+  culprit: Culprit,
+  cards: CardEntry[],
+  checks: HandPattern[],
+  maxCopiesOf: (card: CardEntry) => number = () => MAX_COPIES,
+): string | null {
   const pattern = checks.find((check) => check.id === culprit.patternId)
   const groups = buildDerivedDeckGroupMap(cards)
   const excludeIds = new Set(
@@ -211,8 +235,8 @@ export function buildMaxedHint(culprit: Culprit, cards: CardEntry[], checks: Han
   )
   const saviors = cards.filter((card) => excludeIds.has(card.id))
 
-  return saviors.length > 0 && saviors.every((card) => card.copies >= MAX_COPIES)
-    ? `Las cartas que lo evitan (${saviors.map((card) => card.name).join(', ')}) ya están al máximo de ${MAX_COPIES} copias: para bajarlo, sumá cartas distintas con esos roles.`
+  return saviors.length > 0 && saviors.every((card) => card.copies >= maxCopiesOf(card))
+    ? `Las cartas que lo evitan (${saviors.map((card) => card.name).join(', ')}) ya están al máximo de copias que permite tu formato: para bajarlo, sumá cartas distintas con esos roles.`
     : null
 }
 

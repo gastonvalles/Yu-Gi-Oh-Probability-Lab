@@ -22,14 +22,18 @@ export interface SuggestionAnalysis {
   best: Outcome | null
   /** Si nada sube: el que más baja el problema (cuesta salidas). */
   tradeoff: Outcome | null
+  /** Variantes que se pudieron comparar (0 = ninguna era evaluable). */
+  compared: number
 }
 
 interface SuggestionState {
   status: 'loading' | 'done'
+  /** Variantes ya calculadas y total a calcular. */
+  progress: { done: number; total: number }
   analysis: SuggestionAnalysis
 }
 
-const EMPTY_ANALYSIS: SuggestionAnalysis = { best: null, tradeoff: null }
+const EMPTY_ANALYSIS: SuggestionAnalysis = { best: null, tradeoff: null, compared: 0 }
 
 /**
  * Qué es lo que más frena al deck y qué cambio de una carta lo mejora más. Cada variante se calcula
@@ -41,10 +45,11 @@ export function useLabSuggestion(
   handSize: number,
   view: TurnView,
   result: LabViewResult,
+  maxCopiesOf: (card: CardEntry) => number,
 ) {
   const culprit = useMemo<Culprit | null>(() => findCulprit(result), [result])
   const baseClean = result.cleanProbability
-  const [state, setState] = useState<SuggestionState>({ status: 'loading', analysis: EMPTY_ANALYSIS })
+  const [state, setState] = useState<SuggestionState>({ status: 'loading', progress: { done: 0, total: 0 }, analysis: EMPTY_ANALYSIS })
 
   useEffect(() => {
     if (!culprit) {
@@ -52,8 +57,8 @@ export function useLabSuggestion(
     }
 
     let cancelled = false
-    setState({ status: 'loading', analysis: EMPTY_ANALYSIS })
-    const candidates = buildCandidates(culprit, cards, checks)
+    const candidates = buildCandidates(culprit, cards, checks, maxCopiesOf)
+    setState({ status: candidates.length === 0 ? 'done' : 'loading', progress: { done: 0, total: candidates.length }, analysis: EMPTY_ANALYSIS })
 
     const evaluated: Evaluation[] = []
     const onlyView = view === 'average' ? undefined : view
@@ -76,7 +81,8 @@ export function useLabSuggestion(
         const outcomes = toOutcomes(culprit, view, evaluated)
         setState({
           status: evaluated.length === candidates.length ? 'done' : 'loading',
-          analysis: { best: pickBest(outcomes, baseClean), tradeoff: pickTradeoff(outcomes, culprit.probability) },
+          progress: { done: evaluated.length, total: candidates.length },
+          analysis: { best: pickBest(outcomes, baseClean), tradeoff: pickTradeoff(outcomes, culprit.probability), compared: outcomes.length },
         })
       }),
     )
@@ -84,11 +90,11 @@ export function useLabSuggestion(
     return () => {
       cancelled = true
     }
-  }, [baseClean, cards, checks, culprit, handSize, view])
+  }, [baseClean, cards, checks, culprit, handSize, maxCopiesOf, view])
 
   const hint = useMemo(
-    () => (culprit ? (buildMissingRoleHint(culprit, cards, checks) ?? buildMaxedHint(culprit, cards, checks)) : null),
-    [culprit, cards, checks],
+    () => (culprit ? (buildMissingRoleHint(culprit, cards, checks) ?? buildMaxedHint(culprit, cards, checks, maxCopiesOf)) : null),
+    [culprit, cards, checks, maxCopiesOf],
   )
   const causes = useMemo(() => (culprit ? listCauses(culprit, cards, checks) : []), [culprit, cards, checks])
 

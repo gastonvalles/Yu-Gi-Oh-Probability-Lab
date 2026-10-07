@@ -118,4 +118,34 @@ describe('lab-suggestion', () => {
     expect(best?.changes.find((change) => change.action === 'add')?.card.id).toBe('starter')
     expect(best!.culpritProbability).toBeLessThan(culprit.probability)
   })
+
+  it('no sugiere sumar copias que la banlist no permite', () => {
+    const cards = [card('starter', 1, ['starter']), card('free', 1, ['extender']), ...Array.from({ length: 38 }, (_, index) => card(`f${index}`, 1, ['tech']))]
+    const culprit = { kind: 'no-opening' as const, patternId: null, name: 'x', probability: 0.5 }
+    // "starter" está limitada a 1 copia: no se puede sumar otra.
+    const candidates = buildCandidates(culprit, cards, [opening], (entry) => (entry.id === 'starter' ? 1 : 3))
+    const added = candidates.flatMap((candidate) => candidate.changes.filter((change) => change.action === 'add').map((change) => change.card.id))
+
+    expect(added).not.toContain('starter')
+    expect(added).toContain('free')
+  })
+
+  it('sacrifica primero lo que el deck marcó como malo o de relleno, nunca la interacción', () => {
+    const cards = [
+      card('starter', 1, ['starter']),
+      card('ash', 3, ['handtrap', 'disruption']),
+      card('brick', 1, ['brick']),
+      ...Array.from({ length: 35 }, (_, index) => card(`f${index}`, 1, ['tech'])),
+    ]
+    const culprit = { kind: 'no-opening' as const, patternId: null, name: 'x', probability: 0.5 }
+    const [candidate] = buildCandidates(culprit, cards, [opening])
+
+    expect(candidate.changes.find((change) => change.action === 'remove')?.card.id).toBe('brick')
+
+    // Sin nada malo ni de relleno disponible, igual prefiere el soporte antes que una handtrap.
+    const noFiller = [card('starter', 1, ['starter']), card('ash', 3, ['handtrap']), card('rec', 1, ['recovery']), ...Array.from({ length: 35 }, (_, index) => card(`s${index}`, 1, ['starter']))]
+    const [other] = buildCandidates(culprit, noFiller, [opening])
+
+    expect(other.changes.find((change) => change.action === 'remove')?.card.id).not.toBe('ash')
+  })
 })
