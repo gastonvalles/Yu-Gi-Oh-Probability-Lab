@@ -8,6 +8,6 @@ self.onmessage = (event: MessageEvent<{ id: number } & LabOddsInput>) => {
 
   self.postMessage({
     id,
-    odds: odds && { first: odds.first, second: odds.second, rules: { first: [...odds.rules.first], second: [...odds.rules.second] } },
+    odds: odds && { first: odds.first, second: odds.second, clean: odds.clean, rules: { first: [...odds.rules.first], second: [...odds.rules.second] } },
   })
 }

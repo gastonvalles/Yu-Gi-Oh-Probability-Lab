@@ -20,6 +20,7 @@ import { LabFailureBreakdown } from './probability/LabFailureBreakdown'
 import { LabRoleDistribution } from './probability/LabRoleDistribution'
 import { LabRuleList } from './probability/LabRuleList'
 import { LabScoreCard } from './probability/LabScoreCard'
+import { LabSuggestion } from './probability/LabSuggestion'
 import { LabPendingClassification } from './probability/LabPendingClassification'
 import { PatternEditorDrawer } from './probability/PatternEditorDrawer'
 import type { PatternEditorActions } from './probability/pattern-editor-actions'
@@ -270,6 +271,7 @@ export function ProbabilityPanel({
           {/* Desktop: resultado y reparto lado a lado (misma altura); roles y reglas a lo ancho. */}
           <LabScoreCard results={results} view={activeTurnView} isRecalculating={lab.isStale} />
           <LabFailureBreakdown result={currentResult} />
+          <LabSuggestion cards={derivedMainCards} checks={lab.allChecks} handSize={handSize} view={activeTurnView} result={currentResult} />
           <LabRoleDistribution
             distributions={lab.roleDistributions[activeTurnView]}
             onOpenRole={(role) => setKpiModalRole(ROLE_TO_KPI[role])}

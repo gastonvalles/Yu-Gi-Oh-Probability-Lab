@@ -1,6 +1,6 @@
-import { formatInteger, formatShortPercent } from '../../app/utils'
 import type { PatternKind } from '../../types'
 import { cx } from '../ui/cx'
+import { formatOdds } from './lab-copy'
 import { describePracticeMatch, type PracticeHandMatch, type PracticeVerdict } from './practice'
 import { RULE_COLOR, VERDICT_COLOR } from './practice-styles'
 
@@ -9,20 +9,8 @@ const RULE_BUTTON =
 const EXPLAIN_TEXT = 'm-0 text-[0.88rem] leading-[1.45] text-white/92 [overflow-wrap:anywhere]'
 const ODDS_TEXT = 'm-0 col-span-full text-[0.8rem] leading-[1.45] text-white/62 [overflow-wrap:anywhere]'
 
-/** "Pasa en 1 de cada x manos (p%)"; si pasa en más de la mitad, "x de cada 10" (1 de cada 1 no tiene sentido). */
-export function formatOdds(probability: number): string {
-  const percent = formatShortPercent(probability)
-
-  if (probability >= 0.995) {
-    return `Pasa en casi todas las manos (${percent}).`
-  }
-
-  if (probability > 0.5) {
-    return `Pasa en ${Math.min(9, Math.max(6, Math.round(probability * 10)))} de cada 10 manos (${percent}).`
-  }
-
-  return `Pasa en 1 de cada ${formatInteger(Math.max(2, Math.round(1 / probability)))} manos (${percent}).`
-}
+/** Se exporta desde acá para quien ya lo importaba (vive en lab-copy). */
+export { formatOdds }
 
 /** Id del chip "Mano no jugable" (no es una regla del Lab). */
 export const UNPLAYABLE_ID = 'unplayable'
