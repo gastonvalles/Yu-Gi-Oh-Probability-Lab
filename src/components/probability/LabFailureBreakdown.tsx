@@ -69,7 +69,7 @@ export function LabFailureBreakdown({ result }: { result: LabViewResult }) {
       title="Cómo se reparten tus manos"
       summary={`${formatShortPercent(values.withProblem)} con problema · ${formatShortPercent(values.noOpening)} sin salida`}
       defaultOpenOnMobile={false}
-      className="order-2"
+      className="order-3 min-[1101px]:order-2"
     >
       <div className="flex h-4 overflow-hidden rounded-full bg-foreground/8">
         {SEGMENTS.map((segment) => (
