@@ -34,7 +34,7 @@ export function LabRoleDistribution({ distributions, onOpenRole }: LabRoleDistri
       title="Qué robás de cada rol"
       summary={starters ? `${formatShortPercent(starters.atLeastOne)} con 1+ starter` : undefined}
       defaultOpenOnMobile={false}
-      className="order-3 min-[1101px]:col-span-full"
+      className="order-4 min-[1101px]:col-span-full"
     >
       <div className="flex flex-wrap items-center gap-x-[0.8rem] gap-y-[0.35rem] text-[0.72rem] text-muted" aria-hidden="true">
         <span>Copias robadas:</span>
