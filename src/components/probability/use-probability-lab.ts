@@ -3,7 +3,6 @@ import { useDeferredValue, useMemo } from 'react'
 import { getDeckModelStatus } from '../../app/deck-model-status'
 import { curatePatterns, hasMissingRequiredCards } from '../../app/pattern-curation'
 import { buildActiveRuleSet, buildPatternPresets, type SystemRuleNames } from '../../app/pattern-presets'
-import { computeLabResults, type LabComputation } from '../../app/probability-lab'
 import { buildRoleDistributions, type RoleDistribution } from '../../app/role-distribution'
 import {
   countCardsMissingOrigin,
@@ -13,6 +12,7 @@ import {
   isClassificationStepComplete,
 } from '../../app/role-step'
 import type { CardEntry, HandPattern } from '../../types'
+import { useLabComputation } from './use-lab-computation'
 
 const NO_RULE_NAMES: SystemRuleNames = {}
 
@@ -52,10 +52,13 @@ export function useProbabilityLab(
   const deferredChecks = useDeferredValue(allChecks)
   const deferredCards = useDeferredValue(derivedMainCards)
   const canCalculate = !isEditingDeck && readiness.status === 'ready' && deferredChecks.length > 0
-  const computation = useMemo<LabComputation | null>(
-    () => (canCalculate ? computeLabResults(deferredCards, deferredChecks, handSize) : null),
+  // El cálculo exacto corre en workers y se recuerda (en memoria y en el dispositivo): abrir el Lab con
+  // el mismo deck y reglas muestra el resultado al instante.
+  const labInput = useMemo(
+    () => (canCalculate ? { cards: deferredCards, patterns: deferredChecks, handSize } : null),
     [canCalculate, deferredCards, deferredChecks, handSize],
   )
+  const { computation, isComputing } = useLabComputation(labInput)
   const roleDistributions = useMemo<Record<'first' | 'second' | 'average', RoleDistribution[]>>(
     () => ({
       first: buildRoleDistributions(derivedMainCards, [handSize]),
@@ -72,14 +75,15 @@ export function useProbabilityLab(
     availablePresets,
     canCalculate,
     computation,
-    isStale: deferredChecks !== allChecks || deferredCards !== derivedMainCards,
+    isComputing,
+    isStale: isComputing || deferredChecks !== allChecks || deferredCards !== derivedMainCards,
     modelStatus,
     readiness,
     roleDistributions,
   }
 }
 
-function buildReadiness(cards: CardEntry[]): LabReadiness {
+export function buildReadiness(cards: CardEntry[]): LabReadiness {
   if (cards.reduce((total, card) => total + card.copies, 0) === 0) {
     return { status: 'empty-deck' }
   }

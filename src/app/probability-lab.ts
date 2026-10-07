@@ -1,6 +1,7 @@
 import { calculateProbabilities } from '../probability'
 import { getCleanHands, getCleanProbability } from '../probability-summary'
 import type {
+  CalculationOutput,
   CalculationSummary,
   CardEntry,
   HandPattern,
@@ -55,6 +56,20 @@ export function getHandSizeForView(baseHandSize: number, view: Exclude<TurnView,
   return view === 'second' ? baseHandSize + 1 : baseHandSize
 }
 
+/**
+ * Texto que identifica un cálculo por contenido (mano + cartas + reglas). Los ids de las condiciones se
+ * dejan afuera: se generan al azar cada vez que se arman las reglas del sistema y no cambian el resultado
+ * (que se indexa por id de regla), así que con ellos la caché nunca coincidía.
+ */
+export function labInputSignature(cards: CardEntry[], patterns: HandPattern[], baseHandSize: number): string {
+  const stablePatterns = patterns.map((pattern) => ({
+    ...pattern,
+    conditions: pattern.conditions.map(({ id: _conditionId, ...condition }) => condition),
+  }))
+
+  return JSON.stringify([baseHandSize, cards, stablePatterns])
+}
+
 const MAX_CACHED_COMPUTATIONS = 24
 const computationCache = new Map<string, LabComputation>()
 
@@ -67,7 +82,7 @@ export function computeLabResults(
   patterns: HandPattern[],
   baseHandSize: number,
 ): LabComputation {
-  const key = JSON.stringify([baseHandSize, cards, patterns])
+  const key = labInputSignature(cards, patterns, baseHandSize)
   const cached = computationCache.get(key)
 
   if (cached) {
@@ -104,8 +119,31 @@ function computeLabResultsUncached(
   patterns: HandPattern[],
   baseHandSize: number,
 ): LabComputation {
-  const first = calculateView(cards, patterns, 'first', baseHandSize)
-  const second = calculateView(cards, patterns, 'second', baseHandSize)
+  return assembleLabComputation(
+    calculateView(cards, patterns, 'first', baseHandSize),
+    calculateView(cards, patterns, 'second', baseHandSize),
+    patterns,
+    baseHandSize,
+  )
+}
+
+/** Enumeración exacta de un turno (lo pesado): se puede correr en un worker y armar el resultado después. */
+export function calculateLabView(
+  cards: CardEntry[],
+  patterns: HandPattern[],
+  baseHandSize: number,
+  view: Exclude<TurnView, 'average'>,
+): CalculationOutput {
+  return calculateView(cards, patterns, view, baseHandSize)
+}
+
+/** Arma el resultado del Lab (1º, 2º y promedio) a partir de los dos turnos ya calculados. */
+export function assembleLabComputation(
+  first: CalculationOutput,
+  second: CalculationOutput,
+  patterns: HandPattern[],
+  baseHandSize: number,
+): LabComputation {
   const blockingIssues = [...first.blockingIssues, ...second.blockingIssues]
 
   if (!first.summary || !second.summary) {

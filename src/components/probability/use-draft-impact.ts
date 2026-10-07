@@ -1,7 +1,8 @@
-import { useDeferredValue, useMemo } from 'react'
+import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 
+import { labComputationKey, peekLabComputation, requestLabComputation, type LabComputationInput } from '../../app/lab-computation-client'
 import { buildActiveRuleSet } from '../../app/pattern-presets'
-import { computeLabResults } from '../../app/probability-lab'
+import { computeLabResults, type LabComputation } from '../../app/probability-lab'
 import type { CardEntry, HandPattern, TurnContext } from '../../types'
 
 export interface DraftImpact {
@@ -28,23 +29,34 @@ function probabilityOf(results: { patternId: string; probability: number }[], pa
   return results.find((result) => result.patternId === patternId)?.probability ?? null
 }
 
-/** Cuánto se da la regla del borrador y cómo movería las manos limpias (sin tocar el store). */
-export function computeDraftImpact({
+/** Los dos cálculos que necesita el borrador: la regla sola y el Lab completo con ella. */
+function draftCalculations({
   draft,
   cards,
   customPatterns,
   disabledGenericRuleIds,
   handSize,
-  cleanBefore,
-}: DraftImpactInput): DraftImpact | null {
+}: DraftImpactInput): { alone: LabComputationInput; full: LabComputationInput } | null {
   if (!draft || !isComplete(draft)) {
     return null
   }
 
   // La regla sola se mide en ambos turnos: si fuera "Solo 1º", el turno 2º quedaría
   // sin reglas y el cálculo se bloquearía. Después se oculta el turno que no aplica.
-  const alone = computeLabResults(cards, [{ ...draft, turnContext: 'either' }], handSize)
+  const withDraft = [...customPatterns.filter((pattern) => pattern.id !== draft.id), draft]
 
+  return {
+    alone: { cards, patterns: [{ ...draft, turnContext: 'either' }], handSize },
+    full: { cards, patterns: buildActiveRuleSet(cards, withDraft, disabledGenericRuleIds), handSize },
+  }
+}
+
+function toDraftImpact(
+  draft: HandPattern,
+  alone: LabComputation,
+  full: LabComputation,
+  cleanBefore: number | null,
+): DraftImpact | null {
   if (alone.status !== 'ok') {
     return null
   }
@@ -53,9 +65,6 @@ export function computeDraftImpact({
   const first = scope === 'second' ? null : probabilityOf(alone.results.first.patternResults, draft.id)
   const second = scope === 'first' ? null : probabilityOf(alone.results.second.patternResults, draft.id)
   const main = scope === 'either' ? probabilityOf(alone.results.average.patternResults, draft.id) : (first ?? second)
-
-  const withDraft = [...customPatterns.filter((pattern) => pattern.id !== draft.id), draft]
-  const full = computeLabResults(cards, buildActiveRuleSet(cards, withDraft, disabledGenericRuleIds), handSize)
   const clean =
     cleanBefore !== null && full.status === 'ok'
       ? { before: cleanBefore, after: full.results.average.cleanProbability }
@@ -64,13 +73,66 @@ export function computeDraftImpact({
   return { rule: { first, second, main, scope }, clean }
 }
 
-/** Vista previa en vivo del borrador, con valores diferidos para que escribir no se trabe. */
+/** Cuánto se da la regla del borrador y cómo movería las manos limpias (sin tocar el store). */
+export function computeDraftImpact(input: DraftImpactInput): DraftImpact | null {
+  const calculations = draftCalculations(input)
+
+  if (!calculations || !input.draft) {
+    return null
+  }
+
+  const { alone, full } = calculations
+
+  return toDraftImpact(
+    input.draft,
+    computeLabResults(alone.cards, alone.patterns, alone.handSize),
+    computeLabResults(full.cards, full.patterns, full.handSize),
+    input.cleanBefore,
+  )
+}
+
+/**
+ * Vista previa en vivo del borrador: valores diferidos para que escribir no se trabe y cálculo en
+ * workers (cada edición dispara dos enumeraciones completas; en el hilo principal congelaban el editor).
+ */
 export function useDraftImpact(input: DraftImpactInput): DraftImpact | null {
   const deferredDraft = useDeferredValue(input.draft)
   const { cards, cleanBefore, customPatterns, disabledGenericRuleIds, handSize } = input
-
-  return useMemo(
-    () => computeDraftImpact({ draft: deferredDraft, cards, cleanBefore, customPatterns, disabledGenericRuleIds, handSize }),
+  const calculations = useMemo(
+    () => draftCalculations({ draft: deferredDraft, cards, cleanBefore, customPatterns, disabledGenericRuleIds, handSize }),
     [cards, cleanBefore, customPatterns, deferredDraft, disabledGenericRuleIds, handSize],
   )
+  const [settled, setSettled] = useState<{ calculations: typeof calculations; impact: DraftImpact | null } | null>(null)
+
+  useEffect(() => {
+    if (!calculations || !deferredDraft) {
+      return
+    }
+
+    let cancelled = false
+
+    void Promise.all([requestLabComputation(calculations.alone), requestLabComputation(calculations.full)]).then(([alone, full]) => {
+      if (!cancelled) {
+        setSettled({ calculations, impact: toDraftImpact(deferredDraft, alone, full, cleanBefore) })
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [calculations, cleanBefore, deferredDraft])
+
+  if (!calculations) {
+    return null
+  }
+
+  // Si ya estaba calculado (borrador sin cambios de fondo) se muestra de inmediato; si no, el último valor.
+  const aloneCached = peekLabComputation(labComputationKey(calculations.alone))
+  const fullCached = peekLabComputation(labComputationKey(calculations.full))
+
+  if (aloneCached && fullCached && deferredDraft) {
+    return toDraftImpact(deferredDraft, aloneCached, fullCached, cleanBefore)
+  }
+
+  return settled?.impact ?? null
 }

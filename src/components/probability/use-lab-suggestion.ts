@@ -15,7 +15,7 @@ import {
   type Culprit,
   type Outcome,
 } from '../../app/lab-suggestion'
-import type { LabViewResult } from '../../app/probability-lab'
+import { labInputSignature, type LabViewResult } from '../../app/probability-lab'
 import type { CardEntry, HandPattern, TurnView } from '../../types'
 
 export interface SuggestionAnalysis {
@@ -69,7 +69,7 @@ export function useLabSuggestion(
     // Cada variante llega por separado: se muestra la mejor hasta el momento sin esperar a las demás.
     void Promise.all(
       candidates.map(async (candidate) => {
-        const odds = await requestLabOdds(JSON.stringify(['suggest', handSize, onlyView, candidate.cards, checks]), {
+        const odds = await requestLabOdds(`suggest|${onlyView ?? 'both'}|${labInputSignature(candidate.cards, checks, handSize)}`, {
           cards: candidate.cards,
           patterns: checks,
           handSize,

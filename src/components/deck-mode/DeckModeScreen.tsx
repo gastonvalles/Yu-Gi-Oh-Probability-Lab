@@ -26,6 +26,7 @@ import {
   LazyProbabilityPanel,
   preloadHeavySteps,
 } from './lazy-steps'
+import { useLabPrewarm } from '../probability/use-lab-prewarm'
 import { useDeckModeController } from './use-deck-mode-controller'
 
 const REDUCED_MOTION_MEDIA_QUERY = '(prefers-reduced-motion: reduce)'
@@ -106,6 +107,8 @@ export function DeckModeScreen() {
   })
   const isDeckBuilderStep = activeStep === 'deck-builder'
   const isCategorizationStep = activeStep === 'categorization'
+  // Con el deck quieto se deja calculado el Lab de fondo: al abrirlo el resultado ya está.
+  useLabPrewarm({ ...controller.probability, enabled: activeStep !== 'probability-lab' })
   const contentScrollRef = useRef<HTMLDivElement>(null)
   const activeStepRef = useRef(activeStep)
   const [stepDirection, setStepDirection] = useState<StepNavigationDirection>('forward')
