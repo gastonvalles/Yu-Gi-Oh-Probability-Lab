@@ -1,3 +1,4 @@
+import { formatInteger, formatShortPercent } from '../../app/utils'
 import type { TurnView } from '../../types'
 import type { LabViewResult } from '../../app/probability-lab'
 
@@ -59,4 +60,19 @@ export function buildFailureAdvice(result: LabViewResult): string {
   }
 
   return 'Se reparten entre manos sin salida y manos con salida pero con algún problema.'
+}
+
+/** "Pasa en 1 de cada x manos (p%)"; si pasa en más de la mitad, "x de cada 10" (1 de cada 1 no tiene sentido). */
+export function formatOdds(probability: number): string {
+  const percent = formatShortPercent(probability)
+
+  if (probability >= 0.995) {
+    return `Pasa en casi todas las manos (${percent}).`
+  }
+
+  if (probability > 0.5) {
+    return `Pasa en ${Math.min(9, Math.max(6, Math.round(probability * 10)))} de cada 10 manos (${percent}).`
+  }
+
+  return `Pasa en 1 de cada ${formatInteger(Math.max(2, Math.round(1 / probability)))} manos (${percent}).`
 }

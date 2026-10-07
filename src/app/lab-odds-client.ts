@@ -2,7 +2,7 @@ import { computeLabOdds, type LabOdds, type LabOddsInput } from './lab-odds'
 
 interface WorkerReply {
   id: number
-  odds: { first: number; second: number; rules: { first: [string, number][]; second: [string, number][] } } | null
+  odds: { first: number; second: number; clean: { first: number; second: number }; rules: { first: [string, number][]; second: [string, number][] } } | null
 }
 
 const cache = new Map<string, LabOdds | null>()
@@ -20,7 +20,7 @@ function getWorker(): Worker | null {
     worker?.addEventListener('message', (event: MessageEvent<WorkerReply>) => {
       const { id, odds } = event.data
       pending.get(id)?.(
-        odds && { first: odds.first, second: odds.second, rules: { first: new Map(odds.rules.first), second: new Map(odds.rules.second) } },
+        odds && { first: odds.first, second: odds.second, clean: odds.clean, rules: { first: new Map(odds.rules.first), second: new Map(odds.rules.second) } },
       )
       pending.delete(id)
     })

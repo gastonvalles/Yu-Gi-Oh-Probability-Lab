@@ -6,6 +6,8 @@ export interface LabOdds {
   first: number
   second: number
   rules: { first: Map<string, number>; second: Map<string, number> }
+  /** Manos limpias (con salida y sin problemas) yendo 1º y yendo 2º. */
+  clean: { first: number; second: number }
 }
 
 export interface LabOddsInput {
@@ -24,6 +26,7 @@ export function computeLabOdds({ cards, patterns, handSize }: LabOddsInput): Lab
   const { first, second } = computation.results
 
   return {
+    clean: { first: first.cleanProbability, second: second.cleanProbability },
     first: first.noOpeningProbability,
     second: second.noOpeningProbability,
     rules: {
