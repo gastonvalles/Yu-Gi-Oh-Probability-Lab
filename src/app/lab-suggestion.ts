@@ -133,18 +133,24 @@ export function buildCandidates(culprit: Culprit, cards: CardEntry[], checks: Ha
       openersPool.filter((opener) => opener.id !== cause.id).map((opener) => candidateOf(cards, [{ action: 'remove', card: cause }, { action: 'add', card: opener }])),
     ),
     ...missing.map((card) => candidateOf(cards, [...(cut ? [{ action: 'remove' as const, card: cut }] : []), { action: 'add', card }])),
+    // Si el problema en sí no se puede bajar sin perder más de lo que se gana, queda subir las salidas.
+    ...openersPool.map((card) => candidateOf(cards, [...(cut ? [{ action: 'remove' as const, card: cut }] : []), { action: 'add', card }])),
   ]
 }
 
+/**
+ * Valor de la vista: 1º o 2º leen su lado; el promedio usa los turnos en los que la regla aplica
+ * (una regla "Solo 2º" no existe yendo 1º), igual que el resultado del Lab.
+ */
 const pick = (odds: LabOdds | null, view: TurnView, read: (side: 'first' | 'second') => number | undefined): number | null => {
-  const first = odds ? read('first') : undefined
-  const second = odds ? read('second') : undefined
-
-  if (first === undefined || second === undefined) {
+  if (!odds) {
     return null
   }
 
-  return view === 'first' ? first : view === 'second' ? second : (first + second) / 2
+  const sides = view === 'average' ? (['first', 'second'] as const) : ([view] as const)
+  const values = sides.map(read).filter((value): value is number => value !== undefined)
+
+  return values.length > 0 ? values.reduce((total, value) => total + value, 0) / values.length : null
 }
 
 export function toOutcomes(culprit: Culprit, view: TurnView, evaluated: Evaluation[]): Outcome[] {
@@ -186,6 +192,22 @@ export function buildMissingRoleHint(culprit: Culprit, cards: CardEntry[], check
     .map((condition) => (condition.matcher?.type === 'role' ? getCardRoleDefinition(condition.matcher.value).label : ''))
 
   return labels.length > 0 ? `Tu deck no tiene cartas con rol ${labels.join(', ')}: sumar alguna es lo que más lo baja.` : null
+}
+
+/** Problema por ausencia cuyas cartas "salvadoras" ya están al máximo de copias: hay que sumar cartas distintas. */
+export function buildMaxedHint(culprit: Culprit, cards: CardEntry[], checks: HandPattern[]): string | null {
+  const pattern = checks.find((check) => check.id === culprit.patternId)
+  const groups = buildDerivedDeckGroupMap(cards)
+  const excludeIds = new Set(
+    (pattern?.conditions ?? [])
+      .filter((condition) => condition.kind === 'exclude')
+      .flatMap((condition) => resolveConditionCardIds(condition, groups, cards)),
+  )
+  const saviors = cards.filter((card) => excludeIds.has(card.id))
+
+  return saviors.length > 0 && saviors.every((card) => card.copies >= MAX_COPIES)
+    ? `Las cartas que lo evitan (${saviors.map((card) => card.name).join(', ')}) ya están al máximo de ${MAX_COPIES} copias: para bajarlo, sumá cartas distintas con esos roles.`
+    : null
 }
 
 /** Cartas del deck que causan el problema (para nombrarlas cuando no hay un cambio que convenga). */

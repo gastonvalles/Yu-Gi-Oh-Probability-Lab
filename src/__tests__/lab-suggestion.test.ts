@@ -81,4 +81,41 @@ describe('lab-suggestion', () => {
     expect(pickBest(outcomes, result.cleanProbability)).toBeNull()
     expect(pickTradeoff(outcomes, culprit.probability)?.cleanProbability).toBeLessThan(result.cleanProbability)
   })
+
+  it('si el problema no se puede bajar sin perder salidas, recomienda subir las salidas por otro lado', () => {
+    const cards = [
+      card('both', 4, ['starter', 'brick']),
+      card('pure', 1, ['starter']),
+      ...Array.from({ length: 35 }, (_, index) => card(`f${index}`, 1, ['tech'])),
+    ]
+    const checks = [opening, problem]
+    const result = averageOf(cards, checks)
+    const culprit = { kind: 'problem' as const, patternId: problem.id, name: problem.name, probability: result.patternResults.find((entry) => entry.patternId === problem.id)!.probability }
+    const outcomes = toOutcomes(culprit, 'average', evaluate(buildCandidates(culprit, cards, checks), checks))
+    const best = pickBest(outcomes, result.cleanProbability)
+
+    expect(best).not.toBeNull()
+    expect(best!.changes.find((change) => change.action === 'add')?.card.id).toBe('pure')
+    expect(best!.cleanProbability).toBeGreaterThan(result.cleanProbability)
+  })
+
+  it('funciona con reglas que sólo aplican yendo 2º (no existen yendo 1º)', () => {
+    const secondOnly = createMatcherPattern('Sin starter yendo 2º', 'problem', [{ matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'exclude' }], {
+      turnContext: 'second',
+    })
+    const cards = [card('starter', 1, ['starter']), ...Array.from({ length: 39 }, (_, index) => card(`f${index}`, 1, ['tech']))]
+    // El Lab necesita al menos una regla que valga yendo 1º para calcular ambas vistas.
+    const checks = [opening, secondOnly]
+    const result = computeLabResults(cards, checks, 5)
+
+    if (result.status !== 'ok') throw new Error('no calculable')
+
+    const culprit = { kind: 'problem' as const, patternId: secondOnly.id, name: secondOnly.name, probability: result.results.second.patternResults.find((entry) => entry.patternId === secondOnly.id)!.probability }
+    const outcomes = toOutcomes(culprit, 'second', evaluate(buildCandidates(culprit, cards, checks), checks))
+    const best = pickBest(outcomes, result.results.second.cleanProbability)
+
+    expect(outcomes.length).toBeGreaterThan(0)
+    expect(best?.changes.find((change) => change.action === 'add')?.card.id).toBe('starter')
+    expect(best!.culpritProbability).toBeLessThan(culprit.probability)
+  })
 })
