@@ -87,6 +87,18 @@ export function computeLabResults(
   return computation
 }
 
+/** Un solo turno (la mitad del trabajo): para comparar variantes del deck sin calcular el otro turno. */
+export function computeLabViewResult(
+  cards: CardEntry[],
+  patterns: HandPattern[],
+  baseHandSize: number,
+  view: Exclude<TurnView, 'average'>,
+): LabViewResult | null {
+  const { summary } = calculateView(cards, patterns, view, baseHandSize)
+
+  return summary ? toViewResult(summary, getHandSizeForView(baseHandSize, view)) : null
+}
+
 function computeLabResultsUncached(
   cards: CardEntry[],
   patterns: HandPattern[],
