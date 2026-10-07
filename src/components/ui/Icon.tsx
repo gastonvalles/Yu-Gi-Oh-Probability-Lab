@@ -47,6 +47,14 @@ const PATHS = {
     </>
   ),
 
+  hand: (
+    <>
+      <rect x="8.5" y="2" width="7" height="11" rx="1.2" />
+      <rect x="2.5" y="4" width="7" height="11" rx="1.2" transform="rotate(-12 6 9.5)" />
+      <rect x="14.5" y="4" width="7" height="11" rx="1.2" transform="rotate(12 18 9.5)" />
+    </>
+  ),
+
   // — Estado y avisos —
   info: (
     <>

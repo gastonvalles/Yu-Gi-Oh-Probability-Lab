@@ -96,9 +96,8 @@ export function ConditionBlock({
         bare
         flush
         ariaLabel="Qué contar en esta condición"
-        closeTone="flat"
         closeSize="sm"
-        closeClassName="right-2 top-[0.65rem]"
+        closeClassName="right-3 top-3"
       >
         <CategoryPicker
           patternId={patternId}

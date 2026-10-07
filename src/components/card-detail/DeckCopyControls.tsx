@@ -17,11 +17,11 @@ export function DeckCopyControls({ deckCopy }: { deckCopy: DeckCopyActions }) {
         {deckCopy.copies === 1 ? 'copia' : 'copias'} en {deckCopy.zoneLabel}
       </p>
       <div className="grid grid-cols-2 gap-2.5">
-        <Button variant="secondary" color="danger" size="md" fullWidth onClick={deckCopy.onRemoveCopy}>
-          − Quitar una
+        <Button variant="secondary" color="danger" size="md" fullWidth icon="minus" onClick={deckCopy.onRemoveCopy}>
+          Quitar una
         </Button>
-        <Button variant="primary" size="md" fullWidth disabled={!deckCopy.canAddCopy} onClick={deckCopy.onAddCopy}>
-          + Sumar una
+        <Button variant="primary" size="md" fullWidth icon="plus" disabled={!deckCopy.canAddCopy} onClick={deckCopy.onAddCopy}>
+          Sumar una
         </Button>
       </div>
     </div>

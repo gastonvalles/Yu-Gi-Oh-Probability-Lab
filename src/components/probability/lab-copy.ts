@@ -19,6 +19,18 @@ export const KPI_TONE_LABELS: Record<KpiTone, string> = {
   critical: 'Crítico',
 }
 
+const percentLabel = (value: number) => `${Math.round(value * 100)}%`
+
+/** Escala completa de notas con su rango (leyenda del medidor): "< 40%", "40–60%", "60–85%", "85%+". */
+export const KPI_SCALE: ReadonlyArray<{ tone: KpiTone; range: string }> = [
+  { tone: 'critical', range: `< ${percentLabel(KPI_THRESHOLDS[0]!.value)}` },
+  ...KPI_THRESHOLDS.map((threshold, index) => {
+    const next = KPI_THRESHOLDS[index + 1]
+
+    return { tone: threshold.tone, range: next ? `${Math.round(threshold.value * 100)}–${percentLabel(next.value)}` : `${percentLabel(threshold.value)}+` }
+  }),
+]
+
 /** Color de cada nota: rojo → ámbar → celeste → verde. El color siempre dice lo mismo en toda la app. */
 export const KPI_TONE: Record<KpiTone, Tone> = {
   excellent: 'success',

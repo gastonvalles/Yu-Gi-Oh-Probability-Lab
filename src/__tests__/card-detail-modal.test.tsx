@@ -92,9 +92,9 @@ describe('detalle compartido de cartas', () => {
     render(<CardDetailModal card={card} deckFormat="unlimited" isOpen showActions={false}
       deckCopy={{ zoneLabel: 'Main Deck', copies: 3, canAddCopy: false, onRemoveCopy: onRemove, onAddCopy: vi.fn() }}
       onAddToZone={() => false} onClose={onClose} />)
-    fireEvent.click(screen.getByRole('button', { name: '− Quitar una' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Quitar una' }))
     expect(onRemove).toHaveBeenCalledOnce()
-    expect(screen.getByRole('button', { name: '+ Sumar una' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Sumar una' })).toBeDisabled()
     expect(onClose).not.toHaveBeenCalled()
   })
 

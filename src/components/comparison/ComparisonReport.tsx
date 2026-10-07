@@ -248,6 +248,7 @@ function RoleTable({
 }) {
   return (
     <ReportSection title="Roles" hint="Copias en el deck y probabilidad de robar al menos una.">
+      <div className="-mx-1 overflow-x-auto px-1">
       <table className={TABLE}>
         <thead>
           <tr>
@@ -278,6 +279,7 @@ function RoleTable({
           })}
         </tbody>
       </table>
+      </div>
     </ReportSection>
   )
 }

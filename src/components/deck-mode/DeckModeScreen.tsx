@@ -8,6 +8,7 @@ import { CardDetailModal } from '../card-detail/CardDetailModal'
 import { DeckBuilderStep } from './DeckBuilderStep'
 import { cx } from '../ui/cx'
 import { DraggableFab } from '../ui/DraggableFab'
+import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
 import { DeckModeDragOverlay } from './DeckModeDragOverlay'
 import {
@@ -353,11 +354,7 @@ function PracticeFab({
   return (
     <>
       <DraggableFab label="Abrir práctica" storageKey="ygo-lab:practice-fab" onClick={onOpen}>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <rect x="8.5" y="2" width="7" height="11" rx="1.2" />
-          <rect x="2.5" y="4" width="7" height="11" rx="1.2" transform="rotate(-12 6 9.5)" />
-          <rect x="14.5" y="4" width="7" height="11" rx="1.2" transform="rotate(12 18 9.5)" />
-        </svg>
+        <Icon name="hand" size={24} strokeWidth={1.8} />
       </DraggableFab>
 
       <Modal
