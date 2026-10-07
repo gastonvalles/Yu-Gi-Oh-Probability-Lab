@@ -10,8 +10,7 @@ const MIN_CULPRIT_PROBABILITY = 0.02
 const MIN_CLEAN_GAIN = 0.003
 const MAX_COPIES = 3
 /** Tope de variantes a calcular: cada una enumera todas las manos, en celulares pesa. */
-const MAX_CANDIDATES = 5
-const OPENING_ROLES: readonly CardRole[] = ['starter', 'extender', 'enabler', 'searcher', 'draw', 'combo_piece']
+const MAX_CANDIDATES = 6
 
 /** Qué le quita más manos limpias al deck en la vista activa. */
 export interface Culprit {
@@ -27,10 +26,22 @@ export interface Change {
   card: CardEntry
 }
 
+/** Familias de cartas con las que un jugador razona el deck: "sacá un starter y meté una handtrap". */
+export type RoleGroup = 'starter' | 'interaction' | 'brick' | 'filler'
+
+export const ROLE_GROUP_LABEL: Record<RoleGroup, string> = {
+  starter: 'starter',
+  interaction: 'handtrap',
+  brick: 'brick',
+  filler: 'carta de relleno',
+}
+
 /** Un cambio a probar (sacar una copia, sumar una, o cambiar una por otra) y el deck resultante. */
 export interface Candidate {
   changes: Change[]
   cards: CardEntry[]
+  /** Familia de la que sale y a la que entra la copia (para decirlo como lo diría un jugador). */
+  swap: { from: RoleGroup | null; to: RoleGroup | null }
 }
 
 export interface Evaluation {
@@ -40,6 +51,7 @@ export interface Evaluation {
 
 export interface Outcome {
   changes: Change[]
+  swap: Candidate['swap']
   culpritProbability: number
   cleanProbability: number
 }
@@ -84,37 +96,36 @@ const NEUTRAL_CARD: CardEntry = {
   needsReview: false,
 }
 
-const candidateOf = (cards: CardEntry[], changes: Change[]): Candidate => {
+const candidateOf = (cards: CardEntry[], changes: Change[], swap: Candidate['swap']): Candidate => {
   const net = changes.filter((change) => change.action === 'add').length - changes.filter((change) => change.action === 'remove').length
   const adjusted = adjust(cards, changes)
 
-  return { changes, cards: net < 0 ? [...adjusted, { ...NEUTRAL_CARD, copies: -net }] : adjusted }
+  return { changes, swap, cards: net < 0 ? [...adjusted, { ...NEUTRAL_CARD, copies: -net }] : adjusted }
 }
 const byCopies = (direction: 1 | -1) => (left: CardEntry, right: CardEntry) =>
   direction * (left.copies - right.copies) || left.name.localeCompare(right.name)
-const isOpener = (card: CardEntry) => card.roles.some((role) => OPENING_ROLES.includes(role))
 
-/** Roles que no se tocan salvo que no quede otra: son lo que el deck usa para jugar contra el rival. */
-const VALUABLE_ROLES: readonly CardRole[] = ['handtrap', 'disruption', 'boardbreaker', 'removal', 'floodgate']
-const SUPPORT_ROLES: readonly CardRole[] = ['payoff', 'recovery', 'draw', 'searcher']
+const STARTER_ROLES: readonly CardRole[] = ['starter', 'extender']
+const INTERACTION_ROLES: readonly CardRole[] = ['handtrap', 'disruption', 'boardbreaker', 'removal', 'floodgate']
 
-/**
- * Cuánto cuesta sacar una carta (menor = más fácil de sacrificar): lo que el propio deck marcó como
- * mala (Brick/Garnet) primero, después el relleno (Tech o sin roles), el soporte y, último, la interacción.
- */
-export function cutCost(card: CardEntry): number {
-  if (card.roles.some((role) => role === 'brick' || role === 'garnet')) return 0
-  if (card.roles.length === 0 || card.roles.every((role) => role === 'tech')) return 1
-  if (card.roles.some((role) => VALUABLE_ROLES.includes(role))) return 4
-  return card.roles.some((role) => SUPPORT_ROLES.includes(role)) ? 3 : 2
+/** A qué familia pertenece una carta (la primera que corresponda: starter > handtrap > brick > relleno). */
+export function roleGroupOf(card: CardEntry): RoleGroup | null {
+  if (card.roles.some((role) => STARTER_ROLES.includes(role))) return 'starter'
+  if (card.roles.some((role) => INTERACTION_ROLES.includes(role))) return 'interaction'
+  if (card.roles.some((role) => role === 'brick' || role === 'garnet')) return 'brick'
+  if (card.roles.length === 0 || card.roles.every((role) => role === 'tech')) return 'filler'
+  return null
 }
 
+/** Familias que cuenta una condición "role" del problema (para saber qué le falta al deck). */
+const groupOfRole = (role: CardRole): RoleGroup | null =>
+  STARTER_ROLES.includes(role) ? 'starter' : INTERACTION_ROLES.includes(role) ? 'interaction' : role === 'brick' || role === 'garnet' ? 'brick' : null
+
 /**
- * Cambios que atacan al culpable, siempre con el deck del mismo tamaño y respetando el límite de
- * copias del formato (banlist):
- * - problema por presencia ("2+ Brick"): sacar una copia de lo que lo causa, o cambiarla por un opener;
- * - problema por ausencia ("0 Handtrap"): sumar lo que falta a costa de la carta más sacrificable;
- * - manos sin salida: cambiar la carta más sacrificable por un starter/extender.
+ * Cambios que atacan al culpable, pensados como lo haría un jugador: mover un lugar del deck de una
+ * familia a otra ("sacá un starter y meté una handtrap"), con el deck del mismo tamaño y respetando
+ * el límite de copias del formato. Las familias brick y relleno solo se sacan si son non-engine:
+ * un brick del engine es una pieza del combo y no se toca.
  */
 export function buildCandidates(
   culprit: Culprit,
@@ -122,45 +133,47 @@ export function buildCandidates(
   checks: HandPattern[],
   maxCopiesOf: (card: CardEntry) => number = () => MAX_COPIES,
 ): Candidate[] {
-  const hasRoom = (card: CardEntry) => card.copies < maxCopiesOf(card)
   const room = (card: CardEntry) => maxCopiesOf(card) - card.copies
-  const openers = (role: 'starter' | 'extender') => cards.filter((card) => card.roles.includes(role) && hasRoom(card)).sort(byCopies(1))
-  const openersPool = [...openers('starter'), ...openers('extender')].slice(0, 2)
-  const cuttable = (excluded: Set<string>) =>
-    cards.filter((card) => !excluded.has(card.id) && !isOpener(card)).sort((left, right) => cutCost(left) - cutCost(right) || right.copies - left.copies || left.name.localeCompare(right.name))
-  const withCut = (cut: CardEntry | undefined, card: CardEntry) =>
-    candidateOf(cards, [...(cut ? [{ action: 'remove' as const, card: cut }] : []), { action: 'add', card }])
+  // Quién sale: de cada familia, la carta con más copias (se pierde menos redundancia).
+  const outgoing = (group: RoleGroup): CardEntry | undefined =>
+    cards
+      .filter((card) => roleGroupOf(card) === group && (group === 'starter' || group === 'interaction' || card.origin === 'non_engine'))
+      .sort((left, right) => right.copies - left.copies || left.name.localeCompare(right.name))[0]
+  // Quién entra: de la familia, la que más margen legal tiene y menos copias lleva.
+  const incoming = (group: RoleGroup, not?: CardEntry): CardEntry | undefined =>
+    cards
+      .filter((card) => roleGroupOf(card) === group && room(card) > 0 && card.id !== not?.id)
+      .sort((left, right) => room(right) - room(left) || left.copies - right.copies || left.name.localeCompare(right.name))[0]
+  const swapOf = (from: RoleGroup, to: RoleGroup): Candidate | null => {
+    const out = outgoing(from)
+    const inn = incoming(to, out)
 
-  if (culprit.kind === 'no-opening') {
-    const cut = cuttable(new Set(openersPool.map((card) => card.id)))[0]
-
-    return openersPool.map((card) => withCut(cut, card))
+    return out && inn ? candidateOf(cards, [{ action: 'remove', card: out }, { action: 'add', card: inn }], { from, to }) : null
   }
 
+  // A qué familia le falta cuota: lo que el problema por ausencia pide, o starters si no hay salida / hay bricks.
   const pattern = checks.find((check) => check.id === culprit.patternId)
-  const groups = buildDerivedDeckGroupMap(cards)
-  const idsOf = (conditionKind: 'include' | 'exclude') =>
-    new Set(
-      (pattern?.conditions ?? [])
-        .filter((condition) => condition.kind === conditionKind)
-        .flatMap((condition) => resolveConditionCardIds(condition, groups, cards)),
-    )
-  const includeIds = idsOf('include')
-  const excludeIds = idsOf('exclude')
-  // Un problema por presencia baja sacando copias; uno por ausencia baja sumándolas (solo las que la banlist permite).
-  const causes = cards.filter((card) => includeIds.has(card.id)).sort((l, r) => cutCost(l) - cutCost(r) || r.copies - l.copies).slice(0, 3)
-  const missing = cards.filter((card) => excludeIds.has(card.id) && hasRoom(card)).sort((l, r) => room(r) - room(l) || l.copies - r.copies).slice(0, 2)
-  const cut = cuttable(new Set([...excludeIds, ...openersPool.map((card) => card.id)]))[0]
+  const absentGroups = new Set(
+    culprit.kind === 'problem'
+      ? (pattern?.conditions ?? [])
+          .filter((condition) => condition.kind === 'exclude' && condition.matcher?.type === 'role')
+          .flatMap((condition) => (condition.matcher?.type === 'role' ? [groupOfRole(condition.matcher.value)] : []))
+          .filter((group): group is RoleGroup => group !== null)
+      : [],
+  )
+  const wanted: RoleGroup[] = absentGroups.size > 0 ? [...absentGroups] : ['starter']
+  // De dónde se saca el lugar, de lo más prescindible a lo más importante (nunca de la familia que se refuerza).
+  const sources: RoleGroup[] = ['filler', 'brick', 'interaction', 'starter']
+  const groups = new Set(cards.map(roleGroupOf))
 
-  // En orden de prioridad (se recorta a MAX_CANDIDATES): lo que ataca el problema primero; subir salidas, al final.
-  const candidates = [
-    ...causes.map((card) => candidateOf(cards, [{ action: 'remove', card }])),
-    ...missing.map((card) => withCut(cut, card)),
-    // Si el problema en sí no se puede bajar sin perder más de lo que se gana, queda subir las salidas.
-    ...openersPool.map((card) => withCut(cut, card)),
-  ]
+  const swaps = wanted.flatMap((to) => sources.filter((from) => from !== to && groups.has(from)).map((from) => swapOf(from, to)))
+  // Problema por presencia ("2+ Brick"): además, achicar la familia que lo causa (si es non-engine) a cambio de un starter.
+  const presence =
+    culprit.kind === 'problem' && absentGroups.size === 0
+      ? [swapOf('brick', 'starter'), swapOf('brick', 'interaction')]
+      : []
 
-  return candidates.slice(0, MAX_CANDIDATES)
+  return [...presence, ...swaps].filter((candidate): candidate is Candidate => candidate !== null).slice(0, MAX_CANDIDATES)
 }
 
 /**
@@ -183,7 +196,7 @@ export function toOutcomes(culprit: Culprit, view: TurnView, evaluated: Evaluati
     const cleanProbability = pick(odds, view, (side) => odds?.clean[side])
     const culpritProbability = pick(odds, view, (side) => (culprit.patternId ? odds?.rules[side].get(culprit.patternId) : odds?.[side]))
 
-    return cleanProbability === null || culpritProbability === null ? [] : [{ changes: candidate.changes, culpritProbability, cleanProbability }]
+    return cleanProbability === null || culpritProbability === null ? [] : [{ changes: candidate.changes, swap: candidate.swap, culpritProbability, cleanProbability }]
   })
 }
 
@@ -195,12 +208,12 @@ export function pickBest(outcomes: Outcome[], baseClean: number): Outcome | null
 }
 
 /**
- * Si nada mejora, el cambio que más baja el problema: sirve para explicar que sacar esas cartas
- * cuesta más salidas de las que ahorra.
+ * Si nada mejora, el cambio que más baja el problema: sirve para explicar que moverlo
+ * cuesta más manos limpias de las que ahorra.
  */
 export function pickTradeoff(outcomes: Outcome[], baseCulprit: number): Outcome | null {
   return outcomes
-    .filter((outcome) => outcome.changes.length === 1 && outcome.changes[0].action === 'remove' && outcome.culpritProbability < baseCulprit)
+    .filter((outcome) => outcome.culpritProbability < baseCulprit)
     .reduce<Outcome | null>((top, outcome) => (!top || outcome.culpritProbability < top.culpritProbability ? outcome : top), null)
 }
 
@@ -240,13 +253,19 @@ export function buildMaxedHint(
     : null
 }
 
-/** Cartas del deck que causan el problema (para nombrarlas cuando no hay un cambio que convenga). */
+/** Cartas del deck que cuentan para el problema (por presencia), sean o no sacables: sirve para nombrarlas. */
 export function listCauses(culprit: Culprit, cards: CardEntry[], checks: HandPattern[]): CardEntry[] {
   if (culprit.kind !== 'problem') {
     return []
   }
 
-  return buildCandidates(culprit, cards, checks)
-    .filter((candidate) => candidate.changes.length === 1 && candidate.changes[0].action === 'remove')
-    .map((candidate) => candidate.changes[0].card)
+  const pattern = checks.find((check) => check.id === culprit.patternId)
+  const groups = buildDerivedDeckGroupMap(cards)
+  const ids = new Set(
+    (pattern?.conditions ?? [])
+      .filter((condition) => condition.kind === 'include')
+      .flatMap((condition) => resolveConditionCardIds(condition, groups, cards)),
+  )
+
+  return cards.filter((card) => ids.has(card.id)).sort(byCopies(-1))
 }

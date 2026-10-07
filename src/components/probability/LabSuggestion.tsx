@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 
 import { formatShortPercent } from '../../app/utils'
-import type { Change, Culprit, Outcome } from '../../app/lab-suggestion'
+import { ROLE_GROUP_LABEL, type Culprit, type Outcome } from '../../app/lab-suggestion'
 import { cx } from '../ui/cx'
 import { surface } from '../ui/surfaces'
 import { formatOdds } from './lab-copy'
@@ -61,13 +61,15 @@ function describeCulprit(culprit: Culprit): string {
     : `Son las manos que no tienen ninguna salida. ${formatOdds(culprit.probability).replace('Pasa', 'Pasan')}`
 }
 
-function describeChanges(changes: Change[]): string {
-  const removed = changes.find((change) => change.action === 'remove')
-  const added = changes.find((change) => change.action === 'add')
+/** "Sacá 1 starter y meté 1 handtrap (ej.: A por B)": lo dice por familia, como un jugador, y da un ejemplo concreto. */
+function describeSwap(outcome: Outcome): string {
+  const removed = outcome.changes.find((change) => change.action === 'remove')
+  const added = outcome.changes.find((change) => change.action === 'add')
+  const { from, to } = outcome.swap
+  const example = removed && added ? ` (por ejemplo, ${removed.card.name} por ${added.card.name})` : ''
 
-  if (removed && added) return `cambiá 1 copia de ${removed.card.name} por 1 copia de ${added.card.name}`
-  if (removed) return `sacá 1 copia de ${removed.card.name} (por una carta neutra)`
-  return `sumá 1 copia de ${added?.card.name ?? ''}`
+  if (from && to) return `sacá 1 ${ROLE_GROUP_LABEL[from]} y meté 1 ${ROLE_GROUP_LABEL[to]}${example}`
+  return `sumá 1 ${to ? ROLE_GROUP_LABEL[to] : 'carta'}${added ? ` (${added.card.name})` : ''}`
 }
 
 function describeBest(culprit: Culprit, best: Outcome, cleanBefore: number): string {
@@ -75,10 +77,10 @@ function describeBest(culprit: Culprit, best: Outcome, cleanBefore: number): str
 
   // El cambio no baja el problema: sube las salidas (las manos limpias) por otro lado.
   if (best.culpritProbability >= culprit.probability - 0.0005) {
-    return `Bajar este problema cuesta más salidas de las que ahorra, pero ${describeChanges(best.changes)} y las manos limpias pasarían de ${formatShortPercent(cleanBefore)} a ${formatShortPercent(best.cleanProbability)} (estimado, el resto del deck igual).`
+    return `Bajar este problema cuesta más salidas de las que ahorra, pero ${describeSwap(best)} y las manos limpias pasarían de ${formatShortPercent(cleanBefore)} a ${formatShortPercent(best.cleanProbability)} (estimado, el resto del deck igual).`
   }
 
-  return `${capitalize(describeChanges(best.changes))}: ${target} bajaría a ${oddsOnly(best.culpritProbability)} y las manos limpias pasarían de ${formatShortPercent(cleanBefore)} a ${formatShortPercent(best.cleanProbability)} (estimado, el resto del deck igual).`
+  return `${capitalize(describeSwap(best))}: ${target} bajaría a ${oddsOnly(best.culpritProbability)} y las manos limpias pasarían de ${formatShortPercent(cleanBefore)} a ${formatShortPercent(best.cleanProbability)} (estimado, el resto del deck igual).`
 }
 
 /** Sin cambio que convenga: se explica por qué, con números, en vez de dejar un "no se puede". */
@@ -96,7 +98,11 @@ function describeNoGain(
   }
 
   if (tried === 0) {
-    return 'No hay un cambio permitido por tu formato (copias máximas y banlist) que ataque esto directamente.'
+    const names = causes.slice(0, 4).map((card) => card.name).join(', ')
+
+    return culprit.kind === 'problem' && causes.length > 0
+      ? `Lo causan ${names}${causes.length > 4 ? '…' : ''}, que son parte de tu engine, y no hay cartas non-engine ni de relleno para mover (ni copias libres que tu formato permita). Para bajarlo hay que tocar el engine: es una decisión de armado, no una sugerencia automática.`
+      : 'No hay un cambio permitido por tu formato (copias máximas y banlist) que ataque esto directamente.'
   }
 
   if (compared === 0) {
@@ -104,15 +110,15 @@ function describeNoGain(
   }
 
   if (tradeoff) {
-    const card = tradeoff.changes[0].card.name
-
-    return `Sacar 1 copia de ${card} bajaría el problema a ${oddsOnly(tradeoff.culpritProbability)}, pero te quita más salidas de las que ahorra: las manos limpias quedarían en ${formatShortPercent(tradeoff.cleanProbability)} (hoy ${formatShortPercent(cleanBefore)}). Es el precio de jugar esas cartas, así que conviene dejarlo así salvo que este problema te moleste más que perder jugadas.`
+    return `${capitalize(describeSwap(tradeoff))} bajaría el problema a ${oddsOnly(tradeoff.culpritProbability)}, pero te cuesta más manos limpias de las que ahorra: quedarían en ${formatShortPercent(tradeoff.cleanProbability)} (hoy ${formatShortPercent(cleanBefore)}). Es el precio de ese plan, así que conviene dejarlo así salvo que este problema te moleste más que perder jugadas.`
   }
 
   if (culprit.kind === 'problem' && causes.length > 0) {
     const copies = causes.reduce((total, card) => total + card.copies, 0)
 
-    return `Lo causan ${causes.map((card) => card.name).join(', ')} (${copies} copias en total). Ningún cambio de una carta mejora el resultado: el deck ya está equilibrado para esta regla.`
+    const engine = causes.filter((card) => card.origin !== 'non_engine')
+
+    return `Lo causan ${causes.map((card) => card.name).join(', ')} (${copies} copias en total)${engine.length > 0 ? `, y ${engine.length === causes.length ? 'son' : 'varias son'} parte de tu engine, así que no conviene sacarlas` : ''}. Ningún cambio de una carta mejora el resultado: el deck ya está equilibrado para esta regla.`
   }
 
   return 'Ningún cambio de una carta mejora el resultado: el deck ya está equilibrado para esto.'

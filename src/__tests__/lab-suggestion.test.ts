@@ -1,20 +1,20 @@
 import { describe, expect, it } from 'vitest'
 
 import { computeLabOdds } from '../app/lab-odds'
-import { buildCandidates, findCulprit, pickBest, pickTradeoff, toOutcomes, type Evaluation } from '../app/lab-suggestion'
+import { buildCandidates, findCulprit, pickBest, toOutcomes, type Evaluation } from '../app/lab-suggestion'
 import { createMatcherPattern } from '../app/pattern-factory'
 import { computeLabResults } from '../app/probability-lab'
 import type { CardEntry, CardRole, HandPattern } from '../types'
 
-function card(id: string, copies: number, roles: CardRole[]): CardEntry {
-  return { id, name: `Card ${id}`, copies, source: 'manual', apiCard: null, origin: 'engine', roles, needsReview: false }
+function card(id: string, copies: number, roles: CardRole[], origin: CardEntry['origin'] = 'engine'): CardEntry {
+  return { id, name: `Card ${id}`, copies, source: 'manual', apiCard: null, origin, roles, needsReview: false }
 }
 
 // 20 starters sueltos (casi siempre hay salida) y 6 bricks: el problema "2+ Brick" pesa más que no tener salida.
 const deck = (): CardEntry[] => [
   ...Array.from({ length: 20 }, (_, index) => card(`s${index}`, 1, ['starter'])),
-  card('brick', 6, ['brick']),
-  ...Array.from({ length: 14 }, (_, index) => card(`f${index}`, 1, ['tech'])),
+  card('brick', 6, ['brick'], 'non_engine'),
+  ...Array.from({ length: 14 }, (_, index) => card(`f${index}`, 1, ['tech'], 'non_engine')),
 ]
 
 const opening = createMatcherPattern('Starter', 'opening', [{ matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' }])
@@ -30,7 +30,7 @@ const evaluate = (candidates: ReturnType<typeof buildCandidates>, patterns: Hand
   candidates.map((candidate) => ({ candidate, odds: computeLabOdds({ cards: candidate.cards, patterns, handSize: 5 }) }))
 
 describe('lab-suggestion', () => {
-  it('ante un problema por presencia propone sacar o cambiar la carta que lo causa y mejora las limpias', () => {
+  it('ante un problema por presencia propone mover un lugar de brick a starter y mejora las limpias', () => {
     const cards = deck()
     const checks = [opening, problem]
     const result = averageOf(cards, checks)
@@ -41,8 +41,7 @@ describe('lab-suggestion', () => {
     const candidates = buildCandidates(culprit!, cards, checks)
     // El motor exige 40 cartas: todo cambio mantiene el tamaño del deck (sacar = cambiar por una carta neutra).
     expect(candidates.every((candidate) => candidate.cards.reduce((n, c) => n + c.copies, 0) === 40)).toBe(true)
-    expect(candidates.some((candidate) => candidate.changes.length === 1 && candidate.changes[0].card.id === 'brick')).toBe(true)
-    expect(candidates.some((candidate) => candidate.changes.length === 2)).toBe(true)
+    expect(candidates.some((candidate) => candidate.swap.from === 'brick' && candidate.swap.to === 'starter')).toBe(true)
 
     const outcomes = toOutcomes(culprit!, 'average', evaluate(candidates, checks))
     const best = pickBest(outcomes, result.cleanProbability)
@@ -50,11 +49,11 @@ describe('lab-suggestion', () => {
     expect(best).not.toBeNull()
     expect(best!.cleanProbability).toBeGreaterThan(result.cleanProbability)
     expect(best!.culpritProbability).toBeLessThan(culprit!.probability)
-    expect(best!.changes.some((change) => change.action === 'remove' && change.card.id === 'brick')).toBe(true)
+    expect(best!.swap.from).toBe('brick')
   })
 
   it('si el problema son las manos sin salida cambia una carta que no abre por un starter', () => {
-    const cards = [card('starter', 1, ['starter']), ...Array.from({ length: 39 }, (_, index) => card(`f${index}`, 1, ['tech']))]
+    const cards = [card('starter', 1, ['starter']), ...Array.from({ length: 39 }, (_, index) => card(`f${index}`, 1, ['tech'], 'non_engine'))]
     const result = averageOf(cards, [opening])
     const culprit = findCulprit(result)
 
@@ -70,23 +69,26 @@ describe('lab-suggestion', () => {
     expect(best!.culpritProbability).toBeLessThan(culprit!.probability)
   })
 
-  it('si sacar la carta cuesta más salidas de las que ahorra, no recomienda y deja el costo a la vista', () => {
-    // Las cartas del problema también son las únicas que abren: sacarlas baja el problema pero hunde las salidas.
-    const cards = [card('both', 4, ['starter', 'brick']), ...Array.from({ length: 36 }, (_, index) => card(`f${index}`, 1, ['tech']))]
+  it('no propone sacar piezas del engine aunque cuenten como brick: son parte del combo', () => {
+    const cards = [
+      card('combo', 4, ['combo_piece', 'brick'], 'engine'),
+      card('tech', 2, ['brick'], 'non_engine'),
+      ...Array.from({ length: 34 }, (_, index) => card(`f${index}`, 1, ['starter'])),
+    ]
     const checks = [opening, problem]
     const result = averageOf(cards, checks)
     const culprit = { kind: 'problem' as const, patternId: problem.id, name: problem.name, probability: result.patternResults.find((entry) => entry.patternId === problem.id)!.probability }
-    const outcomes = toOutcomes(culprit, 'average', evaluate(buildCandidates(culprit, cards, checks), checks))
+    const removed = buildCandidates(culprit, cards, checks).flatMap((candidate) => candidate.changes.filter((change) => change.action === 'remove').map((change) => change.card.id))
 
-    expect(pickBest(outcomes, result.cleanProbability)).toBeNull()
-    expect(pickTradeoff(outcomes, culprit.probability)?.cleanProbability).toBeLessThan(result.cleanProbability)
+    expect(removed).toContain('tech')
+    expect(removed).not.toContain('combo')
   })
 
   it('si el problema no se puede bajar sin perder salidas, recomienda subir las salidas por otro lado', () => {
     const cards = [
       card('both', 4, ['starter', 'brick']),
       card('pure', 1, ['starter']),
-      ...Array.from({ length: 35 }, (_, index) => card(`f${index}`, 1, ['tech'])),
+      ...Array.from({ length: 35 }, (_, index) => card(`f${index}`, 1, ['tech'], 'non_engine')),
     ]
     const checks = [opening, problem]
     const result = averageOf(cards, checks)
@@ -103,7 +105,7 @@ describe('lab-suggestion', () => {
     const secondOnly = createMatcherPattern('Sin starter yendo 2º', 'problem', [{ matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'exclude' }], {
       turnContext: 'second',
     })
-    const cards = [card('starter', 1, ['starter']), ...Array.from({ length: 39 }, (_, index) => card(`f${index}`, 1, ['tech']))]
+    const cards = [card('starter', 1, ['starter']), ...Array.from({ length: 39 }, (_, index) => card(`f${index}`, 1, ['tech'], 'non_engine'))]
     // El Lab necesita al menos una regla que valga yendo 1º para calcular ambas vistas.
     const checks = [opening, secondOnly]
     const result = computeLabResults(cards, checks, 5)
@@ -120,7 +122,7 @@ describe('lab-suggestion', () => {
   })
 
   it('no sugiere sumar copias que la banlist no permite', () => {
-    const cards = [card('starter', 1, ['starter']), card('free', 1, ['extender']), ...Array.from({ length: 38 }, (_, index) => card(`f${index}`, 1, ['tech']))]
+    const cards = [card('starter', 1, ['starter']), card('free', 1, ['extender']), ...Array.from({ length: 38 }, (_, index) => card(`f${index}`, 1, ['tech'], 'non_engine'))]
     const culprit = { kind: 'no-opening' as const, patternId: null, name: 'x', probability: 0.5 }
     // "starter" está limitada a 1 copia: no se puede sumar otra.
     const candidates = buildCandidates(culprit, cards, [opening], (entry) => (entry.id === 'starter' ? 1 : 3))
@@ -130,22 +132,32 @@ describe('lab-suggestion', () => {
     expect(added).toContain('free')
   })
 
-  it('sacrifica primero lo que el deck marcó como malo o de relleno, nunca la interacción', () => {
+  it('el lugar sale primero del relleno, después de los bricks y recién después de la interacción', () => {
     const cards = [
       card('starter', 1, ['starter']),
-      card('ash', 3, ['handtrap', 'disruption']),
-      card('brick', 1, ['brick']),
-      ...Array.from({ length: 35 }, (_, index) => card(`f${index}`, 1, ['tech'])),
+      card('ash', 3, ['handtrap', 'disruption'], 'non_engine'),
+      card('brick', 1, ['brick'], 'non_engine'),
+      ...Array.from({ length: 35 }, (_, index) => card(`f${index}`, 1, ['tech'], 'non_engine')),
     ]
     const culprit = { kind: 'no-opening' as const, patternId: null, name: 'x', probability: 0.5 }
-    const [candidate] = buildCandidates(culprit, cards, [opening])
+    const candidates = buildCandidates(culprit, cards, [opening])
 
-    expect(candidate.changes.find((change) => change.action === 'remove')?.card.id).toBe('brick')
+    expect(candidates.map((candidate) => candidate.swap.from)).toEqual(['filler', 'brick', 'interaction'])
+    expect(candidates.every((candidate) => candidate.swap.to === 'starter')).toBe(true)
+  })
 
-    // Sin nada malo ni de relleno disponible, igual prefiere el soporte antes que una handtrap.
-    const noFiller = [card('starter', 1, ['starter']), card('ash', 3, ['handtrap']), card('rec', 1, ['recovery']), ...Array.from({ length: 35 }, (_, index) => card(`s${index}`, 1, ['starter']))]
-    const [other] = buildCandidates(culprit, noFiller, [opening])
+  it('con un problema por ausencia de handtraps propone "sacá un starter y meté una handtrap" entre las opciones', () => {
+    const cards = [
+      ...Array.from({ length: 12 }, (_, index) => card(`s${index}`, 2, ['starter'])),
+      card('ht', 1, ['handtrap'], 'non_engine'),
+      card('brick', 1, ['brick'], 'non_engine'),
+      card('f', 1, ['tech'], 'non_engine'),
+    ]
+    const noAnswer = createMatcherPattern('Sin handtrap', 'problem', [{ matcher: { type: 'role', value: 'handtrap' }, quantity: 1, kind: 'exclude' }])
+    const culprit = { kind: 'problem' as const, patternId: noAnswer.id, name: noAnswer.name, probability: 0.6 }
+    const swaps = buildCandidates(culprit, cards, [opening, noAnswer]).map((candidate) => `${candidate.swap.from}>${candidate.swap.to}`)
 
-    expect(other.changes.find((change) => change.action === 'remove')?.card.id).not.toBe('ash')
+    expect(swaps).toContain('starter>interaction')
+    expect(swaps).toContain('filler>interaction')
   })
 })
