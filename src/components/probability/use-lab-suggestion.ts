@@ -6,6 +6,7 @@ import {
   buildMaxedHint,
   buildMissingRoleHint,
   findCulprit,
+  type PerTurnResults,
   listCauses,
   pickBest,
   pickTradeoff,
@@ -46,8 +47,10 @@ export function useLabSuggestion(
   view: TurnView,
   result: LabViewResult,
   maxCopiesOf: (card: CardEntry) => number,
+  perTurn: PerTurnResults,
 ) {
-  const culprit = useMemo<Culprit | null>(() => findCulprit(result), [result])
+  // En el Promedio el culpable se pondera con los dos turnos; en 1º o 2º se mira solo ese.
+  const culprit = useMemo<Culprit | null>(() => findCulprit(result, view === 'average' ? perTurn : undefined), [perTurn, result, view])
   const baseClean = result.cleanProbability
   const [state, setState] = useState<SuggestionState>({ status: 'loading', progress: { done: 0, total: 0 }, analysis: EMPTY_ANALYSIS })
 

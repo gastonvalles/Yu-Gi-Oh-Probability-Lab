@@ -52,19 +52,37 @@ export interface Evaluation {
 export interface Outcome {
   changes: Change[]
   swap: Candidate['swap']
+  /** Manos limpias por turno después del cambio (se muestra en el Promedio). */
+  cleanBySide: { first: number; second: number } | null
   culpritProbability: number
   cleanProbability: number
 }
 
-export function findCulprit(result: LabViewResult): Culprit | null {
+/** Resultado de cada turno: sirve para ponderar bien las reglas que solo valen en uno (vista Promedio). */
+export interface PerTurnResults {
+  first: LabViewResult
+  second: LabViewResult
+}
+
+/**
+ * Qué le quita más manos limpias en la vista activa. En el Promedio una regla "Solo 2º" pesa la mitad
+ * (no existe yendo 1º), así que el culpable global puede ser otro que el de cada turno.
+ */
+export function findCulprit(result: LabViewResult, perTurn?: PerTurnResults): Culprit | null {
+  const effective = (patternId: string): number => {
+    if (!perTurn) {
+      return result.patternResults.find((entry) => entry.patternId === patternId)?.probability ?? 0
+    }
+
+    const read = (view: LabViewResult) => view.patternResults.find((entry) => entry.patternId === patternId)?.probability ?? 0
+    return (read(perTurn.first) + read(perTurn.second)) / 2
+  }
   const problemRules = result.segmentRules.withProblem.filter((rule) => rule.kind === 'problem')
   const topProblem = problemRules.reduce<(typeof problemRules)[number] | null>(
-    (best, rule) => (!best || rule.jointProbability > best.jointProbability ? rule : best),
+    (best, rule) => (!best || effective(rule.patternId) > effective(best.patternId) ? rule : best),
     null,
   )
-  const problemProbability = topProblem
-    ? (result.patternResults.find((entry) => entry.patternId === topProblem.patternId)?.probability ?? 0)
-    : 0
+  const problemProbability = topProblem ? effective(topProblem.patternId) : 0
 
   if (topProblem && problemProbability >= result.noOpeningProbability && problemProbability >= MIN_CULPRIT_PROBABILITY) {
     return { kind: 'problem', patternId: topProblem.patternId, name: topProblem.name, probability: problemProbability }
@@ -130,53 +148,68 @@ export function buildCandidates(
   maxCopiesOf: (card: CardEntry) => number = () => MAX_COPIES,
 ): Candidate[] {
   const room = (card: CardEntry) => maxCopiesOf(card) - card.copies
-  // Quién sale: de cada familia, la carta con más copias (se pierde menos redundancia).
-  const outgoing = (group: RoleGroup): CardEntry | undefined =>
-    cards
-      .filter((card) => roleGroupOf(card) === group && (group === 'starter' || group === 'interaction' || card.origin === 'non_engine'))
-      .sort((left, right) => right.copies - left.copies || left.name.localeCompare(right.name))[0]
-  // Quién entra: de la familia, la que más margen legal tiene y menos copias lleva.
-  const incoming = (group: RoleGroup, not?: CardEntry): CardEntry | undefined =>
-    cards
-      .filter((card) => roleGroupOf(card) === group && room(card) > 0 && card.id !== not?.id)
-      .sort((left, right) => room(right) - room(left) || left.copies - right.copies || left.name.localeCompare(right.name))[0]
-  const swapOf = (from: RoleGroup, to: RoleGroup): Candidate | null => {
-    const out = outgoing(from)
-    const inn = incoming(to, out)
-
-    return out && inn ? candidateOf(cards, [{ action: 'remove', card: out }, { action: 'add', card: inn }], { from, to }) : null
-  }
-
-  // A qué familia le falta cuota: lo que el problema por ausencia pide, o starters si no hay salida / hay bricks.
   const pattern = checks.find((check) => check.id === culprit.patternId)
   const deckGroups = buildDerivedDeckGroupMap(cards)
-  const cardById = new Map(cards.map((card) => [card.id, card]))
-  // Las reglas del sistema cuentan "grupos" armados con ids de cartas (pool), no solo roles: se mira qué
-  // cartas son las que la regla pide NO tener y a qué familia pertenecen.
-  const absentGroups = new Set(
-    culprit.kind === 'problem'
-      ? (pattern?.conditions ?? [])
-          .filter((condition) => condition.kind === 'exclude')
-          .flatMap((condition) => resolveConditionCardIds(condition, deckGroups, cards))
-          .flatMap((cardId) => {
-            const group = cardById.has(cardId) ? roleGroupOf(cardById.get(cardId)!) : null
-            return group ? [group] : []
-          })
-      : [],
-  )
-  const wanted: RoleGroup[] = absentGroups.size > 0 ? [...absentGroups] : ['starter']
-  // De dónde se saca el lugar, de lo más prescindible a lo más importante (nunca de la familia que se refuerza).
+  // Las reglas del sistema cuentan pools de cartas (no solo roles): se resuelve qué cartas pide la regla
+  // tener (causan el problema) y cuáles pide NO tener (lo evitan).
+  const idsOf = (conditionKind: 'include' | 'exclude') =>
+    new Set(
+      culprit.kind === 'problem'
+        ? (pattern?.conditions ?? [])
+            .filter((condition) => condition.kind === conditionKind)
+            .flatMap((condition) => resolveConditionCardIds(condition, deckGroups, cards))
+        : [],
+    )
+  const saviorIds = idsOf('exclude')
+  const causeIds = idsOf('include')
+  const isAbsence = saviorIds.size > 0
+
+  // Quién sale: de cada familia, la carta con más copias (se pierde menos redundancia). El engine no se toca
+  // salvo starters; un brick/relleno del engine es una pieza del combo.
+  const outgoing = (group: RoleGroup, notIds: ReadonlySet<string>): CardEntry | undefined =>
+    cards
+      .filter((card) => roleGroupOf(card) === group && !notIds.has(card.id) && (group === 'starter' || group === 'interaction' || card.origin === 'non_engine'))
+      .sort((left, right) => right.copies - left.copies || left.name.localeCompare(right.name))[0]
+  const byRoom = (left: CardEntry, right: CardEntry) => room(right) - room(left) || left.copies - right.copies || left.name.localeCompare(right.name)
+  const swap = (out: CardEntry | undefined, inn: CardEntry | undefined): Candidate | null => {
+    const from = out ? (roleGroupOf(out) ?? 'filler') : null
+    const to = inn ? (roleGroupOf(inn) ?? 'filler') : null
+
+    return out && inn && out.id !== inn.id
+      ? candidateOf(cards, [{ action: 'remove', card: out }, { action: 'add', card: inn }], { from, to })
+      : null
+  }
+  // De dónde se saca el lugar, de lo más prescindible a lo más importante.
   const sources: RoleGroup[] = ['filler', 'brick', 'interaction', 'starter']
-  const groups = new Set(cards.map(roleGroupOf))
 
-  const swaps = wanted.flatMap((to) => sources.filter((from) => from !== to && groups.has(from)).map((from) => swapOf(from, to)))
-  // Problema por presencia ("2+ Brick"): además, achicar la familia que lo causa (si es non-engine) a cambio de un starter.
-  const presence =
-    culprit.kind === 'problem' && absentGroups.size === 0
-      ? [swapOf('brick', 'starter'), swapOf('brick', 'interaction')]
-      : []
+  // Sin salida (o como alternativa de un problema): entra un starter/extender a costa de lo más prescindible.
+  const openerSwaps = (): Array<Candidate | null> =>
+    cards
+      .filter((card) => roleGroupOf(card) === 'starter' && room(card) > 0 && !causeIds.has(card.id))
+      .sort(byRoom)
+      .slice(0, 2)
+      .flatMap((inn) => sources.filter((from) => from !== 'starter').map((from) => swap(outgoing(from, new Set()), inn)))
 
-  return [...presence, ...swaps].filter((candidate): candidate is Candidate => candidate !== null).slice(0, MAX_CANDIDATES)
+  let candidates: Array<Candidate | null>
+
+  if (isAbsence) {
+    // "Sin interrupción": entra una carta de las que la regla cuenta (no cualquier handtrap) con margen legal.
+    const savers = cards.filter((card) => saviorIds.has(card.id) && room(card) > 0).sort(byRoom).slice(0, 2)
+    candidates = savers.flatMap((inn) => sources.map((from) => swap(outgoing(from, saviorIds), inn)))
+  } else if (culprit.kind === 'problem') {
+    // "2+ Brick" / "2+ Mulcharmy": sale una copia de lo que lo causa (non-engine) y entra un starter;
+    // si lo causan piezas del engine, queda subir las salidas por otro lado.
+    const causes = cards
+      .filter((card) => causeIds.has(card.id) && card.origin === 'non_engine')
+      .sort((left, right) => right.copies - left.copies || left.name.localeCompare(right.name))
+      .slice(0, 2)
+    const starters = cards.filter((card) => roleGroupOf(card) === 'starter' && !causeIds.has(card.id) && room(card) > 0).sort(byRoom)
+    candidates = [...causes.flatMap((out) => starters.slice(0, 2).map((inn) => swap(out, inn))), ...openerSwaps()]
+  } else {
+    candidates = openerSwaps()
+  }
+
+  return candidates.filter((candidate): candidate is Candidate => candidate !== null).slice(0, MAX_CANDIDATES)
 }
 
 /**
@@ -189,9 +222,14 @@ const pick = (odds: LabOdds | null, view: TurnView, read: (side: 'first' | 'seco
   }
 
   const sides = view === 'average' ? (['first', 'second'] as const) : ([view] as const)
-  const values = sides.map(read).filter((value): value is number => value !== undefined)
+  const values = sides.map(read)
 
-  return values.length > 0 ? values.reduce((total, value) => total + value, 0) / values.length : null
+  // Una regla "Solo 2º" no existe yendo 1º: en el Promedio vale 0 ese turno (igual que el culpable global).
+  if (view !== 'average' && values[0] === undefined) {
+    return null
+  }
+
+  return values.reduce<number>((total, value) => total + (value ?? 0), 0) / values.length
 }
 
 export function toOutcomes(culprit: Culprit, view: TurnView, evaluated: Evaluation[]): Outcome[] {
@@ -199,7 +237,7 @@ export function toOutcomes(culprit: Culprit, view: TurnView, evaluated: Evaluati
     const cleanProbability = pick(odds, view, (side) => odds?.clean[side])
     const culpritProbability = pick(odds, view, (side) => (culprit.patternId ? odds?.rules[side].get(culprit.patternId) : odds?.[side]))
 
-    return cleanProbability === null || culpritProbability === null ? [] : [{ changes: candidate.changes, swap: candidate.swap, culpritProbability, cleanProbability }]
+    return cleanProbability === null || culpritProbability === null ? [] : [{ changes: candidate.changes, swap: candidate.swap, cleanBySide: view === 'average' && odds ? odds.clean : null, culpritProbability, cleanProbability }]
   })
 }
 

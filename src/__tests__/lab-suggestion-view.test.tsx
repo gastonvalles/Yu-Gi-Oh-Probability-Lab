@@ -35,7 +35,7 @@ describe('LabSuggestion', () => {
 
     if (computation.status !== 'ok') throw new Error('no calculable')
 
-    render(<LabSuggestion deckFormat="tcg" cards={cards} checks={checks} handSize={5} view="average" result={computation.results.average} />)
+    render(<LabSuggestion deckFormat="tcg" cards={cards} checks={checks} handSize={5} view="average" result={computation.results.average} first={computation.results.first} second={computation.results.second} />)
 
     expect(screen.getByText('Lo que más te frena')).toBeInTheDocument()
     expect(screen.getByText(/Pasan en/)).toBeInTheDocument()
