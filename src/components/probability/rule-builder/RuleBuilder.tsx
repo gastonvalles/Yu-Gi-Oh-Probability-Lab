@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, type ReactNode } from 'react'
 
 import type { CardEntry, HandPattern } from '../../../types'
 import { getPatternMatchMode, normalizeMinimumConditionMatches } from '../../../app/patterns'
@@ -6,7 +6,6 @@ import { buildPatternCompactSummary, buildPatternPreview } from '../pattern-help
 import type { PatternEditorActions } from '../pattern-editor-actions'
 import { Button } from '../../ui/Button'
 import { cx } from '../../ui/cx'
-import { Icon } from '../../ui/Icon'
 import { overline } from '../../ui/typography'
 
 import { AdvancedSettings } from './AdvancedSettings'
@@ -59,11 +58,11 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
         actions={actions}
       />
 
-      <div className="grid gap-3 min-[640px]:grid-cols-2">
-        <RuleStep title="Tipo">
+      <div className="grid gap-2">
+        <RuleStep title="Tipo" inline>
           <KindToggle patternId={pattern.id} currentKind={pattern.kind} actions={actions} />
         </RuleStep>
-        <RuleStep title="Turno">
+        <RuleStep title="Turno" inline>
           <TurnContextToggle patternId={pattern.id} currentTurnContext={pattern.turnContext} actions={actions} />
         </RuleStep>
       </div>
@@ -116,45 +115,18 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
         )}
       </RuleStep>
 
-      <MoreOptions pattern={pattern} actions={actions} derivedMainCards={derivedMainCards} />
+      {pattern.turnContext !== 'first' ? (
+        <DrawCountToggle patternId={pattern.id} ignoresDraw={pattern.ignoresDraw === true} actions={actions} />
+      ) : null}
+      <AdvancedSettings pattern={pattern} actions={actions} derivedMainCards={derivedMainCards} />
     </div>
   )
 }
 
-/** Los ajustes que casi nunca se tocan, plegados (se abren solos si la regla pide revisión). */
-function MoreOptions({ pattern, actions, derivedMainCards }: { pattern: HandPattern; actions: PatternEditorActions; derivedMainCards: CardEntry[] }) {
-  const [isOpen, setIsOpen] = useState(pattern.needsReview === true)
-
+/** Un paso del editor: título arriba, o (inline) título a la izquierda y el control a la derecha. */
+function RuleStep({ title, inline = false, children }: { title: string; inline?: boolean; children: ReactNode }) {
   return (
-    <section className="grid gap-2">
-      <button
-        type="button"
-        className="inline-flex w-fit items-center gap-1.5 rounded-control py-1 pr-2 text-body font-semibold text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:shadow-focus"
-        aria-expanded={isOpen}
-        onClick={() => setIsOpen((current) => !current)}
-      >
-        <Icon name="chevron-right" size={14} className={cx('transition-transform duration-150', isOpen && 'rotate-90')} />
-        Más opciones
-      </button>
-      {isOpen ? (
-        <div className="grid gap-2">
-          {pattern.turnContext !== 'first' ? <DrawCountToggle patternId={pattern.id} ignoresDraw={pattern.ignoresDraw === true} actions={actions} /> : null}
-          <AdvancedSettings pattern={pattern} actions={actions} derivedMainCards={derivedMainCards} />
-        </div>
-      ) : null}
-    </section>
-  )
-}
-
-function RuleStep({
-  title,
-  children,
-}: {
-  title: string
-  children: ReactNode
-}) {
-  return (
-    <section className="grid content-start gap-2">
+    <section className={cx('grid content-start gap-2', inline && 'grid-cols-[4rem_minmax(0,1fr)] items-center gap-3')}>
       <h4 className={cx('m-0', overline)}>{title}</h4>
       {children}
     </section>

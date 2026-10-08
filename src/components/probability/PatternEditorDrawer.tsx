@@ -66,7 +66,7 @@ export function PatternEditorDrawer({
       <aside
         role="dialog"
         aria-label={title}
-        className="absolute right-0 top-0 grid h-full max-h-full w-full max-w-3xl animate-drawer-enter grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden border-l border-border-subtle bg-card-background p-0 shadow-overlay motion-reduce:animate-none"
+        className="absolute right-0 top-0 grid h-full max-h-full w-full max-w-[min(48rem,100vw)] animate-drawer-enter min-[1101px]:w-[clamp(34rem,42vw,48rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden border-l border-border-subtle bg-card-background p-0 shadow-overlay motion-reduce:animate-none"
       >
         <header className="grid gap-3 border-b border-border-subtle px-4 py-3.5">
           <div className="flex items-start justify-between gap-3">
