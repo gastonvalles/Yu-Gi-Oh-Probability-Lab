@@ -13,14 +13,21 @@ export interface DeckExportResult {
 export async function exportDeckAssets(deckBuilder: DeckBuilderState, deckFormat: DeckFormat): Promise<DeckExportResult> {
   const filenameBase = deckBuilder.deckName || 'ygo-probability-lab-deck'
   const decklist = buildKdeDecklist(deckBuilder)
-  const [imageBlob, pdfBytes] = await Promise.all([
+  // Cada archivo se genera por separado: si falla el PDF (planilla que no carga) igual se bajan la imagen y el YDK.
+  const [image, pdf] = await Promise.allSettled([
     renderDeckAsCanvas(deckBuilder, deckFormat).then(canvasToJpegBlob),
     buildDecklistPdf(decklist),
   ])
 
-  downloadBlob(imageBlob, filenameBase, 'jpg')
-  downloadBlob(new Blob([pdfBytes as BlobPart], { type: 'application/pdf' }), `${filenameBase}-decklist`, 'pdf')
+  if (image.status === 'fulfilled') downloadBlob(image.value, filenameBase, 'jpg')
+  if (pdf.status === 'fulfilled') downloadBlob(new Blob([pdf.value as BlobPart], { type: 'application/pdf' }), `${filenameBase}-decklist`, 'pdf')
   downloadBlob(new Blob([buildYdkText(deckBuilder)], { type: 'text/plain;charset=utf-8' }), filenameBase, 'ydk')
+
+  const failed = [image.status === 'rejected' && 'la imagen', pdf.status === 'rejected' && 'el PDF'].filter(Boolean)
+
+  if (failed.length > 0) {
+    throw new Error(`Se descargó lo que pude, pero falló ${failed.join(' y ')}.`)
+  }
 
   return { decklistOverflow: decklist.overflow }
 }

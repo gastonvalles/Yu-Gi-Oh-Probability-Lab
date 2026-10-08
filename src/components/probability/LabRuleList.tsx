@@ -247,25 +247,20 @@ function RuleRow({
     cx(RULE_ROW, RULE_KIND_RGB[entry.kind], interactive && RULE_ROW_INTERACTIVE, !isActive && 'opacity-55')
 
   if (onClick && trailing) {
-    // El interruptor no puede ir dentro de un botón: la fila entera es el botón y el interruptor frena el toque.
+    // El interruptor no puede ir dentro de un botón (un role="button" oculta a sus hijos para lectores de
+    // pantalla): la fila es un contenedor, el cuerpo es el botón de editar y el interruptor queda al lado.
     return (
-      <div
-        role="button"
-        tabIndex={0}
-        className={rowClass(true)}
-        aria-label={`${actionLabel} regla ${entry.name}: ${formatRuleValue(entry)}`}
-        onClick={onClick}
-        onKeyDown={(event) => {
-          if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
-            event.preventDefault()
-            onClick()
-          }
-        }}
-      >
-        {body}
-        <span className="flex" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
-          {trailing}
-        </span>
+      <div className={cx(rowClass(true), 'has-[button:focus-visible]:shadow-focus')}>
+        {/* `contents`: el botón no genera caja y sus hijos ocupan las columnas de la grilla como antes. */}
+        <button
+          type="button"
+          className="contents cursor-pointer text-left focus-visible:outline-none"
+          aria-label={`${actionLabel} regla ${entry.name}: ${formatRuleValue(entry)}`}
+          onClick={onClick}
+        >
+          {body}
+        </button>
+        <span className="flex">{trailing}</span>
       </div>
     )
   }

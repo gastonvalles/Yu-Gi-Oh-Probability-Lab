@@ -139,7 +139,7 @@ export function ExportDeckPanel({
             <EmptyState icon="image" title={previewState === 'error' ? 'No pude generar la vista previa' : 'Todavía no hay vista previa'}>
               {previewState === 'error'
                 ? 'No pude generar la vista previa de la imagen.'
-                : 'Agregá cartas al Main Deck para habilitar la preview.'}
+                : 'Agregá cartas al Main Deck para habilitar la vista previa.'}
             </EmptyState>
           )}
         </article>

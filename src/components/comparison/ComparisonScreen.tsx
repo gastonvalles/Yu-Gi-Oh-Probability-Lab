@@ -292,6 +292,7 @@ export function ComparisonScreen() {
 
       <ConfirmDialog
         confirmLabel="Borrar build"
+        confirmColor="danger"
         description={`Se borra "${deleteTarget?.name ?? ''}" de tus builds guardadas. Tu deck actual no cambia.`}
         isOpen={deleteTarget !== null}
         onCancel={() => setDeleteTarget(null)}

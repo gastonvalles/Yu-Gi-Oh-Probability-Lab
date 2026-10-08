@@ -293,7 +293,7 @@ export function DeckImportDrawer({
 
     if (trimmedValue.length === 0) {
       setPreview(null)
-      setFormError('Pegá una lista de cartas si querés usar el fallback manual.')
+      setFormError('Pegá una lista de cartas si querés cargar la lista a mano.')
       return
     }
 
@@ -564,6 +564,7 @@ export function DeckImportDrawer({
                   {manualFallbackOpen ? (
                     <div className="grid gap-2.5">
                       <textarea
+                        aria-label="Lista de cartas"
                         value={inputValue}
                         onChange={(event) => {
                           setInputValue(event.target.value)
@@ -642,7 +643,7 @@ export function DeckImportDrawer({
                     <article className="grid gap-2.5">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <small className={overline}>Preview</small>
+                          <small className={overline}>Vista previa</small>
                           <h4 className="m-0 mt-0.5 text-lead font-semibold leading-tight text-foreground">
                             {buildPreviewHeadline(preview)}
                           </h4>
@@ -728,7 +729,7 @@ export function DeckImportDrawer({
 
                     {preview.conflicts.length > 0 ? (
                       <CollapsibleSection
-                        title="Conflictos del import"
+                        title="Conflictos de la importación"
                         subtitle="Estas copias no se pudieron aplicar usando las reglas reales del deck builder."
                         count={preview.conflicts.length}
                         tone="warning"
@@ -772,6 +773,7 @@ export function DeckImportDrawer({
         }
         cancelLabel="Volver"
         confirmLabel="Sí, reemplazar"
+        confirmColor="danger"
         onCancel={() => setIsReplaceConfirmOpen(false)}
         onConfirm={applyImport}
       />
@@ -791,7 +793,7 @@ function buildPreviewHeadline(preview: DeckImportPreview): string {
     return 'Todo listo para aplicar el import'
   }
 
-  return 'Import parcial listo para revisar'
+  return 'Importación parcial lista para revisar'
 }
 
 function buildPreviewDescription(preview: DeckImportPreview): string {

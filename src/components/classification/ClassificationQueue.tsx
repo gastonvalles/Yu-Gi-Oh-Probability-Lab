@@ -114,7 +114,7 @@ const QueueTile = memo(function QueueTile({
           {status ? <span className={statusChip(status.tone, true)}>{status.label}</span> : null}
           {card.origin ? (
             <span className={cx(MINI_CHIP, 'rounded-tag')} style={getClassificationStyle(getCardOriginDefinition(card.origin).key)}>
-              {card.origin === 'non_engine' ? 'Non-Engine' : getCardOriginDefinition(card.origin).label}
+              {getCardOriginDefinition(card.origin).label}
             </span>
           ) : null}
           {roles.slice(0, MAX_VISIBLE_ROLES).map((role) => (

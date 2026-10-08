@@ -288,7 +288,7 @@ export function DeckBuilderStep({
 
                 <div className="flex items-center gap-2">
                   <Button variant="secondary" size="md" icon="upload" className="whitespace-nowrap" onClick={() => setImportDrawerOpen(true)}>
-                    Import deck
+                    Importar deck
                   </Button>
 
                   <IconButton
