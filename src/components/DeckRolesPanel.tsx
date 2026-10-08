@@ -376,7 +376,10 @@ export function DeckRolesPanel({
   }, [filteredCards, isSelectedCardInActiveFilter, selectedCard])
   // Anterior/Siguiente siguen el orden de la lista, que no cambia al clasificar.
   const stableNavigationCards = sortedCards
-  const classifiedPercent = sortedCards.length > 0 ? Math.round((completeCards.length / sortedCards.length) * 100) : 0
+  // Una carta cuenta como "lista" cuando está completa y confirmada: es la misma cuenta que usa el Lab.
+  const pendingReviewCards = useMemo(() => completeCards.filter((card) => card.needsReview), [completeCards])
+  const readyCount = completeCards.length - pendingReviewCards.length
+  const classifiedPercent = sortedCards.length > 0 ? Math.round((readyCount / sortedCards.length) * 100) : 0
   const selectedCardIndexInFullList = selectedCard
     ? stableNavigationCards.findIndex((card) => card.id === selectedCard.id)
     : -1
@@ -513,17 +516,31 @@ export function DeckRolesPanel({
 
       {sortedCards.length > 0 ? (
         <div className={cx('grid gap-4 min-[1101px]:items-center min-[1101px]:gap-6', visibleFilterItems.length > 1 && 'min-[1101px]:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]')}>
-          <Card level="hero" padding="lg" className="flex items-center justify-between gap-4">
+          <Card level="hero" padding="lg" className="flex items-center gap-5 min-[1101px]:gap-6">
+            {/* El anillo va primero y en verde: se lee de un vistazo cuánto falta, y 100 % = listo. */}
+            <ProgressRing tone="onBrand" color="var(--success-rgb)" size={112} strokeWidth={10} value={classifiedPercent / 100} label="Cartas clasificadas">
+              <span className="grid justify-items-center leading-none">
+                <span className="text-title font-bold tracking-[-0.02em]">{formatInteger(classifiedPercent)}%</span>
+                <span className="mt-1 text-micro font-medium text-primary-foreground/75">{hasCardsNeedingClassification ? 'listas' : 'listo'}</span>
+              </span>
+            </ProgressRing>
             <div className="grid min-w-0 gap-4">
               <p className="m-0 max-w-[16rem] text-lead leading-snug">
-                {hasCardsNeedingClassification
-                  ? `Te faltan ${formatInteger(sortedCards.length - completeCards.length)} carta${sortedCards.length - completeCards.length === 1 ? '' : 's'} por clasificar`
-                  : 'Tu deck está clasificado y listo para medir'}
+                {unclassifiedCards.length > 0
+                  ? `Te faltan ${formatInteger(unclassifiedCards.length)} carta${unclassifiedCards.length === 1 ? '' : 's'} por clasificar`
+                  : pendingReviewCards.length > 0
+                    ? `Confirmá ${formatInteger(pendingReviewCards.length)} sugerencia${pendingReviewCards.length === 1 ? '' : 's'} para cerrar la clasificación`
+                    : 'Tu deck está clasificado y listo para medir'}
               </p>
               <div className="flex flex-wrap gap-2">
-                {hasCardsNeedingClassification ? (
+                {unclassifiedCards.length > 0 ? (
                   <Button variant="onBrand" size="sm" icon="sparkles" onClick={() => dispatch(reclassifyAllCards())}>
                     Clasificar todo
+                  </Button>
+                ) : pendingReviewCards.length > 0 ? (
+                  // Abre la primera sugerencia; desde ahí "Siguiente" recorre el resto.
+                  <Button variant="onBrand" size="sm" icon="check" onClick={() => handleCardSelection(pendingReviewCards[0]!.id)}>
+                    Revisar sugerencias
                   </Button>
                 ) : onOpenLab ? (
                   <Button variant="onBrand" size="sm" iconEnd="arrow-right" onClick={onOpenLab}>
@@ -532,7 +549,6 @@ export function DeckRolesPanel({
                 ) : null}
               </div>
             </div>
-            <ProgressRing tone="onBrand" size={76} value={classifiedPercent / 100} label="Cartas clasificadas" />
           </Card>
 
           {visibleFilterItems.length > 1 ? (

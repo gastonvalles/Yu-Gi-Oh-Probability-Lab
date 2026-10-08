@@ -8,10 +8,14 @@ import type { DeckBuilderState, DeckCardInstance, DeckZone } from './model'
 import { saveClassificationOverride } from './persistence'
 import { createId, formatInteger } from './utils'
 
+/**
+ * Extra y Side no tienen tope en el builder: es a propósito (se prueban más de 15 opciones y
+ * después se recorta), no un descuido. El Main sí corta en 60.
+ */
 export const DECK_ZONE_LIMITS: Record<DeckZone, number> = {
   main: 60,
-  extra: 15,
-  side: 15,
+  extra: Infinity,
+  side: Infinity,
 }
 
 export function isCardAllowedInDeckZone(

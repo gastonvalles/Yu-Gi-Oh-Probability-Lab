@@ -56,7 +56,8 @@ export function ProgressRing({ value, tone = 'brand', color, size = 42, strokeWi
           strokeDasharray={circumference}
           strokeDashoffset={circumference * (1 - shown)}
           style={{ transitionDelay: `${delayMs}ms`, ...(instant ? { transitionDuration: '0ms' } : null) }}
-          className={cx(RING_TRANSITION, onBrand ? 'stroke-lavender-light' : 'stroke-[rgb(var(--tone-rgb))]')}
+          // Sobre violeta el arco es lavanda, salvo que venga un color propio (p. ej. verde = listo).
+          className={cx(RING_TRANSITION, onBrand && !color ? 'stroke-lavender-light' : 'stroke-[rgb(var(--tone-rgb))]')}
         />
         {ticks?.map((tick) => {
           const angle = tick * 2 * Math.PI
