@@ -35,6 +35,7 @@ interface DeckZoneProps {
   variant?: 'default' | 'classic-builder'
   selectedCardId?: number | null
   onClearZone: (zone: DeckZoneType) => void
+  onSortZone: (zone: DeckZoneType) => void
   onDeckCardPointerDown: (event: ReactPointerEvent<HTMLElement>, instanceId: string) => void
   onDeckCardClick: (instanceId: string) => void
   onRemoveCard: (instanceId: string) => void
@@ -70,6 +71,7 @@ export const DeckZone = memo(function DeckZone({
   variant = 'default',
   selectedCardId = null,
   onClearZone,
+  onSortZone,
   onDeckCardPointerDown,
   onDeckCardClick,
   onRemoveCard,
@@ -202,6 +204,11 @@ export const DeckZone = memo(function DeckZone({
                 ))}
               </div>
             ) : null}
+            {cards.length > 1 ? (
+              <IconButton tone="ghost" size="sm" aria-label={`Ordenar ${title}`} title={`Ordenar ${title}`} onClick={() => onSortZone(zone)}>
+                <Icon name="sort" />
+              </IconButton>
+            ) : null}
             {cards.length > 0 ? (
               <IconButton tone="ghost" size="sm" aria-label={`Vaciar ${title}`} title={`Vaciar ${title}`} onClick={() => onClearZone(zone)}>
                 <Icon name="trash" />
@@ -263,15 +270,14 @@ export const DeckZone = memo(function DeckZone({
             <p className="m-0 wrap-anywhere text-body text-muted">{headerSummary}</p>
           </div>
         </div>
-        <Button
-          variant="tertiary"
-          size="sm"
-          className="shrink-0"
-          disabled={cards.length === 0}
-          onClick={() => onClearZone(zone)}
-        >
-          Vaciar
-        </Button>
+        <div className="flex shrink-0 items-center gap-1">
+          <Button variant="tertiary" size="sm" icon="sort" disabled={cards.length < 2} onClick={() => onSortZone(zone)}>
+            Ordenar
+          </Button>
+          <Button variant="tertiary" size="sm" disabled={cards.length === 0} onClick={() => onClearZone(zone)}>
+            Vaciar
+          </Button>
+        </div>
       </div>
 
       <div

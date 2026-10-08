@@ -1,6 +1,7 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
 
 import type { DeckBuilderState, DeckZone } from './model'
+import { sortDeckCards } from './deck-sort'
 import type { CardOrigin, CardRole, DeckFormat } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 import type { ClassificationSuggestion } from './classification-engine'
@@ -97,6 +98,9 @@ const deckBuilderSlice = createSlice({
     clearDeckZone(state, action: PayloadAction<DeckZone>) {
       state[action.payload] = []
     },
+    sortDeckZone(state, action: PayloadAction<DeckZone>) {
+      state[action.payload] = sortDeckCards(state[action.payload])
+    },
     clearAllDeckZones(state) {
       state.main = []
       state.extra = []
@@ -137,6 +141,7 @@ export const {
   reclassifyAllCards,
   clearAllDeckZones,
   clearDeckZone,
+  sortDeckZone,
   moveDeckCardInBuilder,
   removeDeckCardFromBuilder,
   replaceDeckBuilder,

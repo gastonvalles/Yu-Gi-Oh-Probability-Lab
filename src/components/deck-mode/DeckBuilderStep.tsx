@@ -56,6 +56,7 @@ interface DeckBuilderStepProps {
   selectedDetailSource: 'search' | 'deck' | null
   selectedDeckCopyActions: DeckCopyActions | null
   onClearDeckZone: (zone: DeckZoneType) => void
+  onSortDeckZone: (zone: DeckZoneType) => void
   onClearAllDeckZones: () => void
   onRemoveDeckCard: (instanceId: string) => void
   onDeckCardPointerDown: (event: ReactPointerEvent<HTMLElement>, instanceId: string) => void
@@ -118,6 +119,7 @@ export function DeckBuilderStep({
   selectedDetailSource,
   selectedDeckCopyActions,
   onClearDeckZone,
+  onSortDeckZone,
   onClearAllDeckZones,
   onRemoveDeckCard,
   onDeckCardPointerDown,
@@ -319,6 +321,7 @@ export function DeckBuilderStep({
                     variant="classic-builder"
                     selectedCardId={selectedCardId}
                     onClearZone={handleRequestClearDeckZone}
+                    onSortZone={onSortDeckZone}
                     onDeckCardPointerDown={onDeckCardPointerDown}
                     onDeckCardClick={onDeckCardClick}
                     onRemoveCard={onRemoveDeckCard}
@@ -496,6 +499,7 @@ export function DeckBuilderStep({
                       : 'idle'
                 }
                 onClearZone={handleRequestClearDeckZone}
+                onSortZone={onSortDeckZone}
                 onDeckCardPointerDown={onDeckCardPointerDown}
                 onDeckCardClick={onDeckCardClick}
                 onRemoveCard={onRemoveDeckCard}

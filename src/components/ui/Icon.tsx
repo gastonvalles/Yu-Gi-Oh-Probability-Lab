@@ -145,6 +145,7 @@ const PATHS = {
       <path d="M20 4v4.5h-4.5" />
     </>
   ),
+  sort: <path d="M4 6.5h16M4 12h11M4 17.5h6" />,
   save: <path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4.5L5 21V4.5a1 1 0 0 1 1-1z" />,
   swap: (
     <>
