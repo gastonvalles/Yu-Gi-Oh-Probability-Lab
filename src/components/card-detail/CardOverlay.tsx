@@ -138,7 +138,7 @@ export function CardOverlay({ ariaLabel, panelLabel, name, card, origin = null, 
       }}
     >
       <div
-        className={cx('group pointer-events-none flex max-h-full flex-col items-center gap-3 [@media(max-height:540px)]:gap-2', tall ? 'w-[min(100%,36rem)]' : 'w-[min(100%,32rem)]')}
+        className={cx('group pointer-events-none flex max-h-full flex-col items-center gap-3 [@media(max-height:540px)]:gap-2', tall ? 'w-[min(100%,36rem)]' : 'w-[min(100%,32rem)]', 'data-[zoomed=true]:w-full')}
         data-zoomed={zoomed ? 'true' : 'false'}
       >
         <div
@@ -155,7 +155,7 @@ export function CardOverlay({ ariaLabel, panelLabel, name, card, origin = null, 
           <CardArt
             remoteUrl={card?.imageUrl ?? card?.imageUrlSmall ?? null}
             name={name}
-            className="block h-full w-full bg-input object-cover"
+            className="block h-full w-full bg-input object-contain"
             limitCard={card}
             limitBadgeSize="lg"
           />
