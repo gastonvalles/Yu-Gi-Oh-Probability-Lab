@@ -112,17 +112,19 @@ describe('importación por texto', () => {
 })
 
 describe('límites de zona', () => {
-  it('Extra y Side aceptan 15 cartas como máximo', () => {
-    expect(DECK_ZONE_LIMITS.extra).toBe(15)
-    expect(DECK_ZONE_LIMITS.side).toBe(15)
+  it('Extra y Side no tienen tope en el builder (decisión de producto); el Main corta en 60', () => {
+    expect(DECK_ZONE_LIMITS.main).toBe(60)
+    expect(DECK_ZONE_LIMITS.extra).toBe(Infinity)
+    expect(DECK_ZONE_LIMITS.side).toBe(Infinity)
 
-    const knight = apiCard(1, 'K', 'link')
+    // 15 cartas distintas en el Extra (el límite de 3 copias por nombre no interfiere) y entra una 16ª.
+    const knights = Array.from({ length: 16 }, (_, i) => apiCard(i + 1, `K${i + 1}`, 'link'))
     const full: DeckBuilderState = {
       deckName: '', main: [], side: [], isEditingDeck: false,
-      extra: Array.from({ length: 15 }, (_, i) => ({ instanceId: `e${i}`, name: 'K', apiCard: knight, origin: null, roles: [], needsReview: true })),
+      extra: knights.slice(0, 15).map((card, i) => ({ instanceId: `e${i}`, name: card.name, apiCard: card, origin: null, roles: [], needsReview: true })),
     }
 
-    expect(addSearchResultToZone(full, [knight], 1, 'extra', 15).extra).toHaveLength(15)
+    expect(addSearchResultToZone(full, knights, 16, 'extra', 15).extra).toHaveLength(16)
   })
 })
 

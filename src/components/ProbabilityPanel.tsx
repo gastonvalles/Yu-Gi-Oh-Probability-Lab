@@ -294,6 +294,7 @@ export function ProbabilityPanel({
         drawerMode={drawerMode}
         isPendingCreation={drawerMode === 'custom-create'}
         saveLabel={replacedGenericId ? 'Guardar cambios' : undefined}
+        hint={draftHasConditions ? 'El análisis se actualiza al guardar.' : 'Elegí qué contar en una condición para poder guardar.'}
         onClose={handleRequestClose}
         onRequestDelete={setPendingDeletePatternId}
         onSave={handleSaveDraft}

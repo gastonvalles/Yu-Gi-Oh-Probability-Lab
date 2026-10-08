@@ -201,6 +201,29 @@ function buildSpecificCardPreview(
     : `al menos ${formatInteger(requirement.quantity)} copias de ${cardName}`
 }
 
+/** Sustantivo de lo que se cuenta, en singular, plural y negado ("ninguna carta"). */
+interface CountNoun {
+  one: string
+  many: string
+  none: string
+}
+
+const CARDS: CountNoun = { one: 'carta', many: 'cartas', none: 'ninguna carta' }
+const NAMES: CountNoun = { one: 'nombre distinto', many: 'nombres distintos', none: 'ningún nombre' }
+const MONSTERS: CountNoun = { one: 'monstruo', many: 'monstruos', none: 'ningún monstruo' }
+const MONSTER_NAMES: CountNoun = { one: 'nombre distinto de monstruo', many: 'nombres distintos de monstruos', none: 'ningún nombre de monstruo' }
+
+/** "al menos 2 cartas …", "al menos 1 carta …", "no robás ninguna carta …", "no robás 2 o más cartas …". */
+function countPhrase(requirement: PatternRequirement, noun: CountNoun, tail: string): string {
+  const quantity = requirement.quantity
+
+  if (requirement.kind === 'exclude') {
+    return quantity === 1 ? `no robás ${noun.none} ${tail}` : `no robás ${formatInteger(quantity)} o más ${noun.many} ${tail}`
+  }
+
+  return `al menos ${formatInteger(quantity)} ${quantity === 1 ? noun.one : noun.many} ${tail}`
+}
+
 function buildCardPoolPreview(
   requirement: PatternRequirement,
   selectedCards: CardEntry[],
@@ -210,43 +233,19 @@ function buildCardPoolPreview(
       ? selectedCards.map((card) => card.name).join(', ')
       : 'un pool de cartas'
 
-  if (requirement.kind === 'exclude') {
-    return requirement.distinct
-      ? `no robás ${formatInteger(requirement.quantity)} o más nombres distintos del pool ${poolLabel}`
-      : `no robás ${formatInteger(requirement.quantity)} o más cartas del pool ${poolLabel}`
-  }
-
-  return requirement.distinct
-    ? `al menos ${formatInteger(requirement.quantity)} nombres distintos del pool ${poolLabel}`
-    : `al menos ${formatInteger(requirement.quantity)} cartas del pool ${poolLabel}`
+  return countPhrase(requirement, requirement.distinct ? NAMES : CARDS, `del pool ${poolLabel}`)
 }
 
 function buildGenericCardPreview(
   requirement: PatternRequirement,
   matcherLabel: string,
 ): string {
-  if (requirement.kind === 'exclude') {
-    return requirement.distinct
-      ? `no robás ${formatInteger(requirement.quantity)} o más nombres distintos ${matcherLabel}`
-      : `no robás ${formatInteger(requirement.quantity)} o más cartas ${matcherLabel}`
-  }
-
-  return requirement.distinct
-    ? `al menos ${formatInteger(requirement.quantity)} nombres distintos ${matcherLabel}`
-    : `al menos ${formatInteger(requirement.quantity)} cartas ${matcherLabel}`
+  return countPhrase(requirement, requirement.distinct ? NAMES : CARDS, matcherLabel)
 }
 
 function buildGenericMonsterPreview(
   requirement: PatternRequirement,
   matcherLabel: string,
 ): string {
-  if (requirement.kind === 'exclude') {
-    return requirement.distinct
-      ? `no robás ${formatInteger(requirement.quantity)} o más nombres distintos de monstruos ${matcherLabel}`
-      : `no robás ${formatInteger(requirement.quantity)} o más monstruos ${matcherLabel}`
-  }
-
-  return requirement.distinct
-    ? `al menos ${formatInteger(requirement.quantity)} nombres distintos de monstruos ${matcherLabel}`
-    : `al menos ${formatInteger(requirement.quantity)} monstruos ${matcherLabel}`
+  return countPhrase(requirement, requirement.distinct ? MONSTER_NAMES : MONSTERS, matcherLabel)
 }

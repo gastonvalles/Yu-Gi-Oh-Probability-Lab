@@ -115,7 +115,8 @@ export function CardOverlay({ ariaLabel, panelLabel, name, card, origin = null, 
       ref={rootRef}
       className={cx(
         'fixed inset-0 z-240 grid place-items-center bg-background/90 pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(1rem,env(safe-area-inset-top))] min-[1101px]:backdrop-blur-[8px] [@media(max-height:540px)]:[--detail-art-height:28dvh] [@media(max-height:540px)]:py-3',
-        tall ? '[--detail-art-height:min(20dvh,13rem)] [--detail-panel-height:min(74dvh,36rem)]' : '[--detail-art-height:min(36dvh,20rem)] [--detail-panel-height:min(52dvh,28rem)]',
+        // Al clasificar la carta se ve grande (32dvh): el panel de abajo cede espacio y su cuerpo scrollea si hace falta.
+        tall ? '[--detail-art-height:min(32dvh,20rem)] [--detail-panel-height:min(64dvh,36rem)]' : '[--detail-art-height:min(36dvh,20rem)] [--detail-panel-height:min(52dvh,28rem)]',
       )}
       role="dialog"
       aria-modal="true"
