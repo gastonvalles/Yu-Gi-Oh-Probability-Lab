@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { compareBuilds } from '../../app/build-comparison'
+import { buildComparisonInputs, compareBuilds } from '../../app/build-comparison'
+import { useLabComputation } from '../probability/use-lab-computation'
 import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
 import type { DeckBuilderState, DeckCardInstance } from '../../app/model'
 import { withReferenceClassification, type BuildZones } from '../../app/saved-builds'
@@ -108,16 +109,28 @@ export function ComparisonScreen() {
   const buildA = useMemo(() => resolve(selection.a) ?? resolve(CURRENT)!, [resolve, selection.a])
   const buildB = useMemo(() => resolve(selection.b), [resolve, selection.b])
 
+  // La enumeración de manos de cada build corre en los workers (y queda en caché por contenido);
+  // compareBuilds sólo arma el informe con esos resultados.
+  const rules = useMemo(
+    () => ({ patterns, disabledGenericRuleIds, systemRuleNames, handSize }),
+    [patterns, disabledGenericRuleIds, systemRuleNames, handSize],
+  )
+  const inputA = useMemo(() => ({ name: buildA.name, cards: deriveMainDeckCardsFromZone(buildA.zones.main) }), [buildA])
+  const inputB = useMemo(() => (buildB ? { name: buildB.name, cards: deriveMainDeckCardsFromZone(buildB.zones.main) } : null), [buildB])
+  const labInputs = useMemo(() => (inputB ? buildComparisonInputs(inputA, inputB, rules) : null), [inputA, inputB, rules])
+  const labA = useLabComputation(labInputs?.a ?? null)
+  const labB = useLabComputation(labInputs?.b ?? null)
+
   const comparison = useMemo(() => {
-    if (!buildB) {
+    if (!inputB) {
       return null
     }
-    return compareBuilds(
-      { name: buildA.name, cards: deriveMainDeckCardsFromZone(buildA.zones.main) },
-      { name: buildB.name, cards: deriveMainDeckCardsFromZone(buildB.zones.main) },
-      { patterns, disabledGenericRuleIds, systemRuleNames, handSize },
-    )
-  }, [buildA, buildB, patterns, disabledGenericRuleIds, systemRuleNames, handSize])
+
+    return compareBuilds(inputA, inputB, rules, {
+      a: labA.isComputing ? undefined : labA.computation,
+      b: labB.isComputing ? undefined : labB.computation,
+    })
+  }, [inputA, inputB, rules, labA.computation, labA.isComputing, labB.computation, labB.isComputing])
 
   const deltaByCardId = useMemo(
     () => new Map((comparison?.cardDiffs ?? []).map((diff) => [diff.cardId, diff.delta])),

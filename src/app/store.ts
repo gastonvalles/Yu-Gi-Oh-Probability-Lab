@@ -53,6 +53,7 @@ function buildRootState(state: AppState): RootStateSchema {
 }
 
 let saveStateTimer: number | null = null
+let lastSavedState: RootState | null = null
 
 function flushSaveState(): void {
   if (saveStateTimer === null) {
@@ -61,11 +62,18 @@ function flushSaveState(): void {
 
   window.clearTimeout(saveStateTimer)
   saveStateTimer = null
-  saveState(selectAppState(store.getState()))
+
+  const state = store.getState()
+
+  if (state !== lastSavedState) {
+    lastSavedState = state
+    saveState(selectAppState(state))
+  }
 }
 
 store.subscribe(() => {
-  if (typeof window === 'undefined') {
+  // Una acción que no cambió nada (reducer devolvió el mismo estado) no vale una serialización.
+  if (typeof window === 'undefined' || store.getState() === lastSavedState) {
     return
   }
 

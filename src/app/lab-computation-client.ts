@@ -18,7 +18,7 @@ const inFlight = new Map<string, Promise<LabComputation>>()
 const keyMemo = new WeakMap<CardEntry[], WeakMap<HandPattern[], Map<number, string>>>()
 
 /** Hash de 53 bits (cyrb53): la clave es corta aunque el deck y las reglas pesen cientos de KB de JSON. */
-function hashString(text: string): string {
+export function hashString(text: string): string {
   let h1 = 0xdeadbeef
   let h2 = 0x41c6ce57
 

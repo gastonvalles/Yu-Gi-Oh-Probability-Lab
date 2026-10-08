@@ -300,12 +300,15 @@ export function reclassifyAll(
 
   for (const zone of zones) {
     for (const card of nextDeckBuilder[zone]) {
-      // Skip cards the user manually confirmed (needsReview === false with origin set)
-      if (!card.needsReview && card.origin !== null && card.roles.length > 0) {
+      const suggestion = classifyCard(card.apiCard, card.name, overrides)
+
+      // Una carta que el usuario ya tocó (needsReview false) no se pisa: sólo se completa lo que le falta.
+      if (!card.needsReview) {
+        if (card.origin === null) card.origin = suggestion.origin
+        if (card.roles.length === 0) card.roles = [...suggestion.roles]
         continue
       }
 
-      const suggestion = classifyCard(card.apiCard, card.name, overrides)
       card.origin = suggestion.origin
       card.roles = [...suggestion.roles]
       const hasOverride = overrides ? overrides.has(normalizeCardNameForLookup(card.name)) : false

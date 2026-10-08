@@ -572,12 +572,16 @@ function getDeckZoneLabel(zone: DeckZoneType): string {
   return zone === 'main' ? 'Main Deck' : zone === 'extra' ? 'Extra Deck' : 'Side Deck'
 }
 
+// Copias por id, pero contadas por nombre: dos artes de la misma carta (ids distintos) son la misma carta,
+// igual que para el límite de copias.
 function countDeckCopiesByCardId(deckBuilder: DeckBuilderState): Map<number, number> {
-  const counts = new Map<number, number>()
+  const cards = [...deckBuilder.main, ...deckBuilder.extra, ...deckBuilder.side]
+  const countsByName = new Map<string, number>()
 
-  for (const card of [...deckBuilder.main, ...deckBuilder.extra, ...deckBuilder.side]) {
-    counts.set(card.apiCard.ygoprodeckId, (counts.get(card.apiCard.ygoprodeckId) ?? 0) + 1)
+  for (const card of cards) {
+    const name = card.name.trim().toLocaleLowerCase()
+    countsByName.set(name, (countsByName.get(name) ?? 0) + 1)
   }
 
-  return counts
+  return new Map(cards.map((card) => [card.apiCard.ygoprodeckId, countsByName.get(card.name.trim().toLocaleLowerCase()) ?? 0]))
 }
