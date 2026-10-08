@@ -318,6 +318,7 @@ export function DeckBuilderStep({
               {DECK_ZONE_ITEMS.map(({ zone, title }) => {
                 const zoneNode = (
                   <DeckZone
+                    key={zone}
                     zone={zone}
                     title={title}
                     cards={deckBuilder[zone]}
