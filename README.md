@@ -154,10 +154,11 @@ npm run build        # chequeo de tipos + build de producción
 npm run preview      # sirve el build
 npm test             # tests
 npm run typecheck    # tipos de la app y de los tests
+npm run lint         # ESLint: reglas de hooks, variables sin uso y lo recomendado de TypeScript
 npm run sync:genesys # actualiza los puntos de Genesys
 ```
 
-El CI (`.github/workflows/ci.yml`) corre `typecheck`, `test` y `build` en cada PR y push a `main`.
+El CI (`.github/workflows/ci.yml`) corre `typecheck`, `lint`, `test` y `build` en cada PR y push a `main`.
 
 ## Requisitos
 

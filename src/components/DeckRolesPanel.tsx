@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import {
   areGroupKeysEqual,
@@ -355,7 +355,7 @@ export function DeckRolesPanel({
     overviewItems.find((item) => areClassificationFilterKeysEqual(item.key, activeFilter)) ??
     overviewItems[0] ??
     null
-  const filteredCards = activeOverview?.cards ?? []
+  const filteredCards = useMemo(() => activeOverview?.cards ?? [], [activeOverview])
   const emptyStateCopy = getEmptyStateCopy(activeFilter)
   const selectedCard = useMemo(
     () =>
@@ -448,23 +448,23 @@ export function DeckRolesPanel({
     setIsDetailOpen(true)
   }
 
-  const handleSelectPreviousCard = () => {
+  const handleSelectPreviousCard = useCallback(() => {
     if (!previousCard) {
       return
     }
 
     setSelectedCardId(previousCard.id)
     setIsDetailOpen(true)
-  }
+  }, [previousCard])
 
-  const handleSelectNextCard = () => {
+  const handleSelectNextCard = useCallback(() => {
     if (!nextCard) {
       return
     }
 
     setSelectedCardId(nextCard.id)
     setIsDetailOpen(true)
-  }
+  }, [nextCard])
 
   useEffect(() => {
     // La guía de roles se abre encima de la carta (que se oculta mientras tanto): las flechas sólo valen con la carta a la vista.
@@ -495,7 +495,7 @@ export function DeckRolesPanel({
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [drawerMode, isDetailOpen, previousCard, nextCard])
+  }, [drawerMode, isDetailOpen, handleSelectPreviousCard, handleSelectNextCard])
 
   return (
     <section className="mx-auto grid w-full min-w-0 max-w-content content-start gap-4 overflow-x-hidden px-gutter pb-6 pt-4 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_auto_minmax(0,1fr)] min-[1101px]:gap-5 min-[1101px]:overflow-hidden min-[1101px]:px-6 min-[1101px]:pb-6 min-[1101px]:pt-6">

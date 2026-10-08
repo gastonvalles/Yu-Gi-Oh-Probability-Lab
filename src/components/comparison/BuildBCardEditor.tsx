@@ -22,7 +22,7 @@ export function BuildBCardEditor({ card, currentEdit, allCards, onSave, onNaviga
   useEffect(() => {
     setOrigin(currentEdit?.origin ?? card.origin ?? 'engine')
     setRoles(currentEdit?.roles ?? [...card.roles])
-  }, [card.instanceId, currentEdit])
+  }, [card.instanceId, card.origin, card.roles, currentEdit])
 
   const toggleRole = (role: CardRole) => {
     setRoles((previous) => (previous.includes(role) ? previous.filter((current) => current !== role) : [...previous, role]))

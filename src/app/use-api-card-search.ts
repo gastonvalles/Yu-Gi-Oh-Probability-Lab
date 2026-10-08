@@ -55,6 +55,8 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
   const searchRequestIdRef = useRef(0)
   const remoteSearchRequest = useMemo(
     () => buildRemoteCardSearchRequest(apiSearch.query, searchFilters, deckFormat),
+    // Se listan sólo los filtros que viajan a la API: los demás (orden, etc.) no deben disparar otra búsqueda.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       deckFormat,
       apiSearch.query,

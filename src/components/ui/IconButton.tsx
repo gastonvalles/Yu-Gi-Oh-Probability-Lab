@@ -44,7 +44,7 @@ export function IconButton({ size = 'md', tone = 'raised', className = '', type 
   return <button type={type} className={cx(toneStyle({ tone }, SIZES[tone][size]), className)} {...props} />
 }
 
-interface CloseButtonProps extends Omit<IconButtonProps, 'children'> {}
+type CloseButtonProps = Omit<IconButtonProps, 'children'>
 
 export function CloseButton({ tone = 'close', ...props }: CloseButtonProps) {
   return (

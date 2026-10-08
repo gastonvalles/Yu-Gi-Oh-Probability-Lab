@@ -618,7 +618,7 @@ function aggregateImportedDeckEntries(entries: ImportedDeckEntry[]): ImportedDec
 
 function parseDeckSectionHeader(line: string): DeckZone | null {
   const normalizedHeader = normalizeSearchText(
-    normalizeImportPunctuation(line).replace(/[:\-\[\]{}()]+/g, ' '),
+    normalizeImportPunctuation(line).replace(/[:\-[\]{}()]+/g, ' '),
   )
 
   // "Main Deck", "Extra Deck (15)", "Side: 15 cards"...
