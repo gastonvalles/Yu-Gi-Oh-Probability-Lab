@@ -19,14 +19,14 @@ import { SideBadge } from './SideBadge'
 /** Nombre con el que el comparador muestra tu deck actual. */
 export const CURRENT_DECK_NAME = 'Deck actual'
 
-/** Diferencias menores a esto se consideran empate (0.1 pp). */
-const TIE_GAP = 0.001
-
 type Side = 'A' | 'B'
+
+/** Los % se muestran con un decimal: dos valores son "iguales" sólo si se ven iguales. */
+const shown = (value: number) => Math.round(value * 1000)
 
 /** Quién gana: `null` es empate. Para problemas (bricks) el menor valor es el mejor. */
 function winnerOf(a: number | null, b: number | null, higherIsBetter = true): Side | null {
-  if (a === null || b === null || Math.abs(b - a) < TIE_GAP) {
+  if (a === null || b === null || shown(a) === shown(b)) {
     return null
   }
   return b > a === higherIsBetter ? 'B' : 'A'
@@ -60,11 +60,10 @@ export function ComparisonReport({ comparison, isCurrentDeck, onShowCards }: Com
           <BuildNotes key={side} side={side} build={build} canClassifyHere={!isCurrentDeck[side]} onShowCards={onShowCards} />
         ))}
         <ResultCard comparison={comparison} />
-      </div>
-      <div className="grid min-w-0 gap-4">
         <CardDiffCard diffs={comparison.cardDiffs} />
-        <DetailCard comparison={comparison} />
       </div>
+      {/* A la derecha sólo el detalle, ya desplegado: es lo que se consulta después del veredicto. */}
+      <DetailCard comparison={comparison} />
     </div>
   )
 }
@@ -241,8 +240,8 @@ function DetailCard({ comparison }: { comparison: BuildComparison }) {
   }
 
   return (
-    <Card padding="md" className="min-w-0">
-      <details className="group">
+    <Card padding="md" className="min-w-0 self-start">
+      <details className="group" open>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-control focus-visible:outline-none focus-visible:shadow-focus [&::-webkit-details-marker]:hidden">
           <SectionHeader as="h3" title="Dónde gana cada una" description="Por rol y por regla, en promedio. El veredicto sale de las manos limpias." />
           <Icon name="chevron-down" size={20} className="shrink-0 text-soft transition-transform duration-200 group-open:rotate-180" />
