@@ -48,7 +48,9 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [cardCatalog, setCardCatalog] = useState<ApiCardSearchResult[] | null>(null)
   const [cardCatalogStatus, setCardCatalogStatus] = useState<CardCatalogStatus>('idle')
-  const searchCacheRef = useRef(loadApiSearchCache())
+  // Lazy: `useRef(loadApiSearchCache())` releía y parseaba el localStorage en cada render.
+  const [searchCache] = useState(loadApiSearchCache)
+  const searchCacheRef = useRef(searchCache)
   const searchDebounceTimerRef = useRef<number>(0)
   const searchRequestIdRef = useRef(0)
   const remoteSearchRequest = useMemo(

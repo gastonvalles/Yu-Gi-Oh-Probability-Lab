@@ -99,7 +99,8 @@ const adjust = (cards: CardEntry[], changes: Change[]): CardEntry[] => {
     delta.set(card.id, (delta.get(card.id) ?? 0) + (action === 'add' ? 1 : -1))
   }
 
-  return cards.map((card) => ({ ...card, copies: card.copies + (delta.get(card.id) ?? 0) })).filter((card) => card.copies > 0)
+  // Una carta que llega a 0 copias se conserva: las reglas que la referencian por id siguen siendo válidas.
+  return cards.map((card) => ({ ...card, copies: Math.max(0, card.copies + (delta.get(card.id) ?? 0)) }))
 }
 
 /** Relleno para sacar una carta sin achicar el deck (el motor pide 40 cartas como mínimo). */

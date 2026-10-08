@@ -105,7 +105,16 @@ export function requestLabComputation(input: LabComputationInput, key = labCompu
   const first = runInPool<{ output: CalculationOutput }>((id) => ({ id, kind: 'view', cards, patterns, handSize, view: 'first' }))
   const second = runInPool<{ output: CalculationOutput }>((id) => ({ id, kind: 'view', cards, patterns, handSize, view: 'second' }))
   const inMainThread = () =>
-    new Promise<LabComputation>((resolve) => window.setTimeout(() => resolve(computeLabResults(cards, patterns, handSize)), 0))
+    new Promise<LabComputation>((resolve) =>
+      window.setTimeout(() => {
+        try {
+          resolve(computeLabResults(cards, patterns, handSize))
+        } catch {
+          // Si el cálculo revienta, la pantalla muestra el aviso en vez de quedarse cargando para siempre.
+          resolve({ status: 'blocked', issues: [{ level: 'error', message: 'No pude calcular las probabilidades. Probá de nuevo.' }] })
+        }
+      }, 0),
+    )
   const computation =
     first && second
       ? Promise.all([first, second])

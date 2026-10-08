@@ -191,17 +191,22 @@ export function buildPatternRequirementLabel<Key extends string | number>(
  * exacto, así que sólo se hace la búsqueda con cartas repartidas entre condiciones cuando de verdad
  * hay duda (2 o más condiciones que no pueden compartir cartas).
  */
+/**
+ * `excludeCounts` es la mano que ven las condiciones "sin": por defecto la misma. Un problema evaluado
+ * con cartas rescatadas descontadas sigue viendo la mano completa en sus "sin" (rescatar no puede crear un problema).
+ */
 export function matchesResolvedPattern<Counts, Key extends string | number>(
   pattern: Pick<ResolvedPattern<Key>, 'requirements' | 'allowSharedCards' | 'requiredMatches'>,
   counts: Counts,
   countOperations: CountOperations<Counts, Key>,
+  excludeCounts: Counts = counts,
 ): boolean {
   let excludeMatched = 0
   let includeCount = 0
   const matchedIncludes: ResolvedRequirement<Key>[] = []
 
   for (const requirement of pattern.requirements) {
-    const matches = matchesRequirement(requirement, counts, countOperations)
+    const matches = matchesRequirement(requirement, requirement.kind === 'exclude' ? excludeCounts : counts, countOperations)
 
     if (requirement.kind === 'exclude') {
       excludeMatched += matches ? 1 : 0

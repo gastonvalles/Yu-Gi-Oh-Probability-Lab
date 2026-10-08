@@ -627,19 +627,10 @@ function parseDeckSectionHeader(line: string): DeckZone | null {
     normalizeImportPunctuation(line).replace(/[:\-\[\]{}()]+/g, ' '),
   )
 
-  if (normalizedHeader === 'main' || normalizedHeader === 'main deck') {
-    return 'main'
-  }
+  // "Main Deck", "Extra Deck (15)", "Side: 15 cards"...
+  const match = normalizedHeader.match(/^(main|extra|side)(?: deck)?(?: \d+)?(?: cards?)?$/)
 
-  if (normalizedHeader === 'extra' || normalizedHeader === 'extra deck') {
-    return 'extra'
-  }
-
-  if (normalizedHeader === 'side' || normalizedHeader === 'side deck') {
-    return 'side'
-  }
-
-  return null
+  return match ? (match[1] as DeckZone) : null
 }
 
 function cleanupDeckEntryName(value: string): string {

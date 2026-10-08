@@ -188,7 +188,7 @@ export function evaluatePracticeHand(
   const matches = resolvedPatterns.flatMap<PracticeHandMatch>((pattern, patternIndex) => {
     const counts = countsOf(pattern, patternIndex)
 
-    if (!matchesResolvedPattern(pattern, counts, MAP_COUNT_OPERATIONS)) {
+    if (!matchesResolvedPattern(pattern, counts, MAP_COUNT_OPERATIONS, baseCountsOf(patternIndex))) {
       return []
     }
 

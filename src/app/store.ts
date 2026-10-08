@@ -71,6 +71,16 @@ function buildRootState(state: AppState): RootStateSchema {
 
 let saveStateTimer: number | null = null
 
+function flushSaveState(): void {
+  if (saveStateTimer === null) {
+    return
+  }
+
+  window.clearTimeout(saveStateTimer)
+  saveStateTimer = null
+  saveState(selectAppState(store.getState()))
+}
+
 store.subscribe(() => {
   if (typeof window === 'undefined') {
     return
@@ -80,10 +90,12 @@ store.subscribe(() => {
     window.clearTimeout(saveStateTimer)
   }
 
-  saveStateTimer = window.setTimeout(() => {
-    saveState(selectAppState(store.getState()))
-    saveStateTimer = null
-  }, 180)
+  saveStateTimer = window.setTimeout(flushSaveState, 180)
 })
+
+// Si la pestaña se cierra antes de que venza el debounce, el último cambio no se pierde.
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', flushSaveState)
+}
 
 export { replaceDeckBuilder, replacePatternsState }

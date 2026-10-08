@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 
 import { deriveMainDeckCardsFromZone } from './calculator-state'
 import { curatePatterns, getPatternCollectionSignature } from './pattern-curation'
@@ -24,7 +24,8 @@ export function usePatternMaintenance({
   state,
 }: PatternMaintenanceOptions): void {
   const dispatch = useAppDispatch()
-  const derivedMainCards = deriveMainDeckCardsFromZone(state.deckBuilder.main)
+  // Memo: es dependencia del efecto; sin él, un array nuevo por render re-firmaba todas las reglas cada vez.
+  const derivedMainCards = useMemo(() => deriveMainDeckCardsFromZone(state.deckBuilder.main), [state.deckBuilder.main])
 
   useEffect(() => {
     if (!hasCompletedRoleStep) {

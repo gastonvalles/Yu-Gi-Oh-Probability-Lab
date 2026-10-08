@@ -57,7 +57,7 @@ export function removeRequirement(
 
     return {
       ...pattern,
-      ...resolvePatternLogic('all', conditions.length, pattern.minimumConditionMatches),
+      ...resolvePatternLogic(getPatternMatchMode(pattern), conditions.length, pattern.minimumConditionMatches),
       needsReview: false,
       conditions,
     }

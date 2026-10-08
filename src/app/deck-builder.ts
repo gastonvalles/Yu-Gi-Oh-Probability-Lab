@@ -10,8 +10,8 @@ import { createId, formatInteger } from './utils'
 
 export const DECK_ZONE_LIMITS: Record<DeckZone, number> = {
   main: 60,
-  extra: Infinity,
-  side: Infinity,
+  extra: 15,
+  side: 15,
 }
 
 export function isCardAllowedInDeckZone(

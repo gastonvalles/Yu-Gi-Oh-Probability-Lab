@@ -147,7 +147,7 @@ export function buildCalculationSummary(state: CalculatorState): CalculationSumm
           ? base.map((copies, key) => Math.max(0, copies - rescued[key]))
           : base
 
-      if (matchesResolvedPattern(pattern, counts, ARRAY_COUNT_OPERATIONS)) {
+      if (matchesResolvedPattern(pattern, counts, ARRAY_COUNT_OPERATIONS, base)) {
         patternHands[index] += weight
         matchedIndexes.push(index)
 
