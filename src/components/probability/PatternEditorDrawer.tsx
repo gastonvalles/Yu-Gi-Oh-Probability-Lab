@@ -3,10 +3,6 @@ import { createPortal } from 'react-dom'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import type { CardEntry, HandPattern } from '../../types'
 import { Button } from '../ui/Button'
-import { cx } from '../ui/cx'
-import { Icon } from '../ui/Icon'
-import { TONE } from '../ui/tone'
-import { overline } from '../ui/typography'
 import { DraftImpactSummary } from './DraftImpactSummary'
 import { CloseButton } from '../ui/IconButton'
 import type { PatternEditorActions } from './pattern-editor-actions'
@@ -74,15 +70,7 @@ export function PatternEditorDrawer({
       >
         <header className="grid gap-3 border-b border-border-subtle px-4 py-3.5">
           <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 items-start gap-3">
-              <span className={cx('mt-0.5 grid size-9 shrink-0 place-items-center rounded-control border', TONE.brand.tint, TONE.brand.text)}>
-                <Icon name={isCreating ? 'plus' : 'pencil'} size={18} />
-              </span>
-              <div className="grid min-w-0 gap-0.5">
-                <p className={cx('m-0', overline)}>Regla propia</p>
-                <h3 className="m-0 truncate text-lead font-semibold tracking-[-0.01em] text-foreground">{title}</h3>
-              </div>
-            </div>
+            <h3 className="m-0 min-w-0 truncate text-lead font-semibold tracking-[-0.01em] text-foreground">{title}</h3>
             <CloseButton size="sm" aria-label="Cerrar editor" onClick={onClose} />
           </div>
 

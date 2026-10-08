@@ -48,7 +48,7 @@ export function BuildBCardEditor({ card, currentEdit, allCards, onSave, onNaviga
     <ClassificationOverlay
       name={card.name}
       card={card.apiCard}
-      lines={[`${summary.typeLine}${summary.statLine ? ` · ${summary.statLine}` : ''}`, 'Clasificación de la Build B']}
+      lines={[`${summary.typeLine}${summary.statLine ? ` · ${summary.statLine}` : ''} · Build B`]}
       origin={origin}
       roles={roles}
       onSetOrigin={setOrigin}

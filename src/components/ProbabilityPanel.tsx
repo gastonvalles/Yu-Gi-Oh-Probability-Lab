@@ -325,7 +325,6 @@ export function ProbabilityPanel({
         <KpiDetailModal
           isOpen
           role={kpiModalRole}
-          side="A"
           mainDeck={cardEntriesToDeckInstances(derivedMainCards)}
           onCardClick={(card, name) => setKpiDetailCard({ ...card, name })}
           onClose={() => setKpiModalRole(null)}

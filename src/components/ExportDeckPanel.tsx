@@ -34,7 +34,17 @@ export function ExportDeckPanel({
   const [busy, setBusy] = useState(false)
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
   const [previewState, setPreviewState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
-  const decklistSections = useMemo(() => buildKdeDecklistSections(deckBuilder), [deckBuilder])
+  const decklistSections = useMemo(() => {
+    const sections = buildKdeDecklistSections(deckBuilder)
+    const main = sections.filter((section) => ['monster', 'spell', 'trap'].includes(section.key))
+    const zone = (key: string, label: string) => sections.find((section) => section.key === key) ?? { key, label, total: 0, entries: [] }
+
+    return [
+      { key: 'main', label: 'Main Deck', total: main.reduce((sum, section) => sum + section.total, 0), entries: main.flatMap((section) => section.entries) },
+      zone('extra', 'Extra Deck'),
+      zone('side', 'Side Deck'),
+    ]
+  }, [deckBuilder])
 
   const handleExport = async () => {
     setBusy(true)

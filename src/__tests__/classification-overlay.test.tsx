@@ -64,8 +64,7 @@ describe('modal de clasificación (mismo marco que el detalle)', () => {
 
     expect(screen.getByRole('dialog', { name: 'Clasificar Starter Uno' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Starter Uno' })).toBeInTheDocument()
-    expect(screen.getByText('[Effect Monster] Spellcaster/DARK · [★4] / 1800/1000')).toBeInTheDocument()
-    expect(screen.getByText('3 copias en el Main')).toBeInTheDocument()
+    expect(screen.getByText('[Effect Monster] Spellcaster/DARK · [★4] / 1800/1000 · ×3 en el Main')).toBeInTheDocument()
     expect(screen.getAllByText(/3 \/ 31/)).toHaveLength(1)
     expect(screen.queryByText(/Carta 3 de 31/)).not.toBeInTheDocument()
     expect(screen.queryByText(/cartas clasificadas/)).not.toBeInTheDocument()

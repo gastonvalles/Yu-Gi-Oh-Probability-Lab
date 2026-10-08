@@ -21,7 +21,7 @@ interface ClassificationFieldsProps {
 /** Los dos campos de clasificar una carta: dónde encaja (origen) y qué función cumple (roles). Los usan todas las pantallas que clasifican. */
 export function ClassificationFields({ origin, roles, onSetOrigin, onToggleRole, onOpenHelp }: ClassificationFieldsProps) {
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-4">
       <section className="grid gap-2" aria-label="Origen">
         <p className={KICKER}>¿Dónde encaja en tu plan?</p>
         <div className="grid gap-1.5 min-[560px]:grid-cols-3 min-[560px]:gap-2">
@@ -53,7 +53,7 @@ export function ClassificationFields({ origin, roles, onSetOrigin, onToggleRole,
         </div>
       </section>
 
-      <section className="grid gap-3" aria-label="Roles">
+      <section className="grid gap-2" aria-label="Roles">
         <div className="flex items-center justify-between gap-2">
           <p className={KICKER}>¿Qué función cumple cuando la robás?</p>
           {onOpenHelp ? (
@@ -69,9 +69,9 @@ export function ClassificationFields({ origin, roles, onSetOrigin, onToggleRole,
         </div>
 
         {ROLE_EDITOR_SECTIONS.map((section) => (
-          <div key={section.title} className="grid gap-2">
-            <strong className="text-body font-semibold leading-none text-foreground">{section.title}</strong>
-            <div className="flex flex-wrap gap-1.5">
+          <div key={section.title} className="flex flex-wrap items-center gap-1.5">
+            <strong className="mr-1 w-full text-micro font-semibold uppercase tracking-[0.06em] text-soft min-[560px]:w-auto min-[560px]:min-w-24">{section.title}</strong>
+            <div className="flex flex-1 flex-wrap gap-1.5">
               {section.roles.map((role) => {
                 const definition = getCardRoleDefinition(role)
                 const active = roles.includes(role)
@@ -82,7 +82,7 @@ export function ClassificationFields({ origin, roles, onSetOrigin, onToggleRole,
                     type="button"
                     aria-pressed={active}
                     title={ROLE_HELP_TEXT[role]}
-                    className={cx(roleOptionButton(active), 'min-h-9 px-3 py-1.5 text-body leading-none')}
+                    className={cx(roleOptionButton(active), 'min-h-9 px-3 py-1.5 text-body leading-none min-[1101px]:min-h-8')}
                     style={getClassificationStyle(definition.key)}
                     onClick={() => onToggleRole(role)}
                   >

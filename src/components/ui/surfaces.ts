@@ -40,4 +40,4 @@ export const filterChip =
 
 /** Fila clickeable de una lista (cartas, resultados). */
 export const listItem =
-  'rounded-card border border-border-subtle bg-tint/3 transition-[border-color,background-color] duration-150 hover:border-primary/40 hover:bg-primary/8'
+  'rounded-card transition-colors duration-150 hover:bg-tint/7'

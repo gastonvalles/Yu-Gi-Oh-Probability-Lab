@@ -513,7 +513,7 @@ export function DeckRolesPanel({
       />
 
       {sortedCards.length > 0 ? (
-        <div className="grid gap-4 min-[1101px]:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] min-[1101px]:items-center min-[1101px]:gap-6">
+        <div className={cx('grid gap-4 min-[1101px]:items-center min-[1101px]:gap-6', visibleFilterItems.length > 1 && 'min-[1101px]:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]')}>
           <Card level="hero" padding="lg" className="flex items-center justify-between gap-4">
             <div className="grid min-w-0 gap-4">
               <p className="m-0 max-w-[16rem] text-lead leading-snug">
