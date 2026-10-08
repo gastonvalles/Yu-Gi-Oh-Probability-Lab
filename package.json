@@ -11,6 +11,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "sync:genesys": "node scripts/sync-genesys-card-data.mjs",
+    "sync:meta": "node scripts/sync-meta-decks.mjs",
     "test": "vitest --run",
     "typecheck": "tsc -p src/tsconfig.test.json"
   },

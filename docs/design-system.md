@@ -71,7 +71,7 @@ Los roles de las cartas (starter, handtrap…) y los grupos (engine, non-engine�
 ## 5. Navegación
 
 - Pestañas con ícono (relleno en la activa, duotono en las demás) + nombre + dato en vivo (p. ej. `40 / 40`) + punto de estado (verde listo, naranja a medio hacer). La activa lleva fondo lavanda.
-- **Mismos nombres en desktop y mobile:** Deck · Roles · Lab · Comparar · Exportar (el nombre completo va en el tooltip).
+- **Mismos nombres en desktop y mobile:** Deck · Roles · Lab · Comparar · Exportar · Meta (el nombre completo va en el tooltip).
 - Mobile: barra inferior lavanda con esquinas superiores de 24 px; la pestaña activa se rellena y se tiñe de violeta claro.
 
 ## 6. Reglas para sumar pantallas

@@ -1,0 +1,277 @@
+import metaDecksJson from '../data/meta-decks.json'
+
+/** Una hand trap del tier list, con su id canónico de YGOPRODeck (las artes alternativas ya están unificadas). */
+export interface MetaCard {
+  name: string
+  image: string | null
+}
+
+/** Un Tournament Meta Deck de YGOPRODeck: sólo sus hand traps, como [id, copias]. */
+export interface MetaDeck {
+  id: number
+  name: string
+  /** Fecha del torneo (YYYY-MM-DD). */
+  date: string
+  tournament: string | null
+  placement: string | null
+  players: number | null
+  /** Tramo final de la URL del deck en YGOPRODeck. */
+  url: string | null
+  main: Array<[number, number]>
+  side: Array<[number, number]>
+}
+
+export interface MetaDecksData {
+  /** Día del snapshot (YYYY-MM-DD): la referencia para contar semanas. */
+  fetchedAt: string
+  windowDays: number
+  source: string
+  cards: Record<string, MetaCard>
+  decks: MetaDeck[]
+}
+
+// Lo escribe scripts/sync-meta-decks.mjs con esta forma exacta (valida cada campo antes de escribirlo).
+export const META_DECKS = metaDecksJson as unknown as MetaDecksData
+
+export type MetaZone = 'both' | 'main' | 'side'
+export type MetaTier = 'S' | 'A' | 'B' | 'C' | 'D'
+export type MetaTrend = 'up' | 'down' | 'flat'
+
+export interface MetaZoneUsage {
+  /** Decks de la ventana que la llevan en esa zona. */
+  decks: number
+  /** Copias sumadas entre esos decks. */
+  copies: number
+}
+
+export interface MetaWeek {
+  decks: number
+  share: number
+}
+
+export interface MetaArchetypeUsage {
+  name: string
+  /** Decks de ese nombre que la juegan, sobre el total de decks con ese nombre. */
+  decks: number
+  total: number
+}
+
+export interface HandtrapStat {
+  id: number
+  name: string
+  image: string | null
+  /** Decks de la ventana que la juegan (en la zona elegida). */
+  decks: number
+  share: number
+  tier: MetaTier
+  main: MetaZoneUsage
+  side: MetaZoneUsage
+  /** Semana a semana sobre todos los datos, de la más vieja a la más nueva. */
+  weekly: MetaWeek[]
+  projectedShare: number
+  projectedTier: MetaTier
+  trend: MetaTrend
+  archetypes: MetaArchetypeUsage[]
+}
+
+export interface MetaReport {
+  /** Decks dentro de la ventana elegida. */
+  deckCount: number
+  handtraps: HandtrapStat[]
+}
+
+export interface MetaDeckFilter {
+  cardId?: number
+  archetype?: string
+}
+
+/** Cuántas semanas hacia adelante se prolonga la tendencia. */
+export const PROJECTION_WEEKS = 2
+/** Cambio proyectado (fracción de decks) a partir del cual se dice que sube o baja. */
+export const TREND_THRESHOLD = 0.05
+/** Piso de cada tier, como fracción de los decks que la juegan. */
+export const TIER_FLOORS: ReadonlyArray<readonly [MetaTier, number]> = [
+  ['S', 0.6],
+  ['A', 0.35],
+  ['B', 0.15],
+  ['C', 0.05],
+]
+/** Una semana con menos decks que esto no pesa en la tendencia: sería ruido. */
+export const MIN_WEEK_DECKS = 10
+const MIN_TREND_WEEKS = 3
+const WEEK_MS = 7 * 86_400_000
+
+export function tierOf(share: number): MetaTier {
+  // Se compara el porcentaje redondeado (el que se ve): dos cartas con "5%" caen en el mismo tier.
+  const shown = Math.round(share * 100) / 100
+
+  for (const [tier, floor] of TIER_FLOORS) {
+    if (shown >= floor) {
+      return tier
+    }
+  }
+
+  return 'D'
+}
+
+/** Semanas enteras entre la fecha del torneo y la del snapshot (0 = los últimos siete días). */
+export function weeksAgo(date: string, reference: string): number {
+  return Math.max(0, Math.floor((Date.parse(reference) - Date.parse(date)) / WEEK_MS))
+}
+
+/**
+ * Recta ajustada a la serie semanal (mínimos cuadrados; cada semana pesa por su cantidad de decks),
+ * prolongada PROJECTION_WEEKS semanas. Con menos de tres semanas con datos no se proyecta nada.
+ */
+export function projectShare(weekly: ReadonlyArray<MetaWeek>, currentShare: number): { projectedShare: number; trend: MetaTrend } {
+  const last = weekly.length - 1
+  const points = weekly
+    .map((week, index) => ({ x: index - last, y: week.share, weight: week.decks }))
+    .filter((point) => point.weight >= MIN_WEEK_DECKS)
+  const flat = { projectedShare: currentShare, trend: 'flat' as const }
+
+  if (points.length < MIN_TREND_WEEKS) {
+    return flat
+  }
+
+  const totalWeight = points.reduce((sum, point) => sum + point.weight, 0)
+  const meanX = points.reduce((sum, point) => sum + point.weight * point.x, 0) / totalWeight
+  const meanY = points.reduce((sum, point) => sum + point.weight * point.y, 0) / totalWeight
+  const spreadX = points.reduce((sum, point) => sum + point.weight * (point.x - meanX) ** 2, 0)
+
+  if (spreadX === 0) {
+    return flat
+  }
+
+  const slope = points.reduce((sum, point) => sum + point.weight * (point.x - meanX) * (point.y - meanY), 0) / spreadX
+  const now = clamp01(meanY - slope * meanX)
+  const projectedShare = clamp01(now + slope * PROJECTION_WEEKS)
+  const delta = projectedShare - now
+
+  return { projectedShare, trend: delta > TREND_THRESHOLD ? 'up' : delta < -TREND_THRESHOLD ? 'down' : 'flat' }
+}
+
+interface UsageAccumulator {
+  main: MetaZoneUsage
+  side: MetaZoneUsage
+  decks: number
+  weekly: number[]
+  archetypes: Map<string, number>
+}
+
+/** Qué hand traps se juegan en los decks de las últimas `windowWeeks` semanas, y hacia dónde va cada una. */
+export function buildMetaReport(data: MetaDecksData, zone: MetaZone, windowWeeks: number): MetaReport {
+  const totalWeeks = Math.max(windowWeeks, Math.ceil(data.windowDays / 7))
+  const weekDecks: number[] = Array.from({ length: totalWeeks }, () => 0)
+  const archetypeTotals = new Map<string, number>()
+  const usage = new Map<number, UsageAccumulator>()
+  let deckCount = 0
+
+  for (const deck of data.decks) {
+    const week = weeksAgo(deck.date, data.fetchedAt)
+
+    if (week >= totalWeeks) {
+      continue
+    }
+
+    const recent = week < windowWeeks
+    weekDecks[week] += 1
+
+    if (recent) {
+      deckCount += 1
+      archetypeTotals.set(deck.name, (archetypeTotals.get(deck.name) ?? 0) + 1)
+    }
+
+    const counted = new Set<number>()
+
+    for (const zoneKey of ['main', 'side'] as const) {
+      for (const [id, copies] of deck[zoneKey]) {
+        let entry = usage.get(id)
+
+        if (!entry) {
+          entry = {
+            main: { decks: 0, copies: 0 },
+            side: { decks: 0, copies: 0 },
+            decks: 0,
+            weekly: Array.from({ length: totalWeeks }, () => 0),
+            archetypes: new Map(),
+          }
+          usage.set(id, entry)
+        }
+
+        if (recent) {
+          entry[zoneKey].decks += 1
+          entry[zoneKey].copies += copies
+        }
+
+        // "La juega" según la zona elegida; un deck cuenta una vez aunque la lleve en Main y en Side.
+        if ((zone === 'both' || zone === zoneKey) && !counted.has(id)) {
+          counted.add(id)
+          entry.weekly[week] += 1
+
+          if (recent) {
+            entry.decks += 1
+            entry.archetypes.set(deck.name, (entry.archetypes.get(deck.name) ?? 0) + 1)
+          }
+        }
+      }
+    }
+  }
+
+  if (deckCount === 0) {
+    return { deckCount: 0, handtraps: [] }
+  }
+
+  const handtraps: HandtrapStat[] = []
+
+  for (const [id, entry] of usage) {
+    if (entry.decks === 0) {
+      continue
+    }
+
+    const card = data.cards[String(id)]
+    const share = entry.decks / deckCount
+    const weekly = weekDecks
+      .map((count, week) => ({ decks: count, share: count > 0 ? (entry.weekly[week] ?? 0) / count : 0 }))
+      .reverse()
+    const { projectedShare, trend } = projectShare(weekly, share)
+
+    handtraps.push({
+      id,
+      name: card?.name ?? `Carta ${id}`,
+      image: card?.image ?? null,
+      decks: entry.decks,
+      share,
+      tier: tierOf(share),
+      main: entry.main,
+      side: entry.side,
+      weekly,
+      projectedShare,
+      projectedTier: tierOf(projectedShare),
+      trend,
+      archetypes: [...entry.archetypes]
+        .map(([name, decks]) => ({ name, decks, total: archetypeTotals.get(name) ?? decks }))
+        .sort((left, right) => right.decks - left.decks || left.name.localeCompare(right.name, 'es')),
+    })
+  }
+
+  handtraps.sort((left, right) => right.share - left.share || right.decks - left.decks || left.name.localeCompare(right.name, 'es'))
+
+  return { deckCount, handtraps }
+}
+
+export function filterMetaDecks(decks: readonly MetaDeck[], filter: MetaDeckFilter): MetaDeck[] {
+  return decks.filter(
+    (deck) =>
+      (filter.archetype === undefined || deck.name === filter.archetype) &&
+      (filter.cardId === undefined || hasCard(deck, filter.cardId)),
+  )
+}
+
+function hasCard(deck: MetaDeck, cardId: number): boolean {
+  return deck.main.some(([id]) => id === cardId) || deck.side.some(([id]) => id === cardId)
+}
+
+function clamp01(value: number): number {
+  return Math.min(1, Math.max(0, value))
+}
