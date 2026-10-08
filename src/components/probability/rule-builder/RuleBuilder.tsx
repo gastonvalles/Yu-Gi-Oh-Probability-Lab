@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useRef, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 import type { CardEntry, HandPattern } from '../../../types'
 import { getPatternMatchMode, normalizeMinimumConditionMatches } from '../../../app/patterns'
 import { buildPatternCompactSummary, buildPatternPreview } from '../pattern-helpers'
 import type { PatternEditorActions } from '../pattern-editor-actions'
 import { Button } from '../../ui/Button'
+import { cx } from '../../ui/cx'
+import { Icon } from '../../ui/Icon'
 import { overline } from '../../ui/typography'
 
 import { AdvancedSettings } from './AdvancedSettings'
@@ -12,7 +14,7 @@ import { ConditionBlock } from './ConditionBlock'
 import { KindToggle } from './KindToggle'
 import { getConnectorWord, LogicSelector } from './LogicSelector'
 import { PatternNameInput } from './PatternNameInput'
-import { TurnContextToggle } from './TurnContextToggle'
+import { DrawCountToggle, TurnContextToggle } from './TurnContextToggle'
 
 interface RuleBuilderProps {
   actions: PatternEditorActions
@@ -39,23 +41,34 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
     }
   }, [actions, conditionCount, isPendingCreation, pattern.id])
 
+  const addCondition = (mode?: 'any') => {
+    actions.addRequirement(pattern.id)
+
+    if (mode) {
+      actions.setPatternMatchMode(pattern.id, mode)
+    }
+  }
+
   return (
-    <div className="grid gap-6">
-      <RuleStep title="Nombre" hint="Opcional">
-        <PatternNameInput
-          patternId={pattern.id}
-          currentName={pattern.name}
-          placeholderSummary={preview.items.some((item) => item.startsWith('(')) ? 'Ej.: Mi combo principal' : summary}
-          isPendingCreation={isPendingCreation}
-          actions={actions}
-        />
-      </RuleStep>
+    <div className="grid gap-4">
+      <PatternNameInput
+        patternId={pattern.id}
+        currentName={pattern.name}
+        placeholderSummary={preview.items.some((item) => item.startsWith('(')) ? 'Nombre (opcional)' : summary}
+        isPendingCreation={isPendingCreation}
+        actions={actions}
+      />
 
-      <RuleStep title="¿Qué representa?">
-        <KindToggle patternId={pattern.id} currentKind={pattern.kind} actions={actions} />
-      </RuleStep>
+      <div className="grid gap-3 min-[640px]:grid-cols-2">
+        <RuleStep title="Tipo">
+          <KindToggle patternId={pattern.id} currentKind={pattern.kind} actions={actions} />
+        </RuleStep>
+        <RuleStep title="Turno">
+          <TurnContextToggle patternId={pattern.id} currentTurnContext={pattern.turnContext} actions={actions} />
+        </RuleStep>
+      </div>
 
-      <RuleStep title="¿Qué tiene que tener la mano?">
+      <RuleStep title="Condiciones">
         {conditionCount > 1 ? (
           <LogicSelector
             patternId={pattern.id}
@@ -87,37 +100,63 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
           ))}
         </div>
 
-        <Button variant="secondary" size="sm" icon="plus" className="justify-self-start" onClick={() => actions.addRequirement(pattern.id)}>
-          Agregar condición
-        </Button>
+        {conditionCount <= 1 ? (
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" size="sm" icon="plus" onClick={() => addCondition()}>
+              Y otra condición
+            </Button>
+            <Button variant="secondary" size="sm" icon="plus" onClick={() => addCondition('any')}>
+              O otra condición
+            </Button>
+          </div>
+        ) : (
+          <Button variant="secondary" size="sm" icon="plus" className="justify-self-start" onClick={() => addCondition()}>
+            Agregar condición
+          </Button>
+        )}
       </RuleStep>
 
-      <RuleStep title="¿Cuándo cuenta?">
-        <TurnContextToggle patternId={pattern.id} currentTurnContext={pattern.turnContext} ignoresDraw={pattern.ignoresDraw === true} actions={actions} />
-      </RuleStep>
-
-
-      <AdvancedSettings pattern={pattern} actions={actions} derivedMainCards={derivedMainCards} />
+      <MoreOptions pattern={pattern} actions={actions} derivedMainCards={derivedMainCards} />
     </div>
+  )
+}
+
+/** Los ajustes que casi nunca se tocan, plegados (se abren solos si la regla pide revisión). */
+function MoreOptions({ pattern, actions, derivedMainCards }: { pattern: HandPattern; actions: PatternEditorActions; derivedMainCards: CardEntry[] }) {
+  const [isOpen, setIsOpen] = useState(pattern.needsReview === true)
+
+  return (
+    <section className="grid gap-2">
+      <button
+        type="button"
+        className="inline-flex w-fit items-center gap-1.5 rounded-control py-1 pr-2 text-body font-semibold text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:shadow-focus"
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((current) => !current)}
+      >
+        <Icon name="chevron-right" size={14} className={cx('transition-transform duration-150', isOpen && 'rotate-90')} />
+        Más opciones
+      </button>
+      {isOpen ? (
+        <div className="grid gap-2">
+          {pattern.turnContext !== 'first' ? <DrawCountToggle patternId={pattern.id} ignoresDraw={pattern.ignoresDraw === true} actions={actions} /> : null}
+          <AdvancedSettings pattern={pattern} actions={actions} derivedMainCards={derivedMainCards} />
+        </div>
+      ) : null}
+    </section>
   )
 }
 
 function RuleStep({
   title,
-  hint,
   children,
 }: {
   title: string
-  hint?: string
   children: ReactNode
 }) {
   return (
-    <section className="grid gap-2.5">
-      <header className="flex flex-wrap items-center gap-2.5">
-        <h4 className="m-0 text-body font-semibold text-foreground">{title}</h4>
-        {hint ? <small className="text-micro text-muted">{hint}</small> : null}
-      </header>
-      <div className="grid gap-2.5">{children}</div>
+    <section className="grid content-start gap-2">
+      <h4 className={cx('m-0', overline)}>{title}</h4>
+      {children}
     </section>
   )
 }

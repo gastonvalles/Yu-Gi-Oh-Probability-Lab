@@ -133,9 +133,9 @@ describe('LabRuleList', () => {
     fireEvent.click(screen.getByRole('button', { name: /Editar regla Mi combo/ }))
     expect(onEditRule).toHaveBeenCalledWith('c')
 
-    // Las reglas del sistema arrancan plegadas.
-    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /Genéricas/, expanded: false }))
+    // Las reglas universales y genéricas se ven siempre: no hay nada que desplegar.
+    expect(screen.getByText('Salida básica')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Genéricas/, expanded: false })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('switch', { name: 'Desactivar Sin respuesta' }))
     expect(onToggleGenericRule).toHaveBeenCalledWith('no_answer_second_problem', false)
 
@@ -156,7 +156,6 @@ describe('LabRuleList', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /Universales/, expanded: false }))
     fireEvent.click(screen.getByRole('button', { name: /Renombrar regla Salida básica/ }))
 
     const input = screen.getByRole('textbox')
@@ -183,7 +182,6 @@ describe('LabRuleList', () => {
     )
 
     fireEvent.click(screen.getByRole('radio', { name: 'Problemas' }))
-    fireEvent.click(screen.getByRole('button', { name: /Genéricas/ }))
     expect(screen.queryByText('Mi combo')).not.toBeInTheDocument()
     expect(screen.getByText('Sin respuesta')).toBeInTheDocument()
   })

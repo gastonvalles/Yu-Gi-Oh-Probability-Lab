@@ -20,7 +20,7 @@ import {
 import { PracticeBoard, PracticeVerdictChip, UNPLAYABLE_ID } from './PracticeBoard'
 import { PracticeCardFocus } from './PracticeCardFocus'
 import { PracticeDeckPile } from './PracticeDeckPile'
-import { VERDICT_COLOR } from './practice-styles'
+import { PRACTICE_PALETTE, VERDICT_COLOR } from './practice-styles'
 import { PracticeHand } from './PracticeHand'
 import { usePracticeTable } from './use-practice-table'
 
@@ -163,7 +163,7 @@ export function PracticeSection(props: PracticeSectionProps) {
 
   return (
     <section
-      className="flex h-full min-w-0 flex-col overflow-hidden [background:radial-gradient(120%_60%_at_50%_0%,rgb(var(--primary-rgb)/0.16),transparent_70%),rgb(var(--background-rgb))]"
+      className={`flex h-full min-w-0 flex-col overflow-hidden [background:radial-gradient(120%_60%_at_50%_0%,rgb(var(--primary-rgb)/0.16),transparent_70%),rgb(var(--background-rgb))] ${PRACTICE_PALETTE}`}
       aria-label="Práctica"
     >
       {/* Veredicto centrado; a la derecha queda la X del modal. */}
