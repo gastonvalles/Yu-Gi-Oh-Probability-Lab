@@ -66,8 +66,25 @@ export function labInputSignature(cards: CardEntry[], patterns: HandPattern[], b
     ...pattern,
     conditions: pattern.conditions.map(({ id: _conditionId, ...condition }) => condition),
   }))
+  // Del apiCard sólo pesan los campos que un matcher puede mirar: la descripción, las URLs, la banlist
+  // y los puntos de Genesys no cambian el resultado y engordaban la firma (y las claves de caché).
+  const stableCards = cards.map(({ apiCard, ...card }) => ({
+    ...card,
+    apiCard: apiCard && {
+      ygoprodeckId: apiCard.ygoprodeckId,
+      cardType: apiCard.cardType,
+      frameType: apiCard.frameType,
+      race: apiCard.race,
+      attribute: apiCard.attribute,
+      level: apiCard.level,
+      linkValue: apiCard.linkValue,
+      atk: apiCard.atk,
+      def: apiCard.def,
+      archetype: apiCard.archetype,
+    },
+  }))
 
-  return JSON.stringify([baseHandSize, cards, stablePatterns])
+  return JSON.stringify([baseHandSize, stableCards, stablePatterns])
 }
 
 const MAX_CACHED_COMPUTATIONS = 24
