@@ -23,6 +23,7 @@ import {
   LazyComparisonScreen,
   LazyDeckRolesPanel,
   LazyExportDeckPanel,
+  LazyMetaScreen,
   LazyPracticeSection,
   LazyProbabilityPanel,
   preloadHeavySteps,
@@ -37,6 +38,7 @@ const WORKFLOW_STEP_ORDER: DeckWorkflowStepKey[] = [
   'probability-lab',
   'workspace',
   'export',
+  'meta',
 ]
 
 type StepNavigationDirection = 'forward' | 'back'
@@ -250,6 +252,12 @@ export function DeckModeScreen() {
       {activeStep === 'workspace' ? (
         <div id="workspace" className="min-w-0 min-[1101px]:min-h-full">
           <LazyComparisonScreen />
+        </div>
+      ) : null}
+
+      {activeStep === 'meta' ? (
+        <div id="meta" className="min-w-0 min-[1101px]:min-h-full">
+          <LazyMetaScreen />
         </div>
       ) : null}
     </section>

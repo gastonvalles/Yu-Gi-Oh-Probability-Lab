@@ -17,6 +17,7 @@ La idea central es ayudar a entender deck building con un flujo simple: armás e
 - Práctica de manos para ver ejemplos concretos.
 - Comparación A vs B contra otra build importada.
 - Exportación del deck como imagen (PNG), lista (TXT) y `.ydk`.
+- Meta: tier list de hand traps según los Tournament Meta Decks de YGOPRODeck (Main y Side), con tendencia a dos semanas y los decks que las juegan. Los datos se actualizan solos cada día.
 
 ## Flujo recomendado
 
@@ -156,6 +157,7 @@ npm test             # tests
 npm run typecheck    # tipos de la app y de los tests
 npm run lint         # ESLint: reglas de hooks, variables sin uso y lo recomendado de TypeScript
 npm run sync:genesys # actualiza los puntos de Genesys
+npm run sync:meta    # actualiza los Tournament Meta Decks (el workflow sync-meta-decks lo hace solo cada día)
 ```
 
 El CI (`.github/workflows/ci.yml`) corre `typecheck`, `lint`, `test` y `build` en cada PR y push a `main`.

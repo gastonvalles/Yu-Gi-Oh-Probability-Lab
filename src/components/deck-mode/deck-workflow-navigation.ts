@@ -1,7 +1,7 @@
 import { formatInteger } from '../../app/utils'
 import type { IconName } from '../ui/Icon'
 
-export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace'
+export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'meta'
 export type DeckWorkflowStepTone = 'complete' | 'progress' | 'pending'
 
 export interface DeckModeNavigationItem {
@@ -32,6 +32,7 @@ const WORKFLOW_STEP_KEYS: readonly DeckWorkflowStepKey[] = [
   'probability-lab',
   'workspace',
   'export',
+  'meta',
 ]
 
 export const DECK_WORKFLOW_TONE_LABEL: Record<DeckWorkflowStepTone, string> = {
@@ -120,6 +121,17 @@ export function buildDeckWorkflowNavigationItems({
       detail: mainDeckCount > 0 ? 'Imagen + PDF + YDK.' : 'Necesitás cartas en Main.',
       tone: mainDeckCount > 0 ? 'complete' : 'pending',
       disabled: mainDeckCount === 0,
+    },
+    // No es un paso del deck: es la referencia del meta para armarlo. Siempre se puede abrir.
+    {
+      key: 'meta',
+      step: '6',
+      label: 'Meta',
+      title: 'Hand traps del meta',
+      icon: 'chart',
+      detail: 'Qué hand traps se juegan en los torneos.',
+      tone: 'pending',
+      disabled: false,
     },
   ]
 }
