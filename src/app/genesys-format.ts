@@ -6,7 +6,7 @@ const GENESYS_POINTS_BY_NAME = genesysCardData.cards as Record<string, number>
 
 export const GENESYS_POINT_CAP = genesysCardData.pointCap
 
-export function normalizeGenesysCardName(value: string): string {
+function normalizeGenesysCardName(value: string): string {
   return value
     .normalize('NFKD')
     .replace(/[\u2018\u2019]/g, "'")
@@ -23,7 +23,7 @@ export function buildGenesysCardInfo(cardName: string): CardGenesysInfo {
   }
 }
 
-export function getGenesysPointsByName(cardName: string): number | null {
+function getGenesysPointsByName(cardName: string): number | null {
   const points = GENESYS_POINTS_BY_NAME[normalizeGenesysCardName(cardName)]
   return typeof points === 'number' ? points : null
 }

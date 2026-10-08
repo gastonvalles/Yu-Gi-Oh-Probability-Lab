@@ -1,6 +1,6 @@
 import type { CardEntry } from '../types'
 
-export interface DeckArchetype {
+interface DeckArchetype {
   name: string
   cardIds: string[]
   copies: number

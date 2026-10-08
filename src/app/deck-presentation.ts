@@ -2,15 +2,15 @@ import type { DeckCardInstance, DeckZone } from './model'
 import type { ApiCardReference } from '../types'
 import { formatInteger } from './utils'
 
-export type DeckZoneTypeKind = 'monster' | 'spell' | 'trap' | 'fusion' | 'synchro' | 'xyz' | 'link'
+type DeckZoneTypeKind = 'monster' | 'spell' | 'trap' | 'fusion' | 'synchro' | 'xyz' | 'link'
 
-export interface DeckZoneTypeCount {
+interface DeckZoneTypeCount {
   kind: DeckZoneTypeKind
   label: string
   count: number
 }
 
-export type MainDeckCardKind = 'monster' | 'spell' | 'trap'
+type MainDeckCardKind = 'monster' | 'spell' | 'trap'
 
 export function getMainDeckCardKind(card: Pick<ApiCardReference, 'cardType' | 'frameType'>): MainDeckCardKind {
   const cardType = card.cardType.toLowerCase()

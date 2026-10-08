@@ -41,7 +41,7 @@ export interface TurnLean {
 }
 
 /** Diferencia mínima entre 1º y 2º para avisarla: por debajo es ruido. */
-export const TURN_LEAN_MIN_GAP = 0.05
+const TURN_LEAN_MIN_GAP = 0.05
 
 /** Detecta si una regla ocurre claramente más yendo 1º o 2º. */
 export function detectTurnLean(first: number | undefined, second: number | undefined): TurnLean | null {

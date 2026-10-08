@@ -50,14 +50,14 @@ export interface ResolvedPattern<Key extends string | number> {
   allowSharedCards: boolean
 }
 
-export interface RequirementMatchWitness<Key extends string | number> {
+interface RequirementMatchWitness<Key extends string | number> {
   requirementId: string
   sourceLabel: string
   kind: RequirementKind
   usage: Array<[Key, number]>
 }
 
-export interface PatternMatchWitness<Key extends string | number> {
+interface PatternMatchWitness<Key extends string | number> {
   matchedRequirements: RequirementMatchWitness<Key>[]
 }
 
@@ -162,7 +162,7 @@ export function resolvePattern<Counts, Key extends string | number>(
   }
 }
 
-export function buildPatternRequirementLabel<Key extends string | number>(
+function buildPatternRequirementLabel<Key extends string | number>(
   matchMode: PatternMatchMode,
   requiredMatches: number,
   requirements: ResolvedRequirement<Key>[],

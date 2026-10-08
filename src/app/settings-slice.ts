@@ -2,7 +2,7 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
 
 import type { DeckFormat } from '../types'
 
-export interface SettingsState {
+interface SettingsState {
   handSize: number
   deckFormat: DeckFormat
 }
@@ -19,11 +19,8 @@ const settingsSlice = createSlice({
     setDeckFormat(state, action: PayloadAction<DeckFormat>) {
       state.deckFormat = action.payload
     },
-    setHandSize(state, action: PayloadAction<number>) {
-      state.handSize = action.payload
-    },
   },
 })
 
-export const { setDeckFormat, setHandSize } = settingsSlice.actions
+export const { setDeckFormat } = settingsSlice.actions
 export const settingsReducer = settingsSlice.reducer

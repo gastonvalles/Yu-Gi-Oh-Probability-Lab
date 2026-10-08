@@ -10,7 +10,7 @@ import { CopiesBadge } from '../ui/CopiesBadge'
 import { Modal } from '../ui/Modal'
 import { listItem } from '../ui/surfaces'
 
-export interface KpiDetailModalProps {
+interface KpiDetailModalProps {
   isOpen: boolean
   role: CardRole
   /** Sólo en el comparador: qué build es. En el Lab no hace falta. */

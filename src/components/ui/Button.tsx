@@ -5,7 +5,7 @@ import { Icon, type IconName } from './Icon'
 
 /** primary: la acción principal de la vista (una sola) · secondary: acciones de apoyo (lavanda) · tertiary: sin caja · onBrand: sobre una tarjeta violeta. */
 export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'onBrand'
-export type ButtonSize = 'sm' | 'md' | 'lg'
+type ButtonSize = 'sm' | 'md' | 'lg'
 /** brand: violeta de la app · danger: acciones que borran o no se pueden deshacer. */
 export type ButtonColor = 'brand' | 'danger'
 

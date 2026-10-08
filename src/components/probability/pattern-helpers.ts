@@ -8,66 +8,7 @@ import {
 import { formatInteger } from '../../app/utils'
 import type { CardEntry, HandPattern, Matcher, PatternRequirement } from '../../types'
 
-export type MatcherEditorType = Matcher['type']
-
-export const MATCHER_EDITOR_OPTIONS: Array<{
-  description: string
-  label: string
-  value: MatcherEditorType
-}> = [
-  {
-    value: 'role',
-    label: 'Rol',
-    description: 'Evalúa cartas por función táctica.',
-  },
-  {
-    value: 'origin',
-    label: 'Origen',
-    description: 'Evalúa pertenencia al motor del deck.',
-  },
-  {
-    value: 'card',
-    label: 'Carta específica',
-    description: 'Evalúa una carta concreta.',
-  },
-  {
-    value: 'card_pool',
-    label: 'Pool de cartas',
-    description: 'Evalúa una lista manual de cartas.',
-  },
-  {
-    value: 'card_type',
-    label: 'Tipo de carta',
-    description: 'Evalúa por tipo general: Monstruo, Magia o Trampa.',
-  },
-  {
-    value: 'attribute',
-    label: 'Atributo',
-    description: 'Evalúa monstruos por atributo.',
-  },
-  {
-    value: 'level',
-    label: 'Nivel',
-    description: 'Evalúa monstruos por nivel.',
-  },
-  {
-    value: 'monster_type',
-    label: 'Tipo de monstruo',
-    description: 'Evalúa monstruos por raza o tipo.',
-  },
-  {
-    value: 'atk',
-    label: 'ATK',
-    description: 'Evalúa monstruos por ataque.',
-  },
-  {
-    value: 'def',
-    label: 'DEF',
-    description: 'Evalúa monstruos por defensa.',
-  },
-]
-
-export interface PatternPreview {
+interface PatternPreview {
   heading: string
   summary: string
   items: string[]

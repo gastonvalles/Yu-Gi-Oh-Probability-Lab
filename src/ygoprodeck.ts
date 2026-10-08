@@ -3,14 +3,14 @@ import { requestCardInfo } from './ygoprodeck/client'
 import { parseSearchResponse } from './ygoprodeck/parser'
 import type { ApiCardSearchResult, ApiSearchPage } from './ygoprodeck/types'
 
-export type { ApiCardSearchResult, ApiSearchPage } from './ygoprodeck/types'
+export type { ApiCardSearchResult } from './ygoprodeck/types'
 
 const CARD_CATALOG_PAGE_SIZE = 1000
 
 let cardCatalogPromise: Promise<ApiCardSearchResult[]> | null = null
 let cardCatalogSnapshot: ApiCardSearchResult[] | null = null
 
-export interface SearchCardsOptions {
+interface SearchCardsOptions {
   query?: string
   archetype?: string
   exactType?: string

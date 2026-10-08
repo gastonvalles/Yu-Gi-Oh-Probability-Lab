@@ -5,7 +5,7 @@ import type {
 } from './deck-import'
 
 /** Grupo de cartas resueltas por zona */
-export interface ZoneGroup {
+interface ZoneGroup {
   zone: DeckZone
   label: string
   entries: ResolvedImportedDeckEntry[]
@@ -13,16 +13,16 @@ export interface ZoneGroup {
 }
 
 /** Resumen compacto de problemas */
-export interface ProblemSummary {
+interface ProblemSummary {
   missingCount: number
   conflictCount: number
   invalidLineCount: number
   totalProblems: number
 }
 
-export const ZONE_ORDER: DeckZone[] = ['main', 'extra', 'side']
+const ZONE_ORDER: DeckZone[] = ['main', 'extra', 'side']
 
-export const ZONE_LABELS: Record<DeckZone, string> = {
+const ZONE_LABELS: Record<DeckZone, string> = {
   main: 'Main Deck',
   extra: 'Extra Deck',
   side: 'Side Deck',

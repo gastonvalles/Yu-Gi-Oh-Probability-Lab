@@ -63,7 +63,7 @@ export interface PracticeHandRequirementAssignment {
   }>
 }
 
-export interface PracticeHandNearMiss {
+interface PracticeHandNearMiss {
   patternId: string
   name: string
   kind: HandPatternCategory
@@ -338,7 +338,7 @@ function getRequirementCurrentAmount(
   return requirement.keys.reduce((total, key) => total + (counts.get(key) ?? 0), 0)
 }
 
-export type PracticeTurn = 'first' | 'second'
+type PracticeTurn = 'first' | 'second'
 export type PracticeVerdict = 'clean' | 'with-problem' | 'no-opening'
 
 /** Por mecánica de juego: con la mano inicial vas 1º; si robaste al menos una más, vas 2º. */

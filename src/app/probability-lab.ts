@@ -52,7 +52,7 @@ export type LabComputation =
   | { status: 'blocked'; issues: ValidationIssue[] }
 
 // Ir segundo roba una carta más en el primer turno.
-export function getHandSizeForView(baseHandSize: number, view: Exclude<TurnView, 'average'>): number {
+function getHandSizeForView(baseHandSize: number, view: Exclude<TurnView, 'average'>): number {
   return view === 'second' ? baseHandSize + 1 : baseHandSize
 }
 

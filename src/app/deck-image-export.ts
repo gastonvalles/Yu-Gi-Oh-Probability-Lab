@@ -5,7 +5,7 @@ import { buildKdeDecklist } from './kde-decklist'
 import type { DeckBuilderState, DeckCardInstance } from './model'
 import type { DeckFormat } from '../types'
 
-export interface DeckExportResult {
+interface DeckExportResult {
   // Secciones del PDF oficial que no entraron completas.
   decklistOverflow: string[]
 }
@@ -46,7 +46,7 @@ async function buildDecklistPdf(decklist: ReturnType<typeof buildKdeDecklist>): 
   return fillKdeDecklistPdf(await templateResponse.arrayBuffer(), decklist)
 }
 
-export function buildYdkText(deckBuilder: DeckBuilderState): string {
+function buildYdkText(deckBuilder: DeckBuilderState): string {
   const lines = [
     '#created by YGO Probability Lab',
     '#main',

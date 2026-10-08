@@ -5,16 +5,16 @@ import { computeLabResults, type LabResults } from './probability-lab'
 import { buildRoleDistributions, type RoleDistribution } from './role-distribution'
 
 /** Diferencias de manos limpias por debajo de esto se consideran empate (0.5 pp). */
-export const EQUIVALENT_GAP = 0.005
+const EQUIVALENT_GAP = 0.005
 
 const TURN_VIEWS: readonly TurnView[] = ['first', 'second', 'average']
 
-export interface ComparisonBuildInput {
+interface ComparisonBuildInput {
   name: string
   cards: CardEntry[]
 }
 
-export interface ComparisonRules {
+interface ComparisonRules {
   patterns: HandPattern[]
   disabledGenericRuleIds: readonly string[]
   /** Nombres propios de las reglas universales. */

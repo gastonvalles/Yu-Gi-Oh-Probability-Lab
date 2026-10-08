@@ -27,7 +27,7 @@ export interface CardSearchRequest {
   format: string
 }
 
-export interface SearchableCardIndexEntry {
+interface SearchableCardIndexEntry {
   card: ApiCardSearchResult
   normalizedName: string
   normalizedDescription: string

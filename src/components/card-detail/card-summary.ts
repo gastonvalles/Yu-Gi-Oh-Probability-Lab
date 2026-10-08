@@ -1,6 +1,6 @@
 import type { ApiCardReference } from '../../types'
 
-export type CardSummarySource = Pick<
+type CardSummarySource = Pick<
   ApiCardReference,
   'cardType' | 'race' | 'attribute' | 'level' | 'linkValue' | 'atk' | 'def'
 >

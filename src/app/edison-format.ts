@@ -7,7 +7,7 @@ import {
   EDISON_SEMI_LIMITED_IDS,
 } from '../data/edison-format-data'
 
-export type EdisonCardStatus = 'unavailable' | 'forbidden' | 'limited' | 'semi-limited' | 'unlimited'
+type EdisonCardStatus = 'unavailable' | 'forbidden' | 'limited' | 'semi-limited' | 'unlimited'
 
 const EDISON_CARD_POOL_ID_SET = new Set<number>(EDISON_CARD_POOL_IDS)
 const EDISON_FORBIDDEN_ID_SET = new Set<number>(EDISON_FORBIDDEN_IDS)

@@ -5,7 +5,7 @@ import { cx } from './cx'
 import { RING_FILL_MS, useRingReveal } from './use-ring-reveal'
 import { clamp01, ringCenterText, ringGeometry } from './ring-shared'
 
-export interface RingSegment {
+interface RingSegment {
   key: string
   /** 0 a 1: la parte del círculo que ocupa. */
   value: number

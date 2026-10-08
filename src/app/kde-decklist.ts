@@ -50,9 +50,9 @@ const KDE_SECTIONS: Record<KdeSection, KdeSectionSpec> = {
   },
 }
 
-export const KDE_MAIN_DECK_TOTAL_FIELD = 'Main Deck Total'
+const KDE_MAIN_DECK_TOTAL_FIELD = 'Main Deck Total'
 
-export interface KdeDecklistEntry {
+interface KdeDecklistEntry {
   name: string
   count: number
 }
@@ -63,7 +63,7 @@ export interface KdeDecklist {
   overflow: string[]
 }
 
-export interface KdeDecklistSection {
+interface KdeDecklistSection {
   key: KdeSection
   label: string
   total: number

@@ -7,7 +7,7 @@ import { formatInteger } from './utils'
 
 const MAX_COPIES_PER_CARD = 3
 
-export interface CardLimitIndicator {
+interface CardLimitIndicator {
   value: number
   label: string
 }

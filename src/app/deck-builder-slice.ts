@@ -6,9 +6,7 @@ import type { CardOrigin, CardRole, DeckFormat } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 import type { ClassificationSuggestion } from './classification-engine'
 import {
-  addSearchResultToDefaultZone,
   addSearchResultToZone,
-  classifyAllUnclassified,
   confirmClassificationForCard,
   reclassifyAll,
   moveDeckCard,
@@ -23,13 +21,6 @@ interface AddSearchResultToDeckZonePayload {
   index: number
   results: ApiCardSearchResult[]
   zone: DeckZone
-  overrides?: ReadonlyMap<string, ClassificationSuggestion>
-}
-
-interface AddSearchResultToDefaultDeckZonePayload {
-  apiCardId: number
-  deckFormat: DeckFormat
-  results: ApiCardSearchResult[]
   overrides?: ReadonlyMap<string, ClassificationSuggestion>
 }
 
@@ -61,18 +52,6 @@ const deckBuilderSlice = createSlice({
   name: 'deckBuilder',
   initialState,
   reducers: {
-    addSearchResultToDefaultDeckZone(
-      state,
-      action: PayloadAction<AddSearchResultToDefaultDeckZonePayload>,
-    ) {
-      return addSearchResultToDefaultZone(
-        state,
-        action.payload.results,
-        action.payload.apiCardId,
-        action.payload.deckFormat,
-        action.payload.overrides,
-      )
-    },
     addSearchResultToDeckZone(state, action: PayloadAction<AddSearchResultToDeckZonePayload>) {
       return addSearchResultToZone(
         state,
@@ -129,9 +108,6 @@ const deckBuilderSlice = createSlice({
     setIsEditingDeck(state, action: PayloadAction<boolean>) {
       state.isEditingDeck = action.payload
     },
-    classifyAllUnclassifiedCards(state, action: PayloadAction<{ overrides?: ReadonlyMap<string, ClassificationSuggestion> } | undefined>) {
-      return classifyAllUnclassified(state, action.payload?.overrides)
-    },
     reclassifyAllCards(state, action: PayloadAction<{ overrides?: ReadonlyMap<string, ClassificationSuggestion> } | undefined>) {
       return reclassifyAll(state, action.payload?.overrides)
     },
@@ -140,8 +116,6 @@ const deckBuilderSlice = createSlice({
 
 export const {
   addSearchResultToDeckZone,
-  addSearchResultToDefaultDeckZone,
-  classifyAllUnclassifiedCards,
   confirmDeckCardClassification,
   reclassifyAllCards,
   clearAllDeckZones,

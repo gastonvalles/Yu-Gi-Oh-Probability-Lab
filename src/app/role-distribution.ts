@@ -8,7 +8,7 @@ interface RoleDistributionSpec {
   roles: readonly CardRole[]
 }
 
-export const ROLE_DISTRIBUTION_SPECS: readonly RoleDistributionSpec[] = [
+const ROLE_DISTRIBUTION_SPECS: readonly RoleDistributionSpec[] = [
   { key: 'starter', label: 'Starters', roles: ['starter'] },
   { key: 'extender', label: 'Extenders', roles: ['extender'] },
   { key: 'interaction', label: 'Interacción', roles: ['handtrap', 'disruption'] },

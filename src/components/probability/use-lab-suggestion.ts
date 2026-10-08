@@ -18,7 +18,7 @@ import {
 import { labInputSignature, type LabViewResult } from '../../app/probability-lab'
 import type { CardEntry, HandPattern, TurnView } from '../../types'
 
-export interface SuggestionAnalysis {
+interface SuggestionAnalysis {
   /** Cambio que más sube las manos limpias. */
   best: Outcome | null
   /** Si nada sube: el que más baja el problema (cuesta salidas). */

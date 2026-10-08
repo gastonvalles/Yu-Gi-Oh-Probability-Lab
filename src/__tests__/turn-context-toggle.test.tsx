@@ -23,21 +23,12 @@ function makeActions(): PatternEditorActions {
     setPatternAllowSharedCards: vi.fn(),
     addRequirement: vi.fn(),
     removeRequirement: vi.fn(),
-    addRequirementCard: vi.fn(),
-    removeRequirementCard: vi.fn(),
     setRequirementKind: vi.fn(),
     setRequirementDistinct: vi.fn(),
     setRequirementCount: vi.fn(),
     setRequirementMatcher: vi.fn(),
-    setRequirementSource: vi.fn(),
-    setRequirementGroup: vi.fn(),
-    setRequirementAttribute: vi.fn(),
-    setRequirementLevel: vi.fn(),
-    setRequirementMonsterType: vi.fn(),
-    setRequirementAtk: vi.fn(),
     setPatternIgnoresDraw: vi.fn(),
     setPatternRescuesCards: vi.fn(),
-    setRequirementDef: vi.fn(),
   }
 }
 

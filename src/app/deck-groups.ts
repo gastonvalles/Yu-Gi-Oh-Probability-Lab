@@ -1,8 +1,8 @@
 import type { CardEntry, CardOrigin, CardRole, GroupKey } from '../types'
 
-export type DeckGroupKind = 'origin' | 'role'
+type DeckGroupKind = 'origin' | 'role'
 
-export interface ClassificationTheme {
+interface ClassificationTheme {
   color: string
   rgb: string
 }
@@ -16,12 +16,12 @@ interface DeckGroupDefinition {
   theme: ClassificationTheme
 }
 
-export interface CardOriginDefinition extends DeckGroupDefinition {
+interface CardOriginDefinition extends DeckGroupDefinition {
   kind: 'origin'
   key: Extract<GroupKey, { type: 'origin' }>
 }
 
-export interface CardRoleDefinition extends DeckGroupDefinition {
+interface CardRoleDefinition extends DeckGroupDefinition {
   kind: 'role'
   key: Extract<GroupKey, { type: 'role' }>
 }
@@ -32,7 +32,7 @@ export interface DerivedDeckGroup extends DeckGroupDefinition {
   copies: number
 }
 
-export interface ParsedStoredGroupKey {
+interface ParsedStoredGroupKey {
   groupKey: GroupKey | null
   isLegacy: boolean
 }
@@ -192,7 +192,7 @@ export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
   },
 ]
 
-export const CARD_GROUP_DEFINITIONS: DeckGroupDefinition[] = [
+const CARD_GROUP_DEFINITIONS: DeckGroupDefinition[] = [
   ...CARD_ORIGIN_DEFINITIONS,
   ...CARD_ROLE_DEFINITIONS,
 ]
@@ -231,7 +231,7 @@ export function getDeckGroupTheme(groupKey: GroupKey): ClassificationTheme {
   return GROUP_DEFINITION_BY_KEY.get(serializeGroupKey(groupKey))?.theme ?? CARD_GROUP_DEFINITIONS[0].theme
 }
 
-export function getDeckGroupKindLabel(kind: DeckGroupKind): string {
+function getDeckGroupKindLabel(kind: DeckGroupKind): string {
   return kind === 'origin' ? 'Origen' : 'Rol'
 }
 

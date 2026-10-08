@@ -22,13 +22,13 @@ export interface DeckImageLayout {
 
 // Proporción real de las imágenes de YGOPRODeck (421×614).
 export const CARD_ASPECT = 614 / 421
-export const CARD_WIDTH = 168
-export const CARD_GAP = 8
-export const PAGE_PADDING = 32
-export const ZONE_PADDING = 16
-export const ZONE_HEADER_HEIGHT = 44
-export const HEADER_HEIGHT = 84
-export const SECTION_GAP = 20
+const CARD_WIDTH = 168
+const CARD_GAP = 8
+const PAGE_PADDING = 32
+const ZONE_PADDING = 16
+const ZONE_HEADER_HEIGHT = 44
+const HEADER_HEIGHT = 84
+const SECTION_GAP = 20
 
 const MAIN_COLUMNS = 10
 

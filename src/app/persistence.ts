@@ -68,7 +68,7 @@ export function loadClassificationOverrides(): Map<string, ClassificationSuggest
   }
 }
 
-export function saveClassificationOverrides(map: ReadonlyMap<string, ClassificationSuggestion>): void {
+function saveClassificationOverrides(map: ReadonlyMap<string, ClassificationSuggestion>): void {
   try {
     localStorage.setItem(CLASSIFICATION_OVERRIDES_KEY, JSON.stringify([...map.entries()]))
   } catch { /* ignore quota errors */ }
