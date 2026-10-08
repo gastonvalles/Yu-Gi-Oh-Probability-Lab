@@ -15,8 +15,8 @@ export function KindToggle({ patternId, currentKind, actions }: KindToggleProps)
       label="Tipo de regla"
       value={currentKind}
       options={[
-        { value: 'opening', label: 'Salida' },
-        { value: 'problem', label: 'Problema' },
+        { value: 'opening', label: 'Salida', tone: 'success' },
+        { value: 'problem', label: 'Problema', tone: 'danger' },
       ]}
       onChange={(kind) => actions.setPatternCategory(patternId, kind)}
     />

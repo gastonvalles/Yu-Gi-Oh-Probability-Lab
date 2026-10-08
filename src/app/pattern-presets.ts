@@ -39,7 +39,7 @@ export function normalizeRuleName(raw: string): string {
 
 const INTERACTION_ROLES: readonly CardRole[] = ['handtrap', 'disruption']
 /** Todo lo que sirve para responder cuando el rival juega primero. */
-const RESPONSE_ROLES: readonly CardRole[] = [...INTERACTION_ROLES, 'boardbreaker']
+const RESPONSE_ROLES: readonly CardRole[] = ['handtrap', 'boardbreaker']
 const DEAD_CARD_ROLES: readonly CardRole[] = ['brick', 'garnet']
 
 export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
@@ -138,16 +138,18 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
     tier: 'generic',
     kind: 'problem',
     title: 'Sin respuesta yendo 2º',
-    description: 'Yendo segundo sin Handtrap, Disruption ni Boardbreaker quedás a merced del campo rival.',
-    technicalSubtitle: '0 Handtrap, Disruption o Boardbreaker',
-    // Una sola condición sobre todas esas cartas: "ninguna Handtrap, Disruption o Boardbreaker".
-    build: (cards) =>
-      createMatcherPattern(
+    description: 'Yendo segundo, sin una Handtrap ni un Boardbreaker en las 5 cartas iniciales (no cuenta la que robás) quedás a merced del campo rival.',
+    technicalSubtitle: '0 Handtrap o Boardbreaker en las 5 cartas',
+    // Una sola condición sobre todas esas cartas ("ninguna Handtrap ni Boardbreaker") y solo las 5 cartas iniciales: la que robás yendo 2º no cuenta.
+    build: (cards) => ({
+      ...createMatcherPattern(
         'Sin respuesta yendo 2º',
         'problem',
         [{ matcher: roleMatcher(cards, RESPONSE_ROLES), quantity: 1, kind: 'exclude' }],
         { allowSharedCards: true, matchMode: 'all', turnContext: 'second' },
       ),
+      ignoresDraw: true,
+    }),
     describeProbability: (probability) => `Yendo segundo, no tenés respuesta en ${formatProbability(probability)} de las manos.`,
   },
 ]

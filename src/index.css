@@ -328,6 +328,7 @@
   --color-surface-hover: var(--surface-hover);
   --color-primary-soft: var(--primary-soft);
   --color-lavender: var(--lavender);
+  --color-lavender-hover: var(--lavender-hover);
   --color-tint: var(--primary-soft);
   --color-info: var(--info);
   --color-success-soft: var(--success-soft);
@@ -382,6 +383,8 @@
     /* Lavanda oscura: el fondo de chips, botones secundarios y barras de navegación (la lavanda del diseño, sobre oscuro). */
     --lavender: #1d1740;
     --lavender-rgb: 29 23 64;
+    /* Lavanda al pasar el mouse: más clara que la base (el hover siempre aclara). */
+    --lavender-hover: #2d2368;
     --info: #0087ff;
     --info-rgb: 0 135 255;
     /* Variantes claras de cada tono: texto e íconos sobre fondos teñidos (más contraste que el color base). */
