@@ -93,9 +93,9 @@ describe('buildVerdict', () => {
   })
 
   it('detecta empate, ganador y cuando depende del turno', () => {
-    expect(buildVerdict('A', 'B', clean(0.001, -0.002), false).kind).toBe('equivalent')
-    expect(buildVerdict('A', 'B', clean(0.03, 0.02), false).kind).toBe('b')
-    expect(buildVerdict('A', 'B', clean(0.03, -0.02), false).kind).toBe('split')
-    expect(buildVerdict('A', 'B', null, false).kind).toBe('incomplete')
+    expect(buildVerdict(clean(0.001, -0.002), false).kind).toBe('equivalent')
+    expect(buildVerdict(clean(0.03, 0.02), false).kind).toBe('b')
+    expect(buildVerdict(clean(0.03, -0.02), false).kind).toBe('split')
+    expect(buildVerdict(null, false).kind).toBe('incomplete')
   })
 })

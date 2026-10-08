@@ -97,8 +97,7 @@ export function compareBuilds(
     cardDiffs,
     rules: compareRules(a.cards, rules, activeA, activeB, metricsA.results, metricsB.results),
     clean,
-    // Con la letra, el veredicto se entiende aunque las dos builds se llamen igual.
-    verdict: buildVerdict(`A (${a.name})`, `B (${b.name})`, clean, cardDiffs.length === 0),
+    verdict: buildVerdict(clean, cardDiffs.length === 0),
   }
 }
 
@@ -222,16 +221,8 @@ function sameDefinition(left: HandPattern, right: HandPattern): boolean {
   return strip(left) === strip(right)
 }
 
-function formatPoints(delta: number): string {
-  return `${(Math.abs(delta) * 100).toFixed(1)} pp`
-}
-
-export function buildVerdict(
-  nameA: string,
-  nameB: string,
-  clean: CleanComparison | null,
-  sameCards: boolean,
-): ComparisonVerdict {
+/** Veredicto en una frase: las cifras están en la tabla, acá sólo qué build conviene. */
+export function buildVerdict(clean: CleanComparison | null, sameCards: boolean): ComparisonVerdict {
   if (!clean) {
     return {
       kind: 'incomplete',
@@ -241,7 +232,7 @@ export function buildVerdict(
   }
 
   if (sameCards) {
-    return { kind: 'identical', title: 'Las dos builds son iguales', detail: 'Tienen exactamente las mismas cartas en el Main Deck.' }
+    return { kind: 'identical', title: 'Son iguales', detail: 'Tienen las mismas cartas en el Main Deck.' }
   }
 
   const { first, second, average } = clean
@@ -250,12 +241,10 @@ export function buildVerdict(
   const secondSide = favors(second.delta)
 
   if (firstSide && secondSide && firstSide !== secondSide) {
-    const firstName = firstSide === 'a' ? nameA : nameB
-    const secondName = secondSide === 'a' ? nameA : nameB
     return {
       kind: 'split',
       title: 'Depende del turno',
-      detail: `${firstName} abre mejor yendo 1º (${formatPoints(first.delta)}) y ${secondName} yendo 2º (${formatPoints(second.delta)}).`,
+      detail: `${firstSide.toUpperCase()} es mejor yendo 1º y ${secondSide.toUpperCase()} yendo 2º.`,
     }
   }
 
@@ -264,15 +253,14 @@ export function buildVerdict(
   if (!averageSide) {
     return {
       kind: 'equivalent',
-      title: 'Prácticamente iguales',
-      detail: `La diferencia de manos limpias es de ${formatPoints(average.delta)}: con tus reglas rinden lo mismo.`,
+      title: 'Rinden lo mismo',
+      detail: 'La diferencia es menor a 0.5 pp: con tus reglas no se nota.',
     }
   }
 
-  const winner = averageSide === 'a' ? nameA : nameB
   return {
     kind: averageSide,
-    title: `${winner} es más consistente`,
-    detail: `Abre limpia ${formatPoints(average.delta)} más seguido en promedio (1º ${formatPoints(first.delta)}, 2º ${formatPoints(second.delta)}).`,
+    title: `La build ${averageSide.toUpperCase()} es mejor`,
+    detail: 'Saca más manos limpias en promedio.',
   }
 }
