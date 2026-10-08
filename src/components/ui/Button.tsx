@@ -21,17 +21,17 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const FILLED: Record<ButtonColor, string> = {
   brand: 'bg-primary text-primary-foreground shadow-brand hover:bg-primary-hover',
-  danger: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+  danger: 'bg-destructive text-white hover:brightness-110',
 }
 
-/** Lavanda: relleno violeta suave con texto violeta claro (como "View Task" del diseño). */
+/** Lavanda: relleno violeta oscuro con texto blanco; al pasar el mouse se aclara. */
 const QUIET: Record<ButtonColor, string> = {
-  brand: 'bg-lavender text-primary-soft hover:bg-primary/28',
-  danger: 'bg-danger/12 text-danger-soft hover:bg-danger/20',
+  brand: 'bg-lavender text-foreground hover:bg-lavender-hover',
+  danger: 'bg-danger/20 text-white hover:bg-danger/30',
 }
 
 const GHOST: Record<ButtonColor, string> = {
-  brand: 'bg-transparent text-muted hover:bg-tint/6 hover:text-foreground',
+  brand: 'bg-transparent text-foreground hover:bg-tint/10',
   danger: 'bg-transparent text-danger-soft hover:bg-danger/12',
 }
 

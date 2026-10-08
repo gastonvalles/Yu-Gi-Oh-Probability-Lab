@@ -30,9 +30,9 @@ const toneStyle = variants({
   base: BASE,
   variants: {
     tone: {
-      raised: 'rounded-control bg-lavender text-primary-soft hover:bg-primary/28',
-      close: 'rounded-control bg-transparent text-soft hover:bg-tint/8 hover:text-foreground',
-      ghost: 'rounded-control bg-transparent text-soft hover:bg-tint/8 hover:text-foreground',
+      raised: 'rounded-control bg-lavender text-foreground hover:bg-lavender-hover',
+      close: 'rounded-full bg-transparent text-white hover:bg-tint/10 active:bg-tint/16',
+      ghost: 'rounded-control bg-transparent text-foreground hover:bg-tint/10',
       flat: 'rounded-full bg-transparent text-white hover:bg-tint/8 active:bg-tint/16 [&_svg]:stroke-[1.3]',
     },
   },

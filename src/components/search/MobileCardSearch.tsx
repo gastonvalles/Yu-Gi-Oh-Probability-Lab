@@ -143,7 +143,7 @@ export function MobileCardSearch({
               <button
                 type="button"
                 aria-label="Borrar texto"
-                className="absolute right-0 top-0 grid h-11 w-11 place-items-center text-muted"
+                className="absolute right-0 top-0 grid h-11 w-11 place-items-center text-white"
                 onClick={() => {
                   actions.onQueryChange('')
                   inputRef.current?.focus()
@@ -201,7 +201,7 @@ export function MobileCardSearch({
                 <span className="truncate text-foreground">
                   {chip.label}: {chip.value}
                 </span>
-                <CloseIcon className="h-3 w-3 shrink-0 text-soft" />
+                <CloseIcon className="h-3 w-3 shrink-0 text-white" />
               </button>
             ))}
           </div>

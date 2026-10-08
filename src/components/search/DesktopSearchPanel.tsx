@@ -184,7 +184,7 @@ export function DesktopSearchPanel({
                 <span className="truncate text-foreground">
                   {chip.label}: {chip.value}
                 </span>
-                <CloseIcon className="h-3 w-3 shrink-0 text-soft" />
+                <CloseIcon className="h-3 w-3 shrink-0 text-white" />
               </button>
             ))}
           </div>

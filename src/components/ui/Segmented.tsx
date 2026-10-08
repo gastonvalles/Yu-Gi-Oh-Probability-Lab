@@ -43,12 +43,12 @@ const ITEM: Record<SegmentedVariant, { base: string; on: string; off: string }> 
   track: {
     base: 'rounded-lg px-3',
     on: 'bg-primary text-primary-foreground shadow-brand',
-    off: 'text-primary-soft hover:bg-primary/20',
+    off: 'text-foreground/85 hover:bg-tint/10',
   },
   chips: {
     base: 'rounded-control px-4',
     on: 'bg-primary text-primary-foreground shadow-brand',
-    off: 'bg-lavender text-primary-soft hover:bg-primary/28',
+    off: 'bg-lavender text-foreground hover:bg-lavender-hover',
   },
   cards: {
     base: 'rounded-card border px-3',

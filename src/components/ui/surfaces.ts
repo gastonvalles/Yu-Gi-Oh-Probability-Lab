@@ -32,7 +32,7 @@ export const chip = {
 
 /** Pastilla de selección (tipo de carta, atributo, nivel): lavanda en reposo, violeta sólido si está elegida (aria-pressed). */
 export const choiceChip =
-  'inline-flex items-center justify-center rounded-control bg-lavender font-semibold text-primary-soft transition-[background-color,color] duration-150 hover:bg-primary/28 focus-visible:outline-none focus-visible:shadow-focus aria-pressed:bg-primary aria-pressed:text-primary-foreground'
+  'inline-flex items-center justify-center rounded-control bg-lavender font-semibold text-foreground transition-[background-color,color] duration-150 hover:bg-lavender-hover focus-visible:outline-none focus-visible:shadow-focus aria-pressed:bg-primary aria-pressed:text-primary-foreground'
 
 /** Chip de un filtro activo del buscador: se toca para quitarlo. */
 export const filterChip =
