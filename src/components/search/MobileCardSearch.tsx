@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
-import { useBodyScrollLock } from '../../app/use-overlay'
+import { useFocusTrap } from '../../app/use-focus-trap'
+import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 
 import { buildCompactSearchDescription, formatSearchError } from '../../app/card-search'
 import { buildFormatLimitLabel } from '../../app/deck-format'
@@ -51,7 +52,10 @@ export function MobileCardSearch({
   onOpenDetail,
   onClose,
 }: MobileCardSearchProps) {
+  const rootRef = useRef<HTMLDivElement | null>(null)
   useBodyScrollLock(true)
+  useEscapeKey(onClose)
+  useFocusTrap(rootRef)
   const { filters, query, status } = search
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [sortOrder, setSortOrder] = useState<SearchSortOrder>('default')
@@ -101,10 +105,12 @@ export function MobileCardSearch({
   // transform, que atraparía el z-index debajo de la navegación inferior.
   return createPortal(
     <div
+      ref={rootRef}
+      tabIndex={-1}
       role="dialog"
       aria-modal="true"
       aria-label="Buscar cartas"
-      className="fixed inset-0 z-140 flex h-dvh w-full flex-col overflow-hidden bg-background min-[1101px]:hidden"
+      className="fixed inset-0 z-140 flex h-dvh w-full flex-col overflow-hidden bg-background outline-none min-[1101px]:hidden"
     >
       <header className="grid gap-2 border-b border-border-subtle px-3 pb-2 pt-[max(0.6rem,env(safe-area-inset-top))]">
         <form
@@ -134,6 +140,7 @@ export function MobileCardSearch({
               autoCapitalize="none"
               spellCheck={false}
               autoFocus
+              data-initial-focus
               className={`${field} h-11 w-full pl-9 pr-11 text-base [-webkit-appearance:none] [appearance:none] [&::-webkit-search-cancel-button]:hidden`}
             />
             {status === 'loading' ? (

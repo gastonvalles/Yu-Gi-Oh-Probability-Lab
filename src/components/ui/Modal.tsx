@@ -1,6 +1,7 @@
-import { useId, type ReactNode } from 'react'
+import { useId, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
+import { useFocusTrap } from '../../app/use-focus-trap'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import { cx } from './cx'
 import { Icon, type IconName } from './Icon'
@@ -14,7 +15,7 @@ import { overline } from './typography'
  * 'sm' es para avisos y confirmaciones; en mobile los de contenido ocupan toda la pantalla.
  * 'table' es la mesa de práctica (angosta, como en el celu) y 'editor' el de clasificación de una carta.
  */
-export type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'table' | 'editor' | 'sheet'
+type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'table' | 'editor' | 'sheet'
 
 const FULL_HEIGHT_MOBILE = 'max-sm:h-[calc(100dvh-1rem)]'
 
@@ -87,9 +88,11 @@ export function Modal({
 }: ModalProps) {
   const id = useId()
   const titleId = `${id}-title`
+  const panelRef = useRef<HTMLDivElement>(null)
 
   useBodyScrollLock(isOpen)
   useEscapeKey(onClose, isOpen && dismissible)
+  useFocusTrap(panelRef, isOpen)
 
   if (!isOpen || typeof document === 'undefined') {
     return null
@@ -103,12 +106,14 @@ export function Modal({
       onClick={dismissible ? onClose : undefined}
     >
       <div
+        ref={panelRef}
+        tabIndex={-1}
         role={role}
         aria-modal="true"
         aria-labelledby={hasHeader && title ? titleId : undefined}
         aria-label={hasHeader && title ? undefined : ariaLabel}
         className={cx(
-          'relative flex max-h-[calc(100dvh-1rem)] min-h-0 flex-col overflow-hidden p-0 motion-reduce:animate-none',
+          'relative flex max-h-[calc(100dvh-1rem)] min-h-0 flex-col overflow-hidden p-0 outline-none motion-reduce:animate-none',
           size === 'sheet' ? 'max-sm:animate-sheet-up sm:animate-dialog-enter' : 'animate-dialog-enter',
           'sm:max-h-[calc(100dvh-2rem)]',
           surface.panel,
