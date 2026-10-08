@@ -6,7 +6,7 @@ import type { CardEntry, CardGroupKey, CardRole } from '../../types'
 
 export type ClassificationStateKey = 'all' | 'unclassified' | 'missing-origin' | 'missing-role' | 'review' | 'complete'
 export type ClassificationStyleKey = ClassificationStateKey | CardGroupKey
-export type StatusTone = 'warning' | 'primary' | 'success'
+type StatusTone = 'warning' | 'primary' | 'success'
 export type CardTypeKey = 'monster' | 'spell' | 'trap'
 
 const PANEL_THEME: Record<ClassificationStateKey, { color: string; rgb: string }> = {

@@ -303,6 +303,7 @@ export function ProbabilityPanel({
       <ConfirmDialog
         cancelLabel="Seguir editando"
         confirmLabel="Descartar"
+        confirmColor="danger"
         description="Los cambios de esta regla no se guardaron. Si salís ahora se pierden."
         isOpen={confirmDiscardOpen}
         onCancel={() => setConfirmDiscardOpen(false)}
@@ -310,10 +311,11 @@ export function ProbabilityPanel({
         title="¿Descartar cambios?"
       />
 
-      <LabDisclaimerDialog isOpen={disclaimer.isOpen} onAcknowledge={disclaimer.acknowledge} />
+      <LabDisclaimerDialog isOpen={disclaimer.isOpen} dismissible={disclaimer.isAcknowledged} onAcknowledge={disclaimer.acknowledge} />
 
       <ConfirmDialog
         confirmLabel="Eliminar regla"
+        confirmColor="danger"
         description="Se va a quitar esta regla del análisis y el resultado se recalculará en el momento."
         isOpen={pendingDeletePatternId !== null}
         onCancel={() => setPendingDeletePatternId(null)}

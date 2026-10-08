@@ -115,10 +115,6 @@ export function normalizeSearchText(value: string): string {
     .toLowerCase()
 }
 
-export function formatPercent(value: number): string {
-  return `${(value * 100).toFixed(2)}%`
-}
-
 export function formatShortPercent(value: number): string {
   return `${(value * 100).toFixed(1)}%`
 }

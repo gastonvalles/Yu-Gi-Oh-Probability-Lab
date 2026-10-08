@@ -37,7 +37,7 @@ export function defaultFabPosition(bounds: FabBounds): FabPosition {
 }
 
 /** Distancia mínima (px) para que un toque cuente como arrastre y no como clic. */
-export const FAB_DRAG_THRESHOLD = 6
+const FAB_DRAG_THRESHOLD = 6
 
 export function isFabDrag(start: FabPosition, current: FabPosition): boolean {
   return Math.hypot(current.x - start.x, current.y - start.y) > FAB_DRAG_THRESHOLD

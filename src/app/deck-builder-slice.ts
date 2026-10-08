@@ -4,11 +4,9 @@ import type { DeckBuilderState, DeckZone } from './model'
 import { sortDeckCards } from './deck-sort'
 import type { CardOrigin, CardRole, DeckFormat } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
-import type { ClassificationSuggestion } from './classification-engine'
+import { getClassificationOverrides } from './classification-overrides'
 import {
-  addSearchResultToDefaultZone,
   addSearchResultToZone,
-  classifyAllUnclassified,
   confirmClassificationForCard,
   reclassifyAll,
   moveDeckCard,
@@ -23,14 +21,6 @@ interface AddSearchResultToDeckZonePayload {
   index: number
   results: ApiCardSearchResult[]
   zone: DeckZone
-  overrides?: ReadonlyMap<string, ClassificationSuggestion>
-}
-
-interface AddSearchResultToDefaultDeckZonePayload {
-  apiCardId: number
-  deckFormat: DeckFormat
-  results: ApiCardSearchResult[]
-  overrides?: ReadonlyMap<string, ClassificationSuggestion>
 }
 
 interface MoveDeckCardPayload {
@@ -61,18 +51,6 @@ const deckBuilderSlice = createSlice({
   name: 'deckBuilder',
   initialState,
   reducers: {
-    addSearchResultToDefaultDeckZone(
-      state,
-      action: PayloadAction<AddSearchResultToDefaultDeckZonePayload>,
-    ) {
-      return addSearchResultToDefaultZone(
-        state,
-        action.payload.results,
-        action.payload.apiCardId,
-        action.payload.deckFormat,
-        action.payload.overrides,
-      )
-    },
     addSearchResultToDeckZone(state, action: PayloadAction<AddSearchResultToDeckZonePayload>) {
       return addSearchResultToZone(
         state,
@@ -81,7 +59,7 @@ const deckBuilderSlice = createSlice({
         action.payload.zone,
         action.payload.index,
         action.payload.deckFormat,
-        action.payload.overrides,
+        getClassificationOverrides(),
       )
     },
     moveDeckCardInBuilder(state, action: PayloadAction<MoveDeckCardPayload>) {
@@ -129,19 +107,15 @@ const deckBuilderSlice = createSlice({
     setIsEditingDeck(state, action: PayloadAction<boolean>) {
       state.isEditingDeck = action.payload
     },
-    classifyAllUnclassifiedCards(state, action: PayloadAction<{ overrides?: ReadonlyMap<string, ClassificationSuggestion> } | undefined>) {
-      return classifyAllUnclassified(state, action.payload?.overrides)
-    },
-    reclassifyAllCards(state, action: PayloadAction<{ overrides?: ReadonlyMap<string, ClassificationSuggestion> } | undefined>) {
-      return reclassifyAll(state, action.payload?.overrides)
+    reclassifyAllCards(state) {
+      // Los overrides salen del caché del módulo: un Map en el payload no es serializable (RTK lo avisa en dev).
+      return reclassifyAll(state, getClassificationOverrides())
     },
   },
 })
 
 export const {
   addSearchResultToDeckZone,
-  addSearchResultToDefaultDeckZone,
-  classifyAllUnclassifiedCards,
   confirmDeckCardClassification,
   reclassifyAllCards,
   clearAllDeckZones,

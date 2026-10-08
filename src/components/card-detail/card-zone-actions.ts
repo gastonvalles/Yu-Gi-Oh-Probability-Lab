@@ -2,7 +2,7 @@ import { isCardAllowedInDeckZone } from '../../app/deck-builder'
 import type { DeckZone } from '../../app/model'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 
-export interface ZoneActionEntry {
+interface ZoneActionEntry {
   zone: DeckZone
   label: string
   variant: 'primary' | 'secondary' | 'tertiary'

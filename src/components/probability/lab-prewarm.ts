@@ -4,7 +4,7 @@ import { buildActiveRuleSet, type SystemRuleNames } from '../../app/pattern-pres
 import type { CardEntry, HandPattern } from '../../types'
 import { buildReadiness } from './use-probability-lab'
 
-export interface PrewarmInput {
+interface PrewarmInput {
   derivedMainCards: CardEntry[]
   patterns: HandPattern[]
   disabledGenericRuleIds: readonly string[]

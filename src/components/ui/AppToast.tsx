@@ -60,7 +60,7 @@ export function AppToast({ id, visible, message, tone }: AppToastProps) {
 
   return (
     <div
-      role="status"
+      role={tone === 'error' ? 'alert' : 'status'}
       className={TOAST_BASE}
       data-visible={visible && !dismissed ? 'true' : 'false'}
       data-dragging={startRef.current !== null ? 'true' : 'false'}

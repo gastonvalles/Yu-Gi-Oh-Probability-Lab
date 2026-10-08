@@ -101,6 +101,7 @@ function BuildNotes({ side, build, canClassifyHere, onShowCards }: { side: Side;
 }
 
 const VERDICT_LOOK: Record<ComparisonVerdict['kind'], { tone: Tone; icon: IconName }> = {
+  computing: { tone: 'info', icon: 'flask' },
   a: { tone: 'success', icon: 'check-circle' },
   b: { tone: 'success', icon: 'check-circle' },
   split: { tone: 'warning', icon: 'swap' },

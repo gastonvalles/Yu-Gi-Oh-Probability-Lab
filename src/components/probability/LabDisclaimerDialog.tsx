@@ -6,26 +6,30 @@ const ACKNOWLEDGED_KEY = 'ygo-probability-lab:lab-disclaimer-ack:v1'
 
 /** Aviso de cómo leer los %: se muestra al entrar al Lab hasta que se toca "Entendido". */
 export function useLabDisclaimer() {
-  const [isOpen, setIsOpen] = useState(() => !readAcknowledged())
+  const [isAcknowledged, setIsAcknowledged] = useState(readAcknowledged)
+  const [isOpen, setIsOpen] = useState(!isAcknowledged)
 
   return {
     isOpen,
+    /** Ya lo aceptó: si lo reabre por curiosidad, se puede cerrar como cualquier diálogo. */
+    isAcknowledged,
     open: () => setIsOpen(true),
     acknowledge: () => {
       writeAcknowledged()
+      setIsAcknowledged(true)
       setIsOpen(false)
     },
   }
 }
 
-export function LabDisclaimerDialog({ isOpen, onAcknowledge }: { isOpen: boolean; onAcknowledge: () => void }) {
+export function LabDisclaimerDialog({ isOpen, dismissible = false, onAcknowledge }: { isOpen: boolean; dismissible?: boolean; onAcknowledge: () => void }) {
   return (
     <Modal
       isOpen={isOpen}
       onClose={onAcknowledge}
       size="sm"
       role="alertdialog"
-      dismissible={false}
+      dismissible={dismissible}
       icon="info"
       tone="info"
       kicker="Antes de empezar"

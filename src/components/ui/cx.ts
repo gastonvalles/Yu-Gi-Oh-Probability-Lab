@@ -1,4 +1,4 @@
-export type ClassValue = string | false | null | undefined | ClassValue[]
+type ClassValue = string | false | null | undefined | ClassValue[]
 
 /** Une clases descartando los valores vacíos (`cond && 'clase'`); acepta listas anidadas. */
 export function cx(...values: ClassValue[]): string {

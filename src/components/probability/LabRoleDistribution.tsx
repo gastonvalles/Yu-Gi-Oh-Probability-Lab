@@ -1,14 +1,15 @@
+import { createRoleGroupKey, getDeckGroupTheme } from '../../app/deck-groups'
 import { DISTRIBUTION_BUCKETS, type RoleDistribution, type RoleDistributionKey } from '../../app/role-distribution'
 import { formatInteger, formatShortPercent } from '../../app/utils'
 import { ProgressRing } from '../ui/ProgressRing'
 import { LabSection } from './LabSection'
 
-/** Color de cada rol (los roles tienen su propia paleta). */
+/** Color de cada rol: la misma paleta que las etiquetas de la pantalla de roles (interacción toma el de handtrap). */
 const ROLE_RGB: Record<RoleDistributionKey, string> = {
-  starter: 'var(--accent-rgb)',
-  extender: 'var(--extender-rgb)',
-  interaction: 'var(--handtrap-rgb)',
-  brick: 'var(--brick-rgb)',
+  starter: getDeckGroupTheme(createRoleGroupKey('starter')).rgb,
+  extender: getDeckGroupTheme(createRoleGroupKey('extender')).rgb,
+  interaction: getDeckGroupTheme(createRoleGroupKey('handtrap')).rgb,
+  brick: getDeckGroupTheme(createRoleGroupKey('brick')).rgb,
 }
 
 interface LabRoleDistributionProps {

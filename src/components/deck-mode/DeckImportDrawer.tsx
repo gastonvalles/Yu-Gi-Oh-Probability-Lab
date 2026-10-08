@@ -26,7 +26,8 @@ import {
   groupResolvedByZone,
 } from '../../app/deck-import-presentation'
 import type { DeckBuilderState } from '../../app/model'
-import { useBodyScrollLock } from '../../app/use-overlay'
+import { useFocusTrap } from '../../app/use-focus-trap'
+import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import { formatInteger } from '../../app/utils'
 import type { DeckFormat } from '../../types'
 import { loadCardCatalog } from '../../ygoprodeck'
@@ -208,64 +209,9 @@ export function DeckImportDrawer({
     }
   }, [isOpen])
 
-  // Task 6.2: Focus trap, Escape close, and auto-focus on open
-  useEffect(() => {
-    if (!isOpen) {
-      return
-    }
-
-    const aside = asideRef.current
-    if (!aside) {
-      return
-    }
-
-    // Auto-focus first interactive element
-    const focusableSelector =
-      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
-
-    requestAnimationFrame(() => {
-      const first = aside.querySelector<HTMLElement>(focusableSelector)
-      first?.focus()
-    })
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Escape closes the drawer
-      if (event.key === 'Escape') {
-        event.stopPropagation()
-        onClose()
-        return
-      }
-
-      // Focus trap on Tab
-      if (event.key === 'Tab') {
-        const focusable = Array.from(aside.querySelectorAll<HTMLElement>(focusableSelector))
-        if (focusable.length === 0) {
-          return
-        }
-
-        const first = focusable[0]
-        const last = focusable[focusable.length - 1]
-
-        if (event.shiftKey) {
-          if (document.activeElement === first) {
-            event.preventDefault()
-            last.focus()
-          }
-        } else {
-          if (document.activeElement === last) {
-            event.preventDefault()
-            first.focus()
-          }
-        }
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [isOpen, onClose])
-
+  // Escape pasa por la pila de overlays: con la confirmación abierta cierra sólo la confirmación.
+  useEscapeKey(() => handleClose(), isOpen)
+  useFocusTrap(asideRef, isOpen)
   useBodyScrollLock(isOpen)
 
   if (!isOpen) {
@@ -293,7 +239,7 @@ export function DeckImportDrawer({
 
     if (trimmedValue.length === 0) {
       setPreview(null)
-      setFormError('Pegá una lista de cartas si querés usar el fallback manual.')
+      setFormError('Pegá una lista de cartas si querés cargar la lista a mano.')
       return
     }
 
@@ -461,9 +407,11 @@ export function DeckImportDrawer({
 
         <aside
           ref={asideRef}
+          tabIndex={-1}
           role="dialog"
+          aria-modal="true"
           aria-label="Importador de deck"
-          className="absolute right-0 top-0 grid h-full w-full max-w-136 grid-rows-[auto_minmax(0,1fr)] gap-0 border-l border-border-subtle bg-card-background p-0 shadow-overlay"
+          className="absolute right-0 top-0 grid h-full w-full max-w-136 grid-rows-[auto_minmax(0,1fr)] gap-0 border-l outline-none border-border-subtle bg-card-background p-0 shadow-overlay"
         >
           <header className="flex items-start justify-between gap-3 border-b border-border-subtle px-4 py-3.5">
             <div className="flex min-w-0 items-start gap-3">
@@ -564,6 +512,7 @@ export function DeckImportDrawer({
                   {manualFallbackOpen ? (
                     <div className="grid gap-2.5">
                       <textarea
+                        aria-label="Lista de cartas"
                         value={inputValue}
                         onChange={(event) => {
                           setInputValue(event.target.value)
@@ -642,7 +591,7 @@ export function DeckImportDrawer({
                     <article className="grid gap-2.5">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <small className={overline}>Preview</small>
+                          <small className={overline}>Vista previa</small>
                           <h4 className="m-0 mt-0.5 text-lead font-semibold leading-tight text-foreground">
                             {buildPreviewHeadline(preview)}
                           </h4>
@@ -728,7 +677,7 @@ export function DeckImportDrawer({
 
                     {preview.conflicts.length > 0 ? (
                       <CollapsibleSection
-                        title="Conflictos del import"
+                        title="Conflictos de la importación"
                         subtitle="Estas copias no se pudieron aplicar usando las reglas reales del deck builder."
                         count={preview.conflicts.length}
                         tone="warning"
@@ -772,6 +721,7 @@ export function DeckImportDrawer({
         }
         cancelLabel="Volver"
         confirmLabel="Sí, reemplazar"
+        confirmColor="danger"
         onCancel={() => setIsReplaceConfirmOpen(false)}
         onConfirm={applyImport}
       />
@@ -791,7 +741,7 @@ function buildPreviewHeadline(preview: DeckImportPreview): string {
     return 'Todo listo para aplicar el import'
   }
 
-  return 'Import parcial listo para revisar'
+  return 'Importación parcial lista para revisar'
 }
 
 function buildPreviewDescription(preview: DeckImportPreview): string {

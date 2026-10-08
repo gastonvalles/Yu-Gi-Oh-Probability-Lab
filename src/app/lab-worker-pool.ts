@@ -78,8 +78,3 @@ export function runInPool<TReply>(build: (id: number) => object): Promise<TReply
     slot.worker.postMessage(build(id))
   })
 }
-
-/** Cuántos hilos hay (para repartir un cálculo en partes parejas). */
-export function getPoolSize(): number {
-  return getPool()?.length ?? 0
-}

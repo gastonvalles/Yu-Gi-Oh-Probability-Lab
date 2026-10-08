@@ -43,10 +43,12 @@ function draftCalculations({
 
   // La regla sola se mide en ambos turnos: si fuera "Solo 1º", el turno 2º quedaría
   // sin reglas y el cálculo se bloquearía. Después se oculta el turno que no aplica.
-  const withDraft = [...customPatterns.filter((pattern) => pattern.id !== draft.id), draft]
+  // El nombre no cambia la matemática: se deja vacío para que escribirlo no dispare otro cálculo completo.
+  const mathDraft = { ...draft, name: '' }
+  const withDraft = [...customPatterns.filter((pattern) => pattern.id !== draft.id), mathDraft]
 
   return {
-    alone: { cards, patterns: [{ ...draft, turnContext: 'either' }], handSize },
+    alone: { cards, patterns: [{ ...mathDraft, turnContext: 'either' }], handSize },
     full: { cards, patterns: buildActiveRuleSet(cards, withDraft, disabledGenericRuleIds), handSize },
   }
 }

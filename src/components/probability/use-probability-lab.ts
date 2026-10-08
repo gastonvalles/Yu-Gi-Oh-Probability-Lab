@@ -15,7 +15,7 @@ import { useLabComputation } from './use-lab-computation'
 
 const NO_RULE_NAMES: SystemRuleNames = {}
 
-export type LabReadiness =
+type LabReadiness =
   | { status: 'empty-deck' }
   | { status: 'needs-classification'; message: string }
   | { status: 'ready' }

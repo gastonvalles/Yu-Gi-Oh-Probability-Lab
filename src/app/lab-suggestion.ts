@@ -27,7 +27,7 @@ export interface Change {
 }
 
 /** Familias de cartas con las que un jugador razona el deck: "sacá un starter y meté una handtrap". */
-export type RoleGroup = 'starter' | 'interaction' | 'brick' | 'filler'
+type RoleGroup = 'starter' | 'interaction' | 'brick' | 'filler'
 
 export const ROLE_GROUP_LABEL: Record<RoleGroup, string> = {
   starter: 'starter',
@@ -99,7 +99,8 @@ const adjust = (cards: CardEntry[], changes: Change[]): CardEntry[] => {
     delta.set(card.id, (delta.get(card.id) ?? 0) + (action === 'add' ? 1 : -1))
   }
 
-  return cards.map((card) => ({ ...card, copies: card.copies + (delta.get(card.id) ?? 0) })).filter((card) => card.copies > 0)
+  // Una carta que llega a 0 copias se conserva: las reglas que la referencian por id siguen siendo válidas.
+  return cards.map((card) => ({ ...card, copies: Math.max(0, card.copies + (delta.get(card.id) ?? 0)) }))
 }
 
 /** Relleno para sacar una carta sin achicar el deck (el motor pide 40 cartas como mínimo). */
@@ -129,7 +130,7 @@ const INTERACTION_ROLES: readonly CardRole[] = ['handtrap', 'disruption', 'board
 const FILLER_ROLES: readonly CardRole[] = ['enabler', 'searcher', 'draw', 'payoff', 'recovery']
 
 /** A qué familia pertenece una carta (la primera que corresponda: starter > handtrap > brick > relleno). */
-export function roleGroupOf(card: CardEntry): RoleGroup | null {
+function roleGroupOf(card: CardEntry): RoleGroup | null {
   if (card.roles.some((role) => STARTER_ROLES.includes(role))) return 'starter'
   if (card.roles.some((role) => INTERACTION_ROLES.includes(role))) return 'interaction'
   if (card.roles.some((role) => role === 'brick' || role === 'garnet')) return 'brick'

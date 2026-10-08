@@ -18,7 +18,7 @@ const inFlight = new Map<string, Promise<LabComputation>>()
 const keyMemo = new WeakMap<CardEntry[], WeakMap<HandPattern[], Map<number, string>>>()
 
 /** Hash de 53 bits (cyrb53): la clave es corta aunque el deck y las reglas pesen cientos de KB de JSON. */
-function hashString(text: string): string {
+export function hashString(text: string): string {
   let h1 = 0xdeadbeef
   let h2 = 0x41c6ce57
 
@@ -105,7 +105,16 @@ export function requestLabComputation(input: LabComputationInput, key = labCompu
   const first = runInPool<{ output: CalculationOutput }>((id) => ({ id, kind: 'view', cards, patterns, handSize, view: 'first' }))
   const second = runInPool<{ output: CalculationOutput }>((id) => ({ id, kind: 'view', cards, patterns, handSize, view: 'second' }))
   const inMainThread = () =>
-    new Promise<LabComputation>((resolve) => window.setTimeout(() => resolve(computeLabResults(cards, patterns, handSize)), 0))
+    new Promise<LabComputation>((resolve) =>
+      window.setTimeout(() => {
+        try {
+          resolve(computeLabResults(cards, patterns, handSize))
+        } catch {
+          // Si el cálculo revienta, la pantalla muestra el aviso en vez de quedarse cargando para siempre.
+          resolve({ status: 'blocked', issues: [{ level: 'error', message: 'No pude calcular las probabilidades. Probá de nuevo.' }] })
+        }
+      }, 0),
+    )
   const computation =
     first && second
       ? Promise.all([first, second])

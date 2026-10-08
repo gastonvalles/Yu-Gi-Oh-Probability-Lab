@@ -311,9 +311,6 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
-  --color-starter: var(--starter);
-  --color-extender: var(--extender);
-  --color-brick: var(--brick);
   --color-muted: var(--text-muted);
   --color-soft: var(--text-soft);
   --color-input-hover: var(--input-hover);
@@ -336,8 +333,6 @@
   --color-danger-soft: var(--danger-soft);
   --color-info-soft: var(--info-soft);
   --color-handtrap: var(--handtrap);
-  --color-boardbreaker: var(--boardbreaker);
-  --color-floodgate: var(--floodgate);
 }
 
 @layer theme {
@@ -393,15 +388,8 @@
     --danger-soft: #fca5a5;
     --info-soft: #7cc2ff;
 
-    --starter: #7452f0;
-    --extender: #a855f7;
-    --extender-rgb: 168 85 247;
-    --brick: #ef4444;
-    --brick-rgb: 239 68 68;
     --handtrap: #3b82f6;
     --handtrap-rgb: 59 130 246;
-    --boardbreaker: #ff9142;
-    --floodgate: #a855f7;
     --success: #00ffa3;
     --success-rgb: 0 255 163;
     --warning: #ff9142;

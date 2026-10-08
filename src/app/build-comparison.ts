@@ -1,20 +1,21 @@
 import type { CardEntry, HandPattern, PatternKind, TurnContext, TurnView } from '../types'
 import { curatePatterns } from './pattern-curation'
 import { buildActiveRuleSet, buildPatternPresets, type SystemRuleNames } from './pattern-presets'
-import { computeLabResults, type LabResults } from './probability-lab'
+import type { LabComputationInput } from './lab-computation-client'
+import { computeLabResults, type LabComputation, type LabResults } from './probability-lab'
 import { buildRoleDistributions, type RoleDistribution } from './role-distribution'
 
 /** Diferencias de manos limpias por debajo de esto se consideran empate (0.5 pp). */
-export const EQUIVALENT_GAP = 0.005
+const EQUIVALENT_GAP = 0.005
 
 const TURN_VIEWS: readonly TurnView[] = ['first', 'second', 'average']
 
-export interface ComparisonBuildInput {
+interface ComparisonBuildInput {
   name: string
   cards: CardEntry[]
 }
 
-export interface ComparisonRules {
+interface ComparisonRules {
   patterns: HandPattern[]
   disabledGenericRuleIds: readonly string[]
   /** Nombres propios de las reglas universales. */
@@ -25,8 +26,10 @@ export interface ComparisonRules {
 export interface BuildMetrics {
   name: string
   deckSize: number
-  /** Mismo cálculo que el Lab (1º, 2º y promedio). null si no se pudo calcular. */
+  /** Mismo cálculo que el Lab (1º, 2º y promedio). null si no se pudo calcular (o todavía se está calculando). */
   results: LabResults | null
+  /** El cálculo está en curso en los workers: todavía no hay resultado ni motivo de bloqueo. */
+  isComputing: boolean
   blockedReasons: string[]
   /** Cartas sin origen, sin rol o pendientes de revisión: el resultado puede no ser fiel. */
   pendingCards: CardEntry[]
@@ -57,7 +60,7 @@ export interface RuleComparisonRow {
 
 export type CleanComparison = Record<TurnView, { a: number; b: number; delta: number }>
 
-export type VerdictKind = 'incomplete' | 'identical' | 'equivalent' | 'a' | 'b' | 'split'
+export type VerdictKind = 'computing' | 'incomplete' | 'identical' | 'equivalent' | 'a' | 'b' | 'split'
 
 export interface ComparisonVerdict {
   kind: VerdictKind
@@ -78,18 +81,44 @@ export function isCardPendingClassification(card: Pick<CardEntry, 'origin' | 'ro
   return card.origin === null || card.roles.length === 0 || card.needsReview
 }
 
-/** Compara dos builds con el mismo motor, las mismas reglas y el mismo tamaño de mano que el Lab. */
+/** Resultado del Lab de cada build; `undefined` = todavía en curso (se calcula en workers, ver `buildComparisonInputs`). */
+export interface ComparisonComputations {
+  a: LabComputation | null | undefined
+  b: LabComputation | null | undefined
+}
+
+/**
+ * Entradas del Lab de cada build (null si el deck es muy chico para calcular): se piden a los workers
+ * y el resultado se le pasa a `compareBuilds`, que así no enumera manos en el hilo principal.
+ */
+export function buildComparisonInputs(
+  a: ComparisonBuildInput,
+  b: ComparisonBuildInput,
+  rules: ComparisonRules,
+): { a: LabComputationInput | null; b: LabComputationInput | null } {
+  const inputOf = (build: ComparisonBuildInput): LabComputationInput | null =>
+    deckSizeOf(build) >= rules.handSize + 1 ? { cards: build.cards, patterns: buildActiveRules(build.cards, rules), handSize: rules.handSize } : null
+
+  return { a: inputOf(a), b: inputOf(b) }
+}
+
+/**
+ * Compara dos builds con el mismo motor, las mismas reglas y el mismo tamaño de mano que el Lab.
+ * Sin `computations` calcula acá mismo (sincrónico); con ellas usa lo que ya calcularon los workers.
+ */
 export function compareBuilds(
   a: ComparisonBuildInput,
   b: ComparisonBuildInput,
   rules: ComparisonRules,
+  computations?: ComparisonComputations,
 ): BuildComparison {
   const activeA = buildActiveRules(a.cards, rules)
   const activeB = buildActiveRules(b.cards, rules)
-  const metricsA = buildMetrics(a, activeA, rules.handSize)
-  const metricsB = buildMetrics(b, activeB, rules.handSize)
+  const metricsA = buildMetrics(a, rules.handSize, computations ? computations.a : computeIfPossible(a, activeA, rules.handSize))
+  const metricsB = buildMetrics(b, rules.handSize, computations ? computations.b : computeIfPossible(b, activeB, rules.handSize))
   const clean = buildCleanComparison(metricsA.results, metricsB.results)
   const cardDiffs = computeCardDiffs(a.cards, b.cards)
+  const isComputing = metricsA.isComputing || metricsB.isComputing
 
   return {
     a: metricsA,
@@ -97,8 +126,18 @@ export function compareBuilds(
     cardDiffs,
     rules: compareRules(a.cards, rules, activeA, activeB, metricsA.results, metricsB.results),
     clean,
-    verdict: buildVerdict(a.name, b.name, clean, cardDiffs.length === 0),
+    verdict: isComputing
+      ? { kind: 'computing', title: 'Calculando…', detail: 'Se están enumerando las manos de las dos builds.' }
+      : buildVerdict(a.name, b.name, clean, cardDiffs.length === 0),
   }
+}
+
+function deckSizeOf(build: ComparisonBuildInput): number {
+  return build.cards.reduce((total, card) => total + card.copies, 0)
+}
+
+function computeIfPossible(build: ComparisonBuildInput, activeRules: HandPattern[], handSize: number): LabComputation | null {
+  return deckSizeOf(build) >= handSize + 1 ? computeLabResults(build.cards, activeRules, handSize) : null
 }
 
 function buildActiveRules(cards: CardEntry[], rules: ComparisonRules): HandPattern[] {
@@ -106,20 +145,25 @@ function buildActiveRules(cards: CardEntry[], rules: ComparisonRules): HandPatte
   return buildActiveRuleSet(cards, curatePatterns(rules.patterns, cards), rules.disabledGenericRuleIds, rules.systemRuleNames)
 }
 
-function buildMetrics(build: ComparisonBuildInput, activeRules: HandPattern[], handSize: number): BuildMetrics {
-  const deckSize = build.cards.reduce((total, card) => total + card.copies, 0)
-  const computation = deckSize >= handSize + 1 ? computeLabResults(build.cards, activeRules, handSize) : null
+function buildMetrics(
+  build: ComparisonBuildInput,
+  handSize: number,
+  computation: LabComputation | null | undefined,
+): BuildMetrics {
+  const deckSize = deckSizeOf(build)
+  const tooSmall = deckSize < handSize + 1
+  const isComputing = !tooSmall && computation === undefined
 
   return {
     name: build.name,
     deckSize,
     results: computation?.status === 'ok' ? computation.results : null,
-    blockedReasons:
-      computation === null
-        ? [`El Main Deck necesita al menos ${handSize + 1} cartas.`]
-        : computation.status === 'blocked'
-          ? computation.issues.map((issue) => issue.message)
-          : [],
+    isComputing,
+    blockedReasons: tooSmall
+      ? [`El Main Deck necesita al menos ${handSize + 1} cartas.`]
+      : computation?.status === 'blocked'
+        ? computation.issues.map((issue) => issue.message)
+        : [],
     pendingCards: build.cards.filter(isCardPendingClassification),
     roles: {
       first: buildRoleDistributions(build.cards, [handSize]),

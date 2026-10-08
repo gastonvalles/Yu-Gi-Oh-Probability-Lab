@@ -3,7 +3,7 @@ import type { ApiCardSearchResult } from '../ygoprodeck'
 
 type CardLike = ApiCardReference | ApiCardSearchResult
 
-export function buildClassicCardTypeLine(card: CardLike): string {
+function buildClassicCardTypeLine(card: CardLike): string {
   if (card.cardType.toLowerCase().includes('spell') || card.cardType.toLowerCase().includes('trap')) {
     const kind = card.cardType.replace(/ Card$/i, '')
 

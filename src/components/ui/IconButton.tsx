@@ -21,8 +21,9 @@ const BASE =
 
 const SIZES: Record<IconButtonTone, Record<IconButtonSize, string>> = {
   raised: { sm: 'size-9 [&_svg]:size-4', md: 'size-10 [&_svg]:size-[1.125rem]', lg: 'size-11 [&_svg]:size-5' },
-  close: { sm: 'size-8 [&_svg]:size-4', md: 'size-9 [&_svg]:size-[1.125rem]', lg: 'size-10 [&_svg]:size-5' },
-  ghost: { sm: 'size-8 [&_svg]:size-4', md: 'size-10 [&_svg]:size-5', lg: 'size-10 [&_svg]:size-5' },
+  // En táctil los chicos crecen a 44 px (área mínima recomendada) sin cambiar el ícono.
+  close: { sm: 'size-8 pointer-coarse:size-11 [&_svg]:size-4', md: 'size-9 pointer-coarse:size-11 [&_svg]:size-[1.125rem]', lg: 'size-10 [&_svg]:size-5' },
+  ghost: { sm: 'size-8 pointer-coarse:size-11 [&_svg]:size-4', md: 'size-10 [&_svg]:size-5', lg: 'size-10 [&_svg]:size-5' },
   flat: { sm: 'size-11 [&_svg]:size-6', md: 'size-12 [&_svg]:size-7', lg: 'size-12 [&_svg]:size-7' },
 }
 
@@ -43,7 +44,7 @@ export function IconButton({ size = 'md', tone = 'raised', className = '', type 
   return <button type={type} className={cx(toneStyle({ tone }, SIZES[tone][size]), className)} {...props} />
 }
 
-interface CloseButtonProps extends Omit<IconButtonProps, 'children'> {}
+type CloseButtonProps = Omit<IconButtonProps, 'children'>
 
 export function CloseButton({ tone = 'close', ...props }: CloseButtonProps) {
   return (

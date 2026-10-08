@@ -151,7 +151,13 @@ export function DeckModeScreen() {
     const nextHash = `#${activeStep}`
 
     if (window.location.hash !== nextHash) {
-      window.history.replaceState(null, '', nextHash)
+      // Cada paso es una entrada del historial: "Atrás" vuelve al paso anterior en vez de salir de la app.
+      // La primera vez (sin hash) se reemplaza para no duplicar la entrada inicial.
+      if (window.location.hash) {
+        window.history.pushState(null, '', nextHash)
+      } else {
+        window.history.replaceState(null, '', nextHash)
+      }
     }
   }, [activeStep])
 

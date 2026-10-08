@@ -25,17 +25,3 @@ export function selectPatternsForView(
   }
   return result
 }
-
-/**
- * Returns `true` iff at least one pattern has a non-default turn context
- * (`'first'` or `'second'`). When this is `false`, every view collapses to the
- * full pattern list and the KPI Hero can safely hide the turn-view toggle.
- */
-export function hasAsymmetricRules(patterns: HandPattern[]): boolean {
-  for (const pattern of patterns) {
-    if (pattern.turnContext !== 'either') {
-      return true
-    }
-  }
-  return false
-}

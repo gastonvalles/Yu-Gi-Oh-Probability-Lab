@@ -10,8 +10,8 @@ import { createId, formatInteger } from './utils'
 
 export const DECK_ZONE_LIMITS: Record<DeckZone, number> = {
   main: 60,
-  extra: Infinity,
-  side: Infinity,
+  extra: 15,
+  side: 15,
 }
 
 export function isCardAllowedInDeckZone(
@@ -70,23 +70,6 @@ function findClassifiedCopy(
     (card) => card.apiCard.ygoprodeckId === ygoprodeckId && !card.needsReview && card.origin !== null && card.roles.length > 0,
   )
   return copy ? { origin: copy.origin, roles: copy.roles } : null
-}
-
-export function addSearchResultToDefaultZone(
-  deckBuilder: DeckBuilderState,
-  searchResults: ApiCardSearchResult[],
-  apiCardId: number,
-  format: DeckFormat = 'unlimited',
-  overrides?: ReadonlyMap<string, ClassificationSuggestion>,
-): DeckBuilderState {
-  const searchResult = searchResults.find((result) => result.ygoprodeckId === apiCardId)
-
-  if (!searchResult) {
-    return deckBuilder
-  }
-
-  const zone = getDefaultDeckZoneForCardInBuilder(deckBuilder, searchResult)
-  return addSearchResultToZone(deckBuilder, searchResults, apiCardId, zone, deckBuilder[zone].length, format, overrides)
 }
 
 export function getAddSearchResultIssue(
@@ -308,28 +291,6 @@ export function confirmClassificationForCard(
   return hasAnyChange ? nextDeckBuilder : deckBuilder
 }
 
-export function classifyAllUnclassified(
-  deckBuilder: DeckBuilderState,
-  overrides?: ReadonlyMap<string, ClassificationSuggestion>,
-): DeckBuilderState {
-  const nextDeckBuilder = cloneDeckBuilder(deckBuilder)
-  const zones: DeckZone[] = ['main', 'extra', 'side']
-
-  for (const zone of zones) {
-    for (const card of nextDeckBuilder[zone]) {
-      if (card.origin === null && card.roles.length === 0) {
-        const suggestion = classifyCard(card.apiCard, card.name, overrides)
-        card.origin = suggestion.origin
-        card.roles = [...suggestion.roles]
-        const hasOverride = overrides ? overrides.has(normalizeCardNameForLookup(card.name)) : false
-        card.needsReview = !hasOverride
-      }
-    }
-  }
-
-  return nextDeckBuilder
-}
-
 export function reclassifyAll(
   deckBuilder: DeckBuilderState,
   overrides?: ReadonlyMap<string, ClassificationSuggestion>,
@@ -339,12 +300,15 @@ export function reclassifyAll(
 
   for (const zone of zones) {
     for (const card of nextDeckBuilder[zone]) {
-      // Skip cards the user manually confirmed (needsReview === false with origin set)
-      if (!card.needsReview && card.origin !== null && card.roles.length > 0) {
+      const suggestion = classifyCard(card.apiCard, card.name, overrides)
+
+      // Una carta que el usuario ya tocó (needsReview false) no se pisa: sólo se completa lo que le falta.
+      if (!card.needsReview) {
+        if (card.origin === null) card.origin = suggestion.origin
+        if (card.roles.length === 0) card.roles = [...suggestion.roles]
         continue
       }
 
-      const suggestion = classifyCard(card.apiCard, card.name, overrides)
       card.origin = suggestion.origin
       card.roles = [...suggestion.roles]
       const hasOverride = overrides ? overrides.has(normalizeCardNameForLookup(card.name)) : false
@@ -355,15 +319,11 @@ export function reclassifyAll(
   return nextDeckBuilder
 }
 
-export function getDefaultDeckZoneForCard(card: ApiCardReference | ApiCardSearchResult): DeckZone {
-  return isExtraDeckCard(card) ? 'extra' : 'main'
-}
-
 export function getDefaultDeckZoneForCardInBuilder(
   deckBuilder: DeckBuilderState,
   card: ApiCardReference | ApiCardSearchResult,
 ): DeckZone {
-  const defaultZone = getDefaultDeckZoneForCard(card)
+  const defaultZone: DeckZone = isExtraDeckCard(card) ? 'extra' : 'main'
 
   if (deckBuilder[defaultZone].length < DECK_ZONE_LIMITS[defaultZone]) {
     return defaultZone

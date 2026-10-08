@@ -1,6 +1,6 @@
 import type { CardAttribute, CardEntry, Matcher } from '../types'
 
-export interface DerivedDeckAttribute {
+interface DerivedDeckAttribute {
   key: CardAttribute
   label: string
   cardIds: string[]
@@ -8,7 +8,7 @@ export interface DerivedDeckAttribute {
   copies: number
 }
 
-export interface DerivedDeckValueOption<T extends number | string> {
+interface DerivedDeckValueOption<T extends number | string> {
   key: T
   label: string
   cardIds: string[]
@@ -25,7 +25,7 @@ type MonsterPropertyMatcher = Extract<
   | { type: 'def' }
 >
 
-export const CARD_ATTRIBUTE_DEFINITIONS: Array<{
+const CARD_ATTRIBUTE_DEFINITIONS: Array<{
   key: CardAttribute
   label: string
 }> = [
@@ -42,7 +42,7 @@ const ATTRIBUTE_LABEL_BY_KEY = new Map(
   CARD_ATTRIBUTE_DEFINITIONS.map((definition) => [definition.key, definition.label]),
 )
 
-export function isCardAttribute(value: unknown): value is CardAttribute {
+function isCardAttribute(value: unknown): value is CardAttribute {
   return CARD_ATTRIBUTE_DEFINITIONS.some((definition) => definition.key === value)
 }
 
@@ -50,7 +50,7 @@ export function parseCardAttribute(value: unknown): CardAttribute | null {
   return isCardAttribute(value) ? value : null
 }
 
-export function getCardAttributeLabel(attribute: CardAttribute): string {
+function getCardAttributeLabel(attribute: CardAttribute): string {
   return ATTRIBUTE_LABEL_BY_KEY.get(attribute) ?? attribute
 }
 

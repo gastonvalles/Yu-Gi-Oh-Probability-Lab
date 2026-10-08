@@ -1,32 +1,32 @@
 import type { DeckCardInstance, DeckZone } from './model'
 
-export interface DeckZoneRowCard {
+interface DeckZoneRowCard {
   card: DeckCardInstance
   index: number
 }
 
-export interface DeckZoneRowLayout {
+interface DeckZoneRowLayout {
   rowIndex: number
   cards: DeckZoneRowCard[]
 }
 
-export interface DeckZoneVisualLayout {
+interface DeckZoneVisualLayout {
   columns: number
   rows: DeckZoneRowLayout[]
 }
 
-export type DeckZoneVisualLayoutMode = 'default' | 'desktop-compact'
+type DeckZoneVisualLayoutMode = 'default' | 'desktop-compact'
 
-export const MAIN_DECK_FIXED_ROW_COUNT = 4
-export const MAIN_DECK_BASE_COLUMNS = 10
-export const MAIN_DECK_MAX_COLUMNS = 15
-export const MAIN_DECK_EXPAND_THRESHOLD = 41
-export const DESKTOP_COMPACT_MAIN_BASE_COLUMNS = 10
-export const DESKTOP_COMPACT_MAIN_EXPANDED_COLUMNS = 15
+const MAIN_DECK_FIXED_ROW_COUNT = 4
+const MAIN_DECK_BASE_COLUMNS = 10
+const MAIN_DECK_MAX_COLUMNS = 15
+const MAIN_DECK_EXPAND_THRESHOLD = 41
+const DESKTOP_COMPACT_MAIN_BASE_COLUMNS = 10
+const DESKTOP_COMPACT_MAIN_EXPANDED_COLUMNS = 15
 export const DESKTOP_COMPACT_MAIN_EXPAND_THRESHOLD = 40
-export const DESKTOP_COMPACT_EXTRA_MAX_COLUMNS = 15
-export const DESKTOP_COMPACT_SIDE_MAX_COLUMNS = 15
-export const DESKTOP_COMPACT_RAIL_MIN_COLUMNS = 8
+const DESKTOP_COMPACT_EXTRA_MAX_COLUMNS = 15
+const DESKTOP_COMPACT_SIDE_MAX_COLUMNS = 15
+const DESKTOP_COMPACT_RAIL_MIN_COLUMNS = 8
 
 export function buildDeckZoneVisualLayout(
   zone: DeckZone,
@@ -67,7 +67,7 @@ export function buildDeckZoneVisualLayout(
   )
 }
 
-export function buildFixedRowDeckLayout(
+function buildFixedRowDeckLayout(
   cards: DeckCardInstance[],
   rowCount: number,
   columnCount?: number,
@@ -95,7 +95,7 @@ export function buildFixedRowDeckLayout(
   }
 }
 
-export function buildColumnLimitedDeckLayout(
+function buildColumnLimitedDeckLayout(
   cards: DeckCardInstance[],
   columnCount: number,
 ): DeckZoneVisualLayout {

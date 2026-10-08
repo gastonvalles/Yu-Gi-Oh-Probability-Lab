@@ -1,12 +1,9 @@
 import type {
-  CardAttribute,
-  CardGroupKey,
   HandPattern,
   HandPatternCategory,
   Matcher,
   PatternMatchMode,
   RequirementKind,
-  RequirementSource,
   TurnContext,
 } from '../../types'
 
@@ -25,17 +22,8 @@ export interface PatternEditorActions {
   setPatternRescuesCards: (patternId: string, value: boolean) => void
   addRequirement: (patternId: string) => void
   removeRequirement: (patternId: string, requirementId: string) => void
-  addRequirementCard: (patternId: string, requirementId: string, cardId: string) => void
-  removeRequirementCard: (patternId: string, requirementId: string, cardId: string) => void
   setRequirementKind: (patternId: string, requirementId: string, value: RequirementKind) => void
   setRequirementDistinct: (patternId: string, requirementId: string, value: boolean) => void
   setRequirementCount: (patternId: string, requirementId: string, value: string) => void
   setRequirementMatcher: (patternId: string, requirementId: string, value: Matcher | null) => void
-  setRequirementSource: (patternId: string, requirementId: string, value: RequirementSource) => void
-  setRequirementGroup: (patternId: string, requirementId: string, value: CardGroupKey | null) => void
-  setRequirementAttribute: (patternId: string, requirementId: string, value: CardAttribute | null) => void
-  setRequirementLevel: (patternId: string, requirementId: string, value: string) => void
-  setRequirementMonsterType: (patternId: string, requirementId: string, value: string | null) => void
-  setRequirementAtk: (patternId: string, requirementId: string, value: string) => void
-  setRequirementDef: (patternId: string, requirementId: string, value: string) => void
 }

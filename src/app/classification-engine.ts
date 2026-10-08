@@ -6,8 +6,6 @@ export interface ClassificationSuggestion {
   roles: CardRole[]
 }
 
-export type ClassificationOverride = ClassificationSuggestion
-
 /** Normalize a card name for KNOWN_CARDS_MAP lookup: trim whitespace, lowercase. */
 export function normalizeCardNameForLookup(name: string): string {
   return name.trim().toLowerCase()
@@ -162,7 +160,7 @@ export const KNOWN_CARDS_MAP: ReadonlyMap<string, ClassificationSuggestion> =
   new Map(KNOWN_CARDS_MAP_ENTRIES)
 
 /** A single heuristic rule that inspects card data and may contribute roles. */
-export interface HeuristicRule {
+interface HeuristicRule {
   id: string
   /** Returns roles this rule suggests for the given card, or empty array. */
   evaluate: (card: ApiCardReference) => CardRole[]
@@ -434,7 +432,7 @@ const ruleBrick: HeuristicRule = {
 }
 
 /** The ordered collection of all heuristic rules. Exported for isolated testing. */
-export const RULE_SET: readonly HeuristicRule[] = [
+const RULE_SET: readonly HeuristicRule[] = [
   ruleHandtrap,   // 1
   ruleDraw,        // 2
   ruleSearcher,    // 3

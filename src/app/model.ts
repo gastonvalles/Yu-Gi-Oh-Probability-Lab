@@ -8,7 +8,6 @@ import type {
   TurnContext,
 } from '../types'
 
-export type CalculatorMode = 'deck'
 export type DeckZone = 'main' | 'extra' | 'side'
 
 export interface DeckCardInstance {

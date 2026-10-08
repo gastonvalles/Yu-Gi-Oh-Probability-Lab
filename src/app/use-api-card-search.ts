@@ -48,11 +48,15 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [cardCatalog, setCardCatalog] = useState<ApiCardSearchResult[] | null>(null)
   const [cardCatalogStatus, setCardCatalogStatus] = useState<CardCatalogStatus>('idle')
-  const searchCacheRef = useRef(loadApiSearchCache())
+  // Lazy: `useRef(loadApiSearchCache())` releía y parseaba el localStorage en cada render.
+  const [searchCache] = useState(loadApiSearchCache)
+  const searchCacheRef = useRef(searchCache)
   const searchDebounceTimerRef = useRef<number>(0)
   const searchRequestIdRef = useRef(0)
   const remoteSearchRequest = useMemo(
     () => buildRemoteCardSearchRequest(apiSearch.query, searchFilters, deckFormat),
+    // Se listan sólo los filtros que viajan a la API: los demás (orden, etc.) no deben disparar otra búsqueda.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       deckFormat,
       apiSearch.query,
@@ -229,10 +233,8 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
       setIsLoadingMore(false)
 
       if (append) {
-        setApiSearch((current) => ({
-          ...current,
-          hasMore: false,
-        }))
+        // Falló cargar más: se mantiene hasMore para que el usuario pueda reintentar (botón o scroll),
+        // en vez de dar la lista truncada por completa.
         return
       }
 
@@ -253,22 +255,32 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
 
     setCardCatalogStatus((current) => (current === 'success' ? current : 'loading'))
 
-    void loadCardCatalog()
-      .then((cards) => {
-        if (cancelled) {
-          return
-        }
+    // El catálogo completo pesa ~20 MB: se baja en un momento ocioso, después del primer pintado.
+    // Mientras tanto la búsqueda funciona contra la API.
+    const schedule = window.requestIdleCallback ?? ((callback: () => void) => window.setTimeout(callback, 1500))
 
-        setCardCatalog(cards)
-        setCardCatalogStatus('success')
-      })
-      .catch(() => {
-        if (cancelled) {
-          return
-        }
+    schedule(() => {
+      if (cancelled) {
+        return
+      }
 
-        setCardCatalogStatus('error')
-      })
+      void loadCardCatalog()
+        .then((cards) => {
+          if (cancelled) {
+            return
+          }
+
+          setCardCatalog(cards)
+          setCardCatalogStatus('success')
+        })
+        .catch(() => {
+          if (cancelled) {
+            return
+          }
+
+          setCardCatalogStatus('error')
+        })
+    })
 
     return () => {
       cancelled = true

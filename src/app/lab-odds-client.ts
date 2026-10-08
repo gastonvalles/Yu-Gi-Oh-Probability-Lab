@@ -1,3 +1,4 @@
+import { hashString } from './lab-computation-client'
 import { computeLabOdds, type LabOdds, type LabOddsInput } from './lab-odds'
 import { runInPool } from './lab-worker-pool'
 
@@ -11,7 +12,11 @@ interface OddsReply {
   } | null
 }
 
+// Las sugerencias prueban decenas de variantes del deck: la caché se acota y las claves se hashean
+// (cada una era el JSON entero del deck).
+const MAX_ENTRIES = 64
 const cache = new Map<string, LabOdds | null>()
+const inFlight = new Map<string, Promise<LabOdds | null>>()
 
 const fromReply = ({ odds }: OddsReply): LabOdds | null =>
   odds && {
@@ -22,18 +27,36 @@ const fromReply = ({ odds }: OddsReply): LabOdds | null =>
   }
 
 /** Calcula las probabilidades en hilos aparte (y recuerda el resultado por contenido). */
-export function requestLabOdds(key: string, input: LabOddsInput): Promise<LabOdds | null> {
+export function requestLabOdds(rawKey: string, input: LabOddsInput): Promise<LabOdds | null> {
+  const key = hashString(rawKey)
+
   if (cache.has(key)) {
-    return Promise.resolve(cache.get(key) ?? null)
+    const hit = cache.get(key) ?? null
+    cache.delete(key)
+    cache.set(key, hit)
+    return Promise.resolve(hit)
+  }
+
+  const running = inFlight.get(key)
+
+  if (running) {
+    return running
   }
 
   const remember = (odds: LabOdds | null) => {
     cache.set(key, odds)
+
+    if (cache.size > MAX_ENTRIES) {
+      cache.delete(cache.keys().next().value as string)
+    }
+
     return odds
   }
   const reply = runInPool<OddsReply>((id) => ({ id, kind: 'odds', ...input }))
-
   const inMainThread = () => new Promise<LabOdds | null>((resolve) => window.setTimeout(() => resolve(remember(computeLabOdds(input))), 0))
+  const result = (reply ? reply.then((data) => remember(fromReply(data)), inMainThread) : inMainThread()).finally(() => inFlight.delete(key))
 
-  return reply ? reply.then((data) => remember(fromReply(data)), inMainThread) : inMainThread()
+  inFlight.set(key, result)
+
+  return result
 }

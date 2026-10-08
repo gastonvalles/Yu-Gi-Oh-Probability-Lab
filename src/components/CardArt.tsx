@@ -1,13 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 
-import { getCachedImageUrl } from '../image-cache'
 import { buildInitials } from '../app/utils'
 import type { ApiCardReference } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 import { CardLimitBadge, type CardLimitBadgeSize } from './CardLimitBadge'
 import { Skeleton } from './ui/Skeleton'
-
-const resolvedImageUrls = new Map<string, string | null>()
 
 interface CardArtProps {
   remoteUrl: string | null
@@ -17,66 +14,30 @@ interface CardArtProps {
   limitBadgeSize?: CardLimitBadgeSize
 }
 
-export function CardArt({
+/**
+ * Arte de una carta con esqueleto mientras carga e iniciales si no hay imagen.
+ * Las imágenes de YGOPRODeck las cachea el navegador (HTTP): no hace falta una capa propia.
+ */
+export const CardArt = memo(function CardArt({
   remoteUrl,
   name,
   className = '',
   limitCard = null,
   limitBadgeSize = 'md',
 }: CardArtProps) {
-  const [resolvedUrl, setResolvedUrl] = useState<string | null>(remoteUrl)
   const [isImageLoaded, setIsImageLoaded] = useState(false)
   const [hasImageError, setHasImageError] = useState(false)
   const imageRef = useRef<HTMLImageElement | null>(null)
 
   useEffect(() => {
-    let cancelled = false
-
-    setIsImageLoaded(false)
     setHasImageError(false)
-    setResolvedUrl(remoteUrl)
 
-    if (!remoteUrl) {
-      return
-    }
-
-    const cachedUrl = resolvedImageUrls.get(remoteUrl)
-
-    if (cachedUrl !== undefined) {
-      if (cachedUrl && !cancelled) {
-        setResolvedUrl(cachedUrl)
-      }
-
-      return
-    }
-
-    void getCachedImageUrl(remoteUrl).then((localUrl) => {
-      resolvedImageUrls.set(remoteUrl, localUrl)
-
-      if (!cancelled && localUrl) {
-        setResolvedUrl(localUrl)
-      }
-    })
-
-    return () => {
-      cancelled = true
-    }
+    // Si la imagen ya estaba en caché, `onLoad` pudo dispararse antes de montar el handler.
+    const image = imageRef.current
+    setIsImageLoaded(Boolean(remoteUrl && image && image.complete && image.naturalWidth > 0))
   }, [remoteUrl])
 
-  useEffect(() => {
-    const image = imageRef.current
-
-    if (
-      resolvedUrl &&
-      image &&
-      image.complete &&
-      image.naturalWidth > 0
-    ) {
-      setIsImageLoaded(true)
-    }
-  }, [resolvedUrl])
-
-  if (resolvedUrl && !hasImageError) {
+  if (remoteUrl && !hasImageError) {
     return (
       <div className="relative block h-full w-full">
         {!isImageLoaded ? (
@@ -88,12 +49,12 @@ export function CardArt({
         <img
           ref={imageRef}
           className={[
-            'rounded-none! [backface-visibility:hidden] [transform:translateZ(0)] transition-opacity duration-150',
+            'rounded-none! transition-opacity duration-150',
             isImageLoaded ? 'opacity-100' : 'opacity-0',
             className,
           ].join(' ').trim()}
           data-card-art
-          src={resolvedUrl}
+          src={remoteUrl}
           alt={name}
           loading="lazy"
           decoding="async"
@@ -111,8 +72,7 @@ export function CardArt({
       <div
         data-card-art
         className={[
-          'rounded-none! [backface-visibility:hidden] [transform:translateZ(0)]',
-          'grid place-items-center bg-input font-bold text-warning',
+          'rounded-none! grid place-items-center bg-input font-bold text-warning',
           className,
         ].join(' ')}
         aria-hidden="true"
@@ -122,4 +82,4 @@ export function CardArt({
       <CardLimitBadge card={limitCard} size={limitBadgeSize} />
     </div>
   )
-}
+})

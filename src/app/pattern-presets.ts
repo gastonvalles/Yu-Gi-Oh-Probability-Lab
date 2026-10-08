@@ -254,6 +254,11 @@ export function buildActiveRuleSet(
 }
 
 export function isLegacySystemRule(pattern: HandPattern, cards: CardEntry[]): boolean {
+  // Una genérica editada por el usuario lleva systemRuleId: es suya, aunque conserve el nombre del catálogo.
+  if (pattern.systemRuleId) {
+    return false
+  }
+
   const systemKeys = new Set(buildPatternPresets(cards).map((preset) => getPatternDefinitionKey(preset.pattern)))
   return LEGACY_SYSTEM_RULE_NAMES.has(normalizePatternName(pattern.name)) || systemKeys.has(getPatternDefinitionKey(pattern))
 }

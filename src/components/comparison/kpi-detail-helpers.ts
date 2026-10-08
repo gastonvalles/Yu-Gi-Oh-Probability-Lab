@@ -4,7 +4,7 @@ import type { ApiCardReference, CardOrigin, CardRole } from '../../types'
 /** Clasificación editada por carta (id de YGOPRODeck), aplicada encima de la del deck. */
 export type CardEditMap = Map<number, { origin: CardOrigin; roles: CardRole[] }>
 
-export interface KpiDetailCard {
+interface KpiDetailCard {
   ygoprodeckId: number
   name: string
   imageUrlSmall: string | null
@@ -13,7 +13,7 @@ export interface KpiDetailCard {
   apiCard: ApiCardReference
 }
 
-export interface KpiDetailResult {
+interface KpiDetailResult {
   cards: KpiDetailCard[]
   totalCopies: number
   mainDeckSize: number

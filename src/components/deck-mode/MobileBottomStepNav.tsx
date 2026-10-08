@@ -24,22 +24,18 @@ export function MobileBottomStepNav({ items, activeStep, onStepChange }: MobileB
   const highlightedStep = optimisticStep ?? activeStep
   const renderStep = (item: DeckModeNavigationItem) => {
     const isActive = item.key === highlightedStep
-    const isDisabled = item.disabled && !isActive
     const statusLabel = DECK_WORKFLOW_TONE_LABEL[item.tone]
 
+    // Misma regla que en desktop: todos los pasos se pueden abrir; cada paso explica qué le falta.
+    // (Antes el botón quedaba deshabilitado y el motivo sólo salía en un tooltip, que en táctil no existe.)
     return (
       <button
         key={item.key}
         type="button"
         aria-current={isActive ? 'step' : undefined}
-        aria-disabled={isDisabled || undefined}
-        aria-label={`${item.title}. ${statusLabel}.`}
-        className={cx(
-          'group relative grid min-w-0 content-center justify-items-center gap-1 rounded-control px-1 pb-1 pt-1.5 transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-not-allowed',
-          isDisabled && 'opacity-40',
-        )}
-        disabled={isDisabled}
-        title={isDisabled ? `${item.title}: ${item.detail}` : item.title}
+        aria-label={`${item.title}. ${statusLabel}. ${item.detail}`}
+        className="group relative grid min-w-0 content-center justify-items-center gap-1 rounded-control px-1 pb-1 pt-1.5 transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus"
+        title={`${item.title}: ${item.detail}`}
         onClick={() => {
           setOptimisticStep(item.key)
           onStepChange(item.key)

@@ -1,35 +1,18 @@
-import { combineReducers, configureStore, createAction } from '@reduxjs/toolkit'
+import { combineReducers, configureStore } from '@reduxjs/toolkit'
 
-import type { AppState, DeckBuilderState } from './model'
+import type { AppState } from './model'
 import { loadState, saveState } from './persistence'
-import { deckBuilderReducer, replaceDeckBuilder } from './deck-builder-slice'
-import { patternsReducer, replacePatternsState, type PatternsState } from './patterns-slice'
-import { settingsReducer, type SettingsState } from './settings-slice'
+import { deckBuilderReducer } from './deck-builder-slice'
+import { patternsReducer } from './patterns-slice'
+import { settingsReducer } from './settings-slice'
 
-export interface RootStateSchema {
-  deckBuilder: DeckBuilderState
-  patterns: PatternsState
-  settings: SettingsState
-}
-
-export const replaceAppState = createAction<AppState>('app/replaceState')
-
-const combinedReducer = combineReducers({
+const rootReducer = combineReducers({
   settings: settingsReducer,
   deckBuilder: deckBuilderReducer,
   patterns: patternsReducer,
 })
 
-const rootReducer = (
-  state: RootStateSchema | undefined,
-  action: ReturnType<typeof replaceAppState> | Parameters<typeof combinedReducer>[1],
-): RootStateSchema => {
-  if (replaceAppState.match(action)) {
-    return buildRootState(action.payload)
-  }
-
-  return combinedReducer(state, action)
-}
+type RootStateSchema = ReturnType<typeof rootReducer>
 
 export const store = configureStore({
   reducer: rootReducer,
@@ -39,7 +22,7 @@ export const store = configureStore({
 export type RootState = ReturnType<typeof store.getState>
 export type AppDispatch = typeof store.dispatch
 
-export function selectAppState(state: RootState): AppState {
+function selectAppState(state: RootState): AppState {
   return {
     handSize: state.settings.handSize,
     deckFormat: state.settings.deckFormat,
@@ -70,9 +53,27 @@ function buildRootState(state: AppState): RootStateSchema {
 }
 
 let saveStateTimer: number | null = null
+let lastSavedState: RootState | null = null
+
+function flushSaveState(): void {
+  if (saveStateTimer === null) {
+    return
+  }
+
+  window.clearTimeout(saveStateTimer)
+  saveStateTimer = null
+
+  const state = store.getState()
+
+  if (state !== lastSavedState) {
+    lastSavedState = state
+    saveState(selectAppState(state))
+  }
+}
 
 store.subscribe(() => {
-  if (typeof window === 'undefined') {
+  // Una acción que no cambió nada (reducer devolvió el mismo estado) no vale una serialización.
+  if (typeof window === 'undefined' || store.getState() === lastSavedState) {
     return
   }
 
@@ -80,10 +81,10 @@ store.subscribe(() => {
     window.clearTimeout(saveStateTimer)
   }
 
-  saveStateTimer = window.setTimeout(() => {
-    saveState(selectAppState(store.getState()))
-    saveStateTimer = null
-  }, 180)
+  saveStateTimer = window.setTimeout(flushSaveState, 180)
 })
 
-export { replaceDeckBuilder, replacePatternsState }
+// Si la pestaña se cierra antes de que venza el debounce, el último cambio no se pierde.
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', flushSaveState)
+}

@@ -3,14 +3,14 @@ import { requestCardInfo } from './ygoprodeck/client'
 import { parseSearchResponse } from './ygoprodeck/parser'
 import type { ApiCardSearchResult, ApiSearchPage } from './ygoprodeck/types'
 
-export type { ApiCardSearchResult, ApiSearchPage } from './ygoprodeck/types'
+export type { ApiCardSearchResult } from './ygoprodeck/types'
 
 const CARD_CATALOG_PAGE_SIZE = 1000
 
 let cardCatalogPromise: Promise<ApiCardSearchResult[]> | null = null
 let cardCatalogSnapshot: ApiCardSearchResult[] | null = null
 
-export interface SearchCardsOptions {
+interface SearchCardsOptions {
   query?: string
   archetype?: string
   exactType?: string
@@ -35,6 +35,7 @@ export async function searchCards(
   options: SearchCardsOptions,
   limit = 24,
   offset = 0,
+  requestOptions: Parameters<typeof requestCardInfo>[1] = {},
 ): Promise<ApiSearchPage> {
   const params = new URLSearchParams({
     num: String(limit),
@@ -49,9 +50,12 @@ export async function searchCards(
     }
   }
 
-  const payload = await requestCardInfo(params)
+  const payload = await requestCardInfo(params, requestOptions)
   return attachGenesysInfo(parseSearchResponse(payload))
 }
+
+// El catálogo completo cambia con cada set nuevo, no cada media hora: un día en el dispositivo alcanza.
+const CARD_CATALOG_PERSIST_MS = 24 * 60 * 60 * 1000
 
 export async function loadCardCatalog(): Promise<ApiCardSearchResult[]> {
   if (cardCatalogSnapshot) {
@@ -77,7 +81,7 @@ async function fetchCardCatalog(): Promise<ApiCardSearchResult[]> {
   let offset = 0
 
   while (true) {
-    const page = await searchCards({}, CARD_CATALOG_PAGE_SIZE, offset)
+    const page = await searchCards({}, CARD_CATALOG_PAGE_SIZE, offset, { persistForMs: CARD_CATALOG_PERSIST_MS })
 
     for (const card of page.results) {
       cardsById.set(card.ygoprodeckId, card)

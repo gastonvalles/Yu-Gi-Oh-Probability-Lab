@@ -89,7 +89,7 @@ export function storeCachedApiSearch(
   return trimmedCache
 }
 
-export function saveApiSearchCache(cache: Record<string, SearchCacheEntry<ApiCardSearchResult>>): void {
+function saveApiSearchCache(cache: Record<string, SearchCacheEntry<ApiCardSearchResult>>): void {
   try {
     localStorage.setItem(SEARCH_CACHE_KEY, JSON.stringify(cache))
   } catch {

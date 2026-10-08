@@ -1,23 +1,17 @@
 import type {
-  CardAttribute,
   CardEntry,
-  CardGroupKey,
   HandPattern,
   HandPatternCategory,
   Matcher,
   PatternMatchMode,
   RequirementKind,
-  RequirementSource,
   TurnContext,
 } from '../types'
 import { createPatternRequirement } from './pattern-factory'
 import {
   buildReusePolicy,
-  createMatcherFromGroupKey,
-  createMatcherFromSource,
   getPatternMatchMode,
   resolvePatternLogic,
-  updateConditionCardPool,
 } from './patterns'
 
 export function addRequirement(
@@ -57,7 +51,7 @@ export function removeRequirement(
 
     return {
       ...pattern,
-      ...resolvePatternLogic('all', conditions.length, pattern.minimumConditionMatches),
+      ...resolvePatternLogic(getPatternMatchMode(pattern), conditions.length, pattern.minimumConditionMatches),
       needsReview: false,
       conditions,
     }
@@ -183,54 +177,6 @@ export function updatePatternAllowSharedCards(
   )
 }
 
-export function addRequirementCardToPool(
-  patterns: HandPattern[],
-  patternId: string,
-  requirementId: string,
-  cardId: string,
-): HandPattern[] {
-  if (!cardId) {
-    return patterns
-  }
-
-  return patterns.map((pattern) =>
-    pattern.id !== patternId
-      ? pattern
-      : {
-          ...pattern,
-          needsReview: false,
-          conditions: pattern.conditions.map((condition) =>
-            condition.id !== requirementId
-              ? condition
-              : updateConditionCardPool(condition, (cardIds) =>
-                  cardIds.includes(cardId) ? cardIds : [...cardIds, cardId],
-                ),
-          ),
-        },
-  )
-}
-
-export function removeRequirementCardFromPool(
-  patterns: HandPattern[],
-  patternId: string,
-  requirementId: string,
-  cardId: string,
-): HandPattern[] {
-  return patterns.map((pattern) =>
-    pattern.id !== patternId
-      ? pattern
-      : {
-          ...pattern,
-          needsReview: false,
-          conditions: pattern.conditions.map((condition) =>
-            condition.id !== requirementId
-              ? condition
-              : updateConditionCardPool(condition, (cardIds) => cardIds.filter((entry) => entry !== cardId)),
-          ),
-        },
-  )
-}
-
 export function updateRequirementKind(
   patterns: HandPattern[],
   patternId: string,
@@ -329,189 +275,4 @@ export function updateRequirementMatcher(
 
 export function removePattern(patterns: HandPattern[], patternId: string): HandPattern[] {
   return patterns.filter((pattern) => pattern.id !== patternId)
-}
-
-export function updateRequirementSource(
-  patterns: HandPattern[],
-  patternId: string,
-  requirementId: string,
-  source: RequirementSource,
-  defaultGroupKey: CardGroupKey | null,
-  defaultAttribute: CardAttribute | null,
-  defaultLevel: number | null,
-  defaultMonsterType: string | null,
-  defaultAtk: number | null,
-  defaultDef: number | null,
-): HandPattern[] {
-  return patterns.map((pattern) =>
-    pattern.id !== patternId
-      ? pattern
-      : {
-          ...pattern,
-          needsReview: false,
-          conditions: pattern.conditions.map((condition) =>
-            condition.id !== requirementId
-              ? condition
-              : {
-                  ...condition,
-                  matcher: createMatcherFromSource(
-                    source,
-                    {
-                      defaultAtk,
-                      defaultAttribute,
-                      defaultDef,
-                      defaultGroupKey,
-                      defaultLevel,
-                      defaultMonsterType,
-                    },
-                    condition.matcher,
-                  ),
-                },
-          ),
-        },
-  )
-}
-
-export function updateRequirementGroup(
-  patterns: HandPattern[],
-  patternId: string,
-  requirementId: string,
-  groupKey: CardGroupKey | null,
-): HandPattern[] {
-  return patterns.map((pattern) =>
-    pattern.id !== patternId
-      ? pattern
-      : {
-          ...pattern,
-          needsReview: false,
-          conditions: pattern.conditions.map((condition) =>
-            condition.id !== requirementId
-              ? condition
-              : {
-                  ...condition,
-                  matcher: groupKey ? createMatcherFromGroupKey(groupKey) : null,
-                },
-          ),
-        },
-  )
-}
-
-export function updateRequirementAttribute(
-  patterns: HandPattern[],
-  patternId: string,
-  requirementId: string,
-  attribute: CardAttribute | null,
-): HandPattern[] {
-  return patterns.map((pattern) =>
-    pattern.id !== patternId
-      ? pattern
-      : {
-          ...pattern,
-          needsReview: false,
-          conditions: pattern.conditions.map((condition) =>
-            condition.id !== requirementId
-              ? condition
-              : {
-                  ...condition,
-                  matcher: attribute ? { type: 'attribute', value: attribute } : null,
-                },
-          ),
-        },
-  )
-}
-
-export function updateRequirementLevel(
-  patterns: HandPattern[],
-  patternId: string,
-  requirementId: string,
-  level: number | null,
-): HandPattern[] {
-  return patterns.map((pattern) =>
-    pattern.id !== patternId
-      ? pattern
-      : {
-          ...pattern,
-          needsReview: false,
-          conditions: pattern.conditions.map((condition) =>
-            condition.id !== requirementId
-              ? condition
-              : {
-                  ...condition,
-                  matcher: level !== null ? { type: 'level', value: level } : null,
-                },
-          ),
-        },
-  )
-}
-
-export function updateRequirementMonsterType(
-  patterns: HandPattern[],
-  patternId: string,
-  requirementId: string,
-  monsterType: string | null,
-): HandPattern[] {
-  return patterns.map((pattern) =>
-    pattern.id !== patternId
-      ? pattern
-      : {
-          ...pattern,
-          needsReview: false,
-          conditions: pattern.conditions.map((condition) =>
-            condition.id !== requirementId
-              ? condition
-              : {
-                  ...condition,
-                  matcher: monsterType ? { type: 'monster_type', value: monsterType } : null,
-                },
-          ),
-        },
-  )
-}
-
-export function updateRequirementAtk(
-  patterns: HandPattern[],
-  patternId: string,
-  requirementId: string,
-  atk: number | null,
-): HandPattern[] {
-  return patterns.map((pattern) =>
-    pattern.id !== patternId
-      ? pattern
-      : {
-          ...pattern,
-          needsReview: false,
-          conditions: pattern.conditions.map((condition) =>
-            condition.id !== requirementId
-              ? condition
-              : {
-                  ...condition,
-                  matcher: atk !== null ? { type: 'atk', value: atk } : null,
-                },
-          ),
-        },
-  )
-}
-
-export function updateRequirementDef(
-  patterns: HandPattern[],
-  patternId: string,
-  requirementId: string,
-  def: number | null,
-): HandPattern[] {
-  return patterns.map((pattern) =>
-    pattern.id !== patternId
-      ? pattern
-      : {
-          ...pattern,
-          needsReview: false,
-          conditions: pattern.conditions.map((condition) =>
-            condition.id !== requirementId
-              ? condition
-              : {
-                  ...condition,
-                  matcher: def !== null ? { type: 'def', value: def } : null,
-                },
-          ),
-        },
-  )
 }

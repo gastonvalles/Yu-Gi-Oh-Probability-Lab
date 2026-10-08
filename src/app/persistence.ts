@@ -5,9 +5,13 @@ import { normalizeCardNameForLookup, type ClassificationSuggestion } from './cla
 import { invalidateClassificationOverridesCache } from './classification-overrides'
 import { normalizeStoredRoles, resolveStoredCardOrigin } from './deck-groups'
 
+const BACKUP_KEY = `${STORAGE_KEY}:backup`
+
 export function loadState(): AppState {
+  let raw: string | null = null
+
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    raw = localStorage.getItem(STORAGE_KEY)
 
     if (!raw) {
       return createInitialState()
@@ -15,6 +19,11 @@ export function loadState(): AppState {
 
     return fromPortableConfig(JSON.parse(raw))
   } catch {
+    // El estado guardado no se pudo leer: se conserva una copia antes de que el próximo guardado lo pise.
+    try {
+      if (raw) localStorage.setItem(BACKUP_KEY, raw)
+    } catch { /* sin espacio: no hay más que hacer */ }
+
     return createInitialState()
   }
 }
@@ -35,7 +44,11 @@ export function loadClassificationOverrides(): Map<string, ClassificationSuggest
     if (!Array.isArray(parsed)) return new Map()
     const overrides = new Map<string, ClassificationSuggestion>()
 
-    for (const [key, val] of parsed as unknown[][]) {
+    for (const entry of parsed as unknown[]) {
+      if (!Array.isArray(entry)) continue
+
+      const [key, val] = entry as unknown[]
+
       if (typeof key !== 'string' || !val || typeof val !== 'object' || !('origin' in val) || !('roles' in val)) {
         continue
       }
@@ -55,7 +68,7 @@ export function loadClassificationOverrides(): Map<string, ClassificationSuggest
   }
 }
 
-export function saveClassificationOverrides(map: ReadonlyMap<string, ClassificationSuggestion>): void {
+function saveClassificationOverrides(map: ReadonlyMap<string, ClassificationSuggestion>): void {
   try {
     localStorage.setItem(CLASSIFICATION_OVERRIDES_KEY, JSON.stringify([...map.entries()]))
   } catch { /* ignore quota errors */ }

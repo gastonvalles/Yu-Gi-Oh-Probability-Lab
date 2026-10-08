@@ -1,5 +1,7 @@
+import { useRef } from 'react'
 import { createPortal } from 'react-dom'
 
+import { useFocusTrap } from '../../app/use-focus-trap'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import type { CardEntry, HandPattern } from '../../types'
 import { Button } from '../ui/Button'
@@ -43,9 +45,11 @@ export function PatternEditorDrawer({
   pattern,
 }: PatternEditorDrawerProps) {
   const isOpen = drawerMode !== null
+  const asideRef = useRef<HTMLElement>(null)
 
   useEscapeKey(onClose, isOpen)
   useBodyScrollLock(isOpen)
+  useFocusTrap(asideRef, isOpen)
 
   if (!isOpen) {
     return null
@@ -64,9 +68,12 @@ export function PatternEditorDrawer({
       />
 
       <aside
+        ref={asideRef}
+        tabIndex={-1}
         role="dialog"
+        aria-modal="true"
         aria-label={title}
-        className="absolute right-0 top-0 grid h-full max-h-full w-full max-w-[min(48rem,100vw)] animate-drawer-enter min-[1101px]:w-[clamp(34rem,42vw,48rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden border-l border-border-subtle bg-card-background p-0 shadow-overlay motion-reduce:animate-none"
+        className="absolute right-0 top-0 grid h-full max-h-full w-full max-w-[min(48rem,100vw)] animate-drawer-enter outline-none min-[1101px]:w-[clamp(34rem,42vw,48rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden border-l border-border-subtle bg-card-background p-0 shadow-overlay motion-reduce:animate-none"
       >
         <header className="grid gap-3 border-b border-border-subtle px-4 py-3.5">
           <div className="flex items-start justify-between gap-3">

@@ -1,12 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react'
 
-import {
-  buildDerivedDeckAttributes,
-  buildDerivedDeckAttackValues,
-  buildDerivedDeckDefenseValues,
-  buildDerivedDeckLevels,
-  buildDerivedDeckMonsterTypes,
-} from '../../app/card-attributes'
 import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
 import {
   DECK_ZONE_LIMITS,
@@ -32,7 +25,6 @@ import {
   toggleDeckCardRole,
 } from '../../app/deck-builder-slice'
 import { buildDeckFormatIssues, getDeckFormatLabel } from '../../app/deck-format'
-import { buildDerivedDeckGroups } from '../../app/deck-groups'
 import { GENESYS_POINT_CAP, calculateGenesysDeckPointTotal } from '../../app/genesys-format'
 import { exportDeckAssets } from '../../app/deck-image-export'
 import { type AppState, type DeckCardInstance, type DeckZone } from '../../app/model'
@@ -46,7 +38,6 @@ import { usePatternEditorActions } from '../../app/use-pattern-editor-actions'
 import { usePatternMaintenance } from '../../app/use-pattern-maintenance'
 import { isClassificationStepComplete } from '../../app/role-step'
 import { useToastMessage } from '../../app/use-toast-message'
-import { getClassificationOverrides } from '../../app/classification-overrides'
 import type { CardOrigin, CardRole } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import type { DeckCopyActions } from '../card-detail/DeckCopyControls'
@@ -163,7 +154,6 @@ export function useDeckModeController() {
             index: pendingDrop.index,
             results: apiSearch.results,
             zone: pendingDrop.zone,
-            overrides: getClassificationOverrides(),
           }),
         )
         return
@@ -213,49 +203,7 @@ export function useDeckModeController() {
     () => (settings.deckFormat === 'genesys' ? calculateGenesysDeckPointTotal(deckBuilder) : null),
     [deckBuilder, settings.deckFormat],
   )
-  const derivedGroups = useMemo(
-    () => buildDerivedDeckGroups(derivedMainCards),
-    [derivedMainCards],
-  )
-  const defaultGroupKey = useMemo(
-    () =>
-      derivedGroups.find((group) => group.kind === 'role' && group.copies > 0)?.key ??
-      derivedGroups.find((group) => group.kind === 'origin' && group.copies > 0)?.key ??
-      null,
-    [derivedGroups],
-  )
-  const defaultAttribute = useMemo(
-    () => buildDerivedDeckAttributes(derivedMainCards).find((attribute) => attribute.copies > 0)?.key ?? null,
-    [derivedMainCards],
-  )
-  const defaultLevel = useMemo(
-    () => buildDerivedDeckLevels(derivedMainCards)[0]?.key ?? null,
-    [derivedMainCards],
-  )
-  const defaultMonsterType = useMemo(
-    () => buildDerivedDeckMonsterTypes(derivedMainCards)[0]?.key ?? null,
-    [derivedMainCards],
-  )
-  const defaultAtk = useMemo(
-    () => buildDerivedDeckAttackValues(derivedMainCards)[0]?.key ?? null,
-    [derivedMainCards],
-  )
-  const defaultDef = useMemo(
-    () => buildDerivedDeckDefenseValues(derivedMainCards)[0]?.key ?? null,
-    [derivedMainCards],
-  )
-  const patternEditorDefaults = useMemo(
-    () => ({
-      defaultAtk,
-      defaultAttribute,
-      defaultDef,
-      defaultGroupKey,
-      defaultLevel,
-      defaultMonsterType,
-      derivedMainCards,
-    }),
-    [defaultAtk, defaultAttribute, defaultDef, defaultGroupKey, defaultLevel, defaultMonsterType, derivedMainCards],
-  )
+  const patternEditorDefaults = useMemo(() => ({ derivedMainCards }), [derivedMainCards])
   const patternActions = usePatternEditorActions(patternEditorDefaults)
 
   const handleSetGenericRuleEnabled = useCallback(
@@ -354,7 +302,6 @@ export function useDeckModeController() {
           index: deckBuilder[zone].length,
           results: resultsForDispatch,
           zone,
-          overrides: getClassificationOverrides(),
         }),
       )
 

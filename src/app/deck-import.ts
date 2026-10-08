@@ -10,7 +10,7 @@ import { isRecord, normalizeSearchText } from './utils'
 
 const DECK_ZONES: DeckZone[] = ['main', 'extra', 'side']
 
-export type DeckImportSourceKind = 'json' | 'text' | 'txt' | 'ydk'
+type DeckImportSourceKind = 'json' | 'text' | 'txt' | 'ydk'
 
 export interface DeckImportSource {
   fileName: string | null
@@ -24,7 +24,7 @@ export interface ImportedDeckEntry {
   count: number
 }
 
-export interface ParsedImportedDeckEntry extends ImportedDeckEntry {
+interface ParsedImportedDeckEntry extends ImportedDeckEntry {
   lineNumber: number
   rawLine: string
 }
@@ -35,12 +35,6 @@ export interface ImportedDeckInvalidLine {
   reason: string
 }
 
-export interface DecklistTextAssessment {
-  parsedEntries: ImportedDeckEntry[]
-  quality: 'good' | 'uncertain' | 'poor'
-  likelyDeckGridScreenshot: boolean
-  message: string | null
-}
 
 export interface ResolvedImportedDeckEntry extends ImportedDeckEntry {
   appliedCount: number
@@ -77,7 +71,7 @@ interface DeckImportBuildOptions {
   source?: Partial<DeckImportSource>
 }
 
-export function parseYdk(text: string): { main: number[]; extra: number[]; side: number[] } {
+function parseYdk(text: string): { main: number[]; extra: number[]; side: number[] } {
   const zones = {
     main: [] as number[],
     extra: [] as number[],
@@ -248,7 +242,7 @@ export function buildDeckImportPreviewFromJson(options: {
   })
 }
 
-export function buildDeckImportPreviewFromDeckBuilder(options: {
+function buildDeckImportPreviewFromDeckBuilder(options: {
   deckBuilder: DeckBuilderState
   source?: Partial<DeckImportSource>
 }): DeckImportPreview {
@@ -624,22 +618,13 @@ function aggregateImportedDeckEntries(entries: ImportedDeckEntry[]): ImportedDec
 
 function parseDeckSectionHeader(line: string): DeckZone | null {
   const normalizedHeader = normalizeSearchText(
-    normalizeImportPunctuation(line).replace(/[:\-\[\]{}()]+/g, ' '),
+    normalizeImportPunctuation(line).replace(/[:\-[\]{}()]+/g, ' '),
   )
 
-  if (normalizedHeader === 'main' || normalizedHeader === 'main deck') {
-    return 'main'
-  }
+  // "Main Deck", "Extra Deck (15)", "Side: 15 cards"...
+  const match = normalizedHeader.match(/^(main|extra|side)(?: deck)?(?: \d+)?(?: cards?)?$/)
 
-  if (normalizedHeader === 'extra' || normalizedHeader === 'extra deck') {
-    return 'extra'
-  }
-
-  if (normalizedHeader === 'side' || normalizedHeader === 'side deck') {
-    return 'side'
-  }
-
-  return null
+  return match ? (match[1] as DeckZone) : null
 }
 
 function cleanupDeckEntryName(value: string): string {

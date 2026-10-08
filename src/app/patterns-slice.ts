@@ -2,23 +2,18 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
 import { normalizeRuleName } from './pattern-presets'
 
 import type {
-  CardAttribute,
   CardEntry,
-  CardGroupKey,
   HandPattern,
   HandPatternCategory,
   Matcher,
   PatternMatchMode,
   RequirementKind,
-  RequirementSource,
   TurnContext,
 } from '../types'
 import {
   addRequirement,
-  addRequirementCardToPool,
   removePattern,
   removeRequirement,
-  removeRequirementCardFromPool,
   updatePatternAllowSharedCards,
   updatePatternIgnoresDraw,
   updatePatternRescuesCards,
@@ -30,14 +25,7 @@ import {
   updateRequirementCount,
   updateRequirementDistinct,
   updateRequirementMatcher,
-  updateRequirementAtk,
-  updateRequirementAttribute,
-  updateRequirementDef,
-  updateRequirementGroup,
   updateRequirementKind,
-  updateRequirementLevel,
-  updateRequirementMonsterType,
-  updateRequirementSource,
 } from './pattern-updates'
 
 export interface PatternsState {
@@ -48,117 +36,15 @@ export interface PatternsState {
   systemRuleNames: Record<string, string>
 }
 
-interface UpdatePatternCategoryPayload {
+interface PatternPayload<T> {
   patternId: string
-  value: HandPatternCategory
+  value: T
 }
 
-interface UpdatePatternNamePayload {
-  patternId: string
-  value: string
-}
-
-interface UpdatePatternTurnContextPayload {
-  patternId: string
-  value: TurnContext
-}
-
-interface UpdatePatternMatchModePayload {
-  patternId: string
-  value: PatternMatchMode
-}
-
-interface UpdatePatternMinimumMatchesPayload {
-  patternId: string
-  value: number
-}
-
-interface UpdatePatternAllowSharedCardsPayload {
-  patternId: string
-  value: boolean
-}
-
-interface AddRequirementPayload {
-  derivedMainCards: CardEntry[]
-  patternId: string
-}
-
-interface RequirementCardPayload {
-  cardId: string
+interface RequirementPayload<T> {
   patternId: string
   requirementId: string
-}
-
-interface RequirementKindPayload {
-  patternId: string
-  requirementId: string
-  value: RequirementKind
-}
-
-interface RequirementDistinctPayload {
-  patternId: string
-  requirementId: string
-  value: boolean
-}
-
-interface RequirementCountPayload {
-  patternId: string
-  requirementId: string
-  value: number
-}
-
-interface RequirementMatcherPayload {
-  patternId: string
-  requirementId: string
-  value: Matcher | null
-}
-
-interface RequirementSourcePayload {
-  defaultAtk: number | null
-  defaultAttribute: CardAttribute | null
-  defaultDef: number | null
-  defaultGroupKey: CardGroupKey | null
-  defaultLevel: number | null
-  defaultMonsterType: string | null
-  patternId: string
-  requirementId: string
-  value: RequirementSource
-}
-
-interface RequirementGroupPayload {
-  patternId: string
-  requirementId: string
-  value: CardGroupKey | null
-}
-
-interface RequirementAttributePayload {
-  patternId: string
-  requirementId: string
-  value: CardAttribute | null
-}
-
-interface RequirementLevelPayload {
-  patternId: string
-  requirementId: string
-  value: number | null
-}
-
-interface RequirementMonsterTypePayload {
-  patternId: string
-  requirementId: string
-  value: string | null
-}
-
-interface RequirementAtkPayload {
-  patternId: string
-  requirementId: string
-  value: number | null
-}
-
-interface RequirementDefPayload {
-  patternId: string
-  requirementId: string
-  value: number | null
+  value: T
 }
 
 interface CompletePatternSeedingPayload {
@@ -178,12 +64,8 @@ const patternsSlice = createSlice({
   name: 'patterns',
   initialState,
   reducers: {
-    addRequirementToPattern(state, action: PayloadAction<AddRequirementPayload>) {
-      state.patterns = addRequirement(
-        state.patterns,
-        action.payload.patternId,
-        action.payload.derivedMainCards,
-      )
+    addRequirementToPattern(state, action: PayloadAction<{ patternId: string; derivedMainCards: CardEntry[] }>) {
+      state.patterns = addRequirement(state.patterns, action.payload.patternId, action.payload.derivedMainCards)
     },
     appendPattern(state, action: PayloadAction<HandPattern>) {
       state.patterns.push(action.payload)
@@ -206,199 +88,58 @@ const patternsSlice = createSlice({
     removePatternFromState(state, action: PayloadAction<string>) {
       state.patterns = removePattern(state.patterns, action.payload)
     },
-    removeRequirementCardFromPattern(state, action: PayloadAction<RequirementCardPayload>) {
-      state.patterns = removeRequirementCardFromPool(
-        state.patterns,
-        action.payload.patternId,
-        action.payload.requirementId,
-        action.payload.cardId,
-      )
-    },
-    removeRequirementFromPattern(
-      state,
-      action: PayloadAction<{ patternId: string; requirementId: string }>,
-    ) {
-      state.patterns = removeRequirement(
-        state.patterns,
-        action.payload.patternId,
-        action.payload.requirementId,
-      )
+    removeRequirementFromPattern(state, action: PayloadAction<{ patternId: string; requirementId: string }>) {
+      state.patterns = removeRequirement(state.patterns, action.payload.patternId, action.payload.requirementId)
     },
     replacePatterns(state, action: PayloadAction<HandPattern[]>) {
       state.patterns = action.payload
     },
-    replacePatternsState(_state, action: PayloadAction<PatternsState>) {
-      return action.payload
+    setPatternAllowSharedCards(state, action: PayloadAction<PatternPayload<boolean>>) {
+      state.patterns = updatePatternAllowSharedCards(state.patterns, action.payload.patternId, action.payload.value)
     },
-    setPatternAllowSharedCards(
-      state,
-      action: PayloadAction<UpdatePatternAllowSharedCardsPayload>,
-    ) {
-      state.patterns = updatePatternAllowSharedCards(
-        state.patterns,
-        action.payload.patternId,
-        action.payload.value,
-      )
-    },
-    setPatternRescuesCards(state, action: PayloadAction<{ patternId: string; value: boolean }>) {
+    setPatternRescuesCards(state, action: PayloadAction<PatternPayload<boolean>>) {
       state.patterns = updatePatternRescuesCards(state.patterns, action.payload.patternId, action.payload.value)
     },
-    setPatternIgnoresDraw(state, action: PayloadAction<{ patternId: string; value: boolean }>) {
+    setPatternIgnoresDraw(state, action: PayloadAction<PatternPayload<boolean>>) {
       state.patterns = updatePatternIgnoresDraw(state.patterns, action.payload.patternId, action.payload.value)
     },
-    setPatternCategory(state, action: PayloadAction<UpdatePatternCategoryPayload>) {
-      state.patterns = updatePatternCategory(
-        state.patterns,
-        action.payload.patternId,
-        action.payload.value,
-      )
+    setPatternCategory(state, action: PayloadAction<PatternPayload<HandPatternCategory>>) {
+      state.patterns = updatePatternCategory(state.patterns, action.payload.patternId, action.payload.value)
     },
-    setPatternMatchMode(state, action: PayloadAction<UpdatePatternMatchModePayload>) {
-      state.patterns = updatePatternMatchMode(
-        state.patterns,
-        action.payload.patternId,
-        action.payload.value,
-      )
+    setPatternMatchMode(state, action: PayloadAction<PatternPayload<PatternMatchMode>>) {
+      state.patterns = updatePatternMatchMode(state.patterns, action.payload.patternId, action.payload.value)
     },
-    setPatternMinimumMatches(
-      state,
-      action: PayloadAction<UpdatePatternMinimumMatchesPayload>,
-    ) {
-      state.patterns = updatePatternMinimumMatches(
-        state.patterns,
-        action.payload.patternId,
-        action.payload.value,
-      )
+    setPatternMinimumMatches(state, action: PayloadAction<PatternPayload<number>>) {
+      state.patterns = updatePatternMinimumMatches(state.patterns, action.payload.patternId, action.payload.value)
     },
-    setPatternName(state, action: PayloadAction<UpdatePatternNamePayload>) {
-      state.patterns = updatePatternName(
-        state.patterns,
-        action.payload.patternId,
-        action.payload.value,
-      )
+    setPatternName(state, action: PayloadAction<PatternPayload<string>>) {
+      state.patterns = updatePatternName(state.patterns, action.payload.patternId, action.payload.value)
     },
-    setPatternTurnContext(state, action: PayloadAction<UpdatePatternTurnContextPayload>) {
-      state.patterns = updatePatternTurnContext(
-        state.patterns,
-        action.payload.patternId,
-        action.payload.value,
-      )
+    setPatternTurnContext(state, action: PayloadAction<PatternPayload<TurnContext>>) {
+      state.patterns = updatePatternTurnContext(state.patterns, action.payload.patternId, action.payload.value)
     },
-    setRequirementCount(state, action: PayloadAction<RequirementCountPayload>) {
-      state.patterns = updateRequirementCount(
-        state.patterns,
-        action.payload.patternId,
-        action.payload.requirementId,
-        action.payload.value,
-      )
+    setRequirementCount(state, action: PayloadAction<RequirementPayload<number>>) {
+      state.patterns = updateRequirementCount(state.patterns, action.payload.patternId, action.payload.requirementId, action.payload.value)
     },
-    setRequirementMatcher(state, action: PayloadAction<RequirementMatcherPayload>) {
-      state.patterns = updateRequirementMatcher(
-        state.patterns,
-        action.payload.patternId,
-        action.payload.requirementId,
-        action.payload.value,
-      )
+    setRequirementMatcher(state, action: PayloadAction<RequirementPayload<Matcher | null>>) {
+      state.patterns = updateRequirementMatcher(state.patterns, action.payload.patternId, action.payload.requirementId, action.payload.value)
     },
-    setRequirementDistinct(state, action: PayloadAction<RequirementDistinctPayload>) {
-      state.patterns = updateRequirementDistinct(
-        state.patterns,
-        action.payload.patternId,
-        action.payload.requirementId,
-        action.payload.value,
-      )
+    setRequirementDistinct(state, action: PayloadAction<RequirementPayload<boolean>>) {
+      state.patterns = updateRequirementDistinct(state.patterns, action.payload.patternId, action.payload.requirementId, action.payload.value)
     },
-    setRequirementGroup(state, action: PayloadAction<RequirementGroupPayload>) {
-      state.patterns = updateRequirementGroup(
-        state.patterns,
-        action.payload.patternId,
-        action.payload.requirementId,
-        action.payload.value,
-      )
-    },
-    setRequirementAttribute(state, action: PayloadAction<RequirementAttributePayload>) {
-      state.patterns = updateRequirementAttribute(
-        state.patterns,
-        action.payload.patternId,
-        action.payload.requirementId,
-        action.payload.value,
-      )
-    },
-    setRequirementLevel(state, action: PayloadAction<RequirementLevelPayload>) {
-      state.patterns = updateRequirementLevel(
-        state.patterns,
-        action.payload.patternId,
-        action.payload.requirementId,
-        action.payload.value,
-      )
-    },
-    setRequirementMonsterType(state, action: PayloadAction<RequirementMonsterTypePayload>) {
-      state.patterns = updateRequirementMonsterType(
-        state.patterns,
-        action.payload.patternId,
-        action.payload.requirementId,
-        action.payload.value,
-      )
-    },
-    setRequirementAtk(state, action: PayloadAction<RequirementAtkPayload>) {
-      state.patterns = updateRequirementAtk(
-        state.patterns,
-        action.payload.patternId,
-        action.payload.requirementId,
-        action.payload.value,
-      )
-    },
-    setRequirementDef(state, action: PayloadAction<RequirementDefPayload>) {
-      state.patterns = updateRequirementDef(
-        state.patterns,
-        action.payload.patternId,
-        action.payload.requirementId,
-        action.payload.value,
-      )
-    },
-    setRequirementKind(state, action: PayloadAction<RequirementKindPayload>) {
-      state.patterns = updateRequirementKind(
-        state.patterns,
-        action.payload.patternId,
-        action.payload.requirementId,
-        action.payload.value,
-      )
-    },
-    setRequirementSource(state, action: PayloadAction<RequirementSourcePayload>) {
-      state.patterns = updateRequirementSource(
-        state.patterns,
-        action.payload.patternId,
-        action.payload.requirementId,
-        action.payload.value,
-        action.payload.defaultGroupKey,
-        action.payload.defaultAttribute,
-        action.payload.defaultLevel,
-        action.payload.defaultMonsterType,
-        action.payload.defaultAtk,
-        action.payload.defaultDef,
-      )
-    },
-    addRequirementCardToPattern(state, action: PayloadAction<RequirementCardPayload>) {
-      state.patterns = addRequirementCardToPool(
-        state.patterns,
-        action.payload.patternId,
-        action.payload.requirementId,
-        action.payload.cardId,
-      )
+    setRequirementKind(state, action: PayloadAction<RequirementPayload<RequirementKind>>) {
+      state.patterns = updateRequirementKind(state.patterns, action.payload.patternId, action.payload.requirementId, action.payload.value)
     },
   },
 })
 
 export const {
-  addRequirementCardToPattern,
   addRequirementToPattern,
   appendPattern,
   completePatternSeeding,
   removePatternFromState,
-  removeRequirementCardFromPattern,
   removeRequirementFromPattern,
   replacePatterns,
-  replacePatternsState,
   setGenericRuleEnabled,
   setSystemRuleName,
   setPatternAllowSharedCards,
@@ -412,13 +153,6 @@ export const {
   setRequirementCount,
   setRequirementMatcher,
   setRequirementDistinct,
-  setRequirementAtk,
-  setRequirementAttribute,
-  setRequirementDef,
-  setRequirementGroup,
   setRequirementKind,
-  setRequirementLevel,
-  setRequirementMonsterType,
-  setRequirementSource,
 } = patternsSlice.actions
 export const patternsReducer = patternsSlice.reducer

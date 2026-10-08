@@ -18,7 +18,7 @@ export interface DeckModeNavigationItem {
   disabled: boolean
 }
 
-export interface DeckWorkflowNavigationSnapshot {
+interface DeckWorkflowNavigationSnapshot {
   mainDeckCount: number
   roleCardCount: number
   unclassifiedCardCount: number

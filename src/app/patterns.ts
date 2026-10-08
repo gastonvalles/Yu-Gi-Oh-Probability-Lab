@@ -1,5 +1,4 @@
 import type {
-  CardAttribute,
   CardGroupKey,
   CardEntry,
   CardType,
@@ -216,83 +215,6 @@ export function createCardPoolMatcher(cardIds: string[]): Matcher | null {
   return uniqueIds.length === 1
     ? { type: 'card', value: uniqueIds[0] }
     : { type: 'card_pool', value: uniqueIds }
-}
-
-export function createMatcherFromSource(
-  source: RequirementSource,
-  defaults: {
-    defaultAtk: number | null
-    defaultAttribute: CardAttribute | null
-    defaultDef: number | null
-    defaultGroupKey: CardGroupKey | null
-    defaultLevel: number | null
-    defaultMonsterType: string | null
-  },
-  currentMatcher: Matcher | null,
-): Matcher | null {
-  if (source === 'group') {
-    return getConditionSource({ matcher: currentMatcher }) === 'group'
-      ? currentMatcher
-      : defaults.defaultGroupKey
-        ? createMatcherFromGroupKey(defaults.defaultGroupKey)
-        : null
-  }
-
-  if (source === 'attribute') {
-    return currentMatcher?.type === 'attribute'
-      ? currentMatcher
-      : defaults.defaultAttribute
-        ? { type: 'attribute', value: defaults.defaultAttribute }
-        : null
-  }
-
-  if (source === 'level') {
-    return currentMatcher?.type === 'level'
-      ? currentMatcher
-      : defaults.defaultLevel !== null
-        ? { type: 'level', value: defaults.defaultLevel }
-        : null
-  }
-
-  if (source === 'type') {
-    return currentMatcher?.type === 'monster_type'
-      ? currentMatcher
-      : defaults.defaultMonsterType
-        ? { type: 'monster_type', value: defaults.defaultMonsterType }
-        : null
-  }
-
-  if (source === 'atk') {
-    return currentMatcher?.type === 'atk'
-      ? currentMatcher
-      : defaults.defaultAtk !== null
-        ? { type: 'atk', value: defaults.defaultAtk }
-        : null
-  }
-
-  if (source === 'def') {
-    return currentMatcher?.type === 'def'
-      ? currentMatcher
-      : defaults.defaultDef !== null
-        ? { type: 'def', value: defaults.defaultDef }
-        : null
-  }
-
-  if (currentMatcher?.type === 'card' || currentMatcher?.type === 'card_pool') {
-    return currentMatcher
-  }
-
-  return null
-}
-
-export function updateConditionCardPool(
-  condition: PatternCondition,
-  updater: (cardIds: string[]) => string[],
-): PatternCondition {
-  return {
-    ...condition,
-    matcher: createCardPoolMatcher(updater(getConditionCardIds(condition))),
-  }
 }
 
 export function resolveConditionCardIds(

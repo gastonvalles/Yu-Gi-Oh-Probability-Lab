@@ -12,7 +12,7 @@ export const ROLE_EDITOR_SECTIONS = [
     roles: ['handtrap', 'disruption', 'boardbreaker', 'floodgate'] as const,
   },
   {
-    title: 'Utility',
+    title: 'Utilidad',
     description: 'Cartas incómodas o que preferís no robar.',
     roles: ['brick', 'garnet'] as const,
   },
