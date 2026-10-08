@@ -101,6 +101,11 @@ const deckBuilderSlice = createSlice({
     sortDeckZone(state, action: PayloadAction<DeckZone>) {
       state[action.payload] = sortDeckCards(state[action.payload])
     },
+    sortAllDeckZones(state) {
+      state.main = sortDeckCards(state.main)
+      state.extra = sortDeckCards(state.extra)
+      state.side = sortDeckCards(state.side)
+    },
     clearAllDeckZones(state) {
       state.main = []
       state.extra = []
@@ -142,6 +147,7 @@ export const {
   clearAllDeckZones,
   clearDeckZone,
   sortDeckZone,
+  sortAllDeckZones,
   moveDeckCardInBuilder,
   removeDeckCardFromBuilder,
   replaceDeckBuilder,

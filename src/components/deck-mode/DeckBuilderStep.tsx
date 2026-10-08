@@ -57,6 +57,7 @@ interface DeckBuilderStepProps {
   selectedDeckCopyActions: DeckCopyActions | null
   onClearDeckZone: (zone: DeckZoneType) => void
   onSortDeckZone: (zone: DeckZoneType) => void
+  onSortAllDeckZones: () => void
   onClearAllDeckZones: () => void
   onRemoveDeckCard: (instanceId: string) => void
   onDeckCardPointerDown: (event: ReactPointerEvent<HTMLElement>, instanceId: string) => void
@@ -120,6 +121,7 @@ export function DeckBuilderStep({
   selectedDeckCopyActions,
   onClearDeckZone,
   onSortDeckZone,
+  onSortAllDeckZones,
   onClearAllDeckZones,
   onRemoveDeckCard,
   onDeckCardPointerDown,
@@ -262,7 +264,7 @@ export function DeckBuilderStep({
             <div className="relative z-1 grid h-full min-h-0 content-start gap-4 overflow-y-auto overflow-x-hidden px-8 pb-6 pt-4 [scrollbar-gutter:stable] [scrollbar-width:thin] max-[1500px]:px-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex min-w-0 flex-[1_1_16rem] items-stretch gap-3">
-                  <LabeledField label="Nombre del deck" className="min-w-0 flex-[1_1_auto]">
+                  <LabeledField label="Nombre del deck" className="min-w-0 max-w-[16rem] flex-[1_1_auto]">
                     <input
                       type="text"
                       value={deckBuilder.deckName}
@@ -288,6 +290,17 @@ export function DeckBuilderStep({
                   <Button variant="secondary" size="md" icon="upload" className="whitespace-nowrap" onClick={() => setImportDrawerOpen(true)}>
                     Import deck
                   </Button>
+
+                  <IconButton
+                    size="lg"
+                    className="size-10"
+                    aria-label="Ordenar todo"
+                    title="Ordenar todo"
+                    onClick={onSortAllDeckZones}
+                    disabled={totalDeckCardCount < 2}
+                  >
+                    <Icon name="sort" />
+                  </IconButton>
 
                   <IconButton
                     size="lg"
@@ -435,6 +448,9 @@ export function DeckBuilderStep({
             </LabeledField>
             <Button variant="secondary" size="md" fullWidth icon="upload" onClick={() => setImportDrawerOpen(true)}>
               Importar
+            </Button>
+            <Button variant="secondary" size="md" fullWidth icon="sort" onClick={onSortAllDeckZones} disabled={totalDeckCardCount < 2}>
+              Ordenar todo
             </Button>
             <Button variant="secondary" size="md" fullWidth icon="trash" onClick={handleRequestClearAllDeckZones} disabled={totalDeckCardCount === 0}>
               Vaciar todo

@@ -22,6 +22,7 @@ import {
   clearDeckZone,
   confirmDeckCardClassification,
   moveDeckCardInBuilder,
+  sortAllDeckZones,
   sortDeckZone,
   removeDeckCardFromBuilder,
   replaceDeckBuilder,
@@ -466,6 +467,11 @@ export function useDeckModeController() {
     [dispatch, showToast],
   )
 
+  const handleSortAllDeckZones = useCallback(() => {
+    dispatch(sortAllDeckZones())
+    showToast('Ordenaste todo el deck.', 'success')
+  }, [dispatch, showToast])
+
   const handleClearDeckZone = useCallback(
     (zone: DeckZone) => {
       const zoneCards = deckBuilder[zone]
@@ -620,6 +626,7 @@ export function useDeckModeController() {
       isCardDetailOpen: selectedDetailCard !== null,
       onClearDeckZone: handleClearDeckZone,
       onSortDeckZone: handleSortDeckZone,
+      onSortAllDeckZones: handleSortAllDeckZones,
       onClearAllDeckZones: handleClearAllDeckZones,
       onRemoveDeckCard: handleRemoveDeckCard,
       onDeckCardPointerDown: handleDeckCardPointerDown,
