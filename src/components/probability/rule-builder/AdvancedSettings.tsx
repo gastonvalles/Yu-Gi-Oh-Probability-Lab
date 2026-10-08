@@ -27,7 +27,7 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
   const conditionCount = pattern.conditions.length
   const showMinimumMatches = matchMode === 'at-least' && conditionCount > 1
   const minimumMatches = normalizeMinimumConditionMatches(pattern)
-  const conditionsWithDistinct = pattern.conditions.filter((c) => c.quantity > 1)
+  const conditionsWithDistinct = pattern.conditions.filter((condition) => condition.quantity > 1 || condition.distinct)
 
   // Detect overlap: are there cards that appear in more than one condition?
   const hasOverlap = useMemo(() => {
@@ -129,6 +129,7 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
                 <span className="text-body text-foreground">Condición {formatInteger(conditionIndex + 1)}</span>
                 <Segmented
                   size="sm"
+                  tone="success"
                   label={`Contar copias o nombres de la condición ${formatInteger(conditionIndex + 1)}`}
                   value={condition.distinct ? 'names' : 'copies'}
                   onChange={(next) => actions.setRequirementDistinct(pattern.id, condition.id, next === 'names')}

@@ -20,6 +20,8 @@ interface SegmentedProps<T extends string> {
   label: string
   variant?: SegmentedVariant
   size?: 'sm' | 'md'
+  /** Color de la opción elegida: violeta de la marca (por defecto) o verde (ajustes que se prenden). */
+  tone?: 'brand' | 'success'
   /** Ocupa todo el ancho y reparte las opciones en partes iguales. */
   fullWidth?: boolean
   className?: string
@@ -33,9 +35,9 @@ const GROUP: Record<SegmentedVariant, string> = {
 
 const ITEM: Record<SegmentedVariant, { base: string; on: string; off: string }> = {
   track: {
-    base: 'rounded-lg px-3 text-primary-soft',
+    base: 'rounded-lg px-3',
     on: 'bg-primary text-primary-foreground shadow-brand',
-    off: 'hover:bg-primary/20',
+    off: 'text-primary-soft hover:bg-primary/20',
   },
   chips: {
     base: 'rounded-control px-4',
@@ -49,8 +51,11 @@ const ITEM: Record<SegmentedVariant, { base: string; on: string; off: string }> 
   },
 }
 
+/** Opción elegida en verde (variante track). */
+const SUCCESS_ON = 'bg-success text-background shadow-[0_6px_16px_rgb(var(--success-rgb)/0.3)]'
+
 /** Selector de una opción entre pocas (turno, tipo de regla, filtro): mismo control en toda la app. */
-export function Segmented<T extends string>({ value, onChange, options, label, variant = 'track', size = 'md', fullWidth = false, className }: SegmentedProps<T>) {
+export function Segmented<T extends string>({ value, onChange, options, label, variant = 'track', size = 'md', tone = 'brand', fullWidth = false, className }: SegmentedProps<T>) {
   const look = ITEM[variant]
 
   return (
@@ -69,7 +74,7 @@ export function Segmented<T extends string>({ value, onChange, options, label, v
             className={cx(
               'grid min-w-0 content-center justify-items-center gap-0.5 font-semibold transition-[background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus',
               look.base,
-              active ? look.on : look.off,
+              active ? (tone === 'success' && variant === 'track' ? SUCCESS_ON : look.on) : look.off,
               size === 'md' ? 'min-h-10 text-body' : 'min-h-9 text-micro',
               variant === 'cards' && size === 'md' && 'py-2',
             )}

@@ -12,7 +12,7 @@ interface KindToggleProps {
 export function KindToggle({ patternId, currentKind, actions }: KindToggleProps) {
   return (
     <Segmented
-      fullWidth
+      tone="success"
       label="Tipo de regla"
       value={currentKind}
       options={[
