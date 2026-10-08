@@ -74,6 +74,7 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
             currentMode={matchMode}
             conditionCount={conditionCount}
             minimumConditionMatches={normalizeMinimumConditionMatches(pattern)}
+            negated={pattern.conditions.every((condition) => condition.kind === 'exclude')}
             actions={actions}
           />
         ) : null}

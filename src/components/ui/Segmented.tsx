@@ -7,6 +7,8 @@ export interface SegmentedOption<T extends string> {
   detail?: string
   /** Conteo a la derecha de la etiqueta. */
   count?: number
+  /** Color propio cuando está elegida (variante track): verde para lo bueno, rojo para lo malo. */
+  tone?: 'success' | 'danger'
 }
 
 /** track: pista lavanda con la opción elegida en violeta · chips: pastillas sueltas · cards: tarjetas (como las fechas del diseño). */
@@ -30,6 +32,12 @@ const GROUP: Record<SegmentedVariant, string> = {
   chips: 'flex flex-wrap gap-2',
   cards: 'grid auto-cols-fr grid-flow-col gap-2',
 }
+
+/** Opción elegida con color propio (verde / rojo) en lugar del violeta de la marca. */
+const TONE_ON = {
+  success: 'bg-success text-background shadow-[0_6px_16px_rgb(var(--success-rgb)/0.3)]',
+  danger: 'bg-danger text-white shadow-[0_6px_16px_rgb(var(--danger-rgb)/0.35)]',
+} as const
 
 const ITEM: Record<SegmentedVariant, { base: string; on: string; off: string }> = {
   track: {
@@ -69,7 +77,7 @@ export function Segmented<T extends string>({ value, onChange, options, label, v
             className={cx(
               'grid min-w-0 content-center justify-items-center gap-0.5 font-semibold transition-[background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus',
               look.base,
-              active ? look.on : look.off,
+              active ? (option.tone && variant === 'track' ? TONE_ON[option.tone] : look.on) : look.off,
               size === 'md' ? 'min-h-10 text-body' : 'min-h-9 text-micro',
               variant === 'cards' && size === 'md' && 'py-2',
             )}

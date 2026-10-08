@@ -8,6 +8,8 @@ interface LogicSelectorProps {
   currentMode: PatternMatchMode
   conditionCount: number
   minimumConditionMatches: number
+  /** Todas las condiciones son "Sin …": Y significa "ninguna está" y O "falta alguna" (se dice así para no confundir). */
+  negated?: boolean
   actions: PatternEditorActions
 }
 
@@ -16,16 +18,16 @@ export function getConnectorWord(mode: PatternMatchMode): string {
 }
 
 /** Cómo se combinan las condiciones: Y (todas), O (alcanza una) o al menos N. */
-export function LogicSelector({ patternId, currentMode, minimumConditionMatches, actions }: LogicSelectorProps) {
+export function LogicSelector({ patternId, currentMode, minimumConditionMatches, negated = false, actions }: LogicSelectorProps) {
   return (
     <Segmented
       size="sm"
       label="Cómo se combinan las condiciones"
       value={currentMode}
       options={[
-        { value: 'all', label: 'Y · todas' },
-        { value: 'any', label: 'O · una alcanza' },
-        { value: 'at-least', label: `Al menos ${formatInteger(minimumConditionMatches)}` },
+        { value: 'all', label: negated ? 'Y · ninguna está' : 'Y · todas' },
+        { value: 'any', label: negated ? 'O · falta alguna' : 'O · una alcanza' },
+        { value: 'at-least', label: negated ? `Faltan al menos ${formatInteger(minimumConditionMatches)}` : `Al menos ${formatInteger(minimumConditionMatches)}` },
       ]}
       onChange={(mode) => actions.setPatternMatchMode(patternId, mode)}
     />
