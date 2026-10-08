@@ -23,14 +23,14 @@ export function DeckModeNavigation({ items, activeStep, onStepChange }: DeckMode
             type="button"
             aria-current={isActive ? 'step' : undefined}
             title={`${item.title}: ${item.detail}`}
-            className={cx(TAB_BASE, isActive ? 'bg-lavender text-foreground' : 'text-muted hover:bg-tint/5 hover:text-foreground')}
+            className={cx(TAB_BASE, isActive ? 'bg-lavender text-success' : 'text-muted hover:bg-tint/5 hover:text-foreground')}
             onClick={() => onStepChange(item.key)}
           >
             <Icon
               name={item.icon}
               size={24}
               variant={isActive ? 'bold' : 'bulk'}
-              className={cx('shrink-0 transition-colors duration-150 [--icon-cut:var(--lavender)]', isActive ? 'text-primary-soft' : 'text-primary-soft/60 group-hover:text-primary-soft')}
+              className={cx('shrink-0 transition-colors duration-150 [--icon-cut:var(--lavender)]', isActive ? 'text-success drop-shadow-[0_0_8px_rgb(var(--success-rgb)/0.55)]' : 'text-primary-soft/60 group-hover:text-primary-soft')}
             />
             <span className={cx('truncate text-body', isActive ? 'font-semibold' : 'font-medium')}>{item.label}</span>
           </button>

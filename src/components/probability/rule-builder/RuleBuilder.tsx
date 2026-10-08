@@ -127,7 +127,7 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
 /** Un paso del editor: título arriba, o (inline) título a la izquierda y el control a la derecha. */
 function RuleStep({ title, inline = false, children }: { title: string; inline?: boolean; children: ReactNode }) {
   return (
-    <section className={cx('grid content-start gap-2', inline && 'grid-cols-[4rem_minmax(0,1fr)] items-center gap-3')}>
+    <section className={cx('grid content-start gap-2', inline && 'min-[520px]:grid-cols-[4rem_minmax(0,1fr)] min-[520px]:items-center min-[520px]:gap-3')}>
       <h4 className={cx('m-0', overline)}>{title}</h4>
       {children}
     </section>
