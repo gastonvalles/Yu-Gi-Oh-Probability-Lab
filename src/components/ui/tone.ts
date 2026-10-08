@@ -2,7 +2,7 @@
  * Tonos semánticos de la app. El color siempre significa algo:
  * brand = lo tuyo (selección, acción principal) · success = bien/listo · warning = ojo ·
  * danger = mal/peligro · info = dato destacado · neutral = sin énfasis.
- * Los roles de las cartas (starter, handtrap…) tienen su propia paleta y no usan estos tonos.
+ * Los roles de las cartas (starter, disruption…) tienen su propia paleta y no usan estos tonos.
  */
 export type Tone = 'neutral' | 'brand' | 'success' | 'warning' | 'danger' | 'info'
 

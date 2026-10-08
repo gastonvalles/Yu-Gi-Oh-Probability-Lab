@@ -43,7 +43,7 @@ function makeCardsWithRoles(): CardEntry[] {
       source: 'manual',
       apiCard: null,
       origin: 'non_engine',
-      roles: ['handtrap'],
+      roles: ['disruption'],
       needsReview: false,
     },
     {
@@ -73,7 +73,7 @@ function makeCardsWithRoles(): CardEntry[] {
       source: 'manual',
       apiCard: null,
       origin: 'engine',
-      roles: ['garnet'],
+      roles: ['brick'],
       needsReview: false,
     },
     {

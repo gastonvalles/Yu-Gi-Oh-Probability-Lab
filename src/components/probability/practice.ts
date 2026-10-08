@@ -382,7 +382,7 @@ export function describePracticeMatch(match: PracticeHandMatch, caseIndex: numbe
   if (match.patternId === getSystemRuleId('dead_cards_problem')) {
     const cards = match.cases[caseIndex]?.cards ?? match.cases[0]?.cards ?? []
     const total = cards.reduce((count, card) => count + card.copies, 0)
-    return `Abrís ${total} Bricks/Garnets.`
+    return `Abrís ${total} Bricks.`
   }
 
   return describeRuleCondition(match.requirementLabel)

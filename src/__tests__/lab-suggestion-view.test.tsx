@@ -39,8 +39,9 @@ describe('LabSuggestion', () => {
 
     expect(screen.getByText('Lo que más te frena')).toBeInTheDocument()
     expect(screen.getByText(/Pasan en/)).toBeInTheDocument()
-    // El cambio se lee en los chips (qué sacar y meter) y el texto sólo suma el ejemplo y el efecto.
+    // El cambio se lee en los chips (qué sacar y meter); no hay un párrafo de "Sugerencia: …" aparte.
     expect(await screen.findByText(/Sacar 1 carta de relleno/)).toBeInTheDocument()
     expect(screen.getByText(/Meter 1 starter/)).toBeInTheDocument()
+    expect(screen.queryByText(/Sugerencia:/)).not.toBeInTheDocument()
   })
 })

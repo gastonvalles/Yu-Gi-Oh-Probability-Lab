@@ -32,7 +32,7 @@ const arbRequirementKind: fc.Arbitrary<RequirementKind> = fc.constantFrom('inclu
 const arbMatcher: fc.Arbitrary<Matcher | null> = fc.oneof(
   fc.constant(null),
   fc
-    .record({ value: fc.constantFrom('engine', 'non_engine', 'hybrid') })
+    .record({ value: fc.constantFrom('engine', 'non_engine') })
     .map((m) => ({ type: 'origin', value: m.value }) as Matcher),
   fc
     .record({ value: fc.string({ minLength: 1, maxLength: 6 }) })

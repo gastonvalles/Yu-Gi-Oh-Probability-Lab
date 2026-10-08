@@ -71,7 +71,7 @@ describe('lab-suggestion', () => {
 
   it('no propone sacar piezas del engine aunque cuenten como brick: son parte del combo', () => {
     const cards = [
-      card('combo', 4, ['combo_piece', 'brick'], 'engine'),
+      card('combo', 4, ['enabler', 'brick'], 'engine'),
       card('tech', 2, ['brick'], 'non_engine'),
       ...Array.from({ length: 34 }, (_, index) => card(`f${index}`, 1, ['starter'])),
     ]
@@ -135,7 +135,7 @@ describe('lab-suggestion', () => {
   it('el lugar sale primero del relleno, después de los bricks y recién después de la interacción', () => {
     const cards = [
       card('starter', 1, ['starter']),
-      card('ash', 3, ['handtrap', 'disruption'], 'non_engine'),
+      card('ash', 3, ['disruption', 'disruption'], 'non_engine'),
       card('brick', 1, ['brick'], 'non_engine'),
       ...Array.from({ length: 35 }, (_, index) => card(`f${index}`, 1, ['tech'], 'non_engine')),
     ]
@@ -149,11 +149,11 @@ describe('lab-suggestion', () => {
   it('con un problema por ausencia de handtraps propone "sacá un starter y meté una handtrap" entre las opciones', () => {
     const cards = [
       ...Array.from({ length: 12 }, (_, index) => card(`s${index}`, 2, ['starter'])),
-      card('ht', 1, ['handtrap'], 'non_engine'),
+      card('ht', 1, ['disruption'], 'non_engine'),
       card('brick', 1, ['brick'], 'non_engine'),
       card('f', 1, ['tech'], 'non_engine'),
     ]
-    const noAnswer = createMatcherPattern('Sin handtrap', 'problem', [{ matcher: { type: 'role', value: 'handtrap' }, quantity: 1, kind: 'exclude' }])
+    const noAnswer = createMatcherPattern('Sin handtrap', 'problem', [{ matcher: { type: 'role', value: 'disruption' }, quantity: 1, kind: 'exclude' }])
     const culprit = { kind: 'problem' as const, patternId: noAnswer.id, name: noAnswer.name, probability: 0.6 }
     const swaps = buildCandidates(culprit, cards, [opening, noAnswer]).map((candidate) => `${candidate.swap.from}>${candidate.swap.to}`)
 
@@ -164,7 +164,7 @@ describe('lab-suggestion', () => {
   it('reconoce el problema por ausencia aunque la regla cuente un pool de cartas (como las reglas del sistema)', () => {
     const cards = [
       ...Array.from({ length: 12 }, (_, index) => card(`s${index}`, 2, ['starter'])),
-      card('ht', 1, ['handtrap'], 'non_engine'),
+      card('ht', 1, ['disruption'], 'non_engine'),
       card('f', 1, ['tech'], 'non_engine'),
     ]
     const poolRule = createMatcherPattern('Sin interrupción', 'problem', [{ matcher: { type: 'card_pool', value: ['ht'] }, quantity: 1, kind: 'exclude' }], { turnContext: 'second' })
@@ -177,12 +177,12 @@ describe('lab-suggestion', () => {
 
   it('en el Promedio una regla "Solo 2º" pesa la mitad: el culpable global puede ser otro que el de 2º', () => {
     const cards = [
-      card('ht', 6, ['handtrap'], 'non_engine'),
+      card('ht', 6, ['disruption'], 'non_engine'),
       card('brick', 6, ['brick'], 'non_engine'),
       ...Array.from({ length: 14 }, (_, index) => card(`s${index}`, 1, ['starter'])),
       ...Array.from({ length: 14 }, (_, index) => card(`f${index}`, 1, ['tech'], 'non_engine')),
     ]
-    const noAnswer = createMatcherPattern('Sin handtrap yendo 2º', 'problem', [{ matcher: { type: 'role', value: 'handtrap' }, quantity: 1, kind: 'exclude' }], {
+    const noAnswer = createMatcherPattern('Sin handtrap yendo 2º', 'problem', [{ matcher: { type: 'role', value: 'disruption' }, quantity: 1, kind: 'exclude' }], {
       turnContext: 'second',
     })
     const computation = computeLabResults(cards, [opening, problem, noAnswer], 5)

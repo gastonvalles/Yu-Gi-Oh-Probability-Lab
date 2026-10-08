@@ -37,10 +37,10 @@ export function normalizeRuleName(raw: string): string {
   return raw.replace(/\s+/g, ' ').trim().slice(0, MAX_RULE_NAME_LENGTH).trim()
 }
 
-const INTERACTION_ROLES: readonly CardRole[] = ['handtrap', 'disruption']
+const INTERACTION_ROLES: readonly CardRole[] = ['disruption']
 /** Todo lo que sirve para responder cuando el rival juega primero. */
-const RESPONSE_ROLES: readonly CardRole[] = [...INTERACTION_ROLES, 'boardbreaker']
-const DEAD_CARD_ROLES: readonly CardRole[] = ['brick', 'garnet']
+const RESPONSE_ROLES: readonly CardRole[] = ['disruption', 'boardbreaker']
+const DEAD_CARD_ROLES: readonly CardRole[] = ['brick']
 
 export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
   {
@@ -61,8 +61,8 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
     tier: 'universal',
     kind: 'problem',
     title: '2+ cartas muertas',
-    description: 'Dos o más Bricks o Garnets en mano dejan la jugada sin recursos, en cualquier deck.',
-    technicalSubtitle: '2+ Brick o Garnet',
+    description: 'Dos o más Bricks en mano dejan la jugada sin recursos, en cualquier deck.',
+    technicalSubtitle: '2+ Brick',
     build: (cards) => {
       const deadCards = collectCardIdsByRoles(cards, DEAD_CARD_ROLES)
 
@@ -100,8 +100,8 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
     tier: 'generic',
     kind: 'opening',
     title: 'Salida con interacción',
-    description: 'Arrancar y además poder frenar al rival con una Handtrap o Disruption.',
-    technicalSubtitle: 'Starter + Handtrap/Disruption',
+    description: 'Arrancar y además poder frenar al rival con una Disruption.',
+    technicalSubtitle: 'Starter + Disruption',
     build: (cards) =>
       createMatcherPattern(
         'Salida con interacción',
@@ -138,9 +138,9 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
     tier: 'generic',
     kind: 'problem',
     title: 'Sin respuesta yendo 2º',
-    description: 'Yendo segundo sin Handtrap, Disruption ni Boardbreaker quedás a merced del campo rival.',
-    technicalSubtitle: '0 Handtrap, Disruption o Boardbreaker',
-    // Una sola condición sobre todas esas cartas: "ninguna Handtrap, Disruption o Boardbreaker".
+    description: 'Yendo segundo sin Disruption ni Boardbreaker quedás a merced del campo rival.',
+    technicalSubtitle: '0 Disruption o Boardbreaker',
+    // Una sola condición sobre todas esas cartas: "ninguna Disruption o Boardbreaker".
     build: (cards) =>
       createMatcherPattern(
         'Sin respuesta yendo 2º',

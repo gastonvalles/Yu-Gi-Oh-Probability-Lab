@@ -43,7 +43,7 @@ function makeFixedDeck(): CardEntry[] {
   return [
     makeCard('c-starter', 'Starter A', 3, 'engine', ['starter']),
     makeCard('c-extender', 'Extender A', 3, 'engine', ['extender']),
-    makeCard('c-handtrap', 'Handtrap A', 3, 'non_engine', ['handtrap']),
+    makeCard('c-handtrap', 'Handtrap A', 3, 'non_engine', ['disruption']),
     makeCard('c-brick', 'Brick A', 1, 'engine', ['brick']),
   ]
 }
@@ -59,7 +59,7 @@ const arbPatternKind: fc.Arbitrary<PatternKind> = fc.constantFrom('opening', 'pr
 const arbRoleMatcher: fc.Arbitrary<Matcher> = fc.constantFrom<Matcher>(
   { type: 'role', value: 'starter' },
   { type: 'role', value: 'extender' },
-  { type: 'role', value: 'handtrap' },
+  { type: 'role', value: 'disruption' },
   { type: 'role', value: 'brick' },
 )
 

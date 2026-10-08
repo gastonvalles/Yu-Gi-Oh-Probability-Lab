@@ -82,10 +82,10 @@ describe('modal de clasificación (mismo marco que el detalle)', () => {
   })
 
   it('marca los roles elegidos y no repite un contador por grupo', () => {
-    render(editor({ card: entry({ origin: 'engine', roles: ['starter', 'handtrap'] }) }))
+    render(editor({ card: entry({ origin: 'engine', roles: ['starter', 'disruption'] }) }))
 
     expect(screen.getByRole('button', { name: 'Starter' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'Handtrap' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Disruption' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: 'Extender' })).toHaveAttribute('aria-pressed', 'false')
     expect(screen.queryByText('2 / 8')).not.toBeInTheDocument()
   })

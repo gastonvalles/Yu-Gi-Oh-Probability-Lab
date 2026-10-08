@@ -56,7 +56,7 @@ type DrawerMode = 'custom-create' | 'edit'
 const ROLE_TO_KPI: Record<RoleDistributionKey, KpiRole> = {
   starter: 'starter',
   extender: 'extender',
-  interaction: 'handtrap',
+  interaction: 'disruption',
   brick: 'brick',
 }
 

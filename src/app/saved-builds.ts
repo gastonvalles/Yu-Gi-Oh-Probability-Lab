@@ -1,5 +1,6 @@
 import type { CardOrigin, CardRole } from '../types'
 import type { DeckCardInstance } from './model'
+import { normalizeStoredRoles, resolveStoredCardOrigin } from './deck-groups'
 import { createId } from './utils'
 
 const SAVED_BUILDS_KEY = 'ygo-lab:saved-builds'
@@ -19,7 +20,7 @@ export interface SavedBuild extends BuildZones {
 export function readSavedBuilds(): SavedBuild[] {
   try {
     const parsed: unknown = JSON.parse(localStorage.getItem(SAVED_BUILDS_KEY) ?? '[]')
-    return Array.isArray(parsed) ? parsed.filter(isSavedBuild) : []
+    return Array.isArray(parsed) ? parsed.filter(isSavedBuild).map(migrateSavedBuild) : []
   } catch {
     return []
   }
@@ -31,6 +32,18 @@ export function writeSavedBuilds(builds: SavedBuild[]): void {
   } catch {
     // Sin almacenamiento (modo privado o cuota llena): las builds viven sólo en esta sesión.
   }
+}
+
+/** Builds guardadas con roles u orígenes que ya no existen (Handtrap, Hybrid…): pasan a sus equivalentes. */
+function migrateSavedBuild(build: SavedBuild): SavedBuild {
+  const migrate = (cards: DeckCardInstance[]) =>
+    cards.map((card) => {
+      const roles = normalizeStoredRoles(card.roles)
+
+      return { ...card, roles, origin: resolveStoredCardOrigin(card.origin, roles) }
+    })
+
+  return { ...build, main: migrate(build.main), extra: migrate(build.extra), side: migrate(build.side) }
 }
 
 function isSavedBuild(value: unknown): value is SavedBuild {

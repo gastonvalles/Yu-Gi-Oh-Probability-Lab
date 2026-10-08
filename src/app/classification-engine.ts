@@ -17,34 +17,34 @@ export function normalizeCardNameForLookup(name: string): string {
 
 const KNOWN_CARDS_MAP_ENTRIES: Array<[string, ClassificationSuggestion]> = [
   // Hand traps (origin: non_engine)
-  ['ash blossom & joyous spring', { origin: 'non_engine', roles: ['handtrap'] }],
-  ['maxx "c"', { origin: 'non_engine', roles: ['handtrap', 'draw'] }],
-  ['effect veiler', { origin: 'non_engine', roles: ['handtrap'] }],
-  ['ghost ogre & snow rabbit', { origin: 'non_engine', roles: ['handtrap'] }],
-  ['ghost belle & haunted mansion', { origin: 'non_engine', roles: ['handtrap'] }],
-  ['droll & lock bird', { origin: 'non_engine', roles: ['handtrap'] }],
-  ['d.d. crow', { origin: 'non_engine', roles: ['handtrap'] }],
-  ['nibiru, the primal being', { origin: 'non_engine', roles: ['handtrap', 'boardbreaker'] }],
-  ['psy-framegear gamma', { origin: 'non_engine', roles: ['handtrap'] }],
-  ['infinite impermanence', { origin: 'non_engine', roles: ['handtrap', 'disruption'] }],
-  ['ghost mourner & moonlit chill', { origin: 'non_engine', roles: ['handtrap'] }],
-  ['dimension shifter', { origin: 'non_engine', roles: ['handtrap', 'floodgate'] }],
-  ['skull meister', { origin: 'non_engine', roles: ['handtrap'] }],
+  ['ash blossom & joyous spring', { origin: 'non_engine', roles: ['disruption'] }],
+  ['maxx "c"', { origin: 'non_engine', roles: ['disruption', 'searcher'] }],
+  ['effect veiler', { origin: 'non_engine', roles: ['disruption'] }],
+  ['ghost ogre & snow rabbit', { origin: 'non_engine', roles: ['disruption'] }],
+  ['ghost belle & haunted mansion', { origin: 'non_engine', roles: ['disruption'] }],
+  ['droll & lock bird', { origin: 'non_engine', roles: ['disruption'] }],
+  ['d.d. crow', { origin: 'non_engine', roles: ['disruption'] }],
+  ['nibiru, the primal being', { origin: 'non_engine', roles: ['disruption', 'boardbreaker'] }],
+  ['psy-framegear gamma', { origin: 'non_engine', roles: ['disruption'] }],
+  ['infinite impermanence', { origin: 'non_engine', roles: ['disruption'] }],
+  ['ghost mourner & moonlit chill', { origin: 'non_engine', roles: ['disruption'] }],
+  ['dimension shifter', { origin: 'non_engine', roles: ['disruption'] }],
+  ['skull meister', { origin: 'non_engine', roles: ['disruption'] }],
 
   // Staple spells
   ['called by the grave', { origin: 'non_engine', roles: ['tech'] }],
   ['crossout designator', { origin: 'non_engine', roles: ['tech'] }],
-  ['triple tactics talent', { origin: 'non_engine', roles: ['draw', 'removal'] }],
+  ['triple tactics talent', { origin: 'non_engine', roles: ['searcher', 'boardbreaker'] }],
   ['forbidden droplet', { origin: 'non_engine', roles: ['boardbreaker', 'disruption'] }],
   ['dark ruler no more', { origin: 'non_engine', roles: ['boardbreaker'] }],
   ["harpie's feather duster", { origin: 'non_engine', roles: ['boardbreaker'] }],
   ['raigeki', { origin: 'non_engine', roles: ['boardbreaker'] }],
   ['lightning storm', { origin: 'non_engine', roles: ['boardbreaker'] }],
-  ['pot of prosperity', { origin: 'non_engine', roles: ['draw'] }],
-  ['pot of desires', { origin: 'non_engine', roles: ['draw'] }],
-  ['pot of extravagance', { origin: 'non_engine', roles: ['draw'] }],
-  ['allure of darkness', { origin: 'non_engine', roles: ['draw'] }],
-  ['upstart goblin', { origin: 'non_engine', roles: ['draw'] }],
+  ['pot of prosperity', { origin: 'non_engine', roles: ['searcher'] }],
+  ['pot of desires', { origin: 'non_engine', roles: ['searcher'] }],
+  ['pot of extravagance', { origin: 'non_engine', roles: ['searcher'] }],
+  ['allure of darkness', { origin: 'non_engine', roles: ['searcher'] }],
+  ['upstart goblin', { origin: 'non_engine', roles: ['searcher'] }],
   ['foolish burial', { origin: 'engine', roles: ['searcher'] }],
   ['monster reborn', { origin: 'non_engine', roles: ['recovery'] }],
   ['one for one', { origin: 'engine', roles: ['searcher'] }],
@@ -54,47 +54,47 @@ const KNOWN_CARDS_MAP_ENTRIES: Array<[string, ClassificationSuggestion]> = [
   ['solemn judgment', { origin: 'non_engine', roles: ['disruption'] }],
   ['solemn strike', { origin: 'non_engine', roles: ['disruption'] }],
   ['torrential tribute', { origin: 'non_engine', roles: ['boardbreaker'] }],
-  ['compulsory evacuation device', { origin: 'non_engine', roles: ['removal'] }],
-  ['dimensional barrier', { origin: 'non_engine', roles: ['floodgate'] }],
-  ['anti-spell fragrance', { origin: 'non_engine', roles: ['floodgate'] }],
-  ['skill drain', { origin: 'non_engine', roles: ['floodgate'] }],
-  ['rivalry of warlords', { origin: 'non_engine', roles: ['floodgate'] }],
-  ['gozen match', { origin: 'non_engine', roles: ['floodgate'] }],
-  ['there can be only one', { origin: 'non_engine', roles: ['floodgate'] }],
+  ['compulsory evacuation device', { origin: 'non_engine', roles: ['boardbreaker'] }],
+  ['dimensional barrier', { origin: 'non_engine', roles: ['disruption'] }],
+  ['anti-spell fragrance', { origin: 'non_engine', roles: ['disruption'] }],
+  ['skill drain', { origin: 'non_engine', roles: ['disruption'] }],
+  ['rivalry of warlords', { origin: 'non_engine', roles: ['disruption'] }],
+  ['gozen match', { origin: 'non_engine', roles: ['disruption'] }],
+  ['there can be only one', { origin: 'non_engine', roles: ['disruption'] }],
 
   // Board breakers & tech
   ['evenly matched', { origin: 'non_engine', roles: ['boardbreaker'] }],
-  ['lava golem', { origin: 'non_engine', roles: ['boardbreaker', 'removal'] }],
-  ['gameciel, the sea turtle kaiju', { origin: 'non_engine', roles: ['removal'] }],
-  ['gadarla, the mystery dust kaiju', { origin: 'non_engine', roles: ['removal'] }],
-  ['dogoran, the mad flame kaiju', { origin: 'non_engine', roles: ['removal'] }],
-  ['kumongous, the sticky string kaiju', { origin: 'non_engine', roles: ['removal'] }],
-  ['super polymerization', { origin: 'non_engine', roles: ['removal', 'boardbreaker'] }],
+  ['lava golem', { origin: 'non_engine', roles: ['boardbreaker'] }],
+  ['gameciel, the sea turtle kaiju', { origin: 'non_engine', roles: ['boardbreaker'] }],
+  ['gadarla, the mystery dust kaiju', { origin: 'non_engine', roles: ['boardbreaker'] }],
+  ['dogoran, the mad flame kaiju', { origin: 'non_engine', roles: ['boardbreaker'] }],
+  ['kumongous, the sticky string kaiju', { origin: 'non_engine', roles: ['boardbreaker'] }],
+  ['super polymerization', { origin: 'non_engine', roles: ['boardbreaker'] }],
   ['forbidden chalice', { origin: 'non_engine', roles: ['tech', 'disruption'] }],
 
   // Modern hand traps & staples (2024–2025 meta)
-  ['mulcharmy fuwalos', { origin: 'non_engine', roles: ['handtrap', 'draw'] }],
-  ['mulcharmy purulia', { origin: 'non_engine', roles: ['handtrap', 'draw'] }],
-  ['mulcharmy nyalus', { origin: 'non_engine', roles: ['handtrap', 'draw'] }],
-  ['bystial druiswurm', { origin: 'non_engine', roles: ['handtrap', 'removal'] }],
-  ['bystial magnamhut', { origin: 'non_engine', roles: ['handtrap', 'searcher'] }],
-  ['bystial saronir', { origin: 'non_engine', roles: ['handtrap'] }],
-  ['token collector', { origin: 'non_engine', roles: ['handtrap'] }],
-  ['contact "c"', { origin: 'non_engine', roles: ['handtrap'] }],
-  ['gnomaterial', { origin: 'non_engine', roles: ['handtrap'] }],
-  ['retaliating "c"', { origin: 'non_engine', roles: ['handtrap'] }],
-  ['herald of orange light', { origin: 'non_engine', roles: ['handtrap', 'disruption'] }],
-  ['herald of green light', { origin: 'non_engine', roles: ['handtrap', 'disruption'] }],
-  ['herald of purple light', { origin: 'non_engine', roles: ['handtrap', 'disruption'] }],
+  ['mulcharmy fuwalos', { origin: 'non_engine', roles: ['disruption', 'searcher'] }],
+  ['mulcharmy purulia', { origin: 'non_engine', roles: ['disruption', 'searcher'] }],
+  ['mulcharmy nyalus', { origin: 'non_engine', roles: ['disruption', 'searcher'] }],
+  ['bystial druiswurm', { origin: 'non_engine', roles: ['disruption', 'boardbreaker'] }],
+  ['bystial magnamhut', { origin: 'non_engine', roles: ['disruption', 'searcher'] }],
+  ['bystial saronir', { origin: 'non_engine', roles: ['disruption'] }],
+  ['token collector', { origin: 'non_engine', roles: ['disruption'] }],
+  ['contact "c"', { origin: 'non_engine', roles: ['disruption'] }],
+  ['gnomaterial', { origin: 'non_engine', roles: ['disruption'] }],
+  ['retaliating "c"', { origin: 'non_engine', roles: ['disruption'] }],
+  ['herald of orange light', { origin: 'non_engine', roles: ['disruption'] }],
+  ['herald of green light', { origin: 'non_engine', roles: ['disruption'] }],
+  ['herald of purple light', { origin: 'non_engine', roles: ['disruption'] }],
 
   // Modern staple spells & traps
   ['forbidden crown', { origin: 'non_engine', roles: ['tech', 'disruption'] }],
   ['change of heart', { origin: 'non_engine', roles: ['boardbreaker'] }],
-  ['mind control', { origin: 'non_engine', roles: ['removal'] }],
-  ['cosmic cyclone', { origin: 'non_engine', roles: ['removal'] }],
-  ['twin twisters', { origin: 'non_engine', roles: ['removal'] }],
-  ['mystical space typhoon', { origin: 'non_engine', roles: ['removal'] }],
-  ['galaxy cyclone', { origin: 'non_engine', roles: ['removal'] }],
+  ['mind control', { origin: 'non_engine', roles: ['boardbreaker'] }],
+  ['cosmic cyclone', { origin: 'non_engine', roles: ['boardbreaker'] }],
+  ['twin twisters', { origin: 'non_engine', roles: ['boardbreaker'] }],
+  ['mystical space typhoon', { origin: 'non_engine', roles: ['boardbreaker'] }],
+  ['galaxy cyclone', { origin: 'non_engine', roles: ['boardbreaker'] }],
   ['feather duster duster', { origin: 'non_engine', roles: ['boardbreaker'] }],
   ['triple tactics thrust', { origin: 'non_engine', roles: ['searcher'] }],
   ['small world', { origin: 'engine', roles: ['searcher'] }],
@@ -104,52 +104,52 @@ const KNOWN_CARDS_MAP_ENTRIES: Array<[string, ClassificationSuggestion]> = [
   ['instant fusion', { origin: 'engine', roles: ['searcher'] }],
   ['reasoning', { origin: 'engine', roles: ['starter'] }],
   ['monster gate', { origin: 'engine', roles: ['starter'] }],
-  ['pot of avarice', { origin: 'non_engine', roles: ['draw', 'recovery'] }],
-  ['jar of avarice', { origin: 'non_engine', roles: ['draw', 'recovery'] }],
+  ['pot of avarice', { origin: 'non_engine', roles: ['searcher', 'recovery'] }],
+  ['jar of avarice', { origin: 'non_engine', roles: ['searcher', 'recovery'] }],
 
   // Additional Kaijus & board breakers
-  ['jizukiru, the star destroying kaiju', { origin: 'non_engine', roles: ['removal'] }],
-  ['radian, the multidimensional kaiju', { origin: 'non_engine', roles: ['removal'] }],
-  ['thunder king, the lightningstrike kaiju', { origin: 'non_engine', roles: ['removal'] }],
+  ['jizukiru, the star destroying kaiju', { origin: 'non_engine', roles: ['boardbreaker'] }],
+  ['radian, the multidimensional kaiju', { origin: 'non_engine', roles: ['boardbreaker'] }],
+  ['thunder king, the lightningstrike kaiju', { origin: 'non_engine', roles: ['boardbreaker'] }],
   ['interrupted kaiju slumber', { origin: 'non_engine', roles: ['boardbreaker', 'searcher'] }],
   ['owner\'s seal', { origin: 'non_engine', roles: ['tech'] }],
-  ['sphere mode (the winged dragon of ra - sphere mode)', { origin: 'non_engine', roles: ['boardbreaker', 'removal'] }],
-  ['the winged dragon of ra - sphere mode', { origin: 'non_engine', roles: ['boardbreaker', 'removal'] }],
-  ['lava golem', { origin: 'non_engine', roles: ['boardbreaker', 'removal'] }],
+  ['sphere mode (the winged dragon of ra - sphere mode)', { origin: 'non_engine', roles: ['boardbreaker'] }],
+  ['the winged dragon of ra - sphere mode', { origin: 'non_engine', roles: ['boardbreaker'] }],
+  ['lava golem', { origin: 'non_engine', roles: ['boardbreaker'] }],
 
   // Floodgate monsters
-  ['inspector boarder', { origin: 'non_engine', roles: ['floodgate', 'starter'] }],
-  ['fossil dyna pachycephalo', { origin: 'non_engine', roles: ['floodgate'] }],
-  ['barrier statue of the stormwinds', { origin: 'non_engine', roles: ['floodgate'] }],
-  ['barrier statue of the abyss', { origin: 'non_engine', roles: ['floodgate'] }],
-  ['barrier statue of the inferno', { origin: 'non_engine', roles: ['floodgate'] }],
-  ['barrier statue of the drought', { origin: 'non_engine', roles: ['floodgate'] }],
-  ['barrier statue of the heavens', { origin: 'non_engine', roles: ['floodgate'] }],
-  ['vanity\'s fiend', { origin: 'non_engine', roles: ['floodgate'] }],
-  ['majesty\'s fiend', { origin: 'non_engine', roles: ['floodgate'] }],
-  ['amano-iwato', { origin: 'non_engine', roles: ['floodgate'] }],
+  ['inspector boarder', { origin: 'non_engine', roles: ['disruption', 'starter'] }],
+  ['fossil dyna pachycephalo', { origin: 'non_engine', roles: ['disruption'] }],
+  ['barrier statue of the stormwinds', { origin: 'non_engine', roles: ['disruption'] }],
+  ['barrier statue of the abyss', { origin: 'non_engine', roles: ['disruption'] }],
+  ['barrier statue of the inferno', { origin: 'non_engine', roles: ['disruption'] }],
+  ['barrier statue of the drought', { origin: 'non_engine', roles: ['disruption'] }],
+  ['barrier statue of the heavens', { origin: 'non_engine', roles: ['disruption'] }],
+  ['vanity\'s fiend', { origin: 'non_engine', roles: ['disruption'] }],
+  ['majesty\'s fiend', { origin: 'non_engine', roles: ['disruption'] }],
+  ['amano-iwato', { origin: 'non_engine', roles: ['disruption'] }],
 
   // 2026 meta staples (YCS Virginia 300th / Burst Protocol format)
-  ['shiina, twin tempests of celestial thunder', { origin: 'non_engine', roles: ['handtrap', 'boardbreaker'] }],
-  ['mulcharmy meowls', { origin: 'non_engine', roles: ['handtrap', 'draw'] }],
-  ['s:p little knight', { origin: 'non_engine', roles: ['removal', 'disruption'] }],
+  ['shiina, twin tempests of celestial thunder', { origin: 'non_engine', roles: ['disruption', 'boardbreaker'] }],
+  ['mulcharmy meowls', { origin: 'non_engine', roles: ['disruption', 'searcher'] }],
+  ['s:p little knight', { origin: 'non_engine', roles: ['boardbreaker', 'disruption'] }],
   ['divine arsenal aa-zeus - sky thunder', { origin: 'non_engine', roles: ['boardbreaker', 'payoff'] }],
-  ['super starslayer ty-phon - sky crisis', { origin: 'non_engine', roles: ['removal', 'payoff'] }],
+  ['super starslayer ty-phon - sky crisis', { origin: 'non_engine', roles: ['boardbreaker', 'payoff'] }],
   ['i:p masquerena', { origin: 'non_engine', roles: ['extender', 'disruption'] }],
-  ['knightmare unicorn', { origin: 'non_engine', roles: ['removal', 'payoff'] }],
-  ['knightmare phoenix', { origin: 'non_engine', roles: ['removal', 'payoff'] }],
+  ['knightmare unicorn', { origin: 'non_engine', roles: ['boardbreaker', 'payoff'] }],
+  ['knightmare phoenix', { origin: 'non_engine', roles: ['boardbreaker', 'payoff'] }],
   ['accesscode talker', { origin: 'non_engine', roles: ['payoff', 'boardbreaker'] }],
-  ['underworld goddess of the closed world', { origin: 'non_engine', roles: ['removal', 'payoff', 'floodgate'] }],
-  ['guardian chimera', { origin: 'non_engine', roles: ['payoff', 'draw'] }],
-  ['saryuja skull dread', { origin: 'non_engine', roles: ['payoff', 'draw'] }],
-  ['imperial princess quinquery', { origin: 'non_engine', roles: ['payoff', 'floodgate'] }],
+  ['underworld goddess of the closed world', { origin: 'non_engine', roles: ['boardbreaker', 'payoff', 'disruption'] }],
+  ['guardian chimera', { origin: 'non_engine', roles: ['payoff', 'searcher'] }],
+  ['saryuja skull dread', { origin: 'non_engine', roles: ['payoff', 'searcher'] }],
+  ['imperial princess quinquery', { origin: 'non_engine', roles: ['payoff', 'disruption'] }],
 
   // Generic extra deck toolbox (commonly sided/mained across meta)
-  ['number 101: silent honor ark', { origin: 'non_engine', roles: ['removal', 'payoff'] }],
-  ['number c101: silent honor dark', { origin: 'non_engine', roles: ['removal', 'payoff'] }],
-  ['tornado dragon', { origin: 'non_engine', roles: ['removal', 'payoff'] }],
-  ['abyss dweller', { origin: 'non_engine', roles: ['floodgate', 'payoff'] }],
-  ['bagooska the terribly tired tapir', { origin: 'non_engine', roles: ['floodgate', 'payoff'] }],
+  ['number 101: silent honor ark', { origin: 'non_engine', roles: ['boardbreaker', 'payoff'] }],
+  ['number c101: silent honor dark', { origin: 'non_engine', roles: ['boardbreaker', 'payoff'] }],
+  ['tornado dragon', { origin: 'non_engine', roles: ['boardbreaker', 'payoff'] }],
+  ['abyss dweller', { origin: 'non_engine', roles: ['disruption', 'payoff'] }],
+  ['bagooska the terribly tired tapir', { origin: 'non_engine', roles: ['disruption', 'payoff'] }],
 
   // Commonly sided going-second cards (2026 format)
   ['dark hole', { origin: 'non_engine', roles: ['boardbreaker'] }],
@@ -170,14 +170,11 @@ export interface HeuristicRule {
 
 /** Roles that advance the player's own game plan. */
 const GAME_PLAN_ROLES: ReadonlySet<CardRole> = new Set([
-  'starter', 'extender', 'enabler', 'searcher', 'draw',
-  'combo_piece', 'payoff', 'recovery',
+  'starter', 'extender', 'enabler', 'searcher', 'payoff', 'recovery',
 ])
 
 /** Roles that interact with the opponent. */
-const INTERACTION_ROLES: ReadonlySet<CardRole> = new Set([
-  'handtrap', 'disruption', 'boardbreaker', 'floodgate', 'removal',
-])
+const INTERACTION_ROLES: ReadonlySet<CardRole> = new Set(['disruption', 'boardbreaker'])
 
 /**
  * Pure function. Given a set of suggested roles, derives the origin.
@@ -189,7 +186,6 @@ export function deriveOrigin(roles: CardRole[]): CardOrigin {
 
   const hasTech = roles.includes('tech')
   const hasBrick = roles.includes('brick')
-  const hasGarnet = roles.includes('garnet')
   const hasGamePlan = roles.some((r) => GAME_PLAN_ROLES.has(r))
   const hasInteraction = roles.some((r) => INTERACTION_ROLES.has(r))
 
@@ -198,24 +194,14 @@ export function deriveOrigin(roles: CardRole[]): CardOrigin {
     return 'non_engine'
   }
 
-  // brick or garnet (and no interaction) → engine
-  if ((hasBrick || hasGarnet) && !hasInteraction) {
+  // brick (and no interaction) → engine
+  if (hasBrick && !hasInteraction) {
     return 'engine'
   }
 
-  // only interaction roles → non_engine
-  if (hasInteraction && !hasGamePlan) {
-    return 'non_engine'
-  }
-
-  // only game-plan roles → engine
-  if (hasGamePlan && !hasInteraction) {
+  // any role of the player's own game plan → engine (even if it also interacts)
+  if (hasGamePlan) {
     return 'engine'
-  }
-
-  // both game-plan and interaction → hybrid
-  if (hasGamePlan && hasInteraction) {
-    return 'hybrid'
   }
 
   return 'non_engine'
@@ -295,7 +281,7 @@ const ruleHandtrap: HeuristicRule = {
 
     // Trap cards with hand-activation language
     if (isTrapCard(card) && HANDTRAP_TRAP_HAND_ACTIVATION.test(desc)) {
-      return ['handtrap']
+      return ['disruption']
     }
 
     if (!isMonsterCard(card)) return []
@@ -304,12 +290,12 @@ const ruleHandtrap: HeuristicRule = {
     const hasDisruptionEffect = HANDTRAP_DISRUPTION_EFFECT.test(desc)
     const hasQuickEffect = HANDTRAP_QUICK_MONSTER.test(desc)
 
-    if (hasHandActivation && hasDisruptionEffect) return ['handtrap']
-    if (hasQuickEffect && hasDisruptionEffect) return ['handtrap']
+    if (hasHandActivation && hasDisruptionEffect) return ['disruption']
+    if (hasQuickEffect && hasDisruptionEffect) return ['disruption']
 
     // "if your opponent" trigger + special summon from hand
     if (HANDTRAP_OPPONENT_TRIGGER.test(desc) && HANDTRAP_SPECIAL_SUMMON_FROM_HAND.test(desc)) {
-      return ['handtrap']
+      return ['disruption']
     }
 
     return []
@@ -323,10 +309,10 @@ const ruleDraw: HeuristicRule = {
     if (!desc) return []
 
     // Standard draw patterns (any card type)
-    if (DRAW_PATTERN.test(desc) || DRAW_FILTER_PATTERN.test(desc)) return ['draw']
+    if (DRAW_PATTERN.test(desc) || DRAW_FILTER_PATTERN.test(desc)) return ['searcher']
 
     // Excavate/reveal the top + add to hand (spell cards)
-    if (isSpellCard(card) && DRAW_EXCAVATE_REVEAL.test(desc) && DRAW_ADD_TO_HAND.test(desc)) return ['draw']
+    if (isSpellCard(card) && DRAW_EXCAVATE_REVEAL.test(desc) && DRAW_ADD_TO_HAND.test(desc)) return ['searcher']
 
     return []
   },
@@ -367,9 +353,9 @@ const ruleRemoval: HeuristicRule = {
     const desc = card.description
     if (!desc) return []
 
-    if (REMOVAL_TARGETED.test(desc)) return ['removal']
-    if (REMOVAL_KAIJU_TRIBUTE.test(desc)) return ['removal']
-    if (REMOVAL_NEGATE_SINGLE.test(desc)) return ['removal']
+    if (REMOVAL_TARGETED.test(desc)) return ['boardbreaker']
+    if (REMOVAL_KAIJU_TRIBUTE.test(desc)) return ['boardbreaker']
+    if (REMOVAL_NEGATE_SINGLE.test(desc)) return ['boardbreaker']
 
     return []
   },
@@ -394,14 +380,14 @@ const ruleFloodgate: HeuristicRule = {
     if (!desc) return []
 
     // Continuous spell/trap or field spell with restriction language
-    if (isContinuousSpellOrTrap(card) && FLOODGATE_RESTRICTION.test(desc)) return ['floodgate']
-    if ((isSpellCard(card) || isTrapCard(card)) && FLOODGATE_RESTRICTION.test(desc) && !DISRUPTION_NEGATE.test(desc)) return ['floodgate']
+    if (isContinuousSpellOrTrap(card) && FLOODGATE_RESTRICTION.test(desc)) return ['disruption']
+    if ((isSpellCard(card) || isTrapCard(card)) && FLOODGATE_RESTRICTION.test(desc) && !DISRUPTION_NEGATE.test(desc)) return ['disruption']
 
     // Monster floodgates: "while this card is face-up" + "cannot"
-    if (isMonsterCard(card) && FLOODGATE_MONSTER_FACE_UP.test(desc) && FLOODGATE_CANNOT.test(desc)) return ['floodgate']
+    if (isMonsterCard(card) && FLOODGATE_MONSTER_FACE_UP.test(desc) && FLOODGATE_CANNOT.test(desc)) return ['disruption']
 
     // "each player can only" or "neither player can" (any card type)
-    if (FLOODGATE_PLAYER_RESTRICTION.test(desc)) return ['floodgate']
+    if (FLOODGATE_PLAYER_RESTRICTION.test(desc)) return ['disruption']
 
     return []
   },
@@ -508,12 +494,12 @@ export function classifyCard(
     if (rule.id === 'boardbreaker') {
       hasBoardbreaker = true
     }
-    if (rule.id === 'floodgate') {
+    if (rule.id === 'disruption') {
       hasFloodgate = true
     }
 
     // Rule 5 (removal): skip if boardbreaker already matched
-    if (rule.id === 'removal' && hasBoardbreaker) continue
+    if (rule.id === 'boardbreaker' && hasBoardbreaker) continue
 
     // Rule 8 (disruption): skip if floodgate already matched
     if (rule.id === 'disruption' && hasFloodgate) continue

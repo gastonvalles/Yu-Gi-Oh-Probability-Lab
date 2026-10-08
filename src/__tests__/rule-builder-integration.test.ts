@@ -47,14 +47,14 @@ function makeRealisticDeck(): CardEntry[] {
     makeCard('s2', 'Starter B', 3, 'engine', ['starter']),
     makeCard('e1', 'Extender A', 3, 'engine', ['extender']),
     makeCard('e2', 'Extender B', 2, 'engine', ['extender']),
-    makeCard('ht1', 'Ash Blossom', 3, 'non_engine', ['handtrap']),
-    makeCard('ht2', 'Maxx C', 3, 'non_engine', ['handtrap']),
+    makeCard('ht1', 'Ash Blossom', 3, 'non_engine', ['disruption']),
+    makeCard('ht2', 'Maxx C', 3, 'non_engine', ['disruption']),
     makeCard('d1', 'Disruption A', 2, 'non_engine', ['disruption']),
     makeCard('b1', 'Brick A', 2, 'engine', ['brick']),
     makeCard('b2', 'Brick B', 1, 'engine', ['brick']),
-    makeCard('cp1', 'Combo Piece', 3, 'engine', ['combo_piece']),
+    makeCard('cp1', 'Combo Piece', 3, 'engine', ['enabler']),
     makeCard('se1', 'Searcher A', 3, 'engine', ['searcher']),
-    makeCard('dr1', 'Draw Card', 2, 'non_engine', ['draw']),
+    makeCard('dr1', 'Draw Card', 2, 'non_engine', ['searcher']),
     makeCard('f1', 'Filler', 10, 'non_engine', ['tech']),
   ]
 }
@@ -64,11 +64,11 @@ function makeRealisticDeck(): CardEntry[] {
 // ---------------------------------------------------------------------------
 
 const arbCardRole: fc.Arbitrary<CardRole> = fc.constantFrom(
-  'starter', 'extender', 'enabler', 'handtrap', 'disruption',
-  'boardbreaker', 'floodgate', 'removal', 'searcher', 'draw',
-  'recovery', 'combo_piece', 'payoff', 'brick', 'garnet', 'tech',
+  'starter', 'extender', 'enabler', 'disruption', 'disruption',
+  'boardbreaker', 'disruption', 'boardbreaker', 'searcher', 'searcher',
+  'recovery', 'enabler', 'payoff', 'brick', 'brick', 'tech',
 )
-const arbCardOrigin: fc.Arbitrary<CardOrigin> = fc.constantFrom('engine', 'non_engine', 'hybrid')
+const arbCardOrigin: fc.Arbitrary<CardOrigin> = fc.constantFrom('engine', 'non_engine')
 const arbPatternKind: fc.Arbitrary<PatternKind> = fc.constantFrom('opening', 'problem')
 const arbPatternLogic: fc.Arbitrary<PatternLogic> = fc.constantFrom('all', 'any')
 const arbReusePolicy: fc.Arbitrary<ReusePolicy> = fc.constantFrom('allow', 'forbid')

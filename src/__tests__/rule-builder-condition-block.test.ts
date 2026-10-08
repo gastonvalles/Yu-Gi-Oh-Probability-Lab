@@ -35,11 +35,11 @@ function makeCard(
 
 const arbRequirementKind: fc.Arbitrary<RequirementKind> = fc.constantFrom('include', 'exclude')
 const arbCardRole: fc.Arbitrary<CardRole> = fc.constantFrom(
-  'starter', 'extender', 'enabler', 'handtrap', 'disruption',
-  'boardbreaker', 'floodgate', 'removal', 'searcher', 'draw',
-  'recovery', 'combo_piece', 'payoff', 'brick', 'garnet', 'tech',
+  'starter', 'extender', 'enabler', 'disruption', 'disruption',
+  'boardbreaker', 'disruption', 'boardbreaker', 'searcher', 'searcher',
+  'recovery', 'enabler', 'payoff', 'brick', 'brick', 'tech',
 )
-const arbCardOrigin: fc.Arbitrary<CardOrigin> = fc.constantFrom('engine', 'non_engine', 'hybrid')
+const arbCardOrigin: fc.Arbitrary<CardOrigin> = fc.constantFrom('engine', 'non_engine')
 
 // ---------------------------------------------------------------------------
 // Tests: UI → Model mapping

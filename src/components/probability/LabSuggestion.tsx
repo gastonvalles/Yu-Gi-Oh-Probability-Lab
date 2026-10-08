@@ -48,10 +48,9 @@ export function LabSuggestion({ cards, checks, deckFormat, handSize, view, resul
       </header>
 
       {best ? (
-        <AdviceBox label="Sugerencia" visual={<SwapSummary best={best} />}>
-          {describeBest(culprit, best)}
-          {perTurnLine(best, perTurn)}
-        </AdviceBox>
+        <div className="border-t border-border-subtle pt-4">
+          <SwapSummary best={best} />
+        </div>
       ) : state.status === 'loading' ? (
         <div className="flex items-center gap-3 border-t border-border-subtle pt-4" role="status">
           <ProgressRing value={state.progress.total > 0 ? state.progress.done / state.progress.total : 0} size={44} strokeWidth={4} label="Cambios probados" />
@@ -68,11 +67,10 @@ export function LabSuggestion({ cards, checks, deckFormat, handSize, view, resul
   )
 }
 
-/** El consejo (o la conclusión cuando no hay un cambio que convenga): va debajo de una línea fina, sin caja. */
-function AdviceBox({ label, visual, children }: { label: string; visual?: ReactNode; children: ReactNode }) {
+/** La conclusión (cuando no hay un cambio que convenga): va debajo de una línea fina, sin caja. */
+function AdviceBox({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="grid gap-3 border-t border-border-subtle pt-4">
-      {visual}
       <p className="m-0 text-body text-muted">
         <strong className={cx('font-semibold', TONE.success.text)}>{label}: </strong>
         {children}
@@ -107,13 +105,6 @@ function SwapChip({ action, label }: { action: 'remove' | 'add'; label: string }
   )
 }
 
-/** En el Promedio se aclara qué pasa en cada turno: así el consejo global no se confunde con el de 1º o 2º. */
-function perTurnLine(best: Outcome, perTurn: PerTurnResults): string {
-  return best.cleanBySide
-    ? ` Por turno: yendo 1º ${formatShortPercent(perTurn.first.cleanProbability)} → ${formatShortPercent(best.cleanBySide.first)}, yendo 2º ${formatShortPercent(perTurn.second.cleanProbability)} → ${formatShortPercent(best.cleanBySide.second)}.`
-    : ''
-}
-
 function describeCulprit(culprit: Culprit): string {
   return culprit.kind === 'problem' ? formatOdds(culprit.probability, false) : formatOdds(culprit.probability, false).replace('Pasa', 'Pasan')
 }
@@ -127,21 +118,6 @@ function describeSwap(outcome: Outcome): string {
 
   if (from && to) return `sacá 1 ${ROLE_GROUP_LABEL[from]} y meté 1 ${ROLE_GROUP_LABEL[to]}${example}`
   return `sumá 1 ${to ? ROLE_GROUP_LABEL[to] : 'carta'}${added ? ` (${added.card.name})` : ''}`
-}
-
-/** Lo que no dicen ya los chips (qué sacar y meter) ni los anillos (manos limpias antes y después): el ejemplo y el efecto sobre el problema. */
-function describeBest(culprit: Culprit, best: Outcome): string {
-  const removed = best.changes.find((change) => change.action === 'remove')
-  const added = best.changes.find((change) => change.action === 'add')
-  const example = removed && added ? ` Por ejemplo, ${removed.card.name} por ${added.card.name}.` : ''
-  const target = culprit.kind === 'problem' ? 'El problema' : 'Las manos sin salida'
-
-  // El cambio no baja el problema: sube las salidas (las manos limpias) por otro lado.
-  if (best.culpritProbability >= culprit.probability - 0.0005) {
-    return `Bajar este problema cuesta más salidas de las que ahorra, pero este cambio sube las manos limpias.${example} Estimado, con el resto del deck igual.`
-  }
-
-  return `${target} bajaría a ${oddsOnly(best.culpritProbability)}.${example} Estimado, con el resto del deck igual.`
 }
 
 /** Sin cambio que convenga: se explica por qué, con números, en vez de dejar un "no se puede". */

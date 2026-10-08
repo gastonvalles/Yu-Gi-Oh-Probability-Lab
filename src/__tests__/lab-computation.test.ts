@@ -11,7 +11,7 @@ function card(id: string, copies: number, roles: CardRole[], origin: CardEntry['
 
 const deck = (): CardEntry[] => [
   ...Array.from({ length: 12 }, (_, index) => card(`s${index}`, 1, ['starter'])),
-  card('ht', 3, ['handtrap'], 'non_engine'),
+  card('ht', 3, ['disruption'], 'non_engine'),
   card('brick', 2, ['brick'], 'non_engine'),
   ...Array.from({ length: 23 }, (_, index) => card(`f${index}`, 1, ['tech'], 'non_engine')),
 ]
