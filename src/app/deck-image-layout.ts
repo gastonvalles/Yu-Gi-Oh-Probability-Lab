@@ -1,3 +1,4 @@
+import { DESKTOP_COMPACT_MAIN_EXPAND_THRESHOLD, getDesktopCompactDeckColumnCount } from './deck-zone-layout'
 import type { DeckZone } from './model'
 
 export interface Rect {
@@ -9,6 +10,9 @@ export interface Rect {
 
 export interface ZoneLayout {
   zone: DeckZone
+  /** Fila del título (punto, nombre, conteos). */
+  header: Rect
+  /** Superficie con las cartas (la caja redondeada del builder). */
   panel: Rect
   cards: Rect[]
 }
@@ -16,84 +20,86 @@ export interface ZoneLayout {
 export interface DeckImageLayout {
   width: number
   height: number
-  header: Rect
   zones: ZoneLayout[]
 }
 
 // Proporción real de las imágenes de YGOPRODeck (421×614).
 export const CARD_ASPECT = 614 / 421
-const CARD_WIDTH = 168
-const CARD_GAP = 8
-const PAGE_PADDING = 32
-const ZONE_PADDING = 16
-const ZONE_HEADER_HEIGHT = 44
-const HEADER_HEIGHT = 84
-const SECTION_GAP = 20
-
-const MAIN_COLUMNS = 10
-
-const GRID_WIDTH = MAIN_COLUMNS * CARD_WIDTH + (MAIN_COLUMNS - 1) * CARD_GAP
-const CONTENT_WIDTH = GRID_WIDTH + ZONE_PADDING * 2
+/** Ancho lógico de las zonas: el builder clásico en una pantalla ancha. */
+const SURFACE_WIDTH = 1500
+const PAGE_PADDING = 24
+const ZONE_GAP = 18
+const HEADER_HEIGHT = 34
+const HEADER_GAP = 7
+/** En el builder cada carta de un rail (Extra/Side) y del Main expandido mide el 10 % del ancho. */
+const SLOT_FRACTION = 0.1
+/** Extra y Side entran hasta 10 cartas sin superponerse; de ahí en más se reparten el ancho. */
+const RAIL_FREE_SLOTS = 10
+const EMPTY_PANEL_HEIGHT = 56
 
 /**
- * Como en el builder: Main en grilla de 10 y, debajo, Extra y Side apilados, cada uno
- * en una sola fila a todo el ancho; si no entran, las cartas se superponen.
+ * La misma composición que el builder clásico, sin los controles: Main en grilla (10 por fila, o 15
+ * superpuestas pasadas las 40 cartas) y, debajo, Extra y Side en una sola fila cada uno.
  */
 export function computeDeckImageLayout(counts: Record<DeckZone, number>): DeckImageLayout {
-  const width = CONTENT_WIDTH + PAGE_PADDING * 2
-  const header: Rect = { x: PAGE_PADDING, y: PAGE_PADDING, width: CONTENT_WIDTH, height: HEADER_HEIGHT }
   const zones: ZoneLayout[] = []
-  let top = header.y + header.height + SECTION_GAP
+  let top = PAGE_PADDING
 
-  const main = layoutGridZone('main', counts.main, PAGE_PADDING, top)
-  zones.push(main)
-  top += main.panel.height + SECTION_GAP
-
-  for (const zone of ['extra', 'side'] as const) {
-    if (counts[zone] > 0) {
-      const strip = layoutStripZone(zone, counts[zone], PAGE_PADDING, top)
-      zones.push(strip)
-      top += strip.panel.height + SECTION_GAP
+  for (const zone of ['main', 'extra', 'side'] as const) {
+    if (zone !== 'main' && counts[zone] === 0) {
+      continue
     }
+
+    const layout = zone === 'main' ? layoutMainZone(counts.main, top) : layoutRailZone(zone, counts[zone], top)
+    zones.push(layout)
+    top = layout.panel.y + layout.panel.height + ZONE_GAP
   }
 
-  return { width, height: top - SECTION_GAP + PAGE_PADDING, header, zones }
+  return { width: SURFACE_WIDTH + PAGE_PADDING * 2, height: top - ZONE_GAP + PAGE_PADDING, zones }
 }
 
-function layoutGridZone(zone: DeckZone, cardCount: number, left: number, top: number): ZoneLayout {
-  const cardHeight = CARD_WIDTH * CARD_ASPECT
-  const rows = Math.max(1, Math.ceil(cardCount / MAIN_COLUMNS))
-  const gridTop = top + ZONE_HEADER_HEIGHT
+function layoutMainZone(cardCount: number, top: number): ZoneLayout {
+  const columns = getDesktopCompactDeckColumnCount('main', cardCount)
+  const overlaps = cardCount > DESKTOP_COMPACT_MAIN_EXPAND_THRESHOLD
+  const cardWidth = overlaps ? SURFACE_WIDTH * SLOT_FRACTION : SURFACE_WIDTH / columns
+  const step = overlaps ? (SURFACE_WIDTH - cardWidth) / (columns - 1) : cardWidth
+  const cardHeight = cardWidth * CARD_ASPECT
+  const rows = Math.max(1, Math.ceil(cardCount / columns))
+  const header: Rect = { x: PAGE_PADDING, y: top, width: SURFACE_WIDTH, height: HEADER_HEIGHT }
+  const panelTop = top + HEADER_HEIGHT + HEADER_GAP
   const cards = Array.from({ length: cardCount }, (_, index) => ({
-    x: left + ZONE_PADDING + (index % MAIN_COLUMNS) * (CARD_WIDTH + CARD_GAP),
-    y: gridTop + Math.floor(index / MAIN_COLUMNS) * (cardHeight + CARD_GAP),
-    width: CARD_WIDTH,
+    x: PAGE_PADDING + (index % columns) * step,
+    y: panelTop + Math.floor(index / columns) * cardHeight,
+    width: cardWidth,
     height: cardHeight,
   }))
 
   return {
-    zone,
-    panel: { x: left, y: top, width: CONTENT_WIDTH, height: ZONE_HEADER_HEIGHT + rows * cardHeight + (rows - 1) * CARD_GAP + ZONE_PADDING },
+    zone: 'main',
+    header,
+    panel: { x: PAGE_PADDING, y: panelTop, width: SURFACE_WIDTH, height: cardCount === 0 ? EMPTY_PANEL_HEIGHT : rows * cardHeight },
     cards,
   }
 }
 
-/** Una fila: con espacio van separadas; si no, se reparte el ancho y se superponen. */
-function layoutStripZone(zone: DeckZone, cardCount: number, left: number, top: number): ZoneLayout {
-  const cardHeight = CARD_WIDTH * CARD_ASPECT
-  const naturalStep = CARD_WIDTH + CARD_GAP
-  const step = cardCount > 1 ? Math.min(naturalStep, (GRID_WIDTH - CARD_WIDTH) / (cardCount - 1)) : naturalStep
-  const gridTop = top + ZONE_HEADER_HEIGHT
+/** Una fila: cada carta mide el 10 % del ancho; con más de 10 se reparten el ancho y se superponen. */
+function layoutRailZone(zone: DeckZone, cardCount: number, top: number): ZoneLayout {
+  const cardWidth = SURFACE_WIDTH * SLOT_FRACTION
+  const cardHeight = cardWidth * CARD_ASPECT
+  const step = cardCount > RAIL_FREE_SLOTS ? (SURFACE_WIDTH - cardWidth) / (cardCount - 1) : cardWidth
+  const header: Rect = { x: PAGE_PADDING, y: top, width: SURFACE_WIDTH, height: HEADER_HEIGHT }
+  const panelTop = top + HEADER_HEIGHT + HEADER_GAP
   const cards = Array.from({ length: cardCount }, (_, index) => ({
-    x: left + ZONE_PADDING + index * step,
-    y: gridTop,
-    width: CARD_WIDTH,
+    x: PAGE_PADDING + index * step,
+    y: panelTop,
+    width: cardWidth,
     height: cardHeight,
   }))
 
   return {
     zone,
-    panel: { x: left, y: top, width: CONTENT_WIDTH, height: ZONE_HEADER_HEIGHT + cardHeight + ZONE_PADDING },
+    header,
+    panel: { x: PAGE_PADDING, y: panelTop, width: SURFACE_WIDTH, height: cardHeight },
     cards,
   }
 }

@@ -127,21 +127,33 @@ describe('computeDeckImageLayout', () => {
     expect(layout.zones.map((zone) => zone.zone)).toEqual(['main', 'extra'])
   })
 
-  it('mantiene la proporción real, todo dentro del lienzo y el Main sin superponerse', () => {
-    const layout = computeDeckImageLayout({ main: 60, extra: 15, side: 15 })
-    const cards = allCards(layout)
+  const overlapping = (cards: ReadonlyArray<{ x: number; y: number; width: number; height: number }>) =>
+    cards.some((a, i) =>
+      cards.some((b, j) => i < j && a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height),
+    )
 
-    for (const rect of cards) {
+  it('mantiene la proporción real y todo dentro del lienzo; hasta 40 cartas el Main va en grilla de 10 sin superponerse', () => {
+    const layout = computeDeckImageLayout({ main: 40, extra: 15, side: 15 })
+
+    for (const rect of allCards(layout)) {
       expect(rect.height / rect.width).toBeCloseTo(614 / 421)
       expect(rect.x).toBeGreaterThanOrEqual(0)
       expect(rect.y + rect.height).toBeLessThanOrEqual(layout.height)
       expect(rect.x + rect.width).toBeLessThanOrEqual(layout.width)
     }
 
-    const mainCards = layout.zones[0]!.cards
-    const overlaps = mainCards.some((a, i) =>
-      mainCards.some((b, j) => i < j && a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height),
-    )
-    expect(overlaps).toBe(false)
+    const main = layout.zones[0]!
+    expect(new Set(main.cards.map((rect) => rect.y)).size).toBe(4)
+    expect(overlapping(main.cards)).toBe(false)
+  })
+
+  it('pasadas las 40 cartas el Main va en filas de 15 superpuestas, como el builder', () => {
+    const main = computeDeckImageLayout({ main: 44, extra: 0, side: 0 }).zones[0]!
+    const rowsY = [...new Set(main.cards.map((rect) => rect.y))]
+
+    expect(rowsY).toHaveLength(3)
+    expect(main.cards.filter((rect) => rect.y === rowsY[0]).length).toBe(15)
+    expect(main.cards[1]!.x - main.cards[0]!.x).toBeLessThan(main.cards[0]!.width)
+    expect(main.cards[14]!.x + main.cards[14]!.width).toBeCloseTo(main.panel.x + main.panel.width)
   })
 })
