@@ -243,7 +243,7 @@ function DetailCard({ comparison }: { comparison: BuildComparison }) {
     <Card padding="md" className="min-w-0">
       <details className="group">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-control focus-visible:outline-none focus-visible:shadow-focus [&::-webkit-details-marker]:hidden">
-          <SectionHeader as="h3" title="Dónde gana cada una" description="Por rol y por regla, en promedio." />
+          <SectionHeader as="h3" title="Dónde gana cada una" description="Por rol y por regla, en promedio. El veredicto sale de las manos limpias." />
           <Icon name="chevron-down" size={20} className="shrink-0 text-soft transition-transform duration-200 group-open:rotate-180" />
         </summary>
         <div className="mt-4 grid gap-5">

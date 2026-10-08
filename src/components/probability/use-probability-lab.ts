@@ -64,6 +64,7 @@ export function useProbabilityLab(
   )
 
   return {
+    allChecks,
     customPatterns,
     unavailablePatterns,
     availablePresets,

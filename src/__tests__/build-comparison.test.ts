@@ -93,9 +93,14 @@ describe('buildVerdict', () => {
   })
 
   it('detecta empate, ganador y cuando depende del turno', () => {
-    expect(buildVerdict(clean(0.001, -0.002), false).kind).toBe('equivalent')
-    expect(buildVerdict(clean(0.03, 0.02), false).kind).toBe('b')
-    expect(buildVerdict(clean(0.03, -0.02), false).kind).toBe('split')
-    expect(buildVerdict(null, false).kind).toBe('incomplete')
+    expect(buildVerdict('A', 'B', clean(0.001, -0.002), false).kind).toBe('equivalent')
+    expect(buildVerdict('A', 'B', clean(0.03, 0.02), false).kind).toBe('b')
+    expect(buildVerdict('A', 'B', clean(0.03, -0.02), false).kind).toBe('split')
+    expect(buildVerdict('A', 'B', null, false).kind).toBe('incomplete')
+    // El veredicto nombra al deck; si se llaman igual, aclara con la letra.
+    expect(buildVerdict('Mitsurugi', 'Gatos', clean(0.03, 0.02), false).title).toBe('Gatos es mejor')
+    expect(buildVerdict('Mitsurugi', 'Gatos', clean(-0.03, -0.02), false).title).toBe('Mitsurugi es mejor')
+    expect(buildVerdict('Deck', 'Deck', clean(0.03, 0.02), false).title).toBe('Deck (B) es mejor')
+    expect(buildVerdict('Mitsurugi', 'Gatos', clean(0.03, -0.02), false).detail).toBe('Gatos es mejor yendo 1º y Mitsurugi yendo 2º.')
   })
 })

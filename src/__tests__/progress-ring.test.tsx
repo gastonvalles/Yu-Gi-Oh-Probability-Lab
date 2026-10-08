@@ -114,9 +114,9 @@ describe('SegmentedRing', () => {
     const [, first, second] = Array.from(container.querySelectorAll('circle'))
     const length = (circle: Element | undefined) => Number(circle?.getAttribute('stroke-dasharray')?.split(' ')[0])
 
-    // Cada tramo pierde 3 px de separación; el segundo mide la mitad que el primero (más la separación).
-    expect(length(first)).toBeCloseTo((0.5 / 0.75) * circumference - 3, 5)
-    expect(length(second)).toBeCloseTo((0.25 / 0.75) * circumference - 3, 5)
+    // Con puntas redondas cada tramo pierde el grosor del trazo más 3 px de separación.
+    expect(length(first)).toBeCloseTo((0.5 / 0.75) * circumference - 13, 5)
+    expect(length(second)).toBeCloseTo((0.25 / 0.75) * circumference - 13, 5)
     expect(screen.getByRole('img', { name: 'Reparto' })).toBeInTheDocument()
   })
 
