@@ -82,7 +82,7 @@ export function isCardPendingClassification(card: Pick<CardEntry, 'origin' | 'ro
 }
 
 /** Resultado del Lab de cada build; `undefined` = todavía en curso (se calcula en workers, ver `buildComparisonInputs`). */
-export interface ComparisonComputations {
+interface ComparisonComputations {
   a: LabComputation | null | undefined
   b: LabComputation | null | undefined
 }

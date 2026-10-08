@@ -60,6 +60,9 @@ interface DeckImportDrawerProps {
 }
 
 const FILE_ACCEPT = '.txt,.json,.ydk,application/json,text/plain'
+/** Una lista de deck pesa unos pocos KB: por encima de esto no es una lista y sólo trabaría la pestaña. */
+const MAX_IMPORT_FILE_BYTES = 2 * 1024 * 1024
+const MAX_IMPORT_TEXT_LENGTH = 20_000
 
 // --- Task 3.3: CollapsibleSection ---
 
@@ -285,6 +288,13 @@ export function DeckImportDrawer({
 
     // Use file name (without extension) as deck name
     const fileDeckName = file.name.replace(/\.[^.]+$/, '').trim() || deckBuilder.deckName
+
+    if (file.size > MAX_IMPORT_FILE_BYTES) {
+      setPreview(null)
+      setFormError('El archivo pesa más de 2 MB: una lista de deck ocupa unos pocos KB.')
+      setIsProcessing(false)
+      return
+    }
 
     try {
       const fileText = await file.text()
@@ -513,6 +523,8 @@ export function DeckImportDrawer({
                     <div className="grid gap-2.5">
                       <textarea
                         aria-label="Lista de cartas"
+                        // Una lista real pesa unos pocos KB: el tope evita pegar un archivo gigante por error.
+                        maxLength={MAX_IMPORT_TEXT_LENGTH}
                         value={inputValue}
                         onChange={(event) => {
                           setInputValue(event.target.value)

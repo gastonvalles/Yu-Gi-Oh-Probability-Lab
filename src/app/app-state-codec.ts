@@ -1,3 +1,4 @@
+import { clampCardDescription, keepCardImageUrl } from '../ygoprodeck/parser'
 import { buildGenesysCardInfo } from './genesys-format'
 import { normalizeRuleName } from './pattern-presets'
 import { parseCardAttribute } from './card-attributes'
@@ -100,7 +101,8 @@ export function fromPortableConfig(value: unknown): AppState {
     throw new Error('La configuración debe ser un objeto JSON.')
   }
 
-  const handSize = parseRequiredInteger(value.handSize, 'handSize')
+  // Ningún control de la app lo cambia: sólo llega del almacenamiento. Fuera de 1..10 la enumeración explota.
+  const handSize = Math.min(10, Math.max(1, parseRequiredInteger(value.handSize, 'handSize')))
   const deckFormat = parseDeckFormat(value.deckFormat)
   const patternsSeedVersion = parseOptionalInteger(value.patternsSeedVersion, 0)
 
@@ -222,7 +224,7 @@ function parseApiCardReference(value: unknown, fieldName: string, cardName: stri
     ygoprodeckId: parseRequiredInteger(value.ygoprodeckId, `${fieldName}.ygoprodeckId`),
     cardType: parseRequiredString(value.cardType, `${fieldName}.cardType`),
     frameType: parseRequiredString(value.frameType, `${fieldName}.frameType`),
-    description: parseNullableString(value.description),
+    description: clampCardDescription(parseNullableString(value.description)),
     race: parseNullableString(value.race),
     attribute: parseNullableString(value.attribute),
     level: parseNullableInteger(value.level),
@@ -231,8 +233,8 @@ function parseApiCardReference(value: unknown, fieldName: string, cardName: stri
     def: parseNullableDisplayString(value.def),
     archetype: parseNullableString(value.archetype),
     ygoprodeckUrl: parseNullableString(value.ygoprodeckUrl),
-    imageUrl: parseNullableString(value.imageUrl),
-    imageUrlSmall: parseNullableString(value.imageUrlSmall),
+    imageUrl: keepCardImageUrl(parseNullableString(value.imageUrl)),
+    imageUrlSmall: keepCardImageUrl(parseNullableString(value.imageUrlSmall)),
     banlist: parseCardBanlistInfo(value.banlist),
     genesys: parseGenesysInfo(value.genesys, cardName),
   }

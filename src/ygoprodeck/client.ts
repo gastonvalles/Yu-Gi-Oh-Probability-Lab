@@ -5,6 +5,7 @@ const NETWORK_ERROR_MESSAGE = 'No se pudo conectar con YGOPRODeck. Revisá tu co
 const GENERIC_ERROR_MESSAGE = 'No se pudo consultar YGOPRODeck.'
 // Subí la versión si cambia el formato de lo que se guarda.
 const PERSISTENT_CACHE_NAME = 'ygoprodeck-cardinfo-v1'
+const REQUEST_TIMEOUT_MS = 20_000
 
 interface RequestOptions {
   /**
@@ -26,7 +27,8 @@ export async function requestCardInfo(params: URLSearchParams, { persistForMs }:
   let response: Response
 
   try {
-    response = await fetch(url)
+    // Un pedido colgado no deja el buscador girando para siempre.
+    response = await fetch(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) })
   } catch {
     // Sin red: una copia vencida sigue siendo mejor que nada.
     if (stored) {

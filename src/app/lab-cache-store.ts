@@ -4,7 +4,7 @@ import type { LabComputation } from './probability-lab'
  * Resultados del Lab guardados en el dispositivo: abrir la app de nuevo con el mismo deck y las mismas
  * reglas muestra el resultado al instante, sin volver a enumerar todas las manos.
  */
-const STORAGE_KEY = 'ygo-lab-cache:v1'
+export const LAB_CACHE_KEY = 'ygo-lab-cache:v1'
 const MAX_ENTRIES = 4
 
 interface Stored {
@@ -15,16 +15,22 @@ interface Stored {
 
 let loaded: Stored | null = null
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
 function load(): Stored {
   if (loaded) {
     return loaded
   }
 
   try {
-    const raw = typeof localStorage === 'undefined' ? null : localStorage.getItem(STORAGE_KEY)
-    const parsed = raw ? (JSON.parse(raw) as Stored) : null
+    const raw = typeof localStorage === 'undefined' ? null : localStorage.getItem(LAB_CACHE_KEY)
+    const parsed: unknown = raw ? JSON.parse(raw) : null
 
-    loaded = parsed && Array.isArray(parsed.order) && parsed.entries ? parsed : { order: [], entries: {} }
+    loaded =
+      isRecord(parsed) && Array.isArray(parsed.order) && isRecord(parsed.entries)
+        ? { order: parsed.order.filter((key): key is string => typeof key === 'string'), entries: parsed.entries as Record<string, LabComputation> }
+        : { order: [], entries: {} }
   } catch {
     loaded = { order: [], entries: {} }
   }
@@ -32,8 +38,22 @@ function load(): Stored {
   return loaded
 }
 
+/** Un resultado guardado con otra forma (versión vieja, dato corrupto) se ignora en vez de romper al dibujar. */
+function isUsableComputation(value: unknown): value is LabComputation {
+  return (
+    isRecord(value) &&
+    value.status === 'ok' &&
+    isRecord(value.results) &&
+    isRecord(value.results.first) &&
+    isRecord(value.results.second) &&
+    isRecord(value.results.average) &&
+    Array.isArray(value.issues)
+  )
+}
+
 export function readPersistedComputation(key: string): LabComputation | null {
-  return load().entries[key] ?? null
+  const entry: unknown = load().entries[key]
+  return isUsableComputation(entry) ? entry : null
 }
 
 /** Guarda el resultado sin bloquear: la serialización se hace cuando el navegador está libre. */
@@ -53,7 +73,7 @@ export function persistComputation(key: string, computation: LabComputation): vo
 
   const write = () => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(store))
+      localStorage.setItem(LAB_CACHE_KEY, JSON.stringify(store))
     } catch {
       // Sin espacio o sin acceso: el resultado igual queda en memoria.
     }

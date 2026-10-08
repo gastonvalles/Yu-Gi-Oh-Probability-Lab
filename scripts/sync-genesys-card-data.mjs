@@ -3,6 +3,9 @@ import path from 'node:path'
 
 const GENESYS_SEARCH_ENDPOINT = 'https://registration.yugioh-card.com/genesys/CardListSearch/Search'
 const RESULTS_PER_PAGE = 100
+const MAX_PAGES_PER_TYPE = 200
+const REQUEST_TIMEOUT_MS = 30_000
+const POINT_CAP = 100
 const SEARCH_TYPES = ['1', '2', '3', '4']
 const OUTPUT_PATH = path.resolve(process.cwd(), 'src/data/genesys-card-data.json')
 
@@ -14,6 +17,11 @@ async function main() {
     collectCards(cards, firstPage.Result.Results)
 
     const totalPages = firstPage.Result.TotalPages
+
+    // El sitio es externo: un TotalPages roto no puede dejarnos paginando para siempre.
+    if (!Number.isInteger(totalPages) || totalPages < 1 || totalPages > MAX_PAGES_PER_TYPE) {
+      throw new Error(`Genesys search returned an unexpected TotalPages (${String(totalPages)}) for type ${searchType}.`)
+    }
 
     for (let currentPage = 2; currentPage <= totalPages; currentPage += 1) {
       const nextPage = await requestGenesysSearchPage(searchType, currentPage)
@@ -60,6 +68,7 @@ async function requestGenesysSearchPage(searchType, currentPage) {
       'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
     },
     body,
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   })
 
   if (!response.ok) {
@@ -77,7 +86,8 @@ async function requestGenesysSearchPage(searchType, currentPage) {
 
 function collectCards(cards, results) {
   for (const result of results) {
-    if (typeof result?.Name !== 'string' || typeof result?.Points !== 'number') {
+    // Puntos fuera de 0..cap serían un dato roto del sitio: no se escriben al repo.
+    if (typeof result?.Name !== 'string' || !Number.isInteger(result?.Points) || result.Points < 0 || result.Points > POINT_CAP) {
       continue
     }
 

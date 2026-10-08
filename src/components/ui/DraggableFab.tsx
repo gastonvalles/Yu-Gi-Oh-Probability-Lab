@@ -26,7 +26,8 @@ interface DraggableFabProps {
 function readPosition(key: string): FabPosition | null {
   try {
     const parsed = JSON.parse(localStorage.getItem(key) ?? 'null') as Partial<FabPosition> | null
-    return typeof parsed?.x === 'number' && typeof parsed?.y === 'number' ? { x: parsed.x, y: parsed.y } : null
+    // NaN o Infinity guardados a mano dejarían el botón en translate3d(NaNpx…): sólo valen números finitos.
+    return Number.isFinite(parsed?.x) && Number.isFinite(parsed?.y) ? { x: parsed!.x as number, y: parsed!.y as number } : null
   } catch {
     return null
   }
