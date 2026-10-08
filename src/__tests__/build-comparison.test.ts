@@ -11,7 +11,7 @@ function card(id: string, copies: number, roles: CardRole[], origin: CardEntry['
 }
 
 const filler = (count: number, prefix = 'f') =>
-  Array.from({ length: count }, (_, index) => card(`${prefix}${index}`, 1, ['combo_piece']))
+  Array.from({ length: count }, (_, index) => card(`${prefix}${index}`, 1, ['enabler']))
 
 const BASE = [card('s1', 3, ['starter']), card('s2', 3, ['starter']), card('b1', 3, ['brick']), ...filler(31)]
 const RULES = { patterns: [], disabledGenericRuleIds: [], handSize: 5 }

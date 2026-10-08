@@ -9,7 +9,7 @@ import type { CardEntry } from '../types'
 const card = (id: string, copies: number, roles: CardEntry['roles']): CardEntry => ({
   id, name: id, copies, source: 'manual', apiCard: null, origin: 'engine', roles, needsReview: false,
 })
-const cards = [card('m', 3, ['handtrap']), card('s', 3, ['starter']), card('f', 34, ['combo_piece'])]
+const cards = [card('m', 3, ['disruption']), card('s', 3, ['starter']), card('f', 34, ['enabler'])]
 const rule = (ignoresDraw: boolean) => ({
   ...createMatcherPattern('2+ M', 'opening', [{ matcher: { type: 'card', value: 'm' }, quantity: 2, kind: 'include' }], { turnContext: 'second' }),
   ignoresDraw,

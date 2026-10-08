@@ -17,11 +17,11 @@ import type {
 // Arbitraries
 // ---------------------------------------------------------------------------
 
-const arbCardOrigin: fc.Arbitrary<CardOrigin> = fc.constantFrom('engine', 'non_engine', 'hybrid')
+const arbCardOrigin: fc.Arbitrary<CardOrigin> = fc.constantFrom('engine', 'non_engine')
 const arbCardRole: fc.Arbitrary<CardRole> = fc.constantFrom(
-  'starter', 'extender', 'enabler', 'handtrap', 'disruption',
-  'boardbreaker', 'floodgate', 'removal', 'searcher', 'draw',
-  'recovery', 'combo_piece', 'payoff', 'brick', 'garnet', 'tech',
+  'starter', 'extender', 'enabler', 'disruption', 'disruption',
+  'boardbreaker', 'disruption', 'boardbreaker', 'searcher', 'searcher',
+  'recovery', 'enabler', 'payoff', 'brick', 'brick', 'tech',
 )
 const arbPatternKind: fc.Arbitrary<PatternKind> = fc.constantFrom('opening', 'problem')
 const arbPatternLogic: fc.Arbitrary<PatternLogic> = fc.constantFrom('all', 'any')

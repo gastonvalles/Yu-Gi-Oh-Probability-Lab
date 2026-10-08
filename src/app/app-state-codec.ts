@@ -11,6 +11,7 @@ import {
 } from './patterns'
 import {
   normalizeCardOriginKey,
+  resolveStoredCardOrigin,
   normalizeCardRoleKey,
   parseStoredGroupKey,
 } from './deck-groups'
@@ -198,7 +199,7 @@ function parseDeckZone(value: unknown, fieldName: string) {
 
     const name = parseRequiredString(item.name, `${fieldName}[${index}].name`)
     const { roles, needsReview: hasRoleReviewPending } = parseCardRoles(item.roles)
-    const { origin, needsReview: hasOriginReviewPending } = parseCardOrigin(item.origin)
+    const { origin, needsReview: hasOriginReviewPending } = parseCardOrigin(item.origin, roles)
 
     return {
       instanceId: createId('deck-card'),
@@ -321,8 +322,8 @@ function parseCardRoles(value: unknown): { roles: CardRole[]; needsReview: boole
   }
 }
 
-function parseCardOrigin(value: unknown): { origin: CardOrigin | null; needsReview: boolean } {
-  const origin = normalizeCardOriginKey(value)
+function parseCardOrigin(value: unknown, roles: readonly CardRole[]): { origin: CardOrigin | null; needsReview: boolean } {
+  const origin = resolveStoredCardOrigin(value, roles)
 
   return {
     origin,

@@ -1,6 +1,6 @@
 import { memo, useCallback, useMemo, useState } from 'react'
 
-import type { CardEntry, CardRole, CardType, Matcher } from '../../../types'
+import type { CardEntry, CardOrigin, CardRole, CardType, Matcher } from '../../../types'
 import { CARD_ORIGIN_DEFINITIONS, CARD_ROLE_DEFINITIONS } from '../../../app/deck-groups'
 import {
   buildDerivedDeckAttributes,
@@ -322,7 +322,7 @@ function buildSections(cards: CardEntry[], used: ReadonlyMap<string, number>): P
       'origin',
       'Origen',
       buildOriginCounts(cards).filter((origin) => origin.copies > 0).map((origin) => ({ key: origin.value, label: origin.label, copies: origin.copies })),
-      (row) => ({ type: 'origin', value: row.key as 'engine' | 'non_engine' | 'hybrid' }),
+      (row) => ({ type: 'origin', value: row.key as CardOrigin }),
     ),
     group(
       'attribute',
@@ -433,7 +433,7 @@ function buildRoleCounts(cards: CardEntry[]): RoleCount[] {
 }
 
 interface OriginCount {
-  value: 'engine' | 'non_engine' | 'hybrid'
+  value: CardOrigin
   label: string
   copies: number
 }
@@ -453,14 +453,8 @@ function buildOriginCounts(cards: CardEntry[]): OriginCount[] {
   })
 }
 
-function matchesOrigin(
-  origin: CardEntry['origin'],
-  target: 'engine' | 'non_engine' | 'hybrid',
-): boolean {
-  if (origin === null) return false
-  if (target === 'engine') return origin === 'engine' || origin === 'hybrid'
-  if (target === 'non_engine') return origin === 'non_engine' || origin === 'hybrid'
-  return origin === 'hybrid'
+function matchesOrigin(origin: CardEntry['origin'], target: CardOrigin): boolean {
+  return origin === target
 }
 
 interface CardTypeCount {

@@ -24,7 +24,7 @@ export function ClassificationFields({ origin, roles, onSetOrigin, onToggleRole,
     <div className="grid gap-4">
       <section className="grid gap-2" aria-label="Origen">
         <p className={KICKER}>¿Dónde encaja en tu plan?</p>
-        <div className="grid gap-1.5 min-[560px]:grid-cols-3 min-[560px]:gap-2">
+        <div className="grid gap-1.5 min-[560px]:grid-cols-2 min-[560px]:gap-2">
           {CARD_ORIGIN_DEFINITIONS.map((definition) => {
             const active = origin === definition.key.value
             const muted = origin !== null && !active

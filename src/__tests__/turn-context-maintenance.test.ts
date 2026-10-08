@@ -43,7 +43,7 @@ function makeFixedDeck(): CardEntry[] {
     makeCard('c-starter-1', 'Starter A', 3, 'engine', ['starter']),
     makeCard('c-starter-2', 'Starter B', 3, 'engine', ['starter']),
     makeCard('c-extender-1', 'Extender A', 3, 'engine', ['extender']),
-    makeCard('c-handtrap-1', 'Handtrap A', 3, 'non_engine', ['handtrap']),
+    makeCard('c-handtrap-1', 'Handtrap A', 3, 'non_engine', ['disruption']),
     makeCard('c-brick-1', 'Brick A', 2, 'engine', ['brick']),
     makeCard('c-brick-2', 'Brick B', 1, 'engine', ['brick']),
   ]
@@ -70,7 +70,7 @@ const arbRoleMatcher: fc.Arbitrary<Matcher> = fc.constantFrom<Matcher>(
   { type: 'role', value: 'starter' },
   { type: 'role', value: 'extender' },
   { type: 'role', value: 'brick' },
-  { type: 'role', value: 'handtrap' },
+  { type: 'role', value: 'disruption' },
 )
 
 function arbLegacyPattern(): fc.Arbitrary<HandPattern> {

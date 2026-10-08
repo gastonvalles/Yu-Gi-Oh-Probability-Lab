@@ -3,6 +3,7 @@ import { createInitialState, CLASSIFICATION_OVERRIDES_KEY, STORAGE_KEY } from '.
 import { fromPortableConfig, toPortableConfig } from './app-state-codec'
 import { normalizeCardNameForLookup, type ClassificationSuggestion } from './classification-engine'
 import { invalidateClassificationOverridesCache } from './classification-overrides'
+import { normalizeStoredRoles, resolveStoredCardOrigin } from './deck-groups'
 
 export function loadState(): AppState {
   try {
@@ -32,9 +33,23 @@ export function loadClassificationOverrides(): Map<string, ClassificationSuggest
     if (!raw) return new Map()
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return new Map()
-    return new Map(parsed.filter(([key, val]: unknown[]) =>
-      typeof key === 'string' && val && typeof val === 'object' && 'origin' in val && 'roles' in val
-    ))
+    const overrides = new Map<string, ClassificationSuggestion>()
+
+    for (const [key, val] of parsed as unknown[][]) {
+      if (typeof key !== 'string' || !val || typeof val !== 'object' || !('origin' in val) || !('roles' in val)) {
+        continue
+      }
+
+      // Roles u orígenes que ya no existen (Handtrap, Hybrid…) pasan a su equivalente.
+      const roles = normalizeStoredRoles(val.roles)
+      const origin = resolveStoredCardOrigin(val.origin, roles)
+
+      if (origin) {
+        overrides.set(key, { origin, roles })
+      }
+    }
+
+    return overrides
   } catch {
     return new Map()
   }

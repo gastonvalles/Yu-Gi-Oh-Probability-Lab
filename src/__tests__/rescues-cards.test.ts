@@ -9,7 +9,7 @@ import type { CardEntry } from '../types'
 const card = (id: string, copies: number, roles: CardEntry['roles']): CardEntry => ({
   id, name: id, copies, source: 'manual', apiCard: null, origin: 'engine', roles, needsReview: false,
 })
-const cards = [card('g', 3, ['garnet']), card('r', 3, ['combo_piece']), card('s', 3, ['starter']), card('f', 31, ['combo_piece'])]
+const cards = [card('g', 3, ['brick']), card('r', 3, ['enabler']), card('s', 3, ['starter']), card('f', 31, ['enabler'])]
 
 const problem = createMatcherPattern('2+ muertas', 'problem', [
   { matcher: { type: 'card_pool', value: ['g', 'r'] }, quantity: 2, kind: 'include' },

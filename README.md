@@ -10,8 +10,8 @@ La idea central es ayudar a entender deck building con un flujo simple: armás e
 - Formatos: Sin límite, TCG, OCG, GOAT, Edison y Genesys (con banlist o puntos).
 - Importación de decks desde archivos `.ydk`, `.txt` o `.json`.
 - Clasificación por carta en dos ejes independientes:
-  - `origin`: `engine`, `non_engine`, `hybrid`.
-  - `roles`: `starter`, `extender`, `enabler`, `searcher`, `draw`, `combo_piece`, `payoff`, `recovery`, `handtrap`, `disruption`, `boardbreaker`, `floodgate`, `removal`, `brick`, `garnet`, `tech`.
+  - `origin`: `engine`, `non_engine`.
+  - `roles`: `starter`, `extender`, `enabler`, `searcher`, `payoff`, `recovery`, `disruption`, `boardbreaker`, `brick`, `tech`.
 - Aperturas y Problemas para medir consistencia real.
 - Probabilidad exacta (enumeración combinatoria), yendo primero, segundo o en promedio.
 - Práctica de manos para ver ejemplos concretos.
@@ -35,9 +35,9 @@ La app separa explícitamente dos dimensiones:
 Eso evita mezclar pertenencia con función. Ejemplo:
 
 - `origin: engine` + `roles: [starter, extender]`
-- `origin: non_engine` + `roles: [handtrap, disruption]`
+- `origin: non_engine` + `roles: [disruption]`
 - `origin: engine` + `roles: [brick]`
-- `origin: hybrid` + `roles: [extender, boardbreaker]`
+- `origin: engine` + `roles: [extender, boardbreaker]`
 
 ## Conceptos clave
 

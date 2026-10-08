@@ -8,12 +8,12 @@ import type { ApiCardReference, CardRole, CardOrigin } from '../types'
 // ── Helpers ──
 
 const ALL_ROLES: CardRole[] = [
-  'starter', 'extender', 'enabler', 'handtrap', 'disruption',
-  'boardbreaker', 'floodgate', 'removal', 'searcher', 'draw',
-  'recovery', 'combo_piece', 'payoff', 'brick', 'garnet', 'tech',
+  'starter', 'extender', 'enabler', 'disruption', 'disruption',
+  'boardbreaker', 'disruption', 'boardbreaker', 'searcher', 'searcher',
+  'recovery', 'enabler', 'payoff', 'brick', 'brick', 'tech',
 ]
 
-const KPI_ROLES: KpiRole[] = ['starter', 'handtrap', 'brick', 'boardbreaker']
+const KPI_ROLES: KpiRole[] = ['starter', 'disruption', 'brick', 'boardbreaker']
 
 function makeApiCard(id: number): ApiCardReference {
   return {
@@ -57,7 +57,7 @@ function makeDeckCardInstance(
 
 const arbKpiRole: fc.Arbitrary<KpiRole> = fc.constantFrom(...KPI_ROLES)
 
-const arbCardOrigin: fc.Arbitrary<CardOrigin> = fc.constantFrom('engine', 'non_engine', 'hybrid')
+const arbCardOrigin: fc.Arbitrary<CardOrigin> = fc.constantFrom('engine', 'non_engine')
 
 /**
  * Generates a main deck with 1-15 cards where some ygoprodeckIds may repeat
@@ -136,7 +136,7 @@ describe('getKpiDetailCards — Property Tests', () => {
           expect(new Set(ids).size).toBe(ids.length)
 
           // 2. Determine which roles to match
-          const matchRoles: CardRole[] = role === 'brick' ? ['brick', 'garnet'] : [role]
+          const matchRoles: CardRole[] = role === 'brick' ? ['brick'] : [role]
 
           // 3. Every card in result matches the role filter
           for (const card of result.cards) {
@@ -190,7 +190,7 @@ describe('getKpiDetailCards — Property Tests', () => {
       fc.assert(
         fc.property(arbMainDeckWithEdits, arbKpiRole, ({ deck, editsMap }, role) => {
           const result = getKpiDetailCards(deck, role, editsMap)
-          const matchRoles: CardRole[] = role === 'brick' ? ['brick', 'garnet'] : [role]
+          const matchRoles: CardRole[] = role === 'brick' ? ['brick'] : [role]
 
           // For each card in the result, verify it matches using effective roles
           for (const card of result.cards) {
@@ -252,7 +252,7 @@ describe('getKpiDetailCards — Example-Based Tests', () => {
       const mainDeck: DeckCardInstance[] = [
         makeDeckCardInstance('Brick Card A', 1, ['brick'], 'engine'),
         makeDeckCardInstance('Brick Card B', 2, ['brick'], 'engine'),
-        makeDeckCardInstance('Garnet Card', 3, ['garnet'], 'engine'),
+        makeDeckCardInstance('Garnet Card', 3, ['brick'], 'engine'),
         makeDeckCardInstance('Starter Card', 4, ['starter'], 'engine'),
       ]
 
@@ -274,11 +274,11 @@ describe('getKpiDetailCards — Example-Based Tests', () => {
       ]
 
       const editsMap: CardEditMap = new Map([
-        [10, { origin: 'non_engine', roles: ['handtrap'] }],
+        [10, { origin: 'non_engine', roles: ['disruption'] }],
       ])
 
       // Searching for handtraps: should find card 10 (edited) but not card 20
-      const handtrapResult = getKpiDetailCards(mainDeck, 'handtrap', editsMap)
+      const handtrapResult = getKpiDetailCards(mainDeck, 'disruption', editsMap)
       expect(handtrapResult.cards).toHaveLength(1)
       expect(handtrapResult.cards[0].ygoprodeckId).toBe(10)
       expect(handtrapResult.totalCopies).toBe(1)
@@ -336,7 +336,7 @@ describe('getKpiDetailCards — Example-Based Tests', () => {
       const mainDeck: DeckCardInstance[] = [
         makeDeckCardInstance('Only Starter', 1, ['starter'], 'engine'),
       ]
-      const result = getKpiDetailCards(mainDeck, 'handtrap')
+      const result = getKpiDetailCards(mainDeck, 'disruption')
       expect(result.cards).toEqual([])
       expect(result.totalCopies).toBe(0)
       expect(result.mainDeckSize).toBe(1)
@@ -345,11 +345,11 @@ describe('getKpiDetailCards — Example-Based Tests', () => {
 
     it('deduplicates by ygoprodeckId and sums copies', () => {
       const mainDeck: DeckCardInstance[] = [
-        makeDeckCardInstance('Ash Blossom', 100, ['handtrap'], 'non_engine'),
-        makeDeckCardInstance('Ash Blossom', 100, ['handtrap'], 'non_engine'),
-        makeDeckCardInstance('Ash Blossom', 100, ['handtrap'], 'non_engine'),
+        makeDeckCardInstance('Ash Blossom', 100, ['disruption'], 'non_engine'),
+        makeDeckCardInstance('Ash Blossom', 100, ['disruption'], 'non_engine'),
+        makeDeckCardInstance('Ash Blossom', 100, ['disruption'], 'non_engine'),
       ]
-      const result = getKpiDetailCards(mainDeck, 'handtrap')
+      const result = getKpiDetailCards(mainDeck, 'disruption')
       expect(result.cards).toHaveLength(1)
       expect(result.cards[0].copies).toBe(3)
       expect(result.totalCopies).toBe(3)

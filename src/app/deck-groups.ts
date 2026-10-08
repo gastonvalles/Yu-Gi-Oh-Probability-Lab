@@ -41,25 +41,18 @@ const ROLE_THEME_BY_KEY: Record<CardRole, ClassificationTheme> = {
   starter: { color: '#9b00ff', rgb: '155 0 255' },
   extender: { color: '#00ffa3', rgb: '0 255 163' },
   enabler: { color: '#14b8a6', rgb: '20 184 166' },
-  handtrap: { color: '#3b82f6', rgb: '59 130 246' },
   disruption: { color: '#2563eb', rgb: '37 99 235' },
   boardbreaker: { color: '#f59e0b', rgb: '245 158 11' },
-  floodgate: { color: '#a855f7', rgb: '168 85 247' },
-  removal: { color: '#f97316', rgb: '249 115 22' },
   searcher: { color: '#06b6d4', rgb: '6 182 212' },
-  draw: { color: '#38bdf8', rgb: '56 189 248' },
   recovery: { color: '#22c55e', rgb: '34 197 94' },
-  combo_piece: { color: '#8b5cf6', rgb: '139 92 246' },
   payoff: { color: '#10b981', rgb: '16 185 129' },
   brick: { color: '#ef4444', rgb: '239 68 68' },
-  garnet: { color: '#b91c1c', rgb: '185 28 28' },
   tech: { color: '#94a3b8', rgb: '148 163 184' },
 }
 
 const ORIGIN_THEME_BY_KEY: Record<CardOrigin, ClassificationTheme> = {
   engine: { color: 'var(--primary)', rgb: 'var(--primary-rgb)' },
   non_engine: { color: 'var(--accent)', rgb: 'var(--accent-rgb)' },
-  hybrid: { color: 'var(--warning)', rgb: 'var(--warning-rgb)' },
 }
 
 export function createOriginGroupKey(value: CardOrigin): Extract<GroupKey, { type: 'origin' }> {
@@ -87,14 +80,6 @@ export const CARD_ORIGIN_DEFINITIONS: CardOriginDefinition[] = [
     description: 'Aporta interacción, cobertura o soporte por fuera del motor principal.',
     theme: ORIGIN_THEME_BY_KEY.non_engine,
   },
-  {
-    kind: 'origin',
-    key: createOriginGroupKey('hybrid'),
-    label: 'Hybrid / Flex',
-    shortLabel: 'Hybrid',
-    description: 'Cruza ambos espacios. Cuenta tanto para Engine como para Non-engine.',
-    theme: ORIGIN_THEME_BY_KEY.hybrid,
-  },
 ]
 
 export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
@@ -119,7 +104,7 @@ export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
     key: createRoleGroupKey('enabler'),
     label: 'Enabler',
     shortLabel: 'Enabler',
-    description: 'Habilita una línea, condición o ventana que otras cartas necesitan para funcionar.',
+    description: 'Habilita la línea: pieza o condición que otras cartas necesitan para funcionar.',
     theme: ROLE_THEME_BY_KEY.enabler,
   },
   {
@@ -127,24 +112,8 @@ export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
     key: createRoleGroupKey('searcher'),
     label: 'Searcher',
     shortLabel: 'Searcher',
-    description: 'Busca piezas específicas del deck, GY o zonas públicas.',
+    description: 'Busca piezas del deck, GY o zonas públicas, o te hace robar más cartas.',
     theme: ROLE_THEME_BY_KEY.searcher,
-  },
-  {
-    kind: 'role',
-    key: createRoleGroupKey('draw'),
-    label: 'Draw',
-    shortLabel: 'Draw',
-    description: 'Repone o profundiza la mano con robo directo o filtrado fuerte.',
-    theme: ROLE_THEME_BY_KEY.draw,
-  },
-  {
-    kind: 'role',
-    key: createRoleGroupKey('combo_piece'),
-    label: 'Combo Piece',
-    shortLabel: 'Combo',
-    description: 'Pieza necesaria dentro de una secuencia concreta, aunque no arranque sola.',
-    theme: ROLE_THEME_BY_KEY.combo_piece,
   },
   {
     kind: 'role',
@@ -164,18 +133,10 @@ export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
   },
   {
     kind: 'role',
-    key: createRoleGroupKey('handtrap'),
-    label: 'Handtrap',
-    shortLabel: 'HT',
-    description: 'Interacción que frena al rival desde la mano.',
-    theme: ROLE_THEME_BY_KEY.handtrap,
-  },
-  {
-    kind: 'role',
     key: createRoleGroupKey('disruption'),
     label: 'Disruption',
     shortLabel: 'Disruption',
-    description: 'Interrumpe jugadas rivales durante la secuencia o en mesa.',
+    description: 'Frena al rival desde la mano o en mesa: handtraps, trampas, negaciones y floodgates.',
     theme: ROLE_THEME_BY_KEY.disruption,
   },
   {
@@ -183,40 +144,16 @@ export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
     key: createRoleGroupKey('boardbreaker'),
     label: 'Boardbreaker',
     shortLabel: 'Boardbreaker',
-    description: 'Rompe campo rival y abre espacio para jugar yendo segundo.',
+    description: 'Rompe campo o quita cartas del rival y abre espacio para jugar, sobre todo yendo segundo.',
     theme: ROLE_THEME_BY_KEY.boardbreaker,
-  },
-  {
-    kind: 'role',
-    key: createRoleGroupKey('floodgate'),
-    label: 'Floodgate',
-    shortLabel: 'Floodgate',
-    description: 'Limita líneas del rival por presencia o efecto continuo.',
-    theme: ROLE_THEME_BY_KEY.floodgate,
-  },
-  {
-    kind: 'role',
-    key: createRoleGroupKey('removal'),
-    label: 'Removal',
-    shortLabel: 'Removal',
-    description: 'Saca cartas del rival por destrucción, banish, bounce o similares.',
-    theme: ROLE_THEME_BY_KEY.removal,
   },
   {
     kind: 'role',
     key: createRoleGroupKey('brick'),
     label: 'Brick',
     shortLabel: 'Brick',
-    description: 'Carta que preferís no robar al inicio si no viene acompañada.',
+    description: 'Carta que preferís no robar: incómoda, o inútil en mano si no viene acompañada.',
     theme: ROLE_THEME_BY_KEY.brick,
-  },
-  {
-    kind: 'role',
-    key: createRoleGroupKey('garnet'),
-    label: 'Garnet',
-    shortLabel: 'Garnet',
-    description: 'Pieza que idealmente queda en deck porque en mano invalida o empeora una línea.',
-    theme: ROLE_THEME_BY_KEY.garnet,
   },
   {
     kind: 'role',
@@ -275,16 +212,57 @@ export function getQualifiedDeckGroupLabel(group: Pick<DeckGroupDefinition, 'kin
   return `${getDeckGroupKindLabel(group.kind)}: ${group.label}`
 }
 
-export function normalizeCardRoleKey(value: unknown): CardRole | null {
-  if (value === 'board_breaker') {
-    return 'boardbreaker'
-  }
+/** Roles que ya no existen y el que los reemplaza (se unificaron al simplificar la categorización). */
+const LEGACY_ROLE_REPLACEMENTS: Record<string, CardRole> = {
+  board_breaker: 'boardbreaker',
+  handtrap: 'disruption',
+  floodgate: 'disruption',
+  removal: 'boardbreaker',
+  draw: 'searcher',
+  combo_piece: 'enabler',
+  garnet: 'brick',
+}
 
+/** Roles que hacen avanzar tu propio plan (el resto frena al rival o es utilidad). */
+const GAME_PLAN_ROLE_KEYS: ReadonlySet<CardRole> = new Set(['starter', 'extender', 'enabler', 'searcher', 'payoff', 'recovery'])
+
+export function normalizeCardRoleKey(value: unknown): CardRole | null {
   if (typeof value !== 'string') {
     return null
   }
 
-  return CARD_ROLE_KEY_SET.has(value as CardRole) ? (value as CardRole) : null
+  return CARD_ROLE_KEY_SET.has(value as CardRole) ? (value as CardRole) : (LEGACY_ROLE_REPLACEMENTS[value] ?? null)
+}
+
+/** Roles guardados de una carta: los viejos se reemplazan por su equivalente y se quitan repetidos. */
+export function normalizeStoredRoles(value: unknown): CardRole[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  const roles: CardRole[] = []
+
+  for (const entry of value) {
+    const role = normalizeCardRoleKey(entry)
+
+    if (role && !roles.includes(role)) {
+      roles.push(role)
+    }
+  }
+
+  return roles
+}
+
+/**
+ * Origen guardado de una carta. El antiguo "Hybrid" ya no existe: pasa a Engine si la carta tiene algún
+ * rol de tu plan y a Non-engine si no.
+ */
+export function resolveStoredCardOrigin(value: unknown, roles: readonly CardRole[]): CardOrigin | null {
+  if (value === 'hybrid') {
+    return roles.some((role) => GAME_PLAN_ROLE_KEYS.has(role)) ? 'engine' : 'non_engine'
+  }
+
+  return normalizeCardOriginKey(value)
 }
 
 export function normalizeCardOriginKey(value: unknown): CardOrigin | null {
@@ -372,11 +350,8 @@ export function mergeCardOrigins(
     return nextOrigin
   }
 
-  if (currentOrigin === 'hybrid' || nextOrigin === 'hybrid') {
-    return 'hybrid'
-  }
-
-  return currentOrigin === nextOrigin ? currentOrigin : 'hybrid'
+  // Dos orígenes distintos para la misma carta: manda el de Engine.
+  return currentOrigin === 'engine' || nextOrigin === 'engine' ? 'engine' : currentOrigin
 }
 
 export function buildDerivedDeckGroups(cards: CardEntry[]): DerivedDeckGroup[] {
@@ -405,19 +380,7 @@ export function cardMatchesGroup(card: CardEntry, groupKey: GroupKey): boolean {
 }
 
 function matchesOriginGroup(origin: CardOrigin | null, groupKey: CardOrigin): boolean {
-  if (origin === null) {
-    return false
-  }
-
-  if (groupKey === 'engine') {
-    return origin === 'engine' || origin === 'hybrid'
-  }
-
-  if (groupKey === 'non_engine') {
-    return origin === 'non_engine' || origin === 'hybrid'
-  }
-
-  return origin === 'hybrid'
+  return origin === groupKey
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

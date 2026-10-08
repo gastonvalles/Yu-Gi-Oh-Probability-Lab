@@ -54,7 +54,7 @@ describe('layout de la mano', () => {
 })
 
 describe('reglas que aparecen mientras se reparte', () => {
-  const cards = [card('s', 3, ['starter']), card('b', 3, ['brick']), card('f', 20, ['combo_piece'])]
+  const cards = [card('s', 3, ['starter']), card('b', 3, ['brick']), card('f', 20, ['enabler'])]
   const groups = buildDerivedDeckGroupMap(cards)
   const deck = buildPracticeDeck(cards)
   const pick = (ids: string[]): PracticeHandCard[] =>
@@ -101,7 +101,7 @@ describe('casos de cumplimiento de una regla', () => {
     card('s1', 3, ['starter']),
     card('s2', 3, ['starter']),
     card('e', 3, ['extender']),
-    card('f', 20, ['combo_piece']),
+    card('f', 20, ['enabler']),
   ]
   const groups = buildDerivedDeckGroupMap(cards)
   const deck = buildPracticeDeck(cards)
