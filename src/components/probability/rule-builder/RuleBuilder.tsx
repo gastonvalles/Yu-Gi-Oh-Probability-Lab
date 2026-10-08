@@ -1,19 +1,21 @@
-import { useEffect, useMemo, useRef, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 
 import type { CardEntry, HandPattern } from '../../../types'
 import { getPatternMatchMode, normalizeMinimumConditionMatches } from '../../../app/patterns'
 import { buildPatternCompactSummary, buildPatternPreview } from '../pattern-helpers'
 import type { PatternEditorActions } from '../pattern-editor-actions'
 import { Button } from '../../ui/Button'
-import { cx } from '../../ui/cx'
+import { Callout } from '../../ui/Callout'
 import { overline } from '../../ui/typography'
 
-import { AdvancedSettings } from './AdvancedSettings'
 import { ConditionBlock } from './ConditionBlock'
 import { KindToggle } from './KindToggle'
 import { getConnectorWord, LogicSelector } from './LogicSelector'
 import { PatternNameInput } from './PatternNameInput'
-import { DrawCountToggle, TurnContextToggle } from './TurnContextToggle'
+import { RuleReadback } from './RuleReadback'
+import { RuleSettings } from './RuleSettings'
+import { RuleStep } from './RuleStep'
+import { TurnContextToggle } from './TurnContextToggle'
 
 interface RuleBuilderProps {
   actions: PatternEditorActions
@@ -22,6 +24,10 @@ interface RuleBuilderProps {
   pattern: HandPattern
 }
 
+/**
+ * Editor de una regla, de arriba abajo: nombre → tipo y turno → condiciones (con la regla leída
+ * en una frase debajo) → ajustes que sólo aparecen cuando aplican.
+ */
 export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, pattern }: RuleBuilderProps) {
   const cardById = useMemo(() => new Map(derivedMainCards.map((card) => [card.id, card])), [derivedMainCards])
   const summary = useMemo(() => buildPatternCompactSummary(pattern, cardById), [pattern, cardById])
@@ -49,16 +55,21 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
   }
 
   return (
-    <div className="grid gap-4">
-      <PatternNameInput
-        patternId={pattern.id}
-        currentName={pattern.name}
-        placeholderSummary={preview.items.some((item) => item.startsWith('(')) ? 'Nombre (opcional)' : summary}
-        isPendingCreation={isPendingCreation}
-        actions={actions}
-      />
+    <div className="grid gap-5">
+      {pattern.needsReview ? (
+        <Callout tone="warning">Esta regla viene de una versión anterior. Revisá estos ajustes antes de confiar en el resultado.</Callout>
+      ) : null}
 
       <div className="grid gap-2">
+        <RuleStep title="Nombre" inline>
+          <PatternNameInput
+            patternId={pattern.id}
+            currentName={pattern.name}
+            placeholderSummary={preview.items.some((item) => item.startsWith('(')) ? 'Opcional: si no, se usa el resumen' : summary}
+            isPendingCreation={isPendingCreation}
+            actions={actions}
+          />
+        </RuleStep>
         <RuleStep title="Tipo" inline>
           <KindToggle patternId={pattern.id} currentKind={pattern.kind} actions={actions} />
         </RuleStep>
@@ -114,22 +125,11 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
             Agregar condición
           </Button>
         )}
+
+        <RuleReadback pattern={pattern} cardById={cardById} />
       </RuleStep>
 
-      {pattern.turnContext !== 'first' ? (
-        <DrawCountToggle patternId={pattern.id} ignoresDraw={pattern.ignoresDraw === true} actions={actions} />
-      ) : null}
-      <AdvancedSettings pattern={pattern} actions={actions} derivedMainCards={derivedMainCards} />
+      <RuleSettings pattern={pattern} actions={actions} derivedMainCards={derivedMainCards} />
     </div>
-  )
-}
-
-/** Un paso del editor: título arriba, o (inline) título a la izquierda y el control a la derecha. */
-function RuleStep({ title, inline = false, children }: { title: string; inline?: boolean; children: ReactNode }) {
-  return (
-    <section className={cx('grid content-start gap-2', inline && 'min-[520px]:grid-cols-[4rem_minmax(0,1fr)] min-[520px]:items-center min-[520px]:gap-3')}>
-      <h4 className={cx('m-0', overline)}>{title}</h4>
-      {children}
-    </section>
   )
 }

@@ -72,6 +72,26 @@ type SelectionState = 'none' | 'some' | 'all'
 
 const fold = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
+/** Grupo del selector que corresponde a un criterio (clave de `buildSections`). */
+function defaultOpenKey(matcher: Matcher | null): string {
+  switch (matcher?.type) {
+    case 'card':
+    case 'card_pool':
+      return 'cards'
+    case 'archetype':
+    case 'card_type':
+    case 'origin':
+    case 'attribute':
+    case 'level':
+    case 'monster_type':
+    case 'atk':
+    case 'def':
+      return matcher.type
+    default:
+      return 'role'
+  }
+}
+
 export function CategoryPicker({
   patternId,
   conditionId,
@@ -123,8 +143,9 @@ export function CategoryPicker({
     [sections, isMulti, needle],
   )
 
-  // Acordeón: una sola pestaña abierta a la vez. Al buscar se abre la primera con resultados.
-  const [openKey, setOpenKey] = useState<string | null>(null)
+  // Acordeón: una sola pestaña abierta a la vez. Entra abierta la del criterio actual (o Roles, lo más
+  // usado) para no arrancar con todo plegado; al buscar se abre la primera con resultados.
+  const [openKey, setOpenKey] = useState<string | null>(() => defaultOpenKey(currentMatcher))
   const activeKey = visibleSections.some((section) => section.key === openKey)
     ? openKey
     : needle !== ''

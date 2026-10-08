@@ -5,6 +5,7 @@ import { useFocusTrap } from '../../app/use-focus-trap'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import type { CardEntry, HandPattern } from '../../types'
 import { Button } from '../ui/Button'
+import { cx } from '../ui/cx'
 import { DraftImpactSummary } from './DraftImpactSummary'
 import { CloseButton } from '../ui/IconButton'
 import type { PatternEditorActions } from './pattern-editor-actions'
@@ -22,6 +23,8 @@ interface PatternEditorDrawerProps {
   isPendingCreation?: boolean
   /** Texto del botón de guardar si no es el de crear una regla nueva. */
   saveLabel?: string
+  /** Pie del editor al crear: qué falta para poder guardar, o qué pasa al guardar. */
+  hint?: string
   onClose: () => void
   onRequestDelete: (patternId: string) => void
   onSave: () => void
@@ -39,6 +42,7 @@ export function PatternEditorDrawer({
   drawerMode,
   isPendingCreation = false,
   saveLabel,
+  hint = 'El análisis se actualiza al guardar.',
   onClose,
   onRequestDelete,
   onSave,
@@ -104,7 +108,7 @@ export function PatternEditorDrawer({
               <span className="max-[519px]:sr-only">Eliminar regla</span>
             </Button>
           ) : (
-            <span className="text-muted hidden text-micro min-[520px]:block">El análisis se actualiza al guardar.</span>
+            <span className={cx('hidden text-micro min-[520px]:block', canSave ? 'text-muted' : 'text-warning-soft')}>{hint}</span>
           )}
           <div className="grid min-w-0 flex-1 grid-cols-2 gap-2 min-[520px]:flex min-[520px]:flex-none">
             <Button variant="secondary" size="sm" fullWidth className="min-w-0 px-3 min-[520px]:w-auto min-[520px]:px-4" onClick={onClose}>

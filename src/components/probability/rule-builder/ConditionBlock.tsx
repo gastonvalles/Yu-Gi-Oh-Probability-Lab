@@ -2,14 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { getCopiesUsedByOtherConditions, getMaxConditionQuantity } from '../../../app/pattern-card-usage'
 import type { CardEntry, HandPattern, PatternCondition, RequirementKind } from '../../../types'
+import { cx } from '../../ui/cx'
+import { Icon } from '../../ui/Icon'
 import { CloseButton } from '../../ui/IconButton'
 import { Modal } from '../../ui/Modal'
+import { Stepper } from '../../ui/Stepper'
+import { TONE } from '../../ui/tone'
 import type { PatternEditorActions } from '../pattern-editor-actions'
 import { CategoryPicker } from './CategoryPicker'
-import { getConditionLabel } from './condition-labels'
-import { NumberField } from '../../ui/NumberField'
-import { cx } from '../../ui/cx'
-import { TONE } from '../../ui/tone'
+import { getConditionLabel, getKindLabel } from './condition-labels'
 
 interface ConditionBlockProps {
   index: number
@@ -22,15 +23,15 @@ interface ConditionBlockProps {
   onRemove: () => void
 }
 
-export function ConditionBlock({
-  index,
-  patternId,
-  pattern,
-  condition,
-  derivedMainCards,
-  actions,
-  onRemove,
-}: ConditionBlockProps) {
+/** Cada pieza de la "frase" de la condición: misma altura, separadas por una línea fina. */
+const SEGMENT =
+  'inline-flex min-h-10 items-center gap-1.5 px-3 text-body transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus'
+
+/**
+ * Una condición se lee como una frase: [Al menos] [− 2 +] [copias] [de qué cartas].
+ * Cada pieza se toca para cambiarla; la cantidad no pasa de las copias que hay en el deck.
+ */
+export function ConditionBlock({ index, patternId, pattern, condition, derivedMainCards, actions, onRemove }: ConditionBlockProps) {
   const [isPickerOpen, setIsPickerOpen] = useState(false)
   const categoryLabel = getConditionLabel(condition.matcher, derivedMainCards)
   const hasCategory = condition.matcher !== null
@@ -38,11 +39,13 @@ export function ConditionBlock({
     () => getCopiesUsedByOtherConditions(pattern, condition.id, derivedMainCards),
     [pattern, condition.id, derivedMainCards],
   )
-  // La cantidad no puede pasar de las copias que realmente hay en el deck.
   const maxQuantity = useMemo(
     () => getMaxConditionQuantity(condition, derivedMainCards, usedCopies),
     [condition, derivedMainCards, usedCopies],
   )
+  // Con una sola copia da lo mismo contar copias o nombres: el selector sólo aparece cuando importa
+  // (o si ya está en "nombres", para poder volver).
+  const showUnit = condition.quantity > 1 || condition.distinct
 
   // Si se elige algo que tiene menos copias que la cantidad pedida, la cantidad baja a lo que hay.
   useEffect(() => {
@@ -52,36 +55,38 @@ export function ConditionBlock({
   }, [actions, condition.id, condition.quantity, hasCategory, maxQuantity, patternId])
 
   return (
-    <article className="grid gap-2 border-b border-border-subtle pb-3 last:border-b-0 last:pb-0">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="inline-flex min-w-0 max-w-full items-stretch overflow-hidden rounded-control">
-          <KindSegment
-            value={condition.kind}
-            onChange={(kind) => actions.setRequirementKind(patternId, condition.id, kind)}
-          />
-          <QuantitySegment
+    <article className="grid gap-2 border-b border-border-subtle pb-3 last:border-b-0 last:pb-0" aria-label={`Condición ${index + 1}`}>
+      <div className="flex items-start gap-2">
+        <div className="flex min-w-0 flex-1 flex-wrap items-stretch divide-x divide-border-subtle overflow-hidden rounded-control bg-tint/4">
+          <KindSegment value={condition.kind} onChange={(kind) => actions.setRequirementKind(patternId, condition.id, kind)} />
+          <Stepper
+            variant="inline"
+            label="Cantidad"
             value={condition.quantity}
-            max={maxQuantity}
-            onChange={(qty) => actions.setRequirementCount(patternId, condition.id, String(qty))}
+            min={1}
+            max={Math.max(maxQuantity, condition.quantity)}
+            onChange={(quantity) => actions.setRequirementCount(patternId, condition.id, String(quantity))}
           />
+          {showUnit ? (
+            <UnitSegment distinct={condition.distinct} onChange={(distinct) => actions.setRequirementDistinct(patternId, condition.id, distinct)} />
+          ) : null}
           <button
             type="button"
             className={cx(
-              'min-w-0 px-3 py-2 text-left text-body font-medium transition-colors focus-visible:outline-none focus-visible:shadow-focus',
-              hasCategory ? 'bg-tint/4 text-foreground hover:bg-primary/12' : cx('text-warning-soft hover:bg-warning/16', 'bg-warning/10'),
+              SEGMENT,
+              // Si no le queda un ancho razonable en la fila, baja a la línea siguiente a todo lo ancho.
+              'min-w-[12rem] flex-1 justify-between text-left font-medium',
+              hasCategory ? 'text-foreground hover:bg-primary/12' : cx('bg-warning/10 hover:bg-warning/16', TONE.warning.text),
             )}
+            aria-label={hasCategory ? `Qué contar: ${categoryLabel}. Cambiar` : 'Elegí qué contar'}
             onClick={() => setIsPickerOpen(true)}
           >
-            {hasCategory ? categoryLabel : 'Elegí qué contar'}
+            <span className="min-w-0 truncate">{hasCategory ? categoryLabel : 'Elegí qué contar'}</span>
+            <Icon name="chevron-down" size={14} className="shrink-0 opacity-70" />
           </button>
         </div>
 
-        <CloseButton
-          size="sm"
-          className="ml-auto shrink-0"
-          aria-label={`Quitar condición ${index + 1}`}
-          onClick={onRemove}
-        />
+        <CloseButton size="sm" className="shrink-0" aria-label={`Quitar condición ${index + 1}`} onClick={onRemove} />
       </div>
 
       <Modal
@@ -108,47 +113,41 @@ export function ConditionBlock({
   )
 }
 
-function KindSegment({
-  value,
-  onChange,
-}: {
-  value: RequirementKind
-  onChange: (kind: RequirementKind) => void
-}) {
+/** "Al menos" (verde) o "Sin" (rojo): se toca para alternar; el ícono avisa que cambia. */
+function KindSegment({ value, onChange }: { value: RequirementKind; onChange: (kind: RequirementKind) => void }) {
   const isInclude = value === 'include'
+  const other: RequirementKind = isInclude ? 'exclude' : 'include'
 
   return (
     <button
       type="button"
       className={cx(
-        'px-3 py-2 text-body font-semibold transition-colors focus-visible:outline-none focus-visible:shadow-focus',
+        SEGMENT,
+        'font-semibold',
         isInclude ? cx('bg-success/14 hover:bg-success/22', TONE.success.text) : cx('bg-danger/14 hover:bg-danger/22', TONE.danger.text),
       )}
-      onClick={() => onChange(isInclude ? 'exclude' : 'include')}
-      aria-label={isInclude ? 'Cambiar a Sin' : 'Cambiar a Al menos'}
+      aria-label={`${getKindLabel(value)}. Cambiar a ${getKindLabel(other)}`}
+      title={`Cambiar a "${getKindLabel(other)}"`}
+      onClick={() => onChange(other)}
     >
-      {isInclude ? 'Al menos' : 'Sin'}
+      {getKindLabel(value)}
+      <Icon name="swap" size={14} className="opacity-70" />
     </button>
   )
 }
 
-function QuantitySegment({
-  value,
-  max,
-  onChange,
-}: {
-  value: number
-  max: number
-  onChange: (quantity: number) => void
-}) {
+/** Copias o nombres distintos: "2 copias de X" vs "2 nombres distintos de X". */
+function UnitSegment({ distinct, onChange }: { distinct: boolean; onChange: (distinct: boolean) => void }) {
   return (
-    <NumberField
-      value={value}
-      min={1}
-      max={Math.max(max, value)}
-      onChange={onChange}
-      className="w-12 border-x border-border-subtle bg-input px-1.5 py-2 text-center text-body font-medium text-foreground outline-none [color-scheme:dark] focus:bg-input-hover focus-visible:shadow-focus"
-      aria-label="Cantidad"
-    />
+    <button
+      type="button"
+      className={cx(SEGMENT, 'font-medium text-muted hover:bg-tint/10 hover:text-foreground')}
+      aria-label={distinct ? 'nombres distintos. Cambiar a copias' : 'copias. Cambiar a nombres distintos'}
+      title={distinct ? 'Contar copias en vez de nombres distintos' : 'Contar nombres distintos en vez de copias'}
+      onClick={() => onChange(!distinct)}
+    >
+      {distinct ? 'nombres' : 'copias'}
+      <Icon name="swap" size={14} className="opacity-70" />
+    </button>
   )
 }
