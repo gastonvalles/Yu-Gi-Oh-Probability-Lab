@@ -239,8 +239,18 @@ function compareRules(
       return []
     }
 
+    // Una regla que ninguna build evalúa (apagada o con cartas que faltan en las dos) no está en el Lab: no se lista.
+    if (!inA && !inB) {
+      return []
+    }
+
     const a = inA ? valueOf(resultsA, row.id) : resultsA ? 0 : null
     const b = inB ? valueOf(resultsB, row.id) : resultsB ? 0 : null
+
+    // 0 % en las dos no dice nada de la comparación.
+    if ((a ?? 0) === 0 && (b ?? 0) === 0) {
+      return []
+    }
 
     return [
       {

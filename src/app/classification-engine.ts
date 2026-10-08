@@ -265,6 +265,41 @@ function isExtraDeckMonster(card: ApiCardReference): boolean {
   return ft.includes('fusion') || ft.includes('synchro') || ft.includes('xyz') || ft.includes('link')
 }
 
+/**
+ * Rol por tipo de carta cuando el texto no dio ninguna pista. Es una sugerencia (queda marcada para
+ * revisar), pero evita que "Clasificar todo" deje cartas sin función y la clasificación no cierre.
+ */
+function fallbackRole(card: ApiCardReference): CardRole {
+  const type = card.cardType.toLowerCase()
+  const desc = card.description ?? ''
+  const targetsOpponent = BOARDBREAKER_OPPONENT_TARGET.test(desc)
+
+  if (isTrapCard(card)) {
+    // Una trampa desconocida se juega en el turno del rival: interacción.
+    return 'disruption'
+  }
+
+  if (isSpellCard(card)) {
+    if (type.includes('quick-play')) {
+      return targetsOpponent ? 'disruption' : 'extender'
+    }
+
+    // Ritual, campo, continua y equipo: piezas que otras cartas necesitan.
+    if (type.includes('ritual') || type.includes('field') || type.includes('continuous') || type.includes('equip')) {
+      return 'enabler'
+    }
+
+    if (SPECIAL_SUMMON_CLAUSE.test(desc)) {
+      return 'starter'
+    }
+
+    return targetsOpponent ? 'boardbreaker' : 'enabler'
+  }
+
+  // Monstruo del Main sin pista: pieza del plan, a confirmar.
+  return 'enabler'
+}
+
 const ruleHandtrap: HeuristicRule = {
   id: 'handtrap',
   evaluate(card) {
@@ -507,6 +542,10 @@ export function classifyCard(
   if (collectedRoles.includes('brick') && collectedRoles.length > 1) {
     const index = collectedRoles.indexOf('brick')
     collectedRoles.splice(index, 1)
+  }
+
+  if (collectedRoles.length === 0) {
+    collectedRoles.push(fallbackRole(card))
   }
 
   const origin = deriveOrigin(collectedRoles)
