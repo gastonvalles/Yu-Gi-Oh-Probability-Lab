@@ -31,6 +31,7 @@ export const ROLE_FILTER_ORDER: CardRole[] = [
   'payoff',
   'recovery',
   'disruption',
+  'floodgate',
   'garnet',
 ]
 

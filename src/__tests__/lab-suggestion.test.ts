@@ -161,6 +161,23 @@ describe('lab-suggestion', () => {
     expect(swaps).toContain('filler>interaction')
   })
 
+  it('nunca propone cambiar una carta por otra de la misma familia (p. ej. un starter por otro starter)', () => {
+    const cards = [
+      ...Array.from({ length: 12 }, (_, index) => card(`s${index}`, 2, ['starter'])),
+      // Una carta que es starter y además handtrap: entra por su handtrap, no "como starter".
+      card('both', 1, ['starter', 'handtrap'], 'non_engine'),
+      card('brick', 1, ['brick'], 'non_engine'),
+      card('f', 1, ['recovery'], 'non_engine'),
+    ]
+    const noAnswer = createMatcherPattern('Sin handtrap', 'problem', [{ matcher: { type: 'role', value: 'handtrap' }, quantity: 1, kind: 'exclude' }])
+    const culprit = { kind: 'problem' as const, patternId: noAnswer.id, name: noAnswer.name, probability: 0.6 }
+    const candidates = buildCandidates(culprit, cards, [opening, noAnswer])
+
+    expect(candidates.length).toBeGreaterThan(0)
+    expect(candidates.every((candidate) => candidate.swap.from !== candidate.swap.to)).toBe(true)
+    expect(candidates.map((candidate) => `${candidate.swap.from}>${candidate.swap.to}`)).toContain('starter>interaction')
+  })
+
   it('reconoce el problema por ausencia aunque la regla cuente un pool de cartas (como las reglas del sistema)', () => {
     const cards = [
       ...Array.from({ length: 12 }, (_, index) => card(`s${index}`, 2, ['starter'])),

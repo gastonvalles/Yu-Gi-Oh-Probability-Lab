@@ -44,6 +44,7 @@ const ROLE_THEME_BY_KEY: Record<CardRole, ClassificationTheme> = {
   handtrap: { color: '#3b82f6', rgb: '59 130 246' },
   disruption: { color: '#2563eb', rgb: '37 99 235' },
   boardbreaker: { color: '#f59e0b', rgb: '245 158 11' },
+  floodgate: { color: '#a855f7', rgb: '168 85 247' },
   searcher: { color: '#06b6d4', rgb: '6 182 212' },
   draw: { color: '#38bdf8', rgb: '56 189 248' },
   recovery: { color: '#22c55e', rgb: '34 197 94' },
@@ -154,7 +155,7 @@ export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
     key: createRoleGroupKey('disruption'),
     label: 'Disruption',
     shortLabel: 'Disruption',
-    description: 'Frena al rival en mesa o en su turno (negaciones, trampas, floodgates), por sí sola.',
+    description: 'Frena al rival en mesa o en su turno (negaciones, trampas), por sí sola.',
     theme: ROLE_THEME_BY_KEY.disruption,
   },
   {
@@ -164,6 +165,14 @@ export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
     shortLabel: 'Boardbreaker',
     description: 'Rompe campo o quita cartas del rival por sí sola. Si solo lo hace cuando se cumple una condición de tu línea, marcá su función principal.',
     theme: ROLE_THEME_BY_KEY.boardbreaker,
+  },
+  {
+    kind: 'role',
+    key: createRoleGroupKey('floodgate'),
+    label: 'Floodgate',
+    shortLabel: 'Floodgate',
+    description: 'Limita líneas del rival por presencia o efecto continuo.',
+    theme: ROLE_THEME_BY_KEY.floodgate,
   },
   {
     kind: 'role',
@@ -233,7 +242,6 @@ export function getQualifiedDeckGroupLabel(group: Pick<DeckGroupDefinition, 'kin
 /** Roles que ya no existen y el que los reemplaza (se unificaron al simplificar la categorización). */
 const LEGACY_ROLE_REPLACEMENTS: Record<string, CardRole> = {
   board_breaker: 'boardbreaker',
-  floodgate: 'disruption',
   removal: 'boardbreaker',
   combo_piece: 'enabler',
 }

@@ -14,9 +14,6 @@ interface MobileBottomStepNavProps {
   onStepChange: (step: DeckWorkflowStepKey) => void
 }
 
-// Pasos que llevan un punto de aviso mientras están a medio completar.
-const ATTENTION_STEPS = new Set<DeckWorkflowStepKey>(['deck-builder', 'categorization'])
-
 export function MobileBottomStepNav({ items, activeStep, onStepChange }: MobileBottomStepNavProps) {
   const [optimisticStep, setOptimisticStep] = useState<DeckWorkflowStepKey | null>(null)
 
@@ -29,7 +26,6 @@ export function MobileBottomStepNav({ items, activeStep, onStepChange }: MobileB
     const isActive = item.key === highlightedStep
     const isDisabled = item.disabled && !isActive
     const statusLabel = DECK_WORKFLOW_TONE_LABEL[item.tone]
-    const needsAttention = !isActive && item.tone === 'progress' && ATTENTION_STEPS.has(item.key)
 
     return (
       <button
@@ -37,7 +33,7 @@ export function MobileBottomStepNav({ items, activeStep, onStepChange }: MobileB
         type="button"
         aria-current={isActive ? 'step' : undefined}
         aria-disabled={isDisabled || undefined}
-        aria-label={`${item.title}. ${statusLabel}.${item.metric ? ` ${item.metric}.` : ''}`}
+        aria-label={`${item.title}. ${statusLabel}.`}
         className={cx(
           'group relative grid min-w-0 content-center justify-items-center gap-1 rounded-control px-1 pb-1 pt-1.5 transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-not-allowed',
           isDisabled && 'opacity-40',
@@ -56,7 +52,6 @@ export function MobileBottomStepNav({ items, activeStep, onStepChange }: MobileB
             variant={isActive ? 'bold' : 'bulk'}
             className={cx('transition-colors duration-150 [--icon-cut:var(--lavender)]', isActive ? 'text-primary-soft' : 'text-primary-soft/55 group-hover:text-primary-soft')}
           />
-          {needsAttention ? <span className="absolute -right-1 top-0 size-2 rounded-full border-2 border-lavender bg-warning" /> : null}
         </span>
         <span className={cx('min-w-0 whitespace-nowrap text-center text-micro', isActive ? 'font-semibold text-primary-soft' : 'font-medium text-soft')}>{item.label}</span>
       </button>

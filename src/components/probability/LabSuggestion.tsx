@@ -1,6 +1,5 @@
-import { useCallback, useMemo, type ReactNode } from 'react'
+import { useCallback, useMemo } from 'react'
 
-import { formatShortPercent } from '../../app/utils'
 import { ROLE_GROUP_LABEL, type Culprit, type Outcome, type PerTurnResults } from '../../app/lab-suggestion'
 import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
@@ -31,7 +30,7 @@ export function LabSuggestion({ cards, checks, deckFormat, handSize, view, resul
   const perTurn = useMemo<PerTurnResults>(() => ({ first, second }), [first, second])
   // Un cambio que suma copias tiene que ser legal en el formato (banlist): la sugerencia no puede pedir lo imposible.
   const maxCopiesOf = useCallback((card: CardEntry) => (card.apiCard ? getCardCopyLimit(card.apiCard, deckFormat) : 3), [deckFormat])
-  const { culprit, state, hint, causes } = useLabSuggestion(cards, checks, handSize, view, result, maxCopiesOf, perTurn)
+  const { culprit, state } = useLabSuggestion(cards, checks, handSize, view, result, maxCopiesOf, perTurn)
 
   if (!culprit) {
     return null
@@ -58,24 +57,8 @@ export function LabSuggestion({ cards, checks, deckFormat, handSize, view, resul
             Probando cambios en tu deck… ({state.progress.done}/{state.progress.total})
           </p>
         </div>
-      ) : (
-        <AdviceBox label="Conclusión">
-          {describeNoGain(culprit, state.analysis.tradeoff, result.cleanProbability, hint, causes, state.progress.total, state.analysis.compared)}
-        </AdviceBox>
-      )}
+      ) : null}
     </Card>
-  )
-}
-
-/** La conclusión (cuando no hay un cambio que convenga): va debajo de una línea fina, sin caja. */
-function AdviceBox({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="grid gap-3 border-t border-border-subtle pt-4">
-      <p className="m-0 text-body text-muted">
-        <strong className={cx('font-semibold', TONE.success.text)}>{label}: </strong>
-        {children}
-      </p>
-    </div>
   )
 }
 
@@ -106,63 +89,5 @@ function SwapChip({ action, label }: { action: 'remove' | 'add'; label: string }
 }
 
 function describeCulprit(culprit: Culprit): string {
-  return culprit.kind === 'problem' ? formatOdds(culprit.probability, false) : formatOdds(culprit.probability, false).replace('Pasa', 'Pasan')
-}
-
-/** "Sacá 1 starter y meté 1 handtrap (ej.: A por B)": lo dice por familia, como un jugador, y da un ejemplo concreto. */
-function describeSwap(outcome: Outcome): string {
-  const removed = outcome.changes.find((change) => change.action === 'remove')
-  const added = outcome.changes.find((change) => change.action === 'add')
-  const { from, to } = outcome.swap
-  const example = removed && added ? ` (por ejemplo, ${removed.card.name} por ${added.card.name})` : ''
-
-  if (from && to) return `sacá 1 ${ROLE_GROUP_LABEL[from]} y meté 1 ${ROLE_GROUP_LABEL[to]}${example}`
-  return `sumá 1 ${to ? ROLE_GROUP_LABEL[to] : 'carta'}${added ? ` (${added.card.name})` : ''}`
-}
-
-/** Sin cambio que convenga: se explica por qué, con números, en vez de dejar un "no se puede". */
-function describeNoGain(
-  culprit: Culprit,
-  tradeoff: Outcome | null,
-  cleanBefore: number,
-  hint: string | null,
-  causes: CardEntry[],
-  tried: number,
-  compared: number,
-): string {
-  if (hint) {
-    return hint
-  }
-
-  if (tried === 0) {
-    const names = causes.slice(0, 4).map((card) => card.name).join(', ')
-
-    return culprit.kind === 'problem' && causes.length > 0
-      ? `Lo causan ${names}${causes.length > 4 ? '…' : ''}, que son parte de tu engine, y no hay cartas non-engine ni de relleno para mover (ni copias libres que tu formato permita). Para bajarlo hay que tocar el engine: es una decisión de armado, no una sugerencia automática.`
-      : 'No hay un cambio permitido por tu formato (copias máximas y banlist) que ataque esto directamente.'
-  }
-
-  if (compared === 0) {
-    return 'No se pudieron comparar cambios para esto con tu deck actual.'
-  }
-
-  if (tradeoff && culprit.probability - tradeoff.culpritProbability >= 0.01) {
-    return `${capitalize(describeSwap(tradeoff))} bajaría el problema a ${oddsOnly(tradeoff.culpritProbability)}, pero te cuesta más manos limpias de las que ahorra: quedarían en ${formatShortPercent(tradeoff.cleanProbability)} (hoy ${formatShortPercent(cleanBefore)}). Es el precio de ese plan, así que conviene dejarlo así salvo que este problema te moleste más que perder jugadas.`
-  }
-
-  if (culprit.kind === 'problem' && causes.length > 0) {
-    const copies = causes.reduce((total, card) => total + card.copies, 0)
-
-    const engine = causes.filter((card) => card.origin !== 'non_engine')
-
-    return `Lo causan ${causes.map((card) => card.name).join(', ')} (${copies} copias en total)${engine.length > 0 ? `, y ${engine.length === causes.length ? 'son' : 'varias son'} parte de tu engine, así que no conviene sacarlas` : ''}. Ningún cambio de una carta mejora el resultado: el deck ya está equilibrado para esta regla.`
-  }
-
-  return 'Ningún cambio de una carta mejora el resultado: el deck ya está equilibrado para esto.'
-}
-
-const capitalize = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1)
-
-function oddsOnly(probability: number): string {
-  return formatOdds(probability).replace(/^Pasa en /, '').replace(/\.$/, '')
+  return culprit.kind === 'problem' ? formatOdds(culprit.probability) : formatOdds(culprit.probability).replace('Pasa', 'Pasan')
 }

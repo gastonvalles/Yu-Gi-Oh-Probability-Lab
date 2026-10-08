@@ -124,7 +124,7 @@ const byCopies = (direction: 1 | -1) => (left: CardEntry, right: CardEntry) =>
   direction * (left.copies - right.copies) || left.name.localeCompare(right.name)
 
 const STARTER_ROLES: readonly CardRole[] = ['starter', 'extender']
-const INTERACTION_ROLES: readonly CardRole[] = ['handtrap', 'disruption', 'boardbreaker']
+const INTERACTION_ROLES: readonly CardRole[] = ['handtrap', 'disruption', 'boardbreaker', 'floodgate']
 /** Roles que ninguna regla del Lab cuenta: una carta que solo tiene estos es de relleno (clasificada pero sin peso en las reglas). */
 const FILLER_ROLES: readonly CardRole[] = ['enabler', 'searcher', 'draw', 'payoff', 'recovery']
 
@@ -173,11 +173,13 @@ export function buildCandidates(
       .filter((card) => roleGroupOf(card) === group && !notIds.has(card.id) && (group === 'starter' || group === 'interaction' || card.origin === 'non_engine'))
       .sort((left, right) => right.copies - left.copies || left.name.localeCompare(right.name))[0]
   const byRoom = (left: CardEntry, right: CardEntry) => room(right) - room(left) || left.copies - right.copies || left.name.localeCompare(right.name)
-  const swap = (out: CardEntry | undefined, inn: CardEntry | undefined): Candidate | null => {
+  // `target` es la familia que gana la carta que entra (una carta con varios roles pertenece a la primera que corresponda,
+  // pero acá importa para qué se la mete). Cambiar una carta por otra de la misma familia no cambia nada: no se propone.
+  const swap = (out: CardEntry | undefined, inn: CardEntry | undefined, target?: RoleGroup): Candidate | null => {
     const from = out ? (roleGroupOf(out) ?? 'filler') : null
-    const to = inn ? (roleGroupOf(inn) ?? 'filler') : null
+    const to = inn ? (target ?? roleGroupOf(inn) ?? 'filler') : null
 
-    return out && inn && out.id !== inn.id
+    return out && inn && out.id !== inn.id && from !== to
       ? candidateOf(cards, [{ action: 'remove', card: out }, { action: 'add', card: inn }], { from, to })
       : null
   }
@@ -190,14 +192,14 @@ export function buildCandidates(
       .filter((card) => roleGroupOf(card) === 'starter' && room(card) > 0 && !causeIds.has(card.id))
       .sort(byRoom)
       .slice(0, 2)
-      .flatMap((inn) => sources.filter((from) => from !== 'starter').map((from) => swap(outgoing(from, new Set()), inn)))
+      .flatMap((inn) => sources.filter((from) => from !== 'starter').map((from) => swap(outgoing(from, new Set()), inn, 'starter')))
 
   let candidates: Array<Candidate | null>
 
   if (isAbsence) {
     // "Sin interrupción": entra una carta de las que la regla cuenta (no cualquier handtrap) con margen legal.
     const savers = cards.filter((card) => saviorIds.has(card.id) && room(card) > 0).sort(byRoom).slice(0, 2)
-    candidates = savers.flatMap((inn) => sources.map((from) => swap(outgoing(from, saviorIds), inn)))
+    candidates = savers.flatMap((inn) => sources.map((from) => swap(outgoing(from, saviorIds), inn, 'interaction')))
   } else if (culprit.kind === 'problem') {
     // "2+ Brick" / "2+ Mulcharmy": sale una copia de lo que lo causa (non-engine) y entra un starter;
     // si lo causan piezas del engine, queda subir las salidas por otro lado.
@@ -206,7 +208,7 @@ export function buildCandidates(
       .sort((left, right) => right.copies - left.copies || left.name.localeCompare(right.name))
       .slice(0, 2)
     const starters = cards.filter((card) => roleGroupOf(card) === 'starter' && !causeIds.has(card.id) && room(card) > 0).sort(byRoom)
-    candidates = [...causes.flatMap((out) => starters.slice(0, 2).map((inn) => swap(out, inn))), ...openerSwaps()]
+    candidates = [...causes.flatMap((out) => starters.slice(0, 2).map((inn) => swap(out, inn, 'starter'))), ...openerSwaps()]
   } else {
     candidates = openerSwaps()
   }

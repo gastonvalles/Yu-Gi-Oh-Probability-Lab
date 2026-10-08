@@ -1,6 +1,6 @@
 import { DISTRIBUTION_BUCKETS, type RoleDistribution, type RoleDistributionKey } from '../../app/role-distribution'
 import { formatInteger, formatShortPercent } from '../../app/utils'
-import { SegmentedRing } from '../ui/SegmentedRing'
+import { ProgressRing } from '../ui/ProgressRing'
 import { LabSection } from './LabSection'
 
 /** Color de cada rol (los roles tienen su propia paleta). */
@@ -11,15 +11,12 @@ const ROLE_RGB: Record<RoleDistributionKey, string> = {
   brick: 'var(--brick-rgb)',
 }
 
-/** Intensidad según cuántas copias se roban (0, 1, 2, 3+): cuantas más, más fuerte el color. */
-const BUCKET_OPACITY = [0.22, 0.5, 0.75, 1] as const
-
 interface LabRoleDistributionProps {
   distributions: RoleDistribution[]
   onOpenRole: (key: RoleDistributionKey) => void
 }
 
-/** Qué robás de cada rol: un anillo por rol repartido en 0 / 1 / 2 / 3+ copias; al centro, la chance de robar al menos una. */
+/** Qué robás de cada rol: un anillo por rol que se llena según la chance de robar al menos una copia (el reparto en 0 / 1 / 2 / 3+ queda en el texto al pasar el mouse). */
 export function LabRoleDistribution({ distributions, onOpenRole }: LabRoleDistributionProps) {
   const starters = distributions.find((distribution) => distribution.key === 'starter')
 
@@ -39,22 +36,19 @@ export function LabRoleDistribution({ distributions, onOpenRole }: LabRoleDistri
               className="group grid w-full justify-items-center gap-2 rounded-card px-2 py-3 text-center transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus enabled:hover:bg-tint/6 disabled:opacity-50"
               disabled={distribution.copies === 0}
               aria-label={`${distribution.label}: ${formatShortPercent(distribution.atLeastOne)} de robar al menos una. Ver cartas`}
+              title={DISTRIBUTION_BUCKETS.map((bucket, bucketIndex) => `${bucket} copias: ${formatShortPercent(distribution.buckets[bucketIndex] ?? 0)}`).join(' · ')}
               onClick={() => onOpenRole(distribution.key)}
             >
-              <SegmentedRing
+              <ProgressRing
+                value={distribution.atLeastOne}
+                color={ROLE_RGB[distribution.key]}
                 size={112}
                 strokeWidth={12}
                 delay={index * 120}
-                label={`${distribution.label}: ${DISTRIBUTION_BUCKETS.map((bucket, bucketIndex) => `${bucket} copias ${formatShortPercent(distribution.buckets[bucketIndex] ?? 0)}`).join(', ')}`}
-                segments={distribution.buckets.map((value, bucketIndex) => ({
-                  key: DISTRIBUTION_BUCKETS[bucketIndex] ?? String(bucketIndex),
-                  value,
-                  color: ROLE_RGB[distribution.key],
-                  opacity: BUCKET_OPACITY[bucketIndex],
-                }))}
+                label={`${distribution.label}: ${formatShortPercent(distribution.atLeastOne)} de robar al menos una`}
               >
                 <strong className="text-lead font-semibold text-foreground tabular-nums">{Math.round(distribution.atLeastOne * 100)}%</strong>
-              </SegmentedRing>
+              </ProgressRing>
               <span className="grid gap-0.5">
                 <strong className="text-body font-semibold text-foreground">{distribution.label}</strong>
                 <small className="text-micro text-muted">{formatInteger(distribution.copies)} copias</small>

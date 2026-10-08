@@ -91,7 +91,6 @@ export function DeckModeScreen() {
   const mainDeckCount = controller.deckBuilderStep.deckBuilder.main.length
   const roleCards = controller.roles.cards
   const unclassifiedCardCount = useMemo(() => countUnclassifiedCards(roleCards), [roleCards])
-  const classifiedCardCount = roleCards.length - unclassifiedCardCount
   const hasCompletedRoleStep = useMemo(() => isClassificationStepComplete(roleCards), [roleCards])
   const patternCount = controller.probability.patterns.length
   const [globalPracticeOpen, setGlobalPracticeOpen] = useState(false)
@@ -182,13 +181,11 @@ export function DeckModeScreen() {
       buildDeckWorkflowNavigationItems({
         mainDeckCount,
         roleCardCount: roleCards.length,
-        classifiedCardCount,
         unclassifiedCardCount,
         hasCompletedRoleStep,
         patternCount,
       }),
     [
-      classifiedCardCount,
       hasCompletedRoleStep,
       mainDeckCount,
       patternCount,
