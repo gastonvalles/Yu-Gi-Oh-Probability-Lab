@@ -50,10 +50,10 @@ export function MobileBottomStepNav({ items, activeStep, onStepChange }: MobileB
             name={item.icon}
             size={24}
             variant={isActive ? 'bold' : 'bulk'}
-            className={cx('transition-colors duration-150 [--icon-cut:var(--lavender)]', isActive ? 'text-primary-soft' : 'text-primary-soft/55 group-hover:text-primary-soft')}
+            className={cx('transition-colors duration-150 [--icon-cut:var(--lavender)]', isActive ? 'text-success drop-shadow-[0_0_8px_rgb(var(--success-rgb)/0.55)]' : 'text-primary-soft/55 group-hover:text-primary-soft')}
           />
         </span>
-        <span className={cx('min-w-0 whitespace-nowrap text-center text-micro', isActive ? 'font-semibold text-primary-soft' : 'font-medium text-soft')}>{item.label}</span>
+        <span className={cx('min-w-0 whitespace-nowrap text-center text-micro', isActive ? 'font-semibold text-success' : 'font-medium text-soft')}>{item.label}</span>
       </button>
     )
   }

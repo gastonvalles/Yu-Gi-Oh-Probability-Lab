@@ -92,17 +92,18 @@ export function PatternEditorDrawer({
 
         <footer className="flex items-center justify-between gap-2 border-t border-border-subtle px-4 py-3">
           {pattern && !isPendingCreation ? (
-            <Button variant="tertiary" color="danger" size="sm" icon="trash" onClick={() => onRequestDelete(pattern.id)}>
-              Eliminar regla
+            // En el celular queda solo el ícono: así Cancelar y Guardar entran siempre en la fila.
+            <Button variant="tertiary" color="danger" size="sm" icon="trash" aria-label="Eliminar regla" className="px-3 min-[520px]:px-4" onClick={() => onRequestDelete(pattern.id)}>
+              <span className="max-[519px]:sr-only">Eliminar regla</span>
             </Button>
           ) : (
-            <span className="text-muted text-micro">El análisis se actualiza al guardar.</span>
+            <span className="text-muted hidden text-micro min-[520px]:block">El análisis se actualiza al guardar.</span>
           )}
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={onClose}>
+          <div className="grid min-w-0 flex-1 grid-cols-2 gap-2 min-[520px]:flex min-[520px]:flex-none">
+            <Button variant="secondary" size="sm" fullWidth className="min-w-0 px-3 min-[520px]:w-auto min-[520px]:px-4" onClick={onClose}>
               Cancelar
             </Button>
-            <Button variant="primary" size="sm" disabled={!canSave} onClick={onSave}>
+            <Button variant="primary" size="sm" fullWidth disabled={!canSave} className="min-w-0 px-3 text-center min-[520px]:w-auto min-[520px]:px-4" onClick={onSave}>
               {saveLabel ?? (isPendingCreation ? 'Crear regla' : 'Guardar cambios')}
             </Button>
           </div>
