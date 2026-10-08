@@ -1,7 +1,9 @@
 import type { CSSProperties, ReactNode } from 'react'
 
 import { cx } from './cx'
+import { RING_TRANSITION, clamp01, ringCenterText, ringGeometry } from './ring-shared'
 import { TONE, type Tone } from './tone'
+import { useRingReveal } from './use-ring-reveal'
 
 interface ProgressRingProps {
   /** 0 a 1. */
@@ -10,21 +12,25 @@ interface ProgressRingProps {
   tone?: Tone | 'onBrand'
   /** Color propio ("R G B" o `var(--x-rgb)`), p. ej. el de un rol; reemplaza al tono. */
   color?: string
-  /** Diámetro en px: 42 en listas, 76 en una tarjeta destacada. */
+  /** Diámetro en px: 42 en listas, 76 en una tarjeta destacada, 168 como protagonista. */
   size?: number
   strokeWidth?: number
   label: string
+  /** Marcas sobre el anillo (0 a 1), p. ej. los umbrales de la nota. */
+  ticks?: ReadonlyArray<number>
+  /** Milisegundos de espera antes de llenarse (para escalonar varios anillos). */
+  delay?: number
   /** Contenido del centro; por defecto el porcentaje. */
   children?: ReactNode
   className?: string
 }
 
-/** Anillo de progreso con el porcentaje al centro (como el de "Task Groups" del diseño). */
-export function ProgressRing({ value, tone = 'brand', color, size = 42, strokeWidth, label, children, className }: ProgressRingProps) {
-  const clamped = Math.max(0, Math.min(1, value))
-  const stroke = strokeWidth ?? (size >= 64 ? 8 : 4)
-  const radius = (size - stroke) / 2
-  const circumference = 2 * Math.PI * radius
+/** Anillo de progreso que se llena al aparecer, con el porcentaje al centro. Es la única forma de mostrar un porcentaje en la app. */
+export function ProgressRing({ value, tone = 'brand', color, size = 42, strokeWidth, label, ticks, delay = 0, children, className }: ProgressRingProps) {
+  const clamped = clamp01(value)
+  const { stroke, radius, circumference, center } = ringGeometry(size, strokeWidth)
+  const { revealed, delayMs } = useRingReveal(delay)
+  const shown = revealed ? clamped : 0
   const onBrand = tone === 'onBrand'
 
   return (
@@ -38,20 +44,38 @@ export function ProgressRing({ value, tone = 'brand', color, size = 42, strokeWi
       aria-valuenow={Math.round(clamped * 100)}
     >
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90" aria-hidden="true">
-        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" strokeWidth={stroke} className={onBrand ? 'stroke-white/25' : 'stroke-[rgb(var(--tone-rgb)/0.2)]'} />
+        <circle cx={center} cy={center} r={radius} fill="none" strokeWidth={stroke} className={onBrand ? 'stroke-white/25' : 'stroke-[rgb(var(--tone-rgb)/0.18)]'} />
         <circle
-          cx={size / 2}
-          cy={size / 2}
+          cx={center}
+          cy={center}
           r={radius}
           fill="none"
           strokeWidth={stroke}
-          strokeLinecap="round"
+          strokeLinecap={shown > 0 ? 'round' : 'butt'}
           strokeDasharray={circumference}
-          strokeDashoffset={circumference * (1 - clamped)}
-          className={cx('transition-[stroke-dashoffset] duration-300 motion-reduce:transition-none', onBrand ? 'stroke-lavender-light' : 'stroke-[rgb(var(--tone-rgb))]')}
+          strokeDashoffset={circumference * (1 - shown)}
+          style={{ transitionDelay: `${delayMs}ms` }}
+          className={cx(RING_TRANSITION, onBrand ? 'stroke-lavender-light' : 'stroke-[rgb(var(--tone-rgb))]')}
         />
+        {ticks?.map((tick) => {
+          const angle = tick * 2 * Math.PI
+          const inner = radius - stroke / 2
+          const outer = radius + stroke / 2
+
+          return (
+            <line
+              key={tick}
+              x1={center + inner * Math.cos(angle)}
+              y1={center + inner * Math.sin(angle)}
+              x2={center + outer * Math.cos(angle)}
+              y2={center + outer * Math.sin(angle)}
+              strokeWidth={2.5}
+              className="stroke-background"
+            />
+          )
+        })}
       </svg>
-      <span className={cx('absolute inset-0 grid place-items-center font-semibold tabular-nums', size >= 64 ? 'text-body' : 'text-micro', onBrand ? 'text-primary-foreground' : 'text-foreground')}>
+      <span className={cx('absolute inset-0 grid place-items-center text-center tabular-nums', ringCenterText(size), onBrand ? 'text-primary-foreground' : 'text-foreground')}>
         {children ?? `${Math.round(clamped * 100)}%`}
       </span>
     </div>

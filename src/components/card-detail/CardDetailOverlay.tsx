@@ -162,10 +162,10 @@ export function CardDetailOverlay({ name, card, origin = null, metadata, actions
             ) : null}
             {metadata ? <p className={DETAIL_META}>{metadata}</p> : null}
           </header>
-          <div ref={textRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-white/10 pr-[0.2rem] pt-[0.55rem] text-lead text-white outline-none focus-visible:border-t-primary/65" tabIndex={0} role="region" aria-label="Efecto">
+          <div ref={textRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-tint/10 pr-[0.2rem] pt-[0.55rem] text-lead text-white outline-none focus-visible:border-t-primary/65" tabIndex={0} role="region" aria-label="Efecto">
             <p className="m-0 whitespace-pre-wrap [overflow-wrap:anywhere]">{card?.description?.trim() || 'Sin texto disponible.'}</p>
           </div>
-          {actions ? <footer className="grid flex-none gap-2 border-t border-white/10 pt-[0.65rem]">{actions}</footer> : null}
+          {actions ? <footer className="grid flex-none gap-2 border-t border-tint/10 pt-[0.65rem]">{actions}</footer> : null}
         </section>
       </div>
     </div>,

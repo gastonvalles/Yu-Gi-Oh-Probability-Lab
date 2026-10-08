@@ -1,10 +1,10 @@
 import type { LabResults } from '../../app/probability-lab'
-import { formatInteger, formatPercent, formatShortPercent } from '../../app/utils'
+import { formatInteger, formatShortPercent } from '../../app/utils'
 import type { TurnView } from '../../types'
 import { Badge } from '../ui/Badge'
 import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
-import { Meter } from '../ui/Meter'
+import { ProgressRing } from '../ui/ProgressRing'
 import { TONE } from '../ui/tone'
 import { overline } from '../ui/typography'
 import {
@@ -23,12 +23,10 @@ interface LabScoreCardProps {
   isRecalculating: boolean
 }
 
-const THRESHOLD_TICKS = KPI_THRESHOLDS.map((threshold) => ({
-  value: threshold.value,
-  label: `${KPI_TONE_LABELS[threshold.tone]} desde ${threshold.value * 100}%`,
-}))
+/** Las marcas del anillo son los cortes de la nota (40 %, 60 %, 85 %). */
+const THRESHOLD_TICKS = KPI_THRESHOLDS.map((threshold) => threshold.value)
 
-/** El resultado principal: % de manos limpias, su nota (con color) y el detalle por turno. */
+/** El resultado principal: % de manos limpias en un anillo grande, su nota (con color) y el detalle por turno. */
 export function LabScoreCard({ results, view, isRecalculating }: LabScoreCardProps) {
   const current = results[view]
   const kpi = getKpiTone(current.cleanProbability)
@@ -38,7 +36,7 @@ export function LabScoreCard({ results, view, isRecalculating }: LabScoreCardPro
     <Card
       tone={tone}
       padding="lg"
-      className="order-1 flex flex-col gap-4 transition-opacity duration-150 aria-busy:opacity-75 min-[1101px]:col-span-5 min-[1101px]:col-start-1"
+      className="order-1 grid content-start gap-5 transition-opacity duration-150 aria-busy:opacity-75 min-[1101px]:col-span-5 min-[1101px]:col-start-1"
       aria-busy={isRecalculating}
     >
       <div className="flex items-center justify-between gap-2">
@@ -48,31 +46,34 @@ export function LabScoreCard({ results, view, isRecalculating }: LabScoreCardPro
         </Badge>
       </div>
 
-      <strong className="text-stat font-bold tracking-[-0.03em] min-[1101px]:text-display text-foreground tabular-nums">
-        {formatPercent(current.cleanProbability)}
-      </strong>
+      <div className="grid justify-items-center gap-5 min-[520px]:grid-cols-[auto_minmax(0,1fr)] min-[520px]:items-center min-[520px]:justify-items-start">
+        <ProgressRing value={current.cleanProbability} tone={tone} size={168} strokeWidth={14} ticks={THRESHOLD_TICKS} label="Manos limpias">
+          <span className="grid justify-items-center gap-1 leading-none">
+            <span>{formatShortPercent(current.cleanProbability)}</span>
+            <span className="text-micro font-normal tracking-normal text-muted">manos limpias</span>
+          </span>
+        </ProgressRing>
 
-      <div className="grid gap-2">
-        <Meter value={current.cleanProbability} tone={tone} size="lg" ticks={THRESHOLD_TICKS} label="Manos limpias" />
-        <ul className="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-micro" aria-label="Escala de notas">
-          {KPI_SCALE.map((step) => (
-            <li key={step.tone} className={cx('inline-flex items-center gap-1.5', step.tone === kpi ? 'font-semibold text-foreground' : 'text-soft')}>
-              <span className={cx('size-2 rounded-full', TONE[KPI_TONE[step.tone]].fill, step.tone !== kpi && 'opacity-50')} aria-hidden="true" />
-              {KPI_TONE_LABELS[step.tone]} <span className="tabular-nums">{step.range}</span>
-            </li>
-          ))}
-        </ul>
+        <p className="m-0 grid gap-1.5 text-body text-muted">
+          <strong className="text-lead font-semibold text-foreground">{buildHandsOutOfTen(current.cleanProbability)}.</strong>
+          <span>{buildVerdict(kpi, view)}</span>
+        </p>
       </div>
 
-      <p className="m-0 text-body text-muted [&_strong]:font-semibold [&_strong]:text-foreground">
-        <strong>{buildHandsOutOfTen(current.cleanProbability)}.</strong> {buildVerdict(kpi, view)}
-      </p>
+      <ul className="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-micro" aria-label="Escala de notas">
+        {KPI_SCALE.map((step) => (
+          <li key={step.tone} className={cx('inline-flex items-center gap-1.5', step.tone === kpi ? 'font-semibold text-foreground' : 'text-soft')}>
+            <span className={cx('size-2 rounded-full', TONE[KPI_TONE[step.tone]].fill, step.tone !== kpi && 'opacity-50')} aria-hidden="true" />
+            {KPI_TONE_LABELS[step.tone]} <span className="tabular-nums">{step.range}</span>
+          </li>
+        ))}
+      </ul>
 
-      <dl className="m-0 mt-auto grid grid-cols-2 gap-2">
+      <dl className="m-0 grid grid-cols-2 gap-x-4 border-t border-border-subtle pt-4">
         {view === 'average' ? (
           <>
-            <Fact label="Yendo primero" value={formatShortPercent(results.first.cleanProbability)} />
-            <Fact label="Yendo segundo" value={formatShortPercent(results.second.cleanProbability)} />
+            <TurnRing label="Yendo primero" value={results.first.cleanProbability} />
+            <TurnRing label="Yendo segundo" value={results.second.cleanProbability} />
           </>
         ) : (
           <>
@@ -85,11 +86,26 @@ export function LabScoreCard({ results, view, isRecalculating }: LabScoreCardPro
   )
 }
 
+/** Resultado de un turno puntual: un anillo chico con su nota de color. */
+function TurnRing({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <ProgressRing value={value} tone={KPI_TONE[getKpiTone(value)]} size={46} strokeWidth={5} delay={250} label={`${label}: ${formatShortPercent(value)}`}>
+        {Math.round(value * 100)}%
+      </ProgressRing>
+      <div className="grid gap-0.5">
+        <dt className="text-micro text-muted">{label}</dt>
+        <dd className="m-0 text-lead font-semibold text-foreground tabular-nums">{formatShortPercent(value)}</dd>
+      </div>
+    </div>
+  )
+}
+
 function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid gap-0.5 rounded-control border border-border-subtle bg-black/25 px-3 py-2">
+    <div className="grid gap-0.5">
       <dt className="text-micro text-muted">{label}</dt>
-      <dd className="m-0 text-lead font-bold text-foreground tabular-nums">{value}</dd>
+      <dd className="m-0 text-lead font-semibold text-foreground tabular-nums">{value}</dd>
     </div>
   )
 }

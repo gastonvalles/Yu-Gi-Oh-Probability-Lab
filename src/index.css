@@ -328,6 +328,7 @@
   --color-surface-hover: var(--surface-hover);
   --color-primary-soft: var(--primary-soft);
   --color-lavender: var(--lavender);
+  --color-tint: var(--primary-soft);
   --color-info: var(--info);
   --color-success-soft: var(--success-soft);
   --color-warning-soft: var(--warning-soft);
@@ -340,22 +341,22 @@
 
 @layer theme {
   :root {
-    --background: #0b0b0f;
-    --background-rgb: 11 11 15;
-    --foreground: #ededed;
-    --foreground-rgb: 237 237 237;
-    --secondary: #12121a;
-    --secondary-rgb: 18 18 26;
-    --secondary-foreground: #ededed;
-    --card-background: #12121a;
-    --card-background-rgb: 18 18 26;
-    --card-foreground: #ededed;
-    --popover-background: #12121a;
-    --popover-foreground: #ededed;
-    --border: #1f1f2b;
-    --border-rgb: 31 31 43;
-    --input: #1a1a24;
-    --input-hover: #222232;
+    --background: #0a0816;
+    --background-rgb: 10 8 22;
+    --foreground: #eeeafc;
+    --foreground-rgb: 238 234 252;
+    --secondary: #130f2b;
+    --secondary-rgb: 19 15 43;
+    --secondary-foreground: #eeeafc;
+    --card-background: #130f2b;
+    --card-background-rgb: 19 15 43;
+    --card-foreground: #eeeafc;
+    --popover-background: #130f2b;
+    --popover-foreground: #eeeafc;
+    --border: #261e52;
+    --border-rgb: 38 30 82;
+    --input: #1b1542;
+    --input-hover: #251d55;
     --ring: #7a5cf0;
     --primary: #5f33e1;
     --primary-rgb: 95 51 225;
@@ -365,16 +366,16 @@
     --accent: #00ffa3;
     --accent-rgb: 0 255 163;
     --accent-hover: #00e695;
-    --accent-foreground: #0b0b0f;
+    --accent-foreground: #0a0816;
     --destructive: #ef4444;
     --destructive-rgb: 239 68 68;
     --destructive-foreground: #ffffff;
     --selected-background: rgba(95, 51, 225, 0.35);
 
     /* Superficies: lienzo < tarjeta < elevada < hover. */
-    --surface-raised: #181824;
-    --surface-hover: #212133;
-    --border-subtle: rgb(255 255 255 / 0.07);
+    --surface-raised: #1a1440;
+    --surface-hover: #251d55;
+    --border-subtle: rgb(var(--primary-soft-rgb) / 0.13);
     /* Violeta legible como texto sobre fondo oscuro (el de marca queda para rellenos). */
     --primary-soft: #ab94ff;
     --primary-soft-rgb: 171 148 255;
@@ -406,8 +407,8 @@
     --danger-rgb: 239 68 68;
 
     --text-main: var(--foreground);
-    --text-muted: #b7b7c6;
-    --text-soft: #88889b;
+    --text-muted: #bfbbd9;
+    --text-soft: #9089b5;
 
     --bg-canvas: var(--background);
     --bg-canvas-2: var(--secondary);
@@ -420,16 +421,17 @@
     --radius-chip: 999px;
     --deck-mode-topbar-height: 3.85rem;
     --deck-mobile-step-nav-height: 4.3rem;
-    --app-scrollbar-track: #1a1a20;
-    --app-scrollbar-thumb: #787880;
-    --app-scrollbar-thumb-hover: #8c8c95;
+    --app-scrollbar-track: #15112f;
+    --app-scrollbar-thumb: #4d447f;
+    --app-scrollbar-thumb-hover: #62589a;
 
-    --zone-main-background: rgb(var(--primary-rgb) / 0.1);
-    --zone-main-border: rgb(var(--primary-rgb) / 0.36);
-    --zone-extra-background: rgb(var(--handtrap-rgb) / 0.1);
-    --zone-extra-border: rgb(var(--handtrap-rgb) / 0.34);
-    --zone-side-background: rgb(var(--accent-rgb) / 0.08);
-    --zone-side-border: rgb(var(--accent-rgb) / 0.34);
+    /* Cada zona se distingue por su tinte (sin marco): el borde sólo se enciende al arrastrar una carta encima. */
+    --zone-main-background: rgb(var(--primary-rgb) / 0.14);
+    --zone-main-border: transparent;
+    --zone-extra-background: rgb(var(--handtrap-rgb) / 0.13);
+    --zone-extra-border: transparent;
+    --zone-side-background: rgb(var(--accent-rgb) / 0.09);
+    --zone-side-border: transparent;
   }
 }
 
@@ -460,7 +462,7 @@
       radial-gradient(44rem 24rem at 106% -6%, rgb(255 205 46 / 0.05), transparent 62%),
       radial-gradient(60rem 22rem at 50% -8%, rgb(var(--primary-rgb) / 0.3), transparent 70%),
       radial-gradient(56rem 30rem at 50% 118%, rgb(var(--primary-rgb) / 0.24), transparent 64%),
-      linear-gradient(180deg, var(--bg-canvas), #101018);
+      linear-gradient(180deg, var(--bg-canvas), #0f0a26);
     background-attachment: fixed;
   }
 

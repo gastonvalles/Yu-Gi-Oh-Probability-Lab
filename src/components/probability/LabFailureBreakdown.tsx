@@ -5,7 +5,8 @@ import { formatShortPercent } from '../../app/utils'
 import type { HandSegment } from '../../types'
 import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
-import { Meter } from '../ui/Meter'
+import { ProgressRing } from '../ui/ProgressRing'
+import { SegmentedRing } from '../ui/SegmentedRing'
 import { TONE, type Tone } from '../ui/tone'
 import { overline } from '../ui/typography'
 import { buildFailureAdvice } from './lab-copy'
@@ -15,6 +16,8 @@ import { LabSection } from './LabSection'
 const SEGMENTS: ReadonlyArray<{
   key: HandSegment
   tone: Tone
+  /** "R G B" del tramo en el anillo. */
+  rgb: string
   label: string
   description: string
   rulesTitle: string
@@ -23,6 +26,7 @@ const SEGMENTS: ReadonlyArray<{
   {
     key: 'clean',
     tone: 'success',
+    rgb: 'var(--success-rgb)',
     label: 'Limpias',
     description: 'Salida y ningún problema',
     rulesTitle: 'Salidas presentes en estas manos',
@@ -31,6 +35,7 @@ const SEGMENTS: ReadonlyArray<{
   {
     key: 'withProblem',
     tone: 'warning',
+    rgb: 'var(--warning-rgb)',
     label: 'Con problema',
     description: 'Tienen salida, pero también algún problema activo',
     rulesTitle: 'Problemas presentes en estas manos',
@@ -39,6 +44,7 @@ const SEGMENTS: ReadonlyArray<{
   {
     key: 'noOpening',
     tone: 'danger',
+    rgb: 'var(--danger-rgb)',
     label: 'Sin salida',
     description: 'No cumplen ninguna salida',
     rulesTitle: 'Problemas presentes en estas manos',
@@ -48,6 +54,7 @@ const SEGMENTS: ReadonlyArray<{
 
 const MAX_RULES = 4
 
+/** Cómo se reparten las manos: un anillo de tres tramos, la leyenda tocable y las reglas del tramo elegido. */
 export function LabFailureBreakdown({ result }: { result: LabViewResult }) {
   const [selectedSegment, setActiveSegment] = useState<HandSegment | null>(null)
   const values: Record<HandSegment, number> = {
@@ -67,50 +74,44 @@ export function LabFailureBreakdown({ result }: { result: LabViewResult }) {
       defaultOpenOnMobile={false}
       className="order-3 min-[1101px]:order-2 min-[1101px]:col-span-7 min-[1101px]:col-start-6 min-[1101px]:row-span-2 min-[1101px]:row-start-2"
     >
-      <div className="flex h-4 gap-0.5 overflow-hidden rounded-full">
-        {SEGMENTS.map((segment) => (
-          <button
-            key={segment.key}
-            type="button"
-            className={cx(
-              'h-full min-w-1 cursor-pointer [transition:width_var(--motion-duration)_ease,filter_150ms_ease,opacity_150ms_ease] first:rounded-l-full last:rounded-r-full focus-visible:outline-none focus-visible:shadow-focus motion-reduce:transition-none',
-              TONE[segment.tone].fill,
-              activeSegment === segment.key ? 'brightness-110' : 'opacity-40',
-            )}
-            style={{ width: `${values[segment.key] * 100}%` }}
-            aria-label={`${segment.label}: ${formatShortPercent(values[segment.key])}. Ver reglas`}
-            onMouseEnter={() => setActiveSegment(segment.key)}
-            onFocus={() => setActiveSegment(segment.key)}
-            onClick={() => setActiveSegment(segment.key)}
-          />
-        ))}
-      </div>
+      <div className="grid items-center justify-items-center gap-5 min-[560px]:grid-cols-[auto_minmax(0,1fr)] min-[560px]:justify-items-start min-[560px]:gap-8">
+        <SegmentedRing
+          size={176}
+          strokeWidth={16}
+          activeKey={activeSegment}
+          label={SEGMENTS.map((segment) => `${segment.label}: ${formatShortPercent(values[segment.key])}`).join(', ')}
+          segments={SEGMENTS.map((segment) => ({ key: segment.key, value: values[segment.key], color: segment.rgb }))}
+        >
+          <span className="grid gap-1 leading-none">
+            <strong className="text-stat font-bold tracking-[-0.02em] text-foreground tabular-nums">{formatShortPercent(values[active.key])}</strong>
+            <span className="text-micro text-muted">{active.label.toLowerCase()}</span>
+          </span>
+        </SegmentedRing>
 
-      <div className="grid grid-cols-3 gap-2 min-[1101px]:gap-3">
-        {SEGMENTS.map((segment) => (
-          <button
-            key={segment.key}
-            type="button"
-            className={cx(
-              'grid content-start gap-1.5 rounded-card border p-3 text-left transition-[background-color,border-color] duration-150 focus-visible:outline-none focus-visible:shadow-focus',
-              TONE[segment.tone].rgb,
-              activeSegment === segment.key
-                ? 'border-[rgb(var(--tone-rgb)/0.7)] bg-[rgb(var(--tone-rgb)/0.18)]'
-                : 'border-[rgb(var(--tone-rgb)/0.2)] bg-[rgb(var(--tone-rgb)/0.07)] hover:bg-[rgb(var(--tone-rgb)/0.12)]',
-            )}
-            aria-pressed={activeSegment === segment.key}
-            onMouseEnter={() => setActiveSegment(segment.key)}
-            onClick={() => setActiveSegment(segment.key)}
-          >
-            <span className="flex items-center justify-between gap-1">
-              <strong className="text-micro font-semibold text-muted">{segment.label}</strong>
-              <span className={cx('size-2 rounded-full', TONE[segment.tone].fill)} aria-hidden="true" />
-            </span>
-            <span className="text-lead font-semibold tabular-nums text-foreground">{formatShortPercent(values[segment.key])}</span>
-            <Meter value={values[segment.key]} tone={segment.tone} size="sm" label={`${segment.label}: ${formatShortPercent(values[segment.key])}`} />
-            <small className="hidden text-micro text-soft min-[640px]:block">{segment.description}</small>
-          </button>
-        ))}
+        <ul className="m-0 grid w-full list-none gap-1 p-0">
+          {SEGMENTS.map((segment) => (
+            <li key={segment.key}>
+              <button
+                type="button"
+                className={cx(
+                  'grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 rounded-control px-3 py-2 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus',
+                  activeSegment === segment.key ? 'bg-tint/10' : 'hover:bg-tint/6',
+                )}
+                aria-pressed={activeSegment === segment.key}
+                onMouseEnter={() => setActiveSegment(segment.key)}
+                onFocus={() => setActiveSegment(segment.key)}
+                onClick={() => setActiveSegment(segment.key)}
+              >
+                <span className={cx('size-2.5 rounded-full', TONE[segment.tone].fill)} aria-hidden="true" />
+                <span className="grid min-w-0">
+                  <strong className="text-body font-semibold text-foreground">{segment.label}</strong>
+                  <small className="text-micro text-muted">{segment.description}</small>
+                </span>
+                <span className="text-lead font-semibold tabular-nums text-foreground">{formatShortPercent(values[segment.key])}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
       </div>
 
       <SegmentRules
@@ -120,7 +121,7 @@ export function LabFailureBreakdown({ result }: { result: LabViewResult }) {
         rules={result.segmentRules[active.key].filter((rule) => (active.key === 'clean' ? rule.kind === 'opening' : rule.kind === 'problem'))}
       />
 
-      <Callout tone="info" icon="sparkles">
+      <Callout tone="info" icon="sparkles" className="mt-auto">
         {buildFailureAdvice(result)}
       </Callout>
     </LabSection>
@@ -129,17 +130,21 @@ export function LabFailureBreakdown({ result }: { result: LabViewResult }) {
 
 function SegmentRules({ title, emptyText, tone, rules }: { title: string; emptyText: string; tone: Tone; rules: SegmentRule[] }) {
   return (
-    <div className={cx('grid gap-3 rounded-control border p-3', TONE[tone].tint)} aria-live="polite">
+    <div className="grid gap-3 border-t border-border-subtle pt-4" aria-live="polite">
       <span className={cx(overline, TONE[tone].text)}>{title}</span>
       {rules.length === 0 ? (
         <p className={LAB_FOOTNOTE}>{emptyText}</p>
       ) : (
-        <ul className="m-0 grid list-none gap-2 p-0">
-          {rules.slice(0, MAX_RULES).map((rule) => (
-            <li key={rule.patternId} className="grid grid-cols-[minmax(0,1.4fr)_minmax(3rem,1fr)_auto] items-center gap-3 text-body">
-              <span className="truncate text-foreground">{rule.name}</span>
-              <Meter value={rule.share} tone={tone} size="sm" label={rule.name} />
-              <span className="font-bold text-foreground tabular-nums">{formatShortPercent(rule.share)}</span>
+        <ul className="m-0 grid list-none gap-x-6 gap-y-3 p-0 min-[640px]:grid-cols-2">
+          {rules.slice(0, MAX_RULES).map((rule, index) => (
+            <li key={rule.patternId} className="flex min-w-0 items-center gap-3 text-body">
+              <ProgressRing value={rule.share} tone={tone} size={44} strokeWidth={4} delay={index * 90} label={`${rule.name}: ${formatShortPercent(rule.share)}`}>
+                {Math.round(rule.share * 100)}%
+              </ProgressRing>
+              <span className="grid min-w-0">
+                <span className="truncate text-foreground">{rule.name}</span>
+                <span className="text-micro tabular-nums text-muted">{formatShortPercent(rule.share)} de estas manos</span>
+              </span>
             </li>
           ))}
         </ul>

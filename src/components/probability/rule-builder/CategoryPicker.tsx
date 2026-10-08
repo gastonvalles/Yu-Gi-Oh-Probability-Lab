@@ -32,11 +32,11 @@ interface CategoryPickerProps {
 }
 
 const CHIP =
-  'inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border-subtle bg-white/5 px-3.5 text-body font-semibold text-foreground transition-[background-color,border-color] [-webkit-tap-highlight-color:transparent] focus-visible:outline-none focus-visible:shadow-focus active:scale-[0.97] data-[active=true]:border-primary/55 data-[active=true]:bg-primary/20 [&_span]:text-micro [&_span]:font-medium [&_span]:text-muted'
+  'inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border-subtle bg-tint/5 px-3.5 text-body font-semibold text-foreground transition-[background-color,border-color] [-webkit-tap-highlight-color:transparent] focus-visible:outline-none focus-visible:shadow-focus active:scale-[0.97] data-[active=true]:border-primary/55 data-[active=true]:bg-primary/20 [&_span]:text-micro [&_span]:font-medium [&_span]:text-muted'
 
 /** Fila: el estado (ninguna / algunas / todas las cartas elegidas) llega por data-state. */
 const ROW =
-  'group flex min-h-11 items-center gap-3 rounded-control border border-transparent bg-transparent px-3 text-left text-body text-foreground [-webkit-tap-highlight-color:transparent] [contain-intrinsic-size:auto_44px] [content-visibility:auto] hover:bg-white/5 focus-visible:outline-none focus-visible:shadow-focus active:bg-white/8 data-[state=all]:border-primary/50 data-[state=all]:bg-primary/14 data-[state=some]:border-primary/25'
+  'group flex min-h-11 items-center gap-3 rounded-control border border-transparent bg-transparent px-3 text-left text-body text-foreground [-webkit-tap-highlight-color:transparent] [contain-intrinsic-size:auto_44px] [content-visibility:auto] hover:bg-tint/5 focus-visible:outline-none focus-visible:shadow-focus active:bg-tint/8 data-[state=all]:border-primary/50 data-[state=all]:bg-primary/14 data-[state=some]:border-primary/25'
 
 const CHECK =
   'inline-grid size-5 flex-none place-items-center rounded-full border-[1.5px] border-border-strong text-micro font-bold leading-none group-data-[state=all]:border-primary group-data-[state=all]:bg-primary group-data-[state=all]:text-primary-foreground group-data-[state=some]:border-primary/70 group-data-[state=some]:text-primary-soft'
@@ -233,7 +233,7 @@ export function CategoryPicker({
       </div>
 
       {isMulti ? (
-        <footer className="flex flex-none items-center gap-3 border-t border-border-subtle bg-black/20 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-3">
+        <footer className="flex flex-none items-center gap-3 border-t border-border-subtle px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-3">
           <span className="min-w-0 flex-1 text-body font-semibold text-foreground">
             {selection.size > 0
               ? `${selection.size} carta${selection.size > 1 ? 's' : ''} seleccionada${selection.size > 1 ? 's' : ''}`

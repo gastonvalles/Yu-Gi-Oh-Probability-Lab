@@ -8,7 +8,6 @@ import type { DeckFormat } from '../types'
 import { StepHero } from './StepHero'
 import { StepPage } from './ui/StepPage'
 import { Button } from './ui/Button'
-import { Card } from './ui/Card'
 import { cx } from './ui/cx'
 import { EmptyState } from './ui/EmptyState'
 import { SectionHeader } from './ui/SectionHeader'
@@ -117,75 +116,56 @@ export function ExportDeckPanel({
         )}
       />
 
-      <section className="grid min-h-0 gap-4 min-[1180px]:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)] min-[1180px]:gap-5">
-        <Card as="article" className="grid min-h-0 gap-4 overflow-hidden min-[1180px]:grid-rows-[auto_minmax(0,1fr)]">
+      <section className="grid min-w-0 gap-8 min-[1180px]:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)] min-[1180px]:items-start min-[1180px]:gap-10">
+        <article className="grid min-w-0 content-start gap-4">
           <SectionHeader icon="image" title="Imagen del deck" description="Se descarga en alta resolución (JPG) para compartir." />
 
-          <div className="min-h-80 overflow-y-auto overflow-x-hidden min-[1180px]:min-h-0">
-            {previewState === 'ready' && imagePreviewUrl ? (
-              <img
-                src={imagePreviewUrl}
-                alt="Vista previa de la imagen del deck"
-                className="pointer-events-none block h-auto w-full select-none"
-                draggable={false}
-              />
-            ) : previewState === 'loading' ? (
-              <div className="grid gap-2 p-2" aria-hidden="true">
-                <Skeleton radius="panel" className="h-10 w-[42%]" />
-                <Skeleton radius="none" className="aspect-[0.74] w-full" />
-                <div className="grid grid-cols-4 gap-2">
-                  <Skeleton radius="none" className="aspect-[0.72] w-full" />
-                  <Skeleton radius="none" className="aspect-[0.72] w-full" />
-                  <Skeleton radius="none" className="aspect-[0.72] w-full" />
-                  <Skeleton radius="none" className="aspect-[0.72] w-full" />
-                </div>
-                <div className="grid grid-cols-4 gap-2">
-                  <Skeleton radius="none" className="aspect-[0.72] w-full" />
-                  <Skeleton radius="none" className="aspect-[0.72] w-full" />
-                  <Skeleton radius="none" className="aspect-[0.72] w-full" />
-                  <Skeleton radius="none" className="aspect-[0.72] w-full" />
-                </div>
-              </div>
-            ) : (
-              <EmptyState icon="image" title={previewState === 'error' ? 'No pude generar la vista previa' : 'Todavía no hay vista previa'} className="h-full content-center">
-                {previewState === 'error'
-                  ? 'No pude generar la vista previa de la imagen.'
-                  : 'Agregá cartas al Main Deck para habilitar la preview.'}
-              </EmptyState>
-            )}
-          </div>
-        </Card>
+          {previewState === 'ready' && imagePreviewUrl ? (
+            <img
+              src={imagePreviewUrl}
+              alt="Vista previa de la imagen del deck"
+              className="pointer-events-none block h-auto w-full select-none rounded-card ring-1 ring-border-subtle"
+              draggable={false}
+            />
+          ) : previewState === 'loading' ? (
+            <Skeleton radius="panel" className="aspect-[0.74] w-full" />
+          ) : (
+            <EmptyState icon="image" title={previewState === 'error' ? 'No pude generar la vista previa' : 'Todavía no hay vista previa'}>
+              {previewState === 'error'
+                ? 'No pude generar la vista previa de la imagen.'
+                : 'Agregá cartas al Main Deck para habilitar la preview.'}
+            </EmptyState>
+          )}
+        </article>
 
-        <Card as="article" className="grid min-h-0 gap-4 overflow-hidden min-[1180px]:grid-rows-[auto_minmax(0,1fr)]">
+        <article className="grid min-w-0 content-start gap-4 min-[1180px]:border-l min-[1180px]:border-border-subtle min-[1180px]:pl-10">
           <SectionHeader
             icon="file"
             title="Decklist oficial (PDF)"
             description="Planilla de Konami para torneos, lista para imprimir. Completá tus datos antes de entregarla."
           />
 
-          <div className="min-h-80 overflow-y-auto overflow-x-hidden min-[1180px]:min-h-0">
-            <div className="grid gap-3">
-              {decklistSections
-                .filter((section) => section.total > 0)
-                .map((section) => (
-                  <section key={section.key} className="grid gap-1">
-                    <h3 className={cx('m-0 flex items-baseline justify-between gap-2 border-b border-border-subtle pb-1.5', overline)}>
-                      <span className="text-foreground">{section.label}</span>
-                      <span className="tabular-nums">{section.total}</span>
-                    </h3>
-                    <ul className="m-0 grid list-none gap-0.5 p-0 text-body">
-                      {section.entries.map((entry) => (
-                        <li key={entry.name} className="grid grid-cols-[1.5rem_minmax(0,1fr)] gap-1.5">
-                          <span className="text-muted text-right tabular-nums">{entry.count}</span>
-                          <span className="truncate text-foreground">{entry.name}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                ))}
-            </div>
+          <div className="grid gap-5">
+            {decklistSections
+              .filter((section) => section.total > 0)
+              .map((section) => (
+                <section key={section.key} className="grid gap-1">
+                  <h3 className={cx('m-0 flex items-baseline justify-between gap-2 border-b border-border-subtle pb-1.5', overline)}>
+                    <span className="text-foreground">{section.label}</span>
+                    <span className="tabular-nums">{section.total}</span>
+                  </h3>
+                  <ul className="m-0 grid list-none gap-0.5 p-0 text-body">
+                    {section.entries.map((entry) => (
+                      <li key={entry.name} className="grid grid-cols-[1.5rem_minmax(0,1fr)] gap-1.5">
+                        <span className="text-muted text-right tabular-nums">{entry.count}</span>
+                        <span className="truncate text-foreground">{entry.name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
           </div>
-        </Card>
+        </article>
       </section>
     </StepPage>
   )

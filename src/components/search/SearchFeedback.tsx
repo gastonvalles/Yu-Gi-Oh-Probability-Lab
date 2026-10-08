@@ -58,7 +58,7 @@ export function SearchResultsToolbar({
         <span className="sr-only">Ordenar resultados</span>
         <select
           className={cx(
-            'cursor-pointer rounded-full border border-border-subtle bg-white/5 px-3 font-semibold text-foreground [color-scheme:dark] focus-visible:outline-none focus-visible:shadow-focus',
+            'cursor-pointer rounded-full border border-border-subtle bg-tint/5 px-3 font-semibold text-foreground [color-scheme:dark] focus-visible:outline-none focus-visible:shadow-focus',
             layout === 'mobile' ? 'min-h-9 text-body' : 'min-h-8 text-micro',
           )}
           value={sortOrder} onChange={(event) => onSortOrderChange(event.target.value as SearchSortOrder)}>
@@ -185,7 +185,7 @@ export function SearchStart({
 
 function EmptyIcon({ name }: { name: 'search' | 'refresh' }) {
   return (
-    <span className="grid size-10 place-items-center rounded-full border border-border-subtle bg-white/5 text-soft">
+    <span className="grid size-10 place-items-center rounded-full border border-border-subtle bg-tint/5 text-soft">
       <Icon name={name} size={20} />
     </span>
   )

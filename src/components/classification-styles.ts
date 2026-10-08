@@ -20,67 +20,62 @@ export function statusChip(tone: StatusTone, compact = false): string {
   const look = TONE[STATUS_TONE[tone]]
 
   return cx(
-    'inline-flex items-center whitespace-nowrap rounded-full border font-semibold leading-none',
+    'inline-flex items-center whitespace-nowrap rounded-full font-semibold leading-none',
     compact ? 'px-1.5 py-1 text-micro' : 'px-2 py-1 text-micro',
-    look.tint,
+    look.soft,
     look.text,
   )
 }
 
-/** Referencias de la guía: tarjeta de rol, grupo y punto de color. */
-export const ROLE_REFERENCE_CARD = 'rounded-card border border-[rgb(var(--role-rgb)/0.26)] bg-[rgb(var(--role-rgb)/0.07)]'
-export const ROLE_REFERENCE_GROUP = 'rounded-card border border-[rgb(var(--role-rgb)/0.24)] bg-[rgb(var(--role-rgb)/0.07)]'
+/** Punto de color de un rol u origen en la guía (la guía se ordena con líneas finas, sin cajas). */
 export const ROLE_REFERENCE_MARK = 'size-2.5 shrink-0 rounded-full bg-(--role-color)'
 
 const OPTION_BASE =
-  'w-full max-w-full border [overflow-wrap:anywhere] transition-[border-color,background-color] duration-150 focus-visible:outline-none focus-visible:shadow-focus'
+  'w-full max-w-full [overflow-wrap:anywhere] transition-[background-color,opacity] duration-150 focus-visible:outline-none focus-visible:shadow-focus'
 
 /** Opción de origen (Engine / Non-Engine / Híbrida): normal, elegida o apagada. */
 export function originOption(state: { active: boolean; muted: boolean }): string {
   if (state.muted) {
-    return cx(OPTION_BASE, 'border-border-subtle bg-white/2 opacity-60 grayscale')
+    return cx(OPTION_BASE, 'bg-tint/4 opacity-60 grayscale')
   }
 
   return cx(
     OPTION_BASE,
     state.active
-      ? 'border-[rgb(var(--role-rgb)/0.65)] bg-[rgb(var(--role-rgb)/0.16)]'
-      : 'border-border-subtle bg-white/3 hover:border-[rgb(var(--role-rgb)/0.45)] hover:bg-[rgb(var(--role-rgb)/0.08)]',
+      ? 'bg-[rgb(var(--role-rgb)/0.28)]'
+      : 'bg-tint/6 hover:bg-[rgb(var(--role-rgb)/0.14)]',
   )
 }
 
 /** Botón de rol (Starter, Extender…): normal o elegido. */
 export function roleOptionButton(active: boolean): string {
   return cx(
-    'rounded-control border text-left [overflow-wrap:anywhere] whitespace-normal transition-[border-color,background-color,color] duration-150 focus-visible:outline-none focus-visible:shadow-focus',
+    'rounded-control text-left [overflow-wrap:anywhere] whitespace-normal transition-[background-color,color] duration-150 focus-visible:outline-none focus-visible:shadow-focus',
     active
-      ? 'border-[rgb(var(--role-rgb)/0.65)] bg-[rgb(var(--role-rgb)/0.2)] text-foreground'
-      : 'border-border-subtle bg-white/4 text-muted hover:border-[rgb(var(--role-rgb)/0.45)] hover:bg-[rgb(var(--role-rgb)/0.08)] hover:text-foreground',
+      ? 'bg-[rgb(var(--role-rgb)/0.3)] text-foreground'
+      : 'bg-tint/7 text-muted hover:bg-[rgb(var(--role-rgb)/0.16)] hover:text-foreground',
   )
 }
 
-/** Chip de vista de la cola ("Todas", "Starters"…). */
+/** Chip de vista de la cola ("Todas", "Starters"…): lavanda en reposo, con el color del grupo al elegirlo. */
 export function viewChip(state: { active: boolean; empty: boolean }): string {
   return cx(
-    'inline-flex items-center gap-2 rounded-control border px-3.5 py-2 text-micro font-semibold leading-none transition-[border-color,background-color,color] duration-150 focus-visible:outline-none focus-visible:shadow-focus',
+    'inline-flex items-center gap-2 rounded-control px-3.5 py-2 text-micro font-semibold leading-none transition-[background-color,color] duration-150 focus-visible:outline-none focus-visible:shadow-focus',
     state.active
-      ? 'border-[rgb(var(--role-rgb)/0.65)] bg-[rgb(var(--role-rgb)/0.18)] text-foreground'
-      : 'border-border-subtle bg-white/4 text-muted hover:border-[rgb(var(--role-rgb)/0.45)] hover:bg-[rgb(var(--role-rgb)/0.08)] hover:text-foreground',
+      ? 'bg-[rgb(var(--role-rgb)/0.3)] text-foreground'
+      : 'bg-lavender text-primary-soft hover:bg-[rgb(var(--role-rgb)/0.2)] hover:text-foreground',
     state.empty && 'opacity-50',
   )
 }
 
-/** Carta de la cola de clasificación y su miniatura. */
+/** Carta de la cola de clasificación: sin caja en reposo; sólo se marca al pasar el mouse o al elegirla. */
 export function queueCard(active: boolean): string {
   return cx(
-    'min-h-14 cursor-pointer border transition-[border-color,background-color] duration-150 focus-visible:outline-none focus-visible:shadow-focus',
-    active ? 'border-primary/60 bg-primary/12' : 'border-border-subtle bg-white/3 hover:border-white/20 hover:bg-white/6',
+    'min-h-14 cursor-pointer transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus',
+    active ? 'bg-primary/18' : 'bg-transparent hover:bg-tint/7',
   )
 }
 
 export function queueArt(active: boolean): string {
-  return cx(
-    'relative overflow-hidden border leading-[0] transition-[border-color] duration-150',
-    active ? 'border-primary/80' : 'border-transparent',
-  )
+  return cx('relative overflow-hidden leading-[0] transition-shadow duration-150', active && 'ring-2 ring-primary/80')
 }

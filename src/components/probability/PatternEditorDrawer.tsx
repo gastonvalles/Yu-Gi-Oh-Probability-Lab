@@ -12,7 +12,6 @@ import { CloseButton } from '../ui/IconButton'
 import type { PatternEditorActions } from './pattern-editor-actions'
 import type { DraftImpact } from './use-draft-impact'
 import { RuleBuilder } from './rule-builder'
-import { surface } from '../ui/surfaces'
 
 type DrawerMode = 'custom-create' | 'edit'
 
@@ -64,7 +63,7 @@ export function PatternEditorDrawer({
       <button
         type="button"
         aria-label="Cerrar editor"
-        className="absolute inset-0 h-full w-full bg-black/65"
+        className="absolute inset-0 h-full w-full bg-background/80"
         onClick={onClose}
       />
 
@@ -99,11 +98,11 @@ export function PatternEditorDrawer({
               pattern={pattern}
             />
           ) : (
-            <p className={`${surface.card} m-0 px-3 py-3 text-body text-muted`}>Preparando el editor…</p>
+            <p className="m-0 px-1 py-3 text-body text-muted">Preparando el editor…</p>
           )}
         </div>
 
-        <footer className="flex items-center justify-between gap-2 border-t border-border-subtle bg-black/20 px-4 py-3">
+        <footer className="flex items-center justify-between gap-2 border-t border-border-subtle px-4 py-3">
           {pattern && !isPendingCreation ? (
             <Button variant="tertiary" color="danger" size="sm" icon="trash" onClick={() => onRequestDelete(pattern.id)}>
               Eliminar regla

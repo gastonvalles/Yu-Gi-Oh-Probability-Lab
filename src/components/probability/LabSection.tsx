@@ -25,7 +25,7 @@ export function LabSection({ title, icon, summary, actions, defaultOpenOnMobile 
   const contentId = useId()
 
   return (
-    <Card className={cx('grid', isOpen ? 'gap-4' : 'gap-0', className)}>
+    <Card className={cx('grid', isOpen ? 'grid-rows-[auto_minmax(0,1fr)] gap-4' : 'gap-0', className)}>
       <header className="flex flex-wrap items-center justify-between gap-2">
         {isMobile ? (
           <button
@@ -44,7 +44,7 @@ export function LabSection({ title, icon, summary, actions, defaultOpenOnMobile 
         {actions && isOpen ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
       </header>
       {isOpen ? (
-        <div id={contentId} className="grid min-w-0 gap-4">
+        <div id={contentId} className="flex min-w-0 flex-col gap-4">
           {children}
         </div>
       ) : null}
@@ -54,11 +54,9 @@ export function LabSection({ title, icon, summary, actions, defaultOpenOnMobile 
 
 function SectionHeading({ title, icon, summary }: { title: string; icon?: IconName; summary?: ReactNode }) {
   return (
-    <span className="flex min-w-0 items-center gap-3">
+    <span className="flex min-w-0 items-start gap-3">
       {icon ? (
-        <span className="grid size-8 shrink-0 place-items-center rounded-control border border-border-subtle bg-white/5 text-muted">
-          <Icon name={icon} size={16} />
-        </span>
+        <Icon name={icon} size={20} className="mt-0.5 shrink-0 text-primary-soft" />
       ) : null}
       <span className="grid min-w-0 gap-0.5">
         <strong className={sectionTitle}>{title}</strong>

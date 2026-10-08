@@ -23,11 +23,10 @@ import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
-import { Meter } from '../ui/Meter'
+import { ProgressRing } from '../ui/ProgressRing'
 import { overline } from '../ui/typography'
 import { DeckBuilderClassicPreview } from './DeckBuilderClassicPreview'
 import { DeckImportDrawer } from './DeckImportDrawer'
-import { surface } from '../ui/surfaces'
 import { LabeledField, fieldInline } from '../ui/LabeledField'
 
 
@@ -443,15 +442,23 @@ export function DeckBuilderStep({
       />
 
       {showGenesysPoints ? (
-        <Card padding="sm" tone={genesysPointTotal > genesysPointCap ? 'warning' : undefined} className="grid gap-2 min-[1101px]:hidden">
-          <div className="flex items-baseline justify-between gap-2">
+        <Card padding="sm" tone={genesysPointTotal > genesysPointCap ? 'warning' : undefined} className="flex items-center gap-4 min-[1101px]:hidden">
+          <ProgressRing
+            value={genesysPointTotal / genesysPointCap}
+            tone={genesysPointTotal > genesysPointCap ? 'warning' : 'brand'}
+            size={60}
+            strokeWidth={6}
+            label={`Puntos Genesys: ${formatInteger(genesysPointTotal)} de ${formatInteger(genesysPointCap)}`}
+          >
+            {formatInteger(genesysPointTotal)}
+          </ProgressRing>
+          <div className="grid gap-0.5">
             <span className={overline}>Puntos Genesys</span>
             <strong className="text-body font-semibold text-foreground tabular-nums">
               {formatInteger(genesysPointTotal)} / {formatInteger(genesysPointCap)} pts
             </strong>
+            <p className="m-0 text-micro text-muted">Cap estándar de 100 puntos y hasta 3 copias por carta.</p>
           </div>
-          <Meter value={genesysPointTotal / genesysPointCap} tone={genesysPointTotal > genesysPointCap ? 'warning' : 'brand'} size="sm" label="Puntos Genesys" />
-          <p className="m-0 text-micro text-muted">Cap estándar de 100 puntos y hasta 3 copias por carta.</p>
         </Card>
       ) : null}
 
@@ -467,8 +474,8 @@ export function DeckBuilderStep({
       ) : null}
 
       <div className="grid items-start gap-3">
-        <article className={`${surface.panelSoft} w-full min-h-0 self-start p-3`}>
-          <div className="grid gap-3">
+        <article className="w-full min-h-0 self-start">
+          <div className="grid gap-4">
             <div className="sticky top-2 z-20 min-[1101px]:hidden">
               <Button variant="primary" size="lg" fullWidth icon="plus" onClick={() => setMobileSearchOpen(true)}>
                 Buscar y agregar cartas

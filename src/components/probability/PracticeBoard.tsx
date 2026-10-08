@@ -112,7 +112,7 @@ function RuleExplanation({ match, caseIndex, odds }: { match: PracticeHandMatch;
 /** Explicación de la salida/problema tocado: abajo del tablero, junto a la mano. */
 function explainStyle(kind: PatternKind): string {
   return cx(
-    'mt-auto grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 rounded-card border border-[color-mix(in_srgb,var(--rule-color)_45%,transparent)] bg-card-background/92 px-4 py-[0.85rem] text-white animate-sheet-in motion-reduce:animate-none',
+    'mt-auto grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 rounded-card bg-[color-mix(in_srgb,var(--rule-color)_16%,var(--card-background))] px-4 py-[0.85rem] text-white animate-sheet-in motion-reduce:animate-none',
     RULE_COLOR[kind],
   )
 }

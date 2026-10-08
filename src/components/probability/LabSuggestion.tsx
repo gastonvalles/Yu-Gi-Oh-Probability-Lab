@@ -6,7 +6,7 @@ import { Badge } from '../ui/Badge'
 import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
-import { Meter } from '../ui/Meter'
+import { ProgressRing } from '../ui/ProgressRing'
 import { TONE } from '../ui/tone'
 import { overline, supportText } from '../ui/typography'
 import { formatOdds } from './lab-copy'
@@ -42,15 +42,10 @@ export function LabSuggestion({ cards, checks, deckFormat, handSize, view, resul
 
   return (
     <Card className="order-2 grid content-start gap-4 min-[1101px]:order-3 min-[1101px]:col-span-5 min-[1101px]:col-start-1" aria-label="Qué mejorar primero">
-      <header className="flex min-w-0 items-start gap-3">
-        <span className={cx('grid size-10 shrink-0 place-items-center rounded-control border', TONE.danger.tint, TONE.danger.text)}>
-          <Icon name="target" size={20} />
-        </span>
-        <div className="grid min-w-0 gap-0.5">
-          <p className={cx('m-0', overline)}>Lo que más te frena</p>
-          <strong className="text-lead font-semibold leading-tight text-foreground [overflow-wrap:anywhere]">{culprit.name}</strong>
-          <p className={supportText}>{describeCulprit(culprit)}</p>
-        </div>
+      <header className="grid min-w-0 gap-0.5">
+        <p className={cx('m-0', overline, TONE.danger.text)}>Lo que más te frena</p>
+        <strong className="text-lead font-semibold leading-tight text-foreground [overflow-wrap:anywhere]">{culprit.name}</strong>
+        <p className={supportText}>{describeCulprit(culprit)}</p>
       </header>
 
       {best ? (
@@ -59,11 +54,11 @@ export function LabSuggestion({ cards, checks, deckFormat, handSize, view, resul
           {perTurnLine(best, perTurn)}
         </AdviceBox>
       ) : state.status === 'loading' ? (
-        <div className="grid gap-2" role="status">
+        <div className="flex items-center gap-3 border-t border-border-subtle pt-4" role="status">
+          <ProgressRing value={state.progress.total > 0 ? state.progress.done / state.progress.total : 0} size={44} strokeWidth={4} label="Cambios probados" />
           <p className="m-0 text-body text-muted motion-safe:animate-pulse">
             Probando cambios en tu deck… ({state.progress.done}/{state.progress.total})
           </p>
-          <Meter value={state.progress.total > 0 ? state.progress.done / state.progress.total : 0} size="sm" label="Cambios probados" />
         </div>
       ) : (
         <AdviceBox label="Conclusión">
@@ -74,13 +69,13 @@ export function LabSuggestion({ cards, checks, deckFormat, handSize, view, resul
   )
 }
 
-/** Recuadro verde del consejo (o de la conclusión cuando no hay un cambio que convenga). */
+/** El consejo (o la conclusión cuando no hay un cambio que convenga): va debajo de una línea fina, sin caja. */
 function AdviceBox({ label, visual, children }: { label: string; visual?: ReactNode; children: ReactNode }) {
   return (
-    <div className={cx('grid gap-3 rounded-control border p-3', TONE.success.tint)}>
+    <div className="grid gap-3 border-t border-border-subtle pt-4">
       {visual}
-      <p className="m-0 text-body text-foreground">
-        <strong>{label}: </strong>
+      <p className="m-0 text-body text-muted">
+        <strong className={cx('font-semibold', TONE.success.text)}>{label}: </strong>
         {children}
       </p>
     </div>
@@ -99,11 +94,14 @@ function SwapSummary({ best, cleanBefore }: { best: Outcome; cleanBefore: number
         {from && to ? <Icon name="arrow-right" size={16} className="text-soft" /> : null}
         {to ? <SwapChip action="add" label={ROLE_GROUP_LABEL[to]} /> : null}
       </div>
-      <div className="flex items-center gap-2 tabular-nums min-[1101px]:ml-auto">
-        <span className="text-micro text-muted">Manos limpias</span>
-        <span className="text-body text-muted">{formatShortPercent(cleanBefore)}</span>
+      <div className="flex items-center gap-2 tabular-nums min-[1101px]:ml-auto" aria-label="Manos limpias antes y después">
+        <ProgressRing value={cleanBefore} tone="neutral" size={48} strokeWidth={4} label={`Manos limpias hoy: ${formatShortPercent(cleanBefore)}`}>
+          {Math.round(cleanBefore * 100)}%
+        </ProgressRing>
         <Icon name="arrow-right" size={14} className="text-soft" />
-        <strong className="text-lead font-bold text-foreground">{formatShortPercent(best.cleanProbability)}</strong>
+        <ProgressRing value={best.cleanProbability} tone="success" size={48} strokeWidth={4} delay={300} label={`Manos limpias con el cambio: ${formatShortPercent(best.cleanProbability)}`}>
+          {Math.round(best.cleanProbability * 100)}%
+        </ProgressRing>
         {points > 0.05 ? (
           <Badge tone="success" size="sm">
             +{points.toFixed(1)} pts
@@ -118,7 +116,7 @@ function SwapChip({ action, label }: { action: 'remove' | 'add'; label: string }
   const tone = action === 'remove' ? TONE.danger : TONE.success
 
   return (
-    <span className={cx('inline-flex items-center gap-1.5 rounded-tag border px-2 py-1 text-micro font-semibold', tone.tint, tone.text)}>
+    <span className={cx('inline-flex items-center gap-1.5 rounded-tag px-2 py-1 text-micro font-semibold', tone.soft, tone.text)}>
       <Icon name={action === 'remove' ? 'minus' : 'plus'} size={12} strokeWidth={2.5} />
       {action === 'remove' ? 'Sacar' : 'Meter'} 1 {label}
     </span>

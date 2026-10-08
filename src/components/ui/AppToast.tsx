@@ -16,7 +16,7 @@ const TOAST_TONE: Record<ToastTone, { tone: Tone; icon: IconName }> = {
 }
 
 const TOAST_BASE =
-  'flex max-w-[min(26rem,calc(100vw-2rem))] cursor-grab touch-pan-y select-none items-center gap-3 rounded-card border border-white/10 bg-surface-raised py-2.5 pl-3 pr-4 text-body font-medium text-foreground shadow-overlay transition-[transform,opacity] animate-toast-in data-[dragging=true]:cursor-grabbing data-[dragging=true]:transition-none data-[visible=false]:animate-toast-out'
+  'flex max-w-[min(26rem,calc(100vw-2rem))] cursor-grab touch-pan-y select-none items-center gap-3 rounded-card border border-tint/10 bg-surface-raised py-2.5 pl-3 pr-4 text-body font-medium text-foreground shadow-overlay transition-[transform,opacity] animate-toast-in data-[dragging=true]:cursor-grabbing data-[dragging=true]:transition-none data-[visible=false]:animate-toast-out'
 
 interface AppToastProps {
   id: string

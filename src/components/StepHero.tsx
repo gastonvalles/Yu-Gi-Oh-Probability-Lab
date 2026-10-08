@@ -36,9 +36,7 @@ export function StepHero({ title, icon, subtitle, help, side, sideVariant = 'act
   return (
     <header className="relative flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-3">
       <div className="flex min-w-0 items-center gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-control border border-primary/30 bg-primary/12 text-primary-soft min-[1101px]:size-11">
-          <Icon name={icon} size={20} />
-        </span>
+        <Icon name={icon} size={28} className="shrink-0 text-primary-soft" />
         <div className="grid min-w-0">
           <div className="flex min-w-0 items-center gap-1">
             <h2 className={cx(pageTitle, 'truncate')}>{title}</h2>

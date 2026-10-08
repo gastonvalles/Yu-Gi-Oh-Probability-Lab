@@ -37,7 +37,7 @@ interface MobileCardSearchProps {
 }
 
 const CHIP_ROW = '-mx-3 flex gap-2 overflow-x-auto px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
-const ROW = '[contain-intrinsic-size:auto_4.9rem] [content-visibility:auto] flex items-center gap-2 rounded-control border border-border-subtle bg-white/3 p-2'
+const ROW = '[contain-intrinsic-size:auto_4.9rem] [content-visibility:auto] flex items-center gap-2 rounded-control p-2'
 const ROW_MAIN = 'flex min-w-0 flex-1 items-center gap-3 border-0 bg-transparent p-0 text-inherit [-webkit-tap-highlight-color:transparent]'
 const ADDED_FEEDBACK_MS = 900
 const SKELETON_COUNT = 8

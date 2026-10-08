@@ -25,9 +25,10 @@ const KIND_FILTERS: ReadonlyArray<SegmentedOption<KindFilter>> = [
   { value: 'problem', label: 'Problemas' },
 ]
 
+/** Fila sin caja: las separa una línea fina y sólo se marca al pasar el mouse o tocarla. */
 const RULE_ROW =
-  'group relative grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 gap-y-1 overflow-hidden rounded-control border border-border-subtle bg-white/3 px-3 py-2.5 text-left transition-[border-color,background-color,opacity,transform] duration-150 focus-visible:outline-none focus-visible:shadow-focus'
-const RULE_ROW_INTERACTIVE = 'cursor-pointer hover:border-[rgb(var(--tone-rgb)/0.5)] hover:bg-white/5 active:scale-[0.99]'
+  'group relative grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 gap-y-1 rounded-control px-2 py-2.5 text-left transition-[background-color,opacity] duration-150 focus-visible:outline-none focus-visible:shadow-focus'
+const RULE_ROW_INTERACTIVE = 'cursor-pointer hover:bg-tint/6 active:bg-tint/10'
 const RULE_KIND_RGB: Record<PatternKind, string> = {
   opening: TONE.success.rgb,
   problem: TONE.danger.rgb,
@@ -204,7 +205,7 @@ function RuleTier({
       {!isOpen ? null : entries.length === 0 ? (
         (emptyState ?? <p className={LAB_FOOTNOTE}>No hay reglas de este tipo.</p>)
       ) : (
-        <ul id={listId} className="m-0 grid list-none gap-2 p-0">
+        <ul id={listId} className="m-0 grid list-none gap-0 divide-y divide-border-subtle p-0">
           {entries.map((entry) => (
             <li key={entry.patternId}>{renderRow(entry)}</li>
           ))}
@@ -248,7 +249,7 @@ function RuleRow({
       {entry.probability !== null && isActive ? (
         <ProgressRing
           value={entry.probability}
-          size={42}
+          size={44}
           tone={entry.kind === 'opening' ? 'success' : 'danger'}
           label={`${entry.name}: ${formatShortPercent(entry.probability)}`}
         />

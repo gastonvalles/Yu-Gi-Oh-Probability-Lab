@@ -4,10 +4,10 @@ import { cx } from './cx'
 import { TONE, type Tone } from './tone'
 
 /**
- * card: tarjeta de primer nivel sobre el lienzo · inset: bloque hundido dentro de una tarjeta ·
+ * card: tarjeta de primer nivel sobre el lienzo (adentro no van más cajas: se ordena con espacio y líneas finas) ·
  * raised: flotante (menús, popovers) · hero: tarjeta destacada violeta (una por pantalla, con su botón lavanda).
  */
-type CardLevel = 'card' | 'inset' | 'raised' | 'hero'
+type CardLevel = 'card' | 'raised' | 'hero'
 type CardPadding = 'none' | 'sm' | 'md' | 'lg'
 
 interface CardProps extends HTMLAttributes<HTMLElement> {
@@ -19,9 +19,8 @@ interface CardProps extends HTMLAttributes<HTMLElement> {
 }
 
 const LEVEL: Record<CardLevel, string> = {
-  card: 'rounded-card border border-border-subtle bg-card-background bg-linear-to-b from-white/4 to-transparent shadow-card',
-  inset: 'rounded-control border border-border-subtle bg-black/25',
-  raised: 'rounded-card border border-white/10 bg-surface-raised shadow-raised',
+  card: 'rounded-card border border-border-subtle bg-card-background bg-linear-to-b from-primary/8 to-transparent shadow-card',
+  raised: 'rounded-card border border-tint/10 bg-surface-raised shadow-raised',
   hero: 'rounded-panel bg-primary text-primary-foreground shadow-brand',
 }
 

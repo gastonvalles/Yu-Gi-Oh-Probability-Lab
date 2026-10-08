@@ -12,7 +12,7 @@ interface DeckModeNavigationProps {
 const STATUS_DOT: Record<DeckWorkflowStepTone, string> = {
   complete: 'bg-success',
   progress: 'bg-warning',
-  pending: 'bg-white/20',
+  pending: 'bg-tint/20',
 }
 
 const TAB_BASE =
@@ -30,7 +30,7 @@ export function DeckModeNavigation({ items, activeStep, onStepChange }: DeckMode
             type="button"
             aria-current={isActive ? 'step' : undefined}
             title={`${item.title}: ${item.detail}`}
-            className={cx(TAB_BASE, isActive ? 'bg-lavender text-foreground' : 'text-muted hover:bg-white/5 hover:text-foreground')}
+            className={cx(TAB_BASE, isActive ? 'bg-lavender text-foreground' : 'text-muted hover:bg-tint/5 hover:text-foreground')}
             onClick={() => onStepChange(item.key)}
           >
             <Icon

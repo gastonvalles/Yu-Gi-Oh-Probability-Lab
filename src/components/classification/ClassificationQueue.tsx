@@ -19,8 +19,7 @@ import {
 
 const MAX_VISIBLE_ROLES = 2
 
-const MINI_CHIP =
-  'whitespace-nowrap rounded-full border border-[rgb(var(--role-rgb)/0.45)] bg-[rgb(var(--role-rgb)/0.12)] px-2 py-0.5 text-micro font-semibold text-foreground'
+const MINI_CHIP = 'whitespace-nowrap rounded-full bg-[rgb(var(--role-rgb)/0.2)] px-2 py-0.5 text-micro font-semibold text-foreground'
 
 interface ClassificationQueueProps {
   cards: CardEntry[]
@@ -114,7 +113,7 @@ const QueueTile = memo(function QueueTile({
           {missingBoth ? <span className={cx(statusChip('warning', true))}>Sin clasificar</span> : null}
           {status ? <span className={statusChip(status.tone, true)}>{status.label}</span> : null}
           {card.origin ? (
-            <span className={cx(MINI_CHIP, 'border-dashed')} style={getClassificationStyle(getCardOriginDefinition(card.origin).key)}>
+            <span className={cx(MINI_CHIP, 'rounded-tag')} style={getClassificationStyle(getCardOriginDefinition(card.origin).key)}>
               {card.origin === 'non_engine' ? 'Non-Engine' : getCardOriginDefinition(card.origin).label}
             </span>
           ) : null}
@@ -125,7 +124,7 @@ const QueueTile = memo(function QueueTile({
           ))}
           {hiddenRoles > 0 ? (
             <span
-              className="rounded-full border border-border-subtle px-1.5 py-0.5 text-micro font-semibold text-muted"
+              className="rounded-full bg-tint/8 px-1.5 py-0.5 text-micro font-semibold text-muted"
               title={roles.slice(MAX_VISIBLE_ROLES).map((role) => getCardRoleDefinition(role).label).join(', ')}
             >
               +{hiddenRoles}

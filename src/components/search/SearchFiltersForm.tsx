@@ -47,7 +47,7 @@ export function SearchFiltersForm({
   return (
     <div
       id={id}
-      className="group/filters grid gap-4 rounded-card border border-border-subtle bg-white/3 p-3.5"
+      className="group/filters grid gap-4 p-3.5"
       data-layout={layout}
     >
       <div className="flex items-center justify-between gap-2.5 border-b border-border-subtle pb-3 text-micro font-semibold text-muted">
@@ -58,7 +58,7 @@ export function SearchFiltersForm({
         </span>
         <button
           type="button"
-          className="min-h-9 rounded-full border border-border-subtle bg-transparent px-4 text-body font-semibold text-foreground transition-[border-color,background-color] duration-150 group-data-[layout=mobile]/filters:min-h-10 enabled:hover:bg-white/6 disabled:cursor-default disabled:text-soft disabled:opacity-60 focus-visible:outline-none focus-visible:shadow-focus"
+          className="min-h-9 rounded-full border border-border-subtle bg-transparent px-4 text-body font-semibold text-foreground transition-[border-color,background-color] duration-150 group-data-[layout=mobile]/filters:min-h-10 enabled:hover:bg-tint/6 disabled:cursor-default disabled:text-soft disabled:opacity-60 focus-visible:outline-none focus-visible:shadow-focus"
           disabled={activeFilterCount === 0} onClick={onClearFilters}>
           Limpiar filtros
         </button>
@@ -125,7 +125,7 @@ export function SearchFiltersForm({
       ) : null}
 
       {context.formatAllowsLegalityFilter ? (
-        <div className="flex items-center justify-between gap-3 rounded-control border border-border-subtle bg-black/20 px-3 py-2">
+        <div className="flex items-center justify-between gap-3 py-1">
           <span className="grid min-w-0 gap-0.5">
             <strong className="text-body font-semibold text-foreground">Ocultar prohibidas</strong>
             <small className="text-micro text-soft">Según la lista de {context.formatLabel}</small>

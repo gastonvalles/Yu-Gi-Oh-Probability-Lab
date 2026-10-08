@@ -24,9 +24,9 @@ interface BuildDeckViewProps {
 }
 
 const ZONE_STYLE = {
-  main: 'border-(--zone-main-border) bg-(--zone-main-background)',
-  extra: 'border-(--zone-extra-border) bg-(--zone-extra-background)',
-  side: 'border-(--zone-side-border) bg-(--zone-side-background)',
+  main: 'bg-(--zone-main-background)',
+  extra: 'bg-(--zone-extra-background)',
+  side: 'bg-(--zone-side-background)',
 } as const
 
 /** Grilla de una build; en el Main se marcan las cartas que cambian respecto de la otra. */
@@ -43,7 +43,7 @@ export function BuildDeckView({ side, name, zones, deltaByCardId, onCardClick }:
             <span className={overline}>
               {label} <span className="tabular-nums">[{formatInteger(zones[key].length)}]</span>
             </span>
-            <div className={cx('grid grid-cols-8 gap-1 rounded-card border p-1.5 sm:grid-cols-10', ZONE_STYLE[key])}>
+            <div className={cx('grid grid-cols-8 gap-1 rounded-card p-1.5 sm:grid-cols-10', ZONE_STYLE[key])}>
               {zones[key].map((card, index) => {
                 const delta = key === 'main' ? deltaByCardId.get(getDerivedCardId(card.apiCard.ygoprodeckId)) ?? 0 : 0
                 // B con más copias que A se marca en B; A con más copias que B, en A.

@@ -37,8 +37,8 @@ const RESULTS_GRID = 'grid min-h-0 grid-cols-2 content-start gap-2 p-2'
 /** Tarjeta de resultado: la elegida y la que ya está al máximo cambian de aspecto. */
 function resultCard({ selected, maxed, dragging }: { selected: boolean; maxed: boolean; dragging: boolean }): string {
   return cx(
-    'group/card relative grid min-w-0 [contain-intrinsic-size:auto_6.9rem] [content-visibility:auto] cursor-pointer grid-cols-[4.2rem_minmax(0,1fr)] items-start gap-2.5 rounded-control border p-2 transition-[background-color,border-color] duration-150',
-    selected ? 'border-primary/60 bg-primary/14' : 'border-border-subtle bg-white/3 hover:border-white/20 hover:bg-white/6',
+    'group/card relative grid min-w-0 [contain-intrinsic-size:auto_6.9rem] [content-visibility:auto] cursor-pointer grid-cols-[4.2rem_minmax(0,1fr)] items-start gap-2.5 rounded-control p-2 transition-colors duration-150',
+    selected ? 'bg-primary/20' : 'hover:bg-tint/7',
     maxed && 'cursor-not-allowed opacity-45 grayscale',
     dragging && !maxed && 'opacity-35',
   )

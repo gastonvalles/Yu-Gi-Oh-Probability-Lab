@@ -8,7 +8,7 @@ import { sectionTitle, supportText } from './typography'
 interface SectionHeaderProps {
   title: ReactNode
   description?: ReactNode
-  /** Ícono en un recuadro a la izquierda del título. */
+  /** Ícono suelto (sin recuadro) a la izquierda del título. */
   icon?: IconName
   tone?: Tone
   /** Controles a la derecha (filtros, botones). */
@@ -23,9 +23,7 @@ export function SectionHeader({ title, description, icon, tone = 'brand', action
     <header className={cx('flex flex-wrap items-start justify-between gap-x-4 gap-y-2', className)}>
       <div className="flex min-w-0 items-start gap-3">
         {icon ? (
-          <span className={cx('grid size-8 shrink-0 place-items-center rounded-control border', TONE[tone].tint, TONE[tone].text)}>
-            <Icon name={icon} size={16} />
-          </span>
+          <Icon name={icon} size={20} className={cx('mt-0.5 shrink-0', TONE[tone].text)} />
         ) : null}
         <div className="grid min-w-0 gap-0.5">
           <Heading className={sectionTitle}>{title}</Heading>

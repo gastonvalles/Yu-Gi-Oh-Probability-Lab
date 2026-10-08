@@ -12,9 +12,7 @@ import { TONE } from './tone'
 export const surface = {
   /** Contenedor flotante grande (modal, drawer). */
   panel: 'rounded-panel border border-border-subtle bg-card-background shadow-overlay',
-  /** Bloque secundario dentro de una tarjeta o drawer: más claro que el fondo, sin sombra. */
-  panelSoft: 'rounded-card border border-border-subtle bg-white/3',
-  card: 'rounded-card border border-border-subtle bg-card-background bg-linear-to-b from-white/4 to-transparent shadow-card',
+  card: 'rounded-card border border-border-subtle bg-card-background bg-linear-to-b from-primary/8 to-transparent shadow-card',
   /** Contenedor de cada paso: sólo ordena (las tarjetas de adentro son las que tienen fondo). */
   stepShell: '',
   cardSuccess: cx('rounded-card border shadow-card', TONE.success.wash),
@@ -22,13 +20,13 @@ export const surface = {
   cardDanger: cx('rounded-card border shadow-card', TONE.danger.wash),
 } as const
 
-/** Campo de texto, select y textarea: hundido (más oscuro que la tarjeta) para que se lea como "escribí acá". */
+/** Campo de texto, select y textarea: lavanda como los demás controles, con borde fino que se enciende al enfocar. */
 export const field =
-  'rounded-control border border-white/10 bg-black/25 text-foreground outline-none transition-[border-color,box-shadow,background-color] duration-150 hover:border-white/16 focus:border-primary/70 focus:shadow-[0_0_0_3px_rgb(var(--primary-rgb)/0.18)] [color-scheme:dark] [&_option]:bg-secondary [&_option]:text-foreground [&_optgroup]:bg-secondary [&_optgroup]:text-foreground'
+  'rounded-control border border-tint/12 bg-input text-foreground outline-none transition-[border-color,box-shadow,background-color] duration-150 hover:border-tint/20 hover:bg-input-hover focus:border-primary/70 focus:shadow-[0_0_0_3px_rgb(var(--primary-rgb)/0.18)] [color-scheme:dark] [&_option]:bg-secondary [&_option]:text-foreground [&_optgroup]:bg-secondary [&_optgroup]:text-foreground'
 
 /** Chips informativos (no interactivos). */
 export const chip = {
-  base: 'rounded-full border border-border-subtle bg-white/5 text-muted',
+  base: 'rounded-full border border-border-subtle bg-tint/5 text-muted',
   accent: cx('rounded-full border text-foreground', TONE.brand.tint),
 } as const
 
@@ -42,4 +40,4 @@ export const filterChip =
 
 /** Fila clickeable de una lista (cartas, resultados). */
 export const listItem =
-  'rounded-card border border-border-subtle bg-white/3 transition-[border-color,background-color] duration-150 hover:border-primary/40 hover:bg-primary/8'
+  'rounded-card border border-border-subtle bg-tint/3 transition-[border-color,background-color] duration-150 hover:border-primary/40 hover:bg-primary/8'

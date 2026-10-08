@@ -31,9 +31,9 @@ const toneStyle = variants({
   variants: {
     tone: {
       raised: 'rounded-control bg-lavender text-primary-soft hover:bg-primary/28',
-      close: 'rounded-control bg-transparent text-soft hover:bg-white/8 hover:text-foreground',
-      ghost: 'rounded-control bg-transparent text-soft hover:bg-white/8 hover:text-foreground',
-      flat: 'rounded-full bg-transparent text-white hover:bg-white/8 active:bg-white/16 [&_svg]:stroke-[1.3]',
+      close: 'rounded-control bg-transparent text-soft hover:bg-tint/8 hover:text-foreground',
+      ghost: 'rounded-control bg-transparent text-soft hover:bg-tint/8 hover:text-foreground',
+      flat: 'rounded-full bg-transparent text-white hover:bg-tint/8 active:bg-tint/16 [&_svg]:stroke-[1.3]',
     },
   },
   defaults: { tone: 'raised' },

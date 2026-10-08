@@ -14,7 +14,7 @@ import { Callout } from '../ui/Callout'
 import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
 import { Icon, type IconName } from '../ui/Icon'
-import { Meter } from '../ui/Meter'
+import { ProgressRing } from '../ui/ProgressRing'
 import { TONE, type Tone } from '../ui/tone'
 import { sectionTitle } from '../ui/typography'
 import { SideBadge } from './SideBadge'
@@ -144,9 +144,7 @@ function VerdictBanner({ verdict }: { verdict: ComparisonVerdict }) {
       {verdict.kind === 'a' || verdict.kind === 'b' ? (
         <SideBadge side={verdict.kind === 'a' ? 'A' : 'B'} size="lg" />
       ) : (
-        <span className={cx('grid size-10 shrink-0 place-items-center rounded-control border', TONE[look.tone].tint, TONE[look.tone].text)}>
-          <Icon name={look.icon} size={20} />
-        </span>
+        <Icon name={look.icon} size={28} className={cx('mt-0.5 shrink-0', TONE[look.tone].text)} />
       )}
       <div className="grid min-w-0 gap-0.5">
         <strong className="text-lead font-semibold text-foreground">{verdict.title}</strong>
@@ -177,20 +175,20 @@ function CleanTable({ clean, nameA, nameB }: { clean: CleanComparison; nameA: st
 
   return (
     <ReportSection title="Manos limpias" hint="Mismo cálculo y mismas reglas que el Probability Lab.">
-      <ul className="m-0 grid list-none gap-4 p-0 tabular-nums">
-        {rows.map((row) => {
+      <ul className="m-0 grid list-none gap-0 divide-y divide-border-subtle p-0 tabular-nums">
+        {rows.map((row, index) => {
           const tone = toneFor(row.data.delta)
 
           return (
-            <li key={row.key} className="grid gap-2">
-              <div className="flex items-center justify-between gap-2">
+            <li key={row.key} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-4 gap-y-1 py-3 first:pt-0 last:pb-0">
+              <div className="grid min-w-0 content-center justify-items-start gap-1.5">
                 <strong className={cx('text-body text-foreground', row.key === 'average' ? 'font-bold' : 'font-semibold')}>{row.label}</strong>
                 <Badge tone={DELTA_BADGE_TONE[tone]} size="sm" title="B vs A">
                   B vs A {formatDelta(row.data.delta)}
                 </Badge>
               </div>
-              <CleanBar side="A" name={nameA} value={row.data.a} />
-              <CleanBar side="B" name={nameB} value={row.data.b} />
+              <CleanRing side="A" name={nameA} value={row.data.a} delay={index * 140} />
+              <CleanRing side="B" name={nameB} value={row.data.b} delay={index * 140 + 90} />
             </li>
           )
         })}
@@ -199,12 +197,14 @@ function CleanTable({ clean, nameA, nameB }: { clean: CleanComparison; nameA: st
   )
 }
 
-function CleanBar({ side, name, value }: { side: 'A' | 'B'; name: string; value: number | null }) {
+/** Manos limpias de una build: un anillo con su letra (A violeta, B celeste) debajo. */
+function CleanRing({ side, name, value, delay }: { side: 'A' | 'B'; name: string; value: number | null; delay: number }) {
   return (
-    <div className="grid grid-cols-[1.25rem_minmax(0,1fr)_3.5rem] items-center gap-2" title={name}>
+    <div className="grid justify-items-center gap-1" title={name}>
+      <ProgressRing value={value ?? 0} tone={side === 'A' ? 'brand' : 'info'} size={68} strokeWidth={6} delay={delay} label={`Manos limpias de la build ${side}: ${formatValue(value)}`}>
+        {formatValue(value)}
+      </ProgressRing>
       <span className={cx('text-micro font-bold', side === 'A' ? 'text-primary-soft' : 'text-info-soft')}>{side}</span>
-      <Meter value={value ?? 0} tone={side === 'A' ? 'brand' : 'info'} size="md" label={`Manos limpias de la build ${side}`} />
-      <span className="text-right text-body font-semibold text-foreground">{formatValue(value)}</span>
     </div>
   )
 }

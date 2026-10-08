@@ -31,7 +31,7 @@ const QUIET: Record<ButtonColor, string> = {
 }
 
 const GHOST: Record<ButtonColor, string> = {
-  brand: 'bg-transparent text-muted hover:bg-foreground/6 hover:text-foreground',
+  brand: 'bg-transparent text-muted hover:bg-tint/6 hover:text-foreground',
   danger: 'bg-transparent text-danger-soft hover:bg-danger/12',
 }
 

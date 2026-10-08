@@ -13,7 +13,7 @@ import { Modal } from '../ui/Modal'
 import { formatInteger } from '../../app/utils'
 import { ROLE_REFERENCE_MARK, originOption, roleOptionButton } from '../classification-styles'
 import { cx } from '../ui/cx'
-import { chip, surface } from '../ui/surfaces'
+import { chip } from '../ui/surfaces'
 import { overline } from '../ui/typography'
 
 interface BuildBCardEditorProps {
@@ -187,7 +187,7 @@ export function BuildBCardEditor({ card, currentEdit, allCards, onSave, onNaviga
                           (t, r) => t + (roles.includes(r) ? 1 : 0), 0,
                         )
                         return (
-                          <article key={section.title} className={`${surface.panelSoft} grid h-full grid-rows-[auto_minmax(0,1fr)] gap-2 p-3`}>
+                          <article key={section.title} className="grid h-full grid-rows-[auto_minmax(0,1fr)] gap-2">
                             <div className="flex flex-wrap items-start justify-between gap-2">
                               <strong className="text-body font-semibold leading-none text-foreground">{section.title}</strong>
                               <span className={`${chip.base} px-1.5 py-0.5 text-micro`}>

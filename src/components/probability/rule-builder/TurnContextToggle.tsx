@@ -2,7 +2,6 @@ import type { TurnContext } from '../../../types'
 import type { PatternEditorActions } from '../pattern-editor-actions'
 import { Switch } from '../../ui/Switch'
 import { ChoiceCards } from './ChoiceCards'
-import { surface } from '../../ui/surfaces'
 
 interface TurnContextToggleProps {
   patternId: string
@@ -27,7 +26,7 @@ export function TurnContextToggle({ patternId, currentTurnContext, ignoresDraw =
       onChange={(turnContext) => actions.setPatternTurnContext(patternId, turnContext)}
     />
     {currentTurnContext !== 'first' ? (
-      <div className={`${surface.panelSoft} flex items-center justify-between gap-3 px-3 py-2.5`}>
+      <div className="flex items-center justify-between gap-3 py-1">
         <span className="grid gap-0.5">
           <span className="text-body font-medium text-foreground">Contar la carta que robás yendo 2º</span>
           <span className="text-micro text-muted">

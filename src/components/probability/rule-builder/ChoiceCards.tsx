@@ -33,11 +33,11 @@ export function ChoiceCards<Value extends string>({ label, value, options, tone,
           aria-checked={value === option.value}
           aria-label={option.label}
           className={cx(
-            'grid gap-0.5 rounded-control border px-3 py-2.5 text-left transition-[border-color,background-color] duration-150 focus-visible:outline-none focus-visible:shadow-focus',
+            'grid gap-0.5 rounded-control px-3 py-2.5 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus',
             CHOICE_RGB[tone?.(option.value) ?? 'neutral'],
             value === option.value
-              ? 'border-[rgb(var(--tone-rgb)/0.7)] bg-[rgb(var(--tone-rgb)/0.14)]'
-              : 'border-border-subtle bg-white/3 hover:border-[rgb(var(--tone-rgb)/0.45)] hover:bg-white/5',
+              ? 'bg-[rgb(var(--tone-rgb)/0.26)]'
+              : 'bg-tint/6 hover:bg-[rgb(var(--tone-rgb)/0.14)]',
           )}
           onClick={() => onChange(option.value)}
         >

@@ -7,7 +7,7 @@ import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
-import { Meter } from '../ui/Meter'
+import { ProgressRing } from '../ui/ProgressRing'
 import { chip } from '../ui/surfaces'
 import { overline } from '../ui/typography'
 import { ORIGIN_BLURB_TEXT, ORIGIN_HELP_TEXT, ROLE_EDITOR_SECTIONS, ROLE_HELP_TEXT } from './classification-copy'
@@ -77,7 +77,12 @@ export function ClassificationEditor({
           </div>
         </header>
 
-        <Meter value={percent} tone="success" size="sm" label="Cartas clasificadas" />
+        <div className="flex items-center gap-3">
+          <ProgressRing value={percent} tone="success" size={40} strokeWidth={4} label="Cartas clasificadas" />
+          <p className="m-0 text-body text-muted">
+            {formatInteger(completed)} de {formatInteger(total)} cartas clasificadas
+          </p>
+        </div>
 
         {needsConfirm ? (
           <Callout
@@ -143,7 +148,7 @@ export function ClassificationEditor({
               const selectedCount = section.roles.reduce((sum, role) => sum + (card.roles.includes(role) ? 1 : 0), 0)
 
               return (
-                <div key={section.title} className="grid content-start gap-2 min-[1101px]:rounded-card min-[1101px]:border min-[1101px]:border-border-subtle min-[1101px]:bg-white/3 min-[1101px]:p-3">
+                <div key={section.title} className="grid content-start gap-2">
                   <div className="flex items-center justify-between gap-2">
                     <strong className="text-body font-semibold leading-none text-foreground">{section.title}</strong>
                     <span className={cx(chip.base, 'px-1.5 py-0.5 text-micro leading-none tabular-nums')}>

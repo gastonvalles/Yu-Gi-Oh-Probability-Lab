@@ -42,13 +42,10 @@ import { ProgressRing } from './ui/ProgressRing'
 import { Modal } from './ui/Modal'
 import { overline, supportText } from './ui/typography'
 import {
-  ROLE_REFERENCE_CARD,
-  ROLE_REFERENCE_GROUP,
   ROLE_REFERENCE_MARK,
   viewChip,
 } from './classification-styles'
 import { cx } from './ui/cx'
-import { surface } from './ui/surfaces'
 
 interface DeckRolesPanelProps {
   cards: CardEntry[]
@@ -121,7 +118,7 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
     return {
       title: 'No quedan cartas pendientes en esta cola.',
       description: 'Podés repasar otros grupos desde la derecha o pasar al Probability Lab cuando termines de validar la build.',
-      tone: `${surface.cardSuccess} text-success-soft`,
+      tone: 'text-success-soft',
     }
   }
 
@@ -129,7 +126,7 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
     return {
       title: 'No hay cartas sin origen en esta vista.',
       description: 'El motor y los slots externos ya quedaron diferenciados.',
-      tone: `${surface.cardSuccess} text-success-soft`,
+      tone: 'text-success-soft',
     }
   }
 
@@ -137,7 +134,7 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
     return {
       title: 'No hay cartas sin roles en esta vista.',
       description: 'La función táctica de estas cartas ya quedó definida.',
-      tone: `${surface.cardSuccess} text-success-soft`,
+      tone: 'text-success-soft',
     }
   }
 
@@ -145,7 +142,7 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
     return {
       title: 'No hay cartas pendientes de revisión.',
       description: 'Las cartas cargadas en esta vista ya están validadas.',
-      tone: `${surface.cardSuccess} text-success-soft`,
+      tone: 'text-success-soft',
     }
   }
 
@@ -153,7 +150,7 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
     return {
       title: 'Todavía no hay cartas completas en esta vista.',
       description: 'Primero definí origen y roles para poblar este subconjunto.',
-      tone: `${surface.card} text-muted`,
+      tone: 'text-muted',
     }
   }
 
@@ -161,14 +158,14 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
     return {
       title: 'Todavía no hay cartas para clasificar.',
       description: 'Primero armá o importá tu Main Deck. Después vas a poder marcar origen y roles.',
-      tone: `${surface.card} text-muted`,
+      tone: 'text-muted',
     }
   }
 
   return {
     title: 'Este grupo está vacío por ahora.',
     description: 'Ajustá el filtro o seguí clasificando cartas para poblarlo.',
-    tone: `${surface.card} text-muted`,
+    tone: 'text-muted',
   }
 }
 
@@ -219,7 +216,7 @@ function renderReferenceRoles(roleKeys: readonly CardRole[]) {
     return (
       <article
         key={serializeGroupKey(definition.key)}
-        className={cx(ROLE_REFERENCE_CARD, 'grid gap-1 px-2 py-2')}
+        className="grid gap-0.5 py-1.5"
         style={getClassificationStyle(definition.key)}
       >
         <div className="flex items-center gap-2">
@@ -677,7 +674,7 @@ export function DeckRolesPanel({
           Primero armá o importá tu Main Deck. Después vas a poder clasificar cada carta.
         </EmptyState>
       ) : (
-        <Card as="section" padding="sm" className="grid min-w-0 gap-3 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[minmax(0,1fr)] min-[1101px]:overflow-hidden">
+        <section className="grid min-w-0 gap-3 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[minmax(0,1fr)] min-[1101px]:overflow-hidden">
             {visibleQueueCards.length === 0 ? (
               <p className={[emptyStateCopy.tone, 'm-0 px-3 py-2.5 text-body'].join(' ')}>
                 <strong className="block text-foreground">{emptyStateCopy.title}</strong>
@@ -686,7 +683,7 @@ export function DeckRolesPanel({
             ) : (
               <ClassificationQueue cards={visibleQueueCards} selectedId={selectedCard?.id ?? null} onSelect={handleCardSelection} />
             )}
-        </Card>
+        </section>
       )}
 
       <ClassificationModal
@@ -721,7 +718,7 @@ export function DeckRolesPanel({
               {CARD_ORIGIN_DEFINITIONS.map((definition) => (
                 <article
                   key={serializeGroupKey(definition.key)}
-                  className={cx(ROLE_REFERENCE_GROUP, 'grid gap-2 p-2.5')}
+                  className="grid gap-2 border-t border-border-subtle pt-3 first:border-t-0 first:pt-0"
                   style={getClassificationStyle(definition.key)}
                 >
                   <div className="flex items-center gap-2">
@@ -744,7 +741,7 @@ export function DeckRolesPanel({
 
             <div className="grid gap-2">
               {ROLE_EDITOR_SECTIONS.map((section) => (
-                <article key={section.title} className={cx(ROLE_REFERENCE_GROUP, 'grid gap-2 p-2.5')}>
+                <article key={section.title} className="grid gap-2 border-t border-border-subtle pt-3 first:border-t-0 first:pt-0">
                   <div className="grid gap-1">
                     <strong className="text-body leading-none text-foreground">{section.title}</strong>
                     <p className="text-muted m-0 text-micro">{section.description}</p>

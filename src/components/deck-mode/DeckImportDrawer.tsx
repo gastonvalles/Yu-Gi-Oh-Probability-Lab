@@ -38,8 +38,9 @@ import { CopiesBadge } from '../ui/CopiesBadge'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { CloseButton } from '../ui/IconButton'
+import { ProgressRing } from '../ui/ProgressRing'
 import { Skeleton } from '../ui/Skeleton'
-import { chip, field, surface } from '../ui/surfaces'
+import { chip, field } from '../ui/surfaces'
 import { TONE } from '../ui/tone'
 import { overline } from '../ui/typography'
 
@@ -86,15 +87,10 @@ function CollapsibleSection({
     return null
   }
 
-  const containerClassName =
-    tone === 'danger'
-      ? `${surface.cardDanger}`
-      : tone === 'warning'
-        ? `${surface.cardWarning}`
-        : `${surface.card}`
+  const accent = tone === 'danger' ? TONE.danger.text : tone === 'warning' ? TONE.warning.text : ''
 
   return (
-    <article className={`${containerClassName} grid gap-0 px-3 py-3`} role={role} aria-label={ariaLabel}>
+    <article className="grid gap-0 border-t border-border-subtle pt-3" role={role} aria-label={ariaLabel}>
       <button
         type="button"
         className="flex w-full items-center justify-between gap-2 text-left"
@@ -102,7 +98,7 @@ function CollapsibleSection({
       >
         <div className="grid gap-0.5 min-w-0">
           <div className="flex items-center gap-2">
-            <small className={overline}>{title}</small>
+            <small className={cx(overline, accent)}>{title}</small>
             <Badge tone="brand" size="sm">{count}</Badge>
           </div>
           {!isExpanded ? (
@@ -459,7 +455,7 @@ export function DeckImportDrawer({
         <button
           type="button"
           aria-label="Cerrar importador"
-          className="absolute inset-0 h-full w-full bg-black/65"
+          className="absolute inset-0 h-full w-full bg-background/80"
           onClick={handleClose}
         />
 
@@ -471,9 +467,7 @@ export function DeckImportDrawer({
         >
           <header className="flex items-start justify-between gap-3 border-b border-border-subtle px-4 py-3.5">
             <div className="flex min-w-0 items-start gap-3">
-              <span className={cx('mt-0.5 grid size-9 shrink-0 place-items-center rounded-control border', TONE.brand.tint, TONE.brand.text)}>
-                <Icon name="upload" size={18} />
-              </span>
+              <Icon name="upload" size={22} className={cx('mt-1 shrink-0', TONE.brand.text)} />
               <div className="min-w-0">
                 <p className={cx('m-0', overline)}>Importación de deck</p>
                 <h3 className="m-0 text-lead font-semibold tracking-[-0.01em] text-foreground">Subí un archivo o pegá texto</h3>
@@ -487,7 +481,7 @@ export function DeckImportDrawer({
             <div className="grid gap-4">
               {!preview && !isProcessing ? (
                 <>
-                <article className={`${surface.card} grid gap-2.5 px-3 py-3`}>
+                <article className="grid gap-2.5">
                   <div className="grid gap-0.5">
                     <small className={overline}>Archivo</small>
                     <strong className="text-lead font-semibold text-foreground">Subí o arrastrá el deck</strong>
@@ -496,7 +490,7 @@ export function DeckImportDrawer({
                   <div
                     className={[
                       'grid gap-3 rounded-card border border-dashed px-4 py-6 text-center transition-colors',
-                      isDragActive ? 'border-primary bg-primary/12' : 'border-border bg-black/20',
+                      isDragActive ? 'border-primary bg-primary/12' : 'border-border',
                     ].join(' ')}
                     onDragEnter={(event) => {
                       event.preventDefault()
@@ -525,9 +519,7 @@ export function DeckImportDrawer({
                             : ''}
                     </span>
                     <div className="grid justify-items-center gap-2">
-                      <span className="grid size-10 place-items-center rounded-full border border-border-subtle bg-white/5 text-soft">
-                        <Icon name="upload" size={20} />
-                      </span>
+                      <Icon name="upload" size={28} className="text-primary-soft/70" />
                       <strong className="text-body font-semibold text-foreground">Arrastrá el archivo acá</strong>
                     </div>
 
@@ -563,7 +555,7 @@ export function DeckImportDrawer({
                   ) : null}
                 </article>
 
-                <article className={`${surface.panelSoft} grid gap-2 px-3 py-2.5`}>
+                <article className="grid gap-2 border-t border-border-subtle pt-4">
                   <div className="flex items-center justify-between gap-3">
                     <div className="grid gap-0.5">
                       <small className={overline}>Texto manual</small>
@@ -625,7 +617,7 @@ export function DeckImportDrawer({
               ) : null}
 
               {isProcessing ? (
-                <article className={`${surface.card} grid gap-2.5 px-3 py-3`} aria-hidden="true">
+                <article className="grid gap-2.5" aria-hidden="true">
                     <div className="grid gap-2">
                       <Skeleton className="h-3 w-20" />
                       <Skeleton className="h-5 w-56" />
@@ -645,7 +637,7 @@ export function DeckImportDrawer({
 
                     <div className="grid gap-2">
                       {Array.from({ length: 5 }, (_, index) => (
-                        <div key={index} className={`${surface.panelSoft} grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-2.5 py-2`}>
+                        <div key={index} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 py-2">
                           <Skeleton radius="chip" className="h-5 w-11" />
                           <div className="grid gap-1.5">
                             <Skeleton className="h-3.5 w-[78%]" />
@@ -658,7 +650,7 @@ export function DeckImportDrawer({
                 </article>
               ) : preview ? (
                 <>
-                    <article className={`${surface.card} grid gap-2.5 px-3 py-3`}>
+                    <article className="grid gap-2.5">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0">
                           <small className={overline}>Preview</small>
@@ -855,12 +847,23 @@ function ZoneTotalCard({
   requested: number
 }) {
   return (
-    <div className={`${surface.panelSoft} grid gap-0.5 px-2.5 py-2`}>
-      <small className={overline}>{label}</small>
-      <strong className="text-lead font-semibold leading-none text-foreground tabular-nums">
-        {formatInteger(imported)} / {formatInteger(requested)}
-      </strong>
-      <span className="text-muted text-micro leading-none">importadas / pedidas</span>
+    <div className="flex items-center gap-3">
+      <ProgressRing
+        value={requested > 0 ? imported / requested : 0}
+        tone={imported === requested ? 'success' : 'warning'}
+        size={52}
+        strokeWidth={5}
+        label={`${label}: ${formatInteger(imported)} de ${formatInteger(requested)} importadas`}
+      >
+        {formatInteger(imported)}
+      </ProgressRing>
+      <div className="grid gap-0.5">
+        <small className={overline}>{label}</small>
+        <strong className="text-body font-semibold leading-none text-foreground tabular-nums">
+          {formatInteger(imported)} / {formatInteger(requested)}
+        </strong>
+        <span className="text-muted text-micro leading-none">importadas / pedidas</span>
+      </div>
     </div>
   )
 }
@@ -869,7 +872,7 @@ function ResolvedEntryCard({ entry }: { entry: ResolvedImportedDeckEntry }) {
   const isPartial = entry.appliedCount !== entry.count
 
   return (
-    <article className={`${surface.panelSoft} flex items-center justify-between gap-3 px-2.5 py-1.5`}>
+    <article className="flex items-center justify-between gap-3 border-b border-border-subtle py-1.5 last:border-b-0">
       <strong className="min-w-0 truncate text-body text-foreground">{entry.card.name}</strong>
       {isPartial ? (
         <span className={`${chip.base} shrink-0 px-2 py-0.5 text-micro`}>
@@ -889,7 +892,7 @@ function SimpleEntryCard({
   entry: ImportedDeckEntry
 }) {
   return (
-    <article className={`${surface.panelSoft} flex items-center justify-between gap-3 px-2.5 py-1.5`}>
+    <article className="flex items-center justify-between gap-3 border-b border-border-subtle py-1.5 last:border-b-0">
       <strong className="min-w-0 truncate text-body text-foreground">{entry.name}</strong>
       <CopiesBadge copies={entry.count} />
     </article>
@@ -898,7 +901,7 @@ function SimpleEntryCard({
 
 function ConflictEntryCard({ entry }: { entry: DeckImportConflict }) {
   return (
-    <article className={`${surface.panelSoft} flex items-center justify-between gap-3 px-2.5 py-1.5`}>
+    <article className="flex items-center justify-between gap-3 border-b border-border-subtle py-1.5 last:border-b-0">
       <div className="min-w-0">
         <strong className="truncate text-body text-foreground">{entry.name}</strong>
         <p className="text-muted m-0 text-micro">{entry.reason}</p>
@@ -910,7 +913,7 @@ function ConflictEntryCard({ entry }: { entry: DeckImportConflict }) {
 
 function InvalidLineCard({ entry }: { entry: ImportedDeckInvalidLine }) {
   return (
-    <article className={`${surface.panelSoft} grid gap-1 px-2.5 py-2`}>
+    <article className="grid gap-1 border-b border-border-subtle py-2 last:border-b-0">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <strong className="text-body text-foreground">Línea {formatInteger(entry.lineNumber)}</strong>
         <span className={`${chip.base} px-2 py-1 text-micro`}>Ignorada</span>

@@ -14,7 +14,7 @@ import { Callout } from '../../ui/Callout'
 import { Segmented } from '../../ui/Segmented'
 import type { PatternEditorActions } from '../pattern-editor-actions'
 import { NumberField } from '../../ui/NumberField'
-import { field, surface } from '../../ui/surfaces'
+import { field } from '../../ui/surfaces'
 
 interface AdvancedSettingsProps {
   pattern: HandPattern
@@ -59,7 +59,7 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
 
       {/* Reuse policy — only show when there's actual overlap between conditions */}
       {hasOverlap ? (
-        <div className={`${surface.panelSoft} grid gap-1.5 px-3 py-3`}>
+        <div className="grid gap-1.5 py-1">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-body font-medium text-foreground">
               ¿La misma carta cuenta para más de una condición?
@@ -81,7 +81,7 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
 
       {/* Una salida puede "rescatar" cartas que de otro modo cuentan como muertas en los problemas. */}
       {pattern.kind === 'opening' ? (
-        <div className={`${surface.panelSoft} flex items-center justify-between gap-3 px-3 py-3`}>
+        <div className="flex items-center justify-between gap-3 py-1">
           <span className="grid gap-0.5">
             <span className="text-body font-medium text-foreground">Rescatar las cartas que usa</span>
             <span className="text-micro text-muted">
@@ -125,7 +125,7 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
             const conditionIndex = pattern.conditions.indexOf(condition)
 
             return (
-              <div key={condition.id} className={`flex flex-wrap items-center justify-between gap-2 ${surface.panelSoft} px-3 py-2`}>
+              <div key={condition.id} className="flex flex-wrap items-center justify-between gap-2 py-1">
                 <span className="text-body text-foreground">Condición {formatInteger(conditionIndex + 1)}</span>
                 <Segmented
                   size="sm"

@@ -99,7 +99,7 @@ export function Modal({
 
   return createPortal(
     <div
-      className={cx('fixed inset-0 z-180 grid place-items-center overscroll-contain bg-black/65 p-2 sm:p-4', size === 'sheet' && 'max-sm:place-items-end max-sm:p-0')}
+      className={cx('fixed inset-0 z-180 grid place-items-center overscroll-contain bg-background/80 p-2 sm:p-4', size === 'sheet' && 'max-sm:place-items-end max-sm:p-0')}
       onClick={dismissible ? onClose : undefined}
     >
       <div
@@ -119,11 +119,7 @@ export function Modal({
         {hasHeader ? (
           <header className="flex items-start justify-between gap-3 border-b border-border-subtle px-4 py-3.5 min-[1101px]:px-6 min-[1101px]:py-4">
             <div className="flex min-w-0 items-start gap-3">
-              {icon ? (
-                <span className={cx('mt-0.5 grid size-9 shrink-0 place-items-center rounded-control border', TONE[tone].tint, TONE[tone].text)}>
-                  <Icon name={icon} size={18} />
-                </span>
-              ) : null}
+              {icon ? <Icon name={icon} size={22} className={cx('mt-0.5 shrink-0', TONE[tone].text)} /> : null}
               <div className="grid min-w-0 gap-0.5">
                 {kicker ? <p className={cx('m-0', overline)}>{kicker}</p> : null}
                 {title ? (
@@ -157,7 +153,7 @@ export function Modal({
         </div>
 
         {footer ? (
-          <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-border-subtle bg-black/20 px-4 py-3 min-[1101px]:px-6">
+          <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-border-subtle px-4 py-3 min-[1101px]:px-6">
             {footer}
           </footer>
         ) : null}

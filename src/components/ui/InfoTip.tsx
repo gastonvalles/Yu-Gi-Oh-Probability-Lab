@@ -58,7 +58,7 @@ export function InfoTip({ label, children, anchor = 'self' }: InfoTipProps) {
             anchor === 'self'
               ? 'right-0 top-[calc(100%+0.45rem)] w-[min(22rem,calc(100vw-2rem))]'
               : 'left-0 top-[calc(100%+0.25rem)] w-[min(26rem,100%)]',
-            'rounded-control border border-white/10 bg-surface-raised px-3 py-2.5 text-left text-body text-muted shadow-overlay [&_strong]:text-foreground',
+            'rounded-control border border-tint/10 bg-surface-raised px-3 py-2.5 text-left text-body text-muted shadow-overlay [&_strong]:text-foreground',
           )}>
           {children}
         </span>

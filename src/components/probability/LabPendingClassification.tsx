@@ -9,10 +9,8 @@ import { compareCardsForQueue } from '../classification/classification-model'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
-import { Icon } from '../ui/Icon'
-import { Meter } from '../ui/Meter'
 import { Modal } from '../ui/Modal'
-import { TONE } from '../ui/tone'
+import { ProgressRing } from '../ui/ProgressRing'
 import { overline, supportText } from '../ui/typography'
 
 interface LabPendingClassificationProps {
@@ -53,26 +51,21 @@ export function LabPendingClassification({ cards, message, onSetOrigin, onToggle
 
   return (
     <div className="grid min-w-0 content-start gap-3">
-      <Card tone={pendingCount > 0 ? 'warning' : 'success'} className="grid gap-4">
-        <div className="flex min-w-0 items-start gap-3">
-          <span className={cx('grid size-10 shrink-0 place-items-center rounded-control border', TONE[pendingCount > 0 ? 'warning' : 'success'].tint, TONE[pendingCount > 0 ? 'warning' : 'success'].text)}>
-            <Icon name={pendingCount > 0 ? 'tag' : 'check-circle'} size={20} />
-          </span>
-          <div className="grid min-w-0 gap-0.5">
-            <p className={cx('m-0', overline)}>{pendingCount > 0 ? 'Falta clasificar' : 'Todo clasificado'}</p>
-            <h3 className="m-0 text-lead font-semibold leading-tight text-foreground">
-              {pendingCount > 0
-                ? `${formatInteger(pendingCount)} carta${pendingCount === 1 ? '' : 's'} por cerrar`
-                : 'Ya no falta ninguna carta'}
-            </h3>
-            <p className={supportText}>
-              {pendingCount > 0
-                ? `${message} Tocá una carta, resolvela acá mismo y cuando termines el Lab calcula solo.`
-                : 'Cerrá el editor para ver el resultado.'}
-            </p>
-          </div>
+      <Card tone={pendingCount > 0 ? 'warning' : 'success'} className="flex items-center justify-between gap-4">
+        <div className="grid min-w-0 gap-0.5">
+          <p className={cx('m-0', overline)}>{pendingCount > 0 ? 'Falta clasificar' : 'Todo clasificado'}</p>
+          <h3 className="m-0 text-lead font-semibold leading-tight text-foreground">
+            {pendingCount > 0
+              ? `${formatInteger(pendingCount)} carta${pendingCount === 1 ? '' : 's'} por cerrar`
+              : 'Ya no falta ninguna carta'}
+          </h3>
+          <p className={supportText}>
+            {pendingCount > 0
+              ? `${message} Tocá una carta, resolvela acá mismo y cuando termines el Lab calcula solo.`
+              : 'Cerrá el editor para ver el resultado.'}
+          </p>
         </div>
-        <Meter value={cards.length > 0 ? classified / cards.length : 0} tone={pendingCount > 0 ? 'warning' : 'success'} size="sm" label="Cartas clasificadas" />
+        <ProgressRing value={cards.length > 0 ? classified / cards.length : 0} tone={pendingCount > 0 ? 'warning' : 'success'} size={76} strokeWidth={8} label="Cartas clasificadas" />
       </Card>
 
       <ClassificationQueue cards={visible} selectedId={selectedId} onSelect={setSelectedId} />

@@ -12,7 +12,6 @@ import { CardDetailModal } from '../card-detail/CardDetailModal'
 import { DeckImportDrawer } from '../deck-mode/DeckImportDrawer'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { Button } from '../ui/Button'
-import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
 import { EmptyState } from '../ui/EmptyState'
 import { Modal } from '../ui/Modal'
@@ -220,13 +219,13 @@ export function ComparisonScreen() {
         }
       />
 
-      <Card padding="sm" className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3 max-[519px]:grid-cols-[minmax(0,1fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3 max-[519px]:grid-cols-[minmax(0,1fr)]">
         {renderPicker('A', selection.a)}
         <span className="grid h-10 place-items-center text-micro font-bold uppercase text-soft max-[519px]:hidden" aria-hidden="true">
           vs
         </span>
         {renderPicker('B', selection.b)}
-      </Card>
+      </div>
 
       {!buildB ? (
         <EmptyState icon="columns" title="Elegí qué comparar">

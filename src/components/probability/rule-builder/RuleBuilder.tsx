@@ -53,7 +53,7 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
         />
       </RuleStep>
 
-      <section className={cx('grid gap-1.5 rounded-card border px-4 py-3', TONE[pattern.kind === 'opening' ? 'success' : 'danger'].tint)} aria-live="polite">
+      <section className={cx('grid gap-1.5 rounded-control px-4 py-3', TONE[pattern.kind === 'opening' ? 'success' : 'danger'].soft)} aria-live="polite">
         <span className={cx('text-body font-semibold', TONE[pattern.kind === 'opening' ? 'success' : 'danger'].text)}>{preview.heading}</span>
         <ul className="m-0 grid gap-0.5 pl-4 text-body text-foreground">
           {preview.items.map((item, index) => (

@@ -99,12 +99,12 @@ describe('LabScoreCard', () => {
   it('muestra el KPI de la vista activa y, en promedio, el detalle por turno', () => {
     const { rerender } = render(<LabScoreCard results={RESULTS} view="average" isRecalculating={false} />)
 
-    expect(screen.getByText('57.00%')).toBeInTheDocument()
+    expect(screen.getByText('57.0%')).toBeInTheDocument()
     expect(screen.getByText('41.0%')).toBeInTheDocument()
     expect(screen.getByText('73.0%')).toBeInTheDocument()
 
     rerender(<LabScoreCard results={RESULTS} view="second" isRecalculating={false} />)
-    expect(screen.getByText('73.00%')).toBeInTheDocument()
+    expect(screen.getAllByText('73.0%').length).toBeGreaterThan(0)
     expect(screen.getByRole('meter', { name: 'Manos limpias' })).toHaveAttribute('aria-valuenow', '73')
   })
 })
