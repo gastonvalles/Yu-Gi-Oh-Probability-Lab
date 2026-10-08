@@ -10,6 +10,24 @@ function mockReducedMotion(reduced: boolean) {
   window.matchMedia = vi.fn().mockReturnValue({ matches: reduced }) as unknown as typeof window.matchMedia
 }
 
+/** jsdom no trae IntersectionObserver: se simula uno que informa si el anillo se ve. */
+function mockVisibility(visible: boolean) {
+  vi.stubGlobal(
+    'IntersectionObserver',
+    class {
+      constructor(private callback: (entries: Array<{ target: Element; isIntersecting: boolean }>) => void) {}
+      observe(target: Element) {
+        this.callback([{ target, isIntersecting: visible }])
+      }
+      unobserve() {}
+    },
+  )
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
 /** Los dos cuadros que el anillo espera antes de pasar a su valor (el primero lo pinta vacío). */
 function flushFrames() {
   act(() => {
@@ -38,6 +56,21 @@ describe('ProgressRing', () => {
     flushFrames()
     expect(Number(arcOf(container).getAttribute('stroke-dashoffset'))).toBeCloseTo(circumference * 0.75, 5)
     expect(screen.getByRole('meter', { name: 'Manos limpias' })).toHaveAttribute('aria-valuenow', '25')
+  })
+
+  it('fuera de pantalla se llena de golpe, sin transición (nadie lo ve llenarse)', () => {
+    mockReducedMotion(false)
+    mockVisibility(false)
+    const { container } = render(<ProgressRing value={0.25} size={100} strokeWidth={10} label="Manos limpias" />)
+
+    act(() => {
+      vi.advanceTimersByTime(32)
+    })
+    expect(Number(arcOf(container).getAttribute('stroke-dashoffset'))).toBeCloseTo(2 * Math.PI * 45 * 0.75, 5)
+    expect(arcOf(container).style.transitionDuration).toMatch(/^0m?s$/)
+
+    flushFrames()
+    expect(arcOf(container).style.transitionDuration).toBe('')
   })
 
   it('con "reducir movimiento" aparece lleno de entrada', () => {

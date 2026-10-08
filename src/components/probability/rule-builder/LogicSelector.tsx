@@ -20,7 +20,6 @@ export function LogicSelector({ patternId, currentMode, minimumConditionMatches,
   return (
     <Segmented
       size="sm"
-      tone="success"
       label="Cómo se combinan las condiciones"
       value={currentMode}
       options={[

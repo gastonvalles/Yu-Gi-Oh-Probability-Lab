@@ -185,17 +185,53 @@ export function buildPatternRequirementLabel<Key extends string | number>(
   return `${buildMatchPrefix(requirementLabels, allowSharedCards)} se cumple si pasan al menos ${requiredMatches} de estas opciones: ${requirementLabels.join(', ')}.`
 }
 
+/**
+ * ¿La mano cumple la regla? Mismo resultado que `getMatchedRequirementCount(...) >= requiredMatches`,
+ * pero sin calcular el máximo cuando no hace falta: es lo que corre millones de veces en el cálculo
+ * exacto, así que sólo se hace la búsqueda con cartas repartidas entre condiciones cuando de verdad
+ * hay duda (2 o más condiciones que no pueden compartir cartas).
+ */
 export function matchesResolvedPattern<Counts, Key extends string | number>(
   pattern: Pick<ResolvedPattern<Key>, 'requirements' | 'allowSharedCards' | 'requiredMatches'>,
   counts: Counts,
   countOperations: CountOperations<Counts, Key>,
 ): boolean {
-  return getMatchedRequirementCount(
-    pattern.requirements,
-    counts,
-    pattern.allowSharedCards,
-    countOperations,
-  ) >= pattern.requiredMatches
+  let excludeMatched = 0
+  let includeCount = 0
+  const matchedIncludes: ResolvedRequirement<Key>[] = []
+
+  for (const requirement of pattern.requirements) {
+    const matches = matchesRequirement(requirement, counts, countOperations)
+
+    if (requirement.kind === 'exclude') {
+      excludeMatched += matches ? 1 : 0
+      continue
+    }
+
+    includeCount += 1
+
+    if (matches) {
+      matchedIncludes.push(requirement)
+    }
+  }
+
+  const needed = pattern.requiredMatches - excludeMatched
+
+  if (needed <= 0) {
+    return true
+  }
+
+  if (matchedIncludes.length < needed) {
+    return false
+  }
+
+  // Una sola condición alcanza, o pueden compartir cartas: no hay nada que repartir.
+  if (needed === 1 || pattern.allowSharedCards || includeCount === 1) {
+    return true
+  }
+
+  // Las condiciones que no se cumplen solas tampoco se cumplen con menos cartas: se descartan.
+  return getMaxMatchedIncludeRequirements(matchedIncludes, counts, countOperations) >= needed
 }
 
 export function getResolvedPatternWitness<Counts, Key extends string | number>(

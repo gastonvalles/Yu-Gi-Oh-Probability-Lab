@@ -4,7 +4,8 @@ import { compareBuilds } from '../../app/build-comparison'
 import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
 import type { DeckBuilderState, DeckCardInstance } from '../../app/model'
 import { withReferenceClassification, type BuildZones } from '../../app/saved-builds'
-import { useAppSelector } from '../../app/store-hooks'
+import { setDeckName } from '../../app/deck-builder-slice'
+import { useAppDispatch, useAppSelector } from '../../app/store-hooks'
 import { useToastMessage } from '../../app/use-toast-message'
 import { formatInteger } from '../../app/utils'
 import type { CardOrigin, CardRole } from '../../types'
@@ -64,6 +65,7 @@ export function ComparisonScreen() {
   const systemRuleNames = useAppSelector((state) => state.patterns.systemRuleNames)
   const handSize = useAppSelector((state) => state.settings.handSize)
   const deckFormat = useAppSelector((state) => state.settings.deckFormat)
+  const dispatch = useAppDispatch()
   const savedBuilds = useSavedBuilds()
   const { showToast } = useToastMessage()
   const [selection, setSelection] = useState(readSelection)
@@ -76,11 +78,14 @@ export function ComparisonScreen() {
 
   useEffect(() => writeSelection(selection), [selection])
 
+  // Tu deck actual se llama como en el Deck builder.
+  const currentName = deckBuilder.deckName.trim() || CURRENT_DECK_NAME
+
   const resolve = useCallback((source: string | null): ResolvedBuild | null => {
     if (source === CURRENT) {
       return {
         source,
-        name: CURRENT_DECK_NAME,
+        name: currentName,
         zones: { main: deckBuilder.main, extra: deckBuilder.extra, side: deckBuilder.side },
         isSaved: false,
       }
@@ -98,7 +103,7 @@ export function ComparisonScreen() {
       zones: { ...saved, main: withReferenceClassification(saved.main, deckBuilder.main) },
       isSaved: true,
     }
-  }, [deckBuilder, savedBuilds.builds])
+  }, [currentName, deckBuilder, savedBuilds.builds])
 
   const buildA = useMemo(() => resolve(selection.a) ?? resolve(CURRENT)!, [resolve, selection.a])
   const buildB = useMemo(() => resolve(selection.b), [resolve, selection.b])
@@ -120,7 +125,7 @@ export function ComparisonScreen() {
   )
 
   const options = [
-    { value: CURRENT, label: `Deck actual (${formatInteger(deckBuilder.main.length)})` },
+    { value: CURRENT, label: `${currentName} (${formatInteger(deckBuilder.main.length)})` },
     ...savedBuilds.builds.map((build) => ({ value: build.id, label: `${build.name} (${formatInteger(build.main.length)})` })),
   ]
 
@@ -131,7 +136,7 @@ export function ComparisonScreen() {
       showToast('Tu deck actual está vacío', 'warning')
       return
     }
-    const build = savedBuilds.save(deckBuilder.deckName || 'Deck actual', deckBuilder)
+    const build = savedBuilds.save(currentName, deckBuilder)
     if (selection.b === null || selection.b === CURRENT) {
       selectAsB(build.id)
     }
@@ -185,14 +190,16 @@ export function ComparisonScreen() {
             ))}
           </select>
         </label>
-        {build?.isSaved ? (
+        {build ? (
           <div className="flex gap-1 pl-9">
             <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setRenameTarget({ id: build.source, name: build.name })}>
               Renombrar
             </Button>
-            <Button variant="tertiary" color="danger" size="sm" icon="trash" onClick={() => setDeleteTarget({ id: build.source, name: build.name })}>
-              Borrar
-            </Button>
+            {build.isSaved ? (
+              <Button variant="tertiary" color="danger" size="sm" icon="trash" onClick={() => setDeleteTarget({ id: build.source, name: build.name })}>
+                Borrar
+              </Button>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -274,7 +281,9 @@ export function ComparisonScreen() {
         target={renameTarget}
         onCancel={() => setRenameTarget(null)}
         onConfirm={(name) => {
-          if (renameTarget) {
+          if (renameTarget?.id === CURRENT) {
+            dispatch(setDeckName(name.trim()))
+          } else if (renameTarget) {
             savedBuilds.rename(renameTarget.id, name)
           }
           setRenameTarget(null)

@@ -129,8 +129,7 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
                 <span className="text-body text-foreground">Condición {formatInteger(conditionIndex + 1)}</span>
                 <Segmented
                   size="sm"
-                  tone="success"
-                  label={`Contar copias o nombres de la condición ${formatInteger(conditionIndex + 1)}`}
+                              label={`Contar copias o nombres de la condición ${formatInteger(conditionIndex + 1)}`}
                   value={condition.distinct ? 'names' : 'copies'}
                   onChange={(next) => actions.setRequirementDistinct(pattern.id, condition.id, next === 'names')}
                   options={[
