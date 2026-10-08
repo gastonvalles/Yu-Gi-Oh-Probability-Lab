@@ -28,7 +28,7 @@ const KNOWN_CARDS_MAP_ENTRIES: Array<[string, ClassificationSuggestion]> = [
   ['psy-framegear gamma', { origin: 'non_engine', roles: ['handtrap'] }],
   ['infinite impermanence', { origin: 'non_engine', roles: ['handtrap', 'disruption'] }],
   ['ghost mourner & moonlit chill', { origin: 'non_engine', roles: ['handtrap'] }],
-  ['dimension shifter', { origin: 'non_engine', roles: ['handtrap', 'disruption'] }],
+  ['dimension shifter', { origin: 'non_engine', roles: ['handtrap', 'floodgate'] }],
   ['skull meister', { origin: 'non_engine', roles: ['handtrap'] }],
 
   // Staple spells
@@ -55,12 +55,12 @@ const KNOWN_CARDS_MAP_ENTRIES: Array<[string, ClassificationSuggestion]> = [
   ['solemn strike', { origin: 'non_engine', roles: ['disruption'] }],
   ['torrential tribute', { origin: 'non_engine', roles: ['boardbreaker'] }],
   ['compulsory evacuation device', { origin: 'non_engine', roles: ['boardbreaker'] }],
-  ['dimensional barrier', { origin: 'non_engine', roles: ['disruption'] }],
-  ['anti-spell fragrance', { origin: 'non_engine', roles: ['disruption'] }],
-  ['skill drain', { origin: 'non_engine', roles: ['disruption'] }],
-  ['rivalry of warlords', { origin: 'non_engine', roles: ['disruption'] }],
-  ['gozen match', { origin: 'non_engine', roles: ['disruption'] }],
-  ['there can be only one', { origin: 'non_engine', roles: ['disruption'] }],
+  ['dimensional barrier', { origin: 'non_engine', roles: ['floodgate'] }],
+  ['anti-spell fragrance', { origin: 'non_engine', roles: ['floodgate'] }],
+  ['skill drain', { origin: 'non_engine', roles: ['floodgate'] }],
+  ['rivalry of warlords', { origin: 'non_engine', roles: ['floodgate'] }],
+  ['gozen match', { origin: 'non_engine', roles: ['floodgate'] }],
+  ['there can be only one', { origin: 'non_engine', roles: ['floodgate'] }],
 
   // Board breakers & tech
   ['evenly matched', { origin: 'non_engine', roles: ['boardbreaker'] }],
@@ -118,16 +118,16 @@ const KNOWN_CARDS_MAP_ENTRIES: Array<[string, ClassificationSuggestion]> = [
   ['lava golem', { origin: 'non_engine', roles: ['boardbreaker'] }],
 
   // Floodgate monsters
-  ['inspector boarder', { origin: 'non_engine', roles: ['disruption', 'starter'] }],
-  ['fossil dyna pachycephalo', { origin: 'non_engine', roles: ['disruption'] }],
-  ['barrier statue of the stormwinds', { origin: 'non_engine', roles: ['disruption'] }],
-  ['barrier statue of the abyss', { origin: 'non_engine', roles: ['disruption'] }],
-  ['barrier statue of the inferno', { origin: 'non_engine', roles: ['disruption'] }],
-  ['barrier statue of the drought', { origin: 'non_engine', roles: ['disruption'] }],
-  ['barrier statue of the heavens', { origin: 'non_engine', roles: ['disruption'] }],
-  ['vanity\'s fiend', { origin: 'non_engine', roles: ['disruption'] }],
-  ['majesty\'s fiend', { origin: 'non_engine', roles: ['disruption'] }],
-  ['amano-iwato', { origin: 'non_engine', roles: ['disruption'] }],
+  ['inspector boarder', { origin: 'non_engine', roles: ['floodgate', 'starter'] }],
+  ['fossil dyna pachycephalo', { origin: 'non_engine', roles: ['floodgate'] }],
+  ['barrier statue of the stormwinds', { origin: 'non_engine', roles: ['floodgate'] }],
+  ['barrier statue of the abyss', { origin: 'non_engine', roles: ['floodgate'] }],
+  ['barrier statue of the inferno', { origin: 'non_engine', roles: ['floodgate'] }],
+  ['barrier statue of the drought', { origin: 'non_engine', roles: ['floodgate'] }],
+  ['barrier statue of the heavens', { origin: 'non_engine', roles: ['floodgate'] }],
+  ['vanity\'s fiend', { origin: 'non_engine', roles: ['floodgate'] }],
+  ['majesty\'s fiend', { origin: 'non_engine', roles: ['floodgate'] }],
+  ['amano-iwato', { origin: 'non_engine', roles: ['floodgate'] }],
 
   // 2026 meta staples (YCS Virginia 300th / Burst Protocol format)
   ['shiina, twin tempests of celestial thunder', { origin: 'non_engine', roles: ['handtrap', 'boardbreaker'] }],
@@ -139,17 +139,17 @@ const KNOWN_CARDS_MAP_ENTRIES: Array<[string, ClassificationSuggestion]> = [
   ['knightmare unicorn', { origin: 'non_engine', roles: ['boardbreaker', 'payoff'] }],
   ['knightmare phoenix', { origin: 'non_engine', roles: ['boardbreaker', 'payoff'] }],
   ['accesscode talker', { origin: 'non_engine', roles: ['payoff', 'boardbreaker'] }],
-  ['underworld goddess of the closed world', { origin: 'non_engine', roles: ['boardbreaker', 'payoff', 'disruption'] }],
+  ['underworld goddess of the closed world', { origin: 'non_engine', roles: ['boardbreaker', 'payoff', 'floodgate'] }],
   ['guardian chimera', { origin: 'non_engine', roles: ['payoff', 'draw'] }],
   ['saryuja skull dread', { origin: 'non_engine', roles: ['payoff', 'draw'] }],
-  ['imperial princess quinquery', { origin: 'non_engine', roles: ['payoff', 'disruption'] }],
+  ['imperial princess quinquery', { origin: 'non_engine', roles: ['payoff', 'floodgate'] }],
 
   // Generic extra deck toolbox (commonly sided/mained across meta)
   ['number 101: silent honor ark', { origin: 'non_engine', roles: ['boardbreaker', 'payoff'] }],
   ['number c101: silent honor dark', { origin: 'non_engine', roles: ['boardbreaker', 'payoff'] }],
   ['tornado dragon', { origin: 'non_engine', roles: ['boardbreaker', 'payoff'] }],
-  ['abyss dweller', { origin: 'non_engine', roles: ['disruption', 'payoff'] }],
-  ['bagooska the terribly tired tapir', { origin: 'non_engine', roles: ['disruption', 'payoff'] }],
+  ['abyss dweller', { origin: 'non_engine', roles: ['floodgate', 'payoff'] }],
+  ['bagooska the terribly tired tapir', { origin: 'non_engine', roles: ['floodgate', 'payoff'] }],
 
   // Commonly sided going-second cards (2026 format)
   ['dark hole', { origin: 'non_engine', roles: ['boardbreaker'] }],
@@ -174,7 +174,7 @@ const GAME_PLAN_ROLES: ReadonlySet<CardRole> = new Set([
 ])
 
 /** Roles that interact with the opponent. */
-const INTERACTION_ROLES: ReadonlySet<CardRole> = new Set(['handtrap', 'disruption', 'boardbreaker'])
+const INTERACTION_ROLES: ReadonlySet<CardRole> = new Set(['handtrap', 'disruption', 'boardbreaker', 'floodgate'])
 
 /**
  * Pure function. Given a set of suggested roles, derives the origin.
@@ -374,14 +374,14 @@ const ruleFloodgate: HeuristicRule = {
     if (!desc) return []
 
     // Continuous spell/trap or field spell with restriction language
-    if (isContinuousSpellOrTrap(card) && FLOODGATE_RESTRICTION.test(desc)) return ['disruption']
-    if ((isSpellCard(card) || isTrapCard(card)) && FLOODGATE_RESTRICTION.test(desc) && !DISRUPTION_NEGATE.test(desc)) return ['disruption']
+    if (isContinuousSpellOrTrap(card) && FLOODGATE_RESTRICTION.test(desc)) return ['floodgate']
+    if ((isSpellCard(card) || isTrapCard(card)) && FLOODGATE_RESTRICTION.test(desc) && !DISRUPTION_NEGATE.test(desc)) return ['floodgate']
 
     // Monster floodgates: "while this card is face-up" + "cannot"
-    if (isMonsterCard(card) && FLOODGATE_MONSTER_FACE_UP.test(desc) && FLOODGATE_CANNOT.test(desc)) return ['disruption']
+    if (isMonsterCard(card) && FLOODGATE_MONSTER_FACE_UP.test(desc) && FLOODGATE_CANNOT.test(desc)) return ['floodgate']
 
     // "each player can only" or "neither player can" (any card type)
-    if (FLOODGATE_PLAYER_RESTRICTION.test(desc)) return ['disruption']
+    if (FLOODGATE_PLAYER_RESTRICTION.test(desc)) return ['floodgate']
 
     return []
   },
@@ -488,7 +488,7 @@ export function classifyCard(
     if (rule.id === 'boardbreaker') {
       hasBoardbreaker = true
     }
-    if (rule.id === 'disruption') {
+    if (rule.id === 'floodgate') {
       hasFloodgate = true
     }
 

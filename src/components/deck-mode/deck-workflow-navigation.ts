@@ -12,8 +12,6 @@ export interface DeckModeNavigationItem {
   /** Nombre completo: tooltip y lectores de pantalla. */
   title: string
   icon: IconName
-  /** Dato en vivo bajo el nombre (sólo donde cambia con el trabajo: cartas del deck y cartas clasificadas). */
-  metric: string | null
   /** Estado del paso: tooltip y lectores de pantalla. */
   detail: string
   tone: DeckWorkflowStepTone
@@ -23,7 +21,6 @@ export interface DeckModeNavigationItem {
 export interface DeckWorkflowNavigationSnapshot {
   mainDeckCount: number
   roleCardCount: number
-  classifiedCardCount: number
   unclassifiedCardCount: number
   hasCompletedRoleStep: boolean
   patternCount: number
@@ -50,7 +47,6 @@ export function isDeckWorkflowStepKey(value: string): value is DeckWorkflowStepK
 export function buildDeckWorkflowNavigationItems({
   mainDeckCount,
   roleCardCount,
-  classifiedCardCount,
   unclassifiedCardCount,
   hasCompletedRoleStep,
   patternCount,
@@ -62,7 +58,6 @@ export function buildDeckWorkflowNavigationItems({
       label: 'Deck',
       title: 'Deck Builder',
       icon: 'cards',
-      metric: `${formatInteger(mainDeckCount)} / 40`,
       detail:
         mainDeckCount >= 40
           ? 'Base principal lista.'
@@ -78,7 +73,6 @@ export function buildDeckWorkflowNavigationItems({
       label: 'Roles',
       title: 'Categorización de roles',
       icon: 'tag',
-      metric: roleCardCount > 0 ? `${formatInteger(classifiedCardCount)} / ${formatInteger(roleCardCount)}` : null,
       detail:
         roleCardCount === 0
           ? 'Necesita cartas en Main.'
@@ -99,7 +93,6 @@ export function buildDeckWorkflowNavigationItems({
       label: 'Lab',
       title: 'Probability Lab',
       icon: 'flask',
-      metric: null,
       detail: hasCompletedRoleStep
         ? patternCount > 0
           ? 'Listo para medir.'
@@ -114,7 +107,6 @@ export function buildDeckWorkflowNavigationItems({
       label: 'Comparar',
       title: 'Comparar builds',
       icon: 'columns',
-      metric: null,
       detail: 'Guardá o importá builds y compará.',
       tone: 'pending',
       disabled: false,
@@ -125,7 +117,6 @@ export function buildDeckWorkflowNavigationItems({
       label: 'Exportar',
       title: 'Exportar deck',
       icon: 'download',
-      metric: null,
       detail: mainDeckCount > 0 ? 'Imagen + PDF + YDK.' : 'Necesitás cartas en Main.',
       tone: mainDeckCount > 0 ? 'complete' : 'pending',
       disabled: mainDeckCount === 0,

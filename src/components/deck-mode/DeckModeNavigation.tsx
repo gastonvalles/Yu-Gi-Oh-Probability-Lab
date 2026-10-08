@@ -1,18 +1,11 @@
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
-import { type DeckModeNavigationItem, type DeckWorkflowStepKey, type DeckWorkflowStepTone } from './deck-workflow-navigation'
+import { type DeckModeNavigationItem, type DeckWorkflowStepKey } from './deck-workflow-navigation'
 
 interface DeckModeNavigationProps {
   items: DeckModeNavigationItem[]
   activeStep: DeckWorkflowStepKey
   onStepChange: (step: DeckWorkflowStepKey) => void
-}
-
-/** Punto de estado de cada paso: verde = listo, ámbar = a medio hacer, sin punto = todavía no. */
-const STATUS_DOT: Record<DeckWorkflowStepTone, string> = {
-  complete: 'bg-success',
-  progress: 'bg-warning',
-  pending: 'bg-tint/20',
 }
 
 const TAB_BASE =
@@ -39,15 +32,7 @@ export function DeckModeNavigation({ items, activeStep, onStepChange }: DeckMode
               variant={isActive ? 'bold' : 'bulk'}
               className={cx('shrink-0 transition-colors duration-150 [--icon-cut:var(--lavender)]', isActive ? 'text-primary-soft' : 'text-primary-soft/60 group-hover:text-primary-soft')}
             />
-            <span className="grid min-w-0 leading-tight">
-              <span className={cx('truncate text-body', isActive ? 'font-semibold' : 'font-medium')}>{item.label}</span>
-              {item.metric ? (
-                <span className="flex items-center gap-1.5 text-micro tabular-nums text-soft">
-                  <span className={cx('size-1.5 shrink-0 rounded-full', STATUS_DOT[item.tone])} aria-hidden="true" />
-                  <span className="truncate">{item.metric}</span>
-                </span>
-              ) : null}
-            </span>
+            <span className={cx('truncate text-body', isActive ? 'font-semibold' : 'font-medium')}>{item.label}</span>
           </button>
         )
       })}

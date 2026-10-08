@@ -13,6 +13,7 @@ export type CardRole =
   | 'handtrap'
   | 'disruption'
   | 'boardbreaker'
+  | 'floodgate'
   | 'brick'
   | 'garnet'
 export type GroupKey =

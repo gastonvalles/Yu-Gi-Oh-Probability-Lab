@@ -9,7 +9,7 @@ export const ROLE_EDITOR_SECTIONS = [
   {
     title: 'Interacción',
     description: 'Cómo frena o rompe al rival, por sí sola (no por una condición de tu línea).',
-    roles: ['handtrap', 'disruption', 'boardbreaker'] as const,
+    roles: ['handtrap', 'disruption', 'boardbreaker', 'floodgate'] as const,
   },
   {
     title: 'Utility',
@@ -37,8 +37,9 @@ export const ROLE_HELP_TEXT: Record<CardRole, string> = {
   payoff: 'Convierte la línea en ventaja, presión o cierre.',
   recovery: 'Recupera recursos después de gastar piezas o recibir interacción.',
   handtrap: 'Interacción que frena al rival desde la mano.',
-  disruption: 'Frena al rival en mesa o en su turno (negaciones, trampas, floodgates), por sí sola.',
+  disruption: 'Frena al rival en mesa o en su turno (negaciones, trampas), por sí sola.',
   boardbreaker: 'Rompe campo o quita cartas del rival por sí sola. Si solo lo hace cuando se cumple una condición de tu línea, marcá su función principal.',
+  floodgate: 'Restringe líneas del rival de forma continua o persistente.',
   brick: 'Carta incómoda de robar si no viene acompañada.',
   garnet: 'Pieza que preferís dejar en el deck porque en mano empeora la línea.',
 }

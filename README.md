@@ -11,7 +11,7 @@ La idea central es ayudar a entender deck building con un flujo simple: armás e
 - Importación de decks desde archivos `.ydk`, `.txt` o `.json`.
 - Clasificación por carta en dos ejes independientes:
   - `origin`: `engine`, `non_engine`.
-  - `roles`: `starter`, `extender`, `enabler`, `searcher`, `draw`, `payoff`, `recovery`, `handtrap`, `disruption`, `boardbreaker`, `brick`, `garnet`.
+  - `roles`: `starter`, `extender`, `enabler`, `searcher`, `draw`, `payoff`, `recovery`, `handtrap`, `disruption`, `boardbreaker`, `floodgate`, `brick`, `garnet`.
 - Aperturas y Problemas para medir consistencia real.
 - Probabilidad exacta (enumeración combinatoria), yendo primero, segundo o en promedio.
 - Práctica de manos para ver ejemplos concretos.
