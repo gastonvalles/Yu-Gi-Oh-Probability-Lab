@@ -38,7 +38,6 @@ import { usePatternEditorActions } from '../../app/use-pattern-editor-actions'
 import { usePatternMaintenance } from '../../app/use-pattern-maintenance'
 import { isClassificationStepComplete } from '../../app/role-step'
 import { useToastMessage } from '../../app/use-toast-message'
-import { getClassificationOverrides } from '../../app/classification-overrides'
 import type { CardOrigin, CardRole } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import type { DeckCopyActions } from '../card-detail/DeckCopyControls'
@@ -155,7 +154,6 @@ export function useDeckModeController() {
             index: pendingDrop.index,
             results: apiSearch.results,
             zone: pendingDrop.zone,
-            overrides: getClassificationOverrides(),
           }),
         )
         return
@@ -304,7 +302,6 @@ export function useDeckModeController() {
           index: deckBuilder[zone].length,
           results: resultsForDispatch,
           zone,
-          overrides: getClassificationOverrides(),
         }),
       )
 

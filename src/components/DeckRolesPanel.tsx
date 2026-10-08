@@ -8,7 +8,6 @@ import {
   serializeGroupKey,
 } from '../app/deck-groups'
 import { reclassifyAllCards } from '../app/deck-builder-slice'
-import { getClassificationOverrides } from '../app/classification-overrides'
 import {
   isCardFullyClassified,
   isCardMissingOrigin,
@@ -523,7 +522,7 @@ export function DeckRolesPanel({
               </p>
               <div className="flex flex-wrap gap-2">
                 {hasCardsNeedingClassification ? (
-                  <Button variant="onBrand" size="sm" icon="sparkles" onClick={() => dispatch(reclassifyAllCards({ overrides: getClassificationOverrides() }))}>
+                  <Button variant="onBrand" size="sm" icon="sparkles" onClick={() => dispatch(reclassifyAllCards())}>
                     Clasificar todo
                   </Button>
                 ) : onOpenLab ? (
