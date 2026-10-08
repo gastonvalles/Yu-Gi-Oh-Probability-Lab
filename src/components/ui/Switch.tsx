@@ -15,15 +15,15 @@ export function Switch({ checked, onChange, label, disabled = false }: SwitchPro
       aria-label={label}
       disabled={disabled}
       className={[
-        'relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
-        checked ? 'bg-primary shadow-[0_0_0_1px_rgb(var(--primary-rgb)/0.5),0_4px_14px_rgb(var(--primary-rgb)/0.35)]' : 'bg-surface-hover shadow-[inset_0_0_0_1px_rgb(255_255_255/0.1)]',
+        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:shadow-focus',
+        checked ? 'bg-success' : 'bg-tint/20',
       ].join(' ')}
       onClick={() => onChange(!checked)}
     >
       <span
         className={[
-          'pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform',
-          checked ? 'translate-x-5' : 'translate-x-0.5',
+          'pointer-events-none inline-block size-4 rounded-full transition-[transform,background-color]',
+          checked ? 'translate-x-4 bg-background' : 'translate-x-0 bg-soft',
         ].join(' ')}
       />
     </button>

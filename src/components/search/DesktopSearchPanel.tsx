@@ -160,10 +160,11 @@ export function DesktopSearchPanel({
             aria-pressed={filtersOpen || search.activeFilterCount > 0}
             aria-expanded={filtersOpen}
             aria-controls="advanced-search-filters"
+            title="Filtros"
             onClick={() => setFiltersOpen((current) => !current)}
           >
             <Icon name="sliders" size={14} />
-            Filtros
+            <span className="sr-only">Filtros</span>
             {search.activeFilterCount > 0 ? (
               <span className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-primary px-1 text-micro font-bold text-white">{search.activeFilterCount}</span>
             ) : null}

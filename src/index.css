@@ -357,11 +357,11 @@
     --border-rgb: 38 30 82;
     --input: #1b1542;
     --input-hover: #251d55;
-    --ring: #7a5cf0;
-    --primary: #5f33e1;
-    --primary-rgb: 95 51 225;
-    --primary-hover: #7452f0;
-    --primary-hover-rgb: 116 82 240;
+    --ring: #9b00ff;
+    --primary: #9b00ff;
+    --primary-rgb: 155 0 255;
+    --primary-hover: #b026ff;
+    --primary-hover-rgb: 176 38 255;
     --primary-foreground: #ffffff;
     --accent: #00ffa3;
     --accent-rgb: 0 255 163;
@@ -370,15 +370,15 @@
     --destructive: #ef4444;
     --destructive-rgb: 239 68 68;
     --destructive-foreground: #ffffff;
-    --selected-background: rgba(95, 51, 225, 0.35);
+    --selected-background: rgba(155, 0, 255, 0.35);
 
     /* Superficies: lienzo < tarjeta < elevada < hover. */
     --surface-raised: #1a1440;
     --surface-hover: #251d55;
     --border-subtle: rgb(var(--primary-soft-rgb) / 0.13);
     /* Violeta legible como texto sobre fondo oscuro (el de marca queda para rellenos). */
-    --primary-soft: #ab94ff;
-    --primary-soft-rgb: 171 148 255;
+    --primary-soft: #cf8dff;
+    --primary-soft-rgb: 207 141 255;
     /* Lavanda oscura: el fondo de chips, botones secundarios y barras de navegación (la lavanda del diseño, sobre oscuro). */
     --lavender: #1d1740;
     --lavender-rgb: 29 23 64;
@@ -455,15 +455,28 @@
     color: var(--text-main);
   }
 
-  /* El fondo se pinta una sola vez (en <html>, que se propaga al lienzo): manchas tenues de menta, amarillo y violeta sobre el negro. */
+  /* Color de base del lienzo; los degradados van en una capa fija propia (ver abajo). */
   html {
+    background: var(--bg-canvas);
+  }
+
+  /*
+   * Manchas tenues de menta, amarillo y violeta sobre el negro. Van en una capa fija y compuesta por la GPU:
+   * con `background-attachment: fixed` en <html> el celular repinta todos los degradados en cada cuadro del scroll.
+   */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
     background:
       radial-gradient(46rem 26rem at -6% -8%, rgb(0 255 163 / 0.06), transparent 62%),
       radial-gradient(44rem 24rem at 106% -6%, rgb(255 205 46 / 0.05), transparent 62%),
       radial-gradient(60rem 22rem at 50% -8%, rgb(var(--primary-rgb) / 0.3), transparent 70%),
       radial-gradient(56rem 30rem at 50% 118%, rgb(var(--primary-rgb) / 0.24), transparent 64%),
       linear-gradient(180deg, var(--bg-canvas), #0f0a26);
-    background-attachment: fixed;
+    transform: translateZ(0);
   }
 
   body,

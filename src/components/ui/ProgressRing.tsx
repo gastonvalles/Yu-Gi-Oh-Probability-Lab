@@ -29,13 +29,14 @@ interface ProgressRingProps {
 export function ProgressRing({ value, tone = 'brand', color, size = 42, strokeWidth, label, ticks, delay = 0, children, className }: ProgressRingProps) {
   const clamped = clamp01(value)
   const { stroke, radius, circumference, center } = ringGeometry(size, strokeWidth)
-  const { revealed, delayMs } = useRingReveal(delay)
+  const { ref, revealed, settled, delayMs, instant } = useRingReveal<HTMLDivElement>(delay)
   const shown = revealed ? clamped : 0
   const onBrand = tone === 'onBrand'
 
   return (
     <div
-      className={cx('relative inline-grid shrink-0 place-items-center', onBrand ? '[--tone-rgb:255_255_255]' : TONE[tone].rgb, className)}
+      ref={ref}
+      className={cx('relative inline-grid shrink-0 place-items-center', !settled && 'will-change-transform', onBrand ? '[--tone-rgb:255_255_255]' : TONE[tone].rgb, className)}
       style={{ width: size, height: size, ...(color ? ({ '--tone-rgb': color } as CSSProperties) : null) }}
       role="meter"
       aria-label={label}
@@ -54,7 +55,7 @@ export function ProgressRing({ value, tone = 'brand', color, size = 42, strokeWi
           strokeLinecap={shown > 0 ? 'round' : 'butt'}
           strokeDasharray={circumference}
           strokeDashoffset={circumference * (1 - shown)}
-          style={{ transitionDelay: `${delayMs}ms` }}
+          style={{ transitionDelay: `${delayMs}ms`, ...(instant ? { transitionDuration: '0ms' } : null) }}
           className={cx(RING_TRANSITION, onBrand ? 'stroke-lavender-light' : 'stroke-[rgb(var(--tone-rgb))]')}
         />
         {ticks?.map((tick) => {

@@ -13,7 +13,6 @@ interface TurnContextToggleProps {
 export function TurnContextToggle({ patternId, currentTurnContext, actions }: TurnContextToggleProps) {
   return (
     <Segmented
-      fullWidth
       label="Contexto de turno"
       value={currentTurnContext}
       options={[

@@ -10,7 +10,7 @@ Todo vive en `src/components/ui/` y los tokens en `src/index.css`.
 - **Dos niveles de caja, no tres.** Lienzo → tarjeta (`Card`) y nada más adentro: bloques, filas y totales se ordenan con espacio y líneas finas (`border-t border-border-subtle`, `divide-y`). Sólo se marcan al pasar el mouse, tocarlos o elegirlos. Un aviso dentro de una tarjeta (`Callout`) es un fondo teñido sin borde.
 - **Cada dato se dice una sola vez.** Un número, un rótulo o una instrucción no se repite en la misma pantalla (ni entre la pestaña, el encabezado y el contenido). Un subtítulo que repite el título, una leyenda fija en la navegación o un resumen que ya está debajo se borran. Los resúmenes de una sección sólo se ven con la sección plegada.
 - **Los porcentajes son círculos.** Un valor → `ProgressRing`; un reparto → `SegmentedRing`. No hay barras de progreso. Los anillos se llenan al aparecer (ver "Anillos").
-- **Base visual: el diseño de Figma "Task management & to-do list" adaptado al oscuro:** Lexend Deca, violeta `#5F33E1`, chips y botones lavanda, anillos de progreso, tarjetas redondeadas y barra inferior con íconos rellenos/duotono.
+- **Base visual: el diseño de Figma "Task management & to-do list" adaptado al oscuro:** Lexend Deca, violeta `#9B00FF` y verde `#00FFA3` (los de la Práctica), chips y botones lavanda, anillos de progreso, tarjetas redondeadas y barra inferior con íconos rellenos/duotono.
 - **El color siempre significa algo** (ver tonos). Si no significa nada, va en gris.
 - **30/70:** un ícono + un número + un color dicen lo principal; el texto sólo completa.
 - **Mismo orden en toda pantalla:** encabezado (`StepHero`) → controles → tarjetas (`Card`) → detalle.
@@ -19,7 +19,7 @@ Todo vive en `src/components/ui/` y los tokens en `src/index.css`.
 
 | Tono | Significa | Ejemplos |
 |---|---|---|
-| `brand` (violeta `#5F33E1`) | lo tuyo: acción principal, selección | botón primario, pestaña activa, chip elegido |
+| `brand` (violeta `#9B00FF`) | lo tuyo: acción principal, selección | botón primario, pestaña activa, chip elegido |
 | `success` (verde) | bien / listo | manos limpias, salida, regla cumplida |
 | `warning` (naranja `#FF9142`) | ojo / a medio hacer | falta clasificar, "Mejorable" |
 | `danger` (rojo) | mal / destructivo | problema, borrar, "Crítico" |
@@ -39,7 +39,7 @@ Los roles de las cartas (starter, handtrap…) y los grupos (engine, non-engine�
 - **Superficies (índigo, sin grises):** `background` `#0A0816` < `card-background` `#130F2B` < `surface-raised` / `input` `#1A1440`–`#1B1542` < `surface-hover` `#251D55`. Bordes: `border-border-subtle` (violeta al 13 %). `lavender` (`bg-lavender`) es el fondo de chips, botones secundarios y barra inferior; `lavender-light` (`#EEE9FF`) el botón sobre una tarjeta violeta.
 - **Margen móvil:** `px-gutter` (22 px).
 - **Ancho:** `max-w-content` (80rem) centrado en todas las pantallas menos el Builder (usa todo el ancho).
-- **Texto:** `text-foreground` → `text-muted` → `text-soft` (de más a menos importante). `*-soft` (p. ej. `text-primary-soft` `#AB94FF`) para texto sobre fondos teñidos.
+- **Texto:** `text-foreground` → `text-muted` → `text-soft` (de más a menos importante). `*-soft` (p. ej. `text-primary-soft` `#CF8DFF`) para texto sobre fondos teñidos.
 
 ## 4. Componentes
 

@@ -22,7 +22,8 @@ function getPool(): Slot[] | null {
 
     // Cada cálculo es una enumeración completa: en celulares con varios núcleos se reparten en paralelo.
     const cores = typeof navigator === 'undefined' ? 2 : navigator.hardwareConcurrency || 2
-    const size = Math.max(1, Math.min(MAX_WORKERS, cores - 1))
+    // Se deja libre más de un núcleo para que la pantalla siga fluida mientras se calcula.
+    const size = Math.max(1, Math.min(MAX_WORKERS, cores - 2))
 
     pool = Array.from({ length: size }, () => {
       const slot: Slot = { worker: new Worker(new URL('./lab-odds.worker.ts', import.meta.url), { type: 'module' }), load: 0 }

@@ -33,9 +33,9 @@ const GROUP: Record<SegmentedVariant, string> = {
 
 const ITEM: Record<SegmentedVariant, { base: string; on: string; off: string }> = {
   track: {
-    base: 'rounded-lg px-3 text-primary-soft',
+    base: 'rounded-lg px-3',
     on: 'bg-primary text-primary-foreground shadow-brand',
-    off: 'hover:bg-primary/20',
+    off: 'text-primary-soft hover:bg-primary/20',
   },
   chips: {
     base: 'rounded-control px-4',
