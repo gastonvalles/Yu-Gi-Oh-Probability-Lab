@@ -1,121 +1,94 @@
-import type {
-  BuildComparison,
-  BuildMetrics,
-  CardDiff,
-  CleanComparison,
-  ComparisonVerdict,
-  RuleComparisonRow,
-} from '../../app/build-comparison'
+import type { ReactNode } from 'react'
+
+import type { BuildComparison, BuildMetrics, CardDiff, CleanComparison, ComparisonVerdict, RuleComparisonRow } from '../../app/build-comparison'
 import type { RoleDistribution } from '../../app/role-distribution'
 import { formatInteger, formatShortPercent } from '../../app/utils'
 import { KindBadge } from '../probability/KindBadge'
 import { Badge } from '../ui/Badge'
+import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
 import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
 import { Icon, type IconName } from '../ui/Icon'
 import { ProgressRing } from '../ui/ProgressRing'
+import { SectionHeader } from '../ui/SectionHeader'
 import { TONE, type Tone } from '../ui/tone'
-import { sectionTitle } from '../ui/typography'
+import { overline } from '../ui/typography'
 import { SideBadge } from './SideBadge'
-
-const DELTA_COLOR = {
-  better: 'text-success-soft',
-  worse: 'text-danger-soft',
-  neutral: 'text-soft',
-} as const
-
-const DELTA_BADGE_TONE: Record<keyof typeof DELTA_COLOR, Tone> = {
-  better: 'success',
-  worse: 'danger',
-  neutral: 'neutral',
-}
-
-const CELL = 'whitespace-nowrap border-t border-border-subtle px-1.5 py-2'
-
-/** Celda de encabezado de columna. */
-const TH_HEAD = 'whitespace-nowrap px-1.5 py-2 text-right text-micro font-semibold uppercase tracking-[0.06em] text-soft'
-
-/** Encabezado de fila (nombre del renglón). */
-const thRow = (emphasis = false) =>
-  cx(CELL, 'text-left text-foreground', emphasis ? 'font-bold' : 'font-semibold')
-
-/** Celda de dato; con `tone` es una diferencia (B vs A) coloreada. */
-const td = (emphasis = false, tone?: keyof typeof DELTA_COLOR) =>
-  cx(
-    CELL,
-    'text-right',
-    tone ? ['font-bold', DELTA_COLOR[tone]] : emphasis ? 'font-bold text-foreground' : 'text-muted',
-  )
-
-const TABLE = 'w-full border-collapse text-body tabular-nums'
 
 /** Nombre con el que el comparador muestra tu deck actual. */
 export const CURRENT_DECK_NAME = 'Deck actual'
 
-/** Diferencias menores a esto se muestran como neutras (0.1 pp). */
-const VISIBLE_DELTA = 0.001
+/** Diferencias menores a esto se consideran empate (0.1 pp). */
+const TIE_GAP = 0.001
 
-type DeltaTone = 'better' | 'worse' | 'neutral'
+type Side = 'A' | 'B'
 
-/** Tono de B frente a A: para salidas y manos limpias subir es mejor; para problemas, bajar. */
-function toneFor(delta: number | null, higherIsBetter = true): DeltaTone {
-  if (delta === null || Math.abs(delta) < VISIBLE_DELTA) {
-    return 'neutral'
+/** Quién gana: `null` es empate. Para problemas (bricks) el menor valor es el mejor. */
+function winnerOf(a: number | null, b: number | null, higherIsBetter = true): Side | null {
+  if (a === null || b === null || Math.abs(b - a) < TIE_GAP) {
+    return null
   }
-  return delta > 0 === higherIsBetter ? 'better' : 'worse'
-}
-
-function formatDelta(delta: number | null): string {
-  if (delta === null) {
-    return '—'
-  }
-  if (Math.abs(delta) < VISIBLE_DELTA) {
-    return '='
-  }
-  return `${delta > 0 ? '+' : '−'}${(Math.abs(delta) * 100).toFixed(1)} pp`
+  return b > a === higherIsBetter ? 'B' : 'A'
 }
 
 function formatValue(value: number | null): string {
   return value === null ? '—' : formatShortPercent(value)
 }
 
-export function ComparisonReport({
-  comparison,
-  isCurrentDeck,
-}: {
+function formatPoints(delta: number): string {
+  return `${(Math.abs(delta) * 100).toFixed(1)} pp`
+}
+
+const mean = (left: number, right: number) => (left + right) / 2
+
+interface ComparisonReportProps {
   comparison: BuildComparison
   /** Qué lado es tu deck actual (se clasifica en Categorización, no acá). */
   isCurrentDeck: { A: boolean; B: boolean }
-}) {
+  /** Lleva a la vista de cartas, donde se clasifican las pendientes. */
+  onShowCards: () => void
+}
+
+export function ComparisonReport({ comparison, isCurrentDeck, onShowCards }: ComparisonReportProps) {
   const { a, b } = comparison
 
   return (
-    <div className="grid min-w-0 gap-4">
-      <VerdictBanner verdict={comparison.verdict} />
-      {[a, b].map((build, index) => (
-        <BuildNotes key={index} side={index === 0 ? 'A' : 'B'} build={build} isCurrentDeck={index === 0 ? isCurrentDeck.A : isCurrentDeck.B} />
-      ))}
-      {comparison.clean ? <CleanTable clean={comparison.clean} nameA={a.name} nameB={b.name} /> : null}
-      <CardDiffList diffs={comparison.cardDiffs} deckSizeA={a.deckSize} deckSizeB={b.deckSize} />
-      <RoleTable rolesA={a.roles} rolesB={b.roles} />
-      <RuleTable rows={comparison.rules} />
+    <div className="grid min-w-0 gap-4 min-[1101px]:grid-cols-2 min-[1101px]:items-start min-[1101px]:gap-5">
+      <div className="grid min-w-0 gap-4">
+        {([['A', a], ['B', b]] as const).map(([side, build]) => (
+          <BuildNotes key={side} side={side} build={build} canClassifyHere={!isCurrentDeck[side]} onShowCards={onShowCards} />
+        ))}
+        <ResultCard comparison={comparison} />
+      </div>
+      <div className="grid min-w-0 gap-4">
+        <CardDiffCard diffs={comparison.cardDiffs} />
+        <DetailCard comparison={comparison} />
+      </div>
     </div>
   )
 }
 
 /** Un aviso por build: primero lo que falta clasificar (con qué hacer), después otros bloqueos. */
-function BuildNotes({ side, build, isCurrentDeck }: { side: 'A' | 'B'; build: BuildMetrics; isCurrentDeck: boolean }) {
+function BuildNotes({ side, build, canClassifyHere, onShowCards }: { side: Side; build: BuildMetrics; canClassifyHere: boolean; onShowCards: () => void }) {
   const pending = build.pendingCards.length
   const otherReasons = pending > 0 ? build.blockedReasons.filter((reason) => !/clasific|revisi/i.test(reason)) : build.blockedReasons
 
   return (
     <>
       {pending > 0 ? (
-        <Callout tone="warning" title={`Build ${side}: ${formatInteger(pending)} carta${pending === 1 ? '' : 's'} sin clasificar`}>
-          {isCurrentDeck
-            ? 'Clasificalas en Categorización para poder comparar.'
-            : 'Están marcadas con “?” en la grilla: tocalas para clasificarlas.'}
+        <Callout
+          tone="warning"
+          title={`Build ${side}: ${formatInteger(pending)} carta${pending === 1 ? '' : 's'} sin clasificar`}
+          action={
+            canClassifyHere ? (
+              <Button variant="secondary" size="sm" onClick={onShowCards}>
+                Ver cartas
+              </Button>
+            ) : undefined
+          }
+        >
+          {canClassifyHere ? 'Clasificalas para que la comparación sea fiel.' : 'Clasificalas en Categorización para poder comparar.'}
         </Callout>
       ) : null}
       {otherReasons.map((reason) => (
@@ -136,37 +109,32 @@ const VERDICT_LOOK: Record<ComparisonVerdict['kind'], { tone: Tone; icon: IconNa
   equivalent: { tone: 'info', icon: 'columns' },
 }
 
-function VerdictBanner({ verdict }: { verdict: ComparisonVerdict }) {
+/** Resultado: primero la respuesta (cuál conviene) y abajo, una sola vez, las cifras de manos limpias. */
+function ResultCard({ comparison }: { comparison: BuildComparison }) {
+  const { verdict, clean } = comparison
   const look = VERDICT_LOOK[verdict.kind]
 
   return (
-    <Card tone={look.tone} padding="md" className="flex items-start gap-3" aria-live="polite">
-      {verdict.kind === 'a' || verdict.kind === 'b' ? (
-        <SideBadge side={verdict.kind === 'a' ? 'A' : 'B'} size="lg" />
-      ) : (
-        <Icon name={look.icon} size={28} className={cx('mt-0.5 shrink-0', TONE[look.tone].text)} />
-      )}
-      <div className="grid min-w-0 gap-0.5">
-        <strong className="text-lead font-semibold text-foreground">{verdict.title}</strong>
-        <span className="text-body text-muted">{verdict.detail}</span>
+    <Card padding="md" className="grid min-w-0 gap-5">
+      <div className="flex items-center gap-3" aria-live="polite">
+        {verdict.kind === 'a' || verdict.kind === 'b' ? (
+          <SideBadge side={verdict.kind === 'a' ? 'A' : 'B'} size="lg" />
+        ) : (
+          <Icon name={look.icon} size={28} className={cx('shrink-0', TONE[look.tone].text)} />
+        )}
+        <div className="grid min-w-0 gap-0.5">
+          <strong className="text-lead font-semibold text-foreground">{verdict.title}</strong>
+          <span className="text-body text-muted">{verdict.detail}</span>
+        </div>
       </div>
+      {clean ? <CleanTable clean={clean} /> : null}
     </Card>
   )
 }
 
-function ReportSection({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <Card padding="sm" className="grid min-w-0 gap-3">
-      <header className="grid gap-0.5">
-        <h3 className={cx(sectionTitle, 'text-body')}>{title}</h3>
-        {hint ? <p className="m-0 text-micro text-soft">{hint}</p> : null}
-      </header>
-      {children}
-    </Card>
-  )
-}
+const CLEAN_COLUMNS = 'grid grid-cols-[minmax(0,1fr)_5.5rem_5.5rem] items-center gap-x-3'
 
-function CleanTable({ clean, nameA, nameB }: { clean: CleanComparison; nameA: string; nameB: string }) {
+function CleanTable({ clean }: { clean: CleanComparison }) {
   const rows = [
     { key: 'first', label: 'Yendo 1º', data: clean.first },
     { key: 'second', label: 'Yendo 2º', data: clean.second },
@@ -174,164 +142,185 @@ function CleanTable({ clean, nameA, nameB }: { clean: CleanComparison; nameA: st
   ] as const
 
   return (
-    <ReportSection title="Manos limpias">
+    <div className="grid gap-3 border-t border-border-subtle pt-4">
+      <SectionHeader as="h3" title="Manos limpias" description="Manos con salida y sin problemas, según tus reglas." />
+      <div className={cx(CLEAN_COLUMNS, 'justify-items-center')}>
+        <span />
+        <SideBadge side="A" size="sm" />
+        <SideBadge side="B" size="sm" />
+      </div>
       <ul className="m-0 grid list-none gap-0 divide-y divide-border-subtle p-0 tabular-nums">
         {rows.map((row, index) => {
-          const tone = toneFor(row.data.delta)
+          const winner = winnerOf(row.data.a, row.data.b)
 
           return (
-            <li key={row.key} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-4 gap-y-1 py-3 first:pt-0 last:pb-0">
-              <div className="grid min-w-0 content-center justify-items-start gap-1.5">
+            <li key={row.key} className={cx(CLEAN_COLUMNS, 'py-3 first:pt-0 last:pb-0')}>
+              <div className="grid min-w-0 gap-0.5">
                 <strong className={cx('text-body text-foreground', row.key === 'average' ? 'font-bold' : 'font-semibold')}>{row.label}</strong>
-                <Badge tone={DELTA_BADGE_TONE[tone]} size="sm" title="B vs A">
-                  B vs A {formatDelta(row.data.delta)}
-                </Badge>
+                <span className={cx('text-micro', winner ? 'font-semibold text-success-soft' : 'text-soft')}>
+                  {winner ? `Gana ${winner} · +${formatPoints(row.data.delta)}` : 'Empate'}
+                </span>
               </div>
-              <CleanRing side="A" name={nameA} value={row.data.a} delay={index * 140} />
-              <CleanRing side="B" name={nameB} value={row.data.b} delay={index * 140 + 90} />
+              <CleanRing side="A" value={row.data.a} dimmed={winner === 'B'} delay={index * 140} />
+              <CleanRing side="B" value={row.data.b} dimmed={winner === 'A'} delay={index * 140 + 90} />
             </li>
           )
         })}
       </ul>
-    </ReportSection>
-  )
-}
-
-/** Manos limpias de una build: un anillo con su letra (A violeta, B celeste) debajo. */
-function CleanRing({ side, name, value, delay }: { side: 'A' | 'B'; name: string; value: number | null; delay: number }) {
-  return (
-    <div className="grid justify-items-center gap-1" title={name}>
-      <ProgressRing value={value ?? 0} tone={side === 'A' ? 'brand' : 'info'} size={68} strokeWidth={6} delay={delay} label={`Manos limpias de la build ${side}: ${formatValue(value)}`}>
-        {formatValue(value)}
-      </ProgressRing>
-      <span className={cx('text-micro font-bold', side === 'A' ? 'text-primary-soft' : 'text-info-soft')}>{side}</span>
     </div>
   )
 }
 
-function CardDiffList({ diffs, deckSizeA, deckSizeB }: { diffs: CardDiff[]; deckSizeA: number; deckSizeB: number }) {
-  const sizeDelta = deckSizeB - deckSizeA
+/** Manos limpias de una build; la que pierde en esa fila se apaga para que se vea quién gana. */
+function CleanRing({ side, value, dimmed, delay }: { side: Side; value: number | null; dimmed: boolean; delay: number }) {
+  return (
+    <div className={cx('grid justify-items-center transition-opacity duration-200', dimmed && 'opacity-50')}>
+      <ProgressRing value={value ?? 0} tone={side === 'A' ? 'brand' : 'info'} size={64} strokeWidth={6} delay={delay} label={`Manos limpias de la build ${side}: ${formatValue(value)}`}>
+        {formatValue(value)}
+      </ProgressRing>
+    </div>
+  )
+}
 
+function CardDiffCard({ diffs }: { diffs: CardDiff[] }) {
   // Sin diferencias no hay nada que listar (el veredicto ya dice que son iguales).
   if (diffs.length === 0) {
     return null
   }
 
   return (
-    <ReportSection
-      title="Qué cambia en el Main Deck"
-      hint={sizeDelta === 0 ? undefined : `A tiene ${formatInteger(deckSizeA)} cartas y B ${formatInteger(deckSizeB)} (${sizeDelta > 0 ? '+' : '−'}${formatInteger(Math.abs(sizeDelta))}).`}
-    >
-      {(
-        <ul className="m-0 grid list-none gap-1.5 p-0">
-          {diffs.map((diff) => (
-            <li key={diff.cardId} className="grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-center gap-2 text-body">
-              <Badge tone={diff.delta > 0 ? 'success' : 'danger'} size="sm" className="justify-center tabular-nums">
-                {diff.delta > 0 ? '+' : '−'}
-                {formatInteger(Math.abs(diff.delta))}
-              </Badge>
-              <span className="truncate text-foreground">{diff.name}</span>
-              <span className="text-micro tabular-nums text-soft">
-                {formatInteger(diff.copiesA)} → {formatInteger(diff.copiesB)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </ReportSection>
+    <Card padding="md" className="grid min-w-0 gap-3">
+      <SectionHeader as="h3" title="Qué cambia en el Main Deck" description="Copias de B respecto de A." />
+      <ul className="m-0 grid list-none gap-1.5 p-0">
+        {diffs.map((diff) => (
+          <li key={diff.cardId} className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-2 text-body">
+            <Badge tone={diff.delta > 0 ? 'success' : 'danger'} size="sm" className="justify-center tabular-nums">
+              {diff.delta > 0 ? '+' : '−'}
+              {formatInteger(Math.abs(diff.delta))}
+            </Badge>
+            <span className="truncate text-foreground">{diff.name}</span>
+          </li>
+        ))}
+      </ul>
+    </Card>
   )
 }
 
-function RoleTable({
-  rolesA,
-  rolesB,
-}: {
-  rolesA: { first: RoleDistribution[]; second: RoleDistribution[] }
-  rolesB: { first: RoleDistribution[]; second: RoleDistribution[] }
-}) {
+interface DetailRowData {
+  key: string
+  label: ReactNode
+  a: number | null
+  b: number | null
+  higherIsBetter: boolean
+  note?: string
+}
+
+/** Roles y reglas, plegado: una fila por cosa, con los dos valores y quién gana. */
+function DetailCard({ comparison }: { comparison: BuildComparison }) {
+  const roleRows: DetailRowData[] = comparison.a.roles.first.flatMap((roleA, index) => {
+    const roleB = comparison.b.roles.first[index]!
+    if (roleA.copies === 0 && roleB.copies === 0) {
+      return []
+    }
+    return [
+      {
+        key: roleA.key,
+        label: roleA.label,
+        a: averageOneOrMore(roleA, comparison.a.roles.second[index]!),
+        b: averageOneOrMore(roleB, comparison.b.roles.second[index]!),
+        // Para bricks, robar menos es mejor.
+        higherIsBetter: roleA.key !== 'brick',
+      },
+    ]
+  })
+  const ruleRows: DetailRowData[] = comparison.rules.map(toRuleRow)
+
+  if (roleRows.length === 0 && ruleRows.length === 0) {
+    return null
+  }
+
   return (
-    <ReportSection title="Roles">
-      <div className="-mx-1 overflow-x-auto px-1">
-      <table className={TABLE}>
-        <thead>
-          <tr>
-            <th scope="col" className={TH_HEAD} />
-            <th scope="col" className={TH_HEAD}>Copias</th>
-            <th scope="col" className={TH_HEAD}>1+ yendo 1º</th>
-            <th scope="col" className={TH_HEAD}>1+ yendo 2º</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rolesA.first.map((roleA, index) => {
-            const roleB = rolesB.first[index]!
-            const secondA = rolesA.second[index]!
-            const secondB = rolesB.second[index]!
-            // Para bricks, robar menos es mejor.
-            const higherIsBetter = roleA.key !== 'brick'
-
-            return (
-              <tr key={roleA.key}>
-                <th scope="row" className={thRow()}>{roleA.label}</th>
-                <td className={td()}>
-                  {formatInteger(roleA.copies)} → {formatInteger(roleB.copies)}
-                </td>
-                <RoleCell a={roleA.atLeastOne} b={roleB.atLeastOne} higherIsBetter={higherIsBetter} />
-                <RoleCell a={secondA.atLeastOne} b={secondB.atLeastOne} higherIsBetter={higherIsBetter} />
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-      </div>
-    </ReportSection>
+    <Card padding="md" className="min-w-0">
+      <details className="group">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-control focus-visible:outline-none focus-visible:shadow-focus [&::-webkit-details-marker]:hidden">
+          <SectionHeader as="h3" title="Dónde gana cada una" description="Por rol y por regla, en promedio." />
+          <Icon name="chevron-down" size={20} className="shrink-0 text-soft transition-transform duration-200 group-open:rotate-180" />
+        </summary>
+        <div className="mt-4 grid gap-5">
+          <DetailGroup title="Roles" rows={roleRows} />
+          <DetailGroup title="Reglas" rows={ruleRows} />
+        </div>
+      </details>
+    </Card>
   )
 }
 
-function RoleCell({ a, b, higherIsBetter }: { a: number; b: number; higherIsBetter: boolean }) {
-  return (
-    <td className={td()}>
-      {formatShortPercent(a)} →{' '}
-      <span className={cx('font-bold', DELTA_COLOR[toneFor(b - a, higherIsBetter)])}>{formatShortPercent(b)}</span>
-    </td>
-  )
+/** Probabilidad de ver al menos uno en la mano, promediando yendo 1º y 2º. */
+function averageOneOrMore(first: RoleDistribution, second: RoleDistribution): number {
+  return mean(first.atLeastOne, second.atLeastOne)
 }
 
-function RuleTable({ rows }: { rows: RuleComparisonRow[] }) {
+function toRuleRow(row: RuleComparisonRow): DetailRowData {
+  const missing = row.missingCardsIn.length === 2 ? 'ambas builds' : row.missingCardsIn.length === 1 ? `la build ${row.missingCardsIn[0]}` : null
+
+  return {
+    key: row.id,
+    label: (
+      <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+        <KindBadge kind={row.kind} />
+        <span className="font-semibold text-foreground">{row.name}</span>
+        {row.turnContext !== 'either' ? (
+          <Badge tone="warning" size="sm" shape="tag">
+            {row.turnContext === 'first' ? 'Solo 1º' : 'Solo 2º'}
+          </Badge>
+        ) : null}
+      </span>
+    ),
+    a: row.a,
+    b: row.b,
+    higherIsBetter: row.kind === 'opening',
+    note: missing ? `Falta una carta de la regla en ${missing}.` : undefined,
+  }
+}
+
+const DETAIL_COLUMNS = 'grid grid-cols-[minmax(0,1fr)_3.25rem_3.25rem_1.5rem] items-center gap-x-2'
+
+function DetailGroup({ title, rows }: { title: string; rows: DetailRowData[] }) {
   if (rows.length === 0) {
     return null
   }
 
   return (
-    <ReportSection title="Reglas" hint="Cuánto se cumple cada regla en promedio (las de un solo turno, en su turno).">
-      <ul className="m-0 grid list-none gap-2 p-0">
-        {rows.map((row) => (
-          <li key={row.id} className="grid gap-1 border-t border-border-subtle pt-2 first:border-t-0 first:pt-0">
-            <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-body text-foreground">
-              <KindBadge kind={row.kind} />
-              <strong className="font-semibold">{row.name}</strong>
-              {row.turnContext !== 'either' ? (
-                <Badge tone="warning" size="sm" shape="tag">
-                  {row.turnContext === 'first' ? 'Solo 1º' : 'Solo 2º'}
-                </Badge>
-              ) : null}
-            </div>
-            <div className="flex items-baseline gap-2 text-body tabular-nums text-muted">
-              <span>{formatValue(row.a)}</span>
-              <span aria-hidden="true">→</span>
-              <span>{formatValue(row.b)}</span>
-              <span className={cx('ml-auto font-bold', DELTA_COLOR[toneFor(row.delta, row.kind === 'opening')])}>
-                {formatDelta(row.delta)}
-              </span>
-            </div>
-            {row.missingCardsIn.length > 0 ? (
-              <p className="m-0 text-micro text-warning-soft">
-                {row.missingCardsIn.length === 2 ? 'Ninguna build' : `La build ${row.missingCardsIn[0]}`} no tiene alguna carta
-                que pide esta regla: ahí no puede cumplirse.
-              </p>
-            ) : null}
-          </li>
-        ))}
+    <div className="grid gap-2">
+      <div className={DETAIL_COLUMNS}>
+        <span className={overline}>{title}</span>
+        <span className="justify-self-end"><SideBadge side="A" size="sm" /></span>
+        <span className="justify-self-end"><SideBadge side="B" size="sm" /></span>
+        <span />
+      </div>
+      <ul className="m-0 grid list-none gap-0 divide-y divide-border-subtle p-0 tabular-nums">
+        {rows.map((row) => {
+          const winner = winnerOf(row.a, row.b, row.higherIsBetter)
+
+          return (
+            <li key={row.key} className="grid gap-1 py-2 first:pt-0 last:pb-0">
+              <div className={cx(DETAIL_COLUMNS, 'text-body')}>
+                <span className="min-w-0 text-foreground">{row.label}</span>
+                <DetailValue value={row.a} wins={winner === 'A'} />
+                <DetailValue value={row.b} wins={winner === 'B'} />
+                <span className="justify-self-end" title={winner ? `Mejor: ${winner}` : 'Empate'}>
+                  {winner ? <SideBadge side={winner} size="sm" /> : <span className="text-soft">=</span>}
+                </span>
+              </div>
+              {row.note ? <p className="m-0 text-micro text-warning-soft">{row.note}</p> : null}
+            </li>
+          )
+        })}
       </ul>
-    </ReportSection>
+    </div>
   )
+}
+
+function DetailValue({ value, wins }: { value: number | null; wins: boolean }) {
+  return <span className={cx('justify-self-end text-right', wins ? 'font-bold text-success-soft' : 'text-muted')}>{formatValue(value)}</span>
 }

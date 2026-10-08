@@ -12,7 +12,6 @@ import { CardDetailModal } from '../card-detail/CardDetailModal'
 import { DeckImportDrawer } from '../deck-mode/DeckImportDrawer'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { Button } from '../ui/Button'
-import { cx } from '../ui/cx'
 import { EmptyState } from '../ui/EmptyState'
 import { Modal } from '../ui/Modal'
 import { Segmented } from '../ui/Segmented'
@@ -29,7 +28,7 @@ import { field } from '../ui/surfaces'
 const CURRENT = 'current'
 const SELECTION_KEY = 'ygo-lab:comparison-selection'
 
-type Tab = 'report' | 'A' | 'B'
+type Tab = 'report' | 'cards'
 
 interface ResolvedBuild {
   source: string
@@ -238,29 +237,27 @@ export function ComparisonScreen() {
             value={tab}
             onChange={setTab}
             fullWidth
-            className="min-[1101px]:hidden"
+            className="max-w-sm"
             options={[
               { value: 'report', label: 'Resumen' },
-              { value: 'A', label: 'Build A' },
-              { value: 'B', label: 'Build B' },
+              { value: 'cards', label: 'Cartas' },
             ]}
           />
 
-          <div className="grid min-w-0 gap-4 min-[1101px]:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] min-[1101px]:items-start min-[1101px]:gap-5">
-            <div className={cx(tab !== 'report' && 'hidden min-[1101px]:block')}>
-              {comparison ? (
-                <ComparisonReport comparison={comparison} isCurrentDeck={{ A: !buildA.isSaved, B: !buildB.isSaved }} />
-              ) : null}
+          {tab === 'report' ? (
+            comparison ? (
+              <ComparisonReport
+                comparison={comparison}
+                isCurrentDeck={{ A: !buildA.isSaved, B: !buildB.isSaved }}
+                onShowCards={() => setTab('cards')}
+              />
+            ) : null
+          ) : (
+            <div className="grid min-w-0 gap-5 min-[1101px]:grid-cols-2 min-[1101px]:items-start">
+              <BuildDeckView side="A" name={buildA.name} zones={buildA.zones} deltaByCardId={deltaByCardId} onCardClick={handleCardClick(buildA)} />
+              <BuildDeckView side="B" name={buildB.name} zones={buildB.zones} deltaByCardId={deltaByCardId} onCardClick={handleCardClick(buildB)} />
             </div>
-            <div className={cx(tab === 'report' ? 'hidden' : 'block', 'min-[1101px]:grid min-[1101px]:gap-5')}>
-              <div className={cx(tab !== 'A' && 'hidden min-[1101px]:block')}>
-                <BuildDeckView side="A" name={buildA.name} zones={buildA.zones} deltaByCardId={deltaByCardId} onCardClick={handleCardClick(buildA)} />
-              </div>
-              <div className={cx(tab !== 'B' && 'hidden min-[1101px]:block')}>
-                <BuildDeckView side="B" name={buildB.name} zones={buildB.zones} deltaByCardId={deltaByCardId} onCardClick={handleCardClick(buildB)} />
-              </div>
-            </div>
-          </div>
+          )}
         </>
       )}
 
