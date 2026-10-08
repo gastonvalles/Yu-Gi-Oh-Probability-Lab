@@ -74,12 +74,16 @@ export function LabFailureBreakdown({ result }: { result: LabViewResult }) {
     >
       <div className="grid items-center justify-items-center gap-5 min-[560px]:grid-cols-[auto_minmax(0,1fr)] min-[560px]:justify-items-start min-[560px]:gap-8">
         <SegmentedRing
-          size={176}
-          strokeWidth={16}
-          activeKey={activeSegment}
+          size={168}
+          strokeWidth={14}
+          activeKey={selectedSegment}
+          onSegmentSelect={(key) => setActiveSegment(key as HandSegment)}
           label={SEGMENTS.map((segment) => `${segment.label}: ${formatShortPercent(values[segment.key])}`).join(', ')}
           segments={SEGMENTS.map((segment) => ({ key: segment.key, value: values[segment.key], color: segment.rgb }))}
-        />
+        >
+          {/* Como en los demás anillos, el centro dice el porcentaje: el del grupo que tocás o recorrés con el mouse. */}
+          {formatShortPercent(values[activeSegment])}
+        </SegmentedRing>
 
         <ul className="m-0 grid w-full list-none gap-1 p-0">
           {SEGMENTS.map((segment) => (

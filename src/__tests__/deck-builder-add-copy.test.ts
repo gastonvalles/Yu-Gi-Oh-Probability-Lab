@@ -27,7 +27,7 @@ const ASH = {
 function deckWith(card: Partial<DeckCardInstance>): DeckBuilderState {
   return {
     deckName: 'Test',
-    main: [{ instanceId: 'a', name: ASH.name, apiCard: ASH, origin: 'non_engine', roles: ['disruption'], needsReview: false, ...card }],
+    main: [{ instanceId: 'a', name: ASH.name, apiCard: ASH, origin: 'non_engine', roles: ['handtrap', 'disruption'], needsReview: false, ...card }],
     extra: [],
     side: [],
     isEditingDeck: false,
@@ -37,7 +37,7 @@ function deckWith(card: Partial<DeckCardInstance>): DeckBuilderState {
 describe('agregar otra copia de una carta', () => {
   it('hereda la clasificación que ya le diste (no queda pendiente de revisión)', () => {
     const next = addSearchResultToZone(deckWith({}), [ASH], ASH.ygoprodeckId, 'main', 1)
-    expect(next.main[1]).toMatchObject({ origin: 'non_engine', roles: ['disruption'], needsReview: false })
+    expect(next.main[1]).toMatchObject({ origin: 'non_engine', roles: ['handtrap', 'disruption'], needsReview: false })
   })
 
   it('si la copia existente todavía no se revisó, usa la sugerencia automática', () => {

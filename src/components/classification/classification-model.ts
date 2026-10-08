@@ -22,14 +22,16 @@ const PANEL_THEME: Record<ClassificationStateKey, { color: string; rgb: string }
 export const ROLE_FILTER_ORDER: CardRole[] = [
   'starter',
   'extender',
-  'disruption',
+  'handtrap',
   'boardbreaker',
   'brick',
   'enabler',
   'searcher',
+  'draw',
   'payoff',
   'recovery',
-  'tech',
+  'disruption',
+  'garnet',
 ]
 
 /** Pone las variables de color (`--role-color` / `--role-rgb`) de un grupo o estado. */

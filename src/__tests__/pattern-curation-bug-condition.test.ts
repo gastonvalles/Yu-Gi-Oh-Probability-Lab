@@ -49,15 +49,15 @@ function makeConfiguredCondition(cardIds: string[]): fc.Arbitrary<PatternConditi
         value: ids,
       })),
       // Origin matcher (always valid, doesn't need card reference)
-      fc.constantFrom('engine', 'non_engine').map((value): Matcher => ({
+      fc.constantFrom('engine', 'non_engine' as const).map((value): Matcher => ({
         type: 'origin',
         value,
       })),
       // Role matcher (always valid)
       fc.constantFrom(
-        'starter', 'extender', 'enabler', 'disruption', 'disruption',
-        'boardbreaker', 'disruption', 'boardbreaker', 'searcher', 'searcher',
-        'recovery', 'enabler', 'payoff', 'brick', 'brick', 'tech',
+        'starter', 'extender', 'enabler', 'handtrap', 'disruption',
+        'boardbreaker', 'disruption', 'boardbreaker', 'searcher', 'draw',
+        'recovery', 'enabler', 'payoff', 'brick', 'garnet',
       ).map((value): Matcher => ({ type: 'role', value })),
     ),
     quantity: fc.integer({ min: 1, max: 3 }),

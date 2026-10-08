@@ -19,9 +19,9 @@ import type {
 
 const arbCardOrigin: fc.Arbitrary<CardOrigin> = fc.constantFrom('engine', 'non_engine')
 const arbCardRole: fc.Arbitrary<CardRole> = fc.constantFrom(
-  'starter', 'extender', 'enabler', 'disruption', 'disruption',
-  'boardbreaker', 'disruption', 'boardbreaker', 'searcher', 'searcher',
-  'recovery', 'enabler', 'payoff', 'brick', 'brick', 'tech',
+  'starter', 'extender', 'enabler', 'handtrap', 'disruption',
+  'boardbreaker', 'disruption', 'boardbreaker', 'searcher', 'draw',
+  'recovery', 'enabler', 'payoff', 'brick', 'garnet',
 )
 const arbPatternKind: fc.Arbitrary<PatternKind> = fc.constantFrom('opening', 'problem')
 const arbPatternLogic: fc.Arbitrary<PatternLogic> = fc.constantFrom('all', 'any')

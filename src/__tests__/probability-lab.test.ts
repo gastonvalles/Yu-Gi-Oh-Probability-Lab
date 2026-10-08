@@ -13,7 +13,7 @@ function card(id: string, copies: number, roles: CardRole[]): CardEntry {
 }
 
 function filler(count: number): CardEntry[] {
-  return Array.from({ length: count }, (_, index) => card(`f${index}`, 1, ['tech']))
+  return Array.from({ length: count }, (_, index) => card(`f${index}`, 1, ['recovery']))
 }
 
 function rolePattern(

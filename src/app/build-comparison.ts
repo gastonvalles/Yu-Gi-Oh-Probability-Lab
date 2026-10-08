@@ -97,7 +97,7 @@ export function compareBuilds(
     cardDiffs,
     rules: compareRules(a.cards, rules, activeA, activeB, metricsA.results, metricsB.results),
     clean,
-    verdict: buildVerdict(clean, cardDiffs.length === 0),
+    verdict: buildVerdict(a.name, b.name, clean, cardDiffs.length === 0),
   }
 }
 
@@ -221,8 +221,12 @@ function sameDefinition(left: HandPattern, right: HandPattern): boolean {
   return strip(left) === strip(right)
 }
 
-/** Veredicto en una frase: las cifras están en la tabla, acá sólo qué build conviene. */
-export function buildVerdict(clean: CleanComparison | null, sameCards: boolean): ComparisonVerdict {
+/** Veredicto en una frase: las cifras están en la tabla, acá sólo qué build conviene (por su nombre; si se llaman igual, con la letra). */
+export function buildVerdict(nameA: string, nameB: string, clean: CleanComparison | null, sameCards: boolean): ComparisonVerdict {
+  const sameName = nameA.trim() === nameB.trim()
+  const labelA = sameName ? `${nameA} (A)` : nameA
+  const labelB = sameName ? `${nameB} (B)` : nameB
+
   if (!clean) {
     return {
       kind: 'incomplete',
@@ -244,7 +248,7 @@ export function buildVerdict(clean: CleanComparison | null, sameCards: boolean):
     return {
       kind: 'split',
       title: 'Depende del turno',
-      detail: `${firstSide.toUpperCase()} es mejor yendo 1º y ${secondSide.toUpperCase()} yendo 2º.`,
+      detail: `${firstSide === 'a' ? labelA : labelB} es mejor yendo 1º y ${secondSide === 'a' ? labelA : labelB} yendo 2º.`,
     }
   }
 
@@ -260,7 +264,7 @@ export function buildVerdict(clean: CleanComparison | null, sameCards: boolean):
 
   return {
     kind: averageSide,
-    title: `La build ${averageSide.toUpperCase()} es mejor`,
+    title: `${averageSide === 'a' ? labelA : labelB} es mejor`,
     detail: 'Saca más manos limpias en promedio.',
   }
 }

@@ -19,6 +19,7 @@ import { StepPage } from './ui/StepPage'
 import { ConfirmDialog } from './probability/ConfirmDialog'
 import { LabDisclaimerDialog, useLabDisclaimer } from './probability/LabDisclaimerDialog'
 import { LabFailureBreakdown } from './probability/LabFailureBreakdown'
+import { LabSuggestion } from './probability/LabSuggestion'
 import { LabRoleDistribution } from './probability/LabRoleDistribution'
 import { LabRuleList } from './probability/LabRuleList'
 import { LabScoreCard } from './probability/LabScoreCard'
@@ -56,7 +57,7 @@ type DrawerMode = 'custom-create' | 'edit'
 const ROLE_TO_KPI: Record<RoleDistributionKey, KpiRole> = {
   starter: 'starter',
   extender: 'extender',
-  interaction: 'disruption',
+  interaction: 'handtrap',
   brick: 'brick',
 }
 
@@ -267,6 +268,7 @@ export function ProbabilityPanel({
           {/* Desktop: resultado y reparto lado a lado (misma altura); roles y reglas a lo ancho. */}
           <LabScoreCard results={results} view={activeTurnView} isRecalculating={lab.isStale} />
           <LabFailureBreakdown result={currentResult} />
+          <LabSuggestion deckFormat={deckFormat} cards={derivedMainCards} checks={lab.allChecks} handSize={handSize} view={activeTurnView} result={currentResult} first={results.first} second={results.second} />
           <LabRoleDistribution
             distributions={lab.roleDistributions[activeTurnView]}
             onOpenRole={(role) => setKpiModalRole(ROLE_TO_KPI[role])}

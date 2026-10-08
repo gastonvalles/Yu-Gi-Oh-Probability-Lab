@@ -26,7 +26,7 @@ Todo vive en `src/components/ui/` y los tokens en `src/index.css`.
 | `info` (azul `#0087FF`) | dato o consejo | avisos, build B, nota "Sólido" |
 | `neutral` (gris) | sin énfasis | conteos, etiquetas |
 
-Los roles de las cartas (starter, disruption…) y los grupos (engine, non-engine…) tienen su paleta propia
+Los roles de las cartas (starter, handtrap…) y los grupos (engine, non-engine…) tienen su paleta propia
 (`--role-color`), no usan estos tonos. La literal de cada tono está en `ui/tone.ts`.
 
 ## 3. Tokens

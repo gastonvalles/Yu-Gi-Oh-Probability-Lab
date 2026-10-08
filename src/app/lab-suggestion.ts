@@ -26,12 +26,12 @@ export interface Change {
   card: CardEntry
 }
 
-/** Familias de cartas con las que un jugador razona el deck: "sacá un starter y meté una disruption". */
+/** Familias de cartas con las que un jugador razona el deck: "sacá un starter y meté una handtrap". */
 export type RoleGroup = 'starter' | 'interaction' | 'brick' | 'filler'
 
 export const ROLE_GROUP_LABEL: Record<RoleGroup, string> = {
   starter: 'starter',
-  interaction: 'disruption',
+  interaction: 'handtrap',
   brick: 'brick',
   filler: 'carta de relleno',
 }
@@ -110,7 +110,7 @@ const NEUTRAL_CARD: CardEntry = {
   source: 'manual',
   apiCard: null,
   origin: 'non_engine',
-  roles: ['tech'],
+  roles: ['recovery'],
   needsReview: false,
 }
 
@@ -124,20 +124,22 @@ const byCopies = (direction: 1 | -1) => (left: CardEntry, right: CardEntry) =>
   direction * (left.copies - right.copies) || left.name.localeCompare(right.name)
 
 const STARTER_ROLES: readonly CardRole[] = ['starter', 'extender']
-const INTERACTION_ROLES: readonly CardRole[] = ['disruption', 'boardbreaker']
+const INTERACTION_ROLES: readonly CardRole[] = ['handtrap', 'disruption', 'boardbreaker']
+/** Roles que ninguna regla del Lab cuenta: una carta que solo tiene estos es de relleno (clasificada pero sin peso en las reglas). */
+const FILLER_ROLES: readonly CardRole[] = ['enabler', 'searcher', 'draw', 'payoff', 'recovery']
 
-/** A qué familia pertenece una carta (la primera que corresponda: starter > disruption > brick > relleno). */
+/** A qué familia pertenece una carta (la primera que corresponda: starter > handtrap > brick > relleno). */
 export function roleGroupOf(card: CardEntry): RoleGroup | null {
   if (card.roles.some((role) => STARTER_ROLES.includes(role))) return 'starter'
   if (card.roles.some((role) => INTERACTION_ROLES.includes(role))) return 'interaction'
-  if (card.roles.includes('brick')) return 'brick'
-  if (card.roles.length === 0 || card.roles.every((role) => role === 'tech')) return 'filler'
+  if (card.roles.some((role) => role === 'brick' || role === 'garnet')) return 'brick'
+  if (card.roles.every((role) => FILLER_ROLES.includes(role))) return 'filler'
   return null
 }
 
 /**
  * Cambios que atacan al culpable, pensados como lo haría un jugador: mover un lugar del deck de una
- * familia a otra ("sacá un starter y meté una disruption"), con el deck del mismo tamaño y respetando
+ * familia a otra ("sacá un starter y meté una handtrap"), con el deck del mismo tamaño y respetando
  * el límite de copias del formato. Las familias brick y relleno solo se sacan si son non-engine:
  * un brick del engine es una pieza del combo y no se toca.
  */

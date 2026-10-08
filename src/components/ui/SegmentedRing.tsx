@@ -3,7 +3,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import { prefersReducedMotion } from '../../app/motion'
 import { cx } from './cx'
 import { RING_FILL_MS, useRingReveal } from './use-ring-reveal'
-import { clamp01, ringGeometry } from './ring-shared'
+import { clamp01, ringCenterText, ringGeometry } from './ring-shared'
 
 export interface RingSegment {
   key: string
@@ -23,18 +23,21 @@ interface SegmentedRingProps {
   label: string
   /** Segmento resaltado (los demás se atenúan). */
   activeKey?: string | null
+  /** Se llama al pasar el mouse (o tocar) un tramo del anillo. */
+  onSegmentSelect?: (key: string) => void
   delay?: number
   children?: ReactNode
   className?: string
 }
 
 /** Anillo que reparte un total entre varios tramos (limpias / con problema / sin salida). Los tramos se llenan en orden, como una aguja. */
-export function SegmentedRing({ segments, size = 160, strokeWidth, label, activeKey = null, delay = 0, children, className }: SegmentedRingProps) {
+export function SegmentedRing({ segments, size = 160, strokeWidth, label, activeKey = null, onSegmentSelect, delay = 0, children, className }: SegmentedRingProps) {
   const { stroke, radius, circumference, center } = ringGeometry(size, strokeWidth)
   const { ref, revealed, settled, delayMs, instant: unseen } = useRingReveal<HTMLDivElement>(delay)
   const total = segments.reduce((sum, segment) => sum + clamp01(segment.value), 0) || 1
   const visible = segments.filter((segment) => segment.value > 0.0005)
-  const gap = visible.length > 1 ? 3 : 0
+  // Con puntas redondas (como los demás anillos) cada tramo se achica lo que ocupan sus puntas, más 3 px de separación.
+  const gap = visible.length > 1 ? 3 + stroke : 0
   const noMotion = unseen || prefersReducedMotion()
   let start = 0
 
@@ -58,6 +61,9 @@ export function SegmentedRing({ segments, size = 160, strokeWidth, label, active
               r={radius}
               fill="none"
               strokeWidth={stroke}
+              strokeLinecap={revealed ? 'round' : 'butt'}
+              onMouseEnter={onSegmentSelect ? () => onSegmentSelect(segment.key) : undefined}
+              onClick={onSegmentSelect ? () => onSegmentSelect(segment.key) : undefined}
               strokeDasharray={`${revealed ? length : 0} ${circumference}`}
               strokeDashoffset={-(from * circumference + gap / 2)}
               style={
@@ -71,7 +77,7 @@ export function SegmentedRing({ segments, size = 160, strokeWidth, label, active
           )
         })}
       </svg>
-      {children ? <span className="absolute inset-0 grid place-content-center text-center">{children}</span> : null}
+      {children ? <span className={cx('absolute inset-0 grid place-content-center text-center tabular-nums text-foreground', ringCenterText(size))}>{children}</span> : null}
     </div>
   )
 }

@@ -38,17 +38,17 @@ describe('builds guardadas', () => {
 
   it('clasificar una carta afecta todas sus copias', () => {
     const build = createSavedBuild('B', { main: [instance(7), instance(7), instance(8)], extra: [], side: [] }, [])
-    const next = classifyBuildCard(build, 7, 'non_engine', ['disruption'])
+    const next = classifyBuildCard(build, 7, 'non_engine', ['handtrap'])
 
-    expect(next.main.filter((card) => card.apiCard.ygoprodeckId === 7).every((card) => card.roles[0] === 'disruption' && !card.needsReview)).toBe(true)
+    expect(next.main.filter((card) => card.apiCard.ygoprodeckId === 7).every((card) => card.roles[0] === 'handtrap' && !card.needsReview)).toBe(true)
     expect(next.main[2]!.origin).toBeNull()
   })
 
   it('una carta que ya está en tu deck usa esa clasificación', () => {
-    const reference = [instance(7, ['disruption'], 'non_engine')]
+    const reference = [instance(7, ['handtrap'], 'non_engine')]
     const [shared, unknown] = withReferenceClassification([instance(7), instance(9)], reference)
 
-    expect(shared).toMatchObject({ origin: 'non_engine', roles: ['disruption'] })
+    expect(shared).toMatchObject({ origin: 'non_engine', roles: ['handtrap'] })
     expect(unknown!.origin).toBeNull()
   })
 })

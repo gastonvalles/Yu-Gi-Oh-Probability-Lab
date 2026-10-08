@@ -16,7 +16,7 @@ function card(id: string, copies: number, roles: CardRole[]): CardEntry {
   return { id, name: id, copies, source: 'manual', apiCard: null, origin: 'engine', roles, needsReview: false }
 }
 
-const CARDS = [card('s', 8, ['starter']), card('e', 6, ['extender']), card('b', 3, ['brick']), card('h', 6, ['disruption'])]
+const CARDS = [card('s', 8, ['starter']), card('e', 6, ['extender']), card('b', 3, ['brick']), card('h', 6, ['handtrap'])]
 const genericIds = PATTERN_PRESET_DEFINITIONS.filter((definition) => definition.tier === 'generic').map((d) => d.id)
 const universalIds = PATTERN_PRESET_DEFINITIONS.filter((definition) => definition.tier === 'universal').map((d) => d.id)
 

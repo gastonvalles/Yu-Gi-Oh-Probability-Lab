@@ -29,7 +29,7 @@ afterEach(cleanup)
 
 describe('LabSuggestion', () => {
   it('muestra la métrica del problema principal y una sugerencia concreta', async () => {
-    const cards = [card('starter', 1, ['starter']), ...Array.from({ length: 39 }, (_, index) => card(`f${index}`, 1, ['tech'], 'non_engine'))]
+    const cards = [card('starter', 1, ['starter']), ...Array.from({ length: 39 }, (_, index) => card(`f${index}`, 1, ['recovery'], 'non_engine'))]
     const checks = [createMatcherPattern('Starter', 'opening', [{ matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' }])]
     const computation = computeLabResults(cards, checks, 5)
 
@@ -39,9 +39,8 @@ describe('LabSuggestion', () => {
 
     expect(screen.getByText('Lo que más te frena')).toBeInTheDocument()
     expect(screen.getByText(/Pasan en/)).toBeInTheDocument()
-    // El cambio se lee en los chips (qué sacar y meter); no hay un párrafo de "Sugerencia: …" aparte.
+    // El cambio se lee en los chips (qué sacar y meter) y el texto sólo suma el ejemplo y el efecto.
     expect(await screen.findByText(/Sacar 1 carta de relleno/)).toBeInTheDocument()
     expect(screen.getByText(/Meter 1 starter/)).toBeInTheDocument()
-    expect(screen.queryByText(/Sugerencia:/)).not.toBeInTheDocument()
   })
 })

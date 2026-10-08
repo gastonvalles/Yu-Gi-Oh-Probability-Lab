@@ -11,8 +11,8 @@ interface RoleDistributionSpec {
 export const ROLE_DISTRIBUTION_SPECS: readonly RoleDistributionSpec[] = [
   { key: 'starter', label: 'Starters', roles: ['starter'] },
   { key: 'extender', label: 'Extenders', roles: ['extender'] },
-  { key: 'interaction', label: 'Interacción', roles: ['disruption'] },
-  { key: 'brick', label: 'Bricks', roles: ['brick'] },
+  { key: 'interaction', label: 'Interacción', roles: ['handtrap', 'disruption'] },
+  { key: 'brick', label: 'Bricks', roles: ['brick', 'garnet'] },
 ]
 
 /** Cantidad de copias robadas: 0, 1, 2 y 3 o más. */

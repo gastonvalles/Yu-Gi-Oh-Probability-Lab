@@ -72,7 +72,7 @@ function makeDeckCardInstance(
 
 describe('KpiDetailModal — close interactions', () => {
   const mainDeck: DeckCardInstance[] = [
-    makeDeckCardInstance('Ash Blossom', 1, ['disruption'], 'non_engine'),
+    makeDeckCardInstance('Ash Blossom', 1, ['handtrap'], 'non_engine'),
   ]
 
   it('closes when Escape is pressed', () => {
@@ -80,7 +80,7 @@ describe('KpiDetailModal — close interactions', () => {
     renderWithStore(
       <KpiDetailModal
         isOpen
-        role="disruption"
+        role="handtrap"
         side="A"
         mainDeck={mainDeck}
         onCardClick={() => {}}
@@ -101,7 +101,7 @@ describe('KpiDetailModal — close interactions', () => {
     renderWithStore(
       <KpiDetailModal
         isOpen
-        role="disruption"
+        role="handtrap"
         side="A"
         mainDeck={mainDeck}
         onCardClick={() => {}}
@@ -119,7 +119,7 @@ describe('KpiDetailModal — close interactions', () => {
     renderWithStore(
       <KpiDetailModal
         isOpen
-        role="disruption"
+        role="handtrap"
         side="A"
         mainDeck={mainDeck}
         onCardClick={() => {}}
@@ -128,7 +128,7 @@ describe('KpiDetailModal — close interactions', () => {
     )
 
     // Click on the modal content (the heading)
-    const heading = screen.getByText(/Disruption\?/)
+    const heading = screen.getByText(/Handtrap\?/)
     fireEvent.click(heading)
     expect(onClose).not.toHaveBeenCalled()
   })
@@ -138,7 +138,7 @@ describe('KpiDetailModal — close interactions', () => {
     renderWithStore(
       <KpiDetailModal
         isOpen
-        role="disruption"
+        role="handtrap"
         side="A"
         mainDeck={mainDeck}
         onCardClick={() => {}}
@@ -159,15 +159,15 @@ describe('KpiDetailModal — close interactions', () => {
 describe('KpiDetailModal — card click', () => {
   it('calls onCardClick with the correct ApiCardReference and name', () => {
     const mainDeck: DeckCardInstance[] = [
-      makeDeckCardInstance('Ash Blossom', 1, ['disruption'], 'non_engine'),
-      makeDeckCardInstance('Effect Veiler', 2, ['disruption'], 'non_engine'),
+      makeDeckCardInstance('Ash Blossom', 1, ['handtrap'], 'non_engine'),
+      makeDeckCardInstance('Effect Veiler', 2, ['handtrap'], 'non_engine'),
     ]
     const onCardClick = vi.fn()
 
     renderWithStore(
       <KpiDetailModal
         isOpen
-        role="disruption"
+        role="handtrap"
         side="A"
         mainDeck={mainDeck}
         onCardClick={onCardClick}
@@ -217,7 +217,7 @@ describe('KpiDetailModal — empty state', () => {
     renderWithStore(
       <KpiDetailModal
         isOpen
-        role="disruption"
+        role="handtrap"
         side="A"
         mainDeck={mainDeck}
         onCardClick={() => {}}
