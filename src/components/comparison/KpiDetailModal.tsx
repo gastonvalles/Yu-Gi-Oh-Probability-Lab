@@ -13,7 +13,8 @@ import { listItem } from '../ui/surfaces'
 export interface KpiDetailModalProps {
   isOpen: boolean
   role: CardRole
-  side: 'A' | 'B'
+  /** Sólo en el comparador: qué build es. En el Lab no hace falta. */
+  side?: 'A' | 'B'
   mainDeck: DeckCardInstance[]
   editsMap?: CardEditMap
   onCardClick: (card: ApiCardReference, name: string) => void
@@ -41,7 +42,7 @@ export function KpiDetailModal({
       isOpen={isOpen}
       onClose={onClose}
       size="md"
-      kicker={`Build ${side}`}
+      kicker={side ? `Build ${side}` : undefined}
       title={`¿Qué cartas cuentan como ${getRoleLabel(role)}?`}
       subtitle={result ? `${formatInteger(result.totalCopies)} carta${result.totalCopies === 1 ? '' : 's'}` : undefined}
     >

@@ -4,10 +4,8 @@ import type { TurnView } from '../../types'
 import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
 import { ProgressRing } from '../ui/ProgressRing'
-import { TONE } from '../ui/tone'
 import { overline } from '../ui/typography'
 import {
-  KPI_SCALE,
   KPI_THRESHOLDS,
   KPI_TONE,
   KPI_TONE_LABELS,
@@ -53,15 +51,6 @@ export function LabScoreCard({ results, view, isRecalculating }: LabScoreCardPro
 
         <p className="m-0 text-lead font-semibold text-foreground">{buildHandsOutOfTen(current.cleanProbability)}.</p>
       </div>
-
-      <ul className="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-micro" aria-label="Escala de notas">
-        {KPI_SCALE.map((step) => (
-          <li key={step.tone} className={cx('inline-flex items-center gap-1.5', step.tone === kpi ? 'font-semibold text-foreground' : 'text-soft')}>
-            <span className={cx('size-2 rounded-full', TONE[KPI_TONE[step.tone]].fill, step.tone !== kpi && 'opacity-50')} aria-hidden="true" />
-            {KPI_TONE_LABELS[step.tone]} <span className="tabular-nums">{step.range}</span>
-          </li>
-        ))}
-      </ul>
 
       <dl className="m-0 grid grid-cols-2 gap-x-4 border-t border-border-subtle pt-4">
         {view === 'average' ? (

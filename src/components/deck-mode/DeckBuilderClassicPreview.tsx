@@ -32,59 +32,50 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, onAddToZone 
   return (
     <aside className="flex h-full max-h-full min-h-0 flex-col gap-3 overflow-y-auto overflow-x-hidden overscroll-contain border-r border-border-subtle bg-card-background/50 px-4 pb-4 pt-4 [scrollbar-gutter:stable] [scrollbar-width:thin] [&>*]:shrink-0">
       {card ? (
-        <h3 className="m-0 text-center text-lead font-semibold leading-tight text-foreground [overflow-wrap:anywhere]">{card.name}</h3>
-      ) : null}
+        <>
+          <h3 className="m-0 text-center text-lead font-semibold leading-tight text-foreground [overflow-wrap:anywhere]">{card.name}</h3>
 
-      <div className="grid min-h-0 justify-items-center overflow-hidden">
-        <div className="w-[min(100%,max(9rem,calc((100dvh-var(--deck-mode-topbar-height)-29rem)*0.72)))] bg-transparent">
-          {card ? (
-            <CardArt
-              remoteUrl={card.imageUrl}
-              name={card.name}
-              className="w-full bg-transparent shadow-none"
-              limitCard={card}
-              limitBadgeSize="lg"
-            />
-          ) : (
-            <div className="grid aspect-[0.72] w-full place-content-center justify-items-center gap-2 p-4 text-center text-body text-soft">
-              <Icon name="image" size={24} />
-              Sin carta seleccionada
+          <div className="grid min-h-0 justify-items-center overflow-hidden">
+            <div className="w-[min(100%,max(9rem,calc((100dvh-var(--deck-mode-topbar-height)-29rem)*0.72)))] bg-transparent">
+              <CardArt remoteUrl={card.imageUrl} name={card.name} className="w-full bg-transparent shadow-none" limitCard={card} limitBadgeSize="lg" />
             </div>
-          )}
-        </div>
-      </div>
+          </div>
 
-      {card && source === 'deck' && deckCopy ? (
-        <DeckCopyControls deckCopy={deckCopy} />
-      ) : null}
+          {source === 'deck' && deckCopy ? <DeckCopyControls deckCopy={deckCopy} /> : null}
 
-      {card && source === 'search' ? (
-        <div className="grid gap-2">
-          {buildZoneActionEntries(card).map((entry) => (
-            <Button key={entry.zone} variant={entry.variant} size="sm" fullWidth onClick={() => onAddToZone(entry.zone)}>
-              {entry.label}
-            </Button>
-          ))}
-        </div>
-      ) : null}
+          {source === 'search' ? (
+            <div className="grid gap-2">
+              {buildZoneActionEntries(card).map((entry) => (
+                <Button key={entry.zone} variant={entry.variant} size="sm" fullWidth onClick={() => onAddToZone(entry.zone)}>
+                  {entry.label}
+                </Button>
+              ))}
+            </div>
+          ) : null}
 
-      {card ? (
-        <article className="grid min-h-48 flex-[1_0_auto] content-start gap-2 border-t border-border-subtle pt-3 text-foreground">
-          {detailHeader ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{detailHeader}</p> : null}
-          {condensedStatLine ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{condensedStatLine}</p> : null}
-          {card.description ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{card.description}</p> : null}
-        </article>
+          <article className="grid min-h-48 flex-[1_0_auto] content-start gap-2 border-t border-border-subtle pt-3 text-foreground">
+            {detailHeader ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{detailHeader}</p> : null}
+            {condensedStatLine ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{condensedStatLine}</p> : null}
+            {card.description ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{card.description}</p> : null}
+          </article>
+        </>
       ) : (
-        <ul className="m-0 grid list-none gap-1.5 p-0 text-micro text-muted" aria-label="Atajos">
-          {SHORTCUTS.map((shortcut) => (
-            <li key={shortcut.keys} className="flex items-center gap-2">
-              <kbd className="inline-block rounded-tag border border-b-2 border-border bg-secondary px-1.5 py-0.5 text-center font-[inherit] text-micro font-semibold text-foreground">
-                {shortcut.keys}
-              </kbd>
-              {shortcut.label}
-            </li>
-          ))}
-        </ul>
+        <div className="grid flex-1 content-center justify-items-center gap-5 text-center">
+          <div className="grid justify-items-center gap-2 text-body text-soft">
+            <Icon name="image" size={28} className="text-primary-soft/70" />
+            Sin carta seleccionada
+          </div>
+          <ul className="m-0 grid list-none gap-1.5 p-0 text-micro text-muted" aria-label="Atajos">
+            {SHORTCUTS.map((shortcut) => (
+              <li key={shortcut.keys} className="flex items-center justify-center gap-2">
+                <kbd className="inline-block rounded-tag border border-b-2 border-border bg-secondary px-1.5 py-0.5 text-center font-[inherit] text-micro font-semibold text-foreground">
+                  {shortcut.keys}
+                </kbd>
+                {shortcut.label}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </aside>
   )

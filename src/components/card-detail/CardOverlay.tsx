@@ -115,7 +115,7 @@ export function CardOverlay({ ariaLabel, panelLabel, name, card, origin = null, 
       ref={rootRef}
       className={cx(
         'fixed inset-0 z-240 grid place-items-center bg-background/90 pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(1rem,env(safe-area-inset-top))] min-[1101px]:backdrop-blur-[8px] [@media(max-height:540px)]:[--detail-art-height:28dvh] [@media(max-height:540px)]:py-3',
-        tall ? '[--detail-art-height:min(24dvh,14rem)] [--detail-panel-height:min(68dvh,36rem)]' : '[--detail-art-height:min(36dvh,20rem)] [--detail-panel-height:min(52dvh,28rem)]',
+        tall ? '[--detail-art-height:min(20dvh,13rem)] [--detail-panel-height:min(74dvh,36rem)]' : '[--detail-art-height:min(36dvh,20rem)] [--detail-panel-height:min(52dvh,28rem)]',
       )}
       role="dialog"
       aria-modal="true"
@@ -163,7 +163,7 @@ export function CardOverlay({ ariaLabel, panelLabel, name, card, origin = null, 
         <section
           ref={panelRef}
           tabIndex={-1}
-          className="pointer-events-auto flex h-(--detail-panel-height) min-h-0 w-full flex-col gap-[0.4rem] rounded-card border border-primary/40 bg-linear-to-b from-card-background/98 to-background/98 px-4 py-[0.9rem] text-white outline-none group-data-[zoomed=true]:hidden [@media(max-height:540px)]:h-[calc(100dvh-var(--detail-art-height)-2rem)] [@media(max-height:540px)]:px-[0.85rem] [@media(max-height:540px)]:py-[0.65rem]"
+          className={cx('pointer-events-auto flex min-h-0 w-full flex-col gap-[0.4rem] rounded-card border border-primary/40 bg-linear-to-b from-card-background/98 to-background/98 px-4 py-[0.9rem] text-white outline-none group-data-[zoomed=true]:hidden [@media(max-height:540px)]:h-[calc(100dvh-var(--detail-art-height)-2rem)] [@media(max-height:540px)]:px-[0.85rem] [@media(max-height:540px)]:py-[0.65rem]', tall ? 'max-h-(--detail-panel-height)' : 'h-(--detail-panel-height)')}
           aria-label={panelLabel}
           onClick={(event) => event.stopPropagation()}
         >

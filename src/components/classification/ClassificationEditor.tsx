@@ -41,8 +41,7 @@ export function ClassificationEditor({
       name={card.name}
       card={card.apiCard ?? null}
       lines={[
-        summary ? `${summary.typeLine}${summary.statLine ? ` · ${summary.statLine}` : ''}` : CARD_TYPE_LABEL[getCardType(card)].singular,
-        `${formatInteger(card.copies)} copia${card.copies === 1 ? '' : 's'} en el Main`,
+        `${summary ? `${summary.typeLine}${summary.statLine ? ` · ${summary.statLine}` : ''}` : CARD_TYPE_LABEL[getCardType(card)].singular} · ×${formatInteger(card.copies)} en el Main`,
       ]}
       origin={card.origin}
       roles={card.roles}

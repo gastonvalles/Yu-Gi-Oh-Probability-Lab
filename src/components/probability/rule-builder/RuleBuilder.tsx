@@ -5,8 +5,6 @@ import { getPatternMatchMode, normalizeMinimumConditionMatches } from '../../../
 import { buildPatternCompactSummary, buildPatternPreview } from '../pattern-helpers'
 import type { PatternEditorActions } from '../pattern-editor-actions'
 import { Button } from '../../ui/Button'
-import { cx } from '../../ui/cx'
-import { TONE } from '../../ui/tone'
 import { overline } from '../../ui/typography'
 
 import { AdvancedSettings } from './AdvancedSettings'
@@ -43,7 +41,7 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
 
   return (
     <div className="grid gap-6">
-      <RuleStep number={1} title="Nombre" hint="Opcional: si lo dejás vacío se usa el resumen.">
+      <RuleStep title="Nombre" hint="Opcional">
         <PatternNameInput
           patternId={pattern.id}
           currentName={pattern.name}
@@ -53,21 +51,11 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
         />
       </RuleStep>
 
-      <section className={cx('grid gap-1.5 rounded-control px-4 py-3', TONE[pattern.kind === 'opening' ? 'success' : 'danger'].soft)} aria-live="polite">
-        <span className={cx('text-body font-semibold', TONE[pattern.kind === 'opening' ? 'success' : 'danger'].text)}>{preview.heading}</span>
-        <ul className="m-0 grid gap-0.5 pl-4 text-body text-foreground">
-          {preview.items.map((item, index) => (
-            <li key={`${index}-${item}`}>{item}</li>
-          ))}
-        </ul>
-        {conditionCount > 1 ? <span className="text-micro text-muted">{preview.logic}</span> : null}
-      </section>
-
-      <RuleStep number={2} title="¿Qué representa?">
+      <RuleStep title="¿Qué representa?">
         <KindToggle patternId={pattern.id} currentKind={pattern.kind} actions={actions} />
       </RuleStep>
 
-      <RuleStep number={3} title="¿Qué tiene que tener la mano?">
+      <RuleStep title="¿Qué tiene que tener la mano?">
         {conditionCount > 1 ? (
           <LogicSelector
             patternId={pattern.id}
@@ -104,7 +92,7 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
         </Button>
       </RuleStep>
 
-      <RuleStep number={4} title="¿Cuándo cuenta?">
+      <RuleStep title="¿Cuándo cuenta?">
         <TurnContextToggle patternId={pattern.id} currentTurnContext={pattern.turnContext} ignoresDraw={pattern.ignoresDraw === true} actions={actions} />
       </RuleStep>
 
@@ -115,12 +103,10 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
 }
 
 function RuleStep({
-  number,
   title,
   hint,
   children,
 }: {
-  number: number
   title: string
   hint?: string
   children: ReactNode
@@ -128,12 +114,6 @@ function RuleStep({
   return (
     <section className="grid gap-2.5">
       <header className="flex flex-wrap items-center gap-2.5">
-        <span
-          className="grid size-6 place-items-center rounded-full border border-primary/40 bg-primary/16 text-micro font-bold text-primary-soft"
-          aria-hidden="true"
-        >
-          {number}
-        </span>
         <h4 className="m-0 text-body font-semibold text-foreground">{title}</h4>
         {hint ? <small className="text-micro text-muted">{hint}</small> : null}
       </header>

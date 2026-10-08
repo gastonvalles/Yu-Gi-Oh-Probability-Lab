@@ -2,7 +2,6 @@ import { useCallback, useMemo, type ReactNode } from 'react'
 
 import { formatShortPercent } from '../../app/utils'
 import { ROLE_GROUP_LABEL, type Culprit, type Outcome, type PerTurnResults } from '../../app/lab-suggestion'
-import { Badge } from '../ui/Badge'
 import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
@@ -49,7 +48,7 @@ export function LabSuggestion({ cards, checks, deckFormat, handSize, view, resul
       </header>
 
       {best ? (
-        <AdviceBox label="Sugerencia" visual={<SwapSummary best={best} cleanBefore={result.cleanProbability} />}>
+        <AdviceBox label="Sugerencia" visual={<SwapSummary best={best} />}>
           {describeBest(culprit, best)}
           {perTurnLine(best, perTurn)}
         </AdviceBox>
@@ -82,10 +81,9 @@ function AdviceBox({ label, visual, children }: { label: string; visual?: ReactN
   )
 }
 
-/** El cambio de un vistazo: qué sacar, qué meter y cuánto suben las manos limpias. */
-function SwapSummary({ best, cleanBefore }: { best: Outcome; cleanBefore: number }) {
+/** El cambio de un vistazo: qué sacar y qué meter. */
+function SwapSummary({ best }: { best: Outcome }) {
   const { from, to } = best.swap
-  const points = (best.cleanProbability - cleanBefore) * 100
 
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -93,20 +91,6 @@ function SwapSummary({ best, cleanBefore }: { best: Outcome; cleanBefore: number
         {from ? <SwapChip action="remove" label={ROLE_GROUP_LABEL[from]} /> : null}
         {from && to ? <Icon name="arrow-right" size={16} className="text-soft" /> : null}
         {to ? <SwapChip action="add" label={ROLE_GROUP_LABEL[to]} /> : null}
-      </div>
-      <div className="flex items-center gap-2 tabular-nums min-[1101px]:ml-auto" aria-label="Manos limpias antes y después">
-        <ProgressRing value={cleanBefore} tone="neutral" size={48} strokeWidth={4} label={`Manos limpias hoy: ${formatShortPercent(cleanBefore)}`}>
-          {Math.round(cleanBefore * 100)}%
-        </ProgressRing>
-        <Icon name="arrow-right" size={14} className="text-soft" />
-        <ProgressRing value={best.cleanProbability} tone="success" size={48} strokeWidth={4} delay={300} label={`Manos limpias con el cambio: ${formatShortPercent(best.cleanProbability)}`}>
-          {Math.round(best.cleanProbability * 100)}%
-        </ProgressRing>
-        {points > 0.05 ? (
-          <Badge tone="success" size="sm">
-            +{points.toFixed(1)} pts
-          </Badge>
-        ) : null}
       </div>
     </div>
   )
