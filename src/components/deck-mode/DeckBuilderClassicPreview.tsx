@@ -10,17 +10,9 @@ import { buildZoneActionEntries } from '../card-detail/card-zone-actions'
 import { DeckCopyControls, type DeckCopyActions } from '../card-detail/DeckCopyControls'
 import { Button } from '../ui/Button'
 import { Icon } from '../ui/Icon'
-import { overline } from '../ui/typography'
-import { cx } from '../ui/cx'
-
-const EMPTY_PREVIEW_GUIDE = {
-  title: 'Armá tu deck',
-  description:
-    'Buscá una carta y agregala con + o doble clic, o arrastrala a la zona que quieras. Hacé clic en una carta para ver el detalle y sumar o quitar copias.',
-} as const
 
 const SHORTCUTS = [
-  { keys: 'Doble clic', label: 'agregar' },
+  { keys: 'Doble clic o arrastrar', label: 'agregar' },
   { keys: 'Clic derecho', label: 'quitar del deck' },
 ] as const
 
@@ -39,28 +31,9 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, onAddToZone 
 
   return (
     <aside className="flex h-full max-h-full min-h-0 flex-col gap-3 overflow-y-auto overflow-x-hidden overscroll-contain border-r border-border-subtle bg-card-background/50 px-4 pb-4 pt-4 [scrollbar-gutter:stable] [scrollbar-width:thin] [&>*]:shrink-0">
-      {!card ? (
-        <section className="grid gap-2 pb-2" aria-label="Guía inicial del deck builder">
-          <h3 className="m-0 text-lead font-semibold text-foreground">{EMPTY_PREVIEW_GUIDE.title}</h3>
-          <p className="m-0 text-body text-muted">{EMPTY_PREVIEW_GUIDE.description}</p>
-          <ul className="m-0 mt-1 grid list-none gap-1.5 p-0 text-micro text-muted" aria-label="Atajos">
-            {SHORTCUTS.map((shortcut) => (
-              <li key={shortcut.keys} className="flex items-center gap-2">
-                <kbd className="inline-block rounded-tag border border-b-2 border-border bg-secondary px-1.5 py-0.5 text-center font-[inherit] text-micro font-semibold text-foreground">
-                  {shortcut.keys}
-                </kbd>
-                {shortcut.label}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
       {card ? (
         <h3 className="m-0 text-center text-lead font-semibold leading-tight text-foreground [overflow-wrap:anywhere]">{card.name}</h3>
-      ) : (
-        <p className={cx('m-0 text-center', overline)}>Elegí una carta</p>
-      )}
+      ) : null}
 
       <div className="grid min-h-0 justify-items-center overflow-hidden">
         <div className="w-[min(100%,max(9rem,calc((100dvh-var(--deck-mode-topbar-height)-29rem)*0.72)))] bg-transparent">
@@ -95,23 +68,24 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, onAddToZone 
         </div>
       ) : null}
 
-      <article className="grid min-h-48 flex-[1_0_auto] content-start gap-2 border-t border-border-subtle pt-3 text-foreground">
-        {card ? (
-          <>
-            {detailHeader ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{detailHeader}</p> : null}
-            {condensedStatLine ? (
-              <p className="m-0 whitespace-pre-wrap text-body text-foreground">{condensedStatLine}</p>
-            ) : null}
-            {card.description ? (
-              <p className="m-0 whitespace-pre-wrap text-body text-foreground">{card.description}</p>
-            ) : null}
-          </>
-        ) : (
-          <p className="m-0 whitespace-pre-wrap text-body text-muted">
-            Hacé clic en una carta del deck o del buscador para ver su detalle acá.
-          </p>
-        )}
-      </article>
+      {card ? (
+        <article className="grid min-h-48 flex-[1_0_auto] content-start gap-2 border-t border-border-subtle pt-3 text-foreground">
+          {detailHeader ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{detailHeader}</p> : null}
+          {condensedStatLine ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{condensedStatLine}</p> : null}
+          {card.description ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{card.description}</p> : null}
+        </article>
+      ) : (
+        <ul className="m-0 grid list-none gap-1.5 p-0 text-micro text-muted" aria-label="Atajos">
+          {SHORTCUTS.map((shortcut) => (
+            <li key={shortcut.keys} className="flex items-center gap-2">
+              <kbd className="inline-block rounded-tag border border-b-2 border-border bg-secondary px-1.5 py-0.5 text-center font-[inherit] text-micro font-semibold text-foreground">
+                {shortcut.keys}
+              </kbd>
+              {shortcut.label}
+            </li>
+          ))}
+        </ul>
+      )}
     </aside>
   )
 }

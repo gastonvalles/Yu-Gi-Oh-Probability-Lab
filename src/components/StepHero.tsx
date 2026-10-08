@@ -12,8 +12,8 @@ interface StepHeroProps {
   icon: IconName
   /** Una línea que dice para qué sirve la vista (sólo desktop: en mobile manda el título). */
   subtitle?: string
-  /** Explicación larga: se ve sólo si la pedís con el ícono "i". */
-  help: ReactNode
+  /** Explicación larga: se ve sólo si la pedís con el ícono "i". Sólo donde dice algo que no se ve en otro lado. */
+  help?: ReactNode
   side?: ReactNode
   /** 'form': la parte lateral es un formulario (se ordena en dos columnas en mobile). */
   sideVariant?: 'actions' | 'form'
@@ -41,9 +41,11 @@ export function StepHero({ title, icon, subtitle, help, side, sideVariant = 'act
           <div className="flex min-w-0 items-center gap-1">
             <h2 className={cx(pageTitle, 'truncate')}>{title}</h2>
             {/* La ayuda se ancla al encabezado (no al ícono): nunca se sale de pantalla. */}
-            <InfoTip label={`Qué hace “${title}”`} anchor="parent">
-              {help}
-            </InfoTip>
+            {help ? (
+              <InfoTip label={`Qué hace “${title}”`} anchor="parent">
+                {help}
+              </InfoTip>
+            ) : null}
           </div>
           {subtitle ? <p className={cx(supportText, 'max-[1100px]:hidden')}>{subtitle}</p> : null}
         </div>

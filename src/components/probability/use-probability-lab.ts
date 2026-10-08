@@ -1,6 +1,5 @@
 import { useDeferredValue, useMemo } from 'react'
 
-import { getDeckModelStatus } from '../../app/deck-model-status'
 import { curatePatterns, hasMissingRequiredCards } from '../../app/pattern-curation'
 import { buildActiveRuleSet, buildPatternPresets, type SystemRuleNames } from '../../app/pattern-presets'
 import { buildRoleDistributions, type RoleDistribution } from '../../app/role-distribution'
@@ -43,10 +42,6 @@ export function useProbabilityLab(
     () => buildActiveRuleSet(derivedMainCards, customPatterns, disabledGenericRuleIds, systemRuleNames),
     [customPatterns, derivedMainCards, disabledGenericRuleIds, systemRuleNames],
   )
-  const modelStatus = useMemo(
-    () => getDeckModelStatus(derivedMainCards, allChecks),
-    [derivedMainCards, allChecks],
-  )
 
   // El cálculo usa valores diferidos: la edición de reglas responde al instante.
   const deferredChecks = useDeferredValue(allChecks)
@@ -77,7 +72,6 @@ export function useProbabilityLab(
     computation,
     isComputing,
     isStale: isComputing || deferredChecks !== allChecks || deferredCards !== derivedMainCards,
-    modelStatus,
     readiness,
     roleDistributions,
   }

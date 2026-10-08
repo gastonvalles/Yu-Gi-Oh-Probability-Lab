@@ -86,8 +86,8 @@ export function AdvancedSettings({ pattern, actions, derivedMainCards }: Advance
             <span className="text-body font-medium text-foreground">Rescatar las cartas que usa</span>
             <span className="text-micro text-muted">
               {pattern.rescuesCards
-                ? 'Encendido: si la mano cumple esta salida, sus cartas no cuentan como muertas en los problemas.'
-                : 'Apagado: los problemas cuentan todas las cartas de la mano.'}
+                ? 'Si la mano cumple esta salida, sus cartas no cuentan como muertas en los problemas.'
+                : 'Los problemas cuentan todas las cartas de la mano.'}
             </span>
           </span>
           <Switch

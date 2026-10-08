@@ -17,7 +17,6 @@ import { overline } from './ui/typography'
 interface ExportDeckPanelProps {
   deckBuilder: DeckBuilderState
   deckFormat: DeckFormat
-  deckName: string
   mainDeckCount: number
   onExport: () => Promise<void>
 }
@@ -29,7 +28,6 @@ const PREVIEW_QUALITY = 0.8
 export function ExportDeckPanel({
   deckBuilder,
   deckFormat,
-  deckName,
   mainDeckCount,
   onExport,
 }: ExportDeckPanelProps) {
@@ -99,8 +97,6 @@ export function ExportDeckPanel({
       <StepHero
         title="Exportá tu deck"
         icon="download"
-        subtitle="Imagen, lista de texto, YDK o planilla de torneo."
-        help={`Descargá ${deckName.trim() || 'tu deck'} como imagen, lista de texto, .ydk o planilla de torneo (KDE), sin moverte del workflow.`}
         side={(
           <Button
             variant="primary"
@@ -118,7 +114,7 @@ export function ExportDeckPanel({
 
       <section className="grid min-w-0 gap-8 min-[1180px]:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)] min-[1180px]:items-start min-[1180px]:gap-10">
         <article className="grid min-w-0 content-start gap-4">
-          <SectionHeader icon="image" title="Imagen del deck" description="Se descarga en alta resolución (JPG) para compartir." />
+          <SectionHeader icon="image" title="Imagen del deck" description="JPG en alta resolución." />
 
           {previewState === 'ready' && imagePreviewUrl ? (
             <img
@@ -142,7 +138,7 @@ export function ExportDeckPanel({
           <SectionHeader
             icon="file"
             title="Decklist oficial (PDF)"
-            description="Planilla de Konami para torneos, lista para imprimir. Completá tus datos antes de entregarla."
+            description="Planilla de Konami para torneos. Completá tus datos antes de entregarla."
           />
 
           <div className="grid gap-5">

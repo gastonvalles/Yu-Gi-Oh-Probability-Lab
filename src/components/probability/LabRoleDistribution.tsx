@@ -1,9 +1,7 @@
 import { DISTRIBUTION_BUCKETS, type RoleDistribution, type RoleDistributionKey } from '../../app/role-distribution'
 import { formatInteger, formatShortPercent } from '../../app/utils'
-import { cx } from '../ui/cx'
 import { SegmentedRing } from '../ui/SegmentedRing'
 import { LabSection } from './LabSection'
-import { LAB_FOOTNOTE } from './lab-styles'
 
 /** Color de cada rol (los roles tienen su propia paleta). */
 const ROLE_RGB: Record<RoleDistributionKey, string> = {
@@ -34,14 +32,14 @@ export function LabRoleDistribution({ distributions, onOpenRole }: LabRoleDistri
       className="order-4 min-[1101px]:col-span-full"
     >
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-micro text-muted" aria-hidden="true">
-        <span>Cada anillo reparte las copias que robás:</span>
+        <span>Copias robadas:</span>
         {DISTRIBUTION_BUCKETS.map((bucket, index) => (
           <span key={bucket} className="inline-flex items-center gap-1.5">
             <span className="size-2.5 rounded-full bg-foreground" style={{ opacity: BUCKET_OPACITY[index] }} />
             {bucket}
           </span>
         ))}
-        <span className="min-[640px]:ml-auto">Al centro: robar 1 o más</span>
+        <span className="min-[640px]:ml-auto">Al centro: 1 o más</span>
       </div>
 
       <ul className="m-0 grid list-none grid-cols-2 gap-x-2 gap-y-4 p-0 min-[1101px]:grid-cols-4">
@@ -76,7 +74,6 @@ export function LabRoleDistribution({ distributions, onOpenRole }: LabRoleDistri
           </li>
         ))}
       </ul>
-      <p className={cx(LAB_FOOTNOTE, 'text-center min-[640px]:text-left')}>Tocá un rol para ver qué cartas lo componen.</p>
     </LabSection>
   )
 }

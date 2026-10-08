@@ -31,8 +31,8 @@ export function TurnContextToggle({ patternId, currentTurnContext, ignoresDraw =
           <span className="text-body font-medium text-foreground">Contar la carta que robás yendo 2º</span>
           <span className="text-micro text-muted">
             {ignoresDraw
-              ? 'Apagado: yendo 2º se mira la mano inicial de 5 (ej. interacción del turno rival).'
-              : 'Encendido: yendo 2º se miran las 6 cartas.'}
+              ? 'Yendo 2º se mira la mano inicial de 5 (ej. interacción del turno rival).'
+              : 'Yendo 2º se miran las 6 cartas.'}
           </span>
         </span>
         <Switch

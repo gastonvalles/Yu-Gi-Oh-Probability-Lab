@@ -69,10 +69,6 @@ export function LabRuleList({
       className="order-5 min-[1101px]:col-span-full"
       actions={<Segmented variant="chips" size="sm" label="Filtrar reglas por tipo" value={kindFilter} onChange={setKindFilter} options={KIND_FILTERS} />}
     >
-      <p className={LAB_FOOTNOTE}>
-        Una mano es <strong>limpia</strong> si cumple al menos una salida y ningún problema activo.
-      </p>
-
       {/* Desktop: reglas del sistema (plegables) a la izquierda, las propias a la derecha. */}
       <div className="grid gap-[1.1rem] min-[1101px]:grid-cols-2 min-[1101px]:items-start min-[1101px]:gap-5">
         <div className={RULE_STACK}>
@@ -94,9 +90,11 @@ export function LabRuleList({
             title="Genéricas"
             collapsible
             badge={
-              <Badge size="sm" tone={enabledGeneric > 0 ? 'success' : 'neutral'}>
-                {formatInteger(enabledGeneric)} activas
-              </Badge>
+              enabledGeneric < groups.generic.length ? (
+                <Badge size="sm" tone={enabledGeneric > 0 ? 'success' : 'neutral'}>
+                  {formatInteger(enabledGeneric)} activas
+                </Badge>
+              ) : null
             }
             description="Aplican a la mayoría de los decks. Apagalas o editalas para ajustar cantidades de copias."
             entries={visible(groups.generic)}
@@ -124,7 +122,7 @@ export function LabRuleList({
                 Crear regla
               </Button>
             }
-            description="Combos, cartas clave o problemas propios de tu deck. Tocá una para editarla."
+            description=""
             entries={visible(groups.custom)}
             emptyState={
               groups.custom.length === 0 ? (
@@ -199,7 +197,7 @@ function RuleTier({
           )}
           {badge}
         </div>
-        <p className={cx('m-0 text-micro text-muted', !isOpen && 'hidden')}>{description}</p>
+        {description ? <p className={cx('m-0 text-micro text-muted', !isOpen && 'hidden')}>{description}</p> : null}
       </header>
 
       {!isOpen ? null : entries.length === 0 ? (
@@ -243,8 +241,11 @@ function RuleRow({
           {entry.ignoresDraw && entry.turnContext !== 'first' ? <TurnBadge title="Yendo 2º no cuenta la carta robada">5 cartas</TurnBadge> : null}
           {entry.turnLean ? <TurnLeanBadge kind={entry.kind} lean={entry.turnLean} /> : null}
         </span>
-        <span className="truncate text-micro text-muted">{entry.summary}</span>
-        {entry.description ? <span className="text-micro text-muted">{entry.description}</span> : null}
+        {entry.description ? (
+          <span className="text-micro text-muted">{entry.description}</span>
+        ) : (
+          <span className="truncate text-micro text-muted">{entry.summary}</span>
+        )}
       </span>
       {entry.probability !== null && isActive ? (
         <ProgressRing

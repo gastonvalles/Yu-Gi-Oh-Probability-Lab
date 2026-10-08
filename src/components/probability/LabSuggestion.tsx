@@ -50,7 +50,7 @@ export function LabSuggestion({ cards, checks, deckFormat, handSize, view, resul
 
       {best ? (
         <AdviceBox label="Sugerencia" visual={<SwapSummary best={best} cleanBefore={result.cleanProbability} />}>
-          {describeBest(culprit, best, result.cleanProbability)}
+          {describeBest(culprit, best)}
           {perTurnLine(best, perTurn)}
         </AdviceBox>
       ) : state.status === 'loading' ? (
@@ -131,9 +131,7 @@ function perTurnLine(best: Outcome, perTurn: PerTurnResults): string {
 }
 
 function describeCulprit(culprit: Culprit): string {
-  return culprit.kind === 'problem'
-    ? `Es el problema que más pesa en las manos que no abren limpias. ${formatOdds(culprit.probability)}`
-    : `Son las manos que no tienen ninguna salida. ${formatOdds(culprit.probability).replace('Pasa', 'Pasan')}`
+  return culprit.kind === 'problem' ? formatOdds(culprit.probability, false) : formatOdds(culprit.probability, false).replace('Pasa', 'Pasan')
 }
 
 /** "Sacá 1 starter y meté 1 handtrap (ej.: A por B)": lo dice por familia, como un jugador, y da un ejemplo concreto. */
@@ -147,15 +145,19 @@ function describeSwap(outcome: Outcome): string {
   return `sumá 1 ${to ? ROLE_GROUP_LABEL[to] : 'carta'}${added ? ` (${added.card.name})` : ''}`
 }
 
-function describeBest(culprit: Culprit, best: Outcome, cleanBefore: number): string {
-  const target = culprit.kind === 'problem' ? 'el problema' : 'las manos sin salida'
+/** Lo que no dicen ya los chips (qué sacar y meter) ni los anillos (manos limpias antes y después): el ejemplo y el efecto sobre el problema. */
+function describeBest(culprit: Culprit, best: Outcome): string {
+  const removed = best.changes.find((change) => change.action === 'remove')
+  const added = best.changes.find((change) => change.action === 'add')
+  const example = removed && added ? ` Por ejemplo, ${removed.card.name} por ${added.card.name}.` : ''
+  const target = culprit.kind === 'problem' ? 'El problema' : 'Las manos sin salida'
 
   // El cambio no baja el problema: sube las salidas (las manos limpias) por otro lado.
   if (best.culpritProbability >= culprit.probability - 0.0005) {
-    return `Bajar este problema cuesta más salidas de las que ahorra, pero ${describeSwap(best)} y las manos limpias pasarían de ${formatShortPercent(cleanBefore)} a ${formatShortPercent(best.cleanProbability)} (estimado, el resto del deck igual).`
+    return `Bajar este problema cuesta más salidas de las que ahorra, pero este cambio sube las manos limpias.${example} Estimado, con el resto del deck igual.`
   }
 
-  return `${capitalize(describeSwap(best))}: ${target} bajaría a ${oddsOnly(best.culpritProbability)} y las manos limpias pasarían de ${formatShortPercent(cleanBefore)} a ${formatShortPercent(best.cleanProbability)} (estimado, el resto del deck igual).`
+  return `${target} bajaría a ${oddsOnly(best.culpritProbability)}.${example} Estimado, con el resto del deck igual.`
 }
 
 /** Sin cambio que convenga: se explica por qué, con números, en vez de dejar un "no se puede". */

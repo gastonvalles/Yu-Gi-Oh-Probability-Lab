@@ -469,8 +469,7 @@ export function DeckImportDrawer({
             <div className="flex min-w-0 items-start gap-3">
               <Icon name="upload" size={22} className={cx('mt-1 shrink-0', TONE.brand.text)} />
               <div className="min-w-0">
-                <p className={cx('m-0', overline)}>Importación de deck</p>
-                <h3 className="m-0 text-lead font-semibold tracking-[-0.01em] text-foreground">Subí un archivo o pegá texto</h3>
+                <h3 className="m-0 text-lead font-semibold tracking-[-0.01em] text-foreground">Importar deck</h3>
               </div>
             </div>
 
@@ -482,11 +481,6 @@ export function DeckImportDrawer({
               {!preview && !isProcessing ? (
                 <>
                 <article className="grid gap-2.5">
-                  <div className="grid gap-0.5">
-                    <small className={overline}>Archivo</small>
-                    <strong className="text-lead font-semibold text-foreground">Subí o arrastrá el deck</strong>
-                  </div>
-
                   <div
                     className={[
                       'grid gap-3 rounded-card border border-dashed px-4 py-6 text-center transition-colors',
@@ -556,12 +550,7 @@ export function DeckImportDrawer({
                 </article>
 
                 <article className="grid gap-2 border-t border-border-subtle pt-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="grid gap-0.5">
-                      <small className={overline}>Texto manual</small>
-                      <strong className="text-body font-semibold text-foreground">Pegar lista</strong>
-                    </div>
-
+                  <div className="flex items-center justify-end gap-3">
                     <Button
                       variant="secondary"
                       size="sm"

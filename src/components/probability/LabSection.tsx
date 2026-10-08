@@ -35,11 +35,11 @@ export function LabSection({ title, icon, summary, actions, defaultOpenOnMobile 
             aria-controls={contentId}
             onClick={() => setIsOpenOnMobile((current) => !current)}
           >
-            <SectionHeading title={title} icon={icon} summary={summary} />
+            <SectionHeading title={title} icon={icon} summary={isOpen ? undefined : summary} />
             <Icon name="chevron-down" size={18} className={cx('shrink-0 text-soft transition-transform duration-150', isOpen && 'rotate-180')} />
           </button>
         ) : (
-          <SectionHeading title={title} icon={icon} summary={summary} />
+          <SectionHeading title={title} icon={icon} />
         )}
         {actions && isOpen ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
       </header>

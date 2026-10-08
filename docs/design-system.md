@@ -8,6 +8,7 @@ Todo vive en `src/components/ui/` y los tokens en `src/index.css`.
 - **Oscuro, plano y con aire.** Fondo índigo casi negro con manchas tenues de color, tarjetas apenas más claras, bordes finos. Sin brillos de adorno.
 - **Sin grises.** Todas las superficies (fondo, tarjetas, campos, bordes, scrollbar) son de la familia índigo de la lavanda de marca; no hay grises neutros. Los velos translúcidos son violetas (`bg-tint/N`, `border-tint/N`), nunca `bg-white/N` ni `bg-black/N`.
 - **Dos niveles de caja, no tres.** Lienzo → tarjeta (`Card`) y nada más adentro: bloques, filas y totales se ordenan con espacio y líneas finas (`border-t border-border-subtle`, `divide-y`). Sólo se marcan al pasar el mouse, tocarlos o elegirlos. Un aviso dentro de una tarjeta (`Callout`) es un fondo teñido sin borde.
+- **Cada dato se dice una sola vez.** Un número, un rótulo o una instrucción no se repite en la misma pantalla (ni entre la pestaña, el encabezado y el contenido). Un subtítulo que repite el título, una leyenda fija en la navegación o un resumen que ya está debajo se borran. Los resúmenes de una sección sólo se ven con la sección plegada.
 - **Los porcentajes son círculos.** Un valor → `ProgressRing`; un reparto → `SegmentedRing`. No hay barras de progreso. Los anillos se llenan al aparecer (ver "Anillos").
 - **Base visual: el diseño de Figma "Task management & to-do list" adaptado al oscuro:** Lexend Deca, violeta `#5F33E1`, chips y botones lavanda, anillos de progreso, tarjetas redondeadas y barra inferior con íconos rellenos/duotono.
 - **El color siempre significa algo** (ver tonos). Si no significa nada, va en gris.
@@ -56,6 +57,7 @@ Los roles de las cartas (starter, handtrap…) y los grupos (engine, non-engine�
 | `Segmented` | elegir 1 entre pocas: `track` (pista lavanda), `chips` (pastillas sueltas) o `cards` (tarjetas, como las fechas del diseño: turno del Lab). |
 | `LabeledField` | campo en tarjeta con la etiqueta chica arriba y el valor abajo (nombre y formato del deck). |
 | `Modal` | todo diálogo (`icon` + `tone` en el encabezado, `footer` para acciones). |
+| `CardOverlay` | marco de los modales de carta (detalle y clasificación): la carta arriba (se agranda al tocarla), un panel con su información abajo y una X blanca arriba a la derecha. `CardPanelHeader` / `CardPanelBody` / `CardPanelFooter` arman el panel. |
 | `Icon` | **único** set de íconos (grilla 24). `variant`: `linear` (por defecto), `bulk` (duotono, pestañas inactivas) y `bold` (relleno, pestaña activa). Nada de SVG suelto. |
 | `field`, `choiceChip`, `filterChip`, `listItem` (`surfaces.ts`) | campos de texto, pastillas de selección (lavanda → violeta al elegirla) y filas clickeables. |
 

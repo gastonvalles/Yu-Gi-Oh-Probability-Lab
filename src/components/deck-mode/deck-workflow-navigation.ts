@@ -12,8 +12,9 @@ export interface DeckModeNavigationItem {
   /** Nombre completo: tooltip y lectores de pantalla. */
   title: string
   icon: IconName
-  description: string
-  metric: string
+  /** Dato en vivo bajo el nombre (sólo donde cambia con el trabajo: cartas del deck y cartas clasificadas). */
+  metric: string | null
+  /** Estado del paso: tooltip y lectores de pantalla. */
   detail: string
   tone: DeckWorkflowStepTone
   disabled: boolean
@@ -61,7 +62,6 @@ export function buildDeckWorkflowNavigationItems({
       label: 'Deck',
       title: 'Deck Builder',
       icon: 'cards',
-      description: 'Buscador, drag & drop y armado de Main, Extra y Side.',
       metric: `${formatInteger(mainDeckCount)} / 40`,
       detail:
         mainDeckCount >= 40
@@ -78,11 +78,7 @@ export function buildDeckWorkflowNavigationItems({
       label: 'Roles',
       title: 'Categorización de roles',
       icon: 'tag',
-      description: 'Separá origen y función sin tocar el deck builder.',
-      metric:
-        roleCardCount > 0
-          ? `${formatInteger(classifiedCardCount)} / ${formatInteger(roleCardCount)}`
-          : 'Esperando deck',
+      metric: roleCardCount > 0 ? `${formatInteger(classifiedCardCount)} / ${formatInteger(roleCardCount)}` : null,
       detail:
         roleCardCount === 0
           ? 'Necesita cartas en Main.'
@@ -103,8 +99,7 @@ export function buildDeckWorkflowNavigationItems({
       label: 'Lab',
       title: 'Probability Lab',
       icon: 'flask',
-      description: 'Reglas, salidas, resultados y simulaciones.',
-      metric: hasCompletedRoleStep ? (patternCount > 0 ? `${formatInteger(patternCount)} propia${patternCount === 1 ? '' : 's'}` : 'Reglas base') : 'Sin medir',
+      metric: null,
       detail: hasCompletedRoleStep
         ? patternCount > 0
           ? 'Listo para medir.'
@@ -119,8 +114,7 @@ export function buildDeckWorkflowNavigationItems({
       label: 'Comparar',
       title: 'Comparar builds',
       icon: 'columns',
-      description: 'Compará builds guardadas o importadas con tus reglas.',
-      metric: 'A vs B',
+      metric: null,
       detail: 'Guardá o importá builds y compará.',
       tone: 'pending',
       disabled: false,
@@ -131,8 +125,7 @@ export function buildDeckWorkflowNavigationItems({
       label: 'Exportar',
       title: 'Exportar deck',
       icon: 'download',
-      description: 'Descarga la imagen, la decklist oficial en PDF y el YDK.',
-      metric: mainDeckCount > 0 ? 'Imagen, PDF, YDK' : 'Sin deck',
+      metric: null,
       detail: mainDeckCount > 0 ? 'Imagen + PDF + YDK.' : 'Necesitás cartas en Main.',
       tone: mainDeckCount > 0 ? 'complete' : 'pending',
       disabled: mainDeckCount === 0,

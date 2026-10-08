@@ -6,10 +6,8 @@ import type { CardEntry, CardOrigin, CardRole } from '../../types'
 import { ClassificationEditor } from '../classification/ClassificationEditor'
 import { ClassificationQueue } from '../classification/ClassificationQueue'
 import { compareCardsForQueue } from '../classification/classification-model'
-import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
-import { Modal } from '../ui/Modal'
 import { ProgressRing } from '../ui/ProgressRing'
 import { overline, supportText } from '../ui/typography'
 
@@ -70,39 +68,19 @@ export function LabPendingClassification({ cards, message, onSetOrigin, onToggle
 
       <ClassificationQueue cards={visible} selectedId={selectedId} onSelect={setSelectedId} />
 
-      <Modal
-        isOpen={selected !== null}
-        onClose={() => setSelectedId(null)}
-        size="sheet"
-        bare
-        ariaLabel="Clasificar carta"
-        footer={
-          <div className="flex flex-1 items-center justify-end gap-2 max-[1100px]:[&>button]:flex-1">
-            <Button variant="secondary" size="md" icon="chevron-left" onClick={() => previous && setSelectedId(previous.id)} disabled={!previous}>
-              Anterior
-            </Button>
-            <span className="text-soft min-w-12 text-center text-micro tabular-nums min-[1101px]:hidden">
-              {formatInteger(index + 1)} / {formatInteger(visible.length)}
-            </span>
-            <Button variant="primary" size="md" iconEnd="chevron-right" onClick={() => next && setSelectedId(next.id)} disabled={!next}>
-              Siguiente
-            </Button>
-          </div>
-        }
-      >
-        {selected ? (
-          <ClassificationEditor
-            key={selected.id}
-            card={selected}
-            position={index + 1}
-            total={visible.length}
-            completed={classified}
-            onSetOrigin={onSetOrigin}
-            onToggleRole={onToggleRole}
-            onConfirm={onConfirm}
-          />
-        ) : null}
-      </Modal>
+      {selected ? (
+        <ClassificationEditor
+          card={selected}
+          position={index + 1}
+          total={visible.length}
+          onSetOrigin={onSetOrigin}
+          onToggleRole={onToggleRole}
+          onConfirm={onConfirm}
+          onPrevious={previous ? () => setSelectedId(previous.id) : undefined}
+          onNext={next ? () => setSelectedId(next.id) : undefined}
+          onClose={() => setSelectedId(null)}
+        />
+      ) : null}
     </div>
   )
 }

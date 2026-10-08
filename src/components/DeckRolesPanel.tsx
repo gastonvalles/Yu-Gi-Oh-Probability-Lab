@@ -7,7 +7,6 @@ import {
   getCardRoleDefinition,
   serializeGroupKey,
 } from '../app/deck-groups'
-import { getDeckModelStatus } from '../app/deck-model-status'
 import { reclassifyAllCards } from '../app/deck-builder-slice'
 import { getClassificationOverrides } from '../app/classification-overrides'
 import {
@@ -16,7 +15,7 @@ import {
   isCardMissingRoles,
   isCardPendingReview,
 } from '../app/role-step'
-import { useAppDispatch, useAppSelector } from '../app/store-hooks'
+import { useAppDispatch } from '../app/store-hooks'
 import { formatInteger } from '../app/utils'
 import type { CardEntry, CardGroupKey, CardOrigin, CardRole } from '../types'
 import {
@@ -33,7 +32,6 @@ import {
   type ClassificationStateKey,
   type ClassificationStyleKey,
 } from './classification/classification-model'
-import { DeckModelStatusBadge } from './DeckModelStatusBadge'
 import { StepHero } from './StepHero'
 import { Button } from './ui/Button'
 import { Card } from './ui/Card'
@@ -253,45 +251,6 @@ function ClassificationDrawer({
   )
 }
 
-function ClassificationModal({
-  isOpen,
-  kicker = 'Clasificación',
-  title,
-  subtitle,
-  headerActions,
-  hideHeader = false,
-  footer,
-  onClose,
-  children,
-}: {
-  isOpen: boolean
-  kicker?: string
-  title: string
-  subtitle: string
-  headerActions?: ReactNode
-  hideHeader?: boolean
-  footer?: ReactNode
-  onClose: () => void
-  children: ReactNode
-}) {
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      footer={footer}
-      size="sheet"
-      bare={hideHeader}
-      kicker={kicker}
-      title={title}
-      subtitle={subtitle}
-      headerActions={headerActions}
-      ariaLabel={title}
-    >
-      <div className="grid gap-2.5 min-[1101px]:gap-3">{children}</div>
-    </Modal>
-  )
-}
-
 export function DeckRolesPanel({
   cards,
   onSetOrigin,
@@ -300,11 +259,6 @@ export function DeckRolesPanel({
   onOpenLab,
 }: DeckRolesPanelProps) {
   const dispatch = useAppDispatch()
-  const patterns = useAppSelector((state) => state.patterns.patterns)
-  const modelStatus = useMemo(
-    () => getDeckModelStatus(cards, patterns),
-    [cards, patterns],
-  )
   const [activeFilter, setActiveFilter] = useState<ClassificationFilterKey>(() =>
     cards.some((card) => !isCardFullyClassified(card)) ? 'unclassified' : 'complete',
   )
@@ -445,6 +399,12 @@ export function DeckRolesPanel({
     [filterItemMap],
   )
 
+  // Un filtro sin cartas es ruido: se muestran los que tienen y el elegido; con uno solo no hay nada que filtrar.
+  const visibleFilterItems = useMemo(
+    () => primaryFilterItems.filter((item) => item.cards.length > 0 || areClassificationFilterKeysEqual(activeFilter, item.key)),
+    [activeFilter, primaryFilterItems],
+  )
+
   useEffect(() => {
     if (overviewItems.some((item) => areClassificationFilterKeysEqual(item.key, activeFilter))) {
       return
@@ -483,29 +443,6 @@ export function DeckRolesPanel({
     }
   }, [selectedCard])
 
-  useEffect(() => {
-    if (drawerMode === null && !isDetailOpen) {
-      return
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        if (drawerMode !== null) {
-          setDrawerMode(null)
-          return
-        }
-
-        setIsDetailOpen(false)
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [drawerMode, isDetailOpen])
-
   const handleCardSelection = (cardId: string) => {
     setSelectedCardId(cardId)
     setIsDetailOpen(true)
@@ -530,7 +467,8 @@ export function DeckRolesPanel({
   }
 
   useEffect(() => {
-    if (!isDetailOpen) {
+    // La guía de roles se abre encima de la carta (que se oculta mientras tanto): las flechas sólo valen con la carta a la vista.
+    if (!isDetailOpen || drawerMode !== null) {
       return
     }
 
@@ -557,45 +495,7 @@ export function DeckRolesPanel({
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [isDetailOpen, previousCard, nextCard])
-
-  const detailNavigation = selectedCard ? (
-    <div className="flex flex-1 items-center justify-end gap-2 max-[1100px]:[&>button]:flex-1">
-      <Button variant="secondary" size="md" icon="chevron-left" onClick={handleSelectPreviousCard} disabled={!previousCard}>
-        Anterior
-      </Button>
-      <span className="text-soft min-w-12 text-center text-micro tabular-nums max-[1100px]:order-0 min-[1101px]:hidden">
-        {formatInteger(selectedCardIndexInFullList + 1)} / {formatInteger(stableNavigationCards.length)}
-      </span>
-      <Button variant="primary" size="md" iconEnd="chevron-right" onClick={handleSelectNextCard} disabled={!nextCard}>
-        Siguiente
-      </Button>
-    </div>
-  ) : null
-
-  const renderSelectedCardDetail = () => {
-    if (!selectedCard) {
-      return (
-        <p className={[emptyStateCopy.tone, 'm-0 px-3 py-2.5 text-body'].join(' ')}>
-          <strong className="block text-foreground">{emptyStateCopy.title}</strong>
-          <span className="mt-1 block">{emptyStateCopy.description}</span>
-        </p>
-      )
-    }
-
-    return (
-      <ClassificationEditor
-        card={selectedCard}
-        position={selectedCardIndexInFullList + 1}
-        total={stableNavigationCards.length}
-        completed={completeCards.length}
-        onSetOrigin={onSetOrigin}
-        onToggleRole={onToggleRole}
-        onConfirm={onConfirm}
-        onOpenHelp={() => setDrawerMode('help')}
-      />
-    )
-  }
+  }, [drawerMode, isDetailOpen, previousCard, nextCard])
 
   return (
     <section className="mx-auto grid w-full min-w-0 max-w-content content-start gap-4 overflow-x-hidden px-gutter pb-6 pt-4 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_auto_minmax(0,1fr)] min-[1101px]:gap-5 min-[1101px]:overflow-hidden min-[1101px]:px-6 min-[1101px]:pb-6 min-[1101px]:pt-6">
@@ -603,15 +503,11 @@ export function DeckRolesPanel({
         title="Clasificá tus cartas"
         icon="tag"
         subtitle="Contale al Lab qué hace cada carta en tu plan."
-        help="Para cada carta elegí dónde encaja en tu plan (Engine, Non-engine o Hybrid) y qué función cumple cuando la robás. Estas decisiones forman tu modelo del deck: el Probability Lab calcula los porcentajes a partir de acá."
         side={
           sortedCards.length > 0 ? (
-            <>
-              <DeckModelStatusBadge modelStatus={modelStatus} variant="compact" />
-              <Button variant="secondary" size="sm" icon="info" onClick={() => setDrawerMode('help')}>
-                Guía de clasificación
-              </Button>
-            </>
+            <Button variant="secondary" size="sm" icon="info" onClick={() => setDrawerMode('help')}>
+              Guía de clasificación
+            </Button>
           ) : null
         }
       />
@@ -640,32 +536,29 @@ export function DeckRolesPanel({
             <ProgressRing tone="onBrand" size={76} value={classifiedPercent / 100} label="Cartas clasificadas" />
           </Card>
 
-          <div className="grid gap-2">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          {visibleFilterItems.length > 1 ? (
+            <div className="grid gap-2">
               <p className={cx('m-0', overline)}>Vista activa</p>
-              <span className="text-micro text-soft tabular-nums">
-                {formatInteger(completeCards.length)} / {formatInteger(sortedCards.length)} clasificadas
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {primaryFilterItems.map((item) => {
-                const active = areClassificationFilterKeysEqual(activeFilter, item.key)
+              <div className="flex flex-wrap gap-2">
+                {visibleFilterItems.map((item) => {
+                  const active = areClassificationFilterKeysEqual(activeFilter, item.key)
 
-                return (
-                  <button
-                    key={getClassificationFilterReactKey(item.key)}
-                    type="button"
-                    className={viewChip({ active, empty: item.cards.length === 0 && !active })}
-                    style={getClassificationStyle(item.styleKey)}
-                    onClick={() => handleFilterChange(item.key)}
-                  >
-                    <span>{item.label}</span>
-                    <span className="text-soft text-micro tabular-nums">{formatInteger(item.cards.length)}</span>
-                  </button>
-                )
-              })}
+                  return (
+                    <button
+                      key={getClassificationFilterReactKey(item.key)}
+                      type="button"
+                      className={viewChip({ active })}
+                      style={getClassificationStyle(item.styleKey)}
+                      onClick={() => handleFilterChange(item.key)}
+                    >
+                      <span>{item.label}</span>
+                      <span className="text-soft text-micro tabular-nums">{formatInteger(item.cards.length)}</span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-          </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -686,17 +579,20 @@ export function DeckRolesPanel({
         </section>
       )}
 
-      <ClassificationModal
-        isOpen={isDetailOpen && selectedCard !== null}
-        title="Origen y roles"
-        subtitle="Resolvé la carta seleccionada sin salir de la cola."
-        hideHeader
-        footer={detailNavigation}
-        onClose={() => setIsDetailOpen(false)}
-        key={selectedCard?.id ?? 'empty'}
-      >
-        {renderSelectedCardDetail()}
-      </ClassificationModal>
+      {isDetailOpen && selectedCard !== null && drawerMode === null ? (
+        <ClassificationEditor
+          card={selectedCard}
+          position={selectedCardIndexInFullList + 1}
+          total={stableNavigationCards.length}
+          onSetOrigin={onSetOrigin}
+          onToggleRole={onToggleRole}
+          onConfirm={onConfirm}
+          onPrevious={previousCard ? handleSelectPreviousCard : undefined}
+          onNext={nextCard ? handleSelectNextCard : undefined}
+          onOpenHelp={() => setDrawerMode('help')}
+          onClose={() => setIsDetailOpen(false)}
+        />
+      ) : null}
 
       <ClassificationDrawer
         kicker="Modelo"

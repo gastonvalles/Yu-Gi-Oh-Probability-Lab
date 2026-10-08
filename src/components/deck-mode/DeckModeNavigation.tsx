@@ -41,10 +41,12 @@ export function DeckModeNavigation({ items, activeStep, onStepChange }: DeckMode
             />
             <span className="grid min-w-0 leading-tight">
               <span className={cx('truncate text-body', isActive ? 'font-semibold' : 'font-medium')}>{item.label}</span>
-              <span className="flex items-center gap-1.5 text-micro tabular-nums text-soft">
-                <span className={cx('size-1.5 shrink-0 rounded-full', STATUS_DOT[item.tone])} aria-hidden="true" />
-                <span className="truncate">{item.metric}</span>
-              </span>
+              {item.metric ? (
+                <span className="flex items-center gap-1.5 text-micro tabular-nums text-soft">
+                  <span className={cx('size-1.5 shrink-0 rounded-full', STATUS_DOT[item.tone])} aria-hidden="true" />
+                  <span className="truncate">{item.metric}</span>
+                </span>
+              ) : null}
             </span>
           </button>
         )

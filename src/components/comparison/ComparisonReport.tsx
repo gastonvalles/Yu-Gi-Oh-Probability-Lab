@@ -174,7 +174,7 @@ function CleanTable({ clean, nameA, nameB }: { clean: CleanComparison; nameA: st
   ] as const
 
   return (
-    <ReportSection title="Manos limpias" hint="Mismo cálculo y mismas reglas que el Probability Lab.">
+    <ReportSection title="Manos limpias">
       <ul className="m-0 grid list-none gap-0 divide-y divide-border-subtle p-0 tabular-nums">
         {rows.map((row, index) => {
           const tone = toneFor(row.data.delta)
@@ -212,14 +212,17 @@ function CleanRing({ side, name, value, delay }: { side: 'A' | 'B'; name: string
 function CardDiffList({ diffs, deckSizeA, deckSizeB }: { diffs: CardDiff[]; deckSizeA: number; deckSizeB: number }) {
   const sizeDelta = deckSizeB - deckSizeA
 
+  // Sin diferencias no hay nada que listar (el veredicto ya dice que son iguales).
+  if (diffs.length === 0) {
+    return null
+  }
+
   return (
     <ReportSection
       title="Qué cambia en el Main Deck"
-      hint={`A tiene ${formatInteger(deckSizeA)} cartas y B ${formatInteger(deckSizeB)}${sizeDelta === 0 ? '' : ` (${sizeDelta > 0 ? '+' : '−'}${formatInteger(Math.abs(sizeDelta))})`}.`}
+      hint={sizeDelta === 0 ? undefined : `A tiene ${formatInteger(deckSizeA)} cartas y B ${formatInteger(deckSizeB)} (${sizeDelta > 0 ? '+' : '−'}${formatInteger(Math.abs(sizeDelta))}).`}
     >
-      {diffs.length === 0 ? (
-        <p className="m-0 text-body text-soft">Las dos builds tienen las mismas cartas.</p>
-      ) : (
+      {(
         <ul className="m-0 grid list-none gap-1.5 p-0">
           {diffs.map((diff) => (
             <li key={diff.cardId} className="grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-center gap-2 text-body">
@@ -247,7 +250,7 @@ function RoleTable({
   rolesB: { first: RoleDistribution[]; second: RoleDistribution[] }
 }) {
   return (
-    <ReportSection title="Roles" hint="Copias en el deck y probabilidad de robar al menos una.">
+    <ReportSection title="Roles">
       <div className="-mx-1 overflow-x-auto px-1">
       <table className={TABLE}>
         <thead>

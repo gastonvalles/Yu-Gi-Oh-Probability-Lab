@@ -401,7 +401,6 @@ export function DeckBuilderStep({
       <StepHero
         title="Armá tu deck"
         icon="cards"
-        subtitle="Buscá cartas y armá Main, Extra y Side."
         help="Agregá cartas desde el buscador. Tocá una carta del deck para ver el detalle y sumar o quitar copias; para moverla entre Main, Extra y Side, mantenela presionada y arrastrala."
         sideVariant="form"
         side={

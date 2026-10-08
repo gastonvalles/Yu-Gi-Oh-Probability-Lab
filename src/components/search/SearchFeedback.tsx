@@ -153,9 +153,7 @@ export function SearchStart({
           <p className={EMPTY_TEXT[layout]}>
             Con <strong>+</strong> agregás una copia. Tocando la carta ves el detalle y elegís Main, Extra o Side.
           </p>
-        ) : (
-          <p className={EMPTY_TEXT[layout]}>Arrastrá una carta al deck, hacé doble click o usá el botón +.</p>
-        )}
+        ) : null}
       </div>
 
       {recent.length > 0 ? (

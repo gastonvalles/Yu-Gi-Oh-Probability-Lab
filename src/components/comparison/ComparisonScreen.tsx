@@ -205,8 +205,6 @@ export function ComparisonScreen() {
       <StepHero
         title="Compará builds"
         icon="columns"
-        subtitle="Dos versiones del deck, mismas reglas, mismo cálculo."
-        help="Guardá versiones de tu deck o importá otras listas y mirá cuál abre mejor yendo 1º y 2º, con tus mismas reglas y el mismo cálculo del Probability Lab."
         side={
           <>
             <Button variant="secondary" size="sm" icon="save" onClick={handleSaveCurrent}>

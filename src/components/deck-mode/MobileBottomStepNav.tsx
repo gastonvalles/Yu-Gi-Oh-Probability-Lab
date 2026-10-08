@@ -37,7 +37,7 @@ export function MobileBottomStepNav({ items, activeStep, onStepChange }: MobileB
         type="button"
         aria-current={isActive ? 'step' : undefined}
         aria-disabled={isDisabled || undefined}
-        aria-label={`${item.title}. ${statusLabel}. ${item.metric}.`}
+        aria-label={`${item.title}. ${statusLabel}.${item.metric ? ` ${item.metric}.` : ''}`}
         className={cx(
           'group relative grid min-w-0 content-center justify-items-center gap-1 rounded-control px-1 pb-1 pt-1.5 transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-not-allowed',
           isDisabled && 'opacity-40',

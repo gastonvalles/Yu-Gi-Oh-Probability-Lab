@@ -6,13 +6,11 @@ import { createPattern } from '../app/pattern-factory'
 import type { RoleDistributionKey } from '../app/role-distribution'
 import { useToastMessage } from '../app/use-toast-message'
 import type { PatternEditorDefaults } from '../app/use-pattern-editor-actions'
-import { formatShortPercent } from '../app/utils'
 import type { ApiCardReference, CardEntry, CardOrigin, CardRole, HandPattern, TurnView } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 import { CardDetailModal } from './card-detail/CardDetailModal'
 import { KpiDetailModal } from './comparison/KpiDetailModal'
 import type { KpiRole } from './comparison/kpi-detail-helpers'
-import { DeckModelStatusBadge } from './DeckModelStatusBadge'
 import { StepHero } from './StepHero'
 import { Button } from './ui/Button'
 import { Callout } from './ui/Callout'
@@ -231,9 +229,6 @@ export function ProbabilityPanel({
       <StepHero
         title="Qué tan bien abre tu deck"
         icon="flask"
-        subtitle="Probabilidad exacta de que tu mano de inicio salga bien, yendo primero o segundo."
-        help="Cálculo exacto de todas las manos posibles, yendo primero (5 cartas) y segundo (6), con las reglas de abajo: una mano es limpia si cumple alguna salida y ningún problema."
-        side={<DeckModelStatusBadge modelStatus={lab.modelStatus} variant="compact" />}
       />
 
       {lab.readiness.status === 'empty-deck' ? (
@@ -263,11 +258,7 @@ export function ProbabilityPanel({
             <TurnViewToggle
               activeView={activeTurnView}
               onChange={setActiveTurnView}
-              details={{
-                first: `5 cartas · ${formatShortPercent(results.first.cleanProbability)}`,
-                second: `6 cartas · ${formatShortPercent(results.second.cleanProbability)}`,
-                average: `50/50 · ${formatShortPercent(results.average.cleanProbability)}`,
-              }}
+              details={{ first: '5 cartas', second: '6 cartas', average: '50/50' }}
             />
             <Button variant="tertiary" size="sm" icon="info" onClick={disclaimer.open}>
               ¿Cómo leer estos %?

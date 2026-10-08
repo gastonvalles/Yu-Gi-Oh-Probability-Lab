@@ -3,13 +3,11 @@ import { useState } from 'react'
 import type { LabViewResult, SegmentRule } from '../../app/probability-lab'
 import { formatShortPercent } from '../../app/utils'
 import type { HandSegment } from '../../types'
-import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
 import { ProgressRing } from '../ui/ProgressRing'
 import { SegmentedRing } from '../ui/SegmentedRing'
 import { TONE, type Tone } from '../ui/tone'
 import { overline } from '../ui/typography'
-import { buildFailureAdvice } from './lab-copy'
 import { LAB_FOOTNOTE } from './lab-styles'
 import { LabSection } from './LabSection'
 
@@ -81,12 +79,7 @@ export function LabFailureBreakdown({ result }: { result: LabViewResult }) {
           activeKey={activeSegment}
           label={SEGMENTS.map((segment) => `${segment.label}: ${formatShortPercent(values[segment.key])}`).join(', ')}
           segments={SEGMENTS.map((segment) => ({ key: segment.key, value: values[segment.key], color: segment.rgb }))}
-        >
-          <span className="grid gap-1 leading-none">
-            <strong className="text-stat font-bold tracking-[-0.02em] text-foreground tabular-nums">{formatShortPercent(values[active.key])}</strong>
-            <span className="text-micro text-muted">{active.label.toLowerCase()}</span>
-          </span>
-        </SegmentedRing>
+        />
 
         <ul className="m-0 grid w-full list-none gap-1 p-0">
           {SEGMENTS.map((segment) => (
@@ -121,9 +114,6 @@ export function LabFailureBreakdown({ result }: { result: LabViewResult }) {
         rules={result.segmentRules[active.key].filter((rule) => (active.key === 'clean' ? rule.kind === 'opening' : rule.kind === 'problem'))}
       />
 
-      <Callout tone="info" icon="sparkles" className="mt-auto">
-        {buildFailureAdvice(result)}
-      </Callout>
     </LabSection>
   )
 }
@@ -139,18 +129,15 @@ function SegmentRules({ title, emptyText, tone, rules }: { title: string; emptyT
           {rules.slice(0, MAX_RULES).map((rule, index) => (
             <li key={rule.patternId} className="flex min-w-0 items-center gap-3 text-body">
               <ProgressRing value={rule.share} tone={tone} size={44} strokeWidth={4} delay={index * 90} label={`${rule.name}: ${formatShortPercent(rule.share)}`}>
-                {Math.round(rule.share * 100)}%
+                {formatShortPercent(rule.share)}
               </ProgressRing>
-              <span className="grid min-w-0">
-                <span className="truncate text-foreground">{rule.name}</span>
-                <span className="text-micro tabular-nums text-muted">{formatShortPercent(rule.share)} de estas manos</span>
-              </span>
+              <span className="min-w-0 truncate text-foreground">{rule.name}</span>
             </li>
           ))}
         </ul>
       )}
       <small className={LAB_FOOTNOTE}>
-        % de las manos de este grupo que cumplen cada regla (una mano puede cumplir varias). Pasá el mouse o tocá otro grupo para cambiar.
+        % de las manos de este grupo que cumplen cada regla (una mano puede cumplir varias).
       </small>
     </div>
   )

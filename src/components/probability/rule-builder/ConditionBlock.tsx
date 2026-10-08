@@ -84,10 +84,6 @@ export function ConditionBlock({
         />
       </div>
 
-      {!hasCategory ? (
-        <p className="m-0 text-body text-warning-soft">Elegí qué tipo de cartas querés contar en esta condición.</p>
-      ) : null}
-
       <Modal
         isOpen={isPickerOpen}
         onClose={() => setIsPickerOpen(false)}
