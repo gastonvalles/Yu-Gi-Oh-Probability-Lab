@@ -13,21 +13,20 @@ import { DeckImportDrawer } from '../deck-mode/DeckImportDrawer'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
+import { EmptyState } from '../ui/EmptyState'
 import { Modal } from '../ui/Modal'
+import { Segmented } from '../ui/Segmented'
 import { SideBadge } from './SideBadge'
 import { StepHero } from '../StepHero'
+import { StepPage } from '../ui/StepPage'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { BuildBCardEditor } from './BuildBCardEditor'
 import { BuildDeckView } from './BuildDeckView'
 import { ComparisonReport, CURRENT_DECK_NAME } from './ComparisonReport'
 import { useSavedBuilds } from './use-saved-builds'
-import { field, surface } from '../ui/surfaces'
+import { field } from '../ui/surfaces'
 
 const CURRENT = 'current'
-const PICKER_LINK = 'border-0 bg-transparent p-0 text-[0.74rem] text-muted underline underline-offset-[0.15rem]'
-
-const PICKER_LINK_DANGER = 'border-0 bg-transparent p-0 text-[0.74rem] text-destructive underline underline-offset-[0.15rem]'
-
 const SELECTION_KEY = 'ygo-lab:comparison-selection'
 
 type Tab = 'report' | 'A' | 'B'
@@ -170,11 +169,11 @@ export function ComparisonScreen() {
   const renderPicker = (side: 'A' | 'B', value: string | null) => {
     const build = side === 'A' ? buildA : buildB
     return (
-      <div className="grid min-w-0 gap-[0.35rem]">
-        <label className="flex min-w-0 items-center gap-2">
+      <div className="grid min-w-0 gap-1.5">
+        <label className="flex min-w-0 items-center gap-2.5">
           <SideBadge side={side} />
           <select
-            className="min-h-10 w-full min-w-0 rounded-control border border-border bg-secondary/90 px-[0.6rem] text-[0.85rem] text-foreground"
+            className={`${field} h-10 w-full min-w-0 px-3 text-body`}
             value={value ?? ''}
             aria-label={`Build ${side}`}
             onChange={(event) => setSelection((current) => ({ ...current, [side.toLowerCase()]: event.target.value || null }))}
@@ -188,13 +187,13 @@ export function ComparisonScreen() {
           </select>
         </label>
         {build?.isSaved ? (
-          <div className="flex gap-3 pl-[2.1rem]">
-            <button type="button" className={PICKER_LINK} onClick={() => setRenameTarget({ id: build.source, name: build.name })}>
+          <div className="flex gap-1 pl-9">
+            <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setRenameTarget({ id: build.source, name: build.name })}>
               Renombrar
-            </button>
-            <button type="button" className={PICKER_LINK_DANGER} onClick={() => setDeleteTarget({ id: build.source, name: build.name })}>
+            </Button>
+            <Button variant="tertiary" color="danger" size="sm" icon="trash" onClick={() => setDeleteTarget({ id: build.source, name: build.name })}>
               Borrar
-            </button>
+            </Button>
           </div>
         ) : null}
       </div>
@@ -202,75 +201,58 @@ export function ComparisonScreen() {
   }
 
   return (
-    <section
-      className={`${surface.stepShell} grid min-w-0 content-start gap-3 px-4 pt-3 min-[1101px]:gap-[0.9rem] min-[1101px]:p-[0.9rem]`}
-      aria-label="Comparar builds"
-    >
+    <StepPage aria-label="Comparar builds">
       <StepHero
         title="Compará builds"
-        help="Guardá versiones de tu deck o importá otras listas y mirá cuál abre mejor yendo 1º y 2º, con tus mismas reglas y el mismo cálculo del Probability Lab."
+        icon="columns"
         side={
           <>
-            <Button variant="secondary" size="sm" onClick={handleSaveCurrent}>
+            <Button variant="secondary" size="sm" icon="save" onClick={handleSaveCurrent}>
               Guardar deck actual
             </Button>
-            <Button variant="primary" size="sm" onClick={() => setIsImportOpen(true)}>
+            <Button variant="primary" size="sm" icon="upload" onClick={() => setIsImportOpen(true)}>
               Importar build
             </Button>
           </>
         }
       />
 
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-[0.6rem] max-[519px]:grid-cols-[minmax(0,1fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3 max-[519px]:grid-cols-[minmax(0,1fr)]">
         {renderPicker('A', selection.a)}
-        <span className="pt-[0.55rem] text-[0.75rem] font-bold uppercase text-soft max-[519px]:hidden" aria-hidden="true">
+        <span className="grid h-10 place-items-center text-micro font-bold uppercase text-soft max-[519px]:hidden" aria-hidden="true">
           vs
         </span>
         {renderPicker('B', selection.b)}
       </div>
 
       {!buildB ? (
-        <div className="grid justify-items-center gap-[0.6rem] rounded-panel border border-dashed border-border px-4 py-8 text-center">
-          <strong className="text-[1rem] text-foreground">Elegí qué comparar</strong>
-          <p className="m-0 max-w-[30rem] text-[0.84rem] text-muted">
-            {savedBuilds.builds.length === 0
-              ? 'Todavía no guardaste builds. Usá “Guardar deck actual” antes de probar cambios, o “Importar build” para traer otra lista.'
-              : 'Elegí una build B arriba para compararla con A.'}
-          </p>
-        </div>
+        <EmptyState icon="columns" title="Elegí qué comparar">
+          {savedBuilds.builds.length === 0
+            ? 'Todavía no guardaste builds. Usá “Guardar deck actual” antes de probar cambios, o “Importar build” para traer otra lista.'
+            : 'Elegí una build B arriba para compararla con A.'}
+        </EmptyState>
       ) : (
         <>
-          <div className="grid grid-cols-3 gap-1 rounded-full bg-secondary/80 p-[0.2rem] min-[1101px]:hidden" role="tablist" aria-label="Vista">
-            {(
-              [
-                ['report', 'Resumen'],
-                ['A', 'Build A'],
-                ['B', 'Build B'],
-              ] as const
-            ).map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                aria-selected={tab === key}
-                className={cx(
-                  'min-h-9 rounded-full border-0 text-[0.82rem] font-semibold',
-                  tab === key ? 'bg-primary/30 text-foreground' : 'bg-transparent text-muted',
-                )}
-                onClick={() => setTab(key)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <Segmented
+            label="Vista"
+            value={tab}
+            onChange={setTab}
+            fullWidth
+            className="min-[1101px]:hidden"
+            options={[
+              { value: 'report', label: 'Resumen' },
+              { value: 'A', label: 'Build A' },
+              { value: 'B', label: 'Build B' },
+            ]}
+          />
 
-          <div className="grid min-w-0 gap-[0.9rem] min-[1101px]:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] min-[1101px]:items-start">
+          <div className="grid min-w-0 gap-4 min-[1101px]:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] min-[1101px]:items-start min-[1101px]:gap-5">
             <div className={cx(tab !== 'report' && 'hidden min-[1101px]:block')}>
               {comparison ? (
                 <ComparisonReport comparison={comparison} isCurrentDeck={{ A: !buildA.isSaved, B: !buildB.isSaved }} />
               ) : null}
             </div>
-            <div className={cx(tab === 'report' ? 'hidden' : 'block', 'min-[1101px]:grid min-[1101px]:gap-[0.9rem]')}>
+            <div className={cx(tab === 'report' ? 'hidden' : 'block', 'min-[1101px]:grid min-[1101px]:gap-5')}>
               <div className={cx(tab !== 'A' && 'hidden min-[1101px]:block')}>
                 <BuildDeckView side="A" name={buildA.name} zones={buildA.zones} deltaByCardId={deltaByCardId} onCardClick={handleCardClick(buildA)} />
               </div>
@@ -339,7 +321,7 @@ export function ComparisonScreen() {
           onClose={() => setEditing(null)}
         />
       ) : null}
-    </section>
+    </StepPage>
   )
 }
 
@@ -384,12 +366,12 @@ function RenameBuildDialog({
         }}
       >
         <label className="grid gap-1.5">
-          <span className="text-[0.8rem] text-(--text-muted)">Nombre</span>
+          <span className="text-body text-muted">Nombre</span>
           <input
             value={name}
             autoFocus
             onChange={(event) => setName(event.target.value)}
-            className={`${field} w-full px-3 py-2 text-base`}
+            className={`${field} h-11 w-full px-3 text-base`}
           />
         </label>
       </form>

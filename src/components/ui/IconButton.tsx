@@ -1,11 +1,12 @@
-import type { ButtonHTMLAttributes, SVGProps } from 'react'
+import type { ButtonHTMLAttributes, ComponentProps } from 'react'
 
 import { cx, variants } from './cx'
+import { Icon } from './Icon'
 
 type IconButtonSize = 'sm' | 'md' | 'lg'
 
 /**
- * raised: botón con relieve (por defecto) · close: X discreta de los encabezados ·
+ * raised: botón de barra de herramientas (por defecto) · close: X de los encabezados ·
  * ghost: sin fondo (papelera de zona) · flat: blanco, grande y sin fondo (estética de la práctica).
  */
 type IconButtonTone = 'raised' | 'close' | 'ghost' | 'flat'
@@ -15,51 +16,31 @@ interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   tone?: IconButtonTone
 }
 
-const BASE = 'inline-flex shrink-0 items-center justify-center p-0 transition-[border-color,background,color,box-shadow,transform] duration-150 focus-visible:outline-none [&_svg]:block'
+const BASE =
+  'inline-flex shrink-0 items-center justify-center p-0 transition-[background-color,border-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus [&_svg]:block'
 
-const TONES: Record<IconButtonTone, Record<IconButtonSize, string>> = {
-  raised: {
-    sm: 'size-8',
-    md: 'size-[2.35rem]',
-    lg: 'size-[2.7rem]',
-  },
-  close: { sm: 'size-[1.7rem]', md: 'size-[1.95rem]', lg: 'size-[2.2rem]' },
-  ghost: {
-    sm: 'size-[1.9rem] [&_svg]:size-4',
-    md: 'size-[2.4rem] [&_svg]:size-[1.32rem]',
-    lg: 'size-[2.4rem] [&_svg]:size-[1.32rem]',
-  },
-  flat: {
-    sm: 'size-11 [&_svg]:size-6',
-    md: 'size-12 [&_svg]:size-[1.7rem]',
-    lg: 'size-12 [&_svg]:size-[1.7rem]',
-  },
+const SIZES: Record<IconButtonTone, Record<IconButtonSize, string>> = {
+  raised: { sm: 'size-9 [&_svg]:size-4', md: 'size-10 [&_svg]:size-[1.125rem]', lg: 'size-11 [&_svg]:size-5' },
+  close: { sm: 'size-8 [&_svg]:size-4', md: 'size-9 [&_svg]:size-[1.125rem]', lg: 'size-10 [&_svg]:size-5' },
+  ghost: { sm: 'size-8 [&_svg]:size-4', md: 'size-10 [&_svg]:size-5', lg: 'size-10 [&_svg]:size-5' },
+  flat: { sm: 'size-11 [&_svg]:size-6', md: 'size-12 [&_svg]:size-7', lg: 'size-12 [&_svg]:size-7' },
 }
 
 const toneStyle = variants({
   base: BASE,
   variants: {
     tone: {
-      raised:
-        'rounded-control border border-foreground/10 bg-linear-to-b from-secondary/98 to-background text-soft shadow-[inset_0_1px_0_rgba(255,255,255,0.12),inset_0_-1px_0_rgba(0,0,0,0.16),0_0_0_1px_rgb(var(--foreground-rgb)/0.03),0_10px_20px_rgba(0,0,0,0.14)] hover:-translate-y-px hover:border-primary/40 hover:from-primary/10 hover:to-card-background/98 hover:text-foreground hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.16),0_0_0_1px_rgb(var(--primary-rgb)/0.08),0_12px_24px_rgb(var(--primary-rgb)/0.12)] focus-visible:shadow-[0_0_0_2px_rgb(var(--background-rgb)),0_0_0_4px_rgb(var(--primary-rgb)/0.32)] [&_svg]:size-[0.92rem]',
-      close:
-        'rounded-control bg-transparent text-foreground/82 hover:text-foreground focus-visible:shadow-[0_0_0_2px_rgb(var(--primary-rgb)/0.24)] [&_svg]:size-[0.82rem]',
-      ghost:
-        'rounded-none bg-transparent text-white/76 hover:text-white/96 focus-visible:shadow-[0_0_0_2px_rgb(var(--primary-rgb)/0.18)]',
-      flat: 'rounded-full bg-transparent text-white [-webkit-tap-highlight-color:transparent] hover:bg-white/8 active:bg-white/16 [&_svg]:stroke-[1.3]',
+      raised: 'rounded-control bg-lavender text-primary-soft hover:bg-primary/28',
+      close: 'rounded-control bg-transparent text-soft hover:bg-tint/8 hover:text-foreground',
+      ghost: 'rounded-control bg-transparent text-soft hover:bg-tint/8 hover:text-foreground',
+      flat: 'rounded-full bg-transparent text-white hover:bg-tint/8 active:bg-tint/16 [&_svg]:stroke-[1.3]',
     },
   },
   defaults: { tone: 'raised' },
 })
 
-export function IconButton({
-  size = 'md',
-  tone = 'raised',
-  className = '',
-  type = 'button',
-  ...props
-}: IconButtonProps) {
-  return <button type={type} className={cx(toneStyle({ tone }, TONES[tone][size]), className)} {...props} />
+export function IconButton({ size = 'md', tone = 'raised', className = '', type = 'button', ...props }: IconButtonProps) {
+  return <button type={type} className={cx(toneStyle({ tone }, SIZES[tone][size]), className)} {...props} />
 }
 
 interface CloseButtonProps extends Omit<IconButtonProps, 'children'> {}
@@ -72,11 +53,7 @@ export function CloseButton({ tone = 'close', ...props }: CloseButtonProps) {
   )
 }
 
-export function CloseIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" aria-hidden="true" {...props}>
-      <path d="m4 4 8 8" />
-      <path d="m12 4-8 8" />
-    </svg>
-  )
+/** La X del set de íconos, para usarla suelta (chips, campos). */
+export function CloseIcon(props: Omit<ComponentProps<typeof Icon>, 'name'>) {
+  return <Icon name="x" strokeWidth={2} {...props} />
 }

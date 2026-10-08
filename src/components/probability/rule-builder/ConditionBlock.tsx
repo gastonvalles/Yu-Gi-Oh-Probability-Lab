@@ -8,7 +8,8 @@ import type { PatternEditorActions } from '../pattern-editor-actions'
 import { CategoryPicker } from './CategoryPicker'
 import { getConditionLabel } from './condition-labels'
 import { NumberField } from '../../ui/NumberField'
-import { field, surface } from '../../ui/surfaces'
+import { cx } from '../../ui/cx'
+import { TONE } from '../../ui/tone'
 
 interface ConditionBlockProps {
   index: number
@@ -51,29 +52,29 @@ export function ConditionBlock({
   }, [actions, condition.id, condition.quantity, hasCategory, maxQuantity, patternId])
 
   return (
-    <article className={`condition-block ${surface.card} grid gap-2 px-3 py-2.5`}>
-      <div className="flex items-center gap-0 flex-wrap">
-        <KindSegment
-          value={condition.kind}
-          onChange={(kind) => actions.setRequirementKind(patternId, condition.id, kind)}
-        />
-        <QuantitySegment
-          value={condition.quantity}
-          max={maxQuantity}
-          onChange={(qty) => actions.setRequirementCount(patternId, condition.id, String(qty))}
-        />
-        <button
-          type="button"
-          className={[
-            'condition-block-category px-3 py-1.5 text-[0.92rem] font-medium transition-colors rounded-r-md',
-            hasCategory
-              ? `${surface.panelSoft} text-(--text-main) hover:bg-[rgb(var(--primary-rgb)/0.08)]`
-              : `${surface.panelSoft} text-(--text-muted) ring-1 ring-[rgb(var(--warning-rgb)/0.3)]`,
-          ].join(' ')}
-          onClick={() => setIsPickerOpen(true)}
-        >
-          {hasCategory ? categoryLabel : 'Elegí qué contar'}
-        </button>
+    <article className="grid gap-2 border-b border-border-subtle pb-3 last:border-b-0 last:pb-0">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="inline-flex min-w-0 max-w-full items-stretch overflow-hidden rounded-control">
+          <KindSegment
+            value={condition.kind}
+            onChange={(kind) => actions.setRequirementKind(patternId, condition.id, kind)}
+          />
+          <QuantitySegment
+            value={condition.quantity}
+            max={maxQuantity}
+            onChange={(qty) => actions.setRequirementCount(patternId, condition.id, String(qty))}
+          />
+          <button
+            type="button"
+            className={cx(
+              'min-w-0 px-3 py-2 text-left text-body font-medium transition-colors focus-visible:outline-none focus-visible:shadow-focus',
+              hasCategory ? 'bg-tint/4 text-foreground hover:bg-primary/12' : cx('text-warning-soft hover:bg-warning/16', 'bg-warning/10'),
+            )}
+            onClick={() => setIsPickerOpen(true)}
+          >
+            {hasCategory ? categoryLabel : 'Elegí qué contar'}
+          </button>
+        </div>
 
         <CloseButton
           size="sm"
@@ -83,12 +84,6 @@ export function ConditionBlock({
         />
       </div>
 
-      {!hasCategory ? (
-        <p className="m-0 text-[0.82rem] text-(--warning)">
-          Elegí qué tipo de cartas querés contar en esta condición.
-        </p>
-      ) : null}
-
       <Modal
         isOpen={isPickerOpen}
         onClose={() => setIsPickerOpen(false)}
@@ -96,9 +91,8 @@ export function ConditionBlock({
         bare
         flush
         ariaLabel="Qué contar en esta condición"
-        closeTone="flat"
         closeSize="sm"
-        closeClassName="right-2 top-[0.65rem]"
+        closeClassName="right-3 top-3"
       >
         <CategoryPicker
           patternId={patternId}
@@ -126,12 +120,10 @@ function KindSegment({
   return (
     <button
       type="button"
-      className={[
-        'condition-block-kind px-3 py-1.5 text-[0.9rem] font-medium rounded-l-md transition-colors',
-        isInclude
-          ? 'bg-[rgb(var(--success-rgb)/0.14)] text-accent'
-          : 'bg-[rgb(var(--danger-rgb)/0.14)] text-destructive',
-      ].join(' ')}
+      className={cx(
+        'px-3 py-2 text-body font-semibold transition-colors focus-visible:outline-none focus-visible:shadow-focus',
+        isInclude ? cx('bg-success/14 hover:bg-success/22', TONE.success.text) : cx('bg-danger/14 hover:bg-danger/22', TONE.danger.text),
+      )}
       onClick={() => onChange(isInclude ? 'exclude' : 'include')}
       aria-label={isInclude ? 'Cambiar a Sin' : 'Cambiar a Al menos'}
     >
@@ -155,7 +147,7 @@ function QuantitySegment({
       min={1}
       max={Math.max(max, value)}
       onChange={onChange}
-      className={`condition-block-qty ${field} w-12 border-x-0 rounded-none px-1.5 py-1.5 text-center text-[0.94rem] font-medium`}
+      className="w-12 border-x border-border-subtle bg-input px-1.5 py-2 text-center text-body font-medium text-foreground outline-none [color-scheme:dark] focus:bg-input-hover focus-visible:shadow-focus"
       aria-label="Cantidad"
     />
   )

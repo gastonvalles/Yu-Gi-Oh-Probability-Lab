@@ -8,7 +8,7 @@ interface SkeletonProps extends HTMLAttributes<HTMLDivElement> {
 
 const RADIUS = {
   control: 'rounded-control',
-  panel: 'rounded-panel',
+  panel: 'rounded-card',
   chip: 'rounded-full',
   none: 'rounded-none',
 } as const
@@ -22,7 +22,7 @@ export function Skeleton({
     <div
       aria-hidden="true"
       className={cx(
-        'relative overflow-hidden bg-foreground/6 before:absolute before:inset-0 before:animate-shimmer before:bg-linear-to-r before:from-transparent before:via-foreground/10 before:to-transparent motion-reduce:before:animate-none',
+        'relative overflow-hidden bg-tint/6 before:absolute before:inset-0 before:animate-shimmer before:bg-linear-to-r before:from-transparent before:via-tint/10 before:to-transparent motion-reduce:before:animate-none',
         RADIUS[radius],
         className,
       )}

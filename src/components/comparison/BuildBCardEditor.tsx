@@ -1,19 +1,9 @@
-import { useState, useEffect, type CSSProperties } from 'react'
+import { useEffect, useState } from 'react'
+
 import type { DeckCardInstance } from '../../app/model'
-import type { CardOrigin, CardRole, GroupKey } from '../../types'
-import {
-  CARD_ORIGIN_DEFINITIONS,
-  getCardRoleDefinition,
-  getDeckGroupTheme,
-  serializeGroupKey,
-} from '../../app/deck-groups'
-import { CardArt } from '../CardArt'
-import { Button } from '../ui/Button'
-import { Modal } from '../ui/Modal'
-import { formatInteger } from '../../app/utils'
-import { ROLE_REFERENCE_MARK, originOption, roleOptionButton } from '../classification-styles'
-import { cx } from '../ui/cx'
-import { chip, surface } from '../ui/surfaces'
+import type { CardOrigin, CardRole } from '../../types'
+import { buildCardSummary } from '../card-detail/card-summary'
+import { ClassificationOverlay } from '../classification/ClassificationOverlay'
 
 interface BuildBCardEditorProps {
   card: DeckCardInstance
@@ -24,216 +14,53 @@ interface BuildBCardEditorProps {
   onClose: () => void
 }
 
-function getStyleVars(groupKey: GroupKey): CSSProperties {
-  const theme = getDeckGroupTheme(groupKey)
-  return { '--role-color': theme.color, '--role-rgb': theme.rgb } as CSSProperties
-}
-
-const ORIGIN_BLURB: Record<CardOrigin, string> = {
-  engine: 'Core y plan principal.',
-  non_engine: 'Interacción y soporte externo.',
-  hybrid: 'Cruza ambos espacios.',
-}
-
-const ORIGIN_HELP: Record<CardOrigin, string> = {
-  engine: 'Parte del core del deck: cartas que querés ver para ejecutar el plan principal.',
-  non_engine: 'Interacción o soporte que no pertenece al motor principal del deck.',
-  hybrid: 'Puede contar como motor o como slot flexible según la mano y la build.',
-}
-
-const ROLE_HELP: Record<CardRole, string> = {
-  starter: 'Carta que por sí sola inicia la línea principal.',
-  extender: 'Continúa la jugada una vez que la mano ya empezó.',
-  enabler: 'Habilita la condición o ventana que otra carta necesita.',
-  searcher: 'Encuentra piezas concretas del deck, GY o zonas visibles.',
-  draw: 'Aumenta la mano o mejora mucho la calidad del robo.',
-  combo_piece: 'Pieza necesaria dentro de una secuencia concreta.',
-  payoff: 'Convierte la línea en ventaja, presión o cierre.',
-  recovery: 'Recupera recursos después de gastar piezas o recibir interacción.',
-  handtrap: 'Interacción que frena al rival desde la mano.',
-  disruption: 'Interrumpe al rival durante su línea o una vez establecida la mesa.',
-  boardbreaker: 'Ayuda a desarmar un campo rival y abrir espacio para jugar.',
-  floodgate: 'Restringe líneas del rival de forma continua o persistente.',
-  removal: 'Quita cartas rivales por destrucción, banish, bounce o un efecto similar.',
-  brick: 'Carta incómoda de robar si no viene acompañada.',
-  garnet: 'Pieza que preferís dejar en el deck porque en mano empeora la línea.',
-  tech: 'Slot flexible para matchup o metajuego.',
-}
-
-const ROLE_SECTIONS = [
-  {
-    title: 'Plan de Juego',
-    roles: ['starter', 'extender', 'enabler', 'searcher', 'draw', 'combo_piece', 'payoff', 'recovery'] as CardRole[],
-  },
-  {
-    title: 'Interacción',
-    roles: ['handtrap', 'disruption', 'boardbreaker', 'floodgate', 'removal'] as CardRole[],
-  },
-  {
-    title: 'Utility',
-    roles: ['brick', 'garnet', 'tech'] as CardRole[],
-  },
-] as const
-
+/** Clasificar una carta de la Build B: se arma de a poco y se guarda al pasar a otra carta o cerrar. */
 export function BuildBCardEditor({ card, currentEdit, allCards, onSave, onNavigate, onClose }: BuildBCardEditorProps) {
-  const [origin, setOrigin] = useState<CardOrigin>(
-    currentEdit?.origin ?? card.origin ?? 'engine',
-  )
-  const [roles, setRoles] = useState<CardRole[]>(
-    currentEdit?.roles ?? (card.roles.length > 0 ? [...card.roles] : []),
-  )
+  const [origin, setOrigin] = useState<CardOrigin>(currentEdit?.origin ?? card.origin ?? 'engine')
+  const [roles, setRoles] = useState<CardRole[]>(currentEdit?.roles ?? [...card.roles])
 
   useEffect(() => {
     setOrigin(currentEdit?.origin ?? card.origin ?? 'engine')
-    setRoles(currentEdit?.roles ?? (card.roles.length > 0 ? [...card.roles] : []))
+    setRoles(currentEdit?.roles ?? [...card.roles])
   }, [card.instanceId, currentEdit])
 
   const toggleRole = (role: CardRole) => {
-    setRoles((prev) =>
-      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role],
-    )
+    setRoles((previous) => (previous.includes(role) ? previous.filter((current) => current !== role) : [...previous, role]))
   }
 
-  const autoSaveAndClose = () => {
+  const save = () => {
     if (roles.length > 0) onSave(card.apiCard.ygoprodeckId, origin, roles)
-    onClose()
   }
 
-  const handleSaveAndNavigate = (next: DeckCardInstance) => {
-    if (roles.length > 0) onSave(card.apiCard.ygoprodeckId, origin, roles)
+  const goTo = (next: DeckCardInstance) => {
+    save()
     onNavigate(next)
   }
 
-  // Deduplicate by ygoprodeckId for navigation (skip copies of the same card)
-  const uniqueCards = allCards.filter((c, i, arr) =>
-    arr.findIndex((x) => x.apiCard.ygoprodeckId === c.apiCard.ygoprodeckId) === i,
-  )
-  const currentIndex = uniqueCards.findIndex((c) => c.apiCard.ygoprodeckId === card.apiCard.ygoprodeckId)
-  const prevCard = uniqueCards.length > 1
-    ? uniqueCards[(currentIndex - 1 + uniqueCards.length) % uniqueCards.length]
-    : null
-  const nextCard = uniqueCards.length > 1
-    ? uniqueCards[(currentIndex + 1) % uniqueCards.length]
-    : null
-  const position = currentIndex + 1
-  const total = uniqueCards.length
+  // Las copias de una misma carta cuentan como una sola al recorrer la lista.
+  const uniqueCards = allCards.filter((candidate, index, all) => all.findIndex((other) => other.apiCard.ygoprodeckId === candidate.apiCard.ygoprodeckId) === index)
+  const currentIndex = uniqueCards.findIndex((candidate) => candidate.apiCard.ygoprodeckId === card.apiCard.ygoprodeckId)
+  const previousCard = uniqueCards.length > 1 ? uniqueCards[(currentIndex - 1 + uniqueCards.length) % uniqueCards.length] : null
+  const nextCard = uniqueCards.length > 1 ? uniqueCards[(currentIndex + 1) % uniqueCards.length] : null
+  const summary = buildCardSummary(card.apiCard)
 
   return (
-    <Modal isOpen onClose={autoSaveAndClose} size="xl" bare ariaLabel={`Editar ${card.name}`}>
-          <div className="grid gap-2.5 min-[1101px]:gap-3">
-            <div className="grid w-full min-w-0 gap-3">
-              <div className="grid gap-3 min-[1101px]:grid-cols-[18rem_minmax(0,1fr)] min-[1101px]:items-stretch">
-                {/* Card art column */}
-                <div className="grid content-start gap-2">
-                  <div className="w-full min-[1101px]:w-[18rem]">
-                    <CardArt
-                      remoteUrl={card.apiCard.imageUrl ?? card.apiCard.imageUrlSmall}
-                      name={card.name}
-                      className="block h-auto w-full bg-input"
-                      limitCard={card.apiCard}
-                    />
-                  </div>
-                </div>
-
-                {/* Editor panel */}
-                <div className="flex min-h-full flex-col gap-2.5">
-                  <div className="grid gap-1 pr-12">
-                    <p className="text-accent m-0 text-[0.68rem] uppercase tracking-[0.12em]">
-                      Build B — Carta {formatInteger(position)} de {formatInteger(total)}
-                    </p>
-                    <h3 className="m-0 wrap-anywhere text-[2rem] leading-[0.94] tracking-[-0.03em] text-(--text-main) min-[1101px]:text-[2.3rem]">
-                      {card.name}
-                    </h3>
-                    <p className="text-muted m-0 text-[0.9rem] leading-[1.05] min-[1101px]:text-[0.98rem]">
-                      Editar clasificación para Build B
-                    </p>
-                  </div>
-
-                  {/* Origin selector — same as Step 2 */}
-                  <section className="grid gap-2">
-                    <p className="text-accent m-0 text-[0.64rem] uppercase tracking-widest">¿Qué es?</p>
-                    <div className="grid gap-1.5 min-[860px]:grid-cols-3">
-                      {CARD_ORIGIN_DEFINITIONS.map((definition) => {
-                        const active = origin === definition.key.value
-                        const muted = origin !== null && !active
-                        return (
-                          <button
-                            key={serializeGroupKey(definition.key)}
-                            type="button"
-                            aria-pressed={active}
-                            title={`${definition.label}: ${ORIGIN_HELP[definition.key.value]}`}
-                            className={cx(originOption({ active, muted }), 'grid gap-1 p-2 text-left')}
-                            style={getStyleVars(definition.key)}
-                            onClick={() => setOrigin(definition.key.value)}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className={ROLE_REFERENCE_MARK} />
-                              <strong className="text-[0.8rem] leading-none text-(--text-main)">{definition.label}</strong>
-                            </div>
-                            <span className="text-muted text-[0.66rem] leading-[1.08]">{ORIGIN_BLURB[definition.key.value]}</span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </section>
-
-                  {/* Role toggles — same as Step 2 */}
-                  <section className="grid gap-2">
-                    <p className="text-accent m-0 text-[0.64rem] uppercase tracking-widest">¿Qué roles cumple?</p>
-                    <div className="grid gap-2 min-[1101px]:grid-cols-3 min-[1101px]:items-stretch">
-                      {ROLE_SECTIONS.map((section) => {
-                        const selectedCount = section.roles.reduce(
-                          (t, r) => t + (roles.includes(r) ? 1 : 0), 0,
-                        )
-                        return (
-                          <article key={section.title} className={`${surface.card} grid h-full grid-rows-[auto_minmax(0,1fr)] gap-1.5 p-2`}>
-                            <div className="flex flex-wrap items-start justify-between gap-2">
-                              <strong className="text-[0.8rem] leading-none text-(--text-main)">{section.title}</strong>
-                              <span className={`${chip.base} px-1.5 py-0.5 text-[0.62rem]`}>
-                                {formatInteger(selectedCount)} / {formatInteger(section.roles.length)}
-                              </span>
-                            </div>
-                            <div className="grid content-start gap-1.5 min-[720px]:grid-cols-2">
-                              {section.roles.map((role) => {
-                                const definition = getCardRoleDefinition(role)
-                                const active = roles.includes(role)
-                                return (
-                                  <button
-                                    key={serializeGroupKey(definition.key)}
-                                    type="button"
-                                    aria-pressed={active}
-                                    title={`${definition.label}: ${ROLE_HELP[role]}`}
-                                    className={cx(
-                                      roleOptionButton(active),
-                                      'w-full min-w-0 px-2 py-[0.44rem] text-[0.68rem] leading-[1.08]',
-                                    )}
-                                    style={getStyleVars(definition.key)}
-                                    onClick={() => toggleRole(role)}
-                                  >
-                                    {definition.label}
-                                  </button>
-                                )
-                              })}
-                            </div>
-                          </article>
-                        )
-                      })}
-                    </div>
-                  </section>
-
-                  {/* Navigation — right-aligned, same as Step 2 */}
-                  <div className="mt-auto flex justify-end gap-2 pt-1">
-                    <Button variant="primary" size="sm" onClick={() => prevCard && handleSaveAndNavigate(prevCard)} disabled={!prevCard}>
-                      Anterior
-                    </Button>
-                    <Button variant="primary" size="sm" onClick={() => nextCard && handleSaveAndNavigate(nextCard)} disabled={!nextCard}>
-                      Siguiente
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-    </Modal>
+    <ClassificationOverlay
+      name={card.name}
+      card={card.apiCard}
+      lines={[`${summary.typeLine}${summary.statLine ? ` · ${summary.statLine}` : ''}`, 'Clasificación de la Build B']}
+      origin={origin}
+      roles={roles}
+      onSetOrigin={setOrigin}
+      onToggleRole={toggleRole}
+      position={currentIndex + 1}
+      total={uniqueCards.length}
+      onPrevious={previousCard ? () => goTo(previousCard) : undefined}
+      onNext={nextCard ? () => goTo(nextCard) : undefined}
+      onClose={() => {
+        save()
+        onClose()
+      }}
+    />
   )
 }

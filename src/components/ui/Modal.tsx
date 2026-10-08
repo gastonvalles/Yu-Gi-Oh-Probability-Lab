@@ -3,8 +3,11 @@ import { createPortal } from 'react-dom'
 
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import { cx } from './cx'
+import { Icon, type IconName } from './Icon'
 import { CloseButton } from './IconButton'
 import { surface } from './surfaces'
+import { TONE, type Tone } from './tone'
+import { overline } from './typography'
 
 /**
  * Tamaños fijos: el panel no crece ni se achica según el contenido (el cuerpo scrollea por dentro).
@@ -30,6 +33,9 @@ interface ModalProps {
   onClose: () => void
   size?: ModalSize
   kicker?: ReactNode
+  /** Ícono del encabezado (en un cuadrito teñido por `tone`): el tipo de diálogo se reconoce sin leer. */
+  icon?: IconName
+  tone?: Tone
   title?: ReactNode
   subtitle?: ReactNode
   /** Acciones a la derecha del título (además de cerrar). */
@@ -62,6 +68,8 @@ export function Modal({
   onClose,
   size = 'md',
   kicker,
+  icon,
+  tone = 'brand',
   title,
   subtitle,
   headerActions,
@@ -91,7 +99,7 @@ export function Modal({
 
   return createPortal(
     <div
-      className={cx('fixed inset-0 z-180 grid place-items-center overscroll-contain bg-background/78 p-2 sm:p-4', size === 'sheet' && 'max-sm:place-items-end max-sm:p-0')}
+      className={cx('fixed inset-0 z-180 grid place-items-center overscroll-contain bg-background/80 p-2 sm:p-4', size === 'sheet' && 'max-sm:place-items-end max-sm:p-0')}
       onClick={dismissible ? onClose : undefined}
     >
       <div
@@ -100,7 +108,7 @@ export function Modal({
         aria-labelledby={hasHeader && title ? titleId : undefined}
         aria-label={hasHeader && title ? undefined : ariaLabel}
         className={cx(
-          'relative flex max-h-[calc(100dvh-1rem)] min-h-0 flex-col overflow-hidden p-0 shadow-[0_32px_80px_rgba(0,0,0,0.48)] motion-reduce:animate-none',
+          'relative flex max-h-[calc(100dvh-1rem)] min-h-0 flex-col overflow-hidden p-0 motion-reduce:animate-none',
           size === 'sheet' ? 'max-sm:animate-sheet-up sm:animate-dialog-enter' : 'animate-dialog-enter',
           'sm:max-h-[calc(100dvh-2rem)]',
           surface.panel,
@@ -109,17 +117,20 @@ export function Modal({
         onClick={(event) => event.stopPropagation()}
       >
         {hasHeader ? (
-          <header className="flex items-start justify-between gap-3 border-b border-border px-4 pb-[0.8rem] pt-[0.9rem] min-[1101px]:px-[1.4rem] min-[1101px]:pb-[0.9rem] min-[1101px]:pt-[1.1rem]">
-            <div className="grid min-w-0 gap-[0.2rem]">
-              {kicker ? <p className="m-0 text-[0.68rem] uppercase tracking-widest text-accent">{kicker}</p> : null}
-              {title ? (
-                <h3 id={titleId} className="m-0 text-[1.15rem] leading-[1.15] text-foreground [overflow-wrap:anywhere]">
-                  {title}
-                </h3>
-              ) : null}
-              {subtitle ? <p className="m-0 text-[0.8rem] leading-[1.3] text-muted">{subtitle}</p> : null}
+          <header className="flex items-start justify-between gap-3 border-b border-border-subtle px-4 py-3.5 min-[1101px]:px-6 min-[1101px]:py-4">
+            <div className="flex min-w-0 items-start gap-3">
+              {icon ? <Icon name={icon} size={22} className={cx('mt-0.5 shrink-0', TONE[tone].text)} /> : null}
+              <div className="grid min-w-0 gap-0.5">
+                {kicker ? <p className={cx('m-0', overline)}>{kicker}</p> : null}
+                {title ? (
+                  <h3 id={titleId} className="m-0 text-lead font-semibold tracking-[-0.01em] text-foreground [overflow-wrap:anywhere] min-[1101px]:text-lead">
+                    {title}
+                  </h3>
+                ) : null}
+                {subtitle ? <p className="m-0 text-body text-muted">{subtitle}</p> : null}
+              </div>
             </div>
-            <div className="flex flex-none items-center gap-[0.4rem]">
+            <div className="flex flex-none items-center gap-1">
               {headerActions}
               {dismissible ? <CloseButton size="sm" aria-label="Cerrar" onClick={onClose} /> : null}
             </div>
@@ -131,18 +142,18 @@ export function Modal({
             aria-label="Cerrar"
             className={cx(
               'absolute z-10',
-              closeClassName ?? 'right-[0.9rem] top-[0.9rem] min-[1101px]:right-[1.3rem] min-[1101px]:top-[1.1rem]',
+              closeClassName ?? 'right-3 top-3 min-[1101px]:right-4 min-[1101px]:top-4',
             )}
             onClick={onClose}
           />
         ) : null}
 
-        <div className={cx('min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain', !flush && 'p-4 min-[1101px]:px-[1.4rem] min-[1101px]:py-5')}>
+        <div className={cx('min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain', !flush && 'p-4 min-[1101px]:px-6 min-[1101px]:py-5')}>
           {children}
         </div>
 
         {footer ? (
-          <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-4 py-3 min-[1101px]:px-[1.4rem] min-[1101px]:py-[0.85rem]">
+          <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-border-subtle px-4 py-3 min-[1101px]:px-6">
             {footer}
           </footer>
         ) : null}

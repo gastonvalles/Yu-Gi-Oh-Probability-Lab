@@ -18,10 +18,16 @@ import type { CardSearchActions, CardSearchViewState } from '../search/search-ty
 import type { DeckCopyActions } from '../card-detail/DeckCopyControls'
 import { StepHero } from '../StepHero'
 import { Button } from '../ui/Button'
+import { Callout } from '../ui/Callout'
+import { Icon } from '../ui/Icon'
+import { IconButton } from '../ui/IconButton'
+import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
+import { ProgressRing } from '../ui/ProgressRing'
+import { overline } from '../ui/typography'
 import { DeckBuilderClassicPreview } from './DeckBuilderClassicPreview'
 import { DeckImportDrawer } from './DeckImportDrawer'
-import { fieldMeta, surface } from '../ui/surfaces'
+import { LabeledField, fieldInline } from '../ui/LabeledField'
 
 
 interface DeckBuilderStepProps {
@@ -220,7 +226,7 @@ export function DeckBuilderStep({
   if (isDesktopDeckBuilder) {
     return (
       <section id="step1" className="h-full max-h-full min-h-0 overflow-hidden">
-        <div className="grid h-full max-h-full min-h-0 grid-cols-[minmax(250px,24%)_minmax(0,1fr)_minmax(360px,30%)] items-stretch overflow-hidden bg-linear-to-b from-background to-secondary">
+        <div className="grid h-full max-h-full min-h-0 grid-cols-[minmax(260px,24%)_minmax(0,1fr)_minmax(360px,30%)] items-stretch overflow-hidden">
           <DeckBuilderClassicPreview
             card={previewCard}
             source={selectedDetailSource}
@@ -234,11 +240,9 @@ export function DeckBuilderStep({
 
           <article
             className={cx(
-              'relative h-full max-h-full min-h-0 min-w-0 overflow-hidden bg-linear-to-b from-secondary/98 to-background/99',
-              builderRootDropState === 'valid' &&
-                'shadow-[inset_0_0_0_1px_rgb(var(--primary-rgb)/0.14),0_0_0_1px_rgb(var(--primary-rgb)/0.08)]',
-              builderRootDropState === 'invalid' &&
-                'shadow-[inset_0_0_0_1px_rgb(var(--destructive-rgb)/0.16),0_0_0_1px_rgb(var(--destructive-rgb)/0.08)]',
+              'relative h-full max-h-full min-h-0 min-w-0 overflow-hidden',
+              builderRootDropState === 'valid' && 'shadow-[inset_0_0_0_2px_rgb(var(--primary-rgb)/0.35)]',
+              builderRootDropState === 'invalid' && 'shadow-[inset_0_0_0_2px_rgb(var(--destructive-rgb)/0.35)]',
             )}
             data-deck-builder-root="true"
             data-deck-builder-root-drop-state={builderRootDropState}
@@ -253,23 +257,21 @@ export function DeckBuilderStep({
               />
             ) : null}
 
-            <div className="relative z-1 grid h-full min-h-0 content-start gap-[0.62rem] overflow-y-auto overflow-x-hidden px-[2.45rem] pb-[0.95rem] pt-[0.55rem] [scrollbar-gutter:stable] [scrollbar-width:thin] max-[1500px]:px-[1.7rem]">
-              <div className="flex flex-wrap items-center justify-between gap-[0.8rem]">
-                <div className="flex min-w-0 flex-[1_1_20rem] items-center gap-[0.8rem]">
-                  <input
-                    type="text"
-                    value={deckBuilder.deckName}
-                    onChange={(event) => onDeckNameChange(event.target.value)}
-                    placeholder="Nombre del deck"
-                    className={`${fieldMeta} min-w-0 flex-[1_1_auto] px-[0.8rem] py-[0.52rem] text-[0.92rem] font-semibold`}
-                  />
+            <div className="relative z-1 grid h-full min-h-0 content-start gap-4 overflow-y-auto overflow-x-hidden px-8 pb-6 pt-4 [scrollbar-gutter:stable] [scrollbar-width:thin] max-[1500px]:px-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex min-w-0 flex-[1_1_16rem] items-stretch gap-3">
+                  <LabeledField label="Nombre del deck" className="min-w-0 flex-[1_1_auto]">
+                    <input
+                      type="text"
+                      value={deckBuilder.deckName}
+                      onChange={(event) => onDeckNameChange(event.target.value)}
+                      placeholder="Nombre del deck"
+                      className={fieldInline}
+                    />
+                  </LabeledField>
 
-                  <label className="inline-flex min-w-0 flex-none items-center gap-[0.45rem] whitespace-nowrap text-[0.88rem] font-bold text-foreground">
-                    <select
-                      value={deckFormat}
-                      onChange={(event) => onDeckFormatChange(event.target.value as DeckFormat)}
-                      className={`${fieldMeta} w-[9.25rem] py-[0.52rem] pl-3 pr-8 text-left text-[0.88rem] font-bold`}
-                    >
+                  <LabeledField label="Formato" className="w-[9.5rem] flex-none">
+                    <select value={deckFormat} onChange={(event) => onDeckFormatChange(event.target.value as DeckFormat)} className={cx(fieldInline, 'cursor-pointer')}>
                       <option value="unlimited">Sin límite</option>
                       <option value="tcg">TCG</option>
                       <option value="ocg">OCG</option>
@@ -277,27 +279,24 @@ export function DeckBuilderStep({
                       <option value="edison">Edison</option>
                       <option value="genesys">Genesys</option>
                     </select>
-                  </label>
+                  </LabeledField>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
+                  <Button variant="secondary" size="md" icon="upload" className="whitespace-nowrap" onClick={() => setImportDrawerOpen(true)}>
+                    Import deck
+                  </Button>
+
+                  <IconButton
+                    size="lg"
+                    className="size-10"
+                    aria-label="Vaciar todo"
+                    title="Vaciar todo"
                     onClick={handleRequestClearAllDeckZones}
                     disabled={totalDeckCardCount === 0}
                   >
-                    Vaciar todo
-                  </Button>
-
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="whitespace-nowrap"
-                    onClick={() => setImportDrawerOpen(true)}
-                  >
-                    Import deck
-                  </Button>
+                    <Icon name="trash" />
+                  </IconButton>
                 </div>
               </div>
 
@@ -356,7 +355,7 @@ export function DeckBuilderStep({
             </div>
           </article>
 
-          <aside className="min-h-0 overflow-hidden border-l border-border/94 bg-linear-to-b from-card-background/96 to-background/98 p-0 min-[1101px]:flex min-[1101px]:h-full min-[1101px]:max-h-full min-[1101px]:flex-col">
+          <aside className="min-h-0 overflow-hidden border-l border-border-subtle bg-card-background/50 p-0 min-[1101px]:flex min-[1101px]:h-full min-[1101px]:max-h-full min-[1101px]:flex-col">
             <DesktopSearchPanel
               search={search}
               actions={searchActions}
@@ -389,7 +388,7 @@ export function DeckBuilderStep({
           cancelLabel="Cancelar"
           confirmLabel="Sí, vaciar"
           confirmVariant="primary"
-          confirmColor="destructive"
+          confirmColor="danger"
           onCancel={() => setPendingClearZone(null)}
           onConfirm={handleConfirmClearDeckZone}
         />
@@ -398,47 +397,43 @@ export function DeckBuilderStep({
   }
 
   return (
-    <section
-      id="step1"
-      className={`${surface.stepShell} grid w-full gap-3 px-4 pt-3 min-[1101px]:p-2.5`}
-    >
+    <section id="step1" className="grid w-full gap-4 px-gutter pb-6 pt-4">
       <StepHero
         title="Armá tu deck"
+        icon="cards"
         help="Agregá cartas desde el buscador. Tocá una carta del deck para ver el detalle y sumar o quitar copias; para moverla entre Main, Extra y Side, mantenela presionada y arrastrala."
         sideVariant="form"
         side={
           <>
-            <input
-              aria-label="Nombre del deck"
-              type="text"
-              value={deckBuilder.deckName}
-              onChange={(event) => onDeckNameChange(event.target.value)}
-              placeholder="Nombre del deck"
-              className={`${fieldMeta} w-full px-2 py-[0.55rem] text-[0.88rem] font-semibold`}
-            />
-            <select
-              aria-label="Formato del deck"
-              value={deckFormat}
-              onChange={(event) => onDeckFormatChange(event.target.value as DeckFormat)}
-              className={`${fieldMeta} text-left w-full px-2 py-[0.55rem] text-[0.88rem] font-semibold`}
-            >
-              <option value="unlimited">Sin límite</option>
-              <option value="tcg">TCG</option>
-              <option value="ocg">OCG</option>
-              <option value="goat">GOAT</option>
-              <option value="edison">Edison</option>
-              <option value="genesys">Genesys</option>
-            </select>
-            <Button variant="secondary" size="sm" fullWidth onClick={() => setImportDrawerOpen(true)}>
+            <LabeledField label="Nombre del deck">
+              <input
+                aria-label="Nombre del deck"
+                type="text"
+                value={deckBuilder.deckName}
+                onChange={(event) => onDeckNameChange(event.target.value)}
+                placeholder="Nombre del deck"
+                className={fieldInline}
+              />
+            </LabeledField>
+            <LabeledField label="Formato">
+              <select
+                aria-label="Formato del deck"
+                value={deckFormat}
+                onChange={(event) => onDeckFormatChange(event.target.value as DeckFormat)}
+                className={cx(fieldInline, 'cursor-pointer')}
+              >
+                <option value="unlimited">Sin límite</option>
+                <option value="tcg">TCG</option>
+                <option value="ocg">OCG</option>
+                <option value="goat">GOAT</option>
+                <option value="edison">Edison</option>
+                <option value="genesys">Genesys</option>
+              </select>
+            </LabeledField>
+            <Button variant="secondary" size="md" fullWidth icon="upload" onClick={() => setImportDrawerOpen(true)}>
               Importar
             </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              fullWidth
-              onClick={handleRequestClearAllDeckZones}
-              disabled={totalDeckCardCount === 0}
-            >
+            <Button variant="secondary" size="md" fullWidth icon="trash" onClick={handleRequestClearAllDeckZones} disabled={totalDeckCardCount === 0}>
               Vaciar todo
             </Button>
           </>
@@ -446,51 +441,43 @@ export function DeckBuilderStep({
       />
 
       {showGenesysPoints ? (
-        <div className="grid gap-2 min-[1101px]:hidden">
-          <div className={[genesysPointTotal > genesysPointCap ? `${surface.cardWarning}` : `${surface.card}`, 'grid gap-1.5 px-2 py-2'].join(' ')}>
-            <span className="text-soft text-[0.68rem] uppercase tracking-widest">Puntos Genesys</span>
-            <strong className="text-[0.92rem] leading-none text-(--text-main)">
+        <Card padding="sm" tone={genesysPointTotal > genesysPointCap ? 'warning' : undefined} className="flex items-center gap-4 min-[1101px]:hidden">
+          <ProgressRing
+            value={genesysPointTotal / genesysPointCap}
+            tone={genesysPointTotal > genesysPointCap ? 'warning' : 'brand'}
+            size={60}
+            strokeWidth={6}
+            label={`Puntos Genesys: ${formatInteger(genesysPointTotal)} de ${formatInteger(genesysPointCap)}`}
+          >
+            {formatInteger(genesysPointTotal)}
+          </ProgressRing>
+          <div className="grid gap-0.5">
+            <span className={overline}>Puntos Genesys</span>
+            <strong className="text-body font-semibold text-foreground tabular-nums">
               {formatInteger(genesysPointTotal)} / {formatInteger(genesysPointCap)} pts
             </strong>
-            <p className="m-0 text-[0.72rem] leading-[1.18] text-(--text-muted)">
-              Cap estándar de 100 puntos y hasta 3 copias por carta.
-            </p>
+            <p className="m-0 text-micro text-muted">Cap estándar de 100 puntos y hasta 3 copias por carta.</p>
           </div>
-        </div>
+        </Card>
       ) : null}
 
       {showFormatIssues ? (
-        <div className="grid gap-2 min-[1101px]:hidden">
-          <div className={`${surface.cardWarning} grid gap-1.5 px-2 py-2`}>
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-soft text-[0.68rem] uppercase tracking-widest">
-                Regla pendiente
-              </span>
-              <span className="inline-flex size-[0.65rem] rounded-full bg-warning shadow-[0_0_0_1px_rgb(var(--warning-rgb)/0.24),0_0_18px_rgb(var(--warning-rgb)/0.22)]" />
-            </div>
-            <strong className="text-[0.92rem] leading-none text-(--text-main)">
-              {formatIssues.length} ajuste{formatIssues.length === 1 ? '' : 's'} para {formatLabel}
-            </strong>
-            <div className="grid gap-1">
-              {visibleFormatIssues.map((issue) => (
-                <p key={issue} className="m-0 text-[0.74rem] leading-[1.18] text-(--text-muted)">
-                  {issue}
-                </p>
-              ))}
-              {hasHiddenIssues ? (
-                <p className="text-soft m-0 text-[0.72rem]">+ {formatIssues.length - visibleFormatIssues.length} más</p>
-              ) : null}
-            </div>
-          </div>
-        </div>
+        <Callout tone="warning" title={`${formatIssues.length} ajuste${formatIssues.length === 1 ? '' : 's'} para ${formatLabel}`} className="min-[1101px]:hidden">
+          <ul className="m-0 grid list-none gap-1 p-0">
+            {visibleFormatIssues.map((issue) => (
+              <li key={issue}>{issue}</li>
+            ))}
+            {hasHiddenIssues ? <li className="text-soft">+ {formatIssues.length - visibleFormatIssues.length} más</li> : null}
+          </ul>
+        </Callout>
       ) : null}
 
       <div className="grid items-start gap-3">
-        <article className={`${surface.panelSoft} self-start w-full min-h-0 p-2.5`}>
-          <div className="grid gap-2.5">
+        <article className="w-full min-h-0 self-start">
+          <div className="grid gap-4">
             <div className="sticky top-2 z-20 min-[1101px]:hidden">
-              <Button variant="primary" size="lg" fullWidth onClick={() => setMobileSearchOpen(true)}>
-                + Buscar y agregar cartas
+              <Button variant="primary" size="lg" fullWidth icon="plus" onClick={() => setMobileSearchOpen(true)}>
+                Buscar y agregar cartas
               </Button>
             </div>
 
@@ -553,7 +540,7 @@ export function DeckBuilderStep({
         cancelLabel="Cancelar"
         confirmLabel="Sí, vaciar"
         confirmVariant="primary"
-        confirmColor="destructive"
+        confirmColor="danger"
         onCancel={() => setPendingClearZone(null)}
         onConfirm={handleConfirmClearDeckZone}
       />

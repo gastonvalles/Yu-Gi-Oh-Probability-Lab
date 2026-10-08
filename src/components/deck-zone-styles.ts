@@ -31,7 +31,7 @@ export const DECK_CARD_CLASSIC = [
   MARCHING_ANTS,
   'cursor-pointer outline-2 -outline-offset-2 outline-dashed outline-foreground/0 transition-[outline-color] duration-150 hover:z-1 hover:outline-foreground/75',
   'data-[selected=true]:shadow-[inset_0_0_0_1.5px_rgb(var(--primary-rgb)/0.56)] data-[selected=true]:hover:outline-primary/85',
-  'data-[dragging=true]:bg-foreground/6 data-[dragging=true]:outline-foreground/75',
+  'data-[dragging=true]:bg-tint/6 data-[dragging=true]:outline-foreground/75',
   'data-[dragging=true]:[&_[data-card-art]]:opacity-0 data-[dragging=true]:[&_[data-card-limit]]:opacity-0',
 ].join(' ')
 
@@ -48,7 +48,7 @@ export const ZONE_TYPE_SWATCH: Record<string, string> = {
 
 /** Superficie de una zona en la vista mobile (grilla de cartas con el color de la zona). */
 export const ZONE_SURFACE_MOBILE =
-  'relative grid w-full grid-cols-5 content-start gap-[0.32rem] rounded-panel border border-(--zone-border) p-[0.35rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] transition-[border-color,background,box-shadow] duration-150 [background:linear-gradient(180deg,var(--zone-background),rgb(var(--background-rgb)/0.88)),linear-gradient(180deg,rgb(var(--secondary-rgb)/0.94),rgb(var(--background-rgb)/0.98))] min-[520px]:grid-cols-8 min-[980px]:grid-cols-10'
+  'relative grid w-full grid-cols-5 content-start gap-1.5 rounded-card border border-(--zone-border) p-2 transition-[border-color,box-shadow] duration-150 [background:linear-gradient(180deg,var(--zone-background),transparent),rgb(var(--card-background-rgb)/0.6)] min-[520px]:grid-cols-8 min-[980px]:grid-cols-10'
 
 /** Filas de cartas del Main en el builder clásico. */
 export const MAIN_ROW_GRID =

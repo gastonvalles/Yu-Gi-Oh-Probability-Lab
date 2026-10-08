@@ -8,6 +8,7 @@ import { CardDetailModal } from '../card-detail/CardDetailModal'
 import { DeckBuilderStep } from './DeckBuilderStep'
 import { cx } from '../ui/cx'
 import { DraggableFab } from '../ui/DraggableFab'
+import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
 import { DeckModeDragOverlay } from './DeckModeDragOverlay'
 import {
@@ -220,16 +221,14 @@ export function DeckModeScreen() {
     </div>
   ) : (
     <section
-      className={[
-        'grid content-start gap-3 min-[1101px]:p-4',
-        isCategorizationStep
-          ? 'h-full min-h-0'
-          : 'min-h-full min-[1101px]:h-full min-[1101px]:min-h-0',
-      ].join(' ')}
+      className={cx(
+        'grid content-start',
+        isCategorizationStep ? 'h-full min-h-0' : 'min-h-full min-[1101px]:h-full min-[1101px]:min-h-0',
+      )}
     >
       {activeStep === 'categorization' ? (
         <div id="categorization" className="h-full min-h-0 min-w-0">
-          <LazyDeckRolesPanel {...controller.roles} />
+          <LazyDeckRolesPanel {...controller.roles} onOpenLab={() => handleStepChange('probability-lab')} />
         </div>
       ) : null}
 
@@ -355,11 +354,7 @@ function PracticeFab({
   return (
     <>
       <DraggableFab label="Abrir práctica" storageKey="ygo-lab:practice-fab" onClick={onOpen}>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <rect x="8.5" y="2" width="7" height="11" rx="1.2" />
-          <rect x="2.5" y="4" width="7" height="11" rx="1.2" transform="rotate(-12 6 9.5)" />
-          <rect x="14.5" y="4" width="7" height="11" rx="1.2" transform="rotate(12 18 9.5)" />
-        </svg>
+        <Icon name="hand" size={24} strokeWidth={1.8} />
       </DraggableFab>
 
       <Modal

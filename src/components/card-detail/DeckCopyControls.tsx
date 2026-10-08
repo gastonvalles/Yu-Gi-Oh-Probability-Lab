@@ -12,16 +12,16 @@ export interface DeckCopyActions {
 export function DeckCopyControls({ deckCopy }: { deckCopy: DeckCopyActions }) {
   return (
     <div className="grid gap-2">
-      <p className="m-0 text-center text-[0.86rem] text-(--text-muted)" aria-live="polite">
-        <strong className="text-(--text-main)">{deckCopy.copies}</strong>{' '}
+      <p className="m-0 text-center text-body text-muted" aria-live="polite">
+        <strong className="text-foreground">{deckCopy.copies}</strong>{' '}
         {deckCopy.copies === 1 ? 'copia' : 'copias'} en {deckCopy.zoneLabel}
       </p>
       <div className="grid grid-cols-2 gap-2.5">
-        <Button variant="secondary" color="destructive" size="md" fullWidth onClick={deckCopy.onRemoveCopy}>
-          − Quitar una
+        <Button variant="secondary" color="danger" size="sm" fullWidth icon="minus" className="whitespace-nowrap" onClick={deckCopy.onRemoveCopy}>
+          Quitar una
         </Button>
-        <Button variant="primary" size="md" fullWidth disabled={!deckCopy.canAddCopy} onClick={deckCopy.onAddCopy}>
-          + Sumar una
+        <Button variant="primary" size="sm" fullWidth icon="plus" className="whitespace-nowrap" disabled={!deckCopy.canAddCopy} onClick={deckCopy.onAddCopy}>
+          Sumar una
         </Button>
       </div>
     </div>

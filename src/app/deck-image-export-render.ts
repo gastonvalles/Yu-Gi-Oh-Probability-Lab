@@ -10,18 +10,18 @@ const ZONE_TITLES: Record<DeckZone, string> = {
   side: 'Side Deck',
 }
 
+// Misma familia índigo que la app: nada de grises. Cada zona se distingue por su tinte, sin marco.
 const ZONE_BACKGROUNDS: Record<DeckZone, string> = {
-  main: '#1a1228',
-  extra: '#101a2d',
-  side: '#0f221c',
+  main: '#1a1342',
+  extra: '#10204a',
+  side: '#0d2b2e',
 }
 
-const PAGE_BACKGROUND = '#0b0b0f'
-const PAGE_BACKGROUND_END = '#12121a'
-const PANEL_BORDER = '#262635'
-const TEXT_MAIN = '#ededed'
-const TEXT_MUTED = '#b7b7c6'
-const CARD_BACKGROUND = '#12121a'
+const PAGE_BACKGROUND = '#0a0816'
+const PAGE_BACKGROUND_END = '#0f0a26'
+const TEXT_MAIN = '#f1eeff'
+const TEXT_MUTED = '#bfbbd9'
+const CARD_BACKGROUND = '#1b1542'
 // 168px lógicos × 2 ≈ 336px por carta: cerca de la resolución nativa (421px).
 const EXPORT_RESOLUTION_SCALE = 2
 // El badge original estaba pensado para cartas de 96px.
@@ -187,9 +187,6 @@ function drawZonePanel(context: CanvasRenderingContext2D, zoneLayout: ZoneLayout
   context.save()
   context.fillStyle = ZONE_BACKGROUNDS[zone]
   context.fillRect(panel.x, panel.y, panel.width, panel.height)
-  context.strokeStyle = PANEL_BORDER
-  context.lineWidth = 1
-  context.strokeRect(panel.x + 0.5, panel.y + 0.5, panel.width - 1, panel.height - 1)
 
   context.textBaseline = 'alphabetic'
   context.fillStyle = TEXT_MAIN

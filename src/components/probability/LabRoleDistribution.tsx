@@ -1,92 +1,79 @@
 import { DISTRIBUTION_BUCKETS, type RoleDistribution, type RoleDistributionKey } from '../../app/role-distribution'
 import { formatInteger, formatShortPercent } from '../../app/utils'
-import { cx } from '../ui/cx'
+import { SegmentedRing } from '../ui/SegmentedRing'
 import { LabSection } from './LabSection'
-import { LAB_FOOTNOTE } from './lab-styles'
 
-/** Color del rol: lo heredan el nombre y las barras de la fila. */
+/** Color de cada rol (los roles tienen su propia paleta). */
 const ROLE_RGB: Record<RoleDistributionKey, string> = {
-  starter: '[--lab-role-rgb:var(--accent-rgb)]',
-  extender: '[--lab-role-rgb:var(--extender-rgb)]',
-  interaction: '[--lab-role-rgb:var(--handtrap-rgb)]',
-  brick: '[--lab-role-rgb:var(--brick-rgb)]',
+  starter: 'var(--accent-rgb)',
+  extender: 'var(--extender-rgb)',
+  interaction: 'var(--handtrap-rgb)',
+  brick: 'var(--brick-rgb)',
 }
 
-/** Intensidad según cuántas copias se roban (0, 1, 2, 3+). */
-const BUCKET_SEGMENT = [
-  'bg-[rgb(var(--lab-role-rgb)/0.14)] text-muted',
-  'bg-[rgb(var(--lab-role-rgb)/0.4)] text-foreground',
-  'bg-[rgb(var(--lab-role-rgb)/0.65)] text-foreground',
-  'bg-[rgb(var(--lab-role-rgb)/0.9)] text-background',
-]
-const BUCKET_SWATCH = ['opacity-[0.14]', 'opacity-40', 'opacity-65', 'opacity-90']
+/** Intensidad según cuántas copias se roban (0, 1, 2, 3+): cuantas más, más fuerte el color. */
+const BUCKET_OPACITY = [0.22, 0.5, 0.75, 1] as const
 
 interface LabRoleDistributionProps {
   distributions: RoleDistribution[]
   onOpenRole: (key: RoleDistributionKey) => void
 }
 
+/** Qué robás de cada rol: un anillo por rol repartido en 0 / 1 / 2 / 3+ copias; al centro, la chance de robar al menos una. */
 export function LabRoleDistribution({ distributions, onOpenRole }: LabRoleDistributionProps) {
   const starters = distributions.find((distribution) => distribution.key === 'starter')
 
   return (
     <LabSection
       title="Qué robás de cada rol"
+      icon="layers"
       summary={starters ? `${formatShortPercent(starters.atLeastOne)} con 1+ starter` : undefined}
       defaultOpenOnMobile={false}
       className="order-4 min-[1101px]:col-span-full"
     >
-      <div className="flex flex-wrap items-center gap-x-[0.8rem] gap-y-[0.35rem] text-[0.72rem] text-muted" aria-hidden="true">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-micro text-muted" aria-hidden="true">
         <span>Copias robadas:</span>
         {DISTRIBUTION_BUCKETS.map((bucket, index) => (
-          <span key={bucket} className="inline-flex items-center gap-[0.3rem]">
-            <span className={cx('size-[0.7rem] rounded-[0.2rem] bg-foreground/80', BUCKET_SWATCH[index])} />
+          <span key={bucket} className="inline-flex items-center gap-1.5">
+            <span className="size-2.5 rounded-full bg-foreground" style={{ opacity: BUCKET_OPACITY[index] }} />
             {bucket}
           </span>
         ))}
+        <span className="min-[640px]:ml-auto">Al centro: 1 o más</span>
       </div>
 
-      <ul className="m-0 grid list-none gap-[0.35rem] p-0">
-        {distributions.map((distribution) => (
+      <ul className="m-0 grid list-none grid-cols-2 gap-x-2 gap-y-4 p-0 min-[1101px]:grid-cols-4">
+        {distributions.map((distribution, index) => (
           <li key={distribution.key}>
             <button
               type="button"
-              className={cx(
-                'grid w-full grid-cols-[minmax(5.5rem,7.5rem)_minmax(0,1fr)_minmax(3.6rem,auto)] items-center gap-3 rounded-[calc(var(--radius-panel)-0.3rem)] border border-transparent px-2 py-[0.4rem] text-left transition-[background,border-color] duration-150 enabled:hover:border-[rgb(var(--lab-role-rgb)/0.35)] enabled:hover:bg-[rgb(var(--lab-role-rgb)/0.06)] disabled:opacity-50',
-                ROLE_RGB[distribution.key],
-              )}
+              className="group grid w-full justify-items-center gap-2 rounded-card px-2 py-3 text-center transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus enabled:hover:bg-tint/6 disabled:opacity-50"
               disabled={distribution.copies === 0}
               aria-label={`${distribution.label}: ${formatShortPercent(distribution.atLeastOne)} de robar al menos una. Ver cartas`}
               onClick={() => onOpenRole(distribution.key)}
             >
-              <span className="grid min-w-0">
-                <strong className="text-[0.82rem] text-[rgb(var(--lab-role-rgb))]">{distribution.label}</strong>
-                <small className="text-[0.68rem] text-muted">{formatInteger(distribution.copies)} copias</small>
-              </span>
-              <span className="flex h-[1.35rem] overflow-hidden rounded-[0.4rem] bg-foreground/6" aria-hidden="true">
-                {distribution.buckets.map((value, index) => (
-                  <span
-                    key={DISTRIBUTION_BUCKETS[index]}
-                    className={cx(
-                      'grid place-items-center overflow-hidden whitespace-nowrap text-[0.66rem] font-bold tabular-nums transition-[width]',
-                      BUCKET_SEGMENT[index],
-                    )}
-                    style={{ width: `${value * 100}%` }}
-                    title={`${DISTRIBUTION_BUCKETS[index]} copias: ${formatShortPercent(value)}`}
-                  >
-                    {value >= 0.09 ? `${Math.round(value * 100)}%` : ''}
-                  </span>
-                ))}
-              </span>
-              <span className="grid justify-items-end tabular-nums">
-                <strong className="text-[0.9rem] text-foreground">{formatShortPercent(distribution.atLeastOne)}</strong>
-                <small className="text-[0.68rem] text-muted">1 o más</small>
+              <SegmentedRing
+                size={112}
+                strokeWidth={12}
+                delay={index * 120}
+                label={`${distribution.label}: ${DISTRIBUTION_BUCKETS.map((bucket, bucketIndex) => `${bucket} copias ${formatShortPercent(distribution.buckets[bucketIndex] ?? 0)}`).join(', ')}`}
+                segments={distribution.buckets.map((value, bucketIndex) => ({
+                  key: DISTRIBUTION_BUCKETS[bucketIndex] ?? String(bucketIndex),
+                  value,
+                  color: ROLE_RGB[distribution.key],
+                  opacity: BUCKET_OPACITY[bucketIndex],
+                }))}
+              >
+                <strong className="text-lead font-semibold text-foreground tabular-nums">{Math.round(distribution.atLeastOne * 100)}%</strong>
+              </SegmentedRing>
+              <span className="grid gap-0.5">
+                <strong className="text-body font-semibold text-foreground">{distribution.label}</strong>
+                <small className="text-micro text-muted">{formatInteger(distribution.copies)} copias</small>
               </span>
             </button>
           </li>
         ))}
       </ul>
-      <p className={LAB_FOOTNOTE}>Tocá un rol para ver qué cartas lo componen.</p>
     </LabSection>
   )
 }

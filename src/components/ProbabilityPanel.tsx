@@ -6,14 +6,16 @@ import { createPattern } from '../app/pattern-factory'
 import type { RoleDistributionKey } from '../app/role-distribution'
 import { useToastMessage } from '../app/use-toast-message'
 import type { PatternEditorDefaults } from '../app/use-pattern-editor-actions'
-import { formatShortPercent } from '../app/utils'
 import type { ApiCardReference, CardEntry, CardOrigin, CardRole, HandPattern, TurnView } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 import { CardDetailModal } from './card-detail/CardDetailModal'
 import { KpiDetailModal } from './comparison/KpiDetailModal'
 import type { KpiRole } from './comparison/kpi-detail-helpers'
-import { DeckModelStatusBadge } from './DeckModelStatusBadge'
 import { StepHero } from './StepHero'
+import { Button } from './ui/Button'
+import { Callout } from './ui/Callout'
+import { EmptyState } from './ui/EmptyState'
+import { StepPage } from './ui/StepPage'
 import { ConfirmDialog } from './probability/ConfirmDialog'
 import { LabDisclaimerDialog, useLabDisclaimer } from './probability/LabDisclaimerDialog'
 import { LabFailureBreakdown } from './probability/LabFailureBreakdown'
@@ -223,17 +225,16 @@ export function ProbabilityPanel({
   }
 
   return (
-    <article className={`${surface.stepShell} grid h-full min-h-0 content-start gap-3 px-4 pt-3 min-[1101px]:p-3`}>
+    <StepPage as="article">
       <StepHero
         title="Qué tan bien abre tu deck"
-        help="Cálculo exacto de todas las manos posibles, yendo primero (5 cartas) y segundo (6), con las reglas de abajo: una mano es limpia si cumple alguna salida y ningún problema."
-        side={<DeckModelStatusBadge modelStatus={lab.modelStatus} variant="compact" />}
+        icon="flask"
       />
 
       {lab.readiness.status === 'empty-deck' ? (
-        <LabNotice kicker="Antes de medir" title="Cargá el Main Deck primero">
+        <EmptyState icon="cards" title="Cargá el Main Deck primero">
           Cuando tengas cartas en el Main Deck vas a ver el % de manos jugables y por qué fallan.
-        </LabNotice>
+        </EmptyState>
       ) : lab.readiness.status === 'needs-classification' || isClassifyingPending ? (
         <LabPendingClassification
           cards={derivedMainCards}
@@ -244,28 +245,24 @@ export function ProbabilityPanel({
           onEditingChange={setIsClassifyingPending}
         />
       ) : lab.computation?.status === 'blocked' ? (
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           {lab.computation.issues.map((issue) => (
-            <p key={issue.message} className={`${surface.cardDanger} m-0 px-3 py-2 text-[0.8rem] text-destructive`}>
+            <Callout key={issue.message} tone="danger">
               {issue.message}
-            </p>
+            </Callout>
           ))}
         </div>
       ) : results && currentResult ? (
-        <div className="grid min-w-0 gap-3 min-[1101px]:grid-cols-2 min-[1101px]:items-stretch min-[1101px]:gap-[0.9rem]">
+        <div className="grid min-w-0 gap-4 min-[1101px]:grid-cols-12 min-[1101px]:items-stretch min-[1101px]:gap-5">
           <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 min-[1101px]:col-span-full">
             <TurnViewToggle
               activeView={activeTurnView}
               onChange={setActiveTurnView}
-              details={{
-                first: `5 cartas · ${formatShortPercent(results.first.cleanProbability)}`,
-                second: `6 cartas · ${formatShortPercent(results.second.cleanProbability)}`,
-                average: `50/50 · ${formatShortPercent(results.average.cleanProbability)}`,
-              }}
+              details={{ first: '5 cartas', second: '6 cartas', average: '50/50' }}
             />
-            <button type="button" className="text-[0.78rem] text-muted underline underline-offset-[3px] hover:text-foreground" onClick={disclaimer.open}>
+            <Button variant="tertiary" size="sm" icon="info" onClick={disclaimer.open}>
               ¿Cómo leer estos %?
-            </button>
+            </Button>
           </div>
 
           {/* Desktop: resultado y reparto lado a lado (misma altura); roles y reglas a lo ancho. */}
@@ -343,17 +340,7 @@ export function ProbabilityPanel({
         onAddToZone={() => false}
         onClose={() => setKpiDetailCard(null)}
       />
-    </article>
-  )
-}
-
-function LabNotice({ kicker, title, children }: { kicker: string; title: string; children: React.ReactNode }) {
-  return (
-    <section className={`${surface.panelStrong} grid gap-1 px-4 py-4`}>
-      <p className="text-accent m-0 text-[0.68rem] uppercase tracking-widest">{kicker}</p>
-      <h3 className="m-0 text-[1rem] leading-tight text-(--text-main)">{title}</h3>
-      <p className="text-muted m-0 text-[0.82rem] leading-[1.3]">{children}</p>
-    </section>
+    </StepPage>
   )
 }
 
@@ -362,10 +349,10 @@ function LabSkeleton() {
   const block = `${surface.card} animate-pulse motion-reduce:animate-none`
 
   return (
-    <div className="grid min-w-0 gap-3 min-[1101px]:grid-cols-2" role="status" aria-busy="true" aria-label="Calculando las manos del deck">
+    <div className="grid min-w-0 gap-4 min-[1101px]:grid-cols-12 min-[1101px]:gap-5" role="status" aria-busy="true" aria-label="Calculando las manos del deck">
       <div className={`${block} h-11 min-[1101px]:col-span-full`} />
-      <div className={`${block} h-[17rem]`} />
-      <div className={`${block} h-[5.5rem] min-[1101px]:h-[17rem]`} />
+      <div className={`${block} h-[17rem] min-[1101px]:col-span-5`} />
+      <div className={`${block} h-[5.5rem] min-[1101px]:col-span-7 min-[1101px]:h-[17rem]`} />
       <div className={`${block} h-[8rem] min-[1101px]:col-span-full`} />
     </div>
   )

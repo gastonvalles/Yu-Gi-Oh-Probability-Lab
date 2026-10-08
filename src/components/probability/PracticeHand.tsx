@@ -31,7 +31,7 @@ const DRAG_THRESHOLD = 6
 
 /** Carta de la mano: el estado (arrastre, brillo, atenuada) llega por data-attributes. */
 const HAND_CARD = [
-  'absolute left-0 top-0 cursor-grab touch-none select-none overflow-hidden rounded-[0.3rem] outline-none will-change-transform min-[820px]:rounded-[0.4rem]',
+  'absolute left-0 top-0 cursor-grab touch-none select-none overflow-hidden rounded-tag outline-none will-change-transform min-[820px]:rounded-tag',
   '[-webkit-touch-callout:none] [-webkit-user-select:none]',
   'shadow-[0_8px_18px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]',
   '[transition:transform_var(--motion-duration)_cubic-bezier(0.2,0.8,0.2,1),filter_var(--motion-duration)_ease,box-shadow_var(--motion-duration)_ease]',

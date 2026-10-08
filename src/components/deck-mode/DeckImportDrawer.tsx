@@ -31,11 +31,18 @@ import { formatInteger } from '../../app/utils'
 import type { DeckFormat } from '../../types'
 import { loadCardCatalog } from '../../ygoprodeck'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
+import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
+import { Callout } from '../ui/Callout'
 import { CopiesBadge } from '../ui/CopiesBadge'
+import { cx } from '../ui/cx'
+import { Icon } from '../ui/Icon'
 import { CloseButton } from '../ui/IconButton'
+import { ProgressRing } from '../ui/ProgressRing'
 import { Skeleton } from '../ui/Skeleton'
-import { chip, field, surface } from '../ui/surfaces'
+import { chip, field } from '../ui/surfaces'
+import { TONE } from '../ui/tone'
+import { overline } from '../ui/typography'
 
 interface DeckImportDrawerProps {
   deckBuilder: DeckBuilderState
@@ -80,15 +87,10 @@ function CollapsibleSection({
     return null
   }
 
-  const containerClassName =
-    tone === 'danger'
-      ? `${surface.cardDanger}`
-      : tone === 'warning'
-        ? `${surface.cardWarning}`
-        : `${surface.card}`
+  const accent = tone === 'danger' ? TONE.danger.text : tone === 'warning' ? TONE.warning.text : ''
 
   return (
-    <article className={`${containerClassName} grid gap-0 px-3 py-3`} role={role} aria-label={ariaLabel}>
+    <article className="grid gap-0 border-t border-border-subtle pt-3" role={role} aria-label={ariaLabel}>
       <button
         type="button"
         className="flex w-full items-center justify-between gap-2 text-left"
@@ -96,21 +98,19 @@ function CollapsibleSection({
       >
         <div className="grid gap-0.5 min-w-0">
           <div className="flex items-center gap-2">
-            <small className="text-muted text-[0.68rem] uppercase tracking-widest">{title}</small>
-            <span className={`${chip.base} px-1.5 py-0.5 text-[0.62rem] font-medium`}>{count}</span>
+            <small className={cx(overline, accent)}>{title}</small>
+            <Badge tone="brand" size="sm">{count}</Badge>
           </div>
           {!isExpanded ? (
-            <p className="m-0 text-[0.72rem] leading-[1.16] text-(--text-muted) truncate">{subtitle}</p>
+            <p className="m-0 text-micro text-muted truncate">{subtitle}</p>
           ) : null}
         </div>
-        <span className="text-[0.7rem] text-(--text-muted) shrink-0">
-          {isExpanded ? '▲' : '▼'}
-        </span>
+        <Icon name="chevron-down" size={16} className={cx('shrink-0 text-soft transition-transform duration-150', isExpanded && 'rotate-180')} />
       </button>
 
       {isExpanded ? (
         <div className="grid gap-1.5 pt-2.5">
-          <p className="m-0 text-[0.76rem] leading-[1.16] text-(--text-muted)">{subtitle}</p>
+          <p className="m-0 text-micro text-muted">{subtitle}</p>
           <div className="grid gap-1.5">{children}</div>
         </div>
       ) : null}
@@ -131,7 +131,7 @@ function ZoneGroupSection({ entries }: { entries: ResolvedImportedDeckEntry[] })
     <div className="grid gap-2">
       {groups.map((group) => (
         <div key={group.zone} className="grid gap-1.5">
-          <h5 className="m-0 text-[0.76rem] font-semibold text-(--text-main)">
+          <h5 className="m-0 text-micro font-semibold text-foreground">
             {formatZoneGroupHeader(group.zone, group.totalCards)}
           </h5>
           <div className="grid gap-1.5">
@@ -165,14 +165,7 @@ function ProblemSummaryBar({ preview }: { preview: DeckImportPreview }) {
     items.push(`${summary.invalidLineCount} línea${summary.invalidLineCount === 1 ? '' : 's'} inválida${summary.invalidLineCount === 1 ? '' : 's'}`)
   }
 
-  return (
-    <div className={`${surface.cardWarning} flex items-center gap-2 px-3 py-2 text-[0.74rem]`}>
-      <span className="text-[0.82rem]">⚠</span>
-      <span className="text-(--text-main)">
-        {items.join(' · ')}
-      </span>
-    </div>
-  )
+  return <Callout tone="warning">{items.join(' · ')}</Callout>
 }
 
 // --- Task 4.1: Refactored DeckImportDrawer ---
@@ -462,7 +455,7 @@ export function DeckImportDrawer({
         <button
           type="button"
           aria-label="Cerrar importador"
-          className="absolute inset-0 h-full w-full bg-[rgb(var(--background-rgb)/0.7)]"
+          className="absolute inset-0 h-full w-full bg-background/80"
           onClick={handleClose}
         />
 
@@ -470,41 +463,28 @@ export function DeckImportDrawer({
           ref={asideRef}
           role="dialog"
           aria-label="Importador de deck"
-          className={[
-            `${surface.panel} absolute right-0 top-0 grid h-full w-full max-w-136 grid-rows-[auto_minmax(0,1fr)] gap-0 border-l border-(--border-subtle) p-0 shadow-[-28px_0_54px_rgba(0,0,0,0.38)]`,
-          ].join(' ')}
-          style={{ background: 'var(--card-background)' }}
+          className="absolute right-0 top-0 grid h-full w-full max-w-136 grid-rows-[auto_minmax(0,1fr)] gap-0 border-l border-border-subtle bg-card-background p-0 shadow-overlay"
         >
-          <div className="grid gap-1.5 border-b border-(--border-subtle) px-3 py-2.5">
-            <div className="flex items-start justify-between gap-3">
+          <header className="flex items-start justify-between gap-3 border-b border-border-subtle px-4 py-3.5">
+            <div className="flex min-w-0 items-start gap-3">
+              <Icon name="upload" size={22} className={cx('mt-1 shrink-0', TONE.brand.text)} />
               <div className="min-w-0">
-                <p className="text-accent m-0 text-[0.68rem] uppercase tracking-widest">Importacion de deck</p>
-                <h3 className="m-[0.18rem_0_0] text-[1.05rem] leading-none text-(--text-main)">
-                  Subí un archivo o pegá texto
-                </h3>
+                <h3 className="m-0 text-lead font-semibold tracking-[-0.01em] text-foreground">Importar deck</h3>
               </div>
-
-              <CloseButton size="sm" aria-label="Cerrar importador" onClick={handleClose} />
             </div>
 
-          </div>
+            <CloseButton size="sm" aria-label="Cerrar importador" onClick={handleClose} />
+          </header>
 
-          <div className="min-h-0 overflow-y-auto px-3 py-3">
-            <div className="grid gap-3">
+          <div className="min-h-0 overflow-y-auto p-4">
+            <div className="grid gap-4">
               {!preview && !isProcessing ? (
                 <>
-                <article className={`${surface.card} grid gap-2.5 px-3 py-3`}>
-                  <div className="grid gap-0.5">
-                    <small className="text-muted text-[0.68rem] uppercase tracking-widest">Archivo</small>
-                    <strong className="text-[0.96rem] text-(--text-main)">Subí o arrastrá el deck</strong>
-                  </div>
-
+                <article className="grid gap-2.5">
                   <div
                     className={[
-                      'grid gap-3 border border-dashed px-4 py-5 text-center transition-colors',
-                      isDragActive
-                        ? 'border-primary bg-[rgb(var(--primary-rgb)/0.12)]'
-                        : 'border-(--border-subtle) bg-[rgb(var(--background-rgb)/0.4)]',
+                      'grid gap-3 rounded-card border border-dashed px-4 py-6 text-center transition-colors',
+                      isDragActive ? 'border-primary bg-primary/12' : 'border-border',
                     ].join(' ')}
                     onDragEnter={(event) => {
                       event.preventDefault()
@@ -532,24 +512,25 @@ export function DeckImportDrawer({
                             ? `Archivo cargado: ${selectedFileName}`
                             : ''}
                     </span>
-                    <div className="grid gap-1">
-                      <strong className="text-[0.9rem] text-(--text-main)">Arrastrá el archivo acá</strong>
+                    <div className="grid justify-items-center gap-2">
+                      <Icon name="upload" size={28} className="text-primary-soft/70" />
+                      <strong className="text-body font-semibold text-foreground">Arrastrá el archivo acá</strong>
                     </div>
 
                     <div className="flex flex-wrap justify-center gap-2">
-                      <Button variant="primary" size="sm" onClick={handleChooseFileClick} disabled={isProcessing}>
+                      <Button variant="primary" size="md" onClick={handleChooseFileClick} disabled={isProcessing}>
                         {isProcessing ? 'Procesando...' : 'Seleccionar archivo'}
                       </Button>
                     </div>
 
                     <div className="flex flex-wrap justify-center gap-1.5">
-                      <span className={`${chip.base} px-2 py-1 text-[0.7rem]`}>.txt</span>
-                      <span className={`${chip.base} px-2 py-1 text-[0.7rem]`}>.json</span>
-                      <span className={`${chip.base} px-2 py-1 text-[0.7rem]`}>.ydk</span>
+                      <span className={`${chip.base} px-2 py-1 text-micro`}>.txt</span>
+                      <span className={`${chip.base} px-2 py-1 text-micro`}>.json</span>
+                      <span className={`${chip.base} px-2 py-1 text-micro`}>.ydk</span>
                     </div>
 
                     {selectedFileName ? (
-                      <span className={`${chip.accent} justify-self-center px-2 py-1 text-[0.72rem]`}>
+                      <span className={`${chip.accent} justify-self-center px-2 py-1 text-micro`}>
                         Archivo seleccionado: {selectedFileName}
                       </span>
                     ) : null}
@@ -564,22 +545,16 @@ export function DeckImportDrawer({
                   </div>
 
                   {formError ? (
-                    <p className={`${surface.cardDanger} m-0 px-2.5 py-2 text-[0.76rem] leading-[1.16] text-(--text-main)`}>
-                      {formError}
-                    </p>
+                    <Callout tone="danger">{formError}</Callout>
                   ) : null}
                 </article>
 
-                <article className={`${surface.panelSoft} grid gap-2 px-3 py-2.5`}>
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="grid gap-0.5">
-                      <small className="text-muted text-[0.68rem] uppercase tracking-widest">Texto manual</small>
-                      <strong className="text-[0.88rem] text-(--text-main)">Pegar lista</strong>
-                    </div>
-
+                <article className="grid gap-2 border-t border-border-subtle pt-4">
+                  <div className="flex items-center justify-end gap-3">
                     <Button
-                      variant="primary"
+                      variant="secondary"
                       size="sm"
+                      icon="file"
                       onClick={() => setManualFallbackOpen((current) => !current)}
                     >
                       {manualFallbackOpen ? 'Ocultar texto' : 'Pegar texto'}
@@ -596,13 +571,13 @@ export function DeckImportDrawer({
                           setFormError(null)
                         }}
                         placeholder={'3 Ash Blossom & Joyous Spring\n3 Maxx "C"\n2 Called by the Grave\n\nExtra Deck:\n1 S:P Little Knight'}
-                        className={`${field} min-h-52 w-full resize-y px-3 py-2 text-[0.82rem] leading-tight`}
+                        className={`${field} min-h-52 w-full resize-y px-3 py-2 text-body leading-tight`}
                       />
 
                       <div className="flex flex-wrap items-center justify-end gap-2">
                         <div className="flex flex-wrap gap-2">
                           <Button
-                            variant="primary"
+                            variant="tertiary"
                             size="sm"
                             onClick={() => {
                               setInputValue('')
@@ -631,7 +606,7 @@ export function DeckImportDrawer({
               ) : null}
 
               {isProcessing ? (
-                <article className={`${surface.card} grid gap-2.5 px-3 py-3`} aria-hidden="true">
+                <article className="grid gap-2.5" aria-hidden="true">
                     <div className="grid gap-2">
                       <Skeleton className="h-3 w-20" />
                       <Skeleton className="h-5 w-56" />
@@ -651,7 +626,7 @@ export function DeckImportDrawer({
 
                     <div className="grid gap-2">
                       {Array.from({ length: 5 }, (_, index) => (
-                        <div key={index} className={`${surface.panelSoft} grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-2.5 py-2`}>
+                        <div key={index} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 py-2">
                           <Skeleton radius="chip" className="h-5 w-11" />
                           <div className="grid gap-1.5">
                             <Skeleton className="h-3.5 w-[78%]" />
@@ -664,14 +639,14 @@ export function DeckImportDrawer({
                 </article>
               ) : preview ? (
                 <>
-                    <article className={`${surface.card} grid gap-2.5 px-3 py-3`}>
+                    <article className="grid gap-2.5">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <small className="text-muted text-[0.68rem] uppercase tracking-widest">Preview</small>
-                          <h4 className="m-[0.22rem_0_0] text-[0.95rem] leading-none text-(--text-main)">
+                          <small className={overline}>Preview</small>
+                          <h4 className="m-0 mt-0.5 text-lead font-semibold leading-tight text-foreground">
                             {buildPreviewHeadline(preview)}
                           </h4>
-                          <p className="text-muted m-[0.28rem_0_0] text-[0.76rem] leading-[1.16]">
+                          <p className="text-muted m-0 mt-1 text-micro">
                             {buildPreviewDescription(preview)}
                           </p>
                         </div>
@@ -679,8 +654,8 @@ export function DeckImportDrawer({
                       </div>
 
                       <div className="flex flex-wrap gap-1.5">
-                        <span className={`${chip.base} px-2 py-1 text-[0.72rem]`}>{getPreviewSourceBadge(preview)}</span>
-                        <span className={`${chip.accent} px-2 py-1 text-[0.72rem] whitespace-nowrap`}>
+                        <span className={`${chip.base} px-2 py-1 text-micro`}>{getPreviewSourceBadge(preview)}</span>
+                        <span className={`${chip.accent} px-2 py-1 text-micro whitespace-nowrap`}>
                           {formatInteger(preview.importedCardCount)} / {formatInteger(preview.requestedCardCount)} cartas
                         </span>
                       </div>
@@ -706,7 +681,7 @@ export function DeckImportDrawer({
                       <ProblemSummaryBar preview={preview} />
 
                       <div className="flex flex-wrap justify-end gap-2">
-                        <Button variant="primary" size="sm" onClick={handleClose}>
+                        <Button variant="secondary" size="sm" onClick={handleClose}>
                           Cancelar
                         </Button>
                         <Button
@@ -861,12 +836,23 @@ function ZoneTotalCard({
   requested: number
 }) {
   return (
-    <div className={`${surface.panelSoft} grid gap-0.5 px-2.5 py-2`}>
-      <small className="text-muted text-[0.66rem] uppercase tracking-widest">{label}</small>
-      <strong className="text-[0.92rem] leading-none text-(--text-main)">
-        {formatInteger(imported)} / {formatInteger(requested)}
-      </strong>
-      <span className="text-muted text-[0.72rem] leading-none">importadas / pedidas</span>
+    <div className="flex items-center gap-3">
+      <ProgressRing
+        value={requested > 0 ? imported / requested : 0}
+        tone={imported === requested ? 'success' : 'warning'}
+        size={52}
+        strokeWidth={5}
+        label={`${label}: ${formatInteger(imported)} de ${formatInteger(requested)} importadas`}
+      >
+        {formatInteger(imported)}
+      </ProgressRing>
+      <div className="grid gap-0.5">
+        <small className={overline}>{label}</small>
+        <strong className="text-body font-semibold leading-none text-foreground tabular-nums">
+          {formatInteger(imported)} / {formatInteger(requested)}
+        </strong>
+        <span className="text-muted text-micro leading-none">importadas / pedidas</span>
+      </div>
     </div>
   )
 }
@@ -875,10 +861,10 @@ function ResolvedEntryCard({ entry }: { entry: ResolvedImportedDeckEntry }) {
   const isPartial = entry.appliedCount !== entry.count
 
   return (
-    <article className={`${surface.panelSoft} flex items-center justify-between gap-3 px-2.5 py-1.5`}>
-      <strong className="min-w-0 truncate text-[0.8rem] text-(--text-main)">{entry.card.name}</strong>
+    <article className="flex items-center justify-between gap-3 border-b border-border-subtle py-1.5 last:border-b-0">
+      <strong className="min-w-0 truncate text-body text-foreground">{entry.card.name}</strong>
       {isPartial ? (
-        <span className={`${chip.base} shrink-0 px-2 py-0.5 text-[0.7rem]`}>
+        <span className={`${chip.base} shrink-0 px-2 py-0.5 text-micro`}>
           {formatInteger(entry.appliedCount)} / {formatInteger(entry.count)}
         </span>
       ) : (
@@ -895,8 +881,8 @@ function SimpleEntryCard({
   entry: ImportedDeckEntry
 }) {
   return (
-    <article className={`${surface.panelSoft} flex items-center justify-between gap-3 px-2.5 py-1.5`}>
-      <strong className="min-w-0 truncate text-[0.8rem] text-(--text-main)">{entry.name}</strong>
+    <article className="flex items-center justify-between gap-3 border-b border-border-subtle py-1.5 last:border-b-0">
+      <strong className="min-w-0 truncate text-body text-foreground">{entry.name}</strong>
       <CopiesBadge copies={entry.count} />
     </article>
   )
@@ -904,10 +890,10 @@ function SimpleEntryCard({
 
 function ConflictEntryCard({ entry }: { entry: DeckImportConflict }) {
   return (
-    <article className={`${surface.panelSoft} flex items-center justify-between gap-3 px-2.5 py-1.5`}>
+    <article className="flex items-center justify-between gap-3 border-b border-border-subtle py-1.5 last:border-b-0">
       <div className="min-w-0">
-        <strong className="truncate text-[0.8rem] text-(--text-main)">{entry.name}</strong>
-        <p className="text-muted m-0 text-[0.68rem] leading-[1.12]">{entry.reason}</p>
+        <strong className="truncate text-body text-foreground">{entry.name}</strong>
+        <p className="text-muted m-0 text-micro">{entry.reason}</p>
       </div>
       <CopiesBadge copies={entry.count} />
     </article>
@@ -916,13 +902,13 @@ function ConflictEntryCard({ entry }: { entry: DeckImportConflict }) {
 
 function InvalidLineCard({ entry }: { entry: ImportedDeckInvalidLine }) {
   return (
-    <article className={`${surface.panelSoft} grid gap-1 px-2.5 py-2`}>
+    <article className="grid gap-1 border-b border-border-subtle py-2 last:border-b-0">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <strong className="text-[0.8rem] text-(--text-main)">Línea {formatInteger(entry.lineNumber)}</strong>
-        <span className={`${chip.base} px-2 py-1 text-[0.7rem]`}>Ignorada</span>
+        <strong className="text-body text-foreground">Línea {formatInteger(entry.lineNumber)}</strong>
+        <span className={`${chip.base} px-2 py-1 text-micro`}>Ignorada</span>
       </div>
-      <p className="m-0 text-[0.74rem] leading-[1.14] text-(--text-main)">{entry.rawLine.trim() || 'Línea vacía'}</p>
-      <p className="text-muted m-0 text-[0.72rem] leading-[1.12]">{entry.reason}</p>
+      <p className="m-0 text-micro text-foreground">{entry.rawLine.trim() || 'Línea vacía'}</p>
+      <p className="text-muted m-0 text-micro">{entry.reason}</p>
     </article>
   )
 }

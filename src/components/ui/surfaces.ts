@@ -1,48 +1,43 @@
+import { cx } from './cx'
+import { TONE } from './tone'
+
 /**
  * Estilos compartidos de la app (superficies, campos, chips). Son strings de utilidades de
  * Tailwind escritos completos (Tailwind sólo detecta clases literales): se combinan con
- * `cx()` o se interpolan en un className.
+ * `cx()` o se interpolan en un className. Para bloques nuevos preferí <Card>, <Callout> y <Badge>.
+ *
+ * Jerarquía: lienzo (fondo) < card < inset (hundido dentro de una card). Las sombras son
+ * parejas y suaves; sólo la acción principal y el foco llevan brillo violeta.
  */
-
-/** Paneles y tarjetas: la jerarquía es panel > panelSoft > card. */
 export const surface = {
-  panel:
-    'rounded-panel border border-border bg-linear-to-b from-card-background/96 to-background/98 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_12px_28px_rgba(0,0,0,0.28)]',
-  panelStrong:
-    'rounded-panel border border-border-strong bg-linear-to-b from-primary/15 to-background/96 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_16px_36px_rgba(0,0,0,0.32),0_0_0_1px_rgb(var(--primary-rgb)/0.12)]',
-  panelSoft: 'rounded-panel border border-border bg-linear-to-b from-secondary/92 to-background/98',
-  card: 'rounded-panel border border-border bg-linear-to-b from-card-background/90 to-background/98 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]',
-  /** Contenedor de cada paso: panel en desktop, sin marco en mobile (la página es el panel). */
-  stepShell:
-    'rounded-panel border border-border bg-linear-to-b from-card-background/96 to-background/98 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_12px_28px_rgba(0,0,0,0.28)] max-[1100px]:rounded-none max-[1100px]:border-0 max-[1100px]:bg-none max-[1100px]:shadow-none',
-  cardAccent:
-    'rounded-panel border border-accent/44 bg-linear-to-b from-accent/16 to-card-background/96 shadow-[0_0_0_1px_rgb(var(--accent-rgb)/0.08)]',
-  cardSuccess:
-    'rounded-panel border border-success/48 bg-linear-to-b from-success/12 to-card-background/96 shadow-[0_0_0_1px_rgb(var(--success-rgb)/0.08)]',
-  cardWarning:
-    'rounded-panel border border-warning/48 bg-linear-to-b from-warning/12 to-card-background/96 shadow-[0_0_0_1px_rgb(var(--warning-rgb)/0.08)]',
-  cardDanger:
-    'rounded-panel border border-danger/50 bg-linear-to-b from-danger/12 to-card-background/96 shadow-[0_0_0_1px_rgb(var(--danger-rgb)/0.08)]',
+  /** Contenedor flotante grande (modal, drawer). */
+  panel: 'rounded-panel border border-border-subtle bg-card-background shadow-overlay',
+  card: 'rounded-card border border-border-subtle bg-card-background bg-linear-to-b from-primary/8 to-transparent shadow-card',
+  /** Contenedor de cada paso: sólo ordena (las tarjetas de adentro son las que tienen fondo). */
+  stepShell: '',
+  cardSuccess: cx('rounded-card border shadow-card', TONE.success.wash),
+  cardWarning: cx('rounded-card border shadow-card', TONE.warning.wash),
+  cardDanger: cx('rounded-card border shadow-card', TONE.danger.wash),
 } as const
 
-/** Campo de texto, select y textarea. */
+/** Campo de texto, select y textarea: lavanda como los demás controles, con borde fino que se enciende al enfocar. */
 export const field =
-  'rounded-control border border-border bg-linear-to-b from-input/98 to-background text-foreground outline-none transition-[border-color,box-shadow,background] duration-150 hover:from-input-hover/98 focus:border-primary/72 focus:shadow-[0_0_0_1px_rgb(var(--primary-rgb)/0.16)] [color-scheme:dark] [&_option]:bg-secondary [&_option]:text-foreground [&_optgroup]:bg-secondary [&_optgroup]:text-foreground'
-
-/** Campo del encabezado del builder (nombre y formato del deck): más translúcido que `field`. */
-export const fieldMeta =
-  'rounded-control border border-primary/20 bg-background/34 text-foreground outline-none transition-[border-color,box-shadow,background] duration-150 hover:border-primary/28 hover:bg-background/42 focus:border-[rgb(137_196_255/0.42)] focus:shadow-[0_0_0_1px_rgb(137_196_255/0.16)] [color-scheme:dark] [&_option]:bg-secondary [&_option]:text-foreground'
+  'rounded-control border border-tint/12 bg-input text-foreground outline-none transition-[border-color,box-shadow,background-color] duration-150 hover:border-tint/20 hover:bg-input-hover focus:border-primary/70 focus:shadow-[0_0_0_3px_rgb(var(--primary-rgb)/0.18)] [color-scheme:dark] [&_option]:bg-secondary [&_option]:text-foreground [&_optgroup]:bg-secondary [&_optgroup]:text-foreground'
 
 /** Chips informativos (no interactivos). */
 export const chip = {
-  base: 'rounded-full border border-border bg-linear-to-b from-secondary/95 to-background/98 text-muted',
-  accent: 'rounded-full border border-accent/46 bg-linear-to-b from-accent/18 to-card-background/96 text-foreground',
+  base: 'rounded-full border border-border-subtle bg-tint/5 text-muted',
+  accent: cx('rounded-full border text-foreground', TONE.brand.tint),
 } as const
+
+/** Pastilla de selección (tipo de carta, atributo, nivel): lavanda en reposo, violeta sólido si está elegida (aria-pressed). */
+export const choiceChip =
+  'inline-flex items-center justify-center rounded-control bg-lavender font-semibold text-primary-soft transition-[background-color,color] duration-150 hover:bg-primary/28 focus-visible:outline-none focus-visible:shadow-focus aria-pressed:bg-primary aria-pressed:text-primary-foreground'
 
 /** Chip de un filtro activo del buscador: se toca para quitarlo. */
 export const filterChip =
-  'inline-flex max-w-full items-center gap-[0.45rem] rounded-full border border-primary/26 bg-linear-to-b from-primary/10 to-card-background/98 px-[0.58rem] py-[0.34rem] text-[0.68rem] leading-none text-foreground transition-[border-color,background,box-shadow] duration-150 hover:border-primary/48 hover:from-primary/16 hover:shadow-[0_0_0_1px_rgb(var(--primary-rgb)/0.08)] focus-visible:shadow-[0_0_0_2px_rgb(var(--background-rgb)),0_0_0_4px_rgb(var(--primary-rgb)/0.24)] focus-visible:outline-none'
+  'inline-flex max-w-full items-center gap-1.5 rounded-control bg-lavender px-3 py-1.5 text-micro font-semibold leading-none text-primary-soft transition-colors duration-150 hover:bg-primary/28 focus-visible:outline-none focus-visible:shadow-focus'
 
 /** Fila clickeable de una lista (cartas, resultados). */
 export const listItem =
-  'rounded-panel border border-border bg-linear-to-b from-secondary/94 to-background/98 transition-[border-color,background,box-shadow] duration-150 hover:border-primary/42 hover:from-primary/15 hover:to-secondary/96 hover:shadow-[0_0_0_1px_rgb(var(--primary-rgb)/0.08)]'
+  'rounded-card border border-border-subtle bg-tint/3 transition-[border-color,background-color] duration-150 hover:border-primary/40 hover:bg-primary/8'

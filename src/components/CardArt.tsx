@@ -112,7 +112,7 @@ export function CardArt({
         data-card-art
         className={[
           'rounded-none! [backface-visibility:hidden] [transform:translateZ(0)]',
-          'grid place-items-center bg-input font-bold text-(--warning)',
+          'grid place-items-center bg-input font-bold text-warning',
           className,
         ].join(' ')}
         aria-hidden="true"

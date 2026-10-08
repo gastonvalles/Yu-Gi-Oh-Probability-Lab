@@ -1,4 +1,5 @@
 import { formatInteger } from '../../app/utils'
+import type { IconName } from '../ui/Icon'
 
 export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace'
 export type DeckWorkflowStepTone = 'complete' | 'progress' | 'pending'
@@ -6,10 +7,14 @@ export type DeckWorkflowStepTone = 'complete' | 'progress' | 'pending'
 export interface DeckModeNavigationItem {
   key: DeckWorkflowStepKey
   step: string
+  /** Nombre corto: es el que se ve en las pestañas (igual en desktop y mobile). */
+  label: string
+  /** Nombre completo: tooltip y lectores de pantalla. */
   title: string
-  shortTitle: string
-  description: string
-  metric: string
+  icon: IconName
+  /** Dato en vivo bajo el nombre (sólo donde cambia con el trabajo: cartas del deck y cartas clasificadas). */
+  metric: string | null
+  /** Estado del paso: tooltip y lectores de pantalla. */
   detail: string
   tone: DeckWorkflowStepTone
   disabled: boolean
@@ -54,9 +59,9 @@ export function buildDeckWorkflowNavigationItems({
     {
       key: 'deck-builder',
       step: '1',
+      label: 'Deck',
       title: 'Deck Builder',
-      shortTitle: 'Builder',
-      description: 'Buscador, drag & drop y armado de Main, Extra y Side.',
+      icon: 'cards',
       metric: `${formatInteger(mainDeckCount)} / 40`,
       detail:
         mainDeckCount >= 40
@@ -70,13 +75,10 @@ export function buildDeckWorkflowNavigationItems({
     {
       key: 'categorization',
       step: '2',
-      title: 'Categorization',
-      shortTitle: 'Roles',
-      description: 'Separá origen y función sin tocar el deck builder.',
-      metric:
-        roleCardCount > 0
-          ? `${formatInteger(classifiedCardCount)} / ${formatInteger(roleCardCount)}`
-          : 'Esperando deck',
+      label: 'Roles',
+      title: 'Categorización de roles',
+      icon: 'tag',
+      metric: roleCardCount > 0 ? `${formatInteger(classifiedCardCount)} / ${formatInteger(roleCardCount)}` : null,
       detail:
         roleCardCount === 0
           ? 'Necesita cartas en Main.'
@@ -94,28 +96,25 @@ export function buildDeckWorkflowNavigationItems({
     {
       key: 'probability-lab',
       step: '3',
+      label: 'Lab',
       title: 'Probability Lab',
-      shortTitle: 'Lab',
-      description: 'Reglas, salidas, resultados y simulaciones.',
-      metric:
-        patternCount > 0
-          ? `${formatInteger(patternCount)} regla${patternCount === 1 ? '' : 's'}`
-          : 'Sin reglas',
+      icon: 'flask',
+      metric: null,
       detail: hasCompletedRoleStep
         ? patternCount > 0
           ? 'Listo para medir.'
-          : 'Definí salidas.'
+          : 'Medí con las reglas base o sumá las tuyas.'
         : 'Entrá igual; categorizá para medir.',
-      tone: patternCount > 0 ? 'complete' : hasCompletedRoleStep ? 'progress' : 'pending',
+      tone: hasCompletedRoleStep ? 'complete' : 'pending',
       disabled: false,
     },
     {
       key: 'workspace',
       step: '4',
-      title: 'Comparar',
-      shortTitle: 'Comparar',
-      description: 'Compará builds guardadas o importadas con tus reglas.',
-      metric: 'A vs B',
+      label: 'Comparar',
+      title: 'Comparar builds',
+      icon: 'columns',
+      metric: null,
       detail: 'Guardá o importá builds y compará.',
       tone: 'pending',
       disabled: false,
@@ -123,10 +122,10 @@ export function buildDeckWorkflowNavigationItems({
     {
       key: 'export',
       step: '5',
-      title: 'Export',
-      shortTitle: 'Export',
-      description: 'Descarga la imagen, la decklist oficial en PDF y el YDK.',
-      metric: mainDeckCount > 0 ? 'Descarga habilitada' : 'Sin deck',
+      label: 'Exportar',
+      title: 'Exportar deck',
+      icon: 'download',
+      metric: null,
       detail: mainDeckCount > 0 ? 'Imagen + PDF + YDK.' : 'Necesitás cartas en Main.',
       tone: mainDeckCount > 0 ? 'complete' : 'pending',
       disabled: mainDeckCount === 0,

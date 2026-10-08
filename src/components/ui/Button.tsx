@@ -1,57 +1,80 @@
 import type { ButtonHTMLAttributes } from 'react'
 
 import { cx, variants } from './cx'
+import { Icon, type IconName } from './Icon'
 
-export type ButtonVariant = 'primary' | 'secondary' | 'tertiary'
+/** primary: la acción principal de la vista (una sola) · secondary: acciones de apoyo (lavanda) · tertiary: sin caja · onBrand: sobre una tarjeta violeta. */
+export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'onBrand'
 export type ButtonSize = 'sm' | 'md' | 'lg'
-export type ButtonColor = 'foreground' | 'primary' | 'accent' | 'destructive' | 'secondary'
+/** brand: violeta de la app · danger: acciones que borran o no se pueden deshacer. */
+export type ButtonColor = 'brand' | 'danger'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant
   size?: ButtonSize
   color?: ButtonColor
   fullWidth?: boolean
+  /** Ícono antes del texto: la acción se reconoce sin leer. */
+  icon?: IconName
+  iconEnd?: IconName
 }
 
-const SOLID: Record<ButtonColor, string> = {
-  foreground: 'border-foreground/8 bg-foreground text-background hover:border-primary hover:bg-primary hover:text-primary-foreground',
-  primary: 'border-primary bg-primary text-primary-foreground hover:border-primary-hover hover:bg-primary-hover',
-  accent: 'border-accent bg-accent text-accent-foreground hover:border-accent-hover hover:bg-accent-hover',
-  destructive: 'border-destructive bg-destructive text-destructive-foreground hover:border-destructive/92 hover:bg-destructive/92',
-  secondary: 'border-border bg-secondary text-secondary-foreground hover:border-foreground/10 hover:bg-input-hover',
+const FILLED: Record<ButtonColor, string> = {
+  brand: 'bg-primary text-primary-foreground shadow-brand hover:bg-primary-hover',
+  danger: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
 }
+
+/** Lavanda: relleno violeta suave con texto violeta claro (como "View Task" del diseño). */
+const QUIET: Record<ButtonColor, string> = {
+  brand: 'bg-lavender text-primary-soft hover:bg-primary/28',
+  danger: 'bg-danger/12 text-danger-soft hover:bg-danger/20',
+}
+
+const GHOST: Record<ButtonColor, string> = {
+  brand: 'bg-transparent text-muted hover:bg-tint/6 hover:text-foreground',
+  danger: 'bg-transparent text-danger-soft hover:bg-danger/12',
+}
+
+const ON_BRAND: Record<ButtonColor, string> = {
+  brand: 'bg-lavender-light text-primary hover:bg-white',
+  danger: 'bg-lavender-light text-primary hover:bg-white',
+}
+
+const COLORS = { primary: FILLED, secondary: QUIET, tertiary: GHOST, onBrand: ON_BRAND } as const
+
+const ICON_SIZE: Record<ButtonSize, number> = { sm: 16, md: 18, lg: 20 }
 
 const buttonStyle = variants({
-  base: 'inline-flex items-center justify-center gap-[0.45rem] rounded-control border font-semibold leading-none transition-[border-color,background-color,color,opacity] duration-120 focus-visible:shadow-[0_0_0_1px_rgb(var(--primary-rgb)/0.42)] focus-visible:outline-none disabled:cursor-default disabled:border-border disabled:bg-input disabled:text-foreground/42 disabled:opacity-42 disabled:shadow-none',
+  base: 'inline-flex shrink-0 items-center justify-center gap-2 font-semibold leading-tight transition-[background-color,color,box-shadow,transform] duration-150 focus-visible:outline-none focus-visible:shadow-focus active:translate-y-px disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none',
   variants: {
-    variant: {
-      primary: '',
-      secondary: 'border-border bg-secondary text-foreground hover:border-foreground/10 hover:bg-input',
-      tertiary: 'border-border/90 bg-background text-muted hover:border-foreground/10 hover:bg-secondary hover:text-foreground',
-    },
     size: {
-      sm: 'min-h-[1.95rem] px-[0.86rem] py-[0.42rem] text-[0.78rem]',
-      md: 'min-h-[2.2rem] px-4 py-[0.54rem] text-[0.84rem]',
-      lg: 'min-h-[2.55rem] px-[1.18rem] py-[0.68rem] text-[0.92rem]',
+      sm: 'min-h-9 rounded-control px-4 py-1.5 text-body pointer-coarse:min-h-10',
+      md: 'min-h-11 rounded-control px-5 py-2 text-body',
+      lg: 'min-h-12.5 rounded-card px-6 py-2.5 text-lead',
     },
   },
-  defaults: { variant: 'secondary', size: 'md' },
+  defaults: { size: 'md' },
 })
 
 export function Button({
   variant = 'secondary',
   size = 'md',
-  color = 'foreground',
+  color = 'brand',
   fullWidth = false,
+  icon,
+  iconEnd,
   className = '',
   type = 'button',
+  children,
   ...props
 }: ButtonProps) {
+  const iconSize = ICON_SIZE[size]
+
   return (
-    <button
-      type={type}
-      className={cx(buttonStyle({ variant, size }, variant === 'primary' && SOLID[color]), fullWidth && 'w-full', className)}
-      {...props}
-    />
+    <button type={type} className={cx(buttonStyle({ size }, COLORS[variant][color]), fullWidth && 'w-full', className)} {...props}>
+      {icon ? <Icon name={icon} size={iconSize} /> : null}
+      {children}
+      {iconEnd ? <Icon name={iconEnd} size={iconSize} /> : null}
+    </button>
   )
 }

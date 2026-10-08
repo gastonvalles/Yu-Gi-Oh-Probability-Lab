@@ -1,10 +1,14 @@
 import { useId, useState, type ReactNode } from 'react'
 
 import { useMediaQuery } from '../../app/use-media-query'
+import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
+import { Icon, type IconName } from '../ui/Icon'
+import { sectionTitle, supportText } from '../ui/typography'
 
 interface LabSectionProps {
   title: string
+  icon?: IconName
   /** Resumen visible también con la sección colapsada (mobile). */
   summary?: ReactNode
   actions?: ReactNode
@@ -14,64 +18,50 @@ interface LabSectionProps {
   children: ReactNode
 }
 
-export function LabSection({
-  title,
-  summary,
-  actions,
-  defaultOpenOnMobile = true,
-  className = '',
-  children,
-}: LabSectionProps) {
+export function LabSection({ title, icon, summary, actions, defaultOpenOnMobile = true, className = '', children }: LabSectionProps) {
   const isMobile = useMediaQuery('(max-width: 1100px)')
   const [isOpenOnMobile, setIsOpenOnMobile] = useState(defaultOpenOnMobile)
   const isOpen = !isMobile || isOpenOnMobile
   const contentId = useId()
 
   return (
-    <section
-      className={cx(
-        'grid min-w-0 rounded-panel border border-border bg-linear-to-b from-card-background/94 to-background/98 px-4 py-[0.95rem]',
-        isOpen ? 'gap-3' : 'gap-0',
-        className,
-      )}
-    >
+    <Card className={cx('grid', isOpen ? 'grid-rows-[auto_minmax(0,1fr)] gap-4' : 'gap-0', className)}>
       <header className="flex flex-wrap items-center justify-between gap-2">
         {isMobile ? (
           <button
             type="button"
-            className="flex min-h-9 flex-[1_1_100%] items-center justify-between gap-3 text-left"
+            className="flex min-h-10 flex-[1_1_100%] items-center justify-between gap-3 rounded-control text-left focus-visible:outline-none focus-visible:shadow-focus"
             aria-expanded={isOpen}
             aria-controls={contentId}
             onClick={() => setIsOpenOnMobile((current) => !current)}
           >
-            <SectionHeading title={title} summary={summary} />
-            <span
-              className={cx(
-                'size-[0.55rem] flex-none border-b-2 border-r-2 border-muted transition-transform duration-150',
-                isOpen ? '[transform:rotate(-135deg)_translateY(-2px)]' : '[transform:rotate(45deg)_translateY(-2px)]',
-              )}
-              aria-hidden="true"
-            />
+            <SectionHeading title={title} icon={icon} summary={isOpen ? undefined : summary} />
+            <Icon name="chevron-down" size={18} className={cx('shrink-0 text-soft transition-transform duration-150', isOpen && 'rotate-180')} />
           </button>
         ) : (
-          <SectionHeading title={title} summary={summary} />
+          <SectionHeading title={title} icon={icon} />
         )}
-        {actions && isOpen ? <div className="flex flex-wrap gap-[0.4rem]">{actions}</div> : null}
+        {actions && isOpen ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
       </header>
       {isOpen ? (
-        <div id={contentId} className="grid min-w-0 gap-3">
+        <div id={contentId} className="flex min-w-0 flex-col gap-4">
           {children}
         </div>
       ) : null}
-    </section>
+    </Card>
   )
 }
 
-function SectionHeading({ title, summary }: { title: string; summary?: ReactNode }) {
+function SectionHeading({ title, icon, summary }: { title: string; icon?: IconName; summary?: ReactNode }) {
   return (
-    <span className="grid min-w-0 gap-[0.15rem]">
-      <strong className="text-[0.95rem] text-foreground">{title}</strong>
-      {summary ? <span className="text-[0.76rem] tabular-nums text-muted">{summary}</span> : null}
+    <span className="flex min-w-0 items-start gap-3">
+      {icon ? (
+        <Icon name={icon} size={20} className="mt-0.5 shrink-0 text-primary-soft" />
+      ) : null}
+      <span className="grid min-w-0 gap-0.5">
+        <strong className={sectionTitle}>{title}</strong>
+        {summary ? <span className={cx(supportText, 'tabular-nums')}>{summary}</span> : null}
+      </span>
     </span>
   )
 }

@@ -2,8 +2,13 @@ import { useCallback, useMemo, type ReactNode } from 'react'
 
 import { formatShortPercent } from '../../app/utils'
 import { ROLE_GROUP_LABEL, type Culprit, type Outcome, type PerTurnResults } from '../../app/lab-suggestion'
+import { Badge } from '../ui/Badge'
+import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
-import { surface } from '../ui/surfaces'
+import { Icon } from '../ui/Icon'
+import { ProgressRing } from '../ui/ProgressRing'
+import { TONE } from '../ui/tone'
+import { overline, supportText } from '../ui/typography'
 import { formatOdds } from './lab-copy'
 import { useLabSuggestion } from './use-lab-suggestion'
 import type { LabViewResult } from '../../app/probability-lab'
@@ -33,36 +38,88 @@ export function LabSuggestion({ cards, checks, deckFormat, handSize, view, resul
     return null
   }
 
-  return (
-    <section className={cx(surface.card, 'order-2 grid min-w-0 gap-2 p-3 min-[1101px]:order-3 min-[1101px]:col-span-full')} aria-label="Qué mejorar primero">
-      <p className="m-0 text-[0.68rem] font-semibold uppercase tracking-widest text-accent">Lo que más te frena</p>
-      <div className="grid gap-0.5">
-        <strong className="text-[0.95rem] leading-tight text-foreground [overflow-wrap:anywhere]">{culprit.name}</strong>
-        <p className="m-0 text-[0.84rem] leading-[1.35] text-muted">{describeCulprit(culprit)}</p>
-      </div>
+  const best = state.analysis.best
 
-      {state.analysis.best ? (
-        <AdviceBox label="Sugerencia">{describeBest(culprit, state.analysis.best, result.cleanProbability)}{perTurnLine(state.analysis.best, perTurn)}</AdviceBox>
+  return (
+    <Card className="order-2 grid content-start gap-4 min-[1101px]:order-3 min-[1101px]:col-span-5 min-[1101px]:col-start-1" aria-label="Qué mejorar primero">
+      <header className="grid min-w-0 gap-0.5">
+        <p className={cx('m-0', overline, TONE.danger.text)}>Lo que más te frena</p>
+        <strong className="text-lead font-semibold leading-tight text-foreground [overflow-wrap:anywhere]">{culprit.name}</strong>
+        <p className={supportText}>{describeCulprit(culprit)}</p>
+      </header>
+
+      {best ? (
+        <AdviceBox label="Sugerencia" visual={<SwapSummary best={best} cleanBefore={result.cleanProbability} />}>
+          {describeBest(culprit, best)}
+          {perTurnLine(best, perTurn)}
+        </AdviceBox>
       ) : state.status === 'loading' ? (
-        <p className="m-0 text-[0.82rem] leading-[1.4] text-muted motion-safe:animate-pulse">
-          Probando cambios en tu deck… ({state.progress.done}/{state.progress.total})
-        </p>
+        <div className="flex items-center gap-3 border-t border-border-subtle pt-4" role="status">
+          <ProgressRing value={state.progress.total > 0 ? state.progress.done / state.progress.total : 0} size={44} strokeWidth={4} label="Cambios probados" />
+          <p className="m-0 text-body text-muted motion-safe:animate-pulse">
+            Probando cambios en tu deck… ({state.progress.done}/{state.progress.total})
+          </p>
+        </div>
       ) : (
         <AdviceBox label="Conclusión">
           {describeNoGain(culprit, state.analysis.tradeoff, result.cleanProbability, hint, causes, state.progress.total, state.analysis.compared)}
         </AdviceBox>
       )}
-    </section>
+    </Card>
   )
 }
 
-/** Recuadro verde del consejo (o de la conclusión cuando no hay un cambio que convenga). */
-function AdviceBox({ label, children }: { label: string; children: ReactNode }) {
+/** El consejo (o la conclusión cuando no hay un cambio que convenga): va debajo de una línea fina, sin caja. */
+function AdviceBox({ label, visual, children }: { label: string; visual?: ReactNode; children: ReactNode }) {
   return (
-    <p className="m-0 rounded-control border border-accent/30 bg-accent/8 px-3 py-2 text-[0.84rem] leading-[1.4] text-foreground">
-      <strong>{label}: </strong>
-      {children}
-    </p>
+    <div className="grid gap-3 border-t border-border-subtle pt-4">
+      {visual}
+      <p className="m-0 text-body text-muted">
+        <strong className={cx('font-semibold', TONE.success.text)}>{label}: </strong>
+        {children}
+      </p>
+    </div>
+  )
+}
+
+/** El cambio de un vistazo: qué sacar, qué meter y cuánto suben las manos limpias. */
+function SwapSummary({ best, cleanBefore }: { best: Outcome; cleanBefore: number }) {
+  const { from, to } = best.swap
+  const points = (best.cleanProbability - cleanBefore) * 100
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {from ? <SwapChip action="remove" label={ROLE_GROUP_LABEL[from]} /> : null}
+        {from && to ? <Icon name="arrow-right" size={16} className="text-soft" /> : null}
+        {to ? <SwapChip action="add" label={ROLE_GROUP_LABEL[to]} /> : null}
+      </div>
+      <div className="flex items-center gap-2 tabular-nums min-[1101px]:ml-auto" aria-label="Manos limpias antes y después">
+        <ProgressRing value={cleanBefore} tone="neutral" size={48} strokeWidth={4} label={`Manos limpias hoy: ${formatShortPercent(cleanBefore)}`}>
+          {Math.round(cleanBefore * 100)}%
+        </ProgressRing>
+        <Icon name="arrow-right" size={14} className="text-soft" />
+        <ProgressRing value={best.cleanProbability} tone="success" size={48} strokeWidth={4} delay={300} label={`Manos limpias con el cambio: ${formatShortPercent(best.cleanProbability)}`}>
+          {Math.round(best.cleanProbability * 100)}%
+        </ProgressRing>
+        {points > 0.05 ? (
+          <Badge tone="success" size="sm">
+            +{points.toFixed(1)} pts
+          </Badge>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function SwapChip({ action, label }: { action: 'remove' | 'add'; label: string }) {
+  const tone = action === 'remove' ? TONE.danger : TONE.success
+
+  return (
+    <span className={cx('inline-flex items-center gap-1.5 rounded-tag px-2 py-1 text-micro font-semibold', tone.soft, tone.text)}>
+      <Icon name={action === 'remove' ? 'minus' : 'plus'} size={12} strokeWidth={2.5} />
+      {action === 'remove' ? 'Sacar' : 'Meter'} 1 {label}
+    </span>
   )
 }
 
@@ -74,9 +131,7 @@ function perTurnLine(best: Outcome, perTurn: PerTurnResults): string {
 }
 
 function describeCulprit(culprit: Culprit): string {
-  return culprit.kind === 'problem'
-    ? `Es el problema que más pesa en las manos que no abren limpias. ${formatOdds(culprit.probability)}`
-    : `Son las manos que no tienen ninguna salida. ${formatOdds(culprit.probability).replace('Pasa', 'Pasan')}`
+  return culprit.kind === 'problem' ? formatOdds(culprit.probability, false) : formatOdds(culprit.probability, false).replace('Pasa', 'Pasan')
 }
 
 /** "Sacá 1 starter y meté 1 handtrap (ej.: A por B)": lo dice por familia, como un jugador, y da un ejemplo concreto. */
@@ -90,15 +145,19 @@ function describeSwap(outcome: Outcome): string {
   return `sumá 1 ${to ? ROLE_GROUP_LABEL[to] : 'carta'}${added ? ` (${added.card.name})` : ''}`
 }
 
-function describeBest(culprit: Culprit, best: Outcome, cleanBefore: number): string {
-  const target = culprit.kind === 'problem' ? 'el problema' : 'las manos sin salida'
+/** Lo que no dicen ya los chips (qué sacar y meter) ni los anillos (manos limpias antes y después): el ejemplo y el efecto sobre el problema. */
+function describeBest(culprit: Culprit, best: Outcome): string {
+  const removed = best.changes.find((change) => change.action === 'remove')
+  const added = best.changes.find((change) => change.action === 'add')
+  const example = removed && added ? ` Por ejemplo, ${removed.card.name} por ${added.card.name}.` : ''
+  const target = culprit.kind === 'problem' ? 'El problema' : 'Las manos sin salida'
 
   // El cambio no baja el problema: sube las salidas (las manos limpias) por otro lado.
   if (best.culpritProbability >= culprit.probability - 0.0005) {
-    return `Bajar este problema cuesta más salidas de las que ahorra, pero ${describeSwap(best)} y las manos limpias pasarían de ${formatShortPercent(cleanBefore)} a ${formatShortPercent(best.cleanProbability)} (estimado, el resto del deck igual).`
+    return `Bajar este problema cuesta más salidas de las que ahorra, pero este cambio sube las manos limpias.${example} Estimado, con el resto del deck igual.`
   }
 
-  return `${capitalize(describeSwap(best))}: ${target} bajaría a ${oddsOnly(best.culpritProbability)} y las manos limpias pasarían de ${formatShortPercent(cleanBefore)} a ${formatShortPercent(best.cleanProbability)} (estimado, el resto del deck igual).`
+  return `${target} bajaría a ${oddsOnly(best.culpritProbability)}.${example} Estimado, con el resto del deck igual.`
 }
 
 /** Sin cambio que convenga: se explica por qué, con números, en vez de dejar un "no se puede". */

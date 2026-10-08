@@ -44,6 +44,7 @@ export function RuleRenameDialog({ entry, onSave, onClose }: RuleRenameDialogPro
       isOpen
       onClose={onClose}
       size="sm"
+      icon="pencil"
       title="Nombre de la regla"
       footer={
         <>
@@ -61,8 +62,8 @@ export function RuleRenameDialog({ entry, onSave, onClose }: RuleRenameDialogPro
         </>
       }
     >
-      <form id={formId} className="grid gap-[0.6rem]" onSubmit={handleSubmit}>
-        <label htmlFor={inputId} className="flex items-center gap-[0.45rem] text-[0.8rem] font-semibold text-muted">
+      <form id={formId} className="grid gap-2.5" onSubmit={handleSubmit}>
+        <label htmlFor={inputId} className="flex items-center gap-2 text-body font-semibold text-muted">
           <KindBadge kind={entry.kind} />
           Nombre
         </label>
@@ -75,7 +76,7 @@ export function RuleRenameDialog({ entry, onSave, onClose }: RuleRenameDialogPro
           autoFocus
           onFocus={(event) => event.target.select()}
           onChange={(event) => setValue(event.target.value)}
-          className={`${field} w-full px-3 py-2 text-[0.95rem]`}
+          className={`${field} h-11 w-full px-3 text-lead`}
         />
       </form>
     </Modal>

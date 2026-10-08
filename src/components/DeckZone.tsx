@@ -1,4 +1,4 @@
-import { memo, useRef, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type SVGProps } from 'react'
+import { memo, useRef, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 
 import {
   buildDeckZoneVisualLayout,
@@ -10,6 +10,7 @@ import type { DeckDropIndicatorState } from '../app/use-deck-pointer-drag'
 import { formatInteger } from '../app/utils'
 import { CardArt } from './CardArt'
 import { Button } from './ui/Button'
+import { Icon } from './ui/Icon'
 import { IconButton } from './ui/IconButton'
 import {
   DECK_CARD_CLASSIC,
@@ -39,18 +40,21 @@ interface DeckZoneProps {
   onRemoveCard: (instanceId: string) => void
 }
 
-const ZONE_STYLES: Record<DeckZoneType, { background: string; border: string }> = {
+const ZONE_STYLES: Record<DeckZoneType, { background: string; border: string; dot: string }> = {
   main: {
     background: 'var(--zone-main-background)',
     border: 'var(--zone-main-border)',
+    dot: 'rgb(var(--primary-rgb))',
   },
   extra: {
     background: 'var(--zone-extra-background)',
     border: 'var(--zone-extra-border)',
+    dot: 'rgb(var(--handtrap-rgb))',
   },
   side: {
     background: 'var(--zone-side-background)',
     border: 'var(--zone-side-border)',
+    dot: 'rgb(var(--accent-rgb))',
   },
 }
 
@@ -91,9 +95,9 @@ export const DeckZone = memo(function DeckZone({
   const classicZoneMaxHeight = zone === 'main' ? '29rem' : 'none'
   const classicBorderColor =
     dropState === 'valid'
-      ? 'rgb(var(--accent-rgb) / 0.82)'
+      ? 'rgb(var(--primary-rgb) / 0.85)'
       : dropState === 'invalid'
-        ? 'rgb(var(--destructive-rgb) / 0.82)'
+        ? 'rgb(var(--destructive-rgb) / 0.85)'
         : 'var(--classic-zone-accent)'
   const classicZoneStyle = isClassicBuilder
     ? ({
@@ -108,17 +112,15 @@ export const DeckZone = memo(function DeckZone({
         maxHeight: classicZoneMaxHeight,
         padding: '0',
         border: `1px solid ${classicBorderColor}`,
-        borderRadius: '0',
-        background:
-          'linear-gradient(180deg, var(--classic-zone-tint), rgb(var(--background-rgb) / 0.98)), linear-gradient(180deg, rgb(var(--secondary-rgb) / 0.94), rgb(var(--background-rgb) / 0.98))',
+        borderRadius: 'var(--radius-card)',
+        background: 'linear-gradient(180deg, var(--classic-zone-tint), transparent), rgb(var(--card-background-rgb) / 0.6)',
         boxShadow:
           dropState === 'valid'
-            ? '0 0 0 1px rgb(var(--accent-rgb) / 0.14)'
+            ? '0 0 0 3px rgb(var(--primary-rgb) / 0.2)'
             : dropState === 'invalid'
-              ? '0 0 0 1px rgb(var(--destructive-rgb) / 0.16)'
+              ? '0 0 0 3px rgb(var(--destructive-rgb) / 0.2)'
               : 'none',
-        overflowX: 'hidden',
-        overflowY: zone === 'main' ? 'hidden' : 'visible',
+        overflow: 'hidden',
       }) as CSSProperties
     : null
   const cardCountLabel = formatInteger(cards.length)
@@ -178,43 +180,38 @@ export const DeckZone = memo(function DeckZone({
         data-classic-zone={zone}
         style={classicZoneStyle}
       >
-        <div>
-          <div className="grid w-[calc(100%-0.04rem)] max-w-[calc(100%-0.04rem)] min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-[0.8rem] rounded-[0.84rem] border border-(--classic-zone-accent) bg-linear-to-b from-(--classic-zone-tint) to-card-background/98 px-[0.95rem] py-[0.28rem] text-[0.98rem] font-bold leading-none text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-            <span className="min-w-0 whitespace-nowrap">
-              {title.replace(' Deck', '')} [{cardCountLabel}]
-            </span>
-            <div className="flex min-w-0 items-center gap-[0.55rem]">
-              {zoneTypeCounts.length > 0 ? (
-                <div className="flex flex-none items-center gap-2">
-                  {zoneTypeCounts.map((entry) => (
-                    <span
-                      key={entry.kind}
-                      className="inline-flex items-center gap-[0.28rem] text-[0.82rem] font-bold text-foreground"
-                      title={`${formatInteger(entry.count)} ${entry.label}`}
-                    >
-                      <span className={cx('size-[0.62rem] rounded-[0.15rem]', ZONE_TYPE_SWATCH[entry.kind])} aria-hidden="true" />
-                      {formatInteger(entry.count)}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-              {cards.length > 0 ? (
-                <IconButton
-                  tone="ghost"
-                  size={isClassicBuilder ? 'sm' : 'md'}
-                  aria-label={`Vaciar ${title}`}
-                  title={`Vaciar ${title}`}
-                  onClick={() => onClearZone(zone)}
-                >
-                  <TrashIcon />
-                </IconButton>
-              ) : null}
-            </div>
+        <div className="flex min-w-0 items-center justify-between gap-3 px-0.5">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="size-2.5 shrink-0 rounded-full" style={{ background: zoneStyle.dot }} aria-hidden="true" />
+            <h3 className="m-0 whitespace-nowrap text-lead font-semibold text-foreground">
+              {title.replace(' Deck', '')} <span className="font-medium text-muted tabular-nums">[{cardCountLabel}]</span>
+            </h3>
+          </div>
+          <div className="flex min-w-0 items-center gap-2">
+            {zoneTypeCounts.length > 0 ? (
+              <div className="flex flex-none items-center gap-3">
+                {zoneTypeCounts.map((entry) => (
+                  <span
+                    key={entry.kind}
+                    className="inline-flex items-center gap-1.5 text-body font-semibold text-muted tabular-nums"
+                    title={`${formatInteger(entry.count)} ${entry.label}`}
+                  >
+                    <span className={cx('size-2.5 rounded-tag', ZONE_TYPE_SWATCH[entry.kind])} aria-hidden="true" />
+                    {formatInteger(entry.count)}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            {cards.length > 0 ? (
+              <IconButton tone="ghost" size="sm" aria-label={`Vaciar ${title}`} title={`Vaciar ${title}`} onClick={() => onClearZone(zone)}>
+                <Icon name="trash" />
+              </IconButton>
+            ) : null}
           </div>
         </div>
 
         <div
-          className="relative flex w-full flex-col overflow-hidden rounded-none transition-[border-color,background,box-shadow] duration-150"
+          className="relative flex w-full flex-col overflow-hidden transition-[border-color,box-shadow] duration-150"
           data-deck-zone={zone}
           data-deck-count={cards.length}
           data-deck-zone-layout="desktop-compact"
@@ -247,7 +244,7 @@ export const DeckZone = memo(function DeckZone({
               ))
             : cards.map((card, index) => renderDeckCard(card, index))}
           {cards.length === 0 ? (
-            <p className="pointer-events-none m-0 col-span-full grid min-h-14 w-full place-items-center p-2 text-[0.78rem] text-soft">
+            <p className="pointer-events-none m-0 col-span-full grid min-h-14 w-full place-items-center p-2 text-body text-soft">
               Arrastrá cartas acá
             </p>
           ) : null}
@@ -258,12 +255,13 @@ export const DeckZone = memo(function DeckZone({
 
   return (
     <section className="w-full bg-transparent p-0">
-      <div className="mb-1.5 flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <h3 className="m-0 wrap-anywhere text-[1.05rem] leading-none">{title}</h3>
-          <p className="m-0 mt-[0.08rem] wrap-anywhere text-[0.82rem] leading-[1.12] text-(--text-muted)">
-            {headerSummary}
-          </p>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          <span className="size-2.5 shrink-0 rounded-full" style={{ background: zoneStyle.dot }} aria-hidden="true" />
+          <div className="min-w-0">
+            <h3 className="m-0 wrap-anywhere text-lead font-semibold leading-tight text-foreground">{title}</h3>
+            <p className="m-0 wrap-anywhere text-body text-muted">{headerSummary}</p>
+          </div>
         </div>
         <Button
           variant="tertiary"
@@ -308,15 +306,3 @@ export const DeckZone = memo(function DeckZone({
     </section>
   )
 })
-
-function TrashIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
-      <path d="M3.5 4.5h9" />
-      <path d="M6 2.75h4" />
-      <path d="m5 4.5.55 7.1a1 1 0 0 0 1 .9h2.9a1 1 0 0 0 1-.9L11 4.5" />
-      <path d="M6.75 6.5v4" />
-      <path d="M9.25 6.5v4" />
-    </svg>
-  )
-}

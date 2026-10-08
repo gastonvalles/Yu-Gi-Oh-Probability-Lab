@@ -56,6 +56,13 @@ describe('detalle compartido de cartas', () => {
     expect(onClose).toHaveBeenCalledOnce()
   })
 
+  it('cierra con la X blanca de arriba a la derecha', () => {
+    const onClose = vi.fn()
+    render(modal(onClose))
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }))
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
   it('cierra sólo el detalle con Escape y conserva el bloqueo del modal padre', () => {
     const onParentClose = vi.fn()
     const onClose = vi.fn()
@@ -92,9 +99,9 @@ describe('detalle compartido de cartas', () => {
     render(<CardDetailModal card={card} deckFormat="unlimited" isOpen showActions={false}
       deckCopy={{ zoneLabel: 'Main Deck', copies: 3, canAddCopy: false, onRemoveCopy: onRemove, onAddCopy: vi.fn() }}
       onAddToZone={() => false} onClose={onClose} />)
-    fireEvent.click(screen.getByRole('button', { name: '− Quitar una' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Quitar una' }))
     expect(onRemove).toHaveBeenCalledOnce()
-    expect(screen.getByRole('button', { name: '+ Sumar una' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Sumar una' })).toBeDisabled()
     expect(onClose).not.toHaveBeenCalled()
   })
 
@@ -104,7 +111,8 @@ describe('detalle compartido de cartas', () => {
     opener.focus()
     const { unmount } = render(modal())
     const text = screen.getByRole('region', { name: 'Efecto' })
-    const lastButton = screen.getByRole('button', { name: 'Agregar al Side Deck' })
+    // La X va última en el orden de tabulación: primero el contenido, después el cierre.
+    const lastButton = screen.getByRole('button', { name: 'Cerrar' })
     expect(text).toHaveFocus()
     fireEvent.keyDown(text, { key: 'Tab', shiftKey: true })
     expect(lastButton).toHaveFocus()

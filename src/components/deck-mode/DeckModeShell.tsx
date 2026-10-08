@@ -1,6 +1,7 @@
 import type { ReactNode, RefObject } from 'react'
 
 import { cx } from '../ui/cx'
+import { DeckModeBrand } from './DeckModeBrand'
 
 interface DeckModeShellProps {
   navigation: ReactNode
@@ -18,9 +19,11 @@ export function DeckModeShell({
   contentScrollable = false,
 }: DeckModeShellProps) {
   return (
-    <section className="grid min-h-dvh w-full min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-x-clip [background:radial-gradient(circle_at_top,rgb(var(--primary-rgb)/0.16),transparent_28%),linear-gradient(180deg,rgb(var(--background-rgb)/1),rgb(var(--secondary-rgb)/1))] max-[1100px]:min-h-screen min-[1101px]:h-dvh min-[1101px]:overflow-hidden">
-      <header className="flex min-h-(--deck-mode-topbar-height) w-full min-w-0 items-center justify-center overflow-hidden border-b border-border/94 bg-linear-to-b from-secondary/96 to-background/99 px-4 py-2 max-[1100px]:hidden">
+    <section className="grid min-h-dvh w-full min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-x-clip max-[1100px]:min-h-screen min-[1101px]:h-dvh min-[1101px]:overflow-hidden">
+      <header className="grid min-h-(--deck-mode-topbar-height) w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 border-b border-border-subtle bg-card-background/70 px-5 py-2 max-[1100px]:hidden">
+        <DeckModeBrand />
         {navigation}
+        <span aria-hidden="true" />
       </header>
       <div
         ref={contentScrollRef}

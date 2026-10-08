@@ -2,29 +2,21 @@ import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { toast } from 'react-hot-toast'
 
 import type { ToastTone } from '../../app/use-toast-message'
-import { variants } from './cx'
+import { cx } from './cx'
+import { Icon, type IconName } from './Icon'
+import { TONE, type Tone } from './tone'
 
 const SWIPE_DISMISS_PX = 70
 
-const TONE_ICON: Record<ToastTone, string> = {
-  info: 'M12 8v.01M11 12h1v5h1',
-  success: 'm6 12.5 4 4 8-9',
-  warning: 'M12 7v6M12 16.5v.01',
-  error: 'm8 8 8 8M16 8l-8 8',
+const TOAST_TONE: Record<ToastTone, { tone: Tone; icon: IconName }> = {
+  info: { tone: 'brand', icon: 'info' },
+  success: { tone: 'success', icon: 'check-circle' },
+  warning: { tone: 'warning', icon: 'alert' },
+  error: { tone: 'danger', icon: 'alert' },
 }
 
-const toastStyle = variants({
-  base: 'flex max-w-[min(26rem,calc(100vw-2rem))] cursor-grab touch-pan-y select-none items-center gap-[0.6rem] rounded-[0.9rem] border border-[rgb(var(--toast-rgb)/0.55)] bg-card-background bg-[linear-gradient(rgb(var(--toast-rgb)/0.16),rgb(var(--toast-rgb)/0.16))] py-[0.7rem] pl-[0.8rem] pr-[0.95rem] text-[0.88rem] font-semibold leading-[1.3] text-white shadow-[0_12px_28px_rgba(0,0,0,0.4),0_0_18px_rgb(var(--toast-rgb)/0.22)] transition-[transform,opacity] animate-toast-in data-[dragging=true]:cursor-grabbing data-[dragging=true]:transition-none data-[visible=false]:animate-toast-out',
-  variants: {
-    tone: {
-      info: '[--toast-rgb:var(--primary-rgb)]',
-      success: '[--toast-rgb:var(--success-rgb)]',
-      warning: '[--toast-rgb:var(--warning-rgb)]',
-      error: '[--toast-rgb:var(--danger-rgb)]',
-    },
-  },
-  defaults: { tone: 'info' },
-})
+const TOAST_BASE =
+  'flex max-w-[min(26rem,calc(100vw-2rem))] cursor-grab touch-pan-y select-none items-center gap-3 rounded-card border border-tint/10 bg-surface-raised py-2.5 pl-3 pr-4 text-body font-medium text-foreground shadow-overlay transition-[transform,opacity] animate-toast-in data-[dragging=true]:cursor-grabbing data-[dragging=true]:transition-none data-[visible=false]:animate-toast-out'
 
 interface AppToastProps {
   id: string
@@ -62,13 +54,14 @@ export function AppToast({ id, visible, message, tone }: AppToastProps) {
     setOffset(0)
   }
 
+  const look = TOAST_TONE[tone]
   const direction = offset < 0 ? -1 : 1
   const gone = dismissed ? direction * 140 : offset
 
   return (
     <div
       role="status"
-      className={toastStyle({ tone })}
+      className={TOAST_BASE}
       data-visible={visible && !dismissed ? 'true' : 'false'}
       data-dragging={startRef.current !== null ? 'true' : 'false'}
       style={{ transform: `translateX(${gone}px)`, opacity: dismissed ? 0 : Math.max(0.25, 1 - Math.abs(offset) / 220) }}
@@ -77,10 +70,9 @@ export function AppToast({ id, visible, message, tone }: AppToastProps) {
       onPointerUp={handleUp}
       onPointerCancel={handleUp}
     >
-      <svg className="size-[1.35rem] flex-none text-[rgb(var(--toast-rgb))]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <circle cx="12" cy="12" r="9.5" strokeWidth="1.6" />
-        <path d={TONE_ICON[tone]} />
-      </svg>
+      <span className={cx('grid size-7 shrink-0 place-items-center rounded-full border', TONE[look.tone].tint, TONE[look.tone].text)}>
+        <Icon name={look.icon} size={16} strokeWidth={2} />
+      </span>
       <span>{message}</span>
     </div>
   )
