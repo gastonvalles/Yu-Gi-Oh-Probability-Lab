@@ -22,6 +22,7 @@ import {
   clearDeckZone,
   confirmDeckCardClassification,
   moveDeckCardInBuilder,
+  sortDeckZone,
   removeDeckCardFromBuilder,
   replaceDeckBuilder,
   setDeckCardOrigin,
@@ -457,6 +458,14 @@ export function useDeckModeController() {
     [handleAddSelectedDeckCopy, handleRemoveSelectedDeckCopy, selectedDeckCopy],
   )
 
+  const handleSortDeckZone = useCallback(
+    (zone: DeckZone) => {
+      dispatch(sortDeckZone(zone))
+      showToast(`Ordenaste ${DECK_ZONE_LABELS[zone]}.`, 'success')
+    },
+    [dispatch, showToast],
+  )
+
   const handleClearDeckZone = useCallback(
     (zone: DeckZone) => {
       const zoneCards = deckBuilder[zone]
@@ -610,6 +619,7 @@ export function useDeckModeController() {
       selectedDeckCopyActions,
       isCardDetailOpen: selectedDetailCard !== null,
       onClearDeckZone: handleClearDeckZone,
+      onSortDeckZone: handleSortDeckZone,
       onClearAllDeckZones: handleClearAllDeckZones,
       onRemoveDeckCard: handleRemoveDeckCard,
       onDeckCardPointerDown: handleDeckCardPointerDown,
