@@ -76,23 +76,30 @@ export async function loadCardCatalog(): Promise<ApiCardSearchResult[]> {
   }
 }
 
+// El catálogo tiene ~14 páginas de 1000: un tope evita que una API rota que siempre dice "hay más" nos tenga pidiendo para siempre.
+const MAX_CARD_CATALOG_PAGES = 40
+
 async function fetchCardCatalog(): Promise<ApiCardSearchResult[]> {
   const cardsById = new Map<number, ApiCardSearchResult>()
   let offset = 0
 
-  while (true) {
+  for (let pageIndex = 0; pageIndex < MAX_CARD_CATALOG_PAGES; pageIndex += 1) {
+    const knownBefore = cardsById.size
     const page = await searchCards({}, CARD_CATALOG_PAGE_SIZE, offset, { persistForMs: CARD_CATALOG_PERSIST_MS })
 
     for (const card of page.results) {
       cardsById.set(card.ygoprodeckId, card)
     }
 
-    if (!page.hasMore || page.results.length === 0) {
-      return [...cardsById.values()]
+    // Sin cartas nuevas en la página (ids repetidos) también se corta: no hay más que traer.
+    if (!page.hasMore || page.results.length === 0 || cardsById.size === knownBefore) {
+      break
     }
 
     offset += page.results.length
   }
+
+  return [...cardsById.values()]
 }
 
 function attachGenesysInfo(searchPage: ApiSearchPage): ApiSearchPage {

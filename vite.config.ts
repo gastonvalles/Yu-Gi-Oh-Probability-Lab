@@ -1,12 +1,25 @@
 /// <reference types="vitest" />
+import { readFileSync } from 'node:fs'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'vite'
 
 const isMountedWindowsWorkspace = process.cwd().startsWith('/mnt/')
 
+/** Los headers de seguridad viven en vercel.json; `npm run preview` los aplica para probar el build como en producción. */
+function readVercelHeaders(): Record<string, string> {
+  const config = JSON.parse(readFileSync(new URL('./vercel.json', import.meta.url), 'utf8')) as {
+    headers?: Array<{ headers: Array<{ key: string; value: string }> }>
+  }
+
+  return Object.fromEntries((config.headers ?? []).flatMap((rule) => rule.headers.map((header) => [header.key, header.value])))
+}
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  preview: {
+    headers: readVercelHeaders(),
+  },
   server: {
     watch: isMountedWindowsWorkspace
       ? {

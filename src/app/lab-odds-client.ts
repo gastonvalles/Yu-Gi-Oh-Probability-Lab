@@ -1,6 +1,6 @@
 import { hashString } from './lab-computation-client'
 import { computeLabOdds, type LabOdds, type LabOddsInput } from './lab-odds'
-import { runInPool } from './lab-worker-pool'
+import { isWorkerTimeout, runInPool } from './lab-worker-pool'
 
 interface OddsReply {
   id: number
@@ -54,7 +54,8 @@ export function requestLabOdds(rawKey: string, input: LabOddsInput): Promise<Lab
   }
   const reply = runInPool<OddsReply>((id) => ({ id, kind: 'odds', ...input }))
   const inMainThread = () => new Promise<LabOdds | null>((resolve) => window.setTimeout(() => resolve(remember(computeLabOdds(input))), 0))
-  const result = (reply ? reply.then((data) => remember(fromReply(data)), inMainThread) : inMainThread()).finally(() => inFlight.delete(key))
+  // Si el worker tardó demasiado no se repite el cálculo en el hilo principal (congelaría la pantalla): queda sin dato.
+  const result = (reply ? reply.then((data) => remember(fromReply(data)), (error) => (isWorkerTimeout(error) ? remember(null) : inMainThread())) : inMainThread()).finally(() => inFlight.delete(key))
 
   inFlight.set(key, result)
 

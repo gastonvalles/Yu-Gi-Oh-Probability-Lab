@@ -6,7 +6,7 @@ import { getClassificationOverrides } from './classification-overrides'
 import { addSearchResultToZone, getAddSearchResultIssue } from './deck-builder'
 import type { DeckBuilderState, DeckZone, PortableConfig } from './model'
 import { createInitialState } from './model'
-import { isRecord, normalizeSearchText } from './utils'
+import { formatInteger, isRecord, normalizeSearchText } from './utils'
 
 const DECK_ZONES: DeckZone[] = ['main', 'extra', 'side']
 
@@ -246,7 +246,8 @@ function buildDeckImportPreviewFromDeckBuilder(options: {
   deckBuilder: DeckBuilderState
   source?: Partial<DeckImportSource>
 }): DeckImportPreview {
-  const importedDeck = cloneDeckBuilderForImport(options.deckBuilder)
+  // Un JSON no pasa por el builder carta por carta: los topes se aplican acá (y lo que sobra se informa).
+  const { deckBuilder: importedDeck, conflicts } = capImportedDeck(cloneDeckBuilderForImport(options.deckBuilder))
   const overrides = getClassificationOverrides()
 
   for (const zone of DECK_ZONES) {
@@ -276,9 +277,60 @@ function buildDeckImportPreviewFromDeckBuilder(options: {
     invalidLines: [],
     resolvedEntries,
     missingEntries: [],
-    conflicts: [],
+    conflicts,
     importedDeck,
   })
+}
+
+/** Tope por zona y por nombre para un deck que llega entero (JSON): un archivo gigante no debe tumbar la pestaña. */
+const IMPORT_ZONE_CAP = 60
+const IMPORT_COPY_CAP = 3
+
+function capImportedDeck(deckBuilder: DeckBuilderState): { deckBuilder: DeckBuilderState; conflicts: DeckImportConflict[] } {
+  const copiesByName = new Map<string, number>()
+  const conflictByKey = new Map<string, DeckImportConflict>()
+
+  const keep = (zone: DeckZone, cards: DeckBuilderState[DeckZone]): DeckBuilderState[DeckZone] => {
+    let kept = 0
+
+    return cards.filter((card) => {
+      const nameKey = normalizeImportedCardName(card.name)
+      const copies = copiesByName.get(nameKey) ?? 0
+      const reason =
+        kept >= IMPORT_ZONE_CAP
+          ? `Una importación admite hasta ${formatInteger(IMPORT_ZONE_CAP)} cartas por zona.`
+          : copies >= IMPORT_COPY_CAP
+            ? `Más de ${formatInteger(IMPORT_COPY_CAP)} copias de ${card.name}.`
+            : null
+
+      if (reason) {
+        const key = `${zone}:${nameKey}:${reason}`
+        const existing = conflictByKey.get(key)
+
+        if (existing) {
+          existing.count += 1
+        } else {
+          conflictByKey.set(key, { zone, name: card.name, count: 1, reason })
+        }
+
+        return false
+      }
+
+      copiesByName.set(nameKey, copies + 1)
+      kept += 1
+      return true
+    })
+  }
+
+  return {
+    deckBuilder: {
+      ...deckBuilder,
+      main: keep('main', deckBuilder.main),
+      extra: keep('extra', deckBuilder.extra),
+      side: keep('side', deckBuilder.side),
+    },
+    conflicts: [...conflictByKey.values()],
+  }
 }
 
 function buildDeckImportPreviewFromResolvedEntries(options: {
@@ -370,13 +422,14 @@ function appendResolvedEntryCopies(options: {
     const issue = getAddSearchResultIssue(nextDeckBuilder, matchedCard, entry.zone, deckFormat)
 
     if (issue) {
+      // El motivo es el mismo para todas las copias que faltan: un solo conflicto con la cuenta, y se corta.
       conflicts.push({
         zone: entry.zone,
         name: matchedCard.name,
-        count: 1,
+        count: entry.count - copyIndex,
         reason: issue,
       })
-      continue
+      break
     }
 
     nextDeckBuilder = addSearchResultToZone(
@@ -649,12 +702,15 @@ function cleanupDeckEntryName(value: string): string {
   return cleanedValue
 }
 
+/** Más copias que esto en una sola línea no es una lista real: se recorta (cada copia se procesa una por una). */
+const MAX_IMPORT_ENTRY_COPIES = 60
+
 function sanitizeDeckEntryCount(value: number): number {
   if (!Number.isInteger(value) || value < 1) {
     return 1
   }
 
-  return value
+  return Math.min(value, MAX_IMPORT_ENTRY_COPIES)
 }
 
 function normalizeImportLine(value: string): string {

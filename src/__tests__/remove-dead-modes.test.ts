@@ -96,8 +96,9 @@ const arbApiCardReference: fc.Arbitrary<ApiCardReference> = fc.record({
   def: fc.option(fc.integer({ min: 0, max: 5000 }).map(String), { nil: null }),
   archetype: fc.option(fc.string({ maxLength: 20 }), { nil: null }),
   ygoprodeckUrl: fc.option(fc.string({ maxLength: 50 }), { nil: null }),
-  imageUrl: fc.option(fc.string({ maxLength: 50 }), { nil: null }),
-  imageUrlSmall: fc.option(fc.string({ maxLength: 50 }), { nil: null }),
+  // Sólo sobreviven al codec las URLs del CDN de YGOPRODeck (el resto se descarta a propósito).
+  imageUrl: fc.option(fc.integer({ min: 1, max: 99999999 }).map((id) => `https://images.ygoprodeck.com/images/cards/${id}.jpg`), { nil: null }),
+  imageUrlSmall: fc.option(fc.integer({ min: 1, max: 99999999 }).map((id) => `https://images.ygoprodeck.com/images/cards_small/${id}.jpg`), { nil: null }),
   banlist: fc.record({
     tcg: fc.option(fc.constantFrom('forbidden' as const, 'limited' as const, 'semi-limited' as const, 'unlimited' as const), { nil: null }),
     ocg: fc.option(fc.constantFrom('forbidden' as const, 'limited' as const, 'semi-limited' as const, 'unlimited' as const), { nil: null }),
@@ -141,7 +142,8 @@ const arbHandPattern: fc.Arbitrary<HandPattern> = fc.record({
 })
 
 const arbAppState: fc.Arbitrary<AppState> = fc.record({
-  handSize: fc.integer({ min: 1, max: 15 }),
+  // El codec acota la mano a 1..10.
+  handSize: fc.integer({ min: 1, max: 10 }),
   deckFormat: arbDeckFormat,
   patternsSeeded: fc.boolean(),
   patternsSeedVersion: fc.integer({ min: 0, max: 10 }),

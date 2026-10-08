@@ -4,6 +4,7 @@ import { Provider } from 'react-redux'
 
 import App from './App'
 import { UI_ANIMATION_MS } from './app/motion'
+import { ErrorBoundary } from './components/ui/ErrorBoundary'
 import { store } from './app/store'
 import './index.css'
 
@@ -17,8 +18,10 @@ document.documentElement.style.setProperty('--motion-duration', `${UI_ANIMATION_
 
 createRoot(appRoot).render(
   <StrictMode>
-    <Provider store={store}>
-      <App />
-    </Provider>
+    <ErrorBoundary>
+      <Provider store={store}>
+        <App />
+      </Provider>
+    </ErrorBoundary>
   </StrictMode>,
 )

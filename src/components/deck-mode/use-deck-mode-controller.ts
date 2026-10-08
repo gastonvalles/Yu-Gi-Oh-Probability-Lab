@@ -37,6 +37,7 @@ import { useDeckPointerDrag } from '../../app/use-deck-pointer-drag'
 import { usePatternEditorActions } from '../../app/use-pattern-editor-actions'
 import { usePatternMaintenance } from '../../app/use-pattern-maintenance'
 import { isClassificationStepComplete } from '../../app/role-step'
+import { STORAGE_FULL_EVENT } from '../../app/persistence'
 import { useToastMessage } from '../../app/use-toast-message'
 import type { CardOrigin, CardRole } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
@@ -105,6 +106,13 @@ export function useDeckModeController() {
     [deckBuilder, settings.deckFormat, visibleSearchResults],
   )
   const { showToast } = useToastMessage()
+
+  // Si el navegador no deja guardar (almacenamiento lleno), que no sea en silencio: el usuario puede exportar.
+  useEffect(() => {
+    const warn = () => showToast('El navegador no tiene espacio para guardar tus cambios. Exportá el deck para no perderlo.', 'error')
+    window.addEventListener(STORAGE_FULL_EVENT, warn)
+    return () => window.removeEventListener(STORAGE_FULL_EVENT, warn)
+  }, [showToast])
   const {
     activeDragInstanceId,
     activeDropZone,

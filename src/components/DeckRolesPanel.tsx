@@ -516,14 +516,7 @@ export function DeckRolesPanel({
 
       {sortedCards.length > 0 ? (
         <div className={cx('grid gap-4 min-[1101px]:items-center min-[1101px]:gap-6', visibleFilterItems.length > 1 && 'min-[1101px]:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]')}>
-          <Card level="hero" padding="lg" className="flex items-center gap-5 min-[1101px]:gap-6">
-            {/* El anillo va primero y en verde: se lee de un vistazo cuánto falta, y 100 % = listo. */}
-            <ProgressRing tone="onBrand" color="var(--success-rgb)" size={112} strokeWidth={10} value={classifiedPercent / 100} label="Cartas clasificadas">
-              <span className="grid justify-items-center leading-none">
-                <span className="text-title font-bold tracking-[-0.02em]">{formatInteger(classifiedPercent)}%</span>
-                <span className="mt-1 text-micro font-medium text-primary-foreground/75">{hasCardsNeedingClassification ? 'listas' : 'listo'}</span>
-              </span>
-            </ProgressRing>
+          <Card level="hero" padding="lg" className="flex items-center justify-between gap-5 min-[1101px]:gap-6">
             <div className="grid min-w-0 gap-4">
               <p className="m-0 max-w-[16rem] text-lead leading-snug">
                 {unclassifiedCards.length > 0
@@ -549,6 +542,13 @@ export function DeckRolesPanel({
                 ) : null}
               </div>
             </div>
+            {/* A la derecha y en verde: se lee de un vistazo cuánto falta, y 100 % = listo. */}
+            <ProgressRing tone="onBrand" color="var(--success-rgb)" size={112} strokeWidth={10} value={classifiedPercent / 100} label="Cartas clasificadas">
+              <span className="grid justify-items-center leading-none">
+                <span className="text-title font-bold tracking-[-0.02em]">{formatInteger(classifiedPercent)}%</span>
+                <span className="mt-1 text-micro font-medium text-primary-foreground/75">{hasCardsNeedingClassification ? 'listas' : 'listo'}</span>
+              </span>
+            </ProgressRing>
           </Card>
 
           {visibleFilterItems.length > 1 ? (

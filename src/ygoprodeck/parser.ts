@@ -37,7 +37,7 @@ function parseCard(entry: unknown, index: number): ApiCardSearchResult {
     name: readRequiredString(entry.name, `data[${index}].name`),
     cardType: readRequiredString(entry.type, `data[${index}].type`),
     frameType: readRequiredString(entry.frameType, `data[${index}].frameType`),
-    description: readOptionalString(entry.desc),
+    description: clampCardDescription(readOptionalString(entry.desc)),
     race: readOptionalString(entry.race),
     attribute: readOptionalString(entry.attribute),
     level: readOptionalInteger(entry.level),
@@ -110,7 +110,30 @@ function readImageUrl(
     return null
   }
 
-  return readOptionalString(firstImage[fieldName])
+  return keepCardImageUrl(readOptionalString(firstImage[fieldName]))
+}
+
+/** El texto de una carta real no pasa de ~1.200 caracteres; más largo es basura y traba los heurísticos (regex sobre la descripción). */
+export const MAX_CARD_DESCRIPTION_LENGTH = 2000
+
+export function clampCardDescription(description: string | null): string | null {
+  return description && description.length > MAX_CARD_DESCRIPTION_LENGTH ? description.slice(0, MAX_CARD_DESCRIPTION_LENGTH) : description
+}
+
+const CARD_IMAGE_HOST = 'images.ygoprodeck.com'
+
+/** Sólo imágenes del CDN de YGOPRODeck: un deck compartido no puede hacer que el navegador llame a cualquier host. */
+export function keepCardImageUrl(url: string | null): string | null {
+  if (!url) {
+    return null
+  }
+
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'https:' && parsed.host === CARD_IMAGE_HOST ? url : null
+  } catch {
+    return null
+  }
 }
 
 function readHasMore(meta: unknown, currentRows: number): boolean {

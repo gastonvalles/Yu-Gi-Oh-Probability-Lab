@@ -1,5 +1,5 @@
 import { persistComputation, readPersistedComputation } from './lab-cache-store'
-import { runInPool } from './lab-worker-pool'
+import { isWorkerTimeout, runInPool } from './lab-worker-pool'
 import { assembleLabComputation, computeLabResults, labInputSignature, type LabComputation } from './probability-lab'
 import type { CalculationOutput, CardEntry, HandPattern } from '../types'
 
@@ -104,6 +104,10 @@ export function requestLabComputation(input: LabComputationInput, key = labCompu
   const { cards, patterns, handSize } = input
   const first = runInPool<{ output: CalculationOutput }>((id) => ({ id, kind: 'view', cards, patterns, handSize, view: 'first' }))
   const second = runInPool<{ output: CalculationOutput }>((id) => ({ id, kind: 'view', cards, patterns, handSize, view: 'second' }))
+  const tooSlow = (): LabComputation => ({
+    status: 'blocked',
+    issues: [{ level: 'error', message: 'El cálculo tardó demasiado y se canceló. Probá con menos condiciones o un pool de cartas más chico.' }],
+  })
   const inMainThread = () =>
     new Promise<LabComputation>((resolve) =>
       window.setTimeout(() => {
@@ -120,7 +124,8 @@ export function requestLabComputation(input: LabComputationInput, key = labCompu
       ? Promise.all([first, second])
           .then(([a, b]) => assembleLabComputation(a.output, b.output, patterns, handSize))
           // Sin workers utilizables (bloqueados o con error) se calcula igual, en el hilo principal.
-          .catch(inMainThread)
+          // Si el worker tardó demasiado, no: repetirlo acá congelaría la pantalla.
+          .catch((error) => (isWorkerTimeout(error) ? tooSlow() : inMainThread()))
       : inMainThread()
   const tracked = computation
     .then((result) => remember(key, result))
