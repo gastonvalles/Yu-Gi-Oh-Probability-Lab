@@ -1,5 +1,12 @@
 import type { PracticeVerdict } from './practice'
 
+/**
+ * Paleta propia de la práctica: el violeta (#9B00FF) y el verde (#00FFA3) de antes del rediseño general.
+ * Se publica como variables en la raíz de la práctica y la heredan todos sus elementos.
+ */
+export const PRACTICE_PALETTE =
+  '[--primary:#9b00ff] [--primary-rgb:155_0_255] [--primary-hover:#b026ff] [--primary-hover-rgb:176_38_255] [--ring:#9b00ff] [--success:#00ffa3] [--success-rgb:0_255_163] [--warning:#f59e0b] [--warning-rgb:245_158_11] [--background:#0b0b0f] [--background-rgb:11_11_15] [--card-background:#12121a] [--card-background-rgb:18_18_26]'
+
 /** Color del veredicto de la mano: lo heredan el chip, el brillo de la bandeja y sus hijos. */
 export const VERDICT_COLOR: Record<PracticeVerdict, string> = {
   clean: '[--verdict-color:rgb(var(--success-rgb))]',

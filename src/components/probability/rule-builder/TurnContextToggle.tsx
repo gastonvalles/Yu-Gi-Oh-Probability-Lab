@@ -1,47 +1,37 @@
 import type { TurnContext } from '../../../types'
-import type { PatternEditorActions } from '../pattern-editor-actions'
+import { Segmented } from '../../ui/Segmented'
 import { Switch } from '../../ui/Switch'
-import { ChoiceCards } from './ChoiceCards'
+import type { PatternEditorActions } from '../pattern-editor-actions'
 
 interface TurnContextToggleProps {
   patternId: string
   currentTurnContext: TurnContext
-  ignoresDraw?: boolean
   actions: PatternEditorActions
 }
 
-const TURN_OPTIONS = [
-  { value: 'either', label: 'Siempre', description: 'Cuenta yendo 1º y 2º.' },
-  { value: 'first', label: 'Solo yendo 1º', description: 'Mano de 5 cartas.' },
-  { value: 'second', label: 'Solo yendo 2º', description: 'Mano de 6 cartas.' },
-] as const
-
-export function TurnContextToggle({ patternId, currentTurnContext, ignoresDraw = false, actions }: TurnContextToggleProps) {
+/** En qué turno cuenta la regla: siempre, sólo yendo 1º (mano de 5) o sólo yendo 2º (mano de 6). */
+export function TurnContextToggle({ patternId, currentTurnContext, actions }: TurnContextToggleProps) {
   return (
-    <div className="grid gap-2">
-    <ChoiceCards
+    <Segmented
+      fullWidth
       label="Contexto de turno"
       value={currentTurnContext}
-      options={TURN_OPTIONS}
+      options={[
+        { value: 'either', label: 'Siempre' },
+        { value: 'first', label: 'Solo yendo 1º' },
+        { value: 'second', label: 'Solo yendo 2º' },
+      ]}
       onChange={(turnContext) => actions.setPatternTurnContext(patternId, turnContext)}
     />
-    {currentTurnContext !== 'first' ? (
-      <div className="flex items-center justify-between gap-3 py-1">
-        <span className="grid gap-0.5">
-          <span className="text-body font-medium text-foreground">Contar la carta que robás yendo 2º</span>
-          <span className="text-micro text-muted">
-            {ignoresDraw
-              ? 'Yendo 2º se mira la mano inicial de 5 (ej. interacción del turno rival).'
-              : 'Yendo 2º se miran las 6 cartas.'}
-          </span>
-        </span>
-        <Switch
-          checked={!ignoresDraw}
-          label="Contar la carta que robás yendo 2º"
-          onChange={(counts) => actions.setPatternIgnoresDraw(patternId, !counts)}
-        />
-      </div>
-    ) : null}
+  )
+}
+
+/** Yendo 2º, ¿se cuenta la carta que robás? (apagado: se mira sólo la mano inicial de 5). */
+export function DrawCountToggle({ patternId, ignoresDraw, actions }: { patternId: string; ignoresDraw: boolean; actions: PatternEditorActions }) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-1">
+      <span className="text-body text-foreground">Contar la carta que robás yendo 2º</span>
+      <Switch checked={!ignoresDraw} label="Contar la carta que robás yendo 2º" onChange={(counts) => actions.setPatternIgnoresDraw(patternId, !counts)} />
     </div>
   )
 }

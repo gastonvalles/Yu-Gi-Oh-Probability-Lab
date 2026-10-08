@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 
 import { formatInteger, formatShortPercent } from '../../app/utils'
 import type { PatternKind } from '../../types'
@@ -74,7 +74,7 @@ export function LabRuleList({
         <div className={RULE_STACK}>
           <RuleTier
             title="Universales"
-            collapsible
+            count={groups.universal.length}
             badge={
               <Badge icon="lock" size="sm">
                 Siempre activas
@@ -88,7 +88,7 @@ export function LabRuleList({
           />
           <RuleTier
             title="Genéricas"
-            collapsible
+            count={groups.generic.length}
             badge={
               enabledGeneric < groups.generic.length ? (
                 <Badge size="sm" tone={enabledGeneric > 0 ? 'success' : 'neutral'}>
@@ -155,55 +155,39 @@ export function LabRuleList({
 
 function RuleTier({
   title,
+  count,
   badge,
   description,
   entries,
   emptyState,
   renderRow,
-  collapsible = false,
 }: {
   title: string
-  collapsible?: boolean
+  /** Cantidad de reglas del grupo (se muestra junto al título). */
+  count?: number
   badge: ReactNode
   description: string
   entries: RuleEntry[]
   emptyState?: ReactNode
   renderRow: (entry: RuleEntry) => ReactNode
 }) {
-  // Las reglas del sistema arrancan plegadas: lo que el usuario edita son las propias.
-  const [isOpen, setIsOpen] = useState(!collapsible)
-  const listId = useId()
-
   return (
     <section className="grid min-w-0 content-start gap-2" aria-label={title}>
       <header className="grid gap-1">
         <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
-          {collapsible ? (
-            <h4 className="m-0 text-body font-semibold text-foreground">
-              <button
-                type="button"
-                className="inline-flex cursor-pointer items-center gap-2 rounded-control border-0 bg-transparent py-1 pr-2 font-[inherit] text-inherit hover:text-primary-soft focus-visible:outline-none focus-visible:shadow-focus"
-                aria-expanded={isOpen}
-                aria-controls={listId}
-                onClick={() => setIsOpen((current) => !current)}
-              >
-                <Icon name="chevron-right" size={14} className={cx('text-soft transition-transform duration-150', isOpen && 'rotate-90')} />
-                {title}
-                <Badge tone="brand" size="sm">{formatInteger(entries.length)}</Badge>
-              </button>
-            </h4>
-          ) : (
-            <h4 className="m-0 text-body font-semibold text-foreground">{title}</h4>
-          )}
+          <h4 className="m-0 flex items-center gap-2 text-body font-semibold text-foreground">
+            {title}
+            {count !== undefined ? <Badge tone="brand" size="sm">{formatInteger(count)}</Badge> : null}
+          </h4>
           {badge}
         </div>
-        {description ? <p className={cx('m-0 text-micro text-muted', !isOpen && 'hidden')}>{description}</p> : null}
+        {description ? <p className="m-0 text-micro text-muted">{description}</p> : null}
       </header>
 
-      {!isOpen ? null : entries.length === 0 ? (
+      {entries.length === 0 ? (
         (emptyState ?? <p className={LAB_FOOTNOTE}>No hay reglas de este tipo.</p>)
       ) : (
-        <ul id={listId} className="m-0 grid list-none gap-0 divide-y divide-border-subtle p-0">
+        <ul className="m-0 grid list-none gap-0 divide-y divide-border-subtle p-0">
           {entries.map((entry) => (
             <li key={entry.patternId}>{renderRow(entry)}</li>
           ))}
