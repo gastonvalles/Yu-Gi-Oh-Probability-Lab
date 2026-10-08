@@ -7,12 +7,14 @@ export type CardRole =
   | 'extender'
   | 'enabler'
   | 'searcher'
+  | 'draw'
   | 'payoff'
   | 'recovery'
+  | 'handtrap'
   | 'disruption'
   | 'boardbreaker'
   | 'brick'
-  | 'tech'
+  | 'garnet'
 export type GroupKey =
   | { type: 'origin'; value: CardOrigin }
   | { type: 'role'; value: CardRole }

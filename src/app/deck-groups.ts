@@ -41,13 +41,15 @@ const ROLE_THEME_BY_KEY: Record<CardRole, ClassificationTheme> = {
   starter: { color: '#9b00ff', rgb: '155 0 255' },
   extender: { color: '#00ffa3', rgb: '0 255 163' },
   enabler: { color: '#14b8a6', rgb: '20 184 166' },
+  handtrap: { color: '#3b82f6', rgb: '59 130 246' },
   disruption: { color: '#2563eb', rgb: '37 99 235' },
   boardbreaker: { color: '#f59e0b', rgb: '245 158 11' },
   searcher: { color: '#06b6d4', rgb: '6 182 212' },
+  draw: { color: '#38bdf8', rgb: '56 189 248' },
   recovery: { color: '#22c55e', rgb: '34 197 94' },
   payoff: { color: '#10b981', rgb: '16 185 129' },
   brick: { color: '#ef4444', rgb: '239 68 68' },
-  tech: { color: '#94a3b8', rgb: '148 163 184' },
+  garnet: { color: '#b91c1c', rgb: '185 28 28' },
 }
 
 const ORIGIN_THEME_BY_KEY: Record<CardOrigin, ClassificationTheme> = {
@@ -112,8 +114,16 @@ export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
     key: createRoleGroupKey('searcher'),
     label: 'Searcher',
     shortLabel: 'Searcher',
-    description: 'Busca piezas del deck, GY o zonas públicas, o te hace robar más cartas.',
+    description: 'Busca una pieza concreta del deck, GY o zonas públicas (por ejemplo, al invocarse o tributarse).',
     theme: ROLE_THEME_BY_KEY.searcher,
+  },
+  {
+    kind: 'role',
+    key: createRoleGroupKey('draw'),
+    label: 'Draw',
+    shortLabel: 'Draw',
+    description: 'Te hace robar cartas (Mulcharmy, Pot of Desires…); no busca una carta concreta.',
+    theme: ROLE_THEME_BY_KEY.draw,
   },
   {
     kind: 'role',
@@ -133,10 +143,18 @@ export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
   },
   {
     kind: 'role',
+    key: createRoleGroupKey('handtrap'),
+    label: 'Handtrap',
+    shortLabel: 'HT',
+    description: 'Interacción que frena al rival desde la mano.',
+    theme: ROLE_THEME_BY_KEY.handtrap,
+  },
+  {
+    kind: 'role',
     key: createRoleGroupKey('disruption'),
     label: 'Disruption',
     shortLabel: 'Disruption',
-    description: 'Frena al rival desde la mano o en mesa: handtraps, trampas, negaciones y floodgates.',
+    description: 'Frena al rival en mesa o en su turno (negaciones, trampas, floodgates), por sí sola.',
     theme: ROLE_THEME_BY_KEY.disruption,
   },
   {
@@ -144,7 +162,7 @@ export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
     key: createRoleGroupKey('boardbreaker'),
     label: 'Boardbreaker',
     shortLabel: 'Boardbreaker',
-    description: 'Rompe campo o quita cartas del rival y abre espacio para jugar, sobre todo yendo segundo.',
+    description: 'Rompe campo o quita cartas del rival por sí sola. Si solo lo hace cuando se cumple una condición de tu línea, marcá su función principal.',
     theme: ROLE_THEME_BY_KEY.boardbreaker,
   },
   {
@@ -152,16 +170,16 @@ export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
     key: createRoleGroupKey('brick'),
     label: 'Brick',
     shortLabel: 'Brick',
-    description: 'Carta que preferís no robar: incómoda, o inútil en mano si no viene acompañada.',
+    description: 'Carta que preferís no robar al inicio si no viene acompañada.',
     theme: ROLE_THEME_BY_KEY.brick,
   },
   {
     kind: 'role',
-    key: createRoleGroupKey('tech'),
-    label: 'Tech',
-    shortLabel: 'Tech',
-    description: 'Slot flexible para metajuego o matchup sin ser parte estable del core.',
-    theme: ROLE_THEME_BY_KEY.tech,
+    key: createRoleGroupKey('garnet'),
+    label: 'Garnet',
+    shortLabel: 'Garnet',
+    description: 'Pieza que idealmente queda en deck porque en mano invalida o empeora una línea.',
+    theme: ROLE_THEME_BY_KEY.garnet,
   },
 ]
 
@@ -215,16 +233,20 @@ export function getQualifiedDeckGroupLabel(group: Pick<DeckGroupDefinition, 'kin
 /** Roles que ya no existen y el que los reemplaza (se unificaron al simplificar la categorización). */
 const LEGACY_ROLE_REPLACEMENTS: Record<string, CardRole> = {
   board_breaker: 'boardbreaker',
-  handtrap: 'disruption',
   floodgate: 'disruption',
   removal: 'boardbreaker',
-  draw: 'searcher',
   combo_piece: 'enabler',
-  garnet: 'brick',
+}
+
+/** Roles que se eliminaron sin reemplazo: se descartan sin pedir revisión. */
+const RETIRED_ROLE_KEYS: ReadonlySet<string> = new Set(['tech'])
+
+export function isRetiredCardRole(value: unknown): boolean {
+  return typeof value === 'string' && RETIRED_ROLE_KEYS.has(value)
 }
 
 /** Roles que hacen avanzar tu propio plan (el resto frena al rival o es utilidad). */
-const GAME_PLAN_ROLE_KEYS: ReadonlySet<CardRole> = new Set(['starter', 'extender', 'enabler', 'searcher', 'payoff', 'recovery'])
+const GAME_PLAN_ROLE_KEYS: ReadonlySet<CardRole> = new Set(['starter', 'extender', 'enabler', 'searcher', 'draw', 'payoff', 'recovery'])
 
 export function normalizeCardRoleKey(value: unknown): CardRole | null {
   if (typeof value !== 'string') {

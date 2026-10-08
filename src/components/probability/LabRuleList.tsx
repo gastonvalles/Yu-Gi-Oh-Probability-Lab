@@ -127,7 +127,7 @@ export function LabRuleList({
             emptyState={
               groups.custom.length === 0 ? (
                 <EmptyState icon="sparkles" title="Todavía no creaste reglas" className="py-6">
-                  Ejemplos: “Abrir tu carta clave”, “Starter + pieza de combo” o “2+ Disruption yendo 2º”.
+                  Ejemplos: “Abrir tu carta clave”, “Starter + pieza de combo” o “2+ Handtraps yendo 2º”.
                 </EmptyState>
               ) : (
                 <p className={LAB_FOOTNOTE}>No hay reglas propias de este tipo.</p>

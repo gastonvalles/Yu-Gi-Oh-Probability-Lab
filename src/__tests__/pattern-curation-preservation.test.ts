@@ -53,10 +53,10 @@ function makeValidMatcher(cardIds: string[]): fc.Arbitrary<Matcher> {
     })),
     // Role matcher (always valid)
     fc.constantFrom(
-      'starter' as const, 'extender' as const, 'enabler' as const, 'disruption' as const,
+      'starter' as const, 'extender' as const, 'enabler' as const, 'handtrap' as const,
       'disruption' as const, 'boardbreaker' as const, 'disruption' as const, 'boardbreaker' as const,
-      'searcher' as const, 'searcher' as const, 'recovery' as const, 'enabler' as const,
-      'payoff' as const, 'brick' as const, 'brick' as const, 'tech' as const,
+      'searcher' as const, 'draw' as const, 'recovery' as const, 'enabler' as const,
+      'payoff' as const, 'brick' as const, 'garnet' as const,
     ).map((value): Matcher => ({ type: 'role', value })),
     // Card type matcher
     fc.constantFrom('monster' as const, 'spell' as const, 'trap' as const).map((value): Matcher => ({

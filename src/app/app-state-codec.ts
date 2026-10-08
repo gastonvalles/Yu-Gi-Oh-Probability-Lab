@@ -10,6 +10,7 @@ import {
   normalizeTurnContext,
 } from './patterns'
 import {
+  isRetiredCardRole,
   normalizeCardOriginKey,
   resolveStoredCardOrigin,
   normalizeCardRoleKey,
@@ -304,6 +305,10 @@ function parseCardRoles(value: unknown): { roles: CardRole[]; needsReview: boole
   let needsReview = false
 
   for (const entry of value) {
+    if (isRetiredCardRole(entry)) {
+      continue
+    }
+
     const normalizedRole = normalizeCardRoleKey(entry)
 
     if (!normalizedRole) {

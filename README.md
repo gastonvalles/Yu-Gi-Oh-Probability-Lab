@@ -11,7 +11,7 @@ La idea central es ayudar a entender deck building con un flujo simple: armás e
 - Importación de decks desde archivos `.ydk`, `.txt` o `.json`.
 - Clasificación por carta en dos ejes independientes:
   - `origin`: `engine`, `non_engine`.
-  - `roles`: `starter`, `extender`, `enabler`, `searcher`, `payoff`, `recovery`, `disruption`, `boardbreaker`, `brick`, `tech`.
+  - `roles`: `starter`, `extender`, `enabler`, `searcher`, `draw`, `payoff`, `recovery`, `handtrap`, `disruption`, `boardbreaker`, `brick`, `garnet`.
 - Aperturas y Problemas para medir consistencia real.
 - Probabilidad exacta (enumeración combinatoria), yendo primero, segundo o en promedio.
 - Práctica de manos para ver ejemplos concretos.
@@ -35,7 +35,7 @@ La app separa explícitamente dos dimensiones:
 Eso evita mezclar pertenencia con función. Ejemplo:
 
 - `origin: engine` + `roles: [starter, extender]`
-- `origin: non_engine` + `roles: [disruption]`
+- `origin: non_engine` + `roles: [handtrap, disruption]`
 - `origin: engine` + `roles: [brick]`
 - `origin: engine` + `roles: [extender, boardbreaker]`
 

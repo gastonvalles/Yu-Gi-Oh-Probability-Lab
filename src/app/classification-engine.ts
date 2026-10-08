@@ -17,38 +17,38 @@ export function normalizeCardNameForLookup(name: string): string {
 
 const KNOWN_CARDS_MAP_ENTRIES: Array<[string, ClassificationSuggestion]> = [
   // Hand traps (origin: non_engine)
-  ['ash blossom & joyous spring', { origin: 'non_engine', roles: ['disruption'] }],
-  ['maxx "c"', { origin: 'non_engine', roles: ['disruption', 'searcher'] }],
-  ['effect veiler', { origin: 'non_engine', roles: ['disruption'] }],
-  ['ghost ogre & snow rabbit', { origin: 'non_engine', roles: ['disruption'] }],
-  ['ghost belle & haunted mansion', { origin: 'non_engine', roles: ['disruption'] }],
-  ['droll & lock bird', { origin: 'non_engine', roles: ['disruption'] }],
-  ['d.d. crow', { origin: 'non_engine', roles: ['disruption'] }],
-  ['nibiru, the primal being', { origin: 'non_engine', roles: ['disruption', 'boardbreaker'] }],
-  ['psy-framegear gamma', { origin: 'non_engine', roles: ['disruption'] }],
-  ['infinite impermanence', { origin: 'non_engine', roles: ['disruption'] }],
-  ['ghost mourner & moonlit chill', { origin: 'non_engine', roles: ['disruption'] }],
-  ['dimension shifter', { origin: 'non_engine', roles: ['disruption'] }],
-  ['skull meister', { origin: 'non_engine', roles: ['disruption'] }],
+  ['ash blossom & joyous spring', { origin: 'non_engine', roles: ['handtrap'] }],
+  ['maxx "c"', { origin: 'non_engine', roles: ['handtrap', 'draw'] }],
+  ['effect veiler', { origin: 'non_engine', roles: ['handtrap'] }],
+  ['ghost ogre & snow rabbit', { origin: 'non_engine', roles: ['handtrap'] }],
+  ['ghost belle & haunted mansion', { origin: 'non_engine', roles: ['handtrap'] }],
+  ['droll & lock bird', { origin: 'non_engine', roles: ['handtrap'] }],
+  ['d.d. crow', { origin: 'non_engine', roles: ['handtrap'] }],
+  ['nibiru, the primal being', { origin: 'non_engine', roles: ['handtrap', 'boardbreaker'] }],
+  ['psy-framegear gamma', { origin: 'non_engine', roles: ['handtrap'] }],
+  ['infinite impermanence', { origin: 'non_engine', roles: ['handtrap', 'disruption'] }],
+  ['ghost mourner & moonlit chill', { origin: 'non_engine', roles: ['handtrap'] }],
+  ['dimension shifter', { origin: 'non_engine', roles: ['handtrap', 'disruption'] }],
+  ['skull meister', { origin: 'non_engine', roles: ['handtrap'] }],
 
   // Staple spells
-  ['called by the grave', { origin: 'non_engine', roles: ['tech'] }],
-  ['crossout designator', { origin: 'non_engine', roles: ['tech'] }],
-  ['triple tactics talent', { origin: 'non_engine', roles: ['searcher', 'boardbreaker'] }],
+  ['called by the grave', { origin: 'non_engine', roles: ['disruption'] }],
+  ['crossout designator', { origin: 'non_engine', roles: ['disruption'] }],
+  ['triple tactics talent', { origin: 'non_engine', roles: ['draw', 'boardbreaker'] }],
   ['forbidden droplet', { origin: 'non_engine', roles: ['boardbreaker', 'disruption'] }],
   ['dark ruler no more', { origin: 'non_engine', roles: ['boardbreaker'] }],
   ["harpie's feather duster", { origin: 'non_engine', roles: ['boardbreaker'] }],
   ['raigeki', { origin: 'non_engine', roles: ['boardbreaker'] }],
   ['lightning storm', { origin: 'non_engine', roles: ['boardbreaker'] }],
-  ['pot of prosperity', { origin: 'non_engine', roles: ['searcher'] }],
-  ['pot of desires', { origin: 'non_engine', roles: ['searcher'] }],
-  ['pot of extravagance', { origin: 'non_engine', roles: ['searcher'] }],
-  ['allure of darkness', { origin: 'non_engine', roles: ['searcher'] }],
-  ['upstart goblin', { origin: 'non_engine', roles: ['searcher'] }],
+  ['pot of prosperity', { origin: 'non_engine', roles: ['draw'] }],
+  ['pot of desires', { origin: 'non_engine', roles: ['draw'] }],
+  ['pot of extravagance', { origin: 'non_engine', roles: ['draw'] }],
+  ['allure of darkness', { origin: 'non_engine', roles: ['draw'] }],
+  ['upstart goblin', { origin: 'non_engine', roles: ['draw'] }],
   ['foolish burial', { origin: 'engine', roles: ['searcher'] }],
   ['monster reborn', { origin: 'non_engine', roles: ['recovery'] }],
   ['one for one', { origin: 'engine', roles: ['searcher'] }],
-  ['book of moon', { origin: 'non_engine', roles: ['tech'] }],
+  ['book of moon', { origin: 'non_engine', roles: ['disruption'] }],
 
   // Staple traps
   ['solemn judgment', { origin: 'non_engine', roles: ['disruption'] }],
@@ -70,25 +70,25 @@ const KNOWN_CARDS_MAP_ENTRIES: Array<[string, ClassificationSuggestion]> = [
   ['dogoran, the mad flame kaiju', { origin: 'non_engine', roles: ['boardbreaker'] }],
   ['kumongous, the sticky string kaiju', { origin: 'non_engine', roles: ['boardbreaker'] }],
   ['super polymerization', { origin: 'non_engine', roles: ['boardbreaker'] }],
-  ['forbidden chalice', { origin: 'non_engine', roles: ['tech', 'disruption'] }],
+  ['forbidden chalice', { origin: 'non_engine', roles: ['disruption'] }],
 
   // Modern hand traps & staples (2024–2025 meta)
-  ['mulcharmy fuwalos', { origin: 'non_engine', roles: ['disruption', 'searcher'] }],
-  ['mulcharmy purulia', { origin: 'non_engine', roles: ['disruption', 'searcher'] }],
-  ['mulcharmy nyalus', { origin: 'non_engine', roles: ['disruption', 'searcher'] }],
-  ['bystial druiswurm', { origin: 'non_engine', roles: ['disruption', 'boardbreaker'] }],
-  ['bystial magnamhut', { origin: 'non_engine', roles: ['disruption', 'searcher'] }],
-  ['bystial saronir', { origin: 'non_engine', roles: ['disruption'] }],
-  ['token collector', { origin: 'non_engine', roles: ['disruption'] }],
-  ['contact "c"', { origin: 'non_engine', roles: ['disruption'] }],
-  ['gnomaterial', { origin: 'non_engine', roles: ['disruption'] }],
-  ['retaliating "c"', { origin: 'non_engine', roles: ['disruption'] }],
-  ['herald of orange light', { origin: 'non_engine', roles: ['disruption'] }],
-  ['herald of green light', { origin: 'non_engine', roles: ['disruption'] }],
-  ['herald of purple light', { origin: 'non_engine', roles: ['disruption'] }],
+  ['mulcharmy fuwalos', { origin: 'non_engine', roles: ['handtrap', 'draw'] }],
+  ['mulcharmy purulia', { origin: 'non_engine', roles: ['handtrap', 'draw'] }],
+  ['mulcharmy nyalus', { origin: 'non_engine', roles: ['handtrap', 'draw'] }],
+  ['bystial druiswurm', { origin: 'non_engine', roles: ['handtrap', 'boardbreaker'] }],
+  ['bystial magnamhut', { origin: 'non_engine', roles: ['handtrap', 'searcher'] }],
+  ['bystial saronir', { origin: 'non_engine', roles: ['handtrap'] }],
+  ['token collector', { origin: 'non_engine', roles: ['handtrap'] }],
+  ['contact "c"', { origin: 'non_engine', roles: ['handtrap'] }],
+  ['gnomaterial', { origin: 'non_engine', roles: ['handtrap'] }],
+  ['retaliating "c"', { origin: 'non_engine', roles: ['handtrap'] }],
+  ['herald of orange light', { origin: 'non_engine', roles: ['handtrap', 'disruption'] }],
+  ['herald of green light', { origin: 'non_engine', roles: ['handtrap', 'disruption'] }],
+  ['herald of purple light', { origin: 'non_engine', roles: ['handtrap', 'disruption'] }],
 
   // Modern staple spells & traps
-  ['forbidden crown', { origin: 'non_engine', roles: ['tech', 'disruption'] }],
+  ['forbidden crown', { origin: 'non_engine', roles: ['disruption'] }],
   ['change of heart', { origin: 'non_engine', roles: ['boardbreaker'] }],
   ['mind control', { origin: 'non_engine', roles: ['boardbreaker'] }],
   ['cosmic cyclone', { origin: 'non_engine', roles: ['boardbreaker'] }],
@@ -104,15 +104,15 @@ const KNOWN_CARDS_MAP_ENTRIES: Array<[string, ClassificationSuggestion]> = [
   ['instant fusion', { origin: 'engine', roles: ['searcher'] }],
   ['reasoning', { origin: 'engine', roles: ['starter'] }],
   ['monster gate', { origin: 'engine', roles: ['starter'] }],
-  ['pot of avarice', { origin: 'non_engine', roles: ['searcher', 'recovery'] }],
-  ['jar of avarice', { origin: 'non_engine', roles: ['searcher', 'recovery'] }],
+  ['pot of avarice', { origin: 'non_engine', roles: ['draw', 'recovery'] }],
+  ['jar of avarice', { origin: 'non_engine', roles: ['draw', 'recovery'] }],
 
   // Additional Kaijus & board breakers
   ['jizukiru, the star destroying kaiju', { origin: 'non_engine', roles: ['boardbreaker'] }],
   ['radian, the multidimensional kaiju', { origin: 'non_engine', roles: ['boardbreaker'] }],
   ['thunder king, the lightningstrike kaiju', { origin: 'non_engine', roles: ['boardbreaker'] }],
   ['interrupted kaiju slumber', { origin: 'non_engine', roles: ['boardbreaker', 'searcher'] }],
-  ['owner\'s seal', { origin: 'non_engine', roles: ['tech'] }],
+  ['owner\'s seal', { origin: 'non_engine', roles: ['disruption'] }],
   ['sphere mode (the winged dragon of ra - sphere mode)', { origin: 'non_engine', roles: ['boardbreaker'] }],
   ['the winged dragon of ra - sphere mode', { origin: 'non_engine', roles: ['boardbreaker'] }],
   ['lava golem', { origin: 'non_engine', roles: ['boardbreaker'] }],
@@ -130,8 +130,8 @@ const KNOWN_CARDS_MAP_ENTRIES: Array<[string, ClassificationSuggestion]> = [
   ['amano-iwato', { origin: 'non_engine', roles: ['disruption'] }],
 
   // 2026 meta staples (YCS Virginia 300th / Burst Protocol format)
-  ['shiina, twin tempests of celestial thunder', { origin: 'non_engine', roles: ['disruption', 'boardbreaker'] }],
-  ['mulcharmy meowls', { origin: 'non_engine', roles: ['disruption', 'searcher'] }],
+  ['shiina, twin tempests of celestial thunder', { origin: 'non_engine', roles: ['handtrap', 'boardbreaker'] }],
+  ['mulcharmy meowls', { origin: 'non_engine', roles: ['handtrap', 'draw'] }],
   ['s:p little knight', { origin: 'non_engine', roles: ['boardbreaker', 'disruption'] }],
   ['divine arsenal aa-zeus - sky thunder', { origin: 'non_engine', roles: ['boardbreaker', 'payoff'] }],
   ['super starslayer ty-phon - sky crisis', { origin: 'non_engine', roles: ['boardbreaker', 'payoff'] }],
@@ -140,8 +140,8 @@ const KNOWN_CARDS_MAP_ENTRIES: Array<[string, ClassificationSuggestion]> = [
   ['knightmare phoenix', { origin: 'non_engine', roles: ['boardbreaker', 'payoff'] }],
   ['accesscode talker', { origin: 'non_engine', roles: ['payoff', 'boardbreaker'] }],
   ['underworld goddess of the closed world', { origin: 'non_engine', roles: ['boardbreaker', 'payoff', 'disruption'] }],
-  ['guardian chimera', { origin: 'non_engine', roles: ['payoff', 'searcher'] }],
-  ['saryuja skull dread', { origin: 'non_engine', roles: ['payoff', 'searcher'] }],
+  ['guardian chimera', { origin: 'non_engine', roles: ['payoff', 'draw'] }],
+  ['saryuja skull dread', { origin: 'non_engine', roles: ['payoff', 'draw'] }],
   ['imperial princess quinquery', { origin: 'non_engine', roles: ['payoff', 'disruption'] }],
 
   // Generic extra deck toolbox (commonly sided/mained across meta)
@@ -170,11 +170,11 @@ export interface HeuristicRule {
 
 /** Roles that advance the player's own game plan. */
 const GAME_PLAN_ROLES: ReadonlySet<CardRole> = new Set([
-  'starter', 'extender', 'enabler', 'searcher', 'payoff', 'recovery',
+  'starter', 'extender', 'enabler', 'searcher', 'draw', 'payoff', 'recovery',
 ])
 
 /** Roles that interact with the opponent. */
-const INTERACTION_ROLES: ReadonlySet<CardRole> = new Set(['disruption', 'boardbreaker'])
+const INTERACTION_ROLES: ReadonlySet<CardRole> = new Set(['handtrap', 'disruption', 'boardbreaker'])
 
 /**
  * Pure function. Given a set of suggested roles, derives the origin.
@@ -184,18 +184,12 @@ export function deriveOrigin(roles: CardRole[]): CardOrigin {
     return 'non_engine'
   }
 
-  const hasTech = roles.includes('tech')
-  const hasBrick = roles.includes('brick')
+  const hasDeadCard = roles.includes('brick') || roles.includes('garnet')
   const hasGamePlan = roles.some((r) => GAME_PLAN_ROLES.has(r))
   const hasInteraction = roles.some((r) => INTERACTION_ROLES.has(r))
 
-  // tech (and no game-plan or interaction) → non_engine
-  if (hasTech && !hasGamePlan && !hasInteraction) {
-    return 'non_engine'
-  }
-
-  // brick (and no interaction) → engine
-  if (hasBrick && !hasInteraction) {
+  // brick or garnet (and no interaction) → engine
+  if (hasDeadCard && !hasInteraction) {
     return 'engine'
   }
 
@@ -281,7 +275,7 @@ const ruleHandtrap: HeuristicRule = {
 
     // Trap cards with hand-activation language
     if (isTrapCard(card) && HANDTRAP_TRAP_HAND_ACTIVATION.test(desc)) {
-      return ['disruption']
+      return ['handtrap']
     }
 
     if (!isMonsterCard(card)) return []
@@ -290,12 +284,12 @@ const ruleHandtrap: HeuristicRule = {
     const hasDisruptionEffect = HANDTRAP_DISRUPTION_EFFECT.test(desc)
     const hasQuickEffect = HANDTRAP_QUICK_MONSTER.test(desc)
 
-    if (hasHandActivation && hasDisruptionEffect) return ['disruption']
-    if (hasQuickEffect && hasDisruptionEffect) return ['disruption']
+    if (hasHandActivation && hasDisruptionEffect) return ['handtrap']
+    if (hasQuickEffect && hasDisruptionEffect) return ['handtrap']
 
     // "if your opponent" trigger + special summon from hand
     if (HANDTRAP_OPPONENT_TRIGGER.test(desc) && HANDTRAP_SPECIAL_SUMMON_FROM_HAND.test(desc)) {
-      return ['disruption']
+      return ['handtrap']
     }
 
     return []
@@ -309,10 +303,10 @@ const ruleDraw: HeuristicRule = {
     if (!desc) return []
 
     // Standard draw patterns (any card type)
-    if (DRAW_PATTERN.test(desc) || DRAW_FILTER_PATTERN.test(desc)) return ['searcher']
+    if (DRAW_PATTERN.test(desc) || DRAW_FILTER_PATTERN.test(desc)) return ['draw']
 
     // Excavate/reveal the top + add to hand (spell cards)
-    if (isSpellCard(card) && DRAW_EXCAVATE_REVEAL.test(desc) && DRAW_ADD_TO_HAND.test(desc)) return ['searcher']
+    if (isSpellCard(card) && DRAW_EXCAVATE_REVEAL.test(desc) && DRAW_ADD_TO_HAND.test(desc)) return ['draw']
 
     return []
   },
