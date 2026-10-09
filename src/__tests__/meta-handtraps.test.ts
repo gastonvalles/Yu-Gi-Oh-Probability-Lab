@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest'
 
 import {
   META_DECKS,
+  buildMetaDeckHash,
   buildMetaReport,
   countCopies,
   filterMetaDecks,
   isMetaHandtrap,
   loadMetaDecklist,
   projectShare,
+  readMetaDeckIdFromHash,
   tierOf,
   toYdkText,
   weeksAgo,
@@ -21,8 +23,15 @@ const ASH = 1
 const IMPERM = 2
 const NIBIRU = 3
 
-function deck(id: number, name: string, date: string, main: Array<[number, number]>, side: Array<[number, number]> = []): MetaDeck {
-  return { id, name, date, tournament: 'YCS Test', placement: 'Top 8', players: 100, player: 'Jugador', cover: null, url: `deck-${id}`, main, side }
+function deck(
+  id: number,
+  name: string,
+  date: string,
+  main: Array<[number, number]>,
+  side: Array<[number, number]> = [],
+  region: MetaDeck['region'] = 'tcg',
+): MetaDeck {
+  return { id, region, name, date, tournament: 'YCS Test', placement: 'Top 8', players: 100, player: 'Jugador', cover: null, url: `deck-${id}`, main, side }
 }
 
 const data: MetaDecksData = {
@@ -30,11 +39,13 @@ const data: MetaDecksData = {
   windowDays: 56,
   source: 'https://ygoprodeck.com/deck-search/',
   cards: {
-    [ASH]: { name: 'Ash Blossom & Joyous Spring', image: null, tcg: 'semi-limited' },
-    [IMPERM]: { name: 'Infinite Impermanence', image: null, tcg: null },
-    [NIBIRU]: { name: 'Nibiru, the Primal Being', image: null, tcg: 'unlimited' },
+    [ASH]: { name: 'Ash Blossom & Joyous Spring', image: null, ban: { tcg: 'semi-limited', ocg: null } },
+    [IMPERM]: { name: 'Infinite Impermanence', image: null, ban: { tcg: null, ocg: null } },
+    [NIBIRU]: { name: 'Nibiru, the Primal Being', image: null, ban: { tcg: 'unlimited', ocg: 'forbidden' } },
   },
   decks: [
+    // OCG, última semana: no cuenta para el tier list TCG; en OCG Nibiru está prohibida y no se lista.
+    deck(7, 'Raise Moon', '2026-10-05', [[ASH, 3], [NIBIRU, 1]], [], 'ocg'),
     // Última semana: Ash en Main, Imperm en Main y Side, Nibiru sólo en Side.
     deck(1, 'Blitzclique', '2026-10-03', [[ASH, 3], [IMPERM, 3]], [[IMPERM, 1], [NIBIRU, 2]]),
     deck(2, 'Blitzclique', '2026-10-03', [[ASH, 3]], [[NIBIRU, 3]]),
@@ -65,10 +76,13 @@ describe('tier list de hand traps del meta', () => {
     expect(weeksAgo('2026-10-02', '2026-10-08')).toBe(0)
     expect(weeksAgo('2026-10-01', '2026-10-08')).toBe(1)
     expect(weeksAgo('2026-10-20', '2026-10-08')).toBe(0)
+    // El snapshot es un instante (con hora): la hora no cambia la semana.
+    expect(weeksAgo('2026-10-02', '2026-10-08T23:59:00.000Z')).toBe(0)
+    expect(weeksAgo('2026-10-01', '2026-10-08T00:30:00.000Z')).toBe(1)
   })
 
   it('cuenta cada deck una vez por carta, con las copias por zona, y ordena por uso', () => {
-    const { deckCount, handtraps } = buildMetaReport(data, 'both', 4)
+    const { deckCount, handtraps } = buildMetaReport(data, 'tcg', 'both', 4)
     const [ash, nibiru, imperm] = handtraps
 
     expect(deckCount).toBe(4)
@@ -85,24 +99,33 @@ describe('tier list de hand traps del meta', () => {
   })
 
   it('con la zona Side sólo quedan las que van en Side, y la ventana cambia qué decks cuentan', () => {
-    expect(buildMetaReport(data, 'side', 4).handtraps.map((stat) => [stat.name, stat.decks])).toEqual([
+    expect(buildMetaReport(data, 'tcg', 'side', 4).handtraps.map((stat) => [stat.name, stat.decks])).toEqual([
       ['Nibiru, the Primal Being', 2],
       ['Infinite Impermanence', 1],
     ])
-    expect(buildMetaReport(data, 'main', 4).handtraps.map((stat) => stat.name)).not.toContain('Nibiru, the Primal Being')
-    expect(buildMetaReport(data, 'both', 8).deckCount).toBe(5)
-    expect(buildMetaReport(data, 'both', 1).deckCount).toBe(3)
+    expect(buildMetaReport(data, 'tcg', 'main', 4).handtraps.map((stat) => stat.name)).not.toContain('Nibiru, the Primal Being')
+    expect(buildMetaReport(data, 'tcg', 'both', 8).deckCount).toBe(5)
+    expect(buildMetaReport(data, 'tcg', 'both', 1).deckCount).toBe(3)
+  })
+
+  it('cada región tiene su tier list, con su propia banlist', () => {
+    const ocg = buildMetaReport(data, 'ocg', 'both', 4)
+
+    expect(ocg.deckCount).toBe(1)
+    // Nibiru está en el deck OCG pero prohibida en OCG: no se lista; en TCG sí.
+    expect(ocg.handtraps.map((stat) => [stat.name, stat.share])).toEqual([['Ash Blossom & Joyous Spring', 1]])
+    expect(buildMetaReport(data, 'tcg', 'both', 4).handtraps.map((stat) => stat.name)).toContain('Nibiru, the Primal Being')
   })
 
   it('una carta prohibida en la banlist TCG de hoy no entra al tier list, aunque los decks viejos la lleven', () => {
     const banned: MetaDecksData = {
       ...data,
-      cards: { ...data.cards, [NIBIRU]: { name: 'Nibiru, the Primal Being', image: null, tcg: 'forbidden' } },
+      cards: { ...data.cards, [NIBIRU]: { name: 'Nibiru, the Primal Being', image: null, ban: { tcg: 'forbidden', ocg: null } } },
     }
-    const names = buildMetaReport(banned, 'both', 4).handtraps.map((stat) => stat.name)
+    const names = buildMetaReport(banned, 'tcg', 'both', 4).handtraps.map((stat) => stat.name)
 
     expect(names).toEqual(['Ash Blossom & Joyous Spring', 'Infinite Impermanence'])
-    expect(buildMetaReport(banned, 'both', 4).deckCount).toBe(4)
+    expect(buildMetaReport(banned, 'tcg', 'both', 4).deckCount).toBe(4)
   })
 
   it('proyecta la tendencia con una recta pesada por decks y la prolonga dos semanas', () => {
@@ -121,26 +144,38 @@ describe('tier list de hand traps del meta', () => {
     const thin = projectShare([...series([0.1, 0.2], 20), ...series([0.9, 0.9], 3)], 0.42)
     expect(thin).toEqual({ projectedShare: 0.42, trend: 'flat' })
 
-    const nibiru = buildMetaReport(data, 'both', 4).handtraps.find((stat) => stat.id === NIBIRU)
+    const nibiru = buildMetaReport(data, 'tcg', 'both', 4).handtraps.find((stat) => stat.id === NIBIRU)
     expect(nibiru?.trend).toBe('flat')
     expect(nibiru?.projectedShare).toBe(0.5)
   })
 
-  it('filtra los decks por carta o por nombre de deck', () => {
-    expect(filterMetaDecks(data.decks, { cardId: NIBIRU }).map((item) => item.id)).toEqual([1, 2])
+  it('filtra los decks por región, por carta o por nombre de deck', () => {
+    expect(filterMetaDecks(data.decks, { cardId: NIBIRU }).map((item) => item.id)).toEqual([7, 1, 2])
+    expect(filterMetaDecks(data.decks, { region: 'tcg', cardId: NIBIRU }).map((item) => item.id)).toEqual([1, 2])
+    expect(filterMetaDecks(data.decks, { region: 'ocg' }).map((item) => item.id)).toEqual([7])
     expect(filterMetaDecks(data.decks, { archetype: 'Elfnote' }).map((item) => item.id)).toEqual([4, 5, 6])
     expect(filterMetaDecks(data.decks, { archetype: 'Elfnote', cardId: ASH }).map((item) => item.id)).toEqual([4])
-    expect(filterMetaDecks(data.decks, {})).toHaveLength(6)
+    expect(filterMetaDecks(data.decks, {})).toHaveLength(7)
   })
 
   it('busca por texto en nombre, torneo, puesto y jugador, sin importar mayúsculas, tildes ni orden', () => {
     expect(filterMetaDecks(data.decks, { text: 'despiá branded' }).map((item) => item.id)).toEqual([3])
     expect(filterMetaDecks(data.decks, { text: 'DESPIA' }).map((item) => item.id)).toEqual([3])
-    expect(filterMetaDecks(data.decks, { text: 'TEST ycs' })).toHaveLength(6)
+    expect(filterMetaDecks(data.decks, { text: 'TEST ycs' })).toHaveLength(7)
     expect(filterMetaDecks(data.decks, { text: 'top 8 blitz' }).map((item) => item.id)).toEqual([1, 2])
-    expect(filterMetaDecks(data.decks, { text: 'jugador', cardId: NIBIRU }).map((item) => item.id)).toEqual([1, 2])
+    expect(filterMetaDecks(data.decks, { text: 'jugador', cardId: NIBIRU, region: 'tcg' }).map((item) => item.id)).toEqual([1, 2])
     expect(filterMetaDecks(data.decks, { text: 'no existe' })).toEqual([])
-    expect(filterMetaDecks(data.decks, { text: '   ' })).toHaveLength(6)
+    expect(filterMetaDecks(data.decks, { text: '   ' })).toHaveLength(7)
+  })
+
+  it('arma y lee el link directo a un deck', () => {
+    expect(buildMetaDeckHash(736578)).toBe('#meta?deck=736578')
+    expect(buildMetaDeckHash(null)).toBe('#meta')
+    expect(readMetaDeckIdFromHash('#meta?deck=736578')).toBe(736578)
+    expect(readMetaDeckIdFromHash('#meta')).toBeNull()
+    expect(readMetaDeckIdFromHash('#deck-builder?deck=1')).toBeNull()
+    expect(readMetaDeckIdFromHash('#meta?deck=abc')).toBeNull()
+    expect(readMetaDeckIdFromHash('')).toBeNull()
   })
 
   it('arma el .ydk de una lista completa con una línea por copia, en el orden original', () => {
@@ -167,9 +202,16 @@ describe('src/data/meta-decks.json (lo que escribe scripts/sync-meta-decks.mjs)'
       }
     }
 
-    const report = buildMetaReport(META_DECKS, 'both', 8)
-    expect(report.deckCount).toBe(META_DECKS.decks.length)
+    const tcg = META_DECKS.decks.filter((deck) => deck.region === 'tcg').length
+    const ocg = META_DECKS.decks.filter((deck) => deck.region === 'ocg').length
+    expect(tcg + ocg).toBe(META_DECKS.decks.length)
+    expect(tcg).toBeGreaterThan(50)
+    expect(ocg).toBeGreaterThan(10)
+
+    const report = buildMetaReport(META_DECKS, 'tcg', 'both', 8)
+    expect(report.deckCount).toBe(tcg)
     expect(report.handtraps[0]?.tier).toBe('S')
+    expect(buildMetaReport(META_DECKS, 'ocg', 'both', 8).deckCount).toBe(ocg)
   })
 
   it('las listas completas son del mismo snapshot: cada deck tiene la suya y sus hand traps coinciden', async () => {

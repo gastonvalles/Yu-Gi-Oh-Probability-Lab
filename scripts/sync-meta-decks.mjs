@@ -11,7 +11,11 @@ import { createServer } from 'vite'
  */
 const DECKS_ENDPOINT = 'https://ygoprodeck.com/api/decks/getDecks.php'
 const CARDINFO_ENDPOINT = 'https://db.ygoprodeck.com/api/v7/cardinfo.php'
-const DECK_FORMAT = 'Tournament Meta Decks'
+/** Las dos categorías de torneo del sitio; cada deck queda etiquetado con su región. */
+const DECK_FORMATS = [
+  { region: 'tcg', format: 'Tournament Meta Decks' },
+  { region: 'ocg', format: 'Tournament Meta Decks OCG' },
+]
 // El endpoint ignora `limit`: siempre son 20 por página, del más nuevo al más viejo.
 const DECKS_PER_PAGE = 20
 const MAX_PAGES = 120
@@ -20,12 +24,19 @@ const MAX_DECKS = 1500
 const WINDOW_DAYS = 56
 const REQUEST_DELAY_MS = 300
 const REQUEST_TIMEOUT_MS = 30_000
+const REQUEST_ATTEMPTS = 3
+const RETRY_DELAY_MS = 1500
 const CARDS_PER_REQUEST = 200
+/** Si falta más que esto de las cartas pedidas, algo anda mal con la API: mejor no escribir decks truncados. */
+const MAX_UNKNOWN_CARD_RATIO = 0.005
 /** Una hand trap es genérica: la juegan al menos tantos arquetipos distintos, y no es el arquetipo del deck. */
 const MIN_ARCHETYPES = 3
 const MAX_ARCHETYPE_NAME_MATCH = 0.5
 const MAX_COPIES_PER_CARD = 60
 const MAX_CARDS_PER_ZONE = 100
+/** Tamaños legales: una lista cargada con menos de 40 en el Main (o más de 15 en Extra o Side) es un error del sitio y se descarta. */
+const MAIN_DECK_SIZE = { min: 40, max: 60 }
+const RAIL_DECK_MAX = 15
 const OUTPUT_PATH = path.resolve(process.cwd(), 'src/data/meta-decks.json')
 const DECKLISTS_PATH = path.resolve(process.cwd(), 'src/data/meta-decklists.json')
 const USER_AGENT = 'YGO Probability Lab sync (+https://github.com/gastonvalles/Yu-Gi-Oh-Probability-Lab)'
@@ -47,16 +58,38 @@ const MONTHS = {
 }
 
 async function main() {
-  const fetchedAt = new Date().toISOString().slice(0, 10)
-  const cutoff = shiftDate(fetchedAt, -WINDOW_DAYS)
-  const decks = await fetchRecentDecks(cutoff)
-  console.log(`${decks.length} decks desde ${cutoff}`)
+  // El instante completo en UTC: la app lo muestra en la hora del usuario (sólo la fecha en UTC podía ir un día adelantada).
+  const fetchedAt = new Date().toISOString()
+  // La app cuenta semanas enteras hacia atrás desde el snapshot: un deck de justo WINDOW_DAYS días atrás ya cae en la semana 9.
+  const cutoff = shiftDate(fetchedAt, -(WINDOW_DAYS - 1))
+  const decks = []
+
+  for (const { region, format } of DECK_FORMATS) {
+    const regionDecks = await fetchRecentDecks(format, region, cutoff)
+    console.log(`${regionDecks.length} decks ${region.toUpperCase()} desde ${cutoff}`)
+    decks.push(...regionDecks)
+  }
+
+  decks.sort((left, right) => right.date.localeCompare(left.date) || right.id - left.id)
 
   const engine = await loadEngine()
 
   try {
-    const cards = await fetchCards(engine.parser, uniqueCardIds(decks))
-    const canonicalById = buildCanonicalIds(cards)
+    const ids = uniqueCardIds(decks)
+    const cards = await fetchCards(engine.parser, ids)
+    const aliases = await resolveAliases(engine.parser, cards, ids)
+    const unknown = ids.filter((id) => !cards.has(id) && !aliases.has(id))
+
+    // Una carta que la API no conoce se omite de las listas; muchas seguidas es una falla de la API, no del dato.
+    if (unknown.length > Math.max(2, ids.length * MAX_UNKNOWN_CARD_RATIO)) {
+      throw new Error(`Faltan ${unknown.length} cartas de ${ids.length}; por ejemplo ${unknown.slice(0, 8).join(', ')}.`)
+    }
+
+    if (unknown.length > 0) {
+      console.warn(`Cartas desconocidas para la API, omitidas: ${unknown.join(', ')}`)
+    }
+
+    const canonicalById = buildCanonicalIds(cards, aliases)
     const handtraps = pickHandtraps(engine.classification, decks, cards, canonicalById)
     const payload = buildPayload(fetchedAt, decks, handtraps, canonicalById)
     const decklists = buildDecklists(decks, canonicalById)
@@ -72,22 +105,22 @@ async function main() {
 
 // Decks
 
-async function fetchRecentDecks(cutoff) {
+async function fetchRecentDecks(format, region, cutoff) {
   const decks = new Map()
 
   for (let page = 0; page < MAX_PAGES; page += 1) {
-    const params = new URLSearchParams({ format: DECK_FORMAT, offset: String(page * DECKS_PER_PAGE) })
+    const params = new URLSearchParams({ format, offset: String(page * DECKS_PER_PAGE) })
     const items = await requestJson(`${DECKS_ENDPOINT}?${params}`)
 
     if (!Array.isArray(items) || items.length === 0) {
       break
     }
 
-    const parsed = items.map(readDeck).filter(Boolean)
+    const parsed = items.map((raw) => readDeck(raw, format, region)).filter(Boolean)
 
     // Si cambió el formato de la respuesta no se escribe un archivo vacío: el workflow falla y se ve.
     if (page === 0 && parsed.length === 0) {
-      throw new Error('YGOPRODeck devolvió decks, pero ninguno con la forma esperada.')
+      throw new Error(`YGOPRODeck devolvió decks de "${format}", pero ninguno con la forma esperada.`)
     }
 
     for (const deck of parsed) {
@@ -105,14 +138,14 @@ async function fetchRecentDecks(cutoff) {
   }
 
   if (decks.size === 0) {
-    throw new Error('YGOPRODeck no devolvió Tournament Meta Decks dentro de la ventana.')
+    throw new Error(`YGOPRODeck no devolvió decks de "${format}" dentro de la ventana.`)
   }
 
-  return [...decks.values()].sort((left, right) => right.date.localeCompare(left.date) || right.id - left.id)
+  return [...decks.values()]
 }
 
-function readDeck(raw) {
-  if (!isRecord(raw) || raw.format !== DECK_FORMAT) {
+function readDeck(raw, format, region) {
+  if (!isRecord(raw) || raw.format !== format) {
     return null
   }
 
@@ -127,11 +160,19 @@ function readDeck(raw) {
     return null
   }
 
+  const mainSize = countCards(main)
+
+  if (mainSize < MAIN_DECK_SIZE.min || mainSize > MAIN_DECK_SIZE.max || countCards(extra) > RAIL_DECK_MAX || countCards(side) > RAIL_DECK_MAX) {
+    console.warn(`Deck ${id} (${name}) descartado: ${mainSize} en Main, ${countCards(extra)} en Extra, ${countCards(side)} en Side.`)
+    return null
+  }
+
   const players = Number(raw.tournamentPlayerCount)
   const cover = Number(raw.cover_card)
 
   return {
     id,
+    region,
     name,
     date,
     tournament: readText(raw.tournamentName, 120),
@@ -199,6 +240,16 @@ function readCardList(value) {
   return copies
 }
 
+function countCards(zone) {
+  let total = 0
+
+  for (const count of zone.values()) {
+    total += count
+  }
+
+  return total
+}
+
 // Cartas
 
 function uniqueCardIds(decks) {
@@ -222,31 +273,54 @@ async function fetchCards(parser, ids) {
     for (const card of await fetchCardChunk(parser, ids.slice(start, start + CARDS_PER_REQUEST))) {
       cards.set(card.ygoprodeckId, card)
     }
-
-    await sleep(REQUEST_DELAY_MS)
   }
 
   return cards
 }
 
-/** Un id desconocido hace fallar la consulta entera: se parte el lote hasta aislarlo y se lo ignora. */
+/**
+ * Un id desconocido hace fallar la consulta entera (400): se parte el lote hasta aislarlo y se lo omite.
+ * Cualquier otra falla se reintenta y, si persiste, corta el sync: una carta que existe nunca se descarta en silencio.
+ */
 async function fetchCardChunk(parser, ids) {
-  try {
-    const payload = await requestJson(`${CARDINFO_ENDPOINT}?${new URLSearchParams({ id: ids.join(',') })}`)
-    return parser.parseSearchResponse(payload).results
-  } catch (error) {
-    if (ids.length === 1) {
-      console.warn(`Carta ${ids[0]} ignorada: ${error instanceof Error ? error.message : String(error)}`)
-      return []
-    }
+  await sleep(REQUEST_DELAY_MS)
 
-    const half = Math.ceil(ids.length / 2)
-    return [...(await fetchCardChunk(parser, ids.slice(0, half))), ...(await fetchCardChunk(parser, ids.slice(half)))]
+  const response = await requestWithRetry(`${CARDINFO_ENDPOINT}?${new URLSearchParams({ id: ids.join(',') })}`)
+
+  if (response.ok) {
+    return parser.parseSearchResponse(response.payload).results
   }
+
+  if (ids.length === 1) {
+    return []
+  }
+
+  const half = Math.ceil(ids.length / 2)
+  return [...(await fetchCardChunk(parser, ids.slice(0, half))), ...(await fetchCardChunk(parser, ids.slice(half)))]
+}
+
+/**
+ * En una consulta de varios ids la API funde las artes alternativas en una sola carta y devuelve los ids de
+ * prelanzamiento del OCG con el id definitivo: los ids pedidos que no vinieron se consultan de a uno y se
+ * anotan como alias del id que la API devuelve para ellos.
+ */
+async function resolveAliases(parser, cards, ids) {
+  const aliases = new Map()
+
+  for (const id of ids.filter((requested) => !cards.has(requested))) {
+    const [card] = await fetchCardChunk(parser, [id])
+
+    if (card) {
+      cards.set(card.ygoprodeckId, card)
+      aliases.set(id, card.ygoprodeckId)
+    }
+  }
+
+  return aliases
 }
 
 /** Las artes alternativas tienen otro id: cada nombre se unifica en el id más chico. Un id desconocido no aparece. */
-function buildCanonicalIds(cards) {
+function buildCanonicalIds(cards, aliases) {
   const smallestByName = new Map()
 
   for (const card of cards.values()) {
@@ -257,7 +331,13 @@ function buildCanonicalIds(cards) {
     }
   }
 
-  return new Map([...cards.values()].map((card) => [card.ygoprodeckId, smallestByName.get(card.name)]))
+  const canonicalById = new Map([...cards.values()].map((card) => [card.ygoprodeckId, smallestByName.get(card.name)]))
+
+  for (const [requestedId, actualId] of aliases) {
+    canonicalById.set(requestedId, canonicalById.get(actualId))
+  }
+
+  return canonicalById
 }
 
 /**
@@ -304,8 +384,8 @@ function pickHandtraps(classification, decks, cards, canonicalById) {
     const generic = suggestion.origin === 'non_engine' && deckNames.size >= MIN_ARCHETYPES && namedAfterArchetype < MAX_ARCHETYPE_NAME_MATCH
 
     if (known?.roles.includes('handtrap') || generic) {
-      // El estado en la banlist TCG de hoy: una carta prohibida no va al tier list aunque los decks viejos la lleven.
-      handtraps.set(card.ygoprodeckId, { name: card.name, image: card.imageUrlSmall, tcg: card.banlist.tcg })
+      // El estado en las banlists de hoy: una carta prohibida no va al tier list de esa región aunque los decks viejos la lleven.
+      handtraps.set(card.ygoprodeckId, { name: card.name, image: card.imageUrlSmall, ban: { tcg: card.banlist.tcg, ocg: card.banlist.ocg } })
     }
   }
 
@@ -324,10 +404,11 @@ function buildPayload(fetchedAt, decks, handtraps, canonicalById) {
   return {
     fetchedAt,
     windowDays: WINDOW_DAYS,
-    source: `https://ygoprodeck.com/deck-search/?format=${encodeURIComponent(DECK_FORMAT)}`,
+    source: 'https://ygoprodeck.com/deck-search/',
     cards,
     decks: decks.map((deck) => ({
       id: deck.id,
+      region: deck.region,
       name: deck.name,
       date: deck.date,
       tournament: deck.tournament,
@@ -410,16 +491,51 @@ async function loadEngine() {
 }
 
 async function requestJson(url) {
-  const response = await fetch(url, {
-    headers: { accept: 'application/json', 'user-agent': USER_AGENT },
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-  })
+  const response = await requestWithRetry(url)
 
   if (!response.ok) {
     throw new Error(`${url} respondió ${response.status}`)
   }
 
-  return response.json()
+  return response.payload
+}
+
+/**
+ * Un 400 es un pedido inválido (p. ej. un id que no existe) y se devuelve como tal; cualquier otra falla
+ * (red, 429, 5xx) se reintenta con una pausa y, si persiste, se lanza.
+ */
+async function requestWithRetry(url) {
+  for (let attempt = 1; ; attempt += 1) {
+    let response
+
+    try {
+      response = await fetch(url, {
+        headers: { accept: 'application/json', 'user-agent': USER_AGENT },
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      })
+    } catch (error) {
+      if (attempt >= REQUEST_ATTEMPTS) {
+        throw error
+      }
+
+      await sleep(RETRY_DELAY_MS * attempt)
+      continue
+    }
+
+    if (response.ok) {
+      return { ok: true, status: response.status, payload: await response.json() }
+    }
+
+    if (response.status === 400) {
+      return { ok: false, status: response.status, payload: null }
+    }
+
+    if (attempt >= REQUEST_ATTEMPTS) {
+      throw new Error(`${url} respondió ${response.status}`)
+    }
+
+    await sleep(RETRY_DELAY_MS * attempt)
+  }
 }
 
 function readText(value, maxLength) {

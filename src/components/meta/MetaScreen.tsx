@@ -1,20 +1,25 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import {
   META_DECKS,
   PROJECTION_WEEKS,
   TIER_FLOORS,
   TREND_THRESHOLD,
+  buildMetaDeckHash,
   buildMetaReport,
   countCopies,
   coverArtUrl,
   filterMetaDecks,
+  readMetaDeckIdFromHash,
   type HandtrapStat,
   type MetaDeck,
   type MetaDeckFilter,
+  type MetaRegion,
   type MetaTier,
   type MetaZone,
 } from '../../app/meta-handtraps'
+import { useAppSelector } from '../../app/store-hooks'
+import { useToastMessage } from '../../app/use-toast-message'
 import { formatInteger } from '../../app/utils'
 import { CardArt } from '../CardArt'
 import { StepHero } from '../StepHero'
@@ -37,6 +42,10 @@ type WindowWeeks = '2' | '4' | '8'
 type BoardView = 'now' | 'projected'
 
 const DECKS_PER_PAGE = 24
+const REGION_OPTIONS = [
+  { value: 'tcg', label: 'TCG' },
+  { value: 'ocg', label: 'OCG' },
+] as const satisfies ReadonlyArray<{ value: MetaRegion; label: string }>
 const ZONE_OPTIONS = [
   { value: 'both', label: 'Main + Side' },
   { value: 'main', label: 'Main' },
@@ -52,7 +61,17 @@ const VIEW_OPTIONS = [
   { value: 'projected', label: `En ${formatInteger(PROJECTION_WEEKS)} sem.` },
 ] as const satisfies ReadonlyArray<{ value: BoardView; label: string }>
 
+/** El deck que pide el link (`#meta?deck=123`), si está entre los de la ventana. */
+function readLinkedDeck(): MetaDeck | null {
+  const id = typeof window === 'undefined' ? null : readMetaDeckIdFromHash(window.location.hash)
+  return id === null ? null : (META_DECKS.decks.find((deck) => deck.id === id) ?? null)
+}
+
 export function MetaScreen() {
+  const deckFormat = useAppSelector((state) => state.settings.deckFormat)
+  const { showToast } = useToastMessage()
+  // Arranca en la región del deck que pide el link o, si no, en la del formato del builder; después se cambia desde el encabezado.
+  const [region, setRegion] = useState<MetaRegion>(() => readLinkedDeck()?.region ?? (deckFormat === 'ocg' ? 'ocg' : 'tcg'))
   const [zone, setZone] = useState<MetaZone>('both')
   const [weeks, setWeeks] = useState<WindowWeeks>('4')
   const [view, setView] = useState<BoardView>('now')
@@ -60,9 +79,37 @@ export function MetaScreen() {
   const [query, setQuery] = useState('')
   const [deckLimit, setDeckLimit] = useState(DECKS_PER_PAGE)
   const [selectedStat, setSelectedStat] = useState<HandtrapStat | null>(null)
-  const [selectedDeck, setSelectedDeck] = useState<MetaDeck | null>(null)
-  const report = useMemo(() => buildMetaReport(META_DECKS, zone, Number(weeks)), [zone, weeks])
-  const decks = useMemo(() => filterMetaDecks(META_DECKS.decks, { ...filter, text: query }), [filter, query])
+  const [selectedDeck, setSelectedDeck] = useState<MetaDeck | null>(readLinkedDeck)
+
+  // El deck abierto vive en el hash: así el link se puede copiar y pegar, y si cambia el hash se abre el que pide.
+  useEffect(() => {
+    if (readMetaDeckIdFromHash(window.location.hash) !== null && !readLinkedDeck()) {
+      showToast('Ese deck ya no está entre los de las últimas semanas.', 'warning')
+    }
+
+    const handleHashChange = () => {
+      const linked = readLinkedDeck()
+      setSelectedDeck(linked)
+
+      if (linked) {
+        setRegion(linked.region)
+      }
+    }
+
+    window.addEventListener('hashchange', handleHashChange)
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange)
+    }
+  }, [showToast])
+
+  const openDeck = (deck: MetaDeck | null) => {
+    setSelectedDeck(deck)
+    window.history.replaceState(null, '', buildMetaDeckHash(deck?.id ?? null))
+  }
+  const report = useMemo(() => buildMetaReport(META_DECKS, region, zone, Number(weeks)), [region, zone, weeks])
+  const decks = useMemo(() => filterMetaDecks(META_DECKS.decks, { ...filter, region, text: query }), [filter, region, query])
+  const regionLabel = region.toUpperCase()
   const board = useMemo(() => {
     const key = view === 'projected' ? 'projectedTier' : 'tier'
     const shareOf = (stat: HandtrapStat) => (view === 'projected' ? stat.projectedShare : stat.share)
@@ -94,7 +141,7 @@ export function MetaScreen() {
             <div className="grid gap-1">
               <strong className="text-foreground">Cómo se arma el tier list</strong>
               <ul className="m-0 grid list-disc gap-1 pl-4">
-                <li>Se miran los decks que llegaron al top de torneos (YCS, regionales y similares). Se actualizan todos los días.</li>
+                <li>Se miran los decks que llegaron al top de torneos de TCG o de OCG, según lo que elijas arriba. Se actualizan todos los días.</li>
                 <li>Cada hand trap se mide por el porcentaje de esos decks que la llevan en el Main o en el Side.</li>
                 <li>
                   {TIER_FLOORS.map(([tier, floor]) => `${tierLabel(tier)}: al menos el ${percent(floor)}`).join(' · ')} · {tierLabel('D')}: menos del{' '}
@@ -119,9 +166,22 @@ export function MetaScreen() {
           </div>
         }
         side={
-          <Badge icon="refresh" title="Fecha de la última actualización de los decks">
-            Actualizado el {formatMetaDateFull(META_DECKS.fetchedAt)}
-          </Badge>
+          <>
+            <Badge icon="refresh" title="Fecha de la última actualización de los decks">
+              Actualizado el {formatMetaDateFull(META_DECKS.fetchedAt)}
+            </Badge>
+            <Segmented
+              value={region}
+              onChange={(next) => {
+                setRegion(next)
+                setDeckLimit(DECKS_PER_PAGE)
+              }}
+              options={REGION_OPTIONS}
+              label="Región de los torneos"
+              size="sm"
+              className="max-[1100px]:w-full"
+            />
+          </>
         }
       />
 
@@ -129,7 +189,7 @@ export function MetaScreen() {
         <SectionHeader
           icon="hand"
           title="Tier list"
-          description={`${formatInteger(report.deckCount)} decks de las últimas ${weeks} semanas. Tocá una carta para ver el detalle.`}
+          description={`${formatInteger(report.deckCount)} decks ${regionLabel} de las últimas ${weeks} semanas. Tocá una carta para ver el detalle.`}
           actions={
             // En mobile cada control ocupa una fila a todo el ancho; en pantallas grandes van en línea.
             <div className="grid w-full gap-2 min-[1101px]:flex min-[1101px]:w-auto min-[1101px]:flex-wrap min-[1101px]:items-center">
@@ -158,8 +218,8 @@ export function MetaScreen() {
           title="Tournament Meta Decks"
           description={
             filterLabel
-              ? `${formatInteger(decks.length)} decks, del más reciente al más viejo. Tocá uno para verlo entero.`
-              : `Los ${formatInteger(decks.length)} decks de las últimas ${formatInteger(totalWeeks)} semanas, del más reciente al más viejo. Tocá uno para verlo entero.`
+              ? `${formatInteger(decks.length)} decks ${regionLabel}, del más reciente al más viejo. Tocá uno para verlo entero.`
+              : `Los ${formatInteger(decks.length)} decks ${regionLabel} de las últimas ${formatInteger(totalWeeks)} semanas, del más reciente al más viejo. Tocá uno para verlo entero.`
           }
           actions={
             <>
@@ -190,7 +250,7 @@ export function MetaScreen() {
         {decks.length > 0 ? (
           <div className="mt-3 grid gap-3 sm:grid-cols-2 min-[1101px]:grid-cols-3">
             {decks.slice(0, deckLimit).map((deck) => (
-              <MetaDeckTile key={deck.id} deck={deck} onOpen={() => setSelectedDeck(deck)} />
+              <MetaDeckTile key={deck.id} deck={deck} onOpen={() => openDeck(deck)} />
             ))}
           </div>
         ) : (
@@ -199,9 +259,11 @@ export function MetaScreen() {
           </EmptyState>
         )}
         {decks.length > deckLimit ? (
-          <Button variant="secondary" size="sm" className="mt-3" onClick={() => setDeckLimit((limit) => limit + DECKS_PER_PAGE)}>
-            Ver {formatInteger(Math.min(DECKS_PER_PAGE, decks.length - deckLimit))} más
-          </Button>
+          <div className="mt-4 flex justify-center">
+            <Button variant="secondary" size="sm" onClick={() => setDeckLimit((limit) => limit + DECKS_PER_PAGE)}>
+              Ver {formatInteger(Math.min(DECKS_PER_PAGE, decks.length - deckLimit))} más
+            </Button>
+          </div>
         ) : null}
       </Card>
 
@@ -211,7 +273,7 @@ export function MetaScreen() {
         onPickArchetype={(name) => applyFilter({ archetype: name })}
         onShowDecks={(cardId) => applyFilter({ cardId })}
       />
-      <MetaDeckModal deck={selectedDeck} onClose={() => setSelectedDeck(null)} />
+      <MetaDeckModal deck={selectedDeck} onClose={() => openDeck(null)} />
     </StepPage>
   )
 }

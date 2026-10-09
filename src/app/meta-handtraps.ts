@@ -2,17 +2,21 @@ import metaDecksJson from '../data/meta-decks.json'
 import type { BanlistStatus } from '../types'
 import { normalizeSearchText } from './utils'
 
+/** De qué circuito de torneos viene un deck; cada región tiene su banlist y su tier list. */
+export type MetaRegion = 'tcg' | 'ocg'
+
 /** Una hand trap del tier list, con su id canónico de YGOPRODeck (las artes alternativas ya están unificadas). */
 export interface MetaCard {
   name: string
   image: string | null
-  /** Estado en la banlist TCG al momento del snapshot. */
-  tcg: BanlistStatus | null
+  /** Estado en la banlist de cada región al momento del snapshot. */
+  ban: Record<MetaRegion, BanlistStatus | null>
 }
 
 /** Un Tournament Meta Deck de YGOPRODeck: sólo sus hand traps, como [id, copias]. */
 export interface MetaDeck {
   id: number
+  region: MetaRegion
   name: string
   /** Fecha del torneo (YYYY-MM-DD). */
   date: string
@@ -37,7 +41,7 @@ export interface MetaDecklist {
 }
 
 export interface MetaDecksData {
-  /** Día del snapshot (YYYY-MM-DD): la referencia para contar semanas. */
+  /** Instante del snapshot (ISO, en UTC): la referencia para contar semanas; se muestra en la hora del usuario. */
   fetchedAt: string
   windowDays: number
   source: string
@@ -123,6 +127,7 @@ export interface MetaReport {
 }
 
 export interface MetaDeckFilter {
+  region?: MetaRegion
   cardId?: number
   archetype?: string
   /** Texto libre: nombre del deck, torneo, puesto o jugador (sin distinguir mayúsculas ni tildes). */
@@ -203,8 +208,8 @@ interface UsageAccumulator {
   archetypes: Map<string, number>
 }
 
-/** Qué hand traps se juegan en los decks de las últimas `windowWeeks` semanas, y hacia dónde va cada una. */
-export function buildMetaReport(data: MetaDecksData, zone: MetaZone, windowWeeks: number): MetaReport {
+/** Qué hand traps se juegan en los decks de una región en las últimas `windowWeeks` semanas, y hacia dónde va cada una. */
+export function buildMetaReport(data: MetaDecksData, region: MetaRegion, zone: MetaZone, windowWeeks: number): MetaReport {
   const totalWeeks = Math.max(windowWeeks, Math.ceil(data.windowDays / 7))
   const weekDecks: number[] = Array.from({ length: totalWeeks }, () => 0)
   const archetypeTotals = new Map<string, number>()
@@ -214,7 +219,7 @@ export function buildMetaReport(data: MetaDecksData, zone: MetaZone, windowWeeks
   for (const deck of data.decks) {
     const week = weeksAgo(deck.date, data.fetchedAt)
 
-    if (week >= totalWeeks) {
+    if (deck.region !== region || week >= totalWeeks) {
       continue
     }
 
@@ -271,8 +276,8 @@ export function buildMetaReport(data: MetaDecksData, zone: MetaZone, windowWeeks
   for (const [id, entry] of usage) {
     const card = data.cards[String(id)]
 
-    // Los decks de antes de la banlist la siguen llevando, pero hoy no se puede jugar: no va al tier list.
-    if (entry.decks === 0 || card?.tcg === 'forbidden') {
+    // Los decks de antes de la banlist la siguen llevando, pero hoy no se puede jugar en esa región: no va al tier list.
+    if (entry.decks === 0 || card?.ban[region] === 'forbidden') {
       continue
     }
     const share = entry.decks / deckCount
@@ -305,11 +310,24 @@ export function buildMetaReport(data: MetaDecksData, zone: MetaZone, windowWeeks
   return { deckCount, handtraps }
 }
 
+/** Link directo a un deck: la pestaña Meta más el id, para pegarlo en un chat. */
+export function buildMetaDeckHash(deckId: number | null): string {
+  return deckId === null ? '#meta' : `#meta?deck=${deckId}`
+}
+
+export function readMetaDeckIdFromHash(hash: string): number | null {
+  const [step, query = ''] = hash.replace(/^#/, '').split('?')
+  const id = Number(new URLSearchParams(query).get('deck'))
+
+  return step === 'meta' && Number.isInteger(id) && id > 0 ? id : null
+}
+
 export function filterMetaDecks(decks: readonly MetaDeck[], filter: MetaDeckFilter): MetaDeck[] {
   const words = normalizeSearchText(filter.text ?? '').split(' ').filter(Boolean)
 
   return decks.filter(
     (deck) =>
+      (filter.region === undefined || deck.region === filter.region) &&
       (filter.archetype === undefined || deck.name === filter.archetype) &&
       (filter.cardId === undefined || hasCard(deck, filter.cardId)) &&
       (words.length === 0 || matchesWords(deck, words)),

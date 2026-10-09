@@ -17,7 +17,7 @@ La idea central es ayudar a entender deck building con un flujo simple: armás e
 - Práctica de manos para ver ejemplos concretos.
 - Comparación A vs B contra otra build importada.
 - Exportación del deck como imagen (PNG), lista (TXT) y `.ydk`.
-- Meta: tier list de hand traps según los Tournament Meta Decks de YGOPRODeck (Main y Side), con tendencia a dos semanas, los decks que las juegan y cada deck de torneo completo para verlo o cargarlo en el builder. Los datos se actualizan solos cada día.
+- Meta: tier list de hand traps según los Tournament Meta Decks de YGOPRODeck (TCG y OCG por separado, Main y Side), con tendencia a dos semanas, los decks que las juegan y cada deck de torneo completo para verlo o cargarlo en el builder. Las cartas prohibidas en la banlist de cada región no entran al tier list. Los datos se actualizan solos cada día.
 
 ## Flujo recomendado
 

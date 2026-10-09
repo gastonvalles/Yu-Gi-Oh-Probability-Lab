@@ -2,7 +2,16 @@ import { useEffect, useState } from 'react'
 
 import { replaceDeckBuilder } from '../../app/deck-builder-slice'
 import { buildDeckImportPreviewFromYdk } from '../../app/deck-import'
-import { META_DECKS, countCopies, coverArtUrl, loadMetaDecklist, toYdkText, type MetaDeck, type MetaDecklist } from '../../app/meta-handtraps'
+import {
+  META_DECKS,
+  buildMetaDeckHash,
+  countCopies,
+  coverArtUrl,
+  loadMetaDecklist,
+  toYdkText,
+  type MetaDeck,
+  type MetaDecklist,
+} from '../../app/meta-handtraps'
 import type { DeckCardInstance, DeckZone as DeckZoneKey } from '../../app/model'
 import { useAppDispatch, useAppSelector } from '../../app/store-hooks'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
@@ -131,6 +140,18 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
     window.location.hash = '#deck-builder'
   }
 
+  /** El link directo a este deck (la pestaña Meta con el id), para mandarlo por chat. */
+  const copyLink = async () => {
+    const url = `${window.location.origin}${window.location.pathname}${buildMetaDeckHash(deck.id)}`
+
+    try {
+      await navigator.clipboard.writeText(url)
+      showToast('Link copiado.', 'success')
+    } catch {
+      showToast(`No se pudo copiar. El link es ${url}`, 'error')
+    }
+  }
+
   const handleCardClick = (instanceId: string) => {
     if (load.status !== 'ready') {
       return
@@ -162,15 +183,20 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
         flush
         ariaLabel={deck.name}
         footer={
-          <Button
-            variant="primary"
-            size="sm"
-            icon="upload"
-            disabled={load.status !== 'ready'}
-            onClick={() => (builderHasCards ? setConfirmReplace(true) : loadIntoBuilder())}
-          >
-            Cargar en el builder
-          </Button>
+          <>
+            <Button variant="secondary" size="sm" icon="link" onClick={() => void copyLink()}>
+              Copiar link
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              icon="upload"
+              disabled={load.status !== 'ready'}
+              onClick={() => (builderHasCards ? setConfirmReplace(true) : loadIntoBuilder())}
+            >
+              Cargar en el builder
+            </Button>
+          </>
         }
       >
         <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)]">
