@@ -21,14 +21,18 @@ const TOUCH = [
 ].join(' ')
 
 /** Carta en la vista mobile. */
+/** Marco verde para destacar cartas (p. ej. las hand traps de un deck del meta). */
+const HIGHLIGHTED = 'data-[highlighted=true]:inset-ring-2 data-[highlighted=true]:inset-ring-success/90'
+
 export function deckCardMobile(dragging: boolean): string {
-  return cx(TOUCH, MARCHING_ANTS, 'cursor-grab', dragging && 'opacity-35')
+  return cx(TOUCH, MARCHING_ANTS, HIGHLIGHTED, 'cursor-grab', dragging && 'opacity-35')
 }
 
 /** Carta en el builder clásico de desktop: contorno punteado al pasar / arrastrar y marco al elegirla. */
 export const DECK_CARD_CLASSIC = [
   TOUCH,
   MARCHING_ANTS,
+  HIGHLIGHTED,
   'cursor-pointer outline-2 -outline-offset-2 outline-dashed outline-foreground/0 transition-[outline-color] duration-150 hover:z-1 hover:outline-foreground/75',
   'data-[selected=true]:shadow-[inset_0_0_0_1.5px_rgb(var(--primary-rgb)/0.56)] data-[selected=true]:hover:outline-primary/85',
   'data-[dragging=true]:bg-tint/6 data-[dragging=true]:outline-foreground/75',

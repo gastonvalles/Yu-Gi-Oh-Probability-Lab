@@ -34,6 +34,10 @@ interface DeckZoneProps {
   desktopCompactColumnCount?: number
   variant?: 'default' | 'classic-builder'
   selectedCardId?: number | null
+  /** Sólo para mirar (p. ej. un deck del meta): sin ordenar, vaciar ni arrastrar. */
+  readOnly?: boolean
+  /** Cartas con marco verde (por id de YGOPRODeck). */
+  highlightedCardIds?: ReadonlySet<number>
   onClearZone: (zone: DeckZoneType) => void
   onSortZone: (zone: DeckZoneType) => void
   onDeckCardPointerDown: (event: ReactPointerEvent<HTMLElement>, instanceId: string) => void
@@ -70,6 +74,8 @@ export const DeckZone = memo(function DeckZone({
   desktopCompactColumnCount,
   variant = 'default',
   selectedCardId = null,
+  readOnly = false,
+  highlightedCardIds,
   onClearZone,
   onSortZone,
   onDeckCardPointerDown,
@@ -94,7 +100,8 @@ export const DeckZone = memo(function DeckZone({
   const isClassicMainOverlapZone =
     isClassicBuilder && zone === 'main' && cards.length > DESKTOP_COMPACT_MAIN_EXPAND_THRESHOLD
   // 4 rows tall at the real card_small aspect ratio (268x391), plus the 2px surface border and a small safety margin.
-  const classicZoneMaxHeight = zone === 'main' ? '29rem' : 'none'
+  // Sólo para mirar no hay tope: la zona puede ser más ancha que en el builder (p. ej. un deck del meta a pantalla completa).
+  const classicZoneMaxHeight = zone === 'main' && !readOnly ? '29rem' : 'none'
   const classicBorderColor =
     dropState === 'valid'
       ? 'rgb(var(--primary-rgb) / 0.85)'
@@ -155,6 +162,7 @@ export const DeckZone = memo(function DeckZone({
       data-deck-zone={zone}
       data-deck-card-index={index}
       data-selected={selectedCardId !== null && card.apiCard.ygoprodeckId === selectedCardId ? 'true' : 'false'}
+      data-highlighted={highlightedCardIds?.has(card.apiCard.ygoprodeckId) ? 'true' : 'false'}
       data-dragging={activeDragInstanceId === card.instanceId ? 'true' : 'false'}
       className={DECK_CARD_CLASSIC}
       onPointerDown={(event) => handleCardPointerDown(event, card.instanceId)}
@@ -204,12 +212,12 @@ export const DeckZone = memo(function DeckZone({
                 ))}
               </div>
             ) : null}
-            {cards.length > 1 ? (
+            {!readOnly && cards.length > 1 ? (
               <IconButton tone="ghost" size="sm" aria-label={`Ordenar ${title}`} title={`Ordenar ${title}`} onClick={() => onSortZone(zone)}>
                 <Icon name="sort" />
               </IconButton>
             ) : null}
-            {cards.length > 0 ? (
+            {!readOnly && cards.length > 0 ? (
               <IconButton tone="ghost" size="sm" aria-label={`Vaciar ${title}`} title={`Vaciar ${title}`} onClick={() => onClearZone(zone)}>
                 <Icon name="trash" />
               </IconButton>
@@ -250,7 +258,7 @@ export const DeckZone = memo(function DeckZone({
                 </div>
               ))
             : cards.map((card, index) => renderDeckCard(card, index))}
-          {cards.length === 0 ? (
+          {cards.length === 0 && !readOnly ? (
             <p className="pointer-events-none m-0 col-span-full grid min-h-14 w-full place-items-center p-2 text-body text-soft">
               Arrastrá cartas acá
             </p>
@@ -270,14 +278,16 @@ export const DeckZone = memo(function DeckZone({
             <p className="m-0 wrap-anywhere text-body text-muted">{headerSummary}</p>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <Button variant="tertiary" size="sm" icon="sort" disabled={cards.length < 2} onClick={() => onSortZone(zone)}>
-            Ordenar
-          </Button>
-          <Button variant="tertiary" size="sm" disabled={cards.length === 0} onClick={() => onClearZone(zone)}>
-            Vaciar
-          </Button>
-        </div>
+        {readOnly ? null : (
+          <div className="flex shrink-0 items-center gap-1">
+            <Button variant="tertiary" size="sm" icon="sort" disabled={cards.length < 2} onClick={() => onSortZone(zone)}>
+              Ordenar
+            </Button>
+            <Button variant="tertiary" size="sm" disabled={cards.length === 0} onClick={() => onClearZone(zone)}>
+              Vaciar
+            </Button>
+          </div>
+        )}
       </div>
 
       <div
@@ -295,6 +305,7 @@ export const DeckZone = memo(function DeckZone({
             key={card.instanceId}
             data-deck-zone={zone}
             data-deck-card-index={index}
+            data-highlighted={highlightedCardIds?.has(card.apiCard.ygoprodeckId) ? 'true' : 'false'}
             className={deckCardMobile(activeDragInstanceId === card.instanceId)}
             onPointerDown={(event) => handleCardPointerDown(event, card.instanceId)}
             onClick={() => onDeckCardClick(card.instanceId)}

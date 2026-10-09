@@ -1,4 +1,5 @@
 import metaDecksJson from '../data/meta-decks.json'
+import { normalizeSearchText } from './utils'
 
 /** Una hand trap del tier list, con su id canónico de YGOPRODeck (las artes alternativas ya están unificadas). */
 export interface MetaCard {
@@ -121,6 +122,8 @@ export interface MetaReport {
 export interface MetaDeckFilter {
   cardId?: number
   archetype?: string
+  /** Texto libre: nombre del deck, torneo, puesto o jugador (sin distinguir mayúsculas ni tildes). */
+  text?: string
 }
 
 /** Cuántas semanas hacia adelante se prolonga la tendencia. */
@@ -299,11 +302,20 @@ export function buildMetaReport(data: MetaDecksData, zone: MetaZone, windowWeeks
 }
 
 export function filterMetaDecks(decks: readonly MetaDeck[], filter: MetaDeckFilter): MetaDeck[] {
+  const words = normalizeSearchText(filter.text ?? '').split(' ').filter(Boolean)
+
   return decks.filter(
     (deck) =>
       (filter.archetype === undefined || deck.name === filter.archetype) &&
-      (filter.cardId === undefined || hasCard(deck, filter.cardId)),
+      (filter.cardId === undefined || hasCard(deck, filter.cardId)) &&
+      (words.length === 0 || matchesWords(deck, words)),
   )
+}
+
+/** Todas las palabras buscadas tienen que aparecer, en cualquier orden y en cualquiera de los campos. */
+function matchesWords(deck: MetaDeck, words: readonly string[]): boolean {
+  const haystack = normalizeSearchText([deck.name, deck.tournament, deck.placement, deck.player].filter(Boolean).join(' '))
+  return words.every((word) => haystack.includes(word))
 }
 
 function hasCard(deck: MetaDeck, cardId: number): boolean {
