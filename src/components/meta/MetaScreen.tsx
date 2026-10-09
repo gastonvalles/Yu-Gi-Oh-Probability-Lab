@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import {
   META_DECKS,
@@ -33,6 +33,7 @@ import { SectionHeader } from '../ui/SectionHeader'
 import { Segmented } from '../ui/Segmented'
 import { StepPage } from '../ui/StepPage'
 import { field, filterChip } from '../ui/surfaces'
+import { overline } from '../ui/typography'
 import { HandtrapModal } from './HandtrapModal'
 import { MetaDeckModal } from './MetaDeckModal'
 import { TrendArrow } from './TrendArrow'
@@ -58,7 +59,7 @@ const WINDOW_OPTIONS = [
 ] as const satisfies ReadonlyArray<{ value: WindowWeeks; label: string }>
 const VIEW_OPTIONS = [
   { value: 'now', label: 'Hoy' },
-  { value: 'projected', label: `En ${formatInteger(PROJECTION_WEEKS)} sem.` },
+  { value: 'projected', label: 'Proyección' },
 ] as const satisfies ReadonlyArray<{ value: BoardView; label: string }>
 
 /** El deck que pide el link (`#meta?deck=123`), si está entre los de la ventana. */
@@ -160,7 +161,7 @@ export function MetaScreen() {
                   Si la cifra proyectada sube más de {formatInteger(Math.round(TREND_THRESHOLD * 100))} puntos dice “Sube”; si baja más de{' '}
                   {formatInteger(Math.round(TREND_THRESHOLD * 100))}, “Baja”; si no, “Estable”.
                 </li>
-                <li>“En {formatInteger(PROJECTION_WEEKS)} sem.” muestra el tier list como quedaría si esa tendencia sigue igual.</li>
+                <li>“Proyección” muestra el tier list como quedaría en {formatInteger(PROJECTION_WEEKS)} semanas si esa tendencia sigue igual.</li>
               </ul>
             </div>
           </div>
@@ -189,13 +190,31 @@ export function MetaScreen() {
         <SectionHeader
           icon="hand"
           title="Tier list"
-          description={`${formatInteger(report.deckCount)} decks ${regionLabel} de las últimas ${weeks} semanas. Tocá una carta para ver el detalle.`}
+          description={
+            view === 'projected'
+              ? `Dónde quedaría cada hand trap en ${formatInteger(PROJECTION_WEEKS)} semanas si sigue su tendencia. Base: ${formatInteger(report.deckCount)} decks ${regionLabel} de las últimas ${weeks} semanas.`
+              : `${formatInteger(report.deckCount)} decks ${regionLabel} de las últimas ${weeks} semanas. Tocá una carta para ver el detalle.`
+          }
           actions={
-            // En mobile cada control ocupa una fila a todo el ancho; en pantallas grandes van en línea.
-            <div className="grid w-full gap-2 min-[1101px]:flex min-[1101px]:w-auto min-[1101px]:flex-wrap min-[1101px]:items-center">
-              <Segmented value={zone} onChange={setZone} options={ZONE_OPTIONS} label="Dónde contar la hand trap" size="sm" className="max-[1100px]:w-full" />
-              <Segmented value={weeks} onChange={setWeeks} options={WINDOW_OPTIONS} label="Ventana de decks" size="sm" className="max-[1100px]:w-full" />
-              <Segmented value={view} onChange={setView} options={VIEW_OPTIONS} label="Tier list de hoy o proyectada" size="sm" className="max-[1100px]:w-full" />
+            // Cada control lleva su rótulo: "2 sem." (cuántos decks se cuentan) y la proyección no se confunden.
+            // En mobile cada uno ocupa una fila a todo el ancho; en pantallas grandes van en línea.
+            <div className="grid w-full gap-3 min-[1101px]:flex min-[1101px]:w-auto min-[1101px]:flex-wrap min-[1101px]:items-end min-[1101px]:gap-2">
+              <ControlField label="Contar en">
+                <Segmented value={zone} onChange={setZone} options={ZONE_OPTIONS} label="Dónde contar la hand trap" size="sm" className="max-[1100px]:w-full" />
+              </ControlField>
+              <ControlField label="Decks de las últimas">
+                <Segmented value={weeks} onChange={setWeeks} options={WINDOW_OPTIONS} label="Cuántas semanas de decks se cuentan" size="sm" className="max-[1100px]:w-full" />
+              </ControlField>
+              <ControlField label="Mostrar">
+                <Segmented
+                  value={view}
+                  onChange={setView}
+                  options={VIEW_OPTIONS}
+                  label={`Tier list de hoy o proyección a ${formatInteger(PROJECTION_WEEKS)} semanas`}
+                  size="sm"
+                  className="max-[1100px]:w-full"
+                />
+              </ControlField>
             </div>
           }
         />
@@ -275,6 +294,16 @@ export function MetaScreen() {
       />
       <MetaDeckModal deck={selectedDeck} onClose={() => openDeck(null)} />
     </StepPage>
+  )
+}
+
+/** Un control con su rótulo chico arriba: dice qué elige cada selector sin que haya que adivinarlo. */
+function ControlField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="grid gap-1">
+      <span className={cx(overline, 'px-0.5')}>{label}</span>
+      {children}
+    </div>
   )
 }
 
