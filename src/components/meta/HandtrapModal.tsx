@@ -12,6 +12,7 @@ import { cx } from '../ui/cx'
 import { choiceChip } from '../ui/surfaces'
 import { overline } from '../ui/typography'
 import { TREND_LOOK, percent, tierLabel, trendText, usageText } from './meta-format'
+import { TrendArrow } from './TrendArrow'
 
 const MAX_ARCHETYPE_CHIPS = 16
 /** La carta no cambia: un día en el dispositivo evita volver a pedirla. */
@@ -68,6 +69,7 @@ function HandtrapOverlay({ stat, onClose, onPickArchetype, onShowDecks }: Handtr
           <div className="grid gap-1.5">
             <span className={overline}>Tendencia</span>
             <div className="flex flex-wrap items-center gap-2">
+              <TrendArrow trend={stat.trend} size={20} />
               <Badge tone={TREND_LOOK[stat.trend].tone}>{trendText(stat)}</Badge>
               <span className="text-micro text-white/66">Proyección a {formatInteger(PROJECTION_WEEKS)} semanas.</span>
             </div>
