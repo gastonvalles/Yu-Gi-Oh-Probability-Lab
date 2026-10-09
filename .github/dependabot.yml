@@ -11,6 +11,9 @@ updates:
       # typescript-eslint todavía no soporta TypeScript 7: hasta que lo haga, no proponer ese salto.
       - dependency-name: typescript
         update-types: ['version-update:semver-major']
+      # jest-dom todavía no registra sus matchers contra vitest 5 (los tests pasan, los tipos no).
+      - dependency-name: vitest
+        update-types: ['version-update:semver-major']
   - package-ecosystem: github-actions
     directory: /
     schedule:
