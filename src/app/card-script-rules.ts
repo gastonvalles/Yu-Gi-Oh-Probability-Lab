@@ -33,6 +33,14 @@ export const CARD_RULE = {
   mentions: 1 << 11,
   /** La juegan decks de torneo de varios arquetipos distintos (lo pone el sync). */
   generic: 1 << 12,
+  /** Al invocarse, o desde el campo, saca ventaja del Deck o del Extra: busca, recluta, manda al cementerio, fusiona. */
+  starts: 1 << 13,
+  /** Trae cosas del cementerio o del destierro, o vuelve ella misma de ahí. */
+  recovery: 1 << 14,
+  /** Tiene algún efecto o procedimiento desde la mano: en la mano no es una carta muerta. */
+  usesHand: 1 << 15,
+  /** Otra carta la nombra (la busca, la invoca, la necesita): lo pone el sync cruzando todos los scripts. */
+  referenced: 1 << 16,
 } as const
 
 export type CardRuleFlag = keyof typeof CARD_RULE
@@ -55,13 +63,19 @@ export interface CardScript {
   /** Las utilidades que invocan al campo del rival (Kaiju, Lava Golem) no declaran el efecto en el script. */
   givesToOpponent: boolean
   mentions: boolean
+  /** Lo que lista `s.listed_names`, tal cual (ids o constantes como CARD_ALBAZ); `id` es la carta misma. */
+  listedNames: string[]
 }
 
 const EMPTY_EFFECT: CardEffect = { type: '', range: '', code: '', category: '', targetRange: '', target: '', operation: '' }
+/** Las fusiones se crean con una utilidad que ya implica la categoría; el script sólo la ajusta y la registra. */
+const FUSION_EFFECT: CardEffect = { ...EMPTY_EFFECT, type: 'EFFECT_TYPE_ACTIVATE', category: 'CATEGORY_SPECIAL_SUMMON+CATEGORY_FUSION_SUMMON' }
 
 const FUNCTION_START = /^function\s+([\w.]+)\s*\(/
 const INITIAL_EFFECT = /^function\s+\w+\.initial_effect\(/
 const CREATE = /^(?:local\s+)?(\w+)\s*=\s*Effect\.CreateEffect\(/
+const CREATE_FUSION = /^(?:local\s+)?(\w+)\s*=\s*Fusion\.CreateSummonEff\(/
+const LISTED_NAMES = /^s\.listed_names\s*=\s*\{([^}]*)\}/
 const CLONE = /^(?:local\s+)?(\w+)\s*=\s*(\w+):Clone\(\)/
 const SETTER = /^(\w+):Set(Type|Range|Code|Category|TargetRange|Target|Operation)\((.*)\)$/
 const REGISTER = /^c:RegisterEffect\((\w+)/
@@ -83,6 +97,12 @@ const RESTRICTION = /^(?:EFFECT_CANNOT_|EFFECT_DISABLE\b|EFFECT_DISABLE_EFFECT\b
 const SEARCH = /\bCATEGORY_SEARCH\b/
 const DRAW = /\bCATEGORY_DRAW\b/
 const SPECIAL_SUMMON = /\bCATEGORY_SPECIAL_SUMMON\b/
+const FUSION_SUMMON = /\bCATEGORY_FUSION_SUMMON\b/
+const TO_HAND = /\bCATEGORY_TOHAND\b/
+const TO_GRAVE = /\bCATEGORY_TOGRAVE\b/
+const ON_SUMMON = /\bEVENT_(?:SUMMON|SPSUMMON)_SUCCESS\b/
+const FROM_DECK = /\bLOCATION_(?:DECK|EXTRA)\b/
+const FROM_GRAVE = /\bLOCATION_(?:GRAVE|REMOVED)\b/
 const NEGATE = /\bCATEGORY_(?:NEGATE|DISABLE|DISABLE_SUMMON)\b/
 const REMOVAL = /\bCATEGORY_(?:DESTROY|REMOVE|TOHAND|TODECK|TOGRAVE|CONTROL|RELEASE)\b/
 const POSITION = /\bCATEGORY_POSITION\b/
@@ -150,6 +170,7 @@ export function readCardScript(lua: string): CardScript {
   let givesToOpponent = false
   let mentions = false
   let inside = false
+  const listedNames: string[] = []
 
   for (const rawLine of lua.split('\n')) {
     const line = rawLine.replace(/--.*$/, '').trim()
@@ -158,6 +179,12 @@ export function readCardScript(lua: string): CardScript {
     // `listed_names={id}` es la carta nombrándose a sí misma.
     if (listed && listed[1].split(',').some((entry) => entry.trim() !== '' && entry.trim() !== 'id')) {
       mentions = true
+    }
+
+    const named = LISTED_NAMES.exec(line)
+
+    if (named) {
+      listedNames.push(...named[1].split(',').map((entry) => entry.trim()).filter((entry) => entry !== '' && entry !== 'id'))
     }
 
     if (!inside) {
@@ -179,6 +206,13 @@ export function readCardScript(lua: string): CardScript {
 
     if (created) {
       drafts.set(created[1], { ...EMPTY_EFFECT })
+      continue
+    }
+
+    const fusion = CREATE_FUSION.exec(line)
+
+    if (fusion) {
+      drafts.set(fusion[1], { ...FUSION_EFFECT })
       continue
     }
 
@@ -219,7 +253,7 @@ export function readCardScript(lua: string): CardScript {
     }
   }
 
-  return { effects, functions, givesToOpponent, mentions }
+  return { effects, functions, givesToOpponent, mentions, listedNames }
 }
 
 /** Los argumentos de una llamada, respetando paréntesis anidados; `text` empieza justo después del `(`. */
@@ -359,6 +393,27 @@ export function cardRuleFlags(lua: string): number {
 
     if (fromHand && (SUMMON_PROCEDURE.test(effect.code) || (IGNITION.test(effect.type) && SPECIAL_SUMMON.test(effect.category)))) {
       flags |= CARD_RULE.selfFromHand
+    }
+
+    if (fromHand || handtrap) {
+      flags |= CARD_RULE.usesHand
+    }
+
+    // Saca ventaja del Deck al entrar al campo (o desde él), o al activarse si es una magia o trampa.
+    const onField = (TRIGGER.test(effect.type) && ON_SUMMON.test(effect.code)) || (IGNITION.test(effect.type) && ON_FIELD.test(effect.range)) || activation
+    const fromDeck = calls.some((call) => FROM_DECK.test(call.own))
+    const fromGrave = calls.some((call) => FROM_GRAVE.test(call.own))
+
+    if (onField && (SEARCH.test(effect.category) || FUSION_SUMMON.test(effect.category) || ((SPECIAL_SUMMON.test(effect.category) || TO_GRAVE.test(effect.category)) && fromDeck))) {
+      flags |= CARD_RULE.starts
+    }
+
+    // Trae del cementerio o del destierro (una carta propia, o ella misma).
+    if (
+      ((SPECIAL_SUMMON.test(effect.category) || TO_HAND.test(effect.category)) && (fromGrave || FROM_GRAVE.test(effect.range))) ||
+      (SUMMON_PROCEDURE.test(effect.code) && FROM_GRAVE.test(effect.range))
+    ) {
+      flags |= CARD_RULE.recovery
     }
 
     if (bodies.some(summonsToOpponent)) {

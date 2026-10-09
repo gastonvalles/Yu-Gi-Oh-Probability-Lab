@@ -65,11 +65,11 @@ describe('qué puede hacer una carta según su script', () => {
     const procedure = script(effect('e1', ['SetType(EFFECT_TYPE_FIELD)', 'SetCode(EFFECT_SPSUMMON_PROC)', 'SetRange(LOCATION_HAND)']))
     const fromHand = script(effect('e1', ['SetCategory(CATEGORY_SPECIAL_SUMMON)', 'SetType(EFFECT_TYPE_IGNITION)', 'SetRange(LOCATION_HAND)']))
 
-    expect(names(cardRuleFlags(searcher))).toEqual(['search'])
+    expect(names(cardRuleFlags(searcher))).toEqual(['search', 'usesHand'])
     expect(names(cardRuleFlags(draw))).toEqual(['draw'])
-    expect(names(cardRuleFlags(recruiter))).toEqual(['recruit'])
-    expect(names(cardRuleFlags(procedure))).toEqual(['selfFromHand'])
-    expect(names(cardRuleFlags(fromHand))).toEqual(['selfFromHand'])
+    expect(names(cardRuleFlags(recruiter))).toEqual(['recruit', 'starts'])
+    expect(names(cardRuleFlags(procedure))).toEqual(['selfFromHand', 'usesHand'])
+    expect(names(cardRuleFlags(fromHand))).toEqual(['selfFromHand', 'usesHand'])
   })
 
   it('a quién le pega: sólo al rival, a cualquiera, o a nadie en el campo', () => {
@@ -94,7 +94,7 @@ describe('qué puede hacer una carta según su script', () => {
     expect(names(cardRuleFlags(raigeki))).toEqual(['hitsOpponent'])
     expect(names(cardRuleFlags(bookOfMoon))).toEqual(['hitsEither'])
     expect(names(cardRuleFlags(swapped))).toEqual(['hitsOpponent'])
-    expect(names(cardRuleFlags(ownGrave))).toEqual([])
+    expect(names(cardRuleFlags(ownGrave))).toEqual(['recovery'])
     expect(names(cardRuleFlags(negateTrap))).toEqual(['negate'])
   })
 
@@ -110,6 +110,41 @@ describe('qué puede hacer una carta según su script', () => {
     expect(names(cardRuleFlags(selfOnly))).toEqual([])
   })
 
+  it('empieza la jugada: al invocarse busca, desde el campo recluta, o una magia fusiona o invoca del Deck', () => {
+    const onSummon = script(
+      effect('e1', ['SetCategory(CATEGORY_SEARCH+CATEGORY_TOHAND)', 'SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_O)', 'SetCode(EVENT_SUMMON_SUCCESS)', 'SetTarget(s.thtg)']),
+      'function s.thtg(e,tp,eg,ep,ev,re,r,rp,chk)\n\tif chk==0 then return Duel.IsExistingMatchingCard(s.thfilter,tp,LOCATION_DECK,0,1,nil) end\nend',
+    )
+    const fieldRecruit = script(
+      effect('e1', ['SetCategory(CATEGORY_SPECIAL_SUMMON)', 'SetType(EFFECT_TYPE_IGNITION)', 'SetRange(LOCATION_MZONE)', 'SetTarget(s.sptg)']),
+      'function s.sptg(e,tp,eg,ep,ev,re,r,rp,chk)\n\tif chk==0 then return Duel.IsExistingMatchingCard(s.spfilter,tp,LOCATION_DECK,0,1,nil,e,tp) end\nend',
+    )
+    const fusionSpell = script('\tlocal e1=Fusion.CreateSummonEff({handler=c,fusfilter=s.ffilter})\n\te1:SetCountLimit(1,id)\n\tc:RegisterEffect(e1)')
+    const onDestroy = script(
+      effect('e1', ['SetCategory(CATEGORY_SEARCH+CATEGORY_TOHAND)', 'SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_O)', 'SetCode(EVENT_DESTROYED)', 'SetTarget(s.thtg)']),
+      'function s.thtg(e,tp,eg,ep,ev,re,r,rp,chk)\n\tif chk==0 then return Duel.IsExistingMatchingCard(s.thfilter,tp,LOCATION_DECK,0,1,nil) end\nend',
+    )
+
+    expect(names(cardRuleFlags(onSummon))).toEqual(['search', 'starts'])
+    expect(names(cardRuleFlags(fieldRecruit))).toEqual(['recruit', 'starts'])
+    expect(names(cardRuleFlags(fusionSpell))).toEqual(['starts'])
+    expect(names(cardRuleFlags(onDestroy))).toEqual(['search'])
+  })
+
+  it('recupera del cementerio: una carta propia, o ella misma; y usar la mano se nota', () => {
+    const reborn = script(
+      effect('e1', ['SetCategory(CATEGORY_SPECIAL_SUMMON)', 'SetType(EFFECT_TYPE_ACTIVATE)', 'SetTarget(s.target)']),
+      'function s.target(e,tp,eg,ep,ev,re,r,rp,chk,chkc)\n\tif chk==0 then return Duel.IsExistingTarget(s.filter,tp,LOCATION_GRAVE,LOCATION_GRAVE,1,nil,e,tp) end\nend',
+    )
+    const selfRevive = script(effect('e3', ['SetCategory(CATEGORY_SPECIAL_SUMMON)', 'SetType(EFFECT_TYPE_IGNITION)', 'SetRange(LOCATION_GRAVE)']))
+    const handSearch = script(effect('e1', ['SetCategory(CATEGORY_TOHAND+CATEGORY_SEARCH)', 'SetType(EFFECT_TYPE_IGNITION)', 'SetRange(LOCATION_HAND)']))
+
+    expect(names(cardRuleFlags(reborn))).toEqual(['recovery'])
+    expect(names(cardRuleFlags(selfRevive))).toEqual(['recovery'])
+    expect(names(cardRuleFlags(handSearch))).toEqual(['search', 'usesHand'])
+    expect(readCardScript(script('', 's.listed_names={CARD_ALBAZ,id,12345678}')).listedNames).toEqual(['CARD_ALBAZ', '12345678'])
+  })
+
   it('se invoca al campo del rival, por procedimiento de utilidad o en la operación; y menciona arquetipos', () => {
     const kaiju = script('\tlocal e1,e2=aux.AddKaijuProcedure(c)', 's.listed_series={SET_KAIJU}')
     const lava = script(
@@ -118,6 +153,6 @@ describe('qué puede hacer una carta según su script', () => {
     )
 
     expect(names(cardRuleFlags(kaiju))).toEqual(['givesToOpponent', 'mentions'])
-    expect(names(cardRuleFlags(lava))).toEqual(['selfFromHand', 'givesToOpponent'])
+    expect(names(cardRuleFlags(lava))).toEqual(['selfFromHand', 'givesToOpponent', 'usesHand'])
   })
 })

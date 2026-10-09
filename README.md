@@ -34,7 +34,7 @@ La app separa explícitamente dos dimensiones:
 - `origin`: de qué espacio del deck viene la carta.
 - `roles`: qué función táctica cumple dentro de la mano, la línea o el plan.
 
-La sugerencia automática lee primero las reglas de la carta (los scripts de EDOPro de Project Ignis, destilados en `src/data/card-rules.json` por el sync diario): qué hace cada efecto, desde dónde se activa y a quién le pega. De ahí salen `handtrap`, `searcher`, `draw`, `extender`, `disruption`, `boardbreaker` y `floodgate`, y si una carta es pieza de un paquete (menciona arquetipos) o se juega en decks de cualquier arquetipo. Los demás roles, y las cartas sin script, siguen saliendo del texto. La lista de cartas conocidas y tus propias correcciones mandan sobre todo eso.
+La sugerencia automática lee primero las reglas de la carta (los scripts de EDOPro de Project Ignis, destilados en `src/data/card-rules.json` por el sync diario): qué hace cada efecto, desde dónde se activa y a quién le pega. De ahí salen `handtrap`, `searcher`, `draw`, `extender`, `starter` (saca ventaja del Deck al entrar al campo, o invoca o fusiona al activarse), `recovery` (trae del cementerio o vuelve de ahí), `disruption`, `boardbreaker`, `floodgate`, `payoff` (el Extra entero, y en el Main un nivel alto con interacción propia) y `garnet` o `brick` (no se puede invocar normal y en la mano no hace nada: garnet si otra carta la nombra, brick si no); también si una carta es pieza de un paquete (menciona arquetipos) o se juega en decks de cualquier arquetipo. Las cartas sin script (monstruos normales, cartas muy nuevas) siguen saliendo del texto. La lista de cartas conocidas y tus propias correcciones mandan sobre todo eso.
 
 Eso evita mezclar pertenencia con función. Ejemplo:
 

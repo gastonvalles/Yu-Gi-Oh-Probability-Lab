@@ -30,5 +30,11 @@ describe('src/data/card-rules.json (lo que escribe scripts/sync-meta-decks.mjs)'
     expect(has(14965712, 'handtrap')).toBe(true)
     // Ruler of the End of the World: tiene script, pero ningún efecto de hand trap.
     expect(index.has(3739500) && !has(3739500, 'handtrap')).toBe(true)
+    // Mitsurugi no Mikoto, Saji busca al invocarse; Branded Fusion fusiona del Deck: empiezan la jugada.
+    expect(has(18176525, 'starts') && has(44362883, 'starts')).toBe(true)
+    // Monster Reborn trae del cementerio; Fiendsmith Engraver vuelve desde ahí.
+    expect(has(83764718, 'recovery') && has(60764609, 'recovery')).toBe(true)
+    // A Fallen of Albaz lo nombran muchas cartas; Engraver actúa desde la mano.
+    expect(has(68468459, 'referenced') && has(60764609, 'usesHand')).toBe(true)
   })
 })
