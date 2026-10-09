@@ -14,7 +14,7 @@ const ROLE_RGB: Record<RoleDistributionKey, string> = {
 
 interface LabRoleDistributionProps {
   distributions: RoleDistribution[]
-  onOpenRole: (key: RoleDistributionKey) => void
+  onOpenRole: (distribution: RoleDistribution) => void
 }
 
 /** Qué robás de cada rol: un anillo por rol que se llena según la chance de robar al menos una copia (el reparto en 0 / 1 / 2 / 3+ queda en el texto al pasar el mouse). */
@@ -38,7 +38,7 @@ export function LabRoleDistribution({ distributions, onOpenRole }: LabRoleDistri
               disabled={distribution.copies === 0}
               aria-label={`${distribution.label}: ${formatShortPercent(distribution.atLeastOne)} de robar al menos una. Ver cartas`}
               title={DISTRIBUTION_BUCKETS.map((bucket, bucketIndex) => `${bucket} copias: ${formatShortPercent(distribution.buckets[bucketIndex] ?? 0)}`).join(' · ')}
-              onClick={() => onOpenRole(distribution.key)}
+              onClick={() => onOpenRole(distribution)}
             >
               <ProgressRing
                 value={distribution.atLeastOne}

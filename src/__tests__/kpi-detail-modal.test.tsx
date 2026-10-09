@@ -80,7 +80,8 @@ describe('KpiDetailModal — close interactions', () => {
     renderWithStore(
       <KpiDetailModal
         isOpen
-        role="handtrap"
+        label="Handtrap"
+        roles={['handtrap']}
         side="A"
         mainDeck={mainDeck}
         onCardClick={() => {}}
@@ -101,7 +102,8 @@ describe('KpiDetailModal — close interactions', () => {
     renderWithStore(
       <KpiDetailModal
         isOpen
-        role="handtrap"
+        label="Handtrap"
+        roles={['handtrap']}
         side="A"
         mainDeck={mainDeck}
         onCardClick={() => {}}
@@ -119,7 +121,8 @@ describe('KpiDetailModal — close interactions', () => {
     renderWithStore(
       <KpiDetailModal
         isOpen
-        role="handtrap"
+        label="Handtrap"
+        roles={['handtrap']}
         side="A"
         mainDeck={mainDeck}
         onCardClick={() => {}}
@@ -138,7 +141,8 @@ describe('KpiDetailModal — close interactions', () => {
     renderWithStore(
       <KpiDetailModal
         isOpen
-        role="handtrap"
+        label="Handtrap"
+        roles={['handtrap']}
         side="A"
         mainDeck={mainDeck}
         onCardClick={() => {}}
@@ -167,7 +171,8 @@ describe('KpiDetailModal — card click', () => {
     renderWithStore(
       <KpiDetailModal
         isOpen
-        role="handtrap"
+        label="Handtrap"
+        roles={['handtrap']}
         side="A"
         mainDeck={mainDeck}
         onCardClick={onCardClick}
@@ -217,7 +222,8 @@ describe('KpiDetailModal — empty state', () => {
     renderWithStore(
       <KpiDetailModal
         isOpen
-        role="handtrap"
+        label="Handtrap"
+        roles={['handtrap']}
         side="A"
         mainDeck={mainDeck}
         onCardClick={() => {}}
@@ -232,7 +238,8 @@ describe('KpiDetailModal — empty state', () => {
     renderWithStore(
       <KpiDetailModal
         isOpen
-        role="starter"
+        label="Starter"
+        roles={['starter']}
         side="A"
         mainDeck={[]}
         onCardClick={() => {}}
@@ -257,7 +264,8 @@ describe('KpiDetailModal — needsReview badge', () => {
     renderWithStore(
       <KpiDetailModal
         isOpen
-        role="starter"
+        label="Starter"
+        roles={['starter']}
         side="B"
         mainDeck={mainDeck}
         onCardClick={() => {}}
@@ -279,7 +287,8 @@ describe('KpiDetailModal — needsReview badge', () => {
     renderWithStore(
       <KpiDetailModal
         isOpen
-        role="starter"
+        label="Starter"
+        roles={['starter']}
         side="B"
         mainDeck={mainDeck}
         editsMap={editsMap}

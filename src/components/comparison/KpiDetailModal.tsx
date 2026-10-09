@@ -4,7 +4,6 @@ import type { CardEditMap } from './kpi-detail-helpers'
 import type { ApiCardReference, CardRole } from '../../types'
 import { CardArt } from '../CardArt'
 import { formatInteger } from '../../app/utils'
-import { getCardRoleDefinition } from '../../app/deck-groups'
 import { Badge } from '../ui/Badge'
 import { CopiesBadge } from '../ui/CopiesBadge'
 import { Modal } from '../ui/Modal'
@@ -12,7 +11,9 @@ import { listItem } from '../ui/surfaces'
 
 interface KpiDetailModalProps {
   isOpen: boolean
-  role: CardRole
+  /** Título y roles que suma el anillo que se clickeó: la lista tiene que coincidir con ese número. */
+  label: string
+  roles: readonly CardRole[]
   /** Sólo en el comparador: qué build es. En el Lab no hace falta. */
   side?: 'A' | 'B'
   mainDeck: DeckCardInstance[]
@@ -21,21 +22,17 @@ interface KpiDetailModalProps {
   onClose: () => void
 }
 
-function getRoleLabel(role: CardRole): string {
-  const def = getCardRoleDefinition(role)
-  return def.label
-}
-
 export function KpiDetailModal({
   isOpen,
-  role,
+  label,
+  roles,
   side,
   mainDeck,
   editsMap,
   onCardClick,
   onClose,
 }: KpiDetailModalProps) {
-  const result = isOpen ? getKpiDetailCards(mainDeck, role, editsMap) : null
+  const result = isOpen ? getKpiDetailCards(mainDeck, roles, editsMap) : null
 
   return (
     <Modal
@@ -43,7 +40,7 @@ export function KpiDetailModal({
       onClose={onClose}
       size="md"
       kicker={side ? `Build ${side}` : undefined}
-      title={`¿Qué cartas cuentan como ${getRoleLabel(role)}?`}
+      title={`¿Qué cartas cuentan como ${label}?`}
       subtitle={result ? `${formatInteger(result.totalCopies)} carta${result.totalCopies === 1 ? '' : 's'}` : undefined}
     >
       {!result || result.cards.length === 0 ? (
