@@ -67,6 +67,7 @@
   --animate-toast-in: toast-in var(--motion-duration) ease-out both;
   --animate-toast-out: toast-out var(--motion-duration) ease-in both;
   --animate-fab-pulse: fab-pulse 5s ease-out infinite;
+  --animate-mascot-drop: mascot-drop 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
   --animate-marching-ants: marching-ants var(--motion-duration) linear infinite;
   --animate-card-armed: card-armed 160ms ease-out;
   --animate-step-forward: step-forward 150ms ease-out both;
@@ -272,6 +273,25 @@
     100% {
       opacity: 0;
       transform: scale(1.4);
+    }
+  }
+
+  /* La mascota al soltarla: cae, se aplasta un poco y vuelve a su forma. */
+  @keyframes mascot-drop {
+    0% {
+      transform: translateY(-10px) scale(1.06, 0.94);
+    }
+
+    45% {
+      transform: translateY(3px) scale(0.94, 1.06);
+    }
+
+    75% {
+      transform: translateY(-2px) scale(1.02, 0.98);
+    }
+
+    100% {
+      transform: none;
     }
   }
 

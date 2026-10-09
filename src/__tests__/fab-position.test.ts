@@ -9,6 +9,10 @@ describe('botón flotante', () => {
     expect(defaultFabPosition(MOBILE)).toEqual({ x: 390 - 56 - 12, y: 844 - 56 - 12 - 70 })
   })
 
+  it('la mascota arranca abajo a la izquierda', () => {
+    expect(defaultFabPosition(MOBILE, 'left')).toEqual({ x: 12, y: 844 - 56 - 12 - 70 })
+  })
+
   it('nunca sale de la pantalla ni se mete en la barra', () => {
     expect(clampFabPosition({ x: -50, y: 2000 }, MOBILE)).toEqual({ x: 12, y: 844 - 56 - 12 - 70 })
   })
