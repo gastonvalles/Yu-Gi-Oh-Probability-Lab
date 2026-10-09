@@ -137,7 +137,7 @@ describe('qué puede hacer una carta según su script', () => {
       'function s.thtg(e,tp,eg,ep,ev,re,r,rp,chk)\n\tif chk==0 then return Duel.IsExistingMatchingCard(s.thfilter,tp,LOCATION_DECK,0,1,nil) end\nend',
     )
 
-    expect(names(cardRuleFlags(onSummon))).toEqual(['search', 'starts'])
+    expect(names(cardRuleFlags(onSummon))).toEqual(['search', 'starts', 'onSummon'])
     expect(names(cardRuleFlags(fieldRecruit))).toEqual(['recruit', 'starts'])
     expect(names(cardRuleFlags(fusionSpell))).toEqual(['starts'])
     expect(names(cardRuleFlags(onDestroy))).toEqual(['search'])
@@ -172,7 +172,7 @@ describe('qué puede hacer una carta según su script', () => {
     expect(names(cardRuleFlags(selfRevive))).toEqual(['recovery'])
     expect(names(cardRuleFlags(comesBack))).toEqual(['search', 'recovery'])
     expect(names(cardRuleFlags(countsGrave))).toEqual([])
-    expect(names(cardRuleFlags(opponentGrave))).toEqual(['hitsGrave'])
+    expect(names(cardRuleFlags(opponentGrave))).toEqual(['hitsGrave', 'onSummon'])
     // Buscar desde la mano (Engraver) también empieza la jugada.
     expect(names(cardRuleFlags(handSearch))).toEqual(['search', 'starts', 'usesHand'])
     expect(readCardScript(script('', 's.listed_names={CARD_ALBAZ,id,12345678}')).listedNames).toEqual(['CARD_ALBAZ', '12345678'])
