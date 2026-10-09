@@ -30,6 +30,12 @@ export function tierHint(tier: MetaTier): string {
 }
 
 const DATE_FORMAT = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+const FULL_DATE_FORMAT = new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' })
+
+/** "09/10/2026": la fecha del snapshot, como la muestra el encabezado. */
+export function formatMetaDateFull(date: string): string {
+  return FULL_DATE_FORMAT.format(new Date(date))
+}
 const AVERAGE_FORMAT = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 
 export function percent(value: number): string {
