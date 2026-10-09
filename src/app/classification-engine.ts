@@ -1,4 +1,6 @@
 import type { ApiCardReference, CardOrigin, CardRole } from '../types'
+import { getCardRuleFlags } from './card-rules'
+import { CARD_RULE } from './card-script-rules'
 
 /** Output of the classification engine for a single card. */
 export interface ClassificationSuggestion {
@@ -175,11 +177,21 @@ const GAME_PLAN_ROLES: ReadonlySet<CardRole> = new Set([
 const INTERACTION_ROLES: ReadonlySet<CardRole> = new Set(['handtrap', 'disruption', 'boardbreaker', 'floodgate'])
 
 /**
- * Pure function. Given a set of suggested roles, derives the origin.
+ * Pure function. Given a set of suggested roles, derives the origin. Con las reglas de la carta (bits de
+ * CARD_RULE) pesan dos datos más: si los decks de torneo la juegan en cualquier arquetipo es non-engine aunque
+ * robe o quite cartas; si menciona a su paquete y sólo interactúa (una trampa de arquetipo), es engine.
  */
-export function deriveOrigin(roles: CardRole[]): CardOrigin {
+export function deriveOrigin(roles: CardRole[], ruleFlags = 0): CardOrigin {
   if (roles.length === 0) {
     return 'non_engine'
+  }
+
+  if (ruleFlags & CARD_RULE.generic && roles.every((role) => INTERACTION_ROLES.has(role) || role === 'draw')) {
+    return 'non_engine'
+  }
+
+  if (ruleFlags & CARD_RULE.mentions && !(ruleFlags & CARD_RULE.generic) && roles.every((role) => INTERACTION_ROLES.has(role))) {
+    return 'engine'
   }
 
   const hasDeadCard = roles.includes('brick') || roles.includes('garnet')
@@ -508,11 +520,34 @@ export function classifyCard(
     }
   }
 
+  // Con script, los roles que son reglas puras salen de ahí; el Extra sigue por texto (es todo payoff).
+  const ruleFlags = isExtraDeckMonster(card) ? undefined : getCardRuleFlags(card.ygoprodeckId)
+  const collectedRoles = ruleFlags === undefined ? rolesFromText(card, RULE_SET) : rolesFromRules(card, ruleFlags)
+
+  // Rule 10 special: brick only applies if no other roles matched
+  if (collectedRoles.includes('brick') && collectedRoles.length > 1) {
+    const index = collectedRoles.indexOf('brick')
+    collectedRoles.splice(index, 1)
+  }
+
+  if (collectedRoles.length === 0) {
+    collectedRoles.push(fallbackRole(card))
+  }
+
+  // Que mencione a su paquete hace engine a una magia o trampa de arquetipo; un monstruo que sólo interactúa
+  // (un Kaiju nombra a los Kaiju) sigue siendo non-engine.
+  const originFlags = ruleFlags !== undefined && isMonsterCard(card) ? ruleFlags & ~CARD_RULE.mentions : ruleFlags
+  const origin = deriveOrigin(collectedRoles, originFlags)
+
+  return { origin, roles: collectedRoles }
+}
+
+function rolesFromText(card: ApiCardReference, rules: readonly HeuristicRule[]): CardRole[] {
   const collectedRoles: CardRole[] = []
   let hasBoardbreaker = false
   let hasFloodgate = false
 
-  for (const rule of RULE_SET) {
+  for (const rule of rules) {
     const suggested = rule.evaluate(card)
 
     if (suggested.length === 0) continue
@@ -526,7 +561,7 @@ export function classifyCard(
     }
 
     // Rule 5 (removal): skip if boardbreaker already matched
-    if (rule.id === 'boardbreaker' && hasBoardbreaker) continue
+    if (rule.id === 'removal' && hasBoardbreaker) continue
 
     // Rule 8 (disruption): skip if floodgate already matched
     if (rule.id === 'disruption' && hasFloodgate) continue
@@ -538,17 +573,49 @@ export function classifyCard(
     }
   }
 
-  // Rule 10 special: brick only applies if no other roles matched
-  if (collectedRoles.includes('brick') && collectedRoles.length > 1) {
-    const index = collectedRoles.indexOf('brick')
-    collectedRoles.splice(index, 1)
+  return collectedRoles
+}
+
+/** Reglas que el texto no cubre todavía (etapa 2): recuperación del cementerio y bricks. */
+const TEXT_ONLY_RULES: readonly HeuristicRule[] = [ruleRecovery, ruleBrick]
+
+/**
+ * Los roles que las reglas de la carta justifican. Qué hace cada efecto, desde dónde y a quién le pega viene
+ * del script (ver CARD_RULE); el tipo de carta decide cómo se lee: una trampa que quita es interacción en el
+ * turno del rival, una magia que quita es para romper el campo yendo segundo.
+ */
+function rolesFromRules(card: ApiCardReference, flags: number): CardRole[] {
+  const has = (bit: number) => (flags & bit) !== 0
+  const trap = isTrapCard(card)
+  const quickPlay = isSpellCard(card) && QUICK_PLAY_SPELL.test(card.cardType)
+  const monster = isMonsterCard(card)
+  const roles: CardRole[] = []
+
+  if (has(CARD_RULE.handtrap)) roles.push('handtrap')
+  if (has(CARD_RULE.search | CARD_RULE.recruit)) roles.push('searcher')
+  if (has(CARD_RULE.draw)) roles.push('draw')
+  // Un Kaiju también "se invoca desde la mano", pero al campo del rival: no extiende nada.
+  if (monster && has(CARD_RULE.selfFromHand) && !has(CARD_RULE.givesToOpponent)) roles.push('extender')
+
+  if (
+    card.cardType.toLowerCase().includes('counter') ||
+    ((trap || quickPlay) && has(CARD_RULE.negate | CARD_RULE.hitsEither)) ||
+    (monster && has(CARD_RULE.quickFromField))
+  ) {
+    roles.push('disruption')
   }
 
-  if (collectedRoles.length === 0) {
-    collectedRoles.push(fallbackRole(card))
+  if (has(CARD_RULE.hitsOpponent | CARD_RULE.givesToOpponent) || (isSpellCard(card) && !quickPlay && has(CARD_RULE.hitsEither))) {
+    roles.push('boardbreaker')
   }
 
-  const origin = deriveOrigin(collectedRoles)
+  if (has(CARD_RULE.floodgate)) roles.push('floodgate')
 
-  return { origin, roles: collectedRoles }
+  for (const role of rolesFromText(card, TEXT_ONLY_RULES)) {
+    if (!roles.includes(role)) {
+      roles.push(role)
+    }
+  }
+
+  return roles
 }

@@ -34,6 +34,8 @@ La app separa explícitamente dos dimensiones:
 - `origin`: de qué espacio del deck viene la carta.
 - `roles`: qué función táctica cumple dentro de la mano, la línea o el plan.
 
+La sugerencia automática lee primero las reglas de la carta (los scripts de EDOPro de Project Ignis, destilados en `src/data/card-rules.json` por el sync diario): qué hace cada efecto, desde dónde se activa y a quién le pega. De ahí salen `handtrap`, `searcher`, `draw`, `extender`, `disruption`, `boardbreaker` y `floodgate`, y si una carta es pieza de un paquete (menciona arquetipos) o se juega en decks de cualquier arquetipo. Los demás roles, y las cartas sin script, siguen saliendo del texto. La lista de cartas conocidas y tus propias correcciones mandan sobre todo eso.
+
 Eso evita mezclar pertenencia con función. Ejemplo:
 
 - `origin: engine` + `roles: [starter, extender]`

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
@@ -10,7 +10,8 @@ import { createServer } from 'vite'
  * Baja los Tournament Meta Decks de YGOPRODeck (las listas de torneo que el sitio carga a mano) y escribe:
  * - src/data/meta-decks.json: cada deck con sus datos de torneo y sólo sus hand traps (lo que lee el tier list).
  * - src/data/meta-decklists.json: las listas completas (Main, Extra y Side), que la app baja recién al abrir un deck.
- * Qué carta es hand trap se lee de sus reglas (los scripts de EDOPro, ver src/app/handtrap-rules.ts), no de su texto.
+ * - src/data/card-rules.json: qué puede hacer cada carta según sus reglas (los scripts de EDOPro leídos por
+ *   src/app/card-script-rules.ts), para el clasificador de la app y para saber qué carta es hand trap.
  * Lo corre todos los días el workflow sync-meta-decks; a mano: `npm run sync:meta`.
  */
 const DECKS_ENDPOINT = 'https://ygoprodeck.com/api/decks/getDecks.php'
@@ -55,6 +56,7 @@ const MAIN_DECK_SIZE = { min: 40, max: 60 }
 const RAIL_DECK_MAX = 15
 const OUTPUT_PATH = path.resolve(process.cwd(), 'src/data/meta-decks.json')
 const DECKLISTS_PATH = path.resolve(process.cwd(), 'src/data/meta-decklists.json')
+const CARD_RULES_PATH = path.resolve(process.cwd(), 'src/data/card-rules.json')
 const USER_AGENT = 'YGO Probability Lab sync (+https://github.com/gastonvalles/Yu-Gi-Oh-Probability-Lab)'
 const EXTRA_DECK_FRAMES = new Set(['fusion', 'synchro', 'xyz', 'link', 'fusion_pendulum', 'synchro_pendulum', 'xyz_pendulum'])
 const ZONES = ['main', 'extra', 'side']
@@ -78,7 +80,7 @@ async function main() {
   const fetchedAt = new Date().toISOString()
   // La app cuenta semanas enteras hacia atrás desde el snapshot: un deck de justo WINDOW_DAYS días atrás ya cae en la semana 9.
   const cutoff = shiftDate(fetchedAt, -(WINDOW_DAYS - 1))
-  const scriptsDir = syncCardScripts()
+  const scripts = syncCardScripts()
   const decks = []
 
   for (const { region, format } of DECK_FORMATS) {
@@ -107,14 +109,19 @@ async function main() {
     }
 
     const canonicalById = buildCanonicalIds(cards, aliases)
-    const handtraps = pickHandtraps(engine.rules, scriptsDir, decks, cards, aliases, canonicalById)
+    const deckNames = deckNamesByCard(decks, canonicalById)
+    const genericIds = pickGenericCards(cards, canonicalById, deckNames)
+    const handtraps = pickHandtraps(engine.rules, scripts.dir, cards, aliases, canonicalById, deckNames, genericIds)
     const payload = buildPayload(fetchedAt, decks, handtraps, canonicalById)
     const decklists = buildDecklists(decks, canonicalById)
+    const cardRules = buildCardRules(engine.rules, scripts, cards, aliases, genericIds)
 
     await mkdir(path.dirname(OUTPUT_PATH), { recursive: true })
     await writeFile(OUTPUT_PATH, formatPayload(payload), 'utf8')
     await writeFile(DECKLISTS_PATH, formatDecklists(decklists), 'utf8')
+    await writeFile(CARD_RULES_PATH, formatCardRules(cardRules), 'utf8')
     console.log(`${Object.keys(payload.cards).length} hand traps en ${payload.decks.length} decks: ${OUTPUT_PATH}`)
+    console.log(`${cardRules.count} cartas con reglas (${genericIds.size} genéricas): ${CARD_RULES_PATH}`)
   } finally {
     await engine.close()
   }
@@ -358,37 +365,21 @@ function buildCanonicalIds(cards, aliases) {
 }
 
 /**
- * Hand traps por reglas (src/app/handtrap-rules.ts sobre el script de cada carta) con un filtro de genericidad
+ * Hand traps por reglas (src/app/card-script-rules.ts sobre el script de cada carta) con un filtro de genericidad
  * sobre los decklists: las que juegan varios decks distintos y no llevan el nombre del deck, porque un monstruo
  * de engine también puede tener un efecto rápido desde la mano. Las excepciones a mano van en HANDTRAP_OVERRIDES.
  */
-function pickHandtraps(rules, scriptsDir, decks, cards, aliases, canonicalById) {
-  const deckNamesByCard = new Map()
-
-  for (const deck of decks) {
-    for (const zone of ['main', 'side']) {
-      for (const id of deck[zone].keys()) {
-        const canonicalId = canonicalById.get(id)
-
-        if (canonicalId !== undefined) {
-          const names = deckNamesByCard.get(canonicalId) ?? new Set()
-          names.add(deck.name.toLowerCase())
-          deckNamesByCard.set(canonicalId, names)
-        }
-      }
-    }
-  }
-
+function pickHandtraps(rules, scriptsDir, cards, aliases, canonicalById, deckNames, genericIds) {
   const idsByName = cardIdsByName(cards, aliases)
   const handtraps = new Map()
   const engineOnly = []
   let withoutScript = 0
 
   for (const card of cards.values()) {
-    const deckNames = deckNamesByCard.get(card.ygoprodeckId)
+    const names = deckNames.get(card.ygoprodeckId)
 
     // Sólo la carta canónica de cada nombre, y sólo las que van en Main o Side.
-    if (canonicalById.get(card.ygoprodeckId) !== card.ygoprodeckId || !deckNames || EXTRA_DECK_FRAMES.has(card.frameType)) {
+    if (canonicalById.get(card.ygoprodeckId) !== card.ygoprodeckId || !names || EXTRA_DECK_FRAMES.has(card.frameType)) {
       continue
     }
 
@@ -410,11 +401,8 @@ function pickHandtraps(rules, scriptsDir, decks, cards, aliases, canonicalById) 
       continue
     }
 
-    const archetype = card.archetype?.toLowerCase() ?? ''
-    const namedAfterArchetype = archetype ? [...deckNames].filter((deckName) => deckName.includes(archetype)).length / deckNames.size : 0
-
-    if (deckNames.size < MIN_ARCHETYPES || namedAfterArchetype >= MAX_ARCHETYPE_NAME_MATCH) {
-      engineOnly.push(`${card.name} (${deckNames.size})`)
+    if (!genericIds.has(card.ygoprodeckId)) {
+      engineOnly.push(`${card.name} (${names.size})`)
       continue
     }
 
@@ -428,6 +416,52 @@ function pickHandtraps(rules, scriptsDir, decks, cards, aliases, canonicalById) 
 
   console.log(`${withoutScript} cartas sin script. Con efecto desde la mano pero de un solo deck o de su arquetipo (afuera): ${engineOnly.join(', ')}`)
   return handtraps
+}
+
+/** Los nombres de deck (en minúsculas) que llevan cada carta en Main o Side, por id canónico. */
+function deckNamesByCard(decks, canonicalById) {
+  const namesByCard = new Map()
+
+  for (const deck of decks) {
+    for (const zone of ['main', 'side']) {
+      for (const id of deck[zone].keys()) {
+        const canonicalId = canonicalById.get(id)
+
+        if (canonicalId !== undefined) {
+          const names = namesByCard.get(canonicalId) ?? new Set()
+          names.add(deck.name.toLowerCase())
+          namesByCard.set(canonicalId, names)
+        }
+      }
+    }
+  }
+
+  return namesByCard
+}
+
+/**
+ * Cartas genéricas: las juegan al menos MIN_ARCHETYPES decks distintos y no llevan el nombre del deck.
+ * Deciden qué hand trap va al tier list y, en el clasificador, que una carta es non-engine.
+ */
+function pickGenericCards(cards, canonicalById, deckNames) {
+  const generic = new Set()
+
+  for (const card of cards.values()) {
+    const names = deckNames.get(card.ygoprodeckId)
+
+    if (canonicalById.get(card.ygoprodeckId) !== card.ygoprodeckId || !names || names.size < MIN_ARCHETYPES) {
+      continue
+    }
+
+    const archetype = card.archetype?.toLowerCase() ?? ''
+    const namedAfterArchetype = archetype ? [...names].filter((deckName) => deckName.includes(archetype)).length / names.size : 0
+
+    if (namedAfterArchetype < MAX_ARCHETYPE_NAME_MATCH) {
+      generic.add(card.ygoprodeckId)
+    }
+  }
+
+  return generic
 }
 
 /** Los ids de cada nombre: las artes alternativas y los ids de prelanzamiento no tienen script propio. */
@@ -449,7 +483,7 @@ function cardIdsByName(cards, aliases) {
   return idsByName
 }
 
-/** Clona los scripts, o los pone al día si ya están, y devuelve la carpeta. */
+/** Clona los scripts, o los pone al día si ya están, y devuelve la carpeta y el commit. */
 function syncCardScripts() {
   const git = (...args) => execFileSync('git', args, { stdio: ['ignore', 'pipe', 'inherit'], encoding: 'utf8' }).trim()
 
@@ -460,8 +494,9 @@ function syncCardScripts() {
     git('clone', '-q', '--depth', '1', '--single-branch', '--branch', 'master', CARD_SCRIPTS_REPO, CARD_SCRIPTS_DIR)
   }
 
-  console.log(`Scripts de EDOPro ${git('-C', CARD_SCRIPTS_DIR, 'rev-parse', '--short', 'HEAD')} en ${CARD_SCRIPTS_DIR}`)
-  return CARD_SCRIPTS_DIR
+  const commit = git('-C', CARD_SCRIPTS_DIR, 'rev-parse', '--short', 'HEAD')
+  console.log(`Scripts de EDOPro ${commit} en ${CARD_SCRIPTS_DIR}`)
+  return { dir: CARD_SCRIPTS_DIR, commit }
 }
 
 /** El script de la carta por cualquiera de sus ids, o null si no tiene. */
@@ -477,6 +512,50 @@ function readCardScript(scriptsDir, ids) {
   }
 
   return null
+}
+
+/**
+ * Los bits de CARD_RULE de cada carta con script (publicadas y anunciadas), más `generic` en las que los decks
+ * de torneo juegan en cualquier arquetipo. Agrupado por valor de bits: pesa menos y el diff diario se lee.
+ */
+function buildCardRules(rules, scripts, cards, aliases, genericIds) {
+  const flagsById = new Map()
+
+  for (const dir of CARD_SCRIPT_DIRS) {
+    const folder = path.join(scripts.dir, dir)
+
+    for (const file of readdirSync(folder)) {
+      const id = Number(/^c(\d+)\.lua$/.exec(file)?.[1])
+
+      if (id > 0 && !flagsById.has(id)) {
+        flagsById.set(id, rules.cardRuleFlags(readFileSync(path.join(folder, file), 'utf8')))
+      }
+    }
+  }
+
+  const idsByName = cardIdsByName(cards, aliases)
+
+  for (const id of genericIds) {
+    for (const candidate of idsByName.get(cards.get(id)?.name) ?? [id]) {
+      if (flagsById.has(candidate)) {
+        flagsById.set(candidate, flagsById.get(candidate) | rules.CARD_RULE.generic)
+      }
+    }
+  }
+
+  const groups = new Map()
+
+  for (const [id, flags] of flagsById) {
+    groups.set(flags, [...(groups.get(flags) ?? []), id])
+  }
+
+  const entries = [...groups].sort((left, right) => left[0] - right[0]).map(([flags, ids]) => [String(flags), ids.sort((left, right) => left - right)])
+  return { scripts: scripts.commit, cards: Object.fromEntries(entries), count: flagsById.size }
+}
+
+function formatCardRules({ scripts, cards }) {
+  const lines = Object.entries(cards).map(([flags, ids]) => `    ${JSON.stringify(flags)}: ${JSON.stringify(ids)}`)
+  return `{\n  "scripts": ${JSON.stringify(scripts)},\n  "cards": {\n${lines.join(',\n')}\n  }\n}\n`
 }
 
 // Salida
@@ -566,7 +645,7 @@ async function loadEngine() {
 
   try {
     const [rules, parser] = await Promise.all([
-      server.ssrLoadModule('/src/app/handtrap-rules.ts'),
+      server.ssrLoadModule('/src/app/card-script-rules.ts'),
       server.ssrLoadModule('/src/ygoprodeck/parser.ts'),
     ])
 
