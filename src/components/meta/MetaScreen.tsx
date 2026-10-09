@@ -47,8 +47,8 @@ const WINDOW_OPTIONS = [
   { value: '8', label: '8 sem.' },
 ] as const satisfies ReadonlyArray<{ value: WindowWeeks; label: string }>
 const VIEW_OPTIONS = [
-  { value: 'now', label: 'Ahora' },
-  { value: 'projected', label: `En ${formatInteger(PROJECTION_WEEKS)} semanas` },
+  { value: 'now', label: 'Hoy' },
+  { value: 'projected', label: `En ${formatInteger(PROJECTION_WEEKS)} sem.` },
 ] as const satisfies ReadonlyArray<{ value: BoardView; label: string }>
 
 export function MetaScreen() {
@@ -105,11 +105,12 @@ export function MetaScreen() {
           title="Tier list"
           description={`${formatInteger(report.deckCount)} decks de las últimas ${weeks} semanas, al ${formatMetaDate(META_DECKS.fetchedAt)}. Tocá una carta para ver el detalle.`}
           actions={
-            <>
-              <Segmented value={zone} onChange={setZone} options={ZONE_OPTIONS} label="Dónde contar la hand trap" size="sm" />
-              <Segmented value={weeks} onChange={setWeeks} options={WINDOW_OPTIONS} label="Ventana de decks" size="sm" />
-              <Segmented value={view} onChange={setView} options={VIEW_OPTIONS} label="Tier list de hoy o proyectada" size="sm" />
-            </>
+            // En mobile cada control ocupa una fila a todo el ancho; en pantallas grandes van en línea.
+            <div className="grid w-full gap-2 min-[1101px]:flex min-[1101px]:w-auto min-[1101px]:flex-wrap min-[1101px]:items-center">
+              <Segmented value={zone} onChange={setZone} options={ZONE_OPTIONS} label="Dónde contar la hand trap" size="sm" className="max-[1100px]:w-full" />
+              <Segmented value={weeks} onChange={setWeeks} options={WINDOW_OPTIONS} label="Ventana de decks" size="sm" className="max-[1100px]:w-full" />
+              <Segmented value={view} onChange={setView} options={VIEW_OPTIONS} label="Tier list de hoy o proyectada" size="sm" className="max-[1100px]:w-full" />
+            </div>
           }
         />
         {report.handtraps.length > 0 ? (
@@ -148,7 +149,7 @@ export function MetaScreen() {
                 <input
                   type="search"
                   value={query}
-                  placeholder="Buscar por deck, torneo o jugador"
+                  placeholder="Deck, torneo o jugador"
                   autoComplete="off"
                   className={cx(field, 'h-9 w-full pl-9 pr-3 text-body')}
                   onChange={(event) => {
@@ -199,23 +200,27 @@ interface TierRowProps {
 /** Una fila de la tier list clásica: la etiqueta de color a la izquierda y las cartas en fila. */
 function TierRow({ tier, cards, view, onOpen }: TierRowProps) {
   return (
-    <div className="grid min-h-[5.75rem] grid-cols-[4.25rem_minmax(0,1fr)] border-b border-border-subtle last:border-b-0 sm:grid-cols-[5.5rem_minmax(0,1fr)]">
+    // En mobile la etiqueta es angosta y las cartas van de a cuatro por fila, a todo el ancho; en pantallas grandes, en fila con ancho fijo.
+    <div className="grid min-h-[5.75rem] grid-cols-[3.5rem_minmax(0,1fr)] border-b border-border-subtle last:border-b-0 sm:grid-cols-[5.5rem_minmax(0,1fr)]">
       <div
-        className="grid place-items-center px-1 text-center text-body font-semibold text-[#1a1204]"
+        className="grid place-items-center px-1 text-center text-micro font-bold text-[#1a1204] sm:text-body sm:font-semibold"
         style={{ backgroundColor: tierColor(tier) }}
         title={tierHint(tier)}
       >
         {tierLabel(tier)}
       </div>
-      <ul className="m-0 flex list-none flex-wrap content-start gap-1 bg-background p-1" aria-label={`${tierLabel(tier)}: ${tierHint(tier)}`}>
+      <ul
+        className="m-0 grid list-none grid-cols-4 content-start gap-1 bg-background p-1 sm:flex sm:flex-wrap"
+        aria-label={`${tierLabel(tier)}: ${tierHint(tier)}`}
+      >
         {cards.map((stat) => {
           const share = view === 'projected' ? stat.projectedShare : stat.share
 
           return (
-            <li key={stat.id}>
+            <li key={stat.id} className="min-w-0">
               <button
                 type="button"
-                className="relative block aspect-[421/614] w-14 overflow-hidden rounded-tag bg-input transition-transform duration-150 hover:scale-[1.04] focus-visible:outline-none focus-visible:shadow-focus sm:w-[4.5rem]"
+                className="relative block aspect-[421/614] w-full overflow-hidden rounded-tag bg-input transition-transform duration-150 hover:scale-[1.04] focus-visible:outline-none focus-visible:shadow-focus sm:w-[4.5rem]"
                 title={`${stat.name}: ${percent(share)} de los decks`}
                 onClick={() => onOpen(stat)}
               >
