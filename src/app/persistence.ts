@@ -123,3 +123,15 @@ export function saveClassificationOverride(name: string, suggestion: Classificat
   saveClassificationOverrides(map)
   invalidateClassificationOverridesCache()
 }
+
+/** Olvida lo que confirmaste o corregiste de esas cartas: la próxima sugerencia vuelve a salir de las reglas. */
+export function removeClassificationOverrides(names: Iterable<string>): void {
+  const map = loadClassificationOverrides()
+
+  for (const name of names) {
+    map.delete(normalizeCardNameForLookup(name))
+  }
+
+  saveClassificationOverrides(map)
+  invalidateClassificationOverridesCache()
+}
