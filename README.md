@@ -177,3 +177,7 @@ El CI (`.github/workflows/ci.yml`) corre `typecheck`, `lint`, `test` y `build` e
 1. Presets de pruebas contra handtraps comunes.
 2. Editor todavía más guiado para aperturas/problemas.
 3. Métricas avanzadas de “juega sobre X”.
+
+## Licencia
+
+© 2026 Gastón Valles. Todos los derechos reservados (ver `LICENSE`). Yu-Gi-Oh!, los nombres y las imágenes de las cartas son marcas y obras de Konami; este proyecto no es oficial ni está afiliado. Los datos de cartas provienen de YGOPRODeck.

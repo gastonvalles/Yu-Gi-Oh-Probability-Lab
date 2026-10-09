@@ -27,7 +27,7 @@ export interface DeckImageLayout {
 export const CARD_ASPECT = 614 / 421
 /** Ancho lógico de las zonas: el builder clásico en una pantalla ancha. */
 const SURFACE_WIDTH = 1500
-const PAGE_PADDING = 24
+export const PAGE_PADDING = 24
 const ZONE_GAP = 18
 const HEADER_HEIGHT = 34
 const HEADER_GAP = 7
