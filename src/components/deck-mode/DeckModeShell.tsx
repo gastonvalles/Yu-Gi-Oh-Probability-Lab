@@ -31,15 +31,21 @@ export function DeckModeShell({
         className={cx(
           'min-h-0 w-full min-w-0 [&>*]:min-w-0 max-[1100px]:overflow-visible min-[1101px]:h-full',
           contentScrollable ? 'min-[1101px]:overflow-y-auto' : 'min-[1101px]:overflow-hidden',
-          Boolean(mobileNavigation) && 'max-[1100px]:pb-[calc(var(--deck-mobile-step-nav-height,4.3rem)+env(safe-area-inset-bottom,0px)+0.55rem)]',
         )}
       >
         {content}
-        {/* En mobile las redes van al pie de la página; en desktop están en la barra de arriba. */}
-        <footer className="flex justify-center px-gutter pb-3 pt-4 min-[1101px]:hidden">
-          <SocialLinks />
-        </footer>
       </div>
+      {/* En mobile las redes van al pie de la página (en desktop están en la barra de arriba). El pie es el que
+          deja lugar a la barra de pasos fija: va fuera del contenido, porque los pasos a altura completa lo empujarían
+          debajo de la barra. */}
+      <footer
+        className={cx(
+          'flex justify-center px-gutter pt-4 min-[1101px]:hidden',
+          mobileNavigation ? 'pb-[calc(var(--deck-mobile-step-nav-height,4.3rem)+env(safe-area-inset-bottom,0px)+0.8rem)]' : 'pb-4',
+        )}
+      >
+        <SocialLinks />
+      </footer>
       {mobileNavigation ? <div className="min-[1101px]:hidden">{mobileNavigation}</div> : null}
     </section>
   )
