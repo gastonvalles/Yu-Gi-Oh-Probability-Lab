@@ -1,7 +1,7 @@
 import type { ReactNode, RefObject } from 'react'
 
 import { cx } from '../ui/cx'
-import { SocialLinks } from '../ui/SocialLinks'
+import { SiteCredit, SocialLinks } from '../ui/SocialLinks'
 import { DeckModeBrand } from './DeckModeBrand'
 
 interface DeckModeShellProps {
@@ -24,7 +24,10 @@ export function DeckModeShell({
       <header className="grid min-h-(--deck-mode-topbar-height) w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 border-b border-border-subtle bg-card-background/70 px-5 py-2 max-[1100px]:hidden">
         <DeckModeBrand />
         {navigation}
-        <SocialLinks className="justify-self-end" />
+        <div className="flex min-w-0 items-center gap-3 justify-self-end">
+          <SiteCredit className="hidden whitespace-nowrap min-[1280px]:block" />
+          <SocialLinks />
+        </div>
       </header>
       <div
         ref={contentScrollRef}
@@ -40,11 +43,12 @@ export function DeckModeShell({
           debajo de la barra. */}
       <footer
         className={cx(
-          'flex justify-center px-gutter pt-4 min-[1101px]:hidden',
+          'grid justify-items-center gap-1 px-gutter pt-4 text-center min-[1101px]:hidden',
           mobileNavigation ? 'pb-[calc(var(--deck-mobile-step-nav-height,4.3rem)+env(safe-area-inset-bottom,0px)+0.8rem)]' : 'pb-4',
         )}
       >
         <SocialLinks />
+        <SiteCredit withDisclaimer />
       </footer>
       {mobileNavigation ? <div className="min-[1101px]:hidden">{mobileNavigation}</div> : null}
     </section>

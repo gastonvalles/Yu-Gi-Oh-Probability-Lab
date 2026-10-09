@@ -1,5 +1,5 @@
 import { getCardLimitIndicator } from './deck-format'
-import { computeDeckImageLayout, type Rect, type ZoneLayout } from './deck-image-layout'
+import { PAGE_PADDING, computeDeckImageLayout, type Rect, type ZoneLayout } from './deck-image-layout'
 import { buildDeckZoneTypeCounts } from './deck-presentation'
 import type { DeckBuilderState, DeckCardInstance, DeckZone } from './model'
 import { formatInteger } from './utils'
@@ -86,7 +86,22 @@ export async function renderDeckAsCanvas(
     context.restore()
   })
 
+  drawCredit(context, layout.width, layout.height)
+
   return canvas
+}
+
+/** Marca discreta en el margen de abajo: de dónde salió la imagen y de quién es (se comparte mucho). */
+function drawCredit(context: CanvasRenderingContext2D, width: number, height: number) {
+  const host = typeof location === 'undefined' ? '' : location.host
+
+  context.save()
+  context.font = `500 12px ${FONT_STACK}`
+  context.textAlign = 'right'
+  context.textBaseline = 'alphabetic'
+  context.fillStyle = 'rgba(191, 187, 217, 0.55)'
+  context.fillText(`${host ? `${host} · ` : ''}© Gastón Valles`, width - PAGE_PADDING, height - 8)
+  context.restore()
 }
 
 /** La tipografía de la app ya está en la página; se espera a que el navegador la tenga lista para el canvas. */

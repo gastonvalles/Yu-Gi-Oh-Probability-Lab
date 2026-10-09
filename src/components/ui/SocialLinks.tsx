@@ -7,6 +7,18 @@ const LINKS: ReadonlyArray<{ href: string; label: string; icon: IconName }> = [
   { href: 'https://github.com/gastonvalles', label: 'GitHub', icon: 'github' },
 ]
 
+const DISCLAIMER = 'Sitio no oficial. Yu-Gi-Oh! es una marca de Konami.'
+
+/** La línea de autoría, discreta: en desktop sólo el ©, con el descargo en el tooltip; en mobile, completa. */
+export function SiteCredit({ withDisclaimer = false, className }: { withDisclaimer?: boolean; className?: string }) {
+  return (
+    <p className={cx('m-0 text-micro text-soft', className)} title={withDisclaimer ? undefined : DISCLAIMER}>
+      © {new Date().getFullYear()} Gastón Valles
+      {withDisclaimer ? ` · ${DISCLAIMER}` : null}
+    </p>
+  )
+}
+
 /** Las redes del autor: en desktop viven en la barra de arriba; en mobile, en el pie de la página. */
 export function SocialLinks({ className }: { className?: string }) {
   return (

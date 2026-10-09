@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 
 const isMountedWindowsWorkspace = process.cwd().startsWith('/mnt/')
 
@@ -15,8 +15,24 @@ function readVercelHeaders(): Record<string, string> {
   return Object.fromEntries((config.headers ?? []).flatMap((rule) => rule.headers.map((header) => [header.key, header.value])))
 }
 
+const COPYRIGHT_BANNER = `/*! Yu-Gi-Oh! Probability Lab © ${new Date().getFullYear()} Gastón Valles. Todos los derechos reservados. Sitio no oficial: Yu-Gi-Oh! es una marca de Konami. */`
+
+/** Aviso de autoría al principio de cada archivo JS del build. Se agrega después de minificar, así ningún paso lo borra. */
+function copyrightBanner(): Plugin {
+  return {
+    name: 'copyright-banner',
+    generateBundle(_options, bundle) {
+      for (const file of Object.values(bundle)) {
+        if (file.type === 'chunk') {
+          file.code = `${COPYRIGHT_BANNER}\n${file.code}`
+        }
+      }
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), copyrightBanner()],
   preview: {
     headers: readVercelHeaders(),
   },
