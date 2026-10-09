@@ -32,8 +32,9 @@ const KNOWN_CARDS_MAP_ENTRIES: Array<[string, ClassificationSuggestion]> = [
   ['skull meister', { origin: 'non_engine', roles: ['handtrap'] }],
 
   // Staple spells
-  ['called by the grave', { origin: 'non_engine', roles: ['disruption'] }],
-  ['crossout designator', { origin: 'non_engine', roles: ['disruption'] }],
+  // Frenan la interacción del rival y te abren paso: también rompen campo y, cuando resuelven, te dejan arriba.
+  ['called by the grave', { origin: 'non_engine', roles: ['disruption', 'boardbreaker', 'payoff'] }],
+  ['crossout designator', { origin: 'non_engine', roles: ['disruption', 'boardbreaker', 'payoff'] }],
   ['triple tactics talent', { origin: 'non_engine', roles: ['draw', 'boardbreaker'] }],
   ['forbidden droplet', { origin: 'non_engine', roles: ['boardbreaker', 'disruption'] }],
   ['dark ruler no more', { origin: 'non_engine', roles: ['boardbreaker'] }],
@@ -267,8 +268,13 @@ function isTrapCard(card: ApiCardReference): boolean {
   return card.cardType.toLowerCase().includes('trap')
 }
 
+/** Tipo y subtipo juntos: la API trae "Spell Card" en el tipo y "Quick-Play", "Field", "Counter"... en race. */
+function cardKind(card: ApiCardReference): string {
+  return `${card.race ?? ''} ${card.cardType}`.toLowerCase()
+}
+
 function isContinuousSpellOrTrap(card: ApiCardReference): boolean {
-  const ct = card.cardType.toLowerCase()
+  const ct = cardKind(card)
   return ct.includes('continuous') || (ct.includes('field') && ct.includes('spell'))
 }
 
@@ -282,7 +288,7 @@ function isExtraDeckMonster(card: ApiCardReference): boolean {
  * revisar), pero evita que "Clasificar todo" deje cartas sin función y la clasificación no cierre.
  */
 function fallbackRole(card: ApiCardReference): CardRole {
-  const type = card.cardType.toLowerCase()
+  const type = cardKind(card)
   const desc = card.description ?? ''
   const targetsOpponent = BOARDBREAKER_OPPONENT_TARGET.test(desc)
 
@@ -301,8 +307,9 @@ function fallbackRole(card: ApiCardReference): CardRole {
       return 'enabler'
     }
 
+    // Invoca, pero no trae nada del Deck: continúa la jugada en vez de empezarla.
     if (SPECIAL_SUMMON_CLAUSE.test(desc)) {
-      return 'starter'
+      return 'extender'
     }
 
     return targetsOpponent ? 'boardbreaker' : 'enabler'
@@ -439,11 +446,11 @@ const ruleDisruption: HeuristicRule = {
     if (!desc) return []
 
     // Counter traps are always disruption
-    if (card.cardType.toLowerCase().includes('counter')) return ['disruption']
+    if (cardKind(card).includes('counter')) return ['disruption']
 
     if (isTrapCard(card) && DISRUPTION_NEGATE.test(desc)) return ['disruption']
     if (isTrapCard(card) && DISRUPTION_NEGATE_SUMMON_DESTROY.test(desc)) return ['disruption']
-    if (isSpellCard(card) && QUICK_PLAY_SPELL.test(card.cardType) && DISRUPTION_NEGATE.test(desc)) return ['disruption']
+    if (isSpellCard(card) && QUICK_PLAY_SPELL.test(cardKind(card)) && DISRUPTION_NEGATE.test(desc)) return ['disruption']
 
     return []
   },
@@ -516,7 +523,7 @@ export function classifyCard(
     // Then check known cards map
     const knownEntry = KNOWN_CARDS_MAP.get(normalizedName)
     if (knownEntry) {
-      return { origin: knownEntry.origin, roles: [...knownEntry.roles] }
+      return { origin: knownEntry.origin, roles: completeRoles(card, knownEntry.origin, [...knownEntry.roles]) }
     }
   }
 
@@ -540,7 +547,30 @@ export function classifyCard(
   const originFlags = ruleFlags !== undefined && isMonsterCard(card) ? ruleFlags & ~CARD_RULE.mentions : ruleFlags
   const origin = deriveOrigin(collectedRoles, originFlags)
 
-  return { origin, roles: collectedRoles }
+  return { origin, roles: completeRoles(card, origin, collectedRoles) }
+}
+
+/**
+ * Lo que vale para cualquier carta, pase lo que pase con el resto: una hand trap frena al rival (disruption);
+ * una pieza de engine que no es trampa continúa la jugada (extender); una hand trap que además frena de
+ * forma persistente te deja arriba cuando resuelve (payoff). Las correcciones del usuario no pasan por acá.
+ */
+function completeRoles(card: ApiCardReference, origin: CardOrigin, roles: CardRole[]): CardRole[] {
+  const add = (role: CardRole) => {
+    if (!roles.includes(role)) roles.push(role)
+  }
+
+  if (roles.includes('handtrap')) {
+    add('disruption')
+
+    if (roles.includes('floodgate')) add('payoff')
+  }
+
+  if (origin === 'engine' && !isTrapCard(card) && !isExtraDeckMonster(card)) {
+    add('extender')
+  }
+
+  return roles
 }
 
 function rolesFromText(card: ApiCardReference, rules: readonly HeuristicRule[]): CardRole[] {
@@ -588,7 +618,7 @@ const TEXT_ONLY_RULES: readonly HeuristicRule[] = [ruleBrick]
 function rolesFromRules(card: ApiCardReference, flags: number): CardRole[] {
   const has = (bit: number) => (flags & bit) !== 0
   const trap = isTrapCard(card)
-  const quickPlay = isSpellCard(card) && QUICK_PLAY_SPELL.test(card.cardType)
+  const quickPlay = isSpellCard(card) && QUICK_PLAY_SPELL.test(cardKind(card))
   const monster = isMonsterCard(card)
   const roles: CardRole[] = []
 
@@ -599,7 +629,7 @@ function rolesFromRules(card: ApiCardReference, flags: number): CardRole[] {
   if (monster && has(CARD_RULE.selfFromHand) && !has(CARD_RULE.givesToOpponent)) roles.push('extender')
 
   if (
-    card.cardType.toLowerCase().includes('counter') ||
+    cardKind(card).includes('counter') ||
     ((trap || quickPlay) && has(CARD_RULE.negate | CARD_RULE.hitsEither)) ||
     (monster && has(CARD_RULE.quickFromField)) ||
     has(CARD_RULE.hitsGrave)
@@ -617,8 +647,10 @@ function rolesFromRules(card: ApiCardReference, flags: number): CardRole[] {
   // Una Quick-Play que invoca es un extender, como ya decía el rol por tipo.
   // Un monstruo de engine de nivel bajo con efecto al invocarse también: con él arrancás, aunque ese efecto no busque nada.
   const engineOpener = monster && (card.level ?? 0) <= 4 && has(CARD_RULE.onSummon) && !has(CARD_RULE.generic) && (has(CARD_RULE.mentions) || card.archetype !== null)
+  // Un cuerpo que se invoca solo desde la mano y hace algo al entrar también abre (Marshmao).
+  const opensFromHand = monster && has(CARD_RULE.selfFromHand) && has(CARD_RULE.onSummon)
 
-  if (has(CARD_RULE.starts) || engineOpener) {
+  if (has(CARD_RULE.starts) || engineOpener || opensFromHand) {
     if (quickPlay) {
       if (!roles.includes('extender')) roles.push('extender')
     } else if (monster || isSpellCard(card)) {
@@ -628,8 +660,27 @@ function rolesFromRules(card: ApiCardReference, flags: number): CardRole[] {
 
   if (has(CARD_RULE.recovery)) roles.push('recovery')
 
-  // Un jefe del Main: nivel alto con interacción propia en el campo.
-  if (monster && (card.level ?? 0) >= 7 && has(CARD_RULE.quickFromField | CARD_RULE.floodgate | CARD_RULE.negate | CARD_RULE.pressures)) {
+  const level = card.level ?? 0
+  const spellType = isSpellCard(card) ? cardKind(card) : ''
+  const enginePiece = !has(CARD_RULE.generic) && (has(CARD_RULE.mentions) || card.archetype !== null)
+
+  // Habilita la línea: el cuerpo de engine de nivel bajo que busca, recluta o recupera; el jefe que desde la mano
+  // abre; y las magias de ritual, de campo, continuas y de equipo, que otras cartas necesitan.
+  if (
+    enginePiece &&
+    ((monster && level <= 4 && has(CARD_RULE.search | CARD_RULE.recruit | CARD_RULE.recovery)) ||
+      (monster && level >= 5 && has(CARD_RULE.usesHand) && has(CARD_RULE.starts)) ||
+      /ritual|field|continuous|equip/.test(spellType))
+  ) {
+    roles.push('enabler')
+  }
+
+  // Un jefe del Main: nivel alto con interacción propia en el campo, o el jefe ritual; y la magia de ritual
+  // o de campo que convierte la línea en él.
+  if (
+    (monster && level >= 7 && (card.frameType.toLowerCase() === 'ritual' || has(CARD_RULE.quickFromField | CARD_RULE.floodgate | CARD_RULE.negate | CARD_RULE.pressures))) ||
+    (enginePiece && /ritual|field/.test(spellType))
+  ) {
     roles.push('payoff')
   }
 

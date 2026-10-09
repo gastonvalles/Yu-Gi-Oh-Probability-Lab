@@ -31,8 +31,9 @@ describe('clasificador con las reglas de la carta', () => {
     rules(R.selfFromHand | R.search)
     expect(classifyCard(card({}))).toEqual({ origin: 'engine', roles: ['searcher', 'extender'] })
 
+    // Una hand trap siempre frena (disruption); una pieza de engine siempre continúa la jugada (extender).
     rules(R.handtrap | R.draw)
-    expect(classifyCard(card({}))).toEqual({ origin: 'engine', roles: ['handtrap', 'draw'] })
+    expect(classifyCard(card({}))).toEqual({ origin: 'engine', roles: ['handtrap', 'draw', 'disruption', 'extender'] })
 
     rules(R.quickFromField | R.negate)
     expect(classifyCard(card({})).roles).toEqual(['disruption'])
@@ -50,10 +51,36 @@ describe('clasificador con las reglas de la carta', () => {
     expect(classifyCard(card({ level: 8 })).roles).toEqual(['disruption'])
   })
 
-  it('Mulcharmy, Droll y Maxx "C" frenan al rival: también son floodgate', () => {
-    expect(classifyCard(card({}), 'Droll & Lock Bird').roles).toEqual(['handtrap', 'floodgate'])
-    expect(classifyCard(card({}), 'Mulcharmy Fuwalos').roles).toEqual(['handtrap', 'draw', 'floodgate'])
-    expect(classifyCard(card({}), 'Maxx "C"').roles).toEqual(['handtrap', 'draw', 'floodgate'])
+  it('enabler y payoff según el criterio de Gastón: cuerpos de engine que buscan o recuperan, jefes rituales, magias de ritual y de campo', () => {
+    // Cupsy: nivel 1 de engine que busca → enabler. Lollipo: sólo interactúa → no.
+    rules(R.search | R.selfFromHand | R.usesHand | R.onSummon | R.mentions)
+    expect(classifyCard(card({ level: 1 })).roles).toEqual(['searcher', 'extender', 'starter', 'enabler'])
+    rules(R.hitsGrave | R.selfFromHand | R.usesHand | R.onSummon | R.mentions)
+    expect(classifyCard(card({ level: 1 })).roles).toEqual(['extender', 'disruption', 'starter'])
+
+    // Futsu: jefe ritual sin efecto de campo, igual payoff; Habakiri abre desde la mano, además enabler.
+    rules(R.search | R.recovery | R.mentions)
+    expect(classifyCard(card({ cardType: 'Ritual Effect Monster', frameType: 'ritual', level: 7 })).roles).toEqual(['searcher', 'recovery', 'payoff', 'extender'])
+    rules(R.recruit | R.starts | R.search | R.usesHand | R.mentions)
+    expect(classifyCard(card({ cardType: 'Ritual Effect Monster', frameType: 'ritual', level: 8 })).roles).toEqual(['searcher', 'starter', 'enabler', 'payoff', 'extender'])
+
+    // Magia de ritual y magia de campo de un arquetipo: habilitan la línea y son su payoff.
+    // Como vienen de la API: tipo "Spell Card" y subtipo en race.
+    rules(R.mentions)
+    expect(classifyCard(card({ cardType: 'Spell Card', race: 'Ritual', frameType: 'spell' })).roles).toEqual(['enabler', 'payoff', 'extender'])
+    rules(R.recovery | R.mentions)
+    expect(classifyCard(card({ cardType: 'Spell Card', race: 'Field', frameType: 'spell' })).roles).toEqual(['recovery', 'enabler', 'payoff', 'extender'])
+    // Una magia de campo genérica no es enabler ni payoff de nadie.
+    rules(R.generic)
+    expect(classifyCard(card({ cardType: 'Spell Card', race: 'Field', frameType: 'spell' })).roles).toEqual(['enabler', 'extender'])
+  })
+
+  it('Mulcharmy, Droll y Maxx "C" frenan al rival: floodgate, y como toda hand trap disruption; al resolver te dejan arriba (payoff)', () => {
+    expect(classifyCard(card({}), 'Droll & Lock Bird').roles).toEqual(['handtrap', 'floodgate', 'disruption', 'payoff'])
+    expect(classifyCard(card({}), 'Mulcharmy Fuwalos').roles).toEqual(['handtrap', 'draw', 'floodgate', 'disruption', 'payoff'])
+    expect(classifyCard(card({}), 'Maxx "C"').roles).toEqual(['handtrap', 'draw', 'floodgate', 'disruption', 'payoff'])
+    expect(classifyCard(card({}), 'Ash Blossom & Joyous Spring').roles).toEqual(['handtrap', 'disruption'])
+    expect(classifyCard(card({}), 'Called by the Grave').roles).toEqual(['disruption', 'boardbreaker', 'payoff'])
   })
 
   it('un Kaiju se invoca desde la mano pero al campo del rival: rompe el campo, no extiende, y no es engine por nombrar a los Kaiju', () => {
@@ -66,8 +93,8 @@ describe('clasificador con las reglas de la carta', () => {
 
   it('con script pero sin pistas de reglas, siguen el texto para lo que falta y el rol por tipo', () => {
     rules(0)
-    expect(classifyCard(card({ level: 8, description: 'Cannot be Normal Summoned.' })).roles).toEqual(['brick'])
-    expect(classifyCard(card({ description: 'Destroy all monsters your opponent controls.' })).roles).toEqual(['enabler'])
+    expect(classifyCard(card({ level: 8, description: 'Cannot be Normal Summoned.' })).roles).toEqual(['brick', 'extender'])
+    expect(classifyCard(card({ description: 'Destroy all monsters your opponent controls.' })).roles).toEqual(['enabler', 'extender'])
     expect(classifyCard(card({ cardType: 'Trap Card', frameType: 'trap', description: 'Negate the activation.' })).roles).toEqual(['disruption'])
   })
 
@@ -88,8 +115,14 @@ describe('clasificador con las reglas de la carta', () => {
 
   it('starter: el monstruo que saca ventaja al entrar y la magia que invoca; la Quick-Play que invoca es extender', () => {
     rules(R.starts | R.search)
-    expect(classifyCard(card({}))).toEqual({ origin: 'engine', roles: ['searcher', 'starter'] })
-    expect(classifyCard(card({ cardType: 'Spell Card', frameType: 'spell' })).roles).toEqual(['searcher', 'starter'])
+    expect(classifyCard(card({}))).toEqual({ origin: 'engine', roles: ['searcher', 'starter', 'extender'] })
+    expect(classifyCard(card({ cardType: 'Spell Card', frameType: 'spell' })).roles).toEqual(['searcher', 'starter', 'extender'])
+
+    // Marshmao: se invoca sola y hace algo al entrar; Kusanagi (efecto al entrar que depende del cementerio) no abre.
+    rules(R.selfFromHand | R.usesHand | R.onSummon | R.recovery | R.mentions)
+    expect(classifyCard(card({ level: 1 })).roles).toEqual(['extender', 'starter', 'recovery', 'enabler'])
+    rules(R.recovery | R.mentions)
+    expect(classifyCard(card({ level: 4, archetype: 'Mitsurugi' })).roles).toEqual(['recovery', 'enabler', 'extender'])
 
     rules(R.starts)
     expect(classifyCard(card({ cardType: 'Quick-Play Spell', frameType: 'spell' })).roles).toEqual(['extender'])
@@ -98,31 +131,31 @@ describe('clasificador con las reglas de la carta', () => {
 
   it('recovery, payoff del Main, y garnet contra brick', () => {
     rules(R.recovery)
-    expect(classifyCard(card({ cardType: 'Spell Card', frameType: 'spell' }))).toEqual({ origin: 'engine', roles: ['recovery'] })
+    expect(classifyCard(card({ cardType: 'Spell Card', frameType: 'spell' }))).toEqual({ origin: 'engine', roles: ['recovery', 'extender'] })
 
     rules(R.quickFromField | R.negate)
-    expect(classifyCard(card({ level: 8 })).roles).toEqual(['disruption', 'payoff'])
+    expect(classifyCard(card({ level: 8 })).roles).toEqual(['disruption', 'payoff', 'extender'])
     expect(classifyCard(card({ level: 4 })).roles).toEqual(['disruption'])
 
     // Ame no Habakiri: starter (recluta desde la mano), searcher, recovery y payoff (nivel 8 que debilita al rival).
     rules(R.recruit | R.starts | R.search | R.recovery | R.pressures | R.usesHand | R.mentions)
     expect(classifyCard(card({ cardType: 'Ritual Effect Monster', frameType: 'ritual', level: 8 }))).toEqual({
       origin: 'engine',
-      roles: ['searcher', 'starter', 'recovery', 'payoff'],
+      roles: ['searcher', 'starter', 'recovery', 'enabler', 'payoff', 'extender'],
     })
 
     const locked = { level: 8, description: 'Cannot be Normal Summoned/Set. Must be Special Summoned by "Contract with Exodia".' }
     rules(R.referenced)
-    expect(classifyCard(card(locked))).toEqual({ origin: 'engine', roles: ['garnet'] })
+    expect(classifyCard(card(locked))).toEqual({ origin: 'engine', roles: ['garnet', 'extender'] })
     rules(0)
-    expect(classifyCard(card(locked)).roles).toEqual(['brick'])
+    expect(classifyCard(card(locked)).roles).toEqual(['brick', 'extender'])
     rules(R.referenced | R.usesHand | R.selfFromHand)
     expect(classifyCard(card(locked)).roles).toEqual(['extender'])
   })
 
   it('la lista conocida y tus correcciones siguen mandando', () => {
     rules(R.hitsOpponent)
-    expect(classifyCard(card({}), 'Ash Blossom & Joyous Spring')).toEqual({ origin: 'non_engine', roles: ['handtrap'] })
+    expect(classifyCard(card({}), 'Ash Blossom & Joyous Spring')).toEqual({ origin: 'non_engine', roles: ['handtrap', 'disruption'] })
     expect(classifyCard(card({}), 'Carta', new Map([['carta', { origin: 'engine', roles: ['starter'] }]]))).toEqual({ origin: 'engine', roles: ['starter'] })
   })
 })

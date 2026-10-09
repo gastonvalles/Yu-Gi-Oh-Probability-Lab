@@ -422,16 +422,21 @@ export function cardRuleFlags(lua: string): number {
     const fromGrave = calls.some((call) => !call.counts && FROM_GRAVE.test(call.own))
     const gains = SPECIAL_SUMMON.test(effect.category) || TO_GRAVE.test(effect.category) || TO_HAND.test(effect.category)
 
-    if (onField && (SEARCH.test(effect.category) || FUSION_SUMMON.test(effect.category) || (gains && (fromDeck || fromGrave)))) {
+    // Del Deck o del Extra: lo que trae del cementerio es recuperación, no una apertura.
+    if (onField && (SEARCH.test(effect.category) || FUSION_SUMMON.test(effect.category) || (gains && fromDeck))) {
       flags |= CARD_RULE.starts
     }
 
-    if (TRIGGER.test(effect.type) && ON_SUMMON.test(effect.code)) {
+    const opponentGrave = calls.some((call) => !call.counts && FROM_GRAVE.test(call.opponent) && isEmptyLocation(call.own))
+    // Un efecto al invocarse que sólo vale con el propio cementerio armado (Kusanagi) no abre nada.
+    const needsOwnGrave = gains && fromGrave && !fromDeck && scope === null && !opponentGrave
+
+    if (TRIGGER.test(effect.type) && ON_SUMMON.test(effect.code) && !needsOwnGrave) {
       flags |= CARD_RULE.onSummon
     }
 
     // Le saca recursos al cementerio del rival (y sólo del rival): Called by the Grave, o un monstruo que al entrar baraja una carta suya.
-    if (REMOVAL.test(effect.category) && calls.some((call) => !call.counts && FROM_GRAVE.test(call.opponent) && isEmptyLocation(call.own))) {
+    if (REMOVAL.test(effect.category) && opponentGrave) {
       flags |= CARD_RULE.hitsGrave
     }
 
