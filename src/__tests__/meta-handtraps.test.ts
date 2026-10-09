@@ -135,6 +135,7 @@ describe('tier list de hand traps del meta', () => {
 
   it('busca por texto en nombre, torneo, puesto y jugador, sin importar mayúsculas, tildes ni orden', () => {
     expect(filterMetaDecks(data.decks, { text: 'despiá branded' }).map((item) => item.id)).toEqual([3])
+    expect(filterMetaDecks(data.decks, { text: 'DESPIA' }).map((item) => item.id)).toEqual([3])
     expect(filterMetaDecks(data.decks, { text: 'TEST ycs' })).toHaveLength(6)
     expect(filterMetaDecks(data.decks, { text: 'top 8 blitz' }).map((item) => item.id)).toEqual([1, 2])
     expect(filterMetaDecks(data.decks, { text: 'jugador', cardId: NIBIRU }).map((item) => item.id)).toEqual([1, 2])
