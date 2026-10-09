@@ -30,9 +30,9 @@ const data: MetaDecksData = {
   windowDays: 56,
   source: 'https://ygoprodeck.com/deck-search/',
   cards: {
-    [ASH]: { name: 'Ash Blossom & Joyous Spring', image: null },
-    [IMPERM]: { name: 'Infinite Impermanence', image: null },
-    [NIBIRU]: { name: 'Nibiru, the Primal Being', image: null },
+    [ASH]: { name: 'Ash Blossom & Joyous Spring', image: null, tcg: 'semi-limited' },
+    [IMPERM]: { name: 'Infinite Impermanence', image: null, tcg: null },
+    [NIBIRU]: { name: 'Nibiru, the Primal Being', image: null, tcg: 'unlimited' },
   },
   decks: [
     // Última semana: Ash en Main, Imperm en Main y Side, Nibiru sólo en Side.
@@ -92,6 +92,17 @@ describe('tier list de hand traps del meta', () => {
     expect(buildMetaReport(data, 'main', 4).handtraps.map((stat) => stat.name)).not.toContain('Nibiru, the Primal Being')
     expect(buildMetaReport(data, 'both', 8).deckCount).toBe(5)
     expect(buildMetaReport(data, 'both', 1).deckCount).toBe(3)
+  })
+
+  it('una carta prohibida en la banlist TCG de hoy no entra al tier list, aunque los decks viejos la lleven', () => {
+    const banned: MetaDecksData = {
+      ...data,
+      cards: { ...data.cards, [NIBIRU]: { name: 'Nibiru, the Primal Being', image: null, tcg: 'forbidden' } },
+    }
+    const names = buildMetaReport(banned, 'both', 4).handtraps.map((stat) => stat.name)
+
+    expect(names).toEqual(['Ash Blossom & Joyous Spring', 'Infinite Impermanence'])
+    expect(buildMetaReport(banned, 'both', 4).deckCount).toBe(4)
   })
 
   it('proyecta la tendencia con una recta pesada por decks y la prolonga dos semanas', () => {

@@ -304,7 +304,8 @@ function pickHandtraps(classification, decks, cards, canonicalById) {
     const generic = suggestion.origin === 'non_engine' && deckNames.size >= MIN_ARCHETYPES && namedAfterArchetype < MAX_ARCHETYPE_NAME_MATCH
 
     if (known?.roles.includes('handtrap') || generic) {
-      handtraps.set(card.ygoprodeckId, { name: card.name, image: card.imageUrlSmall })
+      // El estado en la banlist TCG de hoy: una carta prohibida no va al tier list aunque los decks viejos la lleven.
+      handtraps.set(card.ygoprodeckId, { name: card.name, image: card.imageUrlSmall, tcg: card.banlist.tcg })
     }
   }
 
