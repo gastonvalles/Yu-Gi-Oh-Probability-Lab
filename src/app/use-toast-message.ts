@@ -2,6 +2,7 @@ import { createElement, useCallback } from 'react'
 import { toast } from 'react-hot-toast'
 
 import { AppToast } from '../components/ui/AppToast'
+import { reactMascot } from './mascot'
 
 /** info: avisos neutros · success: se hizo · warning: se quitó/vació algo o falta algo · error: falló. */
 export type ToastTone = 'info' | 'success' | 'warning' | 'error'
@@ -18,6 +19,13 @@ export function useToastMessage(): {
     toast.custom((instance) => createElement(AppToast, { id: instance.id, visible: instance.visible, message, tone }), {
       duration: TOAST_DURATION_MS,
     })
+
+    // Cupsy acompaña el aviso: festeja lo que salió bien y se frustra con lo que falló.
+    if (tone === 'success') {
+      reactMascot('jumping', 2500)
+    } else if (tone === 'error') {
+      reactMascot('failed', 3000)
+    }
   }, [])
 
   return { showToast }

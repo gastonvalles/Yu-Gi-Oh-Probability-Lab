@@ -1,0 +1,160 @@
+import { useSyncExternalStore } from 'react'
+
+/**
+ * Cupsy, la mascota: un estado por animación del paquete. Las pantallas no la manejan directamente:
+ * avisan qué pasa (se está cargando algo, se calcula, salió bien, salió mal) y ella reacciona.
+ */
+export type MascotState = 'idle' | 'look' | 'waiting' | 'running' | 'review' | 'jumping' | 'failed' | 'waving'
+/** Reacciones puntuales: duran unos segundos y ganan a lo demás. */
+export type MascotReaction = Extract<MascotState, 'jumping' | 'failed' | 'waving'>
+/** Lo que puede estar pasando de fondo. */
+export type MascotActivity = 'loading' | 'computing'
+
+const ENABLED_KEY = 'ygo-lab:mascot'
+const listeners = new Set<() => void>()
+const activities: Record<MascotActivity, number> = { loading: 0, computing: 0 }
+let reaction: { state: MascotReaction; until: number } | null = null
+let reactionTimer: ReturnType<typeof setTimeout> | null = null
+let enabled = readEnabled()
+
+function readEnabled(): boolean {
+  try {
+    return localStorage.getItem(ENABLED_KEY) !== 'off'
+  } catch {
+    return true
+  }
+}
+
+function notify() {
+  for (const listener of listeners) {
+    listener()
+  }
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+  }
+}
+
+/** Prioridad: una reacción puntual gana; después lo que pasa de fondo (carga, cálculo); después el paso; si no, reposo. */
+export function computeMascotState(input: {
+  reaction: MascotReaction | null
+  loading: boolean
+  computing: boolean
+  step: string | null
+}): MascotState {
+  if (input.reaction) {
+    return input.reaction
+  }
+
+  if (input.loading) {
+    return 'waiting'
+  }
+
+  if (input.computing) {
+    return 'running'
+  }
+
+  if (input.step === 'categorization') {
+    return 'review'
+  }
+
+  return 'idle'
+}
+
+/** El paso actual sale del hash, igual que en la navegación (`#meta?deck=1` → `meta`). */
+function currentStep(): string | null {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  return window.location.hash.replace(/^#/, '').split('?')[0] || null
+}
+
+export function getMascotState(): MascotState {
+  return computeMascotState({
+    reaction: reaction && reaction.until > Date.now() ? reaction.state : null,
+    loading: activities.loading > 0,
+    computing: activities.computing > 0,
+    step: currentStep(),
+  })
+}
+
+/** Avisa que empezó algo de fondo; devuelve la función para avisar que terminó (llamarla dos veces no rompe nada). */
+export function beginMascotActivity(kind: MascotActivity): () => void {
+  activities[kind] += 1
+  notify()
+  let ended = false
+
+  return () => {
+    if (ended) {
+      return
+    }
+
+    ended = true
+    activities[kind] = Math.max(0, activities[kind] - 1)
+    notify()
+  }
+}
+
+/** Una reacción puntual; la última pisa a la anterior. */
+export function reactMascot(state: MascotReaction, durationMs = 2500): void {
+  reaction = { state, until: Date.now() + durationMs }
+
+  if (reactionTimer) {
+    clearTimeout(reactionTimer)
+  }
+
+  reactionTimer = setTimeout(() => {
+    reaction = null
+    reactionTimer = null
+    notify()
+  }, durationMs)
+  notify()
+}
+
+export function isMascotEnabled(): boolean {
+  return enabled
+}
+
+export function setMascotEnabled(on: boolean): void {
+  enabled = on
+
+  try {
+    if (on) {
+      localStorage.removeItem(ENABLED_KEY)
+    } else {
+      localStorage.setItem(ENABLED_KEY, 'off')
+    }
+  } catch {
+    // Sin storage se recuerda sólo hasta recargar.
+  }
+
+  notify()
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('hashchange', notify)
+}
+
+export function useMascotState(): MascotState {
+  return useSyncExternalStore(subscribe, getMascotState, () => 'idle')
+}
+
+export function useMascotEnabled(): boolean {
+  return useSyncExternalStore(subscribe, isMascotEnabled, () => true)
+}
+
+/** Para los tests: vuelve todo a reposo. */
+export function resetMascotForTests(): void {
+  activities.loading = 0
+  activities.computing = 0
+  reaction = null
+
+  if (reactionTimer) {
+    clearTimeout(reactionTimer)
+    reactionTimer = null
+  }
+}

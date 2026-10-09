@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { buildDerivedDeckGroupMap } from '../../app/deck-groups'
 import { requestLabOdds } from '../../app/lab-odds-client'
+import { reactMascot } from '../../app/mascot'
 import type { LabOdds } from '../../app/lab-odds'
 import type { CardEntry, HandPattern } from '../../types'
 import { Callout } from '../ui/Callout'
@@ -115,6 +116,23 @@ export function PracticeSection(props: PracticeSectionProps) {
     table.isDealt && !blockedMessage && table.result
       ? getPracticeVerdict(table.result.openingMatches.length, table.result.problemMatches.length)
       : null
+
+  // Cupsy festeja la mano limpia y se frustra con un problema: una vez por mano (o por robo).
+  useEffect(() => {
+    const result = table.result
+
+    if (!table.isDealt || blockedMessage || !result) {
+      return
+    }
+
+    const kind = getPracticeVerdict(result.openingMatches.length, result.problemMatches.length)
+
+    if (kind === 'clean') {
+      reactMascot('jumping', 2500)
+    } else if (kind === 'with-problem') {
+      reactMascot('failed', 2500)
+    }
+  }, [table.result, table.isDealt, blockedMessage])
   // El cálculo exacto del Lab es pesado: corre en un hilo aparte (y se recuerda por contenido).
   const [lab, setLab] = useState<LabOdds | null>(null)
   // Las listas llegan como arrays nuevos en cada render: se compara por contenido.

@@ -12,6 +12,7 @@ import {
   type MetaDeck,
   type MetaDecklist,
 } from '../../app/meta-handtraps'
+import { beginMascotActivity } from '../../app/mascot'
 import type { DeckCardInstance, DeckZone as DeckZoneKey } from '../../app/model'
 import { useAppDispatch, useAppSelector } from '../../app/store-hooks'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
@@ -83,6 +84,7 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
     let cancelled = false
     setLoad({ status: 'loading' })
     setSelectedCard(null)
+    const endMascotActivity = beginMascotActivity('loading')
 
     void (async () => {
       try {
@@ -102,6 +104,8 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
         if (!cancelled) {
           setLoad({ status: 'error', message: error instanceof Error ? error.message : 'No se pudo cargar el deck.' })
         }
+      } finally {
+        endMascotActivity()
       }
     })()
 
