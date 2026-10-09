@@ -41,6 +41,10 @@ export const CARD_RULE = {
   usesHand: 1 << 15,
   /** Otra carta la nombra (la busca, la invoca, la necesita): lo pone el sync cruzando todos los scripts. */
   referenced: 1 << 16,
+  /** Destierra, baraja o manda al cementerio cartas del cementerio o del destierro del rival, y sólo del rival. */
+  hitsGrave: 1 << 17,
+  /** Un efecto continuo que le pesa al rival mientras está en el campo (baja ATK, limita): presión de jefe. */
+  pressures: 1 << 18,
 } as const
 
 export type CardRuleFlag = keyof typeof CARD_RULE
@@ -124,6 +128,10 @@ const LOCATION_CALLS: ReadonlyArray<[name: string, player: number, own: number, 
 ]
 const LOCATION_CALL = new RegExp(`Duel\\.(${LOCATION_CALLS.map(([name]) => name).join('|')})\\(`, 'g')
 const GIVE_SUMMON = /Duel\.SpecialSummon(?:Step)?\(/g
+/** La carta se invoca a sí misma (`c` o `e:GetHandler()`), no a otra. */
+const SUMMONS_SELF = /Duel\.SpecialSummon(?:Step)?\(\s*(?:c|e:GetHandler\(\))\s*,/
+/** Eventos de irse del campo o de ser tributada: si después se invoca sola, vuelve. */
+const LEAVES = /\bEVENT_(?:RELEASE|TO_GRAVE|DESTROYED|LEAVE_FIELD|REMOVE|BATTLE_DESTROYED)\b/
 
 type Scope = 'opponent' | 'either' | 'own'
 
@@ -394,7 +402,9 @@ export function cardRuleFlags(lua: string): number {
       flags |= CARD_RULE.recruit
     }
 
-    if (fromHand && (SUMMON_PROCEDURE.test(effect.code) || (IGNITION.test(effect.type) && SPECIAL_SUMMON.test(effect.category)))) {
+    const summonsSelf = bodies.some((body) => SUMMONS_SELF.test(body))
+
+    if (fromHand && (SUMMON_PROCEDURE.test(effect.code) || (IGNITION.test(effect.type) && SPECIAL_SUMMON.test(effect.category) && summonsSelf))) {
       flags |= CARD_RULE.selfFromHand
     }
 
@@ -402,20 +412,28 @@ export function cardRuleFlags(lua: string): number {
       flags |= CARD_RULE.usesHand
     }
 
-    // Saca ventaja del Deck al entrar al campo (o desde él), o al activarse si es una magia o trampa.
-    const onField = (TRIGGER.test(effect.type) && ON_SUMMON.test(effect.code)) || (IGNITION.test(effect.type) && ON_FIELD.test(effect.range)) || activation
+    // Saca ventaja (del Deck, del cementerio o del destierro) al entrar al campo o desde él, o al activarse si es una magia o trampa.
+    // (Una ignición desde la mano que trae del Deck también empieza la jugada: un starter de una carta.)
+    const onField = (TRIGGER.test(effect.type) && ON_SUMMON.test(effect.code)) || (IGNITION.test(effect.type) && (ON_FIELD.test(effect.range) || fromHand)) || activation
     const fromDeck = calls.some((call) => FROM_DECK.test(call.own))
     // "Si tenés 3 magias en el cementerio" cuenta cartas, no las trae: no es recuperación.
     const fromGrave = calls.some((call) => !call.counts && FROM_GRAVE.test(call.own))
+    const gains = SPECIAL_SUMMON.test(effect.category) || TO_GRAVE.test(effect.category) || TO_HAND.test(effect.category)
 
-    if (onField && (SEARCH.test(effect.category) || FUSION_SUMMON.test(effect.category) || ((SPECIAL_SUMMON.test(effect.category) || TO_GRAVE.test(effect.category)) && fromDeck))) {
+    if (onField && (SEARCH.test(effect.category) || FUSION_SUMMON.test(effect.category) || (gains && (fromDeck || fromGrave)))) {
       flags |= CARD_RULE.starts
+    }
+
+    // Le saca recursos al cementerio del rival (y sólo del rival): Called by the Grave, o un monstruo que al entrar baraja una carta suya.
+    if (REMOVAL.test(effect.category) && calls.some((call) => !call.counts && FROM_GRAVE.test(call.opponent) && isEmptyLocation(call.own))) {
+      flags |= CARD_RULE.hitsGrave
     }
 
     // Trae del cementerio o del destierro (una carta propia, o ella misma).
     if (
       ((SPECIAL_SUMMON.test(effect.category) || TO_HAND.test(effect.category)) && (fromGrave || FROM_GRAVE.test(effect.range))) ||
-      (SUMMON_PROCEDURE.test(effect.code) && FROM_GRAVE.test(effect.range))
+      (SUMMON_PROCEDURE.test(effect.code) && FROM_GRAVE.test(effect.range)) ||
+      (summonsSelf && (FROM_GRAVE.test(effect.range) || (TRIGGER.test(effect.type) && LEAVES.test(effect.code))))
     ) {
       flags |= CARD_RULE.recovery
     }
@@ -444,8 +462,8 @@ export function cardRuleFlags(lua: string): number {
       flags |= CARD_RULE.quickFromField
     }
 
-    if (FIELD_TYPE.test(effect.type) && !responsive && !CONTINUOUS.test(effect.type) && RESTRICTION.test(effect.code) && affectsOpponent(effect.targetRange)) {
-      flags |= CARD_RULE.floodgate
+    if (FIELD_TYPE.test(effect.type) && !responsive && !CONTINUOUS.test(effect.type) && affectsOpponent(effect.targetRange)) {
+      flags |= RESTRICTION.test(effect.code) ? CARD_RULE.floodgate : CARD_RULE.pressures
     }
   }
 

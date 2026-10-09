@@ -601,7 +601,8 @@ function rolesFromRules(card: ApiCardReference, flags: number): CardRole[] {
   if (
     card.cardType.toLowerCase().includes('counter') ||
     ((trap || quickPlay) && has(CARD_RULE.negate | CARD_RULE.hitsEither)) ||
-    (monster && has(CARD_RULE.quickFromField))
+    (monster && has(CARD_RULE.quickFromField)) ||
+    has(CARD_RULE.hitsGrave)
   ) {
     roles.push('disruption')
   }
@@ -625,7 +626,7 @@ function rolesFromRules(card: ApiCardReference, flags: number): CardRole[] {
   if (has(CARD_RULE.recovery)) roles.push('recovery')
 
   // Un jefe del Main: nivel alto con interacción propia en el campo.
-  if (monster && (card.level ?? 0) >= 7 && has(CARD_RULE.quickFromField | CARD_RULE.floodgate | CARD_RULE.negate)) {
+  if (monster && (card.level ?? 0) >= 7 && has(CARD_RULE.quickFromField | CARD_RULE.floodgate | CARD_RULE.negate | CARD_RULE.pressures)) {
     roles.push('payoff')
   }
 
@@ -649,7 +650,7 @@ function rolesForExtraDeck(flags: number): CardRole[] {
   const has = (bit: number) => (flags & bit) !== 0
   const roles: CardRole[] = ['payoff']
 
-  if (has(CARD_RULE.quickFromField | CARD_RULE.negate)) roles.push('disruption')
+  if (has(CARD_RULE.quickFromField | CARD_RULE.negate | CARD_RULE.hitsGrave)) roles.push('disruption')
   if (has(CARD_RULE.hitsOpponent | CARD_RULE.givesToOpponent)) roles.push('boardbreaker')
   if (has(CARD_RULE.floodgate)) roles.push('floodgate')
   if (has(CARD_RULE.search | CARD_RULE.recruit)) roles.push('searcher')

@@ -39,6 +39,10 @@ describe('clasificador con las reglas de la carta', () => {
 
     rules(R.floodgate)
     expect(classifyCard(card({ cardType: 'Continuous Trap', frameType: 'trap' })).roles).toEqual(['floodgate'])
+
+    // Lollipo☆Yummy: se invoca sola y al entrar baraja una carta del cementerio rival.
+    rules(R.selfFromHand | R.usesHand | R.hitsGrave | R.mentions)
+    expect(classifyCard(card({}))).toEqual({ origin: 'engine', roles: ['extender', 'disruption'] })
   })
 
   it('un Kaiju se invoca desde la mano pero al campo del rival: rompe el campo, no extiende, y no es engine por nombrar a los Kaiju', () => {
@@ -88,6 +92,13 @@ describe('clasificador con las reglas de la carta', () => {
     rules(R.quickFromField | R.negate)
     expect(classifyCard(card({ level: 8 })).roles).toEqual(['disruption', 'payoff'])
     expect(classifyCard(card({ level: 4 })).roles).toEqual(['disruption'])
+
+    // Ame no Habakiri: starter (recluta desde la mano), searcher, recovery y payoff (nivel 8 que debilita al rival).
+    rules(R.recruit | R.starts | R.search | R.recovery | R.pressures | R.usesHand | R.mentions)
+    expect(classifyCard(card({ cardType: 'Ritual Effect Monster', frameType: 'ritual', level: 8 }))).toEqual({
+      origin: 'engine',
+      roles: ['searcher', 'starter', 'recovery', 'payoff'],
+    })
 
     const locked = { level: 8, description: 'Cannot be Normal Summoned/Set. Must be Special Summoned by "Contract with Exodia".' }
     rules(R.referenced)

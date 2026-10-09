@@ -63,13 +63,22 @@ describe('qué puede hacer una carta según su script', () => {
       'function s.sptg(e,tp,eg,ep,ev,re,r,rp,chk)\n\tif chk==0 then return Duel.IsExistingMatchingCard(s.spfilter,tp,LOCATION_DECK,0,1,nil,e,tp) end\nend',
     )
     const procedure = script(effect('e1', ['SetType(EFFECT_TYPE_FIELD)', 'SetCode(EFFECT_SPSUMMON_PROC)', 'SetRange(LOCATION_HAND)']))
-    const fromHand = script(effect('e1', ['SetCategory(CATEGORY_SPECIAL_SUMMON)', 'SetType(EFFECT_TYPE_IGNITION)', 'SetRange(LOCATION_HAND)']))
+    const fromHand = script(
+      effect('e1', ['SetCategory(CATEGORY_SPECIAL_SUMMON)', 'SetType(EFFECT_TYPE_IGNITION)', 'SetRange(LOCATION_HAND)', 'SetOperation(s.spop)']),
+      'function s.spop(e,tp,eg,ep,ev,re,r,rp)\n\tlocal c=e:GetHandler()\n\tDuel.SpecialSummon(c,0,tp,tp,false,false,POS_FACEUP)\nend',
+    )
+    // Habakiri: desde la mano invoca otro monstruo del Deck. Empieza la jugada, pero no "se invoca sola".
+    const handRecruit = script(
+      effect('e2', ['SetCategory(CATEGORY_SPECIAL_SUMMON+CATEGORY_RELEASE)', 'SetType(EFFECT_TYPE_IGNITION)', 'SetRange(LOCATION_HAND)', 'SetTarget(s.sptg)', 'SetOperation(s.spop)']),
+      'function s.sptg(e,tp,eg,ep,ev,re,r,rp,chk)\n\tif chk==0 then return Duel.IsExistingMatchingCard(s.spfilter,tp,LOCATION_DECK,0,1,nil,e,tp) end\nend\nfunction s.spop(e,tp,eg,ep,ev,re,r,rp)\n\tlocal sg=Duel.SelectMatchingCard(tp,s.spfilter,tp,LOCATION_DECK,0,1,1,nil,e,tp)\n\tDuel.SpecialSummon(sg,0,tp,tp,false,false,POS_FACEUP)\nend',
+    )
 
-    expect(names(cardRuleFlags(searcher))).toEqual(['search', 'usesHand'])
+    expect(names(cardRuleFlags(searcher))).toEqual(['search', 'starts', 'usesHand'])
     expect(names(cardRuleFlags(draw))).toEqual(['draw'])
     expect(names(cardRuleFlags(recruiter))).toEqual(['recruit', 'starts'])
     expect(names(cardRuleFlags(procedure))).toEqual(['selfFromHand', 'usesHand'])
     expect(names(cardRuleFlags(fromHand))).toEqual(['selfFromHand', 'usesHand'])
+    expect(names(cardRuleFlags(handRecruit))).toEqual(['recruit', 'starts', 'usesHand'])
   })
 
   it('a quién le pega: sólo al rival, a cualquiera, o a nadie en el campo', () => {
@@ -94,7 +103,7 @@ describe('qué puede hacer una carta según su script', () => {
     expect(names(cardRuleFlags(raigeki))).toEqual(['hitsOpponent'])
     expect(names(cardRuleFlags(bookOfMoon))).toEqual(['hitsEither'])
     expect(names(cardRuleFlags(swapped))).toEqual(['hitsOpponent'])
-    expect(names(cardRuleFlags(ownGrave))).toEqual(['recovery'])
+    expect(names(cardRuleFlags(ownGrave))).toEqual(['starts', 'recovery'])
     expect(names(cardRuleFlags(negateTrap))).toEqual(['negate'])
   })
 
@@ -103,11 +112,14 @@ describe('qué puede hacer una carta según su script', () => {
     const skillDrain = script(effect('e2', ['SetType(EFFECT_TYPE_FIELD)', 'SetRange(LOCATION_SZONE)', 'SetTargetRange(LOCATION_MZONE,LOCATION_MZONE)', 'SetCode(EFFECT_DISABLE)']))
     const bothPlayers = script(`${effect('e3', ['SetType(EFFECT_TYPE_FIELD)', 'SetRange(LOCATION_SZONE)', 'SetCode(EFFECT_CANNOT_SUMMON)', 'SetTargetRange(1,1)'])}\n\tlocal e4=e3:Clone()\n\te4:SetCode(EFFECT_CANNOT_SPECIAL_SUMMON)\n\tc:RegisterEffect(e4)`)
     const selfOnly = script(effect('e1', ['SetType(EFFECT_TYPE_FIELD)', 'SetCode(EFFECT_CANNOT_DRAW)', 'SetTargetRange(1,0)']))
+    // Habakiri: los monstruos del rival pierden 800 ATK mientras está en el campo.
+    const debuff = script(effect('e1', ['SetType(EFFECT_TYPE_FIELD)', 'SetCode(EFFECT_UPDATE_ATTACK)', 'SetRange(LOCATION_MZONE)', 'SetTargetRange(0,LOCATION_MZONE)']))
 
     expect(names(cardRuleFlags(boss))).toEqual(['negate', 'quickFromField'])
     expect(names(cardRuleFlags(skillDrain))).toEqual(['floodgate'])
     expect(names(cardRuleFlags(bothPlayers))).toEqual(['floodgate'])
     expect(names(cardRuleFlags(selfOnly))).toEqual([])
+    expect(names(cardRuleFlags(debuff))).toEqual(['pressures'])
   })
 
   it('empieza la jugada: al invocarse busca, desde el campo recluta, o una magia fusiona o invoca del Deck', () => {
@@ -144,10 +156,25 @@ describe('qué puede hacer una carta según su script', () => {
       'function s.target(e,tp,eg,ep,ev,re,r,rp,chk)\n\tif chk==0 then return Duel.GetMatchingGroupCount(Card.IsSpell,tp,LOCATION_GRAVE,0,nil)>=3 end\nend',
     )
 
-    expect(names(cardRuleFlags(reborn))).toEqual(['recovery'])
+    const opponentGrave = script(
+      effect('e2', ['SetCategory(CATEGORY_TODECK)', 'SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_O)', 'SetCode(EVENT_SUMMON_SUCCESS)', 'SetTarget(s.tdtg)']),
+      'function s.tdtg(e,tp,eg,ep,ev,re,r,rp,chk,chkc)\n\tif chk==0 then return Duel.IsExistingTarget(s.tgfilter,tp,0,LOCATION_GRAVE,1,nil) end\nend',
+    )
+
+    // Habakiri: si la tributan, busca y después se invoca sola: vuelve.
+    const comesBack = script(
+      effect('e3', ['SetCategory(CATEGORY_TOHAND+CATEGORY_SEARCH+CATEGORY_SPECIAL_SUMMON)', 'SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_O)', 'SetCode(EVENT_RELEASE)', 'SetOperation(s.thop)']),
+      'function s.thop(e,tp,eg,ep,ev,re,r,rp)\n\tlocal c=e:GetHandler()\n\tDuel.SpecialSummon(c,0,tp,tp,false,false,POS_FACEUP)\nend',
+    )
+
+    // Una magia que revive empieza la jugada y recupera; la carta que vuelve sola sólo recupera.
+    expect(names(cardRuleFlags(reborn))).toEqual(['starts', 'recovery'])
     expect(names(cardRuleFlags(selfRevive))).toEqual(['recovery'])
+    expect(names(cardRuleFlags(comesBack))).toEqual(['search', 'recovery'])
     expect(names(cardRuleFlags(countsGrave))).toEqual([])
-    expect(names(cardRuleFlags(handSearch))).toEqual(['search', 'usesHand'])
+    expect(names(cardRuleFlags(opponentGrave))).toEqual(['hitsGrave'])
+    // Buscar desde la mano (Engraver) también empieza la jugada.
+    expect(names(cardRuleFlags(handSearch))).toEqual(['search', 'starts', 'usesHand'])
     expect(readCardScript(script('', 's.listed_names={CARD_ALBAZ,id,12345678}')).listedNames).toEqual(['CARD_ALBAZ', '12345678'])
   })
 
