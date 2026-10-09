@@ -130,6 +130,8 @@ type Scope = 'opponent' | 'either' | 'own'
 interface LocationCall {
   own: string
   opponent: string
+  /** Sólo cuenta cartas (una condición), no las elige ni las mueve. */
+  counts: boolean
 }
 
 /** Las funciones de nivel superior (`function s.x(...)` ... `end` sin sangría), con su cuerpo. */
@@ -300,7 +302,8 @@ function readLocationCalls(body: string): LocationCall[] {
     const opponent = args[signature[3]] ?? ''
 
     // Con `1-tp` como jugador, "propio" y "rival" se dan vuelta.
-    calls.push(/^1-/.test(player) ? { own: opponent, opponent: own } : { own, opponent })
+    const counts = match[1].endsWith('Count')
+    calls.push(/^1-/.test(player) ? { own: opponent, opponent: own, counts } : { own, opponent, counts })
   }
 
   return calls
@@ -402,7 +405,8 @@ export function cardRuleFlags(lua: string): number {
     // Saca ventaja del Deck al entrar al campo (o desde él), o al activarse si es una magia o trampa.
     const onField = (TRIGGER.test(effect.type) && ON_SUMMON.test(effect.code)) || (IGNITION.test(effect.type) && ON_FIELD.test(effect.range)) || activation
     const fromDeck = calls.some((call) => FROM_DECK.test(call.own))
-    const fromGrave = calls.some((call) => FROM_GRAVE.test(call.own))
+    // "Si tenés 3 magias en el cementerio" cuenta cartas, no las trae: no es recuperación.
+    const fromGrave = calls.some((call) => !call.counts && FROM_GRAVE.test(call.own))
 
     if (onField && (SEARCH.test(effect.category) || FUSION_SUMMON.test(effect.category) || ((SPECIAL_SUMMON.test(effect.category) || TO_GRAVE.test(effect.category)) && fromDeck))) {
       flags |= CARD_RULE.starts

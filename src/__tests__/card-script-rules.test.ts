@@ -139,8 +139,14 @@ describe('qué puede hacer una carta según su script', () => {
     const selfRevive = script(effect('e3', ['SetCategory(CATEGORY_SPECIAL_SUMMON)', 'SetType(EFFECT_TYPE_IGNITION)', 'SetRange(LOCATION_GRAVE)']))
     const handSearch = script(effect('e1', ['SetCategory(CATEGORY_TOHAND+CATEGORY_SEARCH)', 'SetType(EFFECT_TYPE_IGNITION)', 'SetRange(LOCATION_HAND)']))
 
+    const countsGrave = script(
+      effect('e1', ['SetCategory(CATEGORY_SPECIAL_SUMMON+CATEGORY_TOKEN)', 'SetType(EFFECT_TYPE_ACTIVATE)', 'SetTarget(s.target)']),
+      'function s.target(e,tp,eg,ep,ev,re,r,rp,chk)\n\tif chk==0 then return Duel.GetMatchingGroupCount(Card.IsSpell,tp,LOCATION_GRAVE,0,nil)>=3 end\nend',
+    )
+
     expect(names(cardRuleFlags(reborn))).toEqual(['recovery'])
     expect(names(cardRuleFlags(selfRevive))).toEqual(['recovery'])
+    expect(names(cardRuleFlags(countsGrave))).toEqual([])
     expect(names(cardRuleFlags(handSearch))).toEqual(['search', 'usesHand'])
     expect(readCardScript(script('', 's.listed_names={CARD_ALBAZ,id,12345678}')).listedNames).toEqual(['CARD_ALBAZ', '12345678'])
   })

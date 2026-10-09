@@ -7,7 +7,7 @@ import {
   getCardRoleDefinition,
   serializeGroupKey,
 } from '../app/deck-groups'
-import { reclassifyAllCards } from '../app/deck-builder-slice'
+import { reclassifyAllCards, resuggestAllCards } from '../app/deck-builder-slice'
 import {
   isCardFullyClassified,
   isCardMissingOrigin,
@@ -15,6 +15,7 @@ import {
   isCardPendingReview,
 } from '../app/role-step'
 import { useAppDispatch } from '../app/store-hooks'
+import { useToastMessage } from '../app/use-toast-message'
 import { formatInteger } from '../app/utils'
 import type { CardEntry, CardGroupKey, CardOrigin, CardRole } from '../types'
 import {
@@ -31,6 +32,7 @@ import {
   type ClassificationStateKey,
   type ClassificationStyleKey,
 } from './classification/classification-model'
+import { ConfirmDialog } from './probability/ConfirmDialog'
 import { StepHero } from './StepHero'
 import { Button } from './ui/Button'
 import { Card } from './ui/Card'
@@ -258,12 +260,20 @@ export function DeckRolesPanel({
   onOpenLab,
 }: DeckRolesPanelProps) {
   const dispatch = useAppDispatch()
+  const { showToast } = useToastMessage()
   const [activeFilter, setActiveFilter] = useState<ClassificationFilterKey>(() =>
     cards.some((card) => !isCardFullyClassified(card)) ? 'unclassified' : 'complete',
   )
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
   const [drawerMode, setDrawerMode] = useState<ClassificationDrawerMode>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [confirmResuggest, setConfirmResuggest] = useState(false)
+
+  const resuggestAll = () => {
+    setConfirmResuggest(false)
+    dispatch(resuggestAllCards())
+    showToast(`${formatInteger(cards.length)} cartas con la sugerencia de hoy. Revisalas una por una.`, 'success')
+  }
 
   const sortedCards = useMemo(() => [...cards].sort(compareCardsForQueue), [cards])
   const unclassifiedCards = useMemo(
@@ -540,6 +550,10 @@ export function DeckRolesPanel({
                     Ir al Lab
                   </Button>
                 ) : null}
+                {/* Vuelve a sugerir todo con las reglas de hoy; pisa lo confirmado, por eso pregunta. */}
+                <Button variant="tertiary" size="sm" icon="refresh" className="text-primary-foreground" onClick={() => setConfirmResuggest(true)}>
+                  Reclasificar todo
+                </Button>
               </div>
             </div>
             {/* A la derecha y en verde: se lee de un vistazo cuánto falta, y 100 % = listo. */}
@@ -665,6 +679,15 @@ export function DeckRolesPanel({
           </section>
         </div>
       </ClassificationDrawer>
+
+      <ConfirmDialog
+        isOpen={confirmResuggest}
+        title="¿Reclasificar todo el deck?"
+        description="Todas las cartas vuelven a la sugerencia de hoy, leída de las reglas de cada carta. Se pierden las confirmaciones y las correcciones a mano de estas cartas; después las revisás una por una."
+        confirmLabel="Reclasificar"
+        onCancel={() => setConfirmResuggest(false)}
+        onConfirm={resuggestAll}
+      />
     </section>
   )
 }

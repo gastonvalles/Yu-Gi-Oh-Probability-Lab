@@ -5,7 +5,7 @@ import { getCardCopyLimit } from './deck-format'
 import { EDISON_FORMAT_LABEL, getEdisonCardStatus, isEdisonCardInPool } from './edison-format'
 import { GENESYS_POINT_CAP, calculateGenesysDeckPointTotal, isGenesysLegalCardName } from './genesys-format'
 import type { DeckBuilderState, DeckCardInstance, DeckZone } from './model'
-import { saveClassificationOverride } from './persistence'
+import { removeClassificationOverrides, saveClassificationOverride } from './persistence'
 import { createId, formatInteger } from './utils'
 
 /**
@@ -320,6 +320,29 @@ export function reclassifyAll(
     }
   }
 
+  return nextDeckBuilder
+}
+
+/**
+ * Vuelve a sugerir todas las cartas con las reglas de hoy, pisando confirmaciones y correcciones: cada carta
+ * queda pendiente de revisión y sus overrides se olvidan, así lo que confirmes después vale de nuevo.
+ */
+export function resuggestAll(deckBuilder: DeckBuilderState): DeckBuilderState {
+  const nextDeckBuilder = cloneDeckBuilder(deckBuilder)
+  const zones: DeckZone[] = ['main', 'extra', 'side']
+  const names = new Set<string>()
+
+  for (const zone of zones) {
+    for (const card of nextDeckBuilder[zone]) {
+      const suggestion = classifyCard(card.apiCard, card.name)
+      card.origin = suggestion.origin
+      card.roles = [...suggestion.roles]
+      card.needsReview = true
+      names.add(card.name)
+    }
+  }
+
+  removeClassificationOverrides(names)
   return nextDeckBuilder
 }
 

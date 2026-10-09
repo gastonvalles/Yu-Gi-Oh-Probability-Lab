@@ -11,6 +11,7 @@ import {
   reclassifyAll,
   moveDeckCard,
   removeDeckCard,
+  resuggestAll,
   setOriginForCard,
   toggleRoleForCard,
 } from './deck-builder'
@@ -111,6 +112,9 @@ const deckBuilderSlice = createSlice({
       // Los overrides salen del caché del módulo: un Map en el payload no es serializable (RTK lo avisa en dev).
       return reclassifyAll(state, getClassificationOverrides())
     },
+    resuggestAllCards(state) {
+      return resuggestAll(state)
+    },
   },
 })
 
@@ -118,6 +122,7 @@ export const {
   addSearchResultToDeckZone,
   confirmDeckCardClassification,
   reclassifyAllCards,
+  resuggestAllCards,
   clearAllDeckZones,
   clearDeckZone,
   sortDeckZone,
