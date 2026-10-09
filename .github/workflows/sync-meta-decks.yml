@@ -30,12 +30,12 @@ jobs:
 
       - name: Commit si cambió
         run: |
-          if git diff --quiet -- src/data/meta-decks.json src/data/meta-decklists.json; then
+          if git diff --quiet -- src/data/meta-decks.json src/data/meta-decklists.json src/data/card-rules.json; then
             echo "Sin cambios."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/data/meta-decks.json src/data/meta-decklists.json
+          git add src/data/meta-decks.json src/data/meta-decklists.json src/data/card-rules.json
           git commit -m "Meta: Tournament Meta Decks de YGOPRODeck al $(date -u +%Y-%m-%d)"
           git push
