@@ -183,7 +183,8 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
         flush
         ariaLabel={deck.name}
         footer={
-          <>
+          // En mobile los dos botones van en la misma fila: copiar a la izquierda, cargar a la derecha.
+          <div className="flex w-full items-center justify-between gap-2 min-[1101px]:w-auto min-[1101px]:justify-end">
             <Button variant="secondary" size="sm" icon="link" onClick={() => void copyLink()}>
               Copiar link
             </Button>
@@ -196,7 +197,7 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
             >
               Cargar en el builder
             </Button>
-          </>
+          </div>
         }
       >
         <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)]">
