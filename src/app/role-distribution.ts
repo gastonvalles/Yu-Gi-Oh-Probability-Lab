@@ -11,7 +11,8 @@ interface RoleDistributionSpec {
 const ROLE_DISTRIBUTION_SPECS: readonly RoleDistributionSpec[] = [
   { key: 'starter', label: 'Starters', roles: ['starter'] },
   { key: 'extender', label: 'Extenders', roles: ['extender'] },
-  { key: 'interaction', label: 'Interacción', roles: ['handtrap', 'disruption'] },
+  // Misma lista que la sección Interacción de la pantalla de roles.
+  { key: 'interaction', label: 'Interacción', roles: ['handtrap', 'disruption', 'boardbreaker', 'floodgate'] },
   { key: 'brick', label: 'Bricks', roles: ['brick', 'garnet'] },
 ]
 

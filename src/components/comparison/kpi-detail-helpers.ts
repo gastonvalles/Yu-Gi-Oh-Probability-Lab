@@ -10,6 +10,8 @@ interface KpiDetailCard {
   imageUrlSmall: string | null
   copies: number
   needsReview: boolean
+  /** Roles efectivos (con las ediciones aplicadas), para agrupar la lista. */
+  roles: CardRole[]
   apiCard: ApiCardReference
 }
 
@@ -66,6 +68,7 @@ export function getKpiDetailCards(
         imageUrlSmall: card.apiCard.imageUrlSmall,
         copies: 1,
         needsReview: card.needsReview && !hasEdit,
+        roles: effectiveRoles,
         apiCard: card.apiCard,
       })
     }
