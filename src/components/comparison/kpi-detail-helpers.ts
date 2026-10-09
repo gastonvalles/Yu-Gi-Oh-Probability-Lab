@@ -10,6 +10,8 @@ interface KpiDetailCard {
   imageUrlSmall: string | null
   copies: number
   needsReview: boolean
+  /** Roles efectivos (con las ediciones aplicadas), para agrupar la lista. */
+  roles: CardRole[]
   apiCard: ApiCardReference
 }
 
@@ -21,14 +23,11 @@ interface KpiDetailResult {
   percentage: number
 }
 
-export type KpiRole = 'starter' | 'extender' | 'handtrap' | 'brick' | 'boardbreaker'
-
 /**
- * Filters main deck cards by role category, deduplicates by ygoprodeckId,
+ * Filters main deck cards that have any of the given roles, deduplicates by ygoprodeckId,
  * and computes copy counts and percentage.
  *
  * - Only processes main deck cards.
- * - For "brick", also includes cards with role "garnet".
  * - If editsMap is provided (Build B), uses edited roles when an entry exists
  *   for a card's ygoprodeckId, instead of the card's original roles.
  * - Deduplicates by ygoprodeckId, summing copies.
@@ -36,13 +35,10 @@ export type KpiRole = 'starter' | 'extender' | 'handtrap' | 'brick' | 'boardbrea
  */
 export function getKpiDetailCards(
   mainDeck: DeckCardInstance[],
-  role: CardRole,
+  matchRoles: readonly CardRole[],
   editsMap?: CardEditMap,
 ): KpiDetailResult {
   const mainDeckSize = mainDeck.length
-
-  // Determine which roles to match
-  const matchRoles: CardRole[] = role === 'brick' ? ['brick', 'garnet'] : [role]
 
   // Dedupe map: ygoprodeckId → accumulated entry
   const deduped = new Map<number, KpiDetailCard>()
@@ -72,6 +68,7 @@ export function getKpiDetailCards(
         imageUrlSmall: card.apiCard.imageUrlSmall,
         copies: 1,
         needsReview: card.needsReview && !hasEdit,
+        roles: effectiveRoles,
         apiCard: card.apiCard,
       })
     }

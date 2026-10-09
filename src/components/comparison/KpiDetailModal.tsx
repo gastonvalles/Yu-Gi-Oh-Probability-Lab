@@ -12,7 +12,9 @@ import { listItem } from '../ui/surfaces'
 
 interface KpiDetailModalProps {
   isOpen: boolean
-  role: CardRole
+  /** Título y roles que suma el anillo que se clickeó: la lista tiene que coincidir con ese número. */
+  label: string
+  roles: readonly CardRole[]
   /** Sólo en el comparador: qué build es. En el Lab no hace falta. */
   side?: 'A' | 'B'
   mainDeck: DeckCardInstance[]
@@ -21,21 +23,21 @@ interface KpiDetailModalProps {
   onClose: () => void
 }
 
-function getRoleLabel(role: CardRole): string {
-  const def = getCardRoleDefinition(role)
-  return def.label
-}
-
 export function KpiDetailModal({
   isOpen,
-  role,
+  label,
+  roles,
   side,
   mainDeck,
   editsMap,
   onCardClick,
   onClose,
 }: KpiDetailModalProps) {
-  const result = isOpen ? getKpiDetailCards(mainDeck, role, editsMap) : null
+  const result = isOpen ? getKpiDetailCards(mainDeck, roles, editsMap) : null
+  // Cada carta va en el primer rol del anillo que tenga, así la suma de los grupos es la del anillo.
+  const groups = roles
+    .map((role) => ({ role, cards: (result?.cards ?? []).filter((card) => roles.find((r) => card.roles.includes(r)) === role) }))
+    .filter((group) => group.cards.length > 0)
 
   return (
     <Modal
@@ -43,40 +45,52 @@ export function KpiDetailModal({
       onClose={onClose}
       size="md"
       kicker={side ? `Build ${side}` : undefined}
-      title={`¿Qué cartas cuentan como ${getRoleLabel(role)}?`}
+      title={`¿Qué cartas cuentan como ${label}?`}
       subtitle={result ? `${formatInteger(result.totalCopies)} carta${result.totalCopies === 1 ? '' : 's'}` : undefined}
     >
-      {!result || result.cards.length === 0 ? (
+      {groups.length === 0 ? (
         <p className="text-muted m-0 py-6 text-center text-body">No hay cartas en esta categoría.</p>
       ) : (
-        <div className="grid grid-cols-1 gap-2 min-[540px]:grid-cols-2">
-          {result.cards.map((card) => (
-            <button
-              key={card.ygoprodeckId}
-              type="button"
-              data-testid="kpi-detail-card-row"
-              className={`${listItem} grid min-w-0 grid-cols-[40px_minmax(0,1fr)] items-center gap-3 p-2 text-left`}
-              onClick={() => onCardClick(card.apiCard, card.name)}
-            >
-              <span className="relative block w-[40px]">
-                <CardArt
-                  remoteUrl={card.imageUrlSmall}
-                  name={card.name}
-                  className="block h-auto w-full bg-input"
-                  limitCard={card.apiCard}
-                  limitBadgeSize="sm"
-                />
-                <CopiesBadge copies={card.copies} placement="overlay" />
-              </span>
-              <span className="grid min-w-0 gap-0.5">
-                <strong className="truncate text-body font-semibold text-foreground">{card.name}</strong>
-                {card.needsReview ? (
-                  <Badge tone="warning" size="sm" shape="tag" className="w-fit">
-                    Revisar
-                  </Badge>
-                ) : null}
-              </span>
-            </button>
+        <div className="grid gap-4">
+          {groups.map((group) => (
+            <section key={group.role} className="grid gap-2" aria-label={getCardRoleDefinition(group.role).label}>
+              {roles.length > 1 ? (
+                <h4 className="m-0 flex items-center gap-2 text-body font-semibold text-foreground">
+                  {getCardRoleDefinition(group.role).label}
+                  <Badge tone="brand" size="sm">{formatInteger(group.cards.reduce((total, card) => total + card.copies, 0))}</Badge>
+                </h4>
+              ) : null}
+              <div className="grid grid-cols-1 gap-2 min-[540px]:grid-cols-2">
+                {group.cards.map((card) => (
+                  <button
+                    key={card.ygoprodeckId}
+                    type="button"
+                    data-testid="kpi-detail-card-row"
+                    className={`${listItem} grid min-w-0 grid-cols-[40px_minmax(0,1fr)] items-center gap-3 p-2 text-left`}
+                    onClick={() => onCardClick(card.apiCard, card.name)}
+                  >
+                    <span className="relative block w-[40px]">
+                      <CardArt
+                        remoteUrl={card.imageUrlSmall}
+                        name={card.name}
+                        className="block h-auto w-full bg-input"
+                        limitCard={card.apiCard}
+                        limitBadgeSize="sm"
+                      />
+                      <CopiesBadge copies={card.copies} placement="overlay" />
+                    </span>
+                    <span className="grid min-w-0 gap-0.5">
+                      <strong className="truncate text-body font-semibold text-foreground">{card.name}</strong>
+                      {card.needsReview ? (
+                        <Badge tone="warning" size="sm" shape="tag" className="w-fit">
+                          Revisar
+                        </Badge>
+                      ) : null}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       )}

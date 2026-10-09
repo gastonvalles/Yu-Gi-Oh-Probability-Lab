@@ -3,14 +3,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAppSelector } from '../app/store-hooks'
 import type { DeckCardInstance } from '../app/model'
 import { createPattern } from '../app/pattern-factory'
-import type { RoleDistributionKey } from '../app/role-distribution'
+import type { RoleDistribution } from '../app/role-distribution'
 import { useToastMessage } from '../app/use-toast-message'
 import type { PatternEditorDefaults } from '../app/use-pattern-editor-actions'
 import type { ApiCardReference, CardEntry, CardOrigin, CardRole, HandPattern, TurnView } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 import { CardDetailModal } from './card-detail/CardDetailModal'
 import { KpiDetailModal } from './comparison/KpiDetailModal'
-import type { KpiRole } from './comparison/kpi-detail-helpers'
 import { StepHero } from './StepHero'
 import { Button } from './ui/Button'
 import { Callout } from './ui/Callout'
@@ -54,13 +53,6 @@ interface ProbabilityPanelProps {
 
 type DrawerMode = 'custom-create' | 'edit'
 
-const ROLE_TO_KPI: Record<RoleDistributionKey, KpiRole> = {
-  starter: 'starter',
-  extender: 'extender',
-  interaction: 'handtrap',
-  brick: 'brick',
-}
-
 export function ProbabilityPanel({
   handSize,
   patterns,
@@ -84,7 +76,7 @@ export function ProbabilityPanel({
   const [pendingDeletePatternId, setPendingDeletePatternId] = useState<string | null>(null)
   // Mientras hay una carta abierta en la lista de pendientes no se pasa a los resultados.
   const [isClassifyingPending, setIsClassifyingPending] = useState(false)
-  const [kpiModalRole, setKpiModalRole] = useState<KpiRole | null>(null)
+  const [kpiModal, setKpiModal] = useState<RoleDistribution | null>(null)
   // Detalle de una carta tocada en la lista del KPI: se abre encima y la lista queda abierta.
   const [kpiDetailCard, setKpiDetailCard] = useState<ApiCardSearchResult | null>(null)
   const deckFormat = useAppSelector((state) => state.settings.deckFormat)
@@ -271,7 +263,7 @@ export function ProbabilityPanel({
           <LabSuggestion deckFormat={deckFormat} cards={derivedMainCards} checks={lab.allChecks} handSize={handSize} view={activeTurnView} result={currentResult} first={results.first} second={results.second} />
           <LabRoleDistribution
             distributions={lab.roleDistributions[activeTurnView]}
-            onOpenRole={(role) => setKpiModalRole(ROLE_TO_KPI[role])}
+            onOpenRole={setKpiModal}
           />
           <LabRuleList
             groups={ruleGroups}
@@ -324,13 +316,14 @@ export function ProbabilityPanel({
         title="Eliminar regla"
       />
 
-      {kpiModalRole !== null ? (
+      {kpiModal !== null ? (
         <KpiDetailModal
           isOpen
-          role={kpiModalRole}
+          label={kpiModal.label}
+          roles={kpiModal.roles}
           mainDeck={cardEntriesToDeckInstances(derivedMainCards)}
           onCardClick={(card, name) => setKpiDetailCard({ ...card, name })}
-          onClose={() => setKpiModalRole(null)}
+          onClose={() => setKpiModal(null)}
         />
       ) : null}
 

@@ -11,7 +11,8 @@ interface RoleDistributionSpec {
 const ROLE_DISTRIBUTION_SPECS: readonly RoleDistributionSpec[] = [
   { key: 'starter', label: 'Starters', roles: ['starter'] },
   { key: 'extender', label: 'Extenders', roles: ['extender'] },
-  { key: 'interaction', label: 'Interacción', roles: ['handtrap', 'disruption'] },
+  // Misma lista que la sección Interacción de la pantalla de roles.
+  { key: 'interaction', label: 'Interacción', roles: ['handtrap', 'disruption', 'boardbreaker', 'floodgate'] },
   { key: 'brick', label: 'Bricks', roles: ['brick', 'garnet'] },
 ]
 
@@ -21,6 +22,7 @@ export const DISTRIBUTION_BUCKETS = ['0', '1', '2', '3+'] as const
 export interface RoleDistribution {
   key: RoleDistributionKey
   label: string
+  roles: readonly CardRole[]
   copies: number
   /** Probabilidad de robar exactamente 0, 1, 2 y 3+ copias. */
   buckets: [number, number, number, number]
@@ -42,6 +44,7 @@ export function buildRoleDistributions(cards: CardEntry[], handSizes: readonly n
     return {
       key: spec.key,
       label: spec.label,
+      roles: spec.roles,
       copies,
       buckets,
       atLeastOne: 1 - buckets[0],

@@ -80,7 +80,8 @@ describe('KpiDetailModal — close interactions', () => {
     renderWithStore(
       <KpiDetailModal
         isOpen
-        role="handtrap"
+        label="Handtrap"
+        roles={['handtrap']}
         side="A"
         mainDeck={mainDeck}
         onCardClick={() => {}}
@@ -101,7 +102,8 @@ describe('KpiDetailModal — close interactions', () => {
     renderWithStore(
       <KpiDetailModal
         isOpen
-        role="handtrap"
+        label="Handtrap"
+        roles={['handtrap']}
         side="A"
         mainDeck={mainDeck}
         onCardClick={() => {}}
@@ -119,7 +121,8 @@ describe('KpiDetailModal — close interactions', () => {
     renderWithStore(
       <KpiDetailModal
         isOpen
-        role="handtrap"
+        label="Handtrap"
+        roles={['handtrap']}
         side="A"
         mainDeck={mainDeck}
         onCardClick={() => {}}
@@ -138,7 +141,8 @@ describe('KpiDetailModal — close interactions', () => {
     renderWithStore(
       <KpiDetailModal
         isOpen
-        role="handtrap"
+        label="Handtrap"
+        roles={['handtrap']}
         side="A"
         mainDeck={mainDeck}
         onCardClick={() => {}}
@@ -167,7 +171,8 @@ describe('KpiDetailModal — card click', () => {
     renderWithStore(
       <KpiDetailModal
         isOpen
-        role="handtrap"
+        label="Handtrap"
+        roles={['handtrap']}
         side="A"
         mainDeck={mainDeck}
         onCardClick={onCardClick}
@@ -217,7 +222,8 @@ describe('KpiDetailModal — empty state', () => {
     renderWithStore(
       <KpiDetailModal
         isOpen
-        role="handtrap"
+        label="Handtrap"
+        roles={['handtrap']}
         side="A"
         mainDeck={mainDeck}
         onCardClick={() => {}}
@@ -232,7 +238,8 @@ describe('KpiDetailModal — empty state', () => {
     renderWithStore(
       <KpiDetailModal
         isOpen
-        role="starter"
+        label="Starter"
+        roles={['starter']}
         side="A"
         mainDeck={[]}
         onCardClick={() => {}}
@@ -257,7 +264,8 @@ describe('KpiDetailModal — needsReview badge', () => {
     renderWithStore(
       <KpiDetailModal
         isOpen
-        role="starter"
+        label="Starter"
+        roles={['starter']}
         side="B"
         mainDeck={mainDeck}
         onCardClick={() => {}}
@@ -279,7 +287,8 @@ describe('KpiDetailModal — needsReview badge', () => {
     renderWithStore(
       <KpiDetailModal
         isOpen
-        role="starter"
+        label="Starter"
+        roles={['starter']}
         side="B"
         mainDeck={mainDeck}
         editsMap={editsMap}
@@ -289,5 +298,51 @@ describe('KpiDetailModal — needsReview badge', () => {
     )
 
     expect(screen.queryByText('Revisar')).not.toBeInTheDocument()
+  })
+})
+
+describe('KpiDetailModal — anillo que suma varios roles', () => {
+  it('agrupa por rol en el orden del anillo, cada carta una sola vez, con el conteo por grupo', () => {
+    const mainDeck: DeckCardInstance[] = [
+      makeDeckCardInstance('Ash Blossom', 1, ['handtrap', 'disruption'], 'non_engine'),
+      makeDeckCardInstance('Ash Blossom', 1, ['handtrap', 'disruption'], 'non_engine'),
+      makeDeckCardInstance('Called by the Grave', 2, ['disruption', 'boardbreaker'], 'non_engine'),
+      makeDeckCardInstance('Raigeki', 3, ['boardbreaker'], 'non_engine'),
+      makeDeckCardInstance('Starter', 4, ['starter'], 'engine'),
+    ]
+
+    renderWithStore(
+      <KpiDetailModal
+        isOpen
+        label="Interacción"
+        roles={['handtrap', 'disruption', 'boardbreaker', 'floodgate']}
+        mainDeck={mainDeck}
+        onCardClick={() => {}}
+        onClose={() => {}}
+      />,
+    )
+
+    expect(screen.getByText('4 cartas')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /handtrap/i })).toHaveTextContent('2')
+    expect(screen.getByRole('heading', { name: /disruption/i })).toHaveTextContent('1')
+    expect(screen.getByRole('heading', { name: /boardbreaker/i })).toHaveTextContent('1')
+    expect(screen.queryByRole('heading', { name: /floodgate/i })).not.toBeInTheDocument()
+    expect(screen.getAllByTestId('kpi-detail-card-row')).toHaveLength(3)
+    expect(screen.queryByText('Starter')).not.toBeInTheDocument()
+  })
+
+  it('no muestra encabezados cuando el anillo es de un solo rol', () => {
+    renderWithStore(
+      <KpiDetailModal
+        isOpen
+        label="Starters"
+        roles={['starter']}
+        mainDeck={[makeDeckCardInstance('Starter', 4, ['starter'], 'engine')]}
+        onCardClick={() => {}}
+        onClose={() => {}}
+      />,
+    )
+
+    expect(screen.queryByRole('heading', { level: 4 })).not.toBeInTheDocument()
   })
 })

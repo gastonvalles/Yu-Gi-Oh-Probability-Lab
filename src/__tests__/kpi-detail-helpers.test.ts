@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import * as fc from 'fast-check'
-import { getKpiDetailCards, type KpiRole } from '../components/comparison/kpi-detail-helpers'
+import { getKpiDetailCards } from '../components/comparison/kpi-detail-helpers'
 import type { DeckCardInstance } from '../app/model'
 import type { CardEditMap } from '../components/comparison/kpi-detail-helpers'
 import type { ApiCardReference, CardRole, CardOrigin } from '../types'
@@ -13,7 +13,7 @@ const ALL_ROLES: CardRole[] = [
   'recovery', 'enabler', 'payoff', 'brick', 'garnet',
 ]
 
-const KPI_ROLES: KpiRole[] = ['starter', 'handtrap', 'brick', 'boardbreaker']
+const KPI_ROLES: CardRole[] = ['starter', 'handtrap', 'brick', 'boardbreaker']
 
 function makeApiCard(id: number): ApiCardReference {
   return {
@@ -55,7 +55,7 @@ function makeDeckCardInstance(
 
 // ── Arbitraries ──
 
-const arbKpiRole: fc.Arbitrary<KpiRole> = fc.constantFrom(...KPI_ROLES)
+const arbKpiRole: fc.Arbitrary<CardRole> = fc.constantFrom(...KPI_ROLES)
 
 const arbCardOrigin: fc.Arbitrary<CardOrigin> = fc.constantFrom('engine', 'non_engine')
 
@@ -129,14 +129,12 @@ describe('getKpiDetailCards — Property Tests', () => {
        *  **Validates: Requirements 3.2, 3.3, 3.4, 3.6** */
       fc.assert(
         fc.property(arbMainDeck, arbKpiRole, (mainDeck, role) => {
-          const result = getKpiDetailCards(mainDeck, role)
+          const matchRoles: CardRole[] = role === 'brick' ? ['brick', 'garnet'] : [role]
+          const result = getKpiDetailCards(mainDeck, matchRoles)
 
           // 1. Unique ygoprodeckIds
           const ids = result.cards.map((c) => c.ygoprodeckId)
           expect(new Set(ids).size).toBe(ids.length)
-
-          // 2. Determine which roles to match
-          const matchRoles: CardRole[] = role === 'brick' ? ['brick', 'garnet'] : [role]
 
           // 3. Every card in result matches the role filter
           for (const card of result.cards) {
@@ -189,8 +187,8 @@ describe('getKpiDetailCards — Property Tests', () => {
        *  **Validates: Requirements 5.2** */
       fc.assert(
         fc.property(arbMainDeckWithEdits, arbKpiRole, ({ deck, editsMap }, role) => {
-          const result = getKpiDetailCards(deck, role, editsMap)
           const matchRoles: CardRole[] = role === 'brick' ? ['brick', 'garnet'] : [role]
+          const result = getKpiDetailCards(deck, matchRoles, editsMap)
 
           // For each card in the result, verify it matches using effective roles
           for (const card of result.cards) {
@@ -256,7 +254,7 @@ describe('getKpiDetailCards — Example-Based Tests', () => {
         makeDeckCardInstance('Starter Card', 4, ['starter'], 'engine'),
       ]
 
-      const result = getKpiDetailCards(mainDeck, 'brick')
+      const result = getKpiDetailCards(mainDeck, ['brick', 'garnet'])
 
       expect(result.cards).toHaveLength(3)
       const ids = result.cards.map((c) => c.ygoprodeckId).sort()
@@ -278,13 +276,13 @@ describe('getKpiDetailCards — Example-Based Tests', () => {
       ])
 
       // Searching for handtraps: should find card 10 (edited) but not card 20
-      const handtrapResult = getKpiDetailCards(mainDeck, 'handtrap', editsMap)
+      const handtrapResult = getKpiDetailCards(mainDeck, ['handtrap'], editsMap)
       expect(handtrapResult.cards).toHaveLength(1)
       expect(handtrapResult.cards[0].ygoprodeckId).toBe(10)
       expect(handtrapResult.totalCopies).toBe(1)
 
       // Searching for starters: should find card 20 (original) but NOT card 10 (edited away)
-      const starterResult = getKpiDetailCards(mainDeck, 'starter', editsMap)
+      const starterResult = getKpiDetailCards(mainDeck, ['starter'], editsMap)
       expect(starterResult.cards).toHaveLength(1)
       expect(starterResult.cards[0].ygoprodeckId).toBe(20)
       expect(starterResult.totalCopies).toBe(1)
@@ -309,14 +307,14 @@ describe('getKpiDetailCards — Example-Based Tests', () => {
 
       // Searching for bricks: should return ONLY card 3 (edited to brick)
       // Card 1 was originally brick but edit changed it to starter → excluded
-      const brickResult = getKpiDetailCards(mainDeck, 'brick', editsMap)
+      const brickResult = getKpiDetailCards(mainDeck, ['brick', 'garnet'], editsMap)
       expect(brickResult.cards).toHaveLength(1)
       expect(brickResult.cards[0].ygoprodeckId).toBe(3)
       expect(brickResult.cards[0].name).toBe('Now Brick')
       expect(brickResult.totalCopies).toBe(1)
 
       // Searching for starters: should return card 1 (edited to starter) and card 2 (original starter)
-      const starterResult = getKpiDetailCards(mainDeck, 'starter', editsMap)
+      const starterResult = getKpiDetailCards(mainDeck, ['starter'], editsMap)
       expect(starterResult.cards).toHaveLength(2)
       const starterIds = starterResult.cards.map((c) => c.ygoprodeckId).sort()
       expect(starterIds).toEqual([1, 2])
@@ -325,7 +323,7 @@ describe('getKpiDetailCards — Example-Based Tests', () => {
 
   describe('Edge cases', () => {
     it('empty main deck returns empty result with percentage 0', () => {
-      const result = getKpiDetailCards([], 'starter')
+      const result = getKpiDetailCards([], ['starter'])
       expect(result.cards).toEqual([])
       expect(result.totalCopies).toBe(0)
       expect(result.mainDeckSize).toBe(0)
@@ -336,7 +334,7 @@ describe('getKpiDetailCards — Example-Based Tests', () => {
       const mainDeck: DeckCardInstance[] = [
         makeDeckCardInstance('Only Starter', 1, ['starter'], 'engine'),
       ]
-      const result = getKpiDetailCards(mainDeck, 'handtrap')
+      const result = getKpiDetailCards(mainDeck, ['handtrap'])
       expect(result.cards).toEqual([])
       expect(result.totalCopies).toBe(0)
       expect(result.mainDeckSize).toBe(1)
@@ -349,7 +347,7 @@ describe('getKpiDetailCards — Example-Based Tests', () => {
         makeDeckCardInstance('Ash Blossom', 100, ['handtrap'], 'non_engine'),
         makeDeckCardInstance('Ash Blossom', 100, ['handtrap'], 'non_engine'),
       ]
-      const result = getKpiDetailCards(mainDeck, 'handtrap')
+      const result = getKpiDetailCards(mainDeck, ['handtrap'])
       expect(result.cards).toHaveLength(1)
       expect(result.cards[0].copies).toBe(3)
       expect(result.totalCopies).toBe(3)
@@ -364,7 +362,7 @@ describe('getKpiDetailCards — Example-Based Tests', () => {
         [2, { origin: 'engine', roles: ['starter'] }],
       ])
 
-      const result = getKpiDetailCards(mainDeck, 'starter', editsMap)
+      const result = getKpiDetailCards(mainDeck, ['starter'], editsMap)
       const card1 = result.cards.find((c) => c.ygoprodeckId === 1)
       const card2 = result.cards.find((c) => c.ygoprodeckId === 2)
 
