@@ -37,7 +37,9 @@ describe('src/data/card-rules.json (lo que escribe scripts/sync-meta-decks.mjs)'
     // A Fallen of Albaz lo nombran muchas cartas; Engraver actúa desde la mano.
     expect(has(68468459, 'referenced') && has(60764609, 'usesHand')).toBe(true)
     // Lollipo☆Yummy baraja una carta del cementerio rival al entrar; Kusanagi recupera un Mitsurugi al entrar.
-    expect(has(4215180, 'hitsGrave') && has(4215180, 'onSummon') && has(82782870, 'starts') && has(82782870, 'recovery')).toBe(true)
+    expect(has(4215180, 'hitsGrave') && has(4215180, 'onSummon') && has(82782870, 'recovery')).toBe(true)
+    // ...pero sin cementerio Kusanagi no abre nada: ni apertura ni efecto de entrada que cuente.
+    expect(has(82782870, 'starts') || has(82782870, 'onSummon')).toBe(false)
     // Ame no Habakiri: desde la mano recluta del Deck (no se invoca sola), tributada busca y vuelve, y debilita al rival.
     expect(has(13332685, 'starts') && has(13332685, 'search') && has(13332685, 'recovery') && has(13332685, 'pressures')).toBe(true)
     expect(has(13332685, 'selfFromHand')).toBe(false)

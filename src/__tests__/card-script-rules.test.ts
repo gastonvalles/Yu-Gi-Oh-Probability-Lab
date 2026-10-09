@@ -103,7 +103,7 @@ describe('qué puede hacer una carta según su script', () => {
     expect(names(cardRuleFlags(raigeki))).toEqual(['hitsOpponent'])
     expect(names(cardRuleFlags(bookOfMoon))).toEqual(['hitsEither'])
     expect(names(cardRuleFlags(swapped))).toEqual(['hitsOpponent'])
-    expect(names(cardRuleFlags(ownGrave))).toEqual(['starts', 'recovery'])
+    expect(names(cardRuleFlags(ownGrave))).toEqual(['recovery'])
     expect(names(cardRuleFlags(negateTrap))).toEqual(['negate'])
   })
 
@@ -167,9 +167,16 @@ describe('qué puede hacer una carta según su script', () => {
       'function s.thop(e,tp,eg,ep,ev,re,r,rp)\n\tlocal c=e:GetHandler()\n\tDuel.SpecialSummon(c,0,tp,tp,false,false,POS_FACEUP)\nend',
     )
 
-    // Una magia que revive empieza la jugada y recupera; la carta que vuelve sola sólo recupera.
-    expect(names(cardRuleFlags(reborn))).toEqual(['starts', 'recovery'])
+    // Kusanagi: al invocarse recupera un Mitsurugi del cementerio. Sin cementerio no abre nada: no cuenta como efecto de apertura.
+    const needsGrave = script(
+      effect('e1', ['SetCategory(CATEGORY_TOHAND)', 'SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_O)', 'SetCode(EVENT_SUMMON_SUCCESS)', 'SetTarget(s.thtg)']),
+      'function s.thtg(e,tp,eg,ep,ev,re,r,rp,chk,chkc)\n\tif chk==0 then return Duel.IsExistingTarget(s.thfilter,tp,LOCATION_GRAVE|LOCATION_REMOVED,0,1,nil) end\nend',
+    )
+
+    // Lo que trae del cementerio es recuperación, no apertura; la carta que vuelve sola sólo recupera.
+    expect(names(cardRuleFlags(reborn))).toEqual(['recovery'])
     expect(names(cardRuleFlags(selfRevive))).toEqual(['recovery'])
+    expect(names(cardRuleFlags(needsGrave))).toEqual(['recovery'])
     expect(names(cardRuleFlags(comesBack))).toEqual(['search', 'recovery'])
     expect(names(cardRuleFlags(countsGrave))).toEqual([])
     expect(names(cardRuleFlags(opponentGrave))).toEqual(['hitsGrave', 'onSummon'])

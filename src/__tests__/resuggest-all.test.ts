@@ -31,9 +31,9 @@ describe('reclasificar todo el deck con las reglas de hoy', () => {
 
     const next = resuggestAll(deck)
 
-    expect(next.main[0]).toMatchObject({ origin: 'engine', roles: ['searcher', 'starter'], needsReview: true })
+    expect(next.main[0]).toMatchObject({ origin: 'engine', roles: ['searcher', 'starter', 'extender'], needsReview: true })
     // La lista conocida sigue mandando.
-    expect(next.main[1]).toMatchObject({ origin: 'non_engine', roles: ['handtrap'], needsReview: true })
+    expect(next.main[1]).toMatchObject({ origin: 'non_engine', roles: ['handtrap', 'disruption'], needsReview: true })
     expect(next.extra[0]).toMatchObject({ origin: 'engine', roles: ['payoff', 'disruption'], needsReview: true })
     // No toca el estado original.
     expect(deck.main[0]!.roles).toEqual(['disruption'])
