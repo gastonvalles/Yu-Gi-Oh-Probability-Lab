@@ -214,6 +214,12 @@ const PATHS = {
       <path d="M4.5 20.5a7.5 7.5 0 0 1 15 0" />
     </>
   ),
+  link: (
+    <>
+      <path d="M10 14a4.2 4.2 0 0 0 5.9 0l3-3a4.2 4.2 0 0 0-5.9-5.9l-1.4 1.4" />
+      <path d="M14 10a4.2 4.2 0 0 0-5.9 0l-3 3a4.2 4.2 0 0 0 5.9 5.9l1.4-1.4" />
+    </>
+  ),
 } satisfies Record<string, ReactNode>
 
 export type IconName = keyof typeof PATHS

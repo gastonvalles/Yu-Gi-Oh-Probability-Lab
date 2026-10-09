@@ -43,8 +43,9 @@ const WORKFLOW_STEP_ORDER: DeckWorkflowStepKey[] = [
 
 type StepNavigationDirection = 'forward' | 'back'
 
+/** El paso va antes del "?": lo que sigue son parámetros de la vista (p. ej. `#meta?deck=123`). */
 function getStepFromHash(hash: string): DeckWorkflowStepKey | null {
-  const normalizedHash = hash.replace(/^#/, '')
+  const normalizedHash = hash.replace(/^#/, '').split('?')[0] ?? ''
 
   return isDeckWorkflowStepKey(normalizedHash) ? normalizedHash : null
 }
@@ -152,7 +153,8 @@ export function DeckModeScreen() {
 
     const nextHash = `#${activeStep}`
 
-    if (window.location.hash !== nextHash) {
+    // Sólo se toca el hash si cambió el paso: los parámetros de la vista (p. ej. el deck abierto) se respetan.
+    if (getStepFromHash(window.location.hash) !== activeStep) {
       // Cada paso es una entrada del historial: "Atrás" vuelve al paso anterior en vez de salir de la app.
       // La primera vez (sin hash) se reemplaza para no duplicar la entrada inicial.
       if (window.location.hash) {
