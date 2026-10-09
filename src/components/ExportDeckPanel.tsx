@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
+import { DECK_EXPORT_FILES, describeExportSelection, type DeckExportSelection } from '../app/deck-image-export'
 import { canvasToJpegBlob } from '../app/deck-image-export-download'
 import { renderDeckAsCanvas } from '../app/deck-image-export-render'
 import { buildKdeDecklistSections } from '../app/kde-decklist'
@@ -8,22 +9,50 @@ import type { DeckFormat } from '../types'
 import { StepHero } from './StepHero'
 import { StepPage } from './ui/StepPage'
 import { Button } from './ui/Button'
+import { Card } from './ui/Card'
 import { cx } from './ui/cx'
 import { EmptyState } from './ui/EmptyState'
+import { Icon } from './ui/Icon'
 import { SectionHeader } from './ui/SectionHeader'
 import { Skeleton } from './ui/Skeleton'
+import { Switch } from './ui/Switch'
 import { overline } from './ui/typography'
 
 interface ExportDeckPanelProps {
   deckBuilder: DeckBuilderState
   deckFormat: DeckFormat
   mainDeckCount: number
-  onExport: () => Promise<void>
+  onExport: (selection: DeckExportSelection) => Promise<void>
 }
 
 /** La vista previa es chica: se dibuja a 1× y con menos calidad (el archivo descargado sigue a 2×). */
 const PREVIEW_SCALE = 1
 const PREVIEW_QUALITY = 0.8
+const SELECTION_KEY = 'ygo-lab:export-selection'
+const DEFAULT_SELECTION: DeckExportSelection = { image: true, pdf: true, ydk: true }
+
+/** Lo que se tildó la última vez: una comodidad, si no se puede leer se vuelve a todo tildado. */
+function readSelection(): DeckExportSelection {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SELECTION_KEY) ?? 'null') as Partial<Record<keyof DeckExportSelection, unknown>> | null
+
+    return {
+      image: typeof parsed?.image === 'boolean' ? parsed.image : true,
+      pdf: typeof parsed?.pdf === 'boolean' ? parsed.pdf : true,
+      ydk: typeof parsed?.ydk === 'boolean' ? parsed.ydk : true,
+    }
+  } catch {
+    return DEFAULT_SELECTION
+  }
+}
+
+function writeSelection(selection: DeckExportSelection) {
+  try {
+    localStorage.setItem(SELECTION_KEY, JSON.stringify(selection))
+  } catch {
+    // Si no se puede guardar, se vuelve a elegir la próxima vez.
+  }
+}
 
 export function ExportDeckPanel({
   deckBuilder,
@@ -32,8 +61,10 @@ export function ExportDeckPanel({
   onExport,
 }: ExportDeckPanelProps) {
   const [busy, setBusy] = useState(false)
+  const [selection, setSelection] = useState<DeckExportSelection>(readSelection)
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
   const [previewState, setPreviewState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const selectedCount = DECK_EXPORT_FILES.filter((file) => selection[file.key]).length
   const decklistSections = useMemo(() => {
     const sections = buildKdeDecklistSections(deckBuilder)
     const main = sections.filter((section) => ['monster', 'spell', 'trap'].includes(section.key))
@@ -46,11 +77,13 @@ export function ExportDeckPanel({
     ]
   }, [deckBuilder])
 
+  useEffect(() => writeSelection(selection), [selection])
+
   const handleExport = async () => {
     setBusy(true)
 
     try {
-      await onExport()
+      await onExport(selection)
     } catch {
       // El controller maneja el toast de error.
     } finally {
@@ -112,15 +145,29 @@ export function ExportDeckPanel({
             variant="primary"
             size="md"
             icon="download"
-            disabled={busy || mainDeckCount === 0}
+            disabled={busy || mainDeckCount === 0 || selectedCount === 0}
+            title={selectedCount === 0 ? 'Tildá al menos un archivo' : undefined}
             onClick={() => {
               void handleExport()
             }}
           >
-            {busy ? 'Generando archivos...' : 'Descargar Deck'}
+            {busy ? 'Generando archivos...' : selectedCount === 0 ? 'Elegí qué descargar' : `Descargar ${selectedCount === DECK_EXPORT_FILES.length ? 'todo' : describeExportSelection(selection)}`}
           </Button>
         )}
       />
+
+      {/* Qué archivos bajar: se tilda lo que hace falta y el botón descarga sólo eso. */}
+      <Card as="section" padding="sm" aria-label="Archivos a descargar" className="grid gap-1 min-[700px]:grid-cols-3 min-[700px]:gap-2">
+        {DECK_EXPORT_FILES.map((file) => (
+          <label key={file.key} className="flex cursor-pointer items-center justify-between gap-3 rounded-control px-2 py-2 transition-colors hover:bg-tint/5">
+            <span className="grid min-w-0 gap-0.5">
+              <span className="text-body font-medium text-foreground">{file.label}</span>
+              <span className="text-micro text-muted">{file.description}</span>
+            </span>
+            <Switch checked={selection[file.key]} label={file.label} onChange={(checked) => setSelection((current) => ({ ...current, [file.key]: checked }))} />
+          </label>
+        ))}
+      </Card>
 
       <section className="grid min-w-0 gap-8 min-[1180px]:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)] min-[1180px]:items-start min-[1180px]:gap-10">
         <article className="grid min-w-0 content-start gap-4">
@@ -151,15 +198,24 @@ export function ExportDeckPanel({
             description="Planilla de Konami para torneos. Completá tus datos antes de entregarla."
           />
 
-          <div className="grid gap-5">
+          <div className="grid gap-3">
             {decklistSections
               .filter((section) => section.total > 0)
               .map((section) => (
-                <section key={section.key} className="grid gap-1">
-                  <h3 className={cx('m-0 flex items-baseline justify-between gap-2 border-b border-border-subtle pb-1.5', overline)}>
+                // Cada zona se pliega por separado; arrancan todas abiertas.
+                <details key={section.key} open className="group grid gap-1">
+                  <summary
+                    className={cx(
+                      'm-0 flex cursor-pointer list-none items-baseline justify-between gap-2 rounded-control border-b border-border-subtle pb-1.5 focus-visible:outline-none focus-visible:shadow-focus [&::-webkit-details-marker]:hidden',
+                      overline,
+                    )}
+                  >
                     <span className="text-foreground">{section.label}</span>
-                    <span className="tabular-nums">{section.total}</span>
-                  </h3>
+                    <span className="flex items-center gap-2 tabular-nums">
+                      {section.total}
+                      <Icon name="chevron-down" size={16} className="shrink-0 text-soft transition-transform duration-200 group-open:rotate-180" />
+                    </span>
+                  </summary>
                   <ul className="m-0 grid list-none gap-0.5 p-0 text-body">
                     {section.entries.map((entry) => (
                       <li key={entry.name} className="grid grid-cols-[1.5rem_minmax(0,1fr)] gap-1.5">
@@ -168,7 +224,7 @@ export function ExportDeckPanel({
                       </li>
                     ))}
                   </ul>
-                </section>
+                </details>
               ))}
           </div>
         </article>

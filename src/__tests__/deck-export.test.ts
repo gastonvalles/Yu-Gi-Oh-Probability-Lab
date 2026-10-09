@@ -5,6 +5,7 @@ import { resolve } from 'node:path'
 import { PDFDocument } from 'pdf-lib'
 import { describe, expect, it } from 'vitest'
 
+import { describeExportSelection } from '../app/deck-image-export'
 import { computeDeckImageLayout, type DeckImageLayout } from '../app/deck-image-layout'
 import { buildKdeDecklist } from '../app/kde-decklist'
 import { fillKdeDecklistPdf } from '../app/kde-decklist-pdf'
@@ -97,6 +98,15 @@ describe('buildKdeDecklist', () => {
     expect(form.getTextField('Monster 1').getText()).toBe('Ash Blossom & Joyous Spring')
     expect(form.getTextField('Main Deck Total').getText()).toBe('7')
     expect(form.getTextField('First  Middle Names').isReadOnly()).toBe(false)
+  })
+})
+
+describe('describeExportSelection', () => {
+  it('nombra los archivos tildados, en orden y con "y" antes del último', () => {
+    expect(describeExportSelection({ image: true, pdf: true, ydk: true })).toBe('imagen, decklist PDF y YDK')
+    expect(describeExportSelection({ image: true, pdf: false, ydk: true })).toBe('imagen y YDK')
+    expect(describeExportSelection({ image: false, pdf: true, ydk: false })).toBe('decklist PDF')
+    expect(describeExportSelection({ image: false, pdf: false, ydk: false })).toBe('')
   })
 })
 
