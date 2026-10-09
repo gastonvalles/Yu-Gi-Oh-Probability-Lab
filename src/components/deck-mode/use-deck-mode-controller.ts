@@ -26,7 +26,7 @@ import {
 } from '../../app/deck-builder-slice'
 import { buildDeckFormatIssues, getDeckFormatLabel } from '../../app/deck-format'
 import { GENESYS_POINT_CAP, calculateGenesysDeckPointTotal } from '../../app/genesys-format'
-import { exportDeckAssets } from '../../app/deck-image-export'
+import { describeExportSelection, exportDeckAssets, type DeckExportSelection } from '../../app/deck-image-export'
 import { type AppState, type DeckCardInstance, type DeckZone } from '../../app/model'
 import { setGenericRuleEnabled, setSystemRuleName } from '../../app/patterns-slice'
 import { setDeckFormat } from '../../app/settings-slice'
@@ -506,29 +506,32 @@ export function useDeckModeController() {
     }
   }, [deckBuilder.main, deckBuilder.extra, deckBuilder.side, deckBuilder.isEditingDeck, dispatch])
 
-  const handleExportDeckImage = useCallback(async () => {
-    const totalCards = deckBuilder.main.length + deckBuilder.extra.length + deckBuilder.side.length
+  const handleExportDeckImage = useCallback(
+    async (selection: DeckExportSelection) => {
+      const totalCards = deckBuilder.main.length + deckBuilder.extra.length + deckBuilder.side.length
 
-    if (totalCards === 0) {
-      showToast('No hay cartas cargadas para exportar.', 'error')
-      return
-    }
-
-    try {
-      const { decklistOverflow } = await exportDeckAssets(deckBuilder, settings.deckFormat)
-
-      if (decklistOverflow.length > 0) {
-        showToast(
-          `Descargado. En el PDF no entraron todas las cartas de: ${decklistOverflow.join(', ')}. Completalas a mano.`,
-          'warning',
-        )
-      } else {
-        showToast('Imagen, decklist PDF y YDK descargados.', 'success')
+      if (totalCards === 0) {
+        showToast('No hay cartas cargadas para exportar.', 'error')
+        return
       }
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : 'No se pudo exportar el deck.', 'error')
-    }
-  }, [deckBuilder, settings.deckFormat, showToast])
+
+      try {
+        const { decklistOverflow } = await exportDeckAssets(deckBuilder, settings.deckFormat, selection)
+
+        if (decklistOverflow.length > 0) {
+          showToast(
+            `Descargado. En el PDF no entraron todas las cartas de: ${decklistOverflow.join(', ')}. Completalas a mano.`,
+            'warning',
+          )
+        } else {
+          showToast(`Listo: ${describeExportSelection(selection)}.`, 'success')
+        }
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : 'No se pudo exportar el deck.', 'error')
+      }
+    },
+    [deckBuilder, settings.deckFormat, showToast],
+  )
 
   const handleDeckCardPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLElement>, instanceId: string) => {
