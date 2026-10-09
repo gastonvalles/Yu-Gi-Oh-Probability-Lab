@@ -60,6 +60,7 @@ Los roles de las cartas (starter, handtrap…) y los grupos (engine, non-engine�
 | `CardOverlay` | marco de los modales de carta (detalle y clasificación): la carta arriba (se agranda al tocarla), un panel con su información abajo y una X blanca arriba a la derecha. `CardPanelHeader` / `CardPanelBody` / `CardPanelFooter` arman el panel. |
 | `Icon` | **único** set de íconos (grilla 24). `variant`: `linear` (por defecto), `bulk` (duotono, pestañas inactivas) y `bold` (relleno, pestaña activa). Nada de SVG suelto. |
 | `field`, `choiceChip`, `filterChip`, `listItem` (`surfaces.ts`) | campos de texto, pastillas de selección (lavanda → violeta al elegirla) y filas clickeables. |
+| `Mascot` (Cupsy) | la mascota, abajo a la izquierda. Las pantallas no la manejan: avisan por `app/mascot.ts` (`beginMascotActivity` para cargas y cálculos, `reactMascot` para lo que salió bien o mal) y ella elige la animación. Se puede ocultar y volver a mostrar; con "reducir movimiento" queda quieta. |
 
 ### Anillos
 

@@ -1,5 +1,6 @@
 import { persistComputation, readPersistedComputation } from './lab-cache-store'
 import { isWorkerTimeout, runInPool } from './lab-worker-pool'
+import { beginMascotActivity } from './mascot'
 import { assembleLabComputation, computeLabResults, labInputSignature, type LabComputation } from './probability-lab'
 import type { CalculationOutput, CardEntry, HandPattern } from '../types'
 
@@ -127,10 +128,13 @@ export function requestLabComputation(input: LabComputationInput, key = labCompu
           // Si el worker tardó demasiado, no: repetirlo acá congelaría la pantalla.
           .catch((error) => (isWorkerTimeout(error) ? tooSlow() : inMainThread()))
       : inMainThread()
+  // Mientras los workers calculan, Cupsy trabaja.
+  const endMascotActivity = beginMascotActivity('computing')
   const tracked = computation
     .then((result) => remember(key, result))
     .finally(() => {
       inFlight.delete(key)
+      endMascotActivity()
     })
 
   inFlight.set(key, tracked)

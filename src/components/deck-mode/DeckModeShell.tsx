@@ -1,6 +1,7 @@
 import type { ReactNode, RefObject } from 'react'
 
 import { cx } from '../ui/cx'
+import { MascotRestoreButton } from '../mascot/Mascot'
 import { SiteCredit, SocialLinks } from '../ui/SocialLinks'
 import { DeckModeBrand } from './DeckModeBrand'
 
@@ -26,6 +27,7 @@ export function DeckModeShell({
         {navigation}
         <div className="flex min-w-0 items-center gap-3 justify-self-end">
           <SiteCredit className="hidden whitespace-nowrap min-[1280px]:block" />
+          <MascotRestoreButton />
           <SocialLinks />
         </div>
       </header>
@@ -47,7 +49,10 @@ export function DeckModeShell({
           mobileNavigation ? 'pb-[calc(var(--deck-mobile-step-nav-height,4.3rem)+env(safe-area-inset-bottom,0px)+0.8rem)]' : 'pb-4',
         )}
       >
-        <SocialLinks />
+        <div className="flex items-center gap-1">
+          <MascotRestoreButton />
+          <SocialLinks />
+        </div>
         <SiteCredit withDisclaimer />
       </footer>
       {mobileNavigation ? <div className="min-[1101px]:hidden">{mobileNavigation}</div> : null}

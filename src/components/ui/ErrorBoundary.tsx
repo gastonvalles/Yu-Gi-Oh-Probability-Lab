@@ -37,6 +37,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       <main className="grid min-h-screen place-items-center px-gutter py-8">
         <Card padding="lg" className="grid w-[min(32rem,100%)] gap-4">
           <div className="flex items-start gap-3">
+            {/* Cupsy frustrada (quieta si se pidió reducir movimiento). */}
+            <img src="/mascot/failed.webp" alt="" className="w-20 shrink-0 motion-reduce:hidden" />
+            <img src="/mascot/idle.png" alt="" className="hidden w-20 shrink-0 motion-reduce:block" />
             <Icon name="alert" size={24} className="mt-0.5 shrink-0 text-danger-soft" />
             <div className="grid gap-1">
               <h1 className="m-0 text-lead font-semibold text-foreground">Algo salió mal</h1>

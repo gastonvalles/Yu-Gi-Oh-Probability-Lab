@@ -1,4 +1,5 @@
 import { buildGenesysCardInfo } from './app/genesys-format'
+import { beginMascotActivity } from './app/mascot'
 import { requestCardInfo } from './ygoprodeck/client'
 import { parseSearchResponse } from './ygoprodeck/parser'
 import type { ApiCardSearchResult, ApiSearchPage } from './ygoprodeck/types'
@@ -66,6 +67,8 @@ export async function loadCardCatalog(): Promise<ApiCardSearchResult[]> {
     return cardCatalogPromise
   }
 
+  // Son ~20 MB la primera vez: Cupsy espera mientras bajan.
+  const endMascotActivity = beginMascotActivity('loading')
   cardCatalogPromise = fetchCardCatalog()
 
   try {
@@ -73,6 +76,7 @@ export async function loadCardCatalog(): Promise<ApiCardSearchResult[]> {
     return cardCatalogSnapshot
   } finally {
     cardCatalogPromise = null
+    endMascotActivity()
   }
 }
 
