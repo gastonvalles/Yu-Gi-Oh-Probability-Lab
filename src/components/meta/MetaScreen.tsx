@@ -29,6 +29,7 @@ import { StepPage } from '../ui/StepPage'
 import { field, filterChip } from '../ui/surfaces'
 import { HandtrapModal } from './HandtrapModal'
 import { MetaDeckModal } from './MetaDeckModal'
+import { TrendArrow } from './TrendArrow'
 import { TIER_ORDER, formatMetaDate, percent, tierColor, tierHint, tierLabel } from './meta-format'
 
 type WindowWeeks = '2' | '4' | '8'
@@ -222,17 +223,7 @@ function TierRow({ tier, cards, view, onOpen }: TierRowProps) {
                 <span className="absolute inset-x-0 bottom-0 bg-black/70 py-0.5 text-center text-micro font-bold text-white tabular-nums">
                   {percent(share)}
                 </span>
-                {stat.trend !== 'flat' ? (
-                  <span
-                    className={cx(
-                      'absolute right-0.5 top-0.5 grid size-4 place-items-center rounded-full',
-                      stat.trend === 'up' ? 'bg-success text-background' : 'bg-danger text-white',
-                    )}
-                    aria-label={stat.trend === 'up' ? 'Sube' : 'Baja'}
-                  >
-                    <Icon name={stat.trend === 'up' ? 'chevron-up' : 'chevron-down'} size={11} strokeWidth={3} />
-                  </span>
-                ) : null}
+                <TrendArrow trend={stat.trend} size={20} className="absolute right-0 top-0" />
               </button>
             </li>
           )
