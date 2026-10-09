@@ -3,11 +3,16 @@ import { describe, expect, it } from 'vitest'
 import {
   META_DECKS,
   buildMetaReport,
+  countCopies,
   filterMetaDecks,
+  isMetaHandtrap,
+  loadMetaDecklist,
   projectShare,
   tierOf,
+  toYdkText,
   weeksAgo,
   type MetaDeck,
+  type MetaDecklist,
   type MetaDecksData,
   type MetaWeek,
 } from '../app/meta-handtraps'
@@ -17,7 +22,7 @@ const IMPERM = 2
 const NIBIRU = 3
 
 function deck(id: number, name: string, date: string, main: Array<[number, number]>, side: Array<[number, number]> = []): MetaDeck {
-  return { id, name, date, tournament: 'YCS Test', placement: 'Top 8', players: 100, url: `deck-${id}`, main, side }
+  return { id, name, date, tournament: 'YCS Test', placement: 'Top 8', players: 100, player: 'Jugador', cover: null, url: `deck-${id}`, main, side }
 }
 
 const data: MetaDecksData = {
@@ -116,6 +121,14 @@ describe('tier list de hand traps del meta', () => {
     expect(filterMetaDecks(data.decks, { archetype: 'Elfnote', cardId: ASH }).map((item) => item.id)).toEqual([4])
     expect(filterMetaDecks(data.decks, {})).toHaveLength(6)
   })
+
+  it('arma el .ydk de una lista completa con una línea por copia, en el orden original', () => {
+    const decklist: MetaDecklist = { main: [[ASH, 3], [IMPERM, 1]], extra: [[99, 2]], side: [[NIBIRU, 2]] }
+
+    expect(toYdkText(decklist).split('\n')).toEqual(['#main', '1', '1', '1', '2', '#extra', '99', '99', '!side', '3', '3'])
+    expect(countCopies(decklist.main)).toBe(4)
+    expect(countCopies([])).toBe(0)
+  })
 })
 
 describe('src/data/meta-decks.json (lo que escribe scripts/sync-meta-decks.mjs)', () => {
@@ -136,5 +149,24 @@ describe('src/data/meta-decks.json (lo que escribe scripts/sync-meta-decks.mjs)'
     const report = buildMetaReport(META_DECKS, 'both', 8)
     expect(report.deckCount).toBe(META_DECKS.decks.length)
     expect(report.handtraps[0]?.tier).toBe('S')
+  })
+
+  it('las listas completas son del mismo snapshot: cada deck tiene la suya y sus hand traps coinciden', async () => {
+    const entriesOf = (entries: ReadonlyArray<[number, number]>) =>
+      entries
+        .filter(([id]) => isMetaHandtrap(id))
+        .map(([id, copies]) => `${id}:${copies}`)
+        .sort()
+
+    for (const deck of META_DECKS.decks.slice(0, 40)) {
+      const decklist = await loadMetaDecklist(deck.id)
+
+      expect(decklist).not.toBeNull()
+      expect(countCopies(decklist!.main)).toBeGreaterThanOrEqual(40)
+      expect(entriesOf(decklist!.main)).toEqual(deck.main.map(([id, copies]) => `${id}:${copies}`).sort())
+      expect(entriesOf(decklist!.side)).toEqual(deck.side.map(([id, copies]) => `${id}:${copies}`).sort())
+    }
+
+    expect(await loadMetaDecklist(-1)).toBeNull()
   })
 })

@@ -193,6 +193,27 @@ const PATHS = {
       <path d="M14 3.5V8h4.5" />
     </>
   ),
+
+  // — Torneos (tarjetas del meta) —
+  trophy: (
+    <>
+      <path data-fill d="M8 4h8v5.5a4 4 0 0 1-8 0z" />
+      <path d="M8 6H5.5v1a3 3 0 0 0 3 3M16 6h2.5v1a3 3 0 0 1-3 3" />
+      <path d="M12 13.5V17M9 20h6M12 17v3" />
+    </>
+  ),
+  calendar: (
+    <>
+      <rect data-fill x="3.5" y="5" width="17" height="15" rx="2.5" />
+      <path d="M8 3v4M16 3v4M3.5 10h17" />
+    </>
+  ),
+  user: (
+    <>
+      <circle data-fill cx="12" cy="8" r="4" />
+      <path d="M4.5 20.5a7.5 7.5 0 0 1 15 0" />
+    </>
+  ),
 } satisfies Record<string, ReactNode>
 
 export type IconName = keyof typeof PATHS

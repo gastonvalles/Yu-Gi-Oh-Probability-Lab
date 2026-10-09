@@ -15,9 +15,20 @@ export interface MetaDeck {
   tournament: string | null
   placement: string | null
   players: number | null
+  /** Quién lo jugó. */
+  player: string | null
+  /** Id de la carta de portada que eligió YGOPRODeck. */
+  cover: number | null
   /** Tramo final de la URL del deck en YGOPRODeck. */
   url: string | null
   main: Array<[number, number]>
+  side: Array<[number, number]>
+}
+
+/** La lista completa de un deck, [id, copias] por zona, en el orden en que la cargaron. */
+export interface MetaDecklist {
+  main: Array<[number, number]>
+  extra: Array<[number, number]>
   side: Array<[number, number]>
 }
 
@@ -32,6 +43,33 @@ export interface MetaDecksData {
 
 // Lo escribe scripts/sync-meta-decks.mjs con esta forma exacta (valida cada campo antes de escribirlo).
 export const META_DECKS = metaDecksJson as unknown as MetaDecksData
+
+/** Las listas completas pesan más que el resto de la pestaña: se bajan recién al abrir un deck. */
+export async function loadMetaDecklist(deckId: number): Promise<MetaDecklist | null> {
+  const decklists = (await import('../data/meta-decklists.json')).default as unknown as Record<string, MetaDecklist>
+  return Object.hasOwn(decklists, String(deckId)) ? decklists[String(deckId)]! : null
+}
+
+/** Arte recortado de la carta de portada, como en las tarjetas de YGOPRODeck. */
+export function coverArtUrl(cardId: number): string {
+  return `https://images.ygoprodeck.com/images/cards_cropped/${cardId}.jpg`
+}
+
+export function isMetaHandtrap(cardId: number): boolean {
+  return Object.hasOwn(META_DECKS.cards, String(cardId))
+}
+
+export function countCopies(entries: ReadonlyArray<[number, number]>): number {
+  return entries.reduce((total, [, copies]) => total + copies, 0)
+}
+
+/** El mismo .ydk que exporta la app: así el deck entra al builder por el camino de importación de siempre. */
+export function toYdkText(decklist: MetaDecklist): string {
+  const lines = (entries: ReadonlyArray<[number, number]>) =>
+    entries.flatMap(([id, copies]) => Array.from({ length: copies }, () => String(id)))
+
+  return ['#main', ...lines(decklist.main), '#extra', ...lines(decklist.extra), '!side', ...lines(decklist.side)].join('\n')
+}
 
 export type MetaZone = 'both' | 'main' | 'side'
 export type MetaTier = 'S' | 'A' | 'B' | 'C' | 'D'
