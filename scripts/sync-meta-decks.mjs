@@ -4,8 +4,9 @@ import path from 'node:path'
 import { createServer } from 'vite'
 
 /**
- * Baja los Tournament Meta Decks de YGOPRODeck (las listas de torneo que el sitio carga a mano), se queda
- * con las hand traps del Main y el Side de cada uno y escribe src/data/meta-decks.json.
+ * Baja los Tournament Meta Decks de YGOPRODeck (las listas de torneo que el sitio carga a mano) y escribe:
+ * - src/data/meta-decks.json: cada deck con sus datos de torneo y sólo sus hand traps (lo que lee el tier list).
+ * - src/data/meta-decklists.json: las listas completas (Main, Extra y Side), que la app baja recién al abrir un deck.
  * Lo corre todos los días el workflow sync-meta-decks; a mano: `npm run sync:meta`.
  */
 const DECKS_ENDPOINT = 'https://ygoprodeck.com/api/decks/getDecks.php'
@@ -26,8 +27,10 @@ const MAX_ARCHETYPE_NAME_MATCH = 0.5
 const MAX_COPIES_PER_CARD = 60
 const MAX_CARDS_PER_ZONE = 100
 const OUTPUT_PATH = path.resolve(process.cwd(), 'src/data/meta-decks.json')
+const DECKLISTS_PATH = path.resolve(process.cwd(), 'src/data/meta-decklists.json')
 const USER_AGENT = 'YGO Probability Lab sync (+https://github.com/gastonvalles/Yu-Gi-Oh-Probability-Lab)'
 const EXTRA_DECK_FRAMES = new Set(['fusion', 'synchro', 'xyz', 'link', 'fusion_pendulum', 'synchro_pendulum', 'xyz_pendulum'])
+const ZONES = ['main', 'extra', 'side']
 const MONTHS = {
   january: 1,
   february: 2,
@@ -53,11 +56,14 @@ async function main() {
 
   try {
     const cards = await fetchCards(engine.parser, uniqueCardIds(decks))
-    const handtraps = pickHandtraps(engine.classification, decks, cards)
-    const payload = buildPayload(fetchedAt, decks, handtraps)
+    const canonicalById = buildCanonicalIds(cards)
+    const handtraps = pickHandtraps(engine.classification, decks, cards, canonicalById)
+    const payload = buildPayload(fetchedAt, decks, handtraps, canonicalById)
+    const decklists = buildDecklists(decks, canonicalById)
 
     await mkdir(path.dirname(OUTPUT_PATH), { recursive: true })
     await writeFile(OUTPUT_PATH, formatPayload(payload), 'utf8')
+    await writeFile(DECKLISTS_PATH, formatDecklists(decklists), 'utf8')
     console.log(`${Object.keys(payload.cards).length} hand traps en ${payload.decks.length} decks: ${OUTPUT_PATH}`)
   } finally {
     await engine.close()
@@ -114,13 +120,15 @@ function readDeck(raw) {
   const name = readText(raw.deck_name, 80)
   const date = readTournamentDate(raw.deck_description)
   const main = readCardList(raw.main_deck)
+  const extra = readCardList(raw.extra_deck)
   const side = readCardList(raw.side_deck)
 
-  if (!Number.isInteger(id) || id <= 0 || !name || !date || !main || !side) {
+  if (!Number.isInteger(id) || id <= 0 || !name || !date || !main || !extra || !side) {
     return null
   }
 
   const players = Number(raw.tournamentPlayerCount)
+  const cover = Number(raw.cover_card)
 
   return {
     id,
@@ -129,8 +137,11 @@ function readDeck(raw) {
     tournament: readText(raw.tournamentName, 120),
     placement: readText(raw.tournamentPlacement, 40),
     players: Number.isInteger(players) && players > 0 ? players : null,
+    player: readText(raw.tournamentPlayerName, 80),
+    cover: Number.isInteger(cover) && cover > 0 ? cover : null,
     url: typeof raw.pretty_url === 'string' && /^[\w-]{1,120}$/.test(raw.pretty_url) ? raw.pretty_url : null,
     main,
+    extra,
     side,
   }
 }
@@ -194,8 +205,8 @@ function uniqueCardIds(decks) {
   const ids = new Set()
 
   for (const deck of decks) {
-    for (const zone of [deck.main, deck.side]) {
-      for (const id of zone.keys()) {
+    for (const zone of ZONES) {
+      for (const id of deck[zone].keys()) {
         ids.add(id)
       }
     }
@@ -234,50 +245,53 @@ async function fetchCardChunk(parser, ids) {
   }
 }
 
+/** Las artes alternativas tienen otro id: cada nombre se unifica en el id más chico. Un id desconocido no aparece. */
+function buildCanonicalIds(cards) {
+  const smallestByName = new Map()
+
+  for (const card of cards.values()) {
+    const current = smallestByName.get(card.name)
+
+    if (current === undefined || card.ygoprodeckId < current) {
+      smallestByName.set(card.name, card.ygoprodeckId)
+    }
+  }
+
+  return new Map([...cards.values()].map((card) => [card.ygoprodeckId, smallestByName.get(card.name)]))
+}
+
 /**
  * Hand traps según el clasificador de la app, con un filtro de genericidad: las que juegan varios
  * arquetipos y no llevan el nombre del deck (el clasificador también marca monstruos de engine con
- * efectos rápidos). Las artes alternativas se unifican por nombre en el id más chico.
+ * efectos rápidos). Las del listado conocido entran siempre.
  */
-function pickHandtraps(classification, decks, cards) {
-  const byName = new Map()
-
-  for (const card of cards.values()) {
-    if (EXTRA_DECK_FRAMES.has(card.frameType)) {
-      continue
-    }
-
-    const group = byName.get(card.name) ?? { canonicalId: card.ygoprodeckId, card, ids: new Set(), deckNames: new Set() }
-    group.ids.add(card.ygoprodeckId)
-
-    if (card.ygoprodeckId < group.canonicalId) {
-      group.canonicalId = card.ygoprodeckId
-      group.card = card
-    }
-
-    byName.set(card.name, group)
-  }
-
-  const groupById = new Map()
-
-  for (const group of byName.values()) {
-    for (const id of group.ids) {
-      groupById.set(id, group)
-    }
-  }
+function pickHandtraps(classification, decks, cards, canonicalById) {
+  const deckNamesByCard = new Map()
 
   for (const deck of decks) {
-    for (const zone of [deck.main, deck.side]) {
-      for (const id of zone.keys()) {
-        groupById.get(id)?.deckNames.add(deck.name.toLowerCase())
+    for (const zone of ['main', 'side']) {
+      for (const id of deck[zone].keys()) {
+        const canonicalId = canonicalById.get(id)
+
+        if (canonicalId !== undefined) {
+          const names = deckNamesByCard.get(canonicalId) ?? new Set()
+          names.add(deck.name.toLowerCase())
+          deckNamesByCard.set(canonicalId, names)
+        }
       }
     }
   }
 
   const handtraps = new Map()
 
-  for (const group of byName.values()) {
-    const { card } = group
+  for (const card of cards.values()) {
+    const deckNames = deckNamesByCard.get(card.ygoprodeckId)
+
+    // Sólo la carta canónica de cada nombre, y sólo las que van en Main o Side.
+    if (canonicalById.get(card.ygoprodeckId) !== card.ygoprodeckId || !deckNames || EXTRA_DECK_FRAMES.has(card.frameType)) {
+      continue
+    }
+
     const suggestion = classification.classifyCard(card, card.name)
 
     if (!suggestion.roles.includes('handtrap')) {
@@ -286,14 +300,11 @@ function pickHandtraps(classification, decks, cards) {
 
     const known = classification.KNOWN_CARDS_MAP.get(classification.normalizeCardNameForLookup(card.name))
     const archetype = card.archetype?.toLowerCase() ?? ''
-    const namedAfterArchetype = archetype
-      ? [...group.deckNames].filter((deckName) => deckName.includes(archetype)).length / Math.max(1, group.deckNames.size)
-      : 0
-    const generic =
-      suggestion.origin === 'non_engine' && group.deckNames.size >= MIN_ARCHETYPES && namedAfterArchetype < MAX_ARCHETYPE_NAME_MATCH
+    const namedAfterArchetype = archetype ? [...deckNames].filter((deckName) => deckName.includes(archetype)).length / deckNames.size : 0
+    const generic = suggestion.origin === 'non_engine' && deckNames.size >= MIN_ARCHETYPES && namedAfterArchetype < MAX_ARCHETYPE_NAME_MATCH
 
     if (known?.roles.includes('handtrap') || generic) {
-      handtraps.set(group.canonicalId, { name: card.name, image: card.imageUrlSmall, ids: group.ids })
+      handtraps.set(card.ygoprodeckId, { name: card.name, image: card.imageUrlSmall })
     }
   }
 
@@ -302,19 +313,11 @@ function pickHandtraps(classification, decks, cards) {
 
 // Salida
 
-function buildPayload(fetchedAt, decks, handtraps) {
-  const canonicalById = new Map()
-
-  for (const [canonicalId, handtrap] of handtraps) {
-    for (const id of handtrap.ids) {
-      canonicalById.set(id, canonicalId)
-    }
-  }
-
+function buildPayload(fetchedAt, decks, handtraps, canonicalById) {
   const cards = {}
 
   for (const [canonicalId, handtrap] of [...handtraps].sort((left, right) => left[0] - right[0])) {
-    cards[String(canonicalId)] = { name: handtrap.name, image: handtrap.image }
+    cards[String(canonicalId)] = handtrap
   }
 
   return {
@@ -329,25 +332,42 @@ function buildPayload(fetchedAt, decks, handtraps) {
       tournament: deck.tournament,
       placement: deck.placement,
       players: deck.players,
+      player: deck.player,
+      cover: deck.cover,
       url: deck.url,
-      main: handtrapEntries(deck.main, canonicalById),
-      side: handtrapEntries(deck.side, canonicalById),
+      main: zoneEntries(deck.main, canonicalById, handtraps),
+      side: zoneEntries(deck.side, canonicalById, handtraps),
     })),
   }
 }
 
-function handtrapEntries(zone, canonicalById) {
+function buildDecklists(decks, canonicalById) {
+  const decklists = {}
+
+  for (const deck of decks) {
+    decklists[String(deck.id)] = {
+      main: zoneEntries(deck.main, canonicalById),
+      extra: zoneEntries(deck.extra, canonicalById),
+      side: zoneEntries(deck.side, canonicalById),
+    }
+  }
+
+  return decklists
+}
+
+/** [id canónico, copias] en el orden de la lista original; con `only` se queda sólo con esos ids. */
+function zoneEntries(zone, canonicalById, only = null) {
   const copies = new Map()
 
   for (const [id, count] of zone) {
     const canonicalId = canonicalById.get(id)
 
-    if (canonicalId !== undefined) {
+    if (canonicalId !== undefined && (only === null || only.has(canonicalId))) {
       copies.set(canonicalId, Math.min(MAX_COPIES_PER_CARD, (copies.get(canonicalId) ?? 0) + count))
     }
   }
 
-  return [...copies].sort((left, right) => left[0] - right[0])
+  return [...copies]
 }
 
 /** Un deck por línea: el diff diario se lee. */
@@ -356,6 +376,11 @@ function formatPayload({ decks, ...head }) {
   const deckLines = decks.map((deck) => `    ${JSON.stringify(deck)}`).join(',\n')
 
   return `${headJson.slice(0, -2)},\n  "decks": [\n${deckLines}\n  ]\n}\n`
+}
+
+function formatDecklists(decklists) {
+  const lines = Object.entries(decklists).map(([id, zones]) => `  ${JSON.stringify(id)}: ${JSON.stringify(zones)}`)
+  return `{\n${lines.join(',\n')}\n}\n`
 }
 
 // Utilidades

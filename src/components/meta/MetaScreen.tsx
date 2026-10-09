@@ -1,19 +1,17 @@
 import { useMemo, useState } from 'react'
 
-import { createRoleGroupKey, getDeckGroupTheme } from '../../app/deck-groups'
 import {
   META_DECKS,
-  MIN_WEEK_DECKS,
   PROJECTION_WEEKS,
-  TIER_FLOORS,
   TREND_THRESHOLD,
   buildMetaReport,
+  countCopies,
+  coverArtUrl,
   filterMetaDecks,
   type HandtrapStat,
   type MetaDeck,
   type MetaDeckFilter,
   type MetaTier,
-  type MetaTrend,
   type MetaZone,
 } from '../../app/meta-handtraps'
 import { formatInteger } from '../../app/utils'
@@ -25,18 +23,18 @@ import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
 import { EmptyState } from '../ui/EmptyState'
 import { Icon } from '../ui/Icon'
-import { ProgressRing } from '../ui/ProgressRing'
 import { SectionHeader } from '../ui/SectionHeader'
 import { Segmented } from '../ui/Segmented'
 import { StepPage } from '../ui/StepPage'
-import { choiceChip, filterChip, listItem } from '../ui/surfaces'
-import { overline } from '../ui/typography'
+import { filterChip } from '../ui/surfaces'
+import { HandtrapModal } from './HandtrapModal'
+import { MetaDeckModal } from './MetaDeckModal'
+import { LINK_CHIP, TIER_ORDER, formatMetaDate, percent, tierColor, tierHint, tierLabel } from './meta-format'
 
 type WindowWeeks = '2' | '4' | '8'
+type BoardView = 'now' | 'projected'
 
-const DECKS_PER_PAGE = 25
-const MAX_ARCHETYPE_CHIPS = 12
-const HANDTRAP_RGB = getDeckGroupTheme(createRoleGroupKey('handtrap')).rgb
+const DECKS_PER_PAGE = 24
 const ZONE_OPTIONS = [
   { value: 'both', label: 'Main + Side' },
   { value: 'main', label: 'Main' },
@@ -47,50 +45,40 @@ const WINDOW_OPTIONS = [
   { value: '4', label: '4 sem.' },
   { value: '8', label: '8 sem.' },
 ] as const satisfies ReadonlyArray<{ value: WindowWeeks; label: string }>
-const TREND_LOOK: Record<MetaTrend, { tone: 'success' | 'danger' | 'neutral'; label: string }> = {
-  up: { tone: 'success', label: 'Sube' },
-  down: { tone: 'danger', label: 'Baja' },
-  flat: { tone: 'neutral', label: 'Estable' },
-}
-const DATE_FORMAT = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', timeZone: 'UTC' })
-const AVERAGE_FORMAT = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-const LINK_CHIP = cx(filterChip, 'h-8 gap-1')
+const VIEW_OPTIONS = [
+  { value: 'now', label: 'Ahora' },
+  { value: 'projected', label: `En ${formatInteger(PROJECTION_WEEKS)} semanas` },
+] as const satisfies ReadonlyArray<{ value: BoardView; label: string }>
 
 export function MetaScreen() {
   const [zone, setZone] = useState<MetaZone>('both')
   const [weeks, setWeeks] = useState<WindowWeeks>('4')
+  const [view, setView] = useState<BoardView>('now')
   const [filter, setFilter] = useState<MetaDeckFilter | null>(null)
   const [deckLimit, setDeckLimit] = useState(DECKS_PER_PAGE)
+  const [selectedStat, setSelectedStat] = useState<HandtrapStat | null>(null)
+  const [selectedDeck, setSelectedDeck] = useState<MetaDeck | null>(null)
   const report = useMemo(() => buildMetaReport(META_DECKS, zone, Number(weeks)), [zone, weeks])
   const decks = useMemo(() => filterMetaDecks(META_DECKS.decks, filter ?? {}), [filter])
+  const board = useMemo(() => {
+    const key = view === 'projected' ? 'projectedTier' : 'tier'
+    const shareOf = (stat: HandtrapStat) => (view === 'projected' ? stat.projectedShare : stat.share)
+
+    return TIER_ORDER.map((tier) => ({
+      tier,
+      cards: report.handtraps.filter((stat) => stat[key] === tier).sort((left, right) => shareOf(right) - shareOf(left)),
+    }))
+  }, [report, view])
   const filterLabel = filter?.archetype ?? (filter?.cardId !== undefined ? `Con ${META_DECKS.cards[String(filter.cardId)]?.name ?? 'esa carta'}` : null)
+  const totalWeeks = Math.ceil(META_DECKS.windowDays / 7)
 
   const applyFilter = (next: MetaDeckFilter) => {
+    setSelectedStat(null)
     setFilter(next)
     setDeckLimit(DECKS_PER_PAGE)
-    document.getElementById('meta-decks')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    // Después de que el modal suelte el scroll de la página.
+    window.setTimeout(() => document.getElementById('meta-decks')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
   }
-
-  const rows = report.handtraps.flatMap((stat, index, all) => {
-    const items = []
-
-    if (index === 0 || all[index - 1]?.tier !== stat.tier) {
-      items.push(<TierHeading key={`tier-${stat.tier}`} tier={stat.tier} />)
-    }
-
-    items.push(
-      <HandtrapRow
-        key={stat.id}
-        stat={stat}
-        rank={index + 1}
-        delay={Math.min(index, 12) * 60}
-        onShowDecks={() => applyFilter({ cardId: stat.id })}
-        onPickArchetype={(name) => applyFilter({ archetype: name })}
-      />,
-    )
-
-    return items
-  })
 
   return (
     <StepPage as="article">
@@ -102,8 +90,9 @@ export function MetaScreen() {
           <>
             YGOPRODeck carga a mano las listas de torneo (tops de YCS, regionales y similares) como Tournament Meta Decks. Esta app las baja una vez por
             día y cuenta en cuántos Main y Side aparece cada hand trap. La tendencia ajusta una recta a la serie semanal de las últimas{' '}
-            {formatInteger(Math.ceil(META_DECKS.windowDays / 7))} semanas (cada semana pesa por su cantidad de decks) y la prolonga{' '}
-            {formatInteger(PROJECTION_WEEKS)} semanas: dice “Sube” o “Baja” cuando eso mueve la cifra más de {formatInteger(Math.round(TREND_THRESHOLD * 100))} puntos.
+            {formatInteger(totalWeeks)} semanas (cada semana pesa por su cantidad de decks) y la prolonga {formatInteger(PROJECTION_WEEKS)} semanas: dice
+            “Sube” o “Baja” cuando eso mueve la cifra más de {formatInteger(Math.round(TREND_THRESHOLD * 100))} puntos. Con “En{' '}
+            {formatInteger(PROJECTION_WEEKS)} semanas” cada carta se ubica en el tier al que va.
           </>
         }
         side={
@@ -118,16 +107,21 @@ export function MetaScreen() {
         <SectionHeader
           icon="hand"
           title="Tier list"
-          description={`${formatInteger(report.deckCount)} decks de las últimas ${weeks} semanas, al ${formatMetaDate(META_DECKS.fetchedAt)}.`}
+          description={`${formatInteger(report.deckCount)} decks de las últimas ${weeks} semanas, al ${formatMetaDate(META_DECKS.fetchedAt)}. Tocá una carta para ver el detalle.`}
           actions={
             <>
               <Segmented value={zone} onChange={setZone} options={ZONE_OPTIONS} label="Dónde contar la hand trap" size="sm" />
               <Segmented value={weeks} onChange={setWeeks} options={WINDOW_OPTIONS} label="Ventana de decks" size="sm" />
+              <Segmented value={view} onChange={setView} options={VIEW_OPTIONS} label="Tier list de hoy o proyectada" size="sm" />
             </>
           }
         />
-        {rows.length > 0 ? (
-          <ol className="mt-3 grid gap-0.5">{rows}</ol>
+        {report.handtraps.length > 0 ? (
+          <div className="mt-3 overflow-hidden rounded-card border border-border-subtle">
+            {board.map(({ tier, cards }) => (
+              <TierRow key={tier} tier={tier} cards={cards} view={view} onOpen={setSelectedStat} />
+            ))}
+          </div>
         ) : (
           <EmptyState icon="hand" title="Sin hand traps en esta ventana">
             Probá con más semanas o con otra zona.
@@ -141,8 +135,8 @@ export function MetaScreen() {
           title="Tournament Meta Decks"
           description={
             filterLabel
-              ? `${formatInteger(decks.length)} decks, del más reciente al más viejo.`
-              : `Los ${formatInteger(decks.length)} decks de las últimas ${formatInteger(Math.ceil(META_DECKS.windowDays / 7))} semanas, del más reciente al más viejo.`
+              ? `${formatInteger(decks.length)} decks, del más reciente al más viejo. Tocá uno para verlo entero.`
+              : `Los ${formatInteger(decks.length)} decks de las últimas ${formatInteger(totalWeeks)} semanas, del más reciente al más viejo. Tocá uno para verlo entero.`
           }
           actions={
             filterLabel ? (
@@ -154,11 +148,11 @@ export function MetaScreen() {
           }
         />
         {decks.length > 0 ? (
-          <ul className="mt-2 divide-y divide-border-subtle">
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 min-[1101px]:grid-cols-3">
             {decks.slice(0, deckLimit).map((deck) => (
-              <MetaDeckRow key={deck.id} deck={deck} onPickArchetype={(name) => applyFilter({ archetype: name })} />
+              <MetaDeckTile key={deck.id} deck={deck} onOpen={() => setSelectedDeck(deck)} />
             ))}
-          </ul>
+          </div>
         ) : (
           <EmptyState icon="layers" title="Ningún deck con ese filtro" />
         )}
@@ -168,145 +162,119 @@ export function MetaScreen() {
           </Button>
         ) : null}
       </Card>
+
+      <HandtrapModal
+        stat={selectedStat}
+        onClose={() => setSelectedStat(null)}
+        onPickArchetype={(name) => applyFilter({ archetype: name })}
+        onShowDecks={(cardId) => applyFilter({ cardId })}
+      />
+      <MetaDeckModal deck={selectedDeck} onClose={() => setSelectedDeck(null)} />
     </StepPage>
   )
 }
 
-function TierHeading({ tier }: { tier: MetaTier }) {
-  const floor = TIER_FLOORS.find(([key]) => key === tier)?.[1]
-
-  return (
-    <li className={cx(overline, 'px-2 pb-1 pt-4 first:pt-0')} title={floor === undefined ? 'Menos del 5% de los decks' : `Al menos el ${percent(floor)} de los decks`}>
-      Tier {tier}
-    </li>
-  )
+interface TierRowProps {
+  tier: MetaTier
+  cards: HandtrapStat[]
+  view: BoardView
+  onOpen: (stat: HandtrapStat) => void
 }
 
-interface HandtrapRowProps {
-  stat: HandtrapStat
-  rank: number
-  delay: number
-  onShowDecks: () => void
-  onPickArchetype: (name: string) => void
-}
-
-function HandtrapRow({ stat, rank, delay, onShowDecks, onPickArchetype }: HandtrapRowProps) {
-  const trend = TREND_LOOK[stat.trend]
-  const trendLabel =
-    stat.trend === 'flat'
-      ? 'Estable'
-      : `${trend.label} a ${percent(stat.projectedShare)}${stat.projectedTier === stat.tier ? '' : ` · Tier ${stat.projectedTier}`}`
-  const trendBadge = (
-    <Badge tone={trend.tone} title={`Proyección a ${formatInteger(PROJECTION_WEEKS)} semanas`}>
-      {trendLabel}
-    </Badge>
-  )
-  const usage = `Main ${usageText(stat.main.decks, stat.main.copies, stat.decks)} · Side ${usageText(stat.side.decks, stat.side.copies, stat.decks)}`
-
+/** Una fila de la tier list clásica: la etiqueta de color a la izquierda y las cartas en fila. */
+function TierRow({ tier, cards, view, onOpen }: TierRowProps) {
   return (
-    <li className="min-w-0">
-      <details className={cx('group', listItem)}>
-        <summary className="flex cursor-pointer list-none items-center gap-3 rounded-card px-2 py-2 focus-visible:outline-none focus-visible:shadow-focus [&::-webkit-details-marker]:hidden">
-          <span className="w-5 shrink-0 text-center text-micro font-semibold text-soft tabular-nums">{rank}</span>
-          <ProgressRing value={stat.share} color={HANDTRAP_RGB} size={42} label={`${stat.name}: ${percent(stat.share)} de los decks`} delay={delay} />
-          <span className="relative hidden aspect-[421/614] w-9 shrink-0 overflow-hidden rounded-tag bg-input min-[480px]:block">
-            <CardArt remoteUrl={stat.image} name={stat.name} className="h-full w-full object-cover" />
-          </span>
-          <span className="grid min-w-0 flex-1 gap-1">
-            <span className="truncate text-body font-semibold text-foreground">{stat.name}</span>
-            <span className="text-micro text-muted tabular-nums">{usage}</span>
-            <span className="min-[700px]:hidden">{trendBadge}</span>
-          </span>
-          <span className="hidden min-[700px]:block">{trendBadge}</span>
-          <Icon name="chevron-down" size={18} className="shrink-0 text-soft transition-transform duration-200 group-open:rotate-180" />
-        </summary>
-        <div className="grid gap-3 px-2 pb-3 pt-1 pl-[5.4rem] min-[480px]:pl-[8.4rem]">
-          {/* Una semana con pocos decks se muestra vacía: tampoco pesa en la tendencia. */}
-          <p className="m-0 text-micro text-muted tabular-nums" title="De la semana más vieja a la más nueva">
-            Semana a semana: {stat.weekly.map((week) => (week.decks >= MIN_WEEK_DECKS ? percent(week.share) : '—')).join(' · ')}
-          </p>
-          <div className="grid gap-1.5">
-            <span className={overline}>Decks que la juegan</span>
-            <div className="flex flex-wrap items-center gap-1.5">
-              {stat.archetypes.slice(0, MAX_ARCHETYPE_CHIPS).map((archetype) => (
-                <button
-                  key={archetype.name}
-                  type="button"
-                  className={cx(choiceChip, 'h-8 gap-1.5 px-3 text-micro')}
-                  onClick={() => onPickArchetype(archetype.name)}
-                >
-                  {archetype.name}
-                  <span className="font-medium text-soft tabular-nums">
-                    {formatInteger(archetype.decks)}/{formatInteger(archetype.total)}
-                  </span>
-                </button>
-              ))}
-              {stat.archetypes.length > MAX_ARCHETYPE_CHIPS ? (
-                <span className="text-micro text-soft">+{formatInteger(stat.archetypes.length - MAX_ARCHETYPE_CHIPS)} más</span>
-              ) : null}
-            </div>
-          </div>
-          <Button variant="tertiary" size="sm" icon="layers" className="justify-self-start" onClick={onShowDecks}>
-            Ver los decks que la juegan
-          </Button>
-        </div>
-      </details>
-    </li>
-  )
-}
-
-function MetaDeckRow({ deck, onPickArchetype }: { deck: MetaDeck; onPickArchetype: (name: string) => void }) {
-  const details = [deck.tournament, deck.placement, deck.players === null ? null : `${formatInteger(deck.players)} jugadores`, formatMetaDate(deck.date)]
-    .filter(Boolean)
-    .join(' · ')
-
-  return (
-    <li className="grid gap-1.5 py-3 min-[1101px]:grid-cols-[minmax(0,1fr)_auto] min-[1101px]:items-start min-[1101px]:gap-x-4">
-      <div className="grid min-w-0 gap-0.5">
-        <button
-          type="button"
-          className="justify-self-start truncate text-left text-body font-semibold text-foreground transition-colors hover:text-primary-soft focus-visible:outline-none focus-visible:shadow-focus"
-          title={`Ver sólo los decks ${deck.name}`}
-          onClick={() => onPickArchetype(deck.name)}
-        >
-          {deck.name}
-        </button>
-        <span className="text-micro text-muted">{details}</span>
-        <span className="text-micro text-soft tabular-nums">
-          {zoneText('Main', deck.main)} · {zoneText('Side', deck.side)}
-        </span>
+    <div className="grid min-h-[5.75rem] grid-cols-[4.25rem_minmax(0,1fr)] border-b border-border-subtle last:border-b-0 sm:grid-cols-[5.5rem_minmax(0,1fr)]">
+      <div
+        className="grid place-items-center px-1 text-center text-body font-semibold text-[#1a1204]"
+        style={{ backgroundColor: tierColor(tier) }}
+        title={tierHint(tier)}
+      >
+        {tierLabel(tier)}
       </div>
-      {deck.url ? (
-        <a className={cx(LINK_CHIP, 'justify-self-start')} href={`https://ygoprodeck.com/deck/${deck.url}`} target="_blank" rel="noreferrer">
-          Ver en YGOPRODeck
-          <Icon name="arrow-right" size={12} />
-        </a>
-      ) : null}
-    </li>
+      <ul className="m-0 flex list-none flex-wrap content-start gap-1 bg-background p-1" aria-label={`${tierLabel(tier)}: ${tierHint(tier)}`}>
+        {cards.map((stat) => {
+          const share = view === 'projected' ? stat.projectedShare : stat.share
+
+          return (
+            <li key={stat.id}>
+              <button
+                type="button"
+                className="relative block aspect-[421/614] w-14 overflow-hidden rounded-tag bg-input transition-transform duration-150 hover:scale-[1.04] focus-visible:outline-none focus-visible:shadow-focus sm:w-[4.5rem]"
+                title={`${stat.name}: ${percent(share)} de los decks`}
+                onClick={() => onOpen(stat)}
+              >
+                <CardArt remoteUrl={stat.image} name={stat.name} className="h-full w-full object-cover" />
+                <span className="absolute inset-x-0 bottom-0 bg-black/70 py-0.5 text-center text-micro font-bold text-white tabular-nums">
+                  {percent(share)}
+                </span>
+                {stat.trend !== 'flat' ? (
+                  <span
+                    className={cx(
+                      'absolute right-0.5 top-0.5 grid size-4 place-items-center rounded-full',
+                      stat.trend === 'up' ? 'bg-success text-background' : 'bg-danger text-white',
+                    )}
+                    aria-label={stat.trend === 'up' ? 'Sube' : 'Baja'}
+                  >
+                    <Icon name={stat.trend === 'up' ? 'chevron-up' : 'chevron-down'} size={11} strokeWidth={3} />
+                  </span>
+                ) : null}
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
   )
 }
 
-function zoneText(label: string, entries: ReadonlyArray<[number, number]>): string {
-  if (entries.length === 0) {
-    return `${label}: sin hand traps`
-  }
-
-  const named = entries
-    .map(([id, copies]) => ({ name: META_DECKS.cards[String(id)]?.name ?? `Carta ${id}`, copies }))
-    .sort((left, right) => right.copies - left.copies || left.name.localeCompare(right.name, 'es'))
-
-  return `${label}: ${named.map((entry) => `${entry.name} ×${formatInteger(entry.copies)}`).join(', ')}`
-}
-
-/** "72% ×2,8": en qué parte de los decks que la juegan va en esa zona, y con cuántas copias. */
-function usageText(decks: number, copies: number, total: number): string {
-  return decks === 0 ? '0%' : `${percent(decks / total)} ×${AVERAGE_FORMAT.format(copies / decks)}`
-}
-
-function percent(value: number): string {
-  return `${formatInteger(Math.round(value * 100))}%`
-}
-
-function formatMetaDate(date: string): string {
-  return DATE_FORMAT.format(new Date(date)).replace('.', '')
+/** La tarjeta de la categoría de YGOPRODeck: portada de fondo, torneo arriba, nombre y puesto abajo. */
+function MetaDeckTile({ deck, onOpen }: { deck: MetaDeck; onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      className="group relative grid min-h-[10rem] content-end gap-1 overflow-hidden rounded-card border border-border-subtle bg-card-background p-3 text-left transition-colors duration-150 hover:border-primary/60 focus-visible:outline-none focus-visible:shadow-focus"
+      onClick={onOpen}
+    >
+      {deck.cover ? (
+        <img
+          src={coverArtUrl(deck.cover)}
+          alt=""
+          aria-hidden="true"
+          loading="lazy"
+          decoding="async"
+          className="absolute inset-0 h-full w-full object-cover opacity-50 transition-opacity duration-150 group-hover:opacity-70"
+        />
+      ) : null}
+      <span className="absolute inset-0 bg-linear-to-t from-background via-background/85 to-background/25" aria-hidden="true" />
+      {deck.tournament ? (
+        <span className="absolute left-3 top-3">
+          <Badge tone="info">{deck.tournament}</Badge>
+        </span>
+      ) : null}
+      <strong className="relative truncate text-lead font-semibold text-foreground">{deck.name}</strong>
+      <span className="relative flex flex-wrap items-center gap-x-3 gap-y-0.5 text-micro text-muted">
+        {deck.placement ? (
+          <span className="inline-flex items-center gap-1">
+            <Icon name="trophy" size={13} />
+            {deck.placement}
+            {deck.players === null ? '' : ` (${formatInteger(deck.players)} jugadores)`}
+          </span>
+        ) : null}
+        <span className="inline-flex items-center gap-1">
+          <Icon name="calendar" size={13} />
+          {formatMetaDate(deck.date)}
+        </span>
+        {deck.player ? (
+          <span className="inline-flex min-w-0 items-center gap-1">
+            <Icon name="user" size={13} className="shrink-0" />
+            <span className="truncate">{deck.player}</span>
+          </span>
+        ) : null}
+      </span>
+      <span className="relative text-micro text-soft tabular-nums">
+        Hand traps: {formatInteger(countCopies(deck.main))} en Main · {formatInteger(countCopies(deck.side))} en Side
+      </span>
+    </button>
+  )
 }
