@@ -40,9 +40,20 @@ describe('clasificador con las reglas de la carta', () => {
     rules(R.floodgate)
     expect(classifyCard(card({ cardType: 'Continuous Trap', frameType: 'trap' })).roles).toEqual(['floodgate'])
 
-    // Lollipo☆Yummy: se invoca sola y al entrar baraja una carta del cementerio rival.
-    rules(R.selfFromHand | R.usesHand | R.hitsGrave | R.mentions)
-    expect(classifyCard(card({}))).toEqual({ origin: 'engine', roles: ['extender', 'disruption'] })
+    // Lollipo☆Yummy: se invoca sola y al entrar baraja una carta del cementerio rival; como es de engine y de nivel bajo, con ella arrancás.
+    rules(R.selfFromHand | R.usesHand | R.hitsGrave | R.mentions | R.onSummon)
+    expect(classifyCard(card({ level: 1 }))).toEqual({ origin: 'engine', roles: ['extender', 'disruption', 'starter'] })
+    // Una genérica con efecto al invocarse, o un monstruo de nivel alto, no.
+    rules(R.onSummon | R.mentions | R.generic | R.hitsGrave)
+    expect(classifyCard(card({ level: 1 })).roles).toEqual(['disruption'])
+    rules(R.onSummon | R.mentions | R.hitsGrave)
+    expect(classifyCard(card({ level: 8 })).roles).toEqual(['disruption'])
+  })
+
+  it('Mulcharmy, Droll y Maxx "C" frenan al rival: también son floodgate', () => {
+    expect(classifyCard(card({}), 'Droll & Lock Bird').roles).toEqual(['handtrap', 'floodgate'])
+    expect(classifyCard(card({}), 'Mulcharmy Fuwalos').roles).toEqual(['handtrap', 'draw', 'floodgate'])
+    expect(classifyCard(card({}), 'Maxx "C"').roles).toEqual(['handtrap', 'draw', 'floodgate'])
   })
 
   it('un Kaiju se invoca desde la mano pero al campo del rival: rompe el campo, no extiende, y no es engine por nombrar a los Kaiju', () => {

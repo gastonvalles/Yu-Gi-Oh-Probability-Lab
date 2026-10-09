@@ -18,11 +18,11 @@ export function normalizeCardNameForLookup(name: string): string {
 const KNOWN_CARDS_MAP_ENTRIES: Array<[string, ClassificationSuggestion]> = [
   // Hand traps (origin: non_engine)
   ['ash blossom & joyous spring', { origin: 'non_engine', roles: ['handtrap'] }],
-  ['maxx "c"', { origin: 'non_engine', roles: ['handtrap', 'draw'] }],
+  ['maxx "c"', { origin: 'non_engine', roles: ['handtrap', 'draw', 'floodgate'] }],
   ['effect veiler', { origin: 'non_engine', roles: ['handtrap'] }],
   ['ghost ogre & snow rabbit', { origin: 'non_engine', roles: ['handtrap'] }],
   ['ghost belle & haunted mansion', { origin: 'non_engine', roles: ['handtrap'] }],
-  ['droll & lock bird', { origin: 'non_engine', roles: ['handtrap'] }],
+  ['droll & lock bird', { origin: 'non_engine', roles: ['handtrap', 'floodgate'] }],
   ['d.d. crow', { origin: 'non_engine', roles: ['handtrap'] }],
   ['nibiru, the primal being', { origin: 'non_engine', roles: ['handtrap', 'boardbreaker'] }],
   ['psy-framegear gamma', { origin: 'non_engine', roles: ['handtrap'] }],
@@ -73,9 +73,9 @@ const KNOWN_CARDS_MAP_ENTRIES: Array<[string, ClassificationSuggestion]> = [
   ['forbidden chalice', { origin: 'non_engine', roles: ['disruption'] }],
 
   // Modern hand traps & staples (2024–2025 meta)
-  ['mulcharmy fuwalos', { origin: 'non_engine', roles: ['handtrap', 'draw'] }],
-  ['mulcharmy purulia', { origin: 'non_engine', roles: ['handtrap', 'draw'] }],
-  ['mulcharmy nyalus', { origin: 'non_engine', roles: ['handtrap', 'draw'] }],
+  ['mulcharmy fuwalos', { origin: 'non_engine', roles: ['handtrap', 'draw', 'floodgate'] }],
+  ['mulcharmy purulia', { origin: 'non_engine', roles: ['handtrap', 'draw', 'floodgate'] }],
+  ['mulcharmy nyalus', { origin: 'non_engine', roles: ['handtrap', 'draw', 'floodgate'] }],
   ['bystial druiswurm', { origin: 'non_engine', roles: ['handtrap', 'boardbreaker'] }],
   ['bystial magnamhut', { origin: 'non_engine', roles: ['handtrap', 'searcher'] }],
   ['bystial saronir', { origin: 'non_engine', roles: ['handtrap'] }],
@@ -131,7 +131,7 @@ const KNOWN_CARDS_MAP_ENTRIES: Array<[string, ClassificationSuggestion]> = [
 
   // 2026 meta staples (YCS Virginia 300th / Burst Protocol format)
   ['shiina, twin tempests of celestial thunder', { origin: 'non_engine', roles: ['handtrap', 'boardbreaker'] }],
-  ['mulcharmy meowls', { origin: 'non_engine', roles: ['handtrap', 'draw'] }],
+  ['mulcharmy meowls', { origin: 'non_engine', roles: ['handtrap', 'draw', 'floodgate'] }],
   ['s:p little knight', { origin: 'non_engine', roles: ['boardbreaker', 'disruption'] }],
   ['divine arsenal aa-zeus - sky thunder', { origin: 'non_engine', roles: ['boardbreaker', 'payoff'] }],
   ['super starslayer ty-phon - sky crisis', { origin: 'non_engine', roles: ['boardbreaker', 'payoff'] }],
@@ -615,7 +615,10 @@ function rolesFromRules(card: ApiCardReference, flags: number): CardRole[] {
 
   // Empieza la jugada: un monstruo que al entrar saca ventaja del Deck, o una magia que invoca o fusiona.
   // Una Quick-Play que invoca es un extender, como ya decía el rol por tipo.
-  if (has(CARD_RULE.starts)) {
+  // Un monstruo de engine de nivel bajo con efecto al invocarse también: con él arrancás, aunque ese efecto no busque nada.
+  const engineOpener = monster && (card.level ?? 0) <= 4 && has(CARD_RULE.onSummon) && !has(CARD_RULE.generic) && (has(CARD_RULE.mentions) || card.archetype !== null)
+
+  if (has(CARD_RULE.starts) || engineOpener) {
     if (quickPlay) {
       if (!roles.includes('extender')) roles.push('extender')
     } else if (monster || isSpellCard(card)) {

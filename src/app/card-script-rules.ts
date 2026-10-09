@@ -45,6 +45,8 @@ export const CARD_RULE = {
   hitsGrave: 1 << 17,
   /** Un efecto continuo que le pesa al rival mientras está en el campo (baja ATK, limita): presión de jefe. */
   pressures: 1 << 18,
+  /** Hace algo al ser invocada, sea lo que sea: con ella empezás la jugada. */
+  onSummon: 1 << 19,
 } as const
 
 export type CardRuleFlag = keyof typeof CARD_RULE
@@ -422,6 +424,10 @@ export function cardRuleFlags(lua: string): number {
 
     if (onField && (SEARCH.test(effect.category) || FUSION_SUMMON.test(effect.category) || (gains && (fromDeck || fromGrave)))) {
       flags |= CARD_RULE.starts
+    }
+
+    if (TRIGGER.test(effect.type) && ON_SUMMON.test(effect.code)) {
+      flags |= CARD_RULE.onSummon
     }
 
     // Le saca recursos al cementerio del rival (y sólo del rival): Called by the Grave, o un monstruo que al entrar baraja una carta suya.
