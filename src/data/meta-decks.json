@@ -5,163 +5,203 @@
   "cards": {
     "3739500": {
       "name": "Ruler of the End of the World",
-      "image": "https://images.ygoprodeck.com/images/cards_small/3739500.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/3739500.jpg",
+      "tcg": null
     },
     "6325660": {
       "name": "Dominus Spark",
-      "image": "https://images.ygoprodeck.com/images/cards_small/6325660.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/6325660.jpg",
+      "tcg": null
     },
     "6637331": {
       "name": "Bystial Druiswurm",
-      "image": "https://images.ygoprodeck.com/images/cards_small/6637331.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/6637331.jpg",
+      "tcg": "limited"
     },
     "10045474": {
       "name": "Infinite Impermanence",
-      "image": "https://images.ygoprodeck.com/images/cards_small/10045474.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/10045474.jpg",
+      "tcg": null
     },
     "10604644": {
       "name": "Therion \"King\" Regulus",
-      "image": "https://images.ygoprodeck.com/images/cards_small/10604644.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/10604644.jpg",
+      "tcg": null
     },
     "12197223": {
       "name": "Shiina, Twin Tempests of Celestial Thunder",
-      "image": "https://images.ygoprodeck.com/images/cards_small/12197223.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/12197223.jpg",
+      "tcg": null
     },
     "14558127": {
       "name": "Ash Blossom & Joyous Spring",
-      "image": "https://images.ygoprodeck.com/images/cards_small/14558127.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/14558127.jpg",
+      "tcg": null
     },
     "17266660": {
       "name": "Herald of Orange Light",
-      "image": "https://images.ygoprodeck.com/images/cards_small/17266660.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/17266660.jpg",
+      "tcg": null
     },
     "24508238": {
       "name": "D.D. Crow",
-      "image": "https://images.ygoprodeck.com/images/cards_small/24508238.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/24508238.jpg",
+      "tcg": null
     },
     "27204311": {
       "name": "Nibiru, the Primal Being",
-      "image": "https://images.ygoprodeck.com/images/cards_small/27204311.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/27204311.jpg",
+      "tcg": null
     },
     "33854624": {
       "name": "Bystial Magnamhut",
-      "image": "https://images.ygoprodeck.com/images/cards_small/33854624.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/33854624.jpg",
+      "tcg": "limited"
     },
     "34267821": {
       "name": "Artifact Lancea",
-      "image": "https://images.ygoprodeck.com/images/cards_small/34267821.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/34267821.jpg",
+      "tcg": null
     },
     "38814750": {
       "name": "PSY-Framegear Gamma",
-      "image": "https://images.ygoprodeck.com/images/cards_small/38814750.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/38814750.jpg",
+      "tcg": "limited"
     },
     "40366667": {
       "name": "Dominus Impulse",
-      "image": "https://images.ygoprodeck.com/images/cards_small/40366667.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/40366667.jpg",
+      "tcg": null
     },
     "42141493": {
       "name": "Mulcharmy Fuwalos",
-      "image": "https://images.ygoprodeck.com/images/cards_small/42141493.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/42141493.jpg",
+      "tcg": null
     },
     "45041488": {
       "name": "Koa'ki Meiru Guardian",
-      "image": "https://images.ygoprodeck.com/images/cards_small/45041488.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/45041488.jpg",
+      "tcg": null
     },
     "46502744": {
       "name": "Retaliating \"C\"",
-      "image": "https://images.ygoprodeck.com/images/cards_small/46502744.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/46502744.jpg",
+      "tcg": null
     },
     "46789706": {
       "name": "Detonating Kuriboh",
-      "image": "https://images.ygoprodeck.com/images/cards_small/46789706.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/46789706.jpg",
+      "tcg": null
     },
     "52038441": {
       "name": "Ghost Mourner & Moonlit Chill",
-      "image": "https://images.ygoprodeck.com/images/cards_small/52038441.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/52038441.jpg",
+      "tcg": null
     },
     "55273560": {
       "name": "Incredible Ecclesia, the Virtuous",
-      "image": "https://images.ygoprodeck.com/images/cards_small/55273560.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/55273560.jpg",
+      "tcg": null
     },
     "55623480": {
       "name": "Fairy Tail - Snow",
-      "image": "https://images.ygoprodeck.com/images/cards_small/55623480.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/55623480.jpg",
+      "tcg": "limited"
     },
     "59438930": {
       "name": "Ghost Ogre & Snow Rabbit",
-      "image": "https://images.ygoprodeck.com/images/cards_small/59438930.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/59438930.jpg",
+      "tcg": null
     },
     "60242223": {
       "name": "Bystial Saronir",
-      "image": "https://images.ygoprodeck.com/images/cards_small/60242223.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/60242223.jpg",
+      "tcg": null
     },
     "67750322": {
       "name": "Skull Meister",
-      "image": "https://images.ygoprodeck.com/images/cards_small/67750322.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/67750322.jpg",
+      "tcg": null
     },
     "68144894": {
       "name": "Hecahands Godos",
-      "image": "https://images.ygoprodeck.com/images/cards_small/68144894.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/68144894.jpg",
+      "tcg": null
     },
     "69680031": {
       "name": "Dogmatika Fleurdelis, the Knighted",
-      "image": "https://images.ygoprodeck.com/images/cards_small/69680031.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/69680031.jpg",
+      "tcg": null
     },
     "70088809": {
       "name": "Fydraulis Harmonia",
-      "image": "https://images.ygoprodeck.com/images/cards_small/70088809.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/70088809.jpg",
+      "tcg": null
     },
     "71564252": {
       "name": "Thunder King Rai-Oh",
-      "image": "https://images.ygoprodeck.com/images/cards_small/71564252.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/71564252.jpg",
+      "tcg": null
     },
     "72656408": {
       "name": "Bystial Baldrake",
-      "image": "https://images.ygoprodeck.com/images/cards_small/72656408.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/72656408.jpg",
+      "tcg": null
     },
     "73642296": {
       "name": "Ghost Belle & Haunted Mansion",
-      "image": "https://images.ygoprodeck.com/images/cards_small/73642296.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/73642296.jpg",
+      "tcg": null
     },
     "74203495": {
       "name": "PSY-Framegear Delta",
-      "image": "https://images.ygoprodeck.com/images/cards_small/74203495.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/74203495.jpg",
+      "tcg": null
     },
     "78661338": {
       "name": "Fantastical Dragon Phantazmay",
-      "image": "https://images.ygoprodeck.com/images/cards_small/78661338.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/78661338.jpg",
+      "tcg": null
     },
     "84192580": {
       "name": "Mulcharmy Purulia",
-      "image": "https://images.ygoprodeck.com/images/cards_small/84192580.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/84192580.jpg",
+      "tcg": null
     },
     "87126721": {
       "name": "Mulcharmy Meowls",
-      "image": "https://images.ygoprodeck.com/images/cards_small/87126721.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/87126721.jpg",
+      "tcg": null
     },
     "87170768": {
       "name": "Contact \"C\"",
-      "image": "https://images.ygoprodeck.com/images/cards_small/87170768.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/87170768.jpg",
+      "tcg": null
     },
     "91800273": {
       "name": "Dimension Shifter",
-      "image": "https://images.ygoprodeck.com/images/cards_small/91800273.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/91800273.jpg",
+      "tcg": "forbidden"
     },
     "94145021": {
       "name": "Droll & Lock Bird",
-      "image": "https://images.ygoprodeck.com/images/cards_small/94145021.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/94145021.jpg",
+      "tcg": "semi-limited"
     },
     "94689635": {
       "name": "Herald of Purple Light",
-      "image": "https://images.ygoprodeck.com/images/cards_small/94689635.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/94689635.jpg",
+      "tcg": null
     },
     "97045737": {
       "name": "Dominus Purge",
-      "image": "https://images.ygoprodeck.com/images/cards_small/97045737.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/97045737.jpg",
+      "tcg": null
     },
     "97268402": {
       "name": "Effect Veiler",
-      "image": "https://images.ygoprodeck.com/images/cards_small/97268402.jpg"
+      "image": "https://images.ygoprodeck.com/images/cards_small/97268402.jpg",
+      "tcg": null
     }
   },
   "decks": [

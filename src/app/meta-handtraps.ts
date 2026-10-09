@@ -1,10 +1,13 @@
 import metaDecksJson from '../data/meta-decks.json'
+import type { BanlistStatus } from '../types'
 import { normalizeSearchText } from './utils'
 
 /** Una hand trap del tier list, con su id canónico de YGOPRODeck (las artes alternativas ya están unificadas). */
 export interface MetaCard {
   name: string
   image: string | null
+  /** Estado en la banlist TCG al momento del snapshot. */
+  tcg: BanlistStatus | null
 }
 
 /** Un Tournament Meta Deck de YGOPRODeck: sólo sus hand traps, como [id, copias]. */
@@ -266,11 +269,12 @@ export function buildMetaReport(data: MetaDecksData, zone: MetaZone, windowWeeks
   const handtraps: HandtrapStat[] = []
 
   for (const [id, entry] of usage) {
-    if (entry.decks === 0) {
+    const card = data.cards[String(id)]
+
+    // Los decks de antes de la banlist la siguen llevando, pero hoy no se puede jugar: no va al tier list.
+    if (entry.decks === 0 || card?.tcg === 'forbidden') {
       continue
     }
-
-    const card = data.cards[String(id)]
     const share = entry.decks / deckCount
     const weekly = weekDecks
       .map((count, week) => ({ decks: count, share: count > 0 ? (entry.weekly[week] ?? 0) / count : 0 }))
