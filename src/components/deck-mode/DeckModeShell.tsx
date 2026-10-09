@@ -1,6 +1,7 @@
 import type { ReactNode, RefObject } from 'react'
 
 import { cx } from '../ui/cx'
+import { SocialLinks } from '../ui/SocialLinks'
 import { DeckModeBrand } from './DeckModeBrand'
 
 interface DeckModeShellProps {
@@ -23,7 +24,7 @@ export function DeckModeShell({
       <header className="grid min-h-(--deck-mode-topbar-height) w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 border-b border-border-subtle bg-card-background/70 px-5 py-2 max-[1100px]:hidden">
         <DeckModeBrand />
         {navigation}
-        <span aria-hidden="true" />
+        <SocialLinks className="justify-self-end" />
       </header>
       <div
         ref={contentScrollRef}
@@ -34,6 +35,10 @@ export function DeckModeShell({
         )}
       >
         {content}
+        {/* En mobile las redes van al pie de la página; en desktop están en la barra de arriba. */}
+        <footer className="flex justify-center px-gutter pb-3 pt-4 min-[1101px]:hidden">
+          <SocialLinks />
+        </footer>
       </div>
       {mobileNavigation ? <div className="min-[1101px]:hidden">{mobileNavigation}</div> : null}
     </section>
