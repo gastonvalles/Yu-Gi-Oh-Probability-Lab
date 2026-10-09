@@ -1,4 +1,7 @@
+import { execFileSync } from 'node:child_process'
+import { existsSync, readFileSync } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 
 import { createServer } from 'vite'
@@ -7,10 +10,23 @@ import { createServer } from 'vite'
  * Baja los Tournament Meta Decks de YGOPRODeck (las listas de torneo que el sitio carga a mano) y escribe:
  * - src/data/meta-decks.json: cada deck con sus datos de torneo y sólo sus hand traps (lo que lee el tier list).
  * - src/data/meta-decklists.json: las listas completas (Main, Extra y Side), que la app baja recién al abrir un deck.
+ * Qué carta es hand trap se lee de sus reglas (los scripts de EDOPro, ver src/app/handtrap-rules.ts), no de su texto.
  * Lo corre todos los días el workflow sync-meta-decks; a mano: `npm run sync:meta`.
  */
 const DECKS_ENDPOINT = 'https://ygoprodeck.com/api/decks/getDecks.php'
 const CARDINFO_ENDPOINT = 'https://db.ygoprodeck.com/api/v7/cardinfo.php'
+/** Los scripts de EDOPro (Project Ignis): un clon superficial en una carpeta temporal; CARD_SCRIPTS_DIR la cambia. */
+const CARD_SCRIPTS_REPO = 'https://github.com/ProjectIgnis/CardScripts.git'
+const CARD_SCRIPTS_DIR = process.env.CARD_SCRIPTS_DIR ?? path.join(os.tmpdir(), 'ygo-lab-card-scripts')
+/** Cartas publicadas y anunciadas; `unofficial` son las de anime y similares. */
+const CARD_SCRIPT_DIRS = ['official', 'pre-release']
+/**
+ * Excepciones al criterio de reglas, por nombre: `false` saca una carta que por reglas se activa desde la mano pero
+ * nadie usa como hand trap; `true` mete una que las reglas no reconocen (el filtro de genericidad se aplica igual).
+ */
+const HANDTRAP_OVERRIDES = new Map([['Evenly Matched', false]])
+/** Con menos hand traps que esto cambió algo en los scripts o en su lectura: mejor fallar que publicar un tier list vacío. */
+const MIN_HANDTRAPS = 10
 /** Las dos categorías de torneo del sitio; cada deck queda etiquetado con su región. */
 const DECK_FORMATS = [
   { region: 'tcg', format: 'Tournament Meta Decks' },
@@ -29,7 +45,7 @@ const RETRY_DELAY_MS = 1500
 const CARDS_PER_REQUEST = 200
 /** Si falta más que esto de las cartas pedidas, algo anda mal con la API: mejor no escribir decks truncados. */
 const MAX_UNKNOWN_CARD_RATIO = 0.005
-/** Una hand trap es genérica: la juegan al menos tantos arquetipos distintos, y no es el arquetipo del deck. */
+/** Una hand trap es genérica: la juegan al menos tantos decks distintos, y no es el arquetipo del deck (la ayuda del Meta lo dice así). */
 const MIN_ARCHETYPES = 3
 const MAX_ARCHETYPE_NAME_MATCH = 0.5
 const MAX_COPIES_PER_CARD = 60
@@ -62,6 +78,7 @@ async function main() {
   const fetchedAt = new Date().toISOString()
   // La app cuenta semanas enteras hacia atrás desde el snapshot: un deck de justo WINDOW_DAYS días atrás ya cae en la semana 9.
   const cutoff = shiftDate(fetchedAt, -(WINDOW_DAYS - 1))
+  const scriptsDir = syncCardScripts()
   const decks = []
 
   for (const { region, format } of DECK_FORMATS) {
@@ -90,7 +107,7 @@ async function main() {
     }
 
     const canonicalById = buildCanonicalIds(cards, aliases)
-    const handtraps = pickHandtraps(engine.classification, decks, cards, canonicalById)
+    const handtraps = pickHandtraps(engine.rules, scriptsDir, decks, cards, aliases, canonicalById)
     const payload = buildPayload(fetchedAt, decks, handtraps, canonicalById)
     const decklists = buildDecklists(decks, canonicalById)
 
@@ -341,11 +358,11 @@ function buildCanonicalIds(cards, aliases) {
 }
 
 /**
- * Hand traps según el clasificador de la app, con un filtro de genericidad: las que juegan varios
- * arquetipos y no llevan el nombre del deck (el clasificador también marca monstruos de engine con
- * efectos rápidos). Las del listado conocido entran siempre.
+ * Hand traps por reglas (src/app/handtrap-rules.ts sobre el script de cada carta) con un filtro de genericidad
+ * sobre los decklists: las que juegan varios decks distintos y no llevan el nombre del deck, porque un monstruo
+ * de engine también puede tener un efecto rápido desde la mano. Las excepciones a mano van en HANDTRAP_OVERRIDES.
  */
-function pickHandtraps(classification, decks, cards, canonicalById) {
+function pickHandtraps(rules, scriptsDir, decks, cards, aliases, canonicalById) {
   const deckNamesByCard = new Map()
 
   for (const deck of decks) {
@@ -362,7 +379,10 @@ function pickHandtraps(classification, decks, cards, canonicalById) {
     }
   }
 
+  const idsByName = cardIdsByName(cards, aliases)
   const handtraps = new Map()
+  const engineOnly = []
+  let withoutScript = 0
 
   for (const card of cards.values()) {
     const deckNames = deckNamesByCard.get(card.ygoprodeckId)
@@ -372,24 +392,91 @@ function pickHandtraps(classification, decks, cards, canonicalById) {
       continue
     }
 
-    const suggestion = classification.classifyCard(card, card.name)
+    let handtrap = HANDTRAP_OVERRIDES.get(card.name)
 
-    if (!suggestion.roles.includes('handtrap')) {
+    if (handtrap === undefined) {
+      const lua = readCardScript(scriptsDir, idsByName.get(card.name) ?? [card.ygoprodeckId])
+
+      // Los monstruos normales no tienen script; sin script no hay efecto desde la mano.
+      if (lua === null) {
+        withoutScript += 1
+        continue
+      }
+
+      handtrap = rules.isHandtrapScript(lua)
+    }
+
+    if (!handtrap) {
       continue
     }
 
-    const known = classification.KNOWN_CARDS_MAP.get(classification.normalizeCardNameForLookup(card.name))
     const archetype = card.archetype?.toLowerCase() ?? ''
     const namedAfterArchetype = archetype ? [...deckNames].filter((deckName) => deckName.includes(archetype)).length / deckNames.size : 0
-    const generic = suggestion.origin === 'non_engine' && deckNames.size >= MIN_ARCHETYPES && namedAfterArchetype < MAX_ARCHETYPE_NAME_MATCH
 
-    if (known?.roles.includes('handtrap') || generic) {
-      // El estado en las banlists de hoy: una carta prohibida no va al tier list de esa región aunque los decks viejos la lleven.
-      handtraps.set(card.ygoprodeckId, { name: card.name, image: card.imageUrlSmall, ban: { tcg: card.banlist.tcg, ocg: card.banlist.ocg } })
+    if (deckNames.size < MIN_ARCHETYPES || namedAfterArchetype >= MAX_ARCHETYPE_NAME_MATCH) {
+      engineOnly.push(`${card.name} (${deckNames.size})`)
+      continue
+    }
+
+    // El estado en las banlists de hoy: una carta prohibida no va al tier list de esa región aunque los decks viejos la lleven.
+    handtraps.set(card.ygoprodeckId, { name: card.name, image: card.imageUrlSmall, ban: { tcg: card.banlist.tcg, ocg: card.banlist.ocg } })
+  }
+
+  if (handtraps.size < MIN_HANDTRAPS) {
+    throw new Error(`Sólo ${handtraps.size} hand traps: ¿cambió la forma de los scripts en ${scriptsDir}?`)
+  }
+
+  console.log(`${withoutScript} cartas sin script. Con efecto desde la mano pero de un solo deck o de su arquetipo (afuera): ${engineOnly.join(', ')}`)
+  return handtraps
+}
+
+/** Los ids de cada nombre: las artes alternativas y los ids de prelanzamiento no tienen script propio. */
+function cardIdsByName(cards, aliases) {
+  const idsByName = new Map()
+
+  for (const card of cards.values()) {
+    idsByName.set(card.name, [...(idsByName.get(card.name) ?? []), card.ygoprodeckId])
+  }
+
+  for (const [requestedId, actualId] of aliases) {
+    const name = cards.get(actualId)?.name
+
+    if (name) {
+      idsByName.get(name).push(requestedId)
     }
   }
 
-  return handtraps
+  return idsByName
+}
+
+/** Clona los scripts, o los pone al día si ya están, y devuelve la carpeta. */
+function syncCardScripts() {
+  const git = (...args) => execFileSync('git', args, { stdio: ['ignore', 'pipe', 'inherit'], encoding: 'utf8' }).trim()
+
+  if (existsSync(path.join(CARD_SCRIPTS_DIR, '.git'))) {
+    git('-C', CARD_SCRIPTS_DIR, 'fetch', '-q', '--depth', '1', 'origin', 'master')
+    git('-C', CARD_SCRIPTS_DIR, 'reset', '-q', '--hard', 'FETCH_HEAD')
+  } else {
+    git('clone', '-q', '--depth', '1', '--single-branch', '--branch', 'master', CARD_SCRIPTS_REPO, CARD_SCRIPTS_DIR)
+  }
+
+  console.log(`Scripts de EDOPro ${git('-C', CARD_SCRIPTS_DIR, 'rev-parse', '--short', 'HEAD')} en ${CARD_SCRIPTS_DIR}`)
+  return CARD_SCRIPTS_DIR
+}
+
+/** El script de la carta por cualquiera de sus ids, o null si no tiene. */
+function readCardScript(scriptsDir, ids) {
+  for (const id of ids) {
+    for (const dir of CARD_SCRIPT_DIRS) {
+      const file = path.join(scriptsDir, dir, `c${id}.lua`)
+
+      if (existsSync(file)) {
+        return readFileSync(file, 'utf8')
+      }
+    }
+  }
+
+  return null
 }
 
 // Salida
@@ -467,7 +554,7 @@ function formatDecklists(decklists) {
 
 // Utilidades
 
-/** El clasificador y el parser de la app son TypeScript: Vite los carga sin compilarlos aparte. */
+/** El lector de reglas y el parser de la app son TypeScript: Vite los carga sin compilarlos aparte. */
 async function loadEngine() {
   const server = await createServer({
     root: process.cwd(),
@@ -478,12 +565,12 @@ async function loadEngine() {
   })
 
   try {
-    const [classification, parser] = await Promise.all([
-      server.ssrLoadModule('/src/app/classification-engine.ts'),
+    const [rules, parser] = await Promise.all([
+      server.ssrLoadModule('/src/app/handtrap-rules.ts'),
       server.ssrLoadModule('/src/ygoprodeck/parser.ts'),
     ])
 
-    return { classification, parser, close: () => server.close() }
+    return { rules, parser, close: () => server.close() }
   } catch (error) {
     await server.close()
     throw error

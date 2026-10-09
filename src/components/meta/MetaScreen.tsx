@@ -143,6 +143,10 @@ export function MetaScreen() {
               <strong className="text-foreground">Cómo se arma el tier list</strong>
               <ul className="m-0 grid list-disc gap-1 pl-4">
                 <li>Se miran los decks que llegaron al top de torneos de TCG o de OCG, según lo que elijas arriba. Se actualizan todos los días.</li>
+                <li>
+                  Cuenta como hand trap una carta que, según sus reglas, tiene un efecto rápido o disparador que se activa desde la mano (o una trampa
+                  activable desde la mano), y que juegan al menos 3 decks distintos sin ser de su arquetipo.
+                </li>
                 <li>Cada hand trap se mide por el porcentaje de esos decks que la llevan en el Main o en el Side.</li>
                 <li>
                   {TIER_FLOORS.map(([tier, floor]) => `${tierLabel(tier)}: al menos el ${percent(floor)}`).join(' · ')} · {tierLabel('D')}: menos del{' '}
