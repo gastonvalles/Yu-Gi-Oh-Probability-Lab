@@ -31,9 +31,9 @@ export function snapFabToEdge(position: FabPosition, bounds: FabBounds): FabPosi
   return clampFabPosition({ x, y: position.y }, bounds)
 }
 
-/** Posición inicial: abajo a la derecha, sobre la zona reservada. */
-export function defaultFabPosition(bounds: FabBounds): FabPosition {
-  return clampFabPosition({ x: Number.POSITIVE_INFINITY, y: Number.POSITIVE_INFINITY }, bounds)
+/** Posición inicial: abajo, sobre la zona reservada, a la derecha (botón) o a la izquierda (mascota). */
+export function defaultFabPosition(bounds: FabBounds, corner: 'right' | 'left' = 'right'): FabPosition {
+  return clampFabPosition({ x: corner === 'right' ? Number.POSITIVE_INFINITY : 0, y: Number.POSITIVE_INFINITY }, bounds)
 }
 
 /** Distancia mínima (px) para que un toque cuente como arrastre y no como clic. */

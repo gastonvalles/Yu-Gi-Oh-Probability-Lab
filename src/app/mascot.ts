@@ -10,7 +10,29 @@ export type MascotReaction = Extract<MascotState, 'jumping' | 'failed' | 'waving
 /** Lo que puede estar pasando de fondo. */
 export type MascotActivity = 'loading' | 'computing'
 
+/** Las mascotas disponibles: cada una con su carpeta de animaciones en public/mascot. Hoy hay una; el día que haya más, acá se suman. */
+export const MASCOTS = {
+  cupsy: { name: 'Cupsy', folder: '/mascot/cupsy' },
+} as const
+export type MascotId = keyof typeof MASCOTS
+
+const MASCOT_KEY = 'ygo-lab:mascot-id'
 const ENABLED_KEY = 'ygo-lab:mascot'
+
+/** La mascota elegida (si la guardada ya no existe, la primera). */
+export function currentMascot(): (typeof MASCOTS)[MascotId] {
+  try {
+    const stored = localStorage.getItem(MASCOT_KEY)
+
+    if (stored && stored in MASCOTS) {
+      return MASCOTS[stored as MascotId]
+    }
+  } catch {
+    // Sin storage: la primera.
+  }
+
+  return MASCOTS.cupsy
+}
 const listeners = new Set<() => void>()
 const activities: Record<MascotActivity, number> = { loading: 0, computing: 0 }
 let reaction: { state: MascotReaction; until: number } | null = null
