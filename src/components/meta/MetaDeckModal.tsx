@@ -2,68 +2,69 @@ import { useEffect, useState } from 'react'
 
 import { replaceDeckBuilder } from '../../app/deck-builder-slice'
 import { buildDeckImportPreviewFromYdk } from '../../app/deck-import'
-import {
-  countCopies,
-  coverArtUrl,
-  isMetaHandtrap,
-  loadMetaDecklist,
-  toYdkText,
-  type MetaDeck,
-  type MetaDecklist,
-} from '../../app/meta-handtraps'
+import { META_DECKS, countCopies, coverArtUrl, loadMetaDecklist, toYdkText, type MetaDeck, type MetaDecklist } from '../../app/meta-handtraps'
+import type { DeckCardInstance, DeckZone as DeckZoneKey } from '../../app/model'
 import { useAppDispatch, useAppSelector } from '../../app/store-hooks'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useToastMessage } from '../../app/use-toast-message'
 import { formatInteger } from '../../app/utils'
 import { fetchCardsByIds, type ApiCardSearchResult } from '../../ygoprodeck'
-import { CardArt } from '../CardArt'
 import { CardDetailModal } from '../card-detail/CardDetailModal'
+import { DeckBuilderClassicPreview } from '../deck-mode/DeckBuilderClassicPreview'
+import { DeckZone } from '../DeckZone'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
-import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
 import { Skeleton } from '../ui/Skeleton'
-import { overline } from '../ui/typography'
-import { LINK_CHIP, formatMetaDate } from './meta-format'
+import { formatMetaDate } from './meta-format'
 
 /** Las cartas de un deck de torneo no cambian: un día en el dispositivo evita volver a pedirlas. */
 const DECK_CARDS_PERSIST_MS = 24 * 60 * 60 * 1000
-const ZONES = [
-  { key: 'main', label: 'Main' },
-  { key: 'extra', label: 'Extra' },
-  { key: 'side', label: 'Side' },
-] as const
-const ZONE_STYLE = {
-  main: 'bg-(--zone-main-background)',
-  extra: 'bg-(--zone-extra-background)',
-  side: 'bg-(--zone-side-background)',
-} as const
+// Los mismos títulos que el builder: la vista clásica muestra "Main [41]".
+const ZONE_ITEMS = [
+  { zone: 'main', title: 'Main Deck' },
+  { zone: 'extra', title: 'Extra Deck' },
+  { zone: 'side', title: 'Side Deck' },
+] as const satisfies ReadonlyArray<{ zone: DeckZoneKey; title: string }>
+const HANDTRAP_IDS: ReadonlySet<number> = new Set(Object.keys(META_DECKS.cards).map(Number))
+const noop = () => {}
 
-type LoadState =
-  | { status: 'loading' }
-  | { status: 'error'; message: string }
-  | { status: 'ready'; decklist: MetaDecklist; cards: Map<number, ApiCardSearchResult> }
+interface LoadedDeck {
+  decklist: MetaDecklist
+  cards: ApiCardSearchResult[]
+  zones: Record<DeckZoneKey, DeckCardInstance[]>
+  /** La carta que se muestra en el panel de la izquierda hasta que se toca otra: la portada, o la primera del Main. */
+  defaultCard: ApiCardSearchResult | null
+}
+
+type LoadState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; deck: LoadedDeck }
 
 interface MetaDeckModalProps {
   deck: MetaDeck | null
   onClose: () => void
 }
 
-/** Un Tournament Meta Deck completo, como en YGOPRODeck pero sin salir de la app; se puede cargar en el builder. */
+/**
+ * Un Tournament Meta Deck completo sin salir de la app, con la estructura del builder: la carta elegida a la
+ * izquierda y las zonas a la derecha (en mobile, el detalle se abre al tocar). Se puede cargar en el builder.
+ */
 export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
   const dispatch = useAppDispatch()
   const deckFormat = useAppSelector((state) => state.settings.deckFormat)
   const builderHasCards = useAppSelector(
     (state) => state.deckBuilder.main.length + state.deckBuilder.extra.length + state.deckBuilder.side.length > 0,
   )
+  const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const { showToast } = useToastMessage()
   const [load, setLoad] = useState<LoadState>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
-  const [detailCard, setDetailCard] = useState<ApiCardSearchResult | null>(null)
+  const [selectedCard, setSelectedCard] = useState<ApiCardSearchResult | null>(null)
   const [confirmReplace, setConfirmReplace] = useState(false)
   const deckId = deck?.id ?? null
+  const cover = deck?.cover ?? null
 
   useEffect(() => {
     if (deckId === null) {
@@ -72,6 +73,7 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
 
     let cancelled = false
     setLoad({ status: 'loading' })
+    setSelectedCard(null)
 
     void (async () => {
       try {
@@ -85,7 +87,7 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
         const cards = await fetchCardsByIds(ids, { persistForMs: DECK_CARDS_PERSIST_MS })
 
         if (!cancelled) {
-          setLoad({ status: 'ready', decklist, cards: new Map(cards.map((card) => [card.ygoprodeckId, card])) })
+          setLoad({ status: 'ready', deck: buildLoadedDeck(decklist, cards, cover) })
         }
       } catch (error) {
         if (!cancelled) {
@@ -97,7 +99,7 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
     return () => {
       cancelled = true
     }
-  }, [deckId, attempt])
+  }, [deckId, cover, attempt])
 
   if (!deck) {
     return null
@@ -109,10 +111,10 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
     }
 
     const preview = buildDeckImportPreviewFromYdk({
-      cards: [...load.cards.values()],
+      cards: load.deck.cards,
       deckFormat,
       deckName: deck.name,
-      text: toYdkText(load.decklist),
+      text: toYdkText(load.deck.decklist),
       source: { label: 'YGOPRODeck' },
     })
     const missing = preview.requestedCardCount - preview.importedCardCount
@@ -129,6 +131,19 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
     window.location.hash = '#deck-builder'
   }
 
+  const handleCardClick = (instanceId: string) => {
+    if (load.status !== 'ready') {
+      return
+    }
+
+    const [zone] = instanceId.split(':') as [DeckZoneKey]
+    const card = load.deck.zones[zone]?.find((instance) => instance.instanceId === instanceId)?.apiCard as ApiCardSearchResult | undefined
+
+    if (card) {
+      setSelectedCard(card)
+    }
+  }
+
   const summary = [
     deck.placement ? `Llegó a ${deck.placement}` : null,
     deck.tournament ? `en ${deck.tournament}` : null,
@@ -142,146 +157,123 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
       <Modal
         isOpen
         onClose={onClose}
-        size="xl"
+        size="full"
         bare
+        flush
         ariaLabel={deck.name}
         footer={
-          <>
-            {deck.url ? (
-              <a className={LINK_CHIP} href={`https://ygoprodeck.com/deck/${deck.url}`} target="_blank" rel="noreferrer">
-                Ver en YGOPRODeck
-                <Icon name="arrow-right" size={12} />
-              </a>
-            ) : null}
-            <Button
-              variant="primary"
-              size="sm"
-              icon="upload"
-              disabled={load.status !== 'ready'}
-              onClick={() => (builderHasCards ? setConfirmReplace(true) : loadIntoBuilder())}
-            >
-              Cargar en el builder
-            </Button>
-          </>
+          <Button
+            variant="primary"
+            size="sm"
+            icon="upload"
+            disabled={load.status !== 'ready'}
+            onClick={() => (builderHasCards ? setConfirmReplace(true) : loadIntoBuilder())}
+          >
+            Cargar en el builder
+          </Button>
         }
       >
-        <div className="grid gap-4">
+        <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)]">
           {/* El encabezado de YGOPRODeck: la portada de fondo y los datos del torneo encima. */}
           <header
-            className="relative grid gap-1 overflow-hidden rounded-card border border-border-subtle bg-card-background p-4 pr-12 min-[700px]:p-5 min-[700px]:pr-14"
+            className="grid gap-1 border-b border-border-subtle bg-card-background px-4 py-3 pr-14 min-[1101px]:px-5"
             style={
-              deck.cover
-                ? {
-                    backgroundImage: `linear-gradient(90deg, rgb(19 15 43 / 0.97) 30%, rgb(19 15 43 / 0.55)), url(${coverArtUrl(deck.cover)})`,
+              cover === null
+                ? undefined
+                : {
+                    backgroundImage: `linear-gradient(90deg, rgb(19 15 43 / 0.97) 40%, rgb(19 15 43 / 0.6)), url(${coverArtUrl(cover)})`,
                     backgroundSize: 'cover',
                     backgroundPosition: 'right center',
                   }
-                : undefined
             }
           >
-            <h3 className="m-0 text-title font-semibold tracking-[-0.01em] text-foreground">{deck.name}</h3>
-            {summary ? <p className="m-0 text-body text-muted">{summary}</p> : null}
-            <p className="m-0 flex flex-wrap items-center gap-x-3 gap-y-1 text-body text-muted">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+              <h3 className="m-0 text-lead font-semibold tracking-[-0.01em] text-foreground">{deck.name}</h3>
+              {summary ? <span className="text-body text-muted">{summary}</span> : null}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-micro text-muted">
               {deck.player ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <Icon name="user" size={15} />
+                <span className="inline-flex items-center gap-1">
+                  <Icon name="user" size={13} />
                   {deck.player}
                 </span>
               ) : null}
-              <span className="inline-flex items-center gap-1.5">
-                <Icon name="calendar" size={15} />
+              <span className="inline-flex items-center gap-1">
+                <Icon name="calendar" size={13} />
                 {formatMetaDate(deck.date)}
               </span>
-            </p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {load.status === 'ready'
-                ? ZONES.map(({ key, label }) => (
-                    <Badge key={key} tone="brand">
-                      {label} {formatInteger(countCopies(load.decklist[key]))}
-                    </Badge>
-                  ))
-                : null}
-              <Badge tone="success" dot>
+              <Badge tone="success" size="sm" dot>
                 Hand traps: {formatInteger(countCopies(deck.main))} en Main · {formatInteger(countCopies(deck.side))} en Side
               </Badge>
             </div>
           </header>
 
           {load.status === 'loading' ? (
-            <div className="grid gap-3" aria-busy="true" aria-label="Cargando el deck">
-              <Skeleton radius="panel" className="h-44" />
-              <Skeleton radius="panel" className="h-16" />
-              <Skeleton radius="panel" className="h-16" />
+            <div className="grid content-start gap-3 p-4" aria-busy="true" aria-label="Cargando el deck">
+              <Skeleton radius="panel" className="h-64" />
+              <Skeleton radius="panel" className="h-20" />
+              <Skeleton radius="panel" className="h-20" />
             </div>
           ) : null}
 
           {load.status === 'error' ? (
-            <Callout
-              tone="danger"
-              title="No se pudo cargar el deck"
-              action={
-                <Button variant="secondary" size="sm" icon="refresh" onClick={() => setAttempt((count) => count + 1)}>
-                  Reintentar
-                </Button>
-              }
-            >
-              {load.message}
-            </Callout>
+            <div className="p-4">
+              <Callout
+                tone="danger"
+                title="No se pudo cargar el deck"
+                action={
+                  <Button variant="secondary" size="sm" icon="refresh" onClick={() => setAttempt((count) => count + 1)}>
+                    Reintentar
+                  </Button>
+                }
+              >
+                {load.message}
+              </Callout>
+            </div>
           ) : null}
 
-          {load.status === 'ready'
-            ? ZONES.map(({ key, label }) =>
-                load.decklist[key].length === 0 ? null : (
-                  <section key={key} className="grid gap-1.5" aria-label={label}>
-                    <span className={overline}>
-                      {label} <span className="tabular-nums">[{formatInteger(countCopies(load.decklist[key]))}]</span>
-                    </span>
-                    <div className={cx('grid grid-cols-5 gap-1 rounded-card p-1.5 sm:grid-cols-8 min-[1101px]:grid-cols-10', ZONE_STYLE[key])}>
-                      {load.decklist[key].flatMap(([id, copies]) =>
-                        Array.from({ length: copies }, (_, copy) => {
-                          const card = load.cards.get(id) ?? null
-                          const name = card?.name ?? `Carta ${formatInteger(id)}`
-                          const handtrap = isMetaHandtrap(id)
-
-                          return (
-                            <button
-                              key={`${id}-${copy}`}
-                              type="button"
-                              className={cx(
-                                'relative min-w-0 cursor-pointer border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-default',
-                                // Las hand traps se marcan: es lo que el tier list está contando.
-                                handtrap && '-outline-offset-2 outline-2 outline-success/90',
-                              )}
-                              title={handtrap ? `${name} (hand trap)` : name}
-                              disabled={!card}
-                              onClick={() => setDetailCard(card)}
-                            >
-                              <CardArt
-                                remoteUrl={card?.imageUrlSmall ?? card?.imageUrl ?? null}
-                                name={name}
-                                className="block aspect-[0.72] w-full bg-input object-cover"
-                                limitCard={card}
-                                limitBadgeSize="sm"
-                              />
-                            </button>
-                          )
-                        }),
-                      )}
-                    </div>
-                  </section>
-                ),
-              )
-            : null}
+          {load.status === 'ready' ? (
+            // Las mismas dos primeras columnas del builder clásico: la carta elegida y las zonas.
+            <div className="grid h-full min-h-0 min-[1101px]:grid-cols-[minmax(260px,24%)_minmax(0,1fr)]">
+              {isDesktop ? (
+                <DeckBuilderClassicPreview card={selectedCard ?? load.deck.defaultCard} source={null} deckCopy={null} onAddToZone={noop} />
+              ) : null}
+              <div className="grid h-full min-h-0 content-start gap-4 overflow-y-auto overflow-x-hidden px-4 pb-6 pt-4 [scrollbar-gutter:stable] [scrollbar-width:thin] min-[1101px]:px-8 min-[1101px]:max-[1500px]:px-5">
+                {ZONE_ITEMS.map(({ zone, title }) =>
+                  load.deck.zones[zone].length === 0 ? null : (
+                    <DeckZone
+                      key={zone}
+                      zone={zone}
+                      title={title}
+                      cards={load.deck.zones[zone]}
+                      activeDragInstanceId={null}
+                      desktopCompact={isDesktop}
+                      variant={isDesktop ? 'classic-builder' : 'default'}
+                      selectedCardId={(selectedCard ?? load.deck.defaultCard)?.ygoprodeckId ?? null}
+                      highlightedCardIds={HANDTRAP_IDS}
+                      readOnly
+                      onClearZone={noop}
+                      onSortZone={noop}
+                      onDeckCardPointerDown={noop}
+                      onDeckCardClick={handleCardClick}
+                      onRemoveCard={noop}
+                    />
+                  ),
+                )}
+              </div>
+            </div>
+          ) : null}
         </div>
       </Modal>
 
+      {/* En mobile no hay panel lateral: la carta tocada se abre en su detalle, como en el builder. */}
       <CardDetailModal
-        card={detailCard}
+        card={selectedCard}
         deckFormat={deckFormat}
-        isOpen={detailCard !== null}
+        isOpen={!isDesktop && selectedCard !== null}
         showActions={false}
         onAddToZone={() => false}
-        onClose={() => setDetailCard(null)}
+        onClose={() => setSelectedCard(null)}
       />
 
       <ConfirmDialog
@@ -294,4 +286,33 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
       />
     </>
   )
+}
+
+function buildLoadedDeck(decklist: MetaDecklist, cards: ApiCardSearchResult[], cover: number | null): LoadedDeck {
+  const cardsById = new Map(cards.map((card) => [card.ygoprodeckId, card]))
+  const build = (zone: DeckZoneKey): DeckCardInstance[] =>
+    decklist[zone].flatMap(([id, copies]) => {
+      const card = cardsById.get(id)
+
+      if (!card) {
+        return []
+      }
+
+      return Array.from({ length: copies }, (_, copy) => ({
+        instanceId: `${zone}:${id}:${copy}`,
+        name: card.name,
+        origin: null,
+        roles: [],
+        needsReview: false,
+        apiCard: card,
+      }))
+    })
+  const zones = { main: build('main'), extra: build('extra'), side: build('side') }
+
+  return {
+    decklist,
+    cards,
+    zones,
+    defaultCard: (cover === null ? null : cardsById.get(cover)) ?? (zones.main[0]?.apiCard as ApiCardSearchResult | undefined) ?? null,
+  }
 }

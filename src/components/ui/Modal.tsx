@@ -15,12 +15,14 @@ import { overline } from './typography'
  * 'sm' es para avisos y confirmaciones; en mobile los de contenido ocupan toda la pantalla.
  * 'table' es la mesa de práctica (angosta, como en el celu) y 'editor' el de clasificación de una carta.
  */
-type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'table' | 'editor' | 'sheet'
+type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full' | 'table' | 'editor' | 'sheet'
 
 const FULL_HEIGHT_MOBILE = 'max-sm:h-[calc(100dvh-1rem)]'
 
 const SIZE_CLASS: Record<ModalSize, string> = {
   sm: 'w-[min(32rem,100%)]',
+  /** Toda la pantalla (menos el margen): para contenido con la estructura del builder. */
+  full: `w-full h-[calc(100dvh-2rem)] ${FULL_HEIGHT_MOBILE}`,
   md: `w-[min(44rem,100%)] h-[min(40rem,calc(100dvh-2rem))] ${FULL_HEIGHT_MOBILE}`,
   lg: `w-[min(60rem,100%)] h-[min(44rem,calc(100dvh-2rem))] ${FULL_HEIGHT_MOBILE}`,
   xl: `w-[min(70rem,100%)] h-[min(46rem,calc(100dvh-2rem))] ${FULL_HEIGHT_MOBILE}`,

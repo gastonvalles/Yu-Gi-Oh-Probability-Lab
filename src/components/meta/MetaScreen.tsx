@@ -26,10 +26,10 @@ import { Icon } from '../ui/Icon'
 import { SectionHeader } from '../ui/SectionHeader'
 import { Segmented } from '../ui/Segmented'
 import { StepPage } from '../ui/StepPage'
-import { filterChip } from '../ui/surfaces'
+import { field, filterChip } from '../ui/surfaces'
 import { HandtrapModal } from './HandtrapModal'
 import { MetaDeckModal } from './MetaDeckModal'
-import { LINK_CHIP, TIER_ORDER, formatMetaDate, percent, tierColor, tierHint, tierLabel } from './meta-format'
+import { TIER_ORDER, formatMetaDate, percent, tierColor, tierHint, tierLabel } from './meta-format'
 
 type WindowWeeks = '2' | '4' | '8'
 type BoardView = 'now' | 'projected'
@@ -55,11 +55,12 @@ export function MetaScreen() {
   const [weeks, setWeeks] = useState<WindowWeeks>('4')
   const [view, setView] = useState<BoardView>('now')
   const [filter, setFilter] = useState<MetaDeckFilter | null>(null)
+  const [query, setQuery] = useState('')
   const [deckLimit, setDeckLimit] = useState(DECKS_PER_PAGE)
   const [selectedStat, setSelectedStat] = useState<HandtrapStat | null>(null)
   const [selectedDeck, setSelectedDeck] = useState<MetaDeck | null>(null)
   const report = useMemo(() => buildMetaReport(META_DECKS, zone, Number(weeks)), [zone, weeks])
-  const decks = useMemo(() => filterMetaDecks(META_DECKS.decks, filter ?? {}), [filter])
+  const decks = useMemo(() => filterMetaDecks(META_DECKS.decks, { ...filter, text: query }), [filter, query])
   const board = useMemo(() => {
     const key = view === 'projected' ? 'projectedTier' : 'tier'
     const shareOf = (stat: HandtrapStat) => (view === 'projected' ? stat.projectedShare : stat.share)
@@ -94,12 +95,6 @@ export function MetaScreen() {
             “Sube” o “Baja” cuando eso mueve la cifra más de {formatInteger(Math.round(TREND_THRESHOLD * 100))} puntos. Con “En{' '}
             {formatInteger(PROJECTION_WEEKS)} semanas” cada carta se ubica en el tier al que va.
           </>
-        }
-        side={
-          <a className={LINK_CHIP} href={META_DECKS.source} target="_blank" rel="noreferrer">
-            Ver en YGOPRODeck
-            <Icon name="arrow-right" size={14} />
-          </a>
         }
       />
 
@@ -139,12 +134,29 @@ export function MetaScreen() {
               : `Los ${formatInteger(decks.length)} decks de las últimas ${formatInteger(totalWeeks)} semanas, del más reciente al más viejo. Tocá uno para verlo entero.`
           }
           actions={
-            filterLabel ? (
-              <button type="button" className={filterChip} onClick={() => setFilter(null)} aria-label={`Quitar el filtro ${filterLabel}`}>
-                {filterLabel}
-                <Icon name="x" size={12} strokeWidth={2.2} />
-              </button>
-            ) : null
+            <>
+              {filterLabel ? (
+                <button type="button" className={filterChip} onClick={() => setFilter(null)} aria-label={`Quitar el filtro ${filterLabel}`}>
+                  {filterLabel}
+                  <Icon name="x" size={12} strokeWidth={2.2} />
+                </button>
+              ) : null}
+              <label className="relative block min-w-[14rem] flex-1 max-[1100px]:w-full">
+                <span className="sr-only">Buscar decks</span>
+                <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-soft" />
+                <input
+                  type="search"
+                  value={query}
+                  placeholder="Buscar por deck, torneo o jugador"
+                  autoComplete="off"
+                  className={cx(field, 'h-9 w-full pl-9 pr-3 text-body')}
+                  onChange={(event) => {
+                    setQuery(event.target.value)
+                    setDeckLimit(DECKS_PER_PAGE)
+                  }}
+                />
+              </label>
+            </>
           }
         />
         {decks.length > 0 ? (
@@ -154,7 +166,9 @@ export function MetaScreen() {
             ))}
           </div>
         ) : (
-          <EmptyState icon="layers" title="Ningún deck con ese filtro" />
+          <EmptyState icon="search" title="Ningún deck con esa búsqueda">
+            Probá con otro nombre de deck, torneo o jugador.
+          </EmptyState>
         )}
         {decks.length > deckLimit ? (
           <Button variant="secondary" size="sm" className="mt-3" onClick={() => setDeckLimit((limit) => limit + DECKS_PER_PAGE)}>

@@ -1,11 +1,8 @@
 import { createRoleGroupKey, getDeckGroupTheme } from '../../app/deck-groups'
 import { TIER_FLOORS, type HandtrapStat, type MetaTier, type MetaTrend } from '../../app/meta-handtraps'
 import { formatInteger } from '../../app/utils'
-import { cx } from '../ui/cx'
-import { filterChip } from '../ui/surfaces'
 
 export const HANDTRAP_RGB = getDeckGroupTheme(createRoleGroupKey('handtrap')).rgb
-export const LINK_CHIP = cx(filterChip, 'h-8 gap-1')
 
 export const TREND_LOOK: Record<MetaTrend, { tone: 'success' | 'danger' | 'neutral'; label: string }> = {
   up: { tone: 'success', label: 'Sube' },
