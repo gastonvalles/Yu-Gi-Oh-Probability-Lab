@@ -55,7 +55,15 @@ function HandtrapOverlay({ stat, onClose, onPickArchetype, onShowDecks }: Handtr
   const summary = card ? buildCardSummary(card) : null
 
   return (
-    <CardOverlay ariaLabel={`Detalle de ${stat.name} en el meta`} panelLabel="Uso en el meta" name={stat.name} card={card ?? placeholderCard(stat)} tall onClose={onClose}>
+    <CardOverlay
+      ariaLabel={`Detalle de ${stat.name} en el meta`}
+      panelLabel="Uso en el meta"
+      name={stat.name}
+      card={card ?? placeholderCard(stat)}
+      tall
+      artOverlay={<TrendArrow trend={stat.trend} size={56} />}
+      onClose={onClose}
+    >
       <CardPanelHeader
         title={stat.name}
         lines={[
@@ -69,7 +77,6 @@ function HandtrapOverlay({ stat, onClose, onPickArchetype, onShowDecks }: Handtr
           <div className="grid gap-1.5">
             <span className={overline}>Tendencia</span>
             <div className="flex flex-wrap items-center gap-2">
-              <TrendArrow trend={stat.trend} size={20} />
               <Badge tone={TREND_LOOK[stat.trend].tone}>{trendText(stat)}</Badge>
               <span className="text-micro text-white/66">Proyección a {formatInteger(PROJECTION_WEEKS)} semanas.</span>
             </div>

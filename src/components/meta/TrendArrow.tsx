@@ -8,19 +8,26 @@ interface TrendArrowProps {
   className?: string
 }
 
-/** Flecha de tendencia, sólo el trazo con color: verde hacia arriba si sube, roja hacia abajo si baja; nada si está estable. */
-export function TrendArrow({ trend, size = 18, className }: TrendArrowProps) {
+/**
+ * Flecha de tendencia, sólo el trazo con color: verde hacia arriba si sube, roja hacia abajo si baja; nada si está
+ * estable. Lleva un borde negro grueso debajo para leerse sobre el arte de cualquier carta (también la roja sobre un marco naranja).
+ */
+export function TrendArrow({ trend, size = 24, className }: TrendArrowProps) {
   if (trend === 'flat') {
     return null
   }
 
+  const name = trend === 'up' ? 'chevron-up' : 'chevron-down'
+
   return (
+    // Las dos flechas comparten la misma celda de la grilla: la negra queda debajo de la de color.
     <span
       role="img"
       aria-label={trend === 'up' ? 'Sube' : 'Baja'}
-      className={cx('inline-grid shrink-0 place-items-center', trend === 'up' ? 'text-success' : 'text-danger', className)}
+      className={cx('inline-grid shrink-0 place-items-center [&>*]:col-start-1 [&>*]:row-start-1', className)}
     >
-      <Icon name={trend === 'up' ? 'chevron-up' : 'chevron-down'} size={size} strokeWidth={3.5} className="drop-shadow-[0_1px_2px_rgb(0_0_0/0.9)]" />
+      <Icon name={name} size={size} strokeWidth={8.5} className="text-black/90" />
+      <Icon name={name} size={size} strokeWidth={4.5} className={trend === 'up' ? 'text-success' : 'text-danger'} />
     </span>
   )
 }

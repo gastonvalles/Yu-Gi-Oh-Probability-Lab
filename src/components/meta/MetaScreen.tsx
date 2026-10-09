@@ -87,14 +87,14 @@ export function MetaScreen() {
       <StepHero
         title="Hand traps del meta"
         icon="chart"
-        subtitle="Qué se juega en los Tournament Meta Decks de YGOPRODeck y hacia dónde va."
+        subtitle="Qué se juega en los decks de torneo y hacia dónde va."
         help={
           <>
-            YGOPRODeck carga a mano las listas de torneo (tops de YCS, regionales y similares) como Tournament Meta Decks. Esta app las baja una vez por
-            día y cuenta en cuántos Main y Side aparece cada hand trap. La tendencia ajusta una recta a la serie semanal de las últimas{' '}
-            {formatInteger(totalWeeks)} semanas (cada semana pesa por su cantidad de decks) y la prolonga {formatInteger(PROJECTION_WEEKS)} semanas: dice
-            “Sube” o “Baja” cuando eso mueve la cifra más de {formatInteger(Math.round(TREND_THRESHOLD * 100))} puntos. Con “En{' '}
-            {formatInteger(PROJECTION_WEEKS)} semanas” cada carta se ubica en el tier al que va.
+            Las listas de torneo (tops de YCS, regionales y similares) se actualizan una vez por día y se cuenta en cuántos Main y Side aparece cada hand
+            trap. La tendencia ajusta una recta a la serie semanal de las últimas {formatInteger(totalWeeks)} semanas (cada semana pesa por su cantidad de
+            decks) y la prolonga {formatInteger(PROJECTION_WEEKS)} semanas: dice “Sube” o “Baja” cuando eso mueve la cifra más de{' '}
+            {formatInteger(Math.round(TREND_THRESHOLD * 100))} puntos. Con “En {formatInteger(PROJECTION_WEEKS)} semanas” cada carta se ubica en el tier al
+            que va.
           </>
         }
       />
@@ -223,7 +223,7 @@ function TierRow({ tier, cards, view, onOpen }: TierRowProps) {
                 <span className="absolute inset-x-0 bottom-0 bg-black/70 py-0.5 text-center text-micro font-bold text-white tabular-nums">
                   {percent(share)}
                 </span>
-                <TrendArrow trend={stat.trend} size={20} className="absolute right-0 top-0" />
+                <TrendArrow trend={stat.trend} size={32} className="absolute right-0 top-0" />
               </button>
             </li>
           )

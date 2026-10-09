@@ -115,7 +115,7 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
       deckFormat,
       deckName: deck.name,
       text: toYdkText(load.deck.decklist),
-      source: { label: 'YGOPRODeck' },
+      source: { label: 'Decks de torneo' },
     })
     const missing = preview.requestedCardCount - preview.importedCardCount
 

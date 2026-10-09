@@ -22,6 +22,8 @@ interface CardOverlayProps {
   origin?: DOMRect | null
   /** Panel más alto y carta más chica: para el que lleva muchos controles (clasificación). */
   tall?: boolean
+  /** Algo encima de la carta, en la esquina superior derecha (p. ej. la flecha de tendencia del meta). */
+  artOverlay?: ReactNode
   onClose: () => void
   /** Contenido del panel: `CardPanelHeader`, `CardPanelBody` y, si hace falta, `CardPanelFooter`. */
   children: ReactNode
@@ -39,7 +41,7 @@ function flightFrom(card: HTMLElement, origin: DOMRect): string {
  * tocarla, y un panel con su información abajo. Una X blanca arriba a la derecha lo cierra; sólo la
  * carta y el panel interceptan los toques del fondo.
  */
-export function CardOverlay({ ariaLabel, panelLabel, name, card, origin = null, tall = false, onClose, children }: CardOverlayProps) {
+export function CardOverlay({ ariaLabel, panelLabel, name, card, origin = null, tall = false, artOverlay = null, onClose, children }: CardOverlayProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLElement>(null)
@@ -144,7 +146,7 @@ export function CardOverlay({ ariaLabel, panelLabel, name, card, origin = null, 
       >
         <div
           ref={cardRef}
-          className="pointer-events-auto aspect-[421/614] h-(--detail-art-height) max-w-full flex-none cursor-zoom-in overflow-hidden rounded-lg shadow-[0_24px_50px_rgb(0_0_0/0.6),0_0_0_1px_rgb(255_255_255/0.12),0_0_40px_rgb(var(--primary-rgb)/0.3)] transition-[height] duration-(--motion-duration) ease-[cubic-bezier(0.2,0.9,0.25,1)] group-data-[zoomed=true]:h-[min(94dvh,calc((100vw-2rem)*614/421))]"
+          className="pointer-events-auto relative aspect-[421/614] h-(--detail-art-height) max-w-full flex-none cursor-zoom-in overflow-hidden rounded-lg shadow-[0_24px_50px_rgb(0_0_0/0.6),0_0_0_1px_rgb(255_255_255/0.12),0_0_40px_rgb(var(--primary-rgb)/0.3)] transition-[height] duration-(--motion-duration) ease-[cubic-bezier(0.2,0.9,0.25,1)] group-data-[zoomed=true]:h-[min(94dvh,calc((100vw-2rem)*614/421))]"
           role="button"
           tabIndex={-1}
           aria-label={zoomed ? 'Volver al detalle' : 'Ver la carta en grande'}
@@ -160,6 +162,7 @@ export function CardOverlay({ ariaLabel, panelLabel, name, card, origin = null, 
             limitCard={card}
             limitBadgeSize="lg"
           />
+          {artOverlay ? <div className="absolute right-2 top-2 z-1">{artOverlay}</div> : null}
         </div>
         <section
           ref={panelRef}
