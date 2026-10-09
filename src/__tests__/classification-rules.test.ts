@@ -60,7 +60,42 @@ describe('clasificador con las reglas de la carta', () => {
     expect(classifyCard(card({ ygoprodeckId: 2, description: 'Destroy all monsters your opponent controls.' })).roles).toEqual(['boardbreaker'])
 
     rules(R.negate | R.quickFromField)
-    expect(classifyCard(card({ cardType: 'Synchro Monster', frameType: 'synchro', level: 10 })).roles).toEqual(['payoff'])
+    expect(classifyCard(card({ ygoprodeckId: 2, cardType: 'Synchro Monster', frameType: 'synchro', level: 10 })).roles).toEqual(['payoff'])
+  })
+
+  it('el Extra es payoff y, con script, lo que la carta sabe hacer', () => {
+    rules(R.negate | R.quickFromField)
+    expect(classifyCard(card({ cardType: 'Synchro Monster', frameType: 'synchro', level: 10 }))).toEqual({ origin: 'engine', roles: ['payoff', 'disruption'] })
+
+    rules(R.search | R.hitsOpponent)
+    expect(classifyCard(card({ cardType: 'Link Monster', frameType: 'link', level: null, linkValue: 2 })).roles).toEqual(['payoff', 'boardbreaker', 'searcher'])
+  })
+
+  it('starter: el monstruo que saca ventaja al entrar y la magia que invoca; la Quick-Play que invoca es extender', () => {
+    rules(R.starts | R.search)
+    expect(classifyCard(card({}))).toEqual({ origin: 'engine', roles: ['searcher', 'starter'] })
+    expect(classifyCard(card({ cardType: 'Spell Card', frameType: 'spell' })).roles).toEqual(['searcher', 'starter'])
+
+    rules(R.starts)
+    expect(classifyCard(card({ cardType: 'Quick-Play Spell', frameType: 'spell' })).roles).toEqual(['extender'])
+    expect(classifyCard(card({ cardType: 'Trap Card', frameType: 'trap' })).roles).toEqual(['disruption'])
+  })
+
+  it('recovery, payoff del Main, y garnet contra brick', () => {
+    rules(R.recovery)
+    expect(classifyCard(card({ cardType: 'Spell Card', frameType: 'spell' }))).toEqual({ origin: 'engine', roles: ['recovery'] })
+
+    rules(R.quickFromField | R.negate)
+    expect(classifyCard(card({ level: 8 })).roles).toEqual(['disruption', 'payoff'])
+    expect(classifyCard(card({ level: 4 })).roles).toEqual(['disruption'])
+
+    const locked = { level: 8, description: 'Cannot be Normal Summoned/Set. Must be Special Summoned by "Contract with Exodia".' }
+    rules(R.referenced)
+    expect(classifyCard(card(locked))).toEqual({ origin: 'engine', roles: ['garnet'] })
+    rules(0)
+    expect(classifyCard(card(locked)).roles).toEqual(['brick'])
+    rules(R.referenced | R.usesHand | R.selfFromHand)
+    expect(classifyCard(card(locked)).roles).toEqual(['extender'])
   })
 
   it('la lista conocida y tus correcciones siguen mandando', () => {

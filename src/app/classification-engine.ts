@@ -520,9 +520,10 @@ export function classifyCard(
     }
   }
 
-  // Con script, los roles que son reglas puras salen de ahí; el Extra sigue por texto (es todo payoff).
-  const ruleFlags = isExtraDeckMonster(card) ? undefined : getCardRuleFlags(card.ygoprodeckId)
-  const collectedRoles = ruleFlags === undefined ? rolesFromText(card, RULE_SET) : rolesFromRules(card, ruleFlags)
+  // Con script, los roles que son reglas puras salen de ahí; sin script, del texto.
+  const ruleFlags = getCardRuleFlags(card.ygoprodeckId)
+  const collectedRoles =
+    ruleFlags === undefined ? rolesFromText(card, RULE_SET) : isExtraDeckMonster(card) ? rolesForExtraDeck(ruleFlags) : rolesFromRules(card, ruleFlags)
 
   // Rule 10 special: brick only applies if no other roles matched
   if (collectedRoles.includes('brick') && collectedRoles.length > 1) {
@@ -576,8 +577,8 @@ function rolesFromText(card: ApiCardReference, rules: readonly HeuristicRule[]):
   return collectedRoles
 }
 
-/** Reglas que el texto no cubre todavía (etapa 2): recuperación del cementerio y bricks. */
-const TEXT_ONLY_RULES: readonly HeuristicRule[] = [ruleRecovery, ruleBrick]
+/** Lo único que sigue saliendo del texto con script: un monstruo de nivel alto sin más función es un brick. */
+const TEXT_ONLY_RULES: readonly HeuristicRule[] = [ruleBrick]
 
 /**
  * Los roles que las reglas de la carta justifican. Qué hace cada efecto, desde dónde y a quién le pega viene
@@ -611,11 +612,49 @@ function rolesFromRules(card: ApiCardReference, flags: number): CardRole[] {
 
   if (has(CARD_RULE.floodgate)) roles.push('floodgate')
 
+  // Empieza la jugada: un monstruo que al entrar saca ventaja del Deck, o una magia que invoca o fusiona.
+  // Una Quick-Play que invoca es un extender, como ya decía el rol por tipo.
+  if (has(CARD_RULE.starts)) {
+    if (quickPlay) {
+      if (!roles.includes('extender')) roles.push('extender')
+    } else if (monster || isSpellCard(card)) {
+      roles.push('starter')
+    }
+  }
+
+  if (has(CARD_RULE.recovery)) roles.push('recovery')
+
+  // Un jefe del Main: nivel alto con interacción propia en el campo.
+  if (monster && (card.level ?? 0) >= 7 && has(CARD_RULE.quickFromField | CARD_RULE.floodgate | CARD_RULE.negate)) {
+    roles.push('payoff')
+  }
+
+  // No se puede invocar normal y en la mano no hace nada: si otra carta la busca o la invoca es un garnet
+  // (está en el deck para eso, no para robarla); si no, un brick.
+  if (monster && CANNOT_NORMAL_SUMMON.test(card.description ?? '') && !has(CARD_RULE.usesHand)) {
+    roles.push(has(CARD_RULE.referenced) ? 'garnet' : 'brick')
+  }
+
   for (const role of rolesFromText(card, TEXT_ONLY_RULES)) {
     if (!roles.includes(role)) {
       roles.push(role)
     }
   }
+
+  return roles
+}
+
+/** El Extra es todo payoff; con script, además, lo que cada carta sabe hacer. */
+function rolesForExtraDeck(flags: number): CardRole[] {
+  const has = (bit: number) => (flags & bit) !== 0
+  const roles: CardRole[] = ['payoff']
+
+  if (has(CARD_RULE.quickFromField | CARD_RULE.negate)) roles.push('disruption')
+  if (has(CARD_RULE.hitsOpponent | CARD_RULE.givesToOpponent)) roles.push('boardbreaker')
+  if (has(CARD_RULE.floodgate)) roles.push('floodgate')
+  if (has(CARD_RULE.search | CARD_RULE.recruit)) roles.push('searcher')
+  if (has(CARD_RULE.draw)) roles.push('draw')
+  if (has(CARD_RULE.recovery)) roles.push('recovery')
 
   return roles
 }

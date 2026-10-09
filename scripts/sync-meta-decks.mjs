@@ -520,6 +520,7 @@ function readCardScript(scriptsDir, ids) {
  */
 function buildCardRules(rules, scripts, cards, aliases, genericIds) {
   const flagsById = new Map()
+  const listedNamesById = new Map()
 
   for (const dir of CARD_SCRIPT_DIRS) {
     const folder = path.join(scripts.dir, dir)
@@ -528,7 +529,28 @@ function buildCardRules(rules, scripts, cards, aliases, genericIds) {
       const id = Number(/^c(\d+)\.lua$/.exec(file)?.[1])
 
       if (id > 0 && !flagsById.has(id)) {
-        flagsById.set(id, rules.cardRuleFlags(readFileSync(path.join(folder, file), 'utf8')))
+        const lua = readFileSync(path.join(folder, file), 'utf8')
+        flagsById.set(id, rules.cardRuleFlags(lua))
+        listedNamesById.set(id, rules.readCardScript(lua).listedNames)
+      }
+    }
+  }
+
+  // Qué cartas nombra cada script: ids sueltos o constantes (CARD_ALBAZ) de los archivos de utilidades.
+  const constants = new Map()
+
+  for (const file of readdirSync(scripts.dir).filter((name) => name.endsWith('.lua'))) {
+    for (const match of readFileSync(path.join(scripts.dir, file), 'utf8').matchAll(/^(CARD_\w+)\s*=\s*(\d+)/gm)) {
+      constants.set(match[1], Number(match[2]))
+    }
+  }
+
+  for (const [id, listedNames] of listedNamesById) {
+    for (const token of listedNames) {
+      const referencedId = /^\d+$/.test(token) ? Number(token) : constants.get(token)
+
+      if (referencedId !== undefined && referencedId !== id && flagsById.has(referencedId)) {
+        flagsById.set(referencedId, flagsById.get(referencedId) | rules.CARD_RULE.referenced)
       }
     }
   }
