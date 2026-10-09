@@ -164,7 +164,7 @@ El CI (`.github/workflows/ci.yml`) corre `typecheck`, `lint`, `test` y `build` e
 
 ## Requisitos
 
-- Node.js `^20.19.0` o `>=22.12.0` (ver `.nvmrc`) + npm.
+- Node.js `>=22.12.0` (ver `.nvmrc`) + npm.
 
 ## Limitaciones actuales
 
