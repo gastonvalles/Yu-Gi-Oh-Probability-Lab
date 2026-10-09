@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import {
   META_DECKS,
   PROJECTION_WEEKS,
+  TIER_FLOORS,
   TREND_THRESHOLD,
   buildMetaReport,
   countCopies,
@@ -30,7 +31,7 @@ import { field, filterChip } from '../ui/surfaces'
 import { HandtrapModal } from './HandtrapModal'
 import { MetaDeckModal } from './MetaDeckModal'
 import { TrendArrow } from './TrendArrow'
-import { TIER_ORDER, formatMetaDate, percent, tierColor, tierHint, tierLabel } from './meta-format'
+import { TIER_ORDER, formatMetaDate, formatMetaDateFull, percent, tierColor, tierHint, tierLabel } from './meta-format'
 
 type WindowWeeks = '2' | '4' | '8'
 type BoardView = 'now' | 'projected'
@@ -89,13 +90,38 @@ export function MetaScreen() {
         icon="chart"
         subtitle="Qué se juega en los decks de torneo y hacia dónde va."
         help={
-          <>
-            Las listas de torneo (tops de YCS, regionales y similares) se actualizan una vez por día y se cuenta en cuántos Main y Side aparece cada hand
-            trap. La tendencia ajusta una recta a la serie semanal de las últimas {formatInteger(totalWeeks)} semanas (cada semana pesa por su cantidad de
-            decks) y la prolonga {formatInteger(PROJECTION_WEEKS)} semanas: dice “Sube” o “Baja” cuando eso mueve la cifra más de{' '}
-            {formatInteger(Math.round(TREND_THRESHOLD * 100))} puntos. Con “En {formatInteger(PROJECTION_WEEKS)} semanas” cada carta se ubica en el tier al
-            que va.
-          </>
+          <div className="grid gap-3">
+            <div className="grid gap-1">
+              <strong className="text-foreground">Cómo se arma el tier list</strong>
+              <ul className="m-0 grid list-disc gap-1 pl-4">
+                <li>Se miran los decks que llegaron al top de torneos (YCS, regionales y similares). Se actualizan todos los días.</li>
+                <li>Cada hand trap se mide por el porcentaje de esos decks que la llevan en el Main o en el Side.</li>
+                <li>
+                  {TIER_FLOORS.map(([tier, floor]) => `${tierLabel(tier)}: al menos el ${percent(floor)}`).join(' · ')} · {tierLabel('D')}: menos del{' '}
+                  {percent(TIER_FLOORS.at(-1)?.[1] ?? 0)}.
+                </li>
+              </ul>
+            </div>
+            <div className="grid gap-1">
+              <strong className="text-foreground">Cómo se predice</strong>
+              <ul className="m-0 grid list-disc gap-1 pl-4">
+                <li>
+                  Se mira cómo cambió ese porcentaje semana a semana en las últimas {formatInteger(totalWeeks)} semanas y se sigue esa línea{' '}
+                  {formatInteger(PROJECTION_WEEKS)} semanas más.
+                </li>
+                <li>
+                  Si la cifra proyectada sube más de {formatInteger(Math.round(TREND_THRESHOLD * 100))} puntos dice “Sube”; si baja más de{' '}
+                  {formatInteger(Math.round(TREND_THRESHOLD * 100))}, “Baja”; si no, “Estable”.
+                </li>
+                <li>“En {formatInteger(PROJECTION_WEEKS)} sem.” muestra el tier list como quedaría si esa tendencia sigue igual.</li>
+              </ul>
+            </div>
+          </div>
+        }
+        side={
+          <Badge icon="refresh" title="Fecha de la última actualización de los decks">
+            Actualizado el {formatMetaDateFull(META_DECKS.fetchedAt)}
+          </Badge>
         }
       />
 
@@ -103,7 +129,7 @@ export function MetaScreen() {
         <SectionHeader
           icon="hand"
           title="Tier list"
-          description={`${formatInteger(report.deckCount)} decks de las últimas ${weeks} semanas, al ${formatMetaDate(META_DECKS.fetchedAt)}. Tocá una carta para ver el detalle.`}
+          description={`${formatInteger(report.deckCount)} decks de las últimas ${weeks} semanas. Tocá una carta para ver el detalle.`}
           actions={
             // En mobile cada control ocupa una fila a todo el ancho; en pantallas grandes van en línea.
             <div className="grid w-full gap-2 min-[1101px]:flex min-[1101px]:w-auto min-[1101px]:flex-wrap min-[1101px]:items-center">
