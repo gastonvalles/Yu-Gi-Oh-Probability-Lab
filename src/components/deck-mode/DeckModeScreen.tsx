@@ -6,6 +6,7 @@ import { curatePatterns } from '../../app/pattern-curation'
 import { buildActiveRuleSet } from '../../app/pattern-presets'
 import { CardDetailModal } from '../card-detail/CardDetailModal'
 import { DeckBuilderStep } from './DeckBuilderStep'
+import { LifeCalculatorFab } from '../life/LifeCalculatorFab'
 import { cx } from '../ui/cx'
 import { DraggableFab } from '../ui/DraggableFab'
 import { Icon } from '../ui/Icon'
@@ -23,7 +24,6 @@ import {
   LazyComparisonScreen,
   LazyDeckRolesPanel,
   LazyExportDeckPanel,
-  LazyLifeCalculatorScreen,
   LazyMetaScreen,
   LazyPracticeSection,
   LazyProbabilityPanel,
@@ -40,7 +40,6 @@ const WORKFLOW_STEP_ORDER: DeckWorkflowStepKey[] = [
   'workspace',
   'export',
   'meta',
-  'life',
 ]
 
 type StepNavigationDirection = 'forward' | 'back'
@@ -112,8 +111,6 @@ export function DeckModeScreen() {
   })
   const isDeckBuilderStep = activeStep === 'deck-builder'
   const isCategorizationStep = activeStep === 'categorization'
-  // Pasos que ocupan la pantalla entera sin scroll de página.
-  const isFullHeightStep = isCategorizationStep || activeStep === 'life'
   // Con el deck quieto se deja calculado el Lab de fondo: al abrirlo el resultado ya está.
   useLabPrewarm({ ...controller.probability, enabled: activeStep !== 'probability-lab' })
   const contentScrollRef = useRef<HTMLDivElement>(null)
@@ -210,7 +207,7 @@ export function DeckModeScreen() {
   const deckBuilderStep = controller.deckBuilderStep
   const navigation = (
     <DeckModeNavigation
-      items={navigationItems.filter((item) => !item.mobileOnly)}
+      items={navigationItems}
       activeStep={activeStep}
       onStepChange={handleStepChange}
     />
@@ -234,9 +231,7 @@ export function DeckModeScreen() {
     <section
       className={cx(
         'grid content-start',
-        isFullHeightStep ? 'h-full min-h-0' : 'min-h-full min-[1101px]:h-full min-[1101px]:min-h-0',
-        // En escritorio la calculadora llena la fila (una fila "auto" no le daría altura a su h-full).
-        activeStep === 'life' && 'min-[1101px]:grid-rows-[minmax(0,1fr)]',
+        isCategorizationStep ? 'h-full min-h-0' : 'min-h-full min-[1101px]:h-full min-[1101px]:min-h-0',
       )}
     >
       {activeStep === 'categorization' ? (
@@ -268,12 +263,6 @@ export function DeckModeScreen() {
           <LazyMetaScreen />
         </div>
       ) : null}
-
-      {activeStep === 'life' ? (
-        <div id="life" className="min-w-0 min-[1101px]:h-full">
-          <LazyLifeCalculatorScreen />
-        </div>
-      ) : null}
     </section>
   )
   const mainContent = (
@@ -281,9 +270,8 @@ export function DeckModeScreen() {
       key={activeStep}
       className={cx(
         'min-w-0 motion-reduce:animate-none',
-        // La calculadora de LP es una capa fija a pantalla completa: un ancestro animado (transform) la posicionaría mal.
-        activeStep === 'life' ? '' : stepDirection === 'back' ? 'animate-step-back' : 'animate-step-forward',
-        isDeckBuilderStep || isFullHeightStep ? 'h-full min-h-0' : 'min-h-full',
+        stepDirection === 'back' ? 'animate-step-back' : 'animate-step-forward',
+        isDeckBuilderStep || isCategorizationStep ? 'h-full min-h-0' : 'min-h-full',
       )}
     >
       <Suspense fallback={null}>{stepContent}</Suspense>
@@ -323,8 +311,8 @@ export function DeckModeScreen() {
         />
       ) : null}
 
-      {/* Global Practice FAB (la calculadora de LP ocupa toda la pantalla: ahí no va) */}
-      {mainDeckCount > 0 && activeStep !== 'life' ? (
+      {/* Global Practice FAB */}
+      {mainDeckCount > 0 ? (
         <PracticeFab
           isOpen={globalPracticeOpen}
           onOpen={() => setGlobalPracticeOpen(true)}
@@ -337,6 +325,9 @@ export function DeckModeScreen() {
           hasCompletedClassification={hasCompletedRoleStep}
         />
       ) : null}
+
+      {/* Calculadora de LP (sólo celular): botón flotante que la abre encima de cualquier pantalla. */}
+      <LifeCalculatorFab />
     </>
   )
 }

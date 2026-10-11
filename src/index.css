@@ -75,9 +75,11 @@
   --animate-drawer-enter: drawer-enter 150ms ease-out both;
   --animate-pop: pop var(--motion-duration) cubic-bezier(0.2, 1.3, 0.4, 1) both;
   /* El resultado de la moneda o el dado aparece cuando terminan de girar. */
-  --animate-reveal: pop var(--motion-duration) cubic-bezier(0.2, 1.3, 0.4, 1) 1.05s both;
-  --animate-coin-flip: coin-flip 1.1s cubic-bezier(0.2, 0.8, 0.3, 1) both;
-  --animate-die-roll: die-roll 1.15s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  --animate-reveal: pop var(--motion-duration) cubic-bezier(0.2, 1.3, 0.4, 1) 1.4s both;
+  --animate-toss-hop: toss-hop 1.4s linear both;
+  --animate-toss-shadow: toss-shadow 1.4s linear both;
+  --animate-coin-spin: coin-spin 1.4s cubic-bezier(0.15, 0.75, 0.3, 1) both;
+  --animate-die-spin: die-spin 1.4s cubic-bezier(0.15, 0.75, 0.3, 1) both;
   --animate-rule-in: rule-in var(--motion-duration) cubic-bezier(0.2, 1.3, 0.4, 1) both;
   --animate-sheet-up: sheet-up var(--motion-duration) ease-out both;
   --animate-sheet-in: sheet-in var(--motion-duration) ease-out both;
@@ -122,33 +124,83 @@
     }
   }
 
-  /* Moneda: salta y gira sobre su eje hasta caer del lado que salió (--coin-turns lo pone cada tirada). */
-  @keyframes coin-flip {
+  /* Moneda y dado: el salto va aparte del giro. Sube rápido y baja acelerando, con un segundo pique corto. */
+  @keyframes toss-hop {
     0% {
-      transform: translateY(0) rotateY(0deg);
-    }
-
-    50% {
-      transform: translateY(-2.5rem) rotateY(calc(var(--coin-turns) / 2));
-    }
-
-    100% {
-      transform: translateY(0) rotateY(var(--coin-turns));
-    }
-  }
-
-  /* Dado: salta y gira en dos ejes hasta quedar con la cara que salió al frente (--die-x y --die-y). */
-  @keyframes die-roll {
-    0% {
-      transform: translateY(0) rotateX(0deg) rotateY(0deg);
+      transform: translateY(0);
+      animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
     }
 
     45% {
-      transform: translateY(-2rem) rotateX(calc(var(--die-x) / 2)) rotateY(calc(var(--die-y) / 2));
+      transform: translateY(-4rem);
+      animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.5);
+    }
+
+    72% {
+      transform: translateY(0);
+      animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+    }
+
+    86% {
+      transform: translateY(-0.9rem);
+      animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.5);
     }
 
     100% {
-      transform: translateY(0) rotateX(var(--die-x)) rotateY(var(--die-y));
+      transform: translateY(0);
+    }
+  }
+
+  /* La sombra en el piso se achica mientras la moneda o el dado están en el aire. */
+  @keyframes toss-shadow {
+    0% {
+      transform: scale(1);
+      opacity: 0.55;
+      animation-timing-function: ease-out;
+    }
+
+    45% {
+      transform: scale(0.5);
+      opacity: 0.2;
+      animation-timing-function: ease-in;
+    }
+
+    72% {
+      transform: scale(1);
+      opacity: 0.55;
+      animation-timing-function: ease-out;
+    }
+
+    86% {
+      transform: scale(0.85);
+      opacity: 0.4;
+      animation-timing-function: ease-in;
+    }
+
+    100% {
+      transform: scale(1);
+      opacity: 0.55;
+    }
+  }
+
+  /* El giro es un solo tramo que frena suave hasta el resultado (--coin-turns, --die-x y --die-y los pone cada tirada). */
+  @keyframes coin-spin {
+    from {
+      transform: rotateY(0deg);
+    }
+
+    to {
+      transform: rotateY(var(--coin-turns));
+    }
+  }
+
+  @keyframes die-spin {
+    from {
+      transform: rotateX(0deg) rotateY(0deg);
+    }
+
+    to {
+      transform: rotateX(var(--die-x)) rotateY(var(--die-y));
     }
   }
 

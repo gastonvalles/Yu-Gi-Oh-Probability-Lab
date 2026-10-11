@@ -49,7 +49,7 @@ export function MobileBottomStepNav({ items, activeStep, onStepChange }: MobileB
             className={cx('transition-colors duration-150 [--icon-cut:var(--lavender)]', isActive ? 'text-success drop-shadow-[0_0_8px_rgb(var(--success-rgb)/0.55)]' : 'text-primary-soft/55 group-hover:text-primary-soft')}
           />
         </span>
-        <span className={cx('min-w-0 whitespace-nowrap text-center text-micro max-[400px]:text-[0.625rem]', isActive ? 'font-semibold text-success' : 'font-medium text-soft')}>{item.label}</span>
+        <span className={cx('min-w-0 whitespace-nowrap text-center text-micro', isActive ? 'font-semibold text-success' : 'font-medium text-soft')}>{item.label}</span>
       </button>
     )
   }
