@@ -1,6 +1,5 @@
 import type { DeckCardInstance, DeckZone } from './model'
 import type { ApiCardReference } from '../types'
-import { formatInteger } from './utils'
 
 type DeckZoneTypeKind = 'monster' | 'spell' | 'trap' | 'fusion' | 'synchro' | 'xyz' | 'link'
 
@@ -69,10 +68,3 @@ export function buildDeckZoneTypeCounts(zone: DeckZone, cards: DeckCardInstance[
     ] as const
   ).filter((entry) => entry.count > 0)
 }
-
-export function buildDeckZoneBreakdown(zone: DeckZone, cards: DeckCardInstance[]): string {
-  return buildDeckZoneTypeCounts(zone, cards)
-    .map((entry) => `${formatInteger(entry.count)} ${entry.label}`)
-    .join(' · ')
-}
-

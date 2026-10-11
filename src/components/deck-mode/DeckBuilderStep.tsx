@@ -419,19 +419,6 @@ export function DeckBuilderStep({
         title="Armá tu deck"
         icon="cards"
         help="Agregá cartas desde el buscador. Tocá una carta del deck para ver el detalle y sumar o quitar copias; para moverla entre Main, Extra y Side, mantenela presionada y arrastrala."
-        trailing={
-          <>
-            <IconButton tone="ghost" size="md" aria-label="Importar" title="Importar" onClick={() => setImportDrawerOpen(true)}>
-              <Icon name="upload" size={20} />
-            </IconButton>
-            <IconButton tone="ghost" size="md" aria-label="Ordenar todo" title="Ordenar todo" disabled={totalDeckCardCount < 2} className="disabled:opacity-35" onClick={onSortAllDeckZones}>
-              <Icon name="sort" size={20} />
-            </IconButton>
-            <IconButton tone="ghost" size="md" aria-label="Vaciar todo" title="Vaciar todo" disabled={totalDeckCardCount === 0} className="disabled:opacity-35" onClick={handleRequestClearAllDeckZones}>
-              <Icon name="trash" size={20} />
-            </IconButton>
-          </>
-        }
         sideVariant="form"
         side={
           <>
@@ -460,6 +447,18 @@ export function DeckBuilderStep({
                 <option value="genesys">Genesys</option>
               </select>
             </LabeledField>
+            {/* Debajo del nombre y el formato: tres íconos con su nombre en el tooltip y en lectores de pantalla. */}
+            <div className="col-span-2 flex items-center">
+            <IconButton tone="ghost" size="md" aria-label="Importar" title="Importar" onClick={() => setImportDrawerOpen(true)}>
+              <Icon name="upload" size={20} />
+            </IconButton>
+            <IconButton tone="ghost" size="md" aria-label="Ordenar todo" title="Ordenar todo" disabled={totalDeckCardCount < 2} className="disabled:opacity-35" onClick={onSortAllDeckZones}>
+              <Icon name="sort" size={20} />
+            </IconButton>
+            <IconButton tone="ghost" size="md" aria-label="Vaciar todo" title="Vaciar todo" disabled={totalDeckCardCount === 0} className="disabled:opacity-35" onClick={handleRequestClearAllDeckZones}>
+              <Icon name="trash" size={20} />
+            </IconButton>
+            </div>
           </>
         }
       />
