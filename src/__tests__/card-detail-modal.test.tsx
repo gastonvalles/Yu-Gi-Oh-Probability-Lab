@@ -111,13 +111,15 @@ describe('detalle compartido de cartas', () => {
     opener.focus()
     const { unmount } = render(modal())
     const text = screen.getByRole('region', { name: 'Efecto' })
-    // La X va última en el orden de tabulación: primero el contenido, después el cierre.
+    // Orden de tabulación: la moneda de precios (sobre la carta), el contenido y, última, la X. Al abrir el foco queda en el texto.
+    const firstButton = screen.getByRole('button', { name: 'Ver precios en TCGplayer' })
     const lastButton = screen.getByRole('button', { name: 'Cerrar' })
     expect(text).toHaveFocus()
-    fireEvent.keyDown(text, { key: 'Tab', shiftKey: true })
+    firstButton.focus()
+    fireEvent.keyDown(firstButton, { key: 'Tab', shiftKey: true })
     expect(lastButton).toHaveFocus()
     fireEvent.keyDown(lastButton, { key: 'Tab' })
-    expect(text).toHaveFocus()
+    expect(firstButton).toHaveFocus()
     unmount()
     expect(opener).toHaveFocus()
     opener.remove()

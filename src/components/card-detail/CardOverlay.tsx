@@ -24,6 +24,8 @@ interface CardOverlayProps {
   tall?: boolean
   /** Algo encima de la carta, en la esquina superior derecha (p. ej. la flecha de tendencia del meta). */
   artOverlay?: ReactNode
+  /** Algo encima de la carta, en la esquina inferior derecha (p. ej. el botón de precios). */
+  artCorner?: ReactNode
   onClose: () => void
   /** Contenido del panel: `CardPanelHeader`, `CardPanelBody` y, si hace falta, `CardPanelFooter`. */
   children: ReactNode
@@ -41,7 +43,7 @@ function flightFrom(card: HTMLElement, origin: DOMRect): string {
  * tocarla, y un panel con su información abajo. Una X blanca arriba a la derecha lo cierra; sólo la
  * carta y el panel interceptan los toques del fondo.
  */
-export function CardOverlay({ ariaLabel, panelLabel, name, card, origin = null, tall = false, artOverlay = null, onClose, children }: CardOverlayProps) {
+export function CardOverlay({ ariaLabel, panelLabel, name, card, origin = null, tall = false, artOverlay = null, artCorner = null, onClose, children }: CardOverlayProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLElement>(null)
@@ -163,6 +165,7 @@ export function CardOverlay({ ariaLabel, panelLabel, name, card, origin = null, 
             limitBadgeSize="lg"
           />
           {artOverlay ? <div className="absolute right-2 top-2 z-1">{artOverlay}</div> : null}
+          {artCorner ? <div className="absolute bottom-2 right-2 z-1">{artCorner}</div> : null}
         </div>
         <section
           ref={panelRef}

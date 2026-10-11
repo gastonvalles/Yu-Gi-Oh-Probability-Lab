@@ -55,6 +55,8 @@ interface ModalProps {
   hideCloseButton?: boolean
   /** false = sólo se cierra con un botón propio (avisos que requieren confirmación). */
   dismissible?: boolean
+  /** Por encima del detalle de carta y de su zoom: para lo que se abre desde ahí. */
+  above?: boolean
   role?: 'dialog' | 'alertdialog'
   ariaLabel?: string
   /** Botón de cerrar flotante (sin encabezado): `flat` es el blanco y grande de la práctica. */
@@ -84,6 +86,7 @@ export function Modal({
   flush = false,
   hideCloseButton = false,
   dismissible = true,
+  above = false,
   role = 'dialog',
   ariaLabel,
   closeTone = 'close',
@@ -107,7 +110,7 @@ export function Modal({
 
   return createPortal(
     <div
-      className={cx('fixed inset-0 z-180 grid place-items-center overscroll-contain bg-background/80 p-2 sm:p-4', size === 'sheet' && 'max-sm:place-items-end max-sm:p-0', size === 'screen' && 'max-[1100px]:p-0!')}
+      className={cx('fixed inset-0 grid place-items-center overscroll-contain bg-background/80 p-2 sm:p-4', above ? 'z-260' : 'z-180', size === 'sheet' && 'max-sm:place-items-end max-sm:p-0', size === 'screen' && 'max-[1100px]:p-0!')}
       onClick={dismissible ? onClose : undefined}
     >
       <div
