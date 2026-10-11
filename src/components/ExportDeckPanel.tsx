@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 
-import { DECK_EXPORT_FILES, describeExportSelection, type DeckExportSelection } from '../app/deck-image-export'
+import { DECK_EXPORT_FILES, describeExportSelection, downloadYdk, type DeckExportSelection } from '../app/deck-image-export'
 import { canvasToJpegBlob } from '../app/deck-image-export-download'
 import { renderDeckAsCanvas } from '../app/deck-image-export-render'
 import { buildKdeDecklistSections } from '../app/kde-decklist'
 import type { DeckBuilderState } from '../app/model'
+import { useToastMessage } from '../app/use-toast-message'
+import { buildYdkeUrl } from '../app/ydke'
 import type { DeckFormat } from '../types'
 import { StepHero } from './StepHero'
 import { StepPage } from './ui/StepPage'
@@ -30,6 +32,16 @@ const PREVIEW_SCALE = 1
 const PREVIEW_QUALITY = 0.8
 const SELECTION_KEY = 'ygo-lab:export-selection'
 const DEFAULT_SELECTION: DeckExportSelection = { image: true, pdf: true, ydk: true }
+
+/** Neuron no abre archivos: el deck entra por la base de datos oficial de Konami con esta extensión de la comunidad. */
+const EXTENSION_LINKS = [
+  { label: 'Chrome', href: 'https://chromewebstore.google.com/detail/deck-transfer-for-yu-gi-o/lgcpomfflpfipndmldmgblhpbnnfidgk' },
+  { label: 'Firefox', href: 'https://addons.mozilla.org/firefox/addon/deck-transfer-for-master-duel/' },
+  { label: 'Código fuente', href: 'https://github.com/DawnbrandBots/deck-transfer-for-master-duel' },
+]
+const KONAMI_DB_URL = 'https://www.db.yugioh-card.com/yugiohdb/?request_locale=en'
+const STEP = 'grid content-start gap-2 rounded-card bg-tint/5 p-3'
+const LINK = 'font-semibold text-primary-soft underline-offset-2 hover:underline'
 
 /** Lo que se tildó la última vez: una comodidad, si no se puede leer se vuelve a todo tildado. */
 function readSelection(): DeckExportSelection {
@@ -64,6 +76,7 @@ export function ExportDeckPanel({
   const [selection, setSelection] = useState<DeckExportSelection>(readSelection)
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
   const [previewState, setPreviewState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const { showToast } = useToastMessage()
   const selectedCount = DECK_EXPORT_FILES.filter((file) => selection[file.key]).length
   const decklistSections = useMemo(() => {
     const sections = buildKdeDecklistSections(deckBuilder)
@@ -88,6 +101,15 @@ export function ExportDeckPanel({
       // El controller maneja el toast de error.
     } finally {
       setBusy(false)
+    }
+  }
+
+  const copyYdke = async () => {
+    try {
+      await navigator.clipboard.writeText(buildYdkeUrl(deckBuilder))
+      showToast('Link YDKE copiado. Pegalo con el botón de importar de la extensión.', 'success')
+    } catch {
+      showToast('No pude copiar el link. Descargá el .ydk y usá ese archivo.', 'error')
     }
   }
 
@@ -229,6 +251,55 @@ export function ExportDeckPanel({
           </div>
         </article>
       </section>
+
+      {/* Neuron no importa archivos ni links: el deck entra por la base de datos oficial, con una extensión del navegador. */}
+      <Card as="section" padding="md" aria-label="Llevar el deck a Neuron" className="grid gap-4">
+        <SectionHeader
+          icon="upload"
+          title="Llevar el deck a Neuron"
+          description="Neuron no abre archivos: el deck entra por la base de datos oficial de Konami con una extensión gratuita del navegador. Tres pasos, desde una computadora."
+        />
+        <ol className="m-0 grid list-none gap-3 p-0 min-[700px]:grid-cols-3">
+          <li className={STEP}>
+            <span className={overline}>Paso 1</span>
+            <strong className="text-body font-semibold text-foreground">Instalá la extensión "Deck transfer for Yu-Gi-Oh! Master Duel and Neuron"</strong>
+            <p className="m-0 text-micro text-muted">Gratis, para Chrome o Firefox de escritorio (en Android, Firefox).</p>
+            <p className="m-0 flex flex-wrap gap-x-3 gap-y-1 text-body">
+              {EXTENSION_LINKS.map((link) => (
+                <a key={link.href} href={link.href} target="_blank" rel="noreferrer" className={LINK}>
+                  {link.label}
+                </a>
+              ))}
+            </p>
+          </li>
+          <li className={STEP}>
+            <span className={overline}>Paso 2</span>
+            <strong className="text-body font-semibold text-foreground">Copiá el deck</strong>
+            <p className="m-0 text-micro text-muted">La extensión acepta el link YDKE o el archivo .ydk, cualquiera de los dos.</p>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" icon="link" disabled={mainDeckCount === 0} onClick={() => void copyYdke()}>
+                Copiar link YDKE
+              </Button>
+              <Button size="sm" variant="tertiary" icon="download" disabled={mainDeckCount === 0} onClick={() => downloadYdk(deckBuilder)}>
+                Descargar .ydk
+              </Button>
+            </div>
+          </li>
+          <li className={STEP}>
+            <span className={overline}>Paso 3</span>
+            <strong className="text-body font-semibold text-foreground">Importalo en la base de datos oficial</strong>
+            <p className="m-0 text-micro text-muted">
+              Entrá con el mismo KONAMI ID que usás en Neuron, abrí "My Deck", creá un deck y usá el botón de importar que agrega la extensión. Al guardarlo, en Neuron
+              aparece entre tus decks.
+            </p>
+            <p className="m-0 text-body">
+              <a href={KONAMI_DB_URL} target="_blank" rel="noreferrer" className={LINK}>
+                Abrir la base de datos oficial
+              </a>
+            </p>
+          </li>
+        </ol>
+      </Card>
     </StepPage>
   )
 }

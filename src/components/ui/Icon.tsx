@@ -54,6 +54,14 @@ const PATHS = {
       <circle data-cut cx="15.5" cy="15.5" r="1" />
     </>
   ),
+  timer: (
+    <>
+      <circle data-fill cx="12" cy="13.5" r="7.5" />
+      <path data-cut d="M12 10.5v3.2l2.2 1.4" />
+      <path d="M9.5 2.5h5" />
+      <path d="M12 2.5v3.5" />
+    </>
+  ),
   columns: (
     <>
       <rect data-fill x="3" y="4" width="7.5" height="16" rx="2.2" />

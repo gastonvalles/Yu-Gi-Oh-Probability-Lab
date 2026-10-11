@@ -4,11 +4,13 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   LIFE_STORAGE_KEY,
   MAX_LP,
+  ROUND_LIMIT_MS,
   createLifeState,
   formatClock,
   lifeReducer,
   readLifeState,
   timerElapsed,
+  timerRemaining,
   writeLifeState,
   type LifeState,
 } from '../app/life-calculator'
@@ -54,7 +56,9 @@ describe('calculadora de LP', () => {
     expect(run(odd, { type: 'halve', player: 0, now: 0 }).lp[0]).toBe(2002)
   })
 
-  it('el reloj acumula entre pausas y el reinicio vuelve todo a cero', () => {
+  it('la ronda cuenta 50 minutos para atrás y acumula entre pausas', () => {
+    expect(ROUND_LIMIT_MS).toBe(50 * 60 * 1000)
+
     const paused = run(createLifeState(), { type: 'timer-toggle', now: 0 }, { type: 'timer-toggle', now: 5000 })
 
     expect(paused.timer).toEqual({ running: false, startedAt: 0, elapsedMs: 5000 })
@@ -63,7 +67,17 @@ describe('calculadora de LP', () => {
     const resumed = run(paused, { type: 'timer-toggle', now: 10_000 })
 
     expect(timerElapsed(resumed.timer, 12_500)).toBe(7500)
-    expect(run(resumed, { type: 'change', player: 0, delta: -100, now: 0 }, { type: 'reset' })).toEqual(createLifeState())
+    expect(timerRemaining(resumed.timer, 12_500)).toBe(ROUND_LIMIT_MS - 7500)
+    // Pasado el límite no queda tiempo negativo.
+    expect(timerRemaining(resumed.timer, 10_000 + ROUND_LIMIT_MS + 1)).toBe(0)
+  })
+
+  it('reiniciar el duelo deja el reloj como está; el reloj se reinicia aparte', () => {
+    const state = run(createLifeState(), { type: 'timer-toggle', now: 0 }, { type: 'change', player: 0, delta: -100, now: 0 })
+
+    expect(run(state, { type: 'reset' })).toEqual({ ...createLifeState(), timer: state.timer })
+    expect(run(state, { type: 'timer-reset' }).timer).toEqual(createLifeState().timer)
+    expect(run(state, { type: 'timer-reset' }).lp).toEqual([7900, 8000])
   })
 
   it('formatea mm:ss y, pasada la hora, h:mm:ss', () => {

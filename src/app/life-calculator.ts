@@ -9,8 +9,8 @@ export const STARTING_LP = 8000
 /** Tope por si alguien suma de más: que el número no rompa el layout. */
 export const MAX_LP = 999_999
 export const LIFE_STORAGE_KEY = 'ygo-lab:life-calculator'
-/** Lo que dura una ronda de torneo: el reloj avisa cuando se pasa. */
-export const ROUND_LIMIT_MS = 40 * 60 * 1000
+/** Lo que dura una ronda de torneo: el reloj cuenta para atrás desde acá y suena al llegar a cero. */
+export const ROUND_LIMIT_MS = 50 * 60 * 1000
 export const DUELIST_NAMES = ['Duelista 1', 'Duelista 2'] as const
 
 export type Duelist = 0 | 1
@@ -44,6 +44,7 @@ export type LifeAction =
   | { type: 'halve'; player: Duelist; now: number }
   | { type: 'undo' }
   | { type: 'reset' }
+  | { type: 'timer-reset' }
   | { type: 'timer-toggle'; now: number }
 
 export function createLifeState(): LifeState {
@@ -52,6 +53,11 @@ export function createLifeState(): LifeState {
 
 export function timerElapsed(timer: LifeTimer, now: number): number {
   return timer.elapsedMs + (timer.running ? Math.max(0, now - timer.startedAt) : 0)
+}
+
+/** Lo que falta de la ronda (nunca menos de 0). */
+export function timerRemaining(timer: LifeTimer, now: number): number {
+  return Math.max(0, ROUND_LIMIT_MS - timerElapsed(timer, now))
 }
 
 /** mm:ss; pasada la hora, h:mm:ss. */
@@ -98,7 +104,10 @@ export function lifeReducer(state: LifeState, action: LifeAction): LifeState {
       return { ...state, lp, log: state.log.slice(0, -1) }
     }
     case 'reset':
-      return createLifeState()
+      // Nuevo juego del mismo match: el reloj de la ronda sigue.
+      return { ...createLifeState(), timer: state.timer }
+    case 'timer-reset':
+      return { ...state, timer: createLifeState().timer }
     case 'timer-toggle':
       return {
         ...state,
