@@ -20,7 +20,7 @@ interface DraggableFabProps {
  * más cercano; un toque sin arrastrar lo activa. Recuerda la posición entre visitas.
  */
 export function DraggableFab({ label, storageKey, onClick, children, corner, lift }: DraggableFabProps) {
-  const { position, dragging, handlers, consumeDragClick } = useDraggablePosition({ storageKey, size: FAB_SIZE, corner, lift })
+  const { position, dragging, handlers, consumeDragClick } = useDraggablePosition({ storageKey, size: FAB_SIZE, corner, lift, group: 'fab' })
 
   return (
     <button

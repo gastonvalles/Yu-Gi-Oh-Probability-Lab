@@ -9,17 +9,44 @@ import {
   type LifeAction,
   type LifeState,
 } from './life-calculator'
-import { showToastMessage } from './use-toast-message'
+import { showToastMessage, type ToastTone } from './use-toast-message'
 
 /**
- * Un solo duelo para toda la app: la calculadora lo edita y la pestaña LP muestra el reloj de la
- * ronda en cualquier pantalla mientras corre. Vive fuera de React (como la mascota) y se guarda
+ * Un solo duelo para toda la app: la calculadora lo edita y el botón flotante muestra el reloj de
+ * la ronda en cualquier pantalla mientras corre. Vive fuera de React (como la mascota) y se guarda
  * en el dispositivo en cada cambio.
  */
 let state: LifeState = readLifeState()
 const listeners = new Set<() => void>()
-let alarm: ReturnType<typeof setTimeout> | null = null
+let alarms: ReturnType<typeof setTimeout>[] = []
+/** Al llegar a cero, la alarma se repite cada tanto hasta que se reinicia el reloj. */
+let endAlarm: ReturnType<typeof setInterval> | null = null
+const END_ALARM_EVERY_MS = 3000
 let audio: AudioContext | null = null
+
+export type RoundCue = 'ten' | 'five' | 'end'
+
+interface CueSpec {
+  /** Tonos: frecuencia (Hz) y duración (s), uno tras otro. */
+  tones: ReadonlyArray<readonly [number, number]>
+  gap: number
+  gain: number
+  vibrate: number[]
+  message: string
+  tone: ToastTone
+}
+
+/** Los tres avisos de la ronda: dos toques a los 10 minutos, tres en subida a los 5, y la alarma al llegar a cero. */
+export const ROUND_CUES: Record<RoundCue, CueSpec> = {
+  ten: { tones: [[660, 0.18], [660, 0.18]], gap: 0.12, gain: 0.18, vibrate: [150, 100, 150], message: 'Quedan 10 minutos de ronda', tone: 'info' },
+  five: { tones: [[660, 0.16], [784, 0.16], [988, 0.22]], gap: 0.1, gain: 0.22, vibrate: [150, 100, 150, 100, 150], message: 'Quedan 5 minutos de ronda', tone: 'warning' },
+  end: { tones: [[880, 0.35], [1175, 0.35], [880, 0.35], [1175, 0.35]], gap: 0.1, gain: 0.25, vibrate: [300, 150, 300, 150, 600], message: 'Se terminó el tiempo de la ronda', tone: 'warning' },
+}
+/** A cuánto del final suena cada aviso previo. */
+const CUE_BEFORE_END_MS: ReadonlyArray<readonly [RoundCue, number]> = [
+  ['ten', 10 * 60 * 1000],
+  ['five', 5 * 60 * 1000],
+]
 
 export function getLifeState(): LifeState {
   return state
@@ -46,7 +73,8 @@ export function dispatchLife(action: LifeAction): void {
   writeLifeState(next)
 
   if (timerChanged) {
-    armAlarm()
+    stopEndAlarm()
+    armAlarms()
   }
 
   for (const listener of listeners) {
@@ -90,7 +118,7 @@ export function useRoundCountdownLabel(): string | null {
   return timer.running ? formatClock(timerRemaining(timer, now)) : null
 }
 
-/** El audio se desbloquea con un toque (iOS lo exige): así la alarma puede sonar sola cuando se acaba la ronda. */
+/** El audio se desbloquea con un toque (iOS lo exige): así los avisos pueden sonar solos durante la ronda. */
 export function unlockAudio(): void {
   if (typeof AudioContext === 'undefined') {
     return
@@ -100,36 +128,59 @@ export function unlockAudio(): void {
   void audio.resume()
 }
 
-/** Cuatro pitidos alternados, sin archivos de sonido. */
-function playAlarm(): void {
-  if (!audio) {
-    return
+/** Sonido, vibración y aviso de uno de los tres momentos de la ronda (también sirve para probarlos). */
+export function playCue(kind: RoundCue): void {
+  soundCue(kind)
+  showToastMessage(ROUND_CUES[kind].message, ROUND_CUES[kind].tone)
+}
+
+/** Sólo el sonido y la vibración (la alarma final los repite sin volver a avisar). */
+function soundCue(kind: RoundCue): void {
+  const cue = ROUND_CUES[kind]
+
+  if (audio) {
+    let at = audio.currentTime + 0.02
+
+    for (const [frequency, duration] of cue.tones) {
+      const oscillator = audio.createOscillator()
+      const gain = audio.createGain()
+
+      oscillator.type = 'square'
+      oscillator.frequency.value = frequency
+      gain.gain.setValueAtTime(0.0001, at)
+      gain.gain.exponentialRampToValueAtTime(cue.gain, at + 0.02)
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + duration)
+      oscillator.connect(gain).connect(audio.destination)
+      oscillator.start(at)
+      oscillator.stop(at + duration + 0.05)
+      at += duration + cue.gap
+    }
   }
 
-  const start = audio.currentTime
+  navigator.vibrate?.(cue.vibrate)
+}
 
-  for (let beep = 0; beep < 4; beep += 1) {
-    const at = start + beep * 0.45
-    const oscillator = audio.createOscillator()
-    const gain = audio.createGain()
-
-    oscillator.type = 'square'
-    oscillator.frequency.value = beep % 2 === 0 ? 880 : 1175
-    gain.gain.setValueAtTime(0.0001, at)
-    gain.gain.exponentialRampToValueAtTime(0.25, at + 0.02)
-    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.35)
-    oscillator.connect(gain).connect(audio.destination)
-    oscillator.start(at)
-    oscillator.stop(at + 0.4)
+function stopEndAlarm(): void {
+  if (endAlarm !== null) {
+    clearInterval(endAlarm)
+    endAlarm = null
   }
 }
 
-/** La alarma se programa para el instante justo en que se acaba la ronda, esté abierta la pantalla que esté. */
-function armAlarm(): void {
-  if (alarm !== null) {
-    clearTimeout(alarm)
-    alarm = null
+/** La alarma del final suena una y otra vez hasta que el reloj se reinicia (cualquier cambio del reloj la corta). */
+function startEndAlarm(): void {
+  stopEndAlarm()
+  playCue('end')
+  endAlarm = setInterval(() => soundCue('end'), END_ALARM_EVERY_MS)
+}
+
+/** Los avisos se programan para el instante justo (10 y 5 minutos antes, y el final), esté abierta la pantalla que esté. */
+function armAlarms(): void {
+  for (const id of alarms) {
+    clearTimeout(id)
   }
+
+  alarms = []
 
   if (typeof window === 'undefined' || !state.timer.running) {
     return
@@ -141,14 +192,20 @@ function armAlarm(): void {
     return
   }
 
-  alarm = setTimeout(() => {
-    alarm = null
-    dispatchLife({ type: 'timer-toggle', now: Date.now() })
-    playAlarm()
-    navigator.vibrate?.([300, 150, 300, 150, 600])
-    showToastMessage('Se terminó el tiempo de la ronda', 'warning')
-  }, left)
+  for (const [kind, before] of CUE_BEFORE_END_MS) {
+    if (left > before) {
+      alarms.push(setTimeout(() => playCue(kind), left - before))
+    }
+  }
+
+  alarms.push(
+    setTimeout(() => {
+      // Primero se para el reloj (eso corta cualquier alarma vieja) y recién después arranca la que se repite.
+      dispatchLife({ type: 'timer-toggle', now: Date.now() })
+      startEndAlarm()
+    }, left),
+  )
 }
 
-// Si el reloj quedó corriendo al cerrar la app, la alarma se vuelve a programar al abrirla.
-armAlarm()
+// Si el reloj quedó corriendo al cerrar la app, los avisos se vuelven a programar al abrirla.
+armAlarms()

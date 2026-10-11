@@ -11,7 +11,7 @@ import {
   timerRemaining,
   type Duelist,
 } from '../../app/life-calculator'
-import { dispatchLife, unlockAudio, useClock, useLifeState } from '../../app/life-store'
+import { dispatchLife, playCue, unlockAudio, useClock, useLifeState, type RoundCue } from '../../app/life-store'
 import { prefersReducedMotion } from '../../app/motion'
 import { useToastMessage } from '../../app/use-toast-message'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
@@ -36,7 +36,7 @@ const BADGE: Record<Duelist, string> = { 0: 'bg-primary/25 text-primary-soft', 1
 /** Teclas y acciones: grandes, sin retardo táctil y con respuesta inmediata al apretar. */
 const PRESSABLE =
   'touch-manipulation select-none rounded-control font-semibold text-foreground transition-[background-color,transform,color] duration-100 focus-visible:outline-none focus-visible:shadow-focus active:scale-[0.96] disabled:opacity-35 [-webkit-tap-highlight-color:transparent]'
-const KEY = cx(PRESSABLE, 'min-h-10 bg-lavender text-lead active:bg-lavender-hover')
+const KEY = cx(PRESSABLE, 'min-h-12 bg-lavender active:bg-lavender-hover @xl:min-h-10')
 
 /** A quién iba la última operación: al cerrar y volver a abrir la calculadora sigue elegido. */
 let lastSelected: Duelist = 0
@@ -186,7 +186,7 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="grid h-full min-h-0 gap-2 overflow-hidden bg-background px-gutter pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] pt-[calc(env(safe-area-inset-top,0px)+0.5rem)] [grid-template-areas:'head'_'lp'_'disp'_'quick'_'pad'_'eq'] [grid-template-rows:auto_auto_auto_auto_minmax(auto,1fr)_auto] landscape:[grid-template-areas:'head_head'_'lp_pad'_'disp_pad'_'quick_pad'_'._eq'] landscape:[grid-template-columns:minmax(0,1fr)_minmax(0,1.1fr)] landscape:[grid-template-rows:auto_auto_auto_minmax(0,1fr)_auto] landscape:gap-x-4"
+      className="@container grid h-full min-h-0 gap-2 overflow-hidden bg-background px-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] pt-[calc(env(safe-area-inset-top,0px)+0.5rem)] [grid-template-areas:'head'_'lp'_'disp'_'quick'_'pad'_'eq'] [grid-template-rows:auto_minmax(auto,1.2fr)_auto_auto_minmax(auto,4fr)_auto] @xl:[grid-template-areas:'head_head'_'lp_pad'_'disp_pad'_'quick_pad'_'._eq'] @xl:[grid-template-columns:minmax(0,1fr)_minmax(0,1.1fr)] @xl:[grid-template-rows:auto_auto_auto_minmax(0,1fr)_auto] @xl:gap-x-4"
       onPointerDown={unlockAudio}
     >
       <header className="flex items-center justify-between gap-2 [grid-area:head]">
@@ -196,14 +196,14 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
             <button
               type="button"
               className={cx(
-                'inline-flex touch-manipulation select-none items-center gap-1.5 text-lead font-semibold tabular-nums [-webkit-tap-highlight-color:transparent]',
+                'inline-flex touch-manipulation select-none items-center gap-1.5 text-title font-semibold tabular-nums [-webkit-tap-highlight-color:transparent]',
                 remaining === 0 ? 'text-danger-soft' : remaining <= ROUND_WARNING_MS ? 'text-warning' : 'text-foreground',
               )}
               aria-label={remaining === 0 ? 'Volver a 50:00' : state.timer.running ? 'Pausar el reloj de la ronda' : 'Poner a correr el reloj de la ronda'}
               title="Cuenta regresiva de la ronda (50 minutos); suena al llegar a cero"
               onClick={toggleClock}
             >
-              <Icon name={state.timer.running ? 'pause' : 'play'} size={18} variant="bold" />
+              <Icon name={state.timer.running ? 'pause' : 'play'} size={22} variant="bold" />
               {formatClock(remaining)}
             </button>
             <IconButton
@@ -222,7 +222,7 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
           <IconButton tone="ghost" aria-label="Ver el registro del duelo" onClick={() => setLogOpen(true)}>
             <Icon name="list" size={20} />
           </IconButton>
-          <IconButton tone="ghost" aria-label="Moneda y dado" onClick={() => setToolsOpen(true)}>
+          <IconButton tone="ghost" aria-label="Moneda, dado y avisos" onClick={() => setToolsOpen(true)}>
             <Icon name="dice" size={20} />
           </IconButton>
           <IconButton tone="ghost" aria-label="Cerrar la calculadora" onClick={onClose}>
@@ -232,7 +232,7 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
       </header>
 
       {/* Los dos LP lado a lado; en el medio, reiniciar y deshacer, como en Neuron. Se toca un duelista para elegir a quién va la operación. */}
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 [grid-area:lp]">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 [grid-area:lp]">
         <DuelistPanel player={0} lp={state.lp[0]} selected={selected === 0} onSelect={() => select(0)} />
         <div className="grid justify-items-center gap-1">
           <MiddleAction icon="refresh" label="Reiniciar" onClick={() => setConfirmReset(true)} />
@@ -250,11 +250,11 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
       </div>
 
       {/* La operación en curso: LP del elegido, signo y cantidad; con menos de tres dígitos los ceros de las centenas van apagados. */}
-      <div className="flex min-h-11 items-center justify-between gap-2 rounded-control bg-input px-3 [grid-area:disp]">
+      <div className="flex min-h-12 items-center justify-between gap-2 rounded-control bg-input px-3 [grid-area:disp]">
         <output
           aria-live="polite"
           aria-label={digits ? `${name}: ${lp} ${operator === '-' ? 'menos' : 'más'} ${amount}` : `${name}: ${lp} LP`}
-          className="flex min-w-0 items-baseline gap-1.5 text-title font-bold tabular-nums text-foreground"
+          className="flex min-w-0 items-baseline gap-1.5 text-[1.75rem] font-bold tabular-nums text-foreground"
         >
           <span>{lp}</span>
           {digits ? (
@@ -271,17 +271,17 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
       </div>
 
       {/* Los últimos cambios, para repetirlos con un toque sobre el duelista elegido. */}
-      <div className="grid grid-cols-3 gap-1.5 [grid-area:quick] landscape:self-start" aria-label="Repetir un cambio reciente">
+      <div className="grid grid-cols-3 gap-1.5 [grid-area:quick] @xl:self-start" aria-label="Repetir un cambio reciente">
         {[0, 1, 2].map((slot) => {
           const delta = recent[slot]
 
           return delta === undefined ? (
-            <span key={slot} className="min-h-9" aria-hidden="true" />
+            <span key={slot} className="min-h-10" aria-hidden="true" />
           ) : (
             <button
               key={slot}
               type="button"
-              className={cx(PRESSABLE, 'min-h-9 text-body tabular-nums', delta < 0 ? 'bg-danger/15 text-danger-soft active:bg-danger/30' : 'bg-success/12 text-success-soft active:bg-success/25')}
+              className={cx(PRESSABLE, 'min-h-10 text-lead tabular-nums', delta < 0 ? 'bg-danger/15 text-danger-soft active:bg-danger/30' : 'bg-success/12 text-success-soft active:bg-success/25')}
               aria-label={`${delta < 0 ? 'Restar' : 'Sumar'} ${Math.abs(delta)} a ${name}`}
               onClick={() => applyDelta(delta)}
             >
@@ -292,7 +292,7 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
         })}
       </div>
 
-      <div className="grid grid-cols-4 grid-rows-4 gap-1.5 [grid-area:pad]" role="group" aria-label="Teclado">
+      <div className="grid grid-cols-4 grid-rows-4 gap-2 [grid-area:pad]" role="group" aria-label="Teclado">
         {KEYS.map((key) => {
           const isOperator = key === '+' || key === '-'
           const active = isOperator && operator === key
@@ -303,8 +303,7 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
               type="button"
               className={cx(
                 KEY,
-                key === 'Borrar' && 'text-body',
-                isOperator && 'text-title',
+                key === 'Borrar' ? 'text-lead' : 'text-[1.75rem]',
                 active && (key === '-' ? 'bg-danger/25 text-danger-soft active:bg-danger/35' : 'bg-success/20 text-success-soft active:bg-success/30'),
               )}
               aria-label={key === '÷2' ? `Dejar a ${name} con la mitad` : key === '-' ? 'Restar' : key === '+' ? 'Sumar' : key === 'Borrar' ? 'Borrar lo tecleado' : undefined}
@@ -319,7 +318,7 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
 
       <button
         type="button"
-        className={cx(PRESSABLE, 'min-h-11 bg-primary text-title text-primary-foreground shadow-brand active:bg-primary-hover [grid-area:eq]')}
+        className={cx(PRESSABLE, 'min-h-[5.25rem] bg-primary text-stat text-primary-foreground shadow-brand active:bg-primary-hover [grid-area:eq] @xl:min-h-14')}
         disabled={amount === 0}
         aria-label={`Aplicar: ${operator === '-' ? 'restar' : 'sumar'} ${amount} a ${name}`}
         onClick={() => applyDelta(operator === '-' ? -amount : amount)}
@@ -357,7 +356,7 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
         )}
       </Modal>
 
-      <Modal isOpen={toolsOpen} onClose={() => setToolsOpen(false)} size="sm" title="Moneda y dado">
+      <Modal isOpen={toolsOpen} onClose={() => setToolsOpen(false)} size="sm" title="Moneda, dado y avisos">
         <ToolsPanel />
       </Modal>
 
@@ -390,19 +389,21 @@ function DuelistPanel({ player, lp, selected, onSelect }: { player: Duelist; lp:
       type="button"
       aria-pressed={selected}
       aria-label={`${name}: ${lp} LP. ${selected ? 'Elegido para la operación' : 'Elegir para la operación'}`}
-      className={cx(PRESSABLE, 'grid min-w-0 justify-items-center gap-0.5 rounded-card px-1 py-2', selected ? 'bg-card-background/70' : 'bg-transparent')}
+      className={cx(PRESSABLE, '@container grid min-w-0 content-center justify-items-center gap-1 rounded-card px-1 py-3 @xl:py-1', selected ? 'bg-card-background/70' : 'bg-transparent')}
       onClick={onSelect}
     >
       <strong
         aria-live="polite"
+        // El número llena el ancho del panel: a más dígitos, letra más chica (--digits), sin cortar nunca.
+        style={{ '--digits': Math.max(3, String(lp).length) } as CSSProperties}
         className={cx(
-          'max-w-full truncate text-[clamp(2.25rem,11vw,3.75rem)] font-bold leading-none tracking-tight tabular-nums transition-colors duration-200',
+          'max-w-full text-[clamp(2rem,calc(152cqw/var(--digits)),4.25rem)] font-bold leading-none tracking-tight tabular-nums transition-colors duration-200',
           flash === 'up' ? 'text-success' : flash === 'down' ? 'text-danger' : lp === 0 ? 'text-danger-soft' : selected ? ACCENT[player] : 'text-soft',
         )}
       >
         {shown}
       </strong>
-      <span className={cx('text-body font-semibold', selected ? 'text-foreground' : 'text-soft')}>
+      <span className={cx('text-lead font-semibold', selected ? 'text-foreground' : 'text-soft')}>
         {player === 1 ? '« ' : null}
         {name}
         {player === 0 ? ' »' : null}
@@ -415,7 +416,7 @@ function MiddleAction({ icon, label, disabled, onClick }: { icon: IconName; labe
   return (
     <button
       type="button"
-      className={cx(PRESSABLE, 'grid justify-items-center gap-0.5 px-2 py-1 text-micro font-semibold text-muted active:bg-tint/12')}
+      className={cx(PRESSABLE, 'grid justify-items-center gap-0.5 px-1 py-1 text-[0.625rem] font-semibold text-muted active:bg-tint/12')}
       disabled={disabled}
       aria-label={label}
       onClick={onClick}
@@ -473,15 +474,43 @@ function ToolsPanel() {
       <p key={toss?.id ?? 'none'} aria-live="polite" className={cx('m-0 min-h-8 text-center text-title font-bold text-foreground', toss && 'animate-reveal motion-reduce:animate-none')}>
         {label}
       </p>
+
+      {/* Para escuchar (y sentir) cómo avisa la ronda antes de que haga falta. */}
+      <div className="grid gap-2 border-t border-border-subtle pt-3">
+        <span className={overline}>Probar los avisos de la ronda</span>
+        <div className="grid grid-cols-3 gap-2">
+          {CUE_TESTS.map(([kind, label]) => (
+            <Button
+              key={kind}
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                unlockAudio()
+                playCue(kind)
+              }}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
 
+const CUE_TESTS: ReadonlyArray<readonly [RoundCue, string]> = [
+  ['ten', '10 min'],
+  ['five', '5 min'],
+  ['end', 'Fin'],
+]
+
 /** El salto (con su sombra en el piso) va aparte del giro: cada uno es una animación continua y el conjunto se ve fluido. */
 function Toss({ shadowWidth, children }: { shadowWidth: string; children: React.ReactNode }) {
   return (
-    <div className="relative grid place-items-center pb-5">
-      <span aria-hidden="true" className={cx('absolute bottom-0 h-3 animate-toss-shadow rounded-full bg-black/70 blur-sm motion-reduce:animate-none', shadowWidth)} />
+    <div className="relative grid place-items-center pb-6">
+      {/* Sobre el fondo oscuro una sombra sola no se ve: va una mesa tenue y, encima, la sombra que se achica en el aire. */}
+      <span aria-hidden="true" className="absolute bottom-0 h-6 w-40 rounded-[50%] bg-tint/10" />
+      <span aria-hidden="true" className={cx('absolute bottom-1.5 h-3 animate-toss-shadow rounded-[50%] bg-black/75 blur-[3px] motion-reduce:animate-none', shadowWidth)} />
       <div className="animate-toss-hop [transform-style:preserve-3d] motion-reduce:animate-none">{children}</div>
     </div>
   )

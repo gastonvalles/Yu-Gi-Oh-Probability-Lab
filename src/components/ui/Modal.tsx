@@ -15,7 +15,7 @@ import { overline } from './typography'
  * 'sm' es para avisos y confirmaciones; en mobile los de contenido ocupan toda la pantalla.
  * 'table' es la mesa de práctica (angosta, como en el celu) y 'editor' el de clasificación de una carta.
  */
-type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full' | 'table' | 'editor' | 'sheet'
+type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full' | 'table' | 'editor' | 'sheet' | 'screen'
 
 const FULL_HEIGHT_MOBILE = 'max-sm:h-[calc(100dvh-1rem)]'
 
@@ -29,6 +29,9 @@ const SIZE_CLASS: Record<ModalSize, string> = {
   table: `w-[min(40rem,100%)] h-[min(46rem,calc(100dvh-2rem))] ${FULL_HEIGHT_MOBILE}`,
   sheet: 'w-[min(70rem,100%)] h-[min(46rem,calc(100dvh-2rem))] min-[1101px]:h-[min(33rem,calc(100dvh-2rem))] max-sm:h-[min(94dvh,52rem)] max-sm:w-full max-sm:rounded-b-none max-sm:border-b-0',
   editor: `w-[min(70rem,100%)] h-[min(46rem,calc(100dvh-2rem))] min-[1101px]:h-[min(33rem,calc(100dvh-2rem))] ${FULL_HEIGHT_MOBILE}`,
+  /** La calculadora de LP: toda la pantalla en el celular (sin margen ni bordes); en escritorio, un panel del tamaño de un celular. */
+  screen:
+    'max-[1100px]:h-dvh max-[1100px]:max-h-dvh! max-[1100px]:w-full max-[1100px]:rounded-none! max-[1100px]:border-0! min-[1101px]:h-[min(52rem,calc(100dvh-2rem))] min-[1101px]:w-[26rem]',
 }
 
 interface ModalProps {
@@ -104,7 +107,7 @@ export function Modal({
 
   return createPortal(
     <div
-      className={cx('fixed inset-0 z-180 grid place-items-center overscroll-contain bg-background/80 p-2 sm:p-4', size === 'sheet' && 'max-sm:place-items-end max-sm:p-0')}
+      className={cx('fixed inset-0 z-180 grid place-items-center overscroll-contain bg-background/80 p-2 sm:p-4', size === 'sheet' && 'max-sm:place-items-end max-sm:p-0', size === 'screen' && 'max-[1100px]:p-0!')}
       onClick={dismissible ? onClose : undefined}
     >
       <div
