@@ -10,15 +10,24 @@ vi.mock('../components/CardArt', () => ({
   CardArt: ({ name }: { name: string }) => <img alt={name} />,
 }))
 
-vi.mock('../app/use-card-prices', () => ({
-  useCardPrices: () => ({
-    status: 'ready',
+const { useCardPrices } = vi.hoisted(() => ({
+  useCardPrices: vi.fn((_cardId: number | null) => ({
+    status: 'ready' as const,
     updated: '2026-10-11',
-    prices: [{ set: 'Justice Hunters', code: 'JUSH-EN016', rarity: "Collector's Rare", edition: '1st Edition', market: 5.86, low: null, url: 'https://www.tcgplayer.com/product/1' }],
-  }),
+    prices: [
+      { set: 'Justice Hunters', code: 'JUSH-EN016', rarity: "Collector's Rare", edition: '1st Edition', market: 5.86, low: null, url: 'https://www.tcgplayer.com/product/1' },
+      { set: 'Justice Hunters', code: 'JUSH-EN016', rarity: 'Ultra Rare', edition: '1st Edition', market: 1.33, low: null, url: 'https://www.tcgplayer.com/product/2' },
+      { set: 'Rarity Collection 5', code: 'RA05-EN091', rarity: 'Starlight Rare', edition: '1st Edition', market: 20.12, low: null, url: 'https://www.tcgplayer.com/product/3' },
+    ],
+  })),
 }))
 
-afterEach(cleanup)
+vi.mock('../app/use-card-prices', () => ({ useCardPrices }))
+
+afterEach(() => {
+  cleanup()
+  useCardPrices.mockClear()
+})
 
 const card: ApiCardSearchResult = {
   name: 'Mulcharmy Purulia',
@@ -55,10 +64,31 @@ describe('precios en el detalle de la carta', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ver precios en TCGplayer' }))
 
     const prices = screen.getByRole('dialog', { name: card.name })
-    expect(prices).toHaveTextContent('Justice Hunters')
-    expect(prices).toHaveTextContent('JUSH-EN016 · Collector\'s Rare · 1st Edition')
+    expect(prices).toHaveTextContent("Collector's Rare · 1st Edition")
+    expect(prices).toHaveTextContent('JUSH-EN016')
     expect(prices).toHaveTextContent('5,86')
     expect(prices).toHaveTextContent('11/10/2026')
+  })
+
+  it('agrupa las impresiones por expansión, cada una con el sobre de fondo', () => {
+    openPrices()
+
+    const headings = screen.getAllByRole('heading', { level: 4 })
+    expect(headings.map((heading) => heading.textContent)).toEqual(['Justice Hunters', 'Rarity Collection 5'])
+    expect(headings[0]!.closest('header')).toHaveTextContent('2 impresiones')
+    expect(headings[1]!.closest('header')).toHaveTextContent('1 impresión')
+    expect(headings[0]!.closest('header')!.style.backgroundImage).toContain('https://images.ygoprodeck.com/images/sets/JUSH.jpg')
+    expect(headings[1]!.closest('header')!.style.backgroundImage).toContain('https://images.ygoprodeck.com/images/sets/RA05.jpg')
+  })
+
+  it('los precios se piden recién al tocar la moneda, no al abrir la carta', () => {
+    render(<CardDetailModal card={card} deckFormat="unlimited" isOpen onAddToZone={() => false} onClose={vi.fn()} />)
+
+    expect(useCardPrices).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ver precios en TCGplayer' }))
+
+    expect(useCardPrices).toHaveBeenCalledWith(card.ygoprodeckId)
   })
 
   it('tocar la moneda no agranda la carta ni cierra el detalle', () => {

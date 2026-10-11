@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { MAX_SETS, extractPrices, fetchCardPrices, matchGroups, type PriceRow } from '../app/card-prices'
+import { MAX_SETS, extractPrices, fetchCardPrices, matchGroups, setImageUrl, type PriceRow } from '../app/card-prices'
 
 const group = (groupId: number, name: string, abbreviation: string, publishedOn: string) => ({ groupId, name, abbreviation, publishedOn })
 const printing = (set_name: string, set_code: string, set_rarity: string) => ({ set_name, set_code, set_rarity })
@@ -25,6 +25,11 @@ describe('precios de TCGplayer por impresión', () => {
 
     expect(matched.map((entry) => entry.group.groupId)).toEqual([2, 1])
     expect(matched[1]!.printings.map((entry) => entry.set_code)).toEqual(['LOB-EN001'])
+  })
+
+  it('la imagen del sobre sale del prefijo del código del set', () => {
+    expect(setImageUrl('JUSH-EN016')).toBe('https://images.ygoprodeck.com/images/sets/JUSH.jpg')
+    expect(setImageUrl('RA05-EN091')).toBe('https://images.ygoprodeck.com/images/sets/RA05.jpg')
   })
 
   it('un set sin fecha va al final, no al principio', () => {

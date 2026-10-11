@@ -254,6 +254,12 @@ const PATHS = {
       <path d="M14 10a4.2 4.2 0 0 0-5.9 0l-3 3a4.2 4.2 0 0 0 5.9 5.9l1.4-1.4" />
     </>
   ),
+  dollar: (
+    <>
+      <path d="M12 3.5v17" />
+      <path d="M16.2 7.6c-.5-1.3-2.1-2.1-4.2-2.1-2.3 0-3.9 1-3.9 2.7 0 1.7 1.5 2.3 3.9 2.8 2.4.5 3.9 1.1 3.9 2.9 0 1.7-1.6 2.7-3.9 2.7-2.1 0-3.7-.9-4.2-2.3" />
+    </>
+  ),
 
   // — Marcas (logos oficiales, de Simple Icons, dominio público): van rellenas, no con trazo —
   github: (
