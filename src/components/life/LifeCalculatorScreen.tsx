@@ -540,7 +540,7 @@ const FACE_PLACEMENT: Record<number, string> = { 1: 'rotateY(0deg)', 2: 'rotateX
 const FACE_UP: Record<number, [number, number]> = { 1: [0, 0], 2: [-90, 0], 3: [0, -90], 4: [0, 90], 5: [90, 0], 6: [0, 180] }
 /** Dado dorado como el de la referencia: caras con degradé metálico y puntos tallados; el 1 es el Ojo Milenario. */
 const FACE =
-  'absolute inset-0 grid grid-cols-3 grid-rows-3 gap-1 rounded-xl p-3 [backface-visibility:hidden] bg-[linear-gradient(145deg,#fbe48f_0%,#dcb345_48%,#b5841c_100%)] shadow-[inset_0_0_0_2px_rgba(255,244,196,0.8),inset_0_-8px_14px_rgba(110,70,0,0.4)]'
+  'absolute inset-0 grid grid-cols-3 grid-rows-3 gap-1 p-3 [backface-visibility:hidden] bg-[linear-gradient(145deg,#fbe48f_0%,#dcb345_48%,#b5841c_100%)] shadow-[inset_0_0_0_2px_rgba(255,244,196,0.8),inset_0_-8px_14px_rgba(110,70,0,0.4)]'
 const PIP = 'rounded-full bg-[radial-gradient(circle_at_35%_35%,#ffeaa8,#d68a0e_55%,#6e4100)] shadow-[inset_0_1px_2px_rgba(0,0,0,0.5)]'
 
 function Die({ value }: { value: number }) {
