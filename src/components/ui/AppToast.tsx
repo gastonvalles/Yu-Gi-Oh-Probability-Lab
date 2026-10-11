@@ -70,9 +70,7 @@ export function AppToast({ id, visible, message, tone }: AppToastProps) {
       onPointerUp={handleUp}
       onPointerCancel={handleUp}
     >
-      <span className={cx('grid size-7 shrink-0 place-items-center rounded-full border', TONE[look.tone].tint, TONE[look.tone].text)}>
-        <Icon name={look.icon} size={16} strokeWidth={2} />
-      </span>
+      <Icon name={look.icon} size={20} strokeWidth={2} className={cx('shrink-0', TONE[look.tone].text)} />
       <span>{message}</span>
     </div>
   )

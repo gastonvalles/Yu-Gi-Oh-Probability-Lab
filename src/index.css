@@ -624,9 +624,10 @@
     color: inherit;
   }
 
+  /* Seleccionar texto: verde flúor sobre el fondo violeta, para que resalte. */
   ::selection {
-    background: var(--selected-background);
-    color: var(--primary-foreground);
+    background: var(--success);
+    color: var(--background);
   }
 
   input[type="search"]::-webkit-search-decoration,

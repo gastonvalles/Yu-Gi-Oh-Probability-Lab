@@ -10,7 +10,7 @@ import { Modal } from '../ui/Modal'
 const LIFT = 68
 
 /**
- * Botón flotante de la calculadora de LP (sólo celular): abre la calculadora encima de cualquier
+ * Botón flotante de la calculadora de LP: abre la calculadora encima de cualquier
  * pantalla, así en pleno duelo se cierra para leer una carta y se vuelve con un toque. Mientras
  * corre el reloj de la ronda, el botón muestra cuánto queda.
  */
@@ -19,7 +19,7 @@ export function LifeCalculatorFab() {
   const countdown = useRoundCountdownLabel()
 
   return (
-    <div className="min-[1101px]:hidden">
+    <>
       <DraggableFab
         label={countdown ? `Calculadora de LP. Quedan ${countdown} de ronda` : 'Abrir la calculadora de LP'}
         storageKey="ygo-lab:life-fab"
@@ -34,11 +34,11 @@ export function LifeCalculatorFab() {
         )}
       </DraggableFab>
 
-      <Modal isOpen={open} onClose={() => setOpen(false)} size="full" bare flush hideCloseButton ariaLabel="Calculadora de LP">
+      <Modal isOpen={open} onClose={() => setOpen(false)} size="screen" bare flush hideCloseButton ariaLabel="Calculadora de LP">
         <Suspense fallback={null}>
           <LazyLifeCalculatorScreen onClose={() => setOpen(false)} />
         </Suspense>
       </Modal>
-    </div>
+    </>
   )
 }
