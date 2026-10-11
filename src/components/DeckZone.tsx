@@ -9,7 +9,6 @@ import type { DeckCardInstance, DeckZone as DeckZoneType } from '../app/model'
 import type { DeckDropIndicatorState } from '../app/use-deck-pointer-drag'
 import { formatInteger } from '../app/utils'
 import { CardArt } from './CardArt'
-import { Button } from './ui/Button'
 import { Icon } from './ui/Icon'
 import { IconButton } from './ui/IconButton'
 import {
@@ -279,13 +278,14 @@ export const DeckZone = memo(function DeckZone({
           </div>
         </div>
         {readOnly ? null : (
-          <div className="flex shrink-0 items-center gap-1">
-            <Button variant="tertiary" size="sm" icon="sort" disabled={cards.length < 2} onClick={() => onSortZone(zone)}>
-              Ordenar
-            </Button>
-            <Button variant="tertiary" size="sm" disabled={cards.length === 0} onClick={() => onClearZone(zone)}>
-              Vaciar
-            </Button>
+          // Dos íconos en vez de dos botones con texto: el resumen de la zona ya no se parte en cuatro renglones.
+          <div className="flex shrink-0 items-center">
+            <IconButton tone="ghost" size="md" aria-label={`Ordenar ${title}`} title={`Ordenar ${title}`} disabled={cards.length < 2} className="disabled:opacity-35" onClick={() => onSortZone(zone)}>
+              <Icon name="sort" size={20} />
+            </IconButton>
+            <IconButton tone="ghost" size="md" aria-label={`Vaciar ${title}`} title={`Vaciar ${title}`} disabled={cards.length === 0} className="disabled:opacity-35" onClick={() => onClearZone(zone)}>
+              <Icon name="trash" size={20} />
+            </IconButton>
           </div>
         )}
       </div>
