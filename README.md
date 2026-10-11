@@ -17,7 +17,7 @@ La idea central es ayudar a entender deck building con un flujo simple: armás e
 - Práctica de manos para ver ejemplos concretos.
 - Comparación A vs B contra otra build importada.
 - Exportación del deck como imagen, decklist oficial en PDF y `.ydk`, y los tres pasos para llevarlo a Neuron (link YDKE o `.ydk` + extensión "Deck transfer" + base de datos oficial de Konami).
-- Cupsy, la mascota: reacciona a lo que pasa (espera mientras carga, calcula con el Lab, revisa en Roles, festeja o se frustra con los avisos y con las manos de la práctica). Se puede ocultar.
+- Cupsy, la mascota: reacciona a lo que pasa (espera mientras carga, calcula con el Lab, revisa en Roles, festeja o se frustra con los avisos y con las manos de la práctica). Se agarra y se lleva a cualquier lado, choca con los botones flotantes y los empuja, y si se la deja apretada siete segundos pregunta si querés darle un descanso (en escritorio también tiene una X al pasar el mouse). El Kuriboh alado junto a las redes es la caja de las mascotas: al tocarlo se despliegan las que hay y elegir una la saca o la trae de vuelta del descanso.
 - Meta: tier list de hand traps según los Tournament Meta Decks de YGOPRODeck (TCG y OCG por separado, Main y Side), con tendencia a dos semanas, los decks que las juegan y cada deck de torneo completo para verlo o cargarlo en el builder. Qué carta es hand trap se lee de sus reglas (los scripts de EDOPro de Project Ignis: un efecto rápido o disparador activable desde la mano), no de su texto, y sólo entran las que juegan varios decks distintos. Las cartas prohibidas en la banlist de cada región no entran al tier list. Los datos se actualizan solos cada día.
 
 ## Flujo recomendado
