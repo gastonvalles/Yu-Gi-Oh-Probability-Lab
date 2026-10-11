@@ -7,29 +7,33 @@ import {
   ROUND_LIMIT_MS,
   createLifeState,
   formatClock,
+  interpretAmount,
   lifeReducer,
   readLifeState,
+  recentAmounts,
   timerElapsed,
   timerRemaining,
   writeLifeState,
+  type Duelist,
   type LifeState,
 } from '../app/life-calculator'
 
 const run = (state: LifeState, ...actions: Parameters<typeof lifeReducer>[1][]) => actions.reduce(lifeReducer, state)
+const change = (player: Duelist, delta: number) => ({ type: 'change', player, delta, now: 0 }) as const
 
 describe('calculadora de LP', () => {
   it('resta y suma sin bajar de 0 ni pasar el tope', () => {
-    const state = run(createLifeState(), { type: 'change', player: 1, delta: -2500, now: 0 }, { type: 'change', player: 0, delta: 1000, now: 0 })
+    const state = run(createLifeState(), change(1, -2500), change(0, 1000))
 
     expect(state.lp).toEqual([9000, 5500])
-    expect(run(state, { type: 'change', player: 1, delta: -9000, now: 0 }).lp[1]).toBe(0)
-    expect(run(state, { type: 'change', player: 0, delta: 5_000_000, now: 0 }).lp[0]).toBe(MAX_LP)
+    expect(run(state, change(1, -9000)).lp[1]).toBe(0)
+    expect(run(state, change(0, 5_000_000)).lp[0]).toBe(MAX_LP)
   })
 
   it('un cambio que no cambia nada no se registra', () => {
-    const zero = run(createLifeState(), { type: 'change', player: 0, delta: -8000, now: 0 })
+    const zero = run(createLifeState(), change(0, -8000))
 
-    expect(run(zero, { type: 'change', player: 0, delta: -500, now: 0 })).toBe(zero)
+    expect(run(zero, change(0, -500))).toBe(zero)
     expect(run(zero, { type: 'halve', player: 0, now: 0 })).toBe(zero)
   })
 
@@ -51,9 +55,26 @@ describe('calculadora de LP', () => {
   })
 
   it('a la mitad redondea para abajo', () => {
-    const odd = run(createLifeState(), { type: 'change', player: 0, delta: -3995, now: 0 })
+    const odd = run(createLifeState(), change(0, -3995))
 
     expect(run(odd, { type: 'halve', player: 0, now: 0 }).lp[0]).toBe(2002)
+  })
+
+  it('con menos de tres dígitos lo tecleado son centenas', () => {
+    expect(interpretAmount('')).toBe(0)
+    expect(interpretAmount('8')).toBe(800)
+    expect(interpretAmount('25')).toBe(2500)
+    expect(interpretAmount('050')).toBe(50)
+    expect(interpretAmount('150')).toBe(150)
+    expect(interpretAmount('1500')).toBe(1500)
+  })
+
+  it('los atajos repiten los últimos cambios distintos, del más nuevo al más viejo', () => {
+    const state = run(createLifeState(), change(1, -800), change(0, -800), change(1, 500), change(0, -2000), change(1, -800))
+
+    expect(recentAmounts(state.log)).toEqual([-800, -2000, 500])
+    expect(recentAmounts(state.log, 2)).toEqual([-800, -2000])
+    expect(recentAmounts([])).toEqual([])
   })
 
   it('la ronda cuenta 50 minutos para atrás y acumula entre pausas', () => {
@@ -73,7 +94,7 @@ describe('calculadora de LP', () => {
   })
 
   it('reiniciar el duelo deja el reloj como está; el reloj se reinicia aparte', () => {
-    const state = run(createLifeState(), { type: 'timer-toggle', now: 0 }, { type: 'change', player: 0, delta: -100, now: 0 })
+    const state = run(createLifeState(), { type: 'timer-toggle', now: 0 }, change(0, -100))
 
     expect(run(state, { type: 'reset' })).toEqual({ ...createLifeState(), timer: state.timer })
     expect(run(state, { type: 'timer-reset' }).timer).toEqual(createLifeState().timer)

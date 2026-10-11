@@ -14,6 +14,8 @@ interface DraggablePositionOptions {
   size: number
   /** Dónde arranca si nunca se movió. */
   corner?: 'right' | 'left'
+  /** Cuánto subirlo (px) respecto del rincón por defecto: para apilar un botón sobre otro. */
+  lift?: number
 }
 
 type PointerHandler = (event: ReactPointerEvent<HTMLElement>) => void
@@ -54,7 +56,7 @@ function writePosition(key: string, position: FabPosition) {
  * cercano y recuerda la posición entre visitas. Un toque sin arrastrar sigue siendo un click.
  * Lo comparten el botón de práctica y la mascota.
  */
-export function useDraggablePosition({ storageKey, size, corner = 'right' }: DraggablePositionOptions): DraggablePosition {
+export function useDraggablePosition({ storageKey, size, corner = 'right', lift = 0 }: DraggablePositionOptions): DraggablePosition {
   const isMobile = useMediaQuery('(max-width: 1100px)')
   const [viewport, setViewport] = useState(() => ({ width: window.innerWidth, height: window.innerHeight }))
   const bounds: FabBounds = {
@@ -74,7 +76,8 @@ export function useDraggablePosition({ storageKey, size, corner = 'right' }: Dra
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  const restingPosition = clampFabPosition(stored ?? defaultFabPosition(bounds, corner), bounds)
+  const fallback = defaultFabPosition(bounds, corner)
+  const restingPosition = clampFabPosition(stored ?? { x: fallback.x, y: fallback.y - lift }, bounds)
   const position = dragPosition ?? restingPosition
 
   const onPointerDown: PointerHandler = (event) => {

@@ -71,6 +71,30 @@ export function formatClock(ms: number): string {
   return hours > 0 ? `${hours}:${minutes}:${seconds}` : `${minutes}:${seconds}`
 }
 
+/** Lo que vale lo tecleado: con menos de tres dígitos se entiende en centenas ("8" es 800, "25" es 2500); con tres o más, literal. */
+export function interpretAmount(digits: string): number {
+  if (digits === '') {
+    return 0
+  }
+
+  return Number(digits.length < 3 ? `${digits}00` : digits)
+}
+
+/** Los últimos cambios distintos (del más nuevo al más viejo) para repetirlos con un toque. */
+export function recentAmounts(log: LifeEntry[], limit = 3): number[] {
+  const seen: number[] = []
+
+  for (let index = log.length - 1; index >= 0 && seen.length < limit; index -= 1) {
+    const delta = log[index]!.delta
+
+    if (!seen.includes(delta)) {
+      seen.push(delta)
+    }
+  }
+
+  return seen
+}
+
 function setLp(state: LifeState, player: Duelist, to: number, now: number): LifeState {
   const from = state.lp[player]
   const next = Math.max(0, Math.min(MAX_LP, to))

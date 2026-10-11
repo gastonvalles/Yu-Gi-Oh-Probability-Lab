@@ -15,6 +15,7 @@ import { Card } from './ui/Card'
 import { cx } from './ui/cx'
 import { EmptyState } from './ui/EmptyState'
 import { Icon } from './ui/Icon'
+import { Modal } from './ui/Modal'
 import { SectionHeader } from './ui/SectionHeader'
 import { Skeleton } from './ui/Skeleton'
 import { Switch } from './ui/Switch'
@@ -73,6 +74,7 @@ export function ExportDeckPanel({
   onExport,
 }: ExportDeckPanelProps) {
   const [busy, setBusy] = useState(false)
+  const [downloadOpen, setDownloadOpen] = useState(false)
   const [selection, setSelection] = useState<DeckExportSelection>(readSelection)
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
   const [previewState, setPreviewState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
@@ -97,6 +99,7 @@ export function ExportDeckPanel({
 
     try {
       await onExport(selection)
+      setDownloadOpen(false)
     } catch {
       // El controller maneja el toast de error.
     } finally {
@@ -163,33 +166,12 @@ export function ExportDeckPanel({
         title="Exportá tu deck"
         icon="download"
         side={(
-          <Button
-            variant="primary"
-            size="md"
-            icon="download"
-            disabled={busy || mainDeckCount === 0 || selectedCount === 0}
-            title={selectedCount === 0 ? 'Tildá al menos un archivo' : undefined}
-            onClick={() => {
-              void handleExport()
-            }}
-          >
-            {busy ? 'Generando archivos...' : selectedCount === 0 ? 'Elegí qué descargar' : `Descargar ${selectedCount === DECK_EXPORT_FILES.length ? 'todo' : describeExportSelection(selection)}`}
+          // Las opciones van en un modal: la página no las muestra de entrada.
+          <Button variant="primary" size="md" icon="download" disabled={busy} onClick={() => setDownloadOpen(true)}>
+            {busy ? 'Generando archivos...' : 'Descargar'}
           </Button>
         )}
       />
-
-      {/* Qué archivos bajar: se tilda lo que hace falta y el botón descarga sólo eso. */}
-      <Card as="section" padding="sm" aria-label="Archivos a descargar" className="grid gap-1 min-[700px]:grid-cols-3 min-[700px]:gap-2">
-        {DECK_EXPORT_FILES.map((file) => (
-          <label key={file.key} className="flex cursor-pointer items-center justify-between gap-3 rounded-control px-2 py-2 transition-colors hover:bg-tint/5">
-            <span className="grid min-w-0 gap-0.5">
-              <span className="text-body font-medium text-foreground">{file.label}</span>
-              <span className="text-micro text-muted">{file.description}</span>
-            </span>
-            <Switch checked={selection[file.key]} label={file.label} onChange={(checked) => setSelection((current) => ({ ...current, [file.key]: checked }))} />
-          </label>
-        ))}
-      </Card>
 
       <section className="grid min-w-0 gap-8 min-[1180px]:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)] min-[1180px]:items-start min-[1180px]:gap-10">
         <article className="grid min-w-0 content-start gap-4">
@@ -300,6 +282,52 @@ export function ExportDeckPanel({
           </li>
         </ol>
       </Card>
+
+      {/* Qué archivos bajar: se tilda lo que hace falta y el botón descarga sólo eso. */}
+      <Modal
+        isOpen={downloadOpen}
+        onClose={() => {
+          if (!busy) {
+            setDownloadOpen(false)
+          }
+        }}
+        size="sm"
+        icon="download"
+        title="¿Qué descargar?"
+        subtitle="Se bajan todos juntos."
+        footer={
+          <>
+            <Button variant="secondary" size="sm" disabled={busy} onClick={() => setDownloadOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              icon="download"
+              disabled={busy || mainDeckCount === 0 || selectedCount === 0}
+              title={mainDeckCount === 0 ? 'Necesitás cartas en Main' : selectedCount === 0 ? 'Tildá al menos un archivo' : undefined}
+              onClick={() => {
+                void handleExport()
+              }}
+            >
+              {busy ? 'Generando archivos...' : selectedCount === 0 ? 'Elegí qué descargar' : `Descargar ${selectedCount === DECK_EXPORT_FILES.length ? 'todo' : describeExportSelection(selection)}`}
+            </Button>
+          </>
+        }
+      >
+        <div className="grid gap-1">
+          {mainDeckCount === 0 ? <p className="m-0 px-2 pb-2 text-body text-warning-soft">Agregá cartas al Main Deck para poder descargar.</p> : null}
+          {DECK_EXPORT_FILES.map((file) => (
+            <label key={file.key} className="flex cursor-pointer items-center justify-between gap-3 rounded-control px-2 py-2 transition-colors hover:bg-tint/5">
+              <span className="grid min-w-0 gap-0.5">
+                <span className="text-body font-medium text-foreground">{file.label}</span>
+                <span className="text-micro text-muted">{file.description}</span>
+              </span>
+              <Switch checked={selection[file.key]} label={file.label} onChange={(checked) => setSelection((current) => ({ ...current, [file.key]: checked }))} />
+            </label>
+          ))}
+        </div>
+      </Modal>
     </StepPage>
   )
 }
