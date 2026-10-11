@@ -14,6 +14,8 @@ interface StepHeroProps {
   subtitle?: string
   /** Explicación larga: se ve sólo si la pedís con el ícono "i". Sólo donde dice algo que no se ve en otro lado. */
   help?: ReactNode
+  /** Un botón chico pegado al título (p. ej. el de la guía): no se estira ni baja de renglón en mobile como `side`. */
+  titleAction?: ReactNode
   side?: ReactNode
   /** 'form': la parte lateral es un formulario (se ordena en dos columnas en mobile). */
   sideVariant?: 'actions' | 'form'
@@ -32,7 +34,7 @@ const sideStyle = variants({
 })
 
 /** Encabezado de cada vista: ícono + título + una línea de contexto + ayuda a pedido + acciones. */
-export function StepHero({ title, icon, subtitle, help, side, sideVariant = 'actions' }: StepHeroProps) {
+export function StepHero({ title, icon, subtitle, help, titleAction, side, sideVariant = 'actions' }: StepHeroProps) {
   return (
     <header className="relative flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-3">
       <div className="flex min-w-0 items-center gap-3">
@@ -46,6 +48,7 @@ export function StepHero({ title, icon, subtitle, help, side, sideVariant = 'act
                 {help}
               </InfoTip>
             ) : null}
+            {titleAction}
           </div>
           {subtitle ? <p className={cx(supportText, 'max-[1100px]:hidden')}>{subtitle}</p> : null}
         </div>

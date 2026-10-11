@@ -35,6 +35,8 @@ import {
 import { ConfirmDialog } from './probability/ConfirmDialog'
 import { StepHero } from './StepHero'
 import { Button } from './ui/Button'
+import { Icon } from './ui/Icon'
+import { IconButton } from './ui/IconButton'
 import { Card } from './ui/Card'
 import { EmptyState } from './ui/EmptyState'
 import { ProgressRing } from './ui/ProgressRing'
@@ -515,54 +517,61 @@ export function DeckRolesPanel({
         title="Clasificá tus cartas"
         icon="tag"
         subtitle="Contale al Lab qué hace cada carta en tu plan."
-        side={
+        titleAction={
           sortedCards.length > 0 ? (
-            <Button variant="secondary" size="sm" icon="info" onClick={() => setDrawerMode('help')}>
-              Guía de clasificación
-            </Button>
+            <IconButton tone="ghost" size="sm" aria-label="Guía de clasificación" title="Guía de clasificación" onClick={() => setDrawerMode('help')}>
+              <Icon name="info" size={18} />
+            </IconButton>
           ) : null
         }
       />
 
       {sortedCards.length > 0 ? (
         <div className={cx('grid gap-4 min-[1101px]:items-center min-[1101px]:gap-6', visibleFilterItems.length > 1 && 'min-[1101px]:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]')}>
-          <Card level="hero" padding="lg" className="flex items-center justify-between gap-5 min-[1101px]:gap-6">
-            <div className="grid min-w-0 gap-4">
-              <p className="m-0 max-w-[16rem] text-lead leading-snug">
+          <Card level="hero" padding="md" className="grid gap-3 min-[1101px]:max-w-[26rem]">
+            {/* El aro (verde: se lee de un vistazo cuánto falta, y 100 % = listo) va junto al mensaje; las acciones, abajo en una sola fila. */}
+            <div className="flex items-center gap-4">
+              <ProgressRing tone="onBrand" color="var(--success-rgb)" size={76} strokeWidth={8} value={classifiedPercent / 100} label="Cartas clasificadas">
+                <span className="grid justify-items-center leading-none">
+                  <span className="text-lead font-bold tracking-[-0.02em]">{formatInteger(classifiedPercent)}%</span>
+                  <span className="mt-0.5 text-[0.625rem] font-medium text-primary-foreground/75">{hasCardsNeedingClassification ? 'listas' : 'listo'}</span>
+                </span>
+              </ProgressRing>
+              <p className="m-0 min-w-0 text-lead leading-snug">
                 {unclassifiedCards.length > 0
                   ? `Te faltan ${formatInteger(unclassifiedCards.length)} carta${unclassifiedCards.length === 1 ? '' : 's'} por clasificar`
                   : pendingReviewCards.length > 0
                     ? `Confirmá ${formatInteger(pendingReviewCards.length)} sugerencia${pendingReviewCards.length === 1 ? '' : 's'} para cerrar la clasificación`
                     : 'Tu deck está clasificado y listo para medir'}
               </p>
-              <div className="flex flex-wrap gap-2">
-                {unclassifiedCards.length > 0 ? (
-                  <Button variant="onBrand" size="sm" icon="sparkles" onClick={() => dispatch(reclassifyAllCards())}>
-                    Clasificar todo
-                  </Button>
-                ) : pendingReviewCards.length > 0 ? (
-                  // Abre la primera sugerencia; desde ahí "Siguiente" recorre el resto.
-                  <Button variant="onBrand" size="sm" icon="check" onClick={() => handleCardSelection(pendingReviewCards[0]!.id)}>
-                    Revisar sugerencias
-                  </Button>
-                ) : onOpenLab ? (
-                  <Button variant="onBrand" size="sm" iconEnd="arrow-right" onClick={onOpenLab}>
-                    Ir al Lab
-                  </Button>
-                ) : null}
-                {/* Vuelve a sugerir todo con las reglas de hoy; pisa lo confirmado, por eso pregunta. */}
-                <Button variant="tertiary" size="sm" icon="refresh" className="text-primary-foreground" onClick={() => setConfirmResuggest(true)}>
-                  Reclasificar todo
-                </Button>
-              </div>
             </div>
-            {/* A la derecha y en verde: se lee de un vistazo cuánto falta, y 100 % = listo. */}
-            <ProgressRing tone="onBrand" color="var(--success-rgb)" size={112} strokeWidth={10} value={classifiedPercent / 100} label="Cartas clasificadas">
-              <span className="grid justify-items-center leading-none">
-                <span className="text-title font-bold tracking-[-0.02em]">{formatInteger(classifiedPercent)}%</span>
-                <span className="mt-1 text-micro font-medium text-primary-foreground/75">{hasCardsNeedingClassification ? 'listas' : 'listo'}</span>
-              </span>
-            </ProgressRing>
+            <div className="flex items-center gap-2">
+              {unclassifiedCards.length > 0 ? (
+                <Button variant="onBrand" size="sm" icon="sparkles" className="flex-1" onClick={() => dispatch(reclassifyAllCards())}>
+                  Clasificar todo
+                </Button>
+              ) : pendingReviewCards.length > 0 ? (
+                // Abre la primera sugerencia; desde ahí "Siguiente" recorre el resto.
+                <Button variant="onBrand" size="sm" icon="check" className="flex-1" onClick={() => handleCardSelection(pendingReviewCards[0]!.id)}>
+                  Revisar sugerencias
+                </Button>
+              ) : onOpenLab ? (
+                <Button variant="onBrand" size="sm" iconEnd="arrow-right" className="flex-1" onClick={onOpenLab}>
+                  Ir al Lab
+                </Button>
+              ) : null}
+              {/* Vuelve a sugerir todo con las reglas de hoy; pisa lo confirmado, por eso pregunta. */}
+              <IconButton
+                tone="ghost"
+                size="md"
+                aria-label="Reclasificar todo"
+                title="Reclasificar todo"
+                className="text-primary-foreground"
+                onClick={() => setConfirmResuggest(true)}
+              >
+                <Icon name="refresh" size={20} />
+              </IconButton>
+            </div>
           </Card>
 
           {visibleFilterItems.length > 1 ? (
