@@ -1,7 +1,7 @@
 import { formatInteger } from '../../app/utils'
 import type { IconName } from '../ui/Icon'
 
-export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'meta'
+export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'meta' | 'life'
 export type DeckWorkflowStepTone = 'complete' | 'progress' | 'pending'
 
 export interface DeckModeNavigationItem {
@@ -16,6 +16,8 @@ export interface DeckModeNavigationItem {
   detail: string
   tone: DeckWorkflowStepTone
   disabled: boolean
+  /** Sólo en la barra del celular: no aparece en las pestañas de escritorio. */
+  mobileOnly?: boolean
 }
 
 interface DeckWorkflowNavigationSnapshot {
@@ -33,6 +35,7 @@ const WORKFLOW_STEP_KEYS: readonly DeckWorkflowStepKey[] = [
   'workspace',
   'export',
   'meta',
+  'life',
 ]
 
 export const DECK_WORKFLOW_TONE_LABEL: Record<DeckWorkflowStepTone, string> = {
@@ -132,6 +135,18 @@ export function buildDeckWorkflowNavigationItems({
       detail: 'Qué hand traps se juegan en los torneos.',
       tone: 'pending',
       disabled: false,
+    },
+    // Tampoco es un paso: la calculadora de LP para duelos en mesa. Sólo en el celular.
+    {
+      key: 'life',
+      step: '7',
+      label: 'LP',
+      title: 'Calculadora de LP',
+      icon: 'heart',
+      detail: 'Contá los puntos de vida de un duelo.',
+      tone: 'pending',
+      disabled: false,
+      mobileOnly: true,
     },
   ]
 }

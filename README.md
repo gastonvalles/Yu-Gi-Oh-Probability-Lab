@@ -118,6 +118,10 @@ Permite robar una mano al azar y ver:
 - Qué problemas aparecen.
 - El veredicto final.
 
+## Calculadora de LP (celular)
+
+En el celular hay una pestaña "LP": una calculadora de puntos de vida para duelos en mesa, pensada como la de Neuron pero más rápida y sin esperas. Dos duelistas con 8000 LP, teclado numérico siempre a la vista con restar, sumar y dividir a la mitad por duelista, deshacer, registro de cada cambio con el reloj del duelo, cronómetro (avisa pasados los 40 minutos de la ronda), moneda, dado y sorteo de quién empieza. El duelo se guarda en el dispositivo (sobrevive a cerrar la app) y la pantalla no se apaga mientras está abierta.
+
 ## Estructura del proyecto
 
 ```
