@@ -62,23 +62,6 @@ function tryWrite(key: string, payload: string): boolean {
   }
 }
 
-/** Último recurso ante una app que no arranca: copia el estado principal a `:backup` y borra todo lo guardado por la app. */
-export function resetPersistedState(): void {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-
-    if (raw) {
-      localStorage.setItem(BACKUP_KEY, raw)
-    }
-
-    for (const key of Object.keys(localStorage)) {
-      if (key !== BACKUP_KEY && (key.startsWith('ygo-probability-lab:') || key.startsWith('ygo-lab'))) {
-        localStorage.removeItem(key)
-      }
-    }
-  } catch { /* sin acceso al almacenamiento: no hay nada que borrar */ }
-}
-
 export function loadClassificationOverrides(): Map<string, ClassificationSuggestion> {
   try {
     const raw = localStorage.getItem(CLASSIFICATION_OVERRIDES_KEY)
