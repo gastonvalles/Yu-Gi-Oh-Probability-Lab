@@ -14,6 +14,7 @@
     "preview": "vite preview",
     "sync:genesys": "node scripts/sync-genesys-card-data.mjs",
     "sync:meta": "node scripts/sync-meta-decks.mjs",
+    "sync:prices": "node scripts/sync-card-prices.mjs",
     "test": "vitest --run",
     "typecheck": "tsc -p src/tsconfig.test.json"
   },

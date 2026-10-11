@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 
 import type { ApiCardReference } from '../../types'
 import { CardOverlay, CardPanelBody, CardPanelFooter, CardPanelHeader } from './CardOverlay'
+import { CardPrices } from './CardPrices'
 import { buildCardSummary } from './card-summary'
 
 interface CardDetailOverlayProps {
@@ -22,6 +23,7 @@ export function CardDetailOverlay({ name, card, origin = null, metadata, actions
       <CardPanelHeader title={name} lines={[summary ? `${summary.typeLine}${summary.statLine ? ` · ${summary.statLine}` : ''}` : null, metadata]} />
       <CardPanelBody label="Efecto" className="text-lead">
         <p className="m-0 whitespace-pre-wrap [overflow-wrap:anywhere]">{card?.description?.trim() || 'Sin texto disponible.'}</p>
+        {card ? <CardPrices cardId={card.ygoprodeckId} /> : null}
       </CardPanelBody>
       {actions ? <CardPanelFooter>{actions}</CardPanelFooter> : null}
     </CardOverlay>

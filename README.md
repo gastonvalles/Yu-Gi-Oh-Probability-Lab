@@ -19,6 +19,7 @@ La idea central es ayudar a entender deck building con un flujo simple: armás e
 - Exportación del deck como imagen, decklist oficial en PDF y `.ydk`, y los tres pasos para llevarlo a Neuron (link YDKE o `.ydk` + extensión "Deck transfer" + base de datos oficial de Konami).
 - Cupsy, la mascota: reacciona a lo que pasa (espera mientras carga, calcula con el Lab, revisa en Roles, festeja o se frustra con los avisos y con las manos de la práctica). Se agarra y se lleva a cualquier lado, choca con los botones flotantes y los empuja, y si se la deja apretada cinco segundos pregunta si querés darle un descanso (en escritorio también tiene una X al pasar el mouse). El Kuriboh alado junto a las redes es la caja de las mascotas: al tocarlo se despliegan las que hay y elegir una la saca o la trae de vuelta del descanso.
 - Meta: tier list de hand traps según los Tournament Meta Decks de YGOPRODeck (TCG y OCG por separado, Main y Side), con tendencia a dos semanas, los decks que las juegan y cada deck de torneo completo para verlo o cargarlo en el builder. Qué carta es hand trap se lee de sus reglas (los scripts de EDOPro de Project Ignis: un efecto rápido o disparador activable desde la mano), no de su texto, y sólo entran las que juegan varios decks distintos. Las cartas prohibidas en la banlist de cada región no entran al tier list. Los datos se actualizan solos cada día.
+- Precios: el detalle de cada carta (en celular y en escritorio) muestra su precio de mercado de TCGplayer, en dólares, en las tres expansiones más nuevas en las que salió, con edición, rareza y link al producto. TCGplayer ya no da keys nuevas para su API, así que los precios salen de TCGCSV, un espejo diario de sus datos: el workflow baja todos los sets de Yu-Gi-Oh! a archivos estáticos en `public/prices/` (un índice y un archivo por set) y la app los cruza con las impresiones de la carta que da YGOPRODeck, sin servidor propio. Son una referencia, con hasta un día de atraso.
 
 ## Flujo recomendado
 
@@ -165,6 +166,7 @@ npm run typecheck    # tipos de la app y de los tests
 npm run lint         # ESLint: reglas de hooks, variables sin uso y lo recomendado de TypeScript
 npm run sync:genesys # actualiza los puntos de Genesys
 npm run sync:meta    # actualiza los Tournament Meta Decks (el workflow sync-meta-decks lo hace solo cada día)
+npm run sync:prices  # baja los precios de TCGplayer a public/prices (el mismo workflow, también cada día)
 ```
 
 El CI (`.github/workflows/ci.yml`) corre `typecheck`, `lint`, `test` y `build` en cada PR y push a `main`.
