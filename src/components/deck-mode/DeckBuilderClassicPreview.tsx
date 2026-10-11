@@ -9,7 +9,7 @@ import type { DeckZone } from '../../app/model'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { CardArt } from '../CardArt'
 import { buildZoneActionEntries } from '../card-detail/card-zone-actions'
-import { CardPrices } from '../card-detail/CardPrices'
+import { CardPricesButton, CardPricesModal } from '../card-detail/CardPrices'
 import { CardZoom } from '../card-detail/CardZoom'
 import { DeckCopyControls, type DeckCopyActions } from '../card-detail/DeckCopyControls'
 import { Button } from '../ui/Button'
@@ -37,6 +37,7 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, onAddToZone 
   const condensedStatLine = [levelLine, statLine].filter(Boolean).join(' ')
   // Tocar la imagen la muestra en grande, como en el detalle del celular.
   const [zoomed, setZoomed] = useState(false)
+  const [pricesOpen, setPricesOpen] = useState(false)
 
   return (
     <aside className="flex h-full max-h-full min-h-0 flex-col gap-3 overflow-y-auto overflow-x-hidden overscroll-contain border-r border-border-subtle bg-card-background/50 px-4 pb-4 pt-4 [scrollbar-gutter:stable] [scrollbar-width:thin] [&>*]:shrink-0">
@@ -45,15 +46,20 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, onAddToZone 
           <h3 className="m-0 text-center text-lead font-semibold leading-tight text-foreground [overflow-wrap:anywhere]">{card.name}</h3>
 
           <div className="grid min-h-0 justify-items-center overflow-hidden">
-            <button
-              type="button"
-              aria-label="Ver la carta en grande"
-              title="Ver la carta en grande"
-              className="block w-[min(100%,max(9rem,calc((100dvh-var(--deck-mode-topbar-height)-29rem)*0.72)))] cursor-zoom-in rounded-lg bg-transparent p-0 focus-visible:outline-none focus-visible:shadow-focus"
-              onClick={() => setZoomed(true)}
-            >
-              <CardArt remoteUrl={card.imageUrl} name={card.name} className="w-full bg-transparent shadow-none" limitCard={card} limitBadgeSize="lg" />
-            </button>
+            <div className="relative w-[min(100%,max(9rem,calc((100dvh-var(--deck-mode-topbar-height)-29rem)*0.72)))]">
+              <button
+                type="button"
+                aria-label="Ver la carta en grande"
+                title="Ver la carta en grande"
+                className="block w-full cursor-zoom-in rounded-lg bg-transparent p-0 focus-visible:outline-none focus-visible:shadow-focus"
+                onClick={() => setZoomed(true)}
+              >
+                <CardArt remoteUrl={card.imageUrl} name={card.name} className="w-full bg-transparent shadow-none" limitCard={card} limitBadgeSize="lg" />
+              </button>
+              <div className="absolute bottom-2 right-2">
+                <CardPricesButton onClick={() => setPricesOpen(true)} />
+              </div>
+            </div>
           </div>
 
           {source === 'deck' && deckCopy ? <DeckCopyControls deckCopy={deckCopy} /> : null}
@@ -73,9 +79,9 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, onAddToZone 
             {detailHeader ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{detailHeader}</p> : null}
             {condensedStatLine ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{condensedStatLine}</p> : null}
             {card.description ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{card.description}</p> : null}
-            <CardPrices cardId={card.ygoprodeckId} />
           </article>
           {zoomed ? <CardZoom card={card} name={card.name} onClose={() => setZoomed(false)} /> : null}
+          <CardPricesModal cardId={card.ygoprodeckId} name={card.name} isOpen={pricesOpen} onClose={() => setPricesOpen(false)} />
         </>
       ) : (
         <div className="grid flex-1 content-center justify-items-center gap-5 text-center">
