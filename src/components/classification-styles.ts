@@ -57,13 +57,17 @@ export function roleOptionButton(active: boolean): string {
   )
 }
 
-/** Chip de vista de la cola ("Todas", "Starters"…): lavanda en reposo, con el color del grupo al elegirlo. */
-export function viewChip(state: { active: boolean }): string {
+/** Chip de vista de la cola ("Todas", "Starters"…): lavanda en reposo, con el color del grupo al elegirlo. Sobre la tarjeta violeta (`onBrand`) va translúcido y, elegido, claro. */
+export function viewChip(state: { active: boolean; onBrand?: boolean }): string {
   return cx(
     'inline-flex items-center gap-2 rounded-control px-3.5 py-2 text-micro font-semibold leading-none transition-[background-color,color] duration-150 focus-visible:outline-none focus-visible:shadow-focus',
-    state.active
-      ? 'bg-[rgb(var(--role-rgb)/0.3)] text-foreground'
-      : 'bg-lavender text-primary-soft hover:bg-[rgb(var(--role-rgb)/0.2)] hover:text-foreground',
+    state.onBrand
+      ? state.active
+        ? 'bg-primary-foreground text-primary'
+        : 'bg-primary-foreground/15 text-primary-foreground hover:bg-primary-foreground/25'
+      : state.active
+        ? 'bg-[rgb(var(--role-rgb)/0.3)] text-foreground'
+        : 'bg-lavender text-primary-soft hover:bg-[rgb(var(--role-rgb)/0.2)] hover:text-foreground',
   )
 }
 

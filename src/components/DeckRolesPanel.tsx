@@ -421,6 +421,9 @@ export function DeckRolesPanel({
     () => primaryFilterItems.filter((item) => item.cards.length > 0 || areClassificationFilterKeysEqual(activeFilter, item.key)),
     [activeFilter, primaryFilterItems],
   )
+  const hasFilters = visibleFilterItems.length > 1
+  // En escritorio los filtros van dentro del banner; en celular, debajo de la tarjeta.
+  const filtersInCard = hasFilters && isDesktop
 
   useEffect(() => {
     if (overviewItems.some((item) => areClassificationFilterKeysEqual(item.key, activeFilter))) {
@@ -514,6 +517,30 @@ export function DeckRolesPanel({
     }
   }, [drawerMode, isDetailOpen, handleSelectPreviousCard, handleSelectNextCard])
 
+  const filterChips = hasFilters ? (
+    <div className={cx(filtersInCard ? 'col-span-2 col-start-2 flex flex-wrap items-center gap-2' : 'grid gap-2')}>
+      <p className={cx('m-0', filtersInCard ? 'text-micro font-semibold uppercase tracking-[0.08em] text-primary-foreground/75' : overline)}>Vista activa</p>
+      <div className="flex flex-wrap gap-2">
+        {visibleFilterItems.map((item) => {
+          const active = areClassificationFilterKeysEqual(activeFilter, item.key)
+
+          return (
+            <button
+              key={getClassificationFilterReactKey(item.key)}
+              type="button"
+              className={viewChip({ active, onBrand: filtersInCard })}
+              style={getClassificationStyle(item.styleKey)}
+              onClick={() => handleFilterChange(item.key)}
+            >
+              <span>{item.label}</span>
+              <span className={cx('text-micro tabular-nums', filtersInCard ? 'opacity-75' : 'text-soft')}>{formatInteger(item.cards.length)}</span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  ) : null
+
   return (
     <section className="mx-auto grid w-full min-w-0 max-w-content content-start gap-4 overflow-x-hidden px-gutter pb-6 pt-4 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_auto_minmax(0,1fr)] min-[1101px]:gap-5 min-[1101px]:overflow-hidden min-[1101px]:px-6 min-[1101px]:pb-6 min-[1101px]:pt-6">
       <StepHero
@@ -530,10 +557,14 @@ export function DeckRolesPanel({
       />
 
       {sortedCards.length > 0 ? (
-        <div className={cx('grid gap-4 min-[1101px]:items-center min-[1101px]:gap-6', visibleFilterItems.length > 1 && 'min-[1101px]:grid-cols-[minmax(0,30rem)_minmax(0,1fr)]')}>
-          <Card level="hero" padding={isDesktop ? 'lg' : 'md'} className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3 min-[1101px]:max-w-[30rem] min-[1101px]:gap-x-6 min-[1101px]:gap-y-4">
-            {/* El aro (verde: se lee de un vistazo cuánto falta, y 100 % = listo) va junto al mensaje. En celular las acciones van abajo, en una fila; en escritorio, el aro es más grande y las acciones quedan bajo el mensaje. */}
-            <div className="min-[1101px]:row-span-2">
+        <div className="grid gap-4">
+          <Card
+            level="hero"
+            padding={isDesktop ? 'lg' : 'md'}
+            className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3 min-[1101px]:grid-cols-[auto_minmax(0,1fr)_auto] min-[1101px]:gap-x-8 min-[1101px]:gap-y-4"
+          >
+            {/* El aro (verde: se lee de un vistazo cuánto falta, y 100 % = listo) va junto al mensaje. En celular las acciones van abajo, en una fila. En escritorio es un banner de todo el ancho: aro, mensaje y acciones a la derecha, y los filtros (si hay) en una segunda fila. */}
+            <div className={cx(filtersInCard && 'min-[1101px]:row-span-2')}>
               <ProgressRing tone="onBrand" color="var(--success-rgb)" size={isDesktop ? 112 : 76} strokeWidth={isDesktop ? 10 : 8} value={classifiedPercent / 100} label="Cartas clasificadas">
                 <span className="grid justify-items-center leading-none">
                   <span className="text-lead font-bold tracking-[-0.02em] min-[1101px]:text-title">{formatInteger(classifiedPercent)}%</span>
@@ -548,7 +579,7 @@ export function DeckRolesPanel({
                     ? `Confirmá ${formatInteger(pendingReviewCards.length)} sugerencia${pendingReviewCards.length === 1 ? '' : 's'} para cerrar la clasificación`
                     : 'Tu deck está clasificado y listo para medir'}
             </p>
-            <div className="col-span-2 flex items-center gap-2 min-[1101px]:col-span-1 min-[1101px]:col-start-2">
+            <div className="col-span-2 flex items-center gap-2 min-[1101px]:col-span-1 min-[1101px]:col-start-3 min-[1101px]:w-72">
               {unclassifiedCards.length > 0 ? (
                 <Button variant="onBrand" size={buttonSize} icon="sparkles" className="flex-1" onClick={() => dispatch(reclassifyAllCards())}>
                   Clasificar todo
@@ -575,31 +606,10 @@ export function DeckRolesPanel({
                 <Icon name="refresh" size={20} />
               </IconButton>
             </div>
+            {filtersInCard ? filterChips : null}
           </Card>
 
-          {visibleFilterItems.length > 1 ? (
-            <div className="grid gap-2">
-              <p className={cx('m-0', overline)}>Vista activa</p>
-              <div className="flex flex-wrap gap-2">
-                {visibleFilterItems.map((item) => {
-                  const active = areClassificationFilterKeysEqual(activeFilter, item.key)
-
-                  return (
-                    <button
-                      key={getClassificationFilterReactKey(item.key)}
-                      type="button"
-                      className={viewChip({ active })}
-                      style={getClassificationStyle(item.styleKey)}
-                      onClick={() => handleFilterChange(item.key)}
-                    >
-                      <span>{item.label}</span>
-                      <span className="text-soft text-micro tabular-nums">{formatInteger(item.cards.length)}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          ) : null}
+          {filtersInCard ? null : filterChips}
         </div>
       ) : null}
 
