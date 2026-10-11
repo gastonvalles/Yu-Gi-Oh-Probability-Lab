@@ -16,6 +16,7 @@ import {
 } from '../app/role-step'
 import { useAppDispatch } from '../app/store-hooks'
 import { useToastMessage } from '../app/use-toast-message'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../app/use-media-query'
 import { formatInteger } from '../app/utils'
 import type { CardEntry, CardGroupKey, CardOrigin, CardRole } from '../types'
 import {
@@ -261,6 +262,8 @@ export function DeckRolesPanel({
   onConfirm,
   onOpenLab,
 }: DeckRolesPanelProps) {
+  const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  const buttonSize = isDesktop ? 'md' : 'sm'
   const dispatch = useAppDispatch()
   const { showToast } = useToastMessage()
   const [activeFilter, setActiveFilter] = useState<ClassificationFilterKey>(() =>
@@ -527,36 +530,36 @@ export function DeckRolesPanel({
       />
 
       {sortedCards.length > 0 ? (
-        <div className={cx('grid gap-4 min-[1101px]:items-center min-[1101px]:gap-6', visibleFilterItems.length > 1 && 'min-[1101px]:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]')}>
-          <Card level="hero" padding="md" className="grid gap-3 min-[1101px]:max-w-[26rem]">
-            {/* El aro (verde: se lee de un vistazo cuánto falta, y 100 % = listo) va junto al mensaje; las acciones, abajo en una sola fila. */}
-            <div className="flex items-center gap-4">
-              <ProgressRing tone="onBrand" color="var(--success-rgb)" size={76} strokeWidth={8} value={classifiedPercent / 100} label="Cartas clasificadas">
+        <div className={cx('grid gap-4 min-[1101px]:items-center min-[1101px]:gap-6', visibleFilterItems.length > 1 && 'min-[1101px]:grid-cols-[minmax(0,30rem)_minmax(0,1fr)]')}>
+          <Card level="hero" padding={isDesktop ? 'lg' : 'md'} className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3 min-[1101px]:max-w-[30rem] min-[1101px]:gap-x-6 min-[1101px]:gap-y-4">
+            {/* El aro (verde: se lee de un vistazo cuánto falta, y 100 % = listo) va junto al mensaje. En celular las acciones van abajo, en una fila; en escritorio, el aro es más grande y las acciones quedan bajo el mensaje. */}
+            <div className="min-[1101px]:row-span-2">
+              <ProgressRing tone="onBrand" color="var(--success-rgb)" size={isDesktop ? 112 : 76} strokeWidth={isDesktop ? 10 : 8} value={classifiedPercent / 100} label="Cartas clasificadas">
                 <span className="grid justify-items-center leading-none">
-                  <span className="text-lead font-bold tracking-[-0.02em]">{formatInteger(classifiedPercent)}%</span>
-                  <span className="mt-0.5 text-[0.625rem] font-medium text-primary-foreground/75">{hasCardsNeedingClassification ? 'listas' : 'listo'}</span>
+                  <span className="text-lead font-bold tracking-[-0.02em] min-[1101px]:text-title">{formatInteger(classifiedPercent)}%</span>
+                  <span className="mt-0.5 text-[0.625rem] font-medium text-primary-foreground/75 min-[1101px]:mt-1 min-[1101px]:text-micro">{hasCardsNeedingClassification ? 'listas' : 'listo'}</span>
                 </span>
               </ProgressRing>
-              <p className="m-0 min-w-0 text-lead leading-snug">
+            </div>
+            <p className="m-0 min-w-0 text-lead leading-snug min-[1101px]:text-title min-[1101px]:leading-tight">
                 {unclassifiedCards.length > 0
                   ? `Te faltan ${formatInteger(unclassifiedCards.length)} carta${unclassifiedCards.length === 1 ? '' : 's'} por clasificar`
                   : pendingReviewCards.length > 0
                     ? `Confirmá ${formatInteger(pendingReviewCards.length)} sugerencia${pendingReviewCards.length === 1 ? '' : 's'} para cerrar la clasificación`
                     : 'Tu deck está clasificado y listo para medir'}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
+            </p>
+            <div className="col-span-2 flex items-center gap-2 min-[1101px]:col-span-1 min-[1101px]:col-start-2">
               {unclassifiedCards.length > 0 ? (
-                <Button variant="onBrand" size="sm" icon="sparkles" className="flex-1" onClick={() => dispatch(reclassifyAllCards())}>
+                <Button variant="onBrand" size={buttonSize} icon="sparkles" className="flex-1" onClick={() => dispatch(reclassifyAllCards())}>
                   Clasificar todo
                 </Button>
               ) : pendingReviewCards.length > 0 ? (
                 // Abre la primera sugerencia; desde ahí "Siguiente" recorre el resto.
-                <Button variant="onBrand" size="sm" icon="check" className="flex-1" onClick={() => handleCardSelection(pendingReviewCards[0]!.id)}>
+                <Button variant="onBrand" size={buttonSize} icon="check" className="flex-1" onClick={() => handleCardSelection(pendingReviewCards[0]!.id)}>
                   Revisar sugerencias
                 </Button>
               ) : onOpenLab ? (
-                <Button variant="onBrand" size="sm" iconEnd="arrow-right" className="flex-1" onClick={onOpenLab}>
+                <Button variant="onBrand" size={buttonSize} iconEnd="arrow-right" className="flex-1" onClick={onOpenLab}>
                   Ir al Lab
                 </Button>
               ) : null}
