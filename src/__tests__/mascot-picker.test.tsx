@@ -43,6 +43,26 @@ describe('el botón del Kuriboh', () => {
     expect(localStorage.getItem('ygo-lab:mascot')).toBeNull()
   })
 
+  it('mientras la mascota está afuera, el menú trae una X para darle un descanso, y la X cierra el menú', () => {
+    render(<MascotPicker placement="below" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mascotas' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Darle un descanso a Cupsy' }))
+
+    expect(isMascotEnabled()).toBe(false)
+    expect(localStorage.getItem('ygo-lab:mascot')).toBe('off')
+    expect(screen.queryByRole('group', { name: 'Mascotas disponibles' })).not.toBeInTheDocument()
+  })
+
+  it('no hay X en el menú si la mascota ya está descansando', () => {
+    setMascotEnabled(false)
+    render(<MascotPicker placement="below" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mascotas' }))
+
+    expect(screen.queryByRole('button', { name: /Darle un descanso/ })).not.toBeInTheDocument()
+  })
+
   it('se cierra con Escape y tocando afuera', () => {
     render(<MascotPicker placement="below" />)
     const open = () => fireEvent.click(screen.getByRole('button', { name: 'Mascotas' }))
