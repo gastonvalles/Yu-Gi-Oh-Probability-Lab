@@ -1,10 +1,15 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
+import { configureStore } from '@reduxjs/toolkit'
+import { Provider } from 'react-redux'
 import { describe, expect, it, vi } from 'vitest'
 
 import { CardZoom } from '../components/card-detail/CardZoom'
 import type { ApiCardReference } from '../types'
+
+// El aviso de límite de copias de la carta lee el formato del store.
+const store = configureStore({ reducer: { settings: (state = { handSize: 5, deckFormat: 'unlimited' as const }) => state } })
 
 const card = {
   ygoprodeckId: 1,
@@ -28,7 +33,11 @@ const card = {
 describe('la carta en grande', () => {
   it('se cierra tocando en cualquier lado, con la X o con Escape', () => {
     const onClose = vi.fn()
-    render(<CardZoom card={card} name="Maxx" onClose={onClose} />)
+    render(
+      <Provider store={store}>
+        <CardZoom card={card} name="Maxx" onClose={onClose} />
+      </Provider>,
+    )
 
     const dialog = screen.getByRole('dialog', { name: 'Maxx en grande' })
 
