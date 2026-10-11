@@ -16,6 +16,6 @@
     "noUnusedParameters": true,
     "noImplicitReturns": true,
   },
-  "include": [".", "../api"],
+  "include": ["."],
   "exclude": ["./__tests__"]
 }

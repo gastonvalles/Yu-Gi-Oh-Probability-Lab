@@ -5,9 +5,12 @@ import { overline } from '../ui/typography'
 
 const USD = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'USD' })
 
+/** "2026-10-11" → "11/10/2026". */
+const formatDay = (day: string) => day.split('-').reverse().join('/')
+
 /**
- * Precios de TCGplayer de las impresiones más nuevas de la carta (prototipo): expansión, código, rareza y edición,
- * con el precio de mercado en dólares y un link al producto.
+ * Precios de TCGplayer de las impresiones más nuevas de la carta: expansión, código, rareza y edición, con el precio de
+ * mercado en dólares y un link al producto. Salen de los archivos que baja el sync diario.
  */
 export function CardPrices({ cardId }: { cardId: number }) {
   const state = useCardPrices(cardId)
@@ -52,7 +55,7 @@ export function CardPrices({ cardId }: { cardId: number }) {
               </li>
             ))}
           </ul>
-          <p className="m-0 text-micro text-white/55">Precio de mercado de TCGplayer, en dólares. Puede tener hasta un día de atraso.</p>
+          <p className="m-0 text-micro text-white/55">Precio de mercado de TCGplayer, en dólares, al {formatDay(state.updated)}.</p>
         </>
       ) : null}
     </section>

@@ -9,6 +9,7 @@ import type { DeckZone } from '../../app/model'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { CardArt } from '../CardArt'
 import { buildZoneActionEntries } from '../card-detail/card-zone-actions'
+import { CardPrices } from '../card-detail/CardPrices'
 import { CardZoom } from '../card-detail/CardZoom'
 import { DeckCopyControls, type DeckCopyActions } from '../card-detail/DeckCopyControls'
 import { Button } from '../ui/Button'
@@ -72,6 +73,7 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, onAddToZone 
             {detailHeader ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{detailHeader}</p> : null}
             {condensedStatLine ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{condensedStatLine}</p> : null}
             {card.description ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{card.description}</p> : null}
+            <CardPrices cardId={card.ygoprodeckId} />
           </article>
           {zoomed ? <CardZoom card={card} name={card.name} onClose={() => setZoomed(false)} /> : null}
         </>
