@@ -1,0 +1,108 @@
+// @vitest-environment jsdom
+import { beforeEach, describe, expect, it } from 'vitest'
+
+import {
+  LIFE_STORAGE_KEY,
+  MAX_LP,
+  ROUND_LIMIT_MS,
+  createLifeState,
+  formatClock,
+  lifeReducer,
+  readLifeState,
+  timerElapsed,
+  timerRemaining,
+  writeLifeState,
+  type LifeState,
+} from '../app/life-calculator'
+
+const run = (state: LifeState, ...actions: Parameters<typeof lifeReducer>[1][]) => actions.reduce(lifeReducer, state)
+
+describe('calculadora de LP', () => {
+  it('resta y suma sin bajar de 0 ni pasar el tope', () => {
+    const state = run(createLifeState(), { type: 'change', player: 1, delta: -2500, now: 0 }, { type: 'change', player: 0, delta: 1000, now: 0 })
+
+    expect(state.lp).toEqual([9000, 5500])
+    expect(run(state, { type: 'change', player: 1, delta: -9000, now: 0 }).lp[1]).toBe(0)
+    expect(run(state, { type: 'change', player: 0, delta: 5_000_000, now: 0 }).lp[0]).toBe(MAX_LP)
+  })
+
+  it('un cambio que no cambia nada no se registra', () => {
+    const zero = run(createLifeState(), { type: 'change', player: 0, delta: -8000, now: 0 })
+
+    expect(run(zero, { type: 'change', player: 0, delta: -500, now: 0 })).toBe(zero)
+    expect(run(zero, { type: 'halve', player: 0, now: 0 })).toBe(zero)
+  })
+
+  it('registra cada cambio con el reloj del duelo y deshace el último', () => {
+    const running = run(createLifeState(), { type: 'timer-toggle', now: 1000 })
+    const state = run(running, { type: 'change', player: 1, delta: -3000, now: 61_000 }, { type: 'halve', player: 1, now: 90_000 })
+
+    expect(state.log).toEqual([
+      { at: 60_000, player: 1, delta: -3000, from: 8000, to: 5000 },
+      { at: 89_000, player: 1, delta: -2500, from: 5000, to: 2500 },
+    ])
+
+    const undone = run(state, { type: 'undo' })
+
+    expect(undone.lp).toEqual([8000, 5000])
+    expect(undone.log).toHaveLength(1)
+    // Sin registro no hay nada que deshacer.
+    expect(run(createLifeState(), { type: 'undo' })).toEqual(createLifeState())
+  })
+
+  it('a la mitad redondea para abajo', () => {
+    const odd = run(createLifeState(), { type: 'change', player: 0, delta: -3995, now: 0 })
+
+    expect(run(odd, { type: 'halve', player: 0, now: 0 }).lp[0]).toBe(2002)
+  })
+
+  it('la ronda cuenta 50 minutos para atrás y acumula entre pausas', () => {
+    expect(ROUND_LIMIT_MS).toBe(50 * 60 * 1000)
+
+    const paused = run(createLifeState(), { type: 'timer-toggle', now: 0 }, { type: 'timer-toggle', now: 5000 })
+
+    expect(paused.timer).toEqual({ running: false, startedAt: 0, elapsedMs: 5000 })
+    expect(timerElapsed(paused.timer, 99_000)).toBe(5000)
+
+    const resumed = run(paused, { type: 'timer-toggle', now: 10_000 })
+
+    expect(timerElapsed(resumed.timer, 12_500)).toBe(7500)
+    expect(timerRemaining(resumed.timer, 12_500)).toBe(ROUND_LIMIT_MS - 7500)
+    // Pasado el límite no queda tiempo negativo.
+    expect(timerRemaining(resumed.timer, 10_000 + ROUND_LIMIT_MS + 1)).toBe(0)
+  })
+
+  it('reiniciar el duelo deja el reloj como está; el reloj se reinicia aparte', () => {
+    const state = run(createLifeState(), { type: 'timer-toggle', now: 0 }, { type: 'change', player: 0, delta: -100, now: 0 })
+
+    expect(run(state, { type: 'reset' })).toEqual({ ...createLifeState(), timer: state.timer })
+    expect(run(state, { type: 'timer-reset' }).timer).toEqual(createLifeState().timer)
+    expect(run(state, { type: 'timer-reset' }).lp).toEqual([7900, 8000])
+  })
+
+  it('formatea mm:ss y, pasada la hora, h:mm:ss', () => {
+    expect(formatClock(0)).toBe('00:00')
+    expect(formatClock(65_999)).toBe('01:05')
+    expect(formatClock(3_600_000 + 61_000)).toBe('1:01:01')
+  })
+
+  describe('persistencia', () => {
+    beforeEach(() => localStorage.clear())
+
+    it('guarda y vuelve a leer el duelo', () => {
+      const state = run(createLifeState(), { type: 'timer-toggle', now: 1 }, { type: 'change', player: 0, delta: -700, now: 2 })
+
+      writeLifeState(state)
+
+      expect(readLifeState()).toEqual(state)
+    })
+
+    it('con datos rotos o ajenos arranca un duelo nuevo', () => {
+      localStorage.setItem(LIFE_STORAGE_KEY, '{"lp":[8000,-1],"log":[],"timer":{}}')
+      expect(readLifeState()).toEqual(createLifeState())
+
+      localStorage.setItem(LIFE_STORAGE_KEY, 'no es json')
+      expect(readLifeState()).toEqual(createLifeState())
+    })
+  })
+})

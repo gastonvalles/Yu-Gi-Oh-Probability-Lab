@@ -28,6 +28,40 @@ const PATHS = {
       <path data-cut d="M7.2 16h9.6" />
     </>
   ),
+  heart: (
+    <path data-fill d="M12 20.3s-7.6-4.7-7.6-10.2A4.1 4.1 0 0 1 12 7.6a4.1 4.1 0 0 1 7.6 2.5c0 5.5-7.6 10.2-7.6 10.2z" />
+  ),
+  undo: (
+    <>
+      <path d="M9 14 4 9l5-5" />
+      <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+    </>
+  ),
+  play: <path data-fill d="M7 4.8v14.4a1 1 0 0 0 1.5.86l12-7.2a1 1 0 0 0 0-1.72l-12-7.2A1 1 0 0 0 7 4.8z" />,
+  pause: (
+    <>
+      <rect data-fill x="5" y="4" width="5" height="16" rx="1.2" />
+      <rect data-fill x="14" y="4" width="5" height="16" rx="1.2" />
+    </>
+  ),
+  dice: (
+    <>
+      <rect data-fill x="3.5" y="3.5" width="17" height="17" rx="4" />
+      <circle data-cut cx="8.5" cy="8.5" r="1" />
+      <circle data-cut cx="15.5" cy="8.5" r="1" />
+      <circle data-cut cx="12" cy="12" r="1" />
+      <circle data-cut cx="8.5" cy="15.5" r="1" />
+      <circle data-cut cx="15.5" cy="15.5" r="1" />
+    </>
+  ),
+  timer: (
+    <>
+      <circle data-fill cx="12" cy="13.5" r="7.5" />
+      <path data-cut d="M12 10.5v3.2l2.2 1.4" />
+      <path d="M9.5 2.5h5" />
+      <path d="M12 2.5v3.5" />
+    </>
+  ),
   columns: (
     <>
       <rect data-fill x="3" y="4" width="7.5" height="16" rx="2.2" />

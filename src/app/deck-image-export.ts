@@ -51,7 +51,7 @@ export async function exportDeckAssets(
 
   if (image.status === 'fulfilled' && image.value) downloadBlob(image.value, filenameBase, 'jpg')
   if (pdf.status === 'fulfilled' && pdf.value) downloadBlob(new Blob([pdf.value as BlobPart], { type: 'application/pdf' }), `${filenameBase}-decklist`, 'pdf')
-  if (selection.ydk) downloadBlob(new Blob([buildYdkText(deckBuilder)], { type: 'text/plain;charset=utf-8' }), filenameBase, 'ydk')
+  if (selection.ydk) downloadYdk(deckBuilder)
 
   const failed = [image.status === 'rejected' && 'la imagen', pdf.status === 'rejected' && 'el PDF'].filter(Boolean)
 
@@ -74,6 +74,11 @@ async function buildDecklistPdf(decklist: ReturnType<typeof buildKdeDecklist>): 
   }
 
   return fillKdeDecklistPdf(await templateResponse.arrayBuffer(), decklist)
+}
+
+/** Baja el .ydk solo (el paso 2 para llevar el deck a Neuron). */
+export function downloadYdk(deckBuilder: DeckBuilderState): void {
+  downloadBlob(new Blob([buildYdkText(deckBuilder)], { type: 'text/plain;charset=utf-8' }), deckBuilder.deckName || 'ygo-probability-lab-deck', 'ydk')
 }
 
 function buildYdkText(deckBuilder: DeckBuilderState): string {

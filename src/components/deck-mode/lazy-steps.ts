@@ -11,6 +11,7 @@ const loaders = {
   comparison: () => import('../comparison/ComparisonScreen'),
   practice: () => import('../probability/PracticeSection'),
   meta: () => import('../meta/MetaScreen'),
+  life: () => import('../life/LifeCalculatorScreen'),
 }
 
 export const LazyDeckRolesPanel = lazy(() => loaders.roles().then((m) => ({ default: m.DeckRolesPanel })))
@@ -19,6 +20,7 @@ export const LazyExportDeckPanel = lazy(() => loaders.exportDeck().then((m) => (
 export const LazyComparisonScreen = lazy(() => loaders.comparison().then((m) => ({ default: m.ComparisonScreen })))
 export const LazyPracticeSection = lazy(() => loaders.practice().then((m) => ({ default: m.PracticeSection })))
 export const LazyMetaScreen = lazy(() => loaders.meta().then((m) => ({ default: m.MetaScreen })))
+export const LazyLifeCalculatorScreen = lazy(() => loaders.life().then((m) => ({ default: m.LifeCalculatorScreen })))
 
 export function preloadHeavySteps(): void {
   const run = () => Object.values(loaders).forEach((load) => void load())
