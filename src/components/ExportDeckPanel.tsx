@@ -179,15 +179,18 @@ export function ExportDeckPanel({
       />
 
       {/* Qué archivos bajar: se tilda lo que hace falta y el botón descarga sólo eso. */}
-      <Card as="section" padding="sm" aria-label="Archivos a descargar" className="grid gap-1 min-[700px]:grid-cols-3 min-[700px]:gap-2">
+      <Card as="section" padding="sm" aria-label="Archivos a descargar" className="grid gap-1 min-[700px]:grid-cols-3 min-[700px]:gap-0 min-[700px]:divide-x min-[700px]:divide-border-subtle">
         {DECK_EXPORT_FILES.map((file) => (
-          <label key={file.key} className="flex cursor-pointer items-center justify-between gap-3 rounded-control px-2 py-2 transition-colors hover:bg-tint/5">
-            <span className="grid min-w-0 gap-0.5">
-              <span className="text-body font-medium text-foreground">{file.label}</span>
-              <span className="text-micro text-muted">{file.description}</span>
-            </span>
-            <Switch checked={selection[file.key]} label={file.label} onChange={(checked) => setSelection((current) => ({ ...current, [file.key]: checked }))} />
-          </label>
+          // El divisor va en el contenedor y no en la etiqueta: la etiqueta es redondeada y el borde se curvaría.
+          <div key={file.key} className="min-w-0 min-[700px]:px-2 min-[700px]:first:pl-0 min-[700px]:last:pr-0">
+            <label className="flex cursor-pointer items-center justify-between gap-3 rounded-control px-2 py-2 transition-colors hover:bg-tint/5 min-[700px]:justify-start">
+              <span className="grid min-w-0 gap-0.5">
+                <span className="text-body font-medium text-foreground">{file.label}</span>
+                <span className="text-micro text-muted">{file.description}</span>
+              </span>
+              <Switch checked={selection[file.key]} label={file.label} onChange={(checked) => setSelection((current) => ({ ...current, [file.key]: checked }))} />
+            </label>
+          </div>
         ))}
       </Card>
 
