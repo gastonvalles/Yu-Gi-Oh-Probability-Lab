@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 
-import { clampFabPosition, defaultFabPosition, isFabDrag, pushFabApart, snapFabToEdge, type FabBounds, type FabPosition } from './fab-position'
+import { clampFabPosition, defaultFabPosition, isFabDrag, resolveFabGroup, snapFabToEdge, type FabBounds, type FabPosition } from './fab-position'
 import { useMediaQuery } from './use-media-query'
 
 const MARGIN = 12
@@ -48,7 +48,7 @@ interface GroupMember {
 
 const groups = new Map<string, Map<string, GroupMember>>()
 
-/** Corre a los demás miembros del grupo que queden encimados con `self` puesto en `position`. */
+/** Corre a los demás miembros del grupo para que no se toquen con `self` (puesto en `position`) ni entre sí. */
 function pushOthers(group: string | undefined, selfKey: string, selfSize: number, position: FabPosition): void {
   const members = group ? groups.get(group) : undefined
 
@@ -56,31 +56,19 @@ function pushOthers(group: string | undefined, selfKey: string, selfSize: number
     return
   }
 
-  for (const [key, other] of members) {
-    if (key === selfKey) {
-      continue
+  const others = [...members].filter(([key]) => key !== selfKey).map(([, member]) => member)
+  const before = others.map((member) => member.getPosition())
+  const after = resolveFabGroup(
+    { position, size: selfSize },
+    others.map((member, index) => ({ position: before[index]!, size: member.size, bounds: member.getBounds() })),
+    GROUP_GAP,
+  )
+
+  others.forEach((member, index) => {
+    if (after[index] !== before[index]) {
+      member.push(after[index]!)
     }
-
-    const bounds = other.getBounds()
-    const pushed = pushFabApart(position, selfSize, other.getPosition(), other.size, GROUP_GAP)
-
-    if (!pushed) {
-      continue
-    }
-
-    let next = clampFabPosition(pushed, bounds)
-
-    // Contra un borde puede seguir encimado: entonces se corre en vertical hacia el lado que tenga lugar.
-    if (pushFabApart(position, selfSize, next, other.size, GROUP_GAP)) {
-      const span = (selfSize + other.size) / 2 + GROUP_GAP
-      const above = clampFabPosition({ x: next.x, y: position.y - span }, bounds)
-      const below = clampFabPosition({ x: next.x, y: position.y + span }, bounds)
-
-      next = pushFabApart(position, selfSize, above, other.size, GROUP_GAP) ? below : above
-    }
-
-    other.push(next)
-  }
+  })
 }
 
 /** Al soltar, los empujados se quedan donde quedaron (y lo recuerdan). */

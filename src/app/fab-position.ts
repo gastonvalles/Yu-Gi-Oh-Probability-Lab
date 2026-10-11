@@ -51,6 +51,82 @@ export function pushFabApart(self: FabPosition, selfSize: number, other: FabPosi
   return { x: other.x + ux * shove, y: other.y + uy * shove }
 }
 
+interface FabBody {
+  position: FabPosition
+  size: number
+}
+
+const overlaps = (a: FabBody, b: FabBody, gap: number) => pushFabApart(a.position, a.size, b.position, b.size, gap) !== null
+
+/**
+ * Corre `body` fuera de `obstacle`: primero un empujón en línea recta y, si el borde de la pantalla no lo deja
+ * (clavado contra el costado, por ejemplo), hacia arriba o hacia abajo, lo que quede más cerca. Si ya no se tocan,
+ * devuelve la misma posición (mismo objeto).
+ */
+export function moveClearOf(body: FabBody, obstacle: FabBody, bounds: FabBounds, gap: number): FabPosition {
+  const pushed = pushFabApart(obstacle.position, obstacle.size, body.position, body.size, gap)
+
+  if (!pushed) {
+    return body.position
+  }
+
+  const straight = clampFabPosition(pushed, bounds)
+
+  if (!overlaps({ position: straight, size: body.size }, obstacle, gap)) {
+    return straight
+  }
+
+  const distance = (obstacle.size + body.size) / 2 + gap
+  const centerY = obstacle.position.y + obstacle.size / 2
+  const candidates = [centerY - distance - body.size / 2, centerY + distance - body.size / 2]
+    .map((y) => clampFabPosition({ x: straight.x, y }, bounds))
+    .sort((a, b) => Math.abs(a.y - body.position.y) - Math.abs(b.y - body.position.y))
+
+  return candidates.find((candidate) => !overlaps({ position: candidate, size: body.size }, obstacle, gap)) ?? straight
+}
+
+/**
+ * Con `dragged` quieto en su lugar, corre al resto hasta que no se toquen con él ni entre sí (varias pasadas: un
+ * empujado puede chocar con otro). Devuelve las posiciones nuevas en el mismo orden; las que no cambian son el mismo objeto.
+ */
+export function resolveFabGroup(dragged: FabBody, others: Array<FabBody & { bounds: FabBounds }>, gap: number): FabPosition[] {
+  const positions = others.map((other) => other.position)
+
+  for (let pass = 0; pass < 6; pass += 1) {
+    let moved = false
+
+    others.forEach((other, index) => {
+      const next = moveClearOf({ position: positions[index]!, size: other.size }, dragged, other.bounds, gap)
+
+      if (next !== positions[index]) {
+        positions[index] = next
+        moved = true
+      }
+    })
+
+    others.forEach((first, i) => {
+      others.forEach((second, j) => {
+        if (j <= i) {
+          return
+        }
+
+        const next = moveClearOf({ position: positions[j]!, size: second.size }, { position: positions[i]!, size: first.size }, second.bounds, gap)
+
+        if (next !== positions[j]) {
+          positions[j] = next
+          moved = true
+        }
+      })
+    })
+
+    if (!moved) {
+      break
+    }
+  }
+
+  return positions
+}
+
 /** Posición inicial: abajo, sobre la zona reservada, a la derecha (botón) o a la izquierda (mascota). */
 export function defaultFabPosition(bounds: FabBounds, corner: 'right' | 'left' = 'right'): FabPosition {
   return clampFabPosition({ x: corner === 'right' ? Number.POSITIVE_INFINITY : 0, y: Number.POSITIVE_INFINITY }, bounds)

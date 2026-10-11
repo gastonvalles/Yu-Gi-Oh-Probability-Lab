@@ -19,19 +19,43 @@ export type MascotId = keyof typeof MASCOTS
 const MASCOT_KEY = 'ygo-lab:mascot-id'
 const ENABLED_KEY = 'ygo-lab:mascot'
 
-/** La mascota elegida (si la guardada ya no existe, la primera). */
-export function currentMascot(): (typeof MASCOTS)[MascotId] {
+function readChosenId(): MascotId {
   try {
     const stored = localStorage.getItem(MASCOT_KEY)
 
     if (stored && stored in MASCOTS) {
-      return MASCOTS[stored as MascotId]
+      return stored as MascotId
     }
   } catch {
     // Sin storage: la primera.
   }
 
-  return MASCOTS.cupsy
+  return 'cupsy'
+}
+
+let chosenId: MascotId = readChosenId()
+
+/** El id de la mascota elegida (si la guardada ya no existe, la primera). */
+export function currentMascotId(): MascotId {
+  return chosenId
+}
+
+/** La mascota elegida. */
+export function currentMascot(): (typeof MASCOTS)[MascotId] {
+  return MASCOTS[chosenId]
+}
+
+/** Elige una mascota y la saca (si estaba descansando, vuelve). */
+export function selectMascot(id: MascotId): void {
+  chosenId = id
+
+  try {
+    localStorage.setItem(MASCOT_KEY, id)
+  } catch {
+    // Sin storage se recuerda sólo hasta recargar.
+  }
+
+  setMascotEnabled(true)
 }
 const listeners = new Set<() => void>()
 const activities: Record<MascotActivity, number> = { loading: 0, computing: 0 }
@@ -167,6 +191,19 @@ export function useMascotState(): MascotState {
 
 export function useMascotEnabled(): boolean {
   return useSyncExternalStore(subscribe, isMascotEnabled, () => true)
+}
+
+/** La mascota elegida, con su id; se actualiza cuando se elige otra. */
+export function useCurrentMascot(): (typeof MASCOTS)[MascotId] & { id: MascotId } {
+  const id = useSyncExternalStore(subscribe, currentMascotId, () => 'cupsy' as MascotId)
+
+  return { id, ...MASCOTS[id] }
+}
+
+/** Para los tests: vuelve a la primera mascota y la deja afuera. */
+export function resetMascotChoiceForTests(): void {
+  chosenId = 'cupsy'
+  enabled = true
 }
 
 /** Para los tests: vuelve todo a reposo. */
