@@ -4,12 +4,11 @@ import {
   buildDeckZoneVisualLayout,
   DESKTOP_COMPACT_MAIN_EXPAND_THRESHOLD,
 } from '../app/deck-zone-layout'
-import { buildDeckZoneBreakdown, buildDeckZoneTypeCounts } from '../app/deck-presentation'
+import { buildDeckZoneTypeCounts } from '../app/deck-presentation'
 import type { DeckCardInstance, DeckZone as DeckZoneType } from '../app/model'
 import type { DeckDropIndicatorState } from '../app/use-deck-pointer-drag'
 import { formatInteger } from '../app/utils'
 import { CardArt } from './CardArt'
-import { Button } from './ui/Button'
 import { Icon } from './ui/Icon'
 import { IconButton } from './ui/IconButton'
 import {
@@ -83,7 +82,6 @@ export const DeckZone = memo(function DeckZone({
   onRemoveCard,
 }: DeckZoneProps) {
   const lastPointerTypeRef = useRef<string>('mouse')
-  const zoneBreakdown = buildDeckZoneBreakdown(zone, cards)
   const zoneTypeCounts = buildDeckZoneTypeCounts(zone, cards)
   const visualLayout = desktopCompact
     ? buildDeckZoneVisualLayout(
@@ -133,7 +131,6 @@ export const DeckZone = memo(function DeckZone({
       }) as CSSProperties
     : null
   const cardCountLabel = formatInteger(cards.length)
-  const headerSummary = `${cardCountLabel} cartas${zoneBreakdown ? ` (${zoneBreakdown})` : ''}`
   const classicRailRowStyle = isClassicRailZone
     ? ({
         '--classic-rail-card-count': String(Math.max(cards.length, 1)),
@@ -178,6 +175,44 @@ export const DeckZone = memo(function DeckZone({
     </article>
   )
 
+  /** Encabezado de la zona (igual en escritorio y celular): título con conteo, cantidad por tipo con su color e íconos de ordenar y vaciar. */
+  const zoneHeader = (className: string, buttonSize: 'sm' | 'md') => (
+    <div className={cx('flex min-w-0 items-center justify-between gap-3 px-0.5', className)}>
+      <div className="flex min-w-0 items-center gap-2.5">
+        <span className="size-2.5 shrink-0 rounded-full" style={{ background: zoneStyle.dot }} aria-hidden="true" />
+        <h3 className="m-0 whitespace-nowrap text-lead font-semibold text-foreground">
+          {title.replace(' Deck', '')} <span className="font-medium text-muted tabular-nums">[{cardCountLabel}]</span>
+        </h3>
+      </div>
+      <div className="ml-auto flex min-w-0 items-center gap-2">
+        {zoneTypeCounts.length > 0 ? (
+          <div className="flex flex-none items-center gap-3">
+            {zoneTypeCounts.map((entry) => (
+              <span
+                key={entry.kind}
+                className="inline-flex items-center gap-1.5 text-body font-semibold text-muted tabular-nums"
+                title={`${formatInteger(entry.count)} ${entry.label}`}
+              >
+                <span className={cx('size-2.5 rounded-tag', ZONE_TYPE_SWATCH[entry.kind])} aria-hidden="true" />
+                {formatInteger(entry.count)}
+              </span>
+            ))}
+          </div>
+        ) : null}
+        {!readOnly && cards.length > 1 ? (
+          <IconButton tone="ghost" size={buttonSize} aria-label={`Ordenar ${title}`} title={`Ordenar ${title}`} onClick={() => onSortZone(zone)}>
+            <Icon name="sort" size={buttonSize === 'md' ? 20 : undefined} />
+          </IconButton>
+        ) : null}
+        {!readOnly && cards.length > 0 ? (
+          <IconButton tone="ghost" size={buttonSize} aria-label={`Vaciar ${title}`} title={`Vaciar ${title}`} onClick={() => onClearZone(zone)}>
+            <Icon name="trash" size={buttonSize === 'md' ? 20 : undefined} />
+          </IconButton>
+        ) : null}
+      </div>
+    </div>
+  )
+
   if (isClassicBuilder) {
     return (
       <section
@@ -190,40 +225,7 @@ export const DeckZone = memo(function DeckZone({
         data-classic-zone={zone}
         style={classicZoneStyle}
       >
-        <div className="flex min-w-0 items-center justify-between gap-3 px-0.5">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span className="size-2.5 shrink-0 rounded-full" style={{ background: zoneStyle.dot }} aria-hidden="true" />
-            <h3 className="m-0 whitespace-nowrap text-lead font-semibold text-foreground">
-              {title.replace(' Deck', '')} <span className="font-medium text-muted tabular-nums">[{cardCountLabel}]</span>
-            </h3>
-          </div>
-          <div className="flex min-w-0 items-center gap-2">
-            {zoneTypeCounts.length > 0 ? (
-              <div className="flex flex-none items-center gap-3">
-                {zoneTypeCounts.map((entry) => (
-                  <span
-                    key={entry.kind}
-                    className="inline-flex items-center gap-1.5 text-body font-semibold text-muted tabular-nums"
-                    title={`${formatInteger(entry.count)} ${entry.label}`}
-                  >
-                    <span className={cx('size-2.5 rounded-tag', ZONE_TYPE_SWATCH[entry.kind])} aria-hidden="true" />
-                    {formatInteger(entry.count)}
-                  </span>
-                ))}
-              </div>
-            ) : null}
-            {!readOnly && cards.length > 1 ? (
-              <IconButton tone="ghost" size="sm" aria-label={`Ordenar ${title}`} title={`Ordenar ${title}`} onClick={() => onSortZone(zone)}>
-                <Icon name="sort" />
-              </IconButton>
-            ) : null}
-            {!readOnly && cards.length > 0 ? (
-              <IconButton tone="ghost" size="sm" aria-label={`Vaciar ${title}`} title={`Vaciar ${title}`} onClick={() => onClearZone(zone)}>
-                <Icon name="trash" />
-              </IconButton>
-            ) : null}
-          </div>
-        </div>
+        {zoneHeader('', 'sm')}
 
         <div
           className="relative flex w-full flex-col overflow-hidden transition-[border-color,box-shadow] duration-150"
@@ -270,25 +272,7 @@ export const DeckZone = memo(function DeckZone({
 
   return (
     <section className="w-full bg-transparent p-0">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-2.5">
-          <span className="size-2.5 shrink-0 rounded-full" style={{ background: zoneStyle.dot }} aria-hidden="true" />
-          <div className="min-w-0">
-            <h3 className="m-0 wrap-anywhere text-lead font-semibold leading-tight text-foreground">{title}</h3>
-            <p className="m-0 wrap-anywhere text-body text-muted">{headerSummary}</p>
-          </div>
-        </div>
-        {readOnly ? null : (
-          <div className="flex shrink-0 items-center gap-1">
-            <Button variant="tertiary" size="sm" icon="sort" disabled={cards.length < 2} onClick={() => onSortZone(zone)}>
-              Ordenar
-            </Button>
-            <Button variant="tertiary" size="sm" disabled={cards.length === 0} onClick={() => onClearZone(zone)}>
-              Vaciar
-            </Button>
-          </div>
-        )}
-      </div>
+      {zoneHeader('mb-2 flex-wrap gap-y-1', 'md')}
 
       <div
         className={ZONE_SURFACE_MOBILE}

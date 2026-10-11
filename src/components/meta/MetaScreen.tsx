@@ -19,6 +19,7 @@ import {
   type MetaZone,
 } from '../../app/meta-handtraps'
 import { useAppSelector } from '../../app/store-hooks'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useToastMessage } from '../../app/use-toast-message'
 import { formatInteger } from '../../app/utils'
 import { CardArt } from '../CardArt'
@@ -29,6 +30,8 @@ import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
 import { EmptyState } from '../ui/EmptyState'
 import { Icon } from '../ui/Icon'
+import { IconButton } from '../ui/IconButton'
+import { Modal } from '../ui/Modal'
 import { SectionHeader } from '../ui/SectionHeader'
 import { Segmented } from '../ui/Segmented'
 import { StepPage } from '../ui/StepPage'
@@ -71,6 +74,8 @@ function readLinkedDeck(): MetaDeck | null {
 export function MetaScreen() {
   const deckFormat = useAppSelector((state) => state.settings.deckFormat)
   const { showToast } = useToastMessage()
+  const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  const [adjustOpen, setAdjustOpen] = useState(false)
   // Arranca en la región del deck que pide el link o, si no, en la del formato del builder; después se cambia desde el encabezado.
   const [region, setRegion] = useState<MetaRegion>(() => readLinkedDeck()?.region ?? (deckFormat === 'ocg' ? 'ocg' : 'tcg'))
   const [zone, setZone] = useState<MetaZone>('both')
@@ -131,6 +136,23 @@ export function MetaScreen() {
     window.setTimeout(() => document.getElementById('meta-decks')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
   }
 
+  const zoneControl = () => (
+    <Segmented value={zone} onChange={setZone} options={ZONE_OPTIONS} label="Dónde contar la hand trap" size="sm" fullWidth={!isDesktop} />
+  )
+  const weeksControl = () => (
+    <Segmented value={weeks} onChange={setWeeks} options={WINDOW_OPTIONS} label="Cuántas semanas de decks se cuentan" size="sm" fullWidth={!isDesktop} />
+  )
+  const viewControl = () => (
+    <Segmented
+      value={view}
+      onChange={setView}
+      options={VIEW_OPTIONS}
+      label={`Tier list de hoy o proyección a ${formatInteger(PROJECTION_WEEKS)} semanas`}
+      size="sm"
+      fullWidth={!isDesktop}
+    />
+  )
+
   return (
     <StepPage as="article">
       <StepHero
@@ -171,9 +193,11 @@ export function MetaScreen() {
           </div>
         }
         side={
-          <>
-            <Badge icon="refresh" title="Fecha de la última actualización de los decks">
-              Actualizado el {formatMetaDateFull(META_DECKS.fetchedAt)}
+          // En celular, un solo renglón: la región ocupa lo que sobra y la fecha va compacta al lado.
+          <div className="flex w-full items-center gap-2 min-[1101px]:w-auto">
+            <Badge icon="refresh" title="Fecha de la última actualización de los decks" className="min-[1101px]:order-first">
+              <span className="sr-only min-[1101px]:not-sr-only">Actualizado el </span>
+              {formatMetaDateFull(META_DECKS.fetchedAt)}
             </Badge>
             <Segmented
               value={region}
@@ -184,9 +208,9 @@ export function MetaScreen() {
               options={REGION_OPTIONS}
               label="Región de los torneos"
               size="sm"
-              className="max-[1100px]:w-full"
+              className="min-w-0 max-[1100px]:order-first max-[1100px]:flex-1"
             />
-          </>
+          </div>
         }
       />
 
@@ -200,26 +224,22 @@ export function MetaScreen() {
               : `${formatInteger(report.deckCount)} decks ${regionLabel} de las últimas ${weeks} semanas. Tocá una carta para ver el detalle.`
           }
           actions={
-            // Cada control lleva su rótulo: "2 sem." (cuántos decks se cuentan) y la proyección no se confunden.
-            // En mobile cada uno ocupa una fila a todo el ancho; en pantallas grandes van en línea.
-            <div className="grid w-full gap-3 min-[1101px]:flex min-[1101px]:w-auto min-[1101px]:flex-wrap min-[1101px]:items-end min-[1101px]:gap-2">
-              <ControlField label="Contar en">
-                <Segmented value={zone} onChange={setZone} options={ZONE_OPTIONS} label="Dónde contar la hand trap" size="sm" className="max-[1100px]:w-full" />
-              </ControlField>
-              <ControlField label="Decks de las últimas">
-                <Segmented value={weeks} onChange={setWeeks} options={WINDOW_OPTIONS} label="Cuántas semanas de decks se cuentan" size="sm" className="max-[1100px]:w-full" />
-              </ControlField>
-              <ControlField label="Mostrar">
-                <Segmented
-                  value={view}
-                  onChange={setView}
-                  options={VIEW_OPTIONS}
-                  label={`Tier list de hoy o proyección a ${formatInteger(PROJECTION_WEEKS)} semanas`}
-                  size="sm"
-                  className="max-[1100px]:w-full"
-                />
-              </ControlField>
-            </div>
+            isDesktop ? (
+              // Cada control lleva su rótulo: "2 sem." (cuántos decks se cuentan) y la proyección no se confunden.
+              <div className="flex flex-wrap items-end gap-2">
+                <ControlField label="Contar en">{zoneControl()}</ControlField>
+                <ControlField label="Decks de las últimas">{weeksControl()}</ControlField>
+                <ControlField label="Mostrar">{viewControl()}</ControlField>
+              </div>
+            ) : (
+              // En celular se ve lo que más se usa (hoy o proyección) y el resto, que casi no se toca, va en un modal.
+              <div className="flex w-full items-center gap-2">
+                <div className="min-w-0 flex-1">{viewControl()}</div>
+                <IconButton tone="raised" size="md" aria-label="Ajustar la tier list" title="Ajustar la tier list" onClick={() => setAdjustOpen(true)}>
+                  <Icon name="sliders" size={20} />
+                </IconButton>
+              </div>
+            )
           }
         />
         {report.handtraps.length > 0 ? (
@@ -289,6 +309,24 @@ export function MetaScreen() {
           </div>
         ) : null}
       </Card>
+
+      <Modal
+        isOpen={adjustOpen && !isDesktop}
+        onClose={() => setAdjustOpen(false)}
+        size="sm"
+        icon="sliders"
+        title="Ajustar la tier list"
+        footer={
+          <Button variant="primary" size="sm" onClick={() => setAdjustOpen(false)}>
+            Listo
+          </Button>
+        }
+      >
+        <div className="grid gap-4">
+          <ControlField label="Contar en">{zoneControl()}</ControlField>
+          <ControlField label="Decks de las últimas">{weeksControl()}</ControlField>
+        </div>
+      </Modal>
 
       <HandtrapModal
         stat={selectedStat}

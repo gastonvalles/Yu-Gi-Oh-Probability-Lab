@@ -26,8 +26,8 @@ const sideStyle = variants({
   variants: {
     variant: {
       actions: 'flex flex-wrap items-center justify-end max-[1100px]:w-full max-[1100px]:justify-stretch max-[1100px]:[&>button]:flex-1',
-      // Formulario (nombre y formato del deck + acciones): dos columnas compactas.
-      form: 'grid w-full grid-cols-2 gap-2',
+      // Formulario (nombre y formato del deck): el nombre se queda con el ancho que sobra y el formato con uno fijo.
+      form: 'grid w-full grid-cols-[minmax(0,1fr)_8.5rem] gap-2',
     },
   },
   defaults: { variant: 'actions' },

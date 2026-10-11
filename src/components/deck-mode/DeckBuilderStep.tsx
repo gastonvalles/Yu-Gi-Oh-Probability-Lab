@@ -447,15 +447,18 @@ export function DeckBuilderStep({
                 <option value="genesys">Genesys</option>
               </select>
             </LabeledField>
-            <Button variant="secondary" size="md" fullWidth icon="upload" onClick={() => setImportDrawerOpen(true)}>
-              Importar
-            </Button>
-            <Button variant="secondary" size="md" fullWidth icon="sort" onClick={onSortAllDeckZones} disabled={totalDeckCardCount < 2}>
-              Ordenar todo
-            </Button>
-            <Button variant="secondary" size="md" fullWidth icon="trash" onClick={handleRequestClearAllDeckZones} disabled={totalDeckCardCount === 0}>
-              Vaciar todo
-            </Button>
+            {/* Debajo del nombre y el formato: tres íconos con su nombre en el tooltip y en lectores de pantalla. */}
+            <div className="col-span-2 flex items-center">
+            <IconButton tone="ghost" size="md" aria-label="Importar" title="Importar" onClick={() => setImportDrawerOpen(true)}>
+              <Icon name="upload" size={20} />
+            </IconButton>
+            <IconButton tone="ghost" size="md" aria-label="Ordenar todo" title="Ordenar todo" disabled={totalDeckCardCount < 2} className="disabled:opacity-35" onClick={onSortAllDeckZones}>
+              <Icon name="sort" size={20} />
+            </IconButton>
+            <IconButton tone="ghost" size="md" aria-label="Vaciar todo" title="Vaciar todo" disabled={totalDeckCardCount === 0} className="disabled:opacity-35" onClick={handleRequestClearAllDeckZones}>
+              <Icon name="trash" size={20} />
+            </IconButton>
+            </div>
           </>
         }
       />
