@@ -53,6 +53,9 @@ export const MAX_SETS = 3
 const CARD_INFO = 'https://db.ygoprodeck.com/api/v7/cardinfo.php'
 const PRICES_DIR = '/prices'
 
+/** La imagen del sobre del set en YGOPRODeck ("JUSH-EN016" → .../sets/JUSH.jpg). Algunos sets no la tienen. */
+export const setImageUrl = (code: string) => `https://images.ygoprodeck.com/images/sets/${code.split('-')[0]}.jpg`
+
 const normalize = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, '')
 /** Los sets sin fecha van al final, como si fueran los más viejos. */
 const newestFirst = (a: PriceGroup, b: PriceGroup) => b.publishedOn.localeCompare(a.publishedOn)

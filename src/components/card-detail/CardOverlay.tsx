@@ -7,6 +7,7 @@ import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
 import { CloseButton } from '../ui/IconButton'
+import { CardPricesButton, CardPricesModal } from './CardPrices'
 
 const CLOSE_MS = 180
 const EASE = 'cubic-bezier(0.2, 0.9, 0.25, 1)'
@@ -24,8 +25,6 @@ interface CardOverlayProps {
   tall?: boolean
   /** Algo encima de la carta, en la esquina superior derecha (p. ej. la flecha de tendencia del meta). */
   artOverlay?: ReactNode
-  /** Algo encima de la carta, en la esquina inferior derecha (p. ej. el botón de precios). */
-  artCorner?: ReactNode
   onClose: () => void
   /** Contenido del panel: `CardPanelHeader`, `CardPanelBody` y, si hace falta, `CardPanelFooter`. */
   children: ReactNode
@@ -39,11 +38,25 @@ function flightFrom(card: HTMLElement, origin: DOMRect): string {
 }
 
 /**
- * Marco común de los modales de carta (detalle y clasificación): la carta arriba, que se agranda al
+ * Marco común de los modales de carta (detalle, clasificación y meta): la carta arriba, que se agranda al
  * tocarla, y un panel con su información abajo. Una X blanca arriba a la derecha lo cierra; sólo la
- * carta y el panel interceptan los toques del fondo.
+ * carta y el panel interceptan los toques del fondo. Si la carta tiene datos, lleva abajo a la derecha la moneda
+ * de precios de TCGplayer, que abre el modal de precios y recién ahí los pide.
  */
-export function CardOverlay({ ariaLabel, panelLabel, name, card, origin = null, tall = false, artOverlay = null, artCorner = null, onClose, children }: CardOverlayProps) {
+export function CardOverlay(props: CardOverlayProps) {
+  const { card, name } = props
+  const [pricesOpen, setPricesOpen] = useState(false)
+
+  return (
+    <>
+      <CardOverlayFrame {...props} artCorner={card ? <CardPricesButton onClick={() => setPricesOpen(true)} /> : null} />
+      {/* Hermano del marco, no hijo: los clics de React suben por los portales y tocar el modal cerraría la carta. */}
+      {card ? <CardPricesModal cardId={card.ygoprodeckId} name={name} isOpen={pricesOpen} onClose={() => setPricesOpen(false)} /> : null}
+    </>
+  )
+}
+
+function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, tall = false, artOverlay = null, artCorner = null, onClose, children }: CardOverlayProps & { artCorner?: ReactNode }) {
   const rootRef = useRef<HTMLDivElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLElement>(null)

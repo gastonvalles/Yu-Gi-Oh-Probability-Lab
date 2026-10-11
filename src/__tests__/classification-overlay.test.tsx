@@ -142,4 +142,12 @@ describe('modal de clasificación (mismo marco que el detalle)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Qué significa cada rol/ }))
     expect(onOpenHelp).toHaveBeenCalledOnce()
   })
+
+  it('lleva la moneda de precios sólo si la carta tiene datos', () => {
+    const { rerender } = render(editor())
+    expect(screen.getByRole('button', { name: 'Ver precios en TCGplayer' })).toBeInTheDocument()
+
+    rerender(editor({ card: entry({ apiCard: null }) }))
+    expect(screen.queryByRole('button', { name: 'Ver precios en TCGplayer' })).not.toBeInTheDocument()
+  })
 })
