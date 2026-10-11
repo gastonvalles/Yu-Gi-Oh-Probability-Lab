@@ -18,8 +18,9 @@ const packBackground = (code: string) => ({
 })
 
 /**
- * El botón de precios sobre la esquina de la carta: un círculo de vidrio chico con el signo de dólar. El que lo usa le da
- * la posición (esquina inferior derecha de la imagen) y qué hacer al tocarlo. El área táctil es más grande que el círculo.
+ * El botón de precios sobre la esquina de la carta: un círculo chico con el look de la pestaña activa de la barra (fondo
+ * lavanda, ícono verde con resplandor) y el borde violeta del panel del detalle. El que lo usa le da la posición (esquina
+ * inferior derecha de la imagen) y qué hacer al tocarlo. El área táctil es más grande que el círculo.
  */
 export function CardPricesButton({ onClick }: { onClick: () => void }) {
   return (
@@ -27,14 +28,14 @@ export function CardPricesButton({ onClick }: { onClick: () => void }) {
       type="button"
       aria-label="Ver precios en TCGplayer"
       title="Ver precios en TCGplayer"
-      className="relative grid size-7 place-items-center rounded-full border border-white/25 bg-background/55 p-0 text-success shadow-[0_1px_6px_rgb(0_0_0/0.45)] backdrop-blur-[3px] transition-[transform,background-color] duration-150 before:absolute before:-inset-2 before:content-[''] hover:scale-110 hover:bg-background/75 focus-visible:outline-none focus-visible:shadow-focus"
+      className="relative grid size-7 place-items-center rounded-full border border-primary/40 bg-lavender p-0 text-success shadow-[0_0_12px_rgb(var(--primary-rgb)/0.5)] transition-[transform,background-color] duration-150 before:absolute before:-inset-2 before:content-[''] hover:scale-110 hover:bg-lavender-hover focus-visible:outline-none focus-visible:shadow-focus"
       onClick={(event) => {
         // Está encima de una imagen que se agranda al tocarla: acá sólo se abren los precios.
         event.stopPropagation()
         onClick()
       }}
     >
-      <Icon name="dollar" size={14} strokeWidth={2.2} />
+      <Icon name="dollar" size={15} strokeWidth={2.2} className="drop-shadow-[0_0_6px_rgb(var(--success-rgb)/0.55)]" />
     </button>
   )
 }
