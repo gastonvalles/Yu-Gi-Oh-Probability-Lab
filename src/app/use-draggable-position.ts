@@ -124,9 +124,15 @@ export function useDraggablePosition({ storageKey, size, corner = 'right', lift 
   const [pushedPosition, setPushedPosition] = useState<FabPosition | null>(null)
   const dragRef = useRef<{ pointerStart: FabPosition; origin: FabPosition; moved: boolean } | null>(null)
   const suppressClickRef = useRef(false)
+  const pushedRef = useRef<FabPosition | null>(null)
 
   useEffect(() => {
-    const handleResize = () => setViewport({ width: window.innerWidth, height: window.innerHeight })
+    const handleResize = () => {
+      setViewport({ width: window.innerWidth, height: window.innerHeight })
+      // Un empujón transitorio (p. ej. al abrir apaisado) no sobrevive a un cambio de tamaño: vuelve a su lugar.
+      pushedRef.current = null
+      setPushedPosition(null)
+    }
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
@@ -136,7 +142,6 @@ export function useDraggablePosition({ storageKey, size, corner = 'right', lift 
   const position = dragPosition ?? pushedPosition ?? restingPosition
   const positionRef = useRef(position)
   const boundsRef = useRef(bounds)
-  const pushedRef = useRef<FabPosition | null>(null)
 
   positionRef.current = position
   boundsRef.current = bounds
@@ -168,9 +173,9 @@ export function useDraggablePosition({ storageKey, size, corner = 'right', lift 
         }
       },
     })
-    // Si aparece encimado con otro (p. ej. los dos en el mismo rincón), lo corre.
+    // Si aparece encimado con otro (p. ej. los dos en el mismo rincón), lo corre, pero sólo mientras dure: eso no se guarda,
+    // porque depende del tamaño de pantalla de ese momento. Lo que se guarda es lo que deja un arrastre.
     pushOthers(group, storageKey, size, positionRef.current)
-    settleOthers(group, storageKey)
 
     return () => {
       members.delete(storageKey)
