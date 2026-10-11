@@ -39,7 +39,7 @@ const REDUCED_MOTION_MEDIA_QUERY = '(prefers-reduced-motion: reduce)'
 const SIZE_DESKTOP = 104
 const SIZE_MOBILE = 96
 /** Cuánto hay que dejarla apretada, sin moverla, para que pregunte si querés darle un descanso. */
-const HOLD_TO_REST_MS = 7000
+const HOLD_TO_REST_MS = 5000
 /** En reposo, cada tanto mira alrededor un ratito. */
 const LOOK_EVERY_MS = 25_000
 const LOOK_FOR_MS = 4_200

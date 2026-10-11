@@ -24,11 +24,11 @@ const press = () => fireEvent.pointerDown(screen.getByRole('button', { name: 'Sa
 const release = () => fireEvent.pointerUp(screen.getByRole('button', { name: 'Saludar a Cupsy' }), { button: 0, pointerId: 1, clientX: 20, clientY: 20 })
 
 describe('dejar a la mascota descansar', () => {
-  it('a los siete segundos apretada pregunta si querés darle un descanso, y aceptar la saca', () => {
+  it('a los cinco segundos apretada pregunta si querés darle un descanso, y aceptar la saca', () => {
     render(<Mascot />)
 
     press()
-    act(() => vi.advanceTimersByTime(6999))
+    act(() => vi.advanceTimersByTime(4999))
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
 
     act(() => vi.advanceTimersByTime(1))
@@ -48,7 +48,7 @@ describe('dejar a la mascota descansar', () => {
     render(<Mascot />)
 
     press()
-    act(() => vi.advanceTimersByTime(7000))
+    act(() => vi.advanceTimersByTime(5000))
     fireEvent.click(screen.getByRole('button', { name: 'Seguir jugando' }))
 
     expect(isMascotEnabled()).toBe(true)
@@ -56,11 +56,11 @@ describe('dejar a la mascota descansar', () => {
     expect(screen.getByRole('button', { name: 'Saludar a Cupsy' })).toBeInTheDocument()
   })
 
-  it('soltarla antes de los siete segundos no pregunta nada', () => {
+  it('soltarla antes de los cinco segundos no pregunta nada', () => {
     render(<Mascot />)
 
     press()
-    act(() => vi.advanceTimersByTime(4000))
+    act(() => vi.advanceTimersByTime(3000))
     release()
     act(() => vi.advanceTimersByTime(10_000))
 
