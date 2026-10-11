@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState } from 'react'
 
-import { MASCOTS, currentMascotId, reactMascot, selectMascot, useCurrentMascot, useMascotEnabled, type MascotId } from '../../app/mascot'
+import { MASCOTS, currentMascotId, reactMascot, restMascot, selectMascot, useCurrentMascot, useMascotEnabled, type MascotId } from '../../app/mascot'
 import { cx } from '../ui/cx'
+import { CloseButton } from '../ui/IconButton'
 import { overline } from '../ui/typography'
 
 /** Un cuadro quieto de cada mascota, para la lista. */
@@ -76,7 +77,7 @@ export function MascotPicker({ placement, className }: { placement: 'above' | 'b
           role="group"
           aria-label="Mascotas disponibles"
           className={cx(
-            'absolute z-130 grid w-60 gap-1 rounded-card border border-border-subtle bg-surface-raised p-2 shadow-overlay animate-dialog-enter motion-reduce:animate-none',
+            'absolute z-130 grid w-60 gap-1 rounded-card text-left border border-border-subtle bg-surface-raised p-2 shadow-overlay animate-dialog-enter motion-reduce:animate-none',
             placement === 'above' ? 'bottom-full left-1/2 mb-2 -translate-x-1/2' : 'right-0 top-full mt-2',
           )}
         >
@@ -85,18 +86,31 @@ export function MascotPicker({ placement, className }: { placement: 'above' | 'b
             const isCurrent = id === current.id
 
             return (
-              <button
-                key={id}
-                type="button"
-                className="flex items-center gap-3 rounded-control px-2 py-1.5 text-left transition-colors duration-150 hover:bg-tint/8 focus-visible:outline-none focus-visible:shadow-focus"
-                onClick={() => summon(id)}
-              >
-                <img src={`${mascot.folder}/${STILL}`} alt="" draggable={false} className="size-12 shrink-0 object-contain" />
-                <span className="grid min-w-0 gap-0.5">
-                  <strong className="truncate text-body font-semibold text-foreground">{mascot.name}</strong>
-                  <span className="text-micro text-muted">{isCurrent ? (enabled ? 'Afuera' : 'Descansando') : 'Tocá para sacarla'}</span>
-                </span>
-              </button>
+              <div key={id} className="flex items-center rounded-control pr-1 transition-colors duration-150 hover:bg-tint/8">
+                <button
+                  type="button"
+                  className="flex min-w-0 flex-1 items-center gap-3 rounded-control px-2 py-1.5 text-left focus-visible:outline-none focus-visible:shadow-focus"
+                  onClick={() => summon(id)}
+                >
+                  <img src={`${mascot.folder}/${STILL}`} alt="" draggable={false} className="size-12 shrink-0 object-contain" />
+                  <span className="grid min-w-0 gap-0.5">
+                    <strong className="truncate text-body font-semibold text-foreground">{mascot.name}</strong>
+                    <span className="text-micro text-muted">{isCurrent ? (enabled ? 'Afuera' : 'Descansando') : 'Tocá para sacarla'}</span>
+                  </span>
+                </button>
+                {/* La que está afuera se puede mandar a descansar desde acá (en el celular no hay otra X). */}
+                {isCurrent && enabled ? (
+                  <CloseButton
+                    size="sm"
+                    aria-label={`Darle un descanso a ${mascot.name}`}
+                    title={`Darle un descanso a ${mascot.name}`}
+                    onClick={() => {
+                      restMascot()
+                      setOpen(false)
+                    }}
+                  />
+                ) : null}
+              </div>
             )
           })}
         </div>

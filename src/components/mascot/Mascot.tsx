@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 
-import { reactMascot, setMascotEnabled, useCurrentMascot, useMascotEnabled, useMascotState, type MascotState } from '../../app/mascot'
+import { reactMascot, restMascot, useCurrentMascot, useMascotEnabled, useMascotState, type MascotState } from '../../app/mascot'
 import { useDraggablePosition } from '../../app/use-draggable-position'
 import { useHold } from '../../app/use-hold'
 import { useMediaQuery } from '../../app/use-media-query'
-import { useToastMessage } from '../../app/use-toast-message'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
@@ -55,7 +54,6 @@ function ActiveMascot() {
   const state = useMascotState()
   const reduceMotion = useMediaQuery(REDUCED_MOTION_MEDIA_QUERY)
   const isMobile = useMediaQuery('(max-width: 1100px)')
-  const { showToast } = useToastMessage()
   const { position, dragging, handlers, consumeDragClick } = useDraggablePosition({
     storageKey: POSITION_KEY,
     size: isMobile ? SIZE_MOBILE : SIZE_DESKTOP,
@@ -124,8 +122,7 @@ function ActiveMascot() {
 
   const rest = () => {
     setRestAsked(false)
-    setMascotEnabled(false)
-    showToast(`${mascot.name} se fue a descansar. Para que vuelva, tocá el botón de mascotas junto a las redes.`, 'info')
+    restMascot()
   }
 
   // Agarrada va saltando; si no, lo que marque el estado (y en reposo, a veces, mirando alrededor).

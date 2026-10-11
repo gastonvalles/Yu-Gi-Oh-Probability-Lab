@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from 'react'
 
+import { showToastMessage } from './use-toast-message'
+
 /**
  * Cupsy, la mascota: un estado por animación del paquete. Las pantallas no la manejan directamente:
  * avisan qué pasa (se está cargando algo, se calcula, salió bien, salió mal) y ella reacciona.
@@ -57,6 +59,13 @@ export function selectMascot(id: MascotId): void {
 
   setMascotEnabled(true)
 }
+
+/** La manda a descansar (deja la pantalla libre) y avisa cómo traerla de vuelta. */
+export function restMascot(): void {
+  setMascotEnabled(false)
+  showToastMessage(`${currentMascot().name} se fue a descansar. Para que vuelva, tocá el botón de mascotas junto a las redes.`, 'info')
+}
+
 const listeners = new Set<() => void>()
 const activities: Record<MascotActivity, number> = { loading: 0, computing: 0 }
 let reaction: { state: MascotReaction; until: number } | null = null
