@@ -31,8 +31,41 @@ function copyrightBanner(): Plugin {
   }
 }
 
+/** En desarrollo, sirve las funciones de api/ como las despliega Vercel: un `GET(request)` con la firma Web por archivo. */
+function devApi(): Plugin {
+  return {
+    name: 'dev-api',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use('/api/', async (req, res) => {
+        const url = new URL(req.url ?? '/', 'http://localhost')
+        const name = url.pathname.replace(/^\//, '')
+
+        if (!/^[a-z0-9-]+$/.test(name)) {
+          res.statusCode = 404
+          res.end()
+          return
+        }
+
+        try {
+          const module = await server.ssrLoadModule(`/api/${name}.ts`)
+          const response: Response = await module.GET(new Request(url))
+
+          res.statusCode = response.status
+          response.headers.forEach((value, key) => res.setHeader(key, value))
+          res.end(Buffer.from(await response.arrayBuffer()))
+        } catch (error) {
+          server.config.logger.error(String(error))
+          res.statusCode = 500
+          res.end()
+        }
+      })
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss(), copyrightBanner()],
+  plugins: [react(), tailwindcss(), copyrightBanner(), devApi()],
   preview: {
     headers: readVercelHeaders(),
   },
