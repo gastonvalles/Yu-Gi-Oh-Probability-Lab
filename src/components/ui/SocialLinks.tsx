@@ -31,9 +31,10 @@ export function SocialLinks({ className }: { className?: string }) {
           rel="noreferrer"
           aria-label={`Gastón Valles en ${link.label}`}
           title={link.label}
-          className="grid size-9 place-items-center rounded-control text-primary-soft/70 transition-colors duration-150 hover:bg-tint/10 hover:text-foreground focus-visible:outline-none focus-visible:shadow-focus"
+          // Al pasar el mouse se iluminan como la pestaña activa de la barra: fondo lavanda, verde y resplandor.
+          className="group grid size-9 place-items-center rounded-control text-primary-soft/70 transition-colors duration-150 hover:bg-lavender hover:text-success focus-visible:outline-none focus-visible:shadow-focus"
         >
-          <Icon name={link.icon} size={20} />
+          <Icon name={link.icon} size={20} className="transition-[filter] duration-150 group-hover:drop-shadow-[0_0_8px_rgb(var(--success-rgb)/0.55)]" />
         </a>
       ))}
     </nav>
