@@ -100,6 +100,8 @@ describe('la mesa de práctica', () => {
     expect(within(hand()).queryByRole('listitem', { name: 'Ash Blossom' })).not.toBeInTheDocument()
     expect(within(status()).getByText('Invocación Normal de Ash Blossom')).toBeInTheDocument()
     expect(within(status()).getByText('1/1')).toBeInTheDocument()
+    // Jugando en vivo no hay controles de replay (sólo al ver un combo guardado).
+    expect(screen.queryByRole('button', { name: 'Avance rápido' })).not.toBeInTheDocument()
 
     // Deshacer la devuelve a la mano y borra la jugada.
     fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
