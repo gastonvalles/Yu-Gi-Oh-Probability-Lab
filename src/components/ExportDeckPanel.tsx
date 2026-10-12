@@ -32,7 +32,7 @@ interface ExportDeckPanelProps {
 const PREVIEW_SCALE = 1
 const PREVIEW_QUALITY = 0.8
 const SELECTION_KEY = 'ygo-lab:export-selection'
-const DEFAULT_SELECTION: DeckExportSelection = { image: true, pdf: true, ydk: true }
+const DEFAULT_SELECTION: DeckExportSelection = { image: true, pdf: true, ydk: true, txt: false, json: false }
 
 /** Neuron no abre archivos: el deck entra por la base de datos oficial de Konami con esta extensión de la comunidad. */
 const EXTENSION_LINKS = [
@@ -49,11 +49,9 @@ function readSelection(): DeckExportSelection {
   try {
     const parsed = JSON.parse(localStorage.getItem(SELECTION_KEY) ?? 'null') as Partial<Record<keyof DeckExportSelection, unknown>> | null
 
-    return {
-      image: typeof parsed?.image === 'boolean' ? parsed.image : true,
-      pdf: typeof parsed?.pdf === 'boolean' ? parsed.pdf : true,
-      ydk: typeof parsed?.ydk === 'boolean' ? parsed.ydk : true,
-    }
+    return Object.fromEntries(
+      DECK_EXPORT_FILES.map((file) => [file.key, typeof parsed?.[file.key] === 'boolean' ? parsed[file.key] : DEFAULT_SELECTION[file.key]]),
+    ) as unknown as DeckExportSelection
   } catch {
     return DEFAULT_SELECTION
   }

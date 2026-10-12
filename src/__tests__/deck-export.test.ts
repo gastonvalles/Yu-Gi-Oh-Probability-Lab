@@ -5,11 +5,12 @@ import { resolve } from 'node:path'
 import { PDFDocument } from 'pdf-lib'
 import { describe, expect, it } from 'vitest'
 
-import { describeExportSelection } from '../app/deck-image-export'
+import { buildDeckImportPreview, buildDeckImportPreviewFromJson } from '../app/deck-import'
+import { buildDeckJson, buildDecklistText, describeExportSelection, type DeckExportSelection } from '../app/deck-image-export'
 import { computeDeckImageLayout, type DeckImageLayout } from '../app/deck-image-layout'
 import { buildKdeDecklist } from '../app/kde-decklist'
 import { fillKdeDecklistPdf } from '../app/kde-decklist-pdf'
-import type { DeckBuilderState, DeckCardInstance } from '../app/model'
+import type { DeckBuilderState, DeckCardInstance, DeckZone } from '../app/model'
 
 let nextId = 1
 
@@ -102,11 +103,49 @@ describe('buildKdeDecklist', () => {
 })
 
 describe('describeExportSelection', () => {
+  const selection = (picked: Partial<DeckExportSelection>): DeckExportSelection => ({ image: false, pdf: false, ydk: false, txt: false, json: false, ...picked })
+
   it('nombra los archivos tildados, en orden y con "y" antes del último', () => {
-    expect(describeExportSelection({ image: true, pdf: true, ydk: true })).toBe('imagen, decklist PDF y YDK')
-    expect(describeExportSelection({ image: true, pdf: false, ydk: true })).toBe('imagen y YDK')
-    expect(describeExportSelection({ image: false, pdf: true, ydk: false })).toBe('decklist PDF')
-    expect(describeExportSelection({ image: false, pdf: false, ydk: false })).toBe('')
+    expect(describeExportSelection(selection({ image: true, pdf: true, ydk: true }))).toBe('imagen, decklist PDF y YDK')
+    expect(describeExportSelection(selection({ image: true, ydk: true }))).toBe('imagen y YDK')
+    expect(describeExportSelection(selection({ pdf: true }))).toBe('decklist PDF')
+    expect(describeExportSelection(selection({ txt: true, json: true }))).toBe('lista TXT y JSON')
+    expect(describeExportSelection(selection({}))).toBe('')
+  })
+})
+
+describe('exportar la lista en texto y el JSON', () => {
+  const sample = deck({
+    deckName: 'Gatos',
+    main: [...copies(3, () => card('Ash Blossom & Joyous Spring')), ...copies(2, () => card('Pot of Prosperity', 'Spell Card', 'spell')), card('7 Colored Fish')],
+    extra: copies(2, () => card('Accesscode Talker', 'Link Monster', 'link')),
+    side: [card('Droll & Lock Bird')],
+  })
+  const names = (zone: DeckZone, cards: DeckBuilderState) => cards[zone].map((entry) => entry.name)
+  const counts = (deckBuilder: DeckBuilderState) => (['main', 'extra', 'side'] as const).map((zone) => names(zone, deckBuilder).sort())
+
+  it('la lista en texto agrupa por zona con cantidades y se vuelve a importar igual', () => {
+    const text = buildDecklistText(sample)
+
+    expect(text).toBe('Main Deck (6)\n3 Ash Blossom & Joyous Spring\n2 Pot of Prosperity\n1 7 Colored Fish\n\nExtra Deck (2)\n2 Accesscode Talker\n\nSide Deck (1)\n1 Droll & Lock Bird\n')
+
+    const catalog = [...sample.main, ...sample.extra, ...sample.side].map((entry) => ({ ...entry.apiCard, name: entry.name }))
+    const preview = buildDeckImportPreview({ cards: catalog, deckFormat: 'unlimited', deckName: 'Gatos', text })
+
+    expect(preview.invalidLines).toEqual([])
+    expect(preview.missingEntries).toEqual([])
+    expect(counts(preview.importedDeck)).toEqual(counts(sample))
+  })
+
+  it('el JSON lleva el deck con sus roles y se vuelve a importar tal cual', () => {
+    const withRoles = { ...sample, main: sample.main.map((entry, index) => (index === 0 ? { ...entry, origin: 'non_engine' as const, roles: ['handtrap' as const] } : entry)) }
+    const preview = buildDeckImportPreviewFromJson({ deckName: 'x', text: buildDeckJson(withRoles) })
+
+    expect(preview.importedDeck.deckName).toBe('Gatos')
+    expect(counts(preview.importedDeck)).toEqual(counts(sample))
+    expect(preview.importedDeck.main[0]).toMatchObject({ name: 'Ash Blossom & Joyous Spring', origin: 'non_engine', roles: ['handtrap'] })
+    // Lo guardado no lleva ids de instancia: son de esta sesión.
+    expect(buildDeckJson(sample)).not.toContain('instanceId')
   })
 })
 
