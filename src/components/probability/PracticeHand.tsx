@@ -17,10 +17,9 @@ import {
 } from '../../app/practice-hand-layout'
 import { UI_ANIMATION_MS } from '../../app/motion'
 import { useElementWidth } from '../../app/use-element-width'
-import type { PatternKind } from '../../types'
+import type { ApiCardReference, PatternKind } from '../../types'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
-import type { PracticeHandCard } from './practice'
 import { CARD_BACK } from './practice-styles'
 
 /** Espacio sobre las cartas: el abanico sube un poco en el centro. */
@@ -28,10 +27,12 @@ const TOP_ROOM = 8
 /** Espacio bajo las cartas: el abanico baja en los extremos y las cartas inclinadas sobresalen. */
 const FAN_ROOM = 22
 const DRAG_THRESHOLD = 6
+/** Ancho por defecto mientras el contenedor no se midió (p. ej. en tests). */
+const FALLBACK_WIDTH = 340
 
-/** Carta de la mano: el estado (arrastre, brillo, atenuada) llega por data-attributes. */
+/** Carta de la mano: el estado (arrastre, brillo, atenuada, destello) llega por data-attributes. */
 const HAND_CARD = [
-  'absolute left-0 top-0 cursor-grab touch-none select-none overflow-hidden rounded-tag outline-none will-change-transform min-[820px]:rounded-tag',
+  'absolute left-0 top-0 cursor-grab touch-none select-none overflow-hidden rounded-tag outline-none will-change-transform',
   '[-webkit-touch-callout:none] [-webkit-user-select:none]',
   'shadow-[0_8px_18px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]',
   '[transition:transform_var(--motion-duration)_cubic-bezier(0.2,0.8,0.2,1),filter_var(--motion-duration)_ease,box-shadow_var(--motion-duration)_ease]',
@@ -45,13 +46,19 @@ const HAND_CARD = [
   // Salidas en verde, problemas en rojo.
   'data-[glow=true]:animate-card-glow data-[glow=true]:[--glow-rgb:var(--accent-rgb)] data-[glow-kind=problem]:[--glow-rgb:var(--danger-rgb)]',
   'data-[glow=true]:shadow-[0_8px_18px_rgba(0,0,0,0.45),0_0_0_2px_rgb(var(--glow-rgb)),0_0_22px_rgb(var(--glow-rgb)/0.6)]',
+  // Activación: la carta se agranda y destella en verde.
+  'data-[flash=true]:animate-card-activate data-[flash=true]:shadow-[0_0_0_2px_rgb(var(--accent-rgb)),0_0_28px_rgb(var(--accent-rgb)/0.85)]',
   'motion-reduce:animate-none motion-reduce:transition-none',
 ].join(' ')
 
+export interface HandCardData {
+  id: string
+  name: string
+  apiCard: ApiCardReference | null
+}
+
 interface PracticeHandProps {
-  cards: PracticeHandCard[]
-  /** Lugares de la mano completa (5, o 6 si se va 2º): reparte las cartas a lo ancho. */
-  slots: number
+  cards: HandCardData[]
   /** Lugares de la mano inicial: fija el tamaño de las cartas, que no cambia al robar. */
   sizeSlots: number
   maxCardWidth: number
@@ -61,11 +68,22 @@ interface PracticeHandProps {
   highlightKind: PatternKind | null
   /** Mano no jugable: las cartas se ven grises. */
   muted: boolean
+  /** Carta que acaba de activarse (destella) y una clave que cambia en cada activación. */
+  flash: { id: string; key: number } | null
   /** Rect del mazo: de ahí salen las cartas al repartirse. */
   getDeckRect: () => DOMRect | null
+  /**
+   * El campo (su rect y el ancho de una zona): al arrastrar una carta hacia él se va achicando hasta el
+   * tamaño de la zona, con un poco de perspectiva, como si se hundiera en la mesa.
+   */
+  getField: () => { rect: DOMRect; zoneWidth: number } | null
   onReorder: (ids: string[]) => void
-  /** Toque sin arrastre: pide ver la carta en grande. */
-  onInspect: (card: PracticeHandCard, rect: DOMRect) => void
+  /** Toque sin arrastre: abre el menú de la carta. */
+  onTap: (card: HandCardData, rect: DOMRect) => void
+  /** Mientras se arrastra fuera de la mano: la zona (`data-drop`) bajo el puntero, o null. */
+  onDragOver: (target: string | null) => void
+  /** Se soltó sobre una zona de la mesa. */
+  onDrop: (card: HandCardData, target: string) => void
   className?: string
 }
 
@@ -73,25 +91,48 @@ interface DragState {
   id: string
   x: number
   y: number
+  /** Tamaño relativo (1.1 en la mano, el de la zona sobre el campo) e inclinación en grados. */
+  scale: number
+  tilt: number
 }
+
+/** Escala de la carta levantada mientras está sobre la mano. */
+const LIFT_SCALE = 1.1
+/** Inclinación máxima (perspectiva) al llegar al campo. */
+const MAX_TILT = 16
+
+const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 
 function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
 }
 
-/** Mano en abanico: se reordena arrastrando, un toque abre la carta y se reparte desde el mazo. */
-export function PracticeHand({ cards, slots, sizeSlots, maxCardWidth, fanDegrees, highlighted, highlightKind, muted, getDeckRect, onReorder, onInspect, className }: PracticeHandProps) {
+/** La zona (`data-drop`) bajo el puntero, sin contar la carta que se está arrastrando. */
+function dropTargetAt(x: number, y: number, dragged: HTMLElement): { element: HTMLElement; drop: string } | null {
+  const under = document.elementsFromPoint(x, y).find((element) => element !== dragged && !dragged.contains(element))
+  const element = under?.closest<HTMLElement>('[data-drop]') ?? null
+  const drop = element?.dataset.drop
+
+  return element && drop ? { element, drop } : null
+}
+
+/**
+ * Mano en abanico: un toque abre el menú de la carta, se reordena arrastrando dentro de la mano, se
+ * arrastra fuera de la mano hasta una zona de la mesa, y se reparte desde el mazo.
+ */
+export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highlighted, highlightKind, muted, flash, getDeckRect, getField, onReorder, onTap, onDragOver, onDrop, className }: PracticeHandProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const width = useElementWidth(containerRef)
+  const width = useElementWidth(containerRef) || FALLBACK_WIDTH
+  const slots = Math.max(cards.length, sizeSlots)
   const layout = computeHandLayout(width, slots, maxCardWidth, sizeSlots)
   const [drag, setDrag] = useState<DragState | null>(null)
-  const dragRef = useRef<{ id: string; pointerId: number; startX: number; startY: number; grabDx: number; moved: boolean } | null>(null)
+  const dragRef = useRef<{ id: string; pointerId: number; startX: number; startY: number; grabDx: number; moved: boolean; outside: string | null; element: HTMLElement } | null>(null)
   const cardsRef = useRef(cards)
   cardsRef.current = cards
   const layoutRef = useRef(layout)
   layoutRef.current = layout
 
-  const ids = cards.map((card) => card.drawId)
+  const ids = cards.map((card) => card.id)
   const hasHighlight = highlighted.size > 0
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLElement>, id: string) => {
@@ -108,6 +149,8 @@ export function PracticeHand({ cards, slots, sizeSlots, maxCardWidth, fanDegrees
       startY: event.clientY,
       grabDx: event.clientX - rect.left - slotLeft(layout, index),
       moved: false,
+      outside: null,
+      element: event.currentTarget,
     }
     event.currentTarget.setPointerCapture(event.pointerId)
   }
@@ -127,18 +170,47 @@ export function PracticeHand({ cards, slots, sizeSlots, maxCardWidth, fanDegrees
       return
     }
 
-    const rect = containerRef.current.getBoundingClientRect()
+    const container = containerRef.current
+    const rect = container.getBoundingClientRect()
     const current = layoutRef.current
     const x = move.clientX - rect.left - state.grabDx
-    const y = Math.min(Math.max(move.clientY - state.startY, -110), 50)
-    setDrag({ id: state.id, x, y })
+    const y = move.clientY - state.startY
 
-    const currentIds = cardsRef.current.map((card) => card.drawId)
-    const from = currentIds.indexOf(state.id)
-    const to = slotIndexAtCenter(current, x + current.cardWidth / 2, currentIds.length)
+    // Fuera de la mano la carta busca una zona de la mesa; adentro (o a los costados, a su altura), se reordena.
+    const target = dropTargetAt(move.clientX, move.clientY, state.element)
+    const overHand = target !== null && (target.drop === 'hand' || container.contains(target.element))
+    const besideHand = target === null && move.clientY >= rect.top && move.clientY <= rect.bottom
+    const insideHand = overHand || besideHand
+    const outside = target && !insideHand ? target.drop : null
 
-    if (from !== -1 && to !== from) {
-      onReorder(moveItem(currentIds, from, to))
+    // Camino hacia el campo: de la mano (levantada) al borde de abajo del campo la carta se achica hasta el
+    // tamaño de la zona y se inclina, como si se hundiera en la mesa.
+    const field = getField()
+    let scale = LIFT_SCALE
+    let tilt = 0
+
+    if (field && !insideHand) {
+      const progress = clamp01((rect.top - move.clientY) / Math.max(1, rect.top - field.rect.bottom))
+      const zoneScale = Math.min(LIFT_SCALE, field.zoneWidth / Math.max(1, current.cardWidth))
+      scale = LIFT_SCALE + (zoneScale - LIFT_SCALE) * progress
+      tilt = MAX_TILT * progress
+    }
+
+    setDrag({ id: state.id, x, y, scale, tilt })
+
+    if (outside !== state.outside) {
+      state.outside = outside
+      onDragOver(outside)
+    }
+
+    if (insideHand) {
+      const currentIds = cardsRef.current.map((card) => card.id)
+      const from = currentIds.indexOf(state.id)
+      const to = slotIndexAtCenter(current, x + current.cardWidth / 2, currentIds.length)
+
+      if (from !== -1 && to !== from) {
+        onReorder(moveItem(currentIds, from, to))
+      }
     }
   }
 
@@ -174,10 +246,30 @@ export function PracticeHand({ cards, slots, sizeSlots, maxCardWidth, fanDegrees
     pendingMoveRef.current = null
     setDrag(null)
 
-    const tapped = cardsRef.current.find((card) => card.drawId === id)
+    const card = cardsRef.current.find((entry) => entry.id === id)
 
-    if (!state.moved && event.type === 'pointerup' && tapped) {
-      onInspect(tapped, event.currentTarget.getBoundingClientRect())
+    if (state.outside !== null) {
+      onDragOver(null)
+    }
+
+    if (!card) {
+      return
+    }
+
+    if (state.moved) {
+      // Se mira la zona bajo el puntero al soltar (puede no haber llegado el último frame).
+      const target = event.type === 'pointerup' ? dropTargetAt(event.clientX, event.clientY, state.element) : null
+      const container = containerRef.current
+
+      if (target && target.drop !== 'hand' && !(container && container.contains(target.element))) {
+        onDrop(card, target.drop)
+      }
+
+      return
+    }
+
+    if (event.type === 'pointerup') {
+      onTap(card, event.currentTarget.getBoundingClientRect())
     }
   }
 
@@ -192,10 +284,10 @@ export function PracticeHand({ cards, slots, sizeSlots, maxCardWidth, fanDegrees
       onReorder(moveItem(ids, from, from + 1))
     } else if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
-      const card = cardsRef.current.find((entry) => entry.drawId === id)
+      const card = cardsRef.current.find((entry) => entry.id === id)
 
       if (card) {
-        onInspect(card, event.currentTarget.getBoundingClientRect())
+        onTap(card, event.currentTarget.getBoundingClientRect())
       }
     }
   }
@@ -206,47 +298,49 @@ export function PracticeHand({ cards, slots, sizeSlots, maxCardWidth, fanDegrees
       className={cx('relative w-full', className)}
       role="list"
       aria-label="Mano"
+      data-drop="hand"
       style={{ height: layout.cardHeight + TOP_ROOM + FAN_ROOM }}
     >
-      {width > 0
-        ? cards.map((card, index) => {
-            const isDragged = drag?.id === card.drawId
-            const angle = fanAngle(index, slots, fanDegrees)
-            const arch = Math.abs(index - (slots - 1) / 2) ** 2 * 1.6
-            const x = isDragged ? drag.x : slotLeft(layout, index)
-            const y = TOP_ROOM + (isDragged ? drag.y - 16 : arch)
-            const transform = isDragged
-              ? `translate3d(${x}px, ${y}px, 0) rotate(0deg) scale(1.1)`
-              : `translate3d(${x}px, ${y}px, 0) rotate(${angle}deg)`
+      {cards.map((card, index) => {
+        const isDragged = drag?.id === card.id
+        const angle = fanAngle(index, slots, fanDegrees)
+        const arch = Math.abs(index - (slots - 1) / 2) ** 2 * 1.6
+        const x = isDragged ? drag.x : slotLeft(layout, index)
+        const y = TOP_ROOM + (isDragged ? drag.y - 16 : arch)
+        const transform = isDragged
+          ? `translate3d(${x}px, ${y}px, 0) perspective(900px) rotateX(${drag.tilt}deg) scale(${drag.scale})`
+          : `translate3d(${x}px, ${y}px, 0) rotate(${angle}deg)`
+        const flashing = flash?.id === card.id
 
-            return (
-              <HandCard
-                key={card.drawId}
-                card={card}
-                layout={layout}
-                transform={transform}
-                zIndex={isDragged ? 100 : index + 1}
-                state={isDragged ? 'dragging' : 'rest'}
-                glow={highlighted.has(card.drawId)}
-                glowKind={highlightKind}
-                muted={muted}
-                dim={hasHighlight && !highlighted.has(card.drawId)}
-                getDeckRect={getDeckRect}
-                containerRef={containerRef}
-                onPointerDown={(event) => handlePointerDown(event, card.drawId)}
-                onPointerMove={handlePointerMove}
-                onPointerEnd={(event) => handlePointerEnd(event, card.drawId)}
-                onKeyDown={(event) => handleKeyDown(event, card.drawId)}
-              />
-            )
-          })
-        : null}
+        return (
+          <HandCard
+            key={card.id}
+            card={card}
+            layout={layout}
+            transform={transform}
+            zIndex={isDragged ? 100 : flashing ? 50 : index + 1}
+            state={isDragged ? 'dragging' : 'rest'}
+            glow={highlighted.has(card.id)}
+            glowKind={highlightKind}
+            muted={muted}
+            dim={hasHighlight && !highlighted.has(card.id)}
+            flashKey={flashing ? flash.key : null}
+            getDeckRect={getDeckRect}
+            containerRef={containerRef}
+            onPointerDown={(event) => handlePointerDown(event, card.id)}
+            onPointerMove={handlePointerMove}
+            onPointerEnd={(event) => handlePointerEnd(event, card.id)}
+            onKeyDown={(event) => handleKeyDown(event, card.id)}
+          />
+        )
+      })}
+      {cards.length === 0 ? <span className="absolute inset-0 grid place-items-center text-micro text-soft">Sin cartas en la mano</span> : null}
     </div>
   )
 }
 
 interface HandCardProps {
-  card: PracticeHandCard
+  card: HandCardData
   layout: HandLayout
   transform: string
   zIndex: number
@@ -255,6 +349,7 @@ interface HandCardProps {
   glowKind: PatternKind | null
   muted: boolean
   dim: boolean
+  flashKey: number | null
   getDeckRect: () => DOMRect | null
   containerRef: React.RefObject<HTMLDivElement | null>
   onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void
@@ -273,6 +368,7 @@ function HandCard({
   glowKind,
   muted,
   dim,
+  flashKey,
   getDeckRect,
   containerRef,
   onPointerDown,
@@ -342,18 +438,21 @@ function HandCard({
       role="listitem"
       tabIndex={0}
       aria-label={card.name}
+      title={card.name}
       className={HAND_CARD}
       data-state={state}
       data-glow={glow ? 'true' : 'false'}
       data-glow-kind={glow ? (glowKind ?? 'opening') : undefined}
       data-dim={dim ? 'true' : 'false'}
       data-muted={muted ? 'true' : 'false'}
+      data-flash={flashKey !== null ? 'true' : 'false'}
       style={style}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerEnd}
       onPointerCancel={onPointerEnd}
       onKeyDown={onKeyDown}
+      onContextMenu={(event) => event.preventDefault()}
     >
       <CardArt
         remoteUrl={card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null}

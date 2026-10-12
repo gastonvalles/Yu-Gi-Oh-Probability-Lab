@@ -4,6 +4,12 @@ import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-m
 import { countUnclassifiedCards, countCardsMissingOrigin, countCardsMissingRoles, countCardsPendingReview, isClassificationStepComplete } from '../../app/role-step'
 import { curatePatterns } from '../../app/pattern-curation'
 import { buildActiveRuleSet } from '../../app/pattern-presets'
+import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
+import { createMatState, randomSeed, shuffleWithSeed } from '../../app/practice-mat'
+import { useMatSession } from '../../app/use-mat-session'
+import type { DeckCardInstance } from '../../app/model'
+import type { SavedCombo } from '../../app/saved-combos'
+import { buildPracticeDeck } from '../probability/practice'
 import { CardDetailModal } from '../card-detail/CardDetailModal'
 import { DeckBuilderStep } from './DeckBuilderStep'
 import { LifeCalculatorFab } from '../life/LifeCalculatorFab'
@@ -319,6 +325,8 @@ export function DeckModeScreen() {
           onClose={() => setGlobalPracticeOpen(false)}
           handSize={controller.probability.handSize}
           derivedMainCards={controller.probability.derivedMainCards}
+          extraZone={controller.exportDeck.deckBuilder.extra}
+          deckName={controller.exportDeck.deckName}
           patterns={controller.probability.patterns}
           disabledGenericRuleIds={controller.probability.disabledGenericRuleIds}
           systemRuleNames={controller.probability.systemRuleNames}
@@ -341,6 +349,8 @@ function PracticeFab({
   onClose,
   handSize,
   derivedMainCards,
+  extraZone,
+  deckName,
   patterns,
   disabledGenericRuleIds,
   systemRuleNames,
@@ -351,6 +361,8 @@ function PracticeFab({
   onClose: () => void
   handSize: number
   derivedMainCards: import('../../types').CardEntry[]
+  extraZone: DeckCardInstance[]
+  deckName: string
   patterns: import('../../types').HandPattern[]
   disabledGenericRuleIds: string[]
   systemRuleNames: Record<string, string>
@@ -368,6 +380,26 @@ function PracticeFab({
     [patterns],
   )
 
+  // La mesa vive acá y no en el modal: cerrarlo no pierde la partida ni el combo en curso.
+  const { session, state, start, dispatch, undo, seek } = useMatSession()
+  const mainIds = useMemo(() => buildPracticeDeck(derivedMainCards).map((card) => card.drawId), [derivedMainCards])
+  const extraCards = useMemo(() => buildPracticeDeck(deriveMainDeckCardsFromZone(extraZone)), [extraZone])
+  const extraIds = useMemo(() => extraCards.map((card) => card.drawId), [extraCards])
+  const cardsById = useMemo(
+    () => new Map([...buildPracticeDeck(derivedMainCards), ...extraCards].map((card) => [card.drawId, { name: card.name, apiCard: card.apiCard }])),
+    [derivedMainCards, extraCards],
+  )
+
+  const newHand = useCallback(() => start(createMatState(shuffleWithSeed(mainIds, randomSeed()), extraIds, handSize)), [start, mainIds, extraIds, handSize])
+  const loadCombo = useCallback((combo: SavedCombo) => start(combo.initial, combo.actions, combo.names), [start])
+
+  // Al abrir la práctica ya se roban las cartas de la mano.
+  useEffect(() => {
+    if (isOpen && !session && mainIds.length >= handSize) {
+      newHand()
+    }
+  }, [isOpen, session, mainIds.length, handSize, newHand])
+
   return (
     <>
       <DraggableFab label="Abrir práctica" storageKey="ygo-lab:practice-fab" onClick={onOpen}>
@@ -377,7 +409,7 @@ function PracticeFab({
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        size="table"
+        size="board"
         bare
         flush
         ariaLabel="Práctica"
@@ -385,16 +417,27 @@ function PracticeFab({
         closeClassName="right-1.5 top-3 min-[820px]:right-4 min-[820px]:top-4"
       >
         <Suspense fallback={null}>
-        <LazyPracticeSection
-          handSize={handSize}
-          derivedMainCards={derivedMainCards}
-          patterns={activePatterns}
-          hasCompletedClassification={hasCompletedClassification}
-          missingOriginCount={missingOriginCount}
-          missingRoleCount={missingRoleCount}
-          pendingReviewCount={pendingReviewCount}
-          reviewPendingPatternCount={reviewPendingPatternCount}
-        />
+          {session && state ? (
+            <LazyPracticeSection
+              handSize={handSize}
+              derivedMainCards={derivedMainCards}
+              patterns={activePatterns}
+              hasCompletedClassification={hasCompletedClassification}
+              missingOriginCount={missingOriginCount}
+              missingRoleCount={missingRoleCount}
+              pendingReviewCount={pendingReviewCount}
+              reviewPendingPatternCount={reviewPendingPatternCount}
+              session={session}
+              state={state}
+              cardsById={cardsById}
+              deckName={deckName}
+              onDispatch={dispatch}
+              onUndo={undo}
+              onSeek={seek}
+              onLoadCombo={loadCombo}
+              onNewHand={newHand}
+            />
+          ) : null}
         </Suspense>
       </Modal>
     </>

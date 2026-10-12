@@ -19,6 +19,12 @@ export function getDerivedCardId(ygoprodeckId: number): string {
   return `card-${ygoprodeckId}`
 }
 
+/** El id de YGOPRODeck detrás de un `card-<id>` (null si no tiene esa forma). */
+export function parseDerivedCardId(cardId: string): number | null {
+  const match = /^card-(\d+)$/.exec(cardId)
+  return match ? Number(match[1]) : null
+}
+
 export function deriveMainDeckCardsFromZone(mainDeck: DeckCardInstance[]): CardEntry[] {
   const groupedCards = new Map<number, CardEntry>()
 

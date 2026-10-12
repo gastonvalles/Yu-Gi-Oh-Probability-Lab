@@ -81,8 +81,10 @@
   --animate-sheet-up: sheet-up var(--motion-duration) ease-out both;
   --animate-sheet-in: sheet-in var(--motion-duration) ease-out both;
   --animate-card-glow: card-glow var(--motion-duration) ease-out;
+  /* Activar una carta o efecto en la mesa de práctica: la carta se agranda y destella, como en DuelingBook. */
+  --animate-card-activate: card-activate 650ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* El mazo de la mesa: tirón de la carta de arriba al repartir y barajado (las dos de abajo se abren a los costados). */
   --animate-pile-draw: pile-draw 200ms ease-out;
-  --animate-pile-ring: pile-ring var(--motion-duration) ease-out infinite;
   --animate-riffle-left: riffle-left var(--motion-duration) ease-in-out;
   --animate-riffle-right: riffle-right var(--motion-duration) ease-in-out;
 
@@ -260,18 +262,6 @@
     }
   }
 
-  @keyframes pile-ring {
-    0% {
-      opacity: 0.9;
-      transform: scale(0.96);
-    }
-
-    100% {
-      opacity: 0;
-      transform: scale(1.35);
-    }
-  }
-
   @keyframes riffle-left {
     0%,
     100% {
@@ -291,6 +281,23 @@
 
     50% {
       transform: translate(11px, 1.5px) rotate(6deg);
+    }
+  }
+
+  @keyframes card-activate {
+    0% {
+      transform: scale(1);
+      filter: brightness(1);
+    }
+
+    30% {
+      transform: scale(1.16);
+      filter: brightness(1.7) saturate(1.3);
+    }
+
+    100% {
+      transform: scale(1);
+      filter: brightness(1);
     }
   }
 

@@ -33,11 +33,6 @@ export interface PracticeHandCard {
   apiCard: ApiCardReference | null
 }
 
-export interface PracticeHandState {
-  hand: PracticeHandCard[]
-  remainingDeck: PracticeHandCard[]
-}
-
 /** Una forma de cumplir la regla con esta mano: las cartas que usa. */
 interface PracticeHandMatchCase {
   cards: Array<{ cardId: string; name: string; copies: number }>
@@ -72,6 +67,11 @@ interface PracticeHandNearMiss {
   notes: string[]
 }
 
+/** "card-12345-2" → "card-12345": la carta detrás de una copia. */
+export function cardIdOfDrawId(drawId: string): string {
+  return drawId.replace(/-\d+$/, '')
+}
+
 export function buildPracticeDeck(cards: CardEntry[]): PracticeHandCard[] {
   return cards.flatMap((card) =>
     Array.from({ length: card.copies }, (_, index) => ({
@@ -81,44 +81,6 @@ export function buildPracticeDeck(cards: CardEntry[]): PracticeHandCard[] {
       apiCard: card.apiCard,
     })),
   )
-}
-
-export function drawRandomPracticeHand(deck: PracticeHandCard[], count: number): PracticeHandState {
-  const remainingDeck = [...deck]
-  const hand: PracticeHandCard[] = []
-
-  while (hand.length < count && remainingDeck.length > 0) {
-    const pickedIndex = Math.floor(Math.random() * remainingDeck.length)
-    const [nextCard] = remainingDeck.splice(pickedIndex, 1)
-
-    if (nextCard) {
-      hand.push(nextCard)
-    }
-  }
-
-  return {
-    hand,
-    remainingDeck,
-  }
-}
-
-export function drawNextCard(current: PracticeHandState): PracticeHandState {
-  if (current.remainingDeck.length === 0) {
-    return current
-  }
-
-  const remainingDeck = [...current.remainingDeck]
-  const pickedIndex = Math.floor(Math.random() * remainingDeck.length)
-  const [nextCard] = remainingDeck.splice(pickedIndex, 1)
-
-  if (!nextCard) {
-    return current
-  }
-
-  return {
-    hand: [...current.hand, nextCard],
-    remainingDeck,
-  }
 }
 
 export function evaluatePracticeHand(
@@ -397,52 +359,4 @@ export function getMatchCardIds(match: PracticeHandMatch, hand: readonly Practic
   const usedCardIds = new Set(cases.flatMap((matchCase) => matchCase.cards.map((card) => card.cardId)))
 
   return hand.filter((card) => usedCardIds.has(card.cardId)).map((card) => card.drawId)
-}
-
-export interface PracticeReveal {
-  /** Resultado final de la mano completa. */
-  result: ReturnType<typeof evaluatePracticeHand>
-  /** En qué carta repartida (1..n) aparece cada regla cumplida. */
-  steps: ReadonlyMap<string, number>
-}
-
-/**
- * Para que las reglas aparezcan a medida que se reparten las cartas sin parpadeos: cada regla
- * cumplida en la mano final aparece en la primera carta desde la cual se cumple de forma continua.
- * Si ya había una mano mostrada (al robar la carta para ir 2º), las reglas nuevas aparecen con la última.
- */
-export function computeRevealSteps(
-  hand: PracticeHandCard[],
-  patterns: HandPattern[],
-  derivedMainCards: CardEntry[],
-  groupsByKey: Map<string, DerivedDeckGroup>,
-  turn: PracticeTurn,
-  previous?: ReadonlyMap<string, number>,
-  openingSize?: number,
-): PracticeReveal {
-  const result = evaluatePracticeHand(hand, patterns, derivedMainCards, groupsByKey, turn, openingSize)
-  const finalIds = result.matches.map((match) => match.patternId)
-  const stable = new Map<string, number>()
-
-  for (let size = 1; size <= hand.length; size += 1) {
-    const prefix = new Set(
-      evaluatePracticeHand(hand.slice(0, size), patterns, derivedMainCards, groupsByKey, turn, openingSize).matches.map((match) => match.patternId),
-    )
-
-    for (const id of finalIds) {
-      if (!prefix.has(id)) {
-        stable.delete(id)
-      } else if (!stable.has(id)) {
-        stable.set(id, size)
-      }
-    }
-  }
-
-  const steps = new Map<string, number>()
-
-  for (const id of finalIds) {
-    steps.set(id, previous && !previous.has(id) ? hand.length : (previous?.get(id) ?? stable.get(id) ?? hand.length))
-  }
-
-  return { result, steps }
 }

@@ -13,9 +13,10 @@ import { overline } from './typography'
 /**
  * Tamaños fijos: el panel no crece ni se achica según el contenido (el cuerpo scrollea por dentro).
  * 'sm' es para avisos y confirmaciones; en mobile los de contenido ocupan toda la pantalla.
- * 'table' es la mesa de práctica (angosta, como en el celu).
+ * 'board' es la mesa de práctica: angosta como en el celu, y en escritorio se ensancha para el campo completo y el
+ * panel de pasos.
  */
-type ModalSize = 'sm' | 'md' | 'full' | 'table' | 'sheet' | 'screen'
+type ModalSize = 'sm' | 'md' | 'full' | 'board' | 'sheet' | 'screen'
 
 const FULL_HEIGHT_MOBILE = 'max-sm:h-[calc(100dvh-1rem)]'
 
@@ -24,7 +25,7 @@ const SIZE_CLASS: Record<ModalSize, string> = {
   /** Toda la pantalla (menos el margen): para contenido con la estructura del builder. */
   full: `w-full h-[calc(100dvh-2rem)] ${FULL_HEIGHT_MOBILE}`,
   md: `w-[min(44rem,100%)] h-[min(40rem,calc(100dvh-2rem))] ${FULL_HEIGHT_MOBILE}`,
-  table: `w-[min(40rem,100%)] h-[min(46rem,calc(100dvh-2rem))] ${FULL_HEIGHT_MOBILE}`,
+  board: `w-[min(40rem,100%)] h-[min(46rem,calc(100dvh-2rem))] min-[1101px]:w-[min(78rem,100%)] min-[1101px]:h-[min(50rem,calc(100dvh-2rem))] ${FULL_HEIGHT_MOBILE}`,
   sheet: 'w-[min(70rem,100%)] h-[min(46rem,calc(100dvh-2rem))] min-[1101px]:h-[min(33rem,calc(100dvh-2rem))] max-sm:h-[min(94dvh,52rem)] max-sm:w-full max-sm:rounded-b-none max-sm:border-b-0',
   /** La calculadora de LP: toda la pantalla en el celular (sin margen ni bordes); en escritorio, un panel del tamaño de un celular. */
   screen:

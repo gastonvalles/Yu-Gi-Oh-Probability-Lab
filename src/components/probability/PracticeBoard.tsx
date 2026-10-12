@@ -1,47 +1,20 @@
 import type { PatternKind } from '../../types'
 import { cx } from '../ui/cx'
-import { overline } from '../ui/typography'
 import { formatOdds } from './lab-copy'
-import { describePracticeMatch, type PracticeHandMatch, type PracticeVerdict } from './practice'
-import { RULE_COLOR, VERDICT_COLOR } from './practice-styles'
+import { describePracticeMatch, type PracticeHandMatch } from './practice'
+import { RULE_COLOR } from './practice-styles'
 
+/** Chip chico de una salida (verde) o un problema (rojo): va debajo de la mano, en la mesa. */
 const RULE_BUTTON =
-  'min-h-10 max-w-full rounded-full border border-[color-mix(in_srgb,var(--rule-color)_55%,transparent)] bg-[color-mix(in_srgb,var(--rule-color)_12%,transparent)] px-4 text-left text-body font-semibold text-foreground transition-[background,box-shadow,transform] duration-150 [overflow-wrap:anywhere] [-webkit-tap-highlight-color:transparent] animate-rule-in active:scale-[0.96] aria-pressed:bg-[color-mix(in_srgb,var(--rule-color)_32%,transparent)] aria-pressed:shadow-[0_0_18px_color-mix(in_srgb,var(--rule-color)_45%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-hover min-[820px]:min-h-11 min-[820px]:text-lead motion-reduce:animate-none motion-reduce:transition-none'
-const EXPLAIN_TEXT = 'm-0 text-body text-white/92 [overflow-wrap:anywhere]'
-const ODDS_TEXT = 'm-0 col-span-full text-body text-white/62 [overflow-wrap:anywhere]'
+  'min-h-8 max-w-full rounded-full border border-[color-mix(in_srgb,var(--rule-color)_55%,transparent)] bg-[color-mix(in_srgb,var(--rule-color)_12%,transparent)] px-3 text-left text-micro font-semibold text-foreground transition-[background,box-shadow,transform] duration-150 [overflow-wrap:anywhere] [-webkit-tap-highlight-color:transparent] animate-rule-in active:scale-[0.96] aria-pressed:bg-[color-mix(in_srgb,var(--rule-color)_32%,transparent)] aria-pressed:shadow-[0_0_14px_color-mix(in_srgb,var(--rule-color)_45%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-hover motion-reduce:animate-none motion-reduce:transition-none'
+const EXPLAIN_TEXT = 'm-0 text-micro text-white/92 [overflow-wrap:anywhere]'
+const ODDS_TEXT = 'm-0 col-span-full text-micro text-white/62 [overflow-wrap:anywhere]'
 
 /** Se exporta desde acá para quien ya lo importaba (vive en lab-copy). */
 export { formatOdds }
 
 /** Id del chip "Mano no jugable" (no es una regla del Lab). */
 export const UNPLAYABLE_ID = 'unplayable'
-
-const VERDICT_WORD: Record<PracticeVerdict, string> = {
-  clean: 'Limpia',
-  'with-problem': 'Con problema',
-  'no-opening': 'Sin salida',
-}
-
-/** Resultado de la mano en una palabra: aparece cuando terminó de repartirse. */
-export function PracticeVerdictChip({ verdict }: { verdict: PracticeVerdict | null }) {
-  if (!verdict) {
-    return <span aria-hidden="true" />
-  }
-
-  return (
-    <span
-      key={verdict}
-      className={cx(
-        'inline-flex min-h-[2.1rem] items-center gap-2 rounded-full border border-(--verdict-color) bg-[color-mix(in_srgb,var(--verdict-color)_14%,transparent)] pl-3 pr-[0.95rem] text-body font-bold text-foreground shadow-[0_0_22px_color-mix(in_srgb,var(--verdict-color)_28%,transparent)] animate-pop motion-reduce:animate-none',
-        VERDICT_COLOR[verdict],
-      )}
-      role="status"
-    >
-      <span className="size-[0.55rem] rounded-full bg-(--verdict-color) shadow-[0_0_10px_var(--verdict-color)]" aria-hidden="true" />
-      {VERDICT_WORD[verdict]}
-    </span>
-  )
-}
 
 interface PracticeBoardProps {
   openings: PracticeHandMatch[]
@@ -56,13 +29,13 @@ interface PracticeBoardProps {
   onToggle: (patternId: string) => void
 }
 
-/** Salidas y problemas: cada uno aparece en cuanto la mano cumple sus condiciones. */
+/** Salidas y problemas de la mano, en una fila de chips chicos; el tocado se explica debajo. */
 export function PracticeBoard({ openings, problems, activeId, caseIndex, unplayableOdds, ruleOdds = null, onToggle }: PracticeBoardProps) {
   const active = [...openings, ...problems].find((match) => match.patternId === activeId) ?? null
 
   return (
-    <>
-      <div className="grid w-full content-start gap-[1.1rem] pb-[0.9rem] pt-2">
+    <div className="grid gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
         <RuleGroup kind="opening" matches={openings} activeId={activeId} onToggle={onToggle} />
         <RuleGroup kind="problem" matches={problems} activeId={activeId} unplayable={unplayableOdds !== null} onToggle={onToggle} />
       </div>
@@ -72,7 +45,7 @@ export function PracticeBoard({ openings, problems, activeId, caseIndex, unplaya
         </section>
       ) : null}
       {active ? <RuleExplanation key={active.patternId} match={active} caseIndex={caseIndex} odds={ruleOdds?.get(active.patternId) ?? null} /> : null}
-    </>
+    </div>
   )
 }
 
@@ -89,18 +62,18 @@ function RuleExplanation({ match, caseIndex, odds }: { match: PracticeHandMatch;
       <p className={EXPLAIN_TEXT}>{condition}</p>
       {match.cases.length > 1 ? (
         <span
-          className="rounded-full bg-[color-mix(in_srgb,var(--rule-color)_22%,transparent)] px-[0.6rem] py-[0.1rem] text-body font-extrabold tabular-nums"
+          className="rounded-full bg-[color-mix(in_srgb,var(--rule-color)_22%,transparent)] px-2 py-px text-micro font-extrabold tabular-nums"
           aria-label={`Caso ${caseIndex + 1} de ${match.cases.length}`}>
           {caseIndex + 1}/{match.cases.length}
         </span>
       ) : null}
       {odds !== null && odds > 0 ? <p className={ODDS_TEXT}>{formatOdds(odds)}</p> : null}
       {cards.length > 0 ? (
-        <ul aria-label="Cartas de tu mano" className="m-0 col-span-full flex list-none flex-wrap gap-[0.35rem] p-0">
+        <ul aria-label="Cartas de tu mano" className="m-0 col-span-full flex list-none flex-wrap gap-1 p-0">
           {cards.map((card) => (
             <li
               key={card.cardId}
-              className="rounded-full bg-[color-mix(in_srgb,var(--rule-color)_18%,transparent)] px-[0.65rem] py-[0.15rem] text-micro font-semibold"
+              className="rounded-full bg-[color-mix(in_srgb,var(--rule-color)_18%,transparent)] px-2 py-px text-micro font-semibold"
             >{card.copies > 1 ? `${card.name} ×${card.copies}` : card.name}</li>
           ))}
         </ul>
@@ -109,10 +82,10 @@ function RuleExplanation({ match, caseIndex, odds }: { match: PracticeHandMatch;
   )
 }
 
-/** Explicación de la salida/problema tocado: abajo del tablero, junto a la mano. */
+/** Explicación de la salida/problema tocado, debajo de los chips. */
 function explainStyle(kind: PatternKind): string {
   return cx(
-    'mt-auto grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 rounded-card bg-[color-mix(in_srgb,var(--rule-color)_16%,var(--card-background))] px-4 py-[0.85rem] text-white animate-sheet-in motion-reduce:animate-none',
+    'grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1.5 rounded-card bg-[color-mix(in_srgb,var(--rule-color)_16%,var(--card-background))] px-3 py-2 text-white animate-sheet-in motion-reduce:animate-none',
     RULE_COLOR[kind],
   )
 }
@@ -135,36 +108,31 @@ function RuleGroup({
   }
 
   return (
-    <section className={cx('grid min-w-0 gap-2', RULE_COLOR[kind])} aria-label={kind === 'opening' ? 'Salidas' : 'Problemas'}>
-      <h4 className={cx('m-0 flex items-center gap-2 before:size-1.5 before:rounded-full before:bg-(--rule-color)', overline)}>
-        {kind === 'opening' ? 'Salidas' : 'Problemas'}
-      </h4>
-      <ul className="m-0 flex list-none flex-wrap gap-[0.45rem] p-0">
-        {unplayable && kind === 'problem' ? (
-          <li>
-            <button
-              type="button"
-              className={RULE_BUTTON}
-              aria-pressed={activeId === UNPLAYABLE_ID}
-              onClick={() => onToggle(UNPLAYABLE_ID)}
-            >
-              Mano no jugable
-            </button>
-          </li>
-        ) : null}
-        {matches.map((match) => (
-          <li key={match.patternId}>
-            <button
-              type="button"
-              className={RULE_BUTTON}
-              aria-pressed={activeId === match.patternId}
-              onClick={() => onToggle(match.patternId)}
-            >
-              {match.name}
-            </button>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <ul className={cx('m-0 flex list-none flex-wrap items-center gap-1.5 p-0', RULE_COLOR[kind])} aria-label={kind === 'opening' ? 'Salidas' : 'Problemas'}>
+      {unplayable && kind === 'problem' ? (
+        <li>
+          <button
+            type="button"
+            className={RULE_BUTTON}
+            aria-pressed={activeId === UNPLAYABLE_ID}
+            onClick={() => onToggle(UNPLAYABLE_ID)}
+          >
+            Mano no jugable
+          </button>
+        </li>
+      ) : null}
+      {matches.map((match) => (
+        <li key={match.patternId}>
+          <button
+            type="button"
+            className={RULE_BUTTON}
+            aria-pressed={activeId === match.patternId}
+            onClick={() => onToggle(match.patternId)}
+          >
+            {match.name}
+          </button>
+        </li>
+      ))}
+    </ul>
   )
 }

@@ -14,7 +14,7 @@ La idea central es ayudar a entender deck building con un flujo simple: armás e
   - `roles`: `starter`, `extender`, `enabler`, `searcher`, `draw`, `payoff`, `recovery`, `handtrap`, `disruption`, `boardbreaker`, `floodgate`, `brick`, `garnet`.
 - Aperturas y Problemas para medir consistencia real.
 - Probabilidad exacta (enumeración combinatoria), yendo primero, segundo o en promedio.
-- Práctica de manos para ver ejemplos concretos.
+- Práctica: una mesa para jugar solo (como el Solo Mode de DuelingBook) que abre con la mano ya robada y sus salidas y problemas debajo, con combos que se guardan y se reproducen paso a paso.
 - Comparación A vs B contra otra build importada.
 - Exportación del deck como imagen, decklist oficial en PDF y `.ydk`, y los tres pasos para llevarlo a Neuron (link YDKE o `.ydk` + extensión "Deck transfer" + base de datos oficial de Konami).
 - Cupsy, la mascota: reacciona a lo que pasa (espera mientras carga, calcula con el Lab, revisa en Roles, festeja o se frustra con los avisos y con las manos de la práctica). Se agarra y se lleva a cualquier lado, choca con los botones flotantes y los empuja, y si se la deja apretada cinco segundos pregunta si querés darle un descanso (en escritorio también tiene una X al pasar el mouse). El Kuriboh alado junto a las redes es la caja de las mascotas: al tocarlo se despliegan las que hay, elegir una la saca o la trae de vuelta del descanso, y la que está afuera lleva una X blanca para mandarla a descansar (también en el celular).
@@ -112,12 +112,15 @@ La probabilidad exacta se calcula enumerando todas las manos iniciales posibles:
 si alguna aplica a un solo turno, la vista "Promedio" pondera los dos casos 50/50.
 No es simulación, es cálculo combinatorio real.
 
-## Práctica de manos
+## Práctica: la mesa
 
-Permite robar una mano al azar y ver:
-- Qué aperturas cumple.
-- Qué problemas aparecen.
-- El veredicto final.
+El botón flotante de la mano abre la mesa: el mazo se baraja y reparte de a una las cinco cartas a la mano en abanico, pegada abajo como en DuelingBook (una más al robar del deck: se va 2º); debajo de la mano, las salidas y problemas de esa mano inicial (chips chicos: tocar uno ilumina las cartas que lo cumplen y explica la regla; se evalúa la mano con la que se abrió, no lo que se va jugando). Al elegir una Invocación, activar o colocar una Mágica, una escala o una ficha, se encienden las zonas libres y se toca una (como el "Choose Zones" de DuelingBook); al activar un efecto o una Mágica, la carta destella. El campo tiene la disposición de DuelingBook: zona de campo arriba a la izquierda, destierro arriba a la derecha, dos zonas extra de monstruo, cinco de monstruo con el cementerio al lado, cinco de magia y trampa (las puntas, con sus gemas, hacen de péndulo) con el Extra Deck a la izquierda y el deck a la derecha, y una celda para crear fichas. No valida reglas: el que practica manda.
+
+- **Arrastrar** una carta a una zona la invoca o activa boca arriba; soltarla sobre un Xyz la adjunta como material; a la mano, cementerio, destierro, Extra o deck la mueve. Arrastrar el deck arrastra su carta tope (a la mano = robar, al cementerio = mill, a una zona = sale boca arriba). La ficha se arrastra a una zona de monstruo.
+- **Tocar** una carta abre, pegado a la carta, el menú con las jugadas del juego (y con lo mismo que hace el arrastre, para teclado): desde la mano, Invocación Normal o Colocar boca abajo (Nivel 1-4; de Nivel 5-6 pide 1 Sacrificio y de Nivel 7+ pide 2: "Invocación por Sacrificio", eligiendo los monstruos en el campo), Invocación Especial en ataque o defensa, Activar efecto (con o sin descartar, para las hand traps), Activar como escala, Revelar, Descartar; en el campo, Activar efecto, Invocación por Volteo o voltear boca arriba, cambiar de posición, poner boca abajo, contadores, adjuntar como material Xyz y desacoplar, Sacrificar; desde el cementerio o el destierro, Invocación Especial, Activar efecto, a la mano. Las Magias se activan o se colocan, las Trampas sólo se colocan desde la mano, los Link no van a defensa y las fichas no se colocan boca abajo. Tocar el deck: robar, mandar al cementerio, ver el deck (en su orden real, tope primero, con buscador; al cerrar se baraja, como en la mesa real) o barajar. La ficha se crea desde el botón "+" de la barra (se toca y se elige la zona, o se arrastra). Tocar el Extra, el cementerio o el destierro muestra sus cartas.
+- Cada jugada queda anotada ("Robás Ash Blossom", "Invocás X en ataque"…): **Deshacer** la borra y la lista de pasos (panel lateral en escritorio, botón en el celular) permite volver a cualquier paso. En escritorio el panel lateral muestra además la carta por la que se pasa el mouse, con su texto.
+- **Guardar combo** guarda con nombre la mano, el orden del deck y las jugadas en este dispositivo. Desde la lista de combos se carga uno y se reproduce con Anterior / Siguiente; una jugada nueva a mitad de la reproducción sigue desde ahí (el combo guardado no cambia). Si una carta del combo ya no está en el deck, se baja su imagen para mostrarla igual.
+- La mesa sigue viva al cerrar el modal: se vuelve a abrir donde estaba. "Nueva mano" baraja y reparte otra.
 
 ## Calculadora de LP (celular)
 
@@ -139,6 +142,8 @@ src/
     pattern-*.ts, patterns.ts aperturas y problemas
     turn-context.ts          ir primero / segundo / promedio
     build-comparison.ts      comparación A vs B
+    practice-mat.ts          la mesa de práctica: estado, jugadas y sus textos (puro)
+    saved-combos.ts          combos guardados en localStorage
     use-*.ts                 hooks reutilizables
   components/
     deck-mode/               pantalla principal y navegación por pasos
@@ -146,7 +151,7 @@ src/
     SearchPanel.tsx          búsqueda
     DeckRolesPanel.tsx       clasificación por carta
     ProbabilityPanel.tsx     Probability Lab
-    probability/             editor de reglas y práctica
+    probability/             editor de reglas, práctica y mesa (PracticeMat)
     comparison/              pantalla de comparación
     card-detail/             detalle de carta
     ui/                      botones y piezas básicas
@@ -179,7 +184,7 @@ El CI (`.github/workflows/ci.yml`) corre `typecheck`, `lint`, `test` y `build` e
 
 - No hay importación desde imagen (por decisión de UX).
 - El cálculo es exacto solo para la mano inicial (no simula robos posteriores).
-- No hay simulación de líneas o interrupciones todavía.
+- La mesa de práctica es manual (no aplica reglas ni simula al rival); no hay simulación automática de líneas o interrupciones.
 
 ## Próximos pasos sugeridos
 
