@@ -37,8 +37,6 @@
   --text-title--line-height: 1.875rem;
   --text-stat: 2.0625rem;
   --text-stat--line-height: 1.15;
-  --text-display: 2.75rem;
-  --text-display--line-height: 1;
 
   /* Radios: etiqueta (8) · control (12: chips, botones chicos, campos) · tarjeta (16) · panel (24: tarjeta destacada, barra inferior, diálogos) · píldora. */
   --radius-tag: 0.5rem;
@@ -48,7 +46,6 @@
 
   /* Elevación: tres niveles (tarjeta, flotante, overlay) y el brillo de marca. */
   --shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 10px 28px rgb(0 0 0 / 0.26);
-  --shadow-raised: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 14px 36px rgb(0 0 0 / 0.34);
   --shadow-overlay: 0 24px 64px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(255 255 255 / 0.06);
   --shadow-brand: 0 10px 24px rgb(var(--primary-rgb) / 0.42);
   --shadow-focus: 0 0 0 2px var(--background), 0 0 0 4px rgb(var(--primary-rgb) / 0.6);
@@ -403,25 +400,18 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card-background: var(--card-background);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover-background: var(--popover-background);
-  --color-popover-foreground: var(--popover-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
-  --color-ring: var(--ring);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
   --color-muted: var(--text-muted);
   --color-soft: var(--text-soft);
   --color-input-hover: var(--input-hover);
   --color-primary-hover: var(--primary-hover);
-  --color-accent-hover: var(--accent-hover);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
@@ -448,18 +438,11 @@
     --foreground: #eeeafc;
     --foreground-rgb: 238 234 252;
     --secondary: #130f2b;
-    --secondary-rgb: 19 15 43;
-    --secondary-foreground: #eeeafc;
     --card-background: #130f2b;
     --card-background-rgb: 19 15 43;
-    --card-foreground: #eeeafc;
-    --popover-background: #130f2b;
-    --popover-foreground: #eeeafc;
     --border: #261e52;
-    --border-rgb: 38 30 82;
     --input: #1b1542;
     --input-hover: #251d55;
-    --ring: #9b00ff;
     --primary: #9b00ff;
     --primary-rgb: 155 0 255;
     --primary-hover: #b026ff;
@@ -467,12 +450,9 @@
     --primary-foreground: #ffffff;
     --accent: #00ffa3;
     --accent-rgb: 0 255 163;
-    --accent-hover: #00e695;
     --accent-foreground: #0a0816;
     --destructive: #ef4444;
     --destructive-rgb: 239 68 68;
-    --destructive-foreground: #ffffff;
-    --selected-background: rgba(155, 0, 255, 0.35);
 
     /* Superficies: lienzo < tarjeta < elevada < hover. */
     --surface-raised: #1a1440;
@@ -483,7 +463,6 @@
     --primary-soft-rgb: 207 141 255;
     /* Lavanda oscura: el fondo de chips, botones secundarios y barras de navegación (la lavanda del diseño, sobre oscuro). */
     --lavender: #1d1740;
-    --lavender-rgb: 29 23 64;
     /* Lavanda al pasar el mouse: más clara que la base (el hover siempre aclara). */
     --lavender-hover: #2d2368;
     --info: #0087ff;
@@ -508,9 +487,7 @@
     --text-soft: #9089b5;
 
     --bg-canvas: var(--background);
-    --bg-canvas-2: var(--secondary);
     --border-strong: rgb(var(--primary-rgb) / 0.58);
-    --primary-muted: rgb(var(--primary-rgb) / 0.3);
     --radius-tag: 0.5rem;
     --radius-control: 0.75rem;
     --radius-card: 1rem;

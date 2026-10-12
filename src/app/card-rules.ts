@@ -1,5 +1,3 @@
-import { CARD_RULE, type CardRuleFlag } from './card-script-rules'
-
 /**
  * Las reglas de cada carta (bits de CARD_RULE por id), destiladas de los scripts de EDOPro por
  * scripts/sync-meta-decks.mjs en src/data/card-rules.json. El JSON agrupa los ids por valor de bits para
@@ -41,10 +39,6 @@ export function loadCardRules(): Promise<void> {
 /** Los bits de la carta, o undefined si no tiene script (monstruos normales, cartas nuevas, artes alternativas). */
 export function getCardRuleFlags(ygoprodeckId: number): number | undefined {
   return flagsById?.get(ygoprodeckId)
-}
-
-export function hasCardRule(flags: number, flag: CardRuleFlag): boolean {
-  return (flags & CARD_RULE[flag]) !== 0
 }
 
 export function setCardRulesForTests(index: ReadonlyMap<number, number> | null): void {

@@ -37,7 +37,7 @@ interface CueSpec {
 }
 
 /** Los tres avisos de la ronda: dos toques a los 10 minutos, tres en subida a los 5, y la alarma al llegar a cero. */
-export const ROUND_CUES: Record<RoundCue, CueSpec> = {
+const ROUND_CUES: Record<RoundCue, CueSpec> = {
   ten: { tones: [[660, 0.18], [660, 0.18]], gap: 0.12, gain: 0.5, vibrate: [150, 100, 150], message: 'Quedan 10 minutos de ronda', tone: 'info' },
   five: { tones: [[660, 0.16], [784, 0.16], [988, 0.22]], gap: 0.1, gain: 0.6, vibrate: [150, 100, 150, 100, 150], message: 'Quedan 5 minutos de ronda', tone: 'warning' },
   end: { tones: [[880, 0.35], [1175, 0.35], [880, 0.35], [1175, 0.35]], gap: 0.1, gain: 0.7, vibrate: [300, 150, 300, 150, 600], message: 'Se terminó el tiempo de la ronda', tone: 'warning' },
@@ -48,11 +48,11 @@ const CUE_BEFORE_END_MS: ReadonlyArray<readonly [RoundCue, number]> = [
   ['five', 5 * 60 * 1000],
 ]
 
-export function getLifeState(): LifeState {
+function getLifeState(): LifeState {
   return state
 }
 
-export function subscribeLife(listener: () => void): () => void {
+function subscribeLife(listener: () => void): () => void {
   listeners.add(listener)
 
   return () => {

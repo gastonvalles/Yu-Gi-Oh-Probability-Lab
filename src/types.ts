@@ -1,4 +1,4 @@
-export type CardSource = 'manual' | 'ygoprodeck'
+type CardSource = 'manual' | 'ygoprodeck'
 export type DeckFormat = 'unlimited' | 'tcg' | 'ocg' | 'goat' | 'edison' | 'genesys'
 export type BanlistStatus = 'forbidden' | 'limited' | 'semi-limited' | 'unlimited'
 export type CardOrigin = 'engine' | 'non_engine'
@@ -92,7 +92,7 @@ export interface PatternCondition {
   distinct: boolean
 }
 
-export interface Pattern {
+interface Pattern {
   id: string
   name: string
   kind: PatternKind

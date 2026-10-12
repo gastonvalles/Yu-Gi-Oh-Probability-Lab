@@ -3,7 +3,7 @@ import { getPatternDefinitionKey } from '../../app/patterns'
 import type { CardEntry, HandPattern, PatternKind, PatternProbability, TurnContext, TurnView } from '../../types'
 import { buildPatternCompactSummary } from './pattern-helpers'
 
-export type RuleTier = SystemRuleTier | 'custom'
+type RuleTier = SystemRuleTier | 'custom'
 
 export interface RuleEntry {
   patternId: string

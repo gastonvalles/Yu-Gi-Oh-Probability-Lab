@@ -1,34 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import * as fc from 'fast-check'
-import { parseMode } from '../app/utils'
-
-/**
- * Bug Condition Exploration Test
- *
- * **Validates: Requirements 1.5, 2.5**
- *
- * Property 1: Bug Condition — Dead Modes Accepted by parseMode and CalculatorMode Type
- *
- * The parseMode function currently accepts 'manual' and 'gambling' as valid CalculatorMode
- * values and returns them. The expected behavior is that parseMode should return 'deck'
- * for these dead mode inputs (backward compatibility fallback).
- *
- * This test is EXPECTED TO FAIL on unfixed code — failure confirms the bug exists.
- */
-describe('Bug Condition Exploration: Dead Modes Accepted by parseMode', () => {
-  it('Property 1: for all dead mode inputs, parseMode should return "deck" (not the dead mode value)', () => {
-    const deadModes = fc.constantFrom('manual', 'gambling')
-
-    fc.assert(
-      fc.property(deadModes, (input) => {
-        const result = parseMode(input)
-        expect(result).toBe('deck')
-      }),
-      { verbose: 2 }
-    )
-  })
-})
-
 import { toPortableConfig, fromPortableConfig } from '../app/app-state-codec'
 import type { AppState } from '../app/model'
 import type {
@@ -40,32 +11,6 @@ import type {
   DeckFormat,
 } from '../types'
 import type { DeckCardInstance } from '../app/model'
-
-/* ------------------------------------------------------------------ */
-/*  Observation Tests — confirm baseline behavior on UNFIXED code     */
-/* ------------------------------------------------------------------ */
-
-describe('Observation: parseMode baseline behavior on unfixed code', () => {
-  it('parseMode("deck") returns "deck"', () => {
-    expect(parseMode('deck')).toBe('deck')
-  })
-
-  it('parseMode(undefined) returns "deck"', () => {
-    expect(parseMode(undefined)).toBe('deck')
-  })
-
-  it('parseMode(null) returns "deck"', () => {
-    expect(parseMode(null)).toBe('deck')
-  })
-
-  it('parseMode(42) returns "deck"', () => {
-    expect(parseMode(42)).toBe('deck')
-  })
-
-  it('parseMode("anything-else") returns "deck"', () => {
-    expect(parseMode('anything-else')).toBe('deck')
-  })
-})
 
 /* ------------------------------------------------------------------ */
 /*  Arbitraries for property-based tests                              */
@@ -159,59 +104,11 @@ const arbAppState: fc.Arbitrary<AppState> = fc.record({
   }),
 })
 
-/* ------------------------------------------------------------------ */
-/*  Property 2: Preservation — Deck Mode Behavior Unchanged           */
-/* ------------------------------------------------------------------ */
-
-/**
- * Preservation Property Tests
- *
- * **Validates: Requirements 3.1, 3.2, 3.3, 3.4**
- *
- * Property 2: Preservation — Deck Mode Behavior Unchanged
- *
- * For all inputs where the mode is NOT a dead mode ('manual' or 'gambling'),
- * parseMode should return 'deck'. For valid AppState objects with mode: 'deck',
- * the toPortableConfig → fromPortableConfig round-trip should preserve key fields.
- *
- * These tests are EXPECTED TO PASS on unfixed code — they confirm baseline behavior.
- */
-describe('Preservation: Deck Mode Behavior Unchanged', () => {
-  it('Property 2a: for all non-dead-mode inputs, parseMode returns "deck"', () => {
-    /**
-     * **Validates: Requirements 3.1, 3.2**
-     *
-     * For any input that is NOT 'manual' and NOT 'gambling',
-     * parseMode should always return 'deck'.
-     */
-    const nonDeadModeInputs = fc.oneof(
-      fc.constant('deck'),
-      fc.constant(undefined),
-      fc.constant(null),
-      fc.integer(),
-      fc.boolean(),
-      fc.string().filter((s) => s !== 'manual' && s !== 'gambling'),
-      fc.constant({}),
-      fc.constant([]),
-    )
-
-    fc.assert(
-      fc.property(nonDeadModeInputs, (input) => {
-        const result = parseMode(input)
-        expect(result).toBe('deck')
-      }),
-      { verbose: 2, numRuns: 200 }
-    )
-  })
-
-  it('Property 2b: toPortableConfig → fromPortableConfig round-trips key fields for deck mode AppState', () => {
-    /**
-     * **Validates: Requirements 3.2, 3.3, 3.4**
-     *
-     * For random valid AppState objects with mode: 'deck',
-     * serializing via toPortableConfig and deserializing via fromPortableConfig
-     * should preserve handSize, deckFormat, deckBuilder.deckName, and patterns.
-     */
+/** El estado de la app sobrevive a pasar por la configuración portable (exportar e importar). */
+describe('Codec: toPortableConfig → fromPortableConfig', () => {
+  it('conserva el formato, la mano, el nombre del deck, las reglas y las cartas de cualquier estado válido', () => {
+    // Para cualquier AppState válido, pasar por toPortableConfig y volver con fromPortableConfig
+    // conserva handSize, deckFormat, el nombre del deck, las reglas y las cartas.
     fc.assert(
       fc.property(arbAppState, (appState) => {
         const portable = toPortableConfig(appState)

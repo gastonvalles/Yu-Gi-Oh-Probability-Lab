@@ -6,7 +6,6 @@ import {
   buildMetaReport,
   countCopies,
   filterMetaDecks,
-  isMetaHandtrap,
   loadMetaDecklist,
   projectShare,
   readMetaDeckIdFromHash,
@@ -217,7 +216,7 @@ describe('src/data/meta-decks.json (lo que escribe scripts/sync-meta-decks.mjs)'
   it('las listas completas son del mismo snapshot: cada deck tiene la suya y sus hand traps coinciden', async () => {
     const entriesOf = (entries: ReadonlyArray<[number, number]>) =>
       entries
-        .filter(([id]) => isMetaHandtrap(id))
+        .filter(([id]) => Object.hasOwn(META_DECKS.cards, String(id)))
         .map(([id, copies]) => `${id}:${copies}`)
         .sort()
 

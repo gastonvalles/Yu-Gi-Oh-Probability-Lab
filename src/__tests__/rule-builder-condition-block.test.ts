@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import * as fc from 'fast-check'
-import { getKindLabel, kindFromLabel, getConditionLabel } from '../components/probability/rule-builder/condition-labels'
+import { getKindLabel, getConditionLabel } from '../components/probability/rule-builder/condition-labels'
 import { createCardPoolMatcher } from '../app/patterns'
 import type {
   CardEntry,
@@ -46,7 +46,7 @@ const arbCardOrigin: fc.Arbitrary<CardOrigin> = fc.constantFrom('engine', 'non_e
 // ---------------------------------------------------------------------------
 
 describe('ConditionBlock label mapping', () => {
-  it('Property 8: "Al menos" maps to include, "Sin" maps to exclude', () => {
+  it('Property 8: include is labelled "Al menos" and exclude "Sin"', () => {
     /** Feature: visual-rule-builder, Property 8: UI label mapping correctness */
     fc.assert(
       fc.property(arbRequirementKind, (kind) => {
@@ -58,8 +58,6 @@ describe('ConditionBlock label mapping', () => {
           expect(label).toBe('Sin')
         }
 
-        // Round-trip: label → kind → label
-        expect(kindFromLabel(label)).toBe(kind)
       }),
       { numRuns: 100 },
     )

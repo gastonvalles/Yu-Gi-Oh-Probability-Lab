@@ -75,7 +75,7 @@ function toDraftImpact(
   return { rule: { first, second, main, scope }, clean }
 }
 
-/** Cuánto se da la regla del borrador y cómo movería las manos limpias (sin tocar el store). */
+/** Cuánto se da la regla del borrador y cómo movería las manos limpias (sin tocar el store). Versión síncrona de lo que hace el hook en workers: sirve para probar la matemática. */
 export function computeDraftImpact(input: DraftImpactInput): DraftImpact | null {
   const calculations = draftCalculations(input)
 

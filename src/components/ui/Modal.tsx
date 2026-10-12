@@ -13,9 +13,9 @@ import { overline } from './typography'
 /**
  * Tamaños fijos: el panel no crece ni se achica según el contenido (el cuerpo scrollea por dentro).
  * 'sm' es para avisos y confirmaciones; en mobile los de contenido ocupan toda la pantalla.
- * 'table' es la mesa de práctica (angosta, como en el celu) y 'editor' el de clasificación de una carta.
+ * 'table' es la mesa de práctica (angosta, como en el celu).
  */
-type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full' | 'table' | 'editor' | 'sheet' | 'screen'
+type ModalSize = 'sm' | 'md' | 'full' | 'table' | 'sheet' | 'screen'
 
 const FULL_HEIGHT_MOBILE = 'max-sm:h-[calc(100dvh-1rem)]'
 
@@ -24,11 +24,8 @@ const SIZE_CLASS: Record<ModalSize, string> = {
   /** Toda la pantalla (menos el margen): para contenido con la estructura del builder. */
   full: `w-full h-[calc(100dvh-2rem)] ${FULL_HEIGHT_MOBILE}`,
   md: `w-[min(44rem,100%)] h-[min(40rem,calc(100dvh-2rem))] ${FULL_HEIGHT_MOBILE}`,
-  lg: `w-[min(60rem,100%)] h-[min(44rem,calc(100dvh-2rem))] ${FULL_HEIGHT_MOBILE}`,
-  xl: `w-[min(70rem,100%)] h-[min(46rem,calc(100dvh-2rem))] ${FULL_HEIGHT_MOBILE}`,
   table: `w-[min(40rem,100%)] h-[min(46rem,calc(100dvh-2rem))] ${FULL_HEIGHT_MOBILE}`,
   sheet: 'w-[min(70rem,100%)] h-[min(46rem,calc(100dvh-2rem))] min-[1101px]:h-[min(33rem,calc(100dvh-2rem))] max-sm:h-[min(94dvh,52rem)] max-sm:w-full max-sm:rounded-b-none max-sm:border-b-0',
-  editor: `w-[min(70rem,100%)] h-[min(46rem,calc(100dvh-2rem))] min-[1101px]:h-[min(33rem,calc(100dvh-2rem))] ${FULL_HEIGHT_MOBILE}`,
   /** La calculadora de LP: toda la pantalla en el celular (sin margen ni bordes); en escritorio, un panel del tamaño de un celular. */
   screen:
     'max-[1100px]:h-dvh max-[1100px]:max-h-dvh! max-[1100px]:w-full max-[1100px]:rounded-none! max-[1100px]:border-0! min-[1101px]:h-[min(52rem,calc(100dvh-2rem))] min-[1101px]:w-[26rem]',
@@ -44,8 +41,6 @@ interface ModalProps {
   tone?: Tone
   title?: ReactNode
   subtitle?: ReactNode
-  /** Acciones a la derecha del título (además de cerrar). */
-  headerActions?: ReactNode
   footer?: ReactNode
   /** Sin encabezado estándar: el contenido trae el suyo (se mantiene la X). */
   bare?: boolean
@@ -80,7 +75,6 @@ export function Modal({
   tone = 'brand',
   title,
   subtitle,
-  headerActions,
   footer,
   bare = false,
   flush = false,
@@ -106,7 +100,7 @@ export function Modal({
     return null
   }
 
-  const hasHeader = !bare && (kicker || title || subtitle || headerActions)
+  const hasHeader = !bare && (kicker || title || subtitle)
 
   return createPortal(
     <div
@@ -143,10 +137,7 @@ export function Modal({
                 {subtitle ? <p className="m-0 text-body text-muted">{subtitle}</p> : null}
               </div>
             </div>
-            <div className="flex flex-none items-center gap-1">
-              {headerActions}
-              {dismissible ? <CloseButton size="sm" aria-label="Cerrar" onClick={onClose} /> : null}
-            </div>
+            {dismissible ? <CloseButton size="sm" aria-label="Cerrar" onClick={onClose} /> : null}
           </header>
         ) : dismissible && !hideCloseButton ? (
           <CloseButton

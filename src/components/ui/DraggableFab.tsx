@@ -10,7 +10,6 @@ interface DraggableFabProps {
   storageKey: string
   onClick: () => void
   children: ReactNode
-  corner?: 'right' | 'left'
   /** Cuánto subirlo (px) respecto del rincón: para apilar un botón sobre otro. */
   lift?: number
 }
@@ -19,8 +18,8 @@ interface DraggableFabProps {
  * Botón flotante que se puede arrastrar a cualquier lado. Al soltarlo se pega al borde
  * más cercano; un toque sin arrastrar lo activa. Recuerda la posición entre visitas.
  */
-export function DraggableFab({ label, storageKey, onClick, children, corner, lift }: DraggableFabProps) {
-  const { position, dragging, handlers, consumeDragClick } = useDraggablePosition({ storageKey, size: FAB_SIZE, corner, lift, group: 'fab' })
+export function DraggableFab({ label, storageKey, onClick, children, lift }: DraggableFabProps) {
+  const { position, dragging, handlers, consumeDragClick } = useDraggablePosition({ storageKey, size: FAB_SIZE, lift, group: 'fab' })
 
   return (
     <button

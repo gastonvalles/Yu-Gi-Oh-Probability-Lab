@@ -22,11 +22,10 @@ interface ProgressRingProps {
   delay?: number
   /** Contenido del centro; por defecto el porcentaje. */
   children?: ReactNode
-  className?: string
 }
 
 /** Anillo de progreso que se llena al aparecer, con el porcentaje al centro. Es la única forma de mostrar un porcentaje en la app. */
-export function ProgressRing({ value, tone = 'brand', color, size = 42, strokeWidth, label, ticks, delay = 0, children, className }: ProgressRingProps) {
+export function ProgressRing({ value, tone = 'brand', color, size = 42, strokeWidth, label, ticks, delay = 0, children }: ProgressRingProps) {
   const clamped = clamp01(value)
   const { stroke, radius, circumference, center } = ringGeometry(size, strokeWidth)
   const { ref, revealed, settled, delayMs, instant } = useRingReveal<HTMLDivElement>(delay)
@@ -36,7 +35,7 @@ export function ProgressRing({ value, tone = 'brand', color, size = 42, strokeWi
   return (
     <div
       ref={ref}
-      className={cx('relative inline-grid shrink-0 place-items-center', !settled && 'will-change-transform', onBrand ? '[--tone-rgb:255_255_255]' : TONE[tone].rgb, className)}
+      className={cx('relative inline-grid shrink-0 place-items-center', !settled && 'will-change-transform', onBrand ? '[--tone-rgb:255_255_255]' : TONE[tone].rgb)}
       style={{ width: size, height: size, ...(color ? ({ '--tone-rgb': color } as CSSProperties) : null) }}
       role="meter"
       aria-label={label}
