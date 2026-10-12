@@ -449,7 +449,7 @@ function HandCard({
       ref={elementRef}
       role="listitem"
       tabIndex={0}
-      aria-label={targeted ? `${card.name} (objetivo)` : card.name}
+      aria-label={targeted ? `${card.name} (seleccionada)` : card.name}
       title={card.name}
       data-card-id={card.id}
       className={HAND_CARD}
@@ -483,7 +483,7 @@ function HandCard({
 /** La mira de "objetivo": se comparte con las cartas del campo. */
 export function TargetMark() {
   return (
-    <span className="pointer-events-none absolute right-0.5 top-0.5 z-2 grid size-5 place-items-center rounded-full bg-danger text-white shadow-[0_0_10px_rgb(var(--danger-rgb)/0.8)] animate-pop motion-reduce:animate-none" aria-label="Objetivo" role="img">
+    <span className="pointer-events-none absolute right-0.5 top-0.5 z-2 grid size-5 place-items-center rounded-full bg-danger text-white shadow-[0_0_10px_rgb(var(--danger-rgb)/0.8)] animate-pop motion-reduce:animate-none" aria-label="Seleccionada" role="img">
       <Icon name="target" size={13} strokeWidth={2.2} />
     </span>
   )
