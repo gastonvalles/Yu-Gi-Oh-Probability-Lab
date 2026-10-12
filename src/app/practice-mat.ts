@@ -48,6 +48,8 @@ export type MatAction =
   /** `deck` = tope del deck. */
   | { type: 'move'; id: string; to: MatPile | 'deck-bottom' }
   | { type: 'place'; id: string; zone: MatSpot; index: number; pos: MatPos; how?: MatSummon }
+  /** Invocación por Sacrificio (o Colocar por Sacrificio): los sacrificios van al cementerio y la carta sale a la zona. */
+  | { type: 'tribute'; id: string; tributes: string[]; zone: MatZone; index: number; pos: MatPos }
   /** Pone la carta como material Xyz debajo de otra que está en el campo. */
   | { type: 'attach'; id: string; to: string }
   | { type: 'position'; id: string; pos: MatPos }
@@ -289,6 +291,28 @@ export function matReducer(state: MatState, action: MatAction): MatState {
       return withPlaced({ ...state, tokens }, action.zone, action.index, { id: `${TOKEN_PREFIX}${tokens}`, pos: 'atk', counters: 0, materials: [] })
     }
 
+    case 'tribute': {
+      if (action.tributes.length === 0 || !locateCard(state, action.id) || action.tributes.includes(action.id)) {
+        return state
+      }
+
+      let next = state
+
+      for (const tribute of action.tributes) {
+        const where = locateCard(next, tribute)
+
+        // Sólo se sacrifican monstruos propios en el campo (boca arriba o abajo).
+        if (where?.kind !== 'spot' || where.spot === 'st' || where.spot === 'field') {
+          return state
+        }
+
+        next = matReducer(next, { type: 'move', id: tribute, to: 'gy' })
+      }
+
+      const placed = matReducer(next, { type: 'place', id: action.id, zone: action.zone, index: action.index, pos: action.pos })
+      return placed === next ? state : placed
+    }
+
     case 'activate': {
       if (!action.cost || !locateCard(state, action.id)) {
         return state
@@ -377,6 +401,14 @@ export function describeMatAction(before: MatState, action: MatAction, nameOf: (
       return `${card} sale al campo en ${position}`
     }
 
+    case 'tribute': {
+      const card = name(action.id)
+      const tributes = action.tributes.map(name)
+      const list = tributes.length > 1 ? `${tributes.slice(0, -1).join(', ')} y ${tributes[tributes.length - 1]}` : (tributes[0] ?? '')
+
+      return action.pos === 'set' ? `Colocás ${card} boca abajo sacrificando ${list}` : `Invocación por Sacrificio de ${card} (sacrificás ${list})`
+    }
+
     case 'attach':
       return `Adjuntás ${name(action.id)} a ${name(action.to)}`
 
@@ -442,9 +474,17 @@ export interface MatCardKind {
   xyz: boolean
   /** Los Link no tienen defensa: ni se ponen en defensa ni boca abajo. */
   link: boolean
+  /** Nivel (o Rango): de 5 a 6 la Invocación Normal pide 1 Sacrificio; de 7 en adelante, 2. */
+  level: number | null
 }
 
-export const TOKEN_KIND: MatCardKind = { monster: true, spell: false, trap: false, extra: false, effect: false, fieldSpell: false, pendulum: false, xyz: false, link: false }
+export const TOKEN_KIND: MatCardKind = { monster: true, spell: false, trap: false, extra: false, effect: false, fieldSpell: false, pendulum: false, xyz: false, link: false, level: null }
+
+/** Sacrificios que pide la Invocación Normal (o Colocar) de un monstruo según su Nivel. */
+export function tributesFor(level: number | null): number {
+  if (level === null || level <= 4) return 0
+  return level <= 6 ? 1 : 2
+}
 
 /** La API pone el subtipo de Magia/Trampa en `race` ("Field", "Quick-Play"); el marco dice si es monstruo y de qué clase. */
 export function cardKindOf(card: ApiCardReference | null): MatCardKind {
@@ -463,6 +503,7 @@ export function cardKindOf(card: ApiCardReference | null): MatCardKind {
     pendulum: frame.includes('pendulum'),
     xyz: frame.includes('xyz'),
     link: frame.includes('link'),
+    level: monster && typeof card?.level === 'number' ? card.level : null,
   }
 }
 
@@ -477,6 +518,13 @@ export interface MatMenuItem {
   action: MatAction
   /** Zonas libres entre las que se puede elegir dónde sale la carta. */
   targets?: MatTarget[]
+  /** Cuántos monstruos del campo hay que elegir como Sacrificio antes de la zona. */
+  tributes?: number
+}
+
+/** Monstruos propios en el campo (los que se pueden sacrificar). */
+export function monstersOnField(state: MatState): string[] {
+  return [...state.mz, ...state.emz].flatMap((placed) => (placed ? [placed.id] : []))
 }
 
 /** Zonas libres de esos tipos, en orden. */
@@ -570,8 +618,18 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
 
   if (pile === 'hand') {
     if (kind.monster && !kind.extra) {
-      summon('Invocación Normal', 'atk', 'normal')
-      summon('Colocar boca abajo', 'set', 'normal')
+      const tributes = tributesFor(kind.level)
+
+      if (tributes === 0) {
+        summon('Invocación Normal', 'atk', 'normal')
+        summon('Colocar boca abajo', 'set', 'normal')
+      } else if (monstersOnField(state).length >= tributes) {
+        // Nivel 5+: primero se eligen los Sacrificios y después la zona (la mesa completa `tributes`, `zone` e `index`).
+        add(`Invocación por Sacrificio (${tributes})`, { type: 'tribute', id, tributes: [], zone: 'mz', index: 0, pos: 'atk' })
+        add(`Colocar por Sacrificio (${tributes})`, { type: 'tribute', id, tributes: [], zone: 'mz', index: 0, pos: 'set' })
+        items[items.length - 2]!.tributes = tributes
+        items[items.length - 1]!.tributes = tributes
+      }
     }
 
     if (kind.monster) specialSummon()

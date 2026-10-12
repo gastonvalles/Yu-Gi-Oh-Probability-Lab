@@ -11,6 +11,6 @@ export const RULE_COLOR = {
   problem: '[--rule-color:rgb(var(--danger-rgb))]',
 } as const
 
-/** Dorso de carta: lo comparten el mazo y las cartas que se están repartiendo. */
+/** Dorso de carta, liso: violeta oscuro con un marco fino adentro (lo comparten el mazo, el Extra, las cartas boca abajo y el fantasma). */
 export const CARD_BACK =
-  'absolute inset-0 z-1 overflow-hidden rounded-tag border-2 border-primary/75 [background:radial-gradient(ellipse_at_50%_50%,rgb(var(--primary-rgb)/0.55),transparent_62%),repeating-linear-gradient(45deg,rgb(var(--primary-rgb)/0.2)_0_4px,transparent_4px_9px),linear-gradient(160deg,#1d1033,#0b0614)] after:absolute after:inset-[24%_20%] after:rounded-full after:border-2 after:border-accent/75 after:bg-[radial-gradient(circle,rgb(var(--accent-rgb)/0.35),transparent_70%)]'
+  'absolute inset-0 z-1 overflow-hidden rounded-tag border border-primary/55 bg-[#160f28] after:absolute after:inset-[10%] after:rounded-[3px] after:border after:border-primary/35'

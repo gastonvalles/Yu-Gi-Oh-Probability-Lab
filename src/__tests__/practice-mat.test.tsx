@@ -72,6 +72,7 @@ const status = () => screen.getByRole('status', { name: 'Paso actual' })
 beforeEach(() => {
   localStorage.clear()
   HTMLElement.prototype.setPointerCapture = () => {}
+  window.matchMedia = ((query: string) => ({ matches: query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
   window.requestAnimationFrame = (callback) => {
     callback(0)
     return 1
@@ -108,6 +109,7 @@ describe('la mesa de práctica', () => {
 
     const gy = screen.getByRole('button', { name: 'Cementerio: 0' })
     document.elementFromPoint = () => gy
+    document.elementsFromPoint = () => [gy]
 
     const maxx = within(hand()).getByRole('listitem', { name: 'Maxx C' })
     fireEvent.pointerDown(maxx, { ...pointer, clientX: 10, clientY: 10 })

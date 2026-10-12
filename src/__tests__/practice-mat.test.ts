@@ -13,6 +13,7 @@ import {
   replayMat,
   shuffleWithSeed,
   TOKEN_KIND,
+  tributesFor,
   type MatAction,
   type MatCardKind,
   type MatPos,
@@ -20,15 +21,16 @@ import {
 } from '../app/practice-mat'
 import type { ApiCardReference } from '../types'
 
-const MONSTER: MatCardKind = { monster: true, spell: false, trap: false, extra: false, effect: true, fieldSpell: false, pendulum: false, xyz: false, link: false }
+const MONSTER: MatCardKind = { monster: true, spell: false, trap: false, extra: false, effect: true, fieldSpell: false, pendulum: false, xyz: false, link: false, level: 4 }
 const XYZ: MatCardKind = { ...MONSTER, extra: true, xyz: true }
-const LINK: MatCardKind = { ...MONSTER, extra: true, link: true }
-const SPELL: MatCardKind = { ...MONSTER, monster: false, spell: true }
-const TRAP: MatCardKind = { ...MONSTER, monster: false, trap: true }
+const LINK: MatCardKind = { ...MONSTER, extra: true, link: true, level: null }
+const SPELL: MatCardKind = { ...MONSTER, monster: false, spell: true, level: null }
+const TRAP: MatCardKind = { ...MONSTER, monster: false, trap: true, level: null }
 
 const DECK = ['a1', 'a2', 'b1', 'c1', 'd1', 'e1', 'f1']
 const EXTRA = ['x1', 'x2']
-const KINDS: Record<string, MatCardKind> = { a1: MONSTER, a2: MONSTER, b1: SPELL, c1: MONSTER, d1: TRAP, e1: MONSTER, f1: MONSTER, x1: XYZ, x2: LINK }
+// c1 es de Nivel 7 (pide 2 Sacrificios) y e1 de Nivel 5 (pide 1).
+const KINDS: Record<string, MatCardKind> = { a1: MONSTER, a2: MONSTER, b1: SPELL, c1: { ...MONSTER, level: 7 }, d1: TRAP, e1: { ...MONSTER, level: 5 }, f1: MONSTER, x1: XYZ, x2: LINK }
 const kindOf = (id: string) => KINDS[id] ?? TOKEN_KIND
 const nameOf = (id: string) => id.toUpperCase()
 
@@ -91,6 +93,22 @@ describe('la mesa de práctica', () => {
     const detached = matReducer(state, { type: 'move', id: 'a2', to: 'hand' })
     expect(detached.mz[0]?.materials).toEqual(['a1'])
     expect(detached.hand).toContain('a2')
+  })
+
+  it('la Invocación por Sacrificio manda los sacrificios al cementerio y saca la carta, incluso a la zona que se liberó', () => {
+    const two = run([{ type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }, { type: 'place', id: 'a2', zone: 'mz', index: 1, pos: 'def' }])
+    const summoned = matReducer(two, { type: 'tribute', id: 'c1', tributes: ['a1', 'a2'], zone: 'mz', index: 0, pos: 'atk' })
+
+    expect(summoned.gy).toEqual(['a1', 'a2'])
+    expect(summoned.mz[0]?.id).toBe('c1')
+    expect(summoned.mz[1]).toBeNull()
+    expect(summoned.hand).not.toContain('c1')
+    expect(describeMatAction(two, { type: 'tribute', id: 'c1', tributes: ['a1', 'a2'], zone: 'mz', index: 0, pos: 'atk' }, nameOf)).toBe('Invocación por Sacrificio de C1 (sacrificás A1 y A2)')
+    expect(describeMatAction(two, { type: 'tribute', id: 'c1', tributes: ['a1'], zone: 'mz', index: 2, pos: 'set' }, nameOf)).toBe('Colocás C1 boca abajo sacrificando A1')
+
+    // Un sacrificio que no está en el campo, o sin sacrificios, no hace nada.
+    expect(matReducer(two, { type: 'tribute', id: 'c1', tributes: ['b1'], zone: 'mz', index: 2, pos: 'atk' })).toBe(two)
+    expect(matReducer(two, { type: 'tribute', id: 'c1', tributes: [], zone: 'mz', index: 2, pos: 'atk' })).toBe(two)
   })
 
   it('las fichas se numeran y desaparecen al salir del campo', () => {
@@ -181,6 +199,9 @@ describe('la mesa de práctica', () => {
     // Desde el Extra sólo Invocación Especial; un Link no va a defensa.
     expect(labels(start(), 'x1')).toEqual(['Invocación Especial en ataque', 'Invocación Especial en defensa', 'Al cementerio', 'Desterrar'])
     expect(labels(start(), 'x2')).toEqual(['Invocación Especial en ataque', 'Al cementerio', 'Desterrar'])
+    // Nivel 7 sin monstruos en el campo: ni Invocación Normal ni por Sacrificio.
+    expect(labels(start(), 'c1').slice(0, 2)).toEqual(['Invocación Especial en ataque', 'Invocación Especial en defensa'])
+    expect(labels(start(), 'c1')).not.toContain('Invocación Normal')
 
     const played = run([
       { type: 'place', id: 'x1', zone: 'emz', index: 0, pos: 'atk' },
@@ -198,6 +219,16 @@ describe('la mesa de práctica', () => {
     expect(labels(played, 'e1')).toEqual(['Invocación Especial en ataque', 'Invocación Especial en defensa', 'Activar efecto', 'A la mano', 'Desterrar', 'Arriba del deck', 'Abajo del deck'])
     expect(labels(played, 'zzz')).toEqual([])
 
+    // Con dos monstruos en el campo, el Nivel 7 ofrece la Invocación (y Colocar) por Sacrificio, que la mesa completa.
+    const two = run([{ type: 'place', id: 'x1', zone: 'emz', index: 0, pos: 'atk' }, { type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }])
+    const bySacrifice = listCardActions(two, 'c1', kindOf, nameOf).slice(0, 2)
+    expect(bySacrifice.map((item) => [item.label, item.tributes])).toEqual([['Invocación por Sacrificio (2)', 2], ['Colocar por Sacrificio (2)', 2]])
+    expect(bySacrifice[0]!.action).toEqual({ type: 'tribute', id: 'c1', tributes: [], zone: 'mz', index: 0, pos: 'atk' })
+    // Con un solo monstruo alcanza para el Nivel 5 pero no para el 7.
+    const one = run([{ type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }, { type: 'move', id: 'e1', to: 'hand' }])
+    expect(labels(one, 'e1')[0]).toBe('Invocación por Sacrificio (1)')
+    expect(labels(one, 'c1')).not.toContain('Invocación por Sacrificio (2)')
+
     // Sin zonas de monstruo libres no se ofrece invocar.
     const fillers: MatAction[] = [
       ...[0, 1, 2, 3, 4].map((index): MatAction => ({ type: 'token', zone: 'mz', index })),
@@ -211,17 +242,24 @@ describe('la mesa de práctica', () => {
   })
 
   it('reconoce el tipo de carta por el marco y el subtipo', () => {
-    const card = (frameType: string, race = ''): ApiCardReference => ({ frameType, race } as ApiCardReference)
+    const card = (frameType: string, race = '', level: number | null = 4): ApiCardReference => ({ frameType, race, level } as ApiCardReference)
 
     expect(cardKindOf(card('effect'))).toEqual(MONSTER)
+    expect(cardKindOf(card('effect', '', 7))).toEqual({ ...MONSTER, level: 7 })
     expect(cardKindOf(card('normal'))).toEqual({ ...MONSTER, effect: false })
     expect(cardKindOf(card('xyz'))).toEqual(XYZ)
-    expect(cardKindOf(card('link'))).toEqual(LINK)
+    expect(cardKindOf(card('link', '', null))).toEqual(LINK)
     expect(cardKindOf(card('effect_pendulum'))).toEqual({ ...MONSTER, pendulum: true })
-    expect(cardKindOf(card('spell'))).toEqual(SPELL)
-    expect(cardKindOf(card('spell', 'Field'))).toEqual({ ...SPELL, fieldSpell: true })
-    expect(cardKindOf(card('trap'))).toEqual(TRAP)
+    expect(cardKindOf(card('spell', '', null))).toEqual(SPELL)
+    expect(cardKindOf(card('spell', 'Field', null))).toEqual({ ...SPELL, fieldSpell: true })
+    expect(cardKindOf(card('trap', '', null))).toEqual(TRAP)
     expect(cardKindOf(null)).toEqual({ ...SPELL, spell: false, effect: false })
+    expect(tributesFor(4)).toBe(0)
+    expect(tributesFor(5)).toBe(1)
+    expect(tributesFor(6)).toBe(1)
+    expect(tributesFor(7)).toBe(2)
+    expect(tributesFor(12)).toBe(2)
+    expect(tributesFor(null)).toBe(0)
   })
 
   it('ninguna secuencia de jugadas pierde ni duplica cartas', () => {
@@ -240,6 +278,7 @@ describe('la mesa de práctica', () => {
       fc.record({ type: fc.constant('token' as const), zone: fc.constantFrom('mz', 'emz', 'st'), index: fc.integer({ min: -1, max: 5 }) }),
       fc.record({ type: fc.constant('activate' as const), id, cost: fc.constantFrom(undefined, 'discard' as const, 'banish' as const) }),
       fc.record({ type: fc.constant('reveal' as const), id }),
+      fc.record({ type: fc.constant('tribute' as const), id, tributes: fc.array(id, { maxLength: 2 }), zone: fc.constantFrom('mz', 'emz'), index: fc.integer({ min: -1, max: 5 }), pos }),
     )
 
     fc.assert(

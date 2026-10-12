@@ -117,13 +117,13 @@ interface PileViewerProps {
 }
 
 /**
- * Las cartas de una pila. El deck se muestra ordenado por nombre (no revela el orden) y con buscador;
- * cementerio y destierro, la más reciente primero.
+ * Las cartas de una pila. El deck y el Extra se muestran en su orden real (tope primero; al cerrar el
+ * deck se baraja, como en la mesa real) y con buscador; cementerio y destierro, la más reciente primero.
  */
 export function PileViewer({ pile, ids, info, onPick, onClose }: PileViewerProps) {
   const [query, setQuery] = useState('')
   const cards = ids.map((id) => ({ id, ...info(id) }))
-  const ordered = pile === 'deck' ? [...cards].sort((a, b) => a.name.localeCompare(b.name, 'es')) : pile === 'extra' ? cards : [...cards].reverse()
+  const ordered = pile === 'deck' || pile === 'extra' ? cards : [...cards].reverse()
   const words = normalizeSearchText(query).split(' ').filter(Boolean)
   const visible = words.length === 0 ? ordered : ordered.filter((card) => words.every((word) => normalizeSearchText(card.name).includes(word)))
   const title = pile ? `${PILE_TITLES[pile]} · ${ids.length}` : ''

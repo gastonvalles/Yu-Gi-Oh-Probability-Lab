@@ -78,6 +78,7 @@ const tap = (element: HTMLElement) => {
 beforeEach(() => {
   localStorage.clear()
   HTMLElement.prototype.setPointerCapture = () => {}
+  window.matchMedia = ((query: string) => ({ matches: query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
 })
 
 describe('la práctica integrada en la mesa', () => {
