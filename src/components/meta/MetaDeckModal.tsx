@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 
+import { cardImageSrc } from '../../app/card-image-source'
 import { replaceDeckBuilder } from '../../app/deck-builder-slice'
 import { buildDeckImportPreviewFromYdk } from '../../app/deck-import'
 import {
@@ -214,7 +215,7 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
               cover === null
                 ? undefined
                 : {
-                    backgroundImage: `linear-gradient(90deg, rgb(19 15 43 / 0.97) 40%, rgb(19 15 43 / 0.6)), url(${coverArtUrl(cover)})`,
+                    backgroundImage: `linear-gradient(90deg, rgb(19 15 43 / 0.97) 40%, rgb(19 15 43 / 0.6)), url(${cardImageSrc(coverArtUrl(cover))})`,
                     backgroundSize: 'cover',
                     backgroundPosition: 'right center',
                   }

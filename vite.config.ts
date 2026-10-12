@@ -17,6 +17,15 @@ function readVercelHeaders(): Record<string, string> {
 
 const COPYRIGHT_BANNER = `/*! Yu-Gi-Oh! Probability Lab © ${new Date().getFullYear()} Gastón Valles. Todos los derechos reservados. Sitio no oficial: Yu-Gi-Oh! es una marca de Konami. */`
 
+/** En desarrollo y en `preview` las imágenes de las cartas pasan por Vite, como en producción pasan por la función `api/card-image`. */
+const CARD_IMAGE_PROXY = {
+  '/api/card-image': {
+    target: 'https://images.ygoprodeck.com',
+    changeOrigin: true,
+    rewrite: (path: string) => path.replace(/^\/api\/card-image/, '/images'),
+  },
+}
+
 /** Aviso de autoría al principio de cada archivo JS del build. Se agrega después de minificar, así ningún paso lo borra. */
 function copyrightBanner(): Plugin {
   return {
@@ -35,8 +44,10 @@ export default defineConfig({
   plugins: [react(), tailwindcss(), copyrightBanner()],
   preview: {
     headers: readVercelHeaders(),
+    proxy: CARD_IMAGE_PROXY,
   },
   server: {
+    proxy: CARD_IMAGE_PROXY,
     watch: isMountedWindowsWorkspace
       ? {
           usePolling: true,

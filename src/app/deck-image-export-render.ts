@@ -1,3 +1,4 @@
+import { cardImageSrc } from './card-image-source'
 import { getCardLimitIndicator } from './deck-format'
 import { PAGE_PADDING, computeDeckImageLayout, type Rect, type ZoneLayout } from './deck-image-layout'
 import { buildDeckZoneTypeCounts } from './deck-presentation'
@@ -292,16 +293,7 @@ function loadImage(source: string): Promise<HTMLImageElement> {
   })
 }
 
+/** Por nuestro proxy la imagen es del mismo origen: el lienzo la puede leer sin pasar por un servicio de terceros. */
 function toExportImageUrl(source: string): string {
-  if (source.startsWith('data:') || source.startsWith('blob:')) {
-    return source
-  }
-
-  try {
-    const url = new URL(source)
-    const raw = `${url.host}${url.pathname}${url.search}`
-    return `https://images.weserv.nl/?url=${encodeURIComponent(raw)}&q=95`
-  } catch {
-    return source
-  }
+  return cardImageSrc(source)
 }
