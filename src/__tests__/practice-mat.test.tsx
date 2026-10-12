@@ -94,6 +94,10 @@ describe('la mesa de práctica', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'En ataque' }))
     expect(screen.queryByRole('menu', { name: 'Ash Blossom' })).not.toBeInTheDocument()
     expect(within(status()).getByText('Tocá la zona para Invocación Normal: en ataque')).toBeInTheDocument()
+    // Se eligen sólo las cinco zonas principales: la Extra Monster Zone es para lo que viene del Extra Deck.
+    expect(screen.getAllByRole('button', { name: /: elegir$/ }).map((cell) => cell.getAttribute('aria-label'))).toEqual(
+      ['Zona de monstruo 1: elegir', 'Zona de monstruo 2: elegir', 'Zona de monstruo 3: elegir', 'Zona de monstruo 4: elegir', 'Zona de monstruo 5: elegir'],
+    )
     fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
 
     expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' })).toBeInTheDocument()
@@ -194,6 +198,18 @@ describe('la mesa de práctica', () => {
     expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom, en defensa' })).toBeInTheDocument()
     expect(within(status()).getByText('Invocación Especial de Ash Blossom en defensa')).toBeInTheDocument()
 
+    // Soltada en una zona extra de monstruo, una carta de la mano no cae: esa zona es para lo que viene del Extra Deck.
+    const emz1 = zone('Zona extra de monstruo 1')
+    document.elementFromPoint = () => emz1
+    document.elementsFromPoint = () => [emz1]
+    const maxx = within(hand()).getByRole('listitem', { name: 'Maxx C' })
+    fireEvent.pointerDown(maxx, { ...pointer, clientX: 10, clientY: 10 })
+    fireEvent.pointerMove(maxx, { ...pointer, clientX: 80, clientY: 120 })
+    fireEvent.pointerUp(maxx, { ...pointer, clientX: 80, clientY: 120 })
+    expect(within(hand()).getByRole('listitem', { name: 'Maxx C' })).toBeInTheDocument()
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(within(status()).getByText('1/1')).toBeInTheDocument()
+
     // Una Mágica soltada en la zona de Mágicas y Trampas: Activar o Colocar.
     const st1 = zone('Zona de magia y trampa 1')
     document.elementFromPoint = () => st1
@@ -228,12 +244,22 @@ describe('la mesa de práctica', () => {
     expect(within(zone('Zona de monstruo 4')).getByRole('button', { name: 'Ficha' })).toBeInTheDocument()
     expect(within(status()).getByText('Ficha en ataque, zona 4')).toBeInTheDocument()
 
-    // Tocada, pregunta la posición y después la zona.
+    // Soltada en una zona extra no pasa nada: una ficha no viene del Extra Deck.
+    const emz1 = zone('Zona extra de monstruo 1')
+    document.elementFromPoint = () => emz1
+    document.elementsFromPoint = () => [emz1]
+    fireEvent.pointerDown(plus, { ...pointer, clientX: 10, clientY: 10 })
+    fireEvent.pointerMove(plus, { ...pointer, clientX: 80, clientY: 120 })
+    fireEvent.pointerUp(plus, { ...pointer, clientX: 80, clientY: 120 })
+    expect(screen.queryByRole('menu', { name: 'Ficha' })).not.toBeInTheDocument()
+
+    // Tocada, pregunta la posición y después la zona (sólo las principales).
     tap(plus)
     const menu = screen.getByRole('menu', { name: 'Ficha' })
     expect(within(menu).getByText('Invocación Especial')).toBeInTheDocument()
     fireEvent.click(within(menu).getByRole('menuitem', { name: 'En defensa' }))
     expect(within(status()).getByText('Tocá la zona para la ficha')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /: elegir$/ })).toHaveLength(4)
     fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
 
     const token = within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ficha, en defensa' })
@@ -286,7 +312,7 @@ describe('la mesa de práctica', () => {
     expect(within(hand()).getByRole('listitem', { name: 'Maxx C (seleccionada)' })).toHaveAttribute('data-flash', 'true')
   })
 
-  it('el visor del deck permite buscar una carta a la mano y baraja al cerrar', () => {
+  it('el visor del deck: sacar una carta de ahí baraja el resto en la misma jugada; cerrarlo sin sacar nada baraja aparte', () => {
     render(<Harness />)
 
     tap(screen.getByRole('button', { name: 'Main: 1' }))
@@ -298,8 +324,41 @@ describe('la mesa de práctica', () => {
 
     expect(within(hand()).getByRole('listitem', { name: 'Imperm' })).toBeInTheDocument()
     expect(screen.queryByRole('dialog', { name: 'Main · 1' })).not.toBeInTheDocument()
-    expect(within(status()).getByText('2/2')).toBeInTheDocument()
+    expect(within(status()).getByText('1/1')).toBeInTheDocument()
+    expect(within(status()).getByText('Buscás Imperm del deck a la mano y barajás')).toBeInTheDocument()
+
+    // Un solo paso: deshacer devuelve la carta al deck.
+    fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
+    expect(screen.getByRole('button', { name: 'Main: 1' })).toBeInTheDocument()
+    expect(within(status()).queryByText('1/1')).not.toBeInTheDocument()
+
+    tap(screen.getByRole('button', { name: 'Main: 1' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ver el deck' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Main · 1' })).getByRole('button', { name: 'Cerrar' }))
+    expect(within(status()).getByText('1/1')).toBeInTheDocument()
     expect(within(status()).getByText('Barajás el deck')).toBeInTheDocument()
+  })
+
+  it('cada visor arranca sin filtro: lo buscado en el deck no se hereda al abrirlo de nuevo', () => {
+    // Doce cartas: el deck queda con diez y muestra el buscador (sale con más de ocho).
+    const ids = [...CARDS.keys(), 'card-1-2', 'card-2-2', 'card-3-2', 'card-4-2', 'card-5-2']
+    render(<Harness initial={createMatState(ids, [], 2)} />)
+
+    const openDeck = () => {
+      tap(screen.getByRole('button', { name: 'Main: 10' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Ver el deck' }))
+      return screen.getByRole('dialog', { name: 'Main · 10' })
+    }
+
+    const viewer = openDeck()
+    fireEvent.change(within(viewer).getByRole('searchbox', { name: 'Buscar carta' }), { target: { value: 'nib' } })
+    expect(within(viewer).getAllByRole('listitem')).toHaveLength(2)
+    fireEvent.click(within(viewer).getByRole('button', { name: 'Cerrar' }))
+    expect(within(status()).getByText('Barajás el deck')).toBeInTheDocument()
+
+    const reopened = openDeck()
+    expect(within(reopened).getByRole('searchbox', { name: 'Buscar carta' })).toHaveValue('')
+    expect(within(reopened).getAllByRole('listitem')).toHaveLength(10)
   })
 
   it('guarda el combo con nombre, lo lista y lo reproduce paso a paso', () => {

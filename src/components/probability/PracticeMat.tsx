@@ -12,6 +12,7 @@ import {
   locateCard,
   matReducer,
   monstersOnField,
+  monsterZones,
   PHASES,
   placedAt,
   randomSeed,
@@ -341,7 +342,7 @@ export function PracticeMat({
   }, [autoplay, isDealt, session.cursor, session.actions.length, onSeek, fast])
 
   const closeViewer = useCallback(() => {
-    // Después de mirar el deck se baraja, como en la mesa real (y la jugada queda anotada).
+    // Después de mirar el deck sin sacar nada se baraja, como en la mesa real (y la jugada queda anotada).
     if (viewer === 'deck') {
       onDispatch({ type: 'shuffle', seed: randomSeed() })
       setShuffleKey((key) => key + 1)
@@ -350,22 +351,34 @@ export function PracticeMat({
     setViewer(null)
   }, [viewer, onDispatch])
 
+  /** Sacar una carta mirando el deck: el resto se baraja en la misma jugada (buscar = un paso, que se deshace entero). */
+  const searching = useCallback(
+    (action: MatAction): action is Extract<MatAction, { type: 'move' | 'place' }> =>
+      viewer === 'deck' && (action.type === 'move' || action.type === 'place') && state.deck.includes(action.id),
+    [viewer, state.deck],
+  )
+
   const play = useCallback(
     (action: MatAction) => {
-      onDispatch(action)
+      const searched = searching(action)
+      const played: MatAction = searched ? { ...action, shuffle: randomSeed() } : action
+
+      onDispatch(played)
       setMenu(null)
       setPicking(null)
       setAutoplay(false)
 
-      if (action.type === 'shuffle') {
+      if (played.type === 'shuffle' || ((played.type === 'move' || played.type === 'place') && played.shuffle !== undefined)) {
         setShuffleKey((key) => key + 1)
       }
 
-      if (viewer) {
+      if (searched) {
+        setViewer(null)
+      } else if (viewer) {
         closeViewer()
       }
     },
-    [onDispatch, viewer, closeViewer],
+    [onDispatch, viewer, closeViewer, searching],
   )
 
   /** Una jugada del menú: con Sacrificios primero se eligen; si puede salir a varias zonas, la mesa pide elegir una (como "Choose Zones" en DuelingBook). */
@@ -379,6 +392,14 @@ export function PracticeMat({
 
       const pick = (picking: Picking) => {
         setMenu(null)
+
+        // La carta sale del deck recién al elegir la zona: la jugada ya lleva el barajado y el visor se cierra sin barajar aparte.
+        if (picking.kind === 'zone' && picking.action.type === 'place' && searching(picking.action)) {
+          setPicking({ ...picking, action: { ...picking.action, shuffle: randomSeed() } })
+          setViewer(null)
+          return
+        }
+
         setPicking(picking)
 
         if (viewer) {
@@ -403,7 +424,7 @@ export function PracticeMat({
 
       play(item.action)
     },
-    [play, viewer, closeViewer],
+    [play, viewer, closeViewer, searching],
   )
 
   const pickZone = (zone: MatSpot, index: number) => {
@@ -420,7 +441,7 @@ export function PracticeMat({
   /** Con los Sacrificios o los materiales elegidos (que dejan el campo), la carta sale a la zona donde se soltó si sigue libre, a la única libre, o se elige una. */
   const summonAfter = (label: string, action: Extract<MatAction, { type: 'tribute' | 'summon' }>, removed: string[], dropped?: MatTarget) => {
     const after = removed.reduce((current, id) => matReducer(current, { type: 'move', id, to: 'gy' }), state)
-    const targets = freeTargets(after, ['mz', 'emz'])
+    const targets = freeTargets(after, monsterZones(action.type === 'summon'))
     const zone = dropped && targets.some((target) => target.zone === dropped.zone && target.index === dropped.index) ? dropped : targets.length === 1 ? targets[0] : null
 
     if (zone) play({ ...action, zone: zone.zone as 'mz' | 'emz', index: zone.index })
@@ -446,10 +467,10 @@ export function PracticeMat({
     if (picking?.kind === 'materials' && picking.chosen.length > 0) summonAfter(picking.label, { ...picking.action, materials: picking.chosen }, picking.chosen, picking.zone)
   }
 
-  /** La ficha en esa posición: en la zona donde se soltó, en la única libre, o la mesa pide tocar una zona. */
+  /** La ficha en esa posición: en la zona donde se soltó, en la única libre, o la mesa pide tocar una zona (de las principales: una ficha no viene del Extra). */
   const summonToken = useCallback(
     (pos: 'atk' | 'def', dropped?: MatTarget) => {
-      const targets = freeTargets(state, ['mz', 'emz'])
+      const targets = freeTargets(state, monsterZones(false))
       const first = dropped ?? targets[0]
 
       if (!first) {
@@ -502,7 +523,7 @@ export function PracticeMat({
         .flatMap((item): MatMenuItem[] => {
           const targets = [{ zone, index }]
 
-          if (item.action.type === 'tribute') return zone === 'mz' || zone === 'emz' ? [{ ...item, action: { ...item.action, zone, index }, targets }] : []
+          if (item.action.type === 'tribute') return zone === 'mz' ? [{ ...item, action: { ...item.action, zone, index }, targets }] : []
           if (item.action.type === 'place' && item.targets?.some((target) => target.zone === zone && target.index === index)) return [{ ...item, action: { ...item.action, zone, index }, targets }]
           return []
         }),
@@ -530,9 +551,9 @@ export function PracticeMat({
 
   const handleDrop = useCallback(
     (source: MatDragSource, target: MatDropTarget) => {
-      // La ficha soltada en una zona de monstruo libre pregunta si sale en ataque o en defensa, ahí mismo.
+      // La ficha soltada en una zona de monstruo principal libre pregunta si sale en ataque o en defensa, ahí mismo.
       if (source.id === NEW_TOKEN) {
-        if (target.kind === 'spot' && target.spot !== 'st' && target.spot !== 'field' && !placedAt(state, target.spot, target.index)) {
+        if (target.kind === 'spot' && target.spot === 'mz' && !placedAt(state, target.spot, target.index)) {
           const anchor = sectionRef.current?.querySelector(`[data-drop="${dropIdOf(target.spot, target.index)}"]`) ?? sectionRef.current
 
           if (anchor) {
@@ -550,7 +571,7 @@ export function PracticeMat({
           if (target.pile === 'hand') onDispatch({ type: 'draw', count: 1 })
           else if (target.pile === 'gy') onDispatch({ type: 'mill', count: 1 })
           else if (target.pile === 'banished') onDispatch({ type: 'move', id: top, to: 'banished' })
-        } else if (!placedAt(state, target.spot, target.index)) {
+        } else if (target.spot !== 'emz' && !placedAt(state, target.spot, target.index)) {
           dropInto(top, target.spot, target.index)
         }
         return
@@ -575,6 +596,8 @@ export function PracticeMat({
       }
 
       if (where.kind === 'pile') {
+        // La Extra Monster Zone es sólo para lo que viene del Extra Deck: de la mano o de otra pila no se cae ahí ni arrastrando.
+        if (target.spot === 'emz' && where.pile !== 'extra') return
         dropInto(source.id, target.spot, target.index)
         return
       }
@@ -591,7 +614,7 @@ export function PracticeMat({
       // La ficha: primero la posición (en ataque o en defensa); la zona se toca después si hay más de una libre.
       if (source.id === NEW_TOKEN) {
         setPicking(null)
-        if (freeTargets(state, ['mz', 'emz']).length > 0) setMenu({ kind: 'token', rect })
+        if (freeTargets(state, monsterZones(false)).length > 0) setMenu({ kind: 'token', rect })
         return
       }
 
@@ -987,7 +1010,9 @@ export function PracticeMat({
         onClose={() => setMenu(null)}
       />
 
+      {/* Una instancia por pila: cada visor arranca sin filtro (lo buscado en el deck no se hereda al abrir el cementerio, donde con pocas cartas el buscador ni se ve). */}
       <PileViewer
+        key={viewer ?? 'closed'}
         pile={viewer}
         ids={viewer ? state[viewer] : []}
         info={(id) => ({ name: cardOf(id).name, art: artOf(cardOf(id)), faceDown: state.facedown.includes(id) })}

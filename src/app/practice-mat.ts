@@ -66,9 +66,9 @@ export type MatAction =
   | { type: 'draw'; count: number }
   | { type: 'mill'; count: number }
   | { type: 'shuffle'; seed: number }
-  /** `deck` = tope del deck. `faceDown` sólo aplica al destierro. */
-  | { type: 'move'; id: string; to: MatPile | 'deck-bottom'; faceDown?: boolean }
-  | { type: 'place'; id: string; zone: MatSpot; index: number; pos: MatPos; how?: MatSummon }
+  /** `deck` = tope del deck. `faceDown` sólo aplica al destierro. `shuffle`: la carta salió mirando el deck y el resto se baraja con esa semilla en la misma jugada. */
+  | { type: 'move'; id: string; to: MatPile | 'deck-bottom'; faceDown?: boolean; shuffle?: number }
+  | { type: 'place'; id: string; zone: MatSpot; index: number; pos: MatPos; how?: MatSummon; shuffle?: number }
   /** Invocación por Sacrificio (o Colocar por Sacrificio): los sacrificios van al cementerio y la carta sale a la zona. */
   | { type: 'tribute'; id: string; tributes: string[]; zone: MatZone; index: number; pos: MatPos }
   /** Invocación desde el Extra Deck con materiales del campo: Fusión, Sincronía y Enlace los mandan al cementerio; Xyz los pone debajo. */
@@ -239,6 +239,11 @@ function pileLength(state: MatState, count: number): number {
   return Math.max(0, Math.min(Math.floor(count), state.deck.length))
 }
 
+/** Buscar en el deck: después de sacar la carta, el resto se baraja en la misma jugada. */
+function reshuffled(state: MatState, seed: number | undefined): MatState {
+  return seed === undefined ? state : { ...state, deck: shuffleWithSeed(state.deck, seed) }
+}
+
 export function matReducer(state: MatState, action: MatAction): MatState {
   switch (action.type) {
     case 'draw': {
@@ -260,7 +265,7 @@ export function matReducer(state: MatState, action: MatAction): MatState {
       }
 
       const removed = removeEverywhere(state, action.id)
-      const next = dropMaterials(removed.state, removed.placed)
+      const next = reshuffled(dropMaterials(removed.state, removed.placed), action.shuffle)
 
       // Una ficha fuera del campo deja de existir.
       if (isToken(action.id)) {
@@ -287,7 +292,7 @@ export function matReducer(state: MatState, action: MatAction): MatState {
       const kept = removed.placed
       const placed: Placed = { id: action.id, pos: action.pos, counters: kept?.counters ?? 0, materials: kept?.materials ?? [] }
 
-      return withPlaced(removed.state, action.zone, action.index, placed)
+      return withPlaced(reshuffled(removed.state, action.shuffle), action.zone, action.index, placed)
     }
 
     case 'attach': {
@@ -428,7 +433,13 @@ const PILE_LABELS: Record<MatPile, string> = { deck: 'el deck', extra: 'el Extra
 /** Qué hace la jugada, en una línea: `before` es el estado previo (para saber de dónde viene la carta). */
 export function describeMatAction(before: MatState, action: MatAction, nameOf: (id: string) => string): string {
   const name = (id: string) => (isToken(id) ? 'la ficha' : nameOf(id))
+  const text = describePlay(before, action, name)
 
+  // La carta salió mirando el deck y el resto se barajó en la misma jugada.
+  return (action.type === 'move' || action.type === 'place') && action.shuffle !== undefined ? `${text} y barajás` : text
+}
+
+function describePlay(before: MatState, action: MatAction, name: (id: string) => string): string {
   switch (action.type) {
     case 'draw': {
       const top = before.deck[0]
@@ -656,6 +667,11 @@ export function monstersOnField(state: MatState): string[] {
   return [...state.mz, ...state.emz].flatMap((placed) => (placed ? [placed.id] : []))
 }
 
+/** Zonas de monstruo a las que puede salir una carta: la Extra Monster Zone es sólo para las que vienen del Extra Deck (Master Rule vigente). */
+export function monsterZones(fromExtraDeck: boolean): readonly MatSpot[] {
+  return fromExtraDeck ? ['mz', 'emz'] : ['mz']
+}
+
 /** Zonas libres de esos tipos, en orden. */
 export function freeTargets(state: MatState, zones: readonly MatSpot[]): MatTarget[] {
   return zones.flatMap((zone): MatTarget[] =>
@@ -670,7 +686,8 @@ export function freeTargets(state: MatState, zones: readonly MatSpot[]): MatTarg
  * con las jugadas del juego: Invocación Normal (en ataque o boca abajo) desde la mano, Invocación Especial desde cualquier lado,
  * Invocación por Volteo de un monstruo boca abajo, Activar efecto (con descarte como costo si está en la mano),
  * escalas de péndulo, revelar, descartar, desterrar. Las Trampas no se activan desde la mano; los Link no van a
- * defensa; las fichas no se colocan boca abajo ni salen del campo.
+ * defensa; las fichas no se colocan boca abajo ni salen del campo; la Extra Monster Zone sólo se ofrece a lo que
+ * viene del Extra Deck.
  */
 export function listCardActions(state: MatState, id: string, kindOf: (id: string) => MatCardKind, nameOf: (id: string) => string): MatMenuItem[] {
   const where = locateCard(state, id)
@@ -680,6 +697,8 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
   }
 
   const kind = isToken(id) ? TOKEN_KIND : kindOf(id)
+  const pile = where.kind === 'pile' ? where.pile : null
+  const zones = monsterZones(pile === 'extra')
   const items: MatMenuItem[] = []
   const add = (label: string, action: MatAction) => items.push({ label, action })
   const target = () => add(state.targeted.includes(id) ? 'Quitar selección' : 'Seleccionar', { type: 'target', id })
@@ -696,8 +715,8 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
   }
   /** Invocación Especial: primero se elige la posición (un Link sale en ataque, no tiene defensa). */
   const specialSummon = () => {
-    const attack = placeItem('En ataque', ['mz', 'emz'], 'atk', 'special')
-    const defense = placeItem('En defensa', ['mz', 'emz'], 'def', 'special')
+    const attack = placeItem('En ataque', zones, 'atk', 'special')
+    const defense = placeItem('En defensa', zones, 'def', 'special')
 
     if (!attack || !defense) return
     if (kind.link) items.push({ ...attack, label: 'Invocación Especial' })
@@ -755,16 +774,14 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     return items
   }
 
-  const pile = where.kind === 'pile' ? where.pile : null
-
   if (pile === 'hand') {
     if (kind.monster && !kind.extra) {
       const tributes = tributesFor(kind.level)
 
       if (tributes === 0) {
         // Invocación Normal: primero se elige si sale en ataque o boca abajo (Colocar), como con la Especial.
-        const attack = placeItem('En ataque', ['mz', 'emz'], 'atk', 'normal')
-        const set = placeItem('Boca abajo', ['mz', 'emz'], 'set', 'normal')
+        const attack = placeItem('En ataque', zones, 'atk', 'normal')
+        const set = placeItem('Boca abajo', zones, 'set', 'normal')
 
         if (attack && set) items.push({ label: 'Invocación Normal', action: attack.action, choices: [attack, set] })
       } else if (monstersOnField(state).length >= tributes) {
@@ -817,7 +834,7 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     if (kind.monster && how && monstersOnField(state).length > 0) {
       // Desde el Extra: posición, después los materiales en el campo (con confirmación) y al final la zona (contando las que se liberan).
       const summonItem = (label: string, pos: MatPos): MatMenuItem | null => {
-        const targets = freeTargets(state, ['mz', 'emz'])
+        const targets = freeTargets(state, zones)
         const first = targets[0]
 
         return first ? { label, action: { type: 'summon', id, how, materials: [], zone: first.zone as MatZone, index: first.index, pos }, targets, materials: true } : null
