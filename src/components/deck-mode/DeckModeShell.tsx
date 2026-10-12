@@ -2,7 +2,7 @@ import type { ReactNode, RefObject } from 'react'
 
 import { cx } from '../ui/cx'
 import { MascotPicker } from '../mascot/MascotPicker'
-import { SiteCredit, SocialLinks } from '../ui/SocialLinks'
+import { LegalLink, SiteCredit, SocialLinks } from '../ui/SocialLinks'
 import { DeckModeBrand } from './DeckModeBrand'
 
 interface DeckModeShellProps {
@@ -28,7 +28,10 @@ export function DeckModeShell({
         <div className="flex min-w-0 items-center gap-3 justify-self-end">
           <SiteCredit className="hidden whitespace-nowrap min-[1280px]:block" />
           <MascotPicker placement="below" />
-          <SocialLinks />
+          <div className="flex items-center gap-1">
+            <SocialLinks />
+            <LegalLink />
+          </div>
         </div>
       </header>
       <div
@@ -52,6 +55,7 @@ export function DeckModeShell({
         <div className="flex items-center gap-1">
           <MascotPicker placement="above" />
           <SocialLinks />
+          <LegalLink />
         </div>
         <SiteCredit withDisclaimer />
       </footer>
