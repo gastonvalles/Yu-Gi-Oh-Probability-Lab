@@ -49,7 +49,8 @@ export function StepHero({ title, icon, subtitle, help, titleAction, side, sideV
                 {help}
               </InfoTip>
             ) : null}
-            {titleAction}
+            {/* El botón de al lado mide 44 px en táctil: sobresale, centrado, en vez de agrandar el renglón y bajar el título. */}
+            {titleAction ? <span className="-my-1.5 inline-flex shrink-0">{titleAction}</span> : null}
           </div>
           {subtitle ? <p className={cx(supportText, 'max-[1100px]:hidden')}>{subtitle}</p> : null}
         </div>

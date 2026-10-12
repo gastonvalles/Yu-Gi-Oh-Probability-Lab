@@ -30,9 +30,11 @@ describe('que nada se corra de lugar al cambiar de pestaña', () => {
   })
 
   it('el título de cada paso tiene un renglón de alto fijo, y todos los pasos llevan subtítulo', () => {
-    render(<StepHero title="Un paso" icon="cards" />)
+    render(<StepHero title="Un paso" icon="cards" titleAction={<button type="button">Guía</button>} />)
 
     expect(screen.getByRole('heading', { name: 'Un paso' }).parentElement).toHaveClass('min-h-8')
+    // El botón de al lado (44 px en táctil) sobresale con margen negativo: no agranda el renglón ni baja el título.
+    expect(screen.getByRole('button', { name: 'Guía' }).parentElement).toHaveClass('-my-1.5')
 
     // Con subtítulo en todos, el encabezado mide lo mismo en escritorio y el primer bloque arranca en el mismo lugar.
     for (const file of ['DeckRolesPanel', 'ProbabilityPanel', 'comparison/ComparisonScreen', 'ExportDeckPanel', 'meta/MetaScreen', 'replays/ReplaysScreen']) {
