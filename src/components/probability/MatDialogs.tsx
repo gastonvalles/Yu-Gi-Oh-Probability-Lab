@@ -14,11 +14,14 @@ import { field, surface } from '../ui/surfaces'
 import { overline } from '../ui/typography'
 import { CARD_BACK } from './practice-styles'
 
-export const PILE_TITLES: Record<MatPile, string> = { deck: 'Deck', extra: 'Extra Deck', hand: 'Mano', gy: 'Cementerio', banished: 'Destierro' }
+/** Nombres de las casillas, los mismos que usa el builder (Main / Extra) y los del juego en inglés para las pilas. */
+export const PILE_TITLES: Record<MatPile, string> = { deck: 'Main', extra: 'Extra', hand: 'Mano', gy: 'GY', banished: 'Banish' }
 
 interface MatCardInfo {
   name: string
   art: string | null
+  /** Desterrada boca abajo: se muestra de dorso. */
+  faceDown?: boolean
 }
 
 export interface MenuItem {
@@ -41,11 +44,18 @@ const MENU_ITEM =
   'block w-full border-0 bg-transparent px-3 py-1.5 text-left text-body font-medium text-foreground outline-none transition-colors duration-100 hover:bg-tint/12 focus-visible:bg-tint/12'
 
 /**
+ * En el celular, el click que el navegador sintetiza al soltar el dedo llega DESPUÉS del `pointerup` que
+ * abrió el menú y cae sobre el fondo recién montado: durante este lapso el fondo no cierra el menú.
+ */
+const GHOST_CLICK_MS = 350
+
+/**
  * Menú de jugadas pegado a la carta, como en DuelingBook: una línea por jugada, sin diálogo en el
  * medio. Se cierra al elegir, al tocar afuera o con Escape.
  */
 export function CardMenu({ anchor, kicker, title, items, onInspect, onClose }: CardMenuProps) {
   const ref = useRef<HTMLDivElement | null>(null)
+  const openedAtRef = useRef(0)
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null)
   const open = anchor !== null
 
@@ -60,6 +70,8 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, onClose }: C
       return
     }
 
+    openedAtRef.current = performance.now()
+
     const margin = 8
     const { width, height } = menu.getBoundingClientRect()
     const left = Math.min(Math.max(anchor.left + anchor.width / 2 - width / 2, margin), window.innerWidth - width - margin)
@@ -73,8 +85,14 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, onClose }: C
     return null
   }
 
+  const closeFromBackdrop = () => {
+    if (performance.now() - openedAtRef.current >= GHOST_CLICK_MS) {
+      onClose()
+    }
+  }
+
   return createPortal(
-    <div className="fixed inset-0 z-210" onClick={onClose}>
+    <div className="fixed inset-0 z-210" onClick={closeFromBackdrop}>
       <div
         ref={ref}
         role="menu"
@@ -148,7 +166,8 @@ export function PileViewer({ pile, ids, info, onPick, onClose }: PileViewerProps
         ) : null}
         {ids.length === 0 ? <p className="m-0 text-body text-muted">No hay cartas acá.</p> : null}
         {visible.length === 0 && ids.length > 0 ? <p className="m-0 text-body text-muted">Ninguna carta coincide con “{query.trim()}”.</p> : null}
-        <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] gap-2 p-0" aria-label="Cartas">
+        {/* En el celular, cinco por fila (como el campo); en pantallas anchas, las que entren de 5.25 rem. */}
+        <ul className="m-0 grid list-none grid-cols-5 gap-1.5 p-0 sm:grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] sm:gap-2" aria-label="Cartas">
           {visible.map((card) => (
             <li key={card.id}>
               <button
@@ -157,9 +176,9 @@ export function PileViewer({ pile, ids, info, onPick, onClose }: PileViewerProps
                 onClick={(event) => onPick(card.id, event.currentTarget.getBoundingClientRect())}
               >
                 <span className="relative block aspect-[421/614] w-full overflow-hidden rounded-tag bg-input shadow-[0_4px_10px_rgba(0,0,0,0.4)]">
-                  <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />
+                  {card.faceDown ? <span className={CARD_BACK} /> : <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />}
                 </span>
-                <span className="truncate text-micro text-foreground">{card.name}</span>
+                <span className="truncate text-micro text-foreground">{card.faceDown ? `${card.name} (boca abajo)` : card.name}</span>
               </button>
             </li>
           ))}

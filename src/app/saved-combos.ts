@@ -22,10 +22,16 @@ export interface SavedCombo {
 export function readSavedCombos(): SavedCombo[] {
   try {
     const parsed: unknown = JSON.parse(localStorage.getItem(SAVED_COMBOS_KEY) ?? '[]')
-    return Array.isArray(parsed) ? parsed.filter(isSavedCombo) : []
+    return Array.isArray(parsed) ? parsed.filter(isSavedCombo).map(migrateSavedCombo) : []
   } catch {
     return []
   }
+}
+
+/** Combos guardados antes de que la mesa tuviera fases y destierro boca abajo: arrancan en la Main Phase 1 del turno 1. */
+function migrateSavedCombo(combo: SavedCombo): SavedCombo {
+  const initial: MatState = { ...combo.initial, phase: combo.initial.phase ?? 'main1', turn: combo.initial.turn ?? 1, facedown: combo.initial.facedown ?? [] }
+  return { ...combo, initial }
 }
 
 export function writeSavedCombos(combos: readonly SavedCombo[]): void {

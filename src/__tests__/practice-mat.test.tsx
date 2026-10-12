@@ -104,10 +104,46 @@ describe('la mesa de práctica', () => {
     expect(within(status()).queryByText('1/1')).not.toBeInTheDocument()
   })
 
+  it('el click fantasma del celular (justo después de abrir el menú) no lo cierra; un toque en el fondo más tarde, sí', () => {
+    vi.useFakeTimers({ toFake: ['performance', 'setTimeout', 'clearTimeout', 'Date'] })
+
+    try {
+      render(<Harness />)
+      tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
+      const menu = screen.getByRole('menu', { name: 'Ash Blossom' })
+
+      fireEvent.click(menu.parentElement!)
+      expect(screen.getByRole('menu', { name: 'Ash Blossom' })).toBeInTheDocument()
+
+      vi.advanceTimersByTime(400)
+      fireEvent.click(menu.parentElement!)
+      expect(screen.queryByRole('menu', { name: 'Ash Blossom' })).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('las seis fases van arriba del campo; tocar una la enciende y queda anotada, y de la End Phase a la Draw Phase cambia el turno', () => {
+    render(<Harness />)
+
+    expect(screen.getByRole('button', { name: 'Main Phase 1' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByLabelText('Turno 1')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Battle Phase' }))
+    expect(screen.getByRole('button', { name: 'Battle Phase' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Main Phase 1' })).toHaveAttribute('aria-pressed', 'false')
+    expect(within(status()).getByText('Pasás a la Battle Phase')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'End Phase' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Draw Phase' }))
+    expect(screen.getByLabelText('Turno 2')).toBeInTheDocument()
+    expect(within(status()).getByText('Turno 2: Draw Phase')).toBeInTheDocument()
+  })
+
   it('arrastrar una carta al cementerio la manda ahí; tocar el deck ofrece robar', () => {
     render(<Harness />)
 
-    const gy = screen.getByRole('button', { name: 'Cementerio: 0' })
+    const gy = screen.getByRole('button', { name: 'GY: 0' })
     document.elementFromPoint = () => gy
     document.elementsFromPoint = () => [gy]
 
@@ -117,12 +153,12 @@ describe('la mesa de práctica', () => {
     fireEvent.pointerMove(maxx, { ...pointer, clientX: 80, clientY: 120 })
     fireEvent.pointerUp(maxx, { ...pointer, clientX: 80, clientY: 120 })
 
-    expect(screen.getByRole('button', { name: 'Cementerio: 1' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'GY: 1' })).toBeInTheDocument()
     expect(within(status()).getByText('Maxx C va al cementerio')).toBeInTheDocument()
 
-    tap(screen.getByRole('button', { name: 'Deck: 1' }))
+    tap(screen.getByRole('button', { name: 'Main: 1' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Robar' }))
-    expect(screen.getByRole('button', { name: 'Deck: 0' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Main: 0' })).toBeInTheDocument()
     expect(within(hand()).getByRole('listitem', { name: 'Imperm' })).toBeInTheDocument()
     expect(within(status()).getByText('Robás Imperm')).toBeInTheDocument()
   })
@@ -130,15 +166,15 @@ describe('la mesa de práctica', () => {
   it('el visor del deck permite buscar una carta a la mano y baraja al cerrar', () => {
     render(<Harness />)
 
-    tap(screen.getByRole('button', { name: 'Deck: 1' }))
+    tap(screen.getByRole('button', { name: 'Main: 1' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Ver el deck' }))
 
-    const viewer = screen.getByRole('dialog', { name: 'Deck · 1' })
+    const viewer = screen.getByRole('dialog', { name: 'Main · 1' })
     fireEvent.click(within(viewer).getByRole('button', { name: 'Imperm' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'A la mano' }))
 
     expect(within(hand()).getByRole('listitem', { name: 'Imperm' })).toBeInTheDocument()
-    expect(screen.queryByRole('dialog', { name: 'Deck · 1' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Main · 1' })).not.toBeInTheDocument()
     expect(within(status()).getByText('2/2')).toBeInTheDocument()
     expect(within(status()).getByText('Barajás el deck')).toBeInTheDocument()
   })

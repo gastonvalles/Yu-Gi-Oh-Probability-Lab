@@ -21,6 +21,18 @@ export interface Placed {
   materials: string[]
 }
 
+/** Las seis fases del turno (se nombran en inglés también en el TCG en español). */
+export type MatPhase = 'draw' | 'standby' | 'main1' | 'battle' | 'main2' | 'end'
+
+export const PHASES: ReadonlyArray<{ id: MatPhase; short: string; name: string }> = [
+  { id: 'draw', short: 'DP', name: 'Draw Phase' },
+  { id: 'standby', short: 'SP', name: 'Standby Phase' },
+  { id: 'main1', short: 'M1', name: 'Main Phase 1' },
+  { id: 'battle', short: 'BP', name: 'Battle Phase' },
+  { id: 'main2', short: 'M2', name: 'Main Phase 2' },
+  { id: 'end', short: 'EP', name: 'End Phase' },
+]
+
 export interface MatState {
   /** Tope primero. */
   deck: string[]
@@ -36,6 +48,11 @@ export interface MatState {
   field: Placed | null
   /** Fichas creadas hasta ahora (dan los ids `token-n`). */
   tokens: number
+  /** Fase del turno en curso; la mesa arranca en la Main Phase 1 del turno 1 (la mano ya está robada). */
+  phase: MatPhase
+  turn: number
+  /** Las cartas del destierro que están boca abajo. */
+  facedown: string[]
 }
 
 /** Cómo llega la carta al campo (sólo cambia el texto de la jugada): Invocación Normal, Especial, o como escala de péndulo. */
@@ -45,8 +62,8 @@ export type MatAction =
   | { type: 'draw'; count: number }
   | { type: 'mill'; count: number }
   | { type: 'shuffle'; seed: number }
-  /** `deck` = tope del deck. */
-  | { type: 'move'; id: string; to: MatPile | 'deck-bottom' }
+  /** `deck` = tope del deck. `faceDown` sólo aplica al destierro. */
+  | { type: 'move'; id: string; to: MatPile | 'deck-bottom'; faceDown?: boolean }
   | { type: 'place'; id: string; zone: MatSpot; index: number; pos: MatPos; how?: MatSummon }
   /** Invocación por Sacrificio (o Colocar por Sacrificio): los sacrificios van al cementerio y la carta sale a la zona. */
   | { type: 'tribute'; id: string; tributes: string[]; zone: MatZone; index: number; pos: MatPos }
@@ -59,6 +76,10 @@ export type MatAction =
   | { type: 'activate'; id: string; cost?: 'discard' | 'banish' }
   /** Mostrar una carta (de la mano, en general): sólo queda anotado. */
   | { type: 'reveal'; id: string }
+  /** Declarar el nombre de una carta (para efectos que lo piden): sólo queda anotado. */
+  | { type: 'declare'; id: string }
+  /** Cambiar de fase; de la End Phase a la Draw Phase empieza otro turno. */
+  | { type: 'phase'; phase: MatPhase }
 
 const ZONE_SIZES: Record<MatZone, number> = { mz: 5, emz: 2, st: 5 }
 
@@ -78,8 +99,13 @@ export function createMatState(deck: readonly string[], extra: readonly string[]
     st: Array.from({ length: ZONE_SIZES.st }, () => null),
     field: null,
     tokens: 0,
+    phase: 'main1',
+    turn: 1,
+    facedown: [],
   }
 }
+
+const isPhase = (value: unknown): value is MatPhase => PHASES.some((phase) => phase.id === value)
 
 /** Fisher-Yates con mulberry32: la misma semilla da siempre el mismo orden (así un combo se reproduce igual). */
 export function shuffleWithSeed<T>(items: readonly T[], seed: number): T[] {
@@ -172,7 +198,8 @@ function removeEverywhere(state: MatState, id: string): { state: MatState; place
   }
 
   if (where.kind === 'pile') {
-    return { state: { ...state, [where.pile]: state[where.pile].filter((card) => card !== id) }, placed: null }
+    const facedown = where.pile === 'banished' ? state.facedown.filter((card) => card !== id) : state.facedown
+    return { state: { ...state, [where.pile]: state[where.pile].filter((card) => card !== id), facedown }, placed: null }
   }
 
   if (where.kind === 'material') {
@@ -232,7 +259,8 @@ export function matReducer(state: MatState, action: MatAction): MatState {
       }
 
       const pile = action.to === 'deck-bottom' ? 'deck' : action.to
-      return { ...next, [pile]: [...next[pile], action.id] }
+      const facedown = action.to === 'banished' && action.faceDown ? [...next.facedown, action.id] : next.facedown
+      return { ...next, [pile]: [...next[pile], action.id], facedown }
     }
 
     case 'place': {
@@ -322,7 +350,17 @@ export function matReducer(state: MatState, action: MatAction): MatState {
     }
 
     case 'reveal':
+    case 'declare':
       return state
+
+    case 'phase': {
+      if (!isPhase(action.phase) || action.phase === state.phase) {
+        return state
+      }
+
+      const newTurn = state.phase === 'end' && action.phase === 'draw'
+      return { ...state, phase: action.phase, turn: newTurn ? state.turn + 1 : state.turn }
+    }
 
     default:
       return state
@@ -368,7 +406,7 @@ export function describeMatAction(before: MatState, action: MatAction, nameOf: (
           if (isToken(action.id)) return 'La ficha desaparece'
           return fromPile === 'deck' ? `Mandás ${card} del deck al cementerio` : `${card} va al cementerio`
         case 'banished':
-          return `Desterrás ${card}`
+          return action.faceDown ? `Desterrás ${card} boca abajo` : `Desterrás ${card}`
         case 'extra':
           return `${card} vuelve al Extra Deck`
         case 'deck':
@@ -433,6 +471,14 @@ export function describeMatAction(before: MatState, action: MatAction, nameOf: (
 
     case 'reveal':
       return `Revelás ${name(action.id)}`
+
+    case 'declare':
+      return `Declarás ${name(action.id)}`
+
+    case 'phase': {
+      const phase = PHASES.find((entry) => entry.id === action.phase)?.name ?? action.phase
+      return before.phase === 'end' && action.phase === 'draw' ? `Turno ${before.turn + 1}: ${phase}` : `Pasás a la ${phase}`
+    }
 
     case 'counter': {
       const from = locateCard(before, action.id)
@@ -605,6 +651,9 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
       add('Sacrificar / quitar la ficha', { type: 'move', id, to: 'gy' })
       return items
     }
+
+    // Un monstruo puede pasar a la zona de Mágicas y Trampas (los que se tratan como Mágicas de Equipo o Continuas).
+    if (spot !== 'st' && spot !== 'field') placeIn('A la zona de Mágicas y Trampas', ['st'], 'atk')
   }
 
   if (where.kind === 'material') {
@@ -632,7 +681,10 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
       }
     }
 
-    if (kind.monster) specialSummon()
+    if (kind.monster) {
+      specialSummon()
+      placeIn('A la zona de Mágicas y Trampas', ['st'], 'atk')
+    }
 
     if (kind.pendulum) {
       const scales = freeTargets(state, ['st']).filter((target) => target.index === 0 || target.index === 4)
@@ -660,21 +712,28 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     }
 
     add('Revelar', { type: 'reveal', id })
+    add('Declarar', { type: 'declare', id })
     add('Descartar', { type: 'move', id, to: 'gy' })
     add('Desterrar', { type: 'move', id, to: 'banished' })
+    add('Desterrar boca abajo', { type: 'move', id, to: 'banished', faceDown: true })
   } else if (pile) {
     // Deck, Extra, cementerio o destierro.
     if (pile === 'deck') add('A la mano', { type: 'move', id, to: 'hand' })
     if (kind.monster) specialSummon()
+    if (kind.monster && (pile === 'gy' || pile === 'banished')) placeIn('A la zona de Mágicas y Trampas', ['st'], 'atk')
     if (kind.effect && (pile === 'gy' || pile === 'banished')) add('Activar efecto', { type: 'activate', id })
     if (pile === 'gy' || pile === 'banished') add('A la mano', { type: 'move', id, to: 'hand' })
     if (pile !== 'gy') add('Al cementerio', { type: 'move', id, to: 'gy' })
-    if (pile !== 'banished') add('Desterrar', { type: 'move', id, to: 'banished' })
+    if (pile !== 'banished') {
+      add('Desterrar', { type: 'move', id, to: 'banished' })
+      add('Desterrar boca abajo', { type: 'move', id, to: 'banished', faceDown: true })
+    }
   } else {
     // En el campo.
     add('A la mano', { type: 'move', id, to: 'hand' })
     add(kind.monster ? 'Sacrificar (al cementerio)' : 'Al cementerio', { type: 'move', id, to: 'gy' })
     add('Desterrar', { type: 'move', id, to: 'banished' })
+    add('Desterrar boca abajo', { type: 'move', id, to: 'banished', faceDown: true })
   }
 
   if (kind.extra && pile !== 'extra') add('Al Extra Deck', { type: 'move', id, to: 'extra' })
