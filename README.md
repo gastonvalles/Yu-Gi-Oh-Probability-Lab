@@ -106,7 +106,7 @@ Problemas:
 - `Sin interacción`
 - `Extender sin starter`
 
-Si ya existían reglas con el mismo nombre, no se duplican.
+Si ya existían reglas con el mismo nombre, no se duplican. Las reglas propias que usan cartas que ya no están en el deck no se evalúan: quedan plegadas en "Reglas sin carta", debajo de "Tus reglas", hasta que les cambiés la carta o las elimines.
 
 ## Cálculo exacto
 
