@@ -1,8 +1,7 @@
+import { t } from '../i18n'
 import { readApiErrorMessage } from './parser'
 
 const CARDINFO_ENDPOINT = 'https://db.ygoprodeck.com/api/v7/cardinfo.php'
-const NETWORK_ERROR_MESSAGE = 'No se pudo conectar con YGOPRODeck. Revisá tu conexión e intentá de nuevo.'
-const GENERIC_ERROR_MESSAGE = 'No se pudo consultar YGOPRODeck.'
 // Subí la versión si cambia el formato de lo que se guarda.
 const PERSISTENT_CACHE_NAME = 'ygoprodeck-cardinfo-v1'
 const REQUEST_TIMEOUT_MS = 20_000
@@ -35,7 +34,7 @@ export async function requestCardInfo(params: URLSearchParams, { persistForMs }:
       return readJsonPayload(stored)
     }
 
-    throw new Error(NETWORK_ERROR_MESSAGE)
+    throw new Error(t('search.ygoprodeck.networkError'))
   }
 
   if (cache && response.ok) {
@@ -48,7 +47,7 @@ export async function requestCardInfo(params: URLSearchParams, { persistForMs }:
   const payload = await readJsonPayload(response)
 
   if (!response.ok) {
-    throw new Error(readApiErrorMessage(payload) ?? GENERIC_ERROR_MESSAGE)
+    throw new Error(readApiErrorMessage(payload) ?? t('search.ygoprodeck.requestError'))
   }
 
   return payload

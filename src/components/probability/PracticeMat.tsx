@@ -35,6 +35,7 @@ import { useEscapeKey } from '../../app/use-overlay'
 import { showToastMessage } from '../../app/use-toast-message'
 import { useMatDrag, type MatDragSource, type MatDropTarget } from '../../app/use-mat-drag'
 import type { MatSession } from '../../app/use-mat-session'
+import { t } from '../../i18n'
 import type { ApiCardReference, PatternKind } from '../../types'
 import { fetchCardsByIds } from '../../ygoprodeck'
 import { CardArt } from '../CardArt'
@@ -83,8 +84,9 @@ const NEW_TOKEN = 'new-token'
 
 /** La ficha se dibuja con la "Sheep Token" de YGOPRODeck, del mismo lugar de donde vienen las imágenes de todas las cartas. */
 const TOKEN_ART = 'https://images.ygoprodeck.com/images/cards_small/73915052.jpg'
-const TOKEN_CARD: MatCard = { name: 'Ficha', apiCard: null, art: TOKEN_ART }
-const UNKNOWN_CARD: MatCard = { name: 'Carta', apiCard: null }
+// El nombre se arma al leerlo (no al cargar el módulo): así sale en el idioma activo.
+const TOKEN_CARD: MatCard = { get name() { return t('practice.token.name') }, apiCard: null, art: TOKEN_ART }
+const UNKNOWN_CARD: MatCard = { get name() { return t('practice.card.unknown') }, apiCard: null }
 const EMPTY_IDS: ReadonlySet<string> = new Set()
 
 /** Pausa antes de repartir la primera carta (mientras el mazo se baraja) y entre carta y carta. */
@@ -117,7 +119,12 @@ const MAT_CARD = [
 /** Duración de la activación: lo que dura la carta en el centro de la pantalla (y el aro en su lugar). */
 const ACTIVATE_MS = 950
 
-const ZONE_LABELS: Record<MatSpot, string> = { mz: 'Zona de monstruo', emz: 'Zona extra de monstruo', st: 'Zona de magia y trampa', field: 'Zona de campo' }
+const ZONE_LABELS: Record<MatSpot, string> = {
+  get mz() { return t('practice.zone.mz') },
+  get emz() { return t('practice.zone.emz') },
+  get st() { return t('practice.zone.st') },
+  get field() { return t('practice.zone.field') },
+}
 
 /** Las zonas de péndulo (las puntas de la fila de magias y trampas) llevan la gema azul y la roja, como en la mesa real. */
 const PENDULUM_GEM: Record<number, string> = {
@@ -159,7 +166,7 @@ const REPLAY_BUTTON =
 
 /** `data-drop` y nombre de una zona de la mesa. */
 const dropIdOf = (spot: MatSpot, index: number) => (spot === 'field' ? 'field' : `${spot}:${index}`)
-const zoneLabelOf = (spot: MatSpot, index: number) => (spot === 'field' ? ZONE_LABELS.field : `${ZONE_LABELS[spot]} ${index + 1}`)
+const zoneLabelOf = (spot: MatSpot, index: number) => (spot === 'field' ? ZONE_LABELS.field : t('practice.zone.numbered', { zone: ZONE_LABELS[spot], n: index + 1 }))
 
 function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
@@ -484,7 +491,7 @@ export function PracticeMat({
         play(action)
       } else {
         setMenu(null)
-        setPicking({ kind: 'zone', label: 'la ficha', action, targets })
+        setPicking({ kind: 'zone', label: t('practice.token.the'), action, targets })
       }
     },
     [state, play],
@@ -637,12 +644,12 @@ export function PracticeMat({
     if (menu.kind === 'deck') {
       const top = state.deck[0]
       const items: MenuItem[] = [
-        { label: 'Robar', onSelect: () => play({ type: 'draw', count: 1 }) },
-        { label: 'Mandar al cementerio', onSelect: () => play({ type: 'mill', count: 1 }) },
-        { label: 'Desterrar el tope', onSelect: () => top && play({ type: 'move', id: top, to: 'banished' }) },
-        { label: 'Desterrar el tope boca abajo', onSelect: () => top && play({ type: 'move', id: top, to: 'banished', faceDown: true }) },
-        { label: 'Ver el deck', onSelect: () => { setMenu(null); setViewer('deck') } },
-        { label: 'Barajar', onSelect: () => play({ type: 'shuffle', seed: randomSeed() }) },
+        { label: t('practice.deckMenu.draw'), onSelect: () => play({ type: 'draw', count: 1 }) },
+        { label: t('practice.deckMenu.mill'), onSelect: () => play({ type: 'mill', count: 1 }) },
+        { label: t('practice.deckMenu.banishTop'), onSelect: () => top && play({ type: 'move', id: top, to: 'banished' }) },
+        { label: t('practice.deckMenu.banishTopFaceDown'), onSelect: () => top && play({ type: 'move', id: top, to: 'banished', faceDown: true }) },
+        { label: t('practice.deckMenu.view'), onSelect: () => { setMenu(null); setViewer('deck') } },
+        { label: t('practice.deckMenu.shuffle'), onSelect: () => play({ type: 'shuffle', seed: randomSeed() }) },
       ]
       return top ? items : items.slice(4, 5)
     }
@@ -651,8 +658,8 @@ export function PracticeMat({
       const dropped = menu.zone
 
       return [
-        { label: 'En ataque', onSelect: () => summonToken('atk', dropped) },
-        { label: 'En defensa', onSelect: () => summonToken('def', dropped) },
+        { label: t('practice.menu.attack'), onSelect: () => summonToken('atk', dropped) },
+        { label: t('practice.menu.defense'), onSelect: () => summonToken('def', dropped) },
       ]
     }
 
@@ -667,13 +674,13 @@ export function PracticeMat({
   const menuWhere = menu?.kind === 'card' ? locateCard(state, menu.id) : null
   const menuKicker =
     menu?.kind === 'token'
-      ? menu.zone ? zoneLabelOf(menu.zone.zone, menu.zone.index) : 'Invocación Especial'
+      ? menu.zone ? zoneLabelOf(menu.zone.zone, menu.zone.index) : t('practice.menu.specialSummon')
       : menu?.kind === 'card' && menu.submenu
         ? menu.submenu.label
         : menuWhere
-          ? menuWhere.kind === 'pile' ? PILE_TITLES[menuWhere.pile] : menuWhere.kind === 'spot' ? ZONE_LABELS[menuWhere.spot] : `Material de ${nameOf(menuWhere.of)}`
-          : 'Main'
-  const menuTitle = menuCard?.name ?? `${state.deck.length} ${state.deck.length === 1 ? 'carta' : 'cartas'}`
+          ? menuWhere.kind === 'pile' ? PILE_TITLES[menuWhere.pile] : menuWhere.kind === 'spot' ? ZONE_LABELS[menuWhere.spot] : t('practice.mat.materialOf', { name: nameOf(menuWhere.of) })
+          : PILE_TITLES.deck
+  const menuTitle = menuCard?.name ?? t('practice.mat.cardCount', { count: state.deck.length })
 
   const saveCombo = (name: string) => {
     const combo = createSavedCombo({ name, deckName, initial: session.initial, actions: session.actions.slice(0, session.cursor), nameOf }, combos)
@@ -681,14 +688,14 @@ export function PracticeMat({
     writeSavedCombos(next)
     setCombos(next)
     setSaving(false)
-    showToastMessage(`Combo “${combo.name}” guardado.`, 'success')
+    showToastMessage(t('practice.combo.saved', { name: combo.name }), 'success')
   }
 
   const deleteCombo = (combo: SavedCombo) => {
     const next = combos.filter((entry) => entry.id !== combo.id)
     writeSavedCombos(next)
     setCombos(next)
-    showToastMessage(`Borraste “${combo.name}”.`, 'warning')
+    showToastMessage(t('practice.combo.deleted', { name: combo.name }), 'warning')
   }
 
   const panel = (
@@ -709,7 +716,7 @@ export function PracticeMat({
   const tributeCandidates = choosingOnField ? monstersOnField(state) : []
   // Eligiendo la zona, los Sacrificios o materiales ya confirmados siguen marcados: su zona se libera y también se puede elegir.
   const leaving = picking?.kind === 'zone' ? (picking.action.type === 'tribute' ? picking.action.tributes : picking.action.type === 'summon' ? picking.action.materials : []) : []
-  const chosenLabel = picking?.kind === 'materials' || (picking?.kind === 'zone' && picking.action.type === 'summon') ? 'Material' : 'Sacrificio'
+  const chosenLabel = picking?.kind === 'materials' || (picking?.kind === 'zone' && picking.action.type === 'summon') ? t('practice.mat.chosenMaterial') : t('practice.mat.chosenTribute')
   const targetedIds = useMemo(() => new Set(state.targeted), [state.targeted])
 
   const cell = (spot: MatSpot, index: number, area: string) => {
@@ -726,7 +733,7 @@ export function PracticeMat({
         key={drop}
         role={pickableZone ? 'button' : 'group'}
         tabIndex={pickableZone ? 0 : undefined}
-        aria-label={pickableZone ? `${label}: elegir` : label}
+        aria-label={pickableZone ? t('practice.zone.pick', { zone: label }) : label}
         data-drop={drop}
         data-over={over === drop || handOver === drop ? 'true' : 'false'}
         data-pick={pickableZone || pickableTribute ? 'true' : 'false'}
@@ -737,7 +744,7 @@ export function PracticeMat({
         onKeyDown={pickableZone ? (event) => activate(event, () => pickZone(spot, index)) : undefined}
       >
         {gem && !placed ? <span aria-hidden="true" className={cx('absolute left-1/2 top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[3px]', gem)} /> : null}
-        {spot === 'field' && !placed ? <span aria-hidden="true" className="absolute inset-0 grid place-items-center text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-soft min-[1101px]:text-[0.6rem]">Field</span> : null}
+        {spot === 'field' && !placed ? <span aria-hidden="true" className="absolute inset-0 grid place-items-center text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-soft min-[1101px]:text-[0.6rem]">{t('practice.zone.fieldLabel')}</span> : null}
         {placed ? (
           <PlacedCard
             placed={placed}
@@ -804,20 +811,20 @@ export function PracticeMat({
     [getField],
   )
 
-  const replayLabel = autoplay ? 'Pausar' : live ? 'Ver de nuevo' : 'Reproducir'
+  const replayLabel = autoplay ? t('practice.mat.pause') : live ? t('practice.mat.watchAgain') : t('practice.mat.play')
   const pickingText =
     picking?.kind === 'tributes'
-      ? `Tocá ${picking.required === 1 ? 'el monstruo' : `${picking.required} monstruos`} para sacrificar (${picking.chosen.length}/${picking.required})`
+      ? t('practice.mat.pickTributes', { count: picking.required, chosen: picking.chosen.length })
       : picking?.kind === 'materials'
-        ? `Tocá los materiales en el campo (${picking.chosen.length}) y confirmá`
+        ? t('practice.mat.pickMaterials', { count: picking.chosen.length })
         : picking
-          ? `Tocá la zona para ${picking.label}`
+          ? t('practice.mat.pickZone', { label: picking.label })
           : null
 
   return (
     <section
       ref={sectionRef}
-      aria-label="Mesa de práctica"
+      aria-label={t('practice.mat.label')}
       className={cx(
         // `select-none`: un arrastre que arranca entre dos cartas no debe pintar texto seleccionado por toda la mesa.
         'grid h-full min-h-0 select-none grid-rows-[auto_minmax(0,1fr)] [background:radial-gradient(120%_60%_at_50%_0%,rgb(var(--primary-rgb)/0.16),transparent_70%),rgb(var(--background-rgb))] min-[1101px]:grid-cols-[minmax(0,1fr)_20rem]',
@@ -825,22 +832,22 @@ export function PracticeMat({
       )}
     >
       {/* Barra: nueva mano, deshacer, guardar, ficha y (en el celu) el panel. Deja lugar a la X del modal. */}
-      <div className="col-start-1 row-start-1 flex items-center gap-1 px-2 pr-14 pt-2 min-[1101px]:px-4 min-[1101px]:pt-3" role="toolbar" aria-label="Mesa">
-        <IconButton tone="flat" size="sm" aria-label="Nueva mano" title="Nueva mano" onClick={onNewHand}>
+      <div className="col-start-1 row-start-1 flex items-center gap-1 px-2 pr-14 pt-2 min-[1101px]:px-4 min-[1101px]:pt-3" role="toolbar" aria-label={t('practice.mat.name')}>
+        <IconButton tone="flat" size="sm" aria-label={t('practice.mat.newHand')} title={t('practice.mat.newHand')} onClick={onNewHand}>
           <Icon name="refresh" />
         </IconButton>
-        <IconButton tone="flat" size="sm" aria-label="Deshacer" title="Deshacer" disabled={session.cursor === 0} className="disabled:opacity-35" onClick={() => { setAutoplay(false); onUndo() }}>
+        <IconButton tone="flat" size="sm" aria-label={t('practice.mat.undo')} title={t('practice.mat.undo')} disabled={session.cursor === 0} className="disabled:opacity-35" onClick={() => { setAutoplay(false); onUndo() }}>
           <Icon name="undo" />
         </IconButton>
-        <IconButton tone="flat" size="sm" aria-label="Guardar combo" title="Guardar combo" disabled={session.cursor === 0} className="disabled:opacity-35" onClick={() => setSaving(true)}>
+        <IconButton tone="flat" size="sm" aria-label={t('practice.mat.saveCombo')} title={t('practice.mat.saveCombo')} disabled={session.cursor === 0} className="disabled:opacity-35" onClick={() => setSaving(true)}>
           <Icon name="save" />
         </IconButton>
         {/* Ficha: se toca para elegir la posición (y la zona) o se arrastra a una zona de monstruo. */}
         <IconButton
           tone="flat"
           size="sm"
-          aria-label="Ficha"
-          title="Crear una ficha"
+          aria-label={t('practice.token.name')}
+          title={t('practice.token.create')}
           className="touch-none select-none [-webkit-touch-callout:none]"
           {...bind(tokenSource)}
           onKeyDown={(event) => activate(event, () => handleTap(tokenSource, event.currentTarget.getBoundingClientRect()))}
@@ -848,11 +855,11 @@ export function PracticeMat({
         >
           <Icon name="plus" />
         </IconButton>
-        <IconButton tone="flat" size="sm" aria-label="Pasos y combos" title="Pasos y combos" className="min-[1101px]:hidden" onClick={() => setPanelOpen(true)}>
+        <IconButton tone="flat" size="sm" aria-label={t('practice.mat.stepsAndCombos')} title={t('practice.mat.stepsAndCombos')} className="min-[1101px]:hidden" onClick={() => setPanelOpen(true)}>
           <Icon name="list" />
         </IconButton>
-        <span className="ml-auto whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted" aria-label={`Turno ${state.turn}`}>
-          Turno {state.turn}
+        <span className="ml-auto whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted" aria-label={t('practice.mat.turn', { turn: state.turn })}>
+          {t('practice.mat.turn', { turn: state.turn })}
         </span>
       </div>
 
@@ -862,14 +869,14 @@ export function PracticeMat({
           ref={fieldRef}
           // `my-auto`: el aire que sobra se reparte arriba y abajo del campo (ni pegado a la barra ni un hueco antes de la mano).
           className="my-auto grid grid-cols-7 gap-1 [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[repeat(7,minmax(0,5.5rem))]"
-          aria-label="Campo"
+          aria-label={t('practice.mat.field')}
         >
           {cell('field', 0, 'fld')}
           {cell('emz', 0, 'emz1')}
           {cell('emz', 1, 'emz2')}
           {/* Las seis fases, de a dos entre las zonas, como en DuelingBook: la actual encendida; tocar otra cambia de fase. */}
           {[0, 2, 4].map((start, index) => (
-            <div key={start} role="group" aria-label={index === 0 ? 'Fases' : undefined} className="grid grid-cols-2 gap-0.5 self-center min-[1101px]:gap-1" style={{ gridArea: `p${index + 1}` }}>
+            <div key={start} role="group" aria-label={index === 0 ? t('practice.mat.phases') : undefined} className="grid grid-cols-2 gap-0.5 self-center min-[1101px]:gap-1" style={{ gridArea: `p${index + 1}` }}>
               {PHASES.slice(start, start + 2).map((phase) => (
                 <PhaseButton key={phase.id} short={phase.short} name={phase.name} active={state.phase === phase.id} onPick={() => play({ type: 'phase', phase: phase.id })} />
               ))}
@@ -883,8 +890,8 @@ export function PracticeMat({
             ref={deckRef}
             role="button"
             tabIndex={0}
-            aria-label={`Main: ${state.deck.length}`}
-            title="Main Deck"
+            aria-label={`${PILE_TITLES.deck}: ${state.deck.length}`}
+            title={t('practice.mat.mainDeck')}
             data-drop="deck"
             data-over={over === 'deck' || handOver === 'deck' ? 'true' : 'false'}
             className={cx(CELL, state.deck.length > 0 && 'cursor-grab touch-none select-none [-webkit-touch-callout:none]', 'focus-visible:outline-none focus-visible:shadow-focus')}
@@ -901,7 +908,7 @@ export function PracticeMat({
                 <span key={dealt} className={cx(CARD_BACK, 'animate-pile-draw motion-reduce:animate-none')} />
               </span>
             ) : null}
-            <PileBadge label="Main" count={state.deck.length} />
+            <PileBadge label={PILE_TITLES.deck} count={state.deck.length} />
           </div>
           {pileCell('extra', 'extra')}
           {pileCell('gy', 'gy')}
@@ -934,17 +941,17 @@ export function PracticeMat({
         />
 
         {/* Pasos: en vivo muestra la última jugada; con jugadas, se recorre con Anterior / Siguiente. Eligiendo, pide lo que falta. */}
-        <div className="flex min-h-9 flex-wrap items-center gap-x-2 gap-y-1 px-1 text-micro text-muted" role="status" aria-label="Paso actual">
+        <div className="flex min-h-9 flex-wrap items-center gap-x-2 gap-y-1 px-1 text-micro text-muted" role="status" aria-label={t('practice.mat.currentStep')}>
           {pickingText ? (
             <>
               <span className="min-w-0 flex-1 truncate font-semibold text-accent">{pickingText}</span>
               {picking?.kind === 'materials' ? (
                 <Button variant="primary" size="sm" className="min-h-8 px-3" disabled={picking.chosen.length === 0} onClick={confirmMaterials}>
-                  Confirmar
+                  {t('practice.mat.confirm')}
                 </Button>
               ) : null}
               <Button variant="tertiary" size="sm" className="min-h-8 px-2" onClick={() => setPicking(null)}>
-                Cancelar
+                {t('common.cancel')}
               </Button>
             </>
           ) : null}
@@ -969,35 +976,35 @@ export function PracticeMat({
                   >
                     <Icon name={autoplay ? 'pause' : 'play'} />
                   </button>
-                  <button type="button" className={REPLAY_BUTTON} aria-label="Avance rápido" title="Avance rápido" aria-pressed={fast} onClick={() => setFast((value) => !value)}>
+                  <button type="button" className={REPLAY_BUTTON} aria-label={t('practice.mat.fastForward')} title={t('practice.mat.fastForward')} aria-pressed={fast} onClick={() => setFast((value) => !value)}>
                     <Icon name="fast-forward" />
                   </button>
                 </>
               ) : null}
               <Button variant="tertiary" size="sm" className="min-h-8 px-2" disabled={session.cursor === 0} onClick={() => { setAutoplay(false); onSeek(session.cursor - 1) }}>
-                Anterior
+                {t('practice.mat.previous')}
               </Button>
               <span className="font-semibold tabular-nums text-foreground">
                 {session.cursor}/{session.actions.length}
               </span>
               <Button variant="tertiary" size="sm" className="min-h-8 px-2" disabled={live} onClick={() => { setAutoplay(false); onSeek(session.cursor + 1) }}>
-                Siguiente
+                {t('practice.mat.next')}
               </Button>
             </>
           ) : null}
           {!picking ? (
-            <span className="min-w-0 flex-1 truncate">{session.cursor === 0 ? (session.actions.length > 0 ? 'Mano inicial' : 'Arrastrá una carta a una zona o tocala para ver qué podés hacer.') : steps[session.cursor - 1]}</span>
+            <span className="min-w-0 flex-1 truncate">{session.cursor === 0 ? (session.actions.length > 0 ? t('practice.mat.startingHand') : t('practice.mat.hint')) : steps[session.cursor - 1]}</span>
           ) : null}
         </div>
       </div>
 
       {/* Panel lateral (escritorio): arriba los pasos y combos (debajo de la X del modal) y abajo, a la altura de la mano, las salidas y problemas; la explicación del chip tocado crece hacia arriba sobre la lista. El detalle de una carta se abre desde su menú. */}
-      <aside className="hidden min-h-0 border-l border-border-subtle px-3 pb-3 pt-18 min-[1101px]:col-start-2 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col min-[1101px]:gap-3" aria-label="Pasos y combos">
+      <aside className="hidden min-h-0 border-l border-border-subtle px-3 pb-3 pt-18 min-[1101px]:col-start-2 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col min-[1101px]:gap-3" aria-label={t('practice.mat.stepsAndCombos')}>
         {panel}
         {footer && isDealt && isDesktop ? <div className="flex-none animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
       </aside>
 
-      <Modal isOpen={panelOpen} onClose={() => setPanelOpen(false)} size="md" kicker="Mesa" title="Pasos y combos">
+      <Modal isOpen={panelOpen} onClose={() => setPanelOpen(false)} size="md" kicker={t('practice.mat.name')} title={t('practice.mat.stepsAndCombos')}>
         {panel}
       </Modal>
 
@@ -1020,7 +1027,7 @@ export function PracticeMat({
         onClose={closeViewer}
       />
 
-      <SaveComboDialog key={String(saving)} isOpen={saving} defaultName={`Combo ${combos.length + 1}`} onSave={saveCombo} onClose={() => setSaving(false)} />
+      <SaveComboDialog key={String(saving)} isOpen={saving} defaultName={t('practice.combo.defaultName', { n: combos.length + 1 })} onSave={saveCombo} onClose={() => setSaving(false)} />
 
       {inspected ? <CardDetailOverlay key={inspected.id} name={cardOf(inspected.id).name} card={cardOf(inspected.id).apiCard} origin={inspected.rect} onClose={() => setInspected(null)} /> : null}
 
@@ -1126,7 +1133,10 @@ interface PlacedCardProps {
  * materiales y objetivo como etiquetas.
  */
 function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, chosen, targeted, bind, onOpen }: PlacedCardProps) {
-  const label = `${card.name}${placed.pos === 'set' ? ', boca abajo' : placed.pos === 'def' ? ', en defensa' : ''}${chosen ? ` (${chosen})` : ''}${targeted ? ' (seleccionada)' : ''}`
+  // El nombre y lo que lo acompaña (boca abajo o en defensa, etiqueta de elegida, seleccionada): cada pedazo es su mensaje.
+  let label = placed.pos === 'set' ? t('practice.mat.cardFaceDown', { name: card.name }) : placed.pos === 'def' ? t('practice.mat.cardDefense', { name: card.name }) : card.name
+  if (chosen) label = t('practice.mat.cardChosen', { label, chosen })
+  if (targeted) label = t('practice.card.selected', { name: label })
   const sideways = spot !== 'st' && spot !== 'field' && placed.pos !== 'atk'
 
   return (

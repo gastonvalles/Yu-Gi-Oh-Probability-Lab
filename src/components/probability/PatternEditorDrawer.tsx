@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 
 import { useFocusTrap } from '../../app/use-focus-trap'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
+import { t } from '../../i18n'
 import type { CardEntry, HandPattern } from '../../types'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
@@ -42,7 +43,7 @@ export function PatternEditorDrawer({
   drawerMode,
   isPendingCreation = false,
   saveLabel,
-  hint = 'El análisis se actualiza al guardar.',
+  hint = t('builder.drawer.hint'),
   onClose,
   onRequestDelete,
   onSave,
@@ -60,13 +61,13 @@ export function PatternEditorDrawer({
   }
 
   const isCreating = drawerMode === 'custom-create'
-  const title = pattern?.name.trim() || (isCreating ? 'Nueva regla' : 'Editar regla')
+  const title = pattern?.name.trim() || t(isCreating ? 'builder.drawer.titleNew' : 'builder.drawer.titleEdit')
 
   const drawer = (
     <div className="fixed inset-0 isolate z-150 min-[1101px]:bottom-0 min-[1101px]:top-(--deck-mode-topbar-height) min-[1101px]:h-auto">
       <button
         type="button"
-        aria-label="Cerrar editor"
+        aria-label={t('builder.drawer.close')}
         className="absolute inset-0 h-full w-full bg-background/80"
         onClick={onClose}
       />
@@ -82,7 +83,7 @@ export function PatternEditorDrawer({
         <header className="grid gap-3 border-b border-border-subtle px-4 py-3.5">
           <div className="flex items-start justify-between gap-3">
             <h3 className="m-0 min-w-0 truncate text-lead font-semibold tracking-[-0.01em] text-foreground">{title}</h3>
-            <CloseButton size="sm" aria-label="Cerrar editor" onClick={onClose} />
+            <CloseButton size="sm" aria-label={t('builder.drawer.close')} onClick={onClose} />
           </div>
 
           {pattern ? <DraftImpactSummary impact={impact} kind={pattern.kind} /> : null}
@@ -97,25 +98,25 @@ export function PatternEditorDrawer({
               pattern={pattern}
             />
           ) : (
-            <p className="m-0 px-1 py-3 text-body text-muted">Preparando el editor…</p>
+            <p className="m-0 px-1 py-3 text-body text-muted">{t('builder.drawer.preparing')}</p>
           )}
         </div>
 
         <footer className="flex items-center justify-between gap-2 border-t border-border-subtle px-4 py-3">
           {pattern && !isPendingCreation ? (
             // En el celular queda solo el ícono: así Cancelar y Guardar entran siempre en la fila.
-            <Button variant="tertiary" color="danger" size="sm" icon="trash" aria-label="Eliminar regla" className="px-3 min-[520px]:px-4" onClick={() => onRequestDelete(pattern.id)}>
-              <span className="max-[519px]:sr-only">Eliminar regla</span>
+            <Button variant="tertiary" color="danger" size="sm" icon="trash" aria-label={t('builder.drawer.delete')} className="px-3 min-[520px]:px-4" onClick={() => onRequestDelete(pattern.id)}>
+              <span className="max-[519px]:sr-only">{t('builder.drawer.delete')}</span>
             </Button>
           ) : (
             <span className={cx('hidden text-micro min-[520px]:block', canSave ? 'text-muted' : 'text-warning-soft')}>{hint}</span>
           )}
           <div className="grid min-w-0 flex-1 grid-cols-2 gap-2 min-[520px]:flex min-[520px]:flex-none">
             <Button variant="secondary" size="sm" fullWidth className="min-w-0 px-3 min-[520px]:w-auto min-[520px]:px-4" onClick={onClose}>
-              Cancelar
+              {t('common.cancel')}
             </Button>
             <Button variant="primary" size="sm" fullWidth disabled={!canSave} className="min-w-0 px-3 text-center min-[520px]:w-auto min-[520px]:px-4" onClick={onSave}>
-              {saveLabel ?? (isPendingCreation ? 'Crear regla' : 'Guardar cambios')}
+              {saveLabel ?? t(isPendingCreation ? 'builder.drawer.create' : 'builder.drawer.saveChanges')}
             </Button>
           </div>
         </footer>

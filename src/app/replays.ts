@@ -1,4 +1,5 @@
 import replaysJson from '../data/replays.json'
+import { getLocale, t, type Locale } from '../i18n'
 import { META_DECKS, type MetaDeck } from './meta-handtraps'
 import { normalizeSearchText } from './utils'
 
@@ -72,11 +73,12 @@ export function readStage(text: string): ReplayStage | null {
   const round = /^(?:swiss\s+)?round\s*(\d+)$/i.exec(value)
   const semifinal = /^semi.?finals?(?:\s+(\d+))?$/i.exec(value)
 
-  if (/^finals?$/i.test(value)) return { label: 'Final', rank: 0 }
-  if (semifinal) return { label: semifinal[1] ? `Semifinal ${semifinal[1]}` : 'Semifinal', rank: 1 }
-  if (/^quarter.?finals?/i.test(value)) return { label: 'Cuartos de final', rank: 2 }
-  if (top) return { label: `Top ${Number(top[1])}`, rank: Math.max(1, Math.round(Math.log2(Number(top[1]))) - 1) }
-  if (round) return { label: `Ronda ${Number(round[1])}`, rank: 100 - Number(round[1]) }
+  // El nombre de la instancia se arma en el idioma de ese momento (el idioma sólo cambia recargando la página).
+  if (/^finals?$/i.test(value)) return { label: t('meta.replays.stage.final'), rank: 0 }
+  if (semifinal) return { label: semifinal[1] ? t('meta.replays.stage.semifinalN', { number: semifinal[1] }) : t('meta.replays.stage.semifinal'), rank: 1 }
+  if (/^quarter.?finals?/i.test(value)) return { label: t('meta.replays.stage.quarterfinal'), rank: 2 }
+  if (top) return { label: t('meta.replays.stage.top', { number: Number(top[1]) }), rank: Math.max(1, Math.round(Math.log2(Number(top[1]))) - 1) }
+  if (round) return { label: t('meta.replays.stage.round', { number: Number(round[1]) }), rank: 100 - Number(round[1]) }
 
   return null
 }
@@ -192,8 +194,9 @@ export function matchReplays(videos: readonly ReplayVideo[], decks: readonly Met
     const titleWords = new Set(words(video.title))
     const kind = eventKind([...titleWords])
     const players = parsed.players.map((name): ReplayPlayer => ({ name, deck: parsed.genesys ? null : findDeck(name, titleWords, kind, index) })) as [ReplayPlayer, ReplayPlayer]
+    // El título tal cual (en inglés) también se busca: la instancia se muestra en el idioma elegido ("Ronda 13"), pero "round 13" tiene que servir en los dos.
     const search = normalizeSearchText(
-      [parsed.event, parsed.stage?.label, ...players.flatMap((player) => [player.name, player.deck?.name, player.deck?.player, player.deck?.placement])].filter(Boolean).join(' '),
+      [parsed.event, parsed.stage?.label, video.title, ...players.flatMap((player) => [player.name, player.deck?.name, player.deck?.player, player.deck?.placement])].filter(Boolean).join(' '),
     )
 
     return [{ entry: { video, event: parsed.event, stage: parsed.stage, players, genesys: parsed.genesys, search }, order }]
@@ -214,12 +217,13 @@ export function matchReplays(videos: readonly ReplayVideo[], decks: readonly Met
 export const hasMetaDeck = (entry: ReplayEntry) => entry.players.some((player) => player.deck !== null)
 export const playsDeck = (entry: ReplayEntry, deckId: number) => entry.players.some((player) => player.deck?.id === deckId)
 
-let cached: { decks: readonly MetaDeck[]; entries: ReplayEntry[] } | null = null
+let cached: { decks: readonly MetaDeck[]; locale: Locale; entries: ReplayEntry[] } | null = null
 
 /** Los replays cruzados con los decks del Meta de hoy (se calcula una vez). */
 export function getReplayEntries(): ReplayEntry[] {
-  if (!cached || cached.decks !== META_DECKS.decks) {
-    cached = { decks: META_DECKS.decks, entries: matchReplays(REPLAYS.videos, META_DECKS.decks) }
+  // El nombre de cada instancia sale en el idioma de ese momento: la copia vale para ese idioma.
+  if (!cached || cached.decks !== META_DECKS.decks || cached.locale !== getLocale()) {
+    cached = { decks: META_DECKS.decks, locale: getLocale(), entries: matchReplays(REPLAYS.videos, META_DECKS.decks) }
   }
 
   return cached.entries

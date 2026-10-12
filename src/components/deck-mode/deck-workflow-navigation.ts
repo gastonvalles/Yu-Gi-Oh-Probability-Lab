@@ -1,4 +1,5 @@
 import { formatInteger } from '../../app/utils'
+import { t } from '../../i18n'
 import type { IconName } from '../ui/Icon'
 
 export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'meta' | 'replays'
@@ -36,10 +37,15 @@ const WORKFLOW_STEP_KEYS: readonly DeckWorkflowStepKey[] = [
   'replays',
 ]
 
-export const DECK_WORKFLOW_TONE_LABEL: Record<DeckWorkflowStepTone, string> = {
-  complete: 'Listo',
-  progress: 'En progreso',
-  pending: 'Pendiente',
+// Las tablas guardan claves de mensajes, no textos: el texto se arma al dibujar, en el idioma de ese momento.
+const TONE_LABEL_KEY = {
+  complete: 'shell.tone.complete',
+  progress: 'shell.tone.progress',
+  pending: 'shell.tone.pending',
+} as const
+
+export function deckWorkflowToneLabel(tone: DeckWorkflowStepTone): string {
+  return t(TONE_LABEL_KEY[tone])
 }
 
 export function isDeckWorkflowStepKey(value: string): value is DeckWorkflowStepKey {
@@ -57,30 +63,30 @@ export function buildDeckWorkflowNavigationItems({
     {
       key: 'deck-builder',
       step: '1',
-      label: 'Deck',
-      title: 'Deck Builder',
+      label: t('shell.step.deck.label'),
+      title: t('shell.step.deck.title'),
       icon: 'cards',
       detail:
         mainDeckCount >= 40
-          ? 'Base principal lista.'
+          ? t('shell.step.deck.ready')
           : mainDeckCount > 0
-            ? `${formatInteger(Math.max(0, 40 - mainDeckCount))} para llegar a 40.`
-            : 'Empezá agregando cartas.',
+            ? t('shell.step.deck.remaining', { count: formatInteger(Math.max(0, 40 - mainDeckCount)) })
+            : t('shell.step.deck.empty'),
       tone: mainDeckCount >= 40 ? 'complete' : mainDeckCount > 0 ? 'progress' : 'pending',
       disabled: false,
     },
     {
       key: 'categorization',
       step: '2',
-      label: 'Roles',
-      title: 'Categorización de roles',
+      label: t('shell.step.roles.label'),
+      title: t('shell.step.roles.title'),
       icon: 'tag',
       detail:
         roleCardCount === 0
-          ? 'Necesita cartas en Main.'
+          ? t('shell.step.roles.needsMain')
           : hasCompletedRoleStep
-            ? 'Todo clasificado.'
-            : `${formatInteger(unclassifiedCardCount)} sin cerrar.`,
+            ? t('shell.step.roles.done')
+            : t('shell.step.roles.open', { count: formatInteger(unclassifiedCardCount) }),
       tone:
         roleCardCount === 0
           ? 'pending'
@@ -92,34 +98,34 @@ export function buildDeckWorkflowNavigationItems({
     {
       key: 'probability-lab',
       step: '3',
-      label: 'Lab',
-      title: 'Probability Lab',
+      label: t('shell.step.lab.label'),
+      title: t('shell.step.lab.title'),
       icon: 'flask',
       detail: hasCompletedRoleStep
         ? patternCount > 0
-          ? 'Listo para medir.'
-          : 'Medí con las reglas base o sumá las tuyas.'
-        : 'Entrá igual; categorizá para medir.',
+          ? t('shell.step.lab.ready')
+          : t('shell.step.lab.baseRules')
+        : t('shell.step.lab.classifyFirst'),
       tone: hasCompletedRoleStep ? 'complete' : 'pending',
       disabled: false,
     },
     {
       key: 'workspace',
       step: '4',
-      label: 'Comparar',
-      title: 'Comparar builds',
+      label: t('shell.step.compare.label'),
+      title: t('shell.step.compare.title'),
       icon: 'columns',
-      detail: 'Guardá o importá builds y compará.',
+      detail: t('shell.step.compare.detail'),
       tone: 'pending',
       disabled: false,
     },
     {
       key: 'export',
       step: '5',
-      label: 'Exportar',
-      title: 'Exportar deck',
+      label: t('shell.step.export.label'),
+      title: t('shell.step.export.title'),
       icon: 'download',
-      detail: mainDeckCount > 0 ? 'Imagen + PDF + YDK.' : 'Necesitás cartas en Main.',
+      detail: mainDeckCount > 0 ? t('shell.step.export.formats') : t('shell.step.export.needsMain'),
       tone: mainDeckCount > 0 ? 'complete' : 'pending',
       disabled: mainDeckCount === 0,
     },
@@ -127,10 +133,10 @@ export function buildDeckWorkflowNavigationItems({
     {
       key: 'meta',
       step: '6',
-      label: 'Meta',
-      title: 'Hand traps del meta',
+      label: t('shell.step.meta.label'),
+      title: t('shell.step.meta.title'),
       icon: 'chart',
-      detail: 'Qué hand traps se juegan en los torneos.',
+      detail: t('shell.step.meta.detail'),
       tone: 'pending',
       disabled: false,
     },
@@ -138,10 +144,10 @@ export function buildDeckWorkflowNavigationItems({
     {
       key: 'replays',
       step: '7',
-      label: 'Replays',
-      title: 'Replays de torneo',
+      label: t('shell.step.replays.label'),
+      title: t('shell.step.replays.title'),
       icon: 'play',
-      detail: 'Los duelos de los decks del Meta, en video.',
+      detail: t('shell.step.replays.detail'),
       tone: 'pending',
       disabled: false,
     },

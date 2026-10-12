@@ -1,6 +1,7 @@
 import { useId, useState, type FormEvent } from 'react'
 
 import { MAX_RULE_NAME_LENGTH, normalizeRuleName } from '../../app/pattern-presets'
+import { t } from '../../i18n'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
 import { KindBadge } from './KindBadge'
@@ -45,19 +46,19 @@ export function RuleRenameDialog({ entry, onSave, onClose }: RuleRenameDialogPro
       onClose={onClose}
       size="sm"
       icon="pencil"
-      title="Nombre de la regla"
+      title={t('builder.rename.title')}
       footer={
         <>
           {isCustomized ? (
             <Button variant="tertiary" onClick={() => commit(defaultName)}>
-              Restaurar
+              {t('builder.rename.restore')}
             </Button>
           ) : null}
           <Button variant="secondary" onClick={onClose}>
-            Cancelar
+            {t('common.cancel')}
           </Button>
           <Button variant="primary" type="submit" form={formId} disabled={!isChanged}>
-            Guardar
+            {t('common.save')}
           </Button>
         </>
       }
@@ -65,7 +66,7 @@ export function RuleRenameDialog({ entry, onSave, onClose }: RuleRenameDialogPro
       <form id={formId} className="grid gap-2.5" onSubmit={handleSubmit}>
         <label htmlFor={inputId} className="flex items-center gap-2 text-body font-semibold text-muted">
           <KindBadge kind={entry.kind} />
-          Nombre
+          {t('builder.rename.name')}
         </label>
         <input
           id={inputId}

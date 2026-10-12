@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import type { CardEntry, CardRole, HandPattern, TurnView } from '../types'
 import { buildDerivedDeckGroupMap, getCardRoleDefinition } from './deck-groups'
 import type { LabOdds } from './lab-odds'
@@ -33,7 +34,10 @@ export const ROLE_GROUP_LABEL: Record<RoleGroup, string> = {
   starter: 'starter',
   interaction: 'handtrap',
   brick: 'brick',
-  filler: 'carta de relleno',
+  // Un getter: el texto se arma al leerlo, en el idioma de ese momento (los otros tres son términos del juego, iguales en los dos).
+  get filler() {
+    return t('rules.suggestion.fillerCard')
+  },
 }
 
 /** Un cambio a probar (sacar una copia, sumar una, o cambiar una por otra) y el deck resultante. */
@@ -89,7 +93,7 @@ export function findCulprit(result: LabViewResult, perTurn?: PerTurnResults): Cu
   }
 
   return result.noOpeningProbability >= MIN_CULPRIT_PROBABILITY
-    ? { kind: 'no-opening', patternId: null, name: 'Manos sin ninguna salida', probability: result.noOpeningProbability }
+    ? { kind: 'no-opening', patternId: null, name: t('rules.suggestion.noOpening'), probability: result.noOpeningProbability }
     : null
 }
 
@@ -106,6 +110,7 @@ const adjust = (cards: CardEntry[], changes: Change[]): CardEntry[] => {
 /** Relleno para sacar una carta sin achicar el deck (el motor pide 40 cartas como mínimo). */
 const NEUTRAL_CARD: CardEntry = {
   id: '__neutral__',
+  // i18n-ignore: nombre interno del relleno; nunca se muestra (sólo entra a la cuenta de las variantes)
   name: 'una carta neutra',
   copies: 1,
   source: 'manual',
@@ -275,7 +280,7 @@ export function buildMissingRoleHint(culprit: Culprit, cards: CardEntry[], check
     .filter((condition) => resolveConditionCardIds(condition, groups, cards).length === 0)
     .map((condition) => (condition.matcher?.type === 'role' ? getCardRoleDefinition(condition.matcher.value).label : ''))
 
-  return labels.length > 0 ? `Tu deck no tiene cartas con rol ${labels.join(', ')}: sumar alguna es lo que más lo baja.` : null
+  return labels.length > 0 ? t('rules.suggestion.missingRole', { count: labels.length, roles: labels.join(', ') }) : null
 }
 
 /** Problema por ausencia cuyas cartas "salvadoras" ya están al máximo de copias: hay que sumar cartas distintas. */
@@ -295,7 +300,7 @@ export function buildMaxedHint(
   const saviors = cards.filter((card) => excludeIds.has(card.id))
 
   return saviors.length > 0 && saviors.every((card) => card.copies >= maxCopiesOf(card))
-    ? `Las cartas que lo evitan (${saviors.map((card) => card.name).join(', ')}) ya están al máximo de copias que permite tu formato: para bajarlo, sumá cartas distintas con esos roles.`
+    ? t('rules.suggestion.maxed', { names: saviors.map((card) => card.name).join(', ') })
     : null
 }
 

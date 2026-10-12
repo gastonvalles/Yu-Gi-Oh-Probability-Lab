@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import type { LabViewResult, SegmentRule } from '../../app/probability-lab'
 import { formatShortPercent } from '../../app/utils'
+import { t, type MessageKey } from '../../i18n'
 import type { HandSegment } from '../../types'
 import { cx } from '../ui/cx'
 import { ProgressRing } from '../ui/ProgressRing'
@@ -11,44 +12,45 @@ import { overline } from '../ui/typography'
 import { LAB_FOOTNOTE } from './lab-styles'
 import { LabSection } from './LabSection'
 
-const SEGMENTS: ReadonlyArray<{
-  key: HandSegment
-  tone: Tone
-  /** "R G B" del tramo en el anillo. */
-  rgb: string
-  label: string
-  description: string
-  rulesTitle: string
-  emptyRules: string
-}> = [
+// Los textos de cada tramo son claves de mensajes: se arman al dibujar, en el idioma de ese momento.
+const SEGMENTS = [
   {
     key: 'clean',
     tone: 'success',
     rgb: 'var(--success-rgb)',
-    label: 'Limpias',
-    description: 'Salida y ningún problema',
-    rulesTitle: 'Salidas presentes en estas manos',
-    emptyRules: 'No hay manos limpias.',
+    label: 'lab.breakdown.clean.label',
+    description: 'lab.breakdown.clean.description',
+    rulesTitle: 'lab.breakdown.clean.rules',
+    emptyRules: 'lab.breakdown.clean.empty',
   },
   {
     key: 'withProblem',
     tone: 'warning',
     rgb: 'var(--warning-rgb)',
-    label: 'Con problema',
-    description: 'Tienen salida, pero también algún problema activo',
-    rulesTitle: 'Problemas presentes en estas manos',
-    emptyRules: 'Ninguna mano con salida tiene problemas.',
+    label: 'lab.breakdown.withProblem.label',
+    description: 'lab.breakdown.withProblem.description',
+    rulesTitle: 'lab.breakdown.withProblem.rules',
+    emptyRules: 'lab.breakdown.withProblem.empty',
   },
   {
     key: 'noOpening',
     tone: 'danger',
     rgb: 'var(--danger-rgb)',
-    label: 'Sin salida',
-    description: 'No cumplen ninguna salida',
-    rulesTitle: 'Problemas presentes en estas manos',
-    emptyRules: 'Estas manos no tienen ningún problema activo: sólo les falta una salida.',
+    label: 'lab.breakdown.noOpening.label',
+    description: 'lab.breakdown.noOpening.description',
+    rulesTitle: 'lab.breakdown.noOpening.rules',
+    emptyRules: 'lab.breakdown.noOpening.empty',
   },
-]
+] as const satisfies ReadonlyArray<{
+  key: HandSegment
+  tone: Tone
+  /** "R G B" del tramo en el anillo. */
+  rgb: string
+  label: MessageKey
+  description: MessageKey
+  rulesTitle: MessageKey
+  emptyRules: MessageKey
+}>
 
 const MAX_RULES = 4
 
@@ -66,9 +68,9 @@ export function LabFailureBreakdown({ result }: { result: LabViewResult }) {
 
   return (
     <LabSection
-      title="Cómo se reparten tus manos"
+      title={t('lab.breakdown.title')}
       icon="chart"
-      summary={`${formatShortPercent(values.withProblem)} con problema · ${formatShortPercent(values.noOpening)} sin salida`}
+      summary={t('lab.breakdown.summary', { withProblem: formatShortPercent(values.withProblem), noOpening: formatShortPercent(values.noOpening) })}
       defaultOpenOnMobile={false}
       className="order-3 min-[1101px]:order-2 min-[1101px]:col-span-7 min-[1101px]:col-start-6 min-[1101px]:row-span-2 min-[1101px]:row-start-2"
     >
@@ -78,7 +80,7 @@ export function LabFailureBreakdown({ result }: { result: LabViewResult }) {
           strokeWidth={14}
           activeKey={selectedSegment}
           onSegmentSelect={(key) => setActiveSegment(key as HandSegment)}
-          label={SEGMENTS.map((segment) => `${segment.label}: ${formatShortPercent(values[segment.key])}`).join(', ')}
+          label={SEGMENTS.map((segment) => `${t(segment.label)}: ${formatShortPercent(values[segment.key])}`).join(', ')}
           segments={SEGMENTS.map((segment) => ({ key: segment.key, value: values[segment.key], color: segment.rgb }))}
         >
           {/* Como en los demás anillos, el centro dice el porcentaje: el del grupo que tocás o recorrés con el mouse. */}
@@ -101,8 +103,8 @@ export function LabFailureBreakdown({ result }: { result: LabViewResult }) {
               >
                 <span className={cx('size-2.5 rounded-full', TONE[segment.tone].fill)} aria-hidden="true" />
                 <span className="grid min-w-0">
-                  <strong className="text-body font-semibold text-foreground">{segment.label}</strong>
-                  <small className="text-micro text-muted">{segment.description}</small>
+                  <strong className="text-body font-semibold text-foreground">{t(segment.label)}</strong>
+                  <small className="text-micro text-muted">{t(segment.description)}</small>
                 </span>
                 <span className="text-lead font-semibold tabular-nums text-foreground">{formatShortPercent(values[segment.key])}</span>
               </button>
@@ -112,8 +114,8 @@ export function LabFailureBreakdown({ result }: { result: LabViewResult }) {
       </div>
 
       <SegmentRules
-        title={active.rulesTitle}
-        emptyText={active.emptyRules}
+        title={t(active.rulesTitle)}
+        emptyText={t(active.emptyRules)}
         tone={active.tone}
         rules={result.segmentRules[active.key].filter((rule) => (active.key === 'clean' ? rule.kind === 'opening' : rule.kind === 'problem'))}
       />
@@ -140,9 +142,7 @@ function SegmentRules({ title, emptyText, tone, rules }: { title: string; emptyT
           ))}
         </ul>
       )}
-      <small className={LAB_FOOTNOTE}>
-        % de las manos de este grupo que cumplen cada regla (una mano puede cumplir varias).
-      </small>
+      <small className={LAB_FOOTNOTE}>{t('lab.breakdown.footnote')}</small>
     </div>
   )
 }

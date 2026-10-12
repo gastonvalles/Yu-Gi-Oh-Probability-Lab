@@ -5,6 +5,7 @@ import { useFocusTrap } from '../../app/use-focus-trap'
 import { useEscapeKey } from '../../app/use-overlay'
 import { normalizeSearchText } from '../../app/utils'
 import type { MatPile } from '../../app/practice-mat'
+import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
@@ -14,8 +15,14 @@ import { field, surface } from '../ui/surfaces'
 import { overline } from '../ui/typography'
 import { CARD_BACK } from './practice-styles'
 
-/** Nombres de las casillas, los mismos que usa el builder (Main / Extra) y los del juego en inglés para las pilas. */
-export const PILE_TITLES: Record<MatPile, string> = { deck: 'Main', extra: 'Extra', hand: 'Mano', gy: 'GY', banished: 'Banish' }
+/** Nombres de las casillas, los mismos que usa el builder (Main / Extra) y los del juego en inglés para las pilas. El texto se arma al leerlo, en el idioma de ese momento. */
+export const PILE_TITLES: Record<MatPile, string> = {
+  get deck() { return t('practice.pile.deck') },
+  get extra() { return t('practice.pile.extra') },
+  get hand() { return t('practice.pile.hand') },
+  get gy() { return t('practice.pile.gy') },
+  get banished() { return t('practice.pile.banished') },
+}
 
 interface MatCardInfo {
   name: string
@@ -114,11 +121,11 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, onClose }: C
             {item.label}
           </button>
         ))}
-        {items.length === 0 ? <p className="m-0 px-3 py-1.5 text-micro text-muted">No hay nada para hacer desde acá.</p> : null}
+        {items.length === 0 ? <p className="m-0 px-3 py-1.5 text-micro text-muted">{t('practice.dialog.empty')}</p> : null}
         {onInspect ? (
           <button type="button" role="menuitem" className={cx(MENU_ITEM, 'mt-1 flex items-center gap-2 border-t border-border-subtle pt-2 text-muted')} data-initial-focus={items.length === 0 ? '' : undefined} onClick={onInspect}>
             <Icon name="search" size={14} />
-            Ver carta
+            {t('practice.dialog.viewCard')}
           </button>
         ) : null}
       </div>
@@ -148,16 +155,16 @@ export function PileViewer({ pile, ids, info, onPick, onClose }: PileViewerProps
   const title = pile ? `${PILE_TITLES[pile]} · ${ids.length}` : ''
 
   return (
-    <Modal isOpen={pile !== null} onClose={onClose} size="md" kicker="Mesa" title={title} ariaLabel={title}>
+    <Modal isOpen={pile !== null} onClose={onClose} size="md" kicker={t('practice.mat.name')} title={title} ariaLabel={title}>
       <div className="grid gap-3">
         {ids.length > 8 ? (
           <label className="relative block">
-            <span className="sr-only">Buscar carta</span>
+            <span className="sr-only">{t('practice.dialog.searchCard')}</span>
             <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-soft" />
             <input
               type="search"
               value={query}
-              placeholder="Buscar carta"
+              placeholder={t('practice.dialog.searchCard')}
               autoComplete="off"
               data-initial-focus=""
               className={cx(field, 'h-10 w-full pl-9 pr-3 text-body')}
@@ -165,10 +172,10 @@ export function PileViewer({ pile, ids, info, onPick, onClose }: PileViewerProps
             />
           </label>
         ) : null}
-        {ids.length === 0 ? <p className="m-0 text-body text-muted">No hay cartas acá.</p> : null}
-        {visible.length === 0 && ids.length > 0 ? <p className="m-0 text-body text-muted">Ninguna carta coincide con “{query.trim()}”.</p> : null}
+        {ids.length === 0 ? <p className="m-0 text-body text-muted">{t('practice.dialog.noCards')}</p> : null}
+        {visible.length === 0 && ids.length > 0 ? <p className="m-0 text-body text-muted">{t('practice.dialog.noMatch', { query: query.trim() })}</p> : null}
         {/* En el celular, cinco por fila (como el campo); en pantallas anchas, las que entren de 5.25 rem. */}
-        <ul className="m-0 grid list-none grid-cols-5 gap-1.5 p-0 sm:grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] sm:gap-2" aria-label="Cartas">
+        <ul className="m-0 grid list-none grid-cols-5 gap-1.5 p-0 sm:grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] sm:gap-2" aria-label={t('practice.dialog.cards')}>
           {visible.map((card) => (
             <li key={card.id}>
               <button
@@ -179,7 +186,7 @@ export function PileViewer({ pile, ids, info, onPick, onClose }: PileViewerProps
                 <span className="relative block aspect-[421/614] w-full overflow-hidden rounded-tag bg-input shadow-[0_4px_10px_rgba(0,0,0,0.4)]">
                   {card.faceDown ? <span className={CARD_BACK} /> : <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />}
                 </span>
-                <span className="truncate text-micro text-foreground">{card.faceDown ? `${card.name} (boca abajo)` : card.name}</span>
+                <span className="truncate text-micro text-foreground">{card.faceDown ? t('practice.dialog.cardFaceDown', { name: card.name }) : card.name}</span>
               </button>
             </li>
           ))}
@@ -205,10 +212,10 @@ export function SaveComboDialog({ isOpen, defaultName, onSave, onClose }: SaveCo
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="sm" kicker="Mesa" title="Guardar combo" ariaLabel="Guardar combo">
+    <Modal isOpen={isOpen} onClose={onClose} size="sm" kicker={t('practice.mat.name')} title={t('practice.mat.saveCombo')} ariaLabel={t('practice.mat.saveCombo')}>
       <form className="grid gap-3" onSubmit={submit}>
         <label className="grid gap-1">
-          <span className="text-body text-muted">Nombre</span>
+          <span className="text-body text-muted">{t('practice.dialog.name')}</span>
           <input
             type="text"
             value={name}
@@ -219,13 +226,13 @@ export function SaveComboDialog({ isOpen, defaultName, onSave, onClose }: SaveCo
             onChange={(event) => setName(event.target.value)}
           />
         </label>
-        <p className="m-0 text-micro text-soft">Se guardan la mano, el orden del deck y cada jugada, en este dispositivo.</p>
+        <p className="m-0 text-micro text-soft">{t('practice.dialog.saveNote')}</p>
         <div className="flex justify-end gap-2">
           <Button variant="secondary" size="sm" type="button" onClick={onClose}>
-            Cancelar
+            {t('common.cancel')}
           </Button>
           <Button variant="primary" size="sm" type="submit" icon="save">
-            Guardar
+            {t('common.save')}
           </Button>
         </div>
       </form>

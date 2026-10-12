@@ -7,6 +7,7 @@ import { buildActiveRuleSet } from '../../app/pattern-presets'
 import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
 import { createMatState, randomSeed, shuffleWithSeed } from '../../app/practice-mat'
 import { useMatSession } from '../../app/use-mat-session'
+import { t } from '../../i18n'
 import type { DeckCardInstance } from '../../app/model'
 import type { SavedCombo } from '../../app/saved-combos'
 import { buildPracticeDeck } from '../probability/practice'
@@ -370,7 +371,7 @@ function PracticeFab({
 
   return (
     <>
-      <DraggableFab label="Abrir práctica" storageKey="ygo-lab:practice-fab" onClick={onOpen}>
+      <DraggableFab label={t('shell.practice.open')} storageKey="ygo-lab:practice-fab" onClick={onOpen}>
         <Icon name="hand" size={24} strokeWidth={1.8} />
       </DraggableFab>
 
@@ -380,7 +381,7 @@ function PracticeFab({
         size="board"
         bare
         flush
-        ariaLabel="Práctica"
+        ariaLabel={t('shell.practice.title')}
         closeTone="flat"
         closeClassName="right-1.5 top-3 min-[820px]:right-4 min-[820px]:top-4"
       >

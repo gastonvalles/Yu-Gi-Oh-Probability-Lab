@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 
 import type { CardSearchFilters } from '../../app/card-search'
+import { t } from '../../i18n'
 import { Switch } from '../ui/Switch'
 import { ATTRIBUTE_OPTIONS, type FilterOption, type FilterOptionGroup } from './search-options'
 import type { SearchFilterContext } from './use-search-filter-context'
@@ -52,20 +53,18 @@ export function SearchFiltersForm({
     >
       <div className="flex items-center justify-between gap-2.5 border-b border-border-subtle pb-3 text-micro font-semibold text-muted">
         <span>
-          {activeFilterCount > 0
-            ? `${activeFilterCount} filtro${activeFilterCount === 1 ? '' : 's'} activo${activeFilterCount === 1 ? '' : 's'}`
-            : 'Sin filtros activos'}
+          {activeFilterCount > 0 ? t('search.filters.active', { count: activeFilterCount }) : t('search.filters.none')}
         </span>
         <button
           type="button"
           className="min-h-9 rounded-full border border-border-subtle bg-transparent px-4 text-body font-semibold text-foreground transition-[border-color,background-color] duration-150 group-data-[layout=mobile]/filters:min-h-10 enabled:hover:bg-tint/6 disabled:cursor-default disabled:text-soft disabled:opacity-60 focus-visible:outline-none focus-visible:shadow-focus"
           disabled={activeFilterCount === 0} onClick={onClearFilters}>
-          Limpiar filtros
+          {t('search.filters.clear')}
         </button>
       </div>
 
-      <FilterGroup title="Búsqueda">
-        <Field label="Arquetipo">
+      <FilterGroup title={t('search.filters.groupSearch')}>
+        <Field label={t('search.filters.archetype')}>
           <input
             type="text"
             value={filters.archetype}
@@ -77,7 +76,7 @@ export function SearchFiltersForm({
           />
         </Field>
 
-        <Field label="Texto del efecto (inglés)">
+        <Field label={t('search.filters.effectText')}>
           <input
             type="text"
             value={filters.description}
@@ -90,7 +89,7 @@ export function SearchFiltersForm({
         </Field>
       </FilterGroup>
 
-      <FilterGroup title="Características">
+      <FilterGroup title={t('search.filters.groupTraits')}>
         <Field label={quickTypeMeta.exactTypeLabel}>
           <GroupedSelect
             value={filters.exactType}
@@ -107,7 +106,7 @@ export function SearchFiltersForm({
 
       {quickTypeMeta.showAttribute ? (
         <ChipGroup
-          title="Atributo"
+          title={t('search.filters.attribute')}
           options={ATTRIBUTE_CHOICES}
           value={filters.attribute}
           onChange={(attribute) => onFilterChange({ attribute })}
@@ -127,12 +126,12 @@ export function SearchFiltersForm({
       {context.formatAllowsLegalityFilter ? (
         <div className="flex items-center justify-between gap-3 py-1">
           <span className="grid min-w-0 gap-0.5">
-            <strong className="text-body font-semibold text-foreground">Ocultar prohibidas</strong>
-            <small className="text-micro text-soft">Según la lista de {context.formatLabel}</small>
+            <strong className="text-body font-semibold text-foreground">{t('search.filters.hideBanned')}</strong>
+            <small className="text-micro text-soft">{t('search.filters.basedOn', { format: context.formatLabel })}</small>
           </span>
           <Switch
             checked={filters.legalOnly}
-            label={`Ocultar prohibidas en ${context.formatLabel}`}
+            label={t('search.filters.hideBannedIn', { format: context.formatLabel })}
             onChange={(legalOnly) => onFilterChange({ legalOnly })}
           />
         </div>
@@ -204,7 +203,7 @@ function GroupedSelect({
 }) {
   return (
     <select value={value} onChange={(event) => onChange(event.target.value)} className={FILTER_FIELD}>
-      <option value="">Cualquiera</option>
+      <option value="">{t('search.filters.any')}</option>
       {groups.map((group) => (
         <optgroup key={group.label} label={group.label}>
           {group.options.map((option) => (

@@ -39,6 +39,7 @@ import { usePatternMaintenance } from '../../app/use-pattern-maintenance'
 import { isClassificationStepComplete } from '../../app/role-step'
 import { STORAGE_FULL_EVENT } from '../../app/persistence'
 import { useToastMessage } from '../../app/use-toast-message'
+import { t } from '../../i18n'
 import type { CardOrigin, CardRole } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import type { DeckCopyActions } from '../card-detail/DeckCopyControls'
@@ -109,7 +110,7 @@ export function useDeckModeController() {
 
   // Si el navegador no deja guardar (almacenamiento lleno), que no sea en silencio: el usuario puede exportar.
   useEffect(() => {
-    const warn = () => showToast('El navegador no tiene espacio para guardar tus cambios. Exportá el deck para no perderlo.', 'error')
+    const warn = () => showToast(t('deck.toast.storageFull'), 'error')
     window.addEventListener(STORAGE_FULL_EVENT, warn)
     return () => window.removeEventListener(STORAGE_FULL_EVENT, warn)
   }, [showToast])
@@ -314,7 +315,7 @@ export function useDeckModeController() {
       )
 
       if (!options.silent) {
-        showToast('Carta añadida', 'success')
+        showToast(t('deck.toast.cardAdded'), 'success')
       }
 
       return true
@@ -391,7 +392,7 @@ export function useDeckModeController() {
     }
 
     closeCardDetail()
-    showToast('Carta quitada del deck.', 'warning')
+    showToast(t('deck.toast.cardRemoved'), 'warning')
   }, [closeCardDetail, deckBuilder, dispatch, selectedDeckCopy, selectedDeckInstanceId, showToast])
 
   const handleAddSelectedDeckCopy = useCallback(() => {
@@ -417,14 +418,14 @@ export function useDeckModeController() {
   const handleSortDeckZone = useCallback(
     (zone: DeckZone) => {
       dispatch(sortDeckZone(zone))
-      showToast(`Ordenaste ${DECK_ZONE_LABELS[zone]}.`, 'success')
+      showToast(t('deck.toast.zoneSorted', { zone: DECK_ZONE_LABELS[zone] }), 'success')
     },
     [dispatch, showToast],
   )
 
   const handleSortAllDeckZones = useCallback(() => {
     dispatch(sortAllDeckZones())
-    showToast('Ordenaste todo el deck.', 'success')
+    showToast(t('deck.toast.allSorted'), 'success')
   }, [dispatch, showToast])
 
   const handleClearDeckZone = useCallback(
@@ -437,7 +438,12 @@ export function useDeckModeController() {
 
       dispatch(clearDeckZone(zone))
 
-      showToast(`Vaciaste ${DECK_ZONE_LABELS[zone]}${settings.deckFormat === 'genesys' ? ` para ${formatLabel}` : ''}.`, 'warning')
+      showToast(
+        settings.deckFormat === 'genesys'
+          ? t('deck.toast.zoneClearedFor', { zone: DECK_ZONE_LABELS[zone], format: formatLabel })
+          : t('deck.toast.zoneCleared', { zone: DECK_ZONE_LABELS[zone] }),
+        'warning',
+      )
     },
     [deckBuilder, dispatch, formatLabel, settings.deckFormat, showToast],
   )
@@ -448,7 +454,10 @@ export function useDeckModeController() {
     }
 
     dispatch(clearAllDeckZones())
-    showToast(`Vaciaste todo el deck${settings.deckFormat === 'genesys' ? ` para ${formatLabel}` : ''}.`, 'warning')
+    showToast(
+      settings.deckFormat === 'genesys' ? t('deck.toast.allClearedFor', { format: formatLabel }) : t('deck.toast.allCleared'),
+      'warning',
+    )
   }, [deckBuilder, dispatch, formatLabel, settings.deckFormat, showToast])
 
   const handleToggleRole = useCallback(
@@ -489,7 +498,7 @@ export function useDeckModeController() {
   const handleImportDeck = useCallback(
     (nextDeckBuilder: AppState['deckBuilder']) => {
       dispatch(replaceDeckBuilder(nextDeckBuilder))
-      showToast('Deck importado al builder.', 'success')
+      showToast(t('deck.toast.imported'), 'success')
     },
     [dispatch, showToast],
   )
@@ -511,7 +520,7 @@ export function useDeckModeController() {
       const totalCards = deckBuilder.main.length + deckBuilder.extra.length + deckBuilder.side.length
 
       if (totalCards === 0) {
-        showToast('No hay cartas cargadas para exportar.', 'error')
+        showToast(t('deck.toast.nothingToExport'), 'error')
         return
       }
 
@@ -519,15 +528,12 @@ export function useDeckModeController() {
         const { decklistOverflow } = await exportDeckAssets(deckBuilder, settings.deckFormat, selection)
 
         if (decklistOverflow.length > 0) {
-          showToast(
-            `Descargado. En el PDF no entraron todas las cartas de: ${decklistOverflow.join(', ')}. Completalas a mano.`,
-            'warning',
-          )
+          showToast(t('deck.toast.pdfOverflow', { sections: decklistOverflow.join(', ') }), 'warning')
         } else {
-          showToast(`Listo: ${describeExportSelection(selection)}.`, 'success')
+          showToast(t('deck.toast.exported', { files: describeExportSelection(selection) }), 'success')
         }
       } catch (error) {
-        showToast(error instanceof Error ? error.message : 'No se pudo exportar el deck.', 'error')
+        showToast(error instanceof Error ? error.message : t('deck.toast.exportFailed'), 'error')
       }
     },
     [deckBuilder, settings.deckFormat, showToast],

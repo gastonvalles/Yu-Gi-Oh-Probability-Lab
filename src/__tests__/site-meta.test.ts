@@ -64,7 +64,7 @@ describe('el sitio para compartir y para los buscadores', () => {
   })
 
   it('todo lo que enlazan el HTML y las páginas estáticas existe en public/, y la 404 no se indexa', () => {
-    for (const page of ['index.html', 'public/404.html', 'public/privacidad.html']) {
+    for (const page of ['index.html', 'public/404.html', 'public/privacidad.html', 'public/privacy.html']) {
       for (const [, url] of text(page).matchAll(/(?:href|src)="(\/[^"#?]*)"/g)) {
         if (url === '/' || url!.startsWith('/src/')) continue
         expect(inPublic(url!), `${page}: ${url}`).toBe(true)

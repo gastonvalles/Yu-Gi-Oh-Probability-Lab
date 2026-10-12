@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 
+import { t } from '../i18n'
+
 import { cx, variants } from './ui/cx'
 import { Icon, type IconName } from './ui/Icon'
 import { InfoTip } from './ui/InfoTip'
@@ -45,7 +47,7 @@ export function StepHero({ title, icon, subtitle, help, titleAction, side, sideV
             <h2 className={cx(pageTitle, 'truncate')}>{title}</h2>
             {/* La ayuda se ancla al encabezado (no al ícono): nunca se sale de pantalla. */}
             {help ? (
-              <InfoTip label={`Qué hace “${title}”`} anchor="parent">
+              <InfoTip label={t('shell.stepHero.help', { title })} anchor="parent">
                 {help}
               </InfoTip>
             ) : null}

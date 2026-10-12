@@ -8,6 +8,7 @@ import { buildDeckZoneTypeCounts } from '../app/deck-presentation'
 import type { DeckCardInstance, DeckZone as DeckZoneType } from '../app/model'
 import type { DeckDropIndicatorState } from '../app/use-deck-pointer-drag'
 import { formatInteger } from '../app/utils'
+import { t } from '../i18n'
 import { CardArt } from './CardArt'
 import { Icon } from './ui/Icon'
 import { IconButton } from './ui/IconButton'
@@ -200,12 +201,12 @@ export const DeckZone = memo(function DeckZone({
           </div>
         ) : null}
         {!readOnly && cards.length > 1 ? (
-          <IconButton tone="ghost" size={buttonSize} aria-label={`Ordenar ${title}`} title={`Ordenar ${title}`} onClick={() => onSortZone(zone)}>
+          <IconButton tone="ghost" size={buttonSize} aria-label={t('deck.zone.sort', { zone: title })} title={t('deck.zone.sort', { zone: title })} onClick={() => onSortZone(zone)}>
             <Icon name="sort" size={buttonSize === 'md' ? 20 : undefined} />
           </IconButton>
         ) : null}
         {!readOnly && cards.length > 0 ? (
-          <IconButton tone="ghost" size={buttonSize} aria-label={`Vaciar ${title}`} title={`Vaciar ${title}`} onClick={() => onClearZone(zone)}>
+          <IconButton tone="ghost" size={buttonSize} aria-label={t('deck.zone.clear', { zone: title })} title={t('deck.zone.clear', { zone: title })} onClick={() => onClearZone(zone)}>
             <Icon name="trash" size={buttonSize === 'md' ? 20 : undefined} />
           </IconButton>
         ) : null}
@@ -262,7 +263,7 @@ export const DeckZone = memo(function DeckZone({
             : cards.map((card, index) => renderDeckCard(card, index))}
           {cards.length === 0 && !readOnly ? (
             <p className="pointer-events-none m-0 col-span-full grid min-h-14 w-full place-items-center p-2 text-body text-soft">
-              Arrastrá cartas acá
+              {t('deck.zone.dropHint')}
             </p>
           ) : null}
         </div>

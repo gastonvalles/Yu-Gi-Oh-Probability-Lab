@@ -6,6 +6,7 @@ import {
   buildClassicCardStatLine,
 } from '../../app/deck-builder-classic'
 import type { DeckZone } from '../../app/model'
+import { t } from '../../i18n'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { CardArt } from '../CardArt'
 import { buildZoneActionEntries } from '../card-detail/card-zone-actions'
@@ -18,9 +19,10 @@ import { Icon } from '../ui/Icon'
 /** Nombre corto de la zona para los botones de agregar (el texto completo queda en el tooltip y en lectores de pantalla). */
 const ZONE_SHORT_LABEL: Record<DeckZone, string> = { main: 'Main', extra: 'Extra', side: 'Side' }
 
+// Claves de mensajes, no textos: el texto se arma al dibujar, en el idioma de ese momento.
 const SHORTCUTS = [
-  { keys: 'Doble clic o arrastrar', label: 'agregar' },
-  { keys: 'Clic derecho', label: 'quitar del deck' },
+  { keys: 'deck.classic.shortcut.addKeys', label: 'deck.classic.shortcut.add' },
+  { keys: 'deck.classic.shortcut.removeKeys', label: 'deck.classic.shortcut.remove' },
 ] as const
 
 interface DeckBuilderClassicPreviewProps {
@@ -49,8 +51,8 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, onAddToZone 
             <div className="relative w-[min(100%,max(9rem,calc((100dvh-var(--deck-mode-topbar-height)-29rem)*0.72)))]">
               <button
                 type="button"
-                aria-label="Ver la carta en grande"
-                title="Ver la carta en grande"
+                aria-label={t('deck.classic.zoom')}
+                title={t('deck.classic.zoom')}
                 className="block w-full cursor-zoom-in rounded-lg bg-transparent p-0 focus-visible:outline-none focus-visible:shadow-focus"
                 onClick={() => setZoomed(true)}
               >
@@ -87,15 +89,15 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, onAddToZone 
         <div className="grid flex-1 content-center justify-items-center gap-5 text-center">
           <div className="grid justify-items-center gap-2 text-body text-soft">
             <Icon name="image" size={28} className="text-primary-soft/70" />
-            Sin carta seleccionada
+            {t('deck.classic.empty')}
           </div>
-          <ul className="m-0 grid list-none gap-1.5 p-0 text-micro text-muted" aria-label="Atajos">
+          <ul className="m-0 grid list-none gap-1.5 p-0 text-micro text-muted" aria-label={t('deck.classic.shortcuts')}>
             {SHORTCUTS.map((shortcut) => (
               <li key={shortcut.keys} className="flex items-center justify-center gap-2">
                 <kbd className="inline-block rounded-tag border border-b-2 border-border bg-secondary px-1.5 py-0.5 text-center font-[inherit] text-micro font-semibold text-foreground">
-                  {shortcut.keys}
+                  {t(shortcut.keys)}
                 </kbd>
-                {shortcut.label}
+                {t(shortcut.label)}
               </li>
             ))}
           </ul>

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 
 import { useFocusTrap } from '../../app/use-focus-trap'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
+import { t } from '../../i18n'
 import { cx } from './cx'
 import { Icon, type IconName } from './Icon'
 import { CloseButton } from './IconButton'
@@ -151,13 +152,13 @@ export function Modal({
                 {subtitle ? <p className="m-0 text-body text-muted">{subtitle}</p> : null}
               </div>
             </div>
-            {dismissible ? <CloseButton size="sm" aria-label="Cerrar" onClick={onClose} /> : null}
+            {dismissible ? <CloseButton size="sm" aria-label={t('common.close')} onClick={onClose} /> : null}
           </header>
         ) : dismissible && !hideCloseButton ? (
           <CloseButton
             size={closeSize}
             tone={closeTone}
-            aria-label="Cerrar"
+            aria-label={t('common.close')}
             className={cx(
               'absolute z-10',
               closeClassName ?? 'right-3 top-3 min-[1101px]:right-4 min-[1101px]:top-4',

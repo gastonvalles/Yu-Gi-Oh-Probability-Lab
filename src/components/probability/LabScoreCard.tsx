@@ -1,5 +1,6 @@
 import type { LabResults } from '../../app/probability-lab'
 import { formatInteger, formatShortPercent, formatWholePercent } from '../../app/utils'
+import { t } from '../../i18n'
 import type { TurnView } from '../../types'
 import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
@@ -35,7 +36,7 @@ export function LabScoreCard({ results, view, isRecalculating }: LabScoreCardPro
       className="order-1 grid content-start gap-5 transition-opacity duration-150 aria-busy:opacity-75 min-[1101px]:col-span-5 min-[1101px]:col-start-1"
       aria-busy={isRecalculating}
     >
-      <p className={cx('m-0', overline)}>Manos jugables sin problemas</p>
+      <p className={cx('m-0', overline)}>{t('lab.score.overline')}</p>
 
       <div className="grid justify-items-center gap-5 min-[520px]:grid-cols-[auto_minmax(0,1fr)] min-[520px]:items-center min-[520px]:justify-items-start">
         <ProgressRing
@@ -44,7 +45,7 @@ export function LabScoreCard({ results, view, isRecalculating }: LabScoreCardPro
           size={168}
           strokeWidth={14}
           ticks={THRESHOLD_TICKS}
-          label={`Manos limpias: ${formatShortPercent(current.cleanProbability)} (${KPI_TONE_LABELS[kpi]})`}
+          label={t('lab.score.ringLabel', { percent: formatShortPercent(current.cleanProbability), tone: KPI_TONE_LABELS[kpi] })}
         >
           {formatShortPercent(current.cleanProbability)}
         </ProgressRing>
@@ -55,13 +56,13 @@ export function LabScoreCard({ results, view, isRecalculating }: LabScoreCardPro
       <dl className="m-0 grid grid-cols-2 gap-x-4 border-t border-border-subtle pt-4">
         {view === 'average' ? (
           <>
-            <TurnRing label="Yendo primero" value={results.first.cleanProbability} />
-            <TurnRing label="Yendo segundo" value={results.second.cleanProbability} />
+            <TurnRing label={t('lab.score.goingFirst')} value={results.first.cleanProbability} />
+            <TurnRing label={t('lab.score.goingSecond')} value={results.second.cleanProbability} />
           </>
         ) : (
           <>
-            <Fact label="Manos posibles" value={formatInteger(current.totalHands ?? 0)} />
-            <Fact label="Manos limpias" value={formatInteger(current.cleanHands ?? 0)} />
+            <Fact label={t('lab.score.possibleHands')} value={formatInteger(current.totalHands ?? 0)} />
+            <Fact label={t('lab.score.cleanHands')} value={formatInteger(current.cleanHands ?? 0)} />
           </>
         )}
       </dl>

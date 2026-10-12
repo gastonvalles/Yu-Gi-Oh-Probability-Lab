@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react'
 
 import { ROLE_GROUP_LABEL, type Culprit, type Outcome, type PerTurnResults } from '../../app/lab-suggestion'
+import { t } from '../../i18n'
 import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
@@ -39,9 +40,9 @@ export function LabSuggestion({ cards, checks, deckFormat, handSize, view, resul
   const best = state.analysis.best
 
   return (
-    <Card className="order-2 grid content-start gap-4 min-[1101px]:order-3 min-[1101px]:col-span-5 min-[1101px]:col-start-1" aria-label="Qué mejorar primero">
+    <Card className="order-2 grid content-start gap-4 min-[1101px]:order-3 min-[1101px]:col-span-5 min-[1101px]:col-start-1" aria-label={t('lab.suggestion.label')}>
       <header className="grid min-w-0 gap-0.5">
-        <p className={cx('m-0', overline, TONE.danger.text)}>Lo que más te frena</p>
+        <p className={cx('m-0', overline, TONE.danger.text)}>{t('lab.suggestion.overline')}</p>
         <strong className="text-lead font-semibold leading-tight text-foreground [overflow-wrap:anywhere]">{culprit.name}</strong>
         <p className={supportText}>{describeCulprit(culprit)}</p>
       </header>
@@ -52,9 +53,9 @@ export function LabSuggestion({ cards, checks, deckFormat, handSize, view, resul
         </div>
       ) : state.status === 'loading' ? (
         <div className="flex items-center gap-3 border-t border-border-subtle pt-4" role="status">
-          <ProgressRing value={state.progress.total > 0 ? state.progress.done / state.progress.total : 0} size={44} strokeWidth={4} label="Cambios probados" />
+          <ProgressRing value={state.progress.total > 0 ? state.progress.done / state.progress.total : 0} size={44} strokeWidth={4} label={t('lab.suggestion.progressLabel')} />
           <p className="m-0 text-body text-muted motion-safe:animate-pulse">
-            Probando cambios en tu deck… ({state.progress.done}/{state.progress.total})
+            {t('lab.suggestion.testing', { done: state.progress.done, total: state.progress.total })}
           </p>
         </div>
       ) : null}
@@ -83,11 +84,12 @@ function SwapChip({ action, label }: { action: 'remove' | 'add'; label: string }
   return (
     <span className={cx('inline-flex items-center gap-1.5 rounded-tag px-2 py-1 text-micro font-semibold', tone.soft, tone.text)}>
       <Icon name={action === 'remove' ? 'minus' : 'plus'} size={12} strokeWidth={2.5} />
-      {action === 'remove' ? 'Sacar' : 'Meter'} 1 {label}
+      {t(action === 'remove' ? 'lab.suggestion.remove' : 'lab.suggestion.add', { label })}
     </span>
   )
 }
 
 function describeCulprit(culprit: Culprit): string {
-  return culprit.kind === 'problem' ? formatOdds(culprit.probability) : formatOdds(culprit.probability).replace('Pasa', 'Pasan')
+  // Un problema es una regla ("Pasa en…"); las manos sin salida son varias ("Pasan en…").
+  return formatOdds(culprit.probability, true, culprit.kind !== 'problem')
 }

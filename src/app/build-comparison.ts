@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import type { CardEntry, HandPattern, PatternKind, TurnContext, TurnView } from '../types'
 import { curatePatterns } from './pattern-curation'
 import { buildActiveRuleSet, buildPatternPresets, type SystemRuleNames } from './pattern-presets'
@@ -127,7 +128,7 @@ export function compareBuilds(
     rules: compareRules(a.cards, rules, activeA, activeB, metricsA.results, metricsB.results),
     clean,
     verdict: isComputing
-      ? { kind: 'computing', title: 'Calculando…', detail: 'Se están enumerando las manos de las dos builds.' }
+      ? { kind: 'computing', title: t('meta.compare.verdict.computing.title'), detail: t('meta.compare.verdict.computing.detail') }
       : buildVerdict(a.name, b.name, clean, cardDiffs.length === 0),
   }
 }
@@ -160,7 +161,7 @@ function buildMetrics(
     results: computation?.status === 'ok' ? computation.results : null,
     isComputing,
     blockedReasons: tooSmall
-      ? [`El Main Deck necesita al menos ${handSize + 1} cartas.`]
+      ? [t('meta.compare.blocked.deckTooSmall', { size: handSize + 1 })]
       : computation?.status === 'blocked'
         ? computation.issues.map((issue) => issue.message)
         : [],
@@ -220,7 +221,7 @@ function compareRules(
     .filter((pattern) => !pattern.needsReview && pattern.conditions.some((condition) => condition.matcher !== null))
     .map((pattern) => ({
       id: pattern.id,
-      name: pattern.name.trim() || (pattern.kind === 'opening' ? 'Salida sin nombre' : 'Problema sin nombre'),
+      name: pattern.name.trim() || t(pattern.kind === 'opening' ? 'meta.compare.rule.unnamedOpening' : 'meta.compare.rule.unnamedProblem'),
       kind: pattern.kind,
       turnContext: pattern.turnContext,
       isSystem: false,
@@ -284,13 +285,13 @@ export function buildVerdict(nameA: string, nameB: string, clean: CleanCompariso
   if (!clean) {
     return {
       kind: 'incomplete',
-      title: 'Falta información para comparar',
-      detail: 'Revisá que las dos builds tengan Main Deck completo y cartas clasificadas.',
+      title: t('meta.compare.verdict.incomplete.title'),
+      detail: t('meta.compare.verdict.incomplete.detail'),
     }
   }
 
   if (sameCards) {
-    return { kind: 'identical', title: 'Son iguales', detail: 'Tienen las mismas cartas en el Main Deck.' }
+    return { kind: 'identical', title: t('meta.compare.verdict.identical.title'), detail: t('meta.compare.verdict.identical.detail') }
   }
 
   const { first, second, average } = clean
@@ -301,8 +302,11 @@ export function buildVerdict(nameA: string, nameB: string, clean: CleanCompariso
   if (firstSide && secondSide && firstSide !== secondSide) {
     return {
       kind: 'split',
-      title: 'Depende del turno',
-      detail: `${firstSide === 'a' ? labelA : labelB} es mejor yendo 1º y ${secondSide === 'a' ? labelA : labelB} yendo 2º.`,
+      title: t('meta.compare.verdict.split.title'),
+      detail: t('meta.compare.verdict.split.detail', {
+        first: firstSide === 'a' ? labelA : labelB,
+        second: secondSide === 'a' ? labelA : labelB,
+      }),
     }
   }
 
@@ -311,14 +315,14 @@ export function buildVerdict(nameA: string, nameB: string, clean: CleanCompariso
   if (!averageSide) {
     return {
       kind: 'equivalent',
-      title: 'Rinden lo mismo',
-      detail: 'La diferencia es menor a 0.5 pp: con tus reglas no se nota.',
+      title: t('meta.compare.verdict.equivalent.title'),
+      detail: t('meta.compare.verdict.equivalent.detail'),
     }
   }
 
   return {
     kind: averageSide,
-    title: `${averageSide === 'a' ? labelA : labelB} es mejor`,
-    detail: 'Saca más manos limpias en promedio.',
+    title: t('meta.compare.verdict.better.title', { name: averageSide === 'a' ? labelA : labelB }),
+    detail: t('meta.compare.verdict.better.detail'),
   }
 }

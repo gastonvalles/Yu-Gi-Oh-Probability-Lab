@@ -22,6 +22,7 @@ import {
   getCachedApiSearch,
   storeCachedApiSearch,
 } from './api-search-cache'
+import { t } from '../i18n'
 import { loadCardCatalog, searchCards, type ApiCardSearchResult } from '../ygoprodeck'
 import type { DeckFormat } from '../types'
 
@@ -245,7 +246,7 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
         requestId,
         page,
         hasMore: false,
-        errorMessage: error instanceof Error ? error.message : 'No se pudo consultar YGOPRODeck.',
+        errorMessage: error instanceof Error ? error.message : t('search.ygoprodeck.requestError'),
       }))
     }
   }, [])

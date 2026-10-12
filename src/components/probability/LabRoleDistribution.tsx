@@ -1,6 +1,7 @@
 import { createRoleGroupKey, getDeckGroupTheme } from '../../app/deck-groups'
 import { DISTRIBUTION_BUCKETS, type RoleDistribution, type RoleDistributionKey } from '../../app/role-distribution'
 import { formatInteger, formatShortPercent, formatWholePercent } from '../../app/utils'
+import { t } from '../../i18n'
 import { ProgressRing } from '../ui/ProgressRing'
 import { LabSection } from './LabSection'
 
@@ -23,9 +24,9 @@ export function LabRoleDistribution({ distributions, onOpenRole }: LabRoleDistri
 
   return (
     <LabSection
-      title="Qué robás de cada rol"
+      title={t('lab.roles.title')}
       icon="layers"
-      summary={starters ? `${formatShortPercent(starters.atLeastOne)} con 1+ starter` : undefined}
+      summary={starters ? t('lab.roles.summary', { percent: formatShortPercent(starters.atLeastOne) }) : undefined}
       defaultOpenOnMobile={false}
       className="order-4 min-[1101px]:col-span-full"
     >
@@ -36,8 +37,8 @@ export function LabRoleDistribution({ distributions, onOpenRole }: LabRoleDistri
               type="button"
               className="group grid w-full justify-items-center gap-2 rounded-card px-2 py-3 text-center transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus enabled:hover:bg-tint/6 disabled:opacity-50"
               disabled={distribution.copies === 0}
-              aria-label={`${distribution.label}: ${formatShortPercent(distribution.atLeastOne)} de robar al menos una. Ver cartas`}
-              title={DISTRIBUTION_BUCKETS.map((bucket, bucketIndex) => `${bucket} copias: ${formatShortPercent(distribution.buckets[bucketIndex] ?? 0)}`).join(' · ')}
+              aria-label={t('lab.roles.chanceOpen', { label: distribution.label, percent: formatShortPercent(distribution.atLeastOne) })}
+              title={DISTRIBUTION_BUCKETS.map((bucket, bucketIndex) => t('lab.roles.bucket', { bucket, percent: formatShortPercent(distribution.buckets[bucketIndex] ?? 0) })).join(' · ')}
               onClick={() => onOpenRole(distribution)}
             >
               <ProgressRing
@@ -46,13 +47,13 @@ export function LabRoleDistribution({ distributions, onOpenRole }: LabRoleDistri
                 size={112}
                 strokeWidth={12}
                 delay={index * 120}
-                label={`${distribution.label}: ${formatShortPercent(distribution.atLeastOne)} de robar al menos una`}
+                label={t('lab.roles.chance', { label: distribution.label, percent: formatShortPercent(distribution.atLeastOne) })}
               >
                 <strong className="text-lead font-semibold text-foreground tabular-nums">{formatWholePercent(distribution.atLeastOne)}</strong>
               </ProgressRing>
               <span className="grid gap-0.5">
                 <strong className="text-body font-semibold text-foreground">{distribution.label}</strong>
-                <small className="text-micro text-muted">{formatInteger(distribution.copies)} copias</small>
+                <small className="text-micro text-muted">{t('lab.roles.copies', { count: distribution.copies, n: formatInteger(distribution.copies) })}</small>
               </span>
             </button>
           </li>

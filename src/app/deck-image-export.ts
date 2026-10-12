@@ -1,4 +1,5 @@
 import kdeTemplateUrl from '../assets/kde-decklist.pdf?url'
+import { getLocale, t } from '../i18n'
 import { toPortableDeckBuilder } from './app-state-codec'
 import { canvasToJpegBlob, downloadBlob } from './deck-image-export-download'
 import { renderDeckAsCanvas } from './deck-image-export-render'
@@ -15,25 +16,35 @@ export interface DeckExportSelection {
   json: boolean
 }
 
-export const DECK_EXPORT_FILES: ReadonlyArray<{ key: keyof DeckExportSelection; label: string; description: string }> = [
-  { key: 'image', label: 'Imagen del deck', description: 'JPG en alta resolución, como se ve en el builder.' },
-  { key: 'pdf', label: 'Decklist oficial', description: 'La planilla de Konami para torneos, en PDF.' },
-  { key: 'ydk', label: 'Archivo YDK', description: 'Para abrir el deck en simuladores y otras apps.' },
-  { key: 'txt', label: 'Lista en texto', description: 'Cantidad y nombre por línea, con Main, Extra y Side: para pegar en cualquier lado (y volver a importar acá).' },
-  { key: 'json', label: 'Copia para esta app', description: 'El deck con sus roles, tal cual: se importa acá en otro navegador.' },
-]
+// Las tablas guardan claves de mensajes, no textos: el texto se arma al leerlo, en el idioma de ese momento.
+const FILE_KEYS = {
+  image: { label: 'deck.export.files.image.label', description: 'deck.export.files.image.description', name: 'deck.export.files.image.name' },
+  pdf: { label: 'deck.export.files.pdf.label', description: 'deck.export.files.pdf.description', name: 'deck.export.files.pdf.name' },
+  ydk: { label: 'deck.export.files.ydk.label', description: 'deck.export.files.ydk.description', name: 'deck.export.files.ydk.name' },
+  txt: { label: 'deck.export.files.txt.label', description: 'deck.export.files.txt.description', name: 'deck.export.files.txt.name' },
+  json: { label: 'deck.export.files.json.label', description: 'deck.export.files.json.description', name: 'deck.export.files.json.name' },
+} as const
 
-const FILE_NAMES: Record<keyof DeckExportSelection, string> = { image: 'imagen', pdf: 'decklist PDF', ydk: 'YDK', txt: 'lista TXT', json: 'JSON' }
+export const DECK_EXPORT_FILES: ReadonlyArray<{ key: keyof DeckExportSelection; label: string; description: string }> = (
+  Object.keys(FILE_KEYS) as Array<keyof DeckExportSelection>
+).map((key) => ({
+  key,
+  get label() {
+    return t(FILE_KEYS[key].label)
+  },
+  get description() {
+    return t(FILE_KEYS[key].description)
+  },
+}))
+
+/** "A, B y C" (en inglés "A, B, and C"): la lista con la conjunción del idioma actual. */
+function joinList(items: string[]): string {
+  return new Intl.ListFormat(getLocale(), { style: 'long', type: 'conjunction' }).format(items)
+}
 
 /** "imagen, decklist PDF y YDK": los archivos elegidos, para el botón y el aviso. */
 export function describeExportSelection(selection: DeckExportSelection): string {
-  const names = DECK_EXPORT_FILES.filter((file) => selection[file.key]).map((file) => FILE_NAMES[file.key])
-
-  if (names.length === 0) {
-    return ''
-  }
-
-  return names.length === 1 ? names[0]! : `${names.slice(0, -1).join(', ')} y ${names.at(-1)}`
+  return joinList(DECK_EXPORT_FILES.filter((file) => selection[file.key]).map((file) => t(FILE_KEYS[file.key].name)))
 }
 
 interface DeckExportResult {
@@ -60,10 +71,12 @@ export async function exportDeckAssets(
   if (selection.txt) downloadBlob(new Blob([buildDecklistText(deckBuilder)], { type: 'text/plain;charset=utf-8' }), filenameBase, 'txt')
   if (selection.json) downloadBlob(new Blob([buildDeckJson(deckBuilder)], { type: 'application/json;charset=utf-8' }), filenameBase, 'json')
 
-  const failed = [image.status === 'rejected' && 'la imagen', pdf.status === 'rejected' && 'el PDF'].filter(Boolean)
+  const failed = [image.status === 'rejected' && t('deck.export.failed.image'), pdf.status === 'rejected' && t('deck.export.failed.pdf')].filter(
+    (name): name is string => Boolean(name),
+  )
 
   if (failed.length > 0) {
-    throw new Error(`Se descargó lo que pude, pero falló ${failed.join(' y ')}.`)
+    throw new Error(t('deck.export.error.partial', { failed: joinList(failed) }))
   }
 
   return { decklistOverflow: decklist?.overflow ?? [] }
@@ -77,7 +90,7 @@ async function buildDecklistPdf(decklist: ReturnType<typeof buildKdeDecklist>): 
   ])
 
   if (!templateResponse.ok) {
-    throw new Error('No pude cargar la planilla oficial de decklist.')
+    throw new Error(t('deck.export.error.template'))
   }
 
   return fillKdeDecklistPdf(await templateResponse.arrayBuffer(), decklist)

@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import type { DeckZone } from './model'
 import type {
   DeckImportPreview,
@@ -84,5 +85,5 @@ export function formatZoneGroupHeader(zone: DeckZone, count: number): string {
 
 /** Formatea el aria-label de una sección (ej: "Cartas resueltas, 15 elementos") */
 export function formatSectionAriaLabel(sectionName: string, itemCount: number): string {
-  return `${sectionName}, ${itemCount} ${itemCount === 1 ? 'elemento' : 'elementos'}`
+  return t('deck.import.section.aria', { name: sectionName, count: itemCount })
 }

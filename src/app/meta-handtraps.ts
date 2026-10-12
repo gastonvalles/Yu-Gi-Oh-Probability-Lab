@@ -1,4 +1,5 @@
 import metaDecksJson from '../data/meta-decks.json'
+import { t } from '../i18n'
 import type { BanlistStatus } from '../types'
 import { normalizeSearchText } from './utils'
 
@@ -284,7 +285,7 @@ export function buildMetaReport(data: MetaDecksData, region: MetaRegion, zone: M
 
     handtraps.push({
       id,
-      name: card?.name ?? `Carta ${id}`,
+      name: card?.name ?? t('meta.handtrap.unknown', { id }),
       image: card?.image ?? null,
       decks: entry.decks,
       share,

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { MIN_WEEK_DECKS, PROJECTION_WEEKS, type HandtrapStat } from '../../app/meta-handtraps'
 import { formatInteger } from '../../app/utils'
+import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
 import { fetchCardsByIds, type ApiCardSearchResult } from '../../ygoprodeck'
 import { CardOverlay, CardPanelBody, CardPanelFooter, CardPanelHeader } from '../card-detail/CardOverlay'
@@ -56,8 +57,8 @@ function HandtrapOverlay({ stat, onClose, onPickArchetype, onShowDecks }: Handtr
 
   return (
     <CardOverlay
-      ariaLabel={`Detalle de ${stat.name} en el meta`}
-      panelLabel="Uso en el meta"
+      ariaLabel={t('meta.handtrap.ariaLabel', { name: stat.name })}
+      panelLabel={t('meta.handtrap.panelLabel')}
       name={stat.name}
       card={card ?? placeholderCard(stat)}
       tall
@@ -68,33 +69,36 @@ function HandtrapOverlay({ stat, onClose, onPickArchetype, onShowDecks }: Handtr
         title={stat.name}
         lines={[
           summary ? `${summary.typeLine}${summary.statLine ? ` · ${summary.statLine}` : ''}` : null,
-          `${tierLabel(stat.tier)} · ${percent(stat.share)} de los decks (${formatInteger(stat.decks)})`,
-          `Main ${usageText(stat.main.decks, stat.main.copies, stat.decks)} · Side ${usageText(stat.side.decks, stat.side.copies, stat.decks)}`,
+          t('meta.handtrap.shareLine', { tier: tierLabel(stat.tier), percent: percent(stat.share), decks: formatInteger(stat.decks) }),
+          t('meta.handtrap.usageLine', {
+            main: usageText(stat.main.decks, stat.main.copies, stat.decks),
+            side: usageText(stat.side.decks, stat.side.copies, stat.decks),
+          }),
         ]}
       />
-      <CardPanelBody label="Tendencia y decks que la juegan">
+      <CardPanelBody label={t('meta.handtrap.bodyLabel')}>
         <div className="grid gap-3">
           <div className="grid gap-1.5">
-            <span className={overline}>Tendencia</span>
+            <span className={overline}>{t('meta.handtrap.trend')}</span>
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone={TREND_LOOK[stat.trend].tone}>{trendText(stat)}</Badge>
-              <span className="text-micro text-white/66">Proyección a {formatInteger(PROJECTION_WEEKS)} semanas.</span>
+              <span className="text-micro text-white/66">{t('meta.handtrap.projection', { ahead: formatInteger(PROJECTION_WEEKS) })}</span>
             </div>
             {/* Una semana con pocos decks se muestra vacía: tampoco pesa en la tendencia. */}
-            <p className="m-0 text-micro text-white/66 tabular-nums" title="De la semana más vieja a la más nueva">
-              Semana a semana: {stat.weekly.map((week) => (week.decks >= MIN_WEEK_DECKS ? percent(week.share) : '—')).join(' · ')}
+            <p className="m-0 text-micro text-white/66 tabular-nums" title={t('meta.handtrap.weeklyHint')}>
+              {t('meta.handtrap.weekly', { values: stat.weekly.map((week) => (week.decks >= MIN_WEEK_DECKS ? percent(week.share) : '—')).join(' · ') })}
             </p>
           </div>
 
           <div className="grid gap-1.5">
-            <span className={overline}>Decks que la juegan</span>
+            <span className={overline}>{t('meta.handtrap.archetypes')}</span>
             <div className="flex flex-wrap items-center gap-1.5">
               {stat.archetypes.slice(0, MAX_ARCHETYPE_CHIPS).map((archetype) => (
                 <button
                   key={archetype.name}
                   type="button"
                   className={cx(choiceChip, 'h-7 gap-1.5 px-2.5 text-micro')}
-                  title={`Ver sólo los decks ${archetype.name}`}
+                  title={t('meta.handtrap.onlyArchetype', { name: archetype.name })}
                   onClick={() => onPickArchetype(archetype.name)}
                 >
                   {archetype.name}
@@ -104,7 +108,7 @@ function HandtrapOverlay({ stat, onClose, onPickArchetype, onShowDecks }: Handtr
                 </button>
               ))}
               {stat.archetypes.length > MAX_ARCHETYPE_CHIPS ? (
-                <span className="text-micro text-white/66">+{formatInteger(stat.archetypes.length - MAX_ARCHETYPE_CHIPS)} más</span>
+                <span className="text-micro text-white/66">{t('meta.handtrap.moreArchetypes', { count: formatInteger(stat.archetypes.length - MAX_ARCHETYPE_CHIPS) })}</span>
               ) : null}
             </div>
           </div>
@@ -112,7 +116,7 @@ function HandtrapOverlay({ stat, onClose, onPickArchetype, onShowDecks }: Handtr
       </CardPanelBody>
       <CardPanelFooter>
         <Button variant="primary" size="md" fullWidth icon="layers" onClick={() => onShowDecks(stat.id)}>
-          Ver los decks que la juegan
+          {t('meta.handtrap.showDecks')}
         </Button>
       </CardPanelFooter>
     </CardOverlay>

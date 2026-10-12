@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 
 import type { CardEntry, HandPattern } from '../../../types'
 import { getPatternMatchMode, normalizeMinimumConditionMatches } from '../../../app/patterns'
+import { t } from '../../../i18n'
 import { buildPatternCompactSummary, buildPatternPreview } from '../pattern-helpers'
 import type { PatternEditorActions } from '../pattern-editor-actions'
 import { Button } from '../../ui/Button'
@@ -57,28 +58,29 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
   return (
     <div className="grid gap-5">
       {pattern.needsReview ? (
-        <Callout tone="warning">Esta regla viene de una versión anterior. Revisá estos ajustes antes de confiar en el resultado.</Callout>
+        <Callout tone="warning">{t('builder.reviewNotice')}</Callout>
       ) : null}
 
       <div className="grid gap-2">
-        <RuleStep title="Nombre" inline>
+        <RuleStep title={t('builder.step.name')} inline>
           <PatternNameInput
             patternId={pattern.id}
             currentName={pattern.name}
-            placeholderSummary={preview.items.some((item) => item.startsWith('(')) ? 'Opcional: si no, se usa el resumen' : summary}
+            // Un ítem que empieza con "(" es una condición sin criterio: con la regla a medias no hay resumen que ofrecer.
+            placeholderSummary={preview.items.some((item) => item.startsWith('(')) ? t('builder.name.useSummary') : summary}
             isPendingCreation={isPendingCreation}
             actions={actions}
           />
         </RuleStep>
-        <RuleStep title="Tipo" inline>
+        <RuleStep title={t('builder.step.kind')} inline>
           <KindToggle patternId={pattern.id} currentKind={pattern.kind} actions={actions} />
         </RuleStep>
-        <RuleStep title="Turno" inline>
+        <RuleStep title={t('builder.step.turn')} inline>
           <TurnContextToggle patternId={pattern.id} currentTurnContext={pattern.turnContext} actions={actions} />
         </RuleStep>
       </div>
 
-      <RuleStep title="Condiciones">
+      <RuleStep title={t('builder.step.conditions')}>
         {conditionCount > 1 ? (
           <LogicSelector
             patternId={pattern.id}
@@ -114,15 +116,15 @@ export function RuleBuilder({ actions, derivedMainCards, isPendingCreation, patt
         {conditionCount <= 1 ? (
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" size="sm" icon="plus" onClick={() => addCondition()}>
-              Y otra condición
+              {t('builder.addAnd')}
             </Button>
             <Button variant="secondary" size="sm" icon="plus" onClick={() => addCondition('any')}>
-              O otra condición
+              {t('builder.addOr')}
             </Button>
           </div>
         ) : (
           <Button variant="secondary" size="sm" icon="plus" className="justify-self-start" onClick={() => addCondition()}>
-            Agregar condición
+            {t('builder.add')}
           </Button>
         )}
 

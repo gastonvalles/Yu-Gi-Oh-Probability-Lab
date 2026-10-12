@@ -7,6 +7,7 @@ import type { DeckDropIndicatorState } from '../../app/use-deck-pointer-drag'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useBodyScrollLock } from '../../app/use-overlay'
 import { formatInteger } from '../../app/utils'
+import { t } from '../../i18n'
 import type { DeckFormat } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import type { CardSearchFilters } from '../../app/card-search'
@@ -159,7 +160,7 @@ export function DeckBuilderStep({
   const pendingClearZoneCardCount =
     pendingClearZone === 'all' ? totalDeckCardCount : pendingClearZone ? deckBuilder[pendingClearZone].length : 0
   const pendingClearZoneLabel =
-    pendingClearZone === 'all' ? 'todo el deck' : pendingClearZone ? getDeckZoneLabel(pendingClearZone) : ''
+    pendingClearZone === 'all' ? t('deck.builder.clearAllLabel') : pendingClearZone ? getDeckZoneLabel(pendingClearZone) : ''
   const handleSearchCardPointerDown = (
     event: ReactPointerEvent<HTMLElement>,
     apiCardId: number,
@@ -264,19 +265,19 @@ export function DeckBuilderStep({
             <div className="relative z-1 grid h-full min-h-0 content-start gap-4 overflow-y-auto overflow-x-hidden px-8 pb-6 pt-4 [scrollbar-gutter:stable] [scrollbar-width:thin] max-[1500px]:px-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex min-w-0 flex-[1_1_16rem] items-stretch gap-3">
-                  <LabeledField label="Nombre del deck" className="min-w-0 max-w-[16rem] flex-[1_1_auto]">
+                  <LabeledField label={t('deck.builder.deckName')} className="min-w-0 max-w-[16rem] flex-[1_1_auto]">
                     <input
                       type="text"
                       value={deckBuilder.deckName}
                       onChange={(event) => onDeckNameChange(event.target.value)}
-                      placeholder="Nombre del deck"
+                      placeholder={t('deck.builder.deckName')}
                       className={fieldInline}
                     />
                   </LabeledField>
 
-                  <LabeledField label="Formato" className="w-[9.5rem] flex-none">
+                  <LabeledField label={t('deck.builder.format')} className="w-[9.5rem] flex-none">
                     <select value={deckFormat} onChange={(event) => onDeckFormatChange(event.target.value as DeckFormat)} className={cx(fieldInline, 'cursor-pointer')}>
-                      <option value="unlimited">Sin límite</option>
+                      <option value="unlimited">{t('deck.format.unlimited')}</option>
                       <option value="tcg">TCG</option>
                       <option value="ocg">OCG</option>
                       <option value="goat">GOAT</option>
@@ -288,14 +289,14 @@ export function DeckBuilderStep({
 
                 <div className="flex items-center gap-2">
                   <Button variant="secondary" size="md" icon="upload" className="whitespace-nowrap" onClick={() => setImportDrawerOpen(true)}>
-                    Importar deck
+                    {t('deck.builder.importDeck')}
                   </Button>
 
                   <IconButton
                     size="lg"
                     className="size-10"
-                    aria-label="Ordenar todo"
-                    title="Ordenar todo"
+                    aria-label={t('deck.builder.sortAll')}
+                    title={t('deck.builder.sortAll')}
                     onClick={onSortAllDeckZones}
                     disabled={totalDeckCardCount < 2}
                   >
@@ -305,8 +306,8 @@ export function DeckBuilderStep({
                   <IconButton
                     size="lg"
                     className="size-10"
-                    aria-label="Vaciar todo"
-                    title="Vaciar todo"
+                    aria-label={t('deck.builder.clearAll')}
+                    title={t('deck.builder.clearAll')}
                     onClick={handleRequestClearAllDeckZones}
                     disabled={totalDeckCardCount === 0}
                   >
@@ -396,14 +397,14 @@ export function DeckBuilderStep({
 
         <ConfirmDialog
           isOpen={pendingClearZone !== null}
-          title={pendingClearZoneLabel ? `Vaciar ${pendingClearZoneLabel}` : 'Vaciar zona'}
+          title={pendingClearZoneLabel ? t('deck.zone.clear', { zone: pendingClearZoneLabel }) : t('deck.builder.clearZoneTitle')}
           description={
             pendingClearZoneLabel
-              ? `Se van a quitar ${formatInteger(pendingClearZoneCardCount)} carta${pendingClearZoneCardCount === 1 ? '' : 's'} de ${pendingClearZoneLabel}. Esta acción no se puede deshacer.`
+              ? t('deck.builder.clearConfirm', { count: formatInteger(pendingClearZoneCardCount), zone: pendingClearZoneLabel })
               : ''
           }
-          cancelLabel="Cancelar"
-          confirmLabel="Sí, vaciar"
+          cancelLabel={t('common.cancel')}
+          confirmLabel={t('deck.builder.clearConfirmYes')}
           confirmVariant="primary"
           confirmColor="danger"
           onCancel={() => setPendingClearZone(null)}
@@ -416,30 +417,30 @@ export function DeckBuilderStep({
   return (
     <section id="step1" className="grid w-full gap-4 px-gutter pb-6 pt-4">
       <StepHero
-        title="Armá tu deck"
+        title={t('deck.builder.title')}
         icon="cards"
-        help="Agregá cartas desde el buscador. Tocá una carta del deck para ver el detalle y sumar o quitar copias; para moverla entre Main, Extra y Side, mantenela presionada y arrastrala."
+        help={t('deck.builder.help')}
         sideVariant="form"
         side={
           <>
-            <LabeledField label="Nombre del deck">
+            <LabeledField label={t('deck.builder.deckName')}>
               <input
-                aria-label="Nombre del deck"
+                aria-label={t('deck.builder.deckName')}
                 type="text"
                 value={deckBuilder.deckName}
                 onChange={(event) => onDeckNameChange(event.target.value)}
-                placeholder="Nombre del deck"
+                placeholder={t('deck.builder.deckName')}
                 className={fieldInline}
               />
             </LabeledField>
-            <LabeledField label="Formato">
+            <LabeledField label={t('deck.builder.format')}>
               <select
-                aria-label="Formato del deck"
+                aria-label={t('deck.builder.formatAria')}
                 value={deckFormat}
                 onChange={(event) => onDeckFormatChange(event.target.value as DeckFormat)}
                 className={cx(fieldInline, 'cursor-pointer')}
               >
-                <option value="unlimited">Sin límite</option>
+                <option value="unlimited">{t('deck.format.unlimited')}</option>
                 <option value="tcg">TCG</option>
                 <option value="ocg">OCG</option>
                 <option value="goat">GOAT</option>
@@ -449,13 +450,13 @@ export function DeckBuilderStep({
             </LabeledField>
             {/* Debajo del nombre y el formato: tres íconos con su nombre en el tooltip y en lectores de pantalla. */}
             <div className="col-span-2 flex items-center">
-            <IconButton tone="ghost" size="md" aria-label="Importar" title="Importar" onClick={() => setImportDrawerOpen(true)}>
+            <IconButton tone="ghost" size="md" aria-label={t('deck.builder.import')} title={t('deck.builder.import')} onClick={() => setImportDrawerOpen(true)}>
               <Icon name="upload" size={20} />
             </IconButton>
-            <IconButton tone="ghost" size="md" aria-label="Ordenar todo" title="Ordenar todo" disabled={totalDeckCardCount < 2} className="disabled:opacity-35" onClick={onSortAllDeckZones}>
+            <IconButton tone="ghost" size="md" aria-label={t('deck.builder.sortAll')} title={t('deck.builder.sortAll')} disabled={totalDeckCardCount < 2} className="disabled:opacity-35" onClick={onSortAllDeckZones}>
               <Icon name="sort" size={20} />
             </IconButton>
-            <IconButton tone="ghost" size="md" aria-label="Vaciar todo" title="Vaciar todo" disabled={totalDeckCardCount === 0} className="disabled:opacity-35" onClick={handleRequestClearAllDeckZones}>
+            <IconButton tone="ghost" size="md" aria-label={t('deck.builder.clearAll')} title={t('deck.builder.clearAll')} disabled={totalDeckCardCount === 0} className="disabled:opacity-35" onClick={handleRequestClearAllDeckZones}>
               <Icon name="trash" size={20} />
             </IconButton>
             </div>
@@ -470,27 +471,27 @@ export function DeckBuilderStep({
             tone={genesysPointTotal > genesysPointCap ? 'warning' : 'brand'}
             size={60}
             strokeWidth={6}
-            label={`Puntos Genesys: ${formatInteger(genesysPointTotal)} de ${formatInteger(genesysPointCap)}`}
+            label={t('deck.builder.genesys.label', { total: formatInteger(genesysPointTotal), cap: formatInteger(genesysPointCap) })}
           >
             {formatInteger(genesysPointTotal)}
           </ProgressRing>
           <div className="grid gap-0.5">
-            <span className={overline}>Puntos Genesys</span>
+            <span className={overline}>{t('deck.builder.genesys.title')}</span>
             <strong className="text-body font-semibold text-foreground tabular-nums">
-              {formatInteger(genesysPointTotal)} / {formatInteger(genesysPointCap)} pts
+              {t('deck.builder.genesys.total', { total: formatInteger(genesysPointTotal), cap: formatInteger(genesysPointCap) })}
             </strong>
-            <p className="m-0 text-micro text-muted">Cap estándar de 100 puntos y hasta 3 copias por carta.</p>
+            <p className="m-0 text-micro text-muted">{t('deck.builder.genesys.cap')}</p>
           </div>
         </Card>
       ) : null}
 
       {showFormatIssues ? (
-        <Callout tone="warning" title={`${formatIssues.length} ajuste${formatIssues.length === 1 ? '' : 's'} para ${formatLabel}`} className="min-[1101px]:hidden">
+        <Callout tone="warning" title={t('deck.builder.issues.title', { count: formatIssues.length, format: formatLabel })} className="min-[1101px]:hidden">
           <ul className="m-0 grid list-none gap-1 p-0">
             {visibleFormatIssues.map((issue) => (
               <li key={issue}>{issue}</li>
             ))}
-            {hasHiddenIssues ? <li className="text-soft">+ {formatIssues.length - visibleFormatIssues.length} más</li> : null}
+            {hasHiddenIssues ? <li className="text-soft">{t('deck.builder.issues.more', { count: formatIssues.length - visibleFormatIssues.length })}</li> : null}
           </ul>
         </Callout>
       ) : null}
@@ -500,7 +501,7 @@ export function DeckBuilderStep({
           <div className="grid gap-4">
             <div className="sticky top-2 z-20 min-[1101px]:hidden">
               <Button variant="primary" size="lg" fullWidth icon="plus" onClick={() => setMobileSearchOpen(true)}>
-                Buscar y agregar cartas
+                {t('deck.builder.search')}
               </Button>
             </div>
 
@@ -555,14 +556,14 @@ export function DeckBuilderStep({
 
       <ConfirmDialog
         isOpen={pendingClearZone !== null}
-        title={pendingClearZoneLabel ? `Vaciar ${pendingClearZoneLabel}` : 'Vaciar zona'}
+        title={pendingClearZoneLabel ? t('deck.zone.clear', { zone: pendingClearZoneLabel }) : t('deck.builder.clearZoneTitle')}
         description={
           pendingClearZoneLabel
-            ? `Se van a quitar ${formatInteger(pendingClearZoneCardCount)} carta${pendingClearZoneCardCount === 1 ? '' : 's'} de ${pendingClearZoneLabel}. Esta acción no se puede deshacer.`
+            ? t('deck.builder.clearConfirm', { count: formatInteger(pendingClearZoneCardCount), zone: pendingClearZoneLabel })
             : ''
         }
-        cancelLabel="Cancelar"
-        confirmLabel="Sí, vaciar"
+        cancelLabel={t('common.cancel')}
+        confirmLabel={t('deck.builder.clearConfirmYes')}
         confirmVariant="primary"
         confirmColor="danger"
         onCancel={() => setPendingClearZone(null)}

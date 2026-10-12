@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { isCardFullyClassified } from '../../app/role-step'
 import { formatInteger } from '../../app/utils'
+import { t } from '../../i18n'
 import type { CardEntry, CardOrigin, CardRole } from '../../types'
 import { ClassificationEditor } from '../classification/ClassificationEditor'
 import { ClassificationQueue } from '../classification/ClassificationQueue'
@@ -51,19 +52,19 @@ export function LabPendingClassification({ cards, message, onSetOrigin, onToggle
     <div className="grid min-w-0 content-start gap-3">
       <Card tone={pendingCount > 0 ? 'warning' : 'success'} className="flex items-center justify-between gap-4">
         <div className="grid min-w-0 gap-0.5">
-          <p className={cx('m-0', overline)}>{pendingCount > 0 ? 'Falta clasificar' : 'Todo clasificado'}</p>
+          <p className={cx('m-0', overline)}>{pendingCount > 0 ? t('lab.pending.overline') : t('lab.pending.allDone')}</p>
           <h3 className="m-0 text-lead font-semibold leading-tight text-foreground">
             {pendingCount > 0
-              ? `${formatInteger(pendingCount)} carta${pendingCount === 1 ? '' : 's'} por cerrar`
-              : 'Ya no falta ninguna carta'}
+              ? t('lab.pending.count', { count: pendingCount, n: formatInteger(pendingCount) })
+              : t('lab.pending.none')}
           </h3>
           <p className={supportText}>
             {pendingCount > 0
-              ? `${message} Tocá una carta, resolvela acá mismo y cuando termines el Lab calcula solo.`
-              : 'Cerrá el editor para ver el resultado.'}
+              ? t('lab.pending.help', { message })
+              : t('lab.pending.closeEditor')}
           </p>
         </div>
-        <ProgressRing value={cards.length > 0 ? classified / cards.length : 0} tone={pendingCount > 0 ? 'warning' : 'success'} size={76} strokeWidth={8} label="Cartas clasificadas" />
+        <ProgressRing value={cards.length > 0 ? classified / cards.length : 0} tone={pendingCount > 0 ? 'warning' : 'success'} size={76} strokeWidth={8} label={t('lab.pending.ringLabel')} />
       </Card>
 
       <ClassificationQueue cards={visible} selectedId={selectedId} onSelect={setSelectedId} />

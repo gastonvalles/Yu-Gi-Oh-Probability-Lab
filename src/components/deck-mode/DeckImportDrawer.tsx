@@ -29,6 +29,7 @@ import type { DeckBuilderState } from '../../app/model'
 import { useFocusTrap } from '../../app/use-focus-trap'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import { formatInteger } from '../../app/utils'
+import { t } from '../../i18n'
 import type { DeckFormat } from '../../types'
 import { loadCardCatalog } from '../../ygoprodeck'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
@@ -160,13 +161,13 @@ function ProblemSummaryBar({ preview }: { preview: DeckImportPreview }) {
 
   const items: string[] = []
   if (summary.missingCount > 0) {
-    items.push(`${summary.missingCount} no encontrada${summary.missingCount === 1 ? '' : 's'}`)
+    items.push(t('deck.import.summary.missing', { count: summary.missingCount }))
   }
   if (summary.conflictCount > 0) {
-    items.push(`${summary.conflictCount} conflicto${summary.conflictCount === 1 ? '' : 's'}`)
+    items.push(t('deck.import.summary.conflicts', { count: summary.conflictCount }))
   }
   if (summary.invalidLineCount > 0) {
-    items.push(`${summary.invalidLineCount} línea${summary.invalidLineCount === 1 ? '' : 's'} inválida${summary.invalidLineCount === 1 ? '' : 's'}`)
+    items.push(t('deck.import.summary.invalid', { count: summary.invalidLineCount }))
   }
 
   return <Callout tone="warning">{items.join(' · ')}</Callout>
@@ -197,7 +198,7 @@ export function DeckImportDrawer({
   const hasExistingDeck = target === 'builder' && currentDeckCardCount > 0
   const canApplyPreview = Boolean(preview && preview.importedCardCount > 0)
   const applyButtonLabel =
-    target === 'comparison' ? 'Guardar build para comparar' : hasExistingDeck ? 'Reemplazar deck actual' : 'Importar al builder'
+    target === 'comparison' ? t('deck.import.apply.compare') : hasExistingDeck ? t('deck.import.apply.replace') : t('deck.import.apply.import')
 
   useEffect(() => {
     if (!isOpen) {
@@ -225,12 +226,12 @@ export function DeckImportDrawer({
     setPreview(nextPreview)
 
     if (nextPreview.parsedEntries.length === 0) {
-      setFormError(options?.emptyMessage ?? 'No pude detectar cartas importables en la entrada cargada.')
+      setFormError(options?.emptyMessage ?? t('deck.import.error.noCards'))
       return
     }
 
     if (nextPreview.importedCardCount === 0) {
-      setFormError('No pude resolver ninguna carta para cargarla al deck actual.')
+      setFormError(t('deck.import.error.unresolved'))
       return
     }
 
@@ -242,7 +243,7 @@ export function DeckImportDrawer({
 
     if (trimmedValue.length === 0) {
       setPreview(null)
-      setFormError('Pegá una lista de cartas si querés cargar la lista a mano.')
+      setFormError(t('deck.import.error.emptyText'))
       return
     }
 
@@ -258,16 +259,16 @@ export function DeckImportDrawer({
         text: trimmedValue,
         source: {
           kind: 'text',
-          label: 'Texto pegado manualmente',
+          label: t('deck.import.source.pastedManually'),
         },
       })
 
       handlePreviewResult(nextPreview, {
-        emptyMessage: 'No pude detectar una lista válida en el texto pegado.',
+        emptyMessage: t('deck.import.error.noList'),
       })
     } catch (error) {
       setPreview(null)
-      setFormError(error instanceof Error ? error.message : 'No pude procesar el texto pegado.')
+      setFormError(error instanceof Error ? error.message : t('deck.import.error.processText'))
     } finally {
       setIsProcessing(false)
     }
@@ -278,7 +279,7 @@ export function DeckImportDrawer({
 
     if (!fileKind) {
       setPreview(null)
-      setFormError('Formato no soportado. Usá un archivo .txt, .json o .ydk.')
+      setFormError(t('deck.import.error.format'))
       return
     }
 
@@ -291,7 +292,7 @@ export function DeckImportDrawer({
 
     if (file.size > MAX_IMPORT_FILE_BYTES) {
       setPreview(null)
-      setFormError('El archivo pesa más de 2 MB: una lista de deck ocupa unos pocos KB.')
+      setFormError(t('deck.import.error.tooBig'))
       setIsProcessing(false)
       return
     }
@@ -307,7 +308,7 @@ export function DeckImportDrawer({
           source: {
             kind: 'json',
             fileName: file.name,
-            label: `Archivo JSON: ${file.name}`,
+            label: t('deck.import.source.json', { name: file.name }),
           },
         })
       } else {
@@ -323,7 +324,7 @@ export function DeckImportDrawer({
                 source: {
                   kind: 'ydk',
                   fileName: file.name,
-                  label: `Archivo YDK: ${file.name}`,
+                  label: t('deck.import.source.ydk', { name: file.name }),
                 },
               })
             : buildDeckImportPreview({
@@ -334,17 +335,17 @@ export function DeckImportDrawer({
                 source: {
                   kind: 'txt',
                   fileName: file.name,
-                  label: `Archivo TXT: ${file.name}`,
+                  label: t('deck.import.source.txt', { name: file.name }),
                 },
               })
       }
 
       handlePreviewResult(nextPreview, {
-        emptyMessage: 'El archivo no contiene cartas importables.',
+        emptyMessage: t('deck.import.error.emptyFile'),
       })
     } catch (error) {
       setPreview(null)
-      setFormError(error instanceof Error ? error.message : 'No pude leer el archivo seleccionado.')
+      setFormError(error instanceof Error ? error.message : t('deck.import.error.readFile'))
     } finally {
       setIsProcessing(false)
     }
@@ -410,7 +411,7 @@ export function DeckImportDrawer({
       <div className="fixed inset-0 z-150">
         <button
           type="button"
-          aria-label="Cerrar importador"
+          aria-label={t('deck.import.close')}
           className="absolute inset-0 h-full w-full bg-background/80"
           onClick={handleClose}
         />
@@ -420,18 +421,18 @@ export function DeckImportDrawer({
           tabIndex={-1}
           role="dialog"
           aria-modal="true"
-          aria-label="Importador de deck"
+          aria-label={t('deck.import.dialog')}
           className="absolute right-0 top-0 grid h-full w-full max-w-136 grid-rows-[auto_minmax(0,1fr)] gap-0 border-l outline-none border-border-subtle bg-card-background p-0 shadow-overlay"
         >
           <header className="flex items-start justify-between gap-3 border-b border-border-subtle px-4 py-3.5">
             <div className="flex min-w-0 items-start gap-3">
               <Icon name="upload" size={22} className={cx('mt-1 shrink-0', TONE.brand.text)} />
               <div className="min-w-0">
-                <h3 className="m-0 text-lead font-semibold tracking-[-0.01em] text-foreground">Importar deck</h3>
+                <h3 className="m-0 text-lead font-semibold tracking-[-0.01em] text-foreground">{t('deck.import.title')}</h3>
               </div>
             </div>
 
-            <CloseButton size="sm" aria-label="Cerrar importador" onClick={handleClose} />
+            <CloseButton size="sm" aria-label={t('deck.import.close')} onClick={handleClose} />
           </header>
 
           <div className="min-h-0 overflow-y-auto p-4">
@@ -463,21 +464,21 @@ export function DeckImportDrawer({
                   >
                     <span aria-live="polite" className="sr-only">
                       {isProcessing
-                        ? 'Procesando archivo'
+                        ? t('deck.import.live.processing')
                         : isDragActive
-                          ? 'Archivo detectado, soltá para cargar'
+                          ? t('deck.import.live.dragging')
                           : selectedFileName
-                            ? `Archivo cargado: ${selectedFileName}`
+                            ? t('deck.import.live.loaded', { name: selectedFileName })
                             : ''}
                     </span>
                     <div className="grid justify-items-center gap-2">
                       <Icon name="upload" size={28} className="text-primary-soft/70" />
-                      <strong className="text-body font-semibold text-foreground">Arrastrá el archivo acá</strong>
+                      <strong className="text-body font-semibold text-foreground">{t('deck.import.drop')}</strong>
                     </div>
 
                     <div className="flex flex-wrap justify-center gap-2">
                       <Button variant="primary" size="md" onClick={handleChooseFileClick} disabled={isProcessing}>
-                        {isProcessing ? 'Procesando...' : 'Seleccionar archivo'}
+                        {isProcessing ? t('deck.import.processing') : t('deck.import.chooseFile')}
                       </Button>
                     </div>
 
@@ -489,7 +490,7 @@ export function DeckImportDrawer({
 
                     {selectedFileName ? (
                       <span className={`${chip.accent} justify-self-center px-2 py-1 text-micro`}>
-                        Archivo seleccionado: {selectedFileName}
+                        {t('deck.import.selectedFile', { name: selectedFileName })}
                       </span>
                     ) : null}
 
@@ -515,14 +516,14 @@ export function DeckImportDrawer({
                       icon="file"
                       onClick={() => setManualFallbackOpen((current) => !current)}
                     >
-                      {manualFallbackOpen ? 'Ocultar texto' : 'Pegar texto'}
+                      {manualFallbackOpen ? t('deck.import.hideText') : t('deck.import.pasteText')}
                     </Button>
                   </div>
 
                   {manualFallbackOpen ? (
                     <div className="grid gap-2.5">
                       <textarea
-                        aria-label="Lista de cartas"
+                        aria-label={t('deck.import.listLabel')}
                         // Una lista real pesa unos pocos KB: el tope evita pegar un archivo gigante por error.
                         maxLength={MAX_IMPORT_TEXT_LENGTH}
                         value={inputValue}
@@ -546,7 +547,7 @@ export function DeckImportDrawer({
                               setFormError(null)
                             }}
                           >
-                            Limpiar
+                            {t('deck.import.clear')}
                           </Button>
                           <Button
                             variant="primary"
@@ -556,7 +557,7 @@ export function DeckImportDrawer({
                             }}
                             disabled={isProcessing}
                           >
-                            {isProcessing ? 'Procesando...' : 'Procesar texto'}
+                            {isProcessing ? t('deck.import.processing') : t('deck.import.processText')}
                           </Button>
                         </div>
                       </div>
@@ -603,7 +604,7 @@ export function DeckImportDrawer({
                     <article className="grid gap-2.5">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <small className={overline}>Vista previa</small>
+                          <small className={overline}>{t('deck.import.preview')}</small>
                           <h4 className="m-0 mt-0.5 text-lead font-semibold leading-tight text-foreground">
                             {buildPreviewHeadline(preview)}
                           </h4>
@@ -617,7 +618,7 @@ export function DeckImportDrawer({
                       <div className="flex flex-wrap gap-1.5">
                         <span className={`${chip.base} px-2 py-1 text-micro`}>{getPreviewSourceBadge(preview)}</span>
                         <span className={`${chip.accent} px-2 py-1 text-micro whitespace-nowrap`}>
-                          {formatInteger(preview.importedCardCount)} / {formatInteger(preview.requestedCardCount)} cartas
+                          {t('deck.import.cardsRatio', { imported: formatInteger(preview.importedCardCount), requested: formatInteger(preview.requestedCardCount) })}
                         </span>
                       </div>
 
@@ -643,7 +644,7 @@ export function DeckImportDrawer({
 
                       <div className="flex flex-wrap justify-end gap-2">
                         <Button variant="secondary" size="sm" onClick={handleClose}>
-                          Cancelar
+                          {t('common.cancel')}
                         </Button>
                         <Button
                           variant="primary"
@@ -658,12 +659,12 @@ export function DeckImportDrawer({
 
                     {preview.resolvedEntries.length > 0 ? (
                       <CollapsibleSection
-                        title="Cartas encontradas"
-                        subtitle="Estas cartas quedaron listas para cargar en el Deck Builder."
+                        title={t('deck.import.found.title')}
+                        subtitle={t('deck.import.found.subtitle')}
                         count={preview.resolvedEntries.length}
                         defaultExpanded={preview.importedCardCount !== preview.requestedCardCount}
                         role="region"
-                        aria-label={formatSectionAriaLabel('Cartas encontradas', preview.resolvedEntries.length)}
+                        aria-label={formatSectionAriaLabel(t('deck.import.found.title'), preview.resolvedEntries.length)}
                       >
                         <ZoneGroupSection entries={preview.resolvedEntries} />
                       </CollapsibleSection>
@@ -671,12 +672,12 @@ export function DeckImportDrawer({
 
                     {preview.missingEntries.length > 0 ? (
                       <CollapsibleSection
-                        title="No encontradas"
-                        subtitle="Quedan afuera del import hasta que el nombre o ID coincida con una carta disponible."
+                        title={t('deck.import.missing.title')}
+                        subtitle={t('deck.import.missing.subtitle')}
                         count={preview.missingEntries.length}
                         tone="danger"
                         role="region"
-                        aria-label={formatSectionAriaLabel('No encontradas', preview.missingEntries.length)}
+                        aria-label={formatSectionAriaLabel(t('deck.import.missing.title'), preview.missingEntries.length)}
                       >
                         {preview.missingEntries.map((entry) => (
                           <SimpleEntryCard
@@ -689,12 +690,12 @@ export function DeckImportDrawer({
 
                     {preview.conflicts.length > 0 ? (
                       <CollapsibleSection
-                        title="Conflictos de la importación"
-                        subtitle="Estas copias no se pudieron aplicar usando las reglas reales del deck builder."
+                        title={t('deck.import.conflicts.title')}
+                        subtitle={t('deck.import.conflicts.subtitle')}
                         count={preview.conflicts.length}
                         tone="warning"
                         role="region"
-                        aria-label={formatSectionAriaLabel('Conflictos del import', preview.conflicts.length)}
+                        aria-label={formatSectionAriaLabel(t('deck.import.conflicts.aria'), preview.conflicts.length)}
                       >
                         {preview.conflicts.map((entry) => (
                           <ConflictEntryCard key={`${entry.zone}:${entry.name}:${entry.reason}`} entry={entry} />
@@ -704,12 +705,12 @@ export function DeckImportDrawer({
 
                     {preview.invalidLines.length > 0 ? (
                       <CollapsibleSection
-                        title="Líneas inválidas"
-                        subtitle="Se ignoraron porque no pude leer una carta válida en esas líneas."
+                        title={t('deck.import.invalid.title')}
+                        subtitle={t('deck.import.invalid.subtitle')}
                         count={preview.invalidLines.length}
                         tone="danger"
                         role="region"
-                        aria-label={formatSectionAriaLabel('Líneas inválidas', preview.invalidLines.length)}
+                        aria-label={formatSectionAriaLabel(t('deck.import.invalid.title'), preview.invalidLines.length)}
                       >
                         {preview.invalidLines.map((entry) => (
                           <InvalidLineCard key={`${entry.lineNumber}:${entry.rawLine}`} entry={entry} />
@@ -725,14 +726,14 @@ export function DeckImportDrawer({
 
       <ConfirmDialog
         isOpen={isReplaceConfirmOpen}
-        title="Reemplazar deck actual"
+        title={t('deck.import.apply.replace')}
         description={
           preview
-            ? `Tu deck actual tiene ${formatInteger(currentDeckCardCount)} carta${currentDeckCardCount === 1 ? '' : 's'}. Si confirmás, se reemplaza por ${formatInteger(preview.importedCardCount)} carta${preview.importedCardCount === 1 ? '' : 's'} resueltas del import.`
+            ? `${t('deck.import.replace.current', { count: formatInteger(currentDeckCardCount) })} ${t('deck.import.replace.incoming', { count: formatInteger(preview.importedCardCount) })}`
             : ''
         }
-        cancelLabel="Volver"
-        confirmLabel="Sí, reemplazar"
+        cancelLabel={t('deck.import.replace.back')}
+        confirmLabel={t('deck.import.replace.confirm')}
         confirmColor="danger"
         onCancel={() => setIsReplaceConfirmOpen(false)}
         onConfirm={applyImport}
@@ -746,19 +747,19 @@ export function DeckImportDrawer({
 
 function buildPreviewHeadline(preview: DeckImportPreview): string {
   if (preview.importedCardCount === 0) {
-    return 'No hay cartas listas para importar'
+    return t('deck.import.headline.none')
   }
 
   if (preview.importedCardCount === preview.requestedCardCount) {
-    return 'Todo listo para aplicar el import'
+    return t('deck.import.headline.all')
   }
 
-  return 'Importación parcial lista para revisar'
+  return t('deck.import.headline.partial')
 }
 
 function buildPreviewDescription(preview: DeckImportPreview): string {
   if (preview.importedCardCount === 0) {
-    return 'La entrada se pudo leer, pero ninguna carta quedó lista para cargarse en el deck.'
+    return t('deck.import.description.none')
   }
 
   if (
@@ -766,10 +767,10 @@ function buildPreviewDescription(preview: DeckImportPreview): string {
     preview.conflicts.length === 0 &&
     preview.invalidLines.length === 0
   ) {
-    return 'Todas las cartas se pueden convertir directamente en el deck actual.'
+    return t('deck.import.description.all')
   }
 
-  return 'Sólo se van a cargar las cartas resueltas que no tengan conflictos.'
+  return t('deck.import.description.partial')
 }
 
 function getPreviewSourceBadge(preview: DeckImportPreview): string {
@@ -785,7 +786,7 @@ function getPreviewSourceBadge(preview: DeckImportPreview): string {
     return 'YDK'
   }
 
-  return 'Texto manual'
+  return t('deck.import.badge.text')
 }
 
 function ZoneTotalCard({
@@ -804,7 +805,7 @@ function ZoneTotalCard({
         tone={imported === requested ? 'success' : 'warning'}
         size={52}
         strokeWidth={5}
-        label={`${label}: ${formatInteger(imported)} de ${formatInteger(requested)} importadas`}
+        label={t('deck.import.zoneTotalAria', { zone: label, imported: formatInteger(imported), requested: formatInteger(requested) })}
       >
         {formatInteger(imported)}
       </ProgressRing>
@@ -813,7 +814,7 @@ function ZoneTotalCard({
         <strong className="text-body font-semibold leading-none text-foreground tabular-nums">
           {formatInteger(imported)} / {formatInteger(requested)}
         </strong>
-        <span className="text-muted text-micro leading-none">importadas / pedidas</span>
+        <span className="text-muted text-micro leading-none">{t('deck.import.zoneTotalCaption')}</span>
       </div>
     </div>
   )
@@ -866,10 +867,10 @@ function InvalidLineCard({ entry }: { entry: ImportedDeckInvalidLine }) {
   return (
     <article className="grid gap-1 border-b border-border-subtle py-2 last:border-b-0">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <strong className="text-body text-foreground">Línea {formatInteger(entry.lineNumber)}</strong>
-        <span className={`${chip.base} px-2 py-1 text-micro`}>Ignorada</span>
+        <strong className="text-body text-foreground">{t('deck.import.line', { number: formatInteger(entry.lineNumber) })}</strong>
+        <span className={`${chip.base} px-2 py-1 text-micro`}>{t('deck.import.ignored')}</span>
       </div>
-      <p className="m-0 text-micro text-foreground">{entry.rawLine.trim() || 'Línea vacía'}</p>
+      <p className="m-0 text-micro text-foreground">{entry.rawLine.trim() || t('deck.import.emptyLine')}</p>
       <p className="text-muted m-0 text-micro">{entry.reason}</p>
     </article>
   )

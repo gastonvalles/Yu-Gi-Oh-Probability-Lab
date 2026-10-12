@@ -1,6 +1,6 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
 
-import type { DeckBuilderState, DeckZone } from './model'
+import { createInitialState, type DeckBuilderState, type DeckZone } from './model'
 import { sortDeckCards } from './deck-sort'
 import type { CardOrigin, CardRole, DeckFormat } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
@@ -40,17 +40,10 @@ interface SetDeckCardOriginPayload {
   ygoprodeckId: number
 }
 
-const initialState: DeckBuilderState = {
-  deckName: 'Nuevo Deck',
-  main: [],
-  extra: [],
-  side: [],
-  isEditingDeck: true,
-}
-
 const deckBuilderSlice = createSlice({
   name: 'deckBuilder',
-  initialState,
+  // Perezoso: el nombre por defecto sale en el idioma de ese momento (nunca se arma texto al evaluar el módulo).
+  initialState: (): DeckBuilderState => createInitialState().deckBuilder,
   reducers: {
     addSearchResultToDeckZone(state, action: PayloadAction<AddSearchResultToDeckZonePayload>) {
       return addSearchResultToZone(

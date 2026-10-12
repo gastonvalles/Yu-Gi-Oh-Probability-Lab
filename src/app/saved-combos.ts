@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import { isRecord } from './utils'
 import { createId } from './utils'
 import type { MatAction, MatState } from './practice-mat'
@@ -66,7 +67,7 @@ function isSavedCombo(value: unknown): value is SavedCombo {
 
 /** Evita dos combos con el mismo nombre: "Línea básica", "Línea básica (2)"… */
 export function uniqueComboName(name: string, combos: readonly SavedCombo[]): string {
-  const base = name.trim() || 'Combo sin nombre'
+  const base = name.trim() || t('practice.combo.unnamed')
   const taken = new Set(combos.map((combo) => combo.name.toLowerCase()))
 
   if (!taken.has(base.toLowerCase())) {

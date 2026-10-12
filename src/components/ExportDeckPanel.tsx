@@ -9,6 +9,7 @@ import type { DeckBuilderState } from '../app/model'
 import { stopPersisting } from '../app/store'
 import { useToastMessage } from '../app/use-toast-message'
 import { buildYdkeUrl } from '../app/ydke'
+import { formatDay, t } from '../i18n'
 import type { DeckFormat } from '../types'
 import { ConfirmDialog } from './probability/ConfirmDialog'
 import { StepHero } from './StepHero'
@@ -41,8 +42,8 @@ const DEFAULT_SELECTION: DeckExportSelection = { image: true, pdf: true, ydk: tr
 const EXTENSION_LINKS = [
   { label: 'Chrome', href: 'https://chromewebstore.google.com/detail/deck-transfer-for-yu-gi-o/lgcpomfflpfipndmldmgblhpbnnfidgk' },
   { label: 'Firefox', href: 'https://addons.mozilla.org/firefox/addon/deck-transfer-for-master-duel/' },
-  { label: 'Código fuente', href: 'https://github.com/DawnbrandBots/deck-transfer-for-master-duel' },
-]
+  { labelKey: 'deck.export.neuron.sourceCode', href: 'https://github.com/DawnbrandBots/deck-transfer-for-master-duel' },
+] as const
 const KONAMI_DB_URL = 'https://www.db.yugioh-card.com/yugiohdb/?request_locale=en'
 const STEP = 'grid content-start gap-2 rounded-card bg-tint/5 p-3'
 const LINK = 'font-semibold text-primary-soft underline-offset-2 hover:underline'
@@ -60,8 +61,7 @@ function readSelection(): DeckExportSelection {
   }
 }
 
-/** "2026-10-12T10:00:00.000Z" → "12/10/2026". */
-const formatBackupDay = (iso: string) => new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+/** "2026-10-12T10:00:00.000Z" → "12/10/2026" (en inglés, "10/12/2026"). */
 
 function writeSelection(selection: DeckExportSelection) {
   try {
@@ -117,16 +117,16 @@ export function ExportDeckPanel({
   const copyYdke = async () => {
     try {
       await navigator.clipboard.writeText(buildYdkeUrl(deckBuilder))
-      showToast('Link YDKE copiado. Pegalo con el botón de importar de la extensión.', 'success')
+      showToast(t('deck.export.neuron.copied'), 'success')
     } catch {
-      showToast('No pude copiar el link. Descargá el .ydk y usá ese archivo.', 'error')
+      showToast(t('deck.export.neuron.copyFailed'), 'error')
     }
   }
 
   const downloadBackup = () => {
     const backup = collectBackup()
 
-    downloadBlob(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8' }), `ygo-probability-lab-copia-${backup.savedAt.slice(0, 10)}`, 'json')
+    downloadBlob(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8' }), t('deck.backup.fileName', { date: backup.savedAt.slice(0, 10) }), 'json')
   }
 
   const readBackupFile = async (file: File | undefined) => {
@@ -135,7 +135,7 @@ export function ExportDeckPanel({
     try {
       setPendingBackup(parseBackup(await file.text()))
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'No pude leer la copia.', 'error')
+      showToast(error instanceof Error ? error.message : t('deck.backup.readFailed'), 'error')
     }
   }
 
@@ -195,35 +195,33 @@ export function ExportDeckPanel({
   return (
     <StepPage as="article">
       <StepHero
-        title="Exportá tu deck"
+        title={t('deck.export.title')}
         icon="download"
-        subtitle="Para compartirlo, entregarlo en un torneo o llevarlo a Neuron."
+        subtitle={t('deck.export.subtitle')}
         side={(
           // Las opciones van en un modal: la página no las muestra de entrada.
           <Button variant="primary" size="md" icon="download" disabled={busy} onClick={() => setDownloadOpen(true)}>
-            {busy ? 'Generando archivos...' : 'Descargar'}
+            {busy ? t('deck.export.generating') : t('deck.export.download')}
           </Button>
         )}
       />
 
       <section className="grid min-w-0 gap-8 min-[1180px]:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)] min-[1180px]:items-start min-[1180px]:gap-10">
         <article className="grid min-w-0 content-start gap-4">
-          <SectionHeader icon="image" title="Imagen del deck" description="JPG en alta resolución." />
+          <SectionHeader icon="image" title={t('deck.export.image.title')} description={t('deck.export.image.description')} />
 
           {previewState === 'ready' && imagePreviewUrl ? (
             <img
               src={imagePreviewUrl}
-              alt="Vista previa de la imagen del deck"
+              alt={t('deck.export.image.alt')}
               className="pointer-events-none block h-auto w-full select-none rounded-card ring-1 ring-border-subtle"
               draggable={false}
             />
           ) : previewState === 'loading' ? (
             <Skeleton radius="panel" className="aspect-[0.74] w-full" />
           ) : (
-            <EmptyState icon="image" title={previewState === 'error' ? 'No pude generar la vista previa' : 'Todavía no hay vista previa'}>
-              {previewState === 'error'
-                ? 'No pude generar la vista previa de la imagen.'
-                : 'Agregá cartas al Main Deck para habilitar la vista previa.'}
+            <EmptyState icon="image" title={previewState === 'error' ? t('deck.export.preview.errorTitle') : t('deck.export.preview.emptyTitle')}>
+              {previewState === 'error' ? t('deck.export.preview.errorText') : t('deck.export.preview.emptyText')}
             </EmptyState>
           )}
         </article>
@@ -231,8 +229,8 @@ export function ExportDeckPanel({
         <article className="grid min-w-0 content-start gap-4 min-[1180px]:border-l min-[1180px]:border-border-subtle min-[1180px]:pl-10">
           <SectionHeader
             icon="file"
-            title="Decklist oficial (PDF)"
-            description="Planilla de Konami para torneos. Completá tus datos antes de entregarla."
+            title={t('deck.export.pdf.title')}
+            description={t('deck.export.pdf.description')}
           />
 
           <div className="grid gap-3">
@@ -268,48 +266,45 @@ export function ExportDeckPanel({
       </section>
 
       {/* Neuron no importa archivos ni links: el deck entra por la base de datos oficial, con una extensión del navegador. */}
-      <Card as="section" padding="md" aria-label="Llevar el deck a Neuron" className="grid gap-4">
+      <Card as="section" padding="md" aria-label={t('deck.export.neuron.title')} className="grid gap-4">
         <SectionHeader
           icon="upload"
-          title="Llevar el deck a Neuron"
-          description="Neuron no abre archivos: el deck entra por la base de datos oficial de Konami con una extensión gratuita del navegador. Tres pasos, desde una computadora."
+          title={t('deck.export.neuron.title')}
+          description={t('deck.export.neuron.description')}
         />
         <ol className="m-0 grid list-none gap-3 p-0 min-[700px]:grid-cols-3">
           <li className={STEP}>
-            <span className={overline}>Paso 1</span>
-            <strong className="text-body font-semibold text-foreground">Instalá la extensión "Deck transfer for Yu-Gi-Oh! Master Duel and Neuron"</strong>
-            <p className="m-0 text-micro text-muted">Gratis, para Chrome o Firefox de escritorio (en Android, Firefox).</p>
+            <span className={overline}>{t('deck.export.neuron.step1')}</span>
+            <strong className="text-body font-semibold text-foreground">{t('deck.export.neuron.install')}</strong>
+            <p className="m-0 text-micro text-muted">{t('deck.export.neuron.installHint')}</p>
             <p className="m-0 flex flex-wrap gap-x-3 gap-y-1 text-body">
               {EXTENSION_LINKS.map((link) => (
                 <a key={link.href} href={link.href} target="_blank" rel="noreferrer" className={LINK}>
-                  {link.label}
+                  {'labelKey' in link ? t(link.labelKey) : link.label}
                 </a>
               ))}
             </p>
           </li>
           <li className={STEP}>
-            <span className={overline}>Paso 2</span>
-            <strong className="text-body font-semibold text-foreground">Copiá el deck</strong>
-            <p className="m-0 text-micro text-muted">La extensión acepta el link YDKE o el archivo .ydk, cualquiera de los dos.</p>
+            <span className={overline}>{t('deck.export.neuron.step2')}</span>
+            <strong className="text-body font-semibold text-foreground">{t('deck.export.neuron.copyTitle')}</strong>
+            <p className="m-0 text-micro text-muted">{t('deck.export.neuron.copyHint')}</p>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" icon="link" disabled={mainDeckCount === 0} onClick={() => void copyYdke()}>
-                Copiar link YDKE
+                {t('deck.export.neuron.copyLink')}
               </Button>
               <Button size="sm" variant="tertiary" icon="download" disabled={mainDeckCount === 0} onClick={() => downloadYdk(deckBuilder)}>
-                Descargar .ydk
+                {t('deck.export.neuron.downloadYdk')}
               </Button>
             </div>
           </li>
           <li className={STEP}>
-            <span className={overline}>Paso 3</span>
-            <strong className="text-body font-semibold text-foreground">Importalo en la base de datos oficial</strong>
-            <p className="m-0 text-micro text-muted">
-              Entrá con el mismo KONAMI ID que usás en Neuron, abrí "My Deck", creá un deck y usá el botón de importar que agrega la extensión. Al guardarlo, en Neuron
-              aparece entre tus decks.
-            </p>
+            <span className={overline}>{t('deck.export.neuron.step3')}</span>
+            <strong className="text-body font-semibold text-foreground">{t('deck.export.neuron.importTitle')}</strong>
+            <p className="m-0 text-micro text-muted">{t('deck.export.neuron.importHint')}</p>
             <p className="m-0 text-body">
               <a href={KONAMI_DB_URL} target="_blank" rel="noreferrer" className={LINK}>
-                Abrir la base de datos oficial
+                {t('deck.export.neuron.openDb')}
               </a>
             </p>
           </li>
@@ -317,18 +312,18 @@ export function ExportDeckPanel({
       </Card>
 
       {/* Todo lo guardado en este navegador, en un archivo: para otro navegador o para después de borrar los datos. */}
-      <Card as="section" padding="md" aria-label="Copia de seguridad" className="grid gap-4">
+      <Card as="section" padding="md" aria-label={t('deck.backup.title')} className="grid gap-4">
         <SectionHeader
           icon="save"
-          title="Copia de seguridad"
-          description="Todo lo que la app guarda en este navegador (deck, roles, reglas, builds guardados, combos y calculadora de LP) en un archivo, para llevarlo a otro navegador o recuperarlo después de borrar los datos."
+          title={t('deck.backup.title')}
+          description={t('deck.backup.description')}
           actions={(
             <>
               <Button size="sm" icon="download" onClick={downloadBackup}>
-                Descargar copia
+                {t('deck.backup.download')}
               </Button>
               <Button size="sm" variant="tertiary" icon="upload" onClick={() => backupInputRef.current?.click()}>
-                Restaurar copia
+                {t('deck.backup.restore')}
               </Button>
               <input
                 ref={backupInputRef}
@@ -336,7 +331,7 @@ export function ExportDeckPanel({
                 accept=".json,application/json"
                 className="sr-only"
                 tabIndex={-1}
-                aria-label="Archivo de la copia"
+                aria-label={t('deck.backup.fileLabel')}
                 onChange={(event) => {
                   void readBackupFile(event.target.files?.[0])
                   event.target.value = ''
@@ -349,9 +344,9 @@ export function ExportDeckPanel({
 
       <ConfirmDialog
         isOpen={pendingBackup !== null}
-        title="¿Restaurar la copia?"
-        description={`Lo que trae la copia${pendingBackup?.savedAt ? ` (del ${formatBackupDay(pendingBackup.savedAt)})` : ''} reemplaza lo que hay en este navegador: deck, roles, reglas, builds y combos. La página se recarga.`}
-        confirmLabel="Restaurar"
+        title={t('deck.backup.confirmTitle')}
+        description={pendingBackup?.savedAt ? t('deck.backup.confirmTextDated', { date: formatDay(pendingBackup.savedAt) }) : t('deck.backup.confirmText')}
+        confirmLabel={t('deck.backup.confirmButton')}
         onCancel={() => setPendingBackup(null)}
         onConfirm={restorePendingBackup}
       />
@@ -366,30 +361,36 @@ export function ExportDeckPanel({
         }}
         size="sm"
         icon="download"
-        title="¿Qué descargar?"
-        subtitle="Se bajan todos juntos."
+        title={t('deck.export.modal.title')}
+        subtitle={t('deck.export.modal.subtitle')}
         footer={
           <>
             <Button variant="secondary" size="sm" disabled={busy} onClick={() => setDownloadOpen(false)}>
-              Cancelar
+              {t('common.cancel')}
             </Button>
             <Button
               variant="primary"
               size="sm"
               icon="download"
               disabled={busy || mainDeckCount === 0 || selectedCount === 0}
-              title={mainDeckCount === 0 ? 'Necesitás cartas en Main' : selectedCount === 0 ? 'Tildá al menos un archivo' : undefined}
+              title={mainDeckCount === 0 ? t('deck.export.modal.needsMain') : selectedCount === 0 ? t('deck.export.modal.pickOne') : undefined}
               onClick={() => {
                 void handleExport()
               }}
             >
-              {busy ? 'Generando archivos...' : selectedCount === 0 ? 'Elegí qué descargar' : `Descargar ${selectedCount === DECK_EXPORT_FILES.length ? 'todo' : describeExportSelection(selection)}`}
+              {busy
+                ? t('deck.export.generating')
+                : selectedCount === 0
+                  ? t('deck.export.modal.choose')
+                  : selectedCount === DECK_EXPORT_FILES.length
+                    ? t('deck.export.modal.downloadAll')
+                    : t('deck.export.modal.downloadSome', { files: describeExportSelection(selection) })}
             </Button>
           </>
         }
       >
         <div className="grid gap-1">
-          {mainDeckCount === 0 ? <p className="m-0 px-2 pb-2 text-body text-warning-soft">Agregá cartas al Main Deck para poder descargar.</p> : null}
+          {mainDeckCount === 0 ? <p className="m-0 px-2 pb-2 text-body text-warning-soft">{t('deck.export.modal.emptyHint')}</p> : null}
           {DECK_EXPORT_FILES.map((file) => (
             <label key={file.key} className="flex cursor-pointer items-center justify-between gap-3 rounded-control px-2 py-2 transition-colors hover:bg-tint/5">
               <span className="grid min-w-0 gap-0.5">

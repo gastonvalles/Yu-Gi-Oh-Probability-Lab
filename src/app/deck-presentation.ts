@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import type { DeckCardInstance, DeckZone } from './model'
 import type { ApiCardReference } from '../types'
 
@@ -62,9 +63,9 @@ export function buildDeckZoneTypeCounts(zone: DeckZone, cards: DeckCardInstance[
 
   return (
     [
-      { kind: 'monster', label: 'monstruos', count: counts.monster },
-      { kind: 'spell', label: 'magias', count: counts.spell },
-      { kind: 'trap', label: 'trampas', count: counts.trap },
+      { kind: 'monster', label: t('deck.zone.type.monster', { count: counts.monster }), count: counts.monster },
+      { kind: 'spell', label: t('deck.zone.type.spell', { count: counts.spell }), count: counts.spell },
+      { kind: 'trap', label: t('deck.zone.type.trap', { count: counts.trap }), count: counts.trap },
     ] as const
   ).filter((entry) => entry.count > 0)
 }

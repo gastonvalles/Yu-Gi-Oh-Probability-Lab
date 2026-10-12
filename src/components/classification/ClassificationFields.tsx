@@ -1,4 +1,5 @@
 import { CARD_ORIGIN_DEFINITIONS, getCardRoleDefinition, serializeGroupKey } from '../../app/deck-groups'
+import { t } from '../../i18n'
 import type { CardOrigin, CardRole } from '../../types'
 import { ROLE_REFERENCE_MARK, originOption, roleOptionButton } from '../classification-styles'
 import { cx } from '../ui/cx'
@@ -22,8 +23,8 @@ interface ClassificationFieldsProps {
 export function ClassificationFields({ origin, roles, onSetOrigin, onToggleRole, onOpenHelp }: ClassificationFieldsProps) {
   return (
     <div className="grid gap-4">
-      <section className="grid gap-2" aria-label="Origen">
-        <p className={KICKER}>¿Dónde encaja en tu plan?</p>
+      <section className="grid gap-2" aria-label={t('roles.fields.originAria')}>
+        <p className={KICKER}>{t('roles.fields.originQuestion')}</p>
         <div className="grid gap-1.5 min-[560px]:grid-cols-2 min-[560px]:gap-2">
           {CARD_ORIGIN_DEFINITIONS.map((definition) => {
             const active = origin === definition.key.value
@@ -53,9 +54,9 @@ export function ClassificationFields({ origin, roles, onSetOrigin, onToggleRole,
         </div>
       </section>
 
-      <section className="grid gap-2" aria-label="Roles">
+      <section className="grid gap-2" aria-label={t('roles.fields.rolesAria')}>
         <div className="flex items-center justify-between gap-2">
-          <p className={KICKER}>¿Qué función cumple cuando la robás?</p>
+          <p className={KICKER}>{t('roles.fields.roleQuestion')}</p>
           {onOpenHelp ? (
             <button
               type="button"
@@ -63,7 +64,7 @@ export function ClassificationFields({ origin, roles, onSetOrigin, onToggleRole,
               onClick={onOpenHelp}
             >
               <Icon name="info" size={14} />
-              ¿Qué significa cada rol?
+              {t('roles.fields.help')}
             </button>
           ) : null}
         </div>

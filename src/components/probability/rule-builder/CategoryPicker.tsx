@@ -13,12 +13,14 @@ import { buildDeckArchetypes } from '../../../app/card-archetypes'
 import { getRemainingCopies } from '../../../app/pattern-card-usage'
 import { createCardPoolMatcher } from '../../../app/patterns'
 import { formatCopies } from '../../../app/utils'
+import { t } from '../../../i18n'
 import { Button } from '../../ui/Button'
 import { cx } from '../../ui/cx'
 import { Icon } from '../../ui/Icon'
 import { field } from '../../ui/surfaces'
 import { overline } from '../../ui/typography'
 import type { PatternEditorActions } from '../pattern-editor-actions'
+import { getCardTypeLabel } from './condition-labels'
 
 interface CategoryPickerProps {
   patternId: string
@@ -44,11 +46,8 @@ const CHECK =
 /** Roles fijados como atajo arriba del selector. */
 const SHORTCUT_ROLES: readonly CardRole[] = ['starter', 'extender', 'brick']
 
-const CARD_TYPE_OPTIONS: Array<{ value: CardType; label: string }> = [
-  { value: 'monster', label: 'Monstruo' },
-  { value: 'spell', label: 'Magia' },
-  { value: 'trap', label: 'Trampa' },
-]
+/** Tipos de carta que se ofrecen; el rótulo sale de `getCardTypeLabel` al armar el selector. */
+const CARD_TYPES: readonly CardType[] = ['monster', 'spell', 'trap']
 
 /** Una opción del selector: elige un criterio (`matcher`) o, en selección múltiple, suma sus cartas al pool. */
 interface PickerItem {
@@ -195,13 +194,13 @@ export function CategoryPicker({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="grid flex-none gap-3 border-b border-border-subtle pb-3 pl-4 pr-14 pt-4">
-        <h3 className="m-0 text-lead font-semibold tracking-[-0.01em] text-foreground">¿Qué querés contar?</h3>
+        <h3 className="m-0 text-lead font-semibold tracking-[-0.01em] text-foreground">{t('builder.picker.title')}</h3>
         <input
           type="search"
           className={`${field} h-11 w-full px-4 text-body [&::-webkit-search-cancel-button]:hidden`}
           value={query}
-          placeholder="Buscar carta, rol, arquetipo…"
-          aria-label="Buscar"
+          placeholder={t('builder.picker.placeholder')}
+          aria-label={t('builder.picker.search')}
           onChange={(event) => setQuery(event.target.value)}
         />
         <div className="flex flex-wrap gap-2">
@@ -225,14 +224,14 @@ export function CategoryPicker({
             aria-pressed={isMulti}
             onClick={() => setIsMulti((current) => !current)}
           >
-            {isMulti ? 'Varias cartas ✓' : 'Elegir varias cartas'}
+            {t(isMulti ? 'builder.picker.multiOn' : 'builder.picker.multiOff')}
           </button>
         </div>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 pb-4 pt-2">
         {visibleSections.length === 0 ? (
-          <p className="m-0 mt-1 py-6 text-center text-body text-muted">{cards.length === 0 ? 'No hay cartas en el deck.' : 'Nada coincide con la búsqueda.'}</p>
+          <p className="m-0 mt-1 py-6 text-center text-body text-muted">{t(cards.length === 0 ? 'builder.picker.noCards' : 'builder.picker.noMatches')}</p>
         ) : (
           visibleSections.map((section) => (
             <PickerGroup key={section.key} id={section.key} label={section.label} open={section.key === activeKey} onToggle={toggleSection}>
@@ -246,7 +245,7 @@ export function CategoryPicker({
                 />
               ))}
               {section.key === 'cards' && hiddenCards.length > 0 ? (
-                <p className="m-0 mt-1 text-body text-muted">Ya usadas en otra condición: {hiddenCards.join(', ')}.</p>
+                <p className="m-0 mt-1 text-body text-muted">{t('builder.picker.used', { names: hiddenCards.join(', ') })}</p>
               ) : null}
             </PickerGroup>
           ))
@@ -256,17 +255,15 @@ export function CategoryPicker({
       {isMulti ? (
         <footer className="flex flex-none items-center gap-3 border-t border-border-subtle px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-3">
           <span className="min-w-0 flex-1 text-body font-semibold text-foreground">
-            {selection.size > 0
-              ? `${selection.size} carta${selection.size > 1 ? 's' : ''} seleccionada${selection.size > 1 ? 's' : ''}`
-              : 'Tocá cartas de cualquier grupo para armar el pool'}
+            {selection.size > 0 ? t('builder.picker.selected', { count: selection.size }) : t('builder.picker.hint')}
           </span>
           {selection.size > 0 ? (
             <Button variant="tertiary" size="sm" onClick={() => setSelection(new Set())}>
-              Limpiar
+              {t('builder.picker.clear')}
             </Button>
           ) : null}
           <Button variant="primary" size="sm" disabled={selection.size === 0} onClick={handleConfirm}>
-            Confirmar
+            {t('builder.picker.confirm')}
           </Button>
         </footer>
       ) : null}
@@ -309,7 +306,7 @@ function buildSections(cards: CardEntry[], used: ReadonlyMap<string, number>): P
   const sections: PickerSection[] = [
     {
       key: 'cards',
-      label: 'Cartas',
+      label: t('builder.picker.group.cards'),
       poolable: true,
       items: cards
         .filter((card) => available.has(card.id))
@@ -323,56 +320,56 @@ function buildSections(cards: CardEntry[], used: ReadonlyMap<string, number>): P
     },
     group(
       'archetype',
-      'Arquetipo',
+      t('builder.picker.group.archetype'),
       buildDeckArchetypes(cards).map((archetype) => ({ key: archetype.name, label: archetype.name, copies: archetype.copies, cardIds: archetype.cardIds })),
       (row) => ({ type: 'archetype', value: String(row.key) }),
     ),
     group(
       'card_type',
-      'Tipo de carta',
+      t('builder.picker.group.cardType'),
       buildCardTypeCounts(cards).map((entry) => ({ key: entry.value, label: entry.label, copies: entry.copies })),
       (row) => ({ type: 'card_type', value: row.key as CardType }),
     ),
     group(
       'role',
-      'Roles',
+      t('builder.picker.group.role'),
       roleCounts.map((role) => ({ key: role.value, label: role.label, copies: role.copies })),
       (row) => ({ type: 'role', value: row.key as CardRole }),
     ),
     group(
       'origin',
-      'Origen',
+      t('builder.picker.group.origin'),
       buildOriginCounts(cards).filter((origin) => origin.copies > 0).map((origin) => ({ key: origin.value, label: origin.label, copies: origin.copies })),
       (row) => ({ type: 'origin', value: row.key as CardOrigin }),
     ),
     group(
       'attribute',
-      'Atributo',
+      t('builder.picker.group.attribute'),
       buildDerivedDeckAttributes(cards).filter((a) => a.copies > 0).map((a) => ({ key: a.key, label: a.label, copies: a.copies, cardIds: a.cardIds })),
       (row) => ({ type: 'attribute', value: row.key } as Matcher),
     ),
     group(
       'level',
-      'Nivel',
-      buildDerivedDeckLevels(cards).filter((l) => l.copies > 0).map((l) => ({ key: l.key, label: `Nivel ${l.label}`, copies: l.copies, cardIds: l.cardIds })),
+      t('builder.picker.group.level'),
+      buildDerivedDeckLevels(cards).filter((l) => l.copies > 0).map((l) => ({ key: l.key, label: t('builder.label.level', { value: l.label }), copies: l.copies, cardIds: l.cardIds })),
       (row) => ({ type: 'level', value: row.key } as Matcher),
     ),
     group(
       'monster_type',
-      'Tipo de monstruo',
-      buildDerivedDeckMonsterTypes(cards).filter((t) => t.copies > 0).map((t) => ({ key: t.key, label: t.label, copies: t.copies, cardIds: t.cardIds })),
+      t('builder.picker.group.monsterType'),
+      buildDerivedDeckMonsterTypes(cards).filter((type) => type.copies > 0).map((type) => ({ key: type.key, label: type.label, copies: type.copies, cardIds: type.cardIds })),
       (row) => ({ type: 'monster_type', value: row.key } as Matcher),
     ),
     group(
       'atk',
-      'ATK',
-      buildDerivedDeckAttackValues(cards).filter((a) => a.copies > 0).map((a) => ({ key: a.key, label: `${a.label} ATK`, copies: a.copies, cardIds: a.cardIds })),
+      t('builder.picker.group.atk'),
+      buildDerivedDeckAttackValues(cards).filter((a) => a.copies > 0).map((a) => ({ key: a.key, label: t('builder.label.atk', { value: a.label }), copies: a.copies, cardIds: a.cardIds })),
       (row) => ({ type: 'atk', value: row.key } as Matcher),
     ),
     group(
       'def',
-      'DEF',
-      buildDerivedDeckDefenseValues(cards).filter((d) => d.copies > 0).map((d) => ({ key: d.key, label: `${d.label} DEF`, copies: d.copies, cardIds: d.cardIds })),
+      t('builder.picker.group.def'),
+      buildDerivedDeckDefenseValues(cards).filter((d) => d.copies > 0).map((d) => ({ key: d.key, label: t('builder.label.def', { value: d.label }), copies: d.copies, cardIds: d.cardIds })),
       (row) => ({ type: 'def', value: row.key } as Matcher),
     ),
   ]
@@ -485,16 +482,16 @@ interface CardTypeCount {
 }
 
 function buildCardTypeCounts(cards: CardEntry[]): CardTypeCount[] {
-  return CARD_TYPE_OPTIONS
-    .map((option) => {
+  return CARD_TYPES
+    .map((value) => {
       const copies = cards
         .filter((card) => {
           const ct = card.apiCard?.cardType.toLowerCase() ?? ''
-          return ct.includes(option.value)
+          return ct.includes(value)
         })
         .reduce((total, card) => total + card.copies, 0)
 
-      return { ...option, copies }
+      return { value, label: getCardTypeLabel(value), copies }
     })
     .filter((entry) => entry.copies > 0)
 }

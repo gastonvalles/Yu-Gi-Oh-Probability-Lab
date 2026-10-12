@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { t } from '../../i18n'
+import { tRich } from '../../i18n/rich'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
 
@@ -32,21 +34,17 @@ export function LabDisclaimerDialog({ isOpen, dismissible = false, onAcknowledge
       dismissible={dismissible}
       icon="info"
       tone="info"
-      kicker="Antes de empezar"
-      title="Cómo leer estos porcentajes"
+      kicker={t('lab.disclaimer.kicker')}
+      title={t('lab.disclaimer.title')}
       footer={
         <Button variant="primary" size="md" autoFocus onClick={onAcknowledge}>
-          Entendido
+          {t('lab.disclaimer.acknowledge')}
         </Button>
       }
     >
       <div className="grid gap-2 text-body text-muted">
-        <p className="m-0">
-          Los porcentajes que vas a ver <strong className="text-foreground">no son una fuente irrefutable</strong> de
-          información. Son estadísticas basadas en <strong className="text-foreground">tu</strong> entendimiento del
-          deck y en la categorización que le diste a cada carta de la build.
-        </p>
-        <p className="m-0">Los resultados pueden variar de jugador en jugador.</p>
+        <p className="m-0">{tRich('lab.disclaimer.body', { b: (text) => <strong className="text-foreground">{text}</strong> })}</p>
+        <p className="m-0">{t('lab.disclaimer.variance')}</p>
       </div>
     </Modal>
   )

@@ -3,6 +3,8 @@ import type { LabComputation } from './probability-lab'
 /**
  * Resultados del Lab guardados en el dispositivo: abrir la app de nuevo con el mismo deck y las mismas
  * reglas muestra el resultado al instante, sin volver a enumerar todas las manos.
+ * Lo guardado lleva texto (avisos, frases de las reglas): el idioma va en la clave de cada resultado
+ * (ver `labInputSignature`), así uno calculado en español no se muestra en inglés ni al revés.
  */
 export const LAB_CACHE_KEY = 'ygo-lab-cache:v1'
 const MAX_ENTRIES = 4

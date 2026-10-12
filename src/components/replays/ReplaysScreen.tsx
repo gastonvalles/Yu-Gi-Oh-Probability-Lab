@@ -13,6 +13,8 @@ import {
   type ReplayEntry,
 } from '../../app/replays'
 import { formatInteger, normalizeSearchText } from '../../app/utils'
+import { t } from '../../i18n'
+import { tRich } from '../../i18n/rich'
 import { formatMetaDateFull } from '../meta/meta-format'
 import { StepHero } from '../StepHero'
 import { Badge } from '../ui/Badge'
@@ -32,6 +34,13 @@ type Scope = 'meta' | 'all'
 
 const REPLAYS_PER_PAGE = 12
 const CHANNEL_BADGE: Record<ReplayChannel, string> = { eu: 'EU', tcg: 'TCG' }
+
+/** El nombre de un canal, como link a su página de YouTube. */
+const channelLink = (key: ReplayChannel) => (text: string) => (
+  <a href={REPLAYS.channels[key].url} target="_blank" rel="noreferrer" className="font-semibold text-primary-soft underline-offset-2 hover:underline">
+    {text}
+  </a>
+)
 
 export function ReplaysScreen() {
   const entries = useMemo(getReplayEntries, [])
@@ -70,34 +79,34 @@ export function ReplaysScreen() {
   }
 
   const description = filterDeck
-    ? `${formatInteger(visible.length)} replays de ${filterDeck.name}${filterDeck.tournament ? ` en ${filterDeck.tournament}` : ''}, de lo más nuevo a lo más viejo.`
-    : scope === 'meta'
-      ? `${formatInteger(visible.length)} replays con al menos un deck de la pestaña Meta, de lo más nuevo a lo más viejo. Tocá uno para verlo.`
-      : `${formatInteger(visible.length)} replays de los canales, de lo más nuevo a lo más viejo. Tocá uno para verlo.`
+    ? filterDeck.tournament
+      ? t('meta.replays.descriptionDeckTournament', { count: visible.length, deck: filterDeck.name, tournament: filterDeck.tournament })
+      : t('meta.replays.descriptionDeck', { count: visible.length, deck: filterDeck.name })
+    : t(scope === 'meta' ? 'meta.replays.descriptionMeta' : 'meta.replays.descriptionAll', { count: visible.length })
 
   return (
     <StepPage as="article">
       <StepHero
-        title="Replays"
+        title={t('meta.replays.title')}
         icon="play"
-        subtitle="Los duelos de torneo de los decks del Meta, en video."
+        subtitle={t('meta.replays.subtitle')}
         help={
           <div className="grid gap-1">
-            <strong className="text-foreground">De dónde salen</strong>
+            <strong className="text-foreground">{t('meta.replays.helpTitle')}</strong>
             <ul className="m-0 grid list-disc gap-1 pl-4">
-              <li>Son los duelos de torneo de los canales de YouTube Yu-Gi-Oh! TCG Europe y Yu-Gi-Oh! TCG. Se actualizan todos los días.</li>
-              <li>
-                Cada replay se cruza con los decks de la pestaña Meta por torneo y jugador: los canales sólo ponen la inicial del apellido, y si ese jugador llevó
-                uno de esos decks lo ves debajo y lo podés abrir.
-              </li>
-              <li>Muchos duelos son de jugadores cuyo deck no está en el Meta: con “Todos” los ves igual.</li>
+              <li>{t('meta.replays.help1')}</li>
+              <li>{t('meta.replays.help2')}</li>
+              <li>{t('meta.replays.help3')}</li>
             </ul>
           </div>
         }
         side={
-          <Badge icon="refresh" title="Fecha de la última actualización de los replays">
-            <span className="sr-only min-[1101px]:not-sr-only">Actualizado el </span>
-            {formatMetaDateFull(REPLAYS.fetchedAt)}
+          <Badge icon="refresh" title={t('meta.replays.updatedTitle')}>
+            {tRich(
+              'meta.updated',
+              { lead: (text) => <span className="sr-only min-[1101px]:not-sr-only">{text} </span> },
+              { date: formatMetaDateFull(REPLAYS.fetchedAt) },
+            )}
           </Badge>
         }
       />
@@ -105,12 +114,12 @@ export function ReplaysScreen() {
       <Card id="replays-list">
         <SectionHeader
           icon="play"
-          title="Replays de torneo"
+          title={t('meta.replays.listTitle')}
           description={description}
           actions={
             <>
               {filterDeck ? (
-                <button type="button" className={filterChip} onClick={() => navigate({ deck: null })} aria-label={`Quitar el filtro ${filterDeck.name}`}>
+                <button type="button" className={filterChip} onClick={() => navigate({ deck: null })} aria-label={t('meta.filter.clear', { name: filterDeck.name })}>
                   <span className="truncate">{filterDeck.name}</span>
                   <Icon name="x" size={12} strokeWidth={2.2} />
                 </button>
@@ -122,21 +131,21 @@ export function ReplaysScreen() {
                     setLimit(REPLAYS_PER_PAGE)
                   }}
                   options={[
-                    { value: 'meta', label: 'Con deck del Meta', count: metaCount },
-                    { value: 'all', label: 'Todos', count: entries.length },
+                    { value: 'meta', label: t('meta.replays.scopeMeta'), count: metaCount },
+                    { value: 'all', label: t('meta.replays.scopeAll'), count: entries.length },
                   ]}
-                  label="Qué replays mostrar"
+                  label={t('meta.replays.scopeLabel')}
                   size="sm"
                   className="max-[1100px]:w-full"
                 />
               )}
               <label className="relative block min-w-[14rem] flex-1 max-[1100px]:w-full">
-                <span className="sr-only">Buscar replays</span>
+                <span className="sr-only">{t('meta.replays.searchLabel')}</span>
                 <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-soft" />
                 <input
                   type="search"
                   value={query}
-                  placeholder="Torneo, jugador o deck"
+                  placeholder={t('meta.replays.searchPlaceholder')}
                   autoComplete="off"
                   className={cx(field, 'h-9 w-full pl-9 pr-3 text-body')}
                   onChange={(event) => {
@@ -159,36 +168,25 @@ export function ReplaysScreen() {
             ))}
           </ul>
         ) : entries.length === 0 ? (
-          <EmptyState icon="play" title="Todavía no hay replays">
-            Aparecen cuando los canales suben los duelos de un torneo. Se actualizan todos los días.
+          <EmptyState icon="play" title={t('meta.replays.emptyTitle')}>
+            {t('meta.replays.emptyHint')}
           </EmptyState>
         ) : (
-          <EmptyState icon="search" title="Ningún replay con eso">
-            {scope === 'meta' && !filterDeck && query.trim() === ''
-              ? 'Ningún replay de los canales tiene un deck del Meta. Probá con “Todos”.'
-              : 'Probá con otro torneo, jugador o deck.'}
+          <EmptyState icon="search" title={t('meta.replays.noMatchTitle')}>
+            {scope === 'meta' && !filterDeck && query.trim() === '' ? t('meta.replays.noMatchMeta') : t('meta.replays.noMatchTry')}
           </EmptyState>
         )}
 
         {visible.length > limit ? (
           <div className="mt-4 flex justify-center">
             <Button variant="secondary" size="sm" onClick={() => setLimit((current) => current + REPLAYS_PER_PAGE)}>
-              Ver {formatInteger(Math.min(REPLAYS_PER_PAGE, visible.length - limit))} más
+              {t('meta.showMore', { count: formatInteger(Math.min(REPLAYS_PER_PAGE, visible.length - limit)) })}
             </Button>
           </div>
         ) : null}
 
         <p className="m-0 mt-4 text-micro text-soft">
-          Los videos son de los canales oficiales{' '}
-          {(Object.keys(REPLAYS.channels) as ReplayChannel[]).map((key, index) => (
-            <span key={key}>
-              {index > 0 ? ' y ' : null}
-              <a href={REPLAYS.channels[key].url} target="_blank" rel="noreferrer" className="font-semibold text-primary-soft underline-offset-2 hover:underline">
-                {REPLAYS.channels[key].name}
-              </a>
-            </span>
-          ))}{' '}
-          en YouTube.
+          {tRich('meta.replays.channels', { eu: channelLink('eu'), tcg: channelLink('tcg') }, { eu: REPLAYS.channels.eu.name, tcg: REPLAYS.channels.tcg.name })}
         </p>
       </Card>
 
@@ -208,7 +206,7 @@ function ReplayCard({ entry, onOpen }: { entry: ReplayEntry; onOpen: () => void 
       <button
         type="button"
         className="relative block aspect-video w-full overflow-hidden bg-input focus-visible:outline-none focus-visible:shadow-focus"
-        aria-label={`Ver el replay ${label}${heading ? `, ${heading}` : ''}`}
+        aria-label={heading ? t('meta.replays.watchWithHeading', { label, heading }) : t('meta.replays.watch', { label })}
         onClick={onOpen}
       >
         {/* La miniatura de YouTube es 4:3 con barras negras arriba y abajo: `object-cover` en 16:9 las recorta. */}
@@ -239,12 +237,12 @@ function ReplayCard({ entry, onOpen }: { entry: ReplayEntry; onOpen: () => void 
                 <a
                   href={buildMetaDeckHash(player.deck.id)}
                   className="min-w-0 truncate text-primary-soft underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus"
-                  title={`${player.deck.name}${player.deck.placement ? ` · ${player.deck.placement}` : ''}: abrirlo en la pestaña Meta`}
+                  title={t('meta.replays.openDeck', { deck: player.deck.placement ? `${player.deck.name} · ${player.deck.placement}` : player.deck.name })}
                 >
                   {player.deck.name}
                 </a>
               ) : (
-                <span className="truncate text-soft">deck sin identificar</span>
+                <span className="truncate text-soft">{t('meta.replays.noDeck')}</span>
               )}
             </li>
           ))}

@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import type { ApiCardReference, DeckFormat } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 import { SEARCH_MIN_QUERY_LENGTH } from './model'
@@ -46,18 +47,18 @@ export const DEFAULT_CARD_SEARCH_FILTERS: CardSearchFilters = {
 }
 
 export function buildCompactSearchDescription(card: ApiCardReference | ApiCardSearchResult): string {
-  const typeLabel = typeof card.cardType === 'string' && card.cardType.trim().length > 0 ? card.cardType : 'Carta'
-  return [typeLabel, card.archetype ? `Arquetipo: ${card.archetype}` : ''].filter(Boolean).join(' · ')
+  const typeLabel = typeof card.cardType === 'string' && card.cardType.trim().length > 0 ? card.cardType : t('search.card.fallbackType')
+  return [typeLabel, card.archetype ? t('search.card.archetype', { name: card.archetype }) : ''].filter(Boolean).join(' · ')
 }
 
 export function formatSearchError(message: string): string {
   const normalizedMessage = message.toLowerCase()
 
   if (normalizedMessage.includes('no card matching your query')) {
-    return 'No se encontraron cartas para esa búsqueda.'
+    return t('search.error.noResults')
   }
 
-  return 'No se pudo completar la búsqueda.'
+  return t('search.error.failed')
 }
 
 export function buildSearchableCardIndex(cards: ApiCardSearchResult[]): SearchableCardIndexEntry[] {

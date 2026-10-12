@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import { getMainDeckCardKind } from './deck-presentation'
 import type { DeckBuilderState, DeckCardInstance } from './model'
 
@@ -5,7 +6,8 @@ import type { DeckBuilderState, DeckCardInstance } from './model'
 type KdeSection = 'monster' | 'spell' | 'trap' | 'extra' | 'side'
 
 interface KdeSectionSpec {
-  label: string
+  /** Clave del nombre de la sección (el texto se arma al usarlo, en el idioma de ese momento). */
+  labelKey: `deck.kde.section.${KdeSection}`
   rows: number
   nameField: (row: number) => string
   countField: (row: number) => string
@@ -14,35 +16,35 @@ interface KdeSectionSpec {
 
 const KDE_SECTIONS: Record<KdeSection, KdeSectionSpec> = {
   monster: {
-    label: 'Monstruos',
+    labelKey: 'deck.kde.section.monster',
     rows: 18,
     nameField: (row) => `Monster ${row}`,
     countField: (row) => `Monster Card ${row} Count`,
     totalField: 'Total Monster Cards',
   },
   spell: {
-    label: 'Magias',
+    labelKey: 'deck.kde.section.spell',
     rows: 18,
     nameField: (row) => `Spell ${row}`,
     countField: (row) => `Spell Card ${row} Count`,
     totalField: 'Total Spell Cards',
   },
   trap: {
-    label: 'Trampas',
+    labelKey: 'deck.kde.section.trap',
     rows: 18,
     nameField: (row) => `Trap ${row}`,
     countField: (row) => `Trap Card ${row} Count`,
     totalField: 'Total Trap Cards',
   },
   extra: {
-    label: 'Extra Deck',
+    labelKey: 'deck.kde.section.extra',
     rows: 15,
     nameField: (row) => `Extra Deck ${row}`,
     countField: (row) => `Extra Deck ${row} Count`,
     totalField: 'Total Extra Deck',
   },
   side: {
-    label: 'Side Deck',
+    labelKey: 'deck.kde.section.side',
     rows: 15,
     nameField: (row) => `Side Deck ${row}`,
     countField: (row) => `Side Deck ${row} Count`,
@@ -83,7 +85,7 @@ export function buildKdeDecklistSections(deckBuilder: DeckBuilderState): KdeDeck
 
   return SECTION_ORDER.map((key) => ({
     key,
-    label: KDE_SECTIONS[key].label,
+    label: t(KDE_SECTIONS[key].labelKey),
     total: cardsBySection[key].length,
     entries: groupByName(cardsBySection[key]),
   }))
@@ -106,7 +108,7 @@ export function buildKdeDecklist(deckBuilder: DeckBuilderState): KdeDecklist {
     fields[spec.totalField] = String(section.total)
 
     if (section.entries.length > spec.rows) {
-      overflow.push(spec.label)
+      overflow.push(t(spec.labelKey))
     }
   }
 

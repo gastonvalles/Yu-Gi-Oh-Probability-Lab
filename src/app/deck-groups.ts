@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import type { CardEntry, CardOrigin, CardRole, GroupKey } from '../types'
 
 type DeckGroupKind = 'origin' | 'role'
@@ -72,7 +73,7 @@ export const CARD_ORIGIN_DEFINITIONS: CardOriginDefinition[] = [
     key: createOriginGroupKey('engine'),
     label: 'Engine',
     shortLabel: 'Engine',
-    description: 'Pertenece al motor o plan principal del deck.',
+    get description() { return t('roles.group.engine.description') },
     theme: ORIGIN_THEME_BY_KEY.engine,
   },
   {
@@ -80,7 +81,7 @@ export const CARD_ORIGIN_DEFINITIONS: CardOriginDefinition[] = [
     key: createOriginGroupKey('non_engine'),
     label: 'Non-engine',
     shortLabel: 'Non-engine',
-    description: 'Aporta interacción, cobertura o soporte por fuera del motor principal.',
+    get description() { return t('roles.group.nonEngine.description') },
     theme: ORIGIN_THEME_BY_KEY.non_engine,
   },
 ]
@@ -91,7 +92,7 @@ export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
     key: createRoleGroupKey('starter'),
     label: 'Starter',
     shortLabel: 'Starter',
-    description: 'Carta que por sí sola te pone a jugar o encuentra el punto de arranque.',
+    get description() { return t('roles.group.starter.description') },
     theme: ROLE_THEME_BY_KEY.starter,
   },
   {
@@ -99,7 +100,7 @@ export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
     key: createRoleGroupKey('extender'),
     label: 'Extender',
     shortLabel: 'Extender',
-    description: 'Suma cuerpo, recursos o continuidad una vez que la mano ya empezó.',
+    get description() { return t('roles.group.extender.description') },
     theme: ROLE_THEME_BY_KEY.extender,
   },
   {
@@ -107,7 +108,7 @@ export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
     key: createRoleGroupKey('enabler'),
     label: 'Enabler',
     shortLabel: 'Enabler',
-    description: 'Habilita la línea: pieza o condición que otras cartas necesitan para funcionar.',
+    get description() { return t('roles.group.enabler.description') },
     theme: ROLE_THEME_BY_KEY.enabler,
   },
   {
@@ -115,7 +116,7 @@ export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
     key: createRoleGroupKey('searcher'),
     label: 'Searcher',
     shortLabel: 'Searcher',
-    description: 'Busca una pieza concreta del deck, GY o zonas públicas (por ejemplo, al invocarse o tributarse).',
+    get description() { return t('roles.group.searcher.description') },
     theme: ROLE_THEME_BY_KEY.searcher,
   },
   {
@@ -123,7 +124,7 @@ export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
     key: createRoleGroupKey('draw'),
     label: 'Draw',
     shortLabel: 'Draw',
-    description: 'Te hace robar cartas (Mulcharmy, Pot of Desires…); no busca una carta concreta.',
+    get description() { return t('roles.group.draw.description') },
     theme: ROLE_THEME_BY_KEY.draw,
   },
   {
@@ -131,7 +132,7 @@ export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
     key: createRoleGroupKey('payoff'),
     label: 'Payoff',
     shortLabel: 'Payoff',
-    description: 'Convierte la línea en ventaja real, presión o cierre de turno.',
+    get description() { return t('roles.group.payoff.description') },
     theme: ROLE_THEME_BY_KEY.payoff,
   },
   {
@@ -139,7 +140,7 @@ export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
     key: createRoleGroupKey('recovery'),
     label: 'Recovery',
     shortLabel: 'Recovery',
-    description: 'Recupera recursos, recicla piezas o recompone después de interrupción.',
+    get description() { return t('roles.group.recovery.description') },
     theme: ROLE_THEME_BY_KEY.recovery,
   },
   {
@@ -147,7 +148,7 @@ export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
     key: createRoleGroupKey('handtrap'),
     label: 'Handtrap',
     shortLabel: 'HT',
-    description: 'Interacción que frena al rival desde la mano.',
+    get description() { return t('roles.group.handtrap.description') },
     theme: ROLE_THEME_BY_KEY.handtrap,
   },
   {
@@ -155,7 +156,7 @@ export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
     key: createRoleGroupKey('disruption'),
     label: 'Disruption',
     shortLabel: 'Disruption',
-    description: 'Frena al rival en mesa o en su turno (negaciones, trampas), por sí sola.',
+    get description() { return t('roles.group.disruption.description') },
     theme: ROLE_THEME_BY_KEY.disruption,
   },
   {
@@ -163,7 +164,7 @@ export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
     key: createRoleGroupKey('boardbreaker'),
     label: 'Boardbreaker',
     shortLabel: 'Boardbreaker',
-    description: 'Rompe campo o quita cartas del rival por sí sola. Si solo lo hace cuando se cumple una condición de tu línea, marcá su función principal.',
+    get description() { return t('roles.group.boardbreaker.description') },
     theme: ROLE_THEME_BY_KEY.boardbreaker,
   },
   {
@@ -171,7 +172,7 @@ export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
     key: createRoleGroupKey('floodgate'),
     label: 'Floodgate',
     shortLabel: 'Floodgate',
-    description: 'Limita líneas del rival por presencia o efecto continuo.',
+    get description() { return t('roles.group.floodgate.description') },
     theme: ROLE_THEME_BY_KEY.floodgate,
   },
   {
@@ -179,7 +180,7 @@ export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
     key: createRoleGroupKey('brick'),
     label: 'Brick',
     shortLabel: 'Brick',
-    description: 'Carta que preferís no robar al inicio si no viene acompañada.',
+    get description() { return t('roles.group.brick.description') },
     theme: ROLE_THEME_BY_KEY.brick,
   },
   {
@@ -187,7 +188,7 @@ export const CARD_ROLE_DEFINITIONS: CardRoleDefinition[] = [
     key: createRoleGroupKey('garnet'),
     label: 'Garnet',
     shortLabel: 'Garnet',
-    description: 'Pieza que idealmente queda en deck porque en mano invalida o empeora una línea.',
+    get description() { return t('roles.group.garnet.description') },
     theme: ROLE_THEME_BY_KEY.garnet,
   },
 ]
@@ -231,12 +232,9 @@ export function getDeckGroupTheme(groupKey: GroupKey): ClassificationTheme {
   return GROUP_DEFINITION_BY_KEY.get(serializeGroupKey(groupKey))?.theme ?? CARD_GROUP_DEFINITIONS[0].theme
 }
 
-function getDeckGroupKindLabel(kind: DeckGroupKind): string {
-  return kind === 'origin' ? 'Origen' : 'Rol'
-}
-
+/** "Origen: Engine" / "Rol: Starter" (en inglés, "Origin: Engine" / "Role: Starter"). */
 export function getQualifiedDeckGroupLabel(group: Pick<DeckGroupDefinition, 'kind' | 'label'>): string {
-  return `${getDeckGroupKindLabel(group.kind)}: ${group.label}`
+  return t(group.kind === 'origin' ? 'roles.group.qualifiedOrigin' : 'roles.group.qualifiedRole', { label: group.label })
 }
 
 /** Roles que ya no existen y el que los reemplaza (se unificaron al simplificar la categorización). */

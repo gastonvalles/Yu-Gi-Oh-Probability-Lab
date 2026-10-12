@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import { cardImageSrc } from './card-image-source'
 import { getCardLimitIndicator } from './deck-format'
 import { PAGE_PADDING, computeDeckImageLayout, type Rect, type ZoneLayout } from './deck-image-layout'
@@ -59,7 +60,7 @@ export async function renderDeckAsCanvas(
   const context = canvas.getContext('2d')
 
   if (!context) {
-    throw new Error('No pude preparar la imagen del deck.')
+    throw new Error(t('deck.export.error.canvas'))
   }
 
   context.scale(scale, scale)
@@ -101,6 +102,7 @@ function drawCredit(context: CanvasRenderingContext2D, width: number, height: nu
   context.textAlign = 'right'
   context.textBaseline = 'alphabetic'
   context.fillStyle = 'rgba(191, 187, 217, 0.55)'
+  // i18n-ignore: nombre propio, no se traduce
   context.fillText(`${host ? `${host} · ` : ''}© Gastón Valles`, width - PAGE_PADDING, height - 8)
   context.restore()
 }
@@ -288,6 +290,7 @@ function loadImage(source: string): Promise<HTMLImageElement> {
     const image = new Image()
     image.crossOrigin = 'anonymous'
     image.onload = () => resolve(image)
+    // i18n-ignore: error interno, loadZoneImages lo captura y prueba la otra imagen
     image.onerror = () => reject(new Error('No se pudo cargar la imagen de una carta.'))
     image.src = source
   })

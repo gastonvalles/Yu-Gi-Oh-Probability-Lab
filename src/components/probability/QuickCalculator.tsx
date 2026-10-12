@@ -2,12 +2,15 @@ import { useState } from 'react'
 
 import { atLeastProbability, minCopiesFor } from '../../app/quick-odds'
 import { formatInteger, formatShortPercent } from '../../app/utils'
+import { t } from '../../i18n'
+import { tRich } from '../../i18n/rich'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Modal } from '../ui/Modal'
 import { ProgressRing } from '../ui/ProgressRing'
 import { Segmented } from '../ui/Segmented'
 import { field } from '../ui/surfaces'
+import { formatCardCount } from './lab-copy'
 
 interface QuickCalculatorProps {
   isOpen: boolean
@@ -44,48 +47,48 @@ export function QuickCalculator({ isOpen, onClose, deckSize, handSize }: QuickCa
   const needed = minCopiesFor(cards, hand, wanted / 100)
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="sm" icon="sliders" kicker="Lab" title="Calculadora rápida" subtitle="Una carta (o un grupo que contás junto), sin armar el deck.">
+    <Modal isOpen={isOpen} onClose={onClose} size="sm" icon="sliders" kicker={t('lab.quick.kicker')} title={t('lab.quick.title')} subtitle={t('lab.quick.subtitle')}>
       <div className="grid gap-4">
         <div className="grid grid-cols-2 gap-2">
           <label className="grid gap-1">
-            <span className="text-micro text-muted">Cartas en el deck</span>
+            <span className="text-micro text-muted">{t('lab.quick.deckCards')}</span>
             <input type="number" inputMode="numeric" min={1} max={MAX_DECK} value={deck} className={INPUT} onChange={(event) => setDeck(event.target.value)} />
           </label>
           <label className="grid gap-1">
-            <span className="text-micro text-muted">Copias</span>
+            <span className="text-micro text-muted">{t('lab.quick.copies')}</span>
             <input type="number" inputMode="numeric" min={0} max={cards} value={copies} className={INPUT} onChange={(event) => setCopies(event.target.value)} />
           </label>
         </div>
 
         {deckSize > 0 && cards !== deckSize ? (
           <Button variant="tertiary" size="sm" icon="cards" className="justify-self-start" onClick={() => setDeck(String(deckSize))}>
-            Usar mi deck ({formatInteger(deckSize)} cartas)
+            {t('lab.quick.useDeck', { count: deckSize, n: formatInteger(deckSize) })}
           </Button>
         ) : null}
 
         <Segmented
-          label="Turno"
+          label={t('lab.quick.turn')}
           value={turn}
           onChange={setTurn}
           variant="track"
           size="sm"
           fullWidth
           options={[
-            { value: 'first', label: 'Yendo 1º', detail: `${formatInteger(handSize)} cartas` },
-            { value: 'second', label: 'Yendo 2º', detail: `${formatInteger(handSize + 1)} cartas` },
+            { value: 'first', label: t('lab.quick.goingFirst'), detail: formatCardCount(handSize) },
+            { value: 'second', label: t('lab.quick.goingSecond'), detail: formatCardCount(handSize + 1) },
           ]}
         />
 
-        <ul className="m-0 grid list-none grid-cols-3 gap-2 p-0" aria-label="Manos que la abren">
+        <ul className="m-0 grid list-none grid-cols-3 gap-2 p-0" aria-label={t('lab.quick.handsList')}>
           {AT_LEAST.map((atLeast) => {
             const probability = atLeastProbability(cards, count, hand, atLeast)
 
             return (
               <li key={atLeast} className="grid justify-items-center gap-1.5 text-center">
-                <ProgressRing value={probability} size={84} strokeWidth={9} label={`Al menos ${formatInteger(atLeast)}: ${formatShortPercent(probability)}`}>
+                <ProgressRing value={probability} size={84} strokeWidth={9} label={`${t('lab.quick.atLeast', { n: formatInteger(atLeast) })}: ${formatShortPercent(probability)}`}>
                   <span className="text-body font-semibold">{formatShortPercent(probability)}</span>
                 </ProgressRing>
-                <span className="text-micro text-muted">Al menos {formatInteger(atLeast)}</span>
+                <span className="text-micro text-muted">{t('lab.quick.atLeast', { n: formatInteger(atLeast) })}</span>
               </li>
             )
           })}
@@ -94,14 +97,16 @@ export function QuickCalculator({ isOpen, onClose, deckSize, handSize }: QuickCa
         {/* Al revés: cuántas copias hacen falta para abrirla en tantas manos. */}
         <p className="m-0 flex flex-wrap items-center gap-x-1.5 gap-y-2 border-t border-border-subtle pt-4 text-body text-muted">
           <label className="inline-flex items-center gap-1.5">
-            Para abrirla en al menos
-            <input type="number" inputMode="numeric" min={1} max={100} value={target} aria-label="Porcentaje buscado" className={cx(field, 'h-9 w-16 px-2 text-center text-body tabular-nums')} onChange={(event) => setTarget(event.target.value)} />
-            % de las manos
+            {tRich('lab.quick.reverse', {
+              field: () => (
+                <input type="number" inputMode="numeric" min={1} max={100} value={target} aria-label={t('lab.quick.targetPercent')} className={cx(field, 'h-9 w-16 px-2 text-center text-body tabular-nums')} onChange={(event) => setTarget(event.target.value)} />
+              ),
+            })}
           </label>
           <strong className="text-foreground" data-testid="needed-copies">
             {needed === null
-              ? 'no alcanza ni con todo el deck.'
-              : `hacen falta ${formatInteger(needed)} ${needed === 1 ? 'copia' : 'copias'} (${formatShortPercent(atLeastProbability(cards, needed, hand, 1))}).`}
+              ? t('lab.quick.notEnough')
+              : t('lab.quick.needed', { count: needed, n: formatInteger(needed), percent: formatShortPercent(atLeastProbability(cards, needed, hand, 1)) })}
           </strong>
         </p>
       </div>

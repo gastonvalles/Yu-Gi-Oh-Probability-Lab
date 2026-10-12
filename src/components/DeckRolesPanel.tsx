@@ -18,6 +18,7 @@ import { useAppDispatch } from '../app/store-hooks'
 import { useToastMessage } from '../app/use-toast-message'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../app/use-media-query'
 import { formatInteger, formatWholePercent } from '../app/utils'
+import { t } from '../i18n'
 import type { CardEntry, CardGroupKey, CardOrigin, CardRole } from '../types'
 import {
   ORIGIN_HELP_TEXT,
@@ -118,55 +119,55 @@ function getEmptyStateCopy(filterKey: ClassificationFilterKey): {
 } {
   if (filterKey === 'unclassified') {
     return {
-      title: 'No quedan cartas pendientes en esta cola.',
-      description: 'Podés repasar otros grupos desde la derecha o pasar al Probability Lab cuando termines de validar la build.',
+      title: t('roles.panel.empty.unclassified.title'),
+      description: t('roles.panel.empty.unclassified.text'),
       tone: 'text-success-soft',
     }
   }
 
   if (filterKey === 'missing-origin') {
     return {
-      title: 'No hay cartas sin origen en esta vista.',
-      description: 'El motor y los slots externos ya quedaron diferenciados.',
+      title: t('roles.panel.empty.missingOrigin.title'),
+      description: t('roles.panel.empty.missingOrigin.text'),
       tone: 'text-success-soft',
     }
   }
 
   if (filterKey === 'missing-role') {
     return {
-      title: 'No hay cartas sin roles en esta vista.',
-      description: 'La función táctica de estas cartas ya quedó definida.',
+      title: t('roles.panel.empty.missingRole.title'),
+      description: t('roles.panel.empty.missingRole.text'),
       tone: 'text-success-soft',
     }
   }
 
   if (filterKey === 'review') {
     return {
-      title: 'No hay cartas pendientes de revisión.',
-      description: 'Las cartas cargadas en esta vista ya están validadas.',
+      title: t('roles.panel.empty.review.title'),
+      description: t('roles.panel.empty.review.text'),
       tone: 'text-success-soft',
     }
   }
 
   if (filterKey === 'complete') {
     return {
-      title: 'Todavía no hay cartas completas en esta vista.',
-      description: 'Primero definí origen y roles para poblar este subconjunto.',
+      title: t('roles.panel.empty.complete.title'),
+      description: t('roles.panel.empty.complete.text'),
       tone: 'text-muted',
     }
   }
 
   if (filterKey === 'all') {
     return {
-      title: 'Todavía no hay cartas para clasificar.',
-      description: 'Primero armá o importá tu Main Deck. Después vas a poder marcar origen y roles.',
+      title: t('roles.panel.empty.all.title'),
+      description: t('roles.panel.empty.all.text'),
       tone: 'text-muted',
     }
   }
 
   return {
-    title: 'Este grupo está vacío por ahora.',
-    description: 'Ajustá el filtro o seguí clasificando cartas para poblarlo.',
+    title: t('roles.panel.empty.group.title'),
+    description: t('roles.panel.empty.group.text'),
     tone: 'text-muted',
   }
 }
@@ -185,27 +186,27 @@ function getGroupHelpText(groupKey: CardGroupKey): string {
 
 function getOverviewDescription(filterKey: ClassificationFilterKey): string {
   if (filterKey === 'all') {
-    return 'Vista general del Main Deck.'
+    return t('roles.panel.overview.all')
   }
 
   if (filterKey === 'unclassified') {
-    return 'Cartas que todavía requieren una decisión.'
+    return t('roles.panel.overview.unclassified')
   }
 
   if (filterKey === 'missing-origin') {
-    return 'Todavía no tienen origen definido.'
+    return t('roles.panel.overview.missingOrigin')
   }
 
   if (filterKey === 'missing-role') {
-    return 'Todavía no tienen roles asignados.'
+    return t('roles.panel.overview.missingRole')
   }
 
   if (filterKey === 'review') {
-    return 'Tienen clasificación, pero conviene validarlas.'
+    return t('roles.panel.overview.review')
   }
 
   if (filterKey === 'complete') {
-    return 'Listas para medir en el Probability Lab.'
+    return t('roles.panel.overview.complete')
   }
 
   return getGroupHelpText(filterKey)
@@ -277,7 +278,7 @@ export function DeckRolesPanel({
   const resuggestAll = () => {
     setConfirmResuggest(false)
     dispatch(resuggestAllCards())
-    showToast(`${formatInteger(cards.length)} cartas con la sugerencia de hoy. Revisalas una por una.`, 'success')
+    showToast(t('roles.panel.resuggested', { count: cards.length }), 'success')
   }
 
   const sortedCards = useMemo(() => [...cards].sort(compareCardsForQueue), [cards])
@@ -299,42 +300,42 @@ export function DeckRolesPanel({
     const stateItems = [
       buildOverviewItem(
         'unclassified',
-        'Sin completar',
+        t('roles.panel.filter.unclassified'),
         getOverviewDescription('unclassified'),
         unclassifiedCards,
         'unclassified',
       ),
       buildOverviewItem(
         'missing-origin',
-        'Sin origen',
+        t('roles.status.noOrigin'),
         getOverviewDescription('missing-origin'),
         sortedCards.filter((card) => isCardMissingOrigin(card)),
         'missing-origin',
       ),
       buildOverviewItem(
         'missing-role',
-        'Sin rol',
+        t('roles.panel.filter.missingRole'),
         getOverviewDescription('missing-role'),
         sortedCards.filter((card) => isCardMissingRoles(card)),
         'missing-role',
       ),
       buildOverviewItem(
         'review',
-        'Revisión pendiente',
+        t('roles.panel.filter.review'),
         getOverviewDescription('review'),
         sortedCards.filter((card) => isCardPendingReview(card)),
         'review',
       ),
       buildOverviewItem(
         'complete',
-        'Completas',
+        t('roles.panel.filter.complete'),
         getOverviewDescription('complete'),
         completeCards,
         'complete',
       ),
       buildOverviewItem(
         'all',
-        'Todo el Main',
+        t('roles.panel.filter.all'),
         getOverviewDescription('all'),
         sortedCards,
         'all',
@@ -519,7 +520,7 @@ export function DeckRolesPanel({
 
   const filterChips = hasFilters ? (
     <div className={cx(filtersInCard ? 'col-span-2 col-start-2 flex flex-wrap items-center gap-2' : 'grid gap-2')}>
-      <p className={cx('m-0', filtersInCard ? 'text-micro font-semibold uppercase tracking-[0.08em] text-primary-foreground/75' : overline)}>Vista activa</p>
+      <p className={cx('m-0', filtersInCard ? 'text-micro font-semibold uppercase tracking-[0.08em] text-primary-foreground/75' : overline)}>{t('roles.panel.activeView')}</p>
       <div className="flex flex-wrap gap-2">
         {visibleFilterItems.map((item) => {
           const active = areClassificationFilterKeysEqual(activeFilter, item.key)
@@ -544,12 +545,12 @@ export function DeckRolesPanel({
   return (
     <section className="mx-auto grid w-full min-w-0 max-w-content content-start gap-4 overflow-x-hidden px-gutter pb-6 pt-4 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_auto_minmax(0,1fr)] min-[1101px]:gap-5 min-[1101px]:overflow-hidden min-[1101px]:px-6 min-[1101px]:pb-6 min-[1101px]:pt-6">
       <StepHero
-        title="Clasificá tus cartas"
+        title={t('roles.panel.title')}
         icon="tag"
-        subtitle="Contale al Lab qué hace cada carta en tu plan."
+        subtitle={t('roles.panel.subtitle')}
         titleAction={
           sortedCards.length > 0 ? (
-            <IconButton tone="ghost" size="sm" aria-label="Guía de clasificación" title="Guía de clasificación" onClick={() => setDrawerMode('help')}>
+            <IconButton tone="ghost" size="sm" aria-label={t('roles.guide.title')} title={t('roles.guide.title')} onClick={() => setDrawerMode('help')}>
               <Icon name="info" size={18} />
             </IconButton>
           ) : null
@@ -565,41 +566,41 @@ export function DeckRolesPanel({
           >
             {/* El aro (verde: se lee de un vistazo cuánto falta, y 100 % = listo) va junto al mensaje. En celular las acciones van abajo, en una fila. En escritorio es un banner de todo el ancho: aro, mensaje y acciones a la derecha, y los filtros (si hay) en una segunda fila. */}
             <div className={cx(filtersInCard && 'min-[1101px]:row-span-2')}>
-              <ProgressRing tone="onBrand" color="var(--success-rgb)" size={isDesktop ? 112 : 76} strokeWidth={isDesktop ? 10 : 8} value={classifiedShare} label="Cartas clasificadas">
+              <ProgressRing tone="onBrand" color="var(--success-rgb)" size={isDesktop ? 112 : 76} strokeWidth={isDesktop ? 10 : 8} value={classifiedShare} label={t('roles.panel.ringLabel')}>
                 <span className="grid justify-items-center leading-none">
                   <span className="text-lead font-bold tracking-[-0.02em] min-[1101px]:text-title">{formatWholePercent(classifiedShare)}</span>
-                  <span className="mt-0.5 text-[0.625rem] font-medium text-primary-foreground/75 min-[1101px]:mt-1 min-[1101px]:text-micro">{hasCardsNeedingClassification ? 'listas' : 'listo'}</span>
+                  <span className="mt-0.5 text-[0.625rem] font-medium text-primary-foreground/75 min-[1101px]:mt-1 min-[1101px]:text-micro">{hasCardsNeedingClassification ? t('roles.panel.ringPartial') : t('roles.panel.ringDone')}</span>
                 </span>
               </ProgressRing>
             </div>
             <p className="m-0 min-w-0 text-lead leading-snug min-[1101px]:text-title min-[1101px]:leading-tight">
                 {unclassifiedCards.length > 0
-                  ? `Te faltan ${formatInteger(unclassifiedCards.length)} carta${unclassifiedCards.length === 1 ? '' : 's'} por clasificar`
+                  ? t('roles.panel.remaining', { count: unclassifiedCards.length })
                   : pendingReviewCards.length > 0
-                    ? `Confirmá ${formatInteger(pendingReviewCards.length)} sugerencia${pendingReviewCards.length === 1 ? '' : 's'} para cerrar la clasificación`
-                    : 'Tu deck está clasificado y listo para medir'}
+                    ? t('roles.panel.confirmSuggestions', { count: pendingReviewCards.length })
+                    : t('roles.panel.allDone')}
             </p>
             <div className="col-span-2 flex items-center gap-2 min-[1101px]:col-span-1 min-[1101px]:col-start-3 min-[1101px]:w-72">
               {unclassifiedCards.length > 0 ? (
                 <Button variant="onBrand" size={buttonSize} icon="sparkles" className="flex-1" onClick={() => dispatch(reclassifyAllCards())}>
-                  Clasificar todo
+                  {t('roles.panel.classifyAll')}
                 </Button>
               ) : pendingReviewCards.length > 0 ? (
                 // Abre la primera sugerencia; desde ahí "Siguiente" recorre el resto.
                 <Button variant="onBrand" size={buttonSize} icon="check" className="flex-1" onClick={() => handleCardSelection(pendingReviewCards[0]!.id)}>
-                  Revisar sugerencias
+                  {t('roles.panel.reviewSuggestions')}
                 </Button>
               ) : onOpenLab ? (
                 <Button variant="onBrand" size={buttonSize} iconEnd="arrow-right" className="flex-1" onClick={onOpenLab}>
-                  Ir al Lab
+                  {t('roles.panel.goToLab')}
                 </Button>
               ) : null}
               {/* Vuelve a sugerir todo con las reglas de hoy; pisa lo confirmado, por eso pregunta. */}
               <IconButton
                 tone="ghost"
                 size="md"
-                aria-label="Reclasificar todo"
-                title="Reclasificar todo"
+                aria-label={t('roles.panel.reclassifyAll')}
+                title={t('roles.panel.reclassifyAll')}
                 className="text-primary-foreground"
                 onClick={() => setConfirmResuggest(true)}
               >
@@ -614,8 +615,8 @@ export function DeckRolesPanel({
       ) : null}
 
       {sortedCards.length === 0 ? (
-        <EmptyState icon="cards" title="Todavía no hay cartas para clasificar">
-          Primero armá o importá tu Main Deck. Después vas a poder clasificar cada carta.
+        <EmptyState icon="cards" title={t('roles.panel.noCardsTitle')}>
+          {t('roles.panel.noCardsText')}
         </EmptyState>
       ) : (
         <section className="grid min-w-0 gap-3 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[minmax(0,1fr)] min-[1101px]:overflow-hidden">
@@ -646,18 +647,18 @@ export function DeckRolesPanel({
       ) : null}
 
       <ClassificationDrawer
-        kicker="Modelo"
-        title="Guía de clasificación"
-        subtitle="Origen y roles usados en el lab. Consultala solo cuando necesites recordar la definición."
+        kicker={t('roles.guide.kicker')}
+        title={t('roles.guide.title')}
+        subtitle={t('roles.guide.subtitle')}
         isOpen={drawerMode === 'help'}
         onClose={() => setDrawerMode(null)}
       >
         <div className="grid gap-4">
           <section className="grid gap-2">
             <div>
-              <p className={cx('m-0', overline)}>Origen</p>
+              <p className={cx('m-0', overline)}>{t('roles.guide.originTitle')}</p>
               <p className={cx(supportText, 'mt-0.5 text-micro')}>
-                Responde si la carta pertenece al motor principal o a un espacio externo/flexible.
+                {t('roles.guide.originText')}
               </p>
             </div>
 
@@ -680,9 +681,9 @@ export function DeckRolesPanel({
 
           <section className="grid gap-2">
             <div>
-              <p className={cx('m-0', overline)}>Roles</p>
+              <p className={cx('m-0', overline)}>{t('roles.guide.rolesTitle')}</p>
               <p className={cx(supportText, 'mt-0.5 text-micro')}>
-                Responden qué hace la carta dentro de tu mano, tu línea o tu plan de turno.
+                {t('roles.guide.rolesText')}
               </p>
             </div>
 
@@ -704,9 +705,9 @@ export function DeckRolesPanel({
 
       <ConfirmDialog
         isOpen={confirmResuggest}
-        title="¿Reclasificar todo el deck?"
-        description="Todas las cartas vuelven a la sugerencia de hoy, leída de las reglas de cada carta. Se pierden las confirmaciones y las correcciones a mano de estas cartas; después las revisás una por una."
-        confirmLabel="Reclasificar"
+        title={t('roles.panel.confirmTitle')}
+        description={t('roles.panel.confirmText')}
+        confirmLabel={t('roles.panel.confirmAction')}
         onCancel={() => setConfirmResuggest(false)}
         onConfirm={resuggestAll}
       />

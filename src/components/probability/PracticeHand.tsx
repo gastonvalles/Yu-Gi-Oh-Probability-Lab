@@ -17,6 +17,7 @@ import {
 } from '../../app/practice-hand-layout'
 import { UI_ANIMATION_MS } from '../../app/motion'
 import { useElementWidth } from '../../app/use-element-width'
+import { t } from '../../i18n'
 import type { ApiCardReference, PatternKind } from '../../types'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
@@ -302,7 +303,7 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highl
       ref={containerRef}
       className={cx('relative w-full', className)}
       role="list"
-      aria-label="Mano"
+      aria-label={t('practice.hand.label')}
       data-drop="hand"
       style={{ height: layout.cardHeight + TOP_ROOM + FAN_ROOM }}
     >
@@ -341,7 +342,7 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highl
           />
         )
       })}
-      {cards.length === 0 ? <span className="absolute inset-0 grid place-items-center text-micro text-soft">Sin cartas en la mano</span> : null}
+      {cards.length === 0 ? <span className="absolute inset-0 grid place-items-center text-micro text-soft">{t('practice.hand.empty')}</span> : null}
     </div>
   )
 }
@@ -449,7 +450,7 @@ function HandCard({
       ref={elementRef}
       role="listitem"
       tabIndex={0}
-      aria-label={targeted ? `${card.name} (seleccionada)` : card.name}
+      aria-label={targeted ? t('practice.card.selected', { name: card.name }) : card.name}
       title={card.name}
       data-card-id={card.id}
       className={HAND_CARD}
@@ -483,7 +484,7 @@ function HandCard({
 /** La mira de "objetivo": se comparte con las cartas del campo. */
 export function TargetMark() {
   return (
-    <span className="pointer-events-none absolute right-0.5 top-0.5 z-2 grid size-5 place-items-center rounded-full bg-danger text-white shadow-[0_0_10px_rgb(var(--danger-rgb)/0.8)] animate-pop motion-reduce:animate-none" aria-label="Seleccionada" role="img">
+    <span className="pointer-events-none absolute right-0.5 top-0.5 z-2 grid size-5 place-items-center rounded-full bg-danger text-white shadow-[0_0_10px_rgb(var(--danger-rgb)/0.8)] animate-pop motion-reduce:animate-none" aria-label={t('practice.card.targetMark')} role="img">
       <Icon name="target" size={13} strokeWidth={2.2} />
     </span>
   )

@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom'
 
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
+import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
 import { CloseButton } from '../ui/IconButton'
@@ -23,7 +24,7 @@ export function CardZoom({ card, name, onClose }: CardZoomProps) {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={`${name} en grande`}
+      aria-label={t('search.zoom.aria', { name })}
       className="fixed inset-0 z-250 grid cursor-zoom-out place-items-center bg-background/90 p-4 backdrop-blur-[8px] animate-dialog-enter motion-reduce:animate-none"
       onClick={onClose}
     >
@@ -33,7 +34,7 @@ export function CardZoom({ card, name, onClose }: CardZoomProps) {
       <CloseButton
         tone="flat"
         size="lg"
-        aria-label="Cerrar"
+        aria-label={t('common.close')}
         className="absolute right-[max(0.5rem,env(safe-area-inset-right))] top-[max(0.5rem,env(safe-area-inset-top))] z-10"
         onClick={(event) => {
           event.stopPropagation()

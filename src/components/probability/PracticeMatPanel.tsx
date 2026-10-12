@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 import type { SavedCombo } from '../../app/saved-combos'
+import { formatDay, t } from '../../i18n'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { EmptyState } from '../ui/EmptyState'
@@ -23,7 +24,6 @@ interface PracticeMatPanelProps {
   className?: string
 }
 
-const formatDate = (iso: string) => new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 
 /** Panel lateral de la mesa: las jugadas de esta partida (se toca una para volver a ese paso) y los combos guardados. */
 export function PracticeMatPanel({ steps, cursor, onSeek, combos, deckName, onLoad, onDelete, className }: PracticeMatPanelProps) {
@@ -34,23 +34,23 @@ export function PracticeMatPanel({ steps, cursor, onSeek, combos, deckName, onLo
       <Segmented
         value={tab}
         onChange={setTab}
-        label="Panel de la mesa"
+        label={t('practice.panel.label')}
         size="sm"
         fullWidth
         options={[
-          { value: 'steps', label: 'Pasos', count: steps.length },
-          { value: 'combos', label: 'Combos', count: combos.length },
+          { value: 'steps', label: t('practice.panel.steps'), count: steps.length },
+          { value: 'combos', label: t('practice.panel.combos'), count: combos.length },
         ]}
       />
 
       {tab === 'steps' ? (
         steps.length === 0 ? (
-          <EmptyState icon="hand" title="Todavía no hay jugadas">
-            Arrastrá una carta a una zona o tocala para ver qué podés hacer. Cada jugada queda anotada acá.
+          <EmptyState icon="hand" title={t('practice.panel.noPlays')}>
+            {t('practice.panel.noPlaysHint')}
           </EmptyState>
         ) : (
           // La última jugada arriba, como un registro; la mano inicial al final.
-          <ol className="m-0 grid list-none content-start gap-1 overflow-y-auto p-0" aria-label="Jugadas">
+          <ol className="m-0 grid list-none content-start gap-1 overflow-y-auto p-0" aria-label={t('practice.panel.plays')}>
             {steps
               .map((label, index) => (
                 <li key={index}>
@@ -59,7 +59,7 @@ export function PracticeMatPanel({ steps, cursor, onSeek, combos, deckName, onLo
               ))
               .reverse()}
             <li>
-              <StepButton active={cursor === 0} label="Mano inicial" index={0} onClick={() => onSeek(0)} />
+              <StepButton active={cursor === 0} label={t('practice.mat.startingHand')} index={0} onClick={() => onSeek(0)} />
             </li>
           </ol>
         )
@@ -87,28 +87,28 @@ function SavedCombosList({ combos, deckName, onLoad, onDelete }: SavedCombosList
 
   if (ordered.length === 0) {
     return (
-      <EmptyState icon="save" title="No hay combos guardados">
-        Jugá una línea en la mesa y tocá “Guardar combo”: después la reproducís paso a paso desde acá.
+      <EmptyState icon="save" title={t('practice.panel.noCombos')}>
+        {t('practice.panel.noCombosHint')}
       </EmptyState>
     )
   }
 
   return (
     <>
-      <ul className="m-0 grid list-none content-start gap-2 overflow-y-auto p-0" aria-label="Combos guardados">
+      <ul className="m-0 grid list-none content-start gap-2 overflow-y-auto p-0" aria-label={t('practice.panel.saved')}>
         {ordered.map((combo) => (
           <li key={combo.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-card border border-border-subtle bg-card-background px-3 py-2">
             <div className="grid min-w-0 gap-0.5">
               <strong className="truncate text-body font-semibold text-foreground">{combo.name}</strong>
               <span className="truncate text-micro text-muted">
-                {combo.deckName} · {combo.actions.length} {combo.actions.length === 1 ? 'jugada' : 'jugadas'} · {formatDate(combo.savedAt)}
+                {t('practice.panel.comboMeta', { deck: combo.deckName, plays: t('practice.panel.comboPlays', { count: combo.actions.length }), date: formatDay(combo.savedAt) })}
               </span>
             </div>
             <div className="flex items-center gap-1">
-              <Button variant="secondary" size="sm" icon="play" aria-label={`Cargar ${combo.name}`} onClick={() => onLoad(combo)}>
-                Cargar
+              <Button variant="secondary" size="sm" icon="play" aria-label={t('practice.panel.loadNamed', { name: combo.name })} onClick={() => onLoad(combo)}>
+                {t('practice.panel.load')}
               </Button>
-              <IconButton tone="ghost" size="sm" aria-label={`Borrar ${combo.name}`} title="Borrar" onClick={() => setDeleting(combo)}>
+              <IconButton tone="ghost" size="sm" aria-label={t('practice.panel.deleteNamed', { name: combo.name })} title={t('common.delete')} onClick={() => setDeleting(combo)}>
                 <Icon name="trash" />
               </IconButton>
             </div>
@@ -118,9 +118,10 @@ function SavedCombosList({ combos, deckName, onLoad, onDelete }: SavedCombosList
 
       <ConfirmDialog
         isOpen={deleting !== null}
-        title={deleting ? `¿Borrar “${deleting.name}”?` : ''}
-        description="El combo se borra de este dispositivo. No se puede deshacer."
-        confirmLabel="Borrar"
+        title={deleting ? t('practice.panel.deleteTitle', { name: deleting.name }) : ''}
+        description={t('practice.panel.deleteBody')}
+        cancelLabel={t('common.cancel')}
+        confirmLabel={t('common.delete')}
         confirmColor="danger"
         onCancel={() => setDeleting(null)}
         onConfirm={() => {

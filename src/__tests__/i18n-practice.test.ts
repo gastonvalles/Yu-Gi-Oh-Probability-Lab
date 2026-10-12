@@ -1,0 +1,247 @@
+// @vitest-environment jsdom
+import { configureStore } from '@reduxjs/toolkit'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import '@testing-library/jest-dom'
+import { createElement, useEffect } from 'react'
+import { Provider } from 'react-redux'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { applyLocale } from '../i18n'
+import { createMatState, describeMatAction, listCardActions, replayMat, TOKEN_KIND, type MatAction, type MatCardKind, type MatState } from '../app/practice-mat'
+import { createSavedCombo, uniqueComboName } from '../app/saved-combos'
+import { useMatSession } from '../app/use-mat-session'
+import { createMatcherPattern } from '../app/pattern-factory'
+import { buildDerivedDeckGroupMap } from '../app/deck-groups'
+import { HandSampling } from '../components/probability/HandSampling'
+import { PracticeMat, type MatCard } from '../components/probability/PracticeMat'
+import { PracticeMatPanel } from '../components/probability/PracticeMatPanel'
+import { buildPracticeDeck, describePracticeMatch, describeRuleCondition, evaluatePracticeHand } from '../components/probability/practice'
+import type { ApiCardReference, CardEntry } from '../types'
+
+vi.mock('../ygoprodeck', () => ({ fetchCardsByIds: vi.fn(async () => []) }))
+
+const MONSTER: MatCardKind = { monster: true, spell: false, trap: false, extra: false, effect: true, fieldSpell: false, pendulum: false, fusion: false, synchro: false, xyz: false, link: false, level: 4 }
+const XYZ: MatCardKind = { ...MONSTER, extra: true, xyz: true }
+const KINDS: Record<string, MatCardKind> = { a1: MONSTER, a2: MONSTER, b1: MONSTER, c1: { ...MONSTER, level: 7 }, d1: MONSTER, e1: MONSTER, f1: MONSTER, x1: XYZ }
+const kindOf = (id: string) => KINDS[id] ?? TOKEN_KIND
+const nameOf = (id: string) => id.toUpperCase()
+
+const start = () => createMatState(['a1', 'a2', 'b1', 'c1', 'd1', 'e1', 'f1'], ['x1'], 5)
+const run = (actions: MatAction[], from = start()) => replayMat(from, actions)
+const labels = (state: MatState, id: string) => listCardActions(state, id, kindOf, nameOf).map((item) => item.label)
+
+beforeEach(() => applyLocale('en'))
+afterEach(() => {
+  cleanup()
+  applyLocale('es')
+})
+
+describe('la mesa de práctica en inglés', () => {
+  it('cuenta cada jugada en segunda persona, con plurales y los términos oficiales', () => {
+    const state = start()
+    const describe = (action: MatAction, from: MatState = state) => describeMatAction(from, action, nameOf)
+
+    expect(describe({ type: 'draw', count: 1 })).toBe('You draw E1')
+    expect(describe({ type: 'draw', count: 2 })).toBe('You draw 2 cards')
+    expect(describe({ type: 'draw', count: 1 }, { ...state, deck: [] })).toBe('You draw 1 card')
+    expect(describe({ type: 'mill', count: 3 })).toBe('You send 3 cards from the Deck to the Graveyard')
+    expect(describe({ type: 'move', id: 'e1', to: 'hand', shuffle: 5 })).toBe('You add E1 from the Deck to your hand and shuffle')
+    expect(describe({ type: 'move', id: 'x1', to: 'hand' })).toBe('X1 goes from the Extra Deck to your hand')
+    expect(describe({ type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'def', how: 'special' })).toBe('You Special Summon A1 in Defense Position')
+    expect(describe({ type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'set' })).toBe('You Set A1 face-down')
+    expect(describe({ type: 'place', id: 'a1', zone: 'st', index: 0, pos: 'atk', how: 'scale' })).toBe('You activate A1 as a Pendulum Scale')
+    expect(describe({ type: 'activate', id: 'a1', cost: 'banish' })).toBe('You activate the effect of A1, banishing it')
+  })
+
+  it('arma las listas con coma y "and", y los pasos de un turno nuevo y de una ficha', () => {
+    const state = start()
+    const end = run([{ type: 'phase', phase: 'end' }])
+    const describe = (action: MatAction, from: MatState = state) => describeMatAction(from, action, nameOf)
+
+    expect(describe({ type: 'tribute', id: 'c1', tributes: ['a1', 'a2'], zone: 'mz', index: 0, pos: 'atk' })).toBe('You Tribute Summon C1 (Tributing A1 and A2)')
+    expect(describe({ type: 'tribute', id: 'c1', tributes: ['a1'], zone: 'mz', index: 0, pos: 'set' })).toBe('You Set C1 face-down by Tributing A1')
+    expect(describe({ type: 'summon', id: 'x1', how: 'xyz', materials: ['a1', 'a2', 'b1'], zone: 'emz', index: 0, pos: 'def' })).toBe('You Xyz Summon X1 in Defense Position (materials: A1, A2, and B1)')
+    expect(describe({ type: 'phase', phase: 'battle' })).toBe('You go to the Battle Phase')
+    expect(describe({ type: 'phase', phase: 'draw' }, end)).toBe('Turn 2: Draw Phase, you draw E1')
+    expect(describe({ type: 'token', zone: 'emz', index: 0, pos: 'def' })).toBe('You Special Summon a Token in Defense Position, Extra Monster Zone 1')
+    expect(describe({ type: 'token', zone: 'mz', index: 1 })).toBe('You Special Summon a Token in Attack Position, Monster Zone 2')
+
+    const withToken = run([{ type: 'token', zone: 'mz', index: 0 }])
+    expect(describe({ type: 'target', id: 'token-1' }, withToken)).toBe('You select the Token')
+    expect(describe({ type: 'counter', id: 'token-1', delta: 2 }, withToken)).toBe('Counters on the Token: 2')
+  })
+
+  it('el menú de una carta ofrece las jugadas con su nombre oficial', () => {
+    expect(labels(start(), 'a1')).toEqual(['Normal Summon', 'Special Summon', 'Activate effect', 'Reveal', 'Select', 'Discard', 'Banish', 'Banish face-down', 'Top of the Deck', 'Bottom of the Deck'])
+    expect(listCardActions(start(), 'a1', kindOf, nameOf)[0]!.choices?.map((choice) => choice.label)).toEqual(['Attack', 'Set face-down'])
+    expect(labels(start(), 'x1')).toEqual(['Special Summon', 'To the Graveyard', 'Banish', 'Banish face-down'])
+
+    const two = run([{ type: 'place', id: 'x1', zone: 'emz', index: 0, pos: 'atk' }, { type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }])
+    expect(labels(two, 'c1')[0]).toBe('Tribute Summon (2)')
+    expect(labels(two, 'a1')).toEqual(['Activate effect', 'Switch to Defense', 'Turn face-down', 'Attach to X1', 'Counter +1', 'Select', 'To the Spell & Trap Zone', 'To hand', 'To the Graveyard', 'Banish', 'Banish face-down', 'Top of the Deck', 'Bottom of the Deck'])
+  })
+
+  it('el nombre de un combo sin nombre sale en el idioma de ese momento', () => {
+    expect(uniqueComboName('', [])).toBe('Unnamed combo')
+    expect(uniqueComboName('  ', [])).toBe('Unnamed combo')
+    applyLocale('es')
+    expect(uniqueComboName('', [])).toBe('Combo sin nombre')
+  })
+})
+
+describe('el muestreo de manos en inglés', () => {
+  const sampling = (playable: number, dead: number, labClean: number | null) =>
+    render(createElement(HandSampling, { rating: null, tally: { playable, dead }, labClean, turn: 'first', onRate: () => {}, onReset: () => {} }))
+
+  it('con pocas manos avisa que la muestra es chica y dice lo que da el Lab', () => {
+    sampling(1, 0, 0.5)
+
+    const box = screen.getByLabelText('Hand sampling')
+    expect(within(box).getByText('Does this hand work for you?')).toBeInTheDocument()
+    expect(within(box).getByRole('button', { name: 'Playable' })).toBeInTheDocument()
+    expect(within(box).getByRole('button', { name: 'Dead' })).toBeInTheDocument()
+    expect(within(box).getByText('You rated 1 hand: 100.0% playable (small sample). The Lab gives 50.0% clean hands going first.')).toBeInTheDocument()
+  })
+
+  it('con diez manos o más da el intervalo y avisa si el Lab queda afuera', () => {
+    sampling(9, 1, 0.5)
+
+    expect(screen.getByText(/^You rated 10 hands: 90.0% playable \(between 59.6% and 98.2%\)\. The Lab gives 50.0% clean hands going first\. Your rules and your judgment don’t match: review your rules\./)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reset' })).toBeInTheDocument()
+  })
+})
+
+describe('las salidas y problemas de la mano en inglés', () => {
+  const card = (id: string, name: string, copies: number, roles: CardEntry['roles']): CardEntry => ({ id, name, copies, source: 'manual', apiCard: null, origin: 'engine', roles, needsReview: false })
+  const cards = [card('card-1', 'Starter', 2, ['starter']), card('card-2', 'Brick', 3, ['brick']), card('card-3', 'Filler', 5, ['enabler'])]
+  const deck = buildPracticeDeck(cards)
+  const groups = buildDerivedDeckGroupMap(cards)
+  const pick = (ids: string[]) => ids.map((id, index) => ({ ...deck.find((entry) => entry.cardId === id)!, drawId: `${id}-${index}` }))
+
+  it('quita el "The rule is met if" y deja la condición; resume las listas largas', () => {
+    expect(describeRuleCondition('The rule is met if you open 1 copy of Role: Starter.')).toBe('You open 1 copy of Role: Starter.')
+    expect(describeRuleCondition('The rule, without reusing the same card across conditions, is met if you open 1 copy of A and you open 1 copy of B.')).toBe(
+      'Without reusing cards: you open 1 copy of A and you open 1 copy of B.',
+    )
+    expect(describeRuleCondition('The rule is met if you open 1 copy of (A / B / C / D / E).')).toBe('You open 1 copy of (5 cards).')
+    expect(describeRuleCondition('No requirements')).toBe('No requirements')
+  })
+
+  it('lo que arma el motor en inglés se explica sin el prefijo, y lo que faltó o bloquea sale con su plural', () => {
+    const opening = createMatcherPattern('Starter + Brick', 'opening', [
+      { matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' },
+      { matcher: { type: 'role', value: 'enabler' }, quantity: 1, kind: 'include' },
+    ])
+    const starter = createMatcherPattern('Starter', 'opening', [{ matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' }])
+    const noBrick = createMatcherPattern('Clean', 'opening', [{ matcher: { type: 'role', value: 'brick' }, quantity: 1, kind: 'exclude' }])
+
+    const hand = pick(['card-1', 'card-3', 'card-3', 'card-3', 'card-3'])
+    expect(describePracticeMatch(evaluatePracticeHand(hand, [starter], cards, groups, 'first').matches[0]!, 0)).toMatch(/^You open 1 copy of /)
+    // Dos condiciones que no comparten cartas: el motor lo dice y la explicación lo conserva.
+    expect(describePracticeMatch(evaluatePracticeHand(hand, [opening], cards, groups, 'first').matches[0]!, 0)).toMatch(/^Without reusing cards: you open 1 copy of /)
+
+    const missing = evaluatePracticeHand(pick(['card-2', 'card-3', 'card-3', 'card-3', 'card-3']), [opening], cards, groups, 'first')
+    expect(missing.openingNearMisses[0]!.notes[0]).toMatch(/^Missing /)
+
+    const blocked = evaluatePracticeHand(pick(['card-2', 'card-2', 'card-3', 'card-3', 'card-3']), [noBrick], cards, groups, 'first')
+    expect(blocked.openingNearMisses[0]!.notes[0]).toMatch(/^Blocked: .* already appears 2 times in your hand\.$/)
+  })
+})
+
+describe('el panel de la mesa en inglés', () => {
+  it('lista los combos guardados con su cantidad de jugadas y la fecha del idioma', () => {
+    const initial = createMatState(['card-1-1', 'card-2-1', 'card-3-1', 'card-4-1', 'card-5-1', 'card-6-1'], [], 5)
+    const combo = createSavedCombo(
+      { name: 'Basic line', deckName: 'Yummy', initial, actions: [{ type: 'draw', count: 1 }], nameOf: (id) => id },
+      [],
+      new Date('2026-10-11T12:00:00Z'),
+    )
+
+    render(createElement(PracticeMatPanel, { steps: [], cursor: 0, onSeek: () => {}, combos: [combo], deckName: 'Yummy', onLoad: () => {}, onDelete: () => {} }))
+
+    expect(screen.getByText('No plays yet')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('radio', { name: /Combos/ }))
+    expect(screen.getByText('Yummy · 1 play · Oct 11, 2026')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Load Basic line' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Basic line' }))
+    expect(screen.getByText('Delete “Basic line”?')).toBeInTheDocument()
+  })
+})
+
+describe('la mesa dibujada en inglés', () => {
+  const apiCard = (ygoprodeckId: number, frameType: string) =>
+    ({ ygoprodeckId, frameType, race: null, cardType: 'x', description: null, attribute: null, level: null, linkValue: null, atk: null, def: null, archetype: null, ygoprodeckUrl: null, imageUrl: null, imageUrlSmall: null }) as unknown as ApiCardReference
+  const CARDS: ReadonlyMap<string, MatCard> = new Map([
+    ['card-1-1', { name: 'Ash Blossom', apiCard: apiCard(1, 'effect') }],
+    ['card-2-1', { name: 'Maxx C', apiCard: apiCard(2, 'effect') }],
+    ['card-3-1', { name: 'Called by the Grave', apiCard: apiCard(3, 'spell') }],
+    ['card-4-1', { name: 'Nibiru', apiCard: apiCard(4, 'effect') }],
+    ['card-5-1', { name: 'Droll', apiCard: apiCard(5, 'effect') }],
+    ['card-6-1', { name: 'Imperm', apiCard: apiCard(6, 'trap') }],
+  ])
+  const INITIAL = createMatState([...CARDS.keys()], [], 5)
+
+  function MatHarness() {
+    const mat = useMatSession()
+    const { start: begin } = mat
+
+    useEffect(() => {
+      begin(INITIAL)
+    }, [begin])
+
+    if (!mat.session || !mat.state) return null
+
+    return createElement(PracticeMat, { session: mat.session, state: mat.state, cardsById: CARDS, deckName: 'Test', onDispatch: mat.dispatch, onUndo: mat.undo, onSeek: mat.seek, onLoadCombo: () => {}, onNewHand: () => begin(INITIAL) })
+  }
+
+  const pointer = { button: 0, pointerId: 1 }
+  const tap = (element: HTMLElement) => {
+    fireEvent.pointerDown(element, { ...pointer, clientX: 10, clientY: 10 })
+    fireEvent.pointerUp(element, { ...pointer, clientX: 10, clientY: 10 })
+  }
+
+  beforeEach(() => {
+    localStorage.clear()
+    HTMLElement.prototype.setPointerCapture = () => {}
+    window.matchMedia = ((query: string) => ({ matches: query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+  })
+
+  it('la barra, los menús, el paso que pide la zona y la jugada anotada salen en inglés', () => {
+    const store = configureStore({ reducer: { settings: (state = { handSize: 5, deckFormat: 'unlimited' as const }) => state } })
+    render(createElement(Provider, { store, children: createElement(MatHarness) }))
+
+    const toolbar = screen.getByRole('toolbar', { name: 'Mat' })
+    const status = () => screen.getByRole('status', { name: 'Current step' })
+    const hand = () => screen.getByRole('list', { name: 'Hand' })
+    const zone = (name: string) => screen.getByRole('group', { name })
+
+    expect(within(toolbar).getByRole('button', { name: 'Token' })).toHaveAttribute('title', 'Create a Token')
+    expect(within(toolbar).getByRole('button', { name: 'Undo' })).toBeDisabled()
+    expect(screen.getByLabelText('Turn 1')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Draw Phase' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'GY: 0' })).toBeInTheDocument()
+    expect(status()).toHaveTextContent('Drag a card to a zone or tap it to see what you can do.')
+
+    tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
+    expect(screen.getByRole('menu', { name: 'Ash Blossom' })).toHaveTextContent('Hand')
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Normal Summon' }))
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Attack', 'Set face-down'])
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Attack' }))
+    expect(status()).toHaveTextContent('Tap the zone for Normal Summon: attack')
+    fireEvent.click(screen.getByRole('button', { name: 'Choose Monster Zone 1' }))
+
+    expect(within(zone('Monster Zone 1')).getByRole('button', { name: 'Ash Blossom' })).toBeInTheDocument()
+    expect(status()).toHaveTextContent('You Normal Summon Ash Blossom')
+
+    tap(within(hand()).getByRole('listitem', { name: 'Maxx C' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Special Summon' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Defense' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Choose Monster Zone 2' }))
+    expect(within(zone('Monster Zone 2')).getByRole('button', { name: 'Maxx C, Defense Position' })).toBeInTheDocument()
+
+    tap(screen.getByRole('button', { name: 'Main: 1' }))
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Draw', 'Send to the Graveyard', 'Banish the top card', 'Banish the top card face-down', 'View the Deck', 'Shuffle'])
+    expect(screen.getByRole('menu', { name: '1 card' })).toBeInTheDocument()
+  })
+})

@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import { isRecord } from './utils'
 
 /**
@@ -42,17 +43,17 @@ export function parseBackup(text: string): LabBackup {
   try {
     parsed = JSON.parse(text)
   } catch {
-    throw new Error('El archivo no es un JSON válido.')
+    throw new Error(t('shell.backup.invalidJson'))
   }
 
   if (!isRecord(parsed) || parsed.app !== BACKUP_APP || !isRecord(parsed.entries)) {
-    throw new Error('El archivo no es una copia de seguridad de esta app.')
+    throw new Error(t('shell.backup.notBackup'))
   }
 
   const entries = Object.fromEntries(Object.entries(parsed.entries).filter((entry): entry is [string, string] => isOurs(entry[0]) && typeof entry[1] === 'string'))
 
   if (Object.keys(entries).length === 0) {
-    throw new Error('La copia está vacía.')
+    throw new Error(t('shell.backup.empty'))
   }
 
   return { app: BACKUP_APP, version: 1, savedAt: typeof parsed.savedAt === 'string' ? parsed.savedAt : '', entries }

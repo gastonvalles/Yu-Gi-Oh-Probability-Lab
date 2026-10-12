@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import type { DeckCardInstance } from '../../app/model'
+import { t } from '../../i18n'
 import type { CardOrigin, CardRole } from '../../types'
 import { buildCardSummary } from '../card-detail/card-summary'
 import { ClassificationOverlay } from '../classification/ClassificationOverlay'
@@ -48,7 +49,7 @@ export function BuildBCardEditor({ card, currentEdit, allCards, onSave, onNaviga
     <ClassificationOverlay
       name={card.name}
       card={card.apiCard}
-      lines={[`${summary.typeLine}${summary.statLine ? ` · ${summary.statLine}` : ''} · Build B`]}
+      lines={[`${summary.typeLine}${summary.statLine ? ` · ${summary.statLine}` : ''} · ${t('meta.compare.build', { side: 'B' })}`]}
       origin={origin}
       roles={roles}
       onSetOrigin={setOrigin}

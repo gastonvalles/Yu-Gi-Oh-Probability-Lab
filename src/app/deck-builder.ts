@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import type { ApiCardReference, CardOrigin, CardRole, DeckFormat } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 import { classifyCard, normalizeCardNameForLookup, type ClassificationSuggestion } from './classification-engine'
@@ -83,41 +84,43 @@ export function getAddSearchResultIssue(
   format: DeckFormat = 'unlimited',
 ): string | null {
   if (format === 'genesys' && !isGenesysLegalCardName(searchResult.name)) {
-    return `${searchResult.name} no figura como carta legal en Genesys.`
+    return t('deck.issue.genesysNotLegal', { name: searchResult.name })
   }
 
   if (format === 'edison' && !isEdisonCardInPool(searchResult)) {
-    return `${searchResult.name} no es legal en ${EDISON_FORMAT_LABEL}.`
+    return t('deck.issue.notLegalIn', { name: searchResult.name, format: EDISON_FORMAT_LABEL })
   }
 
   if (!isCardAllowedInDeckZone(searchResult, zone)) {
-    return zone === 'main'
-      ? `${searchResult.name} solo puede ir al Extra Deck o Side Deck.`
-      : `${searchResult.name} solo puede ir al Main Deck o Side Deck.`
+    return t(zone === 'main' ? 'deck.issue.onlyExtraOrSide' : 'deck.issue.onlyMainOrSide', { name: searchResult.name })
   }
 
   if (deckBuilder[zone].length >= DECK_ZONE_LIMITS[zone]) {
     const zoneLabel = zone === 'extra' ? 'Extra Deck' : zone === 'side' ? 'Side Deck' : 'Main Deck'
-    return `${zoneLabel} ya alcanzó su tamaño máximo.`
+    return t('deck.issue.zoneFull', { zone: zoneLabel })
   }
 
   const limit = getCardCopyLimit(searchResult, format)
 
   if (countCardCopies(deckBuilder, searchResult.name) >= limit) {
     if (limit === 0 && format === 'edison' && getEdisonCardStatus(searchResult) === 'forbidden') {
-      return `${searchResult.name} está prohibida en ${EDISON_FORMAT_LABEL}.`
+      return t('deck.issue.forbiddenIn', { name: searchResult.name, format: EDISON_FORMAT_LABEL })
     }
 
     return limit === 0
-      ? `${searchResult.name} no se puede jugar en este formato.`
-      : `${searchResult.name} ya alcanzó el límite de ${formatInteger(limit)} copia${limit === 1 ? '' : 's'} en este formato.`
+      ? t('deck.issue.cannotPlay', { name: searchResult.name })
+      : t('deck.issue.copyLimitReached', { name: searchResult.name, count: limit })
   }
 
   if (format === 'genesys') {
     const nextPointTotal = calculateGenesysDeckPointTotal(deckBuilder) + (searchResult.genesys.points ?? 0)
 
     if (nextPointTotal > GENESYS_POINT_CAP) {
-      return `${searchResult.name} llevaría el deck a ${formatInteger(nextPointTotal)} puntos y supera el cap estándar de ${formatInteger(GENESYS_POINT_CAP)} en Genesys.`
+      return t('deck.issue.genesysOverCapAdding', {
+        name: searchResult.name,
+        points: formatInteger(nextPointTotal),
+        cap: formatInteger(GENESYS_POINT_CAP),
+      })
     }
   }
 

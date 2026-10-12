@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import { persistComputation, readPersistedComputation } from './lab-cache-store'
 import { isWorkerTimeout, runInPool } from './lab-worker-pool'
 import { beginMascotActivity } from './mascot'
@@ -107,7 +108,7 @@ export function requestLabComputation(input: LabComputationInput, key = labCompu
   const second = runInPool<{ output: CalculationOutput }>((id) => ({ id, kind: 'view', cards, patterns, handSize, view: 'second' }))
   const tooSlow = (): LabComputation => ({
     status: 'blocked',
-    issues: [{ level: 'error', message: 'El cálculo tardó demasiado y se canceló. Probá con menos condiciones o un pool de cartas más chico.' }],
+    issues: [{ level: 'error', message: t('rules.compute.tooSlow') }],
   })
   const inMainThread = () =>
     new Promise<LabComputation>((resolve) =>
@@ -116,7 +117,7 @@ export function requestLabComputation(input: LabComputationInput, key = labCompu
           resolve(computeLabResults(cards, patterns, handSize))
         } catch {
           // Si el cálculo revienta, la pantalla muestra el aviso en vez de quedarse cargando para siempre.
-          resolve({ status: 'blocked', issues: [{ level: 'error', message: 'No pude calcular las probabilidades. Probá de nuevo.' }] })
+          resolve({ status: 'blocked', issues: [{ level: 'error', message: t('rules.compute.failed') }] })
         }
       }, 0),
     )

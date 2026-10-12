@@ -4,6 +4,7 @@ import { Provider } from 'react-redux'
 
 import App from './App'
 import { UI_ANIMATION_MS } from './app/motion'
+import { syncSiteMeta } from './i18n'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
 import { store } from './app/store'
 import './index.css'
@@ -11,10 +12,11 @@ import './index.css'
 const appRoot = document.querySelector<HTMLDivElement>('#app')
 
 if (!appRoot) {
-  throw new Error('No se encontró el contenedor principal.')
+  throw new Error('No se encontró el contenedor principal.') // i18n-ignore: error de programación, no llega a la pantalla
 }
 
 document.documentElement.style.setProperty('--motion-duration', `${UI_ANIMATION_MS}ms`)
+syncSiteMeta()
 
 createRoot(appRoot).render(
   <StrictMode>

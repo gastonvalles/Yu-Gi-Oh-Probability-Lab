@@ -9,6 +9,7 @@ import { buildFormatLimitLabel } from '../../app/deck-format'
 import type { DeckZone } from '../../app/model'
 import { useInfiniteScroll } from '../../app/use-infinite-scroll'
 import { formatInteger } from '../../app/utils'
+import { t } from '../../i18n'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { CardArt } from '../CardArt'
 import { Button } from '../ui/Button'
@@ -109,7 +110,7 @@ export function MobileCardSearch({
       tabIndex={-1}
       role="dialog"
       aria-modal="true"
-      aria-label="Buscar cartas"
+      aria-label={t('search.mobile.dialog')}
       className="fixed inset-0 z-140 flex h-dvh w-full flex-col overflow-hidden bg-background outline-none min-[1101px]:hidden"
     >
       <header className="grid gap-2 border-b border-border-subtle px-3 pb-2 pt-[max(0.6rem,env(safe-area-inset-top))]">
@@ -121,12 +122,12 @@ export function MobileCardSearch({
             inputRef.current?.blur()
           }}
         >
-          <IconButton size="lg" aria-label="Volver al deck" onClick={onClose}>
+          <IconButton size="lg" aria-label={t('search.mobile.back')} onClick={onClose}>
             <Icon name="chevron-left" />
           </IconButton>
 
           <label className="relative block min-w-0 flex-1">
-            <span className="sr-only">Nombre o texto de la carta</span>
+            <span className="sr-only">{t('search.mobile.inputLabel')}</span>
             <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 z-1 -translate-y-1/2 text-soft" />
             <input
               ref={inputRef}
@@ -134,7 +135,7 @@ export function MobileCardSearch({
               enterKeyHint="search"
               value={query}
               onChange={(event) => actions.onQueryChange(event.target.value)}
-              placeholder="Nombre de la carta"
+              placeholder={t('search.mobile.placeholder')}
               autoComplete="off"
               autoCorrect="off"
               autoCapitalize="none"
@@ -149,7 +150,7 @@ export function MobileCardSearch({
             {query.length > 0 ? (
               <button
                 type="button"
-                aria-label="Borrar texto"
+                aria-label={t('search.clearText')}
                 className="absolute right-0 top-0 grid h-11 w-11 place-items-center text-white"
                 onClick={() => {
                   actions.onQueryChange('')
@@ -174,14 +175,14 @@ export function MobileCardSearch({
             onClick={() => setFiltersOpen((current) => !current)}
           >
             <Icon name="sliders" />
-            <span className="sr-only">Filtros</span>
+            <span className="sr-only">{t('search.filters.title')}</span>
             {search.activeFilterCount > 0 ? (
               <span className="absolute -right-1.5 -top-1.5 grid h-4.5 min-w-4.5 place-items-center rounded-full bg-primary px-1 text-micro font-bold text-white">{formatInteger(search.activeFilterCount)}</span>
             ) : null}
           </button>
         </form>
 
-        <div className={CHIP_ROW} role="group" aria-label="Tipo de carta">
+        <div className={CHIP_ROW} role="group" aria-label={t('search.label.cardType')}>
           {QUICK_TYPE_OPTIONS.map((option) => (
             <button
               key={option.value}
@@ -203,7 +204,7 @@ export function MobileCardSearch({
                 type="button"
                 className={`${filterChip} min-h-9`}
                 onClick={() => actions.onFilterChange(chip.updates)}
-                aria-label={`Quitar filtro ${chip.label}: ${chip.value}`}
+                aria-label={t('search.chip.removeAria', { label: chip.label, value: chip.value })}
               >
                 <span className="truncate text-foreground">
                   {chip.label}: {chip.value}
@@ -268,7 +269,7 @@ export function MobileCardSearch({
                 hasMore={search.hasMore}
                 sortOrder={sortOrder}
                 onSortOrderChange={setSortOrder}
-                hint="tocá para ver detalle"
+                hint={t('search.mobile.detailHint')}
               />
               <ul className="m-0 grid list-none gap-2 p-0">
                 {sortedResults.map((card) => (
@@ -287,7 +288,7 @@ export function MobileCardSearch({
               </ul>
               {search.hasMore && !search.isLoadingMore ? (
                 <Button variant="secondary" size="md" fullWidth className="mt-2" onClick={actions.onLoadMore}>
-                  Cargar más resultados
+                  {t('search.mobile.loadMore')}
                 </Button>
               ) : null}
             </>
@@ -298,7 +299,7 @@ export function MobileCardSearch({
       <footer className="flex items-center gap-3 border-t border-border-subtle px-3 pb-[max(0.6rem,env(safe-area-inset-bottom))] pt-2">
         <p className="m-0 min-w-0 flex-1 text-body leading-tight text-muted" aria-live="polite">
           {lastAdded ? (
-            <span className="text-foreground">Agregaste {lastAdded.name}</span>
+            <span className="text-foreground">{t('search.mobile.added', { name: lastAdded.name })}</span>
           ) : (
             <>
               Main <strong className="text-foreground">{formatInteger(zoneCounts.main)}</strong> · Extra{' '}
@@ -309,11 +310,11 @@ export function MobileCardSearch({
         </p>
         {filtersOpen ? (
           <Button variant="primary" size="md" onClick={() => setFiltersOpen(false)}>
-            Ver resultados
+            {t('search.mobile.viewResults')}
           </Button>
         ) : (
           <Button variant="primary" size="md" onClick={onClose}>
-            Listo
+            {t('search.mobile.done')}
           </Button>
         )}
       </footer>
@@ -352,7 +353,7 @@ function MobileResultRow({
             limitCard={card}
             limitBadgeSize="sm"
           />
-          {copiesInDeck > 0 ? <CopiesBadge copies={copiesInDeck} placement="overlay" label={`${copiesInDeck} en el deck`} /> : null}
+          {copiesInDeck > 0 ? <CopiesBadge copies={copiesInDeck} placement="overlay" label={t('search.result.inDeck', { copies: copiesInDeck })} /> : null}
         </span>
         <span className="grid min-w-0 gap-0.5 text-left">
           <strong className="text-body font-semibold leading-tight wrap-anywhere text-foreground">{card.name}</strong>
@@ -370,10 +371,10 @@ function MobileResultRow({
           justAdded ? 'border-success/70 bg-success/25 text-success-soft' : 'border-primary/55 bg-primary/20',
         )}
         disabled={isMaxed}
-        aria-label={isMaxed ? `${card.name}: máximo de copias alcanzado` : `Agregar ${card.name} al deck`}
+        aria-label={isMaxed ? t('search.mobile.maxedAria', { name: card.name }) : t('search.result.addAria', { name: card.name })}
         onClick={onAdd}
       >
-        {isMaxed ? <span className="text-micro font-semibold">MÁX</span> : justAdded ? <Icon name="check" strokeWidth={2} /> : <Icon name="plus" strokeWidth={2} />}
+        {isMaxed ? <span className="text-micro font-semibold">{t('search.result.maxBadge')}</span> : justAdded ? <Icon name="check" strokeWidth={2} /> : <Icon name="plus" strokeWidth={2} />}
       </button>
     </li>
   )

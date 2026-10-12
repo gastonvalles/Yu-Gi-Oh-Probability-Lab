@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 
 import { currentMascot } from '../../app/mascot'
+import { t } from '../../i18n'
 import { Button } from './Button'
 import { Card } from './Card'
 
@@ -39,11 +40,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           <img src={`${currentMascot().folder}/failed.webp`} alt="" className="w-28 motion-reduce:hidden" />
           <img src={`${currentMascot().folder}/idle.png`} alt="" className="hidden w-28 motion-reduce:block" />
           <div className="grid gap-1">
-            <h1 className="m-0 text-title font-semibold text-foreground">Algo salió mal</h1>
-            <p className="m-0 text-body text-muted">La pantalla no se pudo dibujar. Tu deck y tus reglas siguen guardados en este navegador.</p>
+            <h1 className="m-0 text-title font-semibold text-foreground">{t('shell.error.title')}</h1>
+            <p className="m-0 text-body text-muted">{t('shell.error.description')}</p>
           </div>
           <Button variant="primary" size="md" icon="refresh" onClick={() => window.location.reload()}>
-            Reintentar
+            {t('shell.error.retry')}
           </Button>
         </Card>
       </main>

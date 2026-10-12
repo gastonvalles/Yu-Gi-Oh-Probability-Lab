@@ -75,6 +75,7 @@ Los roles de las cartas (starter, handtrap…) y los grupos (engine, non-engine�
 - Pestañas con ícono (relleno en la activa, duotono en las demás) + nombre + dato en vivo (p. ej. `40 / 40`) + punto de estado (verde listo, naranja a medio hacer). La activa lleva fondo lavanda.
 - **Mismos nombres en desktop y mobile:** Deck · Roles · Lab · Comparar · Exportar · Meta · Replays (el nombre completo va en el tooltip). Los rótulos de las pestañas de arriba reservan el ancho de la negrita, así al activarse una ninguna se corre.
 - Mobile: barra inferior lavanda con esquinas superiores de 24 px; la pestaña activa se rellena y se tiñe de violeta claro.
+- **Idioma:** el selector ES | EN (`LanguageSwitcher`, una pista lavanda como `Segmented`) va en la barra de arriba, junto a las mascotas, y en el pie en mobile. Todo texto sale de `t()` (ver `docs/i18n.md`): el inglés cambia el largo de los rótulos, así que ningún diseño depende del ancho de un texto.
 
 ## 6. Reglas para sumar pantallas
 
