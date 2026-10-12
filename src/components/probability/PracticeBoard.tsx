@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 
+import { t } from '../../i18n'
 import type { PatternKind } from '../../types'
 import { cx } from '../ui/cx'
 import { formatOdds } from './lab-copy'
@@ -74,11 +75,11 @@ export function PracticeBoard({ openings, problems, activeId, caseIndex, unplaya
   return (
     <div ref={ref} className="grid gap-1.5">
       {activeId === UNPLAYABLE_ID && unplayable ? (
-        <section className={explainStyle('problem')} aria-live="polite" aria-label="Mano no jugable">
-          <p className={EXPLAIN_TEXT}>Ninguna salida se cumple con esta mano: por eso se ve gris.</p>
+        <section className={explainStyle('problem')} aria-live="polite" aria-label={t('practice.board.unplayable')}>
+          <p className={EXPLAIN_TEXT}>{t('practice.board.unplayableWhy')}</p>
           {unplayableOdds !== null && unplayableOdds > 0 ? <p className={ODDS_TEXT}>{formatOdds(unplayableOdds)}</p> : null}
           {nearMisses.length > 0 ? (
-            <ul aria-label="Qué faltó" className="m-0 col-span-full grid list-none gap-0.5 p-0 text-micro text-white/85">
+            <ul aria-label={t('practice.board.missing')} className="m-0 col-span-full grid list-none gap-0.5 p-0 text-micro text-white/85">
               {nearMisses.map((miss) => (
                 <li key={miss.name} className="[overflow-wrap:anywhere]">
                   <strong className="font-semibold">{miss.name}:</strong> {miss.notes.join(' ')}
@@ -111,13 +112,13 @@ function RuleExplanation({ match, caseIndex, odds }: { match: PracticeHandMatch;
       {match.cases.length > 1 ? (
         <span
           className="rounded-full bg-[color-mix(in_srgb,var(--rule-color)_22%,transparent)] px-2 py-px text-micro font-extrabold tabular-nums"
-          aria-label={`Caso ${caseIndex + 1} de ${match.cases.length}`}>
+          aria-label={t('practice.board.caseOf', { n: caseIndex + 1, total: match.cases.length })}>
           {caseIndex + 1}/{match.cases.length}
         </span>
       ) : null}
       {odds !== null && odds > 0 ? <p className={ODDS_TEXT}>{formatOdds(odds)}</p> : null}
       {cards.length > 0 ? (
-        <ul aria-label="Cartas de tu mano" className="m-0 col-span-full flex list-none flex-wrap gap-1 p-0">
+        <ul aria-label={t('practice.board.handCards')} className="m-0 col-span-full flex list-none flex-wrap gap-1 p-0">
           {cards.map((card) => (
             <li
               key={card.cardId}
@@ -156,7 +157,7 @@ function RuleGroup({
   }
 
   return (
-    <ul className={cx('m-0 flex list-none flex-wrap items-center gap-1.5 p-0', RULE_COLOR[kind])} aria-label={kind === 'opening' ? 'Salidas' : 'Problemas'}>
+    <ul className={cx('m-0 flex list-none flex-wrap items-center gap-1.5 p-0', RULE_COLOR[kind])} aria-label={kind === 'opening' ? t('practice.board.openings') : t('practice.board.problems')}>
       {unplayable && kind === 'problem' ? (
         <li className={cx(RULE_ITEM, RULE_COLOR[kind])}>
           <button
@@ -165,7 +166,7 @@ function RuleGroup({
             aria-pressed={activeId === UNPLAYABLE_ID}
             onClick={() => onToggle(UNPLAYABLE_ID)}
           >
-            Mano no jugable
+            {t('practice.board.unplayable')}
           </button>
         </li>
       ) : null}

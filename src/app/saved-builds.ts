@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import type { CardOrigin, CardRole } from '../types'
 import type { DeckCardInstance } from './model'
 import { normalizeStoredRoles, resolveStoredCardOrigin } from './deck-groups'
@@ -64,7 +65,8 @@ function isSavedBuild(value: unknown): value is SavedBuild {
 
 /** Evita dos builds con el mismo nombre: "Mitsurugi", "Mitsurugi (2)"… */
 export function uniqueBuildName(name: string, builds: readonly SavedBuild[]): string {
-  const base = name.trim() || 'Build sin nombre'
+  // Ese nombre se guarda con la build: queda en el idioma en que se guardó (después se puede renombrar).
+  const base = name.trim() || t('meta.compare.untitledBuild')
   const taken = new Set(builds.map((build) => build.name.toLowerCase()))
 
   if (!taken.has(base.toLowerCase())) {

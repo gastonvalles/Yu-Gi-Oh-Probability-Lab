@@ -9,6 +9,7 @@ import { setDeckName } from '../../app/deck-builder-slice'
 import { useAppDispatch, useAppSelector } from '../../app/store-hooks'
 import { useToastMessage } from '../../app/use-toast-message'
 import { formatInteger } from '../../app/utils'
+import { t } from '../../i18n'
 import type { CardOrigin, CardRole } from '../../types'
 import { CardDetailModal } from '../card-detail/CardDetailModal'
 import { DeckImportDrawer } from '../deck-mode/DeckImportDrawer'
@@ -23,7 +24,7 @@ import { StepPage } from '../ui/StepPage'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { BuildBCardEditor } from './BuildBCardEditor'
 import { BuildDeckView } from './BuildDeckView'
-import { ComparisonReport, CURRENT_DECK_NAME } from './ComparisonReport'
+import { ComparisonReport, currentDeckName } from './ComparisonReport'
 import { useSavedBuilds } from './use-saved-builds'
 import { field } from '../ui/surfaces'
 
@@ -80,7 +81,7 @@ export function ComparisonScreen() {
   useEffect(() => writeSelection(selection), [selection])
 
   // Tu deck actual se llama como en el Deck builder.
-  const currentName = deckBuilder.deckName.trim() || CURRENT_DECK_NAME
+  const currentName = deckBuilder.deckName.trim() || currentDeckName()
 
   const resolve = useCallback((source: string | null): ResolvedBuild | null => {
     if (source === CURRENT) {
@@ -146,21 +147,22 @@ export function ComparisonScreen() {
 
   const handleSaveCurrent = () => {
     if (deckBuilder.main.length === 0) {
-      showToast('Tu deck actual está vacío', 'warning')
+      showToast(t('meta.compare.toastEmpty'), 'warning')
       return
     }
     const build = savedBuilds.save(currentName, deckBuilder)
     if (selection.b === null || selection.b === CURRENT) {
       selectAsB(build.id)
     }
-    showToast(`Guardaste "${build.name}"`, 'success')
+    showToast(t('meta.compare.toastSaved', { name: build.name }), 'success')
   }
 
   const handleImport = (deck: DeckBuilderState) => {
-    const build = savedBuilds.save(deck.deckName || 'Build importada', deck)
+    // Sin nombre, la build queda con uno genérico en el idioma de ese momento (se guarda con ella; después se puede renombrar).
+    const build = savedBuilds.save(deck.deckName || t('meta.compare.importedBuild'), deck)
     selectAsB(build.id)
     setIsImportOpen(false)
-    showToast(`Guardaste "${build.name}" y la elegiste como B`, 'success')
+    showToast(t('meta.compare.toastImported', { name: build.name }), 'success')
   }
 
   const handleCardClick = (build: ResolvedBuild) => (card: DeckCardInstance) => {
@@ -192,10 +194,10 @@ export function ComparisonScreen() {
           <select
             className={`${field} h-10 w-full min-w-0 px-3 text-body`}
             value={value ?? ''}
-            aria-label={`Build ${side}`}
+            aria-label={t('meta.compare.build', { side })}
             onChange={(event) => setSelection((current) => ({ ...current, [side.toLowerCase()]: event.target.value || null }))}
           >
-            {side === 'B' ? <option value="">Elegí una build…</option> : null}
+            {side === 'B' ? <option value="">{t('meta.compare.pickPlaceholder')}</option> : null}
             {options.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -206,11 +208,11 @@ export function ComparisonScreen() {
         {build ? (
           <div className="flex gap-1 pl-9">
             <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setRenameTarget({ id: build.source, name: build.name })}>
-              Renombrar
+              {t('meta.compare.rename')}
             </Button>
             {build.isSaved ? (
               <Button variant="tertiary" color="danger" size="sm" icon="trash" onClick={() => setDeleteTarget({ id: build.source, name: build.name })}>
-                Borrar
+                {t('common.delete')}
               </Button>
             ) : null}
           </div>
@@ -220,18 +222,18 @@ export function ComparisonScreen() {
   }
 
   return (
-    <StepPage aria-label="Comparar builds">
+    <StepPage aria-label={t('meta.compare.label')}>
       <StepHero
-        title="Compará builds"
+        title={t('meta.compare.title')}
         icon="columns"
-        subtitle="Tu build contra otra, lado a lado."
+        subtitle={t('meta.compare.subtitle')}
         side={
           <>
             <Button variant="secondary" size="sm" icon="save" onClick={handleSaveCurrent}>
-              Guardar deck actual
+              {t('meta.compare.saveCurrent')}
             </Button>
             <Button variant="primary" size="sm" icon="upload" onClick={() => setIsImportOpen(true)}>
-              Importar build
+              {t('meta.compare.import')}
             </Button>
           </>
         }
@@ -246,22 +248,20 @@ export function ComparisonScreen() {
       </div>
 
       {!buildB ? (
-        <EmptyState icon="columns" title="Elegí qué comparar">
-          {savedBuilds.builds.length === 0
-            ? 'Todavía no guardaste builds. Usá “Guardar deck actual” antes de probar cambios, o “Importar build” para traer otra lista.'
-            : 'Elegí una build B arriba para compararla con A.'}
+        <EmptyState icon="columns" title={t('meta.compare.emptyTitle')}>
+          {savedBuilds.builds.length === 0 ? t('meta.compare.emptyNoBuilds') : t('meta.compare.emptyPickB')}
         </EmptyState>
       ) : (
         <>
           <Segmented
-            label="Vista"
+            label={t('meta.compare.view')}
             value={tab}
             onChange={setTab}
             fullWidth
             className="max-w-sm"
             options={[
-              { value: 'report', label: 'Resumen' },
-              { value: 'cards', label: 'Cartas' },
+              { value: 'report', label: t('meta.compare.tabReport') },
+              { value: 'cards', label: t('meta.compare.tabCards') },
             ]}
           />
 
@@ -305,9 +305,9 @@ export function ComparisonScreen() {
       />
 
       <ConfirmDialog
-        confirmLabel="Borrar build"
+        confirmLabel={t('meta.compare.deleteTitle')}
         confirmColor="danger"
-        description={`Se borra "${deleteTarget?.name ?? ''}" de tus builds guardadas. Tu deck actual no cambia.`}
+        description={t('meta.compare.deleteBody', { name: deleteTarget?.name ?? '' })}
         isOpen={deleteTarget !== null}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => {
@@ -320,7 +320,7 @@ export function ComparisonScreen() {
           }
           setDeleteTarget(null)
         }}
-        title="Borrar build"
+        title={t('meta.compare.deleteTitle')}
       />
 
       <CardDetailModal
@@ -366,14 +366,14 @@ function RenameBuildDialog({
       isOpen={target !== null}
       onClose={onCancel}
       size="sm"
-      title="Renombrar build"
+      title={t('meta.compare.renameTitle')}
       footer={
         <>
           <Button variant="secondary" size="sm" onClick={onCancel}>
-            Cancelar
+            {t('common.cancel')}
           </Button>
           <Button variant="primary" size="sm" disabled={!name.trim()} onClick={() => onConfirm(name)}>
-            Guardar
+            {t('common.save')}
           </Button>
         </>
       }
@@ -387,7 +387,7 @@ function RenameBuildDialog({
         }}
       >
         <label className="grid gap-1.5">
-          <span className="text-body text-muted">Nombre</span>
+          <span className="text-body text-muted">{t('meta.compare.renameField')}</span>
           <input
             value={name}
             autoFocus

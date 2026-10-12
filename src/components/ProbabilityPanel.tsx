@@ -6,6 +6,7 @@ import { createPattern } from '../app/pattern-factory'
 import type { RoleDistribution } from '../app/role-distribution'
 import { useToastMessage } from '../app/use-toast-message'
 import type { PatternEditorDefaults } from '../app/use-pattern-editor-actions'
+import { t } from '../i18n'
 import type { ApiCardReference, CardEntry, CardOrigin, CardRole, HandPattern, TurnView } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 import { CardDetailModal } from './card-detail/CardDetailModal'
@@ -25,6 +26,7 @@ import { LabScoreCard } from './probability/LabScoreCard'
 import { LabPendingClassification } from './probability/LabPendingClassification'
 import { PatternEditorDrawer } from './probability/PatternEditorDrawer'
 import type { PatternEditorActions } from './probability/pattern-editor-actions'
+import { formatCardCount } from './probability/lab-copy'
 import { buildPatternCompactSummary } from './probability/pattern-helpers'
 import { buildRuleEntryGroups, type RuleEntry } from './probability/probability-lab-helpers'
 import { QuickCalculator } from './probability/QuickCalculator'
@@ -190,7 +192,7 @@ export function ProbabilityPanel({
       patternActions.replacePatterns(patterns.map((pattern) => (pattern.id === saved.id ? saved : pattern)))
     }
 
-    showToast(drawerMode === 'custom-create' ? 'Regla creada' : 'Regla guardada', 'success')
+    showToast(drawerMode === 'custom-create' ? t('lab.panel.toast.created') : t('lab.panel.toast.saved'), 'success')
     closeDrawer()
   }
 
@@ -222,19 +224,19 @@ export function ProbabilityPanel({
   return (
     <StepPage as="article">
       <StepHero
-        title="Qué tan bien abre tu deck"
+        title={t('lab.panel.title')}
         icon="flask"
-        subtitle="Tus aperturas y problemas, con probabilidad exacta."
+        subtitle={t('lab.panel.subtitle')}
         side={(
           <Button variant="secondary" size="sm" icon="sliders" onClick={() => setQuickCalculator((count) => count + 1)}>
-            Calculadora rápida
+            {t('lab.panel.quickCalculator')}
           </Button>
         )}
       />
 
       {lab.readiness.status === 'empty-deck' ? (
-        <EmptyState icon="cards" title="Cargá el Main Deck primero">
-          Cuando tengas cartas en el Main Deck vas a ver el % de manos jugables y por qué fallan.
+        <EmptyState icon="cards" title={t('lab.panel.emptyDeck.title')}>
+          {t('lab.panel.emptyDeck.body')}
         </EmptyState>
       ) : lab.readiness.status === 'needs-classification' || isClassifyingPending ? (
         <LabPendingClassification
@@ -259,10 +261,10 @@ export function ProbabilityPanel({
             <TurnViewToggle
               activeView={activeTurnView}
               onChange={setActiveTurnView}
-              details={{ first: '5 cartas', second: '6 cartas', average: '50/50' }}
+              details={{ first: formatCardCount(5), second: formatCardCount(6), average: '50/50' }}
             />
             <Button variant="tertiary" size="sm" icon="info" onClick={disclaimer.open}>
-              ¿Cómo leer estos %?
+              {t('lab.panel.howToRead')}
             </Button>
           </div>
 
@@ -294,8 +296,8 @@ export function ProbabilityPanel({
         derivedMainCards={labelCards}
         drawerMode={drawerMode}
         isPendingCreation={drawerMode === 'custom-create'}
-        saveLabel={replacedGenericId ? 'Guardar cambios' : undefined}
-        hint={draftHasConditions ? 'El análisis se actualiza al guardar.' : 'Elegí qué contar en una condición para poder guardar.'}
+        saveLabel={replacedGenericId ? t('lab.panel.saveChanges') : undefined}
+        hint={draftHasConditions ? t('lab.panel.hint.ready') : t('lab.panel.hint.needsCondition')}
         onClose={handleRequestClose}
         onRequestDelete={setPendingDeletePatternId}
         onSave={handleSaveDraft}
@@ -303,14 +305,14 @@ export function ProbabilityPanel({
       />
 
       <ConfirmDialog
-        cancelLabel="Seguir editando"
-        confirmLabel="Descartar"
+        cancelLabel={t('lab.panel.discard.keepEditing')}
+        confirmLabel={t('lab.panel.discard.confirm')}
         confirmColor="danger"
-        description="Los cambios de esta regla no se guardaron. Si salís ahora se pierden."
+        description={t('lab.panel.discard.description')}
         isOpen={confirmDiscardOpen}
         onCancel={() => setConfirmDiscardOpen(false)}
         onConfirm={closeDrawer}
-        title="¿Descartar cambios?"
+        title={t('lab.panel.discard.title')}
       />
 
       <LabDisclaimerDialog isOpen={disclaimer.isOpen} dismissible={disclaimer.isAcknowledged} onAcknowledge={disclaimer.acknowledge} />
@@ -324,13 +326,13 @@ export function ProbabilityPanel({
       />
 
       <ConfirmDialog
-        confirmLabel="Eliminar regla"
+        confirmLabel={t('lab.panel.delete.confirm')}
         confirmColor="danger"
-        description="Se va a quitar esta regla del análisis y el resultado se recalculará en el momento."
+        description={t('lab.panel.delete.description')}
         isOpen={pendingDeletePatternId !== null}
         onCancel={() => setPendingDeletePatternId(null)}
         onConfirm={handleConfirmDelete}
-        title="Eliminar regla"
+        title={t('lab.panel.delete.title')}
       />
 
       {kpiModal !== null ? (
@@ -361,7 +363,7 @@ function LabSkeleton() {
   const block = `${surface.card} animate-pulse motion-reduce:animate-none`
 
   return (
-    <div className="grid min-w-0 gap-4 min-[1101px]:grid-cols-12 min-[1101px]:gap-5" role="status" aria-busy="true" aria-label="Calculando las manos del deck">
+    <div className="grid min-w-0 gap-4 min-[1101px]:grid-cols-12 min-[1101px]:gap-5" role="status" aria-busy="true" aria-label={t('lab.panel.calculating')}>
       <div className={`${block} h-11 min-[1101px]:col-span-full`} />
       <div className={`${block} h-[17rem] min-[1101px]:col-span-5`} />
       <div className={`${block} h-[5.5rem] min-[1101px]:col-span-7 min-[1101px]:h-[17rem]`} />

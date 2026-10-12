@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import type {
   ApiCardReference,
   CardOrigin,
@@ -125,7 +126,7 @@ export function createInitialState(): AppState {
     disabledGenericRuleIds: [],
     systemRuleNames: {},
     deckBuilder: {
-      deckName: 'Nuevo Deck',
+      deckName: t('deck.defaultName'),
       main: [],
       extra: [],
       side: [],

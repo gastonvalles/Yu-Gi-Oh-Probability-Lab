@@ -1,4 +1,5 @@
 import { formatInteger } from '../../app/utils'
+import { t } from '../../i18n'
 import type { CardEntry, CardOrigin, CardRole } from '../../types'
 import { buildCardSummary } from '../card-detail/card-summary'
 import { Button } from '../ui/Button'
@@ -41,7 +42,10 @@ export function ClassificationEditor({
       name={card.name}
       card={card.apiCard ?? null}
       lines={[
-        `${summary ? `${summary.typeLine}${summary.statLine ? ` · ${summary.statLine}` : ''}` : CARD_TYPE_LABEL[getCardType(card)].singular} · ×${formatInteger(card.copies)} en el Main`,
+        t('roles.editor.line', {
+          summary: summary ? `${summary.typeLine}${summary.statLine ? ` · ${summary.statLine}` : ''}` : CARD_TYPE_LABEL[getCardType(card)].singular,
+          copies: formatInteger(card.copies),
+        }),
       ]}
       origin={card.origin}
       roles={card.roles}
@@ -53,11 +57,11 @@ export function ClassificationEditor({
             tone="warning"
             action={
               <Button variant="primary" size="sm" onClick={() => onConfirm(ygoprodeckId)}>
-                Confirmar
+                {t('roles.editor.confirm')}
               </Button>
             }
           >
-            Sugerida automáticamente: confirmala si te parece bien.
+            {t('roles.editor.suggested')}
           </Callout>
         ) : null
       }

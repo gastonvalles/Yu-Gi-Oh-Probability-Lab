@@ -1,45 +1,47 @@
+import { t } from '../../i18n'
 import type { CardOrigin, CardRole } from '../../types'
 
+// Los textos son getters: se arman al leerlos (en el idioma de ese momento), no al evaluar el módulo.
 export const ROLE_EDITOR_SECTIONS = [
   {
-    title: 'Plan de Juego',
-    description: 'Inicio, conversión y continuidad de tu línea.',
+    get title() { return t('roles.section.plan.title') },
+    get description() { return t('roles.section.plan.description') },
     roles: ['starter', 'extender', 'enabler', 'searcher', 'draw', 'payoff', 'recovery'] as const,
   },
   {
-    title: 'Interacción',
-    description: 'Cómo frena o rompe al rival, por sí sola (no por una condición de tu línea).',
+    get title() { return t('roles.section.interaction.title') },
+    get description() { return t('roles.section.interaction.description') },
     roles: ['handtrap', 'disruption', 'boardbreaker', 'floodgate'] as const,
   },
   {
-    title: 'Utilidad',
-    description: 'Cartas incómodas o que preferís no robar.',
+    get title() { return t('roles.section.utility.title') },
+    get description() { return t('roles.section.utility.description') },
     roles: ['brick', 'garnet'] as const,
   },
 ] as const
 
 export const ORIGIN_HELP_TEXT: Record<CardOrigin, string> = {
-  engine: 'Parte del core del deck: cartas que querés ver para ejecutar el plan principal.',
-  non_engine: 'Interacción o soporte que no pertenece al motor principal del deck.',
+  get engine() { return t('roles.help.engine') },
+  get non_engine() { return t('roles.help.nonEngine') },
 }
 
 export const ORIGIN_BLURB_TEXT: Record<CardOrigin, string> = {
-  engine: 'Core y plan principal.',
-  non_engine: 'Interacción y soporte externo.',
+  get engine() { return t('roles.blurb.engine') },
+  get non_engine() { return t('roles.blurb.nonEngine') },
 }
 
 export const ROLE_HELP_TEXT: Record<CardRole, string> = {
-  starter: 'Carta que por sí sola inicia la línea principal.',
-  extender: 'Continúa la jugada una vez que la mano ya empezó.',
-  enabler: 'Habilita la línea: pieza o condición que otras cartas necesitan para funcionar.',
-  searcher: 'Busca una pieza concreta del deck, GY o zonas visibles (por ejemplo, al invocarse o tributarse).',
-  draw: 'Te hace robar cartas (Mulcharmy, Pot of Desires…); no busca una carta concreta.',
-  payoff: 'Convierte la línea en ventaja, presión o cierre.',
-  recovery: 'Recupera recursos después de gastar piezas o recibir interacción.',
-  handtrap: 'Interacción que frena al rival desde la mano.',
-  disruption: 'Frena al rival en mesa o en su turno (negaciones, trampas), por sí sola.',
-  boardbreaker: 'Rompe campo o quita cartas del rival por sí sola. Si solo lo hace cuando se cumple una condición de tu línea, marcá su función principal.',
-  floodgate: 'Restringe líneas del rival de forma continua o persistente.',
-  brick: 'Carta incómoda de robar si no viene acompañada.',
-  garnet: 'Pieza que preferís dejar en el deck porque en mano empeora la línea.',
+  get starter() { return t('roles.help.starter') },
+  get extender() { return t('roles.help.extender') },
+  get enabler() { return t('roles.help.enabler') },
+  get searcher() { return t('roles.help.searcher') },
+  get draw() { return t('roles.help.draw') },
+  get payoff() { return t('roles.help.payoff') },
+  get recovery() { return t('roles.help.recovery') },
+  get handtrap() { return t('roles.help.handtrap') },
+  get disruption() { return t('roles.help.disruption') },
+  get boardbreaker() { return t('roles.help.boardbreaker') },
+  get floodgate() { return t('roles.help.floodgate') },
+  get brick() { return t('roles.help.brick') },
+  get garnet() { return t('roles.help.garnet') },
 }

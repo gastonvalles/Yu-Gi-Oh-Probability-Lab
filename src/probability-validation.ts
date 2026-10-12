@@ -10,6 +10,7 @@ import {
   getConditionSource,
   resolveConditionCardIds,
 } from './app/patterns'
+import { t } from './i18n'
 import type { CardEntry, CalculatorState, ValidationIssue } from './types'
 
 export function validateCalculationState(state: CalculatorState): ValidationIssue[] {
@@ -18,42 +19,42 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
   if (!Number.isInteger(state.deckSize) || state.deckSize < 1) {
     issues.push({
       level: 'error',
-      message: 'El tamaño del deck debe ser un entero positivo.',
+      message: t('rules.validation.deckSizeInvalid'),
     })
   }
 
   if (!Number.isInteger(state.handSize) || state.handSize < 1) {
     issues.push({
       level: 'error',
-      message: 'El tamaño de la mano inicial debe ser un entero positivo.',
+      message: t('rules.validation.handSizeInvalid'),
     })
   }
 
   if (Number.isInteger(state.deckSize) && state.deckSize < 40) {
     issues.push({
       level: 'error',
-      message: 'El Main Deck debe tener al menos 40 cartas para calcular la probabilidad exacta.',
+      message: t('rules.validation.deckTooSmall'),
     })
   }
 
   if (Number.isInteger(state.deckSize) && state.deckSize > 60) {
     issues.push({
       level: 'warning',
-      message: 'En Yu-Gi-Oh! el Main Deck suele estar entre 40 y 60 cartas.',
+      message: t('rules.validation.deckTooBig'),
     })
   }
 
   if (state.handSize > state.deckSize) {
     issues.push({
       level: 'error',
-      message: 'La mano inicial no puede ser más grande que el deck.',
+      message: t('rules.validation.handBiggerThanDeck'),
     })
   }
 
   if (state.cards.length === 0) {
     issues.push({
       level: 'error',
-      message: 'Agregá al menos una carta o grupo de cartas.',
+      message: t('rules.validation.noCards'),
     })
   } else {
     const missingOriginCount = countCardsMissingOrigin(state.cards)
@@ -63,21 +64,21 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
     if (missingOriginCount > 0) {
       issues.push({
         level: 'error',
-        message: 'Hay cartas sin clasificar (origen). Revisalas en Categorización.',
+        message: t('rules.validation.missingOrigin'),
       })
     }
 
     if (missingRoleCount > 0) {
       issues.push({
         level: 'error',
-        message: 'Hay cartas sin clasificar (roles). Revisalas en Categorización.',
+        message: t('rules.validation.missingRoles'),
       })
     }
 
     if (pendingReviewCount > 0) {
       issues.push({
         level: 'error',
-        message: 'Hay cartas con clasificación pendiente de revisión. Revisalas en Categorización.',
+        message: t('rules.validation.pendingReview'),
       })
     }
   }
@@ -90,7 +91,7 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
     if (trimmedName.length === 0) {
       issues.push({
         level: 'error',
-        message: 'Cada carta o grupo debe tener un nombre.',
+        message: t('rules.validation.cardNeedsName'),
       })
       continue
     }
@@ -99,7 +100,7 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
     if (normalizedNames.has(normalizedName)) {
       issues.push({
         level: 'error',
-        message: `El nombre "${trimmedName}" está repetido. Usá nombres únicos para evitar ambigüedad.`,
+        message: t('rules.validation.duplicateName', { name: trimmedName }),
       })
     } else {
       normalizedNames.set(normalizedName, trimmedName)
@@ -108,7 +109,7 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
     if (!Number.isInteger(card.copies) || card.copies < 0) {
       issues.push({
         level: 'error',
-        message: `La cantidad de "${trimmedName}" debe ser un entero mayor o igual a 0.`,
+        message: t('rules.validation.copiesInvalid', { name: trimmedName }),
       })
     }
   }
@@ -118,21 +119,21 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
   if (definedCopies > state.deckSize) {
     issues.push({
       level: 'error',
-      message: 'La suma de copias definidas supera el tamaño del deck.',
+      message: t('rules.validation.copiesOverDeck'),
     })
   }
 
   if (definedCopies < state.deckSize) {
     issues.push({
       level: 'warning',
-      message: `Faltan ${state.deckSize - definedCopies} cartas. Se tratarán como "Otras cartas".`,
+      message: t('rules.validation.missingCopies', { count: state.deckSize - definedCopies }),
     })
   }
 
   if (state.patterns.length === 0) {
     issues.push({
       level: 'error',
-      message: 'Agregá al menos una regla de salida o problema.',
+      message: t('rules.validation.noRules'),
     })
   }
 
@@ -140,10 +141,12 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
   const groupsByKey = buildDerivedDeckGroupMap(state.cards)
 
   for (const pattern of state.patterns) {
+    const patternName = pattern.name || t('rules.validation.unnamedRule')
+
     if (pattern.needsReview) {
       issues.push({
         level: 'error',
-        message: `El patrón "${pattern.name || 'sin nombre'}" viene de una versión anterior y necesita revisión manual antes de calcular.`,
+        message: t('rules.validation.ruleNeedsReview', { name: patternName }),
       })
       continue
     }
@@ -151,7 +154,7 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
     if (pattern.conditions.length === 0) {
       issues.push({
         level: 'error',
-        message: `El patrón "${pattern.name || 'sin nombre'}" no tiene requisitos.`,
+        message: t('rules.validation.ruleNoRequirements', { name: patternName }),
       })
       continue
     }
@@ -161,18 +164,17 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
     if (requiredMatches > pattern.conditions.length) {
       issues.push({
         level: 'error',
-        message: `El patrón "${pattern.name || 'sin nombre'}" pide más requisitos de los que existen.`,
+        message: t('rules.validation.ruleTooManyRequired', { name: patternName }),
       })
     }
 
     for (const requirement of pattern.conditions) {
-      const patternName = pattern.name || 'sin nombre'
       const source = getConditionSource(requirement)
 
       if (source === 'group' && !requirement.matcher) {
         issues.push({
           level: 'error',
-          message: `El patrón "${patternName}" tiene una condición sin grupo seleccionado.`,
+          message: t('rules.validation.conditionNoGroup', { name: patternName }),
         })
         continue
       }
@@ -180,7 +182,7 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
       if (isMonsterPropertyMatcher(requirement.matcher) && !getMonsterRequirementSourceLabel(requirement.matcher)) {
         issues.push({
           level: 'error',
-          message: `El patrón "${patternName}" tiene una condición de monstruo sin valor seleccionado.`,
+          message: t('rules.validation.conditionNoMonsterValue', { name: patternName }),
         })
         continue
       }
@@ -192,16 +194,19 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
           source === 'group'
             ? {
                 level: 'warning',
-                message: `El patrón "${patternName}" usa un grupo vacío. Ajustá origen/roles en el deck o elegí otro grupo.`,
+                message: t('rules.validation.groupEmpty', { name: patternName }),
               }
             : isMonsterPropertyMatcher(requirement.matcher)
               ? {
                   level: 'warning',
-                  message: `El patrón "${patternName}" no encuentra monstruos ${getMonsterRequirementSourceLabel(requirement.matcher) ?? 'con ese filtro'} en el Main Deck.`,
+                  message: t('rules.validation.noMonsters', {
+                    name: patternName,
+                    filter: getMonsterRequirementSourceLabel(requirement.matcher) ?? t('rules.validation.noMonstersFilter'),
+                  }),
                 }
             : {
                 level: 'error',
-                message: `El patrón "${patternName}" tiene un requisito sin cartas seleccionadas.`,
+                message: t('rules.validation.requirementNoCards', { name: patternName }),
               },
         )
         continue
@@ -210,7 +215,7 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
       if (!Number.isInteger(requirement.quantity) || requirement.quantity < 1) {
         issues.push({
           level: 'error',
-          message: `El patrón "${patternName}" tiene una cantidad inválida en uno de sus requisitos.`,
+          message: t('rules.validation.quantityInvalid', { name: patternName }),
         })
       }
 
@@ -221,7 +226,7 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
       if (cards.length !== uniqueCardIds.length) {
         issues.push({
           level: 'error',
-          message: `El patrón "${patternName}" referencia una carta que ya no existe.`,
+          message: t('rules.validation.cardGone', { name: patternName }),
         })
         continue
       }
@@ -234,13 +239,13 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
           if (distinctAvailable < requirement.quantity) {
             issues.push({
               level: 'warning',
-              message: `El patrón "${patternName}" pide ${requirement.quantity} nombre${requirement.quantity === 1 ? '' : 's'} distinto${requirement.quantity === 1 ? '' : 's'} en una pool que solo tiene ${distinctAvailable}.`,
+              message: t('rules.validation.poolTooFewNames', { count: requirement.quantity, name: patternName, available: distinctAvailable }),
             })
           }
         } else if (totalCopies < requirement.quantity) {
           issues.push({
             level: 'warning',
-            message: `El patrón "${patternName}" pide ${requirement.quantity} copias en una pool que solo suma ${totalCopies}.`,
+            message: t('rules.validation.poolTooFewCopies', { count: requirement.quantity, name: patternName, total: totalCopies }),
           })
         }
       }
@@ -248,7 +253,7 @@ export function validateCalculationState(state: CalculatorState): ValidationIssu
       if (requirement.quantity > state.handSize && requirement.kind === 'include') {
         issues.push({
           level: 'warning',
-          message: `El patrón "${patternName}" exige más cartas de las que entran en la mano inicial.`,
+          message: t('rules.validation.quantityOverHand', { name: patternName }),
         })
       }
     }

@@ -1,4 +1,5 @@
 import type { SearchQuickTypeFilter } from '../../app/card-search'
+import { t } from '../../i18n'
 
 export interface FilterOption {
   value: string
@@ -20,52 +21,53 @@ export interface QuickTypeMeta {
 
 export type SearchSortOrder = 'default' | 'name-asc' | 'name-desc'
 
+// Los rótulos son getters: el texto se arma al leerlo (en el idioma de ese momento), no al evaluar el módulo.
 export const QUICK_TYPE_OPTIONS: Array<{ value: SearchQuickTypeFilter; label: string }> = [
-  { value: 'all', label: 'Todas' },
-  { value: 'monster', label: 'Monstruos' },
-  { value: 'spell', label: 'Magias' },
-  { value: 'trap', label: 'Trampas' },
+  { value: 'all', get label() { return t('search.type.all') } },
+  { value: 'monster', get label() { return t('search.type.monsters') } },
+  { value: 'spell', get label() { return t('search.type.spells') } },
+  { value: 'trap', get label() { return t('search.type.traps') } },
 ]
 
 export const QUICK_TYPE_META: Record<SearchQuickTypeFilter, QuickTypeMeta> = {
   all: {
-    exactTypeLabel: 'Tipo exacto',
-    raceLabel: 'Raza / subtipo',
-    levelLabel: 'Nivel / rango',
+    get exactTypeLabel() { return t('search.label.exactType') },
+    get raceLabel() { return t('search.label.raceOrSubtype') },
+    get levelLabel() { return t('search.label.levelOrRank') },
     showAttribute: true,
     showLevel: true,
   },
   monster: {
-    exactTypeLabel: 'Tipo de monstruo',
-    raceLabel: 'Raza',
-    levelLabel: 'Nivel / rango',
+    get exactTypeLabel() { return t('search.label.monsterType') },
+    get raceLabel() { return t('search.label.race') },
+    get levelLabel() { return t('search.label.levelOrRank') },
     showAttribute: true,
     showLevel: true,
   },
   spell: {
-    exactTypeLabel: 'Tipo de carta',
-    raceLabel: 'Subtipo',
-    levelLabel: 'Nivel / rango',
+    get exactTypeLabel() { return t('search.label.cardType') },
+    get raceLabel() { return t('search.label.subtype') },
+    get levelLabel() { return t('search.label.levelOrRank') },
     showAttribute: false,
     showLevel: false,
   },
   trap: {
-    exactTypeLabel: 'Tipo de carta',
-    raceLabel: 'Subtipo',
-    levelLabel: 'Nivel / rango',
+    get exactTypeLabel() { return t('search.label.cardType') },
+    get raceLabel() { return t('search.label.subtype') },
+    get levelLabel() { return t('search.label.levelOrRank') },
     showAttribute: false,
     showLevel: false,
   },
 }
 
 export const SEARCH_SORT_OPTIONS: Array<{ value: SearchSortOrder; label: string }> = [
-  { value: 'default', label: 'Orden base' },
-  { value: 'name-asc', label: 'Nombre A-Z' },
-  { value: 'name-desc', label: 'Nombre Z-A' },
+  { value: 'default', get label() { return t('search.sort.default') } },
+  { value: 'name-asc', get label() { return t('search.sort.nameAsc') } },
+  { value: 'name-desc', get label() { return t('search.sort.nameDesc') } },
 ]
 
 export const ATTRIBUTE_OPTIONS: FilterOption[] = [
-  { value: '', label: 'Cualquiera' },
+  { value: '', get label() { return t('search.filters.any') } },
   { value: 'DARK', label: 'DARK' },
   { value: 'LIGHT', label: 'LIGHT' },
   { value: 'FIRE', label: 'FIRE' },
@@ -159,13 +161,13 @@ const TRAP_RACE_OPTIONS: FilterOption[] = [
 
 export function getExactTypeFilterGroups(quickType: SearchQuickTypeFilter): FilterOptionGroup[] {
   if (quickType === 'monster') {
-    return [{ label: 'Monstruos', options: MONSTER_EXACT_TYPE_OPTIONS }]
+    return [{ label: t('search.type.monsters'), options: MONSTER_EXACT_TYPE_OPTIONS }]
   }
 
   if (quickType === 'spell') {
     return [
       {
-        label: 'Magias',
+        label: t('search.type.spells'),
         options: SPELL_TRAP_EXACT_TYPE_OPTIONS.filter((option) => option.value === 'Spell Card'),
       },
     ]
@@ -174,36 +176,36 @@ export function getExactTypeFilterGroups(quickType: SearchQuickTypeFilter): Filt
   if (quickType === 'trap') {
     return [
       {
-        label: 'Trampas',
+        label: t('search.type.traps'),
         options: SPELL_TRAP_EXACT_TYPE_OPTIONS.filter((option) => option.value === 'Trap Card'),
       },
     ]
   }
 
   return [
-    { label: 'Monstruos', options: MONSTER_EXACT_TYPE_OPTIONS },
+    { label: t('search.type.monsters'), options: MONSTER_EXACT_TYPE_OPTIONS },
     { label: 'Spell / Trap', options: SPELL_TRAP_EXACT_TYPE_OPTIONS },
-    { label: 'Otros', options: OTHER_EXACT_TYPE_OPTIONS },
+    { label: t('search.type.other'), options: OTHER_EXACT_TYPE_OPTIONS },
   ]
 }
 
 export function getRaceFilterGroups(quickType: SearchQuickTypeFilter): FilterOptionGroup[] {
   if (quickType === 'spell') {
-    return [{ label: 'Magias', options: SPELL_RACE_OPTIONS }]
+    return [{ label: t('search.type.spells'), options: SPELL_RACE_OPTIONS }]
   }
 
   if (quickType === 'trap') {
-    return [{ label: 'Trampas', options: TRAP_RACE_OPTIONS }]
+    return [{ label: t('search.type.traps'), options: TRAP_RACE_OPTIONS }]
   }
 
   if (quickType === 'monster') {
-    return [{ label: 'Monstruos', options: MONSTER_RACE_OPTIONS }]
+    return [{ label: t('search.type.monsters'), options: MONSTER_RACE_OPTIONS }]
   }
 
   return [
-    { label: 'Monstruos', options: MONSTER_RACE_OPTIONS },
-    { label: 'Magias', options: SPELL_RACE_OPTIONS },
-    { label: 'Trampas', options: TRAP_RACE_OPTIONS },
+    { label: t('search.type.monsters'), options: MONSTER_RACE_OPTIONS },
+    { label: t('search.type.spells'), options: SPELL_RACE_OPTIONS },
+    { label: t('search.type.traps'), options: TRAP_RACE_OPTIONS },
   ]
 }
 

@@ -1,13 +1,14 @@
+import { t } from '../i18n'
 import type { BanlistStatus, CardBanlistInfo } from '../types'
 import type { ApiCardSearchResult, ApiSearchPage } from './types'
 
 export function parseSearchResponse(payload: unknown): ApiSearchPage {
   if (!isRecord(payload)) {
-    throw new Error('La respuesta de YGOPRODeck no es un objeto válido.')
+    throw new Error(t('search.ygoprodeck.invalidResponse'))
   }
 
   if (!Array.isArray(payload.data)) {
-    throw new Error(readApiErrorMessage(payload) ?? 'YGOPRODeck no devolvió resultados.')
+    throw new Error(readApiErrorMessage(payload) ?? t('search.ygoprodeck.noData'))
   }
 
   const results = payload.data.map((entry, index) => parseCard(entry, index))
@@ -29,7 +30,7 @@ export function readApiErrorMessage(payload: unknown): string | null {
 
 function parseCard(entry: unknown, index: number): ApiCardSearchResult {
   if (!isRecord(entry)) {
-    throw new Error(`La carta #${index + 1} devuelta por YGOPRODeck es inválida.`)
+    throw new Error(t('search.ygoprodeck.invalidCard', { number: index + 1 }))
   }
 
   return {
@@ -160,7 +161,7 @@ function readHasMore(meta: unknown, currentRows: number): boolean {
 
 function readRequiredInteger(value: unknown, fieldName: string): number {
   if (typeof value !== 'number' || !Number.isInteger(value)) {
-    throw new Error(`"${fieldName}" debe ser un entero.`)
+    throw new Error(t('search.ygoprodeck.mustBeInteger', { field: fieldName }))
   }
 
   return value
@@ -168,7 +169,7 @@ function readRequiredInteger(value: unknown, fieldName: string): number {
 
 function readRequiredString(value: unknown, fieldName: string): string {
   if (typeof value !== 'string') {
-    throw new Error(`"${fieldName}" debe ser un string.`)
+    throw new Error(t('search.ygoprodeck.mustBeString', { field: fieldName }))
   }
 
   return value

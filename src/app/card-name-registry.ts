@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import type { CardEntry } from '../types'
 
 const CARD_NAMES_KEY = 'ygo-lab:card-names'
@@ -48,7 +49,7 @@ export function parseYgoprodeckId(cardId: string): number | null {
 export function createAbsentCardEntry(id: string, name: string): CardEntry {
   return {
     id,
-    name: `${name} (fuera del deck)`,
+    name: t('deck.absentCard', { name }),
     copies: 0,
     source: 'manual',
     apiCard: null,

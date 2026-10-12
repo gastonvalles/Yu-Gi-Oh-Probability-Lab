@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointer
 import { formatSearchError } from '../../app/card-search'
 import { buildClassicCardPrimaryLine, buildClassicCardStatLine } from '../../app/deck-builder-classic'
 import { useInfiniteScroll } from '../../app/use-infinite-scroll'
+import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
 import { CloseButton, CloseIcon } from '../ui/IconButton'
@@ -110,7 +111,7 @@ export function DesktopSearchPanel({
     <article className="flex h-full min-h-0 flex-col overflow-hidden min-[1101px]:h-full">
       <div className="grid gap-3 border-b border-border-subtle p-3">
         <label className="relative block min-w-0 flex-1">
-          <span className="sr-only">Buscar cartas por nombre</span>
+          <span className="sr-only">{t('search.desktop.searchByName')}</span>
           <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 z-1 -translate-y-1/2 text-soft" />
           <input
             ref={inputRef}
@@ -123,7 +124,7 @@ export function DesktopSearchPanel({
                 actions.onQueryChange('')
               }
             }}
-            placeholder="Buscar cartas por nombre"
+            placeholder={t('search.desktop.searchByName')}
             autoComplete="off"
             spellCheck={false}
             className={`${field} h-10 w-full pl-9 pr-11 text-body [&::-webkit-search-cancel-button]:hidden`}
@@ -131,7 +132,7 @@ export function DesktopSearchPanel({
           {query.trim().length > 0 ? (
             <CloseButton
               size="sm"
-              aria-label="Limpiar búsqueda"
+              aria-label={t('search.desktop.clearSearch')}
               className="absolute right-2 top-1/2 -translate-y-1/2"
               onClick={() => actions.onQueryChange('')}
             />
@@ -141,7 +142,7 @@ export function DesktopSearchPanel({
           ) : null}
         </label>
 
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Tipo de carta">
+        <div className="flex flex-wrap gap-2" role="group" aria-label={t('search.label.cardType')}>
           {QUICK_TYPE_OPTIONS.map((option) => (
             <button
               key={option.value}
@@ -160,11 +161,11 @@ export function DesktopSearchPanel({
             aria-pressed={filtersOpen || search.activeFilterCount > 0}
             aria-expanded={filtersOpen}
             aria-controls="advanced-search-filters"
-            title="Filtros"
+            title={t('search.filters.title')}
             onClick={() => setFiltersOpen((current) => !current)}
           >
             <Icon name="sliders" size={14} />
-            <span className="sr-only">Filtros</span>
+            <span className="sr-only">{t('search.filters.title')}</span>
             {search.activeFilterCount > 0 ? (
               <span className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-primary px-1 text-micro font-bold text-white">{search.activeFilterCount}</span>
             ) : null}
@@ -179,7 +180,7 @@ export function DesktopSearchPanel({
                 type="button"
                 className={filterChip}
                 onClick={() => actions.onFilterChange(chip.updates)}
-                title={`Quitar filtro ${chip.label.toLowerCase()}`}
+                title={t('search.chip.removeTitle', { label: chip.label.toLowerCase() })}
               >
                 <span className="truncate text-foreground">
                   {chip.label}: {chip.value}
@@ -244,7 +245,7 @@ export function DesktopSearchPanel({
                     <article
                       key={card.ygoprodeckId}
                       aria-disabled={isMaxed}
-                      title={isMaxed ? 'Ya alcanzaste el máximo de copias de esta carta.' : undefined}
+                      title={isMaxed ? t('search.result.maxedTitle') : undefined}
                       className={resultCard({
                         selected: selectedCardId === card.ygoprodeckId,
                         maxed: isMaxed,
@@ -270,7 +271,7 @@ export function DesktopSearchPanel({
                           limitCard={card}
                           limitBadgeSize="sm"
                         />
-                        {copiesInDeck > 0 ? <CopiesBadge copies={copiesInDeck} placement="overlay" label={`${copiesInDeck} en el deck`} /> : null}
+                        {copiesInDeck > 0 ? <CopiesBadge copies={copiesInDeck} placement="overlay" label={t('search.result.inDeck', { copies: copiesInDeck })} /> : null}
                       </div>
 
                       <div className="grid min-w-0 content-start gap-0.5">
@@ -289,15 +290,15 @@ export function DesktopSearchPanel({
                         type="button"
                         className={addButton(isMaxed ? 'maxed' : lastAddedId === card.ygoprodeckId ? 'added' : 'idle')}
                         disabled={isMaxed}
-                        aria-label={isMaxed ? `${card.name}: máximo de copias` : `Agregar ${card.name} al deck`}
-                        title={isMaxed ? 'Máximo de copias' : 'Agregar al deck'}
+                        aria-label={isMaxed ? t('search.result.maxedAria', { name: card.name }) : t('search.result.addAria', { name: card.name })}
+                        title={isMaxed ? t('search.result.maxedShort') : t('search.result.addTitle')}
                         onPointerDown={(event) => event.stopPropagation()}
                         onClick={(event) => {
                           event.stopPropagation()
                           handleAdd(card.ygoprodeckId)
                         }}
                       >
-                        {isMaxed ? 'MÁX' : lastAddedId === card.ygoprodeckId ? <Icon name="check" size={16} strokeWidth={2} /> : <Icon name="plus" size={16} strokeWidth={2} />}
+                        {isMaxed ? t('search.result.maxBadge') : lastAddedId === card.ygoprodeckId ? <Icon name="check" size={16} strokeWidth={2} /> : <Icon name="plus" size={16} strokeWidth={2} />}
                       </button>
                     </article>
                   )

@@ -1,3 +1,5 @@
+import { t } from '../i18n'
+
 // Firefox y Safari pueden leer el blob después del click: revocar la URL
 // en el mismo tick llega a cancelar la descarga.
 const OBJECT_URL_REVOKE_DELAY_MS = 30_000
@@ -8,7 +10,7 @@ export function canvasToJpegBlob(canvas: HTMLCanvasElement, quality: number = JP
     canvas.toBlob(
       (blob) => {
         if (!blob) {
-          reject(new Error('No pude generar la imagen del deck.'))
+          reject(new Error(t('deck.export.error.image')))
           return
         }
 

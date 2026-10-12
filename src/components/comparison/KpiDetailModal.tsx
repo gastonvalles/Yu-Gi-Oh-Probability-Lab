@@ -5,6 +5,7 @@ import type { ApiCardReference, CardRole } from '../../types'
 import { CardArt } from '../CardArt'
 import { formatInteger } from '../../app/utils'
 import { getCardRoleDefinition } from '../../app/deck-groups'
+import { t } from '../../i18n'
 import { Badge } from '../ui/Badge'
 import { CopiesBadge } from '../ui/CopiesBadge'
 import { Modal } from '../ui/Modal'
@@ -44,12 +45,12 @@ export function KpiDetailModal({
       isOpen={isOpen}
       onClose={onClose}
       size="md"
-      kicker={side ? `Build ${side}` : undefined}
-      title={`¿Qué cartas cuentan como ${label}?`}
-      subtitle={result ? `${formatInteger(result.totalCopies)} carta${result.totalCopies === 1 ? '' : 's'}` : undefined}
+      kicker={side ? t('meta.compare.build', { side }) : undefined}
+      title={t('meta.kpi.title', { label })}
+      subtitle={result ? t('meta.kpi.copies', { count: result.totalCopies }) : undefined}
     >
       {groups.length === 0 ? (
-        <p className="text-muted m-0 py-6 text-center text-body">No hay cartas en esta categoría.</p>
+        <p className="text-muted m-0 py-6 text-center text-body">{t('meta.kpi.empty')}</p>
       ) : (
         <div className="grid gap-4">
           {groups.map((group) => (
@@ -83,7 +84,7 @@ export function KpiDetailModal({
                       <strong className="truncate text-body font-semibold text-foreground">{card.name}</strong>
                       {card.needsReview ? (
                         <Badge tone="warning" size="sm" shape="tag" className="w-fit">
-                          Revisar
+                          {t('meta.kpi.review')}
                         </Badge>
                       ) : null}
                     </span>

@@ -23,6 +23,8 @@ import { useAppSelector } from '../../app/store-hooks'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useToastMessage } from '../../app/use-toast-message'
 import { formatInteger } from '../../app/utils'
+import { t } from '../../i18n'
+import { tRich } from '../../i18n/rich'
 import { CardArt } from '../CardArt'
 import { StepHero } from '../StepHero'
 import { Badge } from '../ui/Badge'
@@ -51,20 +53,8 @@ const REGION_OPTIONS = [
   { value: 'tcg', label: 'TCG' },
   { value: 'ocg', label: 'OCG' },
 ] as const satisfies ReadonlyArray<{ value: MetaRegion; label: string }>
-const ZONE_OPTIONS = [
-  { value: 'both', label: 'Main + Side' },
-  { value: 'main', label: 'Main' },
-  { value: 'side', label: 'Side' },
-] as const satisfies ReadonlyArray<{ value: MetaZone; label: string }>
-const WINDOW_OPTIONS = [
-  { value: '2', label: '2 sem.' },
-  { value: '4', label: '4 sem.' },
-  { value: '8', label: '8 sem.' },
-] as const satisfies ReadonlyArray<{ value: WindowWeeks; label: string }>
-const VIEW_OPTIONS = [
-  { value: 'now', label: 'Hoy' },
-  { value: 'projected', label: 'Proyección' },
-] as const satisfies ReadonlyArray<{ value: BoardView; label: string }>
+const ZONE_LABEL_KEY = { both: 'meta.screen.zoneBoth', main: 'meta.screen.zoneMain', side: 'meta.screen.zoneSide' } as const satisfies Record<MetaZone, string>
+const WINDOW_WEEKS: readonly WindowWeeks[] = ['2', '4', '8']
 
 /** El deck que pide el link (`#meta?deck=123`), si está entre los de la ventana. */
 function readLinkedDeck(): MetaDeck | null {
@@ -91,7 +81,7 @@ export function MetaScreen() {
   // El deck abierto vive en el hash: así el link se puede copiar y pegar, y si cambia el hash se abre el que pide.
   useEffect(() => {
     if (readMetaDeckIdFromHash(window.location.hash) !== null && !readLinkedDeck()) {
-      showToast('Ese deck ya no está entre los de las últimas semanas.', 'warning')
+      showToast(t('meta.screen.deckGone'), 'warning')
     }
 
     const handleHashChange = () => {
@@ -126,8 +116,18 @@ export function MetaScreen() {
       cards: report.handtraps.filter((stat) => stat[key] === tier).sort((left, right) => shareOf(right) - shareOf(left)),
     }))
   }, [report, view])
-  const filterLabel = filter?.archetype ?? (filter?.cardId !== undefined ? `Con ${META_DECKS.cards[String(filter.cardId)]?.name ?? 'esa carta'}` : null)
+  const filteredCardName = filter?.cardId === undefined ? undefined : META_DECKS.cards[String(filter.cardId)]?.name
+  const filterLabel =
+    filter?.archetype ??
+    (filter?.cardId === undefined ? null : filteredCardName === undefined ? t('meta.screen.filterThatCard') : t('meta.screen.filterCard', { name: filteredCardName }))
   const totalWeeks = Math.ceil(META_DECKS.windowDays / 7)
+  const ahead = formatInteger(PROJECTION_WEEKS)
+  const zoneOptions = (Object.keys(ZONE_LABEL_KEY) as MetaZone[]).map((value) => ({ value, label: t(ZONE_LABEL_KEY[value]) }))
+  const windowOptions = WINDOW_WEEKS.map((value) => ({ value, label: t('meta.screen.weeksOption', { count: value }) }))
+  const viewOptions: ReadonlyArray<{ value: BoardView; label: string }> = [
+    { value: 'now', label: t('meta.screen.viewNow') },
+    { value: 'projected', label: t('meta.screen.viewProjected') },
+  ]
 
   const applyFilter = (next: MetaDeckFilter) => {
     setSelectedStat(null)
@@ -138,17 +138,17 @@ export function MetaScreen() {
   }
 
   const zoneControl = () => (
-    <Segmented value={zone} onChange={setZone} options={ZONE_OPTIONS} label="Dónde contar la hand trap" size="sm" fullWidth={!isDesktop} />
+    <Segmented value={zone} onChange={setZone} options={zoneOptions} label={t('meta.screen.zoneLabel')} size="sm" fullWidth={!isDesktop} />
   )
   const weeksControl = () => (
-    <Segmented value={weeks} onChange={setWeeks} options={WINDOW_OPTIONS} label="Cuántas semanas de decks se cuentan" size="sm" fullWidth={!isDesktop} />
+    <Segmented value={weeks} onChange={setWeeks} options={windowOptions} label={t('meta.screen.weeksLabel')} size="sm" fullWidth={!isDesktop} />
   )
   const viewControl = () => (
     <Segmented
       value={view}
       onChange={setView}
-      options={VIEW_OPTIONS}
-      label={`Tier list de hoy o proyección a ${formatInteger(PROJECTION_WEEKS)} semanas`}
+      options={viewOptions}
+      label={t('meta.screen.viewLabel', { ahead })}
       size="sm"
       fullWidth={!isDesktop}
     />
@@ -157,38 +157,31 @@ export function MetaScreen() {
   return (
     <StepPage as="article">
       <StepHero
-        title="Hand traps del meta"
+        title={t('meta.screen.title')}
         icon="chart"
-        subtitle="Qué se juega en los decks de torneo y hacia dónde va."
+        subtitle={t('meta.screen.subtitle')}
         help={
           <div className="grid gap-3">
             <div className="grid gap-1">
-              <strong className="text-foreground">Cómo se arma el tier list</strong>
+              <strong className="text-foreground">{t('meta.help.buildTitle')}</strong>
               <ul className="m-0 grid list-disc gap-1 pl-4">
-                <li>Se miran los decks que llegaron al top de torneos de TCG o de OCG, según lo que elijas arriba. Se actualizan todos los días.</li>
+                <li>{t('meta.help.build1')}</li>
+                <li>{t('meta.help.build2')}</li>
+                <li>{t('meta.help.build3')}</li>
                 <li>
-                  Cuenta como hand trap una carta que, según sus reglas, tiene un efecto rápido o disparador que se activa desde la mano (o una trampa
-                  activable desde la mano), y que juegan al menos 3 decks distintos sin ser de su arquetipo.
-                </li>
-                <li>Cada hand trap se mide por el porcentaje de esos decks que la llevan en el Main o en el Side.</li>
-                <li>
-                  {TIER_FLOORS.map(([tier, floor]) => `${tierLabel(tier)}: al menos el ${percent(floor)}`).join(' · ')} · {tierLabel('D')}: menos del{' '}
-                  {percent(TIER_FLOORS.at(-1)?.[1] ?? 0)}.
+                  {[
+                    ...TIER_FLOORS.map(([tier, floor]) => t('meta.help.tierAtLeast', { tier: tierLabel(tier), percent: percent(floor) })),
+                    t('meta.help.tierBelow', { tier: tierLabel('D'), percent: percent(TIER_FLOORS.at(-1)?.[1] ?? 0) }),
+                  ].join(' · ')}
                 </li>
               </ul>
             </div>
             <div className="grid gap-1">
-              <strong className="text-foreground">Cómo se predice</strong>
+              <strong className="text-foreground">{t('meta.help.predictTitle')}</strong>
               <ul className="m-0 grid list-disc gap-1 pl-4">
-                <li>
-                  Se mira cómo cambió ese porcentaje semana a semana en las últimas {formatInteger(totalWeeks)} semanas y se sigue esa línea{' '}
-                  {formatInteger(PROJECTION_WEEKS)} semanas más.
-                </li>
-                <li>
-                  Si la cifra proyectada sube más de {formatInteger(Math.round(TREND_THRESHOLD * 100))} puntos dice “Sube”; si baja más de{' '}
-                  {formatInteger(Math.round(TREND_THRESHOLD * 100))}, “Baja”; si no, “Estable”.
-                </li>
-                <li>“Proyección” muestra el tier list como quedaría en {formatInteger(PROJECTION_WEEKS)} semanas si esa tendencia sigue igual.</li>
+                <li>{t('meta.help.predict1', { weeks: formatInteger(totalWeeks), ahead })}</li>
+                <li>{t('meta.help.predict2', { points: formatInteger(Math.round(TREND_THRESHOLD * 100)) })}</li>
+                <li>{t('meta.help.predict3', { ahead })}</li>
               </ul>
             </div>
           </div>
@@ -196,9 +189,12 @@ export function MetaScreen() {
         side={
           // En celular, un solo renglón: la región ocupa lo que sobra y la fecha va compacta al lado.
           <div className="flex w-full items-center gap-2 min-[1101px]:w-auto">
-            <Badge icon="refresh" title="Fecha de la última actualización de los decks" className="min-[1101px]:order-first">
-              <span className="sr-only min-[1101px]:not-sr-only">Actualizado el </span>
-              {formatMetaDateFull(META_DECKS.fetchedAt)}
+            <Badge icon="refresh" title={t('meta.screen.updatedTitle')} className="min-[1101px]:order-first">
+              {tRich(
+                'meta.updated',
+                { lead: (text) => <span className="sr-only min-[1101px]:not-sr-only">{text} </span> },
+                { date: formatMetaDateFull(META_DECKS.fetchedAt) },
+              )}
             </Badge>
             <Segmented
               value={region}
@@ -207,7 +203,7 @@ export function MetaScreen() {
                 setDeckLimit(DECKS_PER_PAGE)
               }}
               options={REGION_OPTIONS}
-              label="Región de los torneos"
+              label={t('meta.screen.regionLabel')}
               size="sm"
               className="min-w-0 max-[1100px]:order-first max-[1100px]:flex-1"
             />
@@ -218,25 +214,27 @@ export function MetaScreen() {
       <Card>
         <SectionHeader
           icon="hand"
-          title="Tier list"
-          description={
-            view === 'projected'
-              ? `Dónde quedaría cada hand trap en ${formatInteger(PROJECTION_WEEKS)} semanas si sigue su tendencia. Base: ${formatInteger(report.deckCount)} decks ${regionLabel} de las últimas ${weeks} semanas.`
-              : `${formatInteger(report.deckCount)} decks ${regionLabel} de las últimas ${weeks} semanas. Tocá una carta para ver el detalle.`
-          }
+          title={t('meta.screen.tierTitle')}
+          description={t(view === 'projected' ? 'meta.screen.tierProjected' : 'meta.screen.tierNow', {
+            count: report.deckCount,
+            n: formatInteger(report.deckCount),
+            region: regionLabel,
+            weeks,
+            ahead,
+          })}
           actions={
             isDesktop ? (
               // Cada control lleva su rótulo: "2 sem." (cuántos decks se cuentan) y la proyección no se confunden.
               <div className="flex flex-wrap items-end gap-2">
-                <ControlField label="Contar en">{zoneControl()}</ControlField>
-                <ControlField label="Decks de las últimas">{weeksControl()}</ControlField>
-                <ControlField label="Mostrar">{viewControl()}</ControlField>
+                <ControlField label={t('meta.screen.fieldCount')}>{zoneControl()}</ControlField>
+                <ControlField label={t('meta.screen.fieldWeeks')}>{weeksControl()}</ControlField>
+                <ControlField label={t('meta.screen.fieldView')}>{viewControl()}</ControlField>
               </div>
             ) : (
               // En celular se ve lo que más se usa (hoy o proyección) y el resto, que casi no se toca, va en un modal.
               <div className="flex w-full items-center gap-2">
                 <div className="min-w-0 flex-1">{viewControl()}</div>
-                <IconButton tone="raised" size="md" aria-label="Ajustar la tier list" title="Ajustar la tier list" onClick={() => setAdjustOpen(true)}>
+                <IconButton tone="raised" size="md" aria-label={t('meta.screen.adjust')} title={t('meta.screen.adjust')} onClick={() => setAdjustOpen(true)}>
                   <Icon name="sliders" size={20} />
                 </IconButton>
               </div>
@@ -250,8 +248,8 @@ export function MetaScreen() {
             ))}
           </div>
         ) : (
-          <EmptyState icon="hand" title="Sin hand traps en esta ventana">
-            Probá con más semanas o con otra zona.
+          <EmptyState icon="hand" title={t('meta.screen.emptyTitle')}>
+            {t('meta.screen.emptyHint')}
           </EmptyState>
         )}
       </Card>
@@ -259,27 +257,28 @@ export function MetaScreen() {
       <Card id="meta-decks">
         <SectionHeader
           icon="layers"
-          title="Tournament Meta Decks"
-          description={
-            filterLabel
-              ? `${formatInteger(decks.length)} decks ${regionLabel}, del más reciente al más viejo. Tocá uno para verlo entero.`
-              : `Los ${formatInteger(decks.length)} decks ${regionLabel} de las últimas ${formatInteger(totalWeeks)} semanas, del más reciente al más viejo. Tocá uno para verlo entero.`
-          }
+          title={t('meta.screen.decksTitle')}
+          description={t(filterLabel ? 'meta.screen.decksFiltered' : 'meta.screen.decksAll', {
+            count: decks.length,
+            n: formatInteger(decks.length),
+            region: regionLabel,
+            weeks: formatInteger(totalWeeks),
+          })}
           actions={
             <>
               {filterLabel ? (
-                <button type="button" className={filterChip} onClick={() => setFilter(null)} aria-label={`Quitar el filtro ${filterLabel}`}>
+                <button type="button" className={filterChip} onClick={() => setFilter(null)} aria-label={t('meta.filter.clear', { name: filterLabel })}>
                   {filterLabel}
                   <Icon name="x" size={12} strokeWidth={2.2} />
                 </button>
               ) : null}
               <label className="relative block min-w-[14rem] flex-1 max-[1100px]:w-full">
-                <span className="sr-only">Buscar decks</span>
+                <span className="sr-only">{t('meta.screen.searchLabel')}</span>
                 <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-soft" />
                 <input
                   type="search"
                   value={query}
-                  placeholder="Deck, torneo o jugador"
+                  placeholder={t('meta.screen.searchPlaceholder')}
                   autoComplete="off"
                   className={cx(field, 'h-9 w-full pl-9 pr-3 text-body')}
                   onChange={(event) => {
@@ -298,14 +297,14 @@ export function MetaScreen() {
             ))}
           </div>
         ) : (
-          <EmptyState icon="search" title="Ningún deck con esa búsqueda">
-            Probá con otro nombre de deck, torneo o jugador.
+          <EmptyState icon="search" title={t('meta.screen.noDecksTitle')}>
+            {t('meta.screen.noDecksHint')}
           </EmptyState>
         )}
         {decks.length > deckLimit ? (
           <div className="mt-4 flex justify-center">
             <Button variant="secondary" size="sm" onClick={() => setDeckLimit((limit) => limit + DECKS_PER_PAGE)}>
-              Ver {formatInteger(Math.min(DECKS_PER_PAGE, decks.length - deckLimit))} más
+              {t('meta.showMore', { count: formatInteger(Math.min(DECKS_PER_PAGE, decks.length - deckLimit)) })}
             </Button>
           </div>
         ) : null}
@@ -316,16 +315,16 @@ export function MetaScreen() {
         onClose={() => setAdjustOpen(false)}
         size="sm"
         icon="sliders"
-        title="Ajustar la tier list"
+        title={t('meta.screen.adjust')}
         footer={
           <Button variant="primary" size="sm" onClick={() => setAdjustOpen(false)}>
-            Listo
+            {t('meta.screen.adjustDone')}
           </Button>
         }
       >
         <div className="grid gap-4">
-          <ControlField label="Contar en">{zoneControl()}</ControlField>
-          <ControlField label="Decks de las últimas">{weeksControl()}</ControlField>
+          <ControlField label={t('meta.screen.fieldCount')}>{zoneControl()}</ControlField>
+          <ControlField label={t('meta.screen.fieldWeeks')}>{weeksControl()}</ControlField>
         </div>
       </Modal>
 
@@ -381,7 +380,7 @@ function TierRow({ tier, cards, view, onOpen }: TierRowProps) {
               <button
                 type="button"
                 className="relative block aspect-[421/614] w-full overflow-hidden rounded-tag bg-input transition-transform duration-150 hover:scale-[1.04] focus-visible:outline-none focus-visible:shadow-focus sm:w-[4.5rem]"
-                title={`${stat.name}: ${percent(share)} de los decks`}
+                title={t('meta.tier.cardTitle', { name: stat.name, percent: percent(share) })}
                 onClick={() => onOpen(stat)}
               >
                 <CardArt remoteUrl={stat.image} name={stat.name} className="h-full w-full object-cover" />
@@ -428,7 +427,7 @@ function MetaDeckTile({ deck, onOpen }: { deck: MetaDeck; onOpen: () => void }) 
           <span className="inline-flex items-center gap-1">
             <Icon name="trophy" size={13} />
             {deck.placement}
-            {deck.players === null ? '' : ` (${formatInteger(deck.players)} jugadores)`}
+            {deck.players === null ? '' : ` ${t('meta.deck.players', { players: formatInteger(deck.players) })}`}
           </span>
         ) : null}
         <span className="inline-flex items-center gap-1">
@@ -443,7 +442,7 @@ function MetaDeckTile({ deck, onOpen }: { deck: MetaDeck; onOpen: () => void }) 
         ) : null}
       </span>
       <span className="relative text-micro text-soft tabular-nums">
-        Hand traps: {formatInteger(countCopies(deck.main))} en Main · {formatInteger(countCopies(deck.side))} en Side
+        {t('meta.deck.handtraps', { main: formatInteger(countCopies(deck.main)), side: formatInteger(countCopies(deck.side)) })}
       </span>
     </button>
   )

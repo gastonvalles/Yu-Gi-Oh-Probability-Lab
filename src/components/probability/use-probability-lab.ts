@@ -10,6 +10,7 @@ import {
   countUnclassifiedCards,
   isClassificationStepComplete,
 } from '../../app/role-step'
+import { t } from '../../i18n'
 import type { CardEntry, HandPattern } from '../../types'
 import { useLabComputation } from './use-lab-computation'
 
@@ -87,14 +88,15 @@ export function buildReadiness(cards: CardEntry[]): LabReadiness {
     return { status: 'ready' }
   }
 
+  const unclassified = countUnclassifiedCards(cards)
   const message =
     countCardsMissingOrigin(cards) > 0
-      ? 'Hay cartas sin origen.'
+      ? t('lab.readiness.noOrigin')
       : countCardsMissingRoles(cards) > 0
-        ? 'Hay cartas sin roles.'
+        ? t('lab.readiness.noRoles')
         : countCardsPendingReview(cards) > 0
-          ? 'Hay cartas pendientes de revisión.'
-          : `Faltan ${countUnclassifiedCards(cards)} cartas por cerrar.`
+          ? t('lab.readiness.pendingReview')
+          : t('lab.readiness.open', { count: unclassified, n: unclassified })
 
   return { status: 'needs-classification', message }
 }

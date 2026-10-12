@@ -1,3 +1,4 @@
+import { getLocale } from '../i18n'
 import { calculateProbabilities } from '../probability'
 import { getCleanHands, getCleanProbability } from '../probability-summary'
 import type {
@@ -60,6 +61,8 @@ function getHandSizeForView(baseHandSize: number, view: Exclude<TurnView, 'avera
  * Texto que identifica un cálculo por contenido (mano + cartas + reglas). Los ids de las condiciones se
  * dejan afuera: se generan al azar cada vez que se arman las reglas del sistema y no cambian el resultado
  * (que se indexa por id de regla), así que con ellos la caché nunca coincidía.
+ * El idioma también cuenta: el resultado lleva texto (avisos, frases de las reglas) y las cachés, incluida la
+ * que se guarda en el dispositivo, no pueden mostrarlo en el idioma equivocado.
  */
 export function labInputSignature(cards: CardEntry[], patterns: HandPattern[], baseHandSize: number): string {
   const stablePatterns = patterns.map((pattern) => ({
@@ -84,7 +87,7 @@ export function labInputSignature(cards: CardEntry[], patterns: HandPattern[], b
     },
   }))
 
-  return JSON.stringify([baseHandSize, stableCards, stablePatterns])
+  return JSON.stringify([getLocale(), baseHandSize, stableCards, stablePatterns])
 }
 
 const MAX_CACHED_COMPUTATIONS = 24

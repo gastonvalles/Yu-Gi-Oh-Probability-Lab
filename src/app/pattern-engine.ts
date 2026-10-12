@@ -15,6 +15,7 @@ import {
   serializeGroupKey,
   type DerivedDeckGroup,
 } from './deck-groups'
+import { t } from '../i18n'
 import type {
   CardEntry,
   HandPattern,
@@ -29,6 +30,8 @@ export interface ResolvedRequirement<Key extends string | number> {
   id: string
   sourceLabel: string
   source: RequirementSource
+  /** `source` 'type' junta dos cosas: el tipo de carta (Monstruo, Magia, Trampa) y el tipo de monstruo. Esto distingue la primera, sin leer el rótulo. */
+  cardType?: boolean
   cardIds: string[]
   quantity: number
   kind: RequirementKind
@@ -127,6 +130,7 @@ export function resolvePattern<Counts, Key extends string | number>(
       id: condition.id,
       sourceLabel: buildConditionSourceLabel(condition, cards, context.groupsByKey),
       source: getConditionSource(condition),
+      cardType: condition.matcher?.type === 'card_type',
       cardIds: uniqueCardIds,
       quantity: condition.quantity,
       kind: condition.kind,
@@ -146,7 +150,7 @@ export function resolvePattern<Counts, Key extends string | number>(
 
   return {
     id: pattern.id,
-    name: pattern.name.trim() || 'Patrón sin nombre',
+    name: pattern.name.trim() || t('rules.engine.unnamedRule'),
     kind: normalizeHandPatternCategory(pattern.kind),
     requirementLabel: buildPatternRequirementLabel(
       getPatternMatchMode(pattern),
@@ -169,20 +173,29 @@ function buildPatternRequirementLabel<Key extends string | number>(
   allowSharedCards: boolean,
 ): string {
   if (requirements.length === 0) {
-    return 'Sin requisitos'
+    return t('rules.engine.noRequirements')
   }
 
   const requirementLabels = requirements.map((requirement) => formatRequirementPhrase(requirement))
+  // Con una sola condición no hay nada que repartir: sólo se aclara "sin reutilizar la misma carta" cuando son dos o más.
+  const separate = !allowSharedCards && requirementLabels.length >= 2
 
   if (matchMode === 'all') {
-    return `${buildMatchPrefix(requirementLabels, allowSharedCards)} se cumple si ${requirementLabels.join(' y ')}.`
+    return t(separate ? 'rules.engine.label.allSeparate' : 'rules.engine.label.all', {
+      conditions: requirementLabels.join(` ${t('rules.engine.joinAnd')} `),
+    })
   }
 
   if (matchMode === 'any') {
-    return `${buildMatchPrefix(requirementLabels, allowSharedCards)} se cumple si pasa cualquiera de estas opciones: ${requirementLabels.join(' o ')}.`
+    return t(separate ? 'rules.engine.label.anySeparate' : 'rules.engine.label.any', {
+      conditions: requirementLabels.join(` ${t('rules.engine.joinOr')} `),
+    })
   }
 
-  return `${buildMatchPrefix(requirementLabels, allowSharedCards)} se cumple si pasan al menos ${requiredMatches} de estas opciones: ${requirementLabels.join(', ')}.`
+  return t(separate ? 'rules.engine.label.atLeastSeparate' : 'rules.engine.label.atLeast', {
+    required: requiredMatches,
+    conditions: requirementLabels.join(', '),
+  })
 }
 
 /**
@@ -425,20 +438,25 @@ function buildConditionSourceLabel(
 
   if (groupKey) {
     const group = groupsByKey.get(serializeGroupKey(groupKey))
-    return group ? getQualifiedDeckGroupLabel(group) : 'Grupo eliminado'
+    return group ? getQualifiedDeckGroupLabel(group) : t('rules.engine.groupDeleted')
   }
 
   if (isMonsterPropertyMatcher(condition.matcher)) {
-    return getMonsterRequirementSourceLabel(condition.matcher) ?? 'Filtro de monstruos'
+    return getMonsterRequirementSourceLabel(condition.matcher) ?? t('rules.engine.monsterFilter')
   }
 
   if (condition.matcher?.type === 'archetype') {
-    return `Arquetipo: ${condition.matcher.value}`
+    return t('rules.engine.archetype', { name: condition.matcher.value })
   }
 
   if (condition.matcher?.type === 'card_type') {
-    const label = condition.matcher.value === 'monster' ? 'Monstruo' : condition.matcher.value === 'spell' ? 'Magia' : 'Trampa'
-    return `Tipo: ${label}`
+    return t(
+      condition.matcher.value === 'monster'
+        ? 'rules.engine.cardType.monster'
+        : condition.matcher.value === 'spell'
+          ? 'rules.engine.cardType.spell'
+          : 'rules.engine.cardType.trap',
+    )
   }
 
   const cardIds = getConditionCardIds(condition)
@@ -447,102 +465,33 @@ function buildConditionSourceLabel(
     return cards[0].name.trim()
   }
 
-  return `(${cards.length > 0 ? cards.map((card) => card.name.trim()).join(' / ') : 'Pool vacía'})`
+  return `(${cards.length > 0 ? cards.map((card) => card.name.trim()).join(' / ') : t('rules.engine.emptyPool')})`
 }
+
+// Cada condición se dice distinto según lo que cuenta: cartas (puntuales, pools, grupos, arquetipos), monstruos por una
+// propiedad (atributo, nivel, tipo, ATK, DEF) o un tipo de carta. Las tablas guardan claves; el texto se arma al pedirlo.
+const REQUIREMENT_PHRASE_KEY = {
+  cards: {
+    include: { copies: 'rules.engine.phrase.cards.includeCopies', names: 'rules.engine.phrase.cards.includeNames' },
+    exclude: { copies: 'rules.engine.phrase.cards.excludeCopies', names: 'rules.engine.phrase.cards.excludeNames' },
+  },
+  monster: {
+    include: { copies: 'rules.engine.phrase.monster.includeCopies', names: 'rules.engine.phrase.monster.includeNames' },
+    exclude: { copies: 'rules.engine.phrase.monster.excludeCopies', names: 'rules.engine.phrase.monster.excludeNames' },
+  },
+  cardType: {
+    include: { copies: 'rules.engine.phrase.cardType.includeCopies', names: 'rules.engine.phrase.cardType.includeNames' },
+    exclude: { copies: 'rules.engine.phrase.cardType.excludeCopies', names: 'rules.engine.phrase.cardType.excludeNames' },
+  },
+} as const
 
 function formatRequirementPhrase<Key extends string | number>(requirement: ResolvedRequirement<Key>): string {
-  if (requirement.source !== 'cards' && requirement.source !== 'group') {
-    if (requirement.sourceLabel.startsWith('Tipo:')) {
-      return formatCardTypeRequirementPhrase(requirement)
-    }
-    return formatMonsterPropertyRequirementPhrase(requirement)
-  }
+  const family = requirement.source === 'cards' || requirement.source === 'group' ? 'cards' : requirement.cardType ? 'cardType' : 'monster'
 
-  if (requirement.kind === 'exclude') {
-    if (requirement.distinct) {
-      return requirement.quantity === 1
-        ? `no abrís ningún nombre de ${requirement.sourceLabel}`
-        : `no abrís ${requirement.quantity} o más nombres distintos de ${requirement.sourceLabel}`
-    }
-
-    return requirement.quantity === 1
-      ? `no abrís ninguna copia de ${requirement.sourceLabel}`
-      : `no abrís ${requirement.quantity} o más copias de ${requirement.sourceLabel}`
-  }
-
-  if (requirement.distinct) {
-    return requirement.quantity === 1
-      ? `abrís 1 nombre distinto de ${requirement.sourceLabel}`
-      : `abrís ${requirement.quantity} nombres distintos de ${requirement.sourceLabel}`
-  }
-
-  return requirement.quantity === 1
-    ? `abrís 1 copia de ${requirement.sourceLabel}`
-    : `abrís ${requirement.quantity} copias de ${requirement.sourceLabel}`
-}
-
-function formatMonsterPropertyRequirementPhrase<Key extends string | number>(
-  requirement: ResolvedRequirement<Key>,
-): string {
-  const sourceLabel = requirement.sourceLabel
-
-  if (requirement.kind === 'exclude') {
-    if (requirement.distinct) {
-      return requirement.quantity === 1
-        ? `no abrís ningún monstruo ${sourceLabel}`
-        : `no abrís ${requirement.quantity} o más nombres distintos de monstruos ${sourceLabel}`
-    }
-
-    return requirement.quantity === 1
-      ? `no abrís ningún monstruo ${sourceLabel}`
-      : `no abrís ${requirement.quantity} o más monstruos ${sourceLabel}`
-  }
-
-  if (requirement.distinct) {
-    return requirement.quantity === 1
-      ? `abrís 1 monstruo ${sourceLabel}`
-      : `abrís ${requirement.quantity} nombres distintos de monstruos ${sourceLabel}`
-  }
-
-  return requirement.quantity === 1
-    ? `abrís 1 monstruo ${sourceLabel}`
-    : `abrís ${requirement.quantity} monstruos ${sourceLabel}`
-}
-
-function formatCardTypeRequirementPhrase<Key extends string | number>(
-  requirement: ResolvedRequirement<Key>,
-): string {
-  const sourceLabel = requirement.sourceLabel
-
-  if (requirement.kind === 'exclude') {
-    if (requirement.distinct) {
-      return requirement.quantity === 1
-        ? `no abrís ninguna carta ${sourceLabel}`
-        : `no abrís ${requirement.quantity} o más nombres distintos de cartas ${sourceLabel}`
-    }
-
-    return requirement.quantity === 1
-      ? `no abrís ninguna carta ${sourceLabel}`
-      : `no abrís ${requirement.quantity} o más cartas ${sourceLabel}`
-  }
-
-  if (requirement.distinct) {
-    return requirement.quantity === 1
-      ? `abrís 1 carta ${sourceLabel}`
-      : `abrís ${requirement.quantity} nombres distintos de cartas ${sourceLabel}`
-  }
-
-  return requirement.quantity === 1
-    ? `abrís 1 carta ${sourceLabel}`
-    : `abrís ${requirement.quantity} cartas ${sourceLabel}`
-}
-
-function buildMatchPrefix(requirementLabels: string[], allowSharedCards: boolean): string {
-  if (allowSharedCards || requirementLabels.length < 2) {
-    return 'La regla'
-  }
-
-  return 'La regla, sin reutilizar la misma carta entre condiciones,'
+  return t(REQUIREMENT_PHRASE_KEY[family][requirement.kind][requirement.distinct ? 'names' : 'copies'], {
+    count: requirement.quantity,
+    label: requirement.sourceLabel,
+  })
 }
 
 function matchesRequirement<Counts, Key extends string | number>(

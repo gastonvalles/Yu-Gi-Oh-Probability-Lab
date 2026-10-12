@@ -6,7 +6,9 @@ import {
   normalizeMinimumConditionMatches,
 } from '../../app/patterns'
 import { formatInteger } from '../../app/utils'
+import { t } from '../../i18n'
 import type { CardEntry, HandPattern, Matcher, PatternRequirement } from '../../types'
+import { getCardTypeLabel } from './rule-builder/condition-labels'
 
 interface PatternPreview {
   heading: string
@@ -22,27 +24,27 @@ export function buildPatternPreview(
 ): PatternPreview {
   const items =
     pattern.conditions.length === 0
-      ? ['definir al menos una condición']
+      ? [t('builder.preview.noConditions')]
       : pattern.conditions.map((condition) => buildConditionPreview(condition, cardById))
   const includeConditionCount = pattern.conditions.filter((condition) => condition.kind === 'include').length
   const matchMode = getPatternMatchMode(pattern)
 
   return {
-    heading: pattern.kind === 'problem' ? 'Este problema ocurre si:' : 'Esta salida requiere:',
+    heading: t(pattern.kind === 'problem' ? 'builder.preview.headingProblem' : 'builder.preview.headingOpening'),
     summary: buildPatternCompactSummary(pattern, cardById),
     items,
     logic:
       matchMode === 'all'
-        ? 'Deben cumplirse todas las condiciones.'
+        ? t('builder.preview.logicAll')
         : matchMode === 'any'
-          ? 'Alcanza con que se cumpla una condición.'
-          : `Deben cumplirse al menos ${formatInteger(normalizeMinimumConditionMatches(pattern))} condiciones.`,
+          ? t('builder.preview.logicAny')
+          : t('builder.preview.logicAtLeast', { count: formatInteger(normalizeMinimumConditionMatches(pattern)) }),
     reuse:
       includeConditionCount < 2
-        ? 'La política de reutilización no cambia el resultado mientras haya una sola condición positiva.'
+        ? t('builder.preview.reuseSingle')
         : allowsSharedCards(pattern)
-          ? 'Se permite reutilizar la misma carta entre condiciones.'
-          : 'No se permite reutilizar la misma carta entre condiciones.',
+          ? t('builder.preview.reuseAllowed')
+          : t('builder.preview.reuseForbidden'),
   }
 }
 
@@ -51,7 +53,7 @@ export function buildPatternCompactSummary(
   cardById: Map<string, CardEntry>,
 ): string {
   if (pattern.conditions.length === 0) {
-    return 'Regla sin definir'
+    return t('builder.summary.undefinedRule')
   }
 
   const parts = pattern.conditions.map((condition) =>
@@ -65,10 +67,10 @@ export function buildPatternCompactSummary(
   }
 
   if (matchMode === 'any') {
-    return `Una de estas: ${parts.join(' / ')}`
+    return t('builder.summary.anyOf', { parts: parts.join(' / ') })
   }
 
-  return `${formatInteger(minimumMatches)} de estas: ${parts.join(' / ')}`
+  return t('builder.summary.atLeastOf', { count: formatInteger(minimumMatches), parts: parts.join(' / ') })
 }
 
 function buildConditionPreview(
@@ -76,47 +78,42 @@ function buildConditionPreview(
   cardById: Map<string, CardEntry>,
 ): string {
   if (!requirement.matcher) {
-    return '(elegí qué cartas contar)'
+    return t('builder.preview.chooseCards')
   }
 
   const selectedCards = resolveSelectedCards(requirement, cardById)
 
   switch (requirement.matcher.type) {
     case 'card':
-      return buildSpecificCardPreview(requirement, selectedCards[0]?.name ?? 'una carta que ya no está en el deck')
+      return buildSpecificCardPreview(requirement, selectedCards[0]?.name ?? t('builder.preview.cardGone'))
     case 'card_pool':
       return buildCardPoolPreview(requirement, selectedCards)
     case 'card_type':
-      return buildGenericCardPreview(
-        requirement,
-        requirement.matcher.value === 'monster' ? 'de tipo Monstruo'
-          : requirement.matcher.value === 'spell' ? 'de tipo Magia'
-          : 'de tipo Trampa',
-      )
+      return buildGenericCardPreview(requirement, t('builder.tail.cardType', { type: getCardTypeLabel(requirement.matcher.value) }))
     case 'archetype':
-      return buildGenericCardPreview(requirement, `del arquetipo ${requirement.matcher.value}`)
+      return buildGenericCardPreview(requirement, t('builder.tail.archetype', { name: requirement.matcher.value }))
     case 'role':
       return buildGenericCardPreview(
         requirement,
-        `con rol ${getCardRoleDefinition(requirement.matcher.value).label}`,
+        t('builder.tail.role', { role: getCardRoleDefinition(requirement.matcher.value).label }),
       )
     case 'origin':
       return buildGenericCardPreview(
         requirement,
-        `con origen ${getCardOriginDefinition(requirement.matcher.value).label}`,
+        t('builder.tail.origin', { origin: getCardOriginDefinition(requirement.matcher.value).label }),
       )
     case 'attribute':
-      return buildGenericMonsterPreview(requirement, `con atributo ${requirement.matcher.value}`)
+      return buildGenericMonsterPreview(requirement, t('builder.tail.attribute', { attribute: requirement.matcher.value }))
     case 'level':
-      return buildGenericMonsterPreview(requirement, `de Nivel ${requirement.matcher.value}`)
+      return buildGenericMonsterPreview(requirement, t('builder.tail.level', { level: requirement.matcher.value }))
     case 'monster_type':
-      return buildGenericMonsterPreview(requirement, `de tipo ${requirement.matcher.value}`)
+      return buildGenericMonsterPreview(requirement, t('builder.tail.monsterType', { type: requirement.matcher.value }))
     case 'atk':
-      return buildGenericMonsterPreview(requirement, `con ${formatInteger(requirement.matcher.value)} ATK`)
+      return buildGenericMonsterPreview(requirement, t('builder.tail.atk', { value: formatInteger(requirement.matcher.value) }))
     case 'def':
-      return buildGenericMonsterPreview(requirement, `con ${formatInteger(requirement.matcher.value)} DEF`)
+      return buildGenericMonsterPreview(requirement, t('builder.tail.def', { value: formatInteger(requirement.matcher.value) }))
     default:
-      return '(elegí qué cartas contar)'
+      return t('builder.preview.chooseCards')
   }
 }
 
@@ -125,22 +122,22 @@ function buildCompactConditionLabel(
   selectedCards: CardEntry[],
 ): string {
   if (!requirement.matcher) {
-    return 'sin definir'
+    return t('builder.summary.conditionUndefined')
   }
 
   const baseLabel = buildCompactMatcherLabel(requirement.matcher, selectedCards)
 
   if (requirement.kind === 'exclude') {
     return requirement.quantity <= 1
-      ? `sin ${baseLabel}`
-      : `sin ${formatInteger(requirement.quantity)}+ ${baseLabel}`
+      ? t('builder.summary.without', { label: baseLabel })
+      : t('builder.summary.withoutMany', { count: formatInteger(requirement.quantity), label: baseLabel })
   }
 
   if (requirement.quantity <= 1) {
     return baseLabel
   }
 
-  return `${formatInteger(requirement.quantity)}+ ${baseLabel}`
+  return t('builder.summary.many', { count: formatInteger(requirement.quantity), label: baseLabel })
 }
 
 function buildCompactMatcherLabel(
@@ -153,27 +150,27 @@ function buildCompactMatcherLabel(
     case 'origin':
       return getCardOriginDefinition(matcher.value).label
     case 'card':
-      return selectedCards[0]?.name ?? 'carta fuera del deck'
+      return selectedCards[0]?.name ?? t('builder.summary.cardMissing')
     case 'card_pool':
       return selectedCards.length === 1
-        ? selectedCards[0]?.name ?? 'pool'
-        : 'pool manual'
+        ? selectedCards[0]?.name ?? t('builder.summary.pool')
+        : t('builder.summary.poolManual')
     case 'card_type':
-      return matcher.value === 'monster' ? 'Monstruo' : matcher.value === 'spell' ? 'Magia' : 'Trampa'
+      return getCardTypeLabel(matcher.value)
     case 'attribute':
-      return `Atributo ${matcher.value}`
+      return t('builder.label.attribute', { value: matcher.value })
     case 'level':
-      return `Nivel ${formatInteger(matcher.value)}`
+      return t('builder.label.level', { value: formatInteger(matcher.value) })
     case 'monster_type':
       return matcher.value
     case 'archetype':
       return matcher.value
     case 'atk':
-      return `${formatInteger(matcher.value)} ATK`
+      return t('builder.label.atk', { value: formatInteger(matcher.value) })
     case 'def':
-      return `${formatInteger(matcher.value)} DEF`
+      return t('builder.label.def', { value: formatInteger(matcher.value) })
     default:
-      return 'criterio'
+      return t('builder.summary.criterion')
   }
 }
 
@@ -186,66 +183,64 @@ function resolveSelectedCards(
     .filter((card): card is CardEntry => Boolean(card))
 }
 
+/** "al menos 1 copia de X", "al menos 2 copias de X", "no robás ninguna copia de X", "no robás 2 o más copias de X". */
 function buildSpecificCardPreview(
   requirement: PatternRequirement,
   cardName: string,
 ): string {
-  if (requirement.kind === 'exclude') {
-    return requirement.quantity === 1
-      ? `no robás ninguna copia de ${cardName}`
-      : `no robás ${formatInteger(requirement.quantity)} o más copias de ${cardName}`
-  }
-
-  return requirement.quantity === 1
-    ? `al menos 1 copia de ${cardName}`
-    : `al menos ${formatInteger(requirement.quantity)} copias de ${cardName}`
+  return t(requirement.kind === 'exclude' ? 'builder.preview.copiesExclude' : 'builder.preview.copiesInclude', {
+    count: requirement.quantity,
+    card: cardName,
+  })
 }
 
-/** Sustantivo de lo que se cuenta, en singular, plural y negado ("ninguna carta"). */
-interface CountNoun {
-  one: string
-  many: string
-  none: string
-}
+/** Qué se cuenta: cartas, nombres distintos, monstruos o nombres distintos de monstruos. */
+type CountNoun = 'cards' | 'names' | 'monsters' | 'monsterNames'
 
-const CARDS: CountNoun = { one: 'carta', many: 'cartas', none: 'ninguna carta' }
-const NAMES: CountNoun = { one: 'nombre distinto', many: 'nombres distintos', none: 'ningún nombre' }
-const MONSTERS: CountNoun = { one: 'monstruo', many: 'monstruos', none: 'ningún monstruo' }
-const MONSTER_NAMES: CountNoun = { one: 'nombre distinto de monstruo', many: 'nombres distintos de monstruos', none: 'ningún nombre de monstruo' }
+// Las frases guardan claves: cada idioma decide el orden de las palabras y cómo cambian con la cantidad.
+const INCLUDE_PHRASE = {
+  cards: 'builder.preview.include.cards',
+  names: 'builder.preview.include.names',
+  monsters: 'builder.preview.include.monsters',
+  monsterNames: 'builder.preview.include.monsterNames',
+} as const
 
-/** "al menos 2 cartas …", "al menos 1 carta …", "no robás ninguna carta …", "no robás 2 o más cartas …". */
+const EXCLUDE_PHRASE = {
+  cards: 'builder.preview.exclude.cards',
+  names: 'builder.preview.exclude.names',
+  monsters: 'builder.preview.exclude.monsters',
+  monsterNames: 'builder.preview.exclude.monsterNames',
+} as const
+
+/** "al menos 2 cartas …", "al menos 1 carta …", "no robás ninguna carta …", "no robás 2 o más cartas …" (`tail` es el "…"). */
 function countPhrase(requirement: PatternRequirement, noun: CountNoun, tail: string): string {
-  const quantity = requirement.quantity
+  const phrase = requirement.kind === 'exclude' ? EXCLUDE_PHRASE[noun] : INCLUDE_PHRASE[noun]
 
-  if (requirement.kind === 'exclude') {
-    return quantity === 1 ? `no robás ${noun.none} ${tail}` : `no robás ${formatInteger(quantity)} o más ${noun.many} ${tail}`
-  }
-
-  return `al menos ${formatInteger(quantity)} ${quantity === 1 ? noun.one : noun.many} ${tail}`
+  return t(phrase, { count: requirement.quantity, tail })
 }
 
 function buildCardPoolPreview(
   requirement: PatternRequirement,
   selectedCards: CardEntry[],
 ): string {
-  const poolLabel =
+  const tail =
     selectedCards.length > 0
-      ? selectedCards.map((card) => card.name).join(', ')
-      : 'un pool de cartas'
+      ? t('builder.tail.pool', { pool: selectedCards.map((card) => card.name).join(', ') })
+      : t('builder.tail.poolMissing')
 
-  return countPhrase(requirement, requirement.distinct ? NAMES : CARDS, `del pool ${poolLabel}`)
+  return countPhrase(requirement, requirement.distinct ? 'names' : 'cards', tail)
 }
 
 function buildGenericCardPreview(
   requirement: PatternRequirement,
   matcherLabel: string,
 ): string {
-  return countPhrase(requirement, requirement.distinct ? NAMES : CARDS, matcherLabel)
+  return countPhrase(requirement, requirement.distinct ? 'names' : 'cards', matcherLabel)
 }
 
 function buildGenericMonsterPreview(
   requirement: PatternRequirement,
   matcherLabel: string,
 ): string {
-  return countPhrase(requirement, requirement.distinct ? MONSTER_NAMES : MONSTERS, matcherLabel)
+  return countPhrase(requirement, requirement.distinct ? 'monsterNames' : 'monsters', matcherLabel)
 }

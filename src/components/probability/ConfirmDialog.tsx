@@ -1,3 +1,4 @@
+import { t } from '../../i18n'
 import { Button, type ButtonColor, type ButtonVariant } from '../ui/Button'
 import { Modal } from '../ui/Modal'
 
@@ -14,8 +15,8 @@ interface ConfirmDialogProps {
 }
 
 export function ConfirmDialog({
-  cancelLabel = 'Cancelar',
-  confirmLabel = 'Confirmar',
+  cancelLabel = t('common.cancel'),
+  confirmLabel = t('lab.confirm.confirm'),
   confirmColor = 'brand',
   confirmVariant = 'primary',
   description,
@@ -30,7 +31,7 @@ export function ConfirmDialog({
       onClose={onCancel}
       size="sm"
       role="alertdialog"
-      kicker="Confirmación"
+      kicker={t('lab.confirm.kicker')}
       title={title}
       footer={
         <>

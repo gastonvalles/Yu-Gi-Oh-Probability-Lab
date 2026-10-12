@@ -12,7 +12,7 @@ import './index.css'
 const appRoot = document.querySelector<HTMLDivElement>('#app')
 
 if (!appRoot) {
-  throw new Error('No se encontró el contenedor principal.')
+  throw new Error('No se encontró el contenedor principal.') // i18n-ignore: error de programación, no llega a la pantalla
 }
 
 document.documentElement.style.setProperty('--motion-duration', `${UI_ANIMATION_MS}ms`)

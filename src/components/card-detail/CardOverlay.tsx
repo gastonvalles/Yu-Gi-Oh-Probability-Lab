@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 
 import { UI_ANIMATION_MS, prefersReducedMotion } from '../../app/motion'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
+import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
@@ -164,7 +165,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
           className="pointer-events-auto relative aspect-[421/614] h-(--detail-art-height) max-w-full flex-none cursor-zoom-in overflow-hidden rounded-lg shadow-[0_24px_50px_rgb(0_0_0/0.6),0_0_0_1px_rgb(255_255_255/0.12),0_0_40px_rgb(var(--primary-rgb)/0.3)] transition-[height] duration-(--motion-duration) ease-[cubic-bezier(0.2,0.9,0.25,1)] group-data-[zoomed=true]:h-[min(94dvh,calc((100vw-2rem)*614/421))]"
           role="button"
           tabIndex={-1}
-          aria-label={zoomed ? 'Volver al detalle' : 'Ver la carta en grande'}
+          aria-label={zoomed ? t('search.overlay.backToDetail') : t('search.overlay.zoomIn')}
           onClick={(event) => {
             event.stopPropagation()
             setZoomed((current) => !current)
@@ -195,7 +196,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
       <CloseButton
         tone="flat"
         size="lg"
-        aria-label="Cerrar"
+        aria-label={t('common.close')}
         className="absolute right-[max(0.5rem,env(safe-area-inset-right))] top-[max(0.5rem,env(safe-area-inset-top))] z-10"
         onClick={(event) => {
           event.stopPropagation()

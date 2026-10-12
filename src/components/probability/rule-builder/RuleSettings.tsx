@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 
 import { buildDerivedDeckGroupMap } from '../../../app/deck-groups'
 import { allowsSharedCards, resolveConditionCardIds } from '../../../app/patterns'
+import { t } from '../../../i18n'
 import type { CardEntry, HandPattern } from '../../../types'
 import { Switch } from '../../ui/Switch'
 import type { PatternEditorActions } from '../pattern-editor-actions'
@@ -33,12 +34,8 @@ export function RuleSettings({ pattern, actions, derivedMainCards }: RuleSetting
     pattern.turnContext !== 'first' && (
       <SettingRow
         key="draw"
-        title="Contar la carta que robás yendo 2º"
-        description={
-          pattern.ignoresDraw
-            ? 'Se mira sólo la mano inicial de 5 (p. ej. interacción para el turno del rival).'
-            : 'Yendo 2º la regla ve las 6 cartas, la robada incluida.'
-        }
+        title={t('builder.settings.draw.title')}
+        description={t(pattern.ignoresDraw ? 'builder.settings.draw.handOnly' : 'builder.settings.draw.withDraw')}
         checked={pattern.ignoresDraw !== true}
         onChange={(counts) => actions.setPatternIgnoresDraw(pattern.id, !counts)}
       />
@@ -46,12 +43,8 @@ export function RuleSettings({ pattern, actions, derivedMainCards }: RuleSetting
     pattern.kind === 'opening' && (
       <SettingRow
         key="rescue"
-        title="Rescatar las cartas que usa"
-        description={
-          pattern.rescuesCards
-            ? 'Si la mano cumple esta salida, sus cartas no cuentan como muertas en los problemas.'
-            : 'Los problemas cuentan todas las cartas de la mano.'
-        }
+        title={t('builder.settings.rescue.title')}
+        description={t(pattern.rescuesCards ? 'builder.settings.rescue.on' : 'builder.settings.rescue.off')}
         checked={pattern.rescuesCards === true}
         onChange={(checked) => actions.setPatternRescuesCards(pattern.id, checked)}
       />
@@ -59,12 +52,8 @@ export function RuleSettings({ pattern, actions, derivedMainCards }: RuleSetting
     hasOverlap && (
       <SettingRow
         key="shared"
-        title="La misma carta cuenta para más de una condición"
-        description={
-          allowsSharedCards(pattern)
-            ? 'Hay cartas en más de una condición: una sola copia puede cumplir varias a la vez.'
-            : 'Hay cartas en más de una condición: cada condición necesita cartas distintas.'
-        }
+        title={t('builder.settings.shared.title')}
+        description={t(allowsSharedCards(pattern) ? 'builder.settings.shared.on' : 'builder.settings.shared.off')}
         checked={allowsSharedCards(pattern)}
         onChange={(checked) => actions.setPatternAllowSharedCards(pattern.id, checked)}
       />
@@ -76,7 +65,7 @@ export function RuleSettings({ pattern, actions, derivedMainCards }: RuleSetting
   }
 
   return (
-    <RuleStep title="Ajustes">
+    <RuleStep title={t('builder.step.settings')}>
       <div className="grid divide-y divide-border-subtle">{rows}</div>
     </RuleStep>
   )

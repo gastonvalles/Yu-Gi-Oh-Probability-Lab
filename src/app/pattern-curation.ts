@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import type { CardEntry, HandPattern, Matcher, PatternCondition } from '../types'
 import { buildDerivedDeckGroupMap } from './deck-groups'
 import { getPatternDefinitionKey, getPatternMatchMode, normalizeHandPatternCategory, normalizeReusePolicy, normalizeTurnContext, resolveConditionCardIds, resolvePatternLogic } from './patterns'
@@ -168,9 +169,7 @@ function curatePattern(
   const kind = normalizeHandPatternCategory(pattern.kind)
   const name = isBeingEdited && pattern.name.trim().length === 0
     ? ''
-    : pattern.name.replace(/\s+/g, ' ').trim() || (kind === 'opening'
-      ? 'Salida sin nombre'
-      : 'Problema sin nombre')
+    : pattern.name.replace(/\s+/g, ' ').trim() || t(kind === 'opening' ? 'rules.curation.unnamedOpening' : 'rules.curation.unnamedProblem')
   return {
     ...pattern,
     name,

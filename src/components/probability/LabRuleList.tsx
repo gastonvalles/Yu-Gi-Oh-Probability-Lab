@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 
 import { formatInteger, formatShortPercent } from '../../app/utils'
+import { t, type MessageKey } from '../../i18n'
 import type { PatternKind } from '../../types'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
@@ -13,17 +14,29 @@ import { Switch } from '../ui/Switch'
 import { TONE } from '../ui/tone'
 import { KindBadge } from './KindBadge'
 import { LabSection } from './LabSection'
+import { formatCardCount, turnWord } from './lab-copy'
 import { LAB_FOOTNOTE } from './lab-styles'
 import { RuleRenameDialog } from './RuleRenameDialog'
 import type { RuleEntry, RuleEntryGroups, TurnLean } from './probability-lab-helpers'
 
 type KindFilter = 'all' | PatternKind
 
-const KIND_FILTERS: ReadonlyArray<SegmentedOption<KindFilter>> = [
-  { value: 'all', label: 'Todas' },
-  { value: 'opening', label: 'Salidas' },
-  { value: 'problem', label: 'Problemas' },
-]
+// Las tablas guardan claves de mensajes, no textos: el texto se arma al dibujar, en el idioma de ese momento.
+const KIND_FILTER_KEY = {
+  all: 'lab.rules.filter.all',
+  opening: 'lab.rules.filter.opening',
+  problem: 'lab.rules.filter.problem',
+} as const satisfies Record<KindFilter, MessageKey>
+
+function kindFilterOptions(): SegmentedOption<KindFilter>[] {
+  return (['all', 'opening', 'problem'] as const).map((value) => ({ value, label: t(KIND_FILTER_KEY[value]) }))
+}
+
+/** Cada acción de la fila tiene su frase entera (con y sin el aviso de turno): el orden de las palabras lo decide el idioma. */
+const ROW_LABEL_KEY = {
+  edit: { plain: 'lab.rules.row.edit', lean: 'lab.rules.row.editLean' },
+  rename: { plain: 'lab.rules.row.rename', lean: 'lab.rules.row.renameLean' },
+} as const
 
 /** Fila sin caja: las separa una línea fina y sólo se marca al pasar el mouse o tocarla. */
 const RULE_ROW =
@@ -66,40 +79,45 @@ export function LabRuleList({
 
   return (
     <LabSection
-      title="Reglas del análisis"
+      title={t('lab.rules.title')}
       icon="list"
-      summary={`${formatInteger(groups.universal.length)} universales · ${formatInteger(enabledGeneric)}/${formatInteger(groups.generic.length)} genéricas · ${formatInteger(groups.custom.length)} propias`}
+      summary={t('lab.rules.summary', {
+        universal: formatInteger(groups.universal.length),
+        enabled: formatInteger(enabledGeneric),
+        generic: formatInteger(groups.generic.length),
+        custom: formatInteger(groups.custom.length),
+      })}
       className="order-5 min-[1101px]:col-span-full"
-      actions={<Segmented variant="chips" size="sm" label="Filtrar reglas por tipo" value={kindFilter} onChange={setKindFilter} options={KIND_FILTERS} />}
+      actions={<Segmented variant="chips" size="sm" label={t('lab.rules.filter.label')} value={kindFilter} onChange={setKindFilter} options={kindFilterOptions()} />}
     >
       {/* Desktop: reglas del sistema (plegables) a la izquierda, las propias a la derecha. */}
       <div className="grid gap-[1.1rem] min-[1101px]:grid-cols-2 min-[1101px]:items-start min-[1101px]:gap-5">
         <div className={RULE_STACK}>
           <RuleTier
-            title="Universales"
+            title={t('lab.rules.universal.title')}
             count={groups.universal.length}
             badge={
               <Badge icon="lock" size="sm">
-                Siempre activas
+                {t('lab.rules.universal.badge')}
               </Badge>
             }
-            description="Valen para cualquier deck de Yu-Gi-Oh!: definen la base de una mano jugable. Solo podés cambiarles el nombre."
+            description={t('lab.rules.universal.description')}
             entries={visible(groups.universal)}
             renderRow={(entry) => (
-              <RuleRow entry={entry} actionLabel="Renombrar" showEditIcon onClick={() => setRenamingId(entry.patternId)} />
+              <RuleRow entry={entry} action="rename" showEditIcon onClick={() => setRenamingId(entry.patternId)} />
             )}
           />
           <RuleTier
-            title="Genéricas"
+            title={t('lab.rules.generic.title')}
             count={groups.generic.length}
             badge={
               enabledGeneric < groups.generic.length ? (
                 <Badge size="sm" tone={enabledGeneric > 0 ? 'success' : 'neutral'}>
-                  {formatInteger(enabledGeneric)} activas
+                  {t('lab.rules.generic.badge', { n: formatInteger(enabledGeneric) })}
                 </Badge>
               ) : null
             }
-            description="Aplican a la mayoría de los decks. Apagalas o editalas para ajustar cantidades de copias."
+            description={t('lab.rules.generic.description')}
             entries={visible(groups.generic)}
             renderRow={(entry) => (
               <RuleRow
@@ -109,7 +127,7 @@ export function LabRuleList({
                 trailing={
                   <Switch
                     checked={entry.enabled}
-                    label={`${entry.enabled ? 'Desactivar' : 'Activar'} ${entry.name}`}
+                    label={entry.enabled ? t('lab.rules.toggle.off', { name: entry.name }) : t('lab.rules.toggle.on', { name: entry.name })}
                     onChange={(enabled) => entry.presetId && onToggleGenericRule(entry.presetId, enabled)}
                   />
                 }
@@ -119,21 +137,21 @@ export function LabRuleList({
         </div>
         <div className={RULE_STACK}>
           <RuleTier
-            title="Tus reglas"
+            title={t('lab.rules.custom.title')}
             badge={
               <Button variant="secondary" size="sm" icon="plus" onClick={onCreateCustom}>
-                Crear regla
+                {t('lab.rules.custom.create')}
               </Button>
             }
             description=""
             entries={visible(liveCustom)}
             emptyState={
               liveCustom.length === 0 ? (
-                <EmptyState icon="sparkles" title="Todavía no creaste reglas" className="py-6">
-                  Ejemplos: “Abrir tu carta clave”, “Starter + pieza de combo” o “2+ Handtraps yendo 2º”.
+                <EmptyState icon="sparkles" title={t('lab.rules.custom.emptyTitle')} className="py-6">
+                  {t('lab.rules.custom.emptyExamples')}
                 </EmptyState>
               ) : (
-                <p className={LAB_FOOTNOTE}>No hay reglas propias de este tipo.</p>
+                <p className={LAB_FOOTNOTE}>{t('lab.rules.custom.noneOfKind')}</p>
               )
             }
             renderRow={(entry) => (
@@ -144,15 +162,15 @@ export function LabRuleList({
             )}
           />
           {orphans.length > 0 ? (
-            <details className="group grid gap-1" aria-label="Reglas sin carta">
+            <details className="group grid gap-1" aria-label={t('lab.rules.orphans.title')}>
               <summary className="m-0 flex cursor-pointer list-none items-center justify-between gap-2 rounded-control py-1.5 text-body font-semibold text-foreground focus-visible:outline-none focus-visible:shadow-focus [&::-webkit-details-marker]:hidden">
                 <span className="flex items-center gap-2">
-                  Reglas sin carta
+                  {t('lab.rules.orphans.title')}
                   <Badge tone="warning" size="sm">{formatInteger(orphans.length)}</Badge>
                 </span>
                 <Icon name="chevron-down" size={16} className="shrink-0 text-soft transition-transform duration-200 group-open:rotate-180" />
               </summary>
-              <p className="m-0 text-micro text-muted">Usan cartas que ya no están en el deck y no cuentan en el análisis. Tocá una para cambiarle la carta o eliminarla.</p>
+              <p className="m-0 text-micro text-muted">{t('lab.rules.orphans.description')}</p>
               <ul className="m-0 grid list-none gap-0 divide-y divide-border-subtle p-0">
                 {orphans.map((entry) => (
                   <li key={entry.patternId}>
@@ -207,7 +225,7 @@ function RuleTier({
       </header>
 
       {entries.length === 0 ? (
-        (emptyState ?? <p className={LAB_FOOTNOTE}>No hay reglas de este tipo.</p>)
+        (emptyState ?? <p className={LAB_FOOTNOTE}>{t('lab.rules.noneOfKind')}</p>)
       ) : (
         <ul className="m-0 grid list-none gap-0 divide-y divide-border-subtle p-0">
           {entries.map((entry) => (
@@ -223,14 +241,14 @@ function RuleRow({
   entry,
   trailing,
   onClick,
-  actionLabel = 'Editar',
+  action = 'edit',
   showEditIcon = false,
 }: {
   entry: RuleEntry
   trailing?: ReactNode
   onClick?: () => void
-  /** Verbo del botón para lectores de pantalla ("Editar" / "Renombrar"). */
-  actionLabel?: string
+  /** Qué hace el botón para lectores de pantalla: editar o renombrar. */
+  action?: 'edit' | 'rename'
   showEditIcon?: boolean
 }) {
   const isActive = entry.enabled && entry.appliesToView && !entry.missingCards
@@ -242,9 +260,9 @@ function RuleRow({
           <span className="min-w-0 [overflow-wrap:anywhere]">{entry.name}</span>
           {showEditIcon ? <Icon name="pencil" size={13} className="flex-none text-soft group-hover:text-foreground" /> : null}
           {entry.turnContext !== 'either' ? (
-            <TurnBadge>{entry.turnContext === 'first' ? 'Solo 1º' : 'Solo 2º'}</TurnBadge>
+            <TurnBadge>{entry.turnContext === 'first' ? t('lab.rules.badge.onlyFirst') : t('lab.rules.badge.onlySecond')}</TurnBadge>
           ) : null}
-          {entry.ignoresDraw && entry.turnContext !== 'first' ? <TurnBadge title="Yendo 2º no cuenta la carta robada">5 cartas</TurnBadge> : null}
+          {entry.ignoresDraw && entry.turnContext !== 'first' ? <TurnBadge title={t('lab.rules.badge.ignoresDraw')}>{formatCardCount(5)}</TurnBadge> : null}
           {entry.turnLean ? <TurnLeanBadge kind={entry.kind} lean={entry.turnLean} /> : null}
         </span>
         {entry.description ? (
@@ -277,7 +295,7 @@ function RuleRow({
         <button
           type="button"
           className="contents cursor-pointer text-left focus-visible:outline-none"
-          aria-label={`${actionLabel} regla ${entry.name}: ${formatRuleValue(entry)}`}
+          aria-label={t(ROW_LABEL_KEY[action].plain, { name: entry.name, value: formatRuleValue(entry) })}
           onClick={onClick}
         >
           {body}
@@ -292,7 +310,11 @@ function RuleRow({
       <button
         type="button"
         className={rowClass(true)}
-        aria-label={`${actionLabel} regla ${entry.name}: ${formatRuleValue(entry)}${entry.turnLean ? `, más yendo ${entry.turnLean.favored === 'first' ? '1º' : '2º'}` : ''}`}
+        aria-label={
+          entry.turnLean
+            ? t(ROW_LABEL_KEY[action].lean, { name: entry.name, value: formatRuleValue(entry), turn: turnWord(entry.turnLean.favored) })
+            : t(ROW_LABEL_KEY[action].plain, { name: entry.name, value: formatRuleValue(entry) })
+        }
         onClick={onClick}
       >
         {body}
@@ -310,19 +332,19 @@ function RuleRow({
 
 function formatRuleValue(entry: RuleEntry): string {
   if (entry.missingCards) {
-    return 'Falta carta'
+    return t('lab.rules.value.missingCard')
   }
 
   if (!entry.enabled) {
-    return 'Apagada'
+    return t('lab.rules.value.off')
   }
 
   if (!entry.isComplete) {
-    return 'Incompleta'
+    return t('lab.rules.value.incomplete')
   }
 
   if (!entry.appliesToView) {
-    return 'No aplica'
+    return t('lab.rules.value.notApplicable')
   }
 
   return entry.probability === null ? '—' : formatShortPercent(entry.probability)
@@ -330,19 +352,17 @@ function formatRuleValue(entry: RuleEntry): string {
 
 /** Aviso automático: la regla se da claramente más en un turno (aunque valga para ambos). */
 function TurnLeanBadge({ kind, lean }: { kind: RuleEntry['kind']; lean: TurnLean }) {
-  const turn = lean.favored === 'first' ? '1º' : '2º'
-  const detail = `Yendo 1º: ${formatShortPercent(lean.first)} · yendo 2º: ${formatShortPercent(lean.second)}`
-  const meaning =
-    kind === 'opening'
-      ? `Esta salida aparece más yendo ${turn}.`
-      : `Este problema pesa más yendo ${turn}.`
+  const turn = turnWord(lean.favored)
+  const title = t(kind === 'opening' ? 'lab.rules.lean.opening' : 'lab.rules.lean.problem', {
+    turn,
+    first: formatShortPercent(lean.first),
+    second: formatShortPercent(lean.second),
+  })
 
   return (
-    <Badge tone="brand" size="sm" shape="tag" className="cursor-help" title={`${meaning} ${detail}`}>
-      Más yendo {turn}
-      <span className="sr-only">
-        . {meaning} {detail}
-      </span>
+    <Badge tone="brand" size="sm" shape="tag" className="cursor-help" title={title}>
+      {t('lab.rules.lean.badge', { turn })}
+      <span className="sr-only">. {title}</span>
     </Badge>
   )
 }

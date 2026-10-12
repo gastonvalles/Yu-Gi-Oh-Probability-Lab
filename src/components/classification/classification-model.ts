@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react'
 
 import { getDeckGroupTheme } from '../../app/deck-groups'
 import { isCardMissingOrigin, isCardMissingRoles, isCardPendingReview } from '../../app/role-step'
+import { t } from '../../i18n'
 import type { CardEntry, CardGroupKey, CardRole } from '../../types'
 
 export type ClassificationStateKey = 'all' | 'unclassified' | 'missing-origin' | 'missing-role' | 'review' | 'complete'
@@ -55,10 +56,11 @@ export function getCardType(card: CardEntry): CardTypeKey {
 
 export const CARD_TYPE_ORDER: readonly CardTypeKey[] = ['monster', 'spell', 'trap']
 
+// Getters: el texto se arma al leerlo, no al evaluar el módulo. Cada tipo es un mensaje plural (una forma por cantidad).
 export const CARD_TYPE_LABEL: Record<CardTypeKey, { singular: string; plural: string }> = {
-  monster: { singular: 'Monstruo', plural: 'Monstruos' },
-  spell: { singular: 'Magia', plural: 'Magias' },
-  trap: { singular: 'Trampa', plural: 'Trampas' },
+  monster: { get singular() { return t('roles.cardType.monster', { count: 1 }) }, get plural() { return t('roles.cardType.monster', { count: 2 }) } },
+  spell: { get singular() { return t('roles.cardType.spell', { count: 1 }) }, get plural() { return t('roles.cardType.spell', { count: 2 }) } },
+  trap: { get singular() { return t('roles.cardType.trap', { count: 1 }) }, get plural() { return t('roles.cardType.trap', { count: 2 }) } },
 }
 
 /** Orden fijo de la lista: tipo, más copias primero y nombre. No cambia al clasificar. */
@@ -79,12 +81,12 @@ export function getCardPrimaryStatus(card: CardEntry): { label: string; tone: St
   }
 
   if (missingOrigin) {
-    return { label: 'Sin origen', tone: 'warning' }
+    return { label: t('roles.status.noOrigin'), tone: 'warning' }
   }
 
   if (missingRoles) {
-    return { label: 'Sin función', tone: 'warning' }
+    return { label: t('roles.status.noFunction'), tone: 'warning' }
   }
 
-  return isCardPendingReview(card) ? { label: 'Revisión', tone: 'primary' } : null
+  return isCardPendingReview(card) ? { label: t('roles.status.review'), tone: 'primary' } : null
 }

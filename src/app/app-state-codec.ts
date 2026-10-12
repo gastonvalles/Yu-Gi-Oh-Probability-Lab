@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import { clampCardDescription, keepCardImageUrl } from '../ygoprodeck/parser'
 import { buildGenesysCardInfo } from './genesys-format'
 import { normalizeRuleName } from './pattern-presets'
@@ -89,7 +90,7 @@ export function toPortableConfig(state: AppState): PortableConfig {
 
 export function fromPortableConfig(value: unknown): AppState {
   if (!isRecord(value)) {
-    throw new Error('La configuración debe ser un objeto JSON.')
+    throw new Error(t('deck.codec.notObject'))
   }
 
   // Ningún control de la app lo cambia: sólo llega del almacenamiento. Fuera de 1..10 la enumeración explota.
@@ -98,7 +99,7 @@ export function fromPortableConfig(value: unknown): AppState {
   const patternsSeedVersion = parseOptionalInteger(value.patternsSeedVersion, 0)
 
   if (!isRecord(value.deckBuilder)) {
-    throw new Error('"deckBuilder" debe ser un objeto.')
+    throw new Error(t('deck.codec.deckBuilderNotObject'))
   }
 
   const deckBuilder = {
@@ -115,7 +116,7 @@ export function fromPortableConfig(value: unknown): AppState {
 
   const patterns = patternsRaw.map((rawPattern, index) => {
     if (!isRecord(rawPattern)) {
-      throw new Error(`El patrón #${index + 1} es inválido.`)
+      throw new Error(t('deck.codec.invalidPattern', { number: index + 1 }))
     }
 
     const patternName = parseRequiredString(rawPattern.name, `patterns[${index}].name`)
@@ -131,7 +132,7 @@ export function fromPortableConfig(value: unknown): AppState {
 
     const conditions = conditionsRaw.map<PatternCondition>((rawCondition, conditionIndex) => {
       if (!isRecord(rawCondition)) {
-        throw new Error(`La condición #${conditionIndex + 1} del patrón #${index + 1} es inválida.`)
+        throw new Error(t('deck.codec.invalidCondition', { condition: conditionIndex + 1, pattern: index + 1 }))
       }
 
       const { matcher, needsReview: matcherNeedsReview } = parseConditionMatcher(
@@ -188,7 +189,7 @@ function parseDeckZone(value: unknown, fieldName: string) {
 
   return items.map((item, index) => {
     if (!isRecord(item)) {
-      throw new Error(`"${fieldName}[${index}]" es inválido.`)
+      throw new Error(t('deck.codec.invalidItem', { field: `${fieldName}[${index}]` }))
     }
 
     const name = parseRequiredString(item.name, `${fieldName}[${index}].name`)
@@ -208,7 +209,7 @@ function parseDeckZone(value: unknown, fieldName: string) {
 
 function parseApiCardReference(value: unknown, fieldName: string, cardName: string): ApiCardReference {
   if (!isRecord(value)) {
-    throw new Error(`"${fieldName}" debe ser un objeto.`)
+    throw new Error(t('deck.codec.fieldNotObject', { field: fieldName }))
   }
 
   return {
@@ -450,7 +451,7 @@ function parseConditionMatcher(
     const cardId = cardIdsByName.get(normalizeName(cardName))
 
     if (!cardId) {
-      throw new Error(`El patrón "${patternName}" referencia "${cardName}", pero no existe en el Main Deck.`)
+      throw new Error(t('deck.codec.cardNotInMain', { pattern: patternName, card: cardName }))
     }
 
     return cardId

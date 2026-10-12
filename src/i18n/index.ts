@@ -86,6 +86,22 @@ export const numberLocale = (): string => INTL_TAGS[current].number
 export const dateLocale = (): string => INTL_TAGS[current].date
 export const currencyLocale = (): string => INTL_TAGS[current].currency
 
+/**
+ * Un día con año: "12/10/2026" en español y "Oct 12, 2026" en inglés (el número solo se confunde día con mes). Con `timeZone` el día
+ * se lee en esa zona (los de torneo, en UTC); sin ella, en la del usuario. Una fecha que no se entiende se muestra tal cual.
+ */
+export function formatDay(value: Date | string | number, timeZone?: string): string {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value)
+  }
+
+  const options: Intl.DateTimeFormatOptions = current === 'es' ? { day: '2-digit', month: '2-digit', year: 'numeric' } : { day: 'numeric', month: 'short', year: 'numeric' }
+
+  return new Intl.DateTimeFormat(dateLocale(), { ...options, timeZone }).format(date)
+}
+
 /** Arma un mensaje: elige la forma plural con `count` y reemplaza cada {nombre} por su parámetro (si falta, queda el {nombre}). */
 export function formatMessage(message: string | PluralMessage, params: Record<string, string | number> | undefined, locale: Locale): string {
   const text = typeof message === 'string' ? message : message[PLURAL_RULES[locale].select(Number(params?.count)) === 'one' ? 'one' : 'other']

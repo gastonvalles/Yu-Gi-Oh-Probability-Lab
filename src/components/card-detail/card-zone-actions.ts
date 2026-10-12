@@ -1,5 +1,6 @@
 import { isCardAllowedInDeckZone } from '../../app/deck-builder'
 import type { DeckZone } from '../../app/model'
+import { t } from '../../i18n'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 
 interface ZoneActionEntry {
@@ -13,14 +14,14 @@ export function buildZoneActionEntries(card: ApiCardSearchResult): ZoneActionEnt
   const entries: ZoneActionEntry[] = []
 
   if (isCardAllowedInDeckZone(card, 'main')) {
-    entries.push({ zone: 'main', label: 'Agregar al Main Deck', variant: 'primary' })
+    entries.push({ zone: 'main', label: t('search.zone.addMain'), variant: 'primary' })
   }
 
   if (isCardAllowedInDeckZone(card, 'extra')) {
-    entries.push({ zone: 'extra', label: 'Agregar al Extra Deck', variant: 'primary' })
+    entries.push({ zone: 'extra', label: t('search.zone.addExtra'), variant: 'primary' })
   }
 
-  entries.push({ zone: 'side', label: 'Agregar al Side Deck', variant: 'secondary' })
+  entries.push({ zone: 'side', label: t('search.zone.addSide'), variant: 'secondary' })
 
   return entries
 }

@@ -1,7 +1,13 @@
 import type { PatternPreset, SystemRuleTier } from '../../app/pattern-presets'
 import { getPatternDefinitionKey } from '../../app/patterns'
+import { t } from '../../i18n'
 import type { CardEntry, HandPattern, PatternKind, PatternProbability, TurnContext, TurnView } from '../../types'
 import { buildPatternCompactSummary } from './pattern-helpers'
+
+/** Nombre de una regla sin nombre propio: depende de si es una salida o un problema. */
+function unnamedRuleName(kind: PatternKind): string {
+  return t(kind === 'opening' ? 'lab.entry.unnamed.opening' : 'lab.entry.unnamed.problem')
+}
 
 type RuleTier = SystemRuleTier | 'custom'
 
@@ -132,10 +138,10 @@ export function buildRuleEntryGroups({
       presetId: pattern.systemRuleId ?? null,
       tier: pattern.systemRuleId ? 'generic' : 'custom',
       kind: pattern.kind,
-      name: pattern.name.trim() || (pattern.kind === 'opening' ? 'Salida sin nombre' : 'Problema sin nombre'),
+      name: pattern.name.trim() || unnamedRuleName(pattern.kind),
       defaultName: null,
-      summary: isComplete ? buildPatternCompactSummary(pattern, cardById) : 'Falta completar las condiciones',
-      description: duplicateOf ? `Es igual a “${duplicateOf}”, que ya se cuenta: no cambia el resultado.` : null,
+      summary: isComplete ? buildPatternCompactSummary(pattern, cardById) : t('lab.entry.incomplete'),
+      description: duplicateOf ? t('lab.entry.duplicate', { name: duplicateOf }) : null,
       turnContext: pattern.turnContext,
       ignoresDraw: pattern.ignoresDraw === true,
       enabled: !pattern.systemRuleId || !disabled.has(pattern.systemRuleId),
@@ -149,10 +155,10 @@ export function buildRuleEntryGroups({
     presetId: null,
     tier: 'custom',
     kind: pattern.kind,
-    name: pattern.name.trim() || (pattern.kind === 'opening' ? 'Salida sin nombre' : 'Problema sin nombre'),
+    name: pattern.name.trim() || unnamedRuleName(pattern.kind),
     defaultName: null,
     summary: buildPatternCompactSummary(pattern, cardById),
-    description: 'Usa una carta que ya no está en el deck, así que no se evalúa. Editala o volvé a sumar la carta.',
+    description: t('lab.entry.missingCard'),
     turnContext: pattern.turnContext,
     enabled: true,
     appliesToView: true,

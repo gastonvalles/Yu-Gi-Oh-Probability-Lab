@@ -1,6 +1,7 @@
 import { memo, useMemo } from 'react'
 
 import { getCardOriginDefinition, getCardRoleDefinition } from '../../app/deck-groups'
+import { t } from '../../i18n'
 import type { CardEntry } from '../../types'
 import { CardArt } from '../CardArt'
 import { CopiesBadge } from '../ui/CopiesBadge'
@@ -61,9 +62,7 @@ function GroupHeading({ type, cards }: { type: CardTypeKey; cards: CardEntry[] }
   return (
     <h3 className={cx('m-0 flex items-center gap-2 leading-none', overline)}>
       <span className="text-muted">{CARD_TYPE_LABEL[type].plural}</span>
-      <span className="tabular-nums">
-        {cards.length} · {copies} copias
-      </span>
+      <span className="tabular-nums">{t('roles.queue.groupCount', { cards: cards.length, count: copies })}</span>
       <span className="h-px flex-1 bg-border-subtle" aria-hidden="true" />
     </h3>
   )
@@ -110,7 +109,7 @@ const QueueTile = memo(function QueueTile({
         </div>
 
         <div className="flex min-w-0 flex-wrap items-center gap-1" aria-label={describe(card)}>
-          {missingBoth ? <span className={cx(statusChip('warning', true))}>Sin clasificar</span> : null}
+          {missingBoth ? <span className={cx(statusChip('warning', true))}>{t('roles.queue.unclassified')}</span> : null}
           {status ? <span className={statusChip(status.tone, true)}>{status.label}</span> : null}
           {card.origin ? (
             <span className={cx(MINI_CHIP, 'rounded-tag')} style={getClassificationStyle(getCardOriginDefinition(card.origin).key)}>
@@ -137,8 +136,8 @@ const QueueTile = memo(function QueueTile({
 })
 
 function describe(card: CardEntry): string {
-  const origin = card.origin ? getCardOriginDefinition(card.origin).label : 'sin origen'
+  const origin = card.origin ? getCardOriginDefinition(card.origin).label : t('roles.queue.noOrigin')
   const roles = ROLE_FILTER_ORDER.filter((role) => card.roles.includes(role)).map((role) => getCardRoleDefinition(role).label)
 
-  return [origin, roles.length > 0 ? roles.join(', ') : 'sin roles'].join(' | ')
+  return [origin, roles.length > 0 ? roles.join(', ') : t('roles.queue.noRoles')].join(' | ')
 }

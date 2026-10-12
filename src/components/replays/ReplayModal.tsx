@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import { buildMetaDeckHash } from '../../app/meta-handtraps'
 import { REPLAYS, embedUrl, thumbnailUrl, watchUrl, type ReplayEntry } from '../../app/replays'
+import { t } from '../../i18n'
 import { Badge } from '../ui/Badge'
 import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
@@ -41,7 +42,7 @@ function ReplayDialog({ entry, onClose }: { entry: ReplayEntry; onClose: () => v
       footer={
         <a href={watchUrl(video.id)} target="_blank" rel="noreferrer" className={LINK_BUTTON}>
           <Icon name="link" size={16} />
-          Ver en YouTube
+          {t('meta.replays.modal.watchOnYoutube')}
         </a>
       }
     >
@@ -60,7 +61,7 @@ function ReplayDialog({ entry, onClose }: { entry: ReplayEntry; onClose: () => v
             <button
               type="button"
               className="group absolute inset-0 block size-full focus-visible:outline-none focus-visible:shadow-focus"
-              aria-label={`Reproducir ${label}`}
+              aria-label={t('meta.replays.modal.play', { label })}
               onClick={() => setPlaying(true)}
             >
               <img src={thumbnailUrl(video.id)} alt="" decoding="async" className="size-full object-cover" />
@@ -74,7 +75,7 @@ function ReplayDialog({ entry, onClose }: { entry: ReplayEntry; onClose: () => v
           )}
         </div>
 
-        <ul className="m-0 grid list-none gap-2 p-0" aria-label="Los decks de los jugadores">
+        <ul className="m-0 grid list-none gap-2 p-0" aria-label={t('meta.replays.modal.decksLabel')}>
           {players.map((player, index) => (
             <li key={index} className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-body">
               <span className="inline-flex shrink-0 items-center gap-1.5 font-semibold text-foreground">
@@ -83,7 +84,7 @@ function ReplayDialog({ entry, onClose }: { entry: ReplayEntry; onClose: () => v
               </span>
               {player.deck ? (
                 <>
-                  <a href={buildMetaDeckHash(player.deck.id)} className="min-w-0 truncate font-semibold text-primary-soft underline-offset-2 hover:underline" title={`Abrir ${player.deck.name} en la pestaña Meta`}>
+                  <a href={buildMetaDeckHash(player.deck.id)} className="min-w-0 truncate font-semibold text-primary-soft underline-offset-2 hover:underline" title={t('meta.replays.modal.openDeck', { deck: player.deck.name })}>
                     {player.deck.name}
                   </a>
                   {player.deck.placement ? (
@@ -93,7 +94,7 @@ function ReplayDialog({ entry, onClose }: { entry: ReplayEntry; onClose: () => v
                   ) : null}
                 </>
               ) : (
-                <span className="text-muted">Su deck no está entre los del Meta.</span>
+                <span className="text-muted">{t('meta.replays.modal.noDeck')}</span>
               )}
             </li>
           ))}

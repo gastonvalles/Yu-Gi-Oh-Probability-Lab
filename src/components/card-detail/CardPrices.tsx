@@ -3,16 +3,19 @@ import { useState } from 'react'
 import { cardImageSrc } from '../../app/card-image-source'
 import { filterPrintings, setImageUrl, type PrintingPrice } from '../../app/card-prices'
 import { useCardPrices } from '../../app/use-card-prices'
+import { currencyLocale, formatDay as formatDate, t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
 import { Skeleton } from '../ui/Skeleton'
 import { field } from '../ui/surfaces'
 
-const USD = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'USD' })
+/** "2026-10-11" → "11/10/2026" (en inglés, "Oct 11, 2026"). Un día con otra forma se muestra tal cual. */
+function formatDay(day: string): string {
+  const date = new Date(`${day}T00:00:00Z`)
 
-/** "2026-10-11" → "11/10/2026". */
-const formatDay = (day: string) => day.split('-').reverse().join('/')
+  return Number.isNaN(date.getTime()) ? day : formatDate(date, 'UTC')
+}
 
 /** El encabezado del Meta: la imagen a la derecha y un degradado oscuro que la deja leer el texto de la izquierda. Acá, el sobre de la expansión. */
 const packBackground = (code: string) => ({
@@ -31,8 +34,8 @@ export function CardPricesButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
-      aria-label="Ver precios en TCGplayer"
-      title="Ver precios en TCGplayer"
+      aria-label={t('search.prices.button')}
+      title={t('search.prices.button')}
       className="relative block size-7 rounded-full bg-transparent p-0 shadow-[0_1px_6px_rgb(0_0_0/0.5)] transition-transform duration-150 before:absolute before:-inset-2 before:content-[''] hover:scale-110 focus-visible:outline-none focus-visible:shadow-focus"
       onClick={(event) => {
         // Está encima de una imagen que se agranda al tocarla: acá sólo se abren los precios.
@@ -47,11 +50,13 @@ export function CardPricesButton({ onClick }: { onClick: () => void }) {
 
 /** Una expansión: su encabezado con el sobre de fondo y, debajo, el precio de mercado de cada impresión de la carta con un link al producto. */
 function ExpansionPrices({ set, prices }: { set: string; prices: PrintingPrice[] }) {
+  const usd = new Intl.NumberFormat(currencyLocale(), { style: 'currency', currency: 'USD' })
+
   return (
     <section className="overflow-hidden rounded-card border border-border-subtle bg-card-background">
       <header className="grid gap-0.5 px-3 py-2.5" style={packBackground(prices[0]!.code)}>
         <h4 className="m-0 truncate text-body font-semibold text-foreground">{set}</h4>
-        <p className="m-0 text-micro text-muted">{prices.length === 1 ? '1 impresión' : `${prices.length} impresiones`}</p>
+        <p className="m-0 text-micro text-muted">{t('search.prices.printings', { count: prices.length })}</p>
       </header>
       <ul className="m-0 grid list-none p-0">
         {prices.map((price) => (
@@ -69,7 +74,7 @@ function ExpansionPrices({ set, prices }: { set: string; prices: PrintingPrice[]
                 <span className="text-micro text-muted">{price.code}</span>
               </span>
               <span className="inline-flex items-center gap-1.5 text-body font-semibold tabular-nums">
-                {price.market === null ? 'Sin precio' : USD.format(price.market)}
+                {price.market === null ? t('search.prices.noPrice') : usd.format(price.market)}
                 <Icon name="link" size={13} className="text-soft" />
               </span>
             </a>
@@ -99,7 +104,7 @@ function PriceList({ cardId }: { cardId: number }) {
   }
 
   if (state.status === 'error') {
-    return <p className="m-0 text-body text-muted">No pude traer los precios ahora. Probá de nuevo más tarde.</p>
+    return <p className="m-0 text-body text-muted">{t('search.prices.loadError')}</p>
   }
 
   if (state.status !== 'ready') {
@@ -109,7 +114,7 @@ function PriceList({ cardId }: { cardId: number }) {
   const { prices } = state
 
   if (prices.length === 0) {
-    return <p className="m-0 text-body text-muted">No hay precios de TCGplayer para esta carta.</p>
+    return <p className="m-0 text-body text-muted">{t('search.prices.empty')}</p>
   }
 
   const visible = filterPrintings(prices, query)
@@ -123,12 +128,12 @@ function PriceList({ cardId }: { cardId: number }) {
     <div className="grid gap-3">
       {new Set(prices.map((price) => price.set)).size > 1 || prices.length > 3 ? (
         <label className="relative block">
-          <span className="sr-only">Buscar por código o rareza</span>
+          <span className="sr-only">{t('search.prices.searchLabel')}</span>
           <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-soft" />
           <input
             type="search"
             value={query}
-            placeholder="Buscar por código o rareza"
+            placeholder={t('search.prices.searchLabel')}
             autoComplete="off"
             className={cx(field, 'h-10 w-full pl-9 pr-3 text-body')}
             onChange={(event) => setQuery(event.target.value)}
@@ -138,8 +143,8 @@ function PriceList({ cardId }: { cardId: number }) {
       {[...bySet].map(([set, setPrices]) => (
         <ExpansionPrices key={set} set={set} prices={setPrices} />
       ))}
-      {searching && visible.length === 0 ? <p className="m-0 text-body text-muted">Ninguna impresión coincide con “{query.trim()}”.</p> : null}
-      <p className="m-0 text-micro text-soft">Precio de mercado de TCGplayer, en dólares, al {formatDay(state.updated)}.</p>
+      {searching && visible.length === 0 ? <p className="m-0 text-body text-muted">{t('search.prices.noMatch', { query: query.trim() })}</p> : null}
+      <p className="m-0 text-micro text-soft">{t('search.prices.footnote', { date: formatDay(state.updated) })}</p>
     </div>
   )
 }
@@ -151,7 +156,7 @@ function PriceList({ cardId }: { cardId: number }) {
  */
 export function CardPricesModal({ cardId, name, isOpen, onClose }: { cardId: number; name: string; isOpen: boolean; onClose: () => void }) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="sm" above kicker="Precios en TCGplayer" title={name}>
+    <Modal isOpen={isOpen} onClose={onClose} size="sm" above kicker={t('search.prices.kicker')} title={name}>
       <PriceList cardId={cardId} />
     </Modal>
   )

@@ -4,7 +4,7 @@ import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { LanguageSwitcher } from '../components/ui/LanguageSwitcher'
-import { applyLocale, detectLocale, formatMessage, getLocale, LOCALE_STORAGE_KEY, setLocale, syncSiteMeta, t } from '../i18n'
+import { applyLocale, detectLocale, formatDay, formatMessage, getLocale, LOCALE_STORAGE_KEY, setLocale, syncSiteMeta, t } from '../i18n'
 import { areas as enAreas, en } from '../i18n/en'
 import { areas as esAreas, es } from '../i18n/es'
 import { renderRich } from '../i18n/rich'
@@ -87,6 +87,17 @@ describe('t()', () => {
     expect(formatMessage(cards, { count: 3 }, 'en')).toBe('3 cards')
     expect(formatMessage({ one: '{count} carta', other: '{count} cartas' }, { count: 1 }, 'es')).toBe('1 carta')
     expect(formatMessage({ one: '{count} carta', other: '{count} cartas' }, { count: 2 }, 'es')).toBe('2 cartas')
+  })
+
+  it('formatDay escribe el día como cada idioma lo lee y deja tal cual lo que no entiende', () => {
+    expect(formatDay('2026-10-12T12:00:00Z', 'UTC')).toBe('12/10/2026')
+    expect(formatDay('mañana')).toBe('mañana')
+
+    applyLocale('en')
+
+    // Con el mes en letras no se confunde el 10/12 con el 12/10.
+    expect(formatDay('2026-10-12T12:00:00Z', 'UTC')).toBe('Oct 12, 2026')
+    expect(formatDay('mañana')).toBe('mañana')
   })
 
   it('renderRich resalta lo que va entre etiquetas y deja como texto la etiqueta que no conoce', () => {

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 
+import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
 import { CardOverlay, CardPanelBody, CardPanelFooter, CardPanelHeader } from './CardOverlay'
 import { buildCardSummary } from './card-summary'
@@ -18,10 +19,10 @@ export function CardDetailOverlay({ name, card, origin = null, metadata, actions
   const summary = card ? buildCardSummary(card) : null
 
   return (
-    <CardOverlay ariaLabel={`Detalle de ${name}`} panelLabel="Texto de la carta" name={name} card={card} origin={origin} onClose={onClose}>
+    <CardOverlay ariaLabel={t('search.detail.aria', { name })} panelLabel={t('search.detail.panel')} name={name} card={card} origin={origin} onClose={onClose}>
       <CardPanelHeader title={name} lines={[summary ? `${summary.typeLine}${summary.statLine ? ` · ${summary.statLine}` : ''}` : null, metadata]} />
-      <CardPanelBody label="Efecto" className="text-lead">
-        <p className="m-0 whitespace-pre-wrap [overflow-wrap:anywhere]">{card?.description?.trim() || 'Sin texto disponible.'}</p>
+      <CardPanelBody label={t('search.detail.effect')} className="text-lead">
+        <p className="m-0 whitespace-pre-wrap [overflow-wrap:anywhere]">{card?.description?.trim() || t('search.detail.noText')}</p>
       </CardPanelBody>
       {actions ? <CardPanelFooter>{actions}</CardPanelFooter> : null}
     </CardOverlay>

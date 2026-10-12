@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import type { DeckFormat } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 import { fromPortableConfig } from './app-state-codec'
@@ -231,7 +232,7 @@ export function buildDeckImportPreviewFromJson(options: {
   try {
     parsedValue = JSON.parse(options.text)
   } catch {
-    throw new Error('El archivo JSON no es válido.')
+    throw new Error(t('deck.import.error.invalidJson'))
   }
 
   const importedDeck = parseDeckBuilderFromImportedJson(parsedValue, options.deckName)
@@ -298,9 +299,9 @@ function capImportedDeck(deckBuilder: DeckBuilderState): { deckBuilder: DeckBuil
       const copies = copiesByName.get(nameKey) ?? 0
       const reason =
         kept >= IMPORT_ZONE_CAP
-          ? `Una importación admite hasta ${formatInteger(IMPORT_ZONE_CAP)} cartas por zona.`
+          ? t('deck.import.conflict.zoneCap', { limit: formatInteger(IMPORT_ZONE_CAP) })
           : copies >= IMPORT_COPY_CAP
-            ? `Más de ${formatInteger(IMPORT_COPY_CAP)} copias de ${card.name}.`
+            ? t('deck.import.conflict.copyCap', { limit: formatInteger(IMPORT_COPY_CAP), name: card.name })
             : null
 
       if (reason) {
@@ -469,9 +470,7 @@ function parseDeckBuilderFromImportedJson(
     return fromPortableConfig(buildPortableConfigFromDeckBuilderRecord(value, fallbackDeckName)).deckBuilder
   }
 
-  throw new Error(
-    'El JSON no coincide con un PortableConfig ni con un deckBuilder serializado por la app.',
-  )
+  throw new Error(t('deck.import.error.jsonShape'))
 }
 
 function buildPortableConfigFromDeckBuilderRecord(
@@ -584,7 +583,7 @@ function parseDecklistTextDetails(text: string): ParsedDecklistDetails {
       invalidLines.push({
         lineNumber: lineIndex + 1,
         rawLine,
-        reason: 'No pude leer una cantidad y un nombre de carta en esa linea.',
+        reason: t('deck.import.error.invalidLine'),
       })
       continue
     }
@@ -879,7 +878,7 @@ function getDeckImportSourceLabel(kind: DeckImportSourceKind, fileName: string |
     return 'YDK'
   }
 
-  return 'Texto pegado'
+  return t('deck.import.source.pasted')
 }
 
 function isLikelyNoiseLine(value: string): boolean {

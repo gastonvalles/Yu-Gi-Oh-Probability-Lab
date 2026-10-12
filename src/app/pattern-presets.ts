@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import type { CardEntry, CardRole, HandPattern, PatternKind } from '../types'
 import { createMatcherPattern } from './pattern-factory'
 import { getPatternDefinitionKey, normalizePatternName } from './patterns'
@@ -47,26 +48,38 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
     id: 'starter_opening',
     tier: 'universal',
     kind: 'opening',
-    title: 'Salida básica',
-    description: 'Robar al menos un Starter: la condición mínima para que cualquier deck arranque su jugada.',
-    technicalSubtitle: '1+ Starter',
+    get title() {
+      return t('rules.preset.starterOpening.title')
+    },
+    get description() {
+      return t('rules.preset.starterOpening.description')
+    },
+    get technicalSubtitle() {
+      return t('rules.preset.starterOpening.subtitle')
+    },
     build: () =>
-      createMatcherPattern('Salida básica', 'opening', [
+      createMatcherPattern(t('rules.preset.starterOpening.title'), 'opening', [
         { matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' },
       ]),
-    describeProbability: (probability) => `Abrís al menos un Starter en ${formatProbability(probability)} de las manos.`,
+    describeProbability: (probability) => t('rules.preset.starterOpening.probability', { percent: formatProbability(probability) }),
   },
   {
     id: 'dead_cards_problem',
     tier: 'universal',
     kind: 'problem',
-    title: '2+ cartas muertas',
-    description: 'Dos o más Bricks o Garnets en mano dejan la jugada sin recursos, en cualquier deck.',
-    technicalSubtitle: '2+ Brick o Garnet',
+    get title() {
+      return t('rules.preset.deadCards.title')
+    },
+    get description() {
+      return t('rules.preset.deadCards.description')
+    },
+    get technicalSubtitle() {
+      return t('rules.preset.deadCards.subtitle')
+    },
     build: (cards) => {
       const deadCards = collectCardIdsByRoles(cards, DEAD_CARD_ROLES)
 
-      return createMatcherPattern('2+ cartas muertas', 'problem', [
+      return createMatcherPattern(t('rules.preset.deadCards.title'), 'problem', [
         {
           matcher: deadCards.length > 0 ? { type: 'card_pool', value: deadCards } : { type: 'role', value: 'brick' },
           quantity: 2,
@@ -74,18 +87,24 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
         },
       ])
     },
-    describeProbability: (probability) => `Abrís 2 o más cartas muertas en ${formatProbability(probability)} de las manos.`,
+    describeProbability: (probability) => t('rules.preset.deadCards.probability', { percent: formatProbability(probability) }),
   },
   {
     id: 'starter_extender_opening',
     tier: 'generic',
     kind: 'opening',
-    title: 'Salida con seguimiento',
-    description: 'Starter y Extender en cartas distintas: la mano puede continuar si la interrumpen.',
-    technicalSubtitle: 'Starter + Extender',
+    get title() {
+      return t('rules.preset.starterExtender.title')
+    },
+    get description() {
+      return t('rules.preset.starterExtender.description')
+    },
+    get technicalSubtitle() {
+      return t('rules.preset.starterExtender.subtitle')
+    },
     build: () =>
       createMatcherPattern(
-        'Salida con seguimiento',
+        t('rules.preset.starterExtender.title'),
         'opening',
         [
           { matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' },
@@ -93,18 +112,24 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
         ],
         { allowSharedCards: false, matchMode: 'all', minimumMatches: 2 },
       ),
-    describeProbability: (probability) => `Abrís Starter y Extender en ${formatProbability(probability)} de las manos.`,
+    describeProbability: (probability) => t('rules.preset.starterExtender.probability', { percent: formatProbability(probability) }),
   },
   {
     id: 'starter_interaction_opening',
     tier: 'generic',
     kind: 'opening',
-    title: 'Salida con interacción',
-    description: 'Arrancar y además poder frenar al rival con una Handtrap o Disruption.',
-    technicalSubtitle: 'Starter + Handtrap/Disruption',
+    get title() {
+      return t('rules.preset.starterInteraction.title')
+    },
+    get description() {
+      return t('rules.preset.starterInteraction.description')
+    },
+    get technicalSubtitle() {
+      return t('rules.preset.starterInteraction.subtitle')
+    },
     build: (cards) =>
       createMatcherPattern(
-        'Salida con interacción',
+        t('rules.preset.starterInteraction.title'),
         'opening',
         [
           { matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' },
@@ -112,18 +137,24 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
         ],
         { allowSharedCards: false, matchMode: 'all', minimumMatches: 2 },
       ),
-    describeProbability: (probability) => `Abrís Starter con interacción en ${formatProbability(probability)} de las manos.`,
+    describeProbability: (probability) => t('rules.preset.starterInteraction.probability', { percent: formatProbability(probability) }),
   },
   {
     id: 'starter_boardbreaker_opening',
     tier: 'generic',
     kind: 'opening',
-    title: 'Salida que rompe campo',
-    description: 'Yendo segundo: arrancar y tener con qué romper el campo del rival.',
-    technicalSubtitle: 'Starter + Boardbreaker',
+    get title() {
+      return t('rules.preset.starterBoardbreaker.title')
+    },
+    get description() {
+      return t('rules.preset.starterBoardbreaker.description')
+    },
+    get technicalSubtitle() {
+      return t('rules.preset.starterBoardbreaker.subtitle')
+    },
     build: () =>
       createMatcherPattern(
-        'Salida que rompe campo',
+        t('rules.preset.starterBoardbreaker.title'),
         'opening',
         [
           { matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' },
@@ -131,66 +162,73 @@ export const PATTERN_PRESET_DEFINITIONS: readonly PatternPresetDefinition[] = [
         ],
         { allowSharedCards: false, matchMode: 'all', minimumMatches: 2, turnContext: 'second' },
       ),
-    describeProbability: (probability) => `Yendo segundo, abrís Starter y Boardbreaker en ${formatProbability(probability)} de las manos.`,
+    describeProbability: (probability) => t('rules.preset.starterBoardbreaker.probability', { percent: formatProbability(probability) }),
   },
   {
     id: 'no_answer_second_problem',
     tier: 'generic',
     kind: 'problem',
-    title: 'Sin respuesta yendo 2º',
-    description: 'Yendo segundo, sin una Handtrap ni un Boardbreaker en las 5 cartas iniciales (no cuenta la que robás) quedás a merced del campo rival.',
-    technicalSubtitle: '0 Handtrap o Boardbreaker en las 5 cartas',
+    get title() {
+      return t('rules.preset.noAnswerSecond.title')
+    },
+    get description() {
+      return t('rules.preset.noAnswerSecond.description')
+    },
+    get technicalSubtitle() {
+      return t('rules.preset.noAnswerSecond.subtitle')
+    },
     // Una sola condición sobre todas esas cartas ("ninguna Handtrap ni Boardbreaker") y solo las 5 cartas iniciales: la que robás yendo 2º no cuenta.
     build: (cards) => ({
       ...createMatcherPattern(
-        'Sin respuesta yendo 2º',
+        t('rules.preset.noAnswerSecond.title'),
         'problem',
         [{ matcher: roleMatcher(cards, RESPONSE_ROLES), quantity: 1, kind: 'exclude' }],
         { allowSharedCards: true, matchMode: 'all', turnContext: 'second' },
       ),
       ignoresDraw: true,
     }),
-    describeProbability: (probability) => `Yendo segundo, no tenés respuesta en ${formatProbability(probability)} de las manos.`,
+    describeProbability: (probability) => t('rules.preset.noAnswerSecond.probability', { percent: formatProbability(probability) }),
   },
 ]
 
-// Reglas de sistema de versiones anteriores: se quitan de las reglas propias al migrar.
+// Reglas de sistema de versiones anteriores: se quitan de las reglas propias al migrar. Un nombre por línea.
 const LEGACY_SYSTEM_RULE_NAMES = new Set(
-  [
-    'Salida básica',
-    'Salida con seguimiento',
-    'Salida con interacción',
-    'Salida para romper campo',
-    'Mano sin Starter',
-    '2+ Bricks en mano',
-    '3+ Non-engine en mano',
-    'Mano sin interacción',
-    'Extender sin Starter',
-    'Solo Brick/Garnet en engine',
-    'starter + non-engine',
-    'starter + non engine',
-    'starter + extender sin brick',
-    '3 o mas ht en mano',
-    '3 o más ht en mano',
-    '3 o mas handtrap',
-    '3 o más handtrap',
-    '3 o mas bbs en mano',
-    '3 o más bbs en mano',
-    '3 o mas boardbreaker',
-    '3 o más boardbreaker',
-    '4 o mas non-engine',
-    '4 o más non-engine',
-    'al menos 1 interacción',
-    'al menos 1 starter',
-    'starter + extender',
-    'starter + protección',
-    'engine + interacción',
-    'sin starter',
-    '2 o más bricks',
-    '3 o más non-engine',
-    'sin interacción',
-    'mano jugable mínima',
-  ].map(normalizePatternName),
+  // i18n-ignore: nombres viejos guardados por versiones anteriores (datos de migración, no texto de la interfaz)
+  `Salida básica
+Salida con seguimiento
+Salida con interacción
+Salida para romper campo
+Mano sin Starter
+2+ Bricks en mano
+3+ Non-engine en mano
+Mano sin interacción
+Extender sin Starter
+Solo Brick/Garnet en engine
+starter + non-engine
+starter + non engine
+starter + extender sin brick
+3 o mas ht en mano
+3 o más ht en mano
+3 o mas handtrap
+3 o más handtrap
+3 o mas bbs en mano
+3 o más bbs en mano
+3 o mas boardbreaker
+3 o más boardbreaker
+4 o mas non-engine
+4 o más non-engine
+al menos 1 interacción
+al menos 1 starter
+starter + extender
+starter + protección
+engine + interacción
+sin starter
+2 o más bricks
+3 o más non-engine
+sin interacción
+mano jugable mínima`
+    .split('\n')
+    .map(normalizePatternName),
 )
 
 /** Sólo las universales se pueden renombrar; la condición de la regla no cambia. */

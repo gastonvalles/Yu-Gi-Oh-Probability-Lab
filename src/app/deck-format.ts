@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import type { ApiCardReference, BanlistStatus, DeckFormat } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 import { GENESYS_POINT_CAP, calculateGenesysDeckPointTotal } from './genesys-format'
@@ -52,7 +53,7 @@ export function getDeckFormatLabel(format: DeckFormat): string {
     return 'Genesys'
   }
 
-  return 'Sin límite'
+  return t('deck.format.unlimited')
 }
 
 export function getCardLimitIndicator(
@@ -68,7 +69,7 @@ export function getCardLimitIndicator(
 
     return {
       value: points,
-      label: `Genesys: ${formatInteger(points)} pts`,
+      label: t('deck.limit.genesysPoints', { points: formatInteger(points) }),
     }
   }
 
@@ -79,7 +80,7 @@ export function getCardLimitIndicator(
   if (format === 'edison' && !isEdisonCardInPool(card)) {
     return {
       value: 0,
-      label: `${EDISON_FORMAT_LABEL}: fuera del formato`,
+      label: t('deck.limit.outOfFormat', { format: EDISON_FORMAT_LABEL }),
     }
   }
 
@@ -93,14 +94,14 @@ export function getCardLimitIndicator(
     value: limit,
     label:
       limit === 0
-        ? `${getDeckFormatLabel(format)}: prohibida`
-        : `${getDeckFormatLabel(format)}: ${formatInteger(limit)}x`,
+        ? t('deck.limit.forbidden', { format: getDeckFormatLabel(format) })
+        : t('deck.limit.copies', { format: getDeckFormatLabel(format), limit: formatInteger(limit) }),
   }
 }
 
 export function buildFormatLimitLabel(card: ApiCardReference | ApiCardSearchResult, format: DeckFormat): string | null {
   if (format === 'genesys') {
-    return card.genesys.points === null ? null : `Genesys: ${formatInteger(card.genesys.points)} pts`
+    return card.genesys.points === null ? null : t('deck.limit.genesysPoints', { points: formatInteger(card.genesys.points) })
   }
 
   return getCardLimitIndicator(card, format)?.label ?? null
@@ -136,16 +137,16 @@ export function buildDeckFormatIssues(deckBuilder: DeckBuilderState, format: Dec
     .filter((entry) => entry.copies > getCardCopyLimit(entry.card, format))
     .map((entry) => {
       if (format === 'edison' && getEdisonCardStatus(entry.card) === 'unavailable') {
-        return `${entry.name} no es legal en ${EDISON_FORMAT_LABEL}.`
+        return t('deck.issue.notLegalIn', { name: entry.name, format: EDISON_FORMAT_LABEL })
       }
 
       const limit = getCardCopyLimit(entry.card, format)
 
       if (limit === 0) {
-        return `${entry.name} está prohibida en ${getDeckFormatLabel(format)}.`
+        return t('deck.issue.forbiddenIn', { name: entry.name, format: getDeckFormatLabel(format) })
       }
 
-      return `${entry.name} supera el límite de ${formatInteger(limit)} copia${limit === 1 ? '' : 's'} en ${getDeckFormatLabel(format)}.`
+      return t('deck.issue.copyLimitExceeded', { name: entry.name, count: limit, format: getDeckFormatLabel(format) })
     })
 
   if (format !== 'genesys') {
@@ -156,16 +157,14 @@ export function buildDeckFormatIssues(deckBuilder: DeckBuilderState, format: Dec
 
   for (const entry of countsByName.values()) {
     if (entry.card.genesys.points === null) {
-      genesysIssues.push(`${entry.name} no figura en la base oficial de Genesys.`)
+      genesysIssues.push(t('deck.issue.genesysUnknown', { name: entry.name }))
     }
   }
 
   const pointTotal = calculateGenesysDeckPointTotal(deckBuilder)
 
   if (pointTotal > GENESYS_POINT_CAP) {
-    genesysIssues.push(
-      `El deck suma ${formatInteger(pointTotal)} puntos y supera el cap estándar de ${formatInteger(GENESYS_POINT_CAP)} en Genesys.`,
-    )
+    genesysIssues.push(t('deck.issue.genesysOverCap', { points: formatInteger(pointTotal), cap: formatInteger(GENESYS_POINT_CAP) }))
   }
 
   return genesysIssues

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import type { BuildComparison, BuildMetrics, CardDiff, CleanComparison, ComparisonVerdict, RuleComparisonRow } from '../../app/build-comparison'
 import type { RoleDistribution } from '../../app/role-distribution'
 import { formatInteger, formatShortPercent } from '../../app/utils'
+import { t } from '../../i18n'
 import { KindBadge } from '../probability/KindBadge'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
@@ -16,8 +17,11 @@ import { TONE, type Tone } from '../ui/tone'
 import { overline } from '../ui/typography'
 import { SideBadge } from './SideBadge'
 
-/** Nombre con el que el comparador muestra tu deck actual. */
-export const CURRENT_DECK_NAME = 'Deck actual'
+/** Nombre con el que el comparador muestra tu deck actual (si no le pusiste uno). */
+export const currentDeckName = () => t('meta.compare.currentDeck')
+
+/** Los motivos de bloqueo del Lab que hablan de clasificar o revisar cartas, en español o en inglés: ya los cubre el aviso de cartas sin clasificar. */
+const CLASSIFICATION_REASON = /clasific|revisi|classif|review/i
 
 type Side = 'A' | 'B'
 
@@ -71,27 +75,27 @@ export function ComparisonReport({ comparison, isCurrentDeck, onShowCards }: Com
 /** Un aviso por build: primero lo que falta clasificar (con qué hacer), después otros bloqueos. */
 function BuildNotes({ side, build, canClassifyHere, onShowCards }: { side: Side; build: BuildMetrics; canClassifyHere: boolean; onShowCards: () => void }) {
   const pending = build.pendingCards.length
-  const otherReasons = pending > 0 ? build.blockedReasons.filter((reason) => !/clasific|revisi/i.test(reason)) : build.blockedReasons
+  const otherReasons = pending > 0 ? build.blockedReasons.filter((reason) => !CLASSIFICATION_REASON.test(reason)) : build.blockedReasons
 
   return (
     <>
       {pending > 0 ? (
         <Callout
           tone="warning"
-          title={`Build ${side}: ${formatInteger(pending)} carta${pending === 1 ? '' : 's'} sin clasificar`}
+          title={t('meta.compare.pending', { side, count: pending })}
           action={
             canClassifyHere ? (
               <Button variant="secondary" size="sm" onClick={onShowCards}>
-                Ver cartas
+                {t('meta.compare.viewCards')}
               </Button>
             ) : undefined
           }
         >
-          {canClassifyHere ? 'Clasificalas para que la comparación sea fiel.' : 'Clasificalas en Categorización para poder comparar.'}
+          {t(canClassifyHere ? 'meta.compare.classifyHere' : 'meta.compare.classifyElsewhere')}
         </Callout>
       ) : null}
       {otherReasons.map((reason) => (
-        <Callout key={reason} tone="warning" title={`Build ${side}`}>
+        <Callout key={reason} tone="warning" title={t('meta.compare.build', { side })}>
           {reason}
         </Callout>
       ))}
@@ -136,14 +140,14 @@ const CLEAN_COLUMNS = 'grid grid-cols-[minmax(0,1fr)_5.5rem_5.5rem] items-center
 
 function CleanTable({ clean }: { clean: CleanComparison }) {
   const rows = [
-    { key: 'first', label: 'Yendo 1º', data: clean.first },
-    { key: 'second', label: 'Yendo 2º', data: clean.second },
-    { key: 'average', label: 'Promedio', data: clean.average },
+    { key: 'first', label: t('meta.compare.rowFirst'), data: clean.first },
+    { key: 'second', label: t('meta.compare.rowSecond'), data: clean.second },
+    { key: 'average', label: t('meta.compare.rowAverage'), data: clean.average },
   ] as const
 
   return (
     <div className="grid gap-3 border-t border-border-subtle pt-4">
-      <SectionHeader as="h3" title="Manos limpias" description="Manos con salida y sin problemas, según tus reglas." />
+      <SectionHeader as="h3" title={t('meta.compare.cleanTitle')} description={t('meta.compare.cleanHint')} />
       <div className={cx(CLEAN_COLUMNS, 'justify-items-center')}>
         <span />
         <SideBadge side="A" size="sm" />
@@ -158,7 +162,7 @@ function CleanTable({ clean }: { clean: CleanComparison }) {
               <div className="grid min-w-0 gap-0.5">
                 <strong className={cx('text-body text-foreground', row.key === 'average' ? 'font-bold' : 'font-semibold')}>{row.label}</strong>
                 <span className={cx('text-micro', winner ? 'font-semibold text-success-soft' : 'text-soft')}>
-                  {winner ? `Gana ${winner} · +${formatPoints(row.data.delta)}` : 'Empate'}
+                  {winner ? t('meta.compare.wins', { side: winner, points: formatPoints(row.data.delta) }) : t('meta.compare.tie')}
                 </span>
               </div>
               <CleanRing side="A" value={row.data.a} dimmed={winner === 'B'} delay={index * 140} />
@@ -175,7 +179,7 @@ function CleanTable({ clean }: { clean: CleanComparison }) {
 function CleanRing({ side, value, dimmed, delay }: { side: Side; value: number | null; dimmed: boolean; delay: number }) {
   return (
     <div className={cx('grid justify-items-center transition-opacity duration-200', dimmed && 'opacity-50')}>
-      <ProgressRing value={value ?? 0} tone={side === 'A' ? 'brand' : 'info'} size={64} strokeWidth={6} delay={delay} label={`Manos limpias de la build ${side}: ${formatValue(value)}`}>
+      <ProgressRing value={value ?? 0} tone={side === 'A' ? 'brand' : 'info'} size={64} strokeWidth={6} delay={delay} label={t('meta.compare.cleanRing', { side, value: formatValue(value) })}>
         {formatValue(value)}
       </ProgressRing>
     </div>
@@ -190,7 +194,7 @@ function CardDiffCard({ diffs }: { diffs: CardDiff[] }) {
 
   return (
     <Card padding="md" className="grid min-w-0 gap-3">
-      <SectionHeader as="h3" title="Qué cambia en el Main Deck" description="Copias de B respecto de A." />
+      <SectionHeader as="h3" title={t('meta.compare.diffTitle')} description={t('meta.compare.diffHint')} />
       <ul className="m-0 grid list-none gap-1.5 p-0">
         {diffs.map((diff) => (
           <li key={diff.cardId} className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-2 text-body">
@@ -243,12 +247,12 @@ function DetailCard({ comparison }: { comparison: BuildComparison }) {
     <Card padding="md" className="min-w-0 self-start">
       <details className="group" open>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-control focus-visible:outline-none focus-visible:shadow-focus [&::-webkit-details-marker]:hidden">
-          <SectionHeader as="h3" title="Dónde gana cada una" description="Por rol y por regla, en promedio. El veredicto sale de las manos limpias." />
+          <SectionHeader as="h3" title={t('meta.compare.detailTitle')} description={t('meta.compare.detailHint')} />
           <Icon name="chevron-down" size={20} className="shrink-0 text-soft transition-transform duration-200 group-open:rotate-180" />
         </summary>
         <div className="mt-4 grid gap-5">
-          <DetailGroup title="Roles" rows={roleRows} />
-          <DetailGroup title="Reglas" rows={ruleRows} />
+          <DetailGroup title={t('meta.compare.groupRoles')} rows={roleRows} />
+          <DetailGroup title={t('meta.compare.groupRules')} rows={ruleRows} />
         </div>
       </details>
     </Card>
@@ -261,7 +265,12 @@ function averageOneOrMore(first: RoleDistribution, second: RoleDistribution): nu
 }
 
 function toRuleRow(row: RuleComparisonRow): DetailRowData {
-  const missing = row.missingCardsIn.length === 2 ? 'ambas builds' : row.missingCardsIn.length === 1 ? `la build ${row.missingCardsIn[0]}` : null
+  const missing =
+    row.missingCardsIn.length === 2
+      ? t('meta.compare.missingBoth')
+      : row.missingCardsIn.length === 1
+        ? t('meta.compare.missingOne', { side: row.missingCardsIn[0]! })
+        : undefined
 
   return {
     key: row.id,
@@ -271,7 +280,7 @@ function toRuleRow(row: RuleComparisonRow): DetailRowData {
         <span className="font-semibold text-foreground">{row.name}</span>
         {row.turnContext !== 'either' ? (
           <Badge tone="warning" size="sm" shape="tag">
-            {row.turnContext === 'first' ? 'Solo 1º' : 'Solo 2º'}
+            {t(row.turnContext === 'first' ? 'meta.compare.onlyFirst' : 'meta.compare.onlySecond')}
           </Badge>
         ) : null}
       </span>
@@ -279,7 +288,7 @@ function toRuleRow(row: RuleComparisonRow): DetailRowData {
     a: row.a,
     b: row.b,
     higherIsBetter: row.kind === 'opening',
-    note: missing ? `Falta una carta de la regla en ${missing}.` : undefined,
+    note: missing,
   }
 }
 
@@ -308,7 +317,7 @@ function DetailGroup({ title, rows }: { title: string; rows: DetailRowData[] }) 
                 <span className="min-w-0 text-foreground">{row.label}</span>
                 <DetailValue value={row.a} wins={winner === 'A'} />
                 <DetailValue value={row.b} wins={winner === 'B'} />
-                <span className="justify-self-end" title={winner ? `Mejor: ${winner}` : 'Empate'}>
+                <span className="justify-self-end" title={winner ? t('meta.compare.better', { side: winner }) : t('meta.compare.tie')}>
                   {winner ? <SideBadge side={winner} size="sm" /> : <span className="text-soft">=</span>}
                 </span>
               </div>

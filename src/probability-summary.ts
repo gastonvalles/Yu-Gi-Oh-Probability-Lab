@@ -79,6 +79,7 @@ export function buildCalculationSummary(state: CalculatorState): CalculationSumm
   if (otherCopies > 0) {
     relevantCards.push({
       id: '__other__',
+      // i18n-ignore: nombre interno del resto del deck; nunca se muestra (el aviso de validación lo nombra en su idioma)
       name: 'Otras cartas',
       copies: otherCopies,
     })

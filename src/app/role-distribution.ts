@@ -1,19 +1,21 @@
+import { t } from '../i18n'
 import type { CardEntry, CardRole } from '../types'
 
 export type RoleDistributionKey = 'starter' | 'extender' | 'interaction' | 'brick'
 
 interface RoleDistributionSpec {
   key: RoleDistributionKey
-  label: string
+  /** La clave del nombre en el diccionario: el texto se arma al construir la distribución, no al cargar el módulo. */
+  labelKey: `roles.distribution.${RoleDistributionKey}`
   roles: readonly CardRole[]
 }
 
 const ROLE_DISTRIBUTION_SPECS: readonly RoleDistributionSpec[] = [
-  { key: 'starter', label: 'Starters', roles: ['starter'] },
-  { key: 'extender', label: 'Extenders', roles: ['extender'] },
+  { key: 'starter', labelKey: 'roles.distribution.starter', roles: ['starter'] },
+  { key: 'extender', labelKey: 'roles.distribution.extender', roles: ['extender'] },
   // Misma lista que la sección Interacción de la pantalla de roles.
-  { key: 'interaction', label: 'Interacción', roles: ['handtrap', 'disruption', 'boardbreaker', 'floodgate'] },
-  { key: 'brick', label: 'Bricks', roles: ['brick', 'garnet'] },
+  { key: 'interaction', labelKey: 'roles.distribution.interaction', roles: ['handtrap', 'disruption', 'boardbreaker', 'floodgate'] },
+  { key: 'brick', labelKey: 'roles.distribution.brick', roles: ['brick', 'garnet'] },
 ]
 
 /** Cantidad de copias robadas: 0, 1, 2 y 3 o más. */
@@ -43,7 +45,7 @@ export function buildRoleDistributions(cards: CardEntry[], handSizes: readonly n
 
     return {
       key: spec.key,
-      label: spec.label,
+      label: t(spec.labelKey),
       roles: spec.roles,
       copies,
       buckets,

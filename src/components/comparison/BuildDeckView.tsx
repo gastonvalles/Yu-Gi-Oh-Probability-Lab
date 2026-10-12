@@ -3,16 +3,17 @@ import { isCardPendingClassification } from '../../app/build-comparison'
 import type { DeckCardInstance } from '../../app/model'
 import type { BuildZones } from '../../app/saved-builds'
 import { formatInteger } from '../../app/utils'
+import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { overline } from '../ui/typography'
 import { SideBadge } from './SideBadge'
 import { CardArt } from '../CardArt'
 
-const ZONES: ReadonlyArray<{ key: keyof BuildZones; label: string }> = [
-  { key: 'main', label: 'Main' },
-  { key: 'extra', label: 'Extra' },
-  { key: 'side', label: 'Side' },
-]
+const ZONES = [
+  { key: 'main', labelKey: 'meta.compare.zoneMain' },
+  { key: 'extra', labelKey: 'meta.compare.zoneExtra' },
+  { key: 'side', labelKey: 'meta.compare.zoneSide' },
+] as const satisfies ReadonlyArray<{ key: keyof BuildZones; labelKey: string }>
 
 interface BuildDeckViewProps {
   side: 'A' | 'B'
@@ -32,16 +33,16 @@ const ZONE_STYLE = {
 /** Grilla de una build; en el Main se marcan las cartas que cambian respecto de la otra. */
 export function BuildDeckView({ side, name, zones, deltaByCardId, onCardClick }: BuildDeckViewProps) {
   return (
-    <section className="grid min-w-0 gap-3" aria-label={`Build ${side}: ${name}`}>
+    <section className="grid min-w-0 gap-3" aria-label={t('meta.compare.deckAria', { side, name })}>
       <header className="flex min-w-0 items-center gap-2.5">
         <SideBadge side={side} />
         <strong className="truncate text-lead font-semibold text-foreground">{name}</strong>
       </header>
-      {ZONES.map(({ key, label }) =>
+      {ZONES.map(({ key, labelKey }) =>
         zones[key].length === 0 ? null : (
           <div key={key} className="grid gap-1.5">
             <span className={overline}>
-              {label} <span className="tabular-nums">[{formatInteger(zones[key].length)}]</span>
+              {t(labelKey)} <span className="tabular-nums">[{formatInteger(zones[key].length)}]</span>
             </span>
             <div className={cx('grid grid-cols-8 gap-1 rounded-card p-1.5 sm:grid-cols-10', ZONE_STYLE[key])}>
               {zones[key].map((card, index) => {
@@ -61,7 +62,7 @@ export function BuildDeckView({ side, name, zones, deltaByCardId, onCardClick }:
                       pending &&
                         "after:absolute after:right-0.5 after:top-0.5 after:grid after:size-4 after:place-items-center after:rounded-full after:bg-warning after:text-micro after:font-bold after:text-[#1a1204] after:content-['?']",
                     )}
-                    title={pending ? `${card.name}: sin clasificar` : card.name}
+                    title={pending ? t('meta.compare.unclassifiedCard', { name: card.name }) : card.name}
                     onClick={() => onCardClick(card)}
                   >
                     <CardArt

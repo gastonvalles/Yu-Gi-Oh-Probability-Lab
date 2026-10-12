@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 
 import { formatInteger } from '../../app/utils'
+import { t } from '../../i18n'
 import type { ApiCardReference, CardOrigin, CardRole } from '../../types'
 import { CardOverlay, CardPanelBody, CardPanelFooter, CardPanelHeader } from '../card-detail/CardOverlay'
 import { Button } from '../ui/Button'
@@ -45,9 +46,9 @@ export function ClassificationOverlay({
   onClose,
 }: ClassificationOverlayProps) {
   return (
-    <CardOverlay ariaLabel={`Clasificar ${name}`} panelLabel="Clasificación de la carta" name={name} card={card} tall onClose={onClose}>
+    <CardOverlay ariaLabel={t('roles.overlay.aria', { name })} panelLabel={t('roles.overlay.panel')} name={name} card={card} tall onClose={onClose}>
       <CardPanelHeader title={name} lines={lines} />
-      <CardPanelBody label="Origen y roles" className="text-body">
+      <CardPanelBody label={t('roles.overlay.body')} className="text-body">
         <div className="grid gap-4">
           {notice}
           <ClassificationFields origin={origin} roles={roles} onSetOrigin={onSetOrigin} onToggleRole={onToggleRole} onOpenHelp={onOpenHelp} />
@@ -56,13 +57,13 @@ export function ClassificationOverlay({
       <CardPanelFooter>
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
           <Button variant="secondary" size="md" icon="chevron-left" fullWidth disabled={!onPrevious} onClick={onPrevious}>
-            Anterior
+            {t('roles.overlay.previous')}
           </Button>
           <span className="min-w-14 text-center text-micro tabular-nums text-soft">
             {formatInteger(position)} / {formatInteger(total)}
           </span>
           <Button variant="primary" size="md" iconEnd="chevron-right" fullWidth disabled={!onNext} onClick={onNext}>
-            Siguiente
+            {t('roles.overlay.next')}
           </Button>
         </div>
       </CardPanelFooter>

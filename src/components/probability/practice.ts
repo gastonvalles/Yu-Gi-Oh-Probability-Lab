@@ -10,6 +10,7 @@ import {
   type ResolvedPattern,
   type ResolvedRequirement,
 } from '../../app/pattern-engine'
+import { t } from '../../i18n'
 import type { ApiCardReference, CardEntry, HandPattern, HandPatternCategory } from '../../types'
 import { selectPatternsForView } from '../../app/turn-context'
 
@@ -156,7 +157,7 @@ export function evaluatePracticeHand(
 
     const witness = getResolvedPatternWitness(pattern, counts, MAP_COUNT_OPERATIONS)
     const cases = enumeratePatternCases(pattern, counts, MAP_COUNT_OPERATIONS).map<PracticeHandMatchCase>((usage) => ({
-      cards: usage.map(([cardId, copies]) => ({ cardId, name: cardById.get(cardId)?.name.trim() ?? 'Carta fuera del deck', copies })),
+      cards: usage.map(([cardId, copies]) => ({ cardId, name: cardById.get(cardId)?.name.trim() ?? t('practice.eval.cardOutside'), copies })),
     }))
 
     return [
@@ -172,7 +173,7 @@ export function evaluatePracticeHand(
             kind: requirement.kind,
             cards: requirement.usage
               .map(([cardId, copies]) => ({
-                name: cardById.get(cardId)?.name.trim() ?? 'Carta fuera del deck',
+                name: cardById.get(cardId)?.name.trim() ?? t('practice.eval.cardOutside'),
                 copies,
               }))
               .filter((entry) => entry.copies > 0),
@@ -229,9 +230,7 @@ function buildPracticeNearMiss(
 
   const notes =
     !pattern.allowSharedCards && individuallyMatchedRequirements.length >= pattern.requiredMatches
-      ? [
-          'Las condiciones compiten por la misma carta. Hace falta otra carta que cubra una de ellas sin reutilizar.',
-        ]
+      ? [t('practice.eval.compete')]
       : []
 
   const neededNotes = pattern.matchMode === 'all'
@@ -273,7 +272,7 @@ function describeRequirementGap(
   if (requirement.kind === 'exclude') {
     return {
       distance: Math.max(1, currentAmount - requirement.quantity + 1),
-      summary: `Bloquea: ${requirement.sourceLabel} ya aparece ${currentAmount} vez${currentAmount === 1 ? '' : 'veces'} en la mano.`,
+      summary: t('practice.eval.blocks', { source: requirement.sourceLabel, count: currentAmount }),
     }
   }
 
@@ -281,11 +280,11 @@ function describeRequirementGap(
   const label =
     requirement.quantity === 1 && missingAmount === 1
       ? requirement.sourceLabel
-      : `${requirement.sourceLabel} (${missingAmount} más)`
+      : t('practice.eval.missingMore', { source: requirement.sourceLabel, count: missingAmount })
 
   return {
     distance: missingAmount,
-    summary: `Falta ${label}.`,
+    summary: t('practice.eval.missing', { label }),
   }
 }
 
@@ -317,7 +316,8 @@ export function getPracticeVerdict(openingCount: number, problemCount: number): 
   return problemCount > 0 ? 'with-problem' : 'clean'
 }
 
-const RULE_PREFIX = /^La regla(, sin reutilizar la misma carta entre condiciones,)? se cumple si /
+// El motor de reglas arma la frase en el idioma activo: se reconoce el prefijo de los dos.
+const RULE_PREFIX = /^(?:La regla(, sin reutilizar la misma carta entre condiciones,)? se cumple si |The rule(, without reusing the same card across conditions,)? is met if )/
 
 /** Listas largas de cartas ("(A / B / C / D)") se resumen en cuántas son: las cartas de la mano ya se muestran aparte. */
 const CARD_POOL = /\(([^()]*\/[^()]*)\)/g
@@ -327,7 +327,7 @@ export function describeRuleCondition(requirementLabel: string): string {
   const match = RULE_PREFIX.exec(requirementLabel)
   const text = requirementLabel.replace(CARD_POOL, (_, pool: string) => {
     const count = pool.split('/').length
-    return count > 3 ? `(${count} cartas)` : `(${pool})`
+    return count > 3 ? t('practice.eval.pool', { count }) : `(${pool})`
   })
 
   if (!match) {
@@ -336,7 +336,7 @@ export function describeRuleCondition(requirementLabel: string): string {
 
   const rest = text.slice(match[0].length)
 
-  return match[1] ? `Sin repetir carta: ${rest}` : `${rest.charAt(0).toUpperCase()}${rest.slice(1)}`
+  return (match[1] ?? match[2]) ? t('practice.eval.noReuse', { rest }) : `${rest.charAt(0).toUpperCase()}${rest.slice(1)}`
 }
 
 /** Distingue las cartas que salieron en la mano del mínimo exigido por la regla. */
@@ -344,7 +344,7 @@ export function describePracticeMatch(match: PracticeHandMatch, caseIndex: numbe
   if (match.patternId === getSystemRuleId('dead_cards_problem')) {
     const cards = match.cases[caseIndex]?.cards ?? match.cases[0]?.cards ?? []
     const total = cards.reduce((count, card) => count + card.copies, 0)
-    return `Abrís ${total} Bricks/Garnets.`
+    return t('practice.eval.deadCards', { total })
   }
 
   return describeRuleCondition(match.requirementLabel)

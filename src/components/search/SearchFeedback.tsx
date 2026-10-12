@@ -1,5 +1,7 @@
 import { SEARCH_MIN_QUERY_LENGTH } from '../../app/model'
 import { formatInteger } from '../../app/utils'
+import { t } from '../../i18n'
+import { tRich } from '../../i18n/rich'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { choiceChip } from '../ui/surfaces'
@@ -47,15 +49,12 @@ export function SearchResultsToolbar({
       )}
     >
       <p className="m-0 min-w-0 truncate text-micro text-muted [&_strong]:text-foreground" aria-live="polite">
-        <strong>
-          {formatInteger(count)}
-          {hasMore ? '+' : ''}
-        </strong>{' '}
-        resultado{count === 1 && !hasMore ? '' : 's'}
+        {/* Con "+" (hay más) el plural va siempre: 0 elige la forma plural. */}
+        {tRich('search.toolbar.results', { b: (text) => <strong>{text}</strong> }, { count: hasMore ? 0 : count, shown: `${formatInteger(count)}${hasMore ? '+' : ''}` })}
         {hint ? <span className="text-soft"> · {hint}</span> : null}
       </p>
       <label>
-        <span className="sr-only">Ordenar resultados</span>
+        <span className="sr-only">{t('search.toolbar.sort')}</span>
         <select
           className={cx(
             'cursor-pointer rounded-full border border-border-subtle bg-tint/5 px-3 font-semibold text-foreground [color-scheme:dark] focus-visible:outline-none focus-visible:shadow-focus',
@@ -93,8 +92,8 @@ export function SearchEmptyState({
     return (
       <div className={cx(EMPTY_BOX, 'gap-2')}>
         <EmptyIcon name="refresh" />
-        <p className={EMPTY_TITLE}>Todavía no hay coincidencias en lo cargado</p>
-        <p className={EMPTY_TEXT[layout]}>Seguimos trayendo más cartas…</p>
+        <p className={EMPTY_TITLE}>{t('search.empty.loadingTitle')}</p>
+        <p className={EMPTY_TEXT[layout]}>{t('search.empty.loadingText')}</p>
       </div>
     )
   }
@@ -102,11 +101,9 @@ export function SearchEmptyState({
   return (
     <div className={cx(EMPTY_BOX, 'gap-2')}>
       <EmptyIcon name="search" />
-      <p className={EMPTY_TITLE}>No encontramos cartas</p>
+      <p className={EMPTY_TITLE}>{t('search.empty.title')}</p>
       <p className={EMPTY_TEXT[layout]}>
-        {activeFilterCount > 0
-          ? 'Puede que algún filtro sea demasiado estricto.'
-          : 'Revisá cómo está escrito o probá con una parte del nombre (en inglés).'}
+        {activeFilterCount > 0 ? t('search.empty.strictFilter') : t('search.empty.checkSpelling')}
       </p>
       <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
         {activeFilterCount > 0 ? (
@@ -115,12 +112,12 @@ export function SearchEmptyState({
             className={cx(EMPTY_ACTION_BASE, EMPTY_ACTION[layout], 'border-primary/55 bg-primary/20')}
             onClick={onClearFilters}
           >
-            Quitar filtros ({formatInteger(activeFilterCount)})
+            {t('search.empty.clearFilters', { count: formatInteger(activeFilterCount) })}
           </button>
         ) : null}
         {hasQuery ? (
           <button type="button" className={cx(EMPTY_ACTION_BASE, EMPTY_ACTION[layout])} onClick={onClearQuery}>
-            Borrar texto
+            {t('search.clearText')}
           </button>
         ) : null}
       </div>
@@ -144,24 +141,23 @@ export function SearchStart({
     <div className={cx(EMPTY_BOX, 'gap-5')}>
       <div className="grid justify-items-center gap-2 text-center">
         <EmptyIcon name="search" />
-        <p className={EMPTY_TITLE}>¿Qué carta buscás?</p>
+        <p className={EMPTY_TITLE}>{t('search.start.title')}</p>
         <p className={EMPTY_TEXT[layout]}>
-          Escribí al menos {formatInteger(SEARCH_MIN_QUERY_LENGTH)} letras del nombre (en inglés), o elegí un tipo y
-          usá <strong>Filtros</strong> para buscar por arquetipo, atributo o nivel.
+          {tRich('search.start.hint', { b: (text) => <strong>{text}</strong> }, { min: formatInteger(SEARCH_MIN_QUERY_LENGTH) })}
         </p>
         {layout === 'mobile' ? (
           <p className={EMPTY_TEXT[layout]}>
-            Con <strong>+</strong> agregás una copia. Tocando la carta ves el detalle y elegís Main, Extra o Side.
+            {tRich('search.start.mobileHint', { b: (text) => <strong>{text}</strong> })}
           </p>
         ) : null}
       </div>
 
       {recent.length > 0 ? (
-        <section className="grid w-full max-w-[30rem] gap-2" aria-label="Búsquedas recientes">
+        <section className="grid w-full max-w-[30rem] gap-2" aria-label={t('search.start.recentAria')}>
           <div className="flex items-center justify-between text-micro font-semibold uppercase tracking-[0.08em] text-soft">
-            <span>Recientes</span>
+            <span>{t('search.start.recent')}</span>
             <button type="button" className="rounded-tag border-0 bg-transparent px-1 text-micro normal-case tracking-normal text-muted hover:text-foreground focus-visible:outline-none focus-visible:shadow-focus" onClick={onClearRecent}>
-              Borrar
+              {t('search.start.clearRecent')}
             </button>
           </div>
           <div className="flex flex-wrap justify-center gap-[0.4rem]">

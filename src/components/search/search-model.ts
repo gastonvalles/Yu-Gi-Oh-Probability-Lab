@@ -1,4 +1,5 @@
 import type { CardSearchFilters } from '../../app/card-search'
+import { t } from '../../i18n'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { collectFilterValues, type FilterOptionGroup, type SearchSortOrder } from './search-options'
 
@@ -115,7 +116,7 @@ export function buildActiveFilterChips({
   if (filters.archetype.trim().length > 0) {
     chips.push({
       key: 'archetype',
-      label: 'Arquetipo',
+      label: t('search.filters.archetype'),
       value: filters.archetype.trim(),
       updates: { archetype: '' },
     })
@@ -124,7 +125,7 @@ export function buildActiveFilterChips({
   if (filters.description.trim().length > 0) {
     chips.push({
       key: 'description',
-      label: 'Texto EN',
+      label: t('search.chip.effectText'),
       value: filters.description.trim(),
       updates: { description: '' },
     })
@@ -133,7 +134,7 @@ export function buildActiveFilterChips({
   if (filters.exactType.trim().length > 0) {
     chips.push({
       key: 'exact-type',
-      label: 'Tipo',
+      label: t('search.chip.type'),
       value: filters.exactType.trim(),
       updates: { exactType: '' },
     })
@@ -142,7 +143,7 @@ export function buildActiveFilterChips({
   if (filters.attribute.trim().length > 0) {
     chips.push({
       key: 'attribute',
-      label: 'Atributo',
+      label: t('search.filters.attribute'),
       value: filters.attribute.trim(),
       updates: { attribute: '' },
     })
@@ -160,7 +161,7 @@ export function buildActiveFilterChips({
   if (filters.level.trim().length > 0) {
     chips.push({
       key: 'level',
-      label: 'Nivel',
+      label: t('search.chip.level'),
       value: filters.level.trim(),
       updates: { level: '' },
     })
@@ -169,8 +170,8 @@ export function buildActiveFilterChips({
   if (formatAllowsLegalityFilter && filters.legalOnly) {
     chips.push({
       key: 'legal-only',
-      label: 'Legalidad',
-      value: `Sin prohibidas en ${formatLabel}`,
+      label: t('search.chip.legality'),
+      value: t('search.chip.noBanned', { format: formatLabel }),
       updates: { legalOnly: false },
     })
   }

@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import type { ApiCardReference } from '../types'
 
 /**
@@ -428,31 +429,35 @@ export function replayMat(initial: MatState, actions: readonly MatAction[], upTo
   return actions.slice(0, upTo).reduce(matReducer, initial)
 }
 
-const PILE_LABELS: Record<MatPile, string> = { deck: 'el deck', extra: 'el Extra Deck', hand: 'la mano', gy: 'el cementerio', banished: 'el destierro' }
+/** De dónde viene la carta en "va de {pile} a la mano": sólo el Extra Deck y el destierro llegan a esa frase (del deck y del cementerio hay una frase propia). */
+const PILE_PHRASE_KEY = { extra: 'practice.step.pile.extra', banished: 'practice.step.pile.banished' } as const
+
+/** La posición dicha en una jugada: boca abajo se cuenta como defensa. */
+const positionName = (pos: MatPos) => t(pos === 'atk' ? 'practice.step.position.atk' : 'practice.step.position.def')
 
 /** Qué hace la jugada, en una línea: `before` es el estado previo (para saber de dónde viene la carta). */
 export function describeMatAction(before: MatState, action: MatAction, nameOf: (id: string) => string): string {
-  const name = (id: string) => (isToken(id) ? 'la ficha' : nameOf(id))
+  const name = (id: string) => (isToken(id) ? t('practice.token.the') : nameOf(id))
   const text = describePlay(before, action, name)
 
   // La carta salió mirando el deck y el resto se barajó en la misma jugada.
-  return (action.type === 'move' || action.type === 'place') && action.shuffle !== undefined ? `${text} y barajás` : text
+  return (action.type === 'move' || action.type === 'place') && action.shuffle !== undefined ? t('practice.step.andShuffle', { text }) : text
 }
 
 function describePlay(before: MatState, action: MatAction, name: (id: string) => string): string {
   switch (action.type) {
     case 'draw': {
       const top = before.deck[0]
-      return action.count === 1 && top ? `Robás ${name(top)}` : `Robás ${action.count} cartas`
+      return action.count === 1 && top ? t('practice.step.draw', { card: name(top) }) : t('practice.step.drawCount', { count: action.count })
     }
 
     case 'mill': {
       const top = before.deck[0]
-      return action.count === 1 && top ? `Mandás ${name(top)} del deck al cementerio` : `Mandás ${action.count} cartas del deck al cementerio`
+      return action.count === 1 && top ? t('practice.step.mill', { card: name(top) }) : t('practice.step.millCount', { count: action.count })
     }
 
     case 'shuffle':
-      return 'Barajás el deck'
+      return t('practice.step.shuffle')
 
     case 'move': {
       const card = name(action.id)
@@ -461,59 +466,62 @@ function describePlay(before: MatState, action: MatAction, name: (id: string) =>
 
       switch (action.to) {
         case 'hand':
-          if (fromPile === 'deck') return `Buscás ${card} del deck a la mano`
-          if (fromPile === 'gy') return `Recuperás ${card} del cementerio`
-          if (fromPile && fromPile !== 'hand') return `${card} va de ${PILE_LABELS[fromPile]} a la mano`
-          return `${card} vuelve a la mano`
+          if (fromPile === 'deck') return t('practice.step.search', { card })
+          if (fromPile === 'gy') return t('practice.step.recover', { card })
+          if (fromPile && fromPile !== 'hand') return t('practice.step.pileToHand', { card, pile: t(PILE_PHRASE_KEY[fromPile]) })
+          return t('practice.step.backToHand', { card })
         case 'gy':
-          if (isToken(action.id)) return 'La ficha desaparece'
-          return fromPile === 'deck' ? `Mandás ${card} del deck al cementerio` : `${card} va al cementerio`
+          if (isToken(action.id)) return t('practice.step.tokenGone')
+          return fromPile === 'deck' ? t('practice.step.mill', { card }) : t('practice.step.toGy', { card })
         case 'banished':
-          return action.faceDown ? `Desterrás ${card} boca abajo` : `Desterrás ${card}`
+          return action.faceDown ? t('practice.step.banishFaceDown', { card }) : t('practice.step.banish', { card })
         case 'extra':
-          return `${card} vuelve al Extra Deck`
+          return t('practice.step.toExtra', { card })
         case 'deck':
-          return `Ponés ${card} arriba del deck`
+          return t('practice.step.deckTop', { card })
         case 'deck-bottom':
-          return `Ponés ${card} abajo del deck`
+          return t('practice.step.deckBottom', { card })
         default:
-          return `Movés ${card}`
+          return t('practice.step.move', { card })
       }
     }
 
     case 'place': {
       const card = name(action.id)
       const from = locateCard(before, action.id)
-      const position = action.pos === 'atk' ? 'ataque' : 'defensa'
+      const position = positionName(action.pos)
 
       if (from?.kind === 'spot') {
-        return `Movés ${card} de zona`
+        return t('practice.step.moveZone', { card })
       }
 
-      if (action.how === 'scale') return `Activás ${card} como escala`
+      if (action.how === 'scale') return t('practice.step.scale', { card })
 
       if (action.zone === 'st' || action.zone === 'field') {
-        return action.pos === 'set' ? `Colocás ${card}` : `Activás ${card}`
+        return action.pos === 'set' ? t('practice.step.setSpellTrap', { card }) : t('practice.step.activate', { card })
       }
 
-      if (action.pos === 'set') return `Colocás ${card} boca abajo`
-      if (action.how === 'normal') return `Invocación Normal de ${card}`
-      if (action.how === 'special') return `Invocación Especial de ${card} en ${position}`
-      return `${card} sale al campo en ${position}`
+      if (action.pos === 'set') return t('practice.step.setFaceDown', { card })
+      if (action.how === 'normal') return t('practice.step.normalSummon', { card })
+      if (action.how === 'special') return t('practice.step.specialSummon', { card, position })
+      return t('practice.step.enters', { card, position })
     }
 
     case 'tribute': {
       const card = name(action.id)
       const list = listNames(action.tributes.map(name))
 
-      return action.pos === 'set' ? `Colocás ${card} boca abajo sacrificando ${list}` : `Invocación por Sacrificio de ${card} (sacrificás ${list})`
+      return action.pos === 'set' ? t('practice.step.tributeSet', { card, list }) : t('practice.step.tributeSummon', { card, list })
     }
 
-    case 'summon':
-      return `${SUMMON_NAMES[action.how]} de ${name(action.id)}${action.pos === 'def' ? ' en defensa' : ''} (materiales: ${listNames(action.materials.map(name))})`
+    case 'summon': {
+      const params = { summon: t(SUMMON_NAME_KEY[action.how]), card: name(action.id), materials: listNames(action.materials.map(name)) }
+
+      return t(action.pos === 'def' ? 'practice.step.summonDefense' : 'practice.step.summon', params)
+    }
 
     case 'attach':
-      return `Adjuntás ${name(action.id)} a ${name(action.to)}`
+      return t('practice.step.attach', { card: name(action.id), target: name(action.to) })
 
     case 'position': {
       const card = name(action.id)
@@ -521,50 +529,55 @@ function describePlay(before: MatState, action: MatAction, name: (id: string) =>
       const wasSet = from?.kind === 'spot' && from.placed.pos === 'set'
       const spell = from?.kind === 'spot' && (from.spot === 'st' || from.spot === 'field')
 
-      if (action.pos === 'set') return `Ponés ${card} boca abajo`
-      if (wasSet && spell) return `Activás ${card}`
-      if (wasSet) return action.pos === 'atk' ? `Invocación por Volteo de ${card}` : `Volteás ${card} boca arriba`
-      return `${card} pasa a ${action.pos === 'atk' ? 'ataque' : 'defensa'}`
+      if (action.pos === 'set') return t('practice.step.turnFaceDown', { card })
+      if (wasSet && spell) return t('practice.step.activate', { card })
+      if (wasSet) return action.pos === 'atk' ? t('practice.step.flipSummon', { card }) : t('practice.step.turnFaceUp', { card })
+      return t('practice.step.toPosition', { card, position: positionName(action.pos) })
     }
 
     case 'activate': {
       const card = name(action.id)
-      if (action.cost === 'discard') return `Activás el efecto de ${card} descartándola`
-      if (action.cost === 'banish') return `Activás el efecto de ${card} desterrándola`
-      return `Activás el efecto de ${card}`
+      if (action.cost === 'discard') return t('practice.step.effectDiscard', { card })
+      if (action.cost === 'banish') return t('practice.step.effectBanish', { card })
+      return t('practice.step.effect', { card })
     }
 
     case 'reveal':
-      return `Revelás ${name(action.id)}`
+      return t('practice.step.reveal', { card: name(action.id) })
 
     case 'declare':
-      return `Declarás ${name(action.id)}`
+      return t('practice.step.declare', { card: name(action.id) })
 
     case 'target':
-      return before.targeted.includes(action.id) ? `Dejás de seleccionar ${name(action.id)}` : `Seleccionás ${name(action.id)}`
+      return before.targeted.includes(action.id) ? t('practice.step.deselect', { card: name(action.id) }) : t('practice.step.select', { card: name(action.id) })
 
     case 'phase': {
       const phase = PHASES.find((entry) => entry.id === action.phase)?.name ?? action.phase
 
       if (before.phase === 'end' && action.phase === 'draw') {
         const top = before.deck[0]
-        return `Turno ${before.turn + 1}: ${phase}${top ? `, robás ${name(top)}` : ''}`
+        const turn = before.turn + 1
+
+        return top ? t('practice.step.newTurnDraw', { turn, phase, card: name(top) }) : t('practice.step.newTurn', { turn, phase })
       }
 
-      return `Pasás a la ${phase}`
+      return t('practice.step.phase', { phase })
     }
 
     case 'counter': {
       const from = locateCard(before, action.id)
       const counters = Math.max(0, (from?.kind === 'spot' ? from.placed.counters : 0) + Math.trunc(action.delta))
-      return `Contador en ${name(action.id)}: ${counters}`
+      return t('practice.step.counter', { card: name(action.id), count: counters })
     }
 
-    case 'token':
-      return `Ficha en ${action.pos === 'def' ? 'defensa' : 'ataque'}, zona${action.zone === 'emz' ? ' extra' : ''} ${action.index + 1}`
+    case 'token': {
+      const zone = t(action.zone === 'emz' ? 'practice.step.tokenExtraZone' : 'practice.step.tokenZone', { n: action.index + 1 })
+
+      return t('practice.step.tokenSummon', { position: positionName(action.pos === 'def' ? 'def' : 'atk'), zone })
+    }
 
     default:
-      return 'Jugada'
+      return t('practice.step.play')
   }
 }
 
@@ -607,11 +620,18 @@ function extraSummonOf(kind: MatCardKind): ExtraSummon | null {
   return kind.link ? 'link' : kind.xyz ? 'xyz' : kind.synchro ? 'synchro' : kind.fusion ? 'fusion' : null
 }
 
-const SUMMON_NAMES: Record<ExtraSummon, string> = { fusion: 'Invocación por Fusión', synchro: 'Invocación por Sincronía', xyz: 'Invocación Xyz', link: 'Invocación de Enlace' }
+const SUMMON_NAME_KEY = {
+  fusion: 'practice.step.summonName.fusion',
+  synchro: 'practice.step.summonName.synchro',
+  xyz: 'practice.step.summonName.xyz',
+  link: 'practice.step.summonName.link',
+} as const satisfies Record<ExtraSummon, string>
 
-/** "A", "A y B", "A, B y C". */
+/** "A", "A y B", "A, B y C" (en inglés, "A, B, and C"). */
 function listNames(names: string[]): string {
-  return names.length > 1 ? `${names.slice(0, -1).join(', ')} y ${names[names.length - 1]}` : (names[0] ?? '')
+  if (names.length < 2) return names[0] ?? ''
+
+  return t(names.length === 2 ? 'practice.list.two' : 'practice.list.many', { head: names.slice(0, -1).join(', '), last: names[names.length - 1]! })
 }
 
 /** Sacrificios que pide la Invocación Normal (o Colocar) de un monstruo según su Nivel. */
@@ -701,7 +721,7 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
   const zones = monsterZones(pile === 'extra')
   const items: MatMenuItem[] = []
   const add = (label: string, action: MatAction) => items.push({ label, action })
-  const target = () => add(state.targeted.includes(id) ? 'Quitar selección' : 'Seleccionar', { type: 'target', id })
+  const target = () => add(state.targeted.includes(id) ? t('practice.menu.deselect') : t('practice.menu.select'), { type: 'target', id })
   /** Una jugada que saca la carta a una zona: la primera libre por defecto, y la lista para elegir otra. */
   const placeItem = (label: string, zones: readonly MatSpot[], pos: MatPos, how?: MatSummon): MatMenuItem | null => {
     const targets = freeTargets(state, zones)
@@ -715,62 +735,62 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
   }
   /** Invocación Especial: primero se elige la posición (un Link sale en ataque, no tiene defensa). */
   const specialSummon = () => {
-    const attack = placeItem('En ataque', zones, 'atk', 'special')
-    const defense = placeItem('En defensa', zones, 'def', 'special')
+    const attack = placeItem(t('practice.menu.attack'), zones, 'atk', 'special')
+    const defense = placeItem(t('practice.menu.defense'), zones, 'def', 'special')
 
     if (!attack || !defense) return
-    if (kind.link) items.push({ ...attack, label: 'Invocación Especial' })
-    else items.push({ label: 'Invocación Especial', action: attack.action, choices: [attack, defense] })
+    if (kind.link) items.push({ ...attack, label: t('practice.menu.specialSummon') })
+    else items.push({ label: t('practice.menu.specialSummon'), action: attack.action, choices: [attack, defense] })
   }
 
   if (where.kind === 'spot') {
     const { placed, spot } = where
 
     if (spot === 'st' || spot === 'field') {
-      if (placed.pos === 'set') add('Activar', { type: 'position', id, pos: 'atk' })
-      else if (kind.effect) add('Activar efecto', { type: 'activate', id })
-      if (placed.pos !== 'set') add('Poner boca abajo', { type: 'position', id, pos: 'set' })
+      if (placed.pos === 'set') add(t('practice.menu.activate'), { type: 'position', id, pos: 'atk' })
+      else if (kind.effect) add(t('practice.menu.activateEffect'), { type: 'activate', id })
+      if (placed.pos !== 'set') add(t('practice.menu.turnFaceDown'), { type: 'position', id, pos: 'set' })
     } else {
       if (placed.pos === 'set') {
-        add('Invocación por Volteo', { type: 'position', id, pos: 'atk' })
-        add('Voltear boca arriba', { type: 'position', id, pos: 'def' })
+        add(t('practice.menu.flipSummon'), { type: 'position', id, pos: 'atk' })
+        add(t('practice.menu.turnFaceUp'), { type: 'position', id, pos: 'def' })
       } else {
-        if (kind.effect) add('Activar efecto', { type: 'activate', id })
-        if (!kind.link) add(placed.pos === 'atk' ? 'Pasar a defensa' : 'Pasar a ataque', { type: 'position', id, pos: placed.pos === 'atk' ? 'def' : 'atk' })
-        if (!kind.link && !isToken(id)) add('Poner boca abajo', { type: 'position', id, pos: 'set' })
+        if (kind.effect) add(t('practice.menu.activateEffect'), { type: 'activate', id })
+        if (!kind.link) add(placed.pos === 'atk' ? t('practice.menu.toDefense') : t('practice.menu.toAttack'), { type: 'position', id, pos: placed.pos === 'atk' ? 'def' : 'atk' })
+        if (!kind.link && !isToken(id)) add(t('practice.menu.turnFaceDown'), { type: 'position', id, pos: 'set' })
       }
 
       for (const zone of ['mz', 'emz'] as const) {
         for (const other of state[zone]) {
           if (other && other.id !== id && !isToken(other.id) && kindOf(other.id).xyz && !isToken(id)) {
-            add(`Adjuntar a ${nameOf(other.id)}`, { type: 'attach', id, to: other.id })
+            add(t('practice.menu.attachTo', { name: nameOf(other.id) }), { type: 'attach', id, to: other.id })
           }
         }
       }
 
-      add('Contador +1', { type: 'counter', id, delta: 1 })
-      if (placed.counters > 0) add('Contador −1', { type: 'counter', id, delta: -1 })
+      add(t('practice.menu.counterPlus'), { type: 'counter', id, delta: 1 })
+      if (placed.counters > 0) add(t('practice.menu.counterMinus'), { type: 'counter', id, delta: -1 })
 
       for (const material of placed.materials) {
-        add(`Desacoplar ${nameOf(material)}`, { type: 'move', id: material, to: 'gy' })
+        add(t('practice.menu.detach', { name: nameOf(material) }), { type: 'move', id: material, to: 'gy' })
       }
     }
 
     target()
 
     if (isToken(id)) {
-      add('Quitar la ficha', { type: 'move', id, to: 'gy' })
+      add(t('practice.menu.removeToken'), { type: 'move', id, to: 'gy' })
       return items
     }
 
     // Un monstruo puede pasar a la zona de Mágicas y Trampas (los que se tratan como Mágicas de Equipo o Continuas).
-    if (spot !== 'st' && spot !== 'field') placeIn('A la zona de Mágicas y Trampas', ['st'], 'atk')
+    if (spot !== 'st' && spot !== 'field') placeIn(t('practice.menu.toSpellTrapZone'), ['st'], 'atk')
   }
 
   if (where.kind === 'material') {
-    add('Desacoplar al cementerio', { type: 'move', id, to: 'gy' })
-    add('Desterrar', { type: 'move', id, to: 'banished' })
-    add('A la mano', { type: 'move', id, to: 'hand' })
+    add(t('practice.menu.detachToGy'), { type: 'move', id, to: 'gy' })
+    add(t('practice.menu.banish'), { type: 'move', id, to: 'banished' })
+    add(t('practice.menu.toHand'), { type: 'move', id, to: 'hand' })
     return items
   }
 
@@ -780,16 +800,16 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
 
       if (tributes === 0) {
         // Invocación Normal: primero se elige si sale en ataque o boca abajo (Colocar), como con la Especial.
-        const attack = placeItem('En ataque', zones, 'atk', 'normal')
-        const set = placeItem('Boca abajo', zones, 'set', 'normal')
+        const attack = placeItem(t('practice.menu.attack'), zones, 'atk', 'normal')
+        const set = placeItem(t('practice.menu.faceDown'), zones, 'set', 'normal')
 
-        if (attack && set) items.push({ label: 'Invocación Normal', action: attack.action, choices: [attack, set] })
+        if (attack && set) items.push({ label: t('practice.menu.normalSummon'), action: attack.action, choices: [attack, set] })
       } else if (monstersOnField(state).length >= tributes) {
         // Nivel 5+: posición, después los Sacrificios y al final la zona (la mesa completa `tributes`, `zone` e `index`).
         const tribute = (label: string, pos: MatPos): MatMenuItem => ({ label, action: { type: 'tribute', id, tributes: [], zone: 'mz', index: 0, pos }, tributes })
-        const attack = tribute('En ataque', 'atk')
+        const attack = tribute(t('practice.menu.attack'), 'atk')
 
-        items.push({ label: `Invocación por Sacrificio (${tributes})`, action: attack.action, choices: [attack, tribute('Boca abajo', 'set')] })
+        items.push({ label: t('practice.menu.tributeSummon', { count: tributes }), action: attack.action, choices: [attack, tribute(t('practice.menu.faceDown'), 'set')] })
       }
     }
 
@@ -800,34 +820,34 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
       const first = scales[0]
 
       if (first) {
-        items.push({ label: 'Activar como escala', action: { type: 'place', id, zone: 'st', index: first.index, pos: 'atk', how: 'scale' }, targets: scales })
+        items.push({ label: t('practice.menu.asScale'), action: { type: 'place', id, zone: 'st', index: first.index, pos: 'atk', how: 'scale' }, targets: scales })
       }
     }
 
     if (kind.spell) {
       const zones: MatSpot[] = kind.fieldSpell ? ['field'] : ['st']
-      placeIn('Activar', zones, 'atk')
-      placeIn('Colocar', zones, 'set')
+      placeIn(t('practice.menu.activate'), zones, 'atk')
+      placeIn(t('practice.menu.set'), zones, 'set')
     }
 
     if (kind.trap) {
       // La Trampa que se activa desde la mano por su propio efecto (una hand trap) sale boca arriba a la zona, y destella.
-      placeIn('Activar efecto', ['st'], 'atk')
-      placeIn('Colocar', ['st'], 'set')
+      placeIn(t('practice.menu.activateEffect'), ['st'], 'atk')
+      placeIn(t('practice.menu.set'), ['st'], 'set')
     }
 
     // Un efecto de monstruo desde la mano (hand trap): se activa (destella) y después la carta va a donde diga el costo.
-    if (kind.monster && kind.effect) add('Activar efecto', { type: 'activate', id })
-    add('Revelar', { type: 'reveal', id })
+    if (kind.monster && kind.effect) add(t('practice.menu.activateEffect'), { type: 'activate', id })
+    add(t('practice.menu.reveal'), { type: 'reveal', id })
     target()
-    add('Descartar', { type: 'move', id, to: 'gy' })
-    add('Desterrar', { type: 'move', id, to: 'banished' })
-    add('Desterrar boca abajo', { type: 'move', id, to: 'banished', faceDown: true })
+    add(t('practice.menu.discard'), { type: 'move', id, to: 'gy' })
+    add(t('practice.menu.banish'), { type: 'move', id, to: 'banished' })
+    add(t('practice.menu.banishFaceDown'), { type: 'move', id, to: 'banished', faceDown: true })
   } else if (pile) {
     // Deck, Extra, cementerio o destierro.
-    if (pile === 'deck') add('A la mano', { type: 'move', id, to: 'hand' })
+    if (pile === 'deck') add(t('practice.menu.toHand'), { type: 'move', id, to: 'hand' })
     // Las Mágicas de Campo se activan directo desde el Deck (hay efectos que lo piden).
-    if (pile === 'deck' && kind.fieldSpell) placeIn('Activar', ['field'], 'atk')
+    if (pile === 'deck' && kind.fieldSpell) placeIn(t('practice.menu.activate'), ['field'], 'atk')
 
     const how = pile === 'extra' ? extraSummonOf(kind) : null
 
@@ -839,39 +859,39 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
 
         return first ? { label, action: { type: 'summon', id, how, materials: [], zone: first.zone as MatZone, index: first.index, pos }, targets, materials: true } : null
       }
-      const attack = summonItem('En ataque', 'atk')
-      const defense = summonItem('En defensa', 'def')
+      const attack = summonItem(t('practice.menu.attack'), 'atk')
+      const defense = summonItem(t('practice.menu.defense'), 'def')
 
-      if (attack && defense) items.push(kind.link ? { ...attack, label: 'Invocación Especial' } : { label: 'Invocación Especial', action: attack.action, choices: [attack, defense] })
+      if (attack && defense) items.push(kind.link ? { ...attack, label: t('practice.menu.specialSummon') } : { label: t('practice.menu.specialSummon'), action: attack.action, choices: [attack, defense] })
     } else if (kind.monster) {
       specialSummon()
     }
-    if (kind.monster && (pile === 'gy' || pile === 'banished')) placeIn('A la zona de Mágicas y Trampas', ['st'], 'atk')
+    if (kind.monster && (pile === 'gy' || pile === 'banished')) placeIn(t('practice.menu.toSpellTrapZone'), ['st'], 'atk')
     if (pile === 'gy' || pile === 'banished') {
       // Efectos que se activan en el cementerio o en el destierro.
-      if (kind.effect) add('Activar efecto', { type: 'activate', id })
-      add('A la mano', { type: 'move', id, to: 'hand' })
+      if (kind.effect) add(t('practice.menu.activateEffect'), { type: 'activate', id })
+      add(t('practice.menu.toHand'), { type: 'move', id, to: 'hand' })
       target()
     }
-    if (pile !== 'gy') add('Al cementerio', { type: 'move', id, to: 'gy' })
+    if (pile !== 'gy') add(t('practice.menu.toGy'), { type: 'move', id, to: 'gy' })
     if (pile !== 'banished') {
-      add('Desterrar', { type: 'move', id, to: 'banished' })
-      add('Desterrar boca abajo', { type: 'move', id, to: 'banished', faceDown: true })
+      add(t('practice.menu.banish'), { type: 'move', id, to: 'banished' })
+      add(t('practice.menu.banishFaceDown'), { type: 'move', id, to: 'banished', faceDown: true })
     }
   } else {
     // En el campo.
-    add('A la mano', { type: 'move', id, to: 'hand' })
-    add('Al cementerio', { type: 'move', id, to: 'gy' })
-    add('Desterrar', { type: 'move', id, to: 'banished' })
-    add('Desterrar boca abajo', { type: 'move', id, to: 'banished', faceDown: true })
+    add(t('practice.menu.toHand'), { type: 'move', id, to: 'hand' })
+    add(t('practice.menu.toGy'), { type: 'move', id, to: 'gy' })
+    add(t('practice.menu.banish'), { type: 'move', id, to: 'banished' })
+    add(t('practice.menu.banishFaceDown'), { type: 'move', id, to: 'banished', faceDown: true })
   }
 
-  if (kind.extra && pile !== 'extra') add('Al Extra Deck', { type: 'move', id, to: 'extra' })
+  if (kind.extra && pile !== 'extra') add(t('practice.menu.toExtra'), { type: 'move', id, to: 'extra' })
 
   // Arriba/abajo del deck desde cualquier lado (mano, campo, cementerio, destierro): los mismos nombres en todos los menús.
   if (!kind.extra) {
-    add('Arriba del deck', { type: 'move', id, to: 'deck' })
-    add('Abajo del deck', { type: 'move', id, to: 'deck-bottom' })
+    add(t('practice.menu.deckTop'), { type: 'move', id, to: 'deck' })
+    add(t('practice.menu.deckBottom'), { type: 'move', id, to: 'deck-bottom' })
   }
 
   return items

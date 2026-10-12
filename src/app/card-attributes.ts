@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import type { CardAttribute, CardEntry, Matcher } from '../types'
 
 interface DerivedDeckAttribute {
@@ -67,15 +68,15 @@ export function isMonsterPropertyMatcher(matcher: Matcher | null): matcher is Mo
 export function getMonsterRequirementSourceLabel(matcher: Matcher | null): string | null {
   switch (matcher?.type) {
     case 'attribute':
-      return getCardAttributeLabel(matcher.value)
+      return t('search.requirement.attribute', { value: getCardAttributeLabel(matcher.value) })
     case 'level':
-      return `de Nivel ${matcher.value}`
+      return t('search.requirement.level', { value: matcher.value })
     case 'monster_type':
-      return `de tipo ${matcher.value}`
+      return t('search.requirement.type', { value: matcher.value })
     case 'atk':
-      return `con ${matcher.value} ATK`
+      return t('search.requirement.atk', { value: matcher.value })
     case 'def':
-      return `con ${matcher.value} DEF`
+      return t('search.requirement.def', { value: matcher.value })
     default:
       return null
   }

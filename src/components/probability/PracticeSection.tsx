@@ -8,6 +8,7 @@ import type { LabOdds } from '../../app/lab-odds'
 import type { MatAction, MatState } from '../../app/practice-mat'
 import type { SavedCombo } from '../../app/saved-combos'
 import type { MatSession } from '../../app/use-mat-session'
+import { t } from '../../i18n'
 import type { CardEntry, HandPattern } from '../../types'
 import { Callout } from '../ui/Callout'
 import {
@@ -47,10 +48,10 @@ const EMPTY_IDS: ReadonlySet<string> = new Set()
 
 function getBlockedMessage(props: PracticeSectionProps): string | null {
   if (!props.hasCompletedClassification) {
-    return 'Clasificá tus cartas para ver salidas y problemas.'
+    return t('practice.section.classify')
   }
 
-  return props.reviewPendingPatternCount > 0 ? 'Hay reglas heredadas por revisar.' : null
+  return props.reviewPendingPatternCount > 0 ? t('practice.section.legacyRules') : null
 }
 
 /**
@@ -206,7 +207,7 @@ export function PracticeSection(props: PracticeSectionProps) {
   }, [isUnplayable, session.initial])
 
   if (deck.length < handSize) {
-    return <Callout tone="info" className="m-4">Sumá cartas al Main Deck para practicar.</Callout>
+    return <Callout tone="info" className="m-4">{t('practice.section.needCards')}</Callout>
   }
 
   const footer = blockedMessage ? (

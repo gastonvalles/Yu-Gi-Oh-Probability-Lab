@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 
+import { t } from '../../../i18n'
 import type { PatternEditorActions } from '../pattern-editor-actions'
 import { field } from '../../ui/surfaces'
 
@@ -18,7 +19,7 @@ export function PatternNameInput({
   isPendingCreation,
   actions,
 }: PatternNameInputProps) {
-  const placeholder = placeholderSummary || 'Nombre de la regla (opcional)'
+  const placeholder = placeholderSummary || t('builder.name.placeholder')
   const [localName, setLocalName] = useState(currentName)
 
   // Sync from store when the external value changes (e.g. undo, preset applied)
@@ -34,7 +35,7 @@ export function PatternNameInput({
 
   return (
     <label className="grid gap-1">
-      <span className="sr-only">Nombre</span>
+      <span className="sr-only">{t('builder.name.label')}</span>
       <input
         type="text"
         value={localName}

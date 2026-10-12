@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { getCopiesUsedByOtherConditions, getMaxConditionQuantity } from '../../../app/pattern-card-usage'
+import { t } from '../../../i18n'
 import type { CardEntry, HandPattern, PatternCondition, RequirementKind } from '../../../types'
 import { cx } from '../../ui/cx'
 import { Icon } from '../../ui/Icon'
@@ -55,13 +56,13 @@ export function ConditionBlock({ index, patternId, pattern, condition, derivedMa
   }, [actions, condition.id, condition.quantity, hasCategory, maxQuantity, patternId])
 
   return (
-    <article className="grid gap-2 border-b border-border-subtle pb-3 last:border-b-0 last:pb-0" aria-label={`Condición ${index + 1}`}>
+    <article className="grid gap-2 border-b border-border-subtle pb-3 last:border-b-0 last:pb-0" aria-label={t('builder.condition.label', { index: index + 1 })}>
       <div className="flex items-start gap-2">
         <div className="flex min-w-0 flex-1 flex-wrap items-stretch divide-x divide-border-subtle overflow-hidden rounded-control bg-tint/4">
           <KindSegment value={condition.kind} onChange={(kind) => actions.setRequirementKind(patternId, condition.id, kind)} />
           <Stepper
             variant="inline"
-            label="Cantidad"
+            label={t('builder.condition.quantity')}
             value={condition.quantity}
             min={1}
             max={Math.max(maxQuantity, condition.quantity)}
@@ -78,15 +79,15 @@ export function ConditionBlock({ index, patternId, pattern, condition, derivedMa
               'min-w-[12rem] flex-1 justify-between text-left font-medium',
               hasCategory ? 'text-foreground hover:bg-primary/12' : cx('bg-warning/10 hover:bg-warning/16', TONE.warning.text),
             )}
-            aria-label={hasCategory ? `Qué contar: ${categoryLabel}. Cambiar` : 'Elegí qué contar'}
+            aria-label={hasCategory ? t('builder.condition.picked', { label: categoryLabel }) : t('builder.condition.pick')}
             onClick={() => setIsPickerOpen(true)}
           >
-            <span className="min-w-0 truncate">{hasCategory ? categoryLabel : 'Elegí qué contar'}</span>
+            <span className="min-w-0 truncate">{hasCategory ? categoryLabel : t('builder.condition.pick')}</span>
             <Icon name="chevron-down" size={14} className="shrink-0 opacity-70" />
           </button>
         </div>
 
-        <CloseButton size="sm" className="shrink-0" aria-label={`Quitar condición ${index + 1}`} onClick={onRemove} />
+        <CloseButton size="sm" className="shrink-0" aria-label={t('builder.condition.remove', { index: index + 1 })} onClick={onRemove} />
       </div>
 
       <Modal
@@ -95,7 +96,7 @@ export function ConditionBlock({ index, patternId, pattern, condition, derivedMa
         size="md"
         bare
         flush
-        ariaLabel="Qué contar en esta condición"
+        ariaLabel={t('builder.condition.pickerLabel')}
         closeSize="sm"
         closeClassName="right-3 top-3"
       >
@@ -126,8 +127,8 @@ function KindSegment({ value, onChange }: { value: RequirementKind; onChange: (k
         'font-semibold',
         isInclude ? cx('bg-success/14 hover:bg-success/22', TONE.success.text) : cx('bg-danger/14 hover:bg-danger/22', TONE.danger.text),
       )}
-      aria-label={`${getKindLabel(value)}. Cambiar a ${getKindLabel(other)}`}
-      title={`Cambiar a "${getKindLabel(other)}"`}
+      aria-label={t('builder.condition.kindChange', { kind: getKindLabel(value), other: getKindLabel(other) })}
+      title={t('builder.condition.kindTitle', { kind: getKindLabel(other) })}
       onClick={() => onChange(other)}
     >
       {getKindLabel(value)}
@@ -142,11 +143,11 @@ function UnitSegment({ distinct, onChange }: { distinct: boolean; onChange: (dis
     <button
       type="button"
       className={cx(SEGMENT, 'font-medium text-muted hover:bg-tint/10 hover:text-foreground')}
-      aria-label={distinct ? 'nombres distintos. Cambiar a copias' : 'copias. Cambiar a nombres distintos'}
-      title={distinct ? 'Contar copias en vez de nombres distintos' : 'Contar nombres distintos en vez de copias'}
+      aria-label={t(distinct ? 'builder.condition.unitToCopies' : 'builder.condition.unitToNames')}
+      title={t(distinct ? 'builder.condition.unitToCopiesTitle' : 'builder.condition.unitToNamesTitle')}
       onClick={() => onChange(!distinct)}
     >
-      {distinct ? 'nombres' : 'copias'}
+      {t(distinct ? 'builder.condition.unitNames' : 'builder.condition.unitCopies')}
       <Icon name="swap" size={14} className="opacity-70" />
     </button>
   )

@@ -20,6 +20,7 @@ import { useAppDispatch, useAppSelector } from '../../app/store-hooks'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useToastMessage } from '../../app/use-toast-message'
 import { formatInteger } from '../../app/utils'
+import { t } from '../../i18n'
 import { fetchCardsByIds, type ApiCardSearchResult } from '../../ygoprodeck'
 import { CardDetailModal } from '../card-detail/CardDetailModal'
 import { DeckBuilderClassicPreview } from '../deck-mode/DeckBuilderClassicPreview'
@@ -37,10 +38,10 @@ import { formatMetaDate } from './meta-format'
 const DECK_CARDS_PERSIST_MS = 24 * 60 * 60 * 1000
 // Los mismos títulos que el builder: la vista clásica muestra "Main [41]".
 const ZONE_ITEMS = [
-  { zone: 'main', title: 'Main Deck' },
-  { zone: 'extra', title: 'Extra Deck' },
-  { zone: 'side', title: 'Side Deck' },
-] as const satisfies ReadonlyArray<{ zone: DeckZoneKey; title: string }>
+  { zone: 'main', titleKey: 'meta.deckModal.zoneMain' },
+  { zone: 'extra', titleKey: 'meta.deckModal.zoneExtra' },
+  { zone: 'side', titleKey: 'meta.deckModal.zoneSide' },
+] as const satisfies ReadonlyArray<{ zone: DeckZoneKey; titleKey: string }>
 const HANDTRAP_IDS: ReadonlySet<number> = new Set(Object.keys(META_DECKS.cards).map(Number))
 const noop = () => {}
 
@@ -93,7 +94,7 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
         const decklist = await loadMetaDecklist(deckId)
 
         if (!decklist) {
-          throw new Error('No tengo la lista completa de este deck.')
+          throw new Error(t('meta.deckModal.noDecklist'))
         }
 
         const ids = [...new Set([...decklist.main, ...decklist.extra, ...decklist.side].map(([id]) => id))]
@@ -104,7 +105,7 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
         }
       } catch (error) {
         if (!cancelled) {
-          setLoad({ status: 'error', message: error instanceof Error ? error.message : 'No se pudo cargar el deck.' })
+          setLoad({ status: 'error', message: error instanceof Error ? error.message : t('meta.deckModal.loadFailed') })
         }
       } finally {
         endMascotActivity()
@@ -130,15 +131,13 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
       deckFormat,
       deckName: deck.name,
       text: toYdkText(load.deck.decklist),
-      source: { label: 'Decks de torneo' },
+      source: { label: t('meta.deckModal.importSource') },
     })
     const missing = preview.requestedCardCount - preview.importedCardCount
 
     dispatch(replaceDeckBuilder(preview.importedDeck))
     showToast(
-      missing > 0
-        ? `${deck.name} cargado en el builder con ${formatInteger(missing)} cartas menos (fuera del formato o desconocidas).`
-        : `${deck.name} cargado en el builder.`,
+      missing > 0 ? t('meta.deckModal.loadedMissing', { name: deck.name, count: missing }) : t('meta.deckModal.loaded', { name: deck.name }),
       missing > 0 ? 'warning' : 'success',
     )
     setConfirmReplace(false)
@@ -152,9 +151,9 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
 
     try {
       await navigator.clipboard.writeText(url)
-      showToast('Link copiado.', 'success')
+      showToast(t('meta.deckModal.linkCopied'), 'success')
     } catch {
-      showToast(`No se pudo copiar. El link es ${url}`, 'error')
+      showToast(t('meta.deckModal.copyFailed', { url }), 'error')
     }
   }
 
@@ -172,10 +171,11 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
   }
 
   const replayCount = countReplaysOfDeck(deck.id)
+  // Cada pedazo es una frase suelta y van en el mismo orden en los dos idiomas: "Llegó a Top 8 en YCS Paris (500 jugadores)".
   const summary = [
-    deck.placement ? `Llegó a ${deck.placement}` : null,
-    deck.tournament ? `en ${deck.tournament}` : null,
-    deck.players === null ? null : `(${formatInteger(deck.players)} jugadores)`,
+    deck.placement ? t('meta.deckModal.reached', { placement: deck.placement }) : null,
+    deck.tournament ? t('meta.deckModal.at', { tournament: deck.tournament }) : null,
+    deck.players === null ? null : t('meta.deck.players', { players: formatInteger(deck.players) }),
   ]
     .filter(Boolean)
     .join(' ')
@@ -193,7 +193,7 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
           // En mobile los dos botones van en la misma fila: copiar a la izquierda, cargar a la derecha.
           <div className="flex w-full items-center justify-between gap-2 min-[1101px]:w-auto min-[1101px]:justify-end">
             <Button variant="secondary" size="sm" icon="link" onClick={() => void copyLink()}>
-              Copiar link
+              {t('meta.deckModal.copyLink')}
             </Button>
             <Button
               variant="primary"
@@ -202,7 +202,7 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
               disabled={load.status !== 'ready'}
               onClick={() => (builderHasCards ? setConfirmReplace(true) : loadIntoBuilder())}
             >
-              Cargar en el builder
+              {t('meta.deckModal.loadInBuilder')}
             </Button>
           </div>
         }
@@ -237,7 +237,7 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
                 {formatMetaDate(deck.date)}
               </span>
               <Badge tone="success" size="sm" dot>
-                Hand traps: {formatInteger(countCopies(deck.main))} en Main · {formatInteger(countCopies(deck.side))} en Side
+                {t('meta.deck.handtraps', { main: formatInteger(countCopies(deck.main)), side: formatInteger(countCopies(deck.side)) })}
               </Badge>
               {replayCount > 0 ? (
                 // Los replays de los duelos de este deck, en la pestaña Replays (el click cierra el modal y el link cambia de pestaña).
@@ -247,14 +247,14 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
                   onClick={onClose}
                 >
                   <Icon name="play" size={13} variant="bold" />
-                  {replayCount === 1 ? 'Ver el replay' : `Ver ${formatInteger(replayCount)} replays`}
+                  {t('meta.deckModal.watchReplays', { count: replayCount })}
                 </a>
               ) : null}
             </div>
           </header>
 
           {load.status === 'loading' ? (
-            <div className="grid content-start gap-3 p-4" aria-busy="true" aria-label="Cargando el deck">
+            <div className="grid content-start gap-3 p-4" aria-busy="true" aria-label={t('meta.deckModal.loading')}>
               <Skeleton radius="panel" className="h-64" />
               <Skeleton radius="panel" className="h-20" />
               <Skeleton radius="panel" className="h-20" />
@@ -265,10 +265,10 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
             <div className="p-4">
               <Callout
                 tone="danger"
-                title="No se pudo cargar el deck"
+                title={t('meta.deckModal.errorTitle')}
                 action={
                   <Button variant="secondary" size="sm" icon="refresh" onClick={() => setAttempt((count) => count + 1)}>
-                    Reintentar
+                    {t('meta.deckModal.retry')}
                   </Button>
                 }
               >
@@ -284,12 +284,12 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
                 <DeckBuilderClassicPreview card={selectedCard ?? load.deck.defaultCard} source={null} deckCopy={null} onAddToZone={noop} />
               ) : null}
               <div className="grid h-full min-h-0 content-start gap-4 overflow-y-auto overflow-x-hidden px-4 pb-6 pt-4 [scrollbar-gutter:stable] [scrollbar-width:thin] min-[1101px]:px-8 min-[1101px]:max-[1500px]:px-5">
-                {ZONE_ITEMS.map(({ zone, title }) =>
+                {ZONE_ITEMS.map(({ zone, titleKey }) =>
                   load.deck.zones[zone].length === 0 ? null : (
                     <DeckZone
                       key={zone}
                       zone={zone}
-                      title={title}
+                      title={t(titleKey)}
                       cards={load.deck.zones[zone]}
                       activeDragInstanceId={null}
                       desktopCompact={isDesktop}
@@ -323,9 +323,9 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
 
       <ConfirmDialog
         isOpen={confirmReplace}
-        title="¿Reemplazar tu deck?"
-        description={`El builder ya tiene cartas. Se reemplazan por ${deck.name}; lo que tenías no se guarda.`}
-        confirmLabel="Reemplazar"
+        title={t('meta.deckModal.replaceTitle')}
+        description={t('meta.deckModal.replaceBody', { name: deck.name })}
+        confirmLabel={t('meta.deckModal.replaceConfirm')}
         onCancel={() => setConfirmReplace(false)}
         onConfirm={loadIntoBuilder}
       />

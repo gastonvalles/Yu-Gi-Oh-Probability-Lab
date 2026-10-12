@@ -1,4 +1,5 @@
 import type { MetaTrend } from '../../app/meta-handtraps'
+import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 
@@ -23,7 +24,7 @@ export function TrendArrow({ trend, size = 24, className }: TrendArrowProps) {
     // Las dos flechas comparten la misma celda de la grilla: la negra queda debajo de la de color.
     <span
       role="img"
-      aria-label={trend === 'up' ? 'Sube' : 'Baja'}
+      aria-label={t(trend === 'up' ? 'meta.trend.up' : 'meta.trend.down')}
       className={cx('inline-grid shrink-0 place-items-center [&>*]:col-start-1 [&>*]:row-start-1', className)}
     >
       <Icon name={name} size={size} strokeWidth={8.5} className="text-black/90" />
