@@ -671,7 +671,7 @@ export function PracticeMat({
           {pileCell('banished', 'ban')}
         </div>
 
-        {/* Abajo del todo, como en la mesa real: la mano en abanico. Las salidas y problemas van entre el campo y la mano en el celu, y debajo de la mano en escritorio. */}
+        {/* Abajo del todo, como en la mesa real: la mano en abanico. Las salidas y problemas van entre el campo y la mano en el celu, y en el panel lateral en escritorio. */}
         {footer && isDealt && !isDesktop ? <div className="mt-auto px-1 animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
         <PracticeHand
           cards={handCards}
@@ -694,8 +694,6 @@ export function PracticeMat({
           }}
           className={footer && isDealt && !isDesktop ? undefined : 'mt-auto'}
         />
-
-        {footer && isDealt && isDesktop ? <div className="px-1 animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
 
         {/* Pasos: en vivo muestra la última jugada; con jugadas, se recorre con Anterior / Siguiente. Eligiendo, pide lo que falta. */}
         <div className="flex min-h-9 flex-wrap items-center gap-x-2 gap-y-1 px-1 text-micro text-muted" role="status" aria-label="Paso actual">
@@ -726,9 +724,10 @@ export function PracticeMat({
         </div>
       </div>
 
-      {/* Panel lateral (escritorio): la carta que se está mirando arriba, los pasos y los combos abajo. */}
+      {/* Panel lateral (escritorio): la carta que se está mirando, las salidas y problemas de la mano, y los pasos y combos. */}
       <aside className="hidden min-h-0 border-l border-border-subtle px-3 py-3 pr-14 min-[1101px]:col-start-2 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col min-[1101px]:gap-3" aria-label="Pasos y combos">
         <CardPreview card={previewCard} />
+        {footer && isDealt && isDesktop ? <div className="flex-none animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
         {panel}
       </aside>
 
