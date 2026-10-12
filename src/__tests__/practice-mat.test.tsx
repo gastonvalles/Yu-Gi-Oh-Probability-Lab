@@ -205,6 +205,32 @@ describe('la mesa de práctica', () => {
     expect(within(zone('Zona de magia y trampa 1')).getByRole('button', { name: 'Called by the Grave, boca abajo' })).toBeInTheDocument()
   })
 
+  it('desde el Extra, la Invocación Especial pide tocar los materiales en el campo y confirmar', () => {
+    render(<Harness />)
+
+    tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'En ataque' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Extra: 1' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Extra · 1' })).getByRole('button', { name: 'Zeus' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Especial' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'En ataque' }))
+
+    expect(within(status()).getByText('Tocá los materiales en el campo (0) y confirmá')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Confirmar' })).toBeDisabled()
+    tap(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' }))
+    expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom (Material)' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+
+    // Quedan varias zonas libres (la de Ash también): se elige una.
+    fireEvent.click(screen.getByRole('button', { name: 'Zona extra de monstruo 1: elegir' }))
+    expect(within(zone('Zona extra de monstruo 1')).getByRole('button', { name: 'Zeus' })).toBeInTheDocument()
+    expect(within(status()).getByText('Invocación Xyz de Zeus (materiales: Ash Blossom)')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'GY: 0' })).toBeInTheDocument()
+  })
+
   it('el visor del deck permite buscar una carta a la mano y baraja al cerrar', () => {
     render(<Harness />)
 
@@ -250,10 +276,10 @@ describe('la mesa de práctica', () => {
     expect(within(status()).getByText('Mano inicial')).toBeInTheDocument()
     expect(within(hand()).getAllByRole('listitem')).toHaveLength(5)
 
-    // Se reproduce solo (con pausa y velocidad); la lista de pasos lleva la última jugada arriba.
+    // Se reproduce solo (botones redondos de pausa y avance rápido); la lista de pasos lleva la última jugada arriba.
     expect(screen.getByRole('button', { name: 'Pausar' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Velocidad ×1' }))
-    expect(screen.getByRole('button', { name: 'Velocidad ×2' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Avance rápido' }))
+    expect(screen.getByRole('button', { name: 'Avance rápido' })).toHaveAttribute('aria-pressed', 'true')
     fireEvent.click(within(aside).getByRole('radio', { name: 'Pasos' }))
     expect(within(within(aside).getByRole('list', { name: 'Jugadas' })).getAllByRole('button').map((item) => item.textContent)).toEqual(['2Colocás Called by the Grave', '1Invocación Especial de Ash Blossom en defensa', '0Mano inicial'])
 

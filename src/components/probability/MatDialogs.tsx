@@ -73,8 +73,9 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, onClose }: C
     openedAtRef.current = performance.now()
 
     const margin = 8
-    const { width, height } = menu.getBoundingClientRect()
-    const left = Math.min(Math.max(anchor.left + anchor.width / 2 - width / 2, margin), window.innerWidth - width - margin)
+    // Medidas de layout, no del rect: la animación de entrada arranca en escala 0.7 y el rect daba un menú más chico del real (se salía de la pantalla).
+    const { offsetWidth: width, offsetHeight: height } = menu
+    const left = Math.min(Math.max(anchor.left + anchor.width / 2 - width / 2, margin), Math.max(margin, window.innerWidth - width - margin))
     const above = anchor.top - height - 6
     const top = above >= margin ? above : Math.min(anchor.bottom + 6, Math.max(margin, window.innerHeight - height - margin))
 
@@ -98,7 +99,7 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, onClose }: C
         role="menu"
         aria-label={title}
         tabIndex={-1}
-        className={cx(surface.panel, 'absolute max-h-[min(80dvh,34rem)] w-[13rem] overflow-y-auto py-1 outline-none animate-pop motion-reduce:animate-none', position ? 'visible' : 'invisible')}
+        className={cx(surface.panel, 'absolute max-h-[min(calc(100dvh-1rem),34rem)] w-[13rem] overflow-y-auto py-1 outline-none animate-pop motion-reduce:animate-none', position ? 'visible' : 'invisible')}
         style={position ?? { left: 0, top: 0 }}
         onClick={(event) => event.stopPropagation()}
       >

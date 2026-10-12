@@ -21,7 +21,7 @@ import {
 } from '../app/practice-mat'
 import type { ApiCardReference } from '../types'
 
-const MONSTER: MatCardKind = { monster: true, spell: false, trap: false, extra: false, effect: true, fieldSpell: false, pendulum: false, xyz: false, link: false, level: 4 }
+const MONSTER: MatCardKind = { monster: true, spell: false, trap: false, extra: false, effect: true, fieldSpell: false, pendulum: false, fusion: false, synchro: false, xyz: false, link: false, level: 4 }
 const XYZ: MatCardKind = { ...MONSTER, extra: true, xyz: true }
 const LINK: MatCardKind = { ...MONSTER, extra: true, link: true, level: null }
 const SPELL: MatCardKind = { ...MONSTER, monster: false, spell: true, level: null }
@@ -219,6 +219,35 @@ describe('la mesa de práctica', () => {
     expect(describeMatSteps(state, [{ type: 'draw', count: 1 }, { type: 'draw', count: 1 }], nameOf)).toEqual(['Robás E1', 'Robás F1'])
   })
 
+  it('la Invocación desde el Extra Deck usa materiales del campo: Xyz los pone debajo, Enlace los manda al cementerio', () => {
+    const two = run([{ type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }, { type: 'place', id: 'a2', zone: 'mz', index: 1, pos: 'atk' }])
+    const xyzSummon: MatAction = { type: 'summon', id: 'x1', how: 'xyz', materials: ['a1', 'a2'], zone: 'emz', index: 0, pos: 'atk' }
+    const xyz = matReducer(two, xyzSummon)
+    expect(xyz.emz[0]).toEqual({ id: 'x1', pos: 'atk', counters: 0, materials: ['a1', 'a2'] })
+    expect([xyz.mz[0], xyz.mz[1], xyz.gy, xyz.extra]).toEqual([null, null, [], ['x2']])
+    expect(describeMatAction(two, xyzSummon, nameOf)).toBe('Invocación Xyz de X1 (materiales: A1 y A2)')
+
+    const linkSummon: MatAction = { type: 'summon', id: 'x2', how: 'link', materials: ['a1'], zone: 'mz', index: 0, pos: 'atk' }
+    const link = matReducer(two, linkSummon)
+    expect([link.mz[0]?.id, link.gy]).toEqual(['x2', ['a1']])
+    expect(describeMatAction(two, linkSummon, nameOf)).toBe('Invocación de Enlace de X2 (materiales: A1)')
+
+    // Sin materiales, con una carta que no está en el Extra o con una ficha como material Xyz no pasa nada; una ficha sí sirve de material de Enlace.
+    expect(matReducer(two, { ...xyzSummon, materials: [] })).toBe(two)
+    expect(matReducer(two, { ...xyzSummon, id: 'a1', materials: ['a2'] })).toBe(two)
+    const withToken = matReducer(two, { type: 'token', zone: 'mz', index: 2 })
+    expect(matReducer(withToken, { ...xyzSummon, materials: ['token-1'] })).toBe(withToken)
+    expect(matReducer(withToken, { ...linkSummon, materials: ['token-1'], zone: 'emz' }).emz[0]?.id).toBe('x2')
+
+    // El menú del Extra: con monstruos en el campo la Invocación Especial pide materiales (un Link no pregunta la posición); sin monstruos, sale directo.
+    const fromExtra = listCardActions(two, 'x1', kindOf, nameOf)[0]!
+    expect(fromExtra.label).toBe('Invocación Especial')
+    expect(fromExtra.choices?.map((choice) => [choice.label, choice.materials, choice.action.type === 'summon' && choice.action.how])).toEqual([['En ataque', true, 'xyz'], ['En defensa', true, 'xyz']])
+    const linkItem = listCardActions(two, 'x2', kindOf, nameOf)[0]!
+    expect([linkItem.materials, linkItem.choices, linkItem.action.type]).toEqual([true, undefined, 'summon'])
+    expect(listCardActions(start(), 'x1', kindOf, nameOf)[0]!.action.type).toBe('place')
+  })
+
   it('el menú ofrece lo que se puede hacer desde donde está la carta', () => {
     const labels = (state: MatState, id: string) => listCardActions(state, id, kindOf, nameOf).map((item) => item.label)
 
@@ -262,13 +291,13 @@ describe('la mesa de práctica', () => {
       { type: 'place', id: 'c1', zone: 'mz', index: 1, pos: 'set' },
       { type: 'move', id: 'e1', to: 'gy' },
     ])
-    expect(labels(played, 'a1')).toEqual(['Activar efecto', 'Pasar a defensa', 'Poner boca abajo', 'Adjuntar a X1', 'Contador +1', 'Marcar como objetivo', 'A la zona de Mágicas y Trampas', 'A la mano', 'Sacrificar (al cementerio)', 'Desterrar', 'Desterrar boca abajo', 'Arriba del deck', 'Abajo del deck'])
-    expect(labels(played, 'x1')).toEqual(['Activar efecto', 'Pasar a defensa', 'Poner boca abajo', 'Contador +1', 'Desacoplar A2', 'Marcar como objetivo', 'A la zona de Mágicas y Trampas', 'A la mano', 'Sacrificar (al cementerio)', 'Desterrar', 'Desterrar boca abajo', 'Al Extra Deck'])
+    expect(labels(played, 'a1')).toEqual(['Activar efecto', 'Pasar a defensa', 'Poner boca abajo', 'Adjuntar a X1', 'Contador +1', 'Marcar como objetivo', 'A la zona de Mágicas y Trampas', 'A la mano', 'Al cementerio', 'Desterrar', 'Desterrar boca abajo', 'Arriba del deck', 'Abajo del deck'])
+    expect(labels(played, 'x1')).toEqual(['Activar efecto', 'Pasar a defensa', 'Poner boca abajo', 'Contador +1', 'Desacoplar A2', 'Marcar como objetivo', 'A la zona de Mágicas y Trampas', 'A la mano', 'Al cementerio', 'Desterrar', 'Desterrar boca abajo', 'Al Extra Deck'])
     expect(labels(played, 'a2')).toEqual(['Desacoplar al cementerio', 'Desterrar', 'A la mano'])
     // Boca abajo: Invocación por Volteo (a ataque) o voltear boca arriba (queda en defensa).
     expect(labels(played, 'c1').slice(0, 2)).toEqual(['Invocación por Volteo', 'Voltear boca arriba'])
-    // Desde el cementerio, como en DuelingBook: Invocación Especial, a Mágicas/Trampas, a la mano, destierro (sin arriba/abajo del deck).
-    expect(labels(played, 'e1')).toEqual(['Invocación Especial', 'A la zona de Mágicas y Trampas', 'Activar efecto', 'A la mano', 'Marcar como objetivo', 'Desterrar', 'Desterrar boca abajo'])
+    // Desde el cementerio: Invocación Especial, a Mágicas/Trampas, a la mano, destierro y de vuelta al deck (arriba o abajo).
+    expect(labels(played, 'e1')).toEqual(['Invocación Especial', 'A la zona de Mágicas y Trampas', 'Activar efecto', 'A la mano', 'Marcar como objetivo', 'Desterrar', 'Desterrar boca abajo', 'Arriba del deck', 'Abajo del deck'])
     expect(labels(played, 'zzz')).toEqual([])
 
     // Con dos monstruos en el campo, el Nivel 7 ofrece la Invocación por Sacrificio (en ataque o boca abajo), que la mesa completa.
@@ -298,7 +327,7 @@ describe('la mesa de práctica', () => {
     expect(labels(full, 'a1')).not.toContain('Invocación Normal')
     expect(labels(full, 'a1')).not.toContain('Invocación Especial')
     // Las fichas no se colocan boca abajo ni tienen efecto.
-    expect(labels(full, 'token-1')).toEqual(['Pasar a defensa', 'Contador +1', 'Marcar como objetivo', 'Sacrificar / quitar la ficha'])
+    expect(labels(full, 'token-1')).toEqual(['Pasar a defensa', 'Contador +1', 'Marcar como objetivo', 'Quitar la ficha'])
   })
 
   it('reconoce el tipo de carta por el marco y el subtipo', () => {
