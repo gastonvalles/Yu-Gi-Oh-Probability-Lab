@@ -689,10 +689,7 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
       }
     }
 
-    if (kind.monster) {
-      specialSummon()
-      placeIn('A la zona de Mágicas y Trampas', ['st'], 'atk')
-    }
+    if (kind.monster) specialSummon()
 
     if (kind.pendulum) {
       const scales = freeTargets(state, ['st']).filter((target) => target.index === 0 || target.index === 4)
@@ -710,15 +707,12 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     }
 
     if (kind.trap) {
+      // "To S/T" en DuelingBook: la Trampa que se activa desde la mano por su propio efecto sale boca arriba.
+      placeIn('A la zona de Mágicas y Trampas', ['st'], 'atk')
       placeIn('Colocar', ['st'], 'set')
     }
 
-    // Efectos desde la mano (hand traps): se activan y, en general, se descartan como costo.
-    if (kind.monster && kind.effect) {
-      add('Activar efecto', { type: 'activate', id })
-      add('Activar efecto y descartar', { type: 'activate', id, cost: 'discard' })
-    }
-
+    // Como en DuelingBook, un efecto desde la mano (hand trap) se revela y la carta va a donde diga el costo.
     add('Revelar', { type: 'reveal', id })
     add('Declarar', { type: 'declare', id })
     add('Descartar', { type: 'move', id, to: 'gy' })
@@ -729,7 +723,6 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     if (pile === 'deck') add('A la mano', { type: 'move', id, to: 'hand' })
     if (kind.monster) specialSummon()
     if (kind.monster && (pile === 'gy' || pile === 'banished')) placeIn('A la zona de Mágicas y Trampas', ['st'], 'atk')
-    if (kind.effect && (pile === 'gy' || pile === 'banished')) add('Activar efecto', { type: 'activate', id })
     if (pile === 'gy' || pile === 'banished') add('A la mano', { type: 'move', id, to: 'hand' })
     if (pile !== 'gy') add('Al cementerio', { type: 'move', id, to: 'gy' })
     if (pile !== 'banished') {
@@ -746,7 +739,8 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
 
   if (kind.extra && pile !== 'extra') add('Al Extra Deck', { type: 'move', id, to: 'extra' })
 
-  if (!kind.extra) {
+  // Arriba/abajo del deck: desde la mano y el campo (como en DuelingBook; desde el cementerio o el destierro no).
+  if (!kind.extra && pile !== 'gy' && pile !== 'banished') {
     add('Arriba del deck', { type: 'move', id, to: 'deck' })
     add('Abajo del deck', { type: 'move', id, to: 'deck-bottom' })
   }
