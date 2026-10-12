@@ -226,6 +226,7 @@ export function PracticeMat({
   const [dealt, setDealt] = useState(0)
   const [shuffleKey, setShuffleKey] = useState(0)
   const deckRef = useRef<HTMLDivElement | null>(null)
+  const fieldRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     setHandOrder([])
@@ -556,6 +557,12 @@ export function PracticeMat({
 
   const previewCard = preview ? cardOf(preview) : null
   const getDeckRect = useCallback(() => deckRef.current?.getBoundingClientRect() ?? null, [])
+  const getField = useCallback(() => {
+    const field = fieldRef.current
+    const zone = field?.querySelector('[data-drop="mz:0"]')
+
+    return field && zone ? { rect: field.getBoundingClientRect(), zoneWidth: zone.getBoundingClientRect().width } : null
+  }, [])
 
   const pickingText =
     picking?.kind === 'tributes'
@@ -605,6 +612,7 @@ export function PracticeMat({
       <div className="col-start-1 row-start-2 flex min-h-0 flex-col gap-2 overflow-y-auto overflow-x-hidden px-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] min-[1101px]:px-4 min-[1101px]:pb-4">
         {/* El campo, con la disposición de DuelingBook en todos los tamaños: campo y Extra a la izquierda, destierro, cementerio y deck a la derecha, las zonas extra entre medio. */}
         <div
+          ref={fieldRef}
           className="grid grid-cols-7 gap-1 [grid-template-areas:'fld_._emz1_._emz2_._ban'_'._m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[repeat(7,minmax(0,5.75rem))]"
           aria-label="Campo"
         >
@@ -655,6 +663,7 @@ export function PracticeMat({
           muted={muted}
           flash={flash}
           getDeckRect={getDeckRect}
+          getField={getField}
           onReorder={setHandOrder}
           onTap={(card, rect) => openCard(card.id, rect)}
           onDragOver={setHandOver}

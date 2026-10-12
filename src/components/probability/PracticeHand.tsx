@@ -72,6 +72,11 @@ interface PracticeHandProps {
   flash: { id: string; key: number } | null
   /** Rect del mazo: de ahí salen las cartas al repartirse. */
   getDeckRect: () => DOMRect | null
+  /**
+   * El campo (su rect y el ancho de una zona): al arrastrar una carta hacia él se va achicando hasta el
+   * tamaño de la zona, con un poco de perspectiva, como si se hundiera en la mesa.
+   */
+  getField: () => { rect: DOMRect; zoneWidth: number } | null
   onReorder: (ids: string[]) => void
   /** Toque sin arrastre: abre el menú de la carta. */
   onTap: (card: HandCardData, rect: DOMRect) => void
@@ -86,7 +91,17 @@ interface DragState {
   id: string
   x: number
   y: number
+  /** Tamaño relativo (1.1 en la mano, el de la zona sobre el campo) e inclinación en grados. */
+  scale: number
+  tilt: number
 }
+
+/** Escala de la carta levantada mientras está sobre la mano. */
+const LIFT_SCALE = 1.1
+/** Inclinación máxima (perspectiva) al llegar al campo. */
+const MAX_TILT = 16
+
+const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 
 function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
@@ -105,7 +120,7 @@ function dropTargetAt(x: number, y: number, dragged: HTMLElement): { element: HT
  * Mano en abanico: un toque abre el menú de la carta, se reordena arrastrando dentro de la mano, se
  * arrastra fuera de la mano hasta una zona de la mesa, y se reparte desde el mazo.
  */
-export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highlighted, highlightKind, muted, flash, getDeckRect, onReorder, onTap, onDragOver, onDrop, className }: PracticeHandProps) {
+export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highlighted, highlightKind, muted, flash, getDeckRect, getField, onReorder, onTap, onDragOver, onDrop, className }: PracticeHandProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const width = useElementWidth(containerRef) || FALLBACK_WIDTH
   const slots = Math.max(cards.length, sizeSlots)
@@ -160,12 +175,28 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highl
     const current = layoutRef.current
     const x = move.clientX - rect.left - state.grabDx
     const y = move.clientY - state.startY
-    setDrag({ id: state.id, x, y })
 
-    // Fuera de la mano la carta busca una zona de la mesa; adentro, se reordena.
+    // Fuera de la mano la carta busca una zona de la mesa; adentro (o a los costados, a su altura), se reordena.
     const target = dropTargetAt(move.clientX, move.clientY, state.element)
-    const insideHand = !target || target.drop === 'hand' || container.contains(target.element)
-    const outside = insideHand ? null : target.drop
+    const overHand = target !== null && (target.drop === 'hand' || container.contains(target.element))
+    const besideHand = target === null && move.clientY >= rect.top && move.clientY <= rect.bottom
+    const insideHand = overHand || besideHand
+    const outside = target && !insideHand ? target.drop : null
+
+    // Camino hacia el campo: de la mano (levantada) al borde de abajo del campo la carta se achica hasta el
+    // tamaño de la zona y se inclina, como si se hundiera en la mesa.
+    const field = getField()
+    let scale = LIFT_SCALE
+    let tilt = 0
+
+    if (field && !insideHand) {
+      const progress = clamp01((rect.top - move.clientY) / Math.max(1, rect.top - field.rect.bottom))
+      const zoneScale = Math.min(LIFT_SCALE, field.zoneWidth / Math.max(1, current.cardWidth))
+      scale = LIFT_SCALE + (zoneScale - LIFT_SCALE) * progress
+      tilt = MAX_TILT * progress
+    }
+
+    setDrag({ id: state.id, x, y, scale, tilt })
 
     if (outside !== state.outside) {
       state.outside = outside
@@ -277,7 +308,7 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highl
         const x = isDragged ? drag.x : slotLeft(layout, index)
         const y = TOP_ROOM + (isDragged ? drag.y - 16 : arch)
         const transform = isDragged
-          ? `translate3d(${x}px, ${y}px, 0) rotate(0deg) scale(1.1)`
+          ? `translate3d(${x}px, ${y}px, 0) perspective(900px) rotateX(${drag.tilt}deg) scale(${drag.scale})`
           : `translate3d(${x}px, ${y}px, 0) rotate(${angle}deg)`
         const flashing = flash?.id === card.id
 
