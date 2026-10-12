@@ -22,9 +22,10 @@ export function DeckModeShell({
 }: DeckModeShellProps) {
   return (
     <section className="grid min-h-dvh w-full min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-x-clip max-[1100px]:min-h-screen min-[1101px]:h-dvh min-[1101px]:overflow-hidden">
-      <header className="grid min-h-(--deck-mode-topbar-height) w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 border-b border-border-subtle bg-card-background/70 px-5 py-2 max-[1100px]:hidden">
+      {/* Con siete pestañas, la barra sólo se centra en la pantalla cuando sobra lugar a los costados (2xl); antes, la marca y las redes ocupan lo que necesitan y las pestañas se centran en el resto. */}
+      <header className="grid min-h-(--deck-mode-topbar-height) w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 border-b border-border-subtle bg-card-background/70 px-5 py-2 max-[1100px]:hidden min-[1536px]:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
         <DeckModeBrand />
-        {navigation}
+        <div className="flex min-w-0 justify-center">{navigation}</div>
         <div className="flex min-w-0 items-center gap-3 justify-self-end">
           <SiteCredit className="hidden whitespace-nowrap min-[1280px]:block" />
           <MascotPicker placement="below" />

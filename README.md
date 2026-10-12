@@ -19,6 +19,7 @@ La idea central es ayudar a entender deck building con un flujo simple: armás e
 - Exportación del deck como imagen, decklist oficial en PDF y `.ydk`, y los tres pasos para llevarlo a Neuron (link YDKE o `.ydk` + extensión "Deck transfer" + base de datos oficial de Konami).
 - Cupsy, la mascota: reacciona a lo que pasa (espera mientras carga, calcula con el Lab, revisa en Roles, festeja o se frustra con los avisos y con las manos de la práctica). Se agarra y se lleva a cualquier lado, choca con los botones flotantes y los empuja, y si se la deja apretada cinco segundos pregunta si querés darle un descanso (en escritorio también tiene una X al pasar el mouse). El Kuriboh alado junto a las redes es la caja de las mascotas: al tocarlo se despliegan las que hay, elegir una la saca o la trae de vuelta del descanso, y la que está afuera lleva una X blanca para mandarla a descansar (también en el celular).
 - Meta: tier list de hand traps según los Tournament Meta Decks de YGOPRODeck (TCG y OCG por separado, Main y Side), con tendencia a dos semanas, los decks que las juegan y cada deck de torneo completo para verlo o cargarlo en el builder. Qué carta es hand trap se lee de sus reglas (los scripts de EDOPro de Project Ignis: un efecto rápido o disparador activable desde la mano), no de su texto, y sólo entran las que juegan varios decks distintos. Las cartas prohibidas en la banlist de cada región no entran al tier list. Los datos se actualizan solos cada día.
+- Replays: los duelos de torneo de los canales de YouTube Yu-Gi-Oh! TCG Europe y Yu-Gi-Oh! TCG, cruzados con los decks de la pestaña Meta por torneo y jugador (los canales sólo ponen la inicial del apellido: "Timoti B." es "Timoti Baggio") para ver el deck de cada uno y abrirlo en el Meta. Por defecto se ven los que tienen al menos un deck del Meta; "Todos" suma el resto (los de Genesys no se cruzan: el Meta es de TCG y OCG). Cada replay se ve en la app con el reproductor sin cookies de YouTube, que no se carga hasta tocar Reproducir (hasta entonces sólo se piden las miniaturas), y desde un deck del Meta "Ver N replays" lleva a los suyos. El workflow `sync-replays` los baja todos los días leyendo la pestaña Videos de cada canal, sin API key: es el formato interno de YouTube y puede cambiar; si pasa, el workflow se ve rojo y los datos siguen como estaban.
 - Precios: en todos los detalles de carta (el detalle, la clasificación, el meta y el panel del builder de escritorio) la carta lleva una moneda verde con el signo de dólar en la esquina inferior derecha; al tocarlo se abre un modal con su precio de mercado de TCGplayer, en dólares, agrupado por expansión (con el sobre de fondo, la imagen de YGOPRODeck) y con edición, rareza y link al producto. Muestra todas las expansiones en las que salió la carta, las más nuevas primero, y un buscador por código o rareza que filtra ahí mismo. Los precios se piden recién al abrir el modal: un solo archivo de unos 4 KB, tenga la carta las reimpresiones que tenga. TCGplayer ya no da keys nuevas para su API, así que los precios salen de TCGCSV, un espejo diario de sus datos: el workflow baja todos los sets de Yu-Gi-Oh!, los cruza con las cartas de YGOPRODeck por código de set y los deja como archivos estáticos en `public/prices/` indexados por carta (un índice con los sets y 256 archivos `cards/<id % 256>.json`), sin servidor propio. Son una referencia, con hasta un día de atraso.
 
 ## Flujo recomendado
@@ -145,6 +146,7 @@ src/
     build-comparison.ts      comparación A vs B
     practice-mat.ts          la mesa de práctica: estado, jugadas y sus textos (puro)
     saved-combos.ts          combos guardados en localStorage
+    replays.ts               replays de torneo (YouTube) y su cruce con los decks del Meta
     use-*.ts                 hooks reutilizables
   components/
     deck-mode/               pantalla principal y navegación por pasos
@@ -153,6 +155,7 @@ src/
     DeckRolesPanel.tsx       clasificación por carta
     ProbabilityPanel.tsx     Probability Lab
     probability/             editor de reglas, práctica y mesa (PracticeMat)
+    replays/                 pestaña Replays y su reproductor
     comparison/              pantalla de comparación
     card-detail/             detalle de carta
     ui/                      botones y piezas básicas
@@ -181,6 +184,7 @@ npm run lint         # ESLint: reglas de hooks, variables sin uso y lo recomenda
 npm run sync:genesys # actualiza los puntos de Genesys
 npm run sync:meta    # actualiza los Tournament Meta Decks (el workflow sync-meta-decks lo hace solo cada día)
 npm run sync:prices  # baja los precios de TCGplayer a public/prices, indexados por carta (el mismo workflow, también cada día)
+npm run sync:replays # baja los replays de torneo de los canales de YouTube a src/data/replays.json (el workflow sync-replays lo hace solo cada día)
 ```
 
 El CI (`.github/workflows/ci.yml`) corre `typecheck`, `lint`, `test` y `build` en cada PR y push a `main`.

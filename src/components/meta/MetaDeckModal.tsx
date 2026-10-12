@@ -14,6 +14,7 @@ import {
 } from '../../app/meta-handtraps'
 import { beginMascotActivity } from '../../app/mascot'
 import type { DeckCardInstance, DeckZone as DeckZoneKey } from '../../app/model'
+import { buildReplaysHash, countReplaysOfDeck } from '../../app/replays'
 import { useAppDispatch, useAppSelector } from '../../app/store-hooks'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useToastMessage } from '../../app/use-toast-message'
@@ -169,6 +170,7 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
     }
   }
 
+  const replayCount = countReplaysOfDeck(deck.id)
   const summary = [
     deck.placement ? `Llegó a ${deck.placement}` : null,
     deck.tournament ? `en ${deck.tournament}` : null,
@@ -236,6 +238,17 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
               <Badge tone="success" size="sm" dot>
                 Hand traps: {formatInteger(countCopies(deck.main))} en Main · {formatInteger(countCopies(deck.side))} en Side
               </Badge>
+              {replayCount > 0 ? (
+                // Los replays de los duelos de este deck, en la pestaña Replays (el click cierra el modal y el link cambia de pestaña).
+                <a
+                  href={buildReplaysHash({ deck: deck.id })}
+                  className="inline-flex items-center gap-1 font-semibold text-primary-soft underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus"
+                  onClick={onClose}
+                >
+                  <Icon name="play" size={13} variant="bold" />
+                  {replayCount === 1 ? 'Ver el replay' : `Ver ${formatInteger(replayCount)} replays`}
+                </a>
+              ) : null}
             </div>
           </header>
 
