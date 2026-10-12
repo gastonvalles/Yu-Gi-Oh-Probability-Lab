@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { GET } from '../../api/card-image/[...path]'
+import { GET } from '../../api/card-image'
 import { cardImageSrc, resolveCardImageUpstream } from '../app/card-image-source'
 
 describe('las imágenes de las cartas pasan por el proxy', () => {
@@ -32,17 +32,20 @@ describe('la función api/card-image', () => {
 
   const call = (path: string) => GET(new Request(`https://yu-gi-oh-probability-lab.vercel.app${path}`))
 
-  it('sirve la imagen con un año de caché en el CDN', async () => {
+  it('sirve la imagen con un año de caché en el CDN, llegue por el rewrite (?path=) o por la ruta entera', async () => {
     const fetchMock = vi.fn(async () => new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { 'content-type': 'image/jpeg' } }))
     vi.stubGlobal('fetch', fetchMock)
 
-    const response = await call('/api/card-image/cards_small/14558127.jpg')
+    const response = await call('/api/card-image?path=cards_small/14558127.jpg')
 
     expect(fetchMock).toHaveBeenCalledWith('https://images.ygoprodeck.com/images/cards_small/14558127.jpg', expect.anything())
     expect(response.status).toBe(200)
     expect(response.headers.get('content-type')).toBe('image/jpeg')
     expect(response.headers.get('cache-control')).toBe('public, max-age=86400, s-maxage=31536000, immutable')
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]))
+
+    expect((await call('/api/card-image/cards_small/14558127.jpg')).status).toBe(200)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('no pide nada por una ruta inválida, y una caída de YGOPRODeck no se cachea', async () => {
@@ -50,6 +53,8 @@ describe('la función api/card-image', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     expect((await call('/api/card-image/cards_small/../x.jpg')).status).toBe(404)
+    expect((await call('/api/card-image?path=cards_small/../x.jpg')).status).toBe(404)
+    expect((await call('/api/card-image')).status).toBe(404)
     expect(fetchMock).not.toHaveBeenCalled()
 
     const failed = await call('/api/card-image/cards_small/1.jpg')
