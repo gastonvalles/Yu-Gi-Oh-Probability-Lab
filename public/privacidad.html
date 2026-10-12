@@ -82,10 +82,11 @@
         <ul>
           <li><strong>Vercel</strong>, donde está alojado: recibe los datos técnicos de cualquier visita web, como la dirección IP y el navegador, para entregar las páginas.</li>
           <li>
-            <strong>YGOPRODeck</strong> (db.ygoprodeck.com e images.ygoprodeck.com): tu navegador le pide directamente los datos y las imágenes de las cartas.
-            Por eso YGOPRODeck ve esos pedidos, incluido lo que buscás, y tu dirección IP.
+            <strong>YGOPRODeck</strong> (db.ygoprodeck.com): tu navegador le pide directamente los datos de las cartas. Por eso YGOPRODeck ve esos
+            pedidos, incluido lo que buscás, y tu dirección IP. Las imágenes de las cartas, en cambio, las sirve este sitio: se las pide a
+            images.ygoprodeck.com una sola vez y las guarda en su caché, así YGOPRODeck no ve qué cartas mirás (sólo si esa copia falla, tu navegador
+            se la pide directamente).
           </li>
-          <li><strong>images.weserv.nl</strong>: un servicio de terceros por el que pasan las imágenes de las cartas cuando generás la imagen del deck en Exportar.</li>
           <li>
             <strong>YouTube (Google)</strong>: en la pestaña Replays, las miniaturas de los videos se piden a i.ytimg.com apenas aparecen en pantalla. El
             reproductor (youtube-nocookie.com) no se carga hasta que tocás Reproducir: ahí YouTube ve tu dirección IP y puede guardar cookies propias.

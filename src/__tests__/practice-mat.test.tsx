@@ -263,7 +263,7 @@ describe('la mesa de práctica', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
 
     const token = within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ficha, en defensa' })
-    expect(within(token).getByRole('img', { name: 'Ficha' })).toHaveAttribute('src', 'https://images.ygoprodeck.com/images/cards_small/73915052.jpg')
+    expect(within(token).getByRole('img', { name: 'Ficha' })).toHaveAttribute('src', '/api/card-image/cards_small/73915052.jpg')
     expect(within(status()).getByText('Ficha en defensa, zona 1')).toBeInTheDocument()
 
     // Como en DuelingBook: mover, seleccionar, pasar a ataque y quitar.

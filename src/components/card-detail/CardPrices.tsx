@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { cardImageSrc } from '../../app/card-image-source'
 import { filterPrintings, setImageUrl, type PrintingPrice } from '../../app/card-prices'
 import { useCardPrices } from '../../app/use-card-prices'
 import { cx } from '../ui/cx'
@@ -15,7 +16,7 @@ const formatDay = (day: string) => day.split('-').reverse().join('/')
 
 /** El encabezado del Meta: la imagen a la derecha y un degradado oscuro que la deja leer el texto de la izquierda. Acá, el sobre de la expansión. */
 const packBackground = (code: string) => ({
-  backgroundImage: `linear-gradient(90deg, rgb(var(--card-background-rgb) / 0.97) 40%, rgb(var(--card-background-rgb) / 0.6)), url(${setImageUrl(code)})`,
+  backgroundImage: `linear-gradient(90deg, rgb(var(--card-background-rgb) / 0.97) 40%, rgb(var(--card-background-rgb) / 0.6)), url(${cardImageSrc(setImageUrl(code))})`,
   // Un poco más grande que la franja para que no asomen los bordes blancos del sobre, y centrado en la ilustración.
   backgroundSize: '115% auto',
   backgroundPosition: '50% 35%',

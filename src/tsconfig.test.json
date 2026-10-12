@@ -4,6 +4,6 @@
     "allowJs": true,
     "types": ["vitest/globals", "@testing-library/jest-dom"]
   },
-  "include": ["."],
+  "include": [".", "../api"],
   "exclude": []
 }

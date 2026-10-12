@@ -162,6 +162,8 @@ src/
     ui/                      botones y piezas básicas
   ygoprodeck/                cliente y parser de la API
   __tests__/                 tests (Vitest + fast-check)
+api/
+  card-image/[...path].ts    función de Vercel: sirve las imágenes de las cartas desde nuestra caché (YGOPRODeck pide no enlazarlas directo)
 public/                      íconos, manifiesto, imagen para compartir, robots.txt, sitemap.xml, 404.html y privacidad.html (estáticos)
 ```
 
@@ -170,6 +172,7 @@ public/                      íconos, manifiesto, imagen para compartir, robots.
 - **Vista previa al compartir el link** (Discord, WhatsApp, X): las etiquetas Open Graph van en `index.html` y la imagen es `public/og-image.jpg` (1200 × 630). Los bots no ejecutan JS, por eso no pueden salir de la app.
 - **Buscadores y navegadores:** `robots.txt`, `sitemap.xml`, `favicon.ico` (16, 32, 48 y 64 px), los íconos de 192 y 512 px y `site.webmanifest` (para agregar la app a la pantalla de inicio).
 - **404 y privacidad:** Vercel sirve `404.html` en cualquier ruta que no existe. `privacidad.html` explica qué se guarda en el navegador y con quién se comunica el sitio, y trae el aviso legal; su link (el ícono "i") está junto a las redes. Dice que el sitio no tiene analíticas ni cookies: si se suman, hay que actualizarla.
+- **Imágenes de las cartas:** YGOPRODeck pide no enlazar sus imágenes directamente (bloquea la IP del que lo hace). Todas las URLs de `images.ygoprodeck.com` se dibujan por `/api/card-image/<carpeta>/<archivo>.jpg` (`cardImageSrc`): en producción es la función de Vercel en `api/card-image/`, que se la pide a YGOPRODeck una vez y la deja un año en la caché del CDN; en desarrollo y en `preview`, Vite hace de proxy a la misma ruta. Si la función falla, `CardArt` prueba una vez con la URL original. Como las imágenes son del mismo origen, la imagen del deck en Exportar ya no pasa por images.weserv.nl.
 - **La URL pública** (`https://yu-gi-oh-probability-lab.vercel.app`) está escrita en `index.html`, `robots.txt` y `sitemap.xml`. Si cambia el dominio, se cambia en los tres; el test `site-meta` avisa si dejan de coincidir o si falta algún archivo que enlazan.
 
 ## Scripts

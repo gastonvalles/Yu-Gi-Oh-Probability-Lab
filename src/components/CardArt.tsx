@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react'
 
+import { cardImageSrc } from '../app/card-image-source'
 import { buildInitials } from '../app/utils'
 import type { ApiCardReference } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
@@ -16,7 +17,7 @@ interface CardArtProps {
 
 /**
  * Arte de una carta con esqueleto mientras carga e iniciales si no hay imagen.
- * Las imágenes de YGOPRODeck las cachea el navegador (HTTP): no hace falta una capa propia.
+ * Las imágenes pasan por nuestro proxy (`cardImageSrc`) y las cachea el navegador (HTTP): no hace falta una capa propia.
  */
 export const CardArt = memo(function CardArt({
   remoteUrl,
@@ -27,17 +28,21 @@ export const CardArt = memo(function CardArt({
 }: CardArtProps) {
   const [isImageLoaded, setIsImageLoaded] = useState(false)
   const [hasImageError, setHasImageError] = useState(false)
+  // Si el proxy falla, se prueba una vez con la URL original de YGOPRODeck antes de darla por perdida.
+  const [useRemote, setUseRemote] = useState(false)
   const imageRef = useRef<HTMLImageElement | null>(null)
+  const src = remoteUrl && !useRemote ? cardImageSrc(remoteUrl) : remoteUrl
 
   useEffect(() => {
     setHasImageError(false)
+    setUseRemote(false)
 
     // Si la imagen ya estaba en caché, `onLoad` pudo dispararse antes de montar el handler.
     const image = imageRef.current
     setIsImageLoaded(Boolean(remoteUrl && image && image.complete && image.naturalWidth > 0))
   }, [remoteUrl])
 
-  if (remoteUrl && !hasImageError) {
+  if (src && !hasImageError) {
     return (
       <div className="relative block h-full w-full">
         {!isImageLoaded ? (
@@ -54,13 +59,13 @@ export const CardArt = memo(function CardArt({
             className,
           ].join(' ').trim()}
           data-card-art
-          src={remoteUrl}
+          src={src}
           alt={name}
           loading="lazy"
           decoding="async"
           draggable={false}
           onLoad={() => setIsImageLoaded(true)}
-          onError={() => setHasImageError(true)}
+          onError={() => (src !== remoteUrl ? setUseRemote(true) : setHasImageError(true))}
         />
         <CardLimitBadge card={limitCard} size={limitBadgeSize} />
       </div>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 
+import { cardImageSrc } from '../../app/card-image-source'
 import {
   META_DECKS,
   PROJECTION_WEEKS,
@@ -407,7 +408,7 @@ function MetaDeckTile({ deck, onOpen }: { deck: MetaDeck; onOpen: () => void }) 
     >
       {deck.cover ? (
         <img
-          src={coverArtUrl(deck.cover)}
+          src={cardImageSrc(coverArtUrl(deck.cover))}
           alt=""
           aria-hidden="true"
           loading="lazy"

@@ -80,8 +80,9 @@ describe('precios en el detalle de la carta', () => {
     expect(headings.map((heading) => heading.textContent)).toEqual(['Justice Hunters', 'Rarity Collection 5'])
     expect(headings[0]!.closest('header')).toHaveTextContent('2 impresiones')
     expect(headings[1]!.closest('header')).toHaveTextContent('1 impresión')
-    expect(headings[0]!.closest('header')!.style.backgroundImage).toContain('https://images.ygoprodeck.com/images/sets/JUSH.jpg')
-    expect(headings[1]!.closest('header')!.style.backgroundImage).toContain('https://images.ygoprodeck.com/images/sets/RA05.jpg')
+    // El sobre sale de YGOPRODeck, pero por nuestro proxy.
+    expect(headings[0]!.closest('header')!.style.backgroundImage).toContain('/api/card-image/sets/JUSH.jpg')
+    expect(headings[1]!.closest('header')!.style.backgroundImage).toContain('/api/card-image/sets/RA05.jpg')
   })
 
   it('muestra todas las expansiones juntas, sin botones de "ver más"', () => {
