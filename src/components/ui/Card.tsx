@@ -5,10 +5,10 @@ import { TONE, type Tone } from './tone'
 
 /**
  * card: tarjeta de primer nivel sobre el lienzo (adentro no van más cajas: se ordena con espacio y líneas finas) ·
- * raised: flotante (menús, popovers) · hero: tarjeta destacada violeta (una por pantalla, con su botón lavanda).
+ * hero: tarjeta destacada violeta (una por pantalla, con su botón lavanda).
  */
-type CardLevel = 'card' | 'raised' | 'hero'
-type CardPadding = 'none' | 'sm' | 'md' | 'lg'
+type CardLevel = 'card' | 'hero'
+type CardPadding = 'sm' | 'md' | 'lg'
 
 interface CardProps extends HTMLAttributes<HTMLElement> {
   as?: ElementType
@@ -20,12 +20,10 @@ interface CardProps extends HTMLAttributes<HTMLElement> {
 
 const LEVEL: Record<CardLevel, string> = {
   card: 'rounded-card border border-border-subtle bg-card-background bg-linear-to-b from-primary/8 to-transparent shadow-card',
-  raised: 'rounded-card border border-tint/10 bg-surface-raised shadow-raised',
   hero: 'rounded-panel bg-primary text-primary-foreground shadow-brand',
 }
 
 const PADDING: Record<CardPadding, string> = {
-  none: '',
   sm: 'p-3',
   md: 'p-4 min-[1101px]:p-5',
   lg: 'p-5 min-[1101px]:p-6',

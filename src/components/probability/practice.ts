@@ -39,7 +39,7 @@ export interface PracticeHandState {
 }
 
 /** Una forma de cumplir la regla con esta mano: las cartas que usa. */
-export interface PracticeHandMatchCase {
+interface PracticeHandMatchCase {
   cards: Array<{ cardId: string; name: string; copies: number }>
 }
 
@@ -53,7 +53,7 @@ export interface PracticeHandMatch {
   cases: PracticeHandMatchCase[]
 }
 
-export interface PracticeHandRequirementAssignment {
+interface PracticeHandRequirementAssignment {
   requirementId: string
   sourceLabel: string
   kind: 'include' | 'exclude'

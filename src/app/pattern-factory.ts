@@ -1,5 +1,4 @@
 import type {
-  CardGroupKey,
   HandPattern,
   HandPatternCategory,
   Matcher,
@@ -11,7 +10,6 @@ import type {
 import {
   buildReusePolicy,
   createCardPoolMatcher,
-  createMatcherFromGroupKey,
   resolvePatternLogic,
 } from './patterns'
 import { createId } from './utils'
@@ -93,35 +91,6 @@ export function createMatcherPattern(
       distinct: condition.distinct ?? false,
     })),
   }
-}
-
-export function createGroupPattern(
-  name: string,
-  category: HandPatternCategory | 'good' | 'bad',
-  requirements: Array<{
-    groupKey: CardGroupKey
-    count: number
-    kind: RequirementKind
-    distinct?: boolean
-  }>,
-  options?: {
-    matchMode?: PatternMatchMode
-    minimumMatches?: number
-    allowSharedCards?: boolean
-    turnContext?: TurnContext
-  },
-): HandPattern {
-  return createMatcherPattern(
-    name,
-    category,
-    requirements.map((requirement) => ({
-      matcher: createMatcherFromGroupKey(requirement.groupKey),
-      quantity: requirement.count,
-      kind: requirement.kind,
-      distinct: requirement.distinct,
-    })),
-    options,
-  )
 }
 
 function normalizePatternKind(category: HandPatternCategory | 'good' | 'bad'): HandPattern['kind'] {

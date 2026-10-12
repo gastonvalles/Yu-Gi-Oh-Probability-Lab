@@ -6,7 +6,7 @@ import { normalizeSearchText } from './utils'
 export type MetaRegion = 'tcg' | 'ocg'
 
 /** Una hand trap del tier list, con su id canónico de YGOPRODeck (las artes alternativas ya están unificadas). */
-export interface MetaCard {
+interface MetaCard {
   name: string
   image: string | null
   /** Estado en la banlist de cada región al momento del snapshot. */
@@ -63,10 +63,6 @@ export function coverArtUrl(cardId: number): string {
   return `https://images.ygoprodeck.com/images/cards_cropped/${cardId}.jpg`
 }
 
-export function isMetaHandtrap(cardId: number): boolean {
-  return Object.hasOwn(META_DECKS.cards, String(cardId))
-}
-
 export function countCopies(entries: ReadonlyArray<[number, number]>): number {
   return entries.reduce((total, [, copies]) => total + copies, 0)
 }
@@ -83,7 +79,7 @@ export type MetaZone = 'both' | 'main' | 'side'
 export type MetaTier = 'S' | 'A' | 'B' | 'C' | 'D'
 export type MetaTrend = 'up' | 'down' | 'flat'
 
-export interface MetaZoneUsage {
+interface MetaZoneUsage {
   /** Decks de la ventana que la llevan en esa zona. */
   decks: number
   /** Copias sumadas entre esos decks. */
@@ -95,7 +91,7 @@ export interface MetaWeek {
   share: number
 }
 
-export interface MetaArchetypeUsage {
+interface MetaArchetypeUsage {
   name: string
   /** Decks de ese nombre que la juegan, sobre el total de decks con ese nombre. */
   decks: number

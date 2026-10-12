@@ -79,10 +79,6 @@ export function parseArray(value: unknown, fieldName: string): unknown[] {
   return value
 }
 
-export function parseMode(_value: unknown): 'deck' {
-  return 'deck'
-}
-
 export function parseDeckFormat(value: unknown): DeckFormat {
   if (
     value === 'unlimited' ||

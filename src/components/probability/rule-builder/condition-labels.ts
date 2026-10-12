@@ -11,14 +11,6 @@ export function getKindLabel(kind: RequirementKind): string {
 }
 
 /**
- * Maps a RequirementKind label back to the internal value.
- * "Al menos" → "include", "Sin" → "exclude"
- */
-export function kindFromLabel(label: string): RequirementKind {
-  return label === 'Sin' ? 'exclude' : 'include'
-}
-
-/**
  * Returns a human-readable label for a matcher, suitable for display
  * in the ConditionBlock category segment.
  */

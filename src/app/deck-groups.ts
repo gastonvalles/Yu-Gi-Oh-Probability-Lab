@@ -384,7 +384,7 @@ export function mergeCardOrigins(
   return currentOrigin === 'engine' || nextOrigin === 'engine' ? 'engine' : currentOrigin
 }
 
-export function buildDerivedDeckGroups(cards: CardEntry[]): DerivedDeckGroup[] {
+function buildDerivedDeckGroups(cards: CardEntry[]): DerivedDeckGroup[] {
   return CARD_GROUP_DEFINITIONS.map((definition) => {
     const matchingCards = cards.filter((card) => cardMatchesGroup(card, definition.key))
 

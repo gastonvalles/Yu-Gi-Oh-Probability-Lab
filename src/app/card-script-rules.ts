@@ -49,9 +49,7 @@ export const CARD_RULE = {
   onSummon: 1 << 19,
 } as const
 
-export type CardRuleFlag = keyof typeof CARD_RULE
-
-export interface CardEffect {
+interface CardEffect {
   type: string
   range: string
   code: string
@@ -362,7 +360,7 @@ function affectsOpponent(targetRange: string): boolean {
   return !isEmptyLocation(opponent)
 }
 
-export function isHandtrapEffect(effect: CardEffect): boolean {
+function isHandtrapEffect(effect: CardEffect): boolean {
   return TRAP_FROM_HAND.test(effect.code) || ((QUICK.test(effect.type) || TRIGGER.test(effect.type)) && FROM_HAND.test(effect.range))
 }
 

@@ -25,15 +25,13 @@ interface SegmentedRingProps {
   activeKey?: string | null
   /** Se llama al pasar el mouse (o tocar) un tramo del anillo. */
   onSegmentSelect?: (key: string) => void
-  delay?: number
   children?: ReactNode
-  className?: string
 }
 
 /** Anillo que reparte un total entre varios tramos (limpias / con problema / sin salida). Los tramos se llenan en orden, como una aguja. */
-export function SegmentedRing({ segments, size = 160, strokeWidth, label, activeKey = null, onSegmentSelect, delay = 0, children, className }: SegmentedRingProps) {
+export function SegmentedRing({ segments, size = 160, strokeWidth, label, activeKey = null, onSegmentSelect, children }: SegmentedRingProps) {
   const { stroke, radius, circumference, center } = ringGeometry(size, strokeWidth)
-  const { ref, revealed, settled, delayMs, instant: unseen } = useRingReveal<HTMLDivElement>(delay)
+  const { ref, revealed, settled, delayMs, instant: unseen } = useRingReveal<HTMLDivElement>()
   const total = segments.reduce((sum, segment) => sum + clamp01(segment.value), 0) || 1
   const visible = segments.filter((segment) => segment.value > 0.0005)
   // Con puntas redondas (como los demás anillos) cada tramo se achica lo que ocupan sus puntas, más 3 px de separación.
@@ -42,7 +40,7 @@ export function SegmentedRing({ segments, size = 160, strokeWidth, label, active
   let start = 0
 
   return (
-    <div ref={ref} className={cx('relative inline-grid shrink-0 place-items-center', !settled && 'will-change-transform', className)} style={{ width: size, height: size }} role="img" aria-label={label}>
+    <div ref={ref} className={cx('relative inline-grid shrink-0 place-items-center', !settled && 'will-change-transform')} style={{ width: size, height: size }} role="img" aria-label={label}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90" aria-hidden="true">
         <circle cx={center} cy={center} r={radius} fill="none" strokeWidth={stroke} className="stroke-tint/10" />
         {segments.map((segment) => {

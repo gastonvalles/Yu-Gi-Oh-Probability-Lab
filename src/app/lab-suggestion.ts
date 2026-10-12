@@ -21,7 +21,7 @@ export interface Culprit {
   probability: number
 }
 
-export interface Change {
+interface Change {
   action: 'remove' | 'add'
   card: CardEntry
 }

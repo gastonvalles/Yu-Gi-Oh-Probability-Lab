@@ -3,7 +3,6 @@ import * as fc from 'fast-check'
 import {
   createPattern,
   createMatcherPattern,
-  createGroupPattern,
 } from '../app/pattern-factory'
 import { PATTERN_PRESET_DEFINITIONS } from '../app/pattern-presets'
 import type { CardEntry, TurnContext } from '../types'
@@ -112,18 +111,6 @@ describe('Pattern factory turnContext defaults', () => {
     )
   })
 
-  it('2.2.1: createGroupPattern without turnContext defaults to either', () => {
-    /** Validates: Requirements 1.1, 9.1 */
-    fc.assert(
-      fc.property(arbCategory, (category) => {
-        const p = createGroupPattern('test', category, [
-          { groupKey: { type: 'role', value: 'starter' }, count: 1, kind: 'include' },
-        ])
-        expect(p.turnContext).toBe('either')
-      }),
-    )
-  })
-
   it('2.2.2: createPattern assigns passed turnContext', () => {
     /** Validates: Requirements 1.1, 9.1 */
     fc.assert(
@@ -142,21 +129,6 @@ describe('Pattern factory turnContext defaults', () => {
           'test',
           category,
           [{ matcher: { type: 'role', value: 'starter' }, quantity: 1, kind: 'include' }],
-          { turnContext: tc },
-        )
-        expect(p.turnContext).toBe(tc)
-      }),
-    )
-  })
-
-  it('2.2.2: createGroupPattern assigns passed turnContext', () => {
-    /** Validates: Requirements 1.1, 9.1 */
-    fc.assert(
-      fc.property(arbTurnContext, arbCategory, (tc, category) => {
-        const p = createGroupPattern(
-          'test',
-          category,
-          [{ groupKey: { type: 'role', value: 'starter' }, count: 1, kind: 'include' }],
           { turnContext: tc },
         )
         expect(p.turnContext).toBe(tc)

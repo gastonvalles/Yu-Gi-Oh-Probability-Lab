@@ -35,7 +35,7 @@ Los roles de las cartas (starter, handtrap…) y los grupos (engine, non-engine�
 - **Tipografía (6 pasos, los del diseño):** `text-micro` 11 · `body` 14 · `lead` 19 · `title` 24 · `stat` 33 · `display` 44.
   Nada de `text-[…]`. Cifras con `tabular-nums`.
 - **Radios:** `rounded-tag` 8 (etiquetas, estados) · `control` 12 (chips, botones chicos, campos) · `card` 16 (tarjetas, botón grande) · `panel` 24 (tarjeta destacada, barra inferior, diálogos) · `rounded-full` (píldoras y puntos).
-- **Elevación:** `shadow-card` · `shadow-raised` · `shadow-overlay` · `shadow-focus` (anillo de foco, el mismo en todo) · `shadow-brand` (brillo violeta de la acción principal).
+- **Elevación:** `shadow-card` · `shadow-overlay` · `shadow-focus` (anillo de foco, el mismo en todo) · `shadow-brand` (brillo violeta de la acción principal).
 - **Superficies (índigo, sin grises):** `background` `#0A0816` < `card-background` `#130F2B` < `surface-raised` / `input` `#1A1440`–`#1B1542` < `surface-hover` `#251D55`. Bordes: `border-border-subtle` (violeta al 13 %). `lavender` (`bg-lavender`) es el fondo de chips, botones secundarios y barra inferior; `lavender-light` (`#EEE9FF`) el botón sobre una tarjeta violeta.
 - **Margen móvil:** `px-gutter` (22 px).
 - **Ancho:** `max-w-content` (80rem) centrado en todas las pantallas menos el Builder (usa todo el ancho).
@@ -47,7 +47,7 @@ Los roles de las cartas (starter, handtrap…) y los grupos (engine, non-engine�
 |---|---|
 | `Button` | `primary` (violeta con brillo, una por vista) · `secondary` (lavanda) · `tertiary` · `onBrand` (sobre tarjeta violeta); `color="danger"`; `icon` / `iconEnd`; `sm` 36 · `md` 44 · `lg` 50 (en táctil crecen solos). |
 | `IconButton` / `CloseButton` | acciones sólo con ícono (siempre con `aria-label`). |
-| `Card` | toda tarjeta: `level` card / raised / **hero** (violeta, una por pantalla), `tone` (tarjeta teñida, como las "In Progress" del diseño), `padding`. Adentro no van más cajas. |
+| `Card` | toda tarjeta: `level` card / **hero** (violeta, una por pantalla), `tone` (tarjeta teñida, como las "In Progress" del diseño), `padding`. Adentro no van más cajas. |
 | `ProgressRing` | anillo de progreso con el % al centro (44 px en listas, 76 px en una tarjeta destacada, 168 px como protagonista; `tone="onBrand"` sobre violeta; `color` para roles; `ticks` para marcar cortes; `delay` para escalonar varios). |
 | `SegmentedRing` | anillo repartido en tramos (limpias / con problema / sin salida; copias robadas 0-1-2-3+). Los tramos se llenan en orden y se resalta uno con `activeKey`. |
 | `SectionHeader` | encabezado de tarjeta: ícono suelto + título + descripción + acciones. |
@@ -57,7 +57,7 @@ Los roles de las cartas (starter, handtrap…) y los grupos (engine, non-engine�
 | `Segmented` | elegir 1 entre pocas: `track` (pista lavanda), `chips` (pastillas sueltas) o `cards` (tarjetas, como las fechas del diseño: turno del Lab). |
 | `LabeledField` | campo en tarjeta con la etiqueta chica arriba y el valor abajo (nombre y formato del deck). |
 | `Modal` | todo diálogo (`icon` + `tone` en el encabezado, `footer` para acciones). |
-| `CardOverlay` | marco de los modales de carta (detalle y clasificación): la carta arriba (se agranda al tocarla), un panel con su información abajo y una X blanca arriba a la derecha. `CardPanelHeader` / `CardPanelBody` / `CardPanelFooter` arman el panel. |
+| `CardOverlay` | marco de los modales de carta (detalle y clasificación): la carta arriba (se agranda al tocarla), un panel con su información abajo y una X blanca arriba a la derecha. Si la carta tiene datos, lleva abajo a la derecha la moneda verde de precios (`CardPricesButton`), que abre `CardPricesModal` (precios de TCGplayer por expansión, pedidos recién al tocarla). `CardPanelHeader` / `CardPanelBody` / `CardPanelFooter` arman el panel. |
 | `Icon` | **único** set de íconos (grilla 24). `variant`: `linear` (por defecto), `bulk` (duotono, pestañas inactivas) y `bold` (relleno, pestaña activa). Nada de SVG suelto. |
 | `field`, `choiceChip`, `filterChip`, `listItem` (`surfaces.ts`) | campos de texto, pastillas de selección (lavanda → violeta al elegirla) y filas clickeables. |
 | `Mascot` (Cupsy) | la mascota, abajo a la izquierda. Las pantallas no la manejan: avisan por `app/mascot.ts` (`beginMascotActivity` para cargas y cálculos, `reactMascot` para lo que salió bien o mal) y ella elige la animación. Se puede ocultar y volver a mostrar; con "reducir movimiento" queda quieta. |

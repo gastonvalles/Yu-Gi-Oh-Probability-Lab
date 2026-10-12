@@ -60,7 +60,7 @@ export interface RuleComparisonRow {
 
 export type CleanComparison = Record<TurnView, { a: number; b: number; delta: number }>
 
-export type VerdictKind = 'computing' | 'incomplete' | 'identical' | 'equivalent' | 'a' | 'b' | 'split'
+type VerdictKind = 'computing' | 'incomplete' | 'identical' | 'equivalent' | 'a' | 'b' | 'split'
 
 export interface ComparisonVerdict {
   kind: VerdictKind

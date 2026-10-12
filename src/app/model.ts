@@ -47,7 +47,7 @@ export interface PortableCondition {
   distinct: boolean
 }
 
-export interface PortablePattern {
+interface PortablePattern {
   name: string
   kind: HandPattern['kind']
   turnContext?: TurnContext
@@ -61,7 +61,7 @@ export interface PortablePattern {
   conditions: PortableCondition[]
 }
 
-export interface PortableDeckCard {
+interface PortableDeckCard {
   name: string
   apiCard: ApiCardReference
   origin: CardOrigin | null
