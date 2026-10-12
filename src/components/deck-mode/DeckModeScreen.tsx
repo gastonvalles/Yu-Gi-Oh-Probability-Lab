@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { countUnclassifiedCards, countCardsMissingOrigin, countCardsMissingRoles, countCardsPendingReview, isClassificationStepComplete } from '../../app/role-step'
@@ -39,19 +39,6 @@ import {
 import { useLabPrewarm } from '../probability/use-lab-prewarm'
 import { useDeckModeController } from './use-deck-mode-controller'
 
-const REDUCED_MOTION_MEDIA_QUERY = '(prefers-reduced-motion: reduce)'
-const WORKFLOW_STEP_ORDER: DeckWorkflowStepKey[] = [
-  'deck-builder',
-  'categorization',
-  'probability-lab',
-  'workspace',
-  'export',
-  'meta',
-  'replays',
-]
-
-type StepNavigationDirection = 'forward' | 'back'
-
 /** El paso va antes del "?": lo que sigue son parámetros de la vista (p. ej. `#meta?deck=123`). */
 function getStepFromHash(hash: string): DeckWorkflowStepKey | null {
   const normalizedHash = hash.replace(/^#/, '').split('?')[0] ?? ''
@@ -77,24 +64,6 @@ function getRecommendedStep(
   }
 
   return 'export'
-}
-
-function getStepDirection(
-  currentStep: DeckWorkflowStepKey,
-  nextStep: DeckWorkflowStepKey,
-): StepNavigationDirection {
-  const currentIndex = WORKFLOW_STEP_ORDER.indexOf(currentStep)
-  const nextIndex = WORKFLOW_STEP_ORDER.indexOf(nextStep)
-
-  return nextIndex >= currentIndex ? 'forward' : 'back'
-}
-
-function shouldReduceMotion(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia(REDUCED_MOTION_MEDIA_QUERY).matches
-  )
 }
 
 export function DeckModeScreen() {
@@ -123,7 +92,6 @@ export function DeckModeScreen() {
   useLabPrewarm({ ...controller.probability, enabled: activeStep !== 'probability-lab' })
   const contentScrollRef = useRef<HTMLDivElement>(null)
   const activeStepRef = useRef(activeStep)
-  const [stepDirection, setStepDirection] = useState<StepNavigationDirection>('forward')
 
   useEffect(() => {
     activeStepRef.current = activeStep
@@ -138,12 +106,6 @@ export function DeckModeScreen() {
       const nextStep = getStepFromHash(window.location.hash)
 
       if (nextStep) {
-        const currentStep = activeStepRef.current
-
-        if (nextStep !== currentStep) {
-          setStepDirection(getStepDirection(currentStep, nextStep))
-        }
-
         setActiveStep(nextStep)
       }
     }
@@ -174,25 +136,23 @@ export function DeckModeScreen() {
     }
   }, [activeStep])
 
-  useEffect(() => {
-    contentScrollRef.current?.scrollTo({
-      top: 0,
-      behavior: shouldReduceMotion() ? 'auto' : 'smooth',
-    })
-  }, [activeStep])
+  // La pantalla nueva se dibuja ya arriba de todo: antes el scroll animado la dejaba un instante donde estaba la anterior y
+  // la deslizaba hacia arriba, y todo se movía. Va en un layout effect para que el primer cuadro que se pinta ya esté arriba.
+  const shownStepRef = useRef(activeStep)
 
-  const handleStepChange = useCallback((nextStep: DeckWorkflowStepKey) => {
-    const currentStep = activeStepRef.current
-
-    if (nextStep === currentStep) {
+  useLayoutEffect(() => {
+    if (shownStepRef.current === activeStep) {
       return
     }
 
-    setStepDirection(getStepDirection(currentStep, nextStep))
-    setActiveStep(nextStep)
+    shownStepRef.current = activeStep
+    contentScrollRef.current?.scrollTo({ top: 0, behavior: 'instant' })
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [activeStep])
 
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: shouldReduceMotion() ? 'auto' : 'smooth' })
+  const handleStepChange = useCallback((nextStep: DeckWorkflowStepKey) => {
+    if (nextStep !== activeStepRef.current) {
+      setActiveStep(nextStep)
     }
   }, [])
   const navigationItems = useMemo(
@@ -283,8 +243,8 @@ export function DeckModeScreen() {
     <div
       key={activeStep}
       className={cx(
-        'min-w-0 motion-reduce:animate-none',
-        stepDirection === 'back' ? 'animate-step-back' : 'animate-step-forward',
+        // La pantalla nueva aparece (fundido) donde va a quedar: nada se desliza ni cambia de lugar.
+        'min-w-0 animate-step-in motion-reduce:animate-none',
         isDeckBuilderStep || isCategorizationStep ? 'h-full min-h-0' : 'min-h-full',
       )}
     >

@@ -32,7 +32,13 @@ export function DeckModeNavigation({ items, activeStep, onStepChange }: DeckMode
               variant={isActive ? 'bold' : 'bulk'}
               className={cx('shrink-0 transition-colors duration-150 [--icon-cut:var(--lavender)]', isActive ? 'text-success drop-shadow-[0_0_8px_rgb(var(--success-rgb)/0.55)]' : 'text-primary-soft/60 group-hover:text-primary-soft')}
             />
-            <span className={cx('truncate text-body', isActive ? 'font-semibold' : 'font-medium')}>{item.label}</span>
+            {/* El rótulo reserva el ancho de la negrita: al activarse una pestaña ninguna se corre (la elegida pasa a negrita, que es más ancha). */}
+            <span className="grid text-body">
+              <span aria-hidden="true" className="invisible col-start-1 row-start-1 truncate font-semibold">
+                {item.label}
+              </span>
+              <span className={cx('col-start-1 row-start-1 truncate', isActive ? 'font-semibold' : 'font-medium')}>{item.label}</span>
+            </span>
           </button>
         )
       })}

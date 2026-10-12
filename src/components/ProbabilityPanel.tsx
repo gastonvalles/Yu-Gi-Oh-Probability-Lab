@@ -221,6 +221,7 @@ export function ProbabilityPanel({
       <StepHero
         title="Qué tan bien abre tu deck"
         icon="flask"
+        subtitle="Tus aperturas y problemas, con probabilidad exacta."
       />
 
       {lab.readiness.status === 'empty-deck' ? (

@@ -165,6 +165,7 @@ export function ExportDeckPanel({
       <StepHero
         title="Exportá tu deck"
         icon="download"
+        subtitle="Para compartirlo, entregarlo en un torneo o llevarlo a Neuron."
         side={(
           // Las opciones van en un modal: la página no las muestra de entrada.
           <Button variant="primary" size="md" icon="download" disabled={busy} onClick={() => setDownloadOpen(true)}>
