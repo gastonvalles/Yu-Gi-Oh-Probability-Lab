@@ -2,6 +2,8 @@ import { t } from '../../i18n'
 import { cx } from './cx'
 import { Icon, type IconName } from './Icon'
 
+const AUTHOR = 'Gastón Valles' // i18n-ignore: nombre propio
+
 const LINKS: ReadonlyArray<{ href: string; label: string; icon: IconName }> = [
   { href: 'https://www.linkedin.com/in/gastonvalles/', label: 'LinkedIn', icon: 'linkedin' },
   { href: 'https://www.instagram.com/gaston_valles/', label: 'Instagram', icon: 'instagram' },
@@ -16,7 +18,7 @@ const ICON_GLOW = 'transition-[filter] duration-150 group-hover:drop-shadow-[0_0
 export function SiteCredit({ withDisclaimer = false, className }: { withDisclaimer?: boolean; className?: string }) {
   return (
     <p className={cx('m-0 text-micro text-soft', className)} title={withDisclaimer ? undefined : t('shell.disclaimer')}>
-      © {new Date().getFullYear()} Gastón Valles
+      © {new Date().getFullYear()} {AUTHOR}
       {withDisclaimer ? ` · ${t('shell.disclaimer')}` : null}
     </p>
   )

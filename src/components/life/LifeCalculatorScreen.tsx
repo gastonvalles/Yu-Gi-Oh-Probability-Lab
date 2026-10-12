@@ -2,9 +2,9 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 
 import { currentCoin } from '../../app/cosmetics'
 import {
-  DUELIST_NAMES,
   ROUND_LIMIT_MS,
   STARTING_LP,
+  duelistName,
   formatClock,
   interpretAmount,
   recentAmounts,
@@ -14,6 +14,7 @@ import {
 import { dispatchLife, playCue, unlockAudio, useClock, useLifeState, type RoundCue } from '../../app/life-store'
 import { prefersReducedMotion } from '../../app/motion'
 import { useToastMessage } from '../../app/use-toast-message'
+import { t } from '../../i18n'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
@@ -26,7 +27,7 @@ type Operator = '-' | '+'
 
 const MAX_DIGITS = 6
 /** El teclado de Neuron: operaciones en la primera columna, dígitos del 7 al 0 y ceros rápidos. */
-const KEYS = ['Borrar', '7', '8', '9', '+', '4', '5', '6', '-', '1', '2', '3', '÷2', '0', '00', '000'] as const
+const KEYS = ['clear', '7', '8', '9', '+', '4', '5', '6', '-', '1', '2', '3', '÷2', '0', '00', '000'] as const
 type Key = (typeof KEYS)[number]
 /** Últimos cinco minutos de la ronda: el reloj se pone naranja. */
 const ROUND_WARNING_MS = 5 * 60 * 1000
@@ -146,7 +147,7 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
   const amount = interpretAmount(digits)
   const lp = state.lp[selected]
   const recent = recentAmounts(state.log)
-  const name = DUELIST_NAMES[selected]
+  const name = duelistName(selected)
 
   useWakeLock()
 
@@ -166,7 +167,7 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
     buzz()
   }
   const press = (key: Key) => {
-    if (key === 'Borrar') {
+    if (key === 'clear') {
       setDigits('')
       setOperator('-')
     } else if (key === '+' || key === '-') {
@@ -191,7 +192,7 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
     >
       <header className="flex items-center justify-between gap-2 [grid-area:head]">
         <div className="grid gap-0.5">
-          <span className={overline}>Calculadora de LP</span>
+          <span className={overline}>{t('shell.life.title')}</span>
           <div className="flex items-center gap-1">
             <button
               type="button"
@@ -199,8 +200,8 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
                 'inline-flex touch-manipulation select-none items-center gap-1.5 text-title font-semibold tabular-nums [-webkit-tap-highlight-color:transparent]',
                 remaining === 0 ? 'text-danger-soft' : remaining <= ROUND_WARNING_MS ? 'text-warning' : 'text-foreground',
               )}
-              aria-label={remaining === 0 ? 'Volver a 50:00' : state.timer.running ? 'Pausar el reloj de la ronda' : 'Poner a correr el reloj de la ronda'}
-              title="Cuenta regresiva de la ronda (50 minutos); suena al llegar a cero"
+              aria-label={remaining === 0 ? t('shell.life.clock.reset') : state.timer.running ? t('shell.life.clock.pause') : t('shell.life.clock.start')}
+              title={t('shell.life.clock.hint')}
               onClick={toggleClock}
             >
               <Icon name={state.timer.running ? 'pause' : 'play'} size={22} variant="bold" />
@@ -209,7 +210,7 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
             <IconButton
               tone="ghost"
               size="sm"
-              aria-label="Volver a 50:00"
+              aria-label={t('shell.life.clock.reset')}
               disabled={!state.timer.running && remaining === ROUND_LIMIT_MS}
               className="disabled:opacity-35"
               onClick={() => dispatchLife({ type: 'timer-reset' })}
@@ -219,13 +220,13 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <IconButton tone="ghost" aria-label="Ver el registro del duelo" onClick={() => setLogOpen(true)}>
+          <IconButton tone="ghost" aria-label={t('shell.life.log.open')} onClick={() => setLogOpen(true)}>
             <Icon name="list" size={20} />
           </IconButton>
-          <IconButton tone="ghost" aria-label="Moneda, dado y avisos" onClick={() => setToolsOpen(true)}>
+          <IconButton tone="ghost" aria-label={t('shell.life.tools.title')} onClick={() => setToolsOpen(true)}>
             <Icon name="dice" size={20} />
           </IconButton>
-          <IconButton tone="ghost" aria-label="Cerrar la calculadora" onClick={onClose}>
+          <IconButton tone="ghost" aria-label={t('shell.life.close')} onClick={onClose}>
             <Icon name="x" size={20} />
           </IconButton>
         </div>
@@ -235,10 +236,10 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
       <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 [grid-area:lp]">
         <DuelistPanel player={0} lp={state.lp[0]} selected={selected === 0} onSelect={() => select(0)} />
         <div className="grid justify-items-center gap-1">
-          <MiddleAction icon="refresh" label="Reiniciar" onClick={() => setConfirmReset(true)} />
+          <MiddleAction icon="refresh" label={t('shell.life.reset')} onClick={() => setConfirmReset(true)} />
           <MiddleAction
             icon="undo"
-            label="Deshacer"
+            label={t('shell.life.undo')}
             disabled={state.log.length === 0}
             onClick={() => {
               dispatchLife({ type: 'undo' })
@@ -253,7 +254,7 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
       <div className="flex min-h-12 items-center justify-between gap-2 rounded-control bg-input px-3 [grid-area:disp]">
         <output
           aria-live="polite"
-          aria-label={digits ? `${name}: ${lp} ${operator === '-' ? 'menos' : 'más'} ${amount}` : `${name}: ${lp} LP`}
+          aria-label={digits ? t(operator === '-' ? 'shell.life.operation.minus' : 'shell.life.operation.plus', { name, lp, amount }) : `${name}: ${lp} LP`}
           className="flex min-w-0 items-baseline gap-1.5 text-[1.75rem] font-bold tabular-nums text-foreground"
         >
           <span>{lp}</span>
@@ -271,7 +272,7 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
       </div>
 
       {/* Los últimos cambios, para repetirlos con un toque sobre el duelista elegido. */}
-      <div className="grid grid-cols-3 gap-1.5 [grid-area:quick] @xl:self-start" aria-label="Repetir un cambio reciente">
+      <div className="grid grid-cols-3 gap-1.5 [grid-area:quick] @xl:self-start" aria-label={t('shell.life.recent.label')}>
         {[0, 1, 2].map((slot) => {
           const delta = recent[slot]
 
@@ -282,7 +283,7 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
               key={slot}
               type="button"
               className={cx(PRESSABLE, 'min-h-10 text-lead tabular-nums', delta < 0 ? 'bg-danger/15 text-danger-soft active:bg-danger/30' : 'bg-success/12 text-success-soft active:bg-success/25')}
-              aria-label={`${delta < 0 ? 'Restar' : 'Sumar'} ${Math.abs(delta)} a ${name}`}
+              aria-label={t(delta < 0 ? 'shell.life.recent.subtract' : 'shell.life.recent.add', { amount: Math.abs(delta), name })}
               onClick={() => applyDelta(delta)}
             >
               {delta < 0 ? '−' : '+'}
@@ -292,7 +293,7 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
         })}
       </div>
 
-      <div className="grid grid-cols-4 grid-rows-4 gap-2 [grid-area:pad]" role="group" aria-label="Teclado">
+      <div className="grid grid-cols-4 grid-rows-4 gap-2 [grid-area:pad]" role="group" aria-label={t('shell.life.keypad')}>
         {KEYS.map((key) => {
           const isOperator = key === '+' || key === '-'
           const active = isOperator && operator === key
@@ -303,14 +304,14 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
               type="button"
               className={cx(
                 KEY,
-                key === 'Borrar' ? 'text-lead' : 'text-[1.75rem]',
+                key === 'clear' ? 'text-lead' : 'text-[1.75rem]',
                 active && (key === '-' ? 'bg-danger/25 text-danger-soft active:bg-danger/35' : 'bg-success/20 text-success-soft active:bg-success/30'),
               )}
-              aria-label={key === '÷2' ? `Dejar a ${name} con la mitad` : key === '-' ? 'Restar' : key === '+' ? 'Sumar' : key === 'Borrar' ? 'Borrar lo tecleado' : undefined}
+              aria-label={key === '÷2' ? t('shell.life.key.half', { name }) : key === '-' ? t('shell.life.key.subtract') : key === '+' ? t('shell.life.key.add') : key === 'clear' ? t('shell.life.key.clearLabel') : undefined}
               aria-pressed={isOperator ? active : undefined}
               onClick={() => press(key)}
             >
-              {key === '-' ? '−' : key}
+              {key === '-' ? '−' : key === 'clear' ? t('shell.life.key.clear') : key}
             </button>
           )
         })}
@@ -320,7 +321,7 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
         type="button"
         className={cx(PRESSABLE, 'min-h-[5.25rem] bg-primary text-stat text-primary-foreground shadow-brand active:bg-primary-hover [grid-area:eq] @xl:min-h-14')}
         disabled={amount === 0}
-        aria-label={`Aplicar: ${operator === '-' ? 'restar' : 'sumar'} ${amount} a ${name}`}
+        aria-label={t(operator === '-' ? 'shell.life.apply.subtract' : 'shell.life.apply.add', { amount, name })}
         onClick={() => applyDelta(operator === '-' ? -amount : amount)}
       >
         =
@@ -330,18 +331,18 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
         isOpen={logOpen}
         onClose={() => setLogOpen(false)}
         size="sheet"
-        title="Registro del duelo"
-        subtitle={`${formatClock(remaining)} de ronda · ${state.log.length} ${state.log.length === 1 ? 'cambio' : 'cambios'}`}
+        title={t('shell.life.log.title')}
+        subtitle={t('shell.life.log.subtitle', { clock: formatClock(remaining), count: state.log.length })}
       >
         {state.log.length === 0 ? (
-          <p className="m-0 py-6 text-center text-body text-muted">Todavía no cambió ningún LP.</p>
+          <p className="m-0 py-6 text-center text-body text-muted">{t('shell.life.log.empty')}</p>
         ) : (
           <ol className="m-0 grid list-none gap-1 p-0">
             {state.log
               .map((entry, index) => (
                 <li key={index} className="grid grid-cols-[3.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-control bg-tint/5 px-3 py-2 text-body tabular-nums">
                   <span className="text-muted">{formatClock(Math.max(0, ROUND_LIMIT_MS - entry.at))}</span>
-                  <span className="truncate font-semibold text-foreground">{DUELIST_NAMES[entry.player]}</span>
+                  <span className="truncate font-semibold text-foreground">{duelistName(entry.player)}</span>
                   <span>
                     <span className={entry.delta < 0 ? 'text-danger-soft' : 'text-success-soft'}>
                       {entry.delta < 0 ? '−' : '+'}
@@ -356,15 +357,15 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
         )}
       </Modal>
 
-      <Modal isOpen={toolsOpen} onClose={() => setToolsOpen(false)} size="sm" title="Moneda, dado y avisos">
+      <Modal isOpen={toolsOpen} onClose={() => setToolsOpen(false)} size="sm" title={t('shell.life.tools.title')}>
         <ToolsPanel />
       </Modal>
 
       <ConfirmDialog
         isOpen={confirmReset}
-        title="¿Reiniciar el duelo?"
-        description={`Los dos vuelven a ${STARTING_LP} LP y se vacía el registro. El reloj de la ronda sigue como está.`}
-        confirmLabel="Reiniciar"
+        title={t('shell.life.resetDialog.title')}
+        description={t('shell.life.resetDialog.description', { lp: STARTING_LP })}
+        confirmLabel={t('shell.life.reset')}
         confirmColor="danger"
         onCancel={() => setConfirmReset(false)}
         onConfirm={() => {
@@ -372,7 +373,7 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
           setDigits('')
           setOperator('-')
           setConfirmReset(false)
-          showToast('Duelo reiniciado', 'success')
+          showToast(t('shell.life.resetDialog.done'), 'success')
         }}
       />
     </div>
@@ -382,13 +383,13 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
 function DuelistPanel({ player, lp, selected, onSelect }: { player: Duelist; lp: number; selected: boolean; onSelect: () => void }) {
   const shown = useAnimatedNumber(lp)
   const flash = useLpFlash(lp)
-  const name = DUELIST_NAMES[player]
+  const name = duelistName(player)
 
   return (
     <button
       type="button"
       aria-pressed={selected}
-      aria-label={`${name}: ${lp} LP. ${selected ? 'Elegido para la operación' : 'Elegir para la operación'}`}
+      aria-label={t(selected ? 'shell.life.duelist.selected' : 'shell.life.duelist.choose', { name, lp })}
       className={cx(PRESSABLE, '@container grid min-w-0 content-center justify-items-center gap-1 rounded-card px-1 py-3 @xl:py-1', selected ? 'bg-card-background/70' : 'bg-transparent')}
       onClick={onSelect}
     >
@@ -450,21 +451,21 @@ function ToolsPanel() {
     setToss({ id: (count.current += 1), kind: 'die', value: 1 + Math.floor(Math.random() * 6) })
     navigator.vibrate?.(12)
   }
-  const label = toss === null ? ' ' : toss.kind === 'coin' ? (toss.face === 0 ? 'Cara' : 'Cruz') : `Salió ${toss.value}`
+  const label = toss === null ? ' ' : toss.kind === 'coin' ? t(toss.face === 0 ? 'shell.life.coin.heads' : 'shell.life.coin.tails') : t('shell.life.die.rolled', { value: toss.value })
 
   return (
     <div className="grid gap-4">
       <div className="grid grid-cols-2 gap-2">
         <Button variant="secondary" onClick={throwCoin}>
-          Moneda
+          {t('shell.life.coin.button')}
         </Button>
         <Button variant="secondary" onClick={throwDie}>
-          Dado
+          {t('shell.life.die.button')}
         </Button>
       </div>
       <div className="grid min-h-44 place-items-center [perspective:40rem]">
         {toss === null ? (
-          <p className="m-0 text-body text-muted">Tocá para tirar.</p>
+          <p className="m-0 text-body text-muted">{t('shell.life.tools.tapToThrow')}</p>
         ) : toss.kind === 'coin' ? (
           <Coin key={toss.id} face={toss.face} />
         ) : (
@@ -477,9 +478,9 @@ function ToolsPanel() {
 
       {/* Para escuchar (y sentir) cómo avisa la ronda antes de que haga falta. */}
       <div className="grid gap-2 border-t border-border-subtle pt-3">
-        <span className={overline}>Probar los avisos de la ronda</span>
+        <span className={overline}>{t('shell.life.tools.testCues')}</span>
         <div className="grid grid-cols-3 gap-2">
-          {CUE_TESTS.map(([kind, label]) => (
+          {CUE_TESTS.map((kind) => (
             <Button
               key={kind}
               variant="secondary"
@@ -489,7 +490,7 @@ function ToolsPanel() {
                 playCue(kind)
               }}
             >
-              {label}
+              {kind === 'end' ? t('shell.life.tools.cueEnd') : kind === 'five' ? '5 min' : '10 min'}
             </Button>
           ))}
         </div>
@@ -498,11 +499,7 @@ function ToolsPanel() {
   )
 }
 
-const CUE_TESTS: ReadonlyArray<readonly [RoundCue, string]> = [
-  ['ten', '10 min'],
-  ['five', '5 min'],
-  ['end', 'Fin'],
-]
+const CUE_TESTS: readonly RoundCue[] = ['ten', 'five', 'end']
 
 /** El salto (con su sombra en el piso) va aparte del giro: cada uno es una animación continua y el conjunto se ve fluido. */
 function Toss({ shadowWidth, children }: { shadowWidth: string; children: React.ReactNode }) {

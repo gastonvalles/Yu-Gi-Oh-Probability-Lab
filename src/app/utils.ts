@@ -1,3 +1,4 @@
+import { numberLocale, t } from '../i18n'
 import type { DeckFormat } from '../types'
 
 export function createId(prefix: string): string {
@@ -33,7 +34,7 @@ export function toNonNegativeInteger(value: string, fallback: number): number {
 
 export function parseRequiredInteger(value: unknown, fieldName: string): number {
   if (typeof value !== 'number' || !Number.isInteger(value)) {
-    throw new Error(`"${fieldName}" debe ser un entero.`)
+    throw new Error(t('shell.parse.integer', { field: fieldName }))
   }
 
   return value
@@ -41,7 +42,7 @@ export function parseRequiredInteger(value: unknown, fieldName: string): number 
 
 export function parseRequiredString(value: unknown, fieldName: string): string {
   if (typeof value !== 'string') {
-    throw new Error(`"${fieldName}" debe ser un string.`)
+    throw new Error(t('shell.parse.string', { field: fieldName }))
   }
 
   return value
@@ -73,7 +74,7 @@ export function parseNullableString(value: unknown): string | null {
 
 export function parseArray(value: unknown, fieldName: string): unknown[] {
   if (!Array.isArray(value)) {
-    throw new Error(`"${fieldName}" debe ser un array.`)
+    throw new Error(t('shell.parse.array', { field: fieldName }))
   }
 
   return value
@@ -131,5 +132,5 @@ export function formatCopies(copies: number): string {
 }
 
 export function formatInteger(value: number): string {
-  return new Intl.NumberFormat('es-ES').format(value)
+  return new Intl.NumberFormat(numberLocale()).format(value)
 }

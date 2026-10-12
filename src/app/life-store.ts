@@ -9,6 +9,7 @@ import {
   type LifeAction,
   type LifeState,
 } from './life-calculator'
+import { t } from '../i18n'
 import { showToastMessage, type ToastTone } from './use-toast-message'
 
 /**
@@ -32,15 +33,15 @@ interface CueSpec {
   gap: number
   gain: number
   vibrate: number[]
-  message: string
+  message: 'shell.life.cue.ten' | 'shell.life.cue.five' | 'shell.life.cue.timeUp'
   tone: ToastTone
 }
 
 /** Los tres avisos de la ronda: dos toques a los 10 minutos, tres en subida a los 5, y la alarma al llegar a cero. */
 const ROUND_CUES: Record<RoundCue, CueSpec> = {
-  ten: { tones: [[660, 0.18], [660, 0.18]], gap: 0.12, gain: 0.5, vibrate: [150, 100, 150], message: 'Quedan 10 minutos de ronda', tone: 'info' },
-  five: { tones: [[660, 0.16], [784, 0.16], [988, 0.22]], gap: 0.1, gain: 0.6, vibrate: [150, 100, 150, 100, 150], message: 'Quedan 5 minutos de ronda', tone: 'warning' },
-  end: { tones: [[880, 0.35], [1175, 0.35], [880, 0.35], [1175, 0.35]], gap: 0.1, gain: 0.7, vibrate: [300, 150, 300, 150, 600], message: 'Se terminó el tiempo de la ronda', tone: 'warning' },
+  ten: { tones: [[660, 0.18], [660, 0.18]], gap: 0.12, gain: 0.5, vibrate: [150, 100, 150], message: 'shell.life.cue.ten', tone: 'info' },
+  five: { tones: [[660, 0.16], [784, 0.16], [988, 0.22]], gap: 0.1, gain: 0.6, vibrate: [150, 100, 150, 100, 150], message: 'shell.life.cue.five', tone: 'warning' },
+  end: { tones: [[880, 0.35], [1175, 0.35], [880, 0.35], [1175, 0.35]], gap: 0.1, gain: 0.7, vibrate: [300, 150, 300, 150, 600], message: 'shell.life.cue.timeUp', tone: 'warning' },
 }
 /** A cuánto del final suena cada aviso previo. */
 const CUE_BEFORE_END_MS: ReadonlyArray<readonly [RoundCue, number]> = [
@@ -131,7 +132,7 @@ export function unlockAudio(): void {
 /** Sonido, vibración y aviso de uno de los tres momentos de la ronda (también sirve para probarlos). */
 export function playCue(kind: RoundCue): void {
   soundCue(kind)
-  showToastMessage(ROUND_CUES[kind].message, ROUND_CUES[kind].tone)
+  showToastMessage(t(ROUND_CUES[kind].message), ROUND_CUES[kind].tone)
 }
 
 /** Sólo el sonido y la vibración (la alarma final los repite sin volver a avisar). */

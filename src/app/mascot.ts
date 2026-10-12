@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 
+import { t } from '../i18n'
 import { showToastMessage } from './use-toast-message'
 
 /**
@@ -63,7 +64,7 @@ export function selectMascot(id: MascotId): void {
 /** La manda a descansar (deja la pantalla libre) y avisa cómo traerla de vuelta. */
 export function restMascot(): void {
   setMascotEnabled(false)
-  showToastMessage(`${currentMascot().name} se fue a descansar. Para que vuelva, tocá el botón de mascotas junto a las redes.`, 'info')
+  showToastMessage(t('shell.mascot.restToast', { name: currentMascot().name }), 'info')
 }
 
 const listeners = new Set<() => void>()

@@ -1,6 +1,7 @@
 import { Suspense, useState } from 'react'
 
 import { useRoundCountdownLabel } from '../../app/life-store'
+import { t } from '../../i18n'
 import { LazyLifeCalculatorScreen } from '../deck-mode/lazy-steps'
 import { DraggableFab } from '../ui/DraggableFab'
 import { Icon } from '../ui/Icon'
@@ -21,7 +22,7 @@ export function LifeCalculatorFab() {
   return (
     <>
       <DraggableFab
-        label={countdown ? `Calculadora de LP. Quedan ${countdown} de ronda` : 'Abrir la calculadora de LP'}
+        label={countdown ? t('shell.life.fab.running', { countdown }) : t('shell.life.fab.open')}
         storageKey="ygo-lab:life-fab"
         lift={LIFT}
         onClick={() => setOpen(true)}
@@ -34,7 +35,7 @@ export function LifeCalculatorFab() {
         )}
       </DraggableFab>
 
-      <Modal isOpen={open} onClose={() => setOpen(false)} size="screen" bare flush hideCloseButton ariaLabel="Calculadora de LP">
+      <Modal isOpen={open} onClose={() => setOpen(false)} size="screen" bare flush hideCloseButton ariaLabel={t('shell.life.title')}>
         <Suspense fallback={null}>
           <LazyLifeCalculatorScreen onClose={() => setOpen(false)} />
         </Suspense>

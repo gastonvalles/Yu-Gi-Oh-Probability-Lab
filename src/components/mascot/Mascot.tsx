@@ -4,6 +4,7 @@ import { reactMascot, restMascot, useCurrentMascot, useMascotEnabled, useMascotS
 import { useDraggablePosition } from '../../app/use-draggable-position'
 import { useHold } from '../../app/use-hold'
 import { useMediaQuery } from '../../app/use-media-query'
+import { t } from '../../i18n'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
@@ -21,15 +22,19 @@ const ANIMATION: Record<MascotState, string> = {
 }
 /** Un cuadro quieto: para "reducir movimiento". */
 const STILL = 'idle.png'
-const TITLE: Record<MascotState, (name: string) => string> = {
-  idle: (name) => name,
-  look: (name) => `${name} mira alrededor`,
-  waiting: (name) => `${name} espera que termine de cargar`,
-  running: (name) => `${name} está calculando`,
-  review: (name) => `${name} revisa la clasificación`,
-  jumping: (name) => `${name} festeja`,
-  failed: (name) => `A ${name} no le gustó`,
-  waving: (name) => `${name} saluda`,
+/** Lo que dice la mascota de cada estado (en reposo, sólo su nombre). */
+const TITLE_KEY = {
+  look: 'shell.mascot.state.look',
+  waiting: 'shell.mascot.state.waiting',
+  running: 'shell.mascot.state.running',
+  review: 'shell.mascot.state.review',
+  jumping: 'shell.mascot.state.jumping',
+  failed: 'shell.mascot.state.failed',
+  waving: 'shell.mascot.state.waving',
+} as const
+
+function stateTitle(state: MascotState, name: string): string {
+  return state === 'idle' ? name : t(TITLE_KEY[state], { name })
 }
 const GREETED_KEY = 'ygo-lab:mascot-greeted'
 const POSITION_KEY = 'ygo-lab:mascot-position'
@@ -133,8 +138,8 @@ function ActiveMascot() {
       <div className="group relative">
         <button
           type="button"
-          aria-label={`Saludar a ${mascot.name}`}
-          title={dragging ? 'Soltala donde quieras' : `${TITLE[shown](mascot.name)} (arrastrala para moverla)`}
+          aria-label={t('shell.mascot.greet', { name: mascot.name })}
+          title={dragging ? t('shell.mascot.dropHint') : t('shell.mascot.dragHint', { title: stateTitle(shown, mascot.name) })}
           className="block h-24 w-[5.5rem] cursor-grab touch-none select-none bg-transparent p-0 [-webkit-tap-highlight-color:transparent] focus-visible:outline-none focus-visible:shadow-focus data-[dragging=true]:cursor-grabbing min-[1101px]:h-[6.5rem] min-[1101px]:w-24"
           data-dragging={dragging ? 'true' : 'false'}
           {...handlers}
@@ -195,8 +200,8 @@ function ActiveMascot() {
         {/* En escritorio la X aparece al pasar el mouse; en el celular no hay X: se la deja descansar manteniéndola apretada. */}
         <button
           type="button"
-          aria-label={`Ocultar a ${mascot.name}`}
-          title={`Ocultar a ${mascot.name}`}
+          aria-label={t('shell.mascot.hide', { name: mascot.name })}
+          title={t('shell.mascot.hide', { name: mascot.name })}
           className="absolute -right-1 -top-1 grid size-6 place-items-center rounded-full bg-lavender text-foreground opacity-0 shadow-card transition-opacity duration-150 hover:bg-lavender-hover focus-visible:opacity-100 focus-visible:outline-none focus-visible:shadow-focus group-hover:opacity-100 max-[1100px]:hidden"
           onClick={rest}
         >
@@ -206,10 +211,10 @@ function ActiveMascot() {
 
       <ConfirmDialog
         isOpen={restAsked}
-        title={`¿Darle un descanso a ${mascot.name}?`}
-        description={`${mascot.name} se va a descansar y deja la pantalla libre. Podés traerla de vuelta cuando quieras desde el botón de mascotas, junto a las redes.`}
-        confirmLabel="Darle un descanso"
-        cancelLabel="Seguir jugando"
+        title={t('shell.mascot.restDialog.title', { name: mascot.name })}
+        description={t('shell.mascot.restDialog.description', { name: mascot.name })}
+        confirmLabel={t('shell.mascot.restDialog.confirm')}
+        cancelLabel={t('shell.mascot.restDialog.cancel')}
         onCancel={() => setRestAsked(false)}
         onConfirm={rest}
       />

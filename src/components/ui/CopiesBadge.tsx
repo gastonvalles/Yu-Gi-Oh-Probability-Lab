@@ -1,4 +1,5 @@
 import { formatInteger } from '../../app/utils'
+import { t } from '../../i18n'
 import { cx } from './cx'
 
 interface CopiesBadgeProps {
@@ -16,7 +17,7 @@ export function CopiesBadge({ copies, placement = 'inline', label }: CopiesBadge
         'inline-flex flex-none items-center rounded-full bg-primary px-1.5 py-px text-micro font-bold leading-4 text-primary-foreground tabular-nums',
         placement === 'overlay' && 'absolute -bottom-1 -right-1 z-1 shadow-[0_0_0_2px_var(--background)]',
       )}
-      aria-label={label ?? `${formatInteger(copies)} copias`}>
+      aria-label={label ?? t('shell.copies', { count: copies, n: formatInteger(copies) })}>
       ×{formatInteger(copies)}
     </span>
   )

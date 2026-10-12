@@ -5,6 +5,7 @@ La idea central es ayudar a entender deck building con un flujo simple: armás e
 
 ## Qué hace la app
 
+- Español e inglés: toda la interfaz está en los dos idiomas. Se elige con el selector **ES | EN** de la barra de arriba (en el celular, del pie); si nunca se eligió, se usa el idioma del navegador. Cambiar de idioma recarga la página (lo guardado no se pierde). Los nombres y textos de las cartas los da YGOPRODeck en inglés. Cómo agregar o cambiar un texto: `docs/i18n.md`.
 - Builder visual con búsqueda de cartas por YGOPRODeck.
 - Drag & drop entre Main, Extra y Side.
 - Formatos: Sin límite, TCG, OCG, GOAT, Edison y Genesys (con banlist o puntos).
@@ -163,18 +164,20 @@ src/
     card-detail/             detalle de carta
     ui/                      botones y piezas básicas
   ygoprodeck/                cliente y parser de la API
+  i18n/                      los textos en español e inglés: `t()`, el idioma y un diccionario por área (`es/`, `en/`); ver docs/i18n.md
   __tests__/                 tests (Vitest + fast-check)
 api/
   card-image.ts              función de Vercel: sirve las imágenes de las cartas desde nuestra caché (YGOPRODeck pide no enlazarlas directo); vercel.json le reescribe /api/card-image/<carpeta>/<archivo>.jpg
-public/                      íconos, manifiesto, imagen para compartir, robots.txt, sitemap.xml, 404.html y privacidad.html (estáticos)
+public/                      íconos, manifiesto, imagen para compartir, robots.txt, sitemap.xml, 404.html, privacidad.html y privacy.html (estáticos)
 ```
 
 ## Sitio publicado
 
 - **Vista previa al compartir el link** (Discord, WhatsApp, X): las etiquetas Open Graph van en `index.html` y la imagen es `public/og-image.jpg` (1200 × 630). Los bots no ejecutan JS, por eso no pueden salir de la app.
 - **Buscadores y navegadores:** `robots.txt`, `sitemap.xml`, `favicon.ico` (16, 32, 48 y 64 px), los íconos de 192 y 512 px y `site.webmanifest` (para agregar la app a la pantalla de inicio).
-- **404 y privacidad:** Vercel sirve `404.html` en cualquier ruta que no existe. `privacidad.html` explica qué se guarda en el navegador y con quién se comunica el sitio, y trae el aviso legal; su link (el ícono "i") está junto a las redes. Dice que el sitio no tiene analíticas ni cookies: si se suman, hay que actualizarla.
+- **404 y privacidad:** Vercel sirve `404.html` en cualquier ruta que no existe. `privacidad.html` (y `privacy.html`, la misma página en inglés: el ícono "i" junto a las redes abre la del idioma elegido) explica qué se guarda en el navegador y con quién se comunica el sitio, y trae el aviso legal; la 404 está en los dos idiomas. Dice que el sitio no tiene analíticas ni cookies: si se suman, hay que actualizarla.
 - **Imágenes de las cartas:** YGOPRODeck pide no enlazar sus imágenes directamente (bloquea la IP del que lo hace). Todas las URLs de `images.ygoprodeck.com` se dibujan por `/api/card-image/<carpeta>/<archivo>.jpg` (`cardImageSrc`): en producción es la función de Vercel `api/card-image.ts` (un `rewrite` de `vercel.json` le manda la ruta en `?path=`; Vercel ya no documenta rutas dinámicas en `api/`), que se la pide a YGOPRODeck una vez y la deja un año en la caché del CDN; en desarrollo y en `preview`, Vite hace de proxy a la misma ruta. Si la función falla, `CardArt` prueba una vez con la URL original. Como las imágenes son del mismo origen, la imagen del deck en Exportar ya no pasa por images.weserv.nl.
+- **Idiomas:** `index.html` queda en español para los buscadores y los links compartidos (con `og:locale:alternate` para el inglés); en el navegador, `syncSiteMeta()` pasa la descripción al idioma elegido. El idioma se guarda en `ygo-lab:locale`; el worker del Lab lo recibe como nombre porque no ve el almacenamiento.
 - **La URL pública** (`https://yu-gi-oh-probability-lab.vercel.app`) está escrita en `index.html`, `robots.txt` y `sitemap.xml`. Si cambia el dominio, se cambia en los tres; el test `site-meta` avisa si dejan de coincidir o si falta algún archivo que enlazan.
 
 ## Scripts

@@ -2,7 +2,7 @@ import { LOCALES, getLocale, setLocale, t, type Locale } from '../../i18n'
 import { cx } from './cx'
 
 /** Cada idioma se nombra en su propio idioma: se reconoce aunque la página esté en el otro. */
-const NAMES: Record<Locale, string> = { es: 'Español', en: 'English' }
+const NAMES: Record<Locale, string> = { es: 'Español', en: 'English' } // i18n-ignore: cada idioma se nombra en el suyo
 
 /** ES | EN en la barra (y en el pie en mobile). Elegir otro idioma lo guarda y recarga la página. */
 export function LanguageSwitcher({ className }: { className?: string }) {

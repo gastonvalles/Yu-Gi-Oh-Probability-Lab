@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import { isRecord } from './utils'
 
 /**
@@ -11,7 +12,10 @@ export const MAX_LP = 999_999
 export const LIFE_STORAGE_KEY = 'ygo-lab:life-calculator'
 /** Lo que dura una ronda de torneo: el reloj cuenta para atrás desde acá y suena al llegar a cero. */
 export const ROUND_LIMIT_MS = 50 * 60 * 1000
-export const DUELIST_NAMES = ['Duelista 1', 'Duelista 2'] as const
+
+export function duelistName(player: Duelist): string {
+  return t(player === 0 ? 'shell.life.duelist.first' : 'shell.life.duelist.second')
+}
 
 export type Duelist = 0 | 1
 

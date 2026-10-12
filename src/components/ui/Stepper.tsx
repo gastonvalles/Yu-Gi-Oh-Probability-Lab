@@ -1,3 +1,4 @@
+import { t } from '../../i18n'
 import { cx } from './cx'
 import { Icon } from './Icon'
 import { NumberField } from './NumberField'
@@ -23,7 +24,7 @@ export function Stepper({ value, min, max, onChange, label, variant = 'field' }:
 
   return (
     <span role="group" aria-label={label} className={cx('inline-flex items-stretch overflow-hidden bg-input', variant === 'field' && 'rounded-control')}>
-      <button type="button" className={STEP_BUTTON} aria-label="Uno menos" disabled={atMin} onClick={() => onChange(Math.max(min, value - 1))}>
+      <button type="button" className={STEP_BUTTON} aria-label={t('shell.stepper.less')} disabled={atMin} onClick={() => onChange(Math.max(min, value - 1))}>
         <Icon name="minus" size={14} strokeWidth={2.5} />
       </button>
       <NumberField
@@ -34,7 +35,7 @@ export function Stepper({ value, min, max, onChange, label, variant = 'field' }:
         aria-label={label}
         className="w-10 bg-transparent text-center text-body font-semibold text-foreground outline-none [color-scheme:dark] focus:bg-input-hover focus-visible:shadow-focus"
       />
-      <button type="button" className={STEP_BUTTON} aria-label="Uno más" disabled={atMax} onClick={() => onChange(max === undefined ? value + 1 : Math.min(max, value + 1))}>
+      <button type="button" className={STEP_BUTTON} aria-label={t('shell.stepper.more')} disabled={atMax} onClick={() => onChange(max === undefined ? value + 1 : Math.min(max, value + 1))}>
         <Icon name="plus" size={14} strokeWidth={2.5} />
       </button>
     </span>
