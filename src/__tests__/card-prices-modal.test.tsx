@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CardDetailModal } from '../components/card-detail/CardDetailModal'
 import type { ApiCardSearchResult } from '../ygoprodeck'
@@ -10,23 +10,26 @@ vi.mock('../components/CardArt', () => ({
   CardArt: ({ name }: { name: string }) => <img alt={name} />,
 }))
 
-const { useCardPrices } = vi.hoisted(() => ({
-  useCardPrices: vi.fn((_cardId: number | null) => ({
-    status: 'ready' as const,
-    updated: '2026-10-11',
-    prices: [
-      { set: 'Justice Hunters', code: 'JUSH-EN016', rarity: "Collector's Rare", edition: '1st Edition', market: 5.86, low: null, url: 'https://www.tcgplayer.com/product/1' },
-      { set: 'Justice Hunters', code: 'JUSH-EN016', rarity: 'Ultra Rare', edition: '1st Edition', market: 1.33, low: null, url: 'https://www.tcgplayer.com/product/2' },
-      { set: 'Rarity Collection 5', code: 'RA05-EN091', rarity: 'Starlight Rare', edition: '1st Edition', market: 20.12, low: null, url: 'https://www.tcgplayer.com/product/3' },
-    ],
-  })),
-}))
+const PRICES = [
+  { set: 'Justice Hunters', code: 'JUSH-EN016', rarity: "Collector's Rare", edition: '1st Edition', market: 5.86, url: 'https://www.tcgplayer.com/product/1' },
+  { set: 'Justice Hunters', code: 'JUSH-EN016', rarity: 'Ultra Rare', edition: '1st Edition', market: 1.33, url: 'https://www.tcgplayer.com/product/2' },
+  { set: 'Rarity Collection 5', code: 'RA05-EN091', rarity: 'Starlight Rare', edition: '1st Edition', market: 20.12, url: 'https://www.tcgplayer.com/product/3' },
+]
+
+const { useCardPrices } = vi.hoisted(() => ({ useCardPrices: vi.fn() }))
 
 vi.mock('../app/use-card-prices', () => ({ useCardPrices }))
 
+beforeEach(() => {
+  // Como el hook real, devuelve el mismo objeto mientras no cambie nada.
+  const state = { status: 'ready', updated: '2026-10-11', prices: PRICES }
+
+  useCardPrices.mockImplementation(() => state)
+})
+
 afterEach(() => {
   cleanup()
-  useCardPrices.mockClear()
+  useCardPrices.mockReset()
 })
 
 const card: ApiCardSearchResult = {
@@ -79,6 +82,69 @@ describe('precios en el detalle de la carta', () => {
     expect(headings[1]!.closest('header')).toHaveTextContent('1 impresión')
     expect(headings[0]!.closest('header')!.style.backgroundImage).toContain('https://images.ygoprodeck.com/images/sets/JUSH.jpg')
     expect(headings[1]!.closest('header')!.style.backgroundImage).toContain('https://images.ygoprodeck.com/images/sets/RA05.jpg')
+  })
+
+  it('muestra todas las expansiones juntas, sin botones de "ver más"', () => {
+    openPrices()
+
+    expect(screen.queryByRole('button', { name: /expansi/ })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Mostrando/)).not.toBeInTheDocument()
+  })
+
+  describe('buscador por código o rareza', () => {
+    const search = (text: string) => fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar por código o rareza' }), { target: { value: text } })
+    const headings = () => screen.queryAllByRole('heading', { level: 4 }).map((heading) => heading.textContent)
+
+    it('filtra por rareza y deja sólo las expansiones que tienen coincidencias', () => {
+      openPrices()
+      search('starlight')
+
+      expect(headings()).toEqual(['Rarity Collection 5'])
+      expect(screen.queryByText('JUSH-EN016')).not.toBeInTheDocument()
+    })
+
+    it('filtra por código', () => {
+      openPrices()
+      search('jush-en016')
+
+      expect(headings()).toEqual(['Justice Hunters'])
+      expect(screen.getAllByText('JUSH-EN016')).toHaveLength(2)
+    })
+
+    it('al borrar lo escrito vuelven todas', () => {
+      openPrices()
+      search('ultra')
+      expect(headings()).toEqual(['Justice Hunters'])
+
+      search('')
+      expect(headings()).toEqual(['Justice Hunters', 'Rarity Collection 5'])
+    })
+
+    it('si nada coincide lo dice', () => {
+      openPrices()
+      search('zzz')
+
+      expect(headings()).toEqual([])
+      expect(screen.getByText('Ninguna impresión coincide con “zzz”.')).toBeInTheDocument()
+    })
+
+    it('una carta con una sola impresión no muestra el buscador', () => {
+      const state = { status: 'ready', updated: '2026-10-11', prices: PRICES.slice(0, 1) }
+
+      useCardPrices.mockImplementation(() => state)
+      openPrices()
+
+      expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
+    })
+  })
+
+  it('una carta sin precios lo dice', () => {
+    const state = { status: 'ready', updated: '2026-10-11', prices: [] }
+
+    useCardPrices.mockImplementation(() => state)
+    openPrices()
+
+    expect(screen.getByText('No hay precios de TCGplayer para esta carta.')).toBeInTheDocument()
   })
 
   it('los precios se piden recién al tocar la moneda, no al abrir la carta', () => {
