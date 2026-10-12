@@ -13,8 +13,9 @@ import { overline } from './typography'
 /**
  * Tamaños fijos: el panel no crece ni se achica según el contenido (el cuerpo scrollea por dentro).
  * 'sm' es para avisos y confirmaciones; en mobile los de contenido ocupan toda la pantalla.
- * 'board' es la mesa de práctica: angosta como en el celu, y en escritorio se ensancha para el campo completo y el
- * panel de pasos.
+ * 'board' es la mesa de práctica: en el celu es una hoja pegada abajo de la altura del contenido (campo, salidas
+ * y mano, sin espacio muerto; la mano queda al alcance del pulgar); en escritorio se ensancha para el campo
+ * completo y el panel de pasos.
  */
 type ModalSize = 'sm' | 'md' | 'full' | 'board' | 'sheet' | 'screen'
 
@@ -25,7 +26,8 @@ const SIZE_CLASS: Record<ModalSize, string> = {
   /** Toda la pantalla (menos el margen): para contenido con la estructura del builder. */
   full: `w-full h-[calc(100dvh-2rem)] ${FULL_HEIGHT_MOBILE}`,
   md: `w-[min(44rem,100%)] h-[min(40rem,calc(100dvh-2rem))] ${FULL_HEIGHT_MOBILE}`,
-  board: `w-[min(40rem,100%)] h-[min(46rem,calc(100dvh-2rem))] min-[1101px]:w-[min(78rem,100%)] min-[1101px]:h-[min(50rem,calc(100dvh-2rem))] ${FULL_HEIGHT_MOBILE}`,
+  board:
+    'w-[min(40rem,100%)] h-[min(46rem,calc(100dvh-2rem))] max-sm:h-auto max-sm:max-h-[min(96dvh,52rem)] max-sm:w-full max-sm:rounded-b-none max-sm:border-b-0 min-[1101px]:w-[min(78rem,100%)] min-[1101px]:h-[min(50rem,calc(100dvh-2rem))]',
   sheet: 'w-[min(70rem,100%)] h-[min(46rem,calc(100dvh-2rem))] min-[1101px]:h-[min(33rem,calc(100dvh-2rem))] max-sm:h-[min(94dvh,52rem)] max-sm:w-full max-sm:rounded-b-none max-sm:border-b-0',
   /** La calculadora de LP: toda la pantalla en el celular (sin margen ni bordes); en escritorio, un panel del tamaño de un celular. */
   screen:
@@ -92,6 +94,9 @@ export function Modal({
   const id = useId()
   const titleId = `${id}-title`
   const panelRef = useRef<HTMLDivElement>(null)
+  // El fondo cierra sólo si el toque empezó ahí: si empezó en el panel y el panel se achicó o movió antes de
+  // soltar (se cerró una explicación, cambió el contenido), el click cae en el fondo pero no es un cierre.
+  const pressedBackdropRef = useRef(false)
 
   useBodyScrollLock(isOpen)
   useEscapeKey(onClose, isOpen && dismissible)
@@ -102,11 +107,21 @@ export function Modal({
   }
 
   const hasHeader = !bare && (kicker || title || subtitle)
+  const sheet = size === 'sheet' || size === 'board'
 
   return createPortal(
     <div
-      className={cx('fixed inset-0 grid place-items-center overscroll-contain bg-background/80 p-2 sm:p-4', above ? 'z-260' : 'z-180', size === 'sheet' && 'max-sm:place-items-end max-sm:p-0', size === 'screen' && 'max-[1100px]:p-0!')}
-      onClick={dismissible ? onClose : undefined}
+      className={cx('fixed inset-0 grid place-items-center overscroll-contain bg-background/80 p-2 sm:p-4', above ? 'z-260' : 'z-180', sheet && 'max-sm:place-items-end max-sm:p-0', size === 'screen' && 'max-[1100px]:p-0!')}
+      onPointerDown={(event) => {
+        pressedBackdropRef.current = event.target === event.currentTarget
+      }}
+      onClick={
+        dismissible
+          ? (event) => {
+              if (pressedBackdropRef.current && event.target === event.currentTarget) onClose()
+            }
+          : undefined
+      }
     >
       <div
         ref={panelRef}
@@ -117,7 +132,7 @@ export function Modal({
         aria-label={hasHeader && title ? undefined : ariaLabel}
         className={cx(
           'relative flex max-h-[calc(100dvh-1rem)] min-h-0 flex-col overflow-hidden p-0 outline-none motion-reduce:animate-none',
-          size === 'sheet' ? 'max-sm:animate-sheet-up sm:animate-dialog-enter' : 'animate-dialog-enter',
+          sheet ? 'max-sm:animate-sheet-up sm:animate-dialog-enter' : 'animate-dialog-enter',
           'sm:max-h-[calc(100dvh-2rem)]',
           surface.panel,
           SIZE_CLASS[size],

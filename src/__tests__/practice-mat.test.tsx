@@ -89,8 +89,11 @@ describe('la mesa de práctica', () => {
 
     expect(screen.getByRole('menu', { name: 'Ash Blossom' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+    // Segundo paso: en ataque o boca abajo.
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['En ataque', 'Boca abajo'])
+    fireEvent.click(screen.getByRole('menuitem', { name: 'En ataque' }))
     expect(screen.queryByRole('menu', { name: 'Ash Blossom' })).not.toBeInTheDocument()
-    expect(within(status()).getByText('Tocá la zona para Invocación Normal')).toBeInTheDocument()
+    expect(within(status()).getByText('Tocá la zona para Invocación Normal: en ataque')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
 
     expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' })).toBeInTheDocument()
@@ -167,6 +170,41 @@ describe('la mesa de práctica', () => {
     expect(within(status()).getByText('Robás Imperm')).toBeInTheDocument()
   })
 
+  it('soltar una carta de la mano en una zona pregunta cómo sale (Normal o Especial, en ataque, boca abajo o en defensa)', () => {
+    render(<Harness />)
+
+    const mz1 = zone('Zona de monstruo 1')
+    document.elementFromPoint = () => mz1
+    document.elementsFromPoint = () => [mz1]
+
+    const ash = within(hand()).getByRole('listitem', { name: 'Ash Blossom' })
+    fireEvent.pointerDown(ash, { ...pointer, clientX: 10, clientY: 10 })
+    fireEvent.pointerMove(ash, { ...pointer, clientX: 40, clientY: 60 })
+    fireEvent.pointerMove(ash, { ...pointer, clientX: 80, clientY: 120 })
+    fireEvent.pointerUp(ash, { ...pointer, clientX: 80, clientY: 120 })
+
+    // La carta sigue en la mano hasta que se elige.
+    expect(within(hand()).getByRole('listitem', { name: 'Ash Blossom' })).toBeInTheDocument()
+    const menu = screen.getByRole('menu', { name: 'Ash Blossom' })
+    expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Invocación Normal: en ataque', 'Invocación Normal: boca abajo', 'Invocación Especial: en ataque', 'Invocación Especial: en defensa'])
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Invocación Especial: en defensa' }))
+
+    expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom, en defensa' })).toBeInTheDocument()
+    expect(within(status()).getByText('Invocación Especial de Ash Blossom en defensa')).toBeInTheDocument()
+
+    // Una Mágica soltada en la zona de Mágicas y Trampas: Activar o Colocar.
+    const st1 = zone('Zona de magia y trampa 1')
+    document.elementFromPoint = () => st1
+    document.elementsFromPoint = () => [st1]
+    const called = within(hand()).getByRole('listitem', { name: 'Called by the Grave' })
+    fireEvent.pointerDown(called, { ...pointer, clientX: 10, clientY: 10 })
+    fireEvent.pointerMove(called, { ...pointer, clientX: 80, clientY: 120 })
+    fireEvent.pointerUp(called, { ...pointer, clientX: 80, clientY: 120 })
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Activar', 'Colocar'])
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Colocar' }))
+    expect(within(zone('Zona de magia y trampa 1')).getByRole('button', { name: 'Called by the Grave, boca abajo' })).toBeInTheDocument()
+  })
+
   it('el visor del deck permite buscar una carta a la mano y baraja al cerrar', () => {
     render(<Harness />)
 
@@ -212,7 +250,15 @@ describe('la mesa de práctica', () => {
     expect(within(status()).getByText('Mano inicial')).toBeInTheDocument()
     expect(within(hand()).getAllByRole('listitem')).toHaveLength(5)
 
+    // Se reproduce solo (con pausa y velocidad); la lista de pasos lleva la última jugada arriba.
+    expect(screen.getByRole('button', { name: 'Pausar' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Velocidad ×1' }))
+    expect(screen.getByRole('button', { name: 'Velocidad ×2' })).toBeInTheDocument()
+    fireEvent.click(within(aside).getByRole('radio', { name: 'Pasos' }))
+    expect(within(within(aside).getByRole('list', { name: 'Jugadas' })).getAllByRole('button').map((item) => item.textContent)).toEqual(['2Colocás Called by the Grave', '1Invocación Especial de Ash Blossom en defensa', '0Mano inicial'])
+
     fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    expect(screen.getByRole('button', { name: 'Reproducir' })).toBeInTheDocument()
     expect(within(status()).getByText('1/2')).toBeInTheDocument()
     expect(within(status()).getByText('Invocación Especial de Ash Blossom en defensa')).toBeInTheDocument()
     expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom, en defensa' })).toBeInTheDocument()
@@ -226,6 +272,7 @@ describe('la mesa de práctica', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Anterior' }))
     tap(within(hand()).getByRole('listitem', { name: 'Nibiru' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'En ataque' }))
     fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 2: elegir' }))
     expect(within(status()).getByText('2/2')).toBeInTheDocument()
     expect(within(status()).getByText('Invocación Normal de Nibiru')).toBeInTheDocument()

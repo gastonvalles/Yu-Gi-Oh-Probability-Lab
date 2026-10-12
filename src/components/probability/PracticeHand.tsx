@@ -75,6 +75,8 @@ interface PracticeHandProps {
   targeted: ReadonlySet<string>
   /** Rect del mazo: de ahí salen las cartas al repartirse. */
   getDeckRect: () => DOMRect | null
+  /** Si una carta que aparece en la mano se reparte desde el mazo o ya la trae otra animación (vuelve de una zona). */
+  dealsFromDeck?: (id: string) => boolean
   /**
    * El campo (su rect y el ancho de una zona): al arrastrar una carta hacia él se va achicando hasta el
    * tamaño de la zona, con un poco de perspectiva, como si se hundiera en la mesa.
@@ -123,7 +125,7 @@ function dropTargetAt(x: number, y: number, dragged: HTMLElement): { element: HT
  * Mano en abanico: un toque abre el menú de la carta, se reordena arrastrando dentro de la mano, se
  * arrastra fuera de la mano hasta una zona de la mesa, y se reparte desde el mazo.
  */
-export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highlighted, highlightKind, muted, flash, targeted, getDeckRect, getField, onReorder, onTap, onDragOver, onDrop, className }: PracticeHandProps) {
+export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highlighted, highlightKind, muted, flash, targeted, getDeckRect, dealsFromDeck, getField, onReorder, onTap, onDragOver, onDrop, className }: PracticeHandProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const width = useElementWidth(containerRef) || FALLBACK_WIDTH
   const slots = Math.max(cards.length, sizeSlots)
@@ -330,6 +332,7 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highl
             flashKey={flashing ? flash.key : null}
             targeted={targeted.has(card.id)}
             getDeckRect={getDeckRect}
+            flyIn={dealsFromDeck ? dealsFromDeck(card.id) : true}
             containerRef={containerRef}
             onPointerDown={(event) => handlePointerDown(event, card.id)}
             onPointerMove={handlePointerMove}
@@ -356,6 +359,8 @@ interface HandCardProps {
   flashKey: number | null
   targeted: boolean
   getDeckRect: () => DOMRect | null
+  /** false: la carta llega de otro lado de la mesa (la trae el vuelo entre zonas), sin el reparto desde el mazo. */
+  flyIn: boolean
   containerRef: React.RefObject<HTMLDivElement | null>
   onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void
   onPointerMove: (event: ReactPointerEvent<HTMLDivElement>) => void
@@ -376,6 +381,7 @@ function HandCard({
   flashKey,
   targeted,
   getDeckRect,
+  flyIn,
   containerRef,
   onPointerDown,
   onPointerMove,
@@ -394,7 +400,7 @@ function HandCard({
     const container = containerRef.current
     const deck = getDeckRect()
 
-    if (!element || !back || !container || typeof element.animate !== 'function' || prefersReducedMotion()) {
+    if (!flyIn || !element || !back || !container || typeof element.animate !== 'function' || prefersReducedMotion()) {
       back?.style.setProperty('display', 'none')
       return
     }
@@ -445,6 +451,7 @@ function HandCard({
       tabIndex={0}
       aria-label={targeted ? `${card.name} (objetivo)` : card.name}
       title={card.name}
+      data-card-id={card.id}
       className={HAND_CARD}
       data-state={state}
       data-glow={glow ? 'true' : 'false'}

@@ -614,7 +614,7 @@ export function freeTargets(state: MatState, zones: readonly MatSpot[]): MatTarg
 
 /**
  * Lo que se puede hacer con una carta desde donde está: el menú al tocarla (cubre todo lo que hace el arrastre),
- * con las jugadas del juego: Invocación Normal / Colocar desde la mano, Invocación Especial desde cualquier lado,
+ * con las jugadas del juego: Invocación Normal (en ataque o boca abajo) desde la mano, Invocación Especial desde cualquier lado,
  * Invocación por Volteo de un monstruo boca abajo, Activar efecto (con descarte como costo si está en la mano),
  * escalas de péndulo, revelar, descartar, desterrar. Las Trampas no se activan desde la mano; los Link no van a
  * defensa; las fichas no se colocan boca abajo ni salen del campo.
@@ -641,7 +641,6 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     const item = placeItem(label, zones, pos, how)
     if (item) items.push(item)
   }
-  const summon = (label: string, pos: MatPos, how: MatSummon) => placeIn(label, ['mz', 'emz'], pos, how)
   /** Invocación Especial: primero se elige la posición (un Link sale en ataque, no tiene defensa). */
   const specialSummon = () => {
     const attack = placeItem('En ataque', ['mz', 'emz'], 'atk', 'special')
@@ -710,14 +709,17 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
       const tributes = tributesFor(kind.level)
 
       if (tributes === 0) {
-        summon('Invocación Normal', 'atk', 'normal')
-        summon('Colocar boca abajo', 'set', 'normal')
+        // Invocación Normal: primero se elige si sale en ataque o boca abajo (Colocar), como con la Especial.
+        const attack = placeItem('En ataque', ['mz', 'emz'], 'atk', 'normal')
+        const set = placeItem('Boca abajo', ['mz', 'emz'], 'set', 'normal')
+
+        if (attack && set) items.push({ label: 'Invocación Normal', action: attack.action, choices: [attack, set] })
       } else if (monstersOnField(state).length >= tributes) {
-        // Nivel 5+: primero se eligen los Sacrificios y después la zona (la mesa completa `tributes`, `zone` e `index`).
-        add(`Invocación por Sacrificio (${tributes})`, { type: 'tribute', id, tributes: [], zone: 'mz', index: 0, pos: 'atk' })
-        add(`Colocar por Sacrificio (${tributes})`, { type: 'tribute', id, tributes: [], zone: 'mz', index: 0, pos: 'set' })
-        items[items.length - 2]!.tributes = tributes
-        items[items.length - 1]!.tributes = tributes
+        // Nivel 5+: posición, después los Sacrificios y al final la zona (la mesa completa `tributes`, `zone` e `index`).
+        const tribute = (label: string, pos: MatPos): MatMenuItem => ({ label, action: { type: 'tribute', id, tributes: [], zone: 'mz', index: 0, pos }, tributes })
+        const attack = tribute('En ataque', 'atk')
+
+        items.push({ label: `Invocación por Sacrificio (${tributes})`, action: attack.action, choices: [attack, tribute('Boca abajo', 'set')] })
       }
     }
 
