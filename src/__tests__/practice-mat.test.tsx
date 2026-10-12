@@ -233,6 +233,19 @@ describe('la mesa de práctica', () => {
     expect(screen.getByRole('button', { name: 'GY: 0' })).toBeInTheDocument()
   })
 
+  it('al avanzar un paso del replay, activar un efecto destella la carta en el centro y marcar un objetivo sólo le pone el aro', () => {
+    render(<Harness actions={[{ type: 'activate', id: 'card-1-1' }, { type: 'target', id: 'card-2-1' }]} />)
+
+    expect(document.querySelector('[data-activation]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    expect(document.querySelector('[data-activation="card-1-1"]')).not.toBeNull()
+    expect(within(hand()).getByRole('listitem', { name: 'Ash Blossom' })).toHaveAttribute('data-flash', 'true')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    expect(document.querySelector('[data-activation]')).toBeNull()
+    expect(within(hand()).getByRole('listitem', { name: 'Maxx C (objetivo)' })).toHaveAttribute('data-flash', 'true')
+  })
+
   it('el visor del deck permite buscar una carta a la mano y baraja al cerrar', () => {
     render(<Harness />)
 

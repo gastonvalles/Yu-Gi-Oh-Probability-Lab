@@ -792,12 +792,12 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     }
 
     if (kind.trap) {
-      // "To S/T" en DuelingBook: la Trampa que se activa desde la mano por su propio efecto sale boca arriba.
-      placeIn('A la zona de Mágicas y Trampas', ['st'], 'atk')
+      // La Trampa que se activa desde la mano por su propio efecto (una hand trap) sale boca arriba a la zona, y destella.
+      placeIn('Activar efecto', ['st'], 'atk')
       placeIn('Colocar', ['st'], 'set')
     }
 
-    // Un efecto desde la mano (hand trap): se activa (destella) y después la carta va a donde diga el costo.
+    // Un efecto de monstruo desde la mano (hand trap): se activa (destella) y después la carta va a donde diga el costo.
     if (kind.monster && kind.effect) add('Activar efecto', { type: 'activate', id })
     add('Revelar', { type: 'reveal', id })
     target()

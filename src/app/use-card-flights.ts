@@ -12,6 +12,9 @@ const FLIGHT_ID = 'mat-flight'
 
 interface Snapshot {
   rect: DOMRect
+  /** Tamaño de layout (sin transformaciones): el fantasma se dibuja con este, aunque la carta estuviera girada o en pleno vuelo al medirse. */
+  width: number
+  height: number
   art: string | null
 }
 
@@ -41,9 +44,9 @@ const centerX = (rect: DOMRect) => rect.left + rect.width / 2
 const centerY = (rect: DOMRect) => rect.top + rect.height / 2
 const near = (a: DOMRect, b: DOMRect) => Math.abs(a.left - b.left) < 1 && Math.abs(a.top - b.top) < 1 && Math.abs(a.width - b.width) < 1
 
-/** FLIP: transformación que lleva el elemento desde donde estaba (`from`) hasta donde está (`to`); el tamaño se compara por el lado largo (las cartas de costado). */
+/** FLIP: transformación que lleva el elemento desde donde estaba (`from`) hasta donde está (`to`); el tamaño se compara por el lado largo (las cartas de costado) y se acota por si la medición agarró una animación a medias. */
 function offset(from: DOMRect, to: DOMRect): string {
-  const scale = Math.max(from.width, from.height) / Math.max(1, to.width, to.height)
+  const scale = Math.min(3, Math.max(0.3, Math.max(from.width, from.height) / Math.max(1, to.width, to.height)))
 
   return `translate(${centerX(from) - centerX(to)}px, ${centerY(from) - centerY(to)}px) scale(${scale})`
 }
@@ -78,7 +81,7 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
     }
 
     const previous = previousRef.current
-    previousRef.current = { state, cards: new Map([...current].map(([id, { rect }]) => [id, { rect, art: artOf(id) }])) }
+    previousRef.current = { state, cards: new Map([...current].map(([id, { element, rect }]) => [id, { rect, width: element.offsetWidth, height: element.offsetHeight, art: artOf(id) }])) }
 
     if (!previous || previous.state === state || prefersReducedMotion()) return
 
@@ -101,7 +104,10 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
 
       const home = homeOf(root, state, id)
       const to = home?.getBoundingClientRect() ?? null
-      const { left, top, width, height } = snapshot.rect
+      // Sale centrado donde estaba la carta, con su tamaño de layout (no el del rect, que puede ser el de una carta girada o en vuelo).
+      const { width, height } = snapshot
+      const left = centerX(snapshot.rect) - width / 2
+      const top = centerY(snapshot.rect) - height / 2
       const ghost = document.createElement('div')
       ghost.className = 'pointer-events-none fixed left-0 top-0 z-200 overflow-hidden rounded-tag bg-input shadow-[0_12px_28px_rgba(0,0,0,0.5)]'
       ghost.style.width = `${width}px`
