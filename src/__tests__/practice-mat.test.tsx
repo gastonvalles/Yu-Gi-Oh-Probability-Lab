@@ -226,9 +226,9 @@ describe('la mesa de práctica', () => {
     expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom (Material)' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
 
-    // Quedan varias zonas libres (la de Ash también): se elige una.
-    fireEvent.click(screen.getByRole('button', { name: 'Zona extra de monstruo 1: elegir' }))
-    expect(within(zone('Zona extra de monstruo 1')).getByRole('button', { name: 'Zeus' })).toBeInTheDocument()
+    // Quedan varias zonas para elegir, incluida la de Ash (que se va como material y sigue marcada): tocar a Ash elige esa zona.
+    tap(within(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' })).getByRole('button', { name: 'Ash Blossom (Material)' }))
+    expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Zeus' })).toBeInTheDocument()
     expect(within(status()).getByText('Invocación Xyz de Zeus (materiales: Ash Blossom)')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'GY: 0' })).toBeInTheDocument()
   })

@@ -413,6 +413,16 @@ export function PracticeMat({
         return
       }
 
+      // Eligiendo la zona, tocar la carta que la ocupa (un Sacrificio o un material que se va) elige esa zona, como en el juego real.
+      if (picking?.kind === 'zone') {
+        const where = locateCard(state, id)
+
+        if (where?.kind === 'spot' && picking.targets.some((target) => target.zone === where.spot && target.index === where.index)) {
+          pickZone(where.spot, where.index)
+          return
+        }
+      }
+
       setPicking(null)
       setMenu({ kind: 'card', id, rect })
     },
@@ -598,7 +608,9 @@ export function PracticeMat({
   // Eligiendo Sacrificios o materiales, los monstruos del campo se encienden y el elegido lleva su etiqueta.
   const choosingOnField = picking?.kind === 'tributes' || picking?.kind === 'materials'
   const tributeCandidates = choosingOnField ? monstersOnField(state) : []
-  const chosenLabel = picking?.kind === 'materials' ? 'Material' : 'Sacrificio'
+  // Eligiendo la zona, los Sacrificios o materiales ya confirmados siguen marcados: su zona se libera y también se puede elegir.
+  const leaving = picking?.kind === 'zone' ? (picking.action.type === 'tribute' ? picking.action.tributes : picking.action.type === 'summon' ? picking.action.materials : []) : []
+  const chosenLabel = picking?.kind === 'materials' || (picking?.kind === 'zone' && picking.action.type === 'summon') ? 'Material' : 'Sacrificio'
   const targetedIds = useMemo(() => new Set(state.targeted), [state.targeted])
 
   const cell = (spot: MatSpot, index: number, area: string) => {
@@ -608,7 +620,7 @@ export function PracticeMat({
     const gem = spot === 'st' ? PENDULUM_GEM[index] : undefined
     const pickableZone = picking?.kind === 'zone' && picking.targets.some((target) => target.zone === spot && target.index === index)
     const pickableTribute = choosingOnField && placed !== null && tributeCandidates.includes(placed.id)
-    const chosen = (picking?.kind === 'tributes' || picking?.kind === 'materials') && placed !== null && picking.chosen.includes(placed.id)
+    const chosen = placed !== null && (((picking?.kind === 'tributes' || picking?.kind === 'materials') && picking.chosen.includes(placed.id)) || leaving.includes(placed.id))
 
     return (
       <div
