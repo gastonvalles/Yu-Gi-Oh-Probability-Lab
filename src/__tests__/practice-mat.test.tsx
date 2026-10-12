@@ -52,7 +52,6 @@ function Harness({ initial = INITIAL, actions = NO_ACTIONS }: { initial?: MatSta
       onSeek={mat.seek}
       onLoadCombo={(combo) => start(combo.initial, combo.actions, combo.names)}
       onNewHand={() => start(INITIAL)}
-      onBack={() => {}}
     />
   )
 }
@@ -87,10 +86,10 @@ describe('la mesa de práctica', () => {
     expect(within(hand()).getAllByRole('listitem')).toHaveLength(5)
     tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
 
-    expect(screen.getByRole('dialog', { name: 'Ash Blossom' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Invocar en ataque' }))
+    expect(screen.getByRole('menu', { name: 'Ash Blossom' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocar en ataque' }))
 
-    expect(screen.queryByRole('dialog', { name: 'Ash Blossom' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('menu', { name: 'Ash Blossom' })).not.toBeInTheDocument()
     expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' })).toBeInTheDocument()
     expect(within(hand()).queryByRole('listitem', { name: 'Ash Blossom' })).not.toBeInTheDocument()
     expect(within(status()).getByText('Invocás Ash Blossom en ataque')).toBeInTheDocument()
@@ -118,7 +117,7 @@ describe('la mesa de práctica', () => {
     expect(within(status()).getByText('Maxx C va al cementerio')).toBeInTheDocument()
 
     tap(screen.getByRole('button', { name: 'Deck: 1' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Robar' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Robar' }))
     expect(screen.getByRole('button', { name: 'Deck: 0' })).toBeInTheDocument()
     expect(within(hand()).getByRole('listitem', { name: 'Imperm' })).toBeInTheDocument()
     expect(within(status()).getByText('Robás Imperm')).toBeInTheDocument()
@@ -128,11 +127,11 @@ describe('la mesa de práctica', () => {
     render(<Harness />)
 
     tap(screen.getByRole('button', { name: 'Deck: 1' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Ver el deck' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ver el deck' }))
 
     const viewer = screen.getByRole('dialog', { name: 'Deck · 1' })
     fireEvent.click(within(viewer).getByRole('button', { name: 'Imperm' }))
-    fireEvent.click(screen.getByRole('button', { name: 'A la mano' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'A la mano' }))
 
     expect(within(hand()).getByRole('listitem', { name: 'Imperm' })).toBeInTheDocument()
     expect(screen.queryByRole('dialog', { name: 'Deck · 1' })).not.toBeInTheDocument()
@@ -144,9 +143,9 @@ describe('la mesa de práctica', () => {
     render(<Harness />)
 
     tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Invocar en defensa' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocar en defensa' }))
     tap(within(hand()).getByRole('listitem', { name: 'Called by the Grave' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Colocar' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Colocar' }))
 
     fireEvent.click(screen.getByRole('button', { name: 'Guardar combo' }))
     const dialog = screen.getByRole('dialog', { name: 'Guardar combo' })
@@ -179,7 +178,7 @@ describe('la mesa de práctica', () => {
     // Una jugada nueva a mitad de la reproducción deja de lado lo que seguía.
     fireEvent.click(screen.getByRole('button', { name: 'Anterior' }))
     tap(within(hand()).getByRole('listitem', { name: 'Nibiru' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Invocar en ataque' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocar en ataque' }))
     expect(within(status()).getByText('2/2')).toBeInTheDocument()
     expect(within(status()).getByText('Invocás Nibiru en ataque')).toBeInTheDocument()
     expect(within(hand()).getByRole('listitem', { name: 'Called by the Grave' })).toBeInTheDocument()

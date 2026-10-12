@@ -81,10 +81,6 @@
   --animate-sheet-up: sheet-up var(--motion-duration) ease-out both;
   --animate-sheet-in: sheet-in var(--motion-duration) ease-out both;
   --animate-card-glow: card-glow var(--motion-duration) ease-out;
-  --animate-pile-draw: pile-draw 200ms ease-out;
-  --animate-pile-ring: pile-ring var(--motion-duration) ease-out infinite;
-  --animate-riffle-left: riffle-left var(--motion-duration) ease-in-out;
-  --animate-riffle-right: riffle-right var(--motion-duration) ease-in-out;
 
   /* Brillo de carga: sólo se mueve un degradé con transform (compuesto en la GPU, sin repintar). */
   @keyframes shimmer {
@@ -243,54 +239,6 @@
 
     100% {
       filter: brightness(1);
-    }
-  }
-
-  @keyframes pile-draw {
-    0% {
-      transform: translate(0, 0) rotate(0deg);
-    }
-
-    40% {
-      transform: translate(-8px, -12px) rotate(-8deg);
-    }
-
-    100% {
-      transform: translate(0, 0) rotate(0deg);
-    }
-  }
-
-  @keyframes pile-ring {
-    0% {
-      opacity: 0.9;
-      transform: scale(0.96);
-    }
-
-    100% {
-      opacity: 0;
-      transform: scale(1.35);
-    }
-  }
-
-  @keyframes riffle-left {
-    0%,
-    100% {
-      transform: translate(-3px, 3px);
-    }
-
-    50% {
-      transform: translate(-14px, 3px) rotate(-6deg);
-    }
-  }
-
-  @keyframes riffle-right {
-    0%,
-    100% {
-      transform: translate(-1.5px, 1.5px);
-    }
-
-    50% {
-      transform: translate(11px, 1.5px) rotate(6deg);
     }
   }
 

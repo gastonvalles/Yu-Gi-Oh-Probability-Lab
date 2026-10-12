@@ -76,7 +76,7 @@ interface SavedCombosListProps {
 }
 
 /** Los combos guardados en este dispositivo: cargar uno lo reproduce en la mesa; borrar pide confirmación. */
-export function SavedCombosList({ combos, deckName, onLoad, onDelete }: SavedCombosListProps) {
+function SavedCombosList({ combos, deckName, onLoad, onDelete }: SavedCombosListProps) {
   const [deleting, setDeleting] = useState<SavedCombo | null>(null)
   const ordered = [...combos].sort(
     (a, b) => Number(b.deckName === deckName) - Number(a.deckName === deckName) || a.deckName.localeCompare(b.deckName, 'es') || b.savedAt.localeCompare(a.savedAt),

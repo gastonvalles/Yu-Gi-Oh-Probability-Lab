@@ -9,7 +9,7 @@ import { createMatState, randomSeed, shuffleWithSeed } from '../../app/practice-
 import { useMatSession } from '../../app/use-mat-session'
 import type { DeckCardInstance } from '../../app/model'
 import type { SavedCombo } from '../../app/saved-combos'
-import { buildPracticeDeck, type PracticeHandCard } from '../probability/practice'
+import { buildPracticeDeck } from '../probability/practice'
 import { CardDetailModal } from '../card-detail/CardDetailModal'
 import { DeckBuilderStep } from './DeckBuilderStep'
 import { LifeCalculatorFab } from '../life/LifeCalculatorFab'
@@ -31,7 +31,6 @@ import {
   LazyDeckRolesPanel,
   LazyExportDeckPanel,
   LazyMetaScreen,
-  LazyPracticeMat,
   LazyPracticeSection,
   LazyProbabilityPanel,
   preloadHeavySteps,
@@ -381,9 +380,8 @@ function PracticeFab({
     [patterns],
   )
 
-  // La mesa (jugar la mano sobre el campo) vive acá y no en el modal: cerrarlo no pierde la partida ni el combo en curso.
-  const [view, setView] = useState<'hand' | 'mat'>('hand')
-  const mat = useMatSession()
+  // La mesa vive acá y no en el modal: cerrarlo no pierde la partida ni el combo en curso.
+  const { session, state, start, dispatch, undo, seek } = useMatSession()
   const mainIds = useMemo(() => buildPracticeDeck(derivedMainCards).map((card) => card.drawId), [derivedMainCards])
   const extraCards = useMemo(() => buildPracticeDeck(deriveMainDeckCardsFromZone(extraZone)), [extraZone])
   const extraIds = useMemo(() => extraCards.map((card) => card.drawId), [extraCards])
@@ -392,24 +390,15 @@ function PracticeFab({
     [derivedMainCards, extraCards],
   )
 
-  const playHand = useCallback(
-    (hand: PracticeHandCard[], remaining: PracticeHandCard[]) => {
-      const deck = [...hand.map((card) => card.drawId), ...shuffleWithSeed(remaining.map((card) => card.drawId), randomSeed())]
-      mat.start(createMatState(deck, extraIds, hand.length))
-      setView('mat')
-    },
-    [mat, extraIds],
-  )
-  const newHand = useCallback(() => mat.start(createMatState(shuffleWithSeed(mainIds, randomSeed()), extraIds, handSize)), [mat, mainIds, extraIds, handSize])
-  const loadCombo = useCallback(
-    (combo: SavedCombo) => {
-      mat.start(combo.initial, combo.actions, combo.names)
-      setView('mat')
-    },
-    [mat],
-  )
+  const newHand = useCallback(() => start(createMatState(shuffleWithSeed(mainIds, randomSeed()), extraIds, handSize)), [start, mainIds, extraIds, handSize])
+  const loadCombo = useCallback((combo: SavedCombo) => start(combo.initial, combo.actions, combo.names), [start])
 
-  const showMat = view === 'mat' && mat.session !== null && mat.state !== null
+  // Al abrir la práctica ya se roban las cartas de la mano.
+  useEffect(() => {
+    if (isOpen && !session && mainIds.length >= handSize) {
+      newHand()
+    }
+  }, [isOpen, session, mainIds.length, handSize, newHand])
 
   return (
     <>
@@ -420,7 +409,7 @@ function PracticeFab({
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        size={showMat ? 'board' : 'table'}
+        size="board"
         bare
         flush
         ariaLabel="Práctica"
@@ -428,20 +417,7 @@ function PracticeFab({
         closeClassName="right-1.5 top-3 min-[820px]:right-4 min-[820px]:top-4"
       >
         <Suspense fallback={null}>
-          {showMat && mat.session && mat.state ? (
-            <LazyPracticeMat
-              session={mat.session}
-              state={mat.state}
-              cardsById={cardsById}
-              deckName={deckName}
-              onDispatch={mat.dispatch}
-              onUndo={mat.undo}
-              onSeek={mat.seek}
-              onLoadCombo={loadCombo}
-              onNewHand={newHand}
-              onBack={() => setView('hand')}
-            />
-          ) : (
+          {session && state ? (
             <LazyPracticeSection
               handSize={handSize}
               derivedMainCards={derivedMainCards}
@@ -451,10 +427,17 @@ function PracticeFab({
               missingRoleCount={missingRoleCount}
               pendingReviewCount={pendingReviewCount}
               reviewPendingPatternCount={reviewPendingPatternCount}
-              onPlayHand={playHand}
+              session={session}
+              state={state}
+              cardsById={cardsById}
+              deckName={deckName}
+              onDispatch={dispatch}
+              onUndo={undo}
+              onSeek={seek}
               onLoadCombo={loadCombo}
+              onNewHand={newHand}
             />
-          )}
+          ) : null}
         </Suspense>
       </Modal>
     </>

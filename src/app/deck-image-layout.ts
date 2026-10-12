@@ -24,7 +24,7 @@ export interface DeckImageLayout {
 }
 
 // Proporción real de las imágenes de YGOPRODeck (421×614).
-export const CARD_ASPECT = 614 / 421
+const CARD_ASPECT = 614 / 421
 /** Ancho lógico de las zonas: el builder clásico en una pantalla ancha. */
 const SURFACE_WIDTH = 1500
 export const PAGE_PADDING = 24

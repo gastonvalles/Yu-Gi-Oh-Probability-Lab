@@ -1,5 +1,8 @@
-import { useState, type FormEvent } from 'react'
+import { useLayoutEffect, useRef, useState, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 
+import { useFocusTrap } from '../../app/use-focus-trap'
+import { useEscapeKey } from '../../app/use-overlay'
 import { normalizeSearchText } from '../../app/utils'
 import type { MatPile } from '../../app/practice-mat'
 import { CardArt } from '../CardArt'
@@ -7,7 +10,8 @@ import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
-import { field } from '../ui/surfaces'
+import { field, surface } from '../ui/surfaces'
+import { overline } from '../ui/typography'
 import { CARD_BACK } from './practice-styles'
 
 export const PILE_TITLES: Record<MatPile, string> = { deck: 'Deck', extra: 'Extra Deck', hand: 'Mano', gy: 'Cementerio', banished: 'Destierro' }
@@ -17,39 +21,90 @@ interface MatCardInfo {
   art: string | null
 }
 
-export interface SheetItem {
+export interface MenuItem {
   label: string
   onSelect: () => void
 }
 
-interface ActionSheetProps {
-  isOpen: boolean
+interface CardMenuProps {
+  /** Dónde está la carta (o el deck) que se tocó: el menú sale pegado, arriba si hay lugar. */
+  anchor: DOMRect | null
   kicker: string
   title: string
-  items: SheetItem[]
-  /** "Ver carta": abre el detalle (se muestra al final, aparte de las jugadas). */
+  items: MenuItem[]
+  /** "Ver carta": abre el detalle (va al final, aparte de las jugadas). */
   onInspect?: () => void
   onClose: () => void
 }
 
-/** Menú al tocar una carta o el deck: una acción por botón, la primera con el foco. */
-export function ActionSheet({ isOpen, kicker, title, items, onInspect, onClose }: ActionSheetProps) {
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} size="sm" kicker={kicker} title={title} ariaLabel={title}>
-      <div className="grid gap-2" role="group" aria-label="Jugadas">
+const MENU_ITEM =
+  'block w-full border-0 bg-transparent px-3 py-1.5 text-left text-body font-medium text-foreground outline-none transition-colors duration-100 hover:bg-tint/12 focus-visible:bg-tint/12'
+
+/**
+ * Menú de jugadas pegado a la carta, como en DuelingBook: una línea por jugada, sin diálogo en el
+ * medio. Se cierra al elegir, al tocar afuera o con Escape.
+ */
+export function CardMenu({ anchor, kicker, title, items, onInspect, onClose }: CardMenuProps) {
+  const ref = useRef<HTMLDivElement | null>(null)
+  const [position, setPosition] = useState<{ left: number; top: number } | null>(null)
+  const open = anchor !== null
+
+  useEscapeKey(onClose, open)
+  useFocusTrap(ref, open)
+
+  useLayoutEffect(() => {
+    const menu = ref.current
+
+    if (!anchor || !menu) {
+      setPosition(null)
+      return
+    }
+
+    const margin = 8
+    const { width, height } = menu.getBoundingClientRect()
+    const left = Math.min(Math.max(anchor.left + anchor.width / 2 - width / 2, margin), window.innerWidth - width - margin)
+    const above = anchor.top - height - 6
+    const top = above >= margin ? above : Math.min(anchor.bottom + 6, Math.max(margin, window.innerHeight - height - margin))
+
+    setPosition({ left, top })
+  }, [anchor, items.length])
+
+  if (!open || typeof document === 'undefined') {
+    return null
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-210" onClick={onClose}>
+      <div
+        ref={ref}
+        role="menu"
+        aria-label={title}
+        tabIndex={-1}
+        className={cx(surface.panel, 'absolute max-h-[min(80dvh,34rem)] w-[13rem] overflow-y-auto py-1 outline-none animate-pop motion-reduce:animate-none', position ? 'visible' : 'invisible')}
+        style={position ?? { left: 0, top: 0 }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="grid gap-0.5 px-3 pb-1.5 pt-1.5">
+          <p className={cx('m-0', overline)}>{kicker}</p>
+          <p className="m-0 truncate text-body font-semibold text-foreground" title={title}>
+            {title}
+          </p>
+        </div>
         {items.map((item, index) => (
-          <Button key={item.label} variant="secondary" size="sm" fullWidth data-initial-focus={index === 0 ? '' : undefined} onClick={item.onSelect}>
+          <button key={item.label} type="button" role="menuitem" className={MENU_ITEM} data-initial-focus={index === 0 ? '' : undefined} onClick={item.onSelect}>
             {item.label}
-          </Button>
+          </button>
         ))}
-        {items.length === 0 ? <p className="m-0 text-body text-muted">No hay nada para hacer con esta carta desde acá.</p> : null}
+        {items.length === 0 ? <p className="m-0 px-3 py-1.5 text-micro text-muted">No hay nada para hacer desde acá.</p> : null}
         {onInspect ? (
-          <Button variant="tertiary" size="sm" fullWidth icon="search" onClick={onInspect}>
+          <button type="button" role="menuitem" className={cx(MENU_ITEM, 'mt-1 flex items-center gap-2 border-t border-border-subtle pt-2 text-muted')} data-initial-focus={items.length === 0 ? '' : undefined} onClick={onInspect}>
+            <Icon name="search" size={14} />
             Ver carta
-          </Button>
+          </button>
         ) : null}
       </div>
-    </Modal>
+    </div>,
+    document.body,
   )
 }
 
@@ -85,6 +140,7 @@ export function PileViewer({ pile, ids, info, onPick, onClose }: PileViewerProps
               value={query}
               placeholder="Buscar carta"
               autoComplete="off"
+              data-initial-focus=""
               className={cx(field, 'h-10 w-full pl-9 pr-3 text-body')}
               onChange={(event) => setQuery(event.target.value)}
             />

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { useBodyScrollLock, useEscapeKey } from '../app/use-overlay'
 import { CardDetailModal } from '../components/card-detail/CardDetailModal'
-import { PracticeCardFocus } from '../components/probability/PracticeCardFocus'
+import { CardDetailOverlay } from '../components/card-detail/CardDetailOverlay'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 
 vi.mock('../components/CardArt', () => ({
@@ -127,7 +127,7 @@ describe('detalle compartido de cartas', () => {
 
   it('usa el mismo detalle en práctica incluso sin datos de la carta', () => {
     const onClose = vi.fn()
-    render(<PracticeCardFocus card={{ drawId: 'draw-1', cardId: 'card-1', name: 'Carta manual', apiCard: null }} origin={null} onClose={onClose} />)
+    render(<CardDetailOverlay name="Carta manual" card={null} origin={null} onClose={onClose} />)
     expect(screen.getByRole('dialog', { name: 'Detalle de Carta manual' })).toBeInTheDocument()
     expect(screen.getByText('Sin texto disponible.')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('dialog'))
