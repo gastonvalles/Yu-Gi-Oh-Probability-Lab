@@ -36,13 +36,11 @@ import type { ApiCardReference, PatternKind } from '../../types'
 import { fetchCardsByIds } from '../../ygoprodeck'
 import { CardArt } from '../CardArt'
 import { CardDetailOverlay } from '../card-detail/CardDetailOverlay'
-import { buildCardSummary } from '../card-detail/card-summary'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
-import { overline } from '../ui/typography'
 import { CardBack, CardMenu, PILE_TITLES, PileViewer, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, TargetMark, type HandCardData } from './PracticeHand'
@@ -98,7 +96,7 @@ const MAT_CARD = [
   'relative block aspect-[421/614] w-full cursor-grab touch-none select-none overflow-hidden rounded-tag bg-input outline-none',
   '[-webkit-touch-callout:none] [-webkit-user-select:none] [&>*]:pointer-events-none [&_img]:[-webkit-user-drag:none]',
   'shadow-[0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]',
-  '[transition:filter_var(--motion-duration)_ease,box-shadow_var(--motion-duration)_ease]',
+  '[transition:transform_var(--motion-duration)_ease,filter_var(--motion-duration)_ease,box-shadow_var(--motion-duration)_ease]',
   'focus-visible:shadow-[0_6px_14px_rgba(0,0,0,0.45),0_0_0_2px_rgb(var(--primary-hover-rgb))]',
   'data-[dragging=true]:pointer-events-none data-[dragging=true]:opacity-30',
   'data-[dim=true]:brightness-[0.42] data-[dim=true]:saturate-[0.6]',
@@ -137,12 +135,20 @@ function activatedCard(state: MatState, action: MatAction): string | null {
 
 /** Una jugada que todavía espera algo del jugador: los Sacrificios y/o la zona. */
 type Picking =
-  | { kind: 'zone'; label: string; action: Extract<MatAction, { type: 'place' | 'token' | 'tribute' }>; targets: MatTarget[] }
+  | { kind: 'zone'; label: string; action: Extract<MatAction, { type: 'place' | 'token' | 'tribute' | 'summon' }>; targets: MatTarget[] }
   | { kind: 'tributes'; label: string; required: number; chosen: string[]; action: Extract<MatAction, { type: 'tribute' }>; zone?: MatTarget }
+  /** Invocación desde el Extra: se tocan los materiales en el campo (los que sean) y se confirma con un botón. */
+  | { kind: 'materials'; label: string; chosen: string[]; action: Extract<MatAction, { type: 'summon' }>; zone?: MatTarget }
 
-/** Reproducción de un combo: cuánto espera entre jugadas (a velocidad ×1) y las velocidades que alterna el botón. */
+const toggle = (list: string[], id: string) => (list.includes(id) ? list.filter((entry) => entry !== id) : [...list, id])
+
+/** Reproducción de un combo: cuánto espera entre jugadas, normal y con el avance rápido. */
 const AUTOPLAY_MS = 1400
-const SPEEDS = [1, 2, 0.5] as const
+const FAST_AUTOPLAY_MS = 450
+
+/** Botones redondos del replay (pausa / reproducir y avance rápido), como los de un replay de videojuego; apretado = claro. */
+const REPLAY_BUTTON =
+  'inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-tint/30 bg-card-background text-foreground shadow-[0_2px_8px_rgba(0,0,0,0.4)] transition-[background-color,border-color,color] duration-150 hover:bg-tint/14 focus-visible:outline-none focus-visible:shadow-focus pointer-coarse:size-10 [&_svg]:block [&_svg]:size-4 aria-pressed:border-foreground aria-pressed:bg-foreground aria-pressed:text-background aria-pressed:hover:bg-foreground/90'
 
 /** `data-drop` y nombre de una zona de la mesa. */
 const dropIdOf = (spot: MatSpot, index: number) => (spot === 'field' ? 'field' : `${spot}:${index}`)
@@ -216,7 +222,6 @@ export function PracticeMat({
   const [menu, setMenu] = useState<{ kind: 'card'; id: string; rect: DOMRect; submenu?: { label: string; items: MatMenuItem[] } } | { kind: 'deck'; rect: DOMRect } | null>(null)
   const [viewer, setViewer] = useState<MatPile | null>(null)
   const [inspected, setInspected] = useState<{ id: string; rect: DOMRect } | null>(null)
-  const [preview, setPreview] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   const [combos, setCombos] = useState<SavedCombo[]>(() => readSavedCombos())
@@ -273,9 +278,9 @@ export function PracticeMat({
   const artById = useCallback((id: string) => artOf(cardOf(id)), [cardOf])
   const { dealsFromDeck } = useCardFlights(sectionRef, state, artById, `${isDesktop}:${dealt}:${handOrder.join(',')}`)
 
-  // Reproducir un combo: las jugadas avanzan solas a la velocidad elegida (arranca al cargarlo; cualquier jugada propia lo pausa).
+  // Reproducir un combo: las jugadas avanzan solas (arranca al cargarlo; cualquier jugada propia lo pausa), más rápido con el avance rápido.
   const [autoplay, setAutoplay] = useState(false)
-  const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(1)
+  const [fast, setFast] = useState(false)
 
   useEffect(() => {
     if (!autoplay || !isDealt) return
@@ -285,9 +290,9 @@ export function PracticeMat({
       return
     }
 
-    const timer = window.setTimeout(() => onSeek(session.cursor + 1), AUTOPLAY_MS / speed)
+    const timer = window.setTimeout(() => onSeek(session.cursor + 1), fast ? FAST_AUTOPLAY_MS : AUTOPLAY_MS)
     return () => window.clearTimeout(timer)
-  }, [autoplay, isDealt, session.cursor, session.actions.length, onSeek, speed])
+  }, [autoplay, isDealt, session.cursor, session.actions.length, onSeek, fast])
 
   const closeViewer = useCallback(() => {
     // Después de mirar el deck se baraja, como en la mesa real (y la jugada queda anotada).
@@ -346,6 +351,11 @@ export function PracticeMat({
         return
       }
 
+      if (item.materials && item.action.type === 'summon') {
+        pick({ kind: 'materials', label: item.label, chosen: [], action: item.action, zone: item.targets?.length === 1 ? item.targets[0] : undefined })
+        return
+      }
+
       if (item.targets && item.targets.length > 1 && item.action.type === 'place') {
         pick({ kind: 'zone', label: item.label, action: item.action, targets: item.targets })
         return
@@ -359,7 +369,7 @@ export function PracticeMat({
   const pickZone = (zone: MatSpot, index: number) => {
     if (picking?.kind !== 'zone') return
 
-    if (picking.action.type === 'token' || picking.action.type === 'tribute') {
+    if (picking.action.type === 'token' || picking.action.type === 'tribute' || picking.action.type === 'summon') {
       if (zone === 'mz' || zone === 'emz') play({ ...picking.action, zone, index })
       return
     }
@@ -367,40 +377,46 @@ export function PracticeMat({
     play({ ...picking.action, zone, index })
   }
 
-  /** Un monstruo del campo elegido como Sacrificio; con todos elegidos, se pasa a elegir la zona (contando las que se liberan). */
-  const pickTribute = (id: string) => {
-    if (picking?.kind !== 'tributes') return
-
-    const chosen = picking.chosen.includes(id) ? picking.chosen.filter((entry) => entry !== id) : [...picking.chosen, id]
-
-    if (chosen.length < picking.required) {
-      setPicking({ ...picking, chosen })
-      return
-    }
-
-    const after = chosen.reduce((current, tribute) => matReducer(current, { type: 'move', id: tribute, to: 'gy' }), state)
+  /** Con los Sacrificios o los materiales elegidos (que dejan el campo), la carta sale a la zona donde se soltó si sigue libre, a la única libre, o se elige una. */
+  const summonAfter = (label: string, action: Extract<MatAction, { type: 'tribute' | 'summon' }>, removed: string[], dropped?: MatTarget) => {
+    const after = removed.reduce((current, id) => matReducer(current, { type: 'move', id, to: 'gy' }), state)
     const targets = freeTargets(after, ['mz', 'emz'])
-    const action = { ...picking.action, tributes: chosen }
-    // La zona donde se soltó la carta (si sigue libre) o la única libre; si no, se elige.
-    const dropped = picking.zone
     const zone = dropped && targets.some((target) => target.zone === dropped.zone && target.index === dropped.index) ? dropped : targets.length === 1 ? targets[0] : null
 
     if (zone) play({ ...action, zone: zone.zone as 'mz' | 'emz', index: zone.index })
-    else if (targets.length > 0) setPicking({ kind: 'zone', label: picking.label, action, targets })
+    else if (targets.length > 0) setPicking({ kind: 'zone', label, action, targets })
+  }
+
+  /** Un monstruo del campo elegido como Sacrificio; con todos elegidos, se pasa a la zona. */
+  const pickTribute = (id: string) => {
+    if (picking?.kind !== 'tributes') return
+
+    const chosen = toggle(picking.chosen, id)
+
+    if (chosen.length < picking.required) setPicking({ ...picking, chosen })
+    else summonAfter(picking.label, { ...picking.action, tributes: chosen }, chosen, picking.zone)
+  }
+
+  /** Un monstruo del campo elegido (o deselegido) como material de una Invocación desde el Extra; se confirma con el botón. */
+  const pickMaterial = (id: string) => {
+    if (picking?.kind === 'materials') setPicking({ ...picking, chosen: toggle(picking.chosen, id) })
+  }
+
+  const confirmMaterials = () => {
+    if (picking?.kind === 'materials' && picking.chosen.length > 0) summonAfter(picking.label, { ...picking.action, materials: picking.chosen }, picking.chosen, picking.zone)
   }
 
   const openCard = useCallback(
     (id: string, rect: DOMRect) => {
-      if (picking?.kind === 'tributes') {
-        if (monstersOnField(state).includes(id)) pickTribute(id)
+      if (picking?.kind === 'tributes' || picking?.kind === 'materials') {
+        if (monstersOnField(state).includes(id)) (picking.kind === 'tributes' ? pickTribute : pickMaterial)(id)
         return
       }
 
       setPicking(null)
-      setPreview(id)
       setMenu({ kind: 'card', id, rect })
     },
-    // pickTribute lee `picking` y `state` del render actual.
+    // pickTribute y pickMaterial leen `picking` y `state` del render actual.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [picking, state],
   )
@@ -429,7 +445,6 @@ export function PracticeMat({
 
       if (choices.length > 1 && anchor) {
         setPicking(null)
-        setPreview(id)
         setMenu({ kind: 'card', id, rect: anchor.getBoundingClientRect(), submenu: { label: zoneLabelOf(zone, index), items: choices } })
       } else if (only) {
         choose(only)
@@ -580,7 +595,10 @@ export function PracticeMat({
     />
   )
 
-  const tributeCandidates = picking?.kind === 'tributes' ? monstersOnField(state) : []
+  // Eligiendo Sacrificios o materiales, los monstruos del campo se encienden y el elegido lleva su etiqueta.
+  const choosingOnField = picking?.kind === 'tributes' || picking?.kind === 'materials'
+  const tributeCandidates = choosingOnField ? monstersOnField(state) : []
+  const chosenLabel = picking?.kind === 'materials' ? 'Material' : 'Sacrificio'
   const targetedIds = useMemo(() => new Set(state.targeted), [state.targeted])
 
   const cell = (spot: MatSpot, index: number, area: string) => {
@@ -589,8 +607,8 @@ export function PracticeMat({
     const label = zoneLabelOf(spot, index)
     const gem = spot === 'st' ? PENDULUM_GEM[index] : undefined
     const pickableZone = picking?.kind === 'zone' && picking.targets.some((target) => target.zone === spot && target.index === index)
-    const pickableTribute = picking?.kind === 'tributes' && placed !== null && tributeCandidates.includes(placed.id)
-    const chosen = picking?.kind === 'tributes' && placed !== null && picking.chosen.includes(placed.id)
+    const pickableTribute = choosingOnField && placed !== null && tributeCandidates.includes(placed.id)
+    const chosen = (picking?.kind === 'tributes' || picking?.kind === 'materials') && placed !== null && picking.chosen.includes(placed.id)
 
     return (
       <div
@@ -619,11 +637,10 @@ export function PracticeMat({
             glow={highlighted.has(placed.id)}
             glowKind={highlightKind}
             dim={highlighted.size > 0 && !highlighted.has(placed.id)}
-            chosen={chosen}
+            chosen={chosen ? chosenLabel : null}
             targeted={targetedIds.has(placed.id)}
             bind={bind}
             onOpen={(rect) => openCard(placed.id, rect)}
-            onHover={() => setPreview(placed.id)}
           />
         ) : null}
       </div>
@@ -654,7 +671,6 @@ export function PracticeMat({
     )
   }
 
-  const previewCard = preview ? cardOf(preview) : null
   const getDeckRect = useCallback(() => deckRef.current?.getBoundingClientRect() ?? null, [])
   const getField = useCallback(() => {
     const field = fieldRef.current
@@ -663,12 +679,15 @@ export function PracticeMat({
     return field && zone ? { rect: field.getBoundingClientRect(), zoneWidth: zone.getBoundingClientRect().width } : null
   }, [])
 
+  const replayLabel = autoplay ? 'Pausar' : live ? 'Ver de nuevo' : 'Reproducir'
   const pickingText =
     picking?.kind === 'tributes'
       ? `Tocá ${picking.required === 1 ? 'el monstruo' : `${picking.required} monstruos`} para sacrificar (${picking.chosen.length}/${picking.required})`
-      : picking
-        ? `Tocá la zona para ${picking.label}`
-        : null
+      : picking?.kind === 'materials'
+        ? `Tocá los materiales en el campo (${picking.chosen.length}) y confirmá`
+        : picking
+          ? `Tocá la zona para ${picking.label}`
+          : null
 
   return (
     <section
@@ -712,11 +731,12 @@ export function PracticeMat({
         </span>
       </div>
 
-      <div className="col-start-1 row-start-2 flex min-h-0 flex-col gap-2 overflow-y-auto overflow-x-hidden px-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] min-[1101px]:px-4 min-[1101px]:pb-4">
-        {/* El campo, con la disposición del lado propio de DuelingBook en todos los tamaños: a la izquierda destierro, zona de campo y Extra Deck; a la derecha cementerio y deck (arriba a la derecha iría el destierro del rival, que acá no existe); las fases y las zonas extra entre medio. */}
+      <div className="col-start-1 row-start-2 flex min-h-0 flex-col gap-2 overflow-y-auto overflow-x-hidden px-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] min-[1101px]:px-4 min-[1101px]:pb-4 min-[1101px]:pt-2">
+        {/* El campo en todos los tamaños: a la izquierda la zona de campo y el Extra Deck; a la derecha, de arriba abajo, destierro, cementerio y deck (como pidió Gastón: el Banish arriba del GY); las fases y las zonas extra entre medio. */}
         <div
           ref={fieldRef}
-          className="grid grid-cols-7 gap-1 [grid-template-areas:'ban_p1_emz1_p2_emz2_p3_.'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[repeat(7,minmax(0,5.75rem))]"
+          // `my-auto`: el aire que sobra se reparte arriba y abajo del campo (ni pegado a la barra ni un hueco antes de la mano).
+          className="my-auto grid grid-cols-7 gap-1 [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[repeat(7,minmax(0,5.5rem))]"
           aria-label="Campo"
         >
           {cell('field', 0, 'fld')}
@@ -764,11 +784,11 @@ export function PracticeMat({
         </div>
 
         {/* Abajo del todo, como en la mesa real: la mano en abanico. Las salidas y problemas van entre el campo y la mano en el celu, y en el panel lateral en escritorio. */}
-        {footer && isDealt && !isDesktop ? <div className="mt-auto px-1 animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
+        {footer && isDealt && !isDesktop ? <div className="px-1 animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
         <PracticeHand
           cards={handCards}
           sizeSlots={Math.max(session.initial.hand.length, 1)}
-          maxCardWidth={isDesktop ? 92 : 110}
+          maxCardWidth={isDesktop ? 124 : 110}
           fanDegrees={2.2}
           highlighted={highlighted}
           highlightKind={highlightKind}
@@ -786,7 +806,6 @@ export function PracticeMat({
             const parsed = parseDrop(target)
             if (parsed) handleDrop({ id: card.id, name: card.name, art: artOf(card) }, parsed)
           }}
-          className={footer && isDealt && !isDesktop ? undefined : 'mt-auto'}
         />
 
         {/* Pasos: en vivo muestra la última jugada; con jugadas, se recorre con Anterior / Siguiente. Eligiendo, pide lo que falta. */}
@@ -794,6 +813,11 @@ export function PracticeMat({
           {pickingText ? (
             <>
               <span className="min-w-0 flex-1 truncate font-semibold text-accent">{pickingText}</span>
+              {picking?.kind === 'materials' ? (
+                <Button variant="primary" size="sm" className="min-h-8 px-3" disabled={picking.chosen.length === 0} onClick={confirmMaterials}>
+                  Confirmar
+                </Button>
+              ) : null}
               <Button variant="tertiary" size="sm" className="min-h-8 px-2" onClick={() => setPicking(null)}>
                 Cancelar
               </Button>
@@ -801,22 +825,12 @@ export function PracticeMat({
           ) : null}
           {!picking && session.actions.length > 0 ? (
             <>
-              <Button variant="tertiary" size="sm" className="min-h-8 px-2" disabled={session.cursor === 0} onClick={() => { setAutoplay(false); onSeek(session.cursor - 1) }}>
-                Anterior
-              </Button>
-              <span className="font-semibold tabular-nums text-foreground">
-                {session.cursor}/{session.actions.length}
-              </span>
-              <Button variant="tertiary" size="sm" className="min-h-8 px-2" disabled={live} onClick={() => { setAutoplay(false); onSeek(session.cursor + 1) }}>
-                Siguiente
-              </Button>
-              {/* Reproducir: las jugadas avanzan solas; al final, "Ver de nuevo" vuelve al principio. */}
-              <Button
-                variant="tertiary"
-                size="sm"
-                className="min-h-8 px-2"
-                icon={autoplay ? 'pause' : 'play'}
-                aria-pressed={autoplay}
+              {/* Replay: pausa / reproducir (al final, "Ver de nuevo" vuelve al principio) y avance rápido, redondos como en un replay. */}
+              <button
+                type="button"
+                className={REPLAY_BUTTON}
+                aria-label={replayLabel}
+                title={replayLabel}
                 onClick={() => {
                   if (autoplay) {
                     setAutoplay(false)
@@ -826,17 +840,19 @@ export function PracticeMat({
                   }
                 }}
               >
-                {autoplay ? 'Pausar' : live ? 'Ver de nuevo' : 'Reproducir'}
+                <Icon name={autoplay ? 'pause' : 'play'} />
+              </button>
+              <button type="button" className={REPLAY_BUTTON} aria-label="Avance rápido" title="Avance rápido" aria-pressed={fast} onClick={() => setFast((value) => !value)}>
+                <Icon name="fast-forward" />
+              </button>
+              <Button variant="tertiary" size="sm" className="min-h-8 px-2" disabled={session.cursor === 0} onClick={() => { setAutoplay(false); onSeek(session.cursor - 1) }}>
+                Anterior
               </Button>
-              <Button
-                variant="tertiary"
-                size="sm"
-                className="min-h-8 px-2 tabular-nums"
-                aria-label={`Velocidad ×${speed}`}
-                title="Velocidad de la reproducción"
-                onClick={() => setSpeed(SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length] ?? 1)}
-              >
-                ×{speed}
+              <span className="font-semibold tabular-nums text-foreground">
+                {session.cursor}/{session.actions.length}
+              </span>
+              <Button variant="tertiary" size="sm" className="min-h-8 px-2" disabled={live} onClick={() => { setAutoplay(false); onSeek(session.cursor + 1) }}>
+                Siguiente
               </Button>
             </>
           ) : null}
@@ -846,10 +862,9 @@ export function PracticeMat({
         </div>
       </div>
 
-      {/* Panel lateral (escritorio): la carta que se está mirando, las salidas y problemas de la mano, y los pasos y combos. */}
+      {/* Panel lateral (escritorio): las salidas y problemas de la mano (dejando lugar a la X del modal) y los pasos y combos. El detalle de una carta se abre desde su menú. */}
       <aside className="hidden min-h-0 border-l border-border-subtle px-3 py-3 min-[1101px]:col-start-2 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col min-[1101px]:gap-3" aria-label="Pasos y combos">
-        <CardPreview card={previewCard} />
-        {footer && isDealt && isDesktop ? <div className="flex-none animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
+        {footer && isDealt && isDesktop ? <div className="flex-none pr-11 animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
         {panel}
       </aside>
 
@@ -870,7 +885,7 @@ export function PracticeMat({
         pile={viewer}
         ids={viewer ? state[viewer] : []}
         info={(id) => ({ name: cardOf(id).name, art: artOf(cardOf(id)), faceDown: state.facedown.includes(id) })}
-        onPick={(id, rect) => { setPreview(id); setMenu({ kind: 'card', id, rect }) }}
+        onPick={(id, rect) => setMenu({ kind: 'card', id, rect })}
         onClose={closeViewer}
       />
 
@@ -958,42 +973,6 @@ function PileBadge({ label, count }: { label: string; count: number }) {
 }
 
 /** La carta que se está mirando (al pasar el mouse o tocarla), como el panel de la izquierda de DuelingBook. */
-/**
- * La carta por la que se pasa el mouse (panel lateral): imagen y nombre arriba (dejando lugar a la X del modal) y
- * el texto abajo a todo el ancho, con altura fija para que lo de abajo no salte al pasar de una carta a otra.
- */
-function CardPreview({ card }: { card: MatCard | null }) {
-  const summary = card?.apiCard ? buildCardSummary(card.apiCard) : null
-
-  return (
-    <div className="grid flex-none gap-2" aria-label="Carta" aria-live="polite">
-      <div className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-3 pr-11">
-        <span className="relative block aspect-[421/614] w-full overflow-hidden rounded-tag bg-input shadow-[0_6px_14px_rgba(0,0,0,0.45)]">
-          {card ? <CardArt remoteUrl={artOf(card)} name={card.name} className="block h-full w-full object-cover" /> : null}
-        </span>
-        <div className="grid min-w-0 gap-1">
-          {card ? (
-            <>
-              <strong className="text-body font-semibold leading-tight text-foreground [overflow-wrap:anywhere]">{card.name}</strong>
-              {summary ? (
-                <span className="text-micro text-muted">
-                  {summary.typeLine}
-                  {summary.statLine ? ` · ${summary.statLine}` : ''}
-                </span>
-              ) : null}
-            </>
-          ) : (
-            <span className={overline}>Pasá por una carta para leerla</span>
-          )}
-        </div>
-      </div>
-      <p className="m-0 h-[5.5rem] overflow-y-auto whitespace-pre-wrap rounded-control bg-tint/5 px-2 py-1.5 text-micro leading-snug text-foreground/85 [overflow-wrap:anywhere]">
-        {card ? card.apiCard?.description?.trim() || 'Sin texto disponible.' : ''}
-      </p>
-    </div>
-  )
-}
-
 interface PlacedCardProps {
   placed: Placed
   spot: MatSpot
@@ -1004,21 +983,21 @@ interface PlacedCardProps {
   glow: boolean
   glowKind: PatternKind | null
   dim: boolean
-  /** Elegida como Sacrificio. */
-  chosen: boolean
+  /** Elegida como Sacrificio o como material (la etiqueta que lleva), o null. */
+  chosen: string | null
   /** Marcada como objetivo. */
   targeted: boolean
   bind: ReturnType<typeof useMatDrag>['bind']
   onOpen: (rect: DOMRect) => void
-  onHover: () => void
 }
 
 /**
  * Carta en una zona del campo: es tuya, así que boca abajo se ve su imagen atenuada (como en DuelingBook); en defensa o
- * colocada en una zona de monstruo se acuesta; contadores, materiales y objetivo como etiquetas.
+ * colocada en una zona de monstruo se acuesta a su tamaño y sobresale de la casilla, como en la mesa real; contadores,
+ * materiales y objetivo como etiquetas.
  */
-function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, chosen, targeted, bind, onOpen, onHover }: PlacedCardProps) {
-  const label = `${card.name}${placed.pos === 'set' ? ', boca abajo' : placed.pos === 'def' ? ', en defensa' : ''}${chosen ? ' (Sacrificio)' : ''}${targeted ? ' (objetivo)' : ''}`
+function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, chosen, targeted, bind, onOpen }: PlacedCardProps) {
+  const label = `${card.name}${placed.pos === 'set' ? ', boca abajo' : placed.pos === 'def' ? ', en defensa' : ''}${chosen ? ` (${chosen})` : ''}${targeted ? ' (objetivo)' : ''}`
   const sideways = spot !== 'st' && spot !== 'field' && placed.pos !== 'atk'
 
   return (
@@ -1028,7 +1007,8 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, 
       tabIndex={0}
       aria-label={label}
       title={label}
-      className={cx(MAT_CARD, 'absolute inset-0 h-full')}
+      // Rotación en `transform` (no en `rotate`): así el vuelo entre zonas la lee y la compone bien.
+      className={cx(MAT_CARD, 'absolute inset-0 h-full', sideways && 'z-1 [transform:rotate(90deg)]')}
       data-card-id={placed.id}
       data-dragging={dragging ? 'true' : 'false'}
       data-flash={flash !== null ? 'true' : 'false'}
@@ -1036,22 +1016,15 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, 
       data-glow-kind={glow ? (glowKind ?? 'opening') : undefined}
       data-dim={dim ? 'true' : 'false'}
       {...bind({ id: placed.id, name: card.name, art: artOf(card) })}
-      onPointerEnter={onHover}
       onKeyDown={(event) => activate(event, () => onOpen(event.currentTarget.getBoundingClientRect()))}
       onContextMenu={(event) => event.preventDefault()}
     >
-      <span
-        className={cx(
-          'block h-full w-full transition-[transform,filter] duration-150',
-          sideways && 'rotate-90 scale-[0.68]',
-          placed.pos === 'set' && 'brightness-[0.4] saturate-[0.55]',
-        )}
-      >
+      <span className={cx('block h-full w-full transition-[filter] duration-150', placed.pos === 'set' && 'brightness-[0.4] saturate-[0.55]')}>
         <CardArt remoteUrl={artOf(card)} name={card.name} className="block h-full w-full object-cover" />
       </span>
       {placed.counters > 0 ? <span className="absolute left-0.5 top-0.5 z-2 rounded-full bg-warning px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-[#1a1204]">{placed.counters}</span> : null}
       {placed.materials.length > 0 ? <span className="absolute bottom-0.5 right-0.5 z-2 rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-primary-foreground">+{placed.materials.length}</span> : null}
-      {chosen ? <span className="absolute inset-x-0 bottom-0 z-2 bg-accent/85 py-0.5 text-center text-[0.55rem] font-extrabold uppercase tracking-[0.06em] text-[#06140e]">Sacrificio</span> : null}
+      {chosen ? <span className="absolute inset-x-0 bottom-0 z-2 bg-accent/85 py-0.5 text-center text-[0.55rem] font-extrabold uppercase tracking-[0.06em] text-[#06140e]">{chosen}</span> : null}
       {targeted ? <TargetMark /> : null}
     </div>
   )

@@ -44,6 +44,8 @@ const PATHS = {
       <rect data-fill x="14" y="4" width="5" height="16" rx="1.2" />
     </>
   ),
+  /** Avance rápido: dos triángulos, como en un replay. */
+  'fast-forward': <path data-fill d="M3.5 6.1v11.8a1 1 0 0 0 1.56.83L12 13.3v4.6a1 1 0 0 0 1.56.83l8-5.9a1 1 0 0 0 0-1.66l-8-5.9A1 1 0 0 0 12 6.1v4.6L5.06 5.27A1 1 0 0 0 3.5 6.1z" />,
   dice: (
     <>
       <rect data-fill x="3.5" y="3.5" width="17" height="17" rx="4" />

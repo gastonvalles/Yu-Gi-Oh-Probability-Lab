@@ -59,6 +59,8 @@ export interface MatState {
 
 /** Cómo llega la carta al campo (sólo cambia el texto de la jugada): Invocación Normal, Especial, o como escala de péndulo. */
 type MatSummon = 'normal' | 'special' | 'scale'
+/** Invocación desde el Extra Deck: con qué se hace (y a dónde van los materiales). */
+type ExtraSummon = 'fusion' | 'synchro' | 'xyz' | 'link'
 
 export type MatAction =
   | { type: 'draw'; count: number }
@@ -69,6 +71,8 @@ export type MatAction =
   | { type: 'place'; id: string; zone: MatSpot; index: number; pos: MatPos; how?: MatSummon }
   /** Invocación por Sacrificio (o Colocar por Sacrificio): los sacrificios van al cementerio y la carta sale a la zona. */
   | { type: 'tribute'; id: string; tributes: string[]; zone: MatZone; index: number; pos: MatPos }
+  /** Invocación desde el Extra Deck con materiales del campo: Fusión, Sincronía y Enlace los mandan al cementerio; Xyz los pone debajo. */
+  | { type: 'summon'; id: string; how: ExtraSummon; materials: string[]; zone: MatZone; index: number; pos: MatPos }
   /** Pone la carta como material Xyz debajo de otra que está en el campo. */
   | { type: 'attach'; id: string; to: string }
   | { type: 'position'; id: string; pos: MatPos }
@@ -349,6 +353,33 @@ export function matReducer(state: MatState, action: MatAction): MatState {
       return placed === next ? state : placed
     }
 
+    case 'summon': {
+      if (action.materials.length === 0 || !state.extra.includes(action.id) || action.materials.includes(action.id)) {
+        return state
+      }
+
+      let next = state
+
+      for (const material of action.materials) {
+        const where = locateCard(next, material)
+
+        // Sólo monstruos propios en el campo; una ficha no puede ser material Xyz (sí de Enlace: desaparece al salir del campo).
+        if (where?.kind !== 'spot' || where.spot === 'st' || where.spot === 'field' || (action.how === 'xyz' && isToken(material))) {
+          return state
+        }
+
+        next = matReducer(next, { type: 'move', id: material, to: 'gy' })
+      }
+
+      const placed = matReducer(next, { type: 'place', id: action.id, zone: action.zone, index: action.index, pos: action.pos, how: 'special' })
+
+      if (placed === next) return state
+      if (action.how !== 'xyz') return placed
+
+      // Los materiales Xyz pasan del cementerio a debajo de la carta.
+      return action.materials.reduce((current, material) => matReducer(current, { type: 'attach', id: material, to: action.id }), placed)
+    }
+
     case 'activate': {
       if (!action.cost || !locateCard(state, action.id)) {
         return state
@@ -460,11 +491,13 @@ export function describeMatAction(before: MatState, action: MatAction, nameOf: (
 
     case 'tribute': {
       const card = name(action.id)
-      const tributes = action.tributes.map(name)
-      const list = tributes.length > 1 ? `${tributes.slice(0, -1).join(', ')} y ${tributes[tributes.length - 1]}` : (tributes[0] ?? '')
+      const list = listNames(action.tributes.map(name))
 
       return action.pos === 'set' ? `Colocás ${card} boca abajo sacrificando ${list}` : `Invocación por Sacrificio de ${card} (sacrificás ${list})`
     }
+
+    case 'summon':
+      return `${SUMMON_NAMES[action.how]} de ${name(action.id)}${action.pos === 'def' ? ' en defensa' : ''} (materiales: ${listNames(action.materials.map(name))})`
 
     case 'attach':
       return `Adjuntás ${name(action.id)} a ${name(action.to)}`
@@ -545,6 +578,8 @@ export interface MatCardKind {
   effect: boolean
   fieldSpell: boolean
   pendulum: boolean
+  fusion: boolean
+  synchro: boolean
   xyz: boolean
   /** Los Link no tienen defensa: ni se ponen en defensa ni boca abajo. */
   link: boolean
@@ -552,7 +587,19 @@ export interface MatCardKind {
   level: number | null
 }
 
-export const TOKEN_KIND: MatCardKind = { monster: true, spell: false, trap: false, extra: false, effect: false, fieldSpell: false, pendulum: false, xyz: false, link: false, level: null }
+export const TOKEN_KIND: MatCardKind = { monster: true, spell: false, trap: false, extra: false, effect: false, fieldSpell: false, pendulum: false, fusion: false, synchro: false, xyz: false, link: false, level: null }
+
+/** Con qué se Invoca un monstruo del Extra Deck usando materiales del campo (null: p. ej. un Péndulo boca arriba, que sale sin materiales). */
+function extraSummonOf(kind: MatCardKind): ExtraSummon | null {
+  return kind.link ? 'link' : kind.xyz ? 'xyz' : kind.synchro ? 'synchro' : kind.fusion ? 'fusion' : null
+}
+
+const SUMMON_NAMES: Record<ExtraSummon, string> = { fusion: 'Invocación por Fusión', synchro: 'Invocación por Sincronía', xyz: 'Invocación Xyz', link: 'Invocación de Enlace' }
+
+/** "A", "A y B", "A, B y C". */
+function listNames(names: string[]): string {
+  return names.length > 1 ? `${names.slice(0, -1).join(', ')} y ${names[names.length - 1]}` : (names[0] ?? '')
+}
 
 /** Sacrificios que pide la Invocación Normal (o Colocar) de un monstruo según su Nivel. */
 export function tributesFor(level: number | null): number {
@@ -575,6 +622,8 @@ export function cardKindOf(card: ApiCardReference | null): MatCardKind {
     effect: frame !== '' && frame !== 'normal' && frame !== 'token',
     fieldSpell: spell && (card?.race ?? '').toLowerCase() === 'field',
     pendulum: frame.includes('pendulum'),
+    fusion: frame.includes('fusion'),
+    synchro: frame.includes('synchro'),
     xyz: frame.includes('xyz'),
     link: frame.includes('link'),
     level: monster && typeof card?.level === 'number' ? card.level : null,
@@ -596,6 +645,8 @@ export interface MatMenuItem {
   tributes?: number
   /** Segundo paso del menú (p. ej. "¿En ataque o en defensa?"): la jugada es la del hijo elegido. */
   choices?: MatMenuItem[]
+  /** Invocación desde el Extra: primero se eligen los materiales en el campo y se confirma con un botón. */
+  materials?: true
 }
 
 /** Monstruos propios en el campo (los que se pueden sacrificar). */
@@ -687,7 +738,7 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     target()
 
     if (isToken(id)) {
-      add('Sacrificar / quitar la ficha', { type: 'move', id, to: 'gy' })
+      add('Quitar la ficha', { type: 'move', id, to: 'gy' })
       return items
     }
 
@@ -758,7 +809,24 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     if (pile === 'deck') add('A la mano', { type: 'move', id, to: 'hand' })
     // Las Mágicas de Campo se activan directo desde el Deck (hay efectos que lo piden).
     if (pile === 'deck' && kind.fieldSpell) placeIn('Activar', ['field'], 'atk')
-    if (kind.monster) specialSummon()
+
+    const how = pile === 'extra' ? extraSummonOf(kind) : null
+
+    if (kind.monster && how && monstersOnField(state).length > 0) {
+      // Desde el Extra: posición, después los materiales en el campo (con confirmación) y al final la zona (contando las que se liberan).
+      const summonItem = (label: string, pos: MatPos): MatMenuItem | null => {
+        const targets = freeTargets(state, ['mz', 'emz'])
+        const first = targets[0]
+
+        return first ? { label, action: { type: 'summon', id, how, materials: [], zone: first.zone as MatZone, index: first.index, pos }, targets, materials: true } : null
+      }
+      const attack = summonItem('En ataque', 'atk')
+      const defense = summonItem('En defensa', 'def')
+
+      if (attack && defense) items.push(kind.link ? { ...attack, label: 'Invocación Especial' } : { label: 'Invocación Especial', action: attack.action, choices: [attack, defense] })
+    } else if (kind.monster) {
+      specialSummon()
+    }
     if (kind.monster && (pile === 'gy' || pile === 'banished')) placeIn('A la zona de Mágicas y Trampas', ['st'], 'atk')
     if (pile === 'gy' || pile === 'banished') {
       // Efectos que se activan en el cementerio o en el destierro.
@@ -774,15 +842,15 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
   } else {
     // En el campo.
     add('A la mano', { type: 'move', id, to: 'hand' })
-    add(kind.monster ? 'Sacrificar (al cementerio)' : 'Al cementerio', { type: 'move', id, to: 'gy' })
+    add('Al cementerio', { type: 'move', id, to: 'gy' })
     add('Desterrar', { type: 'move', id, to: 'banished' })
     add('Desterrar boca abajo', { type: 'move', id, to: 'banished', faceDown: true })
   }
 
   if (kind.extra && pile !== 'extra') add('Al Extra Deck', { type: 'move', id, to: 'extra' })
 
-  // Arriba/abajo del deck: desde la mano y el campo (como en DuelingBook; desde el cementerio o el destierro no).
-  if (!kind.extra && pile !== 'gy' && pile !== 'banished') {
+  // Arriba/abajo del deck desde cualquier lado (mano, campo, cementerio, destierro): los mismos nombres en todos los menús.
+  if (!kind.extra) {
     add('Arriba del deck', { type: 'move', id, to: 'deck' })
     add('Abajo del deck', { type: 'move', id, to: 'deck-bottom' })
   }
