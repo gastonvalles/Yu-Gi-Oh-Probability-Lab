@@ -84,7 +84,7 @@ export type MatAction =
   | { type: 'reveal'; id: string }
   /** Declarar el nombre de una carta (para efectos que lo piden): sólo queda anotado. */
   | { type: 'declare'; id: string }
-  /** Marcar (o desmarcar) una carta como objetivo de un efecto. */
+  /** Seleccionar (o deseleccionar) una carta: el objetivo de un efecto, con una mira encima. */
   | { type: 'target'; id: string }
   /** Cambiar de fase; de la End Phase a la Draw Phase empieza otro turno. */
   | { type: 'phase'; phase: MatPhase }
@@ -528,7 +528,7 @@ export function describeMatAction(before: MatState, action: MatAction, nameOf: (
       return `Declarás ${name(action.id)}`
 
     case 'target':
-      return before.targeted.includes(action.id) ? `Dejás de apuntar a ${name(action.id)}` : `Apuntás a ${name(action.id)}`
+      return before.targeted.includes(action.id) ? `Dejás de seleccionar ${name(action.id)}` : `Seleccionás ${name(action.id)}`
 
     case 'phase': {
       const phase = PHASES.find((entry) => entry.id === action.phase)?.name ?? action.phase
@@ -680,7 +680,7 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
   const kind = isToken(id) ? TOKEN_KIND : kindOf(id)
   const items: MatMenuItem[] = []
   const add = (label: string, action: MatAction) => items.push({ label, action })
-  const target = () => add(state.targeted.includes(id) ? 'Quitar objetivo' : 'Marcar como objetivo', { type: 'target', id })
+  const target = () => add(state.targeted.includes(id) ? 'Quitar selección' : 'Seleccionar', { type: 'target', id })
   /** Una jugada que saca la carta a una zona: la primera libre por defecto, y la lista para elegir otra. */
   const placeItem = (label: string, zones: readonly MatSpot[], pos: MatPos, how?: MatSummon): MatMenuItem | null => {
     const targets = freeTargets(state, zones)

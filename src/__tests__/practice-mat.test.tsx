@@ -243,7 +243,7 @@ describe('la mesa de práctica', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
     expect(document.querySelector('[data-activation]')).toBeNull()
-    expect(within(hand()).getByRole('listitem', { name: 'Maxx C (objetivo)' })).toHaveAttribute('data-flash', 'true')
+    expect(within(hand()).getByRole('listitem', { name: 'Maxx C (seleccionada)' })).toHaveAttribute('data-flash', 'true')
   })
 
   it('el visor del deck permite buscar una carta a la mano y baraja al cerrar', () => {

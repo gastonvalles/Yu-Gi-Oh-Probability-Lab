@@ -355,7 +355,7 @@ export function PracticeMat({
         closeViewer()
       }
     },
-    [state, onDispatch, viewer, closeViewer],
+    [onDispatch, viewer, closeViewer],
   )
 
   /** Una jugada del menú: con Sacrificios primero se eligen; si puede salir a varias zonas, la mesa pide elegir una (como "Choose Zones" en DuelingBook). */
@@ -1043,7 +1043,7 @@ interface PlacedCardProps {
  * materiales y objetivo como etiquetas.
  */
 function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, chosen, targeted, bind, onOpen }: PlacedCardProps) {
-  const label = `${card.name}${placed.pos === 'set' ? ', boca abajo' : placed.pos === 'def' ? ', en defensa' : ''}${chosen ? ` (${chosen})` : ''}${targeted ? ' (objetivo)' : ''}`
+  const label = `${card.name}${placed.pos === 'set' ? ', boca abajo' : placed.pos === 'def' ? ', en defensa' : ''}${chosen ? ` (${chosen})` : ''}${targeted ? ' (seleccionada)' : ''}`
   const sideways = spot !== 'st' && spot !== 'field' && placed.pos !== 'atk'
 
   return (
