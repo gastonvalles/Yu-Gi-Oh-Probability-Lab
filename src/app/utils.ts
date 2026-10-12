@@ -115,6 +115,16 @@ export function formatShortPercent(value: number): string {
   return `${(value * 100).toFixed(1)}%`
 }
 
+/** Entero, sin mentir en las puntas: 99,5 % no es "100%" (sale ">99%") ni 0,4 % es "0%" (sale "<1%"). */
+export function formatWholePercent(value: number): string {
+  const percent = value * 100
+  const rounded = Math.round(percent)
+
+  if (rounded === 100 && percent < 100) return '>99%'
+  if (rounded === 0 && percent > 0) return '<1%'
+  return `${rounded}%`
+}
+
 /** Notación única de copias en la app: "×3". */
 export function formatCopies(copies: number): string {
   return `×${formatInteger(copies)}`

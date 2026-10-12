@@ -48,7 +48,7 @@ Los roles de las cartas (starter, handtrap…) y los grupos (engine, non-engine�
 | `Button` | `primary` (violeta con brillo, una por vista) · `secondary` (lavanda) · `tertiary` · `onBrand` (sobre tarjeta violeta); `color="danger"`; `icon` / `iconEnd`; `sm` 36 · `md` 44 · `lg` 50 (en táctil crecen solos). |
 | `IconButton` / `CloseButton` | acciones sólo con ícono (siempre con `aria-label`). |
 | `Card` | toda tarjeta: `level` card / **hero** (violeta, una por pantalla), `tone` (tarjeta teñida, como las "In Progress" del diseño), `padding`. Adentro no van más cajas. |
-| `ProgressRing` | anillo de progreso con el % al centro (44 px en listas, 76 px en una tarjeta destacada, 168 px como protagonista; `tone="onBrand"` sobre violeta; `color` para roles; `ticks` para marcar cortes; `delay` para escalonar varios). |
+| `ProgressRing` | anillo de progreso con el % al centro (44 px en listas, 76 px en una tarjeta destacada, 168 px como protagonista; `tone="onBrand"` sobre violeta; `color` para roles; `ticks` para marcar cortes; `delay` para escalonar varios). El entero del centro sale de `formatWholePercent`: 99,5 % se muestra ">99%" y 0,4 % "<1%", nunca un "100%" o "0%" que no lo es (el valor con decimal, `formatShortPercent`, va en el `label` y al lado). |
 | `SegmentedRing` | anillo repartido en tramos (limpias / con problema / sin salida; copias robadas 0-1-2-3+). Los tramos se llenan en orden y se resalta uno con `activeKey`. |
 | `SectionHeader` | encabezado de tarjeta: ícono suelto + título + descripción + acciones. |
 | `StepHero` / `StepPage` | encabezado de cada paso y contenedor (ancho, márgenes y separación). |

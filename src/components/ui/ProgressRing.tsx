@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 
+import { formatWholePercent } from '../../app/utils'
 import { cx } from './cx'
 import { RING_TRANSITION, clamp01, ringCenterText, ringGeometry } from './ring-shared'
 import { TONE, type Tone } from './tone'
@@ -20,7 +21,7 @@ interface ProgressRingProps {
   ticks?: ReadonlyArray<number>
   /** Milisegundos de espera antes de llenarse (para escalonar varios anillos). */
   delay?: number
-  /** Contenido del centro; por defecto el porcentaje. */
+  /** Contenido del centro; por defecto el porcentaje entero (`formatWholePercent`: nunca "100%" ni "0%" si no lo es). */
   children?: ReactNode
 }
 
@@ -77,7 +78,7 @@ export function ProgressRing({ value, tone = 'brand', color, size = 42, strokeWi
         })}
       </svg>
       <span className={cx('absolute inset-0 grid place-items-center text-center tabular-nums', ringCenterText(size), onBrand ? 'text-primary-foreground' : 'text-foreground')}>
-        {children ?? `${Math.round(clamped * 100)}%`}
+        {children ?? formatWholePercent(clamped)}
       </span>
     </div>
   )
