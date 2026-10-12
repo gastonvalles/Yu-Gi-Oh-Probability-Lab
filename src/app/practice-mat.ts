@@ -682,6 +682,14 @@ export interface MatMenuItem {
   materials?: true
 }
 
+/** Desterrar es una sola jugada del menú que pregunta cómo queda la carta: boca arriba (la de "Desterrar" a secas) o boca abajo. */
+export function banishItem(id: string, label: string): MatMenuItem {
+  const faceUp: MatMenuItem = { label: t('practice.menu.banishFaceUp'), action: { type: 'move', id, to: 'banished' } }
+  const faceDown: MatMenuItem = { label: t('practice.menu.banishFaceDown'), action: { type: 'move', id, to: 'banished', faceDown: true } }
+
+  return { label, action: faceUp.action, choices: [faceUp, faceDown] }
+}
+
 /** Monstruos propios en el campo (los que se pueden sacrificar). */
 export function monstersOnField(state: MatState): string[] {
   return [...state.mz, ...state.emz].flatMap((placed) => (placed ? [placed.id] : []))
@@ -722,6 +730,7 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
   const items: MatMenuItem[] = []
   const add = (label: string, action: MatAction) => items.push({ label, action })
   const target = () => add(state.targeted.includes(id) ? t('practice.menu.deselect') : t('practice.menu.select'), { type: 'target', id })
+  const banish = () => items.push(banishItem(id, t('practice.menu.banish')))
   /** Una jugada que saca la carta a una zona: la primera libre por defecto, y la lista para elegir otra. */
   const placeItem = (label: string, zones: readonly MatSpot[], pos: MatPos, how?: MatSummon): MatMenuItem | null => {
     const targets = freeTargets(state, zones)
@@ -789,7 +798,7 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
 
   if (where.kind === 'material') {
     add(t('practice.menu.detachToGy'), { type: 'move', id, to: 'gy' })
-    add(t('practice.menu.banish'), { type: 'move', id, to: 'banished' })
+    banish()
     add(t('practice.menu.toHand'), { type: 'move', id, to: 'hand' })
     return items
   }
@@ -841,8 +850,7 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     add(t('practice.menu.reveal'), { type: 'reveal', id })
     target()
     add(t('practice.menu.discard'), { type: 'move', id, to: 'gy' })
-    add(t('practice.menu.banish'), { type: 'move', id, to: 'banished' })
-    add(t('practice.menu.banishFaceDown'), { type: 'move', id, to: 'banished', faceDown: true })
+    banish()
   } else if (pile) {
     // Deck, Extra, cementerio o destierro.
     if (pile === 'deck') add(t('practice.menu.toHand'), { type: 'move', id, to: 'hand' })
@@ -874,16 +882,12 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
       target()
     }
     if (pile !== 'gy') add(t('practice.menu.toGy'), { type: 'move', id, to: 'gy' })
-    if (pile !== 'banished') {
-      add(t('practice.menu.banish'), { type: 'move', id, to: 'banished' })
-      add(t('practice.menu.banishFaceDown'), { type: 'move', id, to: 'banished', faceDown: true })
-    }
+    if (pile !== 'banished') banish()
   } else {
     // En el campo.
     add(t('practice.menu.toHand'), { type: 'move', id, to: 'hand' })
     add(t('practice.menu.toGy'), { type: 'move', id, to: 'gy' })
-    add(t('practice.menu.banish'), { type: 'move', id, to: 'banished' })
-    add(t('practice.menu.banishFaceDown'), { type: 'move', id, to: 'banished', faceDown: true })
+    banish()
   }
 
   if (kind.extra && pile !== 'extra') add(t('practice.menu.toExtra'), { type: 'move', id, to: 'extra' })

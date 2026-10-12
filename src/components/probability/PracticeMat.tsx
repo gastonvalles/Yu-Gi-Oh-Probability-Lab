@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { parseDerivedCardId } from '../../app/calculator-state'
 import {
   allMatIds,
+  banishItem,
   cardKindOf,
   describeMatSteps,
   freeTargets,
@@ -234,8 +235,9 @@ export function PracticeMat({
   const live = session.cursor === session.actions.length
 
   const [menu, setMenu] = useState<
+    /** `submenu`: el segundo paso ("¿En ataque o en defensa?", "¿Boca arriba o boca abajo?") se muestra en el mismo menú. */
     | { kind: 'card'; id: string; rect: DOMRect; submenu?: { label: string; items: MatMenuItem[] } }
-    | { kind: 'deck'; rect: DOMRect }
+    | { kind: 'deck'; rect: DOMRect; submenu?: { label: string; items: MatMenuItem[] } }
     /** La ficha: sale en ataque o en defensa, en la zona donde se soltó (`zone`) o en la que se elija después. */
     | { kind: 'token'; rect: DOMRect; zone?: MatTarget }
     | null
@@ -393,7 +395,7 @@ export function PracticeMat({
     (item: MatMenuItem) => {
       // Segundo paso del menú ("¿En ataque o en defensa?"): se muestran las opciones en el mismo menú.
       if (item.choices) {
-        setMenu((current) => (current?.kind === 'card' ? { ...current, submenu: { label: item.label, items: item.choices! } } : current))
+        setMenu((current) => (current && current.kind !== 'token' ? { ...current, submenu: { label: item.label, items: item.choices! } } : current))
         return
       }
 
@@ -641,19 +643,6 @@ export function PracticeMat({
   const menuItems: MenuItem[] = useMemo(() => {
     if (!menu) return []
 
-    if (menu.kind === 'deck') {
-      const top = state.deck[0]
-      const items: MenuItem[] = [
-        { label: t('practice.deckMenu.draw'), onSelect: () => play({ type: 'draw', count: 1 }) },
-        { label: t('practice.deckMenu.mill'), onSelect: () => play({ type: 'mill', count: 1 }) },
-        { label: t('practice.deckMenu.banishTop'), onSelect: () => top && play({ type: 'move', id: top, to: 'banished' }) },
-        { label: t('practice.deckMenu.banishTopFaceDown'), onSelect: () => top && play({ type: 'move', id: top, to: 'banished', faceDown: true }) },
-        { label: t('practice.deckMenu.view'), onSelect: () => { setMenu(null); setViewer('deck') } },
-        { label: t('practice.deckMenu.shuffle'), onSelect: () => play({ type: 'shuffle', seed: randomSeed() }) },
-      ]
-      return top ? items : items.slice(4, 5)
-    }
-
     if (menu.kind === 'token') {
       const dropped = menu.zone
 
@@ -667,6 +656,21 @@ export function PracticeMat({
     const submenu = menu.submenu
     if (submenu) return submenu.items.map((item) => ({ label: item.label, onSelect: () => choose(item.label.includes(':') ? item : { ...item, label: `${submenu.label}: ${item.label.toLowerCase()}` }) }))
 
+    if (menu.kind === 'deck') {
+      const top = state.deck[0]
+      const view = { label: t('practice.deckMenu.view'), onSelect: () => { setMenu(null); setViewer('deck') } }
+
+      if (!top) return [view]
+
+      return [
+        { label: t('practice.deckMenu.draw'), onSelect: () => play({ type: 'draw', count: 1 }) },
+        { label: t('practice.deckMenu.mill'), onSelect: () => play({ type: 'mill', count: 1 }) },
+        { label: t('practice.deckMenu.banishTop'), onSelect: () => choose(banishItem(top, t('practice.deckMenu.banishTop'))) },
+        view,
+        { label: t('practice.deckMenu.shuffle'), onSelect: () => play({ type: 'shuffle', seed: randomSeed() }) },
+      ]
+    }
+
     return listCardActions(state, menu.id, kindOf, nameOf).map((item) => ({ label: item.label, onSelect: () => choose(item) }))
   }, [menu, state, kindOf, nameOf, play, choose, summonToken])
 
@@ -675,7 +679,7 @@ export function PracticeMat({
   const menuKicker =
     menu?.kind === 'token'
       ? menu.zone ? zoneLabelOf(menu.zone.zone, menu.zone.index) : t('practice.menu.specialSummon')
-      : menu?.kind === 'card' && menu.submenu
+      : menu?.submenu
         ? menu.submenu.label
         : menuWhere
           ? menuWhere.kind === 'pile' ? PILE_TITLES[menuWhere.pile] : menuWhere.kind === 'spot' ? ZONE_LABELS[menuWhere.spot] : t('practice.mat.materialOf', { name: nameOf(menuWhere.of) })
@@ -769,6 +773,8 @@ export function PracticeMat({
   const pileCell = (pile: 'extra' | 'gy' | 'banished', area: string) => {
     const top = pile === 'extra' ? null : topOf(pile)
     const count = state[pile].length
+    // El Extra se ve de dorso; una carta desterrada boca abajo también (el visor de la pila la muestra igual).
+    const back = pile === 'extra' ? count > 0 : top !== null && state.facedown.includes(top)
 
     return (
       <button
@@ -782,8 +788,7 @@ export function PracticeMat({
         style={{ gridArea: area }}
         onClick={() => setViewer(pile)}
       >
-        {pile === 'extra' && count > 0 ? <span className={CARD_BACK} /> : null}
-        {top ? <CardArt remoteUrl={artOf(cardOf(top))} name={cardOf(top).name} className="block h-full w-full object-cover" /> : null}
+        {back ? <span className={CARD_BACK} /> : top ? <CardArt remoteUrl={artOf(cardOf(top))} name={cardOf(top).name} className="block h-full w-full object-cover" /> : null}
         <PileBadge label={PILE_TITLES[pile]} count={count} />
       </button>
     )
