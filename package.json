@@ -15,6 +15,7 @@
     "sync:genesys": "node scripts/sync-genesys-card-data.mjs",
     "sync:meta": "node scripts/sync-meta-decks.mjs",
     "sync:prices": "node scripts/sync-card-prices.mjs",
+    "sync:replays": "node scripts/sync-replays.mjs",
     "test": "vitest --run",
     "typecheck": "tsc -p src/tsconfig.test.json"
   },

@@ -1,0 +1,42 @@
+name: Sync replays
+
+# Los replays de torneo de los canales oficiales de YouTube (Yu-Gi-Oh! TCG Europe y Yu-Gi-Oh! TCG) se suben cuando hay
+# torneos: se bajan todos los días a la mañana (UTC), un rato después de los decks del meta, y si hay novedades el
+# commit a main dispara el deploy en Vercel. Va aparte del meta a propósito: si YouTube cambia su formato o nos bloquea,
+# este workflow se ve rojo y los decks y los precios siguen como siempre.
+on:
+  schedule:
+    - cron: '50 6 * * *'
+  workflow_dispatch:
+
+# A diferencia de CI, este job escribe en el repo (sólo el archivo de datos).
+permissions:
+  contents: write
+
+concurrency: sync-replays
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      # Acciones fijadas por commit (no por tag movible): lo que corre es exactamente lo que se revisó.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+
+      # El script sólo usa lo que trae Node: no hace falta `npm ci`.
+      - run: npm run sync:replays
+
+      - name: Commit si cambió
+        run: |
+          git add src/data/replays.json
+          if git diff --cached --quiet; then
+            echo "Sin cambios."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Datos diarios: replays de los canales oficiales de YouTube al $(date -u +%Y-%m-%d)"
+          git push

@@ -1,7 +1,7 @@
 import { formatInteger } from '../../app/utils'
 import type { IconName } from '../ui/Icon'
 
-export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'meta'
+export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'meta' | 'replays'
 export type DeckWorkflowStepTone = 'complete' | 'progress' | 'pending'
 
 export interface DeckModeNavigationItem {
@@ -33,6 +33,7 @@ const WORKFLOW_STEP_KEYS: readonly DeckWorkflowStepKey[] = [
   'workspace',
   'export',
   'meta',
+  'replays',
 ]
 
 export const DECK_WORKFLOW_TONE_LABEL: Record<DeckWorkflowStepTone, string> = {
@@ -130,6 +131,17 @@ export function buildDeckWorkflowNavigationItems({
       title: 'Hand traps del meta',
       icon: 'chart',
       detail: 'Qué hand traps se juegan en los torneos.',
+      tone: 'pending',
+      disabled: false,
+    },
+    // También es referencia: los duelos de torneo de los decks del Meta, en video.
+    {
+      key: 'replays',
+      step: '7',
+      label: 'Replays',
+      title: 'Replays de torneo',
+      icon: 'play',
+      detail: 'Los duelos de los decks del Meta, en video.',
       tone: 'pending',
       disabled: false,
     },

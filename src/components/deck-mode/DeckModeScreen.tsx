@@ -33,6 +33,7 @@ import {
   LazyMetaScreen,
   LazyPracticeSection,
   LazyProbabilityPanel,
+  LazyReplaysScreen,
   preloadHeavySteps,
 } from './lazy-steps'
 import { useLabPrewarm } from '../probability/use-lab-prewarm'
@@ -46,6 +47,7 @@ const WORKFLOW_STEP_ORDER: DeckWorkflowStepKey[] = [
   'workspace',
   'export',
   'meta',
+  'replays',
 ]
 
 type StepNavigationDirection = 'forward' | 'back'
@@ -267,6 +269,12 @@ export function DeckModeScreen() {
       {activeStep === 'meta' ? (
         <div id="meta" className="min-w-0 min-[1101px]:min-h-full">
           <LazyMetaScreen />
+        </div>
+      ) : null}
+
+      {activeStep === 'replays' ? (
+        <div id="replays" className="min-w-0 min-[1101px]:min-h-full">
+          <LazyReplaysScreen />
         </div>
       ) : null}
     </section>

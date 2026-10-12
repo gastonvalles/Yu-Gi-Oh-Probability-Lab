@@ -9,7 +9,7 @@ interface DeckModeNavigationProps {
 }
 
 const TAB_BASE =
-  'group flex min-w-0 items-center gap-2.5 rounded-control px-3 py-1.5 text-left transition-[background-color,color] duration-150 focus-visible:outline-none focus-visible:shadow-focus motion-reduce:transition-none'
+  'group flex min-w-0 items-center gap-2 rounded-control px-2.5 py-1.5 text-left transition-[background-color,color] duration-150 focus-visible:outline-none focus-visible:shadow-focus motion-reduce:transition-none min-[1536px]:gap-2.5 min-[1536px]:px-3'
 
 export function DeckModeNavigation({ items, activeStep, onStepChange }: DeckModeNavigationProps) {
   return (
