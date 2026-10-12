@@ -1,10 +1,8 @@
-import type { ReactNode } from 'react'
-
 import type { PatternKind } from '../../types'
 import { cx } from '../ui/cx'
 import { formatOdds } from './lab-copy'
-import { describePracticeMatch, type PracticeHandMatch, type PracticeVerdict } from './practice'
-import { RULE_COLOR, VERDICT_COLOR } from './practice-styles'
+import { describePracticeMatch, type PracticeHandMatch } from './practice'
+import { RULE_COLOR } from './practice-styles'
 
 /** Chip chico de una salida (verde) o un problema (rojo): va debajo de la mano, en la mesa. */
 const RULE_BUTTON =
@@ -18,36 +16,7 @@ export { formatOdds }
 /** Id del chip "Mano no jugable" (no es una regla del Lab). */
 export const UNPLAYABLE_ID = 'unplayable'
 
-const VERDICT_WORD: Record<PracticeVerdict, string> = {
-  clean: 'Limpia',
-  'with-problem': 'Con problema',
-  'no-opening': 'Sin salida',
-}
-
-/** Resultado de la mano inicial en una palabra. */
-export function PracticeVerdictChip({ verdict }: { verdict: PracticeVerdict | null }) {
-  if (!verdict) {
-    return null
-  }
-
-  return (
-    <span
-      key={verdict}
-      className={cx(
-        'inline-flex min-h-8 items-center gap-1.5 rounded-full border border-(--verdict-color) bg-[color-mix(in_srgb,var(--verdict-color)_14%,transparent)] pl-2.5 pr-3 text-micro font-bold text-foreground shadow-[0_0_16px_color-mix(in_srgb,var(--verdict-color)_28%,transparent)] animate-pop motion-reduce:animate-none',
-        VERDICT_COLOR[verdict],
-      )}
-      role="status"
-    >
-      <span className="size-2 rounded-full bg-(--verdict-color) shadow-[0_0_8px_var(--verdict-color)]" aria-hidden="true" />
-      {VERDICT_WORD[verdict]}
-    </span>
-  )
-}
-
 interface PracticeBoardProps {
-  /** Lo que va antes de los chips (el veredicto). */
-  leading?: ReactNode
   openings: PracticeHandMatch[]
   problems: PracticeHandMatch[]
   activeId: string | null
@@ -61,13 +30,12 @@ interface PracticeBoardProps {
 }
 
 /** Salidas y problemas de la mano, en una fila de chips chicos; el tocado se explica debajo. */
-export function PracticeBoard({ leading, openings, problems, activeId, caseIndex, unplayableOdds, ruleOdds = null, onToggle }: PracticeBoardProps) {
+export function PracticeBoard({ openings, problems, activeId, caseIndex, unplayableOdds, ruleOdds = null, onToggle }: PracticeBoardProps) {
   const active = [...openings, ...problems].find((match) => match.patternId === activeId) ?? null
 
   return (
     <div className="grid gap-1.5">
       <div className="flex flex-wrap items-center gap-1.5">
-        {leading}
         <RuleGroup kind="opening" matches={openings} activeId={activeId} onToggle={onToggle} />
         <RuleGroup kind="problem" matches={problems} activeId={activeId} unplayable={unplayableOdds !== null} onToggle={onToggle} />
       </div>

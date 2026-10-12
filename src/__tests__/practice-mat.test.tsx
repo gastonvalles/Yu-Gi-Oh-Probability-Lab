@@ -87,12 +87,14 @@ describe('la mesa de práctica', () => {
     tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
 
     expect(screen.getByRole('menu', { name: 'Ash Blossom' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocar en ataque' }))
-
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
     expect(screen.queryByRole('menu', { name: 'Ash Blossom' })).not.toBeInTheDocument()
+    expect(within(status()).getByText('Tocá la zona para Invocación Normal')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
+
     expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' })).toBeInTheDocument()
     expect(within(hand()).queryByRole('listitem', { name: 'Ash Blossom' })).not.toBeInTheDocument()
-    expect(within(status()).getByText('Invocás Ash Blossom en ataque')).toBeInTheDocument()
+    expect(within(status()).getByText('Invocación Normal de Ash Blossom')).toBeInTheDocument()
     expect(within(status()).getByText('1/1')).toBeInTheDocument()
 
     // Deshacer la devuelve a la mano y borra la jugada.
@@ -143,9 +145,11 @@ describe('la mesa de práctica', () => {
     render(<Harness />)
 
     tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocar en defensa' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Especial en defensa' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
     tap(within(hand()).getByRole('listitem', { name: 'Called by the Grave' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Colocar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Zona de magia y trampa 1: elegir' }))
 
     fireEvent.click(screen.getByRole('button', { name: 'Guardar combo' }))
     const dialog = screen.getByRole('dialog', { name: 'Guardar combo' })
@@ -167,7 +171,7 @@ describe('la mesa de práctica', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
     expect(within(status()).getByText('1/2')).toBeInTheDocument()
-    expect(within(status()).getByText('Invocás Ash Blossom en defensa')).toBeInTheDocument()
+    expect(within(status()).getByText('Invocación Especial de Ash Blossom en defensa')).toBeInTheDocument()
     expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom, en defensa' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
@@ -178,9 +182,10 @@ describe('la mesa de práctica', () => {
     // Una jugada nueva a mitad de la reproducción deja de lado lo que seguía.
     fireEvent.click(screen.getByRole('button', { name: 'Anterior' }))
     tap(within(hand()).getByRole('listitem', { name: 'Nibiru' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocar en ataque' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 2: elegir' }))
     expect(within(status()).getByText('2/2')).toBeInTheDocument()
-    expect(within(status()).getByText('Invocás Nibiru en ataque')).toBeInTheDocument()
+    expect(within(status()).getByText('Invocación Normal de Nibiru')).toBeInTheDocument()
     expect(within(hand()).getByRole('listitem', { name: 'Called by the Grave' })).toBeInTheDocument()
   })
 })

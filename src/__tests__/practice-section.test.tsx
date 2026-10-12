@@ -81,11 +81,10 @@ beforeEach(() => {
 })
 
 describe('la práctica integrada en la mesa', () => {
-  it('abre con las cinco cartas en la mano y las salidas debajo; tocar una salida ilumina sus cartas', () => {
+  it('abre con las cinco cartas en la mano y las salidas debajo, sin veredicto; tocar una salida ilumina sus cartas', () => {
     render(<Harness />)
 
     expect(within(hand()).getAllByRole('listitem')).toHaveLength(5)
-    expect(screen.getByText('Limpia')).toBeInTheDocument()
 
     const openings = screen.getByRole('list', { name: 'Salidas' })
     const chip = within(openings).getByRole('button', { name: 'Salida básica' })
@@ -98,21 +97,19 @@ describe('la práctica integrada en la mesa', () => {
     expect(screen.getByRole('region', { name: 'Salida básica' })).toBeInTheDocument()
   })
 
-  it('robar la carta de ir 2º reevalúa la mano inicial: aparece el problema y el veredicto cambia', () => {
+  it('robar la carta de ir 2º reevalúa la mano inicial: aparece el problema', () => {
     render(<Harness />)
 
     tap(screen.getByRole('button', { name: 'Deck: 5' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Robar' }))
 
     expect(within(hand()).getAllByRole('listitem')).toHaveLength(6)
-    expect(screen.getByText('Con problema')).toBeInTheDocument()
     expect(within(screen.getByRole('list', { name: 'Problemas' })).getByRole('button', { name: '2 bricks' })).toBeInTheDocument()
 
     // Jugar cartas después no cambia la evaluación: es sobre la mano inicial.
     tap(within(hand()).getByRole('listitem', { name: 'Starter' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Al cementerio' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Descartar' }))
     expect(within(hand()).getAllByRole('listitem')).toHaveLength(5)
-    expect(screen.getByText('Con problema')).toBeInTheDocument()
     expect(within(screen.getByRole('list', { name: 'Salidas' })).getByRole('button', { name: 'Salida básica' })).toBeInTheDocument()
   })
 })

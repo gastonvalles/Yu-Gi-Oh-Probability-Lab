@@ -1,18 +1,9 @@
-import type { PracticeVerdict } from './practice'
-
 /**
  * Fondos propios de la práctica (el violeta #9B00FF y el verde #00FFA3 ya son los de toda la app).
  * Se publica como variables en la raíz de la práctica y la heredan todos sus elementos.
  */
 export const PRACTICE_PALETTE =
   '[--warning:#f59e0b] [--warning-rgb:245_158_11] [--background:#0b0b0f] [--background-rgb:11_11_15] [--card-background:#12121a] [--card-background-rgb:18_18_26]'
-
-/** Color del veredicto de la mano: lo heredan el chip, el brillo de la bandeja y sus hijos. */
-export const VERDICT_COLOR: Record<PracticeVerdict, string> = {
-  clean: '[--verdict-color:rgb(var(--success-rgb))]',
-  'with-problem': '[--verdict-color:rgb(var(--warning-rgb))]',
-  'no-opening': '[--verdict-color:rgb(var(--danger-rgb))]',
-}
 
 /** Color de una salida (verde) o de un problema (rojo): lo heredan los botones y la explicación. */
 export const RULE_COLOR = {

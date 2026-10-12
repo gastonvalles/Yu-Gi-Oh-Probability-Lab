@@ -18,7 +18,7 @@ import {
   getPracticeVerdict,
   type PracticeHandCard,
 } from './practice'
-import { PracticeBoard, PracticeVerdictChip, UNPLAYABLE_ID } from './PracticeBoard'
+import { PracticeBoard, UNPLAYABLE_ID } from './PracticeBoard'
 import { PracticeMat, type MatCard } from './PracticeMat'
 
 interface PracticeSectionProps {
@@ -52,8 +52,9 @@ function getBlockedMessage(props: PracticeSectionProps): string | null {
 }
 
 /**
- * La práctica: la mesa con la mano ya robada y, debajo de la mano, el veredicto y las salidas y
- * problemas de la mano inicial (la mano con la que se abrió, más la carta robada si se fue 2º).
+ * La práctica: la mesa con la mano ya robada y, debajo de la mano, las salidas y problemas de la mano
+ * inicial (la mano con la que se abrió, más la carta robada si se fue 2º). El veredicto no se muestra
+ * (Gastón lo consideró innecesario): sólo guía a la mascota y al chip "Mano no jugable".
  */
 export function PracticeSection(props: PracticeSectionProps) {
   const { handSize, derivedMainCards, patterns, session } = props
@@ -181,7 +182,6 @@ export function PracticeSection(props: PracticeSectionProps) {
     <Callout tone="warning">{blockedMessage}</Callout>
   ) : (
     <PracticeBoard
-      leading={<PracticeVerdictChip verdict={verdict} />}
       openings={openings}
       problems={problems}
       activeId={activeRuleId}

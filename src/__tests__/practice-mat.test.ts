@@ -20,13 +20,15 @@ import {
 } from '../app/practice-mat'
 import type { ApiCardReference } from '../types'
 
-const MONSTER: MatCardKind = { monster: true, extra: false, fieldSpell: false, pendulum: false, xyz: false }
+const MONSTER: MatCardKind = { monster: true, spell: false, trap: false, extra: false, effect: true, fieldSpell: false, pendulum: false, xyz: false, link: false }
 const XYZ: MatCardKind = { ...MONSTER, extra: true, xyz: true }
-const SPELL: MatCardKind = { monster: false, extra: false, fieldSpell: false, pendulum: false, xyz: false }
+const LINK: MatCardKind = { ...MONSTER, extra: true, link: true }
+const SPELL: MatCardKind = { ...MONSTER, monster: false, spell: true }
+const TRAP: MatCardKind = { ...MONSTER, monster: false, trap: true }
 
 const DECK = ['a1', 'a2', 'b1', 'c1', 'd1', 'e1', 'f1']
 const EXTRA = ['x1', 'x2']
-const KINDS: Record<string, MatCardKind> = { a1: MONSTER, a2: MONSTER, b1: SPELL, c1: MONSTER, d1: SPELL, e1: MONSTER, f1: MONSTER, x1: XYZ, x2: XYZ }
+const KINDS: Record<string, MatCardKind> = { a1: MONSTER, a2: MONSTER, b1: SPELL, c1: MONSTER, d1: TRAP, e1: MONSTER, f1: MONSTER, x1: XYZ, x2: LINK }
 const kindOf = (id: string) => KINDS[id] ?? TOKEN_KIND
 const nameOf = (id: string) => id.toUpperCase()
 
@@ -125,20 +127,33 @@ describe('la mesa de práctica', () => {
     expect(describe({ type: 'draw', count: 2 })).toBe('Robás 2 cartas')
     expect(describe({ type: 'mill', count: 1 })).toBe('Mandás E1 del deck al cementerio')
     expect(describe({ type: 'shuffle', seed: 1 })).toBe('Barajás el deck')
-    expect(describe({ type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' })).toBe('Invocás A1 en ataque')
+    expect(describe({ type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk', how: 'normal' })).toBe('Invocación Normal de A1')
+    expect(describe({ type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'def', how: 'special' })).toBe('Invocación Especial de A1 en defensa')
+    expect(describe({ type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' })).toBe('A1 sale al campo en ataque')
     expect(describe({ type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'set' })).toBe('Colocás A1 boca abajo')
+    expect(describe({ type: 'place', id: 'a1', zone: 'st', index: 0, pos: 'atk', how: 'scale' })).toBe('Activás A1 como escala')
     expect(describe({ type: 'place', id: 'b1', zone: 'st', index: 0, pos: 'atk' })).toBe('Activás B1')
     expect(describe({ type: 'place', id: 'b1', zone: 'st', index: 0, pos: 'set' })).toBe('Colocás B1')
     expect(describe({ type: 'move', id: 'e1', to: 'hand' })).toBe('Buscás E1 del deck a la mano')
     expect(describe({ type: 'move', id: 'a1', to: 'gy' })).toBe('A1 va al cementerio')
     expect(describe({ type: 'move', id: 'a1', to: 'banished' })).toBe('Desterrás A1')
     expect(describe({ type: 'move', id: 'a1', to: 'deck-bottom' })).toBe('Ponés A1 abajo del deck')
+    expect(describe({ type: 'activate', id: 'a1' })).toBe('Activás el efecto de A1')
+    expect(describe({ type: 'activate', id: 'a1', cost: 'discard' })).toBe('Activás el efecto de A1 descartándola')
+    expect(describe({ type: 'reveal', id: 'a1' })).toBe('Revelás A1')
 
-    const played = run([{ type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'set' }, { type: 'move', id: 'a2', to: 'gy' }])
-    expect(describe({ type: 'position', id: 'a1', pos: 'atk' }, played)).toBe('Volteás A1')
+    const played = run([{ type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'set' }, { type: 'move', id: 'a2', to: 'gy' }, { type: 'place', id: 'b1', zone: 'st', index: 1, pos: 'set' }])
+    expect(describe({ type: 'position', id: 'a1', pos: 'atk' }, played)).toBe('Invocación por Volteo de A1')
+    expect(describe({ type: 'position', id: 'a1', pos: 'def' }, played)).toBe('Volteás A1 boca arriba')
+    expect(describe({ type: 'position', id: 'b1', pos: 'atk' }, played)).toBe('Activás B1')
     expect(describe({ type: 'move', id: 'a2', to: 'hand' }, played)).toBe('Recuperás A2 del cementerio')
     expect(describe({ type: 'move', id: 'a1', to: 'hand' }, played)).toBe('A1 vuelve a la mano')
     expect(describe({ type: 'token', zone: 'mz', index: 1 }, played)).toBe('Ficha en la zona 2')
+
+    // Activar con costo mueve la carta; sin costo y revelar sólo quedan anotados.
+    expect(matReducer(state, { type: 'activate', id: 'a1', cost: 'discard' }).gy).toEqual(['a1'])
+    expect(matReducer(state, { type: 'activate', id: 'a1' })).toBe(state)
+    expect(matReducer(state, { type: 'reveal', id: 'a1' })).toBe(state)
 
     expect(describeMatSteps(state, [{ type: 'draw', count: 1 }, { type: 'draw', count: 1 }], nameOf)).toEqual(['Robás E1', 'Robás F1'])
   })
@@ -146,18 +161,41 @@ describe('la mesa de práctica', () => {
   it('el menú ofrece lo que se puede hacer desde donde está la carta', () => {
     const labels = (state: MatState, id: string) => listCardActions(state, id, kindOf, nameOf).map((item) => item.label)
 
-    expect(labels(start(), 'a1')).toEqual(['Invocar en ataque', 'Invocar en defensa', 'Colocar boca abajo', 'Al cementerio', 'Desterrar', 'Arriba del deck', 'Abajo del deck'])
-    expect(labels(start(), 'b1')).toEqual(['Activar', 'Colocar', 'Al cementerio', 'Desterrar', 'Arriba del deck', 'Abajo del deck'])
-    expect(labels(start(), 'x1')).toEqual(['Invocar en ataque', 'Invocar en defensa', 'A la mano', 'Al cementerio', 'Desterrar'])
+    // Desde la mano: un monstruo de efecto se Invoca de modo Normal, se Coloca, se Invoca de modo Especial o activa su efecto (hand trap).
+    expect(labels(start(), 'a1')).toEqual([
+      'Invocación Normal',
+      'Colocar boca abajo',
+      'Invocación Especial en ataque',
+      'Invocación Especial en defensa',
+      'Activar efecto',
+      'Activar efecto y descartar',
+      'Revelar',
+      'Descartar',
+      'Desterrar',
+      'Arriba del deck',
+      'Abajo del deck',
+    ])
+    // Una Magia se activa o se coloca; una Trampa sólo se coloca desde la mano.
+    expect(labels(start(), 'b1')).toEqual(['Activar', 'Colocar', 'Revelar', 'Descartar', 'Desterrar', 'Arriba del deck', 'Abajo del deck'])
+    expect(labels(start(), 'd1')).toEqual(['Colocar', 'Revelar', 'Descartar', 'Desterrar', 'Arriba del deck', 'Abajo del deck'])
+    // Desde el Extra sólo Invocación Especial; un Link no va a defensa.
+    expect(labels(start(), 'x1')).toEqual(['Invocación Especial en ataque', 'Invocación Especial en defensa', 'Al cementerio', 'Desterrar'])
+    expect(labels(start(), 'x2')).toEqual(['Invocación Especial en ataque', 'Al cementerio', 'Desterrar'])
 
     const played = run([
       { type: 'place', id: 'x1', zone: 'emz', index: 0, pos: 'atk' },
       { type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' },
       { type: 'attach', id: 'a2', to: 'x1' },
+      { type: 'place', id: 'c1', zone: 'mz', index: 1, pos: 'set' },
+      { type: 'move', id: 'e1', to: 'gy' },
     ])
-    expect(labels(played, 'a1')).toEqual(['Pasar a defensa', 'Poner boca abajo', 'Adjuntar a X1', 'Contador +1', 'A la mano', 'Al cementerio', 'Desterrar', 'Arriba del deck', 'Abajo del deck'])
-    expect(labels(played, 'x1')).toEqual(['Pasar a defensa', 'Poner boca abajo', 'Contador +1', 'Desacoplar A2', 'A la mano', 'Al cementerio', 'Desterrar', 'Al Extra Deck'])
+    expect(labels(played, 'a1')).toEqual(['Activar efecto', 'Pasar a defensa', 'Poner boca abajo', 'Adjuntar a X1', 'Contador +1', 'A la mano', 'Sacrificar (al cementerio)', 'Desterrar', 'Arriba del deck', 'Abajo del deck'])
+    expect(labels(played, 'x1')).toEqual(['Activar efecto', 'Pasar a defensa', 'Poner boca abajo', 'Contador +1', 'Desacoplar A2', 'A la mano', 'Sacrificar (al cementerio)', 'Desterrar', 'Al Extra Deck'])
     expect(labels(played, 'a2')).toEqual(['Desacoplar al cementerio', 'Desterrar', 'A la mano'])
+    // Boca abajo: Invocación por Volteo (a ataque) o voltear boca arriba (queda en defensa).
+    expect(labels(played, 'c1').slice(0, 2)).toEqual(['Invocación por Volteo', 'Voltear boca arriba'])
+    // Desde el cementerio: Invocación Especial, activar el efecto, volver a la mano.
+    expect(labels(played, 'e1')).toEqual(['Invocación Especial en ataque', 'Invocación Especial en defensa', 'Activar efecto', 'A la mano', 'Desterrar', 'Arriba del deck', 'Abajo del deck'])
     expect(labels(played, 'zzz')).toEqual([])
 
     // Sin zonas de monstruo libres no se ofrece invocar.
@@ -166,20 +204,24 @@ describe('la mesa de práctica', () => {
       ...[0, 1].map((index): MatAction => ({ type: 'token', zone: 'emz', index })),
     ]
     const full = run(fillers)
-    expect(labels(full, 'a1')).not.toContain('Invocar en ataque')
-    expect(labels(full, 'token-1')).toEqual(['Pasar a defensa', 'Poner boca abajo', 'Contador +1', 'Quitar la ficha'])
+    expect(labels(full, 'a1')).not.toContain('Invocación Normal')
+    expect(labels(full, 'a1')).not.toContain('Invocación Especial en ataque')
+    // Las fichas no se colocan boca abajo ni tienen efecto.
+    expect(labels(full, 'token-1')).toEqual(['Pasar a defensa', 'Contador +1', 'Sacrificar / quitar la ficha'])
   })
 
   it('reconoce el tipo de carta por el marco y el subtipo', () => {
     const card = (frameType: string, race = ''): ApiCardReference => ({ frameType, race } as ApiCardReference)
 
     expect(cardKindOf(card('effect'))).toEqual(MONSTER)
+    expect(cardKindOf(card('normal'))).toEqual({ ...MONSTER, effect: false })
     expect(cardKindOf(card('xyz'))).toEqual(XYZ)
+    expect(cardKindOf(card('link'))).toEqual(LINK)
     expect(cardKindOf(card('effect_pendulum'))).toEqual({ ...MONSTER, pendulum: true })
     expect(cardKindOf(card('spell'))).toEqual(SPELL)
     expect(cardKindOf(card('spell', 'Field'))).toEqual({ ...SPELL, fieldSpell: true })
-    expect(cardKindOf(card('trap'))).toEqual(SPELL)
-    expect(cardKindOf(null)).toEqual({ ...SPELL, monster: false })
+    expect(cardKindOf(card('trap'))).toEqual(TRAP)
+    expect(cardKindOf(null)).toEqual({ ...SPELL, spell: false, effect: false })
   })
 
   it('ninguna secuencia de jugadas pierde ni duplica cartas', () => {
@@ -196,6 +238,8 @@ describe('la mesa de práctica', () => {
       fc.record({ type: fc.constant('position' as const), id, pos }),
       fc.record({ type: fc.constant('counter' as const), id, delta: fc.integer({ min: -2, max: 2 }) }),
       fc.record({ type: fc.constant('token' as const), zone: fc.constantFrom('mz', 'emz', 'st'), index: fc.integer({ min: -1, max: 5 }) }),
+      fc.record({ type: fc.constant('activate' as const), id, cost: fc.constantFrom(undefined, 'discard' as const, 'banish' as const) }),
+      fc.record({ type: fc.constant('reveal' as const), id }),
     )
 
     fc.assert(
