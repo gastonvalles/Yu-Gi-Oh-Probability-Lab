@@ -96,6 +96,14 @@ describe('la práctica integrada en la mesa', () => {
     expect(within(hand()).getByRole('listitem', { name: 'Starter' })).toHaveAttribute('data-glow', 'true')
     expect(within(hand()).getByRole('listitem', { name: 'Brick' })).toHaveAttribute('data-dim', 'true')
     expect(screen.getByRole('region', { name: 'Salida básica' })).toBeInTheDocument()
+
+    // Tocar dentro de la explicación no la cierra; tocar en cualquier otro lado sí.
+    fireEvent.pointerDown(screen.getByRole('region', { name: 'Salida básica' }))
+    expect(chip).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.pointerDown(screen.getByRole('group', { name: 'Zona de monstruo 1' }))
+    expect(chip).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.queryByRole('region', { name: 'Salida básica' })).not.toBeInTheDocument()
+    expect(within(hand()).getByRole('listitem', { name: 'Brick' })).toHaveAttribute('data-dim', 'false')
   })
 
   it('sin ninguna salida, la mano se ve gris y el chip "Mano no jugable" explica qué faltó', () => {

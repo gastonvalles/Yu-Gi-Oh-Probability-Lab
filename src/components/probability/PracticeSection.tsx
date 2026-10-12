@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { buildDerivedDeckGroupMap } from '../../app/deck-groups'
 import { requestLabOdds } from '../../app/lab-odds-client'
@@ -117,6 +117,11 @@ export function PracticeSection(props: PracticeSectionProps) {
     setCaseIndex(0)
   }
 
+  const dismissRule = useCallback(() => {
+    setActiveRuleId(null)
+    setCaseIndex(0)
+  }, [])
+
   const highlighted = useMemo<ReadonlySet<string>>(
     () => (activeMatch ? new Set(getMatchCardIds(activeMatch, openingHand, activeCase)) : EMPTY_IDS),
     [activeMatch, activeCase, openingHand],
@@ -191,6 +196,7 @@ export function PracticeSection(props: PracticeSectionProps) {
       nearMisses={(result?.openingNearMisses ?? []).slice(0, 2).map(({ name, notes }) => ({ name, notes }))}
       ruleOdds={lab?.rules[turn] ?? null}
       onToggle={handleToggleRule}
+      onDismiss={dismissRule}
     />
   )
 

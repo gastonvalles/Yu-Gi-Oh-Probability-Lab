@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react'
+
 import type { PatternKind } from '../../types'
 import { cx } from '../ui/cx'
 import { formatOdds } from './lab-copy'
@@ -41,15 +43,34 @@ interface PracticeBoardProps {
   /** Probabilidad (0-1) de cada regla en este turno, por id: se muestra como "1 de cada x manos". */
   ruleOdds?: ReadonlyMap<string, number> | null
   onToggle: (patternId: string) => void
+  /** Se tocó fuera de los chips y de la explicación: se cierra la regla activa. */
+  onDismiss?: () => void
 }
 
-/** Salidas y problemas de la mano, en una fila de chips chicos; el tocado se explica debajo. */
-export function PracticeBoard({ openings, problems, activeId, caseIndex, unplayable, unplayableOdds, nearMisses = [], ruleOdds = null, onToggle }: PracticeBoardProps) {
+/** Salidas y problemas de la mano, en una fila de chips chicos; el tocado se explica arriba de los chips. */
+export function PracticeBoard({ openings, problems, activeId, caseIndex, unplayable, unplayableOdds, nearMisses = [], ruleOdds = null, onToggle, onDismiss }: PracticeBoardProps) {
   const active = [...openings, ...problems].find((match) => match.patternId === activeId) ?? null
+  const ref = useRef<HTMLDivElement | null>(null)
+
+  // Tocar en cualquier otro lado de la pantalla (la mesa, una carta, un menú) cierra la explicación.
+  useEffect(() => {
+    if (activeId === null || !onDismiss) {
+      return
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (ref.current && event.target instanceof Node && !ref.current.contains(event.target)) {
+        onDismiss()
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown, true)
+    return () => document.removeEventListener('pointerdown', handlePointerDown, true)
+  }, [activeId, onDismiss])
 
   // La explicación va ARRIBA de los chips (entre el campo y ellos); los chips quedan junto a la mano.
   return (
-    <div className="grid gap-1.5">
+    <div ref={ref} className="grid gap-1.5">
       {activeId === UNPLAYABLE_ID && unplayable ? (
         <section className={explainStyle('problem')} aria-live="polite" aria-label="Mano no jugable">
           <p className={EXPLAIN_TEXT}>Ninguna salida se cumple con esta mano: por eso se ve gris.</p>
