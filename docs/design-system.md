@@ -87,6 +87,6 @@ Los roles de las cartas (starter, handtrap…) y los grupos (engine, non-engine�
 6. Probá a 390 px, 1100 px y 1440 px antes de dar algo por terminado.
 7. **Nada se corre de lugar al cambiar de pestaña.** Lo que se ve igual en dos pantallas tiene que quedar en el mismo píxel:
    - El que hace scroll reserva la barra: `scrollbar-gutter: stable` en el contenedor del paso (escritorio, `DeckModeShell`) y en `html` (celular y tablet, `index.css`). Con o sin barra, el contenido y la barra de abajo miden lo mismo.
-   - `StepHero` tiene el renglón del título de alto fijo y todo paso lleva subtítulo (sólo se ve en escritorio): el título y el primer bloque quedan en el mismo lugar en todas.
+   - `StepHero` tiene el renglón del título de alto fijo (el botón de al lado, que en táctil mide 44 px, sobresale sin agrandarlo) y todo paso lleva subtítulo (sólo se ve en escritorio): el título y el primer bloque quedan en el mismo lugar en todas.
    - Cambiar de pestaña no desliza nada ni anima el scroll: la pantalla nueva aparece con un fundido, ya arriba de todo.
    Para comprobarlo, recorré todas las pestañas y fijate que el ancho del contenido, la posición del título y la de los íconos de la barra den lo mismo en cada una.
