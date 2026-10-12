@@ -155,6 +155,25 @@ describe('la mesa de práctica', () => {
     expect(matReducer(state, { type: 'attach', id: 'token-2', to: 'token-1' })).toBe(state)
   })
 
+  it('sacar una carta mirando el deck baraja el resto en la misma jugada, y queda dicho', () => {
+    const state = createMatState(DECK, EXTRA, 2)
+    const rest = shuffleWithSeed(['b1', 'c1', 'e1', 'f1'], 5)
+    expect(state.deck).toEqual(['b1', 'c1', 'd1', 'e1', 'f1'])
+
+    const searched = matReducer(state, { type: 'move', id: 'd1', to: 'hand', shuffle: 5 })
+    expect(searched.hand).toEqual(['a1', 'a2', 'd1'])
+    expect(searched.deck).toEqual(rest)
+    expect(describeMatAction(state, { type: 'move', id: 'd1', to: 'hand', shuffle: 5 }, nameOf)).toBe('Buscás D1 del deck a la mano y barajás')
+    // Arriba del deck: se baraja el resto y la carta queda en el tope.
+    expect(matReducer(state, { type: 'move', id: 'd1', to: 'deck', shuffle: 5 }).deck).toEqual(['d1', ...rest])
+
+    const placed = matReducer(state, { type: 'place', id: 'd1', zone: 'mz', index: 0, pos: 'atk', how: 'special', shuffle: 5 })
+    expect([placed.mz[0]?.id, placed.deck]).toEqual(['d1', rest])
+    expect(describeMatAction(state, { type: 'place', id: 'd1', zone: 'mz', index: 0, pos: 'atk', how: 'special', shuffle: 5 }, nameOf)).toBe('Invocación Especial de D1 en ataque y barajás')
+    // Sin semilla el deck queda en su orden.
+    expect(matReducer(state, { type: 'move', id: 'd1', to: 'hand' }).deck).toEqual(['b1', 'c1', 'e1', 'f1'])
+  })
+
   it('la misma semilla baraja igual, y otra semilla distinto', () => {
     const items = Array.from({ length: 40 }, (_, index) => `c${index}`)
 
@@ -285,7 +304,10 @@ describe('la mesa de práctica', () => {
     expect(normal.choices?.map((choice) => [choice.label, choice.action.type === 'place' && [choice.action.pos, choice.action.how]])).toEqual([['En ataque', ['atk', 'normal']], ['Boca abajo', ['set', 'normal']]])
     const special = listCardActions(start(), 'a1', kindOf, nameOf).find((item) => item.label === 'Invocación Especial')!
     expect(special.choices?.map((choice) => [choice.label, choice.action.type === 'place' && choice.action.pos])).toEqual([['En ataque', 'atk'], ['En defensa', 'def']])
-    expect(special.choices?.[1]?.targets).toHaveLength(7)
+    // Desde la mano sólo las cinco zonas principales; la Extra Monster Zone es para lo que viene del Extra Deck.
+    expect(special.choices?.[1]?.targets?.map((target) => target.zone)).toEqual(['mz', 'mz', 'mz', 'mz', 'mz'])
+    expect(normal.choices?.[0]?.targets).toHaveLength(5)
+    expect(listCardActions(start(), 'x1', kindOf, nameOf)[0]!.choices?.[0]?.targets?.map((target) => target.zone)).toEqual(['mz', 'mz', 'mz', 'mz', 'mz', 'emz', 'emz'])
     // Nivel 7 sin monstruos en el campo: ni Invocación Normal ni por Sacrificio.
     expect(labels(start(), 'c1').slice(0, 1)).toEqual(['Invocación Especial'])
     expect(labels(start(), 'c1')).not.toContain('Invocación Normal')
@@ -302,8 +324,9 @@ describe('la mesa de práctica', () => {
     expect(labels(played, 'a2')).toEqual(['Desacoplar al cementerio', 'Desterrar', 'A la mano'])
     // Boca abajo: Invocación por Volteo (a ataque) o voltear boca arriba (queda en defensa).
     expect(labels(played, 'c1').slice(0, 2)).toEqual(['Invocación por Volteo', 'Voltear boca arriba'])
-    // Desde el cementerio: Invocación Especial, a Mágicas/Trampas, a la mano, destierro y de vuelta al deck (arriba o abajo).
+    // Desde el cementerio: Invocación Especial (a una zona principal), a Mágicas/Trampas, a la mano, destierro y de vuelta al deck (arriba o abajo).
     expect(labels(played, 'e1')).toEqual(['Invocación Especial', 'A la zona de Mágicas y Trampas', 'Activar efecto', 'A la mano', 'Seleccionar', 'Desterrar', 'Desterrar boca abajo', 'Arriba del deck', 'Abajo del deck'])
+    expect(listCardActions(played, 'e1', kindOf, nameOf)[0]!.choices?.[0]?.targets?.every((target) => target.zone === 'mz')).toBe(true)
     expect(labels(played, 'zzz')).toEqual([])
 
     // Con dos monstruos en el campo, el Nivel 7 ofrece la Invocación por Sacrificio (en ataque o boca abajo), que la mesa completa.
@@ -365,10 +388,10 @@ describe('la mesa de práctica', () => {
       fc.record({ type: fc.constant('draw' as const), count: fc.integer({ min: 0, max: 3 }) }),
       fc.record({ type: fc.constant('mill' as const), count: fc.integer({ min: 0, max: 3 }) }),
       fc.record({ type: fc.constant('shuffle' as const), seed: fc.integer({ min: 0, max: 1000 }) }),
-      fc.record({ type: fc.constant('move' as const), id, to: fc.constantFrom('deck', 'deck-bottom', 'extra', 'hand', 'gy', 'banished'), faceDown: fc.boolean() }),
+      fc.record({ type: fc.constant('move' as const), id, to: fc.constantFrom('deck', 'deck-bottom', 'extra', 'hand', 'gy', 'banished'), faceDown: fc.boolean(), shuffle: fc.option(fc.integer({ min: 0, max: 1000 }), { nil: undefined }) }),
       fc.record({ type: fc.constant('declare' as const), id }),
       fc.record({ type: fc.constant('target' as const), id }),
-      fc.record({ type: fc.constant('place' as const), id, zone: fc.constantFrom('mz', 'emz', 'st', 'field'), index: fc.integer({ min: -1, max: 5 }), pos }),
+      fc.record({ type: fc.constant('place' as const), id, zone: fc.constantFrom('mz', 'emz', 'st', 'field'), index: fc.integer({ min: -1, max: 5 }), pos, shuffle: fc.option(fc.integer({ min: 0, max: 1000 }), { nil: undefined }) }),
       fc.record({ type: fc.constant('attach' as const), id, to: id }),
       fc.record({ type: fc.constant('position' as const), id, pos }),
       fc.record({ type: fc.constant('counter' as const), id, delta: fc.integer({ min: -2, max: 2 }) }),
