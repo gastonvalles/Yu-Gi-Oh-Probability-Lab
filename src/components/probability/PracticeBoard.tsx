@@ -16,32 +16,52 @@ export { formatOdds }
 /** Id del chip "Mano no jugable" (no es una regla del Lab). */
 export const UNPLAYABLE_ID = 'unplayable'
 
+/** La salida que más cerca estuvo de cumplirse y qué le faltó. */
+export interface PracticeNearMiss {
+  name: string
+  notes: string[]
+}
+
 interface PracticeBoardProps {
   openings: PracticeHandMatch[]
   problems: PracticeHandMatch[]
   activeId: string | null
   /** Qué caso (forma de cumplirla) de la regla activa se está mostrando. */
   caseIndex: number
-  /** Mano sin salida: probabilidad (0-1) de que pase. null si la mano es jugable. */
+  /** Mano sin salida: ninguna apertura se cumple (la mano se ve gris). */
+  unplayable: boolean
+  /** Probabilidad (0-1) de que una mano no sea jugable, cuando el Lab ya la calculó. */
   unplayableOdds: number | null
+  /** Qué le faltó a las salidas más cercanas: explica por qué la mano no es jugable. */
+  nearMisses?: PracticeNearMiss[]
   /** Probabilidad (0-1) de cada regla en este turno, por id: se muestra como "1 de cada x manos". */
   ruleOdds?: ReadonlyMap<string, number> | null
   onToggle: (patternId: string) => void
 }
 
 /** Salidas y problemas de la mano, en una fila de chips chicos; el tocado se explica debajo. */
-export function PracticeBoard({ openings, problems, activeId, caseIndex, unplayableOdds, ruleOdds = null, onToggle }: PracticeBoardProps) {
+export function PracticeBoard({ openings, problems, activeId, caseIndex, unplayable, unplayableOdds, nearMisses = [], ruleOdds = null, onToggle }: PracticeBoardProps) {
   const active = [...openings, ...problems].find((match) => match.patternId === activeId) ?? null
 
   return (
     <div className="grid gap-1.5">
       <div className="flex flex-wrap items-center gap-1.5">
         <RuleGroup kind="opening" matches={openings} activeId={activeId} onToggle={onToggle} />
-        <RuleGroup kind="problem" matches={problems} activeId={activeId} unplayable={unplayableOdds !== null} onToggle={onToggle} />
+        <RuleGroup kind="problem" matches={problems} activeId={activeId} unplayable={unplayable} onToggle={onToggle} />
       </div>
-      {activeId === UNPLAYABLE_ID && unplayableOdds !== null && unplayableOdds > 0 ? (
+      {activeId === UNPLAYABLE_ID && unplayable ? (
         <section className={explainStyle('problem')} aria-live="polite" aria-label="Mano no jugable">
-          <p className={EXPLAIN_TEXT}>{formatOdds(unplayableOdds)}</p>
+          <p className={EXPLAIN_TEXT}>Ninguna salida se cumple con esta mano: por eso se ve gris.</p>
+          {unplayableOdds !== null && unplayableOdds > 0 ? <p className={ODDS_TEXT}>{formatOdds(unplayableOdds)}</p> : null}
+          {nearMisses.length > 0 ? (
+            <ul aria-label="Qué faltó" className="m-0 col-span-full grid list-none gap-0.5 p-0 text-micro text-white/85">
+              {nearMisses.map((miss) => (
+                <li key={miss.name} className="[overflow-wrap:anywhere]">
+                  <strong className="font-semibold">{miss.name}:</strong> {miss.notes.join(' ')}
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </section>
       ) : null}
       {active ? <RuleExplanation key={active.patternId} match={active} caseIndex={caseIndex} odds={ruleOdds?.get(active.patternId) ?? null} /> : null}

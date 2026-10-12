@@ -186,7 +186,9 @@ export function PracticeSection(props: PracticeSectionProps) {
       problems={problems}
       activeId={activeRuleId}
       caseIndex={activeCase}
+      unplayable={isUnplayable}
       unplayableOdds={unplayableOdds}
+      nearMisses={(result?.openingNearMisses ?? []).slice(0, 2).map(({ name, notes }) => ({ name, notes }))}
       ruleOdds={lab?.rules[turn] ?? null}
       onToggle={handleToggleRule}
     />

@@ -7,7 +7,7 @@ import { Provider } from 'react-redux'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createMatcherPattern } from '../app/pattern-factory'
-import { createMatState } from '../app/practice-mat'
+import { createMatState, type MatState } from '../app/practice-mat'
 import { useMatSession } from '../app/use-mat-session'
 import { buildPracticeDeck } from '../components/probability/practice'
 import { PracticeSection } from '../components/probability/PracticeSection'
@@ -31,13 +31,13 @@ const CARDS_BY_ID = new Map(DECK.map((entry) => [entry.drawId, { name: entry.nam
 const ORDER = ['card-1-1', 'card-3-1', 'card-3-2', 'card-3-3', 'card-2-1', 'card-2-2', 'card-1-2', 'card-3-4', 'card-3-5', 'card-3-6']
 const INITIAL = createMatState(ORDER, [], 5)
 
-function Harness() {
+function Harness({ initial = INITIAL }: { initial?: MatState }) {
   const mat = useMatSession()
   const { start } = mat
 
   useEffect(() => {
-    start(INITIAL)
-  }, [start])
+    start(initial)
+  }, [start, initial])
 
   if (!mat.session || !mat.state) {
     return null
@@ -96,6 +96,21 @@ describe('la práctica integrada en la mesa', () => {
     expect(within(hand()).getByRole('listitem', { name: 'Starter' })).toHaveAttribute('data-glow', 'true')
     expect(within(hand()).getByRole('listitem', { name: 'Brick' })).toHaveAttribute('data-dim', 'true')
     expect(screen.getByRole('region', { name: 'Salida básica' })).toBeInTheDocument()
+  })
+
+  it('sin ninguna salida, la mano se ve gris y el chip "Mano no jugable" explica qué faltó', () => {
+    // Cinco cartas de relleno: no hay starter.
+    render(<Harness initial={createMatState(['card-3-1', 'card-3-2', 'card-3-3', 'card-3-4', 'card-3-5', 'card-1-1', 'card-3-6'], [], 5)} />)
+
+    expect(within(hand()).getAllByRole('listitem', { name: 'Relleno' })[0]).toHaveAttribute('data-muted', 'true')
+
+    const chip = within(screen.getByRole('list', { name: 'Problemas' })).getByRole('button', { name: 'Mano no jugable' })
+    expect(chip).toHaveAttribute('aria-pressed', 'true')
+
+    const why = screen.getByRole('region', { name: 'Mano no jugable' })
+    expect(within(why).getByText(/Ninguna salida se cumple/)).toBeInTheDocument()
+    expect(within(why).getByText('Salida básica:')).toBeInTheDocument()
+    expect(within(why).getByText(/Falta/)).toBeInTheDocument()
   })
 
   it('robar la carta de ir 2º reevalúa la mano inicial: aparece el problema', () => {
