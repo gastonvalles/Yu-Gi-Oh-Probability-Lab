@@ -42,6 +42,20 @@ import {
   parseRequiredString,
 } from './utils'
 
+/** El deck tal como se guarda y se exporta en JSON (sin ids de instancia): lo que la importación vuelve a leer. */
+export function toPortableDeckBuilder(deckBuilder: AppState['deckBuilder']): PortableConfig['deckBuilder'] {
+  const zone = (cards: AppState['deckBuilder']['main']) =>
+    cards.map((card) => ({
+      name: card.name,
+      apiCard: { ...card.apiCard },
+      origin: card.origin,
+      roles: [...card.roles],
+      needsReview: card.needsReview === true,
+    }))
+
+  return { deckName: deckBuilder.deckName, main: zone(deckBuilder.main), extra: zone(deckBuilder.extra), side: zone(deckBuilder.side) }
+}
+
 export function toPortableConfig(state: AppState): PortableConfig {
   return {
     version: 16,
@@ -51,30 +65,7 @@ export function toPortableConfig(state: AppState): PortableConfig {
     patternsSeedVersion: state.patternsSeedVersion,
     disabledGenericRuleIds: [...state.disabledGenericRuleIds],
     systemRuleNames: { ...state.systemRuleNames },
-    deckBuilder: {
-      deckName: state.deckBuilder.deckName,
-      main: state.deckBuilder.main.map((card) => ({
-        name: card.name,
-        apiCard: { ...card.apiCard },
-        origin: card.origin,
-        roles: [...card.roles],
-        needsReview: card.needsReview === true,
-      })),
-      extra: state.deckBuilder.extra.map((card) => ({
-        name: card.name,
-        apiCard: { ...card.apiCard },
-        origin: card.origin,
-        roles: [...card.roles],
-        needsReview: card.needsReview === true,
-      })),
-      side: state.deckBuilder.side.map((card) => ({
-        name: card.name,
-        apiCard: { ...card.apiCard },
-        origin: card.origin,
-        roles: [...card.roles],
-        needsReview: card.needsReview === true,
-      })),
-    },
+    deckBuilder: toPortableDeckBuilder(state.deckBuilder),
     patterns: state.patterns.map((pattern) => ({
       name: pattern.name,
       kind: pattern.kind,
