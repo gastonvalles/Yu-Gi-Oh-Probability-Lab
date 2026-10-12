@@ -49,7 +49,8 @@ export const practice: Translated<typeof es> = {
   'practice.menu.reveal': 'Reveal',
   'practice.menu.discard': 'Discard',
   'practice.menu.banish': 'Banish',
-  'practice.menu.banishFaceDown': 'Banish face-down',
+  'practice.menu.banishFaceUp': 'Face-up',
+  'practice.menu.banishFaceDown': 'Face-down',
   'practice.menu.toSpellTrapZone': 'To the Spell & Trap Zone',
   'practice.menu.toHand': 'To hand',
   'practice.menu.toGy': 'To the Graveyard',
@@ -60,7 +61,6 @@ export const practice: Translated<typeof es> = {
   'practice.deckMenu.draw': 'Draw',
   'practice.deckMenu.mill': 'Send to the Graveyard',
   'practice.deckMenu.banishTop': 'Banish the top card',
-  'practice.deckMenu.banishTopFaceDown': 'Banish the top card face-down',
   'practice.deckMenu.view': 'View the Deck',
   'practice.deckMenu.shuffle': 'Shuffle',
 

@@ -72,13 +72,14 @@ describe('la mesa de práctica en inglés', () => {
   })
 
   it('el menú de una carta ofrece las jugadas con su nombre oficial', () => {
-    expect(labels(start(), 'a1')).toEqual(['Normal Summon', 'Special Summon', 'Activate effect', 'Reveal', 'Select', 'Discard', 'Banish', 'Banish face-down', 'Top of the Deck', 'Bottom of the Deck'])
+    expect(labels(start(), 'a1')).toEqual(['Normal Summon', 'Special Summon', 'Activate effect', 'Reveal', 'Select', 'Discard', 'Banish', 'Top of the Deck', 'Bottom of the Deck'])
     expect(listCardActions(start(), 'a1', kindOf, nameOf)[0]!.choices?.map((choice) => choice.label)).toEqual(['Attack', 'Set face-down'])
-    expect(labels(start(), 'x1')).toEqual(['Special Summon', 'To the Graveyard', 'Banish', 'Banish face-down'])
+    expect(labels(start(), 'x1')).toEqual(['Special Summon', 'To the Graveyard', 'Banish'])
+    expect(listCardActions(start(), 'x1', kindOf, nameOf).find((item) => item.label === 'Banish')!.choices?.map((choice) => choice.label)).toEqual(['Face-up', 'Face-down'])
 
     const two = run([{ type: 'place', id: 'x1', zone: 'emz', index: 0, pos: 'atk' }, { type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }])
     expect(labels(two, 'c1')[0]).toBe('Tribute Summon (2)')
-    expect(labels(two, 'a1')).toEqual(['Activate effect', 'Switch to Defense', 'Turn face-down', 'Attach to X1', 'Counter +1', 'Select', 'To the Spell & Trap Zone', 'To hand', 'To the Graveyard', 'Banish', 'Banish face-down', 'Top of the Deck', 'Bottom of the Deck'])
+    expect(labels(two, 'a1')).toEqual(['Activate effect', 'Switch to Defense', 'Turn face-down', 'Attach to X1', 'Counter +1', 'Select', 'To the Spell & Trap Zone', 'To hand', 'To the Graveyard', 'Banish', 'Top of the Deck', 'Bottom of the Deck'])
   })
 
   it('el nombre de un combo sin nombre sale en el idioma de ese momento', () => {
@@ -241,7 +242,22 @@ describe('la mesa dibujada en inglés', () => {
     expect(within(zone('Monster Zone 2')).getByRole('button', { name: 'Maxx C, Defense Position' })).toBeInTheDocument()
 
     tap(screen.getByRole('button', { name: 'Main: 1' }))
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Draw', 'Send to the Graveyard', 'Banish the top card', 'Banish the top card face-down', 'View the Deck', 'Shuffle'])
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Draw', 'Send to the Graveyard', 'Banish the top card', 'View the Deck', 'Shuffle'])
     expect(screen.getByRole('menu', { name: '1 card' })).toBeInTheDocument()
+
+    // Desterrar pregunta cómo queda: boca arriba (la pila muestra la carta) o boca abajo (de dorso).
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Banish the top card' }))
+    expect(screen.getByRole('menu', { name: '1 card' })).toHaveTextContent('Banish the top card')
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Face-up', 'Face-down'])
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Face-up' }))
+    expect(status()).toHaveTextContent(/You banish Imperm$/)
+    expect(screen.getByRole('button', { name: 'Banish: 1' }).querySelector('[data-card-art]')).not.toBeNull()
+
+    fireEvent.click(within(toolbar).getByRole('button', { name: 'Undo' }))
+    tap(screen.getByRole('button', { name: 'Main: 1' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Banish the top card' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Face-down' }))
+    expect(status()).toHaveTextContent('You banish Imperm face-down')
+    expect(screen.getByRole('button', { name: 'Banish: 1' }).querySelector('[data-card-art]')).toBeNull()
   })
 })

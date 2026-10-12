@@ -49,7 +49,8 @@ export const practice = {
   'practice.menu.reveal': 'Revelar',
   'practice.menu.discard': 'Descartar',
   'practice.menu.banish': 'Desterrar',
-  'practice.menu.banishFaceDown': 'Desterrar boca abajo',
+  'practice.menu.banishFaceUp': 'Boca arriba',
+  'practice.menu.banishFaceDown': 'Boca abajo',
   'practice.menu.toSpellTrapZone': 'A la zona de Mágicas y Trampas',
   'practice.menu.toHand': 'A la mano',
   'practice.menu.toGy': 'Al cementerio',
@@ -61,7 +62,6 @@ export const practice = {
   'practice.deckMenu.draw': 'Robar',
   'practice.deckMenu.mill': 'Mandar al cementerio',
   'practice.deckMenu.banishTop': 'Desterrar el tope',
-  'practice.deckMenu.banishTopFaceDown': 'Desterrar el tope boca abajo',
   'practice.deckMenu.view': 'Ver el deck',
   'practice.deckMenu.shuffle': 'Barajar',
 

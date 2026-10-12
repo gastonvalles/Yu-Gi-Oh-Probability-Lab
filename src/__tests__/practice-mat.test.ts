@@ -283,18 +283,17 @@ describe('la mesa de práctica', () => {
       'Seleccionar',
       'Descartar',
       'Desterrar',
-      'Desterrar boca abajo',
       'Arriba del deck',
       'Abajo del deck',
     ])
     // Una Magia se activa o se coloca; una Trampa sólo se coloca desde la mano.
-    expect(labels(start(), 'b1')).toEqual(['Activar', 'Colocar', 'Revelar', 'Seleccionar', 'Descartar', 'Desterrar', 'Desterrar boca abajo', 'Arriba del deck', 'Abajo del deck'])
-    expect(labels(start(), 'd1')).toEqual(['Activar efecto', 'Colocar', 'Revelar', 'Seleccionar', 'Descartar', 'Desterrar', 'Desterrar boca abajo', 'Arriba del deck', 'Abajo del deck'])
+    expect(labels(start(), 'b1')).toEqual(['Activar', 'Colocar', 'Revelar', 'Seleccionar', 'Descartar', 'Desterrar', 'Arriba del deck', 'Abajo del deck'])
+    expect(labels(start(), 'd1')).toEqual(['Activar efecto', 'Colocar', 'Revelar', 'Seleccionar', 'Descartar', 'Desterrar', 'Arriba del deck', 'Abajo del deck'])
     // "Activar efecto" de una Trampa en mano = sale boca arriba a la zona de Mágicas y Trampas (destella).
     expect(listCardActions(start(), 'd1', kindOf, nameOf)[0]!.action).toMatchObject({ type: 'place', zone: 'st', pos: 'atk' })
     // Desde el Extra sólo Invocación Especial; un Link no va a defensa.
-    expect(labels(start(), 'x1')).toEqual(['Invocación Especial', 'Al cementerio', 'Desterrar', 'Desterrar boca abajo'])
-    expect(labels(start(), 'x2')).toEqual(['Invocación Especial', 'Al cementerio', 'Desterrar', 'Desterrar boca abajo'])
+    expect(labels(start(), 'x1')).toEqual(['Invocación Especial', 'Al cementerio', 'Desterrar'])
+    expect(labels(start(), 'x2')).toEqual(['Invocación Especial', 'Al cementerio', 'Desterrar'])
     // Un Link no pregunta: sale en ataque.
     const link = listCardActions(start(), 'x2', kindOf, nameOf)[0]!
     expect(link.choices).toBeUndefined()
@@ -319,15 +318,24 @@ describe('la mesa de práctica', () => {
       { type: 'place', id: 'c1', zone: 'mz', index: 1, pos: 'set' },
       { type: 'move', id: 'e1', to: 'gy' },
     ])
-    expect(labels(played, 'a1')).toEqual(['Activar efecto', 'Pasar a defensa', 'Poner boca abajo', 'Adjuntar a X1', 'Contador +1', 'Seleccionar', 'A la zona de Mágicas y Trampas', 'A la mano', 'Al cementerio', 'Desterrar', 'Desterrar boca abajo', 'Arriba del deck', 'Abajo del deck'])
-    expect(labels(played, 'x1')).toEqual(['Activar efecto', 'Pasar a defensa', 'Poner boca abajo', 'Contador +1', 'Desacoplar A2', 'Seleccionar', 'A la zona de Mágicas y Trampas', 'A la mano', 'Al cementerio', 'Desterrar', 'Desterrar boca abajo', 'Al Extra Deck'])
+    expect(labels(played, 'a1')).toEqual(['Activar efecto', 'Pasar a defensa', 'Poner boca abajo', 'Adjuntar a X1', 'Contador +1', 'Seleccionar', 'A la zona de Mágicas y Trampas', 'A la mano', 'Al cementerio', 'Desterrar', 'Arriba del deck', 'Abajo del deck'])
+    expect(labels(played, 'x1')).toEqual(['Activar efecto', 'Pasar a defensa', 'Poner boca abajo', 'Contador +1', 'Desacoplar A2', 'Seleccionar', 'A la zona de Mágicas y Trampas', 'A la mano', 'Al cementerio', 'Desterrar', 'Al Extra Deck'])
     expect(labels(played, 'a2')).toEqual(['Desacoplar al cementerio', 'Desterrar', 'A la mano'])
     // Boca abajo: Invocación por Volteo (a ataque) o voltear boca arriba (queda en defensa).
     expect(labels(played, 'c1').slice(0, 2)).toEqual(['Invocación por Volteo', 'Voltear boca arriba'])
     // Desde el cementerio: Invocación Especial (a una zona principal), a Mágicas/Trampas, a la mano, destierro y de vuelta al deck (arriba o abajo).
-    expect(labels(played, 'e1')).toEqual(['Invocación Especial', 'A la zona de Mágicas y Trampas', 'Activar efecto', 'A la mano', 'Seleccionar', 'Desterrar', 'Desterrar boca abajo', 'Arriba del deck', 'Abajo del deck'])
+    expect(labels(played, 'e1')).toEqual(['Invocación Especial', 'A la zona de Mágicas y Trampas', 'Activar efecto', 'A la mano', 'Seleccionar', 'Desterrar', 'Arriba del deck', 'Abajo del deck'])
     expect(listCardActions(played, 'e1', kindOf, nameOf)[0]!.choices?.[0]?.targets?.every((target) => target.zone === 'mz')).toBe(true)
     expect(labels(played, 'zzz')).toEqual([])
+
+    // Desterrar es una sola opción, desde donde esté la carta (mano, campo, material, cementerio, Extra), y pregunta boca arriba o boca abajo.
+    for (const [state, id] of [[start(), 'a1'], [start(), 'x1'], [played, 'a1'], [played, 'a2'], [played, 'e1']] as const) {
+      const banish = listCardActions(state, id, kindOf, nameOf).filter((item) => item.label === 'Desterrar')
+
+      expect(banish.map((item) => item.choices?.map((choice) => choice.label))).toEqual([['Boca arriba', 'Boca abajo']])
+      expect(banish[0]!.choices?.map((choice) => choice.action)).toEqual([{ type: 'move', id, to: 'banished' }, { type: 'move', id, to: 'banished', faceDown: true }])
+      expect(banish[0]!.action).toEqual({ type: 'move', id, to: 'banished' })
+    }
 
     // Con dos monstruos en el campo, el Nivel 7 ofrece la Invocación por Sacrificio (en ataque o boca abajo), que la mesa completa.
     const two = run([{ type: 'place', id: 'x1', zone: 'emz', index: 0, pos: 'atk' }, { type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }])
