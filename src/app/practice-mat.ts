@@ -747,7 +747,6 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     // Un efecto desde la mano (hand trap): se activa (destella) y después la carta va a donde diga el costo.
     if (kind.monster && kind.effect) add('Activar efecto', { type: 'activate', id })
     add('Revelar', { type: 'reveal', id })
-    add('Declarar', { type: 'declare', id })
     target()
     add('Descartar', { type: 'move', id, to: 'gy' })
     add('Desterrar', { type: 'move', id, to: 'banished' })
@@ -760,6 +759,8 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     if (kind.monster) specialSummon()
     if (kind.monster && (pile === 'gy' || pile === 'banished')) placeIn('A la zona de Mágicas y Trampas', ['st'], 'atk')
     if (pile === 'gy' || pile === 'banished') {
+      // Efectos que se activan en el cementerio o en el destierro.
+      if (kind.effect) add('Activar efecto', { type: 'activate', id })
       add('A la mano', { type: 'move', id, to: 'hand' })
       target()
     }

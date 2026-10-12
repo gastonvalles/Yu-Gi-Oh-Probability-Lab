@@ -23,7 +23,7 @@ export { formatOdds }
 export const UNPLAYABLE_ID = 'unplayable'
 
 /** La salida que más cerca estuvo de cumplirse y qué le faltó. */
-export interface PracticeNearMiss {
+interface PracticeNearMiss {
   name: string
   notes: string[]
 }
