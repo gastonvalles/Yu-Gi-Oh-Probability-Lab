@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { buildDerivedDeckGroupMap } from '../../app/deck-groups'
+import { deckSampleKey, EMPTY_TALLY, readHandTally, recordHandRating, resetHandTally, type HandRating, type HandTally } from '../../app/hand-samples'
 import { requestLabOdds } from '../../app/lab-odds-client'
 import { reactMascot } from '../../app/mascot'
 import type { LabOdds } from '../../app/lab-odds'
@@ -18,6 +19,7 @@ import {
   getPracticeVerdict,
   type PracticeHandCard,
 } from './practice'
+import { HandSampling } from './HandSampling'
 import { PracticeBoard, UNPLAYABLE_ID } from './PracticeBoard'
 import { PracticeMat, type MatCard } from './PracticeMat'
 
@@ -172,6 +174,30 @@ export function PracticeSection(props: PracticeSectionProps) {
   const isUnplayable = verdict === 'no-opening'
   const unplayableOdds = isUnplayable && lab ? (turn === 'second' ? lab.second : lab.first) : null
 
+  // Muestreo: cada mano se califica una vez (cambiar de opinión mueve la cuenta) y la cuenta es de esta lista de cartas.
+  const deckKey = useMemo(() => deckSampleKey(derivedMainCards, handSize), [derivedMainCards, handSize])
+  const storedTally = useMemo(() => readHandTally(deckKey), [deckKey])
+  const [tallyOverride, setTallyOverride] = useState<{ key: string; tally: HandTally } | null>(null)
+  const tally = tallyOverride?.key === deckKey ? tallyOverride.tally : storedTally
+  const [rating, setRating] = useState<HandRating | null>(null)
+
+  useEffect(() => {
+    setRating(null)
+  }, [session.initial])
+
+  const rateHand = (next: HandRating) => {
+    if (next !== rating) {
+      setTallyOverride({ key: deckKey, tally: recordHandRating(deckKey, next, rating) })
+      setRating(next)
+    }
+  }
+
+  const resetSampling = () => {
+    resetHandTally(deckKey)
+    setTallyOverride({ key: deckKey, tally: EMPTY_TALLY })
+    setRating(null)
+  }
+
   // Una mano no jugable arranca con su chip ya tocado, para mostrar de una cuánto pasa.
   useEffect(() => {
     if (isUnplayable) {
@@ -186,18 +212,21 @@ export function PracticeSection(props: PracticeSectionProps) {
   const footer = blockedMessage ? (
     <Callout tone="warning">{blockedMessage}</Callout>
   ) : (
-    <PracticeBoard
-      openings={openings}
-      problems={problems}
-      activeId={activeRuleId}
-      caseIndex={activeCase}
-      unplayable={isUnplayable}
-      unplayableOdds={unplayableOdds}
-      nearMisses={(result?.openingNearMisses ?? []).slice(0, 2).map(({ name, notes }) => ({ name, notes }))}
-      ruleOdds={lab?.rules[turn] ?? null}
-      onToggle={handleToggleRule}
-      onDismiss={dismissRule}
-    />
+    <div className="grid gap-2">
+      <PracticeBoard
+        openings={openings}
+        problems={problems}
+        activeId={activeRuleId}
+        caseIndex={activeCase}
+        unplayable={isUnplayable}
+        unplayableOdds={unplayableOdds}
+        nearMisses={(result?.openingNearMisses ?? []).slice(0, 2).map(({ name, notes }) => ({ name, notes }))}
+        ruleOdds={lab?.rules[turn] ?? null}
+        onToggle={handleToggleRule}
+        onDismiss={dismissRule}
+      />
+      <HandSampling rating={rating} tally={tally} labClean={lab ? lab.clean[turn] : null} turn={turn} onRate={rateHand} onReset={resetSampling} />
+    </div>
   )
 
   return (
