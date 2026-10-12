@@ -112,6 +112,12 @@ describe('KpiDetailModal — close interactions', () => {
     )
 
     const overlay = document.querySelector('[role="dialog"]')!.parentElement!
+    // Un toque que empieza en el panel y termina en el fondo (el panel se achicó) no cierra.
+    fireEvent.pointerDown(document.querySelector('[role="dialog"]')!)
+    fireEvent.click(overlay)
+    expect(onClose).not.toHaveBeenCalled()
+
+    fireEvent.pointerDown(overlay)
     fireEvent.click(overlay)
     expect(onClose).toHaveBeenCalledOnce()
   })

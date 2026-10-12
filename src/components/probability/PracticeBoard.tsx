@@ -7,12 +7,13 @@ import { describePracticeMatch, type PracticeHandMatch } from './practice'
 import { RULE_COLOR } from './practice-styles'
 
 /**
- * Chip chico de una salida (verde) o un problema (rojo). En el celular los chips se reparten el ancho de
- * cada fila (sin huecos a la derecha); en escritorio tienen su ancho natural.
+ * Chip chico de una salida (verde) o un problema (rojo). En el celular los chips se apilan de a dos por fila
+ * repartiéndose el ancho (el último, si queda solo, ocupa la fila entera: sin huecos); en escritorio tienen su
+ * ancho natural.
  */
 const RULE_BUTTON =
   'min-h-8 w-full max-w-full rounded-full border border-[color-mix(in_srgb,var(--rule-color)_55%,transparent)] bg-[color-mix(in_srgb,var(--rule-color)_12%,transparent)] px-3 text-center text-micro font-semibold text-foreground transition-[background,box-shadow,transform] duration-150 [overflow-wrap:anywhere] [-webkit-tap-highlight-color:transparent] animate-rule-in active:scale-[0.96] aria-pressed:bg-[color-mix(in_srgb,var(--rule-color)_32%,transparent)] aria-pressed:shadow-[0_0_14px_color-mix(in_srgb,var(--rule-color)_45%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-hover motion-reduce:animate-none motion-reduce:transition-none min-[1101px]:w-auto min-[1101px]:text-left'
-const RULE_ITEM = 'min-w-0 max-[1100px]:flex-1'
+const RULE_ITEM = 'min-w-0 max-[1100px]:flex-[1_1_calc(50%-0.375rem)]'
 const EXPLAIN_TEXT = 'm-0 text-micro text-white/92 [overflow-wrap:anywhere]'
 const ODDS_TEXT = 'm-0 col-span-full text-micro text-white/62 [overflow-wrap:anywhere]'
 
@@ -68,7 +69,8 @@ export function PracticeBoard({ openings, problems, activeId, caseIndex, unplaya
     return () => document.removeEventListener('pointerdown', handlePointerDown, true)
   }, [activeId, onDismiss])
 
-  // La explicación va ARRIBA de los chips (entre el campo y ellos); los chips quedan junto a la mano.
+  // En el celular la explicación va ARRIBA de los chips (entre el campo y ellos; los chips quedan junto a la mano,
+  // que no se mueve); en el panel lateral de escritorio va abajo, que es el orden de lectura.
   return (
     <div ref={ref} className="grid gap-1.5">
       {activeId === UNPLAYABLE_ID && unplayable ? (
@@ -87,7 +89,7 @@ export function PracticeBoard({ openings, problems, activeId, caseIndex, unplaya
         </section>
       ) : null}
       {active ? <RuleExplanation key={active.patternId} match={active} caseIndex={caseIndex} odds={ruleOdds?.get(active.patternId) ?? null} /> : null}
-      <div className="flex flex-wrap items-center gap-1.5 max-[1100px]:[&>ul]:contents">
+      <div className="flex flex-wrap items-center gap-1.5 max-[1100px]:[&>ul]:contents min-[1101px]:order-first min-[1101px]:[&>ul]:contents">
         <RuleGroup kind="opening" matches={openings} activeId={activeId} onToggle={onToggle} />
         <RuleGroup kind="problem" matches={problems} activeId={activeId} unplayable={unplayable} onToggle={onToggle} />
       </div>

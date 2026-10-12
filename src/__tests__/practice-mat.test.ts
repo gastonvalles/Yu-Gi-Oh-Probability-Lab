@@ -222,10 +222,9 @@ describe('la mesa de práctica', () => {
   it('el menú ofrece lo que se puede hacer desde donde está la carta', () => {
     const labels = (state: MatState, id: string) => listCardActions(state, id, kindOf, nameOf).map((item) => item.label)
 
-    // Desde la mano, las 11 jugadas de DuelingBook: Invocación Normal, Colocar, Especial, revelar, declarar, descartar, desterrar (boca arriba o abajo), arriba/abajo del deck.
+    // Desde la mano, las jugadas de DuelingBook: Invocación Normal, Especial, activar, revelar, objetivo, descartar, desterrar (boca arriba o abajo), arriba/abajo del deck.
     expect(labels(start(), 'a1')).toEqual([
       'Invocación Normal',
-      'Colocar boca abajo',
       'Invocación Especial',
       'Activar efecto',
       'Revelar',
@@ -246,7 +245,9 @@ describe('la mesa de práctica', () => {
     const link = listCardActions(start(), 'x2', kindOf, nameOf)[0]!
     expect(link.choices).toBeUndefined()
     expect(link.action.type === 'place' && link.action.pos).toBe('atk')
-    // La Invocación Especial pregunta la posición en un segundo paso.
+    // La Invocación Normal pregunta en ataque o boca abajo (Colocar); la Especial, en ataque o en defensa.
+    const normal = listCardActions(start(), 'a1', kindOf, nameOf)[0]!
+    expect(normal.choices?.map((choice) => [choice.label, choice.action.type === 'place' && [choice.action.pos, choice.action.how]])).toEqual([['En ataque', ['atk', 'normal']], ['Boca abajo', ['set', 'normal']]])
     const special = listCardActions(start(), 'a1', kindOf, nameOf).find((item) => item.label === 'Invocación Especial')!
     expect(special.choices?.map((choice) => [choice.label, choice.action.type === 'place' && choice.action.pos])).toEqual([['En ataque', 'atk'], ['En defensa', 'def']])
     expect(special.choices?.[1]?.targets).toHaveLength(7)
@@ -270,11 +271,12 @@ describe('la mesa de práctica', () => {
     expect(labels(played, 'e1')).toEqual(['Invocación Especial', 'A la zona de Mágicas y Trampas', 'Activar efecto', 'A la mano', 'Marcar como objetivo', 'Desterrar', 'Desterrar boca abajo'])
     expect(labels(played, 'zzz')).toEqual([])
 
-    // Con dos monstruos en el campo, el Nivel 7 ofrece la Invocación (y Colocar) por Sacrificio, que la mesa completa.
+    // Con dos monstruos en el campo, el Nivel 7 ofrece la Invocación por Sacrificio (en ataque o boca abajo), que la mesa completa.
     const two = run([{ type: 'place', id: 'x1', zone: 'emz', index: 0, pos: 'atk' }, { type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }])
-    const bySacrifice = listCardActions(two, 'c1', kindOf, nameOf).slice(0, 2)
-    expect(bySacrifice.map((item) => [item.label, item.tributes])).toEqual([['Invocación por Sacrificio (2)', 2], ['Colocar por Sacrificio (2)', 2]])
-    expect(bySacrifice[0]!.action).toEqual({ type: 'tribute', id: 'c1', tributes: [], zone: 'mz', index: 0, pos: 'atk' })
+    const bySacrifice = listCardActions(two, 'c1', kindOf, nameOf)[0]!
+    expect(bySacrifice.label).toBe('Invocación por Sacrificio (2)')
+    expect(bySacrifice.choices?.map((item) => [item.label, item.tributes, item.action.type === 'tribute' && item.action.pos])).toEqual([['En ataque', 2, 'atk'], ['Boca abajo', 2, 'set']])
+    expect(bySacrifice.action).toEqual({ type: 'tribute', id: 'c1', tributes: [], zone: 'mz', index: 0, pos: 'atk' })
     // Con un solo monstruo alcanza para el Nivel 5 pero no para el 7.
     const one = run([{ type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }, { type: 'move', id: 'e1', to: 'hand' }])
     expect(labels(one, 'e1')[0]).toBe('Invocación por Sacrificio (1)')

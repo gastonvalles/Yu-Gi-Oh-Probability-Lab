@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import type { SavedCombo } from '../../app/saved-combos'
 import { Button } from '../ui/Button'
@@ -49,15 +49,18 @@ export function PracticeMatPanel({ steps, cursor, onSeek, combos, deckName, onLo
             Arrastrá una carta a una zona o tocala para ver qué podés hacer. Cada jugada queda anotada acá.
           </EmptyState>
         ) : (
+          // La última jugada arriba, como un registro; la mano inicial al final.
           <ol className="m-0 grid list-none content-start gap-1 overflow-y-auto p-0" aria-label="Jugadas">
+            {steps
+              .map((label, index) => (
+                <li key={index}>
+                  <StepButton active={cursor === index + 1} past={index + 1 < cursor} label={label} index={index + 1} onClick={() => onSeek(index + 1)} />
+                </li>
+              ))
+              .reverse()}
             <li>
               <StepButton active={cursor === 0} label="Mano inicial" index={0} onClick={() => onSeek(0)} />
             </li>
-            {steps.map((label, index) => (
-              <li key={index}>
-                <StepButton active={cursor === index + 1} past={index + 1 < cursor} label={label} index={index + 1} onClick={() => onSeek(index + 1)} />
-              </li>
-            ))}
           </ol>
         )
       ) : (
@@ -133,8 +136,16 @@ function SavedCombosList({ combos, deckName, onLoad, onDelete }: SavedCombosList
 }
 
 function StepButton({ active, past = false, label, index, onClick }: { active: boolean; past?: boolean; label: string; index: number; onClick: () => void }) {
+  const ref = useRef<HTMLButtonElement | null>(null)
+
+  // El paso actual se mantiene a la vista mientras un combo se reproduce solo.
+  useEffect(() => {
+    if (active) ref.current?.scrollIntoView?.({ block: 'nearest' })
+  }, [active])
+
   return (
     <button
+      ref={ref}
       type="button"
       aria-current={active ? 'step' : undefined}
       className={cx(
