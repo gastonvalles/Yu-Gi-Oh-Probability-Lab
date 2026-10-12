@@ -60,6 +60,9 @@ export function LabRuleList({
   const visible = (entries: RuleEntry[]) =>
     kindFilter === 'all' ? entries : entries.filter((entry) => entry.kind === kindFilter)
   const enabledGeneric = groups.generic.filter((entry) => entry.enabled).length
+  // Las reglas con cartas que ya no están en el deck no cuentan: van aparte, plegadas, para limpiarlas o arreglarlas.
+  const liveCustom = groups.custom.filter((entry) => !entry.missingCards)
+  const orphans = visible(groups.custom.filter((entry) => entry.missingCards))
 
   return (
     <LabSection
@@ -123,9 +126,9 @@ export function LabRuleList({
               </Button>
             }
             description=""
-            entries={visible(groups.custom)}
+            entries={visible(liveCustom)}
             emptyState={
-              groups.custom.length === 0 ? (
+              liveCustom.length === 0 ? (
                 <EmptyState icon="sparkles" title="Todavía no creaste reglas" className="py-6">
                   Ejemplos: “Abrir tu carta clave”, “Starter + pieza de combo” o “2+ Handtraps yendo 2º”.
                 </EmptyState>
@@ -140,6 +143,25 @@ export function LabRuleList({
               />
             )}
           />
+          {orphans.length > 0 ? (
+            <details className="group grid gap-1" aria-label="Reglas sin carta">
+              <summary className="m-0 flex cursor-pointer list-none items-center justify-between gap-2 rounded-control py-1.5 text-body font-semibold text-foreground focus-visible:outline-none focus-visible:shadow-focus [&::-webkit-details-marker]:hidden">
+                <span className="flex items-center gap-2">
+                  Reglas sin carta
+                  <Badge tone="warning" size="sm">{formatInteger(orphans.length)}</Badge>
+                </span>
+                <Icon name="chevron-down" size={16} className="shrink-0 text-soft transition-transform duration-200 group-open:rotate-180" />
+              </summary>
+              <p className="m-0 text-micro text-muted">Usan cartas que ya no están en el deck y no cuentan en el análisis. Tocá una para cambiarle la carta o eliminarla.</p>
+              <ul className="m-0 grid list-none gap-0 divide-y divide-border-subtle p-0">
+                {orphans.map((entry) => (
+                  <li key={entry.patternId}>
+                    <RuleRow entry={entry} onClick={() => onEditRule(entry.patternId)} />
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
         </div>
       </div>
       {renaming?.presetId ? (
