@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { MAX_SETS, extractPrices, fetchCardPrices, matchGroups, setImageUrl, type PriceRow } from '../app/card-prices'
+import { extractPrices, fetchCardPriceSets, fetchSetPrices, filterPrintings, matchGroups, setImageUrl, type PriceRow } from '../app/card-prices'
 
 const group = (groupId: number, name: string, abbreviation: string, publishedOn: string) => ({ groupId, name, abbreviation, publishedOn })
 const printing = (set_name: string, set_code: string, set_rarity: string) => ({ set_name, set_code, set_rarity })
@@ -25,6 +25,31 @@ describe('precios de TCGplayer por impresión', () => {
 
     expect(matched.map((entry) => entry.group.groupId)).toEqual([2, 1])
     expect(matched[1]!.printings.map((entry) => entry.set_code)).toEqual(['LOB-EN001'])
+  })
+
+  it('el buscador compara código y rareza, sin mayúsculas ni signos, con todas las palabras', () => {
+    const prices = extractPrices(
+      GROUPS[1]!,
+      [printing('Maze of Millennia', 'MZMI-EN083', "Collector's Rare"), printing('Maze of Millennia', 'MZMI-EN084', 'Ultra Rare')],
+      [row('MZMI-EN083', "Collector's Rare", '1st Edition', 5, null, 1), row('MZMI-EN084', 'Ultra Rare', '1st Edition', 2, null, 2)],
+    )
+    const codes = (query: string) => filterPrintings(prices, query).map((price) => price.code)
+
+    expect(codes('')).toEqual(['MZMI-EN083', 'MZMI-EN084'])
+    expect(codes('   ')).toEqual(['MZMI-EN083', 'MZMI-EN084'])
+    expect(codes('en083')).toEqual(['MZMI-EN083'])
+    expect(codes('MZMI-EN084')).toEqual(['MZMI-EN084'])
+    expect(codes('ultra')).toEqual(['MZMI-EN084'])
+    expect(codes("collector's")).toEqual(['MZMI-EN083'])
+    expect(codes('mzmi ultra')).toEqual(['MZMI-EN084'])
+    expect(codes('mzmi collectors')).toEqual(['MZMI-EN083'])
+    expect(codes('rare')).toEqual(['MZMI-EN083', 'MZMI-EN084'])
+    expect(codes('zzz')).toEqual([])
+    // No se busca en el nombre del set ("Maze of Millennia") ni en la edición.
+    expect(codes('maze')).toEqual([])
+    expect(codes('1st')).toEqual([])
+    // Una palabra no cruza del código a la rareza ("...084" + "ultra").
+    expect(codes('084ultra')).toEqual([])
   })
 
   it('la imagen del sobre sale del prefijo del código del set', () => {
@@ -60,42 +85,44 @@ describe('precios de TCGplayer por impresión', () => {
     expect(rows.map((entry) => entry.rarity)).toEqual(['Rare'])
   })
 
-  it('pide la carta a YGOPRODeck, el índice una sola vez y sólo los archivos de los sets más nuevos', async () => {
+  it('pide la carta a YGOPRODeck y el índice una sola vez, y no baja ningún archivo de precios', async () => {
     const urls: string[] = []
     const sets = Array.from({ length: 6 }, (_, index) => printing(`Set ${index}`, `S${index}-EN001`, 'Common'))
     const index = { updated: '2026-10-11', groups: sets.map((entry, position) => [100 + position, entry.set_name, `S${position}`, `20${10 + position}-01-01`]) }
     const get = async (url: string) => {
       urls.push(url)
 
-      if (url.includes('cardinfo')) return { data: [{ card_sets: sets }] }
-      if (url.endsWith('/index.json')) return index
-
-      const code = `S${Number(url.split('/').pop()!.replace('.json', '')) - 100}-EN001`
-
-      return { rows: [row(code, 'Common', 'Normal', 1, null, 7)] }
+      return url.includes('cardinfo') ? { data: [{ card_sets: sets }] } : index
     }
 
-    const first = await fetchCardPrices(1, get)
-    await fetchCardPrices(2, get)
+    const first = await fetchCardPriceSets(1, get)
+    await fetchCardPriceSets(2, get)
 
     expect(first.updated).toBe('2026-10-11')
-    expect(first.prices.map((price) => price.set)).toEqual(['Set 5', 'Set 4', 'Set 3'])
-    expect(first.prices).toHaveLength(MAX_SETS)
-    // Primera carta: YGOPRODeck + índice + 3 sets. Segunda: YGOPRODeck + 3 sets (el índice no se vuelve a pedir).
+    // Todos los sets de la carta, los más nuevos primero: el recorte de a PAGE_SIZE lo hace quien los pide.
+    expect(first.sets.map((entry) => entry.group.name)).toEqual(['Set 5', 'Set 4', 'Set 3', 'Set 2', 'Set 1', 'Set 0'])
+    // Primera carta: YGOPRODeck + índice. Segunda: sólo YGOPRODeck (el índice no se vuelve a pedir).
     expect(urls.filter((url) => url.endsWith('/index.json'))).toHaveLength(1)
-    expect(urls).toHaveLength(5 + 4)
-    expect(urls.some((url) => url.endsWith('/102.json'))).toBe(false)
+    expect(urls).toHaveLength(3)
+    expect(urls.some((url) => /\/\d+\.json$/.test(url))).toBe(false)
   })
 
-  it('una carta sin impresiones no pide ningún set', async () => {
+  it('los precios de un set bajan sólo el archivo de ese set', async () => {
     const urls: string[] = []
+    const set = { group: GROUPS[1]!, printings: [printing('Maze of Millennia', 'MZMI-EN083', 'Rare')] }
 
-    const result = await fetchCardPrices(1, async (url) => {
+    const prices = await fetchSetPrices(set, async (url) => {
       urls.push(url)
-      return url.endsWith('/index.json') ? { updated: '2026-10-11', groups: [] } : { data: [{}] }
+      return { rows: [row('MZMI-EN083', 'Rare', '1st Edition', 0.21, 0.01, 10), row('MZMI-EN084', 'Rare', 'Normal', 9, null, 12)] }
     })
 
-    expect(result.prices).toEqual([])
-    expect(urls.filter((url) => /\/\d+\.json$/.test(url))).toHaveLength(0)
+    expect(urls).toEqual(['/prices/2.json'])
+    expect(prices.map((price) => [price.code, price.market])).toEqual([['MZMI-EN083', 0.21]])
+  })
+
+  it('una carta sin impresiones no tiene sets', async () => {
+    const result = await fetchCardPriceSets(1, async (url) => (url.endsWith('/index.json') ? { updated: '2026-10-11', groups: [] } : { data: [{}] }))
+
+    expect(result.sets).toEqual([])
   })
 })
