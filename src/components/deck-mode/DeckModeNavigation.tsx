@@ -1,3 +1,4 @@
+import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { type DeckModeNavigationItem, type DeckWorkflowStepKey } from './deck-workflow-navigation'
@@ -13,7 +14,7 @@ const TAB_BASE =
 
 export function DeckModeNavigation({ items, activeStep, onStepChange }: DeckModeNavigationProps) {
   return (
-    <nav aria-label="Pasos de la app" className="flex min-w-0 items-center gap-1">
+    <nav aria-label={t('shell.nav.desktop')} className="flex min-w-0 items-center gap-1">
       {items.map((item) => {
         const isActive = item.key === activeStep
 

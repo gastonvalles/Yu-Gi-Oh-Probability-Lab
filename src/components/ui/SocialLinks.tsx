@@ -1,3 +1,4 @@
+import { t } from '../../i18n'
 import { cx } from './cx'
 import { Icon, type IconName } from './Icon'
 
@@ -7,8 +8,6 @@ const LINKS: ReadonlyArray<{ href: string; label: string; icon: IconName }> = [
   { href: 'https://github.com/gastonvalles', label: 'GitHub', icon: 'github' },
 ]
 
-const DISCLAIMER = 'Sitio no oficial. Yu-Gi-Oh! es una marca de Konami.'
-
 /** Los íconos de la derecha de la barra (y del pie en mobile): al pasar el mouse se iluminan como la pestaña activa de la barra: fondo lavanda, verde y resplandor. */
 const ICON_LINK = 'group grid size-9 place-items-center rounded-control text-primary-soft/70 transition-colors duration-150 hover:bg-lavender hover:text-success focus-visible:outline-none focus-visible:shadow-focus'
 const ICON_GLOW = 'transition-[filter] duration-150 group-hover:drop-shadow-[0_0_8px_rgb(var(--success-rgb)/0.55)]'
@@ -16,9 +15,9 @@ const ICON_GLOW = 'transition-[filter] duration-150 group-hover:drop-shadow-[0_0
 /** La línea de autoría, discreta: en desktop sólo el ©, con el descargo en el tooltip; en mobile, completa. */
 export function SiteCredit({ withDisclaimer = false, className }: { withDisclaimer?: boolean; className?: string }) {
   return (
-    <p className={cx('m-0 text-micro text-soft', className)} title={withDisclaimer ? undefined : DISCLAIMER}>
+    <p className={cx('m-0 text-micro text-soft', className)} title={withDisclaimer ? undefined : t('shell.disclaimer')}>
       © {new Date().getFullYear()} Gastón Valles
-      {withDisclaimer ? ` · ${DISCLAIMER}` : null}
+      {withDisclaimer ? ` · ${t('shell.disclaimer')}` : null}
     </p>
   )
 }
@@ -26,14 +25,14 @@ export function SiteCredit({ withDisclaimer = false, className }: { withDisclaim
 /** Las redes del autor: en desktop viven en la barra de arriba; en mobile, en el pie de la página. */
 export function SocialLinks({ className }: { className?: string }) {
   return (
-    <nav aria-label="Redes de Gastón Valles" className={cx('flex items-center gap-1', className)}>
+    <nav aria-label={t('shell.social.label')} className={cx('flex items-center gap-1', className)}>
       {LINKS.map((link) => (
         <a
           key={link.href}
           href={link.href}
           target="_blank"
           rel="noreferrer"
-          aria-label={`Gastón Valles en ${link.label}`}
+          aria-label={t('shell.social.link', { network: link.label })}
           title={link.label}
           className={ICON_LINK}
         >
@@ -44,10 +43,10 @@ export function SocialLinks({ className }: { className?: string }) {
   )
 }
 
-/** Privacidad y aviso legal: una página estática aparte (public/privacidad.html), que se abre en otra pestaña como las redes. */
+/** Privacidad y aviso legal: una página estática aparte (public/privacidad.html y public/privacy.html), que se abre en otra pestaña como las redes. */
 export function LegalLink() {
   return (
-    <a href="/privacidad.html" target="_blank" rel="noreferrer" aria-label="Privacidad y aviso legal" title="Privacidad y aviso legal" className={ICON_LINK}>
+    <a href={t('shell.legal.page')} target="_blank" rel="noreferrer" aria-label={t('shell.legal.label')} title={t('shell.legal.label')} className={ICON_LINK}>
       <Icon name="info" size={20} className={ICON_GLOW} />
     </a>
   )

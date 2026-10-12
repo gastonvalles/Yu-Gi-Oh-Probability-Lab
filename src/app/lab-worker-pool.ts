@@ -1,3 +1,5 @@
+import { getLocale } from '../i18n'
+
 interface Slot {
   worker: Worker
   /** Pedidos en curso: cada cálculo va al hilo menos ocupado. */
@@ -38,7 +40,8 @@ function rejectPendingFor(slot: Slot, reason: Error): void {
 }
 
 function spawn(): Slot {
-  const slot: Slot = { worker: new Worker(new URL('./lab-odds.worker.ts', import.meta.url), { type: 'module' }), load: 0 }
+  // El worker también arma texto (los avisos de validación): el idioma se le pasa como nombre.
+  const slot: Slot = { worker: new Worker(new URL('./lab-odds.worker.ts', import.meta.url), { type: 'module', name: getLocale() }), load: 0 }
 
   slot.worker.addEventListener('message', (event: MessageEvent<{ id: number }>) => {
     const entry = pending.get(event.data.id)

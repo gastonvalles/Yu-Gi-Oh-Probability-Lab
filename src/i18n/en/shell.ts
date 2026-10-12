@@ -1,0 +1,53 @@
+import type { shell as es } from '../es/shell'
+import type { Translated } from '../types'
+
+export const shell: Translated<typeof es> = {
+  'shell.nav.desktop': 'App steps',
+  'shell.nav.mobile': 'Workflow steps',
+
+  'shell.tone.complete': 'Done',
+  'shell.tone.progress': 'In progress',
+  'shell.tone.pending': 'Pending',
+
+  'shell.step.deck.label': 'Deck',
+  'shell.step.deck.title': 'Deck Builder',
+  'shell.step.deck.ready': 'Main deck ready.',
+  'shell.step.deck.remaining': '{count} more to reach 40.',
+  'shell.step.deck.empty': 'Start by adding cards.',
+  'shell.step.roles.label': 'Roles',
+  'shell.step.roles.title': 'Role categorization',
+  'shell.step.roles.needsMain': 'Needs cards in Main.',
+  'shell.step.roles.done': 'All classified.',
+  'shell.step.roles.open': '{count} still open.',
+  'shell.step.lab.label': 'Lab',
+  'shell.step.lab.title': 'Probability Lab',
+  'shell.step.lab.ready': 'Ready to measure.',
+  'shell.step.lab.baseRules': 'Measure with the base rules or add your own.',
+  'shell.step.lab.classifyFirst': 'Open it anyway; classify your cards to measure.',
+  'shell.step.compare.label': 'Compare',
+  'shell.step.compare.title': 'Compare builds',
+  'shell.step.compare.detail': 'Save or import builds and compare them.',
+  'shell.step.export.label': 'Export',
+  'shell.step.export.title': 'Export deck',
+  'shell.step.export.formats': 'Image + PDF + YDK.',
+  'shell.step.export.needsMain': 'You need cards in Main.',
+  'shell.step.meta.label': 'Meta',
+  'shell.step.meta.title': 'Meta hand traps',
+  'shell.step.meta.detail': 'Which hand traps are played in tournaments.',
+  'shell.step.replays.label': 'Replays',
+  'shell.step.replays.title': 'Tournament replays',
+  'shell.step.replays.detail': 'Duels of the Meta decks, on video.',
+
+  'shell.mascot.title': 'Mascots',
+  'shell.mascot.available': 'Available mascots',
+  'shell.mascot.out': 'Out',
+  'shell.mascot.resting': 'Resting',
+  'shell.mascot.summon': 'Tap to bring it out',
+  'shell.mascot.rest': 'Let {name} rest',
+
+  'shell.social.label': "Gastón Valles' profiles",
+  'shell.social.link': 'Gastón Valles on {network}',
+  'shell.legal.label': 'Privacy and legal notice',
+  'shell.legal.page': '/privacy.html',
+  'shell.disclaimer': 'Unofficial site. Yu-Gi-Oh! is a trademark of Konami.',
+}

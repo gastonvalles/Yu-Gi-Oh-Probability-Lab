@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 
 import { MASCOTS, currentMascotId, reactMascot, restMascot, selectMascot, useCurrentMascot, useMascotEnabled, type MascotId } from '../../app/mascot'
+import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { CloseButton } from '../ui/IconButton'
 import { overline } from '../ui/typography'
@@ -60,11 +61,11 @@ export function MascotPicker({ placement, className }: { placement: 'above' | 'b
     <div ref={rootRef} className={cx('relative', className)}>
       <button
         type="button"
-        aria-label="Mascotas"
+        aria-label={t('shell.mascot.title')}
         aria-haspopup="true"
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
-        title="Mascotas"
+        title={t('shell.mascot.title')}
         className="grid h-9 w-12 place-items-center rounded-control transition-colors duration-150 hover:bg-tint/10 focus-visible:outline-none focus-visible:shadow-focus"
         onClick={() => setOpen((value) => !value)}
       >
@@ -75,13 +76,13 @@ export function MascotPicker({ placement, className }: { placement: 'above' | 'b
         <div
           id={listId}
           role="group"
-          aria-label="Mascotas disponibles"
+          aria-label={t('shell.mascot.available')}
           className={cx(
             'absolute z-130 grid w-60 gap-1 rounded-card text-left border border-border-subtle bg-surface-raised p-2 shadow-overlay animate-dialog-enter motion-reduce:animate-none',
             placement === 'above' ? 'bottom-full left-1/2 mb-2 -translate-x-1/2' : 'right-0 top-full mt-2',
           )}
         >
-          <span className={cx('px-2 pt-1', overline)}>Mascotas</span>
+          <span className={cx('px-2 pt-1', overline)}>{t('shell.mascot.title')}</span>
           {(Object.entries(MASCOTS) as [MascotId, (typeof MASCOTS)[MascotId]][]).map(([id, mascot]) => {
             const isCurrent = id === current.id
 
@@ -95,15 +96,15 @@ export function MascotPicker({ placement, className }: { placement: 'above' | 'b
                   <img src={`${mascot.folder}/${STILL}`} alt="" draggable={false} className="size-12 shrink-0 object-contain" />
                   <span className="grid min-w-0 gap-0.5">
                     <strong className="truncate text-body font-semibold text-foreground">{mascot.name}</strong>
-                    <span className="text-micro text-muted">{isCurrent ? (enabled ? 'Afuera' : 'Descansando') : 'Tocá para sacarla'}</span>
+                    <span className="text-micro text-muted">{isCurrent ? (enabled ? t('shell.mascot.out') : t('shell.mascot.resting')) : t('shell.mascot.summon')}</span>
                   </span>
                 </button>
                 {/* La que está afuera se puede mandar a descansar desde acá (en el celular no hay otra X). */}
                 {isCurrent && enabled ? (
                   <CloseButton
                     size="sm"
-                    aria-label={`Darle un descanso a ${mascot.name}`}
-                    title={`Darle un descanso a ${mascot.name}`}
+                    aria-label={t('shell.mascot.rest', { name: mascot.name })}
+                    title={t('shell.mascot.rest', { name: mascot.name })}
                     onClick={() => {
                       restMascot()
                       setOpen(false)

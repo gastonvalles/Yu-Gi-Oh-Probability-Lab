@@ -1,6 +1,7 @@
 import type { ReactNode, RefObject } from 'react'
 
 import { cx } from '../ui/cx'
+import { LanguageSwitcher } from '../ui/LanguageSwitcher'
 import { MascotPicker } from '../mascot/MascotPicker'
 import { LegalLink, SiteCredit, SocialLinks } from '../ui/SocialLinks'
 import { DeckModeBrand } from './DeckModeBrand'
@@ -29,6 +30,7 @@ export function DeckModeShell({
         <div className="flex min-w-0 items-center gap-3 justify-self-end">
           <SiteCredit className="hidden whitespace-nowrap min-[1280px]:block" />
           <MascotPicker placement="below" />
+          <LanguageSwitcher />
           <div className="flex items-center gap-1">
             <SocialLinks />
             <LegalLink />
@@ -58,6 +60,7 @@ export function DeckModeShell({
       >
         <div className="flex items-center gap-1">
           <MascotPicker placement="above" />
+          <LanguageSwitcher />
           <SocialLinks />
           <LegalLink />
         </div>
