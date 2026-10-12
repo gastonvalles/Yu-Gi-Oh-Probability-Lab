@@ -111,6 +111,24 @@ describe('la mesa de práctica', () => {
     expect(matReducer(two, { type: 'tribute', id: 'c1', tributes: [], zone: 'mz', index: 2, pos: 'atk' })).toBe(two)
   })
 
+  it('la mesa arranca en la Main Phase 1 del turno 1; cambiar de fase queda anotado y de la End Phase a la Draw Phase empieza otro turno', () => {
+    const state = start()
+    expect([state.phase, state.turn]).toEqual(['main1', 1])
+
+    const battle = matReducer(state, { type: 'phase', phase: 'battle' })
+    expect(battle.phase).toBe('battle')
+    expect(describeMatAction(state, { type: 'phase', phase: 'battle' }, nameOf)).toBe('Pasás a la Battle Phase')
+    expect(matReducer(battle, { type: 'phase', phase: 'battle' })).toBe(battle)
+
+    const end = matReducer(battle, { type: 'phase', phase: 'end' })
+    const next = matReducer(end, { type: 'phase', phase: 'draw' })
+    expect([next.phase, next.turn]).toEqual(['draw', 2])
+    expect(describeMatAction(end, { type: 'phase', phase: 'draw' }, nameOf)).toBe('Turno 2: Draw Phase')
+    // Volver atrás dentro del turno no cambia el turno; una fase inválida no hace nada.
+    expect(matReducer(next, { type: 'phase', phase: 'main1' }).turn).toBe(2)
+    expect(matReducer(next, { type: 'phase', phase: 'nope' as 'draw' })).toBe(next)
+  })
+
   it('las fichas se numeran y desaparecen al salir del campo', () => {
     const state = run([
       { type: 'token', zone: 'mz', index: 0 },
@@ -172,6 +190,15 @@ describe('la mesa de práctica', () => {
     expect(matReducer(state, { type: 'activate', id: 'a1', cost: 'discard' }).gy).toEqual(['a1'])
     expect(matReducer(state, { type: 'activate', id: 'a1' })).toBe(state)
     expect(matReducer(state, { type: 'reveal', id: 'a1' })).toBe(state)
+    expect(matReducer(state, { type: 'declare', id: 'a1' })).toBe(state)
+    expect(describe({ type: 'declare', id: 'a1' })).toBe('Declarás A1')
+
+    // Desterrar boca abajo se recuerda hasta que la carta deja el destierro.
+    const hidden = matReducer(state, { type: 'move', id: 'a1', to: 'banished', faceDown: true })
+    expect(hidden.facedown).toEqual(['a1'])
+    expect(describe({ type: 'move', id: 'a1', to: 'banished', faceDown: true })).toBe('Desterrás A1 boca abajo')
+    expect(matReducer(hidden, { type: 'move', id: 'a1', to: 'hand' }).facedown).toEqual([])
+    expect(matReducer(state, { type: 'move', id: 'a1', to: 'gy', faceDown: true }).facedown).toEqual([])
 
     expect(describeMatSteps(state, [{ type: 'draw', count: 1 }, { type: 'draw', count: 1 }], nameOf)).toEqual(['Robás E1', 'Robás F1'])
   })
@@ -185,20 +212,23 @@ describe('la mesa de práctica', () => {
       'Colocar boca abajo',
       'Invocación Especial en ataque',
       'Invocación Especial en defensa',
+      'A la zona de Mágicas y Trampas',
       'Activar efecto',
       'Activar efecto y descartar',
       'Revelar',
+      'Declarar',
       'Descartar',
       'Desterrar',
+      'Desterrar boca abajo',
       'Arriba del deck',
       'Abajo del deck',
     ])
     // Una Magia se activa o se coloca; una Trampa sólo se coloca desde la mano.
-    expect(labels(start(), 'b1')).toEqual(['Activar', 'Colocar', 'Revelar', 'Descartar', 'Desterrar', 'Arriba del deck', 'Abajo del deck'])
-    expect(labels(start(), 'd1')).toEqual(['Colocar', 'Revelar', 'Descartar', 'Desterrar', 'Arriba del deck', 'Abajo del deck'])
+    expect(labels(start(), 'b1')).toEqual(['Activar', 'Colocar', 'Revelar', 'Declarar', 'Descartar', 'Desterrar', 'Desterrar boca abajo', 'Arriba del deck', 'Abajo del deck'])
+    expect(labels(start(), 'd1')).toEqual(['Colocar', 'Revelar', 'Declarar', 'Descartar', 'Desterrar', 'Desterrar boca abajo', 'Arriba del deck', 'Abajo del deck'])
     // Desde el Extra sólo Invocación Especial; un Link no va a defensa.
-    expect(labels(start(), 'x1')).toEqual(['Invocación Especial en ataque', 'Invocación Especial en defensa', 'Al cementerio', 'Desterrar'])
-    expect(labels(start(), 'x2')).toEqual(['Invocación Especial en ataque', 'Al cementerio', 'Desterrar'])
+    expect(labels(start(), 'x1')).toEqual(['Invocación Especial en ataque', 'Invocación Especial en defensa', 'Al cementerio', 'Desterrar', 'Desterrar boca abajo'])
+    expect(labels(start(), 'x2')).toEqual(['Invocación Especial en ataque', 'Al cementerio', 'Desterrar', 'Desterrar boca abajo'])
     // Nivel 7 sin monstruos en el campo: ni Invocación Normal ni por Sacrificio.
     expect(labels(start(), 'c1').slice(0, 2)).toEqual(['Invocación Especial en ataque', 'Invocación Especial en defensa'])
     expect(labels(start(), 'c1')).not.toContain('Invocación Normal')
@@ -210,13 +240,13 @@ describe('la mesa de práctica', () => {
       { type: 'place', id: 'c1', zone: 'mz', index: 1, pos: 'set' },
       { type: 'move', id: 'e1', to: 'gy' },
     ])
-    expect(labels(played, 'a1')).toEqual(['Activar efecto', 'Pasar a defensa', 'Poner boca abajo', 'Adjuntar a X1', 'Contador +1', 'A la mano', 'Sacrificar (al cementerio)', 'Desterrar', 'Arriba del deck', 'Abajo del deck'])
-    expect(labels(played, 'x1')).toEqual(['Activar efecto', 'Pasar a defensa', 'Poner boca abajo', 'Contador +1', 'Desacoplar A2', 'A la mano', 'Sacrificar (al cementerio)', 'Desterrar', 'Al Extra Deck'])
+    expect(labels(played, 'a1')).toEqual(['Activar efecto', 'Pasar a defensa', 'Poner boca abajo', 'Adjuntar a X1', 'Contador +1', 'A la zona de Mágicas y Trampas', 'A la mano', 'Sacrificar (al cementerio)', 'Desterrar', 'Desterrar boca abajo', 'Arriba del deck', 'Abajo del deck'])
+    expect(labels(played, 'x1')).toEqual(['Activar efecto', 'Pasar a defensa', 'Poner boca abajo', 'Contador +1', 'Desacoplar A2', 'A la zona de Mágicas y Trampas', 'A la mano', 'Sacrificar (al cementerio)', 'Desterrar', 'Desterrar boca abajo', 'Al Extra Deck'])
     expect(labels(played, 'a2')).toEqual(['Desacoplar al cementerio', 'Desterrar', 'A la mano'])
     // Boca abajo: Invocación por Volteo (a ataque) o voltear boca arriba (queda en defensa).
     expect(labels(played, 'c1').slice(0, 2)).toEqual(['Invocación por Volteo', 'Voltear boca arriba'])
     // Desde el cementerio: Invocación Especial, activar el efecto, volver a la mano.
-    expect(labels(played, 'e1')).toEqual(['Invocación Especial en ataque', 'Invocación Especial en defensa', 'Activar efecto', 'A la mano', 'Desterrar', 'Arriba del deck', 'Abajo del deck'])
+    expect(labels(played, 'e1')).toEqual(['Invocación Especial en ataque', 'Invocación Especial en defensa', 'A la zona de Mágicas y Trampas', 'Activar efecto', 'A la mano', 'Desterrar', 'Desterrar boca abajo', 'Arriba del deck', 'Abajo del deck'])
     expect(labels(played, 'zzz')).toEqual([])
 
     // Con dos monstruos en el campo, el Nivel 7 ofrece la Invocación (y Colocar) por Sacrificio, que la mesa completa.
@@ -270,7 +300,8 @@ describe('la mesa de práctica', () => {
       fc.record({ type: fc.constant('draw' as const), count: fc.integer({ min: 0, max: 3 }) }),
       fc.record({ type: fc.constant('mill' as const), count: fc.integer({ min: 0, max: 3 }) }),
       fc.record({ type: fc.constant('shuffle' as const), seed: fc.integer({ min: 0, max: 1000 }) }),
-      fc.record({ type: fc.constant('move' as const), id, to: fc.constantFrom('deck', 'deck-bottom', 'extra', 'hand', 'gy', 'banished') }),
+      fc.record({ type: fc.constant('move' as const), id, to: fc.constantFrom('deck', 'deck-bottom', 'extra', 'hand', 'gy', 'banished'), faceDown: fc.boolean() }),
+      fc.record({ type: fc.constant('declare' as const), id }),
       fc.record({ type: fc.constant('place' as const), id, zone: fc.constantFrom('mz', 'emz', 'st', 'field'), index: fc.integer({ min: -1, max: 5 }), pos }),
       fc.record({ type: fc.constant('attach' as const), id, to: id }),
       fc.record({ type: fc.constant('position' as const), id, pos }),
@@ -279,6 +310,7 @@ describe('la mesa de práctica', () => {
       fc.record({ type: fc.constant('activate' as const), id, cost: fc.constantFrom(undefined, 'discard' as const, 'banish' as const) }),
       fc.record({ type: fc.constant('reveal' as const), id }),
       fc.record({ type: fc.constant('tribute' as const), id, tributes: fc.array(id, { maxLength: 2 }), zone: fc.constantFrom('mz', 'emz'), index: fc.integer({ min: -1, max: 5 }), pos }),
+      fc.record({ type: fc.constant('phase' as const), phase: fc.constantFrom('draw', 'standby', 'main1', 'battle', 'main2', 'end') }),
     )
 
     fc.assert(
@@ -289,6 +321,8 @@ describe('la mesa de práctica', () => {
 
         expect(cards).toEqual([...ids].sort())
         expect(new Set(live).size).toBe(live.length)
+        // Lo boca abajo es siempre un subconjunto del destierro.
+        expect(state.facedown.every((card) => state.banished.includes(card))).toBe(true)
         expect(state.deck.length + state.hand.length + state.gy.length).toBeLessThanOrEqual(ids.length)
       }),
     )

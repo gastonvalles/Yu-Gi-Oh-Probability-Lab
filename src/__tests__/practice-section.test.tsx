@@ -124,7 +124,7 @@ describe('la práctica integrada en la mesa', () => {
   it('robar la carta de ir 2º reevalúa la mano inicial: aparece el problema', () => {
     render(<Harness />)
 
-    tap(screen.getByRole('button', { name: 'Deck: 5' }))
+    tap(screen.getByRole('button', { name: 'Main: 5' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Robar' }))
 
     expect(within(hand()).getAllByRole('listitem')).toHaveLength(6)

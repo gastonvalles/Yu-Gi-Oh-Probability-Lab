@@ -12,6 +12,7 @@ import {
   locateCard,
   matReducer,
   monstersOnField,
+  PHASES,
   placedAt,
   randomSeed,
   TOKEN_KIND,
@@ -442,13 +443,16 @@ export function PracticeMat({
     if (!menu) return []
 
     if (menu.kind === 'deck') {
+      const top = state.deck[0]
       const items: MenuItem[] = [
         { label: 'Robar', onSelect: () => play({ type: 'draw', count: 1 }) },
         { label: 'Mandar al cementerio', onSelect: () => play({ type: 'mill', count: 1 }) },
+        { label: 'Desterrar el tope', onSelect: () => top && play({ type: 'move', id: top, to: 'banished' }) },
+        { label: 'Desterrar el tope boca abajo', onSelect: () => top && play({ type: 'move', id: top, to: 'banished', faceDown: true }) },
         { label: 'Ver el deck', onSelect: () => { setMenu(null); setViewer('deck') } },
         { label: 'Barajar', onSelect: () => play({ type: 'shuffle', seed: randomSeed() }) },
       ]
-      return state.deck.length === 0 ? items.slice(2, 3) : items
+      return top ? items : items.slice(4, 5)
     }
 
     return listCardActions(state, menu.id, kindOf, nameOf).map((item) => ({ label: item.label, onSelect: () => choose(item) }))
@@ -456,7 +460,7 @@ export function PracticeMat({
 
   const menuCard = menu?.kind === 'card' ? cardOf(menu.id) : null
   const menuWhere = menu?.kind === 'card' ? locateCard(state, menu.id) : null
-  const menuKicker = menuWhere ? (menuWhere.kind === 'pile' ? PILE_TITLES[menuWhere.pile] : menuWhere.kind === 'spot' ? ZONE_LABELS[menuWhere.spot] : `Material de ${nameOf(menuWhere.of)}`) : 'Deck'
+  const menuKicker = menuWhere ? (menuWhere.kind === 'pile' ? PILE_TITLES[menuWhere.pile] : menuWhere.kind === 'spot' ? ZONE_LABELS[menuWhere.spot] : `Material de ${nameOf(menuWhere.of)}`) : 'Main'
   const menuTitle = menuCard?.name ?? `${state.deck.length} ${state.deck.length === 1 ? 'carta' : 'cartas'}`
 
   const saveCombo = (name: string) => {
@@ -515,6 +519,7 @@ export function PracticeMat({
         onKeyDown={pickableZone ? (event) => activate(event, () => pickZone(spot, index)) : undefined}
       >
         {gem && !placed ? <span aria-hidden="true" className={cx('absolute left-1/2 top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[3px]', gem)} /> : null}
+        {spot === 'field' && !placed ? <span aria-hidden="true" className="absolute inset-0 grid place-items-center text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-soft min-[1101px]:text-[0.6rem]">Field</span> : null}
         {placed ? (
           <PlacedCard
             placed={placed}
@@ -610,18 +615,29 @@ export function PracticeMat({
         <IconButton tone="flat" size="sm" aria-label="Pasos y combos" title="Pasos y combos" className="min-[1101px]:hidden" onClick={() => setPanelOpen(true)}>
           <Icon name="list" />
         </IconButton>
+        <span className="ml-auto rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted" aria-label={`Turno ${state.turn}`}>
+          Turno {state.turn}
+        </span>
       </div>
 
       <div className="col-start-1 row-start-2 flex min-h-0 flex-col gap-2 overflow-y-auto overflow-x-hidden px-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] min-[1101px]:px-4 min-[1101px]:pb-4">
-        {/* El campo, con la disposición de DuelingBook en todos los tamaños: campo y Extra a la izquierda, destierro, cementerio y deck a la derecha, las zonas extra entre medio. */}
+        {/* El campo, con la disposición del lado propio de DuelingBook en todos los tamaños: a la izquierda destierro, zona de campo y Extra Deck; a la derecha cementerio y deck (arriba a la derecha iría el destierro del rival, que acá no existe); las fases y las zonas extra entre medio. */}
         <div
           ref={fieldRef}
-          className="grid grid-cols-7 gap-1 [grid-template-areas:'fld_._emz1_._emz2_._ban'_'._m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[repeat(7,minmax(0,5.75rem))]"
+          className="grid grid-cols-7 gap-1 [grid-template-areas:'ban_p1_emz1_p2_emz2_p3_.'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[repeat(7,minmax(0,5.75rem))]"
           aria-label="Campo"
         >
           {cell('field', 0, 'fld')}
           {cell('emz', 0, 'emz1')}
           {cell('emz', 1, 'emz2')}
+          {/* Las seis fases, de a dos entre las zonas, como en DuelingBook: la actual encendida; tocar otra cambia de fase. */}
+          {[0, 2, 4].map((start, index) => (
+            <div key={start} role="group" aria-label={index === 0 ? 'Fases' : undefined} className="grid grid-cols-2 gap-0.5 self-center min-[1101px]:gap-1" style={{ gridArea: `p${index + 1}` }}>
+              {PHASES.slice(start, start + 2).map((phase) => (
+                <PhaseButton key={phase.id} short={phase.short} name={phase.name} active={state.phase === phase.id} onPick={() => play({ type: 'phase', phase: phase.id })} />
+              ))}
+            </div>
+          ))}
           {state.mz.map((_, index) => cell('mz', index, `m${index + 1}`))}
           {state.st.map((_, index) => cell('st', index, `s${index + 1}`))}
 
@@ -630,8 +646,8 @@ export function PracticeMat({
             ref={deckRef}
             role="button"
             tabIndex={0}
-            aria-label={`Deck: ${state.deck.length}`}
-            title="Deck"
+            aria-label={`Main: ${state.deck.length}`}
+            title="Main Deck"
             data-drop="deck"
             data-over={over === 'deck' || handOver === 'deck' ? 'true' : 'false'}
             className={cx(CELL, state.deck.length > 0 && 'cursor-grab touch-none select-none [-webkit-touch-callout:none]', 'focus-visible:outline-none focus-visible:shadow-focus')}
@@ -648,7 +664,7 @@ export function PracticeMat({
                 <span key={dealt} className={cx(CARD_BACK, 'animate-pile-draw motion-reduce:animate-none')} />
               </span>
             ) : null}
-            <PileBadge label="Deck" count={state.deck.length} />
+            <PileBadge label="Main" count={state.deck.length} />
           </div>
           {pileCell('extra', 'extra')}
           {pileCell('gy', 'gy')}
@@ -729,7 +745,13 @@ export function PracticeMat({
         onClose={() => setMenu(null)}
       />
 
-      <PileViewer pile={viewer} ids={viewer ? state[viewer] : []} info={(id) => ({ name: cardOf(id).name, art: artOf(cardOf(id)) })} onPick={(id, rect) => { setPreview(id); setMenu({ kind: 'card', id, rect }) }} onClose={closeViewer} />
+      <PileViewer
+        pile={viewer}
+        ids={viewer ? state[viewer] : []}
+        info={(id) => ({ name: cardOf(id).name, art: artOf(cardOf(id)), faceDown: state.facedown.includes(id) })}
+        onPick={(id, rect) => { setPreview(id); setMenu({ kind: 'card', id, rect }) }}
+        onClose={closeViewer}
+      />
 
       <SaveComboDialog key={String(saving)} isOpen={saving} defaultName={`Combo ${combos.length + 1}`} onSave={saveCombo} onClose={() => setSaving(false)} />
 
@@ -776,6 +798,27 @@ function parseDrop(value: string): MatDropTarget | null {
   return (zone === 'mz' || zone === 'emz' || zone === 'st') && Number.isInteger(at) ? { kind: 'spot', spot: zone, index: at } : null
 }
 
+/** Botón redondo de una fase (DP, SP, M1, BP, M2, EP): la actual encendida en verde. */
+function PhaseButton({ short, name, active, onPick }: { short: string; name: string; active: boolean; onPick: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-label={name}
+      aria-pressed={active}
+      title={name}
+      className={cx(
+        'grid aspect-square w-full min-w-0 place-items-center rounded-full border text-[0.55rem] font-extrabold leading-none transition-[background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus min-[1101px]:text-micro',
+        active
+          ? 'border-accent bg-accent text-[#06140e] shadow-[0_0_12px_rgb(var(--accent-rgb)/0.7)]'
+          : 'border-tint/25 bg-transparent text-soft hover:bg-tint/10 hover:text-foreground',
+      )}
+      onClick={onPick}
+    >
+      {short}
+    </button>
+  )
+}
+
 function activate(event: ReactKeyboardEvent<HTMLElement>, run: () => void) {
   if (event.key === 'Enter' || event.key === ' ') {
     event.preventDefault()
@@ -783,18 +826,12 @@ function activate(event: ReactKeyboardEvent<HTMLElement>, run: () => void) {
   }
 }
 
-/** En el celular las celdas son angostas: la etiqueta se abrevia. */
-const SHORT_LABELS: Record<string, string> = { Cementerio: 'Cem.', Destierro: 'Dest.', 'Extra Deck': 'Extra' }
-
-/** Cantidad grande en el centro de la pila, como en la mesa real, y la etiqueta chica debajo. */
+/** Cantidad grande en el centro de la pila, como en la mesa real, y el nombre de la casilla chico debajo. */
 function PileBadge({ label, count }: { label: string; count: number }) {
   return (
     <span className="pointer-events-none absolute inset-0 z-2 grid place-content-center justify-items-center text-center leading-none">
       <span className={cx('rounded-full px-1.5 py-0.5 text-body font-extrabold tabular-nums text-foreground min-[1101px]:text-lead', count > 0 && 'bg-background/70')}>{count}</span>
-      <span className="mt-0.5 text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-soft min-[1101px]:text-[0.6rem]">
-        <span className="min-[1101px]:hidden">{SHORT_LABELS[label] ?? label}</span>
-        <span className="hidden min-[1101px]:inline">{label}</span>
-      </span>
+      <span className="mt-0.5 text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-soft min-[1101px]:text-[0.6rem]">{label}</span>
     </span>
   )
 }
