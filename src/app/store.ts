@@ -54,9 +54,20 @@ function buildRootState(state: AppState): RootStateSchema {
 
 let saveStateTimer: number | null = null
 let lastSavedState: RootState | null = null
+let persisting = true
+
+/** Antes de restaurar una copia de seguridad y recargar: lo que hay en memoria ya no debe escribirse (pisaría lo recién restaurado). */
+export function stopPersisting(): void {
+  persisting = false
+
+  if (saveStateTimer !== null) {
+    window.clearTimeout(saveStateTimer)
+    saveStateTimer = null
+  }
+}
 
 function flushSaveState(): void {
-  if (saveStateTimer === null) {
+  if (!persisting || saveStateTimer === null) {
     return
   }
 
@@ -73,7 +84,7 @@ function flushSaveState(): void {
 
 store.subscribe(() => {
   // Una acción que no cambió nada (reducer devolvió el mismo estado) no vale una serialización.
-  if (typeof window === 'undefined' || store.getState() === lastSavedState) {
+  if (!persisting || typeof window === 'undefined' || store.getState() === lastSavedState) {
     return
   }
 

@@ -1,13 +1,16 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
+import { collectBackup, parseBackup, restoreBackup, type LabBackup } from '../app/backup'
 import { DECK_EXPORT_FILES, describeExportSelection, downloadYdk, type DeckExportSelection } from '../app/deck-image-export'
-import { canvasToJpegBlob } from '../app/deck-image-export-download'
+import { canvasToJpegBlob, downloadBlob } from '../app/deck-image-export-download'
 import { renderDeckAsCanvas } from '../app/deck-image-export-render'
 import { buildKdeDecklistSections } from '../app/kde-decklist'
 import type { DeckBuilderState } from '../app/model'
+import { stopPersisting } from '../app/store'
 import { useToastMessage } from '../app/use-toast-message'
 import { buildYdkeUrl } from '../app/ydke'
 import type { DeckFormat } from '../types'
+import { ConfirmDialog } from './probability/ConfirmDialog'
 import { StepHero } from './StepHero'
 import { StepPage } from './ui/StepPage'
 import { Button } from './ui/Button'
@@ -57,6 +60,9 @@ function readSelection(): DeckExportSelection {
   }
 }
 
+/** "2026-10-12T10:00:00.000Z" → "12/10/2026". */
+const formatBackupDay = (iso: string) => new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+
 function writeSelection(selection: DeckExportSelection) {
   try {
     localStorage.setItem(SELECTION_KEY, JSON.stringify(selection))
@@ -76,6 +82,9 @@ export function ExportDeckPanel({
   const [selection, setSelection] = useState<DeckExportSelection>(readSelection)
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
   const [previewState, setPreviewState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  // La copia elegida para restaurar, esperando la confirmación.
+  const [pendingBackup, setPendingBackup] = useState<LabBackup | null>(null)
+  const backupInputRef = useRef<HTMLInputElement | null>(null)
   const { showToast } = useToastMessage()
   const selectedCount = DECK_EXPORT_FILES.filter((file) => selection[file.key]).length
   const decklistSections = useMemo(() => {
@@ -112,6 +121,31 @@ export function ExportDeckPanel({
     } catch {
       showToast('No pude copiar el link. Descargá el .ydk y usá ese archivo.', 'error')
     }
+  }
+
+  const downloadBackup = () => {
+    const backup = collectBackup()
+
+    downloadBlob(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8' }), `ygo-probability-lab-copia-${backup.savedAt.slice(0, 10)}`, 'json')
+  }
+
+  const readBackupFile = async (file: File | undefined) => {
+    if (!file) return
+
+    try {
+      setPendingBackup(parseBackup(await file.text()))
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'No pude leer la copia.', 'error')
+    }
+  }
+
+  const restorePendingBackup = () => {
+    if (!pendingBackup) return
+
+    // Lo que hay en memoria no debe escribirse más: al recargar, la app arranca de lo restaurado.
+    stopPersisting()
+    restoreBackup(pendingBackup)
+    window.location.reload()
   }
 
   useEffect(() => {
@@ -281,6 +315,46 @@ export function ExportDeckPanel({
           </li>
         </ol>
       </Card>
+
+      {/* Todo lo guardado en este navegador, en un archivo: para otro navegador o para después de borrar los datos. */}
+      <Card as="section" padding="md" aria-label="Copia de seguridad" className="grid gap-4">
+        <SectionHeader
+          icon="save"
+          title="Copia de seguridad"
+          description="Todo lo que la app guarda en este navegador (deck, roles, reglas, builds guardados, combos y calculadora de LP) en un archivo, para llevarlo a otro navegador o recuperarlo después de borrar los datos."
+          actions={(
+            <>
+              <Button size="sm" icon="download" onClick={downloadBackup}>
+                Descargar copia
+              </Button>
+              <Button size="sm" variant="tertiary" icon="upload" onClick={() => backupInputRef.current?.click()}>
+                Restaurar copia
+              </Button>
+              <input
+                ref={backupInputRef}
+                type="file"
+                accept=".json,application/json"
+                className="sr-only"
+                tabIndex={-1}
+                aria-label="Archivo de la copia"
+                onChange={(event) => {
+                  void readBackupFile(event.target.files?.[0])
+                  event.target.value = ''
+                }}
+              />
+            </>
+          )}
+        />
+      </Card>
+
+      <ConfirmDialog
+        isOpen={pendingBackup !== null}
+        title="¿Restaurar la copia?"
+        description={`Lo que trae la copia${pendingBackup?.savedAt ? ` (del ${formatBackupDay(pendingBackup.savedAt)})` : ''} reemplaza lo que hay en este navegador: deck, roles, reglas, builds y combos. La página se recarga.`}
+        confirmLabel="Restaurar"
+        onCancel={() => setPendingBackup(null)}
+        onConfirm={restorePendingBackup}
+      />
 
       {/* Qué archivos bajar: se tilda lo que hace falta y el botón descarga sólo eso. */}
       <Modal
