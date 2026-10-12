@@ -825,26 +825,30 @@ export function PracticeMat({
           ) : null}
           {!picking && session.actions.length > 0 ? (
             <>
-              {/* Replay: pausa / reproducir (al final, "Ver de nuevo" vuelve al principio) y avance rápido, redondos como en un replay. */}
-              <button
-                type="button"
-                className={REPLAY_BUTTON}
-                aria-label={replayLabel}
-                title={replayLabel}
-                onClick={() => {
-                  if (autoplay) {
-                    setAutoplay(false)
-                  } else {
-                    if (live) onSeek(0)
-                    setAutoplay(true)
-                  }
-                }}
-              >
-                <Icon name={autoplay ? 'pause' : 'play'} />
-              </button>
-              <button type="button" className={REPLAY_BUTTON} aria-label="Avance rápido" title="Avance rápido" aria-pressed={fast} onClick={() => setFast((value) => !value)}>
-                <Icon name="fast-forward" />
-              </button>
+              {/* Replay (sólo viendo un combo guardado): pausa / reproducir (al final, "Ver de nuevo" vuelve al principio) y avance rápido, redondos como en un replay. */}
+              {session.replay ? (
+                <>
+                  <button
+                    type="button"
+                    className={REPLAY_BUTTON}
+                    aria-label={replayLabel}
+                    title={replayLabel}
+                    onClick={() => {
+                      if (autoplay) {
+                        setAutoplay(false)
+                      } else {
+                        if (live) onSeek(0)
+                        setAutoplay(true)
+                      }
+                    }}
+                  >
+                    <Icon name={autoplay ? 'pause' : 'play'} />
+                  </button>
+                  <button type="button" className={REPLAY_BUTTON} aria-label="Avance rápido" title="Avance rápido" aria-pressed={fast} onClick={() => setFast((value) => !value)}>
+                    <Icon name="fast-forward" />
+                  </button>
+                </>
+              ) : null}
               <Button variant="tertiary" size="sm" className="min-h-8 px-2" disabled={session.cursor === 0} onClick={() => { setAutoplay(false); onSeek(session.cursor - 1) }}>
                 Anterior
               </Button>
@@ -862,10 +866,10 @@ export function PracticeMat({
         </div>
       </div>
 
-      {/* Panel lateral (escritorio): las salidas y problemas de la mano (dejando lugar a la X del modal) y los pasos y combos. El detalle de una carta se abre desde su menú. */}
-      <aside className="hidden min-h-0 border-l border-border-subtle px-3 py-3 min-[1101px]:col-start-2 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col min-[1101px]:gap-3" aria-label="Pasos y combos">
-        {footer && isDealt && isDesktop ? <div className="flex-none pr-11 animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
+      {/* Panel lateral (escritorio): arriba los pasos y combos (debajo de la X del modal) y abajo, a la altura de la mano, las salidas y problemas; la explicación del chip tocado crece hacia arriba sobre la lista. El detalle de una carta se abre desde su menú. */}
+      <aside className="hidden min-h-0 border-l border-border-subtle px-3 pb-3 pt-18 min-[1101px]:col-start-2 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col min-[1101px]:gap-3" aria-label="Pasos y combos">
         {panel}
+        {footer && isDealt && isDesktop ? <div className="flex-none animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
       </aside>
 
       <Modal isOpen={panelOpen} onClose={() => setPanelOpen(false)} size="md" kicker="Mesa" title="Pasos y combos">

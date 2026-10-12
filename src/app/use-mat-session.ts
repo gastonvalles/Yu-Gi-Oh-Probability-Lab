@@ -12,6 +12,8 @@ export interface MatSession {
   cursor: number
   /** Nombres de las cartas de un combo cargado (por si alguna ya no está en el deck). */
   names: Record<string, string>
+  /** Se está viendo un combo guardado (la mesa arrancó con jugadas): sólo entonces se muestran los controles de replay. */
+  replay: boolean
 }
 
 const clamp = (value: number, max: number) => Math.min(Math.max(0, Math.trunc(value)), max)
@@ -22,7 +24,7 @@ export function useMatSession() {
 
   /** Nueva mesa; con jugadas (un combo cargado) arranca en el paso 0 para reproducirlo. */
   const start = useCallback((initial: MatState, actions: MatAction[] = [], names: Record<string, string> = {}) => {
-    setSession({ initial, actions, cursor: 0, names })
+    setSession({ initial, actions, cursor: 0, names, replay: actions.length > 0 })
   }, [])
 
   /** Una jugada nueva: lo que seguía en una reproducción se descarta (el combo guardado no cambia). */

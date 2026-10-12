@@ -68,10 +68,10 @@ export function PracticeBoard({ openings, problems, activeId, caseIndex, unplaya
     return () => document.removeEventListener('pointerdown', handlePointerDown, true)
   }, [activeId, onDismiss])
 
-  // En el celular la explicación va ARRIBA de los chips (entre el campo y ellos; los chips quedan junto a la mano,
-  // que no se mueve); en el panel lateral de escritorio flota debajo de los chips, sin empujar los pasos.
+  // La explicación va ARRIBA de los chips: los chips quedan abajo, junto a la mano (que no se mueve), y la
+  // explicación crece hacia arriba (en escritorio le saca lugar a la lista de pasos, no a ningún control).
   return (
-    <div ref={ref} className="grid gap-1.5 min-[1101px]:relative">
+    <div ref={ref} className="grid gap-1.5">
       {activeId === UNPLAYABLE_ID && unplayable ? (
         <section className={explainStyle('problem')} aria-live="polite" aria-label="Mano no jugable">
           <p className={EXPLAIN_TEXT}>Ninguna salida se cumple con esta mano: por eso se ve gris.</p>
@@ -88,7 +88,7 @@ export function PracticeBoard({ openings, problems, activeId, caseIndex, unplaya
         </section>
       ) : null}
       {active ? <RuleExplanation key={active.patternId} match={active} caseIndex={caseIndex} odds={ruleOdds?.get(active.patternId) ?? null} /> : null}
-      <div className="flex flex-wrap items-center gap-1.5 [&>ul]:contents max-[1100px]:justify-center min-[1101px]:order-first">
+      <div className="flex flex-wrap items-center gap-1.5 [&>ul]:contents max-[1100px]:justify-center">
         <RuleGroup kind="opening" matches={openings} activeId={activeId} onToggle={onToggle} />
         <RuleGroup kind="problem" matches={problems} activeId={activeId} unplayable={unplayable} onToggle={onToggle} />
       </div>
@@ -129,11 +129,10 @@ function RuleExplanation({ match, caseIndex, odds }: { match: PracticeHandMatch;
   )
 }
 
-/** Explicación de la salida/problema tocado: en el celular entre el campo y los chips; en escritorio flota debajo de los chips. */
+/** Explicación de la salida/problema tocado, arriba de los chips. */
 function explainStyle(kind: PatternKind): string {
   return cx(
     'grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1.5 rounded-card bg-[color-mix(in_srgb,var(--rule-color)_16%,var(--card-background))] px-3 py-2 text-white animate-sheet-in motion-reduce:animate-none',
-    'min-[1101px]:absolute min-[1101px]:inset-x-0 min-[1101px]:top-full min-[1101px]:z-20 min-[1101px]:mt-1.5 min-[1101px]:shadow-[0_12px_28px_rgba(0,0,0,0.55)]',
     RULE_COLOR[kind],
   )
 }
