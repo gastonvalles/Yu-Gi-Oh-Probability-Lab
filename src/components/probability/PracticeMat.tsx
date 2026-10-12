@@ -652,7 +652,8 @@ export function PracticeMat({
           {pileCell('banished', 'ban')}
         </div>
 
-        {/* Abajo del todo, como en la mesa real: la mano en abanico y, debajo, las salidas y problemas. */}
+        {/* Abajo del todo, como en la mesa real: la mano en abanico. Las salidas y problemas van entre el campo y la mano en el celu, y debajo de la mano en escritorio. */}
+        {footer && isDealt && !isDesktop ? <div className="mt-auto px-1 animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
         <PracticeHand
           cards={handCards}
           sizeSlots={Math.max(session.initial.hand.length, 1)}
@@ -672,10 +673,10 @@ export function PracticeMat({
             const parsed = parseDrop(target)
             if (parsed) handleDrop({ id: card.id, name: card.name, art: artOf(card) }, parsed)
           }}
-          className="mt-auto"
+          className={footer && isDealt && !isDesktop ? undefined : 'mt-auto'}
         />
 
-        {footer && isDealt ? <div className="px-1 animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
+        {footer && isDealt && isDesktop ? <div className="px-1 animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
 
         {/* Pasos: en vivo muestra la última jugada; con jugadas, se recorre con Anterior / Siguiente. Eligiendo, pide lo que falta. */}
         <div className="flex min-h-9 flex-wrap items-center gap-x-2 gap-y-1 px-1 text-micro text-muted" role="status" aria-label="Paso actual">
