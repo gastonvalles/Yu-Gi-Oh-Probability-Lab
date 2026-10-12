@@ -187,7 +187,8 @@ describe('la mesa de práctica', () => {
     render(<Harness />)
 
     tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Especial en defensa' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Especial' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'En defensa' }))
     fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
     tap(within(hand()).getByRole('listitem', { name: 'Called by the Grave' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Colocar' }))
