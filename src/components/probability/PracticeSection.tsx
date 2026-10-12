@@ -4,6 +4,7 @@ import { buildDerivedDeckGroupMap } from '../../app/deck-groups'
 import { requestLabOdds } from '../../app/lab-odds-client'
 import { reactMascot } from '../../app/mascot'
 import type { LabOdds } from '../../app/lab-odds'
+import type { SavedCombo } from '../../app/saved-combos'
 import type { CardEntry, HandPattern } from '../../types'
 import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
@@ -23,6 +24,7 @@ import { PracticeCardFocus } from './PracticeCardFocus'
 import { PracticeDeckPile } from './PracticeDeckPile'
 import { PRACTICE_PALETTE, VERDICT_COLOR } from './practice-styles'
 import { PracticeHand } from './PracticeHand'
+import { SavedCombosButton } from './SavedCombosButton'
 import { usePracticeTable } from './use-practice-table'
 
 interface PracticeSectionProps {
@@ -34,6 +36,10 @@ interface PracticeSectionProps {
   missingRoleCount: number
   pendingReviewCount: number
   reviewPendingPatternCount: number
+  /** "Jugar esta mano": la mano y lo que quedó en el mazo pasan a la mesa. */
+  onPlayHand: (hand: PracticeHandCard[], remaining: PracticeHandCard[]) => void
+  /** Abre un combo guardado en la mesa. */
+  onLoadCombo: (combo: SavedCombo) => void
 }
 
 const EMPTY_IDS: ReadonlySet<string> = new Set()
@@ -57,7 +63,7 @@ function getBlockedMessage(props: PracticeSectionProps): string | null {
 }
 
 export function PracticeSection(props: PracticeSectionProps) {
-  const { handSize, derivedMainCards, patterns } = props
+  const { handSize, derivedMainCards, patterns, onPlayHand, onLoadCombo } = props
   const deck = useMemo(() => buildPracticeDeck(derivedMainCards), [derivedMainCards])
   const groupsByKey = useMemo(() => buildDerivedDeckGroupMap(derivedMainCards), [derivedMainCards])
   const blockedMessage = getBlockedMessage(props)
@@ -228,16 +234,24 @@ export function PracticeSection(props: PracticeSectionProps) {
           className="min-[820px]:col-start-2 min-[820px]:row-start-1"
         />
         <div className="flex items-end justify-between pb-[0.55rem] pl-0 pr-1 min-[820px]:contents">
-          <IconButton
-            tone="flat"
-            size="md"
-            aria-label="Nueva mano"
-            title="Nueva mano"
-            className="min-[820px]:col-start-1 min-[820px]:row-start-1 min-[820px]:mb-2"
-            onClick={table.deal}
-          >
-            <Icon name="refresh" />
-          </IconButton>
+          <div className="flex items-center gap-0.5 min-[820px]:col-start-1 min-[820px]:row-start-1 min-[820px]:mb-2 min-[820px]:flex-col-reverse min-[820px]:items-start">
+            <IconButton tone="flat" size="md" aria-label="Nueva mano" title="Nueva mano" onClick={table.deal}>
+              <Icon name="refresh" />
+            </IconButton>
+            {/* La mesa: jugar esta mano sobre el campo, o reproducir un combo guardado. */}
+            <IconButton
+              tone="flat"
+              size="md"
+              aria-label="Jugar esta mano"
+              title="Jugar esta mano"
+              disabled={!table.isDealt}
+              className="disabled:opacity-35"
+              onClick={() => onPlayHand(table.allCards, table.remainingDeck)}
+            >
+              <Icon name="play" />
+            </IconButton>
+            <SavedCombosButton onLoad={onLoadCombo} />
+          </div>
           <PracticeDeckPile
             ref={pileRef}
             canDraw={table.canDrawSecond}

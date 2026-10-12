@@ -87,6 +87,8 @@ export function usePracticeTable({ deck, handSize, reveal, reducedMotion }: UseP
     hasTable: table !== null,
     /** Todas las cartas de la mano (también las que todavía no se repartieron). */
     allCards: table?.hand.hand ?? [],
+    /** Lo que quedó en el mazo (en el orden del deck, sin barajar). */
+    remainingDeck: table?.hand.remainingDeck ?? [],
     cards: orderedCards,
     dealt,
     isDealt: table !== null && dealt >= total,

@@ -4,6 +4,12 @@ import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-m
 import { countUnclassifiedCards, countCardsMissingOrigin, countCardsMissingRoles, countCardsPendingReview, isClassificationStepComplete } from '../../app/role-step'
 import { curatePatterns } from '../../app/pattern-curation'
 import { buildActiveRuleSet } from '../../app/pattern-presets'
+import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
+import { createMatState, randomSeed, shuffleWithSeed } from '../../app/practice-mat'
+import { useMatSession } from '../../app/use-mat-session'
+import type { DeckCardInstance } from '../../app/model'
+import type { SavedCombo } from '../../app/saved-combos'
+import { buildPracticeDeck, type PracticeHandCard } from '../probability/practice'
 import { CardDetailModal } from '../card-detail/CardDetailModal'
 import { DeckBuilderStep } from './DeckBuilderStep'
 import { LifeCalculatorFab } from '../life/LifeCalculatorFab'
@@ -25,6 +31,7 @@ import {
   LazyDeckRolesPanel,
   LazyExportDeckPanel,
   LazyMetaScreen,
+  LazyPracticeMat,
   LazyPracticeSection,
   LazyProbabilityPanel,
   preloadHeavySteps,
@@ -319,6 +326,8 @@ export function DeckModeScreen() {
           onClose={() => setGlobalPracticeOpen(false)}
           handSize={controller.probability.handSize}
           derivedMainCards={controller.probability.derivedMainCards}
+          extraZone={controller.exportDeck.deckBuilder.extra}
+          deckName={controller.exportDeck.deckName}
           patterns={controller.probability.patterns}
           disabledGenericRuleIds={controller.probability.disabledGenericRuleIds}
           systemRuleNames={controller.probability.systemRuleNames}
@@ -341,6 +350,8 @@ function PracticeFab({
   onClose,
   handSize,
   derivedMainCards,
+  extraZone,
+  deckName,
   patterns,
   disabledGenericRuleIds,
   systemRuleNames,
@@ -351,6 +362,8 @@ function PracticeFab({
   onClose: () => void
   handSize: number
   derivedMainCards: import('../../types').CardEntry[]
+  extraZone: DeckCardInstance[]
+  deckName: string
   patterns: import('../../types').HandPattern[]
   disabledGenericRuleIds: string[]
   systemRuleNames: Record<string, string>
@@ -368,6 +381,36 @@ function PracticeFab({
     [patterns],
   )
 
+  // La mesa (jugar la mano sobre el campo) vive acá y no en el modal: cerrarlo no pierde la partida ni el combo en curso.
+  const [view, setView] = useState<'hand' | 'mat'>('hand')
+  const mat = useMatSession()
+  const mainIds = useMemo(() => buildPracticeDeck(derivedMainCards).map((card) => card.drawId), [derivedMainCards])
+  const extraCards = useMemo(() => buildPracticeDeck(deriveMainDeckCardsFromZone(extraZone)), [extraZone])
+  const extraIds = useMemo(() => extraCards.map((card) => card.drawId), [extraCards])
+  const cardsById = useMemo(
+    () => new Map([...buildPracticeDeck(derivedMainCards), ...extraCards].map((card) => [card.drawId, { name: card.name, apiCard: card.apiCard }])),
+    [derivedMainCards, extraCards],
+  )
+
+  const playHand = useCallback(
+    (hand: PracticeHandCard[], remaining: PracticeHandCard[]) => {
+      const deck = [...hand.map((card) => card.drawId), ...shuffleWithSeed(remaining.map((card) => card.drawId), randomSeed())]
+      mat.start(createMatState(deck, extraIds, hand.length))
+      setView('mat')
+    },
+    [mat, extraIds],
+  )
+  const newHand = useCallback(() => mat.start(createMatState(shuffleWithSeed(mainIds, randomSeed()), extraIds, handSize)), [mat, mainIds, extraIds, handSize])
+  const loadCombo = useCallback(
+    (combo: SavedCombo) => {
+      mat.start(combo.initial, combo.actions, combo.names)
+      setView('mat')
+    },
+    [mat],
+  )
+
+  const showMat = view === 'mat' && mat.session !== null && mat.state !== null
+
   return (
     <>
       <DraggableFab label="Abrir práctica" storageKey="ygo-lab:practice-fab" onClick={onOpen}>
@@ -377,7 +420,7 @@ function PracticeFab({
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        size="table"
+        size={showMat ? 'board' : 'table'}
         bare
         flush
         ariaLabel="Práctica"
@@ -385,16 +428,33 @@ function PracticeFab({
         closeClassName="right-1.5 top-3 min-[820px]:right-4 min-[820px]:top-4"
       >
         <Suspense fallback={null}>
-        <LazyPracticeSection
-          handSize={handSize}
-          derivedMainCards={derivedMainCards}
-          patterns={activePatterns}
-          hasCompletedClassification={hasCompletedClassification}
-          missingOriginCount={missingOriginCount}
-          missingRoleCount={missingRoleCount}
-          pendingReviewCount={pendingReviewCount}
-          reviewPendingPatternCount={reviewPendingPatternCount}
-        />
+          {showMat && mat.session && mat.state ? (
+            <LazyPracticeMat
+              session={mat.session}
+              state={mat.state}
+              cardsById={cardsById}
+              deckName={deckName}
+              onDispatch={mat.dispatch}
+              onUndo={mat.undo}
+              onSeek={mat.seek}
+              onLoadCombo={loadCombo}
+              onNewHand={newHand}
+              onBack={() => setView('hand')}
+            />
+          ) : (
+            <LazyPracticeSection
+              handSize={handSize}
+              derivedMainCards={derivedMainCards}
+              patterns={activePatterns}
+              hasCompletedClassification={hasCompletedClassification}
+              missingOriginCount={missingOriginCount}
+              missingRoleCount={missingRoleCount}
+              pendingReviewCount={pendingReviewCount}
+              reviewPendingPatternCount={reviewPendingPatternCount}
+              onPlayHand={playHand}
+              onLoadCombo={loadCombo}
+            />
+          )}
         </Suspense>
       </Modal>
     </>

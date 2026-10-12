@@ -10,6 +10,7 @@ const loaders = {
   exportDeck: () => import('../ExportDeckPanel'),
   comparison: () => import('../comparison/ComparisonScreen'),
   practice: () => import('../probability/PracticeSection'),
+  mat: () => import('../probability/PracticeMat'),
   meta: () => import('../meta/MetaScreen'),
   life: () => import('../life/LifeCalculatorScreen'),
 }
@@ -64,6 +65,7 @@ export const LazyProbabilityPanel = lazy(orReload(() => loaders.probability().th
 export const LazyExportDeckPanel = lazy(orReload(() => loaders.exportDeck().then((m) => ({ default: m.ExportDeckPanel }))))
 export const LazyComparisonScreen = lazy(orReload(() => loaders.comparison().then((m) => ({ default: m.ComparisonScreen }))))
 export const LazyPracticeSection = lazy(orReload(() => loaders.practice().then((m) => ({ default: m.PracticeSection }))))
+export const LazyPracticeMat = lazy(orReload(() => loaders.mat().then((m) => ({ default: m.PracticeMat }))))
 export const LazyMetaScreen = lazy(orReload(() => loaders.meta().then((m) => ({ default: m.MetaScreen }))))
 export const LazyLifeCalculatorScreen = lazy(orReload(() => loaders.life().then((m) => ({ default: m.LifeCalculatorScreen }))))
 

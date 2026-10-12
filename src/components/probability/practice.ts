@@ -72,6 +72,11 @@ interface PracticeHandNearMiss {
   notes: string[]
 }
 
+/** "card-12345-2" → "card-12345": la carta detrás de una copia. */
+export function cardIdOfDrawId(drawId: string): string {
+  return drawId.replace(/-\d+$/, '')
+}
+
 export function buildPracticeDeck(cards: CardEntry[]): PracticeHandCard[] {
   return cards.flatMap((card) =>
     Array.from({ length: card.copies }, (_, index) => ({
