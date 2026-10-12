@@ -126,18 +126,22 @@ describe('la mesa de práctica', () => {
   it('las seis fases van arriba del campo; tocar una la enciende y queda anotada, y de la End Phase a la Draw Phase cambia el turno', () => {
     render(<Harness />)
 
-    expect(screen.getByRole('button', { name: 'Main Phase 1' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Draw Phase' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByLabelText('Turno 1')).toBeInTheDocument()
+    expect(within(hand()).getAllByRole('listitem')).toHaveLength(5)
 
     fireEvent.click(screen.getByRole('button', { name: 'Battle Phase' }))
     expect(screen.getByRole('button', { name: 'Battle Phase' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'Main Phase 1' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: 'Draw Phase' })).toHaveAttribute('aria-pressed', 'false')
     expect(within(status()).getByText('Pasás a la Battle Phase')).toBeInTheDocument()
 
+    // Turno nuevo: Draw Phase y se roba sola la carta del tope.
     fireEvent.click(screen.getByRole('button', { name: 'End Phase' }))
     fireEvent.click(screen.getByRole('button', { name: 'Draw Phase' }))
     expect(screen.getByLabelText('Turno 2')).toBeInTheDocument()
-    expect(within(status()).getByText('Turno 2: Draw Phase')).toBeInTheDocument()
+    expect(within(status()).getByText('Turno 2: Draw Phase, robás Imperm')).toBeInTheDocument()
+    expect(within(hand()).getAllByRole('listitem')).toHaveLength(6)
+    expect(screen.getByRole('button', { name: 'Main: 0' })).toBeInTheDocument()
   })
 
   it('arrastrar una carta al cementerio la manda ahí; tocar el deck ofrece robar', () => {

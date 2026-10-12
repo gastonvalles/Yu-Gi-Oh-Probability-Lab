@@ -48,7 +48,7 @@ export interface MatState {
   field: Placed | null
   /** Fichas creadas hasta ahora (dan los ids `token-n`). */
   tokens: number
-  /** Fase del turno en curso; la mesa arranca en la Main Phase 1 del turno 1 (la mano ya está robada). */
+  /** Fase del turno en curso. El turno siempre empieza en la Draw Phase (en el turno 1 el que empieza no roba). */
   phase: MatPhase
   turn: number
   /** Las cartas del destierro que están boca abajo. */
@@ -99,7 +99,7 @@ export function createMatState(deck: readonly string[], extra: readonly string[]
     st: Array.from({ length: ZONE_SIZES.st }, () => null),
     field: null,
     tokens: 0,
-    phase: 'main1',
+    phase: 'draw',
     turn: 1,
     facedown: [],
   }
@@ -358,8 +358,10 @@ export function matReducer(state: MatState, action: MatAction): MatState {
         return state
       }
 
+      // De la End Phase a la Draw Phase empieza otro turno, y en la Draw Phase se roba 1 carta (regla del juego).
       const newTurn = state.phase === 'end' && action.phase === 'draw'
-      return { ...state, phase: action.phase, turn: newTurn ? state.turn + 1 : state.turn }
+      const next = { ...state, phase: action.phase, turn: newTurn ? state.turn + 1 : state.turn }
+      return newTurn ? matReducer(next, { type: 'draw', count: 1 }) : next
     }
 
     default:
@@ -477,7 +479,13 @@ export function describeMatAction(before: MatState, action: MatAction, nameOf: (
 
     case 'phase': {
       const phase = PHASES.find((entry) => entry.id === action.phase)?.name ?? action.phase
-      return before.phase === 'end' && action.phase === 'draw' ? `Turno ${before.turn + 1}: ${phase}` : `Pasás a la ${phase}`
+
+      if (before.phase === 'end' && action.phase === 'draw') {
+        const top = before.deck[0]
+        return `Turno ${before.turn + 1}: ${phase}${top ? `, robás ${name(top)}` : ''}`
+      }
+
+      return `Pasás a la ${phase}`
     }
 
     case 'counter': {

@@ -36,13 +36,13 @@ describe('combos guardados', () => {
     expect(replayMat(saved.initial, saved.actions, 1).mz[0]?.id).toBe('card-1-1')
   })
 
-  it('un combo guardado antes de las fases arranca en la Main Phase 1 del turno 1', () => {
+  it('un combo guardado antes de las fases arranca en la Draw Phase del turno 1', () => {
     const combo = createSavedCombo({ name: 'Viejo', deckName: 'd', initial, actions, nameOf }, [])
     const { phase: _phase, turn: _turn, ...legacyInitial } = combo.initial
     localStorage.setItem('ygo-lab:practice-combos', JSON.stringify([{ ...combo, initial: legacyInitial }]))
 
     const [read] = readSavedCombos()
-    expect(read?.initial.phase).toBe('main1')
+    expect(read?.initial.phase).toBe('draw')
     expect(read?.initial.turn).toBe(1)
   })
 

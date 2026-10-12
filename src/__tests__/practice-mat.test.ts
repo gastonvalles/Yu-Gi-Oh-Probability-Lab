@@ -111,9 +111,10 @@ describe('la mesa de práctica', () => {
     expect(matReducer(two, { type: 'tribute', id: 'c1', tributes: [], zone: 'mz', index: 2, pos: 'atk' })).toBe(two)
   })
 
-  it('la mesa arranca en la Main Phase 1 del turno 1; cambiar de fase queda anotado y de la End Phase a la Draw Phase empieza otro turno', () => {
+  it('el turno empieza en la Draw Phase (en el turno 1 sin robar); cambiar de fase queda anotado y de la End Phase a la Draw Phase empieza otro turno robando 1', () => {
     const state = start()
-    expect([state.phase, state.turn]).toEqual(['main1', 1])
+    expect([state.phase, state.turn]).toEqual(['draw', 1])
+    expect(state.hand).toHaveLength(5)
 
     const battle = matReducer(state, { type: 'phase', phase: 'battle' })
     expect(battle.phase).toBe('battle')
@@ -123,7 +124,12 @@ describe('la mesa de práctica', () => {
     const end = matReducer(battle, { type: 'phase', phase: 'end' })
     const next = matReducer(end, { type: 'phase', phase: 'draw' })
     expect([next.phase, next.turn]).toEqual(['draw', 2])
-    expect(describeMatAction(end, { type: 'phase', phase: 'draw' }, nameOf)).toBe('Turno 2: Draw Phase')
+    expect(next.hand).toEqual([...end.hand, 'e1'])
+    expect(next.deck).toEqual(['f1'])
+    expect(describeMatAction(end, { type: 'phase', phase: 'draw' }, nameOf)).toBe('Turno 2: Draw Phase, robás E1')
+    // Sin cartas en el deck el turno igual empieza (robar es imposible: en el juego real se pierde).
+    const empty = matReducer({ ...end, deck: [] }, { type: 'phase', phase: 'draw' })
+    expect([empty.phase, empty.turn, empty.hand.length]).toEqual(['draw', 2, end.hand.length])
     // Volver atrás dentro del turno no cambia el turno; una fase inválida no hace nada.
     expect(matReducer(next, { type: 'phase', phase: 'main1' }).turn).toBe(2)
     expect(matReducer(next, { type: 'phase', phase: 'nope' as 'draw' })).toBe(next)
