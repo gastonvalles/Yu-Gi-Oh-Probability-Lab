@@ -2,10 +2,9 @@
  * Precios de TCGplayer de una carta, por impresión (expansión + rareza + edición).
  *
  * Los precios los baja todos los días `scripts/sync-card-prices.mjs` (desde TCGCSV, un espejo de TCGplayer, que ya
- * no da keys nuevas para su API) y quedan como archivos estáticos en `public/prices/`. Acá se cruza la carta con
- * ellos: sus impresiones (set, código y rareza) salen de YGOPRODeck y se buscan, por código de set + rareza, en el
- * archivo de cada set en el que salió. Se piden de a `PAGE_SIZE` sets, los más nuevos primero, para no cargar de más
- * en cartas con muchísimas reimpresiones.
+ * no da keys nuevas para su API), los cruza con las cartas de YGOPRODeck por código de set y los deja como archivos
+ * estáticos en `public/prices/`, indexados por carta: el índice (con los nombres y fechas de los sets, una vez por
+ * sesión) y un archivo de unos 4 KB con todas las impresiones de la carta, sea cual sea la cantidad de reimpresiones.
  */
 
 export interface PrintingPrice {
@@ -14,58 +13,34 @@ export interface PrintingPrice {
   rarity: string
   edition: string
   market: number | null
-  low: number | null
   url: string
 }
 
-/** Los sets en los que salió la carta (más nuevos primero) y el día (AAAA-MM-DD) en que se bajaron los precios. */
-export interface CardPriceSets {
-  sets: SetMatch[]
+export interface CardPrices {
+  prices: PrintingPrice[]
+  /** Día (AAAA-MM-DD) en que se bajaron los precios. */
   updated: string
 }
 
-/** Un set de TCGplayer con las impresiones de la carta que le tocan. */
-export interface SetMatch {
-  group: PriceGroup
-  printings: YgoCardSet[]
-}
-
-export interface YgoCardSet {
-  set_name: string
-  set_code: string
-  set_rarity: string
-}
-
-export interface PriceGroup {
-  groupId: number
-  name: string
-  abbreviation: string
-  /** Fecha de salida (AAAA-MM-DD); vacía en los sets de los que TCGCSV no la tiene. */
-  publishedOn: string
-}
-
-/** [código del set, rareza, edición, precio de mercado, precio mínimo, id del producto en TCGplayer] */
-export type PriceRow = [string, string, string, number | null, number | null, number]
+/** [código del set, rareza, edición, precio de mercado, id del producto en TCGplayer, id del set] */
+export type PriceRow = [string, string, string, number | null, number, number]
 
 interface PriceIndex {
   updated: string
-  groups: Array<[number, string, string, string]>
+  /** Cuántos archivos por carta hay: el de la carta es `cards/<id % shards>.json`. */
+  shards: number
+  /** [id del set, nombre, fecha de salida (AAAA-MM-DD, vacía si TCGCSV no la tiene)] */
+  groups: Array<[number, string, string]>
 }
 
 type GetJson = (url: string) => Promise<unknown>
 
-/** Cuántas expansiones se traen por vez (cada una es un archivo de unos pocos KB); "ver más" trae las siguientes. */
-export const PAGE_SIZE = 3
-
-const CARD_INFO = 'https://db.ygoprodeck.com/api/v7/cardinfo.php'
 const PRICES_DIR = '/prices'
 
 /** La imagen del sobre del set en YGOPRODeck ("JUSH-EN016" → .../sets/JUSH.jpg). Algunos sets no la tienen. */
 export const setImageUrl = (code: string) => `https://images.ygoprodeck.com/images/sets/${code.split('-')[0]}.jpg`
 
 const normalize = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, '')
-/** Los sets sin fecha van al final, como si fueran los más viejos. */
-const newestFirst = (a: PriceGroup, b: PriceGroup) => b.publishedOn.localeCompare(a.publishedOn)
 
 async function getJson(url: string): Promise<unknown> {
   const response = await fetch(url)
@@ -75,34 +50,6 @@ async function getJson(url: string): Promise<unknown> {
   }
 
   return response.json()
-}
-
-/**
- * El set de TCGplayer de cada impresión: por nombre y, si no coincide, por el prefijo del código ("MZMI-EN083" → MZMI).
- * Devuelve los sets más nuevos primero, cada uno con las impresiones de la carta que le tocan.
- */
-export function matchGroups(cardSets: YgoCardSet[], groups: PriceGroup[]): SetMatch[] {
-  const recentFirst = [...groups].sort(newestFirst)
-  const found = new Map<number, SetMatch>()
-
-  for (const printing of cardSets) {
-    const [prefix = '', region = ''] = printing.set_code.split('-')
-    const codes = [normalize(prefix), normalize(`${prefix}${region.slice(0, 2)}`)]
-    const group =
-      recentFirst.find((candidate) => normalize(candidate.name) === normalize(printing.set_name)) ??
-      recentFirst.find((candidate) => codes.includes(normalize(candidate.abbreviation)))
-
-    if (!group) {
-      continue
-    }
-
-    const entry = found.get(group.groupId) ?? { group, printings: [] }
-
-    entry.printings.push(printing)
-    found.set(group.groupId, entry)
-  }
-
-  return [...found.values()].sort((a, b) => newestFirst(a.group, b.group))
 }
 
 /**
@@ -124,51 +71,53 @@ export function filterPrintings(prices: PrintingPrice[], query: string): Printin
   })
 }
 
-/** Los precios de las impresiones de la carta dentro de un set: por código + rareza y, si la rareza se llama distinto, sólo por código. */
-export function extractPrices(group: PriceGroup, printings: YgoCardSet[], rows: PriceRow[]): PrintingPrice[] {
-  const found: PrintingPrice[] = []
+/** Lo ya pedido en esta sesión (por cada función de pedido): el índice y los archivos por carta no se piden dos veces. */
+const requests = new WeakMap<GetJson, Map<string, Promise<unknown>>>()
 
-  for (const code of new Set(printings.map((printing) => printing.set_code))) {
-    const rarities = new Set(printings.filter((printing) => printing.set_code === code).map((printing) => normalize(printing.set_rarity)))
-    const sameCode = rows.filter((row) => row[0] === code)
-    const strict = sameCode.filter((row) => rarities.has(normalize(row[1])))
+function cached(get: GetJson, url: string): Promise<unknown> {
+  let byUrl = requests.get(get)
 
-    for (const [, rarity, edition, market, low, productId] of strict.length > 0 ? strict : sameCode) {
-      found.push({ set: group.name, code, rarity, edition, market, low, url: `https://www.tcgplayer.com/product/${productId}` })
-    }
+  if (!byUrl) {
+    byUrl = new Map()
+    requests.set(get, byUrl)
   }
 
-  return found
-}
+  let request = byUrl.get(url)
 
-/** El índice de sets se baja una vez por sesión (por cada función de pedido). */
-const indexes = new Map<GetJson, Promise<PriceIndex>>()
-
-function loadIndex(get: GetJson): Promise<PriceIndex> {
-  let index = indexes.get(get)
-
-  if (!index) {
-    index = get(`${PRICES_DIR}/index.json`) as Promise<PriceIndex>
+  if (!request) {
+    const pending = byUrl
+    request = get(url)
     // Si falla, la próxima vez se vuelve a intentar.
-    index.catch(() => indexes.delete(get))
-    indexes.set(get, index)
+    request.catch(() => pending.delete(url))
+    byUrl.set(url, request)
   }
 
-  return index
+  return request
 }
 
-/** Los sets en los que salió la carta (por id de YGOPRODeck), más nuevos primero: un pedido a YGOPRODeck y el índice, sin ningún archivo de precios todavía. */
-export async function fetchCardPriceSets(cardId: number, get: GetJson = getJson): Promise<CardPriceSets> {
-  const [card, index] = await Promise.all([get(`${CARD_INFO}?id=${cardId}`) as Promise<{ data?: Array<{ card_sets?: YgoCardSet[] }> }>, loadIndex(get)])
-  const cardSets = card.data?.[0]?.card_sets ?? []
-  const groups = index.groups.map(([groupId, name, abbreviation, publishedOn]) => ({ groupId, name, abbreviation, publishedOn }))
+/**
+ * Las impresiones de la carta (por id de YGOPRODeck) con su precio en TCGplayer, las expansiones más nuevas primero (las
+ * que no tienen fecha, al final): el índice una vez por sesión y un solo archivo con todo lo de la carta.
+ */
+export async function fetchCardPrices(cardId: number, get: GetJson = getJson): Promise<CardPrices> {
+  const index = (await cached(get, `${PRICES_DIR}/index.json`)) as PriceIndex
+  const shard = (await cached(get, `${PRICES_DIR}/cards/${cardId % index.shards}.json`)) as Record<string, PriceRow[] | undefined>
+  const sets = new Map(index.groups.map(([id, name, date]) => [id, { name, date }]))
+  const rows = (shard[String(cardId)] ?? []).filter((row) => sets.has(row[5]))
+  const setOf = (row: PriceRow) => sets.get(row[5])!
 
-  return { sets: matchGroups(cardSets, groups), updated: index.updated }
-}
+  // Sort estable: dentro de cada set se conserva el orden del archivo (código, rareza, edición).
+  const ordered = [...rows].sort((a, b) => setOf(b).date.localeCompare(setOf(a).date) || b[5] - a[5])
 
-/** Los precios de la carta en un set: baja sólo el archivo de ese set. */
-export async function fetchSetPrices({ group, printings }: SetMatch, get: GetJson = getJson): Promise<PrintingPrice[]> {
-  const file = (await get(`${PRICES_DIR}/${group.groupId}.json`)) as { rows: PriceRow[] }
-
-  return extractPrices(group, printings, file.rows)
+  return {
+    prices: ordered.map((row) => ({
+      set: setOf(row).name,
+      code: row[0],
+      rarity: row[1],
+      edition: row[2],
+      market: row[3],
+      url: `https://www.tcgplayer.com/product/${row[4]}`,
+    })),
+    updated: index.updated,
+  }
 }

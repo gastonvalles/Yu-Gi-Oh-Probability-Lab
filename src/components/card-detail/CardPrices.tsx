@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
-import { PAGE_SIZE, filterPrintings, setImageUrl, type PrintingPrice } from '../../app/card-prices'
+import { filterPrintings, setImageUrl, type PrintingPrice } from '../../app/card-prices'
 import { useCardPrices } from '../../app/use-card-prices'
-import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
@@ -81,19 +80,13 @@ function ExpansionPrices({ set, prices }: { set: string; prices: PrintingPrice[]
 }
 
 /**
- * Los precios de la carta por expansión (las más nuevas primero), con un buscador por código o rareza. Salen de los
- * archivos del sync diario. Buscar es pedir ver todas las impresiones: al escribir se traen las expansiones que faltan.
+ * Todas las impresiones de la carta por expansión (las más nuevas primero), con un buscador por código o rareza que
+ * filtra acá mismo. Salen de los archivos del sync diario: un solo pedido de pocos KB, tenga la carta las reimpresiones que tenga.
  */
 function PriceList({ cardId }: { cardId: number }) {
   const state = useCardPrices(cardId)
   const [query, setQuery] = useState('')
   const searching = query.trim() !== ''
-
-  useEffect(() => {
-    if (searching && state.status === 'ready' && state.remaining > 0 && !state.loadingMore && !state.moreFailed) {
-      state.loadAll()
-    }
-  }, [searching, state])
 
   if (state.status === 'loading') {
     return (
@@ -112,9 +105,9 @@ function PriceList({ cardId }: { cardId: number }) {
     return null
   }
 
-  const { prices, total, remaining, loadingMore, moreFailed, loadMore, loadAll } = state
+  const { prices } = state
 
-  if (prices.length === 0 && remaining === 0) {
+  if (prices.length === 0) {
     return <p className="m-0 text-body text-muted">No hay precios de TCGplayer para esta carta.</p>
   }
 
@@ -125,11 +118,9 @@ function PriceList({ cardId }: { cardId: number }) {
     bySet.set(price.set, [...(bySet.get(price.set) ?? []), price])
   }
 
-  const next = Math.min(PAGE_SIZE, remaining)
-
   return (
     <div className="grid gap-3">
-      {total > 1 || prices.length > PAGE_SIZE ? (
+      {new Set(prices.map((price) => price.set)).size > 1 || prices.length > 3 ? (
         <label className="relative block">
           <span className="sr-only">Buscar por código o rareza</span>
           <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-soft" />
@@ -146,42 +137,16 @@ function PriceList({ cardId }: { cardId: number }) {
       {[...bySet].map(([set, setPrices]) => (
         <ExpansionPrices key={set} set={set} prices={setPrices} />
       ))}
-      {searching && visible.length === 0 && remaining === 0 ? (
-        <p className="m-0 text-body text-muted">Ninguna impresión coincide con “{query.trim()}”.</p>
-      ) : null}
-      {searching && remaining > 0 ? (
-        // Buscar mira todas las expansiones: mientras llegan las que faltan, se avisa; si falla, se puede reintentar.
-        <div className="grid justify-items-center gap-1.5" aria-live="polite">
-          {moreFailed ? (
-            <>
-              <p className="m-0 text-micro text-soft">No pude traer el resto de las expansiones.</p>
-              <Button variant="secondary" size="sm" onClick={loadAll}>
-                Reintentar
-              </Button>
-            </>
-          ) : (
-            <p className="m-0 text-micro text-soft">Buscando también en las {remaining} expansiones restantes…</p>
-          )}
-        </div>
-      ) : null}
-      {!searching && remaining > 0 ? (
-        // De a PAGE_SIZE expansiones: las cartas con muchas reimpresiones no cargan todo de una.
-        <div className="grid justify-items-center gap-1.5">
-          <Button variant="secondary" size="sm" icon="chevron-down" fullWidth disabled={loadingMore} aria-busy={loadingMore} onClick={loadMore}>
-            {loadingMore ? 'Cargando…' : moreFailed ? 'Reintentar' : `Ver ${next} ${next === 1 ? 'expansión más' : 'expansiones más'}`}
-          </Button>
-          <p className="m-0 text-micro text-soft">{moreFailed ? 'No pude traer más expansiones.' : `Mostrando ${total - remaining} de ${total} expansiones`}</p>
-        </div>
-      ) : null}
+      {searching && visible.length === 0 ? <p className="m-0 text-body text-muted">Ninguna impresión coincide con “{query.trim()}”.</p> : null}
       <p className="m-0 text-micro text-soft">Precio de mercado de TCGplayer, en dólares, al {formatDay(state.updated)}.</p>
     </div>
   )
 }
 
 /**
- * Precios de TCGplayer de la carta, en un modal que se abre con `CardPricesButton`: las 3 expansiones más nuevas, un
- * botón para ver de a 3 más y un buscador por código o rareza. Se monta al lado del detalle (no adentro) para que tocarlo no cierre la carta, y va por
- * encima de ella. Los precios se piden recién al abrirlo y cada tanda, recién al pedirla.
+ * Precios de TCGplayer de la carta, en un modal que se abre con `CardPricesButton`: todas las expansiones en las que
+ * salió y un buscador por código o rareza. Se monta al lado del detalle (no adentro) para que tocarlo no cierre la
+ * carta, y va por encima de ella. Los precios se piden recién al abrirlo.
  */
 export function CardPricesModal({ cardId, name, isOpen, onClose }: { cardId: number; name: string; isOpen: boolean; onClose: () => void }) {
   return (

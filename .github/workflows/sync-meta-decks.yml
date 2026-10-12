@@ -34,7 +34,7 @@ jobs:
 
       - name: Commit si cambió
         run: |
-          # `git add` primero: los precios pueden traer archivos nuevos (sets recién salidos) que `git diff` no vería.
+          # `git add` primero: los precios pueden traer archivos nuevos (o borrar los viejos) que `git diff` no vería.
           git add src/data/meta-decks.json src/data/meta-decklists.json src/data/card-rules.json public/prices
           if git diff --cached --quiet; then
             echo "Sin cambios."
