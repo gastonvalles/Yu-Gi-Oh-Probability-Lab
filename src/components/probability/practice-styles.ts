@@ -11,6 +11,9 @@ export const RULE_COLOR = {
   problem: '[--rule-color:rgb(var(--danger-rgb))]',
 } as const
 
-/** Dorso de carta, liso: violeta oscuro con un marco fino adentro (lo comparten el mazo, el Extra, las cartas boca abajo y el fantasma). */
+/**
+ * Dorso de carta: el clásico de Yu-Gi-Oh! simplificado y en violeta (cuerpo violeta con el óvalo oscuro al centro,
+ * borde fino). Lo comparten el mazo, el Extra, las cartas boca abajo y el fantasma.
+ */
 export const CARD_BACK =
-  'absolute inset-0 z-1 overflow-hidden rounded-tag border border-primary/55 bg-[#160f28] after:absolute after:inset-[10%] after:rounded-[3px] after:border after:border-primary/35'
+  'absolute inset-0 z-1 overflow-hidden rounded-tag border border-primary/60 [background:radial-gradient(ellipse_34%_30%_at_50%_50%,#0a0612_0_72%,transparent_74%),radial-gradient(ellipse_at_50%_50%,rgb(var(--primary-rgb)/0.55),#1d1033_78%)]'

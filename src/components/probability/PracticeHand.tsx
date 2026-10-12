@@ -20,6 +20,7 @@ import { useElementWidth } from '../../app/use-element-width'
 import type { ApiCardReference, PatternKind } from '../../types'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
+import { Icon } from '../ui/Icon'
 import { CARD_BACK } from './practice-styles'
 
 /** Espacio sobre las cartas: el abanico sube un poco en el centro. */
@@ -70,6 +71,8 @@ interface PracticeHandProps {
   muted: boolean
   /** Carta que acaba de activarse (destella) y una clave que cambia en cada activación. */
   flash: { id: string; key: number } | null
+  /** Cartas marcadas como objetivo: llevan una mira. */
+  targeted: ReadonlySet<string>
   /** Rect del mazo: de ahí salen las cartas al repartirse. */
   getDeckRect: () => DOMRect | null
   /**
@@ -120,7 +123,7 @@ function dropTargetAt(x: number, y: number, dragged: HTMLElement): { element: HT
  * Mano en abanico: un toque abre el menú de la carta, se reordena arrastrando dentro de la mano, se
  * arrastra fuera de la mano hasta una zona de la mesa, y se reparte desde el mazo.
  */
-export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highlighted, highlightKind, muted, flash, getDeckRect, getField, onReorder, onTap, onDragOver, onDrop, className }: PracticeHandProps) {
+export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highlighted, highlightKind, muted, flash, targeted, getDeckRect, getField, onReorder, onTap, onDragOver, onDrop, className }: PracticeHandProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const width = useElementWidth(containerRef) || FALLBACK_WIDTH
   const slots = Math.max(cards.length, sizeSlots)
@@ -325,6 +328,7 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highl
             muted={muted}
             dim={hasHighlight && !highlighted.has(card.id)}
             flashKey={flashing ? flash.key : null}
+            targeted={targeted.has(card.id)}
             getDeckRect={getDeckRect}
             containerRef={containerRef}
             onPointerDown={(event) => handlePointerDown(event, card.id)}
@@ -350,6 +354,7 @@ interface HandCardProps {
   muted: boolean
   dim: boolean
   flashKey: number | null
+  targeted: boolean
   getDeckRect: () => DOMRect | null
   containerRef: React.RefObject<HTMLDivElement | null>
   onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void
@@ -369,6 +374,7 @@ function HandCard({
   muted,
   dim,
   flashKey,
+  targeted,
   getDeckRect,
   containerRef,
   onPointerDown,
@@ -437,7 +443,7 @@ function HandCard({
       ref={elementRef}
       role="listitem"
       tabIndex={0}
-      aria-label={card.name}
+      aria-label={targeted ? `${card.name} (objetivo)` : card.name}
       title={card.name}
       className={HAND_CARD}
       data-state={state}
@@ -462,6 +468,16 @@ function HandCard({
         limitBadgeSize="sm"
       />
       <div ref={backRef} data-back className={CARD_BACK} aria-hidden="true" />
+      {targeted ? <TargetMark /> : null}
     </div>
+  )
+}
+
+/** La mira de "objetivo": se comparte con las cartas del campo. */
+export function TargetMark() {
+  return (
+    <span className="pointer-events-none absolute right-0.5 top-0.5 z-2 grid size-5 place-items-center rounded-full bg-danger text-white shadow-[0_0_10px_rgb(var(--danger-rgb)/0.8)] animate-pop motion-reduce:animate-none" aria-label="Objetivo" role="img">
+      <Icon name="target" size={13} strokeWidth={2.2} />
+    </span>
   )
 }

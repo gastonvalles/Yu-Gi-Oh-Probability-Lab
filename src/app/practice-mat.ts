@@ -53,6 +53,8 @@ export interface MatState {
   turn: number
   /** Las cartas del destierro que están boca abajo. */
   facedown: string[]
+  /** Cartas marcadas como objetivo de un efecto (la marca se va al cambiar de lugar). */
+  targeted: string[]
 }
 
 /** Cómo llega la carta al campo (sólo cambia el texto de la jugada): Invocación Normal, Especial, o como escala de péndulo. */
@@ -78,6 +80,8 @@ export type MatAction =
   | { type: 'reveal'; id: string }
   /** Declarar el nombre de una carta (para efectos que lo piden): sólo queda anotado. */
   | { type: 'declare'; id: string }
+  /** Marcar (o desmarcar) una carta como objetivo de un efecto. */
+  | { type: 'target'; id: string }
   /** Cambiar de fase; de la End Phase a la Draw Phase empieza otro turno. */
   | { type: 'phase'; phase: MatPhase }
 
@@ -102,6 +106,7 @@ export function createMatState(deck: readonly string[], extra: readonly string[]
     phase: 'draw',
     turn: 1,
     facedown: [],
+    targeted: [],
   }
 }
 
@@ -190,12 +195,15 @@ function withPlaced(state: MatState, spot: MatSpot, index: number, placed: Place
  * Saca la carta de donde esté. Si estaba en el campo, sus materiales van al cementerio y se devuelve
  * su `Placed` (para conservar contadores y materiales cuando sólo cambia de zona).
  */
-function removeEverywhere(state: MatState, id: string): { state: MatState; placed: Placed | null } {
-  const where = locateCard(state, id)
+function removeEverywhere(source: MatState, id: string): { state: MatState; placed: Placed | null } {
+  const where = locateCard(source, id)
 
   if (!where) {
-    return { state, placed: null }
+    return { state: source, placed: null }
   }
+
+  // Al cambiar de lugar la carta deja de ser objetivo.
+  const state = source.targeted.includes(id) ? { ...source, targeted: source.targeted.filter((card) => card !== id) } : source
 
   if (where.kind === 'pile') {
     const facedown = where.pile === 'banished' ? state.facedown.filter((card) => card !== id) : state.facedown
@@ -206,7 +214,7 @@ function removeEverywhere(state: MatState, id: string): { state: MatState; place
     const owner = locateCard(state, where.of)
 
     if (owner?.kind !== 'spot') {
-      return { state, placed: null }
+      return { state: source, placed: null }
     }
 
     const placed = { ...owner.placed, materials: owner.placed.materials.filter((card) => card !== id) }
@@ -353,6 +361,15 @@ export function matReducer(state: MatState, action: MatAction): MatState {
     case 'declare':
       return state
 
+    case 'target': {
+      if (!locateCard(state, action.id)) {
+        return state
+      }
+
+      const marked = state.targeted.includes(action.id)
+      return { ...state, targeted: marked ? state.targeted.filter((card) => card !== action.id) : [...state.targeted, action.id] }
+    }
+
     case 'phase': {
       if (!isPhase(action.phase) || action.phase === state.phase) {
         return state
@@ -477,6 +494,9 @@ export function describeMatAction(before: MatState, action: MatAction, nameOf: (
     case 'declare':
       return `Declarás ${name(action.id)}`
 
+    case 'target':
+      return before.targeted.includes(action.id) ? `Dejás de apuntar a ${name(action.id)}` : `Apuntás a ${name(action.id)}`
+
     case 'phase': {
       const phase = PHASES.find((entry) => entry.id === action.phase)?.name ?? action.phase
 
@@ -574,6 +594,8 @@ export interface MatMenuItem {
   targets?: MatTarget[]
   /** Cuántos monstruos del campo hay que elegir como Sacrificio antes de la zona. */
   tributes?: number
+  /** Segundo paso del menú (p. ej. "¿En ataque o en defensa?"): la jugada es la del hijo elegido. */
+  choices?: MatMenuItem[]
 }
 
 /** Monstruos propios en el campo (los que se pueden sacrificar). */
@@ -607,19 +629,27 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
   const kind = isToken(id) ? TOKEN_KIND : kindOf(id)
   const items: MatMenuItem[] = []
   const add = (label: string, action: MatAction) => items.push({ label, action })
+  const target = () => add(state.targeted.includes(id) ? 'Quitar objetivo' : 'Marcar como objetivo', { type: 'target', id })
   /** Una jugada que saca la carta a una zona: la primera libre por defecto, y la lista para elegir otra. */
-  const placeIn = (label: string, zones: readonly MatSpot[], pos: MatPos, how?: MatSummon) => {
+  const placeItem = (label: string, zones: readonly MatSpot[], pos: MatPos, how?: MatSummon): MatMenuItem | null => {
     const targets = freeTargets(state, zones)
     const first = targets[0]
 
-    if (first) {
-      items.push({ label, action: { type: 'place', id, zone: first.zone, index: first.index, pos, how }, targets })
-    }
+    return first ? { label, action: { type: 'place', id, zone: first.zone, index: first.index, pos, how }, targets } : null
+  }
+  const placeIn = (label: string, zones: readonly MatSpot[], pos: MatPos, how?: MatSummon) => {
+    const item = placeItem(label, zones, pos, how)
+    if (item) items.push(item)
   }
   const summon = (label: string, pos: MatPos, how: MatSummon) => placeIn(label, ['mz', 'emz'], pos, how)
+  /** Invocación Especial: primero se elige la posición (un Link sale en ataque, no tiene defensa). */
   const specialSummon = () => {
-    summon('Invocación Especial en ataque', 'atk', 'special')
-    if (!kind.link) summon('Invocación Especial en defensa', 'def', 'special')
+    const attack = placeItem('En ataque', ['mz', 'emz'], 'atk', 'special')
+    const defense = placeItem('En defensa', ['mz', 'emz'], 'def', 'special')
+
+    if (!attack || !defense) return
+    if (kind.link) items.push({ ...attack, label: 'Invocación Especial' })
+    else items.push({ label: 'Invocación Especial', action: attack.action, choices: [attack, defense] })
   }
 
   if (where.kind === 'spot') {
@@ -654,6 +684,8 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
         add(`Desacoplar ${nameOf(material)}`, { type: 'move', id: material, to: 'gy' })
       }
     }
+
+    target()
 
     if (isToken(id)) {
       add('Sacrificar / quitar la ficha', { type: 'move', id, to: 'gy' })
@@ -712,18 +744,25 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
       placeIn('Colocar', ['st'], 'set')
     }
 
-    // Como en DuelingBook, un efecto desde la mano (hand trap) se revela y la carta va a donde diga el costo.
+    // Un efecto desde la mano (hand trap): se activa (destella) y después la carta va a donde diga el costo.
+    if (kind.monster && kind.effect) add('Activar efecto', { type: 'activate', id })
     add('Revelar', { type: 'reveal', id })
     add('Declarar', { type: 'declare', id })
+    target()
     add('Descartar', { type: 'move', id, to: 'gy' })
     add('Desterrar', { type: 'move', id, to: 'banished' })
     add('Desterrar boca abajo', { type: 'move', id, to: 'banished', faceDown: true })
   } else if (pile) {
     // Deck, Extra, cementerio o destierro.
     if (pile === 'deck') add('A la mano', { type: 'move', id, to: 'hand' })
+    // Las Mágicas de Campo se activan directo desde el Deck (hay efectos que lo piden).
+    if (pile === 'deck' && kind.fieldSpell) placeIn('Activar', ['field'], 'atk')
     if (kind.monster) specialSummon()
     if (kind.monster && (pile === 'gy' || pile === 'banished')) placeIn('A la zona de Mágicas y Trampas', ['st'], 'atk')
-    if (pile === 'gy' || pile === 'banished') add('A la mano', { type: 'move', id, to: 'hand' })
+    if (pile === 'gy' || pile === 'banished') {
+      add('A la mano', { type: 'move', id, to: 'hand' })
+      target()
+    }
     if (pile !== 'gy') add('Al cementerio', { type: 'move', id, to: 'gy' })
     if (pile !== 'banished') {
       add('Desterrar', { type: 'move', id, to: 'banished' })

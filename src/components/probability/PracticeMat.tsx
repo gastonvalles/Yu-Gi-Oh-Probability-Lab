@@ -44,7 +44,7 @@ import { Modal } from '../ui/Modal'
 import { overline } from '../ui/typography'
 import { CardBack, CardMenu, PILE_TITLES, PileViewer, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { cardIdOfDrawId } from './practice'
-import { PracticeHand, type HandCardData } from './PracticeHand'
+import { PracticeHand, TargetMark, type HandCardData } from './PracticeHand'
 import { PracticeMatPanel } from './PracticeMatPanel'
 import { CARD_BACK, PRACTICE_PALETTE } from './practice-styles'
 
@@ -204,7 +204,7 @@ export function PracticeMat({
   const steps = useMemo(() => describeMatSteps(session.initial, session.actions, nameOf), [session.initial, session.actions, nameOf])
   const live = session.cursor === session.actions.length
 
-  const [menu, setMenu] = useState<{ kind: 'card'; id: string; rect: DOMRect } | { kind: 'deck'; rect: DOMRect } | null>(null)
+  const [menu, setMenu] = useState<{ kind: 'card'; id: string; rect: DOMRect; submenu?: { label: string; items: MatMenuItem[] } } | { kind: 'deck'; rect: DOMRect } | null>(null)
   const [viewer, setViewer] = useState<MatPile | null>(null)
   const [inspected, setInspected] = useState<{ id: string; rect: DOMRect } | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
@@ -295,6 +295,12 @@ export function PracticeMat({
   /** Una jugada del menú: con Sacrificios primero se eligen; si puede salir a varias zonas, la mesa pide elegir una (como "Choose Zones" en DuelingBook). */
   const choose = useCallback(
     (item: MatMenuItem) => {
+      // Segundo paso del menú ("¿En ataque o en defensa?"): se muestran las opciones en el mismo menú.
+      if (item.choices) {
+        setMenu((current) => (current?.kind === 'card' ? { ...current, submenu: { label: item.label, items: item.choices! } } : current))
+        return
+      }
+
       const pick = (picking: Picking) => {
         setMenu(null)
         setPicking(picking)
@@ -455,12 +461,18 @@ export function PracticeMat({
       return top ? items : items.slice(4, 5)
     }
 
-    return listCardActions(state, menu.id, kindOf, nameOf).map((item) => ({ label: item.label, onSelect: () => choose(item) }))
+    const items = menu.submenu ? menu.submenu.items : listCardActions(state, menu.id, kindOf, nameOf)
+    return items.map((item) => ({ label: item.label, onSelect: () => choose(item) }))
   }, [menu, state, kindOf, nameOf, play, choose])
 
   const menuCard = menu?.kind === 'card' ? cardOf(menu.id) : null
   const menuWhere = menu?.kind === 'card' ? locateCard(state, menu.id) : null
-  const menuKicker = menuWhere ? (menuWhere.kind === 'pile' ? PILE_TITLES[menuWhere.pile] : menuWhere.kind === 'spot' ? ZONE_LABELS[menuWhere.spot] : `Material de ${nameOf(menuWhere.of)}`) : 'Main'
+  const menuKicker =
+    menu?.kind === 'card' && menu.submenu
+      ? menu.submenu.label
+      : menuWhere
+        ? menuWhere.kind === 'pile' ? PILE_TITLES[menuWhere.pile] : menuWhere.kind === 'spot' ? ZONE_LABELS[menuWhere.spot] : `Material de ${nameOf(menuWhere.of)}`
+        : 'Main'
   const menuTitle = menuCard?.name ?? `${state.deck.length} ${state.deck.length === 1 ? 'carta' : 'cartas'}`
 
   const saveCombo = (name: string) => {
@@ -493,6 +505,7 @@ export function PracticeMat({
   )
 
   const tributeCandidates = picking?.kind === 'tributes' ? monstersOnField(state) : []
+  const targetedIds = useMemo(() => new Set(state.targeted), [state.targeted])
 
   const cell = (spot: MatSpot, index: number, area: string) => {
     const placed = placedAt(state, spot, index)
@@ -530,6 +543,7 @@ export function PracticeMat({
             glowKind={highlightKind}
             dim={highlighted.size > 0 && !highlighted.has(placed.id)}
             chosen={chosen}
+            targeted={targetedIds.has(placed.id)}
             bind={bind}
             onOpen={(rect) => openCard(placed.id, rect)}
             onHover={() => setPreview(placed.id)}
@@ -682,6 +696,7 @@ export function PracticeMat({
           highlightKind={highlightKind}
           muted={muted}
           flash={flash}
+          targeted={targetedIds}
           getDeckRect={getDeckRect}
           getField={getField}
           onReorder={setHandOrder}
@@ -740,7 +755,7 @@ export function PracticeMat({
         kicker={menuKicker}
         title={menuTitle}
         items={menuItems}
-        onInspect={menu?.kind === 'card' && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
+        onInspect={menu?.kind === 'card' && !menu.submenu && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
         onClose={() => setMenu(null)}
       />
 
@@ -875,14 +890,16 @@ interface PlacedCardProps {
   dim: boolean
   /** Elegida como Sacrificio. */
   chosen: boolean
+  /** Marcada como objetivo. */
+  targeted: boolean
   bind: ReturnType<typeof useMatDrag>['bind']
   onOpen: (rect: DOMRect) => void
   onHover: () => void
 }
 
-/** Carta en una zona del campo: boca abajo muestra el dorso, en defensa se acuesta; contadores y materiales como etiquetas. */
-function PlacedCard({ placed, card, dragging, flash, glow, glowKind, dim, chosen, bind, onOpen, onHover }: PlacedCardProps) {
-  const label = `${card.name}${placed.pos === 'set' ? ', boca abajo' : placed.pos === 'def' ? ', en defensa' : ''}${chosen ? ' (Sacrificio)' : ''}`
+/** Carta en una zona del campo: boca abajo muestra el dorso, en defensa se acuesta; contadores, materiales y objetivo como etiquetas. */
+function PlacedCard({ placed, card, dragging, flash, glow, glowKind, dim, chosen, targeted, bind, onOpen, onHover }: PlacedCardProps) {
+  const label = `${card.name}${placed.pos === 'set' ? ', boca abajo' : placed.pos === 'def' ? ', en defensa' : ''}${chosen ? ' (Sacrificio)' : ''}${targeted ? ' (objetivo)' : ''}`
 
   return (
     <div
@@ -912,6 +929,7 @@ function PlacedCard({ placed, card, dragging, flash, glow, glowKind, dim, chosen
       {placed.counters > 0 ? <span className="absolute left-0.5 top-0.5 z-2 rounded-full bg-warning px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-[#1a1204]">{placed.counters}</span> : null}
       {placed.materials.length > 0 ? <span className="absolute bottom-0.5 right-0.5 z-2 rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-primary-foreground">+{placed.materials.length}</span> : null}
       {chosen ? <span className="absolute inset-x-0 bottom-0 z-2 bg-accent/85 py-0.5 text-center text-[0.55rem] font-extrabold uppercase tracking-[0.06em] text-[#06140e]">Sacrificio</span> : null}
+      {targeted ? <TargetMark /> : null}
     </div>
   )
 }
