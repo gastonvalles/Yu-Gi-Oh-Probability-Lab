@@ -102,10 +102,13 @@ const MAT_CARD = [
   'data-[dim=true]:brightness-[0.42] data-[dim=true]:saturate-[0.6]',
   'data-[glow=true]:animate-card-glow data-[glow=true]:[--glow-rgb:var(--accent-rgb)] data-[glow-kind=problem]:[--glow-rgb:var(--danger-rgb)]',
   'data-[glow=true]:shadow-[0_6px_14px_rgba(0,0,0,0.45),0_0_0_2px_rgb(var(--glow-rgb)),0_0_22px_rgb(var(--glow-rgb)/0.6)]',
-  // Activación: la carta se agranda y destella en verde por encima de las demás.
-  'data-[flash=true]:z-10 data-[flash=true]:animate-card-activate data-[flash=true]:shadow-[0_0_0_2px_rgb(var(--accent-rgb)),0_0_28px_rgb(var(--accent-rgb)/0.85)]',
+  // Activación: aro amarillo en la carta (la carta grande aparece aparte, en el centro de la pantalla).
+  'data-[flash=true]:z-10 data-[flash=true]:shadow-[0_0_0_2px_#facc15,0_0_22px_#facc15b3]',
   'motion-reduce:animate-none motion-reduce:transition-none',
 ].join(' ')
+
+/** Duración de la activación: lo que dura la carta en el centro de la pantalla (y el aro en su lugar). */
+const ACTIVATE_MS = 950
 
 const ZONE_LABELS: Record<MatSpot, string> = { mz: 'Zona de monstruo', emz: 'Zona extra de monstruo', st: 'Zona de magia y trampa', field: 'Zona de campo' }
 
@@ -217,7 +220,7 @@ export function PracticeMat({
 
   useEffect(() => {
     if (!flash) return
-    const timer = window.setTimeout(() => setFlash(null), 700)
+    const timer = window.setTimeout(() => setFlash(null), ACTIVATE_MS)
     return () => window.clearTimeout(timer)
   }, [flash])
 
@@ -731,6 +734,18 @@ export function PracticeMat({
       <SaveComboDialog key={String(saving)} isOpen={saving} defaultName={`Combo ${combos.length + 1}`} onSave={saveCombo} onClose={() => setSaving(false)} />
 
       {inspected ? <CardDetailOverlay key={inspected.id} name={cardOf(inspected.id).name} card={cardOf(inspected.id).apiCard} origin={inspected.rect} onClose={() => setInspected(null)} /> : null}
+
+      {/* Activación: la carta aparece grande en el centro de la pantalla con brillo amarillo y se desvanece, como en DuelingBook. */}
+      {flash
+        ? createPortal(
+            <div key={flash.key} className="pointer-events-none fixed inset-0 z-205 grid place-items-center" aria-hidden="true" data-activation={flash.id}>
+              <div className="aspect-[421/614] w-[min(42vw,13rem)] overflow-hidden rounded-tag bg-input shadow-[0_0_0_3px_#facc15,0_0_60px_#facc15cc,0_24px_48px_rgba(0,0,0,0.6)] animate-card-activate-center motion-reduce:animate-none">
+                <CardArt remoteUrl={artOf(cardOf(flash.id))} name={cardOf(flash.id).name} className="block h-full w-full object-cover" />
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
 
       {drag
         ? createPortal(
