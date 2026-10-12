@@ -15,6 +15,7 @@ import {
   PHASES,
   placedAt,
   randomSeed,
+  replayMat,
   TOKEN_KIND,
   type MatAction,
   type MatMenuItem,
@@ -26,6 +27,7 @@ import {
 } from '../../app/practice-mat'
 import { mergeHandOrder } from '../../app/practice-hand-layout'
 import { createSavedCombo, readSavedCombos, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
+import { UI_ANIMATION_MS } from '../../app/motion'
 import { useCardFlights } from '../../app/use-card-flights'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
@@ -227,7 +229,7 @@ export function PracticeMat({
   const [combos, setCombos] = useState<SavedCombo[]>(() => readSavedCombos())
   const [picking, setPicking] = useState<Picking | null>(null)
   // La carta que acaba de activarse destella un instante (la `key` repite el destello si se activa dos veces seguidas).
-  const [flash, setFlash] = useState<{ id: string; key: number } | null>(null)
+  const [flash, setFlash] = useState<{ id: string; key: number; overlay: boolean } | null>(null)
   // Zona de la mesa bajo una carta de la mano que se está arrastrando.
   const [handOver, setHandOver] = useState<string | null>(null)
 
@@ -238,6 +240,26 @@ export function PracticeMat({
     const timer = window.setTimeout(() => setFlash(null), ACTIVATE_MS)
     return () => window.clearTimeout(timer)
   }, [flash])
+
+  // El destello sale con cada paso que avanza (jugadas propias y replay por igual): activar = carta grande en el centro y aro; marcar objetivo = sólo el aro.
+  const lastCursorRef = useRef(session.cursor)
+
+  useEffect(() => {
+    const previous = lastCursorRef.current
+    lastCursorRef.current = session.cursor
+
+    if (session.cursor !== previous + 1) return
+
+    const action = session.actions[session.cursor - 1]
+
+    if (!action) return
+
+    const before = replayMat(session.initial, session.actions, session.cursor - 1)
+    const activated = activatedCard(before, action)
+
+    if (activated) setFlash({ id: activated, key: Date.now(), overlay: true })
+    else if (action.type === 'target' && !before.targeted.includes(action.id)) setFlash({ id: action.id, key: Date.now(), overlay: false })
+  }, [session.cursor, session.actions, session.initial])
 
   // La mano: el orden que le dio el jugador, y el reparto de a una carta desde el mazo (que se baraja con cada mano nueva).
   const [handOrder, setHandOrder] = useState<string[]>([])
@@ -276,7 +298,21 @@ export function PracticeMat({
   // Las cartas vuelan entre zonas con cada jugada (y al reproducir un combo).
   const sectionRef = useRef<HTMLElement | null>(null)
   const artById = useCallback((id: string) => artOf(cardOf(id)), [cardOf])
-  const { dealsFromDeck } = useCardFlights(sectionRef, state, artById, `${isDesktop}:${dealt}:${handOrder.join(',')}`)
+  // Al terminar el reparto las cartas se vuelven a medir quietas: la última medición las agarraba en pleno vuelo desde el mazo
+  // (achicadas y giradas) y el siguiente vuelo arrancaba de ahí, con una carta gigante y estirada.
+  const [settled, setSettled] = useState(false)
+
+  useEffect(() => {
+    if (!isDealt) {
+      setSettled(false)
+      return
+    }
+
+    const timer = window.setTimeout(() => setSettled(true), UI_ANIMATION_MS + 60)
+    return () => window.clearTimeout(timer)
+  }, [isDealt])
+
+  const { dealsFromDeck } = useCardFlights(sectionRef, state, artById, `${isDesktop}:${dealt}:${settled}:${handOrder.join(',')}`)
 
   // Reproducir un combo: las jugadas avanzan solas (arranca al cargarlo; cualquier jugada propia lo pausa), más rápido con el avance rápido.
   const [autoplay, setAutoplay] = useState(false)
@@ -306,16 +342,10 @@ export function PracticeMat({
 
   const play = useCallback(
     (action: MatAction) => {
-      const activated = activatedCard(state, action)
-
       onDispatch(action)
       setMenu(null)
       setPicking(null)
       setAutoplay(false)
-
-      if (activated) {
-        setFlash({ id: activated, key: Date.now() })
-      }
 
       if (action.type === 'shuffle') {
         setShuffleKey((key) => key + 1)
@@ -910,7 +940,7 @@ export function PracticeMat({
       {inspected ? <CardDetailOverlay key={inspected.id} name={cardOf(inspected.id).name} card={cardOf(inspected.id).apiCard} origin={inspected.rect} onClose={() => setInspected(null)} /> : null}
 
       {/* Activación: la carta aparece grande en el centro de la pantalla con brillo amarillo y se desvanece, como en DuelingBook. */}
-      {flash
+      {flash?.overlay
         ? createPortal(
             <div key={flash.key} className="pointer-events-none fixed inset-0 z-205 grid place-items-center" aria-hidden="true" data-activation={flash.id}>
               <div className="aspect-[421/614] w-[min(42vw,13rem)] overflow-hidden rounded-tag bg-input shadow-[0_0_0_3px_#facc15,0_0_60px_#facc15cc,0_24px_48px_rgba(0,0,0,0.6)] animate-card-activate-center motion-reduce:animate-none">

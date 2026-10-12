@@ -266,7 +266,9 @@ describe('la mesa de práctica', () => {
     ])
     // Una Magia se activa o se coloca; una Trampa sólo se coloca desde la mano.
     expect(labels(start(), 'b1')).toEqual(['Activar', 'Colocar', 'Revelar', 'Marcar como objetivo', 'Descartar', 'Desterrar', 'Desterrar boca abajo', 'Arriba del deck', 'Abajo del deck'])
-    expect(labels(start(), 'd1')).toEqual(['A la zona de Mágicas y Trampas', 'Colocar', 'Revelar', 'Marcar como objetivo', 'Descartar', 'Desterrar', 'Desterrar boca abajo', 'Arriba del deck', 'Abajo del deck'])
+    expect(labels(start(), 'd1')).toEqual(['Activar efecto', 'Colocar', 'Revelar', 'Marcar como objetivo', 'Descartar', 'Desterrar', 'Desterrar boca abajo', 'Arriba del deck', 'Abajo del deck'])
+    // "Activar efecto" de una Trampa en mano = sale boca arriba a la zona de Mágicas y Trampas (destella).
+    expect(listCardActions(start(), 'd1', kindOf, nameOf)[0]!.action).toMatchObject({ type: 'place', zone: 'st', pos: 'atk' })
     // Desde el Extra sólo Invocación Especial; un Link no va a defensa.
     expect(labels(start(), 'x1')).toEqual(['Invocación Especial', 'Al cementerio', 'Desterrar', 'Desterrar boca abajo'])
     expect(labels(start(), 'x2')).toEqual(['Invocación Especial', 'Al cementerio', 'Desterrar', 'Desterrar boca abajo'])
