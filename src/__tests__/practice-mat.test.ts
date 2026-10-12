@@ -229,7 +229,6 @@ describe('la mesa de práctica', () => {
       'Invocación Especial',
       'Activar efecto',
       'Revelar',
-      'Declarar',
       'Marcar como objetivo',
       'Descartar',
       'Desterrar',
@@ -238,8 +237,8 @@ describe('la mesa de práctica', () => {
       'Abajo del deck',
     ])
     // Una Magia se activa o se coloca; una Trampa sólo se coloca desde la mano.
-    expect(labels(start(), 'b1')).toEqual(['Activar', 'Colocar', 'Revelar', 'Declarar', 'Marcar como objetivo', 'Descartar', 'Desterrar', 'Desterrar boca abajo', 'Arriba del deck', 'Abajo del deck'])
-    expect(labels(start(), 'd1')).toEqual(['A la zona de Mágicas y Trampas', 'Colocar', 'Revelar', 'Declarar', 'Marcar como objetivo', 'Descartar', 'Desterrar', 'Desterrar boca abajo', 'Arriba del deck', 'Abajo del deck'])
+    expect(labels(start(), 'b1')).toEqual(['Activar', 'Colocar', 'Revelar', 'Marcar como objetivo', 'Descartar', 'Desterrar', 'Desterrar boca abajo', 'Arriba del deck', 'Abajo del deck'])
+    expect(labels(start(), 'd1')).toEqual(['A la zona de Mágicas y Trampas', 'Colocar', 'Revelar', 'Marcar como objetivo', 'Descartar', 'Desterrar', 'Desterrar boca abajo', 'Arriba del deck', 'Abajo del deck'])
     // Desde el Extra sólo Invocación Especial; un Link no va a defensa.
     expect(labels(start(), 'x1')).toEqual(['Invocación Especial', 'Al cementerio', 'Desterrar', 'Desterrar boca abajo'])
     expect(labels(start(), 'x2')).toEqual(['Invocación Especial', 'Al cementerio', 'Desterrar', 'Desterrar boca abajo'])
@@ -268,7 +267,7 @@ describe('la mesa de práctica', () => {
     // Boca abajo: Invocación por Volteo (a ataque) o voltear boca arriba (queda en defensa).
     expect(labels(played, 'c1').slice(0, 2)).toEqual(['Invocación por Volteo', 'Voltear boca arriba'])
     // Desde el cementerio, como en DuelingBook: Invocación Especial, a Mágicas/Trampas, a la mano, destierro (sin arriba/abajo del deck).
-    expect(labels(played, 'e1')).toEqual(['Invocación Especial', 'A la zona de Mágicas y Trampas', 'A la mano', 'Marcar como objetivo', 'Desterrar', 'Desterrar boca abajo'])
+    expect(labels(played, 'e1')).toEqual(['Invocación Especial', 'A la zona de Mágicas y Trampas', 'Activar efecto', 'A la mano', 'Marcar como objetivo', 'Desterrar', 'Desterrar boca abajo'])
     expect(labels(played, 'zzz')).toEqual([])
 
     // Con dos monstruos en el campo, el Nivel 7 ofrece la Invocación (y Colocar) por Sacrificio, que la mesa completa.

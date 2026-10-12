@@ -536,6 +536,7 @@ export function PracticeMat({
         {placed ? (
           <PlacedCard
             placed={placed}
+            spot={spot}
             card={cardOf(placed.id)}
             dragging={drag?.source.id === placed.id}
             flash={flash?.id === placed.id ? flash.key : null}
@@ -881,6 +882,7 @@ function CardPreview({ card }: { card: MatCard | null }) {
 
 interface PlacedCardProps {
   placed: Placed
+  spot: MatSpot
   card: MatCard
   dragging: boolean
   /** Clave del destello de activación (null = quieta). */
@@ -897,9 +899,13 @@ interface PlacedCardProps {
   onHover: () => void
 }
 
-/** Carta en una zona del campo: boca abajo muestra el dorso, en defensa se acuesta; contadores, materiales y objetivo como etiquetas. */
-function PlacedCard({ placed, card, dragging, flash, glow, glowKind, dim, chosen, targeted, bind, onOpen, onHover }: PlacedCardProps) {
+/**
+ * Carta en una zona del campo: es tuya, así que boca abajo se ve su imagen atenuada (como en DuelingBook); en defensa o
+ * colocada en una zona de monstruo se acuesta; contadores, materiales y objetivo como etiquetas.
+ */
+function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, chosen, targeted, bind, onOpen, onHover }: PlacedCardProps) {
   const label = `${card.name}${placed.pos === 'set' ? ', boca abajo' : placed.pos === 'def' ? ', en defensa' : ''}${chosen ? ' (Sacrificio)' : ''}${targeted ? ' (objetivo)' : ''}`
+  const sideways = spot !== 'st' && spot !== 'field' && placed.pos !== 'atk'
 
   return (
     <div
@@ -919,13 +925,15 @@ function PlacedCard({ placed, card, dragging, flash, glow, glowKind, dim, chosen
       onKeyDown={(event) => activate(event, () => onOpen(event.currentTarget.getBoundingClientRect()))}
       onContextMenu={(event) => event.preventDefault()}
     >
-      {placed.pos === 'set' ? (
-        <span className={CARD_BACK} />
-      ) : (
-        <span className={cx('block h-full w-full transition-transform duration-150', placed.pos === 'def' && 'rotate-90 scale-[0.68]')}>
-          <CardArt remoteUrl={artOf(card)} name={card.name} className="block h-full w-full object-cover" />
-        </span>
-      )}
+      <span
+        className={cx(
+          'block h-full w-full transition-[transform,filter] duration-150',
+          sideways && 'rotate-90 scale-[0.68]',
+          placed.pos === 'set' && 'brightness-[0.4] saturate-[0.55]',
+        )}
+      >
+        <CardArt remoteUrl={artOf(card)} name={card.name} className="block h-full w-full object-cover" />
+      </span>
       {placed.counters > 0 ? <span className="absolute left-0.5 top-0.5 z-2 rounded-full bg-warning px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-[#1a1204]">{placed.counters}</span> : null}
       {placed.materials.length > 0 ? <span className="absolute bottom-0.5 right-0.5 z-2 rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-primary-foreground">+{placed.materials.length}</span> : null}
       {chosen ? <span className="absolute inset-x-0 bottom-0 z-2 bg-accent/85 py-0.5 text-center text-[0.55rem] font-extrabold uppercase tracking-[0.06em] text-[#06140e]">Sacrificio</span> : null}
