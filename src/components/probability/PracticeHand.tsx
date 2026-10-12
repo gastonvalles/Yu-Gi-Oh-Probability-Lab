@@ -46,8 +46,8 @@ const HAND_CARD = [
   // Salidas en verde, problemas en rojo.
   'data-[glow=true]:animate-card-glow data-[glow=true]:[--glow-rgb:var(--accent-rgb)] data-[glow-kind=problem]:[--glow-rgb:var(--danger-rgb)]',
   'data-[glow=true]:shadow-[0_8px_18px_rgba(0,0,0,0.45),0_0_0_2px_rgb(var(--glow-rgb)),0_0_22px_rgb(var(--glow-rgb)/0.6)]',
-  // Activación: la carta se agranda y destella en verde.
-  'data-[flash=true]:animate-card-activate data-[flash=true]:shadow-[0_0_0_2px_rgb(var(--accent-rgb)),0_0_28px_rgb(var(--accent-rgb)/0.85)]',
+  // Activación: aro amarillo (la carta grande aparece aparte, en el centro de la pantalla).
+  'data-[flash=true]:shadow-[0_8px_18px_rgba(0,0,0,0.45),0_0_0_2px_#facc15,0_0_22px_#facc15b3]',
   'motion-reduce:animate-none motion-reduce:transition-none',
 ].join(' ')
 
