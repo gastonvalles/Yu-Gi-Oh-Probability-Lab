@@ -224,6 +224,7 @@ export function ComparisonScreen() {
       <StepHero
         title="Compará builds"
         icon="columns"
+        subtitle="Tu build contra otra, lado a lado."
         side={
           <>
             <Button variant="secondary" size="sm" icon="save" onClick={handleSaveCurrent}>

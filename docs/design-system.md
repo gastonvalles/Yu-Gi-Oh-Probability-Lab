@@ -73,7 +73,7 @@ Los roles de las cartas (starter, handtrap…) y los grupos (engine, non-engine�
 ## 5. Navegación
 
 - Pestañas con ícono (relleno en la activa, duotono en las demás) + nombre + dato en vivo (p. ej. `40 / 40`) + punto de estado (verde listo, naranja a medio hacer). La activa lleva fondo lavanda.
-- **Mismos nombres en desktop y mobile:** Deck · Roles · Lab · Comparar · Exportar · Meta (el nombre completo va en el tooltip).
+- **Mismos nombres en desktop y mobile:** Deck · Roles · Lab · Comparar · Exportar · Meta · Replays (el nombre completo va en el tooltip). Los rótulos de las pestañas de arriba reservan el ancho de la negrita, así al activarse una ninguna se corre.
 - Mobile: barra inferior lavanda con esquinas superiores de 24 px; la pestaña activa se rellena y se tiñe de violeta claro.
 
 ## 6. Reglas para sumar pantallas
@@ -85,3 +85,8 @@ Los roles de las cartas (starter, handtrap…) y los grupos (engine, non-engine�
 4. Tailwind sólo detecta clases literales: no armes clases con `${}`; para variantes usá `variants()` / `cx()`.
 5. No mezcles dos utilidades de la misma propiedad en un elemento (p. ej. `rounded-control` y `rounded-none`).
 6. Probá a 390 px, 1100 px y 1440 px antes de dar algo por terminado.
+7. **Nada se corre de lugar al cambiar de pestaña.** Lo que se ve igual en dos pantallas tiene que quedar en el mismo píxel:
+   - El que hace scroll reserva la barra: `scrollbar-gutter: stable` en el contenedor del paso (escritorio, `DeckModeShell`) y en `html` (celular y tablet, `index.css`). Con o sin barra, el contenido y la barra de abajo miden lo mismo.
+   - `StepHero` tiene el renglón del título de alto fijo y todo paso lleva subtítulo (sólo se ve en escritorio): el título y el primer bloque quedan en el mismo lugar en todas.
+   - Cambiar de pestaña no desliza nada ni anima el scroll: la pantalla nueva aparece con un fundido, ya arriba de todo.
+   Para comprobarlo, recorré todas las pestañas y fijate que el ancho del contenido, la posición del título y la de los íconos de la barra den lo mismo en cada una.

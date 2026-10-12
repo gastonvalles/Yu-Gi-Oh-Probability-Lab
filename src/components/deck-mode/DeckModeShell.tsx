@@ -38,7 +38,10 @@ export function DeckModeShell({
       <div
         ref={contentScrollRef}
         className={cx(
-          'min-h-0 w-full min-w-0 [&>*]:min-w-0 max-[1100px]:overflow-visible min-[1101px]:h-full',
+          // `scrollbar-gutter`: la barra de scroll queda reservada en todos los pasos (también en el builder, que no la usa), así el ancho
+          // del contenido no cambia entre una pestaña larga y una corta y nada se corre de lugar al cambiar. Fina en todos: sin overflow
+          // automático el navegador reservaría la barra gruesa y el builder quedaría 5 px más angosto.
+          'min-h-0 w-full min-w-0 [&>*]:min-w-0 max-[1100px]:overflow-visible min-[1101px]:h-full min-[1101px]:[scrollbar-gutter:stable] min-[1101px]:[scrollbar-width:thin]',
           contentScrollable ? 'min-[1101px]:overflow-y-auto' : 'min-[1101px]:overflow-hidden',
         )}
       >

@@ -40,7 +40,8 @@ export function StepHero({ title, icon, subtitle, help, titleAction, side, sideV
       <div className="flex min-w-0 items-center gap-3">
         <Icon name={icon} size={28} className="shrink-0 text-primary-soft" />
         <div className="grid min-w-0">
-          <div className="flex min-w-0 items-center gap-1">
+          {/* Alto fijo del renglón del título (el de la ayuda o el botón de al lado): el título no sube ni baja de una pestaña a otra. */}
+          <div className="flex min-h-8 min-w-0 items-center gap-1">
             <h2 className={cx(pageTitle, 'truncate')}>{title}</h2>
             {/* La ayuda se ancla al encabezado (no al ícono): nunca se sale de pantalla. */}
             {help ? (
