@@ -207,6 +207,46 @@ describe('la mesa de práctica', () => {
     expect(within(zone('Zona de magia y trampa 1')).getByRole('button', { name: 'Called by the Grave, boca abajo' })).toBeInTheDocument()
   })
 
+  it('la ficha pide la posición (en ataque o en defensa) al soltarla o al tocarla, y se ve con la imagen de una ficha', () => {
+    render(<Harness />)
+
+    // Arrastrada, la ficha es una carta con su imagen; soltada en una zona libre pregunta la posición ahí mismo.
+    const mz4 = zone('Zona de monstruo 4')
+    document.elementFromPoint = () => mz4
+    document.elementsFromPoint = () => [mz4]
+    const plus = within(screen.getByRole('toolbar', { name: 'Mesa' })).getByRole('button', { name: 'Ficha' })
+    fireEvent.pointerDown(plus, { ...pointer, clientX: 10, clientY: 10 })
+    fireEvent.pointerMove(plus, { ...pointer, clientX: 40, clientY: 60 })
+    fireEvent.pointerMove(plus, { ...pointer, clientX: 80, clientY: 120 })
+    expect(document.querySelectorAll('img[src$="/cards_small/73915052.jpg"]')).toHaveLength(1)
+    fireEvent.pointerUp(plus, { ...pointer, clientX: 80, clientY: 120 })
+
+    const dropped = screen.getByRole('menu', { name: 'Ficha' })
+    expect(within(dropped).getByText('Zona de monstruo 4')).toBeInTheDocument()
+    expect(within(dropped).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['En ataque', 'En defensa'])
+    fireEvent.click(within(dropped).getByRole('menuitem', { name: 'En ataque' }))
+    expect(within(zone('Zona de monstruo 4')).getByRole('button', { name: 'Ficha' })).toBeInTheDocument()
+    expect(within(status()).getByText('Ficha en ataque, zona 4')).toBeInTheDocument()
+
+    // Tocada, pregunta la posición y después la zona.
+    tap(plus)
+    const menu = screen.getByRole('menu', { name: 'Ficha' })
+    expect(within(menu).getByText('Invocación Especial')).toBeInTheDocument()
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'En defensa' }))
+    expect(within(status()).getByText('Tocá la zona para la ficha')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
+
+    const token = within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ficha, en defensa' })
+    expect(within(token).getByRole('img', { name: 'Ficha' })).toHaveAttribute('src', 'https://images.ygoprodeck.com/images/cards_small/73915052.jpg')
+    expect(within(status()).getByText('Ficha en defensa, zona 1')).toBeInTheDocument()
+
+    // Como en DuelingBook: mover, seleccionar, pasar a ataque y quitar.
+    tap(token)
+    expect(within(screen.getByRole('menu', { name: 'Ficha' })).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Pasar a ataque', 'Contador +1', 'Seleccionar', 'Quitar la ficha'])
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Pasar a ataque' }))
+    expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ficha' })).toBeInTheDocument()
+  })
+
   it('desde el Extra, la Invocación Especial pide tocar los materiales en el campo y confirmar', () => {
     render(<Harness />)
 

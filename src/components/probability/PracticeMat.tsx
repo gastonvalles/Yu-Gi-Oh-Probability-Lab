@@ -52,6 +52,8 @@ import { CARD_BACK, PRACTICE_PALETTE } from './practice-styles'
 export interface MatCard {
   name: string
   apiCard: ApiCardReference | null
+  /** Imagen propia, para lo que no es una carta del deck (la ficha). */
+  art?: string
 }
 
 interface PracticeMatProps {
@@ -78,7 +80,9 @@ interface PracticeMatProps {
 const DECK_TOP = 'deck-top'
 const NEW_TOKEN = 'new-token'
 
-const TOKEN_CARD: MatCard = { name: 'Ficha', apiCard: null }
+/** La ficha se dibuja con la "Sheep Token" de YGOPRODeck, del mismo lugar de donde vienen las imágenes de todas las cartas. */
+const TOKEN_ART = 'https://images.ygoprodeck.com/images/cards_small/73915052.jpg'
+const TOKEN_CARD: MatCard = { name: 'Ficha', apiCard: null, art: TOKEN_ART }
 const UNKNOWN_CARD: MatCard = { name: 'Carta', apiCard: null }
 const EMPTY_IDS: ReadonlySet<string> = new Set()
 
@@ -120,7 +124,7 @@ const PENDULUM_GEM: Record<number, string> = {
   4: 'bg-[#ff4d6d]/55 shadow-[0_0_10px_#ff4d6d80]',
 }
 
-const artOf = (card: MatCard) => card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null
+const artOf = (card: MatCard) => card.art ?? card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null
 
 /** Jugadas que se ven como "activar": el efecto de una carta, o una Mágica/Trampa que pasa boca arriba. */
 function activatedCard(state: MatState, action: MatAction): string | null {
@@ -221,7 +225,13 @@ export function PracticeMat({
   const steps = useMemo(() => describeMatSteps(session.initial, session.actions, nameOf), [session.initial, session.actions, nameOf])
   const live = session.cursor === session.actions.length
 
-  const [menu, setMenu] = useState<{ kind: 'card'; id: string; rect: DOMRect; submenu?: { label: string; items: MatMenuItem[] } } | { kind: 'deck'; rect: DOMRect } | null>(null)
+  const [menu, setMenu] = useState<
+    | { kind: 'card'; id: string; rect: DOMRect; submenu?: { label: string; items: MatMenuItem[] } }
+    | { kind: 'deck'; rect: DOMRect }
+    /** La ficha: sale en ataque o en defensa, en la zona donde se soltó (`zone`) o en la que se elija después. */
+    | { kind: 'token'; rect: DOMRect; zone?: MatTarget }
+    | null
+  >(null)
   const [viewer, setViewer] = useState<MatPile | null>(null)
   const [inspected, setInspected] = useState<{ id: string; rect: DOMRect } | null>(null)
   const [saving, setSaving] = useState(false)
@@ -436,6 +446,29 @@ export function PracticeMat({
     if (picking?.kind === 'materials' && picking.chosen.length > 0) summonAfter(picking.label, { ...picking.action, materials: picking.chosen }, picking.chosen, picking.zone)
   }
 
+  /** La ficha en esa posición: en la zona donde se soltó, en la única libre, o la mesa pide tocar una zona. */
+  const summonToken = useCallback(
+    (pos: 'atk' | 'def', dropped?: MatTarget) => {
+      const targets = freeTargets(state, ['mz', 'emz'])
+      const first = dropped ?? targets[0]
+
+      if (!first) {
+        setMenu(null)
+        return
+      }
+
+      const action = { type: 'token' as const, zone: first.zone as 'mz' | 'emz', index: first.index, pos }
+
+      if (dropped || targets.length === 1) {
+        play(action)
+      } else {
+        setMenu(null)
+        setPicking({ kind: 'zone', label: 'la ficha', action, targets })
+      }
+    },
+    [state, play],
+  )
+
   const openCard = useCallback(
     (id: string, rect: DOMRect) => {
       if (picking?.kind === 'tributes' || picking?.kind === 'materials') {
@@ -497,9 +530,15 @@ export function PracticeMat({
 
   const handleDrop = useCallback(
     (source: MatDragSource, target: MatDropTarget) => {
+      // La ficha soltada en una zona de monstruo libre pregunta si sale en ataque o en defensa, ahí mismo.
       if (source.id === NEW_TOKEN) {
         if (target.kind === 'spot' && target.spot !== 'st' && target.spot !== 'field' && !placedAt(state, target.spot, target.index)) {
-          onDispatch({ type: 'token', zone: target.spot, index: target.index })
+          const anchor = sectionRef.current?.querySelector(`[data-drop="${dropIdOf(target.spot, target.index)}"]`) ?? sectionRef.current
+
+          if (anchor) {
+            setPicking(null)
+            setMenu({ kind: 'token', rect: anchor.getBoundingClientRect(), zone: { zone: target.spot, index: target.index } })
+          }
         }
         return
       }
@@ -549,14 +588,10 @@ export function PracticeMat({
 
   const handleTap = useCallback(
     (source: MatDragSource, rect: DOMRect) => {
+      // La ficha: primero la posición (en ataque o en defensa); la zona se toca después si hay más de una libre.
       if (source.id === NEW_TOKEN) {
         setPicking(null)
-        const targets = freeTargets(state, ['mz', 'emz'])
-        const first = targets[0]
-
-        if (!first) return
-        if (targets.length > 1) setPicking({ kind: 'zone', label: 'la ficha', action: { type: 'token', zone: 'mz', index: first.index }, targets })
-        else onDispatch({ type: 'token', zone: first.zone as 'mz' | 'emz', index: first.index })
+        if (freeTargets(state, ['mz', 'emz']).length > 0) setMenu({ kind: 'token', rect })
         return
       }
 
@@ -568,7 +603,7 @@ export function PracticeMat({
 
       openCard(source.id, rect)
     },
-    [state, onDispatch, openCard],
+    [state, openCard],
   )
 
   const { drag, over, bind, setGhostElement } = useMatDrag({ onDrop: handleDrop, onTap: handleTap })
@@ -589,21 +624,32 @@ export function PracticeMat({
       return top ? items : items.slice(4, 5)
     }
 
+    if (menu.kind === 'token') {
+      const dropped = menu.zone
+
+      return [
+        { label: 'En ataque', onSelect: () => summonToken('atk', dropped) },
+        { label: 'En defensa', onSelect: () => summonToken('def', dropped) },
+      ]
+    }
+
     // Elegir en el segundo paso arma la jugada completa ("Invocación Normal: en ataque") para lo que la mesa pida después.
     const submenu = menu.submenu
     if (submenu) return submenu.items.map((item) => ({ label: item.label, onSelect: () => choose(item.label.includes(':') ? item : { ...item, label: `${submenu.label}: ${item.label.toLowerCase()}` }) }))
 
     return listCardActions(state, menu.id, kindOf, nameOf).map((item) => ({ label: item.label, onSelect: () => choose(item) }))
-  }, [menu, state, kindOf, nameOf, play, choose])
+  }, [menu, state, kindOf, nameOf, play, choose, summonToken])
 
-  const menuCard = menu?.kind === 'card' ? cardOf(menu.id) : null
+  const menuCard = menu?.kind === 'card' ? cardOf(menu.id) : menu?.kind === 'token' ? TOKEN_CARD : null
   const menuWhere = menu?.kind === 'card' ? locateCard(state, menu.id) : null
   const menuKicker =
-    menu?.kind === 'card' && menu.submenu
-      ? menu.submenu.label
-      : menuWhere
-        ? menuWhere.kind === 'pile' ? PILE_TITLES[menuWhere.pile] : menuWhere.kind === 'spot' ? ZONE_LABELS[menuWhere.spot] : `Material de ${nameOf(menuWhere.of)}`
-        : 'Main'
+    menu?.kind === 'token'
+      ? menu.zone ? zoneLabelOf(menu.zone.zone, menu.zone.index) : 'Invocación Especial'
+      : menu?.kind === 'card' && menu.submenu
+        ? menu.submenu.label
+        : menuWhere
+          ? menuWhere.kind === 'pile' ? PILE_TITLES[menuWhere.pile] : menuWhere.kind === 'spot' ? ZONE_LABELS[menuWhere.spot] : `Material de ${nameOf(menuWhere.of)}`
+          : 'Main'
   const menuTitle = menuCard?.name ?? `${state.deck.length} ${state.deck.length === 1 ? 'carta' : 'cartas'}`
 
   const saveCombo = (name: string) => {
@@ -720,6 +766,20 @@ export function PracticeMat({
 
     return field && zone ? { rect: field.getBoundingClientRect(), zoneWidth: zone.getBoundingClientRect().width } : null
   }, [])
+  // La ficha del menú se arrastra como una carta del tamaño de una zona del campo.
+  const tokenSource = useMemo<MatDragSource>(
+    () => ({
+      id: NEW_TOKEN,
+      name: TOKEN_CARD.name,
+      art: TOKEN_ART,
+      size: () => {
+        const width = getField()?.zoneWidth
+
+        return width ? { width, height: (width * 614) / 421 } : null
+      },
+    }),
+    [getField],
+  )
 
   const replayLabel = autoplay ? 'Pausar' : live ? 'Ver de nuevo' : 'Reproducir'
   const pickingText =
@@ -752,15 +812,15 @@ export function PracticeMat({
         <IconButton tone="flat" size="sm" aria-label="Guardar combo" title="Guardar combo" disabled={session.cursor === 0} className="disabled:opacity-35" onClick={() => setSaving(true)}>
           <Icon name="save" />
         </IconButton>
-        {/* Ficha: se toca para elegir la zona o se arrastra a una zona de monstruo. */}
+        {/* Ficha: se toca para elegir la posición (y la zona) o se arrastra a una zona de monstruo. */}
         <IconButton
           tone="flat"
           size="sm"
           aria-label="Ficha"
           title="Crear una ficha"
           className="touch-none select-none [-webkit-touch-callout:none]"
-          {...bind({ id: NEW_TOKEN, name: 'Ficha', art: null })}
-          onKeyDown={(event) => activate(event, () => handleTap({ id: NEW_TOKEN, name: 'Ficha', art: null }, event.currentTarget.getBoundingClientRect()))}
+          {...bind(tokenSource)}
+          onKeyDown={(event) => activate(event, () => handleTap(tokenSource, event.currentTarget.getBoundingClientRect()))}
           onContextMenu={(event) => event.preventDefault()}
         >
           <Icon name="plus" />
@@ -956,8 +1016,6 @@ export function PracticeMat({
             <div ref={setGhostElement} className="pointer-events-none fixed left-0 top-0 z-200 opacity-90 will-change-transform" style={{ width: drag.width, height: drag.height }} aria-hidden="true">
               {drag.source.back ? (
                 <CardBack className="h-full" />
-              ) : drag.source.id === NEW_TOKEN ? (
-                <span className="grid h-full w-full place-items-center rounded-tag border border-primary bg-card-background text-micro font-semibold text-foreground">Ficha</span>
               ) : (
                 <CardArt remoteUrl={drag.source.art} name={drag.source.name} className="block h-full w-full rounded-tag object-cover shadow-[0_18px_32px_rgba(0,0,0,0.55)]" />
               )}

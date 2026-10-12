@@ -77,7 +77,8 @@ export type MatAction =
   | { type: 'attach'; id: string; to: string }
   | { type: 'position'; id: string; pos: MatPos }
   | { type: 'counter'; id: string; delta: number }
-  | { type: 'token'; zone: MatZone; index: number }
+  /** Una ficha en una zona de monstruo, en ataque o en defensa (las fichas guardadas antes de elegir la posición no tienen `pos` y salen en ataque). */
+  | { type: 'token'; zone: MatZone; index: number; pos?: Exclude<MatPos, 'set'> }
   /** Activar el efecto de una carta (queda anotado); con costo, la carta se descarta o se destierra. */
   | { type: 'activate'; id: string; cost?: 'discard' | 'banish' }
   /** Mostrar una carta (de la mano, en general): sólo queda anotado. */
@@ -328,7 +329,8 @@ export function matReducer(state: MatState, action: MatAction): MatState {
       }
 
       const tokens = state.tokens + 1
-      return withPlaced({ ...state, tokens }, action.zone, action.index, { id: `${TOKEN_PREFIX}${tokens}`, pos: 'atk', counters: 0, materials: [] })
+      // Una ficha no se coloca boca abajo: cualquier otra posición sale en ataque.
+      return withPlaced({ ...state, tokens }, action.zone, action.index, { id: `${TOKEN_PREFIX}${tokens}`, pos: action.pos === 'def' ? 'def' : 'atk', counters: 0, materials: [] })
     }
 
     case 'tribute': {
@@ -548,7 +550,7 @@ export function describeMatAction(before: MatState, action: MatAction, nameOf: (
     }
 
     case 'token':
-      return action.zone === 'emz' ? `Ficha en la zona extra ${action.index + 1}` : `Ficha en la zona ${action.index + 1}`
+      return `Ficha en ${action.pos === 'def' ? 'defensa' : 'ataque'}, zona${action.zone === 'emz' ? ' extra' : ''} ${action.index + 1}`
 
     default:
       return 'Jugada'

@@ -25,6 +25,8 @@ export interface MatDragSource {
   name: string
   art: string | null
   back?: boolean
+  /** Tamaño del fantasma cuando no es el del elemento que se arrastra (la ficha del menú: una carta del tamaño de una zona); queda centrado bajo el puntero. */
+  size?: () => { width: number; height: number } | null
 }
 
 export interface MatDragState {
@@ -42,6 +44,7 @@ interface Session {
   offsetY: number
   moved: boolean
   element: HTMLElement
+  size: { width: number; height: number } | null
 }
 
 const DRAG_THRESHOLD = 6
@@ -103,15 +106,17 @@ export function useMatDrag({ onDrop, onTap }: UseMatDragOptions) {
     }
 
     const rect = event.currentTarget.getBoundingClientRect()
+    const size = source.size?.() ?? null
     sessionRef.current = {
       source,
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
-      offsetX: event.clientX - rect.left,
-      offsetY: event.clientY - rect.top,
+      offsetX: size ? size.width / 2 : event.clientX - rect.left,
+      offsetY: size ? size.height / 2 : event.clientY - rect.top,
       moved: false,
       element: event.currentTarget,
+      size,
     }
     event.currentTarget.setPointerCapture(event.pointerId)
   }, [])
@@ -131,7 +136,7 @@ export function useMatDrag({ onDrop, onTap }: UseMatDragOptions) {
 
         session.moved = true
         const rect = session.element.getBoundingClientRect()
-        setDrag({ source: session.source, width: rect.width, height: rect.height })
+        setDrag({ source: session.source, width: session.size?.width ?? rect.width, height: session.size?.height ?? rect.height })
       }
 
       pendingRef.current = { x: event.clientX, y: event.clientY }

@@ -135,14 +135,17 @@ describe('la mesa de práctica', () => {
     expect(matReducer(next, { type: 'phase', phase: 'nope' as 'draw' })).toBe(next)
   })
 
-  it('las fichas se numeran y desaparecen al salir del campo', () => {
+  it('las fichas se numeran, salen en ataque o en defensa y desaparecen al salir del campo', () => {
     const state = run([
       { type: 'token', zone: 'mz', index: 0 },
-      { type: 'token', zone: 'mz', index: 1 },
+      { type: 'token', zone: 'mz', index: 1, pos: 'def' },
     ])
 
     expect(state.mz[0]?.id).toBe('token-1')
     expect(state.mz[1]?.id).toBe('token-2')
+    // Sin posición (las fichas de los combos guardados antes) salen en ataque, y una ficha no se coloca boca abajo.
+    expect([state.mz[0]?.pos, state.mz[1]?.pos]).toEqual(['atk', 'def'])
+    expect(matReducer(state, { type: 'token', zone: 'mz', index: 2, pos: 'set' as 'def' }).mz[2]?.pos).toBe('atk')
     expect(matReducer(state, { type: 'token', zone: 'mz', index: 0 })).toBe(state)
 
     const removed = matReducer(state, { type: 'move', id: 'token-1', to: 'gy' })
@@ -190,7 +193,8 @@ describe('la mesa de práctica', () => {
     expect(describe({ type: 'position', id: 'b1', pos: 'atk' }, played)).toBe('Activás B1')
     expect(describe({ type: 'move', id: 'a2', to: 'hand' }, played)).toBe('Recuperás A2 del cementerio')
     expect(describe({ type: 'move', id: 'a1', to: 'hand' }, played)).toBe('A1 vuelve a la mano')
-    expect(describe({ type: 'token', zone: 'mz', index: 1 }, played)).toBe('Ficha en la zona 2')
+    expect(describe({ type: 'token', zone: 'mz', index: 1 }, played)).toBe('Ficha en ataque, zona 2')
+    expect(describe({ type: 'token', zone: 'emz', index: 0, pos: 'def' }, played)).toBe('Ficha en defensa, zona extra 1')
 
     // Activar con costo mueve la carta; sin costo y revelar sólo quedan anotados.
     expect(matReducer(state, { type: 'activate', id: 'a1', cost: 'discard' }).gy).toEqual(['a1'])
@@ -368,7 +372,7 @@ describe('la mesa de práctica', () => {
       fc.record({ type: fc.constant('attach' as const), id, to: id }),
       fc.record({ type: fc.constant('position' as const), id, pos }),
       fc.record({ type: fc.constant('counter' as const), id, delta: fc.integer({ min: -2, max: 2 }) }),
-      fc.record({ type: fc.constant('token' as const), zone: fc.constantFrom('mz', 'emz', 'st'), index: fc.integer({ min: -1, max: 5 }) }),
+      fc.record({ type: fc.constant('token' as const), zone: fc.constantFrom('mz', 'emz', 'st'), index: fc.integer({ min: -1, max: 5 }), pos: fc.constantFrom<'atk' | 'def' | undefined>('atk', 'def', undefined) }),
       fc.record({ type: fc.constant('activate' as const), id, cost: fc.constantFrom(undefined, 'discard' as const, 'banish' as const) }),
       fc.record({ type: fc.constant('reveal' as const), id }),
       fc.record({ type: fc.constant('tribute' as const), id, tributes: fc.array(id, { maxLength: 2 }), zone: fc.constantFrom('mz', 'emz'), index: fc.integer({ min: -1, max: 5 }), pos }),
