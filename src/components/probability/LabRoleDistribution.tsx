@@ -1,6 +1,6 @@
 import { createRoleGroupKey, getDeckGroupTheme } from '../../app/deck-groups'
 import { DISTRIBUTION_BUCKETS, type RoleDistribution, type RoleDistributionKey } from '../../app/role-distribution'
-import { formatInteger, formatShortPercent } from '../../app/utils'
+import { formatInteger, formatShortPercent, formatWholePercent } from '../../app/utils'
 import { ProgressRing } from '../ui/ProgressRing'
 import { LabSection } from './LabSection'
 
@@ -48,7 +48,7 @@ export function LabRoleDistribution({ distributions, onOpenRole }: LabRoleDistri
                 delay={index * 120}
                 label={`${distribution.label}: ${formatShortPercent(distribution.atLeastOne)} de robar al menos una`}
               >
-                <strong className="text-lead font-semibold text-foreground tabular-nums">{Math.round(distribution.atLeastOne * 100)}%</strong>
+                <strong className="text-lead font-semibold text-foreground tabular-nums">{formatWholePercent(distribution.atLeastOne)}</strong>
               </ProgressRing>
               <span className="grid gap-0.5">
                 <strong className="text-body font-semibold text-foreground">{distribution.label}</strong>

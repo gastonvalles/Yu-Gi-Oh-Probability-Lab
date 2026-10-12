@@ -1,5 +1,5 @@
 import type { LabResults } from '../../app/probability-lab'
-import { formatInteger, formatShortPercent } from '../../app/utils'
+import { formatInteger, formatShortPercent, formatWholePercent } from '../../app/utils'
 import type { TurnView } from '../../types'
 import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
@@ -74,7 +74,7 @@ function TurnRing({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex items-center gap-2.5">
       <ProgressRing value={value} tone={KPI_TONE[getKpiTone(value)]} size={46} strokeWidth={5} delay={250} label={`${label}: ${formatShortPercent(value)}`}>
-        {Math.round(value * 100)}%
+        {formatWholePercent(value)}
       </ProgressRing>
       <div className="grid gap-0.5">
         <dt className="text-micro text-muted">{label}</dt>

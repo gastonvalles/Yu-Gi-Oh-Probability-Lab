@@ -17,7 +17,7 @@ import {
 import { useAppDispatch } from '../app/store-hooks'
 import { useToastMessage } from '../app/use-toast-message'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../app/use-media-query'
-import { formatInteger } from '../app/utils'
+import { formatInteger, formatWholePercent } from '../app/utils'
 import type { CardEntry, CardGroupKey, CardOrigin, CardRole } from '../types'
 import {
   ORIGIN_HELP_TEXT,
@@ -394,7 +394,7 @@ export function DeckRolesPanel({
   // Una carta cuenta como "lista" cuando está completa y confirmada: es la misma cuenta que usa el Lab.
   const pendingReviewCards = useMemo(() => completeCards.filter((card) => card.needsReview), [completeCards])
   const readyCount = completeCards.length - pendingReviewCards.length
-  const classifiedPercent = sortedCards.length > 0 ? Math.round((readyCount / sortedCards.length) * 100) : 0
+  const classifiedShare = sortedCards.length > 0 ? readyCount / sortedCards.length : 0
   const selectedCardIndexInFullList = selectedCard
     ? stableNavigationCards.findIndex((card) => card.id === selectedCard.id)
     : -1
@@ -565,9 +565,9 @@ export function DeckRolesPanel({
           >
             {/* El aro (verde: se lee de un vistazo cuánto falta, y 100 % = listo) va junto al mensaje. En celular las acciones van abajo, en una fila. En escritorio es un banner de todo el ancho: aro, mensaje y acciones a la derecha, y los filtros (si hay) en una segunda fila. */}
             <div className={cx(filtersInCard && 'min-[1101px]:row-span-2')}>
-              <ProgressRing tone="onBrand" color="var(--success-rgb)" size={isDesktop ? 112 : 76} strokeWidth={isDesktop ? 10 : 8} value={classifiedPercent / 100} label="Cartas clasificadas">
+              <ProgressRing tone="onBrand" color="var(--success-rgb)" size={isDesktop ? 112 : 76} strokeWidth={isDesktop ? 10 : 8} value={classifiedShare} label="Cartas clasificadas">
                 <span className="grid justify-items-center leading-none">
-                  <span className="text-lead font-bold tracking-[-0.02em] min-[1101px]:text-title">{formatInteger(classifiedPercent)}%</span>
+                  <span className="text-lead font-bold tracking-[-0.02em] min-[1101px]:text-title">{formatWholePercent(classifiedShare)}</span>
                   <span className="mt-0.5 text-[0.625rem] font-medium text-primary-foreground/75 min-[1101px]:mt-1 min-[1101px]:text-micro">{hasCardsNeedingClassification ? 'listas' : 'listo'}</span>
                 </span>
               </ProgressRing>

@@ -1,4 +1,4 @@
-import { formatShortPercent } from '../../app/utils'
+import { formatShortPercent, formatWholePercent } from '../../app/utils'
 import type { PatternKind } from '../../types'
 import { ProgressRing } from '../ui/ProgressRing'
 import type { DraftImpact } from './use-draft-impact'
@@ -21,7 +21,7 @@ export function DraftImpactSummary({ impact, kind }: { impact: DraftImpact | nul
           strokeWidth={5}
           label={`${kind === 'opening' ? 'Salida' : 'Problema'}: ${rule.main === null ? 'sin dato' : formatShortPercent(rule.main)}`}
         >
-          {rule.main === null ? '—' : `${Math.round(rule.main * 100)}%`}
+          {rule.main === null ? '—' : formatWholePercent(rule.main)}
         </ProgressRing>
         <div className="grid min-w-0 gap-0.5">
           <span>

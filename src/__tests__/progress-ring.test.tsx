@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 
+import { formatWholePercent } from '../app/utils'
 import { ProgressRing } from '../components/ui/ProgressRing'
 import { SegmentedRing } from '../components/ui/SegmentedRing'
 
@@ -85,6 +86,18 @@ describe('ProgressRing', () => {
     render(<ProgressRing value={1.7} label="Sobrepasado" />)
 
     expect(screen.getByRole('meter', { name: 'Sobrepasado' })).toHaveAttribute('aria-valuenow', '100')
+  })
+
+  it('el entero del centro no miente en las puntas: 99,5 % no es "100%" ni 0,4 % es "0%"', () => {
+    mockReducedMotion(true)
+    render(<ProgressRing value={0.9952} label="Interacción" />)
+
+    expect(screen.getByText('>99%')).toBeInTheDocument()
+    expect(formatWholePercent(0.9927)).toBe('99%')
+    expect(formatWholePercent(0.004)).toBe('<1%')
+    expect(formatWholePercent(0.747)).toBe('75%')
+    expect(formatWholePercent(1)).toBe('100%')
+    expect(formatWholePercent(0)).toBe('0%')
   })
 })
 
