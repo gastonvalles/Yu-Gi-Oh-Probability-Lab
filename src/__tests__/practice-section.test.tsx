@@ -6,6 +6,8 @@ import { useEffect, type ReactElement } from 'react'
 import { Provider } from 'react-redux'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { deckSampleKey } from '../app/hand-samples'
+import { requestLabOdds } from '../app/lab-odds-client'
 import { createMatcherPattern } from '../app/pattern-factory'
 import { createMatState, type MatState } from '../app/practice-mat'
 import { useMatSession } from '../app/use-mat-session'
@@ -61,7 +63,8 @@ function Harness({ initial = INITIAL }: { initial?: MatState }) {
       onUndo={mat.undo}
       onSeek={mat.seek}
       onLoadCombo={(combo) => start(combo.initial, combo.actions, combo.names)}
-      onNewHand={() => start(INITIAL)}
+      // Una mano nueva es otro estado (como en la app): copia nueva de la misma.
+      onNewHand={() => start({ ...INITIAL })}
     />
   )
 }
@@ -135,5 +138,41 @@ describe('la práctica integrada en la mesa', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Descartar' }))
     expect(within(hand()).getAllByRole('listitem')).toHaveLength(5)
     expect(within(screen.getByRole('list', { name: 'Salidas' })).getByRole('button', { name: 'Salida básica' })).toBeInTheDocument()
+  })
+
+  it('cada mano se califica jugable o muerta, la cuenta queda por deck y se compara con las manos limpias del Lab', async () => {
+    vi.mocked(requestLabOdds).mockImplementationOnce(() => Promise.resolve({ first: 0.3, second: 0.2, clean: { first: 0.5, second: 0.6 }, rules: { first: new Map(), second: new Map() } }))
+    render(<Harness />)
+
+    const sampling = () => screen.getByLabelText('Muestreo de manos')
+    expect(within(sampling()).queryByText(/Calificaste/)).not.toBeInTheDocument()
+
+    fireEvent.click(within(sampling()).getByRole('button', { name: 'Jugable' }))
+    expect(within(sampling()).getByRole('button', { name: 'Jugable' })).toHaveAttribute('aria-pressed', 'true')
+    expect(await within(sampling()).findByText(/Calificaste 1 mano: 100.0% jugables \(muestra chica\)\. El Lab da 50.0% de manos limpias yendo 1º\./)).toBeInTheDocument()
+
+    // Cambiar de opinión mueve la cuenta, no la duplica.
+    fireEvent.click(within(sampling()).getByRole('button', { name: 'Muerta' }))
+    expect(within(sampling()).getByText(/Calificaste 1 mano: 0.0% jugables/)).toBeInTheDocument()
+    expect(JSON.parse(localStorage.getItem('ygo-lab:hand-samples:v1') ?? '{}')).toEqual({ [deckSampleKey(CARDS, 5)]: { playable: 0, dead: 1 } })
+
+    // Una mano nueva arranca sin calificar y suma a la misma cuenta.
+    fireEvent.click(screen.getByRole('button', { name: 'Nueva mano' }))
+    expect(within(sampling()).getByRole('button', { name: 'Muerta' })).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(within(sampling()).getByRole('button', { name: 'Jugable' }))
+    expect(within(sampling()).getByText(/Calificaste 2 manos: 50.0% jugables/)).toBeInTheDocument()
+
+    fireEvent.click(within(sampling()).getByRole('button', { name: 'Reiniciar' }))
+    expect(within(sampling()).queryByText(/Calificaste/)).not.toBeInTheDocument()
+    expect(localStorage.getItem('ygo-lab:hand-samples:v1')).toBe('{}')
+  })
+
+  it('con diez manos o más muestra el intervalo y avisa si el Lab queda afuera', async () => {
+    vi.mocked(requestLabOdds).mockImplementationOnce(() => Promise.resolve({ first: 0.3, second: 0.2, clean: { first: 0.5, second: 0.6 }, rules: { first: new Map(), second: new Map() } }))
+    localStorage.setItem('ygo-lab:hand-samples:v1', JSON.stringify({ [deckSampleKey(CARDS, 5)]: { playable: 9, dead: 1 } }))
+    render(<Harness />)
+
+    const sampling = screen.getByLabelText('Muestreo de manos')
+    expect(await within(sampling).findByText(/Calificaste 10 manos: 90.0% jugables \(entre 59.6% y 98.2%\)\. El Lab da 50.0% de manos limpias yendo 1º\. Tus reglas y tu criterio no coinciden: revisá las reglas\./)).toBeInTheDocument()
   })
 })
