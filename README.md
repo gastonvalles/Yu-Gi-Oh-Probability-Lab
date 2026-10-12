@@ -14,6 +14,7 @@ La idea central es ayudar a entender deck building con un flujo simple: armás e
   - `roles`: `starter`, `extender`, `enabler`, `searcher`, `draw`, `payoff`, `recovery`, `handtrap`, `disruption`, `boardbreaker`, `floodgate`, `brick`, `garnet`.
 - Aperturas y Problemas para medir consistencia real.
 - Probabilidad exacta (enumeración combinatoria), yendo primero, segundo o en promedio.
+- Calculadora rápida en el Lab, sin armar el deck: con N copias en un deck de M, cuántas manos abren la carta (al menos 1, 2 o 3, yendo 1º o 2º) y cuántas copias hacen falta para llegar a un %.
 - Práctica: una mesa para jugar solo (como el Solo Mode de DuelingBook) que abre con la mano ya robada y sus salidas y problemas debajo, con combos que se guardan y se reproducen paso a paso.
 - Comparación A vs B contra otra build importada.
 - Exportación del deck como imagen, decklist oficial en PDF y `.ydk`, y los tres pasos para llevarlo a Neuron (link YDKE o `.ydk` + extensión "Deck transfer" + base de datos oficial de Konami).

@@ -27,6 +27,7 @@ import { PatternEditorDrawer } from './probability/PatternEditorDrawer'
 import type { PatternEditorActions } from './probability/pattern-editor-actions'
 import { buildPatternCompactSummary } from './probability/pattern-helpers'
 import { buildRuleEntryGroups, type RuleEntry } from './probability/probability-lab-helpers'
+import { QuickCalculator } from './probability/QuickCalculator'
 import { TurnViewToggle } from './probability/TurnViewToggle'
 import { useDraftImpact } from './probability/use-draft-impact'
 import { useLabelCards } from './probability/use-label-cards'
@@ -79,6 +80,8 @@ export function ProbabilityPanel({
   const [kpiModal, setKpiModal] = useState<RoleDistribution | null>(null)
   // Detalle de una carta tocada en la lista del KPI: se abre encima y la lista queda abierta.
   const [kpiDetailCard, setKpiDetailCard] = useState<ApiCardSearchResult | null>(null)
+  // La calculadora rápida no necesita deck ni roles: se abre también con el Lab vacío (con `key` arranca de cero cada vez).
+  const [quickCalculator, setQuickCalculator] = useState(0)
   const deckFormat = useAppSelector((state) => state.settings.deckFormat)
   const { showToast } = useToastMessage()
   const disclaimer = useLabDisclaimer()
@@ -222,6 +225,11 @@ export function ProbabilityPanel({
         title="Qué tan bien abre tu deck"
         icon="flask"
         subtitle="Tus aperturas y problemas, con probabilidad exacta."
+        side={(
+          <Button variant="secondary" size="sm" icon="sliders" onClick={() => setQuickCalculator((count) => count + 1)}>
+            Calculadora rápida
+          </Button>
+        )}
       />
 
       {lab.readiness.status === 'empty-deck' ? (
@@ -306,6 +314,14 @@ export function ProbabilityPanel({
       />
 
       <LabDisclaimerDialog isOpen={disclaimer.isOpen} dismissible={disclaimer.isAcknowledged} onAcknowledge={disclaimer.acknowledge} />
+
+      <QuickCalculator
+        key={quickCalculator}
+        isOpen={quickCalculator > 0}
+        onClose={() => setQuickCalculator(0)}
+        deckSize={derivedMainCards.reduce((total, card) => total + card.copies, 0)}
+        handSize={handSize}
+      />
 
       <ConfirmDialog
         confirmLabel="Eliminar regla"
