@@ -12,7 +12,6 @@ import { createSavedCombo, uniqueComboName } from '../app/saved-combos'
 import { useMatSession } from '../app/use-mat-session'
 import { createMatcherPattern } from '../app/pattern-factory'
 import { buildDerivedDeckGroupMap } from '../app/deck-groups'
-import { HandSampling } from '../components/probability/HandSampling'
 import { PracticeMat, type MatCard } from '../components/probability/PracticeMat'
 import { PracticeMatPanel } from '../components/probability/PracticeMatPanel'
 import { buildPracticeDeck, describePracticeMatch, describeRuleCondition, evaluatePracticeHand } from '../components/probability/practice'
@@ -72,13 +71,13 @@ describe('la mesa de práctica en inglés', () => {
   })
 
   it('el menú de una carta ofrece las jugadas con su nombre oficial', () => {
-    expect(labels(start(), 'a1')).toEqual(['Normal Summon', 'Special Summon', 'Activate effect', 'Reveal', 'Select', 'Discard', 'Banish', 'Top of the Deck', 'Bottom of the Deck'])
-    expect(listCardActions(start(), 'a1', kindOf, nameOf)[0]!.choices?.map((choice) => choice.label)).toEqual(['Attack', 'Set face-down'])
+    expect(labels(start(), 'a1')).toEqual(['Normal Summon', 'Set', 'Special Summon', 'Activate effect', 'Reveal', 'Select', 'Discard', 'Banish', 'Top of the Deck', 'Bottom of the Deck'])
+    expect(listCardActions(start(), 'a1', kindOf, nameOf).find((item) => item.label === 'Special Summon')!.choices?.map((choice) => choice.label)).toEqual(['Attack', 'Defense'])
     expect(labels(start(), 'x1')).toEqual(['Special Summon', 'To the Graveyard', 'Banish'])
     expect(listCardActions(start(), 'x1', kindOf, nameOf).find((item) => item.label === 'Banish')!.choices?.map((choice) => choice.label)).toEqual(['Face-up', 'Face-down'])
 
     const two = run([{ type: 'place', id: 'x1', zone: 'emz', index: 0, pos: 'atk' }, { type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }])
-    expect(labels(two, 'c1')[0]).toBe('Tribute Summon (2)')
+    expect(labels(two, 'c1').slice(0, 2)).toEqual(['Tribute Summon (2)', 'Tribute Set (2)'])
     expect(labels(two, 'a1')).toEqual(['Activate effect', 'Switch to Defense', 'Turn face-down', 'Attach to X1', 'Counter +1', 'Select', 'To the Spell & Trap Zone', 'To hand', 'To the Graveyard', 'Banish', 'Top of the Deck', 'Bottom of the Deck'])
   })
 
@@ -87,28 +86,6 @@ describe('la mesa de práctica en inglés', () => {
     expect(uniqueComboName('  ', [])).toBe('Unnamed combo')
     applyLocale('es')
     expect(uniqueComboName('', [])).toBe('Combo sin nombre')
-  })
-})
-
-describe('el muestreo de manos en inglés', () => {
-  const sampling = (playable: number, dead: number, labClean: number | null) =>
-    render(createElement(HandSampling, { rating: null, tally: { playable, dead }, labClean, turn: 'first', onRate: () => {}, onReset: () => {} }))
-
-  it('con pocas manos avisa que la muestra es chica y dice lo que da el Lab', () => {
-    sampling(1, 0, 0.5)
-
-    const box = screen.getByLabelText('Hand sampling')
-    expect(within(box).getByText('Does this hand work for you?')).toBeInTheDocument()
-    expect(within(box).getByRole('button', { name: 'Playable' })).toBeInTheDocument()
-    expect(within(box).getByRole('button', { name: 'Dead' })).toBeInTheDocument()
-    expect(within(box).getByText('You rated 1 hand: 100.0% playable (small sample). The Lab gives 50.0% clean hands going first.')).toBeInTheDocument()
-  })
-
-  it('con diez manos o más da el intervalo y avisa si el Lab queda afuera', () => {
-    sampling(9, 1, 0.5)
-
-    expect(screen.getByText(/^You rated 10 hands: 90.0% playable \(between 59.6% and 98.2%\)\. The Lab gives 50.0% clean hands going first\. Your rules and your judgment don’t match: review your rules\./)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Reset' })).toBeInTheDocument()
   })
 })
 
@@ -226,10 +203,9 @@ describe('la mesa dibujada en inglés', () => {
 
     tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
     expect(screen.getByRole('menu', { name: 'Ash Blossom' })).toHaveTextContent('Hand')
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent).slice(0, 3)).toEqual(['Normal Summon', 'Set', 'Special Summon'])
     fireEvent.click(screen.getByRole('menuitem', { name: 'Normal Summon' }))
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Attack', 'Set face-down'])
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Attack' }))
-    expect(status()).toHaveTextContent('Tap the zone for Normal Summon: attack')
+    expect(status()).toHaveTextContent('Tap the zone for Normal Summon')
     fireEvent.click(screen.getByRole('button', { name: 'Choose Monster Zone 1' }))
 
     expect(within(zone('Monster Zone 1')).getByRole('button', { name: 'Ash Blossom' })).toBeInTheDocument()

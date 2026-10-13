@@ -16,6 +16,8 @@ interface Snapshot {
   width: number
   height: number
   art: string | null
+  /** Era la carta soltada que espera en una zona que se elija cómo sale (`data-pending`): si se cancela, vuelve volando a la mano. */
+  pending: boolean
 }
 
 function prefersReducedMotion(): boolean {
@@ -104,12 +106,19 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
     }
 
     const previous = previousRef.current
-    previousRef.current = { state, cards: new Map([...current].map(([id, { element, rect }]) => [id, { rect, width: element.offsetWidth, height: element.offsetHeight, art: artOf(id) }])) }
+    previousRef.current = { state, cards: new Map([...current].map(([id, { element, rect }]) => [id, { rect, width: element.offsetWidth, height: element.offsetHeight, art: artOf(id), pending: element.dataset.pending === 'true' }])) }
 
-    if (!previous || previous.state === state || prefersReducedMotion()) return
+    if (!previous || prefersReducedMotion()) return
+
+    // Sin jugada (sólo se volvió a medir) nada vuela, salvo la carta que esperaba en una zona y vuelve a la mano porque se cerró el menú sin elegir.
+    const sameState = previous.state === state
+    const returning = (id: string) => previous.cards.get(id)?.pending === true && state.hand.includes(id)
+
+    if (sameState && ![...current.keys()].some(returning)) return
 
     for (const [id, { element, rect }] of current) {
-      if (state.hand.includes(id) && (previous.state.hand.includes(id) || previous.state.deck.includes(id))) continue
+      if (sameState && !returning(id)) continue
+      if (!returning(id) && state.hand.includes(id) && (previous.state.hand.includes(id) || previous.state.deck.includes(id))) continue
 
       const before = previous.cards.get(id)?.rect ?? homeOf(root, previous.state, id)?.getBoundingClientRect()
 
@@ -124,6 +133,8 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
 
       element.animate([{ transform: `${offset(before, rect)}${own}` }, { transform: base }], { id: FLIGHT_ID, duration: FLIGHT_MS, easing: EASING })
     }
+
+    if (sameState) return
 
     for (const [id, snapshot] of previous.cards) {
       if (current.has(id)) continue

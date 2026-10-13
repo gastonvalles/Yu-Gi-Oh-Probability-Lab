@@ -11,6 +11,7 @@ import {
   freeTargets,
   isToken,
   listCardActions,
+  listDropActions,
   locateCard,
   matReducer,
   monstersOnField,
@@ -165,12 +166,15 @@ const PENDULUM_GEM: Record<number, string> = {
 
 const artOf = (card: MatCard) => card.art ?? card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null
 
-/** Una jugada que todavía espera algo del jugador: los Sacrificios y/o la zona. */
+/**
+ * Una jugada que todavía espera algo del jugador: los Sacrificios y/o la zona. `zone` es adonde sale la carta si ya se sabe;
+ * `dropped`, que se la soltó ahí: se queda en esa zona mientras se eligen los Sacrificios o los materiales.
+ */
 type Picking =
   | { kind: 'zone'; label: string; action: Extract<MatAction, { type: 'place' | 'token' | 'tribute' | 'summon' }>; targets: MatTarget[] }
-  | { kind: 'tributes'; label: string; required: number; chosen: string[]; action: Extract<MatAction, { type: 'tribute' }>; zone?: MatTarget }
+  | { kind: 'tributes'; label: string; required: number; chosen: string[]; action: Extract<MatAction, { type: 'tribute' }>; zone?: MatTarget; dropped?: boolean }
   /** Invocación desde el Extra: se tocan los materiales en el campo (los que sean) y se confirma con un botón. */
-  | { kind: 'materials'; label: string; chosen: string[]; action: Extract<MatAction, { type: 'summon' }>; zone?: MatTarget }
+  | { kind: 'materials'; label: string; chosen: string[]; action: Extract<MatAction, { type: 'summon' }>; zone?: MatTarget; dropped?: boolean }
 
 const toggle = (list: string[], id: string) => (list.includes(id) ? list.filter((entry) => entry !== id) : [...list, id])
 
@@ -257,9 +261,12 @@ export function PracticeMat({
   const live = session.cursor === session.actions.length
 
   const [menu, setMenu] = useState<
-    /** `submenu`: el segundo paso ("¿En ataque o en defensa?", "¿Boca arriba o boca abajo?") se muestra en el mismo menú. */
-    | { kind: 'card'; id: string; rect: DOMRect; submenu?: { label: string; items: MatMenuItem[] } }
-    | { kind: 'deck'; rect: DOMRect; submenu?: { label: string; items: MatMenuItem[] } }
+    /**
+     * `ask`: la opción elegida que pregunta cómo ("¿En ataque o en defensa?", "¿Boca arriba o boca abajo?"): la pregunta se muestra en el mismo menú.
+     * `drop`: la zona donde se soltó la carta; el menú ofrece lo que la saca ahí y la carta se queda en la zona mientras se elige (si se cancela, vuelve).
+     */
+    | { kind: 'card'; id: string; rect: DOMRect; ask?: MatMenuItem; drop?: MatTarget }
+    | { kind: 'deck'; rect: DOMRect; ask?: MatMenuItem }
     /** La ficha: sale en ataque o en defensa, en la zona donde se soltó (`zone`) o en la que se elija después. */
     | { kind: 'token'; rect: DOMRect; zone?: MatTarget }
     | null
@@ -315,6 +322,8 @@ export function PracticeMat({
 
   // Los efectos salen con cada paso que avanza (jugadas propias y replay por igual): ver `matEffects`. Deshacer o saltar de paso no los repite.
   const lastCursorRef = useRef(session.cursor)
+  // La carta que estaba soltada en una zona (esperando) hasta la jugada anterior: ya está ahí, así que su destello no espera ningún vuelo.
+  const pendingRef = useRef<string | null>(null)
 
   useEffect(() => {
     const previous = lastCursorRef.current
@@ -347,7 +356,7 @@ export function PracticeMat({
           ? { ...effects.showcase, step: session.cursor, key }
           : null,
     )
-    if (effects.landing) setLanding({ ...effects.landing, key })
+    if (effects.landing) setLanding({ ...effects.landing, flies: effects.landing.flies && !('id' in action && action.id === pendingRef.current), key })
     if (effects.banner) setBanner({ ...effects.banner, key })
     if (effects.hand) setHandFlash(key)
   }, [session.cursor, session.actions, session.initial, session.replay])
@@ -382,8 +391,23 @@ export function PracticeMat({
     return () => window.clearTimeout(timer)
   }, [dealt, handTotal])
 
+  // La carta soltada en una zona que todavía espera que se elija cómo sale (el menú de esa zona, o los Sacrificios o materiales) se queda en la zona,
+  // en vez de volver a la mano; si se cancela, vuelve. Sin jugada no hay cambio de estado: es sólo cómo se la dibuja mientras tanto.
+  const pending = useMemo<({ id: string } & MatTarget) | null>(() => {
+    if (menu?.kind === 'card' && menu.drop) return { id: menu.id, ...menu.drop }
+    if ((picking?.kind === 'tributes' || picking?.kind === 'materials') && picking.dropped && picking.zone) return { id: picking.action.id, ...picking.zone }
+
+    return null
+  }, [menu, picking])
+  const pendingId = pending?.id ?? null
+
+  // Va después del efecto del paso (que lee la anterior): al jugarse, la carta ya no está esperando.
+  useEffect(() => {
+    pendingRef.current = pendingId
+  }, [pendingId])
+
   const orderedHand = useMemo(() => mergeHandOrder(handOrder, state.hand), [handOrder, state.hand])
-  const handCards = useMemo<HandCardData[]>(() => orderedHand.slice(0, dealt).map((id) => ({ id, ...cardOf(id) })), [orderedHand, dealt, cardOf])
+  const handCards = useMemo<HandCardData[]>(() => orderedHand.slice(0, dealt).filter((id) => id !== pendingId).map((id) => ({ id, ...cardOf(id) })), [orderedHand, dealt, cardOf, pendingId])
   const isDealt = dealt >= handTotal
 
   // Las cartas vuelan entre zonas con cada jugada (y al reproducir un combo).
@@ -403,7 +427,7 @@ export function PracticeMat({
     return () => window.clearTimeout(timer)
   }, [isDealt])
 
-  const { dealsFromDeck } = useCardFlights(sectionRef, state, artById, `${isDesktop}:${dealt}:${settled}:${handOrder.join(',')}`)
+  const { dealsFromDeck } = useCardFlights(sectionRef, state, artById, `${isDesktop}:${dealt}:${settled}:${handOrder.join(',')}:${pendingId ?? ''}`)
 
   // Reproducir un combo: las jugadas avanzan solas (arranca al cargarlo; cualquier jugada propia lo pausa), más rápido con el avance rápido.
   const [autoplay, setAutoplay] = useState(false)
@@ -454,7 +478,8 @@ export function PracticeMat({
 
       if (searched) {
         setViewer(null)
-      } else if (viewer) {
+      } else if (viewer && played.type !== 'target') {
+        // Seleccionar una carta no la mueve: el visor sigue abierto (para elegir otra y ver la mira caer sobre ella).
         closeViewer()
       }
     },
@@ -463,10 +488,10 @@ export function PracticeMat({
 
   /** Una jugada del menú: con Sacrificios primero se eligen; si puede salir a varias zonas, la mesa pide elegir una (como "Choose Zones" en DuelingBook). */
   const choose = useCallback(
-    (item: MatMenuItem) => {
-      // Segundo paso del menú ("¿En ataque o en defensa?"): se muestran las opciones en el mismo menú.
+    (item: MatMenuItem, dropped?: MatTarget) => {
+      // Segundo paso del menú ("¿En ataque o en defensa?"): la pregunta se muestra en el mismo menú.
       if (item.choices) {
-        setMenu((current) => (current && current.kind !== 'token' ? { ...current, submenu: { label: item.label, items: item.choices! } } : current))
+        setMenu((current) => (current && current.kind !== 'token' ? { ...current, ask: item } : current))
         return
       }
 
@@ -488,12 +513,12 @@ export function PracticeMat({
       }
 
       if (item.tributes && item.action.type === 'tribute') {
-        pick({ kind: 'tributes', label: item.label, required: item.tributes, chosen: [], action: item.action, zone: item.targets?.length === 1 ? item.targets[0] : undefined })
+        pick({ kind: 'tributes', label: item.label, required: item.tributes, chosen: [], action: item.action, zone: item.targets?.length === 1 ? item.targets[0] : undefined, dropped: dropped !== undefined })
         return
       }
 
       if (item.materials && item.action.type === 'summon') {
-        pick({ kind: 'materials', label: item.label, chosen: [], action: item.action, zone: item.targets?.length === 1 ? item.targets[0] : undefined })
+        pick({ kind: 'materials', label: item.label, chosen: [], action: item.action, zone: item.targets?.length === 1 ? item.targets[0] : undefined, dropped: dropped !== undefined })
         return
       }
 
@@ -595,38 +620,25 @@ export function PracticeMat({
     [picking, state],
   )
 
-  /** Las jugadas del menú que sacan la carta justo a esa zona, con la posición ya desplegada ("Invocación Normal: en ataque"). */
-  const dropChoices = useCallback(
-    (id: string, zone: MatSpot, index: number): MatMenuItem[] =>
-      listCardActions(state, id, kindOf, nameOf)
-        .flatMap((item) => (item.choices ? item.choices.map((choice) => ({ ...choice, label: `${item.label}: ${choice.label.toLowerCase()}` })) : [item]))
-        .flatMap((item): MatMenuItem[] => {
-          const targets = [{ zone, index }]
-
-          if (item.action.type === 'tribute') return zone === 'mz' ? [{ ...item, action: { ...item.action, zone, index }, targets }] : []
-          if (item.action.type === 'place' && item.targets?.some((target) => target.zone === zone && target.index === index)) return [{ ...item, action: { ...item.action, zone, index }, targets }]
-          return []
-        }),
-    [state, kindOf, nameOf],
-  )
-
-  /** Soltar una carta de una pila en una zona libre: si puede salir de varias formas, la mesa pregunta cómo (como DuelingBook); si de una sola, sale así. */
+  /** Soltar una carta de una pila en una zona libre: el menú ofrece lo que la saca ahí (si es una sola jugada, sale así) y la carta se queda en la zona mientras se elige. */
   const dropInto = useCallback(
     (id: string, zone: MatSpot, index: number) => {
-      const choices = dropChoices(id, zone, index)
-      const only = choices[0]
+      const drop = { zone, index }
+      const items = listDropActions(state, id, kindOf, nameOf, drop)
+      const [first] = items
       const anchor = sectionRef.current?.querySelector(`[data-drop="${dropIdOf(zone, index)}"]`) ?? sectionRef.current
 
-      if (choices.length > 1 && anchor) {
-        setPicking(null)
-        setMenu({ kind: 'card', id, rect: anchor.getBoundingClientRect(), submenu: { label: zoneLabelOf(zone, index), items: choices } })
-      } else if (only) {
-        choose(only)
-      } else {
+      if (!first) {
         onDispatch({ type: 'place', id, zone, index, pos: 'atk' })
+      } else if (items.length === 1 && !first.choices) {
+        choose(first, drop)
+      } else if (anchor) {
+        setPicking(null)
+        // Una sola jugada que pregunta (p. ej. Invocación Especial) abre directo la pregunta.
+        setMenu({ kind: 'card', id, rect: anchor.getBoundingClientRect(), drop, ask: items.length === 1 ? first : undefined })
       }
     },
-    [dropChoices, choose, onDispatch],
+    [state, kindOf, nameOf, choose, onDispatch],
   )
 
   const handleDrop = useCallback(
@@ -723,9 +735,14 @@ export function PracticeMat({
       ]
     }
 
-    // Elegir en el segundo paso arma la jugada completa ("Invocación Normal: en ataque") para lo que la mesa pida después.
-    const submenu = menu.submenu
-    if (submenu) return submenu.items.map((item) => ({ label: item.label, onSelect: () => choose(item.label.includes(':') ? item : { ...item, label: `${submenu.label}: ${item.label.toLowerCase()}` }) }))
+    // Elegir en la pregunta arma la jugada completa ("Invocación Especial: en ataque") para lo que la mesa pida después.
+    const { ask } = menu
+
+    if (ask?.choices) {
+      const dropped = menu.kind === 'card' ? menu.drop : undefined
+
+      return ask.choices.map((choice) => ({ label: choice.label, onSelect: () => choose({ ...choice, label: `${ask.label}: ${choice.label.toLowerCase()}` }, dropped) }))
+    }
 
     if (menu.kind === 'deck') {
       const top = state.deck[0]
@@ -742,7 +759,9 @@ export function PracticeMat({
       ]
     }
 
-    return listCardActions(state, menu.id, kindOf, nameOf).map((item) => ({ label: item.label, onSelect: () => choose(item) }))
+    const items = menu.drop ? listDropActions(state, menu.id, kindOf, nameOf, menu.drop) : listCardActions(state, menu.id, kindOf, nameOf)
+
+    return items.map((item) => ({ label: item.label, onSelect: () => choose(item, menu.drop) }))
   }, [menu, state, kindOf, nameOf, play, choose, summonToken])
 
   const menuCard = menu?.kind === 'card' ? cardOf(menu.id) : menu?.kind === 'token' ? TOKEN_CARD : null
@@ -750,11 +769,13 @@ export function PracticeMat({
   const menuKicker =
     menu?.kind === 'token'
       ? menu.zone ? zoneLabelOf(menu.zone.zone, menu.zone.index) : t('practice.menu.specialSummon')
-      : menu?.submenu
-        ? menu.submenu.label
-        : menuWhere
-          ? menuWhere.kind === 'pile' ? PILE_TITLES[menuWhere.pile] : menuWhere.kind === 'spot' ? ZONE_LABELS[menuWhere.spot] : t('practice.mat.materialOf', { name: nameOf(menuWhere.of) })
-          : PILE_TITLES.deck
+      : menu?.ask
+        ? menu.ask.label
+        : menu?.kind === 'card' && menu.drop
+          ? zoneLabelOf(menu.drop.zone, menu.drop.index)
+          : menuWhere
+            ? menuWhere.kind === 'pile' ? PILE_TITLES[menuWhere.pile] : menuWhere.kind === 'spot' ? ZONE_LABELS[menuWhere.spot] : t('practice.mat.materialOf', { name: nameOf(menuWhere.of) })
+            : PILE_TITLES.deck
   const menuTitle = menuCard?.name ?? t('practice.mat.cardCount', { count: state.deck.length })
 
   const saveCombo = (name: string) => {
@@ -798,6 +819,9 @@ export function PracticeMat({
 
   const cell = (spot: MatSpot, index: number, area: string) => {
     const placed = placedAt(state, spot, index)
+    // La carta soltada acá que espera que se elija cómo sale se queda en la zona (en ataque, hasta que se elija) en vez de volver a la mano.
+    const waiting = !placed && pending && pending.zone === spot && pending.index === index ? pending : null
+    const shown: Placed | null = placed ?? (waiting ? { id: waiting.id, pos: 'atk', counters: 0, materials: [] } : null)
     const drop = dropIdOf(spot, index)
     const label = zoneLabelOf(spot, index)
     const gem = spot === 'st' ? PENDULUM_GEM[index] : undefined
@@ -822,22 +846,23 @@ export function PracticeMat({
       >
         {gem && !placed ? <span aria-hidden="true" className={cx('absolute left-1/2 top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[3px]', gem)} /> : null}
         {spot === 'field' && !placed ? <span aria-hidden="true" className="absolute inset-0 grid place-items-center text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-soft min-[1101px]:text-[0.6rem]">{t('practice.zone.fieldLabel')}</span> : null}
-        {placed ? (
+        {shown ? (
           <PlacedCard
-            key={placed.id}
-            placed={placed}
+            key={shown.id}
+            placed={shown}
             spot={spot}
-            card={cardOf(placed.id)}
-            dragging={drag?.source.id === placed.id}
-            flash={flash?.id === placed.id ? flash : null}
-            glow={highlighted.has(placed.id)}
+            card={cardOf(shown.id)}
+            pending={waiting !== null}
+            dragging={drag?.source.id === shown.id}
+            flash={flash?.id === shown.id ? flash : null}
+            glow={highlighted.has(shown.id)}
             glowKind={highlightKind}
-            dim={highlighted.size > 0 && !highlighted.has(placed.id)}
+            dim={highlighted.size > 0 && !highlighted.has(shown.id)}
             chosen={chosen ? chosenLabel : null}
-            targeted={targetedIds.has(placed.id)}
-            selected={selectedId === placed.id}
+            targeted={targetedIds.has(shown.id)}
+            selected={selectedId === shown.id}
             bind={bind}
-            onOpen={(rect) => openCard(placed.id, rect)}
+            onOpen={(rect) => openCard(shown.id, rect)}
           />
         ) : null}
         {landing?.spot === spot && landing.index === index ? <LandingBurst key={landing.key} tone={landing.tone} flies={landing.flies} /> : null}
@@ -851,6 +876,8 @@ export function PracticeMat({
     const count = state[pile].length
     // El Extra se ve de dorso; una carta desterrada boca abajo también (el visor de la pila la muestra igual).
     const back = pile === 'extra' ? count > 0 : top !== null && state.facedown.includes(top)
+    // Una carta marcada como objetivo adentro (se vea o no: no es siempre la de arriba) lleva la mira sobre la casilla.
+    const marked = state[pile].some((id) => targetedIds.has(id))
 
     return (
       <button
@@ -860,12 +887,14 @@ export function PracticeMat({
         title={PILE_TITLES[pile]}
         data-drop={pile}
         data-over={over === pile || handOver === pile ? 'true' : 'false'}
-        className={cx(CELL, 'cursor-pointer overflow-hidden bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus')}
-        style={{ gridArea: area }}
+        data-targeted={marked ? 'true' : 'false'}
+        className={cx(CELL, 'cursor-pointer overflow-hidden bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus', FX_CARD, '[--card-shadow:0_0_0_0_transparent]')}
+        style={{ gridArea: area, ...fxVars('red') }}
         onClick={() => setViewer(pile)}
       >
         {back ? <span className={CARD_BACK} /> : top ? <CardArt remoteUrl={artOf(cardOf(top))} name={cardOf(top).name} className="block h-full w-full object-cover" /> : null}
         <PileBadge label={PILE_TITLES[pile]} count={count} />
+        {marked ? <TargetMark /> : null}
       </button>
     )
   }
@@ -1110,7 +1139,7 @@ export function PracticeMat({
         kicker={menuKicker}
         title={menuTitle}
         items={menuItems}
-        onInspect={menu?.kind === 'card' && !menu.submenu && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
+        onInspect={menu?.kind === 'card' && !menu.ask && !menu.drop && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
         onClose={() => setMenu(null)}
       />
 
@@ -1120,6 +1149,7 @@ export function PracticeMat({
         pile={viewer}
         ids={viewer ? state[viewer] : []}
         info={(id) => ({ name: cardOf(id).name, art: artOf(cardOf(id)), faceDown: state.facedown.includes(id) })}
+        targeted={targetedIds}
         onPick={(id, rect) => setMenu({ kind: 'card', id, rect })}
         onClose={closeViewer}
       />
@@ -1224,6 +1254,8 @@ interface PlacedCardProps {
   targeted: boolean
   /** Es la carta de la que se está viendo el menú. */
   selected: boolean
+  /** La carta soltada que todavía espera que se elija cómo sale: está en la zona (como se la verá, si la elección es otra se acomoda) pero no se toca ni se arrastra, y lleva el marco de la carta del menú. */
+  pending: boolean
   bind: ReturnType<typeof useMatDrag>['bind']
   onOpen: (rect: DOMRect) => void
 }
@@ -1233,12 +1265,14 @@ interface PlacedCardProps {
  * colocada en una zona de monstruo se acuesta a su tamaño y sobresale de la casilla, como en la mesa real; contadores,
  * materiales y objetivo como etiquetas. Al darla vuelta se angosta y se abre; los contadores y los materiales rebotan al cambiar.
  */
-function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, chosen, targeted, selected, bind, onOpen }: PlacedCardProps) {
+function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, chosen, targeted, selected, pending, bind, onOpen }: PlacedCardProps) {
   // El nombre y lo que lo acompaña (boca abajo o en defensa, etiqueta de elegida, seleccionada): cada pedazo es su mensaje.
   let label = placed.pos === 'set' ? t('practice.mat.cardFaceDown', { name: card.name }) : placed.pos === 'def' ? t('practice.mat.cardDefense', { name: card.name }) : card.name
   if (chosen) label = t('practice.mat.cardChosen', { label, chosen })
   if (targeted) label = t('practice.card.selected', { name: label })
   const sideways = spot !== 'st' && spot !== 'field' && placed.pos !== 'atk'
+  // El marco celeste: la carta del menú y la que espera en la zona (tiene el menú, o los Sacrificios, todavía por delante).
+  const framed = selected || pending
 
   const cardRef = useRef<HTMLDivElement | null>(null)
   const previousPos = useRef(placed.pos)
@@ -1255,20 +1289,23 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, 
   return (
     <div
       ref={cardRef}
-      role="button"
-      tabIndex={0}
-      aria-label={label}
-      title={label}
+      // Esperando que se elija cómo sale, la carta es sólo una imagen: lo que se puede hacer lo dice el menú (o la barra de pasos).
+      role={pending ? undefined : 'button'}
+      tabIndex={pending ? undefined : 0}
+      aria-hidden={pending || undefined}
+      aria-label={pending ? undefined : label}
+      title={pending ? undefined : label}
       // Rotación en `transform` (no en `rotate`): así el vuelo entre zonas la lee y la compone bien.
-      className={cx(MAT_CARD, 'absolute inset-0 h-full', sideways && 'z-1 [transform:rotate(90deg)]')}
+      className={cx(MAT_CARD, 'absolute inset-0 h-full', sideways && 'z-1 [transform:rotate(90deg)]', pending && 'pointer-events-none')}
       // El color de su aro: el del destaque, o el rojo de la mira.
       style={fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red')}
       data-card-id={placed.id}
+      data-pending={pending ? 'true' : undefined}
       data-dragging={dragging ? 'true' : 'false'}
       data-flash={flash ? 'true' : 'false'}
       data-flash-kind={flash?.kind}
       data-targeted={targeted ? 'true' : 'false'}
-      data-selected={selected ? 'true' : 'false'}
+      data-selected={framed ? 'true' : 'false'}
       data-glow={glow ? 'true' : 'false'}
       data-glow-kind={glow ? (glowKind ?? 'opening') : undefined}
       data-dim={dim ? 'true' : 'false'}
@@ -1277,13 +1314,13 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, 
       onContextMenu={(event) => event.preventDefault()}
     >
       {/* El cambio de brillo (boca abajo se ve atenuada) espera a que la carta, al darse vuelta, esté de canto. */}
-      <span className={cx('block h-full w-full transition-[filter] duration-150 delay-[115ms] motion-reduce:delay-0', placed.pos === 'set' && 'brightness-[0.4] saturate-[0.55]')}>
+      <span className={cx('block h-full w-full transition-[filter] duration-150 delay-[115ms] motion-reduce:delay-0', placed.pos === 'set' && 'brightness-[0.4] saturate-[0.55]', pending && 'animate-pop motion-reduce:animate-none')}>
         <CardArt remoteUrl={artOf(card)} name={card.name} className="block h-full w-full object-cover" />
       </span>
       {placed.counters > 0 ? <span key={placed.counters} className="absolute left-0.5 top-0.5 z-2 animate-pop rounded-full bg-warning px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-[#1a1204] motion-reduce:animate-none">{placed.counters}</span> : null}
       {placed.materials.length > 0 ? <span key={placed.materials.length} className="absolute bottom-0.5 right-0.5 z-2 animate-pop rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-primary-foreground motion-reduce:animate-none">+{placed.materials.length}</span> : null}
       {chosen ? <span className="absolute inset-x-0 bottom-0 z-2 bg-accent/85 py-0.5 text-center text-[0.55rem] font-extrabold uppercase tracking-[0.06em] text-[#06140e]">{chosen}</span> : null}
-      {selected ? <FxFrame tone="cyan" /> : null}
+      {framed ? <FxFrame tone="cyan" /> : null}
       {glow ? <FxFrame tone={glowKind === 'problem' ? 'red' : 'green'} orbit={false} /> : null}
       {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
       {targeted ? <TargetMark /> : null}

@@ -64,7 +64,7 @@ const BRACKETS = [
 ]
 
 /**
- * La mira de un objetivo (la comparten las cartas de la mano y del campo): cae sobre la carta girando, se cierra y queda con el aro
+ * La mira de un objetivo (la comparten las cartas de la mano y del campo, las del visor de una pila y la casilla del cementerio y del destierro): cae sobre la carta girando, se cierra y queda con el aro
  * punteado dando vueltas; una onda sale del centro al fijarse y la carta se tiñe de rojo.
  */
 export function TargetMark() {
