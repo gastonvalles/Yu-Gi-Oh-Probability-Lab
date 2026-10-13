@@ -56,7 +56,7 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, onAddToZone 
                 type="button"
                 aria-label={t('deck.classic.zoom')}
                 title={t('deck.classic.zoom')}
-                className="block w-full cursor-zoom-in rounded-lg bg-transparent p-0 focus-visible:outline-none focus-visible:shadow-focus"
+                className="block w-full cursor-zoom-in rounded-none bg-transparent p-0 focus-visible:outline-none focus-visible:shadow-focus"
                 onClick={() => setZoomed(true)}
               >
                 <CardArt remoteUrl={card.imageUrl} name={card.name} className="w-full bg-transparent shadow-none" limitCard={card} limitBadgeSize="lg" />

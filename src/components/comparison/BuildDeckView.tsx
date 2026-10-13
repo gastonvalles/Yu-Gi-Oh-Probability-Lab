@@ -56,7 +56,7 @@ export function BuildDeckView({ side, name, zones, deltaByCardId, onCardClick }:
                     key={`${card.instanceId}-${index}`}
                     type="button"
                     className={cx(
-                      'relative min-w-0 cursor-pointer border-0 bg-transparent p-0',
+                      'relative min-w-0 cursor-pointer rounded-none border-0 bg-transparent p-0',
                       change === 'added' && '-outline-offset-1 outline-2 outline-success/90',
                       change === 'removed' && '-outline-offset-1 outline-2 outline-danger/90',
                       pending &&
