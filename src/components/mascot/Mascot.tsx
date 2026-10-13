@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
-import { reactMascot, restMascot, useCurrentMascot, useMascotEnabled, useMascotState, type MascotState } from '../../app/mascot'
+import { MASCOTS, MASCOT_ANIMATION, MASCOT_STILL, mascotPositionKey, reactMascot, restMascot, useActiveMascots, useMascotState, type MascotId, type MascotState } from '../../app/mascot'
+import { forgetMascotBody, reportMascotBody } from '../../app/mascot-interplay'
 import { useDraggablePosition } from '../../app/use-draggable-position'
 import { useHold } from '../../app/use-hold'
 import { useMediaQuery } from '../../app/use-media-query'
@@ -9,19 +10,6 @@ import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 
-// Cada estado es un WebP animado con transparencia dentro de la carpeta de la mascota; se baja sólo el actual.
-const ANIMATION: Record<MascotState, string> = {
-  idle: 'idle.webp',
-  look: 'look.webp',
-  waiting: 'waiting.webp',
-  running: 'running.webp',
-  review: 'review.webp',
-  jumping: 'jumping.webp',
-  failed: 'failed.webp',
-  waving: 'waving.webp',
-}
-/** Un cuadro quieto: para "reducir movimiento". */
-const STILL = 'idle.png'
 /** Lo que dice la mascota de cada estado (en reposo, sólo su nombre). */
 const TITLE_KEY = {
   look: 'shell.mascot.state.look',
@@ -37,7 +25,6 @@ function stateTitle(state: MascotState, name: string): string {
   return state === 'idle' ? name : t(TITLE_KEY[state], { name })
 }
 const GREETED_KEY = 'ygo-lab:mascot-greeted'
-const POSITION_KEY = 'ygo-lab:mascot-position'
 const REDUCED_MOTION_MEDIA_QUERY = '(prefers-reduced-motion: reduce)'
 /** Alto del cuadro en pantalla (el ancho es un poco menor): es lo que se usa para que no se salga de la pantalla ni choque con los botones. */
 const SIZE_DESKTOP = 104
@@ -48,21 +35,35 @@ const HOLD_TO_REST_MS = 5000
 const LOOK_EVERY_MS = 25_000
 const LOOK_FOR_MS = 4_200
 
-/** La mascota sólo existe mientras está afuera: descansando no ocupa lugar ni empuja a los botones flotantes. */
+/** Las mascotas sólo existen mientras están afuera: descansando no ocupan lugar ni empujan a los botones flotantes. */
 export function Mascot() {
-  return useMascotEnabled() ? <ActiveMascot /> : null
+  const ids = useActiveMascots()
+
+  return (
+    <>
+      {ids.map((id, slot) => (
+        <ActiveMascot key={id} id={id} slot={slot} />
+      ))}
+    </>
+  )
 }
 
-/** Se puede agarrar y llevar a cualquier lado (como el botón de práctica), choca con los botones flotantes y los empuja, y reacciona a lo que pasa. */
-function ActiveMascot() {
-  const mascot = useCurrentMascot()
-  const state = useMascotState()
+/**
+ * Cada una se puede agarrar y llevar a cualquier lado (como el botón de práctica), choca con los botones flotantes y con las otras mascotas
+ * y las empuja, reacciona a lo que pasa y, cuando se juntan con otra, se saluda (ver `mascot-interplay`). `slot` es su lugar en la fila:
+ * si nunca la movieron, arranca al lado de las que salieron antes, no encima.
+ */
+function ActiveMascot({ id, slot }: { id: MascotId; slot: number }) {
+  const mascot = { id, ...MASCOTS[id] }
+  const state = useMascotState(id)
   const reduceMotion = useMediaQuery(REDUCED_MOTION_MEDIA_QUERY)
   const isMobile = useMediaQuery('(max-width: 1100px)')
+  const size = isMobile ? SIZE_MOBILE : SIZE_DESKTOP
   const { position, dragging, handlers, consumeDragClick } = useDraggablePosition({
-    storageKey: POSITION_KEY,
-    size: isMobile ? SIZE_MOBILE : SIZE_DESKTOP,
+    storageKey: mascotPositionKey(id),
+    size,
     corner: 'left',
+    slide: slot * (size + 8),
     group: 'fab',
   })
   const [looking, setLooking] = useState(false)
@@ -89,6 +90,13 @@ function ActiveMascot() {
     wasDraggingRef.current = dragging
   }, [dragging, hold])
 
+  // Cada una avisa dónde está (y si la están arrastrando): con eso se saludan al juntarse y se enojan si las empujan.
+  useEffect(() => {
+    reportMascotBody(id, { x: position.x, y: position.y, size, dragging })
+  }, [id, position.x, position.y, size, dragging])
+
+  useEffect(() => () => forgetMascotBody(id), [id])
+
   // Saluda la primera vez que alguien abre la app.
   useEffect(() => {
     try {
@@ -114,7 +122,7 @@ function ActiveMascot() {
     const interval = setInterval(() => {
       setLooking(true)
       lookTimer = setTimeout(() => setLooking(false), LOOK_FOR_MS)
-    }, LOOK_EVERY_MS)
+    }, LOOK_EVERY_MS + slot * 7000)
 
     return () => {
       clearInterval(interval)
@@ -123,11 +131,11 @@ function ActiveMascot() {
         clearTimeout(lookTimer)
       }
     }
-  }, [state])
+  }, [state, slot])
 
   const rest = () => {
     setRestAsked(false)
-    restMascot()
+    restMascot(id)
   }
 
   // Agarrada va saltando; si no, lo que marque el estado (y en reposo, a veces, mirando alrededor).
@@ -178,7 +186,7 @@ function ActiveMascot() {
               return
             }
 
-            reactMascot('waving', 2200)
+            reactMascot('waving', 2200, id)
           }}
         >
           {/* Al agarrarla se agranda y se ladea; al soltarla, rebota. */}
@@ -191,7 +199,7 @@ function ActiveMascot() {
             onAnimationEnd={() => setDropping(false)}
           >
             <img
-              src={`${mascot.folder}/${reduceMotion ? STILL : ANIMATION[shown]}`}
+              src={`${mascot.folder}/${reduceMotion ? MASCOT_STILL : MASCOT_ANIMATION[shown]}`}
               alt=""
               draggable={false}
               className={cx(

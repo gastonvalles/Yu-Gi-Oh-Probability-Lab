@@ -14,6 +14,7 @@ import { buildPracticeDeck } from '../probability/practice'
 import { CardDetailModal } from '../card-detail/CardDetailModal'
 import { DeckBuilderStep } from './DeckBuilderStep'
 import { LifeCalculatorFab } from '../life/LifeCalculatorFab'
+import { MascotsModal } from '../mascot/MascotsModal'
 import { AppShell } from '../shell/AppShell'
 import { cx } from '../ui/cx'
 import { DraggableFab } from '../ui/DraggableFab'
@@ -83,6 +84,7 @@ export function DeckModeScreen() {
   const patternCount = controller.probability.patterns.length
   const [globalPracticeOpen, setGlobalPracticeOpen] = useState(false)
   const [lifeOpen, setLifeOpen] = useState(false)
+  const [mascotsOpen, setMascotsOpen] = useState(false)
   const recommendedStep = useMemo(
     () => getRecommendedStep(mainDeckCount, hasCompletedRoleStep, patternCount),
     [hasCompletedRoleStep, mainDeckCount, patternCount],
@@ -187,6 +189,7 @@ export function DeckModeScreen() {
     (key: string) => {
       if (key === 'practice') setGlobalPracticeOpen(true)
       else if (key === 'life') setLifeOpen(true)
+      else if (key === 'mascots') setMascotsOpen(true)
       else if (isDeckWorkflowStepKey(key)) handleStepChange(key)
     },
     [handleStepChange],
@@ -317,6 +320,9 @@ export function DeckModeScreen() {
 
       {/* Calculadora de LP: botón flotante que la abre encima de cualquier pantalla (también se abre desde el menú). */}
       <LifeCalculatorFab open={lifeOpen} onOpen={() => setLifeOpen(true)} onClose={() => setLifeOpen(false)} />
+
+      {/* Las mascotas: se abre desde el menú y deja sacar hasta tres a la vez. */}
+      <MascotsModal isOpen={mascotsOpen} onClose={() => setMascotsOpen(false)} />
     </>
   )
 }

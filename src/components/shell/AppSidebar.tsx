@@ -3,7 +3,6 @@ import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { LanguageSwitcher } from '../ui/LanguageSwitcher'
-import { MascotPicker } from '../mascot/MascotPicker'
 import { AppBrand } from './AppBrand'
 import type { NavGroup } from './nav-model'
 import { RAIL_LABEL, RAIL_ROW, RAIL_SLOT } from './rail'
@@ -18,18 +17,17 @@ interface AppSidebarProps {
   className?: string
 }
 
-/** Abajo del todo del menú (y del cajón del celular): el idioma y las mascotas. */
+/** Abajo del todo del menú (y del cajón del celular): el idioma. Las mascotas son una herramienta más del menú (abren su modal). */
 export function MenuTools({ className }: { className?: string }) {
   return (
     <div className={cx('flex items-center justify-between gap-2', className)}>
       <LanguageSwitcher />
-      <MascotPicker placement="above" />
     </div>
   )
 }
 
 /**
- * El menú lateral de escritorio, en lugar de la barra de arriba: la marca, los destinos agrupados (`SidebarNav`), el idioma y las mascotas,
+ * El menú lateral de escritorio, en lugar de la barra de arriba: la marca, los destinos agrupados (`SidebarNav`), el idioma,
  * y el botón para contraerlo a una columna de íconos. Ocupa el alto que le da el padre. Abierto y contraído es la misma pieza con otro ancho
  * (ver `rail.ts`): el ícono de cada fila no se mueve, los rótulos se desvanecen y el menú los recorta, y el ancho se anima con una sola curva
  * (`--sidebar-duration` y `--sidebar-ease`, las mismas con las que se corren la mascota y los botones flotantes).
@@ -49,7 +47,7 @@ export function AppSidebar({ groups, activeKey, onSelect, collapsed, onToggleCol
       </div>
       <SidebarNav groups={groups} activeKey={activeKey} onSelect={onSelect} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pb-3 [scrollbar-width:thin]" />
       <div className="shrink-0 px-3 pb-3">
-        {/* Contraído, el idioma y las mascotas se desvanecen y no se pueden tocar ni enfocar; el renglón conserva su alto para que la flecha de abajo no se mueva. */}
+        {/* Contraído, el idioma se desvanece y no se pueden tocar ni enfocar; el renglón conserva su alto para que la flecha de abajo no se mueva. */}
         <MenuTools className="border-t border-border-subtle pb-2 pt-3 transition-[opacity,visibility] duration-150 group-data-[collapsed=true]/sidebar:invisible group-data-[collapsed=true]/sidebar:opacity-0 motion-reduce:transition-none" />
         <button
           type="button"
