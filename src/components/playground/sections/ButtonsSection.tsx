@@ -84,7 +84,7 @@ export function ButtonsSection() {
       </Specimen>
 
       <SpecimenGrid>
-        <Specimen title="IconButton" note={<>Un botón sin texto va <b>sin fondo y siempre blanco</b>: el aviso es un resplandor al pasar el mouse (el único con relleno es <Tag>primary</Tag>, la acción principal de una barra). Siempre con <Tag>aria-label</Tag>. Archivo: <Tag>ui/IconButton.tsx</Tag></>} layout="column">
+        <Specimen title="IconButton" note={<>Un botón sin texto va <b>sin fondo y siempre blanco</b>: el aviso es que se pone <b>verde</b> (con un resplandor) al pasar el mouse y mientras está seleccionado (el único con relleno es <Tag>primary</Tag>, la acción principal de una barra). Siempre con <Tag>aria-label</Tag>. Archivo: <Tag>ui/IconButton.tsx</Tag></>} layout="column">
           {ICON_TONES.map((tone) => (
             <div key={tone} className="flex items-center gap-3">
               <span className="w-14"><Tag>{tone}</Tag></span>

@@ -151,7 +151,7 @@ export function MobileCardSearch({
               <button
                 type="button"
                 aria-label={t('search.clearText')}
-                className="absolute right-0 top-0 grid h-11 w-11 place-items-center text-white"
+                className="absolute right-0 top-0 grid h-11 w-11 place-items-center text-white transition-colors duration-150 hover:text-success focus-visible:text-success focus-visible:outline-none"
                 onClick={() => {
                   actions.onQueryChange('')
                   inputRef.current?.focus()
@@ -202,14 +202,14 @@ export function MobileCardSearch({
               <button
                 key={chip.key}
                 type="button"
-                className={`${filterChip} min-h-9`}
+                className={`${filterChip} group/chip min-h-9`}
                 onClick={() => actions.onFilterChange(chip.updates)}
                 aria-label={t('search.chip.removeAria', { label: chip.label, value: chip.value })}
               >
                 <span className="truncate text-foreground">
                   {chip.label}: {chip.value}
                 </span>
-                <CloseIcon className="h-3 w-3 shrink-0 text-white" />
+                <CloseIcon className="h-3 w-3 shrink-0 text-white transition-colors duration-150 group-hover/chip:text-success" />
               </button>
             ))}
           </div>

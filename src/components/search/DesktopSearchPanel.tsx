@@ -178,14 +178,14 @@ export function DesktopSearchPanel({
               <button
                 key={chip.key}
                 type="button"
-                className={filterChip}
+                className={`${filterChip} group/chip`}
                 onClick={() => actions.onFilterChange(chip.updates)}
                 title={t('search.chip.removeTitle', { label: chip.label.toLowerCase() })}
               >
                 <span className="truncate text-foreground">
                   {chip.label}: {chip.value}
                 </span>
-                <CloseIcon className="h-3 w-3 shrink-0 text-white" />
+                <CloseIcon className="h-3 w-3 shrink-0 text-white transition-colors duration-150 group-hover/chip:text-success" />
               </button>
             ))}
           </div>
