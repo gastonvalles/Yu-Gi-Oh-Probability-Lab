@@ -99,9 +99,12 @@ const EMPTY_IDS: ReadonlySet<string> = new Set()
 const FIRST_DEAL_MS = 90
 const NEXT_DEAL_MS = 55
 
-/** Celda del campo o de una pila: borde punteado; se enciende con una carta arrastrada encima y respira en verde cuando se está eligiendo. */
-const CELL = [
-  'relative aspect-[421/614] min-w-0 border border-dashed border-tint/20 transition-[color,background-color,border-color,box-shadow] duration-150',
+/**
+ * Lo que tiene toda casilla del campo o de una pila: borde punteado; se enciende con una carta arrastrada encima y respira en verde cuando se está eligiendo.
+ * La forma va aparte: ver `CELL` y `CELL_SQUARE`.
+ */
+const CELL_LOOK = [
+  'relative min-w-0 border border-dashed border-tint/20 transition-[color,background-color,border-color,box-shadow] duration-150',
   // Con una carta arrastrada encima: borde parejo, relleno y resplandor violeta.
   'data-[over=true]:border-solid data-[over=true]:border-primary-hover data-[over=true]:bg-primary/25 data-[over=true]:shadow-[0_0_0_2px_rgb(var(--primary-hover-rgb)/0.55),0_0_24px_rgb(var(--primary-hover-rgb)/0.6),inset_0_0_18px_rgb(var(--primary-hover-rgb)/0.35)]',
   // Una zona que se puede elegir respira en verde y un aro se le expande desde el borde.
@@ -111,12 +114,22 @@ const CELL = [
   'motion-reduce:animate-none motion-reduce:after:hidden motion-reduce:data-[pick=true]:shadow-[0_0_0_2px_rgb(var(--accent-rgb)/0.75),0_0_16px_rgb(var(--accent-rgb)/0.45)]',
 ].join(' ')
 
+/** La zona de campo y las pilas (las columnas de los costados): del tamaño justo de una carta, que nunca se acuesta. */
+const CELL = `aspect-[421/614] ${CELL_LOOK}`
 /**
- * Carta en una zona del campo: arrastrable, sin menú de imagen ni selección (así el dedo no corta el arrastre).
- * El brillo (salida verde / problema rojo), la atenuación, el destello y la marca de objetivo llegan por data-attributes.
+ * Las zonas del centro (monstruos, Mágicas y Trampas, Zonas Extra) son cuadradas, del lado largo de una carta: la carta entra parada (el alto de la casilla)
+ * o acostada en defensa (el ancho de la casilla) con el mismo tamaño y sin salirse, así que dos cartas en defensa vecinas no se pisan ni se achican.
+ */
+const CELL_SQUARE = `aspect-square ${CELL_LOOK}`
+/** El ancho de una carta como parte de su alto (421 × 614 px): una carta parada en una casilla cuadrada mide ese tanto de ancho. */
+const CARD_WIDTH_PER_HEIGHT = 421 / 614
+
+/**
+ * Carta en una zona del campo: arrastrable, sin menú de imagen ni selección (así el dedo no corta el arrastre). La posición y el tamaño los pone
+ * `PlacedCard`. El brillo (salida verde / problema rojo), la atenuación, el destello y la marca de objetivo llegan por data-attributes.
  */
 const MAT_CARD = [
-  'relative block aspect-[421/614] w-full cursor-grab touch-none select-none overflow-hidden bg-input outline-none',
+  'block cursor-grab touch-none select-none overflow-hidden bg-input outline-none',
   '[-webkit-touch-callout:none] [-webkit-user-select:none] [&>*]:pointer-events-none [&_img]:[-webkit-user-drag:none]',
   '[--card-shadow:0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]',
   'shadow-[0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]',
@@ -853,7 +866,7 @@ export function PracticeMat({
         data-over={over === drop || handOver === drop ? 'true' : 'false'}
         data-pick={pickableZone || pickableTribute ? 'true' : 'false'}
         data-chosen={chosen ? 'true' : 'false'}
-        className={CELL}
+        className={spot === 'field' ? CELL : CELL_SQUARE}
         style={{ gridArea: area }}
         onClick={pickableZone ? () => pickZone(spot, index) : undefined}
         onKeyDown={pickableZone ? (event) => activate(event, () => pickZone(spot, index)) : undefined}
@@ -919,7 +932,8 @@ export function PracticeMat({
     const field = fieldRef.current
     const zone = field?.querySelector('[data-drop="mz:0"]')
 
-    return field && zone ? { rect: field.getBoundingClientRect(), zoneWidth: zone.getBoundingClientRect().width } : null
+    // La casilla es cuadrada y la carta parada ocupa su alto: de ahí sale cuánto mide de ancho.
+    return field && zone ? { rect: field.getBoundingClientRect(), zoneWidth: zone.getBoundingClientRect().height * CARD_WIDTH_PER_HEIGHT } : null
   }, [])
   // La ficha del menú se arrastra como una carta del tamaño de una zona del campo.
   const tokenSource = useMemo<MatDragSource>(
@@ -1003,11 +1017,12 @@ export function PracticeMat({
       </div>
 
       <div className="col-start-1 row-start-2 flex min-h-0 flex-col gap-2 overflow-y-auto overflow-x-hidden px-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] min-[1101px]:px-4 min-[1101px]:pb-4 min-[1101px]:pt-2">
-        {/* El campo en todos los tamaños: a la izquierda la zona de campo y el Extra Deck; a la derecha, de arriba abajo, destierro, cementerio y deck (como pidió Gastón: el Banish arriba del GY); las fases y las zonas extra entre medio. */}
+        {/* El campo en todos los tamaños: a la izquierda la zona de campo y el Extra Deck; a la derecha, de arriba abajo, destierro, cementerio y deck (como pidió Gastón: el Banish arriba del GY); las fases y las zonas extra entre medio.
+            Las cinco columnas del centro son cuadradas (una carta acostada entra en su zona sin pisar a la vecina) y las de los costados miden lo justo de una carta (0,6857 de una del centro), así que todas las cartas miden lo mismo. */}
         <div
           ref={fieldRef}
           // `my-auto`: el aire que sobra se reparte arriba y abajo del campo (ni pegado a la barra ni un hueco antes de la mano).
-          className="relative my-auto grid grid-cols-7 gap-1 [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[repeat(7,minmax(0,5.5rem))]"
+          className="relative my-auto grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,5.485rem)_repeat(5,minmax(0,8rem))_minmax(0,5.485rem)]"
           aria-label={t('practice.mat.field')}
         >
           {cell('field', 0, 'fld')}
@@ -1297,8 +1312,8 @@ interface PlacedCardProps {
 
 /**
  * Carta en una zona del campo: es tuya, así que boca abajo se ve su imagen atenuada (como en DuelingBook); en defensa o
- * colocada en una zona de monstruo se acuesta a su tamaño y sobresale de la casilla, como en la mesa real; contadores,
- * materiales y objetivo como etiquetas. Al darla vuelta se angosta y se abre; los contadores y los materiales rebotan al cambiar.
+ * colocada en una zona de monstruo se acuesta a su tamaño y dentro de su casilla (cuadrada, ver `CELL_SQUARE`): sin achicarse ni pisar a la
+ * de al lado; contadores, materiales y objetivo como etiquetas. Al darla vuelta se angosta y se abre; los contadores y los materiales rebotan al cambiar.
  */
 function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, chosen, targeted, selected, pending, bind, onOpen }: PlacedCardProps) {
   // El nombre y lo que lo acompaña (boca abajo o en defensa, etiqueta de elegida, con target): cada pedazo es su mensaje.
@@ -1331,7 +1346,8 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, 
       aria-label={pending ? undefined : label}
       title={pending ? undefined : label}
       // Rotación en `transform` (no en `rotate`): así el vuelo entre zonas la lee y la compone bien.
-      className={cx(MAT_CARD, 'absolute inset-0 h-full', sideways && 'z-1 [transform:rotate(90deg)]', pending && 'pointer-events-none')}
+      // Parada, la carta ocupa el alto de la casilla y queda centrada (en la zona de campo, de la forma de una carta, es la casilla entera); acostada gira sobre su centro y entra justo.
+      className={cx(MAT_CARD, 'absolute inset-x-0 top-0 mx-auto aspect-[421/614]', spot === 'field' ? 'w-full' : 'w-[68.57%]', sideways && '[transform:rotate(90deg)]', pending && 'pointer-events-none')}
       // El color de su aro: el del destaque, o el rojo de la mira.
       style={fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red')}
       data-card-id={placed.id}

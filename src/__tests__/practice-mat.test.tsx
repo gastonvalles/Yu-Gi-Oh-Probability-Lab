@@ -706,6 +706,40 @@ describe('la mesa de práctica', () => {
     expect(within(screen.getByRole('dialog', { name: 'Extra · 1' })).getByRole('button', { name: 'Zeus' })).toHaveClass('rounded-none')
   })
 
+  it('las zonas del centro son cuadradas y las de los costados, de carta: acostada en defensa, la carta mide lo mismo que parada y no pisa a la vecina', () => {
+    const initial = replayMat(INITIAL, [
+      { type: 'place', id: 'card-1-1', zone: 'mz', index: 0, pos: 'def' },
+      { type: 'place', id: 'card-2-1', zone: 'mz', index: 1, pos: 'atk' },
+      { type: 'place', id: 'card-3-1', zone: 'field', index: 0, pos: 'atk' },
+    ])
+    render(<Harness initial={initial} />)
+
+    // Cuadradas: la carta parada ocupa el alto de la casilla y la acostada, el ancho; así dos en defensa, una al lado de la otra, no se tocan.
+    for (const name of ['Zona de monstruo 1', 'Zona de magia y trampa 1', 'Zona extra de monstruo 1']) {
+      expect(zone(name)).toHaveClass('aspect-square')
+    }
+
+    // Las de los costados tienen la forma de una carta (la de campo y las pilas nunca se acuestan), y miden 0,6857 de una del centro.
+    expect(screen.getByLabelText('Campo')).toHaveClass('grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)]')
+    for (const cell of [zone('Zona de campo'), ...['Main: 1', 'Extra: 1', 'GY: 0', 'Banish: 0'].map((name) => screen.getByRole('button', { name }))]) {
+      expect(cell).toHaveClass('aspect-[421/614]')
+      expect(cell).not.toHaveClass('aspect-square')
+    }
+
+    // En una casilla cuadrada la carta mide el alto de la casilla y 421/614 de ancho, parada o acostada; sólo cambia el giro.
+    const sideways = within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom, en defensa' })
+    const upright = within(zone('Zona de monstruo 2')).getByRole('button', { name: 'Maxx C' })
+
+    for (const placed of [sideways, upright]) {
+      expect(placed).toHaveClass('aspect-[421/614]', 'w-[68.57%]')
+    }
+
+    expect(sideways).toHaveClass('[transform:rotate(90deg)]')
+    expect(upright).not.toHaveClass('[transform:rotate(90deg)]')
+    // La casilla de campo tiene el tamaño de la carta: la llena.
+    expect(within(zone('Zona de campo')).getByRole('button', { name: 'Called by the Grave' })).toHaveClass('w-full')
+  })
+
   describe('los controles del replay (como los de YGOPocket)', () => {
     // Mano inicial, robar, y las fases Battle, End y Draw (que empieza el turno 2).
     const ACTIONS: MatAction[] = [{ type: 'draw', count: 1 }, { type: 'phase', phase: 'battle' }, { type: 'phase', phase: 'end' }, { type: 'phase', phase: 'draw' }]
