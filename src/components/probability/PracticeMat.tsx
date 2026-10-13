@@ -938,7 +938,8 @@ export function PracticeMat({
       aria-label={t('practice.mat.label')}
       className={cx(
         // `select-none`: un arrastre que arranca entre dos cartas no debe pintar texto seleccionado por toda la mesa.
-        'grid h-full min-h-0 select-none grid-rows-[auto_minmax(0,1fr)] [background:radial-gradient(120%_60%_at_50%_0%,rgb(var(--primary-rgb)/0.16),transparent_70%),rgb(var(--background-rgb))] min-[1101px]:grid-cols-[minmax(0,1fr)_20rem]',
+        // `relative isolate`: las cartas grandes del centro se acomodan sobre la mesa (no sobre la pantalla) y sus capas no se mezclan con las de afuera.
+        'relative isolate grid h-full min-h-0 select-none grid-rows-[auto_minmax(0,1fr)] [background:radial-gradient(120%_60%_at_50%_0%,rgb(var(--primary-rgb)/0.16),transparent_70%),rgb(var(--background-rgb))] min-[1101px]:grid-cols-[minmax(0,1fr)_20rem]',
         PRACTICE_PALETTE,
       )}
     >
@@ -1159,19 +1160,17 @@ export function PracticeMat({
 
       {inspected ? <CardDetailOverlay key={inspected.id} name={cardOf(inspected.id).name} card={cardOf(inspected.id).apiCard} origin={inspected.rect} onClose={() => setInspected(null)} /> : null}
 
-      {/* Activar, mostrar o declarar (y, al reproducir un combo, lo que mueve cada paso): las cartas aparecen grandes en el centro de la pantalla, con su marco de color, su nombre y lo que pasó arriba, y se desvanecen. Marcar un objetivo no las agranda: ahí sólo cae la mira. */}
-      {stage
-        ? createPortal(
-            <Spotlight
-              key={stage.key}
-              kind={stage.kind}
-              cards={stage.ids.map((id) => ({ id, name: cardOf(id).name, art: artOf(cardOf(id)) }))}
-              caption={steps[stage.step - 1] ?? null}
-              flip={stage.flip}
-            />,
-            document.body,
-          )
-        : null}
+      {/* Activar, mostrar o declarar (y, al reproducir un combo, lo que mueve cada paso): las cartas aparecen grandes en el centro de la mesa, con su marco de color, su nombre y lo que pasó arriba, y se desvanecen. Marcar un objetivo no las agranda: ahí sólo cae la mira. En escritorio el centro es el del campo, sin el panel lateral (20 rem, como en la grilla de arriba). */}
+      {stage ? (
+        <Spotlight
+          key={stage.key}
+          kind={stage.kind}
+          cards={stage.ids.map((id) => ({ id, name: cardOf(id).name, art: artOf(cardOf(id)) }))}
+          caption={steps[stage.step - 1] ?? null}
+          flip={stage.flip}
+          className="absolute inset-y-0 left-0 right-0 z-[120] min-[1101px]:right-[20rem]"
+        />
+      ) : null}
 
       {drag
         ? createPortal(

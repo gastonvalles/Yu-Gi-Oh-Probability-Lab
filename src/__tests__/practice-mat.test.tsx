@@ -419,6 +419,8 @@ describe('la mesa de práctica', () => {
     const spotlight = () => document.querySelector('[data-activation]')
     fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
     expect(spotlight()).toHaveAttribute('data-kind', 'activate')
+    // Las cartas grandes se dibujan sobre la mesa (centradas en ella), no en un portal sobre toda la pantalla.
+    expect(screen.getByRole('region', { name: 'Mesa de práctica' })).toContainElement(spotlight() as HTMLElement)
     expect(spotlight()).toHaveTextContent(/Ash Blossom/)
     expect(spotlight()?.querySelector('[data-fx="frame"]')).toHaveAttribute('data-shine', 'true')
 
