@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { getMascotState, resetMascotChoiceForTests, resetMascotForTests, summonMascot } from '../app/mascot'
 import { resetMascotInterplayForTests } from '../app/mascot-interplay'
+import { NO_SHELL_INSETS, setShellInsets } from '../app/shell-layout'
 import { Mascot } from '../components/mascot/Mascot'
 
 beforeEach(() => {
@@ -85,5 +86,34 @@ describe('varias mascotas afuera', () => {
     expect(getMascotState('cupsy')).toBe('failed')
     // La que se arrastra salta (como siempre que se agarra una mascota).
     expect(imageOf('Winged Kuriboh')).toBe('/mascot/winged-kuriboh/jumping.webp')
+  })
+
+  it('se las puede dejar en cualquier lugar de la pantalla: no se pegan al borde y nada las esquiva, ni el menú ni el pie', () => {
+    // Menú lateral abierto y pie, como en escritorio.
+    act(() => setShellInsets({ left: 240, bottom: 64 }))
+
+    try {
+      render(<Mascot />)
+      const drag = (dx: number, dy: number) => {
+        fireEvent.pointerDown(mascotButton('Cupsy'), { button: 0, pointerId: 1, clientX: 100, clientY: 100 })
+        fireEvent.pointerMove(mascotButton('Cupsy'), { pointerId: 1, clientX: 100 + dx, clientY: 100 + dy })
+        fireEvent.pointerUp(mascotButton('Cupsy'), { pointerId: 1, clientX: 100 + dx, clientY: 100 + dy })
+      }
+
+      // Si nadie la movió, arranca en el rincón libre: al lado del menú y arriba del pie.
+      const start = spot('Cupsy')
+      expect(start.x).toBeGreaterThanOrEqual(240)
+
+      // La lleva al medio de la pantalla y la suelta: se queda exactamente ahí (no se pega al costado).
+      drag(300, -250)
+      expect(spot('Cupsy')).toEqual({ x: start.x + 300, y: start.y - 250 })
+      expect(JSON.parse(localStorage.getItem('ygo-lab:mascot-position:cupsy')!)).toEqual(spot('Cupsy'))
+
+      // La lleva encima del menú y contra el pie: sólo la frena el borde de la ventana, sin margen.
+      drag(-2000, 2000)
+      expect(spot('Cupsy')).toEqual({ x: 0, y: window.innerHeight - 104 })
+    } finally {
+      act(() => setShellInsets(NO_SHELL_INSETS))
+    }
   })
 })
