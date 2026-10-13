@@ -42,6 +42,7 @@ import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { CloseButton } from '../ui/IconButton'
 import { ProgressRing } from '../ui/ProgressRing'
+import { Segmented } from '../ui/Segmented'
 import { Skeleton } from '../ui/Skeleton'
 import { chip, field } from '../ui/surfaces'
 import { TONE } from '../ui/tone'
@@ -60,6 +61,9 @@ interface DeckImportDrawerProps {
    */
   target?: 'builder' | 'comparison'
 }
+
+/** Cómo se trae la lista: un archivo (.txt, .json, .ydk) o el texto pegado. */
+type ImportMethod = 'file' | 'text'
 
 const FILE_ACCEPT = '.txt,.json,.ydk,application/json,text/plain'
 /** Una lista de deck pesa unos pocos KB: por encima de esto no es una lista y sólo trabaría la pestaña. */
@@ -190,7 +194,7 @@ export function DeckImportDrawer({
   const [isProcessing, setIsProcessing] = useState(false)
   const [isReplaceConfirmOpen, setIsReplaceConfirmOpen] = useState(false)
   const [isDragActive, setIsDragActive] = useState(false)
-  const [manualFallbackOpen, setManualFallbackOpen] = useState(false)
+  const [method, setMethod] = useState<ImportMethod>('file')
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const asideRef = useRef<HTMLElement | null>(null)
@@ -200,6 +204,10 @@ export function DeckImportDrawer({
   const canApplyPreview = Boolean(preview && preview.importedCardCount > 0)
   const applyButtonLabel =
     target === 'comparison' ? t('deck.import.apply.compare') : hasExistingDeck ? t('deck.import.apply.replace') : t('deck.import.apply.import')
+  const methodOptions: ReadonlyArray<{ value: ImportMethod; label: string }> = [
+    { value: 'file', label: t('deck.import.method.file') },
+    { value: 'text', label: t('deck.import.pasteText') },
+  ]
 
   useEffect(() => {
     if (!isOpen) {
@@ -209,7 +217,7 @@ export function DeckImportDrawer({
       setIsProcessing(false)
       setIsReplaceConfirmOpen(false)
       setIsDragActive(false)
-      setManualFallbackOpen(false)
+      setMethod('file')
       setSelectedFileName(null)
     }
   }, [isOpen])
@@ -357,6 +365,13 @@ export function DeckImportDrawer({
     onClose()
   }
 
+  // Volver a elegir: la vista previa se descarta, pero el método y el texto pegado quedan como estaban para corregirlo (cerrar la ventana los borra).
+  const handleBack = () => {
+    setPreview(null)
+    setFormError(null)
+    setSelectedFileName(null)
+  }
+
   const applyImport = () => {
     if (!preview || preview.importedCardCount === 0) {
       return
@@ -423,9 +438,9 @@ export function DeckImportDrawer({
           role="dialog"
           aria-modal="true"
           aria-label={t('deck.import.dialog')}
-          className="absolute right-0 top-0 grid h-full w-full max-w-136 grid-rows-[auto_minmax(0,1fr)] gap-0 border-l outline-none border-border-subtle bg-card-background p-0 shadow-overlay"
+          className="absolute right-0 top-0 flex h-full w-full max-w-136 flex-col border-l outline-none border-border-subtle bg-card-background p-0 shadow-overlay"
         >
-          <header className="flex items-start justify-between gap-3 border-b border-border-subtle px-4 py-3.5">
+          <header className="flex shrink-0 items-start justify-between gap-3 border-b border-border-subtle px-4 py-3.5">
             <div className="flex min-w-0 items-start gap-3">
               <Icon name="upload" size={22} className={cx('mt-1 shrink-0', TONE.brand.text)} />
               <div className="min-w-0">
@@ -438,93 +453,77 @@ export function DeckImportDrawer({
             <CloseButton size="sm" aria-label={t('deck.import.close')} onClick={handleClose} />
           </header>
 
-          <div className="min-h-0 overflow-y-auto p-4">
-            <div className="grid gap-4">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
+            <div className="flex min-h-full flex-col gap-4">
+              {/* Siempre montada (la zona de soltar no lo está mientras carga): así lo que pasa se anuncia. */}
+              <span aria-live="polite" className="sr-only">
+                {isProcessing
+                  ? t('deck.import.live.processing')
+                  : isDragActive
+                    ? t('deck.import.live.dragging')
+                    : selectedFileName
+                      ? t('deck.import.live.loaded', { name: selectedFileName })
+                      : ''}
+              </span>
+
               {!preview && !isProcessing ? (
-                <>
-                <article className="grid gap-2.5">
-                  <div
-                    className={[
-                      'grid gap-3 rounded-card border border-dashed px-4 py-6 text-center transition-colors',
-                      isDragActive ? 'border-primary bg-primary/12' : 'border-border',
-                    ].join(' ')}
-                    onDragEnter={(event) => {
-                      event.preventDefault()
-                      setIsDragActive(true)
+                // Dos formas de importar, como opciones parejas: el archivo o el texto pegado (la que se elige llena el resto de la ventana).
+                <div className="flex min-h-0 flex-1 flex-col gap-4">
+                  <Segmented
+                    value={method}
+                    onChange={(next) => {
+                      setMethod(next)
+                      setFormError(null)
                     }}
-                    onDragOver={(event) => {
-                      event.preventDefault()
-                      setIsDragActive(true)
-                    }}
-                    onDragLeave={(event) => {
-                      event.preventDefault()
-                      if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
-                        return
-                      }
-                      setIsDragActive(false)
-                    }}
-                    onDrop={handleDrop}
-                  >
-                    <span aria-live="polite" className="sr-only">
-                      {isProcessing
-                        ? t('deck.import.live.processing')
-                        : isDragActive
-                          ? t('deck.import.live.dragging')
-                          : selectedFileName
-                            ? t('deck.import.live.loaded', { name: selectedFileName })
-                            : ''}
-                    </span>
-                    <div className="grid justify-items-center gap-2">
-                      <Icon name="upload" size={28} className="text-primary-soft/70" />
-                      <strong className="text-body font-semibold text-foreground">{t('deck.import.drop')}</strong>
-                    </div>
+                    options={methodOptions}
+                    label={t('deck.import.method.label')}
+                    fullWidth
+                  />
 
-                    <div className="flex flex-wrap justify-center gap-2">
-                      <Button variant="primary" size="md" onClick={handleChooseFileClick} disabled={isProcessing}>
-                        {isProcessing ? t('deck.import.processing') : t('deck.import.chooseFile')}
-                      </Button>
-                    </div>
-
-                    <div className="flex flex-wrap justify-center gap-1.5">
-                      <span className={`${chip.base} px-2 py-1 text-micro`}>.txt</span>
-                      <span className={`${chip.base} px-2 py-1 text-micro`}>.json</span>
-                      <span className={`${chip.base} px-2 py-1 text-micro`}>.ydk</span>
-                    </div>
-
-                    {selectedFileName ? (
-                      <span className={`${chip.accent} justify-self-center px-2 py-1 text-micro`}>
-                        {t('deck.import.selectedFile', { name: selectedFileName })}
-                      </span>
-                    ) : null}
-
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept={FILE_ACCEPT}
-                      className="hidden"
-                      onChange={handleFileInputChange}
-                    />
-                  </div>
-
-                  {formError ? (
-                    <Callout tone="danger">{formError}</Callout>
-                  ) : null}
-                </article>
-
-                <article className="grid gap-2 border-t border-border-subtle pt-4">
-                  <div className="flex items-center justify-end gap-3">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      icon="file"
-                      onClick={() => setManualFallbackOpen((current) => !current)}
+                  {method === 'file' ? (
+                    <div
+                      className={[
+                        'grid content-center justify-items-center gap-3 rounded-card border border-dashed px-4 py-10 text-center transition-colors pointer-coarse:flex-1',
+                        isDragActive ? 'border-primary bg-primary/12' : 'border-border pointer-coarse:border-transparent',
+                      ].join(' ')}
+                      onDragEnter={(event) => {
+                        event.preventDefault()
+                        setIsDragActive(true)
+                      }}
+                      onDragOver={(event) => {
+                        event.preventDefault()
+                        setIsDragActive(true)
+                      }}
+                      onDragLeave={(event) => {
+                        event.preventDefault()
+                        if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                          return
+                        }
+                        setIsDragActive(false)
+                      }}
+                      onDrop={handleDrop}
                     >
-                      {manualFallbackOpen ? t('deck.import.hideText') : t('deck.import.pasteText')}
-                    </Button>
-                  </div>
+                      <div className="grid justify-items-center gap-2">
+                        <Icon name="upload" size={28} className="text-primary-soft/70" />
+                        {/* En el celular no se arrastra nada: el texto de arrastrar es sólo de los punteros finos (mouse). */}
+                        <strong className="text-body font-semibold text-foreground pointer-coarse:hidden">{t('deck.import.drop')}</strong>
+                        <strong className="hidden text-body font-semibold text-foreground pointer-coarse:block">{t('deck.import.dropTouch')}</strong>
+                      </div>
 
-                  {manualFallbackOpen ? (
-                    <div className="grid gap-2.5">
+                      <Button variant="primary" size="md" onClick={handleChooseFileClick}>
+                        {t('deck.import.chooseFile')}
+                      </Button>
+
+                      <p className="m-0 text-micro text-soft">{t('deck.import.formats')}</p>
+
+                      {selectedFileName ? (
+                        <span className={`${chip.accent} px-2 py-1 text-micro`}>{t('deck.import.selectedFile', { name: selectedFileName })}</span>
+                      ) : null}
+
+                      <input ref={fileInputRef} type="file" accept={FILE_ACCEPT} className="hidden" onChange={handleFileInputChange} />
+                    </div>
+                  ) : (
+                    <div className="flex min-h-0 flex-1 flex-col gap-2.5">
                       <textarea
                         aria-label={t('deck.import.listLabel')}
                         // Una lista real pesa unos pocos KB: el tope evita pegar un archivo gigante por error.
@@ -536,38 +535,38 @@ export function DeckImportDrawer({
                           setFormError(null)
                         }}
                         placeholder={'3 Ash Blossom & Joyous Spring\n3 Maxx "C"\n2 Called by the Grave\n\nExtra Deck:\n1 S:P Little Knight'}
-                        className={`${field} min-h-52 w-full resize-y px-3 py-2 text-body leading-tight`}
+                        className={`${field} min-h-52 w-full flex-1 resize-none px-3 py-2 text-body leading-tight placeholder:text-soft`}
                       />
 
+                      <p className="m-0 text-micro text-soft">{t('deck.import.pasteHint')}</p>
+
                       <div className="flex flex-wrap items-center justify-end gap-2">
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            variant="tertiary"
-                            size="sm"
-                            onClick={() => {
-                              setInputValue('')
-                              setPreview(null)
-                              setFormError(null)
-                            }}
-                          >
-                            {t('deck.import.clear')}
-                          </Button>
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => {
-                              void processManualText()
-                            }}
-                            disabled={isProcessing}
-                          >
-                            {isProcessing ? t('deck.import.processing') : t('deck.import.processText')}
-                          </Button>
-                        </div>
+                        <Button
+                          variant="tertiary"
+                          size="sm"
+                          onClick={() => {
+                            setInputValue('')
+                            setPreview(null)
+                            setFormError(null)
+                          }}
+                        >
+                          {t('deck.import.clear')}
+                        </Button>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => {
+                            void processManualText()
+                          }}
+                        >
+                          {t('deck.import.processText')}
+                        </Button>
                       </div>
                     </div>
-                  ) : null}
-                </article>
-                </>
+                  )}
+
+                  {formError ? <Callout tone="danger">{formError}</Callout> : null}
+                </div>
               ) : null}
 
               {isProcessing ? (
@@ -583,7 +582,7 @@ export function DeckImportDrawer({
                       <Skeleton radius="chip" className="h-7 w-40" />
                     </div>
 
-                    <div className="grid gap-2 min-[620px]:grid-cols-3">
+                    <div className="grid grid-cols-3 gap-2">
                       <Skeleton radius="panel" className="h-[4.9rem] w-full" />
                       <Skeleton radius="panel" className="h-[4.9rem] w-full" />
                       <Skeleton radius="panel" className="h-[4.9rem] w-full" />
@@ -625,39 +624,28 @@ export function DeckImportDrawer({
                         </span>
                       </div>
 
-                      <div className="grid gap-2 min-[620px]:grid-cols-3">
-                        <ZoneTotalCard
-                          label="Main Deck"
-                          imported={preview.importedTotals.main}
-                          requested={preview.requestedTotals.main}
-                        />
-                        <ZoneTotalCard
-                          label="Extra Deck"
-                          imported={preview.importedTotals.extra}
-                          requested={preview.requestedTotals.extra}
-                        />
-                        <ZoneTotalCard
-                          label="Side Deck"
-                          imported={preview.importedTotals.side}
-                          requested={preview.requestedTotals.side}
-                        />
+                      <div className="grid gap-1.5">
+                        <div className="grid grid-cols-3 gap-2">
+                          <ZoneTotalCard
+                            label="Main Deck"
+                            imported={preview.importedTotals.main}
+                            requested={preview.requestedTotals.main}
+                          />
+                          <ZoneTotalCard
+                            label="Extra Deck"
+                            imported={preview.importedTotals.extra}
+                            requested={preview.requestedTotals.extra}
+                          />
+                          <ZoneTotalCard
+                            label="Side Deck"
+                            imported={preview.importedTotals.side}
+                            requested={preview.requestedTotals.side}
+                          />
+                        </div>
+                        <p className="m-0 text-center text-micro text-muted">{t('deck.import.zoneTotalCaption')}</p>
                       </div>
 
                       <ProblemSummaryBar preview={preview} />
-
-                      <div className="flex flex-wrap justify-end gap-2">
-                        <Button variant="secondary" size="sm" onClick={handleClose}>
-                          {t('common.cancel')}
-                        </Button>
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          onClick={handleApplyClick}
-                          disabled={!canApplyPreview}
-                        >
-                          {applyButtonLabel}
-                        </Button>
-                      </div>
                     </article>
 
                     {preview.resolvedEntries.length > 0 ? (
@@ -724,6 +712,18 @@ export function DeckImportDrawer({
               ) : null}
             </div>
           </div>
+
+          {/* Las acciones quedan siempre a la vista (no se pierden al bajar por una lista larga): volver a elegir, o aplicar. */}
+          {preview && !isProcessing ? (
+            <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-border-subtle px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              <Button variant="tertiary" size="sm" icon="chevron-left" onClick={handleBack}>
+                {t('deck.import.back')}
+              </Button>
+              <Button variant="primary" size="sm" onClick={handleApplyClick} disabled={!canApplyPreview}>
+                {applyButtonLabel}
+              </Button>
+            </footer>
+          ) : null}
         </aside>
       </div>
 
@@ -802,7 +802,7 @@ function ZoneTotalCard({
   requested: number
 }) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="grid justify-items-center gap-1.5 text-center">
       <ProgressRing
         value={requested > 0 ? imported / requested : 0}
         tone={imported === requested ? 'success' : 'warning'}
@@ -817,7 +817,6 @@ function ZoneTotalCard({
         <strong className="text-body font-semibold leading-none text-foreground tabular-nums">
           {formatInteger(imported)} / {formatInteger(requested)}
         </strong>
-        <span className="text-muted text-micro leading-none">{t('deck.import.zoneTotalCaption')}</span>
       </div>
     </div>
   )
