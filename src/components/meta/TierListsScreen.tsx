@@ -1,7 +1,8 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import {
   DECK_TIER_FLOORS,
+  DECK_TREND_THRESHOLD,
   META_DECKS,
   MIN_RELIABLE_DECKS,
   MIN_TIER_DECKS,
@@ -74,6 +75,19 @@ export function TierListsScreen() {
   const [selectedDeckTier, setSelectedDeckTier] = useState<DeckTierStat | null>(null)
   // Un resultado del deck abierto: el deck entero se ve encima del detalle del tier list, y al cerrarlo se vuelve a él.
   const [selectedDeck, setSelectedDeck] = useState<MetaDeck | null>(null)
+
+  // Un link a otra lista (o "Atrás") cambia el hash sin remontar la pantalla; si el hash ya es de otra pantalla, ella se va sola y no se toca nada.
+  useEffect(() => {
+    const syncList = () => {
+      if (/^#meta(\?|$)/.test(window.location.hash)) {
+        setList(readTierListHash(window.location.hash))
+      }
+    }
+
+    window.addEventListener('hashchange', syncList)
+
+    return () => window.removeEventListener('hashchange', syncList)
+  }, [])
 
   const isDeckList = list === 'deck'
   const cardReport = useMemo(() => (isDeckList ? null : buildMetaReport(META_DECKS, region, zone, Number(weeks), list)), [isDeckList, region, zone, weeks, list])
@@ -264,7 +278,7 @@ function TierListHelp({ list, floors, totalWeeks }: TierListHelpProps) {
         <strong className="text-foreground">{t('meta.help.predictTitle')}</strong>
         <ul className="m-0 grid list-disc gap-1 pl-4">
           <li>{t('meta.help.predict1', { weeks: formatInteger(totalWeeks), ahead })}</li>
-          <li>{t('meta.help.predict2', { points: formatInteger(Math.round(TREND_THRESHOLD * 100)) })}</li>
+          <li>{t('meta.help.predict2', { points: formatInteger(Math.round((list === 'deck' ? DECK_TREND_THRESHOLD : TREND_THRESHOLD) * 100)) })}</li>
           <li>{t('meta.help.predict3', { ahead })}</li>
         </ul>
       </div>
