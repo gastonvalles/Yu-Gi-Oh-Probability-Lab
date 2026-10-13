@@ -100,7 +100,12 @@
   --animate-fx-shock: fx-shock 720ms cubic-bezier(0.1, 0.7, 0.3, 1) both;
   --animate-fx-spark: fx-spark 680ms cubic-bezier(0.1, 0.8, 0.3, 1) both;
   --animate-fx-banner: fx-banner 1100ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  --animate-fx-banner-text: fx-banner-text 1100ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
   --animate-fx-stage: fx-stage 950ms ease-out both;
+  /* Una carta que sale del deck o del Extra aparece de dorso y se da vuelta en 3D. */
+  --animate-fx-flip-in: fx-flip-in 520ms cubic-bezier(0.25, 0.8, 0.25, 1) 60ms both;
+  /* El marco de la mano cuando recibe una carta. */
+  --animate-fx-zone: fx-zone 900ms ease-out both;
   --animate-fx-pick: fx-pick 1.5s ease-in-out infinite;
   --animate-fx-ripple: fx-ripple 1.4s ease-out infinite;
 
@@ -450,30 +455,76 @@
     }
   }
 
-  /* El cartel de la fase: aparece con un golpe, se queda y se va agrandándose. */
+  /* El cartel de la fase: la banda se abre desde una línea, se queda, y se cierra hacia el centro; el texto entra por la izquierda y sale por la derecha. */
   @keyframes fx-banner {
     0% {
       opacity: 0;
-      transform: scale(0.55);
+      transform: scale(1.12, 0.08);
     }
 
-    16% {
+    14% {
       opacity: 1;
-      transform: scale(1.07);
+      transform: scale(1, 1.06);
     }
 
-    28% {
+    26% {
       transform: scale(1);
     }
 
-    72% {
+    76% {
       opacity: 1;
-      transform: scale(1.02);
+      transform: scale(1);
     }
 
     100% {
       opacity: 0;
-      transform: scale(1.5);
+      transform: scale(1.06, 0.2);
+    }
+  }
+
+  @keyframes fx-banner-text {
+    0%,
+    6% {
+      opacity: 0;
+      transform: translateX(-1.75rem);
+    }
+
+    22%,
+    76% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    100% {
+      opacity: 0;
+      transform: translateX(1.75rem);
+    }
+  }
+
+  /* Una carta que sale del deck o del Extra aparece de dorso y se da vuelta en 3D (las dos caras tienen ). */
+  @keyframes fx-flip-in {
+    from {
+      transform: rotateY(180deg);
+    }
+
+    to {
+      transform: rotateY(0deg);
+    }
+  }
+
+  /* El marco de la mano cuando recibe una carta: se enciende y se apaga. */
+  @keyframes fx-zone {
+    0% {
+      opacity: 0;
+    }
+
+    15%,
+    70% {
+      opacity: 1;
+    }
+
+    100% {
+      opacity: 0;
     }
   }
 

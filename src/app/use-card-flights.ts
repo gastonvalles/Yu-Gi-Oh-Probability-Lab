@@ -67,14 +67,15 @@ function impactRgb(state: MatState, id: string): string {
   return FX_RGB.cyan
 }
 
-/** Al aterrizar, el lugar da el golpe: un aro de su color que se expande y un destello (pasa junto con `bump`, que lo infla). */
+/** Al aterrizar, el lugar da el golpe: un marco de su color que se enciende y se expande al apagarse, y un destello (pasa junto con `bump`, que lo infla). */
 function impact(element: HTMLElement, rgb: string) {
   element.animate(
     [
-      { boxShadow: `0 0 0 0 rgb(${rgb} / 0.95), 0 0 18px 3px rgb(${rgb} / 0.9)`, filter: 'brightness(1.9)' },
+      { boxShadow: `0 0 0 2px rgb(${rgb} / 1), 0 0 18px 3px rgb(${rgb} / 0.9)`, filter: 'brightness(1.9)' },
+      { boxShadow: `0 0 0 2px rgb(${rgb} / 1), 0 0 22px 6px rgb(${rgb} / 0.7)`, filter: 'brightness(1.25)', offset: 0.4 },
       { boxShadow: `0 0 0 16px rgb(${rgb} / 0), 0 0 34px 10px rgb(${rgb} / 0)`, filter: 'brightness(1)' },
     ],
-    { duration: 640, delay: FLIGHT_MS - 100, easing: 'ease-out' },
+    { duration: 700, delay: FLIGHT_MS - 100, easing: 'ease-out' },
   )
 }
 
@@ -147,12 +148,14 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
         ghost.append(image)
       }
 
-      if (hiddenAt(state, id)) {
-        // Llega boca abajo: a mitad de camino se le ve el dorso.
+      const faceDown = hiddenAt(state, id)
+
+      if (faceDown) {
+        // Llega boca abajo: a mitad de camino queda de canto y ahí se cambia la cara por el dorso.
         const back = document.createElement('span')
         back.className = CARD_BACK
         ghost.append(back)
-        back.animate([{ opacity: 0 }, { opacity: 0, offset: 0.45 }, { opacity: 1, offset: 0.6 }, { opacity: 1 }], { duration: FLIGHT_MS, fill: 'forwards' })
+        back.animate([{ opacity: 0 }, { opacity: 0, offset: 0.5 }, { opacity: 1, offset: 0.5 }, { opacity: 1 }], { duration: FLIGHT_MS, fill: 'forwards' })
       }
 
       document.body.append(ghost)
@@ -162,6 +165,19 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
       const flight = ghost.animate([{ transform: ghost.style.transform, opacity: 1 }, { transform: landing, opacity: to ? 0.75 : 0 }], { duration: FLIGHT_MS, easing: EASING, fill: 'forwards' })
       flight.onfinish = () => ghost.remove()
       flight.oncancel = () => ghost.remove()
+
+      // El giro en 3D se suma al vuelo (va después en la pila de animaciones, con `composite: 'add'`): de canto a mitad de camino y abierto del otro lado.
+      if (faceDown) {
+        ghost.animate(
+          [
+            { transform: 'perspective(700px) rotateY(0deg)', easing: 'ease-in' },
+            { transform: 'perspective(700px) rotateY(90deg)', offset: 0.5 },
+            { transform: 'perspective(700px) rotateY(-90deg)', offset: 0.5, easing: 'ease-out' },
+            { transform: 'perspective(700px) rotateY(0deg)' },
+          ],
+          { duration: FLIGHT_MS, composite: 'add', fill: 'forwards' },
+        )
+      }
 
       if (home) {
         bump(home)

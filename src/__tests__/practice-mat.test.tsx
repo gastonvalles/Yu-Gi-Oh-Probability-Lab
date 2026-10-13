@@ -353,6 +353,37 @@ describe('la mesa de práctica', () => {
     expect(spotlight()).toHaveTextContent('Declarás Called by the Grave')
   })
 
+  it('al reproducir un combo cada paso que mueve cartas las muestra grandes con su nombre y lo que pasó; las que salen del deck se dan vuelta; en vivo, no', () => {
+    // Mano: Ash, Maxx C, Called, Nibiru, Droll; el deck guarda a Imperm.
+    render(<Harness actions={[{ type: 'draw', count: 1 }, { type: 'move', id: 'card-2-1', to: 'gy' }]} />)
+
+    const spotlight = () => document.querySelector('[data-activation]')
+    expect(spotlight()).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    expect(spotlight()).toHaveAttribute('data-kind', 'hand')
+    expect(spotlight()).toHaveTextContent('Robás Imperm')
+    expect(spotlight()?.querySelector('figcaption')).toHaveTextContent('Imperm')
+    // Sale del deck: aparece de dorso y se da vuelta en 3D; la mano se enmarca porque recibió una carta.
+    expect(spotlight()?.querySelector('.animate-fx-flip-in')).not.toBeNull()
+    expect(document.querySelector('[data-fx="hand"]')).not.toBeNull()
+
+    // De la mano al cementerio: se ve la carta (que ya estaba a la vista, sin darse vuelta) y su paso.
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    expect(spotlight()).toHaveAttribute('data-kind', 'gy')
+    expect(spotlight()).toHaveTextContent('Maxx C')
+    expect(spotlight()?.querySelector('.animate-fx-flip-in')).toBeNull()
+  })
+
+  it('jugando en vivo, robar enmarca la mano pero no agranda la carta', () => {
+    render(<Harness />)
+
+    tap(screen.getByRole('button', { name: 'Main: 1' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Robar' }))
+    expect(within(hand()).getByRole('listitem', { name: 'Imperm' })).toBeInTheDocument()
+    expect(document.querySelector('[data-fx="hand"]')).not.toBeNull()
+    expect(document.querySelector('[data-activation]')).toBeNull()
+  })
+
   it('marcar un objetivo lo cubre con la mira; cambiar de fase muestra el cartel y una invocación cae con su destello, y se van solos', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
 

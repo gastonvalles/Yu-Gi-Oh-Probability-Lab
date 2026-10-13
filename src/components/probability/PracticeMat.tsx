@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent a
 import { createPortal } from 'react-dom'
 
 import { parseDerivedCardId } from '../../app/calculator-state'
-import { matEffects, type LandingTone, type SpotlightKind } from '../../app/mat-effects'
+import { matEffects, type LandingTone, type ShowcaseKind, type SpotlightKind } from '../../app/mat-effects'
 import {
   allMatIds,
   banishItem,
@@ -53,7 +53,7 @@ import { FX_CARD, FxFrame, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight,
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PracticeMatPanel } from './PracticeMatPanel'
-import { CARD_BACK, PRACTICE_PALETTE } from './practice-styles'
+import { CARD_BACK, CARD_BACK_URL, PRACTICE_PALETTE } from './practice-styles'
 
 export interface MatCard {
   name: string
@@ -135,9 +135,19 @@ const ACTIVATE_MS = 950
 /** Cuánto se queda el destello de una invocación (con lo que espera a que la carta aterrice) y el cartel de una fase. */
 const LANDING_MS = 1300
 const BANNER_MS = 1100
+/** Cuánto se queda el marco de la mano cuando recibe una carta. */
+const HAND_FLASH_MS = 900
 
-/** Dar vuelta una carta (boca abajo ↔ boca arriba): se angosta hasta ser una línea y se vuelve a abrir. Va por `scale` (aparte de `transform`) para no pisar la rotación ni el vuelo. */
-const FLIP_FRAMES = [{ scale: '1 1' }, { scale: '0.04 1', offset: 0.5 }, { scale: '1 1' }]
+/**
+ * Dar vuelta una carta (boca abajo ↔ boca arriba), en 3D: gira hasta quedar de canto (ahí cambia la cara) y se abre del otro lado.
+ * Se suma (`composite: 'add'`) a la `transform` que ya tiene la carta (su rotación de costado, el vuelo entre zonas) sin pisarla.
+ */
+const FLIP_FRAMES = [
+  { transform: 'perspective(700px) rotateY(0deg)', easing: 'ease-in' },
+  { transform: 'perspective(700px) rotateY(90deg)', offset: 0.5 },
+  { transform: 'perspective(700px) rotateY(-90deg)', offset: 0.5, easing: 'ease-out' },
+  { transform: 'perspective(700px) rotateY(0deg)' },
+]
 const FLIP_MS = 380
 
 const ZONE_LABELS: Record<MatSpot, string> = {
@@ -236,6 +246,11 @@ export function PracticeMat({
       .catch(() => {})
   }, [state, byCardId, fetched])
 
+  // El dorso se pide una vez, al abrir la mesa: así está en la caché cuando se reparte la mano o una carta se da vuelta.
+  useEffect(() => {
+    new Image().src = CARD_BACK_URL
+  }, [])
+
   const nameOf = useCallback((id: string) => cardOf(id).name, [cardOf])
   const kindOf = useCallback((id: string) => (isToken(id) ? TOKEN_KIND : cardKindOf(cardOf(id).apiCard)), [cardOf])
   const steps = useMemo(() => describeMatSteps(session.initial, session.actions, nameOf), [session.initial, session.actions, nameOf])
@@ -260,6 +275,9 @@ export function PracticeMat({
   // La zona donde acaba de caer un monstruo y el cartel de la fase nueva: cada uno se va solo.
   const [landing, setLanding] = useState<{ spot: MatSpot; index: number; tone: LandingTone; flies: boolean; key: number } | null>(null)
   const [banner, setBanner] = useState<{ phase: MatPhase; turn: number | null; key: number } | null>(null)
+  // Las cartas grandes del centro (activar, mostrar, declarar y, al reproducir un combo, lo que mueve cada paso) y el marco de la mano cuando recibe una carta.
+  const [stage, setStage] = useState<{ ids: string[]; kind: SpotlightKind | ShowcaseKind; flip?: true; key: number } | null>(null)
+  const [handFlash, setHandFlash] = useState<number | null>(null)
   // Zona de la mesa bajo una carta de la mano que se está arrastrando.
   const [handOver, setHandOver] = useState<string | null>(null)
 
@@ -270,6 +288,18 @@ export function PracticeMat({
     const timer = window.setTimeout(() => setFlash(null), ACTIVATE_MS)
     return () => window.clearTimeout(timer)
   }, [flash])
+
+  useEffect(() => {
+    if (!stage) return
+    const timer = window.setTimeout(() => setStage(null), ACTIVATE_MS)
+    return () => window.clearTimeout(timer)
+  }, [stage])
+
+  useEffect(() => {
+    if (handFlash === null) return
+    const timer = window.setTimeout(() => setHandFlash(null), HAND_FLASH_MS)
+    return () => window.clearTimeout(timer)
+  }, [handFlash])
 
   useEffect(() => {
     if (!landing) return
@@ -300,9 +330,19 @@ export function PracticeMat({
     const key = Date.now()
 
     if (effects.spotlight) setFlash({ ...effects.spotlight, key })
+    // Activar, mostrar y declarar agrandan la carta siempre; marcar un objetivo, nunca; y reproduciendo un combo, cada paso que mueve cartas las muestra.
+    // Un paso que no muestra nada saca las cartas del paso anterior (que seguirían con la línea de éste).
+    setStage(
+      effects.spotlight && effects.spotlight.kind !== 'target'
+        ? { ids: [effects.spotlight.id], kind: effects.spotlight.kind, key }
+        : effects.showcase && session.replay
+          ? { ...effects.showcase, key }
+          : null,
+    )
     if (effects.landing) setLanding({ ...effects.landing, key })
     if (effects.banner) setBanner({ ...effects.banner, key })
-  }, [session.cursor, session.actions, session.initial])
+    if (effects.hand) setHandFlash(key)
+  }, [session.cursor, session.actions, session.initial, session.replay])
 
   // La mano: el orden que le dio el jugador, y el reparto de a una carta desde el mazo (que se baraja con cada mano nueva).
   const [handOrder, setHandOrder] = useState<string[]>([])
@@ -952,29 +992,41 @@ export function PracticeMat({
 
         {/* Abajo del todo, como en la mesa real: la mano en abanico. Las salidas y problemas van entre el campo y la mano en el celu, y en el panel lateral en escritorio. */}
         {footer && isDealt && !isDesktop ? <div className="px-1 animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
-        <PracticeHand
-          cards={handCards}
-          sizeSlots={Math.max(session.initial.hand.length, 1)}
-          maxCardWidth={isDesktop ? 124 : 110}
-          fanDegrees={2.2}
-          highlighted={highlighted}
-          highlightKind={highlightKind}
-          muted={muted}
-          flash={flash}
-          targeted={targetedIds}
-          selectedId={selectedId}
-          getDeckRect={getDeckRect}
-          dealsFromDeck={dealsFromDeck}
-          getField={getField}
-          onReorder={setHandOrder}
-          onTap={(card, rect) => openCard(card.id, rect)}
-          onDragOver={setHandOver}
-          onDrop={(card, target) => {
-            setHandOver(null)
-            const parsed = parseDrop(target)
-            if (parsed) handleDrop({ id: card.id, name: card.name, art: artOf(card) }, parsed)
-          }}
-        />
+        {/* Cuando la mano recibe una carta (robada, buscada o devuelta), se enmarca un instante en celeste. */}
+        <div className="relative">
+          <PracticeHand
+            cards={handCards}
+            sizeSlots={Math.max(session.initial.hand.length, 1)}
+            maxCardWidth={isDesktop ? 124 : 110}
+            fanDegrees={2.2}
+            highlighted={highlighted}
+            highlightKind={highlightKind}
+            muted={muted}
+            flash={flash}
+            targeted={targetedIds}
+            selectedId={selectedId}
+            getDeckRect={getDeckRect}
+            dealsFromDeck={dealsFromDeck}
+            getField={getField}
+            onReorder={setHandOrder}
+            onTap={(card, rect) => openCard(card.id, rect)}
+            onDragOver={setHandOver}
+            onDrop={(card, target) => {
+              setHandOver(null)
+              const parsed = parseDrop(target)
+              if (parsed) handleDrop({ id: card.id, name: card.name, art: artOf(card) }, parsed)
+            }}
+          />
+          {handFlash !== null ? (
+            <span
+              key={handFlash}
+              aria-hidden="true"
+              data-fx="hand"
+              className="pointer-events-none absolute inset-0 animate-fx-zone border-2 border-[color:rgb(var(--fx-rgb))] bg-[color:rgb(var(--fx-rgb)/0.06)] shadow-[0_0_20px_rgb(var(--fx-rgb)/0.5),inset_0_0_24px_rgb(var(--fx-rgb)/0.18)] motion-reduce:hidden"
+              style={fxVars('cyan')}
+            />
+          ) : null}
+        </div>
 
         {/* Pasos: en vivo muestra la última jugada; con jugadas, se recorre con Anterior / Siguiente. Eligiendo, pide lo que falta. */}
         <div className="flex min-h-9 flex-wrap items-center gap-x-2 gap-y-1 px-1 text-micro text-muted" role="status" aria-label={t('practice.mat.currentStep')}>
@@ -1067,9 +1119,18 @@ export function PracticeMat({
 
       {inspected ? <CardDetailOverlay key={inspected.id} name={cardOf(inspected.id).name} card={cardOf(inspected.id).apiCard} origin={inspected.rect} onClose={() => setInspected(null)} /> : null}
 
-      {/* Activar, mostrar o declarar: la carta aparece grande en el centro de la pantalla, con su marco de color y lo que pasó arriba, y se desvanece, como en DuelingBook. Marcar un objetivo no la agranda: ahí sólo cae la mira. */}
-      {flash && flash.kind !== 'target'
-        ? createPortal(<Spotlight key={flash.key} id={flash.id} kind={flash.kind} name={cardOf(flash.id).name} art={artOf(cardOf(flash.id))} caption={steps[session.cursor - 1] ?? null} />, document.body)
+      {/* Activar, mostrar o declarar (y, al reproducir un combo, lo que mueve cada paso): las cartas aparecen grandes en el centro de la pantalla, con su marco de color, su nombre y lo que pasó arriba, y se desvanecen. Marcar un objetivo no las agranda: ahí sólo cae la mira. */}
+      {stage
+        ? createPortal(
+            <Spotlight
+              key={stage.key}
+              kind={stage.kind}
+              cards={stage.ids.map((id) => ({ id, name: cardOf(id).name, art: artOf(cardOf(id)) }))}
+              caption={steps[session.cursor - 1] ?? null}
+              flip={stage.flip}
+            />,
+            document.body,
+          )
         : null}
 
       {drag
@@ -1179,7 +1240,7 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, 
 
     if (wasFaceDown === (placed.pos === 'set') || prefersReducedMotion()) return
 
-    cardRef.current?.animate(FLIP_FRAMES, { duration: FLIP_MS, easing: 'ease-in-out' })
+    cardRef.current?.animate(FLIP_FRAMES, { duration: FLIP_MS, composite: 'add' })
   }, [placed.pos])
 
   return (

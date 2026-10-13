@@ -30,8 +30,14 @@ export const RULE_COLOR = {
 } as const
 
 /**
- * Dorso de carta: el clásico de Yu-Gi-Oh! simplificado y en violeta (cuerpo violeta con el óvalo oscuro al centro,
- * borde fino). Lo comparten el mazo, el Extra, las cartas boca abajo y el fantasma.
+ * El dorso por defecto de una carta de Yu-Gi-Oh!: la imagen `cards/back.jpg` de YGOPRODeck, que sale por el mismo proxy que las
+ * demás (`card-image-source`).
  */
-export const CARD_BACK =
-  'absolute inset-0 z-1 overflow-hidden border border-primary/60 [background:radial-gradient(ellipse_34%_30%_at_50%_50%,#0a0612_0_72%,transparent_74%),radial-gradient(ellipse_at_50%_50%,rgb(var(--primary-rgb)/0.55),#1d1033_78%)]'
+export const CARD_BACK_URL = '/api/card-image/cards/back.jpg'
+
+/**
+ * Dorso de carta: la imagen de `CARD_BACK_URL` (un violeta oscuro debajo mientras carga). Lo comparten el mazo, el Extra, las cartas
+ * boca abajo, los fantasmas de los vuelos y las cartas que se dan vuelta. Tiene que decir lo mismo que `CARD_BACK_URL`: Tailwind sólo
+ * ve las clases escritas completas.
+ */
+export const CARD_BACK = 'absolute inset-0 z-1 overflow-hidden bg-[#1d1033] bg-cover bg-center bg-[url(/api/card-image/cards/back.jpg)]'

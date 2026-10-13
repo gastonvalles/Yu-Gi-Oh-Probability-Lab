@@ -422,14 +422,17 @@ function HandCard({
     const target = /translate3d\((-?[\d.]+)px, (-?[\d.]+)px/.exec(finalTransform)
     const toX = target ? Number(target[1]) : fromX
     const toY = target ? Number(target[2]) : fromY
-    // A mitad de camino la carta se "angosta": ahí se cambia el dorso por la cara.
-    const mid = `translate3d(${(fromX + toX) / 2}px, ${Math.min(fromY, toY) - 18}px, 0) rotate(-6deg) scale(0.06, 1.05)`
+    // La carta se da vuelta en el aire, en 3D: sale mostrando el dorso, a mitad de camino queda de canto (ahí se cambia el dorso por la cara)
+    // y termina de abrirse del otro lado. Todos los pasos llevan las mismas funciones, en el mismo orden, para que se interpolen una por una.
+    const spin = (position: string, degrees: number) => `perspective(700px) ${position} rotateY(${degrees}deg)`
+    const midPosition = `translate3d(${(fromX + toX) / 2}px, ${Math.min(fromY, toY) - 18}px, 0) rotate(-6deg) scale(1)`
 
     const flight = element.animate(
       [
-        { transform: `translate3d(${fromX}px, ${fromY}px, 0) rotate(-14deg) scale(${startScale})`, opacity: 0.9 },
-        { transform: mid, opacity: 1, offset: 0.5 },
-        { transform: finalTransform, opacity: 1 },
+        { transform: spin(`translate3d(${fromX}px, ${fromY}px, 0) rotate(-14deg) scale(${startScale})`, 0), opacity: 0.9 },
+        { transform: spin(midPosition, 90), opacity: 1, offset: 0.5 },
+        { transform: spin(midPosition, -90), opacity: 1, offset: 0.5 },
+        { transform: spin(`${finalTransform} scale(1)`, 0), opacity: 1 },
       ],
       { duration: UI_ANIMATION_MS, easing: 'cubic-bezier(0.22, 0.9, 0.3, 1)', fill: 'backwards' },
     )
