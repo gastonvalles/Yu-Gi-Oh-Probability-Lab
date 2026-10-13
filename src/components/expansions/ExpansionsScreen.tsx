@@ -23,8 +23,8 @@ import { choiceChip, listItem, surface } from '../ui/surfaces'
 import { overline } from '../ui/typography'
 import { ExpansionCardModal } from './ExpansionCardModal'
 
-/** Cuántas impresiones se dibujan de entrada (hay expansiones con más de 800): el resto, con "Mostrar más". */
-const PAGE_SIZE = 80
+/** Cuántas cartas se dibujan de entrada (hay expansiones con más de 800 impresiones): el resto, con "Mostrar más". */
+const PAGE_SIZE = 60
 
 type Sort = 'code' | 'price'
 
@@ -222,30 +222,37 @@ function ExpansionDetail({ expansion, updated, onBack }: { expansion: Expansion;
             {rows.length === 0 ? (
               <EmptyState icon="search" title={t('catalog.sets.noMatch')} />
             ) : (
-              <ul className="m-0 grid list-none overflow-hidden rounded-card border border-border-subtle p-0">
+              // Las cartas enteras una al lado de la otra, cada una con su código, rareza, edición y precio abajo.
+              <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-x-3 gap-y-5 p-0">
                 {rows.slice(0, shown).map((card) => (
-                  <li key={`${card.code}-${card.cardId}-${card.rarity}-${card.edition}-${card.url}`} className="grid grid-cols-[minmax(0,1fr)_auto] items-center border-t border-border-subtle first:border-t-0">
-                    <button type="button" aria-label={t('catalog.sets.openCard', { name: card.name })} className={cx(listItem, 'grid min-w-0 grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-3 rounded-none px-3 py-2 text-left')} onClick={() => setOpened(card)}>
-                      <span className="block aspect-[421/614] w-10 overflow-hidden rounded-tag bg-input">
+                  <li key={`${card.code}-${card.cardId}-${card.rarity}-${card.edition}-${card.url}`} className="grid min-w-0 content-start gap-2">
+                    <button
+                      type="button"
+                      aria-label={t('catalog.sets.openCard', { name: card.name })}
+                      className="group block rounded-tag text-left focus-visible:outline-none focus-visible:shadow-focus"
+                      onClick={() => setOpened(card)}
+                    >
+                      <span className="block aspect-[421/614] overflow-hidden rounded-tag bg-input shadow-card transition-transform duration-150 group-hover:-translate-y-0.5">
                         <CardArt remoteUrl={cardSmallImageUrl(card.cardId)} name="" className="block h-full w-full object-cover" />
                       </span>
-                      <span className="grid min-w-0 gap-0.5">
-                        <span className="text-body font-semibold text-foreground [overflow-wrap:anywhere]">{card.name}</span>
-                        <span className="text-micro text-muted">
-                          {card.code} · {card.rarity} · {card.edition}
-                        </span>
-                      </span>
                     </button>
-                    <a
-                      href={card.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={t('catalog.sets.openProduct', { name: card.name })}
-                      className="inline-flex items-center gap-1.5 self-stretch px-3 text-body font-semibold tabular-nums text-foreground no-underline transition-colors hover:bg-tint/8 hover:text-success focus-visible:outline-none focus-visible:shadow-focus"
-                    >
-                      {card.market === null ? t('search.prices.noPrice') : usd.format(card.market)}
-                      <Icon name="link" size={13} className="text-soft" />
-                    </a>
+                    <div className="grid min-w-0 gap-0.5">
+                      <span className="line-clamp-2 text-micro font-semibold leading-snug text-foreground [overflow-wrap:anywhere]">{card.name}</span>
+                      <span className="text-micro text-muted">{card.code}</span>
+                      <span className="text-micro text-muted [overflow-wrap:anywhere]">
+                        {card.rarity} · {card.edition}
+                      </span>
+                      <a
+                        href={card.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={t('catalog.sets.openProduct', { name: card.name })}
+                        className="mt-0.5 inline-flex items-center gap-1.5 justify-self-start text-body font-semibold tabular-nums text-foreground no-underline transition-colors hover:text-success focus-visible:outline-none focus-visible:shadow-focus"
+                      >
+                        {card.market === null ? t('search.prices.noPrice') : usd.format(card.market)}
+                        <Icon name="link" size={13} className="text-soft" />
+                      </a>
+                    </div>
                   </li>
                 ))}
               </ul>
