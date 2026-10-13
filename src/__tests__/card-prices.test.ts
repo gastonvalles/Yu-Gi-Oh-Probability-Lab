@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { fetchCardPrices, filterPrintings, setImageUrl, type PrintingPrice, type PriceRow } from '../app/card-prices'
+import { cardSmallImageUrl, fetchCardPrices, fetchExpansionCards, fetchExpansions, filterPrintings, setImageUrl, type PrintingPrice, type PriceRow } from '../app/card-prices'
 
 const row = (code: string, rarity: string, edition: string, market: number | null, productId: number, groupId: number): PriceRow => [code, rarity, edition, market, productId, groupId]
 
@@ -113,5 +113,62 @@ describe('precios de TCGplayer por impresión', () => {
   it('la imagen del sobre sale del prefijo del código del set', () => {
     expect(setImageUrl('JUSH-EN016')).toBe('https://images.ygoprodeck.com/images/sets/JUSH.jpg')
     expect(setImageUrl('RA05-EN091')).toBe('https://images.ygoprodeck.com/images/sets/RA05.jpg')
+  })
+})
+
+describe('expansiones', () => {
+  const groups = [
+    [1, 'Legend of Blue Eyes White Dragon', '2002-03-08', 3],
+    [2, 'Maze of Millennia', '2024-01-19', 4],
+    [3, 'Duelist Pack 7', '', 2],
+    [4, 'Otro de 2024', '2024-01-19', 5],
+    [5, 'Sin cantidad', '2010-01-01'],
+  ]
+
+  function sets() {
+    const urls: string[] = []
+    const get = async (url: string) => {
+      urls.push(url)
+
+      if (url.endsWith('/index.json')) return { updated: '2026-10-11', shards: 4, groups }
+
+      return [
+        ['MAZE-EN001', 'Rare', 'Unlimited', 0.5, 21, 100, 'Mulcharmy Purulia'],
+        ['MAZE-EN002', 'Common', '1st Edition', null, 22, 101, 'Ash Blossom & Joyous Spring'],
+      ]
+    }
+
+    return { urls, get }
+  }
+
+  it('las expansiones salen con las más nuevas primero (a igual fecha, la de id más alto) y las sin fecha al final', async () => {
+    const { get } = sets()
+    const { expansions, updated } = await fetchExpansions(get)
+
+    expect(updated).toBe('2026-10-11')
+    expect(expansions.map((expansion) => expansion.id)).toEqual([4, 2, 5, 1, 3])
+    expect(expansions[0]).toEqual({ id: 4, name: 'Otro de 2024', date: '2024-01-19', count: 5 })
+    // Un índice sin la cantidad (de antes de que existiera) no rompe: cuenta cero.
+    expect(expansions.find((expansion) => expansion.id === 5)?.count).toBe(0)
+  })
+
+  it('las cartas de una expansión salen de su archivo, con el link al producto, y se piden una sola vez', async () => {
+    const { urls, get } = sets()
+    const cards = await fetchExpansionCards(2, get)
+
+    expect(urls).toEqual(['/prices/sets/2.json'])
+    expect(cards).toEqual([
+      { cardId: 100, name: 'Mulcharmy Purulia', code: 'MAZE-EN001', rarity: 'Rare', edition: 'Unlimited', market: 0.5, url: 'https://www.tcgplayer.com/product/21' },
+      { cardId: 101, name: 'Ash Blossom & Joyous Spring', code: 'MAZE-EN002', rarity: 'Common', edition: '1st Edition', market: null, url: 'https://www.tcgplayer.com/product/22' },
+    ])
+
+    await fetchExpansionCards(2, get)
+    await fetchExpansions(get)
+    await fetchExpansions(get)
+    expect(urls).toEqual(['/prices/sets/2.json', '/prices/index.json'])
+  })
+
+  it('el arte chico de una carta sale de su id', () => {
+    expect(cardSmallImageUrl(89631139)).toBe('https://images.ygoprodeck.com/images/cards_small/89631139.jpg')
   })
 })

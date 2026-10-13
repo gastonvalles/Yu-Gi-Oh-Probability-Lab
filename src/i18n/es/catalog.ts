@@ -1,0 +1,28 @@
+/** Expansiones (sets) y banlists históricas: las dos vistas de consulta del catálogo de cartas. */
+export const catalog = {
+  // Expansiones
+  'catalog.sets.title': 'Expansiones',
+  'catalog.sets.subtitle': 'Las cartas de cada expansión, con su rareza y su precio.',
+  'catalog.sets.help': 'Son las expansiones del TCG en inglés, con los precios de mercado de TCGplayer (hasta un día de atraso). Elegí una para ver sus cartas por código, filtrarlas por nombre o rareza u ordenarlas por precio; tocá una carta para ver su detalle y el nombre del precio para abrirla en TCGplayer.',
+  'catalog.sets.updated': 'Precios al {date}',
+  'catalog.sets.updatedTitle': 'Cuándo se bajaron los precios de TCGplayer',
+  'catalog.sets.loadError': 'No pude traer las expansiones ahora. Probá de nuevo más tarde.',
+  'catalog.sets.cardsError': 'No pude traer las cartas de esta expansión. Probá de nuevo más tarde.',
+  'catalog.sets.listLabel': 'Expansiones',
+  'catalog.sets.searchLabel': 'Buscar expansión',
+  'catalog.sets.noExpansion': 'Ninguna expansión coincide con “{query}”.',
+  'catalog.sets.noDate': 'Sin fecha',
+  'catalog.sets.back': 'Volver a las expansiones',
+  'catalog.sets.printings': { one: '{n} impresión', other: '{n} impresiones' },
+  'catalog.sets.distinct': { one: '{n} carta distinta', other: '{n} cartas distintas' },
+  'catalog.sets.cardSearch': 'Buscar por nombre o código',
+  'catalog.sets.sortLabel': 'Ordenar las cartas',
+  'catalog.sets.sortCode': 'Por código',
+  'catalog.sets.sortPrice': 'Por precio',
+  'catalog.sets.rarityLabel': 'Rareza',
+  'catalog.sets.rarityAll': 'Todas',
+  'catalog.sets.noMatch': 'Ninguna carta coincide con esos filtros.',
+  'catalog.sets.showMore': 'Mostrar {n} más',
+  'catalog.sets.openCard': 'Ver el detalle de {name}',
+  'catalog.sets.openProduct': 'Ver {name} en TCGplayer',
+} as const

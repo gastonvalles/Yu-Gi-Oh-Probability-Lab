@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { SHARDS, buildCardRows, buildCodeIndex, buildRows, carryOver, shardFile, shardOf } from '../../scripts/sync-card-prices.mjs'
+import { SHARDS, buildCardRows, buildCodeIndex, buildRows, carryOver, setFile, shardFile, shardOf } from '../../scripts/sync-card-prices.mjs'
 
 /** [código del set, rareza, edición, precio de mercado, id del producto] */
 type SetRow = [string, string, string, number | null, number]
@@ -137,5 +137,55 @@ describe('scripts/sync-card-prices.mjs: de TCGCSV a archivos por carta', () => {
     expect(shardOf(14558127)).toBe(14558127 % 256)
     expect(shardOf(256)).toBe(0)
     expect(shardOf(255)).toBe(255)
+  })
+})
+
+describe('scripts/sync-card-prices.mjs: los archivos por set', () => {
+  it('las filas de cada set son las mismas impresiones, con la carta que le tocó a cada una, ordenadas por código, rareza y edición', () => {
+    const index = buildCodeIndex([
+      { id: 10, card_sets: [{ set_code: 'MZMI-EN083', set_rarity: 'Rare' }] },
+      { id: 11, card_sets: [{ set_code: 'MZMI-EN084', set_rarity: 'Common' }] },
+    ])
+    const { bySet } = buildCardRows(
+      [
+        { groupId: 5, rows: [set('MZMI-EN084', 'Common', 'Unlimited', 0.1, 3), set('MZMI-EN083', 'Rare', 'Unlimited', 0.5, 2), set('MZMI-EN083', 'Rare', '1st Edition', 0.2, 1), set('ZZZZ-EN001', 'Common', 'Normal', 9, 4)] },
+        { groupId: 6, rows: [set('MZMI-EN083', 'Rare', 'Normal', 3, 9)] },
+      ],
+      index,
+    )
+
+    // La de código desconocido no está en ningún set; las demás van a su set con el id de la carta al final.
+    expect(bySet.get(5)).toEqual([
+      ['MZMI-EN083', 'Rare', '1st Edition', 0.2, 1, 10],
+      ['MZMI-EN083', 'Rare', 'Unlimited', 0.5, 2, 10],
+      ['MZMI-EN084', 'Common', 'Unlimited', 0.1, 3, 11],
+    ])
+    expect(bySet.get(6)).toEqual([['MZMI-EN083', 'Rare', 'Normal', 3, 9, 10]])
+  })
+
+  it('un código que salió con varias cartas aparece una vez por carta', () => {
+    const index = buildCodeIndex([
+      { id: 1, card_sets: [{ set_code: 'AAA-EN001', set_rarity: 'Common' }] },
+      { id: 2, card_sets: [{ set_code: 'AAA-EN001', set_rarity: 'Common' }] },
+    ])
+    const { bySet } = buildCardRows([{ groupId: 1, rows: [set('AAA-EN001', 'Common', 'Normal', 1, 7)] }], index)
+
+    expect(bySet.get(1)!.map((row: CardRow) => row[5])).toEqual([1, 2])
+  })
+
+  it('el archivo de un set es un arreglo con una impresión por línea y el nombre de la carta al final; vacío es []', () => {
+    const names = new Map([[10, 'Mulcharmy Purulia'], [11, 'Ash Blossom']])
+    const text = setFile([['A-EN001', 'Rare', '1st Edition', 0.2, 1, 10], ['A-EN002', 'Common', 'Unlimited', null, 2, 11], ['A-EN003', 'Common', 'Unlimited', 1, 3, 99]], names)
+
+    expect(text.split('\n')).toEqual([
+      '[',
+      '["A-EN001","Rare","1st Edition",0.2,1,10,"Mulcharmy Purulia"],',
+      '["A-EN002","Common","Unlimited",null,2,11,"Ash Blossom"],',
+      '["A-EN003","Common","Unlimited",1,3,99,""]',
+      ']',
+      '',
+    ])
+    expect(JSON.parse(text)).toHaveLength(3)
+    expect(setFile([], names)).toBe('[]\n')
   })
 })

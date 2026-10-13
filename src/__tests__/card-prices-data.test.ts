@@ -3,13 +3,16 @@ import { describe, expect, it } from 'vitest'
 
 import { SHARDS, shardOf } from '../../scripts/sync-card-prices.mjs'
 
+// Las filas de un set: [código, rareza, edición, mercado, producto, id de la carta, nombre de la carta].
+type SetRow = [string, string, string, number | null, number, number, string]
+
 const DIR = new URL('../../public/prices/', import.meta.url)
 const read = (name: string) => JSON.parse(readFileSync(new URL(name, DIR), 'utf8')) as unknown
 
 interface Index {
   updated: string
   shards: number
-  groups: Array<[number, string, string]>
+  groups: Array<[number, string, string, number]>
 }
 
 type Row = [string, string, string, number | null, number, number]
@@ -25,15 +28,17 @@ describe('public/prices (lo que escribe scripts/sync-card-prices.mjs)', () => {
     expect(index.groups.length).toBeGreaterThan(400)
     expect(index.groups.map(([id]) => id)).toEqual([...index.groups.map(([id]) => id)].sort((a, b) => a - b))
 
-    for (const [id, name, published] of index.groups) {
+    for (const [id, name, published, count] of index.groups) {
       expect(Number.isInteger(id)).toBe(true)
       expect(name).not.toBe('')
       expect(published === '' || /^\d{4}-\d{2}-\d{2}$/.test(published)).toBe(true)
+      expect(Number.isInteger(count) && count > 0).toBe(true)
     }
   })
 
-  it('están los archivos por carta (0 a 255) y el índice, y no sobra nada', () => {
-    expect(readdirSync(DIR).sort()).toEqual(['cards', 'index.json'])
+  it('están los archivos por carta (0 a 255), los de cada set y el índice, y no sobra nada', () => {
+    expect(readdirSync(DIR).sort()).toEqual(['cards', 'index.json', 'sets'])
+    expect(readdirSync(new URL('sets/', DIR)).sort()).toEqual(index.groups.map(([id]) => `${id}.json`).sort())
     expect(readdirSync(new URL('cards/', DIR)).sort()).toEqual(Array.from({ length: SHARDS }, (_, n) => `${n}.json`).sort())
   })
 
@@ -83,5 +88,50 @@ describe('public/prices (lo que escribe scripts/sync-card-prices.mjs)', () => {
     for (let n = 0; n < SHARDS; n += 1) {
       expect(readFileSync(new URL(`cards/${n}.json`, DIR), 'utf8').length).toBeLessThan(60_000)
     }
+  })
+})
+
+describe('public/prices/sets (las mismas impresiones, vistas por expansión)', () => {
+  const index = read('index.json') as Index
+
+  it('cada set trae las impresiones que dice el índice, ordenadas por código, con la carta y su nombre', () => {
+    const problems: string[] = []
+    let total = 0
+
+    for (const [id, , , count] of index.groups) {
+      const rows = read(`sets/${id}.json`) as SetRow[]
+
+      total += rows.length
+      if (rows.length !== count) problems.push(`set ${id}: ${rows.length} filas y el índice dice ${count}`)
+
+      rows.forEach(([code, rarity, edition, market, productId, cardId, name], i) => {
+        const valid = code !== '' && typeof rarity === 'string' && typeof edition === 'string' && (market === null || market >= 0) && Number.isInteger(productId) && Number.isInteger(cardId) && name !== ''
+
+        if (!valid) problems.push(`set ${id}: fila ${JSON.stringify(rows[i])}`)
+        if (i > 0 && code < rows[i - 1]![0]) problems.push(`set ${id}: fuera de orden en ${code}`)
+      })
+    }
+
+    expect(problems.slice(0, 5)).toEqual([])
+    // Es lo mismo que está en los archivos por carta, visto desde el otro lado.
+    expect(total).toBeGreaterThan(50_000)
+  })
+
+  it('cada impresión de un set está también en el archivo de su carta, y al revés', () => {
+    const fromSets = new Set<string>()
+    const fromCards = new Set<string>()
+
+    for (const [id] of index.groups) {
+      for (const [code, rarity, edition, , productId, cardId] of read(`sets/${id}.json`) as SetRow[]) fromSets.add(`${id}|${cardId}|${code}|${rarity}|${edition}|${productId}`)
+    }
+
+    for (let n = 0; n < SHARDS; n += 1) {
+      for (const [cardId, rows] of Object.entries(read(`cards/${n}.json`) as Shard)) {
+        for (const [code, rarity, edition, , productId, groupId] of rows) fromCards.add(`${groupId}|${cardId}|${code}|${rarity}|${edition}|${productId}`)
+      }
+    }
+
+    expect(fromSets.size).toBe(fromCards.size)
+    expect([...fromSets].filter((key) => !fromCards.has(key)).slice(0, 5)).toEqual([])
   })
 })

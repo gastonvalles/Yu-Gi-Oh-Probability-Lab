@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 
 import { META_DECKS, PROJECTION_WEEKS, kindsOf, type MetaCardKind, type MetaCardStat } from '../../app/meta'
+import { placeholderCard } from '../../app/card-placeholder'
 import { formatInteger } from '../../app/utils'
 import { t } from '../../i18n'
-import type { ApiCardReference } from '../../types'
 import { fetchCardsByIds, type ApiCardSearchResult } from '../../ygoprodeck'
 import { CardOverlay, CardPanelBody, CardPanelFooter, CardPanelHeader } from '../card-detail/CardOverlay'
 import { buildCardSummary } from '../card-detail/card-summary'
@@ -63,7 +63,7 @@ function MetaCardOverlay({ stat, onClose, onPickArchetype, onShowDecks }: MetaCa
       ariaLabel={t('meta.card.ariaLabel', { name: stat.name })}
       panelLabel={t('meta.card.panelLabel')}
       name={stat.name}
-      card={card ?? placeholderCard(stat)}
+      card={card ?? placeholderCard(stat.id, stat.image)}
       tall
       artOverlay={<TrendArrow trend={stat.trend} size={56} />}
       onClose={onClose}
@@ -124,26 +124,4 @@ function MetaCardOverlay({ stat, onClose, onPickArchetype, onShowDecks }: MetaCa
       </CardPanelFooter>
     </CardOverlay>
   )
-}
-
-/** Hasta que llega la carta completa, el marco muestra la imagen chica del tier list. */
-function placeholderCard(stat: MetaCardStat): ApiCardReference {
-  return {
-    ygoprodeckId: stat.id,
-    cardType: '',
-    frameType: '',
-    description: null,
-    race: null,
-    attribute: null,
-    level: null,
-    linkValue: null,
-    atk: null,
-    def: null,
-    archetype: null,
-    ygoprodeckUrl: null,
-    imageUrl: null,
-    imageUrlSmall: stat.image,
-    banlist: { tcg: null, ocg: null, goat: null },
-    genesys: { points: null },
-  }
 }
