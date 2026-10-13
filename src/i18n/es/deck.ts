@@ -91,7 +91,6 @@ export const deck = {
   'deck.import.close': 'Cerrar importador',
   'deck.import.dialog': 'Importador de deck',
   'deck.import.title': 'Importar deck',
-  'deck.import.live.processing': 'Procesando archivo',
   'deck.import.live.dragging': 'Archivo detectado, soltá para cargar',
   'deck.import.live.loaded': 'Archivo cargado: {name}',
   'deck.import.method.label': 'Cómo importar',

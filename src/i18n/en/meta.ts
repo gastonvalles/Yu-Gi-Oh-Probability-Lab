@@ -214,7 +214,7 @@ export const meta: Translated<typeof es> = {
   'meta.replays.watchWithHeading': 'Watch the replay {label}, {heading}',
   'meta.replays.noDeck': 'unidentified deck',
   'meta.replays.viewDeck': 'View deck',
-  'meta.replays.viewDeckLabel': 'View the {deck} deck',
+  'meta.replays.viewDeckLabel': 'View deck {deck}',
   'meta.replays.stage.final': 'Final',
   'meta.replays.stage.semifinal': 'Semifinal',
   'meta.replays.stage.semifinalN': 'Semifinal {number}',

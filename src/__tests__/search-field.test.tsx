@@ -34,6 +34,19 @@ describe('los campos de búsqueda llevan la lupa', () => {
     expect(onChange).toHaveBeenCalledWith('elfnote')
   })
 
+  it('con algo escrito hay una X que lo borra y devuelve el foco al campo; vacío, no hay X (la del navegador va oculta)', () => {
+    const onChange = vi.fn()
+    const { rerender } = render(<SearchField label="Buscar decks" value="" onChange={onChange} />)
+
+    expect(screen.queryByRole('button', { name: 'Borrar texto' })).not.toBeInTheDocument()
+
+    rerender(<SearchField label="Buscar decks" value="elf" onChange={onChange} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Borrar texto' }))
+
+    expect(onChange).toHaveBeenCalledWith('')
+    expect(screen.getByRole('searchbox', { name: 'Buscar decks' })).toHaveFocus()
+  })
+
   it('todo archivo que arma un <input type="search"> dibuja también una lupa (o pasa por SearchField)', () => {
     const files = componentFiles(join(__dirname, '..', 'components')).filter((path) => readFileSync(path, 'utf8').includes('type="search"'))
 

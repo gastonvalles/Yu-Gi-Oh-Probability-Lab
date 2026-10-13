@@ -141,6 +141,45 @@ describe('el importador de decks', () => {
     expect(screen.queryByText(/Archivo seleccionado/)).not.toBeInTheDocument()
   })
 
+  it('Tab gira entre la X y el botón de archivo: el input invisible que abre el botón no es el "último" control', () => {
+    renderDrawer()
+
+    const dialog = screen.getByRole('dialog', { name: 'Importador de deck' })
+    const close = within(dialog).getByRole('button', { name: 'Cerrar importador' })
+    const choose = within(dialog).getByRole('button', { name: 'Seleccionar archivo' })
+
+    choose.focus()
+    fireEvent.keyDown(choose, { key: 'Tab' })
+    expect(close).toHaveFocus()
+
+    fireEvent.keyDown(close, { key: 'Tab', shiftKey: true })
+    expect(choose).toHaveFocus()
+  })
+
+  it('al procesar el texto y al volver el foco se queda en el panel (no cae al <body>), y lo que se anuncia vale para un texto y para un archivo', async () => {
+    renderDrawer()
+
+    const dialog = screen.getByRole('dialog', { name: 'Importador de deck' })
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Pegar texto' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Lista de cartas' }), { target: { value: LIST } })
+    const process = screen.getByRole('button', { name: 'Procesar texto' })
+    process.focus()
+    fireEvent.click(process)
+
+    // Mientras carga los controles no están: el foco ya está en el panel, y el aviso es neutro.
+    expect(dialog).toHaveFocus()
+    expect(screen.getByText('Procesando...')).toBeInTheDocument()
+    expect(screen.queryByText('Procesando archivo')).not.toBeInTheDocument()
+
+    await screen.findByText('Todo listo para aplicar el import')
+    const back = within(dialog).getByRole('button', { name: 'Volver' })
+    back.focus()
+    fireEvent.click(back)
+
+    expect(dialog).toHaveFocus()
+  })
+
   it('en inglés', () => {
     applyLocale('en')
     renderDrawer()

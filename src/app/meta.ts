@@ -154,8 +154,10 @@ export interface MetaDeckFilter {
 
 /** Cuántas semanas hacia adelante se prolonga la tendencia. */
 export const PROJECTION_WEEKS = 2
-/** Cambio proyectado (fracción de decks) a partir del cual se dice que sube o baja. */
+/** Cambio proyectado (fracción de decks) a partir del cual se dice que sube o baja una carta. */
 export const TREND_THRESHOLD = 0.05
+/** Lo mismo para un deck: se reparten el meta en porcentajes mucho más bajos que las cartas (ver `DECK_TIER_FLOORS`), así que con 5 puntos casi ninguno se movería. */
+export const DECK_TREND_THRESHOLD = 0.02
 /** Piso de cada tier de las cartas, como fracción de los decks que la juegan. */
 export const TIER_FLOORS: ReadonlyArray<readonly [MetaTier, number]> = [
   ['S', 0.6],
@@ -214,8 +216,9 @@ export function weeksAgo(date: string, reference: string): number {
 /**
  * Recta ajustada a la serie semanal (mínimos cuadrados; cada semana pesa por su cantidad de decks),
  * prolongada PROJECTION_WEEKS semanas. Con menos de tres semanas con datos no se proyecta nada.
+ * Sube o baja si lo que cambia la recta en esas semanas pasa de `threshold` (la lista de cartas y la de decks piden distinto).
  */
-export function projectShare(weekly: ReadonlyArray<MetaWeek>, currentShare: number): { projectedShare: number; trend: MetaTrend } {
+export function projectShare(weekly: ReadonlyArray<MetaWeek>, currentShare: number, threshold: number = TREND_THRESHOLD): { projectedShare: number; trend: MetaTrend } {
   const last = weekly.length - 1
   const points = weekly
     .map((week, index) => ({ x: index - last, y: week.share, weight: week.decks }))
@@ -238,9 +241,10 @@ export function projectShare(weekly: ReadonlyArray<MetaWeek>, currentShare: numb
   const slope = points.reduce((sum, point) => sum + point.weight * (point.x - meanX) * (point.y - meanY), 0) / spreadX
   const now = clamp01(meanY - slope * meanX)
   const projectedShare = clamp01(now + slope * PROJECTION_WEEKS)
-  const delta = projectedShare - now
+  // Lo que cambia la recta, sin el tope de 0 y 100 %: una carta al 98 % que sube fuerte sigue subiendo aunque el tope le coma el cambio de la cifra.
+  const delta = slope * PROJECTION_WEEKS
 
-  return { projectedShare, trend: delta > TREND_THRESHOLD ? 'up' : delta < -TREND_THRESHOLD ? 'down' : 'flat' }
+  return { projectedShare, trend: delta > threshold ? 'up' : delta < -threshold ? 'down' : 'flat' }
 }
 
 interface UsageAccumulator {
@@ -442,7 +446,7 @@ export function buildDeckTierReport(data: MetaDecksData, region: MetaRegion, win
 
     const share = group.results.length / deckCount
     const weekly = weekDecks.map((count, week) => ({ decks: count, share: count > 0 ? (group.weekly[week] ?? 0) / count : 0 })).reverse()
-    const { projectedShare, trend } = projectShare(weekly, share)
+    const { projectedShare, trend } = projectShare(weekly, share, DECK_TREND_THRESHOLD)
     const results = [...group.results].sort((left, right) => placementRank(left.placement) - placementRank(right.placement) || right.date.localeCompare(left.date) || right.id - left.id)
     const newest = [...group.results].sort((left, right) => right.date.localeCompare(left.date) || right.id - left.id).find((deck) => deck.cover !== null)
 

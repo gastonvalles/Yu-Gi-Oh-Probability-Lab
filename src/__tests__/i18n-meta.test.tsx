@@ -208,6 +208,30 @@ describe('Meta en inglés', () => {
     expect(screen.queryByRole('radiogroup', { name: 'Where to count the card' })).not.toBeInTheDocument()
   })
 
+  it('con las tier lists abiertas, un link a otra lista la cambia; el hash de otra pantalla no toca nada', () => {
+    applyLocale('en')
+    window.history.replaceState(null, '', '#meta')
+    wideScreen()
+    renderInStore(<TierListsScreen />)
+
+    const checked = () => screen.getAllByRole('radio', { checked: true }).map((radio) => radio.textContent)
+    const goTo = (hash: string) => {
+      window.history.replaceState(null, '', hash)
+      fireEvent(window, new Event('hashchange'))
+    }
+
+    expect(checked()).toContain('Hand traps')
+    goTo('#meta?list=deck')
+    expect(checked()).toContain('Decks')
+    goTo('#meta?list=boardbreaker')
+    expect(checked()).toContain('Boardbreakers')
+    // Al irse a otra pantalla el hash ya no es de las tier lists: la lista elegida no salta a la de hand traps mientras la pantalla se va.
+    goTo('#tournaments')
+    expect(checked()).toContain('Boardbreakers')
+    goTo('#meta')
+    expect(checked()).toContain('Hand traps')
+  })
+
   it('los decks de torneo se dibujan en inglés: encabezado, búsqueda y la lista con su plural', () => {
     applyLocale('en')
     window.history.replaceState(null, '', '#tournaments')
@@ -321,7 +345,7 @@ describe('Replays en inglés', () => {
     expect(screen.getByText('unidentified deck')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Watch the replay Timoti B. vs. Vladis B., YCS Paris 2026 · Final' })).toBeInTheDocument()
     // Cada jugador con un deck de torneo tiene su botón para ver el detalle.
-    expect(screen.getAllByRole('button', { name: 'View the Elfnote deck' })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: 'View deck Elfnote' })).toHaveLength(1)
     expect(screen.getAllByText('View deck')).toHaveLength(3)
 
     const footer = view.container.querySelector('p.mt-4')!

@@ -211,7 +211,7 @@ export const meta = {
   'meta.replays.watchWithHeading': 'Ver el replay {label}, {heading}',
   'meta.replays.noDeck': 'deck sin identificar',
   'meta.replays.viewDeck': 'Ver deck',
-  'meta.replays.viewDeckLabel': 'Ver el deck {deck}',
+  'meta.replays.viewDeckLabel': 'Ver deck {deck}',
   'meta.replays.stage.final': 'Final',
   'meta.replays.stage.semifinal': 'Semifinal',
   'meta.replays.stage.semifinalN': 'Semifinal {number}',

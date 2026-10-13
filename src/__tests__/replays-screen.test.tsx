@@ -73,12 +73,12 @@ describe('la pestaña Replays', () => {
     expect(final.getByText('YCS Paris 2026 · Final')).toBeInTheDocument()
     expect(final.getByText('Timoti B. vs. Vladis B.')).toBeInTheDocument()
     expect(final.getByText('Elfnote')).toBeInTheDocument()
-    expect(final.getByRole('button', { name: 'Ver el deck Elfnote' })).toHaveTextContent('Ver deck')
-    expect(final.getByRole('button', { name: 'Ver el deck Azamina Mitsurugi' })).toHaveTextContent('Ver deck')
+    expect(final.getByRole('button', { name: 'Ver deck Elfnote' })).toHaveTextContent('Ver deck')
+    expect(final.getByRole('button', { name: 'Ver deck Azamina Mitsurugi' })).toHaveTextContent('Ver deck')
     // El otro replay: Usama B. no tiene deck en el Meta (y no tiene botón), Pascal K. sí.
     expect(within(cards()[1]!).getByText('deck sin identificar')).toBeInTheDocument()
-    expect(within(cards()[1]!).getAllByRole('button', { name: /^Ver el deck/ })).toHaveLength(1)
-    expect(within(cards()[1]!).getByRole('button', { name: 'Ver el deck Sky Striker' })).toBeInTheDocument()
+    expect(within(cards()[1]!).getAllByRole('button', { name: /^Ver deck/ })).toHaveLength(1)
+    expect(within(cards()[1]!).getByRole('button', { name: 'Ver deck Sky Striker' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('radio', { name: 'Todos' }))
     expect(cards()).toHaveLength(3)
@@ -141,7 +141,7 @@ describe('la pestaña Replays', () => {
   it('"Ver deck" abre el detalle del deck sin salir de los replays, con sus videos ahí mismo', async () => {
     renderScreen()
 
-    fireEvent.click(within(cards()[0]!).getByRole('button', { name: 'Ver el deck Elfnote' }))
+    fireEvent.click(within(cards()[0]!).getByRole('button', { name: 'Ver deck Elfnote' }))
 
     const deck = screen.getByRole('dialog', { name: 'Elfnote' })
     expect(window.location.hash).toBe('#replays')
@@ -152,7 +152,7 @@ describe('la pestaña Replays', () => {
     expect(screen.getAllByRole('dialog')).toHaveLength(2)
 
     // Ver el deck del otro jugador cierra el video y cambia el deck que se ve.
-    fireEvent.click(within(screen.getByRole('dialog', { name: 'Timoti B. vs. Vladis B.' })).getByRole('button', { name: 'Ver el deck Azamina Mitsurugi' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Timoti B. vs. Vladis B.' })).getByRole('button', { name: 'Ver deck Azamina Mitsurugi' }))
     expect(screen.getAllByRole('dialog')).toHaveLength(1)
     expect(screen.getByRole('dialog', { name: 'Azamina Mitsurugi' })).toBeInTheDocument()
 
@@ -168,7 +168,7 @@ describe('la pestaña Replays', () => {
     fireEvent.click(within(cards()[0]!).getByRole('button', { name: /Ver el replay Timoti B. vs. Vladis B./ }))
     expect(window.location.hash).toBe('#replays?video=aaaaaaaaaa1')
 
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Ver el deck Elfnote' }))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Ver deck Elfnote' }))
 
     expect(screen.getAllByRole('dialog')).toHaveLength(1)
     expect(screen.getByRole('dialog', { name: 'Elfnote' })).toBeInTheDocument()

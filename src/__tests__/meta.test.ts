@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  DECK_TREND_THRESHOLD,
   META_DECKS,
   MIN_TIER_DECKS,
   buildDeckTierReport,
@@ -148,6 +149,23 @@ describe('tier list de hand traps del meta', () => {
     expect(falling.projectedShare).toBeCloseTo(0.3, 5)
 
     expect(projectShare(series([0.5, 0.52, 0.49, 0.5]), 0.5).trend).toBe('flat')
+  })
+
+  it('la tendencia sale de lo que cambia la recta, no de las cifras ya recortadas al 100 %: una carta casi al tope que sube sigue subiendo', () => {
+    const topping = projectShare(series([0.7, 0.8, 0.9, 1]), 0.95)
+
+    expect(topping.projectedShare).toBe(1)
+    expect(topping.trend).toBe('up')
+    expect(projectShare(series([0.3, 0.2, 0.1, 0]), 0.05)).toMatchObject({ projectedShare: 0, trend: 'down' })
+  })
+
+  it('cuánto tiene que cambiar para que suba o baje lo pone quien pregunta: las cartas piden 5 puntos y los decks, 2', () => {
+    // Sube 1,5 puntos por semana: 3 en dos semanas.
+    const slow = series([0.02, 0.035, 0.05, 0.065])
+
+    expect(projectShare(slow, 0.05).trend).toBe('flat')
+    expect(projectShare(slow, 0.05, DECK_TREND_THRESHOLD).trend).toBe('up')
+    expect(projectShare(series([0.065, 0.05, 0.035, 0.02]), 0.05, DECK_TREND_THRESHOLD).trend).toBe('down')
   })
 
   it('sin tres semanas con decks suficientes no proyecta nada', () => {
@@ -316,6 +334,24 @@ describe('tier list de decks del meta', () => {
 
     expect(elfnote?.trend).toBe('up')
     expect(elfnote?.projectedShare).toBeGreaterThan(elfnote?.share ?? 1)
+  })
+
+  it('un deck que sube de a poco ya es tendencia (a una carta con ese cambio no le alcanzaría)', () => {
+    // Elfnote tiene 2 de cada 12 decks las cuatro semanas más viejas y 3 de cada 12 las cuatro más nuevas: la recta sube ~1,6 puntos por semana.
+    const slow: MetaDecksData = {
+      ...data,
+      decks: Array.from({ length: 8 }, (_, week) => week).flatMap((week) => {
+        const date = new Date(Date.parse('2026-10-07') - week * 7 * 86_400_000).toISOString().slice(0, 10)
+        const elfnotes = week < 4 ? 3 : 2
+
+        return Array.from({ length: 12 }, (_, index) => deck(week * 100 + index, index < elfnotes ? 'Elfnote' : `Otro ${index}`, date, []))
+      }),
+    }
+    const [elfnote] = buildDeckTierReport(slow, 'tcg', 4).decks
+
+    expect(elfnote?.name).toBe('Elfnote')
+    expect(elfnote?.trend).toBe('up')
+    expect(projectShare(elfnote?.weekly ?? [], elfnote?.share ?? 0).trend).toBe('flat')
   })
 })
 

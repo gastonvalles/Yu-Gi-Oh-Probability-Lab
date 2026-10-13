@@ -65,6 +65,13 @@ const BOARDBREAKER_OVERRIDES = new Map([
   ['Mind Control', true],
 ])
 const MIN_BOARDBREAKERS = 8
+/**
+ * De los boardbreakers, los que salen de las reglas y no de BOARDBREAKER_OVERRIDES (hoy son 14): las excepciones solas ya pasan de MIN_BOARDBREAKERS,
+ * así que sin este piso las reglas podrían dejar de leer los scripts sin que nada falle.
+ */
+const MIN_RULE_BOARDBREAKERS = 5
+/** Con menos que este tanto de los decks de la corrida anterior (la ventana es la misma y los decks se suman de a pocos por día) la API devolvió una lista cortada. */
+const MIN_DECKS_VS_PREVIOUS = 0.5
 /** Las dos categorías de torneo del sitio; cada deck queda etiquetado con su región. */
 const DECK_FORMATS = [
   { region: 'tcg', format: 'Tournament Meta Decks' },
@@ -153,6 +160,8 @@ async function main() {
     const payload = buildPayload(fetchedAt, decks, trackCards(handtraps, boardbreakers), canonicalById)
     const decklists = buildDecklists(decks, canonicalById)
     const cardRules = buildCardRules(engine.rules, scripts, cards, aliases, genericIds)
+
+    assertPayload(payload, readPreviousDeckCount())
 
     await mkdir(path.dirname(OUTPUT_PATH), { recursive: true })
     await writeFile(OUTPUT_PATH, formatPayload(payload), 'utf8')
@@ -463,6 +472,7 @@ function pickHandtraps(rules, scriptsDir, cards, aliases, canonicalById, deckNam
 function pickBoardbreakers(rules, scriptsDir, cards, aliases, canonicalById, deckNames, genericIds) {
   const idsByName = cardIdsByName(cards, aliases)
   const boardbreakers = new Map()
+  let byRules = 0
 
   for (const card of cards.values()) {
     // Sólo la carta canónica de cada nombre, y que vaya en Main o Side.
@@ -478,6 +488,7 @@ function pickBoardbreakers(rules, scriptsDir, cards, aliases, canonicalById, dec
       const flags = lua === null ? 0 : rules.cardRuleFlags(lua)
 
       boardbreaker = (flags & rules.CARD_RULE.mentions) === 0 && rules.isBoardbreakerRules(flags, isPlainSpell(card))
+      byRules += boardbreaker ? 1 : 0
     }
 
     if (boardbreaker) {
@@ -485,8 +496,8 @@ function pickBoardbreakers(rules, scriptsDir, cards, aliases, canonicalById, dec
     }
   }
 
-  if (boardbreakers.size < MIN_BOARDBREAKERS) {
-    throw new Error(`Sólo ${boardbreakers.size} boardbreakers: ¿cambió la forma de los scripts en ${scriptsDir}?`)
+  if (boardbreakers.size < MIN_BOARDBREAKERS || byRules < MIN_RULE_BOARDBREAKERS) {
+    throw new Error(`Sólo ${boardbreakers.size} boardbreakers (${byRules} por reglas): ¿cambió la forma de los scripts en ${scriptsDir}?`)
   }
 
   console.log(`Boardbreakers: ${[...boardbreakers.values()].map((card) => card.name).sort().join(', ')}`)
@@ -704,6 +715,33 @@ function buildPayload(fetchedAt, decks, tracked, canonicalById) {
       main: zoneEntries(deck.main, canonicalById, tracked),
       side: zoneEntries(deck.side, canonicalById, tracked),
     })),
+  }
+}
+
+/**
+ * Lo último antes de escribir: una falla de la API o de los scripts que no tiró ningún error no debe pisar los datos buenos que ya están en el repo.
+ * Toda carta del tier list tiene que decir de qué lista es, y los decks no pueden ser muchos menos que los de la corrida anterior.
+ */
+function assertPayload(payload, previousDeckCount) {
+  const untyped = Object.entries(payload.cards).filter(([, card]) => !Array.isArray(card.kinds) || card.kinds.length === 0)
+
+  if (untyped.length > 0) {
+    throw new Error(`${untyped.length} cartas sin tipo (hand trap o boardbreaker); por ejemplo ${untyped.slice(0, 8).map(([id]) => id).join(', ')}.`)
+  }
+
+  if (previousDeckCount > 0 && payload.decks.length < previousDeckCount * MIN_DECKS_VS_PREVIOUS) {
+    throw new Error(`Sólo ${payload.decks.length} decks contra ${previousDeckCount} de la corrida anterior: ¿devolvió la API una lista cortada?`)
+  }
+}
+
+/** Cuántos decks tiene el archivo publicado (0 si todavía no hay o no se lee). */
+function readPreviousDeckCount() {
+  try {
+    const previous = JSON.parse(readFileSync(OUTPUT_PATH, 'utf8'))
+
+    return Array.isArray(previous.decks) ? previous.decks.length : 0
+  } catch {
+    return 0
   }
 }
 

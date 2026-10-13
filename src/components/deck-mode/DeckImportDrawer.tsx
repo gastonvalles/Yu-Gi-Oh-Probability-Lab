@@ -231,6 +231,9 @@ export function DeckImportDrawer({
     return null
   }
 
+  // La ventana cambia de contenido (los controles se van mientras carga y la vista previa se va con "Volver"): el foco se queda en el panel, no cae al <body>.
+  const keepFocus = () => asideRef.current?.focus({ preventScroll: true })
+
   const handlePreviewResult = (nextPreview: DeckImportPreview, options?: { emptyMessage?: string }) => {
     setPreview(nextPreview)
 
@@ -258,6 +261,7 @@ export function DeckImportDrawer({
 
     setFormError(null)
     setIsProcessing(true)
+    keepFocus()
 
     try {
       const cards = await loadCardCatalog()
@@ -294,6 +298,7 @@ export function DeckImportDrawer({
 
     setFormError(null)
     setIsProcessing(true)
+    keepFocus()
     setSelectedFileName(file.name)
 
     // Use file name (without extension) as deck name
@@ -370,6 +375,7 @@ export function DeckImportDrawer({
     setPreview(null)
     setFormError(null)
     setSelectedFileName(null)
+    keepFocus()
   }
 
   const applyImport = () => {
@@ -458,7 +464,7 @@ export function DeckImportDrawer({
               {/* Siempre montada (la zona de soltar no lo está mientras carga): así lo que pasa se anuncia. */}
               <span aria-live="polite" className="sr-only">
                 {isProcessing
-                  ? t('deck.import.live.processing')
+                  ? t('deck.import.processing')
                   : isDragActive
                     ? t('deck.import.live.dragging')
                     : selectedFileName
@@ -510,6 +516,9 @@ export function DeckImportDrawer({
                         <strong className="hidden text-body font-semibold text-foreground pointer-coarse:block">{t('deck.import.dropTouch')}</strong>
                       </div>
 
+                      {/* Antes del botón: la trampa de foco toma como último control al último del DOM, y este input (invisible: lo abre el botón) no recibe foco. */}
+                      <input ref={fileInputRef} type="file" accept={FILE_ACCEPT} className="hidden" onChange={handleFileInputChange} />
+
                       <Button variant="primary" size="md" onClick={handleChooseFileClick}>
                         {t('deck.import.chooseFile')}
                       </Button>
@@ -519,8 +528,6 @@ export function DeckImportDrawer({
                       {selectedFileName ? (
                         <span className={`${chip.accent} px-2 py-1 text-micro`}>{t('deck.import.selectedFile', { name: selectedFileName })}</span>
                       ) : null}
-
-                      <input ref={fileInputRef} type="file" accept={FILE_ACCEPT} className="hidden" onChange={handleFileInputChange} />
                     </div>
                   ) : (
                     <div className="flex min-h-0 flex-1 flex-col gap-2.5">

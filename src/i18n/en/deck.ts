@@ -92,7 +92,6 @@ export const deck: Translated<typeof es> = {
   'deck.import.close': 'Close importer',
   'deck.import.dialog': 'Deck importer',
   'deck.import.title': 'Import deck',
-  'deck.import.live.processing': 'Processing file',
   'deck.import.live.dragging': 'File detected, drop to load',
   'deck.import.live.loaded': 'File loaded: {name}',
   'deck.import.method.label': 'How to import',
