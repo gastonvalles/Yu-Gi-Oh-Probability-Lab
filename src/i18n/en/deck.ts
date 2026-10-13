@@ -55,7 +55,6 @@ export const deck: Translated<typeof es> = {
   'deck.builder.help':
     'Add cards from the search. Tap a card in the deck to see its details and add or remove copies; to move it between Main, Extra and Side, press and hold it, then drag.',
   'deck.builder.deckName': 'Deck name',
-  'deck.builder.format': 'Format',
   'deck.builder.formatAria': 'Deck format',
   'deck.builder.importDeck': 'Import deck',
   'deck.builder.import': 'Import',

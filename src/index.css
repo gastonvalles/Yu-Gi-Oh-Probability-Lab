@@ -850,6 +850,9 @@
     --radius-chip: 999px;
     /* Alto del pie de la app (en escritorio va fijo abajo de las pantallas que ocupan todo el alto, como el builder). */
     --app-footer-height: 2.75rem;
+    /* El menú lateral al contraerse o abrirse: el ancho, los rótulos y lo flotante que lo sigue (mascota, botones) van con la misma duración y curva. */
+    --sidebar-duration: 280ms;
+    --sidebar-ease: cubic-bezier(0.22, 1, 0.36, 1);
     --app-scrollbar-track: #15112f;
     --app-scrollbar-thumb: #4d447f;
     --app-scrollbar-thumb-hover: #62589a;

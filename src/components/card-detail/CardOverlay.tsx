@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 import { UI_ANIMATION_MS, prefersReducedMotion } from '../../app/motion'
@@ -10,6 +10,7 @@ import { Heading } from '../ui/Heading'
 import { cx } from '../ui/cx'
 import { CloseButton } from '../ui/IconButton'
 import { CardPricesButton, CardPricesModal } from './CardPrices'
+import { CardGlare, levelOut, tiltHandlers } from './card-tilt'
 
 const CLOSE_MS = 180
 const EASE = 'cubic-bezier(0.2, 0.9, 0.25, 1)'
@@ -37,32 +38,6 @@ function flightFrom(card: HTMLElement, origin: DOMRect): string {
   const dx = origin.left + origin.width / 2 - (target.left + target.width / 2)
   const dy = origin.top + origin.height / 2 - (target.top + target.height / 2)
   return `translate(${dx}px, ${dy}px) scale(${origin.width / Math.max(1, target.width)})`
-}
-
-/** Cuánto se inclina la carta (en grados, en el borde) hacia donde está el puntero. */
-const TILT_DEGREES = 12
-
-/**
- * Inclina la carta hacia el puntero, como una carta de verdad que se apoya con el dedo (y un brillo que sigue al puntero).
- * Va por `rotate` (aparte de `transform`, que usa el vuelo al abrir y cerrar) y con la perspectiva puesta en el contenedor.
- * Sin tocar el estado de React: cada movimiento sólo escribe estilos.
- */
-function tiltTowards(art: HTMLElement, event: ReactPointerEvent<HTMLElement>) {
-  const rect = art.getBoundingClientRect()
-  const x = ((event.clientX - rect.left) / Math.max(1, rect.width) - 0.5) * 2
-  const y = ((event.clientY - rect.top) / Math.max(1, rect.height) - 0.5) * 2
-  const strength = Math.min(1, Math.hypot(x, y))
-
-  // Se hunde del lado del puntero: el eje es perpendicular a su desplazamiento desde el centro.
-  art.style.rotate = strength < 0.01 ? 'none' : `${-y} ${x} 0 ${strength * TILT_DEGREES}deg`
-  art.style.setProperty('--glare-x', `${(x + 1) * 50}%`)
-  art.style.setProperty('--glare-y', `${(y + 1) * 50}%`)
-  art.dataset.tilting = 'true'
-}
-
-function levelOut(art: HTMLElement) {
-  art.style.rotate = ''
-  art.dataset.tilting = 'false'
 }
 
 /**
@@ -193,12 +168,8 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
           role="button"
           tabIndex={-1}
           aria-label={zoomed ? t('search.overlay.backToDetail') : t('search.overlay.zoomIn')}
-          // La inclinación es sólo para el mouse (con el dedo sería tirar de la carta) y se apaga con la carta agrandada o con movimiento reducido.
-          onPointerMove={(event) => {
-            if (event.pointerType !== 'mouse' || zoomed || prefersReducedMotion()) return
-            tiltTowards(event.currentTarget, event)
-          }}
-          onPointerLeave={(event) => levelOut(event.currentTarget)}
+          // La inclinación en 3D (ver card-tilt), también con la carta agrandada.
+          {...tiltHandlers}
           onClick={(event) => {
             event.stopPropagation()
             levelOut(event.currentTarget)
@@ -212,11 +183,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
             limitCard={card}
             limitBadgeSize="lg"
           />
-          {/* El brillo que sigue al puntero mientras la carta se inclina. */}
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-(--motion-duration) [background:radial-gradient(circle_at_var(--glare-x,50%)_var(--glare-y,50%),rgb(255_255_255/0.34),transparent_58%)] mix-blend-overlay group-data-[tilting=true]/art:opacity-100 motion-reduce:hidden"
-          />
+          <CardGlare />
           {artOverlay ? <div className="absolute right-2 top-2 z-1">{artOverlay}</div> : null}
           {artCorner ? <div className="absolute bottom-2 right-2 z-1">{artCorner}</div> : null}
         </div>

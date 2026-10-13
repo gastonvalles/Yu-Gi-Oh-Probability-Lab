@@ -23,7 +23,6 @@ export function AssetsSection() {
       <SpecimenGrid min="22rem">
         <Specimen title="Marca" layout="column" note={<>La marca de la app. Archivo: <Tag>shell/AppBrand.tsx</Tag>. Los íconos de la app y de la pestaña están más abajo, en <Tag>/</Tag>.</>}>
           <AppBrand />
-          <AppBrand collapsed />
         </Specimen>
 
         <Specimen title="Cartas" note={<>El dorso es el de YGOPRODeck, por el proxy de imágenes; las cartas, por <Tag>CardArt</Tag> (esqueleto, iniciales si no hay imagen y esquinas rectas).</>}>

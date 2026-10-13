@@ -11,11 +11,13 @@ import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { CardArt } from '../CardArt'
 import { buildZoneActionEntries } from '../card-detail/card-zone-actions'
 import { CardPricesButton, CardPricesModal } from '../card-detail/CardPrices'
+import { CardGlare, TILT_ART, TILT_PERSPECTIVE, tiltHandlers } from '../card-detail/card-tilt'
 import { CardZoom } from '../card-detail/CardZoom'
 import { DeckCopyControls, type DeckCopyActions } from '../card-detail/DeckCopyControls'
 import { Heading } from '../ui/Heading'
 import { Button } from '../ui/Button'
 import { Icon } from '../ui/Icon'
+import { cx } from '../ui/cx'
 
 /** Nombre corto de la zona para los botones de agregar (el texto completo queda en el tooltip y en lectores de pantalla). */
 const ZONE_SHORT_LABEL: Record<DeckZone, string> = { main: 'Main', extra: 'Extra', side: 'Side' }
@@ -50,19 +52,23 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, onAddToZone 
             {card.name}
           </Heading>
 
-          <div className="grid min-h-0 justify-items-center overflow-hidden">
-            <div className="relative w-[min(100%,max(9rem,calc((100dvh-var(--app-footer-height)-29rem)*0.72)))]">
-              <button
-                type="button"
-                aria-label={t('deck.classic.zoom')}
-                title={t('deck.classic.zoom')}
-                className="block w-full cursor-zoom-in rounded-none bg-transparent p-0 focus-visible:outline-none focus-visible:shadow-focus"
-                onClick={() => setZoomed(true)}
-              >
-                <CardArt remoteUrl={card.imageUrl} name={card.name} className="w-full bg-transparent shadow-none" limitCard={card} limitBadgeSize="lg" />
-              </button>
-              <div className="absolute bottom-2 right-2">
-                <CardPricesButton onClick={() => setPricesOpen(true)} />
+          {/* La carta se inclina en 3D hacia el mouse (como en el detalle): la perspectiva va en el contenedor y la inclinación en la carta, con la moneda de precios adentro para que la acompañe. */}
+          <div className="grid min-h-0 justify-items-center">
+            <div className={cx('relative w-[min(100%,max(9rem,calc((100dvh-var(--app-footer-height)-29rem)*0.72)))]', TILT_PERSPECTIVE)}>
+              <div className={cx('relative', TILT_ART)} {...tiltHandlers}>
+                <button
+                  type="button"
+                  aria-label={t('deck.classic.zoom')}
+                  title={t('deck.classic.zoom')}
+                  className="block w-full cursor-zoom-in rounded-none bg-transparent p-0 focus-visible:outline-none focus-visible:shadow-focus"
+                  onClick={() => setZoomed(true)}
+                >
+                  <CardArt remoteUrl={card.imageUrl} name={card.name} className="w-full bg-transparent shadow-none" limitCard={card} limitBadgeSize="lg" />
+                </button>
+                <CardGlare />
+                <div className="absolute bottom-2 right-2">
+                  <CardPricesButton onClick={() => setPricesOpen(true)} />
+                </div>
               </div>
             </div>
           </div>

@@ -134,7 +134,11 @@ function ActiveMascot() {
   const shown: MascotState = dragging ? 'jumping' : state === 'idle' && looking ? 'look' : state
 
   return (
-    <div className="fixed left-0 top-0 z-110" style={{ transform: `translate3d(${position.x}px, ${position.y}px, 0)` }}>
+    // Se corre con la misma curva que el menú lateral (si el menú se abre o se contrae, la mascota lo acompaña); agarrada, sigue al puntero sin demora.
+    <div
+      className={cx('fixed left-0 top-0 z-110', !dragging && 'transition-transform duration-(--sidebar-duration) ease-(--sidebar-ease) motion-reduce:transition-none')}
+      style={{ transform: `translate3d(${position.x}px, ${position.y}px, 0)` }}
+    >
       <div className="group relative">
         <button
           type="button"

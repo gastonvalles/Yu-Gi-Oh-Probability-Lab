@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type CSSProperties } from 'react'
 
 import { MASCOTS, currentMascotId, reactMascot, restMascot, selectMascot, useCurrentMascot, useMascotEnabled, type MascotId } from '../../app/mascot'
 import { t } from '../../i18n'
@@ -8,6 +8,20 @@ import { overline } from '../ui/typography'
 
 /** Un cuadro quieto de cada mascota, para la lista. */
 const STILL = 'idle.png'
+/** El ancho del desplegable (`w-60`) y cuánto se separa del botón y del borde de la ventana. */
+const POPUP_WIDTH = 240
+const POPUP_GAP = 8
+
+/**
+ * Dónde va el desplegable: pegado al botón (arriba o abajo) y siempre adentro de la ventana. Va con `position: fixed`: así no lo recorta el menú
+ * lateral (que recorta lo que le sobra al cambiar de ancho) ni el cajón del celular, y de todos modos queda justo después del botón en el orden del teclado.
+ */
+function popupStyle(anchor: DOMRect, placement: 'above' | 'below'): CSSProperties {
+  const wanted = placement === 'above' ? anchor.left + anchor.width / 2 - POPUP_WIDTH / 2 : anchor.right - POPUP_WIDTH
+  const left = Math.min(Math.max(wanted, POPUP_GAP), Math.max(POPUP_GAP, window.innerWidth - POPUP_WIDTH - POPUP_GAP))
+
+  return placement === 'above' ? { left, bottom: window.innerHeight - anchor.top + POPUP_GAP } : { left, top: anchor.bottom + POPUP_GAP }
+}
 
 /**
  * El Kuriboh alado (vectorizado de la imagen de referencia en public/mascot/kuriboh.svg) es la caja de
@@ -15,6 +29,8 @@ const STILL = 'idle.png'
  */
 export function MascotPicker({ placement, className }: { placement: 'above' | 'below'; className?: string }) {
   const [open, setOpen] = useState(false)
+  // Dónde estaba el botón al abrir: de ahí sale la posición del desplegable.
+  const [anchor, setAnchor] = useState<DOMRect | null>(null)
   const enabled = useMascotEnabled()
   const current = useCurrentMascot()
   const rootRef = useRef<HTMLDivElement>(null)
@@ -66,8 +82,11 @@ export function MascotPicker({ placement, className }: { placement: 'above' | 'b
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
         title={t('shell.mascot.title')}
-        className="grid h-9 w-12 place-items-center rounded-control transition-colors duration-150 hover:bg-tint/10 focus-visible:outline-none focus-visible:shadow-focus"
-        onClick={() => setOpen((value) => !value)}
+        className="grid h-9 w-12 place-items-center rounded-control transition-opacity duration-150 hover:opacity-80 focus-visible:outline-none focus-visible:shadow-focus active:opacity-60"
+        onClick={(event) => {
+          setAnchor(event.currentTarget.getBoundingClientRect())
+          setOpen((value) => !value)
+        }}
       >
         <img src="/mascot/kuriboh.svg" alt="" draggable={false} className="w-10 select-none" />
       </button>
@@ -77,10 +96,8 @@ export function MascotPicker({ placement, className }: { placement: 'above' | 'b
           id={listId}
           role="group"
           aria-label={t('shell.mascot.available')}
-          className={cx(
-            'absolute z-130 grid w-60 gap-1 rounded-card text-left border border-border-subtle bg-surface-raised p-2 shadow-overlay animate-dialog-enter motion-reduce:animate-none',
-            placement === 'above' ? 'bottom-full left-1/2 mb-2 -translate-x-1/2' : 'right-0 top-full mt-2',
-          )}
+          style={anchor ? popupStyle(anchor, placement) : undefined}
+          className="fixed z-130 grid w-60 gap-1 rounded-card border border-border-subtle bg-surface-raised p-2 text-left shadow-overlay animate-dialog-enter motion-reduce:animate-none"
         >
           <span className={cx('px-2 pt-1', overline)}>{t('shell.mascot.title')}</span>
           {(Object.entries(MASCOTS) as [MascotId, (typeof MASCOTS)[MascotId]][]).map(([id, mascot]) => {

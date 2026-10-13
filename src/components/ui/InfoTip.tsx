@@ -27,7 +27,7 @@ export function InfoTip({ label, children, anchor = 'self' }: InfoTipProps) {
     >
       <button
         type="button"
-        className="grid size-6 place-items-center rounded-full text-soft transition-colors duration-150 hover:text-foreground focus-visible:outline-none focus-visible:shadow-focus aria-expanded:text-primary-soft"
+        className="grid size-6 place-items-center rounded-full text-white transition-opacity duration-150 focus-visible:outline-none focus-visible:shadow-focus active:opacity-70 [&_svg]:transition-[filter] [&_svg]:duration-150 hover:[&_svg]:drop-shadow-[0_0_6px_rgb(255_255_255/0.7)]"
         aria-label={label}
         aria-expanded={isOpen}
         aria-describedby={isOpen ? contentId : undefined}
