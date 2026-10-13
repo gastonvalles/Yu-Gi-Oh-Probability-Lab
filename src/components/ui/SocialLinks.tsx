@@ -10,9 +10,9 @@ const LINKS: ReadonlyArray<{ href: string; label: string; icon: IconName }> = [
   { href: 'https://github.com/gastonvalles', label: 'GitHub', icon: 'github' },
 ]
 
-/** Los íconos de las redes (en el pie): al pasar el mouse se iluminan como el destino abierto del menú: fondo lavanda, verde y resplandor. */
-const ICON_LINK = 'group grid size-9 place-items-center rounded-control text-primary-soft/70 transition-colors duration-150 hover:bg-lavender hover:text-success focus-visible:outline-none focus-visible:shadow-focus'
-const ICON_GLOW = 'transition-[filter] duration-150 group-hover:drop-shadow-[0_0_8px_rgb(var(--success-rgb)/0.55)]'
+/** Los íconos de las redes (en el pie): blancos y sin fondo, como todo botón sin texto; al pasar el mouse se iluminan con un resplandor blanco. */
+const ICON_LINK = 'group grid size-9 place-items-center rounded-control text-white transition-opacity duration-150 focus-visible:outline-none focus-visible:shadow-focus active:opacity-70'
+const ICON_GLOW = 'transition-[filter] duration-150 group-hover:drop-shadow-[0_0_8px_rgb(255_255_255/0.7)]'
 
 /** La línea de autoría, discreta: en desktop sólo el ©, con el descargo en el tooltip; en mobile, completa. */
 export function SiteCredit({ withDisclaimer = false, className }: { withDisclaimer?: boolean; className?: string }) {

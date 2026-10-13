@@ -28,7 +28,7 @@ import { ProgressRing } from '../ui/ProgressRing'
 import { overline } from '../ui/typography'
 import { DeckBuilderClassicPreview } from './DeckBuilderClassicPreview'
 import { DeckImportDrawer } from './DeckImportDrawer'
-import { LabeledField, fieldInline } from '../ui/LabeledField'
+import { FieldBox, fieldInline } from '../ui/FieldBox'
 
 
 interface DeckBuilderStepProps {
@@ -265,18 +265,25 @@ export function DeckBuilderStep({
             <div className="relative z-1 grid h-full min-h-0 content-start gap-4 overflow-y-auto overflow-x-hidden px-8 pb-6 pt-4 [scrollbar-gutter:stable] [scrollbar-width:thin] max-[1500px]:px-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex min-w-0 flex-[1_1_16rem] items-stretch gap-3">
-                  <LabeledField label={t('deck.builder.deckName')} className="min-w-0 max-w-[16rem] flex-[1_1_auto]">
+                  {/* Sin etiqueta: el nombre que se escribe y el formato que se elige ya dicen qué es cada campo. */}
+                  <FieldBox className="min-w-0 max-w-[16rem] flex-[1_1_auto]">
                     <input
                       type="text"
+                      aria-label={t('deck.builder.deckName')}
                       value={deckBuilder.deckName}
                       onChange={(event) => onDeckNameChange(event.target.value)}
                       placeholder={t('deck.builder.deckName')}
                       className={fieldInline}
                     />
-                  </LabeledField>
+                  </FieldBox>
 
-                  <LabeledField label={t('deck.builder.format')} className="w-[9.5rem] flex-none">
-                    <select value={deckFormat} onChange={(event) => onDeckFormatChange(event.target.value as DeckFormat)} className={cx(fieldInline, 'cursor-pointer')}>
+                  <FieldBox className="w-[9.5rem] flex-none">
+                    <select
+                      aria-label={t('deck.builder.formatAria')}
+                      value={deckFormat}
+                      onChange={(event) => onDeckFormatChange(event.target.value as DeckFormat)}
+                      className={cx(fieldInline, 'cursor-pointer')}
+                    >
                       <option value="unlimited">{t('deck.format.unlimited')}</option>
                       <option value="tcg">TCG</option>
                       <option value="ocg">OCG</option>
@@ -284,7 +291,7 @@ export function DeckBuilderStep({
                       <option value="edison">Edison</option>
                       <option value="genesys">Genesys</option>
                     </select>
-                  </LabeledField>
+                  </FieldBox>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -423,7 +430,7 @@ export function DeckBuilderStep({
         sideVariant="form"
         side={
           <>
-            <LabeledField label={t('deck.builder.deckName')}>
+            <FieldBox>
               <input
                 aria-label={t('deck.builder.deckName')}
                 type="text"
@@ -432,8 +439,8 @@ export function DeckBuilderStep({
                 placeholder={t('deck.builder.deckName')}
                 className={fieldInline}
               />
-            </LabeledField>
-            <LabeledField label={t('deck.builder.format')}>
+            </FieldBox>
+            <FieldBox>
               <select
                 aria-label={t('deck.builder.formatAria')}
                 value={deckFormat}
@@ -447,7 +454,7 @@ export function DeckBuilderStep({
                 <option value="edison">Edison</option>
                 <option value="genesys">Genesys</option>
               </select>
-            </LabeledField>
+            </FieldBox>
             {/* Debajo del nombre y el formato: tres íconos con su nombre en el tooltip y en lectores de pantalla. */}
             <div className="col-span-2 flex items-center">
             <IconButton tone="ghost" size="md" aria-label={t('deck.builder.import')} title={t('deck.builder.import')} onClick={() => setImportDrawerOpen(true)}>

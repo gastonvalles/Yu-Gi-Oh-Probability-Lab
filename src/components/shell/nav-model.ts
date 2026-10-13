@@ -1,7 +1,7 @@
 import { t } from '../../i18n'
 import type { IconName } from '../ui/Icon'
 
-/** Estado de un destino del menú en pocas palabras: el punto de color (verde listo, naranja a medio hacer; pendiente no lleva punto). */
+/** Estado de un destino del menú en pocas palabras (listo, en progreso, pendiente): lo dicen el tooltip y el nombre accesible. */
 export type NavTone = 'complete' | 'progress' | 'pending'
 
 export interface NavItem {
@@ -11,7 +11,7 @@ export interface NavItem {
   /** Nombre completo: tooltip y lectores de pantalla. */
   title: string
   icon: IconName
-  /** Estado o ayuda en una línea: tooltip y lectores de pantalla (en el menú sólo se ve el punto de color). */
+  /** Estado o ayuda en una línea: tooltip y lectores de pantalla. */
   detail?: string
   tone?: NavTone
 }

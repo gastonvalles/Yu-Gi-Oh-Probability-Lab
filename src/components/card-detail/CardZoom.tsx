@@ -4,7 +4,9 @@ import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
+import { cx } from '../ui/cx'
 import { CloseButton } from '../ui/IconButton'
+import { CardGlare, TILT_ART, TILT_PERSPECTIVE, tiltHandlers } from './card-tilt'
 
 interface CardZoomProps {
   card: ApiCardReference
@@ -25,11 +27,15 @@ export function CardZoom({ card, name, onClose }: CardZoomProps) {
       role="dialog"
       aria-modal="true"
       aria-label={t('search.zoom.aria', { name })}
-      className="fixed inset-0 z-250 grid cursor-zoom-out place-items-center bg-background/90 p-4 backdrop-blur-[8px] animate-dialog-enter motion-reduce:animate-none"
+      className={cx('fixed inset-0 z-250 grid cursor-zoom-out place-items-center bg-background/90 p-4 backdrop-blur-[8px] animate-dialog-enter motion-reduce:animate-none', TILT_PERSPECTIVE)}
       onClick={onClose}
     >
-      <div className="relative aspect-[421/614] h-[min(94dvh,calc((100vw-2rem)*614/421))] max-w-full overflow-hidden shadow-[0_24px_50px_rgb(0_0_0/0.6),0_0_0_1px_rgb(255_255_255/0.12),0_0_40px_rgb(var(--primary-rgb)/0.3)]">
+      <div
+        className={cx('relative aspect-[421/614] h-[min(94dvh,calc((100vw-2rem)*614/421))] max-w-full overflow-hidden shadow-[0_24px_50px_rgb(0_0_0/0.6),0_0_0_1px_rgb(255_255_255/0.12),0_0_40px_rgb(var(--primary-rgb)/0.3)]', TILT_ART)}
+        {...tiltHandlers}
+      >
         <CardArt remoteUrl={card.imageUrl ?? card.imageUrlSmall ?? null} name={name} className="block h-full w-full bg-input object-contain" limitCard={card} limitBadgeSize="lg" />
+        <CardGlare />
       </div>
       <CloseButton
         tone="flat"

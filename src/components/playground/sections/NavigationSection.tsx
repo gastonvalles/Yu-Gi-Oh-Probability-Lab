@@ -122,7 +122,7 @@ export function NavigationSection() {
       ) : null}
 
       <SpecimenGrid min="24rem">
-        <Specimen title="Menú lateral (escritorio)" layout="free" note={<>Reemplaza la barra de arriba. El punto de color dice cómo viene cada paso (verde listo, naranja a medio hacer). Archivos: <Tag>shell/AppSidebar.tsx</Tag> <Tag>shell/SidebarNav.tsx</Tag></>}>
+        <Specimen title="Menú lateral (escritorio)" layout="free" note={<>Reemplaza la barra de arriba. Contraído, el ícono de cada fila no se mueve y los rótulos se desvanecen (probalo con la flecha de abajo). Archivos: <Tag>shell/AppSidebar.tsx</Tag> <Tag>shell/SidebarNav.tsx</Tag></>}>
           <div className="flex flex-wrap items-start gap-4">
             <div className="h-[38rem] overflow-hidden rounded-card border border-border-subtle">
               <AppSidebar groups={groups} activeKey={active} onSelect={setActive} collapsed={collapsed} onToggleCollapsed={() => setCollapsed((current) => !current)} />

@@ -43,7 +43,7 @@ describe('el menú de la app', () => {
     expect(buildAppNavGroups(STEPS, { practice: false })[1]?.items.map((item) => item.key)).toEqual(['life'])
   })
 
-  it('el destino abierto lleva aria-current, elegir otro avisa cuál y el punto de color dice cómo viene cada paso', () => {
+  it('el destino abierto lleva aria-current, elegir otro avisa cuál, y cómo viene cada paso se dice con palabras (no con un punto de color)', () => {
     const onSelect = vi.fn()
     render(<SidebarNav groups={GROUPS} activeKey="categorization" onSelect={onSelect} />)
 
@@ -53,21 +53,25 @@ describe('el menú de la app', () => {
     // Cada grupo se anuncia por su nombre.
     expect(within(nav).getByRole('group', { name: 'Herramientas' })).toBeInTheDocument()
 
-    // Listo (verde), a medio hacer (naranja) y pendiente (sin punto).
-    expect(within(nav).getByRole('button', { name: /^Deck Builder/ }).querySelector('[data-tone="complete"]')).not.toBeNull()
-    expect(within(nav).getByRole('button', { name: /^Categorización de roles/ }).querySelector('[data-tone="progress"]')).not.toBeNull()
-    expect(within(nav).getByRole('button', { name: /^Probability Lab/ }).querySelector('[data-tone]')).toBeNull()
+    // Listo, a medio hacer y pendiente: lo anuncian el nombre accesible y el tooltip; un punto de color en el borde del ícono parecería una notificación.
+    expect(within(nav).getByRole('button', { name: /^Deck Builder. Listo/ })).toBeInTheDocument()
+    expect(within(nav).getByRole('button', { name: /^Categorización de roles. En progreso/ })).toBeInTheDocument()
+    expect(within(nav).getByRole('button', { name: /^Probability Lab. Pendiente/ })).toBeInTheDocument()
+    expect(nav.querySelector('[data-tone]')).toBeNull()
 
     fireEvent.click(within(nav).getByRole('button', { name: /^Exportar deck/ }))
     expect(onSelect).toHaveBeenCalledWith('export')
   })
 
-  it('contraído, sólo se ven los íconos: el nombre queda para los lectores de pantalla y el tooltip', () => {
-    render(<SidebarNav groups={GROUPS} activeKey="export" onSelect={() => {}} collapsed />)
+  it('contraído, sólo se ven los íconos: el nombre queda para los lectores de pantalla y el tooltip, y el rótulo sigue en el DOM (sólo se desvanece)', () => {
+    render(<AppSidebar groups={GROUPS} activeKey="export" onSelect={() => {}} collapsed onToggleCollapsed={() => {}} />)
 
     const button = screen.getByRole('button', { name: /^Exportar deck/ })
     expect(button).toHaveAttribute('title', expect.stringContaining('Exportar deck'))
-    expect(within(button).queryByText('Exportar')).not.toBeInTheDocument()
+    // El rótulo no se quita (si no, el ancho no se podría animar sin que todo salte): se oculta a los lectores y se desvanece con el menú.
+    const [label] = within(button).getAllByText('Exportar')
+    expect(label.closest('[aria-hidden="true"]')).not.toBeNull()
+    expect(label.closest('.grid')).toHaveClass('group-data-[collapsed=true]/sidebar:opacity-0')
   })
 })
 
@@ -85,7 +89,8 @@ describe('el menú lateral', () => {
 
     rerender(<AppSidebar groups={GROUPS} activeKey="export" onSelect={() => {}} collapsed onToggleCollapsed={onToggle} />)
     expect(aside).toHaveAttribute('data-collapsed', 'true')
-    expect(screen.queryByRole('group', { name: 'Idioma' })).not.toBeInTheDocument()
+    // Contraído el idioma y las mascotas se desvanecen y no se pueden tocar ni enfocar (el renglón conserva su alto: la flecha de abajo no se mueve).
+    expect(screen.getByRole('group', { name: 'Idioma' }).parentElement).toHaveClass('group-data-[collapsed=true]/sidebar:invisible', 'group-data-[collapsed=true]/sidebar:opacity-0')
     expect(screen.getByRole('button', { name: 'Expandir menú' })).toHaveAttribute('aria-expanded', 'false')
   })
 })

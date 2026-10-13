@@ -6,9 +6,11 @@ import { Icon } from './Icon'
 type IconButtonSize = 'sm' | 'md' | 'lg'
 
 /**
- * raised: botón de barra de herramientas (por defecto) · close: X de los encabezados · ghost: sin fondo (papelera de zona) ·
- * flat: blanco, grande y sin fondo (estética de la práctica) · outline: redondo con borde (volver al principio de un replay) ·
- * primary: redondo violeta, la acción principal de una barra (reproducir).
+ * Los botones que son sólo un ícono no llevan fondo y son siempre blancos: el aviso de que se pueden tocar es un resplandor blanco al pasar
+ * el mouse (y un poco menos de opacidad al apretar); el foco lleva el aro de siempre. El tono sólo cambia el tamaño y la forma:
+ * raised: el de las barras de herramientas (por defecto) · close: la X de los encabezados · ghost: el de las zonas del deck (papelera, ordenar) ·
+ * flat: el grande de la práctica · outline: redondo con borde (volver al principio de un replay).
+ * primary es la excepción: redondo violeta, la acción principal de una barra (reproducir).
  */
 type IconButtonTone = 'raised' | 'close' | 'ghost' | 'flat' | 'outline' | 'primary'
 
@@ -18,7 +20,11 @@ interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const BASE =
-  'inline-flex shrink-0 items-center justify-center p-0 transition-[background-color,border-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus [&_svg]:block'
+  'inline-flex shrink-0 items-center justify-center p-0 transition-[opacity,border-color,background-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus [&_svg]:block'
+
+/** Lo común de los que van sin fondo: ícono blanco, resplandor al pasar el mouse, más tenue al apretar o si está deshabilitado. */
+const BARE =
+  'bg-transparent text-white active:opacity-70 disabled:pointer-events-none disabled:opacity-40 [&_svg]:transition-[filter] [&_svg]:duration-150 hover:[&_svg]:drop-shadow-[0_0_6px_rgb(255_255_255/0.7)]'
 
 const SIZES: Record<IconButtonTone, Record<IconButtonSize, string>> = {
   raised: { sm: 'size-9 [&_svg]:size-4', md: 'size-10 [&_svg]:size-[1.125rem]', lg: 'size-11 [&_svg]:size-5' },
@@ -34,11 +40,11 @@ const toneStyle = variants({
   base: BASE,
   variants: {
     tone: {
-      raised: 'rounded-control bg-lavender text-foreground hover:bg-lavender-hover',
-      close: 'rounded-full bg-transparent text-white hover:bg-tint/10 active:bg-tint/16',
-      ghost: 'rounded-control bg-transparent text-foreground hover:bg-tint/10',
-      flat: 'rounded-full bg-transparent text-white hover:bg-tint/8 active:bg-tint/16 [&_svg]:stroke-[1.3]',
-      outline: 'rounded-full border border-tint/30 bg-card-background text-foreground hover:bg-tint/14 disabled:pointer-events-none disabled:opacity-40',
+      raised: cx('rounded-control', BARE),
+      close: cx('rounded-full', BARE),
+      ghost: cx('rounded-control', BARE),
+      flat: cx('rounded-full [&_svg]:stroke-[1.3]', BARE),
+      outline: cx('rounded-full border border-tint/30 hover:border-tint/60', BARE),
       primary: 'rounded-full bg-primary text-primary-foreground shadow-brand hover:bg-primary-hover active:translate-y-px disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none',
     },
   },

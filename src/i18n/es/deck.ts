@@ -54,7 +54,6 @@ export const deck = {
   'deck.builder.help':
     'Agregá cartas desde el buscador. Tocá una carta del deck para ver el detalle y sumar o quitar copias; para moverla entre Main, Extra y Side, mantenela presionada y arrastrala.',
   'deck.builder.deckName': 'Nombre del deck',
-  'deck.builder.format': 'Formato',
   'deck.builder.formatAria': 'Formato del deck',
   'deck.builder.importDeck': 'Importar deck',
   'deck.builder.import': 'Importar',
