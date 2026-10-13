@@ -1,6 +1,6 @@
 import type { ApiCardReference, CardOrigin, CardRole } from '../types'
 import { getCardRuleFlags } from './card-rules'
-import { CARD_RULE } from './card-script-rules'
+import { CARD_RULE, isBoardbreakerRules } from './card-script-rules'
 
 /** Output of the classification engine for a single card. */
 export interface ClassificationSuggestion {
@@ -637,7 +637,7 @@ function rolesFromRules(card: ApiCardReference, flags: number): CardRole[] {
     roles.push('disruption')
   }
 
-  if (has(CARD_RULE.hitsOpponent | CARD_RULE.givesToOpponent) || (isSpellCard(card) && !quickPlay && has(CARD_RULE.hitsEither))) {
+  if (isBoardbreakerRules(flags, isSpellCard(card) && !quickPlay)) {
     roles.push('boardbreaker')
   }
 

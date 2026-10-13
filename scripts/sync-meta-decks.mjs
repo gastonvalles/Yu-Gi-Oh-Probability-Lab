@@ -8,7 +8,8 @@ import { createServer } from 'vite'
 
 /**
  * Baja los Tournament Meta Decks de YGOPRODeck (las listas de torneo que el sitio carga a mano) y escribe:
- * - src/data/meta-decks.json: cada deck con sus datos de torneo y sólo sus hand traps (lo que lee el tier list).
+ * - src/data/meta-decks.json: cada deck con sus datos de torneo y sólo sus hand traps y boardbreakers (lo que leen los tier lists de
+ *   cartas; el tier list de decks se arma con el nombre y la fecha de cada uno).
  * - src/data/meta-decklists.json: las listas completas (Main, Extra y Side), que la app baja recién al abrir un deck.
  * - src/data/card-rules.json: qué puede hacer cada carta según sus reglas (los scripts de EDOPro leídos por
  *   src/app/card-script-rules.ts), para el clasificador de la app y para saber qué carta es hand trap.
@@ -28,6 +29,42 @@ const CARD_SCRIPT_DIRS = ['official', 'pre-release']
 const HANDTRAP_OVERRIDES = new Map([['Evenly Matched', false]])
 /** Con menos hand traps que esto cambió algo en los scripts o en su lectura: mejor fallar que publicar un tier list vacío. */
 const MIN_HANDTRAPS = 10
+/**
+ * Excepciones al criterio de reglas de los boardbreakers, por nombre. El criterio es el del clasificador (isBoardbreakerRules) más que no mencione
+ * a su paquete (las piezas de engine que rompen algo no son boardbreakers genéricos).
+ * `false` saca una que por reglas le pega al campo del rival pero nadie cuenta como boardbreaker; `true` mete una que las reglas no leen
+ * así (las Quick-Play y trampas de siempre) y no pasa por el filtro de genericidad: son cartas que cualquier deck puede llevar.
+ */
+const BOARDBREAKER_OVERRIDES = new Map([
+  ['Pot of Sloth', false],
+  ['Triple Tactics Thrust', false],
+  ['Contact "C"', false],
+  ['Fantastical Dragon Phantazmay', false],
+  ['Fydraulis Harmonia', false],
+  ['Phara the Primordial Goddess', false],
+  ['Fairy Tail - Luna', false],
+  ['Nibiru, the Primal Being', true],
+  ['Gameciel, the Sea Turtle Kaiju', true],
+  ['Thunder King, the Lightningstrike Kaiju', true],
+  ['Dogoran, the Mad Flame Kaiju', true],
+  ['Gadarla, the Mystery Dust Kaiju', true],
+  ['Kumongous, the Sticky String Kaiju', true],
+  ['Radian, the Multidimensional Kaiju', true],
+  ['Mystical Space Typhoon', true],
+  ['Twin Twisters', true],
+  ['Cosmic Cyclone', true],
+  ['Galaxy Cyclone', true],
+  ['Dark Hole', true],
+  ['Dark Ruler No More', true],
+  ['Forbidden Droplet', true],
+  ['Super Polymerization', true],
+  ['Book of Eclipse', true],
+  ['Torrential Tribute', true],
+  ['Compulsory Evacuation Device', true],
+  ['Change of Heart', true],
+  ['Mind Control', true],
+])
+const MIN_BOARDBREAKERS = 8
 /** Las dos categorías de torneo del sitio; cada deck queda etiquetado con su región. */
 const DECK_FORMATS = [
   { region: 'tcg', format: 'Tournament Meta Decks' },
@@ -112,7 +149,8 @@ async function main() {
     const deckNames = deckNamesByCard(decks, canonicalById)
     const genericIds = pickGenericCards(cards, canonicalById, deckNames)
     const handtraps = pickHandtraps(engine.rules, scripts.dir, cards, aliases, canonicalById, deckNames, genericIds)
-    const payload = buildPayload(fetchedAt, decks, handtraps, canonicalById)
+    const boardbreakers = pickBoardbreakers(engine.rules, scripts.dir, cards, aliases, canonicalById, deckNames, genericIds)
+    const payload = buildPayload(fetchedAt, decks, trackCards(handtraps, boardbreakers), canonicalById)
     const decklists = buildDecklists(decks, canonicalById)
     const cardRules = buildCardRules(engine.rules, scripts, cards, aliases, genericIds)
 
@@ -120,7 +158,7 @@ async function main() {
     await writeFile(OUTPUT_PATH, formatPayload(payload), 'utf8')
     await writeFile(DECKLISTS_PATH, formatDecklists(decklists), 'utf8')
     await writeFile(CARD_RULES_PATH, formatCardRules(cardRules), 'utf8')
-    console.log(`${Object.keys(payload.cards).length} hand traps en ${payload.decks.length} decks: ${OUTPUT_PATH}`)
+    console.log(`${handtraps.size} hand traps y ${boardbreakers.size} boardbreakers en ${payload.decks.length} decks: ${OUTPUT_PATH}`)
     console.log(`${cardRules.count} cartas con reglas (${genericIds.size} genéricas): ${CARD_RULES_PATH}`)
   } finally {
     await engine.close()
@@ -418,6 +456,64 @@ function pickHandtraps(rules, scriptsDir, cards, aliases, canonicalById, deckNam
   return handtraps
 }
 
+/**
+ * Boardbreakers por reglas (isBoardbreakerRules sobre los bits de cada script: le sacan cartas al rival del campo, o le dan monstruos), con el
+ * mismo filtro de genericidad que las hand traps: las que juegan varios decks distintos y no son de su arquetipo.
+ */
+function pickBoardbreakers(rules, scriptsDir, cards, aliases, canonicalById, deckNames, genericIds) {
+  const idsByName = cardIdsByName(cards, aliases)
+  const boardbreakers = new Map()
+
+  for (const card of cards.values()) {
+    // Sólo la carta canónica de cada nombre, y que vaya en Main o Side.
+    if (canonicalById.get(card.ygoprodeckId) !== card.ygoprodeckId || !deckNames.has(card.ygoprodeckId) || EXTRA_DECK_FRAMES.has(card.frameType)) {
+      continue
+    }
+
+    let boardbreaker = BOARDBREAKER_OVERRIDES.get(card.name)
+
+    // Por reglas, y sólo las genéricas: las que juegan varios decks distintos y no mencionan a su paquete.
+    if (boardbreaker === undefined && genericIds.has(card.ygoprodeckId)) {
+      const lua = readCardScript(scriptsDir, idsByName.get(card.name) ?? [card.ygoprodeckId])
+      const flags = lua === null ? 0 : rules.cardRuleFlags(lua)
+
+      boardbreaker = (flags & rules.CARD_RULE.mentions) === 0 && rules.isBoardbreakerRules(flags, isPlainSpell(card))
+    }
+
+    if (boardbreaker) {
+      boardbreakers.set(card.ygoprodeckId, { name: card.name, image: card.imageUrlSmall, ban: { tcg: card.banlist.tcg, ocg: card.banlist.ocg } })
+    }
+  }
+
+  if (boardbreakers.size < MIN_BOARDBREAKERS) {
+    throw new Error(`Sólo ${boardbreakers.size} boardbreakers: ¿cambió la forma de los scripts en ${scriptsDir}?`)
+  }
+
+  console.log(`Boardbreakers: ${[...boardbreakers.values()].map((card) => card.name).sort().join(', ')}`)
+  return boardbreakers
+}
+
+/** Una magia que no es de juego rápido (el clasificador la lee igual: la API trae "Spell Card" en el tipo y "Quick-Play", "Field"... en race). */
+function isPlainSpell(card) {
+  return /spell/i.test(card.cardType) && !/quick-play/i.test(`${card.race ?? ''} ${card.cardType}`)
+}
+
+/** Las cartas que llevan los tier lists, con lo que son: una carta puede ser hand trap y boardbreaker a la vez (Nibiru). */
+function trackCards(handtraps, boardbreakers) {
+  const tracked = new Map()
+
+  for (const [kind, cards] of [
+    ['handtrap', handtraps],
+    ['boardbreaker', boardbreakers],
+  ]) {
+    for (const [id, card] of cards) {
+      tracked.set(id, { ...card, kinds: [...(tracked.get(id)?.kinds ?? []), kind] })
+    }
+  }
+
+  return tracked
+}
+
 /** Los nombres de deck (en minúsculas) que llevan cada carta en Main o Side, por id canónico. */
 function deckNamesByCard(decks, canonicalById) {
   const namesByCard = new Map()
@@ -582,11 +678,11 @@ function formatCardRules({ scripts, cards }) {
 
 // Salida
 
-function buildPayload(fetchedAt, decks, handtraps, canonicalById) {
+function buildPayload(fetchedAt, decks, tracked, canonicalById) {
   const cards = {}
 
-  for (const [canonicalId, handtrap] of [...handtraps].sort((left, right) => left[0] - right[0])) {
-    cards[String(canonicalId)] = handtrap
+  for (const [canonicalId, card] of [...tracked].sort((left, right) => left[0] - right[0])) {
+    cards[String(canonicalId)] = card
   }
 
   return {
@@ -605,8 +701,8 @@ function buildPayload(fetchedAt, decks, handtraps, canonicalById) {
       player: deck.player,
       cover: deck.cover,
       url: deck.url,
-      main: zoneEntries(deck.main, canonicalById, handtraps),
-      side: zoneEntries(deck.side, canonicalById, handtraps),
+      main: zoneEntries(deck.main, canonicalById, tracked),
+      side: zoneEntries(deck.side, canonicalById, tracked),
     })),
   }
 }

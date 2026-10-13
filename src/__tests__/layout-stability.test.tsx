@@ -40,7 +40,7 @@ describe('que nada se corra de lugar al cambiar de pestaña', () => {
     expect(screen.getByRole('button', { name: 'Guía' }).parentElement).toHaveClass('-my-1.5')
 
     // Con subtítulo en todos, el encabezado mide lo mismo en escritorio y el primer bloque arranca en el mismo lugar.
-    for (const file of ['DeckRolesPanel', 'ProbabilityPanel', 'comparison/ComparisonScreen', 'ExportDeckPanel', 'meta/MetaScreen', 'replays/ReplaysScreen']) {
+    for (const file of ['DeckRolesPanel', 'ProbabilityPanel', 'comparison/ComparisonScreen', 'ExportDeckPanel', 'meta/TierListsScreen', 'meta/TournamentDecksScreen', 'replays/ReplaysScreen']) {
       expect(source(`components/${file}.tsx`), file).toMatch(/<StepHero[^>]*?\bsubtitle=/s)
     }
   })

@@ -51,7 +51,7 @@ playground lo muestra con los mismos componentes). Si algo del menú, del cajón
 - `AppFooter`: autoría, aviso de sitio no oficial, redes y privacidad.
 - `nav-model.ts`: los tipos (`NavGroup`, `NavItem`) y `buildAppNavGroups` (en `deck-workflow-navigation.ts`) arma los grupos de la app:
   **Tu deck** (Deck · Roles · Lab · Comparar · Exportar), **Herramientas** (Práctica · Calculadora de LP, que abren un panel) y
-  **Descubrir** (Meta · Replays).
+  **Descubrir** (Tier lists · Decks de torneo · Replays).
 
 ## Fuera del sistema (lo que falta migrar a un componente único)
 
@@ -60,6 +60,6 @@ componente no los cambia. Los títulos ya están migrados: todos pasan por `Head
 
 - **`<button>` sueltos** (cantidad por archivo): `search/MobileCardSearch` 6, `life/LifeCalculatorScreen` 6, `probability/PracticeMat` 5
   (fases, replay, pilas), `search/SearchFeedback` 4, `search/DesktopSearchPanel` 4, `probability/rule-builder/CategoryPicker` 4,
-  `replays/ReplaysScreen` 3, `probability/rule-builder/ConditionBlock` 3, `probability/MatDialogs` 3, `meta/MetaScreen` 3,
+  `replays/ReplaysScreen` 4, `probability/rule-builder/ConditionBlock` 3, `probability/MatDialogs` 3, `meta/TierBoard` 2, `meta/TournamentDecksScreen` 2,
   `classification/ClassificationFields` 3, y uno o dos en otros 25 archivos. Muchos son chips o filas clickeables con su propia
   clase (`RULE_BUTTON` en `PracticeBoard`): conviene sumarlos a `ui/` como variantes.

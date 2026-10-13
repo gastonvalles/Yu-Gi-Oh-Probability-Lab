@@ -1,4 +1,4 @@
-import type { MetaTrend } from '../../app/meta-handtraps'
+import type { MetaTrend } from '../../app/meta'
 import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'

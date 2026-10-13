@@ -1,6 +1,6 @@
 import replaysJson from '../data/replays.json'
 import { getLocale, t, type Locale } from '../i18n'
-import { META_DECKS, type MetaDeck } from './meta-handtraps'
+import { META_DECKS, type MetaDeck } from './meta'
 import { normalizeSearchText } from './utils'
 
 export type ReplayChannel = 'eu' | 'tcg'
@@ -229,8 +229,14 @@ export function getReplayEntries(): ReplayEntry[] {
   return cached.entries
 }
 
-/** Cuántos replays hay de un deck de la pestaña Meta (para ofrecer el link). */
-export const countReplaysOfDeck = (deckId: number) => getReplayEntries().filter((entry) => playsDeck(entry, deckId)).length
+/** Los replays de los duelos de un deck de torneo (se ven en su detalle). */
+export const replaysOfDeck = (deckId: number) => getReplayEntries().filter((entry) => playsDeck(entry, deckId))
+
+/** Cuántos replays tiene un deck de torneo (la tarjeta del deck avisa que hay). */
+export const countReplaysOfDeck = (deckId: number) => replaysOfDeck(deckId).length
+
+/** "Timoti B. vs. Vladis B.": cómo se nombra un replay. */
+export const replayLabel = (entry: ReplayEntry) => `${entry.players[0].name} vs. ${entry.players[1].name}`
 
 // Links
 

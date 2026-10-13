@@ -3,7 +3,7 @@ import { t } from '../../i18n'
 import type { NavGroup, NavItem, NavTone } from '../shell/nav-model'
 import type { IconName } from '../ui/Icon'
 
-export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'meta' | 'replays'
+export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'meta' | 'tournaments' | 'replays'
 
 export interface DeckModeNavigationItem {
   key: DeckWorkflowStepKey
@@ -34,6 +34,7 @@ const WORKFLOW_STEP_KEYS: readonly DeckWorkflowStepKey[] = [
   'workspace',
   'export',
   'meta',
+  'tournaments',
   'replays',
 ]
 
@@ -118,7 +119,7 @@ export function buildDeckWorkflowNavigationItems({
       tone: mainDeckCount > 0 ? 'complete' : 'pending',
       disabled: mainDeckCount === 0,
     },
-    // No es un paso del deck: es la referencia del meta para armarlo. Siempre se puede abrir.
+    // No es un paso del deck: es la referencia del meta para armarlo (las tier lists). Siempre se puede abrir.
     {
       key: 'meta',
       step: '6',
@@ -129,10 +130,21 @@ export function buildDeckWorkflowNavigationItems({
       tone: 'pending',
       disabled: false,
     },
-    // También es referencia: los duelos de torneo de los decks del Meta, en video.
+    // También es referencia, y va aparte de las tier lists: los decks que llegaron al top de los torneos, completos.
+    {
+      key: 'tournaments',
+      step: '7',
+      label: t('shell.step.tournaments.label'),
+      title: t('shell.step.tournaments.title'),
+      icon: 'trophy',
+      detail: t('shell.step.tournaments.detail'),
+      tone: 'pending',
+      disabled: false,
+    },
+    // Y los duelos de torneo de esos decks, en video.
     {
       key: 'replays',
-      step: '7',
+      step: '8',
       label: t('shell.step.replays.label'),
       title: t('shell.step.replays.title'),
       icon: 'play',
@@ -162,6 +174,6 @@ export function buildAppNavGroups(steps: DeckModeNavigationItem[], tools: AppNav
         { key: 'life', label: t('shell.life.title'), title: t('shell.life.title'), icon: 'heart' as const },
       ],
     },
-    { key: 'discover', label: t('shell.nav.group.discover'), items: pick('meta', 'replays') },
+    { key: 'discover', label: t('shell.nav.group.discover'), items: pick('meta', 'tournaments', 'replays') },
   ]
 }

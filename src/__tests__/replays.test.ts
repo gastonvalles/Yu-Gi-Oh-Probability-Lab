@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { MetaDeck } from '../app/meta-handtraps'
+import type { MetaDeck } from '../app/meta'
 import { buildReplaysHash, hasMetaDeck, matchReplays, parseReplayTitle, playsDeck, readReplaysHash, readStage, samePlayer, type ReplayVideo } from '../app/replays'
 
 const deck = (id: number, tournament: string, player: string, name: string, placement = 'Top 8'): MetaDeck => ({
