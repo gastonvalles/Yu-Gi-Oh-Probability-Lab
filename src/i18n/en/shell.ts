@@ -49,6 +49,9 @@ export const shell: Translated<typeof es> = {
   'shell.step.expansions.label': 'Expansions',
   'shell.step.expansions.title': 'Expansions and prices',
   'shell.step.expansions.detail': 'The cards in each expansion, with rarity and price.',
+  'shell.step.banlists.label': 'Banlists',
+  'shell.step.banlists.title': 'Historical banlists',
+  'shell.step.banlists.detail': 'The TCG and OCG Forbidden & Limited lists, one by one.',
 
   'shell.practice.open': 'Open practice',
   'shell.practice.title': 'Practice',

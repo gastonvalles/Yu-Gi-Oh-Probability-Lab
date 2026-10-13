@@ -47,6 +47,9 @@ export const shell = {
   'shell.step.expansions.label': 'Expansiones',
   'shell.step.expansions.title': 'Expansiones y precios',
   'shell.step.expansions.detail': 'Las cartas de cada expansión, con rareza y precio.',
+  'shell.step.banlists.label': 'Banlists',
+  'shell.step.banlists.title': 'Banlists históricas',
+  'shell.step.banlists.detail': 'Las listas de prohibidas y limitadas del TCG y el OCG, una por una.',
 
   'shell.practice.open': 'Abrir práctica',
   'shell.practice.title': 'Práctica',
