@@ -379,7 +379,7 @@ function TierRow({ tier, cards, view, onOpen }: TierRowProps) {
             <li key={stat.id} className="min-w-0">
               <button
                 type="button"
-                className="relative block aspect-[421/614] w-full overflow-hidden bg-input transition-transform duration-150 hover:scale-[1.04] focus-visible:outline-none focus-visible:shadow-focus sm:w-[4.5rem]"
+                className="relative block aspect-[421/614] w-full overflow-hidden rounded-none bg-input transition-transform duration-150 hover:scale-[1.04] focus-visible:outline-none focus-visible:shadow-focus sm:w-[4.5rem]"
                 title={t('meta.tier.cardTitle', { name: stat.name, percent: percent(share) })}
                 onClick={() => onOpen(stat)}
               >

@@ -121,7 +121,8 @@ export const DeckZone = memo(function DeckZone({
         maxHeight: classicZoneMaxHeight,
         padding: '0',
         border: `1px solid ${classicBorderColor}`,
-        borderRadius: 'var(--radius-card)',
+        // Las cartas llegan hasta el borde de la zona y la zona las recorta: con esquinas redondeadas se las redondearía a las de las puntas (las cartas van rectas).
+        borderRadius: 0,
         background: 'linear-gradient(180deg, var(--classic-zone-tint), transparent), rgb(var(--card-background-rgb) / 0.6)',
         boxShadow:
           dropState === 'valid'
