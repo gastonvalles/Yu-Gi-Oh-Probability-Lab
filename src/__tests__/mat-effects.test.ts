@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+
 import { describe, expect, it } from 'vitest'
 
 import { matEffects } from '../app/mat-effects'
@@ -54,6 +56,9 @@ describe('los efectos de una jugada', () => {
 
   it('Colocar boca abajo, mover una carta que ya está en el campo o soltar en una zona ocupada no destellan', () => {
     expect(matEffects(start(), place('a1', 0, 'set', 'normal'))).toEqual({})
+    // Mover una Magia que ya está boca arriba de una zona a otra no es activarla.
+    const spell = after([{ type: 'place', id: 'b1', zone: 'st', index: 1, pos: 'atk' }])
+    expect(matEffects(spell, { type: 'place', id: 'b1', zone: 'st', index: 3, pos: 'atk' })).toEqual({})
 
     const onField = after([place('a1', 0)])
     expect(matEffects(onField, place('a1', 3))).toEqual({})
@@ -139,5 +144,15 @@ describe('los efectos de una jugada', () => {
     expect(matEffects(xyz, { type: 'attach', id: 'x1', to: 'x1' })).toEqual({})
     expect(matEffects(start(), { type: 'shuffle', seed: 3 })).toEqual({})
     expect(matEffects(after([place('a1', 0)]), { type: 'counter', id: 'a1', delta: 1 })).toEqual({})
+  })
+})
+
+describe('las animaciones que no paran de la mesa', () => {
+  it('se aplican sólo con `motion-safe:`: con `motion-reduce:animate-none` perdían contra los selectores `data-[…]` (más específicos) y seguían corriendo', () => {
+    const sources = ['PracticeMat.tsx', 'PracticeHand.tsx', 'MatFx.tsx'].map((file) => readFileSync(`src/components/probability/${file}`, 'utf8'))
+    const classes = sources.flatMap((source) => source.match(/[^\s'"`]*animate-fx-(?:pick|ripple|target-glow|halo)\b/g) ?? [])
+
+    expect(classes.length).toBeGreaterThan(0)
+    expect(classes.filter((name) => !name.startsWith('motion-safe:'))).toEqual([])
   })
 })

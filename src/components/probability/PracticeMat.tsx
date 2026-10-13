@@ -103,8 +103,8 @@ const CELL = [
   // Con una carta arrastrada encima: borde parejo, relleno y resplandor violeta.
   'data-[over=true]:border-solid data-[over=true]:border-primary-hover data-[over=true]:bg-primary/25 data-[over=true]:shadow-[0_0_0_2px_rgb(var(--primary-hover-rgb)/0.55),0_0_24px_rgb(var(--primary-hover-rgb)/0.6),inset_0_0_18px_rgb(var(--primary-hover-rgb)/0.35)]',
   // Una zona que se puede elegir respira en verde y un aro se le expande desde el borde.
-  'data-[pick=true]:cursor-pointer data-[pick=true]:border-solid data-[pick=true]:border-accent data-[pick=true]:bg-accent/15 data-[pick=true]:animate-fx-pick data-[pick=true]:hover:bg-accent/25',
-  'data-[pick=true]:after:pointer-events-none data-[pick=true]:after:absolute data-[pick=true]:after:-inset-1 data-[pick=true]:after:animate-fx-ripple data-[pick=true]:after:border-2 data-[pick=true]:after:border-accent',
+  'data-[pick=true]:cursor-pointer data-[pick=true]:border-solid data-[pick=true]:border-accent data-[pick=true]:bg-accent/15 motion-safe:data-[pick=true]:animate-fx-pick data-[pick=true]:hover:bg-accent/25',
+  'data-[pick=true]:after:pointer-events-none data-[pick=true]:after:absolute data-[pick=true]:after:-inset-1 motion-safe:data-[pick=true]:after:animate-fx-ripple data-[pick=true]:after:border-2 data-[pick=true]:after:border-accent',
   'data-[chosen=true]:bg-accent/40',
   'motion-reduce:animate-none motion-reduce:after:hidden motion-reduce:data-[pick=true]:shadow-[0_0_0_2px_rgb(var(--accent-rgb)/0.75),0_0_16px_rgb(var(--accent-rgb)/0.45)]',
 ].join(' ')
@@ -120,10 +120,10 @@ const MAT_CARD = [
   'shadow-[0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]',
   // Al cambiar de posición la carta se acuesta (o se para) pasándose un poco y volviendo.
   '[transition:transform_var(--motion-duration)_cubic-bezier(0.3,1.35,0.5,1),filter_var(--motion-duration)_ease,box-shadow_var(--motion-duration)_ease]',
-  'focus-visible:shadow-[0_6px_14px_rgba(0,0,0,0.45),0_0_0_2px_rgb(var(--primary-hover-rgb))]',
+  'focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-hover',
   'data-[dragging=true]:pointer-events-none data-[dragging=true]:opacity-30',
   'data-[dim=true]:brightness-[0.42] data-[dim=true]:saturate-[0.6]',
-  'data-[glow=true]:animate-card-glow data-[glow=true]:[--glow-rgb:var(--accent-rgb)] data-[glow-kind=problem]:[--glow-rgb:var(--danger-rgb)]',
+  'motion-safe:data-[glow=true]:animate-card-glow data-[glow=true]:[--glow-rgb:var(--accent-rgb)] data-[glow-kind=problem]:[--glow-rgb:var(--danger-rgb)]',
   'data-[glow=true]:shadow-[0_6px_14px_rgba(0,0,0,0.45),0_0_0_3px_rgb(var(--glow-rgb)),0_0_30px_5px_rgb(var(--glow-rgb)/0.7)]',
   // Activar, mostrar, declarar y marcar como objetivo: el aro de afuera (el marco de adentro y la mira son hijos de la carta).
   FX_CARD,
@@ -276,7 +276,7 @@ export function PracticeMat({
   const [landing, setLanding] = useState<{ spot: MatSpot; index: number; tone: LandingTone; flies: boolean; key: number } | null>(null)
   const [banner, setBanner] = useState<{ phase: MatPhase; turn: number | null; key: number } | null>(null)
   // Las cartas grandes del centro (activar, mostrar, declarar y, al reproducir un combo, lo que mueve cada paso) y el marco de la mano cuando recibe una carta.
-  const [stage, setStage] = useState<{ ids: string[]; kind: SpotlightKind | ShowcaseKind; flip?: true; key: number } | null>(null)
+  const [stage, setStage] = useState<{ ids: string[]; kind: SpotlightKind | ShowcaseKind; flip?: true; step: number; key: number } | null>(null)
   const [handFlash, setHandFlash] = useState<number | null>(null)
   // Zona de la mesa bajo una carta de la mano que se está arrastrando.
   const [handOver, setHandOver] = useState<string | null>(null)
@@ -320,7 +320,15 @@ export function PracticeMat({
     const previous = lastCursorRef.current
     lastCursorRef.current = session.cursor
 
-    if (session.cursor !== previous + 1) return
+    if (session.cursor !== previous + 1) {
+      // Deshacer, saltar a otro paso, una mano nueva o cargar otro combo: lo que estaba en curso se corta (no era de este paso).
+      setFlash(null)
+      setStage(null)
+      setLanding(null)
+      setBanner(null)
+      setHandFlash(null)
+      return
+    }
 
     const action = session.actions[session.cursor - 1]
 
@@ -334,9 +342,9 @@ export function PracticeMat({
     // Un paso que no muestra nada saca las cartas del paso anterior (que seguirían con la línea de éste).
     setStage(
       effects.spotlight && effects.spotlight.kind !== 'target'
-        ? { ids: [effects.spotlight.id], kind: effects.spotlight.kind, key }
+        ? { ids: [effects.spotlight.id], kind: effects.spotlight.kind, step: session.cursor, key }
         : effects.showcase && session.replay
-          ? { ...effects.showcase, key }
+          ? { ...effects.showcase, step: session.cursor, key }
           : null,
     )
     if (effects.landing) setLanding({ ...effects.landing, key })
@@ -816,6 +824,7 @@ export function PracticeMat({
         {spot === 'field' && !placed ? <span aria-hidden="true" className="absolute inset-0 grid place-items-center text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-soft min-[1101px]:text-[0.6rem]">{t('practice.zone.fieldLabel')}</span> : null}
         {placed ? (
           <PlacedCard
+            key={placed.id}
             placed={placed}
             spot={spot}
             card={cardOf(placed.id)}
@@ -1126,7 +1135,7 @@ export function PracticeMat({
               key={stage.key}
               kind={stage.kind}
               cards={stage.ids.map((id) => ({ id, name: cardOf(id).name, art: artOf(cardOf(id)) }))}
-              caption={steps[session.cursor - 1] ?? null}
+              caption={steps[stage.step - 1] ?? null}
               flip={stage.flip}
             />,
             document.body,

@@ -32,8 +32,9 @@ const STAGE_TONE: Record<SpotlightKind | ShowcaseKind, FxTone> = { ...SPOTLIGHT_
  */
 export const FX_CARD = [
   'data-[flash=true]:z-10',
-  'data-[flash-kind=activate]:animate-fx-halo data-[flash-kind=reveal]:animate-fx-halo data-[flash-kind=declare]:animate-fx-halo',
-  'data-[targeted=true]:animate-fx-target-glow',
+  // Dos atributos en cada selector (más específico que el brillo de una regla o la marca de objetivo): si coinciden, el destello de activar gana.
+  'motion-safe:data-[flash=true]:data-[flash-kind=activate]:animate-fx-halo motion-safe:data-[flash=true]:data-[flash-kind=reveal]:animate-fx-halo motion-safe:data-[flash=true]:data-[flash-kind=declare]:animate-fx-halo',
+  'motion-safe:data-[targeted=true]:animate-fx-target-glow',
   // La carta de la que se está viendo el menú: aro y resplandor celestes fijos (el marco de adentro lleva la luz que gira).
   'data-[selected=true]:z-10 data-[selected=true]:[box-shadow:var(--card-shadow),0_0_0_2px_rgb(56_189_248/0.9),0_0_22px_4px_rgb(56_189_248/0.55)]',
   // Sin animaciones, el aro queda fijo.
@@ -102,12 +103,12 @@ export function LandingBurst({ tone, flies }: { tone: LandingTone; flies: boolea
   return (
     <span aria-hidden="true" data-fx="landing" data-tone={tone} className="pointer-events-none absolute inset-0 z-4 motion-reduce:hidden" style={fxVars(LANDING_TONE[tone])}>
       <span className="absolute inset-0 animate-fx-flash bg-[radial-gradient(circle,rgb(255_255_255/0.95),rgb(var(--fx-rgb)/0.75)_35%,transparent_72%)]" style={delay()} />
-      <span className="absolute inset-0 animate-fx-shock border-[3px] border-[color:rgb(var(--fx-rgb))] shadow-[0_0_14px_rgb(var(--fx-rgb)/0.8)]" style={delay()} />
-      <span className="absolute inset-0 animate-fx-shock border border-[color:rgb(var(--fx-rgb)/0.8)]" style={delay(110)} />
+      <span className="absolute inset-0 animate-fx-shock border-[3px] opacity-0 border-[color:rgb(var(--fx-rgb))] shadow-[0_0_14px_rgb(var(--fx-rgb)/0.8)]" style={delay()} />
+      <span className="absolute inset-0 animate-fx-shock border opacity-0 border-[color:rgb(var(--fx-rgb)/0.8)]" style={delay(110)} />
       {SPARKS.map(([x, y]) => (
         <span
           key={`${x}:${y}`}
-          className="absolute left-1/2 top-1/2 -ml-[3px] -mt-[3px] size-1.5 animate-fx-spark bg-white shadow-[0_0_6px_2px_rgb(var(--fx-rgb))]"
+          className="absolute left-1/2 top-1/2 -ml-[3px] -mt-[3px] size-1.5 animate-fx-spark bg-white opacity-0 shadow-[0_0_6px_2px_rgb(var(--fx-rgb))]"
           style={{ ...delay(), '--dx': `${x}rem`, '--dy': `${y}rem` } as CSSProperties}
         />
       ))}
@@ -182,7 +183,7 @@ export function Spotlight({ kind, cards, caption, flip = false }: SpotlightProps
   return (
     <div data-activation={shown[0]?.id} data-kind={kind} aria-hidden="true" className="pointer-events-none fixed inset-0 z-205 grid place-items-center" style={fxVars(tone)}>
       <span className="absolute left-1/2 top-1/2 aspect-square w-[min(100vw,30rem)] -translate-x-1/2 -translate-y-1/2 animate-fx-stage rounded-full bg-[radial-gradient(circle,rgb(var(--fx-rgb)/0.6),rgb(var(--fx-rgb)/0.18)_42%,transparent_68%)] motion-reduce:hidden" />
-      <span className="absolute left-1/2 top-1/2 aspect-square w-[min(56vw,14rem)] -translate-x-1/2 -translate-y-1/2 animate-fx-shock rounded-full border-[3px] border-[color:rgb(var(--fx-rgb))] motion-reduce:hidden" />
+      <span className="absolute left-1/2 top-1/2 aspect-square w-[min(56vw,14rem)] -translate-x-1/2 -translate-y-1/2 animate-fx-shock rounded-full border-[3px] border-[color:rgb(var(--fx-rgb))] opacity-0 motion-reduce:hidden" />
       <div className="relative animate-card-activate-center motion-reduce:animate-none">
         {caption ? (
           <span className="absolute bottom-full left-1/2 mb-3 max-w-[88vw] -translate-x-1/2 truncate whitespace-nowrap rounded-full border-2 border-[color:rgb(var(--fx-rgb)/0.9)] bg-background/90 px-3.5 py-1 text-micro font-bold text-foreground shadow-[0_0_18px_rgb(var(--fx-rgb)/0.5)]">

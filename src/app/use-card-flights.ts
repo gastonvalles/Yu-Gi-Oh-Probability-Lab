@@ -179,7 +179,8 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
         )
       }
 
-      if (home) {
+      // La mano no es una pila: no se infla ni se enciende entera cuando le vuelve una carta (la carta se acomoda sola).
+      if (home && home.dataset.drop !== 'hand') {
         bump(home)
         impact(home, impactRgb(state, id))
       }

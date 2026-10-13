@@ -374,6 +374,30 @@ describe('la mesa de práctica', () => {
     expect(spotlight()?.querySelector('.animate-fx-flip-in')).toBeNull()
   })
 
+  it('deshacer corta lo que estaba en curso: la carta grande del paso y el destello de la zona', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+
+    try {
+      render(<Harness />)
+
+      tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
+      expect(document.querySelector('[data-activation]')).not.toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
+      expect(document.querySelector('[data-activation]')).toBeNull()
+
+      tap(within(hand()).getByRole('listitem', { name: 'Maxx C' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'En ataque' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
+      expect(document.querySelector('[data-fx="landing"]')).not.toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
+      expect(document.querySelector('[data-fx="landing"]')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('jugando en vivo, robar enmarca la mano pero no agranda la carta', () => {
     render(<Harness />)
 

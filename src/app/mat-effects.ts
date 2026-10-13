@@ -85,14 +85,15 @@ function effectsOf(before: MatState, after: MatState, action: MatAction): MatEff
       return changed ? show([action.id], 'attach') : {}
 
     case 'place': {
-      if (!changed) return {}
+      const where = locateCard(before, action.id)
+
+      // Una carta que ya estaba en el campo sólo cambia de lugar.
+      if (!changed || where?.kind === 'spot') return {}
       // Boca arriba en la zona de Mágicas y Trampas o en la de campo = activar (también la escala de un monstruo de Péndulo).
       if (!isMonsterZone(action.zone)) return action.pos === 'atk' ? { spotlight: { id: action.id, kind: 'activate' } } : {}
 
-      const where = locateCard(before, action.id)
-
-      // Boca abajo es Colocar, y una carta que ya estaba en el campo sólo cambia de lugar.
-      if (action.pos === 'set' || where?.kind === 'spot') return {}
+      // Boca abajo es Colocar.
+      if (action.pos === 'set') return {}
 
       const normal = action.how === 'normal' || (action.how === undefined && where?.kind === 'pile' && where.pile === 'hand')
       const tone = normal ? 'normal' : 'special'
