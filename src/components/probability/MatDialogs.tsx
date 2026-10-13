@@ -180,10 +180,10 @@ export function PileViewer({ pile, ids, info, onPick, onClose }: PileViewerProps
             <li key={card.id}>
               <button
                 type="button"
-                className="grid w-full gap-1 rounded-tag bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus"
+                className="grid w-full gap-1 bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus"
                 onClick={(event) => onPick(card.id, event.currentTarget.getBoundingClientRect())}
               >
-                <span className="relative block aspect-[421/614] w-full overflow-hidden rounded-tag bg-input shadow-[0_4px_10px_rgba(0,0,0,0.4)]">
+                <span className="relative block aspect-[421/614] w-full overflow-hidden bg-input shadow-[0_4px_10px_rgba(0,0,0,0.4)]">
                   {card.faceDown ? <span className={CARD_BACK} /> : <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />}
                 </span>
                 <span className="truncate text-micro text-foreground">{card.faceDown ? t('practice.dialog.cardFaceDown', { name: card.name }) : card.name}</span>

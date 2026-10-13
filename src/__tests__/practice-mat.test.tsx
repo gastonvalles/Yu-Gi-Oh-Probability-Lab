@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { configureStore } from '@reduxjs/toolkit'
-import { fireEvent, render as renderBare, screen, within, type RenderResult } from '@testing-library/react'
+import { act, fireEvent, render as renderBare, screen, within, type RenderResult } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { useEffect, type ReactElement } from 'react'
 import { Provider } from 'react-redux'
@@ -111,6 +111,28 @@ describe('la mesa de práctica', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
     expect(within(hand()).getByRole('listitem', { name: 'Ash Blossom' })).toBeInTheDocument()
     expect(within(status()).queryByText('1/1')).not.toBeInTheDocument()
+  })
+
+  it('la carta de la que se ve el menú lleva un marco celeste mientras el menú está abierto, en la mano y en el campo', () => {
+    render(<Harness />)
+
+    const ash = within(hand()).getByRole('listitem', { name: 'Ash Blossom' })
+    expect(ash).toHaveAttribute('data-selected', 'false')
+    tap(ash)
+    expect(ash).toHaveAttribute('data-selected', 'true')
+    expect(ash.querySelector('[data-fx="frame"]')).not.toBeNull()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+    // Elegir cómo sale (el segundo paso) no la suelta: sigue siendo la carta del menú.
+    expect(ash).toHaveAttribute('data-selected', 'true')
+    fireEvent.click(screen.getByRole('menuitem', { name: 'En ataque' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
+
+    const onField = within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' })
+    expect(onField).toHaveAttribute('data-selected', 'false')
+    tap(onField)
+    expect(onField).toHaveAttribute('data-selected', 'true')
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(onField).toHaveAttribute('data-selected', 'false')
   })
 
   it('el click fantasma del celular (justo después de abrir el menú) no lo cierra; un toque en el fondo más tarde, sí', () => {
@@ -310,6 +332,68 @@ describe('la mesa de práctica', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
     expect(document.querySelector('[data-activation]')).toBeNull()
     expect(within(hand()).getByRole('listitem', { name: 'Maxx C (seleccionada)' })).toHaveAttribute('data-flash', 'true')
+  })
+
+  it('mostrar o declarar una carta la pone grande en el centro con una línea de lo que pasó, cada uno con su color', () => {
+    render(<Harness actions={[{ type: 'activate', id: 'card-1-1' }, { type: 'reveal', id: 'card-2-1' }, { type: 'declare', id: 'card-3-1' }]} />)
+
+    const spotlight = () => document.querySelector('[data-activation]')
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    expect(spotlight()).toHaveAttribute('data-kind', 'activate')
+    expect(spotlight()).toHaveTextContent(/Ash Blossom/)
+    expect(spotlight()?.querySelector('[data-fx="frame"]')).toHaveAttribute('data-shine', 'true')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    expect(spotlight()).toHaveAttribute('data-kind', 'reveal')
+    expect(spotlight()).toHaveTextContent('Revelás Maxx C')
+    expect(within(hand()).getByRole('listitem', { name: 'Maxx C' })).toHaveAttribute('data-flash-kind', 'reveal')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    expect(spotlight()).toHaveAttribute('data-kind', 'declare')
+    expect(spotlight()).toHaveTextContent('Declarás Called by the Grave')
+  })
+
+  it('marcar un objetivo lo cubre con la mira; cambiar de fase muestra el cartel y una invocación cae con su destello, y se van solos', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+
+    try {
+      render(<Harness />)
+
+      // La mira (con su nombre accesible) queda sobre la carta marcada y se va al quitar la marca.
+      tap(within(hand()).getByRole('listitem', { name: 'Maxx C' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Seleccionar' }))
+      const marked = within(hand()).getByRole('listitem', { name: 'Maxx C (seleccionada)' })
+      expect(marked).toHaveAttribute('data-targeted', 'true')
+      expect(within(marked).getByRole('img', { name: 'Seleccionada' })).toHaveAttribute('data-fx', 'target')
+      tap(marked)
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Quitar selección' }))
+      expect(document.querySelector('[data-fx="target"]')).toBeNull()
+
+      // Una Invocación Normal: el destello cae en la zona (dorado) y espera a que la carta aterrice.
+      tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'En ataque' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
+      const burst = zone('Zona de monstruo 1').querySelector('[data-fx="landing"]')
+      expect(burst).toHaveAttribute('data-tone', 'normal')
+      expect(burst?.querySelector('span')).toHaveStyle({ animationDelay: '360ms' })
+      expect(zone('Zona de monstruo 2').querySelector('[data-fx="landing"]')).toBeNull()
+
+      // Una fase nueva: el cartel con su nombre; y de la End Phase a la Draw Phase, con el turno.
+      fireEvent.click(screen.getByRole('button', { name: 'Main Phase 1' }))
+      expect(document.querySelector('[data-fx="banner"]')).toHaveTextContent('Main Phase 1')
+      fireEvent.click(screen.getByRole('button', { name: 'End Phase' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Draw Phase' }))
+      expect(document.querySelector('[data-fx="banner"]')).toHaveTextContent('Turno 2Draw Phase')
+
+      act(() => {
+        vi.advanceTimersByTime(1500)
+      })
+      expect(document.querySelector('[data-fx="landing"]')).toBeNull()
+      expect(document.querySelector('[data-fx="banner"]')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('el visor del deck: sacar una carta de ahí baraja el resto en la misma jugada; cerrarlo sin sacar nada baraja aparte', () => {

@@ -1,11 +1,11 @@
 import { useCallback, useLayoutEffect, useRef, type RefObject } from 'react'
 
-import { CARD_BACK } from '../components/probability/practice-styles'
+import { CARD_BACK, FX_RGB } from '../components/probability/practice-styles'
 import { UI_ANIMATION_MS } from './motion'
 import { locateCard, type MatState } from './practice-mat'
 
 /** Cuánto dura el vuelo de una carta entre dos lugares de la mesa. */
-const FLIGHT_MS = UI_ANIMATION_MS * 2
+export const FLIGHT_MS = UI_ANIMATION_MS * 2
 const EASING = 'cubic-bezier(0.22, 0.9, 0.3, 1)'
 /** Marca de los vuelos: una jugada que llega con un vuelo a medias lo corta antes de medir, así la carta se mide quieta. */
 const FLIGHT_ID = 'mat-flight'
@@ -56,6 +56,28 @@ function bump(element: HTMLElement) {
   element.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.08)', offset: 0.45 }, { transform: 'scale(1)' }], { duration: 260, delay: FLIGHT_MS - 120, easing: 'ease-out' })
 }
 
+/** El color con que cada lugar recibe una carta: el cementerio, violeta; el destierro, ámbar; el deck y el Extra, celeste; debajo de un Xyz, azul. */
+function impactRgb(state: MatState, id: string): string {
+  const where = locateCard(state, id)
+
+  if (where?.kind === 'material') return FX_RGB.indigo
+  if (where?.kind === 'pile' && where.pile === 'gy') return FX_RGB.violet
+  if (where?.kind === 'pile' && where.pile === 'banished') return FX_RGB.amber
+
+  return FX_RGB.cyan
+}
+
+/** Al aterrizar, el lugar da el golpe: un aro de su color que se expande y un destello (pasa junto con `bump`, que lo infla). */
+function impact(element: HTMLElement, rgb: string) {
+  element.animate(
+    [
+      { boxShadow: `0 0 0 0 rgb(${rgb} / 0.95), 0 0 18px 3px rgb(${rgb} / 0.9)`, filter: 'brightness(1.9)' },
+      { boxShadow: `0 0 0 16px rgb(${rgb} / 0), 0 0 34px 10px rgb(${rgb} / 0)`, filter: 'brightness(1)' },
+    ],
+    { duration: 640, delay: FLIGHT_MS - 100, easing: 'ease-out' },
+  )
+}
+
 /**
  * Las cartas vuelan de un lugar a otro cuando cambia el estado de la mesa (jugadas, deshacer, reproducir un
  * combo): cada carta a la vista (`data-card-id`) se anima desde donde estaba (FLIP) o desde la pila de la que
@@ -92,6 +114,9 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
 
       if (!before || near(before, rect)) continue
 
+      // Una carta que cambió de posición gira con su transición: un vuelo encima la dejaría como estaba hasta terminar y después la daría vuelta de golpe.
+      if (typeof CSSTransition === 'function' && element.getAnimations().some((animation) => animation instanceof CSSTransition && animation.transitionProperty === 'transform')) continue
+
       // El vuelo va por delante de la transformación propia de la carta (el abanico de la mano, una carta de costado).
       const base = getComputedStyle(element).transform
       const own = base === 'none' ? '' : ` ${base}`
@@ -109,7 +134,7 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
       const left = centerX(snapshot.rect) - width / 2
       const top = centerY(snapshot.rect) - height / 2
       const ghost = document.createElement('div')
-      ghost.className = 'pointer-events-none fixed left-0 top-0 z-200 overflow-hidden rounded-tag bg-input shadow-[0_12px_28px_rgba(0,0,0,0.5)]'
+      ghost.className = 'pointer-events-none fixed left-0 top-0 z-200 overflow-hidden bg-input shadow-[0_12px_28px_rgba(0,0,0,0.5)]'
       ghost.style.width = `${width}px`
       ghost.style.height = `${height}px`
       ghost.style.transform = `translate(${left}px, ${top}px)`
@@ -138,7 +163,10 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
       flight.onfinish = () => ghost.remove()
       flight.oncancel = () => ghost.remove()
 
-      if (home) bump(home)
+      if (home) {
+        bump(home)
+        impact(home, impactRgb(state, id))
+      }
     }
     // Se mide con cada jugada y cada vez que la mano se reacomoda; `artOf` sólo pinta el fantasma.
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -259,5 +259,13 @@ describe('la mesa dibujada en inglés', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Face-down' }))
     expect(status()).toHaveTextContent('You banish Imperm face-down')
     expect(screen.getByRole('button', { name: 'Banish: 1' }).querySelector('[data-card-art]')).toBeNull()
+
+    // El cartel de la fase lleva el turno en el idioma activo y la mira de un objetivo, su nombre.
+    fireEvent.click(screen.getByRole('button', { name: 'End Phase' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Draw Phase' }))
+    expect(document.querySelector('[data-fx="banner"]')).toHaveTextContent('Turn 2Draw Phase')
+    tap(within(hand()).getByRole('listitem', { name: 'Nibiru' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Select' }))
+    expect(within(hand()).getByRole('img', { name: 'Selected' })).toHaveAttribute('data-fx', 'target')
   })
 })

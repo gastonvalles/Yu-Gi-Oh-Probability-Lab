@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent a
 import { createPortal } from 'react-dom'
 
 import { parseDerivedCardId } from '../../app/calculator-state'
+import { matEffects, type LandingTone, type SpotlightKind } from '../../app/mat-effects'
 import {
   allMatIds,
   banishItem,
@@ -21,6 +22,7 @@ import {
   TOKEN_KIND,
   type MatAction,
   type MatMenuItem,
+  type MatPhase,
   type MatPile,
   type MatSpot,
   type MatState,
@@ -47,8 +49,9 @@ import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
 import { CardBack, CardMenu, PILE_TITLES, PileViewer, SaveComboDialog, type MenuItem } from './MatDialogs'
+import { FX_CARD, FxFrame, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, TargetMark, fxVars } from './MatFx'
 import { cardIdOfDrawId } from './practice'
-import { PracticeHand, TargetMark, type HandCardData } from './PracticeHand'
+import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PracticeMatPanel } from './PracticeMatPanel'
 import { CARD_BACK, PRACTICE_PALETTE } from './practice-styles'
 
@@ -94,31 +97,48 @@ const EMPTY_IDS: ReadonlySet<string> = new Set()
 const FIRST_DEAL_MS = 90
 const NEXT_DEAL_MS = 55
 
-/** Celda del campo o de una pila: borde punteado; se enciende con una carta encima y en verde cuando se está eligiendo. */
-const CELL =
-  'relative aspect-[421/614] min-w-0 rounded-tag border border-dashed border-tint/20 transition-colors duration-150 data-[over=true]:border-primary data-[over=true]:bg-primary/15 data-[pick=true]:cursor-pointer data-[pick=true]:border-solid data-[pick=true]:border-accent data-[pick=true]:bg-accent/15 data-[pick=true]:shadow-[0_0_0_2px_rgb(var(--accent-rgb)/0.45),0_0_16px_rgb(var(--accent-rgb)/0.35)] data-[pick=true]:hover:bg-accent/25 data-[chosen=true]:bg-accent/40'
+/** Celda del campo o de una pila: borde punteado; se enciende con una carta arrastrada encima y respira en verde cuando se está eligiendo. */
+const CELL = [
+  'relative aspect-[421/614] min-w-0 border border-dashed border-tint/20 transition-[color,background-color,border-color,box-shadow] duration-150',
+  // Con una carta arrastrada encima: borde parejo, relleno y resplandor violeta.
+  'data-[over=true]:border-solid data-[over=true]:border-primary-hover data-[over=true]:bg-primary/25 data-[over=true]:shadow-[0_0_0_2px_rgb(var(--primary-hover-rgb)/0.55),0_0_24px_rgb(var(--primary-hover-rgb)/0.6),inset_0_0_18px_rgb(var(--primary-hover-rgb)/0.35)]',
+  // Una zona que se puede elegir respira en verde y un aro se le expande desde el borde.
+  'data-[pick=true]:cursor-pointer data-[pick=true]:border-solid data-[pick=true]:border-accent data-[pick=true]:bg-accent/15 data-[pick=true]:animate-fx-pick data-[pick=true]:hover:bg-accent/25',
+  'data-[pick=true]:after:pointer-events-none data-[pick=true]:after:absolute data-[pick=true]:after:-inset-1 data-[pick=true]:after:animate-fx-ripple data-[pick=true]:after:border-2 data-[pick=true]:after:border-accent',
+  'data-[chosen=true]:bg-accent/40',
+  'motion-reduce:animate-none motion-reduce:after:hidden motion-reduce:data-[pick=true]:shadow-[0_0_0_2px_rgb(var(--accent-rgb)/0.75),0_0_16px_rgb(var(--accent-rgb)/0.45)]',
+].join(' ')
 
 /**
  * Carta en una zona del campo: arrastrable, sin menú de imagen ni selección (así el dedo no corta el arrastre).
- * El brillo (salida verde / problema rojo), la atenuación y el destello llegan por data-attributes.
+ * El brillo (salida verde / problema rojo), la atenuación, el destello y la marca de objetivo llegan por data-attributes.
  */
 const MAT_CARD = [
-  'relative block aspect-[421/614] w-full cursor-grab touch-none select-none overflow-hidden rounded-tag bg-input outline-none',
+  'relative block aspect-[421/614] w-full cursor-grab touch-none select-none overflow-hidden bg-input outline-none',
   '[-webkit-touch-callout:none] [-webkit-user-select:none] [&>*]:pointer-events-none [&_img]:[-webkit-user-drag:none]',
+  '[--card-shadow:0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]',
   'shadow-[0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]',
-  '[transition:transform_var(--motion-duration)_ease,filter_var(--motion-duration)_ease,box-shadow_var(--motion-duration)_ease]',
+  // Al cambiar de posición la carta se acuesta (o se para) pasándose un poco y volviendo.
+  '[transition:transform_var(--motion-duration)_cubic-bezier(0.3,1.35,0.5,1),filter_var(--motion-duration)_ease,box-shadow_var(--motion-duration)_ease]',
   'focus-visible:shadow-[0_6px_14px_rgba(0,0,0,0.45),0_0_0_2px_rgb(var(--primary-hover-rgb))]',
   'data-[dragging=true]:pointer-events-none data-[dragging=true]:opacity-30',
   'data-[dim=true]:brightness-[0.42] data-[dim=true]:saturate-[0.6]',
   'data-[glow=true]:animate-card-glow data-[glow=true]:[--glow-rgb:var(--accent-rgb)] data-[glow-kind=problem]:[--glow-rgb:var(--danger-rgb)]',
-  'data-[glow=true]:shadow-[0_6px_14px_rgba(0,0,0,0.45),0_0_0_2px_rgb(var(--glow-rgb)),0_0_22px_rgb(var(--glow-rgb)/0.6)]',
-  // Activación: aro amarillo en la carta (la carta grande aparece aparte, en el centro de la pantalla).
-  'data-[flash=true]:z-10 data-[flash=true]:shadow-[0_0_0_2px_#facc15,0_0_22px_#facc15b3]',
+  'data-[glow=true]:shadow-[0_6px_14px_rgba(0,0,0,0.45),0_0_0_3px_rgb(var(--glow-rgb)),0_0_30px_5px_rgb(var(--glow-rgb)/0.7)]',
+  // Activar, mostrar, declarar y marcar como objetivo: el aro de afuera (el marco de adentro y la mira son hijos de la carta).
+  FX_CARD,
   'motion-reduce:animate-none motion-reduce:transition-none',
 ].join(' ')
 
-/** Duración de la activación: lo que dura la carta en el centro de la pantalla (y el aro en su lugar). */
+/** Duración del destaque de una carta: lo que dura la carta grande en el centro de la pantalla (y el aro en su lugar). */
 const ACTIVATE_MS = 950
+/** Cuánto se queda el destello de una invocación (con lo que espera a que la carta aterrice) y el cartel de una fase. */
+const LANDING_MS = 1300
+const BANNER_MS = 1100
+
+/** Dar vuelta una carta (boca abajo ↔ boca arriba): se angosta hasta ser una línea y se vuelve a abrir. Va por `scale` (aparte de `transform`) para no pisar la rotación ni el vuelo. */
+const FLIP_FRAMES = [{ scale: '1 1' }, { scale: '0.04 1', offset: 0.5 }, { scale: '1 1' }]
+const FLIP_MS = 380
 
 const ZONE_LABELS: Record<MatSpot, string> = {
   get mz() { return t('practice.zone.mz') },
@@ -134,19 +154,6 @@ const PENDULUM_GEM: Record<number, string> = {
 }
 
 const artOf = (card: MatCard) => card.art ?? card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null
-
-/** Jugadas que se ven como "activar": el efecto de una carta, o una Mágica/Trampa que pasa boca arriba. */
-function activatedCard(state: MatState, action: MatAction): string | null {
-  if (action.type === 'activate') return action.id
-  if (action.type === 'place' && (action.zone === 'st' || action.zone === 'field') && action.pos === 'atk') return action.id
-
-  if (action.type === 'position' && action.pos === 'atk') {
-    const where = locateCard(state, action.id)
-    if (where?.kind === 'spot' && (where.spot === 'st' || where.spot === 'field')) return action.id
-  }
-
-  return null
-}
 
 /** Una jugada que todavía espera algo del jugador: los Sacrificios y/o la zona. */
 type Picking =
@@ -248,8 +255,11 @@ export function PracticeMat({
   const [panelOpen, setPanelOpen] = useState(false)
   const [combos, setCombos] = useState<SavedCombo[]>(() => readSavedCombos())
   const [picking, setPicking] = useState<Picking | null>(null)
-  // La carta que acaba de activarse destella un instante (la `key` repite el destello si se activa dos veces seguidas).
-  const [flash, setFlash] = useState<{ id: string; key: number; overlay: boolean } | null>(null)
+  // La carta que acaba de destacarse (activada, mostrada, declarada o marcada como objetivo) destella un instante; la `key` repite el destello si pasa dos veces seguidas.
+  const [flash, setFlash] = useState<{ id: string; key: number; kind: SpotlightKind } | null>(null)
+  // La zona donde acaba de caer un monstruo y el cartel de la fase nueva: cada uno se va solo.
+  const [landing, setLanding] = useState<{ spot: MatSpot; index: number; tone: LandingTone; flies: boolean; key: number } | null>(null)
+  const [banner, setBanner] = useState<{ phase: MatPhase; turn: number | null; key: number } | null>(null)
   // Zona de la mesa bajo una carta de la mano que se está arrastrando.
   const [handOver, setHandOver] = useState<string | null>(null)
 
@@ -261,7 +271,19 @@ export function PracticeMat({
     return () => window.clearTimeout(timer)
   }, [flash])
 
-  // El destello sale con cada paso que avanza (jugadas propias y replay por igual): activar = carta grande en el centro y aro; marcar objetivo = sólo el aro.
+  useEffect(() => {
+    if (!landing) return
+    const timer = window.setTimeout(() => setLanding(null), LANDING_MS)
+    return () => window.clearTimeout(timer)
+  }, [landing])
+
+  useEffect(() => {
+    if (!banner) return
+    const timer = window.setTimeout(() => setBanner(null), BANNER_MS)
+    return () => window.clearTimeout(timer)
+  }, [banner])
+
+  // Los efectos salen con cada paso que avanza (jugadas propias y replay por igual): ver `matEffects`. Deshacer o saltar de paso no los repite.
   const lastCursorRef = useRef(session.cursor)
 
   useEffect(() => {
@@ -274,11 +296,12 @@ export function PracticeMat({
 
     if (!action) return
 
-    const before = replayMat(session.initial, session.actions, session.cursor - 1)
-    const activated = activatedCard(before, action)
+    const effects = matEffects(replayMat(session.initial, session.actions, session.cursor - 1), action)
+    const key = Date.now()
 
-    if (activated) setFlash({ id: activated, key: Date.now(), overlay: true })
-    else if (action.type === 'target' && !before.targeted.includes(action.id)) setFlash({ id: action.id, key: Date.now(), overlay: false })
+    if (effects.spotlight) setFlash({ ...effects.spotlight, key })
+    if (effects.landing) setLanding({ ...effects.landing, key })
+    if (effects.banner) setBanner({ ...effects.banner, key })
   }, [session.cursor, session.actions, session.initial])
 
   // La mano: el orden que le dio el jugador, y el reparto de a una carta desde el mazo (que se baraja con cada mano nueva).
@@ -722,6 +745,8 @@ export function PracticeMat({
   const leaving = picking?.kind === 'zone' ? (picking.action.type === 'tribute' ? picking.action.tributes : picking.action.type === 'summon' ? picking.action.materials : []) : []
   const chosenLabel = picking?.kind === 'materials' || (picking?.kind === 'zone' && picking.action.type === 'summon') ? t('practice.mat.chosenMaterial') : t('practice.mat.chosenTribute')
   const targetedIds = useMemo(() => new Set(state.targeted), [state.targeted])
+  // La carta de la que se está viendo el menú lleva un marco celeste mientras tanto.
+  const selectedId = menu?.kind === 'card' ? menu.id : null
 
   const cell = (spot: MatSpot, index: number, area: string) => {
     const placed = placedAt(state, spot, index)
@@ -755,16 +780,18 @@ export function PracticeMat({
             spot={spot}
             card={cardOf(placed.id)}
             dragging={drag?.source.id === placed.id}
-            flash={flash?.id === placed.id ? flash.key : null}
+            flash={flash?.id === placed.id ? flash : null}
             glow={highlighted.has(placed.id)}
             glowKind={highlightKind}
             dim={highlighted.size > 0 && !highlighted.has(placed.id)}
             chosen={chosen ? chosenLabel : null}
             targeted={targetedIds.has(placed.id)}
+            selected={selectedId === placed.id}
             bind={bind}
             onOpen={(rect) => openCard(placed.id, rect)}
           />
         ) : null}
+        {landing?.spot === spot && landing.index === index ? <LandingBurst key={landing.key} tone={landing.tone} flies={landing.flies} /> : null}
       </div>
     )
   }
@@ -873,7 +900,7 @@ export function PracticeMat({
         <div
           ref={fieldRef}
           // `my-auto`: el aire que sobra se reparte arriba y abajo del campo (ni pegado a la barra ni un hueco antes de la mano).
-          className="my-auto grid grid-cols-7 gap-1 [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[repeat(7,minmax(0,5.5rem))]"
+          className="relative my-auto grid grid-cols-7 gap-1 [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[repeat(7,minmax(0,5.5rem))]"
           aria-label={t('practice.mat.field')}
         >
           {cell('field', 0, 'fld')}
@@ -918,6 +945,9 @@ export function PracticeMat({
           {pileCell('extra', 'extra')}
           {pileCell('gy', 'gy')}
           {pileCell('banished', 'ban')}
+
+          {/* Cambio de fase: el cartel se asoma en el medio del campo y se va agrandándose. */}
+          {banner ? <PhaseBanner key={banner.key} phase={banner.phase} turn={banner.turn} className="absolute inset-0 z-30" /> : null}
         </div>
 
         {/* Abajo del todo, como en la mesa real: la mano en abanico. Las salidas y problemas van entre el campo y la mano en el celu, y en el panel lateral en escritorio. */}
@@ -932,6 +962,7 @@ export function PracticeMat({
           muted={muted}
           flash={flash}
           targeted={targetedIds}
+          selectedId={selectedId}
           getDeckRect={getDeckRect}
           dealsFromDeck={dealsFromDeck}
           getField={getField}
@@ -1036,16 +1067,9 @@ export function PracticeMat({
 
       {inspected ? <CardDetailOverlay key={inspected.id} name={cardOf(inspected.id).name} card={cardOf(inspected.id).apiCard} origin={inspected.rect} onClose={() => setInspected(null)} /> : null}
 
-      {/* Activación: la carta aparece grande en el centro de la pantalla con brillo amarillo y se desvanece, como en DuelingBook. */}
-      {flash?.overlay
-        ? createPortal(
-            <div key={flash.key} className="pointer-events-none fixed inset-0 z-205 grid place-items-center" aria-hidden="true" data-activation={flash.id}>
-              <div className="aspect-[421/614] w-[min(42vw,13rem)] overflow-hidden rounded-tag bg-input shadow-[0_0_0_3px_#facc15,0_0_60px_#facc15cc,0_24px_48px_rgba(0,0,0,0.6)] animate-card-activate-center motion-reduce:animate-none">
-                <CardArt remoteUrl={artOf(cardOf(flash.id))} name={cardOf(flash.id).name} className="block h-full w-full object-cover" />
-              </div>
-            </div>,
-            document.body,
-          )
+      {/* Activar, mostrar o declarar: la carta aparece grande en el centro de la pantalla, con su marco de color y lo que pasó arriba, y se desvanece, como en DuelingBook. Marcar un objetivo no la agranda: ahí sólo cae la mira. */}
+      {flash && flash.kind !== 'target'
+        ? createPortal(<Spotlight key={flash.key} id={flash.id} kind={flash.kind} name={cardOf(flash.id).name} art={artOf(cardOf(flash.id))} caption={steps[session.cursor - 1] ?? null} />, document.body)
         : null}
 
       {drag
@@ -1054,7 +1078,7 @@ export function PracticeMat({
               {drag.source.back ? (
                 <CardBack className="h-full" />
               ) : (
-                <CardArt remoteUrl={drag.source.art} name={drag.source.name} className="block h-full w-full rounded-tag object-cover shadow-[0_18px_32px_rgba(0,0,0,0.55)]" />
+                <CardArt remoteUrl={drag.source.art} name={drag.source.name} className="block h-full w-full object-cover shadow-[0_18px_32px_rgba(0,0,0,0.55)]" />
               )}
             </div>,
             document.body,
@@ -1119,8 +1143,8 @@ interface PlacedCardProps {
   spot: MatSpot
   card: MatCard
   dragging: boolean
-  /** Clave del destello de activación (null = quieta). */
-  flash: number | null
+  /** El destaque en curso (activar, mostrar, declarar o marcar como objetivo), con su clave; null = quieta. */
+  flash: { key: number; kind: SpotlightKind } | null
   glow: boolean
   glowKind: PatternKind | null
   dim: boolean
@@ -1128,6 +1152,8 @@ interface PlacedCardProps {
   chosen: string | null
   /** Marcada como objetivo. */
   targeted: boolean
+  /** Es la carta de la que se está viendo el menú. */
+  selected: boolean
   bind: ReturnType<typeof useMatDrag>['bind']
   onOpen: (rect: DOMRect) => void
 }
@@ -1135,27 +1161,44 @@ interface PlacedCardProps {
 /**
  * Carta en una zona del campo: es tuya, así que boca abajo se ve su imagen atenuada (como en DuelingBook); en defensa o
  * colocada en una zona de monstruo se acuesta a su tamaño y sobresale de la casilla, como en la mesa real; contadores,
- * materiales y objetivo como etiquetas.
+ * materiales y objetivo como etiquetas. Al darla vuelta se angosta y se abre; los contadores y los materiales rebotan al cambiar.
  */
-function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, chosen, targeted, bind, onOpen }: PlacedCardProps) {
+function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, chosen, targeted, selected, bind, onOpen }: PlacedCardProps) {
   // El nombre y lo que lo acompaña (boca abajo o en defensa, etiqueta de elegida, seleccionada): cada pedazo es su mensaje.
   let label = placed.pos === 'set' ? t('practice.mat.cardFaceDown', { name: card.name }) : placed.pos === 'def' ? t('practice.mat.cardDefense', { name: card.name }) : card.name
   if (chosen) label = t('practice.mat.cardChosen', { label, chosen })
   if (targeted) label = t('practice.card.selected', { name: label })
   const sideways = spot !== 'st' && spot !== 'field' && placed.pos !== 'atk'
 
+  const cardRef = useRef<HTMLDivElement | null>(null)
+  const previousPos = useRef(placed.pos)
+
+  useEffect(() => {
+    const wasFaceDown = previousPos.current === 'set'
+    previousPos.current = placed.pos
+
+    if (wasFaceDown === (placed.pos === 'set') || prefersReducedMotion()) return
+
+    cardRef.current?.animate(FLIP_FRAMES, { duration: FLIP_MS, easing: 'ease-in-out' })
+  }, [placed.pos])
+
   return (
     <div
-      key={flash ?? undefined}
+      ref={cardRef}
       role="button"
       tabIndex={0}
       aria-label={label}
       title={label}
       // Rotación en `transform` (no en `rotate`): así el vuelo entre zonas la lee y la compone bien.
       className={cx(MAT_CARD, 'absolute inset-0 h-full', sideways && 'z-1 [transform:rotate(90deg)]')}
+      // El color de su aro: el del destaque, o el rojo de la mira.
+      style={fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red')}
       data-card-id={placed.id}
       data-dragging={dragging ? 'true' : 'false'}
-      data-flash={flash !== null ? 'true' : 'false'}
+      data-flash={flash ? 'true' : 'false'}
+      data-flash-kind={flash?.kind}
+      data-targeted={targeted ? 'true' : 'false'}
+      data-selected={selected ? 'true' : 'false'}
       data-glow={glow ? 'true' : 'false'}
       data-glow-kind={glow ? (glowKind ?? 'opening') : undefined}
       data-dim={dim ? 'true' : 'false'}
@@ -1163,12 +1206,16 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, 
       onKeyDown={(event) => activate(event, () => onOpen(event.currentTarget.getBoundingClientRect()))}
       onContextMenu={(event) => event.preventDefault()}
     >
-      <span className={cx('block h-full w-full transition-[filter] duration-150', placed.pos === 'set' && 'brightness-[0.4] saturate-[0.55]')}>
+      {/* El cambio de brillo (boca abajo se ve atenuada) espera a que la carta, al darse vuelta, esté de canto. */}
+      <span className={cx('block h-full w-full transition-[filter] duration-150 delay-[115ms] motion-reduce:delay-0', placed.pos === 'set' && 'brightness-[0.4] saturate-[0.55]')}>
         <CardArt remoteUrl={artOf(card)} name={card.name} className="block h-full w-full object-cover" />
       </span>
-      {placed.counters > 0 ? <span className="absolute left-0.5 top-0.5 z-2 rounded-full bg-warning px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-[#1a1204]">{placed.counters}</span> : null}
-      {placed.materials.length > 0 ? <span className="absolute bottom-0.5 right-0.5 z-2 rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-primary-foreground">+{placed.materials.length}</span> : null}
+      {placed.counters > 0 ? <span key={placed.counters} className="absolute left-0.5 top-0.5 z-2 animate-pop rounded-full bg-warning px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-[#1a1204] motion-reduce:animate-none">{placed.counters}</span> : null}
+      {placed.materials.length > 0 ? <span key={placed.materials.length} className="absolute bottom-0.5 right-0.5 z-2 animate-pop rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-primary-foreground motion-reduce:animate-none">+{placed.materials.length}</span> : null}
       {chosen ? <span className="absolute inset-x-0 bottom-0 z-2 bg-accent/85 py-0.5 text-center text-[0.55rem] font-extrabold uppercase tracking-[0.06em] text-[#06140e]">{chosen}</span> : null}
+      {selected ? <FxFrame tone="cyan" /> : null}
+      {glow ? <FxFrame tone={glowKind === 'problem' ? 'red' : 'green'} orbit={false} /> : null}
+      {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
       {targeted ? <TargetMark /> : null}
     </div>
   )
