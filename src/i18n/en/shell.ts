@@ -4,6 +4,14 @@ import type { Translated } from '../types'
 export const shell: Translated<typeof es> = {
   'shell.nav.desktop': 'App steps',
   'shell.nav.mobile': 'Workflow steps',
+  'shell.nav.main': 'Main navigation',
+  'shell.nav.open': 'Open the menu',
+  'shell.nav.close': 'Close the menu',
+  'shell.nav.collapse': 'Collapse menu',
+  'shell.nav.expand': 'Expand menu',
+  'shell.nav.group.deck': 'Your deck',
+  'shell.nav.group.tools': 'Tools',
+  'shell.nav.group.discover': 'Discover',
 
   'shell.tone.complete': 'Done',
   'shell.tone.progress': 'In progress',

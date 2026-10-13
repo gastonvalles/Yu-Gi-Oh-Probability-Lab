@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /playground
 
 Sitemap: https://yu-gi-oh-probability-lab.vercel.app/sitemap.xml

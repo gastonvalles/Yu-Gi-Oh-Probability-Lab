@@ -2,6 +2,7 @@
 
 Una sola forma de hacer cada cosa. Antes de escribir clases sueltas, buscá si ya existe el componente.
 Todo vive en `src/components/ui/` y los tokens en `src/index.css`.
+El catálogo vivo de todo esto (botones, navegación, títulos, íconos, assets y tokens) es la página `/playground`: se prueba ahí primero. Ver `docs/playground.md`.
 
 ## 1. Idea general
 
@@ -50,6 +51,7 @@ Los roles de las cartas (starter, handtrap…) y los grupos (engine, non-engine�
 | `Card` | toda tarjeta: `level` card / **hero** (violeta, una por pantalla), `tone` (tarjeta teñida, como las "In Progress" del diseño), `padding`. Adentro no van más cajas. |
 | `ProgressRing` | anillo de progreso con el % al centro (44 px en listas, 76 px en una tarjeta destacada, 168 px como protagonista; `tone="onBrand"` sobre violeta; `color` para roles; `ticks` para marcar cortes; `delay` para escalonar varios). El entero del centro sale de `formatWholePercent`: 99,5 % se muestra ">99%" y 0,4 % "<1%", nunca un "100%" o "0%" que no lo es (el valor con decimal, `formatShortPercent`, va en el `label` y al lado). |
 | `SegmentedRing` | anillo repartido en tramos (limpias / con problema / sin salida; copias robadas 0-1-2-3+). Los tramos se llenan en orden y se resalta uno con `activeKey`. |
+| `Heading` | **todos los títulos**: `page` (h1, uno por pantalla) · `section` (h2: tarjeta, diálogo, panel) · `card` (h3: ítem de una tarjeta) · `kicker` (sobretítulo). Los estilos de cada nivel viven en `ui/typography.ts`: no se escriben clases de título a mano. |
 | `SectionHeader` | encabezado de tarjeta: ícono suelto + título + descripción + acciones. |
 | `StepHero` / `StepPage` | encabezado de cada paso y contenedor (ancho, márgenes y separación). |
 | `Badge` | estado, conteo o tipo (`dot`, `icon`, `shape="tag"`); los conteos van en `tone="brand"`. |

@@ -1,5 +1,6 @@
 /// <reference types="vitest" />
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig, type Plugin } from 'vite'
@@ -40,8 +41,34 @@ function copyrightBanner(): Plugin {
   }
 }
 
+/**
+ * `virtual:public-assets`: los archivos de `public/` (menos los precios, que son datos) con su tamaño, para el catálogo de assets de /playground.
+ * Es una lista armada al leer la carpeta: un archivo nuevo aparece solo, nadie tiene que anotarlo.
+ */
+function publicAssetsList(): Plugin {
+  const id = 'virtual:public-assets'
+  const resolved = `\0${id}`
+
+  return {
+    name: 'public-assets-list',
+    resolveId: (source) => (source === id ? resolved : undefined),
+    load(source) {
+      if (source !== resolved) return undefined
+
+      const root = fileURLToPath(new URL('./public', import.meta.url))
+      const files = (readdirSync(root, { recursive: true }) as string[])
+        .map((path) => path.split('\\').join('/'))
+        .filter((path) => !path.startsWith('prices/') && statSync(`${root}/${path}`).isFile())
+        .sort()
+        .map((path) => ({ path: `/${path}`, bytes: statSync(`${root}/${path}`).size }))
+
+      return `export default ${JSON.stringify(files)}`
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss(), copyrightBanner()],
+  plugins: [react(), tailwindcss(), copyrightBanner(), publicAssetsList()],
   preview: {
     headers: readVercelHeaders(),
     proxy: CARD_IMAGE_PROXY,

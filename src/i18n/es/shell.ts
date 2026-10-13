@@ -2,6 +2,14 @@
 export const shell = {
   'shell.nav.desktop': 'Pasos de la app',
   'shell.nav.mobile': 'Pasos del workflow',
+  'shell.nav.main': 'Navegación principal',
+  'shell.nav.open': 'Abrir el menú',
+  'shell.nav.close': 'Cerrar el menú',
+  'shell.nav.collapse': 'Contraer menú',
+  'shell.nav.expand': 'Expandir menú',
+  'shell.nav.group.deck': 'Tu deck',
+  'shell.nav.group.tools': 'Herramientas',
+  'shell.nav.group.discover': 'Descubrir',
 
   'shell.tone.complete': 'Listo',
   'shell.tone.progress': 'En progreso',
