@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
 import { createPortal } from 'react-dom'
 
 import { UI_ANIMATION_MS, prefersReducedMotion } from '../../app/motion'
-import { useCardArts } from '../../app/use-card-arts'
+import { useCardArtOptions, type ArtChoice } from '../../app/use-card-art-options'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
@@ -30,6 +30,8 @@ interface CardOverlayProps {
   tall?: boolean
   /** Algo encima de la carta, en la esquina superior derecha (p. ej. la flecha de tendencia del meta). */
   artOverlay?: ReactNode
+  /** El arte con el que se abre (p. ej. el de la impresión que se tocó en una expansión): arranca elegido y se ve de entrada. */
+  initialArt?: Pick<ArtChoice, 'id' | 'imageUrl'>
   onClose: () => void
   /** Contenido del panel: `CardPanelHeader`, `CardPanelBody` y, si hace falta, `CardPanelFooter`. */
   children: ReactNode
@@ -62,7 +64,7 @@ export function CardOverlay(props: CardOverlayProps) {
   )
 }
 
-function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, tall = false, artOverlay = null, onOpenPrices = null, onClose, children }: CardOverlayProps & { onOpenPrices?: (() => void) | null }) {
+function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, tall = false, artOverlay = null, initialArt, onOpenPrices = null, onClose, children }: CardOverlayProps & { onOpenPrices?: (() => void) | null }) {
   const rootRef = useRef<HTMLDivElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLElement>(null)
@@ -70,10 +72,10 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
   // Tocar la carta la agranda al máximo; tocarla de nuevo (o el fondo) vuelve al panel.
   const [zoomed, setZoomed] = useState(false)
   const animationsRef = useRef<Animation[]>([])
-  // Los artes alternativos de la carta (llegan después de abrir) y cuál se ve.
-  const arts = useCardArts(card?.ygoprodeckId ?? null, name)
-  const [artId, setArtId] = useState<number | null>(null)
-  const art = arts.find((option) => option.id === artId)
+  // Los artes de la carta (los de YGOPRODeck y las impresiones: llegan después de abrir) y cuál se ve.
+  const arts = useCardArtOptions(card?.ygoprodeckId ?? null, name)
+  const [artId, setArtId] = useState<string | null>(initialArt?.id ?? null)
+  const art = arts.find((option) => option.id === artId) ?? (initialArt && artId === initialArt.id ? initialArt : undefined)
 
   useBodyScrollLock(true)
 

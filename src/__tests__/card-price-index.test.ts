@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { SHARDS, buildCardRows, buildCodeIndex, buildRows, carryOver, setFile, shardFile, shardOf } from '../../scripts/sync-card-prices.mjs'
+import { SHARDS, buildCardRows, buildCodeIndex, buildRows, carryOver, setCodeOf, setFile, shardFile, shardOf, variantOf } from '../../scripts/sync-card-prices.mjs'
 
 /** [código del set, rareza, edición, precio de mercado, id del producto] */
 type SetRow = [string, string, string, number | null, number]
@@ -187,5 +187,72 @@ describe('scripts/sync-card-prices.mjs: los archivos por set', () => {
     ])
     expect(JSON.parse(text)).toHaveLength(3)
     expect(setFile([], names)).toBe('[]\n')
+  })
+})
+
+describe('scripts/sync-card-prices.mjs: el prefijo de los códigos de un set', () => {
+  it('es el más común entre las filas (el nombre de la imagen del sobre), y el primero si empatan', () => {
+    expect(setCodeOf([['LOB-EN001'], ['LOB-EN002'], ['LOB-EN003']])).toBe('LOB')
+    expect(setCodeOf([['CT13-EN008'], ['LOB-EN001'], ['LOB-EN002']])).toBe('LOB')
+    expect(setCodeOf([['AAA-EN001'], ['BBB-EN001']])).toBe('AAA')
+    expect(setCodeOf([['RA05-EN001', 'Rare']])).toBe('RA05')
+    expect(setCodeOf([])).toBe('')
+  })
+})
+
+describe('scripts/sync-card-prices.mjs: de qué arte es cada impresión', () => {
+  it('el arte sale del nombre del producto: lo de entre paréntesis que no es la rareza, su sigla ni el código del set', () => {
+    expect(variantOf('Dark Magical Curtain (Starlight Rare) (Extended Art)', 'Starlight Rare')).toBe('Extended Art')
+    expect(variantOf('Dark Magical Curtain (Extended Art)', 'Ultra Rare')).toBe('Extended Art')
+    expect(variantOf('Polymerization (B) (HERO Art) (Platinum Secret Rare)', 'Platinum Secret Rare')).toBe('HERO Art')
+    expect(variantOf('Reinforcement of the Army (Alternate Art) (Starlight Rare)', 'Starlight Rare')).toBe('Alternate Art')
+    expect(variantOf('Blue-Eyes White Dragon (SDWD-EN001) (Unlimited Misprint)', 'Ultra Rare')).toBe('Unlimited Misprint')
+    expect(variantOf('Dark Magician (New Art) (Quarter Century Secret Rare)', 'Quarter Century Secret Rare')).toBe('New Art')
+  })
+
+  it('sin arte distinto es vacío: sin paréntesis, con la rareza (entera, abreviada o en sigla) o sin datos', () => {
+    expect(variantOf('Dark Magical Curtain', 'Ultra Rare')).toBe('')
+    expect(variantOf('Dark Magical Curtain (GMR)', 'Grand Master Rare')).toBe('')
+    expect(variantOf('Dark Time Wizard (Secret Rare)', 'Secret Rare')).toBe('')
+    expect(variantOf('Dark Magician (Secret)', 'Secret Rare')).toBe('')
+    expect(variantOf('Sage with Eyes of Blue (UTR)', 'Ultimate Rare')).toBe('')
+    expect(variantOf(undefined, undefined)).toBe('')
+    expect(variantOf('', 'Rare')).toBe('')
+  })
+
+  it('con más de un arte se unen; y las filas por set y por carta llevan el arte al final sólo si lo hay', () => {
+    expect(variantOf('Card (Alternate Art) (Overframe) (Rare)', 'Rare')).toBe('Alternate Art · Overframe')
+
+    const rows = buildRows(
+      [
+        { productId: 1, name: 'Dark Magical Curtain (Extended Art)', extendedData: [{ name: 'Number', value: 'MAMO-EN003' }, { name: 'Rarity', value: 'Ultra Rare' }] },
+        { productId: 2, name: 'Dark Magical Curtain', extendedData: [{ name: 'Number', value: 'MAMO-EN003' }, { name: 'Rarity', value: 'Ultra Rare' }] },
+      ],
+      [
+        { productId: 1, marketPrice: 153.4, lowPrice: 100, subTypeName: '1st Edition' },
+        { productId: 2, marketPrice: 7.1, lowPrice: 6, subTypeName: '1st Edition' },
+      ],
+    )
+
+    expect(rows).toEqual([
+      ['MAMO-EN003', 'Ultra Rare', '1st Edition', 153.4, 1, 'Extended Art'],
+      ['MAMO-EN003', 'Ultra Rare', '1st Edition', 7.1, 2],
+    ])
+
+    const { byCard, bySet } = buildCardRows([{ groupId: 9, rows }], buildCodeIndex([{ id: 41350417, card_sets: [{ set_code: 'MAMO-EN003', set_rarity: 'Ultra Rare' }] }]))
+
+    // Con todo igual, por producto (el 1, el de arte extendido, antes que el 2).
+    expect(byCard.get(41350417)).toEqual([
+      ['MAMO-EN003', 'Ultra Rare', '1st Edition', 153.4, 1, 9, 'Extended Art'],
+      ['MAMO-EN003', 'Ultra Rare', '1st Edition', 7.1, 2, 9],
+    ])
+    expect(bySet.get(9)).toEqual([
+      ['MAMO-EN003', 'Ultra Rare', '1st Edition', 153.4, 1, 41350417, 'Extended Art'],
+      ['MAMO-EN003', 'Ultra Rare', '1st Edition', 7.1, 2, 41350417],
+    ])
+    expect(JSON.parse(setFile(bySet.get(9), new Map([[41350417, 'Dark Magical Curtain']])))).toEqual([
+      ['MAMO-EN003', 'Ultra Rare', '1st Edition', 153.4, 1, 41350417, 'Dark Magical Curtain', 'Extended Art'],
+      ['MAMO-EN003', 'Ultra Rare', '1st Edition', 7.1, 2, 41350417, 'Dark Magical Curtain'],
+    ])
   })
 })

@@ -4,12 +4,14 @@ import { cardImageSrc } from '../../app/card-image-source'
 import { filterPrintings, setImageUrl, type PrintingPrice } from '../../app/card-prices'
 import { useCardPrices } from '../../app/use-card-prices'
 import { currencyLocale, formatDay as formatDate, t } from '../../i18n'
+import { Badge } from '../ui/Badge'
 import { Heading } from '../ui/Heading'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
 import { Skeleton } from '../ui/Skeleton'
+import { PrintingArt } from './PrintingArt'
 import { field } from '../ui/surfaces'
 
 /** "2026-10-11" → "11/10/2026" (en inglés, "Oct 11, 2026"). Un día con otra forma se muestra tal cual. */
@@ -20,7 +22,7 @@ function formatDay(day: string): string {
 }
 
 /** El encabezado del Meta: la imagen a la derecha y un degradado oscuro que la deja leer el texto de la izquierda. Acá, el sobre de la expansión. */
-export const packBackground = (code: string) => ({
+const packBackground = (code: string) => ({
   backgroundImage: `linear-gradient(90deg, rgb(var(--card-background-rgb) / 0.97) 40%, rgb(var(--card-background-rgb) / 0.6)), url(${cardImageSrc(setImageUrl(code))})`,
   // Un poco más grande que la franja para que no asomen los bordes blancos del sobre, y centrado en la ilustración.
   backgroundSize: '115% auto',
@@ -51,7 +53,7 @@ export function CardPricesButton({ onClick, className }: { onClick: () => void; 
 }
 
 /** Una expansión: su encabezado con el sobre de fondo y, debajo, el precio de mercado de cada impresión de la carta con un link al producto. */
-function ExpansionPrices({ set, prices }: { set: string; prices: PrintingPrice[] }) {
+function ExpansionPrices({ set, prices, cardId }: { set: string; prices: PrintingPrice[]; cardId: number }) {
   const usd = new Intl.NumberFormat(currencyLocale(), { style: 'currency', currency: 'USD' })
 
   return (
@@ -64,16 +66,25 @@ function ExpansionPrices({ set, prices }: { set: string; prices: PrintingPrice[]
       </header>
       <ul className="m-0 grid list-none p-0">
         {prices.map((price) => (
-          <li key={`${price.code}-${price.rarity}-${price.edition}`} className="border-t border-border-subtle">
+          <li key={`${price.code}-${price.rarity}-${price.edition}-${price.productId}`} className="border-t border-border-subtle">
             <a
               href={price.url}
               target="_blank"
               rel="noreferrer"
-              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2 text-foreground no-underline transition-colors hover:bg-tint/8 focus-visible:outline-none focus-visible:shadow-focus"
+              className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3 px-3 py-2 text-foreground no-underline transition-colors hover:bg-tint/8 focus-visible:outline-none focus-visible:shadow-focus"
             >
+              {/* La carta tal cual salió en esa impresión: ahí se ve si es overframe, de arte extendido o alternativa. */}
+              <PrintingArt productId={price.productId} cardId={cardId} className="aspect-[421/614] w-9 rounded-tag object-cover" />
               <span className="grid min-w-0 gap-0.5">
-                <span className="text-body font-semibold">
-                  {price.rarity} · {price.edition}
+                <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-body font-semibold">
+                  <span>
+                    {price.rarity} · {price.edition}
+                  </span>
+                  {price.variant ? (
+                    <Badge size="sm" tone="info" shape="tag">
+                      {price.variant}
+                    </Badge>
+                  ) : null}
                 </span>
                 <span className="text-micro text-muted">{price.code}</span>
               </span>
@@ -145,7 +156,7 @@ function PriceList({ cardId }: { cardId: number }) {
         </label>
       ) : null}
       {[...bySet].map(([set, setPrices]) => (
-        <ExpansionPrices key={set} set={set} prices={setPrices} />
+        <ExpansionPrices key={set} set={set} prices={setPrices} cardId={cardId} />
       ))}
       {searching && visible.length === 0 ? <p className="m-0 text-body text-muted">{t('search.prices.noMatch', { query: query.trim() })}</p> : null}
       <p className="m-0 text-micro text-soft">{t('search.prices.footnote', { date: formatDay(state.updated) })}</p>

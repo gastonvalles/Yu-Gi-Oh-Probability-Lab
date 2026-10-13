@@ -15,6 +15,10 @@ export interface PrintingPrice {
   edition: string
   market: number | null
   url: string
+  /** El producto en TCGplayer: de ahí sale la imagen de esa impresión (`printImageUrl`). */
+  productId: number
+  /** De qué arte es, si es distinto ("Extended Art", "Alternate Art"...); vacío si es el de siempre. */
+  variant: string
 }
 
 export interface CardPrices {
@@ -23,15 +27,15 @@ export interface CardPrices {
   updated: string
 }
 
-/** [código del set, rareza, edición, precio de mercado, id del producto en TCGplayer, id del set] */
-export type PriceRow = [string, string, string, number | null, number, number]
+/** [código del set, rareza, edición, precio de mercado, id del producto en TCGplayer, id del set, y sólo si es de un arte distinto, cuál] */
+export type PriceRow = [string, string, string, number | null, number, number, string?]
 
 interface PriceIndex {
   updated: string
   /** Cuántos archivos por carta hay: el de la carta es `cards/<id % shards>.json`. */
   shards: number
-  /** [id del set, nombre, fecha de salida (AAAA-MM-DD, vacía si TCGCSV no la tiene), cuántas impresiones tiene] */
-  groups: Array<[number, string, string, number?]>
+  /** [id del set, nombre, fecha de salida (AAAA-MM-DD, vacía si TCGCSV no la tiene), cuántas impresiones tiene, prefijo de sus códigos ("LOB" de "LOB-EN001")] */
+  groups: Array<[number, string, string, number?, string?]>
 }
 
 /** Una expansión: lo que alcanza para listarlas (las cartas se piden recién al abrir una). */
@@ -42,6 +46,8 @@ export interface Expansion {
   date: string
   /** Cuántas impresiones (carta + rareza + edición) trae. */
   count: number
+  /** El prefijo de sus códigos ("LOB" de "LOB-EN001"): el nombre de la imagen de su sobre. Vacío si no se sabe. */
+  code: string
 }
 
 /** Una impresión de una expansión: la carta, su rareza y edición, y a cuánto está en TCGplayer. */
@@ -53,10 +59,13 @@ export interface ExpansionCard {
   edition: string
   market: number | null
   url: string
+  productId: number
+  /** De qué arte es, si es distinto ("Extended Art", "Alternate Art"...); vacío si es el de siempre. */
+  variant: string
 }
 
-/** [código del set, rareza, edición, precio de mercado, id del producto en TCGplayer, id de la carta, nombre de la carta] */
-type ExpansionRow = [string, string, string, number | null, number, number, string]
+/** [código del set, rareza, edición, precio de mercado, id del producto en TCGplayer, id de la carta, nombre de la carta, y sólo si es de un arte distinto, cuál] */
+type ExpansionRow = [string, string, string, number | null, number, number, string, string?]
 
 type GetJson = (url: string) => Promise<unknown>
 
@@ -78,8 +87,8 @@ async function getJson(url: string): Promise<unknown> {
 }
 
 /**
- * Las impresiones que coinciden con lo que se escribió en el buscador: cada palabra tiene que estar en el código o en
- * la rareza, sin importar mayúsculas ni signos ("enl06", "lavd enl", "starlight", "collectors").
+ * Las impresiones que coinciden con lo que se escribió en el buscador: cada palabra tiene que estar en el código, en la rareza o en el arte
+ * ("Extended Art"), sin importar mayúsculas ni signos ("enl06", "lavd enl", "starlight", "collectors", "extended").
  */
 export function filterPrintings(prices: PrintingPrice[], query: string): PrintingPrice[] {
   const words = query.split(/\s+/).map(normalize).filter(Boolean)
@@ -89,8 +98,8 @@ export function filterPrintings(prices: PrintingPrice[], query: string): Printin
   }
 
   return prices.filter((price) => {
-    // El "|" separa código y rareza: ya normalizadas no lo contienen, así que una palabra no cruza de uno al otro.
-    const text = `${normalize(price.code)}|${normalize(price.rarity)}`
+    // El "|" separa código, rareza y arte: ya normalizadas no lo contienen, así que una palabra no cruza de uno al otro.
+    const text = `${normalize(price.code)}|${normalize(price.rarity)}|${normalize(price.variant)}`
 
     return words.every((word) => text.includes(word))
   })
@@ -147,6 +156,8 @@ export async function fetchCardPrices(cardId: number, get: GetJson = getJson): P
       edition: row[2],
       market: row[3],
       url: `https://www.tcgplayer.com/product/${row[4]}`,
+      productId: row[4],
+      variant: row[6] ?? '',
     })),
     updated: index.updated,
   }
@@ -158,7 +169,7 @@ export async function fetchCardPrices(cardId: number, get: GetJson = getJson): P
  */
 export async function fetchExpansions(get: GetJson = getJson): Promise<{ expansions: Expansion[]; updated: string }> {
   const index = (await cached(get, `${PRICES_DIR}/index.json`)) as PriceIndex
-  const expansions = index.groups.map(([id, name, date, count]) => ({ id, name, date, count: count ?? 0 }))
+  const expansions = index.groups.map(([id, name, date, count, code]) => ({ id, name, date, count: count ?? 0, code: code ?? '' }))
 
   // Sort estable: con la misma fecha (o sin ninguna), la de id más alto (la que se cargó después) va primero.
   expansions.sort((a, b) => (a.date === '' ? 1 : 0) - (b.date === '' ? 1 : 0) || b.date.localeCompare(a.date) || b.id - a.id)
@@ -170,7 +181,7 @@ export async function fetchExpansions(get: GetJson = getJson): Promise<{ expansi
 export async function fetchExpansionCards(expansionId: number, get: GetJson = getJson): Promise<ExpansionCard[]> {
   const rows = (await cached(get, `${PRICES_DIR}/sets/${expansionId}.json`)) as ExpansionRow[]
 
-  return rows.map(([code, rarity, edition, market, productId, cardId, name]) => ({
+  return rows.map(([code, rarity, edition, market, productId, cardId, name, variant]) => ({
     cardId,
     name,
     code,
@@ -178,8 +189,16 @@ export async function fetchExpansionCards(expansionId: number, get: GetJson = ge
     edition,
     market,
     url: `https://www.tcgplayer.com/product/${productId}`,
+    productId,
+    variant: variant ?? '',
   }))
 }
+
+/**
+ * La imagen de una impresión: la del producto en TCGplayer, que es el escaneo de esa carta tal cual salió (las overframe, las de arte extendido y las
+ * alternativas se ven distintas; YGOPRODeck sólo tiene el arte de siempre). 200 px de ancho para las grillas, 400 para la carta grande.
+ */
+export const printImageUrl = (productId: number, size: '200w' | '400w' = '200w') => `https://tcgplayer-cdn.tcgplayer.com/product/${productId}_${size}.jpg`
 
 /** El arte chico de una carta por su id (el del arte original: el id de YGOPRODeck de la carta es el de su imagen). */
 export const cardSmallImageUrl = (cardId: number) => `https://images.ygoprodeck.com/images/cards_small/${cardId}.jpg`

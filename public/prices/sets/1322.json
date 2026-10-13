@@ -1,6 +1,6 @@
 [
-["TKN1-EN001","Common","Unlimited",6.26,81303,73915052,"Sheep Token"],
-["TKN1-EN002","Common","Unlimited",5.06,81304,73915052,"Sheep Token"],
-["TKN1-EN003","Common","Unlimited",6.76,81305,73915052,"Sheep Token"],
-["TKN1-EN004","Common","Unlimited",2.92,81306,73915052,"Sheep Token"]
+["TKN1-EN001","Common","Unlimited",6.26,81303,73915052,"Sheep Token","Blue"],
+["TKN1-EN002","Common","Unlimited",5.06,81304,73915052,"Sheep Token","Yellow"],
+["TKN1-EN003","Common","Unlimited",6.76,81305,73915052,"Sheep Token","Orange"],
+["TKN1-EN004","Common","Unlimited",2.92,81306,73915052,"Sheep Token","Red"]
 ]

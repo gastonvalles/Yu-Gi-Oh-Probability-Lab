@@ -39,7 +39,7 @@
 ["YS16-EN038","Common","1st Edition",0.69,118470,77538567,"Dark Bribe"],
 ["YS16-EN039","Common","1st Edition",0.21,118469,4923662,"Chaos Burst"],
 ["YS16-EN040","Common","1st Edition",0.12,118467,77826734,"Pendulum Reborn"],
-["YS16-ENT01","Common","1st Edition",0.32,118517,11050416,"Hippo Token"],
-["YS16-ENT02","Common","1st Edition",0.49,118516,11050416,"Hippo Token"],
-["YS16-ENT03","Common","1st Edition",0.4,118515,11050416,"Hippo Token"]
+["YS16-ENT01","Common","1st Edition",0.32,118517,11050416,"Hippo Token","Orange"],
+["YS16-ENT02","Common","1st Edition",0.49,118516,11050416,"Hippo Token","Yellow"],
+["YS16-ENT03","Common","1st Edition",0.4,118515,11050416,"Hippo Token","Blue"]
 ]

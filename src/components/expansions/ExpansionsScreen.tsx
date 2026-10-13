@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react'
 
-import { cardSmallImageUrl, type Expansion, type ExpansionCard } from '../../app/card-prices'
+import { type Expansion, type ExpansionCard } from '../../app/card-prices'
 import { useExpansionCards, useExpansions } from '../../app/use-expansions'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { formatInteger } from '../../app/utils'
 import { currencyLocale, formatDay, t } from '../../i18n'
 import { StepHero } from '../StepHero'
-import { CardArt } from '../CardArt'
-import { packBackground } from '../card-detail/CardPrices'
+import { PrintingArt } from '../card-detail/PrintingArt'
+import { TiltCard } from '../card-detail/TiltCard'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
@@ -22,6 +22,7 @@ import { StepPage } from '../ui/StepPage'
 import { choiceChip, listItem, surface } from '../ui/surfaces'
 import { overline } from '../ui/typography'
 import { ExpansionCardModal } from './ExpansionCardModal'
+import { PackArt } from './PackArt'
 
 /** Cuántas cartas se dibujan de entrada (hay expansiones con más de 800 impresiones): el resto, con "Mostrar más". */
 const PAGE_SIZE = 60
@@ -52,7 +53,7 @@ export function ExpansionsScreen() {
   const showList = isDesktop || active === null
 
   return (
-    <StepPage as="article">
+    <StepPage as="article" wide>
       <StepHero
         title={t('catalog.sets.title')}
         icon="package"
@@ -70,7 +71,7 @@ export function ExpansionsScreen() {
           <Skeleton className="h-12 w-full" />
         </div>
       ) : (
-        <div className="grid items-start gap-4 min-[1101px]:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)] min-[1101px]:gap-5">
+        <div className="grid items-start gap-4 min-[1101px]:grid-cols-[minmax(19rem,24rem)_minmax(0,1fr)] min-[1101px]:gap-5">
           {showList ? <ExpansionList expansions={expansions} activeId={activeId} onPick={setPickedId} /> : null}
           {active ? <ExpansionDetail key={active.id} expansion={active} updated={list.status === 'ready' ? list.updated : ''} onBack={isDesktop ? null : () => setPickedId(null)} /> : null}
         </div>
@@ -99,7 +100,7 @@ function ExpansionList({ expansions, activeId, onPick }: { expansions: Expansion
   return (
     <section className={cx(surface.card, 'grid min-w-0 content-start gap-3 p-3 min-[1101px]:sticky min-[1101px]:top-4')}>
       <SearchField label={t('catalog.sets.searchLabel')} placeholder={t('catalog.sets.searchLabel')} value={query} onChange={setQuery} />
-      <nav aria-label={t('catalog.sets.listLabel')} className="grid max-h-[70dvh] gap-3 overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin]">
+      <nav aria-label={t('catalog.sets.listLabel')} className="grid max-h-[70dvh] gap-3 overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin] min-[1101px]:max-h-[calc(100dvh-11rem)]">
         {groups.map(([year, items]) => (
           <section key={year} className="grid gap-0.5">
             <h3 className={cx(overline, 'px-1')}>{year || t('catalog.sets.noDate')}</h3>
@@ -108,9 +109,10 @@ function ExpansionList({ expansions, activeId, onPick }: { expansions: Expansion
                 key={expansion.id}
                 type="button"
                 aria-current={expansion.id === activeId ? 'true' : undefined}
-                className={cx(listItem, 'grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-2.5 py-2 text-left aria-[current=true]:bg-primary/15')}
+                className={cx(listItem, 'grid w-full grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-2.5 px-2.5 py-2 text-left aria-[current=true]:bg-primary/15')}
                 onClick={() => onPick(expansion.id)}
               >
+                <PackArt code={expansion.code} className="h-12 w-9 rounded-tag" />
                 <span className="grid min-w-0 gap-0.5">
                   <span className="truncate text-body font-semibold text-foreground">{expansion.name}</span>
                   <span className="text-micro text-muted">{dayText(expansion.date)}</span>
@@ -126,7 +128,7 @@ function ExpansionList({ expansions, activeId, onPick }: { expansions: Expansion
   )
 }
 
-/** Una expansión: su encabezado con el sobre de fondo y sus impresiones (con filtros por nombre o código y por rareza, y orden por código o precio). */
+/** Una expansión: su encabezado y sus impresiones (con filtros por nombre o código y por rareza, y orden por código o precio). */
 function ExpansionDetail({ expansion, updated, onBack }: { expansion: Expansion; updated: string; onBack: (() => void) | null }) {
   const state = useExpansionCards(expansion.id)
   const [query, setQuery] = useState('')
@@ -139,7 +141,7 @@ function ExpansionDetail({ expansion, updated, onBack }: { expansion: Expansion;
   const rarities = useMemo(() => [...new Set(cards.map((card) => card.rarity))].sort((a, b) => a.localeCompare(b)), [cards])
   const rows = useMemo(() => {
     const words = query.split(/\s+/).map(normalize).filter(Boolean)
-    const matching = cards.filter((card) => (rarity === null || card.rarity === rarity) && words.every((word) => `${normalize(card.name)}|${normalize(card.code)}`.includes(word)))
+    const matching = cards.filter((card) => (rarity === null || card.rarity === rarity) && words.every((word) => `${normalize(card.name)}|${normalize(card.code)}|${normalize(card.variant)}`.includes(word)))
 
     // El orden de los archivos ya es por código; por precio, de más a menos caro y las que no tienen precio al final.
     return sort === 'price' ? [...matching].sort((a, b) => (b.market ?? -1) - (a.market ?? -1)) : matching
@@ -150,18 +152,20 @@ function ExpansionDetail({ expansion, updated, onBack }: { expansion: Expansion;
 
   return (
     <section className={cx(surface.card, 'grid min-w-0 content-start gap-3 overflow-hidden')}>
-      <header className="grid gap-2 px-4 py-3" style={cards[0] ? packBackground(cards[0].code) : undefined}>
-        {onBack ? (
-          <Button variant="tertiary" size="sm" icon="chevron-left" className="justify-self-start" onClick={onBack}>
-            {t('catalog.sets.back')}
-          </Button>
-        ) : null}
-        <Heading level="section" as="h2">
-          {expansion.name}
-        </Heading>
-        <p className="m-0 text-micro text-muted">
-          {[dayText(expansion.date), t('catalog.sets.printings', { count: expansion.count, n: formatInteger(expansion.count) }), state.status === 'ready' ? t('catalog.sets.distinct', { count: distinct, n: formatInteger(distinct) }) : null].filter(Boolean).join(' · ')}
-        </p>
+      <header className="px-4 pt-4 min-[1101px]:px-5 min-[1101px]:pt-5">
+        <div className="grid min-w-0 content-center justify-items-start gap-2">
+          {onBack ? (
+            <Button variant="tertiary" size="sm" icon="chevron-left" onClick={onBack}>
+              {t('catalog.sets.back')}
+            </Button>
+          ) : null}
+          <Heading level="section" as="h2">
+            {expansion.name}
+          </Heading>
+          <p className="m-0 text-body text-muted">
+            {[dayText(expansion.date), t('catalog.sets.printings', { count: expansion.count, n: formatInteger(expansion.count) }), state.status === 'ready' ? t('catalog.sets.distinct', { count: distinct, n: formatInteger(distinct) }) : null].filter(Boolean).join(' · ')}
+          </p>
+        </div>
       </header>
 
       <div className="grid gap-3 px-4 pb-4">
@@ -232,9 +236,9 @@ function ExpansionDetail({ expansion, updated, onBack }: { expansion: Expansion;
                       className="group block rounded-tag text-left focus-visible:outline-none focus-visible:shadow-focus"
                       onClick={() => setOpened(card)}
                     >
-                      <span className="block aspect-[421/614] overflow-hidden rounded-tag bg-input shadow-card transition-transform duration-150 group-hover:-translate-y-0.5">
-                        <CardArt remoteUrl={cardSmallImageUrl(card.cardId)} name="" className="block h-full w-full object-cover" />
-                      </span>
+                      <TiltCard className="aspect-[421/614] rounded-tag bg-input shadow-card">
+                        <PrintingArt productId={card.productId} cardId={card.cardId} className="h-full w-full object-cover" />
+                      </TiltCard>
                     </button>
                     <div className="grid min-w-0 gap-0.5">
                       <span className="line-clamp-2 text-micro font-semibold leading-snug text-foreground [overflow-wrap:anywhere]">{card.name}</span>
@@ -242,6 +246,11 @@ function ExpansionDetail({ expansion, updated, onBack }: { expansion: Expansion;
                       <span className="text-micro text-muted [overflow-wrap:anywhere]">
                         {card.rarity} · {card.edition}
                       </span>
+                      {card.variant ? (
+                        <Badge size="sm" tone="info" shape="tag" className="justify-self-start">
+                          {card.variant}
+                        </Badge>
+                      ) : null}
                       <a
                         href={card.url}
                         target="_blank"
