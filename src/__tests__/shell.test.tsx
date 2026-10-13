@@ -35,7 +35,7 @@ describe('el menú de la app', () => {
     expect(GROUPS.map((group) => [group.label, group.items.map((item) => item.key)])).toEqual([
       ['Tu deck', ['deck-builder', 'categorization', 'probability-lab', 'workspace', 'export']],
       ['Herramientas', ['practice', 'life']],
-      ['Descubrir', ['meta', 'replays']],
+      ['Descubrir', ['meta', 'tournaments', 'replays']],
     ])
   })
 

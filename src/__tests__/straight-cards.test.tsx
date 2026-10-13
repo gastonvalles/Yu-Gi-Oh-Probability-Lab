@@ -34,8 +34,6 @@ describe('las cartas van rectas', () => {
           activeDragInstanceId={null}
           variant="classic-builder"
           desktopCompact
-          onClearZone={noop}
-          onSortZone={noop}
           onDeckCardPointerDown={noop}
           onDeckCardClick={noop}
           onRemoveCard={noop}
@@ -50,8 +48,8 @@ describe('las cartas van rectas', () => {
   })
 
   it('las fichas de carta que son <button> se declaran rectas: el reset global le da radio a todo <button>', () => {
-    // El Meta (con `overflow-hidden`, recortaría la imagen), el comparador (el contorno de lo que cambió) y la carta grande del builder (su foco).
-    for (const file of ['components/meta/MetaScreen.tsx', 'components/comparison/BuildDeckView.tsx', 'components/deck-mode/DeckBuilderClassicPreview.tsx']) {
+    // Las tier lists (con `overflow-hidden`, recortaría la imagen), el comparador (el contorno de lo que cambió) y la carta grande del builder (su foco).
+    for (const file of ['components/meta/TierBoard.tsx', 'components/comparison/BuildDeckView.tsx', 'components/deck-mode/DeckBuilderClassicPreview.tsx']) {
       expect(source(file), file).toContain('rounded-none')
     }
   })

@@ -12,11 +12,9 @@ import {
 import {
   addSearchResultToDeckZone,
   clearAllDeckZones,
-  clearDeckZone,
   confirmDeckCardClassification,
   moveDeckCardInBuilder,
   sortAllDeckZones,
-  sortDeckZone,
   removeDeckCardFromBuilder,
   replaceDeckBuilder,
   setDeckCardOrigin,
@@ -415,38 +413,10 @@ export function useDeckModeController() {
     [handleAddSelectedDeckCopy, handleRemoveSelectedDeckCopy, selectedDeckCopy],
   )
 
-  const handleSortDeckZone = useCallback(
-    (zone: DeckZone) => {
-      dispatch(sortDeckZone(zone))
-      showToast(t('deck.toast.zoneSorted', { zone: DECK_ZONE_LABELS[zone] }), 'success')
-    },
-    [dispatch, showToast],
-  )
-
   const handleSortAllDeckZones = useCallback(() => {
     dispatch(sortAllDeckZones())
     showToast(t('deck.toast.allSorted'), 'success')
   }, [dispatch, showToast])
-
-  const handleClearDeckZone = useCallback(
-    (zone: DeckZone) => {
-      const zoneCards = deckBuilder[zone]
-
-      if (zoneCards.length === 0) {
-        return
-      }
-
-      dispatch(clearDeckZone(zone))
-
-      showToast(
-        settings.deckFormat === 'genesys'
-          ? t('deck.toast.zoneClearedFor', { zone: DECK_ZONE_LABELS[zone], format: formatLabel })
-          : t('deck.toast.zoneCleared', { zone: DECK_ZONE_LABELS[zone] }),
-        'warning',
-      )
-    },
-    [deckBuilder, dispatch, formatLabel, settings.deckFormat, showToast],
-  )
 
   const handleClearAllDeckZones = useCallback(() => {
     if (deckBuilder.main.length === 0 && deckBuilder.extra.length === 0 && deckBuilder.side.length === 0) {
@@ -588,8 +558,6 @@ export function useDeckModeController() {
       selectedDetailSource,
       selectedDeckCopyActions,
       isCardDetailOpen: selectedDetailCard !== null,
-      onClearDeckZone: handleClearDeckZone,
-      onSortDeckZone: handleSortDeckZone,
       onSortAllDeckZones: handleSortAllDeckZones,
       onClearAllDeckZones: handleClearAllDeckZones,
       onRemoveDeckCard: handleRemoveDeckCard,

@@ -57,13 +57,13 @@ export function AppSidebar({ groups, activeKey, onSelect, collapsed, onToggleCol
           aria-label={collapsed ? t('shell.nav.expand') : t('shell.nav.collapse')}
           title={collapsed ? t('shell.nav.expand') : undefined}
           className={cx(
-            'group/toggle flex w-full items-center rounded-control text-left text-body font-medium text-white transition-opacity duration-150 hover:[&_svg]:drop-shadow-[0_0_6px_rgb(255_255_255/0.7)] focus-visible:outline-none focus-visible:shadow-focus active:opacity-70 motion-reduce:transition-none',
+            'group/toggle flex w-full items-center rounded-control text-left text-body font-medium text-white transition-opacity duration-150 hover:[&_svg]:text-success hover:[&_svg]:drop-shadow-[0_0_6px_rgb(var(--success-rgb)/0.7)] focus-visible:outline-none focus-visible:shadow-focus active:opacity-70 motion-reduce:transition-none',
             RAIL_ROW,
           )}
           onClick={onToggleCollapsed}
         >
           <span className={RAIL_SLOT}>
-            <Icon name="chevrons-left" size={20} className="transition-[rotate,filter] duration-(--sidebar-duration) ease-(--sidebar-ease) group-data-[collapsed=true]/sidebar:rotate-180 motion-reduce:transition-none" />
+            <Icon name="chevrons-left" size={20} className="transition-[rotate,filter,color] duration-(--sidebar-duration) ease-(--sidebar-ease) group-data-[collapsed=true]/sidebar:rotate-180 motion-reduce:transition-none" />
           </span>
           <span aria-hidden="true" className={cx('w-36 shrink-0 truncate', RAIL_LABEL)}>
             {t('shell.nav.collapse')}

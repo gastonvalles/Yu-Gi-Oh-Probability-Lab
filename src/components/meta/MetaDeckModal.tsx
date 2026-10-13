@@ -6,16 +6,15 @@ import { buildDeckImportPreviewFromYdk } from '../../app/deck-import'
 import {
   META_DECKS,
   buildMetaDeckHash,
-  countCopies,
   coverArtUrl,
   loadMetaDecklist,
   toYdkText,
   type MetaDeck,
   type MetaDecklist,
-} from '../../app/meta-handtraps'
+} from '../../app/meta'
 import { beginMascotActivity } from '../../app/mascot'
 import type { DeckCardInstance, DeckZone as DeckZoneKey } from '../../app/model'
-import { buildReplaysHash, countReplaysOfDeck } from '../../app/replays'
+import { replayLabel, replaysOfDeck, type ReplayEntry } from '../../app/replays'
 import { useAppDispatch, useAppSelector } from '../../app/store-hooks'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useToastMessage } from '../../app/use-toast-message'
@@ -26,6 +25,7 @@ import { CardDetailModal } from '../card-detail/CardDetailModal'
 import { DeckBuilderClassicPreview } from '../deck-mode/DeckBuilderClassicPreview'
 import { DeckZone } from '../DeckZone'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
+import { ReplayModal } from '../replays/ReplayModal'
 import { Heading } from '../ui/Heading'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
@@ -33,7 +33,7 @@ import { Callout } from '../ui/Callout'
 import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
 import { Skeleton } from '../ui/Skeleton'
-import { formatMetaDate } from './meta-format'
+import { deckCardCounts, formatMetaDate } from './meta-format'
 
 /** Las cartas de un deck de torneo no cambian: un día en el dispositivo evita volver a pedirlas. */
 const DECK_CARDS_PERSIST_MS = 24 * 60 * 60 * 1000
@@ -43,7 +43,8 @@ const ZONE_ITEMS = [
   { zone: 'extra', titleKey: 'meta.deckModal.zoneExtra' },
   { zone: 'side', titleKey: 'meta.deckModal.zoneSide' },
 ] as const satisfies ReadonlyArray<{ zone: DeckZoneKey; titleKey: string }>
-const HANDTRAP_IDS: ReadonlySet<number> = new Set(Object.keys(META_DECKS.cards).map(Number))
+// Las cartas de los tier lists (hand traps y boardbreakers) se resaltan en la lista del deck.
+const TRACKED_IDS: ReadonlySet<number> = new Set(Object.keys(META_DECKS.cards).map(Number))
 const noop = () => {}
 
 interface LoadedDeck {
@@ -59,13 +60,15 @@ type LoadState = { status: 'loading' } | { status: 'error'; message: string } | 
 interface MetaDeckModalProps {
   deck: MetaDeck | null
   onClose: () => void
+  /** El deck del otro jugador de un replay: quien muestra el modal lo reemplaza. */
+  onOpenDeck: (deck: MetaDeck) => void
 }
 
 /**
  * Un Tournament Meta Deck completo sin salir de la app, con la estructura del builder: la carta elegida a la
  * izquierda y las zonas a la derecha (en mobile, el detalle se abre al tocar). Se puede cargar en el builder.
  */
-export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
+export function MetaDeckModal({ deck, onClose, onOpenDeck }: MetaDeckModalProps) {
   const dispatch = useAppDispatch()
   const deckFormat = useAppSelector((state) => state.settings.deckFormat)
   const builderHasCards = useAppSelector(
@@ -77,10 +80,15 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
   const [attempt, setAttempt] = useState(0)
   const [selectedCard, setSelectedCard] = useState<ApiCardSearchResult | null>(null)
   const [confirmReplace, setConfirmReplace] = useState(false)
+  // El replay que se ve encima del deck (sus videos están en el encabezado).
+  const [replay, setReplay] = useState<ReplayEntry | null>(null)
   const deckId = deck?.id ?? null
   const cover = deck?.cover ?? null
 
   useEffect(() => {
+    // Un replay que estaba abierto era de otro deck (o del anterior): al cambiar de deck, o al cerrarlo, no queda colgado.
+    setReplay(null)
+
     if (deckId === null) {
       return
     }
@@ -146,7 +154,7 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
     window.location.hash = '#deck-builder'
   }
 
-  /** El link directo a este deck (la pestaña Meta con el id), para mandarlo por chat. */
+  /** El link directo a este deck (los decks de torneo con el id), para mandarlo por chat. */
   const copyLink = async () => {
     const url = `${window.location.origin}${window.location.pathname}${buildMetaDeckHash(deck.id)}`
 
@@ -171,7 +179,7 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
     }
   }
 
-  const replayCount = countReplaysOfDeck(deck.id)
+  const replays = replaysOfDeck(deck.id)
   // Cada pedazo es una frase suelta y van en el mismo orden en los dos idiomas: "Llegó a Top 8 en YCS Paris (500 jugadores)".
   const summary = [
     deck.placement ? t('meta.deckModal.reached', { placement: deck.placement }) : null,
@@ -239,20 +247,23 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
                 <Icon name="calendar" size={13} />
                 {formatMetaDate(deck.date)}
               </span>
-              <Badge tone="success" size="sm" dot>
-                {t('meta.deck.handtraps', { main: formatInteger(countCopies(deck.main)), side: formatInteger(countCopies(deck.side)) })}
-              </Badge>
-              {replayCount > 0 ? (
-                // Los replays de los duelos de este deck, en la pestaña Replays (el click cierra el modal y el link cambia de pestaña).
-                <a
-                  href={buildReplaysHash({ deck: deck.id })}
-                  className="inline-flex items-center gap-1 font-semibold text-primary-soft underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus"
-                  onClick={onClose}
+              {deckCardCounts(deck).map(({ kind, text }) => (
+                <Badge key={kind} tone={kind === 'handtrap' ? 'success' : 'warning'} size="sm" dot>
+                  {text}
+                </Badge>
+              ))}
+              {/* Los videos de los duelos de este deck, ahí mismo: se ven encima del deck y al cerrarlos se vuelve a él. */}
+              {replays.map((entry) => (
+                <button
+                  key={entry.video.id}
+                  type="button"
+                  className="inline-flex min-w-0 max-w-full items-center gap-1 font-semibold text-primary-soft underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus"
+                  onClick={() => setReplay(entry)}
                 >
-                  <Icon name="play" size={13} variant="bold" />
-                  {t('meta.deckModal.watchReplays', { count: replayCount })}
-                </a>
-              ) : null}
+                  <Icon name="play" size={13} variant="bold" className="shrink-0" />
+                  <span className="truncate">{t('meta.deckModal.replay', { label: [entry.stage?.label, replayLabel(entry)].filter(Boolean).join(' · ') })}</span>
+                </button>
+              ))}
             </div>
           </header>
 
@@ -298,10 +309,8 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
                       desktopCompact={isDesktop}
                       variant={isDesktop ? 'classic-builder' : 'default'}
                       selectedCardId={(selectedCard ?? load.deck.defaultCard)?.ygoprodeckId ?? null}
-                      highlightedCardIds={HANDTRAP_IDS}
+                      highlightedCardIds={TRACKED_IDS}
                       readOnly
-                      onClearZone={noop}
-                      onSortZone={noop}
                       onDeckCardPointerDown={noop}
                       onDeckCardClick={handleCardClick}
                       onRemoveCard={noop}
@@ -322,6 +331,18 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
         showActions={false}
         onAddToZone={() => false}
         onClose={() => setSelectedCard(null)}
+      />
+
+      <ReplayModal
+        entry={replay}
+        onClose={() => setReplay(null)}
+        onOpenDeck={(next) => {
+          setReplay(null)
+
+          if (next.id !== deck.id) {
+            onOpenDeck(next)
+          }
+        }}
       />
 
       <ConfirmDialog

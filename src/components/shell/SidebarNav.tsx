@@ -22,7 +22,7 @@ const ITEM = cx(
 
 /**
  * La lista de destinos del menú, agrupada: es lo que se ve en el menú lateral (escritorio) y en el cajón del celular, así que un cambio
- * acá cambia los dos. El destino abierto lleva fondo lavanda, ícono relleno y texto verde. Cómo viene cada paso (listo, a medio hacer) va en el tooltip y en
+ * acá cambia los dos. Los íconos son blancos, como los de todo botón sin texto, y se ponen verdes al pasar el mouse; el destino abierto lleva fondo lavanda, ícono relleno y texto verdes. Cómo viene cada paso (listo, a medio hacer) va en el tooltip y en
  * el nombre accesible, no en un punto de color: un punto suelto en el borde de un ícono se lee como una notificación.
  * Contraído (el menú lateral lo marca con `data-collapsed`), la misma lista se queda con los íconos: nada se vuelve a armar, los rótulos
  * sólo se desvanecen y el menú los recorta (ver `rail.ts`), así el cambio de ancho se anima sin que nada salte.
@@ -67,7 +67,7 @@ function NavButton({ item, active, onSelect }: { item: NavItem; active: boolean;
       aria-current={active ? 'page' : undefined}
       aria-label={navItemDescription(item)}
       title={item.detail ? `${item.title}: ${item.detail}` : item.title}
-      className={cx(ITEM, active ? 'bg-lavender text-success' : 'text-muted hover:bg-tint/5 hover:text-foreground')}
+      className={cx(ITEM, active ? 'bg-lavender text-success' : 'text-foreground hover:bg-tint/5')}
       onClick={() => onSelect(item.key)}
     >
       <span className={RAIL_SLOT}>
@@ -75,7 +75,10 @@ function NavButton({ item, active, onSelect }: { item: NavItem; active: boolean;
           name={item.icon}
           size={22}
           variant={active ? 'bold' : 'bulk'}
-          className={cx('transition-colors duration-150 [--icon-cut:var(--lavender)]', active ? 'text-success drop-shadow-[0_0_8px_rgb(var(--success-rgb)/0.55)]' : 'text-primary-soft/60 group-hover/item:text-primary-soft')}
+          className={cx(
+            'transition-[color,filter] duration-150 [--icon-cut:var(--lavender)]',
+            active ? 'text-success drop-shadow-[0_0_8px_rgb(var(--success-rgb)/0.55)]' : 'text-white group-hover/item:text-success group-hover/item:drop-shadow-[0_0_6px_rgb(var(--success-rgb)/0.6)]',
+          )}
         />
       </span>
       {/* El rótulo reserva el ancho de la negrita: al abrirse un destino ninguno se corre. */}

@@ -2,18 +2,20 @@
 import { configureStore } from '@reduxjs/toolkit'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
+import type { ReactElement } from 'react'
 import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { buildVerdict, compareBuilds } from '../app/build-comparison'
-import { buildMetaReport, type HandtrapStat, type MetaDeck, type MetaDecksData } from '../app/meta-handtraps'
+import { DECK_TIER_FLOORS, buildMetaReport, type MetaCardStat, type MetaDeck, type MetaDecksData } from '../app/meta'
 import type { DeckCardInstance } from '../app/model'
 import { matchReplays, readStage } from '../app/replays'
 import { createSavedBuild, uniqueBuildName } from '../app/saved-builds'
 import { ComparisonReport } from '../components/comparison/ComparisonReport'
 import { KpiDetailModal } from '../components/comparison/KpiDetailModal'
-import { MetaScreen } from '../components/meta/MetaScreen'
-import { formatMetaDate, formatMetaDateFull, tierHint, tierLabel, trendText, usageText } from '../components/meta/meta-format'
+import { TierListsScreen } from '../components/meta/TierListsScreen'
+import { TournamentDecksScreen } from '../components/meta/TournamentDecksScreen'
+import { deckCardCounts, formatMetaDate, formatMetaDateFull, tierHint, tierLabel, trendText, usageText } from '../components/meta/meta-format'
 import { ReplaysScreen } from '../components/replays/ReplaysScreen'
 import { applyLocale, t } from '../i18n'
 import type { ApiCardReference, CardEntry, CardRole } from '../types'
@@ -130,8 +132,9 @@ describe('Comparar builds en inglés', () => {
     expect(t('meta.compare.pending', { side: 'A', count: 3 })).toBe('Build A: 3 unclassified cards')
     expect(t('meta.deckModal.loadedMissing', { name: 'Elfnote', count: 1 })).toBe('Elfnote loaded into the builder with 1 fewer card (outside the format or unknown).')
     expect(t('meta.deckModal.loadedMissing', { name: 'Elfnote', count: 4 })).toBe('Elfnote loaded into the builder with 4 fewer cards (outside the format or unknown).')
-    expect(t('meta.deckModal.watchReplays', { count: 1 })).toBe('Watch the replay')
-    expect(t('meta.deckModal.watchReplays', { count: 3 })).toBe('Watch 3 replays')
+    expect(t('meta.deckModal.replay', { label: 'Final · A vs. B' })).toBe('Replay: Final · A vs. B')
+    expect(t('meta.tournaments.hasReplays', { count: 1 })).toBe('Has a replay')
+    expect(t('meta.tournaments.hasReplays', { count: 3 })).toBe('Has 3 replays')
   })
 
   it('la ventana de cartas de un anillo cuenta las cartas en inglés', () => {
@@ -154,41 +157,75 @@ describe('Comparar builds en inglés', () => {
   })
 })
 
+/** En una pantalla ancha los controles de las tier lists se ven en la pantalla (en celular van en una ventana aparte). */
+function wideScreen() {
+  window.matchMedia = ((query: string) => ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+}
+
+function renderInStore(screenNode: ReactElement) {
+  const store = configureStore({
+    reducer: {
+      settings: (state = { handSize: 5, deckFormat: 'tcg' }) => state,
+      deckBuilder: (state = { deckName: '', main: [], extra: [], side: [], isEditingDeck: false }) => state,
+    },
+  })
+
+  return render(<Provider store={store}>{screenNode}</Provider>)
+}
+
 describe('Meta en inglés', () => {
-  it('la pestaña se dibuja en inglés: encabezado, ayuda, controles y la lista de decks con su plural', () => {
+  it('las tier lists se dibujan en inglés: encabezado, las tres listas, controles y estado vacío con el nombre de cada lista', () => {
     applyLocale('en')
     window.history.replaceState(null, '', '#meta')
-    // En escritorio los controles del tier list se ven en la pantalla (en celular van en una ventana aparte).
-    window.matchMedia = ((query: string) => ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
-    const store = configureStore({
-      reducer: {
-        settings: (state = { handSize: 5, deckFormat: 'tcg' }) => state,
-        deckBuilder: (state = { deckName: '', main: [], extra: [], side: [], isEditingDeck: false }) => state,
-      },
-    })
-    const view = render(
-      <Provider store={store}>
-        <MetaScreen />
-      </Provider>,
-    )
+    wideScreen()
+    const view = renderInStore(<TierListsScreen />)
 
-    expect(screen.getByRole('heading', { name: 'Meta hand traps' })).toBeInTheDocument()
-    // Con una zona vacía no hay tier list: la ventana lo dice.
+    expect(screen.getByRole('heading', { name: 'Tier lists' })).toBeInTheDocument()
+    expect(screen.getByRole('radiogroup', { name: 'Which tier list to show' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Hand traps' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('heading', { name: 'Hand trap tier list' })).toBeInTheDocument()
+    // Tres decks son pocos para un tier list: la pantalla lo dice (y nombra la región y cuántos son).
+    expect(screen.getByText('There are few TCG decks in this window (3): each one weighs several points, so tiers swing a lot. Try more weeks.')).toBeInTheDocument()
+    // Los decks del test no llevan ninguna carta de las listas: la ventana lo dice.
     expect(screen.getByText('No hand traps in this window')).toBeInTheDocument()
-    expect(screen.getByText('The 3 TCG decks from the last 8 weeks, from newest to oldest. Tap one to see it in full.')).toBeInTheDocument()
+    expect(screen.getByText('Try more weeks or another zone.')).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: '4 wks' })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByRole('radio', { name: 'Projection' })).toBeInTheDocument()
+    expect(screen.getByRole('radiogroup', { name: 'Where to count the card' })).toBeInTheDocument()
+    // La fecha de la actualización es la del usuario: se mira el formato (mes en letras), no el día.
+    expect(view.container.querySelector('[title="Date of the last deck update"]')).toHaveTextContent(/^Updated [A-Z][a-z]{2} \d{1,2}, 2026$/)
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Boardbreakers' }))
+    expect(screen.getByRole('heading', { name: 'Boardbreaker tier list' })).toBeInTheDocument()
+    expect(screen.getByText('No boardbreakers in this window')).toBeInTheDocument()
+    expect(window.location.hash).toBe('#meta?list=boardbreaker')
+
+    // La de decks no cuenta cartas: no hay zona. Con tres decks de nombres distintos ninguno llega al mínimo de resultados.
+    fireEvent.click(screen.getByRole('radio', { name: 'Decks' }))
+    expect(screen.getByRole('heading', { name: 'Deck tier list' })).toBeInTheDocument()
+    expect(screen.getByText('No decks in this window')).toBeInTheDocument()
+    expect(screen.getByText('Try more weeks.')).toBeInTheDocument()
+    expect(screen.queryByRole('radiogroup', { name: 'Where to count the card' })).not.toBeInTheDocument()
+  })
+
+  it('los decks de torneo se dibujan en inglés: encabezado, búsqueda y la lista con su plural', () => {
+    applyLocale('en')
+    window.history.replaceState(null, '', '#tournaments')
+    wideScreen()
+    const view = renderInStore(<TournamentDecksScreen />)
+
+    expect(screen.getByRole('heading', { name: 'Tournament decks' })).toBeInTheDocument()
+    expect(screen.getByText('The 3 TCG decks from the last 8 weeks, from newest to oldest. Tap one to see it in full.')).toBeInTheDocument()
     expect(screen.getByRole('searchbox', { name: 'Search decks' })).toHaveAttribute('placeholder', 'Deck, event or player')
     expect(screen.getByText('Top 32 (500 players)')).toBeInTheDocument()
-    // La fecha de la actualización es la del usuario: se mira el formato (mes en letras), no el día.
     expect(view.container.querySelector('[title="Date of the last deck update"]')).toHaveTextContent(/^Updated [A-Z][a-z]{2} \d{1,2}, 2026$/)
 
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search decks' }), { target: { value: 'elfnote' } })
     expect(screen.getByText('1 TCG deck from the last 8 weeks, from newest to oldest. Tap it to see it in full.')).toBeInTheDocument()
   })
 
-  const stat = (patch: Partial<HandtrapStat>): HandtrapStat =>
-    ({ id: 1, name: 'Ash', image: null, decks: 4, share: 0.25, tier: 'B', main: { decks: 0, copies: 0 }, side: { decks: 0, copies: 0 }, weekly: [], projectedShare: 0.25, projectedTier: 'B', trend: 'flat', archetypes: [], ...patch }) as HandtrapStat
+  const stat = (patch: Partial<MetaCardStat>): MetaCardStat =>
+    ({ id: 1, name: 'Ash', image: null, decks: 4, share: 0.25, tier: 'B', main: { decks: 0, copies: 0 }, side: { decks: 0, copies: 0 }, weekly: [], projectedShare: 0.25, projectedTier: 'B', trend: 'flat', archetypes: [], ...patch }) as MetaCardStat
 
   it('las etiquetas de los tiers y lo que dice cada piso', () => {
     applyLocale('en')
@@ -196,6 +233,16 @@ describe('Meta en inglés', () => {
     expect([tierLabel('S'), tierLabel('C'), tierLabel('D')]).toEqual(['TIER S', 'MEH', '😭'])
     expect(tierHint('S')).toBe('At least 60% of decks')
     expect(tierHint('D')).toBe('Less than 5% of decks')
+    // Los decks se reparten el meta en porcentajes mucho más bajos: su lista pide otros pisos.
+    expect(tierHint('S', DECK_TIER_FLOORS)).toBe('At least 8% of decks')
+    expect(tierHint('D', DECK_TIER_FLOORS)).toBe('Less than 1% of decks')
+  })
+
+  it('lo que lleva un deck se dice por tipo (una carta que los datos no conocen cuenta como hand trap), y el que no lleva ninguna no dice nada', () => {
+    applyLocale('en')
+
+    expect(deckCardCounts({ main: [[1, 3]], side: [[2, 1]] })).toEqual([{ kind: 'handtrap', text: 'Hand traps: 3 in Main · 1 in Side' }])
+    expect(deckCardCounts({ main: [], side: [] })).toEqual([])
   })
 
   it('la tendencia dice si sube o baja, a cuánto y, si cambia, a qué tier', () => {
@@ -229,7 +276,7 @@ describe('Meta en inglés', () => {
     const deck = (id: number): MetaDeck => ({ id, region: 'tcg', name: 'Elfnote', date: '2026-10-03', tournament: null, placement: null, players: null, player: null, cover: null, url: null, main: [[999, 3]], side: [] })
     const data: MetaDecksData = { fetchedAt: '2026-10-08', windowDays: 56, source: 'test', cards: {}, decks: [deck(1), deck(2)] }
 
-    expect(buildMetaReport(data, 'tcg', 'both', 4).handtraps.map((entry) => entry.name)).toEqual(['Card 999'])
+    expect(buildMetaReport(data, 'tcg', 'both', 4).cards.map((entry) => entry.name)).toEqual(['Card 999'])
   })
 })
 
@@ -263,16 +310,19 @@ describe('Replays en inglés', () => {
 
   it('la pestaña se dibuja en inglés: descripción con plural, filtros, jugadores sin deck y los dos canales con su link', () => {
     applyLocale('en')
-    const view = render(<ReplaysScreen />)
+    const view = renderInStore(<ReplaysScreen />)
 
     expect(screen.getByRole('heading', { name: 'Replays' })).toBeInTheDocument()
-    expect(screen.getByText('2 replays with at least one deck from the Meta tab, from newest to oldest. Tap one to watch it.')).toBeInTheDocument()
+    expect(screen.getByText('2 replays with at least one tournament deck, from newest to oldest. Tap one to watch it.')).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'With Meta deck' })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByRole('searchbox', { name: 'Search replays' })).toHaveAttribute('placeholder', 'Event, player or deck')
     expect(screen.getByText('YCS Paris 2026 · Final')).toBeInTheDocument()
     expect(screen.getByText('YCS Paris 2026 · Round 13')).toBeInTheDocument()
     expect(screen.getByText('unidentified deck')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Watch the replay Timoti B. vs. Vladis B., YCS Paris 2026 · Final' })).toBeInTheDocument()
+    // Cada jugador con un deck de torneo tiene su botón para ver el detalle.
+    expect(screen.getAllByRole('button', { name: 'View the Elfnote deck' })).toHaveLength(1)
+    expect(screen.getAllByText('View deck')).toHaveLength(3)
 
     const footer = view.container.querySelector('p.mt-4')!
     expect(footer).toHaveTextContent('The videos are from the official Yu-Gi-Oh! TCG Europe and Yu-Gi-Oh! TCG YouTube channels.')
@@ -289,7 +339,7 @@ describe('Replays en inglés', () => {
   it('con un deck elegido la descripción nombra el deck y el torneo, y el plural elige la forma', () => {
     applyLocale('en')
     window.history.replaceState(null, '', '#replays?deck=101')
-    render(<ReplaysScreen />)
+    renderInStore(<ReplaysScreen />)
 
     expect(screen.getByText('1 Elfnote replay at YCS Paris, from newest to oldest.')).toBeInTheDocument()
     expect(screen.queryByRole('radio', { name: 'All' })).not.toBeInTheDocument()

@@ -123,7 +123,7 @@ describe('las pantallas del deck en inglés', () => {
     render(
       createElement(DeckZone, {
         zone: 'main', title: 'Main Deck', cards: [], activeDragInstanceId: null, variant: 'classic-builder', desktopCompact: true,
-        onClearZone: noop, onSortZone: noop, onDeckCardPointerDown: noop, onDeckCardClick: noop, onRemoveCard: noop,
+        onDeckCardPointerDown: noop, onDeckCardClick: noop, onRemoveCard: noop,
       }),
     )
 

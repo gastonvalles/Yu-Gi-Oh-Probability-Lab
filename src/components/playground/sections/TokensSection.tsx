@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react'
 
-import { cx } from '../../ui/cx'
+import { SearchField } from '../../ui/SearchField'
 import { Segmented } from '../../ui/Segmented'
-import { field } from '../../ui/surfaces'
 import { Specimen, SpecimenGrid } from '../Specimen'
 import { readThemeTokens, tokenKind, type ThemeToken, type TokenKind } from '../theme-tokens'
 
@@ -81,7 +80,7 @@ export function TokensSection() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center gap-3">
-        <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar un token (primary, radius, 0.75rem…)" aria-label="Buscar un token" className={cx(field, 'h-10 min-w-0 flex-1 px-3 text-body')} />
+        <SearchField label="Buscar un token" value={query} onChange={setQuery} placeholder="Buscar un token (primary, radius, 0.75rem…)" className="min-w-0 flex-1" inputClassName="h-10" />
         <Segmented<TokenKind | 'all'>
           label="Tipo de token"
           size="sm"

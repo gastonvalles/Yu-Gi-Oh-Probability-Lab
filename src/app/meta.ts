@@ -3,18 +3,23 @@ import { t } from '../i18n'
 import type { BanlistStatus } from '../types'
 import { normalizeSearchText } from './utils'
 
-/** De qué circuito de torneos viene un deck; cada región tiene su banlist y su tier list. */
+/** De qué circuito de torneos viene un deck; cada región tiene su banlist y sus tier lists. */
 export type MetaRegion = 'tcg' | 'ocg'
 
-/** Una hand trap del tier list, con su id canónico de YGOPRODeck (las artes alternativas ya están unificadas). */
+/** Qué tier list de cartas: las hand traps o los boardbreakers (una carta puede estar en las dos). */
+export type MetaCardKind = 'handtrap' | 'boardbreaker'
+
+/** Una carta de los tier lists (hand trap o boardbreaker), con su id canónico de YGOPRODeck (las artes alternativas ya están unificadas). */
 interface MetaCard {
   name: string
   image: string | null
   /** Estado en la banlist de cada región al momento del snapshot. */
   ban: Record<MetaRegion, BanlistStatus | null>
+  /** Qué es la carta (lo escribe el sync). Los datos de antes de los boardbreakers sólo traían hand traps y no lo decían. */
+  kinds?: MetaCardKind[]
 }
 
-/** Un Tournament Meta Deck de YGOPRODeck: sólo sus hand traps, como [id, copias]. */
+/** Un Tournament Meta Deck de YGOPRODeck: sólo sus hand traps y boardbreakers, como [id, copias]. */
 export interface MetaDeck {
   id: number
   region: MetaRegion
@@ -68,6 +73,21 @@ export function countCopies(entries: ReadonlyArray<[number, number]>): number {
   return entries.reduce((total, [, copies]) => total + copies, 0)
 }
 
+/** Qué es una carta de los tier lists: lo que dice el sync, o hand trap si es de los datos de antes de los boardbreakers. */
+export function kindsOf(card: MetaCard | undefined): MetaCardKind[] {
+  return card?.kinds ?? ['handtrap']
+}
+
+/** Los ids de las cartas de un tipo (para resaltarlas en la lista de un deck). */
+export function cardIdsOfKind(kind: MetaCardKind, cards: Record<string, MetaCard> = META_DECKS.cards): Set<number> {
+  return new Set(Object.entries(cards).filter(([, card]) => kindsOf(card).includes(kind)).map(([id]) => Number(id)))
+}
+
+/** Copias de un tipo de carta en una zona de un deck (el deck trae hand traps y boardbreakers mezclados). */
+export function countKindCopies(entries: ReadonlyArray<[number, number]>, kind: MetaCardKind, cards: Record<string, MetaCard> = META_DECKS.cards): number {
+  return countCopies(entries.filter(([id]) => kindsOf(cards[String(id)]).includes(kind)))
+}
+
 /** El mismo .ydk que exporta la app: así el deck entra al builder por el camino de importación de siempre. */
 export function toYdkText(decklist: MetaDecklist): string {
   const lines = (entries: ReadonlyArray<[number, number]>) =>
@@ -99,7 +119,8 @@ interface MetaArchetypeUsage {
   total: number
 }
 
-export interface HandtrapStat {
+/** Una carta del tier list (hand trap o boardbreaker). */
+export interface MetaCardStat {
   id: number
   name: string
   image: string | null
@@ -120,7 +141,7 @@ export interface HandtrapStat {
 export interface MetaReport {
   /** Decks dentro de la ventana elegida. */
   deckCount: number
-  handtraps: HandtrapStat[]
+  cards: MetaCardStat[]
 }
 
 export interface MetaDeckFilter {
@@ -135,29 +156,54 @@ export interface MetaDeckFilter {
 export const PROJECTION_WEEKS = 2
 /** Cambio proyectado (fracción de decks) a partir del cual se dice que sube o baja. */
 export const TREND_THRESHOLD = 0.05
-/** Piso de cada tier, como fracción de los decks que la juegan. */
+/** Piso de cada tier de las cartas, como fracción de los decks que la juegan. */
 export const TIER_FLOORS: ReadonlyArray<readonly [MetaTier, number]> = [
   ['S', 0.6],
   ['A', 0.35],
   ['B', 0.15],
   ['C', 0.05],
 ]
+/**
+ * Piso de cada tier de los decks, como fracción de todos los decks de la ventana: el meta se reparte entre muchos más nombres que cartas
+ * hay en un deck, así que los pisos son mucho más bajos.
+ */
+export const DECK_TIER_FLOORS: ReadonlyArray<readonly [MetaTier, number]> = [
+  ['S', 0.08],
+  ['A', 0.04],
+  ['B', 0.02],
+  ['C', 0.01],
+]
+/** Un deck con menos resultados que esto en la ventana no entra al tier list: uno suelto no hace meta. */
+export const MIN_TIER_DECKS = 2
+/**
+ * Con menos decks que esto en la ventana los porcentajes bailan (cada deck vale varios puntos: con 22 decks, dos resultados ya son un 9%, que es S) y los
+ * tiers no dicen mucho. Pasa sobre todo en OCG, que tiene pocos decks de torneo: la pantalla lo avisa.
+ */
+export const MIN_RELIABLE_DECKS = 30
 /** Una semana con menos decks que esto no pesa en la tendencia: sería ruido. */
 export const MIN_WEEK_DECKS = 10
 const MIN_TREND_WEEKS = 3
 const WEEK_MS = 7 * 86_400_000
 
-export function tierOf(share: number): MetaTier {
+function tierFrom(share: number, floors: ReadonlyArray<readonly [MetaTier, number]>): MetaTier {
   // Se compara el porcentaje redondeado (el que se ve): dos cartas con "5%" caen en el mismo tier.
   const shown = Math.round(share * 100) / 100
 
-  for (const [tier, floor] of TIER_FLOORS) {
+  for (const [tier, floor] of floors) {
     if (shown >= floor) {
       return tier
     }
   }
 
   return 'D'
+}
+
+export function tierOf(share: number): MetaTier {
+  return tierFrom(share, TIER_FLOORS)
+}
+
+export function deckTierOf(share: number): MetaTier {
+  return tierFrom(share, DECK_TIER_FLOORS)
 }
 
 /** Semanas enteras entre la fecha del torneo y la del snapshot (0 = los últimos siete días). */
@@ -205,8 +251,11 @@ interface UsageAccumulator {
   archetypes: Map<string, number>
 }
 
-/** Qué hand traps se juegan en los decks de una región en las últimas `windowWeeks` semanas, y hacia dónde va cada una. */
-export function buildMetaReport(data: MetaDecksData, region: MetaRegion, zone: MetaZone, windowWeeks: number): MetaReport {
+/**
+ * Qué cartas de un tipo (hand traps o boardbreakers) se juegan en los decks de una región en las últimas `windowWeeks` semanas, y hacia
+ * dónde va cada una. Los decks traen las dos mezcladas: acá sólo cuentan las del tipo pedido.
+ */
+export function buildMetaReport(data: MetaDecksData, region: MetaRegion, zone: MetaZone, windowWeeks: number, kind: MetaCardKind = 'handtrap'): MetaReport {
   const totalWeeks = Math.max(windowWeeks, Math.ceil(data.windowDays / 7))
   const weekDecks: number[] = Array.from({ length: totalWeeks }, () => 0)
   const archetypeTotals = new Map<string, number>()
@@ -232,6 +281,10 @@ export function buildMetaReport(data: MetaDecksData, region: MetaRegion, zone: M
 
     for (const zoneKey of ['main', 'side'] as const) {
       for (const [id, copies] of deck[zoneKey]) {
+        if (!kindsOf(data.cards[String(id)]).includes(kind)) {
+          continue
+        }
+
         let entry = usage.get(id)
 
         if (!entry) {
@@ -265,10 +318,10 @@ export function buildMetaReport(data: MetaDecksData, region: MetaRegion, zone: M
   }
 
   if (deckCount === 0) {
-    return { deckCount: 0, handtraps: [] }
+    return { deckCount: 0, cards: [] }
   }
 
-  const handtraps: HandtrapStat[] = []
+  const cards: MetaCardStat[] = []
 
   for (const [id, entry] of usage) {
     const card = data.cards[String(id)]
@@ -283,9 +336,9 @@ export function buildMetaReport(data: MetaDecksData, region: MetaRegion, zone: M
       .reverse()
     const { projectedShare, trend } = projectShare(weekly, share)
 
-    handtraps.push({
+    cards.push({
       id,
-      name: card?.name ?? t('meta.handtrap.unknown', { id }),
+      name: card?.name ?? t('meta.card.unknown', { id }),
       image: card?.image ?? null,
       decks: entry.decks,
       share,
@@ -302,21 +355,172 @@ export function buildMetaReport(data: MetaDecksData, region: MetaRegion, zone: M
     })
   }
 
-  handtraps.sort((left, right) => right.share - left.share || right.decks - left.decks || left.name.localeCompare(right.name, 'es'))
+  cards.sort((left, right) => right.share - left.share || right.decks - left.decks || left.name.localeCompare(right.name, 'es'))
 
-  return { deckCount, handtraps }
+  return { deckCount, cards }
 }
 
-/** Link directo a un deck: la pestaña Meta más el id, para pegarlo en un chat. */
+/** Un deck del tier list de decks: todos los de ese nombre en la ventana. */
+export interface DeckTierStat {
+  name: string
+  /** La carta de portada del deck más reciente de ese nombre (para la imagen del tier list). */
+  cover: number | null
+  /** Decks con ese nombre dentro de la ventana. */
+  decks: number
+  share: number
+  tier: MetaTier
+  /** Semana a semana sobre todos los datos, de la más vieja a la más nueva. */
+  weekly: MetaWeek[]
+  projectedShare: number
+  projectedTier: MetaTier
+  trend: MetaTrend
+  /** Los decks de la ventana, del mejor puesto al peor (a igual puesto, el más nuevo primero). */
+  results: MetaDeck[]
+}
+
+export interface DeckTierReport {
+  /** Todos los decks dentro de la ventana elegida (con o sin entrar al tier list). */
+  deckCount: number
+  decks: DeckTierStat[]
+}
+
+/**
+ * Cuánto vale un puesto para ordenar: Campeón, Finalista, Top 4, Top 8, Top 16… (menor es mejor). Lo que no se entiende queda al final.
+ * Los puestos los escriben a mano en YGOPRODeck ("Winner", "2nd Place", "Top 8"): el orden sólo tiene que ser razonable.
+ */
+export function placementRank(placement: string | null): number {
+  const text = (placement ?? '').toLowerCase()
+  const top = /top\s*(\d+)/.exec(text)
+
+  if (/winner|champion|1st/.test(text)) return 0
+  if (/finalist|runner|2nd/.test(text)) return 1
+  if (top) return 1 + Math.max(1, Math.round(Math.log2(Number(top[1]))))
+
+  return 99
+}
+
+/**
+ * El tier list de decks: cada nombre de deck se mide por la parte de los decks de la región que lo llevaron en las últimas `windowWeeks`
+ * semanas, y hacia dónde va semana a semana. Con menos de MIN_TIER_DECKS decks en la ventana no entra (y cuenta igual para el total).
+ */
+export function buildDeckTierReport(data: MetaDecksData, region: MetaRegion, windowWeeks: number): DeckTierReport {
+  const totalWeeks = Math.max(windowWeeks, Math.ceil(data.windowDays / 7))
+  const weekDecks: number[] = Array.from({ length: totalWeeks }, () => 0)
+  const groups = new Map<string, { weekly: number[]; results: MetaDeck[] }>()
+  let deckCount = 0
+
+  for (const deck of data.decks) {
+    const week = weeksAgo(deck.date, data.fetchedAt)
+
+    if (deck.region !== region || week >= totalWeeks) {
+      continue
+    }
+
+    weekDecks[week] += 1
+
+    let group = groups.get(deck.name)
+
+    if (!group) {
+      group = { weekly: Array.from({ length: totalWeeks }, () => 0), results: [] }
+      groups.set(deck.name, group)
+    }
+
+    group.weekly[week] += 1
+
+    if (week < windowWeeks) {
+      deckCount += 1
+      group.results.push(deck)
+    }
+  }
+
+  const decks: DeckTierStat[] = []
+
+  for (const [name, group] of groups) {
+    if (group.results.length < MIN_TIER_DECKS) {
+      continue
+    }
+
+    const share = group.results.length / deckCount
+    const weekly = weekDecks.map((count, week) => ({ decks: count, share: count > 0 ? (group.weekly[week] ?? 0) / count : 0 })).reverse()
+    const { projectedShare, trend } = projectShare(weekly, share)
+    const results = [...group.results].sort((left, right) => placementRank(left.placement) - placementRank(right.placement) || right.date.localeCompare(left.date) || right.id - left.id)
+    const newest = [...group.results].sort((left, right) => right.date.localeCompare(left.date) || right.id - left.id).find((deck) => deck.cover !== null)
+
+    decks.push({
+      name,
+      cover: newest?.cover ?? null,
+      decks: group.results.length,
+      share,
+      tier: deckTierOf(share),
+      weekly,
+      projectedShare,
+      projectedTier: deckTierOf(projectedShare),
+      trend,
+      results,
+    })
+  }
+
+  decks.sort((left, right) => right.share - left.share || right.decks - left.decks || left.name.localeCompare(right.name, 'es'))
+
+  return { deckCount, decks }
+}
+
+/** Qué tier list se ve: las hand traps, los decks o los boardbreakers. */
+export type MetaList = MetaCardKind | 'deck'
+
+const META_LISTS: readonly MetaList[] = ['handtrap', 'deck', 'boardbreaker']
+
+/** Link directo a un tier list (`#meta?list=deck`); el de las hand traps es el de la pantalla sin más. */
+export function buildTierListHash(list: MetaList): string {
+  return list === 'handtrap' ? '#meta' : `#meta?list=${list}`
+}
+
+export function readTierListHash(hash: string): MetaList {
+  const [step, query = ''] = hash.replace(/^#/, '').split('?')
+  const list = new URLSearchParams(query).get('list')
+
+  return (step === 'meta' ? META_LISTS.find((item) => item === list) : undefined) ?? 'handtrap'
+}
+
+/** Links directos: los decks de torneo (con un deck abierto o filtrados por una carta o un nombre). */
+export function buildTournamentsHash({ deck, card, archetype }: { deck?: number | null; card?: number | null; archetype?: string | null } = {}): string {
+  const query = new URLSearchParams()
+
+  if (deck) query.set('deck', String(deck))
+  if (card) query.set('card', String(card))
+  if (archetype) query.set('archetype', archetype)
+
+  const text = query.toString()
+
+  return text ? `#tournaments?${text}` : '#tournaments'
+}
+
+/** Link directo a un deck: los decks de torneo más el id, para pegarlo en un chat. */
 export function buildMetaDeckHash(deckId: number | null): string {
-  return deckId === null ? '#meta' : `#meta?deck=${deckId}`
+  return buildTournamentsHash({ deck: deckId })
+}
+
+export function readTournamentsHash(hash: string): { deck: number | null; card: number | null; archetype: string | null } {
+  const [step, query = ''] = hash.replace(/^#/, '').split('?')
+  const params = new URLSearchParams(query)
+  const deck = Number(params.get('deck'))
+  const card = Number(params.get('card'))
+  const archetype = params.get('archetype')
+
+  // `#meta?deck=123` es el link de antes de separar los tier lists de los decks de torneo: sigue abriendo el deck.
+  if (step !== 'tournaments' && !(step === 'meta' && params.has('deck'))) {
+    return { deck: null, card: null, archetype: null }
+  }
+
+  return {
+    deck: Number.isInteger(deck) && deck > 0 ? deck : null,
+    card: Number.isInteger(card) && card > 0 ? card : null,
+    archetype: archetype && archetype.length <= 120 ? archetype : null,
+  }
 }
 
 export function readMetaDeckIdFromHash(hash: string): number | null {
-  const [step, query = ''] = hash.replace(/^#/, '').split('?')
-  const id = Number(new URLSearchParams(query).get('deck'))
-
-  return step === 'meta' && Number.isInteger(id) && id > 0 ? id : null
+  return readTournamentsHash(hash).deck
 }
 
 export function filterMetaDecks(decks: readonly MetaDeck[], filter: MetaDeckFilter): MetaDeck[] {

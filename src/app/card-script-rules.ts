@@ -483,3 +483,12 @@ export function cardRuleFlags(lua: string): number {
 export function isHandtrapScript(lua: string): boolean {
   return (cardRuleFlags(lua) & CARD_RULE.handtrap) !== 0
 }
+
+/**
+ * Si las reglas de la carta la hacen un boardbreaker: le saca cartas al rival del campo (o le da monstruos, como un Kaiju), o es una magia
+ * común (no de juego rápido) que las saca de los dos campos. `plainSpell`: la carta es una magia que no es de juego rápido.
+ * Lo usan el rol del clasificador y el tier list de boardbreakers del Meta, así los dos dicen lo mismo.
+ */
+export function isBoardbreakerRules(flags: number, plainSpell: boolean): boolean {
+  return (flags & (CARD_RULE.hitsOpponent | CARD_RULE.givesToOpponent)) !== 0 || (plainSpell && (flags & CARD_RULE.hitsEither) !== 0)
+}

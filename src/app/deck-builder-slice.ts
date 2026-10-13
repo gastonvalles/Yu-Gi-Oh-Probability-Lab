@@ -67,12 +67,6 @@ const deckBuilderSlice = createSlice({
     removeDeckCardFromBuilder(state, action: PayloadAction<string>) {
       return removeDeckCard(state, action.payload)
     },
-    clearDeckZone(state, action: PayloadAction<DeckZone>) {
-      state[action.payload] = []
-    },
-    sortDeckZone(state, action: PayloadAction<DeckZone>) {
-      state[action.payload] = sortDeckCards(state[action.payload])
-    },
     sortAllDeckZones(state) {
       state.main = sortDeckCards(state.main)
       state.extra = sortDeckCards(state.extra)
@@ -117,8 +111,6 @@ export const {
   reclassifyAllCards,
   resuggestAllCards,
   clearAllDeckZones,
-  clearDeckZone,
-  sortDeckZone,
   sortAllDeckZones,
   moveDeckCardInBuilder,
   removeDeckCardFromBuilder,

@@ -31,20 +31,26 @@ import {
   LazyComparisonScreen,
   LazyDeckRolesPanel,
   LazyExportDeckPanel,
-  LazyMetaScreen,
   LazyPracticeSection,
   LazyProbabilityPanel,
   LazyReplaysScreen,
+  LazyTierListsScreen,
+  LazyTournamentDecksScreen,
   preloadHeavySteps,
 } from './lazy-steps'
 import { useLabPrewarm } from '../probability/use-lab-prewarm'
 import { useDeckModeController } from './use-deck-mode-controller'
 
-/** El paso va antes del "?": lo que sigue son parámetros de la vista (p. ej. `#meta?deck=123`). */
+/** El paso va antes del "?": lo que sigue son parámetros de la vista (p. ej. `#tournaments?deck=123`). */
 function getStepFromHash(hash: string): DeckWorkflowStepKey | null {
-  const normalizedHash = hash.replace(/^#/, '').split('?')[0] ?? ''
+  const [step = '', query = ''] = hash.replace(/^#/, '').split('?')
 
-  return isDeckWorkflowStepKey(normalizedHash) ? normalizedHash : null
+  // `#meta?deck=123` es el link de antes de separar los decks de torneo de las tier lists: sigue llevando al deck.
+  if (step === 'meta' && new URLSearchParams(query).has('deck')) {
+    return 'tournaments'
+  }
+
+  return isDeckWorkflowStepKey(step) ? step : null
 }
 
 function getRecommendedStep(
@@ -233,7 +239,13 @@ export function DeckModeScreen() {
 
       {activeStep === 'meta' ? (
         <div id="meta" className="min-w-0 min-[1101px]:min-h-full">
-          <LazyMetaScreen />
+          <LazyTierListsScreen />
+        </div>
+      ) : null}
+
+      {activeStep === 'tournaments' ? (
+        <div id="tournaments" className="min-w-0 min-[1101px]:min-h-full">
+          <LazyTournamentDecksScreen />
         </div>
       ) : null}
 

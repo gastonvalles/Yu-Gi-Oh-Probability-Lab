@@ -1,6 +1,6 @@
-/** Meta (tier list de hand traps), Replays de torneo y Comparar builds. */
+/** Tier lists del meta, decks de torneo, Replays de torneo y Comparar builds. */
 export const meta = {
-  // Tier list: etiquetas de cada tier, pisos y tendencia (los emojis y los colores no cambian de idioma).
+  // Tier lists: etiquetas de cada tier, pisos y tendencia (los emojis y los colores no cambian de idioma).
   'meta.tier.s': 'TIER S',
   'meta.tier.a': 'TIER A',
   'meta.tier.b': 'TIER B',
@@ -8,26 +8,28 @@ export const meta = {
   'meta.tier.d': '😭',
   'meta.tier.atLeast': 'Al menos el {percent} de los decks',
   'meta.tier.below': 'Menos del {percent} de los decks',
-  'meta.tier.cardTitle': '{name}: {percent} de los decks',
+  'meta.tier.itemTitle': '{name}: {percent} de los decks',
   'meta.trend.up': 'Sube',
   'meta.trend.down': 'Baja',
   'meta.trend.flat': 'Estable',
   'meta.trend.upTo': 'Sube a {percent}',
   'meta.trend.downTo': 'Baja a {percent}',
 
-  // Lo que comparten el Meta y los Replays.
+  // Lo que comparten los tier lists, los decks de torneo y los Replays.
   'meta.updated': '<lead>Actualizado el</lead>{date}',
   'meta.filter.clear': 'Quitar el filtro {name}',
   'meta.showMore': 'Ver {count} más',
   'meta.deck.players': '({players} jugadores)',
   'meta.deck.handtraps': 'Hand traps: {main} en Main · {side} en Side',
+  'meta.deck.boardbreakers': 'Boardbreakers: {main} en Main · {side} en Side',
 
-  // Pantalla del Meta
-  'meta.screen.title': 'Hand traps del meta',
-  'meta.screen.subtitle': 'Qué se juega en los decks de torneo y hacia dónde va.',
+  // Pantalla de los tier lists
+  'meta.screen.title': 'Tier lists',
+  'meta.screen.subtitle': 'Qué hand traps, decks y boardbreakers mandan en los torneos, y hacia dónde van.',
   'meta.screen.regionLabel': 'Región de los torneos',
   'meta.screen.updatedTitle': 'Fecha de la última actualización de los decks',
-  'meta.screen.zoneLabel': 'Dónde contar la hand trap',
+  'meta.screen.listLabel': 'Qué tier list ver',
+  'meta.screen.zoneLabel': 'Dónde contar la carta',
   'meta.screen.weeksLabel': 'Cuántas semanas de decks se cuentan',
   'meta.screen.viewLabel': 'Tier list de hoy o proyección a {ahead} semanas',
   'meta.screen.weeksOption': '{count} sem.',
@@ -39,42 +41,50 @@ export const meta = {
   'meta.screen.fieldCount': 'Contar en',
   'meta.screen.fieldWeeks': 'Decks de las últimas',
   'meta.screen.fieldView': 'Mostrar',
-  'meta.screen.tierTitle': 'Tier list',
   'meta.screen.tierProjected': {
-    one: 'Dónde quedaría cada hand trap en {ahead} semanas si sigue su tendencia. Base: {n} deck {region} de las últimas {weeks} semanas.',
-    other: 'Dónde quedaría cada hand trap en {ahead} semanas si sigue su tendencia. Base: {n} decks {region} de las últimas {weeks} semanas.',
+    one: 'Dónde quedaría cada carta en {ahead} semanas si sigue su tendencia. Base: {n} deck {region} de las últimas {weeks} semanas.',
+    other: 'Dónde quedaría cada carta en {ahead} semanas si sigue su tendencia. Base: {n} decks {region} de las últimas {weeks} semanas.',
   },
   'meta.screen.tierNow': {
     one: '{n} deck {region} de las últimas {weeks} semanas. Tocá una carta para ver el detalle.',
     other: '{n} decks {region} de las últimas {weeks} semanas. Tocá una carta para ver el detalle.',
   },
-  'meta.screen.decksTitle': 'Tournament Meta Decks',
+  'meta.screen.deckProjected': {
+    one: 'Dónde quedaría cada deck en {ahead} semanas si sigue su tendencia. Base: {n} deck {region} de las últimas {weeks} semanas.',
+    other: 'Dónde quedaría cada deck en {ahead} semanas si sigue su tendencia. Base: {n} decks {region} de las últimas {weeks} semanas.',
+  },
+  'meta.screen.deckNow': {
+    one: '{n} deck {region} de las últimas {weeks} semanas, agrupado por nombre. Tocá uno para ver sus mejores resultados.',
+    other: '{n} decks {region} de las últimas {weeks} semanas, agrupados por nombre. Tocá uno para ver sus mejores resultados.',
+  },
+  'meta.screen.lowSample': 'Hay pocos decks {region} en esta ventana ({n}): cada uno pesa varios puntos y los tiers se mueven mucho. Probá con más semanas.',
   'meta.screen.adjust': 'Ajustar la tier list',
   'meta.screen.adjustDone': 'Listo',
-  'meta.screen.emptyTitle': 'Sin hand traps en esta ventana',
+  'meta.screen.emptyTitle': 'Sin {things} en esta ventana',
   'meta.screen.emptyHint': 'Probá con más semanas o con otra zona.',
-  'meta.screen.decksFiltered': {
-    one: '{n} deck {region}, del más reciente al más viejo. Tocá uno para verlo entero.',
-    other: '{n} decks {region}, del más reciente al más viejo. Tocá uno para verlo entero.',
-  },
-  'meta.screen.decksAll': {
-    one: '{n} deck {region} de las últimas {weeks} semanas, del más reciente al más viejo. Tocá uno para verlo entero.',
-    other: 'Los {n} decks {region} de las últimas {weeks} semanas, del más reciente al más viejo. Tocá uno para verlo entero.',
-  },
-  'meta.screen.searchLabel': 'Buscar decks',
-  'meta.screen.searchPlaceholder': 'Deck, torneo o jugador',
-  'meta.screen.noDecksTitle': 'Ningún deck con esa búsqueda',
-  'meta.screen.noDecksHint': 'Probá con otro nombre de deck, torneo o jugador.',
-  'meta.screen.filterCard': 'Con {name}',
-  'meta.screen.filterThatCard': 'Con esa carta',
-  'meta.screen.deckGone': 'Ese deck ya no está entre los de las últimas semanas.',
+  'meta.screen.emptyDecksHint': 'Probá con más semanas.',
 
-  // Ayuda del Meta (cada viñeta es un mensaje: los números van de parámetro)
+  // Las tres tier lists
+  'meta.list.handtrap': 'Hand traps',
+  'meta.list.deck': 'Decks',
+  'meta.list.boardbreaker': 'Boardbreakers',
+  'meta.list.handtrapTitle': 'Tier list de hand traps',
+  'meta.list.deckTitle': 'Tier list de decks',
+  'meta.list.boardbreakerTitle': 'Tier list de boardbreakers',
+  'meta.list.handtrapThings': 'hand traps',
+  'meta.list.deckThings': 'decks',
+  'meta.list.boardbreakerThings': 'boardbreakers',
+
+  // Ayuda de los tier lists (cada viñeta es un mensaje: los números van de parámetro)
   'meta.help.buildTitle': 'Cómo se arma el tier list',
   'meta.help.build1': 'Se miran los decks que llegaron al top de torneos de TCG o de OCG, según lo que elijas arriba. Se actualizan todos los días.',
-  'meta.help.build2':
+  'meta.help.handtrap':
     'Cuenta como hand trap una carta que, según sus reglas, tiene un efecto rápido o disparador que se activa desde la mano (o una trampa activable desde la mano), y que juegan al menos 3 decks distintos sin ser de su arquetipo.',
-  'meta.help.build3': 'Cada hand trap se mide por el porcentaje de esos decks que la llevan en el Main o en el Side.',
+  'meta.help.boardbreaker':
+    'Cuenta como boardbreaker una carta que, según sus reglas, destruye, destierra, devuelve o roba el control de cartas del campo del rival (o se invoca en su campo, como los Kaiju), y que juegan al menos 3 decks distintos sin ser de su arquetipo. También entran las de siempre, como Dark Hole o Mystical Space Typhoon.',
+  'meta.help.deck':
+    'Los decks se agrupan por el nombre con el que están cargados en YGOPRODeck, y cada nombre se mide por el porcentaje de los decks de esa región que lo llevan. Con menos de {min} decks en la ventana no entra a la lista.',
+  'meta.help.cards': 'Cada carta se mide por el porcentaje de esos decks que la llevan en el Main o en el Side.',
   'meta.help.tierAtLeast': '{tier}: al menos el {percent}',
   'meta.help.tierBelow': '{tier}: menos del {percent}.',
   'meta.help.predictTitle': 'Cómo se predice',
@@ -82,21 +92,57 @@ export const meta = {
   'meta.help.predict2': 'Si la cifra proyectada sube más de {points} puntos dice “Sube”; si baja más de {points}, “Baja”; si no, “Estable”.',
   'meta.help.predict3': '“Proyección” muestra el tier list como quedaría en {ahead} semanas si esa tendencia sigue igual.',
 
-  // Detalle de una hand trap
-  'meta.handtrap.unknown': 'Carta {id}',
-  'meta.handtrap.ariaLabel': 'Detalle de {name} en el meta',
-  'meta.handtrap.panelLabel': 'Uso en el meta',
-  'meta.handtrap.shareLine': '{tier} · {percent} de los decks ({decks})',
-  'meta.handtrap.usageLine': 'Main {main} · Side {side}',
-  'meta.handtrap.bodyLabel': 'Tendencia y decks que la juegan',
-  'meta.handtrap.trend': 'Tendencia',
-  'meta.handtrap.projection': 'Proyección a {ahead} semanas.',
-  'meta.handtrap.weekly': 'Semana a semana: {values}',
-  'meta.handtrap.weeklyHint': 'De la semana más vieja a la más nueva',
-  'meta.handtrap.archetypes': 'Decks que la juegan',
-  'meta.handtrap.onlyArchetype': 'Ver sólo los decks {name}',
-  'meta.handtrap.moreArchetypes': '+{count} más',
-  'meta.handtrap.showDecks': 'Ver los decks que la juegan',
+  // Detalle de una carta o de un deck del tier list
+  'meta.detail.shareLine': '{tier} · {percent} de los decks ({decks})',
+  'meta.detail.trend': 'Tendencia',
+  'meta.detail.projection': 'Proyección a {ahead} semanas.',
+  'meta.detail.weekly': 'Semana a semana: {values}',
+  'meta.detail.weeklyHint': 'De la semana más vieja a la más nueva',
+
+  // Detalle de una carta (hand trap o boardbreaker)
+  'meta.card.unknown': 'Carta {id}',
+  'meta.card.ariaLabel': 'Detalle de {name} en el meta',
+  'meta.card.panelLabel': 'Uso en el meta',
+  'meta.card.usageLine': 'Main {main} · Side {side}',
+  'meta.card.bodyLabel': 'Tendencia y decks que la juegan',
+  'meta.card.kind.handtrap': 'Hand trap',
+  'meta.card.kind.boardbreaker': 'Boardbreaker',
+  'meta.card.archetypes': 'Decks que la juegan',
+  'meta.card.onlyArchetype': 'Ver los decks {name}',
+  'meta.card.moreArchetypes': '+{count} más',
+  'meta.card.showDecks': 'Ver los decks que la juegan',
+
+  // Detalle de un deck del tier list
+  'meta.deckTier.kicker': 'Tier list de decks',
+  'meta.deckTier.results': 'Mejores resultados',
+  'meta.deckTier.openDeck': 'Ver el deck de {player}',
+  'meta.deckTier.noPlayer': 'Jugador sin nombre',
+  'meta.deckTier.moreResults': '+{count} resultados más',
+  'meta.deckTier.showDecks': 'Ver los decks de torneo',
+
+  // Pantalla de los decks de torneo
+  'meta.tournaments.title': 'Decks de torneo',
+  'meta.tournaments.subtitle': 'Los decks que llegaron al top de los torneos, completos y listos para llevar al builder.',
+  'meta.tournaments.helpTitle': 'De dónde salen',
+  'meta.tournaments.help1': 'Son los Tournament Meta Decks de YGOPRODeck: los decks que llegaron al top de torneos de TCG y de OCG. Se actualizan todos los días.',
+  'meta.tournaments.help2': 'Tocá un deck para verlo entero, copiar su link, cargarlo en el builder o mirar sus replays.',
+  'meta.tournaments.listTitle': 'Últimos decks',
+  'meta.tournaments.decksFiltered': {
+    one: '{n} deck {region}, del más reciente al más viejo. Tocá uno para verlo entero.',
+    other: '{n} decks {region}, del más reciente al más viejo. Tocá uno para verlo entero.',
+  },
+  'meta.tournaments.decksAll': {
+    one: '{n} deck {region} de las últimas {weeks} semanas, del más reciente al más viejo. Tocá uno para verlo entero.',
+    other: 'Los {n} decks {region} de las últimas {weeks} semanas, del más reciente al más viejo. Tocá uno para verlo entero.',
+  },
+  'meta.tournaments.searchLabel': 'Buscar decks',
+  'meta.tournaments.searchPlaceholder': 'Deck, torneo o jugador',
+  'meta.tournaments.noDecksTitle': 'Ningún deck con esa búsqueda',
+  'meta.tournaments.noDecksHint': 'Probá con otro nombre de deck, torneo o jugador.',
+  'meta.tournaments.filterCard': 'Con {name}',
+  'meta.tournaments.filterThatCard': 'Con esa carta',
+  'meta.tournaments.deckGone': 'Ese deck ya no está entre los de las últimas semanas.',
+  'meta.tournaments.hasReplays': { one: 'Tiene un replay', other: 'Tiene {count} replays' },
 
   // Un deck de torneo
   'meta.deckModal.importSource': 'Decks de torneo',
@@ -116,7 +162,7 @@ export const meta = {
   'meta.deckModal.at': 'en {tournament}',
   'meta.deckModal.copyLink': 'Copiar link',
   'meta.deckModal.loadInBuilder': 'Cargar en el builder',
-  'meta.deckModal.watchReplays': { one: 'Ver el replay', other: 'Ver {count} replays' },
+  'meta.deckModal.replay': 'Replay: {label}',
   'meta.deckModal.loading': 'Cargando el deck',
   'meta.deckModal.errorTitle': 'No se pudo cargar el deck',
   'meta.deckModal.retry': 'Reintentar',
@@ -130,7 +176,7 @@ export const meta = {
   'meta.replays.helpTitle': 'De dónde salen',
   'meta.replays.help1': 'Son los duelos de torneo de los canales de YouTube Yu-Gi-Oh! TCG Europe y Yu-Gi-Oh! TCG. Se actualizan todos los días.',
   'meta.replays.help2':
-    'Cada replay se cruza con los decks de la pestaña Meta por torneo y jugador: los canales sólo ponen la inicial del apellido, y si ese jugador llevó uno de esos decks lo ves debajo y lo podés abrir.',
+    'Cada replay se cruza con los decks de torneo por torneo y jugador: los canales sólo ponen la inicial del apellido, y si ese jugador llevó uno de esos decks lo ves debajo y lo abrís con “Ver deck”.',
   'meta.replays.help3': 'Muchos duelos son de jugadores cuyo deck no está en el Meta: con “Todos” los ves igual.',
   'meta.replays.updatedTitle': 'Fecha de la última actualización de los replays',
   'meta.replays.listTitle': 'Replays de torneo',
@@ -143,8 +189,8 @@ export const meta = {
     other: '{count} replays de {deck} en {tournament}, de lo más nuevo a lo más viejo.',
   },
   'meta.replays.descriptionMeta': {
-    one: '{count} replay con al menos un deck de la pestaña Meta, de lo más nuevo a lo más viejo. Tocá uno para verlo.',
-    other: '{count} replays con al menos un deck de la pestaña Meta, de lo más nuevo a lo más viejo. Tocá uno para verlo.',
+    one: '{count} replay con al menos un deck de torneo, de lo más nuevo a lo más viejo. Tocá uno para verlo.',
+    other: '{count} replays con al menos un deck de torneo, de lo más nuevo a lo más viejo. Tocá uno para verlo.',
   },
   'meta.replays.descriptionAll': {
     one: '{count} replay de los canales, de lo más nuevo a lo más viejo. Tocá uno para verlo.',
@@ -158,13 +204,14 @@ export const meta = {
   'meta.replays.emptyTitle': 'Todavía no hay replays',
   'meta.replays.emptyHint': 'Aparecen cuando los canales suben los duelos de un torneo. Se actualizan todos los días.',
   'meta.replays.noMatchTitle': 'Ningún replay con eso',
-  'meta.replays.noMatchMeta': 'Ningún replay de los canales tiene un deck del Meta. Probá con “Todos”.',
+  'meta.replays.noMatchMeta': 'Ningún replay de los canales tiene un deck de torneo. Probá con “Todos”.',
   'meta.replays.noMatchTry': 'Probá con otro torneo, jugador o deck.',
   'meta.replays.channels': 'Los videos son de los canales oficiales <eu>{eu}</eu> y <tcg>{tcg}</tcg> en YouTube.',
   'meta.replays.watch': 'Ver el replay {label}',
   'meta.replays.watchWithHeading': 'Ver el replay {label}, {heading}',
   'meta.replays.noDeck': 'deck sin identificar',
-  'meta.replays.openDeck': '{deck}: abrirlo en la pestaña Meta',
+  'meta.replays.viewDeck': 'Ver deck',
+  'meta.replays.viewDeckLabel': 'Ver el deck {deck}',
   'meta.replays.stage.final': 'Final',
   'meta.replays.stage.semifinal': 'Semifinal',
   'meta.replays.stage.semifinalN': 'Semifinal {number}',
@@ -174,8 +221,7 @@ export const meta = {
   'meta.replays.modal.watchOnYoutube': 'Ver en YouTube',
   'meta.replays.modal.play': 'Reproducir {label}',
   'meta.replays.modal.decksLabel': 'Los decks de los jugadores',
-  'meta.replays.modal.openDeck': 'Abrir {deck} en la pestaña Meta',
-  'meta.replays.modal.noDeck': 'Su deck no está entre los del Meta.',
+  'meta.replays.modal.noDeck': 'Su deck no está entre los de torneo.',
 
   // Comparar builds
   'meta.compare.label': 'Comparar builds',

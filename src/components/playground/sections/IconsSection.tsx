@@ -1,9 +1,8 @@
 import { useMemo, useState } from 'react'
 
-import { cx } from '../../ui/cx'
 import { ICON_NAMES, Icon } from '../../ui/Icon'
+import { SearchField } from '../../ui/SearchField'
 import { Segmented } from '../../ui/Segmented'
-import { field } from '../../ui/surfaces'
 import { Tag } from '../Specimen'
 
 type Variant = 'linear' | 'bulk' | 'bold'
@@ -18,7 +17,7 @@ export function IconsSection() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center gap-3">
-        <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar un ícono" aria-label="Buscar un ícono" className={cx(field, 'h-10 min-w-0 flex-1 px-3 text-body')} />
+        <SearchField label="Buscar un ícono" value={query} onChange={setQuery} placeholder="Buscar un ícono" className="min-w-0 flex-1" inputClassName="h-10" />
         <Segmented<Variant> label="Variante" size="sm" value={variant} onChange={setVariant} options={[{ value: 'linear', label: 'linear' }, { value: 'bulk', label: 'bulk' }, { value: 'bold', label: 'bold' }]} />
         <Segmented label="Tamaño" size="sm" value={size} onChange={setSize} options={[{ value: '18', label: '18' }, { value: '24', label: '24' }, { value: '32', label: '32' }]} />
       </div>

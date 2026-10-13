@@ -4,6 +4,7 @@ import { Card } from '../../ui/Card'
 import { cx } from '../../ui/cx'
 import { EmptyState } from '../../ui/EmptyState'
 import { FieldBox, fieldInline } from '../../ui/FieldBox'
+import { SearchField } from '../../ui/SearchField'
 import { Skeleton } from '../../ui/Skeleton'
 import { field, surface } from '../../ui/surfaces'
 import { TONE, type Tone } from '../../ui/tone'
@@ -66,7 +67,7 @@ export function SurfacesSection() {
           </div>
         </Specimen>
 
-        <Specimen title="Campos" layout="column" note={<>Clases de <Tag>ui/surfaces.ts</Tag> (<Tag>field</Tag>) y <Tag>ui/FieldBox.tsx</Tag> (campo en tarjeta de una línea: sin etiqueta, el valor o el placeholder dicen qué es).</>}>
+        <Specimen title="Campos" layout="column" note={<>Clases de <Tag>ui/surfaces.ts</Tag> (<Tag>field</Tag>), <Tag>ui/FieldBox.tsx</Tag> (campo en tarjeta de una línea: sin etiqueta, el valor o el placeholder dicen qué es) y <Tag>ui/SearchField.tsx</Tag> (todo campo de búsqueda lleva la lupa).</>}>
           <input aria-label="Texto" placeholder="Campo de texto" className={cx(field, 'h-11 w-full px-3 text-body')} />
           <select aria-label="Opciones" className={cx(field, 'h-11 w-full px-3 text-body')}>
             <option>Un select</option>
@@ -76,6 +77,7 @@ export function SurfacesSection() {
           <FieldBox>
             <input aria-label="Nombre del deck" placeholder="Nombre del deck" className={fieldInline} />
           </FieldBox>
+          <SearchField label="Buscar" value="" onChange={() => {}} placeholder="Campo de búsqueda: siempre con lupa" />
         </Specimen>
       </SpecimenGrid>
 

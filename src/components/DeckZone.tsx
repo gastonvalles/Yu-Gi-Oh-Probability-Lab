@@ -11,8 +11,6 @@ import { formatInteger } from '../app/utils'
 import { t } from '../i18n'
 import { CardArt } from './CardArt'
 import { Heading } from './ui/Heading'
-import { Icon } from './ui/Icon'
-import { IconButton } from './ui/IconButton'
 import {
   DECK_CARD_CLASSIC,
   MAIN_ROW_GRID,
@@ -35,12 +33,10 @@ interface DeckZoneProps {
   desktopCompactColumnCount?: number
   variant?: 'default' | 'classic-builder'
   selectedCardId?: number | null
-  /** Sólo para mirar (p. ej. un deck del meta): sin ordenar, vaciar ni arrastrar. */
+  /** Sólo para mirar (p. ej. un deck del meta): sin tope de alto y sin el aviso de zona vacía. */
   readOnly?: boolean
   /** Cartas con marco verde (por id de YGOPRODeck). */
   highlightedCardIds?: ReadonlySet<number>
-  onClearZone: (zone: DeckZoneType) => void
-  onSortZone: (zone: DeckZoneType) => void
   onDeckCardPointerDown: (event: ReactPointerEvent<HTMLElement>, instanceId: string) => void
   onDeckCardClick: (instanceId: string) => void
   onRemoveCard: (instanceId: string) => void
@@ -77,8 +73,6 @@ export const DeckZone = memo(function DeckZone({
   selectedCardId = null,
   readOnly = false,
   highlightedCardIds,
-  onClearZone,
-  onSortZone,
   onDeckCardPointerDown,
   onDeckCardClick,
   onRemoveCard,
@@ -178,8 +172,8 @@ export const DeckZone = memo(function DeckZone({
     </article>
   )
 
-  /** Encabezado de la zona (igual en escritorio y celular): título con conteo, cantidad por tipo con su color e íconos de ordenar y vaciar. */
-  const zoneHeader = (className: string, buttonSize: 'sm' | 'md') => (
+  /** Encabezado de la zona (igual en escritorio y celular): título con conteo y cantidad por tipo con su color. */
+  const zoneHeader = (className: string) => (
     <div className={cx('flex min-w-0 items-center justify-between gap-3 px-0.5', className)}>
       <div className="flex min-w-0 items-center gap-2.5">
         <span className="size-2.5 shrink-0 rounded-full" style={{ background: zoneStyle.dot }} aria-hidden="true" />
@@ -202,16 +196,6 @@ export const DeckZone = memo(function DeckZone({
             ))}
           </div>
         ) : null}
-        {!readOnly && cards.length > 1 ? (
-          <IconButton tone="ghost" size={buttonSize} aria-label={t('deck.zone.sort', { zone: title })} title={t('deck.zone.sort', { zone: title })} onClick={() => onSortZone(zone)}>
-            <Icon name="sort" size={buttonSize === 'md' ? 20 : undefined} />
-          </IconButton>
-        ) : null}
-        {!readOnly && cards.length > 0 ? (
-          <IconButton tone="ghost" size={buttonSize} aria-label={t('deck.zone.clear', { zone: title })} title={t('deck.zone.clear', { zone: title })} onClick={() => onClearZone(zone)}>
-            <Icon name="trash" size={buttonSize === 'md' ? 20 : undefined} />
-          </IconButton>
-        ) : null}
       </div>
     </div>
   )
@@ -228,7 +212,7 @@ export const DeckZone = memo(function DeckZone({
         data-classic-zone={zone}
         style={classicZoneStyle}
       >
-        {zoneHeader('', 'sm')}
+        {zoneHeader('')}
 
         <div
           className="relative flex w-full flex-col overflow-hidden transition-[border-color,box-shadow] duration-150"
@@ -275,7 +259,7 @@ export const DeckZone = memo(function DeckZone({
 
   return (
     <section className="w-full bg-transparent p-0">
-      {zoneHeader('mb-2 flex-wrap gap-y-1', 'md')}
+      {zoneHeader('mb-2 flex-wrap gap-y-1')}
 
       <div
         className={ZONE_SURFACE_MOBILE}
