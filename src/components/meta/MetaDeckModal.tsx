@@ -86,6 +86,9 @@ export function MetaDeckModal({ deck, onClose, onOpenDeck }: MetaDeckModalProps)
   const cover = deck?.cover ?? null
 
   useEffect(() => {
+    // Un replay que estaba abierto era de otro deck (o del anterior): al cambiar de deck, o al cerrarlo, no queda colgado.
+    setReplay(null)
+
     if (deckId === null) {
       return
     }

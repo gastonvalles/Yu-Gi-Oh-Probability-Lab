@@ -12,12 +12,12 @@ import { StepHero } from '../StepHero'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
-import { cx } from '../ui/cx'
 import { EmptyState } from '../ui/EmptyState'
 import { Icon } from '../ui/Icon'
+import { SearchField } from '../ui/SearchField'
 import { SectionHeader } from '../ui/SectionHeader'
 import { StepPage } from '../ui/StepPage'
-import { field, filterChip } from '../ui/surfaces'
+import { filterChip } from '../ui/surfaces'
 import { MetaDeckModal } from './MetaDeckModal'
 import { MetaHeroSide } from './MetaHeroSide'
 import { deckCardCounts, formatMetaDate } from './meta-format'
@@ -140,21 +140,16 @@ export function TournamentDecksScreen() {
                   <Icon name="x" size={12} strokeWidth={2.2} />
                 </button>
               ) : null}
-              <label className="relative block min-w-[14rem] flex-1 max-[1100px]:w-full">
-                <span className="sr-only">{t('meta.tournaments.searchLabel')}</span>
-                <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-soft" />
-                <input
-                  type="search"
-                  value={query}
-                  placeholder={t('meta.tournaments.searchPlaceholder')}
-                  autoComplete="off"
-                  className={cx(field, 'h-9 w-full pl-9 pr-3 text-body')}
-                  onChange={(event) => {
-                    setQuery(event.target.value)
-                    setDeckLimit(DECKS_PER_PAGE)
-                  }}
-                />
-              </label>
+              <SearchField
+                label={t('meta.tournaments.searchLabel')}
+                value={query}
+                placeholder={t('meta.tournaments.searchPlaceholder')}
+                className="min-w-[14rem] flex-1 max-[1100px]:w-full"
+                onChange={(next) => {
+                  setQuery(next)
+                  setDeckLimit(DECKS_PER_PAGE)
+                }}
+              />
             </>
           }
         />

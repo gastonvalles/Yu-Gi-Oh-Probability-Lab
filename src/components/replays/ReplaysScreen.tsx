@@ -25,10 +25,11 @@ import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
 import { EmptyState } from '../ui/EmptyState'
 import { Icon } from '../ui/Icon'
+import { SearchField } from '../ui/SearchField'
 import { SectionHeader } from '../ui/SectionHeader'
 import { Segmented } from '../ui/Segmented'
 import { StepPage } from '../ui/StepPage'
-import { choiceChip, field, filterChip } from '../ui/surfaces'
+import { choiceChip, filterChip } from '../ui/surfaces'
 import { overline } from '../ui/typography'
 import { ReplayModal } from './ReplayModal'
 
@@ -143,21 +144,16 @@ export function ReplaysScreen() {
                   className="max-[1100px]:w-full"
                 />
               )}
-              <label className="relative block min-w-[14rem] flex-1 max-[1100px]:w-full">
-                <span className="sr-only">{t('meta.replays.searchLabel')}</span>
-                <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-soft" />
-                <input
-                  type="search"
-                  value={query}
-                  placeholder={t('meta.replays.searchPlaceholder')}
-                  autoComplete="off"
-                  className={cx(field, 'h-9 w-full pl-9 pr-3 text-body')}
-                  onChange={(event) => {
-                    setQuery(event.target.value)
-                    setLimit(REPLAYS_PER_PAGE)
-                  }}
-                />
-              </label>
+              <SearchField
+                label={t('meta.replays.searchLabel')}
+                value={query}
+                placeholder={t('meta.replays.searchPlaceholder')}
+                className="min-w-[14rem] flex-1 max-[1100px]:w-full"
+                onChange={(next) => {
+                  setQuery(next)
+                  setLimit(REPLAYS_PER_PAGE)
+                }}
+              />
             </>
           }
         />

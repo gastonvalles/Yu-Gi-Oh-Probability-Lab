@@ -18,7 +18,7 @@ import { Heading } from '../../ui/Heading'
 import { Button } from '../../ui/Button'
 import { cx } from '../../ui/cx'
 import { Icon } from '../../ui/Icon'
-import { field } from '../../ui/surfaces'
+import { SearchField } from '../../ui/SearchField'
 import { overline } from '../../ui/typography'
 import type { PatternEditorActions } from '../pattern-editor-actions'
 import { getCardTypeLabel } from './condition-labels'
@@ -198,17 +198,7 @@ export function CategoryPicker({
         <Heading level="section" as="h3">
           {t('builder.picker.title')}
         </Heading>
-        <div className="relative">
-          <Icon name="search" size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-soft" />
-          <input
-            type="search"
-            className={`${field} h-11 w-full pl-10 pr-4 text-body [&::-webkit-search-cancel-button]:hidden`}
-            value={query}
-            placeholder={t('builder.picker.placeholder')}
-            aria-label={t('builder.picker.search')}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-        </div>
+        <SearchField label={t('builder.picker.search')} value={query} placeholder={t('builder.picker.placeholder')} inputClassName="h-11" onChange={setQuery} />
         <div className="flex flex-wrap gap-2">
           {!isMulti
             ? shortcuts.map((role) => (
