@@ -3,7 +3,7 @@ import { t } from '../../i18n'
 import type { NavGroup, NavItem, NavTone } from '../shell/nav-model'
 import type { IconName } from '../ui/Icon'
 
-export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'meta' | 'tournaments' | 'replays' | 'expansions'
+export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'meta' | 'tournaments' | 'replays' | 'expansions' | 'banlists'
 
 export interface DeckModeNavigationItem {
   key: DeckWorkflowStepKey
@@ -37,6 +37,7 @@ const WORKFLOW_STEP_KEYS: readonly DeckWorkflowStepKey[] = [
   'tournaments',
   'replays',
   'expansions',
+  'banlists',
 ]
 
 export function isDeckWorkflowStepKey(value: string): value is DeckWorkflowStepKey {
@@ -164,6 +165,17 @@ export function buildDeckWorkflowNavigationItems({
       tone: 'pending',
       disabled: false,
     },
+    // Y las listas de prohibidas y limitadas de todas las épocas, del TCG y del OCG.
+    {
+      key: 'banlists',
+      step: '10',
+      label: t('shell.step.banlists.label'),
+      title: t('shell.step.banlists.title'),
+      icon: 'ban',
+      detail: t('shell.step.banlists.detail'),
+      tone: 'pending',
+      disabled: false,
+    },
   ]
 }
 
@@ -187,6 +199,6 @@ export function buildAppNavGroups(steps: DeckModeNavigationItem[], tools: AppNav
         { key: 'mascots', label: t('shell.mascot.title'), title: t('shell.mascot.title'), icon: 'paw' as const },
       ],
     },
-    { key: 'discover', label: t('shell.nav.group.discover'), items: pick('meta', 'tournaments', 'replays', 'expansions') },
+    { key: 'discover', label: t('shell.nav.group.discover'), items: pick('meta', 'tournaments', 'replays', 'expansions', 'banlists') },
   ]
 }

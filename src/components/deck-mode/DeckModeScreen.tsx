@@ -29,6 +29,7 @@ import {
   isDeckWorkflowStepKey,
 } from './deck-workflow-navigation'
 import {
+  LazyBanlistsScreen,
   LazyComparisonScreen,
   LazyDeckRolesPanel,
   LazyExpansionsScreen,
@@ -262,6 +263,12 @@ export function DeckModeScreen() {
       {activeStep === 'expansions' ? (
         <div id="expansions" className="min-w-0 min-[1101px]:min-h-full">
           <LazyExpansionsScreen />
+        </div>
+      ) : null}
+
+      {activeStep === 'banlists' ? (
+        <div id="banlists" className="min-w-0 min-[1101px]:min-h-full">
+          <LazyBanlistsScreen />
         </div>
       ) : null}
     </section>

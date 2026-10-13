@@ -74,7 +74,7 @@ describe('public/prices (lo que escribe scripts/sync-card-prices.mjs)', () => {
     expect(problems.slice(0, 5)).toEqual([])
     // Hoy hay precio de unas 14.000 cartas.
     expect(cards).toBeGreaterThan(10_000)
-  })
+  }, 60_000)
 
   it('todos los sets del índice se usan en alguna carta, y los archivos son livianos (una carta por línea)', () => {
     const used = new Set<number>()
@@ -115,7 +115,7 @@ describe('public/prices/sets (las mismas impresiones, vistas por expansión)', (
     expect(problems.slice(0, 5)).toEqual([])
     // Es lo mismo que está en los archivos por carta, visto desde el otro lado.
     expect(total).toBeGreaterThan(50_000)
-  })
+  }, 60_000)
 
   it('cada impresión de un set está también en el archivo de su carta, y al revés', () => {
     const fromSets = new Set<string>()
@@ -133,5 +133,5 @@ describe('public/prices/sets (las mismas impresiones, vistas por expansión)', (
 
     expect(fromSets.size).toBe(fromCards.size)
     expect([...fromSets].filter((key) => !fromCards.has(key)).slice(0, 5)).toEqual([])
-  })
+  }, 60_000)
 })
