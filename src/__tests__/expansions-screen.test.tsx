@@ -112,10 +112,14 @@ describe('la pantalla de expansiones', () => {
 
     expect(requested.filter((url) => url.includes('/sets/'))).toEqual(['/prices/sets/2.json'])
     expect(rowsText()[0]).toContain('Mulcharmy Purulia')
-    expect(rowsText()[0]).toContain('MAZE-EN001 · Rare · Unlimited')
+    expect(rowsText()[0]).toContain('MAZE-EN001')
+    expect(rowsText()[0]).toContain('Rare · Unlimited')
     expect(rowsText()[0]).toContain(usd(0.5))
     expect(rowsText().map((text) => /MAZE-EN\d+/.exec(text)?.[0])).toEqual(['MAZE-EN001', 'MAZE-EN001', 'MAZE-EN002', 'MAZE-EN003'])
     expect(screen.getByText(/3 cartas distintas/)).toBeInTheDocument()
+    // Las cartas van enteras una al lado de la otra, en una grilla (no en una lista de una columna).
+    expect(screen.getAllByRole('list').find((list) => list.className.includes('auto-fill'))).toBeDefined()
+    expect(document.querySelectorAll('li img')).toHaveLength(4)
   })
 
   it('las cartas se filtran por nombre o código y por rareza, y se ordenan por precio con las que no tienen al final', async () => {
