@@ -390,12 +390,25 @@ export function PracticeMat({
   // La carta soltada en una zona que todavía espera que se elija cómo sale (el menú de esa zona, o los Sacrificios o materiales) se queda en la zona,
   // en vez de volver a la mano; si se cancela, vuelve. Sin jugada no hay cambio de estado: es sólo cómo se la dibuja mientras tanto.
   const pending = useMemo<({ id: string } & MatTarget) | null>(() => {
-    if (menu?.kind === 'card' && menu.drop) return { id: menu.id, ...menu.drop }
-    if ((picking?.kind === 'tributes' || picking?.kind === 'materials') && picking.dropped && picking.zone) return { id: picking.action.id, ...picking.zone }
+    const waiting =
+      menu?.kind === 'card' && menu.drop
+        ? { id: menu.id, ...menu.drop }
+        : (picking?.kind === 'tributes' || picking?.kind === 'materials') && picking.dropped && picking.zone
+          ? { id: picking.action.id, ...picking.zone }
+          : null
 
-    return null
-  }, [menu, picking])
+    // Sólo espera mientras la mesa sigue como estaba al soltarla (la carta en una pila y la zona libre): si cambió por debajo (deshacer, un arrastre
+    // a esa zona), no hay nada que dibujar esperando y la carta se queda donde está.
+    return waiting && locateCard(state, waiting.id)?.kind === 'pile' && !placedAt(state, waiting.zone, waiting.index) ? waiting : null
+  }, [menu, picking, state])
   const pendingId = pending?.id ?? null
+
+  // Si la mesa cambia por debajo de lo que esperaba una elección (deshacer, un paso del panel, un arrastre, otro combo), el menú y los Sacrificios o
+  // materiales que se estaban eligiendo ya no valen: se cancelan. Jugar desde el menú ya los cierra por su cuenta.
+  useEffect(() => {
+    setMenu(null)
+    setPicking(null)
+  }, [session.cursor, session.initial])
 
   // Va después del efecto del paso (que lee la anterior): al jugarse, la carta ya no está esperando.
   useEffect(() => {
@@ -440,6 +453,11 @@ export function PracticeMat({
     const timer = window.setTimeout(() => onSeek(session.cursor + 1), AUTOPLAY_MS / speed)
     return () => window.clearTimeout(timer)
   }, [autoplay, isDealt, session.cursor, session.actions.length, onSeek, speed])
+
+  // Abrir un menú o elegir Sacrificios también pausa la reproducción: si no, los pasos seguirían avanzando por debajo de lo que se está eligiendo.
+  useEffect(() => {
+    if (menu || picking) setAutoplay(false)
+  }, [menu, picking])
 
   const closeViewer = useCallback(() => {
     // Después de mirar el deck sin sacar nada se baraja, como en la mesa real (y la jugada queda anotada).

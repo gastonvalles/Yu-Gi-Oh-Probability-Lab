@@ -325,6 +325,109 @@ describe('la mesa de práctica', () => {
     expect(screen.getByRole('button', { name: 'GY: 2' })).toBeInTheDocument()
   })
 
+  describe('si la mesa cambia mientras la carta soltada espera que se elija cómo sale', () => {
+    const cards = new Map([...CARDS, ['card-8-1', { name: 'Blue-Eyes', apiCard: { ...card(8, 'normal'), level: 8 } }]])
+    /** Blue-Eyes y la Mágica quedan en la mano; Ash y Maxx (y, si se pide, Droll) están en las zonas de monstruo 1, 2 y 3. */
+    const withField = (...ids: string[]) =>
+      replayMat(
+        createMatState(['card-8-1', 'card-1-1', 'card-2-1', 'card-5-1', 'card-3-1', 'card-4-1'], ['card-7-1'], 5),
+        ids.map((id, index) => ({ type: 'place' as const, id, zone: 'mz' as const, index, pos: 'atk' as const })),
+      )
+    const dropBlueEyesForTributes = (target: HTMLElement) => {
+      dragToZone('Blue-Eyes', target)
+      fireEvent.click(within(screen.getByRole('menu', { name: 'Blue-Eyes' })).getByRole('menuitem', { name: 'Invocación por Sacrificio (2)' }))
+      expect(waitingIn(target)).not.toBeNull()
+    }
+
+    it('deshacer cancela la selección de Sacrificios y la carta soltada vuelve a la mano, no desaparece', () => {
+      render(<Harness initial={withField('card-1-1', 'card-2-1', 'card-5-1')} cards={cards} />)
+      const mz3 = zone('Zona de monstruo 3')
+
+      // Droll al cementerio libera la zona 3 (y deja una jugada para deshacer); ahí se suelta Blue-Eyes por Sacrificio.
+      tap(within(mz3).getByRole('button', { name: 'Droll' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Al cementerio' }))
+      dropBlueEyesForTributes(mz3)
+
+      // Deshacer devuelve a Droll a la zona 3: ya no hay nada esperando ahí, la selección se cerró y Blue-Eyes está en la mano.
+      fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
+      expect(within(zone('Zona de monstruo 3')).getByRole('button', { name: 'Droll' })).toBeInTheDocument()
+      expect(waitingIn(zone('Zona de monstruo 3'))).toBeNull()
+      expect(within(status()).queryByText(/Tocá 2 monstruos/)).not.toBeInTheDocument()
+      expect(within(hand()).getByRole('listitem', { name: 'Blue-Eyes' })).toBeInTheDocument()
+    })
+
+    it('arrastrar un monstruo del campo a la zona donde espera la carta cancela la selección y la carta vuelve a la mano', () => {
+      render(<Harness initial={withField('card-1-1', 'card-2-1')} cards={cards} />)
+      const mz3 = zone('Zona de monstruo 3')
+
+      dropBlueEyesForTributes(mz3)
+
+      // Ash (zona 1) arrastrado a la zona 3, que se ve ocupada por la carta que espera pero para la mesa está libre.
+      const ash = within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' })
+      document.elementFromPoint = () => mz3
+      document.elementsFromPoint = () => [mz3]
+      fireEvent.pointerDown(ash, { ...pointer, clientX: 10, clientY: 10 })
+      fireEvent.pointerMove(ash, { ...pointer, clientX: 40, clientY: 60 })
+      fireEvent.pointerMove(ash, { ...pointer, clientX: 80, clientY: 120 })
+      fireEvent.pointerUp(ash, { ...pointer, clientX: 80, clientY: 120 })
+
+      expect(within(zone('Zona de monstruo 3')).getByRole('button', { name: 'Ash Blossom' })).toBeInTheDocument()
+      expect(waitingIn(zone('Zona de monstruo 3'))).toBeNull()
+      expect(within(status()).queryByText(/Tocá 2 monstruos/)).not.toBeInTheDocument()
+      expect(within(hand()).getByRole('listitem', { name: 'Blue-Eyes' })).toBeInTheDocument()
+    })
+
+    it('deshacer a mitad de la selección no deja anotar después una invocación que no pasó: lo que se toca vuelve a ser una carta común', () => {
+      render(<Harness initial={withField('card-1-1')} cards={cards} />)
+
+      // Maxx C entra por su menú (la jugada que se va a deshacer) y se suelta Blue-Eyes por Sacrificio en la zona 4.
+      tap(within(hand()).getByRole('listitem', { name: 'Maxx C' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 2: elegir' }))
+      dropBlueEyesForTributes(zone('Zona de monstruo 4'))
+      tap(within(zone('Zona de monstruo 2')).getByRole('button', { name: 'Maxx C' }))
+      expect(within(status()).getByText('Tocá 2 monstruos para sacrificar (1/2)')).toBeInTheDocument()
+
+      // Deshacer saca a Maxx del campo: la selección ya no vale, y tocar a Ash abre su menú en vez de contar como el segundo Sacrificio.
+      fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
+      tap(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' }))
+
+      expect(screen.getByRole('menu', { name: 'Ash Blossom' })).toBeInTheDocument()
+      expect(within(status()).queryByText(/Invocación por Sacrificio/)).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'GY: 0' })).toBeInTheDocument()
+      expect(within(hand()).getByRole('listitem', { name: 'Blue-Eyes' })).toBeInTheDocument()
+    })
+  })
+
+  it('abrir un menú (tocando una carta o soltándola en una zona) pausa la reproducción del combo', () => {
+    render(<Harness />)
+
+    tap(within(hand()).getByRole('listitem', { name: 'Maxx C' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar combo' }))
+    const dialog = screen.getByRole('dialog', { name: 'Guardar combo' })
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Nombre' }), { target: { value: 'Uno' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    const aside = screen.getByRole('complementary', { name: 'Pasos y combos' })
+    fireEvent.click(within(aside).getByRole('radio', { name: 'Combos' }))
+    fireEvent.click(within(aside).getByRole('button', { name: 'Cargar Uno' }))
+    expect(screen.getByRole('button', { name: 'Pausar' })).toBeInTheDocument()
+
+    // Tocar una carta abre su menú y pausa: si no, los pasos seguirían avanzando por debajo de lo que se elige.
+    tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
+    expect(screen.getByRole('menu', { name: 'Ash Blossom' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reproducir' })).toBeInTheDocument()
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    // Soltarla en una zona (el menú de soltar) también.
+    fireEvent.click(screen.getByRole('button', { name: 'Reproducir' }))
+    expect(screen.getByRole('button', { name: 'Pausar' })).toBeInTheDocument()
+    dragToZone('Ash Blossom', zone('Zona de monstruo 3'))
+    expect(screen.getByRole('menu', { name: 'Ash Blossom' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reproducir' })).toBeInTheDocument()
+  })
+
   it('la ficha pide la posición (en ataque o en defensa) al soltarla o al tocarla, y se ve con la imagen de una ficha', () => {
     render(<Harness />)
 
@@ -574,6 +677,22 @@ describe('la mesa de práctica', () => {
     expect(screen.getByRole('dialog', { name: 'Banish · 1' }).querySelector('[data-fx="target"]')).toBeNull()
     // La del cementerio sigue marcada.
     expect(gy().querySelector('[data-fx="target"]')).not.toBeNull()
+  })
+
+  it('una carta desterrada boca abajo y marcada como target dice las dos cosas en el visor', () => {
+    render(<Harness />)
+
+    tap(within(hand()).getByRole('listitem', { name: 'Nibiru' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Desterrar' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Boca abajo' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Banish: 1' }))
+
+    const viewer = () => screen.getByRole('dialog', { name: 'Banish · 1' })
+    fireEvent.click(within(viewer()).getByRole('button', { name: 'Nibiru (boca abajo)' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Target' }))
+
+    // La mira se suma al "boca abajo": el nombre accesible no pierde ninguno de los dos.
+    expect(within(viewer()).getByRole('button', { name: 'Nibiru (boca abajo) (target)' })).toBeInTheDocument()
   })
 
   it('las casillas de las pilas y sus cartas en el visor no van redondeadas (el reset global le da radio a todo <button>)', () => {

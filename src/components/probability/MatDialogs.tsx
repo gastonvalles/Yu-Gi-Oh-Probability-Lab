@@ -179,26 +179,31 @@ export function PileViewer({ pile, ids, info, targeted, onPick, onClose }: PileV
         {visible.length === 0 && ids.length > 0 ? <p className="m-0 text-body text-muted">{t('practice.dialog.noMatch', { query: query.trim() })}</p> : null}
         {/* En el celular, cinco por fila (como el campo); en pantallas anchas, las que entren de 5.25 rem. */}
         <ul className="m-0 grid list-none grid-cols-5 gap-1.5 p-0 sm:grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] sm:gap-2" aria-label={t('practice.dialog.cards')}>
-          {visible.map((card) => (
-            <li key={card.id}>
-              <button
-                type="button"
-                aria-label={targeted.has(card.id) ? t('practice.card.targeted', { name: card.name }) : undefined}
-                className="grid w-full gap-1 rounded-none bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus"
-                onClick={(event) => onPick(card.id, event.currentTarget.getBoundingClientRect())}
-              >
-                <span
-                  data-targeted={targeted.has(card.id) ? 'true' : 'false'}
-                  className={cx('relative block aspect-[421/614] w-full overflow-hidden bg-input shadow-[0_4px_10px_rgba(0,0,0,0.4)] [--card-shadow:0_4px_10px_rgba(0,0,0,0.4)]', FX_CARD)}
-                  style={fxVars('red')}
+          {visible.map((card) => {
+            // Boca abajo y objetivo a la vez: el nombre accesible dice las dos cosas (la mira se suma al "boca abajo", no lo pisa).
+            const label = card.faceDown ? t('practice.dialog.cardFaceDown', { name: card.name }) : card.name
+
+            return (
+              <li key={card.id}>
+                <button
+                  type="button"
+                  aria-label={targeted.has(card.id) ? t('practice.card.targeted', { name: label }) : undefined}
+                  className="grid w-full gap-1 rounded-none bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus"
+                  onClick={(event) => onPick(card.id, event.currentTarget.getBoundingClientRect())}
                 >
-                  {card.faceDown ? <span className={CARD_BACK} /> : <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />}
-                  {targeted.has(card.id) ? <TargetMark /> : null}
-                </span>
-                <span className="truncate text-micro text-foreground">{card.faceDown ? t('practice.dialog.cardFaceDown', { name: card.name }) : card.name}</span>
-              </button>
-            </li>
-          ))}
+                  <span
+                    data-targeted={targeted.has(card.id) ? 'true' : 'false'}
+                    className={cx('relative block aspect-[421/614] w-full overflow-hidden bg-input shadow-[0_4px_10px_rgba(0,0,0,0.4)] [--card-shadow:0_4px_10px_rgba(0,0,0,0.4)]', FX_CARD)}
+                    style={fxVars('red')}
+                  >
+                    {card.faceDown ? <span className={CARD_BACK} /> : <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />}
+                    {targeted.has(card.id) ? <TargetMark /> : null}
+                  </span>
+                  <span className="truncate text-micro text-foreground">{label}</span>
+                </button>
+              </li>
+            )
+          })}
         </ul>
       </div>
     </Modal>
