@@ -1,7 +1,7 @@
 {
 "35699":[["MACR-EN086","Super Rare","1st Edition",0.24,131203,1922],["MACR-EN086","Super Rare","Unlimited",0.29,131203,1922]],
 "3204467":[["HA03-EN022","Super Rare","1st Edition",0.26,38714,226],["HA03-EN022","Super Rare","Unlimited",0.15,38714,226],["DT03-EN029","Duel Terminal Rare Parallel Rare","Limited",0.32,81131,1329]],
-"5380979":[["TAMA-EN023","Ultra Rare","1st Edition",5.06,282326,3066],["BLMR-EN102","Quarter Century Secret Rare","1st Edition",81.95,500527,23031],["BLMR-EN102","Secret Rare","1st Edition",5.63,500526,23031],["MP23-EN235","Prismatic Secret Rare","1st Edition",5.23,514723,23291],["WI26-EN038","Ultra Rare","Unlimited",16,708868,24789],["WI26-EN038","Ultra Rare","Unlimited",null,710149,24789],["WI26-EN038","Ultra Rare","Unlimited",null,710189,24789]],
+"5380979":[["TAMA-EN023","Ultra Rare","1st Edition",5.06,282326,3066],["BLMR-EN102","Quarter Century Secret Rare","1st Edition",81.95,500527,23031],["BLMR-EN102","Secret Rare","1st Edition",5.63,500526,23031],["MP23-EN235","Prismatic Secret Rare","1st Edition",5.23,514723,23291],["WI26-EN038","Ultra Rare","Unlimited",16,708868,24789,"OTS Stamp"],["WI26-EN038","Ultra Rare","Unlimited",null,710149,24789,"Regional Qualifier Stamp"],["WI26-EN038","Ultra Rare","Unlimited",null,710189,24789,"Judge Stamp"]],
 "6438003":[["ETCO-EN022","Common","1st Edition",0.2,213325,2625]],
 "9284723":[["TAEV-EN016","Common","1st Edition",0.35,26094,325],["TAEV-EN016","Common","Unlimited",0.36,26094,325]],
 "9831539":[["ABYR-EN053","Super Rare","1st Edition",0.21,67253,573],["ABYR-EN053","Super Rare","Unlimited",0.4,67253,573],["INCH-EN056","Super Rare","1st Edition",0.2,186423,2398]],
@@ -65,6 +65,6 @@
 "90263923":[["TSHD-EN061","Common","1st Edition",0.7,35008,332],["TSHD-EN061","Common","Unlimited",0.51,35008,332]],
 "96561011":[["SD1-EN001","Ultra Rare","1st Edition",6.24,23476,307],["SD1-EN001","Ultra Rare","Unlimited",3.53,23476,307],["LCJW-EN039","Common","1st Edition",2.15,71582,1157],["WCPP-EN009","Rare","Limited",31.98,164469,2227],["LDS1-EN003","Common","1st Edition",0.91,217422,2658],["SGX3-ENB01","Common","1st Edition",0.44,489392,17700],["SGX3-ENB01","Secret Rare","1st Edition",14.73,489592,17700]],
 "97926515":[["MACR-ENSE3","Super Rare","Limited",0.31,133444,1922],["COTD-EN061","Common","1st Edition",0.16,139234,1989],["COTD-EN061","Common","Unlimited",0.1,139234,1989],["MP18-EN075","Common","1st Edition",0.3,174945,2317]],
-"98476659":[["CORI-EN061","Secret Rare","1st Edition",54.52,702425,24675],["CORI-EN061","Starlight Rare","1st Edition",138.26,703795,24675],["WI26-EN034","Ultra Rare","Unlimited",69.93,708864,24789],["WI26-EN034","Ultra Rare","Unlimited",null,710185,24789]],
+"98476659":[["CORI-EN061","Secret Rare","1st Edition",54.52,702425,24675],["CORI-EN061","Starlight Rare","1st Edition",138.26,703795,24675],["WI26-EN034","Ultra Rare","Unlimited",69.93,708864,24789,"OTS Stamp"],["WI26-EN034","Ultra Rare","Unlimited",null,710185,24789,"Judge Stamp"]],
 "300102003":[["SBAD-ENS03","Super Rare","1st Edition",0.46,191743,2425],["STP6-ENS02","Common","Unlimited",0.39,515494,23292]]
 }

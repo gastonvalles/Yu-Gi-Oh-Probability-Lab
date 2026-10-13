@@ -117,7 +117,7 @@ export const search: Translated<typeof es> = {
   'search.prices.noPrice': 'No price',
   'search.prices.loadError': "Couldn't load the prices right now. Try again later.",
   'search.prices.empty': 'There are no TCGplayer prices for this card.',
-  'search.prices.searchLabel': 'Search by code or rarity',
+  'search.prices.searchLabel': 'Search by code, rarity or art',
   'search.prices.noMatch': 'No printing matches “{query}”.',
   'search.prices.footnote': 'TCGplayer market price, in US dollars, as of {date}.',
 }

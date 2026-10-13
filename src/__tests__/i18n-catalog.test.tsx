@@ -31,6 +31,8 @@ vi.mock('../app/use-card-prices', () => ({ useCardPrices }))
 
 beforeEach(() => {
   applyLocale('en')
+  // El detalle de la carta pide los precios al abrir (para el selector de artes): sin datos hasta que un test los ponga.
+  useCardPrices.mockReturnValue({ status: 'idle' })
 })
 
 afterEach(() => {
@@ -133,9 +135,9 @@ describe('catálogo en inglés: detalle de carta y precios', () => {
 
   it('los precios usan dólares y fecha de Estados Unidos, y cuentan las impresiones en singular y plural', () => {
     const prices = [
-      { set: 'Justice Hunters', code: 'JUSH-EN016', rarity: 'Ultra Rare', edition: '1st Edition', market: 1.33, url: 'https://www.tcgplayer.com/product/2' },
-      { set: 'Justice Hunters', code: 'JUSH-EN016', rarity: 'Common', edition: '1st Edition', market: null, url: 'https://www.tcgplayer.com/product/1' },
-      { set: 'Rarity Collection 5', code: 'RA05-EN091', rarity: 'Starlight Rare', edition: '1st Edition', market: 20.12, url: 'https://www.tcgplayer.com/product/3' },
+      { set: 'Justice Hunters', code: 'JUSH-EN016', rarity: 'Ultra Rare', edition: '1st Edition', market: 1.33, url: 'https://www.tcgplayer.com/product/2', productId: 2, variant: '' },
+      { set: 'Justice Hunters', code: 'JUSH-EN016', rarity: 'Common', edition: '1st Edition', market: null, url: 'https://www.tcgplayer.com/product/1', productId: 1, variant: '' },
+      { set: 'Rarity Collection 5', code: 'RA05-EN091', rarity: 'Starlight Rare', edition: '1st Edition', market: 20.12, url: 'https://www.tcgplayer.com/product/3', productId: 3, variant: '' },
     ]
     useCardPrices.mockReturnValue({ status: 'ready', updated: '2026-10-11', prices })
 
@@ -150,7 +152,7 @@ describe('catálogo en inglés: detalle de carta y precios', () => {
     expect(dialog).toHaveTextContent('No price')
     expect(dialog).toHaveTextContent('TCGplayer market price, in US dollars, as of Oct 11, 2026.')
 
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Search by code or rarity' }), { target: { value: 'zzz' } })
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search by code, rarity or art' }), { target: { value: 'zzz' } })
     expect(screen.getByText('No printing matches “zzz”.')).toBeInTheDocument()
   })
 

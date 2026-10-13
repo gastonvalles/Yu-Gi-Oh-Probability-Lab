@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { SHARDS, shardOf } from '../../scripts/sync-card-prices.mjs'
 
 // Las filas de un set: [código, rareza, edición, mercado, producto, id de la carta, nombre de la carta].
-type SetRow = [string, string, string, number | null, number, number, string]
+type SetRow = [string, string, string, number | null, number, number, string, string?]
 
 const DIR = new URL('../../public/prices/', import.meta.url)
 const read = (name: string) => JSON.parse(readFileSync(new URL(name, DIR), 'utf8')) as unknown
@@ -12,7 +12,7 @@ const read = (name: string) => JSON.parse(readFileSync(new URL(name, DIR), 'utf8
 interface Index {
   updated: string
   shards: number
-  groups: Array<[number, string, string, number]>
+  groups: Array<[number, string, string, number, string]>
 }
 
 type Row = [string, string, string, number | null, number, number]
@@ -28,11 +28,13 @@ describe('public/prices (lo que escribe scripts/sync-card-prices.mjs)', () => {
     expect(index.groups.length).toBeGreaterThan(400)
     expect(index.groups.map(([id]) => id)).toEqual([...index.groups.map(([id]) => id)].sort((a, b) => a - b))
 
-    for (const [id, name, published, count] of index.groups) {
+    for (const [id, name, published, count, code] of index.groups) {
       expect(Number.isInteger(id)).toBe(true)
       expect(name).not.toBe('')
       expect(published === '' || /^\d{4}-\d{2}-\d{2}$/.test(published)).toBe(true)
       expect(Number.isInteger(count) && count > 0).toBe(true)
+      // El prefijo de los códigos del set: es el nombre de la imagen de su sobre.
+      expect(code).toMatch(/^[A-Za-z0-9]+$/)
     }
   })
 
@@ -98,10 +100,11 @@ describe('public/prices/sets (las mismas impresiones, vistas por expansión)', (
     const problems: string[] = []
     let total = 0
 
-    for (const [id, , , count] of index.groups) {
+    for (const [id, , , count, code] of index.groups) {
       const rows = read(`sets/${id}.json`) as SetRow[]
 
       total += rows.length
+      if (!rows.some((row) => row[0].startsWith(`${code}-`))) problems.push(`set ${id}: ninguna fila lleva el prefijo ${code}`)
       if (rows.length !== count) problems.push(`set ${id}: ${rows.length} filas y el índice dice ${count}`)
 
       rows.forEach(([code, rarity, edition, market, productId, cardId, name], i) => {
@@ -109,6 +112,8 @@ describe('public/prices/sets (las mismas impresiones, vistas por expansión)', (
 
         if (!valid) problems.push(`set ${id}: fila ${JSON.stringify(rows[i])}`)
         if (i > 0 && code < rows[i - 1]![0]) problems.push(`set ${id}: fuera de orden en ${code}`)
+        // De qué arte es (sólo si es distinto): nunca un texto vacío, que ocuparía lugar sin decir nada.
+        if (rows[i]!.length > 7 && (typeof rows[i]![7] !== 'string' || rows[i]![7] === '')) problems.push(`set ${id}: arte vacío en ${code}`)
       })
     }
 
@@ -133,5 +138,32 @@ describe('public/prices/sets (las mismas impresiones, vistas por expansión)', (
 
     expect(fromSets.size).toBe(fromCards.size)
     expect([...fromSets].filter((key) => !fromCards.has(key)).slice(0, 5)).toEqual([])
+  }, 60_000)
+})
+
+describe('public/prices: el arte de cada impresión (overframe, extended art, alternativas)', () => {
+  it('las impresiones de arte distinto traen su nombre al final, en los archivos por set y por carta', () => {
+    // Magnificent Monsters: Dark Magical Curtain (MAMO-EN003) salió en arte normal y en arte extendido, que son productos distintos en TCGplayer.
+    const rows = read('sets/24707.json') as SetRow[]
+    const curtain = rows.filter((row) => row[0] === 'MAMO-EN003')
+
+    expect(curtain.some((row) => row[7] === 'Extended Art')).toBe(true)
+    expect(curtain.some((row) => row.length === 7)).toBe(true)
+
+    const cardId = curtain[0]![5]
+    const shard = read(`cards/${shardOf(cardId)}.json`) as Shard
+
+    expect(shard[String(cardId)]!.some((row) => (row as unknown[])[6] === 'Extended Art')).toBe(true)
+  })
+
+  it('hay muchas impresiones con arte distinto en total', () => {
+    let withVariant = 0
+
+    for (const [id] of (read('index.json') as Index).groups) {
+      for (const row of read(`sets/${id}.json`) as SetRow[]) if (row[7]) withVariant += 1
+    }
+
+    // Hoy son unas 1.600 (colores de Duel Terminal, Alternate Art, Extended Art, sellos...).
+    expect(withVariant).toBeGreaterThan(500)
   }, 60_000)
 })

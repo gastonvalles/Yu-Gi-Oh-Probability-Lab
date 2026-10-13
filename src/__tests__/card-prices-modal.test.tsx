@@ -11,9 +11,9 @@ vi.mock('../components/CardArt', () => ({
 }))
 
 const PRICES = [
-  { set: 'Justice Hunters', code: 'JUSH-EN016', rarity: "Collector's Rare", edition: '1st Edition', market: 5.86, url: 'https://www.tcgplayer.com/product/1' },
-  { set: 'Justice Hunters', code: 'JUSH-EN016', rarity: 'Ultra Rare', edition: '1st Edition', market: 1.33, url: 'https://www.tcgplayer.com/product/2' },
-  { set: 'Rarity Collection 5', code: 'RA05-EN091', rarity: 'Starlight Rare', edition: '1st Edition', market: 20.12, url: 'https://www.tcgplayer.com/product/3' },
+  { set: 'Justice Hunters', code: 'JUSH-EN016', rarity: "Collector's Rare", edition: '1st Edition', market: 5.86, url: 'https://www.tcgplayer.com/product/1', productId: 1, variant: '' },
+  { set: 'Justice Hunters', code: 'JUSH-EN016', rarity: 'Ultra Rare', edition: '1st Edition', market: 1.33, url: 'https://www.tcgplayer.com/product/2', productId: 2, variant: '' },
+  { set: 'Rarity Collection 5', code: 'RA05-EN091', rarity: 'Starlight Rare', edition: '1st Edition', market: 20.12, url: 'https://www.tcgplayer.com/product/3', productId: 3, variant: '' },
 ]
 
 const { useCardPrices } = vi.hoisted(() => ({ useCardPrices: vi.fn() }))
@@ -93,7 +93,7 @@ describe('precios en el detalle de la carta', () => {
   })
 
   describe('buscador por código o rareza', () => {
-    const search = (text: string) => fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar por código o rareza' }), { target: { value: text } })
+    const search = (text: string) => fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar por código, rareza o arte' }), { target: { value: text } })
     const headings = () => screen.queryAllByRole('heading', { level: 4 }).map((heading) => heading.textContent)
 
     it('filtra por rareza y deja sólo las expansiones que tienen coincidencias', () => {
@@ -148,14 +148,15 @@ describe('precios en el detalle de la carta', () => {
     expect(screen.getByText('No hay precios de TCGplayer para esta carta.')).toBeInTheDocument()
   })
 
-  it('los precios se piden recién al tocar la moneda, no al abrir la carta', () => {
+  it('los precios de la carta se piden al abrir su detalle (un solo archivo, que también trae los escaneos de sus impresiones para el selector de artes) y se muestran al tocar el botón', () => {
     render(<CardDetailModal card={card} deckFormat="unlimited" isOpen onAddToZone={() => false} onClose={vi.fn()} />)
 
-    expect(useCardPrices).not.toHaveBeenCalled()
+    expect(useCardPrices).toHaveBeenCalledWith(card.ygoprodeckId)
+    expect(screen.queryByRole('dialog', { name: 'Mulcharmy Purulia' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Ver precios en TCGplayer' }))
 
-    expect(useCardPrices).toHaveBeenCalledWith(card.ygoprodeckId)
+    expect(screen.getByRole('dialog', { name: 'Mulcharmy Purulia' })).toBeInTheDocument()
   })
 
   it('tocar la moneda no agranda la carta ni cierra el detalle', () => {

@@ -6,7 +6,7 @@ import {
   buildClassicCardStatLine,
 } from '../../app/deck-builder-classic'
 import type { DeckZone } from '../../app/model'
-import { useCardArts } from '../../app/use-card-arts'
+import { useCardArtOptions } from '../../app/use-card-art-options'
 import { t } from '../../i18n'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { CardArt } from '../CardArt'
@@ -46,8 +46,8 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, onAddToZone 
   const [zoomed, setZoomed] = useState(false)
   const [pricesOpen, setPricesOpen] = useState(false)
   // Los artes alternativos de la carta (llegan después de elegirla) y cuál se ve: la elección vale sólo para esa carta.
-  const arts = useCardArts(card?.ygoprodeckId ?? null, card?.name ?? '')
-  const [picked, setPicked] = useState<{ cardId: number; artId: number } | null>(null)
+  const arts = useCardArtOptions(card?.ygoprodeckId ?? null, card?.name ?? '')
+  const [picked, setPicked] = useState<{ cardId: number; artId: string } | null>(null)
   const art = card && picked?.cardId === card.ygoprodeckId ? arts.find((option) => option.id === picked.artId) : undefined
   const artUrl = art?.imageUrl ?? card?.imageUrl ?? null
 
