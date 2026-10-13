@@ -102,6 +102,8 @@ export const search: Translated<typeof es> = {
   'search.overlay.backToDetail': 'Back to details',
   'search.overlay.zoomIn': 'View card larger',
   'search.zoom.aria': 'Large view of {name}',
+  'search.arts.label': 'Card artworks',
+  'search.arts.pick': 'Artwork {n} of {count}',
   'search.copies.inZone': { one: '<b>{count}</b> copy in {zone}', other: '<b>{count}</b> copies in {zone}' },
   'search.copies.removeOne': 'Remove one',
   'search.copies.addOne': 'Add one',

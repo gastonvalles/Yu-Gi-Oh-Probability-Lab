@@ -96,6 +96,6 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    setupFiles: ['./src/i18n/test-setup.ts'],
+    setupFiles: ['./src/i18n/test-setup.ts', './src/test-setup.ts'],
   },
 })

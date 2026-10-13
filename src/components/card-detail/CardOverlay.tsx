@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
 import { createPortal } from 'react-dom'
 
 import { UI_ANIMATION_MS, prefersReducedMotion } from '../../app/motion'
+import { useCardArts } from '../../app/use-card-arts'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
@@ -9,6 +10,7 @@ import { CardArt } from '../CardArt'
 import { Heading } from '../ui/Heading'
 import { cx } from '../ui/cx'
 import { CloseButton } from '../ui/IconButton'
+import { CardArtPicker } from './CardArtPicker'
 import { CardPricesButton, CardPricesModal } from './CardPrices'
 import { CardGlare, levelOut, tiltHandlers } from './card-tilt'
 
@@ -43,8 +45,9 @@ function flightFrom(card: HTMLElement, origin: DOMRect): string {
 /**
  * Marco común de los modales de carta (detalle, clasificación y meta): la carta arriba, que se agranda al
  * tocarla, y un panel con su información abajo. Una X blanca arriba a la derecha lo cierra; sólo la
- * carta y el panel interceptan los toques del fondo. Si la carta tiene datos, lleva abajo a la derecha la moneda
- * de precios de TCGplayer, que abre el modal de precios y recién ahí los pide.
+ * carta y el panel interceptan los toques del fondo. Si la carta tiene datos, al lado de ella (afuera, para que no se mueva con la inclinación
+ * 3D) lleva el botón de precios de TCGplayer, que abre el modal de precios y recién ahí los pide, y, si tiene artes alternativos, sus
+ * miniaturas para cambiar el arte grande.
  */
 export function CardOverlay(props: CardOverlayProps) {
   const { card, name } = props
@@ -52,14 +55,14 @@ export function CardOverlay(props: CardOverlayProps) {
 
   return (
     <>
-      <CardOverlayFrame {...props} artCorner={card ? <CardPricesButton onClick={() => setPricesOpen(true)} /> : null} />
+      <CardOverlayFrame {...props} onOpenPrices={card ? () => setPricesOpen(true) : null} />
       {/* Hermano del marco, no hijo: los clics de React suben por los portales y tocar el modal cerraría la carta. */}
       {card ? <CardPricesModal cardId={card.ygoprodeckId} name={name} isOpen={pricesOpen} onClose={() => setPricesOpen(false)} /> : null}
     </>
   )
 }
 
-function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, tall = false, artOverlay = null, artCorner = null, onClose, children }: CardOverlayProps & { artCorner?: ReactNode }) {
+function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, tall = false, artOverlay = null, onOpenPrices = null, onClose, children }: CardOverlayProps & { onOpenPrices?: (() => void) | null }) {
   const rootRef = useRef<HTMLDivElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLElement>(null)
@@ -67,6 +70,10 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
   // Tocar la carta la agranda al máximo; tocarla de nuevo (o el fondo) vuelve al panel.
   const [zoomed, setZoomed] = useState(false)
   const animationsRef = useRef<Animation[]>([])
+  // Los artes alternativos de la carta (llegan después de abrir) y cuál se ve.
+  const arts = useCardArts(card?.ygoprodeckId ?? null, name)
+  const [artId, setArtId] = useState<number | null>(null)
+  const art = arts.find((option) => option.id === artId)
 
   useBodyScrollLock(true)
 
@@ -162,30 +169,42 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
         className={cx('group pointer-events-none flex max-h-full flex-col items-center gap-3 [perspective:900px] [@media(max-height:540px)]:gap-2', tall ? 'w-[min(100%,36rem)]' : 'w-[min(100%,32rem)]', 'data-[zoomed=true]:w-full')}
         data-zoomed={zoomed ? 'true' : 'false'}
       >
-        <div
-          ref={cardRef}
-          className="group/art pointer-events-auto relative aspect-[421/614] h-(--detail-art-height) max-w-full flex-none cursor-zoom-in overflow-hidden shadow-[0_24px_50px_rgb(0_0_0/0.6),0_0_0_1px_rgb(255_255_255/0.12),0_0_40px_rgb(var(--primary-rgb)/0.3)] transition-[height,rotate] duration-(--motion-duration) ease-[cubic-bezier(0.2,0.9,0.25,1)] group-data-[zoomed=true]:h-[min(94dvh,calc((100vw-2rem)*614/421))]"
-          role="button"
-          tabIndex={-1}
-          aria-label={zoomed ? t('search.overlay.backToDetail') : t('search.overlay.zoomIn')}
-          // La inclinación en 3D (ver card-tilt), también con la carta agrandada.
-          {...tiltHandlers}
-          onClick={(event) => {
-            event.stopPropagation()
-            levelOut(event.currentTarget)
-            setZoomed((current) => !current)
-          }}
-        >
-          <CardArt
-            remoteUrl={card?.imageUrl ?? card?.imageUrlSmall ?? null}
-            name={name}
-            className="block h-full w-full bg-input object-contain"
-            limitCard={card}
-            limitBadgeSize="lg"
-          />
-          <CardGlare />
-          {artOverlay ? <div className="absolute right-2 top-2 z-1">{artOverlay}</div> : null}
-          {artCorner ? <div className="absolute bottom-2 right-2 z-1">{artCorner}</div> : null}
+        {/* El envoltorio no se inclina ni vuela: lo que va al costado de la carta (artes y precios) queda quieto mientras ella se mueve. */}
+        <div className="pointer-events-none relative max-w-full flex-none">
+          <div
+            ref={cardRef}
+            className="group/art pointer-events-auto relative aspect-[421/614] h-(--detail-art-height) max-w-full flex-none cursor-zoom-in overflow-hidden shadow-[0_24px_50px_rgb(0_0_0/0.6),0_0_0_1px_rgb(255_255_255/0.12),0_0_40px_rgb(var(--primary-rgb)/0.3)] transition-[height,rotate] duration-(--motion-duration) ease-[cubic-bezier(0.2,0.9,0.25,1)] group-data-[zoomed=true]:h-[min(94dvh,calc((100vw-2rem)*614/421))]"
+            role="button"
+            tabIndex={-1}
+            aria-label={zoomed ? t('search.overlay.backToDetail') : t('search.overlay.zoomIn')}
+            // La inclinación en 3D (ver card-tilt), también con la carta agrandada.
+            {...tiltHandlers}
+            onClick={(event) => {
+              event.stopPropagation()
+              levelOut(event.currentTarget)
+              setZoomed((current) => !current)
+            }}
+          >
+            <CardArt
+              remoteUrl={art?.imageUrl ?? card?.imageUrl ?? card?.imageUrlSmall ?? null}
+              name={name}
+              className="block h-full w-full bg-input object-contain"
+              limitCard={card}
+              limitBadgeSize="lg"
+            />
+            <CardGlare />
+            {artOverlay ? <div className="absolute right-2 top-2 z-1">{artOverlay}</div> : null}
+          </div>
+          {arts.length > 1 ? (
+            <div className="pointer-events-auto absolute inset-y-0 -left-12 flex w-10 flex-col justify-start group-data-[zoomed=true]:hidden">
+              <CardArtPicker arts={arts} selectedId={art?.id ?? null} onSelect={setArtId} direction="column" className="max-h-full" />
+            </div>
+          ) : null}
+          {onOpenPrices ? (
+            <div className="pointer-events-auto absolute -right-12 bottom-0 group-data-[zoomed=true]:hidden">
+              <CardPricesButton onClick={onOpenPrices} />
+            </div>
+          ) : null}
         </div>
         <section
           ref={panelRef}
