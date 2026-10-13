@@ -587,6 +587,147 @@ describe('la mesa de práctica', () => {
     expect(within(screen.getByRole('dialog', { name: 'Extra · 1' })).getByRole('button', { name: 'Zeus' })).toHaveClass('rounded-none')
   })
 
+  describe('los controles del replay (como los de YGOPocket)', () => {
+    // Mano inicial, robar, y las fases Battle, End y Draw (que empieza el turno 2).
+    const ACTIONS: MatAction[] = [{ type: 'draw', count: 1 }, { type: 'phase', phase: 'battle' }, { type: 'phase', phase: 'end' }, { type: 'phase', phase: 'draw' }]
+    const slider = () => screen.getByRole('slider', { name: 'Línea de tiempo del replay' })
+
+    it('viendo un combo hay reiniciar, anterior, reproducir, siguiente, la línea de tiempo, la lista de pasos y la velocidad; en vivo, no', () => {
+      const { unmount } = render(<Harness />)
+      expect(screen.queryByRole('group', { name: 'Controles del replay' })).not.toBeInTheDocument()
+      unmount()
+
+      render(<Harness actions={ACTIONS} />)
+      const bar = screen.getByRole('group', { name: 'Controles del replay' })
+
+      expect(within(bar).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual([
+        'Volver al principio',
+        'Anterior',
+        'Reproducir',
+        'Siguiente',
+        'Ver los pasos',
+        'Velocidad: 1×',
+      ])
+      // Al principio no hay a dónde volver.
+      expect(within(bar).getByRole('button', { name: 'Volver al principio' })).toBeDisabled()
+      expect(within(bar).getByRole('button', { name: 'Anterior' })).toBeDisabled()
+    })
+
+    it('la línea de tiempo tiene una pastilla por paso (y la mano inicial), marca los cambios de fase y separa los turnos', () => {
+      render(<Harness actions={ACTIONS} />)
+
+      const pills = [...slider().querySelectorAll('[data-state]')]
+      expect(pills).toHaveLength(5)
+      expect(pills.map((pill) => pill.getAttribute('data-state'))).toEqual(['current', 'upcoming', 'upcoming', 'upcoming', 'upcoming'])
+      expect(pills.map((pill) => pill.hasAttribute('data-phase'))).toEqual([false, false, true, true, true])
+      // El turno 2 empieza con la última jugada: una sola línea, antes de su pastilla.
+      expect(slider().querySelectorAll('[data-fx="turn"]')).toHaveLength(1)
+      expect(slider().querySelector('[data-fx="turn"]')?.nextElementSibling).toBe(pills[4])
+
+      fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+      expect([...slider().querySelectorAll('[data-state]')].map((pill) => pill.getAttribute('data-state'))).toEqual(['done', 'done', 'current', 'upcoming', 'upcoming'])
+    })
+
+    it('la línea de tiempo se maneja con el teclado como un deslizador y se toca o arrastra para ir a un paso', () => {
+      render(<Harness actions={ACTIONS} />)
+      const status = () => within(screen.getByRole('status', { name: 'Paso actual' }))
+
+      expect(slider()).toHaveAttribute('aria-valuenow', '0')
+      expect(slider()).toHaveAttribute('aria-valuetext', 'Mano inicial')
+      fireEvent.keyDown(slider(), { key: 'ArrowRight' })
+      expect(slider()).toHaveAttribute('aria-valuenow', '1')
+      expect(slider()).toHaveAttribute('aria-valuetext', 'Paso 1 de 4: Robás Imperm')
+      expect(status().getByText('1/4')).toBeInTheDocument()
+      fireEvent.keyDown(slider(), { key: 'End' })
+      expect(slider()).toHaveAttribute('aria-valuenow', '4')
+      fireEvent.keyDown(slider(), { key: 'ArrowLeft' })
+      expect(slider()).toHaveAttribute('aria-valuenow', '3')
+      fireEvent.keyDown(slider(), { key: 'Home' })
+      expect(slider()).toHaveAttribute('aria-valuenow', '0')
+
+      // Tocar la línea: la posición dice el paso (cinco pastillas en 500 px).
+      slider().getBoundingClientRect = () => ({ left: 0, top: 0, right: 500, bottom: 36, width: 500, height: 36, x: 0, y: 0, toJSON: () => ({}) })
+      fireEvent.pointerDown(slider(), { ...pointer, clientX: 250 })
+      expect(slider()).toHaveAttribute('aria-valuenow', '2')
+      fireEvent.pointerMove(slider(), { ...pointer, clientX: 499 })
+      expect(slider()).toHaveAttribute('aria-valuenow', '4')
+      fireEvent.pointerUp(slider(), { ...pointer, clientX: 499 })
+      // Soltada, ya no sigue al puntero.
+      fireEvent.pointerMove(slider(), { ...pointer, clientX: 10 })
+      expect(slider()).toHaveAttribute('aria-valuenow', '4')
+    })
+
+    it('volver al principio, la lista de pasos que se abre aparte y la velocidad con su menú', () => {
+      render(<Harness actions={ACTIONS} />)
+
+      fireEvent.keyDown(slider(), { key: 'End' })
+      fireEvent.click(screen.getByRole('button', { name: 'Volver al principio' }))
+      expect(slider()).toHaveAttribute('aria-valuenow', '0')
+
+      fireEvent.click(screen.getByRole('button', { name: 'Ver los pasos' }))
+      expect(screen.getByRole('dialog', { name: 'Pasos y combos' })).toBeInTheDocument()
+      fireEvent.keyDown(window, { key: 'Escape' })
+      expect(screen.queryByRole('dialog', { name: 'Pasos y combos' })).not.toBeInTheDocument()
+
+      // 0,5× · 1× · 1,5× · 2×, con el elegido tildado.
+      fireEvent.click(screen.getByRole('button', { name: 'Velocidad: 1×' }))
+      const menu = screen.getByRole('menu', { name: 'Velocidad' })
+      expect(within(menu).getAllByRole('menuitemradio').map((item) => [item.textContent, item.getAttribute('aria-checked')])).toEqual([['0,5×', 'false'], ['1×', 'true'], ['1,5×', 'false'], ['2×', 'false']])
+      fireEvent.keyDown(window, { key: 'Escape' })
+      expect(screen.queryByRole('menu', { name: 'Velocidad' })).not.toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Velocidad: 1×' }))
+      fireEvent.click(within(screen.getByRole('menu', { name: 'Velocidad' })).getByRole('menuitemradio', { name: '0,5×' }))
+      expect(screen.queryByRole('menu', { name: 'Velocidad' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Velocidad: 0,5×' })).toBeInTheDocument()
+    })
+
+    it('reproduce solo: cada paso espera 1,4 s a velocidad normal, la mitad a 2× y el doble a 0,5×; pausar lo frena', () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+
+      try {
+        render(<Harness actions={ACTIONS} />)
+
+        fireEvent.click(screen.getByRole('button', { name: 'Reproducir' }))
+        act(() => {
+          vi.advanceTimersByTime(1399)
+        })
+        expect(slider()).toHaveAttribute('aria-valuenow', '0')
+        act(() => {
+          vi.advanceTimersByTime(1)
+        })
+        expect(slider()).toHaveAttribute('aria-valuenow', '1')
+
+        fireEvent.click(screen.getByRole('button', { name: 'Velocidad: 1×' }))
+        fireEvent.click(screen.getByRole('menuitemradio', { name: '2×' }))
+        act(() => {
+          vi.advanceTimersByTime(700)
+        })
+        expect(slider()).toHaveAttribute('aria-valuenow', '2')
+
+        fireEvent.click(screen.getByRole('button', { name: 'Velocidad: 2×' }))
+        fireEvent.click(screen.getByRole('menuitemradio', { name: '0,5×' }))
+        act(() => {
+          vi.advanceTimersByTime(2799)
+        })
+        expect(slider()).toHaveAttribute('aria-valuenow', '2')
+        act(() => {
+          vi.advanceTimersByTime(1)
+        })
+        expect(slider()).toHaveAttribute('aria-valuenow', '3')
+
+        fireEvent.click(screen.getByRole('button', { name: 'Pausar' }))
+        act(() => {
+          vi.advanceTimersByTime(10_000)
+        })
+        expect(slider()).toHaveAttribute('aria-valuenow', '3')
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+  })
+
   it('el visor del deck: sacar una carta de ahí baraja el resto en la misma jugada; cerrarlo sin sacar nada baraja aparte', () => {
     render(<Harness />)
 
@@ -665,10 +806,12 @@ describe('la mesa de práctica', () => {
     expect(within(status()).getByText('Mano inicial')).toBeInTheDocument()
     expect(within(hand()).getAllByRole('listitem')).toHaveLength(5)
 
-    // Se reproduce solo (botones redondos de pausa y avance rápido); la lista de pasos lleva la última jugada arriba.
+    // Se reproduce solo, con los controles del replay (el botón grande, la línea de tiempo y la velocidad); la lista de pasos lleva la última jugada arriba.
     expect(screen.getByRole('button', { name: 'Pausar' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Avance rápido' }))
-    expect(screen.getByRole('button', { name: 'Avance rápido' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('slider', { name: 'Línea de tiempo del replay' })).toHaveAttribute('aria-valuemax', '2')
+    fireEvent.click(screen.getByRole('button', { name: 'Velocidad: 1×' }))
+    fireEvent.click(screen.getByRole('menuitemradio', { name: '2×' }))
+    expect(screen.getByRole('button', { name: 'Velocidad: 2×' })).toBeInTheDocument()
     fireEvent.click(within(aside).getByRole('radio', { name: 'Pasos' }))
     expect(within(within(aside).getByRole('list', { name: 'Jugadas' })).getAllByRole('button').map((item) => item.textContent)).toEqual(['2Colocás Called by the Grave', '1Invocación Especial de Ash Blossom en defensa', '0Mano inicial'])
 

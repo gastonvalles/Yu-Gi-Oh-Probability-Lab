@@ -46,6 +46,13 @@ const PATHS = {
   ),
   /** Avance rápido: dos triángulos, como en un replay. */
   'fast-forward': <path data-fill d="M3.5 6.1v11.8a1 1 0 0 0 1.56.83L12 13.3v4.6a1 1 0 0 0 1.56.83l8-5.9a1 1 0 0 0 0-1.66l-8-5.9A1 1 0 0 0 12 6.1v4.6L5.06 5.27A1 1 0 0 0 3.5 6.1z" />,
+  /** Volver al principio (de un replay): una barra y un triángulo hacia la izquierda. */
+  'skip-back': (
+    <>
+      <path data-fill d="M18.2 5.6v12.8a.8.8 0 0 1-1.22.68l-9.6-6.4a.8.8 0 0 1 0-1.36l9.6-6.4a.8.8 0 0 1 1.22.68z" />
+      <path d="M5 5.5v13" />
+    </>
+  ),
   dice: (
     <>
       <rect data-fill x="3.5" y="3.5" width="17" height="17" rx="4" />
