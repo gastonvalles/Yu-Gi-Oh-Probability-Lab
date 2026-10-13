@@ -57,6 +57,7 @@ export const meta = {
     one: '{n} deck {region} de las últimas {weeks} semanas, agrupado por nombre. Tocá uno para ver sus mejores resultados.',
     other: '{n} decks {region} de las últimas {weeks} semanas, agrupados por nombre. Tocá uno para ver sus mejores resultados.',
   },
+  'meta.screen.lowSample': 'Hay pocos decks {region} en esta ventana ({n}): cada uno pesa varios puntos y los tiers se mueven mucho. Probá con más semanas.',
   'meta.screen.adjust': 'Ajustar la tier list',
   'meta.screen.adjustDone': 'Listo',
   'meta.screen.emptyTitle': 'Sin {things} en esta ventana',

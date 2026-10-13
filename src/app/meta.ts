@@ -175,6 +175,11 @@ export const DECK_TIER_FLOORS: ReadonlyArray<readonly [MetaTier, number]> = [
 ]
 /** Un deck con menos resultados que esto en la ventana no entra al tier list: uno suelto no hace meta. */
 export const MIN_TIER_DECKS = 2
+/**
+ * Con menos decks que esto en la ventana los porcentajes bailan (cada deck vale varios puntos: con 22 decks, dos resultados ya son un 9%, que es S) y los
+ * tiers no dicen mucho. Pasa sobre todo en OCG, que tiene pocos decks de torneo: la pantalla lo avisa.
+ */
+export const MIN_RELIABLE_DECKS = 30
 /** Una semana con menos decks que esto no pesa en la tendencia: sería ruido. */
 export const MIN_WEEK_DECKS = 10
 const MIN_TREND_WEEKS = 3

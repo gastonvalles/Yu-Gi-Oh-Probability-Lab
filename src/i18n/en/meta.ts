@@ -59,6 +59,7 @@ export const meta: Translated<typeof es> = {
     one: '{n} {region} deck from the last {weeks} weeks, grouped by name. Tap one to see its best results.',
     other: '{n} {region} decks from the last {weeks} weeks, grouped by name. Tap one to see its best results.',
   },
+  'meta.screen.lowSample': 'There are few {region} decks in this window ({n}): each one weighs several points, so tiers swing a lot. Try more weeks.',
   'meta.screen.adjust': 'Adjust the tier list',
   'meta.screen.adjustDone': 'Done',
   'meta.screen.emptyTitle': 'No {things} in this window',

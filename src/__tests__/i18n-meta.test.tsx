@@ -184,6 +184,8 @@ describe('Meta en inglés', () => {
     expect(screen.getByRole('radiogroup', { name: 'Which tier list to show' })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Hand traps' })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByRole('heading', { name: 'Hand trap tier list' })).toBeInTheDocument()
+    // Tres decks son pocos para un tier list: la pantalla lo dice (y nombra la región y cuántos son).
+    expect(screen.getByText('There are few TCG decks in this window (3): each one weighs several points, so tiers swing a lot. Try more weeks.')).toBeInTheDocument()
     // Los decks del test no llevan ninguna carta de las listas: la ventana lo dice.
     expect(screen.getByText('No hand traps in this window')).toBeInTheDocument()
     expect(screen.getByText('Try more weeks or another zone.')).toBeInTheDocument()

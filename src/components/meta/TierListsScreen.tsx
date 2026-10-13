@@ -3,6 +3,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import {
   DECK_TIER_FLOORS,
   META_DECKS,
+  MIN_RELIABLE_DECKS,
   MIN_TIER_DECKS,
   PROJECTION_WEEKS,
   TIER_FLOORS,
@@ -26,6 +27,7 @@ import { formatInteger } from '../../app/utils'
 import { t } from '../../i18n'
 import { StepHero } from '../StepHero'
 import { Button } from '../ui/Button'
+import { Callout } from '../ui/Callout'
 import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
 import { EmptyState } from '../ui/EmptyState'
@@ -146,6 +148,12 @@ export function TierListsScreen() {
             )
           }
         />
+        {deckCount > 0 && deckCount < MIN_RELIABLE_DECKS ? (
+          // Con pocos decks cada uno pesa varios puntos y casi todo cae en S: se dice, en lugar de dejar que parezca un error.
+          <Callout tone="warning" className="mt-3">
+            {t('meta.screen.lowSample', { n: formatInteger(deckCount), region: region.toUpperCase() })}
+          </Callout>
+        ) : null}
         {isEmpty ? (
           <EmptyState icon={LIST_ICON[list]} title={t('meta.screen.emptyTitle', { things: t(LIST_THINGS_KEY[list]) })}>
             {t(isDeckList ? 'meta.screen.emptyDecksHint' : 'meta.screen.emptyHint')}
