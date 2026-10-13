@@ -12,7 +12,8 @@ import { describe, expect, it } from 'vitest'
  * revisa sólo esas rutas.
  */
 const ROOT = fileURLToPath(new URL('../../', import.meta.url))
-const SKIPPED_DIRS = new Set(['__tests__', 'i18n', 'data', 'assets', 'fonts'])
+// `playground`: el catálogo de /playground es una herramienta de desarrollo, escrita en español y sin traducción.
+const SKIPPED_DIRS = new Set(['__tests__', 'i18n', 'data', 'assets', 'fonts', 'playground'])
 const ACCENTED = /[áéíóúñüÁÉÍÓÚÑ¿¡]/
 const SPANISH_WORD =
   /\b(?:para|con|sin|del|los|las|una|uno|unos|unas|tus?|su|sus|mis?|más|que|qué|por|ya|hay|desde|hasta|entre|sobre|cada|todas?|todos?|también|porque|cuando|donde|está|esta|este|esto|ese|esa|como|pero|muy|mejor|de|la|el|un|se|lo|al|nombre|nuevos?|nuevas?|sólo|mano|manos|cartas?|copias?|reglas?|mazo|campo|cementerio|ataque|defensa|invocar|zonas?|monstruos?|hechizos?|trampas?|fichas?|contadores?|pasos?|jugadas?|jugables?|turno|segundo|primero|yendo|robar|barajar|listo|pendiente|guardar|guardado|borrar|eliminar|cancelar|cerrar|abrir|agregar|quitar|sacar|elegir|buscar|exportar|importar|descargar|copiar|pegar|volver|siguiente|anterior)\b/i

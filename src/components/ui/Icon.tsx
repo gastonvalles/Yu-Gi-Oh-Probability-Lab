@@ -193,6 +193,15 @@ const PATHS = {
   'chevron-up': <path d="m6 15 6-6 6 6" />,
   'chevron-left': <path d="m15 6-6 6 6 6" />,
   'chevron-right': <path d="m9 6 6 6-6 6" />,
+  /** Contraer el menú lateral: dos flechas hacia la izquierda. */
+  'chevrons-left': (
+    <>
+      <path d="m11 17-5-5 5-5" />
+      <path d="m18 17-5-5 5-5" />
+    </>
+  ),
+  /** Botón de hamburguesa: abre el menú en el celular. */
+  menu: <path d="M4 7h16M4 12h16M4 17h16" />,
 
   // — Contenido —
   layers: (
@@ -274,6 +283,9 @@ const PATHS = {
 } satisfies Record<string, ReactNode>
 
 export type IconName = keyof typeof PATHS
+
+/** Todos los íconos, en el orden del set: el catálogo de /playground los muestra sin que nadie tenga que anotarlos. */
+export const ICON_NAMES = Object.keys(PATHS) as IconName[]
 
 /** linear: sólo trazo (por defecto) · bulk: trazo + relleno suave en las formas cerradas · bold: relleno sólido (la pestaña activa). */
 type IconVariant = 'linear' | 'bulk' | 'bold'

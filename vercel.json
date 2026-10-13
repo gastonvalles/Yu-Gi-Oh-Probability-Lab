@@ -1,7 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
-    { "source": "/api/card-image/:path*", "destination": "/api/card-image?path=:path*" }
+    { "source": "/api/card-image/:path*", "destination": "/api/card-image?path=:path*" },
+    { "source": "/playground/:path*", "destination": "/index.html" }
   ],
   "headers": [
     {

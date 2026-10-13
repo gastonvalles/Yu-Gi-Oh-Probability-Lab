@@ -162,7 +162,9 @@ src/
     replays/                 pestaña Replays y su reproductor
     comparison/              pantalla de comparación
     card-detail/             detalle de carta
-    ui/                      botones y piezas básicas
+    ui/                      botones, títulos (`Heading`) y piezas básicas
+    shell/                   el armazón de la app: menú lateral, barra y cajón del celular, pie
+    playground/              el catálogo vivo `/playground` de todos los componentes y assets; ver docs/playground.md
   ygoprodeck/                cliente y parser de la API
   i18n/                      los textos en español e inglés: `t()`, el idioma y un diccionario por área (`es/`, `en/`); ver docs/i18n.md
   __tests__/                 tests (Vitest + fast-check)

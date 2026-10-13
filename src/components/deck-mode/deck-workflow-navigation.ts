@@ -1,5 +1,6 @@
 import { formatInteger } from '../../app/utils'
 import { t } from '../../i18n'
+import type { NavGroup, NavItem } from '../shell/nav-model'
 import type { IconName } from '../ui/Icon'
 
 export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'meta' | 'replays'
@@ -151,5 +152,23 @@ export function buildDeckWorkflowNavigationItems({
       tone: 'pending',
       disabled: false,
     },
+  ]
+}
+
+/** El menú de la app: los pasos del deck, las herramientas (que abren un panel) y la referencia del meta. Lo ven el menú lateral y el cajón del celular. */
+export function buildAppNavGroups(steps: DeckModeNavigationItem[]): NavGroup[] {
+  const pick = (...keys: DeckWorkflowStepKey[]): NavItem[] => keys.flatMap((key) => steps.filter((step) => step.key === key))
+
+  return [
+    { key: 'deck', label: t('shell.nav.group.deck'), items: pick('deck-builder', 'categorization', 'probability-lab', 'workspace', 'export') },
+    {
+      key: 'tools',
+      label: t('shell.nav.group.tools'),
+      items: [
+        { key: 'practice', label: t('shell.practice.title'), title: t('shell.practice.title'), icon: 'hand' },
+        { key: 'life', label: t('shell.life.title'), title: t('shell.life.title'), icon: 'heart' },
+      ],
+    },
+    { key: 'discover', label: t('shell.nav.group.discover'), items: pick('meta', 'replays') },
   ]
 }
