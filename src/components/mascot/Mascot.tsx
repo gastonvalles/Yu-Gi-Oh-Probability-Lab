@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-import { reactMascot, restMascot, useCurrentMascot, useMascotEnabled, useMascotState, type MascotState } from '../../app/mascot'
+import { MASCOT_ANIMATION, MASCOT_STILL, reactMascot, restMascot, useCurrentMascot, useMascotEnabled, useMascotState, type MascotState } from '../../app/mascot'
 import { useDraggablePosition } from '../../app/use-draggable-position'
 import { useHold } from '../../app/use-hold'
 import { useMediaQuery } from '../../app/use-media-query'
@@ -9,19 +9,6 @@ import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 
-// Cada estado es un WebP animado con transparencia dentro de la carpeta de la mascota; se baja sólo el actual.
-const ANIMATION: Record<MascotState, string> = {
-  idle: 'idle.webp',
-  look: 'look.webp',
-  waiting: 'waiting.webp',
-  running: 'running.webp',
-  review: 'review.webp',
-  jumping: 'jumping.webp',
-  failed: 'failed.webp',
-  waving: 'waving.webp',
-}
-/** Un cuadro quieto: para "reducir movimiento". */
-const STILL = 'idle.png'
 /** Lo que dice la mascota de cada estado (en reposo, sólo su nombre). */
 const TITLE_KEY = {
   look: 'shell.mascot.state.look',
@@ -191,7 +178,7 @@ function ActiveMascot() {
             onAnimationEnd={() => setDropping(false)}
           >
             <img
-              src={`${mascot.folder}/${reduceMotion ? STILL : ANIMATION[shown]}`}
+              src={`${mascot.folder}/${reduceMotion ? MASCOT_STILL : MASCOT_ANIMATION[shown]}`}
               alt=""
               draggable={false}
               className={cx(

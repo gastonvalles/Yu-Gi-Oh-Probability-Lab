@@ -1,15 +1,13 @@
 import { useEffect, useId, useRef, useState, type CSSProperties } from 'react'
 
-import { MASCOTS, currentMascotId, reactMascot, restMascot, selectMascot, useCurrentMascot, useMascotEnabled, type MascotId } from '../../app/mascot'
+import { MASCOTS, MASCOT_STILL, currentMascotId, reactMascot, restMascot, selectMascot, useCurrentMascot, useMascotEnabled, type MascotId } from '../../app/mascot'
 import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { CloseButton } from '../ui/IconButton'
 import { overline } from '../ui/typography'
 
-/** Un cuadro quieto de cada mascota, para la lista. */
-const STILL = 'idle.png'
-/** El ancho del desplegable (`w-60`) y cuánto se separa del botón y del borde de la ventana. */
-const POPUP_WIDTH = 240
+/** El ancho del desplegable (`w-64`: entra "Winged Kuriboh" sin cortarse) y cuánto se separa del botón y del borde de la ventana. */
+const POPUP_WIDTH = 256
 const POPUP_GAP = 8
 
 /**
@@ -97,7 +95,7 @@ export function MascotPicker({ placement, className }: { placement: 'above' | 'b
           role="group"
           aria-label={t('shell.mascot.available')}
           style={anchor ? popupStyle(anchor, placement) : undefined}
-          className="fixed z-130 grid w-60 gap-1 rounded-card border border-border-subtle bg-surface-raised p-2 text-left shadow-overlay animate-dialog-enter motion-reduce:animate-none"
+          className="fixed z-130 grid w-64 gap-1 rounded-card border border-border-subtle bg-surface-raised p-2 text-left shadow-overlay animate-dialog-enter motion-reduce:animate-none"
         >
           <span className={cx('px-2 pt-1', overline)}>{t('shell.mascot.title')}</span>
           {(Object.entries(MASCOTS) as [MascotId, (typeof MASCOTS)[MascotId]][]).map(([id, mascot]) => {
@@ -110,7 +108,7 @@ export function MascotPicker({ placement, className }: { placement: 'above' | 'b
                   className="flex min-w-0 flex-1 items-center gap-3 rounded-control px-2 py-1.5 text-left focus-visible:outline-none focus-visible:shadow-focus"
                   onClick={() => summon(id)}
                 >
-                  <img src={`${mascot.folder}/${STILL}`} alt="" draggable={false} className="size-12 shrink-0 object-contain" />
+                  <img src={`${mascot.folder}/${MASCOT_STILL}`} alt="" draggable={false} className="size-12 shrink-0 object-contain" />
                   <span className="grid min-w-0 gap-0.5">
                     <strong className="truncate text-body font-semibold text-foreground">{mascot.name}</strong>
                     <span className="text-micro text-muted">{isCurrent ? (enabled ? t('shell.mascot.out') : t('shell.mascot.resting')) : t('shell.mascot.summon')}</span>

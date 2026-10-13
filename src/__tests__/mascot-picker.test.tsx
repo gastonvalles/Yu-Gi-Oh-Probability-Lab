@@ -25,7 +25,27 @@ describe('el botón del Kuriboh', () => {
 
     expect(screen.getByRole('group', { name: 'Mascotas disponibles' })).toBeInTheDocument()
     expect(screen.getByText('Cupsy')).toBeInTheDocument()
+    expect(screen.getByText('Winged Kuriboh')).toBeInTheDocument()
+    // Sólo la que está afuera dice cómo está; la otra, cómo traerla.
     expect(screen.getByText('Afuera')).toBeInTheDocument()
+    expect(screen.getByText('Tocá para sacarla')).toBeInTheDocument()
+  })
+
+  it('elegir otra mascota la saca en lugar de la actual y se acuerda de la elección', () => {
+    render(<MascotPicker placement="below" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mascotas' }))
+    fireEvent.click(screen.getByRole('button', { name: /Winged Kuriboh/ }))
+
+    expect(currentMascotId()).toBe('winged-kuriboh')
+    expect(localStorage.getItem('ygo-lab:mascot-id')).toBe('winged-kuriboh')
+    expect(isMascotEnabled()).toBe(true)
+    expect(screen.queryByRole('group', { name: 'Mascotas disponibles' })).not.toBeInTheDocument()
+
+    // Al abrir de nuevo, ahora la que está afuera es el Kuriboh (con su X) y Cupsy espera.
+    fireEvent.click(screen.getByRole('button', { name: 'Mascotas' }))
+    expect(screen.getByRole('button', { name: 'Darle un descanso a Winged Kuriboh' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Darle un descanso a Cupsy' })).not.toBeInTheDocument()
   })
 
   it('elegir una mascota que descansaba la trae de vuelta y cierra el desplegable', () => {

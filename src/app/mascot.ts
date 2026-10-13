@@ -4,7 +4,7 @@ import { t } from '../i18n'
 import { showToastMessage } from './use-toast-message'
 
 /**
- * Cupsy, la mascota: un estado por animación del paquete. Las pantallas no la manejan directamente:
+ * La mascota (Cupsy, el Kuriboh alado...): un estado por animación del paquete. Las pantallas no la manejan directamente:
  * avisan qué pasa (se está cargando algo, se calcula, salió bien, salió mal) y ella reacciona.
  */
 export type MascotState = 'idle' | 'look' | 'waiting' | 'running' | 'review' | 'jumping' | 'failed' | 'waving'
@@ -13,9 +13,27 @@ export type MascotReaction = Extract<MascotState, 'jumping' | 'failed' | 'waving
 /** Lo que puede estar pasando de fondo. */
 export type MascotActivity = 'loading' | 'computing'
 
-/** Las mascotas disponibles: cada una con su carpeta de animaciones en public/mascot. Hoy hay una; el día que haya más, acá se suman. */
+/** Cada estado es un WebP animado con transparencia dentro de la carpeta de la mascota; se baja sólo el actual. */
+export const MASCOT_ANIMATION: Record<MascotState, string> = {
+  idle: 'idle.webp',
+  look: 'look.webp',
+  waiting: 'waiting.webp',
+  running: 'running.webp',
+  review: 'review.webp',
+  jumping: 'jumping.webp',
+  failed: 'failed.webp',
+  waving: 'waving.webp',
+}
+/** Un cuadro quieto: para "reducir movimiento" y para la lista de mascotas. */
+export const MASCOT_STILL = 'idle.png'
+
+/**
+ * Las mascotas disponibles: cada una con su carpeta en public/mascot, con una animación por estado (de 192×208, ver `ANIMATION` en Mascot.tsx)
+ * y un cuadro quieto (idle.png). Para sumar otra alcanza con la carpeta y una línea acá.
+ */
 export const MASCOTS = {
   cupsy: { name: 'Cupsy', folder: '/mascot/cupsy' },
+  'winged-kuriboh': { name: 'Winged Kuriboh', folder: '/mascot/winged-kuriboh' },
 } as const
 export type MascotId = keyof typeof MASCOTS
 
