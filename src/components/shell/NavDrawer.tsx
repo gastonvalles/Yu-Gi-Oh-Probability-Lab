@@ -19,7 +19,7 @@ interface DrawerPanelProps {
   className?: string
 }
 
-/** Lo de adentro del cajón del celular: la marca con su X, los destinos (los mismos del menú lateral) y abajo el idioma y las mascotas. */
+/** Lo de adentro del cajón del celular: la marca con su X, los destinos (los mismos del menú lateral) y abajo el idioma. */
 export function DrawerPanel({ groups, activeKey, onSelect, onClose, className }: DrawerPanelProps) {
   return (
     <div className={cx('flex h-full min-h-0 flex-col border-r border-border-subtle bg-card-background shadow-overlay', className)}>

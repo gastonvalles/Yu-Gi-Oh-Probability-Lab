@@ -100,6 +100,17 @@ const PATHS = {
     </>
   ),
 
+  // La patita de las mascotas: una almohadilla y cuatro deditos.
+  paw: (
+    <>
+      <path data-fill d="M12 11.3c-2.7 0-5.2 2.4-5.2 4.9 0 1.6 1.1 2.6 2.5 2.6 1 0 1.7-.4 2.7-.4s1.7.4 2.7.4c1.4 0 2.5-1 2.5-2.6 0-2.5-2.5-4.9-5.2-4.9z" />
+      <ellipse data-fill cx="5.1" cy="10.5" rx="1.8" ry="2.4" transform="rotate(-20 5.1 10.5)" />
+      <ellipse data-fill cx="9.2" cy="5.9" rx="1.8" ry="2.6" transform="rotate(-8 9.2 5.9)" />
+      <ellipse data-fill cx="14.8" cy="5.9" rx="1.8" ry="2.6" transform="rotate(8 14.8 5.9)" />
+      <ellipse data-fill cx="18.9" cy="10.5" rx="1.8" ry="2.4" transform="rotate(20 18.9 10.5)" />
+    </>
+  ),
+
   // — Estado y avisos —
   info: (
     <>

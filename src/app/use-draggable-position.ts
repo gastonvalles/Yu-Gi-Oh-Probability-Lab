@@ -16,6 +16,8 @@ interface DraggablePositionOptions {
   corner?: 'right' | 'left'
   /** Cuánto subirlo (px) respecto del rincón por defecto: para apilar un botón sobre otro. */
   lift?: number
+  /** Cuánto correrlo (px) hacia adentro desde el rincón por defecto: para poner varios en fila (las mascotas). */
+  slide?: number
   /** Los elementos del mismo grupo chocan entre sí: el que se mueve empuja al otro. */
   group?: string
 }
@@ -107,7 +109,7 @@ function writePosition(key: string, position: FabPosition) {
  * cercano y recuerda la posición entre visitas. Un toque sin arrastrar sigue siendo un click.
  * Lo comparten los botones flotantes y la mascota; los botones, además, se empujan entre sí.
  */
-export function useDraggablePosition({ storageKey, size, corner = 'right', lift = 0, group }: DraggablePositionOptions): DraggablePosition {
+export function useDraggablePosition({ storageKey, size, corner = 'right', lift = 0, slide = 0, group }: DraggablePositionOptions): DraggablePosition {
   const [viewport, setViewport] = useState(() => ({ width: window.innerWidth, height: window.innerHeight }))
   // El menú lateral y el pie (en escritorio) quedan libres: no se arranca ni se lleva nada encima de ellos.
   const shell = useShellInsets()
@@ -138,7 +140,7 @@ export function useDraggablePosition({ storageKey, size, corner = 'right', lift 
   }, [])
 
   const fallback = defaultFabPosition(bounds, corner)
-  const restingPosition = clampFabPosition(stored ?? { x: fallback.x, y: fallback.y - lift }, bounds)
+  const restingPosition = clampFabPosition(stored ?? { x: fallback.x + (corner === 'left' ? slide : -slide), y: fallback.y - lift }, bounds)
   const position = dragPosition ?? pushedPosition ?? restingPosition
   const positionRef = useRef(position)
   const boundsRef = useRef(bounds)

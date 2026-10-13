@@ -172,6 +172,7 @@ export function buildAppNavGroups(steps: DeckModeNavigationItem[], tools: AppNav
       items: [
         ...(tools.practice ? [{ key: 'practice', label: t('shell.practice.title'), title: t('shell.practice.title'), icon: 'hand' as const }] : []),
         { key: 'life', label: t('shell.life.title'), title: t('shell.life.title'), icon: 'heart' as const },
+        { key: 'mascots', label: t('shell.mascot.title'), title: t('shell.mascot.title'), icon: 'paw' as const },
       ],
     },
     { key: 'discover', label: t('shell.nav.group.discover'), items: pick('meta', 'tournaments', 'replays') },

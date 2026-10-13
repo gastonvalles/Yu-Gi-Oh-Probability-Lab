@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { isMascotEnabled, resetMascotChoiceForTests, resetMascotForTests } from '../app/mascot'
+import { activeMascotIds, resetMascotChoiceForTests, resetMascotForTests } from '../app/mascot'
 import { Mascot } from '../components/mascot/Mascot'
 
 beforeEach(() => {
@@ -40,7 +40,7 @@ describe('dejar a la mascota descansar', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Darle un descanso' }))
 
-    expect(isMascotEnabled()).toBe(false)
+    expect(activeMascotIds()).toEqual([])
     expect(screen.queryByRole('button', { name: 'Saludar a Cupsy' })).not.toBeInTheDocument()
   })
 
@@ -51,7 +51,7 @@ describe('dejar a la mascota descansar', () => {
     act(() => vi.advanceTimersByTime(5000))
     fireEvent.click(screen.getByRole('button', { name: 'Seguir jugando' }))
 
-    expect(isMascotEnabled()).toBe(true)
+    expect(activeMascotIds()).toEqual(['cupsy'])
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Saludar a Cupsy' })).toBeInTheDocument()
   })
@@ -65,6 +65,6 @@ describe('dejar a la mascota descansar', () => {
     act(() => vi.advanceTimersByTime(10_000))
 
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    expect(isMascotEnabled()).toBe(true)
+    expect(activeMascotIds()).toEqual(['cupsy'])
   })
 })

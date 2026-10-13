@@ -4,8 +4,8 @@ import { t } from '../i18n'
 import { showToastMessage } from './use-toast-message'
 
 /**
- * La mascota (Cupsy, el Kuriboh alado...): un estado por animación del paquete. Las pantallas no la manejan directamente:
- * avisan qué pasa (se está cargando algo, se calcula, salió bien, salió mal) y ella reacciona.
+ * Las mascotas (Cupsy, el Kuriboh alado...): un estado por animación del paquete. Las pantallas no las manejan directamente:
+ * avisan qué pasa (se está cargando algo, se calcula, salió bien, salió mal) y ellas reaccionan.
  */
 export type MascotState = 'idle' | 'look' | 'waiting' | 'running' | 'review' | 'jumping' | 'failed' | 'waving'
 /** Reacciones puntuales: duran unos segundos y ganan a lo demás. */
@@ -28,7 +28,7 @@ export const MASCOT_ANIMATION: Record<MascotState, string> = {
 export const MASCOT_STILL = 'idle.png'
 
 /**
- * Las mascotas disponibles: cada una con su carpeta en public/mascot, con una animación por estado (de 192×208, ver `ANIMATION` en Mascot.tsx)
+ * Las mascotas disponibles: cada una con su carpeta en public/mascot, con una animación por estado (de 192×208, ver `MASCOT_ANIMATION`)
  * y un cuadro quieto (idle.png). Para sumar otra alcanza con la carpeta y una línea acá.
  */
 export const MASCOTS = {
@@ -37,67 +37,75 @@ export const MASCOTS = {
 } as const
 export type MascotId = keyof typeof MASCOTS
 
-const MASCOT_KEY = 'ygo-lab:mascot-id'
-const ENABLED_KEY = 'ygo-lab:mascot'
+/** Cuántas pueden estar afuera a la vez. */
+export const MAX_ACTIVE_MASCOTS = 3
 
-function readChosenId(): MascotId {
+const ACTIVE_KEY = 'ygo-lab:mascots'
+// Lo que se guardaba cuando había una sola: cuál era y si estaba descansando ('off'), y dónde la habían dejado.
+const LEGACY_ID_KEY = 'ygo-lab:mascot-id'
+const LEGACY_ENABLED_KEY = 'ygo-lab:mascot'
+const LEGACY_POSITION_KEY = 'ygo-lab:mascot-position'
+
+export const isMascotId = (value: unknown): value is MascotId => typeof value === 'string' && value in MASCOTS
+
+/** Dónde se recuerda la posición de cada mascota (cada una la suya). */
+export const mascotPositionKey = (id: MascotId): string => `ygo-lab:mascot-position:${id}`
+
+/** La lista que queda al sacar una mascota: sin repetir, y sin pasar el máximo (si no entra, queda igual). */
+export function withMascot(active: readonly MascotId[], id: MascotId, max = MAX_ACTIVE_MASCOTS): MascotId[] {
+  return active.includes(id) || active.length >= max ? [...active] : [...active, id]
+}
+
+/** Lo guardado a mano o por una versión vieja: sólo mascotas que existen, sin repetir y hasta el máximo. */
+export function sanitizeActiveMascots(value: unknown, max = MAX_ACTIVE_MASCOTS): MascotId[] {
+  return Array.isArray(value) ? value.filter(isMascotId).filter((id, index, all) => all.indexOf(id) === index).slice(0, max) : []
+}
+
+function readActive(): MascotId[] {
   try {
-    const stored = localStorage.getItem(MASCOT_KEY)
+    const stored = localStorage.getItem(ACTIVE_KEY)
 
-    if (stored && stored in MASCOTS) {
-      return stored as MascotId
+    if (stored !== null) {
+      return sanitizeActiveMascots(JSON.parse(stored))
     }
+
+    // Primera vez con varias: la que había estaba afuera, salvo que la hubieran mandado a descansar.
+    const legacyId = localStorage.getItem(LEGACY_ID_KEY)
+    const id: MascotId = isMascotId(legacyId) ? legacyId : 'cupsy'
+    const legacyPosition = localStorage.getItem(LEGACY_POSITION_KEY)
+
+    if (legacyPosition !== null && localStorage.getItem(mascotPositionKey(id)) === null) {
+      localStorage.setItem(mascotPositionKey(id), legacyPosition)
+    }
+
+    return localStorage.getItem(LEGACY_ENABLED_KEY) === 'off' ? [] : [id]
   } catch {
-    // Sin storage: la primera.
+    return ['cupsy']
   }
-
-  return 'cupsy'
 }
 
-let chosenId: MascotId = readChosenId()
-
-/** El id de la mascota elegida (si la guardada ya no existe, la primera). */
-export function currentMascotId(): MascotId {
-  return chosenId
-}
-
-/** La mascota elegida. */
-export function currentMascot(): (typeof MASCOTS)[MascotId] {
-  return MASCOTS[chosenId]
-}
-
-/** Elige una mascota y la saca (si estaba descansando, vuelve). */
-export function selectMascot(id: MascotId): void {
-  chosenId = id
-
+function writeActive(ids: readonly MascotId[]): void {
   try {
-    localStorage.setItem(MASCOT_KEY, id)
+    localStorage.setItem(ACTIVE_KEY, JSON.stringify(ids))
+    // Ya está migrado: lo viejo no vuelve a leerse.
+    for (const key of [LEGACY_ID_KEY, LEGACY_ENABLED_KEY, LEGACY_POSITION_KEY]) {
+      localStorage.removeItem(key)
+    }
   } catch {
     // Sin storage se recuerda sólo hasta recargar.
   }
-
-  setMascotEnabled(true)
 }
 
-/** La manda a descansar (deja la pantalla libre) y avisa cómo traerla de vuelta. */
-export function restMascot(): void {
-  setMascotEnabled(false)
-  showToastMessage(t('shell.mascot.restToast', { name: currentMascot().name }), 'info')
-}
+let active: readonly MascotId[] = readActive()
+let maxActive = MAX_ACTIVE_MASCOTS
+const SERVER_ACTIVE: readonly MascotId[] = ['cupsy']
 
 const listeners = new Set<() => void>()
 const activities: Record<MascotActivity, number> = { loading: 0, computing: 0 }
-let reaction: { state: MascotReaction; until: number } | null = null
-let reactionTimer: ReturnType<typeof setTimeout> | null = null
-let enabled = readEnabled()
-
-function readEnabled(): boolean {
-  try {
-    return localStorage.getItem(ENABLED_KEY) !== 'off'
-  } catch {
-    return true
-  }
-}
+/** Las reacciones puntuales: la clave es la mascota, o '*' si es para todas (lo que salió bien o mal en la app). */
+const reactions = new Map<string, { state: MascotReaction; until: number }>()
+/** Lo que pasa entre ellas (saludarse, chocarse): sólo se ve si la mascota no está ocupada con otra cosa. */
+const socials = new Map<MascotId, { state: MascotReaction; until: number }>()
 
 function notify() {
   for (const listener of listeners) {
@@ -112,12 +120,70 @@ function subscribe(listener: () => void): () => void {
   }
 }
 
-/** Prioridad: una reacción puntual gana; después lo que pasa de fondo (carga, cálculo); después el paso; si no, reposo. */
+/** Quiénes están afuera, en el orden en que salieron. */
+export function activeMascotIds(): readonly MascotId[] {
+  return active
+}
+
+export function isMascotActive(id: MascotId): boolean {
+  return active.includes(id)
+}
+
+/** Cuántas pueden estar afuera a la vez. */
+export function maxActiveMascots(): number {
+  return maxActive
+}
+
+/** Cuántas pueden salir todavía. */
+export function freeMascotSlots(): number {
+  return Math.max(0, maxActive - active.length)
+}
+
+/** La primera que está afuera (o Cupsy si no hay ninguna): la de la pantalla de error, por ejemplo. */
+export function currentMascot(): (typeof MASCOTS)[MascotId] {
+  return MASCOTS[active[0] ?? 'cupsy']
+}
+
+function setActive(next: readonly MascotId[]) {
+  active = next
+  writeActive(next)
+  notify()
+}
+
+/** La saca (saluda al llegar). Devuelve false si ya hay el máximo afuera. */
+export function summonMascot(id: MascotId): boolean {
+  if (active.includes(id)) {
+    return true
+  }
+
+  const next = withMascot(active, id, maxActive)
+
+  if (next.length === active.length) {
+    return false
+  }
+
+  setActive(next)
+  reactMascot('waving', 2600, id)
+  return true
+}
+
+/** La manda a descansar (deja la pantalla libre) y avisa cómo traerla de vuelta. */
+export function restMascot(id: MascotId): void {
+  if (!active.includes(id)) {
+    return
+  }
+
+  setActive(active.filter((other) => other !== id))
+  showToastMessage(t('shell.mascot.restToast', { name: MASCOTS[id].name }), 'info')
+}
+
+/** Prioridad: una reacción puntual gana; después lo que pasa de fondo (carga, cálculo); después el paso; después lo social; si no, reposo. */
 export function computeMascotState(input: {
   reaction: MascotReaction | null
   loading: boolean
   computing: boolean
   step: string | null
+  social?: MascotReaction | null
 }): MascotState {
   if (input.reaction) {
     return input.reaction
@@ -135,7 +201,7 @@ export function computeMascotState(input: {
     return 'review'
   }
 
-  return 'idle'
+  return input.social ?? 'idle'
 }
 
 /** El paso actual sale del hash, igual que en la navegación (`#meta?deck=1` → `meta`). */
@@ -147,12 +213,24 @@ function currentStep(): string | null {
   return window.location.hash.replace(/^#/, '').split('?')[0] || null
 }
 
-export function getMascotState(): MascotState {
+/** La reacción que está en curso para esa mascota: la suya o la de todas, la que empezó después. */
+function reactionOf(id: MascotId | undefined, now: number): MascotReaction | null {
+  const candidates = [id ? reactions.get(id) : undefined, reactions.get('*')].filter((reaction) => reaction && reaction.until > now)
+
+  return candidates.sort((first, second) => second!.until - first!.until)[0]?.state ?? null
+}
+
+/** Qué animación le toca a esa mascota (sin `id`, la de las reacciones y tareas que son de todas). */
+export function getMascotState(id?: MascotId): MascotState {
+  const now = Date.now()
+  const social = id ? socials.get(id) : undefined
+
   return computeMascotState({
-    reaction: reaction && reaction.until > Date.now() ? reaction.state : null,
+    reaction: reactionOf(id, now),
     loading: activities.loading > 0,
     computing: activities.computing > 0,
     step: currentStep(),
+    social: social && social.until > now ? social.state : null,
   })
 }
 
@@ -173,75 +251,57 @@ export function beginMascotActivity(kind: MascotActivity): () => void {
   }
 }
 
-/** Una reacción puntual; la última pisa a la anterior. */
-export function reactMascot(state: MascotReaction, durationMs = 2500): void {
-  reaction = { state, until: Date.now() + durationMs }
-
-  if (reactionTimer) {
-    clearTimeout(reactionTimer)
-  }
-
-  reactionTimer = setTimeout(() => {
-    reaction = null
-    reactionTimer = null
-    notify()
-  }, durationMs)
-  notify()
+/** Avisa cuando vence una reacción, para volver a dibujar con la animación de reposo. */
+function expireAfter(durationMs: number) {
+  setTimeout(notify, durationMs + 20)
 }
 
-export function isMascotEnabled(): boolean {
-  return enabled
+/** Una reacción puntual (de todas, o sólo de `id`); la última pisa a la anterior. */
+export function reactMascot(state: MascotReaction, durationMs = 2500, id?: MascotId): void {
+  reactions.set(id ?? '*', { state, until: Date.now() + durationMs })
+  notify()
+  expireAfter(durationMs)
 }
 
-export function setMascotEnabled(on: boolean): void {
-  enabled = on
-
-  try {
-    if (on) {
-      localStorage.removeItem(ENABLED_KEY)
-    } else {
-      localStorage.setItem(ENABLED_KEY, 'off')
-    }
-  } catch {
-    // Sin storage se recuerda sólo hasta recargar.
-  }
-
+/** Algo que pasa entre mascotas (saludo, choque): la mascota lo muestra sólo si está en reposo, así no tapa lo que está haciendo. */
+export function playMascotSocial(id: MascotId, state: MascotReaction, durationMs = 2400): void {
+  socials.set(id, { state, until: Date.now() + durationMs })
   notify()
+  expireAfter(durationMs)
 }
 
 if (typeof window !== 'undefined') {
   window.addEventListener('hashchange', notify)
 }
 
-export function useMascotState(): MascotState {
-  return useSyncExternalStore(subscribe, getMascotState, () => 'idle')
+export function useMascotState(id?: MascotId): MascotState {
+  return useSyncExternalStore(
+    subscribe,
+    () => getMascotState(id),
+    () => 'idle',
+  )
 }
 
-export function useMascotEnabled(): boolean {
-  return useSyncExternalStore(subscribe, isMascotEnabled, () => true)
+/** Las que están afuera, en el orden en que salieron; se actualiza cuando sale o descansa alguna. */
+export function useActiveMascots(): readonly MascotId[] {
+  return useSyncExternalStore(subscribe, activeMascotIds, () => SERVER_ACTIVE)
 }
 
-/** La mascota elegida, con su id; se actualiza cuando se elige otra. */
-export function useCurrentMascot(): (typeof MASCOTS)[MascotId] & { id: MascotId } {
-  const id = useSyncExternalStore(subscribe, currentMascotId, () => 'cupsy' as MascotId)
-
-  return { id, ...MASCOTS[id] }
-}
-
-/** Para los tests: vuelve a la primera mascota y la deja afuera. */
+/** Para los tests: vuelve a la primera mascota afuera, el máximo de siempre y nada guardado. */
 export function resetMascotChoiceForTests(): void {
-  chosenId = 'cupsy'
-  enabled = true
+  active = ['cupsy']
+  maxActive = MAX_ACTIVE_MASCOTS
+}
+
+/** Para los tests: cuántas pueden estar afuera a la vez (para probar el tope sin tener tres mascotas). */
+export function setMaxActiveMascotsForTests(max: number): void {
+  maxActive = max
 }
 
 /** Para los tests: vuelve todo a reposo. */
 export function resetMascotForTests(): void {
   activities.loading = 0
   activities.computing = 0
-  reaction = null
-
-  if (reactionTimer) {
-    clearTimeout(reactionTimer)
-    reactionTimer = null
-  }
+  reactions.clear()
+  socials.clear()
 }

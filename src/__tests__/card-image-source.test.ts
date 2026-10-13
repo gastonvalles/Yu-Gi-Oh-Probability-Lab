@@ -12,7 +12,7 @@ describe('las imágenes de las cartas pasan por el proxy', () => {
     // Lo que no es una imagen de carta (otra carpeta, otro host, una ruta rara) no se toca.
     expect(cardImageSrc('https://images.ygoprodeck.com/images/other/1.jpg')).toBe('https://images.ygoprodeck.com/images/other/1.jpg')
     expect(cardImageSrc('https://images.ygoprodeck.com/images/cards/../x.jpg')).toBe('https://images.ygoprodeck.com/images/cards/../x.jpg')
-    expect(cardImageSrc('/mascot/kuriboh.svg')).toBe('/mascot/kuriboh.svg')
+    expect(cardImageSrc('/mascot/cupsy/idle.png')).toBe('/mascot/cupsy/idle.png')
     expect(cardImageSrc('data:image/png;base64,AAAA')).toBe('data:image/png;base64,AAAA')
   })
 

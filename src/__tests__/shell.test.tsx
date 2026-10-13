@@ -34,13 +34,21 @@ describe('el menú de la app', () => {
   it('agrupa los destinos: los pasos del deck, las herramientas y la referencia', () => {
     expect(GROUPS.map((group) => [group.label, group.items.map((item) => item.key)])).toEqual([
       ['Tu deck', ['deck-builder', 'categorization', 'probability-lab', 'workspace', 'export']],
-      ['Herramientas', ['practice', 'life']],
+      ['Herramientas', ['practice', 'life', 'mascots']],
       ['Descubrir', ['meta', 'tournaments', 'replays']],
     ])
   })
 
-  it('la mesa de práctica sólo se ofrece con cartas en el Main; la calculadora de LP, siempre', () => {
-    expect(buildAppNavGroups(STEPS, { practice: false })[1]?.items.map((item) => item.key)).toEqual(['life'])
+  it('la mesa de práctica sólo se ofrece con cartas en el Main; la calculadora de LP y las mascotas, siempre', () => {
+    expect(buildAppNavGroups(STEPS, { practice: false })[1]?.items.map((item) => item.key)).toEqual(['life', 'mascots'])
+  })
+
+  it('las mascotas son una herramienta más del menú, con su patita, y no hay un botón suelto de mascotas abajo', () => {
+    const mascots = GROUPS[1]?.items.find((item) => item.key === 'mascots')
+
+    expect(mascots).toMatchObject({ label: 'Mascotas', icon: 'paw' })
+    render(<AppSidebar groups={GROUPS} activeKey="export" onSelect={() => {}} collapsed={false} onToggleCollapsed={() => {}} />)
+    expect(screen.getAllByRole('button', { name: 'Mascotas' })).toHaveLength(1)
   })
 
   it('el destino abierto lleva aria-current, elegir otro avisa cuál, y cómo viene cada paso se dice con palabras (no con un punto de color)', () => {
@@ -82,14 +90,14 @@ describe('el menú lateral', () => {
 
     const aside = document.querySelector('aside')
     expect(aside).toHaveAttribute('data-collapsed', 'false')
-    // Abierto lleva el idioma y las mascotas.
+    // Abierto lleva el idioma.
     expect(screen.getByRole('group', { name: 'Idioma' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Contraer menú' }))
     expect(onToggle).toHaveBeenCalledTimes(1)
 
     rerender(<AppSidebar groups={GROUPS} activeKey="export" onSelect={() => {}} collapsed onToggleCollapsed={onToggle} />)
     expect(aside).toHaveAttribute('data-collapsed', 'true')
-    // Contraído el idioma y las mascotas se desvanecen y no se pueden tocar ni enfocar (el renglón conserva su alto: la flecha de abajo no se mueve).
+    // Contraído el idioma se desvanece y no se puede tocar ni enfocar (el renglón conserva su alto: la flecha de abajo no se mueve).
     expect(screen.getByRole('group', { name: 'Idioma' }).parentElement).toHaveClass('group-data-[collapsed=true]/sidebar:invisible', 'group-data-[collapsed=true]/sidebar:opacity-0')
     expect(screen.getByRole('button', { name: 'Expandir menú' })).toHaveAttribute('aria-expanded', 'false')
   })
