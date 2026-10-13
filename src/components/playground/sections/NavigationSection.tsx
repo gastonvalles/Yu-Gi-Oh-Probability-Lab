@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { buildAppNavGroups, buildDeckWorkflowNavigationItems } from '../../deck-mode/deck-workflow-navigation'
+import { ReplayBar, type ReplayMark, type ReplaySpeed } from '../../probability/ReplayBar'
 import { AppFooter } from '../../shell/AppFooter'
 import { AppShell } from '../../shell/AppShell'
 import { AppSidebar } from '../../shell/AppSidebar'
@@ -11,6 +12,60 @@ import { Card } from '../../ui/Card'
 import { StepHero } from '../../StepHero'
 import { StepPage } from '../../ui/StepPage'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
+
+/** Un replay de mentira: 36 pasos, con un cambio de fase cada seis y un turno nuevo en la mitad. */
+const DEMO_MARKS: ReplayMark[] = Array.from({ length: 36 }, (_, index) => ({ phase: index % 6 === 5, turnStart: index === 18 }))
+const DEMO_AUTOPLAY_MS = 1400
+
+/** Los controles del replay con un replay de mentira que avanza solo (a la velocidad elegida), para tocarlos como en la mesa. */
+function ReplayDemo({ className }: { className?: string }) {
+  const [cursor, setCursor] = useState(0)
+  const [playing, setPlaying] = useState(false)
+  const [speed, setSpeed] = useState<ReplaySpeed>(1)
+
+  useEffect(() => {
+    if (!playing) return
+    if (cursor >= DEMO_MARKS.length) {
+      setPlaying(false)
+      return
+    }
+
+    const timer = window.setTimeout(() => setCursor(cursor + 1), DEMO_AUTOPLAY_MS / speed)
+    return () => window.clearTimeout(timer)
+  }, [playing, cursor, speed])
+
+  return (
+    <ReplayBar
+      className={className}
+      marks={DEMO_MARKS}
+      cursor={cursor}
+      playing={playing}
+      playLabel={playing ? 'Pausar' : cursor >= DEMO_MARKS.length ? 'Ver de nuevo' : 'Reproducir'}
+      speed={speed}
+      describe={(step) => (step === 0 ? 'Mano inicial' : `Paso ${step} de ${DEMO_MARKS.length}`)}
+      onSeek={setCursor}
+      onTogglePlay={() => {
+        if (playing) {
+          setPlaying(false)
+        } else {
+          if (cursor >= DEMO_MARKS.length) setCursor(0)
+          setPlaying(true)
+        }
+      }}
+      onRestart={() => setCursor(0)}
+      onPrevious={() => {
+        setPlaying(false)
+        setCursor((current) => Math.max(0, current - 1))
+      }}
+      onNext={() => {
+        setPlaying(false)
+        setCursor((current) => Math.min(DEMO_MARKS.length, current + 1))
+      }}
+      onOpenSteps={() => {}}
+      onSpeed={setSpeed}
+    />
+  )
+}
 
 /** Una pantalla de relleno para probar el armazón. */
 function DemoPage({ onExit }: { onExit: () => void }) {
@@ -92,6 +147,17 @@ export function NavigationSection() {
           </div>
         </Specimen>
       </SpecimenGrid>
+
+      <Specimen title="Controles del replay" layout="free" note={<>Como los de YGOPocket: volver al principio, anterior, reproducir, siguiente, la línea de tiempo (se toca, se arrastra o se maneja con el teclado), la lista de pasos y la velocidad. Violeta lo ya visto, verde el paso actual, una rayita naranja los cambios de fase y una línea los turnos. Archivo: <Tag>probability/ReplayBar.tsx</Tag></>}>
+        <div className="grid gap-4">
+          <div className="rounded-card border border-border-subtle p-3">
+            <ReplayDemo />
+          </div>
+          <div className="w-full max-w-[23.4rem] rounded-card border border-border-subtle p-3">
+            <ReplayDemo />
+          </div>
+        </div>
+      </Specimen>
 
       <Specimen title="Pie" layout="free" note={<>Autoría, aviso de sitio no oficial, redes y privacidad; va abajo de toda pantalla. Archivo: <Tag>shell/AppFooter.tsx</Tag></>}>
         <div className="grid gap-4">

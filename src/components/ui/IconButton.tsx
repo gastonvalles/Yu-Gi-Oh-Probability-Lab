@@ -6,10 +6,11 @@ import { Icon } from './Icon'
 type IconButtonSize = 'sm' | 'md' | 'lg'
 
 /**
- * raised: botón de barra de herramientas (por defecto) · close: X de los encabezados ·
- * ghost: sin fondo (papelera de zona) · flat: blanco, grande y sin fondo (estética de la práctica).
+ * raised: botón de barra de herramientas (por defecto) · close: X de los encabezados · ghost: sin fondo (papelera de zona) ·
+ * flat: blanco, grande y sin fondo (estética de la práctica) · outline: redondo con borde (volver al principio de un replay) ·
+ * primary: redondo violeta, la acción principal de una barra (reproducir).
  */
-type IconButtonTone = 'raised' | 'close' | 'ghost' | 'flat'
+type IconButtonTone = 'raised' | 'close' | 'ghost' | 'flat' | 'outline' | 'primary'
 
 interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: IconButtonSize
@@ -25,6 +26,8 @@ const SIZES: Record<IconButtonTone, Record<IconButtonSize, string>> = {
   close: { sm: 'size-8 pointer-coarse:size-11 [&_svg]:size-4', md: 'size-9 pointer-coarse:size-11 [&_svg]:size-[1.125rem]', lg: 'size-10 [&_svg]:size-5' },
   ghost: { sm: 'size-8 pointer-coarse:size-11 [&_svg]:size-4', md: 'size-10 [&_svg]:size-5', lg: 'size-10 [&_svg]:size-5' },
   flat: { sm: 'size-11 [&_svg]:size-6', md: 'size-12 [&_svg]:size-7', lg: 'size-12 [&_svg]:size-7' },
+  outline: { sm: 'size-9 [&_svg]:size-4', md: 'size-10 [&_svg]:size-[1.125rem]', lg: 'size-12 [&_svg]:size-5' },
+  primary: { sm: 'size-10 [&_svg]:size-[1.125rem]', md: 'size-12 [&_svg]:size-5', lg: 'size-14 [&_svg]:size-6' },
 }
 
 const toneStyle = variants({
@@ -35,6 +38,8 @@ const toneStyle = variants({
       close: 'rounded-full bg-transparent text-white hover:bg-tint/10 active:bg-tint/16',
       ghost: 'rounded-control bg-transparent text-foreground hover:bg-tint/10',
       flat: 'rounded-full bg-transparent text-white hover:bg-tint/8 active:bg-tint/16 [&_svg]:stroke-[1.3]',
+      outline: 'rounded-full border border-tint/30 bg-card-background text-foreground hover:bg-tint/14 disabled:pointer-events-none disabled:opacity-40',
+      primary: 'rounded-full bg-primary text-primary-foreground shadow-brand hover:bg-primary-hover active:translate-y-px disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none',
     },
   },
   defaults: { tone: 'raised' },

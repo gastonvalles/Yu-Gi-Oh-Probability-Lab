@@ -54,6 +54,7 @@ import { FX_CARD, FxFrame, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight,
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PracticeMatPanel } from './PracticeMatPanel'
+import { ReplayBar, type ReplayMark, type ReplaySpeed } from './ReplayBar'
 import { CARD_BACK, CARD_BACK_URL, PRACTICE_PALETTE } from './practice-styles'
 
 export interface MatCard {
@@ -178,13 +179,8 @@ type Picking =
 
 const toggle = (list: string[], id: string) => (list.includes(id) ? list.filter((entry) => entry !== id) : [...list, id])
 
-/** Reproducción de un combo: cuánto espera entre jugadas, normal y con el avance rápido. */
+/** Reproducción de un combo: cuánto espera entre jugadas a velocidad normal (a 2× espera la mitad; a 0,5×, el doble). */
 const AUTOPLAY_MS = 1400
-const FAST_AUTOPLAY_MS = 450
-
-/** Botones redondos del replay (pausa / reproducir y avance rápido), como los de un replay de videojuego; apretado = claro. */
-const REPLAY_BUTTON =
-  'inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-tint/30 bg-card-background text-foreground shadow-[0_2px_8px_rgba(0,0,0,0.4)] transition-[background-color,border-color,color] duration-150 hover:bg-tint/14 focus-visible:outline-none focus-visible:shadow-focus pointer-coarse:size-10 [&_svg]:block [&_svg]:size-4 aria-pressed:border-foreground aria-pressed:bg-foreground aria-pressed:text-background aria-pressed:hover:bg-foreground/90'
 
 /** `data-drop` y nombre de una zona de la mesa. */
 const dropIdOf = (spot: MatSpot, index: number) => (spot === 'field' ? 'field' : `${spot}:${index}`)
@@ -431,7 +427,7 @@ export function PracticeMat({
 
   // Reproducir un combo: las jugadas avanzan solas (arranca al cargarlo; cualquier jugada propia lo pausa), más rápido con el avance rápido.
   const [autoplay, setAutoplay] = useState(false)
-  const [fast, setFast] = useState(false)
+  const [speed, setSpeed] = useState<ReplaySpeed>(1)
 
   useEffect(() => {
     if (!autoplay || !isDealt) return
@@ -441,9 +437,9 @@ export function PracticeMat({
       return
     }
 
-    const timer = window.setTimeout(() => onSeek(session.cursor + 1), fast ? FAST_AUTOPLAY_MS : AUTOPLAY_MS)
+    const timer = window.setTimeout(() => onSeek(session.cursor + 1), AUTOPLAY_MS / speed)
     return () => window.clearTimeout(timer)
-  }, [autoplay, isDealt, session.cursor, session.actions.length, onSeek, fast])
+  }, [autoplay, isDealt, session.cursor, session.actions.length, onSeek, speed])
 
   const closeViewer = useCallback(() => {
     // Después de mirar el deck sin sacar nada se baraja, como en la mesa real (y la jugada queda anotada).
@@ -923,6 +919,19 @@ export function PracticeMat({
   )
 
   const replayLabel = autoplay ? t('practice.mat.pause') : live ? t('practice.mat.watchAgain') : t('practice.mat.play')
+  // La línea de tiempo del replay: una marca por jugada (cambio de fase, comienzo de turno). Se arma una vez por combo, no por paso.
+  const replayMarks = useMemo<ReplayMark[]>(() => {
+    if (!session.replay) return []
+
+    let current = session.initial
+
+    return session.actions.map((action) => {
+      const before = current
+      current = matReducer(current, action)
+
+      return { phase: action.type === 'phase', turnStart: current.turn !== before.turn }
+    })
+  }, [session.replay, session.initial, session.actions])
   const pickingText =
     picking?.kind === 'tributes'
       ? t('practice.mat.pickTributes', { count: picking.required, chosen: picking.chosen.length })
@@ -1068,6 +1077,33 @@ export function PracticeMat({
           ) : null}
         </div>
 
+        {/* Replay (sólo viendo un combo guardado): los controles de YGOPocket. La lista de pasos se abre aparte, en el mismo panel del celular. */}
+        {session.replay && !picking ? (
+          <ReplayBar
+            marks={replayMarks}
+            cursor={session.cursor}
+            playing={autoplay}
+            playLabel={replayLabel}
+            speed={speed}
+            describe={(step) => (step === 0 ? t('practice.mat.startingHand') : t('practice.replay.stepOf', { step, total: session.actions.length, text: steps[step - 1] ?? '' }))}
+            onSeek={onSeek}
+            onTogglePlay={() => {
+              if (autoplay) {
+                setAutoplay(false)
+              } else {
+                // Al final, reproducir vuelve a empezar ("Ver de nuevo").
+                if (live) onSeek(0)
+                setAutoplay(true)
+              }
+            }}
+            onRestart={() => onSeek(0)}
+            onPrevious={() => { setAutoplay(false); onSeek(session.cursor - 1) }}
+            onNext={() => { setAutoplay(false); onSeek(session.cursor + 1) }}
+            onOpenSteps={() => setPanelOpen(true)}
+            onSpeed={setSpeed}
+          />
+        ) : null}
+
         {/* Pasos: en vivo muestra la última jugada; con jugadas, se recorre con Anterior / Siguiente. Eligiendo, pide lo que falta. */}
         <div className="flex min-h-9 flex-wrap items-center gap-x-2 gap-y-1 px-1 text-micro text-muted" role="status" aria-label={t('practice.mat.currentStep')}>
           {pickingText ? (
@@ -1085,39 +1121,20 @@ export function PracticeMat({
           ) : null}
           {!picking && session.actions.length > 0 ? (
             <>
-              {/* Replay (sólo viendo un combo guardado): pausa / reproducir (al final, "Ver de nuevo" vuelve al principio) y avance rápido, redondos como en un replay. */}
-              {session.replay ? (
-                <>
-                  <button
-                    type="button"
-                    className={REPLAY_BUTTON}
-                    aria-label={replayLabel}
-                    title={replayLabel}
-                    onClick={() => {
-                      if (autoplay) {
-                        setAutoplay(false)
-                      } else {
-                        if (live) onSeek(0)
-                        setAutoplay(true)
-                      }
-                    }}
-                  >
-                    <Icon name={autoplay ? 'pause' : 'play'} />
-                  </button>
-                  <button type="button" className={REPLAY_BUTTON} aria-label={t('practice.mat.fastForward')} title={t('practice.mat.fastForward')} aria-pressed={fast} onClick={() => setFast((value) => !value)}>
-                    <Icon name="fast-forward" />
-                  </button>
-                </>
-              ) : null}
-              <Button variant="tertiary" size="sm" className="min-h-8 px-2" disabled={session.cursor === 0} onClick={() => { setAutoplay(false); onSeek(session.cursor - 1) }}>
-                {t('practice.mat.previous')}
-              </Button>
+              {/* En vivo, Anterior y Siguiente; viendo un combo, esos botones están en los controles del replay de arriba. */}
+              {session.replay ? null : (
+                <Button variant="tertiary" size="sm" className="min-h-8 px-2" disabled={session.cursor === 0} onClick={() => { setAutoplay(false); onSeek(session.cursor - 1) }}>
+                  {t('practice.mat.previous')}
+                </Button>
+              )}
               <span className="font-semibold tabular-nums text-foreground">
                 {session.cursor}/{session.actions.length}
               </span>
-              <Button variant="tertiary" size="sm" className="min-h-8 px-2" disabled={live} onClick={() => { setAutoplay(false); onSeek(session.cursor + 1) }}>
-                {t('practice.mat.next')}
-              </Button>
+              {session.replay ? null : (
+                <Button variant="tertiary" size="sm" className="min-h-8 px-2" disabled={live} onClick={() => { setAutoplay(false); onSeek(session.cursor + 1) }}>
+                  {t('practice.mat.next')}
+                </Button>
+              )}
             </>
           ) : null}
           {!picking ? (
