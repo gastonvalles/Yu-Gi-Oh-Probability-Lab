@@ -16,8 +16,7 @@ export function AppFooter({ className }: { className?: string }) {
         className,
       )}
     >
-      {/* En el celular el texto es una columna angosta y balanceada: queda entre la mascota (abajo a la izquierda) y los botones flotantes (abajo a la derecha) y no lo tapan. */}
-      <SiteCredit withDisclaimer className="order-2 max-w-[11rem] text-balance min-[1101px]:order-none min-[1101px]:max-w-prose" />
+      <SiteCredit withDisclaimer className="order-2 max-w-prose min-[1101px]:order-none" />
       {/* En el celular el grupo "desaparece" (`contents`) para que sus piezas se ordenen solas en la columna; en escritorio es una fila. */}
       <div className="contents min-[1101px]:flex min-[1101px]:flex-wrap min-[1101px]:items-center min-[1101px]:gap-x-3 min-[1101px]:gap-y-1">
         <SocialLinks className="order-1 min-[1101px]:order-none" />
