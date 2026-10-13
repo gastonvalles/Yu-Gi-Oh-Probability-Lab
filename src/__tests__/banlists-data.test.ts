@@ -26,6 +26,22 @@ describe('src/data/banlists.json (lo que escribe scripts/sync-banlists.mjs)', ()
     expect(new Set(data.lists.map((list) => list.region))).toEqual(new Set(['tcg', 'ocg']))
   })
 
+  it('cada lista trae el día exacto en que entró en vigencia (de Yugipedia): las nuevas pueden tener sólo el mes hasta que su página exista', () => {
+    const monthOnly = data.lists.filter((list) => list.date.length === 7)
+
+    // Como mucho la lista de este mes puede estar sin día; el resto, con el de los anuncios de Konami.
+    expect(monthOnly.length).toBeLessThanOrEqual(2)
+
+    const day = (region: string, month: string) => data.lists.find((list) => list.region === region && list.date.startsWith(month))?.date
+
+    expect(day('tcg', '2026-09')).toBe('2026-09-21')
+    expect(day('tcg', '2026-05')).toBe('2026-05-18')
+    expect(day('tcg', '2022-02')).toBe('2022-02-07')
+    expect(day('tcg', '2013-10')).toBe('2013-10-11')
+    expect(day('ocg', '2026-10')).toBe('2026-10-01')
+    expect(day('ocg', '2014-02')).toBe('2014-02-01')
+  })
+
   it('cada carta está en una sola sección de su lista, sin repetirse y en orden, y todas tienen nombre', () => {
     const problems: string[] = []
 

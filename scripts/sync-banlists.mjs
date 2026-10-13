@@ -12,11 +12,16 @@ import { fileURLToPath } from 'node:url'
  *
  * El formato del archivo: una lista por encabezado `!<año>.<mes>[.<día>][ TCG]` (sin "TCG" es del OCG, salvo las cuatro primeras, que son del TCG
  * y no llevan la etiqueta), con sus secciones `#forbidden`, `#limit` y `#semi limit` y una carta por línea (`<código> <límite> --<nombre>`).
- * Sólo trae el mes (a veces el día): es lo que se muestra.
+ * Sólo trae el mes (a veces el día). El día exacto en que entró en vigencia cada lista sale de Yugipedia: la página de cada lista ("May 2026 Lists
+ * (TCG)") tiene una plantilla `Limitation list` con `start_date` y `medium` (TCG u OCG). Se piden de a 50 páginas y sólo las listas que todavía no
+ * tienen día (el archivo ya escrito se reusa: una lista nueva es un pedido, y ninguno si todas lo tienen). Si Yugipedia no responde o todavía no tiene
+ * la página de una lista nueva, esa lista queda con el mes y al día siguiente se vuelve a probar: la bajada no falla por eso.
  *
  * Lo corre todos los días el workflow sync-meta-decks; a mano: `npm run sync:banlists`.
  */
 const LFLIST_URL = 'https://raw.githubusercontent.com/Fluorohydride/ygopro/master/lflist.conf'
+const YUGIPEDIA_API = 'https://yugipedia.com/api.php'
+const WIKI_BATCH = 50
 const YGOPRODECK_CARDS = 'https://db.ygoprodeck.com/api/v7/cardinfo.php'
 const OUT_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'src', 'data', 'banlists.json')
 const USER_AGENT = 'ygo-probability-lab (+https://github.com/gastonvalles/Yu-Gi-Oh-Probability-Lab)'
@@ -30,6 +35,7 @@ const MIN_LISTS_PER_REGION = 40
 const MIN_CARDS = 10_000
 
 const STATUS_BY_LIMIT = { 0: 'forbidden', 1: 'limited', 2: 'semiLimited' }
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 /** "2026.9 TCG" → "2026-09"; "2013.10.11 TCG" → "2013-10-11". Una etiqueta que no empieza con año y mes no es una lista. */
 export function listDate(header) {
@@ -70,6 +76,50 @@ export function parseLflist(text) {
 
   return lists
 }
+
+const monthKey = (region, date) => `${region}|${date.slice(0, 7)}`
+
+/** Los títulos con que Yugipedia puede llamar a la página de una lista: "September 2026 Lists (TCG)", o sin la región las más viejas. */
+export function wikiTitles(region, date) {
+  const [year, month] = date.split('-')
+  const base = `${MONTH_NAMES[Number(month) - 1]} ${year} Lists`
+
+  return [`${base} (${region.toUpperCase()})`, base]
+}
+
+/**
+ * De la página de una lista en Yugipedia a { region, date: AAAA-MM-DD }, el día en que entró en vigencia ("start_date = September 21, 2026", a veces con un
+ * punto al final), o null si no tiene la plantilla (una página de desambiguación, por ejemplo).
+ */
+export function wikiListDate(text) {
+  const field = (name) => new RegExp(`\\|\\s*${name}\\s*=\\s*([^\\n|]*)`).exec(text)?.[1]?.trim() ?? ''
+  const start = /^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})/.exec(field('start_date'))
+  const month = MONTH_NAMES.findIndex((name) => name.toLowerCase() === start?.[1].toLowerCase())
+  const region = field('medium').toLowerCase()
+
+  if (!start || month < 0 || (region !== 'tcg' && region !== 'ocg')) {
+    return null
+  }
+
+  return { region, date: `${start[3]}-${String(month + 1).padStart(2, '0')}-${start[2].padStart(2, '0')}` }
+}
+
+/** Las fechas con día que ya tiene el archivo escrito la vez anterior: región|AAAA-MM → AAAA-MM-DD. */
+export function knownDates(text) {
+  try {
+    const { lists } = JSON.parse(text)
+
+    return new Map(lists.filter((list) => list.date.length > 7).map((list) => [monthKey(list.region, list.date), list.date]))
+  } catch {
+    return new Map()
+  }
+}
+
+/** Las listas que todavía tienen sólo el mes y no están en `known`. */
+export const listsNeedingDay = (lists, known) => lists.filter((list) => list.date.length === 7 && !known.has(monthKey(list.region, list.date)))
+
+/** Cambia la fecha de cada lista por la que trae `exact` (región|AAAA-MM → AAAA-MM-DD), si la tiene: el resto queda como está. */
+export const withExactDates = (lists, exact) => lists.map((list) => ({ ...list, date: exact.get(monthKey(list.region, list.date)) ?? list.date }))
 
 /** De cada código de imagen de YGOPRODeck (el de la carta y los de sus artes alternativos) a la carta: { id, name }. */
 export function buildCardLookup(cards) {
@@ -143,8 +193,57 @@ async function getText(url) {
   return response.text()
 }
 
+/**
+ * Los días de Yugipedia de las listas pedidas (región|AAAA-MM → AAAA-MM-DD): de a 50 páginas, con las dos formas de nombrar la de cada lista; de cada una
+ * se toma la que dice ser de esa región y de ese mes, así una página equivocada (o la de otra región del mismo mes) no cambia nada.
+ */
+async function fetchWikiDates(pending) {
+  const titles = [...new Set(pending.flatMap((list) => wikiTitles(list.region, list.date)))]
+  const wanted = new Set(pending.map((list) => monthKey(list.region, list.date)))
+  const exact = new Map()
+
+  for (let i = 0; i < titles.length; i += WIKI_BATCH) {
+    const query = new URLSearchParams({
+      action: 'query',
+      prop: 'revisions',
+      rvprop: 'content',
+      rvsection: '0',
+      format: 'json',
+      formatversion: '2',
+      redirects: '1',
+      titles: titles.slice(i, i + WIKI_BATCH).join('|'),
+    })
+    const { query: result } = JSON.parse(await getText(`${YUGIPEDIA_API}?${query}`))
+
+    for (const page of result.pages) {
+      const found = page.missing ? null : wikiListDate(page.revisions?.[0]?.content ?? '')
+
+      if (found && wanted.has(monthKey(found.region, found.date))) {
+        exact.set(monthKey(found.region, found.date), found.date)
+      }
+    }
+  }
+
+  return exact
+}
+
 async function main() {
-  const lists = parseLflist(await getText(LFLIST_URL))
+  const parsed = parseLflist(await getText(LFLIST_URL))
+  const previous = await readFile(OUT_FILE, 'utf8').catch(() => null)
+  const exact = knownDates(previous ?? '')
+  const pending = listsNeedingDay(parsed, exact)
+
+  if (pending.length > 0) {
+    try {
+      for (const [key, date] of await fetchWikiDates(pending)) {
+        exact.set(key, date)
+      }
+    } catch (error) {
+      console.warn(`Yugipedia no respondió (${error.message}): las listas nuevas quedan con el mes.`)
+    }
+  }
+
+  const lists = withExactDates(parsed, exact)
 
   for (const region of ['tcg', 'ocg']) {
     const count = lists.filter((list) => list.region === region).length
@@ -169,7 +268,6 @@ async function main() {
   }
 
   const content = banlistsFile(built, new Date().toISOString().slice(0, 10))
-  const previous = await readFile(OUT_FILE, 'utf8').catch(() => null)
 
   // Si sólo cambió la fecha de la bajada no se reescribe: el commit diario no tiene por qué cambiar este archivo.
   if (previous && previous.replace(/"fetchedAt":"[^"]*"/, '') === content.replace(/"fetchedAt":"[^"]*"/, '')) {

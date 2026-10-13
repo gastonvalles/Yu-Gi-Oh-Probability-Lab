@@ -1,5 +1,5 @@
 import banlistsJson from '../data/banlists.json'
-import { dateLocale, formatDay } from '../i18n'
+import { dateLocale } from '../i18n'
 import type { BanlistStatus } from '../types'
 
 /**
@@ -11,7 +11,7 @@ export type BanlistRegion = 'tcg' | 'ocg'
 
 export interface Banlist {
   region: BanlistRegion
-  /** AAAA-MM (de casi todas) o AAAA-MM-DD: de cuándo es la lista. */
+  /** AAAA-MM-DD: el día en que entró en vigencia (de Yugipedia). Una lista nueva que todavía no tiene su página queda con AAAA-MM. */
   date: string
   forbidden: number[]
   limited: number[]
@@ -88,10 +88,10 @@ export function diffBanlists(previous: Banlist | null, next: Banlist): Record<Ba
   return changes
 }
 
-/** "2026-09" → "Septiembre de 2026" (en inglés, "September 2026"); "2013-10-11" → "11/10/2013" (en inglés, "Oct 11, 2013"). */
+/** "2026-09-21" → "21 de septiembre de 2026" (en inglés, "September 21, 2026"); "2026-09", si todavía no se sabe el día → "Septiembre de 2026" ("September 2026"). */
 export function formatBanlistDate(date: string): string {
   if (date.length > 7) {
-    return formatDay(new Date(`${date}T00:00:00Z`), 'UTC')
+    return new Intl.DateTimeFormat(dateLocale(), { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`))
   }
 
   const month = new Intl.DateTimeFormat(dateLocale(), { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}-01T00:00:00Z`))

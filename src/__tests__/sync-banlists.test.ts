@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { banlistsFile, buildBanlists, buildCardLookup, listDate, parseLflist, regionOf } from '../../scripts/sync-banlists.mjs'
+import { banlistsFile, buildBanlists, buildCardLookup, knownDates, listDate, listsNeedingDay, parseLflist, regionOf, wikiListDate, wikiTitles, withExactDates } from '../../scripts/sync-banlists.mjs'
 
 const SAMPLE = `#[2026.10][2026.9 TCG]
 #[2026.5 TCG][2013.3.1]
@@ -94,6 +94,57 @@ describe('scripts/sync-banlists.mjs: de lflist.conf a las banlists', () => {
       [4280258, 'Apollousa, Bow of the Goddess'],
       [20292186, 'Artifact Scythe'],
       [62320425, 'Agido the Ancient Sentry'],
+    ])
+  })
+
+  it('Yugipedia llama a la página de cada lista por mes y año, con la región o sin ella', () => {
+    expect(wikiTitles('tcg', '2026-09')).toEqual(['September 2026 Lists (TCG)', 'September 2026 Lists'])
+    expect(wikiTitles('ocg', '2013-03-01')).toEqual(['March 2013 Lists (OCG)', 'March 2013 Lists'])
+  })
+
+  it('el día sale de la plantilla de la página (a veces con un punto al final) y tiene que decir de qué región es', () => {
+    const page = (start: string, medium: string) => `These are the '''lists'''.\n\n{{Limitation list\n| start_date   = ${start}\n| end_date     = May 18, 2026\n| medium       = ${medium}\n| prev         = X\n| forbidden    = \nAbyss Dweller`
+
+    expect(wikiListDate(page('September 21, 2026', 'TCG'))).toEqual({ region: 'tcg', date: '2026-09-21' })
+    expect(wikiListDate(page('February 7, 2022.', 'TCG'))).toEqual({ region: 'tcg', date: '2022-02-07' })
+    expect(wikiListDate(page('October 1, 2026', 'OCG'))).toEqual({ region: 'ocg', date: '2026-10-01' })
+    // Sin plantilla (una página de desambiguación), sin región conocida o sin fecha: no es una lista.
+    expect(wikiListDate('Esta página lleva a: [[X]]')).toBeNull()
+    expect(wikiListDate(page('September 21, 2026', 'Anime'))).toBeNull()
+    expect(wikiListDate(page('Septembre', 'TCG'))).toBeNull()
+    expect(wikiListDate('')).toBeNull()
+  })
+
+  it('se reusan los días que el archivo ya tiene y sólo se piden los de las listas que sólo traen el mes', () => {
+    const file = JSON.stringify({
+      lists: [
+        { region: 'tcg', date: '2026-05-18' },
+        { region: 'ocg', date: '2026-07' },
+      ],
+    })
+    const known = knownDates(file)
+
+    expect([...known]).toEqual([['tcg|2026-05', '2026-05-18']])
+    expect(knownDates('')).toEqual(new Map())
+    expect(knownDates('no es json')).toEqual(new Map())
+
+    const lists = parseLflist(SAMPLE)
+
+    // La 2026.10 del OCG y la 2026.9 del TCG sólo traen el mes; las 2013 ya traen el día.
+    expect(listsNeedingDay(lists, new Map()).map((list: { header: string }) => list.header)).toEqual(['2026.10', '2026.9 TCG'])
+    expect(listsNeedingDay(lists, new Map([['tcg|2026-09', '2026-09-21']])).map((list: { header: string }) => list.header)).toEqual(['2026.10'])
+  })
+
+  it('con el día de Yugipedia la lista cambia de fecha (y se ordena por ella); la que no lo tiene queda con el mes', () => {
+    const lookup = buildCardLookup([{ id: 20292186, name: 'Artifact Scythe' }])
+    const exact = new Map([['tcg|2026-09', '2026-09-21']])
+    const { lists } = buildBanlists(withExactDates(parseLflist(SAMPLE), exact), lookup)
+
+    expect(lists.map((list: { region: string; date: string }) => [list.region, list.date])).toEqual([
+      ['ocg', '2026-10'],
+      ['tcg', '2013-03-01'],
+      ['tcg', '2013-10-11'],
+      ['tcg', '2026-09-21'],
     ])
   })
 
