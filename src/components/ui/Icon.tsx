@@ -249,6 +249,13 @@ const PATHS = {
     </>
   ),
 
+  /** Expansiones: una caja de sobres vista en perspectiva. */
+  package: (
+    <>
+      <path data-fill d="M3.5 8 12 3.5 20.5 8v8L12 20.5 3.5 16z" />
+      <path d="m3.5 8 8.5 4.5L20.5 8M12 12.5v8" />
+    </>
+  ),
   /** Precios: una moneda con el signo de dólar. */
   dollar: (
     <>

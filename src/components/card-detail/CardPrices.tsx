@@ -20,7 +20,7 @@ function formatDay(day: string): string {
 }
 
 /** El encabezado del Meta: la imagen a la derecha y un degradado oscuro que la deja leer el texto de la izquierda. Acá, el sobre de la expansión. */
-const packBackground = (code: string) => ({
+export const packBackground = (code: string) => ({
   backgroundImage: `linear-gradient(90deg, rgb(var(--card-background-rgb) / 0.97) 40%, rgb(var(--card-background-rgb) / 0.6)), url(${cardImageSrc(setImageUrl(code))})`,
   // Un poco más grande que la franja para que no asomen los bordes blancos del sobre, y centrado en la ilustración.
   backgroundSize: '115% auto',

@@ -13,6 +13,7 @@ const loaders = {
   tierLists: () => import('../meta/TierListsScreen'),
   tournaments: () => import('../meta/TournamentDecksScreen'),
   replays: () => import('../replays/ReplaysScreen'),
+  expansions: () => import('../expansions/ExpansionsScreen'),
   life: () => import('../life/LifeCalculatorScreen'),
 }
 
@@ -69,6 +70,7 @@ export const LazyPracticeSection = lazy(orReload(() => loaders.practice().then((
 export const LazyTierListsScreen = lazy(orReload(() => loaders.tierLists().then((m) => ({ default: m.TierListsScreen }))))
 export const LazyTournamentDecksScreen = lazy(orReload(() => loaders.tournaments().then((m) => ({ default: m.TournamentDecksScreen }))))
 export const LazyReplaysScreen = lazy(orReload(() => loaders.replays().then((m) => ({ default: m.ReplaysScreen }))))
+export const LazyExpansionsScreen = lazy(orReload(() => loaders.expansions().then((m) => ({ default: m.ExpansionsScreen }))))
 export const LazyLifeCalculatorScreen = lazy(orReload(() => loaders.life().then((m) => ({ default: m.LifeCalculatorScreen }))))
 
 export function preloadHeavySteps(): void {

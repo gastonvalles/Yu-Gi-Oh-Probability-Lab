@@ -7,16 +7,19 @@ import { fileURLToPath } from 'node:url'
  * TCGplayer ya no da keys nuevas para su API), los cruza con las cartas de YGOPRODeck por código de set y escribe
  * archivos estáticos que la app lee sin servidor, indexados por carta para que abrir una sola baje unos pocos KB
  * (no un archivo por cada expansión en la que salió):
- * - public/prices/index.json: la fecha de la última actualización, cuántos archivos hay y los sets (id, nombre y fecha de salida).
+ * - public/prices/index.json: la fecha de la última actualización, cuántos archivos hay y los sets (id, nombre, fecha de salida y cuántas impresiones tiene).
  * - public/prices/cards/<n>.json, con n = id de la carta % SHARDS: un objeto { "<id de la carta>": filas }, una carta por línea
  *   para que git sólo vea lo que cambió. Cada fila es una impresión y edición:
  *   [código del set, rareza, edición, precio de mercado, id del producto en TCGplayer, id del set].
+ * - public/prices/sets/<id del set>.json: lo mismo pero por expansión (para ver qué cartas trae y a cuánto está cada una): un arreglo con una
+ *   impresión por línea, [código del set, rareza, edición, precio de mercado, id del producto en TCGplayer, id de la carta, nombre de la carta].
  * Lo corre todos los días el workflow sync-meta-decks; a mano: `npm run sync:prices`.
  */
 const TCGCSV = 'https://tcgcsv.com/tcgplayer/2' // categoría 2 = Yu-Gi-Oh!
 const YGOPRODECK_CARDS = 'https://db.ygoprodeck.com/api/v7/cardinfo.php'
 const OUT_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public', 'prices')
 const CARDS_DIR = path.join(OUT_DIR, 'cards')
+const SETS_DIR = path.join(OUT_DIR, 'sets')
 /** Cuántos archivos por carta: con unas 14.000 cartas con precio, cada uno pesa unos 4 KB comprimidos. La app lo lee del índice. */
 export const SHARDS = 256
 /** TCGCSV es un proyecto de una sola persona: pide un User-Agent que diga quién consulta, y se lo trata con pocos pedidos a la vez. */
@@ -106,10 +109,12 @@ const byRow = (a, b) => a[5] - b[5] || a[0].localeCompare(b[0]) || a[1].localeCo
  * Pasa los precios de "filas por set" a "filas por carta": cada fila del set va a las cartas que salieron con ese código.
  * Si YGOPRODeck lista la carta con ciertas rarezas para ese código, sólo van las filas de esas rarezas; si ninguna
  * coincide (la rareza se llama distinto en TCGplayer), van todas las del código.
- * Devuelve las filas por carta ([código, rareza, edición, mercado, producto, set]) y cuántas filas cruzaron con una carta.
+ * Devuelve las filas por carta ([código, rareza, edición, mercado, producto, set]), las filas por set ([código, rareza, edición, mercado, producto,
+ * id de la carta]: lo mismo visto desde la expansión) y cuántas filas cruzaron con una carta.
  */
 export function buildCardRows(sets, codeIndex) {
   const byCard = new Map()
+  const bySet = new Map()
   let matched = 0
   let total = 0
 
@@ -134,12 +139,15 @@ export function buildCardRows(sets, codeIndex) {
       for (const [cardId, rarities] of cards) {
         const strict = codeRows.filter((row) => rarities.has(normalize(row[1])))
         const list = byCard.get(cardId) ?? []
+        const inSet = bySet.get(groupId) ?? []
 
         for (const [, rarity, edition, market, productId] of strict.length > 0 ? strict : codeRows) {
           list.push([code, rarity, edition, market, productId, groupId])
+          inSet.push([code, rarity, edition, market, productId, cardId])
         }
 
         byCard.set(cardId, list)
+        bySet.set(groupId, inSet)
       }
     }
   }
@@ -148,7 +156,16 @@ export function buildCardRows(sets, codeIndex) {
     rows.sort(byRow)
   }
 
-  return { byCard, matched, total }
+  for (const rows of bySet.values()) {
+    rows.sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]) || a[2].localeCompare(b[2]) || a[4] - b[4] || a[5] - b[5])
+  }
+
+  return { byCard, bySet, matched, total }
+}
+
+/** El contenido del archivo de un set: un arreglo con una impresión por línea (y el nombre de la carta al final); vacío, `[]`. */
+export function setFile(rows, names) {
+  return rows.length > 0 ? `[\n${rows.map((row) => JSON.stringify([...row, names.get(row[5]) ?? ''])).join(',\n')}\n]\n` : '[]\n'
 }
 
 /** Un set que falló conserva lo de ayer: se suman a las filas nuevas las filas anteriores de esos sets. */
@@ -252,7 +269,8 @@ async function main() {
   }
 
   const sets = fetched.filter((entry) => entry.ok).map((entry) => ({ groupId: entry.group.groupId, rows: entry.rows }))
-  const { byCard, matched, total } = buildCardRows(sets, buildCodeIndex(cards))
+  const { byCard, bySet, matched, total } = buildCardRows(sets, buildCodeIndex(cards))
+  const names = new Map(cards.map((card) => [card.id, card.name]))
 
   if (matched / total < MIN_MATCHED_SHARE) {
     throw new Error(`Sólo ${matched} de ${total} filas cruzaron con una carta: no se escribe nada.`)
@@ -284,8 +302,36 @@ async function main() {
     if (await writeIfChanged(path.join(CARDS_DIR, `${n}.json`), shardFile(shards[n]))) changed += 1
   }
 
+  // Un archivo por set. Uno que falló hoy conserva el de ayer (y la cantidad de impresiones que tenía en el índice).
+  await mkdir(SETS_DIR, { recursive: true })
+
+  const previousIndex = JSON.parse((await readFile(path.join(OUT_DIR, 'index.json'), 'utf8').catch(() => null)) ?? '{"groups":[]}')
+  const previousCounts = new Map(previousIndex.groups.map(([id, , , count]) => [id, count ?? 0]))
+  const setCounts = new Map()
+  let changedSets = 0
+
+  for (const group of kept) {
+    const rows = bySet.get(group.groupId)
+
+    if (rows) {
+      setCounts.set(group.groupId, rows.length)
+
+      if (await writeIfChanged(path.join(SETS_DIR, `${group.groupId}.json`), setFile(rows, names))) changedSets += 1
+    } else {
+      setCounts.set(group.groupId, previousCounts.get(group.groupId) ?? 0)
+    }
+  }
+
+  const keptSetFiles = new Set(kept.map((group) => `${group.groupId}.json`))
+
+  for (const name of await readdir(SETS_DIR)) {
+    if (!keptSetFiles.has(name)) {
+      await rm(path.join(SETS_DIR, name), { force: true })
+    }
+  }
+
   const index = `{"updated":"${new Date().toISOString().slice(0, 10)}","shards":${SHARDS},"groups":[\n${kept
-    .map((group) => JSON.stringify([group.groupId, group.name, releaseDate(group.publishedOn ?? '')]))
+    .map((group) => JSON.stringify([group.groupId, group.name, releaseDate(group.publishedOn ?? ''), setCounts.get(group.groupId) ?? 0]))
     .join(',\n')}\n]}\n`
 
   await writeFile(path.join(OUT_DIR, 'index.json'), index)
@@ -294,7 +340,7 @@ async function main() {
   const shardNames = new Set(Array.from({ length: SHARDS }, (_, n) => `${n}.json`))
 
   for (const name of await readdir(OUT_DIR)) {
-    if (name !== 'index.json' && name !== 'cards') {
+    if (name !== 'index.json' && name !== 'cards' && name !== 'sets') {
       await rm(path.join(OUT_DIR, name), { force: true })
     }
   }
@@ -305,7 +351,7 @@ async function main() {
     }
   }
 
-  console.log(`Listo: ${byCard.size} cartas con precio en ${kept.length} sets (${changed} de ${SHARDS} archivos cambiaron, ${failed.length} sets fallaron y conservan lo anterior).`)
+  console.log(`Listo: ${byCard.size} cartas con precio en ${kept.length} sets (${changed} de ${SHARDS} archivos por carta y ${changedSets} de ${kept.length} por set cambiaron, ${failed.length} sets fallaron y conservan lo anterior).`)
 }
 
 // Se puede importar sin que corra (para los tests); como script, baja todo.

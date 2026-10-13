@@ -44,6 +44,9 @@ export const shell = {
   'shell.step.replays.label': 'Replays',
   'shell.step.replays.title': 'Replays de torneo',
   'shell.step.replays.detail': 'Los duelos de los decks del Meta, en video.',
+  'shell.step.expansions.label': 'Expansiones',
+  'shell.step.expansions.title': 'Expansiones y precios',
+  'shell.step.expansions.detail': 'Las cartas de cada expansión, con rareza y precio.',
 
   'shell.practice.open': 'Abrir práctica',
   'shell.practice.title': 'Práctica',

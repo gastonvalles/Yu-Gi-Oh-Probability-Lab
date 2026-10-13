@@ -5,6 +5,7 @@
  * no da keys nuevas para su API), los cruza con las cartas de YGOPRODeck por código de set y los deja como archivos
  * estáticos en `public/prices/`, indexados por carta: el índice (con los nombres y fechas de los sets, una vez por
  * sesión) y un archivo de unos 4 KB con todas las impresiones de la carta, sea cual sea la cantidad de reimpresiones.
+ * Los mismos precios vistos por expansión (para ver qué cartas trae una y a cuánto está cada una) salen de `public/prices/sets/<id>.json`.
  */
 
 export interface PrintingPrice {
@@ -29,9 +30,33 @@ interface PriceIndex {
   updated: string
   /** Cuántos archivos por carta hay: el de la carta es `cards/<id % shards>.json`. */
   shards: number
-  /** [id del set, nombre, fecha de salida (AAAA-MM-DD, vacía si TCGCSV no la tiene)] */
-  groups: Array<[number, string, string]>
+  /** [id del set, nombre, fecha de salida (AAAA-MM-DD, vacía si TCGCSV no la tiene), cuántas impresiones tiene] */
+  groups: Array<[number, string, string, number?]>
 }
+
+/** Una expansión: lo que alcanza para listarlas (las cartas se piden recién al abrir una). */
+export interface Expansion {
+  id: number
+  name: string
+  /** AAAA-MM-DD; vacía si no se sabe. */
+  date: string
+  /** Cuántas impresiones (carta + rareza + edición) trae. */
+  count: number
+}
+
+/** Una impresión de una expansión: la carta, su rareza y edición, y a cuánto está en TCGplayer. */
+export interface ExpansionCard {
+  cardId: number
+  name: string
+  code: string
+  rarity: string
+  edition: string
+  market: number | null
+  url: string
+}
+
+/** [código del set, rareza, edición, precio de mercado, id del producto en TCGplayer, id de la carta, nombre de la carta] */
+type ExpansionRow = [string, string, string, number | null, number, number, string]
 
 type GetJson = (url: string) => Promise<unknown>
 
@@ -72,7 +97,12 @@ export function filterPrintings(prices: PrintingPrice[], query: string): Printin
 }
 
 /** Lo ya pedido en esta sesión (por cada función de pedido): el índice y los archivos por carta no se piden dos veces. */
-const requests = new WeakMap<GetJson, Map<string, Promise<unknown>>>()
+let requests = new WeakMap<GetJson, Map<string, Promise<unknown>>>()
+
+/** Para los tests: olvida lo ya pedido (el índice y los archivos de la sesión). */
+export function resetPriceRequestsForTests(): void {
+  requests = new WeakMap()
+}
 
 function cached(get: GetJson, url: string): Promise<unknown> {
   let byUrl = requests.get(get)
@@ -121,3 +151,35 @@ export async function fetchCardPrices(cardId: number, get: GetJson = getJson): P
     updated: index.updated,
   }
 }
+
+/**
+ * Las expansiones con precios, las más nuevas primero (las que no tienen fecha, al final), y el día en que se bajaron los precios. Es el mismo índice
+ * que usan los precios de cada carta: se pide una vez por sesión.
+ */
+export async function fetchExpansions(get: GetJson = getJson): Promise<{ expansions: Expansion[]; updated: string }> {
+  const index = (await cached(get, `${PRICES_DIR}/index.json`)) as PriceIndex
+  const expansions = index.groups.map(([id, name, date, count]) => ({ id, name, date, count: count ?? 0 }))
+
+  // Sort estable: con la misma fecha (o sin ninguna), la de id más alto (la que se cargó después) va primero.
+  expansions.sort((a, b) => (a.date === '' ? 1 : 0) - (b.date === '' ? 1 : 0) || b.date.localeCompare(a.date) || b.id - a.id)
+
+  return { expansions, updated: index.updated }
+}
+
+/** Las cartas de una expansión en orden de código (y rareza), cada una con su precio y el link a su producto. Un solo archivo por expansión. */
+export async function fetchExpansionCards(expansionId: number, get: GetJson = getJson): Promise<ExpansionCard[]> {
+  const rows = (await cached(get, `${PRICES_DIR}/sets/${expansionId}.json`)) as ExpansionRow[]
+
+  return rows.map(([code, rarity, edition, market, productId, cardId, name]) => ({
+    cardId,
+    name,
+    code,
+    rarity,
+    edition,
+    market,
+    url: `https://www.tcgplayer.com/product/${productId}`,
+  }))
+}
+
+/** El arte chico de una carta por su id (el del arte original: el id de YGOPRODeck de la carta es el de su imagen). */
+export const cardSmallImageUrl = (cardId: number) => `https://images.ygoprodeck.com/images/cards_small/${cardId}.jpg`

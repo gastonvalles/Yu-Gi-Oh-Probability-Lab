@@ -31,6 +31,7 @@ import {
 import {
   LazyComparisonScreen,
   LazyDeckRolesPanel,
+  LazyExpansionsScreen,
   LazyExportDeckPanel,
   LazyPracticeSection,
   LazyProbabilityPanel,
@@ -255,6 +256,12 @@ export function DeckModeScreen() {
       {activeStep === 'replays' ? (
         <div id="replays" className="min-w-0 min-[1101px]:min-h-full">
           <LazyReplaysScreen />
+        </div>
+      ) : null}
+
+      {activeStep === 'expansions' ? (
+        <div id="expansions" className="min-w-0 min-[1101px]:min-h-full">
+          <LazyExpansionsScreen />
         </div>
       ) : null}
     </section>
