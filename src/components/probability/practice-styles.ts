@@ -5,6 +5,24 @@
 export const PRACTICE_PALETTE =
   '[--warning:#f59e0b] [--warning-rgb:245_158_11] [--background:#0b0b0f] [--background-rgb:11_11_15] [--card-background:#12121a] [--card-background-rgb:18_18_26]'
 
+/**
+ * Colores de los efectos de la mesa, como `r g b` para `rgb(var(--fx-rgb) / alfa)`: dorado para activar y para la Invocación Normal,
+ * celeste para lo que se muestra y la Invocación Especial, rojo para el objetivo, violeta para declarar, la Fusión y el cementerio.
+ */
+export const FX_RGB = {
+  gold: '250 204 21',
+  cyan: '56 189 248',
+  red: '255 74 94',
+  violet: '192 132 252',
+  green: '0 255 163',
+  white: '241 245 249',
+  indigo: '129 140 248',
+  teal: '45 212 191',
+  amber: '251 191 36',
+} as const
+
+export type FxTone = keyof typeof FX_RGB
+
 /** Color de una salida (verde) o de un problema (rojo): lo heredan los botones y la explicación. */
 export const RULE_COLOR = {
   opening: '[--rule-color:rgb(var(--success-rgb))]',
@@ -12,8 +30,14 @@ export const RULE_COLOR = {
 } as const
 
 /**
- * Dorso de carta: el clásico de Yu-Gi-Oh! simplificado y en violeta (cuerpo violeta con el óvalo oscuro al centro,
- * borde fino). Lo comparten el mazo, el Extra, las cartas boca abajo y el fantasma.
+ * El dorso por defecto de una carta de Yu-Gi-Oh!: la imagen `cards/back.jpg` de YGOPRODeck, que sale por el mismo proxy que las
+ * demás (`card-image-source`).
  */
-export const CARD_BACK =
-  'absolute inset-0 z-1 overflow-hidden rounded-tag border border-primary/60 [background:radial-gradient(ellipse_34%_30%_at_50%_50%,#0a0612_0_72%,transparent_74%),radial-gradient(ellipse_at_50%_50%,rgb(var(--primary-rgb)/0.55),#1d1033_78%)]'
+export const CARD_BACK_URL = '/api/card-image/cards/back.jpg'
+
+/**
+ * Dorso de carta: la imagen de `CARD_BACK_URL` (un violeta oscuro debajo mientras carga). Lo comparten el mazo, el Extra, las cartas
+ * boca abajo, los fantasmas de los vuelos y las cartas que se dan vuelta. Tiene que decir lo mismo que `CARD_BACK_URL`: Tailwind sólo
+ * ve las clases escritas completas.
+ */
+export const CARD_BACK = 'absolute inset-0 z-1 overflow-hidden bg-[#1d1033] bg-cover bg-center bg-[url(/api/card-image/cards/back.jpg)]'

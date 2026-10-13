@@ -13,6 +13,7 @@ import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
 import { field, surface } from '../ui/surfaces'
 import { overline } from '../ui/typography'
+import { FX_CARD, TargetMark, fxVars } from './MatFx'
 import { CARD_BACK } from './practice-styles'
 
 /** Nombres de las casillas, los mismos que usa el builder (Main / Extra) y los del juego en inglés para las pilas. El texto se arma al leerlo, en el idioma de ese momento. */
@@ -138,6 +139,8 @@ interface PileViewerProps {
   pile: MatPile | null
   ids: string[]
   info: (id: string) => MatCardInfo
+  /** Cartas marcadas como objetivo: llevan la mira (como en la mano y en el campo). */
+  targeted: ReadonlySet<string>
   onPick: (id: string, rect: DOMRect) => void
   onClose: () => void
 }
@@ -146,7 +149,7 @@ interface PileViewerProps {
  * Las cartas de una pila. El deck y el Extra se muestran en su orden real (tope primero; al cerrar el
  * deck se baraja, como en la mesa real) y con buscador; cementerio y destierro, la más reciente primero.
  */
-export function PileViewer({ pile, ids, info, onPick, onClose }: PileViewerProps) {
+export function PileViewer({ pile, ids, info, targeted, onPick, onClose }: PileViewerProps) {
   const [query, setQuery] = useState('')
   const cards = ids.map((id) => ({ id, ...info(id) }))
   const ordered = pile === 'deck' || pile === 'extra' ? cards : [...cards].reverse()
@@ -180,11 +183,17 @@ export function PileViewer({ pile, ids, info, onPick, onClose }: PileViewerProps
             <li key={card.id}>
               <button
                 type="button"
-                className="grid w-full gap-1 rounded-tag bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus"
+                aria-label={targeted.has(card.id) ? t('practice.card.selected', { name: card.name }) : undefined}
+                className="grid w-full gap-1 bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus"
                 onClick={(event) => onPick(card.id, event.currentTarget.getBoundingClientRect())}
               >
-                <span className="relative block aspect-[421/614] w-full overflow-hidden rounded-tag bg-input shadow-[0_4px_10px_rgba(0,0,0,0.4)]">
+                <span
+                  data-targeted={targeted.has(card.id) ? 'true' : 'false'}
+                  className={cx('relative block aspect-[421/614] w-full overflow-hidden bg-input shadow-[0_4px_10px_rgba(0,0,0,0.4)] [--card-shadow:0_4px_10px_rgba(0,0,0,0.4)]', FX_CARD)}
+                  style={fxVars('red')}
+                >
                   {card.faceDown ? <span className={CARD_BACK} /> : <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />}
+                  {targeted.has(card.id) ? <TargetMark /> : null}
                 </span>
                 <span className="truncate text-micro text-foreground">{card.faceDown ? t('practice.dialog.cardFaceDown', { name: card.name }) : card.name}</span>
               </button>

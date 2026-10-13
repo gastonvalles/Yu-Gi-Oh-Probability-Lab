@@ -682,12 +682,20 @@ export interface MatMenuItem {
   materials?: true
 }
 
+/**
+ * Una opción del menú que pregunta cómo después de elegirla (en ataque o en defensa, boca arriba o boca abajo): la jugada es la del hijo que se elija.
+ * Los menús ofrecen la jugada ("Invocación Especial", "Desterrar") y la pregunta va en un segundo paso, nunca desplegada en la primera lista.
+ */
+function askItem(label: string, choices: [MatMenuItem, ...MatMenuItem[]]): MatMenuItem {
+  return { label, action: choices[0].action, choices }
+}
+
 /** Desterrar es una sola jugada del menú que pregunta cómo queda la carta: boca arriba (la de "Desterrar" a secas) o boca abajo. */
 export function banishItem(id: string, label: string): MatMenuItem {
-  const faceUp: MatMenuItem = { label: t('practice.menu.banishFaceUp'), action: { type: 'move', id, to: 'banished' } }
-  const faceDown: MatMenuItem = { label: t('practice.menu.banishFaceDown'), action: { type: 'move', id, to: 'banished', faceDown: true } }
-
-  return { label, action: faceUp.action, choices: [faceUp, faceDown] }
+  return askItem(label, [
+    { label: t('practice.menu.banishFaceUp'), action: { type: 'move', id, to: 'banished' } },
+    { label: t('practice.menu.banishFaceDown'), action: { type: 'move', id, to: 'banished', faceDown: true } },
+  ])
 }
 
 /** Monstruos propios en el campo (los que se pueden sacrificar). */
@@ -711,7 +719,7 @@ export function freeTargets(state: MatState, zones: readonly MatSpot[]): MatTarg
 
 /**
  * Lo que se puede hacer con una carta desde donde está: el menú al tocarla (cubre todo lo que hace el arrastre),
- * con las jugadas del juego: Invocación Normal (en ataque o boca abajo) desde la mano, Invocación Especial desde cualquier lado,
+ * con las jugadas del juego: Invocación Normal y Colocar desde la mano, Invocación Especial (que pregunta la posición) desde cualquier lado,
  * Invocación por Volteo de un monstruo boca abajo, Activar efecto (con descarte como costo si está en la mano),
  * escalas de péndulo, revelar, descartar, desterrar. Las Trampas no se activan desde la mano; los Link no van a
  * defensa; las fichas no se colocan boca abajo ni salen del campo; la Extra Monster Zone sólo se ofrece a lo que
@@ -742,15 +750,12 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     const item = placeItem(label, zones, pos, how)
     if (item) items.push(item)
   }
-  /** Invocación Especial: primero se elige la posición (un Link sale en ataque, no tiene defensa). */
-  const specialSummon = () => {
-    const attack = placeItem(t('practice.menu.attack'), zones, 'atk', 'special')
-    const defense = placeItem(t('practice.menu.defense'), zones, 'def', 'special')
-
+  /** Invocación Especial: pregunta la posición después de elegirla (un Link sale en ataque, no tiene defensa). */
+  const specialSummonItem = (attack: MatMenuItem | null, defense: MatMenuItem | null) => {
     if (!attack || !defense) return
-    if (kind.link) items.push({ ...attack, label: t('practice.menu.specialSummon') })
-    else items.push({ label: t('practice.menu.specialSummon'), action: attack.action, choices: [attack, defense] })
+    items.push(kind.link ? { ...attack, label: t('practice.menu.specialSummon') } : askItem(t('practice.menu.specialSummon'), [attack, defense]))
   }
+  const specialSummon = () => specialSummonItem(placeItem(t('practice.menu.attack'), zones, 'atk', 'special'), placeItem(t('practice.menu.defense'), zones, 'def', 'special'))
 
   if (where.kind === 'spot') {
     const { placed, spot } = where
@@ -808,17 +813,15 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
       const tributes = tributesFor(kind.level)
 
       if (tributes === 0) {
-        // Invocación Normal: primero se elige si sale en ataque o boca abajo (Colocar), como con la Especial.
-        const attack = placeItem(t('practice.menu.attack'), zones, 'atk', 'normal')
-        const set = placeItem(t('practice.menu.faceDown'), zones, 'set', 'normal')
-
-        if (attack && set) items.push({ label: t('practice.menu.normalSummon'), action: attack.action, choices: [attack, set] })
+        // Invocación Normal (siempre en ataque) o Colocar (boca abajo): la regla fija la posición, no se pregunta.
+        placeIn(t('practice.menu.normalSummon'), zones, 'atk', 'normal')
+        placeIn(t('practice.menu.set'), zones, 'set', 'normal')
       } else if (monstersOnField(state).length >= tributes) {
-        // Nivel 5+: posición, después los Sacrificios y al final la zona (la mesa completa `tributes`, `zone` e `index`).
-        const tribute = (label: string, pos: MatPos): MatMenuItem => ({ label, action: { type: 'tribute', id, tributes: [], zone: 'mz', index: 0, pos }, tributes })
-        const attack = tribute(t('practice.menu.attack'), 'atk')
+        // Nivel 5+: primero los Sacrificios y al final la zona (la mesa completa `tributes`, `zone` e `index`).
+        const tribute = (label: string, pos: MatPos) => items.push({ label, action: { type: 'tribute', id, tributes: [], zone: 'mz', index: 0, pos }, tributes })
 
-        items.push({ label: t('practice.menu.tributeSummon', { count: tributes }), action: attack.action, choices: [attack, tribute(t('practice.menu.faceDown'), 'set')] })
+        tribute(t('practice.menu.tributeSummon', { count: tributes }), 'atk')
+        tribute(t('practice.menu.tributeSet', { count: tributes }), 'set')
       }
     }
 
@@ -867,10 +870,8 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
 
         return first ? { label, action: { type: 'summon', id, how, materials: [], zone: first.zone as MatZone, index: first.index, pos }, targets, materials: true } : null
       }
-      const attack = summonItem(t('practice.menu.attack'), 'atk')
-      const defense = summonItem(t('practice.menu.defense'), 'def')
 
-      if (attack && defense) items.push(kind.link ? { ...attack, label: t('practice.menu.specialSummon') } : { label: t('practice.menu.specialSummon'), action: attack.action, choices: [attack, defense] })
+      specialSummonItem(summonItem(t('practice.menu.attack'), 'atk'), summonItem(t('practice.menu.defense'), 'def'))
     } else if (kind.monster) {
       specialSummon()
     }
@@ -899,4 +900,29 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
   }
 
   return items
+}
+
+/**
+ * Lo que se puede hacer con una carta soltada en una zona libre: el mismo menú que al tocarla (con las mismas preguntas después), sólo con
+ * las jugadas que la sacan justo a esa zona, ya apuntadas a ella. Una pregunta que queda con una sola salida ya no pregunta.
+ */
+export function listDropActions(state: MatState, id: string, kindOf: (id: string) => MatCardKind, nameOf: (id: string) => string, target: MatTarget): MatMenuItem[] {
+  const aim = (item: MatMenuItem): MatMenuItem[] => {
+    const { action } = item
+
+    if (item.choices) {
+      const [first, ...rest] = item.choices.flatMap(aim)
+
+      if (!first) return []
+      return rest.length > 0 ? [askItem(item.label, [first, ...rest])] : [{ ...first, label: item.label }]
+    }
+
+    // Por Sacrificio la zona se completa después (sólo las principales); el resto sale a una de las zonas libres que ofrece.
+    if (action.type === 'tribute') return target.zone === 'mz' ? [{ ...item, action: { ...action, ...target, zone: 'mz' }, targets: [target] }] : []
+    if (action.type === 'place' && item.targets?.some((free) => free.zone === target.zone && free.index === target.index)) return [{ ...item, action: { ...action, ...target }, targets: [target] }]
+
+    return []
+  }
+
+  return listCardActions(state, id, kindOf, nameOf).flatMap(aim)
 }

@@ -1,4 +1,4 @@
-/** Práctica de manos y mesa de práctica: la mesa, sus menús, el texto de cada jugada, los combos, el muestreo de manos y las salidas y problemas de la mano. */
+/** Práctica de manos y mesa de práctica: la mesa, sus menús, el texto de cada jugada, los combos y las salidas y problemas de la mano. */
 export const practice = {
   // Casillas: los nombres de las pilas son los del juego en inglés; la mano va en español.
   'practice.pile.deck': 'Main',
@@ -27,10 +27,10 @@ export const practice = {
   'practice.menu.deselect': 'Quitar selección',
   'practice.menu.attack': 'En ataque',
   'practice.menu.defense': 'En defensa',
-  'practice.menu.faceDown': 'Boca abajo',
   'practice.menu.specialSummon': 'Invocación Especial',
   'practice.menu.normalSummon': 'Invocación Normal',
   'practice.menu.tributeSummon': 'Invocación por Sacrificio ({count})',
+  'practice.menu.tributeSet': 'Colocar por Sacrificio ({count})',
   'practice.menu.flipSummon': 'Invocación por Volteo',
   'practice.menu.activate': 'Activar',
   'practice.menu.activateEffect': 'Activar efecto',
@@ -197,18 +197,6 @@ export const practice = {
   'practice.panel.deleteNamed': 'Borrar {name}',
   'practice.panel.deleteTitle': '¿Borrar “{name}”?',
   'practice.panel.deleteBody': 'El combo se borra de este dispositivo. No se puede deshacer.',
-
-  // Muestreo de manos: la frase de resumen se arma con estas partes, separadas por ". " y cerrada con un punto.
-  'practice.sampling.label': 'Muestreo de manos',
-  'practice.sampling.question': '¿Esta mano te sirve?',
-  'practice.sampling.playable': 'Jugable',
-  'practice.sampling.dead': 'Muerta',
-  'practice.sampling.headline': { one: 'Calificaste {total} mano: {percent} jugables (entre {low} y {high})', other: 'Calificaste {total} manos: {percent} jugables (entre {low} y {high})' },
-  'practice.sampling.headlineSmall': { one: 'Calificaste {total} mano: {percent} jugables (muestra chica)', other: 'Calificaste {total} manos: {percent} jugables (muestra chica)' },
-  'practice.sampling.labFirst': 'El Lab da {percent} de manos limpias yendo 1º',
-  'practice.sampling.labSecond': 'El Lab da {percent} de manos limpias yendo 2º',
-  'practice.sampling.disagree': 'Tus reglas y tu criterio no coinciden: revisá las reglas',
-  'practice.sampling.reset': 'Reiniciar',
 
   // Salidas y problemas de la mano.
   'practice.board.unplayable': 'Mano no jugable',

@@ -15,13 +15,14 @@ import {
   slotLeft,
   type HandLayout,
 } from '../../app/practice-hand-layout'
+import type { SpotlightKind } from '../../app/mat-effects'
 import { UI_ANIMATION_MS } from '../../app/motion'
 import { useElementWidth } from '../../app/use-element-width'
 import { t } from '../../i18n'
 import type { ApiCardReference, PatternKind } from '../../types'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
-import { Icon } from '../ui/Icon'
+import { FX_CARD, FxFrame, SPOTLIGHT_TONE, TargetMark, fxVars } from './MatFx'
 import { CARD_BACK } from './practice-styles'
 
 /** Espacio sobre las cartas: el abanico sube un poco en el centro. */
@@ -32,24 +33,25 @@ const DRAG_THRESHOLD = 6
 /** Ancho por defecto mientras el contenedor no se midió (p. ej. en tests). */
 const FALLBACK_WIDTH = 340
 
-/** Carta de la mano: el estado (arrastre, brillo, atenuada, destello) llega por data-attributes. */
+/** Carta de la mano: el estado (arrastre, brillo, atenuada, destello, objetivo) llega por data-attributes. */
 const HAND_CARD = [
-  'absolute left-0 top-0 cursor-grab touch-none select-none overflow-hidden rounded-tag outline-none will-change-transform',
+  'absolute left-0 top-0 cursor-grab touch-none select-none overflow-hidden outline-none will-change-transform',
   '[-webkit-touch-callout:none] [-webkit-user-select:none]',
+  '[--card-shadow:0_8px_18px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]',
   'shadow-[0_8px_18px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]',
   '[transition:transform_var(--motion-duration)_cubic-bezier(0.2,0.8,0.2,1),filter_var(--motion-duration)_ease,box-shadow_var(--motion-duration)_ease]',
   // El arte no debe capturar el toque ni arrancar el arrastre nativo de imágenes.
   '[&>:not([data-back])]:pointer-events-none [&>:not([data-back])]:[-webkit-user-drag:none]',
-  'focus-visible:shadow-[0_8px_18px_rgba(0,0,0,0.45),0_0_0_2px_rgb(var(--primary-hover-rgb))]',
+  'focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-hover',
   'data-[state=dragging]:cursor-grabbing data-[state=dragging]:shadow-[0_24px_38px_rgba(0,0,0,0.55),0_0_0_2px_rgb(var(--primary-hover-rgb))]',
   'data-[state=dragging]:[transition:filter_var(--motion-duration)_ease,box-shadow_var(--motion-duration)_ease]',
   'data-[muted=true]:grayscale data-[muted=true]:brightness-70',
   'data-[dim=true]:brightness-[0.42] data-[dim=true]:saturate-[0.6]',
   // Salidas en verde, problemas en rojo.
-  'data-[glow=true]:animate-card-glow data-[glow=true]:[--glow-rgb:var(--accent-rgb)] data-[glow-kind=problem]:[--glow-rgb:var(--danger-rgb)]',
-  'data-[glow=true]:shadow-[0_8px_18px_rgba(0,0,0,0.45),0_0_0_2px_rgb(var(--glow-rgb)),0_0_22px_rgb(var(--glow-rgb)/0.6)]',
-  // Activación: aro amarillo (la carta grande aparece aparte, en el centro de la pantalla).
-  'data-[flash=true]:shadow-[0_8px_18px_rgba(0,0,0,0.45),0_0_0_2px_#facc15,0_0_22px_#facc15b3]',
+  'motion-safe:data-[glow=true]:animate-card-glow data-[glow=true]:[--glow-rgb:var(--accent-rgb)] data-[glow-kind=problem]:[--glow-rgb:var(--danger-rgb)]',
+  'data-[glow=true]:shadow-[0_8px_18px_rgba(0,0,0,0.45),0_0_0_3px_rgb(var(--glow-rgb)),0_0_30px_5px_rgb(var(--glow-rgb)/0.7)]',
+  // Activar, mostrar, declarar y marcar como objetivo: el aro de afuera (el marco de adentro y la mira son hijos de la carta).
+  FX_CARD,
   'motion-reduce:animate-none motion-reduce:transition-none',
 ].join(' ')
 
@@ -70,10 +72,12 @@ interface PracticeHandProps {
   highlightKind: PatternKind | null
   /** Mano no jugable: las cartas se ven grises. */
   muted: boolean
-  /** Carta que acaba de activarse (destella) y una clave que cambia en cada activación. */
-  flash: { id: string; key: number } | null
+  /** Carta que acaba de destacarse (destella), una clave que cambia en cada destaque y para qué fue. */
+  flash: { id: string; key: number; kind: SpotlightKind } | null
   /** Cartas marcadas como objetivo: llevan una mira. */
   targeted: ReadonlySet<string>
+  /** La carta de la que se está viendo el menú: lleva un marco celeste y sube sobre las vecinas. */
+  selectedId: string | null
   /** Rect del mazo: de ahí salen las cartas al repartirse. */
   getDeckRect: () => DOMRect | null
   /** Si una carta que aparece en la mano se reparte desde el mazo o ya la trae otra animación (vuelve de una zona). */
@@ -126,7 +130,7 @@ function dropTargetAt(x: number, y: number, dragged: HTMLElement): { element: HT
  * Mano en abanico: un toque abre el menú de la carta, se reordena arrastrando dentro de la mano, se
  * arrastra fuera de la mano hasta una zona de la mesa, y se reparte desde el mazo.
  */
-export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highlighted, highlightKind, muted, flash, targeted, getDeckRect, dealsFromDeck, getField, onReorder, onTap, onDragOver, onDrop, className }: PracticeHandProps) {
+export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highlighted, highlightKind, muted, flash, targeted, selectedId, getDeckRect, dealsFromDeck, getField, onReorder, onTap, onDragOver, onDrop, className }: PracticeHandProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const width = useElementWidth(containerRef) || FALLBACK_WIDTH
   const slots = Math.max(cards.length, sizeSlots)
@@ -317,6 +321,7 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highl
           ? `translate3d(${x}px, ${y}px, 0) perspective(900px) rotateX(${drag.tilt}deg) scale(${drag.scale})`
           : `translate3d(${x}px, ${y}px, 0) rotate(${angle}deg)`
         const flashing = flash?.id === card.id
+        const selected = selectedId === card.id
 
         return (
           <HandCard
@@ -324,14 +329,15 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highl
             card={card}
             layout={layout}
             transform={transform}
-            zIndex={isDragged ? 100 : flashing ? 50 : index + 1}
+            zIndex={isDragged ? 100 : flashing || selected ? 50 : index + 1}
             state={isDragged ? 'dragging' : 'rest'}
             glow={highlighted.has(card.id)}
             glowKind={highlightKind}
             muted={muted}
             dim={hasHighlight && !highlighted.has(card.id)}
-            flashKey={flashing ? flash.key : null}
+            flash={flashing ? flash : null}
             targeted={targeted.has(card.id)}
+            selected={selected}
             getDeckRect={getDeckRect}
             flyIn={dealsFromDeck ? dealsFromDeck(card.id) : true}
             containerRef={containerRef}
@@ -357,8 +363,9 @@ interface HandCardProps {
   glowKind: PatternKind | null
   muted: boolean
   dim: boolean
-  flashKey: number | null
+  flash: { key: number; kind: SpotlightKind } | null
   targeted: boolean
+  selected: boolean
   getDeckRect: () => DOMRect | null
   /** false: la carta llega de otro lado de la mesa (la trae el vuelo entre zonas), sin el reparto desde el mazo. */
   flyIn: boolean
@@ -379,8 +386,9 @@ function HandCard({
   glowKind,
   muted,
   dim,
-  flashKey,
+  flash,
   targeted,
+  selected,
   getDeckRect,
   flyIn,
   containerRef,
@@ -414,14 +422,17 @@ function HandCard({
     const target = /translate3d\((-?[\d.]+)px, (-?[\d.]+)px/.exec(finalTransform)
     const toX = target ? Number(target[1]) : fromX
     const toY = target ? Number(target[2]) : fromY
-    // A mitad de camino la carta se "angosta": ahí se cambia el dorso por la cara.
-    const mid = `translate3d(${(fromX + toX) / 2}px, ${Math.min(fromY, toY) - 18}px, 0) rotate(-6deg) scale(0.06, 1.05)`
+    // La carta se da vuelta en el aire, en 3D: sale mostrando el dorso, a mitad de camino queda de canto (ahí se cambia el dorso por la cara)
+    // y termina de abrirse del otro lado. Todos los pasos llevan las mismas funciones, en el mismo orden, para que se interpolen una por una.
+    const spin = (position: string, degrees: number) => `perspective(700px) ${position} rotateY(${degrees}deg)`
+    const midPosition = `translate3d(${(fromX + toX) / 2}px, ${Math.min(fromY, toY) - 18}px, 0) rotate(-6deg) scale(1)`
 
     const flight = element.animate(
       [
-        { transform: `translate3d(${fromX}px, ${fromY}px, 0) rotate(-14deg) scale(${startScale})`, opacity: 0.9 },
-        { transform: mid, opacity: 1, offset: 0.5 },
-        { transform: finalTransform, opacity: 1 },
+        { transform: spin(`translate3d(${fromX}px, ${fromY}px, 0) rotate(-14deg) scale(${startScale})`, 0), opacity: 0.9 },
+        { transform: spin(midPosition, 90), opacity: 1, offset: 0.5 },
+        { transform: spin(midPosition, -90), opacity: 1, offset: 0.5 },
+        { transform: spin(`${finalTransform} scale(1)`, 0), opacity: 1 },
       ],
       { duration: UI_ANIMATION_MS, easing: 'cubic-bezier(0.22, 0.9, 0.3, 1)', fill: 'backwards' },
     )
@@ -443,6 +454,8 @@ function HandCard({
     height: layout.cardHeight,
     transform,
     zIndex,
+    // El color de su aro: el del destaque, o el rojo de la mira.
+    ...fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red'),
   }
 
   return (
@@ -459,7 +472,10 @@ function HandCard({
       data-glow-kind={glow ? (glowKind ?? 'opening') : undefined}
       data-dim={dim ? 'true' : 'false'}
       data-muted={muted ? 'true' : 'false'}
-      data-flash={flashKey !== null ? 'true' : 'false'}
+      data-flash={flash ? 'true' : 'false'}
+      data-flash-kind={flash?.kind}
+      data-targeted={targeted ? 'true' : 'false'}
+      data-selected={selected ? 'true' : 'false'}
       style={style}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -476,16 +492,10 @@ function HandCard({
         limitBadgeSize="sm"
       />
       <div ref={backRef} data-back className={CARD_BACK} aria-hidden="true" />
+      {selected ? <FxFrame tone="cyan" /> : null}
+      {glow ? <FxFrame tone={glowKind === 'problem' ? 'red' : 'green'} orbit={false} /> : null}
+      {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
       {targeted ? <TargetMark /> : null}
     </div>
-  )
-}
-
-/** La mira de "objetivo": se comparte con las cartas del campo. */
-export function TargetMark() {
-  return (
-    <span className="pointer-events-none absolute right-0.5 top-0.5 z-2 grid size-5 place-items-center rounded-full bg-danger text-white shadow-[0_0_10px_rgb(var(--danger-rgb)/0.8)] animate-pop motion-reduce:animate-none" aria-label={t('practice.card.targetMark')} role="img">
-      <Icon name="target" size={13} strokeWidth={2.2} />
-    </span>
   )
 }

@@ -8,6 +8,7 @@ import {
   describeMatAction,
   describeMatSteps,
   listCardActions,
+  listDropActions,
   locateCard,
   matReducer,
   replayMat,
@@ -274,9 +275,10 @@ describe('la mesa de práctica', () => {
   it('el menú ofrece lo que se puede hacer desde donde está la carta', () => {
     const labels = (state: MatState, id: string) => listCardActions(state, id, kindOf, nameOf).map((item) => item.label)
 
-    // Desde la mano, las jugadas de DuelingBook: Invocación Normal, Especial, activar, revelar, objetivo, descartar, desterrar (boca arriba o abajo), arriba/abajo del deck.
+    // Desde la mano, las jugadas de DuelingBook: Invocación Normal, Colocar, Especial, activar, revelar, objetivo, descartar, desterrar (boca arriba o abajo), arriba/abajo del deck.
     expect(labels(start(), 'a1')).toEqual([
       'Invocación Normal',
+      'Colocar',
       'Invocación Especial',
       'Activar efecto',
       'Revelar',
@@ -298,14 +300,17 @@ describe('la mesa de práctica', () => {
     const link = listCardActions(start(), 'x2', kindOf, nameOf)[0]!
     expect(link.choices).toBeUndefined()
     expect(link.action.type === 'place' && link.action.pos).toBe('atk')
-    // La Invocación Normal pregunta en ataque o boca abajo (Colocar); la Especial, en ataque o en defensa.
-    const normal = listCardActions(start(), 'a1', kindOf, nameOf)[0]!
-    expect(normal.choices?.map((choice) => [choice.label, choice.action.type === 'place' && [choice.action.pos, choice.action.how]])).toEqual([['En ataque', ['atk', 'normal']], ['Boca abajo', ['set', 'normal']]])
-    const special = listCardActions(start(), 'a1', kindOf, nameOf).find((item) => item.label === 'Invocación Especial')!
-    expect(special.choices?.map((choice) => [choice.label, choice.action.type === 'place' && choice.action.pos])).toEqual([['En ataque', 'atk'], ['En defensa', 'def']])
+    // La Invocación Normal (siempre en ataque) y Colocar (boca abajo) no preguntan nada; la Especial pregunta en ataque o en defensa después.
+    const [normal, set, special] = listCardActions(start(), 'a1', kindOf, nameOf)
+    expect([normal, set].map((item) => [item!.label, item!.choices, item!.action.type === 'place' && [item!.action.pos, item!.action.how]])).toEqual([
+      ['Invocación Normal', undefined, ['atk', 'normal']],
+      ['Colocar', undefined, ['set', 'normal']],
+    ])
+    expect(special!.label).toBe('Invocación Especial')
+    expect(special!.choices?.map((choice) => [choice.label, choice.action.type === 'place' && choice.action.pos])).toEqual([['En ataque', 'atk'], ['En defensa', 'def']])
     // Desde la mano sólo las cinco zonas principales; la Extra Monster Zone es para lo que viene del Extra Deck.
-    expect(special.choices?.[1]?.targets?.map((target) => target.zone)).toEqual(['mz', 'mz', 'mz', 'mz', 'mz'])
-    expect(normal.choices?.[0]?.targets).toHaveLength(5)
+    expect(special!.choices?.[1]?.targets?.map((target) => target.zone)).toEqual(['mz', 'mz', 'mz', 'mz', 'mz'])
+    expect(normal!.targets).toHaveLength(5)
     expect(listCardActions(start(), 'x1', kindOf, nameOf)[0]!.choices?.[0]?.targets?.map((target) => target.zone)).toEqual(['mz', 'mz', 'mz', 'mz', 'mz', 'emz', 'emz'])
     // Nivel 7 sin monstruos en el campo: ni Invocación Normal ni por Sacrificio.
     expect(labels(start(), 'c1').slice(0, 1)).toEqual(['Invocación Especial'])
@@ -337,12 +342,14 @@ describe('la mesa de práctica', () => {
       expect(banish[0]!.action).toEqual({ type: 'move', id, to: 'banished' })
     }
 
-    // Con dos monstruos en el campo, el Nivel 7 ofrece la Invocación por Sacrificio (en ataque o boca abajo), que la mesa completa.
+    // Con dos monstruos en el campo, el Nivel 7 ofrece la Invocación por Sacrificio y Colocar por Sacrificio, que la mesa completa.
     const two = run([{ type: 'place', id: 'x1', zone: 'emz', index: 0, pos: 'atk' }, { type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }])
-    const bySacrifice = listCardActions(two, 'c1', kindOf, nameOf)[0]!
-    expect(bySacrifice.label).toBe('Invocación por Sacrificio (2)')
-    expect(bySacrifice.choices?.map((item) => [item.label, item.tributes, item.action.type === 'tribute' && item.action.pos])).toEqual([['En ataque', 2, 'atk'], ['Boca abajo', 2, 'set']])
-    expect(bySacrifice.action).toEqual({ type: 'tribute', id: 'c1', tributes: [], zone: 'mz', index: 0, pos: 'atk' })
+    const [bySacrifice, setBySacrifice] = listCardActions(two, 'c1', kindOf, nameOf)
+    expect([bySacrifice, setBySacrifice].map((item) => [item!.label, item!.tributes, item!.choices, item!.action.type === 'tribute' && item!.action.pos])).toEqual([
+      ['Invocación por Sacrificio (2)', 2, undefined, 'atk'],
+      ['Colocar por Sacrificio (2)', 2, undefined, 'set'],
+    ])
+    expect(bySacrifice!.action).toEqual({ type: 'tribute', id: 'c1', tributes: [], zone: 'mz', index: 0, pos: 'atk' })
     // Con un solo monstruo alcanza para el Nivel 5 pero no para el 7.
     const one = run([{ type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }, { type: 'move', id: 'e1', to: 'hand' }])
     expect(labels(one, 'e1')[0]).toBe('Invocación por Sacrificio (1)')
@@ -365,6 +372,46 @@ describe('la mesa de práctica', () => {
     expect(labels(full, 'a1')).not.toContain('Invocación Especial')
     // Las fichas no se colocan boca abajo ni tienen efecto.
     expect(labels(full, 'token-1')).toEqual(['Pasar a defensa', 'Contador +1', 'Seleccionar', 'Quitar la ficha'])
+  })
+
+  it('soltar una carta en una zona ofrece el mismo menú que al tocarla, apuntado a esa zona y con las preguntas para después', () => {
+    const drop = (state: MatState, id: string, zone: 'mz' | 'emz' | 'st' | 'field', index: number) => listDropActions(state, id, kindOf, nameOf, { zone, index })
+    const labels = (items: ReturnType<typeof drop>) => items.map((item) => item.label)
+
+    // Un monstruo de la mano en una zona principal: Invocación Normal, Colocar y la Especial, que pregunta la posición cuando se la elige.
+    const items = drop(start(), 'a1', 'mz', 2)
+    expect(labels(items)).toEqual(['Invocación Normal', 'Colocar', 'Invocación Especial'])
+    expect(items.map((item) => [item.action.type === 'place' && [item.action.zone, item.action.index, item.action.pos, item.action.how], item.targets])).toEqual([
+      [['mz', 2, 'atk', 'normal'], [{ zone: 'mz', index: 2 }]],
+      [['mz', 2, 'set', 'normal'], [{ zone: 'mz', index: 2 }]],
+      [['mz', 2, 'atk', 'special'], undefined],
+    ])
+    expect(items[2]!.choices?.map((choice) => [choice.label, choice.action.type === 'place' && [choice.action.zone, choice.action.index, choice.action.pos], choice.targets])).toEqual([
+      ['En ataque', ['mz', 2, 'atk'], [{ zone: 'mz', index: 2 }]],
+      ['En defensa', ['mz', 2, 'def'], [{ zone: 'mz', index: 2 }]],
+    ])
+
+    // Sólo lo que la saca ahí: de la mano no se cae en la Extra Monster Zone ni en la zona de Mágicas y Trampas, y no se ofrecen descartes ni otros destinos.
+    expect(drop(start(), 'a1', 'emz', 0)).toEqual([])
+    expect(drop(start(), 'a1', 'st', 1)).toEqual([])
+    expect(drop(start(), 'b1', 'mz', 0)).toEqual([])
+    expect(labels(drop(start(), 'b1', 'st', 1))).toEqual(['Activar', 'Colocar'])
+    expect(labels(drop(start(), 'd1', 'st', 3))).toEqual(['Activar efecto', 'Colocar'])
+
+    // Nivel 7: sin monstruos para sacrificar sólo la Especial (que pregunta directo); con dos, la Invocación por Sacrificio y Colocar por Sacrificio, ya en la zona.
+    expect(labels(drop(start(), 'c1', 'mz', 0))).toEqual(['Invocación Especial'])
+    const two = run([{ type: 'place', id: 'x1', zone: 'emz', index: 0, pos: 'atk' }, { type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }])
+    const sacrifice = drop(two, 'c1', 'mz', 3)
+    expect(labels(sacrifice)).toEqual(['Invocación por Sacrificio (2)', 'Colocar por Sacrificio (2)', 'Invocación Especial'])
+    expect(sacrifice.map((item) => [item.tributes, item.action.type === 'tribute' && [item.action.zone, item.action.index, item.action.pos]])).toEqual([[2, ['mz', 3, 'atk']], [2, ['mz', 3, 'set']], [undefined, false]])
+    expect(drop(two, 'c1', 'st', 0)).toEqual([])
+
+    // Un Link del Extra no pregunta la posición: una sola jugada, ya apuntada a la zona.
+    const link = drop(start(), 'x2', 'mz', 1)
+    expect(link).toHaveLength(1)
+    expect([link[0]!.label, link[0]!.choices, link[0]!.action]).toEqual(['Invocación Especial', undefined, expect.objectContaining({ type: 'place', zone: 'mz', index: 1, pos: 'atk', how: 'special' })])
+    // Una zona ocupada no ofrece nada (la mesa no deja soltar ahí).
+    expect(drop(run([{ type: 'place', id: 'a2', zone: 'mz', index: 1, pos: 'atk' }]), 'a1', 'mz', 1)).toEqual([])
   })
 
   it('reconoce el tipo de carta por el marco y el subtipo', () => {

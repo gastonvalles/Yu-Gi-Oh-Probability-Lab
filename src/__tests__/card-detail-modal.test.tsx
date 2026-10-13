@@ -48,6 +48,20 @@ describe('detalle compartido de cartas', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
+  it('la carta se inclina hacia el mouse mientras está encima y se acomoda al salir; con el dedo no se mueve', () => {
+    render(modal())
+    const art = screen.getByRole('button', { name: 'Ver la carta en grande' })
+
+    fireEvent.pointerMove(art, { pointerType: 'touch', clientX: 10, clientY: 10 })
+    expect(art.dataset.tilting).toBeUndefined()
+
+    fireEvent.pointerMove(art, { pointerType: 'mouse', clientX: 10, clientY: 10 })
+    expect(art.dataset.tilting).toBe('true')
+
+    fireEvent.pointerLeave(art, { pointerType: 'mouse' })
+    expect(art.dataset.tilting).toBe('false')
+  })
+
   it.each(['fondo', 'espacio entre carta y texto'])('cierra al tocar el %s', (area) => {
     const onClose = vi.fn()
     render(modal(onClose))

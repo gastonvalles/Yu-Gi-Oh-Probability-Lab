@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 import { configureStore } from '@reduxjs/toolkit'
-import { fireEvent, render as renderBare, screen, within, type RenderResult } from '@testing-library/react'
+import { act, fireEvent, render as renderBare, screen, within, type RenderResult } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { useEffect, type ReactElement } from 'react'
 import { Provider } from 'react-redux'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createMatState, type MatAction, type MatState } from '../app/practice-mat'
+import { createMatState, replayMat, type MatAction, type MatState } from '../app/practice-mat'
 import { useMatSession } from '../app/use-mat-session'
 import { PracticeMat, type MatCard } from '../components/probability/PracticeMat'
 import type { ApiCardReference } from '../types'
@@ -29,7 +29,7 @@ const INITIAL = createMatState(['card-1-1', 'card-2-1', 'card-3-1', 'card-4-1', 
 const NO_ACTIONS: MatAction[] = []
 const NO_NAMES: Record<string, string> = {}
 
-function Harness({ initial = INITIAL, actions = NO_ACTIONS }: { initial?: MatState; actions?: MatAction[] }) {
+function Harness({ initial = INITIAL, actions = NO_ACTIONS, cards = CARDS }: { initial?: MatState; actions?: MatAction[]; cards?: ReadonlyMap<string, MatCard> }) {
   const mat = useMatSession()
   const { start } = mat
 
@@ -45,7 +45,7 @@ function Harness({ initial = INITIAL, actions = NO_ACTIONS }: { initial?: MatSta
     <PracticeMat
       session={mat.session}
       state={mat.state}
-      cardsById={CARDS}
+      cardsById={cards}
       deckName="Test"
       onDispatch={mat.dispatch}
       onUndo={mat.undo}
@@ -88,12 +88,11 @@ describe('la mesa de práctica', () => {
     tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
 
     expect(screen.getByRole('menu', { name: 'Ash Blossom' })).toBeInTheDocument()
+    // Invocación Normal, Colocar y la Especial son opciones aparte: la posición sólo se pregunta (después) en la Especial.
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent).slice(0, 3)).toEqual(['Invocación Normal', 'Colocar', 'Invocación Especial'])
     fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
-    // Segundo paso: en ataque o boca abajo.
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['En ataque', 'Boca abajo'])
-    fireEvent.click(screen.getByRole('menuitem', { name: 'En ataque' }))
     expect(screen.queryByRole('menu', { name: 'Ash Blossom' })).not.toBeInTheDocument()
-    expect(within(status()).getByText('Tocá la zona para Invocación Normal: en ataque')).toBeInTheDocument()
+    expect(within(status()).getByText('Tocá la zona para Invocación Normal')).toBeInTheDocument()
     // Se eligen sólo las cinco zonas principales: la Extra Monster Zone es para lo que viene del Extra Deck.
     expect(screen.getAllByRole('button', { name: /: elegir$/ }).map((cell) => cell.getAttribute('aria-label'))).toEqual(
       ['Zona de monstruo 1: elegir', 'Zona de monstruo 2: elegir', 'Zona de monstruo 3: elegir', 'Zona de monstruo 4: elegir', 'Zona de monstruo 5: elegir'],
@@ -111,6 +110,28 @@ describe('la mesa de práctica', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
     expect(within(hand()).getByRole('listitem', { name: 'Ash Blossom' })).toBeInTheDocument()
     expect(within(status()).queryByText('1/1')).not.toBeInTheDocument()
+  })
+
+  it('la carta de la que se ve el menú lleva un marco celeste mientras el menú está abierto, en la mano y en el campo', () => {
+    render(<Harness />)
+
+    const ash = within(hand()).getByRole('listitem', { name: 'Ash Blossom' })
+    expect(ash).toHaveAttribute('data-selected', 'false')
+    tap(ash)
+    expect(ash).toHaveAttribute('data-selected', 'true')
+    expect(ash.querySelector('[data-fx="frame"]')).not.toBeNull()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Especial' }))
+    // Elegir cómo sale (la pregunta de la posición) no la suelta: sigue siendo la carta del menú.
+    expect(ash).toHaveAttribute('data-selected', 'true')
+    fireEvent.click(screen.getByRole('menuitem', { name: 'En ataque' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
+
+    const onField = within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' })
+    expect(onField).toHaveAttribute('data-selected', 'false')
+    tap(onField)
+    expect(onField).toHaveAttribute('data-selected', 'true')
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(onField).toHaveAttribute('data-selected', 'false')
   })
 
   it('el click fantasma del celular (justo después de abrir el menú) no lo cierra; un toque en el fondo más tarde, sí', () => {
@@ -176,51 +197,132 @@ describe('la mesa de práctica', () => {
     expect(within(status()).getByText('Robás Imperm')).toBeInTheDocument()
   })
 
-  it('soltar una carta de la mano en una zona pregunta cómo sale (Normal o Especial, en ataque, boca abajo o en defensa)', () => {
+  /** Arrastra una carta de la mano hasta una zona (la que devuelve `elementFromPoint`) y la suelta. */
+  const dragToZone = (name: string, target: HTMLElement) => {
+    document.elementFromPoint = () => target
+    document.elementsFromPoint = () => [target]
+
+    const dragged = within(hand()).getByRole('listitem', { name })
+    fireEvent.pointerDown(dragged, { ...pointer, clientX: 10, clientY: 10 })
+    fireEvent.pointerMove(dragged, { ...pointer, clientX: 40, clientY: 60 })
+    fireEvent.pointerMove(dragged, { ...pointer, clientX: 80, clientY: 120 })
+    fireEvent.pointerUp(dragged, { ...pointer, clientX: 80, clientY: 120 })
+  }
+  const waitingIn = (target: HTMLElement) => target.querySelector('[data-pending="true"]')
+
+  it('soltar una carta de la mano en una zona la deja ahí y pregunta cómo sale: Invocación Normal, Colocar o Especial, y la posición después', () => {
     render(<Harness />)
 
     const mz1 = zone('Zona de monstruo 1')
-    document.elementFromPoint = () => mz1
-    document.elementsFromPoint = () => [mz1]
+    dragToZone('Ash Blossom', mz1)
 
-    const ash = within(hand()).getByRole('listitem', { name: 'Ash Blossom' })
-    fireEvent.pointerDown(ash, { ...pointer, clientX: 10, clientY: 10 })
-    fireEvent.pointerMove(ash, { ...pointer, clientX: 40, clientY: 60 })
-    fireEvent.pointerMove(ash, { ...pointer, clientX: 80, clientY: 120 })
-    fireEvent.pointerUp(ash, { ...pointer, clientX: 80, clientY: 120 })
-
-    // La carta sigue en la mano hasta que se elige.
-    expect(within(hand()).getByRole('listitem', { name: 'Ash Blossom' })).toBeInTheDocument()
+    // La carta se queda en la zona (no vuelve a la mano) mientras se elige; el menú es el de tocarla, sólo con lo que la saca ahí.
+    expect(waitingIn(mz1)).toHaveAttribute('data-card-id', 'card-1-1')
+    expect(waitingIn(mz1)).toHaveAttribute('aria-hidden', 'true')
+    expect(waitingIn(mz1)?.querySelector('[data-fx="frame"]')).not.toBeNull()
+    expect(within(hand()).queryByRole('listitem', { name: 'Ash Blossom' })).not.toBeInTheDocument()
+    expect(within(hand()).getAllByRole('listitem')).toHaveLength(4)
     const menu = screen.getByRole('menu', { name: 'Ash Blossom' })
-    expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Invocación Normal: en ataque', 'Invocación Normal: boca abajo', 'Invocación Especial: en ataque', 'Invocación Especial: en defensa'])
-    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Invocación Especial: en defensa' }))
+    expect(within(menu).getByText('Zona de monstruo 1')).toBeInTheDocument()
+    expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Invocación Normal', 'Colocar', 'Invocación Especial'])
 
+    // La posición se pregunta después, en el mismo menú, y la carta sigue en la zona.
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Invocación Especial' }))
+    const question = screen.getByRole('menu', { name: 'Ash Blossom' })
+    expect(within(question).getByText('Invocación Especial')).toBeInTheDocument()
+    expect(within(question).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['En ataque', 'En defensa'])
+    expect(waitingIn(mz1)).not.toBeNull()
+    fireEvent.click(within(question).getByRole('menuitem', { name: 'En defensa' }))
+
+    expect(waitingIn(mz1)).toBeNull()
     expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom, en defensa' })).toBeInTheDocument()
     expect(within(status()).getByText('Invocación Especial de Ash Blossom en defensa')).toBeInTheDocument()
+    // Ya estaba en la zona: el destello no espera ningún vuelo desde la mano.
+    expect(mz1.querySelector('[data-fx="landing"] span')).toHaveStyle({ animationDelay: '0ms' })
 
     // Soltada en una zona extra de monstruo, una carta de la mano no cae: esa zona es para lo que viene del Extra Deck.
     const emz1 = zone('Zona extra de monstruo 1')
-    document.elementFromPoint = () => emz1
-    document.elementsFromPoint = () => [emz1]
-    const maxx = within(hand()).getByRole('listitem', { name: 'Maxx C' })
-    fireEvent.pointerDown(maxx, { ...pointer, clientX: 10, clientY: 10 })
-    fireEvent.pointerMove(maxx, { ...pointer, clientX: 80, clientY: 120 })
-    fireEvent.pointerUp(maxx, { ...pointer, clientX: 80, clientY: 120 })
+    dragToZone('Maxx C', emz1)
     expect(within(hand()).getByRole('listitem', { name: 'Maxx C' })).toBeInTheDocument()
+    expect(waitingIn(emz1)).toBeNull()
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     expect(within(status()).getByText('1/1')).toBeInTheDocument()
 
-    // Una Mágica soltada en la zona de Mágicas y Trampas: Activar o Colocar.
+    // Una Mágica soltada en la zona de Mágicas y Trampas: Activar o Colocar (las posiciones ya las fija la jugada: no hay pregunta).
     const st1 = zone('Zona de magia y trampa 1')
-    document.elementFromPoint = () => st1
-    document.elementsFromPoint = () => [st1]
-    const called = within(hand()).getByRole('listitem', { name: 'Called by the Grave' })
-    fireEvent.pointerDown(called, { ...pointer, clientX: 10, clientY: 10 })
-    fireEvent.pointerMove(called, { ...pointer, clientX: 80, clientY: 120 })
-    fireEvent.pointerUp(called, { ...pointer, clientX: 80, clientY: 120 })
+    dragToZone('Called by the Grave', st1)
+    expect(waitingIn(st1)).not.toBeNull()
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Activar', 'Colocar'])
     fireEvent.click(screen.getByRole('menuitem', { name: 'Colocar' }))
+    expect(waitingIn(st1)).toBeNull()
     expect(within(zone('Zona de magia y trampa 1')).getByRole('button', { name: 'Called by the Grave, boca abajo' })).toBeInTheDocument()
+  })
+
+  it('una Invocación Normal soltada en la zona sale por la opción sin preguntar nada más', () => {
+    render(<Harness />)
+
+    const mz2 = zone('Zona de monstruo 2')
+    dragToZone('Maxx C', mz2)
+    fireEvent.click(within(screen.getByRole('menu', { name: 'Maxx C' })).getByRole('menuitem', { name: 'Invocación Normal' }))
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(waitingIn(mz2)).toBeNull()
+    expect(within(zone('Zona de monstruo 2')).getByRole('button', { name: 'Maxx C' })).toBeInTheDocument()
+    expect(within(status()).getByText('Invocación Normal de Maxx C')).toBeInTheDocument()
+  })
+
+  it('si se cierra el menú sin elegir, la carta soltada vuelve a la mano', () => {
+    render(<Harness />)
+
+    const mz3 = zone('Zona de monstruo 3')
+    dragToZone('Maxx C', mz3)
+    expect(waitingIn(mz3)).not.toBeNull()
+    expect(within(hand()).queryByRole('listitem', { name: 'Maxx C' })).not.toBeInTheDocument()
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(waitingIn(mz3)).toBeNull()
+    expect(within(hand()).getByRole('listitem', { name: 'Maxx C' })).toBeInTheDocument()
+    // No hubo jugada: nada quedó anotado.
+    expect(within(status()).queryByText('1/1')).not.toBeInTheDocument()
+  })
+
+  it('por Sacrificio, la carta soltada espera en la zona mientras se eligen los Sacrificios; cancelar la devuelve a la mano', () => {
+    const cards = new Map([...CARDS, ['card-8-1', { name: 'Blue-Eyes', apiCard: { ...card(8, 'normal'), level: 8 } }]])
+    const initial = replayMat(createMatState(['card-8-1', 'card-1-1', 'card-2-1', 'card-3-1', 'card-4-1', 'card-5-1'], ['card-7-1'], 5), [
+      { type: 'place', id: 'card-1-1', zone: 'mz', index: 0, pos: 'atk' },
+      { type: 'place', id: 'card-2-1', zone: 'mz', index: 1, pos: 'atk' },
+    ])
+    render(<Harness initial={initial} cards={cards} />)
+
+    const mz3 = zone('Zona de monstruo 3')
+    dragToZone('Blue-Eyes', mz3)
+    const menu = screen.getByRole('menu', { name: 'Blue-Eyes' })
+    expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Invocación por Sacrificio (2)', 'Colocar por Sacrificio (2)', 'Invocación Especial'])
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Invocación por Sacrificio (2)' }))
+
+    // El menú se fue pero la carta sigue en la zona, esperando los Sacrificios.
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(within(status()).getByText('Tocá 2 monstruos para sacrificar (0/2)')).toBeInTheDocument()
+    expect(waitingIn(mz3)).toHaveAttribute('data-card-id', 'card-8-1')
+    expect(within(hand()).queryByRole('listitem', { name: 'Blue-Eyes' })).not.toBeInTheDocument()
+
+    // Cancelar la devuelve a la mano.
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    expect(waitingIn(mz3)).toBeNull()
+    expect(within(hand()).getByRole('listitem', { name: 'Blue-Eyes' })).toBeInTheDocument()
+
+    // De nuevo, y esta vez se sacrifican los dos monstruos: sale en la zona donde se soltó.
+    dragToZone('Blue-Eyes', mz3)
+    fireEvent.click(within(screen.getByRole('menu', { name: 'Blue-Eyes' })).getByRole('menuitem', { name: 'Invocación por Sacrificio (2)' }))
+    tap(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' }))
+    expect(waitingIn(mz3)).not.toBeNull()
+    tap(within(zone('Zona de monstruo 2')).getByRole('button', { name: 'Maxx C' }))
+
+    expect(waitingIn(mz3)).toBeNull()
+    expect(within(zone('Zona de monstruo 3')).getByRole('button', { name: 'Blue-Eyes' })).toBeInTheDocument()
+    expect(within(status()).getByText('Invocación por Sacrificio de Blue-Eyes (sacrificás Ash Blossom y Maxx C)')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'GY: 2' })).toBeInTheDocument()
   })
 
   it('la ficha pide la posición (en ataque o en defensa) al soltarla o al tocarla, y se ve con la imagen de una ficha', () => {
@@ -278,7 +380,6 @@ describe('la mesa de práctica', () => {
 
     tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'En ataque' }))
     fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
 
     fireEvent.click(screen.getByRole('button', { name: 'Extra: 1' }))
@@ -310,6 +411,167 @@ describe('la mesa de práctica', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
     expect(document.querySelector('[data-activation]')).toBeNull()
     expect(within(hand()).getByRole('listitem', { name: 'Maxx C (seleccionada)' })).toHaveAttribute('data-flash', 'true')
+  })
+
+  it('mostrar o declarar una carta la pone grande en el centro con una línea de lo que pasó, cada uno con su color', () => {
+    render(<Harness actions={[{ type: 'activate', id: 'card-1-1' }, { type: 'reveal', id: 'card-2-1' }, { type: 'declare', id: 'card-3-1' }]} />)
+
+    const spotlight = () => document.querySelector('[data-activation]')
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    expect(spotlight()).toHaveAttribute('data-kind', 'activate')
+    expect(spotlight()).toHaveTextContent(/Ash Blossom/)
+    expect(spotlight()?.querySelector('[data-fx="frame"]')).toHaveAttribute('data-shine', 'true')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    expect(spotlight()).toHaveAttribute('data-kind', 'reveal')
+    expect(spotlight()).toHaveTextContent('Revelás Maxx C')
+    expect(within(hand()).getByRole('listitem', { name: 'Maxx C' })).toHaveAttribute('data-flash-kind', 'reveal')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    expect(spotlight()).toHaveAttribute('data-kind', 'declare')
+    expect(spotlight()).toHaveTextContent('Declarás Called by the Grave')
+  })
+
+  it('al reproducir un combo cada paso que mueve cartas las muestra grandes con su nombre y lo que pasó; las que salen del deck se dan vuelta; en vivo, no', () => {
+    // Mano: Ash, Maxx C, Called, Nibiru, Droll; el deck guarda a Imperm.
+    render(<Harness actions={[{ type: 'draw', count: 1 }, { type: 'move', id: 'card-2-1', to: 'gy' }]} />)
+
+    const spotlight = () => document.querySelector('[data-activation]')
+    expect(spotlight()).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    expect(spotlight()).toHaveAttribute('data-kind', 'hand')
+    expect(spotlight()).toHaveTextContent('Robás Imperm')
+    expect(spotlight()?.querySelector('figcaption')).toHaveTextContent('Imperm')
+    // Sale del deck: aparece de dorso y se da vuelta en 3D; la mano se enmarca porque recibió una carta.
+    expect(spotlight()?.querySelector('.animate-fx-flip-in')).not.toBeNull()
+    expect(document.querySelector('[data-fx="hand"]')).not.toBeNull()
+
+    // De la mano al cementerio: se ve la carta (que ya estaba a la vista, sin darse vuelta) y su paso.
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    expect(spotlight()).toHaveAttribute('data-kind', 'gy')
+    expect(spotlight()).toHaveTextContent('Maxx C')
+    expect(spotlight()?.querySelector('.animate-fx-flip-in')).toBeNull()
+  })
+
+  it('deshacer corta lo que estaba en curso: la carta grande del paso y el destello de la zona', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+
+    try {
+      render(<Harness />)
+
+      tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
+      expect(document.querySelector('[data-activation]')).not.toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
+      expect(document.querySelector('[data-activation]')).toBeNull()
+
+      tap(within(hand()).getByRole('listitem', { name: 'Maxx C' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
+      expect(document.querySelector('[data-fx="landing"]')).not.toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
+      expect(document.querySelector('[data-fx="landing"]')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('jugando en vivo, robar enmarca la mano pero no agranda la carta', () => {
+    render(<Harness />)
+
+    tap(screen.getByRole('button', { name: 'Main: 1' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Robar' }))
+    expect(within(hand()).getByRole('listitem', { name: 'Imperm' })).toBeInTheDocument()
+    expect(document.querySelector('[data-fx="hand"]')).not.toBeNull()
+    expect(document.querySelector('[data-activation]')).toBeNull()
+  })
+
+  it('marcar un objetivo lo cubre con la mira; cambiar de fase muestra el cartel y una invocación cae con su destello, y se van solos', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+
+    try {
+      render(<Harness />)
+
+      // La mira (con su nombre accesible) queda sobre la carta marcada y se va al quitar la marca.
+      tap(within(hand()).getByRole('listitem', { name: 'Maxx C' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Seleccionar' }))
+      const marked = within(hand()).getByRole('listitem', { name: 'Maxx C (seleccionada)' })
+      expect(marked).toHaveAttribute('data-targeted', 'true')
+      expect(within(marked).getByRole('img', { name: 'Seleccionada' })).toHaveAttribute('data-fx', 'target')
+      tap(marked)
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Quitar selección' }))
+      expect(document.querySelector('[data-fx="target"]')).toBeNull()
+
+      // Una Invocación Normal: el destello cae en la zona (dorado) y espera a que la carta aterrice.
+      tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
+      const burst = zone('Zona de monstruo 1').querySelector('[data-fx="landing"]')
+      expect(burst).toHaveAttribute('data-tone', 'normal')
+      expect(burst?.querySelector('span')).toHaveStyle({ animationDelay: '360ms' })
+      expect(zone('Zona de monstruo 2').querySelector('[data-fx="landing"]')).toBeNull()
+
+      // Una fase nueva: el cartel con su nombre; y de la End Phase a la Draw Phase, con el turno.
+      fireEvent.click(screen.getByRole('button', { name: 'Main Phase 1' }))
+      expect(document.querySelector('[data-fx="banner"]')).toHaveTextContent('Main Phase 1')
+      fireEvent.click(screen.getByRole('button', { name: 'End Phase' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Draw Phase' }))
+      expect(document.querySelector('[data-fx="banner"]')).toHaveTextContent('Turno 2Draw Phase')
+
+      act(() => {
+        vi.advanceTimersByTime(1500)
+      })
+      expect(document.querySelector('[data-fx="landing"]')).toBeNull()
+      expect(document.querySelector('[data-fx="banner"]')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('seleccionar una carta del cementerio o del destierro le pone la mira en el visor y en la casilla, y el visor sigue abierto', () => {
+    render(<Harness />)
+
+    // Maxx C al cementerio y Nibiru al destierro, desde sus menús.
+    tap(within(hand()).getByRole('listitem', { name: 'Maxx C' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Descartar' }))
+    tap(within(hand()).getByRole('listitem', { name: 'Nibiru' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Desterrar' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Boca arriba' }))
+
+    const gy = () => screen.getByRole('button', { name: 'GY: 1' })
+    const banish = () => screen.getByRole('button', { name: 'Banish: 1' })
+    expect(gy()).toHaveAttribute('data-targeted', 'false')
+    expect(gy().querySelector('[data-fx="target"]')).toBeNull()
+
+    fireEvent.click(gy())
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'GY · 1' })).getByRole('button', { name: 'Maxx C' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Seleccionar' }))
+
+    // Seleccionar no mueve la carta: el visor sigue abierto, con la mira sobre ella, y la casilla también la lleva.
+    const viewer = screen.getByRole('dialog', { name: 'GY · 1' })
+    const tile = within(viewer).getByRole('button', { name: 'Maxx C (seleccionada)' })
+    expect(tile.querySelector('[data-fx="target"]')).not.toBeNull()
+    expect(tile.querySelector('[data-targeted="true"]')).not.toBeNull()
+    expect(gy()).toHaveAttribute('data-targeted', 'true')
+    expect(gy().querySelector('[data-fx="target"]')).not.toBeNull()
+    expect(within(status()).getByText('Seleccionás Maxx C')).toBeInTheDocument()
+
+    // El destierro, igual.
+    fireEvent.click(within(viewer).getByRole('button', { name: 'Cerrar' }))
+    expect(banish().querySelector('[data-fx="target"]')).toBeNull()
+    fireEvent.click(banish())
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Banish · 1' })).getByRole('button', { name: 'Nibiru' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Seleccionar' }))
+    expect(within(screen.getByRole('dialog', { name: 'Banish · 1' })).getByRole('button', { name: 'Nibiru (seleccionada)' }).querySelector('[data-fx="target"]')).not.toBeNull()
+    expect(banish().querySelector('[data-fx="target"]')).not.toBeNull()
+
+    // Quitar la selección saca la mira de las dos partes.
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Banish · 1' })).getByRole('button', { name: 'Nibiru (seleccionada)' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Quitar selección' }))
+    expect(banish().querySelector('[data-fx="target"]')).toBeNull()
+    expect(screen.getByRole('dialog', { name: 'Banish · 1' }).querySelector('[data-fx="target"]')).toBeNull()
+    // La del cementerio sigue marcada.
+    expect(gy().querySelector('[data-fx="target"]')).not.toBeNull()
   })
 
   it('el visor del deck: sacar una carta de ahí baraja el resto en la misma jugada; cerrarlo sin sacar nada baraja aparte', () => {
@@ -412,7 +674,6 @@ describe('la mesa de práctica', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Anterior' }))
     tap(within(hand()).getByRole('listitem', { name: 'Nibiru' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'En ataque' }))
     fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 2: elegir' }))
     expect(within(status()).getByText('2/2')).toBeInTheDocument()
     expect(within(status()).getByText('Invocación Normal de Nibiru')).toBeInTheDocument()

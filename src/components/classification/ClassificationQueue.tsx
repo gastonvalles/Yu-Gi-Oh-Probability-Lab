@@ -92,7 +92,7 @@ const QueueTile = memo(function QueueTile({
         'grid h-full w-full min-w-0 grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-3 rounded-card p-2 text-left',
       )}
     >
-      <div className={cx(queueArt(active), 'aspect-[268/391] w-11 rounded-tag bg-input')}>
+      <div className={cx(queueArt(active), 'aspect-[268/391] w-11 bg-input')}>
         <CardArt
           remoteUrl={card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null}
           name={card.name}

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 import { UI_ANIMATION_MS, prefersReducedMotion } from '../../app/motion'
@@ -36,6 +36,32 @@ function flightFrom(card: HTMLElement, origin: DOMRect): string {
   const dx = origin.left + origin.width / 2 - (target.left + target.width / 2)
   const dy = origin.top + origin.height / 2 - (target.top + target.height / 2)
   return `translate(${dx}px, ${dy}px) scale(${origin.width / Math.max(1, target.width)})`
+}
+
+/** Cuánto se inclina la carta (en grados, en el borde) hacia donde está el puntero. */
+const TILT_DEGREES = 12
+
+/**
+ * Inclina la carta hacia el puntero, como una carta de verdad que se apoya con el dedo (y un brillo que sigue al puntero).
+ * Va por `rotate` (aparte de `transform`, que usa el vuelo al abrir y cerrar) y con la perspectiva puesta en el contenedor.
+ * Sin tocar el estado de React: cada movimiento sólo escribe estilos.
+ */
+function tiltTowards(art: HTMLElement, event: ReactPointerEvent<HTMLElement>) {
+  const rect = art.getBoundingClientRect()
+  const x = ((event.clientX - rect.left) / Math.max(1, rect.width) - 0.5) * 2
+  const y = ((event.clientY - rect.top) / Math.max(1, rect.height) - 0.5) * 2
+  const strength = Math.min(1, Math.hypot(x, y))
+
+  // Se hunde del lado del puntero: el eje es perpendicular a su desplazamiento desde el centro.
+  art.style.rotate = strength < 0.01 ? 'none' : `${-y} ${x} 0 ${strength * TILT_DEGREES}deg`
+  art.style.setProperty('--glare-x', `${(x + 1) * 50}%`)
+  art.style.setProperty('--glare-y', `${(y + 1) * 50}%`)
+  art.dataset.tilting = 'true'
+}
+
+function levelOut(art: HTMLElement) {
+  art.style.rotate = ''
+  art.dataset.tilting = 'false'
 }
 
 /**
@@ -157,17 +183,24 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
       }}
     >
       <div
-        className={cx('group pointer-events-none flex max-h-full flex-col items-center gap-3 [@media(max-height:540px)]:gap-2', tall ? 'w-[min(100%,36rem)]' : 'w-[min(100%,32rem)]', 'data-[zoomed=true]:w-full')}
+        className={cx('group pointer-events-none flex max-h-full flex-col items-center gap-3 [perspective:900px] [@media(max-height:540px)]:gap-2', tall ? 'w-[min(100%,36rem)]' : 'w-[min(100%,32rem)]', 'data-[zoomed=true]:w-full')}
         data-zoomed={zoomed ? 'true' : 'false'}
       >
         <div
           ref={cardRef}
-          className="pointer-events-auto relative aspect-[421/614] h-(--detail-art-height) max-w-full flex-none cursor-zoom-in overflow-hidden rounded-lg shadow-[0_24px_50px_rgb(0_0_0/0.6),0_0_0_1px_rgb(255_255_255/0.12),0_0_40px_rgb(var(--primary-rgb)/0.3)] transition-[height] duration-(--motion-duration) ease-[cubic-bezier(0.2,0.9,0.25,1)] group-data-[zoomed=true]:h-[min(94dvh,calc((100vw-2rem)*614/421))]"
+          className="group/art pointer-events-auto relative aspect-[421/614] h-(--detail-art-height) max-w-full flex-none cursor-zoom-in overflow-hidden shadow-[0_24px_50px_rgb(0_0_0/0.6),0_0_0_1px_rgb(255_255_255/0.12),0_0_40px_rgb(var(--primary-rgb)/0.3)] transition-[height,rotate] duration-(--motion-duration) ease-[cubic-bezier(0.2,0.9,0.25,1)] group-data-[zoomed=true]:h-[min(94dvh,calc((100vw-2rem)*614/421))]"
           role="button"
           tabIndex={-1}
           aria-label={zoomed ? t('search.overlay.backToDetail') : t('search.overlay.zoomIn')}
+          // La inclinación es sólo para el mouse (con el dedo sería tirar de la carta) y se apaga con la carta agrandada o con movimiento reducido.
+          onPointerMove={(event) => {
+            if (event.pointerType !== 'mouse' || zoomed || prefersReducedMotion()) return
+            tiltTowards(event.currentTarget, event)
+          }}
+          onPointerLeave={(event) => levelOut(event.currentTarget)}
           onClick={(event) => {
             event.stopPropagation()
+            levelOut(event.currentTarget)
             setZoomed((current) => !current)
           }}
         >
@@ -177,6 +210,11 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
             className="block h-full w-full bg-input object-contain"
             limitCard={card}
             limitBadgeSize="lg"
+          />
+          {/* El brillo que sigue al puntero mientras la carta se inclina. */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-(--motion-duration) [background:radial-gradient(circle_at_var(--glare-x,50%)_var(--glare-y,50%),rgb(255_255_255/0.34),transparent_58%)] mix-blend-overlay group-data-[tilting=true]/art:opacity-100 motion-reduce:hidden"
           />
           {artOverlay ? <div className="absolute right-2 top-2 z-1">{artOverlay}</div> : null}
           {artCorner ? <div className="absolute bottom-2 right-2 z-1">{artCorner}</div> : null}

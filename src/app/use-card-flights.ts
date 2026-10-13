@@ -1,11 +1,11 @@
 import { useCallback, useLayoutEffect, useRef, type RefObject } from 'react'
 
-import { CARD_BACK } from '../components/probability/practice-styles'
-import { UI_ANIMATION_MS } from './motion'
+import { CARD_BACK, FX_RGB } from '../components/probability/practice-styles'
+import { UI_ANIMATION_MS, supportsAdditiveAnimation } from './motion'
 import { locateCard, type MatState } from './practice-mat'
 
 /** Cuánto dura el vuelo de una carta entre dos lugares de la mesa. */
-const FLIGHT_MS = UI_ANIMATION_MS * 2
+export const FLIGHT_MS = UI_ANIMATION_MS * 2
 const EASING = 'cubic-bezier(0.22, 0.9, 0.3, 1)'
 /** Marca de los vuelos: una jugada que llega con un vuelo a medias lo corta antes de medir, así la carta se mide quieta. */
 const FLIGHT_ID = 'mat-flight'
@@ -16,6 +16,8 @@ interface Snapshot {
   width: number
   height: number
   art: string | null
+  /** Era la carta soltada que espera en una zona que se elija cómo sale (`data-pending`): si se cancela, vuelve volando a la mano. */
+  pending: boolean
 }
 
 function prefersReducedMotion(): boolean {
@@ -56,6 +58,29 @@ function bump(element: HTMLElement) {
   element.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.08)', offset: 0.45 }, { transform: 'scale(1)' }], { duration: 260, delay: FLIGHT_MS - 120, easing: 'ease-out' })
 }
 
+/** El color con que cada lugar recibe una carta: el cementerio, violeta; el destierro, ámbar; el deck y el Extra, celeste; debajo de un Xyz, azul. */
+function impactRgb(state: MatState, id: string): string {
+  const where = locateCard(state, id)
+
+  if (where?.kind === 'material') return FX_RGB.indigo
+  if (where?.kind === 'pile' && where.pile === 'gy') return FX_RGB.violet
+  if (where?.kind === 'pile' && where.pile === 'banished') return FX_RGB.amber
+
+  return FX_RGB.cyan
+}
+
+/** Al aterrizar, el lugar da el golpe: un marco de su color que se enciende y se expande al apagarse, y un destello (pasa junto con `bump`, que lo infla). */
+function impact(element: HTMLElement, rgb: string) {
+  element.animate(
+    [
+      { boxShadow: `0 0 0 2px rgb(${rgb} / 1), 0 0 18px 3px rgb(${rgb} / 0.9)`, filter: 'brightness(1.9)' },
+      { boxShadow: `0 0 0 2px rgb(${rgb} / 1), 0 0 22px 6px rgb(${rgb} / 0.7)`, filter: 'brightness(1.25)', offset: 0.4 },
+      { boxShadow: `0 0 0 16px rgb(${rgb} / 0), 0 0 34px 10px rgb(${rgb} / 0)`, filter: 'brightness(1)' },
+    ],
+    { duration: 700, delay: FLIGHT_MS - 100, easing: 'ease-out' },
+  )
+}
+
 /**
  * Las cartas vuelan de un lugar a otro cuando cambia el estado de la mesa (jugadas, deshacer, reproducir un
  * combo): cada carta a la vista (`data-card-id`) se anima desde donde estaba (FLIP) o desde la pila de la que
@@ -81,16 +106,26 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
     }
 
     const previous = previousRef.current
-    previousRef.current = { state, cards: new Map([...current].map(([id, { element, rect }]) => [id, { rect, width: element.offsetWidth, height: element.offsetHeight, art: artOf(id) }])) }
+    previousRef.current = { state, cards: new Map([...current].map(([id, { element, rect }]) => [id, { rect, width: element.offsetWidth, height: element.offsetHeight, art: artOf(id), pending: element.dataset.pending === 'true' }])) }
 
-    if (!previous || previous.state === state || prefersReducedMotion()) return
+    if (!previous || prefersReducedMotion()) return
+
+    // Sin jugada (sólo se volvió a medir) nada vuela, salvo la carta que esperaba en una zona y vuelve a la mano porque se cerró el menú sin elegir.
+    const sameState = previous.state === state
+    const returning = (id: string) => previous.cards.get(id)?.pending === true && state.hand.includes(id)
+
+    if (sameState && ![...current.keys()].some(returning)) return
 
     for (const [id, { element, rect }] of current) {
-      if (state.hand.includes(id) && (previous.state.hand.includes(id) || previous.state.deck.includes(id))) continue
+      if (sameState && !returning(id)) continue
+      if (!returning(id) && state.hand.includes(id) && (previous.state.hand.includes(id) || previous.state.deck.includes(id))) continue
 
       const before = previous.cards.get(id)?.rect ?? homeOf(root, previous.state, id)?.getBoundingClientRect()
 
       if (!before || near(before, rect)) continue
+
+      // Una carta que cambió de posición gira con su transición: un vuelo encima la dejaría como estaba hasta terminar y después la daría vuelta de golpe.
+      if (typeof CSSTransition === 'function' && element.getAnimations().some((animation) => animation instanceof CSSTransition && animation.transitionProperty === 'transform')) continue
 
       // El vuelo va por delante de la transformación propia de la carta (el abanico de la mano, una carta de costado).
       const base = getComputedStyle(element).transform
@@ -98,6 +133,8 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
 
       element.animate([{ transform: `${offset(before, rect)}${own}` }, { transform: base }], { id: FLIGHT_ID, duration: FLIGHT_MS, easing: EASING })
     }
+
+    if (sameState) return
 
     for (const [id, snapshot] of previous.cards) {
       if (current.has(id)) continue
@@ -109,7 +146,7 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
       const left = centerX(snapshot.rect) - width / 2
       const top = centerY(snapshot.rect) - height / 2
       const ghost = document.createElement('div')
-      ghost.className = 'pointer-events-none fixed left-0 top-0 z-200 overflow-hidden rounded-tag bg-input shadow-[0_12px_28px_rgba(0,0,0,0.5)]'
+      ghost.className = 'pointer-events-none fixed left-0 top-0 z-200 overflow-hidden bg-input shadow-[0_12px_28px_rgba(0,0,0,0.5)]'
       ghost.style.width = `${width}px`
       ghost.style.height = `${height}px`
       ghost.style.transform = `translate(${left}px, ${top}px)`
@@ -122,12 +159,14 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
         ghost.append(image)
       }
 
-      if (hiddenAt(state, id)) {
-        // Llega boca abajo: a mitad de camino se le ve el dorso.
+      const faceDown = hiddenAt(state, id)
+
+      if (faceDown) {
+        // Llega boca abajo: a mitad de camino queda de canto y ahí se cambia la cara por el dorso.
         const back = document.createElement('span')
         back.className = CARD_BACK
         ghost.append(back)
-        back.animate([{ opacity: 0 }, { opacity: 0, offset: 0.45 }, { opacity: 1, offset: 0.6 }, { opacity: 1 }], { duration: FLIGHT_MS, fill: 'forwards' })
+        back.animate([{ opacity: 0 }, { opacity: 0, offset: 0.5 }, { opacity: 1, offset: 0.5 }, { opacity: 1 }], { duration: FLIGHT_MS, fill: 'forwards' })
       }
 
       document.body.append(ghost)
@@ -138,7 +177,24 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
       flight.onfinish = () => ghost.remove()
       flight.oncancel = () => ghost.remove()
 
-      if (home) bump(home)
+      // El giro en 3D se suma al vuelo (va después en la pila de animaciones, con `composite: 'add'`): de canto a mitad de camino y abierto del otro lado.
+      if (faceDown && supportsAdditiveAnimation()) {
+        ghost.animate(
+          [
+            { transform: 'perspective(700px) rotateY(0deg)', easing: 'ease-in' },
+            { transform: 'perspective(700px) rotateY(90deg)', offset: 0.5 },
+            { transform: 'perspective(700px) rotateY(-90deg)', offset: 0.5, easing: 'ease-out' },
+            { transform: 'perspective(700px) rotateY(0deg)' },
+          ],
+          { duration: FLIGHT_MS, composite: 'add', fill: 'forwards' },
+        )
+      }
+
+      // La mano no es una pila: no se infla ni se enciende entera cuando le vuelve una carta (la carta se acomoda sola).
+      if (home && home.dataset.drop !== 'hand') {
+        bump(home)
+        impact(home, impactRgb(state, id))
+      }
     }
     // Se mide con cada jugada y cada vez que la mano se reacomoda; `artOf` sólo pinta el fantasma.
     // eslint-disable-next-line react-hooks/exhaustive-deps
