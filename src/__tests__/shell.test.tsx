@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { useShellInsets } from '../app/shell-layout'
 import { buildAppNavGroups, buildDeckWorkflowNavigationItems } from '../components/deck-mode/deck-workflow-navigation'
 import { AppFooter } from '../components/shell/AppFooter'
 import { AppShell } from '../components/shell/AppShell'
@@ -12,12 +13,13 @@ import { NavDrawer } from '../components/shell/NavDrawer'
 import { SidebarNav } from '../components/shell/SidebarNav'
 import { Heading } from '../components/ui/Heading'
 
-const GROUPS = buildAppNavGroups(
-  buildDeckWorkflowNavigationItems({ mainDeckCount: 42, roleCardCount: 40, unclassifiedCardCount: 3, hasCompletedRoleStep: false, patternCount: 0 }),
-)
+const STEPS = buildDeckWorkflowNavigationItems({ mainDeckCount: 42, roleCardCount: 40, unclassifiedCardCount: 3, hasCompletedRoleStep: false, patternCount: 0 })
+const GROUPS = buildAppNavGroups(STEPS, { practice: true })
 
 beforeEach(() => {
   localStorage.clear()
+  // Una ventana ancha: el menú lateral arranca abierto (en una angosta arranca contraído).
+  Object.defineProperty(window, 'innerWidth', { value: 1600, configurable: true })
   window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
   window.requestAnimationFrame = (callback) => {
     callback(0)
@@ -35,6 +37,10 @@ describe('el menú de la app', () => {
       ['Herramientas', ['practice', 'life']],
       ['Descubrir', ['meta', 'replays']],
     ])
+  })
+
+  it('la mesa de práctica sólo se ofrece con cartas en el Main; la calculadora de LP, siempre', () => {
+    expect(buildAppNavGroups(STEPS, { practice: false })[1]?.items.map((item) => item.key)).toEqual(['life'])
   })
 
   it('el destino abierto lleva aria-current, elegir otro avisa cuál y el punto de color dice cómo viene cada paso', () => {
@@ -186,6 +192,25 @@ describe('el armazón', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
+  it('sin haber elegido, arranca contraído en una ventana angosta y abierto en una ancha', () => {
+    Object.defineProperty(window, 'innerWidth', { value: 1200, configurable: true })
+    const { unmount } = render(
+      <AppShell groups={GROUPS} activeKey="export" onSelect={() => {}}>
+        <p>Pantalla</p>
+      </AppShell>,
+    )
+    expect(document.querySelector('aside')).toHaveAttribute('data-collapsed', 'true')
+    unmount()
+
+    Object.defineProperty(window, 'innerWidth', { value: 1600, configurable: true })
+    render(
+      <AppShell groups={GROUPS} activeKey="export" onSelect={() => {}}>
+        <p>Pantalla</p>
+      </AppShell>,
+    )
+    expect(document.querySelector('aside')).toHaveAttribute('data-collapsed', 'false')
+  })
+
   it('recuerda si el menú lateral estaba contraído', () => {
     const { unmount } = render(
       <AppShell groups={GROUPS} activeKey="export" onSelect={() => {}}>
@@ -207,5 +232,34 @@ describe('el armazón', () => {
       </AppShell>,
     )
     expect(document.querySelector('aside')).toHaveAttribute('data-collapsed', 'true')
+  })
+
+  it('avisa cuánto espacio ocupa (menú lateral y pie) para que los botones flotantes y la mascota lo dejen libre', () => {
+    // Ventana de escritorio: el corte de 1101 px de la app.
+    window.matchMedia = ((query: string) => ({ matches: query === '(min-width: 1101px)', media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+
+    function Probe() {
+      return <output data-testid="insets">{JSON.stringify(useShellInsets())}</output>
+    }
+
+    const { unmount } = render(
+      <>
+        <AppShell groups={GROUPS} activeKey="export" onSelect={() => {}}>
+          <p>Pantalla</p>
+        </AppShell>
+        <Probe />
+      </>,
+    )
+
+    expect(screen.getByTestId('insets')).toHaveTextContent('{"left":240,"bottom":64}')
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Contraer menú' }))
+    })
+    expect(screen.getByTestId('insets')).toHaveTextContent('{"left":76,"bottom":64}')
+    unmount()
+
+    // Sin armazón montado no queda nada reservado.
+    render(<Probe />)
+    expect(screen.getByTestId('insets')).toHaveTextContent('{"left":0,"bottom":0}')
   })
 })

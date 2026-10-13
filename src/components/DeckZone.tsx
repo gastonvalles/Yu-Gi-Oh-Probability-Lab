@@ -10,6 +10,7 @@ import type { DeckDropIndicatorState } from '../app/use-deck-pointer-drag'
 import { formatInteger } from '../app/utils'
 import { t } from '../i18n'
 import { CardArt } from './CardArt'
+import { Heading } from './ui/Heading'
 import { Icon } from './ui/Icon'
 import { IconButton } from './ui/IconButton'
 import {
@@ -181,9 +182,9 @@ export const DeckZone = memo(function DeckZone({
     <div className={cx('flex min-w-0 items-center justify-between gap-3 px-0.5', className)}>
       <div className="flex min-w-0 items-center gap-2.5">
         <span className="size-2.5 shrink-0 rounded-full" style={{ background: zoneStyle.dot }} aria-hidden="true" />
-        <h3 className="m-0 whitespace-nowrap text-lead font-semibold text-foreground">
+        <Heading level="section" as="h3" className="whitespace-nowrap">
           {title.replace(' Deck', '')} <span className="font-medium text-muted tabular-nums">[{cardCountLabel}]</span>
-        </h3>
+        </Heading>
       </div>
       <div className="ml-auto flex min-w-0 items-center gap-2">
         {zoneTypeCounts.length > 0 ? (

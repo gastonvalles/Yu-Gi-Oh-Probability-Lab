@@ -6,6 +6,7 @@ import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
+import { Heading } from '../ui/Heading'
 import { cx } from '../ui/cx'
 import { CloseButton } from '../ui/IconButton'
 import { CardPricesButton, CardPricesModal } from './CardPrices'
@@ -252,7 +253,7 @@ export function CardPanelHeader({ title, lines }: { title: string; lines: Readon
 
   return (
     <header className="grid flex-none gap-1">
-      <h2 className="m-0 text-lead font-bold [overflow-wrap:anywhere]">{title}</h2>
+      <Heading level="section">{title}</Heading>
       {visible.map((line, index) => (
         <p key={index} className="m-0 text-body text-white/66 [overflow-wrap:anywhere]">
           {line}

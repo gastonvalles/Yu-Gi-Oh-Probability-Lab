@@ -14,6 +14,7 @@ import { getRemainingCopies } from '../../../app/pattern-card-usage'
 import { createCardPoolMatcher } from '../../../app/patterns'
 import { formatCopies } from '../../../app/utils'
 import { t } from '../../../i18n'
+import { Heading } from '../../ui/Heading'
 import { Button } from '../../ui/Button'
 import { cx } from '../../ui/cx'
 import { Icon } from '../../ui/Icon'
@@ -194,7 +195,9 @@ export function CategoryPicker({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="grid flex-none gap-3 border-b border-border-subtle pb-3 pl-4 pr-14 pt-4">
-        <h3 className="m-0 text-lead font-semibold tracking-[-0.01em] text-foreground">{t('builder.picker.title')}</h3>
+        <Heading level="section" as="h3">
+          {t('builder.picker.title')}
+        </Heading>
         <input
           type="search"
           className={`${field} h-11 w-full px-4 text-body [&::-webkit-search-cancel-button]:hidden`}

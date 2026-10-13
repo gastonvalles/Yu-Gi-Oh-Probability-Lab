@@ -26,6 +26,7 @@ import { CardDetailModal } from '../card-detail/CardDetailModal'
 import { DeckBuilderClassicPreview } from '../deck-mode/DeckBuilderClassicPreview'
 import { DeckZone } from '../DeckZone'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
+import { Heading } from '../ui/Heading'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
@@ -222,7 +223,9 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
             }
           >
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-              <h3 className="m-0 text-lead font-semibold tracking-[-0.01em] text-foreground">{deck.name}</h3>
+              <Heading level="section" as="h3">
+                {deck.name}
+              </Heading>
               {summary ? <span className="text-body text-muted">{summary}</span> : null}
             </div>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-micro text-muted">

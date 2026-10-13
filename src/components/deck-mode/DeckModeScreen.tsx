@@ -14,19 +14,19 @@ import { buildPracticeDeck } from '../probability/practice'
 import { CardDetailModal } from '../card-detail/CardDetailModal'
 import { DeckBuilderStep } from './DeckBuilderStep'
 import { LifeCalculatorFab } from '../life/LifeCalculatorFab'
+import { AppShell } from '../shell/AppShell'
 import { cx } from '../ui/cx'
 import { DraggableFab } from '../ui/DraggableFab'
+import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
 import { DeckModeDragOverlay } from './DeckModeDragOverlay'
 import {
+  buildAppNavGroups,
   buildDeckWorkflowNavigationItems,
   type DeckWorkflowStepKey,
   isDeckWorkflowStepKey,
 } from './deck-workflow-navigation'
-import { DeckModeNavigation } from './DeckModeNavigation'
-import { MobileBottomStepNav } from './MobileBottomStepNav'
-import { DeckModeShell } from './DeckModeShell'
 import {
   LazyComparisonScreen,
   LazyDeckRolesPanel,
@@ -76,6 +76,7 @@ export function DeckModeScreen() {
   const hasCompletedRoleStep = useMemo(() => isClassificationStepComplete(roleCards), [roleCards])
   const patternCount = controller.probability.patterns.length
   const [globalPracticeOpen, setGlobalPracticeOpen] = useState(false)
+  const [lifeOpen, setLifeOpen] = useState(false)
   const recommendedStep = useMemo(
     () => getRecommendedStep(mainDeckCount, hasCompletedRoleStep, patternCount),
     [hasCompletedRoleStep, mainDeckCount, patternCount],
@@ -174,19 +175,15 @@ export function DeckModeScreen() {
     ],
   )
   const deckBuilderStep = controller.deckBuilderStep
-  const navigation = (
-    <DeckModeNavigation
-      items={navigationItems}
-      activeStep={activeStep}
-      onStepChange={handleStepChange}
-    />
-  )
-  const mobileNavigation = (
-    <MobileBottomStepNav
-      items={navigationItems}
-      activeStep={activeStep}
-      onStepChange={handleStepChange}
-    />
+  // El menú: los pasos del deck, las herramientas (que abren un panel encima) y la referencia. La mesa de práctica necesita cartas en el Main.
+  const navGroups = useMemo(() => buildAppNavGroups(navigationItems, { practice: mainDeckCount > 0 }), [navigationItems, mainDeckCount])
+  const handleNavSelect = useCallback(
+    (key: string) => {
+      if (key === 'practice') setGlobalPracticeOpen(true)
+      else if (key === 'life') setLifeOpen(true)
+      else if (isDeckWorkflowStepKey(key)) handleStepChange(key)
+    },
+    [handleStepChange],
   )
   useEffect(() => {
     preloadHeavySteps()
@@ -194,6 +191,13 @@ export function DeckModeScreen() {
 
   const stepContent = isDeckBuilderStep ? (
     <div id="deck-builder" className="h-full min-h-0">
+      {/* En escritorio el builder no lleva encabezado a la vista (las zonas del deck son el título), pero la pantalla tiene su h1 como todas.
+          En el celular el encabezado es el de la propia vista (`StepHero`). */}
+      {isDesktopDeckBuilder ? (
+        <Heading level="page" className="sr-only">
+          {t('deck.builder.title')}
+        </Heading>
+      ) : null}
       <DeckBuilderStep {...deckBuilderStep} />
     </div>
   ) : (
@@ -255,13 +259,9 @@ export function DeckModeScreen() {
 
   return (
     <>
-      <DeckModeShell
-        navigation={navigation}
-        mobileNavigation={mobileNavigation}
-        content={mainContent}
-        contentScrollable={!isDeckBuilderStep}
-        contentScrollRef={contentScrollRef}
-      />
+      <AppShell groups={navGroups} activeKey={activeStep} onSelect={handleNavSelect} contentScrollable={!isDeckBuilderStep} contentScrollRef={contentScrollRef}>
+        {mainContent}
+      </AppShell>
 
       <DeckModeDragOverlay
         overlay={controller.feedback.dragOverlay}
@@ -303,8 +303,8 @@ export function DeckModeScreen() {
         />
       ) : null}
 
-      {/* Calculadora de LP (sólo celular): botón flotante que la abre encima de cualquier pantalla. */}
-      <LifeCalculatorFab />
+      {/* Calculadora de LP: botón flotante que la abre encima de cualquier pantalla (también se abre desde el menú). */}
+      <LifeCalculatorFab open={lifeOpen} onOpen={() => setLifeOpen(true)} onClose={() => setLifeOpen(false)} />
     </>
   )
 }

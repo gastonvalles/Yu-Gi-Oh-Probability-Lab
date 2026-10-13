@@ -1,29 +1,13 @@
-import { useCallback, useState, type ReactNode, type RefObject } from 'react'
+import { useCallback, useLayoutEffect, useState, type ReactNode, type RefObject } from 'react'
 
+import { NO_SHELL_INSETS, readSidebarCollapsed, setShellInsets, shellInsetsFor, writeSidebarCollapsed } from '../../app/shell-layout'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { cx } from '../ui/cx'
 import { AppFooter } from './AppFooter'
 import { AppSidebar } from './AppSidebar'
 import { MobileTopBar } from './MobileTopBar'
 import type { NavGroup } from './nav-model'
 import { NavDrawer } from './NavDrawer'
-
-const SIDEBAR_KEY = 'ygo-lab:sidebar-collapsed'
-
-function readCollapsed(): boolean {
-  try {
-    return window.localStorage.getItem(SIDEBAR_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-
-function writeCollapsed(collapsed: boolean): void {
-  try {
-    window.localStorage.setItem(SIDEBAR_KEY, collapsed ? '1' : '0')
-  } catch {
-    // Sin almacenamiento: el menú se queda como esté hasta recargar.
-  }
-}
 
 interface AppShellProps {
   groups: NavGroup[]
@@ -42,15 +26,24 @@ interface AppShellProps {
  * sólo ponen su contenido adentro.
  */
 export function AppShell({ groups, activeKey, onSelect, children, contentScrollRef, contentScrollable = false }: AppShellProps) {
-  const [collapsed, setCollapsed] = useState(readCollapsed)
+  const [collapsed, setCollapsed] = useState(readSidebarCollapsed)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const toggleCollapsed = useCallback(() => {
     setCollapsed((current) => {
-      writeCollapsed(!current)
+      writeSidebarCollapsed(!current)
       return !current
     })
   }, [])
   const closeDrawer = useCallback(() => setDrawerOpen(false), [])
+  const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+
+  // Los botones flotantes y la mascota dejan libres el menú lateral (con su ancho de ahora) y el pie. En el celular no hay menú fijo.
+  // Va en un layout effect para que el cambio (contraer el menú, girar la pantalla) se vea en el mismo cuadro; el valor del primer cuadro ya lo trae el módulo.
+  useLayoutEffect(() => {
+    setShellInsets(shellInsetsFor(collapsed, isDesktop))
+
+    return () => setShellInsets(NO_SHELL_INSETS)
+  }, [collapsed, isDesktop])
 
   return (
     <div className="min-h-dvh w-full min-w-0 overflow-x-clip min-[1101px]:grid min-[1101px]:h-dvh min-[1101px]:grid-cols-[auto_minmax(0,1fr)] min-[1101px]:overflow-hidden">
@@ -62,14 +55,16 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
           className={cx(
             // `scrollbar-gutter`: la barra de scroll queda reservada en todas las pantallas (también en el builder, que no la usa), así el ancho
             // del contenido no cambia entre una pantalla larga y una corta y nada se corre de lugar al cambiar. Fina en todos.
-            'flex min-h-0 w-full min-w-0 flex-1 flex-col min-[1101px]:[scrollbar-gutter:stable] min-[1101px]:[scrollbar-width:thin]',
+            // `relative`: lo posicionado adentro (los `sr-only`) queda dentro de este recuadro; si no, se estira el alto del documento.
+            'relative flex min-h-0 w-full min-w-0 flex-1 flex-col min-[1101px]:[scrollbar-gutter:stable] min-[1101px]:[scrollbar-width:thin]',
             contentScrollable ? 'min-[1101px]:overflow-y-auto' : 'min-[1101px]:overflow-hidden',
           )}
         >
-          <div className="min-h-0 w-full min-w-0 flex-1 [&>*]:min-w-0">{children}</div>
-          {contentScrollable ? <AppFooter /> : null}
+          {/* Si la pantalla scrollea, su contenido no se achica (el pie va después de él y no lo pisa); si ocupa el alto, se ajusta y scrollea por dentro,
+              y el pie queda fijo abajo. El pie va siempre adentro: así tiene el mismo ancho (y la barra reservada) en todas las pantallas. */}
+          <div className={cx('w-full min-w-0 flex-1 [&>*]:min-w-0', !contentScrollable && 'min-h-0')}>{children}</div>
+          <AppFooter className={contentScrollable ? undefined : 'min-[1101px]:py-2'} />
         </div>
-        {contentScrollable ? null : <AppFooter className="min-[1101px]:py-2" />}
       </div>
       <NavDrawer isOpen={drawerOpen} onClose={closeDrawer} groups={groups} activeKey={activeKey} onSelect={onSelect} />
     </div>

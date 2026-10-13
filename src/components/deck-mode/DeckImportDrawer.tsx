@@ -33,6 +33,7 @@ import { t } from '../../i18n'
 import type { DeckFormat } from '../../types'
 import { loadCardCatalog } from '../../ygoprodeck'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
+import { Heading } from '../ui/Heading'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
@@ -428,7 +429,9 @@ export function DeckImportDrawer({
             <div className="flex min-w-0 items-start gap-3">
               <Icon name="upload" size={22} className={cx('mt-1 shrink-0', TONE.brand.text)} />
               <div className="min-w-0">
-                <h3 className="m-0 text-lead font-semibold tracking-[-0.01em] text-foreground">{t('deck.import.title')}</h3>
+                <Heading level="section" as="h3">
+                  {t('deck.import.title')}
+                </Heading>
               </div>
             </div>
 
@@ -605,9 +608,9 @@ export function DeckImportDrawer({
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0">
                           <small className={overline}>{t('deck.import.preview')}</small>
-                          <h4 className="m-0 mt-0.5 text-lead font-semibold leading-tight text-foreground">
+                          <Heading level="section" as="h4" className="mt-0.5 leading-tight">
                             {buildPreviewHeadline(preview)}
-                          </h4>
+                          </Heading>
                           <p className="text-muted m-0 mt-1 text-micro">
                             {buildPreviewDescription(preview)}
                           </p>

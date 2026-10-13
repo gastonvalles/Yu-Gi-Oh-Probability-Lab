@@ -29,7 +29,12 @@ const TONE_LABEL_KEY = {
   pending: 'shell.tone.pending',
 } as const
 
+/** "Listo", "En progreso", "Pendiente". */
+export function navToneLabel(tone: NavTone): string {
+  return t(TONE_LABEL_KEY[tone])
+}
+
 /** "Deck Builder. Listo. Base principal lista.": lo que anuncia un lector de pantalla de un destino del menú. */
 export function navItemDescription(item: NavItem): string {
-  return [item.title, item.tone ? t(TONE_LABEL_KEY[item.tone]) : null, item.detail].filter(Boolean).join('. ')
+  return [item.title, item.tone ? navToneLabel(item.tone) : null, item.detail].filter(Boolean).join('. ')
 }

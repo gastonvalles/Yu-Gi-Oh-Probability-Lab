@@ -1,3 +1,4 @@
+import { SIDEBAR_PX } from '../../app/shell-layout'
 import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
@@ -6,9 +7,6 @@ import { MascotPicker } from '../mascot/MascotPicker'
 import { AppBrand } from './AppBrand'
 import type { NavGroup } from './nav-model'
 import { SidebarNav } from './SidebarNav'
-
-/** El menú lateral abierto es de 15 rem; contraído, una columna de íconos de 4.75 rem. */
-const SIDEBAR_WIDTH = { expanded: 'w-60', collapsed: 'w-[4.75rem]' } as const
 
 interface AppSidebarProps {
   groups: NavGroup[]
@@ -37,9 +35,9 @@ export function AppSidebar({ groups, activeKey, onSelect, collapsed, onToggleCol
   return (
     <aside
       data-collapsed={collapsed ? 'true' : 'false'}
+      style={{ width: collapsed ? SIDEBAR_PX.collapsed : SIDEBAR_PX.expanded }}
       className={cx(
         'flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-r border-border-subtle bg-card-background/70 transition-[width] duration-200 motion-reduce:transition-none',
-        collapsed ? SIDEBAR_WIDTH.collapsed : SIDEBAR_WIDTH.expanded,
         className,
       )}
     >

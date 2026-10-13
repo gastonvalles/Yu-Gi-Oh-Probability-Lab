@@ -848,8 +848,8 @@
     --radius-card: 1rem;
     --radius-panel: 1.5rem;
     --radius-chip: 999px;
-    --deck-mode-topbar-height: 3.85rem;
-    --deck-mobile-step-nav-height: 4.3rem;
+    /* Alto del pie de la app (en escritorio va fijo abajo de las pantallas que ocupan todo el alto, como el builder). */
+    --app-footer-height: 2.75rem;
     --app-scrollbar-track: #15112f;
     --app-scrollbar-thumb: #4d447f;
     --app-scrollbar-thumb-hover: #62589a;

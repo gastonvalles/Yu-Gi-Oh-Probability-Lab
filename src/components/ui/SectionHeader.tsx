@@ -2,7 +2,8 @@ import type { ReactNode } from 'react'
 
 import { cx } from './cx'
 import { Icon, type IconName } from './Icon'
-import { sectionTitle, supportText } from './typography'
+import { supportText } from './typography'
+import { Heading } from './Heading'
 
 interface SectionHeaderProps {
   title: ReactNode
@@ -16,13 +17,15 @@ interface SectionHeaderProps {
 }
 
 /** Encabezado de tarjeta o sección: ícono + título + descripción a la izquierda, acciones a la derecha. */
-export function SectionHeader({ title, description, icon, actions, as: Heading = 'h3', className }: SectionHeaderProps) {
+export function SectionHeader({ title, description, icon, actions, as = 'h2', className }: SectionHeaderProps) {
   return (
     <header className={cx('flex flex-wrap items-start justify-between gap-x-4 gap-y-2', className)}>
       <div className="flex min-w-0 items-start gap-3">
         {icon ? <Icon name={icon} size={20} className="mt-0.5 shrink-0 text-primary-soft" /> : null}
         <div className="grid min-w-0 gap-0.5">
-          <Heading className={sectionTitle}>{title}</Heading>
+          <Heading level="section" as={as}>
+            {title}
+          </Heading>
           {description ? <p className={supportText}>{description}</p> : null}
         </div>
       </div>

@@ -6,22 +6,25 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import { StepHero } from '../components/StepHero'
-import { DeckModeNavigation } from '../components/deck-mode/DeckModeNavigation'
-import { buildDeckWorkflowNavigationItems } from '../components/deck-mode/deck-workflow-navigation'
+import { buildAppNavGroups, buildDeckWorkflowNavigationItems } from '../components/deck-mode/deck-workflow-navigation'
+import { SidebarNav } from '../components/shell/SidebarNav'
 
 // jsdom no calcula el layout: lo que se mide a mano en el navegador (que todo quede en el mismo píxel al pasar de una pestaña a
 // otra) se cuida acá con las reglas que lo hacen posible. Ver "Reglas para sumar pantallas", punto 7, en docs/design-system.md.
 const source = (file: string) => readFileSync(path.join(process.cwd(), 'src', file), 'utf8')
 
 describe('que nada se corra de lugar al cambiar de pestaña', () => {
-  it('las pestañas de arriba reservan el ancho de la negrita: al activarse una, ninguna se mueve', () => {
-    const items = buildDeckWorkflowNavigationItems({ mainDeckCount: 40, roleCardCount: 40, unclassifiedCardCount: 0, hasCompletedRoleStep: true, patternCount: 2 })
+  it('los destinos del menú reservan el ancho de la negrita: al abrirse uno, ninguno se mueve', () => {
+    const groups = buildAppNavGroups(
+      buildDeckWorkflowNavigationItems({ mainDeckCount: 40, roleCardCount: 40, unclassifiedCardCount: 0, hasCompletedRoleStep: true, patternCount: 2 }),
+      { practice: true },
+    )
 
-    render(<DeckModeNavigation items={items} activeStep="probability-lab" onStepChange={() => {}} />)
+    render(<SidebarNav groups={groups} activeKey="probability-lab" onSelect={() => {}} />)
 
-    for (const item of items) {
+    for (const item of groups.flatMap((group) => group.items)) {
       // El nombre accesible es uno solo: la copia que reserva el ancho está oculta a los lectores de pantalla.
-      const [reserve, shown] = within(screen.getByRole('button', { name: item.label })).getAllByText(item.label)
+      const [reserve, shown] = within(screen.getByRole('button', { name: new RegExp(`^${item.title}`) })).getAllByText(item.label)
 
       expect(reserve).toHaveAttribute('aria-hidden', 'true')
       expect(reserve).toHaveClass('invisible', 'font-semibold')
@@ -45,7 +48,7 @@ describe('que nada se corra de lugar al cambiar de pestaña', () => {
   it('la barra de scroll queda reservada: en la página entera (celular y tablet) y en el contenedor de los pasos (escritorio)', () => {
     expect(source('index.css')).toMatch(/@media \(max-width: 1100px\)\s*\{\s*html\s*\{\s*scrollbar-gutter: stable;/)
 
-    const shell = source('components/deck-mode/DeckModeShell.tsx')
+    const shell = source('components/shell/AppShell.tsx')
 
     expect(shell).toContain('min-[1101px]:[scrollbar-gutter:stable]')
     // Fina en todos los pasos: sin `overflow: auto` el navegador reservaría la gruesa y el builder quedaría más angosto.

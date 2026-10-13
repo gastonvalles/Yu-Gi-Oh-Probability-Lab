@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 
 import { clampFabPosition, defaultFabPosition, isFabDrag, resolveFabGroup, snapFabToEdge, type FabBounds, type FabPosition } from './fab-position'
-import { useMediaQuery } from './use-media-query'
+import { useShellInsets } from './shell-layout'
 
 const MARGIN = 12
-/** En mobile queda por encima de la barra de pasos (su alto + un respiro). */
-const MOBILE_NAV_INSET = 76
 /** Hueco mínimo entre dos elementos del mismo grupo cuando se empujan. */
 const GROUP_GAP = 8
 
@@ -110,13 +108,15 @@ function writePosition(key: string, position: FabPosition) {
  * Lo comparten los botones flotantes y la mascota; los botones, además, se empujan entre sí.
  */
 export function useDraggablePosition({ storageKey, size, corner = 'right', lift = 0, group }: DraggablePositionOptions): DraggablePosition {
-  const isMobile = useMediaQuery('(max-width: 1100px)')
   const [viewport, setViewport] = useState(() => ({ width: window.innerWidth, height: window.innerHeight }))
+  // El menú lateral y el pie (en escritorio) quedan libres: no se arranca ni se lleva nada encima de ellos.
+  const shell = useShellInsets()
   const bounds: FabBounds = {
     ...viewport,
     size,
     margin: MARGIN,
-    bottomInset: isMobile ? MOBILE_NAV_INSET : 0,
+    bottomInset: shell.bottom,
+    leftInset: shell.left,
   }
   const [stored, setStored] = useState<FabPosition | null>(() => readPosition(storageKey))
   const [dragPosition, setDragPosition] = useState<FabPosition | null>(null)

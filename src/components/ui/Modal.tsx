@@ -10,6 +10,7 @@ import { CloseButton } from './IconButton'
 import { surface } from './surfaces'
 import { TONE, type Tone } from './tone'
 import { overline } from './typography'
+import { Heading } from './Heading'
 
 /**
  * Tamaños fijos: el panel no crece ni se achica según el contenido (el cuerpo scrollea por dentro).
@@ -145,9 +146,9 @@ export function Modal({
               <div className="grid min-w-0 gap-0.5">
                 {kicker ? <p className={cx('m-0', overline)}>{kicker}</p> : null}
                 {title ? (
-                  <h3 id={titleId} className="m-0 text-lead font-semibold tracking-[-0.01em] text-foreground [overflow-wrap:anywhere] min-[1101px]:text-lead">
+                  <Heading level="section" id={titleId}>
                     {title}
-                  </h3>
+                  </Heading>
                 ) : null}
                 {subtitle ? <p className="m-0 text-body text-muted">{subtitle}</p> : null}
               </div>

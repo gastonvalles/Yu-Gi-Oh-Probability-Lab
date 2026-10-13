@@ -1,10 +1,9 @@
 import { formatInteger } from '../../app/utils'
 import { t } from '../../i18n'
-import type { NavGroup, NavItem } from '../shell/nav-model'
+import type { NavGroup, NavItem, NavTone } from '../shell/nav-model'
 import type { IconName } from '../ui/Icon'
 
 export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'meta' | 'replays'
-export type DeckWorkflowStepTone = 'complete' | 'progress' | 'pending'
 
 export interface DeckModeNavigationItem {
   key: DeckWorkflowStepKey
@@ -16,7 +15,7 @@ export interface DeckModeNavigationItem {
   icon: IconName
   /** Estado del paso: tooltip y lectores de pantalla. */
   detail: string
-  tone: DeckWorkflowStepTone
+  tone: NavTone
   disabled: boolean
 }
 
@@ -37,17 +36,6 @@ const WORKFLOW_STEP_KEYS: readonly DeckWorkflowStepKey[] = [
   'meta',
   'replays',
 ]
-
-// Las tablas guardan claves de mensajes, no textos: el texto se arma al dibujar, en el idioma de ese momento.
-const TONE_LABEL_KEY = {
-  complete: 'shell.tone.complete',
-  progress: 'shell.tone.progress',
-  pending: 'shell.tone.pending',
-} as const
-
-export function deckWorkflowToneLabel(tone: DeckWorkflowStepTone): string {
-  return t(TONE_LABEL_KEY[tone])
-}
 
 export function isDeckWorkflowStepKey(value: string): value is DeckWorkflowStepKey {
   return WORKFLOW_STEP_KEYS.some((stepKey) => stepKey === value)
@@ -155,8 +143,13 @@ export function buildDeckWorkflowNavigationItems({
   ]
 }
 
+/** Qué herramientas se pueden abrir ahora: la mesa de práctica necesita cartas en el Main. */
+interface AppNavTools {
+  practice: boolean
+}
+
 /** El menú de la app: los pasos del deck, las herramientas (que abren un panel) y la referencia del meta. Lo ven el menú lateral y el cajón del celular. */
-export function buildAppNavGroups(steps: DeckModeNavigationItem[]): NavGroup[] {
+export function buildAppNavGroups(steps: DeckModeNavigationItem[], tools: AppNavTools): NavGroup[] {
   const pick = (...keys: DeckWorkflowStepKey[]): NavItem[] => keys.flatMap((key) => steps.filter((step) => step.key === key))
 
   return [
@@ -165,8 +158,8 @@ export function buildAppNavGroups(steps: DeckModeNavigationItem[]): NavGroup[] {
       key: 'tools',
       label: t('shell.nav.group.tools'),
       items: [
-        { key: 'practice', label: t('shell.practice.title'), title: t('shell.practice.title'), icon: 'hand' },
-        { key: 'life', label: t('shell.life.title'), title: t('shell.life.title'), icon: 'heart' },
+        ...(tools.practice ? [{ key: 'practice', label: t('shell.practice.title'), title: t('shell.practice.title'), icon: 'hand' as const }] : []),
+        { key: 'life', label: t('shell.life.title'), title: t('shell.life.title'), icon: 'heart' as const },
       ],
     },
     { key: 'discover', label: t('shell.nav.group.discover'), items: pick('meta', 'replays') },

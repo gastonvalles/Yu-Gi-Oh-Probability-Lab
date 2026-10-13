@@ -6,6 +6,7 @@ import { CardArt } from '../CardArt'
 import { formatInteger } from '../../app/utils'
 import { getCardRoleDefinition } from '../../app/deck-groups'
 import { t } from '../../i18n'
+import { Heading } from '../ui/Heading'
 import { Badge } from '../ui/Badge'
 import { CopiesBadge } from '../ui/CopiesBadge'
 import { Modal } from '../ui/Modal'
@@ -56,10 +57,10 @@ export function KpiDetailModal({
           {groups.map((group) => (
             <section key={group.role} className="grid gap-2" aria-label={getCardRoleDefinition(group.role).label}>
               {roles.length > 1 ? (
-                <h4 className="m-0 flex items-center gap-2 text-body font-semibold text-foreground">
+                <Heading level="card" as="h4" className="flex items-center gap-2">
                   {getCardRoleDefinition(group.role).label}
                   <Badge tone="brand" size="sm">{formatInteger(group.cards.reduce((total, card) => total + card.copies, 0))}</Badge>
-                </h4>
+                </Heading>
               ) : null}
               <div className="grid grid-cols-1 gap-2 min-[540px]:grid-cols-2">
                 {group.cards.map((card) => (

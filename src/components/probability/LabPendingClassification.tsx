@@ -7,6 +7,7 @@ import type { CardEntry, CardOrigin, CardRole } from '../../types'
 import { ClassificationEditor } from '../classification/ClassificationEditor'
 import { ClassificationQueue } from '../classification/ClassificationQueue'
 import { compareCardsForQueue } from '../classification/classification-model'
+import { Heading } from '../ui/Heading'
 import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
 import { ProgressRing } from '../ui/ProgressRing'
@@ -53,11 +54,11 @@ export function LabPendingClassification({ cards, message, onSetOrigin, onToggle
       <Card tone={pendingCount > 0 ? 'warning' : 'success'} className="flex items-center justify-between gap-4">
         <div className="grid min-w-0 gap-0.5">
           <p className={cx('m-0', overline)}>{pendingCount > 0 ? t('lab.pending.overline') : t('lab.pending.allDone')}</p>
-          <h3 className="m-0 text-lead font-semibold leading-tight text-foreground">
+          <Heading level="section" as="h3" className="leading-tight">
             {pendingCount > 0
               ? t('lab.pending.count', { count: pendingCount, n: formatInteger(pendingCount) })
               : t('lab.pending.none')}
-          </h3>
+          </Heading>
           <p className={supportText}>
             {pendingCount > 0
               ? t('lab.pending.help', { message })

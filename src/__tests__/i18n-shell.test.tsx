@@ -6,7 +6,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { parseBackup } from '../app/backup'
 import { duelistName } from '../app/life-calculator'
 import { formatInteger } from '../app/utils'
-import { buildDeckWorkflowNavigationItems, deckWorkflowToneLabel } from '../components/deck-mode/deck-workflow-navigation'
+import { buildDeckWorkflowNavigationItems } from '../components/deck-mode/deck-workflow-navigation'
+import { navToneLabel } from '../components/shell/nav-model'
 import { CopiesBadge } from '../components/ui/CopiesBadge'
 import { applyLocale } from '../i18n'
 
@@ -19,14 +20,14 @@ describe('el armazón de la app en inglés', () => {
     const snapshot = { mainDeckCount: 28, roleCardCount: 28, unclassifiedCardCount: 3, hasCompletedRoleStep: false, patternCount: 0 }
 
     expect(buildDeckWorkflowNavigationItems(snapshot)[0]).toMatchObject({ label: 'Deck', detail: '12 para llegar a 40.', tone: 'progress' })
-    expect(deckWorkflowToneLabel('complete')).toBe('Listo')
+    expect(navToneLabel('complete')).toBe('Listo')
 
     applyLocale('en')
 
     expect(buildDeckWorkflowNavigationItems(snapshot).map((item) => item.label)).toEqual(['Deck', 'Roles', 'Lab', 'Compare', 'Export', 'Meta', 'Replays'])
     expect(buildDeckWorkflowNavigationItems(snapshot)[0]).toMatchObject({ detail: '12 more to reach 40.' })
     expect(buildDeckWorkflowNavigationItems(snapshot)[1]).toMatchObject({ detail: '3 still open.' })
-    expect(deckWorkflowToneLabel('complete')).toBe('Done')
+    expect(navToneLabel('complete')).toBe('Done')
   })
 
   it('los números llevan el separador de cada idioma y las copias, su plural', () => {
