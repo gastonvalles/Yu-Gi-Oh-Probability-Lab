@@ -6,7 +6,7 @@
 "15185344":[["BETB-EN045","Common","1st Edition",0.15,719890,24815]],
 "15653824":[["DB2-EN129","Common","Unlimited",0.2,24261,164],["LOD-006","Common","1st Edition",0.28,22408,243],["LOD-006","Common","Unlimited",0.25,22408,243],["LOD-EN006","Common","Unlimited",null,476558,22885]],
 "15792576":[["LIOV-EN025","Common","1st Edition",0.14,239479,2779]],
-"17896384":[["CRMS-EN061","Rare","1st Edition",0.27,29030,157],["CRMS-EN061","Rare","Unlimited",0.21,29030,157],["DL14-EN014","Rare","Unlimited",1.04,77590,182],["DL14-EN014","Rare","Unlimited",0.59,80511,182],["DL14-EN014","Rare","Unlimited",1.59,80512,182],["DL14-EN014","Rare","Unlimited",1.4,80513,182],["SR08-EN026","Common","1st Edition",0.16,188677,2401],["SBAD-EN005","Common","1st Edition",0.11,190889,2425]],
+"17896384":[["CRMS-EN061","Rare","1st Edition",0.27,29030,157],["CRMS-EN061","Rare","Unlimited",0.21,29030,157],["DL14-EN014","Rare","Unlimited",1.04,77590,182,"Red"],["DL14-EN014","Rare","Unlimited",0.59,80511,182,"Blue"],["DL14-EN014","Rare","Unlimited",1.59,80512,182,"Green"],["DL14-EN014","Rare","Unlimited",1.4,80513,182,"Purple"],["SR08-EN026","Common","1st Edition",0.16,188677,2401],["SBAD-EN005","Common","1st Edition",0.11,190889,2425]],
 "18595008":[["BLZD-EN008","Common","1st Edition",0.13,692245,24581]],
 "20426176":[["IGAS-EN091","Rare","1st Edition",0.85,207975,2578],["IGAS-EN091","Rare","Unlimited",0.8,207975,2578]],
 "20590784":[["PGL2-EN020","Gold Secret Rare","1st Edition",0.47,96989,1523],["PGL2-EN020","Gold Secret Rare","Unlimited",0.41,96989,1523]],
@@ -17,7 +17,7 @@
 "38007744":[["LVAL-EN008","Common","1st Edition",0.15,78977,1286],["LVAL-EN008","Common","Unlimited",0.12,78977,1286],["MP14-EN190","Common","1st Edition",0.13,92739,1485]],
 "38527680":[["MZTM-EN023","Ultra Rare","1st Edition",2.54,622025,23849]],
 "39564736":[["INOV-EN058","Super Rare","1st Edition",0.22,124758,1849],["INOV-EN058","Super Rare","Unlimited",0.1,124758,1849],["MP17-EN154","Super Rare","1st Edition",0.14,141650,1991]],
-"41659072":[["JUMP-EN089","Ultra Rare","Limited",1.49,205624,281],["BLAR-EN049","Secret Rare","1st Edition",1.36,217994,2660],["BLC1-EN046","Ultra Rare","1st Edition",3.48,538518,23314],["BLC1-EN046","Ultra Rare","1st Edition",2.12,538679,23314]],
+"41659072":[["JUMP-EN089","Ultra Rare","Limited",1.49,205624,281],["BLAR-EN049","Secret Rare","1st Edition",1.36,217994,2660],["BLC1-EN046","Ultra Rare","1st Edition",3.48,538518,23314],["BLC1-EN046","Ultra Rare","1st Edition",2.12,538679,23314,"Silver"]],
 "43633088":[["PHNI-EN083","Common","1st Edition",0.05,536457,23321]],
 "43932352":[["BLZD-EN075","Common","1st Edition",0.16,692328,24581]],
 "44663232":[["LTGY-EN085","Super Rare","1st Edition",3.36,68146,1112],["LTGY-EN085","Super Rare","Unlimited",2.51,68146,1112],["BLGG-EN058","Ultra Rare","1st Edition",0.13,695614,24621]],
@@ -53,7 +53,7 @@
 "94326720":[["DOOD-EN059","Common","1st Edition",0.1,654292,24357],["BLGG-EN128","Ultra Rare","1st Edition",0.12,695685,24621]],
 "94942656":[["BROL-EN031","Secret Rare","1st Edition",0.68,256321,2877]],
 "95974848":[["BLVO-EN013","Super Rare","1st Edition",0.28,231326,2749]],
-"96947648":[["DR2-EN097","Common","Unlimited",1.71,24718,173],["DL12-EN014","Rare","Unlimited",2.35,77411,182],["DL12-EN014","Rare","Unlimited",6.96,80391,182],["DL12-EN014","Rare","Unlimited",2.13,80392,182],["DL12-EN014","Rare","Unlimited",1.82,80393,182],["IOC-096","Common","1st Edition",0.56,23183,237],["IOC-096","Common","Unlimited",0.39,23183,237],["SD4-EN023","Common","1st Edition",0.33,24168,308],["LCYW-EN276","Super Rare","1st Edition",4.49,67076,584],["LCYW-EN276","Super Rare","Unlimited",2.41,67076,584],["SDRE-EN030","Common","1st Edition",0.49,67148,591],["SDFC-EN032","Common","1st Edition",0.22,232215,2751],["GFTP-EN107","Ultra Rare","1st Edition",1.14,235782,2752],["IOC-EN096","Common","Unlimited",0.87,477018,22887],["IOC-EN096","Common","Unlimited",0.26,487245,23056],["SBC1-ENC12","Common","1st Edition",0.43,512281,23073]],
+"96947648":[["DR2-EN097","Common","Unlimited",1.71,24718,173],["DL12-EN014","Rare","Unlimited",2.35,77411,182,"Red"],["DL12-EN014","Rare","Unlimited",6.96,80391,182,"Blue"],["DL12-EN014","Rare","Unlimited",2.13,80392,182,"Green"],["DL12-EN014","Rare","Unlimited",1.82,80393,182,"Purple"],["IOC-096","Common","1st Edition",0.56,23183,237],["IOC-096","Common","Unlimited",0.39,23183,237],["SD4-EN023","Common","1st Edition",0.33,24168,308],["LCYW-EN276","Super Rare","1st Edition",4.49,67076,584],["LCYW-EN276","Super Rare","Unlimited",2.41,67076,584],["SDRE-EN030","Common","1st Edition",0.49,67148,591],["SDFC-EN032","Common","1st Edition",0.22,232215,2751],["GFTP-EN107","Ultra Rare","1st Edition",1.14,235782,2752],["IOC-EN096","Common","Unlimited",0.87,477018,22887],["IOC-EN096","Common","Unlimited",0.26,487245,23056],["SBC1-ENC12","Common","1st Edition",0.43,512281,23073]],
 "97476032":[["BLMM-EN031","Ultra Rare","1st Edition",0.22,635917,24263]],
 "300302016":[["SBCB-ENS16","Common","1st Edition",0.22,228024,2700]]
 }

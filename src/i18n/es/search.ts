@@ -123,7 +123,7 @@ export const search = {
   'search.prices.noPrice': 'Sin precio',
   'search.prices.loadError': 'No pude traer los precios ahora. Probá de nuevo más tarde.',
   'search.prices.empty': 'No hay precios de TCGplayer para esta carta.',
-  'search.prices.searchLabel': 'Buscar por código o rareza',
+  'search.prices.searchLabel': 'Buscar por código, rareza o arte',
   'search.prices.noMatch': 'Ninguna impresión coincide con “{query}”.',
   'search.prices.footnote': 'Precio de mercado de TCGplayer, en dólares, al {date}.',
 } as const

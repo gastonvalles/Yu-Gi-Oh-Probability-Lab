@@ -121,3 +121,21 @@ describe('la pantalla de banlists', () => {
     await waitFor(() => expect(within(dialog).getByText('Si controlás…')).toBeInTheDocument())
   })
 })
+
+describe('las cartas de las banlists', () => {
+  it('se inclinan en 3D hacia el mouse, igual que en el detalle de la carta', () => {
+    HTMLElement.prototype.getBoundingClientRect = () => ({ left: 0, top: 0, right: 200, bottom: 300, width: 200, height: 300, x: 0, y: 0, toJSON: () => ({}) })
+    render(<BanlistsScreen />)
+
+    const art = document.querySelector('li [class~="group/art"]') as HTMLElement
+
+    expect(art.parentElement!.className).toContain('perspective')
+
+    fireEvent.pointerMove(art, { pointerType: 'mouse', clientX: 190, clientY: 20 })
+    expect(art.style.rotate).toMatch(/12deg$/)
+    expect(art.dataset.tilting).toBe('true')
+
+    fireEvent.pointerLeave(art)
+    expect(art.style.rotate).toBe('')
+  })
+})

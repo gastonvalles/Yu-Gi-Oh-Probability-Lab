@@ -18,10 +18,10 @@ const INDEX = {
   updated: '2026-10-11',
   shards: 4,
   groups: [
-    [1, 'Legend of Blue-Eyes White Dragon', '2002-03-08', 3],
-    [2, 'Maze of Millennia', '2024-01-19', 4],
-    [3, 'Sin cartas', '2020-01-01', 0],
-    [4, 'Promo sin fecha', '', 1],
+    [1, 'Legend of Blue-Eyes White Dragon', '2002-03-08', 3, 'LOB'],
+    [2, 'Maze of Millennia', '2024-01-19', 4, 'MAZE'],
+    [3, 'Sin cartas', '2020-01-01', 0, 'NONE'],
+    [4, 'Promo sin fecha', '', 1, ''],
   ],
 }
 
@@ -34,7 +34,7 @@ const SETS: Record<number, unknown[]> = {
   ],
   2: [
     ['MAZE-EN001', 'Rare', 'Unlimited', 0.5, 21, 100, 'Mulcharmy Purulia'],
-    ['MAZE-EN001', 'Ultra Rare', 'Unlimited', 4, 22, 100, 'Mulcharmy Purulia'],
+    ['MAZE-EN001', 'Ultra Rare', 'Unlimited', 4, 22, 100, 'Mulcharmy Purulia', 'Extended Art'],
     ['MAZE-EN002', 'Common', 'Unlimited', 0.1, 23, 101, 'Ash Blossom & Joyous Spring'],
     ['MAZE-EN003', 'Rare', 'Unlimited', 7, 24, 102, 'Maxx "C"'],
   ],
@@ -189,5 +189,100 @@ describe('la pantalla de expansiones', () => {
     render(<ExpansionsScreen />)
 
     expect(await screen.findByText('No pude traer las expansiones ahora. Probá de nuevo más tarde.')).toBeInTheDocument()
+  })
+})
+
+describe('el sobre de cada expansión', () => {
+  const packs = (container: ParentNode) => [...container.querySelectorAll('img')].map((image) => image.getAttribute('src'))
+
+  it('sale en la lista, al lado de cada expansión, y en ningún otro lado', async () => {
+    render(<ExpansionsScreen />)
+
+    const nav = await screen.findByRole('navigation', { name: 'Expansiones' })
+
+    // Maze y Legend tienen código y por eso imagen; la promo sin código queda con la caja de ícono.
+    expect(packs(nav)).toEqual(['/api/card-image/sets/MAZE.jpg', '/api/card-image/sets/LOB.jpg'])
+
+    const heading = await screen.findByRole('heading', { name: 'Maze of Millennia', level: 2 })
+
+    expect(packs(heading.closest('header')!)).toEqual([])
+  })
+
+  it('si la imagen del sobre no existe, queda la caja de ícono en el mismo lugar', async () => {
+    render(<ExpansionsScreen />)
+
+    const nav = await screen.findByRole('navigation', { name: 'Expansiones' })
+
+    fireEvent.error(nav.querySelector('img')!)
+
+    expect(packs(nav)).toEqual(['/api/card-image/sets/LOB.jpg'])
+    expect(nav.querySelectorAll('span[aria-hidden="true"] svg')).toHaveLength(2)
+  })
+})
+
+describe('las impresiones de arte distinto (overframe, extended art...)', () => {
+  const tileImages = () => [...document.querySelectorAll('li img')].map((image) => image.getAttribute('src'))
+
+  beforeEach(() => {
+    HTMLElement.prototype.getBoundingClientRect = () => ({ left: 0, top: 0, right: 200, bottom: 300, width: 200, height: 300, x: 0, y: 0, toJSON: () => ({}) })
+  })
+
+  it('cada carta se ve con el escaneo de su impresión y dice de qué arte es', async () => {
+    render(<ExpansionsScreen />)
+    await screen.findByRole('button', { name: 'Ver el detalle de Maxx "C"' })
+
+    // El producto 22 es la Mulcharmy de arte extendido: su imagen es la de su producto en TCGplayer.
+    expect(tileImages()).toContain('https://tcgplayer-cdn.tcgplayer.com/product/22_200w.jpg')
+    expect(tileImages()).toContain('https://tcgplayer-cdn.tcgplayer.com/product/21_200w.jpg')
+    expect(screen.getAllByText('Extended Art')).toHaveLength(1)
+    expect(rowsText().find((text) => text.includes('Extended Art'))).toContain('Mulcharmy Purulia')
+  })
+
+  it('si la imagen de la impresión no existe, se prueba con el arte de siempre', async () => {
+    render(<ExpansionsScreen />)
+    await screen.findByRole('button', { name: 'Ver el detalle de Maxx "C"' })
+
+    fireEvent.error(document.querySelector('li img')!)
+
+    expect(tileImages()[0]).toBe('/api/card-image/cards_small/100.jpg')
+  })
+
+  it('se busca también por el arte', async () => {
+    render(<ExpansionsScreen />)
+    await screen.findByRole('button', { name: 'Ver el detalle de Maxx "C"' })
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar por nombre o código' }), { target: { value: 'extended' } })
+
+    expect(rowsText()).toHaveLength(1)
+    expect(rowsText()[0]).toContain('Mulcharmy Purulia')
+  })
+
+  it('tocar una impresión abre el detalle con el escaneo de esa impresión, ya elegido', async () => {
+    render(<ExpansionsScreen />)
+
+    const buttons = await screen.findAllByRole('button', { name: 'Ver el detalle de Mulcharmy Purulia' })
+
+    fireEvent.click(buttons[1]!)
+
+    const dialog = await screen.findByRole('dialog', { name: /Mulcharmy Purulia/ })
+
+    expect(within(dialog).getByText('MAZE-EN001 · Ultra Rare · Extended Art · Unlimited')).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Ver la carta en grande' }).querySelector('img')!.getAttribute('src')).toBe('https://tcgplayer-cdn.tcgplayer.com/product/22_400w.jpg')
+  })
+
+  it('las cartas se inclinan en 3D hacia el mouse, igual que en el detalle', async () => {
+    render(<ExpansionsScreen />)
+    await screen.findByRole('button', { name: 'Ver el detalle de Maxx "C"' })
+
+    const art = document.querySelector('li [class~="group/art"]') as HTMLElement
+
+    expect(art.parentElement!.className).toContain('perspective')
+
+    fireEvent.pointerMove(art, { pointerType: 'mouse', clientX: 190, clientY: 20 })
+    expect(art.style.rotate).toMatch(/12deg$/)
+    expect(art.dataset.tilting).toBe('true')
+
+    fireEvent.pointerLeave(art)
+    expect(art.style.rotate).toBe('')
   })
 })

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 
-import { cardSmallImageUrl, type ExpansionCard } from '../../app/card-prices'
+import { cardSmallImageUrl, printImageUrl, type ExpansionCard } from '../../app/card-prices'
 import { placeholderCard } from '../../app/card-placeholder'
+import { printArtId } from '../../app/use-card-art-options'
 import { fetchCardsByIds, type ApiCardSearchResult } from '../../ygoprodeck'
 import { CardDetailOverlay } from '../card-detail/CardDetailOverlay'
 
@@ -39,7 +40,9 @@ function ExpansionCardOverlay({ item, onClose }: { item: ExpansionCard; onClose:
     <CardDetailOverlay
       name={item.name}
       card={card ?? placeholderCard(item.cardId, cardSmallImageUrl(item.cardId))}
-      metadata={[item.code, item.rarity, item.edition].join(' · ')}
+      metadata={[item.code, item.rarity, item.variant, item.edition].filter(Boolean).join(' · ')}
+      // Se abre con el escaneo de la impresión que se tocó (la overframe se ve overframe), no con el arte de siempre.
+      initialArt={{ id: printArtId(item.productId), imageUrl: printImageUrl(item.productId, '400w') }}
       onClose={onClose}
     />
   )

@@ -17,6 +17,7 @@ import { formatDay, t } from '../../i18n'
 import { useAppSelector } from '../../app/store-hooks'
 import type { BanlistStatus } from '../../types'
 import { StepHero } from '../StepHero'
+import { TiltCard } from '../card-detail/TiltCard'
 import { CardArt } from '../CardArt'
 import { Badge } from '../ui/Badge'
 import { Card } from '../ui/Card'
@@ -95,7 +96,7 @@ export function BanlistsScreen() {
   const total = sections.reduce((sum, section) => sum + section.entries.length, 0)
 
   return (
-    <StepPage as="article">
+    <StepPage as="article" wide>
       <StepHero
         title={t('catalog.banlists.title')}
         icon="ban"
@@ -176,9 +177,9 @@ export function BanlistsScreen() {
                       className="group grid w-full content-start gap-1.5 rounded-tag text-left focus-visible:outline-none focus-visible:shadow-focus"
                       onClick={() => setOpened({ cardId: entry.cardId, status })}
                     >
-                      <span className="block aspect-[421/614] overflow-hidden rounded-tag bg-input shadow-card transition-transform duration-150 group-hover:-translate-y-0.5">
+                      <TiltCard className="aspect-[421/614] rounded-tag bg-input shadow-card">
                         <CardArt remoteUrl={cardSmallImageUrl(entry.cardId)} name="" className="block h-full w-full object-cover" />
-                      </span>
+                      </TiltCard>
                       <span className="line-clamp-2 text-micro font-semibold text-foreground [overflow-wrap:anywhere]">{banlistCardName(entry.cardId)}</span>
                       {entry.from ? <span className="text-micro text-muted">{t('catalog.banlists.was', { status: t(STATUS_KEY[entry.from]) })}</span> : null}
                     </button>

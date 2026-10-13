@@ -7,12 +7,16 @@ import { fileURLToPath } from 'node:url'
  * TCGplayer ya no da keys nuevas para su API), los cruza con las cartas de YGOPRODeck por código de set y escribe
  * archivos estáticos que la app lee sin servidor, indexados por carta para que abrir una sola baje unos pocos KB
  * (no un archivo por cada expansión en la que salió):
- * - public/prices/index.json: la fecha de la última actualización, cuántos archivos hay y los sets (id, nombre, fecha de salida y cuántas impresiones tiene).
+ * - public/prices/index.json: la fecha de la última actualización, cuántos archivos hay y los sets (id, nombre, fecha de salida, cuántas impresiones tiene
+ *   y el prefijo de sus códigos, "LOB" de "LOB-EN001", que es el nombre de la imagen de su sobre en YGOPRODeck).
  * - public/prices/cards/<n>.json, con n = id de la carta % SHARDS: un objeto { "<id de la carta>": filas }, una carta por línea
  *   para que git sólo vea lo que cambió. Cada fila es una impresión y edición:
- *   [código del set, rareza, edición, precio de mercado, id del producto en TCGplayer, id del set].
+ *   [código del set, rareza, edición, precio de mercado, id del producto en TCGplayer, id del set] y, sólo si la impresión es de un arte distinto
+ *   ("Extended Art", "Alternate Art"...), el nombre de ese arte al final. La imagen de cada impresión es la de su producto: `product/<id>_200w.jpg`
+ *   en el CDN de TCGplayer (así se ven las overframe, las de arte extendido y las alternativas, que YGOPRODeck no tiene).
  * - public/prices/sets/<id del set>.json: lo mismo pero por expansión (para ver qué cartas trae y a cuánto está cada una): un arreglo con una
- *   impresión por línea, [código del set, rareza, edición, precio de mercado, id del producto en TCGplayer, id de la carta, nombre de la carta].
+ *   impresión por línea, [código del set, rareza, edición, precio de mercado, id del producto en TCGplayer, id de la carta, nombre de la carta] y, si
+ *   la impresión es de un arte distinto, el nombre de ese arte al final.
  * Lo corre todos los días el workflow sync-meta-decks; a mano: `npm run sync:prices`.
  */
 const TCGCSV = 'https://tcgcsv.com/tcgplayer/2' // categoría 2 = Yu-Gi-Oh!
@@ -66,6 +70,25 @@ const releaseDate = (publishedOn) => (publishedOn.endsWith('T00:00:00') ? publis
 
 export const shardOf = (cardId) => cardId % SHARDS
 
+/**
+ * El arte de una impresión, del nombre de su producto en TCGplayer: lo que va entre paréntesis y no es la rareza ni su sigla ni el código del set.
+ * "Dark Magical Curtain (Starlight Rare) (Extended Art)" → "Extended Art"; "Polymerization (B) (HERO Art) (Platinum Secret Rare)" → "HERO Art";
+ * "Dark Magical Curtain (GMR)" o "Dark Magical Curtain" → "". Si hay más de uno se unen con " · ".
+ */
+export function variantOf(name, rarity) {
+  const rarityKey = normalize(rarity ?? '')
+  const labels = [...(name ?? '').matchAll(/\(([^)]*)\)/g)].map((match) => match[1].trim())
+
+  return labels
+    .filter((label) => {
+      const key = normalize(label)
+
+      // Vacío, una sigla ("UR", "GMR", "B"), el código del set o la rareza (entera o abreviada, como "Secret" por "Secret Rare"): no dicen de qué arte es.
+      return key !== '' && !/^[A-Z0-9]{1,5}$/.test(label) && !/^[A-Z0-9]+-[A-Z0-9]+$/.test(label) && !(rarityKey !== '' && (rarityKey.includes(key) || key.includes(rarityKey)))
+    })
+    .join(' · ')
+}
+
 /** Las filas de un set: sólo cartas (los productos con código de set), una por edición con precio, en un orden fijo. */
 export function buildRows(products, prices) {
   const byProduct = new Map(products.map((product) => [product.productId, product]))
@@ -79,7 +102,10 @@ export function buildRows(products, prices) {
       continue
     }
 
-    rows.push([code, fieldOf(product, 'Rarity'), price.subTypeName ?? '', price.marketPrice ?? null, product.productId])
+    const rarity = fieldOf(product, 'Rarity')
+    const variant = variantOf(product.name, rarity)
+
+    rows.push([code, rarity, price.subTypeName ?? '', price.marketPrice ?? null, product.productId, ...(variant ? [variant] : [])])
   }
 
   return rows.sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]) || a[2].localeCompare(b[2]) || a[4] - b[4])
@@ -141,9 +167,9 @@ export function buildCardRows(sets, codeIndex) {
         const list = byCard.get(cardId) ?? []
         const inSet = bySet.get(groupId) ?? []
 
-        for (const [, rarity, edition, market, productId] of strict.length > 0 ? strict : codeRows) {
-          list.push([code, rarity, edition, market, productId, groupId])
-          inSet.push([code, rarity, edition, market, productId, cardId])
+        for (const [, rarity, edition, market, productId, variant] of strict.length > 0 ? strict : codeRows) {
+          list.push([code, rarity, edition, market, productId, groupId, ...(variant ? [variant] : [])])
+          inSet.push([code, rarity, edition, market, productId, cardId, ...(variant ? [variant] : [])])
         }
 
         byCard.set(cardId, list)
@@ -163,9 +189,23 @@ export function buildCardRows(sets, codeIndex) {
   return { byCard, bySet, matched, total }
 }
 
+/** El prefijo de los códigos de un set ("LOB" de "LOB-EN001"): el más común entre sus filas (un set de varias cartas sueltas puede mezclar), vacío si no hay. */
+export function setCodeOf(rows) {
+  const counts = new Map()
+
+  for (const row of rows) {
+    const prefix = row[0].split('-')[0]
+
+    counts.set(prefix, (counts.get(prefix) ?? 0) + 1)
+  }
+
+  // El más repetido; con empate, el primero que apareció (el orden de las filas es por código).
+  return [...counts].reduce((best, entry) => (entry[1] > best[1] ? entry : best), ['', 0])[0]
+}
+
 /** El contenido del archivo de un set: un arreglo con una impresión por línea (y el nombre de la carta al final); vacío, `[]`. */
 export function setFile(rows, names) {
-  return rows.length > 0 ? `[\n${rows.map((row) => JSON.stringify([...row, names.get(row[5]) ?? ''])).join(',\n')}\n]\n` : '[]\n'
+  return rows.length > 0 ? `[\n${rows.map((row) => JSON.stringify([...row.slice(0, 6), names.get(row[5]) ?? '', ...row.slice(6)])).join(',\n')}\n]\n` : '[]\n'
 }
 
 /** Un set que falló conserva lo de ayer: se suman a las filas nuevas las filas anteriores de esos sets. */
@@ -307,7 +347,9 @@ async function main() {
 
   const previousIndex = JSON.parse((await readFile(path.join(OUT_DIR, 'index.json'), 'utf8').catch(() => null)) ?? '{"groups":[]}')
   const previousCounts = new Map(previousIndex.groups.map(([id, , , count]) => [id, count ?? 0]))
+  const previousCodes = new Map(previousIndex.groups.map(([id, , , , code]) => [id, code ?? '']))
   const setCounts = new Map()
+  const setCodes = new Map()
   let changedSets = 0
 
   for (const group of kept) {
@@ -315,10 +357,12 @@ async function main() {
 
     if (rows) {
       setCounts.set(group.groupId, rows.length)
+      setCodes.set(group.groupId, setCodeOf(rows))
 
       if (await writeIfChanged(path.join(SETS_DIR, `${group.groupId}.json`), setFile(rows, names))) changedSets += 1
     } else {
       setCounts.set(group.groupId, previousCounts.get(group.groupId) ?? 0)
+      setCodes.set(group.groupId, previousCodes.get(group.groupId) ?? '')
     }
   }
 
@@ -331,7 +375,7 @@ async function main() {
   }
 
   const index = `{"updated":"${new Date().toISOString().slice(0, 10)}","shards":${SHARDS},"groups":[\n${kept
-    .map((group) => JSON.stringify([group.groupId, group.name, releaseDate(group.publishedOn ?? ''), setCounts.get(group.groupId) ?? 0]))
+    .map((group) => JSON.stringify([group.groupId, group.name, releaseDate(group.publishedOn ?? ''), setCounts.get(group.groupId) ?? 0, setCodes.get(group.groupId) ?? '']))
     .join(',\n')}\n]}\n`
 
   await writeFile(path.join(OUT_DIR, 'index.json'), index)
