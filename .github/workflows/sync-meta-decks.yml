@@ -1,7 +1,7 @@
 name: Sync meta decks
 
-# Los Tournament Meta Decks de YGOPRODeck y los precios de TCGplayer (vía TCGCSV) cambian todos los días: se bajan
-# a la mañana (UTC) y, si hay novedades, el commit a main dispara el deploy en Vercel.
+# Los Tournament Meta Decks de YGOPRODeck, los precios de TCGplayer (vía TCGCSV) y las banlists (lflist.conf de YGOPro) cambian
+# todos los días: se bajan a la mañana (UTC) y, si hay novedades, el commit a main dispara el deploy en Vercel.
 on:
   schedule:
     - cron: '20 6 * * *'
@@ -32,15 +32,19 @@ jobs:
       - run: npm run sync:prices
         continue-on-error: true
 
+      # Si lflist.conf o YGOPRODeck fallan, las banlists quedan como estaban.
+      - run: npm run sync:banlists
+        continue-on-error: true
+
       - name: Commit si cambió
         run: |
           # `git add` primero: los precios pueden traer archivos nuevos (o borrar los viejos) que `git diff` no vería.
-          git add src/data/meta-decks.json src/data/meta-decklists.json src/data/card-rules.json public/prices
+          git add src/data/meta-decks.json src/data/meta-decklists.json src/data/card-rules.json src/data/banlists.json public/prices
           if git diff --cached --quiet; then
             echo "Sin cambios."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Datos diarios: meta de YGOPRODeck y precios de TCGplayer al $(date -u +%Y-%m-%d)"
+          git commit -m "Datos diarios: meta de YGOPRODeck, precios de TCGplayer y banlists al $(date -u +%Y-%m-%d)"
           git push

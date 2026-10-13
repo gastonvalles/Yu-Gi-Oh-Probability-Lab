@@ -256,6 +256,13 @@ const PATHS = {
       <path d="m3.5 8 8.5 4.5L20.5 8M12 12.5v8" />
     </>
   ),
+  /** Banlists: un círculo tachado. */
+  ban: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m5.6 5.6 12.8 12.8" />
+    </>
+  ),
   /** Precios: una moneda con el signo de dólar. */
   dollar: (
     <>
