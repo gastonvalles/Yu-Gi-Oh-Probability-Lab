@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-12T07:27:08.058Z",
+  "fetchedAt": "2026-10-13T14:36:48.495Z",
   "windowDays": 75,
   "channels": {"eu":{"name":"Yu-Gi-Oh! TCG Europe","url":"https://www.youtube.com/@YuGiOhCardEU"},"tcg":{"name":"Yu-Gi-Oh! TCG","url":"https://www.youtube.com/@OfficialYuGiOhTCG"}},
   "videos": [
@@ -42,19 +42,6 @@
     {"id":"jnfTGwNu2XY","channel":"eu","title":"Genesys Championship Day 1 | Round 4 - Luna G. vs. Max V. | WCQ Brussels 2026","duration":"53:13","date":"2026-08-13"},
     {"id":"Jsb_OhSGED4","channel":"eu","title":"Genesys Championship Day 1 | Round 3 - Janos V. vs. Rio P. | WCQ Brussels 2026","duration":"30:05","date":"2026-08-13"},
     {"id":"SUnmXkt3XWc","channel":"eu","title":"Genesys Championship Day 1 | Round 2 - Erikas Z. vs. Joshua S. | WCQ Brussels 2026","duration":"19:48","date":"2026-08-13"},
-    {"id":"FMPZPLrvOxk","channel":"eu","title":"Genesys Championship Day 1 - Round 1 - Mike S. vs. Lutz H. | WCQ Brussels 2026","duration":"40:27","date":"2026-08-13"},
-    {"id":"j8KWRnsQnrY","channel":"eu","title":"WCQ Brussels 2026 - Final - Tim G. vs. Florian D.","duration":"1:00:17","date":"2026-08-13"},
-    {"id":"pz8NOzbHUpE","channel":"eu","title":"WCQ Brussels 2026 - Top 4 - Tim G. vs. Paul-Robert G.","duration":"1:02:39","date":"2026-08-13"},
-    {"id":"G8nrxqOcF9Y","channel":"eu","title":"WCQ Brussels 2026 - Top 8 - Daniel M. vs. Florian D.","duration":"54:21","date":"2026-08-13"},
-    {"id":"TtOzEY4nQpg","channel":"eu","title":"WCQ Brussels 2026 - Top 8 - Francesco S. vs. Danilo S.","duration":"1:15:55","date":"2026-08-13"},
-    {"id":"LCZe9Sdq1vM","channel":"eu","title":"WCQ Brussels 2026 - Top 8 - Guillaume M. vs. Paul-Robert G.","duration":"50:20","date":"2026-08-13"},
-    {"id":"BKxXYEphr2o","channel":"eu","title":"WCQ Brussels 2026 - Top 8 - Tim G. vs. Alex B.","duration":"48:19","date":"2026-08-13"},
-    {"id":"1dU9iAj5iv4","channel":"eu","title":"WCQ Brussels 2026 - Round 15 - Luigi A. vs. Brandan W.","duration":"37:48","date":"2026-08-13"},
-    {"id":"pAoejUGWS4o","channel":"eu","title":"WCQ Brussels 2026 - Round 14 - Marco D. vs. Danilo S.","duration":"34:04","date":"2026-08-13"},
-    {"id":"rDd_JqBhiBE","channel":"eu","title":"WCQ Brussels 2026 - Round 13 - Andrea N. vs. Themis G.","duration":"52:59","date":"2026-08-13"},
-    {"id":"7x31-UnRHCI","channel":"eu","title":"WCQ Brussels 2026 - Round 12 - Herman H. vs. Samir B.","duration":"15:47","date":"2026-08-13"},
-    {"id":"HIWf5QivWUw","channel":"eu","title":"WCQ Brussels 2026 - Round 11 - Zio M. vs. Florian D.","duration":"45:10","date":"2026-08-13"},
-    {"id":"OP7D0V6aTyM","channel":"eu","title":"WCQ Brussels 2026 - Round 10 - Herman H. vs. Joshua S.","duration":"22:59","date":"2026-08-13"},
     {"id":"KHcIPPJrjN4","channel":"tcg","title":"2026 North American WCQ Minneapolis, MN // Dragon Duel Championship Finals - Emmett P. vs. Simon B.","duration":"44:47","date":"2026-08-13"}
   ]
 }
