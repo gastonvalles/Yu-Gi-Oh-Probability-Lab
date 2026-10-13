@@ -107,6 +107,8 @@ export const search = {
   'search.overlay.backToDetail': 'Volver al detalle',
   'search.overlay.zoomIn': 'Ver la carta en grande',
   'search.zoom.aria': '{name} en grande',
+  'search.arts.label': 'Artes de la carta',
+  'search.arts.pick': 'Arte {n} de {count}',
   'search.copies.inZone': { one: '<b>{count}</b> copia en {zone}', other: '<b>{count}</b> copias en {zone}' },
   'search.copies.removeOne': 'Quitar una',
   'search.copies.addOne': 'Sumar una',

@@ -7,6 +7,7 @@ import { currencyLocale, formatDay as formatDate, t } from '../../i18n'
 import { Heading } from '../ui/Heading'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
+import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
 import { Skeleton } from '../ui/Skeleton'
 import { field } from '../ui/surfaces'
@@ -27,25 +28,25 @@ const packBackground = (code: string) => ({
 })
 
 /**
- * El botón de precios sobre la esquina de la carta: la moneda verde con el signo de dólar (public/price-coin.svg, la
- * imagen de referencia vectorizada), sin caja alrededor. El que lo usa le da la posición (esquina inferior derecha de la
- * imagen) y qué hacer al tocarlo. El área táctil es más grande que la moneda.
+ * El botón de precios: un ícono blanco con una moneda que se pone verde al pasar el mouse, como los demás de la app. Va siempre afuera de la carta
+ * (que se inclina en 3D hacia el mouse), así que no se mueve con ella; el que lo usa le da la posición y qué hacer al tocarlo.
  */
-export function CardPricesButton({ onClick }: { onClick: () => void }) {
+export function CardPricesButton({ onClick, className }: { onClick: () => void; className?: string }) {
   return (
-    <button
-      type="button"
+    <IconButton
+      tone="raised"
+      size="lg"
       aria-label={t('search.prices.button')}
       title={t('search.prices.button')}
-      className="relative block size-7 rounded-full bg-transparent p-0 shadow-[0_1px_6px_rgb(0_0_0/0.5)] transition-transform duration-150 before:absolute before:-inset-2 before:content-[''] hover:scale-110 focus-visible:outline-none focus-visible:shadow-focus"
+      className={className}
       onClick={(event) => {
-        // Está encima de una imagen que se agranda al tocarla: acá sólo se abren los precios.
+        // Está sobre un fondo que se cierra al tocarlo (y al lado de una carta que se agranda): acá sólo se abren los precios.
         event.stopPropagation()
         onClick()
       }}
     >
-      <img src="/price-coin.svg" alt="" draggable={false} className="block size-full select-none" />
-    </button>
+      <Icon name="dollar" />
+    </IconButton>
   )
 }
 

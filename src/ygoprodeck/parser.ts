@@ -1,6 +1,6 @@
 import { t } from '../i18n'
 import type { BanlistStatus, CardBanlistInfo } from '../types'
-import type { ApiCardSearchResult, ApiSearchPage } from './types'
+import type { ApiCardSearchResult, ApiSearchPage, CardArtOption } from './types'
 
 export function parseSearchResponse(payload: unknown): ApiSearchPage {
   if (!isRecord(payload)) {
@@ -18,6 +18,19 @@ export function parseSearchResponse(payload: unknown): ApiSearchPage {
     results,
     hasMore,
   }
+}
+
+/** Todos los artes de la primera carta de la respuesta (los alternativos vienen en `card_images`); lo que no es una imagen de YGOPRODeck se descarta. */
+export function parseCardArts(payload: unknown): CardArtOption[] {
+  if (!isRecord(payload) || !Array.isArray(payload.data) || !isRecord(payload.data[0]) || !Array.isArray(payload.data[0].card_images)) {
+    return []
+  }
+
+  return payload.data[0].card_images.flatMap((entry): CardArtOption[] => {
+    const imageUrl = isRecord(entry) ? keepCardImageUrl(readOptionalString(entry.image_url)) : null
+
+    return isRecord(entry) && imageUrl && typeof entry.id === 'number' ? [{ id: entry.id, imageUrl, imageUrlSmall: keepCardImageUrl(readOptionalString(entry.image_url_small)) }] : []
+  })
 }
 
 export function readApiErrorMessage(payload: unknown): string | null {
