@@ -34,8 +34,6 @@ describe('las cartas van rectas', () => {
           activeDragInstanceId={null}
           variant="classic-builder"
           desktopCompact
-          onClearZone={noop}
-          onSortZone={noop}
           onDeckCardPointerDown={noop}
           onDeckCardClick={noop}
           onRemoveCard={noop}

@@ -300,8 +300,6 @@ export function MetaDeckModal({ deck, onClose }: MetaDeckModalProps) {
                       selectedCardId={(selectedCard ?? load.deck.defaultCard)?.ygoprodeckId ?? null}
                       highlightedCardIds={HANDTRAP_IDS}
                       readOnly
-                      onClearZone={noop}
-                      onSortZone={noop}
                       onDeckCardPointerDown={noop}
                       onDeckCardClick={handleCardClick}
                       onRemoveCard={noop}

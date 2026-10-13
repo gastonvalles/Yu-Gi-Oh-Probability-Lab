@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react'
 
 import { getDeckFormatLabel } from '../../app/deck-format'
 import { getDesktopCompactDeckColumnCount } from '../../app/deck-zone-layout'
@@ -56,8 +56,6 @@ interface DeckBuilderStepProps {
   selectedDetailCard: ApiCardSearchResult | null
   selectedDetailSource: 'search' | 'deck' | null
   selectedDeckCopyActions: DeckCopyActions | null
-  onClearDeckZone: (zone: DeckZoneType) => void
-  onSortDeckZone: (zone: DeckZoneType) => void
   onSortAllDeckZones: () => void
   onClearAllDeckZones: () => void
   onRemoveDeckCard: (instanceId: string) => void
@@ -120,8 +118,6 @@ export function DeckBuilderStep({
   selectedDetailCard,
   selectedDetailSource,
   selectedDeckCopyActions,
-  onClearDeckZone,
-  onSortDeckZone,
   onSortAllDeckZones,
   onClearAllDeckZones,
   onRemoveDeckCard,
@@ -141,7 +137,7 @@ export function DeckBuilderStep({
 }: DeckBuilderStepProps) {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const [importDrawerOpen, setImportDrawerOpen] = useState(false)
-  const [pendingClearZone, setPendingClearZone] = useState<DeckZoneType | 'all' | null>(null)
+  const [pendingClearAll, setPendingClearAll] = useState(false)
   const isDesktopDeckBuilder = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const formatLabel = getDeckFormatLabel(deckFormat)
 
@@ -157,46 +153,38 @@ export function DeckBuilderStep({
   )
   const totalDeckCardCount = deckBuilder.main.length + deckBuilder.extra.length + deckBuilder.side.length
   const deckCopyCounts = useMemo(() => countDeckCopiesByCardId(deckBuilder), [deckBuilder])
-  const pendingClearZoneCardCount =
-    pendingClearZone === 'all' ? totalDeckCardCount : pendingClearZone ? deckBuilder[pendingClearZone].length : 0
-  const pendingClearZoneLabel =
-    pendingClearZone === 'all' ? t('deck.builder.clearAllLabel') : pendingClearZone ? getDeckZoneLabel(pendingClearZone) : ''
   const handleSearchCardPointerDown = (
     event: ReactPointerEvent<HTMLElement>,
     apiCardId: number,
   ) => onSearchCardPointerDown(event, apiCardId)
-
-  const handleRequestClearDeckZone = useCallback((zone: DeckZoneType) => {
-    if (deckBuilder[zone].length === 0) {
-      return
-    }
-
-    setPendingClearZone(zone)
-  }, [deckBuilder])
 
   const handleRequestClearAllDeckZones = () => {
     if (totalDeckCardCount === 0) {
       return
     }
 
-    setPendingClearZone('all')
+    setPendingClearAll(true)
   }
 
-  const handleConfirmClearDeckZone = () => {
-    if (pendingClearZone === 'all') {
-      onClearAllDeckZones()
-      setPendingClearZone(null)
-      return
-    }
-
-    if (!pendingClearZone || deckBuilder[pendingClearZone].length === 0) {
-      setPendingClearZone(null)
-      return
-    }
-
-    onClearDeckZone(pendingClearZone)
-    setPendingClearZone(null)
+  const handleConfirmClearAllDeckZones = () => {
+    onClearAllDeckZones()
+    setPendingClearAll(false)
   }
+
+  // Vaciar es sólo de todo el deck (las zonas no se vacían ni se ordenan de a una): la confirmación es la misma en escritorio y en celular.
+  const clearAllDialog = (
+    <ConfirmDialog
+      isOpen={pendingClearAll}
+      title={t('deck.builder.clearAllTitle')}
+      description={t('deck.builder.clearConfirm', { count: formatInteger(totalDeckCardCount) })}
+      cancelLabel={t('common.cancel')}
+      confirmLabel={t('deck.builder.clearConfirmYes')}
+      confirmVariant="primary"
+      confirmColor="danger"
+      onCancel={() => setPendingClearAll(false)}
+      onConfirm={handleConfirmClearAllDeckZones}
+    />
+  )
 
   const search: CardSearchViewState = {
     deckFormat,
@@ -342,8 +330,6 @@ export function DeckBuilderStep({
                     desktopCompactColumnCount={desktopCompactColumnCount}
                     variant="classic-builder"
                     selectedCardId={selectedCardId}
-                    onClearZone={handleRequestClearDeckZone}
-                    onSortZone={onSortDeckZone}
                     onDeckCardPointerDown={onDeckCardPointerDown}
                     onDeckCardClick={onDeckCardClick}
                     onRemoveCard={onRemoveDeckCard}
@@ -402,21 +388,7 @@ export function DeckBuilderStep({
           onClose={() => setImportDrawerOpen(false)}
         />
 
-        <ConfirmDialog
-          isOpen={pendingClearZone !== null}
-          title={pendingClearZoneLabel ? t('deck.zone.clear', { zone: pendingClearZoneLabel }) : t('deck.builder.clearZoneTitle')}
-          description={
-            pendingClearZoneLabel
-              ? t('deck.builder.clearConfirm', { count: formatInteger(pendingClearZoneCardCount), zone: pendingClearZoneLabel })
-              : ''
-          }
-          cancelLabel={t('common.cancel')}
-          confirmLabel={t('deck.builder.clearConfirmYes')}
-          confirmVariant="primary"
-          confirmColor="danger"
-          onCancel={() => setPendingClearZone(null)}
-          onConfirm={handleConfirmClearDeckZone}
-        />
+        {clearAllDialog}
       </section>
     )
   }
@@ -455,18 +427,6 @@ export function DeckBuilderStep({
                 <option value="genesys">Genesys</option>
               </select>
             </FieldBox>
-            {/* Debajo del nombre y el formato: tres íconos con su nombre en el tooltip y en lectores de pantalla. */}
-            <div className="col-span-2 flex items-center">
-            <IconButton tone="ghost" size="md" aria-label={t('deck.builder.import')} title={t('deck.builder.import')} onClick={() => setImportDrawerOpen(true)}>
-              <Icon name="upload" size={20} />
-            </IconButton>
-            <IconButton tone="ghost" size="md" aria-label={t('deck.builder.sortAll')} title={t('deck.builder.sortAll')} disabled={totalDeckCardCount < 2} className="disabled:opacity-35" onClick={onSortAllDeckZones}>
-              <Icon name="sort" size={20} />
-            </IconButton>
-            <IconButton tone="ghost" size="md" aria-label={t('deck.builder.clearAll')} title={t('deck.builder.clearAll')} disabled={totalDeckCardCount === 0} className="disabled:opacity-35" onClick={handleRequestClearAllDeckZones}>
-              <Icon name="trash" size={20} />
-            </IconButton>
-            </div>
           </>
         }
       />
@@ -506,8 +466,19 @@ export function DeckBuilderStep({
       <div className="grid items-start gap-3">
         <article className="w-full min-h-0 self-start">
           <div className="grid gap-4">
-            <div className="sticky top-2 z-20 min-[1101px]:hidden">
-              <Button variant="primary" size="lg" fullWidth icon="plus" onClick={() => setMobileSearchOpen(true)}>
+            {/* La barra del deck: tres íconos (con su nombre en el tooltip y en lectores de pantalla) y, a la misma altura, el buscador. Queda fija
+                debajo de la barra de arriba del celular: así se vuelve a buscar sin subir a lo largo de todo el deck. */}
+            <div className="sticky top-14 z-30 -mx-gutter flex items-center gap-1 border-b border-border-subtle bg-background/85 px-gutter py-2 backdrop-blur min-[1101px]:hidden">
+              <IconButton tone="ghost" size="md" aria-label={t('deck.builder.import')} title={t('deck.builder.import')} onClick={() => setImportDrawerOpen(true)}>
+                <Icon name="upload" size={20} />
+              </IconButton>
+              <IconButton tone="ghost" size="md" aria-label={t('deck.builder.sortAll')} title={t('deck.builder.sortAll')} disabled={totalDeckCardCount < 2} className="disabled:opacity-35" onClick={onSortAllDeckZones}>
+                <Icon name="sort" size={20} />
+              </IconButton>
+              <IconButton tone="ghost" size="md" aria-label={t('deck.builder.clearAll')} title={t('deck.builder.clearAll')} disabled={totalDeckCardCount === 0} className="disabled:opacity-35" onClick={handleRequestClearAllDeckZones}>
+                <Icon name="trash" size={20} />
+              </IconButton>
+              <Button variant="primary" size="sm" icon="search" className="ml-2 min-w-0 flex-1 pointer-coarse:min-h-10" onClick={() => setMobileSearchOpen(true)}>
                 {t('deck.builder.search')}
               </Button>
             </div>
@@ -526,8 +497,6 @@ export function DeckBuilderStep({
                       ? 'invalid'
                       : 'idle'
                 }
-                onClearZone={handleRequestClearDeckZone}
-                onSortZone={onSortDeckZone}
                 onDeckCardPointerDown={onDeckCardPointerDown}
                 onDeckCardClick={onDeckCardClick}
                 onRemoveCard={onRemoveDeckCard}
@@ -561,27 +530,9 @@ export function DeckBuilderStep({
         onClose={() => setImportDrawerOpen(false)}
       />
 
-      <ConfirmDialog
-        isOpen={pendingClearZone !== null}
-        title={pendingClearZoneLabel ? t('deck.zone.clear', { zone: pendingClearZoneLabel }) : t('deck.builder.clearZoneTitle')}
-        description={
-          pendingClearZoneLabel
-            ? t('deck.builder.clearConfirm', { count: formatInteger(pendingClearZoneCardCount), zone: pendingClearZoneLabel })
-            : ''
-        }
-        cancelLabel={t('common.cancel')}
-        confirmLabel={t('deck.builder.clearConfirmYes')}
-        confirmVariant="primary"
-        confirmColor="danger"
-        onCancel={() => setPendingClearZone(null)}
-        onConfirm={handleConfirmClearDeckZone}
-      />
+      {clearAllDialog}
     </section>
   )
-}
-
-function getDeckZoneLabel(zone: DeckZoneType): string {
-  return zone === 'main' ? 'Main Deck' : zone === 'extra' ? 'Extra Deck' : 'Side Deck'
 }
 
 // Copias por id, pero contadas por nombre: dos artes de la misma carta (ids distintos) son la misma carta,
