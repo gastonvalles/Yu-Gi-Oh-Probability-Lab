@@ -8,8 +8,17 @@ import { normalizeStoredRoles, resolveStoredCardOrigin } from './deck-groups'
 
 const BACKUP_KEY = `${STORAGE_KEY}:backup`
 
+/** Claves de funciones que ya no existen (el calificador de manos de la práctica): se borran al cargar para que no queden datos huérfanos ni viajen en la copia de seguridad. */
+const RETIRED_KEYS = ['ygo-lab:hand-samples:v1']
+
 export function loadState(): AppState {
   let raw: string | null = null
+
+  for (const key of RETIRED_KEYS) {
+    try {
+      localStorage.removeItem(key)
+    } catch { /* sin acceso al almacenamiento: nada que borrar */ }
+  }
 
   try {
     raw = localStorage.getItem(STORAGE_KEY)
