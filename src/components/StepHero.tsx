@@ -2,10 +2,11 @@ import type { ReactNode } from 'react'
 
 import { t } from '../i18n'
 
+import { Heading } from './ui/Heading'
 import { cx, variants } from './ui/cx'
 import { Icon, type IconName } from './ui/Icon'
 import { InfoTip } from './ui/InfoTip'
-import { pageTitle, supportText } from './ui/typography'
+import { supportText } from './ui/typography'
 
 interface StepHeroProps {
   /** Qué hacés en esta vista, en pocas palabras (p. ej. "Armá tu deck"). */
@@ -44,7 +45,9 @@ export function StepHero({ title, icon, subtitle, help, titleAction, side, sideV
         <div className="grid min-w-0">
           {/* Alto fijo del renglón del título (el de la ayuda o el botón de al lado): el título no sube ni baja de una pestaña a otra. */}
           <div className="flex min-h-8 min-w-0 items-center gap-1">
-            <h2 className={cx(pageTitle, 'truncate')}>{title}</h2>
+            <Heading level="page" className="truncate">
+              {title}
+            </Heading>
             {/* La ayuda se ancla al encabezado (no al ícono): nunca se sale de pantalla. */}
             {help ? (
               <InfoTip label={t('shell.stepHero.help', { title })} anchor="parent">

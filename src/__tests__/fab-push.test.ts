@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { moveClearOf, pushFabApart, resolveFabGroup, type FabBounds, type FabPosition } from '../app/fab-position'
 
 // Un celular de 375×812 con la barra de pasos abajo.
-const BOUNDS = (size: number): FabBounds => ({ width: 375, height: 812, size, margin: 12, bottomInset: 76 })
+const BOUNDS = (size: number): FabBounds => ({ width: 375, height: 812, size, margin: 12, bottomInset: 76, leftInset: 0 })
 const GAP = 8
 
 /** ¿Se tocan dos cuadrados (posición de la esquina y lado) a menos de `GAP`? */

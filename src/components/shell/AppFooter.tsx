@@ -2,10 +2,19 @@ import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { SiteCredit, SocialLinks } from '../ui/SocialLinks'
 
-/** Abajo de toda pantalla: la autoría y el aviso de que el sitio no es oficial, las redes del autor y la página de privacidad. */
+/**
+ * Abajo de toda pantalla: la autoría y el aviso de que el sitio no es oficial, las redes del autor y la página de privacidad.
+ * En el celular es lo último de la página y los botones flotantes y la mascota (abajo a los costados) quedarían encima: por eso el
+ * relleno de abajo. En escritorio el pie es fijo y ellos arrancan por encima (`shell-layout`).
+ */
 export function AppFooter({ className }: { className?: string }) {
   return (
-    <footer className={cx('flex shrink-0 flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-border-subtle px-gutter py-3 min-[1101px]:px-6', className)}>
+    <footer
+      className={cx(
+        'flex min-h-(--app-footer-height) shrink-0 flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-border-subtle px-gutter py-3 max-[1100px]:pb-30 min-[1101px]:px-6',
+        className,
+      )}
+    >
       <SiteCredit withDisclaimer className="max-w-prose" />
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <SocialLinks />

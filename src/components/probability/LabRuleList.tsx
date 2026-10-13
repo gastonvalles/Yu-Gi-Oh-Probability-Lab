@@ -3,6 +3,7 @@ import { useState, type ReactNode } from 'react'
 import { formatInteger, formatShortPercent } from '../../app/utils'
 import { t, type MessageKey } from '../../i18n'
 import type { PatternKind } from '../../types'
+import { Heading } from '../ui/Heading'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
@@ -215,10 +216,10 @@ function RuleTier({
     <section className="grid min-w-0 content-start gap-2" aria-label={title}>
       <header className="grid gap-1">
         <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
-          <h4 className="m-0 flex items-center gap-2 text-body font-semibold text-foreground">
+          <Heading level="card" as="h4" className="flex items-center gap-2">
             {title}
             {count !== undefined ? <Badge tone="brand" size="sm">{formatInteger(count)}</Badge> : null}
-          </h4>
+          </Heading>
           {badge}
         </div>
         {description ? <p className="m-0 text-micro text-muted">{description}</p> : null}

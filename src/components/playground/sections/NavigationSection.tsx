@@ -97,6 +97,7 @@ export function NavigationSection() {
     () =>
       buildAppNavGroups(
         buildDeckWorkflowNavigationItems({ mainDeckCount: 42, roleCardCount: 40, unclassifiedCardCount: 3, hasCompletedRoleStep: false, patternCount: 0 }),
+        { practice: true },
       ),
     [],
   )

@@ -2,8 +2,6 @@ import type { shell as es } from '../es/shell'
 import type { Translated } from '../types'
 
 export const shell: Translated<typeof es> = {
-  'shell.nav.desktop': 'App steps',
-  'shell.nav.mobile': 'Workflow steps',
   'shell.nav.main': 'Main navigation',
   'shell.nav.open': 'Open the menu',
   'shell.nav.close': 'Close the menu',

@@ -39,10 +39,12 @@ Para sumar un componente nuevo al catálogo: hacé una muestra con `<Specimen ti
 
 ## El armazón nuevo (`src/components/shell/`)
 
-Lo que reemplaza a la barra de arriba y a la barra de abajo del celular (todavía **no está conectado** a la app: se prueba acá primero).
+Reemplazó a la barra de pasos de arriba y a la barra de abajo del celular: es lo que arma toda la app (`DeckModeScreen` lo usa; el
+playground lo muestra con los mismos componentes). Si algo del menú, del cajón o del pie cambia acá, cambia en toda la app.
 
 - `AppShell`: el armazón de toda la pantalla. En escritorio, menú lateral a la izquierda y la pantalla con su pie a la derecha; en el
-  celular, barra de arriba con hamburguesa y la pantalla con su pie. Recuerda si el menú estaba contraído (`ygo-lab:sidebar-collapsed`).
+  celular, barra de arriba con hamburguesa y la pantalla con su pie. Recuerda si el menú estaba contraído (`ygo-lab:sidebar-collapsed`)
+  y avisa cuánto espacio ocupa (`app/shell-layout.ts`) para que los botones flotantes y la mascota lo dejen libre.
 - `SidebarNav`: la lista de destinos agrupada. La comparten el menú lateral y el cajón, así que un cambio acá cambia los dos.
 - `AppSidebar`: marca, destinos, idioma, mascotas y el botón de contraer a una columna de íconos.
 - `MobileTopBar` + `NavDrawer` (`DrawerPanel` por dentro): la hamburguesa y el cajón con el mismo menú (foco atrapado, Escape, velo).
@@ -53,17 +55,11 @@ Lo que reemplaza a la barra de arriba y a la barra de abajo del celular (todaví
 
 ## Fuera del sistema (lo que falta migrar a un componente único)
 
-Foto del 2026-10-13. Son los lugares que todavía arman un botón o un título "a mano" en vez de pasar por `Button` / `IconButton` /
-`Heading`; cambiar el componente no los cambia.
+Foto del 2026-10-13. Son los lugares que todavía arman un botón "a mano" en vez de pasar por `Button` / `IconButton`; cambiar el
+componente no los cambia. Los títulos ya están migrados: todos pasan por `Heading` (también el de `Modal`, `SectionHeader` y `StepHero`).
 
-- **Títulos con clases a mano** (`m-0 text-lead font-semibold …`): `card-detail/CardOverlay`, `card-detail/CardPrices`,
-  `comparison/KpiDetailModal`, `deck-mode/DeckBuilderClassicPreview`, `deck-mode/DeckImportDrawer`, `DeckZone`, `meta/MetaDeckModal`,
-  `probability/LabPendingClassification`, `probability/LabRuleList`, `probability/PatternEditorDrawer`,
-  `probability/rule-builder/CategoryPicker`, y el título del propio `ui/Modal`. Todos deberían ser `<Heading level=…>`.
 - **`<button>` sueltos** (cantidad por archivo): `search/MobileCardSearch` 6, `life/LifeCalculatorScreen` 6, `probability/PracticeMat` 5
   (fases, replay, pilas), `search/SearchFeedback` 4, `search/DesktopSearchPanel` 4, `probability/rule-builder/CategoryPicker` 4,
   `replays/ReplaysScreen` 3, `probability/rule-builder/ConditionBlock` 3, `probability/MatDialogs` 3, `meta/MetaScreen` 3,
   `classification/ClassificationFields` 3, y uno o dos en otros 25 archivos. Muchos son chips o filas clickeables con su propia
-  clase (`RULE_BUTTON` en `PracticeBoard`, `REPLAY_BUTTON` en `PracticeMat`): conviene sumarlos a `ui/` como variantes.
-- La barra de pasos de arriba (`DeckModeNavigation`), la de abajo del celular (`MobileBottomStepNav`) y `DeckModeShell` se borran cuando
-  el armazón nuevo pase a la app.
+  clase (`RULE_BUTTON` en `PracticeBoard`): conviene sumarlos a `ui/` como variantes.

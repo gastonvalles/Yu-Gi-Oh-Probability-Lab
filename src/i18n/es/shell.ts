@@ -1,7 +1,5 @@
 /** Armazón de la app: barra de pasos, pie, mascotas, avisos, calculadora de LP y los componentes de `ui/`. */
 export const shell = {
-  'shell.nav.desktop': 'Pasos de la app',
-  'shell.nav.mobile': 'Pasos del workflow',
   'shell.nav.main': 'Navegación principal',
   'shell.nav.open': 'Abrir el menú',
   'shell.nav.close': 'Cerrar el menú',

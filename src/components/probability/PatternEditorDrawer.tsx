@@ -5,6 +5,7 @@ import { useFocusTrap } from '../../app/use-focus-trap'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import { t } from '../../i18n'
 import type { CardEntry, HandPattern } from '../../types'
+import { Heading } from '../ui/Heading'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { DraftImpactSummary } from './DraftImpactSummary'
@@ -64,7 +65,7 @@ export function PatternEditorDrawer({
   const title = pattern?.name.trim() || t(isCreating ? 'builder.drawer.titleNew' : 'builder.drawer.titleEdit')
 
   const drawer = (
-    <div className="fixed inset-0 isolate z-150 min-[1101px]:bottom-0 min-[1101px]:top-(--deck-mode-topbar-height) min-[1101px]:h-auto">
+    <div className="fixed inset-0 isolate z-150">
       <button
         type="button"
         aria-label={t('builder.drawer.close')}
@@ -82,7 +83,9 @@ export function PatternEditorDrawer({
       >
         <header className="grid gap-3 border-b border-border-subtle px-4 py-3.5">
           <div className="flex items-start justify-between gap-3">
-            <h3 className="m-0 min-w-0 truncate text-lead font-semibold tracking-[-0.01em] text-foreground">{title}</h3>
+            <Heading level="section" as="h3" className="min-w-0 truncate">
+              {title}
+            </Heading>
             <CloseButton size="sm" aria-label={t('builder.drawer.close')} onClick={onClose} />
           </div>
 

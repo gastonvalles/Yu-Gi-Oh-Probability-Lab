@@ -10,7 +10,7 @@ const LINKS: ReadonlyArray<{ href: string; label: string; icon: IconName }> = [
   { href: 'https://github.com/gastonvalles', label: 'GitHub', icon: 'github' },
 ]
 
-/** Los íconos de la derecha de la barra (y del pie en mobile): al pasar el mouse se iluminan como la pestaña activa de la barra: fondo lavanda, verde y resplandor. */
+/** Los íconos de las redes (en el pie): al pasar el mouse se iluminan como el destino abierto del menú: fondo lavanda, verde y resplandor. */
 const ICON_LINK = 'group grid size-9 place-items-center rounded-control text-primary-soft/70 transition-colors duration-150 hover:bg-lavender hover:text-success focus-visible:outline-none focus-visible:shadow-focus'
 const ICON_GLOW = 'transition-[filter] duration-150 group-hover:drop-shadow-[0_0_8px_rgb(var(--success-rgb)/0.55)]'
 
@@ -24,7 +24,7 @@ export function SiteCredit({ withDisclaimer = false, className }: { withDisclaim
   )
 }
 
-/** Las redes del autor: en desktop viven en la barra de arriba; en mobile, en el pie de la página. */
+/** Las redes del autor, en el pie de la app. */
 export function SocialLinks({ className }: { className?: string }) {
   return (
     <nav aria-label={t('shell.social.label')} className={cx('flex items-center gap-1', className)}>
@@ -42,14 +42,5 @@ export function SocialLinks({ className }: { className?: string }) {
         </a>
       ))}
     </nav>
-  )
-}
-
-/** Privacidad y aviso legal: una página estática aparte (public/privacidad.html y public/privacy.html), que se abre en otra pestaña como las redes. */
-export function LegalLink() {
-  return (
-    <a href={t('shell.legal.page')} target="_blank" rel="noreferrer" aria-label={t('shell.legal.label')} title={t('shell.legal.label')} className={ICON_LINK}>
-      <Icon name="info" size={20} className={ICON_GLOW} />
-    </a>
   )
 }

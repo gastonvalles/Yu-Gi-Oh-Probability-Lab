@@ -13,6 +13,7 @@ import { buildZoneActionEntries } from '../card-detail/card-zone-actions'
 import { CardPricesButton, CardPricesModal } from '../card-detail/CardPrices'
 import { CardZoom } from '../card-detail/CardZoom'
 import { DeckCopyControls, type DeckCopyActions } from '../card-detail/DeckCopyControls'
+import { Heading } from '../ui/Heading'
 import { Button } from '../ui/Button'
 import { Icon } from '../ui/Icon'
 
@@ -45,10 +46,12 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, onAddToZone 
     <aside className="flex h-full max-h-full min-h-0 flex-col gap-3 overflow-y-auto overflow-x-hidden overscroll-contain border-r border-border-subtle bg-card-background/50 px-4 pb-4 pt-4 [scrollbar-gutter:stable] [scrollbar-width:thin] [&>*]:shrink-0">
       {card ? (
         <>
-          <h3 className="m-0 text-center text-lead font-semibold leading-tight text-foreground [overflow-wrap:anywhere]">{card.name}</h3>
+          <Heading level="section" as="h3" className="text-center leading-tight">
+            {card.name}
+          </Heading>
 
           <div className="grid min-h-0 justify-items-center overflow-hidden">
-            <div className="relative w-[min(100%,max(9rem,calc((100dvh-var(--deck-mode-topbar-height)-29rem)*0.72)))]">
+            <div className="relative w-[min(100%,max(9rem,calc((100dvh-var(--app-footer-height)-29rem)*0.72)))]">
               <button
                 type="button"
                 aria-label={t('deck.classic.zoom')}

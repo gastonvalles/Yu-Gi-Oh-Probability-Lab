@@ -8,18 +8,21 @@ export interface FabBounds {
   height: number
   /** Tamaño del botón (es cuadrado). */
   size: number
-  /** Espacio reservado abajo (p. ej. la barra de navegación mobile). */
+  /** Espacio reservado abajo (p. ej. el pie de la pantalla). */
   bottomInset: number
+  /** Espacio reservado a la izquierda (p. ej. el menú lateral). */
+  leftInset: number
   margin: number
 }
 
-/** Mantiene el botón dentro de la pantalla y fuera de la zona reservada de abajo. */
+/** Mantiene el botón dentro de la pantalla y fuera de las zonas reservadas (abajo y a la izquierda). */
 export function clampFabPosition(position: FabPosition, bounds: FabBounds): FabPosition {
-  const maxX = Math.max(bounds.margin, bounds.width - bounds.size - bounds.margin)
+  const minX = bounds.margin + bounds.leftInset
+  const maxX = Math.max(minX, bounds.width - bounds.size - bounds.margin)
   const maxY = Math.max(bounds.margin, bounds.height - bounds.size - bounds.margin - bounds.bottomInset)
 
   return {
-    x: Math.min(Math.max(position.x, bounds.margin), maxX),
+    x: Math.min(Math.max(position.x, minX), maxX),
     y: Math.min(Math.max(position.y, bounds.margin), maxY),
   }
 }
@@ -27,7 +30,7 @@ export function clampFabPosition(position: FabPosition, bounds: FabBounds): FabP
 /** Al soltarlo, se pega al borde lateral más cercano para no tapar el contenido. */
 export function snapFabToEdge(position: FabPosition, bounds: FabBounds): FabPosition {
   const center = position.x + bounds.size / 2
-  const x = center < bounds.width / 2 ? bounds.margin : bounds.width - bounds.size - bounds.margin
+  const x = center < bounds.width / 2 ? bounds.margin + bounds.leftInset : bounds.width - bounds.size - bounds.margin
   return clampFabPosition({ x, y: position.y }, bounds)
 }
 

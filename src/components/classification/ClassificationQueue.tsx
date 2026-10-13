@@ -4,9 +4,9 @@ import { getCardOriginDefinition, getCardRoleDefinition } from '../../app/deck-g
 import { t } from '../../i18n'
 import type { CardEntry } from '../../types'
 import { CardArt } from '../CardArt'
+import { Heading } from '../ui/Heading'
 import { CopiesBadge } from '../ui/CopiesBadge'
 import { cx } from '../ui/cx'
-import { overline } from '../ui/typography'
 import { queueArt, queueCard, statusChip } from '../classification-styles'
 import {
   CARD_TYPE_LABEL,
@@ -60,11 +60,11 @@ function GroupHeading({ type, cards }: { type: CardTypeKey; cards: CardEntry[] }
   const copies = cards.reduce((total, card) => total + card.copies, 0)
 
   return (
-    <h3 className={cx('m-0 flex items-center gap-2 leading-none', overline)}>
+    <Heading level="kicker" as="h3" className="flex items-center gap-2 leading-none">
       <span className="text-muted">{CARD_TYPE_LABEL[type].plural}</span>
       <span className="tabular-nums">{t('roles.queue.groupCount', { cards: cards.length, count: copies })}</span>
       <span className="h-px flex-1 bg-border-subtle" aria-hidden="true" />
-    </h3>
+    </Heading>
   )
 }
 

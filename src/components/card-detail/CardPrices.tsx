@@ -4,6 +4,7 @@ import { cardImageSrc } from '../../app/card-image-source'
 import { filterPrintings, setImageUrl, type PrintingPrice } from '../../app/card-prices'
 import { useCardPrices } from '../../app/use-card-prices'
 import { currencyLocale, formatDay as formatDate, t } from '../../i18n'
+import { Heading } from '../ui/Heading'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
@@ -55,7 +56,9 @@ function ExpansionPrices({ set, prices }: { set: string; prices: PrintingPrice[]
   return (
     <section className="overflow-hidden rounded-card border border-border-subtle bg-card-background">
       <header className="grid gap-0.5 px-3 py-2.5" style={packBackground(prices[0]!.code)}>
-        <h4 className="m-0 truncate text-body font-semibold text-foreground">{set}</h4>
+        <Heading level="card" as="h4" className="truncate">
+          {set}
+        </Heading>
         <p className="m-0 text-micro text-muted">{t('search.prices.printings', { count: prices.length })}</p>
       </header>
       <ul className="m-0 grid list-none p-0">
