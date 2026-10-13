@@ -256,6 +256,15 @@ const PATHS = {
       <path d="m3.5 8 8.5 4.5L20.5 8M12 12.5v8" />
     </>
   ),
+  /** Precios: una moneda con el signo de dólar. */
+  dollar: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M14.8 9.3c-.4-.9-1.4-1.4-2.8-1.4-1.6 0-2.8.8-2.8 2 0 1.1 1.1 1.7 2.8 2.1 1.8.4 2.9.9 2.9 2.2 0 1.3-1.3 2.1-2.9 2.1-1.5 0-2.6-.6-3-1.6" />
+      <path d="M12 6.2v1.7M12 16.1v1.7" />
+    </>
+  ),
+
   // — Torneos (tarjetas del meta) —
   trophy: (
     <>

@@ -1,10 +1,10 @@
 import { buildGenesysCardInfo } from './app/genesys-format'
 import { beginMascotActivity } from './app/mascot'
 import { requestCardInfo } from './ygoprodeck/client'
-import { parseSearchResponse } from './ygoprodeck/parser'
-import type { ApiCardSearchResult, ApiSearchPage } from './ygoprodeck/types'
+import { parseCardArts, parseSearchResponse } from './ygoprodeck/parser'
+import type { ApiCardSearchResult, ApiSearchPage, CardArtOption } from './ygoprodeck/types'
 
-export type { ApiCardSearchResult } from './ygoprodeck/types'
+export type { ApiCardSearchResult, CardArtOption } from './ygoprodeck/types'
 
 const CARD_CATALOG_PAGE_SIZE = 1000
 
@@ -127,6 +127,14 @@ export async function fetchCardsByIds(
 
   const payload = await requestCardInfo(new URLSearchParams({ id: ids.join(',') }), requestOptions)
   return attachGenesysInfo(parseSearchResponse(payload)).results
+}
+
+/**
+ * Los artes de una carta (el original y los alternativos). Se piden por nombre exacto: por id la API devuelve sólo el arte de ese código, y por nombre,
+ * todos. Sin respuesta válida, ninguno: el selector de artes es un extra, no rompe el detalle.
+ */
+export async function fetchCardArts(name: string, requestOptions: Parameters<typeof requestCardInfo>[1] = {}): Promise<CardArtOption[]> {
+  return parseCardArts(await requestCardInfo(new URLSearchParams({ name }), requestOptions))
 }
 
 /** Nombres de cartas por id de YGOPRODeck (una sola consulta para varias). */
