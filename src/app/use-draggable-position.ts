@@ -20,6 +20,11 @@ interface DraggablePositionOptions {
   slide?: number
   /** Los elementos del mismo grupo chocan entre sí: el que se mueve empuja al otro. */
   group?: string
+  /**
+   * Se puede llevar a cualquier lugar de la pantalla: no esquiva el menú ni el pie, no deja margen contra el borde y se queda donde se lo suelta
+   * (no se pega al costado). Dónde arranca, si nunca se movió, sigue siendo el rincón libre. Lo usan las mascotas.
+   */
+  anywhere?: boolean
 }
 
 type PointerHandler = (event: ReactPointerEvent<HTMLElement>) => void
@@ -107,9 +112,9 @@ function writePosition(key: string, position: FabPosition) {
 /**
  * Un elemento flotante que se arrastra a cualquier lado: al soltarlo se pega al borde lateral más
  * cercano y recuerda la posición entre visitas. Un toque sin arrastrar sigue siendo un click.
- * Lo comparten los botones flotantes y la mascota; los botones, además, se empujan entre sí.
+ * Lo comparten los botones flotantes y las mascotas; los que están en un grupo, además, se empujan entre sí.
  */
-export function useDraggablePosition({ storageKey, size, corner = 'right', lift = 0, slide = 0, group }: DraggablePositionOptions): DraggablePosition {
+export function useDraggablePosition({ storageKey, size, corner = 'right', lift = 0, slide = 0, group, anywhere = false }: DraggablePositionOptions): DraggablePosition {
   const [viewport, setViewport] = useState(() => ({ width: window.innerWidth, height: window.innerHeight }))
   // El menú lateral y el pie (en escritorio) quedan libres: no se arranca ni se lleva nada encima de ellos.
   const shell = useShellInsets()
@@ -120,6 +125,8 @@ export function useDraggablePosition({ storageKey, size, corner = 'right', lift 
     bottomInset: shell.bottom,
     leftInset: shell.left,
   }
+  // Por dónde se puede llevar: lo común esquiva el menú y el pie; lo que va a cualquier lugar, no.
+  const roam: FabBounds = anywhere ? { ...bounds, margin: 0, bottomInset: 0, leftInset: 0 } : bounds
   const [stored, setStored] = useState<FabPosition | null>(() => readPosition(storageKey))
   const [dragPosition, setDragPosition] = useState<FabPosition | null>(null)
   // Dónde lo dejó el empujón de otro miembro del grupo mientras ese otro arrastra.
@@ -140,13 +147,13 @@ export function useDraggablePosition({ storageKey, size, corner = 'right', lift 
   }, [])
 
   const fallback = defaultFabPosition(bounds, corner)
-  const restingPosition = clampFabPosition(stored ?? { x: fallback.x + (corner === 'left' ? slide : -slide), y: fallback.y - lift }, bounds)
+  const restingPosition = clampFabPosition(stored ?? { x: fallback.x + (corner === 'left' ? slide : -slide), y: fallback.y - lift }, roam)
   const position = dragPosition ?? pushedPosition ?? restingPosition
   const positionRef = useRef(position)
   const boundsRef = useRef(bounds)
 
   positionRef.current = position
-  boundsRef.current = bounds
+  boundsRef.current = roam
 
   useEffect(() => {
     if (!group) {
@@ -208,7 +215,7 @@ export function useDraggablePosition({ storageKey, size, corner = 'right', lift 
     drag.moved = true
     const next = clampFabPosition(
       { x: drag.origin.x + pointer.x - drag.pointerStart.x, y: drag.origin.y + pointer.y - drag.pointerStart.y },
-      bounds,
+      roam,
     )
     setDragPosition(next)
     pushOthers(group, storageKey, size, next)
@@ -224,7 +231,7 @@ export function useDraggablePosition({ storageKey, size, corner = 'right', lift 
     }
 
     suppressClickRef.current = true
-    const snapped = snapFabToEdge(dragPosition, bounds)
+    const snapped = anywhere ? clampFabPosition(dragPosition, roam) : snapFabToEdge(dragPosition, bounds)
     pushedRef.current = null
     setPushedPosition(null)
     setStored(snapped)

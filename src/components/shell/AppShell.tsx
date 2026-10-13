@@ -37,7 +37,7 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
   const closeDrawer = useCallback(() => setDrawerOpen(false), [])
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
 
-  // Los botones flotantes y la mascota dejan libres el menú lateral (con su ancho de ahora) y el pie. En el celular no hay menú fijo.
+  // Los botones flotantes (y las mascotas, mientras nadie las mueva) dejan libres el menú lateral (con su ancho de ahora) y el pie. En el celular no hay menú fijo.
   // Va en un layout effect para que el cambio (contraer el menú, girar la pantalla) se vea en el mismo cuadro; el valor del primer cuadro ya lo trae el módulo.
   useLayoutEffect(() => {
     setShellInsets(shellInsetsFor(collapsed, isDesktop))

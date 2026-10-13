@@ -49,7 +49,7 @@ export function shellInsetsFor(collapsed: boolean, desktop: boolean): ShellInset
 let insets = typeof window === 'undefined' ? NO_SHELL_INSETS : shellInsetsFor(readSidebarCollapsed(), window.innerWidth >= DESKTOP_MIN_PX)
 const listeners = new Set<() => void>()
 
-/** El armazón avisa cuánto ocupa: los botones flotantes y la mascota arrancan, y se pueden llevar, sólo por el espacio que queda libre. */
+/** El armazón avisa cuánto ocupa: los botones flotantes se llevan sólo por el espacio que queda libre, y las mascotas arrancan ahí (después se las puede dejar en cualquier lugar). */
 export function setShellInsets(next: ShellInsets): void {
   if (next.left === insets.left && next.bottom === insets.bottom) {
     return

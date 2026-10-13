@@ -49,7 +49,7 @@ export function Mascot() {
 }
 
 /**
- * Cada una se puede agarrar y llevar a cualquier lado (como el botón de práctica), choca con los botones flotantes y con las otras mascotas
+ * Cada una se puede agarrar y dejar en cualquier lugar de la pantalla, choca con los botones flotantes y con las otras mascotas
  * y las empuja, reacciona a lo que pasa y, cuando se juntan con otra, se saluda (ver `mascot-interplay`). `slot` es su lugar en la fila:
  * si nunca la movieron, arranca al lado de las que salieron antes, no encima.
  */
@@ -65,6 +65,8 @@ function ActiveMascot({ id, slot }: { id: MascotId; slot: number }) {
     corner: 'left',
     slide: slot * (size + 8),
     group: 'fab',
+    // Se las puede dejar en cualquier lugar de la pantalla (también sobre el menú y el pie), sin que se peguen al borde.
+    anywhere: true,
   })
   const [looking, setLooking] = useState(false)
   const [restAsked, setRestAsked] = useState(false)
