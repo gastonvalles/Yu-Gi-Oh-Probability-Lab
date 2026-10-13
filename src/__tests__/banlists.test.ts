@@ -25,7 +25,7 @@ describe('banlists históricas (datos reales)', () => {
   it('los cambios de la lista de septiembre de 2026 del TCG son los del anuncio oficial de Konami', () => {
     const [current, previous] = banlistsOf('tcg')
 
-    expect(current!.date).toBe('2026-09')
+    expect(current!.date).toBe('2026-09-21')
 
     const changes = diffBanlists(previous!, current!)
     const names = (status: keyof typeof changes) => changes[status].map(({ cardId }) => banlistCardName(cardId))
@@ -95,14 +95,16 @@ describe('funciones de las banlists', () => {
     expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, 'en')))
   })
 
-  it('la fecha se escribe en el idioma elegido: el mes de las listas de siempre y el día de las primeras', () => {
+  it('la fecha exacta se escribe entera en el idioma elegido, y la que todavía no tiene día, con el mes', () => {
+    expect(formatBanlistDate('2026-09-21')).toBe('21 de septiembre de 2026')
+    expect(formatBanlistDate('2013-10-11')).toBe('11 de octubre de 2013')
     expect(formatBanlistDate('2026-09')).toBe('Septiembre de 2026')
-    expect(formatBanlistDate('2013-10-11')).toBe('11/10/2013')
 
     applyLocale('en')
 
+    expect(formatBanlistDate('2026-09-21')).toBe('September 21, 2026')
+    expect(formatBanlistDate('2013-10-11')).toBe('October 11, 2013')
     expect(formatBanlistDate('2026-09')).toBe('September 2026')
-    expect(formatBanlistDate('2013-10-11')).toBe('Oct 11, 2013')
   })
 
   it('una carta sin nombre en los datos se muestra por su id', () => {
