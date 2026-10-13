@@ -4,7 +4,7 @@ import { t } from '../i18n'
 import { showToastMessage } from './use-toast-message'
 
 /**
- * Las mascotas (Cupsy, el Kuriboh alado...): un estado por animación del paquete. Las pantallas no las manejan directamente:
+ * Las mascotas (Cupsy, el Kuriboh alado, el Blue-Eyes...): un estado por animación del paquete. Las pantallas no las manejan directamente:
  * avisan qué pasa (se está cargando algo, se calcula, salió bien, salió mal) y ellas reaccionan.
  */
 export type MascotState = 'idle' | 'look' | 'waiting' | 'running' | 'review' | 'jumping' | 'failed' | 'waving'
@@ -34,6 +34,7 @@ export const MASCOT_STILL = 'idle.png'
 export const MASCOTS = {
   cupsy: { name: 'Cupsy', folder: '/mascot/cupsy' },
   'winged-kuriboh': { name: 'Winged Kuriboh', folder: '/mascot/winged-kuriboh' },
+  'blue-eyes-white-dragon': { name: 'Blue-Eyes White Dragon', folder: '/mascot/blue-eyes-white-dragon' },
 } as const
 export type MascotId = keyof typeof MASCOTS
 

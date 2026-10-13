@@ -73,8 +73,16 @@ describe('quiénes están afuera', () => {
     expect(activeMascotIds()).toEqual(['winged-kuriboh'])
   })
 
+  it('las tres pueden estar afuera a la vez: es justo el máximo', () => {
+    expect(summonMascot('winged-kuriboh')).toBe(true)
+    expect(summonMascot('blue-eyes-white-dragon')).toBe(true)
+
+    expect(activeMascotIds()).toEqual(['cupsy', 'winged-kuriboh', 'blue-eyes-white-dragon'])
+    expect(freeMascotSlots()).toBe(0)
+  })
+
   it('cada mascota recuerda su propia posición', () => {
-    expect(mascotPositionKey('cupsy')).not.toBe(mascotPositionKey('winged-kuriboh'))
+    expect(new Set((['cupsy', 'winged-kuriboh', 'blue-eyes-white-dragon'] as const).map(mascotPositionKey)).size).toBe(3)
   })
 })
 
