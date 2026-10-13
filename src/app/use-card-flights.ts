@@ -1,7 +1,7 @@
 import { useCallback, useLayoutEffect, useRef, type RefObject } from 'react'
 
 import { CARD_BACK, FX_RGB } from '../components/probability/practice-styles'
-import { UI_ANIMATION_MS } from './motion'
+import { UI_ANIMATION_MS, supportsAdditiveAnimation } from './motion'
 import { locateCard, type MatState } from './practice-mat'
 
 /** Cuánto dura el vuelo de una carta entre dos lugares de la mesa. */
@@ -167,7 +167,7 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
       flight.oncancel = () => ghost.remove()
 
       // El giro en 3D se suma al vuelo (va después en la pila de animaciones, con `composite: 'add'`): de canto a mitad de camino y abierto del otro lado.
-      if (faceDown) {
+      if (faceDown && supportsAdditiveAnimation()) {
         ghost.animate(
           [
             { transform: 'perspective(700px) rotateY(0deg)', easing: 'ease-in' },

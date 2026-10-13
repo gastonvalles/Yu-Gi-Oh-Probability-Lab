@@ -31,7 +31,7 @@ import {
 } from '../../app/practice-mat'
 import { mergeHandOrder } from '../../app/practice-hand-layout'
 import { createSavedCombo, readSavedCombos, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
-import { UI_ANIMATION_MS } from '../../app/motion'
+import { UI_ANIMATION_MS, supportsAdditiveAnimation } from '../../app/motion'
 import { useCardFlights } from '../../app/use-card-flights'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
@@ -1238,7 +1238,7 @@ function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, 
     const wasFaceDown = previousPos.current === 'set'
     previousPos.current = placed.pos
 
-    if (wasFaceDown === (placed.pos === 'set') || prefersReducedMotion()) return
+    if (wasFaceDown === (placed.pos === 'set') || prefersReducedMotion() || !supportsAdditiveAnimation()) return
 
     cardRef.current?.animate(FLIP_FRAMES, { duration: FLIP_MS, composite: 'add' })
   }, [placed.pos])
