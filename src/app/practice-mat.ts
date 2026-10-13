@@ -86,7 +86,7 @@ export type MatAction =
   | { type: 'reveal'; id: string }
   /** Declarar el nombre de una carta (para efectos que lo piden): sólo queda anotado. */
   | { type: 'declare'; id: string }
-  /** Seleccionar (o deseleccionar) una carta: el objetivo de un efecto, con una mira encima. */
+  /** Target (o quitar el target) de una carta: el objetivo de un efecto, con una mira encima. */
   | { type: 'target'; id: string }
   /** Cambiar de fase; de la End Phase a la Draw Phase empieza otro turno. */
   | { type: 'phase'; phase: MatPhase }
@@ -549,7 +549,7 @@ function describePlay(before: MatState, action: MatAction, name: (id: string) =>
       return t('practice.step.declare', { card: name(action.id) })
 
     case 'target':
-      return before.targeted.includes(action.id) ? t('practice.step.deselect', { card: name(action.id) }) : t('practice.step.select', { card: name(action.id) })
+      return before.targeted.includes(action.id) ? t('practice.step.untarget', { card: name(action.id) }) : t('practice.step.target', { card: name(action.id) })
 
     case 'phase': {
       const phase = PHASES.find((entry) => entry.id === action.phase)?.name ?? action.phase
@@ -737,7 +737,7 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
   const zones = monsterZones(pile === 'extra')
   const items: MatMenuItem[] = []
   const add = (label: string, action: MatAction) => items.push({ label, action })
-  const target = () => add(state.targeted.includes(id) ? t('practice.menu.deselect') : t('practice.menu.select'), { type: 'target', id })
+  const target = () => add(state.targeted.includes(id) ? t('practice.menu.untarget') : t('practice.menu.target'), { type: 'target', id })
   const banish = () => items.push(banishItem(id, t('practice.menu.banish')))
   /** Una jugada que saca la carta a una zona: la primera libre por defecto, y la lista para elegir otra. */
   const placeItem = (label: string, zones: readonly MatSpot[], pos: MatPos, how?: MatSummon): MatMenuItem | null => {

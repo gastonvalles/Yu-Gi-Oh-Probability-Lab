@@ -183,8 +183,8 @@ export function PileViewer({ pile, ids, info, targeted, onPick, onClose }: PileV
             <li key={card.id}>
               <button
                 type="button"
-                aria-label={targeted.has(card.id) ? t('practice.card.selected', { name: card.name }) : undefined}
-                className="grid w-full gap-1 bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus"
+                aria-label={targeted.has(card.id) ? t('practice.card.targeted', { name: card.name }) : undefined}
+                className="grid w-full gap-1 rounded-none bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus"
                 onClick={(event) => onPick(card.id, event.currentTarget.getBoundingClientRect())}
               >
                 <span

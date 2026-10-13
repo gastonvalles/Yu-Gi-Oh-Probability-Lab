@@ -368,9 +368,9 @@ describe('la mesa de práctica', () => {
     expect(within(token).getByRole('img', { name: 'Ficha' })).toHaveAttribute('src', '/api/card-image/cards_small/73915052.jpg')
     expect(within(status()).getByText('Ficha en defensa, zona 1')).toBeInTheDocument()
 
-    // Como en DuelingBook: mover, seleccionar, pasar a ataque y quitar.
+    // Como en DuelingBook: mover, target, pasar a ataque y quitar.
     tap(token)
-    expect(within(screen.getByRole('menu', { name: 'Ficha' })).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Pasar a ataque', 'Contador +1', 'Seleccionar', 'Quitar la ficha'])
+    expect(within(screen.getByRole('menu', { name: 'Ficha' })).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Pasar a ataque', 'Contador +1', 'Target', 'Quitar la ficha'])
     fireEvent.click(screen.getByRole('menuitem', { name: 'Pasar a ataque' }))
     expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ficha' })).toBeInTheDocument()
   })
@@ -410,7 +410,7 @@ describe('la mesa de práctica', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
     expect(document.querySelector('[data-activation]')).toBeNull()
-    expect(within(hand()).getByRole('listitem', { name: 'Maxx C (seleccionada)' })).toHaveAttribute('data-flash', 'true')
+    expect(within(hand()).getByRole('listitem', { name: 'Maxx C (target)' })).toHaveAttribute('data-flash', 'true')
   })
 
   it('mostrar o declarar una carta la pone grande en el centro con una línea de lo que pasó, cada uno con su color', () => {
@@ -419,6 +419,8 @@ describe('la mesa de práctica', () => {
     const spotlight = () => document.querySelector('[data-activation]')
     fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
     expect(spotlight()).toHaveAttribute('data-kind', 'activate')
+    // Las cartas grandes se dibujan sobre la mesa (centradas en ella), no en un portal sobre toda la pantalla.
+    expect(screen.getByRole('region', { name: 'Mesa de práctica' })).toContainElement(spotlight() as HTMLElement)
     expect(spotlight()).toHaveTextContent(/Ash Blossom/)
     expect(spotlight()?.querySelector('[data-fx="frame"]')).toHaveAttribute('data-shine', 'true')
 
@@ -494,12 +496,12 @@ describe('la mesa de práctica', () => {
 
       // La mira (con su nombre accesible) queda sobre la carta marcada y se va al quitar la marca.
       tap(within(hand()).getByRole('listitem', { name: 'Maxx C' }))
-      fireEvent.click(screen.getByRole('menuitem', { name: 'Seleccionar' }))
-      const marked = within(hand()).getByRole('listitem', { name: 'Maxx C (seleccionada)' })
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Target' }))
+      const marked = within(hand()).getByRole('listitem', { name: 'Maxx C (target)' })
       expect(marked).toHaveAttribute('data-targeted', 'true')
-      expect(within(marked).getByRole('img', { name: 'Seleccionada' })).toHaveAttribute('data-fx', 'target')
+      expect(within(marked).getByRole('img', { name: 'Target' })).toHaveAttribute('data-fx', 'target')
       tap(marked)
-      fireEvent.click(screen.getByRole('menuitem', { name: 'Quitar selección' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Quitar target' }))
       expect(document.querySelector('[data-fx="target"]')).toBeNull()
 
       // Una Invocación Normal: el destello cae en la zona (dorado) y espera a que la carta aterrice.
@@ -528,7 +530,7 @@ describe('la mesa de práctica', () => {
     }
   })
 
-  it('seleccionar una carta del cementerio o del destierro le pone la mira en el visor y en la casilla, y el visor sigue abierto', () => {
+  it('poner un target a una carta del cementerio o del destierro le pone la mira en el visor y en la casilla, y el visor sigue abierto', () => {
     render(<Harness />)
 
     // Maxx C al cementerio y Nibiru al destierro, desde sus menús.
@@ -545,33 +547,44 @@ describe('la mesa de práctica', () => {
 
     fireEvent.click(gy())
     fireEvent.click(within(screen.getByRole('dialog', { name: 'GY · 1' })).getByRole('button', { name: 'Maxx C' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Seleccionar' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Target' }))
 
-    // Seleccionar no mueve la carta: el visor sigue abierto, con la mira sobre ella, y la casilla también la lleva.
+    // Un target no mueve la carta: el visor sigue abierto, con la mira sobre ella, y la casilla también la lleva.
     const viewer = screen.getByRole('dialog', { name: 'GY · 1' })
-    const tile = within(viewer).getByRole('button', { name: 'Maxx C (seleccionada)' })
+    const tile = within(viewer).getByRole('button', { name: 'Maxx C (target)' })
     expect(tile.querySelector('[data-fx="target"]')).not.toBeNull()
     expect(tile.querySelector('[data-targeted="true"]')).not.toBeNull()
     expect(gy()).toHaveAttribute('data-targeted', 'true')
     expect(gy().querySelector('[data-fx="target"]')).not.toBeNull()
-    expect(within(status()).getByText('Seleccionás Maxx C')).toBeInTheDocument()
+    expect(within(status()).getByText('Marcás Maxx C como target')).toBeInTheDocument()
 
     // El destierro, igual.
     fireEvent.click(within(viewer).getByRole('button', { name: 'Cerrar' }))
     expect(banish().querySelector('[data-fx="target"]')).toBeNull()
     fireEvent.click(banish())
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Banish · 1' })).getByRole('button', { name: 'Nibiru' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Seleccionar' }))
-    expect(within(screen.getByRole('dialog', { name: 'Banish · 1' })).getByRole('button', { name: 'Nibiru (seleccionada)' }).querySelector('[data-fx="target"]')).not.toBeNull()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Target' }))
+    expect(within(screen.getByRole('dialog', { name: 'Banish · 1' })).getByRole('button', { name: 'Nibiru (target)' }).querySelector('[data-fx="target"]')).not.toBeNull()
     expect(banish().querySelector('[data-fx="target"]')).not.toBeNull()
 
-    // Quitar la selección saca la mira de las dos partes.
-    fireEvent.click(within(screen.getByRole('dialog', { name: 'Banish · 1' })).getByRole('button', { name: 'Nibiru (seleccionada)' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Quitar selección' }))
+    // Quitar el target saca la mira de las dos partes.
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Banish · 1' })).getByRole('button', { name: 'Nibiru (target)' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Quitar target' }))
     expect(banish().querySelector('[data-fx="target"]')).toBeNull()
     expect(screen.getByRole('dialog', { name: 'Banish · 1' }).querySelector('[data-fx="target"]')).toBeNull()
     // La del cementerio sigue marcada.
     expect(gy().querySelector('[data-fx="target"]')).not.toBeNull()
+  })
+
+  it('las casillas de las pilas y sus cartas en el visor no van redondeadas (el reset global le da radio a todo <button>)', () => {
+    render(<Harness />)
+
+    for (const name of ['Extra: 1', 'GY: 0', 'Banish: 0']) {
+      expect(screen.getByRole('button', { name })).toHaveClass('rounded-none')
+    }
+
+    fireEvent.click(screen.getByRole('button', { name: 'Extra: 1' }))
+    expect(within(screen.getByRole('dialog', { name: 'Extra · 1' })).getByRole('button', { name: 'Zeus' })).toHaveClass('rounded-none')
   })
 
   it('el visor del deck: sacar una carta de ahí baraja el resto en la misma jugada; cerrarlo sin sacar nada baraja aparte', () => {

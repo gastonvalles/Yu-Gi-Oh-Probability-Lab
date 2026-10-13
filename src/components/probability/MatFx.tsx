@@ -163,30 +163,33 @@ interface SpotlightProps {
   caption: string | null
   /** Las cartas salen del deck o del Extra: aparecen de dorso y se dan vuelta en 3D. */
   flip?: boolean
+  /** Dónde se ubica (el padre dice sobre qué parte de la mesa se centran las cartas). */
+  className?: string
 }
 
 /** El resplandor de cada carta del centro (el color del paso, con una sombra abajo). */
 const STAGE_FACE = 'absolute inset-0 overflow-hidden bg-input shadow-[0_0_0_3px_rgb(var(--fx-rgb)),0_0_60px_rgb(var(--fx-rgb)/0.8),0_24px_48px_rgba(0,0,0,0.6)]'
 
 /** Ancho de cada carta según cuántas son: una sola es grande; con más, se achican para entrar juntas. */
-const STAGE_CARD_WIDTH = ['', 'w-[min(42vw,13rem)]', 'w-[min(30vw,10rem)]', 'w-[min(22vw,7.5rem)]', 'w-[min(18vw,6.5rem)]']
+const STAGE_CARD_WIDTH = ['', 'w-[min(42cqw,13rem)]', 'w-[min(30cqw,10rem)]', 'w-[min(22cqw,7.5rem)]', 'w-[min(18cqw,6.5rem)]']
 
 /**
- * Las cartas grandes en el centro de la pantalla cuando se activa, se muestra o se declara una carta (o, al reproducir un combo, cuando
+ * Las cartas grandes en el centro de la mesa cuando se activa, se muestra o se declara una carta (o, al reproducir un combo, cuando
  * un paso las mueve): aparecen con un resplandor y una onda, cada una con su marco de color, un reflejo y su nombre debajo, y arriba una
- * línea que dice qué pasó. Se van solas (las dibuja el padre en un portal, sobre todo lo demás).
+ * línea que dice qué pasó. Se van solas. Se centran en el recuadro que les da el padre (`className`), y sus medidas (`cqw`) son las de ese
+ * recuadro, no las de la pantalla.
  */
-export function Spotlight({ kind, cards, caption, flip = false }: SpotlightProps) {
+export function Spotlight({ kind, cards, caption, flip = false, className }: SpotlightProps) {
   const tone = STAGE_TONE[kind]
   const shown = cards.slice(0, 4)
 
   return (
-    <div data-activation={shown[0]?.id} data-kind={kind} aria-hidden="true" className="pointer-events-none fixed inset-0 z-205 grid place-items-center" style={fxVars(tone)}>
-      <span className="absolute left-1/2 top-1/2 aspect-square w-[min(100vw,30rem)] -translate-x-1/2 -translate-y-1/2 animate-fx-stage rounded-full bg-[radial-gradient(circle,rgb(var(--fx-rgb)/0.6),rgb(var(--fx-rgb)/0.18)_42%,transparent_68%)] motion-reduce:hidden" />
-      <span className="absolute left-1/2 top-1/2 aspect-square w-[min(56vw,14rem)] -translate-x-1/2 -translate-y-1/2 animate-fx-shock rounded-full border-[3px] border-[color:rgb(var(--fx-rgb))] opacity-0 motion-reduce:hidden" />
+    <div data-activation={shown[0]?.id} data-kind={kind} aria-hidden="true" className={cx('pointer-events-none @container grid place-items-center overflow-hidden', className)} style={fxVars(tone)}>
+      <span className="absolute left-1/2 top-1/2 aspect-square w-[min(100cqw,30rem)] -translate-x-1/2 -translate-y-1/2 animate-fx-stage rounded-full bg-[radial-gradient(circle,rgb(var(--fx-rgb)/0.6),rgb(var(--fx-rgb)/0.18)_42%,transparent_68%)] motion-reduce:hidden" />
+      <span className="absolute left-1/2 top-1/2 aspect-square w-[min(56cqw,14rem)] -translate-x-1/2 -translate-y-1/2 animate-fx-shock rounded-full border-[3px] border-[color:rgb(var(--fx-rgb))] opacity-0 motion-reduce:hidden" />
       <div className="relative animate-card-activate-center motion-reduce:animate-none">
         {caption ? (
-          <span className="absolute bottom-full left-1/2 mb-3 max-w-[88vw] -translate-x-1/2 truncate whitespace-nowrap rounded-full border-2 border-[color:rgb(var(--fx-rgb)/0.9)] bg-background/90 px-3.5 py-1 text-micro font-bold text-foreground shadow-[0_0_18px_rgb(var(--fx-rgb)/0.5)]">
+          <span className="absolute bottom-full left-1/2 mb-3 max-w-[88cqw] -translate-x-1/2 truncate whitespace-nowrap rounded-full border-2 border-[color:rgb(var(--fx-rgb)/0.9)] bg-background/90 px-3.5 py-1 text-micro font-bold text-foreground shadow-[0_0_18px_rgb(var(--fx-rgb)/0.5)]">
             {caption}
           </span>
         ) : null}

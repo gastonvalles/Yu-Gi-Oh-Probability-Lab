@@ -479,7 +479,7 @@ export function PracticeMat({
       if (searched) {
         setViewer(null)
       } else if (viewer && played.type !== 'target') {
-        // Seleccionar una carta no la mueve: el visor sigue abierto (para elegir otra y ver la mira caer sobre ella).
+        // Poner un target no mueve la carta: el visor sigue abierto (para elegir otra y ver la mira caer sobre ella).
         closeViewer()
       }
     },
@@ -888,7 +888,8 @@ export function PracticeMat({
         data-drop={pile}
         data-over={over === pile || handOver === pile ? 'true' : 'false'}
         data-targeted={marked ? 'true' : 'false'}
-        className={cx(CELL, 'cursor-pointer overflow-hidden bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus', FX_CARD, '[--card-shadow:0_0_0_0_transparent]')}
+        // `rounded-none`: el reset global le da a todo <button> el radio de los controles, y una casilla no va redondeada.
+        className={cx(CELL, 'cursor-pointer overflow-hidden rounded-none bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus', FX_CARD, '[--card-shadow:0_0_0_0_transparent]')}
         style={{ gridArea: area, ...fxVars('red') }}
         onClick={() => setViewer(pile)}
       >
@@ -937,7 +938,8 @@ export function PracticeMat({
       aria-label={t('practice.mat.label')}
       className={cx(
         // `select-none`: un arrastre que arranca entre dos cartas no debe pintar texto seleccionado por toda la mesa.
-        'grid h-full min-h-0 select-none grid-rows-[auto_minmax(0,1fr)] [background:radial-gradient(120%_60%_at_50%_0%,rgb(var(--primary-rgb)/0.16),transparent_70%),rgb(var(--background-rgb))] min-[1101px]:grid-cols-[minmax(0,1fr)_20rem]',
+        // `relative isolate`: las cartas grandes del centro se acomodan sobre la mesa (no sobre la pantalla) y sus capas no se mezclan con las de afuera.
+        'relative isolate grid h-full min-h-0 select-none grid-rows-[auto_minmax(0,1fr)] [background:radial-gradient(120%_60%_at_50%_0%,rgb(var(--primary-rgb)/0.16),transparent_70%),rgb(var(--background-rgb))] min-[1101px]:grid-cols-[minmax(0,1fr)_20rem]',
         PRACTICE_PALETTE,
       )}
     >
@@ -1158,19 +1160,17 @@ export function PracticeMat({
 
       {inspected ? <CardDetailOverlay key={inspected.id} name={cardOf(inspected.id).name} card={cardOf(inspected.id).apiCard} origin={inspected.rect} onClose={() => setInspected(null)} /> : null}
 
-      {/* Activar, mostrar o declarar (y, al reproducir un combo, lo que mueve cada paso): las cartas aparecen grandes en el centro de la pantalla, con su marco de color, su nombre y lo que pasó arriba, y se desvanecen. Marcar un objetivo no las agranda: ahí sólo cae la mira. */}
-      {stage
-        ? createPortal(
-            <Spotlight
-              key={stage.key}
-              kind={stage.kind}
-              cards={stage.ids.map((id) => ({ id, name: cardOf(id).name, art: artOf(cardOf(id)) }))}
-              caption={steps[stage.step - 1] ?? null}
-              flip={stage.flip}
-            />,
-            document.body,
-          )
-        : null}
+      {/* Activar, mostrar o declarar (y, al reproducir un combo, lo que mueve cada paso): las cartas aparecen grandes en el centro de la mesa, con su marco de color, su nombre y lo que pasó arriba, y se desvanecen. Marcar un objetivo no las agranda: ahí sólo cae la mira. En escritorio el centro es el del campo, sin el panel lateral (20 rem, como en la grilla de arriba). */}
+      {stage ? (
+        <Spotlight
+          key={stage.key}
+          kind={stage.kind}
+          cards={stage.ids.map((id) => ({ id, name: cardOf(id).name, art: artOf(cardOf(id)) }))}
+          caption={steps[stage.step - 1] ?? null}
+          flip={stage.flip}
+          className="absolute inset-y-0 left-0 right-0 z-[120] min-[1101px]:right-[20rem]"
+        />
+      ) : null}
 
       {drag
         ? createPortal(
@@ -1266,10 +1266,10 @@ interface PlacedCardProps {
  * materiales y objetivo como etiquetas. Al darla vuelta se angosta y se abre; los contadores y los materiales rebotan al cambiar.
  */
 function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, chosen, targeted, selected, pending, bind, onOpen }: PlacedCardProps) {
-  // El nombre y lo que lo acompaña (boca abajo o en defensa, etiqueta de elegida, seleccionada): cada pedazo es su mensaje.
+  // El nombre y lo que lo acompaña (boca abajo o en defensa, etiqueta de elegida, con target): cada pedazo es su mensaje.
   let label = placed.pos === 'set' ? t('practice.mat.cardFaceDown', { name: card.name }) : placed.pos === 'def' ? t('practice.mat.cardDefense', { name: card.name }) : card.name
   if (chosen) label = t('practice.mat.cardChosen', { label, chosen })
-  if (targeted) label = t('practice.card.selected', { name: label })
+  if (targeted) label = t('practice.card.targeted', { name: label })
   const sideways = spot !== 'st' && spot !== 'field' && placed.pos !== 'atk'
   // El marco celeste: la carta del menú y la que espera en la zona (tiene el menú, o los Sacrificios, todavía por delante).
   const framed = selected || pending
