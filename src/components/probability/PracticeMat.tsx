@@ -479,7 +479,7 @@ export function PracticeMat({
       if (searched) {
         setViewer(null)
       } else if (viewer && played.type !== 'target') {
-        // Seleccionar una carta no la mueve: el visor sigue abierto (para elegir otra y ver la mira caer sobre ella).
+        // Poner un target no mueve la carta: el visor sigue abierto (para elegir otra y ver la mira caer sobre ella).
         closeViewer()
       }
     },
@@ -888,7 +888,8 @@ export function PracticeMat({
         data-drop={pile}
         data-over={over === pile || handOver === pile ? 'true' : 'false'}
         data-targeted={marked ? 'true' : 'false'}
-        className={cx(CELL, 'cursor-pointer overflow-hidden bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus', FX_CARD, '[--card-shadow:0_0_0_0_transparent]')}
+        // `rounded-none`: el reset global le da a todo <button> el radio de los controles, y una casilla no va redondeada.
+        className={cx(CELL, 'cursor-pointer overflow-hidden rounded-none bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus', FX_CARD, '[--card-shadow:0_0_0_0_transparent]')}
         style={{ gridArea: area, ...fxVars('red') }}
         onClick={() => setViewer(pile)}
       >
@@ -1266,10 +1267,10 @@ interface PlacedCardProps {
  * materiales y objetivo como etiquetas. Al darla vuelta se angosta y se abre; los contadores y los materiales rebotan al cambiar.
  */
 function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, chosen, targeted, selected, pending, bind, onOpen }: PlacedCardProps) {
-  // El nombre y lo que lo acompaña (boca abajo o en defensa, etiqueta de elegida, seleccionada): cada pedazo es su mensaje.
+  // El nombre y lo que lo acompaña (boca abajo o en defensa, etiqueta de elegida, con target): cada pedazo es su mensaje.
   let label = placed.pos === 'set' ? t('practice.mat.cardFaceDown', { name: card.name }) : placed.pos === 'def' ? t('practice.mat.cardDefense', { name: card.name }) : card.name
   if (chosen) label = t('practice.mat.cardChosen', { label, chosen })
-  if (targeted) label = t('practice.card.selected', { name: label })
+  if (targeted) label = t('practice.card.targeted', { name: label })
   const sideways = spot !== 'st' && spot !== 'field' && placed.pos !== 'atk'
   // El marco celeste: la carta del menú y la que espera en la zona (tiene el menú, o los Sacrificios, todavía por delante).
   const framed = selected || pending

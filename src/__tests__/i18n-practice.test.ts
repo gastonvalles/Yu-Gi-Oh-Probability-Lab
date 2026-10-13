@@ -66,19 +66,19 @@ describe('la mesa de práctica en inglés', () => {
     expect(describe({ type: 'token', zone: 'mz', index: 1 })).toBe('You Special Summon a Token in Attack Position, Monster Zone 2')
 
     const withToken = run([{ type: 'token', zone: 'mz', index: 0 }])
-    expect(describe({ type: 'target', id: 'token-1' }, withToken)).toBe('You select the Token')
+    expect(describe({ type: 'target', id: 'token-1' }, withToken)).toBe('You target the Token')
     expect(describe({ type: 'counter', id: 'token-1', delta: 2 }, withToken)).toBe('Counters on the Token: 2')
   })
 
   it('el menú de una carta ofrece las jugadas con su nombre oficial', () => {
-    expect(labels(start(), 'a1')).toEqual(['Normal Summon', 'Set', 'Special Summon', 'Activate effect', 'Reveal', 'Select', 'Discard', 'Banish', 'Top of the Deck', 'Bottom of the Deck'])
+    expect(labels(start(), 'a1')).toEqual(['Normal Summon', 'Set', 'Special Summon', 'Activate effect', 'Reveal', 'Target', 'Discard', 'Banish', 'Top of the Deck', 'Bottom of the Deck'])
     expect(listCardActions(start(), 'a1', kindOf, nameOf).find((item) => item.label === 'Special Summon')!.choices?.map((choice) => choice.label)).toEqual(['Attack', 'Defense'])
     expect(labels(start(), 'x1')).toEqual(['Special Summon', 'To the Graveyard', 'Banish'])
     expect(listCardActions(start(), 'x1', kindOf, nameOf).find((item) => item.label === 'Banish')!.choices?.map((choice) => choice.label)).toEqual(['Face-up', 'Face-down'])
 
     const two = run([{ type: 'place', id: 'x1', zone: 'emz', index: 0, pos: 'atk' }, { type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }])
     expect(labels(two, 'c1').slice(0, 2)).toEqual(['Tribute Summon (2)', 'Tribute Set (2)'])
-    expect(labels(two, 'a1')).toEqual(['Activate effect', 'Switch to Defense', 'Turn face-down', 'Attach to X1', 'Counter +1', 'Select', 'To the Spell & Trap Zone', 'To hand', 'To the Graveyard', 'Banish', 'Top of the Deck', 'Bottom of the Deck'])
+    expect(labels(two, 'a1')).toEqual(['Activate effect', 'Switch to Defense', 'Turn face-down', 'Attach to X1', 'Counter +1', 'Target', 'To the Spell & Trap Zone', 'To hand', 'To the Graveyard', 'Banish', 'Top of the Deck', 'Bottom of the Deck'])
   })
 
   it('el nombre de un combo sin nombre sale en el idioma de ese momento', () => {
@@ -241,7 +241,7 @@ describe('la mesa dibujada en inglés', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Draw Phase' }))
     expect(document.querySelector('[data-fx="banner"]')).toHaveTextContent('Turn 2Draw Phase')
     tap(within(hand()).getByRole('listitem', { name: 'Nibiru' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Select' }))
-    expect(within(hand()).getByRole('img', { name: 'Selected' })).toHaveAttribute('data-fx', 'target')
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Target' }))
+    expect(within(hand()).getByRole('img', { name: 'Targeted' })).toHaveAttribute('data-fx', 'target')
   })
 })

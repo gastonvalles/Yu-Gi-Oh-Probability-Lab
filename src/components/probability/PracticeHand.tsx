@@ -463,7 +463,7 @@ function HandCard({
       ref={elementRef}
       role="listitem"
       tabIndex={0}
-      aria-label={targeted ? t('practice.card.selected', { name: card.name }) : card.name}
+      aria-label={targeted ? t('practice.card.targeted', { name: card.name }) : card.name}
       title={card.name}
       data-card-id={card.id}
       className={HAND_CARD}
