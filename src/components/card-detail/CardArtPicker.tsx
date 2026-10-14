@@ -9,6 +9,8 @@ interface CardArtPickerProps {
   arts: readonly ArtChoice[]
   selectedId: string | null
   onSelect: (id: string) => void
+  /** La imagen de YGOPRODeck de la carta: si el escaneo de una impresión no existe, la miniatura muestra ésta y no unas iniciales. */
+  fallbackUrl?: string | null
   /** En fila (bajo la carta) o en columna (al costado). */
   direction?: 'row' | 'column'
   className?: string
@@ -22,7 +24,7 @@ interface CardArtPickerProps {
  * centra sólo mientras entra, con `auto` en los márgenes de las puntas; con `justify-center` las primeras quedarían cortadas a la izquierda, sin
  * forma de llegar a ellas. Con el mouse, la rueda recorre la fila de costado (es lo que se espera de una tira horizontal).
  */
-export function CardArtPicker({ arts, selectedId, onSelect, direction = 'row', className }: CardArtPickerProps) {
+export function CardArtPicker({ arts, selectedId, onSelect, fallbackUrl = null, direction = 'row', className }: CardArtPickerProps) {
   const listRef = useRef<HTMLDivElement>(null)
   const single = arts.length < 2
 
@@ -82,7 +84,7 @@ export function CardArtPicker({ arts, selectedId, onSelect, direction = 'row', c
               onSelect(art.id)
             }}
           >
-            <CardArt remoteUrl={art.imageUrlSmall ?? art.imageUrl} name="" className="block h-full w-full object-cover" />
+            <CardArt remoteUrl={art.imageUrlSmall ?? art.imageUrl} fallbackUrl={fallbackUrl} name="" className="block h-full w-full object-cover" />
           </button>
         )
       })}
