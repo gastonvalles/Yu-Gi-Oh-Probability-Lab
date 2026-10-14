@@ -1205,6 +1205,12 @@ describe('la mesa de práctica', () => {
 
     const aside = screen.getByRole('complementary', { name: 'Pasos y combos' })
     fireEvent.click(within(aside).getByRole('radio', { name: 'Combos' }))
+
+    // El nombre lleva todo el ancho de la fila (las acciones van abajo, no al lado) y, si se corta, se lee entero en el título.
+    const listed = within(aside).getByText('Línea básica')
+    expect(listed).toHaveAttribute('title', 'Línea básica')
+    expect(listed.closest('li')).not.toHaveClass('grid-cols-[minmax(0,1fr)_auto]')
+
     fireEvent.click(within(aside).getByRole('button', { name: 'Renombrar Línea básica' }))
 
     // El campo arranca con el nombre de siempre y no repite el aviso de qué se guarda.
