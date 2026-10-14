@@ -4,12 +4,13 @@ import {
   applyLocalCardSearchFilters,
   buildCardSearchActiveFilterCount,
   buildRemoteCardSearchRequest,
-  buildSearchableCardIndex,
+  buildSearchableCardIndexInSlices,
   DEFAULT_CARD_SEARCH_FILTERS,
   hasCardSearchRequestCriteria,
   searchCardCatalog,
   sortSearchResults,
   type CardSearchFilters,
+  type SearchableCardIndexEntry,
 } from './card-search'
 import {
   createInitialSearchState,
@@ -47,7 +48,7 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
     ...DEFAULT_CARD_SEARCH_FILTERS,
   }))
   const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const [cardCatalog, setCardCatalog] = useState<ApiCardSearchResult[] | null>(null)
+  const [searchIndex, setSearchIndex] = useState<SearchableCardIndexEntry[]>([])
   const [cardCatalogStatus, setCardCatalogStatus] = useState<CardCatalogStatus>('idle')
   // Lazy: `useRef(loadApiSearchCache())` releía y parseaba el localStorage en cada render.
   const [searchCache] = useState(loadApiSearchCache)
@@ -77,39 +78,29 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
     () => buildCardSearchActiveFilterCount(searchFilters, deckFormat),
     [deckFormat, searchFilters],
   )
-  const searchableCardCatalog = useMemo(
-    () => (cardCatalog ? buildSearchableCardIndex(cardCatalog) : []),
-    [cardCatalog],
+  // Rankear y paginar van por separado: "cargar más" sólo agranda el corte y no tiene por qué reordenar todo el catálogo.
+  const rankedLocalResults = useMemo(
+    () =>
+      cardCatalogStatus === 'success' && hasSearchCriteria
+        ? searchCardCatalog(searchIndex, apiSearch.query, searchFilters, deckFormat)
+        : null,
+    [apiSearch.query, cardCatalogStatus, deckFormat, hasSearchCriteria, searchFilters, searchIndex],
   )
   const localSearchPage = useMemo(() => {
-    if (cardCatalogStatus !== 'success' || !hasSearchCriteria) {
+    if (!rankedLocalResults) {
       return null
     }
 
-    const rankedResults = searchCardCatalog(
-      searchableCardCatalog,
-      apiSearch.query,
-      searchFilters,
-      deckFormat,
-    )
     const visibleResultCount = Math.min(
-      rankedResults.length,
+      rankedLocalResults.length,
       (apiSearch.page + 1) * SEARCH_PAGE_SIZE,
     )
 
     return {
-      results: rankedResults.slice(0, visibleResultCount),
-      hasMore: rankedResults.length > visibleResultCount,
+      results: rankedLocalResults.slice(0, visibleResultCount),
+      hasMore: rankedLocalResults.length > visibleResultCount,
     }
-  }, [
-    apiSearch.page,
-    apiSearch.query,
-    cardCatalogStatus,
-    deckFormat,
-    hasSearchCriteria,
-    searchableCardCatalog,
-    searchFilters,
-  ])
+  }, [apiSearch.page, rankedLocalResults])
   const shouldUseLocalSearch = cardCatalogStatus === 'success' && localSearchPage !== null
   const effectiveApiSearch = useMemo<ApiSearchState<ApiCardSearchResult>>(
     () =>
@@ -265,13 +256,15 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
         return
       }
 
+      // El índice se arma en rebanadas fuera del render; el estado sigue en 'loading' hasta que está completo.
       void loadCardCatalog()
-        .then((cards) => {
-          if (cancelled) {
+        .then((cards) => buildSearchableCardIndexInSlices(cards, () => cancelled))
+        .then((index) => {
+          if (cancelled || !index) {
             return
           }
 
-          setCardCatalog(cards)
+          setSearchIndex(index)
           setCardCatalogStatus('success')
         })
         .catch(() => {
@@ -396,6 +389,34 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
     shouldUseLocalSearch,
   ])
 
+  // Identidad estable: sólo tocan estados, así que quien las reciba puede memoizarse sin que cambien en cada render.
+  const clearFilters = useCallback(() => {
+    setSearchFilters({
+      ...DEFAULT_CARD_SEARCH_FILTERS,
+    })
+    setApiSearch((current) => ({
+      ...current,
+      page: 0,
+    }))
+  }, [])
+  const setQuery = useCallback((value: string) => {
+    setApiSearch((current) => ({
+      ...current,
+      query: value,
+      page: 0,
+    }))
+  }, [])
+  const updateSearchFilters = useCallback((updates: Partial<CardSearchFilters>) => {
+    setSearchFilters((current) => ({
+      ...current,
+      ...updates,
+    }))
+    setApiSearch((current) => ({
+      ...current,
+      page: 0,
+    }))
+  }, [])
+
   return {
     apiSearch: effectiveApiSearch,
     searchFilters,
@@ -403,32 +424,9 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
     activeFilterCount,
     hasSearchCriteria,
     isLoadingMore: shouldUseLocalSearch ? false : isLoadingMore,
-    clearFilters: () => {
-      setSearchFilters({
-        ...DEFAULT_CARD_SEARCH_FILTERS,
-      })
-      setApiSearch((current) => ({
-        ...current,
-        page: 0,
-      }))
-    },
-    setQuery: (value) => {
-      setApiSearch((current) => ({
-        ...current,
-        query: value,
-        page: 0,
-      }))
-    },
-    updateSearchFilters: (updates) => {
-      setSearchFilters((current) => ({
-        ...current,
-        ...updates,
-      }))
-      setApiSearch((current) => ({
-        ...current,
-        page: 0,
-      }))
-    },
+    clearFilters,
+    setQuery,
+    updateSearchFilters,
     loadMoreResults,
   }
 }

@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 
 import { formatSearchError } from '../../app/card-search'
 import { buildClassicCardPrimaryLine, buildClassicCardStatLine } from '../../app/deck-builder-classic'
 import { useInfiniteScroll } from '../../app/use-infinite-scroll'
 import { t } from '../../i18n'
+import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
 import { CloseButton, CloseIcon } from '../ui/IconButton'
@@ -99,6 +100,18 @@ export function DesktopSearchPanel({
       recentSearches.remember(query)
     }
   }
+
+  // Los callbacks del padre cambian en cada render: las filas (con `memo`) reciben estas funciones fijas, que leen siempre los últimos.
+  const latest = useRef({ onResultClick, handleAdd, onResultPointerDown })
+  useLayoutEffect(() => {
+    latest.current = { onResultClick, handleAdd, onResultPointerDown }
+  })
+  const clickResult = useCallback((apiCardId: number) => latest.current.onResultClick(apiCardId), [])
+  const addResult = useCallback((apiCardId: number) => latest.current.handleAdd(apiCardId), [])
+  const pointerDownResult = useCallback(
+    (event: ReactPointerEvent<HTMLElement>, apiCardId: number) => latest.current.onResultPointerDown(event, apiCardId),
+    [],
+  )
 
   useInfiniteScroll({
     containerRef: resultsRef,
@@ -237,72 +250,20 @@ export function DesktopSearchPanel({
                 onSortOrderChange={setSortOrder}
               />
               <div className={cx(RESULTS_GRID, 'h-auto overflow-visible')}>
-                {sortedResults.map((card) => {
-                  const isMaxed = search.maxedOutResultIds.has(card.ygoprodeckId)
-                const copiesInDeck = deckCopyCounts.get(card.ygoprodeckId) ?? 0
-
-                  return (
-                    <article
-                      key={card.ygoprodeckId}
-                      aria-disabled={isMaxed}
-                      title={isMaxed ? t('search.result.maxedTitle') : undefined}
-                      className={resultCard({
-                        selected: selectedCardId === card.ygoprodeckId,
-                        maxed: isMaxed,
-                        dragging: activeDragSearchCardId === card.ygoprodeckId,
-                      })}
-                      onClick={() => onResultClick(card.ygoprodeckId)}
-                      onDoubleClick={() => {
-                        if (!isMaxed) {
-                          handleAdd(card.ygoprodeckId)
-                        }
-                      }}
-                      onPointerDown={(event) => {
-                        if (!isMaxed) {
-                          onResultPointerDown(event, card.ygoprodeckId)
-                        }
-                      }}
-                    >
-                      <div className="relative w-[4.2rem]" data-drag-preview-source="true">
-                        <CardArt
-                          remoteUrl={card.imageUrlSmall ?? card.imageUrl}
-                          name={card.name}
-                          className="aspect-[0.72] w-[4.2rem]"
-                          limitCard={card}
-                          limitBadgeSize="sm"
-                        />
-                        {copiesInDeck > 0 ? <CopiesBadge copies={copiesInDeck} placement="overlay" label={t('search.result.inDeck', { copies: copiesInDeck })} /> : null}
-                      </div>
-
-                      <div className="grid min-w-0 content-start gap-0.5">
-                        <strong className="text-body font-semibold leading-tight wrap-anywhere text-foreground">
-                          {card.name}
-                        </strong>
-                        <p className="m-0 text-micro wrap-anywhere text-muted">
-                          {buildClassicCardPrimaryLine(card)}
-                        </p>
-                        <p className="m-0 text-micro wrap-anywhere text-muted">
-                          {buildClassicCardStatLine(card)}
-                        </p>
-                      </div>
-
-                      <button
-                        type="button"
-                        className={addButton(isMaxed ? 'maxed' : lastAddedId === card.ygoprodeckId ? 'added' : 'idle')}
-                        disabled={isMaxed}
-                        aria-label={isMaxed ? t('search.result.maxedAria', { name: card.name }) : t('search.result.addAria', { name: card.name })}
-                        title={isMaxed ? t('search.result.maxedShort') : t('search.result.addTitle')}
-                        onPointerDown={(event) => event.stopPropagation()}
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          handleAdd(card.ygoprodeckId)
-                        }}
-                      >
-                        {isMaxed ? t('search.result.maxBadge') : lastAddedId === card.ygoprodeckId ? <Icon name="check" size={16} strokeWidth={2} /> : <Icon name="plus" size={16} strokeWidth={2} />}
-                      </button>
-                    </article>
-                  )
-                })}
+                {sortedResults.map((card) => (
+                  <SearchResultRow
+                    key={card.ygoprodeckId}
+                    card={card}
+                    isMaxed={search.maxedOutResultIds.has(card.ygoprodeckId)}
+                    copiesInDeck={deckCopyCounts.get(card.ygoprodeckId) ?? 0}
+                    selected={selectedCardId === card.ygoprodeckId}
+                    dragging={activeDragSearchCardId === card.ygoprodeckId}
+                    added={lastAddedId === card.ygoprodeckId}
+                    onResultClick={clickResult}
+                    onAdd={addResult}
+                    onResultPointerDown={pointerDownResult}
+                  />
+                ))}
 
                 {search.isLoadingMore ? <DesktopResultSkeleton /> : null}
               </div>
@@ -324,6 +285,88 @@ export function DesktopSearchPanel({
     </article>
   )
 }
+
+interface SearchResultRowProps {
+  card: ApiCardSearchResult
+  isMaxed: boolean
+  copiesInDeck: number
+  selected: boolean
+  dragging: boolean
+  added: boolean
+  onResultClick: (apiCardId: number) => void
+  onAdd: (apiCardId: number) => void
+  onResultPointerDown: (event: ReactPointerEvent<HTMLElement>, apiCardId: number) => void
+}
+
+/** Un resultado de la lista. Con `memo`, arrastrar, elegir otra carta o escribir el nombre del deck sólo vuelven a dibujar las filas que cambian (llegan a cientos). */
+const SearchResultRow = memo(function SearchResultRow({
+  card,
+  isMaxed,
+  copiesInDeck,
+  selected,
+  dragging,
+  added,
+  onResultClick,
+  onAdd,
+  onResultPointerDown,
+}: SearchResultRowProps) {
+  return (
+    <article
+      aria-disabled={isMaxed}
+      title={isMaxed ? t('search.result.maxedTitle') : undefined}
+      className={resultCard({ selected, maxed: isMaxed, dragging })}
+      onClick={() => onResultClick(card.ygoprodeckId)}
+      onDoubleClick={() => {
+        if (!isMaxed) {
+          onAdd(card.ygoprodeckId)
+        }
+      }}
+      onPointerDown={(event) => {
+        if (!isMaxed) {
+          onResultPointerDown(event, card.ygoprodeckId)
+        }
+      }}
+    >
+      <div className="relative w-[4.2rem]" data-drag-preview-source="true">
+        <CardArt
+          remoteUrl={card.imageUrlSmall ?? card.imageUrl}
+          name={card.name}
+          className="aspect-[0.72] w-[4.2rem]"
+          limitCard={card}
+          limitBadgeSize="sm"
+        />
+        {copiesInDeck > 0 ? <CopiesBadge copies={copiesInDeck} placement="overlay" label={t('search.result.inDeck', { copies: copiesInDeck })} /> : null}
+      </div>
+
+      <div className="grid min-w-0 content-start gap-0.5">
+        <strong className="text-body font-semibold leading-tight wrap-anywhere text-foreground">
+          {card.name}
+        </strong>
+        <p className="m-0 text-micro wrap-anywhere text-muted">
+          {buildClassicCardPrimaryLine(card)}
+        </p>
+        <p className="m-0 text-micro wrap-anywhere text-muted">
+          {buildClassicCardStatLine(card)}
+        </p>
+      </div>
+
+      <button
+        type="button"
+        className={addButton(isMaxed ? 'maxed' : added ? 'added' : 'idle')}
+        disabled={isMaxed}
+        aria-label={isMaxed ? t('search.result.maxedAria', { name: card.name }) : t('search.result.addAria', { name: card.name })}
+        title={isMaxed ? t('search.result.maxedShort') : t('search.result.addTitle')}
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => {
+          event.stopPropagation()
+          onAdd(card.ygoprodeckId)
+        }}
+      >
+        {isMaxed ? t('search.result.maxBadge') : added ? <Icon name="check" size={16} strokeWidth={2} /> : <Icon name="plus" size={16} strokeWidth={2} />}
+      </button>
+    </article>
+  )
+})
 
 function DesktopResultSkeleton() {
   return (

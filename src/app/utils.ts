@@ -103,13 +103,24 @@ export function normalizeName(value: string): string {
   return value.trim().toLowerCase()
 }
 
+const NON_ASCII = /[\u0080-\uffff]/
+// Lo único que el colapso de espacios deja intacto es un espacio suelto en el medio.
+const NEEDS_SPACE_FIX = /\s\s|[^\S ]|^ | $/
+
 export function normalizeSearchText(value: string): string {
-  return value
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase()
+  let text = value
+
+  // El ASCII ya está en NFKD y no trae marcas: se salta ese paso, que es el grueso del costo en las descripciones.
+  if (NON_ASCII.test(text)) {
+    text = text.normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+  }
+
+  // Se evalúa después de sacar las marcas: `¨` se descompone en un espacio más una marca.
+  if (NEEDS_SPACE_FIX.test(text)) {
+    text = text.replace(/\s+/g, ' ').trim()
+  }
+
+  return text.toLowerCase()
 }
 
 export function formatShortPercent(value: number): string {

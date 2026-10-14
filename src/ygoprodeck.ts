@@ -1,5 +1,6 @@
 import { buildGenesysCardInfo } from './app/genesys-format'
 import { beginMascotActivity } from './app/mascot'
+import { readCatalogPage, writeCatalogPage } from './ygoprodeck/catalog-cache'
 import { requestCardInfo } from './ygoprodeck/client'
 import { parseCardArts, parseSearchResponse } from './ygoprodeck/parser'
 import type { ApiCardSearchResult, ApiSearchPage, CardArtOption } from './ygoprodeck/types'
@@ -83,13 +84,38 @@ export async function loadCardCatalog(): Promise<ApiCardSearchResult[]> {
 // El catálogo tiene ~14 páginas de 1000: un tope evita que una API rota que siempre dice "hay más" nos tenga pidiendo para siempre.
 const MAX_CARD_CATALOG_PAGES = 40
 
+/**
+ * Una página del catálogo: la copia ya procesada si es de hoy, y si no la de la API (que renueva la copia).
+ * Si la API falla, la copia vencida sigue siendo mejor que nada.
+ */
+async function loadCatalogPage(offset: number): Promise<ApiSearchPage> {
+  const stored = await readCatalogPage(offset)
+
+  if (stored && stored.ageMs < CARD_CATALOG_PERSIST_MS) {
+    return stored.page
+  }
+
+  try {
+    // Sin persistForMs: lo que se guarda es la página procesada (catalog-cache), no los ~1,5 MB crudos.
+    const page = await searchCards({}, CARD_CATALOG_PAGE_SIZE, offset)
+    await writeCatalogPage(offset, page)
+    return page
+  } catch (error) {
+    if (stored) {
+      return stored.page
+    }
+
+    throw error
+  }
+}
+
 async function fetchCardCatalog(): Promise<ApiCardSearchResult[]> {
   const cardsById = new Map<number, ApiCardSearchResult>()
   let offset = 0
 
   for (let pageIndex = 0; pageIndex < MAX_CARD_CATALOG_PAGES; pageIndex += 1) {
     const knownBefore = cardsById.size
-    const page = await searchCards({}, CARD_CATALOG_PAGE_SIZE, offset, { persistForMs: CARD_CATALOG_PERSIST_MS })
+    const page = await loadCatalogPage(offset)
 
     for (const card of page.results) {
       cardsById.set(card.ygoprodeckId, card)

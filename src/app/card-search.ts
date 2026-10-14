@@ -28,12 +28,35 @@ export interface CardSearchRequest {
   format: string
 }
 
-interface SearchableCardIndexEntry {
+export interface SearchableCardIndexEntry {
   card: ApiCardSearchResult
   normalizedName: string
   normalizedDescription: string
   normalizedArchetype: string
+  normalizedCardType: string
+  normalizedAttribute: string
+  normalizedRace: string
+  normalizedLevel: string
+  /** `getSearchTypeRank` de la carta: monstruo, mágica, trampa u otra. */
+  typeRank: number
+  /** Qué filtros rápidos cumple, un bit por tipo (`QUICK_TYPE_BITS`). */
+  quickTypes: number
+  /** Posición por nombre y, si empatan, por id: reemplaza a `localeCompare` al ordenar. Se completa al cerrar el índice. */
+  nameRank: number
 }
+
+interface SearchMatch {
+  entry: SearchableCardIndexEntry
+  score: number
+}
+
+const QUICK_TYPE_BITS = { monster: 1, spell: 2, trap: 4 } as const
+
+// Misma regla que `localeCompare` sin argumentos, pero con el Collator armado una sola vez.
+const nameCollator = new Intl.Collator()
+
+// El índice son ~14,6 mil cartas: se arma en rebanadas de este tamaño para no dejar el hilo principal ocupado más de un cuadro.
+const INDEX_SLICE_MS = 8
 
 export const DEFAULT_CARD_SEARCH_FILTERS: CardSearchFilters = {
   quickType: 'all',
@@ -61,13 +84,67 @@ export function formatSearchError(message: string): string {
   return t('search.error.failed')
 }
 
-export function buildSearchableCardIndex(cards: ApiCardSearchResult[]): SearchableCardIndexEntry[] {
-  return cards.map((card) => ({
+function buildIndexEntry(card: ApiCardSearchResult): SearchableCardIndexEntry {
+  return {
     card,
     normalizedName: normalizeSearchText(card.name),
     normalizedDescription: normalizeSearchText(card.description ?? ''),
     normalizedArchetype: normalizeSearchText(card.archetype ?? ''),
-  }))
+    normalizedCardType: normalizeSearchText(card.cardType),
+    normalizedAttribute: normalizeSearchText(card.attribute ?? ''),
+    normalizedRace: normalizeSearchText(card.race ?? ''),
+    normalizedLevel: normalizeSearchText(card.level === null ? '' : String(card.level)),
+    typeRank: getSearchTypeRank(card),
+    quickTypes:
+      (matchesQuickTypeFilter(card, 'monster') ? QUICK_TYPE_BITS.monster : 0) |
+      (matchesQuickTypeFilter(card, 'spell') ? QUICK_TYPE_BITS.spell : 0) |
+      (matchesQuickTypeFilter(card, 'trap') ? QUICK_TYPE_BITS.trap : 0),
+    nameRank: 0,
+  }
+}
+
+// El desempate por nombre (y por id) se resuelve una sola vez al cerrar el índice, no en cada búsqueda.
+function rankIndexByName(entries: SearchableCardIndexEntry[]): SearchableCardIndexEntry[] {
+  const byName = [...entries].sort(
+    (left, right) =>
+      nameCollator.compare(left.card.name, right.card.name) || left.card.ygoprodeckId - right.card.ygoprodeckId,
+  )
+
+  byName.forEach((entry, position) => {
+    entry.nameRank = position
+  })
+
+  return entries
+}
+
+export function buildSearchableCardIndex(cards: ApiCardSearchResult[]): SearchableCardIndexEntry[] {
+  return rankIndexByName(cards.map(buildIndexEntry))
+}
+
+/** Lo mismo que `buildSearchableCardIndex`, pero cede el hilo entre rebanadas; devuelve `null` si se canceló mientras tanto. */
+export async function buildSearchableCardIndexInSlices(
+  cards: ApiCardSearchResult[],
+  isCancelled: () => boolean,
+): Promise<SearchableCardIndexEntry[] | null> {
+  const entries: SearchableCardIndexEntry[] = []
+  let sliceStart = performance.now()
+
+  for (const card of cards) {
+    entries.push(buildIndexEntry(card))
+
+    // En una pestaña oculta los timers se frenan (uno por segundo o peor) y nadie está mirando: se sigue de largo.
+    if (performance.now() - sliceStart > INDEX_SLICE_MS && !document.hidden) {
+      await new Promise<void>((resolve) => setTimeout(resolve, 0))
+
+      if (isCancelled()) {
+        return null
+      }
+
+      sliceStart = performance.now()
+    }
+  }
+
+  return rankIndexByName(entries)
 }
 
 export function searchCardCatalog(
@@ -83,12 +160,13 @@ export function searchCardCatalog(
   const normalizedRaceFilter = normalizeSearchText(filters.race)
   const normalizedLevelFilter = normalizeSearchText(filters.level)
   const normalizedDescriptionFilter = normalizeSearchText(filters.description)
-  const rankedMatches: Array<{ card: ApiCardSearchResult; score: number }> = []
+  const quickTypeBit = filters.quickType === 'all' ? 0 : QUICK_TYPE_BITS[filters.quickType]
+  const rankedMatches: SearchMatch[] = []
 
   for (const entry of searchIndex) {
     const { card } = entry
 
-    if (!matchesQuickTypeFilter(card, filters.quickType)) {
+    if (quickTypeBit !== 0 && (entry.quickTypes & quickTypeBit) === 0) {
       continue
     }
 
@@ -101,28 +179,28 @@ export function searchCardCatalog(
 
     if (
       normalizedExactTypeFilter.length > 0 &&
-      normalizeSearchText(card.cardType) !== normalizedExactTypeFilter
+      entry.normalizedCardType !== normalizedExactTypeFilter
     ) {
       continue
     }
 
     if (
       normalizedAttributeFilter.length > 0 &&
-      normalizeSearchText(card.attribute ?? '') !== normalizedAttributeFilter
+      entry.normalizedAttribute !== normalizedAttributeFilter
     ) {
       continue
     }
 
     if (
       normalizedRaceFilter.length > 0 &&
-      normalizeSearchText(card.race ?? '') !== normalizedRaceFilter
+      entry.normalizedRace !== normalizedRaceFilter
     ) {
       continue
     }
 
     if (
       normalizedLevelFilter.length > 0 &&
-      normalizeSearchText(card.level === null ? '' : String(card.level)) !== normalizedLevelFilter
+      entry.normalizedLevel !== normalizedLevelFilter
     ) {
       continue
     }
@@ -150,14 +228,14 @@ export function searchCardCatalog(
     }
 
     rankedMatches.push({
-      card,
+      entry,
       score,
     })
   }
 
   return rankedMatches
-    .sort((left, right) => compareSearchResults(left.card, right.card, left.score, right.score))
-    .map(({ card }) => card)
+    .sort(compareSearchMatches)
+    .map(({ entry }) => entry.card)
 }
 
 export function sortSearchResults(
@@ -312,31 +390,20 @@ function hasRemoteCardSearchFilters(filters: CardSearchFilters): boolean {
   )
 }
 
-function compareSearchResults(
-  left: ApiCardSearchResult,
-  right: ApiCardSearchResult,
-  leftScore: number,
-  rightScore: number,
-): number {
-  const scoreDifference = rightScore - leftScore
+function compareSearchMatches(left: SearchMatch, right: SearchMatch): number {
+  const scoreDifference = right.score - left.score
 
   if (scoreDifference !== 0) {
     return scoreDifference
   }
 
-  const rankDifference = getSearchTypeRank(left) - getSearchTypeRank(right)
+  const rankDifference = left.entry.typeRank - right.entry.typeRank
 
   if (rankDifference !== 0) {
     return rankDifference
   }
 
-  const nameDifference = left.name.localeCompare(right.name)
-
-  if (nameDifference !== 0) {
-    return nameDifference
-  }
-
-  return left.ygoprodeckId - right.ygoprodeckId
+  return left.entry.nameRank - right.entry.nameRank
 }
 
 function getCardSearchScore(
@@ -362,7 +429,8 @@ function getCardSearchScore(
     return 340
   }
 
-  if (matchesNameWord(normalizedName, normalizedQuery)) {
+  // Una palabra posterior del nombre empieza con la consulta. Las palabras no llevan espacios: una consulta de varias no calza con ninguna.
+  if (!normalizedQuery.includes(' ') && normalizedName.includes(` ${normalizedQuery}`)) {
     return 300
   }
 
@@ -375,10 +443,6 @@ function getCardSearchScore(
   }
 
   return 0
-}
-
-function matchesNameWord(normalizedName: string, normalizedQuery: string): boolean {
-  return normalizedName.split(' ').some((word) => word === normalizedQuery || word.startsWith(normalizedQuery))
 }
 
 function getSearchTypeRank(card: ApiCardReference | ApiCardSearchResult): number {
