@@ -79,6 +79,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers()
+  vi.restoreAllMocks()
   cleanup()
 })
 
@@ -207,7 +208,7 @@ describe('la pantalla del duelo', () => {
     expect(within(guest.container).getByRole('button', { name: 'Crear un duelo' })).toBeInTheDocument()
   })
 
-  it('atacar: el rival ve el ataque grande en el centro (directo, o a la carta tuya que atacó) y lo que se ve no revela nada más', () => {
+  it('atacar: el rival ve el cartel del ataque y la espada cruza la mesa (directo, o a la carta tuya que atacó) y lo que se ve no revela nada más', () => {
     // El aviso se va solo a los pocos segundos: se controla el reloj de los temporizadores (lo demás sigue igual).
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const host = render(<DuelScreen {...screenProps({ cardsById: monsters })} />)
@@ -232,14 +233,41 @@ describe('la pantalla del duelo', () => {
     click(host, 'Battle Phase')
     flush()
 
-    // Ataque directo: Beto lo ve grande en el centro.
+    // Cada barra de vida dice de quién es: a ahí llega la espada de un ataque directo.
+    expect(host.container.querySelector('[data-lp="theirs"]')).toHaveAccessibleName(/Puntos de vida de Beto/)
+    expect(host.container.querySelector('[data-lp="mine"]')).toHaveAccessibleName(/Puntos de vida de Ana/)
+    // Los efectos de movimiento se ven sólo si no se pidió reducirlo: ya repartidas las manos (que con menos movimiento salen de una), se acepta.
+    window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    const strikes = () => document.querySelectorAll('[data-fx="strike"]')
+    expect(strikes()).toHaveLength(0)
+    // jsdom no tiene layout: las cartas propias miden (0, 300), las del rival (0, 100) y las barras de vida (0, 0) la del rival y (0, 500) la propia, así que se ve de dónde a dónde va cada espada.
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      const [left, top, width, height] = this.matches('[data-lp="theirs"]') ? [0, 0, 100, 20] : this.matches('[data-lp="mine"]') ? [0, 500, 100, 20] : this.matches('[data-rival-card-id]') ? [0, 100, 100, 100] : this.matches('[data-card-id]') ? [0, 300, 100, 100] : [0, 0, 0, 0]
+
+      return { left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) } as DOMRect
+    })
+    const centers = (part: string) => [...document.querySelectorAll<HTMLElement>(`[data-fx="strike"] ${part}`)].map(({ parentElement }) => `${parentElement!.style.left},${parentElement!.style.top}`).sort()
+    /** De dónde salen las espadas (en la mesa de cada uno) y adónde llegan. */
+    const flights = () => ({ from: centers('.animate-fx-beam'), to: centers('.animate-fx-shock') })
+
+    // Ataque directo: Beto lo lee en un cartel y ve la espada cruzar su mesa (la de Ana también la ve cruzar la suya); nadie ve una carta grande en el centro.
     tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
     fireEvent.click(screen.getByRole('menuitem', { name: 'Ataque directo' }))
     flush()
-    expect(within(guest.container).getByText('Ana te ataca directo')).toBeInTheDocument()
+    expect(within(guest.container).getByText('Ana te ataca directo')).toHaveAttribute('role', 'status')
     expect(within(host.container).queryByText('Ana te ataca directo')).not.toBeInTheDocument()
+    expect(strikes()).toHaveLength(2)
+    // Ana la tira de su monstruo (50, 350) a la barra de vida del rival (50, 10); en la mesa de Beto, el monstruo de Ana (50, 150) cae sobre la barra propia (50, 510).
+    expect(flights()).toEqual({ from: ['50px,150px', '50px,350px'], to: ['50px,10px', '50px,510px'] })
+    expect(document.querySelector('[data-kind="attack"]')).toBeNull()
+    expect(document.querySelector('[data-activation]')).toBeNull()
 
-    // Se va solo; y si Ana pasa de fase y lo deshace, el ataque de antes no se vuelve a avisar.
+    // Se va solo (el cartel a los 4 s, la espada antes); y si Ana pasa de fase y lo deshace, el ataque de antes no se vuelve a avisar.
+    act(() => {
+      vi.advanceTimersByTime(1100)
+    })
+    expect(strikes()).toHaveLength(0)
+    expect(within(guest.container).getByText('Ana te ataca directo')).toBeInTheDocument()
     act(() => {
       vi.advanceTimersByTime(5000)
     })
@@ -249,6 +277,7 @@ describe('la pantalla del duelo', () => {
     click(host, 'Deshacer')
     flush()
     expect(within(guest.container).queryByText('Ana te ataca directo')).not.toBeInTheDocument()
+    expect(strikes()).toHaveLength(0)
     click(host, 'Battle Phase')
     flush()
 
@@ -261,6 +290,12 @@ describe('la pantalla del duelo', () => {
     fireEvent.click(screen.getAllByRole('menuitem')[0]!)
     flush()
     expect(within(guest.container).getByText(`Ana ataca a ${betoCard}`)).toBeInTheDocument()
+    // La espada llega a una carta: la del rival, por el id que él le dio (en la mesa de Ana), y la propia, por el suyo (en la de Beto).
+    expect(strikes()).toHaveLength(2)
+    // Se cruzan: la espada de Ana va de su monstruo (50, 350) al de Beto (50, 150), y en la mesa de Beto, al revés.
+    expect(flights()).toEqual({ from: ['50px,150px', '50px,350px'], to: ['50px,150px', '50px,350px'] })
+    expect(host.container.querySelector('[data-rival-card-id]')).not.toBeNull()
+    expect(document.querySelector('[data-kind="attack"]')).toBeNull()
   })
 
   it('juegos: moneda, piedra-papel-tijera y quién empieza; los dos ven lo mismo y la elección del rival no se ve hasta elegir la propia', () => {
