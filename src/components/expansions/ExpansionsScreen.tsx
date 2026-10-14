@@ -253,7 +253,7 @@ function ExpansionDetail({ expansion, updated, highlight, onBack }: { expansion:
   }
 
   return (
-    <section className={cx(surface.card, 'grid min-w-0 content-start gap-3 overflow-hidden overscroll-contain min-[1101px]:h-full min-[1101px]:overflow-y-auto min-[1101px]:[scrollbar-width:thin]')}>
+    <section className={cx(surface.card, 'grid min-w-0 content-start gap-3 overflow-hidden min-[1101px]:h-full min-[1101px]:overflow-y-auto min-[1101px]:overscroll-contain min-[1101px]:[scrollbar-width:thin]')}>
       <header className="px-4 pt-4 min-[1101px]:px-5 min-[1101px]:pt-5">
         <div className="grid min-w-0 content-center justify-items-start gap-2">
           {onBack ? (

@@ -169,6 +169,18 @@ describe('la pantalla de expansiones', () => {
     expect(screen.queryByRole('heading', { name: 'Maze of Millennia', level: 2 })).not.toBeInTheDocument()
   })
 
+  it('en el celular el detalle no atrapa el scroll: con overflow-hidden, un overscroll-contain suelto frena la rueda y el dedo y la página no se mueve', async () => {
+    mediaQuery(false)
+    render(<ExpansionsScreen />)
+
+    fireEvent.click(await screen.findByText('Maze of Millennia'))
+
+    const detail = (await screen.findByRole('heading', { name: 'Maze of Millennia', level: 2 })).closest('section')
+
+    expect(detail).toHaveClass('overflow-hidden', 'min-[1101px]:overflow-y-auto', 'min-[1101px]:overscroll-contain')
+    expect(detail).not.toHaveClass('overscroll-contain')
+  })
+
   it('tocar una carta abre su detalle (se pide la carta completa) con su código, rareza y edición', async () => {
     fetchCardsByIds.mockResolvedValue([
       { ygoprodeckId: 100, name: 'Mulcharmy Purulia', cardType: 'Effect Monster', frameType: 'effect', description: 'Si no controlás cartas…', race: 'Aqua', attribute: 'WATER', level: 4, linkValue: null, atk: '100', def: '600', archetype: null, ygoprodeckUrl: null, imageUrl: null, imageUrlSmall: null, banlist: { tcg: null, ocg: null, goat: null }, genesys: { points: null } },
