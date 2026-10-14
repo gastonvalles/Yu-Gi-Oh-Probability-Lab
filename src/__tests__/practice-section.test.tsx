@@ -187,6 +187,16 @@ describe('la práctica integrada en la mesa', () => {
     expect(explanation.parentElement?.parentElement).toHaveClass('max-[1100px]:relative')
   })
 
+  it('en el celular las salidas y problemas flotan arriba de la mano y no ocupan lugar: aparecer o irse no corre el campo', () => {
+    render(<Harness />)
+
+    const overlay = screen.getByRole('list', { name: 'Salidas' }).closest('.absolute')
+
+    expect(overlay).toHaveClass('bottom-full', 'pointer-events-none')
+    // La mano es su ancla: cuelgan de arriba de ella.
+    expect(overlay?.parentElement).toContainElement(hand())
+  })
+
   it('las jugadas que no cambian la mano inicial no la vuelven a evaluar; robar la carta de ir 2º, sí', () => {
     render(<Harness />)
 

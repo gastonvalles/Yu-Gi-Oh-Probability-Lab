@@ -182,29 +182,51 @@ describe('la mesa de práctica', () => {
     expect(screen.getByRole('button', { name: 'Main: 0' })).toBeInTheDocument()
   })
 
-  it('el turno y la fase de ahora son un botón: abre "Elegí la fase a la que cambiar" (como Master Duel), elegir una la cambia y Cancelar no toca nada', () => {
+  it('en el celular las fases van abajo, en la barra de pasos, en lugar de Anterior y Siguiente (ya están Deshacer arriba y la lista de pasos); el campo no las lleva', () => {
     render(<Harness />)
 
-    expect(screen.getByRole('button', { name: 'Turno 1' })).toHaveTextContent('Turno 1 · DP')
-    fireEvent.click(screen.getByRole('button', { name: 'Turno 1' }))
+    const phases = screen.getByRole('group', { name: 'Fases' })
 
-    const dialog = screen.getByRole('dialog', { name: 'Elegí la fase a la que cambiar' })
+    expect(within(screen.getByLabelText('Campo')).queryByRole('button', { name: 'Battle Phase' })).not.toBeInTheDocument()
+    expect(within(phases).getAllByRole('button')).toHaveLength(6)
+    expect(within(phases).getByRole('button', { name: 'Draw Phase' })).toHaveAttribute('aria-pressed', 'true')
 
-    for (const name of ['Draw Phase', 'Standby Phase', 'Main Phase 1', 'Battle Phase', 'Main Phase 2', 'End Phase']) {
-      expect(within(dialog).getByRole('button', { name })).toHaveAttribute('aria-pressed', name === 'Draw Phase' ? 'true' : 'false')
-    }
+    fireEvent.click(within(phases).getByRole('button', { name: 'Battle Phase' }))
+    expect(within(status()).getByText('Pasás a la Battle Phase')).toBeInTheDocument()
+    // En vivo no hay Anterior ni Siguiente: se vuelve con Deshacer, arriba.
+    expect(screen.queryByRole('button', { name: 'Anterior' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Siguiente' })).not.toBeInTheDocument()
 
-    // Cancelar cierra sin jugar nada.
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }))
-    expect(screen.queryByRole('dialog', { name: 'Elegí la fase a la que cambiar' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
     expect(within(status()).queryByText('1/1')).not.toBeInTheDocument()
+  })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Turno 1' }))
-    fireEvent.click(within(screen.getByRole('dialog', { name: 'Elegí la fase a la que cambiar' })).getByRole('button', { name: 'Main Phase 1' }))
+  it('en escritorio las fases siguen entre las zonas del campo, con Anterior y Siguiente en vivo', () => {
+    const matchMedia = window.matchMedia
+    window.matchMedia = ((query: string) => ({ ...matchMedia(query), matches: query.includes('1101') })) as typeof window.matchMedia
 
-    expect(screen.queryByRole('dialog', { name: 'Elegí la fase a la que cambiar' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Turno 1' })).toHaveTextContent('Turno 1 · M1')
-    expect(within(status()).getByText('Pasás a la Main Phase 1')).toBeInTheDocument()
+    try {
+      render(<Harness />)
+
+      expect(within(screen.getByLabelText('Campo')).getAllByRole('button', { name: /Phase( \d)?$/ })).toHaveLength(6)
+      expect(screen.getAllByRole('group', { name: 'Fases' })).toHaveLength(1)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Battle Phase' }))
+      expect(screen.getByRole('button', { name: 'Battle Phase' })).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.getByRole('button', { name: 'Anterior' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Siguiente' })).toBeDisabled()
+    } finally {
+      window.matchMedia = matchMedia
+    }
+  })
+
+  it('el turno va arriba a la izquierda y los botones de la mesa, a la derecha', () => {
+    render(<Harness />)
+
+    const toolbar = screen.getByRole('toolbar', { name: 'Mesa' })
+
+    expect(toolbar.firstElementChild).toBe(screen.getByLabelText('Turno 1'))
+    expect(screen.getByRole('button', { name: 'Nueva mano' })).toHaveClass('ml-auto')
   })
 
   it('arrastrar una carta al cementerio la manda ahí; tocar el deck ofrece robar', () => {

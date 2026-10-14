@@ -137,8 +137,6 @@ export const practice = {
   'practice.mat.turn': 'Turno {turn}',
   'practice.mat.field': 'Campo',
   'practice.mat.phases': 'Fases',
-  'practice.phase.title': 'Elegí la fase a la que cambiar',
-  'practice.phase.change': 'Cambiar de fase',
   'practice.mat.mainDeck': 'Main Deck',
   'practice.mat.currentStep': 'Paso actual',
   'practice.mat.confirm': 'Confirmar',
