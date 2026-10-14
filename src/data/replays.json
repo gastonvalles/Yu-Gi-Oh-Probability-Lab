@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-13T14:36:48.495Z",
+  "fetchedAt": "2026-10-14T12:27:11.392Z",
   "windowDays": 75,
   "channels": {"eu":{"name":"Yu-Gi-Oh! TCG Europe","url":"https://www.youtube.com/@YuGiOhCardEU"},"tcg":{"name":"Yu-Gi-Oh! TCG","url":"https://www.youtube.com/@OfficialYuGiOhTCG"}},
   "videos": [
@@ -41,7 +41,6 @@
     {"id":"txhvnWwasQI","channel":"eu","title":"Genesys Championship Day 1 | Round 5 - Léo D. vs. Matt M. | WCQ Brussels 2026","duration":"39:50","date":"2026-08-13"},
     {"id":"jnfTGwNu2XY","channel":"eu","title":"Genesys Championship Day 1 | Round 4 - Luna G. vs. Max V. | WCQ Brussels 2026","duration":"53:13","date":"2026-08-13"},
     {"id":"Jsb_OhSGED4","channel":"eu","title":"Genesys Championship Day 1 | Round 3 - Janos V. vs. Rio P. | WCQ Brussels 2026","duration":"30:05","date":"2026-08-13"},
-    {"id":"SUnmXkt3XWc","channel":"eu","title":"Genesys Championship Day 1 | Round 2 - Erikas Z. vs. Joshua S. | WCQ Brussels 2026","duration":"19:48","date":"2026-08-13"},
     {"id":"KHcIPPJrjN4","channel":"tcg","title":"2026 North American WCQ Minneapolis, MN // Dragon Duel Championship Finals - Emmett P. vs. Simon B.","duration":"44:47","date":"2026-08-13"}
   ]
 }
