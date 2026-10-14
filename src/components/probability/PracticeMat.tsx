@@ -44,12 +44,13 @@ import type { ApiCardReference, PatternKind } from '../../types'
 import { fetchCardsByIds } from '../../ygoprodeck'
 import { CardArt } from '../CardArt'
 import { CardDetailOverlay } from '../card-detail/CardDetailOverlay'
+import { DuelMascot } from '../mascot/Mascot'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
-import { CardBack, CardMenu, PILE_TITLES, PileViewer, SaveComboDialog, type MenuItem } from './MatDialogs'
+import { CardBack, CardMenu, PILE_TITLES, PhaseDialog, PileViewer, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { FX_CARD, FxFrame, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, TargetMark, fxVars } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
@@ -283,6 +284,7 @@ export function PracticeMat({
   const [viewer, setViewer] = useState<MatPile | null>(null)
   const [inspected, setInspected] = useState<{ id: string; rect: DOMRect } | null>(null)
   const [saving, setSaving] = useState(false)
+  const [phaseOpen, setPhaseOpen] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   const [combos, setCombos] = useState<SavedCombo[]>(() => readSavedCombos())
   const [picking, setPicking] = useState<Picking | null>(null)
@@ -1026,8 +1028,8 @@ export function PracticeMat({
         PRACTICE_PALETTE,
       )}
     >
-      {/* Barra: nueva mano, deshacer, guardar, ficha y (en el celu) el panel. Deja lugar a la X del modal. */}
-      <div className="col-start-1 row-start-1 flex items-center gap-1 px-2 pr-14 pt-2 min-[1101px]:px-4 min-[1101px]:pt-3" role="toolbar" aria-label={t('practice.mat.name')}>
+      {/* Barra: nueva mano, deshacer, guardar, ficha y (en el celu) el panel. */}
+      <div className="col-start-1 row-start-1 flex items-center gap-1 px-2 pt-2 min-[1101px]:px-4 min-[1101px]:pt-3" role="toolbar" aria-label={t('practice.mat.name')}>
         <IconButton tone="flat" size="sm" aria-label={t('practice.mat.newHand')} title={t('practice.mat.newHand')} onClick={onNewHand}>
           <Icon name="refresh" />
         </IconButton>
@@ -1053,9 +1055,17 @@ export function PracticeMat({
         <IconButton tone="flat" size="sm" aria-label={t('practice.mat.stepsAndCombos')} title={t('practice.mat.stepsAndCombos')} className="min-[1101px]:hidden" onClick={() => setPanelOpen(true)}>
           <Icon name="list" />
         </IconButton>
-        <span className="ml-auto whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted" aria-label={t('practice.mat.turn', { turn: state.turn })}>
-          {t('practice.mat.turn', { turn: state.turn })}
-        </span>
+        {/* El turno y la fase de ahora; tocarlo abre "Elegí la fase a la que cambiar" (como en Master Duel). */}
+        <button
+          type="button"
+          aria-label={t('practice.mat.turn', { turn: state.turn })}
+          aria-haspopup="dialog"
+          title={t('practice.phase.change')}
+          className="ml-auto whitespace-nowrap rounded-full border-0 bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted transition-colors duration-150 hover:bg-tint/14 hover:text-foreground focus-visible:outline-none focus-visible:shadow-focus"
+          onClick={() => setPhaseOpen(true)}
+        >
+          {t('practice.mat.turn', { turn: state.turn })} · {PHASES.find((phase) => phase.id === state.phase)?.short}
+        </button>
       </div>
 
       <div className="col-start-1 row-start-2 flex min-h-0 flex-col gap-2 overflow-y-auto overflow-x-hidden px-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] min-[1101px]:px-4 min-[1101px]:pb-4 min-[1101px]:pt-2">
@@ -1067,6 +1077,8 @@ export function PracticeMat({
           className="relative my-auto grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,5.485rem)_repeat(5,minmax(0,8rem))_minmax(0,5.485rem)]"
           aria-label={t('practice.mat.field')}
         >
+          {/* La mascota del duelo, una sola: en escritorio, en la esquina libre de arriba a la izquierda del campo; en el celular, parada sobre esa esquina, detrás de lo demás. */}
+          <DuelMascot className="absolute bottom-full left-0 -z-10 mb-1 size-[4.5rem] min-[1101px]:static min-[1101px]:z-0 min-[1101px]:mb-0 min-[1101px]:size-[5.25rem] min-[1101px]:self-end min-[1101px]:justify-self-center min-[1101px]:[grid-area:1/1]" />
           {cell('field', 0, 'fld')}
           {cell('emz', 0, 'emz1')}
           {cell('emz', 1, 'emz2')}
@@ -1210,8 +1222,8 @@ export function PracticeMat({
         </div>
       </div>
 
-      {/* Panel lateral (escritorio): arriba los pasos y combos (debajo de la X del modal) y abajo, a la altura de la mano, las salidas y problemas; la explicación del chip tocado crece hacia arriba sobre la lista. El detalle de una carta se abre desde su menú. */}
-      <aside className="hidden min-h-0 border-l border-border-subtle px-3 pb-3 pt-18 min-[1101px]:col-start-2 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col min-[1101px]:gap-3" aria-label={t('practice.mat.stepsAndCombos')}>
+      {/* Panel lateral (escritorio): arriba los pasos y combos y abajo, a la altura de la mano, las salidas y problemas; la explicación del chip tocado crece hacia arriba sobre la lista. El detalle de una carta se abre desde su menú. */}
+      <aside className="hidden min-h-0 border-l border-border-subtle px-3 pb-3 pt-3 min-[1101px]:col-start-2 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col min-[1101px]:gap-3" aria-label={t('practice.mat.stepsAndCombos')}>
         {panel}
         {footer && isDealt && isDesktop ? <div className="flex-none animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
       </aside>
@@ -1238,6 +1250,17 @@ export function PracticeMat({
         targeted={targetedIds}
         onPick={(id, rect) => setMenu({ kind: 'card', id, rect })}
         onClose={closeViewer}
+      />
+
+      <PhaseDialog
+        key={String(phaseOpen)}
+        isOpen={phaseOpen}
+        current={state.phase}
+        onPick={(phase) => {
+          setPhaseOpen(false)
+          play({ type: 'phase', phase })
+        }}
+        onClose={() => setPhaseOpen(false)}
       />
 
       <SaveComboDialog key={String(saving)} isOpen={saving} defaultName={t('practice.combo.defaultName', { n: combos.length + 1 })} onSave={saveCombo} onClose={() => setSaving(false)} />

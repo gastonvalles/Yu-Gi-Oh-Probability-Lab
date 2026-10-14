@@ -18,6 +18,8 @@ interface AppShellProps {
   contentScrollRef?: RefObject<HTMLDivElement | null>
   /** false: la pantalla ocupa todo el alto (el builder) y adentro tiene sus propios scrolls; true: scrollea el recuadro de la pantalla. El pie va fijo abajo en los dos. */
   contentScrollable?: boolean
+  /** Vista completa (la práctica): sin pie y, en el celular, del alto exacto de la ventana (nada de scroll de página); la pantalla se reparte ese alto. */
+  immersive?: boolean
 }
 
 /**
@@ -25,7 +27,7 @@ interface AppShellProps {
  * pantalla ocupa el mismo alto y es ella la que scrollea); en el celular, la barra de arriba con la hamburguesa (que abre el cajón con el
  * mismo menú) y la pantalla con su pie al final, en el scroll de la página. Se arma una sola vez: las pantallas sólo ponen su contenido adentro.
  */
-export function AppShell({ groups, activeKey, onSelect, children, contentScrollRef, contentScrollable = false }: AppShellProps) {
+export function AppShell({ groups, activeKey, onSelect, children, contentScrollRef, contentScrollable = false, immersive = false }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(readSidebarCollapsed)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const toggleCollapsed = useCallback(() => {
@@ -46,9 +48,9 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
   }, [collapsed, isDesktop])
 
   return (
-    <div className="min-h-dvh w-full min-w-0 overflow-x-clip min-[1101px]:grid min-[1101px]:h-dvh min-[1101px]:grid-cols-[auto_minmax(0,1fr)] min-[1101px]:overflow-hidden">
+    <div className={cx('min-h-dvh w-full min-w-0 overflow-x-clip min-[1101px]:grid min-[1101px]:h-dvh min-[1101px]:grid-cols-[auto_minmax(0,1fr)] min-[1101px]:overflow-hidden', immersive && 'max-[1100px]:h-dvh max-[1100px]:overflow-hidden')}>
       <AppSidebar groups={groups} activeKey={activeKey} onSelect={onSelect} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} className="max-[1100px]:hidden" />
-      <div className="flex min-h-dvh min-w-0 flex-col min-[1101px]:min-h-0">
+      <div className={cx('flex min-h-dvh min-w-0 flex-col min-[1101px]:min-h-0', immersive && 'max-[1100px]:h-dvh')}>
         <MobileTopBar menuOpen={drawerOpen} onMenu={() => setDrawerOpen(true)} className="min-[1101px]:hidden" />
         <div
           ref={contentScrollRef}
@@ -58,6 +60,7 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
             // `relative`: lo posicionado adentro (los `sr-only`) queda dentro de este recuadro; si no, se estira el alto del documento.
             'relative flex min-h-0 w-full min-w-0 flex-1 flex-col min-[1101px]:[scrollbar-gutter:stable] min-[1101px]:[scrollbar-width:thin]',
             contentScrollable ? 'min-[1101px]:overflow-y-auto' : 'min-[1101px]:overflow-hidden',
+            immersive && 'max-[1100px]:overflow-hidden',
           )}
         >
           {/* En escritorio este envoltorio mide siempre lo que el recuadro (`min-h-0`: no crece con el contenido), así una pantalla puede ocupar justo ese alto con `h-full`
@@ -65,7 +68,7 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
           <div className={cx('w-full min-w-0 flex-1 min-[1101px]:min-h-0 [&>*]:min-w-0', !contentScrollable && 'min-h-0')}>{children}</div>
         </div>
         {/* El pie queda afuera del recuadro que scrollea: en escritorio está siempre a la vista, abajo, con el mismo alto en todas las pantallas. */}
-        <AppFooter className="min-[1101px]:py-2" />
+        {immersive ? null : <AppFooter className="min-[1101px]:py-2" />}
       </div>
       <NavDrawer isOpen={drawerOpen} onClose={closeDrawer} groups={groups} activeKey={activeKey} onSelect={onSelect} />
     </div>

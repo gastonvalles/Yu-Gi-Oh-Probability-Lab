@@ -182,6 +182,31 @@ describe('la mesa de práctica', () => {
     expect(screen.getByRole('button', { name: 'Main: 0' })).toBeInTheDocument()
   })
 
+  it('el turno y la fase de ahora son un botón: abre "Elegí la fase a la que cambiar" (como Master Duel), elegir una la cambia y Cancelar no toca nada', () => {
+    render(<Harness />)
+
+    expect(screen.getByRole('button', { name: 'Turno 1' })).toHaveTextContent('Turno 1 · DP')
+    fireEvent.click(screen.getByRole('button', { name: 'Turno 1' }))
+
+    const dialog = screen.getByRole('dialog', { name: 'Elegí la fase a la que cambiar' })
+
+    for (const name of ['Draw Phase', 'Standby Phase', 'Main Phase 1', 'Battle Phase', 'Main Phase 2', 'End Phase']) {
+      expect(within(dialog).getByRole('button', { name })).toHaveAttribute('aria-pressed', name === 'Draw Phase' ? 'true' : 'false')
+    }
+
+    // Cancelar cierra sin jugar nada.
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }))
+    expect(screen.queryByRole('dialog', { name: 'Elegí la fase a la que cambiar' })).not.toBeInTheDocument()
+    expect(within(status()).queryByText('1/1')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Turno 1' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Elegí la fase a la que cambiar' })).getByRole('button', { name: 'Main Phase 1' }))
+
+    expect(screen.queryByRole('dialog', { name: 'Elegí la fase a la que cambiar' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Turno 1' })).toHaveTextContent('Turno 1 · M1')
+    expect(within(status()).getByText('Pasás a la Main Phase 1')).toBeInTheDocument()
+  })
+
   it('arrastrar una carta al cementerio la manda ahí; tocar el deck ofrece robar', () => {
     render(<Harness />)
 

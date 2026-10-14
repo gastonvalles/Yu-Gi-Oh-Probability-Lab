@@ -51,7 +51,6 @@ export const shell = {
   'shell.step.banlists.title': 'Banlists históricas',
   'shell.step.banlists.detail': 'Las listas de prohibidas y limitadas del TCG y el OCG, una por una.',
 
-  'shell.practice.open': 'Abrir práctica',
   'shell.practice.title': 'Práctica',
 
   'shell.mascot.title': 'Mascotas',
@@ -127,7 +126,6 @@ export const shell = {
   'shell.life.cue.ten': 'Quedan 10 minutos de ronda',
   'shell.life.cue.five': 'Quedan 5 minutos de ronda',
   'shell.life.cue.timeUp': 'Se terminó el tiempo de la ronda',
-  'shell.life.fab.open': 'Abrir la calculadora de LP',
   'shell.life.fab.running': 'Calculadora de LP. Quedan {countdown} de ronda',
 
   'shell.error.title': 'Algo salió mal',

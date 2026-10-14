@@ -120,6 +120,26 @@ function subscribe(listener: () => void): () => void {
   }
 }
 
+/** Cuántas vistas de duelo (la práctica) están abiertas. En un duelo hay una sola mascota, la de la vista: las que andan flotando se quedan esperando. */
+let duels = 0
+
+/** Avisa que empezó un duelo; devuelve la función para avisar que terminó (llamarla dos veces no rompe nada). */
+export function beginDuel(): () => void {
+  duels += 1
+  notify()
+  let ended = false
+
+  return () => {
+    if (ended) {
+      return
+    }
+
+    ended = true
+    duels = Math.max(0, duels - 1)
+    notify()
+  }
+}
+
 /** Quiénes están afuera, en el orden en que salieron. */
 export function activeMascotIds(): readonly MascotId[] {
   return active
@@ -282,6 +302,15 @@ export function useMascotState(id?: MascotId): MascotState {
   )
 }
 
+/** Hay un duelo abierto: las mascotas no flotan por encima de la mesa, la de la vista es la única. */
+export function useInDuel(): boolean {
+  return useSyncExternalStore(
+    subscribe,
+    () => duels > 0,
+    () => false,
+  )
+}
+
 /** Las que están afuera, en el orden en que salieron; se actualiza cuando sale o descansa alguna. */
 export function useActiveMascots(): readonly MascotId[] {
   return useSyncExternalStore(subscribe, activeMascotIds, () => SERVER_ACTIVE)
@@ -300,6 +329,7 @@ export function setMaxActiveMascotsForTests(max: number): void {
 
 /** Para los tests: vuelve todo a reposo. */
 export function resetMascotForTests(): void {
+  duels = 0
   activities.loading = 0
   activities.computing = 0
   reactions.clear()

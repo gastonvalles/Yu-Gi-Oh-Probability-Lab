@@ -70,25 +70,28 @@ export function PracticeBoard({ openings, problems, activeId, caseIndex, unplaya
   }, [activeId, onDismiss])
 
   // La explicación va ARRIBA de los chips: los chips quedan abajo, junto a la mano (que no se mueve), y la
-  // explicación crece hacia arriba (en escritorio le saca lugar a la lista de pasos, no a ningún control).
+  // explicación crece hacia arriba (en escritorio le saca lugar a la lista de pasos; en el celular flota, sin sacarle lugar a nada).
   return (
-    <div ref={ref} className="grid gap-1.5">
-      {activeId === UNPLAYABLE_ID && unplayable ? (
-        <section className={explainStyle('problem')} aria-live="polite" aria-label={t('practice.board.unplayable')}>
-          <p className={EXPLAIN_TEXT}>{t('practice.board.unplayableWhy')}</p>
-          {unplayableOdds !== null && unplayableOdds > 0 ? <p className={ODDS_TEXT}>{formatOdds(unplayableOdds)}</p> : null}
-          {nearMisses.length > 0 ? (
-            <ul aria-label={t('practice.board.missing')} className="m-0 col-span-full grid list-none gap-0.5 p-0 text-micro text-white/85">
-              {nearMisses.map((miss) => (
-                <li key={miss.name} className="[overflow-wrap:anywhere]">
-                  <strong className="font-semibold">{miss.name}:</strong> {miss.notes.join(' ')}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </section>
-      ) : null}
-      {active ? <RuleExplanation key={active.patternId} match={active} caseIndex={caseIndex} odds={ruleOdds?.get(active.patternId) ?? null} /> : null}
+    <div ref={ref} className="grid gap-1.5 max-[1100px]:relative">
+      {/* En el celular la explicación flota sobre los chips (en el aire que queda entre el campo y ellos): no ocupa lugar, así el campo no se corre al tocar un chip. */}
+      <div className="grid gap-1.5 empty:hidden max-[1100px]:absolute max-[1100px]:inset-x-0 max-[1100px]:bottom-full max-[1100px]:z-10 max-[1100px]:mb-1.5">
+        {activeId === UNPLAYABLE_ID && unplayable ? (
+          <section className={explainStyle('problem')} aria-live="polite" aria-label={t('practice.board.unplayable')}>
+            <p className={EXPLAIN_TEXT}>{t('practice.board.unplayableWhy')}</p>
+            {unplayableOdds !== null && unplayableOdds > 0 ? <p className={ODDS_TEXT}>{formatOdds(unplayableOdds)}</p> : null}
+            {nearMisses.length > 0 ? (
+              <ul aria-label={t('practice.board.missing')} className="m-0 col-span-full grid list-none gap-0.5 p-0 text-micro text-white/85">
+                {nearMisses.map((miss) => (
+                  <li key={miss.name} className="[overflow-wrap:anywhere]">
+                    <strong className="font-semibold">{miss.name}:</strong> {miss.notes.join(' ')}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </section>
+        ) : null}
+        {active ? <RuleExplanation key={active.patternId} match={active} caseIndex={caseIndex} odds={ruleOdds?.get(active.patternId) ?? null} /> : null}
+      </div>
       <div className="flex flex-wrap items-center gap-1.5 [&>ul]:contents max-[1100px]:justify-center">
         <RuleGroup kind="opening" matches={openings} activeId={activeId} onToggle={onToggle} />
         <RuleGroup kind="problem" matches={problems} activeId={activeId} unplayable={unplayable} onToggle={onToggle} />

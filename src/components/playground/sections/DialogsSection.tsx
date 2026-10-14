@@ -5,7 +5,7 @@ import { Button } from '../../ui/Button'
 import { Modal } from '../../ui/Modal'
 import { Specimen, SpecimenGrid, Tag } from '../Specimen'
 
-const SIZES = ['sm', 'md', 'full', 'sheet', 'board', 'screen'] as const
+const SIZES = ['sm', 'md', 'full', 'sheet', 'screen'] as const
 const TOASTS: ToastTone[] = ['info', 'success', 'warning', 'error']
 
 /** Diálogos y avisos: se abren desde acá, tal cual se ven en la app. */

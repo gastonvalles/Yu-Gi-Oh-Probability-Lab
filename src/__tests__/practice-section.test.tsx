@@ -136,11 +136,55 @@ describe('la práctica integrada en la mesa', () => {
     expect(within(hand()).getAllByRole('listitem')).toHaveLength(6)
     expect(within(screen.getByRole('list', { name: 'Problemas' })).getByRole('button', { name: '2 bricks' })).toBeInTheDocument()
 
-    // Jugar cartas después no cambia la evaluación: es sobre la mano inicial.
+    // Jugar una carta después ya no es evaluar la mano inicial: los chips se van, y vuelven al deshacer.
     tap(within(hand()).getByRole('listitem', { name: 'Starter' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Descartar' }))
     expect(within(hand()).getAllByRole('listitem')).toHaveLength(5)
+    expect(screen.queryByRole('list', { name: 'Salidas' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'Problemas' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
     expect(within(screen.getByRole('list', { name: 'Salidas' })).getByRole('button', { name: 'Salida básica' })).toBeInTheDocument()
+  })
+
+  it('con la primera jugada los chips de salidas y problemas desaparecen (y con ellos lo que marcan en la mano); al deshacerla vuelven', () => {
+    render(<Harness />)
+
+    const chip = within(screen.getByRole('list', { name: 'Salidas' })).getByRole('button', { name: 'Salida básica' })
+
+    fireEvent.click(chip)
+    expect(within(hand()).getByRole('listitem', { name: 'Starter' })).toHaveAttribute('data-glow', 'true')
+
+    // Cambiar de fase ya es empezar a jugar.
+    fireEvent.click(screen.getByRole('button', { name: 'Battle Phase' }))
+    expect(screen.queryByRole('list', { name: 'Salidas' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Salida básica' })).not.toBeInTheDocument()
+    expect(within(hand()).getByRole('listitem', { name: 'Starter' })).toHaveAttribute('data-glow', 'false')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
+    expect(within(screen.getByRole('list', { name: 'Salidas' })).getByRole('button', { name: 'Salida básica' })).toBeInTheDocument()
+  })
+
+  it('una mano no jugable deja de verse gris cuando se empieza a jugar con ella', () => {
+    render(<Harness initial={createMatState(['card-3-1', 'card-3-2', 'card-3-3', 'card-3-4', 'card-3-5', 'card-1-1', 'card-3-6'], [], 5)} />)
+
+    expect(within(hand()).getAllByRole('listitem', { name: 'Relleno' })[0]).toHaveAttribute('data-muted', 'true')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Battle Phase' }))
+    expect(within(hand()).getAllByRole('listitem', { name: 'Relleno' })[0]).toHaveAttribute('data-muted', 'false')
+    expect(screen.queryByRole('button', { name: 'Mano no jugable' })).not.toBeInTheDocument()
+  })
+
+  it('en el celular la explicación de un chip flota sobre los chips: no ocupa lugar, así que no corre el campo', () => {
+    render(<Harness />)
+
+    fireEvent.click(within(screen.getByRole('list', { name: 'Salidas' })).getByRole('button', { name: 'Salida básica' }))
+
+    const explanation = screen.getByRole('region', { name: 'Salida básica' })
+
+    // Sale del flujo (sólo hasta 1100 px: en el panel de escritorio crece hacia arriba sobre la lista de pasos).
+    expect(explanation.parentElement).toHaveClass('max-[1100px]:absolute', 'max-[1100px]:bottom-full')
+    expect(explanation.parentElement?.parentElement).toHaveClass('max-[1100px]:relative')
   })
 
   it('las jugadas que no cambian la mano inicial no la vuelven a evaluar; robar la carta de ir 2º, sí', () => {

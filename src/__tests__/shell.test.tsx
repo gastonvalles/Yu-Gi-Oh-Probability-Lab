@@ -5,7 +5,7 @@ import { createRef } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useShellInsets } from '../app/shell-layout'
-import { buildAppNavGroups, buildDeckWorkflowNavigationItems } from '../components/deck-mode/deck-workflow-navigation'
+import { buildAppNavGroups, buildDeckWorkflowNavigationItems, isDeckWorkflowStepKey } from '../components/deck-mode/deck-workflow-navigation'
 import { AppFooter } from '../components/shell/AppFooter'
 import { AppShell } from '../components/shell/AppShell'
 import { AppSidebar } from '../components/shell/AppSidebar'
@@ -38,6 +38,11 @@ describe('el menú de la app', () => {
       ['Herramientas', ['practice', 'life', 'mascots']],
       ['Descubrir', ['meta', 'tournaments', 'replays', 'expansions', 'banlists']],
     ])
+  })
+
+  it('la práctica es una pantalla del flujo (#practice) y no un panel que se abre encima: elegirla en el menú cambia de paso', () => {
+    expect(isDeckWorkflowStepKey('practice')).toBe(true)
+    expect(isDeckWorkflowStepKey('life')).toBe(false)
   })
 
   it('la mesa de práctica sólo se ofrece con cartas en el Main; la calculadora de LP y las mascotas, siempre', () => {
@@ -222,6 +227,18 @@ describe('el armazón', () => {
     expect(scroller).not.toContainElement(screen.getByRole('contentinfo'))
     // El envoltorio de la pantalla mide lo que el recuadro en escritorio, así una pantalla puede ocupar justo ese alto (`h-full`).
     expect(screen.getByText('Pantalla').parentElement).toHaveClass('min-[1101px]:min-h-0')
+  })
+
+  it('una vista completa (la práctica) no lleva pie y, en el celular, mide justo el alto de la ventana: no hay scroll de página', () => {
+    const { container } = render(
+      <AppShell groups={GROUPS} activeKey="practice" onSelect={() => {}} immersive>
+        <p>Pantalla</p>
+      </AppShell>,
+    )
+
+    expect(screen.getByText('Pantalla')).toBeInTheDocument()
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument()
+    expect(container.firstElementChild).toHaveClass('max-[1100px]:h-dvh', 'max-[1100px]:overflow-hidden')
   })
 
   it('sin haber elegido, arranca contraído en una ventana angosta y abierto en una ancha', () => {

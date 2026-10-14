@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 import { useFocusTrap } from '../../app/use-focus-trap'
 import { useEscapeKey } from '../../app/use-overlay'
 import { normalizeSearchText } from '../../app/utils'
-import type { MatPile } from '../../app/practice-mat'
+import { PHASES, type MatPhase, type MatPile } from '../../app/practice-mat'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { Button } from '../ui/Button'
@@ -250,6 +250,57 @@ export function SaveComboDialog({ isOpen, defaultName, onSave, onClose }: SaveCo
           </Button>
         </div>
       </form>
+    </Modal>
+  )
+}
+
+interface PhaseDialogProps {
+  isOpen: boolean
+  current: MatPhase
+  onPick: (phase: MatPhase) => void
+  onClose: () => void
+}
+
+/** Cambiar de fase como en Master Duel: las seis en una fila de botones redondos (la actual encendida en verde) y "Cancelar" abajo. */
+export function PhaseDialog({ isOpen, current, onPick, onClose }: PhaseDialogProps) {
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} size="sm" kicker={t('practice.mat.name')} title={t('practice.phase.title')} ariaLabel={t('practice.phase.title')}>
+      <div className="grid gap-5">
+        <div role="group" aria-label={t('practice.mat.phases')} className="grid grid-cols-3 gap-x-3 gap-y-4 min-[30rem]:grid-cols-6">
+          {PHASES.map((phase) => {
+            const active = phase.id === current
+
+            return (
+              <button
+                key={phase.id}
+                type="button"
+                aria-label={phase.name}
+                aria-pressed={active}
+                data-initial-focus={active ? '' : undefined}
+                className="group grid justify-items-center gap-1.5 border-0 bg-transparent p-0 text-center outline-none"
+                onClick={() => onPick(phase.id)}
+              >
+                <span
+                  className={cx(
+                    'grid size-14 place-items-center rounded-full border-2 text-body font-extrabold leading-none transition-[background-color,color,box-shadow] duration-150 group-focus-visible:shadow-focus',
+                    active
+                      ? 'border-accent bg-accent text-[#06140e] shadow-[0_0_16px_rgb(var(--accent-rgb)/0.6)]'
+                      : 'border-tint/25 text-soft group-hover:bg-tint/10 group-hover:text-foreground',
+                  )}
+                >
+                  {phase.short}
+                </span>
+                <span className={cx('text-micro font-semibold leading-tight text-balance', active ? 'text-foreground' : 'text-muted')}>{phase.name}</span>
+              </button>
+            )
+          })}
+        </div>
+        <div className="flex justify-center">
+          <Button variant="secondary" size="sm" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+        </div>
+      </div>
     </Modal>
   )
 }

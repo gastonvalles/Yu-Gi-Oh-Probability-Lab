@@ -134,6 +134,8 @@ export const practice: Translated<typeof es> = {
   'practice.mat.turn': 'Turn {turn}',
   'practice.mat.field': 'Field',
   'practice.mat.phases': 'Phases',
+  'practice.phase.title': 'Select the phase to switch to',
+  'practice.phase.change': 'Change phase',
   'practice.mat.mainDeck': 'Main Deck',
   'practice.mat.currentStep': 'Current step',
   'practice.mat.confirm': 'Confirm',

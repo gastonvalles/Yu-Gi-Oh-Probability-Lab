@@ -3,7 +3,7 @@ import { t } from '../../i18n'
 import type { NavGroup, NavItem, NavTone } from '../shell/nav-model'
 import type { IconName } from '../ui/Icon'
 
-export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'meta' | 'tournaments' | 'replays' | 'expansions' | 'banlists'
+export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'practice' | 'meta' | 'tournaments' | 'replays' | 'expansions' | 'banlists'
 
 export interface DeckModeNavigationItem {
   key: DeckWorkflowStepKey
@@ -33,6 +33,7 @@ const WORKFLOW_STEP_KEYS: readonly DeckWorkflowStepKey[] = [
   'probability-lab',
   'workspace',
   'export',
+  'practice',
   'meta',
   'tournaments',
   'replays',
@@ -179,12 +180,12 @@ export function buildDeckWorkflowNavigationItems({
   ]
 }
 
-/** Qué herramientas se pueden abrir ahora: la mesa de práctica necesita cartas en el Main. */
+/** Qué herramientas se pueden usar ahora: la práctica (una pantalla entera) necesita cartas en el Main. */
 interface AppNavTools {
   practice: boolean
 }
 
-/** El menú de la app: los pasos del deck, las herramientas (que abren un panel) y la referencia del meta. Lo ven el menú lateral y el cajón del celular. */
+/** El menú de la app: los pasos del deck, las herramientas (la práctica es una pantalla; la calculadora y las mascotas abren un panel) y la referencia del meta. Lo ven el menú lateral y el cajón del celular. */
 export function buildAppNavGroups(steps: DeckModeNavigationItem[], tools: AppNavTools): NavGroup[] {
   const pick = (...keys: DeckWorkflowStepKey[]): NavItem[] => keys.flatMap((key) => steps.filter((step) => step.key === key))
 
