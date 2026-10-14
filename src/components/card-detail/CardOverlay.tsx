@@ -189,6 +189,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
           >
             <CardArt
               remoteUrl={art?.imageUrl ?? card?.imageUrl ?? card?.imageUrlSmall ?? null}
+              fallbackUrl={card?.imageUrl ?? card?.imageUrlSmall ?? null}
               name={name}
               className="block h-full w-full bg-input object-contain"
               limitCard={card}
@@ -199,7 +200,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
           </div>
           {arts.length > 1 ? (
             <div className="pointer-events-auto absolute inset-y-0 -left-12 flex w-10 flex-col justify-start group-data-[zoomed=true]:hidden">
-              <CardArtPicker arts={arts} selectedId={art?.id ?? null} onSelect={setArtId} direction="column" className="max-h-full" />
+              <CardArtPicker arts={arts} selectedId={art?.id ?? null} onSelect={setArtId} fallbackUrl={card?.imageUrlSmall ?? card?.imageUrl ?? null} direction="column" className="max-h-full" />
             </div>
           ) : null}
           {onOpenPrices ? (
