@@ -43,5 +43,9 @@ export function gameText(entry: GameEntry, nameOf: (player: Duelist) => string):
       return t('duel.games.log.order', { name: nameOf(game.first) })
     case 'signal':
       return t('duel.games.log.signal', { name, signal: signalText(game.signal) })
+    case 'concede':
+      return t('duel.games.log.concede', { name })
+    case 'rematch':
+      return t('duel.games.log.rematch', { name })
   }
 }

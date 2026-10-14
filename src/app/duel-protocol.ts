@@ -105,7 +105,7 @@ const actionChecks: Record<MatAction['type'], (action: Record<string, unknown>) 
   declare: (a) => isId(a.id),
   target: (a) => isId(a.id),
   attack: (a) => isId(a.id) && optional(a.target, isId),
-  phase: (a) => isPhase(a.phase),
+  phase: (a) => isPhase(a.phase) && optional(a.skipDraw, (v) => v === true),
 }
 
 function parseAction(value: unknown): MatAction | null {
@@ -135,6 +135,10 @@ function parseGame(value: unknown): DuelGame | null {
       return value.first === 0 || value.first === 1 ? { kind: 'order', first: value.first } : null
     case 'signal':
       return isSignal(value.signal) ? { kind: 'signal', signal: value.signal } : null
+    case 'concede':
+      return { kind: 'concede' }
+    case 'rematch':
+      return { kind: 'rematch' }
     default:
       return null
   }

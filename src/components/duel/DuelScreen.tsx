@@ -20,6 +20,7 @@ import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { DuelBar } from './DuelBar'
+import { DuelDeckPicker, type DuelDeck } from './DuelDeckPicker'
 import { gameText, outcomeText, rpsName } from './game-text'
 import { artOfDrawId } from './duel-art'
 import { DUEL_AREAS, SideCells, sharedZoneCard, TheirHand, type DuelSideView } from './DuelTable'
@@ -79,9 +80,13 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
   const [name, setName] = useState(() => readStored(() => localStorage, NAME_KEY) ?? '')
   const [intent, setIntent] = useState<Intent | null>(readIntent)
   const myName = cleanName(name) || t('duel.lobby.defaultName')
-  const settings = useMemo(() => ({ lp: STARTING_LP, hand: handSize }), [handSize])
+  // Los puntos de vida los fija quien crea el duelo; el deck es el del builder o uno que se pega.
+  const [lp, setLp] = useState<number>(STARTING_LP)
+  const [imported, setImported] = useState<DuelDeck | null>(null)
+  const deck = useMemo<DuelDeck>(() => imported ?? { name: deckName, mainIds, extraIds, cardsById }, [imported, deckName, mainIds, extraIds, cardsById])
+  const settings = useMemo(() => ({ lp, hand: handSize }), [lp, handSize])
   const { duel, snapshot, status } = useDuel({ room: intent?.room ?? null, role: intent?.role ?? 'guest', name: myName, settings, connect })
-  const deckReady = mainIds.length >= handSize
+  const deckReady = deck.mainIds.length >= handSize
 
   // Pegar un enlace de duelo en la barra de direcciones (o abrirlo en esta misma pestaña) lleva a esa sala.
   useEffect(() => {
@@ -113,7 +118,22 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
   }, [])
 
   if (!intent) {
-    return <DuelLobby name={name} onName={setName} deckReady={deckReady} deckSize={mainIds.length} minDeck={handSize} onCreate={() => enter(createRoomCode(), 'host')} onJoin={(room) => enter(room, 'guest')} />
+    return (
+      <DuelLobby
+        name={name}
+        onName={setName}
+        lp={lp}
+        onLp={setLp}
+        builder={{ name: deckName, mainIds, extraIds, cardsById }}
+        imported={imported}
+        onImport={setImported}
+        deckReady={deckReady}
+        deckSize={deck.mainIds.length}
+        minDeck={handSize}
+        onCreate={() => enter(createRoomCode(), 'host')}
+        onJoin={(room) => enter(room, 'guest')}
+      />
+    )
   }
 
   if (status === 'full') {
@@ -141,13 +161,13 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
         status={status}
         room={intent.room}
         deckReady={deckReady}
-        onStart={() => duel.start(createMatState(shuffleWithSeed(mainIds, randomSeed()), extraIds, snapshot.settings.hand))}
+        onStart={() => duel.start(createMatState(shuffleWithSeed(deck.mainIds, randomSeed()), deck.extraIds, snapshot.settings.hand))}
         onLeave={leave}
       />
     )
   }
 
-  return <DuelTableScreen duel={duel} snapshot={snapshot} status={status} myName={myName} cardsById={cardsById} deckName={deckName} onLeave={leave} />
+  return <DuelTableScreen duel={duel} snapshot={snapshot} status={status} myName={myName} cardsById={deck.cardsById} deckName={deck.name} onLeave={leave} />
 }
 
 /** Lo que no es la mesa: una columna que scrollea, con el ancho de una pantalla de lectura. */
@@ -159,7 +179,25 @@ function Screen({ children }: { children: React.ReactNode }) {
   )
 }
 
-function DuelLobby({ name, onName, deckReady, deckSize, minDeck, onCreate, onJoin }: { name: string; onName: (name: string) => void; deckReady: boolean; deckSize: number; minDeck: number; onCreate: () => void; onJoin: (room: string) => void }) {
+/** Los puntos de vida con los que se puede empezar: los de siempre y los del formato corto. */
+const LP_CHOICES = [8000, 4000] as const
+
+interface DuelLobbyProps {
+  name: string
+  onName: (name: string) => void
+  lp: number
+  onLp: (lp: number) => void
+  builder: DuelDeck
+  imported: DuelDeck | null
+  onImport: (deck: DuelDeck | null) => void
+  deckReady: boolean
+  deckSize: number
+  minDeck: number
+  onCreate: () => void
+  onJoin: (room: string) => void
+}
+
+function DuelLobby({ name, onName, lp, onLp, builder, imported, onImport, deckReady, deckSize, minDeck, onCreate, onJoin }: DuelLobbyProps) {
   const [code, setCode] = useState('')
   const [invalid, setInvalid] = useState(false)
 
@@ -185,6 +223,19 @@ function DuelLobby({ name, onName, deckReady, deckSize, minDeck, onCreate, onJoi
       <FieldBox>
         <input aria-label={t('duel.lobby.name')} placeholder={t('duel.lobby.namePlaceholder')} maxLength={40} value={name} onChange={(event) => onName(event.target.value)} className={fieldInline} />
       </FieldBox>
+
+      <DuelDeckPicker builder={builder} minMain={minDeck} imported={imported} onImport={onImport} />
+
+      <div className="grid gap-1.5" role="group" aria-label={t('duel.lobby.lp')}>
+        <span className="text-micro font-semibold uppercase tracking-[0.04em] text-soft">{t('duel.lobby.lp')}</span>
+        <div className="flex gap-2">
+          {LP_CHOICES.map((choice) => (
+            <Button key={choice} variant="secondary" size="sm" aria-pressed={lp === choice} className={lp === choice ? 'ring-2 ring-primary' : undefined} onClick={() => onLp(choice)}>
+              {choice}
+            </Button>
+          ))}
+        </div>
+      </div>
 
       <div className="grid gap-1.5">
         <Button variant="primary" icon="link" disabled={!deckReady} onClick={onCreate}>
@@ -300,6 +351,27 @@ function DuelRoom({ snapshot, status, room, deckReady, onStart, onLeave }: { sna
 const NOTHING = () => undefined
 
 /**
+ * La carta del turno se roba cuando empieza el turno propio, o sea cuando el rival pasa el suyo: así el segundo jugador roba en su primer turno
+ * y quien pasa no roba de más antes de tiempo (la mesa, en un duelo, no roba sola al pasar). Pasar dos veces por lo mismo (el rival deshace y repite)
+ * no roba dos veces.
+ */
+function useTurnDraw(duel: Duel, snapshot: DuelSnapshot, turn: 'mine' | 'theirs') {
+  const passes = (snapshot.mine?.turn ?? 1) - 1 + ((snapshot.theirs?.state.turn ?? 1) - 1)
+  const drawnAt = useRef(passes)
+
+  useEffect(() => {
+    if (passes > drawnAt.current) {
+      drawnAt.current = passes
+
+      if (turn === 'mine') {
+        duel.play({ type: 'draw', count: 1 })
+        showToastMessage(t('duel.turn.drew'), 'info')
+      }
+    }
+  }, [passes, turn, duel])
+}
+
+/**
  * Avisos de lo que hace el rival fuera de las cartas (moneda, dado, su elección en piedra-papel-tijera, quién empieza, una señal) y de cómo salió la ronda,
  * para verlos aunque el panel de juegos esté cerrado. Lo que ya estaba en el registro al abrir la pantalla no se avisa.
  */
@@ -386,6 +458,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   )
   const turn = whoseTurn(snapshot.me, mine, theirs!.state, snapshot.starter)
   useGameToasts(snapshot, myName)
+  useTurnDraw(duel, snapshot, turn)
   const announcement = useRivalAttack(snapshot, cardsById)
   // A quiénes se puede atacar: los monstruos del rival en el campo, con el id que él les dio.
   const attackTargets = useMemo(

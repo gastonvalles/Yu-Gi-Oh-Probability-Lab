@@ -13,6 +13,13 @@ import { DuelScreen } from '../components/duel/DuelScreen'
 import type { ApiCardReference } from '../types'
 import { createMemoryRoom, type MemoryEnd, type MemoryRoom } from './support/memory-room'
 
+// Las cartas de un deck pegado se piden por su número: acá salen todas menos la 999 (que no existe).
+vi.mock('../ygoprodeck', () => ({
+  fetchCardsByIds: vi.fn(async (ids: number[]) =>
+    ids.filter((id) => id !== 999).map((id) => ({ ygoprodeckId: id, name: 'Carta ' + id, frameType: 'effect', cardType: 'Effect Monster', race: null, description: null, attribute: null, level: null, linkValue: null, atk: null, def: null, archetype: null, ygoprodeckUrl: null, imageUrl: null, imageUrlSmall: null })),
+  ),
+}))
+
 const store = configureStore({ reducer: { settings: (state = { handSize: 5, deckFormat: 'unlimited' as const }) => state } })
 
 /** Cada pantalla en su propio contenedor: las dos conviven en el mismo documento, como dos pestañas. */
@@ -79,7 +86,7 @@ describe('la pantalla del duelo', () => {
   it('sin cartas suficientes en el Main avisa y no deja crear ni unirse', () => {
     const view = render(<DuelScreen {...screenProps({ mainIds: mainIds.slice(0, 3) })} />)
 
-    expect(within(view.container).getByText(/Armá primero tu deck/)).toBeInTheDocument()
+    expect(within(view.container).getByText(/hacen falta 5 cartas en el Main/)).toBeInTheDocument()
     expect(within(view.container).getByRole('button', { name: 'Crear un duelo' })).toBeDisabled()
 
     typeInto(view, 'Enlace o código', 'K7QF2M9X')
@@ -322,5 +329,180 @@ describe('la pantalla del duelo', () => {
     close()
     open(guest)
     expect(panel().getByText('Ana: Paso')).toBeInTheDocument()
+  })
+
+  /** Los dos adentro de la sala, con su nombre; si se pide, quien crea elige esos puntos de vida. */
+  function startDuel(options: { lp?: string } = {}) {
+    const host = render(<DuelScreen {...screenProps()} />)
+    typeInto(host, 'Tu nombre', 'Ana')
+    if (options.lp) fireEvent.click(within(host.container).getByRole('button', { name: options.lp }))
+    click(host, 'Crear un duelo')
+    const link = within(host.container).getByTestId('duel-link').textContent ?? ''
+    window.history.replaceState(null, '', '#duel')
+    const guest = render(<DuelScreen {...screenProps()} />)
+    typeInto(guest, 'Tu nombre', 'Beto')
+    typeInto(guest, 'Enlace o código', link)
+    click(guest, 'Unirme')
+    flush()
+    return { host, guest }
+  }
+
+  it('otro deck: se pega un .ydk, se buscan las cartas y se juega con ese; se recuerda y, sin deck armado, se vuelve a usar solo', async () => {
+    const small = { mainIds: mainIds.slice(0, 2), extraIds: [], cardsById: new Map() }
+    const view = render(<DuelScreen {...screenProps(small)} />)
+
+    expect(within(view.container).getByRole('button', { name: 'Crear un duelo' })).toBeDisabled()
+    click(view, 'Usar otro deck')
+
+    // Algo que no es un deck se dice y no cambia nada.
+    fireEvent.change(within(view.container).getByRole('textbox', { name: 'ydke://… o el texto del .ydk' }), { target: { value: 'Dark Magician x3' } })
+    click(view, 'Usar este deck')
+    expect(await within(view.container).findByText(/No reconozco ese deck/)).toBeInTheDocument()
+
+    // Un .ydk de verdad: 13 cartas en el Main (una que no existe) y 1 en el Extra; el Side no cuenta.
+    const ydk = ['#created by Ana', '#main', ...Array.from({ length: 12 }, (_, index) => String(1000 + index)), '999', '#extra', '9001', '!side', '5'].join('\n')
+    fireEvent.change(within(view.container).getByRole('textbox', { name: 'ydke://… o el texto del .ydk' }), { target: { value: ydk } })
+    click(view, 'Usar este deck')
+
+    expect(await within(view.container).findByText('Deck importado: 13 cartas en el Main y 1 en el Extra')).toBeInTheDocument()
+    expect(within(view.container).getByText(/1 cartas no se reconocieron/)).toBeInTheDocument()
+    expect(within(view.container).getByRole('button', { name: 'Crear un duelo' })).toBeEnabled()
+    expect(localStorage.getItem('ygo-lab:duel-deck')).toContain('#main')
+
+    // Volver al del builder quita el importado y lo olvida.
+    click(view, 'Volver al deck del builder')
+    expect(within(view.container).getByRole('button', { name: 'Crear un duelo' })).toBeDisabled()
+    expect(localStorage.getItem('ygo-lab:duel-deck')).toBeNull()
+
+    // Con un deck guardado y el builder vacío, la pantalla lo usa sola al abrir.
+    localStorage.setItem('ygo-lab:duel-deck', ydk)
+    cleanup()
+    const again = render(<DuelScreen {...screenProps(small)} />)
+    expect(await within(again.container).findByText('Deck importado: 13 cartas en el Main y 1 en el Extra')).toBeInTheDocument()
+
+    // Y con un deck armado en el builder no se pisa solo.
+    cleanup()
+    const builder = render(<DuelScreen {...screenProps()} />)
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30))
+    })
+    expect(within(builder.container).getByText('El del builder: Mi deck (12 cartas en el Main)')).toBeInTheDocument()
+    expect(within(builder.container).queryByText(/Deck importado/)).not.toBeInTheDocument()
+  })
+
+  it('otro deck: la mano se reparte con las cartas del deck pegado, y el rival juega con las suyas', async () => {
+    const small = { mainIds: mainIds.slice(0, 2), extraIds: [], cardsById: new Map() }
+    const host = render(<DuelScreen {...screenProps(small)} />)
+    typeInto(host, 'Tu nombre', 'Ana')
+    click(host, 'Usar otro deck')
+    const ydk = ['#main', ...Array.from({ length: 12 }, (_, index) => String(2000 + index))].join('\n')
+    fireEvent.change(within(host.container).getByRole('textbox', { name: 'ydke://… o el texto del .ydk' }), { target: { value: ydk } })
+    click(host, 'Usar este deck')
+    await within(host.container).findByText('Deck importado: 12 cartas en el Main y 0 en el Extra')
+    click(host, 'Crear un duelo')
+    const link = within(host.container).getByTestId('duel-link').textContent ?? ''
+    window.history.replaceState(null, '', '#duel')
+    const guest = render(<DuelScreen {...screenProps()} />)
+    typeInto(guest, 'Tu nombre', 'Beto')
+    typeInto(guest, 'Enlace o código', link)
+    click(guest, 'Unirme')
+    flush()
+    click(host, 'Repartir mi mano')
+    click(guest, 'Repartir mi mano')
+    flush()
+
+    const names = (view: RenderResult) => handOf(view).getAllByRole('listitem').map((card) => card.getAttribute('aria-label'))
+    expect(names(host)).toHaveLength(5)
+    expect(names(host).every((name) => /^Carta 20\d\d$/.test(name ?? ''))).toBe(true)
+    expect(names(guest).some((name) => /^Carta 20\d\d$/.test(name ?? ''))).toBe(false)
+  })
+
+  it('puntos de vida: quien crea el duelo elige 8000 o 4000 y los dos empiezan con eso', () => {
+    const { host, guest } = startDuel({ lp: '4000' })
+
+    expect(within(host.container).getByText('Cada uno empieza con 4000 LP y una mano de 5 cartas.')).toBeInTheDocument()
+    expect(within(guest.container).getByText('Cada uno empieza con 4000 LP y una mano de 5 cartas.')).toBeInTheDocument()
+
+    click(host, 'Repartir mi mano')
+    click(guest, 'Repartir mi mano')
+    flush()
+    expect(within(host.container).getByRole('button', { name: /Cambiar mis puntos de vida/ })).toHaveAccessibleName(/4\D?000/)
+    expect(within(guest.container).getByRole('group', { name: /Puntos de vida de Ana: 4\D?000/ })).toBeInTheDocument()
+  })
+
+  it('rendirse: pide confirmación, termina el duelo para los dos y la revancha de los dos vuelve a la sala con todo de cero', () => {
+    const { host, guest } = startDuel()
+    click(host, 'Repartir mi mano')
+    click(guest, 'Repartir mi mano')
+    flush()
+
+    const panel = () => within(screen.getByRole('dialog', { name: 'Juegos y señales' }))
+    const close = () => fireEvent.keyDown(document, { key: 'Escape' })
+
+    click(guest, 'Moneda, dado y más')
+    fireEvent.click(panel().getByRole('button', { name: 'Rendirme' }))
+    // Cancelar no se rinde.
+    fireEvent.click(panel().getByRole('button', { name: 'Cancelar' }))
+    expect(within(host.container).queryByText(/se rindió/)).not.toBeInTheDocument()
+    fireEvent.click(panel().getByRole('button', { name: 'Rendirme' }))
+    expect(panel().getByText('¿Seguro? Gana Ana.')).toBeInTheDocument()
+    fireEvent.click(panel().getByRole('button', { name: 'Sí, rendirme' }))
+    flush()
+
+    expect(within(host.container).getByText('Beto se rindió. ¡Ganaste!')).toBeInTheDocument()
+    expect(within(guest.container).getByText('Te rendiste.')).toBeInTheDocument()
+
+    // Ana pide la revancha: Beto lo ve y la acepta.
+    click(host, 'Revancha')
+    flush()
+    expect(within(host.container).getByText('Esperando a Beto…')).toBeInTheDocument()
+    expect(within(guest.container).getByText('Ana quiere la revancha.')).toBeInTheDocument()
+    click(guest, 'Revancha')
+    flush()
+    close()
+
+    // De vuelta en la sala, cada uno reparte otra vez y el resultado se fue.
+    click(host, 'Repartir mi mano')
+    click(guest, 'Repartir mi mano')
+    flush()
+    expect(within(host.container).queryByText(/se rindió/)).not.toBeInTheDocument()
+    expect(within(guest.container).queryByText('Te rendiste.')).not.toBeInTheDocument()
+    expect(within(guest.container).getByRole('group', { name: /Puntos de vida de Ana: 8\D?000/ })).toBeInTheDocument()
+  })
+
+  it('el robo del turno: al pasar el turno no se roba de más, y el que no empezó roba en su primer turno', () => {
+    const { host, guest } = startDuel()
+    click(host, 'Repartir mi mano')
+    click(guest, 'Repartir mi mano')
+    flush()
+
+    const hand = (view: RenderResult) => handOf(view).getAllByRole('listitem').length
+    expect([hand(host), hand(guest)]).toEqual([5, 5])
+
+    // Ana (la que empieza) termina su turno: su mesa pasa a la Draw Phase del turno siguiente pero todavía no le toca, así que no roba.
+    click(host, 'End Phase')
+    click(host, 'Draw Phase')
+    flush()
+    expect(hand(host)).toBe(5)
+    // A Beto le empieza el primer turno: roba solo.
+    expect(hand(guest)).toBe(6)
+
+    // Beto termina el suyo: ahora a Ana le toca otra vez y roba; Beto no roba de más.
+    click(guest, 'End Phase')
+    click(guest, 'Draw Phase')
+    flush()
+    expect(hand(host)).toBe(6)
+    expect(hand(guest)).toBe(6)
+
+    // Ana se arrepiente de pasar (deshace) y vuelve a pasar: Beto ya robó por ese turno y no roba otra vez.
+    click(host, 'End Phase')
+    click(host, 'Draw Phase')
+    flush()
+    expect(hand(guest)).toBe(7)
+    click(host, 'Deshacer')
+    flush()
+    click(host, 'Draw Phase')
+    flush()
+    expect(hand(guest)).toBe(7)
   })
 })

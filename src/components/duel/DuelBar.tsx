@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 
+import { duelResult, type DuelResult } from '../../app/duel-games'
 import type { DuelSnapshot } from '../../app/duel-session'
 import type { SocketStatus } from '../../app/duel-socket'
 import { formatClock, interpretAmount, timerRemaining } from '../../app/life-calculator'
@@ -63,6 +64,7 @@ export function DuelBar({ snapshot, status, myName, turn, onChangeLife, onHalve,
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
   const running = life.timer.running
   const clock = formatClock(timerRemaining(life.timer, now))
+  const result = duelResult(life.lp, snapshot.conceded)
 
   return (
     <div className="grid gap-1.5 px-0.5">
@@ -100,6 +102,8 @@ export function DuelBar({ snapshot, status, myName, turn, onChangeLife, onHalve,
 
       <DuelGames isOpen={gamesOpen} onClose={() => setGamesOpen(false)} snapshot={snapshot} myName={myName} actions={games} />
 
+      {result ? <ResultBanner result={result} snapshot={snapshot} rival={rivalName} onRematch={games.rematch} /> : null}
+
       <LifeDialog
         isOpen={lifeOpen}
         life={life.lp[me]}
@@ -127,6 +131,36 @@ export function DuelBar({ snapshot, status, myName, turn, onChangeLife, onHalve,
         }}
       />
     </div>
+  )
+}
+
+/** Cómo terminó el duelo (sin puntos de vida o rendido) y la revancha: pedirla, o aceptarla si el rival ya la pidió. */
+function ResultBanner({ result, snapshot, rival, onRematch }: { result: DuelResult; snapshot: DuelSnapshot; rival: string; onRematch: () => void }) {
+  const { me, conceded, rematch } = snapshot
+  const won = result.kind === 'loss' && result.loser !== me
+  const text =
+    result.kind === 'draw'
+      ? t('duel.result.draw')
+      : won
+        ? conceded !== null ? t('duel.result.winConceded', { name: rival }) : t('duel.result.win')
+        : conceded === me ? t('duel.result.loseConceded') : t('duel.result.lose')
+  const note = rematch.mine ? t('duel.result.rematchWaiting', { name: rival }) : rematch.theirs ? t('duel.result.rematchOffered', { name: rival }) : null
+
+  return (
+    <Callout
+      tone={result.kind === 'draw' ? 'info' : won ? 'success' : 'danger'}
+      icon="trophy"
+      action={
+        rematch.mine ? null : (
+          <Button variant="primary" size="sm" disabled={!snapshot.peerPresent} onClick={onRematch}>
+            {t('duel.result.rematch')}
+          </Button>
+        )
+      }
+    >
+      <span role="status">{text}</span>
+      {note ? <span className="block text-micro text-soft">{note}</span> : null}
+    </Callout>
   )
 }
 
