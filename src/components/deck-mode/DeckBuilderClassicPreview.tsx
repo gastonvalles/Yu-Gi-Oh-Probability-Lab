@@ -82,7 +82,7 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, onAddToZone 
             </div>
           </div>
 
-          <CardArtPicker arts={arts} selectedId={art?.id ?? null} onSelect={(artId) => setPicked({ cardId: card.ygoprodeckId, artId })} className="justify-center" />
+          <CardArtPicker arts={arts} selectedId={art?.id ?? null} onSelect={(artId) => setPicked({ cardId: card.ygoprodeckId, artId })} />
 
           {source === 'deck' && deckCopy ? <DeckCopyControls deckCopy={deckCopy} /> : null}
 

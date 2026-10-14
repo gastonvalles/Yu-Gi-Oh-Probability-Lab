@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react'
+
 import type { ArtChoice } from '../../app/use-card-art-options'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
@@ -16,17 +18,49 @@ interface CardArtPickerProps {
  * Las miniaturas de los artes de la carta (los de YGOPRODeck y el escaneo de cada impresión, donde están las overframe, las de arte extendido y las
  * alternativas): tocar una cambia el arte grande; el nombre de la impresión sale al dejar el mouse encima.
  * Con un solo arte no se muestra nada. Sale siempre afuera de la carta que se inclina en 3D, para que no se mueva con ella.
+ * Si son más de los que entran, la tira scrollea (con su barra fina a la vista, para que se note y se pueda arrastrar con el mouse): en fila se
+ * centra sólo mientras entra, con `auto` en los márgenes de las puntas; con `justify-center` las primeras quedarían cortadas a la izquierda, sin
+ * forma de llegar a ellas. Con el mouse, la rueda recorre la fila de costado (es lo que se espera de una tira horizontal).
  */
 export function CardArtPicker({ arts, selectedId, onSelect, direction = 'row', className }: CardArtPickerProps) {
-  if (arts.length < 2) {
+  const listRef = useRef<HTMLDivElement>(null)
+  const single = arts.length < 2
+
+  useEffect(() => {
+    const list = listRef.current
+
+    if (!list || direction !== 'row') return
+
+    // Nativo y no passive (el onWheel de React lo es): hace falta frenar el scroll vertical de la página sólo mientras la fila todavía se puede mover.
+    const onWheel = (event: WheelEvent) => {
+      const max = list.scrollWidth - list.clientWidth
+      const next = Math.min(max, Math.max(0, list.scrollLeft + event.deltaY))
+
+      if (max <= 0 || Math.abs(event.deltaY) < Math.abs(event.deltaX) || next === list.scrollLeft) return
+
+      event.preventDefault()
+      list.scrollLeft = next
+    }
+
+    list.addEventListener('wheel', onWheel, { passive: false })
+
+    return () => list.removeEventListener('wheel', onWheel)
+  }, [direction, single])
+
+  if (single) {
     return null
   }
 
   return (
     <div
+      ref={listRef}
       role="group"
       aria-label={t('search.arts.label')}
-      className={cx('flex gap-1.5 overflow-auto overscroll-contain p-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden', direction === 'column' ? 'flex-col' : 'flex-row', className)}
+      className={cx(
+        'flex gap-1.5 overflow-auto overscroll-contain p-0.5',
+        direction === 'column' ? 'flex-col' : 'flex-row [&>:first-child]:ml-auto [&>:last-child]:mr-auto',
+        className,
+      )}
     >
       {arts.map((art, index) => {
         const selected = (selectedId ?? arts[0]!.id) === art.id
