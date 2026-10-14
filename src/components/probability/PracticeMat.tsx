@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 import { parseDerivedCardId } from '../../app/calculator-state'
@@ -66,6 +66,22 @@ export interface MatCard {
   art?: string
 }
 
+/**
+ * El duelo por enlace en la mesa: el campo del rival (dos filas espejadas arriba del propio, con sus áreas `t…`), lo que va arriba de todo
+ * (la barra con los puntos de vida y la mano del rival) y la carta del rival que ocupa una Zona Extra compartida. En un duelo no hay mano nueva
+ * ni combos guardados, y la mascota no se sienta en el campo. Lo arma la pantalla del duelo: la mesa no sabe nada de la red.
+ */
+export interface DuelMatLink {
+  /** Las áreas de la grilla con los dos campos. */
+  areas: string
+  /** Las casillas del rival (zonas, pilas y su Banish en el medio), ya con su `gridArea`. */
+  opponent: ReactNode
+  /** La carta del rival que ocupa, vista desde acá, la Zona Extra `index` (0 = izquierda); null si no hay. */
+  sharedZone: (index: number) => ReactNode
+  /** Arriba del campo: la barra del duelo y la mano del rival. */
+  header: ReactNode
+}
+
 interface PracticeMatProps {
   session: MatSession
   state: MatState
@@ -84,6 +100,8 @@ interface PracticeMatProps {
   highlightKind?: PatternKind | null
   /** Mano sin salida: las cartas de la mano se ven grises. */
   muted?: boolean
+  /** Es un duelo por enlace: el campo del rival arriba del propio. */
+  duel?: DuelMatLink
 }
 
 /** Fuentes de arrastre que no son cartas: el tope del deck y la ficha. */
@@ -117,12 +135,12 @@ const CELL_LOOK = [
 ].join(' ')
 
 /** La zona de campo y las pilas (las columnas de los costados): del tamaño justo de una carta, que nunca se acuesta. */
-const CELL = `aspect-[421/614] ${CELL_LOOK}`
+export const CELL = `aspect-[421/614] ${CELL_LOOK}`
 /**
  * Las zonas del centro (monstruos, Mágicas y Trampas, Zonas Extra) son cuadradas, del lado largo de una carta: la carta entra parada (el alto de la casilla)
  * o acostada en defensa (el ancho de la casilla) con el mismo tamaño y sin salirse, así que dos cartas en defensa vecinas no se pisan ni se achican.
  */
-const CELL_SQUARE = `aspect-square ${CELL_LOOK}`
+export const CELL_SQUARE = `aspect-square ${CELL_LOOK}`
 /** El ancho de una carta como parte de su alto (421 × 614 px): una carta parada en una casilla cuadrada mide ese tanto de ancho. */
 const CARD_WIDTH_PER_HEIGHT = 421 / 614
 
@@ -175,7 +193,7 @@ const ZONE_LABELS: Record<MatSpot, string> = {
 }
 
 /** Las zonas de péndulo (las puntas de la fila de magias y trampas) llevan la gema azul y la roja, como en la mesa real. */
-const PENDULUM_GEM: Record<number, string> = {
+export const PENDULUM_GEM: Record<number, string> = {
   0: 'bg-[#4aa8ff]/55 shadow-[0_0_10px_#4aa8ff80]',
   4: 'bg-[#ff4d6d]/55 shadow-[0_0_10px_#ff4d6d80]',
 }
@@ -219,6 +237,7 @@ export function PracticeMat({
   highlighted = EMPTY_IDS,
   highlightKind = null,
   muted = false,
+  duel,
 }: PracticeMatProps) {
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
 
@@ -870,6 +889,7 @@ export function PracticeMat({
       onLoad={loadFromPanel}
       onRename={renameCombo}
       onDelete={deleteCombo}
+      showCombos={!duel}
       className="min-h-0 flex-1"
     />
   )
@@ -932,6 +952,7 @@ export function PracticeMat({
             onOpen={(rect) => openCard(shown.id, rect)}
           />
         ) : null}
+        {!shown && spot === 'emz' && duel ? duel.sharedZone(index) : null}
         {landing?.spot === spot && landing.index === index ? <LandingBurst key={landing.key} tone={landing.tone} flies={landing.flies} /> : null}
       </div>
     )
@@ -1046,15 +1067,19 @@ export function PracticeMat({
         <span className="whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted" aria-label={t('practice.mat.turn', { turn: state.turn })}>
           {t('practice.mat.turn', { turn: state.turn })}
         </span>
-        <IconButton tone="flat" size="sm" aria-label={t('practice.mat.newHand')} title={t('practice.mat.newHand')} className="ml-auto" onClick={onNewHand}>
-          <Icon name="refresh" />
-        </IconButton>
-        <IconButton tone="flat" size="sm" aria-label={t('practice.mat.undo')} title={t('practice.mat.undo')} disabled={session.cursor === 0} className="disabled:opacity-35" onClick={() => { setAutoplay(false); onUndo() }}>
+        {duel ? null : (
+          <IconButton tone="flat" size="sm" aria-label={t('practice.mat.newHand')} title={t('practice.mat.newHand')} className="ml-auto" onClick={onNewHand}>
+            <Icon name="refresh" />
+          </IconButton>
+        )}
+        <IconButton tone="flat" size="sm" aria-label={t('practice.mat.undo')} title={t('practice.mat.undo')} disabled={session.cursor === 0} className={cx('disabled:opacity-35', duel && 'ml-auto')} onClick={() => { setAutoplay(false); onUndo() }}>
           <Icon name="undo" />
         </IconButton>
-        <IconButton tone="flat" size="sm" aria-label={t('practice.mat.saveCombo')} title={t('practice.mat.saveCombo')} disabled={session.cursor === 0} className="disabled:opacity-35" onClick={() => setSaving(true)}>
-          <Icon name="save" />
-        </IconButton>
+        {duel ? null : (
+          <IconButton tone="flat" size="sm" aria-label={t('practice.mat.saveCombo')} title={t('practice.mat.saveCombo')} disabled={session.cursor === 0} className="disabled:opacity-35" onClick={() => setSaving(true)}>
+            <Icon name="save" />
+          </IconButton>
+        )}
         {/* Ficha: se toca para elegir la posición (y la zona) o se arrastra a una zona de monstruo. */}
         <IconButton
           tone="flat"
@@ -1074,16 +1099,19 @@ export function PracticeMat({
       </div>
 
       <div className="col-start-1 row-start-2 flex min-h-0 flex-col gap-2 overflow-y-auto overflow-x-hidden px-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] min-[1101px]:px-4 min-[1101px]:pb-4 min-[1101px]:pt-2">
+        {duel?.header}
         {/* El campo en todos los tamaños: a la izquierda la zona de campo y el Extra Deck; a la derecha, de arriba abajo, destierro, cementerio y deck (como pidió Gastón: el Banish arriba del GY); las fases y las zonas extra entre medio.
             Las cinco columnas del centro son cuadradas (una carta acostada entra en su zona sin pisar a la vecina) y las de los costados miden lo justo de una carta (0,6857 de una del centro), así que todas las cartas miden lo mismo. */}
         <div
           ref={fieldRef}
           // `my-auto`: el aire que sobra se reparte arriba y abajo del campo (ni pegado a la barra ni un hueco antes de la mano).
-          className="relative my-auto grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,5.485rem)_repeat(5,minmax(0,8rem))_minmax(0,5.485rem)]"
+          className="relative my-auto grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]"
           aria-label={t('practice.mat.field')}
+          // En un duelo, las áreas de los dos campos (el estilo en línea gana a la clase de las áreas de uno solo); y en escritorio las cartas se achican hasta que las cinco filas y la mano entran en la pantalla.
+          style={duel ? ({ gridTemplateAreas: duel.areas, '--cell': 'max(3.5rem, min(8rem, calc((100dvh - 30rem) / 5.2)))' } as CSSProperties) : undefined}
         >
           {/* La mascota del duelo, una sola: en escritorio, en la esquina libre de arriba a la izquierda del campo; en el celular, parada sobre esa esquina, detrás de lo demás. */}
-          <DuelMascot className="absolute bottom-full left-0 -z-10 mb-1 size-[4.5rem] min-[1101px]:static min-[1101px]:z-0 min-[1101px]:mb-0 min-[1101px]:size-[5.25rem] min-[1101px]:self-end min-[1101px]:justify-self-center min-[1101px]:[grid-area:1/1]" />
+          {duel ? duel.opponent : <DuelMascot className="absolute bottom-full left-0 -z-10 mb-1 size-[4.5rem] min-[1101px]:static min-[1101px]:z-0 min-[1101px]:mb-0 min-[1101px]:size-[5.25rem] min-[1101px]:self-end min-[1101px]:justify-self-center min-[1101px]:[grid-area:1/1]" />}
           {cell('field', 0, 'fld')}
           {cell('emz', 0, 'emz1')}
           {cell('emz', 1, 'emz2')}
@@ -1328,7 +1356,7 @@ function activate(event: ReactKeyboardEvent<HTMLElement>, run: () => void) {
 }
 
 /** Cantidad grande en el centro de la pila, como en la mesa real, y el nombre de la casilla chico debajo. */
-function PileBadge({ label, count }: { label: string; count: number }) {
+export function PileBadge({ label, count }: { label: string; count: number }) {
   return (
     <span className="pointer-events-none absolute inset-0 z-2 grid place-content-center justify-items-center text-center leading-none">
       <span className={cx('rounded-full px-1.5 py-0.5 text-body font-extrabold tabular-nums text-foreground min-[1101px]:text-lead', count > 0 && 'bg-background/70')}>{count}</span>

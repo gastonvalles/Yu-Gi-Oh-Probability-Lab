@@ -49,6 +49,15 @@ describe('el menú de la app', () => {
     expect(buildAppNavGroups(STEPS, { practice: false })[1]?.items.map((item) => item.key)).toEqual(['life', 'mascots'])
   })
 
+  it('el duelo con un amigo es una pantalla del flujo (#duel) que el menú ofrece sólo donde hay un relay', () => {
+    expect(isDeckWorkflowStepKey('duel')).toBe(true)
+    // Sin relay (o sin decirlo) el menú no lo ofrece: es como estaba antes.
+    expect(GROUPS[1]?.items.map((item) => item.key)).toEqual(['practice', 'life', 'mascots'])
+    expect(buildAppNavGroups(STEPS, { practice: true, duel: true })[1]?.items.map((item) => item.key)).toEqual(['practice', 'duel', 'life', 'mascots'])
+    // Es una herramienta que se juega aunque todavía no haya un deck armado (quien llega por el enlace lo ve y se le avisa).
+    expect(buildAppNavGroups(STEPS, { practice: false, duel: true })[1]?.items.map((item) => item.key)).toEqual(['duel', 'life', 'mascots'])
+  })
+
   it('las mascotas son una herramienta más del menú, con su patita, y no hay un botón suelto de mascotas abajo', () => {
     const mascots = GROUPS[1]?.items.find((item) => item.key === 'mascots')
 

@@ -37,6 +37,9 @@ export interface DuelSnapshot {
   incompatible: boolean
   /** Mi mesa, o null hasta `start`. */
   mine: MatState | null
+  /** La mesa con la que arranqué y mis jugadas hasta ahora (de acá sale la lista de pasos). */
+  initial: MatState | null
+  actions: readonly MatAction[]
   /** Cuántas jugadas llevo (para saber si hay algo que deshacer). */
   moves: number
   /** La mesa del rival con ids opacos y lo que ya me mostró, o null hasta que me llegue. */
@@ -103,7 +106,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   const listeners = new Set<() => void>()
   let snapshot: DuelSnapshot
 
-  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent, peerName, incompatible, mine, moves: actions.length, theirs, life })
+  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent, peerName, incompatible, mine, initial, actions, moves: actions.length, theirs, life })
 
   const emit = () => {
     snapshot = build()

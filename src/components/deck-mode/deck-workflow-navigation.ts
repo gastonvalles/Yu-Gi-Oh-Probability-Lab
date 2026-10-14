@@ -3,7 +3,7 @@ import { t } from '../../i18n'
 import type { NavGroup, NavItem, NavTone } from '../shell/nav-model'
 import type { IconName } from '../ui/Icon'
 
-export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'practice' | 'meta' | 'tournaments' | 'replays' | 'expansions' | 'banlists'
+export type DeckWorkflowStepKey = 'deck-builder' | 'categorization' | 'probability-lab' | 'export' | 'workspace' | 'practice' | 'duel' | 'meta' | 'tournaments' | 'replays' | 'expansions' | 'banlists'
 
 export interface DeckModeNavigationItem {
   key: DeckWorkflowStepKey
@@ -34,6 +34,7 @@ const WORKFLOW_STEP_KEYS: readonly DeckWorkflowStepKey[] = [
   'workspace',
   'export',
   'practice',
+  'duel',
   'meta',
   'tournaments',
   'replays',
@@ -183,6 +184,8 @@ export function buildDeckWorkflowNavigationItems({
 /** Qué herramientas se pueden usar ahora: la práctica (una pantalla entera) necesita cartas en el Main. */
 interface AppNavTools {
   practice: boolean
+  /** El duelo por enlace sólo se ofrece donde hay un relay al que conectarse. */
+  duel?: boolean
 }
 
 /** El menú de la app: los pasos del deck, las herramientas (la práctica es una pantalla; la calculadora y las mascotas abren un panel) y la referencia del meta. Lo ven el menú lateral y el cajón del celular. */
@@ -196,6 +199,7 @@ export function buildAppNavGroups(steps: DeckModeNavigationItem[], tools: AppNav
       label: t('shell.nav.group.tools'),
       items: [
         ...(tools.practice ? [{ key: 'practice', label: t('shell.practice.title'), title: t('shell.practice.title'), icon: 'hand' as const }] : []),
+        ...(tools.duel ? [{ key: 'duel', label: t('duel.nav.title'), title: t('duel.nav.title'), icon: 'link' as const }] : []),
         { key: 'life', label: t('shell.life.title'), title: t('shell.life.title'), icon: 'heart' as const },
         { key: 'mascots', label: t('shell.mascot.title'), title: t('shell.mascot.title'), icon: 'paw' as const },
       ],

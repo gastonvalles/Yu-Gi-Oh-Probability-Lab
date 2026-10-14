@@ -10,6 +10,7 @@ import { AssetsSection } from './sections/AssetsSection'
 import { ButtonsSection } from './sections/ButtonsSection'
 import { DataSection } from './sections/DataSection'
 import { DialogsSection } from './sections/DialogsSection'
+import { DuelSection } from './sections/DuelSection'
 import { IconsSection } from './sections/IconsSection'
 import { NavigationSection } from './sections/NavigationSection'
 import { SurfacesSection } from './sections/SurfacesSection'
@@ -32,6 +33,7 @@ const SECTIONS: PlaygroundSection[] = [
   { id: 'superficies', title: 'Tarjetas, avisos y campos', icon: 'layers', description: 'Card, Callout, EmptyState, Skeleton y los campos de texto.', Component: SurfacesSection },
   { id: 'datos', title: 'Datos', icon: 'chart', description: 'Anillos de progreso y repartidos, y la explicación a pedido.', Component: DataSection },
   { id: 'dialogos', title: 'Diálogos y avisos', icon: 'info', description: 'Modal en todos sus tamaños y los avisos (toast).', Component: DialogsSection },
+  { id: 'duelo', title: 'Duelo por enlace', icon: 'layers', description: 'Los dos campos del duelo: tres formas de verlos en el celular.', Component: DuelSection },
   { id: 'iconos', title: 'Íconos', icon: 'sparkles', description: 'Todo el set, en sus tres variantes.', Component: IconsSection },
   { id: 'assets', title: 'Assets', icon: 'image', description: 'Los archivos de public/, la marca, las fuentes y las imágenes de cartas.', Component: AssetsSection },
   { id: 'tokens', title: 'Tokens del diseño', icon: 'sliders', description: 'Colores, radios, sombras y tipografías, leídos de index.css.', Component: TokensSection },
