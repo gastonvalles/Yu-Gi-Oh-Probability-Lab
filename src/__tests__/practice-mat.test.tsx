@@ -182,6 +182,73 @@ describe('la mesa de práctica', () => {
     expect(screen.getByRole('button', { name: 'Main: 0' })).toBeInTheDocument()
   })
 
+  it('en el celular las fases van abajo, en la barra de pasos, en lugar de Anterior y Siguiente (ya están Deshacer arriba y la lista de pasos); el campo no las lleva', () => {
+    render(<Harness />)
+
+    const phases = screen.getByRole('group', { name: 'Fases' })
+
+    expect(within(screen.getByLabelText('Campo')).queryByRole('button', { name: 'Battle Phase' })).not.toBeInTheDocument()
+    expect(within(phases).getAllByRole('button')).toHaveLength(6)
+    expect(within(phases).getByRole('button', { name: 'Draw Phase' })).toHaveAttribute('aria-pressed', 'true')
+
+    fireEvent.click(within(phases).getByRole('button', { name: 'Battle Phase' }))
+    expect(within(status()).getByText('Pasás a la Battle Phase')).toBeInTheDocument()
+    // En vivo no hay Anterior ni Siguiente: se vuelve con Deshacer, arriba.
+    expect(screen.queryByRole('button', { name: 'Anterior' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Siguiente' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
+    expect(within(status()).queryByText('1/1')).not.toBeInTheDocument()
+  })
+
+  it('en escritorio las fases siguen entre las zonas del campo', () => {
+    const matchMedia = window.matchMedia
+    window.matchMedia = ((query: string) => ({ ...matchMedia(query), matches: query.includes('1101') })) as typeof window.matchMedia
+
+    try {
+      render(<Harness />)
+
+      expect(within(screen.getByLabelText('Campo')).getAllByRole('button', { name: /Phase( \d)?$/ })).toHaveLength(6)
+      expect(screen.getAllByRole('group', { name: 'Fases' })).toHaveLength(1)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Battle Phase' }))
+      expect(screen.getByRole('button', { name: 'Battle Phase' })).toHaveAttribute('aria-pressed', 'true')
+    } finally {
+      window.matchMedia = matchMedia
+    }
+  })
+
+  it('la lista de pasos no repite nada: los cambios de fase hacen de separador y abajo no sobran ni Anterior / Siguiente ni el contador ni la frase en escritorio (ahí está el panel)', () => {
+    render(<Harness />)
+
+    tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Battle Phase' }))
+
+    const list = within(screen.getByRole('complementary', { name: 'Pasos y combos' })).getByRole('list', { name: 'Jugadas' })
+    const rows = within(list).getAllByRole('button')
+
+    // De la última a la primera, con la frase de siempre (sin insignias ni encabezados que la repitan); el cambio de fase es el separador.
+    expect(rows.map((row) => row.textContent)).toEqual(['2Pasás a la Battle Phase', '1Invocación Normal de Ash Blossom', '0Mano inicial'])
+    expect(rows.map((row) => row.getAttribute('data-divider'))).toEqual(['true', 'false', 'false'])
+
+    // Abajo: sin Anterior / Siguiente; en vivo el contador y, en escritorio, la frase quedan sólo para el lector de pantalla.
+    expect(screen.queryByRole('button', { name: 'Anterior' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Siguiente' })).not.toBeInTheDocument()
+    expect(within(status()).getByText('2/2')).toHaveClass('sr-only')
+    expect(within(status()).getByText('Pasás a la Battle Phase')).toHaveClass('min-[1101px]:sr-only')
+  })
+
+  it('el turno va arriba a la izquierda y los botones de la mesa, a la derecha', () => {
+    render(<Harness />)
+
+    const toolbar = screen.getByRole('toolbar', { name: 'Mesa' })
+
+    expect(toolbar.firstElementChild).toBe(screen.getByLabelText('Turno 1'))
+    expect(screen.getByRole('button', { name: 'Nueva mano' })).toHaveClass('ml-auto')
+  })
+
   it('arrastrar una carta al cementerio la manda ahí; tocar el deck ofrece robar', () => {
     render(<Harness />)
 

@@ -53,7 +53,6 @@ export const shell: Translated<typeof es> = {
   'shell.step.banlists.title': 'Historical banlists',
   'shell.step.banlists.detail': 'The TCG and OCG Forbidden & Limited lists, one by one.',
 
-  'shell.practice.open': 'Open practice',
   'shell.practice.title': 'Practice',
 
   'shell.mascot.title': 'Mascots',
@@ -129,7 +128,6 @@ export const shell: Translated<typeof es> = {
   'shell.life.cue.ten': '10 minutes left in the round',
   'shell.life.cue.five': '5 minutes left in the round',
   'shell.life.cue.timeUp': "Time's up for the round",
-  'shell.life.fab.open': 'Open the LP calculator',
   'shell.life.fab.running': 'LP calculator. {countdown} left in the round',
 
   'shell.error.title': 'Something went wrong',

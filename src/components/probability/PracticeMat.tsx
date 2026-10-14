@@ -33,6 +33,7 @@ import {
 import { mergeHandOrder } from '../../app/practice-hand-layout'
 import { createSavedCombo, readSavedCombos, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
 import { UI_ANIMATION_MS, supportsAdditiveAnimation } from '../../app/motion'
+import { matStepCards } from '../../app/mat-steps'
 import { useCardFlights } from '../../app/use-card-flights'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
@@ -44,6 +45,7 @@ import type { ApiCardReference, PatternKind } from '../../types'
 import { fetchCardsByIds } from '../../ygoprodeck'
 import { CardArt } from '../CardArt'
 import { CardDetailOverlay } from '../card-detail/CardDetailOverlay'
+import { DuelMascot } from '../mascot/Mascot'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
@@ -53,7 +55,7 @@ import { CardBack, CardMenu, PILE_TITLES, PileViewer, SaveComboDialog, type Menu
 import { FX_CARD, FxFrame, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, TargetMark, fxVars } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
-import { PracticeMatPanel } from './PracticeMatPanel'
+import { PracticeMatPanel, type PanelStep } from './PracticeMatPanel'
 import { ReplayBar, type ReplayMark, type ReplaySpeed } from './ReplayBar'
 import { CARD_BACK, CARD_BACK_URL, PRACTICE_PALETTE } from './practice-styles'
 
@@ -267,6 +269,21 @@ export function PracticeMat({
   const nameOf = useCallback((id: string) => cardOf(id).name, [cardOf])
   const kindOf = useCallback((id: string) => (isToken(id) ? TOKEN_KIND : cardKindOf(cardOf(id).apiCard)), [cardOf])
   const steps = useMemo(() => describeMatSteps(session.initial, session.actions, nameOf), [session.initial, session.actions, nameOf])
+  // La lista de pasos: la frase de cada jugada, las miniaturas de las cartas que mueve (hasta tres, las que tienen imagen) y si es un cambio de fase.
+  const stepCards = useMemo(() => matStepCards(session.initial, session.actions), [session.initial, session.actions])
+  const panelSteps = useMemo<PanelStep[]>(
+    () =>
+      steps.map((label, index) => ({
+        label,
+        divider: session.actions[index]?.type === 'phase',
+        cards: (stepCards[index] ?? []).slice(0, 3).flatMap((id) => {
+          const art = artOf(cardOf(id))
+
+          return art ? [{ name: cardOf(id).name, art }] : []
+        }),
+      })),
+    [steps, stepCards, session.actions, cardOf],
+  )
   const live = session.cursor === session.actions.length
 
   const [menu, setMenu] = useState<
@@ -848,7 +865,7 @@ export function PracticeMat({
   const loadFromPanel = useCallback((combo: SavedCombo) => { onLoadCombo(combo); setAutoplay(true); setPanelOpen(false) }, [onLoadCombo])
   const panel = (
     <PracticeMatPanel
-      steps={steps}
+      steps={panelSteps}
       cursor={session.cursor}
       onSeek={seekFromPanel}
       combos={combos}
@@ -1026,9 +1043,12 @@ export function PracticeMat({
         PRACTICE_PALETTE,
       )}
     >
-      {/* Barra: nueva mano, deshacer, guardar, ficha y (en el celu) el panel. Deja lugar a la X del modal. */}
-      <div className="col-start-1 row-start-1 flex items-center gap-1 px-2 pr-14 pt-2 min-[1101px]:px-4 min-[1101px]:pt-3" role="toolbar" aria-label={t('practice.mat.name')}>
-        <IconButton tone="flat" size="sm" aria-label={t('practice.mat.newHand')} title={t('practice.mat.newHand')} onClick={onNewHand}>
+      {/* Barra: el turno a la izquierda y, a la derecha, nueva mano, deshacer, guardar, ficha y (en el celu) el panel. */}
+      <div className="col-start-1 row-start-1 flex items-center gap-1 px-2 pt-2 min-[1101px]:px-4 min-[1101px]:pt-3" role="toolbar" aria-label={t('practice.mat.name')}>
+        <span className="whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted" aria-label={t('practice.mat.turn', { turn: state.turn })}>
+          {t('practice.mat.turn', { turn: state.turn })}
+        </span>
+        <IconButton tone="flat" size="sm" aria-label={t('practice.mat.newHand')} title={t('practice.mat.newHand')} className="ml-auto" onClick={onNewHand}>
           <Icon name="refresh" />
         </IconButton>
         <IconButton tone="flat" size="sm" aria-label={t('practice.mat.undo')} title={t('practice.mat.undo')} disabled={session.cursor === 0} className="disabled:opacity-35" onClick={() => { setAutoplay(false); onUndo() }}>
@@ -1053,9 +1073,6 @@ export function PracticeMat({
         <IconButton tone="flat" size="sm" aria-label={t('practice.mat.stepsAndCombos')} title={t('practice.mat.stepsAndCombos')} className="min-[1101px]:hidden" onClick={() => setPanelOpen(true)}>
           <Icon name="list" />
         </IconButton>
-        <span className="ml-auto whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted" aria-label={t('practice.mat.turn', { turn: state.turn })}>
-          {t('practice.mat.turn', { turn: state.turn })}
-        </span>
       </div>
 
       <div className="col-start-1 row-start-2 flex min-h-0 flex-col gap-2 overflow-y-auto overflow-x-hidden px-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] min-[1101px]:px-4 min-[1101px]:pb-4 min-[1101px]:pt-2">
@@ -1067,17 +1084,21 @@ export function PracticeMat({
           className="relative my-auto grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,5.485rem)_repeat(5,minmax(0,8rem))_minmax(0,5.485rem)]"
           aria-label={t('practice.mat.field')}
         >
+          {/* La mascota del duelo, una sola: en escritorio, en la esquina libre de arriba a la izquierda del campo; en el celular, parada sobre esa esquina, detrás de lo demás. */}
+          <DuelMascot className="absolute bottom-full left-0 -z-10 mb-1 size-[4.5rem] min-[1101px]:static min-[1101px]:z-0 min-[1101px]:mb-0 min-[1101px]:size-[5.25rem] min-[1101px]:self-end min-[1101px]:justify-self-center min-[1101px]:[grid-area:1/1]" />
           {cell('field', 0, 'fld')}
           {cell('emz', 0, 'emz1')}
           {cell('emz', 1, 'emz2')}
-          {/* Las seis fases, de a dos entre las zonas, como en DuelingBook: la actual encendida; tocar otra cambia de fase. */}
-          {[0, 2, 4].map((start, index) => (
-            <div key={start} role="group" aria-label={index === 0 ? t('practice.mat.phases') : undefined} className="grid grid-cols-2 gap-0.5 self-center min-[1101px]:gap-1" style={{ gridArea: `p${index + 1}` }}>
-              {PHASES.slice(start, start + 2).map((phase) => (
-                <PhaseButton key={phase.id} short={phase.short} name={phase.name} active={state.phase === phase.id} onPick={() => play({ type: 'phase', phase: phase.id })} />
-              ))}
-            </div>
-          ))}
+          {/* Las seis fases, de a dos entre las zonas, como en DuelingBook: la actual encendida; tocar otra cambia de fase. En el celular van abajo, en la barra de pasos. */}
+          {isDesktop
+            ? [0, 2, 4].map((start, index) => (
+                <div key={start} role="group" aria-label={index === 0 ? t('practice.mat.phases') : undefined} className="grid grid-cols-2 gap-0.5 self-center min-[1101px]:gap-1" style={{ gridArea: `p${index + 1}` }}>
+                  {PHASES.slice(start, start + 2).map((phase) => (
+                    <PhaseButton key={phase.id} short={phase.short} name={phase.name} active={state.phase === phase.id} onPick={() => play({ type: 'phase', phase: phase.id })} />
+                  ))}
+                </div>
+              ))
+            : null}
           {state.mz.map((_, index) => cell('mz', index, `m${index + 1}`))}
           {state.st.map((_, index) => cell('st', index, `s${index + 1}`))}
 
@@ -1114,10 +1135,11 @@ export function PracticeMat({
           {banner ? <PhaseBanner key={banner.key} phase={banner.phase} turn={banner.turn} className="absolute inset-0 z-30" /> : null}
         </div>
 
-        {/* Abajo del todo, como en la mesa real: la mano en abanico. Las salidas y problemas van entre el campo y la mano en el celu, y en el panel lateral en escritorio. */}
-        {footer && isDealt && !isDesktop ? <div className="px-1 animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
+        {/* Abajo del todo, como en la mesa real: la mano en abanico. Las salidas y problemas flotan sobre la mano en el celu, y van en el panel lateral en escritorio. */}
         {/* Cuando la mano recibe una carta (robada, buscada o devuelta), se enmarca un instante en celeste. */}
         <div className="relative">
+          {/* Celular: las salidas y problemas flotan justo arriba de la mano (el aire que queda abajo del campo): no ocupan lugar, así que el campo no se mueve cuando aparecen, se explican o se van. Sólo los chips y la explicación atajan toques. */}
+          {footer && isDealt && !isDesktop ? <div className="pointer-events-none absolute inset-x-0 bottom-full z-10 px-1 pb-1.5 animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
           <PracticeHand
             cards={handCards}
             sizeSlots={Math.max(session.initial.hand.length, 1)}
@@ -1171,47 +1193,49 @@ export function PracticeMat({
           />
         ) : null}
 
-        {/* Pasos: en vivo muestra la última jugada; con jugadas, se recorre con Anterior / Siguiente. Eligiendo, pide lo que falta. */}
-        <div className="flex min-h-9 flex-wrap items-center gap-x-2 gap-y-1 px-1 text-micro text-muted" role="status" aria-label={t('practice.mat.currentStep')}>
-          {pickingText ? (
-            <>
-              <span className="min-w-0 flex-1 truncate font-semibold text-accent">{pickingText}</span>
-              {picking?.kind === 'materials' ? (
-                <Button variant="primary" size="sm" className="min-h-8 px-3" disabled={picking.chosen.length === 0} onClick={confirmMaterials}>
-                  {t('practice.mat.confirm')}
-                </Button>
-              ) : null}
-              <Button variant="tertiary" size="sm" className="min-h-8 px-2" onClick={() => setPicking(null)}>
-                {t('common.cancel')}
-              </Button>
-            </>
+        {/* Abajo: en el celular las seis fases (Deshacer está arriba y los pasos en la lista, así que Anterior / Siguiente en vivo sobran) y, al lado, la última jugada. En escritorio, sólo los pasos: las fases están entre las zonas.
+            Eligiendo (Sacrificios, materiales) las fases se van para que entre lo que hay que tocar: la barra no cambia de alto, el campo no se mueve. */}
+        <div className="flex items-center gap-2">
+          {!isDesktop && !picking ? (
+            <div role="group" aria-label={t('practice.mat.phases')} className="grid w-[13.5rem] flex-none grid-cols-6 gap-1">
+              {PHASES.map((phase) => (
+                <PhaseButton key={phase.id} short={phase.short} name={phase.name} active={state.phase === phase.id} onPick={() => play({ type: 'phase', phase: phase.id })} />
+              ))}
+            </div>
           ) : null}
-          {!picking && session.actions.length > 0 ? (
-            <>
-              {/* En vivo, Anterior y Siguiente; viendo un combo, esos botones están en los controles del replay de arriba. */}
-              {session.replay ? null : (
-                <Button variant="tertiary" size="sm" className="min-h-8 px-2" disabled={session.cursor === 0} onClick={() => { setAutoplay(false); onSeek(session.cursor - 1) }}>
-                  {t('practice.mat.previous')}
+          {/* Pasos: en vivo muestra la última jugada (en escritorio, con Anterior / Siguiente). Eligiendo, pide lo que falta. */}
+          <div className="flex min-h-9 min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 px-1 text-micro text-muted" role="status" aria-label={t('practice.mat.currentStep')}>
+            {pickingText ? (
+              <>
+                <span className="min-w-0 flex-1 truncate font-semibold text-accent">{pickingText}</span>
+                {picking?.kind === 'materials' ? (
+                  <Button variant="primary" size="sm" className="min-h-8 px-3" disabled={picking.chosen.length === 0} onClick={confirmMaterials}>
+                    {t('practice.mat.confirm')}
+                  </Button>
+                ) : null}
+                <Button variant="tertiary" size="sm" className="min-h-8 px-2" onClick={() => setPicking(null)}>
+                  {t('common.cancel')}
                 </Button>
-              )}
-              <span className="font-semibold tabular-nums text-foreground">
-                {session.cursor}/{session.actions.length}
-              </span>
-              {session.replay ? null : (
-                <Button variant="tertiary" size="sm" className="min-h-8 px-2" disabled={live} onClick={() => { setAutoplay(false); onSeek(session.cursor + 1) }}>
-                  {t('practice.mat.next')}
-                </Button>
-              )}
-            </>
-          ) : null}
-          {!picking ? (
-            <span className="min-w-0 flex-1 truncate">{session.cursor === 0 ? (session.actions.length > 0 ? t('practice.mat.startingHand') : t('practice.mat.hint')) : steps[session.cursor - 1]}</span>
-          ) : null}
+              </>
+            ) : null}
+            {!picking && session.actions.length > 0 ? (
+              <>
+                {/* Sin Anterior / Siguiente: Deshacer está arriba, la lista de pasos lleva a cualquier jugada y, viendo un combo, los controles del replay también. El contador sólo viendo un combo (en vivo la lista ya numera cada jugada); para el lector de pantalla sigue en el estado. */}
+                <span className={cx('font-semibold tabular-nums text-foreground', !session.replay && 'sr-only')}>
+                  {session.cursor}/{session.actions.length}
+                </span>
+              </>
+            ) : null}
+            {!picking ? (
+              // En escritorio el panel de pasos (siempre a la vista) ya cuenta la jugada, o explica qué hacer si todavía no hay ninguna: la frase sigue en el estado, pero sólo para el lector de pantalla.
+              <span className="min-w-0 flex-1 truncate min-[1101px]:sr-only">{session.cursor === 0 ? (session.actions.length > 0 ? t('practice.mat.startingHand') : t('practice.mat.hint')) : steps[session.cursor - 1]}</span>
+            ) : null}
+          </div>
         </div>
       </div>
 
-      {/* Panel lateral (escritorio): arriba los pasos y combos (debajo de la X del modal) y abajo, a la altura de la mano, las salidas y problemas; la explicación del chip tocado crece hacia arriba sobre la lista. El detalle de una carta se abre desde su menú. */}
-      <aside className="hidden min-h-0 border-l border-border-subtle px-3 pb-3 pt-18 min-[1101px]:col-start-2 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col min-[1101px]:gap-3" aria-label={t('practice.mat.stepsAndCombos')}>
+      {/* Panel lateral (escritorio): arriba los pasos y combos y abajo, a la altura de la mano, las salidas y problemas; la explicación del chip tocado crece hacia arriba sobre la lista. El detalle de una carta se abre desde su menú. */}
+      <aside className="hidden min-h-0 border-l border-border-subtle px-3 pb-3 pt-3 min-[1101px]:col-start-2 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col min-[1101px]:gap-3" aria-label={t('practice.mat.stepsAndCombos')}>
         {panel}
         {footer && isDealt && isDesktop ? <div className="flex-none animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
       </aside>

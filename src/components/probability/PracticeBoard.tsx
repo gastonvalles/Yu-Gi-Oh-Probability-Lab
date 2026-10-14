@@ -12,7 +12,7 @@ import { RULE_COLOR } from './practice-styles'
  * a la izquierda en el panel de escritorio). Gastón los quiere chicos, como los de la práctica original.
  */
 const RULE_BUTTON =
-  'min-h-8 max-w-full rounded-full border border-[color-mix(in_srgb,var(--rule-color)_55%,transparent)] bg-[color-mix(in_srgb,var(--rule-color)_12%,transparent)] px-3 text-left text-micro font-semibold text-foreground transition-[background,box-shadow,transform] duration-150 [overflow-wrap:anywhere] [-webkit-tap-highlight-color:transparent] animate-rule-in active:scale-[0.96] aria-pressed:bg-[color-mix(in_srgb,var(--rule-color)_32%,transparent)] aria-pressed:shadow-[0_0_14px_color-mix(in_srgb,var(--rule-color)_45%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-hover motion-reduce:animate-none motion-reduce:transition-none'
+  'pointer-events-auto min-h-8 max-w-full rounded-full border border-[color-mix(in_srgb,var(--rule-color)_55%,transparent)] bg-[color-mix(in_srgb,var(--rule-color)_12%,transparent)] px-3 text-left text-micro font-semibold text-foreground transition-[background,box-shadow,transform] duration-150 [overflow-wrap:anywhere] [-webkit-tap-highlight-color:transparent] animate-rule-in active:scale-[0.96] aria-pressed:bg-[color-mix(in_srgb,var(--rule-color)_32%,transparent)] aria-pressed:shadow-[0_0_14px_color-mix(in_srgb,var(--rule-color)_45%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-hover motion-reduce:animate-none motion-reduce:transition-none'
 const RULE_ITEM = 'min-w-0'
 const EXPLAIN_TEXT = 'm-0 text-micro text-white/92 [overflow-wrap:anywhere]'
 const ODDS_TEXT = 'm-0 col-span-full text-micro text-white/62 [overflow-wrap:anywhere]'
@@ -70,25 +70,28 @@ export function PracticeBoard({ openings, problems, activeId, caseIndex, unplaya
   }, [activeId, onDismiss])
 
   // La explicación va ARRIBA de los chips: los chips quedan abajo, junto a la mano (que no se mueve), y la
-  // explicación crece hacia arriba (en escritorio le saca lugar a la lista de pasos, no a ningún control).
+  // explicación crece hacia arriba (en escritorio le saca lugar a la lista de pasos; en el celular flota, sin sacarle lugar a nada).
   return (
-    <div ref={ref} className="grid gap-1.5">
-      {activeId === UNPLAYABLE_ID && unplayable ? (
-        <section className={explainStyle('problem')} aria-live="polite" aria-label={t('practice.board.unplayable')}>
-          <p className={EXPLAIN_TEXT}>{t('practice.board.unplayableWhy')}</p>
-          {unplayableOdds !== null && unplayableOdds > 0 ? <p className={ODDS_TEXT}>{formatOdds(unplayableOdds)}</p> : null}
-          {nearMisses.length > 0 ? (
-            <ul aria-label={t('practice.board.missing')} className="m-0 col-span-full grid list-none gap-0.5 p-0 text-micro text-white/85">
-              {nearMisses.map((miss) => (
-                <li key={miss.name} className="[overflow-wrap:anywhere]">
-                  <strong className="font-semibold">{miss.name}:</strong> {miss.notes.join(' ')}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </section>
-      ) : null}
-      {active ? <RuleExplanation key={active.patternId} match={active} caseIndex={caseIndex} odds={ruleOdds?.get(active.patternId) ?? null} /> : null}
+    <div ref={ref} className="grid gap-1.5 max-[1100px]:relative">
+      {/* En el celular la explicación flota sobre los chips (en el aire que queda entre el campo y ellos): no ocupa lugar, así el campo no se corre al tocar un chip. */}
+      <div className="grid gap-1.5 empty:hidden max-[1100px]:absolute max-[1100px]:inset-x-0 max-[1100px]:bottom-full max-[1100px]:z-10 max-[1100px]:mb-1.5">
+        {activeId === UNPLAYABLE_ID && unplayable ? (
+          <section className={explainStyle('problem')} aria-live="polite" aria-label={t('practice.board.unplayable')}>
+            <p className={EXPLAIN_TEXT}>{t('practice.board.unplayableWhy')}</p>
+            {unplayableOdds !== null && unplayableOdds > 0 ? <p className={ODDS_TEXT}>{formatOdds(unplayableOdds)}</p> : null}
+            {nearMisses.length > 0 ? (
+              <ul aria-label={t('practice.board.missing')} className="m-0 col-span-full grid list-none gap-0.5 p-0 text-micro text-white/85">
+                {nearMisses.map((miss) => (
+                  <li key={miss.name} className="[overflow-wrap:anywhere]">
+                    <strong className="font-semibold">{miss.name}:</strong> {miss.notes.join(' ')}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </section>
+        ) : null}
+        {active ? <RuleExplanation key={active.patternId} match={active} caseIndex={caseIndex} odds={ruleOdds?.get(active.patternId) ?? null} /> : null}
+      </div>
       <div className="flex flex-wrap items-center gap-1.5 [&>ul]:contents max-[1100px]:justify-center">
         <RuleGroup kind="opening" matches={openings} activeId={activeId} onToggle={onToggle} />
         <RuleGroup kind="problem" matches={problems} activeId={activeId} unplayable={unplayable} onToggle={onToggle} />
@@ -133,7 +136,7 @@ function RuleExplanation({ match, caseIndex, odds }: { match: PracticeHandMatch;
 /** Explicación de la salida/problema tocado, arriba de los chips. */
 function explainStyle(kind: PatternKind): string {
   return cx(
-    'grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1.5 rounded-card bg-[color-mix(in_srgb,var(--rule-color)_16%,var(--card-background))] px-3 py-2 text-white animate-sheet-in motion-reduce:animate-none',
+    'pointer-events-auto grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1.5 rounded-card bg-[color-mix(in_srgb,var(--rule-color)_16%,var(--card-background))] px-3 py-2 text-white animate-sheet-in motion-reduce:animate-none',
     RULE_COLOR[kind],
   )
 }

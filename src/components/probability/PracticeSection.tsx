@@ -55,7 +55,8 @@ function getBlockedMessage(props: PracticeSectionProps): string | null {
 /**
  * La práctica: la mesa con la mano ya robada y, debajo de la mano, las salidas y problemas de la mano
  * inicial (la mano con la que se abrió, más la carta robada si se fue 2º). El veredicto no se muestra
- * (Gastón lo consideró innecesario): sólo guía a la mascota y al chip "Mano no jugable".
+ * (Gastón lo consideró innecesario): sólo guía a la mascota y al chip "Mano no jugable". Los chips están
+ * mientras se mira la mano de apertura: con la primera jugada desaparecen (y vuelven si se deshace).
  */
 export function PracticeSection(props: PracticeSectionProps) {
   const { handSize, derivedMainCards, patterns, session } = props
@@ -67,6 +68,8 @@ export function PracticeSection(props: PracticeSectionProps) {
   // Sólo importa si se fue 2º (no las jugadas): así cada jugada no vuelve a evaluar la mano.
   const first = session.actions[0]
   const drewSecond = first?.type === 'draw' && first.count === 1 && session.cursor >= 1
+  // Con la primera jugada (robar la carta de ir 2º no cuenta) ya no se evalúa la mano de apertura: las salidas y problemas, y lo que marcan en la mano, dejan de mostrarse.
+  const started = session.cursor > (drewSecond ? 1 : 0)
   const openingHand = useMemo<PracticeHandCard[]>(() => {
     const byDrawId = new Map(deck.map((card) => [card.drawId, card]))
     const byCardId = new Map(deck.map((card) => [card.cardId, card]))
@@ -214,10 +217,10 @@ export function PracticeSection(props: PracticeSectionProps) {
       onSeek={props.onSeek}
       onLoadCombo={props.onLoadCombo}
       onNewHand={props.onNewHand}
-      footer={footer}
-      highlighted={highlighted}
-      highlightKind={activeMatch?.kind ?? null}
-      muted={isUnplayable}
+      footer={started ? null : footer}
+      highlighted={started ? EMPTY_IDS : highlighted}
+      highlightKind={started ? null : (activeMatch?.kind ?? null)}
+      muted={isUnplayable && !started}
     />
   )
 }

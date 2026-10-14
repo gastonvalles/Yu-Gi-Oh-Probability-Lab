@@ -2,6 +2,7 @@ import { memo, useEffect, useRef, useState } from 'react'
 
 import type { SavedCombo } from '../../app/saved-combos'
 import { formatDay, t } from '../../i18n'
+import { CardArt } from '../CardArt'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { EmptyState } from '../ui/EmptyState'
@@ -12,8 +13,15 @@ import { ConfirmDialog } from './ConfirmDialog'
 
 type PanelTab = 'steps' | 'combos'
 
+/** Una jugada de la lista: la frase que la cuenta, si es un cambio de fase (hace de separador) y las miniaturas de las cartas que mueve. */
+export interface PanelStep {
+  label: string
+  divider: boolean
+  cards: Array<{ name: string; art: string }>
+}
+
 interface PracticeMatPanelProps {
-  steps: string[]
+  steps: PanelStep[]
   /** Hasta qué jugada se ve (0 = mano inicial). */
   cursor: number
   onSeek: (step: number) => void
@@ -52,14 +60,14 @@ export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, cursor, 
           // La última jugada arriba, como un registro; la mano inicial al final.
           <ol className="m-0 grid list-none content-start gap-1 overflow-y-auto p-0" aria-label={t('practice.panel.plays')}>
             {steps
-              .map((label, index) => (
+              .map((step, index) => (
                 <li key={index}>
-                  <StepButton active={cursor === index + 1} past={index + 1 < cursor} label={label} index={index + 1} onClick={() => onSeek(index + 1)} />
+                  <StepButton active={cursor === index + 1} past={index + 1 < cursor} step={step} index={index + 1} onClick={() => onSeek(index + 1)} />
                 </li>
               ))
               .reverse()}
             <li>
-              <StepButton active={cursor === 0} label={t('practice.mat.startingHand')} index={0} onClick={() => onSeek(0)} />
+              <StepButton active={cursor === 0} step={{ label: t('practice.mat.startingHand'), divider: false, cards: [] }} index={0} onClick={() => onSeek(0)} />
             </li>
           </ol>
         )
@@ -136,7 +144,7 @@ function SavedCombosList({ combos, deckName, onLoad, onDelete }: SavedCombosList
   )
 }
 
-function StepButton({ active, past = false, label, index, onClick }: { active: boolean; past?: boolean; label: string; index: number; onClick: () => void }) {
+function StepButton({ active, past = false, step, index, onClick }: { active: boolean; past?: boolean; step: PanelStep; index: number; onClick: () => void }) {
   const ref = useRef<HTMLButtonElement | null>(null)
 
   // El paso actual se mantiene a la vista mientras un combo se reproduce solo.
@@ -149,14 +157,25 @@ function StepButton({ active, past = false, label, index, onClick }: { active: b
       ref={ref}
       type="button"
       aria-current={active ? 'step' : undefined}
+      data-divider={step.divider ? 'true' : 'false'}
       className={cx(
-        'grid w-full grid-cols-[1.5rem_minmax(0,1fr)] items-baseline gap-2 rounded-control px-2 py-1.5 text-left text-body transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus',
-        active ? 'bg-primary text-primary-foreground shadow-brand' : past ? 'text-foreground hover:bg-tint/10' : 'text-muted hover:bg-tint/10',
+        'grid w-full grid-cols-[1.5rem_2.5rem_minmax(0,1fr)] items-center gap-2 rounded-control px-2 py-1.5 text-left text-body transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus',
+        // El cambio de fase separa las jugadas de cada fase: es la frase de siempre, en versalitas y de otro color.
+        'data-[divider=true]:text-micro data-[divider=true]:font-bold data-[divider=true]:uppercase data-[divider=true]:tracking-wide',
+        active ? 'bg-primary text-primary-foreground shadow-brand' : past ? 'text-foreground hover:bg-tint/10 data-[divider=true]:text-accent' : 'text-muted hover:bg-tint/10 data-[divider=true]:text-accent/80',
       )}
       onClick={onClick}
     >
       <span className="text-micro font-semibold tabular-nums opacity-70">{index}</span>
-      <span>{label}</span>
+      {/* Las cartas de la jugada (hasta tres, una sobre otra). La columna mide siempre lo mismo, con o sin cartas: el texto queda alineado. */}
+      <span className="relative h-9" aria-hidden="true">
+        {step.cards.map((card, position) => (
+          <span key={position} className="absolute top-0 h-9 w-6 overflow-hidden rounded-[3px] bg-input shadow-[0_0_0_1px_rgb(0_0_0/0.4)]" style={{ left: `${position * 0.5}rem`, zIndex: position }}>
+            <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />
+          </span>
+        ))}
+      </span>
+      <span>{step.label}</span>
     </button>
   )
 }

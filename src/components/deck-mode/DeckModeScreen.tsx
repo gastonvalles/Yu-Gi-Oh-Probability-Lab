@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps } from 'react'
 
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { countUnclassifiedCards, countCardsMissingOrigin, countCardsMissingRoles, countCardsPendingReview, isClassificationStepComplete } from '../../app/role-step'
@@ -17,10 +17,8 @@ import { LifeCalculatorFab } from '../life/LifeCalculatorFab'
 import { MascotsModal } from '../mascot/MascotsModal'
 import { AppShell } from '../shell/AppShell'
 import { cx } from '../ui/cx'
-import { DraggableFab } from '../ui/DraggableFab'
+import { Callout } from '../ui/Callout'
 import { Heading } from '../ui/Heading'
-import { Icon } from '../ui/Icon'
-import { Modal } from '../ui/Modal'
 import { DeckModeDragOverlay } from './DeckModeDragOverlay'
 import {
   buildAppNavGroups,
@@ -84,7 +82,6 @@ export function DeckModeScreen() {
   const unclassifiedCardCount = useMemo(() => countUnclassifiedCards(roleCards), [roleCards])
   const hasCompletedRoleStep = useMemo(() => isClassificationStepComplete(roleCards), [roleCards])
   const patternCount = controller.probability.patterns.length
-  const [globalPracticeOpen, setGlobalPracticeOpen] = useState(false)
   const [lifeOpen, setLifeOpen] = useState(false)
   const [mascotsOpen, setMascotsOpen] = useState(false)
   const recommendedStep = useMemo(
@@ -100,6 +97,19 @@ export function DeckModeScreen() {
   })
   const isDeckBuilderStep = activeStep === 'deck-builder'
   const isCategorizationStep = activeStep === 'categorization'
+  const isPracticeStep = activeStep === 'practice'
+  // La partida vive acá y no en la pantalla: salir de la práctica (a la calculadora, al builder) no pierde la mano ni el combo en curso.
+  const practice = usePracticeSession({
+    active: isPracticeStep,
+    handSize: controller.probability.handSize,
+    derivedMainCards: controller.probability.derivedMainCards,
+    extraZone: controller.exportDeck.deckBuilder.extra,
+    deckName: controller.exportDeck.deckName,
+    patterns: controller.probability.patterns,
+    disabledGenericRuleIds: controller.probability.disabledGenericRuleIds,
+    systemRuleNames: controller.probability.systemRuleNames,
+    hasCompletedClassification: hasCompletedRoleStep,
+  })
   // Con el deck quieto se deja calculado el Lab de fondo: al abrirlo el resultado ya está.
   useLabPrewarm({ ...controller.probability, enabled: activeStep !== 'probability-lab' })
   const contentScrollRef = useRef<HTMLDivElement>(null)
@@ -194,12 +204,11 @@ export function DeckModeScreen() {
     ],
   )
   const deckBuilderStep = controller.deckBuilderStep
-  // El menú: los pasos del deck, las herramientas (que abren un panel encima) y la referencia. La mesa de práctica necesita cartas en el Main.
+  // El menú: los pasos del deck, las herramientas (la práctica es una pantalla; la calculadora y las mascotas abren un panel encima) y la referencia. La práctica necesita cartas en el Main.
   const navGroups = useMemo(() => buildAppNavGroups(navigationItems, { practice: mainDeckCount > 0 }), [navigationItems, mainDeckCount])
   const handleNavSelect = useCallback(
     (key: string) => {
-      if (key === 'practice') setGlobalPracticeOpen(true)
-      else if (key === 'life') setLifeOpen(true)
+      if (key === 'life') setLifeOpen(true)
       else if (key === 'mascots') setMascotsOpen(true)
       else if (isDeckWorkflowStepKey(key)) handleStepChange(key)
     },
@@ -224,7 +233,7 @@ export function DeckModeScreen() {
     <section
       className={cx(
         'grid content-start',
-        isCategorizationStep ? 'h-full min-h-0' : 'min-h-full min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[minmax(0,1fr)]',
+        isCategorizationStep ? 'h-full min-h-0' : isPracticeStep ? 'h-full min-h-0 grid-rows-[minmax(0,1fr)]' : 'min-h-full min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[minmax(0,1fr)]',
       )}
     >
       {activeStep === 'categorization' ? (
@@ -248,6 +257,15 @@ export function DeckModeScreen() {
       {activeStep === 'workspace' ? (
         <div id="workspace" className="min-w-0 min-[1101px]:min-h-full">
           <LazyComparisonScreen />
+        </div>
+      ) : null}
+
+      {activeStep === 'practice' ? (
+        <div id="practice" className="h-full min-h-0 min-w-0">
+          <Heading level="page" className="sr-only">
+            {t('shell.practice.title')}
+          </Heading>
+          {practice ? <LazyPracticeSection {...practice} /> : <Callout tone="info" className="m-4">{t('practice.section.needCards')}</Callout>}
         </div>
       ) : null}
 
@@ -289,7 +307,7 @@ export function DeckModeScreen() {
         // La pantalla nueva aparece (fundido) donde va a quedar: nada se desliza ni cambia de lugar.
         'min-w-0 animate-step-in motion-reduce:animate-none',
         // En escritorio toda pantalla mide el recuadro del armazón (sin pie): una más alta lo desborda y scrollea; una que reparte el alto entre columnas (Expansiones) lo usa justo.
-        isDeckBuilderStep || isCategorizationStep ? 'h-full min-h-0' : 'min-h-full min-[1101px]:h-full min-[1101px]:min-h-0',
+        isDeckBuilderStep || isCategorizationStep || isPracticeStep ? 'h-full min-h-0' : 'min-h-full min-[1101px]:h-full min-[1101px]:min-h-0',
       )}
     >
       <Suspense fallback={null}>{stepContent}</Suspense>
@@ -298,7 +316,7 @@ export function DeckModeScreen() {
 
   return (
     <>
-      <AppShell groups={navGroups} activeKey={activeStep} onSelect={handleNavSelect} contentScrollable={!isDeckBuilderStep} contentScrollRef={contentScrollRef}>
+      <AppShell groups={navGroups} activeKey={activeStep} onSelect={handleNavSelect} contentScrollable={!isDeckBuilderStep && !isPracticeStep} immersive={isPracticeStep} contentScrollRef={contentScrollRef}>
         {mainContent}
       </AppShell>
 
@@ -325,24 +343,7 @@ export function DeckModeScreen() {
         />
       ) : null}
 
-      {/* Global Practice FAB */}
-      {mainDeckCount > 0 ? (
-        <PracticeFab
-          isOpen={globalPracticeOpen}
-          onOpen={() => setGlobalPracticeOpen(true)}
-          onClose={() => setGlobalPracticeOpen(false)}
-          handSize={controller.probability.handSize}
-          derivedMainCards={controller.probability.derivedMainCards}
-          extraZone={controller.exportDeck.deckBuilder.extra}
-          deckName={controller.exportDeck.deckName}
-          patterns={controller.probability.patterns}
-          disabledGenericRuleIds={controller.probability.disabledGenericRuleIds}
-          systemRuleNames={controller.probability.systemRuleNames}
-          hasCompletedClassification={hasCompletedRoleStep}
-        />
-      ) : null}
-
-      {/* Calculadora de LP: botón flotante que la abre encima de cualquier pantalla (también se abre desde el menú). */}
+      {/* Calculadora de LP: se abre desde el menú; mientras corre el reloj de la ronda, un botón flotante vuelve a ella desde cualquier otra pantalla. */}
       <LifeCalculatorFab open={lifeOpen} onOpen={() => setLifeOpen(true)} onClose={() => setLifeOpen(false)} />
 
       {/* Las mascotas: se abre desde el menú y deja sacar hasta tres a la vez. */}
@@ -352,24 +353,13 @@ export function DeckModeScreen() {
 }
 
 
-// ── Global Practice FAB ──
+// ── La práctica ──
 
-function PracticeFab({
-  isOpen,
-  onOpen,
-  onClose,
-  handSize,
-  derivedMainCards,
-  extraZone,
-  deckName,
-  patterns,
-  disabledGenericRuleIds,
-  systemRuleNames,
-  hasCompletedClassification,
-}: {
-  isOpen: boolean
-  onOpen: () => void
-  onClose: () => void
+type PracticeScreenProps = ComponentProps<typeof LazyPracticeSection>
+
+interface PracticeSessionInput {
+  /** La pantalla de práctica está abierta: al entrar sin partida, ya se reparte la mano. */
+  active: boolean
   handSize: number
   derivedMainCards: import('../../types').CardEntry[]
   extraZone: DeckCardInstance[]
@@ -378,7 +368,20 @@ function PracticeFab({
   disabledGenericRuleIds: string[]
   systemRuleNames: Record<string, string>
   hasCompletedClassification: boolean
-}) {
+}
+
+/** Lo que necesita la pantalla de práctica, o null mientras no hay partida (faltan cartas para la mano). */
+function usePracticeSession({
+  active,
+  handSize,
+  derivedMainCards,
+  extraZone,
+  deckName,
+  patterns,
+  disabledGenericRuleIds,
+  systemRuleNames,
+  hasCompletedClassification,
+}: PracticeSessionInput): PracticeScreenProps | null {
   const activePatterns = useMemo(
     () => buildActiveRuleSet(derivedMainCards, curatePatterns(patterns, derivedMainCards), disabledGenericRuleIds, systemRuleNames),
     [patterns, derivedMainCards, disabledGenericRuleIds, systemRuleNames],
@@ -386,12 +389,8 @@ function PracticeFab({
   const missingOriginCount = useMemo(() => countCardsMissingOrigin(derivedMainCards), [derivedMainCards])
   const missingRoleCount = useMemo(() => countCardsMissingRoles(derivedMainCards), [derivedMainCards])
   const pendingReviewCount = useMemo(() => countCardsPendingReview(derivedMainCards), [derivedMainCards])
-  const reviewPendingPatternCount = useMemo(
-    () => patterns.filter((p) => p.needsReview).length,
-    [patterns],
-  )
+  const reviewPendingPatternCount = useMemo(() => patterns.filter((p) => p.needsReview).length, [patterns])
 
-  // La mesa vive acá y no en el modal: cerrarlo no pierde la partida ni el combo en curso.
   const { session, state, start, dispatch, undo, seek } = useMatSession()
   const mainIds = useMemo(() => buildPracticeDeck(derivedMainCards).map((card) => card.drawId), [derivedMainCards])
   const extraCards = useMemo(() => buildPracticeDeck(deriveMainDeckCardsFromZone(extraZone)), [extraZone])
@@ -404,53 +403,34 @@ function PracticeFab({
   const newHand = useCallback(() => start(createMatState(shuffleWithSeed(mainIds, randomSeed()), extraIds, handSize)), [start, mainIds, extraIds, handSize])
   const loadCombo = useCallback((combo: SavedCombo) => start(combo.initial, combo.actions, combo.names), [start])
 
-  // Al abrir la práctica ya se roban las cartas de la mano.
+  // Al entrar a la práctica ya se roban las cartas de la mano.
   useEffect(() => {
-    if (isOpen && !session && mainIds.length >= handSize) {
+    if (active && !session && mainIds.length >= handSize) {
       newHand()
     }
-  }, [isOpen, session, mainIds.length, handSize, newHand])
+  }, [active, session, mainIds.length, handSize, newHand])
 
-  return (
-    <>
-      <DraggableFab label={t('shell.practice.open')} storageKey="ygo-lab:practice-fab" onClick={onOpen}>
-        <Icon name="hand" size={24} strokeWidth={1.8} />
-      </DraggableFab>
+  if (!session || !state) {
+    return null
+  }
 
-      <Modal
-        isOpen={isOpen}
-        onClose={onClose}
-        size="board"
-        bare
-        flush
-        ariaLabel={t('shell.practice.title')}
-        closeTone="flat"
-        closeClassName="right-1.5 top-3 min-[820px]:right-4 min-[820px]:top-4"
-      >
-        <Suspense fallback={null}>
-          {session && state ? (
-            <LazyPracticeSection
-              handSize={handSize}
-              derivedMainCards={derivedMainCards}
-              patterns={activePatterns}
-              hasCompletedClassification={hasCompletedClassification}
-              missingOriginCount={missingOriginCount}
-              missingRoleCount={missingRoleCount}
-              pendingReviewCount={pendingReviewCount}
-              reviewPendingPatternCount={reviewPendingPatternCount}
-              session={session}
-              state={state}
-              cardsById={cardsById}
-              deckName={deckName}
-              onDispatch={dispatch}
-              onUndo={undo}
-              onSeek={seek}
-              onLoadCombo={loadCombo}
-              onNewHand={newHand}
-            />
-          ) : null}
-        </Suspense>
-      </Modal>
-    </>
-  )
+  return {
+    handSize,
+    derivedMainCards,
+    patterns: activePatterns,
+    hasCompletedClassification,
+    missingOriginCount,
+    missingRoleCount,
+    pendingReviewCount,
+    reviewPendingPatternCount,
+    session,
+    state,
+    cardsById,
+    deckName,
+    onDispatch: dispatch,
+    onUndo: undo,
+    onSeek: seek,
+    onLoadCombo: loadCombo,
+    onNewHand: newHand,
+  }
 }

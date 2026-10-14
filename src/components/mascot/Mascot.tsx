@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-import { MASCOTS, MASCOT_ANIMATION, MASCOT_STILL, mascotPositionKey, reactMascot, restMascot, useActiveMascots, useMascotState, type MascotId, type MascotState } from '../../app/mascot'
+import { MASCOTS, MASCOT_ANIMATION, MASCOT_STILL, beginDuel, mascotPositionKey, reactMascot, restMascot, useActiveMascots, useInDuel, useMascotState, type MascotId, type MascotState } from '../../app/mascot'
 import { forgetMascotBody, reportMascotBody } from '../../app/mascot-interplay'
 import { useDraggablePosition } from '../../app/use-draggable-position'
 import { useHold } from '../../app/use-hold'
@@ -35,9 +35,14 @@ const HOLD_TO_REST_MS = 5000
 const LOOK_EVERY_MS = 25_000
 const LOOK_FOR_MS = 4_200
 
-/** Las mascotas sólo existen mientras están afuera: descansando no ocupan lugar ni empujan a los botones flotantes. */
+/** Las mascotas sólo existen mientras están afuera: descansando no ocupan lugar ni empujan a los botones flotantes. En un duelo no flotan: la de la vista es la única. */
 export function Mascot() {
   const ids = useActiveMascots()
+  const inDuel = useInDuel()
+
+  if (inDuel) {
+    return null
+  }
 
   return (
     <>
@@ -231,6 +236,34 @@ function ActiveMascot({ id, slot }: { id: MascotId; slot: number }) {
         cancelLabel={t('shell.mascot.restDialog.cancel')}
         onCancel={() => setRestAsked(false)}
         onConfirm={rest}
+      />
+    </div>
+  )
+}
+
+/**
+ * En un duelo (la práctica) hay una sola mascota: la primera de las que están afuera, parada en un rincón de la vista (como el compañero de
+ * Master Duel). Las demás se quedan esperando, siguen afuera y vuelven a su lugar al salir del duelo; mientras la vista está abierta, ninguna
+ * anda flotando por encima de la mesa. Reacciona igual que las otras (festeja una mano limpia, se frustra con un problema) pero no se agarra.
+ */
+export function DuelMascot({ className }: { className?: string }) {
+  const [id] = useActiveMascots()
+  const state = useMascotState(id)
+  const reduceMotion = useMediaQuery(REDUCED_MOTION_MEDIA_QUERY)
+
+  useEffect(() => beginDuel(), [])
+
+  if (!id) {
+    return null
+  }
+
+  return (
+    <div aria-hidden="true" className={cx('pointer-events-none', className)}>
+      <img
+        src={`${MASCOTS[id].folder}/${reduceMotion ? MASCOT_STILL : MASCOT_ANIMATION[state]}`}
+        alt=""
+        draggable={false}
+        className="h-full w-full select-none object-contain drop-shadow-[0_8px_16px_rgb(0_0_0/0.55)]"
       />
     </div>
   )
