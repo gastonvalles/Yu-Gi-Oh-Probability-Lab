@@ -54,6 +54,7 @@ import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
+import { AttackFx, measureStrike, type Strike, type StrikeSpec } from './AttackFx'
 import { CardBack, CardMenu, PILE_TITLES, PileViewer, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { FX_CARD, FxFrame, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, TargetMark, fxVars } from './MatFx'
 import { cardIdOfDrawId } from './practice'
@@ -93,8 +94,11 @@ export interface DuelMatLink {
   notice?: { key: number; phase: MatPhase; turn?: number; who?: string; label?: string }
   /** El texto del cartel cuando terminás tu turno y pasa al rival ("Turno de Ana"). */
   rivalTurnLabel: string
-  /** Lo que el rival acaba de hacer y se avisa grande en el centro (su ataque); cambiar `key` lo vuelve a mostrar. */
-  announcement?: { key: number; art: string | null; name: string; caption: string }
+  /**
+   * Lo que el rival acaba de hacer y se avisa (su ataque): un cartel arriba con `caption` y la espada de su monstruo (`attackerId`, el id que él le dio) a tu carta
+   * (`targetId`, tu id real) o, sin `targetId`, a tu barra de vida; cambiar `key` lo vuelve a mostrar.
+   */
+  announcement?: { key: number; caption: string; attackerId: string; targetId?: string }
 }
 
 interface PracticeMatProps {
@@ -240,6 +244,9 @@ function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
 }
 
+/** Lo que hay que dibujar de un ataque: sus puntos en pantalla; nada si se pidió reducir el movimiento o no hay de dónde salir. */
+const strikeOf = (spec: StrikeSpec): Strike | null => (prefersReducedMotion() ? null : measureStrike(spec))
+
 export function PracticeMat({
   session,
   state,
@@ -365,6 +372,9 @@ export function PracticeMat({
   // Las cartas grandes del centro (activar, mostrar, declarar y, al reproducir un combo, lo que mueve cada paso) y el marco de la mano cuando recibe una carta.
   const [stage, setStage] = useState<{ ids: string[]; kind: SpotlightKind | ShowcaseKind; flip?: true; step: number; key: number } | null>(null)
   const [handFlash, setHandFlash] = useState<number | null>(null)
+  // El ataque que cruza la mesa (el propio o el del rival): se mide al empezar y `AttackFx` se saca solo al terminar.
+  const [strike, setStrike] = useState<Strike | null>(null)
+  const sectionRef = useRef<HTMLElement | null>(null)
 
   useEscapeKey(() => setPicking(null), picking !== null)
   useEscapeKey(() => setCounterMode(null), counterMode !== null)
@@ -415,6 +425,7 @@ export function PracticeMat({
       setLanding(null)
       setBanner(null)
       setHandFlash(null)
+      setStrike(null)
       return
     }
 
@@ -426,10 +437,14 @@ export function PracticeMat({
     const key = Date.now()
 
     if (effects.spotlight) setFlash({ ...effects.spotlight, key })
-    // Activar, mostrar y declarar agrandan la carta siempre; marcar un objetivo, nunca; y reproduciendo un combo, cada paso que mueve cartas las muestra.
+    // Atacar no agranda la carta: la espada va del atacante a su objetivo (a una carta del rival, o directo a su barra de vida; sin rival, al borde de la mesa).
+    if (action.type === 'attack') {
+      setStrike(strikeOf({ from: `[data-card-id="${action.id}"]`, to: action.target === undefined ? undefined : `[data-rival-card-id="${action.target}"]`, direct: 'theirs', bounds: sectionRef.current }))
+    }
+    // Activar, mostrar y declarar agrandan la carta siempre; marcar un objetivo o atacar, nunca; y reproduciendo un combo, cada paso que mueve cartas las muestra.
     // Un paso que no muestra nada saca las cartas del paso anterior (que seguirían con la línea de éste).
     setStage(
-      effects.spotlight && effects.spotlight.kind !== 'target'
+      effects.spotlight && effects.spotlight.kind !== 'target' && effects.spotlight.kind !== 'attack'
         ? { ids: [effects.spotlight.id], kind: effects.spotlight.kind, step: session.cursor, key }
         : effects.showcase && session.replay
           ? { ...effects.showcase, step: session.cursor, key }
@@ -439,6 +454,15 @@ export function PracticeMat({
     if (effects.banner) setBanner({ ...effects.banner, key })
     if (effects.hand) setHandFlash(key)
   }, [session.cursor, session.actions, session.initial, session.replay])
+
+  // El ataque del rival: la espada sale de su monstruo hacia la carta tuya atacada, o hacia tu barra de vida si es directo. `announcement` es el mismo objeto hasta que llega otro ataque.
+  const announcement = duel?.announcement
+
+  useEffect(() => {
+    if (announcement) {
+      setStrike(strikeOf({ from: `[data-rival-card-id="${announcement.attackerId}"]`, to: announcement.targetId === undefined ? undefined : `[data-card-id="${announcement.targetId}"]`, direct: 'mine', bounds: sectionRef.current }))
+    }
+  }, [announcement])
 
   // La mano: el orden que le dio el jugador, y el reparto de a una carta desde el mazo (que se baraja con cada mano nueva).
   const [handOrder, setHandOrder] = useState<string[]>([])
@@ -504,7 +528,6 @@ export function PracticeMat({
   const isDealt = dealt >= handTotal
 
   // Las cartas vuelan entre zonas con cada jugada (y al reproducir un combo).
-  const sectionRef = useRef<HTMLElement | null>(null)
   const artById = useCallback((id: string) => artOf(cardOf(id)), [cardOf])
   // Las cartas se miden de nuevo cuando todo quedó quieto (ver `useCardFlights`): si no, el reparto, una carta robada o buscada y la mano reacomodada
   // dejaban la medida de cuando todavía volaban, y la próxima jugada arrancaba de ahí (desde el mazo, con una carta gigante y estirada).
@@ -1365,7 +1388,7 @@ export function PracticeMat({
 
       {inspected ? <CardDetailOverlay key={inspected.id} name={cardOf(inspected.id).name} card={cardOf(inspected.id).apiCard} origin={inspected.rect} onClose={() => setInspected(null)} /> : null}
 
-      {/* Activar, mostrar o declarar (y, al reproducir un combo, lo que mueve cada paso): las cartas aparecen grandes en el centro de la mesa, con su marco de color, su nombre y lo que pasó arriba, y se desvanecen. Marcar un objetivo no las agranda: ahí sólo cae la mira. En escritorio el centro es el del campo, sin el panel lateral (20 rem, como en la grilla de arriba). */}
+      {/* Activar, mostrar o declarar (y, al reproducir un combo, lo que mueve cada paso): las cartas aparecen grandes en el centro de la mesa, con su marco de color, su nombre y lo que pasó arriba, y se desvanecen. Marcar un objetivo o atacar no las agranda: ahí sólo cae la mira o cruza la espada. En escritorio el centro es el del campo, sin el panel lateral (20 rem, como en la grilla de arriba). */}
       {stage ? (
         <Spotlight
           key={stage.key}
@@ -1377,15 +1400,19 @@ export function PracticeMat({
         />
       ) : null}
 
-      {/* El ataque del rival en un duelo: su monstruo grande en el centro, con quién ataca a quién arriba (se va solo, como los otros avisos). */}
-      {duel?.announcement ? (
-        <Spotlight
-          key={duel.announcement.key}
-          kind="attack"
-          cards={[{ id: `rival-${duel.announcement.key}`, name: duel.announcement.name, art: duel.announcement.art }]}
-          caption={duel.announcement.caption}
-          className="absolute inset-y-0 left-0 right-0 z-[120] min-[1101px]:right-[20rem]"
-        />
+      {/* Un ataque (el propio o el del rival): la espada cruza la mesa desde el atacante hasta su objetivo y se va sola. */}
+      {strike ? <AttackFx key={strike.key} strike={strike} onDone={() => setStrike(null)} /> : null}
+
+      {/* El ataque del rival en un duelo: quién ataca a quién, en un cartelito arriba (se va solo, como los otros avisos). */}
+      {announcement ? (
+        <span
+          key={announcement.key}
+          role="status"
+          className="fixed left-1/2 top-[4.5rem] z-[120] w-max max-w-[92vw] -translate-x-1/2 truncate rounded-full border-2 border-[color:rgb(var(--fx-rgb)/0.9)] bg-background/90 px-3.5 py-1 text-micro font-bold text-foreground shadow-[0_0_18px_rgb(var(--fx-rgb)/0.5)]"
+          style={fxVars('red')}
+        >
+          {announcement.caption}
+        </span>
       ) : null}
 
       {drag

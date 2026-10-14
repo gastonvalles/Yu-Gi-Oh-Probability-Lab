@@ -452,12 +452,12 @@ function useGameToasts(snapshot: DuelSnapshot, myName: string) {
   }, [outcome, rps.mine, rps.theirs])
 }
 
-/** Cuánto se queda el aviso del ataque del rival en el centro de la mesa. */
+/** Cuánto se queda el cartel del ataque del rival arriba de la mesa. */
 const ANNOUNCE_MS = 4000
 
 /**
- * El ataque que el rival acaba de hacer, para avisarlo grande en el centro: quién ataca (su monstruo) y a qué carta tuya, o que es directo.
- * Lo que ya había jugado antes de abrir la pantalla no se avisa, y deshacer tampoco.
+ * El ataque que el rival acaba de hacer, para avisarlo: el cartel de quién ataca a qué carta tuya (o que es directo) y, para que la mesa dibuje la espada,
+ * con qué monstruo suyo (su id opaco) y a cuál tuyo (tu id real). Lo que ya había jugado antes de abrir la pantalla no se avisa, y deshacer tampoco.
  */
 function useRivalAttack(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, MatCard>): DuelMatLink['announcement'] {
   const { theirs, ownIds, peerName } = snapshot
@@ -471,7 +471,7 @@ function useRivalAttack(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, M
 
     seen.current = acts?.length ?? 0
 
-    if (!acts || !theirs || acts.length <= before || last?.type !== 'attack') {
+    if (!acts || acts.length <= before || last?.type !== 'attack') {
       return
     }
 
@@ -481,11 +481,12 @@ function useRivalAttack(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, M
 
     setShown({
       key: Date.now(),
-      art: artOfDrawId(theirs.known[last.id]),
-      name: rival,
+      attackerId: last.id,
+      // Un objetivo que no se reconoce no es un ataque directo: se deja su id tal cual, que no está en la mesa, y la espada no sale.
+      targetId: last.target === undefined ? undefined : (mine ?? last.target),
       caption: last.target === undefined ? t('duel.announce.attackDirect', { name: rival }) : t('duel.announce.attack', { name: rival, target }),
     })
-  }, [acts, theirs, ownIds, peerName, cardsById])
+  }, [acts, ownIds, peerName, cardsById])
 
   useEffect(() => {
     if (!shown) return

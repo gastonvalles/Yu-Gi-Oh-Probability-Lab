@@ -186,6 +186,8 @@ function ResultBanner({ result, snapshot, rival, onRematch }: { result: DuelResu
 
 /** Los puntos de vida de uno: su nombre y el número grande. Los propios son un botón que abre el cambio. */
 function LifeTile({ name, life, mine = false, onClick }: { name: string; life: number; mine?: boolean; onClick?: () => void }) {
+  // `data-lp`: a qué casilla va la espada de un ataque directo (ver `measureStrike`).
+  const side = mine ? 'mine' : 'theirs'
   const body = (
     <>
       <span className="min-w-0 truncate text-micro font-semibold uppercase tracking-[0.04em] text-soft">{name}</span>
@@ -195,11 +197,11 @@ function LifeTile({ name, life, mine = false, onClick }: { name: string; life: n
   const style = 'flex min-w-0 items-baseline justify-between gap-2 rounded-card border border-border-subtle bg-card-background px-2.5 py-1 text-left'
 
   return onClick ? (
-    <button type="button" aria-label={`${t('duel.bar.lifeOf', { name })}: ${formatInteger(life)}. ${t('duel.bar.changeLife')}`} className={cx(style, 'cursor-pointer focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>
+    <button type="button" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${formatInteger(life)}. ${t('duel.bar.changeLife')}`} className={cx(style, 'cursor-pointer focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>
       {body}
     </button>
   ) : (
-    <div role="group" aria-label={`${t('duel.bar.lifeOf', { name })}: ${formatInteger(life)}`} className={style}>
+    <div role="group" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${formatInteger(life)}`} className={style}>
       {body}
     </div>
   )

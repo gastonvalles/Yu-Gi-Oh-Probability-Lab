@@ -102,6 +102,9 @@
   --animate-fx-flash: fx-flash 560ms ease-out both;
   --animate-fx-shock: fx-shock 720ms cubic-bezier(0.1, 0.7, 0.3, 1) forwards;
   --animate-fx-spark: fx-spark 680ms cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+  /* Un ataque (AttackFx.tsx): el rayo y la espada salen del atacante hacia el objetivo (la distancia, `--len`, la pone el componente) y el impacto, con las ondas y chispas de arriba, empieza cuando llegan. */
+  --animate-fx-beam: fx-beam 900ms ease-out both;
+  --animate-fx-blade: fx-blade 900ms ease-out both;
   --animate-fx-banner: fx-banner 1100ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
   --animate-fx-banner-text: fx-banner-text 1100ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
   --animate-fx-stage: fx-stage 950ms ease-out both;
@@ -455,6 +458,48 @@
     100% {
       opacity: 0;
       transform: translate(var(--dx), var(--dy)) scale(0.2) rotate(225deg);
+    }
+  }
+
+  /* Un ataque: el rayo crece desde el atacante (origen a la izquierda) hasta tocar al objetivo y se afina hasta apagarse. */
+  @keyframes fx-beam {
+    0% {
+      opacity: 1;
+      transform: scaleX(0);
+    }
+
+    35% {
+      opacity: 1;
+      transform: scaleX(1);
+    }
+
+    100% {
+      opacity: 0;
+      transform: scaleX(1) scaleY(0.25);
+    }
+  }
+
+  /* La espada sale del atacante, acelera hasta el objetivo (el 33 % es el instante del impacto: lo que dura el viaje) y ahí se agranda y se apaga. */
+  @keyframes fx-blade {
+    0% {
+      opacity: 0;
+      transform: translateX(0) scale(0.7);
+    }
+
+    6% {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+      animation-timing-function: cubic-bezier(0.55, 0, 0.25, 1);
+    }
+
+    33% {
+      opacity: 1;
+      transform: translateX(var(--len)) scale(1.1);
+    }
+
+    100% {
+      opacity: 0;
+      transform: translateX(var(--len)) scale(1.9);
     }
   }
 
