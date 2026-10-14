@@ -117,7 +117,11 @@ export function buildCalculationSummary(state: CalculatorState): CalculationSumm
   const rescues = state.patterns.map((pattern) => pattern.rescuesCards === true && normalizeHandPatternCategory(pattern.kind) === 'opening')
   const hasRescue = rescues.some(Boolean)
 
-  const tally = (handCounts: number[], initialCounts: number[], weight: number) => {
+  // Sin rescates, las reglas que no ignoran el robo ven la misma mano en cada división de una mano: se evalúan una sola vez por mano.
+  const dedupeSplit = splitsDraw && !hasRescue
+  const baseHits = new Array<boolean>(resolvedPatterns.length).fill(false)
+
+  const tally = (handCounts: number[], initialCounts: number[], weight: number, useBaseHits = false) => {
     let matchedGoodPattern = false
     let matchedBadPattern = false
     matchedIndexes.length = 0
@@ -148,7 +152,11 @@ export function buildCalculationSummary(state: CalculatorState): CalculationSumm
           ? base.map((copies, key) => Math.max(0, copies - rescued[key]))
           : base
 
-      if (matchesResolvedPattern(pattern, counts, ARRAY_COUNT_OPERATIONS, base)) {
+      const hit = useBaseHits && !ignoresDraw[index]
+        ? baseHits[index]
+        : matchesResolvedPattern(pattern, counts, ARRAY_COUNT_OPERATIONS, base)
+
+      if (hit) {
         patternHands[index] += weight
         matchedIndexes.push(index)
 
@@ -192,12 +200,18 @@ export function buildCalculationSummary(state: CalculatorState): CalculationSumm
         return
       }
 
+      if (dedupeSplit) {
+        for (const [index, pattern] of resolvedPatterns.entries()) {
+          baseHits[index] = !ignoresDraw[index] && matchesResolvedPattern(pattern, counts, ARRAY_COUNT_OPERATIONS, counts)
+        }
+      }
+
       // La carta robada puede ser cualquiera de la mano: se promedia sobre cada clase posible.
       for (const [classIndex, copies] of counts.entries()) {
         if (copies > 0) {
           const initial = [...counts]
           initial[classIndex] -= 1
-          tally(counts, initial, (weight * copies) / state.handSize)
+          tally(counts, initial, (weight * copies) / state.handSize, dedupeSplit)
         }
       }
     },
