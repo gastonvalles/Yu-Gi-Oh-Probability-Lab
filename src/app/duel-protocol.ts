@@ -1,3 +1,4 @@
+import { MAX_MESSAGE_BYTES } from './duel-relay-rules'
 import { MAX_LP, STARTING_LP } from './life-calculator'
 import type { WireAct } from './mat-public'
 import { PHASES, type MatAction, type MatPile, type MatPos, type MatSpot, type MatState, type Placed } from './practice-mat'
@@ -11,8 +12,8 @@ import { isRecord } from './utils'
  */
 
 export const PROTOCOL_VERSION = 1
-/** Tope de un mensaje (el relay también lo hace cumplir): una mesa completa en un `sync` ocupa unos 3 KB. */
-export const MAX_MESSAGE_BYTES = 16 * 1024
+/** Tope de un mensaje: lo fija `duel-relay-rules.ts` porque el relay también lo hace cumplir. */
+export { MAX_MESSAGE_BYTES }
 
 export interface DuelSettings {
   /** Puntos de vida con los que empieza cada uno. */
