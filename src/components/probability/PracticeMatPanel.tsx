@@ -10,6 +10,7 @@ import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Segmented } from '../ui/Segmented'
 import { ConfirmDialog } from './ConfirmDialog'
+import { SaveComboDialog } from './MatDialogs'
 
 type PanelTab = 'steps' | 'combos'
 
@@ -28,13 +29,14 @@ interface PracticeMatPanelProps {
   combos: SavedCombo[]
   deckName: string
   onLoad: (combo: SavedCombo) => void
+  onRename: (combo: SavedCombo, name: string) => void
   onDelete: (combo: SavedCombo) => void
   className?: string
 }
 
 
 /** Panel lateral de la mesa: las jugadas de esta partida (se toca una para volver a ese paso) y los combos guardados. */
-export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, cursor, onSeek, combos, deckName, onLoad, onDelete, className }: PracticeMatPanelProps) {
+export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, cursor, onSeek, combos, deckName, onLoad, onRename, onDelete, className }: PracticeMatPanelProps) {
   const [tab, setTab] = useState<PanelTab>('steps')
 
   return (
@@ -72,7 +74,7 @@ export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, cursor, 
           </ol>
         )
       ) : (
-        <SavedCombosList combos={combos} deckName={deckName} onLoad={onLoad} onDelete={onDelete} />
+        <SavedCombosList combos={combos} deckName={deckName} onLoad={onLoad} onRename={onRename} onDelete={onDelete} />
       )}
     </div>
   )
@@ -83,11 +85,13 @@ interface SavedCombosListProps {
   /** Deck actual: sus combos van primero. */
   deckName: string
   onLoad: (combo: SavedCombo) => void
+  onRename: (combo: SavedCombo, name: string) => void
   onDelete: (combo: SavedCombo) => void
 }
 
-/** Los combos guardados en este dispositivo: cargar uno lo reproduce en la mesa; borrar pide confirmación. */
-function SavedCombosList({ combos, deckName, onLoad, onDelete }: SavedCombosListProps) {
+/** Los combos guardados en este dispositivo: cargar uno lo reproduce en la mesa, el lápiz le cambia el nombre y borrar pide confirmación. */
+function SavedCombosList({ combos, deckName, onLoad, onRename, onDelete }: SavedCombosListProps) {
+  const [renaming, setRenaming] = useState<SavedCombo | null>(null)
   const [deleting, setDeleting] = useState<SavedCombo | null>(null)
   const ordered = [...combos].sort(
     (a, b) => Number(b.deckName === deckName) - Number(a.deckName === deckName) || a.deckName.localeCompare(b.deckName, 'es') || b.savedAt.localeCompare(a.savedAt),
@@ -116,6 +120,9 @@ function SavedCombosList({ combos, deckName, onLoad, onDelete }: SavedCombosList
               <Button variant="secondary" size="sm" icon="play" aria-label={t('practice.panel.loadNamed', { name: combo.name })} onClick={() => onLoad(combo)}>
                 {t('practice.panel.load')}
               </Button>
+              <IconButton tone="ghost" size="sm" aria-label={t('practice.panel.renameNamed', { name: combo.name })} title={t('practice.panel.rename')} onClick={() => setRenaming(combo)}>
+                <Icon name="pencil" />
+              </IconButton>
               <IconButton tone="ghost" size="sm" aria-label={t('practice.panel.deleteNamed', { name: combo.name })} title={t('common.delete')} onClick={() => setDeleting(combo)}>
                 <Icon name="trash" />
               </IconButton>
@@ -123,6 +130,22 @@ function SavedCombosList({ combos, deckName, onLoad, onDelete }: SavedCombosList
           </li>
         ))}
       </ul>
+
+      {/* Una instancia por combo: el campo arranca con el nombre del combo que se toca. */}
+      <SaveComboDialog
+        key={renaming?.id ?? 'closed'}
+        rename
+        isOpen={renaming !== null}
+        defaultName={renaming?.name ?? ''}
+        onSave={(name) => {
+          if (renaming) {
+            onRename(renaming, name)
+          }
+
+          setRenaming(null)
+        }}
+        onClose={() => setRenaming(null)}
+      />
 
       <ConfirmDialog
         isOpen={deleting !== null}

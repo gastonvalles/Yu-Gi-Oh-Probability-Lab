@@ -118,7 +118,7 @@ export function LandingBurst({ tone, flies }: { tone: LandingTone; flies: boolea
 
 /**
  * El cartel de una fase nueva (y del turno, si empieza otro): una banda violeta que cruza el campo y se apaga en los bordes, con el nombre de la
- * fase en grande, el turno arriba en verde y las seis fases abajo con la actual encendida, igual que los botones de la mesa.
+ * fase en grande y el turno arriba en verde. Nada más: las seis fases ya están en los botones de la mesa.
  */
 export function PhaseBanner({ phase, turn, className }: { phase: MatPhase; turn: number | null; className?: string }) {
   const name = PHASES.find((entry) => entry.id === phase)?.name ?? phase
@@ -130,19 +130,6 @@ export function PhaseBanner({ phase, turn, className }: { phase: MatPhase; turn:
         <span className="absolute inset-x-0 bottom-0 h-px bg-[linear-gradient(90deg,transparent,rgb(var(--accent-rgb))_22%,rgb(var(--accent-rgb))_78%,transparent)] shadow-[0_0_10px_rgb(var(--accent-rgb)/0.8)]" />
         {turn !== null ? <span className="animate-fx-banner-text text-micro font-bold uppercase tracking-[0.28em] text-accent">{t('practice.mat.turn', { turn })}</span> : null}
         <span className="animate-fx-banner-text text-title font-extrabold uppercase leading-none tracking-[0.22em] text-foreground [text-shadow:0_0_24px_rgb(var(--primary-hover-rgb))] min-[1101px]:text-stat">{name}</span>
-        <span className="flex gap-1.5">
-          {PHASES.map((entry) => (
-            <span
-              key={entry.id}
-              className={cx(
-                'grid size-6 place-items-center rounded-full border text-[0.55rem] font-extrabold leading-none',
-                entry.id === phase ? 'border-accent bg-accent text-[#06140e] shadow-[0_0_12px_rgb(var(--accent-rgb)/0.7)]' : 'border-tint/25 text-soft',
-              )}
-            >
-              {entry.short}
-            </span>
-          ))}
-        </span>
       </div>
     </div>
   )

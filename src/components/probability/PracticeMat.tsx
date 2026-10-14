@@ -31,7 +31,7 @@ import {
   type Placed,
 } from '../../app/practice-mat'
 import { mergeHandOrder } from '../../app/practice-hand-layout'
-import { createSavedCombo, readSavedCombos, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
+import { createSavedCombo, readSavedCombos, renameSavedCombo, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
 import { UI_ANIMATION_MS, supportsAdditiveAnimation } from '../../app/motion'
 import { matStepCards } from '../../app/mat-steps'
 import { useCardFlights } from '../../app/use-card-flights'
@@ -850,6 +850,15 @@ export function PracticeMat({
     showToastMessage(t('practice.combo.saved', { name: combo.name }), 'success')
   }
 
+  const renameCombo = useCallback(
+    (combo: SavedCombo, name: string) => {
+      const next = renameSavedCombo(combos, combo.id, name)
+      writeSavedCombos(next)
+      setCombos(next)
+    },
+    [combos],
+  )
+
   const deleteCombo = useCallback(
     (combo: SavedCombo) => {
       const next = combos.filter((entry) => entry.id !== combo.id)
@@ -871,6 +880,7 @@ export function PracticeMat({
       combos={combos}
       deckName={deckName}
       onLoad={loadFromPanel}
+      onRename={renameCombo}
       onDelete={deleteCombo}
       className="min-h-0 flex-1"
     />
@@ -1193,9 +1203,9 @@ export function PracticeMat({
           />
         ) : null}
 
-        {/* Abajo: en el celular las seis fases (Deshacer está arriba y los pasos en la lista, así que Anterior / Siguiente en vivo sobran) y, al lado, la última jugada. En escritorio, sólo los pasos: las fases están entre las zonas.
+        {/* Abajo: en el celular las seis fases, solas y centradas (Deshacer está arriba y los pasos en la lista, así que ni Anterior / Siguiente ni la última jugada hacen falta). En escritorio las fases están entre las zonas.
             Eligiendo (Sacrificios, materiales) las fases se van para que entre lo que hay que tocar: la barra no cambia de alto, el campo no se mueve. */}
-        <div className="flex items-center gap-2">
+        <div className="flex min-h-9 items-center justify-center gap-2">
           {!isDesktop && !picking ? (
             <div role="group" aria-label={t('practice.mat.phases')} className="grid w-[13.5rem] flex-none grid-cols-6 gap-1">
               {PHASES.map((phase) => (
@@ -1203,8 +1213,8 @@ export function PracticeMat({
               ))}
             </div>
           ) : null}
-          {/* Pasos: en vivo muestra la última jugada (en escritorio, con Anterior / Siguiente). Eligiendo, pide lo que falta. */}
-          <div className="flex min-h-9 min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 px-1 text-micro text-muted" role="status" aria-label={t('practice.mat.currentStep')}>
+          {/* El estado: eligiendo, pide lo que falta; si no, es sólo para el lector de pantalla (la última jugada y el contador ya están en la lista de pasos). */}
+          <div className={cx('flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 px-1 text-micro text-muted', !picking && 'sr-only')} role="status" aria-label={t('practice.mat.currentStep')}>
             {pickingText ? (
               <>
                 <span className="min-w-0 flex-1 truncate font-semibold text-accent">{pickingText}</span>
@@ -1219,17 +1229,11 @@ export function PracticeMat({
               </>
             ) : null}
             {!picking && session.actions.length > 0 ? (
-              <>
-                {/* Sin Anterior / Siguiente: Deshacer está arriba, la lista de pasos lleva a cualquier jugada y, viendo un combo, los controles del replay también. El contador sólo viendo un combo (en vivo la lista ya numera cada jugada); para el lector de pantalla sigue en el estado. */}
-                <span className={cx('font-semibold tabular-nums text-foreground', !session.replay && 'sr-only')}>
-                  {session.cursor}/{session.actions.length}
-                </span>
-              </>
+              <span className="font-semibold tabular-nums text-foreground">
+                {session.cursor}/{session.actions.length}
+              </span>
             ) : null}
-            {!picking ? (
-              // En escritorio el panel de pasos (siempre a la vista) ya cuenta la jugada, o explica qué hacer si todavía no hay ninguna: la frase sigue en el estado, pero sólo para el lector de pantalla.
-              <span className="min-w-0 flex-1 truncate min-[1101px]:sr-only">{session.cursor === 0 ? (session.actions.length > 0 ? t('practice.mat.startingHand') : t('practice.mat.hint')) : steps[session.cursor - 1]}</span>
-            ) : null}
+            {!picking ? <span className="min-w-0 flex-1 truncate">{session.cursor === 0 ? (session.actions.length > 0 ? t('practice.mat.startingHand') : t('practice.mat.hint')) : steps[session.cursor - 1]}</span> : null}
           </div>
         </div>
       </div>

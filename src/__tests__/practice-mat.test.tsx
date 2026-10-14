@@ -182,7 +182,7 @@ describe('la mesa de práctica', () => {
     expect(screen.getByRole('button', { name: 'Main: 0' })).toBeInTheDocument()
   })
 
-  it('en el celular las fases van abajo, en la barra de pasos, en lugar de Anterior y Siguiente (ya están Deshacer arriba y la lista de pasos); el campo no las lleva', () => {
+  it('en el celular las fases van abajo, solas y centradas (sin texto al lado: ya están Deshacer arriba y la lista de pasos); el campo no las lleva', () => {
     render(<Harness />)
 
     const phases = screen.getByRole('group', { name: 'Fases' })
@@ -190,6 +190,9 @@ describe('la mesa de práctica', () => {
     expect(within(screen.getByLabelText('Campo')).queryByRole('button', { name: 'Battle Phase' })).not.toBeInTheDocument()
     expect(within(phases).getAllByRole('button')).toHaveLength(6)
     expect(within(phases).getByRole('button', { name: 'Draw Phase' })).toHaveAttribute('aria-pressed', 'true')
+    // La barra las centra y el estado (la pista, la última jugada) queda sólo para el lector de pantalla: a la vista no hay nada más que las fases.
+    expect(phases.parentElement).toHaveClass('justify-center')
+    expect(status()).toHaveClass('sr-only')
 
     fireEvent.click(within(phases).getByRole('button', { name: 'Battle Phase' }))
     expect(within(status()).getByText('Pasás a la Battle Phase')).toBeInTheDocument()
@@ -218,7 +221,7 @@ describe('la mesa de práctica', () => {
     }
   })
 
-  it('la lista de pasos no repite nada: los cambios de fase hacen de separador y abajo no sobran ni Anterior / Siguiente ni el contador ni la frase en escritorio (ahí está el panel)', () => {
+  it('la lista de pasos no repite nada: los cambios de fase hacen de separador y abajo no sobran ni Anterior / Siguiente ni el contador ni la frase de la última jugada', () => {
     render(<Harness />)
 
     tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
@@ -233,11 +236,12 @@ describe('la mesa de práctica', () => {
     expect(rows.map((row) => row.textContent)).toEqual(['2Pasás a la Battle Phase', '1Invocación Normal de Ash Blossom', '0Mano inicial'])
     expect(rows.map((row) => row.getAttribute('data-divider'))).toEqual(['true', 'false', 'false'])
 
-    // Abajo: sin Anterior / Siguiente; en vivo el contador y, en escritorio, la frase quedan sólo para el lector de pantalla.
+    // Abajo: sin Anterior / Siguiente; el contador y la frase de la última jugada siguen en el estado, pero sólo para el lector de pantalla.
     expect(screen.queryByRole('button', { name: 'Anterior' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Siguiente' })).not.toBeInTheDocument()
-    expect(within(status()).getByText('2/2')).toHaveClass('sr-only')
-    expect(within(status()).getByText('Pasás a la Battle Phase')).toHaveClass('min-[1101px]:sr-only')
+    expect(status()).toHaveClass('sr-only')
+    expect(within(status()).getByText('2/2')).toBeInTheDocument()
+    expect(within(status()).getByText('Pasás a la Battle Phase')).toBeInTheDocument()
   })
 
   it('el turno va arriba a la izquierda y los botones de la mesa, a la derecha', () => {
@@ -379,6 +383,9 @@ describe('la mesa de práctica', () => {
     // El menú se fue pero la carta sigue en la zona, esperando los Sacrificios.
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     expect(within(status()).getByText('Tocá 2 monstruos para sacrificar (0/2)')).toBeInTheDocument()
+    // Eligiendo, lo que falta sí se ve (y las fases se van para dejarle el lugar).
+    expect(status()).not.toHaveClass('sr-only')
+    expect(screen.queryByRole('group', { name: 'Fases' })).not.toBeInTheDocument()
     expect(waitingIn(mz3)).toHaveAttribute('data-card-id', 'card-8-1')
     expect(within(hand()).queryByRole('listitem', { name: 'Blue-Eyes' })).not.toBeInTheDocument()
 
@@ -812,12 +819,12 @@ describe('la mesa de práctica', () => {
       expect(burst?.querySelector('span')).toHaveStyle({ animationDelay: '360ms' })
       expect(zone('Zona de monstruo 2').querySelector('[data-fx="landing"]')).toBeNull()
 
-      // Una fase nueva: el cartel con su nombre; y de la End Phase a la Draw Phase, con el turno.
+      // Una fase nueva: el cartel con su nombre y nada más (sin los círculos de las seis fases, que ya están en los botones); y de la End Phase a la Draw Phase, con el turno.
       fireEvent.click(screen.getByRole('button', { name: 'Main Phase 1' }))
-      expect(document.querySelector('[data-fx="banner"]')).toHaveTextContent('Main Phase 1')
+      expect(document.querySelector('[data-fx="banner"]')?.textContent).toBe('Main Phase 1')
       fireEvent.click(screen.getByRole('button', { name: 'End Phase' }))
       fireEvent.click(screen.getByRole('button', { name: 'Draw Phase' }))
-      expect(document.querySelector('[data-fx="banner"]')).toHaveTextContent('Turno 2Draw Phase')
+      expect(document.querySelector('[data-fx="banner"]')?.textContent).toBe('Turno 2Draw Phase')
 
       act(() => {
         vi.advanceTimersByTime(1500)
@@ -1183,5 +1190,36 @@ describe('la mesa de práctica', () => {
     expect(within(status()).getByText('2/2')).toBeInTheDocument()
     expect(within(status()).getByText('Invocación Normal de Nibiru')).toBeInTheDocument()
     expect(within(hand()).getByRole('listitem', { name: 'Called by the Grave' })).toBeInTheDocument()
+  })
+
+  it('un combo guardado se renombra desde la lista, sin tocar sus jugadas', () => {
+    render(<Harness />)
+
+    tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar combo' }))
+    const saving = screen.getByRole('dialog', { name: 'Guardar combo' })
+    fireEvent.change(within(saving).getByRole('textbox', { name: 'Nombre' }), { target: { value: 'Línea básica' } })
+    fireEvent.click(within(saving).getByRole('button', { name: 'Guardar' }))
+
+    const aside = screen.getByRole('complementary', { name: 'Pasos y combos' })
+    fireEvent.click(within(aside).getByRole('radio', { name: 'Combos' }))
+    fireEvent.click(within(aside).getByRole('button', { name: 'Renombrar Línea básica' }))
+
+    // El campo arranca con el nombre de siempre y no repite el aviso de qué se guarda.
+    const dialog = screen.getByRole('dialog', { name: 'Renombrar combo' })
+    expect(within(dialog).getByRole('textbox', { name: 'Nombre' })).toHaveValue('Línea básica')
+    expect(within(dialog).queryByText(/Se guardan la mano/)).not.toBeInTheDocument()
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Nombre' }), { target: { value: 'Apertura Ash' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+
+    expect(screen.queryByRole('dialog', { name: 'Renombrar combo' })).not.toBeInTheDocument()
+    expect(within(aside).getByText('Apertura Ash')).toBeInTheDocument()
+    expect(within(aside).queryByText('Línea básica')).not.toBeInTheDocument()
+
+    const [saved] = JSON.parse(localStorage.getItem('ygo-lab:practice-combos') ?? '[]') as Array<{ name: string; actions: unknown[] }>
+    expect(saved?.name).toBe('Apertura Ash')
+    expect(saved?.actions).toHaveLength(1)
   })
 })

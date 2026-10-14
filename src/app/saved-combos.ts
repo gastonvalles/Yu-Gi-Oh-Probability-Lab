@@ -81,6 +81,17 @@ export function uniqueComboName(name: string, combos: readonly SavedCombo[]): st
   return `${base} (${index})`
 }
 
+/** Renombra un combo: el nombre nuevo no puede repetir el de otro (con el suyo sí) y uno vacío deja el que tenía. */
+export function renameSavedCombo(combos: readonly SavedCombo[], id: string, name: string): SavedCombo[] {
+  if (!name.trim()) {
+    return [...combos]
+  }
+
+  const others = combos.filter((combo) => combo.id !== id)
+
+  return combos.map((combo) => (combo.id === id ? { ...combo, name: uniqueComboName(name, others) } : combo))
+}
+
 interface NewCombo {
   name: string
   deckName: string
