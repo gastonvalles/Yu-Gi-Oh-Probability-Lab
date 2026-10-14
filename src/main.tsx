@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client'
 import { Provider } from 'react-redux'
 
 import App from './App'
+import { replaceDeckBuilder } from './app/deck-builder-slice'
+import { loadFormatData } from './app/format-data'
+import { refreshStoredGenesysPoints } from './app/genesys-format'
 import { UI_ANIMATION_MS } from './app/motion'
 import { syncSiteMeta } from './i18n'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
@@ -18,12 +21,46 @@ if (!appRoot) {
 document.documentElement.style.setProperty('--motion-duration', `${UI_ANIMATION_MS}ms`)
 syncSiteMeta()
 
-createRoot(appRoot).render(
-  <StrictMode>
-    <ErrorBoundary>
-      <Provider store={store}>
-        <App />
-      </Provider>
-    </ErrorBoundary>
-  </StrictMode>,
-)
+const root = createRoot(appRoot)
+
+const start = () =>
+  root.render(
+    <StrictMode>
+      <ErrorBoundary>
+        <Provider store={store}>
+          <App />
+        </Provider>
+      </ErrorBoundary>
+    </StrictMode>,
+  )
+
+// Leer el deck guardado no espera las tablas de Genesys y Edison: los puntos que quedaron sin resolver (la mayoría de los decks tiene alguna carta así) se completan apenas llegan.
+// Nunca rechaza: sin tablas el deck queda como estaba, y el próximo `loadFormatData` vuelve a intentar.
+const loadTablesAndRefreshPoints = () =>
+  loadFormatData().then(
+    () => {
+      const deckBuilder = store.getState().deckBuilder
+      const refreshed = refreshStoredGenesysPoints(deckBuilder)
+
+      if (refreshed !== deckBuilder) {
+        store.dispatch(replaceDeckBuilder(refreshed))
+      }
+    },
+    () => {},
+  )
+
+const { deckFormat } = store.getState().settings
+
+if (deckFormat === 'edison' || deckFormat === 'genesys') {
+  // Con uno de esos formatos guardado, el deck se valida al pintar: la primera pantalla espera las tablas.
+  void loadTablesAndRefreshPoints().then(start)
+} else {
+  start()
+
+  // Con cualquier otro formato las tablas no se necesitan hasta que alguien las pida: bajan después del primer pintado, en un momento ocioso.
+  if (typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(() => void loadTablesAndRefreshPoints(), { timeout: 4000 })
+  } else {
+    window.setTimeout(() => void loadTablesAndRefreshPoints(), 1500)
+  }
+}

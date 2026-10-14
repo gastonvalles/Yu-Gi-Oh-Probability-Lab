@@ -1,39 +1,32 @@
 import type { ApiCardReference } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
-import {
-  EDISON_CARD_POOL_IDS,
-  EDISON_FORBIDDEN_IDS,
-  EDISON_LIMITED_IDS,
-  EDISON_SEMI_LIMITED_IDS,
-} from '../data/edison-format-data'
+import { formatTables } from './format-data'
 
 type EdisonCardStatus = 'unavailable' | 'forbidden' | 'limited' | 'semi-limited' | 'unlimited'
 
-const EDISON_CARD_POOL_ID_SET = new Set<number>(EDISON_CARD_POOL_IDS)
-const EDISON_FORBIDDEN_ID_SET = new Set<number>(EDISON_FORBIDDEN_IDS)
-const EDISON_LIMITED_ID_SET = new Set<number>(EDISON_LIMITED_IDS)
-const EDISON_SEMI_LIMITED_ID_SET = new Set<number>(EDISON_SEMI_LIMITED_IDS)
-
 type EdisonCard = ApiCardReference | ApiCardSearchResult
 
+// Va escrito acá, y no sacado de las tablas, porque el nombre del formato se muestra en toda la app sin cargarlas.
 export const EDISON_FORMAT_LABEL = 'Edison'
 
+// Las tablas llegan por format-data (se cargan al elegir Edison o al pintar un deck que ya lo usa): sin cargar, ninguna carta figura.
 export function getEdisonCardStatus(card: EdisonCard): EdisonCardStatus {
   const id = card.ygoprodeckId
+  const tables = formatTables.edison
 
-  if (EDISON_FORBIDDEN_ID_SET.has(id)) {
+  if (tables?.forbidden.has(id)) {
     return 'forbidden'
   }
 
-  if (EDISON_LIMITED_ID_SET.has(id)) {
+  if (tables?.limited.has(id)) {
     return 'limited'
   }
 
-  if (EDISON_SEMI_LIMITED_ID_SET.has(id)) {
+  if (tables?.semiLimited.has(id)) {
     return 'semi-limited'
   }
 
-  return EDISON_CARD_POOL_ID_SET.has(id) ? 'unlimited' : 'unavailable'
+  return tables?.pool.has(id) ? 'unlimited' : 'unavailable'
 }
 
 export function isEdisonCardInPool(card: EdisonCard): boolean {
