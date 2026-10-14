@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { parseBackup } from '../app/backup'
 import { duelistName } from '../app/life-calculator'
-import { formatInteger } from '../app/utils'
+import { formatInteger, formatUsd } from '../app/utils'
 import { buildDeckWorkflowNavigationItems } from '../components/deck-mode/deck-workflow-navigation'
 import { navToneLabel } from '../components/shell/nav-model'
 import { CopiesBadge } from '../components/ui/CopiesBadge'
@@ -42,6 +42,37 @@ describe('el armazón de la app en inglés', () => {
 
     rerender(<CopiesBadge copies={3} />)
     expect(screen.getByLabelText('3 copies')).toBeInTheDocument()
+  })
+
+  it('del 0 al 999 un entero sale tal cual y desde el 1000 lleva el separador de cada idioma, también al volver de uno al otro', () => {
+    expect([0, 40, 999].map(formatInteger)).toEqual(['0', '40', '999'])
+    expect(formatInteger(12345)).toBe('12.345')
+    expect(formatInteger(-5)).toBe('-5')
+    expect(formatInteger(1.5)).toBe('1,5')
+    expect(formatInteger(Number.NaN)).toBe('NaN')
+
+    applyLocale('en')
+
+    expect([0, 40, 999].map(formatInteger)).toEqual(['0', '40', '999'])
+    expect(formatInteger(1000)).toBe('1,000')
+    expect(formatInteger(12345)).toBe('12,345')
+    expect(formatInteger(1.5)).toBe('1.5')
+
+    applyLocale('es')
+
+    expect(formatInteger(12345)).toBe('12.345')
+  })
+
+  it('los dólares se escriben como los lee cada idioma, también al volver de uno al otro', () => {
+    expect(formatUsd(1234.5)).toContain('1.234,50')
+
+    applyLocale('en')
+
+    expect(formatUsd(1234.5)).toBe('$1,234.50')
+
+    applyLocale('es')
+
+    expect(formatUsd(1234.5)).toContain('1.234,50')
   })
 
   it('los avisos y nombres que arma la lógica salen en inglés', () => {

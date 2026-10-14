@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { memo, useCallback, useMemo, useState } from 'react'
 
 import {
   BANLISTS_FETCHED_AT,
@@ -80,19 +80,38 @@ export function BanlistsScreen() {
   const index = Math.max(0, picked?.region === region ? lists.findIndex((list) => list.date === picked.date) : 0)
   const list = lists[index]
   const previous = lists[index + 1] ?? null
-  const words = normalizeSearchText(query).split(' ').filter(Boolean)
+  const words = useMemo(() => normalizeSearchText(query).split(' ').filter(Boolean), [query])
+  // Las secciones sólo dependen de la lista y de la vista (la lista y la anterior son siempre las mismas de cada región): escribir en el buscador
+  // no repite el diff, y las cartas de cada una (`entries`) son las mismas, así que las de `BanlistTile` no se vuelven a dibujar.
+  const sections = useMemo<Array<{ status: BanlistStatus; entries: Entry[] }>>(() => {
+    if (!list) {
+      return []
+    }
+
+    if (view === 'changes') {
+      const changes = diffBanlists(previous, list)
+
+      return STATUSES.map((status) => ({ status, entries: changes[status].map(({ cardId, from }) => ({ cardId, from })) }))
+    }
+
+    const listed = listedCards(list)
+
+    return STATUSES.filter((status) => status !== 'unlimited').map((status) => ({ status, entries: listed[status as Exclude<BanlistStatus, 'unlimited'>].map((cardId) => ({ cardId })) }))
+  }, [view, list, previous])
+  const visible = useMemo(
+    () =>
+      sections
+        .map((section) => ({ ...section, entries: section.entries.filter((entry) => words.every((word) => normalizeSearchText(banlistCardName(entry.cardId)).includes(word))) }))
+        .filter((section) => section.entries.length > 0),
+    [sections, words],
+  )
+  const open = useCallback((cardId: number, status: BanlistStatus) => setOpened({ cardId, status }), [])
 
   if (!list) {
     return null
   }
 
   const pick = (nextIndex: number) => setPicked({ region, date: lists[nextIndex]!.date })
-  const matching = (entries: Entry[]) => entries.filter((entry) => words.every((word) => normalizeSearchText(banlistCardName(entry.cardId)).includes(word)))
-  const sections: Array<{ status: BanlistStatus; entries: Entry[] }> =
-    view === 'changes'
-      ? STATUSES.map((status) => ({ status, entries: diffBanlists(previous, list)[status].map(({ cardId, from }) => ({ cardId, from })) }))
-      : STATUSES.filter((status) => status !== 'unlimited').map((status) => ({ status, entries: listedCards(list)[status as Exclude<BanlistStatus, 'unlimited'>].map((cardId) => ({ cardId })) }))
-  const visible = sections.map((section) => ({ ...section, entries: matching(section.entries) })).filter((section) => section.entries.length > 0)
   const total = sections.reduce((sum, section) => sum + section.entries.length, 0)
 
   return (
@@ -170,20 +189,7 @@ export function BanlistsScreen() {
               </div>
               <ul className="m-0 grid list-none grid-cols-3 gap-x-2.5 gap-y-3 p-0 min-[560px]:grid-cols-4 min-[820px]:grid-cols-5 min-[1101px]:grid-cols-6 min-[1300px]:grid-cols-8">
                 {entries.map((entry) => (
-                  <li key={entry.cardId} className="min-w-0">
-                    <button
-                      type="button"
-                      aria-label={t('catalog.banlists.openCard', { name: banlistCardName(entry.cardId) })}
-                      className="group grid w-full content-start gap-1.5 rounded-tag text-left focus-visible:outline-none focus-visible:shadow-focus"
-                      onClick={() => setOpened({ cardId: entry.cardId, status })}
-                    >
-                      <TiltCard className="aspect-[421/614] rounded-tag bg-input shadow-card">
-                        <CardArt remoteUrl={cardSmallImageUrl(entry.cardId)} name="" className="block h-full w-full object-cover" />
-                      </TiltCard>
-                      <span className="line-clamp-2 text-micro font-semibold text-foreground [overflow-wrap:anywhere]">{banlistCardName(entry.cardId)}</span>
-                      {entry.from ? <span className="text-micro text-muted">{t('catalog.banlists.was', { status: t(STATUS_KEY[entry.from]) })}</span> : null}
-                    </button>
-                  </li>
+                  <BanlistTile key={entry.cardId} entry={entry} status={status} onOpen={open} />
                 ))}
               </ul>
             </section>
@@ -195,6 +201,26 @@ export function BanlistsScreen() {
     </StepPage>
   )
 }
+
+/** Una carta de una sección. Con `memo`, abrir una carta o escribir en el buscador sólo dibuja las que se suman o cambian (la lista completa trae más de 200). */
+const BanlistTile = memo(function BanlistTile({ entry, status, onOpen }: { entry: Entry; status: BanlistStatus; onOpen: (cardId: number, status: BanlistStatus) => void }) {
+  return (
+    <li className="min-w-0">
+      <button
+        type="button"
+        aria-label={t('catalog.banlists.openCard', { name: banlistCardName(entry.cardId) })}
+        className="group grid w-full content-start gap-1.5 rounded-tag text-left focus-visible:outline-none focus-visible:shadow-focus"
+        onClick={() => onOpen(entry.cardId, status)}
+      >
+        <TiltCard className="aspect-[421/614] rounded-tag bg-input shadow-card">
+          <CardArt remoteUrl={cardSmallImageUrl(entry.cardId)} name="" className="block h-full w-full object-cover" />
+        </TiltCard>
+        <span className="line-clamp-2 text-micro font-semibold text-foreground [overflow-wrap:anywhere]">{banlistCardName(entry.cardId)}</span>
+        {entry.from ? <span className="text-micro text-muted">{t('catalog.banlists.was', { status: t(STATUS_KEY[entry.from]) })}</span> : null}
+      </button>
+    </li>
+  )
+})
 
 /** La línea de debajo del título: contra qué lista se compara y cuántas cartas hay. */
 function summary(view: View, list: Banlist, previous: Banlist | null, total: number): string {
