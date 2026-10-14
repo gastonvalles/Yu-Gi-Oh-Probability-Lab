@@ -154,7 +154,6 @@ export const duel: Translated<typeof es> = {
   'duel.chat.quick.thanks': 'Thanks!',
 
   // The turn and the rival's phases.
-  'duel.turn.pass': 'End turn',
 
   'duel.result.win': 'You won the duel.',
   'duel.result.lose': 'You lost the duel.',

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { duelResult, type DuelResult } from '../../app/duel-games'
 import type { Duel, DuelSnapshot } from '../../app/duel-session'
 import type { SocketStatus } from '../../app/duel-socket'
+import { duelTurnNumber } from '../../app/duel-turn'
 import { formatClock, interpretAmount, timerRemaining } from '../../app/life-calculator'
 import { PHASES } from '../../app/practice-mat'
 import { formatInteger } from '../../app/utils'
@@ -13,27 +14,13 @@ import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
+import { SideDrawer } from '../ui/SideDrawer'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { DuelChat, useChatUnread } from './DuelChat'
 import { DuelGames, type GameActions } from './DuelGames'
 
 /** Cambios de un toque a los puntos de vida; el resto, en el campo de monto. */
 const QUICK_AMOUNTS = [-1000, -500, -100, 100, 500, 1000] as const
-
-interface DuelBarProps {
-  snapshot: DuelSnapshot
-  status: SocketStatus
-  myName: string
-  turn: 'mine' | 'theirs'
-  onChangeLife: (delta: number) => void
-  onHalve: () => void
-  onToggleClock: () => void
-  /** Moneda, dado, piedra-papel-tijera, quién empieza y señales. */
-  games: GameActions
-  /** Escribirle al rival. */
-  onSendChat: Duel['sendChat']
-  onLeave: () => void
-}
 
 /** Un reloj de pared que se actualiza cada `ms` (el reloj de la ronda se calcula contra él). */
 function useTick(ms: number): number {
@@ -54,17 +41,23 @@ const STATUS_TEXT: Record<Exclude<SocketStatus, 'open'>, () => string> = {
   closed: () => t('duel.status.closed'),
 }
 
+interface DuelBarProps {
+  snapshot: DuelSnapshot
+  status: SocketStatus
+  turn: 'mine' | 'theirs'
+  onToggleClock: () => void
+  onRematch: () => void
+  onLeave: () => void
+}
+
 /**
- * La barra de arriba de la mesa en un duelo: los puntos de vida de los dos (los tuyos se cambian tocándolos), de quién es el turno,
- * el reloj de la ronda (compartido) y cómo va la conexión. Salir pide confirmación.
+ * Lo de arriba de la mesa en un duelo, que es lo del rival y lo que se mira sin tocar: sus puntos de vida, el reloj de la ronda (tocarlo lo pausa),
+ * el turno con la fase en que va quien juega, y cómo va la conexión. Lo propio (tus puntos de vida, el chat, los dados, deshacer) está abajo, al alcance
+ * del pulgar. Salir pide confirmación y queda en la esquina de arriba, lejos de donde se toca jugando.
  */
-export function DuelBar({ snapshot, status, myName, turn, onChangeLife, onHalve, onToggleClock, games, onSendChat, onLeave }: DuelBarProps) {
+export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLeave }: DuelBarProps) {
   const now = useTick(1000)
-  const [lifeOpen, setLifeOpen] = useState(false)
   const [leaving, setLeaving] = useState(false)
-  const [gamesOpen, setGamesOpen] = useState(false)
-  const [chatOpen, setChatOpen] = useState(false)
-  const unread = useChatUnread(snapshot, chatOpen)
   const { life, me, peerPresent } = snapshot
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
   const running = life.timer.running
@@ -75,39 +68,32 @@ export function DuelBar({ snapshot, status, myName, turn, onChangeLife, onHalve,
   const phase = PHASES.find((entry) => entry.id === phaseId)?.name
 
   return (
-    <div className="grid gap-1.5 px-0.5">
-      <div className="grid grid-cols-2 gap-1.5">
-        <LifeTile name={rivalName} life={life.lp[me === 0 ? 1 : 0]} />
-        <LifeTile name={myName || t('duel.bar.you')} life={life.lp[me]} mine onClick={() => setLifeOpen(true)} />
+    <div className="grid gap-1.5 px-0.5 pt-1.5">
+      <div className="flex items-center gap-1.5">
+        <div className="min-w-0 flex-1">
+          <LifeTile name={rivalName} life={life.lp[me === 0 ? 1 : 0]} />
+        </div>
+        <button
+          type="button"
+          aria-label={`${t('duel.bar.clock', { time: clock })}. ${running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}`}
+          title={running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}
+          className="inline-flex h-11 shrink-0 cursor-pointer items-center gap-1 rounded-card border border-border-subtle bg-card-background px-2.5 text-micro font-semibold tabular-nums text-foreground focus-visible:outline-none focus-visible:shadow-focus"
+          onClick={onToggleClock}
+        >
+          <Icon name={running ? 'pause' : 'play'} size={14} />
+          {clock}
+        </button>
+        <IconButton tone="flat" size="sm" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} onClick={() => setLeaving(true)}>
+          <Icon name="x" />
+        </IconButton>
       </div>
 
-      <div className="flex min-h-9 flex-wrap items-center gap-x-2 gap-y-1">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted">{t('practice.mat.turn', { turn: duelTurnNumber(snapshot.mine, snapshot.theirs?.state ?? null) })}</span>
         <span className={cx('whitespace-nowrap rounded-full px-2.5 py-1 text-micro font-semibold', turn === 'mine' ? 'bg-accent/20 text-accent' : 'bg-tint/8 text-muted')}>
           {turn === 'mine' ? t('duel.bar.yourTurn') : t('duel.bar.theirTurn', { name: rivalName })}
           {phase ? <span data-testid="duel-phase">{` · ${phase}`}</span> : null}
         </span>
-        <span className="flex items-center" role="group" aria-label={t('duel.bar.clock', { time: clock })}>
-          <span className="px-1 text-micro font-semibold tabular-nums text-foreground">{clock}</span>
-          <IconButton tone="flat" size="sm" aria-label={running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')} title={running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')} onClick={onToggleClock}>
-            <Icon name={running ? 'pause' : 'play'} />
-          </IconButton>
-        </span>
-        <span className="relative ml-auto">
-          <IconButton tone="flat" size="sm" aria-label={unread > 0 ? `${t('duel.chat.open')} (${t('duel.chat.unread', { count: unread })})` : t('duel.chat.open')} title={t('duel.chat.open')} onClick={() => setChatOpen(true)}>
-            <Icon name="chat" />
-          </IconButton>
-          {unread > 0 ? (
-            <span aria-hidden="true" className="pointer-events-none absolute -right-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full bg-accent px-1 text-[0.625rem] font-extrabold leading-4 text-[#06140e]">
-              {unread}
-            </span>
-          ) : null}
-        </span>
-        <IconButton tone="flat" size="sm" aria-label={t('duel.games.open')} title={t('duel.games.open')} onClick={() => setGamesOpen(true)}>
-          <Icon name="dice" />
-        </IconButton>
-        <IconButton tone="flat" size="sm" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} onClick={() => setLeaving(true)}>
-          <Icon name="x" />
-        </IconButton>
       </div>
 
       {status !== 'open' ? (
@@ -116,27 +102,7 @@ export function DuelBar({ snapshot, status, myName, turn, onChangeLife, onHalve,
         <Callout tone="info">{t('duel.peer.absent')}</Callout>
       ) : null}
 
-      <Modal isOpen={chatOpen} onClose={() => setChatOpen(false)} size="md" title={t('duel.chat.title', { name: rivalName })} ariaLabel={t('duel.chat.title', { name: rivalName })}>
-        <DuelChat snapshot={snapshot} myName={myName} onSend={onSendChat} />
-      </Modal>
-
-      <DuelGames isOpen={gamesOpen} onClose={() => setGamesOpen(false)} snapshot={snapshot} myName={myName} actions={games} />
-
-      {result ? <ResultBanner result={result} snapshot={snapshot} rival={rivalName} onRematch={games.rematch} /> : null}
-
-      <LifeDialog
-        isOpen={lifeOpen}
-        life={life.lp[me]}
-        onClose={() => setLifeOpen(false)}
-        onChange={(delta) => {
-          onChangeLife(delta)
-          setLifeOpen(false)
-        }}
-        onHalve={() => {
-          onHalve()
-          setLifeOpen(false)
-        }}
-      />
+      {result ? <ResultBanner result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} /> : null}
 
       <ConfirmDialog
         isOpen={leaving}
@@ -151,6 +117,82 @@ export function DuelBar({ snapshot, status, myName, turn, onChangeLife, onHalve,
         }}
       />
     </div>
+  )
+}
+
+interface DuelToolsProps {
+  snapshot: DuelSnapshot
+  myName: string
+  /** Moneda, dado, piedra-papel-tijera, quién empieza y rendirse. */
+  games: GameActions
+  /** Escribirle al rival. */
+  onSendChat: Duel['sendChat']
+}
+
+/**
+ * Los botones propios del duelo, abajo a la derecha (el pulgar de quien juega con la derecha): los dados y juegos, y el chat (con un contador de lo que no leíste),
+ * que se abre como un panel por la derecha.
+ */
+export function DuelTools({ snapshot, myName, games, onSendChat }: DuelToolsProps) {
+  const [gamesOpen, setGamesOpen] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false)
+  const unread = useChatUnread(snapshot, chatOpen)
+  const rivalName = snapshot.peerName ?? t('duel.bar.rival')
+
+  return (
+    <>
+      <IconButton tone="flat" size="sm" aria-label={t('duel.games.open')} title={t('duel.games.open')} onClick={() => setGamesOpen(true)}>
+        <Icon name="dice" />
+      </IconButton>
+      <span className="relative">
+        <IconButton tone="flat" size="sm" aria-label={unread > 0 ? `${t('duel.chat.open')} (${t('duel.chat.unread', { count: unread })})` : t('duel.chat.open')} title={t('duel.chat.open')} onClick={() => setChatOpen(true)}>
+          <Icon name="chat" />
+        </IconButton>
+        {unread > 0 ? (
+          <span aria-hidden="true" className="pointer-events-none absolute right-0 top-0 grid min-w-4 place-items-center rounded-full bg-accent px-1 text-[0.625rem] font-extrabold leading-4 text-[#06140e]">
+            {unread}
+          </span>
+        ) : null}
+      </span>
+
+      <SideDrawer isOpen={chatOpen} onClose={() => setChatOpen(false)} title={t('duel.chat.title', { name: rivalName })}>
+        <DuelChat snapshot={snapshot} myName={myName} onSend={onSendChat} fill />
+      </SideDrawer>
+
+      <DuelGames isOpen={gamesOpen} onClose={() => setGamesOpen(false)} snapshot={snapshot} myName={myName} actions={games} />
+    </>
+  )
+}
+
+interface DuelLifeProps {
+  snapshot: DuelSnapshot
+  myName: string
+  onChangeLife: (delta: number) => void
+  onHalve: () => void
+}
+
+/** Tus puntos de vida, abajo junto a las fases: se tocan para cambiarlos. */
+export function DuelLife({ snapshot, myName, onChangeLife, onHalve }: DuelLifeProps) {
+  const [open, setOpen] = useState(false)
+  const lp = snapshot.life.lp[snapshot.me]
+
+  return (
+    <>
+      <LifeTile name={myName || t('duel.bar.you')} life={lp} mine onClick={() => setOpen(true)} />
+      <LifeDialog
+        isOpen={open}
+        life={lp}
+        onClose={() => setOpen(false)}
+        onChange={(delta) => {
+          onChangeLife(delta)
+          setOpen(false)
+        }}
+        onHalve={() => {
+          onHalve()
+          setOpen(false)
+        }}
+      />
+    </>
   )
 }
 
@@ -194,7 +236,7 @@ function LifeTile({ name, life, mine = false, onClick }: { name: string; life: n
       <span className={cx('shrink-0 text-title font-extrabold leading-tight tabular-nums', mine ? 'text-accent' : 'text-foreground')}>{formatInteger(life)}</span>
     </>
   )
-  const style = 'flex min-w-0 items-baseline justify-between gap-2 rounded-card border border-border-subtle bg-card-background px-2.5 py-1 text-left'
+  const style = 'flex h-11 min-w-0 items-center justify-between gap-2 rounded-card border border-border-subtle bg-card-background px-2.5 text-left'
 
   return onClick ? (
     <button type="button" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${formatInteger(life)}. ${t('duel.bar.changeLife')}`} className={cx(style, 'cursor-pointer focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>

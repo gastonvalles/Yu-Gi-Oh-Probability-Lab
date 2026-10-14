@@ -110,7 +110,7 @@ const actionChecks: Record<MatAction['type'], (action: Record<string, unknown>) 
   declare: (a) => isId(a.id),
   target: (a) => isId(a.id),
   attack: (a) => isId(a.id) && optional(a.target, isId),
-  phase: (a) => isPhase(a.phase) && optional(a.skipDraw, (v) => v === true) && optional(a.pass, (v) => v === true),
+  phase: (a) => isPhase(a.phase) && optional(a.skipDraw, (v) => v === true),
 }
 
 function parseAction(value: unknown): MatAction | null {

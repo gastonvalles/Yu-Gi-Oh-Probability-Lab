@@ -6,9 +6,9 @@ import { createRoomCode } from '../../app/duel-relay-rules'
 import type { Duel, DuelRole, DuelSnapshot } from '../../app/duel-session'
 import type { SocketStatus } from '../../app/duel-socket'
 import { rpsOutcome } from '../../app/duel-games'
-import { whoseTurn } from '../../app/duel-turn'
+import { duelTurnNumber, whoseTurn } from '../../app/duel-turn'
 import { STARTING_LP } from '../../app/life-calculator'
-import { createMatState, isToken, randomSeed, shuffleWithSeed } from '../../app/practice-mat'
+import { createMatState, isToken, PHASES, randomSeed, shuffleWithSeed } from '../../app/practice-mat'
 import { useDuel, type DuelConnect } from '../../app/use-duel'
 import type { MatSession } from '../../app/use-mat-session'
 import { showToastMessage } from '../../app/use-toast-message'
@@ -19,7 +19,7 @@ import { FieldBox, fieldInline } from '../ui/FieldBox'
 import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
-import { DuelBar } from './DuelBar'
+import { DuelBar, DuelLife, DuelTools } from './DuelBar'
 import { DuelChat } from './DuelChat'
 import { DuelDeckPicker, loadDuelDeck, readStoredDeck, type DuelDeck } from './DuelDeckPicker'
 import { gameText, outcomeText, rpsName } from './game-text'
@@ -402,24 +402,24 @@ function useAutoStartClock(duel: Duel, snapshot: DuelSnapshot) {
 }
 
 /**
- * La carta del turno se roba cuando empieza el turno propio, o sea cuando el rival pasa el suyo: así el segundo jugador roba en su primer turno
- * y quien pasa no roba de más antes de tiempo (la mesa, en un duelo, no roba sola al pasar). Pasar dos veces por lo mismo (el rival deshace y repite)
+ * La carta del turno se roba cuando empieza el turno propio, o sea cuando el rival llega a su End Phase: así el segundo jugador roba en su primer turno
+ * y quien termina no roba de más antes de tiempo (la mesa, en un duelo, no roba sola al pasar). Llegar dos veces a lo mismo (el rival deshace y repite)
  * no roba dos veces.
  */
 function useTurnDraw(duel: Duel, snapshot: DuelSnapshot, turn: 'mine' | 'theirs') {
-  const passes = (snapshot.mine?.turn ?? 1) - 1 + ((snapshot.theirs?.state.turn ?? 1) - 1)
-  const drawnAt = useRef(passes)
+  const number = duelTurnNumber(snapshot.mine, snapshot.theirs?.state ?? null)
+  const drawnAt = useRef(number)
 
   useEffect(() => {
-    if (passes > drawnAt.current) {
-      drawnAt.current = passes
+    if (number > drawnAt.current) {
+      drawnAt.current = number
 
       if (turn === 'mine') {
         duel.play({ type: 'draw', count: 1 })
         showToastMessage(t('duel.turn.drew'), 'info')
       }
     }
-  }, [passes, turn, duel])
+  }, [number, turn, duel])
 }
 
 /**
@@ -502,13 +502,11 @@ function useRivalAttack(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, M
 const NOTICE_MS = 1400
 
 /**
- * Lo que el rival avanza en su turno, para verlo sin mirar su campo: cada fase que pasa (con su nombre) y, cuando termina su turno y empieza el tuyo, el cartel "Tu turno".
- * Lo que ya había cuando se abrió la pantalla no se avisa, ni lo que se deshace.
+ * Lo que el rival avanza en su turno, para verlo sin mirar su campo: cada fase que pasa (con su nombre) y, cuando llega a su End Phase y empieza el tuyo, el cartel
+ * "Tu turno". Lo que ya había cuando se abrió la pantalla no se avisa, ni lo que se deshace sin cambiar de fase.
  */
-function useRivalNotice(snapshot: DuelSnapshot): DuelMatLink['notice'] {
-  const theirs = snapshot.theirs?.state
-  const phase = theirs?.phase
-  const turn = theirs?.turn
+function useRivalNotice(snapshot: DuelSnapshot, turn: 'mine' | 'theirs'): DuelMatLink['notice'] {
+  const phase = snapshot.theirs?.state.phase
   const seen = useRef({ phase, turn })
   const [shown, setShown] = useState<DuelMatLink['notice']>(undefined)
   const rival = snapshot.peerName ?? t('duel.bar.rival')
@@ -518,14 +516,16 @@ function useRivalNotice(snapshot: DuelSnapshot): DuelMatLink['notice'] {
 
     seen.current = { phase, turn }
 
-    if (phase === undefined || turn === undefined || before.phase === undefined || before.turn === undefined || (before.phase === phase && before.turn === turn)) {
+    if (phase === undefined || before.phase === undefined || before.phase === phase) {
       return
     }
 
-    // Pasó de una End Phase a la Draw Phase del turno siguiente: le toca a quien no es.
-    if (turn === before.turn + 1) {
-      setShown({ key: Date.now(), phase, turn, label: t('duel.bar.yourTurn') })
-    } else if (turn === before.turn) {
+    const name = PHASES.find((entry) => entry.id === phase)?.name ?? phase
+
+    // Llegó a su End Phase y ahora te toca a vos; si no, una fase más de su turno.
+    if (before.turn === 'theirs' && turn === 'mine') {
+      setShown({ key: Date.now(), phase, who: `${rival} · ${name}`, label: t('duel.bar.yourTurn') })
+    } else {
       setShown({ key: Date.now(), phase, who: rival })
     }
   }, [phase, turn, rival])
@@ -555,7 +555,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   useTurnDraw(duel, snapshot, turn)
   useAutoStartClock(duel, snapshot)
   const announcement = useRivalAttack(snapshot, cardsById)
-  const notice = useRivalNotice(snapshot)
+  const notice = useRivalNotice(snapshot, turn)
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
   // A quiénes se puede atacar: los monstruos del rival en el campo, con el id que él les dio.
   const attackTargets = useMemo(
@@ -571,23 +571,13 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       attackTargets,
       foreignKnown: theirs!.known,
       announcement,
-      turn,
       notice,
       rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
+      tools: <DuelTools snapshot={snapshot} myName={myName} games={duel} onSendChat={duel.sendChat} />,
+      life: <DuelLife snapshot={snapshot} myName={myName} onChangeLife={duel.changeLife} onHalve={duel.halveLife} />,
       header: (
         <>
-          <DuelBar
-            snapshot={snapshot}
-            status={status}
-            myName={myName}
-            turn={turn}
-            onChangeLife={duel.changeLife}
-            onHalve={duel.halveLife}
-            onToggleClock={duel.toggleClock}
-            games={duel}
-            onSendChat={duel.sendChat}
-            onLeave={onLeave}
-          />
+          <DuelBar snapshot={snapshot} status={status} turn={turn} onToggleClock={duel.toggleClock} onRematch={duel.rematch} onLeave={onLeave} />
           <TheirHand count={opponent.handCount ?? 0} />
         </>
       ),

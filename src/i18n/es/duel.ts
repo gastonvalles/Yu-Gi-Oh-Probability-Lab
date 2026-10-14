@@ -160,7 +160,6 @@ export const duel = {
   'duel.chat.quick.thanks': '¡Gracias!',
 
   // El turno y las fases del rival.
-  'duel.turn.pass': 'Terminar turno',
 
   // Cómo terminó el duelo y la revancha.
   'duel.result.win': 'Ganaste el duelo.',

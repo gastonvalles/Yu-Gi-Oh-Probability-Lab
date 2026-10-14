@@ -88,10 +88,11 @@ export interface DuelMatLink {
   attackTargets: ReadonlyArray<{ id: string; zone: 'mz' | 'emz'; index: number; faceDown: boolean }>
   /** id que dio el rival → carta real, de lo que ya mostró: así se nombra a quien se ataca. */
   foreignKnown: Readonly<Record<string, string>>
-  /** De quién es el turno: terminar el turno propio sólo se ofrece en el propio. */
-  turn: 'mine' | 'theirs'
+  /** Los botones propios del duelo (dados y chat) y tus puntos de vida: van abajo, en la barra del pulgar, junto a deshacer, la ficha y las fases. */
+  tools: ReactNode
+  life: ReactNode
   /** El cartel de lo que el rival avanzó (una fase suya, o que empieza tu turno); cambiar `key` lo vuelve a mostrar. */
-  notice?: { key: number; phase: MatPhase; turn?: number; who?: string; label?: string }
+  notice?: { key: number; phase: MatPhase; who?: string; label?: string }
   /** El texto del cartel cuando terminás tu turno y pasa al rival ("Turno de Ana"). */
   rivalTurnLabel: string
   /**
@@ -594,9 +595,6 @@ export function PracticeMat({
     },
     [onDispatch, viewer, closeViewer, searching],
   )
-
-  /** Terminar el turno de un toque (sólo en un duelo): una sola jugada que pasa a la Draw Phase del turno que sigue sin robar (la carta la roba quien lo empieza). */
-  const passTurn = useCallback(() => play({ type: 'phase', phase: 'draw', skipDraw: true, pass: true }), [play])
 
   /** Una jugada del menú: con Sacrificios primero se eligen; si puede salir a varias zonas, la mesa pide elegir una (como "Choose Zones" en DuelingBook). */
   const choose = useCallback(
@@ -1144,6 +1142,33 @@ export function PracticeMat({
   // Eligiendo (una zona, Sacrificios, materiales o a quién ponerle contadores) las fases y el replay se van y el estado pide lo que falta.
   const choosing = picking !== null || counterMode !== null
 
+  // Deshacer, la ficha (o los contadores) y la lista de pasos: arriba en la práctica; en un duelo, abajo, donde llega el pulgar.
+  const undoButton = (
+    <IconButton tone="flat" size="sm" aria-label={t('practice.mat.undo')} title={t('practice.mat.undo')} disabled={session.cursor === 0} className="disabled:opacity-35" onClick={() => { setAutoplay(false); onUndo() }}>
+      <Icon name="undo" />
+    </IconButton>
+  )
+  // Ficha: se toca para elegir la posición (y la zona) o se arrastra a una zona de monstruo.
+  const tokenButton = (
+    <IconButton
+      tone="flat"
+      size="sm"
+      aria-label={t('practice.token.name')}
+      title={t('practice.token.create')}
+      className="touch-none select-none [-webkit-touch-callout:none]"
+      {...bind(tokenSource)}
+      onKeyDown={(event) => activate(event, () => handleTap(tokenSource, event.currentTarget.getBoundingClientRect()))}
+      onContextMenu={(event) => event.preventDefault()}
+    >
+      <Icon name="plus" />
+    </IconButton>
+  )
+  const stepsButton = (
+    <IconButton tone="flat" size="sm" aria-label={t('practice.mat.stepsAndCombos')} title={t('practice.mat.stepsAndCombos')} className="min-[1101px]:hidden" onClick={() => setPanelOpen(true)}>
+      <Icon name="list" />
+    </IconButton>
+  )
+
   return (
     <section
       ref={sectionRef}
@@ -1155,41 +1180,23 @@ export function PracticeMat({
         PRACTICE_PALETTE,
       )}
     >
-      {/* Barra: el turno a la izquierda y, a la derecha, nueva mano, deshacer, guardar, ficha y (en el celu) el panel. */}
-      <div className="col-start-1 row-start-1 flex items-center gap-1 px-2 pt-2 min-[1101px]:px-4 min-[1101px]:pt-3" role="toolbar" aria-label={t('practice.mat.name')}>
-        <span className="whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted" aria-label={t('practice.mat.turn', { turn: state.turn })}>
-          {t('practice.mat.turn', { turn: state.turn })}
-        </span>
-        {duel ? null : (
+      {/* Barra (práctica): el turno a la izquierda y, a la derecha, nueva mano, deshacer, guardar, ficha y (en el celu) el panel. En un duelo estos botones van abajo, junto a las fases (ver `dock`). */}
+      {duel ? null : (
+        <div className="col-start-1 row-start-1 flex items-center gap-1 px-2 pt-2 min-[1101px]:px-4 min-[1101px]:pt-3" role="toolbar" aria-label={t('practice.mat.name')}>
+          <span className="whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted" aria-label={t('practice.mat.turn', { turn: state.turn })}>
+            {t('practice.mat.turn', { turn: state.turn })}
+          </span>
           <IconButton tone="flat" size="sm" aria-label={t('practice.mat.newHand')} title={t('practice.mat.newHand')} className="ml-auto" onClick={onNewHand}>
             <Icon name="refresh" />
           </IconButton>
-        )}
-        <IconButton tone="flat" size="sm" aria-label={t('practice.mat.undo')} title={t('practice.mat.undo')} disabled={session.cursor === 0} className={cx('disabled:opacity-35', duel && 'ml-auto')} onClick={() => { setAutoplay(false); onUndo() }}>
-          <Icon name="undo" />
-        </IconButton>
-        {duel ? null : (
+          {undoButton}
           <IconButton tone="flat" size="sm" aria-label={t('practice.mat.saveCombo')} title={t('practice.mat.saveCombo')} disabled={session.cursor === 0} className="disabled:opacity-35" onClick={() => setSaving(true)}>
             <Icon name="save" />
           </IconButton>
-        )}
-        {/* Ficha: se toca para elegir la posición (y la zona) o se arrastra a una zona de monstruo. */}
-        <IconButton
-          tone="flat"
-          size="sm"
-          aria-label={t('practice.token.name')}
-          title={t('practice.token.create')}
-          className="touch-none select-none [-webkit-touch-callout:none]"
-          {...bind(tokenSource)}
-          onKeyDown={(event) => activate(event, () => handleTap(tokenSource, event.currentTarget.getBoundingClientRect()))}
-          onContextMenu={(event) => event.preventDefault()}
-        >
-          <Icon name="plus" />
-        </IconButton>
-        <IconButton tone="flat" size="sm" aria-label={t('practice.mat.stepsAndCombos')} title={t('practice.mat.stepsAndCombos')} className="min-[1101px]:hidden" onClick={() => setPanelOpen(true)}>
-          <Icon name="list" />
-        </IconButton>
-      </div>
+          {tokenButton}
+          {stepsButton}
+        </div>
+      )}
 
       <div className="col-start-1 row-start-2 flex min-h-0 flex-col gap-2 overflow-y-auto overflow-x-hidden px-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] min-[1101px]:px-4 min-[1101px]:pb-4 min-[1101px]:pt-2">
         {duel?.header}
@@ -1251,8 +1258,18 @@ export function PracticeMat({
           {pileCell('banished', 'ban')}
 
           {/* Cambio de fase: el cartel se asoma en el medio del campo y se va agrandándose. */}
-          {banner ? <PhaseBanner key={banner.key} phase={banner.phase} turn={banner.turn} label={duel && banner.turn !== null ? duel.rivalTurnLabel : undefined} className="absolute inset-0 z-30" /> : null}
-          {duel?.notice ? <PhaseBanner key={duel.notice.key} phase={duel.notice.phase} turn={duel.notice.turn ?? null} who={duel.notice.who} label={duel.notice.label} className="absolute inset-0 z-30" /> : null}
+          {banner ? (
+            <PhaseBanner
+              key={banner.key}
+              phase={banner.phase}
+              turn={duel ? null : banner.turn}
+              // En un duelo terminar el turno es llegar a la End Phase: el cartel dice que ahora juega el rival.
+              who={duel && banner.phase === 'end' ? PHASES.find((entry) => entry.id === 'end')?.name : undefined}
+              label={duel && banner.phase === 'end' ? duel.rivalTurnLabel : undefined}
+              className="absolute inset-0 z-30"
+            />
+          ) : null}
+          {duel?.notice ? <PhaseBanner key={duel.notice.key} phase={duel.notice.phase} turn={null} who={duel.notice.who} label={duel.notice.label} className="absolute inset-0 z-30" /> : null}
         </div>
 
         {/* Abajo del todo, como en la mesa real: la mano en abanico. Las salidas y problemas flotan sobre la mano en el celu, y van en el panel lateral en escritorio. */}
@@ -1315,7 +1332,19 @@ export function PracticeMat({
 
         {/* Abajo: en el celular las seis fases, solas y centradas (Deshacer está arriba y los pasos en la lista, así que ni Anterior / Siguiente ni la última jugada hacen falta). En escritorio las fases están entre las zonas.
             Eligiendo (Sacrificios, materiales) las fases se van para que entre lo que hay que tocar: la barra no cambia de alto, el campo no se mueve. */}
-        <div className="sticky bottom-0 z-30 flex min-h-9 items-center justify-center gap-2 max-[1100px]:bg-background/85 max-[1100px]:backdrop-blur-sm">
+        <div className="sticky bottom-0 z-30 grid gap-1 max-[1100px]:bg-background/85 max-[1100px]:backdrop-blur-sm">
+          {/* Duelo: lo que se toca seguido, abajo y a la derecha (el pulgar de quien juega con la derecha): a la izquierda lo menos usado (la lista de pasos; además ahí arrancan las mascotas) y a la derecha deshacer, la ficha, los dados y el chat. */}
+          {duel && !choosing ? (
+            <div role="toolbar" aria-label={t('practice.mat.name')} className="flex items-center">
+              {stepsButton}
+              <span className="ml-auto flex items-center">
+                {undoButton}
+                {tokenButton}
+                {duel.tools}
+              </span>
+            </div>
+          ) : null}
+          <div className="flex min-h-9 items-center justify-center gap-2">
           {!isDesktop && !choosing ? (
             <div role="group" aria-label={t('practice.mat.phases')} className="grid w-[13.5rem] flex-none grid-cols-6 gap-1">
               {PHASES.map((phase) => (
@@ -1323,12 +1352,7 @@ export function PracticeMat({
               ))}
             </div>
           ) : null}
-          {/* Terminar el turno de un toque (la End Phase y la Draw Phase del rival, sin pasar por cada fase): sólo en el turno propio. */}
-          {duel && !choosing ? (
-            <Button variant="secondary" size="sm" className="min-h-8 flex-none px-3" disabled={duel.turn !== 'mine'} onClick={passTurn}>
-              {t('duel.turn.pass')}
-            </Button>
-          ) : null}
+          {duel && !choosing ? <div className="min-w-0 flex-1">{duel.life}</div> : null}
           {/* El estado: eligiendo, pide lo que falta; si no, es sólo para el lector de pantalla (la última jugada y el contador ya están en la lista de pasos). */}
           <div className={cx('flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 px-1 text-micro text-muted', !choosing && 'sr-only')} role="status" aria-label={t('practice.mat.currentStep')}>
             {pickingText ? (
@@ -1350,6 +1374,7 @@ export function PracticeMat({
               </span>
             ) : null}
             {!choosing ? <span className="min-w-0 flex-1 truncate">{session.cursor === 0 ? (session.actions.length > 0 ? t('practice.mat.startingHand') : t('practice.mat.hint')) : steps[session.cursor - 1]}</span> : null}
+          </div>
           </div>
         </div>
       </div>

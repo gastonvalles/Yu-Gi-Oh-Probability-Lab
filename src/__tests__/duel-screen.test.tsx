@@ -202,9 +202,9 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).getByLabelText('Mano del rival: 5')).toBeInTheDocument()
     expect(within(guest.container).getByLabelText('Mano del rival: 5')).toBeInTheDocument()
     // El reloj de la ronda arranca solo cuando los dos tienen su mano: los dos lo ven corriendo, sin apretar nada.
-    expect(within(host.container).getByRole('button', { name: 'Pausar el reloj' })).toBeInTheDocument()
+    expect(within(host.container).getByRole('button', { name: /Pausar el reloj/ })).toBeInTheDocument()
     flush()
-    expect(within(guest.container).getByRole('button', { name: 'Pausar el reloj' })).toBeInTheDocument()
+    expect(within(guest.container).getByRole('button', { name: /Pausar el reloj/ })).toBeInTheDocument()
     expect(within(host.container).getByText('Tu turno')).toBeInTheDocument()
     expect(within(guest.container).getByText('Turno de Ana')).toBeInTheDocument()
 
@@ -525,9 +525,9 @@ describe('la pantalla del duelo', () => {
     expect(within(guest.container).queryByText('Te rendiste.')).not.toBeInTheDocument()
     expect(within(guest.container).getByRole('group', { name: /Puntos de vida de Ana: 8\D?000/ })).toBeInTheDocument()
     // La revancha empieza con el reloj de nuevo: se reinició y vuelve a arrancar solo.
-    expect(within(host.container).getByRole('button', { name: 'Pausar el reloj' })).toBeInTheDocument()
+    expect(within(host.container).getByRole('button', { name: /Pausar el reloj/ })).toBeInTheDocument()
     flush()
-    expect(within(guest.container).getByRole('button', { name: 'Pausar el reloj' })).toBeInTheDocument()
+    expect(within(guest.container).getByRole('button', { name: /Pausar el reloj/ })).toBeInTheDocument()
   })
 
   it('el robo del turno: al pasar el turno no se roba de más, y el que no empezó roba en su primer turno', () => {
@@ -667,18 +667,19 @@ describe('la pantalla del duelo', () => {
     expect(banner(guest)).toContain('Ana')
     expect(banner(guest)).toContain('Main Phase 1')
 
-    // Terminar el turno de un toque: sólo en el turno propio; el rival ve que le toca.
-    expect(within(guest.container).getByRole('button', { name: 'Terminar turno' })).toBeDisabled()
-    click(host, 'Terminar turno')
+    // No hay botón de terminar el turno: se termina al llegar a la End Phase y dejar de tocar, y el rival ve que le toca (con cartel y en la barra).
+    expect(within(guest.container).queryByRole('button', { name: 'Terminar turno' })).not.toBeInTheDocument()
+    const handOfGuest = handOf(guest).getAllByRole('listitem').length
+    click(host, 'End Phase')
     flush()
-    // Además del cartel, la barra dice de quién es el turno.
     expect(within(host.container).getAllByText('Turno de Beto').length).toBeGreaterThan(0)
     expect(within(guest.container).getAllByText('Tu turno').length).toBeGreaterThan(0)
     expect(phase(guest)).toBe(' · Draw Phase')
     expect(banner(guest)).toContain('Tu turno')
+    expect(banner(guest)).toContain('Ana')
     expect(banner(host)).toContain('Turno de Beto')
-    expect(within(host.container).getByRole('button', { name: 'Terminar turno' })).toBeDisabled()
-    expect(within(guest.container).getByRole('button', { name: 'Terminar turno' })).toBeEnabled()
+    // Al empezar su turno Beto roba la carta.
+    expect(handOf(guest).getAllByRole('listitem')).toHaveLength(handOfGuest + 1)
   })
 
   it('recargar dentro de la sala con un deck pegado y el builder vacío: el deck guardado vuelve solo y se puede repartir', async () => {

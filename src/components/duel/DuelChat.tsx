@@ -5,6 +5,8 @@ import type { Duel, DuelSnapshot } from '../../app/duel-session'
 import { showToastMessage } from '../../app/use-toast-message'
 import { t } from '../../i18n'
 import { Button } from '../ui/Button'
+import { Icon } from '../ui/Icon'
+import { IconButton } from '../ui/IconButton'
 import { cx } from '../ui/cx'
 import { FieldBox, fieldInline } from '../ui/FieldBox'
 
@@ -15,10 +17,12 @@ interface DuelChatProps {
   snapshot: DuelSnapshot
   myName: string
   onSend: Duel['sendChat']
+  /** Ocupa todo el alto que le dan (el panel de la derecha): lo escrito crece y lo demás queda abajo. */
+  fill?: boolean
 }
 
 /** El chat entre los dos: lo escrito (lo tuyo a la derecha), los mensajes rápidos y el campo para escribir. Sin el rival en la sala no se puede escribir. */
-export function DuelChat({ snapshot, myName, onSend }: DuelChatProps) {
+export function DuelChat({ snapshot, myName, onSend, fill = false }: DuelChatProps) {
   const { chat, peerPresent, peerName, me } = snapshot
   const rival = peerName ?? t('duel.bar.rival')
   const [text, setText] = useState('')
@@ -39,8 +43,8 @@ export function DuelChat({ snapshot, myName, onSend }: DuelChatProps) {
   }
 
   return (
-    <div className="grid gap-2">
-      <ol ref={listRef} role="log" aria-label={t('duel.chat.title', { name: rival })} className="m-0 grid max-h-64 min-h-24 list-none content-start gap-1.5 overflow-y-auto p-0">
+    <div className={cx('grid gap-2', fill && 'h-full min-h-0 grid-rows-[minmax(0,1fr)_auto]')}>
+      <ol ref={listRef} role="log" aria-label={t('duel.chat.title', { name: rival })} className={cx('m-0 grid list-none content-start gap-1.5 overflow-y-auto p-0', fill ? 'min-h-0' : 'max-h-64 min-h-24')}>
         {chat.length === 0 ? (
           <li className="text-micro text-soft">{t('duel.chat.empty')}</li>
         ) : (
@@ -53,29 +57,31 @@ export function DuelChat({ snapshot, myName, onSend }: DuelChatProps) {
         )}
       </ol>
 
-      <div role="group" aria-label={t('duel.chat.quickTitle')} className="flex flex-wrap gap-1.5">
-        {QUICK.map((key) => (
-          <Button key={key} variant="secondary" size="sm" disabled={!peerPresent} onClick={() => send(t(`duel.chat.quick.${key}`))}>
-            {t(`duel.chat.quick.${key}`)}
-          </Button>
-        ))}
-      </div>
+      <div className="grid gap-2">
+        <div role="group" aria-label={t('duel.chat.quickTitle')} className="flex flex-wrap gap-1.5">
+          {QUICK.map((key) => (
+            <Button key={key} variant="secondary" size="sm" disabled={!peerPresent} onClick={() => send(t(`duel.chat.quick.${key}`))}>
+              {t(`duel.chat.quick.${key}`)}
+            </Button>
+          ))}
+        </div>
 
-      <form
-        className="flex items-center gap-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          send(text)
-        }}
-      >
-        <FieldBox className="min-w-0 flex-1">
-          <input aria-label={t('duel.chat.placeholder')} placeholder={t('duel.chat.placeholder')} maxLength={MAX_CHAT_LENGTH} value={text} disabled={!peerPresent} onChange={(event) => setText(event.target.value)} className={fieldInline} />
-        </FieldBox>
-        <Button type="submit" variant="primary" size="sm" disabled={!peerPresent || text.trim() === ''}>
-          {t('duel.chat.send')}
-        </Button>
-      </form>
-      {peerPresent ? null : <p className="m-0 text-micro text-soft">{t('duel.chat.needRival')}</p>}
+        <form
+          className="flex items-center gap-2"
+          onSubmit={(event) => {
+            event.preventDefault()
+            send(text)
+          }}
+        >
+          <FieldBox className="min-w-0 flex-1">
+            <input aria-label={t('duel.chat.placeholder')} placeholder={t('duel.chat.placeholder')} maxLength={MAX_CHAT_LENGTH} value={text} disabled={!peerPresent} onChange={(event) => setText(event.target.value)} className={fieldInline} />
+          </FieldBox>
+          <IconButton type="submit" tone="primary" size="sm" aria-label={t('duel.chat.send')} title={t('duel.chat.send')} className="shrink-0 rounded-full disabled:opacity-40" disabled={!peerPresent || text.trim() === ''}>
+            <Icon name="send" />
+          </IconButton>
+        </form>
+        {peerPresent ? null : <p className="m-0 text-micro text-soft">{t('duel.chat.needRival')}</p>}
+      </div>
     </div>
   )
 }
