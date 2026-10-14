@@ -200,5 +200,40 @@ export async function fetchExpansionCards(expansionId: number, get: GetJson = ge
  */
 export const printImageUrl = (productId: number, size: '200w' | '400w' = '200w') => `https://tcgplayer-cdn.tcgplayer.com/product/${productId}_${size}.jpg`
 
+/** De la más común a la más rara, como se las suele ordenar; las que no están acá (cosas nuevas) van al final, por nombre. */
+const RARITY_ORDER = [
+  'Common',
+  'Rare',
+  'Super Rare',
+  'Ultra Rare',
+  'Ultimate Rare',
+  'Secret Rare',
+  'Platinum Secret Rare',
+  'Prismatic Secret Rare',
+  'Gold Secret Rare',
+  'Quarter Century Secret Rare',
+  'Starlight Rare',
+  "Collector's Rare",
+  'Ghost Rare',
+  'Ghost/Gold Rare',
+  'Gold Rare',
+  'Premium Gold Rare',
+  'Platinum Rare',
+  'Mosaic Rare',
+  'Shatterfoil Rare',
+  'Starfoil Rare',
+  'Parallel Rare',
+  'Grand Master Rare',
+  'Promo',
+]
+
+const rarityRank = (rarity: string) => {
+  const rank = RARITY_ORDER.indexOf(rarity)
+
+  return rank === -1 ? RARITY_ORDER.length : rank
+}
+
+export const compareRarities = (a: string, b: string) => rarityRank(a) - rarityRank(b) || a.localeCompare(b)
+
 /** El arte chico de una carta por su id (el del arte original: el id de YGOPRODeck de la carta es el de su imagen). */
 export const cardSmallImageUrl = (cardId: number) => `https://images.ygoprodeck.com/images/cards_small/${cardId}.jpg`
