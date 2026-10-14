@@ -201,7 +201,7 @@ describe('la mesa de práctica', () => {
     expect(within(status()).queryByText('1/1')).not.toBeInTheDocument()
   })
 
-  it('en escritorio las fases siguen entre las zonas del campo, con Anterior y Siguiente en vivo', () => {
+  it('en escritorio las fases siguen entre las zonas del campo', () => {
     const matchMedia = window.matchMedia
     window.matchMedia = ((query: string) => ({ ...matchMedia(query), matches: query.includes('1101') })) as typeof window.matchMedia
 
@@ -213,11 +213,31 @@ describe('la mesa de práctica', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Battle Phase' }))
       expect(screen.getByRole('button', { name: 'Battle Phase' })).toHaveAttribute('aria-pressed', 'true')
-      expect(screen.getByRole('button', { name: 'Anterior' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Siguiente' })).toBeDisabled()
     } finally {
       window.matchMedia = matchMedia
     }
+  })
+
+  it('la lista de pasos no repite nada: los cambios de fase hacen de separador y abajo no sobran ni Anterior / Siguiente ni el contador ni la frase en escritorio (ahí está el panel)', () => {
+    render(<Harness />)
+
+    tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Battle Phase' }))
+
+    const list = within(screen.getByRole('complementary', { name: 'Pasos y combos' })).getByRole('list', { name: 'Jugadas' })
+    const rows = within(list).getAllByRole('button')
+
+    // De la última a la primera, con la frase de siempre (sin insignias ni encabezados que la repitan); el cambio de fase es el separador.
+    expect(rows.map((row) => row.textContent)).toEqual(['2Pasás a la Battle Phase', '1Invocación Normal de Ash Blossom', '0Mano inicial'])
+    expect(rows.map((row) => row.getAttribute('data-divider'))).toEqual(['true', 'false', 'false'])
+
+    // Abajo: sin Anterior / Siguiente; en vivo el contador y, en escritorio, la frase quedan sólo para el lector de pantalla.
+    expect(screen.queryByRole('button', { name: 'Anterior' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Siguiente' })).not.toBeInTheDocument()
+    expect(within(status()).getByText('2/2')).toHaveClass('sr-only')
+    expect(within(status()).getByText('Pasás a la Battle Phase')).toHaveClass('min-[1101px]:sr-only')
   })
 
   it('el turno va arriba a la izquierda y los botones de la mesa, a la derecha', () => {

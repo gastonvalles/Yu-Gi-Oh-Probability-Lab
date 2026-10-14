@@ -33,6 +33,7 @@ import {
 import { mergeHandOrder } from '../../app/practice-hand-layout'
 import { createSavedCombo, readSavedCombos, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
 import { UI_ANIMATION_MS, supportsAdditiveAnimation } from '../../app/motion'
+import { matStepCards } from '../../app/mat-steps'
 import { useCardFlights } from '../../app/use-card-flights'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
@@ -54,7 +55,7 @@ import { CardBack, CardMenu, PILE_TITLES, PileViewer, SaveComboDialog, type Menu
 import { FX_CARD, FxFrame, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, TargetMark, fxVars } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
-import { PracticeMatPanel } from './PracticeMatPanel'
+import { PracticeMatPanel, type PanelStep } from './PracticeMatPanel'
 import { ReplayBar, type ReplayMark, type ReplaySpeed } from './ReplayBar'
 import { CARD_BACK, CARD_BACK_URL, PRACTICE_PALETTE } from './practice-styles'
 
@@ -268,6 +269,21 @@ export function PracticeMat({
   const nameOf = useCallback((id: string) => cardOf(id).name, [cardOf])
   const kindOf = useCallback((id: string) => (isToken(id) ? TOKEN_KIND : cardKindOf(cardOf(id).apiCard)), [cardOf])
   const steps = useMemo(() => describeMatSteps(session.initial, session.actions, nameOf), [session.initial, session.actions, nameOf])
+  // La lista de pasos: la frase de cada jugada, las miniaturas de las cartas que mueve (hasta tres, las que tienen imagen) y si es un cambio de fase.
+  const stepCards = useMemo(() => matStepCards(session.initial, session.actions), [session.initial, session.actions])
+  const panelSteps = useMemo<PanelStep[]>(
+    () =>
+      steps.map((label, index) => ({
+        label,
+        divider: session.actions[index]?.type === 'phase',
+        cards: (stepCards[index] ?? []).slice(0, 3).flatMap((id) => {
+          const art = artOf(cardOf(id))
+
+          return art ? [{ name: cardOf(id).name, art }] : []
+        }),
+      })),
+    [steps, stepCards, session.actions, cardOf],
+  )
   const live = session.cursor === session.actions.length
 
   const [menu, setMenu] = useState<
@@ -849,7 +865,7 @@ export function PracticeMat({
   const loadFromPanel = useCallback((combo: SavedCombo) => { onLoadCombo(combo); setAutoplay(true); setPanelOpen(false) }, [onLoadCombo])
   const panel = (
     <PracticeMatPanel
-      steps={steps}
+      steps={panelSteps}
       cursor={session.cursor}
       onSeek={seekFromPanel}
       combos={combos}
@@ -1204,24 +1220,15 @@ export function PracticeMat({
             ) : null}
             {!picking && session.actions.length > 0 ? (
               <>
-                {/* En vivo en escritorio, Anterior y Siguiente; en el celular (donde abajo van las fases) y viendo un combo, esos botones no están acá: Deshacer, la lista de pasos o los controles del replay de arriba. */}
-                {session.replay || !isDesktop ? null : (
-                  <Button variant="tertiary" size="sm" className="min-h-8 px-2" disabled={session.cursor === 0} onClick={() => { setAutoplay(false); onSeek(session.cursor - 1) }}>
-                    {t('practice.mat.previous')}
-                  </Button>
-                )}
-                <span className="font-semibold tabular-nums text-foreground">
+                {/* Sin Anterior / Siguiente: Deshacer está arriba, la lista de pasos lleva a cualquier jugada y, viendo un combo, los controles del replay también. El contador sólo viendo un combo (en vivo la lista ya numera cada jugada); para el lector de pantalla sigue en el estado. */}
+                <span className={cx('font-semibold tabular-nums text-foreground', !session.replay && 'sr-only')}>
                   {session.cursor}/{session.actions.length}
                 </span>
-                {session.replay || !isDesktop ? null : (
-                  <Button variant="tertiary" size="sm" className="min-h-8 px-2" disabled={live} onClick={() => { setAutoplay(false); onSeek(session.cursor + 1) }}>
-                    {t('practice.mat.next')}
-                  </Button>
-                )}
               </>
             ) : null}
             {!picking ? (
-              <span className="min-w-0 flex-1 truncate">{session.cursor === 0 ? (session.actions.length > 0 ? t('practice.mat.startingHand') : t('practice.mat.hint')) : steps[session.cursor - 1]}</span>
+              // En escritorio el panel de pasos (siempre a la vista) ya cuenta la jugada, o explica qué hacer si todavía no hay ninguna: la frase sigue en el estado, pero sólo para el lector de pantalla.
+              <span className="min-w-0 flex-1 truncate min-[1101px]:sr-only">{session.cursor === 0 ? (session.actions.length > 0 ? t('practice.mat.startingHand') : t('practice.mat.hint')) : steps[session.cursor - 1]}</span>
             ) : null}
           </div>
         </div>
