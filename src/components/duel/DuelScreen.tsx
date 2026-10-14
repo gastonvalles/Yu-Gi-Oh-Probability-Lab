@@ -5,6 +5,7 @@ import { cleanName } from '../../app/duel-protocol'
 import { createRoomCode } from '../../app/duel-relay-rules'
 import type { Duel, DuelRole, DuelSnapshot } from '../../app/duel-session'
 import type { SocketStatus } from '../../app/duel-socket'
+import { rpsOutcome } from '../../app/duel-games'
 import { whoseTurn } from '../../app/duel-turn'
 import { STARTING_LP } from '../../app/life-calculator'
 import { createMatState, isToken, randomSeed, shuffleWithSeed } from '../../app/practice-mat'
@@ -19,6 +20,7 @@ import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { DuelBar } from './DuelBar'
+import { gameText, outcomeText, rpsName } from './game-text'
 import { artOfDrawId } from './duel-art'
 import { DUEL_AREAS, SideCells, sharedZoneCard, TheirHand, type DuelSideView } from './DuelTable'
 
@@ -297,6 +299,36 @@ function DuelRoom({ snapshot, status, room, deckReady, onStart, onLeave }: { sna
 
 const NOTHING = () => undefined
 
+/**
+ * Avisos de lo que hace el rival fuera de las cartas (moneda, dado, su elección en piedra-papel-tijera, quién empieza, una señal) y de cómo salió la ronda,
+ * para verlos aunque el panel de juegos esté cerrado. Lo que ya estaba en el registro al abrir la pantalla no se avisa.
+ */
+function useGameToasts(snapshot: DuelSnapshot, myName: string) {
+  const { games, rps, peerName, me } = snapshot
+  const seen = useRef(games.at(-1)?.id ?? 0)
+  const rival = peerName ?? t('duel.bar.rival')
+
+  useEffect(() => {
+    const nameOf = (player: 0 | 1) => (player === me ? myName : rival)
+
+    for (const entry of games) {
+      if (entry.id > seen.current && entry.from !== me) {
+        showToastMessage(gameText(entry, nameOf), 'info')
+      }
+    }
+
+    seen.current = Math.max(seen.current, games.at(-1)?.id ?? 0)
+  }, [games, me, myName, rival])
+
+  const outcome = rpsOutcome(rps.mine, rps.theirs)
+
+  useEffect(() => {
+    if (outcome && rps.mine && rps.theirs) {
+      showToastMessage(t('duel.games.log.rpsResult', { mine: rpsName(rps.mine), theirs: rpsName(rps.theirs), outcome: outcomeText(outcome) }), outcome === 'win' ? 'success' : 'info')
+    }
+  }, [outcome, rps.mine, rps.theirs])
+}
+
 /** Cuánto se queda el aviso del ataque del rival en el centro de la mesa. */
 const ANNOUNCE_MS = 4000
 
@@ -352,7 +384,8 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
     () => ({ state: theirs!.state, artOf: (id) => artOfDrawId(isToken(id) ? id : theirs!.known[id]), handCount: theirs!.state.hand.length }),
     [theirs],
   )
-  const turn = whoseTurn(snapshot.me, mine, theirs!.state)
+  const turn = whoseTurn(snapshot.me, mine, theirs!.state, snapshot.starter)
+  useGameToasts(snapshot, myName)
   const announcement = useRivalAttack(snapshot, cardsById)
   // A quiénes se puede atacar: los monstruos del rival en el campo, con el id que él les dio.
   const attackTargets = useMemo(
@@ -379,6 +412,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
             onHalve={duel.halveLife}
             onToggleClock={duel.toggleClock}
             onResetClock={duel.resetClock}
+            games={duel}
             onLeave={onLeave}
           />
           <TheirHand count={opponent.handCount ?? 0} />

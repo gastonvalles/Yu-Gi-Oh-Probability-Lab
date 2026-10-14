@@ -12,6 +12,7 @@ import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
+import { DuelGames, type GameActions } from './DuelGames'
 
 /** Cambios de un toque a los puntos de vida; el resto, en el campo de monto. */
 const QUICK_AMOUNTS = [-1000, -500, -100, 100, 500, 1000] as const
@@ -25,6 +26,8 @@ interface DuelBarProps {
   onHalve: () => void
   onToggleClock: () => void
   onResetClock: () => void
+  /** Moneda, dado, piedra-papel-tijera, quién empieza y señales. */
+  games: GameActions
   onLeave: () => void
 }
 
@@ -51,10 +54,11 @@ const STATUS_TEXT: Record<Exclude<SocketStatus, 'open'>, () => string> = {
  * La barra de arriba de la mesa en un duelo: los puntos de vida de los dos (los tuyos se cambian tocándolos), de quién es el turno,
  * el reloj de la ronda (compartido) y cómo va la conexión. Salir pide confirmación.
  */
-export function DuelBar({ snapshot, status, myName, turn, onChangeLife, onHalve, onToggleClock, onResetClock, onLeave }: DuelBarProps) {
+export function DuelBar({ snapshot, status, myName, turn, onChangeLife, onHalve, onToggleClock, onResetClock, games, onLeave }: DuelBarProps) {
   const now = useTick(1000)
   const [lifeOpen, setLifeOpen] = useState(false)
   const [leaving, setLeaving] = useState(false)
+  const [gamesOpen, setGamesOpen] = useState(false)
   const { life, me, peerPresent } = snapshot
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
   const running = life.timer.running
@@ -80,7 +84,10 @@ export function DuelBar({ snapshot, status, myName, turn, onChangeLife, onHalve,
             <Icon name="refresh" />
           </IconButton>
         </span>
-        <IconButton tone="flat" size="sm" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} className="ml-auto" onClick={() => setLeaving(true)}>
+        <IconButton tone="flat" size="sm" aria-label={t('duel.games.open')} title={t('duel.games.open')} className="ml-auto" onClick={() => setGamesOpen(true)}>
+          <Icon name="dice" />
+        </IconButton>
+        <IconButton tone="flat" size="sm" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} onClick={() => setLeaving(true)}>
           <Icon name="x" />
         </IconButton>
       </div>
@@ -90,6 +97,8 @@ export function DuelBar({ snapshot, status, myName, turn, onChangeLife, onHalve,
       ) : !peerPresent ? (
         <Callout tone="info">{t('duel.peer.absent')}</Callout>
       ) : null}
+
+      <DuelGames isOpen={gamesOpen} onClose={() => setGamesOpen(false)} snapshot={snapshot} myName={myName} actions={games} />
 
       <LifeDialog
         isOpen={lifeOpen}

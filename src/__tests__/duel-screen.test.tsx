@@ -251,4 +251,76 @@ describe('la pantalla del duelo', () => {
     flush()
     expect(within(guest.container).getByText(`Ana ataca a ${betoCard}`)).toBeInTheDocument()
   })
+
+  it('juegos: moneda, piedra-papel-tijera y quién empieza; los dos ven lo mismo y la elección del rival no se ve hasta elegir la propia', () => {
+    const host = render(<DuelScreen {...screenProps()} />)
+    typeInto(host, 'Tu nombre', 'Ana')
+    click(host, 'Crear un duelo')
+    const link = within(host.container).getByTestId('duel-link').textContent ?? ''
+    window.history.replaceState(null, '', '#duel')
+    const guest = render(<DuelScreen {...screenProps()} />)
+    typeInto(guest, 'Tu nombre', 'Beto')
+    typeInto(guest, 'Enlace o código', link)
+    click(guest, 'Unirme')
+    flush()
+    click(host, 'Repartir mi mano')
+    click(guest, 'Repartir mi mano')
+    flush()
+
+    const panel = () => within(screen.getByRole('dialog', { name: 'Juegos y señales' }))
+    const open = (view: RenderResult) => click(view, 'Moneda, dado y más')
+    const close = () => fireEvent.keyDown(document, { key: 'Escape' })
+
+    // La moneda: tira Ana, los dos ven el mismo resultado, con su nombre.
+    open(host)
+    fireEvent.click(panel().getByRole('button', { name: 'Moneda' }))
+    flush()
+    const tossed = panel().getByText(/^Ana: (Cara|Cruz)$/).textContent!.replace('Ana: ', '')
+    close()
+    open(guest)
+    expect(panel().getByText(`Ana tiró la moneda: ${tossed}`)).toBeInTheDocument()
+    close()
+
+    // Piedra, papel o tijera: Ana elige y espera; Beto sabe que eligió pero no qué.
+    open(host)
+    fireEvent.click(panel().getByRole('button', { name: 'Piedra' }))
+    flush()
+    expect(panel().getByText('Elegiste Piedra. Esperando a Beto…')).toBeInTheDocument()
+    close()
+    open(guest)
+    expect(panel().getByText('Ana ya eligió.')).toBeInTheDocument()
+    // No dice qué eligió: ni el resultado ni el registro lo cuentan todavía.
+    expect(panel().queryByText(/ contra /)).not.toBeInTheDocument()
+    expect(panel().getByText('Ana eligió en piedra, papel o tijera')).toBeInTheDocument()
+    fireEvent.click(panel().getByRole('button', { name: 'Tijera' }))
+    flush()
+    expect(panel().getByText('Tijera contra Piedra')).toBeInTheDocument()
+    expect(panel().getByText('Perdiste')).toBeInTheDocument()
+    close()
+    open(host)
+    expect(panel().getByText('Piedra contra Tijera')).toBeInTheDocument()
+    expect(panel().getByText('Ganaste')).toBeInTheDocument()
+
+    // Otra ronda: vuelve a elegir.
+    fireEvent.click(panel().getByRole('button', { name: 'Otra ronda' }))
+    flush()
+    expect(panel().getByRole('button', { name: 'Papel' })).toBeInTheDocument()
+
+    // Quién empieza: Ana dice que va primero Beto, y el turno cambia en las dos pantallas.
+    expect(within(host.container).getByText('Tu turno')).toBeInTheDocument()
+    fireEvent.click(panel().getByRole('button', { name: 'Va primero Beto' }))
+    flush()
+    expect(panel().getByText('Empieza Beto.')).toBeInTheDocument()
+    close()
+    expect(within(host.container).getByText('Turno de Beto')).toBeInTheDocument()
+    expect(within(guest.container).getByText('Tu turno')).toBeInTheDocument()
+
+    // Una señal: llega y queda en el registro de Beto.
+    open(host)
+    fireEvent.click(panel().getByRole('button', { name: 'Paso' }))
+    flush()
+    close()
+    open(guest)
+    expect(panel().getByText('Ana: Paso')).toBeInTheDocument()
+  })
 })
