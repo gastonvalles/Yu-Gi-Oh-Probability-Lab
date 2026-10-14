@@ -21,6 +21,9 @@ interface DraftImpactInput {
   cleanBefore: number | null
 }
 
+/** Cada edición del borrador pide dos cálculos nuevos: guardarlos en el dispositivo (entran 4) desalojaría el resultado del deck de verdad. */
+const requestPreview = (input: LabComputationInput) => requestLabComputation(input, labComputationKey(input), { persist: false })
+
 function isComplete(pattern: HandPattern): boolean {
   return pattern.conditions.length > 0 && pattern.conditions.every((condition) => condition.matcher !== null)
 }
@@ -113,7 +116,7 @@ export function useDraftImpact(input: DraftImpactInput): DraftImpact | null {
 
     let cancelled = false
 
-    void Promise.all([requestLabComputation(calculations.alone), requestLabComputation(calculations.full)]).then(([alone, full]) => {
+    void Promise.all([requestPreview(calculations.alone), requestPreview(calculations.full)]).then(([alone, full]) => {
       if (!cancelled) {
         setSettled({ calculations, impact: toDraftImpact(deferredDraft, alone, full, cleanBefore) })
       }

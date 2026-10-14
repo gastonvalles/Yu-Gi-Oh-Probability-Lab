@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
+import { Fragment, memo, useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 
 import { useEscapeKey } from '../../app/use-overlay'
 import { numberLocale, t } from '../../i18n'
@@ -214,7 +214,7 @@ interface ReplayBarProps {
  * siguiente, la línea de tiempo de pasos, la lista de pasos (que se abre aparte) y la velocidad. En el celular la línea de tiempo baja
  * a su propio renglón.
  */
-export function ReplayBar({ marks, cursor, playing, playLabel, speed, describe, onSeek, onTogglePlay, onRestart, onPrevious, onNext, onOpenSteps, onSpeed, className }: ReplayBarProps) {
+export const ReplayBar = memo(function ReplayBar({ marks, cursor, playing, playLabel, speed, describe, onSeek, onTogglePlay, onRestart, onPrevious, onNext, onOpenSteps, onSpeed, className }: ReplayBarProps) {
   return (
     // `@container`: la barra se acomoda según su propio ancho (la mesa en escritorio, el celular, una muestra del playground), no el de la pantalla.
     <div role="group" aria-label={t('practice.replay.controls')} className={cx('@container', className)}>
@@ -244,4 +244,4 @@ export function ReplayBar({ marks, cursor, playing, playLabel, speed, describe, 
       </div>
     </div>
   )
-}
+})

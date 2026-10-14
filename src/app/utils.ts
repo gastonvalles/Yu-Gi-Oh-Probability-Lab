@@ -1,4 +1,4 @@
-import { numberLocale, t } from '../i18n'
+import { currencyLocale, numberLocale, perLocale, t } from '../i18n'
 import type { DeckFormat } from '../types'
 
 export function createId(prefix: string): string {
@@ -131,6 +131,19 @@ export function formatCopies(copies: number): string {
   return `×${formatInteger(copies)}`
 }
 
+const integerFormat = perLocale((tag) => new Intl.NumberFormat(tag))
+const usdFormat = perLocale((tag) => new Intl.NumberFormat(tag, { style: 'currency', currency: 'USD' }))
+
+/** Un entero con el separador de miles de cada idioma. Del 0 al 999 no lleva ninguno, en ningún idioma: sale directo, sin armar el formato de `Intl` (de lo más caro del arranque) hasta que haga falta. */
 export function formatInteger(value: number): string {
-  return new Intl.NumberFormat(numberLocale()).format(value)
+  if (Number.isInteger(value) && value >= 0 && value < 1000) {
+    return String(value)
+  }
+
+  return integerFormat(numberLocale()).format(value)
+}
+
+/** Dólares como los escribe cada idioma ("$1,234.50" en inglés): los precios de TCGplayer. */
+export function formatUsd(value: number): string {
+  return usdFormat(currencyLocale()).format(value)
 }

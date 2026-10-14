@@ -43,7 +43,7 @@ export function DeckTierModal({ stat, onClose, onOpenDeck, onShowDecks }: DeckTi
       <div className="grid gap-4">
         <div className="flex items-center gap-3">
           {stat.cover === null ? null : (
-            <img src={cardImageSrc(coverArtUrl(stat.cover))} alt="" decoding="async" className="size-20 shrink-0 rounded-none object-cover" />
+            <img src={cardImageSrc(coverArtUrl(stat.cover), 320)} alt="" decoding="async" className="size-20 shrink-0 rounded-none object-cover" />
           )}
           <div className="grid min-w-0 gap-1.5">
             <p className="m-0 text-body font-semibold text-foreground">

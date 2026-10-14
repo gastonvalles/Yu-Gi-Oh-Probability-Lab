@@ -1,6 +1,6 @@
 import { MIN_WEEK_DECKS, TIER_FLOORS, countKindCopies, type MetaCardKind, type MetaCardStat, type MetaDeck, type MetaTier, type MetaTrend, type MetaWeek } from '../../app/meta'
 import { formatInteger } from '../../app/utils'
-import { dateLocale, formatDay, numberLocale, t } from '../../i18n'
+import { dateLocale, formatDay, numberLocale, perLocale, t } from '../../i18n'
 
 /** La etiqueta se arma al leerla: así sigue el idioma de ese momento sin crear texto al evaluar el módulo. */
 export const TREND_LOOK: Record<MetaTrend, { tone: 'success' | 'danger' | 'neutral'; label: string }> = {
@@ -41,9 +41,12 @@ export function percent(value: number): string {
   return `${formatInteger(Math.round(value * 100))}%`
 }
 
+const tournamentDay = perLocale((tag) => new Intl.DateTimeFormat(tag, { day: 'numeric', month: 'short', timeZone: 'UTC' }))
+const oneDecimal = perLocale((tag) => new Intl.NumberFormat(tag, { minimumFractionDigits: 1, maximumFractionDigits: 1 }))
+
 /** "8 oct" / "Oct 8": el día de un torneo (son días en UTC). */
 export function formatMetaDate(date: string): string {
-  return new Intl.DateTimeFormat(dateLocale(), { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(date)).replace('.', '')
+  return tournamentDay(dateLocale()).format(new Date(date)).replace('.', '')
 }
 
 /** "72% ×2,8": en qué parte de los decks que la juegan va en esa zona, y con cuántas copias. */
@@ -52,7 +55,7 @@ export function usageText(decks: number, copies: number, total: number): string 
     return '0%'
   }
 
-  const average = new Intl.NumberFormat(numberLocale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(copies / decks)
+  const average = oneDecimal(numberLocale()).format(copies / decks)
 
   return `${percent(decks / total)} ×${average}`
 }

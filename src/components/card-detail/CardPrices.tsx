@@ -3,7 +3,8 @@ import { useState } from 'react'
 import { cardImageSrc } from '../../app/card-image-source'
 import { buildExpansionsHash, filterPrintings, setImageUrl, type PrintingPrice } from '../../app/card-prices'
 import { useCardPrices } from '../../app/use-card-prices'
-import { currencyLocale, formatDay as formatDate, t } from '../../i18n'
+import { formatUsd } from '../../app/utils'
+import { formatDay as formatDate, t } from '../../i18n'
 import { Badge } from '../ui/Badge'
 import { Heading } from '../ui/Heading'
 import { cx } from '../ui/cx'
@@ -57,8 +58,6 @@ export function CardPricesButton({ onClick, className }: { onClick: () => void; 
  * de Expansiones, con esa carta iluminada (ahí está el link a su producto en TCGplayer).
  */
 function ExpansionPrices({ set, prices, cardId, onOpenPrint }: { set: string; prices: PrintingPrice[]; cardId: number; onOpenPrint: (price: PrintingPrice) => void }) {
-  const usd = new Intl.NumberFormat(currencyLocale(), { style: 'currency', currency: 'USD' })
-
   return (
     <section className="overflow-hidden rounded-card border border-border-subtle bg-card-background">
       <header className="grid gap-0.5 px-3 py-2.5" style={packBackground(prices[0]!.code)}>
@@ -92,7 +91,7 @@ function ExpansionPrices({ set, prices, cardId, onOpenPrint }: { set: string; pr
                 <span className="text-micro text-muted">{price.code}</span>
               </span>
               <span className="inline-flex items-center gap-1.5 text-body font-semibold tabular-nums">
-                {price.market === null ? t('search.prices.noPrice') : usd.format(price.market)}
+                {price.market === null ? t('search.prices.noPrice') : formatUsd(price.market)}
                 <Icon name="chevron-right" size={14} className="text-soft" />
               </span>
             </button>

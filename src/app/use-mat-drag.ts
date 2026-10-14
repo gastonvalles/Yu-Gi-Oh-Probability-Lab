@@ -53,16 +53,20 @@ interface UseMatDragOptions {
   onDrop: (source: MatDragSource, target: MatDropTarget) => void
   /** Toque sin arrastre. */
   onTap: (source: MatDragSource, rect: DOMRect) => void
+  /**
+   * La zona (`data-drop`) bajo el puntero cambió: la que se dejó y la nueva (null = ninguna). Encenderla es cosa de quien llama, por el DOM:
+   * si pasara por el estado de React, cruzar cada zona volvería a dibujar la mesa entera. Tiene que ser una función estable.
+   */
+  onOver?: (previous: string | null, next: string | null) => void
 }
 
 /**
  * Arrastre entre zonas de la mesa, con el idioma de la mano de práctica: captura del puntero, umbral
  * de 6 px (mouse y dedo: las cartas son `touch-none`) y un cuadro por frame. El destino se busca con
- * `elementFromPoint` sobre `[data-drop]`; el fantasma se mueve por el ref, sin pasar por React.
+ * `elementFromPoint` sobre `[data-drop]`; el fantasma se mueve por el ref y la zona de abajo se avisa con `onOver`, sin pasar por React.
  */
-export function useMatDrag({ onDrop, onTap }: UseMatDragOptions) {
+export function useMatDrag({ onDrop, onTap, onOver }: UseMatDragOptions) {
   const [drag, setDrag] = useState<MatDragState | null>(null)
-  const [over, setOver] = useState<string | null>(null)
   const ghostRef = useRef<HTMLDivElement | null>(null)
   const sessionRef = useRef<Session | null>(null)
   const pendingRef = useRef<{ x: number; y: number } | null>(null)
@@ -95,10 +99,11 @@ export function useMatDrag({ onDrop, onTap }: UseMatDragOptions) {
     const target = document.elementFromPoint(move.x, move.y)?.closest<HTMLElement>('[data-drop]')?.dataset.drop ?? null
 
     if (target !== overRef.current) {
+      const previous = overRef.current
       overRef.current = target
-      setOver(target)
+      onOver?.(previous, target)
     }
-  }, [placeGhost])
+  }, [placeGhost, onOver])
 
   const onPointerDown = useCallback((event: ReactPointerEvent<HTMLElement>, source: MatDragSource) => {
     if (event.button !== 0 || sessionRef.current) {
@@ -167,8 +172,8 @@ export function useMatDrag({ onDrop, onTap }: UseMatDragOptions) {
         const target = parseDropTarget(value)
 
         setDrag(null)
+        onOver?.(overRef.current, null)
         overRef.current = null
-        setOver(null)
 
         if (target) {
           onDrop(session.source, target)
@@ -181,7 +186,7 @@ export function useMatDrag({ onDrop, onTap }: UseMatDragOptions) {
         onTap(session.source, session.element.getBoundingClientRect())
       }
     },
-    [onDrop, onTap],
+    [onDrop, onTap, onOver],
   )
 
   const bind = useCallback(
@@ -203,5 +208,5 @@ export function useMatDrag({ onDrop, onTap }: UseMatDragOptions) {
     [placeGhost],
   )
 
-  return { drag, over, bind, setGhostElement }
+  return { drag, bind, setGhostElement }
 }

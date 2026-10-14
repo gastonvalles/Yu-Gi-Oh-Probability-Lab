@@ -4,18 +4,26 @@ import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { banlistsOf } from '../app/banlists'
+import { cardSmallImageUrl } from '../app/card-prices'
 import { setMetaRegion } from '../app/use-meta-region'
 import { BanlistsScreen } from '../components/banlists/BanlistsScreen'
 
-// El arte real lee el store (el aviso de la banlist): acá sólo importa qué carta es.
-vi.mock('../components/CardArt', () => ({ CardArt: ({ remoteUrl }: { remoteUrl: string | null }) => <img alt="" src={remoteUrl ?? ''} /> }))
-vi.mock('../app/store-hooks', () => ({ useAppSelector: (select: (state: unknown) => unknown) => select({ settings: { deckFormat: 'unlimited' } }) }))
+// El arte real lee el store (el aviso de la banlist): acá sólo importa qué carta es, y se anota cada vez que se dibuja una.
+const { fetchCardsByIds, drawnArt } = vi.hoisted(() => ({ fetchCardsByIds: vi.fn(), drawnArt: [] as Array<string | null> }))
 
-const { fetchCardsByIds } = vi.hoisted(() => ({ fetchCardsByIds: vi.fn() }))
+vi.mock('../components/CardArt', () => ({
+  CardArt: ({ remoteUrl }: { remoteUrl: string | null }) => {
+    drawnArt.push(remoteUrl)
+
+    return <img alt="" src={remoteUrl ?? ''} />
+  },
+}))
+vi.mock('../app/store-hooks', () => ({ useAppSelector: (select: (state: unknown) => unknown) => select({ settings: { deckFormat: 'unlimited' } }) }))
 
 vi.mock('../ygoprodeck', async (importOriginal) => ({ ...(await importOriginal<typeof import('../ygoprodeck')>()), fetchCardsByIds }))
 
 beforeEach(() => {
+  drawnArt.length = 0
   setMetaRegion('tcg')
   fetchCardsByIds.mockReset()
   fetchCardsByIds.mockResolvedValue([])
@@ -119,6 +127,31 @@ describe('la pantalla de banlists', () => {
     expect(within(dialog).getByText('TCG · 21 de septiembre de 2026 · Prohibida')).toBeInTheDocument()
     expect(fetchCardsByIds).toHaveBeenCalledWith([59509952], expect.anything())
     await waitFor(() => expect(within(dialog).getByText('Si controlás…')).toBeInTheDocument())
+  })
+})
+
+describe('las cartas de la lista completa no se vuelven a dibujar de más', () => {
+  it('escribir en el buscador no dibuja de nuevo las que siguen a la vista', () => {
+    render(<BanlistsScreen />)
+    fireEvent.click(screen.getByRole('radio', { name: 'Lista completa' }))
+
+    const all = screen.getAllByRole('listitem').length
+
+    drawnArt.length = 0
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar una carta en esta lista' }), { target: { value: 'dragon' } })
+
+    expect(screen.getAllByRole('listitem').length).toBeLessThan(all)
+    expect(drawnArt).toEqual([])
+  })
+
+  it('abrir una carta sólo dibuja la del detalle (con su imagen chica mientras llega la completa)', () => {
+    render(<BanlistsScreen />)
+    fireEvent.click(screen.getByRole('radio', { name: 'Lista completa' }))
+    drawnArt.length = 0
+    fireEvent.click(screen.getByRole('button', { name: 'Ver el detalle de Archlord Kristya' }))
+
+    expect(screen.getByRole('dialog', { name: /Archlord Kristya/ })).toBeInTheDocument()
+    expect(drawnArt.filter((url) => url !== cardSmallImageUrl(59509952))).toEqual([])
   })
 })
 

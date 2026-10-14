@@ -105,6 +105,11 @@ describe('funciones de las banlists', () => {
     expect(formatBanlistDate('2026-09-21')).toBe('September 21, 2026')
     expect(formatBanlistDate('2013-10-11')).toBe('October 11, 2013')
     expect(formatBanlistDate('2026-09')).toBe('September 2026')
+
+    applyLocale('es')
+
+    expect(formatBanlistDate('2026-09-21')).toBe('21 de septiembre de 2026')
+    expect(formatBanlistDate('2026-09')).toBe('Septiembre de 2026')
   })
 
   it('una carta sin nombre en los datos se muestra por su id', () => {

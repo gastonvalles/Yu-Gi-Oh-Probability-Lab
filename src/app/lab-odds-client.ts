@@ -1,6 +1,6 @@
 import { hashString } from './lab-computation-client'
 import { computeLabOdds, type LabOdds, type LabOddsInput } from './lab-odds'
-import { isWorkerTimeout, runInPool } from './lab-worker-pool'
+import { isWorkerTimeout, runInPool, type PoolPriority } from './lab-worker-pool'
 
 interface OddsReply {
   id: number
@@ -26,8 +26,8 @@ const fromReply = ({ odds }: OddsReply): LabOdds | null =>
     rules: { first: new Map(odds.rules.first), second: new Map(odds.rules.second) },
   }
 
-/** Calcula las probabilidades en hilos aparte (y recuerda el resultado por contenido). */
-export function requestLabOdds(rawKey: string, input: LabOddsInput): Promise<LabOdds | null> {
+/** Calcula las probabilidades en hilos aparte (y recuerda el resultado por contenido). Con prioridad 'low' cede el turno a lo que la persona está esperando. */
+export function requestLabOdds(rawKey: string, input: LabOddsInput, priority?: PoolPriority): Promise<LabOdds | null> {
   const key = hashString(rawKey)
 
   if (cache.has(key)) {
@@ -52,7 +52,7 @@ export function requestLabOdds(rawKey: string, input: LabOddsInput): Promise<Lab
 
     return odds
   }
-  const reply = runInPool<OddsReply>((id) => ({ id, kind: 'odds', ...input }))
+  const reply = runInPool<OddsReply>((id) => ({ id, kind: 'odds', ...input }), priority)
   const inMainThread = () => new Promise<LabOdds | null>((resolve) => window.setTimeout(() => resolve(remember(computeLabOdds(input))), 0))
   // Si el worker tardó demasiado no se repite el cálculo en el hilo principal (congelaría la pantalla): queda sin dato.
   const result = (reply ? reply.then((data) => remember(fromReply(data)), (error) => (isWorkerTimeout(error) ? remember(null) : inMainThread())) : inMainThread()).finally(() => inFlight.delete(key))

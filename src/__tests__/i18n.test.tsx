@@ -98,6 +98,13 @@ describe('t()', () => {
     // Con el mes en letras no se confunde el 10/12 con el 12/10.
     expect(formatDay('2026-10-12T12:00:00Z', 'UTC')).toBe('Oct 12, 2026')
     expect(formatDay('mañana')).toBe('mañana')
+
+    // Los formatos se guardan por idioma y por zona: volver al español no deja el del inglés, ni el de UTC pisa el de otra zona.
+    applyLocale('es')
+
+    expect(formatDay('2026-10-12T12:00:00Z', 'UTC')).toBe('12/10/2026')
+    expect(formatDay('2026-10-12T23:30:00Z', 'UTC')).toBe('12/10/2026')
+    expect(formatDay('2026-10-12T23:30:00Z', 'Asia/Tokyo')).toBe('13/10/2026')
   })
 
   it('renderRich resalta lo que va entre etiquetas y deja como texto la etiqueta que no conoce', () => {

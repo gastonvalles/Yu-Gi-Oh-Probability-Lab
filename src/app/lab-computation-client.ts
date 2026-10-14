@@ -62,7 +62,7 @@ export function labComputationKey({ cards, patterns, handSize }: LabComputationI
   return key
 }
 
-function remember(key: string, computation: LabComputation): LabComputation {
+function remember(key: string, computation: LabComputation, persist: boolean): LabComputation {
   memory.delete(key)
   memory.set(key, computation)
 
@@ -70,7 +70,9 @@ function remember(key: string, computation: LabComputation): LabComputation {
     memory.delete(memory.keys().next().value as string)
   }
 
-  persistComputation(key, computation)
+  if (persist) {
+    persistComputation(key, computation)
+  }
 
   return computation
 }
@@ -88,9 +90,14 @@ export function peekLabComputation(key: string): LabComputation | null {
 
 /**
  * Calcula el Lab fuera del hilo principal: cada turno va a un worker distinto (en paralelo) y el
- * resultado se recuerda por contenido, en memoria y en el dispositivo.
+ * resultado se recuerda por contenido, en memoria y en el dispositivo. Con `persist: false` (vistas previas pasajeras)
+ * queda solo en memoria: guardarlo desalojaría del dispositivo el resultado del deck de verdad.
  */
-export function requestLabComputation(input: LabComputationInput, key = labComputationKey(input)): Promise<LabComputation> {
+export function requestLabComputation(
+  input: LabComputationInput,
+  key = labComputationKey(input),
+  { persist = true }: { persist?: boolean } = {},
+): Promise<LabComputation> {
   const cached = peekLabComputation(key)
 
   if (cached) {
@@ -132,7 +139,7 @@ export function requestLabComputation(input: LabComputationInput, key = labCompu
   // Mientras los workers calculan, Cupsy trabaja.
   const endMascotActivity = beginMascotActivity('computing')
   const tracked = computation
-    .then((result) => remember(key, result))
+    .then((result) => remember(key, result, persist))
     .finally(() => {
       inFlight.delete(key)
       endMascotActivity()

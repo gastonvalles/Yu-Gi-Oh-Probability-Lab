@@ -2,7 +2,7 @@
 import { configureStore } from '@reduxjs/toolkit'
 import { act, fireEvent, render as renderBare, screen, within, type RenderResult } from '@testing-library/react'
 import '@testing-library/jest-dom'
-import { useEffect, type ReactElement } from 'react'
+import { Profiler, useEffect, type ReactElement } from 'react'
 import { Provider } from 'react-redux'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -29,6 +29,12 @@ const INITIAL = createMatState(['card-1-1', 'card-2-1', 'card-3-1', 'card-4-1', 
 const NO_ACTIONS: MatAction[] = []
 const NO_NAMES: Record<string, string> = {}
 
+/** Cuántas veces se dibujó la mesa (un commit de React): para ver que un arrastre no la vuelve a dibujar. */
+let commits = 0
+const countCommit = () => {
+  commits += 1
+}
+
 function Harness({ initial = INITIAL, actions = NO_ACTIONS, cards = CARDS }: { initial?: MatState; actions?: MatAction[]; cards?: ReadonlyMap<string, MatCard> }) {
   const mat = useMatSession()
   const { start } = mat
@@ -42,17 +48,19 @@ function Harness({ initial = INITIAL, actions = NO_ACTIONS, cards = CARDS }: { i
   }
 
   return (
-    <PracticeMat
-      session={mat.session}
-      state={mat.state}
-      cardsById={cards}
-      deckName="Test"
-      onDispatch={mat.dispatch}
-      onUndo={mat.undo}
-      onSeek={mat.seek}
-      onLoadCombo={(combo) => start(combo.initial, combo.actions, combo.names)}
-      onNewHand={() => start(INITIAL)}
-    />
+    <Profiler id="mat" onRender={countCommit}>
+      <PracticeMat
+        session={mat.session}
+        state={mat.state}
+        cardsById={cards}
+        deckName="Test"
+        onDispatch={mat.dispatch}
+        onUndo={mat.undo}
+        onSeek={mat.seek}
+        onLoadCombo={(combo) => start(combo.initial, combo.actions, combo.names)}
+        onNewHand={() => start(INITIAL)}
+      />
+    </Profiler>
   )
 }
 
@@ -476,6 +484,127 @@ describe('la mesa de práctica', () => {
     expect(within(screen.getByRole('menu', { name: 'Ficha' })).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Pasar a ataque', 'Contador +1', 'Target', 'Quitar la ficha'])
     fireEvent.click(screen.getByRole('menuitem', { name: 'Pasar a ataque' }))
     expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ficha' })).toBeInTheDocument()
+  })
+
+  describe('al arrastrar una carta, la zona de abajo se enciende sin volver a dibujar la mesa', () => {
+    // Acá los cuadros se juntan y se sueltan a mano, como en el navegador (el de los demás tests corre de inmediato y sólo deja pasar el primer movimiento).
+    let frames: FrameRequestCallback[] = []
+    const flush = () => act(() => { frames.splice(0).forEach((frame) => frame(0)) })
+    const lit = () => [...document.querySelectorAll('[data-over="true"]')].map((element) => element.getAttribute('data-drop'))
+    const over = (target: HTMLElement) => {
+      document.elementFromPoint = () => target
+      document.elementsFromPoint = () => [target]
+    }
+
+    beforeEach(() => {
+      frames = []
+      window.requestAnimationFrame = (callback) => {
+        frames.push(callback)
+        return frames.length
+      }
+    })
+
+    it('desde la mano: se enciende la zona que se cruza y se apaga la anterior; al soltar o cancelar no queda ninguna', () => {
+      render(<Harness />)
+
+      const mz2 = zone('Zona de monstruo 2')
+      const gy = screen.getByRole('button', { name: 'GY: 0' })
+      const dragged = within(hand()).getByRole('listitem', { name: 'Maxx C' })
+      over(mz2)
+      fireEvent.pointerDown(dragged, { ...pointer, clientX: 10, clientY: 10 })
+      fireEvent.pointerMove(dragged, { ...pointer, clientX: 40, clientY: 60 })
+      // El movimiento se aplica en el cuadro siguiente.
+      expect(lit()).toEqual([])
+      flush()
+      expect(lit()).toEqual(['mz:1'])
+      const drawn = commits
+
+      over(gy)
+      fireEvent.pointerMove(dragged, { ...pointer, clientX: 80, clientY: 120 })
+      flush()
+      expect(lit()).toEqual(['gy'])
+      expect(mz2).toHaveAttribute('data-over', 'false')
+      over(zone('Zona de magia y trampa 3'))
+      fireEvent.pointerMove(dragged, { ...pointer, clientX: 90, clientY: 130 })
+      flush()
+      expect(lit()).toEqual(['st:2'])
+      expect(commits).toBe(drawn)
+
+      fireEvent.pointerCancel(dragged, { ...pointer, clientX: 90, clientY: 130 })
+      expect(lit()).toEqual([])
+      expect(within(status()).queryByText(/1\/1/)).not.toBeInTheDocument()
+
+      // Soltada sobre una zona: se juega y tampoco queda ninguna encendida.
+      over(gy)
+      fireEvent.pointerDown(dragged, { ...pointer, clientX: 10, clientY: 10 })
+      fireEvent.pointerMove(dragged, { ...pointer, clientX: 40, clientY: 60 })
+      flush()
+      expect(lit()).toEqual(['gy'])
+      fireEvent.pointerUp(dragged, { ...pointer, clientX: 40, clientY: 60 })
+      expect(lit()).toEqual([])
+      expect(within(status()).getByText('Maxx C va al cementerio')).toBeInTheDocument()
+    })
+
+    it('desde la mesa (la ficha): lo mismo, y las pilas se encienden igual que las zonas', () => {
+      render(<Harness />)
+
+      const plus = within(screen.getByRole('toolbar', { name: 'Mesa' })).getByRole('button', { name: 'Ficha' })
+      over(zone('Zona de monstruo 4'))
+      fireEvent.pointerDown(plus, { ...pointer, clientX: 10, clientY: 10 })
+      fireEvent.pointerMove(plus, { ...pointer, clientX: 40, clientY: 60 })
+      flush()
+      expect(lit()).toEqual(['mz:3'])
+      const drawn = commits
+
+      over(screen.getByRole('button', { name: 'Banish: 0' }))
+      fireEvent.pointerMove(plus, { ...pointer, clientX: 80, clientY: 120 })
+      flush()
+      expect(lit()).toEqual(['banished'])
+      over(screen.getByRole('button', { name: 'Main: 1' }))
+      fireEvent.pointerMove(plus, { ...pointer, clientX: 90, clientY: 130 })
+      flush()
+      expect(lit()).toEqual(['deck'])
+      expect(commits).toBe(drawn)
+
+      // Soltada en el deck no se juega nada; cancelada, tampoco.
+      fireEvent.pointerUp(plus, { ...pointer, clientX: 90, clientY: 130 })
+      expect(lit()).toEqual([])
+      over(zone('Zona de monstruo 1'))
+      fireEvent.pointerDown(plus, { ...pointer, clientX: 10, clientY: 10 })
+      fireEvent.pointerMove(plus, { ...pointer, clientX: 40, clientY: 60 })
+      flush()
+      expect(lit()).toEqual(['mz:0'])
+      fireEvent.pointerCancel(plus, { ...pointer, clientX: 40, clientY: 60 })
+      expect(lit()).toEqual([])
+      expect(screen.queryByRole('menu', { name: 'Ficha' })).not.toBeInTheDocument()
+    })
+
+    it('la carta de la mano sigue al puntero por su transform, y volver a dibujar la mano a mitad del arrastre no la devuelve a su lugar', () => {
+      render(<Harness />)
+
+      const dragged = within(hand()).getByRole('listitem', { name: 'Maxx C' })
+      const atRest = /^translate3d\(.+px, .+px, 0\) rotate\(.+deg\)$/
+      expect(dragged).toHaveAttribute('data-state', 'rest')
+      expect(dragged.style.transform).toMatch(atRest)
+
+      document.elementsFromPoint = () => []
+      fireEvent.pointerDown(dragged, { ...pointer, clientX: 10, clientY: 10 })
+      fireEvent.pointerMove(dragged, { ...pointer, clientX: 40, clientY: 60 })
+      // Levantada de entrada (sin esperar al cuadro): ya no lleva la transición del transform.
+      expect(dragged).toHaveAttribute('data-state', 'dragging')
+      expect(dragged.style.zIndex).toBe('100')
+      flush()
+      expect(dragged.style.transform).toContain('perspective(900px)')
+      const following = dragged.style.transform
+
+      // Una vecina cambia de lugar (se reordena la mano): la carta arrastrada sigue donde la puso el puntero.
+      fireEvent.keyDown(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }), { key: 'ArrowRight' })
+      expect(dragged.style.transform).toBe(following)
+
+      fireEvent.pointerUp(dragged, { ...pointer, clientX: 40, clientY: 60 })
+      expect(dragged).toHaveAttribute('data-state', 'rest')
+      expect(dragged.style.transform).toMatch(atRest)
+    })
   })
 
   it('desde el Extra, la Invocación Especial pide tocar los materiales en el campo y confirmar', () => {

@@ -87,6 +87,50 @@ export const dateLocale = (): string => INTL_TAGS[current].date
 export const currencyLocale = (): string => INTL_TAGS[current].currency
 
 /**
+ * Un objeto de `Intl` por etiqueta de idioma, armado la primera vez que se pide: construir uno cuesta entre 40 y 190 µs y las listas lo piden por fila.
+ * Se guarda por etiqueta (nunca uno solo) para que `applyLocale` siga cambiando lo que sale; los de `Intl` no cambian, así que se comparten.
+ */
+export function perLocale<T>(make: (tag: string) => T): (tag: string) => T {
+  const made = new Map<string, T>()
+
+  return (tag) => {
+    let value = made.get(tag)
+
+    if (value === undefined) {
+      value = make(tag)
+      made.set(tag, value)
+    }
+
+    return value
+  }
+}
+
+const dayFormats = new Map<string, Intl.DateTimeFormat>()
+
+/** El formato del día en el idioma actual. El de una zona fija se arma una vez por idioma; el de la zona del usuario, cada vez: la lee al armarse y así sigue un cambio de zona con la página abierta. */
+function dayFormat(timeZone: string | undefined): Intl.DateTimeFormat {
+  const make = () => {
+    const options: Intl.DateTimeFormatOptions = current === 'es' ? { day: '2-digit', month: '2-digit', year: 'numeric' } : { day: 'numeric', month: 'short', year: 'numeric' }
+
+    return new Intl.DateTimeFormat(dateLocale(), { ...options, timeZone })
+  }
+
+  if (timeZone === undefined) {
+    return make()
+  }
+
+  const key = `${current}|${timeZone}`
+  let format = dayFormats.get(key)
+
+  if (!format) {
+    format = make()
+    dayFormats.set(key, format)
+  }
+
+  return format
+}
+
+/**
  * Un día con año: "12/10/2026" en español y "Oct 12, 2026" en inglés (el número solo se confunde día con mes). Con `timeZone` el día
  * se lee en esa zona (los de torneo, en UTC); sin ella, en la del usuario. Una fecha que no se entiende se muestra tal cual.
  */
@@ -97,9 +141,7 @@ export function formatDay(value: Date | string | number, timeZone?: string): str
     return String(value)
   }
 
-  const options: Intl.DateTimeFormatOptions = current === 'es' ? { day: '2-digit', month: '2-digit', year: 'numeric' } : { day: 'numeric', month: 'short', year: 'numeric' }
-
-  return new Intl.DateTimeFormat(dateLocale(), { ...options, timeZone }).format(date)
+  return dayFormat(timeZone).format(date)
 }
 
 /** Arma un mensaje: elige la forma plural con `count` y reemplaza cada {nombre} por su parámetro (si falta, queda el {nombre}). */

@@ -64,13 +64,15 @@ export function PracticeSection(props: PracticeSectionProps) {
   const blockedMessage = getBlockedMessage(props)
 
   // Mano inicial: la de la mesa al empezar y, si la primera jugada fue robar una carta, esa también (se fue 2º).
+  // Sólo importa si se fue 2º (no las jugadas): así cada jugada no vuelve a evaluar la mano.
+  const first = session.actions[0]
+  const drewSecond = first?.type === 'draw' && first.count === 1 && session.cursor >= 1
   const openingHand = useMemo<PracticeHandCard[]>(() => {
     const byDrawId = new Map(deck.map((card) => [card.drawId, card]))
     const byCardId = new Map(deck.map((card) => [card.cardId, card]))
     const ids = [...session.initial.hand]
-    const first = session.actions[0]
 
-    if (first?.type === 'draw' && first.count === 1 && session.cursor >= 1 && session.initial.deck[0]) {
+    if (drewSecond && session.initial.deck[0]) {
       ids.push(session.initial.deck[0])
     }
 
@@ -79,7 +81,7 @@ export function PracticeSection(props: PracticeSectionProps) {
       const card = byDrawId.get(drawId) ?? byCardId.get(cardIdOfDrawId(drawId))
       return card ? [{ ...card, drawId }] : []
     })
-  }, [deck, session.initial, session.actions, session.cursor])
+  }, [deck, session.initial, drewSecond])
 
   const turn = getPracticeTurn(openingHand.length, handSize)
   const result = useMemo(

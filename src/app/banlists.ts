@@ -1,5 +1,5 @@
 import banlistsJson from '../data/banlists.json'
-import { dateLocale } from '../i18n'
+import { dateLocale, perLocale } from '../i18n'
 import type { BanlistStatus } from '../types'
 
 /**
@@ -88,13 +88,16 @@ export function diffBanlists(previous: Banlist | null, next: Banlist): Record<Ba
   return changes
 }
 
+const fullDate = perLocale((tag) => new Intl.DateTimeFormat(tag, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }))
+const monthDate = perLocale((tag) => new Intl.DateTimeFormat(tag, { month: 'long', year: 'numeric', timeZone: 'UTC' }))
+
 /** "2026-09-21" → "21 de septiembre de 2026" (en inglés, "September 21, 2026"); "2026-09", si todavía no se sabe el día → "Septiembre de 2026" ("September 2026"). */
 export function formatBanlistDate(date: string): string {
   if (date.length > 7) {
-    return new Intl.DateTimeFormat(dateLocale(), { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`))
+    return fullDate(dateLocale()).format(new Date(`${date}T00:00:00Z`))
   }
 
-  const month = new Intl.DateTimeFormat(dateLocale(), { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}-01T00:00:00Z`))
+  const month = monthDate(dateLocale()).format(new Date(`${date}-01T00:00:00Z`))
 
   return month.charAt(0).toUpperCase() + month.slice(1)
 }
