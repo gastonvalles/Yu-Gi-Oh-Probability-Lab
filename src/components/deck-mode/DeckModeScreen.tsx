@@ -215,7 +215,7 @@ export function DeckModeScreen() {
     <section
       className={cx(
         'grid content-start',
-        isCategorizationStep ? 'h-full min-h-0' : 'min-h-full min-[1101px]:h-full min-[1101px]:min-h-0',
+        isCategorizationStep ? 'h-full min-h-0' : 'min-h-full min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[minmax(0,1fr)]',
       )}
     >
       {activeStep === 'categorization' ? (
@@ -261,7 +261,7 @@ export function DeckModeScreen() {
       ) : null}
 
       {activeStep === 'expansions' ? (
-        <div id="expansions" className="min-w-0 min-[1101px]:min-h-full">
+        <div id="expansions" className="min-w-0 min-[1101px]:h-full min-[1101px]:min-h-0">
           <LazyExpansionsScreen />
         </div>
       ) : null}
@@ -279,7 +279,8 @@ export function DeckModeScreen() {
       className={cx(
         // La pantalla nueva aparece (fundido) donde va a quedar: nada se desliza ni cambia de lugar.
         'min-w-0 animate-step-in motion-reduce:animate-none',
-        isDeckBuilderStep || isCategorizationStep ? 'h-full min-h-0' : 'min-h-full',
+        // En escritorio toda pantalla mide el recuadro del armazón (sin pie): una más alta lo desborda y scrollea; una que reparte el alto entre columnas (Expansiones) lo usa justo.
+        isDeckBuilderStep || isCategorizationStep ? 'h-full min-h-0' : 'min-h-full min-[1101px]:h-full min-[1101px]:min-h-0',
       )}
     >
       <Suspense fallback={null}>{stepContent}</Suspense>
