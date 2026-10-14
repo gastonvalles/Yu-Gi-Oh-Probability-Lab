@@ -1,3 +1,4 @@
+import { loadFormatData } from '../app/format-data'
 import { buildGenesysCardInfo } from '../app/genesys-format'
 import type { ApiCardSearchResult, ApiSearchPage } from './types'
 
@@ -27,6 +28,10 @@ export async function readCatalogPage(offset: number): Promise<{ page: ApiSearch
     if (!json || typeof json.savedAt !== 'number' || typeof json.hasMore !== 'boolean' || !Array.isArray(json.results)) {
       return null
     }
+
+    // La tabla de Genesys se baja aparte: sin ella todas las cartas saldrían con los puntos en null, y el catálogo vive en memoria toda la sesión.
+    // Si no baja, el catch de abajo lo trata como "sin copia" y la página se pide a la API (que tampoco entrega cartas sin puntos).
+    await loadFormatData()
 
     for (const card of json.results) {
       if (typeof card?.name !== 'string' || typeof card.ygoprodeckId !== 'number') {

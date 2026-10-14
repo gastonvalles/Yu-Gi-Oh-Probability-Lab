@@ -23,6 +23,7 @@ import {
   toggleDeckCardRole,
 } from '../../app/deck-builder-slice'
 import { buildDeckFormatIssues, getDeckFormatLabel } from '../../app/deck-format'
+import { formatDataLoaded, loadFormatData } from '../../app/format-data'
 import { GENESYS_POINT_CAP, calculateGenesysDeckPointTotal } from '../../app/genesys-format'
 import { describeExportSelection, exportDeckAssets, type DeckExportSelection } from '../../app/deck-image-export'
 import { type AppState, type DeckCardInstance, type DeckZone } from '../../app/model'
@@ -458,7 +459,12 @@ export function useDeckModeController() {
   )
 
   const handleDeckFormatChange = useCallback(
-    (deckFormat: RootState['settings']['deckFormat']) => {
+    async (deckFormat: RootState['settings']['deckFormat']) => {
+      // Edison y Genesys validan el deck con sus tablas: si todavía no bajaron (se piden en un momento ocioso), el cambio las espera. Si no se pueden bajar, cambia igual.
+      if ((deckFormat === 'edison' || deckFormat === 'genesys') && !formatDataLoaded()) {
+        await loadFormatData().catch(() => {})
+      }
+
       dispatch(setDeckFormat(deckFormat))
     },
     [dispatch],

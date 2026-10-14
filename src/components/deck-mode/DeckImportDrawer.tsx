@@ -25,6 +25,7 @@ import {
   formatZoneGroupHeader,
   groupResolvedByZone,
 } from '../../app/deck-import-presentation'
+import { loadFormatData } from '../../app/format-data'
 import type { DeckBuilderState } from '../../app/model'
 import { useFocusTrap } from '../../app/use-focus-trap'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
@@ -316,6 +317,9 @@ export function DeckImportDrawer({
       let nextPreview: DeckImportPreview
 
       if (fileKind === 'json') {
+        // Leer el JSON resuelve ahí mismo los puntos de Genesys de las cartas que no los traen: las tablas tienen que estar. Si no bajan, se importa igual.
+        await loadFormatData().catch(() => {})
+
         nextPreview = buildDeckImportPreviewFromJson({
           deckName: fileDeckName,
           text: fileText,

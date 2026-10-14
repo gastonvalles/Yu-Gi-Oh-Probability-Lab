@@ -1,3 +1,4 @@
+import { loadFormatData } from './app/format-data'
 import { buildGenesysCardInfo } from './app/genesys-format'
 import { beginMascotActivity } from './app/mascot'
 import { readCatalogPage, writeCatalogPage } from './ygoprodeck/catalog-cache'
@@ -52,7 +53,8 @@ export async function searchCards(
     }
   }
 
-  const payload = await requestCardInfo(params, requestOptions)
+  // Los puntos de Genesys salen de una tabla que se baja aparte: va en paralelo con la consulta, y si no baja la búsqueda falla (no se guardan cartas sin puntos).
+  const [payload] = await Promise.all([requestCardInfo(params, requestOptions), loadFormatData()])
   return attachGenesysInfo(parseSearchResponse(payload))
 }
 
@@ -151,7 +153,7 @@ export async function fetchCardsByIds(
     return []
   }
 
-  const payload = await requestCardInfo(new URLSearchParams({ id: ids.join(',') }), requestOptions)
+  const [payload] = await Promise.all([requestCardInfo(new URLSearchParams({ id: ids.join(',') }), requestOptions), loadFormatData()])
   return attachGenesysInfo(parseSearchResponse(payload)).results
 }
 

@@ -1,10 +1,9 @@
-import genesysCardData from '../data/genesys-card-data.json'
 import type { CardGenesysInfo } from '../types'
-import type { DeckBuilderState } from './model'
+import { formatTables } from './format-data'
+import type { DeckBuilderState, DeckCardInstance } from './model'
 
-const GENESYS_POINTS_BY_NAME = genesysCardData.cards as Record<string, number>
-
-export const GENESYS_POINT_CAP = genesysCardData.pointCap
+// Es el `pointCap` de genesys-card-data.json (un test lo comprueba): va escrito acá para no cargar la tabla entera sólo por mostrar el tope.
+export const GENESYS_POINT_CAP = 100
 
 // ASCII imprimible con espacios simples: casi todos los nombres. A esos sólo les falta pasar a minúsculas (el resto del camino no los toca).
 const PLAIN_ASCII_NAME = /^[\x21-\x7e]+(?: [\x21-\x7e]+)*$/
@@ -30,9 +29,36 @@ export function buildGenesysCardInfo(cardName: string): CardGenesysInfo {
   }
 }
 
+// Con la tabla sin cargar ninguna carta figura (null): leerla antes de tiempo nunca falla.
 function getGenesysPointsByName(cardName: string): number | null {
-  const points = GENESYS_POINTS_BY_NAME[normalizeGenesysCardName(cardName)]
+  const points = formatTables.genesys?.[normalizeGenesysCardName(cardName)]
   return typeof points === 'number' ? points : null
+}
+
+/**
+ * Completa los puntos que quedaron en null porque el deck se leyó antes de que bajara la tabla: se resuelven por nombre, igual que al leerlo con la tabla.
+ * Sin nada que completar devuelve el mismo deck (ni un guardado ni un dibujo de más).
+ */
+export function refreshStoredGenesysPoints(deckBuilder: DeckBuilderState): DeckBuilderState {
+  let changed = false
+
+  const refreshZone = (cards: DeckCardInstance[]) =>
+    cards.map((card) => {
+      const points = card.apiCard.genesys.points === null ? getGenesysPointsByName(card.name) : null
+
+      if (points === null) {
+        return card
+      }
+
+      changed = true
+      return { ...card, apiCard: { ...card.apiCard, genesys: { points } } }
+    })
+
+  const main = refreshZone(deckBuilder.main)
+  const extra = refreshZone(deckBuilder.extra)
+  const side = refreshZone(deckBuilder.side)
+
+  return changed ? { ...deckBuilder, main, extra, side } : deckBuilder
 }
 
 export function isGenesysLegalCardName(cardName: string): boolean {
