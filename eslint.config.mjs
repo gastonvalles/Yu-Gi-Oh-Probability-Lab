@@ -7,7 +7,7 @@ import tseslint from 'typescript-eslint'
 // Lo mínimo que atrapa bugs reales: reglas de hooks (y sus dependencias), variables sin uso y lo
 // recomendado de TypeScript. El estilo lo deja a cada uno (no hay reglas de formato).
 export default defineConfig(
-  { ignores: ['dist/', 'node_modules/', 'scripts/'] },
+  { ignores: ['dist/', 'node_modules/', 'scripts/', 'duel-relay/.wrangler/'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

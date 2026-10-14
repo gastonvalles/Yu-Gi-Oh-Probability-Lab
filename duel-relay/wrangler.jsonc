@@ -1,0 +1,15 @@
+{
+  // Relay del duelo por enlace. Cómo publicarlo y probarlo: docs/duelo-relay.md
+  "name": "ygo-lab-duel-relay",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-09-01",
+  "durable_objects": {
+    "bindings": [{ "name": "DUEL_ROOM", "class_name": "DuelRoom" }]
+  },
+  // Salas con almacenamiento SQLite: es el tipo que entra en el plan gratuito. No se guarda nada en él.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["DuelRoom"] }],
+  "observability": { "enabled": true },
+  "vars": {
+    "ALLOWED_ORIGINS": "https://yu-gi-oh-probability-lab.vercel.app,https://yu-gi-oh-probability-lab-*.vercel.app,http://localhost:5173,http://127.0.0.1:5173"
+  }
+}
