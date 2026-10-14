@@ -119,6 +119,7 @@ export const search = {
   // Precios de TCGplayer.
   'search.prices.button': 'Ver precios en TCGplayer',
   'search.prices.kicker': 'Precios en TCGplayer',
+  'search.prices.openInExpansions': 'Ver esta carta en Expansiones',
   'search.prices.printings': { one: '{count} impresión', other: '{count} impresiones' },
   'search.prices.noPrice': 'Sin precio',
   'search.prices.loadError': 'No pude traer los precios ahora. Probá de nuevo más tarde.',

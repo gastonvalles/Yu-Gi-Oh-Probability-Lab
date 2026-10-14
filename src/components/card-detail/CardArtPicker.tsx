@@ -20,9 +20,10 @@ interface CardArtPickerProps {
  * Las miniaturas de los artes de la carta (los de YGOPRODeck y el escaneo de cada impresión, donde están las overframe, las de arte extendido y las
  * alternativas): tocar una cambia el arte grande; el nombre de la impresión sale al dejar el mouse encima.
  * Con un solo arte no se muestra nada. Sale siempre afuera de la carta que se inclina en 3D, para que no se mueva con ella.
- * Si son más de los que entran, la tira scrollea (con su barra fina a la vista, para que se note y se pueda arrastrar con el mouse): en fila se
- * centra sólo mientras entra, con `auto` en los márgenes de las puntas; con `justify-center` las primeras quedarían cortadas a la izquierda, sin
- * forma de llegar a ellas. Con el mouse, la rueda recorre la fila de costado (es lo que se espera de una tira horizontal).
+ * Si son más de los que entran, la tira scrollea. En fila (bajo la carta) con su barra fina a la vista, para que se note y se pueda arrastrar con el mouse,
+ * y se centra sólo mientras entra, con `auto` en los márgenes de las puntas: con `justify-center` las primeras quedarían cortadas a la izquierda, sin forma
+ * de llegar a ellas; con el mouse, la rueda la recorre de costado. En columna (al costado de la carta, en una franja de 2.5 rem) la barra va escondida: una
+ * barra de verdad le come el ancho a las miniaturas y las tapa; se recorre con el dedo o con la rueda.
  */
 export function CardArtPicker({ arts, selectedId, onSelect, fallbackUrl = null, direction = 'row', className }: CardArtPickerProps) {
   const listRef = useRef<HTMLDivElement>(null)
@@ -60,7 +61,7 @@ export function CardArtPicker({ arts, selectedId, onSelect, fallbackUrl = null, 
       aria-label={t('search.arts.label')}
       className={cx(
         'flex gap-1.5 overflow-auto overscroll-contain p-0.5',
-        direction === 'column' ? 'flex-col' : 'flex-row [&>:first-child]:ml-auto [&>:last-child]:mr-auto',
+        direction === 'column' ? 'flex-col overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden' : 'flex-row [&>:first-child]:ml-auto [&>:last-child]:mr-auto',
         className,
       )}
     >

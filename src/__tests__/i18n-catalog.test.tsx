@@ -135,9 +135,9 @@ describe('catálogo en inglés: detalle de carta y precios', () => {
 
   it('los precios usan dólares y fecha de Estados Unidos, y cuentan las impresiones en singular y plural', () => {
     const prices = [
-      { set: 'Justice Hunters', code: 'JUSH-EN016', rarity: 'Ultra Rare', edition: '1st Edition', market: 1.33, url: 'https://www.tcgplayer.com/product/2', productId: 2, variant: '' },
-      { set: 'Justice Hunters', code: 'JUSH-EN016', rarity: 'Common', edition: '1st Edition', market: null, url: 'https://www.tcgplayer.com/product/1', productId: 1, variant: '' },
-      { set: 'Rarity Collection 5', code: 'RA05-EN091', rarity: 'Starlight Rare', edition: '1st Edition', market: 20.12, url: 'https://www.tcgplayer.com/product/3', productId: 3, variant: '' },
+      { set: 'Justice Hunters', code: 'JUSH-EN016', rarity: 'Ultra Rare', edition: '1st Edition', market: 1.33, url: 'https://www.tcgplayer.com/product/2', productId: 2, expansionId: 5, variant: '' },
+      { set: 'Justice Hunters', code: 'JUSH-EN016', rarity: 'Common', edition: '1st Edition', market: null, url: 'https://www.tcgplayer.com/product/1', productId: 1, expansionId: 5, variant: '' },
+      { set: 'Rarity Collection 5', code: 'RA05-EN091', rarity: 'Starlight Rare', edition: '1st Edition', market: 20.12, url: 'https://www.tcgplayer.com/product/3', productId: 3, expansionId: 6, variant: '' },
     ]
     useCardPrices.mockReturnValue({ status: 'ready', updated: '2026-10-11', prices })
 

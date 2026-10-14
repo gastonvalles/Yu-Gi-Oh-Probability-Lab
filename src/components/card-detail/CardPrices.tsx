@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 import { cardImageSrc } from '../../app/card-image-source'
-import { filterPrintings, setImageUrl, type PrintingPrice } from '../../app/card-prices'
+import { buildExpansionsHash, filterPrintings, setImageUrl, type PrintingPrice } from '../../app/card-prices'
 import { useCardPrices } from '../../app/use-card-prices'
 import { currencyLocale, formatDay as formatDate, t } from '../../i18n'
 import { Badge } from '../ui/Badge'
@@ -52,8 +52,11 @@ export function CardPricesButton({ onClick, className }: { onClick: () => void; 
   )
 }
 
-/** Una expansión: su encabezado con el sobre de fondo y, debajo, el precio de mercado de cada impresión de la carta con un link al producto. */
-function ExpansionPrices({ set, prices, cardId }: { set: string; prices: PrintingPrice[]; cardId: number }) {
+/**
+ * Una expansión: su encabezado con el sobre de fondo y, debajo, el precio de mercado de cada impresión de la carta. Tocar una impresión lleva a la vista
+ * de Expansiones, con esa carta iluminada (ahí está el link a su producto en TCGplayer).
+ */
+function ExpansionPrices({ set, prices, cardId, onOpenPrint }: { set: string; prices: PrintingPrice[]; cardId: number; onOpenPrint: (price: PrintingPrice) => void }) {
   const usd = new Intl.NumberFormat(currencyLocale(), { style: 'currency', currency: 'USD' })
 
   return (
@@ -67,11 +70,11 @@ function ExpansionPrices({ set, prices, cardId }: { set: string; prices: Printin
       <ul className="m-0 grid list-none p-0">
         {prices.map((price) => (
           <li key={`${price.code}-${price.rarity}-${price.edition}-${price.productId}`} className="border-t border-border-subtle">
-            <a
-              href={price.url}
-              target="_blank"
-              rel="noreferrer"
-              className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3 px-3 py-2 text-foreground no-underline transition-colors hover:bg-tint/8 focus-visible:outline-none focus-visible:shadow-focus"
+            <button
+              type="button"
+              title={t('search.prices.openInExpansions')}
+              className="grid w-full grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3 rounded-none px-3 py-2 text-left text-foreground transition-colors hover:bg-tint/8 focus-visible:outline-none focus-visible:shadow-focus"
+              onClick={() => onOpenPrint(price)}
             >
               {/* La carta tal cual salió en esa impresión: ahí se ve si es overframe, de arte extendido o alternativa. */}
               <PrintingArt productId={price.productId} cardId={cardId} className="aspect-[421/614] w-9 rounded-tag object-cover" />
@@ -81,7 +84,7 @@ function ExpansionPrices({ set, prices, cardId }: { set: string; prices: Printin
                     {price.rarity} · {price.edition}
                   </span>
                   {price.variant ? (
-                    <Badge size="sm" tone="info" shape="tag">
+                    <Badge size="sm" tone="info" shape="tag" wrap>
                       {price.variant}
                     </Badge>
                   ) : null}
@@ -90,9 +93,9 @@ function ExpansionPrices({ set, prices, cardId }: { set: string; prices: Printin
               </span>
               <span className="inline-flex items-center gap-1.5 text-body font-semibold tabular-nums">
                 {price.market === null ? t('search.prices.noPrice') : usd.format(price.market)}
-                <Icon name="link" size={13} className="text-soft" />
+                <Icon name="chevron-right" size={14} className="text-soft" />
               </span>
-            </a>
+            </button>
           </li>
         ))}
       </ul>
@@ -104,7 +107,7 @@ function ExpansionPrices({ set, prices, cardId }: { set: string; prices: Printin
  * Todas las impresiones de la carta por expansión (las más nuevas primero), con un buscador por código o rareza que
  * filtra acá mismo. Salen de los archivos del sync diario: un solo pedido de pocos KB, tenga la carta las reimpresiones que tenga.
  */
-function PriceList({ cardId }: { cardId: number }) {
+function PriceList({ cardId, onOpenPrint }: { cardId: number; onOpenPrint: (price: PrintingPrice) => void }) {
   const state = useCardPrices(cardId)
   const [query, setQuery] = useState('')
   const searching = query.trim() !== ''
@@ -156,7 +159,7 @@ function PriceList({ cardId }: { cardId: number }) {
         </label>
       ) : null}
       {[...bySet].map(([set, setPrices]) => (
-        <ExpansionPrices key={set} set={set} prices={setPrices} cardId={cardId} />
+        <ExpansionPrices key={set} set={set} prices={setPrices} cardId={cardId} onOpenPrint={onOpenPrint} />
       ))}
       {searching && visible.length === 0 ? <p className="m-0 text-body text-muted">{t('search.prices.noMatch', { query: query.trim() })}</p> : null}
       <p className="m-0 text-micro text-soft">{t('search.prices.footnote', { date: formatDay(state.updated) })}</p>
@@ -167,12 +170,19 @@ function PriceList({ cardId }: { cardId: number }) {
 /**
  * Precios de TCGplayer de la carta, en un modal que se abre con `CardPricesButton`: todas las expansiones en las que
  * salió y un buscador por código o rareza. Se monta al lado del detalle (no adentro) para que tocarlo no cierre la
- * carta, y va por encima de ella. Los precios se piden recién al abrirlo.
+ * carta, y va por encima de ella. Los precios se piden recién al abrirlo. Tocar una impresión lleva a la vista de Expansiones (cambia el hash) y avisa con
+ * `onGoToPrint` para que el que lo abrió se cierre y no quede un detalle abierto encima de la otra pantalla.
  */
-export function CardPricesModal({ cardId, name, isOpen, onClose }: { cardId: number; name: string; isOpen: boolean; onClose: () => void }) {
+export function CardPricesModal({ cardId, name, isOpen, onClose, onGoToPrint }: { cardId: number; name: string; isOpen: boolean; onClose: () => void; onGoToPrint: () => void }) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="sm" above kicker={t('search.prices.kicker')} title={name}>
-      <PriceList cardId={cardId} />
+      <PriceList
+        cardId={cardId}
+        onOpenPrint={(price) => {
+          window.location.hash = buildExpansionsHash({ expansion: price.expansionId, print: price.productId })
+          onGoToPrint()
+        }}
+      />
     </Modal>
   )
 }

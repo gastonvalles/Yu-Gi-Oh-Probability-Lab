@@ -11,9 +11,9 @@ vi.mock('../components/CardArt', () => ({
 }))
 
 const PRICES = [
-  { set: 'Justice Hunters', code: 'JUSH-EN016', rarity: "Collector's Rare", edition: '1st Edition', market: 5.86, url: 'https://www.tcgplayer.com/product/1', productId: 1, variant: '' },
-  { set: 'Justice Hunters', code: 'JUSH-EN016', rarity: 'Ultra Rare', edition: '1st Edition', market: 1.33, url: 'https://www.tcgplayer.com/product/2', productId: 2, variant: '' },
-  { set: 'Rarity Collection 5', code: 'RA05-EN091', rarity: 'Starlight Rare', edition: '1st Edition', market: 20.12, url: 'https://www.tcgplayer.com/product/3', productId: 3, variant: '' },
+  { set: 'Justice Hunters', code: 'JUSH-EN016', rarity: "Collector's Rare", edition: '1st Edition', market: 5.86, url: 'https://www.tcgplayer.com/product/1', productId: 1, expansionId: 5, variant: '' },
+  { set: 'Justice Hunters', code: 'JUSH-EN016', rarity: 'Ultra Rare', edition: '1st Edition', market: 1.33, url: 'https://www.tcgplayer.com/product/2', productId: 2, expansionId: 5, variant: '' },
+  { set: 'Rarity Collection 5', code: 'RA05-EN091', rarity: 'Starlight Rare', edition: '1st Edition', market: 20.12, url: 'https://www.tcgplayer.com/product/3', productId: 3, expansionId: 6, variant: '' },
 ]
 
 const { useCardPrices } = vi.hoisted(() => ({ useCardPrices: vi.fn() }))
@@ -30,6 +30,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   useCardPrices.mockReset()
+  window.history.replaceState(null, '', '#')
 })
 
 const card: ApiCardSearchResult = {
@@ -90,6 +91,27 @@ describe('precios en el detalle de la carta', () => {
 
     expect(screen.queryByRole('button', { name: /expansi/ })).not.toBeInTheDocument()
     expect(screen.queryByText(/Mostrando/)).not.toBeInTheDocument()
+  })
+
+  it('tocar una impresión lleva a la vista de Expansiones con esa carta (por el hash) y cierra el detalle; de ahí se va a TCGplayer', () => {
+    const onClose = openPrices()
+
+    // Ya no hay links a TCGplayer acá: cada impresión es un botón.
+    expect(screen.queryAllByRole('link')).toHaveLength(0)
+
+    fireEvent.click(screen.getByRole('button', { name: /Starlight Rare · 1st Edition/ }))
+
+    expect(window.location.hash).toBe('#expansions?set=6&print=3')
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('dialog', { name: card.name })).not.toBeInTheDocument()
+  })
+
+  it('cada impresión avisa en su título adónde lleva', () => {
+    openPrices()
+
+    for (const row of screen.getAllByRole('button', { name: /1st Edition/ })) {
+      expect(row).toHaveAttribute('title', 'Ver esta carta en Expansiones')
+    }
   })
 
   describe('buscador por código o rareza', () => {

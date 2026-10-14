@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { cardSmallImageUrl, compareRarities, printImageUrl, fetchCardPrices, fetchExpansionCards, fetchExpansions, filterPrintings, setImageUrl, type PrintingPrice, type PriceRow } from '../app/card-prices'
+import { buildExpansionsHash, cardSmallImageUrl, compareRarities, printImageUrl, fetchCardPrices, fetchExpansionCards, fetchExpansions, filterPrintings, readExpansionsHash, setImageUrl, type PrintingPrice, type PriceRow } from '../app/card-prices'
 
 const row = (code: string, rarity: string, edition: string, market: number | null, productId: number, groupId: number, variant?: string): PriceRow => (variant ? [code, rarity, edition, market, productId, groupId, variant] : [code, rarity, edition, market, productId, groupId])
 
@@ -47,7 +47,7 @@ describe('precios de TCGplayer por impresión', () => {
       ['Legend of Blue Eyes White Dragon', 'LOB-EN001', 'Unlimited'],
       ['Duelist Pack 7', 'DP07-EN001', 'Normal'],
     ])
-    expect(prices[0]).toEqual({ set: 'Maze of Millennia', code: 'MZMI-EN083', rarity: 'Rare', edition: '1st Edition', market: 0.21, url: 'https://www.tcgplayer.com/product/12', productId: 12, variant: '' })
+    expect(prices[0]).toEqual({ set: 'Maze of Millennia', code: 'MZMI-EN083', rarity: 'Rare', edition: '1st Edition', market: 0.21, url: 'https://www.tcgplayer.com/product/12', productId: 12, expansionId: 2, variant: '' })
   })
 
   it('pide el índice y un solo archivo, el de la carta, y no los repite en la sesión', async () => {
@@ -88,8 +88,8 @@ describe('precios de TCGplayer por impresión', () => {
 
   it('el buscador compara código y rareza, sin mayúsculas ni signos, con todas las palabras', () => {
     const prices: PrintingPrice[] = [
-      { set: 'Maze of Millennia', code: 'MZMI-EN083', rarity: "Collector's Rare", edition: '1st Edition', market: 5, url: 'u1', productId: 1, variant: '' },
-      { set: 'Maze of Millennia', code: 'MZMI-EN084', rarity: 'Ultra Rare', edition: '1st Edition', market: 2, url: 'u2', productId: 2, variant: 'Extended Art' },
+      { set: 'Maze of Millennia', code: 'MZMI-EN083', rarity: "Collector's Rare", edition: '1st Edition', market: 5, url: 'u1', productId: 1, expansionId: 7, variant: '' },
+      { set: 'Maze of Millennia', code: 'MZMI-EN084', rarity: 'Ultra Rare', edition: '1st Edition', market: 2, url: 'u2', productId: 2, expansionId: 7, variant: 'Extended Art' },
     ]
     const codes = (query: string) => filterPrintings(prices, query).map((price) => price.code)
 
@@ -209,5 +209,23 @@ describe('compareRarities', () => {
     const rarities = ['Ultra Rare', 'Starlight Rare', 'Common', 'Secret Rare', 'Super Rare', 'Zeta Rare', 'Alfa Rare', 'Rare']
 
     expect([...rarities].sort(compareRarities)).toEqual(['Common', 'Rare', 'Super Rare', 'Ultra Rare', 'Secret Rare', 'Starlight Rare', 'Alfa Rare', 'Zeta Rare'])
+  })
+})
+
+describe('el link a una impresión en Expansiones', () => {
+  it('se arma con la expansión y el producto, y se lee de vuelta', () => {
+    const hash = buildExpansionsHash({ expansion: 24815, print: 719835 })
+
+    expect(hash).toBe('#expansions?set=24815&print=719835')
+    expect(readExpansionsHash(hash)).toEqual({ expansion: 24815, print: 719835 })
+    expect(readExpansionsHash('expansions?set=3')).toEqual({ expansion: 3, print: null })
+  })
+
+  it('no lee nada de otra pantalla ni de números que no son', () => {
+    expect(readExpansionsHash('')).toEqual({ expansion: null, print: null })
+    expect(readExpansionsHash('#replays?set=3&print=4')).toEqual({ expansion: null, print: null })
+    expect(readExpansionsHash('#expansions')).toEqual({ expansion: null, print: null })
+    expect(readExpansionsHash('#expansions?set=abc&print=-4')).toEqual({ expansion: null, print: null })
+    expect(readExpansionsHash('#expansions?set=1.5&print=0')).toEqual({ expansion: null, print: null })
   })
 })

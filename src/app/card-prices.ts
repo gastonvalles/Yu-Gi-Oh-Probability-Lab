@@ -17,6 +17,8 @@ export interface PrintingPrice {
   url: string
   /** El producto en TCGplayer: de ahí sale la imagen de esa impresión (`printImageUrl`). */
   productId: number
+  /** La expansión de esa impresión (su id en el índice): con el producto, lleva a la carta en la vista de Expansiones. */
+  expansionId: number
   /** De qué arte es, si es distinto ("Extended Art", "Alternate Art"...); vacío si es el de siempre. */
   variant: string
 }
@@ -157,6 +159,7 @@ export async function fetchCardPrices(cardId: number, get: GetJson = getJson): P
       market: row[3],
       url: `https://www.tcgplayer.com/product/${row[4]}`,
       productId: row[4],
+      expansionId: row[5],
       variant: row[6] ?? '',
     })),
     updated: index.updated,
@@ -199,6 +202,22 @@ export async function fetchExpansionCards(expansionId: number, get: GetJson = ge
  * alternativas se ven distintas; YGOPRODeck sólo tiene el arte de siempre). 200 px de ancho para las grillas, 400 para la carta grande.
  */
 export const printImageUrl = (productId: number, size: '200w' | '400w' = '200w') => `https://tcgplayer-cdn.tcgplayer.com/product/${productId}_${size}.jpg`
+
+/** Link a una impresión en la vista de Expansiones: `#expansions?set=<expansión>&print=<producto>` abre esa expansión con la carta iluminada. */
+export const buildExpansionsHash = ({ expansion, print }: { expansion: number; print: number }) => `#expansions?set=${expansion}&print=${print}`
+
+/** Lo inverso: de qué expansión y qué impresión habla el hash (nada si no es de Expansiones o no trae números válidos). */
+export function readExpansionsHash(hash: string): { expansion: number | null; print: number | null } {
+  const [step, query = ''] = hash.replace(/^#/, '').split('?')
+  const params = new URLSearchParams(query)
+  const id = (name: string) => {
+    const value = Number(params.get(name))
+
+    return Number.isInteger(value) && value > 0 ? value : null
+  }
+
+  return step === 'expansions' ? { expansion: id('set'), print: id('print') } : { expansion: null, print: null }
+}
 
 /** De la más común a la más rara, como se las suele ordenar; las que no están acá (cosas nuevas) van al final, por nombre. */
 const RARITY_ORDER = [

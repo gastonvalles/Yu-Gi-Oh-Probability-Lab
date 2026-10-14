@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { compareRarities, type Expansion, type ExpansionCard } from '../../app/card-prices'
+import { compareRarities, readExpansionsHash, type Expansion, type ExpansionCard } from '../../app/card-prices'
 import { useExpansionCards, useExpansions } from '../../app/use-expansions'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { formatInteger } from '../../app/utils'
@@ -41,16 +41,37 @@ function dayText(date: string): string {
 /**
  * Las expansiones del TCG con las cartas que trae cada una, ordenadas por código, con su rareza, edición y precio de mercado en TCGplayer. A la izquierda
  * (en celular, primero) la lista de expansiones, con buscador; tocar una abre sus cartas, con filtros por nombre o código y por rareza.
+ * El hash puede traer una impresión (`#expansions?set=…&print=…`, a donde lleva tocar una impresión en los precios de una carta): abre esa expansión y
+ * deja esa carta iluminada y a la vista.
  */
 export function ExpansionsScreen() {
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const list = useExpansions()
   const [pickedId, setPickedId] = useState<number | null>(null)
+  const [link, setLink] = useState(() => readExpansionsHash(window.location.hash))
   const expansions = list.status === 'ready' ? list.expansions : []
-  // En escritorio arranca en la más nueva (que ya tenga cartas); en el celular se elige primero, desde la lista.
-  const activeId = pickedId ?? (isDesktop ? (expansions.find((expansion) => expansion.count > 0)?.id ?? null) : null)
+  // Lo que pide el hash manda; si no, en escritorio arranca en la más nueva (que ya tenga cartas) y en el celular se elige primero, desde la lista.
+  const activeId = link.expansion ?? pickedId ?? (isDesktop ? (expansions.find((expansion) => expansion.count > 0)?.id ?? null) : null)
   const active = expansions.find((expansion) => expansion.id === activeId) ?? null
   const showList = isDesktop || active === null
+
+  useEffect(() => {
+    const handleHashChange = () => setLink(readExpansionsHash(window.location.hash))
+
+    window.addEventListener('hashchange', handleHashChange)
+
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [])
+
+  // Elegir otra expansión (o volver a la lista) suelta la impresión iluminada y limpia el hash, para que recargar no la vuelva a pedir.
+  const pick = (id: number | null) => {
+    setPickedId(id)
+    setLink({ expansion: null, print: null })
+
+    if (readExpansionsHash(window.location.hash).expansion !== null) {
+      window.history.replaceState(null, '', '#expansions')
+    }
+  }
 
   return (
     // En escritorio la pantalla mide lo que el recuadro del armazón (sin pie): la lista y las cartas son dos columnas del mismo alto, y cada una scrollea por adentro.
@@ -73,8 +94,14 @@ export function ExpansionsScreen() {
         </div>
       ) : (
         <div className="grid items-start gap-4 min-[1101px]:min-h-0 min-[1101px]:grid-cols-[minmax(19rem,24rem)_minmax(0,1fr)] min-[1101px]:items-stretch min-[1101px]:gap-5">
-          {showList ? <ExpansionList expansions={expansions} activeId={activeId} onPick={setPickedId} /> : null}
-          {active ? <ExpansionDetail key={active.id} expansion={active} updated={list.status === 'ready' ? list.updated : ''} onBack={isDesktop ? null : () => setPickedId(null)} /> : null}
+          {showList ? <ExpansionList expansions={expansions} activeId={activeId} onPick={pick} /> : null}
+          {active ? <ExpansionDetail
+              key={active.id}
+              expansion={active}
+              updated={list.status === 'ready' ? list.updated : ''}
+              highlight={link.expansion === active.id ? link.print : null}
+              onBack={isDesktop ? null : () => pick(null)}
+            /> : null}
         </div>
       )}
     </StepPage>
@@ -84,6 +111,13 @@ export function ExpansionsScreen() {
 /** Las expansiones agrupadas por año de salida (las más nuevas primero), con un buscador por nombre. */
 function ExpansionList({ expansions, activeId, onPick }: { expansions: Expansion[]; activeId: number | null; onPick: (id: number) => void }) {
   const [query, setQuery] = useState('')
+  const activeRef = useRef<HTMLButtonElement>(null)
+
+  // Si se llega a una expansión desde afuera (los precios de una carta), la lista se mueve hasta ella.
+  useEffect(() => {
+    activeRef.current?.scrollIntoView?.({ block: 'nearest' })
+  }, [activeId])
+
   const groups = useMemo(() => {
     const words = query.split(/\s+/).map(normalize).filter(Boolean)
     const visible = expansions.filter((expansion) => expansion.count > 0 && words.every((word) => normalize(expansion.name).includes(word)))
@@ -109,6 +143,7 @@ function ExpansionList({ expansions, activeId, onPick }: { expansions: Expansion
               <button
                 key={expansion.id}
                 type="button"
+                ref={expansion.id === activeId ? activeRef : undefined}
                 aria-current={expansion.id === activeId ? 'true' : undefined}
                 className={cx(listItem, 'grid w-full grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-2.5 px-2.5 py-2 text-left aria-[current=true]:bg-primary/15')}
                 onClick={() => onPick(expansion.id)}
@@ -173,7 +208,7 @@ function FilterChips({ label, all, allActive, onAll, chips }: { label: string; a
 }
 
 /** Una expansión: su encabezado y sus impresiones (con filtros por nombre o código, por rareza y por arte, y orden por código o precio). */
-function ExpansionDetail({ expansion, updated, onBack }: { expansion: Expansion; updated: string; onBack: (() => void) | null }) {
+function ExpansionDetail({ expansion, updated, highlight, onBack }: { expansion: Expansion; updated: string; highlight: number | null; onBack: (() => void) | null }) {
   const state = useExpansionCards(expansion.id)
   const [query, setQuery] = useState('')
   const [rarity, setRarity] = useState<string | null>(null)
@@ -181,6 +216,7 @@ function ExpansionDetail({ expansion, updated, onBack }: { expansion: Expansion;
   const [sort, setSort] = useState<Sort>('code')
   const [shown, setShown] = useState(PAGE_SIZE)
   const [opened, setOpened] = useState<ExpansionCard | null>(null)
+  const highlightedRef = useRef<HTMLLIElement>(null)
   const cards = state.status === 'ready' ? state.cards : NO_CARDS
 
   // Las rarezas (de la más común a la más rara) y los artes distintos (Extended Art, Alternate Art...) que tiene esta expansión, cada uno con cuántas impresiones.
@@ -201,6 +237,16 @@ function ExpansionDetail({ expansion, updated, onBack }: { expansion: Expansion;
   const distinct = useMemo(() => new Set(cards.map((card) => card.cardId)).size, [cards])
   const usd = new Intl.NumberFormat(currencyLocale(), { style: 'currency', currency: 'USD' })
   const filtersChanged = () => setShown(PAGE_SIZE)
+  // La impresión iluminada tiene que estar entre las que se ven (hay expansiones con más de 800) y a la vista, en el medio del recuadro.
+  const highlightedAt = highlight === null ? -1 : rows.findIndex((card) => card.productId === highlight)
+  const visibleCount = Math.max(shown, highlightedAt + 1)
+
+  useEffect(() => {
+    if (state.status === 'ready') {
+      highlightedRef.current?.scrollIntoView?.({ block: 'center' })
+    }
+  }, [state.status, highlight])
+
   const pick = (set: (value: string | null) => void, current: string | null, value: string) => {
     set(current === value ? null : value)
     filtersChanged()
@@ -279,26 +325,32 @@ function ExpansionDetail({ expansion, updated, onBack }: { expansion: Expansion;
             ) : (
               // Las cartas enteras una al lado de la otra, cada una con su código, rareza, edición y precio abajo.
               <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-x-3 gap-y-5 p-0">
-                {rows.slice(0, shown).map((card) => (
-                  <li key={`${card.code}-${card.cardId}-${card.rarity}-${card.edition}-${card.url}`} className="grid min-w-0 content-start gap-2">
+                {rows.slice(0, visibleCount).map((card) => (
+                  <li
+                    key={`${card.code}-${card.cardId}-${card.rarity}-${card.edition}-${card.url}`}
+                    ref={card.productId === highlight ? highlightedRef : undefined}
+                    className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-2"
+                  >
                     <button
                       type="button"
                       aria-label={t('catalog.sets.openCard', { name: card.name })}
-                      className="group block rounded-tag text-left focus-visible:outline-none focus-visible:shadow-focus"
+                      data-highlight={card.productId === highlight ? 'true' : undefined}
+                      // La carta que se pidió desde los precios: con el borde y el brillo verdes de "elegida" (como la miniatura del selector de artes).
+                      className="group block rounded-tag text-left focus-visible:outline-none focus-visible:shadow-focus data-[highlight=true]:shadow-[0_0_0_2px_rgb(var(--success-rgb)),0_0_28px_rgb(var(--success-rgb)/0.6)]"
                       onClick={() => setOpened(card)}
                     >
                       <TiltCard className="aspect-[421/614] rounded-tag bg-input shadow-card">
                         <PrintingArt productId={card.productId} cardId={card.cardId} className="h-full w-full object-cover" />
                       </TiltCard>
                     </button>
-                    <div className="grid min-w-0 gap-0.5">
+                    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-0.5">
                       <span className="line-clamp-2 text-micro font-semibold leading-snug text-foreground [overflow-wrap:anywhere]">{card.name}</span>
                       <span className="text-micro text-muted">{card.code}</span>
                       <span className="text-micro text-muted [overflow-wrap:anywhere]">
                         {card.rarity} · {card.edition}
                       </span>
                       {card.variant ? (
-                        <Badge size="sm" tone="info" shape="tag" className="justify-self-start">
+                        <Badge size="sm" tone="info" shape="tag" wrap className="justify-self-start">
                           {card.variant}
                         </Badge>
                       ) : null}
@@ -318,9 +370,9 @@ function ExpansionDetail({ expansion, updated, onBack }: { expansion: Expansion;
               </ul>
             )}
 
-            {rows.length > shown ? (
-              <Button variant="secondary" fullWidth onClick={() => setShown((current) => current + PAGE_SIZE)}>
-                {t('catalog.sets.showMore', { n: formatInteger(Math.min(PAGE_SIZE, rows.length - shown)) })}
+            {rows.length > visibleCount ? (
+              <Button variant="secondary" fullWidth onClick={() => setShown(visibleCount + PAGE_SIZE)}>
+                {t('catalog.sets.showMore', { n: formatInteger(Math.min(PAGE_SIZE, rows.length - visibleCount)) })}
               </Button>
             ) : null}
 

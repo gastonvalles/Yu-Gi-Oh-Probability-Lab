@@ -162,6 +162,15 @@ export function DeckModeScreen() {
     window.scrollTo({ top: 0, behavior: 'instant' })
   }, [activeStep])
 
+  // El detalle de carta del celular vive afuera de los pasos: si se cambia de pantalla (el menú, "Atrás", un link a Expansiones) no se queda abierto encima de la nueva.
+  const closeCardDetail = controller.deckBuilderStep.onCloseCardDetail
+
+  useEffect(() => {
+    if (activeStep !== 'deck-builder') {
+      closeCardDetail()
+    }
+  }, [activeStep, closeCardDetail])
+
   const handleStepChange = useCallback((nextStep: DeckWorkflowStepKey) => {
     if (nextStep !== activeStepRef.current) {
       setActiveStep(nextStep)

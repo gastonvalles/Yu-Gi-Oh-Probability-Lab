@@ -153,6 +153,14 @@ describe('el selector de artes de una carta con muchos', () => {
     expect(list.className).not.toContain('::-webkit-scrollbar]:hidden')
   })
 
+  it('en columna (la franja angosta al costado de la carta) la barra va escondida y no hay scroll de costado: no tapa las miniaturas', () => {
+    render(<CardArtPicker arts={arts} selectedId="0" onSelect={() => {}} direction="column" />)
+
+    const list = screen.getByRole('group', { name: /artes/i })
+
+    expect(list).toHaveClass('flex-col', 'overflow-x-hidden', '[scrollbar-width:none]', '[&::-webkit-scrollbar]:hidden')
+  })
+
   it('la rueda del mouse recorre la fila de costado, y no mueve nada si la fila entra entera', () => {
     render(<CardArtPicker arts={arts} selectedId="0" onSelect={() => {}} />)
 
