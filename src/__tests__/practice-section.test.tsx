@@ -9,12 +9,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMatcherPattern } from '../app/pattern-factory'
 import { createMatState, type MatState } from '../app/practice-mat'
 import { useMatSession } from '../app/use-mat-session'
-import { buildPracticeDeck } from '../components/probability/practice'
+import { buildPracticeDeck, evaluatePracticeHand } from '../components/probability/practice'
 import { PracticeSection } from '../components/probability/PracticeSection'
 import type { CardEntry, CardRole } from '../types'
 
 vi.mock('../ygoprodeck', () => ({ fetchCardsByIds: vi.fn(async () => []) }))
 vi.mock('../app/lab-odds-client', () => ({ requestLabOdds: vi.fn(() => new Promise(() => {})) }))
+// La evaluación real, pero contada: para ver cuántas veces se vuelve a calcular la mano.
+vi.mock('../components/probability/practice', async (importActual) => {
+  const actual = await importActual<typeof import('../components/probability/practice')>()
+  return { ...actual, evaluatePracticeHand: vi.fn(actual.evaluatePracticeHand) }
+})
 
 function card(id: string, name: string, copies: number, roles: CardRole[]): CardEntry {
   return { id, name, copies, source: 'manual', apiCard: null, origin: 'engine', roles, needsReview: false }
@@ -136,5 +141,26 @@ describe('la práctica integrada en la mesa', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Descartar' }))
     expect(within(hand()).getAllByRole('listitem')).toHaveLength(5)
     expect(within(screen.getByRole('list', { name: 'Salidas' })).getByRole('button', { name: 'Salida básica' })).toBeInTheDocument()
+  })
+
+  it('las jugadas que no cambian la mano inicial no la vuelven a evaluar; robar la carta de ir 2º, sí', () => {
+    render(<Harness />)
+
+    const evaluations = () => vi.mocked(evaluatePracticeHand).mock.calls.length
+    const mounted = evaluations()
+
+    for (const phase of ['Battle Phase', 'Main Phase 2', 'End Phase']) {
+      fireEvent.click(screen.getByRole('button', { name: phase }))
+    }
+
+    fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
+    expect(evaluations()).toBe(mounted)
+
+    // La primera jugada es robar una sola carta: la mano inicial pasa a tener una más.
+    fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
+    tap(screen.getByRole('button', { name: 'Main: 5' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Robar' }))
+    expect(evaluations()).toBe(mounted + 1)
   })
 })

@@ -294,8 +294,6 @@ export function PracticeMat({
   // Las cartas grandes del centro (activar, mostrar, declarar y, al reproducir un combo, lo que mueve cada paso) y el marco de la mano cuando recibe una carta.
   const [stage, setStage] = useState<{ ids: string[]; kind: SpotlightKind | ShowcaseKind; flip?: true; step: number; key: number } | null>(null)
   const [handFlash, setHandFlash] = useState<number | null>(null)
-  // Zona de la mesa bajo una carta de la mano que se está arrastrando.
-  const [handOver, setHandOver] = useState<string | null>(null)
 
   useEscapeKey(() => setPicking(null), picking !== null)
 
@@ -748,7 +746,28 @@ export function PracticeMat({
     [state, openCard],
   )
 
-  const { drag, over, bind, setGhostElement } = useMatDrag({ onDrop: handleDrop, onTap: handleTap })
+  // La zona bajo una carta arrastrada (de la mesa o de la mano) se enciende por el DOM, no por el estado: si no, cada zona que se cruza dibujaba la mesa entera.
+  // Por eso el `data-over` de las casillas es siempre "false" en el JSX (React no vuelve a tocarlo): acá se enciende y se apaga.
+  const lightZone = useCallback((previous: string | null, next: string | null) => {
+    const light = (drop: string | null, on: boolean) => {
+      // La mano también es un `data-drop`, pero nunca se ilumina.
+      if (drop && drop !== 'hand') sectionRef.current?.querySelector(`[data-drop="${drop}"]`)?.setAttribute('data-over', String(on))
+    }
+
+    light(previous, false)
+    light(next, true)
+  }, [])
+  const { drag, bind, setGhostElement } = useMatDrag({ onDrop: handleDrop, onTap: handleTap, onOver: lightZone })
+
+  // La zona que enciende la mano (la otra fuente de arrastre): se recuerda para apagarla cuando cambia.
+  const handLit = useRef<string | null>(null)
+  const lightFromHand = useCallback(
+    (next: string | null) => {
+      lightZone(handLit.current, next)
+      handLit.current = next
+    },
+    [lightZone],
+  )
 
   const menuItems: MenuItem[] = useMemo(() => {
     if (!menu) return []
@@ -814,21 +833,27 @@ export function PracticeMat({
     showToastMessage(t('practice.combo.saved', { name: combo.name }), 'success')
   }
 
-  const deleteCombo = (combo: SavedCombo) => {
-    const next = combos.filter((entry) => entry.id !== combo.id)
-    writeSavedCombos(next)
-    setCombos(next)
-    showToastMessage(t('practice.combo.deleted', { name: combo.name }), 'warning')
-  }
+  const deleteCombo = useCallback(
+    (combo: SavedCombo) => {
+      const next = combos.filter((entry) => entry.id !== combo.id)
+      writeSavedCombos(next)
+      setCombos(next)
+      showToastMessage(t('practice.combo.deleted', { name: combo.name }), 'warning')
+    },
+    [combos],
+  )
 
+  // Los callbacks del panel y de los controles del replay son estables: así, con un destello o un cartel que se va, no se vuelven a dibujar (el panel es una lista de todos los pasos).
+  const seekFromPanel = useCallback((step: number) => { setAutoplay(false); onSeek(step); setPanelOpen(false) }, [onSeek])
+  const loadFromPanel = useCallback((combo: SavedCombo) => { onLoadCombo(combo); setAutoplay(true); setPanelOpen(false) }, [onLoadCombo])
   const panel = (
     <PracticeMatPanel
       steps={steps}
       cursor={session.cursor}
-      onSeek={(step) => { setAutoplay(false); onSeek(step); setPanelOpen(false) }}
+      onSeek={seekFromPanel}
       combos={combos}
       deckName={deckName}
-      onLoad={(combo) => { onLoadCombo(combo); setAutoplay(true); setPanelOpen(false) }}
+      onLoad={loadFromPanel}
       onDelete={deleteCombo}
       className="min-h-0 flex-1"
     />
@@ -863,7 +888,7 @@ export function PracticeMat({
         tabIndex={pickableZone ? 0 : undefined}
         aria-label={pickableZone ? t('practice.zone.pick', { zone: label }) : label}
         data-drop={drop}
-        data-over={over === drop || handOver === drop ? 'true' : 'false'}
+        data-over="false"
         data-pick={pickableZone || pickableTribute ? 'true' : 'false'}
         data-chosen={chosen ? 'true' : 'false'}
         className={spot === 'field' ? CELL : CELL_SQUARE}
@@ -913,7 +938,7 @@ export function PracticeMat({
         aria-label={`${PILE_TITLES[pile]}: ${count}`}
         title={PILE_TITLES[pile]}
         data-drop={pile}
-        data-over={over === pile || handOver === pile ? 'true' : 'false'}
+        data-over="false"
         data-targeted={marked ? 'true' : 'false'}
         // `rounded-none`: el reset global le da a todo <button> el radio de los controles, y una casilla no va redondeada.
         className={cx(CELL, 'cursor-pointer overflow-hidden rounded-none bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus', FX_CARD, '[--card-shadow:0_0_0_0_transparent]')}
@@ -950,6 +975,23 @@ export function PracticeMat({
     [getField],
   )
 
+  const describeStep = useCallback(
+    (step: number) => (step === 0 ? t('practice.mat.startingHand') : t('practice.replay.stepOf', { step, total: session.actions.length, text: steps[step - 1] ?? '' })),
+    [steps, session.actions.length],
+  )
+  const togglePlay = useCallback(() => {
+    if (autoplay) {
+      setAutoplay(false)
+    } else {
+      // Al final, reproducir vuelve a empezar ("Ver de nuevo").
+      if (live) onSeek(0)
+      setAutoplay(true)
+    }
+  }, [autoplay, live, onSeek])
+  const restart = useCallback(() => onSeek(0), [onSeek])
+  const previousStep = useCallback(() => { setAutoplay(false); onSeek(session.cursor - 1) }, [onSeek, session.cursor])
+  const nextStep = useCallback(() => { setAutoplay(false); onSeek(session.cursor + 1) }, [onSeek, session.cursor])
+  const openSteps = useCallback(() => setPanelOpen(true), [])
   const replayLabel = autoplay ? t('practice.mat.pause') : live ? t('practice.mat.watchAgain') : t('practice.mat.play')
   // La línea de tiempo del replay: una marca por jugada (cambio de fase, comienzo de turno). Se arma una vez por combo, no por paso.
   const replayMarks = useMemo<ReplayMark[]>(() => {
@@ -1047,7 +1089,7 @@ export function PracticeMat({
             aria-label={`${PILE_TITLES.deck}: ${state.deck.length}`}
             title={t('practice.mat.mainDeck')}
             data-drop="deck"
-            data-over={over === 'deck' || handOver === 'deck' ? 'true' : 'false'}
+            data-over="false"
             className={cx(CELL, state.deck.length > 0 && 'cursor-grab touch-none select-none [-webkit-touch-callout:none]', 'focus-visible:outline-none focus-visible:shadow-focus')}
             style={{ gridArea: 'deck' }}
             {...bind({ id: DECK_TOP, name: 'Deck', art: null, back: true })}
@@ -1092,9 +1134,9 @@ export function PracticeMat({
             getField={getField}
             onReorder={setHandOrder}
             onTap={(card, rect) => openCard(card.id, rect)}
-            onDragOver={setHandOver}
+            onDragOver={lightFromHand}
             onDrop={(card, target) => {
-              setHandOver(null)
+              lightFromHand(null)
               const parsed = parseDrop(target)
               if (parsed) handleDrop({ id: card.id, name: card.name, art: artOf(card) }, parsed)
             }}
@@ -1118,21 +1160,13 @@ export function PracticeMat({
             playing={autoplay}
             playLabel={replayLabel}
             speed={speed}
-            describe={(step) => (step === 0 ? t('practice.mat.startingHand') : t('practice.replay.stepOf', { step, total: session.actions.length, text: steps[step - 1] ?? '' }))}
+            describe={describeStep}
             onSeek={onSeek}
-            onTogglePlay={() => {
-              if (autoplay) {
-                setAutoplay(false)
-              } else {
-                // Al final, reproducir vuelve a empezar ("Ver de nuevo").
-                if (live) onSeek(0)
-                setAutoplay(true)
-              }
-            }}
-            onRestart={() => onSeek(0)}
-            onPrevious={() => { setAutoplay(false); onSeek(session.cursor - 1) }}
-            onNext={() => { setAutoplay(false); onSeek(session.cursor + 1) }}
-            onOpenSteps={() => setPanelOpen(true)}
+            onTogglePlay={togglePlay}
+            onRestart={restart}
+            onPrevious={previousStep}
+            onNext={nextStep}
+            onOpenSteps={openSteps}
             onSpeed={setSpeed}
           />
         ) : null}

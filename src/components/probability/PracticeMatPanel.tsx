@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 
 import type { SavedCombo } from '../../app/saved-combos'
 import { formatDay, t } from '../../i18n'
@@ -26,7 +26,7 @@ interface PracticeMatPanelProps {
 
 
 /** Panel lateral de la mesa: las jugadas de esta partida (se toca una para volver a ese paso) y los combos guardados. */
-export function PracticeMatPanel({ steps, cursor, onSeek, combos, deckName, onLoad, onDelete, className }: PracticeMatPanelProps) {
+export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, cursor, onSeek, combos, deckName, onLoad, onDelete, className }: PracticeMatPanelProps) {
   const [tab, setTab] = useState<PanelTab>('steps')
 
   return (
@@ -68,7 +68,7 @@ export function PracticeMatPanel({ steps, cursor, onSeek, combos, deckName, onLo
       )}
     </div>
   )
-}
+})
 
 interface SavedCombosListProps {
   combos: SavedCombo[]

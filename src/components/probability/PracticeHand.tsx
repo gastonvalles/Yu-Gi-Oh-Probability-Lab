@@ -6,6 +6,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
+import { flushSync } from 'react-dom'
 
 import {
   computeHandLayout,
@@ -97,15 +98,6 @@ interface PracticeHandProps {
   className?: string
 }
 
-interface DragState {
-  id: string
-  x: number
-  y: number
-  /** Tamaño relativo (1.1 en la mano, el de la zona sobre el campo) e inclinación en grados. */
-  scale: number
-  tilt: number
-}
-
 /** Escala de la carta levantada mientras está sobre la mano. */
 const LIFT_SCALE = 1.1
 /** Inclinación máxima (perspectiva) al llegar al campo. */
@@ -135,7 +127,8 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highl
   const width = useElementWidth(containerRef) || FALLBACK_WIDTH
   const slots = Math.max(cards.length, sizeSlots)
   const layout = computeHandLayout(width, slots, maxCardWidth, sizeSlots)
-  const [drag, setDrag] = useState<DragState | null>(null)
+  // La carta arrastrada: sólo cuál es. Dónde está se escribe en su `transform` por el ref, un cuadro por vez, sin pasar por React.
+  const [draggedId, setDraggedId] = useState<string | null>(null)
   const dragRef = useRef<{ id: string; pointerId: number; startX: number; startY: number; grabDx: number; moved: boolean; outside: string | null; element: HTMLElement } | null>(null)
   const cardsRef = useRef(cards)
   cardsRef.current = cards
@@ -206,7 +199,7 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highl
       tilt = MAX_TILT * progress
     }
 
-    setDrag({ id: state.id, x, y, scale, tilt })
+    state.element.style.transform = `translate3d(${x}px, ${TOP_ROOM + y - 16}px, 0) perspective(900px) rotateX(${tilt}deg) scale(${scale})`
 
     if (outside !== state.outside) {
       state.outside = outside
@@ -235,6 +228,11 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highl
       return
     }
 
+    // La carta pasa a "dragging" (sin transición de `transform`) ya, no después del primer cuadro: si no, el primer movimiento se vería con la transición.
+    if (!state.moved) {
+      flushSync(() => setDraggedId(state.id))
+    }
+
     state.moved = true
     pendingMoveRef.current = { clientX: event.clientX, clientY: event.clientY }
 
@@ -254,7 +252,7 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highl
     window.cancelAnimationFrame(moveFrameRef.current)
     moveFrameRef.current = 0
     pendingMoveRef.current = null
-    setDrag(null)
+    setDraggedId(null)
 
     const card = cardsRef.current.find((entry) => entry.id === id)
 
@@ -312,14 +310,11 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highl
       style={{ height: layout.cardHeight + TOP_ROOM + FAN_ROOM }}
     >
       {cards.map((card, index) => {
-        const isDragged = drag?.id === card.id
+        const isDragged = draggedId === card.id
         const angle = fanAngle(index, slots, fanDegrees)
         const arch = Math.abs(index - (slots - 1) / 2) ** 2 * 1.6
-        const x = isDragged ? drag.x : slotLeft(layout, index)
-        const y = TOP_ROOM + (isDragged ? drag.y - 16 : arch)
-        const transform = isDragged
-          ? `translate3d(${x}px, ${y}px, 0) perspective(900px) rotateX(${drag.tilt}deg) scale(${drag.scale})`
-          : `translate3d(${x}px, ${y}px, 0) rotate(${angle}deg)`
+        // El lugar que le toca en el abanico; la carta arrastrada lo ignora (ver `HandCard`) y vuelve a él al soltarse.
+        const transform = `translate3d(${slotLeft(layout, index)}px, ${TOP_ROOM + arch}px, 0) rotate(${angle}deg)`
         const flashing = flash?.id === card.id
         const selected = selectedId === card.id
 
@@ -452,7 +447,8 @@ function HandCard({
   const style: CSSProperties = {
     width: layout.cardWidth,
     height: layout.cardHeight,
-    transform,
+    // Arrastrada, la posición la escribe `PracticeHand` por el ref en cada cuadro: React no la toca (y al soltar vuelve a poner la de reposo).
+    transform: state === 'dragging' ? undefined : transform,
     zIndex,
     // El color de su aro: el del destaque, o el rojo de la mira.
     ...fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red'),
