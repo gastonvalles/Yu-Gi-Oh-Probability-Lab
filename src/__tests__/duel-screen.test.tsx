@@ -596,7 +596,7 @@ describe('la pantalla del duelo', () => {
     flush()
     // Gane quien gane, lo dicen los dos lados: uno elige y el otro espera.
     const hostChooses = within(first.host.container).queryByText('Ganaste: elegís vos.') !== null
-    expect(within(first.host.container).getByText(hostChooses ? '¿Querés ir primero o segundo?' : 'Ganó Beto: elige él.')).toBeInTheDocument()
+    expect(within(first.host.container).getByText(hostChooses ? '¿Querés ir primero o segundo?' : 'Ganó Beto.')).toBeInTheDocument()
     expect(within(first.guest.container).getByText(hostChooses ? 'Ana está eligiendo quién va primero…' : '¿Querés ir primero o segundo?')).toBeInTheDocument()
     cleanup()
     window.history.replaceState(null, '', '#duel')

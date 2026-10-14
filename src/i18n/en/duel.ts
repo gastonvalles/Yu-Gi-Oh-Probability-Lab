@@ -125,7 +125,7 @@ export const duel: Translated<typeof es> = {
   'duel.opening.die.result': 'You rolled {mine}; {name}, {theirs}.',
   'duel.opening.die.tie': 'Tie on {value}: roll again.',
   'duel.opening.won': 'You won: you choose.',
-  'duel.opening.lost': '{name} won: they choose.',
+  'duel.opening.lost': '{name} won.',
   'duel.opening.rematch': 'You choose, because you lost the previous duel.',
   'duel.opening.rematchRival': '{name} chooses, because they lost the previous duel.',
   'duel.opening.choose': 'Do you want to go first or second?',

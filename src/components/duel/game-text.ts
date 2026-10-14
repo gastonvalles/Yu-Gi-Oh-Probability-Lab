@@ -41,7 +41,7 @@ export function gameText(entry: GameEntry, nameOf: (player: Duelist) => string):
     case 'order':
       return t('duel.games.log.order', { name: nameOf(game.first) })
     case 'toss':
-      return t('duel.games.log.toss', { name, method: methodName(game.method) })
+      return t('duel.games.log.toss', { name, method: methodName(game.method).toLowerCase() })
     case 'concede':
       return t('duel.games.log.concede', { name })
     case 'rematch':

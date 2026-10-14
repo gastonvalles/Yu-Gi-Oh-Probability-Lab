@@ -131,7 +131,7 @@ export const duel = {
   'duel.opening.die.result': 'Vos sacaste {mine}; {name}, {theirs}.',
   'duel.opening.die.tie': 'Empate en {value}: tiren de nuevo.',
   'duel.opening.won': 'Ganaste: elegís vos.',
-  'duel.opening.lost': 'Ganó {name}: elige él.',
+  'duel.opening.lost': 'Ganó {name}.',
   'duel.opening.rematch': 'Elegís vos, porque perdiste el duelo anterior.',
   'duel.opening.rematchRival': '{name} elige, porque perdió el duelo anterior.',
   'duel.opening.choose': '¿Querés ir primero o segundo?',
