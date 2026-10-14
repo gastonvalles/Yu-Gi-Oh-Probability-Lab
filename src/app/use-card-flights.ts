@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, type RefObject } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, type RefObject } from 'react'
 
 import { CARD_BACK, FX_RGB } from '../components/probability/practice-styles'
 import { UI_ANIMATION_MS, supportsAdditiveAnimation } from './motion'
@@ -6,6 +6,8 @@ import { locateCard, type MatState } from './practice-mat'
 
 /** Cuánto dura el vuelo de una carta entre dos lugares de la mesa. */
 export const FLIGHT_MS = UI_ANIMATION_MS * 2
+/** Cuánto después de una jugada (o de reacomodarse la mano) todo quedó quieto y se puede medir de nuevo: lo que más dura es un vuelo, y un poco más. */
+const SETTLE_MS = FLIGHT_MS + 100
 const EASING = 'cubic-bezier(0.22, 0.9, 0.3, 1)'
 /** Marca de los vuelos: una jugada que llega con un vuelo a medias lo corta antes de medir, así la carta se mide quieta. */
 const FLIGHT_ID = 'mat-flight'
@@ -197,6 +199,40 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
       }
     }
     // Se mide con cada jugada y cada vez que la mano se reacomoda; `artOf` sólo pinta el fantasma.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, layoutKey])
+
+  // Esa medida agarra a las cartas en pleno movimiento: la que se acaba de robar o buscar sale de su vuelo desde el mazo y las vecinas de una carta jugada
+  // se corren con una transición. Si quedaba así como el "de dónde sale" de la próxima jugada, una carta robada que se activaba desde la mano salía volando
+  // desde el mazo. Cuando todo se quedó quieto se mide de nuevo (otra jugada antes de que pase el plazo cancela este turno: ella misma vuelve a medir).
+  useEffect(() => {
+    const root = containerRef.current
+
+    if (!root || prefersReducedMotion()) return
+
+    const timer = window.setTimeout(() => {
+      const snapshot = previousRef.current
+
+      if (!snapshot) return
+
+      const cards = new Map<string, Snapshot>()
+
+      for (const element of root.querySelectorAll<HTMLElement>('[data-card-id]')) {
+        const id = element.dataset.cardId
+
+        if (!id) continue
+
+        // La carta que se está arrastrando no está en su lugar: conserva la medida de antes.
+        const before = snapshot.cards.get(id)
+
+        cards.set(id, element.dataset.state === 'dragging' && before ? before : { rect: element.getBoundingClientRect(), width: element.offsetWidth, height: element.offsetHeight, art: artOf(id), pending: element.dataset.pending === 'true' })
+      }
+
+      previousRef.current = { state: snapshot.state, cards }
+    }, SETTLE_MS)
+
+    return () => window.clearTimeout(timer)
+    // Mismas dependencias que la medida de arriba; `artOf` sólo pinta el fantasma.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, layoutKey])
 

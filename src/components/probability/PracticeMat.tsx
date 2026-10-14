@@ -32,7 +32,7 @@ import {
 } from '../../app/practice-mat'
 import { mergeHandOrder } from '../../app/practice-hand-layout'
 import { createSavedCombo, readSavedCombos, renameSavedCombo, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
-import { UI_ANIMATION_MS, supportsAdditiveAnimation } from '../../app/motion'
+import { supportsAdditiveAnimation } from '../../app/motion'
 import { matStepCards } from '../../app/mat-steps'
 import { useCardFlights } from '../../app/use-card-flights'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
@@ -450,21 +450,9 @@ export function PracticeMat({
   // Las cartas vuelan entre zonas con cada jugada (y al reproducir un combo).
   const sectionRef = useRef<HTMLElement | null>(null)
   const artById = useCallback((id: string) => artOf(cardOf(id)), [cardOf])
-  // Al terminar el reparto las cartas se vuelven a medir quietas: la última medición las agarraba en pleno vuelo desde el mazo
-  // (achicadas y giradas) y el siguiente vuelo arrancaba de ahí, con una carta gigante y estirada.
-  const [settled, setSettled] = useState(false)
-
-  useEffect(() => {
-    if (!isDealt) {
-      setSettled(false)
-      return
-    }
-
-    const timer = window.setTimeout(() => setSettled(true), UI_ANIMATION_MS + 60)
-    return () => window.clearTimeout(timer)
-  }, [isDealt])
-
-  const { dealsFromDeck } = useCardFlights(sectionRef, state, artById, `${isDesktop}:${dealt}:${settled}:${handOrder.join(',')}:${pendingId ?? ''}`)
+  // Las cartas se miden de nuevo cuando todo quedó quieto (ver `useCardFlights`): si no, el reparto, una carta robada o buscada y la mano reacomodada
+  // dejaban la medida de cuando todavía volaban, y la próxima jugada arrancaba de ahí (desde el mazo, con una carta gigante y estirada).
+  const { dealsFromDeck } = useCardFlights(sectionRef, state, artById, `${isDesktop}:${dealt}:${handOrder.join(',')}:${pendingId ?? ''}`)
 
   // Reproducir un combo: las jugadas avanzan solas (arranca al cargarlo; cualquier jugada propia lo pausa), más rápido con el avance rápido.
   const [autoplay, setAutoplay] = useState(false)
