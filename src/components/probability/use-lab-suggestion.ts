@@ -69,12 +69,12 @@ export function useLabSuggestion(
     // Cada variante llega por separado: se muestra la mejor hasta el momento sin esperar a las demás.
     void Promise.all(
       candidates.map(async (candidate) => {
-        const odds = await requestLabOdds(`suggest|${onlyView ?? 'both'}|${labInputSignature(candidate.cards, checks, handSize)}`, {
-          cards: candidate.cards,
-          patterns: checks,
-          handSize,
-          view: onlyView,
-        })
+        // Las variantes se prueban con prioridad baja: si la persona edita, su resultado no espera detrás de estas.
+        const odds = await requestLabOdds(
+          `suggest|${onlyView ?? 'both'}|${labInputSignature(candidate.cards, checks, handSize)}`,
+          { cards: candidate.cards, patterns: checks, handSize, view: onlyView },
+          'low',
+        )
 
         if (cancelled) {
           return
