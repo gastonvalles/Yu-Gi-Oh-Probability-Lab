@@ -202,7 +202,8 @@ function buildPatternRequirementLabel<Key extends string | number>(
  * ¿La mano cumple la regla? Mismo resultado que `getMatchedRequirementCount(...) >= requiredMatches`,
  * pero sin calcular el máximo cuando no hace falta: es lo que corre millones de veces en el cálculo
  * exacto, así que sólo se hace la búsqueda con cartas repartidas entre condiciones cuando de verdad
- * hay duda (2 o más condiciones que no pueden compartir cartas).
+ * hay duda (2 o más condiciones que no pueden compartir cartas y que se pisan entre sí), y esa
+ * búsqueda corta en cuanto llega a las que se piden.
  */
 /**
  * `excludeCounts` es la mano que ven las condiciones "sin": por defecto la misma. Un problema evaluado
@@ -248,8 +249,49 @@ export function matchesResolvedPattern<Counts, Key extends string | number>(
     return true
   }
 
+  // Si ninguna carta sirve a dos condiciones, usar las de una no le quita nada a las otras: ya se cumplen todas las que se cumplen solas.
+  if (includesAreIndependent(pattern.requirements)) {
+    return true
+  }
+
   // Las condiciones que no se cumplen solas tampoco se cumplen con menos cartas: se descartan.
-  return getMaxMatchedIncludeRequirements(matchedIncludes, counts, countOperations) >= needed
+  return canMatchAtLeast(matchedIncludes, counts, countOperations, needed)
+}
+
+// Qué reglas tienen condiciones "con" sin cartas en común. Se guarda por la lista de condiciones (que es la misma en todo el
+// cálculo) para no volver a recorrerla en cada mano.
+const independentIncludes = new WeakMap<object, boolean>()
+
+function includesAreIndependent<Key extends string | number>(requirements: ResolvedRequirement<Key>[]): boolean {
+  let independent = independentIncludes.get(requirements)
+
+  if (independent === undefined) {
+    independent = true
+    const seen = new Set<Key>()
+
+    for (const requirement of requirements) {
+      if (requirement.kind === 'exclude') {
+        continue
+      }
+
+      for (const key of requirement.keys) {
+        if (seen.has(key)) {
+          independent = false
+          break
+        }
+
+        seen.add(key)
+      }
+
+      if (!independent) {
+        break
+      }
+    }
+
+    independentIncludes.set(requirements, independent)
+  }
+
+  return independent
 }
 
 export function getResolvedPatternWitness<Counts, Key extends string | number>(
@@ -519,12 +561,9 @@ function matchesRequirement<Counts, Key extends string | number>(
   return requirement.distinct ? distinctMatched >= requirement.quantity : copiesMatched >= requirement.quantity
 }
 
-function getMaxMatchedIncludeRequirements<Counts, Key extends string | number>(
-  requirements: ResolvedRequirement<Key>[],
-  counts: Counts,
-  countOperations: CountOperations<Counts, Key>,
-): number {
-  const orderedRequirements = [...requirements].sort((left, right) => {
+/** Orden en que se reparten las cartas: primero las condiciones con menos clases donde elegir, después las "distintas" y las que piden más copias. */
+function orderRequirementsForSearch<Key extends string | number>(requirements: ResolvedRequirement<Key>[]): ResolvedRequirement<Key>[] {
+  return [...requirements].sort((left, right) => {
     const leftAvailable = left.keys.length
     const rightAvailable = right.keys.length
 
@@ -538,6 +577,14 @@ function getMaxMatchedIncludeRequirements<Counts, Key extends string | number>(
 
     return right.quantity - left.quantity
   })
+}
+
+function getMaxMatchedIncludeRequirements<Counts, Key extends string | number>(
+  requirements: ResolvedRequirement<Key>[],
+  counts: Counts,
+  countOperations: CountOperations<Counts, Key>,
+): number {
+  const orderedRequirements = orderRequirementsForSearch(requirements)
   const memo = new Map<string, number>()
 
   const visit = (index: number, availableCounts: Counts): number => {
@@ -569,6 +616,43 @@ function getMaxMatchedIncludeRequirements<Counts, Key extends string | number>(
   }
 
   return visit(0, counts)
+}
+
+/** ¿Se pueden cumplir al menos `needed` de estas condiciones a la vez, sin reutilizar cartas? Lo mismo que `getMaxMatchedIncludeRequirements(...) >= needed`, pero corta apenas lo logra. */
+function canMatchAtLeast<Counts, Key extends string | number>(
+  requirements: ResolvedRequirement<Key>[],
+  counts: Counts,
+  countOperations: CountOperations<Counts, Key>,
+  needed: number,
+): boolean {
+  const orderedRequirements = orderRequirementsForSearch(requirements)
+
+  const visit = (index: number, availableCounts: Counts, matched: number): boolean => {
+    if (matched >= needed) {
+      return true
+    }
+
+    // Aunque se cumplieran todas las que quedan, no se llega.
+    if (matched + (orderedRequirements.length - index) < needed) {
+      return false
+    }
+
+    for (const usage of getRequirementUsages(orderedRequirements[index], availableCounts, countOperations)) {
+      const nextCounts = countOperations.cloneCounts(availableCounts)
+
+      for (const [keyToConsume, usedCopies] of usage) {
+        countOperations.consumeCount(nextCounts, keyToConsume, usedCopies)
+      }
+
+      if (visit(index + 1, nextCounts, matched + 1)) {
+        return true
+      }
+    }
+
+    return visit(index + 1, availableCounts, matched)
+  }
+
+  return visit(0, counts, 0)
 }
 
 function getRequirementUsages<Counts, Key extends string | number>(
@@ -688,20 +772,7 @@ function buildDistinctCardWitness<Counts, Key extends string | number>(
   counts: Counts,
   countOperations: CountOperations<Counts, Key>,
 ): { count: number; assignments: Map<string, Array<[Key, number]>> } {
-  const orderedRequirements = [...requirements].sort((left, right) => {
-    const leftAvailable = left.keys.length
-    const rightAvailable = right.keys.length
-
-    if (leftAvailable !== rightAvailable) {
-      return leftAvailable - rightAvailable
-    }
-
-    if (left.distinct !== right.distinct) {
-      return left.distinct ? -1 : 1
-    }
-
-    return right.quantity - left.quantity
-  })
+  const orderedRequirements = orderRequirementsForSearch(requirements)
   let bestCount = 0
   let bestAssignments = new Map<string, Array<[Key, number]>>()
 
