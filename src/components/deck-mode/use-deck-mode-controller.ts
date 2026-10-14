@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 
 import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
 import {
@@ -55,6 +55,12 @@ export function useDeckModeController() {
   const dispatch = useAppDispatch()
   const settings = useAppSelector((state: RootState) => state.settings)
   const deckBuilder = useAppSelector((state: RootState) => state.deckBuilder)
+  // Los manejadores de las cartas del deck leen el deck desde una ref: así no cambian en cada edición
+  // (ni al escribir el nombre) y las zonas memoizadas no se re-dibujan por nada.
+  const deckBuilderRef = useRef(deckBuilder)
+  useLayoutEffect(() => {
+    deckBuilderRef.current = deckBuilder
+  })
   const patternsState = useAppSelector((state: RootState) => state.patterns)
   const [selectedDetailCard, setSelectedDetailCard] = useState<ApiCardSearchResult | null>(null)
   const [selectedDetailSource, setSelectedDetailSource] = useState<'search' | 'deck' | null>(null)
@@ -270,7 +276,7 @@ export function useDeckModeController() {
         return
       }
 
-      const deckCard = findDeckCard(deckBuilder, instanceId)
+      const deckCard = findDeckCard(deckBuilderRef.current, instanceId)
 
       if (!deckCard) {
         return
@@ -280,7 +286,7 @@ export function useDeckModeController() {
       setSelectedDetailSource('deck')
       setSelectedDeckInstanceId(instanceId)
     },
-    [consumeSuppressedPointerClick, deckBuilder],
+    [consumeSuppressedPointerClick],
   )
 
   const handleAddSearchResultToZone = useCallback(
@@ -511,13 +517,13 @@ export function useDeckModeController() {
 
   const handleDeckCardPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLElement>, instanceId: string) => {
-      const draggedCard = findDeckCard(deckBuilder, instanceId)
+      const draggedCard = findDeckCard(deckBuilderRef.current, instanceId)
 
       if (draggedCard) {
         startPointerDrag(event, { type: 'deck-card', instanceId }, draggedCard.name, draggedCard.apiCard)
       }
     },
-    [deckBuilder, startPointerDrag],
+    [startPointerDrag],
   )
 
   const handleSearchCardPointerDown = useCallback(

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import { useFocusTrap } from '../../app/use-focus-trap'
@@ -10,6 +10,7 @@ import type { DeckZone } from '../../app/model'
 import { useInfiniteScroll } from '../../app/use-infinite-scroll'
 import { formatInteger } from '../../app/utils'
 import { t } from '../../i18n'
+import type { DeckFormat } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { CardArt } from '../CardArt'
 import { Button } from '../ui/Button'
@@ -94,6 +95,14 @@ export function MobileCardSearch({
       recentSearches.remember(query)
     }
   }
+
+  // Los callbacks del padre cambian en cada render: las filas (con `memo`) reciben estas funciones fijas, que leen siempre los últimos.
+  const latest = useRef({ onOpenDetail, handleAdd })
+  useLayoutEffect(() => {
+    latest.current = { onOpenDetail, handleAdd }
+  })
+  const openDetail = useCallback((apiCardId: number) => latest.current.onOpenDetail(apiCardId), [])
+  const addCard = useCallback((card: ApiCardSearchResult) => latest.current.handleAdd(card), [])
 
   // Al empezar a scrollear la lista se oculta el teclado para liberar pantalla.
   const dismissKeyboard = () => {
@@ -279,9 +288,9 @@ export function MobileCardSearch({
                     copiesInDeck={deckCopyCounts.get(card.ygoprodeckId) ?? 0}
                     isMaxed={search.maxedOutResultIds.has(card.ygoprodeckId)}
                     justAdded={lastAdded?.id === card.ygoprodeckId}
-                    formatLimitLabel={buildFormatLimitLabel(card, search.deckFormat)}
-                    onOpenDetail={() => onOpenDetail(card.ygoprodeckId)}
-                    onAdd={() => handleAdd(card)}
+                    deckFormat={search.deckFormat}
+                    onOpenDetail={openDetail}
+                    onAdd={addCard}
                   />
                 ))}
                 {search.isLoadingMore ? <MobileResultSkeleton /> : null}
@@ -328,23 +337,26 @@ interface MobileResultRowProps {
   copiesInDeck: number
   isMaxed: boolean
   justAdded: boolean
-  formatLimitLabel: string | null
-  onOpenDetail: () => void
-  onAdd: () => void
+  deckFormat: DeckFormat
+  onOpenDetail: (apiCardId: number) => void
+  onAdd: (card: ApiCardSearchResult) => void
 }
 
-function MobileResultRow({
+/** Un resultado de la lista. Con `memo`, tocar "+" (y el aviso de agregada que se apaga) sólo vuelve a dibujar la fila que cambia. */
+const MobileResultRow = memo(function MobileResultRow({
   card,
   copiesInDeck,
   isMaxed,
   justAdded,
-  formatLimitLabel,
+  deckFormat,
   onOpenDetail,
   onAdd,
 }: MobileResultRowProps) {
+  const formatLimitLabel = buildFormatLimitLabel(card, deckFormat)
+
   return (
     <li className={ROW}>
-      <button type="button" className={cx(ROW_MAIN, isMaxed && 'opacity-55')} onClick={onOpenDetail}>
+      <button type="button" className={cx(ROW_MAIN, isMaxed && 'opacity-55')} onClick={() => onOpenDetail(card.ygoprodeckId)}>
         <span className="relative w-13 shrink-0">
           <CardArt
             remoteUrl={card.imageUrlSmall ?? card.imageUrl}
@@ -372,13 +384,13 @@ function MobileResultRow({
         )}
         disabled={isMaxed}
         aria-label={isMaxed ? t('search.mobile.maxedAria', { name: card.name }) : t('search.result.addAria', { name: card.name })}
-        onClick={onAdd}
+        onClick={() => onAdd(card)}
       >
         {isMaxed ? <span className="text-micro font-semibold">{t('search.result.maxBadge')}</span> : justAdded ? <Icon name="check" strokeWidth={2} /> : <Icon name="plus" strokeWidth={2} />}
       </button>
     </li>
   )
-}
+})
 
 function MobileResultSkeleton() {
   return (
