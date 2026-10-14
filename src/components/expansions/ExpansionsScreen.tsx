@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 
-import { type Expansion, type ExpansionCard } from '../../app/card-prices'
+import { compareRarities, type Expansion, type ExpansionCard } from '../../app/card-prices'
 import { useExpansionCards, useExpansions } from '../../app/use-expansions'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { formatInteger } from '../../app/utils'
@@ -128,24 +128,63 @@ function ExpansionList({ expansions, activeId, onPick }: { expansions: Expansion
   )
 }
 
-/** Una expansión: su encabezado y sus impresiones (con filtros por nombre o código y por rareza, y orden por código o precio). */
+/** De cada valor (que no esté vacío) a cuántas cartas lo tienen, en el orden en que aparecen. */
+function countBy(cards: readonly ExpansionCard[], key: (card: ExpansionCard) => string): Array<[string, number]> {
+  const counts = new Map<string, number>()
+
+  for (const card of cards) {
+    const value = key(card)
+
+    if (value) {
+      counts.set(value, (counts.get(value) ?? 0) + 1)
+    }
+  }
+
+  return [...counts]
+}
+
+/** Una fila de chips para filtrar (uno solo a la vez, o "todos"), cada uno con cuántas impresiones tiene. */
+function FilterChips({ label, all, options, value, onChange }: { label: string; all: string; options: Array<[string, number]>; value: string | null; onChange: (value: string | null) => void }) {
+  return (
+    <div role="group" aria-label={label} className="flex flex-wrap gap-1.5">
+      {[[null, null] as const, ...options].map(([option, count]) => (
+        <button
+          key={option ?? 'all'}
+          type="button"
+          aria-pressed={value === option}
+          aria-label={count === null ? undefined : `${option} ${count}`}
+          className={cx(choiceChip, 'h-7 gap-1.5 px-2.5 text-micro')}
+          onClick={() => onChange(option)}
+        >
+          {option ?? all}
+          {count === null ? null : <span className="text-soft tabular-nums">{formatInteger(count)}</span>}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** Una expansión: su encabezado y sus impresiones (con filtros por nombre o código, por rareza y por arte, y orden por código o precio). */
 function ExpansionDetail({ expansion, updated, onBack }: { expansion: Expansion; updated: string; onBack: (() => void) | null }) {
   const state = useExpansionCards(expansion.id)
   const [query, setQuery] = useState('')
   const [rarity, setRarity] = useState<string | null>(null)
+  const [variant, setVariant] = useState<string | null>(null)
   const [sort, setSort] = useState<Sort>('code')
   const [shown, setShown] = useState(PAGE_SIZE)
   const [opened, setOpened] = useState<ExpansionCard | null>(null)
   const cards = state.status === 'ready' ? state.cards : NO_CARDS
 
-  const rarities = useMemo(() => [...new Set(cards.map((card) => card.rarity))].sort((a, b) => a.localeCompare(b)), [cards])
+  // Las rarezas (de la más común a la más rara) y los artes distintos (Extended Art, Alternate Art...) que tiene esta expansión, cada uno con cuántas impresiones.
+  const rarities = useMemo(() => countBy(cards, (card) => card.rarity).sort(([a], [b]) => compareRarities(a, b)), [cards])
+  const variants = useMemo(() => countBy(cards, (card) => card.variant).sort(([a], [b]) => a.localeCompare(b)), [cards])
   const rows = useMemo(() => {
     const words = query.split(/\s+/).map(normalize).filter(Boolean)
-    const matching = cards.filter((card) => (rarity === null || card.rarity === rarity) && words.every((word) => `${normalize(card.name)}|${normalize(card.code)}|${normalize(card.variant)}`.includes(word)))
+    const matching = cards.filter((card) => (rarity === null || card.rarity === rarity) && (variant === null || card.variant === variant) && words.every((word) => `${normalize(card.name)}|${normalize(card.code)}|${normalize(card.variant)}`.includes(word)))
 
     // El orden de los archivos ya es por código; por precio, de más a menos caro y las que no tienen precio al final.
     return sort === 'price' ? [...matching].sort((a, b) => (b.market ?? -1) - (a.market ?? -1)) : matching
-  }, [cards, query, rarity, sort])
+  }, [cards, query, rarity, variant, sort])
   const distinct = useMemo(() => new Set(cards.map((card) => card.cardId)).size, [cards])
   const usd = new Intl.NumberFormat(currencyLocale(), { style: 'currency', currency: 'USD' })
   const filtersChanged = () => setShown(PAGE_SIZE)
@@ -205,22 +244,28 @@ function ExpansionDetail({ expansion, updated, onBack }: { expansion: Expansion;
             </div>
 
             {rarities.length > 1 ? (
-              <div role="group" aria-label={t('catalog.sets.rarityLabel')} className="flex flex-wrap gap-1.5">
-                {[null, ...rarities].map((value) => (
-                  <button
-                    key={value ?? 'all'}
-                    type="button"
-                    aria-pressed={rarity === value}
-                    className={cx(choiceChip, 'h-7 px-2.5 text-micro')}
-                    onClick={() => {
-                      setRarity(value)
-                      filtersChanged()
-                    }}
-                  >
-                    {value ?? t('catalog.sets.rarityAll')}
-                  </button>
-                ))}
-              </div>
+              <FilterChips
+                label={t('catalog.sets.rarityLabel')}
+                all={t('catalog.sets.rarityAll')}
+                options={rarities}
+                value={rarity}
+                onChange={(value) => {
+                  setRarity(value)
+                  filtersChanged()
+                }}
+              />
+            ) : null}
+            {variants.length > 0 ? (
+              <FilterChips
+                label={t('catalog.sets.variantLabel')}
+                all={t('catalog.sets.variantAll')}
+                options={variants}
+                value={variant}
+                onChange={(value) => {
+                  setVariant(value)
+                  filtersChanged()
+                }}
+              />
             ) : null}
 
             {rows.length === 0 ? (

@@ -131,7 +131,7 @@ describe('la pantalla de expansiones', () => {
     expect(rowsText()[0]).toContain('Ash Blossom')
 
     fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar por nombre o código' }), { target: { value: '' } })
-    fireEvent.click(within(screen.getByRole('group', { name: 'Rareza' })).getByRole('button', { name: 'Rare' }))
+    fireEvent.click(within(screen.getByRole('group', { name: 'Rareza' })).getByRole('button', { name: 'Rare 2' }))
     expect(rowsText().map((text) => /MAZE-EN\d+/.exec(text)?.[0])).toEqual(['MAZE-EN001', 'MAZE-EN003'])
 
     fireEvent.click(within(screen.getByRole('group', { name: 'Rareza' })).getByRole('button', { name: 'Todas' }))
@@ -234,8 +234,43 @@ describe('las impresiones de arte distinto (overframe, extended art...)', () => 
     // El producto 22 es la Mulcharmy de arte extendido: su imagen es la de su producto en TCGplayer.
     expect(tileImages()).toContain('https://tcgplayer-cdn.tcgplayer.com/product/22_200w.jpg')
     expect(tileImages()).toContain('https://tcgplayer-cdn.tcgplayer.com/product/21_200w.jpg')
-    expect(screen.getAllByText('Extended Art')).toHaveLength(1)
+    // La etiqueta sale en la carta (y también hay un chip para filtrar por ese arte, que no es una carta).
+    expect(rowsText().filter((text) => text.includes('Extended Art'))).toHaveLength(1)
     expect(rowsText().find((text) => text.includes('Extended Art'))).toContain('Mulcharmy Purulia')
+  })
+
+  it('las rarezas salen de la más común a la más rara, con cuántas impresiones tiene cada una, y se puede filtrar por arte', async () => {
+    render(<ExpansionsScreen />)
+    await screen.findByRole('button', { name: 'Ver el detalle de Maxx "C"' })
+
+    const rarities = within(screen.getByRole('group', { name: 'Rareza' })).getAllByRole('button')
+
+    expect(rarities.map((chip) => chip.textContent)).toEqual(['Todas', 'Common1', 'Rare2', 'Ultra Rare1'])
+
+    const arts = within(screen.getByRole('group', { name: 'Arte' }))
+
+    expect(arts.getAllByRole('button').map((chip) => chip.textContent)).toEqual(['Todos', 'Extended Art1'])
+
+    fireEvent.click(arts.getByRole('button', { name: 'Extended Art 1' }))
+    expect(rowsText()).toHaveLength(1)
+    expect(rowsText()[0]).toContain('Mulcharmy Purulia')
+
+    // Se combina con la rareza: ninguna Common es de arte extendido.
+    fireEvent.click(within(screen.getByRole('group', { name: 'Rareza' })).getByRole('button', { name: 'Common 1' }))
+    expect(screen.getByText('Ninguna carta coincide con esos filtros.')).toBeInTheDocument()
+
+    fireEvent.click(arts.getByRole('button', { name: 'Todos' }))
+    fireEvent.click(within(screen.getByRole('group', { name: 'Rareza' })).getByRole('button', { name: 'Todas' }))
+    expect(rowsText()).toHaveLength(4)
+  })
+
+  it('una expansión sin artes distintos no muestra el filtro de arte', async () => {
+    render(<ExpansionsScreen />)
+    fireEvent.click(await screen.findByRole('button', { name: /Legend of Blue-Eyes White Dragon/ }))
+    await screen.findByRole('button', { name: 'Ver el detalle de Dark Magician' })
+
+    expect(screen.queryByRole('group', { name: 'Arte' })).not.toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Rareza' })).toBeInTheDocument()
   })
 
   it('si la imagen de la impresión no existe, se prueba con el arte de siempre', async () => {
