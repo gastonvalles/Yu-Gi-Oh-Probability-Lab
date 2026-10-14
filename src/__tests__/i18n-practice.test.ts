@@ -135,12 +135,16 @@ describe('el panel de la mesa en inglés', () => {
       new Date('2026-10-11T12:00:00Z'),
     )
 
-    render(createElement(PracticeMatPanel, { steps: [], cursor: 0, onSeek: () => {}, combos: [combo], deckName: 'Yummy', onLoad: () => {}, onDelete: () => {} }))
+    render(createElement(PracticeMatPanel, { steps: [], cursor: 0, onSeek: () => {}, combos: [combo], deckName: 'Yummy', onLoad: () => {}, onRename: () => {}, onDelete: () => {} }))
 
     expect(screen.getByText('No plays yet')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('radio', { name: /Combos/ }))
     expect(screen.getByText('Yummy · 1 play · Oct 11, 2026')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Load Basic line' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rename Basic line' }))
+    expect(screen.getByRole('dialog', { name: 'Rename combo' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete Basic line' }))
     expect(screen.getByText('Delete “Basic line”?')).toBeInTheDocument()

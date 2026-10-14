@@ -213,12 +213,15 @@ export function PileViewer({ pile, ids, info, targeted, onPick, onClose }: PileV
 interface SaveComboDialogProps {
   isOpen: boolean
   defaultName: string
+  /** Para un combo que ya está guardado: otro título y sin el aviso de qué se guarda. */
+  rename?: boolean
   onSave: (name: string) => void
   onClose: () => void
 }
 
-export function SaveComboDialog({ isOpen, defaultName, onSave, onClose }: SaveComboDialogProps) {
+export function SaveComboDialog({ isOpen, defaultName, rename = false, onSave, onClose }: SaveComboDialogProps) {
   const [name, setName] = useState(defaultName)
+  const title = t(rename ? 'practice.panel.renameTitle' : 'practice.mat.saveCombo')
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
@@ -226,7 +229,7 @@ export function SaveComboDialog({ isOpen, defaultName, onSave, onClose }: SaveCo
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="sm" kicker={t('practice.mat.name')} title={t('practice.mat.saveCombo')} ariaLabel={t('practice.mat.saveCombo')}>
+    <Modal isOpen={isOpen} onClose={onClose} size="sm" kicker={t('practice.mat.name')} title={title} ariaLabel={title}>
       <form className="grid gap-3" onSubmit={submit}>
         <label className="grid gap-1">
           <span className="text-body text-muted">{t('practice.dialog.name')}</span>
@@ -240,7 +243,7 @@ export function SaveComboDialog({ isOpen, defaultName, onSave, onClose }: SaveCo
             onChange={(event) => setName(event.target.value)}
           />
         </label>
-        <p className="m-0 text-micro text-soft">{t('practice.dialog.saveNote')}</p>
+        {rename ? null : <p className="m-0 text-micro text-soft">{t('practice.dialog.saveNote')}</p>}
         <div className="flex justify-end gap-2">
           <Button variant="secondary" size="sm" type="button" onClick={onClose}>
             {t('common.cancel')}

@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { createMatState, replayMat, type MatAction } from '../app/practice-mat'
-import { createSavedCombo, readSavedCombos, uniqueComboName, writeSavedCombos } from '../app/saved-combos'
+import { createSavedCombo, readSavedCombos, renameSavedCombo, uniqueComboName, writeSavedCombos } from '../app/saved-combos'
 
 const initial = createMatState(['card-1-1', 'card-1-2', 'card-2-1', 'card-3-1', 'card-4-1', 'card-5-1'], ['card-9-1'], 5)
 const actions: MatAction[] = [
@@ -62,5 +62,18 @@ describe('combos guardados', () => {
     expect(second.name).toBe('línea (2)')
     expect(uniqueComboName('', [])).toBe('Combo sin nombre')
     expect(uniqueComboName('Línea', [first, second])).toBe('Línea (3)')
+  })
+
+  it('renombrar no repite el nombre de otro combo (con el suyo sí) y un nombre vacío deja el que tenía', () => {
+    const first = createSavedCombo({ name: 'Línea', deckName: 'd', initial, actions, nameOf }, [])
+    const second = createSavedCombo({ name: 'Otra', deckName: 'd', initial, actions, nameOf }, [first])
+    const combos = [first, second]
+
+    expect(renameSavedCombo(combos, second.id, '  Final  ').map((combo) => combo.name)).toEqual(['Línea', 'Final'])
+    expect(renameSavedCombo(combos, second.id, 'línea')[1]?.name).toBe('línea (2)')
+    expect(renameSavedCombo(combos, first.id, 'LÍNEA')[0]?.name).toBe('LÍNEA')
+    expect(renameSavedCombo(combos, second.id, '   ')).toEqual(combos)
+    // Sólo cambia el nombre: las jugadas, la mesa inicial y el resto quedan como estaban.
+    expect(renameSavedCombo(combos, second.id, 'Final')[1]).toEqual({ ...second, name: 'Final' })
   })
 })
