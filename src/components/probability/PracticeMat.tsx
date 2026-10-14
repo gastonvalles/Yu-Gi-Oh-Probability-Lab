@@ -117,12 +117,12 @@ const CELL_LOOK = [
 ].join(' ')
 
 /** La zona de campo y las pilas (las columnas de los costados): del tamaño justo de una carta, que nunca se acuesta. */
-const CELL = `aspect-[421/614] ${CELL_LOOK}`
+export const CELL = `aspect-[421/614] ${CELL_LOOK}`
 /**
  * Las zonas del centro (monstruos, Mágicas y Trampas, Zonas Extra) son cuadradas, del lado largo de una carta: la carta entra parada (el alto de la casilla)
  * o acostada en defensa (el ancho de la casilla) con el mismo tamaño y sin salirse, así que dos cartas en defensa vecinas no se pisan ni se achican.
  */
-const CELL_SQUARE = `aspect-square ${CELL_LOOK}`
+export const CELL_SQUARE = `aspect-square ${CELL_LOOK}`
 /** El ancho de una carta como parte de su alto (421 × 614 px): una carta parada en una casilla cuadrada mide ese tanto de ancho. */
 const CARD_WIDTH_PER_HEIGHT = 421 / 614
 
@@ -175,7 +175,7 @@ const ZONE_LABELS: Record<MatSpot, string> = {
 }
 
 /** Las zonas de péndulo (las puntas de la fila de magias y trampas) llevan la gema azul y la roja, como en la mesa real. */
-const PENDULUM_GEM: Record<number, string> = {
+export const PENDULUM_GEM: Record<number, string> = {
   0: 'bg-[#4aa8ff]/55 shadow-[0_0_10px_#4aa8ff80]',
   4: 'bg-[#ff4d6d]/55 shadow-[0_0_10px_#ff4d6d80]',
 }
@@ -1328,7 +1328,7 @@ function activate(event: ReactKeyboardEvent<HTMLElement>, run: () => void) {
 }
 
 /** Cantidad grande en el centro de la pila, como en la mesa real, y el nombre de la casilla chico debajo. */
-function PileBadge({ label, count }: { label: string; count: number }) {
+export function PileBadge({ label, count }: { label: string; count: number }) {
   return (
     <span className="pointer-events-none absolute inset-0 z-2 grid place-content-center justify-items-center text-center leading-none">
       <span className={cx('rounded-full px-1.5 py-0.5 text-body font-extrabold tabular-nums text-foreground min-[1101px]:text-lead', count > 0 && 'bg-background/70')}>{count}</span>

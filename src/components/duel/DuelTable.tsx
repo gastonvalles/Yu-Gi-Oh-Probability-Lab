@@ -1,0 +1,210 @@
+import { PHASES, type MatPile, type MatSpot, type MatState, type Placed } from '../../app/practice-mat'
+import { t } from '../../i18n'
+import { CardArt } from '../CardArt'
+import { cx } from '../ui/cx'
+import { CardBack, PILE_TITLES } from '../probability/MatDialogs'
+import { CELL, CELL_SQUARE, PENDULUM_GEM, PileBadge } from '../probability/PracticeMat'
+
+/**
+ * La mesa del duelo: los dos campos en una sola grilla, como la mesa real. El rival arriba y espejado (su
+ * Main Monster Zone 1 queda del lado derecho de la pantalla, su Extra Deck arriba a la derecha, su Banish a
+ * la izquierda), las dos Zonas Extra de monstruos en el medio, compartidas, y la mesa propia abajo. Las cartas
+ * se ven siempre de pie: espejado es el orden de las zonas, no las cartas.
+ *
+ * Dibuja y nada más: quien la usa decide qué se puede tocar (la mesa propia es la de siempre, con su menú y su
+ * arrastre; la del rival es de sólo lectura).
+ */
+
+/** Lo que el duelo sabe de un lado: su mesa y cómo se ve cada carta. */
+export interface DuelSideView {
+  state: MatState
+  /** El arte de una carta que se ve; `null` cuando no se sabe cuál es (boca abajo, secreta). */
+  artOf: (id: string) => string | null
+  /** Cartas en la mano: la del rival no se ve, sólo cuántas son. */
+  handCount?: number
+}
+
+/** Qué se dibuja: los dos campos, sólo el propio o sólo el del rival (para elegir entre uno y otro en una pantalla chica). */
+export type DuelShow = 'both' | 'mine' | 'theirs'
+
+interface DuelTableProps {
+  mine: DuelSideView
+  theirs: DuelSideView
+  show?: DuelShow
+  /** De quién es el turno: la tira del medio muestra su fase. */
+  turn?: 'mine' | 'theirs'
+  className?: string
+}
+
+type Owner = 'mine' | 'theirs'
+
+// El campo del rival, espejado: de la fila de arriba a la de abajo, Deck · Mágicas y Trampas 5…1 · Extra, y GY · Monstruos 5…1 · Zona de campo.
+const THEIR_ROWS = ["'tdeck ts5 ts4 ts3 ts2 ts1 textra'", "'tgy tm5 tm4 tm3 tm2 tm1 tfld'"]
+const MINE_ROWS = ["'fld m1 m2 m3 m4 m5 gy'", "'extra s1 s2 s3 s4 s5 deck'"]
+
+/** La tira del medio: el Banish de cada uno en su costado, las dos Zonas Extra (sobre la 2.ª y la 4.ª columna) y las fases entre medio. */
+const middleRow = (theirs: boolean, mine: boolean) => `'${theirs ? 'tban' : '.'} p1 emz1 p2 emz2 p3 ${mine ? 'ban' : '.'}'`
+
+/** Las columnas de los costados miden lo justo de una carta (0,6857 de una del centro): todas las cartas del campo miden lo mismo. */
+const GRID =
+  'relative grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,4.5rem)_repeat(5,minmax(0,6.5rem))_minmax(0,4.5rem)]'
+
+const ZONE_LABEL: Record<MatSpot, () => string> = {
+  mz: () => t('practice.zone.mz'),
+  emz: () => t('practice.zone.emz'),
+  st: () => t('practice.zone.st'),
+  field: () => t('practice.zone.field'),
+}
+
+const zoneLabel = (owner: Owner, spot: MatSpot, index: number) => {
+  const own = spot === 'field' ? ZONE_LABEL.field() : t('practice.zone.numbered', { zone: ZONE_LABEL[spot](), n: index + 1 })
+  return owner === 'theirs' ? t('duel.zone.theirs', { zone: own }) : own
+}
+
+const CARD_SHADOW = 'shadow-[0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]'
+
+export function DuelTable({ mine, theirs, show = 'both', turn = 'mine', className }: DuelTableProps) {
+  const showMine = show !== 'theirs'
+  const showTheirs = show !== 'mine'
+  const rows = [...(showTheirs ? THEIR_ROWS : []), middleRow(showTheirs, showMine), ...(showMine ? MINE_ROWS : [])]
+  const phase = (turn === 'mine' ? mine : theirs).state.phase
+  const hand = theirs.handCount
+
+  return (
+    <div className={cx('grid gap-1.5', className)}>
+      {showTheirs && hand !== undefined ? <TheirHand count={hand} /> : null}
+      <div role="group" aria-label={t('duel.table.label')} className={GRID} style={{ gridTemplateAreas: rows.join(' ') }}>
+        {showTheirs ? <SideCells side={theirs} owner="theirs" /> : null}
+        {[0, 1].map((index) => (
+          <SharedZone key={index} area={`emz${index + 1}`} index={index} mine={mine} theirs={theirs} />
+        ))}
+        {[0, 2, 4].map((start, index) => (
+          <div key={start} className="grid grid-cols-2 gap-0.5 self-center min-[1101px]:gap-1" style={{ gridArea: `p${index + 1}` }}>
+            {PHASES.slice(start, start + 2).map((entry) => (
+              <PhaseTag key={entry.id} short={entry.short} name={entry.name} active={phase === entry.id} />
+            ))}
+          </div>
+        ))}
+        {showMine ? <SideCells side={mine} owner="mine" /> : null}
+      </div>
+    </div>
+  )
+}
+
+/** La mano del rival: sólo se ve cuántas cartas tiene, de dorso y encimadas. */
+function TheirHand({ count }: { count: number }) {
+  return (
+    <div role="img" aria-label={t('duel.hand.theirs', { count })} className="flex h-9 justify-center">
+      {Array.from({ length: Math.min(count, 12) }, (_, index) => (
+        <span key={index} className={cx('-ml-3 block aspect-[421/614] h-full overflow-hidden first:ml-0', CARD_SHADOW)}>
+          <CardBack className="h-full" />
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function PhaseTag({ short, name, active }: { short: string; name: string; active: boolean }) {
+  return (
+    <span
+      title={name}
+      aria-label={active ? t('duel.phase.current', { phase: name }) : name}
+      className={cx(
+        'grid aspect-square w-full min-w-0 place-items-center rounded-full border text-[0.55rem] font-extrabold leading-none min-[1101px]:text-micro',
+        active ? 'border-accent bg-accent text-[#06140e] shadow-[0_0_12px_rgb(var(--accent-rgb)/0.7)]' : 'border-tint/25 text-soft',
+      )}
+    >
+      {short}
+    </span>
+  )
+}
+
+/** Las dos Zonas Extra son de los dos jugadores: la de la izquierda de uno es la de la derecha del otro. Si las ocupan los dos, se ve la propia y un aviso. */
+function SharedZone({ area, index, mine, theirs }: { area: string; index: number; mine: DuelSideView; theirs: DuelSideView }) {
+  const own = mine.state.emz[index] ?? null
+  const other = theirs.state.emz[1 - index] ?? null
+  const conflict = own !== null && other !== null
+  const label = conflict ? t('duel.zone.conflict', { zone: zoneLabel('mine', 'emz', index) }) : zoneLabel('mine', 'emz', index)
+
+  return (
+    <div role="group" aria-label={label} className={cx(CELL_SQUARE, conflict && 'border-solid border-danger')} style={{ gridArea: area }}>
+      {own ? <CardOnZone placed={own} spot="emz" side={mine} owner="mine" label={label} /> : other ? <CardOnZone placed={other} spot="emz" side={theirs} owner="theirs" label={label} /> : null}
+      {conflict ? <span aria-hidden="true" className="absolute right-0.5 top-0.5 z-2 grid size-4 place-items-center rounded-full bg-danger text-[0.6rem] font-extrabold leading-none text-white">!</span> : null}
+    </div>
+  )
+}
+
+/** Las zonas y pilas de un lado. Las áreas del rival llevan una `t` delante (`tm1`, `tgy`…). */
+function SideCells({ side, owner }: { side: DuelSideView; owner: Owner }) {
+  const prefix = owner === 'theirs' ? 't' : ''
+  const { state } = side
+
+  return (
+    <>
+      <Zone area={`${prefix}fld`} spot="field" index={0} placed={state.field} side={side} owner={owner} />
+      {state.mz.map((placed, index) => (
+        <Zone key={`m${index}`} area={`${prefix}m${index + 1}`} spot="mz" index={index} placed={placed} side={side} owner={owner} />
+      ))}
+      {state.st.map((placed, index) => (
+        <Zone key={`s${index}`} area={`${prefix}s${index + 1}`} spot="st" index={index} placed={placed} side={side} owner={owner} />
+      ))}
+      <Pile area={`${prefix}deck`} pile="deck" side={side} />
+      <Pile area={`${prefix}extra`} pile="extra" side={side} />
+      <Pile area={`${prefix}gy`} pile="gy" side={side} />
+      <Pile area={`${prefix}ban`} pile="banished" side={side} />
+    </>
+  )
+}
+
+function Zone({ area, spot, index, placed, side, owner }: { area: string; spot: MatSpot; index: number; placed: Placed | null; side: DuelSideView; owner: Owner }) {
+  const label = zoneLabel(owner, spot, index)
+  // Las puntas de la fila de Mágicas y Trampas son zonas de péndulo. Espejado, el índice 0 del rival queda del lado derecho, como en la mesa real.
+  const gem = spot === 'st' ? PENDULUM_GEM[index] : undefined
+
+  return (
+    <div role="group" aria-label={label} className={spot === 'field' ? CELL : CELL_SQUARE} style={{ gridArea: area }}>
+      {gem && !placed ? <span aria-hidden="true" className={cx('absolute left-1/2 top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[3px]', gem)} /> : null}
+      {spot === 'field' && !placed ? <span aria-hidden="true" className="absolute inset-0 grid place-items-center text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-soft min-[1101px]:text-[0.6rem]">{t('practice.zone.fieldLabel')}</span> : null}
+      {placed ? <CardOnZone placed={placed} spot={spot} side={side} owner={owner} label={label} /> : null}
+    </div>
+  )
+}
+
+/**
+ * Una carta en una zona, de sólo lectura. Parada ocupa el alto de la casilla; en defensa o boca abajo en una zona de monstruo se
+ * acuesta a su tamaño dentro de su casilla cuadrada. Boca abajo, la propia se ve atenuada (sabés cuál es) y la del rival de dorso.
+ */
+function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot: MatSpot; side: DuelSideView; owner: Owner; label: string }) {
+  const art = side.artOf(placed.id)
+  const faceDown = placed.pos === 'set'
+  const sideways = spot !== 'st' && spot !== 'field' && placed.pos !== 'atk'
+  const back = owner === 'theirs' && (faceDown || art === null)
+
+  return (
+    <div
+      data-card-id={owner === 'mine' ? placed.id : undefined}
+      className={cx('absolute inset-x-0 top-0 mx-auto aspect-[421/614] overflow-hidden bg-input', CARD_SHADOW, spot === 'field' ? 'w-full' : 'w-[68.57%]', sideways && '[transform:rotate(90deg)]')}
+    >
+      <span className={cx('block h-full w-full', owner === 'mine' && faceDown && 'brightness-[0.4] saturate-[0.55]')}>
+        {back ? <CardBack className="h-full" /> : <CardArt remoteUrl={art} name={label} className="block h-full w-full object-cover" />}
+      </span>
+      {placed.counters > 0 ? <span className="absolute left-0.5 top-0.5 z-2 rounded-full bg-warning px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-[#1a1204]">{placed.counters}</span> : null}
+      {placed.materials.length > 0 ? <span className="absolute bottom-0.5 right-0.5 z-2 rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-primary-foreground">+{placed.materials.length}</span> : null}
+    </div>
+  )
+}
+
+/** Una pila: Main y Extra de dorso; GY y Banish con su carta de arriba (de dorso si está boca abajo); siempre la cantidad. */
+function Pile({ area, pile, side }: { area: string; pile: Exclude<MatPile, 'hand'>; side: DuelSideView }) {
+  const cards = side.state[pile]
+  const top = pile === 'gy' || pile === 'banished' ? (cards[cards.length - 1] ?? null) : null
+  const back = pile === 'deck' || pile === 'extra' ? cards.length > 0 : top !== null && side.state.facedown.includes(top)
+  const art = top !== null && !back ? side.artOf(top) : null
+
+  return (
+    <div role="group" aria-label={`${PILE_TITLES[pile]}: ${cards.length}`} title={PILE_TITLES[pile]} className={cx(CELL, 'overflow-hidden')} style={{ gridArea: area }}>
+      {cards.length > 0 ? (art ? <CardArt remoteUrl={art} name={PILE_TITLES[pile]} className="block h-full w-full object-cover" /> : <CardBack className="h-full" />) : null}
+      <PileBadge label={PILE_TITLES[pile]} count={cards.length} />
+    </div>
+  )
+}

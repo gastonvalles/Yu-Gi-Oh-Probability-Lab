@@ -11,10 +11,11 @@ import { createMatState } from '../app/practice-mat'
 
 const RELAY = import.meta.env.VITE_DUEL_RELAY_URL ?? ''
 const ORIGIN = 'http://localhost:5173'
-const describe = rawDescribe.skipIf(!RELAY)
+// Por internet cada conexión tarda cientos de milisegundos (y la primera de una sala, más): los tiempos son de red real, no de laboratorio.
+const describe = (name: string, body: () => void) => rawDescribe.skipIf(!RELAY)(name, { timeout: 30_000 }, body)
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-async function until(check: () => boolean, ms = 4000, what = 'condición') {
+async function until(check: () => boolean, ms = 10_000, what = 'condición') {
   const end = Date.now() + ms
   while (!check()) {
     if (Date.now() > end) throw new Error(`Se esperó demasiado: ${what}`)
@@ -193,7 +194,7 @@ describe('el duelo completo por el relay real', () => {
     const host = createDuel(hostTransport, { role: 'host', name: 'Ana', settings: { lp: 4000, hand: 5 } })
     const guest = createDuel(guestTransport, { role: 'guest', name: 'Beto' })
 
-    await until(() => host.getSnapshot().peerPresent && guest.getSnapshot().peerPresent, 5000, 'apretón de manos')
+    await until(() => host.getSnapshot().peerName === 'Beto' && guest.getSnapshot().peerName === 'Ana', 15_000, 'apretón de manos')
     expect(guest.getSnapshot().settings).toEqual({ lp: 4000, hand: 5 })
 
     host.start(hostTable)
@@ -216,7 +217,7 @@ describe('el duelo completo por el relay real', () => {
     host.play({ type: 'move', id: 'card-1001-1', to: 'gy' })
     host.changeLife(-300)
 
-    await until(() => guestTransport.status === 'open' && guest.getSnapshot().peerPresent && guest.getSnapshot().theirs?.state.gy.length === 1, 12_000, 'reconexión y sync')
+    await until(() => guestTransport.status === 'open' && guest.getSnapshot().peerPresent && guest.getSnapshot().theirs?.state.gy.length === 1, 25_000, 'reconexión y sync')
     await until(() => guest.getSnapshot().life.lp[0] === 2500)
 
     expect(sockets[1]!.length).toBeGreaterThan(1)
