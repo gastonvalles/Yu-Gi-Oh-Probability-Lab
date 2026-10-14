@@ -113,6 +113,7 @@ export const search: Translated<typeof es> = {
 
   'search.prices.button': 'View prices on TCGplayer',
   'search.prices.kicker': 'Prices on TCGplayer',
+  'search.prices.openInExpansions': 'See this card in Expansions',
   'search.prices.printings': { one: '{count} printing', other: '{count} printings' },
   'search.prices.noPrice': 'No price',
   'search.prices.loadError': "Couldn't load the prices right now. Try again later.",

@@ -12,6 +12,8 @@ interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   /** Punto de color a la izquierda. */
   dot?: boolean
   icon?: IconName
+  /** El texto puede ocupar varias líneas (un nombre largo, como "Regional Qualifier Stamp"): nunca más ancho que lo que tiene alrededor, y crece a lo alto en vez de salirse. */
+  wrap?: boolean
 }
 
 const SIZE = {
@@ -19,14 +21,20 @@ const SIZE = {
   md: 'h-6 gap-1.5 px-2 text-micro',
 } as const
 
+const SIZE_WRAP = {
+  sm: 'min-h-5 gap-1 px-1.5 py-0.5 text-micro',
+  md: 'min-h-6 gap-1.5 px-2 py-1 text-micro',
+} as const
+
 /** Etiqueta compacta de estado, conteo o tipo. Un solo estilo para toda la app. */
-export function Badge({ tone = 'neutral', size = 'md', shape = 'pill', dot = false, icon, className, children, ...props }: BadgeProps) {
+export function Badge({ tone = 'neutral', size = 'md', shape = 'pill', dot = false, icon, wrap = false, className, children, ...props }: BadgeProps) {
   return (
     <span
       className={cx(
-        'inline-flex shrink-0 items-center border font-semibold leading-none whitespace-nowrap',
+        'inline-flex items-center border font-semibold',
+        wrap ? 'max-w-full text-left leading-snug whitespace-normal [overflow-wrap:anywhere]' : 'shrink-0 leading-none whitespace-nowrap',
         shape === 'pill' ? 'rounded-full' : 'rounded-tag',
-        SIZE[size],
+        wrap ? SIZE_WRAP[size] : SIZE[size],
         TONE[tone].tint,
         TONE[tone].text,
         className,

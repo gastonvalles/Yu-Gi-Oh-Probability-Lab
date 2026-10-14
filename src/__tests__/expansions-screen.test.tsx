@@ -321,3 +321,115 @@ describe('las impresiones de arte distinto (overframe, extended art...)', () => 
     expect(art.style.rotate).toBe('')
   })
 })
+
+describe('llegar desde los precios de una carta: #expansions?set=…&print=…', () => {
+  const scrollIntoView = vi.fn()
+
+  beforeEach(() => {
+    scrollIntoView.mockReset()
+    Element.prototype.scrollIntoView = scrollIntoView
+  })
+
+  afterEach(() => {
+    window.history.replaceState(null, '', '#')
+  })
+
+  const goTo = (hash: string) => window.history.replaceState(null, '', hash)
+  const highlighted = () => [...document.querySelectorAll('[data-highlight="true"]')].map((button) => button.getAttribute('aria-label'))
+
+  it('abre esa expansión (no la más nueva) con esa carta iluminada y a la vista', async () => {
+    goTo('#expansions?set=1&print=12')
+    render(<ExpansionsScreen />)
+
+    expect(await screen.findByRole('heading', { name: 'Legend of Blue-Eyes White Dragon', level: 2 })).toBeInTheDocument()
+    await screen.findByRole('button', { name: 'Ver el detalle de Dark Magician' })
+
+    expect(highlighted()).toEqual(['Ver el detalle de Dark Magician'])
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center' })
+    expect(scrollIntoView.mock.contexts.some((element) => (element as HTMLElement).contains(screen.getByRole('button', { name: 'Ver el detalle de Dark Magician' })))).toBe(true)
+    // La lista marca la expansión y de la carta se va a TCGplayer desde acá.
+    expect(within(screen.getByRole('navigation', { name: 'Expansiones' })).getByRole('button', { name: /Legend of Blue-Eyes/ })).toHaveAttribute('aria-current', 'true')
+    expect(screen.getByRole('link', { name: 'Ver Dark Magician en TCGplayer' })).toHaveAttribute('href', 'https://www.tcgplayer.com/product/12')
+  })
+
+  it('ilumina sólo esa impresión aunque la misma carta tenga otras en la expansión', async () => {
+    goTo('#expansions?set=2&print=22')
+    render(<ExpansionsScreen />)
+
+    await screen.findAllByRole('button', { name: 'Ver el detalle de Mulcharmy Purulia' })
+
+    expect(highlighted()).toEqual(['Ver el detalle de Mulcharmy Purulia'])
+    expect(document.querySelector('[data-highlight="true"]')!.closest('li')).toHaveTextContent('Extended Art')
+  })
+
+  it('en el celular abre directo esa expansión, y "Volver" suelta la carta y limpia el hash', async () => {
+    mediaQuery(false)
+    goTo('#expansions?set=1&print=12')
+    render(<ExpansionsScreen />)
+
+    await screen.findByRole('button', { name: 'Ver el detalle de Dark Magician' })
+    expect(highlighted()).toEqual(['Ver el detalle de Dark Magician'])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Volver a las expansiones' }))
+
+    expect(screen.getByRole('navigation', { name: 'Expansiones' })).toBeInTheDocument()
+    expect(window.location.hash).toBe('#expansions')
+  })
+
+  it('elegir otra expansión apaga la carta iluminada y limpia el hash', async () => {
+    goTo('#expansions?set=1&print=12')
+    render(<ExpansionsScreen />)
+    await screen.findByRole('button', { name: 'Ver el detalle de Dark Magician' })
+
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Expansiones' })).getByRole('button', { name: /Maze of Millennia/ }))
+    await screen.findAllByRole('button', { name: 'Ver el detalle de Mulcharmy Purulia' })
+
+    expect(highlighted()).toEqual([])
+    expect(window.location.hash).toBe('#expansions')
+  })
+
+  it('con la pantalla ya abierta, un hash nuevo la lleva a esa carta', async () => {
+    render(<ExpansionsScreen />)
+    await screen.findAllByRole('button', { name: 'Ver el detalle de Mulcharmy Purulia' })
+    expect(highlighted()).toEqual([])
+
+    goTo('#expansions?set=1&print=13')
+    fireEvent(window, new HashChangeEvent('hashchange'))
+
+    await screen.findByRole('button', { name: 'Ver el detalle de Gaia the Fierce Knight' })
+    expect(highlighted()).toEqual(['Ver el detalle de Gaia the Fierce Knight'])
+  })
+
+  it('un hash sin carta, o con números que no son, abre la expansión (o la de siempre) sin iluminar nada', async () => {
+    goTo('#expansions?set=1')
+    const { unmount } = render(<ExpansionsScreen />)
+
+    await screen.findByRole('button', { name: 'Ver el detalle de Dark Magician' })
+    expect(highlighted()).toEqual([])
+    unmount()
+
+    goTo('#expansions?set=abc&print=-4')
+    render(<ExpansionsScreen />)
+
+    expect(await screen.findByRole('heading', { name: 'Maze of Millennia', level: 2 })).toBeInTheDocument()
+    expect(highlighted()).toEqual([])
+  })
+})
+
+describe('las etiquetas largas no pisan a la carta de al lado', () => {
+  it('el arte distinto se parte en varias líneas dentro de su columna, y la columna no crece con él', async () => {
+    render(<ExpansionsScreen />)
+    await screen.findAllByRole('button', { name: 'Ver el detalle de Mulcharmy Purulia' })
+
+    const tile = document.querySelector('[data-highlight], li:has([aria-label^="Ver el detalle de Mulcharmy"]) ') as HTMLElement
+    const stamp = [...document.querySelectorAll('li span')].find((span) => span.textContent === 'Extended Art') as HTMLElement
+
+    // El texto de abajo va en una columna `minmax(0,1fr)` (con una `auto`, la etiqueta ancha agranda la columna y el nombre se sale).
+    expect(stamp.closest('li')!.className).toContain('grid-cols-[minmax(0,1fr)]')
+    expect(stamp.parentElement!.className).toContain('grid-cols-[minmax(0,1fr)]')
+    expect(stamp.className).toContain('whitespace-normal')
+    expect(stamp.className).toContain('max-w-full')
+    expect(stamp.className).not.toContain('whitespace-nowrap')
+    expect(tile).toBeTruthy()
+  })
+})

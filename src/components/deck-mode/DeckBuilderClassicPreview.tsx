@@ -103,7 +103,7 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, onAddToZone 
             {card.description ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{card.description}</p> : null}
           </article>
           {zoomed ? <CardZoom card={{ ...card, imageUrl: artUrl }} name={card.name} onClose={() => setZoomed(false)} /> : null}
-          <CardPricesModal cardId={card.ygoprodeckId} name={card.name} isOpen={pricesOpen} onClose={() => setPricesOpen(false)} />
+          <CardPricesModal cardId={card.ygoprodeckId} name={card.name} isOpen={pricesOpen} onClose={() => setPricesOpen(false)} onGoToPrint={() => setPricesOpen(false)} />
         </>
       ) : (
         <div className="grid flex-1 content-center justify-items-center gap-5 text-center">

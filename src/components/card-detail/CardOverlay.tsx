@@ -59,7 +59,16 @@ export function CardOverlay(props: CardOverlayProps) {
     <>
       <CardOverlayFrame {...props} onOpenPrices={card ? () => setPricesOpen(true) : null} />
       {/* Hermano del marco, no hijo: los clics de React suben por los portales y tocar el modal cerraría la carta. */}
-      {card ? <CardPricesModal cardId={card.ygoprodeckId} name={name} isOpen={pricesOpen} onClose={() => setPricesOpen(false)} /> : null}
+      {card ? <CardPricesModal
+          cardId={card.ygoprodeckId}
+          name={name}
+          isOpen={pricesOpen}
+          onClose={() => setPricesOpen(false)}
+          onGoToPrint={() => {
+            setPricesOpen(false)
+            props.onClose()
+          }}
+        /> : null}
     </>
   )
 }
