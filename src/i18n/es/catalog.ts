@@ -21,6 +21,8 @@ export const catalog = {
   'catalog.sets.sortPrice': 'Por precio',
   'catalog.sets.rarityLabel': 'Rareza',
   'catalog.sets.rarityAll': 'Todas',
+  'catalog.sets.variantLabel': 'Arte',
+  'catalog.sets.variantAll': 'Todos',
   'catalog.sets.noMatch': 'Ninguna carta coincide con esos filtros.',
   'catalog.sets.showMore': 'Mostrar {n} más',
   'catalog.sets.openCard': 'Ver el detalle de {name}',

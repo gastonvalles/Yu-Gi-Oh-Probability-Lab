@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { cardSmallImageUrl, printImageUrl, fetchCardPrices, fetchExpansionCards, fetchExpansions, filterPrintings, setImageUrl, type PrintingPrice, type PriceRow } from '../app/card-prices'
+import { cardSmallImageUrl, compareRarities, printImageUrl, fetchCardPrices, fetchExpansionCards, fetchExpansions, filterPrintings, setImageUrl, type PrintingPrice, type PriceRow } from '../app/card-prices'
 
 const row = (code: string, rarity: string, edition: string, market: number | null, productId: number, groupId: number, variant?: string): PriceRow => (variant ? [code, rarity, edition, market, productId, groupId, variant] : [code, rarity, edition, market, productId, groupId])
 
@@ -201,5 +201,13 @@ describe('impresiones con arte distinto (overframe, extended, alternativas)', ()
   it('la imagen de una impresión es la de su producto en TCGplayer, de 200 o de 400 px de ancho', () => {
     expect(printImageUrl(714706)).toBe('https://tcgplayer-cdn.tcgplayer.com/product/714706_200w.jpg')
     expect(printImageUrl(714706, '400w')).toBe('https://tcgplayer-cdn.tcgplayer.com/product/714706_400w.jpg')
+  })
+})
+
+describe('compareRarities', () => {
+  it('ordena de la más común a la más rara (no por orden alfabético) y deja al final las que no conoce, por nombre', () => {
+    const rarities = ['Ultra Rare', 'Starlight Rare', 'Common', 'Secret Rare', 'Super Rare', 'Zeta Rare', 'Alfa Rare', 'Rare']
+
+    expect([...rarities].sort(compareRarities)).toEqual(['Common', 'Rare', 'Super Rare', 'Ultra Rare', 'Secret Rare', 'Starlight Rare', 'Alfa Rare', 'Zeta Rare'])
   })
 })

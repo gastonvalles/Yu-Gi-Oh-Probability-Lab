@@ -23,6 +23,8 @@ export const catalog: Translated<typeof es> = {
   'catalog.sets.sortPrice': 'By price',
   'catalog.sets.rarityLabel': 'Rarity',
   'catalog.sets.rarityAll': 'All',
+  'catalog.sets.variantLabel': 'Art',
+  'catalog.sets.variantAll': 'All',
   'catalog.sets.noMatch': 'No card matches those filters.',
   'catalog.sets.showMore': 'Show {n} more',
   'catalog.sets.openCard': 'View details for {name}',
