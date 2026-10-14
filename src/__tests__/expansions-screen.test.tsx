@@ -131,10 +131,10 @@ describe('la pantalla de expansiones', () => {
     expect(rowsText()[0]).toContain('Ash Blossom')
 
     fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar por nombre o código' }), { target: { value: '' } })
-    fireEvent.click(within(screen.getByRole('group', { name: 'Rareza' })).getByRole('button', { name: 'Rare 2' }))
+    fireEvent.click(within(screen.getByRole('group', { name: 'Rareza y arte' })).getByRole('button', { name: 'Rare 2' }))
     expect(rowsText().map((text) => /MAZE-EN\d+/.exec(text)?.[0])).toEqual(['MAZE-EN001', 'MAZE-EN003'])
 
-    fireEvent.click(within(screen.getByRole('group', { name: 'Rareza' })).getByRole('button', { name: 'Todas' }))
+    fireEvent.click(within(screen.getByRole('group', { name: 'Rareza y arte' })).getByRole('button', { name: 'Todas' }))
     fireEvent.click(screen.getByRole('radio', { name: 'Por precio' }))
     expect(rowsText().map((text) => /MAZE-EN\d+/.exec(text)?.[0])).toEqual(['MAZE-EN003', 'MAZE-EN001', 'MAZE-EN001', 'MAZE-EN002'])
 
@@ -239,38 +239,41 @@ describe('las impresiones de arte distinto (overframe, extended art...)', () => 
     expect(rowsText().find((text) => text.includes('Extended Art'))).toContain('Mulcharmy Purulia')
   })
 
-  it('las rarezas salen de la más común a la más rara, con cuántas impresiones tiene cada una, y se puede filtrar por arte', async () => {
+  it('una sola fila: un solo "Todas", las rarezas de la más común a la más rara con su cuenta y, al lado, los artes distintos', async () => {
     render(<ExpansionsScreen />)
     await screen.findByRole('button', { name: 'Ver el detalle de Maxx "C"' })
 
-    const rarities = within(screen.getByRole('group', { name: 'Rareza' })).getAllByRole('button')
+    const filters = () => within(screen.getByRole('group', { name: 'Rareza y arte' }))
 
-    expect(rarities.map((chip) => chip.textContent)).toEqual(['Todas', 'Common1', 'Rare2', 'Ultra Rare1'])
+    expect(screen.getAllByRole('group', { name: 'Rareza y arte' })).toHaveLength(1)
+    expect(filters().getAllByRole('button').map((chip) => chip.textContent)).toEqual(['Todas', 'Common1', 'Rare2', 'Ultra Rare1', 'Extended Art1'])
+    expect(filters().getByRole('button', { name: 'Todas' })).toHaveAttribute('aria-pressed', 'true')
 
-    const arts = within(screen.getByRole('group', { name: 'Arte' }))
-
-    expect(arts.getAllByRole('button').map((chip) => chip.textContent)).toEqual(['Todos', 'Extended Art1'])
-
-    fireEvent.click(arts.getByRole('button', { name: 'Extended Art 1' }))
+    fireEvent.click(filters().getByRole('button', { name: 'Extended Art 1' }))
+    expect(filters().getByRole('button', { name: 'Todas' })).toHaveAttribute('aria-pressed', 'false')
     expect(rowsText()).toHaveLength(1)
     expect(rowsText()[0]).toContain('Mulcharmy Purulia')
 
     // Se combina con la rareza: ninguna Common es de arte extendido.
-    fireEvent.click(within(screen.getByRole('group', { name: 'Rareza' })).getByRole('button', { name: 'Common 1' }))
+    fireEvent.click(filters().getByRole('button', { name: 'Common 1' }))
     expect(screen.getByText('Ninguna carta coincide con esos filtros.')).toBeInTheDocument()
 
-    fireEvent.click(arts.getByRole('button', { name: 'Todos' }))
-    fireEvent.click(within(screen.getByRole('group', { name: 'Rareza' })).getByRole('button', { name: 'Todas' }))
+    // Tocar el chip encendido lo apaga; "Todas" apaga los dos.
+    fireEvent.click(filters().getByRole('button', { name: 'Common 1' }))
+    expect(rowsText()).toHaveLength(1)
+    fireEvent.click(filters().getByRole('button', { name: 'Common 1' }))
+    fireEvent.click(filters().getByRole('button', { name: 'Todas' }))
     expect(rowsText()).toHaveLength(4)
+    expect(filters().getByRole('button', { name: 'Todas' })).toHaveAttribute('aria-pressed', 'true')
+    expect(filters().getByRole('button', { name: 'Extended Art 1' })).toHaveAttribute('aria-pressed', 'false')
   })
 
-  it('una expansión sin artes distintos no muestra el filtro de arte', async () => {
+  it('una expansión sin artes distintos sólo tiene las rarezas', async () => {
     render(<ExpansionsScreen />)
     fireEvent.click(await screen.findByRole('button', { name: /Legend of Blue-Eyes White Dragon/ }))
     await screen.findByRole('button', { name: 'Ver el detalle de Dark Magician' })
 
-    expect(screen.queryByRole('group', { name: 'Arte' })).not.toBeInTheDocument()
-    expect(screen.getByRole('group', { name: 'Rareza' })).toBeInTheDocument()
+    expect(within(screen.getByRole('group', { name: 'Rareza y arte' })).getAllByRole('button').map((chip) => chip.textContent)).toEqual(['Todas', 'Common1', 'Super Rare1', 'Ultra Rare1'])
   })
 
   it('si la imagen de la impresión no existe, se prueba con el arte de siempre', async () => {

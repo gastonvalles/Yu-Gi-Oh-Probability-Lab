@@ -9,6 +9,8 @@ import { Skeleton } from './ui/Skeleton'
 
 interface CardArtProps {
   remoteUrl: string | null
+  /** Si la imagen no carga (por ejemplo, el escaneo de una impresión que no existe), esta: la de YGOPRODeck de siempre. Antes de caer a las iniciales. */
+  fallbackUrl?: string | null
   name: string
   className?: string
   limitCard?: ApiCardReference | ApiCardSearchResult | null
@@ -18,9 +20,11 @@ interface CardArtProps {
 /**
  * Arte de una carta con esqueleto mientras carga e iniciales si no hay imagen.
  * Las imágenes pasan por nuestro proxy (`cardImageSrc`) y las cachea el navegador (HTTP): no hace falta una capa propia.
+ * Orden de intentos: la imagen por el proxy, la misma directa, `fallbackUrl` (también por el proxy y directa) y, si ninguna, las iniciales.
  */
 export const CardArt = memo(function CardArt({
   remoteUrl,
+  fallbackUrl = null,
   name,
   className = '',
   limitCard = null,
@@ -30,12 +34,15 @@ export const CardArt = memo(function CardArt({
   const [hasImageError, setHasImageError] = useState(false)
   // Si el proxy falla, se prueba una vez con la URL original de YGOPRODeck antes de darla por perdida.
   const [useRemote, setUseRemote] = useState(false)
+  const [useFallback, setUseFallback] = useState(false)
   const imageRef = useRef<HTMLImageElement | null>(null)
-  const src = remoteUrl && !useRemote ? cardImageSrc(remoteUrl) : remoteUrl
+  const currentUrl = useFallback ? fallbackUrl : remoteUrl
+  const src = currentUrl && !useRemote ? cardImageSrc(currentUrl) : currentUrl
 
   useEffect(() => {
     setHasImageError(false)
     setUseRemote(false)
+    setUseFallback(false)
 
     // Si la imagen ya estaba en caché, `onLoad` pudo dispararse antes de montar el handler.
     const image = imageRef.current
@@ -65,7 +72,17 @@ export const CardArt = memo(function CardArt({
           decoding="async"
           draggable={false}
           onLoad={() => setIsImageLoaded(true)}
-          onError={() => (src !== remoteUrl ? setUseRemote(true) : setHasImageError(true))}
+          onError={() => {
+            if (src !== currentUrl) {
+              setUseRemote(true)
+            } else if (!useFallback && fallbackUrl && fallbackUrl !== remoteUrl) {
+              setUseFallback(true)
+              setUseRemote(false)
+              setIsImageLoaded(false)
+            } else {
+              setHasImageError(true)
+            }
+          }}
         />
         <CardLimitBadge card={limitCard} size={limitBadgeSize} />
       </div>

@@ -179,21 +179,28 @@ function countBy(cards: readonly ExpansionCard[], key: (card: ExpansionCard) => 
   return [...counts]
 }
 
-/** Una fila de chips para filtrar (uno solo a la vez, o "todos"), cada uno con cuántas impresiones tiene. */
-function FilterChips({ label, all, options, value, onChange }: { label: string; all: string; options: Array<[string, number]>; value: string | null; onChange: (value: string | null) => void }) {
+/** Un chip de filtro: su nombre y cuántas impresiones tiene. */
+interface FilterChip {
+  key: string
+  name: string
+  count: number
+  active: boolean
+  onToggle: () => void
+}
+
+/** La fila de chips para filtrar: "Todas" (que apaga los filtros) y después un chip por cada rareza y por cada arte distinto, cada uno con su cuenta. */
+function FilterChips({ label, all, allActive, onAll, chips }: { label: string; all: string; allActive: boolean; onAll: () => void; chips: FilterChip[] }) {
+  const chipClass = cx(choiceChip, 'h-7 gap-1.5 px-2.5 text-micro')
+
   return (
     <div role="group" aria-label={label} className="flex flex-wrap gap-1.5">
-      {[[null, null] as const, ...options].map(([option, count]) => (
-        <button
-          key={option ?? 'all'}
-          type="button"
-          aria-pressed={value === option}
-          aria-label={count === null ? undefined : `${option} ${count}`}
-          className={cx(choiceChip, 'h-7 gap-1.5 px-2.5 text-micro')}
-          onClick={() => onChange(option)}
-        >
-          {option ?? all}
-          {count === null ? null : <span className="text-soft tabular-nums">{formatInteger(count)}</span>}
+      <button type="button" aria-pressed={allActive} className={chipClass} onClick={onAll}>
+        {all}
+      </button>
+      {chips.map((chip) => (
+        <button key={chip.key} type="button" aria-pressed={chip.active} aria-label={`${chip.name} ${chip.count}`} className={chipClass} onClick={chip.onToggle}>
+          {chip.name}
+          <span className="text-soft tabular-nums">{formatInteger(chip.count)}</span>
         </button>
       ))}
     </div>
@@ -215,6 +222,11 @@ function ExpansionDetail({ expansion, updated, highlight, onBack }: { expansion:
   // Las rarezas (de la más común a la más rara) y los artes distintos (Extended Art, Alternate Art...) que tiene esta expansión, cada uno con cuántas impresiones.
   const rarities = useMemo(() => countBy(cards, (card) => card.rarity).sort(([a], [b]) => compareRarities(a, b)), [cards])
   const variants = useMemo(() => countBy(cards, (card) => card.variant).sort(([a], [b]) => a.localeCompare(b)), [cards])
+  // Una sola fila: las rarezas (si hay más de una) y a continuación los artes distintos. Una rareza y un arte se combinan; tocar el que está encendido lo apaga.
+  const chips: FilterChip[] = [
+    ...(rarities.length > 1 ? rarities : []).map(([name, count]) => ({ key: `rarity:${name}`, name, count, active: rarity === name, onToggle: () => pick(setRarity, rarity, name) })),
+    ...variants.map(([name, count]) => ({ key: `variant:${name}`, name, count, active: variant === name, onToggle: () => pick(setVariant, variant, name) })),
+  ]
   const rows = useMemo(() => {
     const words = query.split(/\s+/).map(normalize).filter(Boolean)
     const matching = cards.filter((card) => (rarity === null || card.rarity === rarity) && (variant === null || card.variant === variant) && words.every((word) => `${normalize(card.name)}|${normalize(card.code)}|${normalize(card.variant)}`.includes(word)))
@@ -234,6 +246,11 @@ function ExpansionDetail({ expansion, updated, highlight, onBack }: { expansion:
       highlightedRef.current?.scrollIntoView?.({ block: 'center' })
     }
   }, [state.status, highlight])
+
+  const pick = (set: (value: string | null) => void, current: string | null, value: string) => {
+    set(current === value ? null : value)
+    filtersChanged()
+  }
 
   return (
     <section className={cx(surface.card, 'grid min-w-0 content-start gap-3 overflow-hidden overscroll-contain min-[1101px]:h-full min-[1101px]:overflow-y-auto min-[1101px]:[scrollbar-width:thin]')}>
@@ -289,28 +306,17 @@ function ExpansionDetail({ expansion, updated, highlight, onBack }: { expansion:
               />
             </div>
 
-            {rarities.length > 1 ? (
+            {chips.length > 0 ? (
               <FilterChips
-                label={t('catalog.sets.rarityLabel')}
+                label={t('catalog.sets.filterLabel')}
                 all={t('catalog.sets.rarityAll')}
-                options={rarities}
-                value={rarity}
-                onChange={(value) => {
-                  setRarity(value)
+                allActive={rarity === null && variant === null}
+                onAll={() => {
+                  setRarity(null)
+                  setVariant(null)
                   filtersChanged()
                 }}
-              />
-            ) : null}
-            {variants.length > 0 ? (
-              <FilterChips
-                label={t('catalog.sets.variantLabel')}
-                all={t('catalog.sets.variantAll')}
-                options={variants}
-                value={variant}
-                onChange={(value) => {
-                  setVariant(value)
-                  filtersChanged()
-                }}
+                chips={chips}
               />
             ) : null}
 

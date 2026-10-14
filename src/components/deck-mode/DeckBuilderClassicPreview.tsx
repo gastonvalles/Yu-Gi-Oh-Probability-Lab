@@ -75,14 +75,14 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, onAddToZone 
                   className="block w-full cursor-zoom-in rounded-none bg-transparent p-0 focus-visible:outline-none focus-visible:shadow-focus"
                   onClick={() => setZoomed(true)}
                 >
-                  <CardArt remoteUrl={artUrl} name={card.name} className="w-full bg-transparent shadow-none" limitCard={card} limitBadgeSize="lg" />
+                  <CardArt remoteUrl={artUrl} fallbackUrl={card.imageUrl} name={card.name} className="w-full bg-transparent shadow-none" limitCard={card} limitBadgeSize="lg" />
                 </button>
                 <CardGlare />
               </div>
             </div>
           </div>
 
-          <CardArtPicker arts={arts} selectedId={art?.id ?? null} onSelect={(artId) => setPicked({ cardId: card.ygoprodeckId, artId })} />
+          <CardArtPicker arts={arts} selectedId={art?.id ?? null} onSelect={(artId) => setPicked({ cardId: card.ygoprodeckId, artId })} fallbackUrl={card.imageUrlSmall ?? card.imageUrl} />
 
           {source === 'deck' && deckCopy ? <DeckCopyControls deckCopy={deckCopy} /> : null}
 
@@ -102,7 +102,7 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, onAddToZone 
             {condensedStatLine ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{condensedStatLine}</p> : null}
             {card.description ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{card.description}</p> : null}
           </article>
-          {zoomed ? <CardZoom card={{ ...card, imageUrl: artUrl }} name={card.name} onClose={() => setZoomed(false)} /> : null}
+          {zoomed ? <CardZoom card={{ ...card, imageUrl: artUrl }} fallbackUrl={card.imageUrl} name={card.name} onClose={() => setZoomed(false)} /> : null}
           <CardPricesModal cardId={card.ygoprodeckId} name={card.name} isOpen={pricesOpen} onClose={() => setPricesOpen(false)} onGoToPrint={() => setPricesOpen(false)} />
         </>
       ) : (
