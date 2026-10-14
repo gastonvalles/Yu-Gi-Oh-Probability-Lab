@@ -161,6 +161,75 @@ describe('el selector de artes de una carta con muchos', () => {
     expect(list).toHaveClass('flex-col', 'overflow-x-hidden', '[scrollbar-width:none]', '[&::-webkit-scrollbar]:hidden')
   })
 
+  describe('arrastrar con el mouse', () => {
+    beforeEach(() => {
+      HTMLElement.prototype.setPointerCapture = () => {}
+    })
+
+    const drag = (list: HTMLElement, to: { x: number; y: number }, pointerType = 'mouse') => {
+      fireEvent.pointerDown(list.children[3]!, { pointerType, button: 0, buttons: 1, clientX: 100, clientY: 200 })
+      fireEvent.pointerMove(list.children[3]!, { pointerType, buttons: 1, clientX: to.x, clientY: to.y })
+      fireEvent.pointerUp(list.children[3]!, { pointerType, button: 0 })
+    }
+
+    it('recorre la tira como con el dedo (en columna de arriba a abajo, en fila de costado) y el clic del final no elige ni cierra nada', async () => {
+      const onSelect = vi.fn()
+      const onBackdrop = vi.fn()
+
+      render(
+        <div onClick={onBackdrop}>
+          <CardArtPicker arts={arts} selectedId="0" onSelect={onSelect} direction="column" />
+        </div>,
+      )
+
+      const list = screen.getByRole('group', { name: /artes/i })
+
+      drag(list, { x: 100, y: 120 })
+      expect(list.scrollTop).toBe(80)
+
+      fireEvent.click(list.children[3]!)
+      expect(onSelect).not.toHaveBeenCalled()
+      expect(onBackdrop).not.toHaveBeenCalled()
+
+      // Pasado el clic, vuelve a elegir con normalidad.
+      await new Promise((resolve) => setTimeout(resolve))
+      fireEvent.click(list.children[3]!)
+      expect(onSelect).toHaveBeenCalledWith('3')
+
+      cleanup()
+      render(<CardArtPicker arts={arts} selectedId="0" onSelect={onSelect} />)
+
+      const row = screen.getByRole('group', { name: /artes/i })
+
+      drag(row, { x: 30, y: 200 })
+      expect(row.scrollLeft).toBe(70)
+    })
+
+    it('un toque sin mover (menos de 6 px) sigue siendo un clic: elige el arte', () => {
+      const onSelect = vi.fn()
+
+      render(<CardArtPicker arts={arts} selectedId="0" onSelect={onSelect} direction="column" />)
+
+      const list = screen.getByRole('group', { name: /artes/i })
+
+      drag(list, { x: 102, y: 203 })
+      fireEvent.click(list.children[3]!)
+
+      expect(list.scrollTop).toBe(0)
+      expect(onSelect).toHaveBeenCalledWith('3')
+    })
+
+    it('con el dedo no se hace nada: el navegador scrollea solo', () => {
+      render(<CardArtPicker arts={arts} selectedId="0" onSelect={() => {}} direction="column" />)
+
+      const list = screen.getByRole('group', { name: /artes/i })
+
+      drag(list, { x: 100, y: 20 }, 'touch')
+
+      expect(list.scrollTop).toBe(0)
+    })
+  })
+
   it('la rueda del mouse recorre la fila de costado, y no mueve nada si la fila entra entera', () => {
     render(<CardArtPicker arts={arts} selectedId="0" onSelect={() => {}} />)
 
