@@ -1,5 +1,5 @@
 import { addChat, addGame, cleanChat, coinWinner, dieWinner, duelResult, rpsOutcome, type ChatLine, type DuelGame, type GameEntry, type RpsPick, type TossMethod } from './duel-games'
-import { DEFAULT_SETTINGS, PROTOCOL_VERSION, cleanName, encodeMessage, parseMessage, type DuelMessage, type DuelSettings } from './duel-protocol'
+import { DEFAULT_SETTINGS, PROTOCOL_VERSION, cleanName, encodeMessage, parseMessage, type DuelMessage, type DuelSettings, type OpeningWire } from './duel-protocol'
 import { createLifeState, lifeReducer, timerElapsed, type Duelist, type LifeState } from './life-calculator'
 import { encodeAct, mapMatIds, mirrorApply, mirrorUndo, openMirror, openPublic, senderKnown, type Mirror, type PublicSender } from './mat-public'
 import { matReducer, replayMat, type MatAction, type MatState } from './practice-mat'
@@ -189,7 +189,10 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       table = { n: actions.length, state: mapMatIds(mine, (id) => opaque[id] ?? id), known: senderKnown(sender) }
     }
 
-    send({ t: 'sync', ...table, lp: life.lp[me], lifeN, ready: ready.mine, ...(ordered ? { order: starter } : {}), ...(role === 'host' ? { clock } : {}) })
+    // Cómo va la tirada de quién empieza, para que un mensaje que se perdió (un celular en segundo plano) no la deje trabada.
+    const opening: OpeningWire = ordered ? {} : { ...(method ? { method } : {}), ...(caller !== null ? { caller } : {}), ...(dice.mine !== null ? { die: dice.mine } : {}), ...(chooser !== null ? { chooser } : {}) }
+
+    send({ t: 'sync', ...table, lp: life.lp[me], lifeN, ready: ready.mine, ...(ordered ? { order: starter } : {}), ...(Object.keys(opening).length > 0 ? { opening } : {}), ...(role === 'host' ? { clock } : {}) })
 
     // Lo mismo con la revancha que ya pedí.
     if (rematch.mine && !rematch.theirs) {
@@ -218,6 +221,25 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   }
 
   /** Lo que un juego cambia (y deja en el registro) cuando lo hace `from`: el mismo efecto de los dos lados. */
+  /** Se fija con qué se define quién empieza y quién lo eligió (y se empieza esa tirada de cero). */
+  const setMethod = (next: TossMethod, by: Duelist) => {
+    method = next
+    caller = by
+    dice = { mine: null, theirs: null }
+    rps = { mine: null, theirs: null }
+  }
+
+  /** Un dado de la tirada que define quién empieza: con números iguales se vuelve a tirar (el primero que tira de nuevo borra los dos); si no, gana el más alto. */
+  const rollDie = (from: Duelist, value: number) => {
+    const tied = dice.mine !== null && dice.theirs !== null
+
+    dice = from === me ? { mine: value, theirs: tied ? null : dice.theirs } : { mine: tied ? null : dice.mine, theirs: value }
+
+    if (dice.mine !== null && dice.theirs !== null) {
+      chooser = dieWinner(me === 0 ? dice.mine : dice.theirs, me === 0 ? dice.theirs : dice.mine)
+    }
+  }
+
   const applyGame = (from: Duelist, game: DuelGame) => {
     const mineNow = from === me
     const defining = ready.mine && ready.theirs && !ordered && chooser === null
@@ -228,10 +250,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
         return
       }
 
-      method = game.method
-      caller = from
-      dice = { mine: null, theirs: null }
-      rps = { mine: null, theirs: null }
+      setMethod(game.method, from)
     }
 
     // Al pedir la moneda que define quién empieza, gana quien acertó.
@@ -240,14 +259,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     }
 
     if (game.kind === 'die' && defining && method === 'die') {
-      // Con números iguales se vuelve a tirar: el primero que tira de nuevo borra los dos.
-      const tied = dice.mine !== null && dice.theirs !== null
-
-      dice = mineNow ? { mine: game.value, theirs: tied ? null : dice.theirs } : { mine: tied ? null : dice.mine, theirs: game.value }
-
-      if (dice.mine !== null && dice.theirs !== null) {
-        chooser = dieWinner(me === 0 ? dice.mine : dice.theirs, me === 0 ? dice.theirs : dice.mine)
-      }
+      rollDie(from, game.value)
     }
 
     if (game.kind === 'rps') {
@@ -415,6 +427,23 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
 
         if (message.ready !== undefined) {
           ready = { ...ready, theirs: message.ready }
+        }
+
+        // Cómo iba su tirada de quién empieza: lo que yo no recibí (un mensaje perdido) lo tomo de acá. Con otro método, vale el del anfitrión.
+        if (message.opening && ready.mine && ready.theirs && !ordered && chooser === null) {
+          const theirsOpening = message.opening
+
+          if (theirsOpening.method !== undefined && (method === null || (method !== theirsOpening.method && peer === 0))) {
+            setMethod(theirsOpening.method, theirsOpening.caller ?? peer)
+          }
+
+          if (theirsOpening.die !== undefined && method === 'die' && dice.theirs !== theirsOpening.die) {
+            rollDie(peer, theirsOpening.die)
+          }
+
+          if (theirsOpening.chooser !== undefined && chooser === null) {
+            chooser = theirsOpening.chooser
+          }
         }
 
         // Si el rival ya había elegido quién empieza (yo recargué), sigo desde ahí.

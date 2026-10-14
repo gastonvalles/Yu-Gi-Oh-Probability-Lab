@@ -298,6 +298,65 @@ describe('definir quién elige ir primero', () => {
     expect(game.host.getSnapshot().opening).toMatchObject({ method: null, caller: null, dice: { mine: null, theirs: null }, chooser: null })
   })
 
+  it('si se pierde un mensaje de la tirada (un celular en segundo plano), al reconectar se repone y no queda trabada', () => {
+    const lost = (game: Game) => game.room.queue.splice(0)
+    const reconnect = (game: Game) => {
+      game.guestEnd.disconnect()
+      game.guestEnd.reconnect()
+      game.room.flush()
+    }
+
+    // El dado del anfitrión se pierde en el camino: el invitado cree que todavía falta.
+    const dice = setup()
+    bothReady(dice)
+    dice.host.chooseMethod('die')
+    dice.room.flush()
+    dice.next.host = 0.9
+    dice.host.throwDie()
+    lost(dice)
+    dice.next.guest = 0.1
+    dice.guest.throwDie()
+    dice.room.flush()
+    expect(dice.guest.getSnapshot().opening).toMatchObject({ dice: { mine: 1, theirs: null }, chooser: null })
+    reconnect(dice)
+    for (const duel of [dice.host, dice.guest]) {
+      expect(duel.getSnapshot().opening).toMatchObject({ chooser: 0 })
+    }
+    expect(dice.guest.getSnapshot().opening.dice).toEqual({ mine: 1, theirs: 6 })
+
+    // Se pierde con qué se define.
+    const method = setup()
+    bothReady(method)
+    method.host.chooseMethod('rps')
+    lost(method)
+    expect(method.guest.getSnapshot().opening.method).toBeNull()
+    reconnect(method)
+    expect(method.guest.getSnapshot().opening).toMatchObject({ method: 'rps', caller: 0 })
+
+    // Se pierde el resultado de la moneda.
+    const coin = setup()
+    bothReady(coin)
+    coin.host.chooseMethod('coin')
+    coin.room.flush()
+    coin.host.callCoin(0)
+    lost(coin)
+    expect(coin.host.getSnapshot().opening.chooser).toBe(0)
+    expect(coin.guest.getSnapshot().opening.chooser).toBeNull()
+    reconnect(coin)
+    expect(coin.guest.getSnapshot().opening.chooser).toBe(0)
+  })
+
+  it('el estado de la tirada que viaja en el sync se valida: un dado fuera de rango o un método que no existe se descartan', () => {
+    const sync = (opening: unknown) => JSON.stringify({ t: 'sync', n: 0, known: {}, lp: 8000, lifeN: 0, opening })
+
+    expect(parseMessage(sync({ method: 'die', caller: 1, die: 4, chooser: 0 }))).toMatchObject({ opening: { method: 'die', caller: 1, die: 4, chooser: 0 } })
+    expect(parseMessage(sync({}))).toMatchObject({ t: 'sync' })
+    expect(parseMessage(sync({ die: 7 }))).toBeNull()
+    expect(parseMessage(sync({ method: 'dados' }))).toBeNull()
+    expect(parseMessage(sync({ chooser: 2 }))).toBeNull()
+    expect(parseMessage(sync('dado'))).toBeNull()
+  })
+
   it('las funciones que deciden quién gana', () => {
     expect(dieWinner(5, 3)).toBe(0)
     expect(dieWinner(2, 6)).toBe(1)

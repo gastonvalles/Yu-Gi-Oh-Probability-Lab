@@ -31,9 +31,9 @@ export function DuelOpening({ snapshot, myName, canReady, actions }: DuelOpening
 
   return (
     <section aria-label={t('duel.opening.title')} className="grid gap-3 rounded-card border border-border-subtle bg-card-background p-3">
-      <ul className="m-0 grid list-none gap-1.5 p-0">
-        <PlayerRow name={myName || t('duel.opening.you')} ready={ready.mine} />
-        <PlayerRow name={rival} ready={ready.theirs} />
+      <ul className="m-0 grid list-none grid-cols-2 gap-2 p-0">
+        <PlayerCard caption={t('duel.opening.you')} name={myName || t('duel.opening.you')} ready={ready.mine} />
+        <PlayerCard caption={t('duel.opening.rival')} name={rival} ready={ready.theirs} />
       </ul>
 
       {!bothReady ? (
@@ -54,15 +54,19 @@ export function DuelOpening({ snapshot, myName, canReady, actions }: DuelOpening
       ) : (
         <TossStep snapshot={snapshot} nameOf={nameOf} actions={actions} />
       )}
+
+      <p className="m-0 text-center text-micro text-soft">{t('duel.room.settings', { lp: snapshot.settings.lp, hand: snapshot.settings.hand })}</p>
     </section>
   )
 }
 
-function PlayerRow({ name, ready }: { name: string; ready: boolean }) {
+/** Uno de los dos jugadores: su nombre y, abajo, si ya está listo (la tarjeta se enciende). */
+function PlayerCard({ caption, name, ready }: { caption: string; name: string; ready: boolean }) {
   return (
-    <li data-ready={ready} className="flex items-center justify-between gap-2 text-body text-foreground">
-      <span className="min-w-0 truncate font-semibold">{name}</span>
-      <span className={cx('inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-micro font-semibold', ready ? 'bg-accent/20 text-accent' : 'bg-tint/8 text-muted')}>
+    <li data-ready={ready} className={cx('grid min-w-0 justify-items-center gap-1 rounded-card border px-2 py-3 text-center transition-colors', ready ? 'border-accent/60 bg-accent/10' : 'border-border-subtle bg-tint/5')}>
+      <span className="text-micro font-semibold uppercase tracking-[0.04em] text-soft">{caption}</span>
+      <span className="max-w-full truncate text-body font-bold text-foreground">{name}</span>
+      <span className={cx('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-micro font-semibold', ready ? 'bg-accent/20 text-accent' : 'bg-tint/8 text-muted')}>
         {ready ? <Icon name="check" size={12} /> : null}
         {ready ? t('duel.opening.ready') : t('duel.opening.notReady')}
       </span>

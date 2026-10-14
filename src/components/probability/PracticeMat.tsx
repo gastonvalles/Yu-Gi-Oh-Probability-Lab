@@ -1176,7 +1176,9 @@ export function PracticeMat({
       className={cx(
         // `select-none`: un arrastre que arranca entre dos cartas no debe pintar texto seleccionado por toda la mesa.
         // `relative isolate`: las cartas grandes del centro se acomodan sobre la mesa (no sobre la pantalla) y sus capas no se mezclan con las de afuera.
-        'relative isolate grid h-full min-h-0 select-none grid-rows-[auto_minmax(0,1fr)] [background:radial-gradient(120%_60%_at_50%_0%,rgb(var(--primary-rgb)/0.16),transparent_70%),rgb(var(--background-rgb))] min-[1101px]:grid-cols-[minmax(0,1fr)_20rem]',
+        'relative isolate grid h-full min-h-0 select-none grid-rows-[auto_minmax(0,1fr)] [background:radial-gradient(120%_60%_at_50%_0%,rgb(var(--primary-rgb)/0.16),transparent_70%),rgb(var(--background-rgb))]',
+        // Los pasos y combos son de la práctica: en un duelo la mesa ocupa todo el ancho.
+        !duel && 'min-[1101px]:grid-cols-[minmax(0,1fr)_20rem]',
         PRACTICE_PALETTE,
       )}
     >
@@ -1333,10 +1335,9 @@ export function PracticeMat({
         {/* Abajo: en el celular las seis fases, solas y centradas (Deshacer está arriba y los pasos en la lista, así que ni Anterior / Siguiente ni la última jugada hacen falta). En escritorio las fases están entre las zonas.
             Eligiendo (Sacrificios, materiales) las fases se van para que entre lo que hay que tocar: la barra no cambia de alto, el campo no se mueve. */}
         <div className="sticky bottom-0 z-30 grid gap-1 max-[1100px]:bg-background/85 max-[1100px]:backdrop-blur-sm">
-          {/* Duelo: lo que se toca seguido, abajo y a la derecha (el pulgar de quien juega con la derecha): a la izquierda lo menos usado (la lista de pasos; además ahí arrancan las mascotas) y a la derecha deshacer, la ficha, los dados y el chat. */}
+          {/* Duelo: lo que se toca seguido, abajo y a la derecha (el pulgar de quien juega con la derecha): deshacer, la ficha, los dados y el chat, todo a la derecha. */}
           {duel && !choosing ? (
             <div role="toolbar" aria-label={t('practice.mat.name')} className="flex items-center">
-              {stepsButton}
               <span className="ml-auto flex items-center">
                 {undoButton}
                 {tokenButton}
@@ -1352,7 +1353,7 @@ export function PracticeMat({
               ))}
             </div>
           ) : null}
-          {duel && !choosing ? <div className="min-w-0 flex-1">{duel.life}</div> : null}
+          {duel && !choosing ? duel.life : null}
           {/* El estado: eligiendo, pide lo que falta; si no, es sólo para el lector de pantalla (la última jugada y el contador ya están en la lista de pasos). */}
           <div className={cx('flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 px-1 text-micro text-muted', !choosing && 'sr-only')} role="status" aria-label={t('practice.mat.currentStep')}>
             {pickingText ? (
@@ -1380,14 +1381,18 @@ export function PracticeMat({
       </div>
 
       {/* Panel lateral (escritorio): arriba los pasos y combos y abajo, a la altura de la mano, las salidas y problemas; la explicación del chip tocado crece hacia arriba sobre la lista. El detalle de una carta se abre desde su menú. */}
-      <aside className="hidden min-h-0 border-l border-border-subtle px-3 pb-3 pt-3 min-[1101px]:col-start-2 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col min-[1101px]:gap-3" aria-label={t('practice.mat.stepsAndCombos')}>
-        {panel}
-        {footer && isDealt && isDesktop ? <div className="flex-none animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
-      </aside>
+      {duel ? null : (
+        <>
+          <aside className="hidden min-h-0 border-l border-border-subtle px-3 pb-3 pt-3 min-[1101px]:col-start-2 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col min-[1101px]:gap-3" aria-label={t('practice.mat.stepsAndCombos')}>
+            {panel}
+            {footer && isDealt && isDesktop ? <div className="flex-none animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
+          </aside>
 
-      <Modal isOpen={panelOpen} onClose={() => setPanelOpen(false)} size="md" kicker={t('practice.mat.name')} title={t('practice.mat.stepsAndCombos')}>
-        {panel}
-      </Modal>
+          <Modal isOpen={panelOpen} onClose={() => setPanelOpen(false)} size="md" kicker={t('practice.mat.name')} title={t('practice.mat.stepsAndCombos')}>
+            {panel}
+          </Modal>
+        </>
+      )}
 
       <CardMenu
         anchor={menu?.rect ?? null}
@@ -1421,7 +1426,7 @@ export function PracticeMat({
           cards={stage.ids.map((id) => ({ id, name: cardOf(id).name, art: artOf(cardOf(id)) }))}
           caption={steps[stage.step - 1] ?? null}
           flip={stage.flip}
-          className="absolute inset-y-0 left-0 right-0 z-[120] min-[1101px]:right-[20rem]"
+          className={cx('absolute inset-y-0 left-0 right-0 z-[120]', !duel && 'min-[1101px]:right-[20rem]')}
         />
       ) : null}
 

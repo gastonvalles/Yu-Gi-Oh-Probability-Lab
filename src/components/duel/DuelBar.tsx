@@ -70,20 +70,18 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
   return (
     <div className="grid gap-1.5 px-0.5 pt-1.5">
       <div className="flex items-center gap-1.5">
-        <div className="min-w-0 flex-1">
-          <LifeTile name={rivalName} life={life.lp[me === 0 ? 1 : 0]} />
-        </div>
+        <LifeTile name={rivalName} life={life.lp[me === 0 ? 1 : 0]} />
         <button
           type="button"
           aria-label={`${t('duel.bar.clock', { time: clock })}. ${running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}`}
           title={running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}
-          className="inline-flex h-11 shrink-0 cursor-pointer items-center gap-1 rounded-card border border-border-subtle bg-card-background px-2.5 text-micro font-semibold tabular-nums text-foreground focus-visible:outline-none focus-visible:shadow-focus"
+          className="inline-flex h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-card border border-border-subtle bg-card-background px-2.5 text-micro font-semibold tabular-nums text-foreground focus-visible:outline-none focus-visible:shadow-focus"
           onClick={onToggleClock}
         >
           <Icon name={running ? 'pause' : 'play'} size={14} />
           {clock}
         </button>
-        <IconButton tone="flat" size="sm" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} onClick={() => setLeaving(true)}>
+        <IconButton tone="flat" size="sm" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} className="ml-auto" onClick={() => setLeaving(true)}>
           <Icon name="x" />
         </IconButton>
       </div>
@@ -236,7 +234,8 @@ function LifeTile({ name, life, mine = false, onClick }: { name: string; life: n
       <span className={cx('shrink-0 text-title font-extrabold leading-tight tabular-nums', mine ? 'text-accent' : 'text-foreground')}>{formatInteger(life)}</span>
     </>
   )
-  const style = 'flex h-11 min-w-0 items-center justify-between gap-2 rounded-card border border-border-subtle bg-card-background px-2.5 text-left'
+  // Las dos vidas miden lo mismo (la del rival arriba, la tuya abajo).
+  const style = 'flex h-11 w-36 shrink-0 items-center justify-between gap-2 rounded-card border border-border-subtle bg-card-background px-2.5 text-left'
 
   return onClick ? (
     <button type="button" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${formatInteger(life)}. ${t('duel.bar.changeLife')}`} className={cx(style, 'cursor-pointer focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>

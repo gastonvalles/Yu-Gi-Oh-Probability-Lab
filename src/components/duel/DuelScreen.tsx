@@ -8,6 +8,7 @@ import type { SocketStatus } from '../../app/duel-socket'
 import { rpsOutcome } from '../../app/duel-games'
 import { duelTurnNumber, whoseTurn } from '../../app/duel-turn'
 import { STARTING_LP } from '../../app/life-calculator'
+import { beginDuel } from '../../app/mascot'
 import { createMatState, isToken, PHASES, randomSeed, shuffleWithSeed } from '../../app/practice-mat'
 import { useDuel, type DuelConnect } from '../../app/use-duel'
 import type { MatSession } from '../../app/use-mat-session'
@@ -79,6 +80,8 @@ function showRoomInUrl(room: string | null) {
  * reparten su mano; y después la mesa de práctica con el campo del rival arriba. No sabe de redes: `connect` (el relay) lo pone quien la usa.
  */
 export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, connect }: DuelScreenProps) {
+  // De momento las mascotas no aparecen en los duelos (ni en el lobby, la sala o la mesa): las que andan flotando esperan afuera.
+  useEffect(() => beginDuel(), [])
   const [name, setName] = useState(() => readStored(() => localStorage, NAME_KEY) ?? '')
   const [intent, setIntent] = useState<Intent | null>(readIntent)
   const myName = cleanName(name) || t('duel.lobby.defaultName')
@@ -306,6 +309,26 @@ function DuelLobby({ name, onName, lp, onLp, builder, imported, onImport, deckRe
   )
 }
 
+/** Cuánto espera quien entra por un enlace antes de pensar que el enlace venció (el anfitrión que lo creó ya debería estar adentro). */
+const EMPTY_ROOM_MS = 12_000
+
+/** Pasó `ms` mientras `active` sigue siendo cierto; al dejar de serlo (o al salir) vuelve a empezar. */
+function useWaited(ms: number, active: boolean): boolean {
+  const [waited, setWaited] = useState(false)
+
+  useEffect(() => {
+    if (!active) {
+      setWaited(false)
+      return
+    }
+
+    const id = setTimeout(() => setWaited(true), ms)
+    return () => clearTimeout(id)
+  }, [ms, active])
+
+  return waited
+}
+
 /** La sala hasta que los dos tienen su mano: el enlace para el rival, quién está listo, cómo se define quién empieza y el chat. */
 function DuelRoom({ duel, snapshot, status, room, myName, deckReady, onLeave }: { duel: Duel; snapshot: DuelSnapshot; status: SocketStatus; room: string; myName: string; deckReady: boolean; onLeave: () => void }) {
   const link = buildDuelLink(window.location.origin, window.location.pathname, room)
@@ -314,6 +337,8 @@ function DuelRoom({ duel, snapshot, status, room, myName, deckReady, onLeave }: 
   const settingsKnown = role === 'host' || peerName !== null
   const canReady = peerPresent && settingsKnown && !incompatible && deckReady
   const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
+  // Quien entra por un enlace y no encuentra a nadie, tras unos segundos, probablemente tiene un enlace vencido: se lo dice en vez de dejarlo esperando.
+  const emptyRoom = useWaited(EMPTY_ROOM_MS, role === 'guest' && !peerPresent && status === 'open')
 
   const copy = async () => {
     try {
@@ -352,13 +377,20 @@ function DuelRoom({ duel, snapshot, status, room, myName, deckReady, onLeave }: 
 
       {status !== 'open' ? <Callout tone="warning" icon="alert">{status === 'connecting' ? t('duel.status.connecting') : t('duel.status.reconnecting')}</Callout> : null}
       {incompatible ? <Callout tone="danger">{t('duel.room.incompatible')}</Callout> : null}
+      {emptyRoom ? <Callout tone="warning" icon="alert">{t('duel.room.expired')}</Callout> : null}
 
-      <p className="m-0 flex items-center gap-2 text-body text-foreground" role="status">
-        <Icon name="user" size={16} />
-        {!peerPresent ? t('duel.room.waitingPeer') : peerName ? t('duel.room.peerHere', { name: peerName }) : t('duel.room.peerHereNoName')}
-      </p>
-
-      {peerPresent && !settingsKnown ? <p className="m-0 text-micro text-soft">{t('duel.room.guestWaits')}</p> : <p className="m-0 text-micro text-soft">{t('duel.room.settings', { lp: settings.lp, hand: settings.hand })}</p>}
+      {/* Con el rival adentro ya se ven los dos nombres en la tarjeta de cada uno: no hace falta decirlo otra vez. */}
+      {!peerPresent ? (
+        <>
+          <p className="m-0 flex items-center gap-2 text-body text-foreground" role="status">
+            <Icon name="user" size={16} />
+            {t('duel.room.waitingPeer')}
+          </p>
+          <p className="m-0 text-micro text-soft">{t('duel.room.settings', { lp: settings.lp, hand: settings.hand })}</p>
+        </>
+      ) : !settingsKnown ? (
+        <p className="m-0 text-micro text-soft">{t('duel.room.guestWaits')}</p>
+      ) : null}
 
       {peerPresent && settingsKnown && !incompatible ? <DuelOpening snapshot={snapshot} myName={myName} canReady={canReady} actions={duel} /> : null}
 

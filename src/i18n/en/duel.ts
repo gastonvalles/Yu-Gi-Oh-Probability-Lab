@@ -38,11 +38,10 @@ export const duel: Translated<typeof es> = {
   'duel.room.share': 'Share',
   'duel.room.shareText': "I'm inviting you to a duel on Probability Lab",
   'duel.room.waitingPeer': 'Waiting for your opponent…',
-  'duel.room.peerHere': '{name} is in the room.',
-  'duel.room.peerHereNoName': 'Your opponent is in the room.',
   'duel.room.guestWaits': "Waiting for the host's settings…",
   'duel.room.settings': 'Each of you starts with {lp} LP and a hand of {hand} cards.',
   'duel.room.leave': 'Leave',
+  'duel.room.expired': 'There is nobody in this duel. The link may have expired: ask your rival to create a new one and send it to you.',
   'duel.room.incompatible': 'Your opponent is on another version of the duel, or you both created the room: ask them to open your link.',
 
   'duel.status.connecting': 'Connecting…',
@@ -71,7 +70,7 @@ export const duel: Translated<typeof es> = {
   'duel.life.halve': 'Halve',
 
   'duel.games.open': 'Coin, die and more',
-  'duel.games.title': 'Games and signals',
+  'duel.games.title': 'Games',
   'duel.games.needRival': 'Your opponent has to be in the room.',
   'duel.games.coin': 'Coin',
   'duel.games.die': 'Die',
@@ -89,10 +88,6 @@ export const duel: Translated<typeof es> = {
   'duel.games.rps.lose': 'You lose',
   'duel.games.rps.draw': 'Draw',
   'duel.games.rps.again': 'Another round',
-  'duel.games.order.title': 'Who goes first',
-  'duel.games.order.current': '{name} goes first.',
-  'duel.games.order.me': 'I go first',
-  'duel.games.order.them': '{name} goes first',
   'duel.games.log.title': 'Log',
   'duel.games.log.empty': 'Nothing yet.',
   'duel.games.log.coin': '{name} tossed the coin: {result}',
@@ -109,6 +104,7 @@ export const duel: Translated<typeof es> = {
 
   // The room before the table: getting ready and deciding who goes first.
   'duel.opening.you': 'You',
+  'duel.opening.rival': 'Rival',
   'duel.opening.ready': 'Ready',
   'duel.opening.notReady': 'Not yet',
   'duel.opening.readyAction': "I'm ready",

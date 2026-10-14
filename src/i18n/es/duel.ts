@@ -40,11 +40,10 @@ export const duel = {
   'duel.room.share': 'Compartir',
   'duel.room.shareText': 'Te invito a un duelo en Probability Lab',
   'duel.room.waitingPeer': 'Esperando a tu rival…',
-  'duel.room.peerHere': '{name} está en la sala.',
-  'duel.room.peerHereNoName': 'Tu rival está en la sala.',
   'duel.room.guestWaits': 'Esperando los ajustes del anfitrión…',
   'duel.room.settings': 'Cada uno empieza con {lp} LP y una mano de {hand} cartas.',
   'duel.room.leave': 'Salir',
+  'duel.room.expired': 'No hay nadie en este duelo. Puede que el enlace haya vencido: pedile a tu rival que cree uno nuevo y te lo mande.',
   'duel.room.incompatible': 'Tu rival usa otra versión del duelo, o los dos crearon la sala: pedile que abra tu enlace.',
 
   // La conexión.
@@ -77,7 +76,7 @@ export const duel = {
 
   // Moneda, dado, piedra-papel-tijera, quién va primero y señales (y su registro).
   'duel.games.open': 'Moneda, dado y más',
-  'duel.games.title': 'Juegos y señales',
+  'duel.games.title': 'Juegos',
   'duel.games.needRival': 'Tu rival tiene que estar en la sala.',
   'duel.games.coin': 'Moneda',
   'duel.games.die': 'Dado',
@@ -95,10 +94,6 @@ export const duel = {
   'duel.games.rps.lose': 'Perdiste',
   'duel.games.rps.draw': 'Empate',
   'duel.games.rps.again': 'Otra ronda',
-  'duel.games.order.title': 'Quién empieza',
-  'duel.games.order.current': 'Empieza {name}.',
-  'duel.games.order.me': 'Voy primero',
-  'duel.games.order.them': 'Va primero {name}',
   'duel.games.log.title': 'Registro',
   'duel.games.log.empty': 'Todavía no pasó nada.',
   'duel.games.log.coin': '{name} tiró la moneda: {result}',
@@ -115,6 +110,7 @@ export const duel = {
 
   // La sala antes de la mesa: estar listos y definir quién empieza.
   'duel.opening.you': 'Vos',
+  'duel.opening.rival': 'Rival',
   'duel.opening.ready': 'Listo',
   'duel.opening.notReady': 'Todavía no',
   'duel.opening.readyAction': 'Estoy listo',

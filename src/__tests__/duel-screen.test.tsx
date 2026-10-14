@@ -172,8 +172,11 @@ describe('la pantalla del duelo', () => {
     click(guest, 'Unirme')
     flush()
 
-    expect(within(host.container).getByText('Beto está en la sala.')).toBeInTheDocument()
-    expect(within(guest.container).getByText('Ana está en la sala.')).toBeInTheDocument()
+    // Con los dos adentro se ven los dos nombres en sus tarjetas: no se repite quién está en la sala.
+    expect(within(host.container).getByText('Beto')).toBeInTheDocument()
+    expect(within(guest.container).getByText('Ana')).toBeInTheDocument()
+    expect(within(host.container).queryByText(/está en la sala/)).not.toBeInTheDocument()
+    expect(within(host.container).queryByText('Esperando a tu rival…')).not.toBeInTheDocument()
     expect(within(guest.container).queryByTestId('duel-link')).not.toBeInTheDocument()
 
     // Cada uno ve si el otro está listo.
@@ -340,7 +343,7 @@ describe('la pantalla del duelo', () => {
     flush()
     openTable(host, guest)
 
-    const panel = () => within(screen.getByRole('dialog', { name: 'Juegos y señales' }))
+    const panel = () => within(screen.getByRole('dialog', { name: 'Juegos' }))
     const open = (view: RenderResult) => click(view, 'Moneda, dado y más')
     const close = () => fireEvent.keyDown(document, { key: 'Escape' })
 
@@ -380,14 +383,9 @@ describe('la pantalla del duelo', () => {
     flush()
     expect(panel().getByRole('button', { name: 'Papel' })).toBeInTheDocument()
 
-    // Quién empieza: Ana dice que va primero Beto, y el turno cambia en las dos pantallas.
+    // Quién empieza ya no se cambia desde acá: se definió al entrar.
+    expect(panel().queryByText('Quién empieza')).not.toBeInTheDocument()
     expect(within(host.container).getByText('Tu turno')).toBeInTheDocument()
-    fireEvent.click(panel().getByRole('button', { name: 'Va primero Beto' }))
-    flush()
-    expect(panel().getByText('Empieza Beto.')).toBeInTheDocument()
-    close()
-    expect(within(host.container).getByText('Turno de Beto')).toBeInTheDocument()
-    expect(within(guest.container).getByText('Tu turno')).toBeInTheDocument()
   })
 
   /** Los dos adentro de la sala, con su nombre; si se pide, quien crea elige esos puntos de vida. */
@@ -489,7 +487,7 @@ describe('la pantalla del duelo', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
 
-    const panel = () => within(screen.getByRole('dialog', { name: 'Juegos y señales' }))
+    const panel = () => within(screen.getByRole('dialog', { name: 'Juegos' }))
     const close = () => fireEvent.keyDown(document, { key: 'Escape' })
 
     click(guest, 'Moneda, dado y más')
@@ -680,6 +678,26 @@ describe('la pantalla del duelo', () => {
     expect(banner(host)).toContain('Turno de Beto')
     // Al empezar su turno Beto roba la carta.
     expect(handOf(guest).getAllByRole('listitem')).toHaveLength(handOfGuest + 1)
+  })
+
+  it('un enlace vencido: quien entra y no encuentra a nadie lo ve avisado pasados unos segundos, y el anfitrión que espera no', () => {
+    vi.useFakeTimers()
+    const host = render(<DuelScreen {...screenProps()} />)
+    click(host, 'Crear un duelo')
+    const link = within(host.container).getByTestId('duel-link').textContent ?? ''
+    // El anfitrión espera a su rival sin ningún aviso de enlace vencido.
+    act(() => vi.advanceTimersByTime(30_000))
+    expect(within(host.container).queryByText(/enlace haya vencido/)).not.toBeInTheDocument()
+    cleanup()
+
+    // Alguien entra con ese mismo enlace a una sala vacía (nadie la creó ahora).
+    window.history.replaceState(null, '', link.slice(link.indexOf('#')))
+    sessionStorage.clear()
+    const lonely = render(<DuelScreen {...screenProps()} />)
+    expect(within(lonely.container).getByText('Esperando a tu rival…')).toBeInTheDocument()
+    expect(within(lonely.container).queryByText(/enlace haya vencido/)).not.toBeInTheDocument()
+    act(() => vi.advanceTimersByTime(13_000))
+    expect(within(lonely.container).getByText(/Puede que el enlace haya vencido/)).toBeInTheDocument()
   })
 
   it('recargar dentro de la sala con un deck pegado y el builder vacío: el deck guardado vuelve solo y se puede repartir', async () => {
