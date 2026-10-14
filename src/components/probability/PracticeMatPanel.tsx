@@ -109,14 +109,17 @@ function SavedCombosList({ combos, deckName, onLoad, onRename, onDelete }: Saved
     <>
       <ul className="m-0 grid list-none content-start gap-2 overflow-y-auto p-0" aria-label={t('practice.panel.saved')}>
         {ordered.map((combo) => (
-          <li key={combo.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-card border border-border-subtle bg-card-background px-3 py-2">
+          <li key={combo.id} className="grid gap-2 rounded-card border border-border-subtle bg-card-background px-3 py-2">
+            {/* El nombre y los datos arriba, con todo el ancho (con tres botones al lado el nombre quedaba en unas quince letras); las acciones, abajo. */}
             <div className="grid min-w-0 gap-0.5">
-              <strong className="truncate text-body font-semibold text-foreground">{combo.name}</strong>
+              <strong className="truncate text-body font-semibold text-foreground" title={combo.name}>
+                {combo.name}
+              </strong>
               <span className="truncate text-micro text-muted">
                 {t('practice.panel.comboMeta', { deck: combo.deckName, plays: t('practice.panel.comboPlays', { count: combo.actions.length }), date: formatDay(combo.savedAt) })}
               </span>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center justify-end gap-1">
               <Button variant="secondary" size="sm" icon="play" aria-label={t('practice.panel.loadNamed', { name: combo.name })} onClick={() => onLoad(combo)}>
                 {t('practice.panel.load')}
               </Button>
