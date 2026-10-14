@@ -71,7 +71,6 @@ export interface Duel {
   changeLife(delta: number): void
   halveLife(): void
   toggleClock(): void
-  resetClock(): void
   throwCoin(): void
   throwDie(): void
   /** Elegir en piedra-papel-tijera (una vez por ronda); `null` empieza otra. */
@@ -476,12 +475,6 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
 
     toggleClock() {
       life = lifeReducer(life, { type: 'timer-toggle', now: now() })
-      sendClock()
-      emit()
-    },
-
-    resetClock() {
-      life = lifeReducer(life, { type: 'timer-reset' })
       sendClock()
       emit()
     },

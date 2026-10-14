@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { parseDerivedCardId } from '../../app/calculator-state'
 import { duelCardIds, parseDuelDeck } from '../../app/duel-deck'
@@ -19,7 +19,7 @@ export interface DuelDeck {
   cardsById: ReadonlyMap<string, MatCard>
 }
 
-const STORED_KEY = 'ygo-lab:duel-deck'
+export const STORED_DECK_KEY = 'ygo-lab:duel-deck'
 /** Cuántas cartas se piden por consulta a YGOPRODeck. */
 const FETCH_CHUNK = 50
 
@@ -28,15 +28,13 @@ type Status = 'idle' | 'loading' | 'invalid' | 'failed'
 interface DuelDeckPickerProps {
   /** El deck armado en el builder: con el que se juega mientras no se elija otro. */
   builder: DuelDeck
-  /** Cartas que hacen falta en el Main para repartir la mano. */
-  minMain: number
   imported: DuelDeck | null
   onImport: (deck: DuelDeck | null) => void
 }
 
-function readStored(): string | null {
+export function readStoredDeck(): string | null {
   try {
-    return localStorage.getItem(STORED_KEY)
+    return localStorage.getItem(STORED_DECK_KEY)
   } catch {
     return null
   }
@@ -44,50 +42,61 @@ function readStored(): string | null {
 
 function writeStored(text: string | null) {
   try {
-    if (text === null) localStorage.removeItem(STORED_KEY)
-    else localStorage.setItem(STORED_KEY, text)
+    if (text === null) localStorage.removeItem(STORED_DECK_KEY)
+    else localStorage.setItem(STORED_DECK_KEY, text)
   } catch {
     // Sin almacenamiento no se recuerda.
   }
 }
 
 /**
+ * El deck de un texto pegado o de un archivo, con sus cartas ya buscadas; `null` si no es un deck. Falla si no se pueden buscar las cartas (sin red).
+ * Se usa también al abrir la pantalla, para recuperar el último deck pegado.
+ */
+export async function loadDuelDeck(raw: string): Promise<DuelDeck | null> {
+  const parsed = parseDuelDeck(raw)
+
+  if (!parsed) {
+    return null
+  }
+
+  const wanted = [...new Set([...parsed.main, ...parsed.extra])]
+  const chunks = Array.from({ length: Math.ceil(wanted.length / FETCH_CHUNK) }, (_, index) => wanted.slice(index * FETCH_CHUNK, (index + 1) * FETCH_CHUNK))
+  const found = new Map<number, ApiCardSearchResult>((await Promise.all(chunks.map((chunk) => fetchCardsByIds(chunk)))).flat().map((card) => [card.ygoprodeckId, card]))
+  const mainIds = duelCardIds(parsed.main)
+  const extraIds = duelCardIds(parsed.extra)
+  const cardsById = new Map<string, MatCard>()
+
+  for (const id of [...mainIds, ...extraIds]) {
+    const card = found.get(parseDerivedCardId(cardIdOfDrawId(id)) ?? -1)
+    if (card) cardsById.set(id, { name: card.name, apiCard: card })
+  }
+
+  return { name: t('duel.deck.importedName'), mainIds, extraIds, cardsById }
+}
+
+/**
  * Elegir con qué deck se duela: el del builder, o uno que se pega (un enlace `ydke://` o un `.ydk`). Es lo que deja jugar desde un celular
  * que no tiene un deck armado: se pasa el enlace de un dispositivo al otro. El último deck pegado se recuerda y, si el builder está vacío, se usa solo.
  */
-export function DuelDeckPicker({ builder, minMain, imported, onImport }: DuelDeckPickerProps) {
+export function DuelDeckPicker({ builder, imported, onImport }: DuelDeckPickerProps) {
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
   const [status, setStatus] = useState<Status>('idle')
-  const [unknown, setUnknown] = useState(0)
   const fileRef = useRef<HTMLInputElement>(null)
-  const tried = useRef(false)
 
   const load = async (raw: string, remember: boolean) => {
-    const parsed = parseDuelDeck(raw)
-
-    if (!parsed) {
-      setStatus('invalid')
-      return
-    }
-
     setStatus('loading')
 
     try {
-      const wanted = [...new Set([...parsed.main, ...parsed.extra])]
-      const chunks = Array.from({ length: Math.ceil(wanted.length / FETCH_CHUNK) }, (_, index) => wanted.slice(index * FETCH_CHUNK, (index + 1) * FETCH_CHUNK))
-      const found = new Map<number, ApiCardSearchResult>((await Promise.all(chunks.map((chunk) => fetchCardsByIds(chunk)))).flat().map((card) => [card.ygoprodeckId, card]))
-      const mainIds = duelCardIds(parsed.main)
-      const extraIds = duelCardIds(parsed.extra)
-      const cardsById = new Map<string, MatCard>()
+      const deck = await loadDuelDeck(raw)
 
-      for (const id of [...mainIds, ...extraIds]) {
-        const card = found.get(parseDerivedCardId(cardIdOfDrawId(id)) ?? -1)
-        if (card) cardsById.set(id, { name: card.name, apiCard: card })
+      if (!deck) {
+        setStatus('invalid')
+        return
       }
 
-      setUnknown(mainIds.length + extraIds.length - cardsById.size)
-      onImport({ name: t('duel.deck.importedName'), mainIds, extraIds, cardsById })
+      onImport(deck)
       if (remember) writeStored(raw.trim())
       setStatus('idle')
       setOpen(false)
@@ -96,26 +105,14 @@ export function DuelDeckPicker({ builder, minMain, imported, onImport }: DuelDec
     }
   }
 
-  // Sin deck armado (un celular que nunca abrió el builder), el último deck pegado se vuelve a usar solo.
-  useEffect(() => {
-    const stored = readStored()
-
-    if (tried.current || stored === null || builder.mainIds.length >= minMain) {
-      return
-    }
-
-    tried.current = true
-    void load(stored, false)
-    // Es sólo al abrir la pantalla.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
   const back = () => {
     writeStored(null)
-    setUnknown(0)
     setStatus('idle')
     onImport(null)
   }
+
+  // Las cartas del deck pegado que la búsqueda no reconoció (se juegan igual, sin nombre).
+  const unknown = imported ? imported.mainIds.length + imported.extraIds.length - imported.cardsById.size : 0
 
   return (
     <section className="grid gap-2" aria-label={t('duel.deck.title')}>
@@ -125,7 +122,7 @@ export function DuelDeckPicker({ builder, minMain, imported, onImport }: DuelDec
           ? t('duel.deck.imported', { main: imported.mainIds.length, extra: imported.extraIds.length })
           : t('duel.deck.builder', { name: builder.name, count: builder.mainIds.length })}
       </p>
-      {imported && unknown > 0 ? <p className="m-0 text-micro text-soft">{t('duel.deck.unknown', { count: unknown })}</p> : null}
+      {unknown > 0 ? <p className="m-0 text-micro text-soft">{t('duel.deck.unknown', { count: unknown })}</p> : null}
 
       <div className="flex flex-wrap gap-2">
         {open ? null : (

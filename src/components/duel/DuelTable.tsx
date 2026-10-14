@@ -94,10 +94,13 @@ export function DuelTable({ mine, theirs, show = 'both', turn = 'mine', classNam
   )
 }
 
-/** La mano del rival: sólo se ve cuántas cartas tiene, de dorso y encimadas. */
+/**
+ * La mano del rival: sólo se ve cuántas cartas tiene, de dorso y encimadas. `shrink-0` es lo que la deja verse: va dentro de una columna que scrollea y,
+ * como los dorsos miden un porcentaje del alto, sin él la columna la aplastaba a 0 px y sólo quedaban sus sombras, como puntitos.
+ */
 export function TheirHand({ count }: { count: number }) {
   return (
-    <div role="img" aria-label={t('duel.hand.theirs', { count })} className="flex h-9 justify-center">
+    <div role="img" aria-label={t('duel.hand.theirs', { count })} className="flex h-9 shrink-0 justify-center min-[1101px]:h-14">
       {Array.from({ length: Math.min(count, 12) }, (_, index) => (
         <span key={index} className={cx('-ml-3 block aspect-[421/614] h-full overflow-hidden first:ml-0', CARD_SHADOW)}>
           <CardBack className="h-full" />

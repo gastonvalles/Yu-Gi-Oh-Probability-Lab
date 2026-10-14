@@ -716,6 +716,11 @@ export function banishItem(id: string, label: string): MatMenuItem {
   ])
 }
 
+/** Las cartas de la mesa (monstruos, Mágicas y Trampas, de campo) con sus contadores: a las que se les puede poner o quitar un contador. */
+export function fieldCards(state: MatState): Placed[] {
+  return [...state.mz, ...state.emz, ...state.st, state.field].flatMap((placed) => (placed ? [placed] : []))
+}
+
 /** Monstruos propios en el campo (los que se pueden sacrificar). */
 export function monstersOnField(state: MatState): string[] {
   return [...state.mz, ...state.emz].flatMap((placed) => (placed ? [placed.id] : []))
@@ -807,9 +812,6 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
           }
         }
       }
-
-      add(t('practice.menu.counterPlus'), { type: 'counter', id, delta: 1 })
-      if (placed.counters > 0) add(t('practice.menu.counterMinus'), { type: 'counter', id, delta: -1 })
 
       for (const material of placed.materials) {
         add(t('practice.menu.detach', { name: nameOf(material) }), { type: 'move', id: material, to: 'gy' })

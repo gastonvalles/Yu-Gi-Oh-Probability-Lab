@@ -200,10 +200,13 @@ describe('puntos de vida y reloj', () => {
     game.room.flush()
 
     expect(game.host.getSnapshot().life.timer).toMatchObject({ running: false, elapsedMs: 4000 })
+  })
 
-    game.host.resetClock()
-    game.room.flush()
-    expect(game.guest.getSnapshot().life.timer).toMatchObject({ running: false, elapsedMs: 0 })
+  it('el reloj no se puede reiniciar a mano: lo único que hacen los jugadores es iniciarlo o frenarlo', () => {
+    const game = setup()
+
+    expect('resetClock' in game.host).toBe(false)
+    expect('resetClock' in game.guest).toBe(false)
   })
 
   it('al volver, el invitado toma el reloj del anfitrión', () => {

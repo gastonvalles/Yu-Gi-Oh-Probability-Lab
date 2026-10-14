@@ -167,6 +167,10 @@ describe('la pantalla del duelo', () => {
     // Ya hay mesa: la mano del rival se cuenta sin verse, y de quién es el turno lo ven igual los dos.
     expect(within(host.container).getByLabelText('Mano del rival: 5')).toBeInTheDocument()
     expect(within(guest.container).getByLabelText('Mano del rival: 5')).toBeInTheDocument()
+    // El reloj de la ronda arranca solo cuando los dos tienen su mano: los dos lo ven corriendo, sin apretar nada.
+    expect(within(host.container).getByRole('button', { name: 'Pausar el reloj' })).toBeInTheDocument()
+    flush()
+    expect(within(guest.container).getByRole('button', { name: 'Pausar el reloj' })).toBeInTheDocument()
     expect(within(host.container).getByText('Tu turno')).toBeInTheDocument()
     expect(within(guest.container).getByText('Turno de Ana')).toBeInTheDocument()
 
@@ -468,6 +472,10 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).queryByText(/se rindió/)).not.toBeInTheDocument()
     expect(within(guest.container).queryByText('Te rendiste.')).not.toBeInTheDocument()
     expect(within(guest.container).getByRole('group', { name: /Puntos de vida de Ana: 8\D?000/ })).toBeInTheDocument()
+    // La revancha empieza con el reloj de nuevo: se reinició y vuelve a arrancar solo.
+    expect(within(host.container).getByRole('button', { name: 'Pausar el reloj' })).toBeInTheDocument()
+    flush()
+    expect(within(guest.container).getByRole('button', { name: 'Pausar el reloj' })).toBeInTheDocument()
   })
 
   it('el robo del turno: al pasar el turno no se roba de más, y el que no empezó roba en su primer turno', () => {
@@ -504,5 +512,27 @@ describe('la pantalla del duelo', () => {
     click(host, 'Draw Phase')
     flush()
     expect(hand(guest)).toBe(7)
+  })
+
+  it('recargar dentro de la sala con un deck pegado y el builder vacío: el deck guardado vuelve solo y se puede repartir', async () => {
+    const ydk = ['#main', ...Array.from({ length: 12 }, (_, index) => String(3000 + index))].join('\n')
+    localStorage.setItem('ygo-lab:duel-deck', ydk)
+
+    // Ana crea la sala; Beto (sin deck armado) llega a ella por la dirección, como al recargar la página.
+    const host = render(<DuelScreen {...screenProps()} />)
+    typeInto(host, 'Tu nombre', 'Ana')
+    click(host, 'Crear un duelo')
+    const room = extractRoomCode(within(host.container).getByTestId('duel-link').textContent ?? '')!
+    sessionStorage.removeItem('ygo-lab:duel-role:' + room)
+    const guest = render(<DuelScreen {...screenProps({ mainIds: mainIds.slice(0, 2), extraIds: [], cardsById: new Map() })} />)
+    flush()
+
+    // Sin deck todavía no puede repartir; cuando vuelve el guardado, sí.
+    expect(within(guest.container).getByRole('button', { name: 'Repartir mi mano' })).toBeDisabled()
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30))
+    })
+    flush()
+    expect(within(guest.container).getByRole('button', { name: 'Repartir mi mano' })).toBeEnabled()
   })
 })

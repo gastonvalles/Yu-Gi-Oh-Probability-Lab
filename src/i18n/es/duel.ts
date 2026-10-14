@@ -67,7 +67,6 @@ export const duel = {
   'duel.bar.clock': 'Reloj de la ronda: {time}',
   'duel.bar.clockStart': 'Iniciar el reloj',
   'duel.bar.clockPause': 'Pausar el reloj',
-  'duel.bar.clockReset': 'Reiniciar el reloj',
   'duel.bar.leave': 'Salir del duelo',
   'duel.bar.leaveTitle': '¿Salir del duelo?',
   'duel.bar.leaveText': 'Tu rival se queda en la sala. Si volvés con el mismo enlace, repartís una mano nueva.',

@@ -78,7 +78,7 @@ describe('la mesa de práctica en inglés', () => {
 
     const two = run([{ type: 'place', id: 'x1', zone: 'emz', index: 0, pos: 'atk' }, { type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }])
     expect(labels(two, 'c1').slice(0, 2)).toEqual(['Normal Summon', 'Set'])
-    expect(labels(two, 'a1')).toEqual(['Activate effect', 'Switch to Defense', 'Turn face-down', 'Attach to X1', 'Counter +1', 'Target', 'To the Spell & Trap Zone', 'To hand', 'To the Graveyard', 'Banish', 'Top of the Deck', 'Bottom of the Deck'])
+    expect(labels(two, 'a1')).toEqual(['Activate effect', 'Switch to Defense', 'Turn face-down', 'Attach to X1', 'Target', 'To the Spell & Trap Zone', 'To hand', 'To the Graveyard', 'Banish', 'Top of the Deck', 'Bottom of the Deck'])
   })
 
   it('el nombre de un combo sin nombre sale en el idioma de ese momento', () => {

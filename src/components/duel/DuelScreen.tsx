@@ -20,7 +20,7 @@ import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { DuelBar } from './DuelBar'
-import { DuelDeckPicker, type DuelDeck } from './DuelDeckPicker'
+import { DuelDeckPicker, loadDuelDeck, readStoredDeck, type DuelDeck } from './DuelDeckPicker'
 import { gameText, outcomeText, rpsName } from './game-text'
 import { artOfDrawId } from './duel-art'
 import { DUEL_AREAS, SideCells, sharedZoneCard, TheirHand, type DuelSideView } from './DuelTable'
@@ -87,6 +87,28 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
   const settings = useMemo(() => ({ lp, hand: handSize }), [lp, handSize])
   const { duel, snapshot, status } = useDuel({ room: intent?.room ?? null, role: intent?.role ?? 'guest', name: myName, settings, connect })
   const deckReady = deck.mainIds.length >= handSize
+
+  // Sin deck armado (un celular que nunca abrió el builder), el último deck pegado se vuelve a usar solo: también al recargar dentro de la sala, por eso va acá y no en el lobby.
+  const builderTooSmall = mainIds.length < handSize
+  useEffect(() => {
+    const stored = readStoredDeck()
+
+    if (!builderTooSmall || stored === null) {
+      return
+    }
+
+    let cancelled = false
+
+    void loadDuelDeck(stored)
+      .then((loaded) => {
+        if (loaded && !cancelled) setImported((current) => current ?? loaded)
+      })
+      .catch(() => undefined)
+
+    return () => {
+      cancelled = true
+    }
+  }, [builderTooSmall])
 
   // Pegar un enlace de duelo en la barra de direcciones (o abrirlo en esta misma pestaña) lleva a esa sala.
   useEffect(() => {
@@ -224,7 +246,7 @@ function DuelLobby({ name, onName, lp, onLp, builder, imported, onImport, deckRe
         <input aria-label={t('duel.lobby.name')} placeholder={t('duel.lobby.namePlaceholder')} maxLength={40} value={name} onChange={(event) => onName(event.target.value)} className={fieldInline} />
       </FieldBox>
 
-      <DuelDeckPicker builder={builder} minMain={minDeck} imported={imported} onImport={onImport} />
+      <DuelDeckPicker builder={builder} imported={imported} onImport={onImport} />
 
       <div className="grid gap-1.5" role="group" aria-label={t('duel.lobby.lp')}>
         <span className="text-micro font-semibold uppercase tracking-[0.04em] text-soft">{t('duel.lobby.lp')}</span>
@@ -351,6 +373,27 @@ function DuelRoom({ snapshot, status, room, deckReady, onStart, onLeave }: { sna
 const NOTHING = () => undefined
 
 /**
+ * El reloj de la ronda arranca solo cuando los dos tienen su mano (lo pone en marcha el anfitrión y el invitado lo recibe): nadie tiene que acordarse de
+ * apretar play. Sólo si el reloj está en cero y parado; si alguien ya lo pausó o lo reinició a mano, no se toca.
+ */
+function useAutoStartClock(duel: Duel, snapshot: DuelSnapshot) {
+  const checked = useRef(false)
+  const { role, life } = snapshot
+
+  useEffect(() => {
+    if (checked.current) {
+      return
+    }
+
+    checked.current = true
+
+    if (role === 'host' && !life.timer.running && life.timer.elapsedMs === 0) {
+      duel.toggleClock()
+    }
+  }, [duel, role, life.timer.running, life.timer.elapsedMs])
+}
+
+/**
  * La carta del turno se roba cuando empieza el turno propio, o sea cuando el rival pasa el suyo: así el segundo jugador roba en su primer turno
  * y quien pasa no roba de más antes de tiempo (la mesa, en un duelo, no roba sola al pasar). Pasar dos veces por lo mismo (el rival deshace y repite)
  * no roba dos veces.
@@ -459,6 +502,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   const turn = whoseTurn(snapshot.me, mine, theirs!.state, snapshot.starter)
   useGameToasts(snapshot, myName)
   useTurnDraw(duel, snapshot, turn)
+  useAutoStartClock(duel, snapshot)
   const announcement = useRivalAttack(snapshot, cardsById)
   // A quiénes se puede atacar: los monstruos del rival en el campo, con el id que él les dio.
   const attackTargets = useMemo(
@@ -484,7 +528,6 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
             onChangeLife={duel.changeLife}
             onHalve={duel.halveLife}
             onToggleClock={duel.toggleClock}
-            onResetClock={duel.resetClock}
             games={duel}
             onLeave={onLeave}
           />

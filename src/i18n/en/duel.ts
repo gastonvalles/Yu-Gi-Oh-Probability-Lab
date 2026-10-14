@@ -63,7 +63,6 @@ export const duel: Translated<typeof es> = {
   'duel.bar.clock': 'Round clock: {time}',
   'duel.bar.clockStart': 'Start the clock',
   'duel.bar.clockPause': 'Pause the clock',
-  'duel.bar.clockReset': 'Reset the clock',
   'duel.bar.leave': 'Leave the duel',
   'duel.bar.leaveTitle': 'Leave the duel?',
   'duel.bar.leaveText': 'Your opponent stays in the room. If you come back with the same link, you deal a new hand.',
