@@ -10,6 +10,7 @@ const loaders = {
   exportDeck: () => import('../ExportDeckPanel'),
   comparison: () => import('../comparison/ComparisonScreen'),
   practice: () => import('../probability/PracticeSection'),
+  duel: () => import('../duel/DuelScreen'),
   tierLists: () => import('../meta/TierListsScreen'),
   tournaments: () => import('../meta/TournamentDecksScreen'),
   replays: () => import('../replays/ReplaysScreen'),
@@ -68,6 +69,7 @@ export const LazyProbabilityPanel = lazy(orReload(() => loaders.probability().th
 export const LazyExportDeckPanel = lazy(orReload(() => loaders.exportDeck().then((m) => ({ default: m.ExportDeckPanel }))))
 export const LazyComparisonScreen = lazy(orReload(() => loaders.comparison().then((m) => ({ default: m.ComparisonScreen }))))
 export const LazyPracticeSection = lazy(orReload(() => loaders.practice().then((m) => ({ default: m.PracticeSection }))))
+export const LazyDuelScreen = lazy(orReload(() => loaders.duel().then((m) => ({ default: m.DuelScreen }))))
 export const LazyTierListsScreen = lazy(orReload(() => loaders.tierLists().then((m) => ({ default: m.TierListsScreen }))))
 export const LazyTournamentDecksScreen = lazy(orReload(() => loaders.tournaments().then((m) => ({ default: m.TournamentDecksScreen }))))
 export const LazyReplaysScreen = lazy(orReload(() => loaders.replays().then((m) => ({ default: m.ReplaysScreen }))))

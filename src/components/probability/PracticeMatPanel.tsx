@@ -31,29 +31,33 @@ interface PracticeMatPanelProps {
   onLoad: (combo: SavedCombo) => void
   onRename: (combo: SavedCombo, name: string) => void
   onDelete: (combo: SavedCombo) => void
+  /** Sin la pestaña de combos guardados (en un duelo, donde no se guardan combos). */
+  showCombos?: boolean
   className?: string
 }
 
 
 /** Panel lateral de la mesa: las jugadas de esta partida (se toca una para volver a ese paso) y los combos guardados. */
-export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, cursor, onSeek, combos, deckName, onLoad, onRename, onDelete, className }: PracticeMatPanelProps) {
+export const PracticeMatPanel = memo(function PracticeMatPanel({ steps, cursor, onSeek, combos, deckName, onLoad, onRename, onDelete, showCombos = true, className }: PracticeMatPanelProps) {
   const [tab, setTab] = useState<PanelTab>('steps')
 
   return (
     <div className={cx('flex min-h-0 flex-col gap-3', className)}>
-      <Segmented
-        value={tab}
-        onChange={setTab}
-        label={t('practice.panel.label')}
-        size="sm"
-        fullWidth
-        options={[
-          { value: 'steps', label: t('practice.panel.steps'), count: steps.length },
-          { value: 'combos', label: t('practice.panel.combos'), count: combos.length },
-        ]}
-      />
+      {showCombos ? (
+        <Segmented
+          value={tab}
+          onChange={setTab}
+          label={t('practice.panel.label')}
+          size="sm"
+          fullWidth
+          options={[
+            { value: 'steps', label: t('practice.panel.steps'), count: steps.length },
+            { value: 'combos', label: t('practice.panel.combos'), count: combos.length },
+          ]}
+        />
+      ) : null}
 
-      {tab === 'steps' ? (
+      {tab === 'steps' || !showCombos ? (
         steps.length === 0 ? (
           <EmptyState icon="hand" title={t('practice.panel.noPlays')}>
             {t('practice.panel.noPlaysHint')}

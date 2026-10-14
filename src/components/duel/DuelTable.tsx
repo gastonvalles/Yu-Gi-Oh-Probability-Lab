@@ -45,6 +45,9 @@ const MINE_ROWS = ["'fld m1 m2 m3 m4 m5 gy'", "'extra s1 s2 s3 s4 s5 deck'"]
 /** La tira del medio: el Banish de cada uno en su costado, las dos Zonas Extra (sobre la 2.ª y la 4.ª columna) y las fases entre medio. */
 const middleRow = (theirs: boolean, mine: boolean) => `'${theirs ? 'tban' : '.'} p1 emz1 p2 emz2 p3 ${mine ? 'ban' : '.'}'`
 
+/** Las áreas de la mesa con los dos campos, para quien arma la grilla por su cuenta (la mesa de práctica, que pone las suyas). */
+export const DUEL_AREAS = [...THEIR_ROWS, middleRow(true, true), ...MINE_ROWS].join(' ')
+
 /** Las columnas de los costados miden lo justo de una carta (0,6857 de una del centro): todas las cartas del campo miden lo mismo. */
 const GRID =
   'relative grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,4.5rem)_repeat(5,minmax(0,6.5rem))_minmax(0,4.5rem)]'
@@ -92,7 +95,7 @@ export function DuelTable({ mine, theirs, show = 'both', turn = 'mine', classNam
 }
 
 /** La mano del rival: sólo se ve cuántas cartas tiene, de dorso y encimadas. */
-function TheirHand({ count }: { count: number }) {
+export function TheirHand({ count }: { count: number }) {
   return (
     <div role="img" aria-label={t('duel.hand.theirs', { count })} className="flex h-9 justify-center">
       {Array.from({ length: Math.min(count, 12) }, (_, index) => (
@@ -134,8 +137,14 @@ function SharedZone({ area, index, mine, theirs }: { area: string; index: number
   )
 }
 
+/** La carta del rival que ocupa, vista desde acá, la Zona Extra `index` (0 = izquierda), para dibujarla dentro de la casilla propia; null si no hay. */
+export function sharedZoneCard(theirs: DuelSideView, index: number) {
+  const placed = theirs.state.emz[1 - index] ?? null
+  return placed ? <CardOnZone placed={placed} spot="emz" side={theirs} owner="theirs" label={zoneLabel('mine', 'emz', index)} /> : null
+}
+
 /** Las zonas y pilas de un lado. Las áreas del rival llevan una `t` delante (`tm1`, `tgy`…). */
-function SideCells({ side, owner }: { side: DuelSideView; owner: Owner }) {
+export function SideCells({ side, owner }: { side: DuelSideView; owner: Owner }) {
   const prefix = owner === 'theirs' ? 't' : ''
   const { state } = side
 

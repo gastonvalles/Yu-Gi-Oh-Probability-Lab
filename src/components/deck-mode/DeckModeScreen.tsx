@@ -7,6 +7,7 @@ import { buildActiveRuleSet } from '../../app/pattern-presets'
 import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
 import { createMatState, randomSeed, shuffleWithSeed } from '../../app/practice-mat'
 import { useMatSession } from '../../app/use-mat-session'
+import { connectToRelay, duelRelayUrl } from '../../app/use-duel'
 import { t } from '../../i18n'
 import type { DeckCardInstance } from '../../app/model'
 import type { SavedCombo } from '../../app/saved-combos'
@@ -30,6 +31,7 @@ import {
   LazyBanlistsScreen,
   LazyComparisonScreen,
   LazyDeckRolesPanel,
+  LazyDuelScreen,
   LazyExpansionsScreen,
   LazyExportDeckPanel,
   LazyPracticeSection,
@@ -98,12 +100,20 @@ export function DeckModeScreen() {
   const isDeckBuilderStep = activeStep === 'deck-builder'
   const isCategorizationStep = activeStep === 'categorization'
   const isPracticeStep = activeStep === 'practice'
+  const isDuelStep = activeStep === 'duel'
+  // La práctica y el duelo juegan con las mismas copias del deck armado.
+  const matDeck = usePracticeDeck(controller.probability.derivedMainCards, controller.exportDeck.deckBuilder.extra)
+  // El duelo por enlace se ofrece sólo si la app sabe a qué relay conectarse (`VITE_DUEL_RELAY_URL`).
+  const duelConnect = useMemo(() => {
+    const url = duelRelayUrl()
+    return url ? connectToRelay(url) : null
+  }, [])
   // La partida vive acá y no en la pantalla: salir de la práctica (a la calculadora, al builder) no pierde la mano ni el combo en curso.
   const practice = usePracticeSession({
     active: isPracticeStep,
     handSize: controller.probability.handSize,
     derivedMainCards: controller.probability.derivedMainCards,
-    extraZone: controller.exportDeck.deckBuilder.extra,
+    deck: matDeck,
     deckName: controller.exportDeck.deckName,
     patterns: controller.probability.patterns,
     disabledGenericRuleIds: controller.probability.disabledGenericRuleIds,
@@ -205,7 +215,7 @@ export function DeckModeScreen() {
   )
   const deckBuilderStep = controller.deckBuilderStep
   // El menú: los pasos del deck, las herramientas (la práctica es una pantalla; la calculadora y las mascotas abren un panel encima) y la referencia. La práctica necesita cartas en el Main.
-  const navGroups = useMemo(() => buildAppNavGroups(navigationItems, { practice: mainDeckCount > 0 }), [navigationItems, mainDeckCount])
+  const navGroups = useMemo(() => buildAppNavGroups(navigationItems, { practice: mainDeckCount > 0, duel: duelConnect !== null }), [navigationItems, mainDeckCount, duelConnect])
   const handleNavSelect = useCallback(
     (key: string) => {
       if (key === 'life') setLifeOpen(true)
@@ -233,7 +243,7 @@ export function DeckModeScreen() {
     <section
       className={cx(
         'grid content-start',
-        isCategorizationStep ? 'h-full min-h-0' : isPracticeStep ? 'h-full min-h-0 grid-rows-[minmax(0,1fr)]' : 'min-h-full min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[minmax(0,1fr)]',
+        isCategorizationStep ? 'h-full min-h-0' : isPracticeStep || isDuelStep ? 'h-full min-h-0 grid-rows-[minmax(0,1fr)]' : 'min-h-full min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[minmax(0,1fr)]',
       )}
     >
       {activeStep === 'categorization' ? (
@@ -266,6 +276,19 @@ export function DeckModeScreen() {
             {t('shell.practice.title')}
           </Heading>
           {practice ? <LazyPracticeSection {...practice} /> : <Callout tone="info" className="m-4">{t('practice.section.needCards')}</Callout>}
+        </div>
+      ) : null}
+
+      {activeStep === 'duel' ? (
+        <div id="duel" className="h-full min-h-0 min-w-0">
+          <Heading level="page" className="sr-only">
+            {t('duel.nav.title')}
+          </Heading>
+          {duelConnect ? (
+            <LazyDuelScreen handSize={controller.probability.handSize} mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} connect={duelConnect} />
+          ) : (
+            <Callout tone="info" className="m-4">{t('duel.unavailable')}</Callout>
+          )}
         </div>
       ) : null}
 
@@ -307,7 +330,7 @@ export function DeckModeScreen() {
         // La pantalla nueva aparece (fundido) donde va a quedar: nada se desliza ni cambia de lugar.
         'min-w-0 animate-step-in motion-reduce:animate-none',
         // En escritorio toda pantalla mide el recuadro del armazón (sin pie): una más alta lo desborda y scrollea; una que reparte el alto entre columnas (Expansiones) lo usa justo.
-        isDeckBuilderStep || isCategorizationStep || isPracticeStep ? 'h-full min-h-0' : 'min-h-full min-[1101px]:h-full min-[1101px]:min-h-0',
+        isDeckBuilderStep || isCategorizationStep || isPracticeStep || isDuelStep ? 'h-full min-h-0' : 'min-h-full min-[1101px]:h-full min-[1101px]:min-h-0',
       )}
     >
       <Suspense fallback={null}>{stepContent}</Suspense>
@@ -316,7 +339,7 @@ export function DeckModeScreen() {
 
   return (
     <>
-      <AppShell groups={navGroups} activeKey={activeStep} onSelect={handleNavSelect} contentScrollable={!isDeckBuilderStep && !isPracticeStep} immersive={isPracticeStep} contentScrollRef={contentScrollRef}>
+      <AppShell groups={navGroups} activeKey={activeStep} onSelect={handleNavSelect} contentScrollable={!isDeckBuilderStep && !isPracticeStep && !isDuelStep} immersive={isPracticeStep || isDuelStep} contentScrollRef={contentScrollRef}>
         {mainContent}
       </AppShell>
 
@@ -357,12 +380,25 @@ export function DeckModeScreen() {
 
 type PracticeScreenProps = ComponentProps<typeof LazyPracticeSection>
 
+/** Las copias del deck armado como las juega la mesa: ids de cada carta (`card-123-2`) del Main y del Extra, y cómo se llama cada una. */
+function usePracticeDeck(derivedMainCards: import('../../types').CardEntry[], extraZone: DeckCardInstance[]) {
+  const mainIds = useMemo(() => buildPracticeDeck(derivedMainCards).map((card) => card.drawId), [derivedMainCards])
+  const extraCards = useMemo(() => buildPracticeDeck(deriveMainDeckCardsFromZone(extraZone)), [extraZone])
+  const extraIds = useMemo(() => extraCards.map((card) => card.drawId), [extraCards])
+  const cardsById = useMemo(
+    () => new Map([...buildPracticeDeck(derivedMainCards), ...extraCards].map((card) => [card.drawId, { name: card.name, apiCard: card.apiCard }])),
+    [derivedMainCards, extraCards],
+  )
+
+  return { mainIds, extraIds, cardsById }
+}
+
 interface PracticeSessionInput {
   /** La pantalla de práctica está abierta: al entrar sin partida, ya se reparte la mano. */
   active: boolean
   handSize: number
   derivedMainCards: import('../../types').CardEntry[]
-  extraZone: DeckCardInstance[]
+  deck: ReturnType<typeof usePracticeDeck>
   deckName: string
   patterns: import('../../types').HandPattern[]
   disabledGenericRuleIds: string[]
@@ -375,7 +411,7 @@ function usePracticeSession({
   active,
   handSize,
   derivedMainCards,
-  extraZone,
+  deck: { mainIds, extraIds, cardsById },
   deckName,
   patterns,
   disabledGenericRuleIds,
@@ -392,14 +428,6 @@ function usePracticeSession({
   const reviewPendingPatternCount = useMemo(() => patterns.filter((p) => p.needsReview).length, [patterns])
 
   const { session, state, start, dispatch, undo, seek } = useMatSession()
-  const mainIds = useMemo(() => buildPracticeDeck(derivedMainCards).map((card) => card.drawId), [derivedMainCards])
-  const extraCards = useMemo(() => buildPracticeDeck(deriveMainDeckCardsFromZone(extraZone)), [extraZone])
-  const extraIds = useMemo(() => extraCards.map((card) => card.drawId), [extraCards])
-  const cardsById = useMemo(
-    () => new Map([...buildPracticeDeck(derivedMainCards), ...extraCards].map((card) => [card.drawId, { name: card.name, apiCard: card.apiCard }])),
-    [derivedMainCards, extraCards],
-  )
-
   const newHand = useCallback(() => start(createMatState(shuffleWithSeed(mainIds, randomSeed()), extraIds, handSize)), [start, mainIds, extraIds, handSize])
   const loadCombo = useCallback((combo: SavedCombo) => start(combo.initial, combo.actions, combo.names), [start])
 
