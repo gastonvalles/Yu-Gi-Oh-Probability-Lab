@@ -11,6 +11,10 @@ export const duel = {
   'duel.zone.conflict': '{zone}: la ocupan los dos',
   'duel.hand.theirs': 'Mano del rival: {count}',
   'duel.phase.current': 'Fase actual: {phase}',
+  // El aviso cuando el rival ataca.
+  'duel.announce.attack': '{name} ataca a {target}',
+  'duel.announce.attackDirect': '{name} te ataca directo',
+  'duel.announce.yourCard': 'una de tus cartas',
 
   // Antes de entrar a una sala.
   'duel.lobby.title': 'Duelo con un amigo',

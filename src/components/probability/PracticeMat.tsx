@@ -3,8 +3,10 @@ import { createPortal } from 'react-dom'
 
 import { parseDerivedCardId } from '../../app/calculator-state'
 import { matEffects, type LandingTone, type ShowcaseKind, type SpotlightKind } from '../../app/mat-effects'
+import { isOpaqueId } from '../../app/mat-public'
 import {
   allMatIds,
+  type AttackTarget,
   banishItem,
   cardKindOf,
   describeMatSteps,
@@ -80,6 +82,12 @@ export interface DuelMatLink {
   sharedZone: (index: number) => ReactNode
   /** Arriba del campo: la barra del duelo y la mano del rival. */
   header: ReactNode
+  /** Los monstruos del rival en el campo (con el id que él les dio) y dónde están: a cuáles se puede atacar. */
+  attackTargets: ReadonlyArray<{ id: string; zone: 'mz' | 'emz'; index: number; faceDown: boolean }>
+  /** id que dio el rival → carta real, de lo que ya mostró: así se nombra a quien se ataca. */
+  foreignKnown: Readonly<Record<string, string>>
+  /** Lo que el rival acaba de hacer y se avisa grande en el centro (su ataque); cambiar `key` lo vuelve a mostrar. */
+  announcement?: { key: number; art: string | null; name: string; caption: string }
 }
 
 interface PracticeMatProps {
@@ -113,6 +121,8 @@ const TOKEN_ART = 'https://images.ygoprodeck.com/images/cards_small/73915052.jpg
 // El nombre se arma al leerlo (no al cargar el módulo): así sale en el idioma activo.
 const TOKEN_CARD: MatCard = { get name() { return t('practice.token.name') }, apiCard: null, art: TOKEN_ART }
 const UNKNOWN_CARD: MatCard = { get name() { return t('practice.card.unknown') }, apiCard: null }
+/** Una carta del rival que todavía no mostró (el objetivo de un ataque a un monstruo boca abajo). */
+const RIVAL_MONSTER: MatCard = { get name() { return t('practice.attack.rivalMonster') }, apiCard: null }
 const EMPTY_IDS: ReadonlySet<string> = new Set()
 
 /** Pausa antes de repartir la primera carta (mientras el mazo se baraja) y entre carta y carta. */
@@ -253,8 +263,12 @@ export function PracticeMat({
   const requestedRef = useRef(new Set<number>())
 
   const cardOf = useCallback(
-    (id: string): MatCard => {
-      if (isToken(id)) return TOKEN_CARD
+    (shown: string): MatCard => {
+      if (isToken(shown)) return TOKEN_CARD
+
+      // Un id del rival (el objetivo de un ataque) se resuelve por la carta que él mostró; si no mostró ninguna, no se sabe cuál es.
+      const id = duel && isOpaqueId(shown) ? duel.foreignKnown[shown] : shown
+      if (id === undefined) return RIVAL_MONSTER
 
       const known = cardsById.get(id) ?? byCardId.get(cardIdOfDrawId(id))
       if (known) return known
@@ -263,11 +277,13 @@ export function PracticeMat({
       const remote = ygoId === null ? undefined : fetched.get(ygoId)
       return remote ?? { name: session.names[id] ?? UNKNOWN_CARD.name, apiCard: null }
     },
-    [cardsById, byCardId, fetched, session.names],
+    [cardsById, byCardId, fetched, session.names, duel],
   )
 
   useEffect(() => {
-    const missing = [...new Set(allMatIds(state).map(cardIdOfDrawId))]
+    // Con los monstruos del rival a los que se puede atacar, también sus nombres (los de su deck no están en `cardsById`).
+    const rivals = duel ? duel.attackTargets.flatMap((target) => duel.foreignKnown[target.id] ?? []) : []
+    const missing = [...new Set([...allMatIds(state), ...rivals].map(cardIdOfDrawId))]
       .filter((cardId) => !byCardId.has(cardId))
       .map(parseDerivedCardId)
       .filter((ygoId): ygoId is number => ygoId !== null && !fetched.has(ygoId) && !requestedRef.current.has(ygoId))
@@ -278,7 +294,7 @@ export function PracticeMat({
     void fetchCardsByIds(missing)
       .then((cards) => setFetched((current) => new Map([...current, ...cards.map((card) => [card.ygoprodeckId, { name: card.name, apiCard: card }] as const)])))
       .catch(() => {})
-  }, [state, byCardId, fetched])
+  }, [state, byCardId, fetched, duel])
 
   // El dorso se pide una vez, al abrir la mesa: así está en la caché cuando se reparte la mano o una carta se da vuelta.
   useEffect(() => {
@@ -287,6 +303,15 @@ export function PracticeMat({
 
   const nameOf = useCallback((id: string) => cardOf(id).name, [cardOf])
   const kindOf = useCallback((id: string) => (isToken(id) ? TOKEN_KIND : cardKindOf(cardOf(id).apiCard)), [cardOf])
+  // A quiénes se puede atacar (en un duelo): los monstruos del rival, nombrados por su zona y, si los mostró, por la carta.
+  const attackTargets = useMemo<AttackTarget[]>(
+    () =>
+      (duel?.attackTargets ?? []).map(({ id, zone, index, faceDown }) => ({
+        id,
+        label: t('practice.attack.target', { zone: t('duel.zone.theirs', { zone: zoneLabelOf(zone, index) }), name: faceDown ? t('practice.attack.faceDown') : nameOf(id) }),
+      })),
+    [duel, nameOf],
+  )
   const steps = useMemo(() => describeMatSteps(session.initial, session.actions, nameOf), [session.initial, session.actions, nameOf])
   // La lista de pasos: la frase de cada jugada, las miniaturas de las cartas que mueve (hasta tres, las que tienen imagen) y si es un cambio de fase.
   const stepCards = useMemo(() => matStepCards(session.initial, session.actions), [session.initial, session.actions])
@@ -829,10 +854,10 @@ export function PracticeMat({
       ]
     }
 
-    const items = menu.drop ? listDropActions(state, menu.id, kindOf, nameOf, menu.drop) : listCardActions(state, menu.id, kindOf, nameOf)
+    const items = menu.drop ? listDropActions(state, menu.id, kindOf, nameOf, menu.drop) : listCardActions(state, menu.id, kindOf, nameOf, attackTargets)
 
     return items.map((item) => ({ label: item.label, onSelect: () => choose(item, menu.drop) }))
-  }, [menu, state, kindOf, nameOf, play, choose, summonToken])
+  }, [menu, state, kindOf, nameOf, attackTargets, play, choose, summonToken])
 
   const menuCard = menu?.kind === 'card' ? cardOf(menu.id) : menu?.kind === 'token' ? TOKEN_CARD : null
   const menuWhere = menu?.kind === 'card' ? locateCard(state, menu.id) : null
@@ -1296,6 +1321,17 @@ export function PracticeMat({
           cards={stage.ids.map((id) => ({ id, name: cardOf(id).name, art: artOf(cardOf(id)) }))}
           caption={steps[stage.step - 1] ?? null}
           flip={stage.flip}
+          className="absolute inset-y-0 left-0 right-0 z-[120] min-[1101px]:right-[20rem]"
+        />
+      ) : null}
+
+      {/* El ataque del rival en un duelo: su monstruo grande en el centro, con quién ataca a quién arriba (se va solo, como los otros avisos). */}
+      {duel?.announcement ? (
+        <Spotlight
+          key={duel.announcement.key}
+          kind="attack"
+          cards={[{ id: `rival-${duel.announcement.key}`, name: duel.announcement.name, art: duel.announcement.art }]}
+          caption={duel.announcement.caption}
           className="absolute inset-y-0 left-0 right-0 z-[120] min-[1101px]:right-[20rem]"
         />
       ) : null}

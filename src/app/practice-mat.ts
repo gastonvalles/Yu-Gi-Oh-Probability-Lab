@@ -88,6 +88,11 @@ export type MatAction =
   | { type: 'declare'; id: string }
   /** Target (o quitar el target) de una carta: el objetivo de un efecto, con una mira encima. */
   | { type: 'target'; id: string }
+  /**
+   * Atacar con un monstruo en ataque durante la Battle Phase: sólo queda anotado (el daño y la destrucción se cuentan a mano, como en la mesa).
+   * `target` es un monstruo del rival, con el id que el rival le dio (en un duelo); sin `target`, es un ataque directo.
+   */
+  | { type: 'attack'; id: string; target?: string }
   /** Cambiar de fase; de la End Phase a la Draw Phase empieza otro turno. */
   | { type: 'phase'; phase: MatPhase }
 
@@ -398,6 +403,7 @@ export function matReducer(state: MatState, action: MatAction): MatState {
 
     case 'reveal':
     case 'declare':
+    case 'attack':
       return state
 
     case 'target': {
@@ -548,6 +554,9 @@ function describePlay(before: MatState, action: MatAction, name: (id: string) =>
     case 'declare':
       return t('practice.step.declare', { card: name(action.id) })
 
+    case 'attack':
+      return action.target === undefined ? t('practice.step.attackDirect', { card: name(action.id) }) : t('practice.step.attack', { card: name(action.id), target: name(action.target) })
+
     case 'target':
       return before.targeted.includes(action.id) ? t('practice.step.untarget', { card: name(action.id) }) : t('practice.step.target', { card: name(action.id) })
 
@@ -668,6 +677,12 @@ export interface MatTarget {
   index: number
 }
 
+/** Un monstruo del rival al que se puede atacar: su id (el que él le dio) y cómo se lo nombra en el menú. */
+export interface AttackTarget {
+  id: string
+  label: string
+}
+
 export interface MatMenuItem {
   label: string
   /** La jugada; si hay `targets`, apunta a la primera zona libre y la mesa deja elegir otra. */
@@ -725,7 +740,7 @@ export function freeTargets(state: MatState, zones: readonly MatSpot[]): MatTarg
  * defensa; las fichas no se colocan boca abajo ni salen del campo; la Extra Monster Zone sólo se ofrece a lo que
  * viene del Extra Deck.
  */
-export function listCardActions(state: MatState, id: string, kindOf: (id: string) => MatCardKind, nameOf: (id: string) => string): MatMenuItem[] {
+export function listCardActions(state: MatState, id: string, kindOf: (id: string) => MatCardKind, nameOf: (id: string) => string, attackTargets: readonly AttackTarget[] = []): MatMenuItem[] {
   const where = locateCard(state, id)
 
   if (!where) {
@@ -769,6 +784,14 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
         add(t('practice.menu.flipSummon'), { type: 'position', id, pos: 'atk' })
         add(t('practice.menu.turnFaceUp'), { type: 'position', id, pos: 'def' })
       } else {
+        // Sólo en la Battle Phase y sólo un monstruo en ataque: "Atacar" pregunta a cuál de los del rival; "Ataque directo" se ofrece siempre (la mesa no hace cumplir la regla).
+        if (state.phase === 'battle' && placed.pos === 'atk') {
+          const [first, ...rest] = attackTargets.map((rival): MatMenuItem => ({ label: rival.label, action: { type: 'attack', id, target: rival.id } }))
+
+          if (first) items.push(askItem(t('practice.menu.battleAttack'), [first, ...rest]))
+          add(t('practice.menu.attackDirectly'), { type: 'attack', id })
+        }
+
         if (kind.effect) add(t('practice.menu.activateEffect'), { type: 'activate', id })
         if (!kind.link) add(placed.pos === 'atk' ? t('practice.menu.toDefense') : t('practice.menu.toAttack'), { type: 'position', id, pos: placed.pos === 'atk' ? 'def' : 'atk' })
         if (!kind.link && !isToken(id)) add(t('practice.menu.turnFaceDown'), { type: 'position', id, pos: 'set' })
