@@ -87,6 +87,12 @@ export interface DuelMatLink {
   attackTargets: ReadonlyArray<{ id: string; zone: 'mz' | 'emz'; index: number; faceDown: boolean }>
   /** id que dio el rival → carta real, de lo que ya mostró: así se nombra a quien se ataca. */
   foreignKnown: Readonly<Record<string, string>>
+  /** De quién es el turno: terminar el turno propio sólo se ofrece en el propio. */
+  turn: 'mine' | 'theirs'
+  /** El cartel de lo que el rival avanzó (una fase suya, o que empieza tu turno); cambiar `key` lo vuelve a mostrar. */
+  notice?: { key: number; phase: MatPhase; turn?: number; who?: string; label?: string }
+  /** El texto del cartel cuando terminás tu turno y pasa al rival ("Turno de Ana"). */
+  rivalTurnLabel: string
   /** Lo que el rival acaba de hacer y se avisa grande en el centro (su ataque); cambiar `key` lo vuelve a mostrar. */
   announcement?: { key: number; art: string | null; name: string; caption: string }
 }
@@ -565,6 +571,9 @@ export function PracticeMat({
     },
     [onDispatch, viewer, closeViewer, searching],
   )
+
+  /** Terminar el turno de un toque (sólo en un duelo): una sola jugada que pasa a la Draw Phase del turno que sigue sin robar (la carta la roba quien lo empieza). */
+  const passTurn = useCallback(() => play({ type: 'phase', phase: 'draw', skipDraw: true, pass: true }), [play])
 
   /** Una jugada del menú: con Sacrificios primero se eligen; si puede salir a varias zonas, la mesa pide elegir una (como "Choose Zones" en DuelingBook). */
   const choose = useCallback(
@@ -1219,7 +1228,8 @@ export function PracticeMat({
           {pileCell('banished', 'ban')}
 
           {/* Cambio de fase: el cartel se asoma en el medio del campo y se va agrandándose. */}
-          {banner ? <PhaseBanner key={banner.key} phase={banner.phase} turn={banner.turn} className="absolute inset-0 z-30" /> : null}
+          {banner ? <PhaseBanner key={banner.key} phase={banner.phase} turn={banner.turn} label={duel && banner.turn !== null ? duel.rivalTurnLabel : undefined} className="absolute inset-0 z-30" /> : null}
+          {duel?.notice ? <PhaseBanner key={duel.notice.key} phase={duel.notice.phase} turn={duel.notice.turn ?? null} who={duel.notice.who} label={duel.notice.label} className="absolute inset-0 z-30" /> : null}
         </div>
 
         {/* Abajo del todo, como en la mesa real: la mano en abanico. Las salidas y problemas flotan sobre la mano en el celu, y van en el panel lateral en escritorio. */}
@@ -1289,6 +1299,12 @@ export function PracticeMat({
                 <PhaseButton key={phase.id} short={phase.short} name={phase.name} active={state.phase === phase.id} onPick={() => play({ type: 'phase', phase: phase.id, ...(duel ? { skipDraw: true as const } : {}) })} />
               ))}
             </div>
+          ) : null}
+          {/* Terminar el turno de un toque (la End Phase y la Draw Phase del rival, sin pasar por cada fase): sólo en el turno propio. */}
+          {duel && !choosing ? (
+            <Button variant="secondary" size="sm" className="min-h-8 flex-none px-3" disabled={duel.turn !== 'mine'} onClick={passTurn}>
+              {t('duel.turn.pass')}
+            </Button>
           ) : null}
           {/* El estado: eligiendo, pide lo que falta; si no, es sólo para el lector de pantalla (la última jugada y el contador ya están en la lista de pasos). */}
           <div className={cx('flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 px-1 text-micro text-muted', !choosing && 'sr-only')} role="status" aria-label={t('practice.mat.currentStep')}>

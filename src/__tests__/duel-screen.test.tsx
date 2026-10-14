@@ -65,6 +65,23 @@ function summonFirst(view: RenderResult): string {
   fireEvent.click(within(view.container).getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
   return name
 }
+/** De la sala a la mesa: los dos listos, definen con piedra-papel-tijera (gana el anfitrión), él elige ir primero (o segundo) y cada uno reparte su mano solo. */
+function openTable(host: RenderResult, guest: RenderResult, first: 'host' | 'guest' = 'host') {
+  click(host, 'Estoy listo')
+  flush()
+  click(guest, 'Estoy listo')
+  flush()
+  click(host, 'Piedra, papel o tijera')
+  flush()
+  click(host, 'Piedra')
+  flush()
+  click(guest, 'Tijera')
+  flush()
+  click(host, first === 'host' ? 'Voy primero' : 'Voy segundo')
+  // Cada uno reparte al enterarse (en un efecto) y lo que reparte le llega al otro en la vuelta siguiente.
+  flush()
+  flush()
+}
 const typeInto = (view: RenderResult, label: string, value: string) => fireEvent.change(within(view.container).getByLabelText(label), { target: { value } })
 
 beforeEach(() => {
@@ -102,7 +119,8 @@ describe('la pantalla del duelo', () => {
     expect(room).not.toBeNull()
     expect(within(view.container).getByTestId('duel-link')).toHaveTextContent(`#duel?room=${room}`)
     expect(within(view.container).getByText('Esperando a tu rival…')).toBeInTheDocument()
-    expect(within(view.container).getByRole('button', { name: 'Repartir mi mano' })).toBeDisabled()
+    // Sin rival todavía no hay nada que decir ni a quién esperar: no hay botón de estar listo.
+    expect(within(view.container).queryByRole('button', { name: 'Estoy listo' })).not.toBeInTheDocument()
   })
 
   it('unirse con algo que no es un código lo dice y no entra a ninguna sala', () => {
@@ -157,11 +175,26 @@ describe('la pantalla del duelo', () => {
     expect(within(guest.container).getByText('Ana está en la sala.')).toBeInTheDocument()
     expect(within(guest.container).queryByTestId('duel-link')).not.toBeInTheDocument()
 
-    click(host, 'Repartir mi mano')
+    // Cada uno ve si el otro está listo.
+    click(host, 'Estoy listo')
     flush()
-    expect(within(host.container).getByText('Esperando que tu rival reparta su mano…')).toBeInTheDocument()
+    expect(within(host.container).getByText('Esperando que Beto esté listo…')).toBeInTheDocument()
+    expect(within(guest.container).getAllByText('Listo')).toHaveLength(1)
+    click(guest, 'Estoy listo')
+    flush()
+    expect(within(host.container).getAllByText('Listo')).toHaveLength(2)
+    expect(within(guest.container).getAllByText('Listo')).toHaveLength(2)
 
-    click(guest, 'Repartir mi mano')
+    // Definen quién elige: gana el anfitrión y elige ir primero; los dos reciben su mano.
+    click(host, 'Piedra, papel o tijera')
+    flush()
+    click(host, 'Piedra')
+    flush()
+    click(guest, 'Tijera')
+    flush()
+    expect(within(guest.container).getByText('Ana está eligiendo quién va primero…')).toBeInTheDocument()
+    click(host, 'Voy primero')
+    flush()
     flush()
 
     // Ya hay mesa: la mano del rival se cuenta sin verse, y de quién es el turno lo ven igual los dos.
@@ -193,9 +226,7 @@ describe('la pantalla del duelo', () => {
     typeInto(guest, 'Enlace o código', link)
     click(guest, 'Unirme')
     flush()
-    click(host, 'Repartir mi mano')
-    click(guest, 'Repartir mi mano')
-    flush()
+    openTable(host, guest)
 
     click(guest, 'Salir del duelo')
     // Confirmar es otra acción, en un diálogo: cancelar no saca a nadie.
@@ -220,9 +251,7 @@ describe('la pantalla del duelo', () => {
     typeInto(guest, 'Enlace o código', link)
     click(guest, 'Unirme')
     flush()
-    click(host, 'Repartir mi mano')
-    click(guest, 'Repartir mi mano')
-    flush()
+    openTable(host, guest)
 
     // Beto invoca un monstruo; Ana invoca el suyo y pasa a la Battle Phase.
     const betoCard = summonFirst(guest)
@@ -274,9 +303,7 @@ describe('la pantalla del duelo', () => {
     typeInto(guest, 'Enlace o código', link)
     click(guest, 'Unirme')
     flush()
-    click(host, 'Repartir mi mano')
-    click(guest, 'Repartir mi mano')
-    flush()
+    openTable(host, guest)
 
     const panel = () => within(screen.getByRole('dialog', { name: 'Juegos y señales' }))
     const open = (view: RenderResult) => click(view, 'Moneda, dado y más')
@@ -302,7 +329,8 @@ describe('la pantalla del duelo', () => {
     expect(panel().getByText('Ana ya eligió.')).toBeInTheDocument()
     // No dice qué eligió: ni el resultado ni el registro lo cuentan todavía.
     expect(panel().queryByText(/ contra /)).not.toBeInTheDocument()
-    expect(panel().getByText('Ana eligió en piedra, papel o tijera')).toBeInTheDocument()
+    // En el registro están las dos elecciones de Ana: la de la sala, que definió quién empieza, y ésta.
+    expect(panel().getAllByText('Ana eligió en piedra, papel o tijera')).toHaveLength(2)
     fireEvent.click(panel().getByRole('button', { name: 'Tijera' }))
     flush()
     expect(panel().getByText('Tijera contra Piedra')).toBeInTheDocument()
@@ -325,14 +353,6 @@ describe('la pantalla del duelo', () => {
     close()
     expect(within(host.container).getByText('Turno de Beto')).toBeInTheDocument()
     expect(within(guest.container).getByText('Tu turno')).toBeInTheDocument()
-
-    // Una señal: llega y queda en el registro de Beto.
-    open(host)
-    fireEvent.click(panel().getByRole('button', { name: 'Paso' }))
-    flush()
-    close()
-    open(guest)
-    expect(panel().getByText('Ana: Paso')).toBeInTheDocument()
   })
 
   /** Los dos adentro de la sala, con su nombre; si se pide, quien crea elige esos puntos de vida. */
@@ -411,9 +431,7 @@ describe('la pantalla del duelo', () => {
     typeInto(guest, 'Enlace o código', link)
     click(guest, 'Unirme')
     flush()
-    click(host, 'Repartir mi mano')
-    click(guest, 'Repartir mi mano')
-    flush()
+    openTable(host, guest)
 
     const names = (view: RenderResult) => handOf(view).getAllByRole('listitem').map((card) => card.getAttribute('aria-label'))
     expect(names(host)).toHaveLength(5)
@@ -427,18 +445,14 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).getByText('Cada uno empieza con 4000 LP y una mano de 5 cartas.')).toBeInTheDocument()
     expect(within(guest.container).getByText('Cada uno empieza con 4000 LP y una mano de 5 cartas.')).toBeInTheDocument()
 
-    click(host, 'Repartir mi mano')
-    click(guest, 'Repartir mi mano')
-    flush()
+    openTable(host, guest)
     expect(within(host.container).getByRole('button', { name: /Cambiar mis puntos de vida/ })).toHaveAccessibleName(/4\D?000/)
     expect(within(guest.container).getByRole('group', { name: /Puntos de vida de Ana: 4\D?000/ })).toBeInTheDocument()
   })
 
   it('rendirse: pide confirmación, termina el duelo para los dos y la revancha de los dos vuelve a la sala con todo de cero', () => {
     const { host, guest } = startDuel()
-    click(host, 'Repartir mi mano')
-    click(guest, 'Repartir mi mano')
-    flush()
+    openTable(host, guest)
 
     const panel = () => within(screen.getByRole('dialog', { name: 'Juegos y señales' }))
     const close = () => fireEvent.keyDown(document, { key: 'Escape' })
@@ -465,10 +479,13 @@ describe('la pantalla del duelo', () => {
     flush()
     close()
 
-    // De vuelta en la sala, cada uno reparte otra vez y el resultado se fue.
-    click(host, 'Repartir mi mano')
-    click(guest, 'Repartir mi mano')
+    // De vuelta en la sala, elige quién va primero quien perdió (Beto), sin tirar nada: los dos ya estaban listos. Después cada uno reparte otra vez y el resultado se fue.
+    expect(within(guest.container).getByText('Elegís vos, porque perdiste el duelo anterior.')).toBeInTheDocument()
+    expect(within(host.container).getByText('Beto elige, porque perdió el duelo anterior.')).toBeInTheDocument()
+    click(guest, 'Voy segundo')
     flush()
+    flush()
+    expect(within(host.container).getByText('Tu turno')).toBeInTheDocument()
     expect(within(host.container).queryByText(/se rindió/)).not.toBeInTheDocument()
     expect(within(guest.container).queryByText('Te rendiste.')).not.toBeInTheDocument()
     expect(within(guest.container).getByRole('group', { name: /Puntos de vida de Ana: 8\D?000/ })).toBeInTheDocument()
@@ -480,9 +497,7 @@ describe('la pantalla del duelo', () => {
 
   it('el robo del turno: al pasar el turno no se roba de más, y el que no empezó roba en su primer turno', () => {
     const { host, guest } = startDuel()
-    click(host, 'Repartir mi mano')
-    click(guest, 'Repartir mi mano')
-    flush()
+    openTable(host, guest)
 
     const hand = (view: RenderResult) => handOf(view).getAllByRole('listitem').length
     expect([hand(host), hand(guest)]).toEqual([5, 5])
@@ -514,6 +529,123 @@ describe('la pantalla del duelo', () => {
     expect(hand(guest)).toBe(7)
   })
 
+  it('la sala: cada uno ve si el otro tocó "Estoy listo", y se puede dejar de estarlo', () => {
+    const { host, guest } = startDuel()
+
+    expect(within(host.container).getByRole('button', { name: 'Estoy listo' })).toBeEnabled()
+    click(host, 'Estoy listo')
+    flush()
+
+    // El invitado ve que Ana ya está lista; Ana, que todavía falta Beto.
+    expect(within(guest.container).getAllByText('Listo')).toHaveLength(1)
+    expect(within(guest.container).getByText('Todavía no')).toBeInTheDocument()
+    expect(within(host.container).getByText('Esperando que Beto esté listo…')).toBeInTheDocument()
+
+    // Ana se arrepiente.
+    click(host, 'Ya no estoy listo')
+    flush()
+    expect(within(guest.container).queryByText('Listo')).not.toBeInTheDocument()
+    // Hasta que los dos están listos no se ofrece cómo definir quién empieza.
+    expect(within(host.container).queryByRole('button', { name: 'Moneda' })).not.toBeInTheDocument()
+  })
+
+  it('quién empieza: con la moneda pide cara o cruz quien la eligió; con el dado tiran los dos; y quien gana elige ir primero o segundo', () => {
+    // Moneda: Ana la elige, Beto lo ve, Ana pide cara o cruz.
+    const first = startDuel()
+    click(first.host, 'Estoy listo')
+    click(first.guest, 'Estoy listo')
+    flush()
+    click(first.host, 'Moneda')
+    flush()
+    expect(within(first.guest.container).getByText('Ana está eligiendo cara o cruz…')).toBeInTheDocument()
+    expect(within(first.host.container).getByText('Elegí cara o cruz')).toBeInTheDocument()
+    click(first.host, 'Cara')
+    flush()
+    // Gane quien gane, lo dicen los dos lados: uno elige y el otro espera.
+    const hostChooses = within(first.host.container).queryByText('Ganaste: elegís vos.') !== null
+    expect(within(first.host.container).getByText(hostChooses ? '¿Querés ir primero o segundo?' : 'Ganó Beto: elige él.')).toBeInTheDocument()
+    expect(within(first.guest.container).getByText(hostChooses ? 'Ana está eligiendo quién va primero…' : '¿Querés ir primero o segundo?')).toBeInTheDocument()
+    cleanup()
+    window.history.replaceState(null, '', '#duel')
+    sessionStorage.clear()
+
+    // Dado: cada uno tira el suyo y los dos ven los dos números.
+    const second = startDuel()
+    click(second.host, 'Estoy listo')
+    click(second.guest, 'Estoy listo')
+    flush()
+    click(second.guest, 'Dado')
+    flush()
+    click(second.host, 'Tirar el dado')
+    flush()
+    expect(within(second.guest.container).getByText('Ana ya tiró: te toca.')).toBeInTheDocument()
+    expect(within(second.host.container).getByRole('button', { name: 'Tirar el dado' })).toBeDisabled()
+    click(second.guest, 'Tirar el dado')
+    flush()
+    const text = within(second.host.container).queryByText(/^Empate en [1-6]: tiren de nuevo.$/) ?? within(second.host.container).getByText(/^Vos sacaste [1-6]; Beto, [1-6].$/)
+    expect(text).toBeInTheDocument()
+  })
+
+  it('el chat: desde la sala y desde la mesa, con un contador de lo que no leíste', () => {
+    const { host, guest } = startDuel()
+
+    // En la sala el chat está a la vista.
+    fireEvent.change(within(host.container).getByLabelText('Escribí un mensaje'), { target: { value: 'Hola, ya entro' } })
+    click(host, 'Enviar')
+    flush()
+    expect(within(guest.container).getByText('Hola, ya entro')).toBeInTheDocument()
+    // Un mensaje rápido va con un toque.
+    click(guest, '¿Querés responder?')
+    flush()
+    expect(within(within(host.container).getByRole('log', { name: 'Chat con Beto' })).getByText('¿Querés responder?')).toBeInTheDocument()
+
+    openTable(host, guest)
+
+    // En la mesa el chat se abre desde la barra; con el chat cerrado el botón cuenta lo que llegó.
+    click(host, 'Chat')
+    const chat = () => within(screen.getByRole('dialog', { name: 'Chat con Beto' }))
+    fireEvent.change(chat().getByLabelText('Escribí un mensaje'), { target: { value: '¿Respondés a mi invocación?' } })
+    fireEvent.click(chat().getByRole('button', { name: 'Enviar' }))
+    flush()
+    expect(chat().getByText('¿Respondés a mi invocación?')).toBeInTheDocument()
+
+    expect(within(guest.container).getByRole('button', { name: 'Chat (1 sin leer)' })).toBeInTheDocument()
+    click(guest, /^Chat/)
+    expect(within(screen.getAllByRole('dialog', { name: 'Chat con Ana' }).at(-1)!).getByText('¿Respondés a mi invocación?')).toBeInTheDocument()
+  })
+
+  it('las fases y el turno: los dos ven en qué fase va quien juega, el rival ve el cartel de cada fase y, al terminar el turno, el de "Tu turno"', () => {
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+
+    const phase = (view: RenderResult) => within(view.container).getByTestId('duel-phase').textContent
+    const banner = (view: RenderResult) => view.container.querySelector('[data-fx="banner"]')?.textContent ?? ''
+
+    expect(phase(host)).toBe(' · Draw Phase')
+    expect(phase(guest)).toBe(' · Draw Phase')
+
+    // Ana pasa a la Main Phase 1: Beto lo ve en la barra y en un cartel con el nombre de Ana.
+    click(host, 'Main Phase 1')
+    flush()
+    expect(phase(host)).toBe(' · Main Phase 1')
+    expect(phase(guest)).toBe(' · Main Phase 1')
+    expect(banner(guest)).toContain('Ana')
+    expect(banner(guest)).toContain('Main Phase 1')
+
+    // Terminar el turno de un toque: sólo en el turno propio; el rival ve que le toca.
+    expect(within(guest.container).getByRole('button', { name: 'Terminar turno' })).toBeDisabled()
+    click(host, 'Terminar turno')
+    flush()
+    // Además del cartel, la barra dice de quién es el turno.
+    expect(within(host.container).getAllByText('Turno de Beto').length).toBeGreaterThan(0)
+    expect(within(guest.container).getAllByText('Tu turno').length).toBeGreaterThan(0)
+    expect(phase(guest)).toBe(' · Draw Phase')
+    expect(banner(guest)).toContain('Tu turno')
+    expect(banner(host)).toContain('Turno de Beto')
+    expect(within(host.container).getByRole('button', { name: 'Terminar turno' })).toBeDisabled()
+    expect(within(guest.container).getByRole('button', { name: 'Terminar turno' })).toBeEnabled()
+  })
+
   it('recargar dentro de la sala con un deck pegado y el builder vacío: el deck guardado vuelve solo y se puede repartir', async () => {
     const ydk = ['#main', ...Array.from({ length: 12 }, (_, index) => String(3000 + index))].join('\n')
     localStorage.setItem('ygo-lab:duel-deck', ydk)
@@ -527,12 +659,12 @@ describe('la pantalla del duelo', () => {
     const guest = render(<DuelScreen {...screenProps({ mainIds: mainIds.slice(0, 2), extraIds: [], cardsById: new Map() })} />)
     flush()
 
-    // Sin deck todavía no puede repartir; cuando vuelve el guardado, sí.
-    expect(within(guest.container).getByRole('button', { name: 'Repartir mi mano' })).toBeDisabled()
+    // Sin deck todavía no puede estar listo; cuando vuelve el guardado, sí.
+    expect(within(guest.container).getByRole('button', { name: 'Estoy listo' })).toBeDisabled()
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 30))
     })
     flush()
-    expect(within(guest.container).getByRole('button', { name: 'Repartir mi mano' })).toBeEnabled()
+    expect(within(guest.container).getByRole('button', { name: 'Estoy listo' })).toBeEnabled()
   })
 })

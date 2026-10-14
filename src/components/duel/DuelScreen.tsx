@@ -20,9 +20,11 @@ import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { DuelBar } from './DuelBar'
+import { DuelChat } from './DuelChat'
 import { DuelDeckPicker, loadDuelDeck, readStoredDeck, type DuelDeck } from './DuelDeckPicker'
 import { gameText, outcomeText, rpsName } from './game-text'
 import { artOfDrawId } from './duel-art'
+import { DuelOpening } from './DuelOpening'
 import { DUEL_AREAS, SideCells, sharedZoneCard, TheirHand, type DuelSideView } from './DuelTable'
 
 const NAME_KEY = 'ygo-lab:duel-name'
@@ -110,6 +112,18 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
     }
   }, [builderTooSmall])
 
+  // Cuando ya se eligió quién va primero, cada uno reparte su mano solo (hace falta el deck y, del invitado, los ajustes del anfitrión).
+  const ordered = snapshot?.opening.ordered ?? false
+  const started = snapshot?.mine != null
+  const settingsKnown = snapshot ? snapshot.role === 'host' || snapshot.peerName !== null : false
+  const dealHand = snapshot?.settings.hand ?? handSize
+
+  useEffect(() => {
+    if (duel && ordered && !started && settingsKnown && deckReady) {
+      duel.start(createMatState(shuffleWithSeed(deck.mainIds, randomSeed()), deck.extraIds, dealHand))
+    }
+  }, [duel, ordered, started, settingsKnown, deckReady, deck, dealHand])
+
   // Pegar un enlace de duelo en la barra de direcciones (o abrirlo en esta misma pestaña) lleva a esa sala.
   useEffect(() => {
     const onHashChange = () => {
@@ -178,14 +192,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
 
   if (!snapshot.mine || !snapshot.theirs) {
     return (
-      <DuelRoom
-        snapshot={snapshot}
-        status={status}
-        room={intent.room}
-        deckReady={deckReady}
-        onStart={() => duel.start(createMatState(shuffleWithSeed(deck.mainIds, randomSeed()), deck.extraIds, snapshot.settings.hand))}
-        onLeave={leave}
-      />
+      <DuelRoom duel={duel} snapshot={snapshot} status={status} room={intent.room} myName={myName} deckReady={deckReady} onLeave={leave} />
     )
   }
 
@@ -299,14 +306,13 @@ function DuelLobby({ name, onName, lp, onLp, builder, imported, onImport, deckRe
   )
 }
 
-/** La sala hasta que los dos tienen su mano: el enlace para el rival, quién está y el botón de repartir. */
-function DuelRoom({ snapshot, status, room, deckReady, onStart, onLeave }: { snapshot: DuelSnapshot; status: SocketStatus; room: string; deckReady: boolean; onStart: () => void; onLeave: () => void }) {
+/** La sala hasta que los dos tienen su mano: el enlace para el rival, quién está listo, cómo se define quién empieza y el chat. */
+function DuelRoom({ duel, snapshot, status, room, myName, deckReady, onLeave }: { duel: Duel; snapshot: DuelSnapshot; status: SocketStatus; room: string; myName: string; deckReady: boolean; onLeave: () => void }) {
   const link = buildDuelLink(window.location.origin, window.location.pathname, room)
   const { peerPresent, peerName, role, incompatible, settings } = snapshot
-  const started = snapshot.mine !== null
-  // El invitado reparte con los ajustes del anfitrión: hasta que no llega su saludo, no.
+  // El invitado se prepara con los ajustes del anfitrión: hasta que no llega su saludo, no.
   const settingsKnown = role === 'host' || peerName !== null
-  const canStart = peerPresent && settingsKnown && !incompatible && deckReady && !started
+  const canReady = peerPresent && settingsKnown && !incompatible && deckReady
   const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
 
   const copy = async () => {
@@ -354,14 +360,16 @@ function DuelRoom({ snapshot, status, room, deckReady, onStart, onLeave }: { sna
 
       {peerPresent && !settingsKnown ? <p className="m-0 text-micro text-soft">{t('duel.room.guestWaits')}</p> : <p className="m-0 text-micro text-soft">{t('duel.room.settings', { lp: settings.lp, hand: settings.hand })}</p>}
 
+      {peerPresent && settingsKnown && !incompatible ? <DuelOpening snapshot={snapshot} myName={myName} canReady={canReady} actions={duel} /> : null}
+
+      {peerPresent && !incompatible ? (
+        <section className="grid gap-2 rounded-card border border-border-subtle bg-card-background p-3" aria-label={t('duel.chat.open')}>
+          <Heading level="card">{t('duel.chat.open')}</Heading>
+          <DuelChat snapshot={snapshot} myName={myName} onSend={duel.sendChat} />
+        </section>
+      ) : null}
+
       <div className="flex flex-wrap items-center gap-2">
-        {started ? (
-          <p className="m-0 text-body text-muted" role="status">{t('duel.room.waitingTable')}</p>
-        ) : (
-          <Button variant="primary" icon="hand" disabled={!canStart} onClick={onStart}>
-            {t('duel.room.start')}
-          </Button>
-        )}
         <Button variant="tertiary" onClick={onLeave}>
           {t('duel.room.leave')}
         </Button>
@@ -489,6 +497,48 @@ function useRivalAttack(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, M
   return shown
 }
 
+/** Cuánto se queda el cartel de la fase o del turno del rival. */
+const NOTICE_MS = 1400
+
+/**
+ * Lo que el rival avanza en su turno, para verlo sin mirar su campo: cada fase que pasa (con su nombre) y, cuando termina su turno y empieza el tuyo, el cartel "Tu turno".
+ * Lo que ya había cuando se abrió la pantalla no se avisa, ni lo que se deshace.
+ */
+function useRivalNotice(snapshot: DuelSnapshot): DuelMatLink['notice'] {
+  const theirs = snapshot.theirs?.state
+  const phase = theirs?.phase
+  const turn = theirs?.turn
+  const seen = useRef({ phase, turn })
+  const [shown, setShown] = useState<DuelMatLink['notice']>(undefined)
+  const rival = snapshot.peerName ?? t('duel.bar.rival')
+
+  useEffect(() => {
+    const before = seen.current
+
+    seen.current = { phase, turn }
+
+    if (phase === undefined || turn === undefined || before.phase === undefined || before.turn === undefined || (before.phase === phase && before.turn === turn)) {
+      return
+    }
+
+    // Pasó de una End Phase a la Draw Phase del turno siguiente: le toca a quien no es.
+    if (turn === before.turn + 1) {
+      setShown({ key: Date.now(), phase, turn, label: t('duel.bar.yourTurn') })
+    } else if (turn === before.turn) {
+      setShown({ key: Date.now(), phase, who: rival })
+    }
+  }, [phase, turn, rival])
+
+  useEffect(() => {
+    if (!shown) return
+
+    const id = setTimeout(() => setShown(undefined), NOTICE_MS)
+    return () => clearTimeout(id)
+  }, [shown])
+
+  return shown
+}
+
 /** La mesa de práctica con el campo del rival arriba: tus jugadas van al relay y las suyas llegan solas. */
 function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, onLeave }: { duel: Duel; snapshot: DuelSnapshot; status: SocketStatus; myName: string; cardsById: ReadonlyMap<string, MatCard>; deckName: string; onLeave: () => void }) {
   const { mine, initial, actions, theirs } = snapshot
@@ -504,6 +554,8 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   useTurnDraw(duel, snapshot, turn)
   useAutoStartClock(duel, snapshot)
   const announcement = useRivalAttack(snapshot, cardsById)
+  const notice = useRivalNotice(snapshot)
+  const rivalName = snapshot.peerName ?? t('duel.bar.rival')
   // A quiénes se puede atacar: los monstruos del rival en el campo, con el id que él les dio.
   const attackTargets = useMemo(
     () => (['mz', 'emz'] as const).flatMap((zone) => theirs!.state[zone].flatMap((placed, index) => (placed ? [{ id: placed.id, zone, index, faceDown: placed.pos === 'set' }] : []))),
@@ -518,6 +570,9 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       attackTargets,
       foreignKnown: theirs!.known,
       announcement,
+      turn,
+      notice,
+      rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
       header: (
         <>
           <DuelBar
@@ -529,13 +584,14 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
             onHalve={duel.halveLife}
             onToggleClock={duel.toggleClock}
             games={duel}
+            onSendChat={duel.sendChat}
             onLeave={onLeave}
           />
           <TheirHand count={opponent.handCount ?? 0} />
         </>
       ),
     }),
-    [opponent, snapshot, status, myName, turn, duel, onLeave, attackTargets, theirs, announcement],
+    [opponent, snapshot, status, myName, turn, duel, onLeave, attackTargets, theirs, announcement, notice, rivalName],
   )
 
   return (

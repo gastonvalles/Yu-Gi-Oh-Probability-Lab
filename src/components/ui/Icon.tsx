@@ -63,6 +63,12 @@ const PATHS = {
       <circle data-cut cx="15.5" cy="15.5" r="1" />
     </>
   ),
+  chat: (
+    <>
+      <path data-fill d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H11.4l-4 3.4a.6.6 0 0 1-1-.46V16h-.1A2.5 2.5 0 0 1 4 13.5z" />
+      <path data-cut d="M8.5 9.2h7M8.5 12.2h4" />
+    </>
+  ),
   timer: (
     <>
       <circle data-fill cx="12" cy="13.5" r="7.5" />

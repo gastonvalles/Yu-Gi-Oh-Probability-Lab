@@ -79,6 +79,9 @@ describe('cómo termina un duelo', () => {
     expect(parseMessage(phase({ skipDraw: true }))).not.toBeNull()
     expect(parseMessage(phase({ skipDraw: false }))).toBeNull()
     expect(parseMessage(phase({ skipDraw: 'yes' }))).toBeNull()
+    expect(parseMessage(phase({ skipDraw: true, pass: true }))).not.toBeNull()
+    expect(parseMessage(phase({ pass: false }))).toBeNull()
+    expect(parseMessage(phase({ pass: 1 }))).toBeNull()
     expect(parseMessage(encodeMessage({ t: 'game', n: 2, game: { kind: 'concede' } }))).toEqual({ t: 'game', n: 2, game: { kind: 'concede' } })
   })
 })
@@ -100,6 +103,19 @@ describe('el robo del turno en un duelo', () => {
     expect(duel.hand).toHaveLength(5)
     expect(duel.turn).toBe(2)
     expect(matReducer(duel, { type: 'draw', count: 1 }).hand).toHaveLength(6)
+  })
+
+  it('terminar el turno de un toque (`pass`): desde la fase que sea se pasa al turno siguiente, también desde la Draw Phase; sin `pass` no', () => {
+    const pass: MatAction = { type: 'phase', phase: 'draw', skipDraw: true, pass: true }
+    const fromMain = replayMat(table, [{ type: 'phase', phase: 'main1' }, pass])
+
+    expect(fromMain).toMatchObject({ turn: 2, phase: 'draw' })
+    expect(fromMain.hand).toHaveLength(5)
+    // Recién empezado el turno (ya en la Draw Phase) también termina.
+    expect(replayMat(table, [pass])).toMatchObject({ turn: 2, phase: 'draw' })
+    // Sin `pass`, ir a la Draw Phase desde otra fase no cambia de turno ni desde la propia Draw Phase.
+    expect(replayMat(table, [{ type: 'phase', phase: 'main1' }, { type: 'phase', phase: 'draw' }])).toMatchObject({ turn: 1, phase: 'draw' })
+    expect(replayMat(table, [{ type: 'phase', phase: 'draw' }])).toMatchObject({ turn: 1, phase: 'draw' })
   })
 })
 

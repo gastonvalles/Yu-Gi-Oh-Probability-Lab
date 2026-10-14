@@ -1,4 +1,4 @@
-import { RPS_PICKS, SIGNALS, type DuelGame } from './duel-games'
+import { RPS_PICKS, TOSS_METHODS, cleanChat, type DuelGame } from './duel-games'
 import { MAX_MESSAGE_BYTES } from './duel-relay-rules'
 import { MAX_LP, STARTING_LP } from './life-calculator'
 import type { WireAct } from './mat-public'
@@ -36,17 +36,22 @@ interface ClockWire {
  * - `sync`: mi mesa de ahora (enmascarada, si ya la empecé), todo lo que ya sabés de ella, mis puntos de vida y, si soy el anfitrión, el reloj; sirve para arrancar, reconectar y reparar.
  * - `act` / `undo`: una jugada mía o el "volver atrás". `n` es la cantidad de jugadas que tengo después de ella.
  * - `life` / `clock`: mis puntos de vida (siempre el valor, no el cambio) y el reloj compartido.
- * - `game`: moneda, dado, piedra-papel-tijera, quién va primero o una señal (no cambian la mesa; `n` cuenta los míos para no repetir ninguno).
+ * - `game`: moneda, dado, piedra-papel-tijera o quién va primero (no cambian la mesa; `n` cuenta los míos para no repetir ninguno).
+ * - `ready`: estoy listo (o ya no) para empezar el duelo; también viaja en el `sync`.
+ * - `chat`: una línea del chat (`n` cuenta las mías para no repetir ninguna).
  * - `resync`: me perdí algo, mandame un `sync`.
  */
 export type DuelMessage =
   | { t: 'hello'; v: number; sid: string; role: 'host' | 'guest'; name: string; settings?: DuelSettings }
-  | { t: 'sync'; n: number; state?: MatState; known: Record<string, string>; lp: number; lifeN: number; clock?: ClockWire }
+  /** `ready` y `order` (quién empieza, si ya se eligió) hacen que quien vuelve a entrar sepa en qué punto va el otro. */
+  | { t: 'sync'; n: number; state?: MatState; known: Record<string, string>; lp: number; lifeN: number; clock?: ClockWire; ready?: boolean; order?: 0 | 1 }
   | { t: 'act'; n: number; wire: WireAct }
   | { t: 'undo'; n: number }
   | { t: 'life'; n: number; lp: number }
   | { t: 'clock'; n: number; running: boolean; elapsedMs: number }
   | { t: 'game'; n: number; game: DuelGame }
+  | { t: 'ready'; ready: boolean }
+  | { t: 'chat'; n: number; text: string }
   | { t: 'resync' }
 
 export function encodeMessage(message: DuelMessage): string {
@@ -105,7 +110,7 @@ const actionChecks: Record<MatAction['type'], (action: Record<string, unknown>) 
   declare: (a) => isId(a.id),
   target: (a) => isId(a.id),
   attack: (a) => isId(a.id) && optional(a.target, isId),
-  phase: (a) => isPhase(a.phase) && optional(a.skipDraw, (v) => v === true),
+  phase: (a) => isPhase(a.phase) && optional(a.skipDraw, (v) => v === true) && optional(a.pass, (v) => v === true),
 }
 
 function parseAction(value: unknown): MatAction | null {
@@ -117,7 +122,7 @@ function parseAction(value: unknown): MatAction | null {
 }
 
 const isRps = oneOf(RPS_PICKS)
-const isSignal = oneOf(SIGNALS)
+const isMethod = oneOf(TOSS_METHODS)
 
 function parseGame(value: unknown): DuelGame | null {
   if (!isPlain(value)) {
@@ -126,15 +131,19 @@ function parseGame(value: unknown): DuelGame | null {
 
   switch (value.kind) {
     case 'coin':
-      return value.face === 0 || value.face === 1 ? { kind: 'coin', face: value.face } : null
+      if (value.face !== 0 && value.face !== 1) {
+        return null
+      }
+
+      return value.call === undefined ? { kind: 'coin', face: value.face } : value.call === 0 || value.call === 1 ? { kind: 'coin', face: value.face, call: value.call } : null
+    case 'toss':
+      return isMethod(value.method) ? { kind: 'toss', method: value.method } : null
     case 'die':
       return isInt(value.value, 1, 6) ? { kind: 'die', value: value.value } : null
     case 'rps':
       return value.pick === null ? { kind: 'rps', pick: null } : isRps(value.pick) ? { kind: 'rps', pick: value.pick } : null
     case 'order':
       return value.first === 0 || value.first === 1 ? { kind: 'order', first: value.first } : null
-    case 'signal':
-      return isSignal(value.signal) ? { kind: 'signal', signal: value.signal } : null
     case 'concede':
       return { kind: 'concede' }
     case 'rematch':
@@ -268,11 +277,23 @@ export function parseMessage(text: unknown): DuelMessage | null {
       const known = parseKnown(raw.known, MAX_CARDS)
       const clock = raw.clock === undefined ? undefined : parseClock(raw.clock)
 
-      if (state === null || !known || clock === null || !isInt(raw.n, 0, MAX_COUNT) || !isInt(raw.lp, 0, MAX_LP) || !isInt(raw.lifeN, 0, MAX_COUNT)) {
+      const orderOk = raw.order === undefined || raw.order === 0 || raw.order === 1
+
+      if (state === null || !known || clock === null || !isInt(raw.n, 0, MAX_COUNT) || !isInt(raw.lp, 0, MAX_LP) || !isInt(raw.lifeN, 0, MAX_COUNT) || !optional(raw.ready, (v) => typeof v === 'boolean') || !orderOk) {
         return null
       }
 
-      return { t: 'sync', n: raw.n, known, lp: raw.lp, lifeN: raw.lifeN, ...(state ? { state } : {}), ...(clock ? { clock } : {}) }
+      return {
+        t: 'sync',
+        n: raw.n,
+        known,
+        lp: raw.lp,
+        lifeN: raw.lifeN,
+        ...(state ? { state } : {}),
+        ...(clock ? { clock } : {}),
+        ...(typeof raw.ready === 'boolean' ? { ready: raw.ready } : {}),
+        ...(raw.order === 0 || raw.order === 1 ? { order: raw.order } : {}),
+      }
     }
 
     case 'act': {
@@ -292,6 +313,15 @@ export function parseMessage(text: unknown): DuelMessage | null {
     case 'game': {
       const game = parseGame(raw.game)
       return game && isInt(raw.n, 1, MAX_COUNT) ? { t: 'game', n: raw.n, game } : null
+    }
+
+    case 'ready':
+      return typeof raw.ready === 'boolean' ? { t: 'ready', ready: raw.ready } : null
+
+    case 'chat': {
+      const text = typeof raw.text === 'string' ? cleanChat(raw.text) : ''
+
+      return text !== '' && isInt(raw.n, 1, MAX_COUNT) ? { t: 'chat', n: raw.n, text } : null
     }
 
     case 'resync':

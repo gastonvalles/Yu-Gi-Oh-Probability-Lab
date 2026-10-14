@@ -1,4 +1,4 @@
-import { addGame, type DuelGame, type GameEntry, type RpsPick, type SignalId } from './duel-games'
+import { addChat, addGame, cleanChat, coinWinner, dieWinner, duelResult, rpsOutcome, type ChatLine, type DuelGame, type GameEntry, type RpsPick, type TossMethod } from './duel-games'
 import { DEFAULT_SETTINGS, PROTOCOL_VERSION, cleanName, encodeMessage, parseMessage, type DuelMessage, type DuelSettings } from './duel-protocol'
 import { createLifeState, lifeReducer, timerElapsed, type Duelist, type LifeState } from './life-calculator'
 import { encodeAct, mapMatIds, mirrorApply, mirrorUndo, openMirror, openPublic, senderKnown, type Mirror, type PublicSender } from './mat-public'
@@ -59,6 +59,15 @@ export interface DuelSnapshot {
   conceded: Duelist | null
   /** Quién pidió la revancha: cuando los dos la piden, la mesa se limpia y se vuelve a repartir. */
   rematch: { mine: boolean; theirs: boolean }
+  /** Quién está listo para empezar: hasta que los dos lo están no se define quién va primero. */
+  ready: { mine: boolean; theirs: boolean }
+  /**
+   * Cómo se define quién elige ir primero: con qué (`method`, que fija el primero en elegir, y `caller`, quién lo eligió: pide la cara o cruz de la moneda), los dados de cada uno, quién ganó y por lo tanto elige (`chooser`)
+   * y si ya eligió (`ordered`, y entonces cada uno reparte su mano). En una revancha elige quien perdió, sin tirar nada.
+   */
+  opening: { method: TossMethod | null; caller: Duelist | null; dice: { mine: number | null; theirs: number | null }; chooser: Duelist | null; ordered: boolean }
+  /** Lo que se escribieron los dos, de más viejo a más nuevo. */
+  chat: readonly ChatLine[]
 }
 
 export interface Duel {
@@ -76,7 +85,14 @@ export interface Duel {
   /** Elegir en piedra-papel-tijera (una vez por ronda); `null` empieza otra. */
   pickRps(pick: RpsPick | null): void
   chooseFirst(first: Duelist): void
-  signal(signal: SignalId): void
+  /** Estoy listo (o ya no) para empezar. */
+  setReady(ready: boolean): void
+  /** Con qué se define quién va primero: el primero en elegir lo fija para los dos. */
+  chooseMethod(method: TossMethod): void
+  /** La moneda de quién empieza: pido cara o cruz y se tira; gano si acerté. */
+  callCoin(call: 0 | 1): void
+  /** Escribirle algo al rival. */
+  sendChat(text: string): void
   /** Rendirme: el duelo termina y gana el rival. */
   concede(): void
   /** Pedir la revancha (o aceptarla si el rival la pidió). */
@@ -129,6 +145,16 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   let starter: Duelist = 0
   let conceded: Duelist | null = null
   let rematch = { mine: false, theirs: false }
+  // Antes de la mesa: quién está listo, con qué se define quién empieza y cómo va, y el chat.
+  let ready = { mine: false, theirs: false }
+  let method: TossMethod | null = null
+  let caller: Duelist | null = null
+  let dice: { mine: number | null; theirs: number | null } = { mine: null, theirs: null }
+  let chooser: Duelist | null = null
+  let ordered = false
+  let chat: ChatLine[] = []
+  let chatId = 0
+  let chatN = 0
 
   // El lado del rival: lo último que le oí, para descartar repetidos y detectar lo que falta.
   let theirs: Mirror | null = null
@@ -136,12 +162,13 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   let peerLifeN = 0
   let peerClockN = 0
   let peerGameN = 0
+  let peerChatN = 0
   let awaitingSync = false
 
   const listeners = new Set<() => void>()
   let snapshot: DuelSnapshot
 
-  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent, peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, rematch })
+  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent, peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat })
 
   const emit = () => {
     snapshot = build()
@@ -162,7 +189,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       table = { n: actions.length, state: mapMatIds(mine, (id) => opaque[id] ?? id), known: senderKnown(sender) }
     }
 
-    send({ t: 'sync', ...table, lp: life.lp[me], lifeN, ...(role === 'host' ? { clock } : {}) })
+    send({ t: 'sync', ...table, lp: life.lp[me], lifeN, ready: ready.mine, ...(ordered ? { order: starter } : {}), ...(role === 'host' ? { clock } : {}) })
 
     // Lo mismo con la revancha que ya pedí.
     if (rematch.mine && !rematch.theirs) {
@@ -193,6 +220,35 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   /** Lo que un juego cambia (y deja en el registro) cuando lo hace `from`: el mismo efecto de los dos lados. */
   const applyGame = (from: Duelist, game: DuelGame) => {
     const mineNow = from === me
+    const defining = ready.mine && ready.theirs && !ordered && chooser === null
+
+    if (game.kind === 'toss') {
+      // Sólo cuando los dos están listos y todavía no hay quien elija: el primero en elegir lo fija para los dos y, si eligen a la vez, vale el del anfitrión.
+      if (!defining || method === game.method || (method !== null && from !== 0)) {
+        return
+      }
+
+      method = game.method
+      caller = from
+      dice = { mine: null, theirs: null }
+      rps = { mine: null, theirs: null }
+    }
+
+    // Al pedir la moneda que define quién empieza, gana quien acertó.
+    if (game.kind === 'coin' && game.call !== undefined && defining && method === 'coin') {
+      chooser = coinWinner(from, game.call, game.face)
+    }
+
+    if (game.kind === 'die' && defining && method === 'die') {
+      // Con números iguales se vuelve a tirar: el primero que tira de nuevo borra los dos.
+      const tied = dice.mine !== null && dice.theirs !== null
+
+      dice = mineNow ? { mine: game.value, theirs: tied ? null : dice.theirs } : { mine: tied ? null : dice.mine, theirs: game.value }
+
+      if (dice.mine !== null && dice.theirs !== null) {
+        chooser = dieWinner(me === 0 ? dice.mine : dice.theirs, me === 0 ? dice.theirs : dice.mine)
+      }
+    }
 
     if (game.kind === 'rps') {
       // Repetir la misma elección (al reconectar) no es una jugada nueva.
@@ -202,6 +258,14 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
 
       rps = game.pick === null ? { mine: null, theirs: null } : mineNow ? { ...rps, mine: game.pick } : { ...rps, theirs: game.pick }
 
+      if (defining && method === 'rps') {
+        const outcome = rpsOutcome(rps.mine, rps.theirs)
+
+        if (outcome !== null && outcome !== 'draw') {
+          chooser = outcome === 'win' ? me : peer
+        }
+      }
+
       // Empezar otra ronda no queda en el registro.
       if (game.pick === null) {
         return
@@ -209,7 +273,13 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     }
 
     if (game.kind === 'order') {
+      // La ronda de piedra-papel-tijera con que se definió no pasa al panel de juegos: ahí se empieza de cero.
+      if (!ordered) {
+        rps = { mine: null, theirs: null }
+      }
+
       starter = game.first
+      ordered = true
     }
 
     if (game.kind === 'concede') {
@@ -234,6 +304,14 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
 
     // Los dos quieren la revancha: se empieza de cero (la mesa, los puntos de vida y el reloj), y cada uno vuelve a repartir su mano.
     if (rematch.mine && rematch.theirs) {
+      // Quien perdió elige quién va primero, sin tirar nada (con un empate, se vuelve a definir).
+      const result = duelResult(life.lp, conceded)
+
+      chooser = result?.kind === 'loss' ? result.loser : null
+      method = null
+      caller = null
+      dice = { mine: null, theirs: null }
+      ordered = false
       initial = null
       actions = []
       mine = null
@@ -280,9 +358,19 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     peerLifeN = 0
     peerClockN = 0
     peerGameN = 0
+    peerChatN = 0
     rps = { ...rps, theirs: null }
     rematch = { ...rematch, theirs: false }
+    ready = { ...ready, theirs: false }
     awaitingSync = false
+
+    // Lo que se estaba definiendo para empezar vuelve a empezar; si ya habían elegido, el rival se entera por mi `sync`.
+    if (!ordered) {
+      method = null
+      caller = null
+      dice = { mine: null, theirs: null }
+      chooser = null
+    }
   }
 
   const handle = (message: DuelMessage) => {
@@ -324,6 +412,17 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
         peerLifeN = message.lifeN
         awaitingSync = false
         setPeerLp(message.lp)
+
+        if (message.ready !== undefined) {
+          ready = { ...ready, theirs: message.ready }
+        }
+
+        // Si el rival ya había elegido quién empieza (yo recargué), sigo desde ahí.
+        if (message.order !== undefined && !ordered) {
+          starter = message.order
+          ordered = true
+          ready = { mine: true, theirs: true }
+        }
 
         if (message.clock && role === 'guest') {
           setClock(message.clock.running, message.clock.elapsedMs)
@@ -375,6 +474,19 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
         if (message.n > peerGameN) {
           peerGameN = message.n
           applyGame(peer, message.game)
+        }
+
+        return
+
+      case 'ready':
+        ready = { ...ready, theirs: message.ready }
+        return
+
+      case 'chat':
+        if (message.n > peerChatN) {
+          peerChatN = message.n
+          chatId += 1
+          chat = addChat(chat, { id: chatId, from: peer, text: message.text })
         }
 
         return
@@ -484,6 +596,11 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     },
 
     throwDie() {
+      // Definiendo quién empieza se tira una vez por vuelta: ya tiré y el rival todavía no.
+      if (method === 'die' && chooser === null && !ordered && dice.mine !== null && dice.theirs === null) {
+        return
+      }
+
       playGame({ kind: 'die', value: 1 + Math.floor(random() * 6) })
     },
 
@@ -508,8 +625,36 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       playGame({ kind: 'order', first })
     },
 
-    signal(signal) {
-      playGame({ kind: 'signal', signal })
+    setReady(value) {
+      if (ready.mine === value) {
+        return
+      }
+
+      ready = { ...ready, mine: value }
+      send({ t: 'ready', ready: value })
+      emit()
+    },
+
+    chooseMethod(next) {
+      playGame({ kind: 'toss', method: next })
+    },
+
+    callCoin(call) {
+      playGame({ kind: 'coin', face: random() < 0.5 ? 0 : 1, call })
+    },
+
+    sendChat(text) {
+      const line = cleanChat(text)
+
+      if (line === '' || !peerPresent) {
+        return
+      }
+
+      chatN += 1
+      send({ t: 'chat', n: chatN, text: line })
+      chatId += 1
+      chat = addChat(chat, { id: chatId, from: me, text: line })
+      emit()
     },
 
     close() {

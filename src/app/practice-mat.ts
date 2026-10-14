@@ -95,9 +95,9 @@ export type MatAction =
   | { type: 'attack'; id: string; target?: string }
   /**
    * Cambiar de fase; de la End Phase a la Draw Phase empieza otro turno y se roba 1 carta. `skipDraw` (en un duelo) no la roba: el turno del rival
-   * no se terminó todavía, y la carta se roba cuando empieza el turno propio.
+   * no se terminó todavía, y la carta se roba cuando empieza el turno propio. `pass` (con `phase: 'draw'`) termina el turno de un toque, desde la fase que sea.
    */
-  | { type: 'phase'; phase: MatPhase; skipDraw?: true }
+  | { type: 'phase'; phase: MatPhase; skipDraw?: true; pass?: true }
 
 const ZONE_SIZES: Record<MatZone, number> = { mz: 5, emz: 2, st: 5 }
 
@@ -419,12 +419,12 @@ export function matReducer(state: MatState, action: MatAction): MatState {
     }
 
     case 'phase': {
-      if (!isPhase(action.phase) || action.phase === state.phase) {
+      if (!isPhase(action.phase) || (action.phase === state.phase && !action.pass)) {
         return state
       }
 
-      // De la End Phase a la Draw Phase empieza otro turno, y en la Draw Phase se roba 1 carta (regla del juego).
-      const newTurn = state.phase === 'end' && action.phase === 'draw'
+      // De la End Phase a la Draw Phase empieza otro turno, y en la Draw Phase se roba 1 carta (regla del juego). `pass` termina el turno desde la fase que sea.
+      const newTurn = action.phase === 'draw' && (state.phase === 'end' || action.pass === true)
       const next = { ...state, phase: action.phase, turn: newTurn ? state.turn + 1 : state.turn }
       return newTurn && !action.skipDraw ? matReducer(next, { type: 'draw', count: 1 }) : next
     }
@@ -566,7 +566,7 @@ function describePlay(before: MatState, action: MatAction, name: (id: string) =>
     case 'phase': {
       const phase = PHASES.find((entry) => entry.id === action.phase)?.name ?? action.phase
 
-      if (before.phase === 'end' && action.phase === 'draw') {
+      if (action.phase === 'draw' && (before.phase === 'end' || action.pass)) {
         const top = action.skipDraw ? undefined : before.deck[0]
         const turn = before.turn + 1
 

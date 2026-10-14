@@ -1,0 +1,111 @@
+import { useEffect, useRef, useState } from 'react'
+
+import { MAX_CHAT_LENGTH } from '../../app/duel-games'
+import type { Duel, DuelSnapshot } from '../../app/duel-session'
+import { showToastMessage } from '../../app/use-toast-message'
+import { t } from '../../i18n'
+import { Button } from '../ui/Button'
+import { cx } from '../ui/cx'
+import { FieldBox, fieldInline } from '../ui/FieldBox'
+
+/** Avisos que se mandan con un toque, para no escribir: pensando, "¿respondés?", paso y gracias. */
+const QUICK = ['think', 'respond', 'pass', 'thanks'] as const
+
+interface DuelChatProps {
+  snapshot: DuelSnapshot
+  myName: string
+  onSend: Duel['sendChat']
+}
+
+/** El chat entre los dos: lo escrito (lo tuyo a la derecha), los mensajes rápidos y el campo para escribir. Sin el rival en la sala no se puede escribir. */
+export function DuelChat({ snapshot, myName, onSend }: DuelChatProps) {
+  const { chat, peerPresent, peerName, me } = snapshot
+  const rival = peerName ?? t('duel.bar.rival')
+  const [text, setText] = useState('')
+  const listRef = useRef<HTMLOListElement | null>(null)
+
+  // Siempre se ve lo último.
+  useEffect(() => {
+    const list = listRef.current
+
+    if (list) {
+      list.scrollTop = list.scrollHeight
+    }
+  }, [chat.length])
+
+  const send = (message: string) => {
+    onSend(message)
+    setText('')
+  }
+
+  return (
+    <div className="grid gap-2">
+      <ol ref={listRef} role="log" aria-label={t('duel.chat.title', { name: rival })} className="m-0 grid max-h-64 min-h-24 list-none content-start gap-1.5 overflow-y-auto p-0">
+        {chat.length === 0 ? (
+          <li className="text-micro text-soft">{t('duel.chat.empty')}</li>
+        ) : (
+          chat.map((line) => (
+            <li key={line.id} data-from={line.from === me ? 'mine' : 'theirs'} className={cx('max-w-[88%] break-words rounded-card px-2.5 py-1 text-body text-foreground', line.from === me ? 'ml-auto bg-accent/20' : 'mr-auto bg-tint/8')}>
+              <span className="block text-micro font-semibold text-soft">{line.from === me ? myName : rival}</span>
+              {line.text}
+            </li>
+          ))
+        )}
+      </ol>
+
+      <div role="group" aria-label={t('duel.chat.quickTitle')} className="flex flex-wrap gap-1.5">
+        {QUICK.map((key) => (
+          <Button key={key} variant="secondary" size="sm" disabled={!peerPresent} onClick={() => send(t(`duel.chat.quick.${key}`))}>
+            {t(`duel.chat.quick.${key}`)}
+          </Button>
+        ))}
+      </div>
+
+      <form
+        className="flex items-center gap-2"
+        onSubmit={(event) => {
+          event.preventDefault()
+          send(text)
+        }}
+      >
+        <FieldBox className="min-w-0 flex-1">
+          <input aria-label={t('duel.chat.placeholder')} placeholder={t('duel.chat.placeholder')} maxLength={MAX_CHAT_LENGTH} value={text} disabled={!peerPresent} onChange={(event) => setText(event.target.value)} className={fieldInline} />
+        </FieldBox>
+        <Button type="submit" variant="primary" size="sm" disabled={!peerPresent || text.trim() === ''}>
+          {t('duel.chat.send')}
+        </Button>
+      </form>
+      {peerPresent ? null : <p className="m-0 text-micro text-soft">{t('duel.chat.needRival')}</p>}
+    </div>
+  )
+}
+
+/**
+ * Cuántos mensajes del rival todavía no leíste (los que llegaron con el chat cerrado) y, mientras está cerrado, un aviso por cada uno que llega: así
+ * se entera de "¿respondés?" sin tener el chat abierto. Lo que ya estaba escrito al abrir la pantalla no se avisa.
+ */
+export function useChatUnread(snapshot: DuelSnapshot, open: boolean): number {
+  const { chat, me, peerName } = snapshot
+  const last = chat.at(-1)?.id ?? 0
+  const seen = useRef(last)
+  const [read, setRead] = useState(last)
+  const rival = peerName ?? t('duel.bar.rival')
+
+  useEffect(() => {
+    if (open) {
+      seen.current = last
+      setRead(last)
+      return
+    }
+
+    for (const line of chat) {
+      if (line.id > seen.current && line.from !== me) {
+        showToastMessage(`${rival}: ${line.text}`, 'info')
+      }
+    }
+
+    seen.current = Math.max(seen.current, last)
+  }, [chat, last, me, open, rival])
+
+  return chat.filter((line) => line.id > read && line.from !== me).length
+}

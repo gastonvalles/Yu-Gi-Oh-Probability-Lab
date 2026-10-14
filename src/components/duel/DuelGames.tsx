@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import { RPS_PICKS, SIGNALS, duelResult, rpsOutcome, type RpsPick, type SignalId } from '../../app/duel-games'
+import { RPS_PICKS, duelResult, rpsOutcome, type RpsPick } from '../../app/duel-games'
 import type { Duel, DuelSnapshot } from '../../app/duel-session'
 import { t } from '../../i18n'
 import { Coin, Die } from '../life/Toss'
@@ -9,10 +9,10 @@ import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
 import { Modal } from '../ui/Modal'
 import { overline } from '../ui/typography'
-import { gameText, outcomeText, rpsName, signalText, tossResult } from './game-text'
+import { gameText, outcomeText, rpsName, tossResult } from './game-text'
 
-/** Lo que el panel puede hacer: tirar, elegir, decir quién empieza y mandar una señal. */
-export type GameActions = Pick<Duel, 'throwCoin' | 'throwDie' | 'pickRps' | 'chooseFirst' | 'signal' | 'concede' | 'rematch'>
+/** Lo que el panel puede hacer: tirar, elegir, decir quién empieza, rendirse y pedir la revancha. */
+export type GameActions = Pick<Duel, 'throwCoin' | 'throwDie' | 'pickRps' | 'chooseFirst' | 'concede' | 'rematch'>
 
 interface DuelGamesProps {
   isOpen: boolean
@@ -27,7 +27,7 @@ const LOG_LINES = 8
 
 /**
  * Moneda y dado (los dos ven la misma tirada, con la misma animación de la calculadora de LP), piedra-papel-tijera (el rival no ve tu
- * elección hasta que elegís), quién va primero y unas señales rápidas. Con el registro de lo último que pasó.
+ * elección hasta que elegís) y quién va primero. Con el registro de lo último que pasó.
  */
 export function DuelGames({ isOpen, onClose, snapshot, myName, actions }: DuelGamesProps) {
   const { games, rps, me, peerPresent, peerName, starter } = snapshot
@@ -108,15 +108,6 @@ export function DuelGames({ isOpen, onClose, snapshot, myName, actions }: DuelGa
           </div>
         </section>
 
-        <section className="grid gap-2 border-t border-border-subtle pt-3" aria-label={t('duel.games.signal.title')}>
-          <span className={overline}>{t('duel.games.signal.title')}</span>
-          <div className="flex flex-wrap gap-2">
-            {SIGNALS.map((signal) => (
-              <SignalButton key={signal} signal={signal} disabled={!peerPresent} onSend={actions.signal} />
-            ))}
-          </div>
-        </section>
-
         <section className="grid gap-2 border-t border-border-subtle pt-3" aria-label={t('duel.games.end.title')}>
           <span className={overline}>{t('duel.games.end.title')}</span>
           {conceding ? (
@@ -173,14 +164,6 @@ function RpsButton({ pick, disabled, onPick }: { pick: RpsPick; disabled: boolea
   return (
     <Button variant="secondary" disabled={disabled} onClick={() => onPick(pick)}>
       {rpsName(pick)}
-    </Button>
-  )
-}
-
-function SignalButton({ signal, disabled, onSend }: { signal: SignalId; disabled: boolean; onSend: (signal: SignalId) => void }) {
-  return (
-    <Button variant="secondary" size="sm" disabled={disabled} onClick={() => onSend(signal)}>
-      {signalText(signal)}
     </Button>
   )
 }
