@@ -366,7 +366,7 @@ describe('la mesa de práctica', () => {
     expect(within(status()).queryByText('1/1')).not.toBeInTheDocument()
   })
 
-  it('por Sacrificio, la carta soltada espera en la zona mientras se eligen los Sacrificios; cancelar la devuelve a la mano', () => {
+  it('un monstruo de Nivel 7 se invoca con la misma Invocación Normal: la carta soltada espera en la zona mientras se eligen los Sacrificios y cancelar la devuelve a la mano', () => {
     const cards = new Map([...CARDS, ['card-8-1', { name: 'Blue-Eyes', apiCard: { ...card(8, 'normal'), level: 8 } }]])
     const initial = replayMat(createMatState(['card-8-1', 'card-1-1', 'card-2-1', 'card-3-1', 'card-4-1', 'card-5-1'], ['card-7-1'], 5), [
       { type: 'place', id: 'card-1-1', zone: 'mz', index: 0, pos: 'atk' },
@@ -377,8 +377,8 @@ describe('la mesa de práctica', () => {
     const mz3 = zone('Zona de monstruo 3')
     dragToZone('Blue-Eyes', mz3)
     const menu = screen.getByRole('menu', { name: 'Blue-Eyes' })
-    expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Invocación por Sacrificio (2)', 'Colocar por Sacrificio (2)', 'Invocación Especial'])
-    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Invocación por Sacrificio (2)' }))
+    expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Invocación Normal', 'Colocar', 'Invocación Especial'])
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Invocación Normal' }))
 
     // El menú se fue pero la carta sigue en la zona, esperando los Sacrificios.
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
@@ -396,14 +396,14 @@ describe('la mesa de práctica', () => {
 
     // De nuevo, y esta vez se sacrifican los dos monstruos: sale en la zona donde se soltó.
     dragToZone('Blue-Eyes', mz3)
-    fireEvent.click(within(screen.getByRole('menu', { name: 'Blue-Eyes' })).getByRole('menuitem', { name: 'Invocación por Sacrificio (2)' }))
+    fireEvent.click(within(screen.getByRole('menu', { name: 'Blue-Eyes' })).getByRole('menuitem', { name: 'Invocación Normal' }))
     tap(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' }))
     expect(waitingIn(mz3)).not.toBeNull()
     tap(within(zone('Zona de monstruo 2')).getByRole('button', { name: 'Maxx C' }))
 
     expect(waitingIn(mz3)).toBeNull()
     expect(within(zone('Zona de monstruo 3')).getByRole('button', { name: 'Blue-Eyes' })).toBeInTheDocument()
-    expect(within(status()).getByText('Invocación por Sacrificio de Blue-Eyes (sacrificás Ash Blossom y Maxx C)')).toBeInTheDocument()
+    expect(within(status()).getByText('Invocación Normal de Blue-Eyes (sacrificás Ash Blossom y Maxx C)')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'GY: 2' })).toBeInTheDocument()
   })
 
@@ -417,7 +417,7 @@ describe('la mesa de práctica', () => {
       )
     const dropBlueEyesForTributes = (target: HTMLElement) => {
       dragToZone('Blue-Eyes', target)
-      fireEvent.click(within(screen.getByRole('menu', { name: 'Blue-Eyes' })).getByRole('menuitem', { name: 'Invocación por Sacrificio (2)' }))
+      fireEvent.click(within(screen.getByRole('menu', { name: 'Blue-Eyes' })).getByRole('menuitem', { name: 'Invocación Normal' }))
       expect(waitingIn(target)).not.toBeNull()
     }
 
@@ -475,7 +475,7 @@ describe('la mesa de práctica', () => {
       tap(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' }))
 
       expect(screen.getByRole('menu', { name: 'Ash Blossom' })).toBeInTheDocument()
-      expect(within(status()).queryByText(/Invocación por Sacrificio/)).not.toBeInTheDocument()
+      expect(within(status()).queryByText(/sacrificás/)).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'GY: 0' })).toBeInTheDocument()
       expect(within(hand()).getByRole('listitem', { name: 'Blue-Eyes' })).toBeInTheDocument()
     })

@@ -96,7 +96,7 @@ describe('la mesa de práctica', () => {
     expect(detached.hand).toContain('a2')
   })
 
-  it('la Invocación por Sacrificio manda los sacrificios al cementerio y saca la carta, incluso a la zona que se liberó', () => {
+  it('la Invocación Normal con Sacrificios manda los sacrificios al cementerio y saca la carta, incluso a la zona que se liberó', () => {
     const two = run([{ type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }, { type: 'place', id: 'a2', zone: 'mz', index: 1, pos: 'def' }])
     const summoned = matReducer(two, { type: 'tribute', id: 'c1', tributes: ['a1', 'a2'], zone: 'mz', index: 0, pos: 'atk' })
 
@@ -104,7 +104,7 @@ describe('la mesa de práctica', () => {
     expect(summoned.mz[0]?.id).toBe('c1')
     expect(summoned.mz[1]).toBeNull()
     expect(summoned.hand).not.toContain('c1')
-    expect(describeMatAction(two, { type: 'tribute', id: 'c1', tributes: ['a1', 'a2'], zone: 'mz', index: 0, pos: 'atk' }, nameOf)).toBe('Invocación por Sacrificio de C1 (sacrificás A1 y A2)')
+    expect(describeMatAction(two, { type: 'tribute', id: 'c1', tributes: ['a1', 'a2'], zone: 'mz', index: 0, pos: 'atk' }, nameOf)).toBe('Invocación Normal de C1 (sacrificás A1 y A2)')
     expect(describeMatAction(two, { type: 'tribute', id: 'c1', tributes: ['a1'], zone: 'mz', index: 2, pos: 'set' }, nameOf)).toBe('Colocás C1 boca abajo sacrificando A1')
 
     // Un sacrificio que no está en el campo, o sin sacrificios, no hace nada.
@@ -312,7 +312,7 @@ describe('la mesa de práctica', () => {
     expect(special!.choices?.[1]?.targets?.map((target) => target.zone)).toEqual(['mz', 'mz', 'mz', 'mz', 'mz'])
     expect(normal!.targets).toHaveLength(5)
     expect(listCardActions(start(), 'x1', kindOf, nameOf)[0]!.choices?.[0]?.targets?.map((target) => target.zone)).toEqual(['mz', 'mz', 'mz', 'mz', 'mz', 'emz', 'emz'])
-    // Nivel 7 sin monstruos en el campo: ni Invocación Normal ni por Sacrificio.
+    // Nivel 7 sin monstruos en el campo: ni Invocación Normal ni Colocar (no hay a quién sacrificar).
     expect(labels(start(), 'c1').slice(0, 1)).toEqual(['Invocación Especial'])
     expect(labels(start(), 'c1')).not.toContain('Invocación Normal')
 
@@ -342,18 +342,18 @@ describe('la mesa de práctica', () => {
       expect(banish[0]!.action).toEqual({ type: 'move', id, to: 'banished' })
     }
 
-    // Con dos monstruos en el campo, el Nivel 7 ofrece la Invocación por Sacrificio y Colocar por Sacrificio, que la mesa completa.
+    // Con dos monstruos en el campo, el Nivel 7 ofrece la Invocación Normal y Colocar de siempre (por Sacrificio es una Invocación Normal, no otra jugada); la mesa pide los Sacrificios y la zona al elegirlas.
     const two = run([{ type: 'place', id: 'x1', zone: 'emz', index: 0, pos: 'atk' }, { type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }])
     const [bySacrifice, setBySacrifice] = listCardActions(two, 'c1', kindOf, nameOf)
     expect([bySacrifice, setBySacrifice].map((item) => [item!.label, item!.tributes, item!.choices, item!.action.type === 'tribute' && item!.action.pos])).toEqual([
-      ['Invocación por Sacrificio (2)', 2, undefined, 'atk'],
-      ['Colocar por Sacrificio (2)', 2, undefined, 'set'],
+      ['Invocación Normal', 2, undefined, 'atk'],
+      ['Colocar', 2, undefined, 'set'],
     ])
     expect(bySacrifice!.action).toEqual({ type: 'tribute', id: 'c1', tributes: [], zone: 'mz', index: 0, pos: 'atk' })
     // Con un solo monstruo alcanza para el Nivel 5 pero no para el 7.
     const one = run([{ type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }, { type: 'move', id: 'e1', to: 'hand' }])
-    expect(labels(one, 'e1')[0]).toBe('Invocación por Sacrificio (1)')
-    expect(labels(one, 'c1')).not.toContain('Invocación por Sacrificio (2)')
+    expect(listCardActions(one, 'e1', kindOf, nameOf)[0]).toMatchObject({ label: 'Invocación Normal', tributes: 1 })
+    expect(labels(one, 'c1')).not.toContain('Invocación Normal')
 
     // Una Mágica de Campo en el deck se puede activar directo (sale a la zona de campo); otra Mágica, no.
     const fieldSpell: MatCardKind = { ...SPELL, fieldSpell: true }
@@ -398,11 +398,11 @@ describe('la mesa de práctica', () => {
     expect(labels(drop(start(), 'b1', 'st', 1))).toEqual(['Activar', 'Colocar'])
     expect(labels(drop(start(), 'd1', 'st', 3))).toEqual(['Activar efecto', 'Colocar'])
 
-    // Nivel 7: sin monstruos para sacrificar sólo la Especial (que pregunta directo); con dos, la Invocación por Sacrificio y Colocar por Sacrificio, ya en la zona.
+    // Nivel 7: sin monstruos para sacrificar sólo la Especial (que pregunta directo); con dos, la Invocación Normal y Colocar de siempre, ya en la zona.
     expect(labels(drop(start(), 'c1', 'mz', 0))).toEqual(['Invocación Especial'])
     const two = run([{ type: 'place', id: 'x1', zone: 'emz', index: 0, pos: 'atk' }, { type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }])
     const sacrifice = drop(two, 'c1', 'mz', 3)
-    expect(labels(sacrifice)).toEqual(['Invocación por Sacrificio (2)', 'Colocar por Sacrificio (2)', 'Invocación Especial'])
+    expect(labels(sacrifice)).toEqual(['Invocación Normal', 'Colocar', 'Invocación Especial'])
     expect(sacrifice.map((item) => [item.tributes, item.action.type === 'tribute' && [item.action.zone, item.action.index, item.action.pos]])).toEqual([[2, ['mz', 3, 'atk']], [2, ['mz', 3, 'set']], [undefined, false]])
     expect(drop(two, 'c1', 'st', 0)).toEqual([])
 
