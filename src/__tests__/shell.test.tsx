@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
+import { createRef } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useShellInsets } from '../app/shell-layout'
@@ -203,6 +204,24 @@ describe('el armazón', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: /^Probability Lab/ }))
     expect(onSelect).toHaveBeenCalledWith('probability-lab')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('el pie queda afuera del recuadro que scrollea, y el envoltorio de la pantalla no crece con el contenido: la pantalla scrollea y el pie queda fijo', () => {
+    const scrollRef = createRef<HTMLDivElement>()
+
+    render(
+      <AppShell groups={GROUPS} activeKey="export" onSelect={() => {}} contentScrollable contentScrollRef={scrollRef}>
+        <p>Pantalla</p>
+      </AppShell>,
+    )
+
+    const scroller = scrollRef.current!
+
+    expect(scroller).toHaveClass('min-[1101px]:overflow-y-auto')
+    expect(scroller).toContainElement(screen.getByText('Pantalla'))
+    expect(scroller).not.toContainElement(screen.getByRole('contentinfo'))
+    // El envoltorio de la pantalla mide lo que el recuadro en escritorio, así una pantalla puede ocupar justo ese alto (`h-full`).
+    expect(screen.getByText('Pantalla').parentElement).toHaveClass('min-[1101px]:min-h-0')
   })
 
   it('sin haber elegido, arranca contraído en una ventana angosta y abierto en una ancha', () => {

@@ -53,7 +53,8 @@ export function ExpansionsScreen() {
   const showList = isDesktop || active === null
 
   return (
-    <StepPage as="article" wide>
+    // En escritorio la pantalla mide lo que el recuadro del armazón (sin pie): la lista y las cartas son dos columnas del mismo alto, y cada una scrollea por adentro.
+    <StepPage as="article" wide className="min-[1101px]:h-full min-[1101px]:grid-rows-[auto_minmax(0,1fr)]">
       <StepHero
         title={t('catalog.sets.title')}
         icon="package"
@@ -71,7 +72,7 @@ export function ExpansionsScreen() {
           <Skeleton className="h-12 w-full" />
         </div>
       ) : (
-        <div className="grid items-start gap-4 min-[1101px]:grid-cols-[minmax(19rem,24rem)_minmax(0,1fr)] min-[1101px]:gap-5">
+        <div className="grid items-start gap-4 min-[1101px]:min-h-0 min-[1101px]:grid-cols-[minmax(19rem,24rem)_minmax(0,1fr)] min-[1101px]:items-stretch min-[1101px]:gap-5">
           {showList ? <ExpansionList expansions={expansions} activeId={activeId} onPick={setPickedId} /> : null}
           {active ? <ExpansionDetail key={active.id} expansion={active} updated={list.status === 'ready' ? list.updated : ''} onBack={isDesktop ? null : () => setPickedId(null)} /> : null}
         </div>
@@ -98,9 +99,9 @@ function ExpansionList({ expansions, activeId, onPick }: { expansions: Expansion
   }, [expansions, query])
 
   return (
-    <section className={cx(surface.card, 'grid min-w-0 content-start gap-3 p-3 min-[1101px]:sticky min-[1101px]:top-4')}>
+    <section className={cx(surface.card, 'grid min-w-0 content-start gap-3 p-3 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_minmax(0,1fr)]')}>
       <SearchField label={t('catalog.sets.searchLabel')} placeholder={t('catalog.sets.searchLabel')} value={query} onChange={setQuery} />
-      <nav aria-label={t('catalog.sets.listLabel')} className="grid max-h-[70dvh] gap-3 overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin] min-[1101px]:max-h-[calc(100dvh-11rem)]">
+      <nav aria-label={t('catalog.sets.listLabel')} className="grid max-h-[70dvh] content-start gap-3 overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin] min-[1101px]:max-h-none min-[1101px]:min-h-0">
         {groups.map(([year, items]) => (
           <section key={year} className="grid gap-0.5">
             <h3 className={cx(overline, 'px-1')}>{year || t('catalog.sets.noDate')}</h3>
@@ -151,7 +152,7 @@ function ExpansionDetail({ expansion, updated, onBack }: { expansion: Expansion;
   const filtersChanged = () => setShown(PAGE_SIZE)
 
   return (
-    <section className={cx(surface.card, 'grid min-w-0 content-start gap-3 overflow-hidden')}>
+    <section className={cx(surface.card, 'grid min-w-0 content-start gap-3 overflow-hidden overscroll-contain min-[1101px]:h-full min-[1101px]:overflow-y-auto min-[1101px]:[scrollbar-width:thin]')}>
       <header className="px-4 pt-4 min-[1101px]:px-5 min-[1101px]:pt-5">
         <div className="grid min-w-0 content-center justify-items-start gap-2">
           {onBack ? (

@@ -848,7 +848,7 @@
     --radius-card: 1rem;
     --radius-panel: 1.5rem;
     --radius-chip: 999px;
-    /* Alto del pie de la app (en escritorio va fijo abajo de las pantallas que ocupan todo el alto, como el builder). */
+    /* Alto del pie de la app (en escritorio va fijo abajo, en todas las pantallas). */
     --app-footer-height: 2.75rem;
     /* El menú lateral al contraerse o abrirse: el ancho, los rótulos y lo flotante que lo sigue (mascota, botones) van con la misma duración y curva. */
     --sidebar-duration: 280ms;

@@ -16,14 +16,14 @@ interface AppShellProps {
   children: ReactNode
   /** El contenedor que scrollea en escritorio (para volver arriba al cambiar de pantalla). */
   contentScrollRef?: RefObject<HTMLDivElement | null>
-  /** false: la pantalla ocupa todo el alto (el builder) y adentro tiene sus propios scrolls; el pie va fijo abajo. */
+  /** false: la pantalla ocupa todo el alto (el builder) y adentro tiene sus propios scrolls; true: scrollea el recuadro de la pantalla. El pie va fijo abajo en los dos. */
   contentScrollable?: boolean
 }
 
 /**
- * El armazón de toda la app: en escritorio, el menú lateral a la izquierda y la pantalla con su pie a la derecha; en el celular, la barra
- * de arriba con la hamburguesa (que abre el cajón con el mismo menú) y la pantalla con su pie. Se arma una sola vez: las pantallas
- * sólo ponen su contenido adentro.
+ * El armazón de toda la app: en escritorio, el menú lateral a la izquierda y, a la derecha, la pantalla y el pie fijo abajo (en todas, la
+ * pantalla ocupa el mismo alto y es ella la que scrollea); en el celular, la barra de arriba con la hamburguesa (que abre el cajón con el
+ * mismo menú) y la pantalla con su pie al final, en el scroll de la página. Se arma una sola vez: las pantallas sólo ponen su contenido adentro.
  */
 export function AppShell({ groups, activeKey, onSelect, children, contentScrollRef, contentScrollable = false }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(readSidebarCollapsed)
@@ -60,11 +60,12 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
             contentScrollable ? 'min-[1101px]:overflow-y-auto' : 'min-[1101px]:overflow-hidden',
           )}
         >
-          {/* Si la pantalla scrollea, su contenido no se achica (el pie va después de él y no lo pisa); si ocupa el alto, se ajusta y scrollea por dentro,
-              y el pie queda fijo abajo. El pie va siempre adentro: así tiene el mismo ancho (y la barra reservada) en todas las pantallas. */}
-          <div className={cx('w-full min-w-0 flex-1 [&>*]:min-w-0', !contentScrollable && 'min-h-0')}>{children}</div>
-          <AppFooter className={contentScrollable ? undefined : 'min-[1101px]:py-2'} />
+          {/* En escritorio este envoltorio mide siempre lo que el recuadro (`min-h-0`: no crece con el contenido), así una pantalla puede ocupar justo ese alto con `h-full`
+              y repartirlo entre columnas que scrollean por dentro; una pantalla más larga lo desborda y es el recuadro el que scrollea. En el celular crece con el contenido. */}
+          <div className={cx('w-full min-w-0 flex-1 min-[1101px]:min-h-0 [&>*]:min-w-0', !contentScrollable && 'min-h-0')}>{children}</div>
         </div>
+        {/* El pie queda afuera del recuadro que scrollea: en escritorio está siempre a la vista, abajo, con el mismo alto en todas las pantallas. */}
+        <AppFooter className="min-[1101px]:py-2" />
       </div>
       <NavDrawer isOpen={drawerOpen} onClose={closeDrawer} groups={groups} activeKey={activeKey} onSelect={onSelect} />
     </div>
