@@ -1,3 +1,4 @@
+import { RPS_PICKS, SIGNALS, type DuelGame } from './duel-games'
 import { MAX_MESSAGE_BYTES } from './duel-relay-rules'
 import { MAX_LP, STARTING_LP } from './life-calculator'
 import type { WireAct } from './mat-public'
@@ -35,6 +36,7 @@ interface ClockWire {
  * - `sync`: mi mesa de ahora (enmascarada, si ya la empecé), todo lo que ya sabés de ella, mis puntos de vida y, si soy el anfitrión, el reloj; sirve para arrancar, reconectar y reparar.
  * - `act` / `undo`: una jugada mía o el "volver atrás". `n` es la cantidad de jugadas que tengo después de ella.
  * - `life` / `clock`: mis puntos de vida (siempre el valor, no el cambio) y el reloj compartido.
+ * - `game`: moneda, dado, piedra-papel-tijera, quién va primero o una señal (no cambian la mesa; `n` cuenta los míos para no repetir ninguno).
  * - `resync`: me perdí algo, mandame un `sync`.
  */
 export type DuelMessage =
@@ -44,6 +46,7 @@ export type DuelMessage =
   | { t: 'undo'; n: number }
   | { t: 'life'; n: number; lp: number }
   | { t: 'clock'; n: number; running: boolean; elapsedMs: number }
+  | { t: 'game'; n: number; game: DuelGame }
   | { t: 'resync' }
 
 export function encodeMessage(message: DuelMessage): string {
@@ -111,6 +114,30 @@ function parseAction(value: unknown): MatAction | null {
   }
 
   return actionChecks[value.type as MatAction['type']](value) ? (value as unknown as MatAction) : null
+}
+
+const isRps = oneOf(RPS_PICKS)
+const isSignal = oneOf(SIGNALS)
+
+function parseGame(value: unknown): DuelGame | null {
+  if (!isPlain(value)) {
+    return null
+  }
+
+  switch (value.kind) {
+    case 'coin':
+      return value.face === 0 || value.face === 1 ? { kind: 'coin', face: value.face } : null
+    case 'die':
+      return isInt(value.value, 1, 6) ? { kind: 'die', value: value.value } : null
+    case 'rps':
+      return value.pick === null ? { kind: 'rps', pick: null } : isRps(value.pick) ? { kind: 'rps', pick: value.pick } : null
+    case 'order':
+      return value.first === 0 || value.first === 1 ? { kind: 'order', first: value.first } : null
+    case 'signal':
+      return isSignal(value.signal) ? { kind: 'signal', signal: value.signal } : null
+    default:
+      return null
+  }
 }
 
 function parseKnown(value: unknown, max: number): Record<string, string> | null {
@@ -257,6 +284,11 @@ export function parseMessage(text: unknown): DuelMessage | null {
 
     case 'clock':
       return isInt(raw.n, 1, MAX_COUNT) && typeof raw.running === 'boolean' && isInt(raw.elapsedMs, 0, MAX_CLOCK_MS) ? { t: 'clock', n: raw.n, running: raw.running, elapsedMs: raw.elapsedMs } : null
+
+    case 'game': {
+      const game = parseGame(raw.game)
+      return game && isInt(raw.n, 1, MAX_COUNT) ? { t: 'game', n: raw.n, game } : null
+    }
 
     case 'resync':
       return { t: 'resync' }

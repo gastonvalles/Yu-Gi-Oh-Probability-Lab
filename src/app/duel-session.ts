@@ -1,3 +1,4 @@
+import { addGame, type DuelGame, type GameEntry, type RpsPick, type SignalId } from './duel-games'
 import { DEFAULT_SETTINGS, PROTOCOL_VERSION, cleanName, encodeMessage, parseMessage, type DuelMessage, type DuelSettings } from './duel-protocol'
 import { createLifeState, lifeReducer, timerElapsed, type Duelist, type LifeState } from './life-calculator'
 import { encodeAct, mapMatIds, mirrorApply, mirrorUndo, openMirror, openPublic, senderKnown, type Mirror, type PublicSender } from './mat-public'
@@ -48,6 +49,12 @@ export interface DuelSnapshot {
   theirs: Mirror | null
   /** LP de los dos (0 = anfitrión, 1 = invitado) y reloj de la ronda. */
   life: LifeState
+  /** El registro de lo que los dos hicieron además de jugar: moneda, dado, piedra-papel-tijera, quién va primero y señales. */
+  games: readonly GameEntry[]
+  /** La ronda de piedra-papel-tijera en curso: la elección del rival se guarda pero no debe mostrarse hasta que yo haya elegido. */
+  rps: { mine: RpsPick | null; theirs: RpsPick | null }
+  /** Quién empieza (0 = anfitrión, 1 = invitado): el anfitrión, hasta que alguien diga otra cosa. */
+  starter: Duelist
 }
 
 export interface Duel {
@@ -61,6 +68,12 @@ export interface Duel {
   halveLife(): void
   toggleClock(): void
   resetClock(): void
+  throwCoin(): void
+  throwDie(): void
+  /** Elegir en piedra-papel-tijera (una vez por ronda); `null` empieza otra. */
+  pickRps(pick: RpsPick | null): void
+  chooseFirst(first: Duelist): void
+  signal(signal: SignalId): void
   close(): void
 }
 
@@ -73,11 +86,14 @@ interface DuelOptions {
   now?: () => number
   /** Identifica esta carga de la página (para las pruebas). */
   sid?: string
+  /** De dónde sale el azar de la moneda y el dado (para las pruebas). */
+  random?: () => number
 }
 
 export function createDuel(transport: DuelTransport, options: DuelOptions): Duel {
   const { role } = options
   const now = options.now ?? Date.now
+  const random = options.random ?? Math.random
   const sid = options.sid ?? Math.random().toString(36).slice(2, 12).padEnd(6, '0')
   const me: Duelist = role === 'host' ? 0 : 1
   const peer: Duelist = role === 'host' ? 1 : 0
@@ -98,18 +114,25 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   let ownIds: Readonly<Record<string, string>> = {}
   let lifeN = 0
   let clockN = 0
+  // Los juegos: lo que cada uno hizo (el registro no viaja en el `sync`: es de esta sesión) y la ronda de piedra-papel-tijera.
+  let games: GameEntry[] = []
+  let gameId = 0
+  let gameN = 0
+  let rps: { mine: RpsPick | null; theirs: RpsPick | null } = { mine: null, theirs: null }
+  let starter: Duelist = 0
 
   // El lado del rival: lo último que le oí, para descartar repetidos y detectar lo que falta.
   let theirs: Mirror | null = null
   let peerSeq = 0
   let peerLifeN = 0
   let peerClockN = 0
+  let peerGameN = 0
   let awaitingSync = false
 
   const listeners = new Set<() => void>()
   let snapshot: DuelSnapshot
 
-  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent, peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life })
+  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent, peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter })
 
   const emit = () => {
     snapshot = build()
@@ -131,6 +154,12 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     }
 
     send({ t: 'sync', ...table, lp: life.lp[me], lifeN, ...(role === 'host' ? { clock } : {}) })
+
+    // Si elegí en piedra-papel-tijera mientras el rival no estaba, mi elección se la mando de nuevo (repetirla no cambia nada del otro lado).
+    if (rps.mine !== null) {
+      gameN += 1
+      send({ t: 'game', n: gameN, game: { kind: 'rps', pick: rps.mine } })
+    }
   }
 
   const sendClock = () => {
@@ -144,6 +173,44 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       awaitingSync = true
       send({ t: 'resync' })
     }
+  }
+
+  /** Lo que un juego cambia (y deja en el registro) cuando lo hace `from`: el mismo efecto de los dos lados. */
+  const applyGame = (from: Duelist, game: DuelGame) => {
+    const mineNow = from === me
+
+    if (game.kind === 'rps') {
+      // Repetir la misma elección (al reconectar) no es una jugada nueva.
+      if (game.pick !== null && (mineNow ? rps.mine : rps.theirs) === game.pick) {
+        return
+      }
+
+      rps = game.pick === null ? { mine: null, theirs: null } : mineNow ? { ...rps, mine: game.pick } : { ...rps, theirs: game.pick }
+
+      // Empezar otra ronda no queda en el registro.
+      if (game.pick === null) {
+        return
+      }
+    }
+
+    if (game.kind === 'order') {
+      starter = game.first
+    }
+
+    gameId += 1
+    games = addGame(games, { id: gameId, from, game })
+  }
+
+  /** Un juego mío: se anota en mi registro y viaja. Con el rival ausente no se hace (no lo vería). */
+  const playGame = (game: DuelGame) => {
+    if (!peerPresent) {
+      return
+    }
+
+    gameN += 1
+    send({ t: 'game', n: gameN, game })
+    applyGame(me, game)
+    emit()
   }
 
   const setPeerLp = (lp: number) => {
@@ -160,6 +227,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     peerSeq = 0
     peerLifeN = 0
     peerClockN = 0
+    peerGameN = 0
+    rps = { ...rps, theirs: null }
     awaitingSync = false
   }
 
@@ -245,6 +314,14 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
         if (message.n > peerClockN) {
           peerClockN = message.n
           setClock(message.running, message.elapsedMs)
+        }
+
+        return
+
+      case 'game':
+        if (message.n > peerGameN) {
+          peerGameN = message.n
+          applyGame(peer, message.game)
         }
 
         return
@@ -353,6 +430,31 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       life = lifeReducer(life, { type: 'timer-reset' })
       sendClock()
       emit()
+    },
+
+    throwCoin() {
+      playGame({ kind: 'coin', face: random() < 0.5 ? 0 : 1 })
+    },
+
+    throwDie() {
+      playGame({ kind: 'die', value: 1 + Math.floor(random() * 6) })
+    },
+
+    pickRps(pick) {
+      // Una elección por ronda: cambiarla después de ver la del rival sería trampa.
+      if (pick !== null && rps.mine !== null) {
+        return
+      }
+
+      playGame({ kind: 'rps', pick })
+    },
+
+    chooseFirst(first) {
+      playGame({ kind: 'order', first })
+    },
+
+    signal(signal) {
+      playGame({ kind: 'signal', signal })
     },
 
     close() {
