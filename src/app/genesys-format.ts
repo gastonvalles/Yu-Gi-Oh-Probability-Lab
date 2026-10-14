@@ -6,7 +6,14 @@ const GENESYS_POINTS_BY_NAME = genesysCardData.cards as Record<string, number>
 
 export const GENESYS_POINT_CAP = genesysCardData.pointCap
 
+// ASCII imprimible con espacios simples: casi todos los nombres. A esos sólo les falta pasar a minúsculas (el resto del camino no los toca).
+const PLAIN_ASCII_NAME = /^[\x21-\x7e]+(?: [\x21-\x7e]+)*$/
+
 function normalizeGenesysCardName(value: string): string {
+  if (PLAIN_ASCII_NAME.test(value)) {
+    return value.toLowerCase()
+  }
+
   return value
     .normalize('NFKD')
     .replace(/[\u2018\u2019]/g, "'")

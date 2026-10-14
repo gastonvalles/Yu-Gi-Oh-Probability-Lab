@@ -135,11 +135,17 @@ export function clampCardDescription(description: string | null): string | null 
 }
 
 const CARD_IMAGE_HOST = 'images.ygoprodeck.com'
+const CARD_IMAGE_PREFIX = `https://${CARD_IMAGE_HOST}/`
 
 /** Sólo imágenes del CDN de YGOPRODeck: un deck compartido no puede hacer que el navegador llame a cualquier host. */
 export function keepCardImageUrl(url: string | null): string | null {
   if (!url) {
     return null
+  }
+
+  // Lo que sigue a `https://host/` no puede cambiar el host: las ~29.000 URLs de cada catálogo (dos por carta) se saltean el `new URL`.
+  if (url.startsWith(CARD_IMAGE_PREFIX)) {
+    return url
   }
 
   try {
