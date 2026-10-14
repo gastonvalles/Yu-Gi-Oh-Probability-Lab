@@ -24,9 +24,12 @@ interface CardArtPickerProps {
  * y se centra sólo mientras entra, con `auto` en los márgenes de las puntas: con `justify-center` las primeras quedarían cortadas a la izquierda, sin forma
  * de llegar a ellas; con el mouse, la rueda la recorre de costado. En columna (al costado de la carta, en una franja de 2.5 rem) la barra va escondida: una
  * barra de verdad le come el ancho a las miniaturas y las tapa; se recorre con el dedo o con la rueda.
+ * Con el mouse también se recorre arrastrando (como con el dedo): sin eso, en una ventana angosta o con el celular emulado no quedaba cómo moverla, y el
+ * clic que deja el arrastre caía en el fondo del detalle y lo cerraba.
  */
 export function CardArtPicker({ arts, selectedId, onSelect, fallbackUrl = null, direction = 'row', className }: CardArtPickerProps) {
   const listRef = useRef<HTMLDivElement>(null)
+  const grab = useRef<{ x: number; y: number; left: number; top: number; moved: boolean } | null>(null)
   const single = arts.length < 2
 
   useEffect(() => {
@@ -59,6 +62,41 @@ export function CardArtPicker({ arts, selectedId, onSelect, fallbackUrl = null, 
       ref={listRef}
       role="group"
       aria-label={t('search.arts.label')}
+      // Sólo el mouse: el dedo ya scrollea solo. Hasta pasar los 6 px es un clic común (elegir la miniatura); después, un arrastre.
+      onPointerDown={(event) => {
+        if (event.pointerType !== 'mouse' || event.button !== 0) return
+
+        const list = event.currentTarget
+
+        grab.current = { x: event.clientX, y: event.clientY, left: list.scrollLeft, top: list.scrollTop, moved: false }
+      }}
+      onPointerMove={(event) => {
+        const start = grab.current
+
+        if (!start || event.buttons !== 1) return
+
+        const dx = event.clientX - start.x
+        const dy = event.clientY - start.y
+
+        if (!start.moved) {
+          if (Math.hypot(dx, dy) < 6) return
+
+          start.moved = true
+          event.currentTarget.setPointerCapture(event.pointerId)
+        }
+
+        event.currentTarget.scrollLeft = start.left - dx
+        event.currentTarget.scrollTop = start.top - dy
+      }}
+      // El clic llega justo después de soltar: se traga y recién entonces se olvida el arrastre.
+      onPointerUp={() => void setTimeout(() => (grab.current = null))}
+      onPointerCancel={() => void setTimeout(() => (grab.current = null))}
+      onClickCapture={(event) => {
+        if (grab.current?.moved) {
+          event.stopPropagation()
+          event.preventDefault()
+        }
+      }}
       className={cx(
         'flex gap-1.5 overflow-auto overscroll-contain p-0.5',
         direction === 'column' ? 'flex-col overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden' : 'flex-row [&>:first-child]:ml-auto [&>:last-child]:mr-auto',
