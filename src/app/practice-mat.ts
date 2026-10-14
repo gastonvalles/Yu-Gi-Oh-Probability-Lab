@@ -70,7 +70,7 @@ export type MatAction =
   /** `deck` = tope del deck. `faceDown` sólo aplica al destierro. `shuffle`: la carta salió mirando el deck y el resto se baraja con esa semilla en la misma jugada. */
   | { type: 'move'; id: string; to: MatPile | 'deck-bottom'; faceDown?: boolean; shuffle?: number }
   | { type: 'place'; id: string; zone: MatSpot; index: number; pos: MatPos; how?: MatSummon; shuffle?: number }
-  /** Invocación por Sacrificio (o Colocar por Sacrificio): los sacrificios van al cementerio y la carta sale a la zona. */
+  /** Invocación Normal (o Colocar) de un monstruo de Nivel 5+: los sacrificios van al cementerio y la carta sale a la zona. */
   | { type: 'tribute'; id: string; tributes: string[]; zone: MatZone; index: number; pos: MatPos }
   /** Invocación desde el Extra Deck con materiales del campo: Fusión, Sincronía y Enlace los mandan al cementerio; Xyz los pone debajo. */
   | { type: 'summon'; id: string; how: ExtraSummon; materials: string[]; zone: MatZone; index: number; pos: MatPos }
@@ -817,11 +817,12 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
         placeIn(t('practice.menu.normalSummon'), zones, 'atk', 'normal')
         placeIn(t('practice.menu.set'), zones, 'set', 'normal')
       } else if (monstersOnField(state).length >= tributes) {
-        // Nivel 5+: primero los Sacrificios y al final la zona (la mesa completa `tributes`, `zone` e `index`).
+        // Nivel 5+: es la misma Invocación Normal (o Colocar) de siempre; los Sacrificios no son otra jugada, la mesa los pide al elegirla: primero ellos y al final
+        // la zona (completa `tributes`, `zone` e `index`).
         const tribute = (label: string, pos: MatPos) => items.push({ label, action: { type: 'tribute', id, tributes: [], zone: 'mz', index: 0, pos }, tributes })
 
-        tribute(t('practice.menu.tributeSummon', { count: tributes }), 'atk')
-        tribute(t('practice.menu.tributeSet', { count: tributes }), 'set')
+        tribute(t('practice.menu.normalSummon'), 'atk')
+        tribute(t('practice.menu.set'), 'set')
       }
     }
 

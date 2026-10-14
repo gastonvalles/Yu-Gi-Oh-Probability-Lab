@@ -57,7 +57,7 @@ describe('la mesa de práctica en inglés', () => {
     const end = run([{ type: 'phase', phase: 'end' }])
     const describe = (action: MatAction, from: MatState = state) => describeMatAction(from, action, nameOf)
 
-    expect(describe({ type: 'tribute', id: 'c1', tributes: ['a1', 'a2'], zone: 'mz', index: 0, pos: 'atk' })).toBe('You Tribute Summon C1 (Tributing A1 and A2)')
+    expect(describe({ type: 'tribute', id: 'c1', tributes: ['a1', 'a2'], zone: 'mz', index: 0, pos: 'atk' })).toBe('You Normal Summon C1 (Tributing A1 and A2)')
     expect(describe({ type: 'tribute', id: 'c1', tributes: ['a1'], zone: 'mz', index: 0, pos: 'set' })).toBe('You Set C1 face-down by Tributing A1')
     expect(describe({ type: 'summon', id: 'x1', how: 'xyz', materials: ['a1', 'a2', 'b1'], zone: 'emz', index: 0, pos: 'def' })).toBe('You Xyz Summon X1 in Defense Position (materials: A1, A2, and B1)')
     expect(describe({ type: 'phase', phase: 'battle' })).toBe('You go to the Battle Phase')
@@ -77,7 +77,7 @@ describe('la mesa de práctica en inglés', () => {
     expect(listCardActions(start(), 'x1', kindOf, nameOf).find((item) => item.label === 'Banish')!.choices?.map((choice) => choice.label)).toEqual(['Face-up', 'Face-down'])
 
     const two = run([{ type: 'place', id: 'x1', zone: 'emz', index: 0, pos: 'atk' }, { type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }])
-    expect(labels(two, 'c1').slice(0, 2)).toEqual(['Tribute Summon (2)', 'Tribute Set (2)'])
+    expect(labels(two, 'c1').slice(0, 2)).toEqual(['Normal Summon', 'Set'])
     expect(labels(two, 'a1')).toEqual(['Activate effect', 'Switch to Defense', 'Turn face-down', 'Attach to X1', 'Counter +1', 'Target', 'To the Spell & Trap Zone', 'To hand', 'To the Graveyard', 'Banish', 'Top of the Deck', 'Bottom of the Deck'])
   })
 
