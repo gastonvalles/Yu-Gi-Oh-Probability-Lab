@@ -540,8 +540,10 @@ describe('la mesa de práctica', () => {
     fireEvent.pointerUp(plus, { ...pointer, clientX: 80, clientY: 120 })
     expect(screen.queryByRole('menu', { name: 'Ficha' })).not.toBeInTheDocument()
 
-    // Tocada, pregunta la posición y después la zona (sólo las principales).
+    // Tocada, pregunta qué agregar (una ficha o, como ya hay una carta en el campo, poner contadores), después la posición y después la zona (sólo las principales).
     tap(plus)
+    expect(within(screen.getByRole('menu', { name: 'Agregar' })).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Ficha', 'Poner contadores'])
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ficha' }))
     const menu = screen.getByRole('menu', { name: 'Ficha' })
     expect(within(menu).getByText('Invocación Especial')).toBeInTheDocument()
     fireEvent.click(within(menu).getByRole('menuitem', { name: 'En defensa' }))
@@ -555,7 +557,7 @@ describe('la mesa de práctica', () => {
 
     // Como en DuelingBook: mover, target, pasar a ataque y quitar.
     tap(token)
-    expect(within(screen.getByRole('menu', { name: 'Ficha' })).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Pasar a ataque', 'Contador +1', 'Target', 'Quitar la ficha'])
+    expect(within(screen.getByRole('menu', { name: 'Ficha' })).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Pasar a ataque', 'Target', 'Quitar la ficha'])
     fireEvent.click(screen.getByRole('menuitem', { name: 'Pasar a ataque' }))
     expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ficha' })).toBeInTheDocument()
   })
@@ -1253,5 +1255,80 @@ describe('la mesa de práctica', () => {
     expect(within(list).getAllByRole('button')[0]).toHaveTextContent('Atacás directo con Ash Blossom')
     // La carta sigue donde estaba: atacar no la mueve.
     expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' })).toBeInTheDocument()
+  })
+
+  describe('contadores', () => {
+    const plusButton = () => screen.getByRole('button', { name: 'Ficha' })
+    const rows = () => within(within(screen.getByRole('complementary', { name: 'Pasos y combos' })).getByRole('list', { name: 'Jugadas' })).getAllByRole('button')
+
+    /** Ash Blossom invocada en la zona 1: devuelve su carta. */
+    function summon() {
+      tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
+      return within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' })
+    }
+
+    it('el botón + los pone y los quita, tocando cartas hasta "Listo"; el menú de la carta no tiene contadores', () => {
+      render(<Harness />)
+      const card = summon()
+
+      // Al tocar una carta no hay contadores en su menú.
+      tap(card)
+      expect(within(screen.getByRole('menu', { name: 'Ash Blossom' })).queryByRole('menuitem', { name: /contador/i })).not.toBeInTheDocument()
+      fireEvent.keyDown(document, { key: 'Escape' })
+
+      // El +: una ficha o poner contadores (quitar sólo si alguna carta tiene).
+      tap(plusButton())
+      expect(within(screen.getByRole('menu', { name: 'Agregar' })).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Ficha', 'Poner contadores'])
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Poner contadores' }))
+      expect(within(status()).getByText('Tocá una carta para ponerle un contador')).toBeInTheDocument()
+      expect(zone('Zona de monstruo 1')).toHaveAttribute('data-pick', 'true')
+      expect(zone('Zona de monstruo 2')).toHaveAttribute('data-pick', 'false')
+
+      // Cada toque suma uno y el modo sigue; una carta de la mano no hace nada.
+      const before = rows().length
+      tap(card)
+      tap(card)
+      tap(within(hand()).getByRole('listitem', { name: 'Maxx C' }))
+      expect(rows()).toHaveLength(before + 2)
+      expect(rows()[0]).toHaveTextContent('Contador en Ash Blossom: 2')
+      expect(within(status()).getByText('Tocá una carta para ponerle un contador')).toBeInTheDocument()
+      fireEvent.click(within(status()).getByRole('button', { name: 'Listo' }))
+      expect(screen.queryByText('Tocá una carta para ponerle un contador')).not.toBeInTheDocument()
+
+      // Ahora hay con qué quitar: cada toque resta uno, y una carta sin contadores no se enciende ni cambia.
+      tap(plusButton())
+      expect(within(screen.getByRole('menu', { name: 'Agregar' })).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Ficha', 'Poner contadores', 'Quitar contadores'])
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Quitar contadores' }))
+      expect(within(status()).getByText('Tocá una carta para quitarle un contador')).toBeInTheDocument()
+      tap(card)
+      expect(rows()[0]).toHaveTextContent('Contador en Ash Blossom: 1')
+      tap(card)
+      expect(rows()[0]).toHaveTextContent('Contador en Ash Blossom: 0')
+      const total = rows().length
+      expect(zone('Zona de monstruo 1')).toHaveAttribute('data-pick', 'false')
+      tap(card)
+      expect(rows()).toHaveLength(total)
+
+      // Escape cierra el modo.
+      fireEvent.keyDown(document, { key: 'Escape' })
+      expect(screen.queryByText('Tocá una carta para quitarle un contador')).not.toBeInTheDocument()
+    })
+
+    it('arrastrar el + sobre una carta del campo le pone un contador; con el campo vacío, el + sólo ofrece la ficha', () => {
+      render(<Harness />)
+      const card = summon()
+      const target = zone('Zona de monstruo 1')
+
+      document.elementFromPoint = () => target
+      document.elementsFromPoint = () => [target]
+      fireEvent.pointerDown(plusButton(), { ...pointer, clientX: 10, clientY: 10 })
+      fireEvent.pointerMove(plusButton(), { ...pointer, clientX: 80, clientY: 120 })
+      fireEvent.pointerUp(plusButton(), { ...pointer, clientX: 80, clientY: 120 })
+
+      expect(rows()[0]).toHaveTextContent('Contador en Ash Blossom: 1')
+      expect(card).toBeInTheDocument()
+    })
   })
 })

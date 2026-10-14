@@ -10,6 +10,7 @@ import {
   banishItem,
   cardKindOf,
   describeMatSteps,
+  fieldCards,
   freeTargets,
   isToken,
   listCardActions,
@@ -338,7 +339,8 @@ export function PracticeMat({
     | { kind: 'card'; id: string; rect: DOMRect; ask?: MatMenuItem; drop?: MatTarget }
     | { kind: 'deck'; rect: DOMRect; ask?: MatMenuItem }
     /** La ficha: sale en ataque o en defensa, en la zona donde se soltó (`zone`) o en la que se elija después. */
-    | { kind: 'token'; rect: DOMRect; zone?: MatTarget }
+    /** Desde el botón +: primero qué agregar (`root`: una ficha o un contador) y, de la ficha, la posición; soltada en una zona libre, directo la posición. */
+    | { kind: 'token'; rect: DOMRect; zone?: MatTarget; root?: true }
     | null
   >(null)
   const [viewer, setViewer] = useState<MatPile | null>(null)
@@ -347,6 +349,8 @@ export function PracticeMat({
   const [panelOpen, setPanelOpen] = useState(false)
   const [combos, setCombos] = useState<SavedCombo[]>(() => readSavedCombos())
   const [picking, setPicking] = useState<Picking | null>(null)
+  // Poner o quitar contadores: las cartas del campo se encienden y cada toque suma o resta uno, hasta tocar "Listo" (no es un `picking` porque sigue después de cada jugada).
+  const [counterMode, setCounterMode] = useState<1 | -1 | null>(null)
   // La carta que acaba de destacarse (activada, mostrada, declarada o marcada como objetivo) destella un instante; la `key` repite el destello si pasa dos veces seguidas.
   const [flash, setFlash] = useState<{ id: string; key: number; kind: SpotlightKind } | null>(null)
   // La zona donde acaba de caer un monstruo y el cartel de la fase nueva: cada uno se va solo.
@@ -357,6 +361,7 @@ export function PracticeMat({
   const [handFlash, setHandFlash] = useState<number | null>(null)
 
   useEscapeKey(() => setPicking(null), picking !== null)
+  useEscapeKey(() => setCounterMode(null), counterMode !== null)
 
   useEffect(() => {
     if (!flash) return
@@ -441,6 +446,7 @@ export function PracticeMat({
     setDealt(0)
     setShuffleKey((key) => key + 1)
     setPicking(null)
+    setCounterMode(null)
   }, [session.initial])
 
   const handTotal = state.hand.length
@@ -516,8 +522,8 @@ export function PracticeMat({
 
   // Abrir un menú o elegir Sacrificios también pausa la reproducción: si no, los pasos seguirían avanzando por debajo de lo que se está eligiendo.
   useEffect(() => {
-    if (menu || picking) setAutoplay(false)
-  }, [menu, picking])
+    if (menu || picking || counterMode !== null) setAutoplay(false)
+  }, [menu, picking, counterMode])
 
   const closeViewer = useCallback(() => {
     // Después de mirar el deck sin sacar nada se baraja, como en la mesa real (y la jugada queda anotada).
@@ -671,6 +677,14 @@ export function PracticeMat({
 
   const openCard = useCallback(
     (id: string, rect: DOMRect) => {
+      // Poniendo o quitando contadores: tocar una carta del campo suma o resta uno y se sigue; lo demás no hace nada.
+      if (counterMode !== null) {
+        const where = locateCard(state, id)
+
+        if (where?.kind === 'spot' && (counterMode > 0 || where.placed.counters > 0)) play({ type: 'counter', id, delta: counterMode })
+        return
+      }
+
       if (picking?.kind === 'tributes' || picking?.kind === 'materials') {
         if (monstersOnField(state).includes(id)) (picking.kind === 'tributes' ? pickTribute : pickMaterial)(id)
         return
@@ -691,7 +705,7 @@ export function PracticeMat({
     },
     // pickTribute y pickMaterial leen `picking` y `state` del render actual.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [picking, state],
+    [picking, state, counterMode],
   )
 
   /** Soltar una carta de una pila en una zona libre: el menú ofrece lo que la saca ahí (si es una sola jugada, sale así) y la carta se queda en la zona mientras se elige. */
@@ -726,6 +740,11 @@ export function PracticeMat({
             setPicking(null)
             setMenu({ kind: 'token', rect: anchor.getBoundingClientRect(), zone: { zone: target.spot, index: target.index } })
           }
+        } else {
+          // Soltado sobre una carta del campo (como en DuelingBook), le pone un contador.
+          const occupant = target.kind === 'spot' ? placedAt(state, target.spot, target.index) : null
+
+          if (occupant) onDispatch({ type: 'counter', id: occupant.id, delta: 1 })
         }
         return
       }
@@ -777,10 +796,11 @@ export function PracticeMat({
 
   const handleTap = useCallback(
     (source: MatDragSource, rect: DOMRect) => {
-      // La ficha: primero la posición (en ataque o en defensa); la zona se toca después si hay más de una libre.
+      // El +: primero qué agregar (una ficha o un contador); de la ficha, la posición (en ataque o en defensa), y la zona se toca después si hay más de una libre.
       if (source.id === NEW_TOKEN) {
         setPicking(null)
-        if (freeTargets(state, monsterZones(false)).length > 0) setMenu({ kind: 'token', rect })
+        setCounterMode(null)
+        if (freeTargets(state, monsterZones(false)).length > 0 || fieldCards(state).length > 0) setMenu({ kind: 'token', rect, root: true })
         return
       }
 
@@ -821,6 +841,17 @@ export function PracticeMat({
   const menuItems: MenuItem[] = useMemo(() => {
     if (!menu) return []
 
+    // El + tocado: una ficha (pregunta la posición después) o poner / quitar un contador (sólo si hay cartas a las que ponérselo o quitárselo).
+    if (menu.kind === 'token' && menu.root) {
+      const root: MenuItem[] = []
+
+      if (freeTargets(state, monsterZones(false)).length > 0) root.push({ label: t('practice.menu.plusToken'), onSelect: () => setMenu({ kind: 'token', rect: menu.rect }) })
+      if (fieldCards(state).length > 0) root.push({ label: t('practice.menu.plusCounter'), onSelect: () => { setMenu(null); setCounterMode(1) } })
+      if (fieldCards(state).some((placed) => placed.counters > 0)) root.push({ label: t('practice.menu.minusCounter'), onSelect: () => { setMenu(null); setCounterMode(-1) } })
+
+      return root
+    }
+
     if (menu.kind === 'token') {
       const dropped = menu.zone
 
@@ -859,11 +890,11 @@ export function PracticeMat({
     return items.map((item) => ({ label: item.label, onSelect: () => choose(item, menu.drop) }))
   }, [menu, state, kindOf, nameOf, attackTargets, play, choose, summonToken])
 
-  const menuCard = menu?.kind === 'card' ? cardOf(menu.id) : menu?.kind === 'token' ? TOKEN_CARD : null
+  const menuCard = menu?.kind === 'card' ? cardOf(menu.id) : menu?.kind === 'token' && !menu.root ? TOKEN_CARD : null
   const menuWhere = menu?.kind === 'card' ? locateCard(state, menu.id) : null
   const menuKicker =
     menu?.kind === 'token'
-      ? menu.zone ? zoneLabelOf(menu.zone.zone, menu.zone.index) : t('practice.menu.specialSummon')
+      ? menu.root ? t('practice.mat.name') : menu.zone ? zoneLabelOf(menu.zone.zone, menu.zone.index) : t('practice.menu.specialSummon')
       : menu?.ask
         ? menu.ask.label
         : menu?.kind === 'card' && menu.drop
@@ -871,7 +902,7 @@ export function PracticeMat({
           : menuWhere
             ? menuWhere.kind === 'pile' ? PILE_TITLES[menuWhere.pile] : menuWhere.kind === 'spot' ? ZONE_LABELS[menuWhere.spot] : t('practice.mat.materialOf', { name: nameOf(menuWhere.of) })
             : PILE_TITLES.deck
-  const menuTitle = menuCard?.name ?? t('practice.mat.cardCount', { count: state.deck.length })
+  const menuTitle = menuCard?.name ?? (menu?.kind === 'token' ? t('practice.token.plusTitle') : t('practice.mat.cardCount', { count: state.deck.length }))
 
   const saveCombo = (name: string) => {
     const combo = createSavedCombo({ name, deckName, initial: session.initial, actions: session.actions.slice(0, session.cursor), nameOf }, combos)
@@ -920,8 +951,9 @@ export function PracticeMat({
   )
 
   // Eligiendo Sacrificios o materiales, los monstruos del campo se encienden y el elegido lleva su etiqueta.
-  const choosingOnField = picking?.kind === 'tributes' || picking?.kind === 'materials'
-  const tributeCandidates = choosingOnField ? monstersOnField(state) : []
+  const choosingOnField = picking?.kind === 'tributes' || picking?.kind === 'materials' || counterMode !== null
+  // Para Sacrificios y materiales, los monstruos; para un contador, cualquier carta del campo (y, al quitar, las que tienen).
+  const tributeCandidates = counterMode !== null ? fieldCards(state).filter((placed) => counterMode > 0 || placed.counters > 0).map((placed) => placed.id) : choosingOnField ? monstersOnField(state) : []
   // Eligiendo la zona, los Sacrificios o materiales ya confirmados siguen marcados: su zona se libera y también se puede elegir.
   const leaving = picking?.kind === 'zone' ? (picking.action.type === 'tribute' ? picking.action.tributes : picking.action.type === 'summon' ? picking.action.materials : []) : []
   const chosenLabel = picking?.kind === 'materials' || (picking?.kind === 'zone' && picking.action.type === 'summon') ? t('practice.mat.chosenMaterial') : t('practice.mat.chosenTribute')
@@ -1074,7 +1106,11 @@ export function PracticeMat({
         ? t('practice.mat.pickMaterials', { count: picking.chosen.length })
         : picking
           ? t('practice.mat.pickZone', { label: picking.label })
-          : null
+          : counterMode !== null
+            ? t(counterMode > 0 ? 'practice.mat.pickCounterAdd' : 'practice.mat.pickCounterRemove')
+            : null
+  // Eligiendo (una zona, Sacrificios, materiales o a quién ponerle contadores) las fases y el replay se van y el estado pide lo que falta.
+  const choosing = picking !== null || counterMode !== null
 
   return (
     <section
@@ -1133,7 +1169,7 @@ export function PracticeMat({
           className="relative my-auto grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]"
           aria-label={t('practice.mat.field')}
           // En un duelo, las áreas de los dos campos (el estilo en línea gana a la clase de las áreas de uno solo); y en escritorio las cartas se achican hasta que las cinco filas y la mano entran en la pantalla.
-          style={duel ? ({ gridTemplateAreas: duel.areas, '--cell': 'max(3.5rem, min(8rem, calc((100dvh - 30rem) / 5.2)))' } as CSSProperties) : undefined}
+          style={duel ? ({ gridTemplateAreas: duel.areas, '--cell': 'max(3.5rem, min(8rem, calc((100dvh - 33.5rem) / 5.2)))' } as CSSProperties) : undefined}
         >
           {/* La mascota del duelo, una sola: en escritorio, en la esquina libre de arriba a la izquierda del campo; en el celular, parada sobre esa esquina, detrás de lo demás. */}
           {duel ? duel.opponent : <DuelMascot className="absolute bottom-full left-0 -z-10 mb-1 size-[4.5rem] min-[1101px]:static min-[1101px]:z-0 min-[1101px]:mb-0 min-[1101px]:size-[5.25rem] min-[1101px]:self-end min-[1101px]:justify-self-center min-[1101px]:[grid-area:1/1]" />}
@@ -1145,7 +1181,7 @@ export function PracticeMat({
             ? [0, 2, 4].map((start, index) => (
                 <div key={start} role="group" aria-label={index === 0 ? t('practice.mat.phases') : undefined} className="grid grid-cols-2 gap-0.5 self-center min-[1101px]:gap-1" style={{ gridArea: `p${index + 1}` }}>
                   {PHASES.slice(start, start + 2).map((phase) => (
-                    <PhaseButton key={phase.id} short={phase.short} name={phase.name} active={state.phase === phase.id} onPick={() => play({ type: 'phase', phase: phase.id })} />
+                    <PhaseButton key={phase.id} short={phase.short} name={phase.name} active={state.phase === phase.id} onPick={() => play({ type: 'phase', phase: phase.id, ...(duel ? { skipDraw: true as const } : {}) })} />
                   ))}
                 </div>
               ))
@@ -1226,7 +1262,7 @@ export function PracticeMat({
         </div>
 
         {/* Replay (sólo viendo un combo guardado): los controles de YGOPocket. La lista de pasos se abre aparte, en el mismo panel del celular. */}
-        {session.replay && !picking ? (
+        {session.replay && !choosing ? (
           <ReplayBar
             marks={replayMarks}
             cursor={session.cursor}
@@ -1246,16 +1282,16 @@ export function PracticeMat({
 
         {/* Abajo: en el celular las seis fases, solas y centradas (Deshacer está arriba y los pasos en la lista, así que ni Anterior / Siguiente ni la última jugada hacen falta). En escritorio las fases están entre las zonas.
             Eligiendo (Sacrificios, materiales) las fases se van para que entre lo que hay que tocar: la barra no cambia de alto, el campo no se mueve. */}
-        <div className="flex min-h-9 items-center justify-center gap-2">
-          {!isDesktop && !picking ? (
+        <div className="sticky bottom-0 z-30 flex min-h-9 items-center justify-center gap-2 max-[1100px]:bg-background/85 max-[1100px]:backdrop-blur-sm">
+          {!isDesktop && !choosing ? (
             <div role="group" aria-label={t('practice.mat.phases')} className="grid w-[13.5rem] flex-none grid-cols-6 gap-1">
               {PHASES.map((phase) => (
-                <PhaseButton key={phase.id} short={phase.short} name={phase.name} active={state.phase === phase.id} onPick={() => play({ type: 'phase', phase: phase.id })} />
+                <PhaseButton key={phase.id} short={phase.short} name={phase.name} active={state.phase === phase.id} onPick={() => play({ type: 'phase', phase: phase.id, ...(duel ? { skipDraw: true as const } : {}) })} />
               ))}
             </div>
           ) : null}
           {/* El estado: eligiendo, pide lo que falta; si no, es sólo para el lector de pantalla (la última jugada y el contador ya están en la lista de pasos). */}
-          <div className={cx('flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 px-1 text-micro text-muted', !picking && 'sr-only')} role="status" aria-label={t('practice.mat.currentStep')}>
+          <div className={cx('flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 px-1 text-micro text-muted', !choosing && 'sr-only')} role="status" aria-label={t('practice.mat.currentStep')}>
             {pickingText ? (
               <>
                 <span className="min-w-0 flex-1 truncate font-semibold text-accent">{pickingText}</span>
@@ -1264,17 +1300,17 @@ export function PracticeMat({
                     {t('practice.mat.confirm')}
                   </Button>
                 ) : null}
-                <Button variant="tertiary" size="sm" className="min-h-8 px-2" onClick={() => setPicking(null)}>
-                  {t('common.cancel')}
+                <Button variant={counterMode !== null ? 'primary' : 'tertiary'} size="sm" className="min-h-8 px-2" onClick={() => { setPicking(null); setCounterMode(null) }}>
+                  {counterMode !== null ? t('practice.mat.pickDone') : t('common.cancel')}
                 </Button>
               </>
             ) : null}
-            {!picking && session.actions.length > 0 ? (
+            {!choosing && session.actions.length > 0 ? (
               <span className="font-semibold tabular-nums text-foreground">
                 {session.cursor}/{session.actions.length}
               </span>
             ) : null}
-            {!picking ? <span className="min-w-0 flex-1 truncate">{session.cursor === 0 ? (session.actions.length > 0 ? t('practice.mat.startingHand') : t('practice.mat.hint')) : steps[session.cursor - 1]}</span> : null}
+            {!choosing ? <span className="min-w-0 flex-1 truncate">{session.cursor === 0 ? (session.actions.length > 0 ? t('practice.mat.startingHand') : t('practice.mat.hint')) : steps[session.cursor - 1]}</span> : null}
           </div>
         </div>
       </div>

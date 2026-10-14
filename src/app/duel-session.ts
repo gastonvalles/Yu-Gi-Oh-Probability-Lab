@@ -55,6 +55,10 @@ export interface DuelSnapshot {
   rps: { mine: RpsPick | null; theirs: RpsPick | null }
   /** Quién empieza (0 = anfitrión, 1 = invitado): el anfitrión, hasta que alguien diga otra cosa. */
   starter: Duelist
+  /** Quién se rindió (0 = anfitrión, 1 = invitado), si alguien lo hizo. */
+  conceded: Duelist | null
+  /** Quién pidió la revancha: cuando los dos la piden, la mesa se limpia y se vuelve a repartir. */
+  rematch: { mine: boolean; theirs: boolean }
 }
 
 export interface Duel {
@@ -67,13 +71,16 @@ export interface Duel {
   changeLife(delta: number): void
   halveLife(): void
   toggleClock(): void
-  resetClock(): void
   throwCoin(): void
   throwDie(): void
   /** Elegir en piedra-papel-tijera (una vez por ronda); `null` empieza otra. */
   pickRps(pick: RpsPick | null): void
   chooseFirst(first: Duelist): void
   signal(signal: SignalId): void
+  /** Rendirme: el duelo termina y gana el rival. */
+  concede(): void
+  /** Pedir la revancha (o aceptarla si el rival la pidió). */
+  rematch(): void
   close(): void
 }
 
@@ -120,6 +127,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   let gameN = 0
   let rps: { mine: RpsPick | null; theirs: RpsPick | null } = { mine: null, theirs: null }
   let starter: Duelist = 0
+  let conceded: Duelist | null = null
+  let rematch = { mine: false, theirs: false }
 
   // El lado del rival: lo último que le oí, para descartar repetidos y detectar lo que falta.
   let theirs: Mirror | null = null
@@ -132,7 +141,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   const listeners = new Set<() => void>()
   let snapshot: DuelSnapshot
 
-  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent, peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter })
+  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent, peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, rematch })
 
   const emit = () => {
     snapshot = build()
@@ -154,6 +163,12 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     }
 
     send({ t: 'sync', ...table, lp: life.lp[me], lifeN, ...(role === 'host' ? { clock } : {}) })
+
+    // Lo mismo con la revancha que ya pedí.
+    if (rematch.mine && !rematch.theirs) {
+      gameN += 1
+      send({ t: 'game', n: gameN, game: { kind: 'rematch' } })
+    }
 
     // Si elegí en piedra-papel-tijera mientras el rival no estaba, mi elección se la mando de nuevo (repetirla no cambia nada del otro lado).
     if (rps.mine !== null) {
@@ -197,8 +212,45 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       starter = game.first
     }
 
+    if (game.kind === 'concede') {
+      // Rendirse dos veces no cuenta dos veces.
+      if (conceded !== null) {
+        return
+      }
+
+      conceded = from
+    }
+
+    if (game.kind === 'rematch') {
+      if (mineNow ? rematch.mine : rematch.theirs) {
+        return
+      }
+
+      rematch = mineNow ? { ...rematch, mine: true } : { ...rematch, theirs: true }
+    }
+
     gameId += 1
     games = addGame(games, { id: gameId, from, game })
+
+    // Los dos quieren la revancha: se empieza de cero (la mesa, los puntos de vida y el reloj), y cada uno vuelve a repartir su mano.
+    if (rematch.mine && rematch.theirs) {
+      initial = null
+      actions = []
+      mine = null
+      sender = null
+      ownIds = {}
+      theirs = null
+      peerSeq = 0
+      lifeN = 0
+      clockN = 0
+      peerLifeN = 0
+      peerClockN = 0
+      awaitingSync = false
+      life = { ...createLifeState(), lp: [settings.lp, settings.lp] }
+      conceded = null
+      rematch = { mine: false, theirs: false }
+      rps = { mine: null, theirs: null }
+    }
   }
 
   /** Un juego mío: se anota en mi registro y viaja. Con el rival ausente no se hace (no lo vería). */
@@ -229,6 +281,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     peerClockN = 0
     peerGameN = 0
     rps = { ...rps, theirs: null }
+    rematch = { ...rematch, theirs: false }
     awaitingSync = false
   }
 
@@ -426,12 +479,6 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       emit()
     },
 
-    resetClock() {
-      life = lifeReducer(life, { type: 'timer-reset' })
-      sendClock()
-      emit()
-    },
-
     throwCoin() {
       playGame({ kind: 'coin', face: random() < 0.5 ? 0 : 1 })
     },
@@ -447,6 +494,14 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       }
 
       playGame({ kind: 'rps', pick })
+    },
+
+    concede() {
+      playGame({ kind: 'concede' })
+    },
+
+    rematch() {
+      playGame({ kind: 'rematch' })
     },
 
     chooseFirst(first) {

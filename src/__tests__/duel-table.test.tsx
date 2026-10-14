@@ -118,7 +118,11 @@ describe('la mesa del duelo', () => {
   it('la mano del rival se ve sólo como cantidad, de dorso', () => {
     render(<DuelTable mine={side(start)} theirs={side(start, [], 5)} />)
 
-    expect(screen.getByRole('img', { name: 'Mano del rival: 5' })).toBeInTheDocument()
+    const hand = screen.getByRole('img', { name: 'Mano del rival: 5' })
+
+    expect(hand.children).toHaveLength(5)
+    // Va dentro de una columna que scrollea: sin `shrink-0` la columna la aplastaba a 0 px y sólo se veían sus sombras (en jsdom no hay layout, así que se cuida la clase).
+    expect(hand).toHaveClass('shrink-0')
   })
 
   it('se puede mostrar un solo campo: el propio o el del rival, con las Zonas Extra en el medio', () => {

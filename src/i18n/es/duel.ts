@@ -29,7 +29,7 @@ export const duel = {
   'duel.lobby.joinPlaceholder': 'Enlace o código',
   'duel.lobby.joinAction': 'Unirme',
   'duel.lobby.joinInvalid': 'Ese no parece un código de duelo: son 8 letras y números.',
-  'duel.lobby.needDeck': 'Armá primero tu deck en el builder: el duelo se juega con el que tengas armado ({count} cartas en el Main, hacen falta {min} para repartir la mano).',
+  'duel.lobby.needDeck': 'Para repartir la mano hacen falta {min} cartas en el Main y tu deck tiene {count}: armalo en el builder o pegá abajo un enlace ydke:// o un archivo .ydk.',
 
   // La sala, hasta que los dos tienen su mano.
   'duel.room.title': 'Tu duelo',
@@ -67,7 +67,6 @@ export const duel = {
   'duel.bar.clock': 'Reloj de la ronda: {time}',
   'duel.bar.clockStart': 'Iniciar el reloj',
   'duel.bar.clockPause': 'Pausar el reloj',
-  'duel.bar.clockReset': 'Reiniciar el reloj',
   'duel.bar.leave': 'Salir del duelo',
   'duel.bar.leaveTitle': '¿Salir del duelo?',
   'duel.bar.leaveText': 'Tu rival se queda en la sala. Si volvés con el mismo enlace, repartís una mano nueva.',
@@ -115,4 +114,40 @@ export const duel = {
   'duel.games.log.order': 'Empieza {name}',
   'duel.games.log.signal': '{name}: {signal}',
   'duel.games.log.rpsResult': '{mine} contra {theirs}: {outcome}',
+  'duel.games.log.concede': '{name} se rindió',
+  'duel.games.log.rematch': '{name} quiere la revancha',
+  'duel.games.end.title': 'Terminar el duelo',
+  'duel.games.concede': 'Rendirme',
+  'duel.games.concede.confirm': '¿Seguro? Gana {name}.',
+  'duel.games.concede.yes': 'Sí, rendirme',
+
+  // Cómo terminó el duelo y la revancha.
+  'duel.result.win': 'Ganaste el duelo.',
+  'duel.result.lose': 'Perdiste el duelo.',
+  'duel.result.draw': 'Empate: los dos se quedaron sin puntos de vida.',
+  'duel.result.winConceded': '{name} se rindió. ¡Ganaste!',
+  'duel.result.loseConceded': 'Te rendiste.',
+  'duel.result.rematch': 'Revancha',
+  'duel.result.rematchWaiting': 'Esperando a {name}…',
+  'duel.result.rematchOffered': '{name} quiere la revancha.',
+  'duel.turn.drew': 'Empezó tu turno: robaste una carta.',
+
+  // Los puntos de vida con los que empieza el duelo (los fija quien lo crea).
+  'duel.lobby.lp': 'Puntos de vida',
+
+  // Jugar con otro deck que el del builder (por ejemplo desde un celular).
+  'duel.deck.title': 'Tu deck',
+  'duel.deck.builder': 'El del builder: {name} ({count} cartas en el Main)',
+  'duel.deck.imported': 'Deck importado: {main} cartas en el Main y {extra} en el Extra',
+  'duel.deck.importedName': 'Deck importado',
+  'duel.deck.useOther': 'Usar otro deck',
+  'duel.deck.hint': 'Pegá un enlace ydke:// o el contenido de un archivo .ydk, o elegí el archivo.',
+  'duel.deck.placeholder': 'ydke://… o el texto del .ydk',
+  'duel.deck.file': 'Elegir un archivo',
+  'duel.deck.use': 'Usar este deck',
+  'duel.deck.loading': 'Buscando las cartas…',
+  'duel.deck.invalid': 'No reconozco ese deck: pegá un enlace ydke:// o el contenido de un archivo .ydk.',
+  'duel.deck.failed': 'No pude buscar las cartas ahora. Probá de nuevo en un momento.',
+  'duel.deck.unknown': '{count} cartas no se reconocieron: se juegan igual, sin nombre.',
+  'duel.deck.back': 'Volver al deck del builder',
 } as const

@@ -1,4 +1,6 @@
-import { RPS_PICKS, SIGNALS, rpsOutcome, type RpsPick, type SignalId } from '../../app/duel-games'
+import { useState } from 'react'
+
+import { RPS_PICKS, SIGNALS, duelResult, rpsOutcome, type RpsPick, type SignalId } from '../../app/duel-games'
 import type { Duel, DuelSnapshot } from '../../app/duel-session'
 import { t } from '../../i18n'
 import { Coin, Die } from '../life/Toss'
@@ -10,7 +12,7 @@ import { overline } from '../ui/typography'
 import { gameText, outcomeText, rpsName, signalText, tossResult } from './game-text'
 
 /** Lo que el panel puede hacer: tirar, elegir, decir quién empieza y mandar una señal. */
-export type GameActions = Pick<Duel, 'throwCoin' | 'throwDie' | 'pickRps' | 'chooseFirst' | 'signal'>
+export type GameActions = Pick<Duel, 'throwCoin' | 'throwDie' | 'pickRps' | 'chooseFirst' | 'signal' | 'concede' | 'rematch'>
 
 interface DuelGamesProps {
   isOpen: boolean
@@ -34,6 +36,8 @@ export function DuelGames({ isOpen, onClose, snapshot, myName, actions }: DuelGa
   const outcome = rpsOutcome(rps.mine, rps.theirs)
   const toss = [...games].reverse().find((entry) => entry.game.kind === 'coin' || entry.game.kind === 'die')
   const rival01 = me === 0 ? 1 : 0
+  const finished = duelResult(snapshot.life.lp, snapshot.conceded) !== null
+  const [conceding, setConceding] = useState(false)
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="md" title={t('duel.games.title')} ariaLabel={t('duel.games.title')}>
@@ -111,6 +115,36 @@ export function DuelGames({ isOpen, onClose, snapshot, myName, actions }: DuelGa
               <SignalButton key={signal} signal={signal} disabled={!peerPresent} onSend={actions.signal} />
             ))}
           </div>
+        </section>
+
+        <section className="grid gap-2 border-t border-border-subtle pt-3" aria-label={t('duel.games.end.title')}>
+          <span className={overline}>{t('duel.games.end.title')}</span>
+          {conceding ? (
+            <>
+              <p className="m-0 text-body text-foreground">{t('duel.games.concede.confirm', { name: rival })}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="primary"
+                  color="danger"
+                  size="sm"
+                  onClick={() => {
+                    setConceding(false)
+                    actions.concede()
+                    onClose()
+                  }}
+                >
+                  {t('duel.games.concede.yes')}
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => setConceding(false)}>
+                  {t('common.cancel')}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <Button variant="secondary" color="danger" size="sm" disabled={!peerPresent || finished} onClick={() => setConceding(true)}>
+              {t('duel.games.concede')}
+            </Button>
+          )}
         </section>
 
         <section className="grid gap-1.5 border-t border-border-subtle pt-3" aria-label={t('duel.games.log.title')}>

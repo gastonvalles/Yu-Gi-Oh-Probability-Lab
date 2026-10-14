@@ -22,6 +22,10 @@ export type DuelGame =
   /** Quién va primero (0 = anfitrión, 1 = invitado). */
   | { kind: 'order'; first: Duelist }
   | { kind: 'signal'; signal: SignalId }
+  /** Me rindo: el duelo termina y gana el otro. */
+  | { kind: 'concede' }
+  /** Quiero la revancha: cuando los dos la piden, los dos vuelven a repartir mano con los puntos de vida del principio. */
+  | { kind: 'rematch' }
 
 /** Una entrada del registro: quién lo hizo y qué. `id` es creciente, sirve de clave. */
 export interface GameEntry {
@@ -38,6 +42,22 @@ export function rpsOutcome(mine: RpsPick | null, theirs: RpsPick | null): 'win' 
   if (mine === null || theirs === null) return null
   if (mine === theirs) return 'draw'
   return BEATS[mine] === theirs ? 'win' : 'lose'
+}
+
+/** Cómo terminó el duelo: alguien perdió (se quedó sin puntos de vida o se rindió) o quedaron los dos en cero. */
+export type DuelResult = { kind: 'loss'; loser: Duelist } | { kind: 'draw' }
+
+/** El resultado de un duelo con esos puntos de vida y, si alguien se rindió, quién; `null` mientras siga. */
+export function duelResult(lp: readonly number[], conceded: Duelist | null): DuelResult | null {
+  if (conceded !== null) return { kind: 'loss', loser: conceded }
+
+  const host = (lp[0] ?? 1) <= 0
+  const guest = (lp[1] ?? 1) <= 0
+
+  if (host && guest) return { kind: 'draw' }
+  if (host) return { kind: 'loss', loser: 0 }
+  if (guest) return { kind: 'loss', loser: 1 }
+  return null
 }
 
 /** Cuántas entradas se guardan: el registro es de la mano, no un historial. */

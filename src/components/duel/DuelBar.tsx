@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 
+import { duelResult, type DuelResult } from '../../app/duel-games'
 import type { DuelSnapshot } from '../../app/duel-session'
 import type { SocketStatus } from '../../app/duel-socket'
 import { formatClock, interpretAmount, timerRemaining } from '../../app/life-calculator'
@@ -25,7 +26,6 @@ interface DuelBarProps {
   onChangeLife: (delta: number) => void
   onHalve: () => void
   onToggleClock: () => void
-  onResetClock: () => void
   /** Moneda, dado, piedra-papel-tijera, quién empieza y señales. */
   games: GameActions
   onLeave: () => void
@@ -54,7 +54,7 @@ const STATUS_TEXT: Record<Exclude<SocketStatus, 'open'>, () => string> = {
  * La barra de arriba de la mesa en un duelo: los puntos de vida de los dos (los tuyos se cambian tocándolos), de quién es el turno,
  * el reloj de la ronda (compartido) y cómo va la conexión. Salir pide confirmación.
  */
-export function DuelBar({ snapshot, status, myName, turn, onChangeLife, onHalve, onToggleClock, onResetClock, games, onLeave }: DuelBarProps) {
+export function DuelBar({ snapshot, status, myName, turn, onChangeLife, onHalve, onToggleClock, games, onLeave }: DuelBarProps) {
   const now = useTick(1000)
   const [lifeOpen, setLifeOpen] = useState(false)
   const [leaving, setLeaving] = useState(false)
@@ -63,6 +63,7 @@ export function DuelBar({ snapshot, status, myName, turn, onChangeLife, onHalve,
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
   const running = life.timer.running
   const clock = formatClock(timerRemaining(life.timer, now))
+  const result = duelResult(life.lp, snapshot.conceded)
 
   return (
     <div className="grid gap-1.5 px-0.5">
@@ -80,9 +81,6 @@ export function DuelBar({ snapshot, status, myName, turn, onChangeLife, onHalve,
           <IconButton tone="flat" size="sm" aria-label={running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')} title={running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')} onClick={onToggleClock}>
             <Icon name={running ? 'pause' : 'play'} />
           </IconButton>
-          <IconButton tone="flat" size="sm" aria-label={t('duel.bar.clockReset')} title={t('duel.bar.clockReset')} onClick={onResetClock}>
-            <Icon name="refresh" />
-          </IconButton>
         </span>
         <IconButton tone="flat" size="sm" aria-label={t('duel.games.open')} title={t('duel.games.open')} className="ml-auto" onClick={() => setGamesOpen(true)}>
           <Icon name="dice" />
@@ -99,6 +97,8 @@ export function DuelBar({ snapshot, status, myName, turn, onChangeLife, onHalve,
       ) : null}
 
       <DuelGames isOpen={gamesOpen} onClose={() => setGamesOpen(false)} snapshot={snapshot} myName={myName} actions={games} />
+
+      {result ? <ResultBanner result={result} snapshot={snapshot} rival={rivalName} onRematch={games.rematch} /> : null}
 
       <LifeDialog
         isOpen={lifeOpen}
@@ -130,15 +130,45 @@ export function DuelBar({ snapshot, status, myName, turn, onChangeLife, onHalve,
   )
 }
 
+/** Cómo terminó el duelo (sin puntos de vida o rendido) y la revancha: pedirla, o aceptarla si el rival ya la pidió. */
+function ResultBanner({ result, snapshot, rival, onRematch }: { result: DuelResult; snapshot: DuelSnapshot; rival: string; onRematch: () => void }) {
+  const { me, conceded, rematch } = snapshot
+  const won = result.kind === 'loss' && result.loser !== me
+  const text =
+    result.kind === 'draw'
+      ? t('duel.result.draw')
+      : won
+        ? conceded !== null ? t('duel.result.winConceded', { name: rival }) : t('duel.result.win')
+        : conceded === me ? t('duel.result.loseConceded') : t('duel.result.lose')
+  const note = rematch.mine ? t('duel.result.rematchWaiting', { name: rival }) : rematch.theirs ? t('duel.result.rematchOffered', { name: rival }) : null
+
+  return (
+    <Callout
+      tone={result.kind === 'draw' ? 'info' : won ? 'success' : 'danger'}
+      icon="trophy"
+      action={
+        rematch.mine ? null : (
+          <Button variant="primary" size="sm" disabled={!snapshot.peerPresent} onClick={onRematch}>
+            {t('duel.result.rematch')}
+          </Button>
+        )
+      }
+    >
+      <span role="status">{text}</span>
+      {note ? <span className="block text-micro text-soft">{note}</span> : null}
+    </Callout>
+  )
+}
+
 /** Los puntos de vida de uno: su nombre y el número grande. Los propios son un botón que abre el cambio. */
 function LifeTile({ name, life, mine = false, onClick }: { name: string; life: number; mine?: boolean; onClick?: () => void }) {
   const body = (
     <>
-      <span className="block truncate text-micro font-semibold uppercase tracking-[0.04em] text-soft">{name}</span>
-      <span className={cx('block text-lead font-extrabold leading-tight tabular-nums', mine ? 'text-accent' : 'text-foreground')}>{formatInteger(life)}</span>
+      <span className="min-w-0 truncate text-micro font-semibold uppercase tracking-[0.04em] text-soft">{name}</span>
+      <span className={cx('shrink-0 text-title font-extrabold leading-tight tabular-nums', mine ? 'text-accent' : 'text-foreground')}>{formatInteger(life)}</span>
     </>
   )
-  const style = 'min-w-0 rounded-card border border-border-subtle bg-card-background px-3 py-1.5 text-left'
+  const style = 'flex min-w-0 items-baseline justify-between gap-2 rounded-card border border-border-subtle bg-card-background px-2.5 py-1 text-left'
 
   return onClick ? (
     <button type="button" aria-label={`${t('duel.bar.lifeOf', { name })}: ${formatInteger(life)}. ${t('duel.bar.changeLife')}`} className={cx(style, 'cursor-pointer focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>

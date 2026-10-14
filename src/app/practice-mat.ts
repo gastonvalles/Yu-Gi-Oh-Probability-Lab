@@ -93,8 +93,11 @@ export type MatAction =
    * `target` es un monstruo del rival, con el id que el rival le dio (en un duelo); sin `target`, es un ataque directo.
    */
   | { type: 'attack'; id: string; target?: string }
-  /** Cambiar de fase; de la End Phase a la Draw Phase empieza otro turno. */
-  | { type: 'phase'; phase: MatPhase }
+  /**
+   * Cambiar de fase; de la End Phase a la Draw Phase empieza otro turno y se roba 1 carta. `skipDraw` (en un duelo) no la roba: el turno del rival
+   * no se terminó todavía, y la carta se roba cuando empieza el turno propio.
+   */
+  | { type: 'phase'; phase: MatPhase; skipDraw?: true }
 
 const ZONE_SIZES: Record<MatZone, number> = { mz: 5, emz: 2, st: 5 }
 
@@ -423,7 +426,7 @@ export function matReducer(state: MatState, action: MatAction): MatState {
       // De la End Phase a la Draw Phase empieza otro turno, y en la Draw Phase se roba 1 carta (regla del juego).
       const newTurn = state.phase === 'end' && action.phase === 'draw'
       const next = { ...state, phase: action.phase, turn: newTurn ? state.turn + 1 : state.turn }
-      return newTurn ? matReducer(next, { type: 'draw', count: 1 }) : next
+      return newTurn && !action.skipDraw ? matReducer(next, { type: 'draw', count: 1 }) : next
     }
 
     default:
@@ -564,7 +567,7 @@ function describePlay(before: MatState, action: MatAction, name: (id: string) =>
       const phase = PHASES.find((entry) => entry.id === action.phase)?.name ?? action.phase
 
       if (before.phase === 'end' && action.phase === 'draw') {
-        const top = before.deck[0]
+        const top = action.skipDraw ? undefined : before.deck[0]
         const turn = before.turn + 1
 
         return top ? t('practice.step.newTurnDraw', { turn, phase, card: name(top) }) : t('practice.step.newTurn', { turn, phase })
@@ -713,6 +716,11 @@ export function banishItem(id: string, label: string): MatMenuItem {
   ])
 }
 
+/** Las cartas de la mesa (monstruos, Mágicas y Trampas, de campo) con sus contadores: a las que se les puede poner o quitar un contador. */
+export function fieldCards(state: MatState): Placed[] {
+  return [...state.mz, ...state.emz, ...state.st, state.field].flatMap((placed) => (placed ? [placed] : []))
+}
+
 /** Monstruos propios en el campo (los que se pueden sacrificar). */
 export function monstersOnField(state: MatState): string[] {
   return [...state.mz, ...state.emz].flatMap((placed) => (placed ? [placed.id] : []))
@@ -804,9 +812,6 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
           }
         }
       }
-
-      add(t('practice.menu.counterPlus'), { type: 'counter', id, delta: 1 })
-      if (placed.counters > 0) add(t('practice.menu.counterMinus'), { type: 'counter', id, delta: -1 })
 
       for (const material of placed.materials) {
         add(t('practice.menu.detach', { name: nameOf(material) }), { type: 'move', id: material, to: 'gy' })
