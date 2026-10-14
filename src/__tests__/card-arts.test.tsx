@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { CardArtPicker } from '../components/card-detail/CardArtPicker'
 import { CardDetailModal } from '../components/card-detail/CardDetailModal'
 import type { ApiCardSearchResult, CardArtOption } from '../ygoprodeck'
 
@@ -133,5 +134,54 @@ describe('el detalle de la carta con las impresiones como artes (overframe, exte
     open()
 
     expect(screen.queryByRole('group', { name: 'Artes de la carta' })).not.toBeInTheDocument()
+  })
+})
+
+describe('el selector de artes de una carta con muchos', () => {
+  const arts = Array.from({ length: 30 }, (_, index) => ({ id: String(index), label: '', imageUrl: `https://images.ygoprodeck.com/images/cards/${index}.jpg`, imageUrlSmall: null }))
+
+  afterEach(cleanup)
+
+  it('la fila no centra con justify-center (cortaría las primeras): centra con márgenes automáticos en las puntas y scrollea con la barra a la vista', () => {
+    render(<CardArtPicker arts={arts} selectedId="0" onSelect={() => {}} />)
+
+    const list = screen.getByRole('group', { name: /artes/i })
+
+    expect(list).toHaveClass('overflow-auto', '[&>:first-child]:ml-auto', '[&>:last-child]:mr-auto')
+    expect(list).not.toHaveClass('justify-center')
+    expect(list.className).not.toContain('scrollbar-width:none')
+    expect(list.className).not.toContain('::-webkit-scrollbar]:hidden')
+  })
+
+  it('la rueda del mouse recorre la fila de costado, y no mueve nada si la fila entra entera', () => {
+    render(<CardArtPicker arts={arts} selectedId="0" onSelect={() => {}} />)
+
+    const list = screen.getByRole('group', { name: /artes/i })
+
+    Object.defineProperty(list, 'scrollWidth', { value: 1000, configurable: true })
+    Object.defineProperty(list, 'clientWidth', { value: 250, configurable: true })
+
+    const wheel = new WheelEvent('wheel', { deltaY: 120, cancelable: true })
+
+    list.dispatchEvent(wheel)
+    expect(list.scrollLeft).toBe(120)
+    expect(wheel.defaultPrevented).toBe(true)
+
+    // Al llegar al final deja pasar la rueda (la página sigue su scroll).
+    list.scrollLeft = 750
+
+    const atEnd = new WheelEvent('wheel', { deltaY: 120, cancelable: true })
+
+    list.dispatchEvent(atEnd)
+    expect(atEnd.defaultPrevented).toBe(false)
+
+    // Si entra entera, la rueda no se toca.
+    Object.defineProperty(list, 'scrollWidth', { value: 250, configurable: true })
+    list.scrollLeft = 0
+
+    const fits = new WheelEvent('wheel', { deltaY: 120, cancelable: true })
+
+    list.dispatchEvent(fits)
+    expect(fits.defaultPrevented).toBe(false)
   })
 })
