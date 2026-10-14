@@ -7,13 +7,18 @@ import { defineConfig, type Plugin } from 'vite'
 
 const isMountedWindowsWorkspace = process.cwd().startsWith('/mnt/')
 
-/** Los headers de seguridad viven en vercel.json; `npm run preview` los aplica para probar el build como en producción. */
+/**
+ * Los headers de seguridad viven en vercel.json; `npm run preview` los aplica para probar el build como en producción.
+ * Los Cache-Control no: son reglas por carpeta (`/assets`, `/mascot`...) y acá se juntan todas en un solo objeto, así que `preview` serviría hasta el index.html como cacheable.
+ */
 function readVercelHeaders(): Record<string, string> {
   const config = JSON.parse(readFileSync(new URL('./vercel.json', import.meta.url), 'utf8')) as {
     headers?: Array<{ headers: Array<{ key: string; value: string }> }>
   }
 
-  return Object.fromEntries((config.headers ?? []).flatMap((rule) => rule.headers.map((header) => [header.key, header.value])))
+  return Object.fromEntries(
+    (config.headers ?? []).flatMap((rule) => rule.headers.filter((header) => header.key.toLowerCase() !== 'cache-control').map((header) => [header.key, header.value])),
+  )
 }
 
 const COPYRIGHT_BANNER = `/*! Yu-Gi-Oh! Probability Lab © ${new Date().getFullYear()} Gastón Valles. Todos los derechos reservados. Sitio no oficial: Yu-Gi-Oh! es una marca de Konami. */`
@@ -23,7 +28,8 @@ const CARD_IMAGE_PROXY = {
   '/api/card-image': {
     target: 'https://images.ygoprodeck.com',
     changeOrigin: true,
-    rewrite: (path: string) => path.replace(/^\/api\/card-image/, '/images'),
+    // Sin el `?w=` de las miniaturas: en producción lo atiende la función (achica con sharp), acá la imagen sale entera.
+    rewrite: (path: string) => path.replace(/^\/api\/card-image/, '/images').replace(/\?.*$/, ''),
   },
 }
 

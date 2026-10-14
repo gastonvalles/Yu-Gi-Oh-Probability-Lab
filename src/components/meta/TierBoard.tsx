@@ -109,7 +109,7 @@ export function DeckTile({ stat, share, onOpen }: TileProps<DeckTierStat>) {
             <Icon name="layers" size={26} />
           </span>
         ) : (
-          <img src={cardImageSrc(coverArtUrl(stat.cover))} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
+          <img src={cardImageSrc(coverArtUrl(stat.cover), 320)} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
         )}
         <span className={TILE_BADGE}>{percent(share)}</span>
         <TrendArrow trend={stat.trend} size={32} className="absolute right-0 top-0" />

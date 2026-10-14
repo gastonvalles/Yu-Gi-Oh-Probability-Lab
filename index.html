@@ -9,6 +9,10 @@
     <!-- La URL pública está también en robots.txt y sitemap.xml (public/): si cambia el dominio, se cambia en los tres. -->
     <link rel="canonical" href="https://yu-gi-oh-probability-lab.vercel.app/" />
     <link rel="preconnect" href="https://db.ygoprodeck.com" crossorigin />
+    <!-- Los tres pesos de Lexend Deca se ven en el primer pantallazo; Vite reescribe estas rutas al archivo con hash. El crossorigin es obligatorio: sin él el navegador baja cada fuente dos veces. -->
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="/src/fonts/lexend-deca-latin-400-normal.woff2" />
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="/src/fonts/lexend-deca-latin-600-normal.woff2" />
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="/src/fonts/lexend-deca-latin-700-normal.woff2" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Deck builder y calculadora exacta de probabilidades para Yu-Gi-Oh!: armá tu deck, clasificá cartas y medí su consistencia." />
     <meta name="author" content="Gastón Valles" />

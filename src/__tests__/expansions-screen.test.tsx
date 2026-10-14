@@ -213,7 +213,7 @@ describe('el sobre de cada expansión', () => {
     const nav = await screen.findByRole('navigation', { name: 'Expansiones' })
 
     // Maze y Legend tienen código y por eso imagen; la promo sin código queda con la caja de ícono.
-    expect(packs(nav)).toEqual(['/api/card-image/sets/MAZE.jpg', '/api/card-image/sets/LOB.jpg'])
+    expect(packs(nav)).toEqual(['/api/card-image/sets/MAZE.jpg?w=128', '/api/card-image/sets/LOB.jpg?w=128'])
 
     const heading = await screen.findByRole('heading', { name: 'Maze of Millennia', level: 2 })
 
@@ -227,7 +227,7 @@ describe('el sobre de cada expansión', () => {
 
     fireEvent.error(nav.querySelector('img')!)
 
-    expect(packs(nav)).toEqual(['/api/card-image/sets/LOB.jpg'])
+    expect(packs(nav)).toEqual(['/api/card-image/sets/LOB.jpg?w=128'])
     expect(nav.querySelectorAll('span[aria-hidden="true"] svg')).toHaveLength(2)
   })
 })

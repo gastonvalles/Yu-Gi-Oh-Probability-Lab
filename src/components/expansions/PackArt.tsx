@@ -22,7 +22,7 @@ export function PackArt({ code, className }: { code: string; className?: string 
 
   return (
     <img
-      src={cardImageSrc(setImageUrl(code))}
+      src={cardImageSrc(setImageUrl(code), 128)}
       alt=""
       loading="lazy"
       decoding="async"

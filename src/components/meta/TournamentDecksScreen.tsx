@@ -191,7 +191,7 @@ function MetaDeckTile({ deck, onOpen }: { deck: MetaDeck; onOpen: () => void }) 
     >
       {deck.cover ? (
         <img
-          src={cardImageSrc(coverArtUrl(deck.cover))}
+          src={cardImageSrc(coverArtUrl(deck.cover), 512)}
           alt=""
           aria-hidden="true"
           loading="lazy"
