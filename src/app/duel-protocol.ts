@@ -101,6 +101,7 @@ const actionChecks: Record<MatAction['type'], (action: Record<string, unknown>) 
   reveal: (a) => isId(a.id),
   declare: (a) => isId(a.id),
   target: (a) => isId(a.id),
+  attack: (a) => isId(a.id) && optional(a.target, isId),
   phase: (a) => isPhase(a.phase),
 }
 

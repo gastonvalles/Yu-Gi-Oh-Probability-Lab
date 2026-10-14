@@ -39,6 +39,8 @@ export interface DuelSnapshot {
   mine: MatState | null
   /** La mesa con la que arranqué y mis jugadas hasta ahora (de acá sale la lista de pasos). */
   initial: MatState | null
+  /** id opaco → id real de mis cartas: así se sabe cuál es una mía que el rival nombra (el objetivo de su ataque). Vacío hasta `start`. */
+  ownIds: Readonly<Record<string, string>>
   actions: readonly MatAction[]
   /** Cuántas jugadas llevo (para saber si hay algo que deshacer). */
   moves: number
@@ -93,6 +95,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   let actions: MatAction[] = []
   let mine: MatState | null = null
   let sender: PublicSender | null = null
+  let ownIds: Readonly<Record<string, string>> = {}
   let lifeN = 0
   let clockN = 0
 
@@ -106,7 +109,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   const listeners = new Set<() => void>()
   let snapshot: DuelSnapshot
 
-  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent, peerName, incompatible, mine, initial, actions, moves: actions.length, theirs, life })
+  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent, peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life })
 
   const emit = () => {
     snapshot = build()
@@ -288,6 +291,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       actions = []
       mine = table
       sender = open.sender
+      ownIds = Object.fromEntries(Object.entries(open.sender.opaque).map(([real, opaque]) => [opaque, real]))
       sendSync()
       emit()
     },

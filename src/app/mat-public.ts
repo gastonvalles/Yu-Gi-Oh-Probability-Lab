@@ -22,6 +22,9 @@ export interface WireAct {
 
 type IdMap = (id: string) => string
 
+/** Un id opaco (`c1`, `c2`…): así llama el rival a sus cartas por la red. Los ids reales (`card-123-2`) y las fichas (`token-1`) no lo son. */
+export const isOpaqueId = (id: string) => /^c[0-9]+$/.test(id)
+
 const MAX_ID_LENGTH = 100
 
 function mapPlaced(placed: Placed | null, map: IdMap): Placed | null {
@@ -67,6 +70,10 @@ export function mapActionIds(action: MatAction, map: IdMap): MatAction {
     case 'reveal':
     case 'declare':
     case 'target':
+      return { ...action, id: map(action.id) }
+
+    // El `target` de un ataque es una carta del rival, que ya viaja con el id que él le dio: sólo el atacante se renombra.
+    case 'attack':
       return { ...action, id: map(action.id) }
 
     case 'tribute':

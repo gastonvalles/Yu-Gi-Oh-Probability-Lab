@@ -12,6 +12,9 @@ export const duel: Translated<typeof es> = {
   'duel.zone.conflict': '{zone}: both players are using it',
   'duel.hand.theirs': "Opponent's hand: {count}",
   'duel.phase.current': 'Current phase: {phase}',
+  'duel.announce.attack': '{name} attacks {target}',
+  'duel.announce.attackDirect': '{name} attacks you directly',
+  'duel.announce.yourCard': 'one of your cards',
 
   'duel.lobby.title': 'Duel a friend',
   'duel.lobby.intro': 'Play the practice mat against another person, each on their own device. No accounts: you join with a link.',

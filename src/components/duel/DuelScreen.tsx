@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { buildDuelLink, DUEL_STEP, extractRoomCode, parseDuelHash } from '../../app/duel-link'
 import { cleanName } from '../../app/duel-protocol'
@@ -297,6 +297,51 @@ function DuelRoom({ snapshot, status, room, deckReady, onStart, onLeave }: { sna
 
 const NOTHING = () => undefined
 
+/** Cuánto se queda el aviso del ataque del rival en el centro de la mesa. */
+const ANNOUNCE_MS = 4000
+
+/**
+ * El ataque que el rival acaba de hacer, para avisarlo grande en el centro: quién ataca (su monstruo) y a qué carta tuya, o que es directo.
+ * Lo que ya había jugado antes de abrir la pantalla no se avisa, y deshacer tampoco.
+ */
+function useRivalAttack(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, MatCard>): DuelMatLink['announcement'] {
+  const { theirs, ownIds, peerName } = snapshot
+  const acts = theirs?.acts
+  const seen = useRef(acts?.length ?? 0)
+  const [shown, setShown] = useState<DuelMatLink['announcement']>(undefined)
+
+  useEffect(() => {
+    const before = seen.current
+    const last = acts?.at(-1)
+
+    seen.current = acts?.length ?? 0
+
+    if (!acts || !theirs || acts.length <= before || last?.type !== 'attack') {
+      return
+    }
+
+    const rival = peerName ?? t('duel.bar.rival')
+    const mine = last.target === undefined ? undefined : ownIds[last.target]
+    const target = (mine === undefined ? undefined : cardsById.get(mine)?.name) ?? t('duel.announce.yourCard')
+
+    setShown({
+      key: Date.now(),
+      art: artOfDrawId(theirs.known[last.id]),
+      name: rival,
+      caption: last.target === undefined ? t('duel.announce.attackDirect', { name: rival }) : t('duel.announce.attack', { name: rival, target }),
+    })
+  }, [acts, theirs, ownIds, peerName, cardsById])
+
+  useEffect(() => {
+    if (!shown) return
+
+    const id = setTimeout(() => setShown(undefined), ANNOUNCE_MS)
+    return () => clearTimeout(id)
+  }, [shown])
+
+  return shown
+}
+
 /** La mesa de práctica con el campo del rival arriba: tus jugadas van al relay y las suyas llegan solas. */
 function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, onLeave }: { duel: Duel; snapshot: DuelSnapshot; status: SocketStatus; myName: string; cardsById: ReadonlyMap<string, MatCard>; deckName: string; onLeave: () => void }) {
   const { mine, initial, actions, theirs } = snapshot
@@ -308,12 +353,21 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
     [theirs],
   )
   const turn = whoseTurn(snapshot.me, mine, theirs!.state)
+  const announcement = useRivalAttack(snapshot, cardsById)
+  // A quiénes se puede atacar: los monstruos del rival en el campo, con el id que él les dio.
+  const attackTargets = useMemo(
+    () => (['mz', 'emz'] as const).flatMap((zone) => theirs!.state[zone].flatMap((placed, index) => (placed ? [{ id: placed.id, zone, index, faceDown: placed.pos === 'set' }] : []))),
+    [theirs],
+  )
 
   const link = useMemo<DuelMatLink>(
     () => ({
       areas: DUEL_AREAS,
       opponent: <SideCells side={opponent} owner="theirs" />,
       sharedZone: (index) => sharedZoneCard(opponent, index),
+      attackTargets,
+      foreignKnown: theirs!.known,
+      announcement,
       header: (
         <>
           <DuelBar
@@ -331,7 +385,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
         </>
       ),
     }),
-    [opponent, snapshot, status, myName, turn, duel, onLeave],
+    [opponent, snapshot, status, myName, turn, duel, onLeave, attackTargets, theirs, announcement],
   )
 
   return (

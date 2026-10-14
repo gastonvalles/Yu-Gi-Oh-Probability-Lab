@@ -25,6 +25,12 @@ export const practice = {
   // Menú de una carta (lo que se puede hacer desde donde está).
   'practice.menu.target': 'Target',
   'practice.menu.untarget': 'Quitar target',
+  'practice.menu.battleAttack': 'Atacar',
+  'practice.menu.attackDirectly': 'Ataque directo',
+  // A quién se ataca: la zona y la carta del rival.
+  'practice.attack.target': '{zone}: {name}',
+  'practice.attack.faceDown': 'Boca abajo',
+  'practice.attack.rivalMonster': 'un monstruo del rival',
   'practice.menu.attack': 'En ataque',
   'practice.menu.defense': 'En defensa',
   'practice.menu.specialSummon': 'Invocación Especial',
@@ -112,6 +118,8 @@ export const practice = {
   'practice.step.effectBanish': 'Activás el efecto de {card} desterrándola',
   'practice.step.reveal': 'Revelás {card}',
   'practice.step.declare': 'Declarás {card}',
+  'practice.step.attack': 'Atacás a {target} con {card}',
+  'practice.step.attackDirect': 'Atacás directo con {card}',
   'practice.step.target': 'Marcás {card} como target',
   'practice.step.untarget': 'Sacás el target de {card}',
   'practice.step.newTurn': 'Turno {turn}: {phase}',

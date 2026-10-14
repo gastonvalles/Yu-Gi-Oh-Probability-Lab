@@ -3,8 +3,8 @@ import { isToken, locateCard, matReducer, type MatAction, type MatPhase, type Ma
 /** Cómo llega un monstruo al campo: da el color del destello de su zona (Fusión violeta, Sincronía blanca, Xyz azul, Enlace verde agua…). */
 export type LandingTone = 'normal' | 'special' | 'fusion' | 'synchro' | 'xyz' | 'link'
 
-/** Para qué se resalta una carta: activar su efecto, marcarla como objetivo, mostrarla o declarar su nombre. */
-export type SpotlightKind = 'activate' | 'target' | 'reveal' | 'declare'
+/** Para qué se resalta una carta: activar su efecto, marcarla como objetivo, mostrarla, declarar su nombre o atacar con ella. */
+export type SpotlightKind = 'activate' | 'target' | 'reveal' | 'declare' | 'attack'
 
 /** A dónde van las cartas de un paso al reproducir un combo (las invocaciones, cómo llegan): da el color del cartel del centro. */
 export type ShowcaseKind = 'hand' | 'gy' | 'banish' | 'extra' | 'deck' | 'attach' | LandingTone
@@ -60,6 +60,7 @@ function effectsOf(before: MatState, after: MatState, action: MatAction): MatEff
 
     case 'reveal':
     case 'declare':
+    case 'attack':
       return exists(action.id) ? { spotlight: { id: action.id, kind: action.type } } : {}
 
     case 'target':

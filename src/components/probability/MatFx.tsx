@@ -17,8 +17,8 @@ import { CARD_BACK, FX_RGB, type FxTone } from './practice-styles'
 /** El color de un efecto como variable CSS: lo heredan todos los pedazos que lo dibujan. */
 export const fxVars = (tone: FxTone): CSSProperties => ({ '--fx-rgb': FX_RGB[tone] }) as CSSProperties
 
-/** Color de cada destaque: dorado al activar, rojo al marcar un objetivo, celeste al mostrar y violeta al declarar. */
-export const SPOTLIGHT_TONE: Record<SpotlightKind, FxTone> = { activate: 'gold', target: 'red', reveal: 'cyan', declare: 'violet' }
+/** Color de cada destaque: dorado al activar, rojo al marcar un objetivo o atacar, celeste al mostrar y violeta al declarar. */
+export const SPOTLIGHT_TONE: Record<SpotlightKind, FxTone> = { activate: 'gold', target: 'red', reveal: 'cyan', declare: 'violet', attack: 'red' }
 
 /** Color de cada forma de llegar al campo. */
 const LANDING_TONE: Record<LandingTone, FxTone> = { normal: 'gold', special: 'cyan', fusion: 'violet', synchro: 'white', xyz: 'indigo', link: 'teal' }

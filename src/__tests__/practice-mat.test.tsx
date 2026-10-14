@@ -1228,4 +1228,30 @@ describe('la mesa de práctica', () => {
     expect(saved?.name).toBe('Apertura Ash')
     expect(saved?.actions).toHaveLength(1)
   })
+
+  it('atacar: un monstruo en ataque ofrece "Ataque directo" sólo en la Battle Phase, y el ataque queda en la lista de pasos', () => {
+    render(<Harness />)
+
+    tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
+
+    // Antes de la Battle Phase no se ofrece.
+    tap(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' }))
+    expect(screen.queryByRole('menuitem', { name: 'Ataque directo' })).not.toBeInTheDocument()
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Battle Phase' }))
+    tap(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' }))
+    // Sin rival (la práctica) no hay a quién elegir: sólo el directo, y primero.
+    expect(screen.queryByRole('menuitem', { name: 'Atacar' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('menuitem')[0]).toHaveTextContent('Ataque directo')
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ataque directo' }))
+
+    expect(within(status()).getByText('Atacás directo con Ash Blossom')).toBeInTheDocument()
+    const list = within(screen.getByRole('complementary', { name: 'Pasos y combos' })).getByRole('list', { name: 'Jugadas' })
+    expect(within(list).getAllByRole('button')[0]).toHaveTextContent('Atacás directo con Ash Blossom')
+    // La carta sigue donde estaba: atacar no la mueve.
+    expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' })).toBeInTheDocument()
+  })
 })

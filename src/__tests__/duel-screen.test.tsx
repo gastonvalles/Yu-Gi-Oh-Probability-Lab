@@ -4,12 +4,13 @@ import { act, cleanup, fireEvent, render as renderBare, screen, within, type Ren
 import '@testing-library/jest-dom'
 import type { ReactElement } from 'react'
 import { Provider } from 'react-redux'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { extractRoomCode } from '../app/duel-link'
 import type { SocketStatus, SocketTransport } from '../app/duel-socket'
 import type { DuelConnect } from '../app/use-duel'
 import { DuelScreen } from '../components/duel/DuelScreen'
+import type { ApiCardReference } from '../types'
 import { createMemoryRoom, type MemoryEnd, type MemoryRoom } from './support/memory-room'
 
 const store = configureStore({ reducer: { settings: (state = { handSize: 5, deckFormat: 'unlimited' as const }) => state } })
@@ -30,12 +31,33 @@ const mainIds = Array.from({ length: 12 }, (_, index) => `card-${1000 + index}-1
 const extraIds = ['card-9001-1']
 const cardsById = new Map([...mainIds, ...extraIds].map((id) => [id, { name: `Carta ${id}`, apiCard: null }]))
 
+// Para jugar de verdad (invocar, atacar) las cartas tienen que ser monstruos: el marco dice qué son.
+const effectMonster = { ygoprodeckId: 1, frameType: 'effect', cardType: 'x', race: null, description: null, attribute: null, level: null, linkValue: null, atk: null, def: null, archetype: null, ygoprodeckUrl: null, imageUrl: null, imageUrlSmall: null } as unknown as ApiCardReference
+const monsters = new Map([...mainIds, ...extraIds].map((id) => [id, { name: `Monstruo ${id.replace(/\D/g, '')}`, apiCard: effectMonster }]))
+
 let memory: MemoryRoom
 let connect: DuelConnect
 
 const screenProps = (overrides: Partial<Parameters<typeof DuelScreen>[0]> = {}) => ({ handSize: 5, mainIds, extraIds, cardsById, deckName: 'Mi deck', connect, ...overrides })
 const flush = () => act(() => memory.flush())
 const click = (view: RenderResult, name: string | RegExp, role: 'button' | 'menuitem' = 'button') => fireEvent.click(within(view.container).getByRole(role, { name }))
+const pointer = { button: 0, pointerId: 1 }
+const tap = (element: HTMLElement) => {
+  fireEvent.pointerDown(element, { ...pointer, clientX: 10, clientY: 10 })
+  fireEvent.pointerUp(element, { ...pointer, clientX: 10, clientY: 10 })
+}
+const handOf = (view: RenderResult) => within(within(view.container).getByRole('list', { name: 'Mano' }))
+const zoneOf = (view: RenderResult, name: string) => within(within(view.container).getByRole('group', { name }))
+/** Invoca la primera carta de la mano en la zona de monstruo 1 y devuelve cómo se llama. */
+function summonFirst(view: RenderResult): string {
+  const [card] = handOf(view).getAllByRole('listitem')
+  const name = card!.getAttribute('aria-label')!
+
+  tap(card!)
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+  fireEvent.click(within(view.container).getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
+  return name
+}
 const typeInto = (view: RenderResult, label: string, value: string) => fireEvent.change(within(view.container).getByLabelText(label), { target: { value } })
 
 beforeEach(() => {
@@ -48,7 +70,10 @@ beforeEach(() => {
   window.matchMedia = ((query: string) => ({ matches: query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
 })
 
-afterEach(cleanup)
+afterEach(() => {
+  vi.useRealTimers()
+  cleanup()
+})
 
 describe('la pantalla del duelo', () => {
   it('sin cartas suficientes en el Main avisa y no deja crear ni unirse', () => {
@@ -169,5 +194,61 @@ describe('la pantalla del duelo', () => {
     click(guest, 'Salir del duelo')
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Salir del duelo' }))
     expect(within(guest.container).getByRole('button', { name: 'Crear un duelo' })).toBeInTheDocument()
+  })
+
+  it('atacar: el rival ve el ataque grande en el centro (directo, o a la carta tuya que atacó) y lo que se ve no revela nada más', () => {
+    // El aviso se va solo a los pocos segundos: se controla el reloj de los temporizadores (lo demás sigue igual).
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const host = render(<DuelScreen {...screenProps({ cardsById: monsters })} />)
+    typeInto(host, 'Tu nombre', 'Ana')
+    click(host, 'Crear un duelo')
+    const link = within(host.container).getByTestId('duel-link').textContent ?? ''
+    window.history.replaceState(null, '', '#duel')
+    const guest = render(<DuelScreen {...screenProps({ cardsById: monsters })} />)
+    typeInto(guest, 'Tu nombre', 'Beto')
+    typeInto(guest, 'Enlace o código', link)
+    click(guest, 'Unirme')
+    flush()
+    click(host, 'Repartir mi mano')
+    click(guest, 'Repartir mi mano')
+    flush()
+
+    // Beto invoca un monstruo; Ana invoca el suyo y pasa a la Battle Phase.
+    const betoCard = summonFirst(guest)
+    flush()
+    summonFirst(host)
+    flush()
+    click(host, 'Battle Phase')
+    flush()
+
+    // Ataque directo: Beto lo ve grande en el centro.
+    tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ataque directo' }))
+    flush()
+    expect(within(guest.container).getByText('Ana te ataca directo')).toBeInTheDocument()
+    expect(within(host.container).queryByText('Ana te ataca directo')).not.toBeInTheDocument()
+
+    // Se va solo; y si Ana pasa de fase y lo deshace, el ataque de antes no se vuelve a avisar.
+    act(() => {
+      vi.advanceTimersByTime(5000)
+    })
+    expect(within(guest.container).queryByText('Ana te ataca directo')).not.toBeInTheDocument()
+    click(host, 'Main Phase 2')
+    flush()
+    click(host, 'Deshacer')
+    flush()
+    expect(within(guest.container).queryByText('Ana te ataca directo')).not.toBeInTheDocument()
+    click(host, 'Battle Phase')
+    flush()
+
+    // Atacar al monstruo de Beto: el menú lista a los del rival por su zona y Beto lee el nombre de SU carta.
+    tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Atacar' }))
+    const choices = screen.getAllByRole('menuitem').map((item) => item.textContent)
+    expect(choices).toHaveLength(1)
+    expect(choices[0]).toMatch(/^Rival, Zona de monstruo 1: Monstruo \d+$/)
+    fireEvent.click(screen.getAllByRole('menuitem')[0]!)
+    flush()
+    expect(within(guest.container).getByText(`Ana ataca a ${betoCard}`)).toBeInTheDocument()
   })
 })
