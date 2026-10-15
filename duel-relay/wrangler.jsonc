@@ -8,8 +8,9 @@
   },
   // Salas con almacenamiento SQLite: es el tipo que entra en el plan gratuito. No se guarda nada en él.
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["DuelRoom"] }],
-  "observability": { "enabled": true },
+  // Los registros guardan sólo los tres avisos de conteo del relay (room_opened, room_paired, room_watched): sin el registro de cada petición, que traería el código de la sala y la dirección de quien se conecta.
+  "observability": { "enabled": true, "logs": { "enabled": true, "invocation_logs": false } },
   "vars": {
-    "ALLOWED_ORIGINS": "https://yu-gi-oh-probability-lab.vercel.app,https://yu-gi-oh-probability-lab-*.vercel.app,http://localhost:5173,http://127.0.0.1:5173"
+    "ALLOWED_ORIGINS": "https://yu-gi-oh-probability-lab.vercel.app,https://yu-gi-oh-probability-lab-*-gastonvalles-projects.vercel.app,http://localhost:5173,http://127.0.0.1:5173"
   }
 }

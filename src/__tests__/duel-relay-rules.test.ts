@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -80,6 +81,29 @@ describe('los orígenes permitidos', () => {
     }
 
     expect(originAllowed('https://lab.example.app', '')).toBe(false)
+  })
+
+  it('la lista real del relay deja pasar el sitio y las previews de este equipo, y no las de otra cuenta que empiece igual', () => {
+    const config = readFileSync(new URL('../../duel-relay/wrangler.jsonc', import.meta.url), 'utf8')
+    const real = /"ALLOWED_ORIGINS":\s*"([^"]+)"/.exec(config)?.[1] ?? ''
+
+    for (const origin of [
+      'https://yu-gi-oh-probability-lab.vercel.app',
+      'https://yu-gi-oh-probability-lab-9cibimjxoosunkmn5v13nr4hpkyn-gastonvalles-projects.vercel.app',
+      'https://yu-gi-oh-probability-lab-git-hardening-relay-gastonvalles-projects.vercel.app',
+      'http://localhost:5173',
+    ]) {
+      expect(originAllowed(origin, real), origin).toBe(true)
+    }
+
+    for (const origin of [
+      'https://yu-gi-oh-probability-lab-abc123-otra-cuenta.vercel.app',
+      'https://yu-gi-oh-probability-lab-evil.vercel.app',
+      'https://yu-gi-oh-probability-lab-abc123-gastonvalles-projects.evil.com',
+      'https://yu-gi-oh-probability-lab-gastonvalles-projects.vercel.app.evil.com',
+    ]) {
+      expect(originAllowed(origin, real), origin).toBe(false)
+    }
   })
 })
 
