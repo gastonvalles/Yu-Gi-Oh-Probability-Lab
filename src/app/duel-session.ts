@@ -3,7 +3,7 @@ import { addChat, addGame, cleanChat, coinWinner, dieWinner, duelResult, rpsOutc
 import { DEFAULT_SETTINGS, MAX_MARKS, NO_MARKS, PROTOCOL_VERSION, cleanName, encodeMessage, parseMessage, type DuelMessage, type DuelSettings, type MarkTarget, type Marks, type OpeningWire } from './duel-protocol'
 import { createLifeState, lifeReducer, timerElapsed, type Duelist, type LifeState } from './life-calculator'
 import { encodeAct, mapMatIds, mirrorApply, mirrorUndo, openMirror, openPublic, senderKnown, type Mirror, type PublicSender } from './mat-public'
-import { allMatIds, matReducer, replayMat, type MatAction, type MatState } from './practice-mat'
+import { allMatIds, locateCard, matReducer, replayMat, type MatAction, type MatState } from './practice-mat'
 
 /**
  * Un duelo por enlace, del lado de uno de los dos jugadores: mi mesa (la real), la del rival (un espejo
@@ -176,6 +176,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   // Los objetivos que cada uno marcó del lado del otro. Lo que marqué yo lo repongo cuando el otro vuelve (viaja con mi `sync`); lo suyo llega con su mensaje.
   let marksOnMine: Marks = NO_MARKS
   let marksOnTheirs: Marks = NO_MARKS
+  /** Cómo estaba cada cosa que marqué cuando la marqué (`c:<id>` / `p:<pila>`): una marca dura mientras eso siga igual. */
+  let markSigns: Record<string, string> = {}
   /** Mis puntos de vida vienen de lo guardado: el saludo del anfitrión no los pisa con los de arranque. */
   let lpRestored = false
 
@@ -202,8 +204,38 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
 
   const sendHello = () => send({ t: 'hello', v: PROTOCOL_VERSION, sid, role, name, ...(role === 'host' ? { settings } : {}) })
 
+  /**
+   * Dónde está una carta del rival (su casilla o su pila) o qué tiene una de sus pilas, para saber si lo marcado sigue como estaba. Una marca es de ESA carta
+   * en ESE lugar (o de esa pila con ESAS cartas): si se mueve o la pila cambia, el objetivo ya no es el mismo y deja de verse (en los dos lados).
+   */
+  const signOf = (table: MatState, target: MarkTarget): string => {
+    if ('pile' in target) {
+      return `p:${target.pile}:${table[target.pile].join(',')}`
+    }
+
+    const where = locateCard(table, target.card)
+
+    return where === null ? 'ausente' : where.kind === 'spot' ? `s:${where.spot}:${where.index}` : where.kind === 'pile' ? `p:${where.pile}` : `m:${where.of}`
+  }
+
   /** Todo lo que tengo marcado del lado del rival (siempre el conjunto entero). */
   const sendMarks = () => send({ t: 'marks', cards: [...marksOnTheirs.cards], piles: [...marksOnTheirs.piles] })
+
+  /** Quita lo que marqué del rival y ya no está como estaba (la carta se fue de ahí, la pila cambió) y se lo avisa al otro. */
+  const pruneMarks = () => {
+    if (!theirs || (marksOnTheirs.cards.length === 0 && marksOnTheirs.piles.length === 0)) {
+      return
+    }
+
+    const table = theirs.state
+    const cards = marksOnTheirs.cards.filter((id) => markSigns[`c:${id}`] === signOf(table, { card: id }))
+    const piles = marksOnTheirs.piles.filter((pile) => markSigns[`p:${pile}`] === signOf(table, { pile }))
+
+    if (cards.length !== marksOnTheirs.cards.length || piles.length !== marksOnTheirs.piles.length) {
+      marksOnTheirs = { cards, piles }
+      sendMarks()
+    }
+  }
 
   /** Mi estado de ahora: la mesa (si ya empecé), mis puntos de vida y, del anfitrión, el reloj. */
   const sendSync = () => {
@@ -363,6 +395,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       theirs = null
       marksOnMine = NO_MARKS
       marksOnTheirs = NO_MARKS
+      markSigns = {}
       peerSeq = 0
       lifeN = 0
       clockN = 0
@@ -457,6 +490,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
         if (message.state) {
           theirs = openMirror(message.state, message.known)
           peerSeq = message.n
+          pruneMarks()
         }
 
         peerLifeN = message.lifeN
@@ -503,6 +537,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
         } else if (message.n === peerSeq + 1) {
           theirs = mirrorApply(theirs, message.wire)
           peerSeq = message.n
+          pruneMarks()
         } else if (message.n > peerSeq) {
           requestSync()
         }
@@ -515,6 +550,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
         } else if (message.n === peerSeq - 1 && theirs.acts.length > 0) {
           theirs = mirrorUndo(theirs)
           peerSeq = message.n
+          pruneMarks()
         } else if (message.n < peerSeq) {
           requestSync()
         }
@@ -794,6 +830,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
         return
       }
 
+      const key = 'card' in target ? `c:${target.card}` : `p:${target.pile}`
+
       if ('card' in target) {
         if (!marksOnTheirs.cards.includes(target.card) && (marksOnTheirs.cards.length >= MAX_MARKS || !allMatIds(theirs.state).includes(target.card))) {
           return
@@ -803,6 +841,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       } else {
         marksOnTheirs = { ...marksOnTheirs, piles: marksOnTheirs.piles.includes(target.pile) ? marksOnTheirs.piles.filter((pile) => pile !== target.pile) : [...marksOnTheirs.piles, target.pile] }
       }
+
+      markSigns = { ...markSigns, [key]: signOf(theirs.state, target) }
 
       sendMarks()
       emit()

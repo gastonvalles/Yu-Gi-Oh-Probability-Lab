@@ -252,13 +252,26 @@ function Pile({ area, pile, side, owner }: { area: string; pile: Exclude<MatPile
   const back = pile === 'deck' || pile === 'extra' ? cards.length > 0 : top !== null && side.state.facedown.includes(top)
   const art = top !== null && !back ? side.artOf(top) : null
   // La pila entera marcada, o una carta de adentro marcada como objetivo (se vea o no): la mira queda sobre la pila. Y lo que destella (activar, marcar) adentro, también.
-  const marked = (side.marks?.piles.includes(pile) ?? false) || cards.some((id) => side.state.targeted.includes(id))
+  const marked = (side.marks?.piles.includes(pile) ?? false) || cards.some((id) => side.state.targeted.includes(id) || (side.marks?.cards.includes(id) ?? false))
   const flash = side.flash && cards.includes(side.flash.id) ? side.flash : null
 
   return (
     <div role="group" aria-label={`${PILE_TITLES[pile]}: ${cards.length}`} title={PILE_TITLES[pile]} data-rival-drop={owner === 'theirs' ? pile : undefined} data-targeted={marked ? 'true' : 'false'} data-flash={flash ? 'true' : 'false'} data-flash-kind={flash?.kind} className={cx(CELL, 'overflow-hidden', FX_CARD, '[--card-shadow:0_0_0_0_transparent]')} style={{ gridArea: area, ...fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red') }}>
       {/* La carta de arriba del rival, como las de su campo, mira hacia él. */}
-      {cards.length > 0 ? (art ? <CardArt remoteUrl={art} name={PILE_TITLES[pile]} className={cx('block h-full w-full object-cover', owner === 'theirs' && 'rotate-180')} /> : <CardBack className={cx('h-full', owner === 'theirs' && 'rotate-180')} />) : null}
+      {pile === 'deck' && owner === 'theirs' && cards.length > 0 ? (
+        // El deck del rival, de capas como el propio: así se baraja a la vista cuando lo toca.
+        <>
+          <span data-layer className="absolute inset-0 [transform:translate(-3px,3px)]">
+            <CardBack className="h-full" />
+          </span>
+          <span data-layer className="absolute inset-0 [transform:translate(-1.5px,1.5px)]">
+            <CardBack className="h-full" />
+          </span>
+          <span className="absolute inset-0">
+            <CardBack className="h-full" />
+          </span>
+        </>
+      ) : cards.length > 0 ? (art ? <CardArt remoteUrl={art} name={PILE_TITLES[pile]} className={cx('block h-full w-full object-cover', owner === 'theirs' && 'rotate-180')} /> : <CardBack className={cx('h-full', owner === 'theirs' && 'rotate-180')} />) : null}
       <PileBadge label={PILE_TITLES[pile]} count={cards.length} />
       {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
       {marked ? <TargetMark /> : null}

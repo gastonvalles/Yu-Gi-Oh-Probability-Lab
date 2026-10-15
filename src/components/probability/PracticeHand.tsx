@@ -478,6 +478,8 @@ function HandCard({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerEnd}
       onPointerCancel={onPointerEnd}
+      // Un puntero que se pierde sin avisar (el navegador del celular, la mano que se arma de nuevo a mitad de camino) corta el arrastre: no queda una zona encendida.
+      onLostPointerCapture={onPointerEnd}
       onKeyDown={onKeyDown}
       onContextMenu={(event) => event.preventDefault()}
     >

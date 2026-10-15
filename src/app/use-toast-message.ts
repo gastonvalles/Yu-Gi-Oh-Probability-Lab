@@ -26,6 +26,15 @@ export function showToastMessage(message: string, tone: ToastTone = 'info'): voi
   }
 }
 
+/** El mensaje que escribió el rival (con el chat cerrado, en el celular): con su nombre, su color y más grande que un aviso común, en la esquina de abajo a la derecha. */
+export function showRivalToast(name: string, message: string): void {
+  toast.dismiss()
+  toast.custom((instance) => createElement(AppToast, { id: instance.id, visible: instance.visible, message, tone: 'info', rival: name }), {
+    duration: TOAST_DURATION_MS,
+    position: 'bottom-right',
+  })
+}
+
 export function useToastMessage(): {
   showToast: (message: string, tone?: ToastTone) => void
 } {

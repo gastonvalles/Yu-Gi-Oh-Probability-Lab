@@ -38,6 +38,7 @@ import { createSavedCombo, readSavedCombos, renameSavedCombo, writeSavedCombos, 
 import { supportsAdditiveAnimation } from '../../app/motion'
 import { matStepCards } from '../../app/mat-steps'
 import type { Marks } from '../../app/duel-protocol'
+import { riffle } from '../../app/shuffle-fx'
 import { useCardFlights } from '../../app/use-card-flights'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
@@ -113,6 +114,8 @@ export interface DuelMatLink {
   marksOnMine?: Marks
   /** La mesa del rival (con ids opacos) y el arte de lo que mostró: sus cartas vuelan de un lugar a otro (al cementerio, a la mano, al campo…) como las propias. */
   rivalFlights?: { state: MatState; artOf: (id: string) => string | null }
+  /** Cuenta las veces que el rival tocó su deck o sumó una carta a su mano: cada vez que sube, su deck y su mano se barajan a la vista. */
+  rivalShuffle?: number
   /** Una capa que tapa toda la mesa (el duelo en pausa): nada de lo de abajo se toca mientras está. */
   cover?: ReactNode
   /** Un panel fijo a la derecha de la mesa, sólo en escritorio (el chat): la mesa le deja 20rem. */
@@ -476,6 +479,11 @@ export function PracticeMat({
     if (effects.landing) setLanding({ ...effects.landing, flies: effects.landing.flies && !('id' in action && action.id === pendingRef.current), key })
     if (effects.banner) setBanner({ ...effects.banner, key })
     if (effects.hand) setHandFlash(key)
+    // Tocar el deck o sumar una carta a la mano: los dos se barajan (el deck con su animación, la mano carta por carta).
+    if (effects.shuffle) {
+      setShuffleKey((current) => current + 1)
+      riffle(sectionRef.current?.querySelectorAll('[data-drop="hand"] [role="listitem"]') ?? [])
+    }
   }, [session.cursor, session.actions, session.initial, session.replay])
 
   // El ataque del rival: la espada sale de su monstruo hacia la carta tuya atacada, o hacia tu barra de vida si es directo. `announcement` es el mismo objeto hasta que llega otro ataque.
@@ -555,6 +563,15 @@ export function PracticeMat({
   // Las cartas se miden de nuevo cuando todo quedó quieto (ver `useCardFlights`): si no, el reparto, una carta robada o buscada y la mano reacomodada
   // dejaban la medida de cuando todavía volaban, y la próxima jugada arrancaba de ahí (desde el mazo, con una carta gigante y estirada).
   const { dealsFromDeck } = useCardFlights(sectionRef, state, artById, `${isDesktop}:${dealt}:${handOrder.join(',')}:${pendingId ?? ''}`)
+  // El rival tocó su deck o sumó una carta a su mano: su deck y su mano se barajan (lo ve quien mira).
+  const rivalShuffle = duel?.rivalShuffle ?? 0
+  useEffect(() => {
+    if (rivalShuffle === 0) return
+
+    const root = sectionRef.current
+    riffle(root?.querySelectorAll('[data-rival-drop="deck"] [data-layer]') ?? [])
+    riffle(root?.querySelectorAll('[data-rival-drop="hand"] [role="img"] > span') ?? [])
+  }, [rivalShuffle])
   // Las cartas del rival, con sus propias marcas en el DOM (`data-rival-card-id`, `data-rival-drop`).
   useCardFlights(sectionRef, duel?.rivalFlights?.state ?? null, duel?.rivalFlights?.artOf ?? NO_ART, 'rival', 'theirs')
 
@@ -905,6 +922,25 @@ export function PracticeMat({
     },
     [lightZone],
   )
+
+  // Red de seguridad: pase lo que pase con un arrastre (el celular lo corta sin avisar, la mano se vuelve a armar a mitad de camino…), al levantar el dedo ninguna casilla queda
+  // encendida. Se espera un poco para que el arrastre termine solo si puede (y suelte la carta donde corresponde).
+  useEffect(() => {
+    const clear = () => {
+      window.setTimeout(() => {
+        sectionRef.current?.querySelectorAll('[data-over="true"]').forEach((element) => element.setAttribute('data-over', 'false'))
+        handLit.current = null
+      }, 120)
+    }
+
+    window.addEventListener('pointerup', clear, true)
+    window.addEventListener('pointercancel', clear, true)
+
+    return () => {
+      window.removeEventListener('pointerup', clear, true)
+      window.removeEventListener('pointercancel', clear, true)
+    }
+  }, [])
 
   const menuItems: MenuItem[] = useMemo(() => {
     if (!menu) return []

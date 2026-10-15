@@ -579,6 +579,51 @@ describe('los objetivos marcados del lado del otro', () => {
     expect(reloaded.getSnapshot().marks.mine).toEqual({ cards: [], piles: [] })
   })
 
+  it('una marca dura mientras la carta siga donde estaba: si se va a otro lado, o la pila cambia, la marca se quita de los dos lados', () => {
+    const game = withFieldCard()
+
+    game.guest.toggleMark({ card: game.opaque })
+    game.guest.toggleMark({ pile: 'gy' })
+    game.guest.toggleMark({ pile: 'hand' })
+    game.room.flush()
+    expect(game.host.getSnapshot().marks.mine).toEqual({ cards: [hostMain[0]], piles: ['gy', 'hand'] })
+
+    // Cambiarla de posición no es irse de ahí: la marca sigue.
+    game.host.play({ type: 'position', id: hostMain[0]!, pos: 'def' })
+    game.room.flush()
+    expect(game.host.getSnapshot().marks.mine.cards).toEqual([hostMain[0]])
+
+    // Se manda al cementerio: la marca de la carta se va (ya no está donde estaba) y la del cementerio también (ahora tiene otra cosa); la de la mano sigue (no cambió).
+    game.host.play({ type: 'move', id: hostMain[0]!, to: 'gy' })
+    game.room.flush()
+    expect(game.guest.getSnapshot().marks.theirs).toEqual({ cards: [], piles: ['hand'] })
+    expect(game.host.getSnapshot().marks.mine).toEqual({ cards: [], piles: ['hand'] })
+
+    // Roba: la mano ya no es la misma y esa marca se va también.
+    game.host.play({ type: 'draw', count: 1 })
+    game.room.flush()
+    expect(game.host.getSnapshot().marks.mine).toEqual({ cards: [], piles: [] })
+  })
+
+  it('una pila marcada sigue marcada mientras nada entre ni salga de ella', () => {
+    const game = withFieldCard()
+
+    game.guest.toggleMark({ pile: 'banished' })
+    game.guest.toggleMark({ pile: 'gy' })
+    game.room.flush()
+
+    // El campo y la mano cambian, pero ni el cementerio ni el destierro.
+    game.host.play({ type: 'position', id: hostMain[0]!, pos: 'def' })
+    game.host.play({ type: 'draw', count: 1 })
+    game.room.flush()
+    expect(game.host.getSnapshot().marks.mine.piles).toEqual(['banished', 'gy'])
+
+    // Entra una carta al destierro: sólo esa marca se va.
+    game.host.play({ type: 'move', id: hostMain[0]!, to: 'banished' })
+    game.room.flush()
+    expect(game.host.getSnapshot().marks.mine.piles).toEqual(['gy'])
+  })
+
   it('la revancha empieza sin marcas, de los dos lados', () => {
     const game = withFieldCard()
 

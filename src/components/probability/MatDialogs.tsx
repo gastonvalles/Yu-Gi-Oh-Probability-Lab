@@ -143,13 +143,15 @@ interface PileViewerProps {
   targeted: ReadonlySet<string>
   onPick: (id: string, rect: DOMRect) => void
   onClose: () => void
+  /** Las cartas del rival: sólo se sabe cómo se ven, no cómo se llaman, así que no hay nombre debajo ni buscador. */
+  anonymous?: boolean
 }
 
 /**
  * Las cartas de una pila. El deck y el Extra se muestran en su orden real (tope primero; al cerrar el
  * deck se baraja, como en la mesa real) y con buscador; cementerio y destierro, la más reciente primero.
  */
-export function PileViewer({ pile, ids, info, targeted, onPick, onClose }: PileViewerProps) {
+export function PileViewer({ pile, ids, info, targeted, onPick, onClose, anonymous = false }: PileViewerProps) {
   const [query, setQuery] = useState('')
   const cards = ids.map((id) => ({ id, ...info(id) }))
   const ordered = pile === 'deck' || pile === 'extra' ? cards : [...cards].reverse()
@@ -160,7 +162,7 @@ export function PileViewer({ pile, ids, info, targeted, onPick, onClose }: PileV
   return (
     <Modal isOpen={pile !== null} onClose={onClose} size="md" kicker={t('practice.mat.name')} title={title} ariaLabel={title}>
       <div className="grid gap-3">
-        {ids.length > 8 ? (
+        {ids.length > 8 && !anonymous ? (
           <label className="relative block">
             <span className="sr-only">{t('practice.dialog.searchCard')}</span>
             <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-soft" />
@@ -187,7 +189,7 @@ export function PileViewer({ pile, ids, info, targeted, onPick, onClose }: PileV
               <li key={card.id}>
                 <button
                   type="button"
-                  aria-label={targeted.has(card.id) ? t('practice.card.targeted', { name: label }) : undefined}
+                  aria-label={targeted.has(card.id) ? t('practice.card.targeted', { name: label }) : anonymous ? label : undefined}
                   className="grid w-full gap-1 rounded-none bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus"
                   onClick={(event) => onPick(card.id, event.currentTarget.getBoundingClientRect())}
                 >
@@ -199,7 +201,7 @@ export function PileViewer({ pile, ids, info, targeted, onPick, onClose }: PileV
                     {card.faceDown ? <span className={CARD_BACK} /> : <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />}
                     {targeted.has(card.id) ? <TargetMark /> : null}
                   </span>
-                  <span className="truncate text-micro text-foreground">{label}</span>
+                  {anonymous ? null : <span className="truncate text-micro text-foreground">{label}</span>}
                 </button>
               </li>
             )

@@ -195,6 +195,8 @@ export function useMatDrag({ onDrop, onTap, onOver }: UseMatDragOptions) {
       onPointerMove,
       onPointerUp: onPointerEnd,
       onPointerCancel: onPointerEnd,
+      // Sin aviso (el celular le quita el puntero a la carta): el arrastre termina igual, sin soltarla.
+      onLostPointerCapture: onPointerEnd,
     }),
     [onPointerDown, onPointerMove, onPointerEnd],
   )
