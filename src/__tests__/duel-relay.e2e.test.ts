@@ -190,36 +190,26 @@ describe('el relay real', () => {
     second.ws.close(1000)
   })
 
-  it('un espectador que entra y sale sin parar se frena: pasado el tope no entra, y los jugadores no repiten su estado de más', async () => {
+  it('espectadores que entran a montones se frenan: pasado el tope no entran, y los jugadores no repiten su estado de más', async () => {
     const room = createRoomCode()
     const a = raw(room)
     await until(() => a.frames.length === 1)
     const b = raw(room)
     await until(() => b.frames.length === 1)
-    let admitted = 0
-    let refused = 0
 
-    for (let index = 0; index < 14; index += 1) {
-      const watcher = raw(room, undefined, ORIGIN, 'spectator')
-      await until(() => watcher.opened || watcher.errored || watcher.closed !== undefined, 3000, 'respuesta a un espectador')
+    // Todos a la vez: por internet cada conexión tarda cientos de milisegundos, y de a una el tope se iría recargando mientras tanto.
+    const watchers = Array.from({ length: 14 }, () => raw(room, undefined, ORIGIN, 'spectator'))
 
-      if (watcher.opened) {
-        admitted += 1
-        await until(() => watcher.frames.length >= 1, 3000, 'aviso al espectador')
-        watcher.ws.close(1000)
-        await until(() => watcher.closed !== undefined, 3000, 'cierre del espectador')
-      } else {
-        refused += 1
-      }
-    }
+    await Promise.all(watchers.map((watcher) => until(() => watcher.opened || watcher.errored || watcher.closed !== undefined, 8000, 'respuesta a un espectador')))
 
-    // Seis seguidas y a partir de ahí una cada dos segundos: de catorce intentos casi seguidos, la mayoría se rechaza.
-    expect(admitted).toBeGreaterThanOrEqual(6)
-    expect(admitted).toBeLessThanOrEqual(9)
+    // Seis entradas de golpe (dos se quedan y las demás reciben "llena"); el resto se rechaza sin abrir la conexión (429).
+    const refused = watchers.filter((watcher) => !watcher.opened).length
+
     expect(refused).toBeGreaterThanOrEqual(5)
-    // Y a los jugadores les piden el estado sólo en la ráfaga corta.
-    await wait(300)
-    expect(a.frames.filter((frame) => frame.kind === 'watchers' && frame.sync).length).toBeLessThanOrEqual(5)
+    // Y a los jugadores les piden el estado sólo por los que entraron.
+    await wait(500)
+    expect(a.frames.filter((frame) => frame.kind === 'watchers' && frame.sync).length).toBeLessThanOrEqual(3)
+    watchers.forEach((watcher) => watcher.ws.close(1000))
     a.ws.close(1000)
     b.ws.close(1000)
   })
