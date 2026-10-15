@@ -294,8 +294,8 @@ describe('la mesa de práctica', () => {
     // "Activar efecto" de una Trampa en mano = sale boca arriba a la zona de Mágicas y Trampas (destella).
     expect(listCardActions(start(), 'd1', kindOf, nameOf)[0]!.action).toMatchObject({ type: 'place', zone: 'st', pos: 'atk' })
     // Desde el Extra sólo Invocación Especial; un Link no va a defensa.
-    expect(labels(start(), 'x1')).toEqual(['Invocación Especial', 'Al cementerio', 'Desterrar'])
-    expect(labels(start(), 'x2')).toEqual(['Invocación Especial', 'Al cementerio', 'Desterrar'])
+    expect(labels(start(), 'x1')).toEqual(['Invocación Especial', 'Revelar', 'Al cementerio', 'Desterrar'])
+    expect(labels(start(), 'x2')).toEqual(['Invocación Especial', 'Revelar', 'Al cementerio', 'Desterrar'])
     // Un Link no pregunta: sale en ataque.
     const link = listCardActions(start(), 'x2', kindOf, nameOf)[0]!
     expect(link.choices).toBeUndefined()

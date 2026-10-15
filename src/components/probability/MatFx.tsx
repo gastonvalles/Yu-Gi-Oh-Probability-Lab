@@ -140,6 +140,8 @@ interface SpotlightCard {
   id: string
   name: string
   art: string | null
+  /** No se sabe cuál es (una carta del rival que no mostró): se ve de dorso. */
+  back?: boolean
 }
 
 interface SpotlightProps {
@@ -188,7 +190,7 @@ export function Spotlight({ kind, cards, caption, flip = false, className }: Spo
               <div className="relative aspect-[421/614] w-full [perspective:900px]">
                 <div className={cx('absolute inset-0 [transform-style:preserve-3d]', flip && 'animate-fx-flip-in motion-reduce:animate-none')}>
                   <div className={cx(STAGE_FACE, '[backface-visibility:hidden]')}>
-                    <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />
+                    {card.back ? <span className={CARD_BACK} /> : <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />}
                     <FxFrame tone={tone} shine />
                   </div>
                   {flip ? (

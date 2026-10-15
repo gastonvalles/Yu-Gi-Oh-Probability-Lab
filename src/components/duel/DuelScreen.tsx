@@ -11,7 +11,7 @@ import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-m
 import { duelTurnNumber, sharedPhase, whoseTurn } from '../../app/duel-turn'
 import { STARTING_LP } from '../../app/life-calculator'
 import { beginDuel } from '../../app/mascot'
-import { matEffects } from '../../app/mat-effects'
+import { matEffects, type SpotlightKind } from '../../app/mat-effects'
 import { createMatState, isToken, PHASES, randomSeed, replayMat, shuffleWithSeed } from '../../app/practice-mat'
 import { useDuel, type DuelConnect, type SpectatorConnect } from '../../app/use-duel'
 import type { MatSession } from '../../app/use-mat-session'
@@ -697,14 +697,16 @@ function useRivalAttack(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, M
 const RIVAL_FX_MS = 950
 
 /**
- * Lo que el rival destaca con su jugada (activar una carta, mostrarla, declararla o marcar un objetivo), para verlo igual que lo tuyo: la carta grande en el centro
- * (con lo que él mostró de ella) y su aro en el campo. Cuenta sólo una jugada nueva a la vez: lo que llega de golpe (la mesa repuesta al reconectar) o se deshace no se repite.
+ * Lo que el rival hace y se anima, para verlo igual que en un combo guardado: sus cartas grandes en el centro (con lo que él mostró de ellas, o de dorso) y un cartel
+ * que dice qué pasó ("Ana manda una carta al cementerio", "Ana activa una carta"), y el aro en su campo de lo que destaca (activar, mostrar, declarar, marcar). Ataques y
+ * cambios de fase tienen lo suyo (la espada, el cartel de la fase) y las cartas que sólo llegan a la mano no se muestran. Cuenta sólo una jugada nueva a la vez: lo que
+ * llega de golpe (la mesa repuesta al reconectar) o se deshace no se repite.
  */
 function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEffect']; flash: DuelSideView['flash'] } {
   const { theirs, peerName } = snapshot
   const acts = theirs?.acts
   const seen = useRef(acts?.length ?? 0)
-  const [shown, setShown] = useState<DuelMatLink['rivalEffect']>(undefined)
+  const [shown, setShown] = useState<{ effect: NonNullable<DuelMatLink['rivalEffect']>; flashId?: string } | undefined>(undefined)
 
   useEffect(() => {
     const before = seen.current
@@ -716,20 +718,21 @@ function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEff
     }
 
     const action = acts[acts.length - 1]!
-    const { spotlight } = matEffects(replayMat(theirs.initial, acts, acts.length - 1), action)
 
-    // El ataque tiene su espada y su cartel (`useRivalAttack`).
-    if (!spotlight || spotlight.kind === 'attack') {
+    if (action.type === 'attack' || action.type === 'phase' || action.type === 'draw') {
       return
     }
 
-    setShown({
-      key: Date.now(),
-      id: spotlight.id,
-      kind: spotlight.kind,
-      art: artOfDrawId(isToken(spotlight.id) ? spotlight.id : theirs.known[spotlight.id]),
-      caption: t(`duel.announce.${spotlight.kind}`, { name: peerName ?? t('duel.bar.rival') }),
-    })
+    const { spotlight, showcase } = matEffects(replayMat(theirs.initial, acts, acts.length - 1), action)
+    const rival = peerName ?? t('duel.bar.rival')
+    const artOf = (id: string) => artOfDrawId(isToken(id) ? id : theirs.known[id]) ?? null
+    const key = Date.now()
+
+    if (spotlight && spotlight.kind !== 'attack') {
+      setShown({ effect: { key, kind: spotlight.kind, cards: [{ id: spotlight.id, art: artOf(spotlight.id) }], caption: t(`duel.announce.${spotlight.kind}`, { name: rival }) }, flashId: spotlight.id })
+    } else if (showcase) {
+      setShown({ effect: { key, kind: showcase.kind, cards: showcase.ids.map((id) => ({ id, art: artOf(id) })), ...(showcase.flip ? { flip: true } : {}), caption: t(`duel.announce.show.${showcase.kind}`, { name: rival, count: showcase.ids.length }) } })
+    }
   }, [acts, theirs, peerName])
 
   useEffect(() => {
@@ -739,9 +742,9 @@ function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEff
     return () => clearTimeout(id)
   }, [shown])
 
-  const flash = useMemo(() => (shown ? { id: shown.id, key: shown.key, kind: shown.kind } : undefined), [shown])
+  const flash = useMemo(() => (shown?.flashId ? { id: shown.flashId, key: shown.effect.key, kind: shown.effect.kind as SpotlightKind } : undefined), [shown])
 
-  return { effect: shown, flash }
+  return { effect: shown?.effect, flash }
 }
 
 /** Cuánto se queda el globo de "pensando" o "todo bien" junto a las vidas. */

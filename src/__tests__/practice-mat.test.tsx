@@ -276,6 +276,22 @@ describe('la mesa de práctica', () => {
     expect(within(status()).getByText('Robás Imperm')).toBeInTheDocument()
   })
 
+  it('del Deck se puede revelar el tope, y desde el visor cualquier carta (sin moverla)', () => {
+    render(<Harness />)
+
+    // El tope: queda anotado y el Deck sigue igual.
+    tap(screen.getByRole('button', { name: 'Main: 1' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Revelar el tope' }))
+    expect(screen.getByRole('button', { name: 'Main: 1' })).toBeInTheDocument()
+    expect(within(status()).getByText('Revelás Imperm')).toBeInTheDocument()
+
+    // Desde el visor del Deck, una carta cualquiera ofrece "Revelar".
+    tap(screen.getByRole('button', { name: 'Main: 1' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ver el deck' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: /Main/ })).getByRole('button', { name: /Imperm/ }))
+    expect(screen.getByRole('menuitem', { name: 'Revelar' })).toBeInTheDocument()
+  })
+
   /** Arrastra una carta de la mano hasta una zona (la que devuelve `elementFromPoint`) y la suelta. */
   const dragToZone = (name: string, target: HTMLElement) => {
     document.elementFromPoint = () => target

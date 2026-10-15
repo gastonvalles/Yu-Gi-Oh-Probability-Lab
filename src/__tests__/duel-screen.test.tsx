@@ -279,6 +279,10 @@ describe('la pantalla del duelo', () => {
     flush()
     click(host, 'Battle Phase')
     flush()
+    // Las invocaciones de recién traen su carta y su cartel; pasan solos.
+    act(() => {
+      vi.advanceTimersByTime(1100)
+    })
 
     // Cada barra de vida dice de quién es: a ahí llega la espada de un ataque directo.
     expect(host.container.querySelector('[data-lp="theirs"]')).toHaveAccessibleName(/Puntos de vida de Beto/)
@@ -356,6 +360,12 @@ describe('la pantalla del duelo', () => {
     const stage = () => guest.container.querySelector('[data-activation]')
     const ring = () => rivalCard().getAttribute('data-flash')
     const myMonster = () => tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
+    // Invocar también se anima, con su carta (de dorso: Beto todavía no la vio) y su cartel, como en un combo guardado.
+    expect(stage()).toHaveAttribute('data-kind', 'normal')
+    expect(within(guest.container).getByText('Ana hace una Invocación Normal')).toBeInTheDocument()
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
     expect(stage()).toBeNull()
     expect(ring()).toBe('false')
 
@@ -385,11 +395,12 @@ describe('la pantalla del duelo', () => {
       vi.advanceTimersByTime(1000)
     })
 
-    // Marcar un objetivo: no agranda la carta, sólo le pone el aro, y la mira se queda mientras esté marcada.
+    // Marcar un objetivo: la carta sale en el centro con su cartel, le queda el aro, y la mira se queda mientras esté marcada.
     myMonster()
     fireEvent.click(screen.getByRole('menuitem', { name: 'Target' }))
     flush()
-    expect(stage()).toBeNull()
+    expect(stage()).toHaveAttribute('data-kind', 'target')
+    expect(within(guest.container).getByText('Ana marca una carta como objetivo')).toBeInTheDocument()
     expect(rivalCard()).toHaveAttribute('data-flash-kind', 'target')
     expect(rivalCard()).toHaveAttribute('data-targeted', 'true')
     act(() => {
@@ -399,11 +410,22 @@ describe('la pantalla del duelo', () => {
     expect(rivalCard()).toHaveAttribute('data-targeted', 'true')
     expect(within(rivalCard()).getByRole('img', { name: 'Target' })).toBeInTheDocument()
 
+    // Mandar la carta al cementerio: su carta viaja (lo anima la mesa) y el cartel dice qué pasó, como en un combo guardado.
+    myMonster()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Al cementerio' }))
+    flush()
+    expect(stage()).toHaveAttribute('data-kind', 'gy')
+    expect(within(guest.container).getByText('Ana manda una carta al cementerio')).toBeInTheDocument()
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(stage()).toBeNull()
+
     // Deshacer lo de Ana no repite nada en la mesa de Beto.
     click(host, 'Deshacer')
     flush()
     expect(stage()).toBeNull()
-    expect(rivalCard()).toHaveAttribute('data-targeted', 'false')
+    expect(guest.container.querySelector('[data-rival-drop="gy"]')?.getAttribute('aria-label')).toBe('GY: 0')
   })
 
   it('en escritorio lo que se centra en la mesa (la carta grande de un efecto del rival, y las tarjetas de pausa y de resultado) deja afuera la columna del chat; en el celular, no', () => {

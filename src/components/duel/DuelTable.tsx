@@ -250,12 +250,15 @@ function Pile({ area, pile, side, owner }: { area: string; pile: Exclude<MatPile
   const top = pile === 'gy' || pile === 'banished' ? (cards[cards.length - 1] ?? null) : null
   const back = pile === 'deck' || pile === 'extra' ? cards.length > 0 : top !== null && side.state.facedown.includes(top)
   const art = top !== null && !back ? side.artOf(top) : null
-  const marked = side.marks?.piles.includes(pile) ?? false
+  // La pila entera marcada, o una carta de adentro marcada como objetivo (se vea o no): la mira queda sobre la pila. Y lo que destella (activar, marcar) adentro, también.
+  const marked = (side.marks?.piles.includes(pile) ?? false) || cards.some((id) => side.state.targeted.includes(id))
+  const flash = side.flash && cards.includes(side.flash.id) ? side.flash : null
 
   return (
-    <div role="group" aria-label={`${PILE_TITLES[pile]}: ${cards.length}`} title={PILE_TITLES[pile]} data-rival-drop={owner === 'theirs' ? pile : undefined} data-targeted={marked ? 'true' : 'false'} className={cx(CELL, 'overflow-hidden')} style={{ gridArea: area }}>
+    <div role="group" aria-label={`${PILE_TITLES[pile]}: ${cards.length}`} title={PILE_TITLES[pile]} data-rival-drop={owner === 'theirs' ? pile : undefined} data-targeted={marked ? 'true' : 'false'} data-flash={flash ? 'true' : 'false'} data-flash-kind={flash?.kind} className={cx(CELL, 'overflow-hidden', FX_CARD, '[--card-shadow:0_0_0_0_transparent]')} style={{ gridArea: area, ...fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red') }}>
       {cards.length > 0 ? (art ? <CardArt remoteUrl={art} name={PILE_TITLES[pile]} className="block h-full w-full object-cover" /> : <CardBack className="h-full" />) : null}
       <PileBadge label={PILE_TITLES[pile]} count={cards.length} />
+      {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
       {marked ? <TargetMark /> : null}
       {side.onMark && owner === 'theirs' ? <MarkButton label={t('duel.mark.label', { place: PILE_TITLES[pile] })} onMark={(rect) => side.onMark!({ pile }, rect, PILE_TITLES[pile])} /> : null}
     </div>
