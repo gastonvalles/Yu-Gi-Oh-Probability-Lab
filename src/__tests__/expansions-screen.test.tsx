@@ -360,7 +360,8 @@ describe('llegar desde los precios de una carta: #expansions?set=…&print=…',
     await screen.findByRole('button', { name: 'Ver el detalle de Dark Magician' })
 
     expect(highlighted()).toEqual(['Ver el detalle de Dark Magician'])
-    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center' })
+    // El efecto que lleva la carta al medio corre después de pintar: con la máquina cargada el botón ya está y el efecto todavía no, así que se espera en vez de leer de una.
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center' }))
     expect(scrollIntoView.mock.contexts.some((element) => (element as HTMLElement).contains(screen.getByRole('button', { name: 'Ver el detalle de Dark Magician' })))).toBe(true)
     // La lista marca la expansión y de la carta se va a TCGplayer desde acá.
     expect(within(screen.getByRole('navigation', { name: 'Expansiones' })).getByRole('button', { name: /Legend of Blue-Eyes/ })).toHaveAttribute('aria-current', 'true')
