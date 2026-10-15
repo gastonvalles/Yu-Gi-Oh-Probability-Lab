@@ -27,8 +27,8 @@ export interface DuelSave {
 const PREFIX = 'ygo-lab:duel-save:'
 const saveKey = (room: string, role: 'host' | 'guest') => `${PREFIX}${room}:${role}`
 
-/** Cuánto se espera a quien salió: pasado ese tiempo el duelo en pausa se descarta (una partida con un amigo no dura más). */
-export const SAVE_TTL_MS = 6 * 60 * 60 * 1000
+/** Cuánto se espera a quien salió: pasado ese tiempo el duelo en pausa se descarta. */
+export const SAVE_TTL_MS = 2 * 60 * 60 * 1000
 
 /** Lo que hay que guardar de este duelo, o null mientras no haya mesa repartida (la mesa sólo se reparte cuando ya se eligió quién empieza) o tras una revancha, que empieza de cero. */
 export function saveOf(snapshot: DuelSnapshot, now: number): DuelSave | null {

@@ -87,7 +87,8 @@ describe('lo guardado para recargar o para volver', () => {
     expect(parseSave(mangled((data) => void (data.savedAt = 'ayer')), 'host', NOW)).toBeNull()
     expect(parseSave(mangled((data) => void (data.rival = 7)), 'host', NOW)).toBeNull()
 
-    // Vence a las seis horas: un día después nadie espera a quien salió.
+    // Vence a las dos horas: pasado ese tiempo nadie espera ya a quien salió.
+    expect(SAVE_TTL_MS).toBe(2 * 60 * 60 * 1000)
     expect(parseSave(good, 'host', NOW + SAVE_TTL_MS)).not.toBeNull()
     expect(parseSave(good, 'host', NOW + SAVE_TTL_MS + 1)).toBeNull()
   })
