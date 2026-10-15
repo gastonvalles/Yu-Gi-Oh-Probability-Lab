@@ -1,3 +1,4 @@
+import type { DuelSave } from './duel-save'
 import { addChat, addGame, cleanChat, coinWinner, dieWinner, duelResult, rpsOutcome, type ChatLine, type DuelGame, type GameEntry, type RpsPick, type TossMethod } from './duel-games'
 import { DEFAULT_SETTINGS, PROTOCOL_VERSION, cleanName, encodeMessage, parseMessage, type DuelMessage, type DuelSettings, type OpeningWire } from './duel-protocol'
 import { createLifeState, lifeReducer, timerElapsed, type Duelist, type LifeState } from './life-calculator'
@@ -117,6 +118,8 @@ interface DuelOptions {
   sid?: string
   /** De dónde sale el azar de la moneda y el dado (para las pruebas). */
   random?: () => number
+  /** Mi mesa guardada de antes de recargar la página: se sigue desde ahí en vez de repartir de nuevo. */
+  restore?: DuelSave
 }
 
 export function createDuel(transport: DuelTransport, options: DuelOptions): Duel {
@@ -162,6 +165,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   let chatId = 0
   let chatN = 0
   let watchers = 0
+  /** Mis puntos de vida vienen de lo guardado: el saludo del anfitrión no los pisa con los de arranque. */
+  let lpRestored = false
 
   // El lado del rival: lo último que le oí, para descartar repetidos y detectar lo que falta.
   let theirs: Mirror | null = null
@@ -370,15 +375,18 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     life = { ...life, timer: running ? { running: true, startedAt: now(), elapsedMs } : { running: false, startedAt: 0, elapsedMs } }
   }
 
-  /** El rival empezó de cero (recargó la página): sus números vuelven a contar desde el principio. */
+  /**
+   * El rival empezó de cero (recargó la página): sus números vuelven a contar desde el principio. Su mesa de antes se sigue mostrando hasta que llegue la nueva
+   * (en cuanto me salude me la manda): si no, a quien no recargó se le cerraría la mesa un instante y se le volvería a repartir la mano.
+   */
   const forgetPeer = () => {
-    theirs = null
     peerSeq = 0
     peerLifeN = 0
     peerClockN = 0
     peerGameN = 0
     peerChatN = 0
-    rps = { ...rps, theirs: null }
+    // Una ronda terminada no se le repite al que vuelve (le diría que el rival "ya eligió"); una a medias sí, para que la pueda terminar.
+    rps = rps.theirs !== null ? { mine: null, theirs: null } : rps
     rematch = { ...rematch, theirs: false }
     ready = { ...ready, theirs: false }
     awaitingSync = false
@@ -413,7 +421,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
           settings = message.settings
 
           // Antes de tocar nada, los puntos de vida arrancan con lo que fijó el anfitrión.
-          if (life.log.length === 0) {
+          if (life.log.length === 0 && !lpRestored) {
             life = { ...life, lp: [settings.lp, settings.lp] }
           }
         }
@@ -563,6 +571,38 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
 
     emit()
   })
+
+  // Volví a abrir la página en pleno duelo: la mesa se arma de nuevo con las mismas jugadas (si lo guardado no sirve, se ignora y se reparte otra).
+  if (options.restore) {
+    try {
+      const saved = options.restore
+      const open = openPublic(saved.initial)
+      let table = saved.initial
+      let tracker = open.sender
+
+      for (const action of saved.actions) {
+        tracker = encodeAct(tracker, table, action).sender
+        table = matReducer(table, action)
+      }
+
+      initial = saved.initial
+      actions = [...saved.actions]
+      mine = table
+      sender = tracker
+      ownIds = Object.fromEntries(Object.entries(open.sender.opaque).map(([real, opaque]) => [opaque, real]))
+      life = { ...life, lp: me === 0 ? [saved.lp, life.lp[1]] : [life.lp[0], saved.lp], timer: saved.timer }
+      lpRestored = true
+      starter = saved.starter
+      ordered = true
+      ready = { mine: true, theirs: true }
+    } catch {
+      initial = null
+      actions = []
+      mine = null
+      sender = null
+      ownIds = {}
+    }
+  }
 
   snapshot = build()
 

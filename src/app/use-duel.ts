@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 
 import type { DuelSettings } from './duel-protocol'
 import { createParticipantId } from './duel-relay-rules'
+import { readDuelSave, writeDuelSave } from './duel-save'
 import { createDuel, type Duel, type DuelRole, type DuelSnapshot } from './duel-session'
 import { createSpectator, type Spectator, type SpectatorSnapshot } from './duel-spectator'
 import { createSocketTransport, type SocketStatus, type SocketTransport, type SpectatorSocket } from './duel-socket'
@@ -42,6 +43,7 @@ const noSnapshot = () => null
 /**
  * Un duelo en curso: se conecta a la sala mientras `room` no sea null y se desconecta al cambiar o desmontarse.
  * El nombre y los ajustes se leen al conectar (cambiarlos después no reconecta). `connect` tiene que ser estable.
+ * Lo propio del duelo (mi mesa, mis vidas, el reloj) se guarda en la pestaña a cada cambio y, al volver a entrar a la misma sala con el mismo rol (una recarga), se sigue desde ahí.
  */
 export function useDuel({ room, role, name, settings, connect }: UseDuelInput): { duel: Duel | null; snapshot: DuelSnapshot | null; status: SocketStatus } {
   const [live, setLive] = useState<{ duel: Duel; transport: SocketTransport } | null>(null)
@@ -54,11 +56,22 @@ export function useDuel({ room, role, name, settings, connect }: UseDuelInput): 
     }
 
     const transport = connect(room, createParticipantId())
-    const duel = createDuel(transport, { role, ...latest.current })
+    const duel = createDuel(transport, { role, ...latest.current, restore: readDuelSave(room, role) ?? undefined })
+    let saved = duel.getSnapshot()
+    const stopSaving = duel.subscribe(() => {
+      // Sólo cuando algo de lo guardado cambió (las jugadas, las vidas o el reloj, la mesa de arranque): el chat y los avisos no pasan por acá.
+      const now = duel.getSnapshot()
+
+      if (now.actions !== saved.actions || now.life !== saved.life || now.initial !== saved.initial) {
+        saved = now
+        writeDuelSave(room, now)
+      }
+    })
 
     setLive({ duel, transport })
 
     return () => {
+      stopSaving()
       duel.close()
       setLive(null)
     }
