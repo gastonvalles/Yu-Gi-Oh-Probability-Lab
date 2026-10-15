@@ -18,6 +18,7 @@ La idea central es ayudar a entender deck building con un flujo simple: armás e
 - Probabilidad exacta (enumeración combinatoria), yendo primero, segundo o en promedio.
 - Calculadora rápida en el Lab, sin armar el deck: con N copias en un deck de M, cuántas manos abren la carta (al menos 1, 2 o 3, yendo 1º o 2º) y cuántas copias hacen falta para llegar a un %.
 - Práctica: una mesa para jugar solo (como el Solo Mode de DuelingBook) que abre con la mano ya robada y sus salidas y problemas debajo, con combos que se guardan y se reproducen paso a paso.
+- Duelo con un amigo: la misma mesa jugada contra otra persona, cada una en su dispositivo (celular y PC), entrando con un enlace, sin cuentas. Los dos tocan "Estoy listo", definen con moneda, dado o piedra-papel-tijera quién elige ir primero, y juegan con ataque animado, contadores, chat, reloj compartido, rendirse y revancha; se juega con el deck del builder o con uno pegado (`ydke://` o `.ydk`). Hasta dos personas más pueden mirar sin poder tocar nada. Ver "Duelo con un amigo" más abajo y `docs/duelo.md`.
 - Comparación A vs B contra otra build importada.
 - Exportación del deck como imagen, decklist oficial en PDF, `.ydk`, lista `.txt` (cantidad y nombre por línea) y `.json` (con los roles, para importarlo acá en otro navegador), y los tres pasos para llevarlo a Neuron (link YDKE o `.ydk` + extensión "Deck transfer" + base de datos oficial de Konami).
 - Copia de seguridad en Exportar: un archivo con todo lo que la app guarda en el navegador (deck, roles, reglas, builds, combos y calculadora de LP; las cachés no) para llevarlo a otro navegador o recuperarlo después de borrar los datos. Restaurar reemplaza lo que hay y recarga la página.
@@ -134,6 +135,19 @@ La práctica es una pantalla entera (`#practice`, en las herramientas del menú;
 - La partida sigue viva al salir de la pantalla (a la calculadora, al builder): al volver está donde estaba. "Nueva mano" baraja y reparte otra.
 - **La mascota del duelo:** en la práctica hay una sola mascota, la primera de las que están afuera, parada en la esquina libre del campo (en el celular, sobre esa esquina); las demás se quedan esperando y al salir del duelo vuelven a flotar donde estaban. Reacciona como siempre (festeja una mano limpia, se frustra con un problema).
 
+## Duelo con un amigo
+
+El paso `#duel` (en las herramientas del menú) junta a dos jugadores, cada uno en su dispositivo, por un **relay** de Cloudflare (`duel-relay/`, ver `docs/duelo-relay.md`): uno crea el duelo, manda el enlace (o el código de 8 letras y números) y el otro lo pega. **Sólo se ofrece donde está la variable `VITE_DUEL_RELAY_URL`** (`wss://…workers.dev`); se lee al compilar, así que cargarla en Vercel exige volver a desplegar.
+
+- **Antes de la mesa:** cada uno ve si el otro ya está listo; con los dos listos definen con una moneda, un dado o piedra-papel-tijera (animados en las dos pantallas) quién elige ir primero o segundo, y cada uno recibe su mano solo. En una revancha elige quien perdió.
+- **Mesa:** la de la práctica con el campo del rival espejado arriba, las dos Extra Monster Zone compartidas en el medio y las fases entre las zonas, pensada para el celular y la mano derecha (lo del rival arriba; tus vidas y los botones abajo, al alcance del pulgar). Las fases son una sola para los dos y sólo las toca quien tiene el turno: el turno pasa al tocar la Draw Phase después de la End Phase, que todavía se juega. El reloj de 50 minutos arranca solo y no se reinicia a mano. La mano del rival se ve de dorso; el rival no ve tu mano, tu deck ni lo boca abajo.
+- **Jugadas del duelo:** Atacar y Ataque directo en la Battle Phase (la espada y el rayo cruzan el tablero), contadores y fichas desde el botón +, puntos de vida con el teclado de la calculadora, chat con mensajes rápidos, y el panel de juegos (moneda, dado, piedra-papel-tijera y rendirse). Pierde quien se queda sin puntos de vida o se rinde, y el cartel del resultado trae la revancha.
+- **Espectadores:** hasta dos personas pueden mirar con un enlace aparte; ven las dos mesas, las vidas, el turno y el chat, y no pueden hacer nada (lo impone el relay).
+- **Reconexión:** se reconecta sola (en el celular, al volver a la pantalla); si el rival recarga, vuelve a la sala y sigue desde donde iban.
+- **Es para jugar con amigos**, no contra quien mire el tráfico: no hay cuentas ni reglas automáticas, y el relay no guarda nada.
+
+Cómo está armado, el protocolo, cómo probarlo con tres pestañas y qué se descartó: `docs/duelo.md`.
+
 ## Calculadora de LP (celular)
 
 La calculadora de puntos de vida se abre desde el menú (herramientas) encima de cualquier pantalla (en escritorio, en un panel del tamaño de un celular). Mientras corre el reloj de la ronda y la calculadora está cerrada, aparece un botón flotante con lo que queda de la ronda (se arrastra a donde moleste menos) que vuelve a ella con un toque: en pleno duelo se cierra para leer una carta o mirar la mesa. Sin el reloj corriendo no hay botón. Tiene la estructura de la de Neuron, pero más rápida: los dos LP lado a lado (se toca uno para elegir a quién va la operación), reiniciar y deshacer en el medio, el display de la operación, tres atajos con los últimos cambios para repetirlos con un toque, y el teclado de Neuron (Borrar, +, −, ÷2, dígitos, 00 y 000) con "=". Con menos de tres dígitos lo tecleado se entiende en centenas ("8" es 800). Las subas se ven en verde y las bajas en rojo. El reloj de la ronda cuenta 50 minutos para atrás, avisa a los 10 y a los 5 minutos, suena y vibra al llegar a cero y lo repite hasta que se reinicia el reloj (los tres avisos se pueden probar desde "Moneda, dado y avisos") y, mientras corre, se ve en el botón flotante cuando la calculadora está cerrada; se reinicia aparte del duelo, porque el match sigue entre juego y juego. Moneda (la King of Games, con sus dos caras) y dado dorado de seis caras animados; las imágenes viven en `public/cosmetics/` para sumar más cosméticos. El duelo se guarda en el dispositivo (sobrevive a cerrar la app) y la pantalla no se apaga mientras la calculadora está abierta.
@@ -155,6 +169,7 @@ src/
     turn-context.ts          ir primero / segundo / promedio
     build-comparison.ts      comparación A vs B
     practice-mat.ts          la mesa de práctica: estado, jugadas y sus textos (puro)
+    mat-public.ts, duel-*.ts, use-duel.ts  el duelo con un amigo: la mesa pública (ids opacos), el protocolo, la sesión, el espectador, el transporte, los juegos y el deck pegado; ver docs/duelo.md
     saved-combos.ts          combos guardados en localStorage
     shell-layout.ts          el menú lateral (ancho, contraído o no) y cuánto espacio deja libre a lo flotante
     meta.ts                  los tier lists (hand traps, decks y boardbreakers) y los decks de torneo: informes, tiers, tendencia y links
@@ -169,6 +184,7 @@ src/
     DeckRolesPanel.tsx       clasificación por carta
     ProbabilityPanel.tsx     Probability Lab
     probability/             editor de reglas, práctica y mesa (PracticeMat)
+    duel/                    el duelo con un amigo: lobby, sala, mesa con el campo del rival, barra, chat, juegos y la pantalla del espectador
     meta/                    tier lists, decks de torneo y sus detalles (carta, deck del tier list, deck completo)
     replays/                 pestaña Replays y su reproductor
     expansions/              la vista de expansiones: lista, cartas con rareza y precio, y su detalle
@@ -181,6 +197,7 @@ src/
   ygoprodeck/                cliente y parser de la API
   i18n/                      los textos en español e inglés: `t()`, el idioma y un diccionario por área (`es/`, `en/`); ver docs/i18n.md
   __tests__/                 tests (Vitest + fast-check)
+duel-relay/                  el relay del duelo (Worker + Durable Object de Cloudflare): dos jugadores y hasta dos espectadores; ver docs/duelo-relay.md
 api/
   card-image.ts              función de Vercel: sirve las imágenes de las cartas desde nuestra caché (YGOPRODeck pide no enlazarlas directo); vercel.json le reescribe /api/card-image/<carpeta>/<archivo>.jpg; con `?w=128|320|512` devuelve la miniatura en WebP
 public/                      íconos, manifiesto, imagen para compartir, robots.txt, sitemap.xml, 404.html, privacidad.html y privacy.html (estáticos)
@@ -223,7 +240,7 @@ El CI (`.github/workflows/ci.yml`) corre `typecheck`, `lint`, `test` y `build` e
 
 - No hay importación desde imagen (por decisión de UX).
 - El cálculo es exacto solo para la mano inicial (no simula robos posteriores).
-- La mesa de práctica es manual (no aplica reglas ni simula al rival); no hay simulación automática de líneas o interrupciones.
+- La mesa de práctica y el duelo con un amigo son manuales (no aplican reglas ni hay un rival automático); no hay simulación automática de líneas o interrupciones.
 
 ## Próximos pasos sugeridos
 

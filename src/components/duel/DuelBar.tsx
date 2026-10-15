@@ -37,6 +37,7 @@ const STATUS_TEXT: Record<Exclude<SocketStatus, 'open'>, () => string> = {
   reconnecting: () => t('duel.status.reconnecting'),
   full: () => t('duel.status.full'),
   closed: () => t('duel.status.closed'),
+  unsupported: () => t('duel.status.unsupported'),
 }
 
 interface DuelBarProps {
@@ -85,6 +86,12 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
       {/* Escritorio: el turno y salir juntos a la derecha. Celular: salir al final de la primera fila, el turno en su propia fila y la mano del rival en la tercera (`contents` y `order` los acomodan). */}
       <div className="contents min-[1101px]:ml-auto min-[1101px]:flex min-[1101px]:items-center min-[1101px]:gap-2">
         <div className="order-2 flex basis-full flex-wrap items-center gap-1.5 min-[1101px]:order-none min-[1101px]:basis-auto min-[1101px]:flex-nowrap">
+          {snapshot.watchers > 0 ? (
+            <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted" title={t('duel.room.watchers', { count: snapshot.watchers })} aria-label={t('duel.room.watchers', { count: snapshot.watchers })}>
+              <Icon name="eye" size={14} />
+              {snapshot.watchers}
+            </span>
+          ) : null}
           <span className="whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted">{t('practice.mat.turn', { turn: duelTurnNumber(snapshot.mine, snapshot.theirs?.state ?? null) })}</span>
           <span className={cx('whitespace-nowrap rounded-full px-2.5 py-1 text-micro font-semibold', turn === 'mine' ? 'bg-accent/20 text-accent' : 'bg-tint/8 text-muted')}>
             {turn === 'mine' ? t('duel.bar.yourTurn') : t('duel.bar.theirTurn', { name: rivalName })}
@@ -234,7 +241,7 @@ function ResultBanner({ result, snapshot, rival, onRematch }: { result: DuelResu
 }
 
 /** Los puntos de vida de uno: su nombre y el número grande. Los propios son un botón que abre el cambio. */
-function LifeTile({ name, life, mine = false, onClick }: { name: string; life: number; mine?: boolean; onClick?: () => void }) {
+export function LifeTile({ name, life, mine = false, onClick }: { name: string; life: number; mine?: boolean; onClick?: () => void }) {
   // `data-lp`: a qué casilla va la espada de un ataque directo (ver `measureStrike`).
   const side = mine ? 'mine' : 'theirs'
   const body = (

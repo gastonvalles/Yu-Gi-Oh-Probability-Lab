@@ -4,7 +4,7 @@
 import { beforeAll, describe as rawDescribe, expect, it } from 'vitest'
 
 import { createDuel } from '../app/duel-session'
-import { CLOSE_FULL, MAX_MESSAGE_BYTES, PING, PONG, createParticipantId, createRoomCode, parseRelayFrame, type RelayFrame } from '../app/duel-relay-rules'
+import { CLOSE_FULL, MAX_MESSAGE_BYTES, PING, PONG, SPECTATOR_RESYNC, createParticipantId, createRoomCode, parseRelayFrame, type ParticipantRole, type RelayFrame } from '../app/duel-relay-rules'
 import { createSocketTransport, type SocketLike } from '../app/duel-socket'
 import { mapMatIds, openPublic } from '../app/mat-public'
 import { createMatState } from '../app/practice-mat'
@@ -24,8 +24,8 @@ async function until(check: () => boolean, ms = 10_000, what = 'condición') {
 }
 
 /** Un cliente crudo: lo que llega (texto y avisos), cómo cerró. */
-function raw(room: string, pid = createParticipantId(), origin: string | null = ORIGIN) {
-  const ws = new WebSocket(`${RELAY}/room/${room}?pid=${pid}`, origin ? ({ headers: { Origin: origin } } as never) : undefined)
+function raw(room: string, pid = createParticipantId(), origin: string | null = ORIGIN, role: ParticipantRole = 'player') {
+  const ws = new WebSocket(`${RELAY}/room/${room}?pid=${pid}${role === 'spectator' ? '&role=spectator' : ''}`, origin ? ({ headers: { Origin: origin } } as never) : undefined)
   ws.binaryType = 'arraybuffer'
   const client = { ws, texts: [] as string[], frames: [] as RelayFrame[], closed: undefined as number | undefined, opened: false, errored: false }
   ws.onopen = () => (client.opened = true)
@@ -126,6 +126,89 @@ describe('el relay real', () => {
     expect(a.texts).toEqual([])
     again.ws.close(1000)
     b.ws.close(1000)
+  })
+
+  it('los espectadores ven el texto de los dos jugadores con quién lo mandó, no pueden mandar nada y son dos', async () => {
+    const room = createRoomCode()
+    const a = raw(room)
+    await until(() => a.frames.length === 1)
+    const b = raw(room)
+    await until(() => b.frames.length === 1)
+    const peerOnly = (client: ReturnType<typeof raw>) => client.frames.filter((frame) => frame.kind === 'peer')
+
+    // Entra uno a mirar: sabe cuántos juegan y los jugadores se enteran de que los miran, con el pedido de que repitan su estado.
+    const first = raw(room, undefined, ORIGIN, 'spectator')
+    await until(() => first.frames.length >= 1 && a.frames.some((frame) => frame.kind === 'watchers') && b.frames.some((frame) => frame.kind === 'watchers'))
+    expect(first.frames).toEqual([{ kind: 'players', count: 2 }])
+    expect(a.frames.at(-1)).toEqual({ kind: 'watchers', count: 1, sync: true })
+    // Mirar no cambia lo que los jugadores saben entre ellos.
+    expect(peerOnly(a)).toEqual([{ kind: 'peer', present: false }, { kind: 'peer', present: true }])
+
+    // Lo que dice cada uno llega al otro de siempre y, al espectador, con su etiqueta (la del orden de llegada).
+    a.ws.send('hola desde A')
+    b.ws.send('hola desde B')
+    await until(() => first.texts.length === 2 && a.texts.length === 1 && b.texts.length === 1)
+    expect([a.texts, b.texts]).toEqual([['hola desde B'], ['hola desde A']])
+    expect(first.texts.sort()).toEqual(['0hola desde A', '1hola desde B'])
+
+    // El segundo espectador entra; el tercero recibe "llena" y no cambia nada.
+    const second = raw(room, undefined, ORIGIN, 'spectator')
+    await until(() => second.frames.length >= 1)
+    const third = raw(room, undefined, ORIGIN, 'spectator')
+    await until(() => third.closed !== undefined)
+    expect(third.frames).toEqual([{ kind: 'full' }])
+    expect(third.closed).toBe(CLOSE_FULL)
+    expect(second.closed).toBeUndefined()
+    expect(a.frames.filter((frame) => frame.kind === 'watchers').at(-1)).toEqual({ kind: 'watchers', count: 2, sync: true })
+
+    // Un espectador no puede hacer nada: lo que manda no llega a nadie y lo desconectan.
+    a.texts.length = 0
+    b.texts.length = 0
+    first.ws.send('soy un jugador')
+    await until(() => first.closed !== undefined)
+    expect(first.closed).toBe(1008)
+    await wait(300)
+    expect([a.texts, b.texts]).toEqual([[], []])
+    await until(() => a.frames.at(-1)?.kind === 'watchers' && (a.frames.at(-1) as { count: number }).count === 1)
+
+    // Lo único que se le acepta es pedir que repitan su estado, y no seguido.
+    const before = a.frames.length
+    second.ws.send(SPECTATOR_RESYNC)
+    await until(() => a.frames.length > before)
+    expect(a.frames.at(-1)).toEqual({ kind: 'watchers', count: 1, sync: true })
+    const after = a.frames.length
+    second.ws.send(SPECTATOR_RESYNC)
+    second.ws.send(SPECTATOR_RESYNC)
+    await wait(300)
+    expect(a.frames.length - after).toBeLessThanOrEqual(1)
+    expect(second.closed).toBeUndefined()
+
+    // Si el otro jugador se va, el espectador se entera de cuántos quedan; y un jugador que vuelve conserva su etiqueta.
+    b.ws.close(1000)
+    await until(() => second.frames.some((frame) => frame.kind === 'players' && frame.count === 1))
+    a.ws.close(1000)
+    second.ws.close(1000)
+  })
+
+  it('un jugador que reconecta con su identidad conserva su etiqueta para los espectadores', async () => {
+    const room = createRoomCode()
+    const pid = createParticipantId()
+    // Uno detrás del otro: la etiqueta es el orden de llegada a la sala, y por internet dos conexiones a la vez pueden llegar en cualquier orden.
+    const a = raw(room, pid)
+    await until(() => a.frames.length > 0)
+    const b = raw(room)
+    await until(() => b.frames.length > 0)
+    const watcher = raw(room, undefined, ORIGIN, 'spectator')
+    await until(() => watcher.frames.length >= 1)
+
+    const again = raw(room, pid)
+    await until(() => again.frames.length > 0)
+    again.ws.send('sigo siendo A')
+    await until(() => watcher.texts.length === 1)
+    expect(watcher.texts).toEqual(['0sigo siendo A'])
+    again.ws.close(1000)
+    b.ws.close(1000)
+    watcher.ws.close(1000)
   })
 
   it('cierra lo que no corresponde: binarios, mensajes enormes y ráfagas', async () => {

@@ -50,7 +50,7 @@ export const DUEL_AREAS = [...THEIR_ROWS, middleRow(true, true), ...MINE_ROWS].j
 
 /** Las columnas de los costados miden lo justo de una carta (0,6857 de una del centro): todas las cartas del campo miden lo mismo. */
 const GRID =
-  'relative grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,4.5rem)_repeat(5,minmax(0,6.5rem))_minmax(0,4.5rem)]'
+  'relative grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,6.5rem)*0.6857))_repeat(5,minmax(0,var(--cell,6.5rem)))_minmax(0,calc(var(--cell,6.5rem)*0.6857))]'
 
 const ZONE_LABEL: Record<MatSpot, () => string> = {
   mz: () => t('practice.zone.mz'),
@@ -190,7 +190,7 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
   const art = side.artOf(placed.id)
   const faceDown = placed.pos === 'set'
   const sideways = spot !== 'st' && spot !== 'field' && placed.pos !== 'atk'
-  const back = owner === 'theirs' && (faceDown || art === null)
+  const back = (owner === 'theirs' && faceDown) || art === null
 
   return (
     <div

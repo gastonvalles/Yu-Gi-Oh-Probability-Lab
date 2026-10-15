@@ -7,7 +7,11 @@ import { ROOM_CODE_PATTERN } from './duel-relay-rules'
 
 export const DUEL_STEP = 'duel'
 
-export const buildDuelLink = (origin: string, pathname: string, room: string) => `${origin}${pathname}#${DUEL_STEP}?room=${room}`
+/** El enlace de un duelo; con `watch`, el de espectador (`&watch=1`): entra a mirar, no a jugar. */
+export const buildDuelLink = (origin: string, pathname: string, room: string, watch = false) => `${origin}${pathname}#${DUEL_STEP}?room=${room}${watch ? '&watch=1' : ''}`
+
+/** ¿Es un enlace para mirar? (Lo que se pega en "Unirme" puede ser uno.) */
+export const isWatchLink = (text: string) => /[?&]watch=1(?![0-9A-Za-z])/.test(text)
 
 /** El código de sala de un texto pegado (un enlace o el código solo), o null si no hay uno válido. */
 export function extractRoomCode(text: string): string | null {
@@ -17,10 +21,17 @@ export function extractRoomCode(text: string): string | null {
   return ROOM_CODE_PATTERN.test(candidate) ? candidate : null
 }
 
+/** La sala que pide el hash de la página (`#duel?room=CODE`), y si es para mirar (`&watch=1`), o null. */
+export function parseDuelTarget(hash: string): { room: string; watch: boolean } | null {
+  const [step = '', query = ''] = hash.replace(/^#/, '').split('?')
+  const params = new URLSearchParams(query)
+  const room = params.get('room')
+  const code = step === DUEL_STEP && room !== null ? extractRoomCode(room) : null
+
+  return code ? { room: code, watch: params.get('watch') === '1' } : null
+}
+
 /** La sala que pide el hash de la página (`#duel?room=CODE`), o null. */
 export function parseDuelHash(hash: string): string | null {
-  const [step = '', query = ''] = hash.replace(/^#/, '').split('?')
-  const room = new URLSearchParams(query).get('room')
-
-  return step === DUEL_STEP && room !== null ? extractRoomCode(room) : null
+  return parseDuelTarget(hash)?.room ?? null
 }

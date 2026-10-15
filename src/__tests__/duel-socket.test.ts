@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CLOSE_FULL, PING, PONG, encodeRelayFrame, type RelayFrame } from '../app/duel-relay-rules'
-import { createSocketTransport, type SocketLike, type SocketStatus, type SocketTransport } from '../app/duel-socket'
+import { createSocketTransport, type SocketLike, type SocketStatus, type SocketTransport, type SpectatorSocket } from '../app/duel-socket'
 
 class FakeSocket implements SocketLike {
   static all: FakeSocket[] = []
@@ -52,9 +52,9 @@ class FakeSocket implements SocketLike {
 const current = () => FakeSocket.all.at(-1)!
 
 // Un transporte escucha la pestaña y la red de todo el documento: hay que cerrarlo (como hará la pantalla al desmontarse) o sigue vivo en las demás pruebas.
-const opened: SocketTransport[] = []
+const opened: Array<SocketTransport & SpectatorSocket> = []
 
-function connect(): SocketTransport {
+function connect(): SocketTransport & SpectatorSocket {
   const transport = createSocketTransport({ url: 'wss://relay.test', room: 'ABCD2345', participant: 'participant01', createSocket: (url) => new FakeSocket(url), random: () => 0.5 })
   opened.push(transport)
   return transport
@@ -328,5 +328,97 @@ describe('al cerrarlo', () => {
     vi.advanceTimersByTime(60_000)
 
     expect(FakeSocket.all).toHaveLength(1)
+  })
+})
+
+describe('mirando como espectador', () => {
+  function watch() {
+    const transport = createSocketTransport({ url: 'wss://relay.test', room: 'ABCD2345', participant: 'participant02', role: 'spectator', createSocket: (url) => new FakeSocket(url), random: () => 0.5 })
+    opened.push(transport)
+    return transport
+  }
+
+  it('entra a la sala como espectador, recibe el texto de cada jugador con quién lo mandó y los avisos de cuántos juegan', () => {
+    const transport = watch()
+    const tagged: Array<[number, string]> = []
+    const players: number[] = []
+
+    transport.onTagged((tag, text) => tagged.push([tag, text]))
+    transport.onPlayers((count) => players.push(count))
+    expect(current().url).toBe('wss://relay.test/room/ABCD2345?pid=participant02&role=spectator')
+    current().open()
+
+    current().frame({ kind: 'players', count: 2 })
+    current().text('0{"t":"chat"}')
+    current().text('1hola')
+    current().text(PONG)
+    current().text('sin etiqueta')
+    expect(players).toEqual([2])
+    expect(tagged).toEqual([
+      [0, '{"t":"chat"}'],
+      [1, 'hola'],
+    ])
+  })
+
+  it('no manda nada, salvo pedir que los jugadores repitan su estado', () => {
+    const transport = watch()
+
+    current().open()
+    transport.send('jugada')
+    transport.requestSync()
+    expect(current().sent).toEqual(['resync'])
+  })
+
+  it('un jugador que pide el estado no manda "resync": eso es sólo de los espectadores', () => {
+    const transport = connect()
+
+    current().open()
+    transport.requestSync()
+    expect(current().sent).toEqual([])
+  })
+
+  it('si el relay lo trata como a un jugador (un relay anterior), lo da por no disponible y no lo reintenta', () => {
+    const transport = watch()
+    const statuses: SocketStatus[] = []
+
+    transport.onStatus((status) => statuses.push(status))
+    current().open()
+    current().frame({ kind: 'peer', present: false })
+    expect(transport.status).toBe('unsupported')
+    expect(current().readyState).toBe(3)
+
+    current().serverClose(1006)
+    vi.advanceTimersByTime(60_000)
+    expect(FakeSocket.all).toHaveLength(1)
+    expect(statuses.at(-1)).toBe('unsupported')
+  })
+
+  it('con dos espectadores ya, el tercero recibe "llena" y no reintenta', () => {
+    const transport = watch()
+
+    current().open()
+    current().frame({ kind: 'full' })
+    expect(transport.status).toBe('full')
+    vi.advanceTimersByTime(60_000)
+    expect(FakeSocket.all).toHaveLength(1)
+  })
+
+  it('quien juega se entera de cuántos lo miran y de quién pide el estado, y el texto de su rival le llega igual', () => {
+    const transport = connect()
+    const seen: Array<[number, boolean]> = []
+    const texts: string[] = []
+
+    transport.onWatchers?.((count, needSync) => seen.push([count, needSync]))
+    transport.onMessage((text) => texts.push(text))
+    current().open()
+    current().frame({ kind: 'watchers', count: 1, sync: true })
+    current().frame({ kind: 'watchers', count: 0, sync: false })
+    current().text('0{"t":"hello"}')
+    expect(seen).toEqual([
+      [1, true],
+      [0, false],
+    ])
+    // Para quien juega no hay etiquetas: lo suyo es lo de siempre.
+    expect(texts).toEqual(['0{"t":"hello"}'])
   })
 })
