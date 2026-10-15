@@ -8,13 +8,15 @@ interface DuelPauseProps {
   /** Es esta conexión la que se cayó, no el rival el que salió. */
   offline: boolean
   onLeave: () => void
+  /** Volver a conectarse ya: si el aviso de que el rival está no llegó, sigue sin salir del duelo. */
+  onReconnect: () => void
 }
 
 /**
  * El duelo está en pausa mientras falta uno de los dos: tapa la mesa (nada se toca) y espera a que vuelva quien salió, que sigue con su mesa como la dejó.
- * Lo único que se puede hacer es salir (el duelo queda guardado para volver).
+ * Se puede salir (el duelo queda guardado para volver) o reconectarse, que es lo que destraba una pausa por un aviso que no llegó.
  */
-export function DuelPause({ rival, offline, onLeave }: DuelPauseProps) {
+export function DuelPause({ rival, offline, onLeave, onReconnect }: DuelPauseProps) {
   return (
     <div role="alertdialog" aria-modal="true" aria-label={t('duel.pause.title')} className="grid h-full place-items-center bg-background/85 p-6 backdrop-blur-sm">
       <div className="grid max-w-xs justify-items-center gap-3 text-center">
@@ -25,9 +27,14 @@ export function DuelPause({ rival, offline, onLeave }: DuelPauseProps) {
         <p className="m-0 text-body text-muted" role="status">
           {offline ? t('duel.pause.offline') : t('duel.pause.rival', { name: rival })}
         </p>
-        <Button variant="secondary" onClick={onLeave}>
-          {t('duel.bar.leave')}
-        </Button>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <Button variant="tertiary" onClick={onLeave}>
+            {t('duel.bar.leave')}
+          </Button>
+          <Button variant="primary" icon="refresh" onClick={onReconnect}>
+            {t('duel.pause.reconnect')}
+          </Button>
+        </div>
       </div>
     </div>
   )

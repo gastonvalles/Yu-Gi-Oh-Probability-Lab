@@ -24,6 +24,8 @@ export interface SocketTransport extends DuelTransport {
   readonly status: SocketStatus
   /** Avisa enseguida del estado de ahora y después de cada cambio. */
   onStatus(listener: (status: SocketStatus) => void): () => void
+  /** Cierra la conexión de ahora y abre otra ya, sin esperar el reintento: el relay vuelve a decir si el rival está. */
+  reconnect(): void
 }
 
 /** Lo que ve un espectador de la conexión: el texto de cada jugador con quién lo mandó (0 o 1), cuántos jugadores hay, y poder pedir que repitan su estado. */
@@ -308,6 +310,22 @@ export function createSocketTransport(options: SocketOptions): SocketTransport &
       statusListeners.add(listener)
       listener(status)
       return () => statusListeners.delete(listener)
+    },
+
+    reconnect() {
+      if (stopped || status === 'full' || unsupported) {
+        return
+      }
+
+      clearTimeout(retryTimer)
+      stopHeartbeat()
+
+      const current = socket
+      socket = null
+      current?.close(1000)
+      setPeer(false)
+      attempt = 0
+      connect()
     },
 
     close() {

@@ -264,6 +264,53 @@ describe('conexiones que mueren sin avisar', () => {
     expect(transport.status).toBe('open')
   })
 
+  it('reconectar a pedido tira la conexión de ahora y abre otra ya, con el mismo id, y el rival figura ausente hasta que el relay avise', () => {
+    const transport = connect()
+    const events: boolean[] = []
+    transport.onPeer((present) => events.push(present))
+    const first = current()
+    first.open()
+    first.frame({ kind: 'peer', present: true })
+
+    transport.reconnect()
+
+    expect(first.closedWith).toBe(1000)
+    expect(FakeSocket.all).toHaveLength(2)
+    expect(current().url).toBe(first.url)
+    expect(transport.status).toBe('reconnecting')
+    expect(events).toEqual([false, true, false])
+
+    // Lo que dice la conexión vieja ya no cuenta; la nueva abre y el relay repite cómo está la sala.
+    first.frame({ kind: 'peer', present: true })
+    expect(events).toEqual([false, true, false])
+    current().open()
+    current().frame({ kind: 'peer', present: true })
+    expect(transport.status).toBe('open')
+    expect(events).toEqual([false, true, false, true])
+  })
+
+  it('reconectar a pedido corta la espera del reintento y no hace nada si la sala está llena o ya se cerró', () => {
+    const transport = connect()
+    current().open()
+    current().serverClose()
+    expect(FakeSocket.all).toHaveLength(1)
+
+    transport.reconnect()
+    expect(FakeSocket.all).toHaveLength(2)
+    // El reintento que esperaba ya no existe: pasa el tiempo y no se abre una tercera.
+    vi.advanceTimersByTime(60_000)
+    expect(FakeSocket.all).toHaveLength(2)
+
+    current().open()
+    current().frame({ kind: 'full' })
+    transport.reconnect()
+    expect(FakeSocket.all).toHaveLength(2)
+
+    transport.close()
+    transport.reconnect()
+    expect(FakeSocket.all).toHaveLength(2)
+  })
+
   it('al volver a la pestaña reconecta enseguida, sin esperar el reintento', () => {
     const transport = connect()
     current().open()

@@ -103,6 +103,11 @@ export interface DuelMatLink {
    * (`targetId`, tu id real) o, sin `targetId`, a tu barra de vida; cambiar `key` lo vuelve a mostrar.
    */
   announcement?: { key: number; caption: string; attackerId: string; targetId?: string }
+  /**
+   * Lo que el rival acaba de destacar (activar, mostrar o declarar una carta; marcar un objetivo sólo le pone el aro a la carta, que dibuja la mesa del rival):
+   * la carta (`id`, el que él le dio) grande en el centro con su arte y `caption` arriba. Cambiar `key` lo vuelve a mostrar.
+   */
+  rivalEffect?: { key: number; id: string; kind: SpotlightKind; art: string | null; caption: string }
   /** Una capa que tapa toda la mesa (el duelo en pausa): nada de lo de abajo se toca mientras está. */
   cover?: ReactNode
   /** Un panel fijo a la derecha de la mesa, sólo en escritorio (el chat): la mesa le deja 20rem. */
@@ -1473,6 +1478,17 @@ export function PracticeMat({
           caption={steps[stage.step - 1] ?? null}
           flip={stage.flip}
           className={cx('absolute inset-y-0 left-0 right-0 z-[120]', !duel && 'min-[1101px]:right-[20rem]')}
+        />
+      ) : null}
+
+      {/* Lo que destaca el rival (activar, mostrar, declarar): su carta aparece grande en el centro, como las tuyas. Marcar un objetivo sólo le pone el aro a su carta. */}
+      {duel?.rivalEffect && duel.rivalEffect.kind !== 'target' ? (
+        <Spotlight
+          key={duel.rivalEffect.key}
+          kind={duel.rivalEffect.kind}
+          cards={[{ id: duel.rivalEffect.id, name: '', art: duel.rivalEffect.art }]}
+          caption={duel.rivalEffect.caption}
+          className="absolute inset-y-0 left-0 right-0 z-[120]"
         />
       ) : null}
 
