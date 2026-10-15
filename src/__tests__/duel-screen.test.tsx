@@ -1530,6 +1530,44 @@ describe('la pantalla del duelo', () => {
     expect(within(watcher.container).queryByText('En pausa')).not.toBeInTheDocument()
   })
 
+  it('la pantalla de quien mira no parte sus filas en celular: vida, reloj y salir juntos; "Mirando" con el turno; los avisos aparte', () => {
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+    const room = Object.keys(localStorage).find((key) => key.endsWith(':host'))!.split(':')[2]
+
+    window.history.replaceState(null, '', `#duel?room=${room}&watch=1`)
+    const watcher = render(<DuelScreen {...screenProps({ mainIds: [], extraIds: [], cardsById: new Map() })} />)
+    flush()
+    flush()
+    const view = within(watcher.container)
+    const rowOf = (element: HTMLElement) => element.closest('div')!
+
+    // Vida, reloj y salir: la misma fila, que no se parte.
+    const top = rowOf(view.getByRole('button', { name: 'Salir' }))
+    expect(top).toBe(rowOf(view.getByLabelText(/^Reloj de la ronda/)))
+    expect(top.querySelector('[data-lp]')).not.toBeNull()
+    expect(top).not.toHaveClass('flex-wrap')
+
+    // "Mirando" y el turno: otra fila, que tampoco se parte.
+    const watching = rowOf(view.getByText('Mirando'))
+    expect(watching).not.toBe(top)
+    expect(watching).toHaveTextContent(/Turno de/)
+    expect(watching).not.toHaveClass('flex-wrap')
+
+    // "En pausa" y los avisos no se pegan a ninguna de las dos: tienen su propia fila.
+    const hostKey = Object.keys(localStorage).find((key) => key.endsWith(':host'))!
+    const hostSave = localStorage.getItem(hostKey)!
+    localStorage.removeItem(hostKey)
+    leaveDuel(guest)
+    flush()
+    localStorage.setItem(hostKey, hostSave)
+    const notices = rowOf(view.getByText('En pausa'))
+    expect(notices).not.toBe(top)
+    expect(notices).not.toBe(watching)
+    expect(notices).toHaveTextContent('Falta un jugador')
+    expect(notices).not.toHaveClass('flex-wrap')
+  })
+
   /** Una pantalla de escritorio (a partir de 1101 px): ahí el chat va fijo a la derecha. */
   const asDesktop = () => {
     window.matchMedia = ((query: string) => ({ matches: query.includes('1101') || query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia

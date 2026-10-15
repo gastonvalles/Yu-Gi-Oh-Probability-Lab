@@ -171,38 +171,43 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
   return (
     <div className="h-full min-h-0 overflow-y-auto">
       <div className="mx-auto grid w-full max-w-3xl content-start gap-2 px-2 py-2 min-[1101px]:px-4" data-testid="spectator-table">
-        {/* Arriba, lo de quien está arriba; las vidas del de abajo en la esquina de enfrente, como en la mesa de los jugadores. */}
-        <div className="flex flex-wrap items-center gap-1.5">
+        {/* Arriba, lo de quien está arriba; las vidas del de abajo en la esquina de enfrente, como en la mesa de los jugadores. Tres filas que no se parten (vida + reloj + salir; lo que se mira + el turno; avisos): si algo no entra se achica en su fila en vez de caerse a otra. */}
+        <div className="flex items-center gap-1.5 [&>[data-lp]]:shrink">
           <LifeTile name={nameOf(top)} life={topSide.lp ?? snapshot.settings?.lp ?? 0} color={top === 0 ? 'mine' : 'theirs'} />
           <span className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-card border border-border-subtle bg-card-background px-2.5 text-micro font-semibold tabular-nums text-foreground" aria-label={t('duel.bar.clock', { time: clock })}>
             <Icon name={snapshot.clock.running ? 'pause' : 'play'} size={14} />
             {clock}
           </span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold text-muted" title={t('duel.watch.readOnly')}>
-            <Icon name="eye" size={14} />
-            {t('duel.watch.badge')}
-          </span>
-          {snapshot.players < 2 && !result ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2.5 py-1 text-micro font-semibold text-warning" role="status">
-              <Icon name="pause" size={14} />
-              {t('duel.watch.paused')}
-            </span>
-          ) : null}
-          <IconButton tone="flat" size="sm" aria-label={t('duel.room.leave')} title={t('duel.room.leave')} className="ml-auto" onClick={onLeave}>
+          <IconButton tone="flat" size="sm" aria-label={t('duel.room.leave')} title={t('duel.room.leave')} className="-mr-2 ml-auto shrink-0" onClick={onLeave}>
             <Icon name="x" />
           </IconButton>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold text-muted" title={t('duel.watch.readOnly')}>
+            <Icon name="eye" size={14} />
+            {t('duel.watch.badge')}
+          </span>
           {snapshot.turn !== null ? (
-            <span className={cx('whitespace-nowrap rounded-full px-2.5 py-1 text-micro font-semibold', 'bg-accent/20 text-accent')}>
+            <span className="min-w-0 truncate rounded-full bg-accent/20 px-2.5 py-1 text-micro font-semibold text-accent">
               {t('duel.watch.turnOf', { name: nameOf(snapshot.turn) })}
               {phase ? <span data-testid="duel-phase">{` · ${phase}`}</span> : null}
             </span>
           ) : null}
-          {online ? null : <span className="text-micro text-warning">{t('duel.status.reconnecting')}</span>}
-          {snapshot.players < 2 ? <span className="text-micro text-warning">{t('duel.watch.playerAway')}</span> : null}
         </div>
+
+        {snapshot.players < 2 || !online ? (
+          <div className="flex min-w-0 items-center gap-1.5">
+            {snapshot.players < 2 && !result ? (
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-warning/15 px-2.5 py-1 text-micro font-semibold text-warning" role="status">
+                <Icon name="pause" size={14} />
+                {t('duel.watch.paused')}
+              </span>
+            ) : null}
+            {online ? null : <span className="min-w-0 truncate text-micro text-warning">{t('duel.status.reconnecting')}</span>}
+            {snapshot.players < 2 ? <span className="min-w-0 truncate text-micro text-warning">{t('duel.watch.playerAway')}</span> : null}
+          </div>
+        ) : null}
 
         {result ? (
           <Callout tone="info" icon="trophy">
