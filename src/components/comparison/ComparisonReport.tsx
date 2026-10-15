@@ -1,15 +1,17 @@
+import { useId, useState } from 'react'
+
 import type { BuildComparison, BuildMetrics, CardDiff, CleanComparison, ComparisonVerdict, HandCount, RuleComparisonRow } from '../../app/build-comparison'
 import type { RoleDistribution } from '../../app/role-distribution'
-import { formatInteger, formatShortPercent } from '../../app/utils'
+import { formatInteger } from '../../app/utils'
 import { t } from '../../i18n'
-import { kindLabel } from '../probability/lab-copy'
-import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
 import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
 import { Icon, type IconName } from '../ui/Icon'
 import { SectionHeader } from '../ui/SectionHeader'
+import { Skeleton } from '../ui/Skeleton'
+import { Switch } from '../ui/Switch'
 import { TONE, type Tone } from '../ui/tone'
 import { SideBadge } from './SideBadge'
 
@@ -21,11 +23,12 @@ const CLASSIFICATION_REASON = /clasific|revisi|classif|review/i
 
 type Side = 'A' | 'B'
 type Turn = 'first' | 'second'
+type Group = 'start' | 'stuck'
 
-/** Los % se muestran con un decimal: dos valores son "iguales" sólo si se ven iguales. */
+/** Los % se comparan con un decimal: dos valores son "iguales" sólo si se ven iguales. */
 const shown = (value: number) => Math.round(value * 1000)
 
-/** Quién gana: `null` es empate. Para problemas (bricks) el menor valor es el mejor. */
+/** Quién gana: `null` es empate. Para las que traban (bricks) el menor valor es el mejor. */
 function winnerOf(a: number | null, b: number | null, higherIsBetter = true): Side | null {
   if (a === null || b === null || shown(a) === shown(b)) {
     return null
@@ -33,25 +36,16 @@ function winnerOf(a: number | null, b: number | null, higherIsBetter = true): Si
   return b > a === higherIsBetter ? 'B' : 'A'
 }
 
-function formatValue(value: number | null): string {
-  return value === null ? '—' : formatShortPercent(value)
-}
-
-function formatPoints(delta: number): string {
-  return `${(Math.abs(delta) * 100).toFixed(1)} pp`
-}
+/** De cada 100 manos (el número solo: la unidad la dice el encabezado). */
+const per100 = (value: number | null) => (value === null ? '—' : (value * 100).toFixed(1))
 
 const mean = (left: number, right: number) => (left + right) / 2
 
-const SIDE_FILL: Record<Side, string> = { A: 'bg-primary', B: 'bg-info' }
-const SIDE_TEXT: Record<Side, string> = { A: 'text-primary-soft', B: 'text-info-soft' }
 const TURNS: readonly Turn[] = ['first', 'second']
 const TURN_LABEL = { first: 'meta.compare.rowFirst', second: 'meta.compare.rowSecond' } as const
 
 /** Menos que esto (en décimas de punto, 0,5 pp) entre las dos builds no es una diferencia: el veredicto también lo trata como empate. */
 const MIN_GAP = 5
-/** Cuántas diferencias se ven de entrada: las mayores. Las demás, a un toque. */
-const SHOWN_ROWS = 5
 
 const handsText = (counts: HandCount) => t('meta.compare.handsOf', { hands: formatInteger(counts.hands), total: formatInteger(counts.total) })
 
@@ -59,7 +53,7 @@ interface ComparisonReportProps {
   comparison: BuildComparison
   /** Qué lado es tu deck actual (se clasifica en Categorización, no acá). */
   isCurrentDeck: { A: boolean; B: boolean }
-  /** Lleva a la vista de cartas, donde se clasifican las pendientes. */
+  /** Lleva a los mazos de cada build, donde se clasifican las cartas pendientes. */
   onShowCards: () => void
 }
 
@@ -121,38 +115,61 @@ const VERDICT_LOOK: Record<ComparisonVerdict['kind'], { tone: Tone; icon: IconNa
   equivalent: { tone: 'info', icon: 'columns' },
 }
 
-/** La respuesta: cuál conviene y, debajo, las manos limpias de cada una (en promedio de los dos turnos). */
+/** La respuesta: cuál conviene, dicho en "de cada 100 manos", y los dos números lado a lado. */
 function ResultCard({ comparison }: { comparison: BuildComparison }) {
   const { verdict, clean } = comparison
   const look = VERDICT_LOOK[verdict.kind]
+  const average = clean?.average
+  const best = verdict.kind === 'a' ? 'A' : verdict.kind === 'b' ? 'B' : null
+  const detail =
+    average && best
+      ? t('meta.compare.verdict.per100', {
+          best,
+          bestValue: Math.round((best === 'A' ? average.a : average.b) * 100),
+          other: best === 'A' ? 'B' : 'A',
+          otherValue: Math.round((best === 'A' ? average.b : average.a) * 100),
+        })
+      : verdict.detail
 
   return (
-    <Card padding="md" className="grid min-w-0 gap-5">
+    <Card padding="md" className="grid min-w-0 gap-4">
       <div className="flex items-center gap-3" aria-live="polite">
-        {verdict.kind === 'a' || verdict.kind === 'b' ? (
-          <SideBadge side={verdict.kind === 'a' ? 'A' : 'B'} size="lg" />
-        ) : (
-          <Icon name={look.icon} size={28} className={cx('shrink-0', TONE[look.tone].text)} />
-        )}
+        {best ? <SideBadge side={best} size="lg" /> : <Icon name={look.icon} size={28} className={cx('shrink-0', TONE[look.tone].text)} />}
         <div className="grid min-w-0 gap-0.5">
           <strong className="text-lead font-semibold text-foreground">{verdict.title}</strong>
-          <span className="text-body text-muted">{verdict.detail}</span>
+          <span className="text-body text-muted">{detail}</span>
         </div>
       </div>
-      {clean ? <CleanBlock clean={clean} /> : null}
+      {clean ? <CleanBlock clean={clean} names={{ A: comparison.a.name, B: comparison.b.name }} best={best} /> : null}
     </Card>
   )
 }
 
-function CleanBlock({ clean }: { clean: CleanComparison }) {
-  const { a, b } = clean.average
-  const winner = winnerOf(a, b)
-
+function CleanBlock({ clean, names, best }: { clean: CleanComparison; names: Record<Side, string>; best: Side | null }) {
   return (
     <div className="grid gap-3 border-t border-border-subtle pt-4">
-      <SectionHeader as="h3" title={t('meta.compare.cleanTitle')} description={t('meta.compare.cleanHint')} />
-      <CleanBar side="A" value={a} dimmed={winner === 'B'} />
-      <CleanBar side="B" value={b} dimmed={winner === 'A'} />
+      <div className="grid grid-cols-2 divide-x divide-border-subtle">
+        {(['A', 'B'] as const).map((side) => {
+          const wins = best === side
+
+          return (
+            <div key={side} className="grid min-w-0 content-start gap-1 first:pr-4 last:pl-4">
+              <span className="flex min-w-0 items-center gap-1.5 text-micro text-muted">
+                <SideBadge side={side} size="sm" />
+                <span className="truncate">{names[side]}</span>
+              </span>
+              <span className={cx('text-title font-bold tabular-nums', wins ? 'text-success-soft' : 'text-foreground')}>
+                {Math.round(clean.average[side === 'A' ? 'a' : 'b'] * 100)} <span className="text-micro font-normal text-soft">{t('meta.compare.outOf100')}</span>
+              </span>
+              <span className={cx('inline-flex items-center gap-1 text-micro font-semibold text-success-soft', !wins && 'invisible')} aria-hidden={!wins}>
+                <Icon name="check" size={14} />
+                {t('meta.compare.better')}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+      <p className="m-0 text-micro text-soft">{t('meta.compare.cleanHint')}</p>
       <details className="group">
         <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-control text-micro font-semibold text-muted focus-visible:outline-none focus-visible:shadow-focus [&::-webkit-details-marker]:hidden">
           {t('meta.compare.seeHands')}
@@ -178,22 +195,7 @@ function CleanBlock({ clean }: { clean: CleanComparison }) {
   )
 }
 
-/** Manos limpias de una build como barra (0 a 100 %); la que pierde se apaga. */
-function CleanBar({ side, value, dimmed }: { side: Side; value: number | null; dimmed: boolean }) {
-  return (
-    <div className={cx('grid grid-cols-[1.25rem_minmax(0,1fr)_3.75rem] items-center gap-x-3 transition-opacity duration-200', dimmed && 'opacity-60')}>
-      <SideBadge side={side} size="sm" />
-      <span role="img" aria-label={t('meta.compare.cleanRing', { side, value: formatValue(value) })} className="h-3 overflow-hidden rounded-full bg-tint/8">
-        <span
-          className={cx('block h-full rounded-full transition-[width] duration-500 motion-reduce:transition-none', SIDE_FILL[side])}
-          style={{ width: `${Math.min(100, Math.max(0, (value ?? 0) * 100))}%` }}
-        />
-      </span>
-      <strong className="text-right text-lead font-bold tabular-nums text-foreground">{formatValue(value)}</strong>
-    </div>
-  )
-}
-
+/** Qué cartas cambiaron: cuántas copias hay en cada build (la lista ya viene con lo que suma B primero). */
 function CardDiffCard({ diffs }: { diffs: CardDiff[] }) {
   // Sin diferencias no hay nada que listar (el veredicto ya dice que son iguales).
   if (diffs.length === 0) {
@@ -203,26 +205,47 @@ function CardDiffCard({ diffs }: { diffs: CardDiff[] }) {
   return (
     <Card padding="md" className="grid min-w-0 gap-3">
       <SectionHeader as="h3" title={t('meta.compare.diffTitle')} description={t('meta.compare.diffHint')} />
-      <ul className="m-0 grid list-none gap-1.5 p-0">
-        {diffs.map((diff) => (
-          <li key={diff.cardId} className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-2 text-body">
-            <Badge tone={diff.delta > 0 ? 'success' : 'danger'} size="sm" className="justify-center tabular-nums">
-              {diff.delta > 0 ? '+' : '−'}
-              {formatInteger(Math.abs(diff.delta))}
-            </Badge>
-            <span className="truncate text-foreground">{diff.name}</span>
-          </li>
-        ))}
-      </ul>
+      <table className="w-full table-fixed border-collapse text-body tabular-nums">
+        <caption className="sr-only">{t('meta.compare.diffTitle')}</caption>
+        <thead>
+          <tr>
+            <th scope="col" className="py-1.5 text-left text-micro font-normal text-soft">
+              {t('meta.compare.cardColumn')}
+            </th>
+            <BuildColumn side="A" />
+            <BuildColumn side="B" />
+          </tr>
+        </thead>
+        <tbody>
+          {diffs.map((diff) => (
+            <tr key={diff.cardId} className="border-t border-border-subtle">
+              <th scope="row" className="py-2 pr-2 text-left font-semibold text-foreground">
+                {diff.name}
+              </th>
+              <td className="py-2 text-right text-muted">{formatInteger(diff.copiesA)}</td>
+              <td className="py-2 text-right font-bold text-foreground">{formatInteger(diff.copiesB)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </Card>
+  )
+}
+
+function BuildColumn({ side }: { side: Side }) {
+  return (
+    <th scope="col" className="w-[4.5rem] py-1.5 text-right font-normal">
+      <SideBadge side={side} size="sm" />
+    </th>
   )
 }
 
 interface DiffRowData {
   key: string
   label: string
-  /** "Rol", o de una regla: salida o problema, y si vale para un único turno. */
-  subtitle: string
+  /** "Solo 1º" y parecidos: la regla vale para un único turno. */
+  tag?: string
+  group: Group
   a: number | null
   b: number | null
   higherIsBetter: boolean
@@ -233,6 +256,9 @@ interface DiffRowData {
 
 /** Qué tan distintas son las dos builds en una fila (en lo que se ve: décimas de punto). */
 const gapOf = (row: DiffRowData) => (row.a === null || row.b === null ? 0 : Math.abs(shown(row.b) - shown(row.a)))
+
+/** Quién gana la fila: sólo si la diferencia es de verdad (menos de medio punto no cuenta). */
+const rowWinner = (row: DiffRowData) => (gapOf(row) >= MIN_GAP ? winnerOf(row.a, row.b, row.higherIsBetter) : null)
 
 /** Probabilidad de ver al menos uno de un rol en la mano (promediando yendo 1º y 2º) y, en cada turno, en cuántas manos de todas las posibles. */
 function roleRow(comparison: BuildComparison, index: number): DiffRowData | null {
@@ -253,11 +279,11 @@ function roleRow(comparison: BuildComparison, index: number): DiffRowData | null
 
   return {
     key: roleA.key,
-    label: roleA.label,
-    subtitle: t('meta.compare.roleTag'),
+    label: t('meta.compare.roleRow', { role: roleA.label }),
+    // Los bricks traban; los demás roles son cosas que se quiere tener en la mano.
+    group: roleA.key === 'brick' ? 'stuck' : 'start',
     a: average(buildA),
     b: average(buildB),
-    // Para bricks, robar menos es mejor.
     higherIsBetter: roleA.key !== 'brick',
     counts: Object.fromEntries(TURNS.map((turn) => [turn, { a: counts(buildA, turn), b: counts(buildB, turn) }])),
   }
@@ -270,12 +296,12 @@ function ruleRowOf(row: RuleComparisonRow): DiffRowData {
       : row.missingCardsIn.length === 1
         ? t('meta.compare.missingOne', { side: row.missingCardsIn[0]! })
         : undefined
-  const onlyOne = row.turnContext === 'either' ? null : t(row.turnContext === 'first' ? 'meta.compare.onlyFirst' : 'meta.compare.onlySecond')
 
   return {
     key: row.id,
     label: row.name,
-    subtitle: [kindLabel(row.kind), onlyOne].filter(Boolean).join(' · '),
+    tag: row.turnContext === 'either' ? undefined : t(row.turnContext === 'first' ? 'meta.compare.onlyFirst' : 'meta.compare.onlySecond'),
+    group: row.kind === 'opening' ? 'start' : 'stuck',
     a: row.a,
     b: row.b,
     higherIsBetter: row.kind === 'opening',
@@ -284,122 +310,168 @@ function ruleRowOf(row: RuleComparisonRow): DiffRowData {
   }
 }
 
+/** Todas las filas, de la mayor diferencia a la menor dentro de cada grupo. Un rol que repite una regla (mismos valores) no se lista dos veces. */
+function diffRows(comparison: BuildComparison): Record<Group, DiffRowData[]> {
+  const rules = comparison.rules.map(ruleRowOf).filter((row) => row.a !== null || row.b !== null)
+  const roles = comparison.a.roles.first.flatMap((_, index) => roleRow(comparison, index) ?? [])
+  const sameAsARule = (role: DiffRowData) =>
+    rules.some((rule) => rule.group === role.group && rule.a !== null && rule.b !== null && role.a !== null && role.b !== null && shown(rule.a) === shown(role.a) && shown(rule.b) === shown(role.b))
+  const biggestFirst = (rows: DiffRowData[]) => [...rows].sort((left, right) => gapOf(right) - gapOf(left))
+  const all = [...rules, ...roles.filter((role) => !sameAsARule(role))]
+
+  return {
+    start: biggestFirst(all.filter((row) => row.group === 'start')),
+    stuck: biggestFirst(all.filter((row) => row.group === 'stuck')),
+  }
+}
+
 /**
- * Dónde se nota la diferencia: una barra por rol y regla que apunta hacia la build que gana, tanto más larga cuanto más gana.
- * De entrada, las mayores; los porcentajes y las cantidades de manos quedan plegados en cada fila.
+ * En qué se diferencian: una tabla de dos columnas (A y B), cada fila con "de cada 100 manos" y el mejor marcado.
+ * De entrada sólo lo que difiere; en cuántas manos pasa, por turno, queda a un toque.
  */
 function DifferencesCard({ comparison }: { comparison: BuildComparison }) {
-  const roles = comparison.a.roles.first.flatMap((_, index) => roleRow(comparison, index) ?? [])
-  const rules = comparison.rules.map(ruleRowOf).filter((row) => row.a !== null || row.b !== null)
-  // Todas juntas, de la mayor diferencia a la menor (entre iguales se conserva el orden de siempre).
-  const sorted = [...roles, ...rules].sort((left, right) => gapOf(right) - gapOf(left))
+  const [onlyDiffs, setOnlyDiffs] = useState(true)
+  const [open, setOpen] = useState<ReadonlySet<string>>(new Set())
+  const tableId = useId()
+  const groups = diffRows(comparison)
+  const total = groups.start.length + groups.stuck.length
+  const differing = [...groups.start, ...groups.stuck].filter((row) => gapOf(row) >= MIN_GAP).length
+  const visible = (rows: DiffRowData[]) => (onlyDiffs ? rows.filter((row) => gapOf(row) >= MIN_GAP) : rows)
+  const sections = ([['start', 'meta.compare.groupStart'], ['stuck', 'meta.compare.groupStuck']] as const).map(([group, title]) => ({ group, title, rows: visible(groups[group]) })).filter((section) => section.rows.length > 0)
+  const toggle = (key: string) =>
+    setOpen((current) => {
+      const next = new Set(current)
 
-  if (sorted.length === 0) {
-    return null
+      if (!next.delete(key)) {
+        next.add(key)
+      }
+
+      return next
+    })
+
+  if (comparison.verdict.kind === 'computing') {
+    return (
+      <Card padding="md" className="grid min-w-0 gap-3 self-start" aria-busy="true">
+        <SectionHeader as="h3" title={t('meta.compare.detailTitle')} description={t('meta.compare.verdict.computing.detail')} />
+        {[0, 1, 2, 3].map((row) => (
+          <Skeleton key={row} className="h-9" />
+        ))}
+      </Card>
+    )
   }
 
-  const maxGap = Math.max(MIN_GAP, gapOf(sorted[0]!))
-  const main = sorted.filter((row) => gapOf(row) >= MIN_GAP).slice(0, SHOWN_ROWS)
-  const rest = sorted.filter((row) => !main.includes(row))
+  if (total === 0) {
+    return null
+  }
 
   return (
     <Card padding="md" className="grid min-w-0 gap-3 self-start">
       <SectionHeader as="h3" title={t('meta.compare.detailTitle')} description={t('meta.compare.detailHint')} />
-      {main.length > 0 ? (
-        <>
-          <div className="grid grid-cols-[minmax(0,1fr)_5rem] gap-3 text-micro text-soft">
-            <div className="grid grid-cols-2">
-              <span className="inline-flex items-center gap-1.5">
-                <SideBadge side="A" size="sm" />
-                {t('meta.compare.winnerLegend', { side: 'A' })}
-              </span>
-              <span className="inline-flex items-center justify-end gap-1.5">
-                {t('meta.compare.winnerLegend', { side: 'B' })}
-                <SideBadge side="B" size="sm" />
-              </span>
-            </div>
-          </div>
-          <ul className="m-0 grid list-none divide-y divide-border-subtle p-0">
-            {main.map((row) => (
-              <DiffRow key={row.key} row={row} maxGap={maxGap} />
-            ))}
-          </ul>
-        </>
+      <label className="flex items-center justify-between gap-3 text-body text-muted">
+        <span className="tabular-nums">{t('meta.compare.onlyDiffs', { shown: differing, total })}</span>
+        <Switch checked={onlyDiffs} onChange={setOnlyDiffs} label={t('meta.compare.onlyDiffsLabel')} />
+      </label>
+      {sections.length > 0 ? (
+        <table className="w-full table-fixed border-collapse text-body tabular-nums">
+          <caption className="sr-only">{t('meta.compare.tableCaption')}</caption>
+          <thead>
+            <tr>
+              <th scope="col" className="py-1.5 text-left text-micro font-normal text-soft">
+                {t('meta.compare.perHundred')}
+              </th>
+              <BuildColumn side="A" />
+              <BuildColumn side="B" />
+            </tr>
+          </thead>
+          {sections.map((section) => (
+            <tbody key={section.group}>
+              <tr>
+                <th scope="rowgroup" colSpan={3} className="pb-1 pt-4 text-left text-micro font-normal text-soft">
+                  {t(section.title)}
+                </th>
+              </tr>
+              {section.rows.map((row) => (
+                <DiffTableRow key={row.key} row={row} open={open.has(row.key)} onToggle={() => toggle(row.key)} detailId={`${tableId}-${row.key}`} />
+              ))}
+            </tbody>
+          ))}
+        </table>
       ) : (
-        <p className="m-0 text-body text-muted">{t('meta.compare.allClose')}</p>
+        <div className="grid justify-items-center gap-2 py-4 text-center">
+          <strong className="text-body font-semibold text-foreground">{t('meta.compare.noDiffsTitle')}</strong>
+          <p className="m-0 text-body text-muted">{t('meta.compare.noDiffsBody')}</p>
+          <Button variant="secondary" size="sm" onClick={() => setOnlyDiffs(false)}>
+            {t('meta.compare.showAllRows')}
+          </Button>
+        </div>
       )}
-      {rest.length > 0 ? (
-        <details className="group border-t border-border-subtle pt-3">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-control text-body font-semibold text-muted focus-visible:outline-none focus-visible:shadow-focus [&::-webkit-details-marker]:hidden">
-            {t('meta.compare.moreRows', { count: rest.length })}
-            <Icon name="chevron-down" size={16} className="shrink-0 text-soft transition-transform duration-200 group-open:rotate-180" />
-          </summary>
-          <ul className="m-0 mt-1 grid list-none divide-y divide-border-subtle p-0">
-            {rest.map((row) => (
-              <DiffRow key={row.key} row={row} maxGap={maxGap} />
-            ))}
-          </ul>
-        </details>
-      ) : null}
     </Card>
   )
 }
 
-function DiffRow({ row, maxGap }: { row: DiffRowData; maxGap: number }) {
-  const winner = winnerOf(row.a, row.b, row.higherIsBetter)
+function DiffTableRow({ row, open, onToggle, detailId }: { row: DiffRowData; open: boolean; onToggle: () => void; detailId: string }) {
+  const winner = rowWinner(row)
+  const lines = (['A', 'B'] as const).flatMap((side) => TURNS.flatMap((turn) => {
+    const counts = row.counts[turn]?.[side === 'A' ? 'a' : 'b']
+
+    return counts ? [{ side, turn, counts }] : []
+  }))
+  const label = (
+    <>
+      <span className="min-w-0 text-foreground">{row.label}</span>
+      {row.tag ? <span className="ml-1.5 whitespace-nowrap text-micro text-soft">{row.tag}</span> : null}
+    </>
+  )
 
   return (
-    <li>
-      <details className="group py-2.5">
-        <summary className="grid cursor-pointer list-none gap-1.5 rounded-control focus-visible:outline-none focus-visible:shadow-focus [&::-webkit-details-marker]:hidden">
-          <span className="flex min-w-0 items-baseline justify-between gap-2">
-            <span className="min-w-0 text-body">
-              <span className="font-semibold text-foreground">{row.label}</span>
-              <span className="ml-2 text-micro text-soft">{row.subtitle}</span>
-            </span>
-            <Icon name="chevron-down" size={16} className="shrink-0 self-center text-soft transition-transform duration-200 group-open:rotate-180" />
-          </span>
-          <DiffBar winner={winner} gap={gapOf(row)} maxGap={maxGap} />
-        </summary>
-        <div className="mt-2 grid gap-2 text-micro tabular-nums">
-          {(['A', 'B'] as const).map((side) => (
-            <div key={side} className="grid gap-0.5">
-              <p className="m-0 flex items-center gap-2">
-                <SideBadge side={side} size="sm" />
-                <strong className="text-body font-semibold text-foreground">{formatValue(side === 'A' ? row.a : row.b)}</strong>
-              </p>
-              {TURNS.map((turn) => {
-                const counts = row.counts[turn]?.[side === 'A' ? 'a' : 'b']
-
-                return counts ? (
-                  <p key={turn} className="m-0 pl-7 text-soft">
-                    {t(TURN_LABEL[turn])}: {handsText(counts)}
-                  </p>
-                ) : null
-              })}
-            </div>
-          ))}
-          {row.note ? <p className="m-0 text-warning-soft">{row.note}</p> : null}
-        </div>
-      </details>
-    </li>
+    <>
+      <tr className="border-t border-border-subtle transition-colors hover:bg-tint/5">
+        <th scope="row" className="py-2.5 pr-2 text-left font-normal">
+          {lines.length > 0 ? (
+            <button
+              type="button"
+              aria-expanded={open}
+              aria-controls={detailId}
+              onClick={onToggle}
+              className="flex w-full items-start gap-1.5 rounded-control text-left focus-visible:outline-none focus-visible:shadow-focus"
+            >
+              <span className="min-w-0 flex-1">{label}</span>
+              <Icon name="chevron-down" size={14} className={cx('mt-1 shrink-0 text-soft transition-transform duration-200', open && 'rotate-180')} />
+            </button>
+          ) : (
+            <span>{label}</span>
+          )}
+          {row.note ? <span className="mt-0.5 block text-micro text-warning-soft">{row.note}</span> : null}
+        </th>
+        <DiffCell value={row.a} wins={winner === 'A'} />
+        <DiffCell value={row.b} wins={winner === 'B'} />
+      </tr>
+      {open ? (
+        <tr id={detailId}>
+          <td colSpan={3} className="pb-3">
+            <ul className="m-0 grid list-none gap-1 p-0 text-micro text-soft">
+              {lines.map(({ side, turn, counts }) => (
+                <li key={`${side}-${turn}`} className="flex flex-wrap items-center gap-x-2">
+                  <SideBadge side={side} size="sm" />
+                  <span>{t(TURN_LABEL[turn])}:</span>
+                  <span className="text-foreground">{handsText(counts)}</span>
+                </li>
+              ))}
+            </ul>
+          </td>
+        </tr>
+      ) : null}
+    </>
   )
 }
 
-/** Barra que sale del centro hacia la build que gana (izquierda A, derecha B); el largo es lo que gana, relativo a la mayor diferencia. */
-function DiffBar({ winner, gap, maxGap }: { winner: Side | null; gap: number; maxGap: number }) {
-  const width = winner ? Math.max(4, (gap / maxGap) * 100) : 0
-
+/** El valor de una build en esa fila; el mejor lleva ✓ y va en negrita (no se apoya sólo en el color). */
+function DiffCell({ value, wins }: { value: number | null; wins: boolean }) {
   return (
-    <span className="grid grid-cols-[minmax(0,1fr)_5rem] items-center gap-3">
-      <span className="relative grid h-2 grid-cols-2 rounded-full bg-tint/8" aria-hidden="true">
-        <span className="flex justify-end">{winner === 'A' ? <span className={cx('h-full rounded-l-full', SIDE_FILL.A)} style={{ width: `${width}%` }} /> : null}</span>
-        <span className="flex justify-start">{winner === 'B' ? <span className={cx('h-full rounded-r-full', SIDE_FILL.B)} style={{ width: `${width}%` }} /> : null}</span>
-        <span className="absolute bottom-[-3px] left-1/2 top-[-3px] w-px bg-tint/25" />
-      </span>
-      <span className={cx('text-right text-micro font-bold tabular-nums', winner ? SIDE_TEXT[winner] : 'text-soft')}>
-        {winner ? `${winner} · ${formatPoints(gap / 1000)}` : '='}
-      </span>
-    </span>
+    <td className={cx('py-2.5 text-right align-top', wins ? 'font-bold text-success-soft' : 'text-muted')}>
+      {wins ? <Icon name="check" size={14} className="mr-1 inline-block align-[-2px]" /> : null}
+      {per100(value)}
+      {wins ? <span className="sr-only"> {t('meta.compare.better')}</span> : null}
+    </td>
   )
 }
