@@ -241,6 +241,9 @@ type Picking =
 
 const toggle = (list: string[], id: string) => (list.includes(id) ? list.filter((entry) => entry !== id) : [...list, id])
 
+/** Dos toques seguidos al mismo material (en escritorio) cuentan como doble clic: cuánto puede pasar entre uno y otro. */
+const DOUBLE_CLICK_MS = 400
+
 /** Reproducción de un combo: cuánto espera entre jugadas a velocidad normal (a 2× espera la mitad; a 0,5×, el doble). */
 const AUTOPLAY_MS = 1400
 
@@ -680,9 +683,23 @@ export function PracticeMat({
     else summonAfter(picking.label, { ...picking.action, tributes: chosen }, chosen, picking.zone)
   }
 
-  /** Un monstruo del campo elegido (o deselegido) como material de una Invocación desde el Extra; se confirma con el botón. */
+  /** Un monstruo del campo elegido (o deselegido) como material de una Invocación desde el Extra; se confirma con el botón (o, en escritorio, con doble clic en el único material). */
+  const lastMaterialTap = useRef<{ id: string; at: number } | null>(null)
   const pickMaterial = (id: string) => {
-    if (picking?.kind === 'materials') setPicking({ ...picking, chosen: toggle(picking.chosen, id) })
+    if (picking?.kind !== 'materials') return
+
+    const now = Date.now()
+    const last = lastMaterialTap.current
+    lastMaterialTap.current = { id, at: now }
+
+    // El primer clic lo dejó como único material: el segundo, enseguida y sobre el mismo, confirma sin buscar el botón.
+    if (isDesktop && last?.id === id && now - last.at <= DOUBLE_CLICK_MS && picking.chosen.length === 1 && picking.chosen[0] === id) {
+      lastMaterialTap.current = null
+      summonAfter(picking.label, { ...picking.action, materials: picking.chosen }, picking.chosen, picking.zone)
+      return
+    }
+
+    setPicking({ ...picking, chosen: toggle(picking.chosen, id) })
   }
 
   const confirmMaterials = () => {
@@ -1140,7 +1157,7 @@ export function PracticeMat({
     picking?.kind === 'tributes'
       ? t('practice.mat.pickTributes', { count: picking.required, chosen: picking.chosen.length })
       : picking?.kind === 'materials'
-        ? t('practice.mat.pickMaterials', { count: picking.chosen.length })
+        ? t(isDesktop && picking.chosen.length === 1 ? 'practice.mat.pickMaterialsOne' : 'practice.mat.pickMaterials', { count: picking.chosen.length })
         : picking
           ? t('practice.mat.pickZone', { label: picking.label })
           : counterMode !== null

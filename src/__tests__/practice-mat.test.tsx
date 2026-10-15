@@ -708,6 +708,128 @@ describe('la mesa de práctica', () => {
     expect(screen.getByRole('button', { name: 'GY: 0' })).toBeInTheDocument()
   })
 
+  describe('doble clic en el único material (escritorio)', () => {
+    const asDesktop = () => {
+      const matchMedia = window.matchMedia
+      // Escritorio, y sin animaciones para que la mano llegue repartida.
+      window.matchMedia = ((query: string) => ({ ...matchMedia(query), matches: query.includes('1101') || query.includes('reduce') })) as typeof window.matchMedia
+    }
+    /** Ash en la zona 1 (Normal) y, si se pide, Maxx C en la 2 (Especial); luego Zeus del Extra pidiendo materiales. */
+    const startXyz = (withSecond = false) => {
+      render(<Harness />)
+      tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
+
+      if (withSecond) {
+        tap(within(hand()).getByRole('listitem', { name: 'Maxx C' }))
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Especial' }))
+        fireEvent.click(screen.getByRole('menuitem', { name: 'En ataque' }))
+        fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 2: elegir' }))
+      }
+
+      fireEvent.click(screen.getByRole('button', { name: 'Extra: 1' }))
+      fireEvent.click(within(screen.getByRole('dialog', { name: 'Extra · 1' })).getByRole('button', { name: 'Zeus' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Especial' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'En ataque' }))
+    }
+    const ash = () => within(zone('Zona de monstruo 1')).getByRole('button', { name: /^Ash Blossom/ })
+    const isMaterial = (button: HTMLElement) => button.getAttribute('aria-label')?.includes('(Material)')
+
+    it('dos toques seguidos al único material lo confirman, sin tocar el botón', () => {
+      const matchMedia = window.matchMedia
+      asDesktop()
+
+      try {
+        startXyz()
+        tap(ash())
+        expect(within(status()).getByText('Con un solo material, doble clic en él para invocar')).toBeInTheDocument()
+        tap(ash())
+
+        // Se siguió como al confirmar: quedan zonas para elegir y Ash va como material.
+        tap(within(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' })).getByRole('button', { name: 'Ash Blossom (Material)' }))
+        expect(within(status()).getByText('Invocación Xyz de Zeus (materiales: Ash Blossom)')).toBeInTheDocument()
+      } finally {
+        window.matchMedia = matchMedia
+      }
+    })
+
+    it('si el segundo toque llega tarde, deselecciona como siempre', () => {
+      const matchMedia = window.matchMedia
+      const now = vi.spyOn(Date, 'now')
+      asDesktop()
+
+      try {
+        startXyz()
+        now.mockReturnValue(1_000)
+        tap(ash())
+        now.mockReturnValue(1_000 + 900)
+        tap(ash())
+
+        expect(isMaterial(ash())).toBe(false)
+        expect(within(status()).getByText('Tocá los materiales en el campo (0) y confirmá')).toBeInTheDocument()
+      } finally {
+        now.mockRestore()
+        window.matchMedia = matchMedia
+      }
+    })
+
+    it('con dos materiales o sobre otra carta no confirma: hay que usar el botón', () => {
+      const matchMedia = window.matchMedia
+      asDesktop()
+
+      try {
+        startXyz(true)
+        const maxx = () => within(zone('Zona de monstruo 2')).getByRole('button', { name: /^Maxx C/ })
+        tap(ash())
+        tap(maxx())
+        tap(maxx())
+
+        // Ash sigue elegida, Maxx C se deseleccionó: sigue pidiendo materiales.
+        expect(isMaterial(ash())).toBe(true)
+        expect(isMaterial(maxx())).toBe(false)
+        expect(within(status()).getByText('Con un solo material, doble clic en él para invocar')).toBeInTheDocument()
+
+        // Con Ash ya elegida, otro toque rápido a Maxx C (el mismo del toque anterior) la suma: son dos y nada se confirma.
+        tap(maxx())
+        expect(within(status()).getByText('Tocá los materiales en el campo (2) y confirmá')).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Invocar' })).toBeEnabled()
+      } finally {
+        window.matchMedia = matchMedia
+      }
+    })
+
+    it('el segundo toque tiene que ser a la misma carta que el primero', () => {
+      const matchMedia = window.matchMedia
+      asDesktop()
+
+      try {
+        startXyz(true)
+        const maxx = () => within(zone('Zona de monstruo 2')).getByRole('button', { name: /^Maxx C/ })
+        tap(ash())
+        tap(maxx())
+        tap(maxx())
+        // Sólo Ash quedó elegida, pero el toque anterior fue a Maxx C: tocar Ash la deselecciona, no confirma.
+        tap(ash())
+
+        expect(isMaterial(ash())).toBe(false)
+        expect(within(status()).getByText('Tocá los materiales en el campo (0) y confirmá')).toBeInTheDocument()
+      } finally {
+        window.matchMedia = matchMedia
+      }
+    })
+
+    it('en el celular dos toques seguidos no confirman', () => {
+      startXyz()
+      tap(ash())
+      expect(within(status()).getByText('Tocá los materiales en el campo (1) y confirmá')).toBeInTheDocument()
+      tap(ash())
+
+      expect(isMaterial(ash())).toBe(false)
+      expect(within(status()).getByText('Tocá los materiales en el campo (0) y confirmá')).toBeInTheDocument()
+    })
+  })
+
   it('al avanzar un paso del replay, activar un efecto destella la carta en el centro y marcar un objetivo sólo le pone el aro', () => {
     render(<Harness actions={[{ type: 'activate', id: 'card-1-1' }, { type: 'target', id: 'card-2-1' }]} />)
 
