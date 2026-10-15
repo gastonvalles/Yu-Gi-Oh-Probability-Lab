@@ -7,6 +7,7 @@ import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { extractRoomCode } from '../app/duel-link'
+import { RIFFLE_MS } from '../app/shuffle-fx'
 import type { SocketStatus, SocketTransport, SpectatorSocket } from '../app/duel-socket'
 import type { DuelConnect } from '../app/use-duel'
 import { LifeTile } from '../components/duel/DuelBar'
@@ -491,6 +492,88 @@ describe('la pantalla del duelo', () => {
     // Y Ana también puede marcar lo de Beto (es de los dos lados).
     markRival(host, 'Extra: marcar', 'Target')
     expect(guest.container.querySelector('[data-drop="extra"]')).toHaveAttribute('data-targeted', 'true')
+  })
+
+  it('cuando el rival toca su deck o suma una carta a su mano, su deck y su mano se barajan y se ven', () => {
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+
+    const animated: Element[] = []
+    const { animate, getAnimations, matchMedia } = { animate: Element.prototype.animate, getAnimations: Element.prototype.getAnimations, matchMedia: window.matchMedia }
+
+    vi.stubGlobal('KeyframeEffect', class { get composite() { return 'replace' } })
+    Element.prototype.getAnimations = () => []
+    // Sólo se cuentan las animaciones del barajado (las demás, como los vuelos, duran otra cosa).
+    Element.prototype.animate = function (this: Element, _frames: unknown, options?: KeyframeAnimationOptions | number) {
+      if (typeof options === 'object' && options.duration === RIFFLE_MS) animated.push(this)
+
+      return { cancel() {}, finish() {}, onfinish: null, oncancel: null } as unknown as Animation
+    }
+    window.matchMedia = (() => ({ matches: false, media: '', addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as unknown as typeof window.matchMedia
+
+    try {
+      // Ana toca su deck y roba: Beto ve barajarse el deck de Ana (sus capas) y su mano (sus dorsos).
+      tap(within(host.container).getByRole('button', { name: /^Main: [0-9]+$/ }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Robar' }))
+      flush()
+
+      const inRivalHand = animated.filter((element) => guest.container.contains(element) && element.closest('[data-rival-drop="hand"]') !== null)
+      const inRivalDeck = animated.filter((element) => guest.container.contains(element) && element.hasAttribute('data-layer') && element.closest('[data-rival-drop="deck"]') !== null)
+
+      expect(inRivalHand.length).toBeGreaterThan(0)
+      expect(inRivalDeck.length).toBe(2)
+
+      // Una jugada que no toca ni el deck ni la mano (poner una carta en el campo) no los baraja.
+      animated.length = 0
+      summonFirst(host)
+      flush()
+      expect(animated.filter((element) => guest.container.contains(element) && (element.closest('[data-rival-drop="hand"]') !== null || element.hasAttribute('data-layer')))).toHaveLength(0)
+    } finally {
+      vi.unstubAllGlobals()
+      Element.prototype.animate = animate
+      Element.prototype.getAnimations = getAnimations
+      window.matchMedia = matchMedia
+    }
+  })
+
+  it('el rival puede desplegar mi cementerio y mi destierro (no el deck, el Extra ni la mano) y marcar una carta de adentro', () => {
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+    summonFirst(host)
+    flush()
+    tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Al cementerio' }))
+    flush()
+
+    const itemsOf = (name: string) => {
+      fireEvent.click(within(guest.container).getByRole('button', { name }))
+
+      return screen.getAllByRole('menuitem').map((item) => item.textContent)
+    }
+
+    // Lo público se despliega; lo secreto, sólo se marca.
+    expect(itemsOf('Main: marcar')).toEqual(['Target'])
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(itemsOf('Mano: marcar')).toEqual(['Target'])
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(itemsOf('GY: marcar')).toEqual(['Ver las cartas', 'Target'])
+
+    // El cementerio de Ana, con su carta (por su arte: no se sabe cómo se llama), y se la puede marcar.
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ver las cartas' }))
+    const viewer = () => within(screen.getByRole('dialog', { name: 'GY · 1' }))
+    fireEvent.click(viewer().getByRole('button', { name: 'Carta del rival' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Target' }))
+    flush()
+
+    // Ana ve la mira sobre su cementerio, y en el visor de Beto la carta la lleva.
+    expect(host.container.querySelector('[data-drop="gy"]')).toHaveAttribute('data-targeted', 'true')
+    expect(viewer().getByRole('button', { name: 'Carta del rival (target)' })).toBeInTheDocument()
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    // El destierro también se despliega (vacío).
+    expect(itemsOf('Banish: marcar')).toEqual(['Ver las cartas', 'Target'])
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ver las cartas' }))
+    expect(within(screen.getByRole('dialog', { name: 'Banish · 0' })).getByText('No hay cartas acá.')).toBeInTheDocument()
   })
 
   it('juegos: moneda, piedra-papel-tijera y quién empieza; los dos ven lo mismo y la elección del rival no se ve hasta elegir la propia', () => {

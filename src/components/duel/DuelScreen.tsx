@@ -22,7 +22,7 @@ import { Callout } from '../ui/Callout'
 import { FieldBox, fieldInline } from '../ui/FieldBox'
 import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
-import { CardMenu, PILE_TITLES } from '../probability/MatDialogs'
+import { CardMenu, PILE_TITLES, PileViewer } from '../probability/MatDialogs'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { DuelBar, DuelLife, DuelTools } from './DuelBar'
 import { isSignal } from './DuelChat'
@@ -702,11 +702,13 @@ const RIVAL_FX_MS = 950
  * cambios de fase tienen lo suyo (la espada, el cartel de la fase) y las cartas que sólo llegan a la mano no se muestran. Cuenta sólo una jugada nueva a la vez: lo que
  * llega de golpe (la mesa repuesta al reconectar) o se deshace no se repite.
  */
-function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEffect']; flash: DuelSideView['flash'] } {
+function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEffect']; flash: DuelSideView['flash']; shuffles: number } {
   const { theirs, peerName } = snapshot
   const acts = theirs?.acts
   const seen = useRef(acts?.length ?? 0)
   const [shown, setShown] = useState<{ effect: NonNullable<DuelMatLink['rivalEffect']>; flashId?: string } | undefined>(undefined)
+  // Las veces que el rival tocó su deck o sumó una carta a su mano (se baraja a la vista).
+  const [shuffles, setShuffles] = useState(0)
 
   useEffect(() => {
     const before = seen.current
@@ -718,12 +720,15 @@ function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEff
     }
 
     const action = acts[acts.length - 1]!
+    const { spotlight, showcase, shuffle } = matEffects(replayMat(theirs.initial, acts, acts.length - 1), action)
+
+    if (shuffle) {
+      setShuffles((count) => count + 1)
+    }
 
     if (action.type === 'attack' || action.type === 'phase' || action.type === 'draw') {
       return
     }
-
-    const { spotlight, showcase } = matEffects(replayMat(theirs.initial, acts, acts.length - 1), action)
     const rival = peerName ?? t('duel.bar.rival')
     const artOf = (id: string) => artOfDrawId(isToken(id) ? id : theirs.known[id]) ?? null
     const key = Date.now()
@@ -744,7 +749,7 @@ function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEff
 
   const flash = useMemo(() => (shown?.flashId ? { id: shown.flashId, key: shown.effect.key, kind: shown.effect.kind as SpotlightKind } : undefined), [shown])
 
-  return { effect: shown?.effect, flash }
+  return { effect: shown?.effect, flash, shuffles }
 }
 
 /** Cuánto se queda el globo de "pensando" o "todo bien" junto a las vidas. */
@@ -849,10 +854,12 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   // Tocar una carta o una pila del rival (o su mano) abre un menú con una sola jugada: marcarla (o quitarle la marca) como objetivo, y él lo ve en lo suyo.
   const [markMenu, setMarkMenu] = useState<{ target: MarkTarget; rect: DOMRect; place: string } | null>(null)
   const openMark = useCallback((target: MarkTarget, rect: DOMRect, place: string) => setMarkMenu({ target, rect, place }), [])
+  // El cementerio y el destierro del rival son públicos: se pueden desplegar para ver (y marcar) sus cartas.
+  const [rivalViewer, setRivalViewer] = useState<'gy' | 'banished' | null>(null)
 
   // La mesa espera una "sesión" con la mano inicial y las jugadas; acá no hay combos ni repetición, así que el cursor está siempre al final.
   const session = useMemo<MatSession>(() => ({ initial: initial!, actions: [...actions], cursor: actions.length, names: {}, replay: false }), [initial, actions])
-  const { effect: rivalEffect, flash: rivalFlash } = useRivalEffect(snapshot)
+  const { effect: rivalEffect, flash: rivalFlash, shuffles: rivalShuffle } = useRivalEffect(snapshot)
   const opponent = useMemo<DuelSideView>(
     () => ({ state: theirs!.state, artOf: (id) => artOfDrawId(isToken(id) ? id : theirs!.known[id]), handCount: theirs!.state.hand.length, flash: rivalFlash, marks: snapshot.marks.theirs, onMark: openMark }),
     [theirs, rivalFlash, snapshot.marks.theirs, openMark],
@@ -893,6 +900,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       announcement,
       rivalEffect,
       marksOnMine: snapshot.marks.mine,
+      rivalShuffle,
       rivalFlights: { state: opponent.state, artOf: opponent.artOf },
       notice,
       rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
@@ -909,13 +917,15 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       ) : undefined,
       header: <DuelBar snapshot={snapshot} status={status} turn={turn} theirHand={<TheirHand count={opponent.handCount ?? 0} marked={snapshot.marks.theirs.piles.includes('hand')} onMark={(rect) => openMark({ pile: 'hand' }, rect, PILE_TITLES.hand)} />} onToggleClock={duel.toggleClock} onRematch={duel.rematch} onLeave={onLeave} onConcede={duel.concede} onReconnect={duel.reconnect} onSignal={docked ? undefined : duel.sendChat} resultOpen={resultOpen} rivalSignal={signals.theirs} />,
     }),
-    [opponent, snapshot, status, myName, turn, duel, onLeave, attackTargets, theirs, announcement, rivalEffect, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, openMark],
+    [opponent, snapshot, status, myName, turn, duel, onLeave, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, openMark],
   )
 
   const markTarget = markMenu?.target
   const marked = markTarget ? ('card' in markTarget ? snapshot.marks.theirs.cards.includes(markTarget.card) : snapshot.marks.theirs.piles.includes(markTarget.pile)) : false
+  const markPile = markTarget && 'pile' in markTarget && (markTarget.pile === 'gy' || markTarget.pile === 'banished') ? markTarget.pile : null
   const markItems = markTarget
     ? [
+        ...(markPile ? [{ label: t('duel.mark.view'), onSelect: () => { setRivalViewer(markPile); setMarkMenu(null) } }] : []),
         {
           label: t(marked ? 'practice.menu.untarget' : 'practice.menu.target'),
           onSelect: () => {
@@ -925,6 +935,8 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
         },
       ]
     : []
+  const rivalCardName = t('duel.mark.rivalCard')
+  const viewerTargeted = useMemo(() => new Set([...snapshot.marks.theirs.cards, ...theirs!.state.targeted]), [snapshot.marks.theirs.cards, theirs])
 
   return (
     <>
@@ -946,6 +958,20 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
         title={markMenu?.place ?? ''}
         items={markItems}
         onClose={() => setMarkMenu(null)}
+      />
+      <PileViewer
+        key={rivalViewer ?? 'closed'}
+        pile={rivalViewer}
+        ids={rivalViewer ? theirs!.state[rivalViewer] : []}
+        info={(id) => {
+          const art = opponent.artOf(id)
+
+          return { name: rivalCardName, art, faceDown: theirs!.state.facedown.includes(id) || art === null }
+        }}
+        targeted={viewerTargeted}
+        onPick={(id, rect) => openMark({ card: id }, rect, rivalCardName)}
+        onClose={() => setRivalViewer(null)}
+        anonymous
       />
       {/* Lo que tira el rival (moneda, dado, piedra-papel-tijera) se ve girar acá aunque el panel de juegos esté cerrado. */}
       <TossOverlay snapshot={snapshot} myName={myName} />

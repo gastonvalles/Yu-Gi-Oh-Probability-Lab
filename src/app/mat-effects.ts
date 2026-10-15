@@ -21,6 +21,8 @@ export interface MatEffects {
   banner?: { phase: MatPhase; turn: number | null }
   /** Una carta entró a la mano (robada, buscada o devuelta): la mano se enmarca un instante. */
   hand?: true
+  /** La jugada tocó el deck (barajar, robar, buscar, mandar o devolver cartas) o sumó una carta a la mano: el deck y la mano se barajan a la vista. */
+  shuffle?: true
 }
 
 const isMonsterZone = (spot: MatSpot) => spot === 'mz' || spot === 'emz'
@@ -36,8 +38,10 @@ const SHOWCASE_OF_PILE = { hand: 'hand', gy: 'gy', banished: 'banish', extra: 'e
 export function matEffects(before: MatState, action: MatAction): MatEffects {
   const after = matReducer(before, action)
   const effects = effectsOf(before, after, action)
+  const handGained = after.hand.length > before.hand.length
+  const touchedDeck = action.type === 'shuffle' || after.deck.length !== before.deck.length
 
-  return after.hand.length > before.hand.length ? { ...effects, hand: true } : effects
+  return { ...effects, ...(handGained ? { hand: true as const } : {}), ...(handGained || touchedDeck ? { shuffle: true as const } : {}) }
 }
 
 function effectsOf(before: MatState, after: MatState, action: MatAction): MatEffects {

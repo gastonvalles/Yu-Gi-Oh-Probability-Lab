@@ -7,6 +7,7 @@ import { Provider } from 'react-redux'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createMatState, replayMat, type MatAction, type MatState } from '../app/practice-mat'
+import { RIFFLE_MS } from '../app/shuffle-fx'
 import { useMatSession } from '../app/use-mat-session'
 import { PracticeMat, type MatCard } from '../components/probability/PracticeMat'
 import type { ApiCardReference } from '../types'
@@ -274,6 +275,54 @@ describe('la mesa de práctica', () => {
     expect(screen.getByRole('button', { name: 'Main: 0' })).toBeInTheDocument()
     expect(within(hand()).getByRole('listitem', { name: 'Imperm' })).toBeInTheDocument()
     expect(within(status()).getByText('Robás Imperm')).toBeInTheDocument()
+  })
+
+  it('robar (o tocar el deck, o sumar una carta a la mano) baraja el deck y la mano a la vista', () => {
+    const animated: Element[] = []
+    const { animate, getAnimations, matchMedia } = { animate: Element.prototype.animate, getAnimations: Element.prototype.getAnimations, matchMedia: window.matchMedia }
+
+    render(<Harness />)
+    // Con la mano ya repartida (sin movimiento), se pide movimiento: sólo el barajado se mide.
+    vi.stubGlobal('KeyframeEffect', class { get composite() { return 'replace' } })
+    Element.prototype.getAnimations = () => []
+    // Sólo se cuentan las animaciones del barajado (las demás, como los vuelos, duran otra cosa).
+    Element.prototype.animate = function (this: Element, _frames: unknown, options?: KeyframeAnimationOptions | number) {
+      if (typeof options === 'object' && options.duration === RIFFLE_MS) animated.push(this)
+
+      return { cancel() {}, finish() {}, onfinish: null, oncancel: null } as unknown as Animation
+    }
+    window.matchMedia = (() => ({ matches: false, media: '', addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as unknown as typeof window.matchMedia
+
+    try {
+      // Las capas del deck se arman de nuevo (otro elemento) cada vez que se baraja.
+      const layers = () => screen.getByRole('button', { name: 'Main: 1' }).querySelector(':scope > span.absolute')
+      const before = layers()
+
+      // Barajar: el deck se vuelve a armar con su animación y la mano se baraja carta por carta.
+      tap(screen.getByRole('button', { name: 'Main: 1' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Barajar' }))
+      expect(layers()).not.toBe(before)
+      expect(layers()?.querySelector('.animate-riffle-left')).not.toBeNull()
+      const inHand = () => animated.filter((element) => element.closest('[data-drop="hand"]') !== null && element.getAttribute('role') === 'listitem')
+      expect(inHand().length).toBeGreaterThan(0)
+
+      // Robar también: la mano se baraja de nuevo.
+      animated.length = 0
+      tap(screen.getByRole('button', { name: 'Main: 1' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Robar' }))
+      expect(inHand().length).toBeGreaterThan(0)
+
+      // Una jugada que no toca ni el deck ni suma a la mano (mandar una carta de la mano al cementerio) no baraja nada.
+      animated.length = 0
+      tap(within(hand()).getAllByRole('listitem')[0]!)
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Descartar' }))
+      expect(inHand()).toHaveLength(0)
+    } finally {
+      vi.unstubAllGlobals()
+      Element.prototype.animate = animate
+      Element.prototype.getAnimations = getAnimations
+      window.matchMedia = matchMedia
+    }
   })
 
   it('del Deck se puede revelar el tope, y desde el visor cualquier carta (sin moverla)', () => {
@@ -593,6 +642,45 @@ describe('la mesa de práctica', () => {
       window.requestAnimationFrame = (callback) => {
         frames.push(callback)
         return frames.length
+      }
+    })
+
+    it('si el navegador le quita el puntero a la carta sin avisar (el celular), el arrastre termina y no queda ninguna zona encendida', () => {
+      render(<Harness />)
+
+      const mz2 = zone('Zona de monstruo 2')
+      const dragged = within(hand()).getByRole('listitem', { name: 'Maxx C' })
+      over(mz2)
+      fireEvent.pointerDown(dragged, { ...pointer, clientX: 10, clientY: 10 })
+      fireEvent.pointerMove(dragged, { ...pointer, clientX: 40, clientY: 60 })
+      flush()
+      expect(lit()).toEqual(['mz:1'])
+
+      // Ni pointerup ni pointercancel: sólo se pierde la captura.
+      fireEvent.lostPointerCapture(dragged, { ...pointer })
+      expect(lit()).toEqual([])
+      // Y la carta no se soltó en ninguna parte: sigue en la mano.
+      expect(within(hand()).getByRole('listitem', { name: 'Maxx C' })).toBeInTheDocument()
+    })
+
+    it('red de seguridad: al levantar el dedo, aunque el arrastre nunca se haya enterado, se apagan las zonas que quedaron encendidas', () => {
+      vi.useFakeTimers()
+
+      try {
+        render(<Harness />)
+
+        const mz2 = zone('Zona de monstruo 2')
+        // Una zona que quedó encendida de un arrastre que se perdió.
+        mz2.setAttribute('data-over', 'true')
+        expect(lit()).toEqual(['mz:1'])
+
+        fireEvent.pointerUp(document.body, { ...pointer, clientX: 5, clientY: 5 })
+        act(() => {
+          vi.advanceTimersByTime(200)
+        })
+        expect(lit()).toEqual([])
+      } finally {
+        vi.useRealTimers()
       }
     })
 

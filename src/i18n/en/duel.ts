@@ -14,6 +14,8 @@ export const duel: Translated<typeof es> = {
   'duel.phase.current': 'Current phase: {phase}',
   'duel.announce.attack': '{name} attacks {target}',
   'duel.announce.attackDirect': '{name} attacks you directly',
+  'duel.mark.view': 'View the cards',
+  'duel.mark.rivalCard': "Opponent's card",
   'duel.mark.label': '{place}: target',
   'duel.mark.notice.pile': '{name} targets your {pile}',
   'duel.mark.notice.card': '{name} targets one of your cards',

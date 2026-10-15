@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { MAX_CHAT_LENGTH } from '../../app/duel-games'
 import type { Duel, DuelSnapshot } from '../../app/duel-session'
-import { showToastMessage } from '../../app/use-toast-message'
+import { showRivalToast } from '../../app/use-toast-message'
 import { t } from '../../i18n'
 import { Button } from '../ui/Button'
 import { Icon } from '../ui/Icon'
@@ -142,7 +142,7 @@ export function useChatUnread(snapshot: DuelSnapshot, open: boolean): number {
 
     for (const line of chat) {
       if (line.id > seen.current && line.from !== me && !isSignal(line.text)) {
-        showToastMessage(`${rival}: ${line.text}`, 'info')
+        showRivalToast(rival, line.text)
       }
     }
 
