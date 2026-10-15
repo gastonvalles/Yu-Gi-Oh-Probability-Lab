@@ -193,9 +193,11 @@ describe('el relay real', () => {
   it('un jugador que reconecta con su identidad conserva su etiqueta para los espectadores', async () => {
     const room = createRoomCode()
     const pid = createParticipantId()
+    // Uno detrás del otro: la etiqueta es el orden de llegada a la sala, y por internet dos conexiones a la vez pueden llegar en cualquier orden.
     const a = raw(room, pid)
+    await until(() => a.frames.length > 0)
     const b = raw(room)
-    await until(() => a.frames.length > 0 && b.frames.length > 0)
+    await until(() => b.frames.length > 0)
     const watcher = raw(room, undefined, ORIGIN, 'spectator')
     await until(() => watcher.frames.length >= 1)
 
