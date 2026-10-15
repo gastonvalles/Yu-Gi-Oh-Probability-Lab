@@ -15,6 +15,7 @@ import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { SideDrawer } from '../ui/SideDrawer'
 import { LifeTile } from './DuelBar'
+import { PLAYER_COLOR } from './player-color'
 import { artOfDrawId } from './duel-art'
 import { DuelTable, TheirHand, type DuelSideView } from './DuelTable'
 import { gameText } from './game-text'
@@ -172,7 +173,7 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
       <div className="mx-auto grid w-full max-w-3xl content-start gap-2 px-2 py-2 min-[1101px]:px-4" data-testid="spectator-table">
         {/* Arriba, lo de quien está arriba; las vidas del de abajo en la esquina de enfrente, como en la mesa de los jugadores. */}
         <div className="flex flex-wrap items-center gap-1.5">
-          <LifeTile name={nameOf(top)} life={topSide.lp ?? snapshot.settings?.lp ?? 0} />
+          <LifeTile name={nameOf(top)} life={topSide.lp ?? snapshot.settings?.lp ?? 0} color={top === 0 ? 'mine' : 'theirs'} />
           <span className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-card border border-border-subtle bg-card-background px-2.5 text-micro font-semibold tabular-nums text-foreground" aria-label={t('duel.bar.clock', { time: clock })}>
             <Icon name={snapshot.clock.running ? 'pause' : 'play'} size={14} />
             {clock}
@@ -229,7 +230,7 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
               ) : null}
             </span>
           </span>
-          <LifeTile name={nameOf(bottom)} life={bottomSide.lp ?? snapshot.settings?.lp ?? 0} mine />
+          <LifeTile name={nameOf(bottom)} life={bottomSide.lp ?? snapshot.settings?.lp ?? 0} mine color={bottom === 0 ? 'mine' : 'theirs'} />
         </div>
       </div>
 
@@ -239,8 +240,8 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
             <li className="text-micro text-soft">{t('duel.watch.chatEmpty')}</li>
           ) : (
             snapshot.chat.map((line) => (
-              <li key={line.id} className="break-words rounded-card bg-tint/8 px-2.5 py-1 text-body text-foreground">
-                <span className="block text-micro font-semibold text-soft">{nameOf(line.from)}</span>
+              <li key={line.id} data-from={line.from === 0 ? 'host' : 'guest'} className={cx('break-words rounded-card px-2.5 py-1 text-body text-foreground', PLAYER_COLOR[line.from === 0 ? 'mine' : 'theirs'].bubble)}>
+                <span className={cx('block text-micro font-semibold', PLAYER_COLOR[line.from === 0 ? 'mine' : 'theirs'].text)}>{nameOf(line.from)}</span>
                 {line.text}
               </li>
             ))

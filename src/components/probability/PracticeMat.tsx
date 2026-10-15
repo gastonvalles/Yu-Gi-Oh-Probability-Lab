@@ -105,6 +105,8 @@ export interface DuelMatLink {
   announcement?: { key: number; caption: string; attackerId: string; targetId?: string }
   /** Una capa que tapa toda la mesa (el duelo en pausa): nada de lo de abajo se toca mientras está. */
   cover?: ReactNode
+  /** Un panel fijo a la derecha de la mesa, sólo en escritorio (el chat): la mesa le deja 20rem. */
+  aside?: ReactNode
 }
 
 interface PracticeMatProps {
@@ -1183,7 +1185,7 @@ export function PracticeMat({
         // `relative isolate`: las cartas grandes del centro se acomodan sobre la mesa (no sobre la pantalla) y sus capas no se mezclan con las de afuera.
         'relative isolate grid h-full min-h-0 select-none grid-rows-[auto_minmax(0,1fr)] [background:radial-gradient(120%_60%_at_50%_0%,rgb(var(--primary-rgb)/0.16),transparent_70%),rgb(var(--background-rgb))]',
         // Los pasos y combos son de la práctica: en un duelo la mesa ocupa todo el ancho.
-        !duel && 'min-[1101px]:grid-cols-[minmax(0,1fr)_20rem]',
+        (!duel || Boolean(duel.aside)) && 'min-[1101px]:grid-cols-[minmax(0,1fr)_20rem]',
         PRACTICE_PALETTE,
       )}
     >
@@ -1372,7 +1374,12 @@ export function PracticeMat({
             </div>
           ) : null}
           {/* El estado: eligiendo, pide lo que falta; si no, es sólo para el lector de pantalla (la última jugada y el contador ya están en la lista de pasos). */}
-          <div className={cx('flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 px-1 text-micro text-muted', !choosing && 'sr-only')} role="status" aria-label={t('practice.mat.currentStep')}>
+          <div
+            // En un duelo de escritorio la barra de abajo no ataja toques (el medio es de la mano): lo que se está eligiendo es una cápsula centrada que sí los recibe, con Confirmar y Cancelar a mano.
+            className={cx('flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 px-1 text-micro text-muted', !choosing && 'sr-only', choosing && duel && 'min-[1101px]:pointer-events-auto min-[1101px]:flex-none min-[1101px]:flex-nowrap min-[1101px]:rounded-card min-[1101px]:border min-[1101px]:border-border-subtle min-[1101px]:bg-card-background min-[1101px]:px-3 min-[1101px]:py-1.5 min-[1101px]:shadow-card')}
+            role="status"
+            aria-label={t('practice.mat.currentStep')}
+          >
             {pickingText ? (
               <>
                 <span className="min-w-0 flex-1 truncate font-semibold text-accent">{pickingText}</span>
@@ -1396,6 +1403,11 @@ export function PracticeMat({
           </div>
         </div>
       </div>
+
+      {/* El panel fijo de un duelo (el chat), a la derecha y a todo el alto, sólo en escritorio. */}
+      {duel?.aside ? (
+        <aside className="hidden min-h-0 border-l border-border-subtle px-3 pb-3 pt-3 min-[1101px]:col-start-2 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col">{duel.aside}</aside>
+      ) : null}
 
       {/* Panel lateral (escritorio): arriba los pasos y combos y abajo, a la altura de la mano, las salidas y problemas; la explicación del chip tocado crece hacia arriba sobre la lista. El detalle de una carta se abre desde su menú. */}
       {duel ? null : (

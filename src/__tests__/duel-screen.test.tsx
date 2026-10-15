@@ -1190,6 +1190,142 @@ describe('la pantalla del duelo', () => {
     expect(within(watcher.container).queryByText('En pausa')).not.toBeInTheDocument()
   })
 
+  /** Una pantalla de escritorio (a partir de 1101 px): ahí el chat va fijo a la derecha. */
+  const asDesktop = () => {
+    window.matchMedia = ((query: string) => ({ matches: query.includes('1101') || query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+  }
+
+  it('rendirse queda a la vista en la barra: pide confirmar, termina el duelo para los dos y después ya no hay a quién rendirse', () => {
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+    expect(within(guest.container).getByRole('button', { name: 'Rendirme' })).toBeEnabled()
+
+    click(guest, 'Rendirme')
+    // Cancelar no se rinde.
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Cancelar' }))
+    flush()
+    expect(within(host.container).queryByText(/se rindió/)).not.toBeInTheDocument()
+
+    click(guest, 'Rendirme')
+    expect(within(screen.getByRole('alertdialog')).getByText('Gana Ana. El duelo termina para los dos y se puede pedir la revancha.')).toBeInTheDocument()
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Rendirme' }))
+    flush()
+
+    expect(within(host.container).getByText('Beto se rindió. ¡Ganaste!')).toBeInTheDocument()
+    expect(within(guest.container).getByText('Te rendiste.')).toBeInTheDocument()
+    expect(within(guest.container).getByRole('button', { name: 'Rendirme' })).toBeDisabled()
+    expect(within(host.container).getByRole('button', { name: 'Rendirme' })).toBeDisabled()
+  })
+
+  it('en escritorio el chat está siempre abierto a la derecha: se escribe sin abrir nada y no hay botón para abrirlo', () => {
+    asDesktop()
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+
+    const panel = within(within(guest.container).getByRole('region', { name: 'Chat con Ana' }))
+    expect(within(guest.container).queryByRole('button', { name: /^Chat/ })).not.toBeInTheDocument()
+
+    fireEvent.click(panel.getByRole('button', { name: 'Paso' }))
+    flush()
+    expect(within(within(within(host.container).getByRole('region', { name: 'Chat con Beto' })).getByRole('log')).getByText('Paso')).toBeInTheDocument()
+    // Con el chat a la vista, lo que llega no suma un contador de no leídos.
+    expect(within(host.container).queryByLabelText(/sin leer/)).not.toBeInTheDocument()
+  })
+
+  it('en el celular el chat no está fijo: un botón lo abre', () => {
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+
+    expect(within(guest.container).queryByRole('region', { name: 'Chat con Ana' })).not.toBeInTheDocument()
+    expect(within(guest.container).getByRole('button', { name: 'Chat' })).toBeInTheDocument()
+  })
+
+  it('en un duelo de escritorio, mientras se eligen contadores o materiales, "Listo" y "Cancelar" reciben toques: la barra de abajo ataja los suyos', () => {
+    asDesktop()
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+    summonFirst(guest)
+    flush()
+
+    const status = () => within(guest.container).getByRole('status', { name: 'Paso actual' })
+    expect(status()).not.toHaveClass('min-[1101px]:pointer-events-auto')
+
+    tap(within(guest.container).getByRole('button', { name: 'Ficha' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Poner contadores' }))
+    expect(status()).toHaveClass('min-[1101px]:pointer-events-auto')
+    expect(within(status()).getByRole('button', { name: 'Listo' })).toBeInTheDocument()
+  })
+
+  it('cada jugador tiene su color, el mismo en sus vidas y en su globo del chat: el tuyo verde y el del rival celeste', () => {
+    asDesktop()
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+
+    fireEvent.click(within(within(guest.container).getByRole('region', { name: 'Chat con Ana' })).getByRole('button', { name: 'Paso' }))
+    flush()
+    fireEvent.click(within(within(host.container).getByRole('region', { name: 'Chat con Beto' })).getByRole('button', { name: '¡Gracias!' }))
+    flush()
+
+    const colors = (view: RenderResult) => {
+      const mineLife = view.container.querySelector('[data-lp="mine"]')!
+      const theirLife = view.container.querySelector('[data-lp="theirs"]')!
+      const log = within(within(view.container).getByRole('region', { name: /^Chat con/ })).getByRole('log')
+      const mineLine = log.querySelector('[data-from="mine"]')!
+      const theirLine = log.querySelector('[data-from="theirs"]')!
+
+      return { mineLife, theirLife, mineLine, theirLine }
+    }
+
+    for (const view of [guest, host]) {
+      const { mineLife, theirLife, mineLine, theirLine } = colors(view)
+
+      // El tuyo, verde: la casilla de tus vidas (borde y número) y tu globo, con tu nombre.
+      expect(mineLife).toHaveClass('border-accent/50')
+      expect(mineLife.querySelector('span:last-child')).toHaveClass('text-accent')
+      expect(mineLine).toHaveClass('bg-accent/20')
+      expect(mineLine.querySelector('span')).toHaveClass('text-accent')
+
+      // El del rival, celeste, también en sus dos lugares.
+      expect(theirLife).toHaveClass('border-info/50')
+      expect(theirLife.querySelector('span:last-child')).toHaveClass('text-info-soft')
+      expect(theirLine).toHaveClass('bg-info/20')
+      expect(theirLine.querySelector('span')).toHaveClass('text-info-soft')
+    }
+  })
+
+  it('quien mira ve a cada jugador con su color (anfitrión verde, invitado celeste) en las vidas y en el chat, y al dar vuelta la mesa los colores siguen a los jugadores', () => {
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+    const room = Object.keys(localStorage).find((key) => key.endsWith(':host'))!.split(':')[2]
+
+    window.history.replaceState(null, '', `#duel?room=${room}&watch=1`)
+    const watcher = render(<DuelScreen {...screenProps({ mainIds: [], extraIds: [], cardsById: new Map() })} />)
+    flush()
+    flush()
+
+    // Lo que escriben los dos (después de que quien mira entró: el chat anterior no se repite).
+    for (const [view, quick] of [[host, 'Paso'], [guest, '¡Gracias!']] as const) {
+      click(view, /^Chat/)
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: quick }))
+      flush()
+      fireEvent.keyDown(document, { key: 'Escape' })
+    }
+
+    const life = (name: string) => within(watcher.container).getByRole('group', { name: new RegExp(`Puntos de vida de ${name}`) })
+
+    expect(life('Ana')).toHaveClass('border-accent/50')
+    expect(life('Beto')).toHaveClass('border-info/50')
+
+    click(watcher, /Ver desde el otro lado/)
+    expect(life('Ana')).toHaveClass('border-accent/50')
+    expect(life('Beto')).toHaveClass('border-info/50')
+
+    click(watcher, /Chat de los jugadores/)
+    const log = within(screen.getByRole('dialog')).getByRole('log')
+    expect(log.querySelector('[data-from="host"]')).toHaveClass('bg-accent/20')
+    expect(log.querySelector('[data-from="guest"]')).toHaveClass('bg-info/20')
+  })
+
   it('desde el inicio del duelo se puede dejar el duelo en pausa', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
