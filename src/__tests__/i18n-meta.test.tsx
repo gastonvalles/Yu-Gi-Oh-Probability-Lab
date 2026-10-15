@@ -106,16 +106,12 @@ describe('Comparar builds en inglés', () => {
     const first = render(<ComparisonReport comparison={better} isCurrentDeck={{ A: true, B: false }} onShowCards={() => {}} />)
 
     expect(screen.getByText('New is better')).toBeInTheDocument()
-    for (const text of ['Clean hands', 'What changes in the Main Deck', 'Where each one wins']) {
+    for (const text of ['Clean hands', 'What changes in the Main Deck', 'Where the difference shows', 'See how many hands']) {
       expect(screen.getByText(text)).toBeInTheDocument()
     }
-    // Cada turno aparece en la tabla de manos limpias y otra vez en el selector de turno del detalle.
-    for (const text of ['Going first', 'Going second', 'Average']) {
-      expect(screen.getAllByText(text)).toHaveLength(2)
-    }
-    expect(screen.getByText('Roles')).toBeInTheDocument()
-    // Un anillo por turno y por build; cada uno dice de qué build es.
-    expect(screen.getAllByLabelText(/^Clean hands of build [AB]: \d+\.\d%$/)).toHaveLength(6)
+    expect(screen.getAllByText('Role').length).toBeGreaterThan(0)
+    // Una barra por build (del turno elegido); cada una dice de qué build es.
+    expect(screen.getAllByLabelText(/^Clean hands of build [AB]: \d+\.\d%$/)).toHaveLength(2)
     first.unmount()
 
     const pending = [...OLD.slice(0, -1), { ...card('x', 1, []), origin: null }]
