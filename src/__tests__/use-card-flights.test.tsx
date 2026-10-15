@@ -17,6 +17,11 @@ interface Box {
 const boxes = new Map<string, Box>()
 /** Los vuelos que arrancó el hook: la carta y el primer cuadro (desde dónde sale). */
 let flights: Array<{ card: string | undefined; from: string }> = []
+/** Los fantasmas que vuelan hasta una pila (una carta que se fue del campo): a dónde llegan. */
+let ghostLandings: string[] = []
+
+/** Con qué nombre se mide cada elemento: la carta propia o del rival por su id, y las pilas del rival como `rival-<pila>`. */
+const keyOf = (element: HTMLElement) => element.dataset.cardId ?? element.dataset.rivalCardId ?? (element.dataset.rivalDrop ? `rival-${element.dataset.rivalDrop}` : '')
 
 const original = {
   getBoundingClientRect: HTMLElement.prototype.getBoundingClientRect,
@@ -42,14 +47,16 @@ beforeEach(() => {
   vi.useFakeTimers()
   boxes.clear()
   flights = []
+  ghostLandings = []
   HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
-    const box = boxes.get(this.dataset.cardId ?? '') ?? { left: 0, top: 0, width: 0, height: 0 }
+    const box = boxes.get(keyOf(this)) ?? { left: 0, top: 0, width: 0, height: 0 }
 
     return { ...box, right: box.left + box.width, bottom: box.top + box.height, x: box.left, y: box.top, toJSON: () => ({}) }
   }
   Element.prototype.getAnimations = () => []
   Element.prototype.animate = function (this: Element, keyframes: Keyframe[] | PropertyIndexedKeyframes | null) {
-    if (this instanceof HTMLElement && this.dataset.cardId && Array.isArray(keyframes)) flights.push({ card: this.dataset.cardId, from: String(keyframes[0]?.transform ?? '') })
+    if (this instanceof HTMLElement && (this.dataset.cardId ?? this.dataset.rivalCardId) && Array.isArray(keyframes)) flights.push({ card: this.dataset.cardId ?? this.dataset.rivalCardId, from: String(keyframes[0]?.transform ?? '') })
+    if (this instanceof HTMLElement && this.classList.contains('z-200') && Array.isArray(keyframes)) ghostLandings.push(String(keyframes[1]?.transform ?? ''))
 
     return {} as Animation
   }
@@ -85,6 +92,62 @@ function Mat({ state }: { state: MatState }) {
     </div>
   )
 }
+
+/** La mesa del rival: su mano, su cementerio y las cartas de su campo, con las marcas del rival. */
+function RivalMat({ state }: { state: MatState }) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useCardFlights(ref, state, () => null, 'fijo', 'theirs')
+
+  return (
+    <div ref={ref}>
+      <div data-rival-drop="hand" />
+      <div data-rival-drop="gy" />
+      {state.mz.map((placed, index) => (placed ? <div key={index} data-rival-card-id={placed.id} /> : null))}
+    </div>
+  )
+}
+
+describe('las cartas del rival vuelan como las propias', () => {
+  it('una carta suya que sale del campo viaja hasta su cementerio', () => {
+    const start = matReducer(createMatState(['a', 'b', 'c'], [], 3), { type: 'place', id: 'a', zone: 'mz', index: 0, pos: 'atk', how: 'normal' })
+    boxes.set('a', at(100, 100))
+    boxes.set('rival-gy', at(500, 100))
+    const { rerender } = render(<RivalMat state={start} />)
+    expect(ghostLandings).toHaveLength(0)
+
+    rerender(<RivalMat state={matReducer(start, { type: 'move', id: 'a', to: 'gy' })} />)
+
+    expect(document.body.querySelectorAll('div.fixed.z-200')).toHaveLength(1)
+    // Aterriza en el centro de su cementerio (el fantasma no tiene tamaño en jsdom, así que se centra sumando la mitad de la pila).
+    expect(ghostLandings).toHaveLength(1)
+    expect(ghostLandings[0]).toContain('translate(540px, 158px)')
+  })
+
+  it('una carta suya que baja de la mano al campo sale de su mano', () => {
+    const start = createMatState(['a', 'b', 'c'], [], 3)
+    boxes.set('rival-hand', at(300, 20))
+    const { rerender } = render(<RivalMat state={start} />)
+
+    boxes.set('b', at(600, 150))
+    rerender(<RivalMat state={matReducer(start, { type: 'place', id: 'b', zone: 'mz', index: 2, pos: 'atk', how: 'normal' })} />)
+
+    expect(flightOrigin('b')).toEqual(centerOf(at(300, 20)))
+  })
+
+  it('sin estado del rival todavía no hace nada', () => {
+    function Empty() {
+      const ref = useRef<HTMLDivElement>(null)
+
+      useCardFlights(ref, null, () => null, 'fijo', 'theirs')
+
+      return <div ref={ref} />
+    }
+
+    expect(() => render(<Empty />)).not.toThrow()
+    expect(flights).toHaveLength(0)
+  })
+})
 
 describe('de dónde sale volando una carta que se juega desde la mano', () => {
   it('una carta robada sale de la mano, no del mazo: la medida de cuando todavía volaba desde el mazo se renueva al quedar quieta', () => {

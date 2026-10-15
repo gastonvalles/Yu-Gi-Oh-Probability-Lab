@@ -104,7 +104,7 @@ export function DuelTable({ mine, theirs, show = 'both', turn = 'mine', classNam
  */
 export function TheirHand({ count }: { count: number }) {
   return (
-    <div role="img" aria-label={t('duel.hand.theirs', { count })} className="flex h-9 shrink-0 justify-center min-[1101px]:h-11">
+    <div role="img" aria-label={t('duel.hand.theirs', { count })} data-rival-drop="hand" className="flex h-9 shrink-0 justify-center min-[1101px]:h-11">
       {Array.from({ length: Math.min(count, 12) }, (_, index) => (
         <span key={index} className={cx('-ml-3 block aspect-[421/614] h-full overflow-hidden first:ml-0', CARD_SHADOW)}>
           <CardBack className="h-full" />
@@ -164,10 +164,10 @@ export function SideCells({ side, owner }: { side: DuelSideView; owner: Owner })
       {state.st.map((placed, index) => (
         <Zone key={`s${index}`} area={`${prefix}s${index + 1}`} spot="st" index={index} placed={placed} side={side} owner={owner} />
       ))}
-      <Pile area={`${prefix}deck`} pile="deck" side={side} />
-      <Pile area={`${prefix}extra`} pile="extra" side={side} />
-      <Pile area={`${prefix}gy`} pile="gy" side={side} />
-      <Pile area={`${prefix}ban`} pile="banished" side={side} />
+      <Pile area={`${prefix}deck`} pile="deck" side={side} owner={owner} />
+      <Pile area={`${prefix}extra`} pile="extra" side={side} owner={owner} />
+      <Pile area={`${prefix}gy`} pile="gy" side={side} owner={owner} />
+      <Pile area={`${prefix}ban`} pile="banished" side={side} owner={owner} />
     </>
   )
 }
@@ -222,14 +222,14 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
 }
 
 /** Una pila: Main y Extra de dorso; GY y Banish con su carta de arriba (de dorso si está boca abajo); siempre la cantidad. */
-function Pile({ area, pile, side }: { area: string; pile: Exclude<MatPile, 'hand'>; side: DuelSideView }) {
+function Pile({ area, pile, side, owner }: { area: string; pile: Exclude<MatPile, 'hand'>; side: DuelSideView; owner: Owner }) {
   const cards = side.state[pile]
   const top = pile === 'gy' || pile === 'banished' ? (cards[cards.length - 1] ?? null) : null
   const back = pile === 'deck' || pile === 'extra' ? cards.length > 0 : top !== null && side.state.facedown.includes(top)
   const art = top !== null && !back ? side.artOf(top) : null
 
   return (
-    <div role="group" aria-label={`${PILE_TITLES[pile]}: ${cards.length}`} title={PILE_TITLES[pile]} className={cx(CELL, 'overflow-hidden')} style={{ gridArea: area }}>
+    <div role="group" aria-label={`${PILE_TITLES[pile]}: ${cards.length}`} title={PILE_TITLES[pile]} data-rival-drop={owner === 'theirs' ? pile : undefined} className={cx(CELL, 'overflow-hidden')} style={{ gridArea: area }}>
       {cards.length > 0 ? (art ? <CardArt remoteUrl={art} name={PILE_TITLES[pile]} className="block h-full w-full object-cover" /> : <CardBack className="h-full" />) : null}
       <PileBadge label={PILE_TITLES[pile]} count={cards.length} />
     </div>

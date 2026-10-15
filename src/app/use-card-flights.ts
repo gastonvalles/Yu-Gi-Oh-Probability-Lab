@@ -22,16 +22,23 @@ interface Snapshot {
   pending: boolean
 }
 
+/** Cómo se marcan las cartas y las pilas de cada lado en el DOM: las propias (`data-card-id`, `data-drop`) o las del rival (`data-rival-card-id`, `data-rival-drop`). */
+const SIDES = {
+  mine: { card: 'data-card-id', cardKey: 'cardId', drop: 'data-drop', dropKey: 'drop' },
+  theirs: { card: 'data-rival-card-id', cardKey: 'rivalCardId', drop: 'data-rival-drop', dropKey: 'rivalDrop' },
+} as const
+type Side = keyof typeof SIDES
+
 function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
 }
 
 /** Dónde se dibuja la carta cuando no es una carta suelta (`data-card-id`): la pila donde está o el Xyz que la tiene de material. */
-function homeOf(root: HTMLElement, state: MatState, id: string): HTMLElement | null {
+function homeOf(root: HTMLElement, state: MatState, id: string, side: Side): HTMLElement | null {
   const where = locateCard(state, id)
 
-  if (where?.kind === 'pile') return root.querySelector<HTMLElement>(`[data-drop="${where.pile}"]`)
-  if (where?.kind === 'material') return root.querySelector<HTMLElement>(`[data-card-id="${where.of}"]`)
+  if (where?.kind === 'pile') return root.querySelector<HTMLElement>(`[${SIDES[side].drop}="${where.pile}"]`)
+  if (where?.kind === 'material') return root.querySelector<HTMLElement>(`[${SIDES[side].card}="${where.of}"]`)
 
   return null
 }
@@ -89,19 +96,21 @@ function impact(element: HTMLElement, rgb: string) {
  * salió; una que se va a una pila (o abajo de un Xyz) viaja hasta ahí como un fantasma, se da vuelta si llega
  * boca abajo, y la pila la recibe con un salto. La mano reparte (desde el mazo) y reacomoda sus propias cartas.
  * `layoutKey` cambia cuando las cartas se mueven sin jugada (reparto, reordenar la mano): se vuelve a medir.
+ * Con `side: 'theirs'` es lo mismo con las cartas y pilas del rival (la mesa del duelo se las dibuja con sus propias marcas); sin estado todavía, no hace nada.
  */
-export function useCardFlights(containerRef: RefObject<HTMLElement | null>, state: MatState, artOf: (id: string) => string | null, layoutKey: string): { dealsFromDeck: (id: string) => boolean } {
+export function useCardFlights(containerRef: RefObject<HTMLElement | null>, state: MatState | null, artOf: (id: string) => string | null, layoutKey: string, side: Side = 'mine'): { dealsFromDeck: (id: string) => boolean } {
+  const marks = SIDES[side]
   const previousRef = useRef<{ state: MatState; cards: Map<string, Snapshot> } | null>(null)
 
   useLayoutEffect(() => {
     const root = containerRef.current
 
-    if (!root || typeof root.animate !== 'function') return
+    if (!root || !state || typeof root.animate !== 'function') return
 
     const current = new Map<string, { element: HTMLElement; rect: DOMRect }>()
 
-    for (const element of root.querySelectorAll<HTMLElement>('[data-card-id]')) {
-      const id = element.dataset.cardId
+    for (const element of root.querySelectorAll<HTMLElement>(`[${marks.card}]`)) {
+      const id = element.dataset[marks.cardKey]
 
       for (const animation of element.getAnimations()) if (animation.id === FLIGHT_ID) animation.cancel()
       if (id) current.set(id, { element, rect: element.getBoundingClientRect() })
@@ -122,7 +131,7 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
       if (sameState && !returning(id)) continue
       if (!returning(id) && state.hand.includes(id) && (previous.state.hand.includes(id) || previous.state.deck.includes(id))) continue
 
-      const before = previous.cards.get(id)?.rect ?? homeOf(root, previous.state, id)?.getBoundingClientRect()
+      const before = previous.cards.get(id)?.rect ?? homeOf(root, previous.state, id, side)?.getBoundingClientRect()
 
       if (!before || near(before, rect)) continue
 
@@ -141,7 +150,7 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
     for (const [id, snapshot] of previous.cards) {
       if (current.has(id)) continue
 
-      const home = homeOf(root, state, id)
+      const home = homeOf(root, state, id, side)
       const to = home?.getBoundingClientRect() ?? null
       // Sale centrado donde estaba la carta, con su tamaño de layout (no el del rect, que puede ser el de una carta girada o en vuelo).
       const { width, height } = snapshot
@@ -159,6 +168,11 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
         image.alt = ''
         image.className = 'block h-full w-full object-cover'
         ghost.append(image)
+      } else if (side === 'theirs') {
+        // De una carta del rival que no mostró, se ve el dorso.
+        const back = document.createElement('span')
+        back.className = CARD_BACK
+        ghost.append(back)
       }
 
       const faceDown = hiddenAt(state, id)
@@ -193,7 +207,7 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
       }
 
       // La mano no es una pila: no se infla ni se enciende entera cuando le vuelve una carta (la carta se acomoda sola).
-      if (home && home.dataset.drop !== 'hand') {
+      if (home && home.dataset[marks.dropKey] !== 'hand') {
         bump(home)
         impact(home, impactRgb(state, id))
       }
@@ -208,7 +222,7 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
   useEffect(() => {
     const root = containerRef.current
 
-    if (!root || prefersReducedMotion()) return
+    if (!root || !state || prefersReducedMotion()) return
 
     const timer = window.setTimeout(() => {
       const snapshot = previousRef.current
@@ -217,8 +231,8 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
 
       const cards = new Map<string, Snapshot>()
 
-      for (const element of root.querySelectorAll<HTMLElement>('[data-card-id]')) {
-        const id = element.dataset.cardId
+      for (const element of root.querySelectorAll<HTMLElement>(`[${marks.card}]`)) {
+        const id = element.dataset[marks.cardKey]
 
         if (!id) continue
 
