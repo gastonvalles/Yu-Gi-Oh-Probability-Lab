@@ -160,7 +160,9 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
       ghost.className = 'pointer-events-none fixed left-0 top-0 z-200 overflow-hidden bg-input shadow-[0_12px_28px_rgba(0,0,0,0.5)]'
       ghost.style.width = `${width}px`
       ghost.style.height = `${height}px`
-      ghost.style.transform = `translate(${left}px, ${top}px)`
+      // Las cartas del rival miran hacia él: el fantasma viaja de cabeza, como se ve en su campo y en su pila.
+      const turn = side === 'theirs' ? ' rotate(180deg)' : ''
+      ghost.style.transform = `translate(${left}px, ${top}px)${turn}`
 
       if (snapshot.art) {
         const image = document.createElement('img')
@@ -187,8 +189,8 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
 
       document.body.append(ghost)
       const landing = to
-        ? `translate(${to.left + (to.width - width) / 2}px, ${to.top + (to.height - height) / 2}px) scale(${to.width / Math.max(1, width)})`
-        : `translate(${left}px, ${top}px) scale(0.6)`
+        ? `translate(${to.left + (to.width - width) / 2}px, ${to.top + (to.height - height) / 2}px) scale(${to.width / Math.max(1, width)})${turn}`
+        : `translate(${left}px, ${top}px) scale(0.6)${turn}`
       const flight = ghost.animate([{ transform: ghost.style.transform, opacity: 1 }, { transform: landing, opacity: to ? 0.75 : 0 }], { duration: FLIGHT_MS, easing: EASING, fill: 'forwards' })
       flight.onfinish = () => ghost.remove()
       flight.oncancel = () => ghost.remove()

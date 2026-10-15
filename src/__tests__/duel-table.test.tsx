@@ -65,6 +65,22 @@ describe('la mesa del duelo', () => {
     expect(document.querySelector('[data-rival-drop="banished"]')).toHaveAttribute('data-flash', 'false')
   })
 
+  it('las cartas del rival miran hacia él (de cabeza) y las propias hacia vos, con los contadores derechos', () => {
+    const placed = (id: string) => play({ type: 'place', id, zone: 'mz', index: 0, pos: 'atk', how: 'normal' }, { type: 'counter', id, delta: 2 })
+    const theirs = replayMat(placed('card-1000-1'), [{ type: 'move', id: 'card-1001-1', to: 'gy' }])
+
+    render(<DuelTable mine={side(placed('card-1002-1'))} theirs={side(theirs)} />)
+
+    const art = (zoneName: string) => zone(zoneName).querySelector('[data-rival-card-id], [data-card-id]')!.firstElementChild as HTMLElement
+
+    expect(art('Rival, Zona de monstruo 1')).toHaveClass('rotate-180')
+    expect(art('Zona de monstruo 1')).not.toHaveClass('rotate-180')
+    // El contador no gira con la carta.
+    expect(art('Rival, Zona de monstruo 1').parentElement!.querySelector('span.bg-warning')).not.toHaveClass('rotate-180')
+    // La carta de arriba de su cementerio, también.
+    expect(document.querySelector('[data-rival-drop="gy"] .rotate-180')).not.toBeNull()
+  })
+
   it('las Zonas Extra son de los dos: la de la izquierda de uno es la de la derecha del otro', () => {
     const mine = play({ type: 'place', id: 'card-9001-1', zone: 'emz', index: 0, pos: 'atk' })
     const theirs = play({ type: 'place', id: 'card-9002-1', zone: 'emz', index: 0, pos: 'atk' })
