@@ -3,7 +3,8 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { DuelSettings } from './duel-protocol'
 import { createParticipantId } from './duel-relay-rules'
 import { createDuel, type Duel, type DuelRole, type DuelSnapshot } from './duel-session'
-import { createSocketTransport, type SocketStatus, type SocketTransport } from './duel-socket'
+import { createSpectator, type Spectator, type SpectatorSnapshot } from './duel-spectator'
+import { createSocketTransport, type SocketStatus, type SocketTransport, type SpectatorSocket } from './duel-socket'
 
 /** Cómo se conecta a una sala: por el relay en la app, por una sala en memoria en las pruebas. */
 export type DuelConnect = (room: string, participant: string) => SocketTransport
@@ -17,6 +18,14 @@ export const connectToRelay =
   (url: string): DuelConnect =>
   (room, participant) =>
     createSocketTransport({ url, room, participant })
+
+/** Cómo se conecta un espectador a una sala: igual, pero mirando. */
+export type SpectatorConnect = (room: string, participant: string) => SpectatorSocket
+
+export const connectSpectatorToRelay =
+  (url: string): SpectatorConnect =>
+  (room, participant) =>
+    createSocketTransport({ url, room, participant, role: 'spectator' })
 
 interface UseDuelInput {
   /** La sala a la que estar conectado; null = ninguna. */
@@ -62,4 +71,33 @@ export function useDuel({ room, role, name, settings, connect }: UseDuelInput): 
   )
 
   return { duel: live?.duel ?? null, snapshot, status }
+}
+
+/** Un duelo mirado como espectador: se conecta a la sala mientras `room` no sea null y se desconecta al cambiar o desmontarse. `connect` tiene que ser estable. */
+export function useSpectator({ room, connect }: { room: string | null; connect: SpectatorConnect }): { spectator: Spectator | null; snapshot: SpectatorSnapshot | null; status: SocketStatus } {
+  const [live, setLive] = useState<{ spectator: Spectator; transport: SpectatorSocket } | null>(null)
+
+  useEffect(() => {
+    if (room === null) {
+      return
+    }
+
+    const transport = connect(room, createParticipantId())
+    const spectator = createSpectator(transport)
+
+    setLive({ spectator, transport })
+
+    return () => {
+      spectator.close()
+      setLive(null)
+    }
+  }, [room, connect])
+
+  const snapshot = useSyncExternalStore(live ? live.spectator.subscribe : noSubscribe, live ? live.spectator.getSnapshot : noSnapshot)
+  const status = useSyncExternalStore(
+    live ? (listener) => live.transport.onStatus(listener) : noSubscribe,
+    live ? () => live.transport.status : () => 'closed' as const,
+  )
+
+  return { spectator: live?.spectator ?? null, snapshot, status }
 }

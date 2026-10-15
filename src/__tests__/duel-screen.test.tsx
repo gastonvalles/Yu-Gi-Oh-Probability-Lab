@@ -7,11 +7,11 @@ import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { extractRoomCode } from '../app/duel-link'
-import type { SocketStatus, SocketTransport } from '../app/duel-socket'
+import type { SocketStatus, SocketTransport, SpectatorSocket } from '../app/duel-socket'
 import type { DuelConnect } from '../app/use-duel'
 import { DuelScreen } from '../components/duel/DuelScreen'
 import type { ApiCardReference } from '../types'
-import { createMemoryRoom, type MemoryEnd, type MemoryRoom } from './support/memory-room'
+import { createMemoryRoom, type MemoryEnd, type MemoryRoom, type MemorySpectator } from './support/memory-room'
 
 // Las cartas de un deck pegado se piden por su número: acá salen todas menos la 999 (que no existe).
 vi.mock('../ygoprodeck', () => ({
@@ -34,6 +34,15 @@ const asSocket = (end: MemoryEnd): SocketTransport =>
     },
   })
 
+const asSpectatorSocket = (spectator: MemorySpectator, status: SocketStatus = 'open'): SpectatorSocket =>
+  Object.assign(spectator, {
+    status,
+    onStatus: (listener: (status: SocketStatus) => void) => {
+      listener(status)
+      return () => {}
+    },
+  })
+
 const mainIds = Array.from({ length: 12 }, (_, index) => `card-${1000 + index}-1`)
 const extraIds = ['card-9001-1']
 const cardsById = new Map([...mainIds, ...extraIds].map((id) => [id, { name: `Carta ${id}`, apiCard: null }]))
@@ -45,7 +54,7 @@ const monsters = new Map([...mainIds, ...extraIds].map((id) => [id, { name: `Mon
 let memory: MemoryRoom
 let connect: DuelConnect
 
-const screenProps = (overrides: Partial<Parameters<typeof DuelScreen>[0]> = {}) => ({ handSize: 5, mainIds, extraIds, cardsById, deckName: 'Mi deck', connect, ...overrides })
+const screenProps = (overrides: Partial<Parameters<typeof DuelScreen>[0]> = {}) => ({ handSize: 5, mainIds, extraIds, cardsById, deckName: 'Mi deck', connect, connectSpectator: () => asSpectatorSocket(memory.spectate()), ...overrides })
 const flush = () => act(() => memory.flush())
 const click = (view: RenderResult, name: string | RegExp, role: 'button' | 'menuitem' = 'button') => fireEvent.click(within(view.container).getByRole(role, { name }))
 const pointer = { button: 0, pointerId: 1 }
@@ -799,6 +808,143 @@ describe('la pantalla del duelo', () => {
     flush()
     expect(phase(host)).toBe(' · Battle Phase')
     expect(phaseButton(host, 'Battle Phase')).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('mirar un duelo: el anfitrión da un enlace para espectadores y ve cuántos miran; son hasta dos', async () => {
+    const written: string[] = []
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (text: string) => void written.push(text) } })
+    const { host } = startDuel()
+
+    expect(within(host.container).queryByText(/mirando/)).not.toBeInTheDocument()
+    await act(async () => {
+      click(host, 'Copiar enlace para mirar')
+    })
+    expect(written.at(-1)).toMatch(/#duel\?room=[A-Z0-9]{8}&watch=1$/)
+
+    // Alguien entra a mirar: el anfitrión lo ve; con dos, no entra un tercero.
+    memory.spectate()
+    flush()
+    expect(within(host.container).getByText('1 mirando')).toBeInTheDocument()
+    memory.spectate()
+    flush()
+    expect(within(host.container).getByText('2 mirando')).toBeInTheDocument()
+    expect(() => memory.spectate()).toThrow()
+  })
+
+  it('quien mira entra con el enlace de espectador, sin deck ni nombre, ve a los dos jugadores y no puede tocar nada', () => {
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+
+    host.container.dataset.who = 'host'
+    // Una tercera persona abre el enlace para mirar (sin deck: el builder está vacío).
+    const room = extractRoomCode(window.location.hash)!
+    window.history.replaceState(null, '', `#duel?room=${room}&watch=1`)
+    const watcher = render(<DuelScreen {...screenProps({ mainIds: [], extraIds: [], cardsById: new Map() })} />)
+    flush()
+    flush()
+
+    const view = within(watcher.container)
+    expect(view.getByTestId('spectator-table')).toBeInTheDocument()
+    // Ven los dos nombres y las vidas de los dos, y de quién es el turno y la fase.
+    expect(view.getAllByText('Ana').length).toBeGreaterThan(0)
+    expect(view.getAllByText('Beto').length).toBeGreaterThan(0)
+    expect(view.getAllByRole('group', { name: /Puntos de vida de/ })).toHaveLength(2)
+    expect(view.getByText('Mirando')).toBeInTheDocument()
+    expect(view.getByText(/Turno de Ana/)).toBeInTheDocument()
+    expect(view.getByTestId('duel-phase')).toHaveTextContent('Draw Phase')
+    // La mano de los dos se cuenta sin verse.
+    expect(view.getAllByRole('img', { name: 'Mano del rival: 5' })).toHaveLength(2)
+
+    // Los jugadores se enteran de que los miran.
+    expect(within(host.container).getByLabelText('1 mirando')).toBeInTheDocument()
+    expect(within(guest.container).getByLabelText('1 mirando')).toBeInTheDocument()
+
+    // Sigue el duelo en vivo.
+    click(host, 'Main Phase 1')
+    flush()
+    expect(view.getByTestId('duel-phase')).toHaveTextContent('Main Phase 1')
+
+    // Nada que tocar: ni jugadas, ni deshacer, ni listo, ni dados, ni un campo para escribir.
+    expect(view.queryByRole('textbox')).not.toBeInTheDocument()
+    for (const name of [/Deshacer/, /Moneda, dado y más/, /Estoy listo/, /Cambiar mis puntos de vida/, /Draw Phase$/, /Main Phase 1$/, /Ficha/]) {
+      expect(view.queryByRole('button', { name })).not.toBeInTheDocument()
+    }
+    expect(view.queryAllByRole('listitem', { name: /Mano/ })).toHaveLength(0)
+  })
+
+  it('quien mira puede dar vuelta la mesa para verla desde el lado del otro jugador', () => {
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+    const room = extractRoomCode(window.location.hash)!
+    window.history.replaceState(null, '', `#duel?room=${room}&watch=1`)
+    const watcher = render(<DuelScreen {...screenProps({ mainIds: [], extraIds: [], cardsById: new Map() })} />)
+    flush()
+    flush()
+
+    // Las vidas de abajo (a la derecha) son las del anfitrión; al dar vuelta, las del invitado, y las de arriba cambian al revés.
+    const bottom = () => watcher.container.querySelector('[data-lp="mine"]')?.getAttribute('aria-label')
+    const top = () => watcher.container.querySelector('[data-lp="theirs"]')?.getAttribute('aria-label')
+    expect(bottom()).toContain('Ana')
+    expect(top()).toContain('Beto')
+    click(watcher, 'Ver desde el otro lado')
+    expect(bottom()).toContain('Beto')
+    expect(top()).toContain('Ana')
+    click(watcher, 'Ver desde el otro lado')
+    expect(bottom()).toContain('Ana')
+  })
+
+  it('el chat de los jugadores se lee desde afuera, sin poder escribir', () => {
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+    const room = extractRoomCode(window.location.hash)!
+    window.history.replaceState(null, '', `#duel?room=${room}&watch=1`)
+    const watcher = render(<DuelScreen {...screenProps({ mainIds: [], extraIds: [], cardsById: new Map() })} />)
+    flush()
+    flush()
+
+    click(host, 'Chat')
+    fireEvent.change(screen.getByLabelText('Escribí un mensaje'), { target: { value: '¿respondés?' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
+    flush()
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    const view = within(watcher.container)
+    expect(view.getByRole('button', { name: /Chat de los jugadores \(1 sin leer\)/ })).toBeInTheDocument()
+    fireEvent.click(view.getByRole('button', { name: /Chat de los jugadores/ }))
+    const log = within(screen.getByRole('log', { name: 'Chat de los jugadores' }))
+    expect(log.getByText('¿respondés?')).toBeInTheDocument()
+    expect(log.getByText('Ana')).toBeInTheDocument()
+    expect(within(screen.getAllByRole('dialog').at(-1)!).queryByRole('textbox')).not.toBeInTheDocument()
+  })
+
+  it('pegar un enlace para mirar entra de espectador aunque no haya deck, y uno común sigue pidiéndolo', () => {
+    window.history.replaceState(null, '', '#duel')
+    const view = render(<DuelScreen {...screenProps({ mainIds: [], extraIds: [], cardsById: new Map() })} />)
+
+    typeInto(view, 'Enlace o código', 'K7QF2M9X')
+    expect(within(view.container).getByRole('button', { name: 'Unirme' })).toBeDisabled()
+
+    typeInto(view, 'Enlace o código', 'http://x.test/#duel?room=K7QF2M9X&watch=1')
+    expect(within(view.container).getByRole('button', { name: 'Unirme' })).toBeEnabled()
+    click(view, 'Unirme')
+    expect(window.location.hash).toBe('#duel?room=K7QF2M9X&watch=1')
+    expect(within(view.container).getByText('Todavía no hay jugadores en la sala…')).toBeInTheDocument()
+    expect(within(view.container).getByText('Sólo mirás: no podés cambiar nada.')).toBeInTheDocument()
+  })
+
+  it('si ya hay dos mirando, o la sala es de un relay anterior, se dice y se puede salir', () => {
+    for (const [status, text] of [
+      ['full', 'Ya hay dos personas mirando este duelo.'],
+      ['unsupported', 'Esta sala todavía no admite espectadores.'],
+    ] as const) {
+      cleanup()
+      window.history.replaceState(null, '', '#duel?room=K7QF2M9X&watch=1')
+      const view = render(<DuelScreen {...screenProps({ connectSpectator: () => asSpectatorSocket(memory.spectate(), status) })} />)
+
+      expect(within(view.container).getByText(text)).toBeInTheDocument()
+      click(view, 'Salir')
+      expect(window.location.hash).toBe('#duel')
+    }
   })
 
   it('recargar dentro de la sala con un deck pegado y el builder vacío: el deck guardado vuelve solo y se puede repartir', async () => {

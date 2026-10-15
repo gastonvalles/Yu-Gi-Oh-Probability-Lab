@@ -1,0 +1,92 @@
+# Duelo con un amigo
+
+Dos personas juegan la mesa de práctica una contra la otra, cada una en su dispositivo (celular y PC, o dos celulares), entrando con un enlace. No hay cuentas, ni base de datos, ni reglas automáticas: es una mesa manual compartida. El relay que junta a los dos está en `duel-relay/` (ver `docs/duelo-relay.md`). Hasta dos personas más pueden **mirar** el duelo sin poder tocar nada.
+
+## Cómo se ve
+
+El paso `#duel` ("Duelo con un amigo", en las herramientas del menú) **sólo se ofrece donde la app sabe a qué relay conectarse**: la variable `VITE_DUEL_RELAY_URL` (`wss://…workers.dev`). Sin ella el menú no lo muestra y abrir `#duel` dice que todavía no está disponible. La variable se lee al compilar: cargarla en Vercel exige volver a desplegar.
+
+1. **Lobby**: nombre (se recuerda), con qué deck se juega (el del builder, o uno que se pega: un enlace `ydke://` o un `.ydk`, que es lo que deja entrar desde un celular sin deck armado), los puntos de vida (8000 o 4000; sólo cuenta lo que elige quien crea) y "Crear un duelo" o "Unirme" pegando el enlace entero o el código de 8 letras y números. Un enlace para mirar entra de espectador (no hace falta deck).
+2. **Sala**: el enlace para el rival y el enlace para mirar (copiar o compartir), y, cuando están los dos, una tarjeta por jugador con "Estoy listo" (cada uno ve si el otro ya lo tocó). Con los dos listos definen quién elige ir primero con una **moneda** (quien la eligió pide cara o cruz), un **dado** (tiran los dos, con empate se repite) o **piedra, papel o tijera**; todo se ve animado en las dos pantallas. Quien gana elige ir primero o segundo (en una revancha elige quien perdió, sin tirar) y cada uno recibe su mano solo. También hay chat.
+3. **Mesa**: la de la práctica con el campo del rival espejado arriba, las dos Extra Monster Zone compartidas en el medio y las seis fases entre las zonas. La mano del rival se ve de dorso (sólo se cuenta); lo que no está a la vista, no viaja.
+   - **Ordenada para el celular y la mano derecha:** arriba lo del rival (sus vidas, el reloj —se toca para pausarlo, nadie puede reiniciarlo—, el turno con la fase y salir); abajo, al alcance del pulgar, tus vidas y los botones (deshacer, la ficha, los dados y el chat). En escritorio, tus vidas van en la esquina opuesta a las del rival y la mano del rival en el centro de la fila de arriba. Sin pasos y combos ni mascotas.
+   - **Turno y fases:** las fases son **una sola para los dos** (la de quien tiene el turno), se ven iguales en las dos pantallas y sólo las toca quien tiene el turno. La End Phase se juega: el turno pasa cuando quien juega toca la Draw Phase después de su End Phase (ahí el botón dice "Pasar el turno"); entonces el otro ve el cartel "Tu turno" y roba solo. El rival ve un cartel con cada fase que pasás.
+   - **Atacar** / **Ataque directo** en la Battle Phase: la espada y el rayo van del atacante a la carta atacada o a las vidas, con un cartel arriba para el rival (la mesa no cuenta el daño).
+   - El botón **+** agrega una ficha, o pone y quita contadores (tocando cartas hasta "Listo"; arrastrar el + sobre una carta le pone uno).
+   - **Puntos de vida:** una hoja que sale de abajo con el teclado de la calculadora de LP (con menos de tres cifras se entiende en centenas), el resultado en vivo y "=" para aplicar; la mitad se aplica sola.
+   - **Chat:** un panel por la derecha con la mitad de la pantalla, mensajes rápidos y un contador de lo no leído.
+4. **Panel "Juegos"** (el dado): moneda, dado, piedra-papel-tijera (el rival no ve tu elección hasta que elegís la tuya), rendirse (con confirmación) y un registro. Lo que tira el rival se ve girar en el centro aunque el panel esté cerrado.
+5. **Final**: pierde quien se queda sin puntos de vida o se rinde. El cartel del resultado trae la **revancha**: cuando los dos la piden, se limpia la mesa, los puntos y el reloj, y elige quién va primero quien perdió.
+
+Es para jugar con amigos: no está pensado contra quien mire el tráfico de red (ver "Qué ve el rival").
+
+## Mirar un duelo (espectadores)
+
+La sala del anfitrión tiene un segundo enlace, "Copiar enlace para mirar" (`#duel?room=CODIGO&watch=1`). **Hasta dos personas** pueden mirar a la vez; un tercero ve "ya hay dos mirando". Los jugadores ven cuántos los miran (un ojo con el número arriba) y quién mira no necesita deck ni nombre.
+
+- **Ve** las dos mesas como las ve cada rival (la mano y el deck de nadie, lo boca abajo de dorso), las vidas, el reloj, de quién es el turno y en qué fase va, lo que tiran los jugadores y el chat de los dos (para leer). Puede dar vuelta la mesa para mirar desde el lado del otro jugador.
+- **No puede hacer nada:** no hay jugadas, ni campo para escribir, ni botones que cambien algo. Además lo impone el relay: lo que mande un espectador no llega a los jugadores y lo desconecta. Lo único que se le acepta es pedir que los jugadores repitan su estado (cuando llega o se le pierde algo), como mucho cada dos segundos.
+
+Cómo funciona: el relay le manda el texto de los dos jugadores, cada mensaje precedido de quién lo mandó (0 o 1, lo asigna el relay). La pantalla lleva cada lado como lo lleva el rival (`src/app/duel-spectator.ts`): un `sync` abre la mesa, las jugadas se aplican en orden y, si falta alguna, pide el estado. Al entrar un espectador, el relay avisa a los jugadores, que repiten su saludo y su mesa.
+
+## Cómo está armado
+
+```
+src/app/mat-public.ts      la mesa pública: ids opacos, qué ve el rival, jugadas con ids opacos, espejo (puro)
+src/app/duel-protocol.ts   los mensajes y su validación (todo lo que llega es dato de otra persona)
+src/app/duel-session.ts    createDuel(transport, opciones): mi mesa, el espejo del rival, vidas, reloj, juegos, chat, listo, quién empieza, revancha
+src/app/duel-spectator.ts  createSpectator(transport): las dos mesas de un duelo visto desde afuera
+src/app/duel-socket.ts     el transporte por WebSocket: reconexión, latido, visibilitychange, rol de espectador
+src/app/duel-relay-rules.ts lo que comparten el cliente y el relay (código de sala, límites, avisos, espectadores)
+src/app/duel-games.ts      moneda, dado, piedra-papel-tijera, resultado y chat
+src/app/duel-turn.ts       de quién es el turno y la fase compartida
+src/app/duel-deck.ts       lee un deck de ydke:// o .ydk
+src/app/duel-link.ts, use-duel.ts   el enlace (de jugador y de espectador) y los ganchos de React
+src/components/duel/       DuelScreen (lobby, sala, mesa), DuelOpening, DuelBar, DuelChat, DuelGames, DuelDeckPicker, DuelTable, SpectatorScreen
+duel-relay/                el Worker + Durable Object de Cloudflare (ver docs/duelo-relay.md)
+```
+
+La mesa sigue siendo `matReducer` (puro y determinista) y cada jugada es una `MatAction` serializable. Cada jugador mueve sólo sus cartas, así que no hay edición simultánea sobre lo mismo: **cada lado aplica las jugadas del otro a un espejo de su mesa** con el mismo reductor, y por eso los dos quedan iguales.
+
+### Mensajes (`duel-protocol.ts`)
+
+| Mensaje | Para qué |
+| --- | --- |
+| `hello` | quién soy (`sid` cambia si recargo), el rol y, del anfitrión, los ajustes |
+| `sync` | mi mesa de ahora (enmascarada), lo que ya sabés de ella, mis puntos de vida, si estoy listo, quién empieza (si ya se eligió), cómo va la tirada que lo define y, del anfitrión, el reloj; arranca, reconecta y repara |
+| `act` / `undo` | una jugada mía o el "volver atrás"; `n` cuenta las que llevo |
+| `life` / `clock` | mis puntos de vida (siempre el valor) y el reloj compartido (gana el anfitrión) |
+| `ready` | estoy listo (o ya no) |
+| `game` | moneda, dado, piedra-papel-tijera, con qué definir quién empieza, quién va primero, rendirse, revancha (número de secuencia propio) |
+| `chat` | una línea del chat (se limpia y se acorta al llegar) |
+| `resync` | me perdí algo: mandame un `sync` |
+
+Un mensaje repetido o viejo se ignora (por su número); uno que falta pide un `sync`. El protocolo está en la versión 1: un cliente viejo ignora los mensajes que no conoce.
+
+### Qué ve el rival
+
+Las cartas de la mesa llevan en su id la identidad de la carta (`card-123-2`), así que **por la red viajan con ids opacos** (`c1`, `c2`…). El rival sólo sabe qué carta es una cuando está donde puede verla (campo boca arriba, cementerio, destierro boca arriba, materiales Xyz) o cuando se la muestran (revelar, declarar, activar): una carta se manda una sola vez (`reveal` en cada jugada). Su mano, su deck y lo boca abajo son sólo ids opacos. Los espectadores ven lo mismo que el rival. No impide que alguien abra las herramientas del navegador y mire el tráfico.
+
+### Reconexión
+
+Safari en iOS suspende los WebSockets al bloquear la pantalla. El cliente reintenta con espera creciente, despierta con `visibilitychange` y `online`, y al volver pide un `sync`. Si el rival **recarga** la página, su mesa se pierde: vuelve a la sala y, si ya habían elegido quién empieza, sigue desde ahí y reparte otra mano. La tirada que define quién empieza también se repone al reconectar (con un mensaje perdido no queda trabada).
+
+## Probarlo
+
+Con tres pestañas del navegador (dos jugadores y un espectador):
+
+1. Un relay local: `docs/duelo-relay.md` (`wrangler dev --local`, con tu origen en `ALLOWED_ORIGINS`), o el publicado.
+2. La app: `VITE_DUEL_RELAY_URL=ws://127.0.0.1:8788 npm run dev` (para el relay publicado, su dirección `wss://…`; el relay publicado sólo acepta los orígenes de `duel-relay/wrangler.jsonc`: `localhost:5173` y `127.0.0.1:5173` sirven).
+3. Cada pestaña de jugador necesita un deck: el del builder, o pegar un enlace `ydke://`. El origen es nuevo para cada puerto, así que no comparte lo guardado. El espectador entra con el enlace para mirar.
+
+Los tests de la pantalla juegan duelos completos de dos jugadores (y de un espectador) sobre una sala en memoria (`src/__tests__/support/memory-room.ts`); `duel-relay.e2e.test.ts` juega contra un relay de verdad (incluidos los espectadores) y sólo corre con `VITE_DUEL_RELAY_URL` definida (no corre en el CI; con la variable en un `.env.local` el resto de `npm test` también lo intentaría).
+
+En **Windows**, `wrangler dev` levantado varias veces en una sesión deja procesos `workerd` colgados que traban los archivos del estado y el relay deja de contestar (la página queda en "Conectando…"): apagalos todos y levantá uno solo con otra carpeta en `--persist-to`.
+
+## Qué se descartó a propósito
+
+El chat de otros simuladores casi no cuenta jugadas (sólo declarar efecto, moneda, dado y ofertas), así que no hay un registro compartido de las jugadas de la mesa: se ven en el tablero. Tampoco hay guardar el duelo como replay, ofertas de empate, revelar de forma persistente, elegir el objetivo del ataque tocando el monstruo del rival (se elige en el menú, que anda bien en el celular), chat libre de los espectadores, siding, torneos ni cuentas.
+
+## Para no repetir un error
+
+Los problemas de layout (un elemento de 0 px, una barra que queda debajo del borde de la ventana, una fila que hace scroll) **no aparecen en los tests de jsdom**: hay que medir con `getBoundingClientRect` en un navegador a tamaño de celular (416×734) y de escritorio. Así aparecieron la mano del rival aplastada por la columna que scrollea y la barra de abajo de la mesa fuera de pantalla.

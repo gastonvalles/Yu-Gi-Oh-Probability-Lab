@@ -1,4 +1,4 @@
-import { CLOSE_FULL, PING, PONG, parseRelayFrame } from './duel-relay-rules'
+import { CLOSE_FULL, PING, PONG, SPECTATOR_RESYNC, parseRelayFrame, parseSpectatorText, type ParticipantRole } from './duel-relay-rules'
 import type { DuelTransport } from './duel-session'
 
 /**
@@ -14,14 +14,26 @@ import type { DuelTransport } from './duel-session'
  *   mano de nuevo (`hello` + `sync`), que es lo que repone lo que se perdió.
  * - Los avisos del relay llegan como mensajes binarios y los del rival como texto: nadie puede hacerse
  *   pasar por el relay.
+ * - Como espectador (`role: 'spectator'`) sólo se mira: llega el texto de los dos jugadores con quién lo mandó y no se puede mandar nada, salvo pedir que
+ *   los jugadores repitan su estado (`requestSync`). Un relay que no conoce a los espectadores (anterior) se detecta y no se intenta de nuevo.
  */
 
-export type SocketStatus = 'connecting' | 'open' | 'reconnecting' | 'full' | 'closed'
+export type SocketStatus = 'connecting' | 'open' | 'reconnecting' | 'full' | 'closed' | 'unsupported'
 
 export interface SocketTransport extends DuelTransport {
   readonly status: SocketStatus
   /** Avisa enseguida del estado de ahora y después de cada cambio. */
   onStatus(listener: (status: SocketStatus) => void): () => void
+}
+
+/** Lo que ve un espectador de la conexión: el texto de cada jugador con quién lo mandó (0 o 1), cuántos jugadores hay, y poder pedir que repitan su estado. */
+export interface SpectatorSocket {
+  readonly status: SocketStatus
+  onStatus(listener: (status: SocketStatus) => void): () => void
+  onTagged(listener: (tag: 0 | 1, text: string) => void): () => void
+  onPlayers(listener: (count: number) => void): () => void
+  requestSync(): void
+  close(): void
 }
 
 /** Lo mínimo de un `WebSocket` que usa el transporte (las pruebas ponen uno falso). */
@@ -42,6 +54,8 @@ interface SocketOptions {
   room: string
   /** Quién soy dentro de la sala (`createParticipantId`): una conexión nueva reemplaza a una colgada del mismo. */
   participant: string
+  /** Juega (lo de siempre) o mira. */
+  role?: ParticipantRole
   createSocket?: (url: string) => SocketLike
   random?: () => number
 }
@@ -52,8 +66,9 @@ const BACKOFF_MAX_MS = 8000
 const HEARTBEAT_MS = 20_000
 const PONG_TIMEOUT_MS = 8000
 
-export function createSocketTransport(options: SocketOptions): SocketTransport {
+export function createSocketTransport(options: SocketOptions): SocketTransport & SpectatorSocket {
   const { url, room, participant } = options
+  const spectator = options.role === 'spectator'
   // El `WebSocket` del navegador cumple `SocketLike` salvo por detalles de tipos de sus manejadores.
   const create: (url: string) => SocketLike = options.createSocket ?? ((target) => new WebSocket(target) as unknown as SocketLike)
   const random = options.random ?? Math.random
@@ -61,6 +76,9 @@ export function createSocketTransport(options: SocketOptions): SocketTransport {
   const messageListeners = new Set<(text: string) => void>()
   const peerListeners = new Set<(present: boolean) => void>()
   const statusListeners = new Set<(status: SocketStatus) => void>()
+  const watcherListeners = new Set<(count: number, needSync: boolean) => void>()
+  const taggedListeners = new Set<(tag: 0 | 1, text: string) => void>()
+  const playerListeners = new Set<(count: number) => void>()
 
   let status: SocketStatus = 'connecting'
   let peerPresent = false
@@ -68,6 +86,8 @@ export function createSocketTransport(options: SocketOptions): SocketTransport {
   let attempt = 0
   let stopped = false
   let full = false
+  /** Un espectador que se encontró con un relay anterior a los espectadores: ahí no se puede mirar. */
+  let unsupported = false
   /** Si alguna vez estuvo abierta: volver a conectar es "reconectando", no "conectando". */
   let hasOpened = false
   let retryTimer: ReturnType<typeof setTimeout> | undefined
@@ -103,6 +123,11 @@ export function createSocketTransport(options: SocketOptions): SocketTransport {
       return
     }
 
+    if (unsupported) {
+      setStatus('unsupported')
+      return
+    }
+
     if (code === CLOSE_FULL || full) {
       setStatus('full')
       return
@@ -133,7 +158,7 @@ export function createSocketTransport(options: SocketOptions): SocketTransport {
     clearTimeout(retryTimer)
     setStatus(attempt === 0 && !hasOpened ? 'connecting' : 'reconnecting')
 
-    const ws = create(`${url}/room/${room}?pid=${participant}`)
+    const ws = create(`${url}/room/${room}?pid=${participant}${spectator ? '&role=spectator' : ''}`)
     ws.binaryType = 'arraybuffer'
     socket = ws
 
@@ -155,7 +180,17 @@ export function createSocketTransport(options: SocketOptions): SocketTransport {
       clearTimeout(pongTimer)
 
       if (typeof data === 'string') {
-        if (data !== PONG) {
+        if (data === PONG) {
+          return
+        }
+
+        if (spectator) {
+          const tagged = parseSpectatorText(data)
+
+          if (tagged) {
+            taggedListeners.forEach((listener) => listener(tagged.tag, tagged.text))
+          }
+        } else {
           messageListeners.forEach((listener) => listener(data))
         }
       } else if (typeof data === 'object' && data !== null) {
@@ -163,7 +198,18 @@ export function createSocketTransport(options: SocketOptions): SocketTransport {
         const frame = parseRelayFrame(data as ArrayBuffer)
 
         if (frame?.kind === 'peer') {
-          setPeer(frame.present)
+          if (spectator) {
+            // Un relay que sabe de espectadores le avisa "cuántos jugadores hay"; si contesta como a un jugador, es el anterior y esta conexión ocupó un lugar que no era suyo.
+            unsupported = true
+            setStatus('unsupported')
+            ws.close()
+          } else {
+            setPeer(frame.present)
+          }
+        } else if (frame?.kind === 'players') {
+          playerListeners.forEach((listener) => listener(frame.count))
+        } else if (frame?.kind === 'watchers') {
+          watcherListeners.forEach((listener) => listener(frame.count, frame.sync))
         } else if (frame?.kind === 'full') {
           // La sala está llena: no se reintenta. No se espera el cierre del relay, que puede no llegar.
           full = true
@@ -186,7 +232,7 @@ export function createSocketTransport(options: SocketOptions): SocketTransport {
 
   /** Volvió la pestaña o la red: si la conexión no está, se reconecta ya; si parece estar, se comprueba. */
   const wake = () => {
-    if (stopped || status === 'full') {
+    if (stopped || status === 'full' || unsupported) {
       return
     }
 
@@ -220,9 +266,31 @@ export function createSocketTransport(options: SocketOptions): SocketTransport {
     },
 
     send(text) {
-      if (socket?.readyState === OPEN) {
+      // Un espectador no manda nada (el relay lo desconectaría): sólo mira.
+      if (!spectator && socket?.readyState === OPEN) {
         socket.send(text)
       }
+    },
+
+    requestSync() {
+      if (spectator && socket?.readyState === OPEN) {
+        socket.send(SPECTATOR_RESYNC)
+      }
+    },
+
+    onWatchers(listener) {
+      watcherListeners.add(listener)
+      return () => watcherListeners.delete(listener)
+    },
+
+    onTagged(listener) {
+      taggedListeners.add(listener)
+      return () => taggedListeners.delete(listener)
+    },
+
+    onPlayers(listener) {
+      playerListeners.add(listener)
+      return () => playerListeners.delete(listener)
     },
 
     onMessage(listener) {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { buildDuelLink, DUEL_STEP, extractRoomCode, parseDuelHash } from '../../app/duel-link'
+import { buildDuelLink, DUEL_STEP, extractRoomCode, isWatchLink, parseDuelTarget } from '../../app/duel-link'
 import { cleanName } from '../../app/duel-protocol'
 import { createRoomCode } from '../../app/duel-relay-rules'
 import type { Duel, DuelRole, DuelSnapshot } from '../../app/duel-session'
@@ -10,7 +10,7 @@ import { duelTurnNumber, sharedPhase, whoseTurn } from '../../app/duel-turn'
 import { STARTING_LP } from '../../app/life-calculator'
 import { beginDuel } from '../../app/mascot'
 import { createMatState, isToken, PHASES, randomSeed, shuffleWithSeed } from '../../app/practice-mat'
-import { useDuel, type DuelConnect } from '../../app/use-duel'
+import { useDuel, type DuelConnect, type SpectatorConnect } from '../../app/use-duel'
 import type { MatSession } from '../../app/use-mat-session'
 import { showToastMessage } from '../../app/use-toast-message'
 import { t } from '../../i18n'
@@ -26,6 +26,7 @@ import { DuelDeckPicker, loadDuelDeck, readStoredDeck, type DuelDeck } from './D
 import { gameText, outcomeText, rpsName } from './game-text'
 import { artOfDrawId } from './duel-art'
 import { DuelOpening } from './DuelOpening'
+import { SpectatorScreen } from './SpectatorScreen'
 import { TossOverlay } from './toss-views'
 import { DUEL_AREAS, SideCells, sharedZoneCard, TheirHand, type DuelSideView } from './DuelTable'
 
@@ -41,11 +42,15 @@ interface DuelScreenProps {
   cardsById: ReadonlyMap<string, MatCard>
   deckName: string
   connect: DuelConnect
+  /** Cómo entrar a mirar un duelo (sin esto, un enlace para mirar no se puede abrir). */
+  connectSpectator?: SpectatorConnect
 }
 
 interface Intent {
   room: string
   role: DuelRole
+  /** Entra a mirar, no a jugar. */
+  watch?: boolean
 }
 
 function readStored(storage: () => Storage, key: string): string | null {
@@ -65,22 +70,30 @@ function writeStored(storage: () => Storage, key: string, value: string) {
 }
 
 /** La sala que pide el enlace con que se abrió la página, si hay una. */
-function readIntent(): Intent | null {
-  const room = typeof window === 'undefined' ? null : parseDuelHash(window.location.hash)
+function intentOf(hash: string): Intent | null {
+  const target = parseDuelTarget(hash)
 
-  return room ? { room, role: readStored(() => sessionStorage, roleKey(room)) === 'host' ? 'host' : 'guest' } : null
+  if (!target) {
+    return null
+  }
+
+  return target.watch ? { room: target.room, role: 'guest', watch: true } : { room: target.room, role: readStored(() => sessionStorage, roleKey(target.room)) === 'host' ? 'host' : 'guest' }
+}
+
+function readIntent(): Intent | null {
+  return typeof window === 'undefined' ? null : intentOf(window.location.hash)
 }
 
 /** Pone la sala en la dirección (sin sumar una entrada al historial): así se puede copiar o recargar. */
-function showRoomInUrl(room: string | null) {
-  window.history.replaceState(null, '', room ? `#${DUEL_STEP}?room=${room}` : `#${DUEL_STEP}`)
+function showRoomInUrl(room: string | null, watch = false) {
+  window.history.replaceState(null, '', room ? `#${DUEL_STEP}?room=${room}${watch ? '&watch=1' : ''}` : `#${DUEL_STEP}`)
 }
 
 /**
  * El duelo por enlace: sin sala, el lobby (crear una o unirse con un código); en la sala, el enlace para el rival hasta que los dos
  * reparten su mano; y después la mesa de práctica con el campo del rival arriba. No sabe de redes: `connect` (el relay) lo pone quien la usa.
  */
-export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, connect }: DuelScreenProps) {
+export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, connect, connectSpectator }: DuelScreenProps) {
   // De momento las mascotas no aparecen en los duelos (ni en el lobby, la sala o la mesa): las que andan flotando esperan afuera.
   useEffect(() => beginDuel(), [])
   const [name, setName] = useState(() => readStored(() => localStorage, NAME_KEY) ?? '')
@@ -91,7 +104,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
   const [imported, setImported] = useState<DuelDeck | null>(null)
   const deck = useMemo<DuelDeck>(() => imported ?? { name: deckName, mainIds, extraIds, cardsById }, [imported, deckName, mainIds, extraIds, cardsById])
   const settings = useMemo(() => ({ lp, hand: handSize }), [lp, handSize])
-  const { duel, snapshot, status } = useDuel({ room: intent?.room ?? null, role: intent?.role ?? 'guest', name: myName, settings, connect })
+  const { duel, snapshot, status } = useDuel({ room: intent && !intent.watch ? intent.room : null, role: intent?.role ?? 'guest', name: myName, settings, connect })
   const deckReady = deck.mainIds.length >= handSize
 
   // Sin deck armado (un celular que nunca abrió el builder), el último deck pegado se vuelve a usar solo: también al recargar dentro de la sala, por eso va acá y no en el lobby.
@@ -131,10 +144,10 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
   // Pegar un enlace de duelo en la barra de direcciones (o abrirlo en esta misma pestaña) lleva a esa sala.
   useEffect(() => {
     const onHashChange = () => {
-      const room = parseDuelHash(window.location.hash)
+      const next = intentOf(window.location.hash)
 
-      if (room) {
-        setIntent((current) => (current?.room === room ? current : { room, role: readStored(() => sessionStorage, roleKey(room)) === 'host' ? 'host' : 'guest' }))
+      if (next) {
+        setIntent((current) => (current?.room === next.room && Boolean(current.watch) === Boolean(next.watch) ? current : next))
       }
     }
 
@@ -143,11 +156,15 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
   }, [])
 
   const enter = useCallback(
-    (room: string, role: DuelRole) => {
+    (room: string, role: DuelRole, watch = false) => {
       writeStored(() => localStorage, NAME_KEY, cleanName(name))
-      writeStored(() => sessionStorage, roleKey(room), role)
-      showRoomInUrl(room)
-      setIntent({ room, role })
+
+      if (!watch) {
+        writeStored(() => sessionStorage, roleKey(room), role)
+      }
+
+      showRoomInUrl(room, watch)
+      setIntent({ room, role, ...(watch ? { watch: true } : {}) })
     },
     [name],
   )
@@ -171,8 +188,19 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
         deckSize={deck.mainIds.length}
         minDeck={handSize}
         onCreate={() => enter(createRoomCode(), 'host')}
-        onJoin={(room) => enter(room, 'guest')}
+        onJoin={(room, watch) => enter(room, 'guest', watch)}
       />
+    )
+  }
+
+  // Mirando: sin deck, sin nombre y sin jugar; la pantalla del espectador no tiene nada que tocar.
+  if (intent.watch) {
+    return connectSpectator ? (
+      <SpectatorScreen room={intent.room} connect={connectSpectator} onLeave={leave} />
+    ) : (
+      <Screen>
+        <Callout tone="info">{t('duel.unavailable')}</Callout>
+      </Screen>
     )
   }
 
@@ -227,7 +255,8 @@ interface DuelLobbyProps {
   deckSize: number
   minDeck: number
   onCreate: () => void
-  onJoin: (room: string) => void
+  /** Entrar a una sala: a jugar, o a mirar si el enlace pegado es de espectador. */
+  onJoin: (room: string, watch: boolean) => void
 }
 
 function DuelLobby({ name, onName, lp, onLp, builder, imported, onImport, deckReady, deckSize, minDeck, onCreate, onJoin }: DuelLobbyProps) {
@@ -238,7 +267,7 @@ function DuelLobby({ name, onName, lp, onLp, builder, imported, onImport, deckRe
     const room = extractRoomCode(code)
 
     if (room) {
-      onJoin(room)
+      onJoin(room, isWatchLink(code))
     } else {
       setInvalid(true)
     }
@@ -298,7 +327,7 @@ function DuelLobby({ name, onName, lp, onLp, builder, imported, onImport, deckRe
               className={fieldInline}
             />
           </FieldBox>
-          <Button type="submit" variant="secondary" disabled={!deckReady || code.trim() === ''}>
+          <Button type="submit" variant="secondary" disabled={(!deckReady && !isWatchLink(code)) || code.trim() === ''}>
             {t('duel.lobby.joinAction')}
           </Button>
         </form>
@@ -341,12 +370,14 @@ function DuelRoom({ duel, snapshot, status, room, myName, deckReady, onLeave }: 
   // Quien entra por un enlace y no encuentra a nadie, tras unos segundos, probablemente tiene un enlace vencido: se lo dice en vez de dejarlo esperando.
   const emptyRoom = useWaited(EMPTY_ROOM_MS, role === 'guest' && !peerPresent && status === 'open')
 
-  const copy = async () => {
+  const copy = async (watch = false) => {
+    const text = watch ? buildDuelLink(window.location.origin, window.location.pathname, room, true) : link
+
     try {
-      await navigator.clipboard.writeText(link)
+      await navigator.clipboard.writeText(text)
       showToastMessage(t('duel.room.copied'), 'success')
     } catch {
-      showToastMessage(link, 'error')
+      showToastMessage(text, 'error')
     }
   }
 
@@ -363,9 +394,13 @@ function DuelRoom({ duel, snapshot, status, room, myName, deckReady, onLeave }: 
           <p className="m-0 text-micro font-semibold uppercase tracking-[0.04em] text-soft">{t('duel.room.link')}</p>
           <p className="m-0 break-all text-body font-semibold text-foreground" data-testid="duel-link">{link}</p>
           <p className="m-0 text-micro text-soft">{t('duel.room.code', { code: room })}</p>
+          <p className="m-0 text-micro text-soft">{t('duel.room.watchHint')}</p>
           <div className="flex flex-wrap gap-2">
             <Button variant="primary" size="sm" icon="link" onClick={() => void copy()}>
               {t('duel.room.copy')}
+            </Button>
+            <Button variant="secondary" size="sm" icon="eye" onClick={() => void copy(true)}>
+              {t('duel.room.copyWatch')}
             </Button>
             {canShare ? (
               <Button variant="secondary" size="sm" onClick={share}>
@@ -377,6 +412,12 @@ function DuelRoom({ duel, snapshot, status, room, myName, deckReady, onLeave }: 
       ) : null}
 
       {status !== 'open' ? <Callout tone="warning" icon="alert">{status === 'connecting' ? t('duel.status.connecting') : t('duel.status.reconnecting')}</Callout> : null}
+      {snapshot.watchers > 0 ? (
+        <p className="m-0 flex items-center gap-2 text-micro text-soft" role="status">
+          <Icon name="eye" size={14} />
+          {t('duel.room.watchers', { count: snapshot.watchers })}
+        </p>
+      ) : null}
       {incompatible ? <Callout tone="danger">{t('duel.room.incompatible')}</Callout> : null}
       {emptyRoom ? <Callout tone="warning" icon="alert">{t('duel.room.expired')}</Callout> : null}
 

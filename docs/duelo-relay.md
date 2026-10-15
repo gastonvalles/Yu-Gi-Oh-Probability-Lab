@@ -4,12 +4,13 @@ El duelo por enlace junta a dos jugadores, cada uno en su dispositivo, por un **
 
 ## Qué hace y qué no
 
-- Una sala por código de 8 letras, de **dos** jugadores. El tercero que entra recibe "sala llena".
+- Una sala por código de 8 letras, de **dos** jugadores y hasta **dos espectadores**. El tercer jugador, o el tercer espectador, recibe "sala llena" (un jugador no ocupa el lugar de un espectador ni al revés).
 - Reenvía cada mensaje de texto sin leerlo ni guardarlo. **No hay base de datos**: la sala existe mientras haya conexiones.
-- Avisa a cada jugador cuando el otro entra o sale, con mensajes binarios (los jugadores no pueden mandar binarios, así nadie puede hacerse pasar por el relay).
+- Avisa a cada jugador cuando el otro entra o sale, y cuántos espectadores hay, con mensajes binarios (los jugadores no pueden mandar binarios, así nadie puede hacerse pasar por el relay).
+- **Espectadores** (`?role=spectator` en la conexión): reciben el texto de los dos jugadores, cada mensaje precedido de quién lo mandó (un `0` o un `1` que asigna el relay por orden de llegada; un jugador que reconecta con su identidad conserva el suyo) y un aviso binario de cuántos jugadores hay. **No pueden hacer nada**: lo que manden no llega a ningún jugador y los desconecta (código 1008), salvo la palabra `resync`, que pide a los jugadores que repitan su estado (los jugadores lo reciben como un aviso binario de espectadores con `sync`; el relay lo deja pasar como mucho cada dos segundos). Al entrar uno, los jugadores reciben ese mismo aviso para que lo pongan al día.
 - Límites: 16 KB por mensaje, 30 mensajes por segundo (ráfaga de 60), y solo acepta conexiones de las páginas listadas en `ALLOWED_ORIGINS`. Lo que se pasa se cierra con un código (1003 binario, 1009 enorme, 1008 ritmo).
 - Contesta el latido (`ping` → `pong`) sin despertar la sala, que hiberna entre mensajes.
-- Cuenta, sin datos de nadie, `room_opened` (entra el primero) y `room_paired` (llega el segundo). No registra el código de la sala ni direcciones.
+- Cuenta, sin datos de nadie, `room_opened` (entra el primer jugador), `room_paired` (llega el segundo) y `room_watched` (entra un espectador). No registra el código de la sala ni direcciones.
 
 El código de la app que lo usa está en `src/app/duel-socket.ts` (cliente con reconexión) y `src/app/duel-relay-rules.ts` (lo que comparten los dos lados).
 
@@ -22,7 +23,7 @@ npx wrangler@4 dev --local --port 8788 --var "ALLOWED_ORIGINS:http://localhost:5
 
 En **Windows**, si falla con `SQLITE_CANTOPEN`, es el límite de 260 caracteres de la ruta: apuntá el estado a una ruta corta con `--persist-to C:/tmp/relay`.
 
-Con el relay levantado, la prueba de integración (no corre en el CI) juega un duelo completo con una caída de la conexión:
+Con el relay levantado, la prueba de integración (no corre en el CI) juega un duelo completo con una caída de la conexión y prueba a los espectadores (el límite de dos, que no puedan mandar, las etiquetas y el pedido de estado):
 
 ```bash
 VITE_DUEL_RELAY_URL=ws://127.0.0.1:8788 npm test -- duel-relay.e2e
@@ -35,6 +36,8 @@ VITE_DUEL_RELAY_URL=ws://127.0.0.1:8788 npm test -- duel-relay.e2e
 3. `npx wrangler@4 deploy`. Devuelve una dirección como `https://ygo-lab-duel-relay.<tu-subdominio>.workers.dev`.
 4. En Vercel, agregá la variable de entorno **`VITE_DUEL_RELAY_URL`** con esa dirección en `wss://` (`wss://ygo-lab-duel-relay.<tu-subdominio>.workers.dev`) y volvé a desplegar.
 5. Opcional: la política de seguridad de `vercel.json` permite `wss://*.workers.dev`; si querés, cambiá el comodín por tu dirección exacta.
+
+Al publicar una versión con espectadores, publicá **primero el relay**: un enlace de espectador abierto contra un relay anterior lo trataría como a un jugador (la app lo detecta y no lo usa, pero ocupa un lugar un instante).
 
 Revisá en el panel de Cloudflare los límites vigentes del plan gratuito para Durable Objects y Workers antes de abrirlo al público.
 

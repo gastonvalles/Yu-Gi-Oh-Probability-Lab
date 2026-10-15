@@ -23,6 +23,8 @@ export interface DuelTransport {
   onMessage(listener: (text: string) => void): () => void
   /** El otro jugador entra o sale. Al suscribirse avisa enseguida cómo está ahora. */
   onPeer(listener: (present: boolean) => void): () => void
+  /** Cuántos espectadores hay y si alguno pide que repitas tu estado (llegó, o se perdió algo). Sin espectadores (una sala en memoria) no existe. */
+  onWatchers?(listener: (count: number, needSync: boolean) => void): () => void
   close(): void
 }
 
@@ -68,6 +70,8 @@ export interface DuelSnapshot {
   opening: { method: TossMethod | null; caller: Duelist | null; dice: { mine: number | null; theirs: number | null }; chooser: Duelist | null; ordered: boolean }
   /** Lo que se escribieron los dos, de más viejo a más nuevo. */
   chat: readonly ChatLine[]
+  /** Cuántos espectadores están mirando (hasta dos): sólo miran, no pueden hacer nada. */
+  watchers: number
 }
 
 export interface Duel {
@@ -155,6 +159,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   let chat: ChatLine[] = []
   let chatId = 0
   let chatN = 0
+  let watchers = 0
 
   // El lado del rival: lo último que le oí, para descartar repetidos y detectar lo que falta.
   let theirs: Mirror | null = null
@@ -168,7 +173,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   const listeners = new Set<() => void>()
   let snapshot: DuelSnapshot
 
-  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent, peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat })
+  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent, peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, watchers })
 
   const emit = () => {
     snapshot = build()
@@ -545,6 +550,18 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     emit()
   })
 
+  // Quien entra a mirar (o se perdió algo) pide que repita mi estado: mi saludo y mi mesa, que le llegan por el relay a los espectadores (y, repetidos, no le cambian nada al otro jugador).
+  const stopWatchers = transport.onWatchers?.((count, needSync) => {
+    watchers = count
+
+    if (needSync) {
+      sendHello()
+      sendSync()
+    }
+
+    emit()
+  })
+
   snapshot = build()
 
   return {
@@ -689,6 +706,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     close() {
       stopMessages()
       stopPeer()
+      stopWatchers?.()
       listeners.clear()
       transport.close()
     },

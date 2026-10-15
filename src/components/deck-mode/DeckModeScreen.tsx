@@ -7,7 +7,7 @@ import { buildActiveRuleSet } from '../../app/pattern-presets'
 import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
 import { createMatState, randomSeed, shuffleWithSeed } from '../../app/practice-mat'
 import { useMatSession } from '../../app/use-mat-session'
-import { connectToRelay, duelRelayUrl } from '../../app/use-duel'
+import { connectSpectatorToRelay, connectToRelay, duelRelayUrl } from '../../app/use-duel'
 import { t } from '../../i18n'
 import type { DeckCardInstance } from '../../app/model'
 import type { SavedCombo } from '../../app/saved-combos'
@@ -106,7 +106,7 @@ export function DeckModeScreen() {
   // El duelo por enlace se ofrece sólo si la app sabe a qué relay conectarse (`VITE_DUEL_RELAY_URL`).
   const duelConnect = useMemo(() => {
     const url = duelRelayUrl()
-    return url ? connectToRelay(url) : null
+    return url ? { play: connectToRelay(url), watch: connectSpectatorToRelay(url) } : null
   }, [])
   // La partida vive acá y no en la pantalla: salir de la práctica (a la calculadora, al builder) no pierde la mano ni el combo en curso.
   const practice = usePracticeSession({
@@ -285,7 +285,7 @@ export function DeckModeScreen() {
             {t('duel.nav.title')}
           </Heading>
           {duelConnect ? (
-            <LazyDuelScreen handSize={controller.probability.handSize} mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} connect={duelConnect} />
+            <LazyDuelScreen handSize={controller.probability.handSize} mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} connect={duelConnect.play} connectSpectator={duelConnect.watch} />
           ) : (
             <Callout tone="info" className="m-4">{t('duel.unavailable')}</Callout>
           )}
