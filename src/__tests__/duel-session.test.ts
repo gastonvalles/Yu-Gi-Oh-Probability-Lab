@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { encodeMessage, type DuelSettings } from '../app/duel-protocol'
 import { saveOf } from '../app/duel-save'
@@ -40,6 +40,14 @@ const masked = (initial: MatState, state: MatState) => {
 function expectSameTables(game: Game) {
   expect(game.guest.getSnapshot().theirs?.state).toEqual(masked(hostTable, game.host.getSnapshot().mine!))
   expect(game.host.getSnapshot().theirs?.state).toEqual(masked(guestTable, game.guest.getSnapshot().mine!))
+}
+
+/** `owner` pide volver atrás su última jugada y el otro lo permite. */
+function undoAllowed(game: Game, owner: Duel, other: Duel) {
+  owner.undo()
+  game.room.flush()
+  other.answerUndo(true)
+  game.room.flush()
 }
 
 function startBoth(game: Game) {
@@ -121,18 +129,121 @@ describe('las mesas', () => {
 
     game.host.play({ type: 'place', id: 'card-1000-1', zone: 'mz', index: 0, pos: 'atk' })
     game.host.play({ type: 'move', id: 'card-1001-1', to: 'gy' })
-    game.host.undo()
-    game.room.flush()
+    undoAllowed(game, game.host, game.guest)
 
     expect(game.host.getSnapshot().moves).toBe(1)
     expectSameTables(game)
     expect(game.guest.getSnapshot().theirs?.state.gy).toEqual([])
 
-    game.host.undo()
-    game.host.undo()
-    game.room.flush()
+    undoAllowed(game, game.host, game.guest)
+    undoAllowed(game, game.host, game.guest)
     expect(game.host.getSnapshot().moves).toBe(0)
     expectSameTables(game)
+  })
+
+  describe('volver atrás pide permiso al rival', () => {
+    const played = () => {
+      const game = setup()
+      startBoth(game)
+      game.host.play({ type: 'place', id: 'card-1000-1', zone: 'mz', index: 0, pos: 'atk' })
+      game.room.flush()
+      return game
+    }
+
+    it('hasta que el rival contesta no se deshace nada: quien pide espera y el otro ve el pedido', () => {
+      const game = played()
+
+      game.host.undo()
+      game.room.flush()
+
+      expect(game.host.getSnapshot().undo).toMatchObject({ asking: true, asked: false })
+      expect(game.guest.getSnapshot().undo).toMatchObject({ asking: false, asked: true })
+      expect(game.host.getSnapshot().moves).toBe(1)
+      expectSameTables(game)
+
+      // Pedir de nuevo mientras espera no manda otro pedido.
+      const sent = game.room.sent.length
+      game.host.undo()
+      expect(game.room.sent).toHaveLength(sent)
+    })
+
+    it('si lo permite, se deshace en los dos lados; si no lo permite, no, y quien pidió se entera', () => {
+      const allowed = played()
+      undoAllowed(allowed, allowed.host, allowed.guest)
+      expect(allowed.host.getSnapshot().moves).toBe(0)
+      expect(allowed.host.getSnapshot().undo).toMatchObject({ asking: false, result: null })
+      expect(allowed.guest.getSnapshot().undo.asked).toBe(false)
+      expectSameTables(allowed)
+
+      const denied = played()
+      denied.host.undo()
+      denied.room.flush()
+      denied.guest.answerUndo(false)
+      denied.room.flush()
+      expect(denied.host.getSnapshot().moves).toBe(1)
+      expect(denied.host.getSnapshot().undo).toMatchObject({ asking: false, result: { n: 1, kind: 'denied' } })
+      expect(denied.guest.getSnapshot().undo.asked).toBe(false)
+      expectSameTables(denied)
+
+      // Puede volver a pedirlo, y el resultado nuevo cuenta aparte.
+      denied.host.undo()
+      denied.room.flush()
+      denied.guest.answerUndo(false)
+      denied.room.flush()
+      expect(denied.host.getSnapshot().undo.result).toEqual({ n: 2, kind: 'denied' })
+    })
+
+    it('hacer otra jugada mientras espera cancela el pedido: el cartel del rival se va y un permiso tardío no deshace la jugada nueva', () => {
+      const game = played()
+
+      game.host.undo()
+      game.room.flush()
+      game.host.play({ type: 'move', id: 'card-1001-1', to: 'gy' })
+      game.room.flush()
+
+      expect(game.host.getSnapshot().undo.asking).toBe(false)
+      expect(game.guest.getSnapshot().undo.asked).toBe(false)
+      game.guest.answerUndo(true)
+      game.room.flush()
+      expect(game.host.getSnapshot().moves).toBe(2)
+      expectSameTables(game)
+    })
+
+    it('sin respuesta en 30 segundos el pedido se cancela y el rival deja de verlo', () => {
+      vi.useFakeTimers()
+
+      try {
+        const game = played()
+
+        game.host.undo()
+        game.room.flush()
+        vi.advanceTimersByTime(30_000)
+        game.room.flush()
+
+        expect(game.host.getSnapshot().undo).toMatchObject({ asking: false, result: { n: 1, kind: 'expired' } })
+        expect(game.guest.getSnapshot().undo.asked).toBe(false)
+        expect(game.host.getSnapshot().moves).toBe(1)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('sin el rival en la sala no hay a quién pedirle permiso: se deshace de una; y si el rival se va con un pedido en el aire, el pedido se cae', () => {
+      const alone = played()
+      alone.guestEnd.disconnect()
+      alone.room.flush()
+      alone.host.undo()
+      expect(alone.host.getSnapshot().moves).toBe(0)
+
+      const leaving = played()
+      leaving.host.undo()
+      leaving.room.flush()
+      expect(leaving.guest.getSnapshot().undo.asked).toBe(true)
+      leaving.hostEnd.disconnect()
+      leaving.room.flush()
+      expect(leaving.guest.getSnapshot().undo.asked).toBe(false)
+      expect(leaving.host.getSnapshot().undo.asking).toBe(false)
+    })
   })
 
   it('empezar otra vez (una revancha) reemplaza la mesa del rival', () => {
@@ -488,6 +599,8 @@ describe('partidas al azar', () => {
           game.room.queue.push(game.room.queue[Math.floor(next() * queued)]!)
         } else if (roll < 0.96 && queued > 0) {
           game.room.queue.splice(Math.floor(next() * queued), 1)
+        } else if (roll >= 0.96) {
+          player.answerUndo(next() < 0.7)
         }
 
         if (next() < 0.7) {
@@ -504,6 +617,9 @@ describe('partidas al azar', () => {
       expect(game.host.getSnapshot().life.lp, `corrida ${run}`).toEqual(game.guest.getSnapshot().life.lp)
       expect(game.host.getSnapshot().life.timer.running, `corrida ${run}`).toBe(game.guest.getSnapshot().life.timer.running)
       expect(timerElapsed(game.host.getSnapshot().life.timer, game.clock.t), `corrida ${run}`).toBe(timerElapsed(game.guest.getSnapshot().life.timer, game.clock.t))
+
+      // Un pedido de volver atrás sin contestar deja un reloj de espera: se cierra la sesión para que no quede colgado.
+      players.forEach(([player]) => player.close())
     }
   })
 })

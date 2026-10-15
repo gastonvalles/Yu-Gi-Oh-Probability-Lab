@@ -30,6 +30,7 @@ import { DuelChat } from './DuelChat'
 import { DuelChatPanel } from './DuelChat'
 import { DuelPause } from './DuelPause'
 import { RivalCardDetail } from './RivalCardDetail'
+import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { ResultCard } from './DuelResult'
 import { DuelDeckPicker, loadDuelDeck, readStoredDeck, type DuelDeck } from './DuelDeckPicker'
 import { gameText, outcomeText, rpsName } from './game-text'
@@ -753,6 +754,28 @@ function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEff
   return { effect: shown?.effect, flash, shuffles }
 }
 
+/** Los avisos del permiso para volver atrás: le pedí al rival (queda esperando), no lo permitió o no contestó. Quien lo recibe ve el cartel, no un aviso. */
+function useUndoNotices(snapshot: DuelSnapshot, rival: string) {
+  const { asking, result } = snapshot.undo
+  const wasAsking = useRef(asking)
+  const seen = useRef(result?.n ?? 0)
+
+  useEffect(() => {
+    if (asking && !wasAsking.current) {
+      showToastMessage(t('duel.undo.asking', { name: rival }), 'info')
+    }
+
+    wasAsking.current = asking
+  }, [asking, rival])
+
+  useEffect(() => {
+    if (result && result.n > seen.current) {
+      seen.current = result.n
+      showToastMessage(t(result.kind === 'denied' ? 'duel.undo.denied' : 'duel.undo.expired', { name: rival }), result.kind === 'denied' ? 'warning' : 'info')
+    }
+  }, [result, rival])
+}
+
 /** Cuánto se queda el globo de "pensando" o "todo bien" junto a las vidas. */
 const SIGNAL_MS = 3500
 
@@ -896,6 +919,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   useMarkNotice(snapshot)
   const notice = useRivalNotice(snapshot, turn)
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
+  useUndoNotices(snapshot, rivalName)
   // A quiénes se puede atacar: los monstruos del rival en el campo, con el id que él les dio.
   const attackTargets = useMemo(
     () => (['mz', 'emz'] as const).flatMap((zone) => theirs!.state[zone].flatMap((placed, index) => (placed ? [{ id: placed.id, zone, index, faceDown: placed.pos === 'set' }] : []))),
@@ -908,6 +932,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       opponent: <SideCells side={opponent} owner="theirs" />,
       sharedZone: (index) => sharedZoneCard(opponent, index),
       attackTargets,
+      undoPending: snapshot.undo.asking,
       rivalEmz: theirs!.state.emz.map(Boolean),
       foreignKnown: theirs!.known,
       announcement,
@@ -988,6 +1013,16 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
         onPick={(id, rect) => openMark({ card: id }, rect, rivalCardName)}
         onClose={() => setRivalViewer(null)}
         anonymous
+      />
+      {/* El rival quiere volver atrás su jugada: hay que contestar. Cerrarlo (Escape, tocar afuera) es no permitir. */}
+      <ConfirmDialog
+        isOpen={snapshot.undo.asked && !covered}
+        title={t('duel.undo.askTitle', { name: rivalName })}
+        description={t('duel.undo.askText', { name: rivalName })}
+        cancelLabel={t('duel.undo.deny')}
+        confirmLabel={t('duel.undo.allow')}
+        onCancel={() => duel.answerUndo(false)}
+        onConfirm={() => duel.answerUndo(true)}
       />
       {rivalInspected && !covered ? <RivalCardDetail key={rivalInspected.drawId} drawId={rivalInspected.drawId} origin={rivalInspected.rect} onClose={() => setRivalInspected(null)} /> : null}
       {/* Lo que tira el rival (moneda, dado, piedra-papel-tijera) se ve girar acá aunque el panel de juegos esté cerrado. */}

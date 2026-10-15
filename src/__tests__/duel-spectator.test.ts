@@ -112,6 +112,8 @@ describe('un espectador que llega con el duelo empezado', () => {
     // Deshacer también se ve (vuelve a la fase de antes de pasar a la Battle Phase).
     game.host.undo()
     game.room.flush()
+    game.guest.answerUndo(true)
+    game.room.flush()
     expect(spectator.getSnapshot().phase).toBe('draw')
 
     // Ana pasa el turno (End Phase y después la Draw Phase): ahora juega Beto.
@@ -245,6 +247,24 @@ describe('un espectador que llega con el duelo empezado', () => {
     first.close()
     game.room.flush()
     expect(game.host.getSnapshot().watchers).toBe(1)
+  })
+
+  it('que un espectador se vaya no pausa el duelo: los jugadores se siguen viendo; sólo se pausa cuando sale uno de ellos', () => {
+    const game = startedDuel()
+    const { transport } = watch(game)
+
+    expect(game.host.getSnapshot()).toMatchObject({ peerPresent: true, watchers: 1 })
+    expect(game.guest.getSnapshot()).toMatchObject({ peerPresent: true, watchers: 1 })
+
+    transport.close()
+    game.room.flush()
+    expect(game.host.getSnapshot()).toMatchObject({ peerPresent: true, watchers: 0 })
+    expect(game.guest.getSnapshot()).toMatchObject({ peerPresent: true, watchers: 0 })
+
+    // Un jugador que se va, sí lo pausa (para el otro).
+    game.guestEnd.disconnect()
+    game.room.flush()
+    expect(game.host.getSnapshot().peerPresent).toBe(false)
   })
 })
 

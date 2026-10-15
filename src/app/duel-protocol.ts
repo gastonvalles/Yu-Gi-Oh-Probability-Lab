@@ -57,6 +57,8 @@ interface ClockWire {
  * - `hello`: quién soy (`sid` cambia si recargo la página: el otro lado empieza de cero con mis números). Sólo el anfitrión manda los ajustes.
  * - `sync`: mi mesa de ahora (enmascarada, si ya la empecé), todo lo que ya sabés de ella, mis puntos de vida y, si soy el anfitrión, el reloj; sirve para arrancar, reconectar y reparar.
  * - `act` / `undo`: una jugada mía o el "volver atrás". `n` es la cantidad de jugadas que tengo después de ella.
+ * - `undoAsk` / `undoAnswer` / `undoCancel`: antes de volver atrás una jugada se le pide permiso al otro (`id` cuenta mis pedidos): él contesta con `ok` y, si lo permite, recién ahí mando el `undo`;
+ *   si me arrepiento (o pasa mucho sin respuesta) lo cancelo y su cartel se va.
  * - `life` / `clock`: mis puntos de vida (siempre el valor, no el cambio) y el reloj compartido.
  * - `game`: moneda, dado, piedra-papel-tijera o quién va primero (no cambian la mesa; `n` cuenta los míos para no repetir ninguno).
  * - `ready`: estoy listo (o ya no) para empezar el duelo; también viaja en el `sync`.
@@ -70,6 +72,9 @@ export type DuelMessage =
   | { t: 'sync'; n: number; state?: MatState; known: Record<string, string>; lp: number; lifeN: number; clock?: ClockWire; ready?: boolean; order?: 0 | 1; opening?: OpeningWire }
   | { t: 'act'; n: number; wire: WireAct }
   | { t: 'undo'; n: number }
+  | { t: 'undoAsk'; id: number }
+  | { t: 'undoAnswer'; id: number; ok: boolean }
+  | { t: 'undoCancel'; id: number }
   | { t: 'life'; n: number; lp: number }
   | { t: 'clock'; n: number; running: boolean; elapsedMs: number }
   | { t: 'game'; n: number; game: DuelGame }
@@ -349,6 +354,15 @@ export function parseMessage(text: unknown): DuelMessage | null {
 
     case 'undo':
       return isInt(raw.n, 0, MAX_COUNT) ? { t: 'undo', n: raw.n } : null
+
+    case 'undoAsk':
+      return isInt(raw.id, 1, MAX_COUNT) ? { t: 'undoAsk', id: raw.id } : null
+
+    case 'undoAnswer':
+      return isInt(raw.id, 1, MAX_COUNT) && typeof raw.ok === 'boolean' ? { t: 'undoAnswer', id: raw.id, ok: raw.ok } : null
+
+    case 'undoCancel':
+      return isInt(raw.id, 1, MAX_COUNT) ? { t: 'undoCancel', id: raw.id } : null
 
     case 'life':
       return isInt(raw.n, 1, MAX_COUNT) && isInt(raw.lp, 0, MAX_LP) ? { t: 'life', n: raw.n, lp: raw.lp } : null

@@ -61,6 +61,11 @@ let connect: DuelConnect
 
 const screenProps = (overrides: Partial<Parameters<typeof DuelScreen>[0]> = {}) => ({ handSize: 5, mainIds, extraIds, cardsById, deckName: 'Mi deck', connect, connectSpectator: () => asSpectatorSocket(memory.spectate()), ...overrides })
 const flush = () => act(() => memory.flush())
+/** El rival de quien tocó Deshacer ve el cartel y permite volver atrás la jugada. */
+const allowUndo = () => {
+  fireEvent.click(screen.getByRole('button', { name: 'Permitir' }))
+  flush()
+}
 const click = (view: RenderResult, name: string | RegExp, role: 'button' | 'menuitem' = 'button') => fireEvent.click(within(view.container).getByRole(role, { name }))
 const pointer = { button: 0, pointerId: 1 }
 const tap = (element: HTMLElement) => {
@@ -330,6 +335,7 @@ describe('la pantalla del duelo', () => {
     flush()
     click(host, 'Deshacer')
     flush()
+    allowUndo()
     expect(within(guest.container).queryByText('Ana te ataca directo')).not.toBeInTheDocument()
     expect(strikes()).toHaveLength(0)
     click(host, 'Battle Phase')
@@ -427,6 +433,7 @@ describe('la pantalla del duelo', () => {
     // Deshacer lo de Ana no repite nada en la mesa de Beto.
     click(host, 'Deshacer')
     flush()
+    allowUndo()
     expect(stage()).toBeNull()
     expect(guest.container.querySelector('[data-rival-drop="gy"]')?.getAttribute('aria-label')).toBe('GY: 0')
   })
@@ -616,6 +623,38 @@ describe('la pantalla del duelo', () => {
     flush()
     fireEvent.click(within(guest.container).getByRole('button', { name: 'Rival, Zona de monstruo 2: marcar' }))
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Target'])
+  })
+
+  it('Deshacer le pide permiso al rival: él ve un cartel para permitirlo o no, y quien pidió espera con Deshacer apagado y la jugada sigue hasta que se lo permitan', () => {
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+    summonFirst(host)
+    flush()
+    const monsterCards = () => zoneOf(host, 'Zona de monstruo 1').queryAllByRole('button')
+
+    click(host, 'Deshacer')
+    flush()
+
+    // Ana espera (sin poder pedirlo de nuevo) y su jugada sigue; Beto ve el cartel.
+    expect(within(host.container).getByRole('button', { name: 'Deshacer' })).toBeDisabled()
+    expect(monsterCards()).toHaveLength(1)
+    const ask = within(screen.getByRole('alertdialog'))
+    expect(ask.getByText('¿Permitís que Ana vuelva atrás su jugada?')).toBeInTheDocument()
+    expect(ask.getByText('Ana quiere deshacer su última jugada. Si la permitís, su mesa vuelve a como estaba antes.')).toBeInTheDocument()
+
+    // No lo permite: el cartel se va, Ana puede volver a pedir y su jugada sigue en la mesa.
+    fireEvent.click(ask.getByRole('button', { name: 'No permitir' }))
+    flush()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(within(host.container).getByRole('button', { name: 'Deshacer' })).toBeEnabled()
+    expect(monsterCards()).toHaveLength(1)
+
+    // Lo permite: ahora sí se deshace, en las dos mesas.
+    click(host, 'Deshacer')
+    flush()
+    allowUndo()
+    expect(monsterCards()).toHaveLength(0)
+    expect(guest.container.querySelector('[data-rival-card-id]')).toBeNull()
   })
 
   it('juegos: moneda, piedra-papel-tijera y quién empieza; los dos ven lo mismo y la elección del rival no se ve hasta elegir la propia', () => {
@@ -865,6 +904,7 @@ describe('la pantalla del duelo', () => {
     expect(hand(guest)).toBe(7)
     click(host, 'Deshacer')
     flush()
+    allowUndo()
     click(host, 'Draw Phase')
     flush()
     expect(hand(guest)).toBe(7)

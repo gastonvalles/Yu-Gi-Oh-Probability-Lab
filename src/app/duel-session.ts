@@ -75,6 +75,11 @@ export interface DuelSnapshot {
   chat: readonly ChatLine[]
   /** Cuántos espectadores están mirando (hasta dos): sólo miran, no pueden hacer nada. */
   watchers: number
+  /**
+   * El permiso para volver atrás una jugada: `asking`, pedí deshacer la mía y espero la respuesta del rival; `asked`, el rival pide deshacer la suya y tengo que contestar;
+   * `result`, cómo terminó mi último pedido si no se permitió (`n` cuenta los resultados, para avisar una sola vez cada uno).
+   */
+  undo: { asking: boolean; asked: boolean; result: { n: number; kind: 'denied' | 'expired' } | null }
   /** Lo marcado como objetivo: `mine`, lo que el rival marcó de mi lado (con mis ids reales); `theirs`, lo que yo marqué del suyo (con los ids que él les dio). */
   marks: { mine: Marks; theirs: Marks }
 }
@@ -85,7 +90,10 @@ export interface Duel {
   /** Mi mesa de arranque (deck mezclado y mano repartida); se la mando al rival ya enmascarada. */
   start(initial: MatState): void
   play(action: MatAction): void
+  /** Volver atrás mi última jugada: si el rival está, primero se le pide permiso (si lo permite, se deshace; si no, no). */
   undo(): void
+  /** Contestar el pedido del rival de volver atrás su jugada. */
+  answerUndo(allow: boolean): void
   changeLife(delta: number): void
   halveLife(): void
   toggleClock(): void
@@ -129,6 +137,9 @@ interface DuelOptions {
   /** Mi mesa guardada de antes de recargar la página: se sigue desde ahí en vez de repartir de nuevo. */
   restore?: DuelSave
 }
+
+/** Cuánto espera mi pedido de volver atrás una respuesta del rival antes de cancelarse. */
+const UNDO_WAIT_MS = 30_000
 
 export function createDuel(transport: DuelTransport, options: DuelOptions): Duel {
   const { role } = options
@@ -180,6 +191,12 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   let markSigns: Record<string, string> = {}
   /** Mis puntos de vida vienen de lo guardado: el saludo del anfitrión no los pisa con los de arranque. */
   let lpRestored = false
+  // El permiso para volver atrás: mi pedido en curso (su número y su reloj de espera), el que me hace el rival y cómo terminó el último que no se permitió.
+  let undoAskN = 0
+  let undoAsking: number | null = null
+  let undoTimer: ReturnType<typeof setTimeout> | null = null
+  let undoAsked: number | null = null
+  let undoResult: { n: number; kind: 'denied' | 'expired' } | null = null
 
   // El lado del rival: lo último que le oí, para descartar repetidos y detectar lo que falta.
   let theirs: Mirror | null = null
@@ -193,7 +210,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   const listeners = new Set<() => void>()
   let snapshot: DuelSnapshot
 
-  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent, peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, watchers, marks: { mine: marksOnMine, theirs: marksOnTheirs } })
+  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent, peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult }, marks: { mine: marksOnMine, theirs: marksOnTheirs } })
 
   const emit = () => {
     snapshot = build()
@@ -409,6 +426,35 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     }
   }
 
+  /** Deshace mi última jugada y se lo cuenta al rival. */
+  const applyUndo = () => {
+    if (!initial || actions.length === 0) {
+      return
+    }
+
+    actions = actions.slice(0, -1)
+    mine = replayMat(initial, actions)
+    send({ t: 'undo', n: actions.length })
+  }
+
+  /** Dejo de esperar la respuesta a mi pedido de volver atrás (si le había preguntado al rival, se lo aviso: su cartel se va). */
+  const dropUndoAsk = (notify: boolean) => {
+    if (undoAsking === null) {
+      return
+    }
+
+    if (undoTimer !== null) {
+      clearTimeout(undoTimer)
+      undoTimer = null
+    }
+
+    if (notify) {
+      send({ t: 'undoCancel', id: undoAsking })
+    }
+
+    undoAsking = null
+  }
+
   /** Un juego mío: se anota en mi registro y viaja. Con el rival ausente no se hace (no lo vería). */
   const playGame = (game: DuelGame) => {
     if (!peerPresent) {
@@ -434,6 +480,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
    * (en cuanto me salude me la manda): si no, a quien no recargó se le cerraría la mesa un instante y se le volvería a repartir la mano.
    */
   const forgetPeer = () => {
+    undoAsked = null
+    dropUndoAsk(false)
     peerSeq = 0
     peerLifeN = 0
     peerClockN = 0
@@ -557,6 +605,31 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
 
         return
 
+      case 'undoAsk':
+        undoAsked = message.id
+        return
+
+      case 'undoAnswer':
+        // Sólo vale la respuesta a mi pedido de ahora: una vieja (cancelado, o ya jugué otra cosa) no deshace nada.
+        if (message.id === undoAsking) {
+          dropUndoAsk(false)
+
+          if (message.ok) {
+            applyUndo()
+          } else {
+            undoResult = { n: (undoResult?.n ?? 0) + 1, kind: 'denied' }
+          }
+        }
+
+        return
+
+      case 'undoCancel':
+        if (undoAsked === message.id) {
+          undoAsked = null
+        }
+
+        return
+
       case 'life':
         if (message.n > peerLifeN) {
           peerLifeN = message.n
@@ -616,6 +689,9 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   const stopPeer = transport.onPeer((present) => {
     peerPresent = present
     awaitingSync = false
+    // Un pedido de volver atrás no sobrevive a que el otro salga o vuelva.
+    undoAsked = null
+    dropUndoAsk(false)
 
     if (present) {
       sendHello()
@@ -697,6 +773,9 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
         return
       }
 
+      // Si estaba esperando permiso para volver atrás, hacer otra jugada lo cancela (el permiso sería para otra jugada que la que se quería deshacer).
+      dropUndoAsk(true)
+
       const sent = encodeAct(sender, mine, action)
 
       sender = sent.sender
@@ -707,13 +786,40 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     },
 
     undo() {
-      if (!initial || actions.length === 0) {
+      if (!initial || actions.length === 0 || undoAsking !== null) {
         return
       }
 
-      actions = actions.slice(0, -1)
-      mine = replayMat(initial, actions)
-      send({ t: 'undo', n: actions.length })
+      // Solo en la sala no hay a quién pedirle permiso; con el rival ahí, se le pregunta y se deshace si lo permite.
+      if (!peerPresent) {
+        applyUndo()
+        emit()
+        return
+      }
+
+      undoAskN += 1
+
+      const id = undoAskN
+
+      undoAsking = id
+      send({ t: 'undoAsk', id })
+      undoTimer = setTimeout(() => {
+        if (undoAsking === id) {
+          dropUndoAsk(true)
+          undoResult = { n: (undoResult?.n ?? 0) + 1, kind: 'expired' }
+          emit()
+        }
+      }, UNDO_WAIT_MS)
+      emit()
+    },
+
+    answerUndo(allow) {
+      if (undoAsked === null) {
+        return
+      }
+
+      send({ t: 'undoAnswer', id: undoAsked, ok: allow })
+      undoAsked = null
       emit()
     },
 
@@ -849,6 +955,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     },
 
     close() {
+      dropUndoAsk(false)
       stopMessages()
       stopPeer()
       stopWatchers?.()
