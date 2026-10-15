@@ -793,7 +793,7 @@ describe('la mesa de práctica', () => {
         // Con Ash ya elegida, otro toque rápido a Maxx C (el mismo del toque anterior) la suma: son dos y nada se confirma.
         tap(maxx())
         expect(within(status()).getByText('Tocá los materiales en el campo (2) y confirmá')).toBeInTheDocument()
-        expect(screen.getByRole('button', { name: 'Confirmar' })).toBeEnabled()
+        expect(screen.getByRole('button', { name: 'Invocar' })).toBeEnabled()
       } finally {
         window.matchMedia = matchMedia
       }
