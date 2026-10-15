@@ -1028,7 +1028,7 @@ describe('la pantalla del duelo', () => {
     openTable(host, guest, 'guest')
 
     const cardsOf = (view: RenderResult) => handOf(view).getAllByRole('listitem').map((card) => card.getAttribute('aria-label'))
-    const savedActions = () => (JSON.parse(sessionStorage.getItem(Object.keys(sessionStorage).find((key) => key.endsWith(':guest') && key.includes('duel-save'))!) ?? '{}') as { actions?: unknown[] }).actions?.length
+    const savedActions = () => (JSON.parse(localStorage.getItem(Object.keys(localStorage).find((key) => key.endsWith(':guest') && key.includes('duel-save'))!) ?? '{}') as { actions?: unknown[] }).actions?.length
 
     const summoned = summonFirst(guest)
     // Se guarda en el momento de jugar, no en la próxima vuelta.
@@ -1063,14 +1063,143 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).getByRole('group', { name: /Puntos de vida de Beto: 7\D?000/ })).toBeInTheDocument()
   })
 
-  it('salir del duelo a propósito borra lo guardado: volver a entrar a esa sala no reabre la mesa de antes', () => {
+  /** Sale del duelo desde la mesa (con la confirmación). */
+  function leaveDuel(view: RenderResult) {
+    click(view, 'Salir del duelo')
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Salir del duelo' }))
+  }
+  const hasSave = (role: 'host' | 'guest') => Object.keys(localStorage).some((key) => key.startsWith('ygo-lab:duel-save:') && key.endsWith(`:${role}`))
+
+  it('salir del duelo lo deja en pausa: lo guardado sigue, el rival ve la pausa (y el reloj se para), y al volver sigue la misma mesa', () => {
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest, 'guest')
+
+    const cardsOf = (view: RenderResult) => handOf(view).getAllByRole('listitem').map((card) => card.getAttribute('aria-label'))
+    const summoned = summonFirst(guest)
+    flush()
+    const hand = cardsOf(guest)
+    expect(within(host.container).getByRole('button', { name: /Pausar el reloj/ })).toBeInTheDocument()
+
+    leaveDuel(guest)
+    flush()
+
+    // Quien salió está en el inicio del duelo, con su duelo en pausa a mano; lo guardado sigue.
+    expect(within(guest.container).getByRole('button', { name: 'Crear un duelo' })).toBeInTheDocument()
+    expect(within(guest.container).getByText(/Tenés un duelo en pausa con/)).toBeInTheDocument()
+    expect(hasSave('guest')).toBe(true)
+
+    // El rival ve el duelo en pausa, sin poder tocar la mesa, y el reloj parado.
+    const pause = within(host.container).getByRole('alertdialog', { name: 'Duelo en pausa' })
+    expect(within(pause).getByText('Beto salió del duelo. Sigue cuando vuelva, con la mesa como la dejaron.')).toBeInTheDocument()
+    expect(within(host.container).getByRole('button', { name: /Iniciar el reloj/ })).toBeInTheDocument()
+
+    // Vuelve desde el inicio del duelo: la misma mano y la misma carta en su zona; el rival retoma y el reloj vuelve a andar.
+    click(guest, 'Volver al duelo')
+    flush()
+    flush()
+    expect(cardsOf(guest)).toEqual(hand)
+    expect(zoneOf(guest, 'Zona de monstruo 1').getByLabelText(summoned)).toBeInTheDocument()
+    expect(within(host.container).queryByRole('alertdialog', { name: 'Duelo en pausa' })).not.toBeInTheDocument()
+    expect(within(host.container).getByRole('button', { name: /Pausar el reloj/ })).toBeInTheDocument()
+    expect(within(guest.container).getByRole('button', { name: /Pausar el reloj/ })).toBeInTheDocument()
+  })
+
+  it('en pausa también se puede salir desde el cartel; y quien vuelve con el enlace en otra pestaña sigue siendo quien era (anfitrión) con su mesa', () => {
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+
+    const cardsOf = (view: RenderResult) => handOf(view).getAllByRole('listitem').map((card) => card.getAttribute('aria-label'))
+    const hand = cardsOf(host)
+    const room = Object.keys(localStorage).find((key) => key.endsWith(':host'))!.split(':')[2]
+
+    // El invitado sale (en su propio navegador: acá comparten almacenamiento, así que mientras sale no se ve lo del anfitrión): al anfitrión le queda el cartel de pausa, y de ahí también puede salir.
+    const hostKey = Object.keys(localStorage).find((key) => key.endsWith(':host'))!
+    const hostSave = localStorage.getItem(hostKey)!
+    localStorage.removeItem(hostKey)
+    leaveDuel(guest)
+    flush()
+    localStorage.setItem(hostKey, hostSave)
+    fireEvent.click(within(within(host.container).getByRole('alertdialog', { name: 'Duelo en pausa' })).getByRole('button', { name: 'Salir del duelo' }))
+    expect(within(host.container).getByRole('button', { name: 'Crear un duelo' })).toBeInTheDocument()
+    expect(hasSave('host')).toBe(true)
+
+    // Vuelve con el enlace en una pestaña nueva (sin el rol guardado en la pestaña): por su duelo guardado se sabe que era el anfitrión.
+    host.unmount()
+    sessionStorage.clear()
+    window.history.replaceState(null, '', `#duel?room=${room}`)
+    const back = render(<DuelScreen {...screenProps({ cardsById: monsters })} />)
+    flush()
+    expect(within(back.container).getByRole('alertdialog', { name: 'Duelo en pausa' })).toBeInTheDocument()
+
+    // El invitado vuelve: los dos retoman, y el anfitrión sigue con su mano (no recibió otra).
+    click(guest, 'Volver al duelo')
+    flush()
+    flush()
+    expect(within(back.container).queryByRole('alertdialog', { name: 'Duelo en pausa' })).not.toBeInTheDocument()
+    expect(cardsOf(back)).toEqual(hand)
+  })
+
+  it('un duelo que ya terminó no queda en pausa: al salir se borra lo guardado y al rival no se le tapa la mesa', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
-    expect(Object.keys(sessionStorage).some((key) => key.startsWith('ygo-lab:duel-save:'))).toBe(true)
 
-    click(guest, 'Salir del duelo')
-    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Salir del duelo' }))
-    expect(Object.keys(sessionStorage).some((key) => key.includes('ygo-lab:duel-save:') && key.endsWith(':guest'))).toBe(false)
+    // El invitado se rinde y sale: terminó, no hay nada que retomar.
+    click(guest, /Moneda, dado y más/)
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Juegos' })).getByRole('button', { name: 'Rendirme' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Juegos' })).getByRole('button', { name: 'Sí, rendirme' }))
+    flush()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    leaveDuel(guest)
+    flush()
+    expect(hasSave('guest')).toBe(false)
+    expect(within(guest.container).queryByText(/Tenés un duelo en pausa/)).not.toBeInTheDocument()
+
+    // Al anfitrión no le tapa la mesa una pausa: el duelo terminó y se sigue viendo el resultado.
+    expect(within(host.container).getByText('Beto se rindió. ¡Ganaste!')).toBeInTheDocument()
+    expect(within(host.container).queryByRole('alertdialog', { name: 'Duelo en pausa' })).not.toBeInTheDocument()
+
+    // El anfitrión sale también: el duelo (que ya terminó) tampoco queda.
+    leaveDuel(host)
+    expect(hasSave('host')).toBe(false)
+  })
+
+  it('quien mira ve "En pausa" mientras falta uno de los jugadores, y deja de verlo cuando vuelve', () => {
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+    const room = Object.keys(localStorage).find((key) => key.endsWith(':host'))!.split(':')[2]
+
+    window.history.replaceState(null, '', `#duel?room=${room}&watch=1`)
+    const watcher = render(<DuelScreen {...screenProps({ mainIds: [], extraIds: [], cardsById: new Map() })} />)
+    flush()
+    flush()
+    expect(within(watcher.container).getByTestId('spectator-table')).toBeInTheDocument()
+    expect(within(watcher.container).queryByText('En pausa')).not.toBeInTheDocument()
+
+    // El invitado sale (desde su propio navegador: acá comparten almacenamiento, así que mientras sale no se ve lo del anfitrión).
+    const hostKey = Object.keys(localStorage).find((key) => key.endsWith(':host'))!
+    const hostSave = localStorage.getItem(hostKey)!
+    localStorage.removeItem(hostKey)
+    leaveDuel(guest)
+    flush()
+    localStorage.setItem(hostKey, hostSave)
+    expect(within(watcher.container).getByText('En pausa')).toBeInTheDocument()
+
+    click(guest, 'Volver al duelo')
+    flush()
+    flush()
+    expect(within(watcher.container).queryByText('En pausa')).not.toBeInTheDocument()
+  })
+
+  it('desde el inicio del duelo se puede dejar el duelo en pausa', () => {
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+
+    leaveDuel(guest)
+    expect(within(guest.container).getByText(/Tenés un duelo en pausa con/)).toBeInTheDocument()
+
+    click(guest, 'Dejar ese duelo')
+    expect(within(guest.container).queryByText(/Tenés un duelo en pausa/)).not.toBeInTheDocument()
+    expect(hasSave('guest')).toBe(false)
   })
 
   it('recargar dentro de la sala con un deck pegado y el builder vacío: el deck guardado vuelve solo y se puede repartir', async () => {

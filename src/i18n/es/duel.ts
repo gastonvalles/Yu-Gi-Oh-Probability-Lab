@@ -90,7 +90,15 @@ export const duel = {
   'duel.bar.clockPause': 'Pausar el reloj',
   'duel.bar.leave': 'Salir del duelo',
   'duel.bar.leaveTitle': '¿Salir del duelo?',
-  'duel.bar.leaveText': 'Tu rival se queda en la sala. Si volvés con el mismo enlace, repartís una mano nueva.',
+  'duel.bar.leaveText': 'El duelo queda en pausa con tu mesa como está y tu rival te espera: si volvés con el mismo enlace, o con "Volver al duelo" en el inicio del duelo, seguís desde ahí.',
+  'duel.pause.title': 'Duelo en pausa',
+  'duel.pause.rival': '{name} salió del duelo. Sigue cuando vuelva, con la mesa como la dejaron.',
+  'duel.pause.offline': 'Sin conexión. El duelo sigue en cuanto se reconecte.',
+  'duel.lobby.paused': 'Tenés un duelo en pausa con {name}.',
+  'duel.lobby.pausedNoName': 'Tenés un duelo en pausa.',
+  'duel.lobby.resume': 'Volver al duelo',
+  'duel.lobby.dropPaused': 'Dejar ese duelo',
+  'duel.watch.paused': 'En pausa',
 
   // Cambiar los puntos de vida.
   'duel.life.title': 'Mis puntos de vida',

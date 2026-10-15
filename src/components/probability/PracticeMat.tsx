@@ -103,6 +103,8 @@ export interface DuelMatLink {
    * (`targetId`, tu id real) o, sin `targetId`, a tu barra de vida; cambiar `key` lo vuelve a mostrar.
    */
   announcement?: { key: number; caption: string; attackerId: string; targetId?: string }
+  /** Una capa que tapa toda la mesa (el duelo en pausa): nada de lo de abajo se toca mientras está. */
+  cover?: ReactNode
 }
 
 interface PracticeMatProps {
@@ -1447,6 +1449,8 @@ export function PracticeMat({
 
       {/* Un ataque (el propio o el del rival): la espada cruza la mesa desde el atacante hasta su objetivo y se va sola. */}
       {strike ? <AttackFx key={strike.key} strike={strike} onDone={() => setStrike(null)} /> : null}
+
+      {duel?.cover ? <div className="absolute inset-0 z-[140]">{duel.cover}</div> : null}
 
       {drag
         ? createPortal(

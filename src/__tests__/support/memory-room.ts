@@ -204,6 +204,10 @@ export class MemoryRoom {
     if (other) {
       this.queue.push({ to: other, present: this.peerPresent(other) })
     }
+
+    for (const spectator of this.spectators) {
+      this.queue.push({ spectator, players: this.ends.filter((end) => end.connected).length })
+    }
   }
 
   /** Agrega un mensaje cualquiera (basura, uno viejo) como si lo hubiera mandado el otro lado. */

@@ -337,7 +337,7 @@ describe('cuando algo falla', () => {
     game.room.flush()
 
     const before = game.guest.getSnapshot()
-    const save = saveOf(before)!
+    const save = saveOf(before, game.clock.t)!
 
     game.guestEnd.close()
     const reloaded = createDuel(game.room.join(), { role: 'guest', name: 'Beto', now: () => game.clock.t, sid: 'guest-2', restore: save })
@@ -367,7 +367,7 @@ describe('cuando algo falla', () => {
     game.guest.play({ type: 'draw', count: 1 })
     game.room.flush()
 
-    const save = saveOf(game.guest.getSnapshot())!
+    const save = saveOf(game.guest.getSnapshot(), game.clock.t)!
     const seen: boolean[] = []
 
     game.host.subscribe(() => seen.push(game.host.getSnapshot().theirs !== null))
@@ -379,26 +379,36 @@ describe('cuando algo falla', () => {
     expect(seen.every(Boolean)).toBe(true)
   })
 
-  it('el reloj guardado sigue corriendo mientras la página estuvo cerrada', () => {
+  it('el reloj guardado se retoma desde donde estaba: no cuenta el tiempo que se estuvo afuera', () => {
     const game = setup()
     startBoth(game)
     game.host.toggleClock()
     game.room.flush()
+    game.clock.t += 2_000
 
-    const save = saveOf(game.host.getSnapshot())!
+    const save = saveOf(game.host.getSnapshot(), game.clock.t)!
     game.hostEnd.close()
-    game.clock.t += 5_000
+    // El duelo estuvo en pausa media hora: al volver el reloj sigue donde se había guardado.
+    game.clock.t += 30 * 60_000
     const reloaded = createDuel(game.room.join(), { role: 'host', name: 'Ana', now: () => game.clock.t, sid: 'host-2', restore: save })
     game.room.flush()
 
     expect(reloaded.getSnapshot().life.timer.running).toBe(true)
-    expect(timerElapsed(reloaded.getSnapshot().life.timer, game.clock.t)).toBe(5_000)
+    expect(timerElapsed(reloaded.getSnapshot().life.timer, game.clock.t)).toBe(2_000)
+
+    // Uno que estaba pausado vuelve pausado.
+    reloaded.toggleClock()
+    const paused = saveOf(reloaded.getSnapshot(), game.clock.t)!
+    expect(paused.timer.running).toBe(false)
+    game.clock.t += 60_000
+    const again = createDuel(createMemoryRoom().join(), { role: 'host', name: 'Ana', now: () => game.clock.t, sid: 'host-3', restore: paused })
+    expect(again.getSnapshot().life.timer).toEqual({ running: false, startedAt: 0, elapsedMs: 2_000 })
   })
 
   it('si lo guardado no se puede volver a armar, se ignora y no queda una mesa a medias', () => {
     const game = setup()
     startBoth(game)
-    const save = saveOf(game.guest.getSnapshot())!
+    const save = saveOf(game.guest.getSnapshot(), game.clock.t)!
 
     game.guestEnd.close()
     const broken = { ...save, initial: { ...save.initial, deck: undefined } } as unknown as typeof save
