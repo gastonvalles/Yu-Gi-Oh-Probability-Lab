@@ -965,6 +965,53 @@ describe('la pantalla del duelo', () => {
     }
   })
 
+  /** Ana crea la sala y otra persona llega por el enlace, sin pasar por el lobby (en otro navegador: sin nombre guardado ni rol). */
+  function arriveByLink(props: Partial<Parameters<typeof DuelScreen>[0]> = {}) {
+    const host = render(<DuelScreen {...screenProps()} />)
+    typeInto(host, 'Tu nombre', 'Ana')
+    click(host, 'Crear un duelo')
+    const room = extractRoomCode(within(host.container).getByTestId('duel-link').textContent ?? '')!
+    sessionStorage.removeItem('ygo-lab:duel-role:' + room)
+    localStorage.removeItem('ygo-lab:duel-name')
+    const guest = render(<DuelScreen {...screenProps(props)} />)
+    flush()
+    return { host, guest }
+  }
+
+  it('quien entra por un enlace se pone nombre desde la sala, el rival lo ve, y puede estar listo', () => {
+    const { host, guest } = arriveByLink()
+    const guestView = within(guest.container)
+
+    // Sin nombre guardado se presenta como Duelista, pero lo puede cambiar ahí mismo.
+    expect(within(host.container).getByText('Duelista')).toBeInTheDocument()
+    const input = guestView.getByLabelText('Tu nombre')
+    fireEvent.change(input, { target: { value: 'Beto' } })
+    fireEvent.blur(input)
+    flush()
+
+    expect(within(host.container).getByText('Beto')).toBeInTheDocument()
+    expect(within(host.container).queryByText('Duelista')).not.toBeInTheDocument()
+    expect(localStorage.getItem('ygo-lab:duel-name')).toBe('Beto')
+
+    // Con el deck del builder, "Estoy listo" anda; ya listo, el nombre deja de editarse y el deck también.
+    expect(guestView.getByRole('region', { name: 'Tu deck' })).toBeInTheDocument()
+    click(guest, 'Estoy listo')
+    flush()
+    expect(guestView.queryByLabelText('Tu nombre')).not.toBeInTheDocument()
+    expect(guestView.queryByRole('region', { name: 'Tu deck' })).not.toBeInTheDocument()
+    expect(within(host.container).getByText('Listo')).toBeInTheDocument()
+  })
+
+  it('quien entra por un enlace sin deck lo ve explicado y puede elegir uno ahí mismo', () => {
+    const { guest } = arriveByLink({ mainIds: mainIds.slice(0, 2), extraIds: [], cardsById: new Map() })
+    const view = within(guest.container)
+
+    expect(view.getByRole('button', { name: 'Estoy listo' })).toBeDisabled()
+    expect(view.getByText(/hacen falta 5 cartas en el Main y tu deck tiene 2/)).toBeInTheDocument()
+    click(guest, 'Usar otro deck')
+    expect(view.getByLabelText('ydke://… o el texto del .ydk')).toBeInTheDocument()
+  })
+
   it('recargar dentro de la sala con un deck pegado y el builder vacío: el deck guardado vuelve solo y se puede repartir', async () => {
     const ydk = ['#main', ...Array.from({ length: 12 }, (_, index) => String(3000 + index))].join('\n')
     localStorage.setItem('ygo-lab:duel-deck', ydk)

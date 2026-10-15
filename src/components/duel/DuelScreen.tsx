@@ -168,6 +168,16 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
     [name],
   )
 
+  // Quien entra por un enlace no pasó por el lobby: el nombre se cambia (y se le avisa al rival) desde la sala.
+  const rename = useCallback(
+    (value: string) => {
+      setName(value)
+      writeStored(() => localStorage, NAME_KEY, cleanName(value))
+      duel?.rename(cleanName(value) || t('duel.lobby.defaultName'))
+    },
+    [duel],
+  )
+
   const leave = useCallback(() => {
     showRoomInUrl(null)
     setIntent(null)
@@ -221,7 +231,18 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
 
   if (!snapshot.mine || !snapshot.theirs) {
     return (
-      <DuelRoom duel={duel} snapshot={snapshot} status={status} room={intent.room} myName={myName} deckReady={deckReady} onLeave={leave} />
+      <DuelRoom
+        duel={duel}
+        snapshot={snapshot}
+        status={status}
+        room={intent.room}
+        myName={myName}
+        name={name}
+        onRename={rename}
+        deckReady={deckReady}
+        deckPicker={{ builder: { name: deckName, mainIds, extraIds, cardsById }, imported, onImport: setImported, size: deck.mainIds.length, min: handSize }}
+        onLeave={leave}
+      />
     )
   }
 
@@ -341,7 +362,22 @@ function useWaited(ms: number, active: boolean): boolean {
 }
 
 /** La sala hasta que los dos tienen su mano: el enlace para el rival, quién está listo, cómo se define quién empieza y el chat. */
-function DuelRoom({ duel, snapshot, status, room, myName, deckReady, onLeave }: { duel: Duel; snapshot: DuelSnapshot; status: SocketStatus; room: string; myName: string; deckReady: boolean; onLeave: () => void }) {
+interface DuelRoomProps {
+  duel: Duel
+  snapshot: DuelSnapshot
+  status: SocketStatus
+  room: string
+  myName: string
+  /** El nombre como se escribió (vacío si no hay) y cómo cambiarlo. */
+  name: string
+  onRename: (name: string) => void
+  deckReady: boolean
+  /** Con qué deck se juega: se elige desde la sala porque quien entra por un enlace no pasó por el lobby. */
+  deckPicker: { builder: DuelDeck; imported: DuelDeck | null; onImport: (deck: DuelDeck | null) => void; size: number; min: number }
+  onLeave: () => void
+}
+
+function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckReady, deckPicker, onLeave }: DuelRoomProps) {
   const link = buildDuelLink(window.location.origin, window.location.pathname, room)
   const { peerPresent, peerName, role, incompatible, settings } = snapshot
   // El invitado se prepara con los ajustes del anfitrión: hasta que no llega su saludo, no.
@@ -415,7 +451,15 @@ function DuelRoom({ duel, snapshot, status, room, myName, deckReady, onLeave }: 
         <p className="m-0 text-micro text-soft">{t('duel.room.guestWaits')}</p>
       ) : null}
 
-      {peerPresent && settingsKnown && !incompatible ? <DuelOpening snapshot={snapshot} myName={myName} canReady={canReady} actions={duel} /> : null}
+      {peerPresent && settingsKnown && !incompatible ? <DuelOpening snapshot={snapshot} myName={myName} canReady={canReady} actions={duel} rename={{ value: name, onCommit: onRename }} /> : null}
+
+      {/* El anfitrión ya eligió su deck en el lobby; quien llega por un enlace lo elige acá (y sin deck armado, es lo que lo deja estar listo). */}
+      {!snapshot.ready.mine && (role === 'guest' || !deckReady) ? (
+        <div className="grid gap-2 rounded-card border border-border-subtle bg-card-background p-3">
+          {deckReady ? null : <Callout tone="warning" icon="alert">{t('duel.lobby.needDeck', { count: deckPicker.size, min: deckPicker.min })}</Callout>}
+          <DuelDeckPicker builder={deckPicker.builder} imported={deckPicker.imported} onImport={deckPicker.onImport} />
+        </div>
+      ) : null}
 
       {peerPresent && !incompatible ? (
         <section className="grid gap-2 rounded-card border border-border-subtle bg-card-background p-3" aria-label={t('duel.chat.open')}>

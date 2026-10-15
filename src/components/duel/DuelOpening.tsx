@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 import { RPS_PICKS, TOSS_METHODS, rpsOutcome } from '../../app/duel-games'
 import type { Duel, DuelSnapshot } from '../../app/duel-session'
 import type { Duelist } from '../../app/life-calculator'
@@ -17,13 +19,15 @@ interface DuelOpeningProps {
   /** Se puede estar listo: hay deck para repartir y los ajustes del anfitrión ya llegaron. */
   canReady: boolean
   actions: OpeningActions
+  /** Mi nombre tal como lo escribí (vacío si no puse uno) y cómo cambiarlo: se edita en mi tarjeta hasta que toco "Estoy listo". */
+  rename?: { value: string; onCommit: (name: string) => void }
 }
 
 /**
  * Lo que pasa entre entrar a la sala y la mesa, en orden: los dos tocan "Estoy listo" (y cada uno ve si el otro ya lo hizo); definen con una moneda, un dado
  * o piedra-papel-tijera quién elige ir primero o segundo; y quien gana elige. En una revancha elige quien perdió, sin tirar. Al elegir, cada uno reparte su mano.
  */
-export function DuelOpening({ snapshot, myName, canReady, actions }: DuelOpeningProps) {
+export function DuelOpening({ snapshot, myName, canReady, actions, rename }: DuelOpeningProps) {
   const { ready, opening, me, peerName, starter } = snapshot
   const rival = peerName ?? t('duel.bar.rival')
   const nameOf = (player: Duelist) => (player === me ? myName : rival)
@@ -32,7 +36,7 @@ export function DuelOpening({ snapshot, myName, canReady, actions }: DuelOpening
   return (
     <section aria-label={t('duel.opening.title')} className="grid gap-3 rounded-card border border-border-subtle bg-card-background p-3">
       <ul className="m-0 grid list-none grid-cols-2 gap-2 p-0">
-        <PlayerCard caption={t('duel.opening.you')} name={myName || t('duel.opening.you')} ready={ready.mine} />
+        <PlayerCard caption={t('duel.opening.you')} name={myName || t('duel.opening.you')} ready={ready.mine} rename={ready.mine ? undefined : rename} />
         <PlayerCard caption={t('duel.opening.rival')} name={rival} ready={ready.theirs} />
       </ul>
 
@@ -89,16 +93,36 @@ function Stage({ snapshot, myName, nameOf }: { snapshot: DuelSnapshot; myName: s
   return null
 }
 
-function PlayerCard({ caption, name, ready }: { caption: string; name: string; ready: boolean }) {
+function PlayerCard({ caption, name, ready, rename }: { caption: string; name: string; ready: boolean; rename?: DuelOpeningProps['rename'] }) {
   return (
     <li data-ready={ready} className={cx('grid min-w-0 justify-items-center gap-1 rounded-card border px-2 py-3 text-center transition-colors', ready ? 'border-accent/60 bg-accent/10' : 'border-border-subtle bg-tint/5')}>
       <span className="text-micro font-semibold uppercase tracking-[0.04em] text-soft">{caption}</span>
-      <span className="max-w-full truncate text-body font-bold text-foreground">{name}</span>
+      {rename ? <NameInput value={rename.value} onCommit={rename.onCommit} /> : <span className="max-w-full truncate text-body font-bold text-foreground">{name}</span>}
       <span className={cx('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-micro font-semibold', ready ? 'bg-accent/20 text-accent' : 'bg-tint/8 text-muted')}>
         {ready ? <Icon name="check" size={12} /> : null}
         {ready ? t('duel.opening.ready') : t('duel.opening.notReady')}
       </span>
     </li>
+  )
+}
+
+/** El nombre propio, editable: se manda al rival al salir del campo (o con Enter), no en cada letra. */
+function NameInput({ value, onCommit }: { value: string; onCommit: (name: string) => void }) {
+  const [draft, setDraft] = useState(value)
+
+  return (
+    <input
+      aria-label={t('duel.lobby.name')}
+      placeholder={t('duel.lobby.defaultName')}
+      maxLength={40}
+      value={draft}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={() => onCommit(draft)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.currentTarget.blur()
+      }}
+      className="w-full min-w-0 rounded-input border border-border-subtle bg-transparent px-2 py-1 text-center text-body font-bold text-foreground outline-none placeholder:font-normal placeholder:text-soft focus:border-primary"
+    />
   )
 }
 
