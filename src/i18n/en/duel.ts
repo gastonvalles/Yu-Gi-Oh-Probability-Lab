@@ -55,6 +55,7 @@ export const duel: Translated<typeof es> = {
   'duel.watch.full': 'Two people are already watching this duel.',
   'duel.watch.waitingPlayers': 'There are no players in the room yet…',
   'duel.watch.waitingStart': 'Waiting for {names} to start…',
+  'duel.watch.waitingRival': "Waiting for {name}'s opponent…",
   'duel.watch.waitingStartNoNames': 'Waiting for the players to start…',
   'duel.watch.turnOf': "{name}'s turn",
   'duel.watch.playerAway': 'A player is missing',
@@ -185,7 +186,6 @@ export const duel: Translated<typeof es> = {
   'duel.turn.passHint': 'Pass the turn',
   'duel.turn.drew': 'Your turn started: you drew a card.',
 
-  'duel.lobby.lp': 'Life points',
 
   'duel.deck.title': 'Your deck',
   'duel.deck.builder': 'The builder one: {name} ({count} cards in the Main)',

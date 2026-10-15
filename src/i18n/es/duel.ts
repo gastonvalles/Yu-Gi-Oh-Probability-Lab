@@ -57,6 +57,7 @@ export const duel = {
   'duel.watch.full': 'Ya hay dos personas mirando este duelo.',
   'duel.watch.waitingPlayers': 'Todavía no hay jugadores en la sala…',
   'duel.watch.waitingStart': 'Esperando que {names} empiecen…',
+  'duel.watch.waitingRival': 'Esperando al rival de {name}…',
   'duel.watch.waitingStartNoNames': 'Esperando que los jugadores empiecen…',
   'duel.watch.turnOf': 'Turno de {name}',
   'duel.watch.playerAway': 'Falta un jugador',
@@ -193,7 +194,6 @@ export const duel = {
   'duel.turn.drew': 'Empezó tu turno: robaste una carta.',
 
   // Los puntos de vida con los que empieza el duelo (los fija quien lo crea).
-  'duel.lobby.lp': 'Puntos de vida',
 
   // Jugar con otro deck que el del builder (por ejemplo desde un celular).
   'duel.deck.title': 'Tu deck',

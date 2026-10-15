@@ -436,3 +436,32 @@ describe('el chat', () => {
     expect(hostEnd.connected).toBe(true)
   })
 })
+
+describe('cambiar el nombre estando en la sala', () => {
+  it('el rival lo ve al instante y nadie pierde su "listo"', () => {
+    const { room, host, guest } = setup()
+
+    guest.setReady(true)
+    room.flush()
+    guest.rename('Beto Ramírez')
+    room.flush()
+
+    expect(host.getSnapshot().peerName).toBe('Beto Ramírez')
+    expect(host.getSnapshot().ready.theirs).toBe(true)
+    expect(guest.getSnapshot().ready.mine).toBe(true)
+  })
+
+  it('un nombre vacío no pisa el que había, y si el rival recarga ve el nuevo', () => {
+    const { room, hostEnd, host, guest } = setup()
+
+    guest.rename('Beto Ramírez')
+    guest.rename('   ')
+    room.flush()
+    expect(host.getSnapshot().peerName).toBe('Beto Ramírez')
+
+    hostEnd.close()
+    const reloaded = createDuel(room.join(), { role: 'host', name: 'Ana', sid: 'host-2' })
+    room.flush()
+    expect(reloaded.getSnapshot().peerName).toBe('Beto Ramírez')
+  })
+})

@@ -400,11 +400,10 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).getByText('Tu turno')).toBeInTheDocument()
   })
 
-  /** Los dos adentro de la sala, con su nombre; si se pide, quien crea elige esos puntos de vida. */
-  function startDuel(options: { lp?: string } = {}) {
+  /** Los dos adentro de la sala, con su nombre. */
+  function startDuel() {
     const host = render(<DuelScreen {...screenProps()} />)
     typeInto(host, 'Tu nombre', 'Ana')
-    if (options.lp) fireEvent.click(within(host.container).getByRole('button', { name: options.lp }))
     click(host, 'Crear un duelo')
     const link = within(host.container).getByTestId('duel-link').textContent ?? ''
     window.history.replaceState(null, '', '#duel')
@@ -484,15 +483,21 @@ describe('la pantalla del duelo', () => {
     expect(names(guest).some((name) => /^Carta 20\d\d$/.test(name ?? ''))).toBe(false)
   })
 
-  it('puntos de vida: quien crea el duelo elige 8000 o 4000 y los dos empiezan con eso', () => {
-    const { host, guest } = startDuel({ lp: '4000' })
+  it('puntos de vida: no se elige, los dos empiezan siempre con 8000', () => {
+    window.history.replaceState(null, '', '#duel')
+    const lobby = render(<DuelScreen {...screenProps()} />)
+    expect(within(lobby.container).queryByText('Puntos de vida')).not.toBeInTheDocument()
+    expect(within(lobby.container).queryByRole('button', { name: '4000' })).not.toBeInTheDocument()
+    cleanup()
 
-    expect(within(host.container).getByText('Cada uno empieza con 4000 LP y una mano de 5 cartas.')).toBeInTheDocument()
-    expect(within(guest.container).getByText('Cada uno empieza con 4000 LP y una mano de 5 cartas.')).toBeInTheDocument()
+    const { host, guest } = startDuel()
+
+    expect(within(host.container).getByText('Cada uno empieza con 8000 LP y una mano de 5 cartas.')).toBeInTheDocument()
+    expect(within(guest.container).getByText('Cada uno empieza con 8000 LP y una mano de 5 cartas.')).toBeInTheDocument()
 
     openTable(host, guest)
-    expect(within(host.container).getByRole('button', { name: /Cambiar mis puntos de vida/ })).toHaveAccessibleName(/4\D?000/)
-    expect(within(guest.container).getByRole('group', { name: /Puntos de vida de Ana: 4\D?000/ })).toBeInTheDocument()
+    expect(within(host.container).getByRole('button', { name: /Cambiar mis puntos de vida/ })).toHaveAccessibleName(/8\D?000/)
+    expect(within(guest.container).getByRole('group', { name: /Puntos de vida de Ana: 8\D?000/ })).toBeInTheDocument()
   })
 
   it('rendirse: pide confirmación, termina el duelo para los dos y la revancha de los dos vuelve a la sala con todo de cero', () => {
@@ -872,6 +877,19 @@ describe('la pantalla del duelo', () => {
     expect(view.queryAllByRole('listitem', { name: /Mano/ })).toHaveLength(0)
   })
 
+  it('quien mira con un solo jugador en la sala espera a su rival, sin hablar de dos', () => {
+    const host = render(<DuelScreen {...screenProps()} />)
+    typeInto(host, 'Tu nombre', 'Ana')
+    click(host, 'Crear un duelo')
+    const room = extractRoomCode(window.location.hash)!
+    window.history.replaceState(null, '', `#duel?room=${room}&watch=1`)
+    const watcher = render(<DuelScreen {...screenProps({ mainIds: [], extraIds: [], cardsById: new Map() })} />)
+    flush()
+    flush()
+
+    expect(within(watcher.container).getByText('Esperando al rival de Ana…')).toBeInTheDocument()
+  })
+
   it('quien mira puede dar vuelta la mesa para verla desde el lado del otro jugador', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
@@ -945,6 +963,53 @@ describe('la pantalla del duelo', () => {
       click(view, 'Salir')
       expect(window.location.hash).toBe('#duel')
     }
+  })
+
+  /** Ana crea la sala y otra persona llega por el enlace, sin pasar por el lobby (en otro navegador: sin nombre guardado ni rol). */
+  function arriveByLink(props: Partial<Parameters<typeof DuelScreen>[0]> = {}) {
+    const host = render(<DuelScreen {...screenProps()} />)
+    typeInto(host, 'Tu nombre', 'Ana')
+    click(host, 'Crear un duelo')
+    const room = extractRoomCode(within(host.container).getByTestId('duel-link').textContent ?? '')!
+    sessionStorage.removeItem('ygo-lab:duel-role:' + room)
+    localStorage.removeItem('ygo-lab:duel-name')
+    const guest = render(<DuelScreen {...screenProps(props)} />)
+    flush()
+    return { host, guest }
+  }
+
+  it('quien entra por un enlace se pone nombre desde la sala, el rival lo ve, y puede estar listo', () => {
+    const { host, guest } = arriveByLink()
+    const guestView = within(guest.container)
+
+    // Sin nombre guardado se presenta como Duelista, pero lo puede cambiar ahí mismo.
+    expect(within(host.container).getByText('Duelista')).toBeInTheDocument()
+    const input = guestView.getByLabelText('Tu nombre')
+    fireEvent.change(input, { target: { value: 'Beto' } })
+    fireEvent.blur(input)
+    flush()
+
+    expect(within(host.container).getByText('Beto')).toBeInTheDocument()
+    expect(within(host.container).queryByText('Duelista')).not.toBeInTheDocument()
+    expect(localStorage.getItem('ygo-lab:duel-name')).toBe('Beto')
+
+    // Con el deck del builder, "Estoy listo" anda; ya listo, el nombre deja de editarse y el deck también.
+    expect(guestView.getByRole('region', { name: 'Tu deck' })).toBeInTheDocument()
+    click(guest, 'Estoy listo')
+    flush()
+    expect(guestView.queryByLabelText('Tu nombre')).not.toBeInTheDocument()
+    expect(guestView.queryByRole('region', { name: 'Tu deck' })).not.toBeInTheDocument()
+    expect(within(host.container).getByText('Listo')).toBeInTheDocument()
+  })
+
+  it('quien entra por un enlace sin deck lo ve explicado y puede elegir uno ahí mismo', () => {
+    const { guest } = arriveByLink({ mainIds: mainIds.slice(0, 2), extraIds: [], cardsById: new Map() })
+    const view = within(guest.container)
+
+    expect(view.getByRole('button', { name: 'Estoy listo' })).toBeDisabled()
+    expect(view.getByText(/hacen falta 5 cartas en el Main y tu deck tiene 2/)).toBeInTheDocument()
+    click(guest, 'Usar otro deck')
+    expect(view.getByLabelText('ydke://… o el texto del .ydk')).toBeInTheDocument()
   })
 
   it('recargar dentro de la sala con un deck pegado y el builder vacío: el deck guardado vuelve solo y se puede repartir', async () => {

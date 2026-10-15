@@ -91,6 +91,8 @@ export interface Duel {
   chooseFirst(first: Duelist): void
   /** Estoy listo (o ya no) para empezar. */
   setReady(ready: boolean): void
+  /** Cambiarme el nombre estando en la sala: el rival (y quien mira) lo ve al instante. */
+  rename(name: string): void
   /** Con qué se define quién va primero: el primero en elegir lo fija para los dos. */
   chooseMethod(method: TossMethod): void
   /** La moneda de quién empieza: pido cara o cruz y se tira; gano si acerté. */
@@ -124,7 +126,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   const sid = options.sid ?? Math.random().toString(36).slice(2, 12).padEnd(6, '0')
   const me: Duelist = role === 'host' ? 0 : 1
   const peer: Duelist = role === 'host' ? 1 : 0
-  const name = cleanName(options.name)
+  let name = cleanName(options.name)
 
   let settings = role === 'host' && options.settings ? options.settings : DEFAULT_SETTINGS
   let life: LifeState = { ...createLifeState(), lp: [settings.lp, settings.lp] }
@@ -669,6 +671,15 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
 
     chooseFirst(first) {
       playGame({ kind: 'order', first })
+    },
+
+    rename(next) {
+      const clean = cleanName(next)
+
+      if (clean !== '' && clean !== name) {
+        name = clean
+        sendHello()
+      }
     },
 
     setReady(value) {

@@ -99,11 +99,10 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
   const [name, setName] = useState(() => readStored(() => localStorage, NAME_KEY) ?? '')
   const [intent, setIntent] = useState<Intent | null>(readIntent)
   const myName = cleanName(name) || t('duel.lobby.defaultName')
-  // Los puntos de vida los fija quien crea el duelo; el deck es el del builder o uno que se pega.
-  const [lp, setLp] = useState<number>(STARTING_LP)
+  // El deck es el del builder o uno que se pega; se juega siempre con los puntos de vida de siempre.
   const [imported, setImported] = useState<DuelDeck | null>(null)
   const deck = useMemo<DuelDeck>(() => imported ?? { name: deckName, mainIds, extraIds, cardsById }, [imported, deckName, mainIds, extraIds, cardsById])
-  const settings = useMemo(() => ({ lp, hand: handSize }), [lp, handSize])
+  const settings = useMemo(() => ({ lp: STARTING_LP, hand: handSize }), [handSize])
   const { duel, snapshot, status } = useDuel({ room: intent && !intent.watch ? intent.room : null, role: intent?.role ?? 'guest', name: myName, settings, connect })
   const deckReady = deck.mainIds.length >= handSize
 
@@ -169,6 +168,16 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
     [name],
   )
 
+  // Quien entra por un enlace no pasó por el lobby: el nombre se cambia (y se le avisa al rival) desde la sala.
+  const rename = useCallback(
+    (value: string) => {
+      setName(value)
+      writeStored(() => localStorage, NAME_KEY, cleanName(value))
+      duel?.rename(cleanName(value) || t('duel.lobby.defaultName'))
+    },
+    [duel],
+  )
+
   const leave = useCallback(() => {
     showRoomInUrl(null)
     setIntent(null)
@@ -179,8 +188,6 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
       <DuelLobby
         name={name}
         onName={setName}
-        lp={lp}
-        onLp={setLp}
         builder={{ name: deckName, mainIds, extraIds, cardsById }}
         imported={imported}
         onImport={setImported}
@@ -224,7 +231,18 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
 
   if (!snapshot.mine || !snapshot.theirs) {
     return (
-      <DuelRoom duel={duel} snapshot={snapshot} status={status} room={intent.room} myName={myName} deckReady={deckReady} onLeave={leave} />
+      <DuelRoom
+        duel={duel}
+        snapshot={snapshot}
+        status={status}
+        room={intent.room}
+        myName={myName}
+        name={name}
+        onRename={rename}
+        deckReady={deckReady}
+        deckPicker={{ builder: { name: deckName, mainIds, extraIds, cardsById }, imported, onImport: setImported, size: deck.mainIds.length, min: handSize }}
+        onLeave={leave}
+      />
     )
   }
 
@@ -240,14 +258,9 @@ function Screen({ children }: { children: React.ReactNode }) {
   )
 }
 
-/** Los puntos de vida con los que se puede empezar: los de siempre y los del formato corto. */
-const LP_CHOICES = [8000, 4000] as const
-
 interface DuelLobbyProps {
   name: string
   onName: (name: string) => void
-  lp: number
-  onLp: (lp: number) => void
   builder: DuelDeck
   imported: DuelDeck | null
   onImport: (deck: DuelDeck | null) => void
@@ -259,7 +272,7 @@ interface DuelLobbyProps {
   onJoin: (room: string, watch: boolean) => void
 }
 
-function DuelLobby({ name, onName, lp, onLp, builder, imported, onImport, deckReady, deckSize, minDeck, onCreate, onJoin }: DuelLobbyProps) {
+function DuelLobby({ name, onName, builder, imported, onImport, deckReady, deckSize, minDeck, onCreate, onJoin }: DuelLobbyProps) {
   const [code, setCode] = useState('')
   const [invalid, setInvalid] = useState(false)
 
@@ -287,17 +300,6 @@ function DuelLobby({ name, onName, lp, onLp, builder, imported, onImport, deckRe
       </FieldBox>
 
       <DuelDeckPicker builder={builder} imported={imported} onImport={onImport} />
-
-      <div className="grid gap-1.5" role="group" aria-label={t('duel.lobby.lp')}>
-        <span className="text-micro font-semibold uppercase tracking-[0.04em] text-soft">{t('duel.lobby.lp')}</span>
-        <div className="flex gap-2">
-          {LP_CHOICES.map((choice) => (
-            <Button key={choice} variant="secondary" size="sm" aria-pressed={lp === choice} className={lp === choice ? 'ring-2 ring-primary' : undefined} onClick={() => onLp(choice)}>
-              {choice}
-            </Button>
-          ))}
-        </div>
-      </div>
 
       <div className="grid gap-1.5">
         <Button variant="primary" icon="link" disabled={!deckReady} onClick={onCreate}>
@@ -360,7 +362,22 @@ function useWaited(ms: number, active: boolean): boolean {
 }
 
 /** La sala hasta que los dos tienen su mano: el enlace para el rival, quién está listo, cómo se define quién empieza y el chat. */
-function DuelRoom({ duel, snapshot, status, room, myName, deckReady, onLeave }: { duel: Duel; snapshot: DuelSnapshot; status: SocketStatus; room: string; myName: string; deckReady: boolean; onLeave: () => void }) {
+interface DuelRoomProps {
+  duel: Duel
+  snapshot: DuelSnapshot
+  status: SocketStatus
+  room: string
+  myName: string
+  /** El nombre como se escribió (vacío si no hay) y cómo cambiarlo. */
+  name: string
+  onRename: (name: string) => void
+  deckReady: boolean
+  /** Con qué deck se juega: se elige desde la sala porque quien entra por un enlace no pasó por el lobby. */
+  deckPicker: { builder: DuelDeck; imported: DuelDeck | null; onImport: (deck: DuelDeck | null) => void; size: number; min: number }
+  onLeave: () => void
+}
+
+function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckReady, deckPicker, onLeave }: DuelRoomProps) {
   const link = buildDuelLink(window.location.origin, window.location.pathname, room)
   const { peerPresent, peerName, role, incompatible, settings } = snapshot
   // El invitado se prepara con los ajustes del anfitrión: hasta que no llega su saludo, no.
@@ -434,7 +451,15 @@ function DuelRoom({ duel, snapshot, status, room, myName, deckReady, onLeave }: 
         <p className="m-0 text-micro text-soft">{t('duel.room.guestWaits')}</p>
       ) : null}
 
-      {peerPresent && settingsKnown && !incompatible ? <DuelOpening snapshot={snapshot} myName={myName} canReady={canReady} actions={duel} /> : null}
+      {peerPresent && settingsKnown && !incompatible ? <DuelOpening snapshot={snapshot} myName={myName} canReady={canReady} actions={duel} rename={{ value: name, onCommit: onRename }} /> : null}
+
+      {/* El anfitrión ya eligió su deck en el lobby; quien llega por un enlace lo elige acá (y sin deck armado, es lo que lo deja estar listo). */}
+      {!snapshot.ready.mine && (role === 'guest' || !deckReady) ? (
+        <div className="grid gap-2 rounded-card border border-border-subtle bg-card-background p-3">
+          {deckReady ? null : <Callout tone="warning" icon="alert">{t('duel.lobby.needDeck', { count: deckPicker.size, min: deckPicker.min })}</Callout>}
+          <DuelDeckPicker builder={deckPicker.builder} imported={deckPicker.imported} onImport={deckPicker.onImport} />
+        </div>
+      ) : null}
 
       {peerPresent && !incompatible ? (
         <section className="grid gap-2 rounded-card border border-border-subtle bg-card-background p-3" aria-label={t('duel.chat.open')}>
