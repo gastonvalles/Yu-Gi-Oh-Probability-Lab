@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { buildComparisonInputs, compareBuilds } from '../../app/build-comparison'
 import { useLabComputation } from '../probability/use-lab-computation'
@@ -16,15 +16,14 @@ import { DeckImportDrawer } from '../deck-mode/DeckImportDrawer'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { Button } from '../ui/Button'
 import { EmptyState } from '../ui/EmptyState'
-import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
 import { SideBadge } from './SideBadge'
 import { StepHero } from '../StepHero'
 import { StepPage } from '../ui/StepPage'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { BuildBCardEditor } from './BuildBCardEditor'
-import { BuildDeckView } from './BuildDeckView'
-import { ComparisonReport, currentDeckName } from './ComparisonReport'
+import { BuildNotes, VerdictLine, currentDeckName } from './ComparisonSummary'
+import { CompareStage } from './CompareStage'
 import { useSavedBuilds } from './use-saved-builds'
 import { field } from '../ui/surfaces'
 
@@ -70,8 +69,6 @@ export function ComparisonScreen() {
   const savedBuilds = useSavedBuilds()
   const { showToast } = useToastMessage()
   const [selection, setSelection] = useState(readSelection)
-  const [decksOpen, setDecksOpen] = useState(false)
-  const decksRef = useRef<HTMLDetailsElement>(null)
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [renameTarget, setRenameTarget] = useState<{ id: string; name: string } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
@@ -165,12 +162,6 @@ export function ComparisonScreen() {
     showToast(t('meta.compare.toastImported', { name: build.name }), 'success')
   }
 
-  /** Abre los mazos de cada build (donde se clasifican las cartas) y baja hasta ellos. */
-  const showDecks = () => {
-    setDecksOpen(true)
-    requestAnimationFrame(() => decksRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
-  }
-
   const handleCardClick = (build: ResolvedBuild) => (card: DeckCardInstance) => {
     const isPending = card.origin === null || card.roles.length === 0 || card.needsReview
     if (build.isSaved && isPending) {
@@ -260,22 +251,19 @@ export function ComparisonScreen() {
       ) : (
         <>
           {comparison ? (
-            <ComparisonReport comparison={comparison} isCurrentDeck={{ A: !buildA.isSaved, B: !buildB.isSaved }} onShowCards={showDecks} />
+            <>
+              <BuildNotes side="A" build={comparison.a} canClassifyHere={!buildA.isSaved} />
+              <BuildNotes side="B" build={comparison.b} canClassifyHere={!buildB.isSaved} />
+              <VerdictLine comparison={comparison} />
+            </>
           ) : null}
 
-          {/* Los mazos completos, para quien los quiera ver o clasificar cartas: plegados, no una pestaña aparte. */}
-          <details ref={decksRef} open={decksOpen} onToggle={(event) => setDecksOpen(event.currentTarget.open)} className="group grid min-w-0 gap-4">
-            <summary className="flex cursor-pointer list-none items-center gap-2 rounded-control text-body font-semibold text-muted focus-visible:outline-none focus-visible:shadow-focus [&::-webkit-details-marker]:hidden">
-              {t('meta.compare.decksTitle')}
-              <Icon name="chevron-down" size={16} className="text-soft transition-transform duration-200 group-open:rotate-180" />
-            </summary>
-            {decksOpen ? (
-              <div className="grid min-w-0 gap-5 min-[1101px]:grid-cols-2 min-[1101px]:items-start">
-                <BuildDeckView side="A" name={buildA.name} zones={buildA.zones} deltaByCardId={deltaByCardId} onCardClick={handleCardClick(buildA)} />
-                <BuildDeckView side="B" name={buildB.name} zones={buildB.zones} deltaByCardId={deltaByCardId} onCardClick={handleCardClick(buildB)} />
-              </div>
-            ) : null}
-          </details>
+          <CompareStage
+            a={{ name: buildA.name, zones: buildA.zones, onCardClick: handleCardClick(buildA) }}
+            b={{ name: buildB.name, zones: buildB.zones, onCardClick: handleCardClick(buildB) }}
+            comparison={comparison}
+            deltaByCardId={deltaByCardId}
+          />
         </>
       )}
 
