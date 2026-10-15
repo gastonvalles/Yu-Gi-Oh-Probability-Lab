@@ -1333,9 +1333,14 @@ export function PracticeMat({
           {/* Celular: las salidas y problemas flotan justo arriba de la mano (el aire que queda abajo del campo): no ocupan lugar, así que el campo no se mueve cuando aparecen, se explican o se van. Sólo los chips y la explicación atajan toques. */}
           {footer && isDealt && !isDesktop ? <div className="pointer-events-none absolute inset-x-0 bottom-full z-10 px-1 pb-1.5 animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
           {rivalMarks?.piles.includes('hand') ? (
-            <span className="pointer-events-none absolute inset-0 z-20" data-targeted="true" data-marked="hand">
-              <TargetMark />
-            </span>
+            <span
+              role="img"
+              aria-label={t('practice.card.targetMark')}
+              data-targeted="true"
+              data-marked="hand"
+              className="pointer-events-none absolute -inset-x-1 -top-1 bottom-0 z-20 animate-fx-lock rounded-card border-2 border-[color:rgb(var(--fx-rgb))] bg-[rgb(var(--fx-rgb)/0.08)] shadow-[0_0_22px_rgb(var(--fx-rgb)/0.6)] motion-reduce:animate-none"
+              style={fxVars('red')}
+            />
           ) : null}
           <PracticeHand
             cards={handCards}

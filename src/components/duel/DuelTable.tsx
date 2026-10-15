@@ -111,7 +111,7 @@ function MarkButton({ label, onMark }: { label: string; onMark: (rect: DOMRect) 
       aria-label={label}
       title={label}
       className="absolute inset-0 z-10 cursor-pointer rounded-none border-0 bg-transparent p-0 opacity-0 focus-visible:opacity-100 focus-visible:outline-none focus-visible:shadow-focus"
-      onClick={(event) => onMark(event.currentTarget.getBoundingClientRect())}
+      onClick={(event) => onMark((event.currentTarget.closest<HTMLElement>('[role="group"]') ?? event.currentTarget).getBoundingClientRect())}
     />
   )
 }
