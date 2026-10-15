@@ -1,5 +1,7 @@
 import { lazy } from 'react'
 
+import { assetUrlsOf, refreshAssets } from '../../app/asset-recovery'
+
 /**
  * Pasos y paneles pesados: se bajan recién cuando se usan (el builder es lo primero que se ve).
  * `preloadHeavySteps` los trae en un momento ocioso para que cambiar de paso sea instantáneo.
@@ -44,8 +46,10 @@ function writeFlag(on: boolean): void {
 /**
  * Tras un deploy, un HTML viejo puede pedir un chunk que ya no existe. La primera vez se recarga la
  * página (trae el HTML nuevo); si vuelve a fallar, el error sigue hasta la pantalla de "Algo salió mal".
+ * Antes de recargar se vuelven a bajar los archivos que fallaron salteando el caché: un 404 de justo después de un deploy queda guardado
+ * como "inmutable" y una recarga común lo reusaría (ver public/recover.js).
  */
-function orReload<T>(load: () => Promise<T>): () => Promise<T> {
+export function orReload<T>(load: () => Promise<T>): () => Promise<T> {
   return async () => {
     try {
       const loaded = await load()
@@ -57,6 +61,7 @@ function orReload<T>(load: () => Promise<T>): () => Promise<T> {
       }
 
       writeFlag(true)
+      await refreshAssets(assetUrlsOf(error))
       window.location.reload()
       // Mientras recarga, la promesa queda pendiente: así no se alcanza a dibujar el error.
       return new Promise<T>(() => {})
