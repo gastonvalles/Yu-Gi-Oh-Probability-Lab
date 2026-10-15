@@ -37,7 +37,7 @@ export const shell = {
   'shell.step.export.needsMain': 'Necesitás cartas en Main.',
   'shell.step.meta.label': 'Tier lists',
   'shell.step.meta.title': 'Tier lists del meta',
-  'shell.step.meta.detail': 'Hand traps, decks y boardbreakers de los torneos.',
+  'shell.step.meta.detail': 'Hand traps y boardbreakers de los torneos.',
   'shell.step.tournaments.label': 'Decks de torneo',
   'shell.step.tournaments.title': 'Decks de torneo',
   'shell.step.tournaments.detail': 'Los decks que llegaron al top, completos.',

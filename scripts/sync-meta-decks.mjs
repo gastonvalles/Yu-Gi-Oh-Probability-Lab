@@ -9,7 +9,7 @@ import { createServer } from 'vite'
 /**
  * Baja los Tournament Meta Decks de YGOPRODeck (las listas de torneo que el sitio carga a mano) y escribe:
  * - src/data/meta-decks.json: cada deck con sus datos de torneo y sólo sus hand traps y boardbreakers (lo que leen los tier lists de
- *   cartas; el tier list de decks se arma con el nombre y la fecha de cada uno).
+ *   cartas).
  * - src/data/meta-decklists.json: las listas completas (Main, Extra y Side), que la app baja recién al abrir un deck.
  * - src/data/card-rules.json: qué puede hacer cada carta según sus reglas (los scripts de EDOPro leídos por
  *   src/app/card-script-rules.ts), para el clasificador de la app y para saber qué carta es hand trap.

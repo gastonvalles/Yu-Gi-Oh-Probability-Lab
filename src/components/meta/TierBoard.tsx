@@ -1,10 +1,8 @@
 import type { ReactNode } from 'react'
 
-import { cardImageSrc } from '../../app/card-image-source'
-import { coverArtUrl, type DeckTierStat, type MetaCardStat, type MetaTier } from '../../app/meta'
+import type { MetaCardStat, MetaTier } from '../../app/meta'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
-import { Icon } from '../ui/Icon'
 import { TrendArrow } from './TrendArrow'
 import { TIER_ORDER, percent, tierColor, tierHint, tierLabel } from './meta-format'
 
@@ -30,17 +28,10 @@ export function groupByTier<T extends Rankable>(items: readonly T[], view: Board
 interface TierBoardProps {
   rows: ReadonlyArray<{ tier: MetaTier; tiles: ReadonlyArray<{ key: string; tile: ReactNode }> }>
   floors: Floors
-  /** cards: las cartas de a cuatro por fila en el celular · decks: las portadas de a tres (llevan el nombre debajo). */
-  layout: 'cards' | 'decks'
 }
 
-const LIST_LAYOUT = {
-  cards: 'grid-cols-4 gap-1',
-  decks: 'grid-cols-3 gap-x-1.5 gap-y-2',
-} as const satisfies Record<TierBoardProps['layout'], string>
-
 /** La tier list clásica: una fila por tier, con la etiqueta de color a la izquierda y los tiles en fila (se dibujan todas, aunque estén vacías). */
-export function TierBoard({ rows, floors, layout }: TierBoardProps) {
+export function TierBoard({ rows, floors }: TierBoardProps) {
   return (
     <div className="mt-3 overflow-hidden rounded-card border border-border-subtle">
       {rows.map(({ tier, tiles }) => (
@@ -54,7 +45,7 @@ export function TierBoard({ rows, floors, layout }: TierBoardProps) {
             {tierLabel(tier)}
           </div>
           <ul
-            className={`m-0 grid list-none ${LIST_LAYOUT[layout]} content-start bg-background p-1 sm:flex sm:flex-wrap`}
+            className="m-0 grid list-none grid-cols-4 gap-1 content-start bg-background p-1 sm:flex sm:flex-wrap"
             aria-label={`${tierLabel(tier)}: ${tierHint(tier, floors)}`}
           >
             {tiles.map(({ key, tile }) => (
@@ -90,31 +81,6 @@ export function CardTile({ stat, share, onOpen }: TileProps<MetaCardStat>) {
       <CardArt remoteUrl={stat.image} name={stat.name} className="h-full w-full object-cover" />
       <span className={TILE_BADGE}>{percent(share)}</span>
       <TrendArrow trend={stat.trend} size={32} className="absolute right-0 top-0" />
-    </button>
-  )
-}
-
-/** El deck: la portada que eligió YGOPRODeck (cuadrada) con lo mismo que la carta, y el nombre debajo porque el arte solo no lo dice. */
-export function DeckTile({ stat, share, onOpen }: TileProps<DeckTierStat>) {
-  return (
-    <button
-      type="button"
-      className="group grid w-full min-w-0 content-start gap-1 text-left focus-visible:outline-none focus-visible:shadow-focus sm:w-22"
-      title={t('meta.tier.itemTitle', { name: stat.name, percent: percent(share) })}
-      onClick={() => onOpen(stat)}
-    >
-      <span className={`${TILE_BASE} aspect-square w-full group-hover:scale-[1.04] group-focus-visible:shadow-focus`}>
-        {stat.cover === null ? (
-          <span className="grid size-full place-items-center text-soft">
-            <Icon name="layers" size={26} />
-          </span>
-        ) : (
-          <img src={cardImageSrc(coverArtUrl(stat.cover), 320)} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
-        )}
-        <span className={TILE_BADGE}>{percent(share)}</span>
-        <TrendArrow trend={stat.trend} size={32} className="absolute right-0 top-0" />
-      </span>
-      <span className="line-clamp-2 text-micro font-medium leading-tight text-foreground [overflow-wrap:anywhere]">{stat.name}</span>
     </button>
   )
 }

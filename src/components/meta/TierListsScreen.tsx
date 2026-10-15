@@ -1,22 +1,16 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import {
-  DECK_TIER_FLOORS,
-  DECK_TREND_THRESHOLD,
   META_DECKS,
   MIN_RELIABLE_DECKS,
-  MIN_TIER_DECKS,
   PROJECTION_WEEKS,
   TIER_FLOORS,
   TREND_THRESHOLD,
-  buildDeckTierReport,
   buildMetaReport,
   buildTierListHash,
   buildTournamentsHash,
   readTierListHash,
-  type MetaDeck,
   type MetaCardStat,
-  type DeckTierStat,
   type MetaList,
   type MetaTier,
   type MetaZone,
@@ -39,22 +33,20 @@ import { SectionHeader } from '../ui/SectionHeader'
 import { Segmented } from '../ui/Segmented'
 import { StepPage } from '../ui/StepPage'
 import { overline } from '../ui/typography'
-import { DeckTierModal } from './DeckTierModal'
 import { MetaCardModal } from './MetaCardModal'
-import { MetaDeckModal } from './MetaDeckModal'
 import { MetaHeroSide } from './MetaHeroSide'
-import { CardTile, DeckTile, TierBoard, groupByTier, type BoardView } from './TierBoard'
+import { CardTile, TierBoard, groupByTier, type BoardView } from './TierBoard'
 import { percent, tierLabel } from './meta-format'
 
 type WindowWeeks = '2' | '4' | '8'
 
 const ZONE_LABEL_KEY = { both: 'meta.screen.zoneBoth', main: 'meta.screen.zoneMain', side: 'meta.screen.zoneSide' } as const satisfies Record<MetaZone, string>
 const WINDOW_WEEKS: readonly WindowWeeks[] = ['2', '4', '8']
-const LISTS: readonly MetaList[] = ['handtrap', 'deck', 'boardbreaker']
-const LIST_LABEL_KEY = { handtrap: 'meta.list.handtrap', deck: 'meta.list.deck', boardbreaker: 'meta.list.boardbreaker' } as const satisfies Record<MetaList, string>
-const LIST_TITLE_KEY = { handtrap: 'meta.list.handtrapTitle', deck: 'meta.list.deckTitle', boardbreaker: 'meta.list.boardbreakerTitle' } as const satisfies Record<MetaList, string>
-const LIST_THINGS_KEY = { handtrap: 'meta.list.handtrapThings', deck: 'meta.list.deckThings', boardbreaker: 'meta.list.boardbreakerThings' } as const satisfies Record<MetaList, string>
-const LIST_ICON: Record<MetaList, IconName> = { handtrap: 'hand', deck: 'layers', boardbreaker: 'target' }
+const LISTS: readonly MetaList[] = ['handtrap', 'boardbreaker']
+const LIST_LABEL_KEY = { handtrap: 'meta.list.handtrap', boardbreaker: 'meta.list.boardbreaker' } as const satisfies Record<MetaList, string>
+const LIST_TITLE_KEY = { handtrap: 'meta.list.handtrapTitle', boardbreaker: 'meta.list.boardbreakerTitle' } as const satisfies Record<MetaList, string>
+const LIST_THINGS_KEY = { handtrap: 'meta.list.handtrapThings', boardbreaker: 'meta.list.boardbreakerThings' } as const satisfies Record<MetaList, string>
+const LIST_ICON: Record<MetaList, IconName> = { handtrap: 'hand', boardbreaker: 'target' }
 
 /** Pasa a otra pantalla por el hash: el armazón cambia de paso y "Atrás" vuelve al tier list. */
 function goTo(hash: string): void {
@@ -72,9 +64,6 @@ export function TierListsScreen() {
   const [weeks, setWeeks] = useState<WindowWeeks>('4')
   const [view, setView] = useState<BoardView>('now')
   const [selectedCard, setSelectedCard] = useState<MetaCardStat | null>(null)
-  const [selectedDeckTier, setSelectedDeckTier] = useState<DeckTierStat | null>(null)
-  // Un resultado del deck abierto: el deck entero se ve encima del detalle del tier list, y al cerrarlo se vuelve a él.
-  const [selectedDeck, setSelectedDeck] = useState<MetaDeck | null>(null)
 
   // Un link a otra lista (o "Atrás") cambia el hash sin remontar la pantalla; si el hash ya es de otra pantalla, ella se va sola y no se toca nada.
   useEffect(() => {
@@ -89,14 +78,11 @@ export function TierListsScreen() {
     return () => window.removeEventListener('hashchange', syncList)
   }, [])
 
-  const isDeckList = list === 'deck'
-  const cardReport = useMemo(() => (isDeckList ? null : buildMetaReport(META_DECKS, region, zone, Number(weeks), list)), [isDeckList, region, zone, weeks, list])
-  const deckReport = useMemo(() => (isDeckList ? buildDeckTierReport(META_DECKS, region, Number(weeks)) : null), [isDeckList, region, weeks])
-  const deckCount = (cardReport ?? deckReport)?.deckCount ?? 0
-  const cardRows = useMemo(() => groupByTier(cardReport?.cards ?? [], view), [cardReport, view])
-  const deckRows = useMemo(() => groupByTier(deckReport?.decks ?? [], view), [deckReport, view])
-  const isEmpty = (cardReport?.cards.length ?? deckReport?.decks.length ?? 0) === 0
-  const floors = isDeckList ? DECK_TIER_FLOORS : TIER_FLOORS
+  const cardReport = useMemo(() => buildMetaReport(META_DECKS, region, zone, Number(weeks), list), [region, zone, weeks, list])
+  const deckCount = cardReport.deckCount
+  const cardRows = useMemo(() => groupByTier(cardReport.cards, view), [cardReport, view])
+  const isEmpty = cardReport.cards.length === 0
+  const floors = TIER_FLOORS
   const ahead = formatInteger(PROJECTION_WEEKS)
   const totalWeeks = Math.ceil(META_DECKS.windowDays / 7)
   const zoneOptions = (Object.keys(ZONE_LABEL_KEY) as MetaZone[]).map((value) => ({ value, label: t(ZONE_LABEL_KEY[value]) }))
@@ -107,9 +93,7 @@ export function TierListsScreen() {
   ]
   const listOptions = LISTS.map((value) => ({ value, label: t(LIST_LABEL_KEY[value]) }))
   const descriptionParams = { count: deckCount, n: formatInteger(deckCount), region: region.toUpperCase(), weeks, ahead }
-  const description = isDeckList
-    ? t(view === 'projected' ? 'meta.screen.deckProjected' : 'meta.screen.deckNow', descriptionParams)
-    : t(view === 'projected' ? 'meta.screen.tierProjected' : 'meta.screen.tierNow', descriptionParams)
+  const description = t(view === 'projected' ? 'meta.screen.tierProjected' : 'meta.screen.tierNow', descriptionParams)
 
   const changeList = (next: MetaList) => {
     setList(next)
@@ -147,7 +131,7 @@ export function TierListsScreen() {
             isDesktop ? (
               // Cada control lleva su rótulo: "2 sem." (cuántos decks se cuentan) y la proyección no se confunden.
               <div className="flex flex-wrap items-end gap-2">
-                {isDeckList ? null : <ControlField label={t('meta.screen.fieldCount')}>{zoneControl()}</ControlField>}
+                <ControlField label={t('meta.screen.fieldCount')}>{zoneControl()}</ControlField>
                 <ControlField label={t('meta.screen.fieldWeeks')}>{weeksControl()}</ControlField>
                 <ControlField label={t('meta.screen.fieldView')}>{viewControl()}</ControlField>
               </div>
@@ -170,23 +154,10 @@ export function TierListsScreen() {
         ) : null}
         {isEmpty ? (
           <EmptyState icon={LIST_ICON[list]} title={t('meta.screen.emptyTitle', { things: t(LIST_THINGS_KEY[list]) })}>
-            {t(isDeckList ? 'meta.screen.emptyDecksHint' : 'meta.screen.emptyHint')}
+            {t('meta.screen.emptyHint')}
           </EmptyState>
-        ) : deckReport ? (
-          <TierBoard
-            layout="decks"
-            floors={floors}
-            rows={deckRows.map(({ tier, items }) => ({
-              tier,
-              tiles: items.map((stat) => ({
-                key: stat.name,
-                tile: <DeckTile stat={stat} share={view === 'projected' ? stat.projectedShare : stat.share} onOpen={setSelectedDeckTier} />,
-              })),
-            }))}
-          />
         ) : (
           <TierBoard
-            layout="cards"
             floors={floors}
             rows={cardRows.map(({ tier, items }) => ({
               tier,
@@ -212,7 +183,7 @@ export function TierListsScreen() {
         }
       >
         <div className="grid gap-4">
-          {isDeckList ? null : <ControlField label={t('meta.screen.fieldCount')}>{zoneControl()}</ControlField>}
+          <ControlField label={t('meta.screen.fieldCount')}>{zoneControl()}</ControlField>
           <ControlField label={t('meta.screen.fieldWeeks')}>{weeksControl()}</ControlField>
         </div>
       </Modal>
@@ -223,13 +194,6 @@ export function TierListsScreen() {
         onPickArchetype={(name) => goTo(buildTournamentsHash({ archetype: name }))}
         onShowDecks={(cardId) => goTo(buildTournamentsHash({ card: cardId }))}
       />
-      <DeckTierModal
-        stat={selectedDeckTier}
-        onClose={() => setSelectedDeckTier(null)}
-        onOpenDeck={setSelectedDeck}
-        onShowDecks={(name) => goTo(buildTournamentsHash({ archetype: name }))}
-      />
-      <MetaDeckModal deck={selectedDeck} onClose={() => setSelectedDeck(null)} onOpenDeck={setSelectedDeck} />
     </StepPage>
   )
 }
@@ -253,10 +217,7 @@ interface TierListHelpProps {
 /** Cómo se arma el tier list que se está viendo y cómo se predice (cada viñeta es un mensaje: los números van de parámetro). */
 function TierListHelp({ list, floors, totalWeeks }: TierListHelpProps) {
   const ahead = formatInteger(PROJECTION_WEEKS)
-  const rule =
-    list === 'deck'
-      ? t('meta.help.deck', { min: formatInteger(MIN_TIER_DECKS) })
-      : t(list === 'handtrap' ? 'meta.help.handtrap' : 'meta.help.boardbreaker')
+  const rule = t(list === 'handtrap' ? 'meta.help.handtrap' : 'meta.help.boardbreaker')
 
   return (
     <div className="grid gap-3">
@@ -265,7 +226,7 @@ function TierListHelp({ list, floors, totalWeeks }: TierListHelpProps) {
         <ul className="m-0 grid list-disc gap-1 pl-4">
           <li>{t('meta.help.build1')}</li>
           <li>{rule}</li>
-          {list === 'deck' ? null : <li>{t('meta.help.cards')}</li>}
+          <li>{t('meta.help.cards')}</li>
           <li>
             {[
               ...floors.map(([tier, floor]) => t('meta.help.tierAtLeast', { tier: tierLabel(tier), percent: percent(floor) })),
@@ -278,7 +239,7 @@ function TierListHelp({ list, floors, totalWeeks }: TierListHelpProps) {
         <strong className="text-foreground">{t('meta.help.predictTitle')}</strong>
         <ul className="m-0 grid list-disc gap-1 pl-4">
           <li>{t('meta.help.predict1', { weeks: formatInteger(totalWeeks), ahead })}</li>
-          <li>{t('meta.help.predict2', { points: formatInteger(Math.round((list === 'deck' ? DECK_TREND_THRESHOLD : TREND_THRESHOLD) * 100)) })}</li>
+          <li>{t('meta.help.predict2', { points: formatInteger(Math.round(TREND_THRESHOLD * 100)) })}</li>
           <li>{t('meta.help.predict3', { ahead })}</li>
         </ul>
       </div>

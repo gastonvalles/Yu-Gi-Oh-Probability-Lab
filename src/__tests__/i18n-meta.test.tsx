@@ -7,7 +7,7 @@ import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { buildVerdict, compareBuilds } from '../app/build-comparison'
-import { DECK_TIER_FLOORS, buildMetaReport, type MetaCardStat, type MetaDeck, type MetaDecksData } from '../app/meta'
+import { buildMetaReport, type MetaCardStat, type MetaDeck, type MetaDecksData } from '../app/meta'
 import type { DeckCardInstance } from '../app/model'
 import { matchReplays, readStage } from '../app/replays'
 import { createSavedBuild, uniqueBuildName } from '../app/saved-builds'
@@ -200,12 +200,9 @@ describe('Meta en inglés', () => {
     expect(screen.getByText('No boardbreakers in this window')).toBeInTheDocument()
     expect(window.location.hash).toBe('#meta?list=boardbreaker')
 
-    // La de decks no cuenta cartas: no hay zona. Con tres decks de nombres distintos ninguno llega al mínimo de resultados.
-    fireEvent.click(screen.getByRole('radio', { name: 'Decks' }))
-    expect(screen.getByRole('heading', { name: 'Deck tier list' })).toBeInTheDocument()
-    expect(screen.getByText('No decks in this window')).toBeInTheDocument()
-    expect(screen.getByText('Try more weeks.')).toBeInTheDocument()
-    expect(screen.queryByRole('radiogroup', { name: 'Where to count the card' })).not.toBeInTheDocument()
+    // Ya no hay una lista de decks: sólo las dos de cartas.
+    expect(screen.queryByRole('radio', { name: 'Decks' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('radio', { name: /^(Hand traps|Boardbreakers)$/ })).toHaveLength(2)
   })
 
   it('con las tier lists abiertas, un link a otra lista la cambia; el hash de otra pantalla no toca nada', () => {
@@ -221,8 +218,6 @@ describe('Meta en inglés', () => {
     }
 
     expect(checked()).toContain('Hand traps')
-    goTo('#meta?list=deck')
-    expect(checked()).toContain('Decks')
     goTo('#meta?list=boardbreaker')
     expect(checked()).toContain('Boardbreakers')
     // Al irse a otra pantalla el hash ya no es de las tier lists: la lista elegida no salta a la de hand traps mientras la pantalla se va.
@@ -257,9 +252,6 @@ describe('Meta en inglés', () => {
     expect([tierLabel('S'), tierLabel('C'), tierLabel('D')]).toEqual(['TIER S', 'MEH', '😭'])
     expect(tierHint('S')).toBe('At least 60% of decks')
     expect(tierHint('D')).toBe('Less than 5% of decks')
-    // Los decks se reparten el meta en porcentajes mucho más bajos: su lista pide otros pisos.
-    expect(tierHint('S', DECK_TIER_FLOORS)).toBe('At least 8% of decks')
-    expect(tierHint('D', DECK_TIER_FLOORS)).toBe('Less than 1% of decks')
   })
 
   it('lo que lleva un deck se dice por tipo (una carta que los datos no conocen cuenta como hand trap), y el que no lleva ninguna no dice nada', () => {

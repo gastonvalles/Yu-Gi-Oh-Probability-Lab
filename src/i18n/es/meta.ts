@@ -25,7 +25,7 @@ export const meta = {
 
   // Pantalla de los tier lists
   'meta.screen.title': 'Tier lists',
-  'meta.screen.subtitle': 'Qué hand traps, decks y boardbreakers mandan en los torneos, y hacia dónde van.',
+  'meta.screen.subtitle': 'Qué hand traps y boardbreakers mandan en los torneos, y hacia dónde van.',
   'meta.screen.regionLabel': 'Región de los torneos',
   'meta.screen.updatedTitle': 'Fecha de la última actualización de los decks',
   'meta.screen.listLabel': 'Qué tier list ver',
@@ -49,30 +49,18 @@ export const meta = {
     one: '{n} deck {region} de las últimas {weeks} semanas. Tocá una carta para ver el detalle.',
     other: '{n} decks {region} de las últimas {weeks} semanas. Tocá una carta para ver el detalle.',
   },
-  'meta.screen.deckProjected': {
-    one: 'Dónde quedaría cada deck en {ahead} semanas si sigue su tendencia. Base: {n} deck {region} de las últimas {weeks} semanas.',
-    other: 'Dónde quedaría cada deck en {ahead} semanas si sigue su tendencia. Base: {n} decks {region} de las últimas {weeks} semanas.',
-  },
-  'meta.screen.deckNow': {
-    one: '{n} deck {region} de las últimas {weeks} semanas, agrupado por nombre. Tocá uno para ver sus mejores resultados.',
-    other: '{n} decks {region} de las últimas {weeks} semanas, agrupados por nombre. Tocá uno para ver sus mejores resultados.',
-  },
   'meta.screen.lowSample': 'Hay pocos decks {region} en esta ventana ({n}): cada uno pesa varios puntos y los tiers se mueven mucho. Probá con más semanas.',
   'meta.screen.adjust': 'Ajustar la tier list',
   'meta.screen.adjustDone': 'Listo',
   'meta.screen.emptyTitle': 'Sin {things} en esta ventana',
   'meta.screen.emptyHint': 'Probá con más semanas o con otra zona.',
-  'meta.screen.emptyDecksHint': 'Probá con más semanas.',
 
-  // Las tres tier lists
+  // Las tier lists
   'meta.list.handtrap': 'Hand traps',
-  'meta.list.deck': 'Decks',
   'meta.list.boardbreaker': 'Boardbreakers',
   'meta.list.handtrapTitle': 'Tier list de hand traps',
-  'meta.list.deckTitle': 'Tier list de decks',
   'meta.list.boardbreakerTitle': 'Tier list de boardbreakers',
   'meta.list.handtrapThings': 'hand traps',
-  'meta.list.deckThings': 'decks',
   'meta.list.boardbreakerThings': 'boardbreakers',
 
   // Ayuda de los tier lists (cada viñeta es un mensaje: los números van de parámetro)
@@ -82,8 +70,6 @@ export const meta = {
     'Cuenta como hand trap una carta que, según sus reglas, tiene un efecto rápido o disparador que se activa desde la mano (o una trampa activable desde la mano), y que juegan al menos 3 decks distintos sin ser de su arquetipo.',
   'meta.help.boardbreaker':
     'Cuenta como boardbreaker una carta que, según sus reglas, destruye, destierra, devuelve o roba el control de cartas del campo del rival (o se invoca en su campo, como los Kaiju), y que juegan al menos 3 decks distintos sin ser de su arquetipo. También entran las de siempre, como Dark Hole o Mystical Space Typhoon.',
-  'meta.help.deck':
-    'Los decks se agrupan por el nombre con el que están cargados en YGOPRODeck, y cada nombre se mide por el porcentaje de los decks de esa región que lo llevan. Con menos de {min} decks en la ventana no entra a la lista.',
   'meta.help.cards': 'Cada carta se mide por el porcentaje de esos decks que la llevan en el Main o en el Side.',
   'meta.help.tierAtLeast': '{tier}: al menos el {percent}',
   'meta.help.tierBelow': '{tier}: menos del {percent}.',
@@ -92,7 +78,7 @@ export const meta = {
   'meta.help.predict2': 'Si la cifra proyectada sube más de {points} puntos dice “Sube”; si baja más de {points}, “Baja”; si no, “Estable”.',
   'meta.help.predict3': '“Proyección” muestra el tier list como quedaría en {ahead} semanas si esa tendencia sigue igual.',
 
-  // Detalle de una carta o de un deck del tier list
+  // Detalle de una carta del tier list
   'meta.detail.shareLine': '{tier} · {percent} de los decks ({decks})',
   'meta.detail.trend': 'Tendencia',
   'meta.detail.projection': 'Proyección a {ahead} semanas.',
@@ -113,12 +99,6 @@ export const meta = {
   'meta.card.showDecks': 'Ver los decks que la juegan',
 
   // Detalle de un deck del tier list
-  'meta.deckTier.kicker': 'Tier list de decks',
-  'meta.deckTier.results': 'Mejores resultados',
-  'meta.deckTier.openDeck': 'Ver el deck de {player}',
-  'meta.deckTier.noPlayer': 'Jugador sin nombre',
-  'meta.deckTier.moreResults': '+{count} resultados más',
-  'meta.deckTier.showDecks': 'Ver los decks de torneo',
 
   // Pantalla de los decks de torneo
   'meta.tournaments.title': 'Decks de torneo',
