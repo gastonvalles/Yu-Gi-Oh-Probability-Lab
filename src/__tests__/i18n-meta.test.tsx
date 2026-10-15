@@ -11,7 +11,8 @@ import { buildMetaReport, type MetaCardStat, type MetaDeck, type MetaDecksData }
 import type { DeckCardInstance } from '../app/model'
 import { matchReplays, readStage } from '../app/replays'
 import { createSavedBuild, uniqueBuildName } from '../app/saved-builds'
-import { ComparisonReport } from '../components/comparison/ComparisonReport'
+import { BuildNotes, VerdictLine } from '../components/comparison/ComparisonSummary'
+import { DeckResults } from '../components/comparison/DeckResults'
 import { KpiDetailModal } from '../components/comparison/KpiDetailModal'
 import { TierListsScreen } from '../components/meta/TierListsScreen'
 import { TournamentDecksScreen } from '../components/meta/TournamentDecksScreen'
@@ -99,28 +100,34 @@ describe('Comparar builds en inglés', () => {
     expect(tiny.b.blockedReasons).toEqual(['The Main Deck needs at least 6 cards.'])
   })
 
-  it('el informe lleva los títulos, los turnos y el aviso de cartas sin clasificar con su plural', () => {
+  it('el veredicto, los resultados de un mazo y el aviso de cartas sin clasificar salen en inglés, con su plural', () => {
     applyLocale('en')
 
     const better = compareBuilds({ name: 'Old', cards: OLD }, { name: 'New', cards: NEW }, RULES)
-    const first = render(<ComparisonReport comparison={better} isCurrentDeck={{ A: true, B: false }} onShowCards={() => {}} />)
+    const first = render(
+      <>
+        <VerdictLine comparison={better} />
+        <DeckResults side="B" comparison={better} onlyDiffs onOnlyDiffsChange={() => {}} />
+      </>,
+    )
 
     expect(screen.getByText('New is better')).toBeInTheDocument()
-    for (const text of ['Which cards changed', 'How they differ', 'See how many hands', 'Get going well (more is better)', 'Get stuck (less is better)']) {
-      expect(screen.getAllByText(text).length).toBeGreaterThan(0)
-    }
-    // La respuesta en lenguaje natural y la tabla, con su nombre.
+    // La respuesta en lenguaje natural y, de ese mazo, su tabla con los grupos.
     expect(screen.getByText(/^Out of every 100 hands, B gives you \d+ good ones and A \d+\.$/)).toBeInTheDocument()
-    expect(screen.getByRole('table', { name: /Share of hands/ })).toBeInTheDocument()
+    expect(screen.getByText('out of every 100 hands are good')).toBeInTheDocument()
+    expect(screen.getByRole('table', { name: 'Share of hands that meet each condition, in build B' })).toBeInTheDocument()
+    for (const text of ['See how many hands', 'Only differences (', 'Get going well (more is better)', 'Get stuck (less is better)']) {
+      expect(screen.getAllByText(text, { exact: false }).length).toBeGreaterThan(0)
+    }
+    expect(screen.getByRole('switch', { name: 'Show only differences' })).toBeInTheDocument()
     first.unmount()
 
     const pending = [...OLD.slice(0, -1), { ...card('x', 1, []), origin: null }]
     const incomplete = compareBuilds({ name: 'Old', cards: OLD }, { name: 'New', cards: pending }, RULES)
-    render(<ComparisonReport comparison={incomplete} isCurrentDeck={{ A: true, B: false }} onShowCards={() => {}} />)
+    render(<BuildNotes side="B" build={incomplete.b} canClassifyHere />)
 
     expect(screen.getByText('Build B: 1 unclassified card')).toBeInTheDocument()
-    expect(screen.getByText('Classify them so the comparison is accurate.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'View cards' })).toBeInTheDocument()
+    expect(screen.getByText('Tap the cards marked with ? in the list below to classify them so the comparison is accurate.')).toBeInTheDocument()
   })
 
   it('el nombre de una build sin nombre y los plurales de las cartas', () => {
