@@ -1,9 +1,9 @@
 import type { DuelSave } from './duel-save'
 import { addChat, addGame, cleanChat, coinWinner, dieWinner, duelResult, rpsOutcome, type ChatLine, type DuelGame, type GameEntry, type RpsPick, type TossMethod } from './duel-games'
-import { DEFAULT_SETTINGS, PROTOCOL_VERSION, cleanName, encodeMessage, parseMessage, type DuelMessage, type DuelSettings, type OpeningWire } from './duel-protocol'
+import { DEFAULT_SETTINGS, MAX_MARKS, NO_MARKS, PROTOCOL_VERSION, cleanName, encodeMessage, parseMessage, type DuelMessage, type DuelSettings, type MarkTarget, type Marks, type OpeningWire } from './duel-protocol'
 import { createLifeState, lifeReducer, timerElapsed, type Duelist, type LifeState } from './life-calculator'
 import { encodeAct, mapMatIds, mirrorApply, mirrorUndo, openMirror, openPublic, senderKnown, type Mirror, type PublicSender } from './mat-public'
-import { matReducer, replayMat, type MatAction, type MatState } from './practice-mat'
+import { allMatIds, matReducer, replayMat, type MatAction, type MatState } from './practice-mat'
 
 /**
  * Un duelo por enlace, del lado de uno de los dos jugadores: mi mesa (la real), la del rival (un espejo
@@ -75,6 +75,8 @@ export interface DuelSnapshot {
   chat: readonly ChatLine[]
   /** Cuántos espectadores están mirando (hasta dos): sólo miran, no pueden hacer nada. */
   watchers: number
+  /** Lo marcado como objetivo: `mine`, lo que el rival marcó de mi lado (con mis ids reales); `theirs`, lo que yo marqué del suyo (con los ids que él les dio). */
+  marks: { mine: Marks; theirs: Marks }
 }
 
 export interface Duel {
@@ -106,6 +108,8 @@ export interface Duel {
   concede(): void
   /** Pedir la revancha (o aceptarla si el rival la pidió). */
   rematch(): void
+  /** Marcar (o desmarcar) como objetivo algo del lado del rival: una carta suya (por el id que él le dio) o una de sus pilas, la mano incluida. Él lo ve en lo suyo. */
+  toggleMark(target: MarkTarget): void
   /** Volver a conectarme a la sala ya: lo que sigue en pausa por un aviso que no llegó se resuelve sin salir del duelo. */
   reconnect(): void
   close(): void
@@ -169,6 +173,9 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   let chatId = 0
   let chatN = 0
   let watchers = 0
+  // Los objetivos que cada uno marcó del lado del otro. Lo que marqué yo lo repongo cuando el otro vuelve (viaja con mi `sync`); lo suyo llega con su mensaje.
+  let marksOnMine: Marks = NO_MARKS
+  let marksOnTheirs: Marks = NO_MARKS
   /** Mis puntos de vida vienen de lo guardado: el saludo del anfitrión no los pisa con los de arranque. */
   let lpRestored = false
 
@@ -184,7 +191,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   const listeners = new Set<() => void>()
   let snapshot: DuelSnapshot
 
-  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent, peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, watchers })
+  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent, peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, watchers, marks: { mine: marksOnMine, theirs: marksOnTheirs } })
 
   const emit = () => {
     snapshot = build()
@@ -194,6 +201,9 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   const send = (message: DuelMessage) => transport.send(encodeMessage(message))
 
   const sendHello = () => send({ t: 'hello', v: PROTOCOL_VERSION, sid, role, name, ...(role === 'host' ? { settings } : {}) })
+
+  /** Todo lo que tengo marcado del lado del rival (siempre el conjunto entero). */
+  const sendMarks = () => send({ t: 'marks', cards: [...marksOnTheirs.cards], piles: [...marksOnTheirs.piles] })
 
   /** Mi estado de ahora: la mesa (si ya empecé), mis puntos de vida y, del anfitrión, el reloj. */
   const sendSync = () => {
@@ -209,6 +219,11 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     const opening: OpeningWire = ordered ? {} : { ...(method ? { method } : {}), ...(caller !== null ? { caller } : {}), ...(dice.mine !== null ? { die: dice.mine } : {}), ...(chooser !== null ? { chooser } : {}) }
 
     send({ t: 'sync', ...table, lp: life.lp[me], lifeN, ready: ready.mine, ...(ordered ? { order: starter } : {}), ...(Object.keys(opening).length > 0 ? { opening } : {}), ...(role === 'host' ? { clock } : {}) })
+
+    // Lo que marqué de su lado se repone junto con mi mesa (si recargó, no se acuerda).
+    if (marksOnTheirs.cards.length > 0 || marksOnTheirs.piles.length > 0) {
+      sendMarks()
+    }
 
     // Lo mismo con la revancha que ya pedí.
     if (rematch.mine && !rematch.theirs) {
@@ -346,6 +361,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       sender = null
       ownIds = {}
       theirs = null
+      marksOnMine = NO_MARKS
+      marksOnTheirs = NO_MARKS
       peerSeq = 0
       lifeN = 0
       clockN = 0
@@ -389,6 +406,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     peerClockN = 0
     peerGameN = 0
     peerChatN = 0
+    marksOnMine = NO_MARKS
+    // (lo que yo marqué de su lado se queda: sus ids opacos no cambian al recargar con su mesa guardada, y se le repone con mi `sync`)
     // Una ronda terminada no se le repite al que vuelve (le diría que el rival "ya eligió"); una a medias sí, para que la pueda terminar.
     rps = rps.theirs !== null ? { mine: null, theirs: null } : rps
     rematch = { ...rematch, theirs: false }
@@ -537,6 +556,11 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
           chat = addChat(chat, { id: chatId, from: peer, text: message.text })
         }
 
+        return
+
+      case 'marks':
+        // Sus ids opacos se vuelven mis cartas reales; los que no son míos no cuentan.
+        marksOnMine = { cards: message.cards.flatMap((id) => (ownIds[id] === undefined ? [] : [ownIds[id]!])), piles: message.piles }
         return
 
       case 'resync':
@@ -762,6 +786,26 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
 
     reconnect() {
       transport.reconnect?.()
+    },
+
+    toggleMark(target) {
+      // Sin rival y sin su mesa no hay a qué marcarle nada; y no se marca lo que no es suyo.
+      if (!peerPresent || !theirs) {
+        return
+      }
+
+      if ('card' in target) {
+        if (!marksOnTheirs.cards.includes(target.card) && (marksOnTheirs.cards.length >= MAX_MARKS || !allMatIds(theirs.state).includes(target.card))) {
+          return
+        }
+
+        marksOnTheirs = { ...marksOnTheirs, cards: marksOnTheirs.cards.includes(target.card) ? marksOnTheirs.cards.filter((id) => id !== target.card) : [...marksOnTheirs.cards, target.card] }
+      } else {
+        marksOnTheirs = { ...marksOnTheirs, piles: marksOnTheirs.piles.includes(target.pile) ? marksOnTheirs.piles.filter((pile) => pile !== target.pile) : [...marksOnTheirs.piles, target.pile] }
+      }
+
+      sendMarks()
+      emit()
     },
 
     close() {

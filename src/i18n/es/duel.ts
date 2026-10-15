@@ -14,6 +14,9 @@ export const duel = {
   // El aviso cuando el rival ataca.
   'duel.announce.attack': '{name} ataca a {target}',
   'duel.announce.attackDirect': '{name} te ataca directo',
+  'duel.mark.label': '{place}: marcar',
+  'duel.mark.notice.pile': '{name} marca tu {pile} como objetivo',
+  'duel.mark.notice.card': '{name} marca una de tus cartas como objetivo',
   'duel.announce.yourCard': 'una de tus cartas',
   'duel.announce.activate': '{name} activa una carta',
   'duel.announce.reveal': '{name} revela una carta',

@@ -178,3 +178,23 @@ describe('contra mensajes alterados', () => {
     expect(accepted).toBeGreaterThan(200)
   })
 })
+
+describe('las marcas de objetivo', () => {
+  const parse = (value: unknown) => parseMessage(JSON.stringify(value))
+
+  it('llega el conjunto entero de cartas (ids opacos) y pilas, sin repetidos', () => {
+    expect(parse({ t: 'marks', cards: ['c1', 'c7'], piles: ['hand', 'gy'] })).toEqual({ t: 'marks', cards: ['c1', 'c7'], piles: ['hand', 'gy'] })
+    expect(parse({ t: 'marks', cards: [], piles: [] })).toEqual({ t: 'marks', cards: [], piles: [] })
+  })
+
+  it('lo mal formado se descarta: pilas que no existen o repetidas, ids que no son ids, demasiadas cartas, otra forma', () => {
+    expect(parse({ t: 'marks', cards: [], piles: ['mz'] })).toBeNull()
+    expect(parse({ t: 'marks', cards: [], piles: ['gy', 'gy'] })).toBeNull()
+    expect(parse({ t: 'marks', cards: [1], piles: [] })).toBeNull()
+    expect(parse({ t: 'marks', cards: [''], piles: [] })).toBeNull()
+    expect(parse({ t: 'marks', cards: Array.from({ length: 31 }, (_, index) => `c${index + 1}`), piles: [] })).toBeNull()
+    expect(parse({ t: 'marks', cards: 'c1', piles: [] })).toBeNull()
+    expect(parse({ t: 'marks', cards: [] })).toBeNull()
+    expect(parse({ t: 'marks', cards: [], piles: ['hand', 'deck', 'extra', 'gy', 'banished', 'hand'] })).toBeNull()
+  })
+})

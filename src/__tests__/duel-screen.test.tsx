@@ -426,6 +426,51 @@ describe('la pantalla del duelo', () => {
     expect(within(guest.container).getByRole('dialog', { name: '¡Ganaste!' }).parentElement).toHaveClass(edge)
   })
 
+  it('el rival se puede marcar como objetivo: su carta del campo, su mano, su Main, su cementerio y su destierro; el dueño lo ve en lo suyo, y se quita igual', () => {
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+    summonFirst(host)
+    flush()
+
+    const markRival = (view: RenderResult, name: string, item: string) => {
+      fireEvent.click(within(view.container).getByRole('button', { name }))
+      fireEvent.click(screen.getByRole('menuitem', { name: item }))
+      flush()
+    }
+    const gyOf = (view: RenderResult) => view.container.querySelector('[data-drop="gy"]')!
+
+    // Su carta del campo: Beto la marca (menú pegado, una sola jugada) y Ana la ve en la suya; los dos con la mira.
+    fireEvent.click(within(guest.container).getByRole('button', { name: 'Rival, Zona de monstruo 1: marcar' }))
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Target' }))
+    flush()
+    expect(zoneOf(host, 'Zona de monstruo 1').getByRole('img', { name: 'Target' })).toBeInTheDocument()
+    expect(guest.container.querySelector('[data-rival-card-id]')).toHaveAttribute('data-targeted', 'true')
+
+    // Sus pilas y su mano: la mira queda sobre cada una, de los dos lados.
+    markRival(guest, 'GY: marcar', 'Target')
+    markRival(guest, 'Banish: marcar', 'Target')
+    markRival(guest, 'Main: marcar', 'Target')
+    markRival(guest, 'Mano: marcar', 'Target')
+    expect(gyOf(host)).toHaveAttribute('data-targeted', 'true')
+    expect(host.container.querySelector('[data-drop="banished"]')).toHaveAttribute('data-targeted', 'true')
+    expect(host.container.querySelector('[data-drop="deck"]')).toHaveAttribute('data-targeted', 'true')
+    expect(host.container.querySelector('[data-marked="hand"]')).not.toBeNull()
+    expect(guest.container.querySelector('[data-rival-drop="gy"]')).toHaveAttribute('data-targeted', 'true')
+    expect(guest.container.querySelector('[data-rival-drop="hand"]')).toHaveAttribute('data-targeted', 'true')
+
+    // Marcar de nuevo ofrece quitarla.
+    markRival(guest, 'GY: marcar', 'Quitar target')
+    markRival(guest, 'Mano: marcar', 'Quitar target')
+    expect(gyOf(host)).toHaveAttribute('data-targeted', 'false')
+    expect(host.container.querySelector('[data-marked="hand"]')).toBeNull()
+    expect(host.container.querySelector('[data-drop="banished"]')).toHaveAttribute('data-targeted', 'true')
+
+    // Y Ana también puede marcar lo de Beto (es de los dos lados).
+    markRival(host, 'Extra: marcar', 'Target')
+    expect(guest.container.querySelector('[data-drop="extra"]')).toHaveAttribute('data-targeted', 'true')
+  })
+
   it('juegos: moneda, piedra-papel-tijera y quién empieza; los dos ven lo mismo y la elección del rival no se ve hasta elegir la propia', () => {
     const host = render(<DuelScreen {...screenProps()} />)
     typeInto(host, 'Tu nombre', 'Ana')

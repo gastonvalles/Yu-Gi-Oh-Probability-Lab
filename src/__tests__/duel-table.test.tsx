@@ -134,7 +134,7 @@ describe('la mesa del duelo', () => {
 
     expect(hand.children).toHaveLength(5)
     // Va dentro de una columna que scrollea: sin `shrink-0` la columna la aplastaba a 0 px y sólo se veían sus sombras (en jsdom no hay layout, así que se cuida la clase).
-    expect(hand).toHaveClass('shrink-0')
+    expect(hand.parentElement).toHaveClass('shrink-0')
   })
 
   it('se puede mostrar un solo campo: el propio o el del rival, con las Zonas Extra en el medio', () => {

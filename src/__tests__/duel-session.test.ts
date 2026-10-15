@@ -507,3 +507,94 @@ describe('partidas al azar', () => {
     }
   })
 })
+
+describe('los objetivos marcados del lado del otro', () => {
+  /** Ana (anfitriona) pone su primera carta de la mano en el campo; Beto la ve con el id opaco que ella le dio. */
+  function withFieldCard() {
+    const game = setup()
+
+    startBoth(game)
+    game.host.play({ type: 'place', id: hostMain[0]!, zone: 'mz', index: 0, pos: 'atk', how: 'normal' })
+    game.room.flush()
+
+    const opaque = game.guest.getSnapshot().theirs!.state.mz[0]!.id
+
+    return { ...game, opaque }
+  }
+
+  it('lo que uno marca de una carta o de una pila del rival lo ve su dueño en lo suyo (con sus ids reales), y marcar de nuevo lo quita', () => {
+    const game = withFieldCard()
+
+    game.guest.toggleMark({ card: game.opaque })
+    game.guest.toggleMark({ pile: 'gy' })
+    game.guest.toggleMark({ pile: 'hand' })
+    game.room.flush()
+
+    expect(game.guest.getSnapshot().marks.theirs).toEqual({ cards: [game.opaque], piles: ['gy', 'hand'] })
+    expect(game.host.getSnapshot().marks.mine).toEqual({ cards: [hostMain[0]], piles: ['gy', 'hand'] })
+    // Lo marcado del otro lado no se mezcla con lo propio.
+    expect(game.guest.getSnapshot().marks.mine).toEqual({ cards: [], piles: [] })
+    expect(game.host.getSnapshot().marks.theirs).toEqual({ cards: [], piles: [] })
+
+    game.guest.toggleMark({ card: game.opaque })
+    game.guest.toggleMark({ pile: 'gy' })
+    game.room.flush()
+
+    expect(game.host.getSnapshot().marks.mine).toEqual({ cards: [], piles: ['hand'] })
+  })
+
+  it('no se marca lo que no es del rival ni nada si el rival no está', () => {
+    const game = withFieldCard()
+
+    game.guest.toggleMark({ card: 'card-5000-1' })
+    game.guest.toggleMark({ card: 'no-existe' })
+    game.room.flush()
+    expect(game.guest.getSnapshot().marks.theirs).toEqual({ cards: [], piles: [] })
+
+    game.hostEnd.disconnect()
+    game.room.flush()
+    game.guest.toggleMark({ pile: 'deck' })
+    expect(game.guest.getSnapshot().marks.theirs).toEqual({ cards: [], piles: [] })
+  })
+
+  it('si el dueño recarga (con su mesa guardada), el que marcó se las repone; si recarga quien marcó, las marcas se van de lo del otro', () => {
+    const game = withFieldCard()
+
+    game.guest.toggleMark({ card: game.opaque })
+    game.guest.toggleMark({ pile: 'banished' })
+    game.room.flush()
+
+    // Recarga Ana, con su mesa guardada: Beto le vuelve a mandar todo lo que marcó.
+    const save = saveOf(game.host.getSnapshot(), game.clock.t)!
+
+    game.hostEnd.close()
+    const reloaded = createDuel(game.room.join(), { role: 'host', name: 'Ana', now: () => game.clock.t, sid: 'host-2', restore: save })
+    game.room.flush()
+    expect(reloaded.getSnapshot().marks.mine).toEqual({ cards: [hostMain[0]], piles: ['banished'] })
+
+    // Recarga Beto: sus marcas no sobreviven (no las guardó), y Ana deja de verlas.
+    game.guestEnd.close()
+    createDuel(game.room.join(), { role: 'guest', name: 'Beto', now: () => game.clock.t, sid: 'guest-2' })
+    game.room.flush()
+    expect(reloaded.getSnapshot().marks.mine).toEqual({ cards: [], piles: [] })
+  })
+
+  it('la revancha empieza sin marcas, de los dos lados', () => {
+    const game = withFieldCard()
+
+    game.guest.toggleMark({ pile: 'gy' })
+    game.host.toggleMark({ pile: 'deck' })
+    game.room.flush()
+    expect(game.host.getSnapshot().marks.mine.piles).toEqual(['gy'])
+    expect(game.guest.getSnapshot().marks.mine.piles).toEqual(['deck'])
+
+    game.host.concede()
+    game.host.rematch()
+    game.guest.rematch()
+    game.room.flush()
+
+    for (const duel of [game.host, game.guest]) {
+      expect(duel.getSnapshot().marks).toEqual({ mine: { cards: [], piles: [] }, theirs: { cards: [], piles: [] } })
+    }
+  })
+})

@@ -25,6 +25,20 @@ export interface DuelSettings {
 
 export const DEFAULT_SETTINGS: DuelSettings = { lp: STARTING_LP, hand: 5 }
 
+/** Lo que alguien marca como objetivo del lado del otro: cartas (por el id con que su dueño las nombra) y pilas enteras (la mano, el deck, el Extra, el cementerio, lo desterrado). */
+export interface Marks {
+  cards: readonly string[]
+  piles: readonly MatPile[]
+}
+
+export const NO_MARKS: Marks = { cards: [], piles: [] }
+
+/** Algo que se puede marcar del lado del rival. */
+export type MarkTarget = { card: string } | { pile: MatPile }
+
+/** Cuántas cartas se pueden tener marcadas a la vez. */
+export const MAX_MARKS = 30
+
 /** Cómo va, de mi lado, la tirada que define quién elige ir primero: con qué, quién lo eligió, mi dado y, si ya se sabe, quién elige. */
 export interface OpeningWire {
   method?: TossMethod
@@ -47,6 +61,7 @@ interface ClockWire {
  * - `game`: moneda, dado, piedra-papel-tijera o quién va primero (no cambian la mesa; `n` cuenta los míos para no repetir ninguno).
  * - `ready`: estoy listo (o ya no) para empezar el duelo; también viaja en el `sync`.
  * - `chat`: una línea del chat (`n` cuenta las mías para no repetir ninguna).
+ * - `marks`: todo lo que tengo marcado como objetivo del lado de quien lo recibe (cartas por su id opaco, y pilas); siempre el conjunto entero, así repetirlo no cambia nada y reconectar lo repone.
  * - `resync`: me perdí algo, mandame un `sync`.
  */
 export type DuelMessage =
@@ -60,6 +75,7 @@ export type DuelMessage =
   | { t: 'game'; n: number; game: DuelGame }
   | { t: 'ready'; ready: boolean }
   | { t: 'chat'; n: number; text: string }
+  | { t: 'marks'; cards: string[]; piles: MatPile[] }
   | { t: 'resync' }
 
 export function encodeMessage(message: DuelMessage): string {
@@ -352,6 +368,16 @@ export function parseMessage(text: unknown): DuelMessage | null {
       const text = typeof raw.text === 'string' ? cleanChat(raw.text) : ''
 
       return text !== '' && isInt(raw.n, 1, MAX_COUNT) ? { t: 'chat', n: raw.n, text } : null
+    }
+
+    case 'marks': {
+      const piles = raw.piles
+
+      if (!isIds(raw.cards, MAX_MARKS) || !Array.isArray(piles) || piles.length > 5 || !piles.every(isPile) || new Set(piles).size !== piles.length) {
+        return null
+      }
+
+      return { t: 'marks', cards: [...raw.cards], piles: [...(piles as MatPile[])] }
     }
 
     case 'resync':
