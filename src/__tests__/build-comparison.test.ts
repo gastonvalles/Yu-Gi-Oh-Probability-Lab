@@ -86,10 +86,11 @@ describe('computeCardDiffs', () => {
 })
 
 describe('buildVerdict', () => {
+  const counts = { countsA: null, countsB: null }
   const clean = (first: number, second: number) => ({
-    first: { a: 0.5, b: 0.5 + first, delta: first },
-    second: { a: 0.5, b: 0.5 + second, delta: second },
-    average: { a: 0.5, b: 0.5 + (first + second) / 2, delta: (first + second) / 2 },
+    first: { a: 0.5, b: 0.5 + first, delta: first, ...counts },
+    second: { a: 0.5, b: 0.5 + second, delta: second, ...counts },
+    average: { a: 0.5, b: 0.5 + (first + second) / 2, delta: (first + second) / 2, ...counts },
   })
 
   it('detecta empate, ganador y cuando depende del turno', () => {

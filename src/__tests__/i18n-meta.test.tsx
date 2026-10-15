@@ -69,10 +69,11 @@ const OLD = [card('s1', 3, ['starter']), card('s2', 3, ['starter']), card('b1', 
 const NEW = [card('s1', 3, ['starter']), card('s2', 3, ['starter']), card('s3', 3, ['starter']), ...filler(31)]
 const RULES = { patterns: [], disabledGenericRuleIds: [], handSize: 5 }
 
+const counts = { countsA: null, countsB: null }
 const clean = (first: number, second: number) => ({
-  first: { a: 0.5, b: 0.5 + first, delta: first },
-  second: { a: 0.5, b: 0.5 + second, delta: second },
-  average: { a: 0.5, b: 0.5 + (first + second) / 2, delta: (first + second) / 2 },
+  first: { a: 0.5, b: 0.5 + first, delta: first, ...counts },
+  second: { a: 0.5, b: 0.5 + second, delta: second, ...counts },
+  average: { a: 0.5, b: 0.5 + (first + second) / 2, delta: (first + second) / 2, ...counts },
 })
 
 describe('Comparar builds en inglés', () => {
@@ -105,8 +106,12 @@ describe('Comparar builds en inglés', () => {
     const first = render(<ComparisonReport comparison={better} isCurrentDeck={{ A: true, B: false }} onShowCards={() => {}} />)
 
     expect(screen.getByText('New is better')).toBeInTheDocument()
-    for (const text of ['Clean hands', 'Going first', 'Going second', 'Average', 'What changes in the Main Deck', 'Where each one wins']) {
+    for (const text of ['Clean hands', 'What changes in the Main Deck', 'Where each one wins']) {
       expect(screen.getByText(text)).toBeInTheDocument()
+    }
+    // Cada turno aparece en la tabla de manos limpias y otra vez en el selector de turno del detalle.
+    for (const text of ['Going first', 'Going second', 'Average']) {
+      expect(screen.getAllByText(text)).toHaveLength(2)
     }
     expect(screen.getByText('Roles')).toBeInTheDocument()
     // Un anillo por turno y por build; cada uno dice de qué build es.

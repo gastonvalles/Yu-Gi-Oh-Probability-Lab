@@ -46,6 +46,23 @@ export interface CardDiff {
   delta: number
 }
 
+/** Cuántas manos cumplen algo, de cuántas hay en total (cuentas exactas del motor: sólo existen yendo 1º o 2º, no en el promedio). */
+export interface HandCount {
+  hands: number
+  total: number
+}
+
+/** Yendo 2º el motor pondera las manos (la carta robada no cuenta para todas las reglas) y la cuenta puede traer decimales: una cantidad de manos se muestra entera. */
+const handCount = (hands: number, total: number): HandCount => ({ hands: Math.round(hands), total })
+
+/** Una regla en un turno concreto de una build: su probabilidad y las manos que la cumplen. */
+export interface RuleTurnValue {
+  probability: number
+  counts: HandCount
+}
+
+export type RuleTurn = 'first' | 'second'
+
 export interface RuleComparisonRow {
   id: string
   name: string
@@ -57,9 +74,11 @@ export interface RuleComparisonRow {
   delta: number | null
   /** La regla pide una carta que esa build no tiene: ahí no puede cumplirse. */
   missingCardsIn: Array<'A' | 'B'>
+  /** Lo mismo por turno; null donde la regla no se evalúa (p. ej. una de "Solo 1º" yendo 2º) o no hay cálculo. */
+  turns: Record<RuleTurn, { a: RuleTurnValue | null; b: RuleTurnValue | null }>
 }
 
-export type CleanComparison = Record<TurnView, { a: number; b: number; delta: number }>
+export type CleanComparison = Record<TurnView, { a: number; b: number; delta: number; countsA: HandCount | null; countsB: HandCount | null }>
 
 type VerdictKind = 'computing' | 'incomplete' | 'identical' | 'equivalent' | 'a' | 'b' | 'split'
 
@@ -182,9 +201,13 @@ function buildCleanComparison(a: LabResults | null, b: LabResults | null): Clean
     TURN_VIEWS.map((view) => {
       const valueA = a[view].cleanProbability
       const valueB = b[view].cleanProbability
-      return [view, { a: valueA, b: valueB, delta: valueB - valueA }]
+      return [view, { a: valueA, b: valueB, delta: valueB - valueA, countsA: cleanCounts(a[view]), countsB: cleanCounts(b[view]) }]
     }),
   ) as CleanComparison
+}
+
+function cleanCounts(view: LabResults[TurnView]): HandCount | null {
+  return view.cleanHands !== null && view.totalHands !== null ? handCount(view.cleanHands, view.totalHands) : null
 }
 
 export function computeCardDiffs(cardsA: CardEntry[], cardsB: CardEntry[]): CardDiff[] {
@@ -230,6 +253,22 @@ function compareRules(
   const activeIdsB = new Set(activeB.map((pattern) => pattern.id))
   const valueOf = (results: LabResults | null, id: string) =>
     results?.average.patternResults.find((result) => result.patternId === id)?.probability ?? null
+  // Una regla que esa build no evalúa vale 0 de todas las manos; una que no aplica a ese turno no tiene valor.
+  const turnValue = (results: LabResults | null, turn: RuleTurn, id: string, active: boolean): RuleTurnValue | null => {
+    const view = results?.[turn]
+
+    if (!view || view.totalHands === null) {
+      return null
+    }
+
+    const found = view.patternResults.find((result) => result.patternId === id)
+
+    return active
+      ? found
+        ? { probability: found.probability, counts: handCount(found.matchingHands, view.totalHands) }
+        : null
+      : { probability: 0, counts: handCount(0, view.totalHands) }
+  }
 
   return [...systemRows, ...customRows].flatMap((row) => {
     const inA = activeIdsA.has(row.id)
@@ -260,6 +299,10 @@ function compareRules(
         b,
         delta: a !== null && b !== null ? b - a : null,
         missingCardsIn: [...(!row.isSystem && !inA ? (['A'] as const) : []), ...(!row.isSystem && !inB ? (['B'] as const) : [])],
+        turns: {
+          first: { a: turnValue(resultsA, 'first', row.id, inA), b: turnValue(resultsB, 'first', row.id, inB) },
+          second: { a: turnValue(resultsA, 'second', row.id, inA), b: turnValue(resultsB, 'second', row.id, inB) },
+        },
       },
     ]
   })
