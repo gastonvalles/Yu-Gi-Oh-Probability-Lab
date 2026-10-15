@@ -6,7 +6,6 @@ import type { SocketStatus } from '../../app/duel-socket'
 import { duelTurnNumber } from '../../app/duel-turn'
 import { formatClock, interpretAmount, timerRemaining } from '../../app/life-calculator'
 import { PHASES } from '../../app/practice-mat'
-import { formatInteger } from '../../app/utils'
 import { KEYS, KEY, MAX_DIGITS, PRESSABLE, type Key } from '../life/LifeCalculatorScreen'
 import { t } from '../../i18n'
 import { Button } from '../ui/Button'
@@ -277,18 +276,18 @@ export function LifeTile({ name, life, mine = false, color, onClick }: { name: s
   const body = (
     <>
       <span className="min-w-0 truncate text-micro font-semibold uppercase tracking-[0.04em] text-soft">{name}</span>
-      <span className={cx('shrink-0 text-title font-extrabold leading-tight tabular-nums', tone.text)}>{formatInteger(life)}</span>
+      <span className={cx('shrink-0 text-title font-extrabold leading-tight tabular-nums', tone.text)}>{life}</span>
     </>
   )
   // Las dos vidas miden lo mismo (la del rival arriba, la tuya abajo).
   const style = cx('flex h-11 w-36 shrink-0 items-center justify-between gap-2 rounded-card border bg-card-background px-2.5 text-left', tone.border)
 
   return onClick ? (
-    <button type="button" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${formatInteger(life)}. ${t('duel.bar.changeLife')}`} className={cx(style, 'cursor-pointer focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>
+    <button type="button" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${life}. ${t('duel.bar.changeLife')}`} className={cx(style, 'cursor-pointer focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>
       {body}
     </button>
   ) : (
-    <div role="group" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${formatInteger(life)}`} className={style}>
+    <div role="group" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${life}`} className={style}>
       {body}
     </div>
   )
@@ -346,8 +345,8 @@ function LifeKeypad({ life, name, onChange, onHalve }: { life: number; name: str
   return (
     <div className="grid gap-3">
       <div role="status" aria-live="polite" className="grid justify-items-center gap-0.5 rounded-card bg-tint/5 px-3 py-3">
-        <span className={cx('text-stat font-extrabold leading-none tabular-nums', digits ? (operator === '-' ? 'text-danger-soft' : 'text-success-soft') : 'text-accent')}>{formatInteger(digits ? result : life)}</span>
-        <span className="text-micro text-soft">{digits ? `${formatInteger(life)} ${operator === '-' ? '−' : '+'} ${formatInteger(amount)}` : t('duel.life.empty')}</span>
+        <span className={cx('text-stat font-extrabold leading-none tabular-nums', digits ? (operator === '-' ? 'text-danger-soft' : 'text-success-soft') : 'text-accent')}>{digits ? result : life}</span>
+        <span className="text-micro text-soft">{digits ? `${life} ${operator === '-' ? '−' : '+'} ${amount}` : t('duel.life.empty')}</span>
       </div>
 
       <div className="grid grid-cols-4 gap-2" role="group" aria-label={t('shell.life.keypad')}>
@@ -374,7 +373,7 @@ function LifeKeypad({ life, name, onChange, onHalve }: { life: number; name: str
         type="button"
         className={cx(PRESSABLE, 'min-h-14 bg-primary text-stat text-primary-foreground shadow-brand active:bg-primary-hover')}
         disabled={amount === 0}
-        aria-label={t(operator === '-' ? 'duel.life.applySubtract' : 'duel.life.applyAdd', { amount: formatInteger(amount) })}
+        aria-label={t(operator === '-' ? 'duel.life.applySubtract' : 'duel.life.applyAdd', { amount })}
         onClick={() => onChange(delta)}
       >
         =

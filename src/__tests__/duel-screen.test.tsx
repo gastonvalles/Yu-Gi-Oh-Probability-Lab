@@ -9,7 +9,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { extractRoomCode } from '../app/duel-link'
 import type { SocketStatus, SocketTransport, SpectatorSocket } from '../app/duel-socket'
 import type { DuelConnect } from '../app/use-duel'
+import { LifeTile } from '../components/duel/DuelBar'
 import { DuelScreen } from '../components/duel/DuelScreen'
+import { applyLocale } from '../i18n'
 import type { ApiCardReference } from '../types'
 import { createMemoryRoom, type MemoryEnd, type MemoryRoom, type MemorySpectator } from './support/memory-room'
 
@@ -228,8 +230,8 @@ describe('la pantalla del duelo', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Restar [0-9]/ }))
     flush()
 
-    expect(within(host.container).getByRole('button', { name: /Puntos de vida de Ana: 7\D?000/ })).toBeInTheDocument()
-    expect(within(guest.container).getByRole('group', { name: /Puntos de vida de Ana: 7\D?000/ })).toBeInTheDocument()
+    expect(within(host.container).getByRole('button', { name: /Puntos de vida de Ana: 7000/ })).toBeInTheDocument()
+    expect(within(guest.container).getByRole('group', { name: /Puntos de vida de Ana: 7000/ })).toBeInTheDocument()
   })
 
   it('salir del duelo pide confirmación y vuelve al lobby', () => {
@@ -496,8 +498,21 @@ describe('la pantalla del duelo', () => {
     expect(within(guest.container).getByText('Cada uno empieza con 8000 LP y una mano de 5 cartas.')).toBeInTheDocument()
 
     openTable(host, guest)
-    expect(within(host.container).getByRole('button', { name: /Cambiar mis puntos de vida/ })).toHaveAccessibleName(/8\D?000/)
-    expect(within(guest.container).getByRole('group', { name: /Puntos de vida de Ana: 8\D?000/ })).toBeInTheDocument()
+    expect(within(host.container).getByRole('button', { name: /Cambiar mis puntos de vida/ })).toHaveAccessibleName(/8000/)
+    expect(within(guest.container).getByRole('group', { name: /Puntos de vida de Ana: 8000/ })).toBeInTheDocument()
+  })
+
+  it('puntos de vida: se escriben sin separador de miles en inglés también (12000, no 12,000)', () => {
+    applyLocale('en')
+
+    try {
+      const view = render(<LifeTile name="Yeou" life={12000} mine onClick={() => {}} />)
+
+      expect(within(view.container).getByRole('button')).toHaveTextContent('12000')
+      expect(view.container).not.toHaveTextContent('12,000')
+    } finally {
+      applyLocale('es')
+    }
   })
 
   it('rendirse: pide confirmación, termina el duelo para los dos y la revancha de los dos vuelve a la sala con todo de cero', () => {
@@ -538,7 +553,7 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).getByText('Tu turno')).toBeInTheDocument()
     expect(within(host.container).queryByText(/se rindió/)).not.toBeInTheDocument()
     expect(within(guest.container).queryByText('Te rendiste.')).not.toBeInTheDocument()
-    expect(within(guest.container).getByRole('group', { name: /Puntos de vida de Ana: 8\D?000/ })).toBeInTheDocument()
+    expect(within(guest.container).getByRole('group', { name: /Puntos de vida de Ana: 8000/ })).toBeInTheDocument()
     // La revancha empieza con el reloj de nuevo: se reinició y vuelve a arrancar solo.
     expect(within(host.container).getByRole('button', { name: /Pausar el reloj/ })).toBeInTheDocument()
     flush()
@@ -699,14 +714,14 @@ describe('la pantalla del duelo', () => {
     click(host, /Cambiar mis puntos de vida/)
     expect(sheet().getByText('Tecleá el monto')).toBeInTheDocument()
     key('8')
-    expect(sheet().getByText(/8D?000 − 800/)).toBeInTheDocument()
-    expect(sheet().getByRole('status')).toHaveTextContent(/7D?200/)
+    expect(sheet().getByText(/8000 − 800/)).toBeInTheDocument()
+    expect(sheet().getByRole('status')).toHaveTextContent(/7200/)
     expect(sheet().getByRole('button', { name: /^Restar 800/ })).toBeEnabled()
     flush()
-    expect(lifeOfAna(guest)).toHaveAccessibleName(/8D?000/)
+    expect(lifeOfAna(guest)).toHaveAccessibleName(/8000/)
     key(/^Restar 800/)
     flush()
-    expect(lifeOfAna(guest)).toHaveAccessibleName(/7D?200/)
+    expect(lifeOfAna(guest)).toHaveAccessibleName(/7200/)
 
     // Sumar: "+" y un monto; borrar deja el monto en cero y "=" deshabilitado.
     click(host, /Cambiar mis puntos de vida/)
@@ -721,13 +736,13 @@ describe('la pantalla del duelo', () => {
     key('00')
     key(/^Sumar 500/)
     flush()
-    expect(lifeOfAna(guest)).toHaveAccessibleName(/7D?700/)
+    expect(lifeOfAna(guest)).toHaveAccessibleName(/7700/)
 
     // La mitad se aplica sola y cierra.
     click(host, /Cambiar mis puntos de vida/)
     key(/con la mitad/)
     flush()
-    expect(lifeOfAna(guest)).toHaveAccessibleName(/3D?850/)
+    expect(lifeOfAna(guest)).toHaveAccessibleName(/3850/)
     expect(screen.queryByRole('dialog', { name: 'Mis puntos de vida' })).not.toBeInTheDocument()
   })
 
@@ -1040,7 +1055,7 @@ describe('la pantalla del duelo', () => {
     fireEvent.click(screen.getByRole('button', { name: '0' }))
     fireEvent.click(screen.getByRole('button', { name: /^Restar [0-9]/ }))
     flush()
-    expect(within(guest.container).getByRole('button', { name: /Puntos de vida de Beto: 7\D?000/ })).toBeInTheDocument()
+    expect(within(guest.container).getByRole('button', { name: /Puntos de vida de Beto: 7000/ })).toBeInTheDocument()
 
     const hand = cardsOf(guest)
     expect(hand).toHaveLength(4)
@@ -1055,12 +1070,12 @@ describe('la pantalla del duelo', () => {
 
     expect(cardsOf(reloaded)).toEqual(hand)
     expect(zoneOf(reloaded, 'Zona de monstruo 1').getByLabelText(summoned)).toBeInTheDocument()
-    expect(within(reloaded.container).getByRole('button', { name: /Puntos de vida de Beto: 7\D?000/ })).toBeInTheDocument()
+    expect(within(reloaded.container).getByRole('button', { name: /Puntos de vida de Beto: 7000/ })).toBeInTheDocument()
     expect(within(reloaded.container).getByText('Tu turno')).toBeInTheDocument()
     // El anfitrión sigue con su mano y ve la de quien recargó, con la carta invocada y las vidas de antes.
     expect(handOf(host).getAllByRole('listitem')).toHaveLength(5)
     expect(within(host.container).getAllByRole('img', { name: 'Mano del rival: 4' })).toHaveLength(1)
-    expect(within(host.container).getByRole('group', { name: /Puntos de vida de Beto: 7\D?000/ })).toBeInTheDocument()
+    expect(within(host.container).getByRole('group', { name: /Puntos de vida de Beto: 7000/ })).toBeInTheDocument()
   })
 
   /** Sale del duelo desde la mesa (con la confirmación). */
