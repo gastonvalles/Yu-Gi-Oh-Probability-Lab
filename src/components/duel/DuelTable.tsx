@@ -11,8 +11,9 @@ import { CELL, CELL_SQUARE, PENDULUM_GEM, PileBadge } from '../probability/Pract
 /**
  * La mesa del duelo: los dos campos en una sola grilla, como la mesa real. El rival arriba y espejado (su
  * Main Monster Zone 1 queda del lado derecho de la pantalla, su Extra Deck arriba a la derecha, su Banish a
- * la izquierda), las dos Zonas Extra de monstruos en el medio, compartidas, y la mesa propia abajo. Las cartas
- * se ven siempre de pie: espejado es el orden de las zonas, no las cartas.
+ * la izquierda), las dos Zonas Extra de monstruos en el medio, compartidas, y la mesa propia abajo. Las cartas del
+ * rival miran hacia él (de cabeza, como en la mesa real) y las tuyas hacia vos; el aviso de un contador o de un material y las
+ * miras quedan derechos.
  *
  * Dibuja y nada más: quien la usa decide qué se puede tocar (la mesa propia es la de siempre, con su menú y su
  * arrastre; la del rival es de sólo lectura).
@@ -232,7 +233,7 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
       data-targeted={targeted ? 'true' : 'false'}
       className={cx('absolute inset-x-0 top-0 mx-auto aspect-[421/614] overflow-hidden bg-input [--card-shadow:0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]', CARD_SHADOW, FX_CARD, spot === 'field' ? 'w-full' : 'w-[68.57%]', sideways && '[transform:rotate(90deg)]')}
     >
-      <span className={cx('block h-full w-full', owner === 'mine' && faceDown && 'brightness-[0.4] saturate-[0.55]')}>
+      <span className={cx('block h-full w-full', owner === 'mine' && faceDown && 'brightness-[0.4] saturate-[0.55]', owner === 'theirs' && 'rotate-180')}>
         {back ? <CardBack className="h-full" /> : <CardArt remoteUrl={art} name={label} className="block h-full w-full object-cover" />}
       </span>
       {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
@@ -256,7 +257,8 @@ function Pile({ area, pile, side, owner }: { area: string; pile: Exclude<MatPile
 
   return (
     <div role="group" aria-label={`${PILE_TITLES[pile]}: ${cards.length}`} title={PILE_TITLES[pile]} data-rival-drop={owner === 'theirs' ? pile : undefined} data-targeted={marked ? 'true' : 'false'} data-flash={flash ? 'true' : 'false'} data-flash-kind={flash?.kind} className={cx(CELL, 'overflow-hidden', FX_CARD, '[--card-shadow:0_0_0_0_transparent]')} style={{ gridArea: area, ...fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red') }}>
-      {cards.length > 0 ? (art ? <CardArt remoteUrl={art} name={PILE_TITLES[pile]} className="block h-full w-full object-cover" /> : <CardBack className="h-full" />) : null}
+      {/* La carta de arriba del rival, como las de su campo, mira hacia él. */}
+      {cards.length > 0 ? (art ? <CardArt remoteUrl={art} name={PILE_TITLES[pile]} className={cx('block h-full w-full object-cover', owner === 'theirs' && 'rotate-180')} /> : <CardBack className={cx('h-full', owner === 'theirs' && 'rotate-180')} />) : null}
       <PileBadge label={PILE_TITLES[pile]} count={cards.length} />
       {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
       {marked ? <TargetMark /> : null}

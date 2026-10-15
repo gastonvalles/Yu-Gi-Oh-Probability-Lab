@@ -122,6 +122,8 @@ describe('las cartas del rival vuelan como las propias', () => {
     // Aterriza en el centro de su cementerio (el fantasma no tiene tamaño en jsdom, así que se centra sumando la mitad de la pila).
     expect(ghostLandings).toHaveLength(1)
     expect(ghostLandings[0]).toContain('translate(540px, 158px)')
+    // Viaja de cabeza: así se ve su carta en su campo y en su pila.
+    expect(ghostLandings[0]).toContain('rotate(180deg)')
   })
 
   it('una carta suya que baja de la mano al campo sale de su mano', () => {
