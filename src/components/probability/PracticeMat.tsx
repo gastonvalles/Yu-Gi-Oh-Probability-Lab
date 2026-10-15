@@ -93,8 +93,11 @@ export interface DuelMatLink {
   life: ReactNode
   /** El cartel de lo que el rival avanzó (una fase suya, o que empieza tu turno); cambiar `key` lo vuelve a mostrar. */
   notice?: { key: number; phase: MatPhase; who?: string; label?: string }
-  /** El texto del cartel cuando terminás tu turno y pasa al rival ("Turno de Ana"). */
+  /** El texto del cartel cuando terminás tu turno (volvés de la End Phase a la Draw Phase) y pasa al rival ("Turno de Ana"). */
   rivalTurnLabel: string
+  /** La fase del duelo, igual para los dos (la de quien tiene el turno), y si el turno es tuyo: sólo quien tiene el turno cambia de fase. */
+  phase: MatPhase
+  myTurn: boolean
   /**
    * Lo que el rival acaba de hacer y se avisa (su ataque): un cartel arriba con `caption` y la espada de su monstruo (`attackerId`, el id que él le dio) a tu carta
    * (`targetId`, tu id real) o, sin `targetId`, a tu barra de vida; cambiar `key` lo vuelve a mostrar.
@@ -1222,7 +1225,7 @@ export function PracticeMat({
             ? [0, 2, 4].map((start, index) => (
                 <div key={start} role="group" aria-label={index === 0 ? t('practice.mat.phases') : undefined} className="grid grid-cols-2 gap-0.5 self-center min-[1101px]:gap-1" style={{ gridArea: `p${index + 1}` }}>
                   {PHASES.slice(start, start + 2).map((phase) => (
-                    <PhaseButton key={phase.id} short={phase.short} name={phase.name} active={state.phase === phase.id} onPick={() => play({ type: 'phase', phase: phase.id, ...(duel ? { skipDraw: true as const } : {}) })} />
+                    <PhaseButton key={phase.id} short={phase.short} name={phase.name} active={(duel ? duel.phase : state.phase) === phase.id} disabled={duel ? !duel.myTurn : false} passes={duel?.myTurn === true && phase.id === 'draw' && state.phase === 'end'} onPick={() => play({ type: 'phase', phase: phase.id, ...(duel ? { skipDraw: true as const } : {}) })} />
                   ))}
                 </div>
               ))
@@ -1265,9 +1268,8 @@ export function PracticeMat({
               key={banner.key}
               phase={banner.phase}
               turn={duel ? null : banner.turn}
-              // En un duelo terminar el turno es llegar a la End Phase: el cartel dice que ahora juega el rival.
-              who={duel && banner.phase === 'end' ? PHASES.find((entry) => entry.id === 'end')?.name : undefined}
-              label={duel && banner.phase === 'end' ? duel.rivalTurnLabel : undefined}
+              // En un duelo, pasar de la End Phase a la Draw Phase es pasar el turno: el cartel dice que ahora juega el rival.
+              label={duel && banner.turn !== null ? duel.rivalTurnLabel : undefined}
               className="absolute inset-0 z-30"
             />
           ) : null}
@@ -1352,7 +1354,7 @@ export function PracticeMat({
           {!isDesktop && !duel && !choosing ? (
             <div role="group" aria-label={t('practice.mat.phases')} className="grid w-[13.5rem] flex-none grid-cols-6 gap-1">
               {PHASES.map((phase) => (
-                <PhaseButton key={phase.id} short={phase.short} name={phase.name} active={state.phase === phase.id} onPick={() => play({ type: 'phase', phase: phase.id, ...(duel ? { skipDraw: true as const } : {}) })} />
+                <PhaseButton key={phase.id} short={phase.short} name={phase.name} active={state.phase === phase.id} onPick={() => play({ type: 'phase', phase: phase.id })} />
               ))}
             </div>
           ) : null}
@@ -1475,18 +1477,20 @@ function parseDrop(value: string): MatDropTarget | null {
 }
 
 /** Botón redondo de una fase (DP, SP, M1, BP, M2, EP): la actual encendida en verde. */
-function PhaseButton({ short, name, active, onPick }: { short: string; name: string; active: boolean; onPick: () => void }) {
+function PhaseButton({ short, name, active, disabled = false, passes = false, onPick }: { short: string; name: string; active: boolean; /** En un duelo, fuera de tu turno las fases no se tocan. */ disabled?: boolean; /** La Draw Phase desde tu End Phase: pasa el turno (se dice en el título y late un poco). */ passes?: boolean; onPick: () => void }) {
   return (
     <button
       type="button"
       aria-label={name}
       aria-pressed={active}
-      title={name}
+      title={passes ? t('duel.turn.passHint') : name}
+      disabled={disabled}
       className={cx(
-        'grid aspect-square w-full min-w-0 place-items-center rounded-full border text-[0.55rem] font-extrabold leading-none transition-[background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus min-[1101px]:text-micro',
+        'grid aspect-square w-full min-w-0 place-items-center rounded-full border text-[0.55rem] font-extrabold leading-none transition-[background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus min-[1101px]:text-micro disabled:cursor-not-allowed disabled:opacity-45',
         active
           ? 'border-accent bg-accent text-[#06140e] shadow-[0_0_12px_rgb(var(--accent-rgb)/0.7)]'
-          : 'border-tint/25 bg-transparent text-soft hover:bg-tint/10 hover:text-foreground',
+          : 'border-tint/25 bg-transparent text-soft hover:bg-tint/10 hover:text-foreground disabled:hover:bg-transparent disabled:hover:text-soft',
+        passes && 'border-accent/80 text-foreground motion-safe:animate-fx-pick',
       )}
       onClick={onPick}
     >

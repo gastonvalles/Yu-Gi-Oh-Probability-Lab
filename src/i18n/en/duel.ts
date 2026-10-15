@@ -159,6 +159,7 @@ export const duel: Translated<typeof es> = {
   'duel.result.rematch': 'Rematch',
   'duel.result.rematchWaiting': 'Waiting for {name}…',
   'duel.result.rematchOffered': '{name} wants a rematch.',
+  'duel.turn.passHint': 'Pass the turn',
   'duel.turn.drew': 'Your turn started: you drew a card.',
 
   'duel.lobby.lp': 'Life points',

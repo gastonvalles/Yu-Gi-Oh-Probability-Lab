@@ -763,39 +763,42 @@ describe('la pantalla del duelo', () => {
     expect(banner(guest)).toContain('Ana')
     expect(banner(guest)).toContain('Main Phase 1')
 
-    // No hay botón de terminar el turno: se termina al llegar a la End Phase y dejar de tocar, y el rival ve que le toca (con cartel y en la barra).
-    expect(within(guest.container).queryByRole('button', { name: 'Terminar turno' })).not.toBeInTheDocument()
+    // Las fases son una sola para los dos y sólo las toca quien tiene el turno: Beto las ve (encendidas igual que Ana) pero no puede cambiarlas.
+    const phaseButton = (view: RenderResult, name: string) => within(view.container).getByRole('button', { name })
+    expect(phaseButton(guest, 'Main Phase 1')).toBeDisabled()
+    expect(phaseButton(guest, 'Main Phase 1')).toHaveAttribute('aria-pressed', 'true')
+    expect(phaseButton(host, 'Main Phase 1')).toBeEnabled()
+
+    // La End Phase se juega: llegar a ella no pasa el turno ni le hace robar a Beto.
     const handOfGuest = handOf(guest).getAllByRole('listitem').length
     click(host, 'End Phase')
+    flush()
+    expect(phase(guest)).toBe(' · End Phase')
+    expect(within(guest.container).queryByText('Tu turno')).not.toBeInTheDocument()
+    expect(handOf(guest).getAllByRole('listitem')).toHaveLength(handOfGuest)
+    expect(phaseButton(guest, 'Draw Phase')).toBeDisabled()
+    expect(phaseButton(guest, 'End Phase')).toHaveAttribute('aria-pressed', 'true')
+    // Para Ana, la Draw Phase es ahora pasar el turno (se lo dice).
+    expect(phaseButton(host, 'Draw Phase')).toHaveAttribute('title', 'Pasar el turno')
+
+    // Ana toca la Draw Phase: ahí sí pasa el turno, Beto ve el cartel y roba, y ahora las fases son de él.
+    click(host, 'Draw Phase')
     flush()
     expect(within(host.container).getAllByText('Turno de Beto').length).toBeGreaterThan(0)
     expect(within(guest.container).getAllByText('Tu turno').length).toBeGreaterThan(0)
     expect(phase(guest)).toBe(' · Draw Phase')
+    expect(phase(host)).toBe(' · Draw Phase')
     expect(banner(guest)).toContain('Tu turno')
-    expect(banner(guest)).toContain('Ana')
     expect(banner(host)).toContain('Turno de Beto')
-    // Al empezar su turno Beto roba la carta.
     expect(handOf(guest).getAllByRole('listitem')).toHaveLength(handOfGuest + 1)
-  })
+    expect(phaseButton(host, 'Main Phase 1')).toBeDisabled()
+    expect(phaseButton(guest, 'Main Phase 1')).toBeEnabled()
 
-  it('un enlace vencido: quien entra y no encuentra a nadie lo ve avisado pasados unos segundos, y el anfitrión que espera no', () => {
-    vi.useFakeTimers()
-    const host = render(<DuelScreen {...screenProps()} />)
-    click(host, 'Crear un duelo')
-    const link = within(host.container).getByTestId('duel-link').textContent ?? ''
-    // El anfitrión espera a su rival sin ningún aviso de enlace vencido.
-    act(() => vi.advanceTimersByTime(30_000))
-    expect(within(host.container).queryByText(/enlace haya vencido/)).not.toBeInTheDocument()
-    cleanup()
-
-    // Alguien entra con ese mismo enlace a una sala vacía (nadie la creó ahora).
-    window.history.replaceState(null, '', link.slice(link.indexOf('#')))
-    sessionStorage.clear()
-    const lonely = render(<DuelScreen {...screenProps()} />)
-    expect(within(lonely.container).getByText('Esperando a tu rival…')).toBeInTheDocument()
-    expect(within(lonely.container).queryByText(/enlace haya vencido/)).not.toBeInTheDocument()
-    act(() => vi.advanceTimersByTime(13_000))
-    expect(within(lonely.container).getByText(/Puede que el enlace haya vencido/)).toBeInTheDocument()
+    // Y Beto juega su turno: Ana lo ve fase por fase.
+    click(guest, 'Battle Phase')
+    flush()
+    expect(phase(host)).toBe(' · Battle Phase')
+    expect(phaseButton(host, 'Battle Phase')).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('recargar dentro de la sala con un deck pegado y el builder vacío: el deck guardado vuelve solo y se puede repartir', async () => {

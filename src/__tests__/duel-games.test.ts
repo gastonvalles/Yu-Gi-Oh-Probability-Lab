@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { MAX_GAME_LOG, RPS_PICKS, addGame, rpsOutcome, type RpsPick } from '../app/duel-games'
 import { encodeMessage, parseMessage } from '../app/duel-protocol'
 import { createDuel } from '../app/duel-session'
-import { completedTurns, duelTurnNumber, whoseTurn } from '../app/duel-turn'
+import { completedTurns, duelTurnNumber, sharedPhase, whoseTurn } from '../app/duel-turn'
 import { createMatState, type MatState } from '../app/practice-mat'
 import { createMemoryRoom } from './support/memory-room'
 
@@ -97,33 +97,37 @@ function setup() {
 describe('de quién es el turno', () => {
   const at = (turn: number, phase: MatState['phase']): MatState => ({ ...hostTable, turn, phase })
 
-  it('terminar el turno es llegar a la End Phase: apenas lo hace uno, le toca al otro, sin botón ni cambiar de turno', () => {
-    // Empieza Ana (anfitriona): juega mientras ninguno haya terminado un turno.
+  it('el turno pasa cuando quien juega vuelve de su End Phase a la Draw Phase, no al llegar a la End Phase (que todavía se juega)', () => {
+    // Empieza Ana (anfitriona): juega mientras nadie haya pasado un turno.
     expect(whoseTurn(0, at(1, 'main1'), at(1, 'draw'), 0)).toBe('mine')
     expect(whoseTurn(1, at(1, 'draw'), at(1, 'main1'), 0)).toBe('theirs')
 
-    // Ana llega a su End Phase: ya le toca a Beto, aunque Ana no haya vuelto a su Draw Phase.
-    expect(whoseTurn(0, at(1, 'end'), at(1, 'draw'), 0)).toBe('theirs')
-    expect(whoseTurn(1, at(1, 'draw'), at(1, 'end'), 0)).toBe('mine')
+    // Ana llega a su End Phase: sigue siendo su turno, y Beto sigue esperando.
+    expect(whoseTurn(0, at(1, 'end'), at(1, 'draw'), 0)).toBe('mine')
+    expect(whoseTurn(1, at(1, 'draw'), at(1, 'end'), 0)).toBe('theirs')
 
-    // Ana vuelve a la Draw Phase (su turno 2) mientras Beto juega: sigue siendo de Beto.
-    expect(whoseTurn(1, at(1, 'main2'), at(2, 'draw'), 0)).toBe('mine')
+    // Ana toca la Draw Phase (su turno 2 de contador): ahora le toca a Beto.
+    expect(whoseTurn(0, at(2, 'draw'), at(1, 'draw'), 0)).toBe('theirs')
+    expect(whoseTurn(1, at(1, 'draw'), at(2, 'draw'), 0)).toBe('mine')
 
-    // Beto también llega a su End Phase: otra vez Ana.
-    expect(whoseTurn(0, at(2, 'draw'), at(1, 'end'), 0)).toBe('mine')
-    // Con quien empieza al revés, es al revés.
+    // Beto también pasa: otra vez Ana. Con quien empieza al revés, es al revés.
+    expect(whoseTurn(0, at(2, 'draw'), at(2, 'draw'), 0)).toBe('mine')
     expect(whoseTurn(0, at(1, 'draw'), at(1, 'draw'), 1)).toBe('theirs')
   })
 
-  it('cuenta los turnos que terminó cada uno y en qué turno del duelo van', () => {
+  it('la fase del duelo es la de quien tiene el turno, igual para los dos', () => {
+    expect(sharedPhase('mine', at(1, 'main2'), at(1, 'draw'))).toBe('main2')
+    expect(sharedPhase('theirs', at(1, 'main2'), at(1, 'battle'))).toBe('battle')
+    expect(sharedPhase('mine', null, null)).toBeUndefined()
+  })
+
+  it('cuenta los turnos que pasó cada uno y en qué turno del duelo van', () => {
     expect(completedTurns(null)).toBe(0)
-    expect(completedTurns(at(1, 'draw'))).toBe(0)
-    expect(completedTurns(at(1, 'end'))).toBe(1)
+    expect(completedTurns(at(1, 'end'))).toBe(0)
     expect(completedTurns(at(2, 'draw'))).toBe(1)
-    expect(completedTurns(at(2, 'end'))).toBe(2)
     expect(duelTurnNumber(at(1, 'draw'), at(1, 'draw'))).toBe(1)
-    expect(duelTurnNumber(at(1, 'end'), at(1, 'draw'))).toBe(2)
-    expect(duelTurnNumber(at(2, 'main1'), at(1, 'end'))).toBe(3)
+    expect(duelTurnNumber(at(2, 'draw'), at(1, 'draw'))).toBe(2)
+    expect(duelTurnNumber(at(2, 'main1'), at(2, 'draw'))).toBe(3)
   })
 })
 
