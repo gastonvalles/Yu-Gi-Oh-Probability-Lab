@@ -213,9 +213,22 @@ export function openMirror(masked: MatState, known: Record<string, string> = {})
   return { initial: masked, acts: [], state: masked, known: acceptKnown({}, masked, known) }
 }
 
+/**
+ * Cuántas jugadas del rival se guardan para poder deshacerlas. Cada jugada nueva copia la lista y cada deshacer rejuega toda: sin tope, un rival que manda jugadas a toda velocidad
+ * (el relay le deja 30 por segundo) congelaría la pestaña de quien lo recibe. Pasado el tope se parte de la mesa de ahora; si después deshace una más vieja, no se puede volver
+ * a ella desde acá y se le pide su mesa (que es lo que ya pasa cuando se pierde una jugada).
+ */
+export const MAX_MIRROR_ACTS = 400
+
 export function mirrorApply(mirror: Mirror, wire: WireAct): Mirror {
   const state = matReducer(mirror.state, wire.action)
-  return { ...mirror, acts: [...mirror.acts, wire.action], state, known: acceptKnown(mirror.known, state, wire.reveal) }
+  const known = acceptKnown(mirror.known, state, wire.reveal)
+
+  if (mirror.acts.length >= MAX_MIRROR_ACTS) {
+    return { initial: state, acts: [], state, known }
+  }
+
+  return { ...mirror, acts: [...mirror.acts, wire.action], state, known }
 }
 
 /** El rival deshizo su última jugada: la mesa vuelve atrás, lo que ya se le reveló se queda. */

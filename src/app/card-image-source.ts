@@ -7,8 +7,11 @@
 const REMOTE_PREFIX = 'https://images.ygoprodeck.com/images/'
 const PROXY_PREFIX = '/api/card-image/'
 
-/** Lo único que el proxy acepta pedir: las carpetas de imágenes de YGOPRODeck y un nombre de archivo simple. */
-const IMAGE_PATH = /^(cards|cards_small|cards_cropped|sets)\/[A-Za-z0-9_-]{1,40}\.jpg$/
+/**
+ * Lo único que el proxy acepta pedir: la imagen de una carta por su número (`14558127.jpg`, o `14558127_1.jpg` para un arte alternativo) o la de un set por su código (`JUSH.jpg`).
+ * Nombres inventados no pasan: cada ruta distinta es una petición a YGOPRODeck desde nuestra IP, que es la que bloquean si se abusa.
+ */
+const IMAGE_PATH = /^(?:(?:cards|cards_small|cards_cropped)\/[0-9]{1,10}(?:_[0-9]{1,2})?|sets\/[A-Za-z0-9]{2,12})\.jpg$/
 
 /**
  * Los anchos (px) a los que el proxy sabe achicar una imagen (`?w=`). Son pocos y cerrados: cada imagen tiene a lo sumo tres variantes

@@ -272,7 +272,9 @@ async function mapLimit(items, limit, work) {
 }
 
 async function main() {
-  const { results: groups } = await getJson(`${TCGCSV}/groups`)
+  // Los ids de set arman rutas y direcciones: sólo valen enteros positivos (lo demás, aunque venga de TCGCSV, se descarta).
+  const { results: allGroups } = await getJson(`${TCGCSV}/groups`)
+  const groups = allGroups.filter((group) => Number.isSafeInteger(group.groupId) && group.groupId > 0)
   console.log(`${groups.length} sets en TCGCSV`)
 
   let done = 0

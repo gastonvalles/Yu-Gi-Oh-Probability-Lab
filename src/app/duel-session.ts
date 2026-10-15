@@ -1,5 +1,6 @@
 import type { DuelSave } from './duel-save'
 import { addChat, addGame, cleanChat, coinWinner, dieWinner, duelResult, rpsOutcome, type ChatLine, type DuelGame, type GameEntry, type RpsPick, type TossMethod } from './duel-games'
+import { RateLimiter } from './duel-relay-rules'
 import { DEFAULT_SETTINGS, MAX_MARKS, NO_MARKS, PROTOCOL_VERSION, cleanName, encodeMessage, parseMessage, type DuelMessage, type DuelSettings, type MarkTarget, type Marks, type OpeningWire } from './duel-protocol'
 import { createLifeState, lifeReducer, timerElapsed, type Duelist, type LifeState } from './life-calculator'
 import { encodeAct, mapMatIds, mirrorApply, mirrorUndo, openMirror, openPublic, senderKnown, type Mirror, type PublicSender } from './mat-public'
@@ -140,6 +141,12 @@ interface DuelOptions {
 
 /** Cuánto espera mi pedido de volver atrás una respuesta del rival antes de cancelarse. */
 const UNDO_WAIT_MS = 30_000
+/**
+ * Cuánto repito mi saludo y mi mesa porque entró un espectador: una ráfaga de `WATCHER_SYNC_BURST` seguidas (entra uno y pide el estado de nuevo) y después una cada `WATCHER_SYNC_MS`.
+ * Un espectador que entra y sale a toda velocidad no me hace mandar mi estado sin parar (y el relay, que cuenta mis mensajes, no me corta).
+ */
+const WATCHER_SYNC_MS = 2000
+const WATCHER_SYNC_BURST = 3
 
 export function createDuel(transport: DuelTransport, options: DuelOptions): Duel {
   const { role } = options
@@ -191,6 +198,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   let markSigns: Record<string, string> = {}
   /** Mis puntos de vida vienen de lo guardado: el saludo del anfitrión no los pisa con los de arranque. */
   let lpRestored = false
+  /** Las veces que puedo repetir mi estado porque entró un espectador (ver `WATCHER_SYNC_MS`). */
+  const watcherSyncs = new RateLimiter(now(), 1000 / WATCHER_SYNC_MS, WATCHER_SYNC_BURST)
   // El permiso para volver atrás: mi pedido en curso (su número y su reloj de espera), el que me hace el rival y cómo terminó el último que no se permitió.
   let undoAskN = 0
   let undoAsking: number | null = null
@@ -521,7 +530,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
 
         peerName = message.name
 
-        if (message.settings) {
+        // Los ajustes (puntos de vida y mano de arranque) son del anfitrión: un saludo de invitado que los traiga no los cambia.
+        if (message.settings && message.role === 'host') {
           settings = message.settings
 
           // Antes de tocar nada, los puntos de vida arrancan con lo que fijó el anfitrión.
@@ -704,7 +714,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   const stopWatchers = transport.onWatchers?.((count, needSync) => {
     watchers = count
 
-    if (needSync) {
+    // Quien entra a mirar se pone al día con lo que ya llegó o lo pide de nuevo (el relay le deja pedirlo seguido): no hace falta repetir lo mío más de una vez cada tanto.
+    if (needSync && watcherSyncs.allow(now())) {
       sendHello()
       sendSync()
     }

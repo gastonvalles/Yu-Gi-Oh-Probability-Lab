@@ -1,3 +1,4 @@
+import { ROOM_CODE_PATTERN } from './duel-relay-rules'
 import type { DuelSnapshot } from './duel-session'
 import type { Duelist, LifeTimer } from './life-calculator'
 import type { MatAction, MatState } from './practice-mat'
@@ -49,6 +50,9 @@ export function saveOf(snapshot: DuelSnapshot, now: number): DuelSave | null {
   }
 }
 
+/** Cuántas jugadas propias entran en un duelo guardado: al volver se rejuegan todas, así que un archivo hecho a propósito no puede traer cientos de miles. */
+const MAX_SAVED_ACTIONS = 5000
+
 const isNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value)
 const isList = (value: unknown): value is string[] => Array.isArray(value) && value.every((entry) => typeof entry === 'string')
 
@@ -77,6 +81,7 @@ export function parseSave(raw: string | null, role: 'host' | 'guest', now: numbe
       !isList(table.hand) ||
       !isList(table.extra) ||
       !Array.isArray(save.actions) ||
+      save.actions.length > MAX_SAVED_ACTIONS ||
       !isNumber(save.lp) ||
       !timer ||
       typeof timer.running !== 'boolean' ||
@@ -152,7 +157,7 @@ export function findPausedDuel(now = Date.now()): PausedDuel | null {
       const [room, role] = key.slice(PREFIX.length).split(':')
       const save = role === 'host' || role === 'guest' ? parseSave(localStorage.getItem(key), role, now) : null
 
-      if (!save || !room) {
+      if (!save || !room || !ROOM_CODE_PATTERN.test(room)) {
         localStorage.removeItem(key)
       } else if (!latest || save.savedAt > latest.savedAt) {
         latest = { room, role: save.role, rival: save.rival, savedAt: save.savedAt }

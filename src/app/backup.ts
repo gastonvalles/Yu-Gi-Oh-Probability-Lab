@@ -10,7 +10,8 @@ import { isRecord } from './utils'
 const BACKUP_APP = 'ygo-probability-lab'
 
 const PREFIXES = ['ygo-lab:', 'ygo-probability-lab:']
-const SKIPPED = /cache|chunk-reload/
+// Las cachés se regeneran solas, y la mesa guardada de un duelo y quién lo creó son de esa pestaña y vencen en horas: no van (ni se restauran, que sería reabrir un duelo ajeno).
+const SKIPPED = /cache|chunk-reload|duel-save:|duel-role:/
 
 export interface LabBackup {
   app: typeof BACKUP_APP
