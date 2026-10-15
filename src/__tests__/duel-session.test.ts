@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { encodeMessage, type DuelSettings } from '../app/duel-protocol'
+import { PROTOCOL_VERSION, encodeMessage, type DuelSettings } from '../app/duel-protocol'
 import { saveOf } from '../app/duel-save'
 import { createDuel, type Duel } from '../app/duel-session'
 import { timerElapsed } from '../app/life-calculator'
@@ -64,6 +64,17 @@ describe('el apretón de manos', () => {
     expect(guest.getSnapshot()).toMatchObject({ peerPresent: true, peerName: 'Ana', me: 1, settings: { lp: 4000, hand: 6 }, incompatible: false })
     expect(guest.getSnapshot().life.lp).toEqual([4000, 4000])
     expect(host.getSnapshot().life.lp).toEqual([4000, 4000])
+  })
+
+  it('los ajustes del duelo son del anfitrión: un saludo de invitado que los traiga no los cambia', () => {
+    const game = setup({ lp: 4000, hand: 6 })
+
+    // El anfitrión recibe, de quien se hace pasar por el invitado, ajustes válidos pero que no le corresponden.
+    game.room.inject(game.hostEnd, JSON.stringify({ t: 'hello', v: PROTOCOL_VERSION, sid: 'guest-1', role: 'guest', name: 'Beto', settings: { lp: 1000, hand: 3 } }))
+    game.room.flush()
+
+    expect(game.host.getSnapshot().settings).toEqual({ lp: 4000, hand: 6 })
+    expect(game.host.getSnapshot().life.lp).toEqual([4000, 4000])
   })
 
   it('dos anfitriones, o versiones distintas, quedan marcados como incompatibles', () => {
@@ -272,6 +283,30 @@ describe('las mesas', () => {
     game.guest.start(guestTable)
     game.room.flush()
     expectSameTables(game)
+  })
+})
+
+describe('los espectadores', () => {
+  it('uno que entra y sale sin parar no le hace mandar su estado sin parar a los jugadores: una ráfaga corta y después de a una cada tanto', () => {
+    const game = setup()
+    startBoth(game)
+    const hellosOf = (sid: string) => game.room.sent.filter((text) => text.includes('"t":"hello"') && text.includes(`"sid":"${sid}"`)).length
+    const before = { host: hellosOf('host-1'), guest: hellosOf('guest-1') }
+
+    for (let index = 0; index < 20; index += 1) {
+      game.room.dropSpectator(game.room.spectate())
+      game.room.flush()
+    }
+
+    // Con el reloj quieto (el mismo instante), cada jugador repitió su saludo sólo lo que deja la ráfaga.
+    expect(hellosOf('host-1') - before.host).toBe(3)
+    expect(hellosOf('guest-1') - before.guest).toBe(3)
+
+    // Pasado un rato, vuelve a atender un pedido.
+    game.clock.t += 2000
+    game.room.spectate()
+    game.room.flush()
+    expect(hellosOf('host-1') - before.host).toBe(4)
   })
 })
 

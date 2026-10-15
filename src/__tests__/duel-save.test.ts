@@ -81,6 +81,9 @@ describe('lo guardado para recargar o para volver', () => {
     expect(parseSave(mangled((data) => void (data.v = 2)), 'host', NOW)).toBeNull()
     expect(parseSave(mangled((data) => void delete data.initial), 'host', NOW)).toBeNull()
     expect(parseSave(mangled((data) => void (data.actions = 'x')), 'host', NOW)).toBeNull()
+    // Un archivo hecho a propósito no puede traer cientos de miles de jugadas para rejugar al abrir la página.
+    expect(parseSave(mangled((data) => void (data.actions = Array.from({ length: 5001 }, () => ({ type: 'draw', count: 0 })))), 'host', NOW)).toBeNull()
+    expect(parseSave(mangled((data) => void (data.actions = Array.from({ length: 5000 }, () => ({ type: 'draw', count: 0 })))), 'host', NOW)).not.toBeNull()
     expect(parseSave(mangled((data) => void (data.lp = 'mucho')), 'host', NOW)).toBeNull()
     expect(parseSave(mangled((data) => void (data.timer = { running: true })), 'host', NOW)).toBeNull()
     expect(parseSave(mangled((data) => void (data.starter = 2)), 'host', NOW)).toBeNull()
@@ -104,14 +107,20 @@ describe('lo guardado para recargar o para volver', () => {
   it('el duelo en pausa de este navegador es el último que se guardó; los vencidos y los rotos se borran de paso', () => {
     expect(findPausedDuel(NOW)).toBeNull()
 
-    writeDuelSave('OLDROOM1', playing().getSnapshot(), NOW - 1000)
-    writeDuelSave('NEWROOM2', playing('guest').getSnapshot(), NOW)
-    localStorage.setItem('ygo-lab:duel-save:BROKEN03:host', '{roto')
-    writeDuelSave('EXPIRED4', playing().getSnapshot(), NOW - SAVE_TTL_MS - 5000)
+    writeDuelSave('ABCDEFG2', playing().getSnapshot(), NOW - 1000)
+    writeDuelSave('HJKMNPQ3', playing('guest').getSnapshot(), NOW)
+    localStorage.setItem('ygo-lab:duel-save:RSTUVWX4:host', '{roto')
+    writeDuelSave('YZ23456A', playing().getSnapshot(), NOW - SAVE_TTL_MS - 5000)
 
-    expect(findPausedDuel(NOW)).toEqual({ room: 'NEWROOM2', role: 'guest', rival: 'Ana' })
-    expect(localStorage.getItem('ygo-lab:duel-save:BROKEN03:host')).toBeNull()
-    expect(localStorage.getItem('ygo-lab:duel-save:EXPIRED4:host')).toBeNull()
-    expect(localStorage.getItem('ygo-lab:duel-save:OLDROOM1:host')).not.toBeNull()
+    // Una sala que no es un código de sala (algo escrito a mano en el almacenamiento) no se ofrece ni se deja.
+    writeDuelSave('<img src=x>', playing().getSnapshot(), NOW + 1000)
+    writeDuelSave('SALA/../X', playing().getSnapshot(), NOW + 2000)
+
+    expect(findPausedDuel(NOW)).toEqual({ room: 'HJKMNPQ3', role: 'guest', rival: 'Ana' })
+    expect(localStorage.getItem('ygo-lab:duel-save:<img src=x>:host')).toBeNull()
+    expect(localStorage.getItem('ygo-lab:duel-save:SALA/../X:host')).toBeNull()
+    expect(localStorage.getItem('ygo-lab:duel-save:RSTUVWX4:host')).toBeNull()
+    expect(localStorage.getItem('ygo-lab:duel-save:YZ23456A:host')).toBeNull()
+    expect(localStorage.getItem('ygo-lab:duel-save:ABCDEFG2:host')).not.toBeNull()
   })
 })

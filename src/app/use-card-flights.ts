@@ -33,12 +33,19 @@ function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
 }
 
+/** Un valor para usar entre comillas en un selector de atributo: las comillas, las barras y los saltos de línea no lo cierran antes de tiempo. */
+const quoted = (value: string) => value.replace(/["\\\n\r\f]/g, (char) => `\\${char.charCodeAt(0).toString(16)} `)
+
 /** Dónde se dibuja la carta cuando no es una carta suelta (`data-card-id`): la pila donde está o el Xyz que la tiene de material. */
 function homeOf(root: HTMLElement, state: MatState, id: string, side: Side): HTMLElement | null {
   const where = locateCard(state, id)
 
-  if (where?.kind === 'pile') return root.querySelector<HTMLElement>(`[${SIDES[side].drop}="${where.pile}"]`)
-  if (where?.kind === 'material') return root.querySelector<HTMLElement>(`[${SIDES[side].card}="${where.of}"]`)
+  try {
+    if (where?.kind === 'pile') return root.querySelector<HTMLElement>(`[${SIDES[side].drop}="${quoted(where.pile)}"]`)
+    if (where?.kind === 'material') return root.querySelector<HTMLElement>(`[${SIDES[side].card}="${quoted(where.of)}"]`)
+  } catch {
+    // Un id que no se puede usar de selector: la carta no vuela, y nada más.
+  }
 
   return null
 }

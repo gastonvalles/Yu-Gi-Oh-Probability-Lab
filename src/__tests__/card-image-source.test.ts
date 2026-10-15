@@ -30,6 +30,14 @@ describe('las imágenes de las cartas pasan por el proxy', () => {
     expect(cardImageWidthOf(null)).toBeNull()
   })
 
+  it('un nombre de archivo tiene que ser el número de una carta (con el sufijo de un arte alternativo) o el código de un set: nada inventado', () => {
+    const ok = ['cards/14558127.jpg', 'cards_small/14558127_1.jpg', 'cards_cropped/1.jpg', 'sets/JUSH.jpg', 'sets/SDWD.jpg', 'sets/LC5D.jpg']
+    const bad = ['cards/abc.jpg', 'cards/14558127x.jpg', 'cards/12345678901.jpg', 'cards/1_123.jpg', 'cards/1_a.jpg', 'cards/' + 'a'.repeat(40) + '.jpg', 'sets/J.jpg', 'sets/JUSH-EN.jpg', 'sets/ABCDEFGHIJKLM.jpg', 'sets/J_USH.jpg', 'cards/1.JPG', 'cards/.jpg', 'sets/..jpg']
+
+    for (const path of ok) expect(resolveCardImageUpstream(`/api/card-image/${path}`), path).toBe(`https://images.ygoprodeck.com/images/${path}`)
+    for (const path of bad) expect(resolveCardImageUpstream(`/api/card-image/${path}`), path).toBeNull()
+  })
+
   it('el proxy sólo pide a YGOPRODeck rutas de imagen válidas', () => {
     expect(resolveCardImageUpstream('/api/card-image/cards_small/14558127.jpg')).toBe('https://images.ygoprodeck.com/images/cards_small/14558127.jpg')
     expect(resolveCardImageUpstream('/api/card-image/cards_small/14558127.png')).toBeNull()
@@ -79,7 +87,7 @@ describe('la función api/card-image', () => {
 
   it('nunca agranda: una imagen más chica que el ancho pedido sale con su tamaño', async () => {
     const jpeg = await sharp({ create: { width: 100, height: 100, channels: 3, background: '#33c' } }).jpeg().toBuffer()
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(new Uint8Array(jpeg), { status: 200 })))
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(new Uint8Array(jpeg), { status: 200, headers: { 'content-type': 'image/jpeg' } })))
 
     const small = await sharp(Buffer.from(await (await call('/api/card-image/sets/LOB.jpg?w=512')).arrayBuffer())).metadata()
 
@@ -135,5 +143,91 @@ describe('la función api/card-image', () => {
 
     vi.stubGlobal('fetch', vi.fn(async () => new Response('nope', { status: 404 })))
     expect((await call('/api/card-image/cards_small/2.jpg')).status).toBe(404)
+  })
+})
+
+describe('la función api/card-image contra pedidos hechos para abusar de ella', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  const call = (path: string) => GET(new Request(`https://yu-gi-oh-probability-lab.vercel.app${path}`))
+  const image = (headers: Record<string, string> = { 'content-type': 'image/jpeg' }, body: BodyInit = new Uint8Array([1, 2, 3])) => vi.fn(async () => new Response(body, { status: 200, headers }))
+
+  it('un parámetro que no es path ni w se rechaza antes de pedir nada: cada valor distinto sería una copia nueva en el CDN y otra petición a YGOPRODeck', async () => {
+    const fetchMock = image()
+    vi.stubGlobal('fetch', fetchMock)
+
+    for (const query of ['?x=1', '?w=128&x=1', '?cache=abc', '?W=128', '?w=128&w=320&y=']) {
+      const response = await call(`/api/card-image/cards/12345.jpg${query}`)
+
+      expect(response.status, query).toBe(400)
+      expect(response.headers.get('cache-control'), query).toBe('public, max-age=300, s-maxage=300')
+    }
+
+    expect((await call('/api/card-image?path=cards/12345.jpg&w=128&z=1')).status).toBe(400)
+    expect(fetchMock).not.toHaveBeenCalled()
+    // Con los dos que sí valen, sigue andando.
+    expect((await call('/api/card-image?path=cards/12345.jpg&w=999')).status).toBe(200)
+  })
+
+  it('lo que no existe se recuerda unos minutos también en el CDN (no sólo en el navegador)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('nope', { status: 404 })))
+
+    for (const path of ['/api/card-image/cards/12345.jpg', '/api/card-image/cards/inventada.jpg']) {
+      const response = await call(path)
+
+      expect(response.status, path).toBe(404)
+      expect(response.headers.get('cache-control'), path).toBe('public, max-age=300, s-maxage=300')
+    }
+  })
+
+  it('no sigue redirecciones: si YGOPRODeck manda a otro lado, no se va', async () => {
+    const fetchMock = image()
+    vi.stubGlobal('fetch', fetchMock)
+
+    await call('/api/card-image/cards/12345.jpg')
+
+    expect(fetchMock).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ redirect: 'error' }))
+
+    vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new TypeError('redirect'))))
+    expect((await call('/api/card-image/cards/12345.jpg')).status).toBe(502)
+  })
+
+  it('sólo devuelve imágenes: otro tipo de contenido, o ninguno, es una caída del origen', async () => {
+    for (const headers of <Record<string, string>[]>[{ 'content-type': 'text/html' }, { 'content-type': 'application/javascript' }, { 'content-type': 'image/svg+xml' }, {}]) {
+      vi.stubGlobal('fetch', image(headers, '<script>alert(1)</script>'))
+      const response = await call('/api/card-image/cards/12345.jpg')
+
+      expect(response.status, JSON.stringify(headers)).toBe(502)
+      expect(response.headers.get('cache-control')).toBe('no-store')
+    }
+
+    // Y el tipo que sale es el validado (con minúsculas y sin parámetros), no lo que diga el origen tal cual.
+    vi.stubGlobal('fetch', image({ 'content-type': 'Image/PNG; charset=binary' }))
+    expect((await call('/api/card-image/cards/12345.jpg')).headers.get('content-type')).toBe('image/png')
+  })
+
+  it('no entrega lo que pesa más que una imagen de carta, lo diga el encabezado o no', async () => {
+    vi.stubGlobal('fetch', image({ 'content-type': 'image/jpeg', 'content-length': String(3 * 1024 * 1024) }))
+    expect((await call('/api/card-image/cards/12345.jpg')).status).toBe(502)
+
+    vi.stubGlobal('fetch', image({ 'content-type': 'image/jpeg' }, new Uint8Array(3 * 1024 * 1024)))
+    expect((await call('/api/card-image/cards/12345.jpg')).status).toBe(502)
+
+    vi.stubGlobal('fetch', image({ 'content-type': 'image/jpeg' }, new Uint8Array(200 * 1024)))
+    expect((await call('/api/card-image/cards/12345.jpg')).status).toBe(200)
+  })
+
+  it('una imagen con muchísimos píxeles no se achica (se sirve entera y por poco tiempo): no le da trabajo de más a sharp', async () => {
+    const huge = await sharp({ create: { width: 3000, height: 3000, channels: 3, background: '#123' } }).jpeg({ quality: 1 }).toBuffer()
+    vi.stubGlobal('fetch', image({ 'content-type': 'image/jpeg' }, new Uint8Array(huge)))
+
+    const response = await call('/api/card-image/cards/12345.jpg?w=320')
+
+    expect(huge.byteLength).toBeLessThan(2 * 1024 * 1024)
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toBe('image/jpeg')
+    expect(response.headers.get('cache-control')).toBe('public, max-age=300, s-maxage=300')
   })
 })

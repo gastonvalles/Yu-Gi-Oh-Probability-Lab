@@ -33,6 +33,18 @@ describe('la copia de seguridad', () => {
     expect(localStorage.getItem('otra-app')).toBeNull()
   })
 
+  it('un duelo en curso (su mesa guardada y quién lo creó) no entra en la copia ni se restaura desde un archivo ajeno', () => {
+    localStorage.setItem('ygo-lab:saved-builds', '[1]')
+    localStorage.setItem('ygo-lab:duel-save:ABCDEFG2:host', '{"v":1}')
+    localStorage.setItem('ygo-lab:duel-role:ABCDEFG2', 'host')
+
+    expect(Object.keys(collectBackup(localStorage).entries)).toEqual(['ygo-lab:saved-builds'])
+
+    const file = '{"app":"ygo-probability-lab","entries":{"ygo-lab:saved-builds":"[2]","ygo-lab:duel-save:HJKMNPQ3:guest":"{}","ygo-lab:duel-role:HJKMNPQ3":"guest"}}'
+
+    expect(parseBackup(file).entries).toEqual({ 'ygo-lab:saved-builds': '[2]' })
+  })
+
   it('rechaza lo que no es una copia de esta app, y de una copia sólo toma lo nuestro', () => {
     expect(() => parseBackup('no es json')).toThrow('El archivo no es un JSON válido.')
     expect(() => parseBackup('{"app":"otra","entries":{}}')).toThrow('no es una copia de seguridad de esta app')

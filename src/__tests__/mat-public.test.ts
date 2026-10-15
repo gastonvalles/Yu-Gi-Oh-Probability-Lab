@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  MAX_MIRROR_ACTS,
   encodeAct,
   mapActionIds,
   mapMatIds,
@@ -200,6 +201,21 @@ describe('el espejo del rival', () => {
 
     expect(rebuilt.state).toEqual(game.mirror.state)
     expect(rebuilt.known).toEqual(game.mirror.known)
+  })
+
+  it('guarda un tope de jugadas: pasado el tope parte de la mesa de ahora, sin perder nada de lo que se ve ni lo revelado', () => {
+    const game = duel()
+
+    for (let index = 0; index < MAX_MIRROR_ACTS + 50; index += 1) {
+      game.play({ type: 'draw', count: 0 })
+    }
+
+    expect(game.mirror.acts.length).toBeLessThanOrEqual(MAX_MIRROR_ACTS)
+    expect(game.mirror.state).toEqual(game.mirror.acts.reduce(matReducer, game.mirror.initial))
+
+    game.play({ type: 'move', id: 'card-1000-1', to: 'gy' })
+    expect(game.mirror.state.gy).toHaveLength(1)
+    expect(Object.values(game.mirror.known)).toContain('card-1000-1')
   })
 
   it('ignora revelaciones de cartas que no existen o con forma rara, y la primera revelación manda', () => {
