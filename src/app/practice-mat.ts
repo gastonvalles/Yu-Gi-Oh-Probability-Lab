@@ -248,6 +248,14 @@ function pileLength(state: MatState, count: number): number {
   return Math.max(0, Math.min(Math.floor(count), state.deck.length))
 }
 
+/**
+ * Una carta que viene de afuera al deck con una semilla (la opción "Al azar" de "Al deck"): se pone y se baraja TODO el deck, la carta incluida. Si ya estaba en el deck (buscarla
+ * y ponerla arriba o abajo), la semilla baraja el resto y la carta queda donde se dijo.
+ */
+function shufflesIn(before: MatState, action: MatAction): boolean {
+  return action.type === 'move' && action.shuffle !== undefined && (action.to === 'deck' || action.to === 'deck-bottom') && !before.deck.includes(action.id)
+}
+
 /** Buscar en el deck: después de sacar la carta, el resto se baraja en la misma jugada. */
 function reshuffled(state: MatState, seed: number | undefined): MatState {
   return seed === undefined ? state : { ...state, deck: shuffleWithSeed(state.deck, seed) }
@@ -274,7 +282,9 @@ export function matReducer(state: MatState, action: MatAction): MatState {
       }
 
       const removed = removeEverywhere(state, action.id)
-      const next = reshuffled(dropMaterials(removed.state, removed.placed), action.shuffle)
+      const mixIn = shufflesIn(state, action)
+      const bare = dropMaterials(removed.state, removed.placed)
+      const next = mixIn ? bare : reshuffled(bare, action.shuffle)
 
       // Una ficha fuera del campo deja de existir.
       if (isToken(action.id)) {
@@ -282,12 +292,14 @@ export function matReducer(state: MatState, action: MatAction): MatState {
       }
 
       if (action.to === 'deck') {
-        return { ...next, deck: [action.id, ...next.deck] }
+        const deck = [action.id, ...next.deck]
+        return { ...next, deck: mixIn ? shuffleWithSeed(deck, action.shuffle!) : deck }
       }
 
       const pile = action.to === 'deck-bottom' ? 'deck' : action.to
       const facedown = action.to === 'banished' && action.faceDown ? [...next.facedown, action.id] : next.facedown
-      return { ...next, [pile]: [...next[pile], action.id], facedown }
+      const grown = { ...next, [pile]: [...next[pile], action.id], facedown }
+      return mixIn ? { ...grown, deck: shuffleWithSeed(grown.deck, action.shuffle!) } : grown
     }
 
     case 'place': {
@@ -448,6 +460,10 @@ const positionName = (pos: MatPos) => t(pos === 'atk' ? 'practice.step.position.
 export function describeMatAction(before: MatState, action: MatAction, nameOf: (id: string) => string): string {
   const name = (id: string) => (isToken(id) ? t('practice.token.the') : nameOf(id))
   const text = describePlay(before, action, name)
+
+  if (action.type === 'move' && shufflesIn(before, action)) {
+    return t('practice.step.deckShuffled', { card: name(action.id) })
+  }
 
   // La carta salió mirando el deck y el resto se barajó en la misma jugada.
   return (action.type === 'move' || action.type === 'place') && action.shuffle !== undefined ? t('practice.step.andShuffle', { text }) : text
@@ -698,6 +714,8 @@ export interface MatMenuItem {
   choices?: MatMenuItem[]
   /** Invocación desde el Extra: primero se eligen los materiales en el campo y se confirma con un botón. */
   materials?: true
+  /** Mandar la carta al deck "al azar": la mesa le pone la semilla al elegirla (se pone y se baraja todo el deck). */
+  shuffleDeck?: true
 }
 
 /**
@@ -935,8 +953,20 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
 
   // Arriba/abajo del deck desde cualquier lado (mano, campo, cementerio, destierro): los mismos nombres en todos los menús.
   if (!kind.extra) {
-    add(t('practice.menu.deckTop'), { type: 'move', id, to: 'deck' })
-    add(t('practice.menu.deckBottom'), { type: 'move', id, to: 'deck-bottom' })
+    if (pile === 'deck') {
+      // Una carta que ya está en el deck (mirándolo) sólo cambia de lugar: arriba o abajo.
+      add(t('practice.menu.deckTop'), { type: 'move', id, to: 'deck' })
+      add(t('practice.menu.deckBottom'), { type: 'move', id, to: 'deck-bottom' })
+    } else {
+      // Una carta de afuera vuelve al deck: al azar (se baraja adentro), arriba o abajo; es una sola jugada del menú que pregunta cómo.
+      items.push(
+        askItem(t('practice.menu.toDeck'), [
+          { label: t('practice.menu.deckRandom'), action: { type: 'move', id, to: 'deck' }, shuffleDeck: true },
+          { label: t('practice.menu.deckOnTop'), action: { type: 'move', id, to: 'deck' } },
+          { label: t('practice.menu.deckOnBottom'), action: { type: 'move', id, to: 'deck-bottom' } },
+        ]),
+      )
+    }
   }
 
   return items

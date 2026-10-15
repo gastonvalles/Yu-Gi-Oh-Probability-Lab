@@ -63,6 +63,10 @@ export const practice: Translated<typeof es> = {
   'practice.deckMenu.revealTop': 'Reveal the top card',
   'practice.menu.deckTop': 'Top of the Deck',
   'practice.menu.deckBottom': 'Bottom of the Deck',
+  'practice.menu.toDeck': 'To the Deck',
+  'practice.menu.deckRandom': 'At random',
+  'practice.menu.deckOnTop': 'On top',
+  'practice.menu.deckOnBottom': 'On the bottom',
 
   'practice.deckMenu.draw': 'Draw',
   'practice.deckMenu.mill': 'Send to the Graveyard',
@@ -89,6 +93,7 @@ export const practice: Translated<typeof es> = {
   'practice.step.toExtra': '{card} returns to the Extra Deck',
   'practice.step.deckTop': 'You put {card} on top of the Deck',
   'practice.step.deckBottom': 'You put {card} on the bottom of the Deck',
+  'practice.step.deckShuffled': 'You shuffle {card} into the Deck',
   'practice.step.move': 'You move {card}',
   'practice.step.moveZone': 'You move {card} to another zone',
   'practice.step.scale': 'You activate {card} as a Pendulum Scale',
