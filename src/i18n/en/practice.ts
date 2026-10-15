@@ -159,6 +159,7 @@ export const practice: Translated<typeof es> = {
   'practice.mat.hint': 'Drag a card to a zone or tap it to see what you can do.',
   'practice.mat.pickTributes': { one: 'Tap the monster to Tribute ({chosen}/{count})', other: 'Tap {count} monsters to Tribute ({chosen}/{count})' },
   'practice.mat.pickMaterials': 'Tap the materials on the field ({count}) and confirm',
+  'practice.mat.pickMaterialsOne': 'With a single material, double-click it to summon',
   'practice.mat.pickZone': 'Tap the zone for {label}',
   'practice.mat.pickCounterAdd': 'Tap a card to put a counter on it',
   'practice.mat.pickCounterRemove': 'Tap a card to take a counter off it',

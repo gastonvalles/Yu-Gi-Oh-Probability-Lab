@@ -164,6 +164,7 @@ export const practice = {
   'practice.mat.hint': 'Arrastrá una carta a una zona o tocala para ver qué podés hacer.',
   'practice.mat.pickTributes': { one: 'Tocá el monstruo para sacrificar ({chosen}/{count})', other: 'Tocá {count} monstruos para sacrificar ({chosen}/{count})' },
   'practice.mat.pickMaterials': 'Tocá los materiales en el campo ({count}) y confirmá',
+  'practice.mat.pickMaterialsOne': 'Con un solo material, doble clic en él para invocar',
   'practice.mat.pickZone': 'Tocá la zona para {label}',
   'practice.mat.pickCounterAdd': 'Tocá una carta para ponerle un contador',
   'practice.mat.pickCounterRemove': 'Tocá una carta para quitarle un contador',
