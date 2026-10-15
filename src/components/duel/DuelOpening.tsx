@@ -7,7 +7,7 @@ import { t } from '../../i18n'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
-import { methodName, outcomeText, rpsName } from './game-text'
+import { RPS_GLYPH, methodName, outcomeText, rpsName } from './game-text'
 import { CoinStage, DiceStage, RpsStage } from './toss-views'
 
 /** Lo que la sala puede hacer antes de la mesa: estar listo, elegir con qué definir quién empieza, jugarlo y elegir ir primero o segundo. */
@@ -195,7 +195,8 @@ function TossStep({ snapshot, nameOf, actions }: StepProps) {
         <>
           <div className="grid grid-cols-3 gap-2">
             {RPS_PICKS.map((pick) => (
-              <Button key={pick} variant="secondary" onClick={() => actions.pickRps(pick)}>
+              <Button key={pick} variant="secondary" className="h-auto flex-col gap-0.5 py-2" onClick={() => actions.pickRps(pick)}>
+                <span aria-hidden="true" className="text-title leading-none">{RPS_GLYPH[pick]}</span>
                 {rpsName(pick)}
               </Button>
             ))}

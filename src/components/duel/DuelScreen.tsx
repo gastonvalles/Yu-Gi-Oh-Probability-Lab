@@ -876,7 +876,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       ) : result !== null && !resultClosed ? (
         <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={duel.rematch} onLeave={onLeave} onClose={() => setResultClosed(true)} />
       ) : undefined,
-      header: <DuelBar snapshot={snapshot} status={status} turn={turn} theirHand={<TheirHand count={opponent.handCount ?? 0} />} onToggleClock={duel.toggleClock} onRematch={duel.rematch} onLeave={onLeave} onConcede={duel.concede} onReconnect={duel.reconnect} resultOpen={resultOpen} rivalSignal={signals.theirs} />,
+      header: <DuelBar snapshot={snapshot} status={status} turn={turn} theirHand={<TheirHand count={opponent.handCount ?? 0} />} onToggleClock={duel.toggleClock} onRematch={duel.rematch} onLeave={onLeave} onConcede={duel.concede} onReconnect={duel.reconnect} onSignal={docked ? undefined : duel.sendChat} resultOpen={resultOpen} rivalSignal={signals.theirs} />,
     }),
     [opponent, snapshot, status, myName, turn, duel, onLeave, attackTargets, theirs, announcement, rivalEffect, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals],
   )

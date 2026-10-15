@@ -6,7 +6,7 @@ import type { Duelist } from '../../app/life-calculator'
 import { t } from '../../i18n'
 import { Coin, Die } from '../life/Toss'
 import { cx } from '../ui/cx'
-import { tossResult } from './game-text'
+import { RPS_GLYPH, tossResult } from './game-text'
 
 /**
  * Lo que se tira en un duelo, para que los dos lo vean: el dado de cada uno (el del otro gira en tu pantalla cuando lo tira), la moneda con lo que salió
@@ -15,8 +15,6 @@ import { tossResult } from './game-text'
 
 /** Cuánto se queda en pantalla lo que tira el rival durante el duelo. */
 const TOSS_MS = 3200
-
-const RPS_GLYPH: Record<RpsPick, string> = { rock: '✊', paper: '✋', scissors: '✌️' }
 
 /** La última vez que `from` tiró un dado (de ahí sale la clave que hace girar el dado de nuevo cuando vuelve a tirar). */
 const lastDie = (games: readonly GameEntry[], from: Duelist) => [...games].reverse().find((entry) => entry.game.kind === 'die' && entry.from === from)
