@@ -140,7 +140,7 @@ export function DuelDeckPicker({ builder, imported, onImport }: DuelDeckPickerPr
       {open ? (
         <div className="grid gap-2">
           <p className="m-0 text-micro text-soft">{t('duel.deck.hint')}</p>
-          <FieldBox>
+          <FieldBox multiline>
             <textarea
               aria-label={t('duel.deck.placeholder')}
               placeholder={t('duel.deck.placeholder')}
@@ -150,7 +150,7 @@ export function DuelDeckPicker({ builder, imported, onImport }: DuelDeckPickerPr
                 setText(event.target.value)
                 setStatus('idle')
               }}
-              className="min-h-24 w-full resize-y bg-transparent px-1 py-1.5 text-body text-foreground outline-none placeholder:text-soft"
+              className="min-h-24 w-full resize-y bg-transparent p-0 text-body text-foreground outline-none placeholder:text-soft"
             />
           </FieldBox>
           <input
