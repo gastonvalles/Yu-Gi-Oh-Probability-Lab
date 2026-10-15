@@ -139,9 +139,11 @@ export const duel = {
   'duel.games.log.concede': '{name} se rindió',
   'duel.games.log.rematch': '{name} quiere la revancha',
   'duel.games.end.title': 'Terminar el duelo',
+  'duel.games.throwCoin': 'Tirar la moneda',
+  'duel.games.throwDie': 'Tirar el dado',
   'duel.games.concede': 'Rendirme',
   'duel.games.concede.confirm': '¿Seguro? Gana {name}.',
-  'duel.games.concede.yes': 'Sí, rendirme',
+  'duel.games.concede.yes': 'Rendirme',
 
   // La sala antes de la mesa: estar listos y definir quién empieza.
   'duel.opening.you': 'Vos',
@@ -170,8 +172,8 @@ export const duel = {
   'duel.opening.rematch': 'Elegís vos, porque perdiste el duelo anterior.',
   'duel.opening.rematchRival': '{name} elige, porque perdió el duelo anterior.',
   'duel.opening.choose': '¿Querés ir primero o segundo?',
-  'duel.opening.first': 'Voy primero',
-  'duel.opening.second': 'Voy segundo',
+  'duel.opening.first': 'Ir primero',
+  'duel.opening.second': 'Ir segundo',
   'duel.opening.chooserWaiting': '{name} está eligiendo quién va primero…',
   'duel.opening.starts': 'Empieza {name}. Repartiendo las manos…',
   'duel.games.log.toss': '{name} eligió {method} para definir quién empieza',

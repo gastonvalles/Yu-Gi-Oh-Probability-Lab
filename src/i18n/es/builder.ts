@@ -9,7 +9,7 @@ export const builder = {
   'builder.drawer.titleEdit': 'Editar regla',
   'builder.drawer.close': 'Cerrar editor',
   'builder.drawer.preparing': 'Preparando el editor…',
-  'builder.drawer.delete': 'Eliminar regla',
+  'builder.drawer.delete': 'Borrar regla',
   'builder.drawer.create': 'Crear regla',
   'builder.drawer.saveChanges': 'Guardar cambios',
 
@@ -102,7 +102,7 @@ export const builder = {
   'builder.picker.selected': { one: '{count} carta seleccionada', other: '{count} cartas seleccionadas' },
   'builder.picker.hint': 'Tocá cartas de cualquier grupo para armar el pool',
   'builder.picker.clear': 'Limpiar',
-  'builder.picker.confirm': 'Confirmar',
+  'builder.picker.confirm': 'Usar selección',
   'builder.picker.group.cards': 'Cartas',
   'builder.picker.group.archetype': 'Arquetipo',
   'builder.picker.group.cardType': 'Tipo de carta',

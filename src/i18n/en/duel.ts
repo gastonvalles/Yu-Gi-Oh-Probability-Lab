@@ -133,9 +133,11 @@ export const duel: Translated<typeof es> = {
   'duel.games.log.concede': '{name} conceded',
   'duel.games.log.rematch': '{name} wants a rematch',
   'duel.games.end.title': 'End the duel',
+  'duel.games.throwCoin': 'Flip the coin',
+  'duel.games.throwDie': 'Roll the die',
   'duel.games.concede': 'Concede',
   'duel.games.concede.confirm': 'Are you sure? {name} wins.',
-  'duel.games.concede.yes': 'Yes, concede',
+  'duel.games.concede.yes': 'Concede',
 
   // The room before the table: getting ready and deciding who goes first.
   'duel.opening.you': 'You',
@@ -164,8 +166,8 @@ export const duel: Translated<typeof es> = {
   'duel.opening.rematch': 'You choose, because you lost the previous duel.',
   'duel.opening.rematchRival': '{name} chooses, because they lost the previous duel.',
   'duel.opening.choose': 'Do you want to go first or second?',
-  'duel.opening.first': 'I go first',
-  'duel.opening.second': 'I go second',
+  'duel.opening.first': 'Go first',
+  'duel.opening.second': 'Go second',
   'duel.opening.chooserWaiting': '{name} is choosing who goes first…',
   'duel.opening.starts': '{name} goes first. Dealing the hands…',
   'duel.games.log.toss': '{name} chose {method} to decide who goes first',

@@ -4,7 +4,8 @@ import { Modal } from '../ui/Modal'
 
 interface ConfirmDialogProps {
   cancelLabel?: string
-  confirmLabel?: string
+  /** Qué hace el botón principal ("Borrar combo", "Salir del duelo"): nunca un "Sí" ni un "Confirmar" a secas. */
+  confirmLabel: string
   confirmColor?: ButtonColor
   confirmVariant?: ButtonVariant
   description: string
@@ -16,7 +17,7 @@ interface ConfirmDialogProps {
 
 export function ConfirmDialog({
   cancelLabel = t('common.cancel'),
-  confirmLabel = t('lab.confirm.confirm'),
+  confirmLabel,
   confirmColor = 'brand',
   confirmVariant = 'primary',
   description,
@@ -35,7 +36,7 @@ export function ConfirmDialog({
       title={title}
       footer={
         <>
-          <Button variant="secondary" size="sm" onClick={onCancel}>
+          <Button variant="tertiary" size="sm" onClick={onCancel}>
             {cancelLabel}
           </Button>
           <Button variant={confirmVariant} color={confirmColor} size="sm" onClick={onConfirm}>

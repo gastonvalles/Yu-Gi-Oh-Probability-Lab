@@ -102,7 +102,7 @@ export const builder: Translated<typeof es> = {
   'builder.picker.selected': { one: '{count} card selected', other: '{count} cards selected' },
   'builder.picker.hint': 'Tap cards from any group to build the pool',
   'builder.picker.clear': 'Clear',
-  'builder.picker.confirm': 'Confirm',
+  'builder.picker.confirm': 'Use selection',
   'builder.picker.group.cards': 'Cards',
   'builder.picker.group.archetype': 'Archetype',
   'builder.picker.group.cardType': 'Card type',

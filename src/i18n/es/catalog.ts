@@ -22,7 +22,7 @@ export const catalog = {
   'catalog.sets.filterLabel': 'Rareza y arte',
   'catalog.sets.rarityAll': 'Todas',
   'catalog.sets.noMatch': 'Ninguna carta coincide con esos filtros.',
-  'catalog.sets.showMore': 'Mostrar {n} más',
+  'catalog.sets.showMore': 'Ver {n} más',
   'catalog.sets.openCard': 'Ver el detalle de {name}',
   'catalog.sets.openProduct': 'Ver {name} en TCGplayer',
 
