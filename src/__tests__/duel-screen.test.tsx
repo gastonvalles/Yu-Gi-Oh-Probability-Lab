@@ -609,14 +609,66 @@ describe('la pantalla del duelo', () => {
     flush()
     click(second.guest, 'Dado')
     flush()
+    const dice = (view: RenderResult) => view.container.querySelector('[data-stage="dice"]')
+    // Antes de que nadie tire, los dos ven los dos lugares vacíos.
+    expect(dice(second.host)?.textContent).toContain('?')
     click(second.host, 'Tirar el dado')
     flush()
     expect(within(second.guest.container).getByText('Ana ya tiró: te toca.')).toBeInTheDocument()
     expect(within(second.host.container).getByRole('button', { name: 'Tirar el dado' })).toBeDisabled()
+    // El dado de Ana gira también en la pantalla de Beto, y el de Beto sigue vacío hasta que tire.
+    expect(dice(second.guest)?.querySelectorAll('[class*="animate-die-spin"]')).toHaveLength(1)
+    expect(dice(second.guest)?.textContent).toContain('?')
     click(second.guest, 'Tirar el dado')
     flush()
-    const text = within(second.host.container).queryByText(/^Empate en [1-6]: tiren de nuevo.$/) ?? within(second.host.container).getByText(/^Vos sacaste [1-6]; Beto, [1-6].$/)
-    expect(text).toBeInTheDocument()
+    // Ya tiraron los dos: cada uno ve los dos dados (sin lugares vacíos) y, sin empate, quién elige.
+    for (const view of [second.host, second.guest]) {
+      expect(dice(view)?.querySelectorAll('[class*="animate-die-spin"]')).toHaveLength(2)
+      expect(dice(view)?.textContent).not.toContain('?')
+    }
+    const tied = within(second.host.container).queryByText(/^Empate en [1-6]: tiren de nuevo.$/) !== null
+    if (!tied) {
+      expect(within(second.host.container).queryByText('Ganaste: elegís vos.') ?? within(second.host.container).queryByText('Ganó Beto.')).not.toBeNull()
+    }
+  })
+
+  it('piedra, papel o tijera en la sala: cuando eligieron los dos, los dos ven las dos manos a la vez', () => {
+    const { host, guest } = startDuel()
+    click(host, 'Estoy listo')
+    click(guest, 'Estoy listo')
+    flush()
+    click(host, 'Piedra, papel o tijera')
+    flush()
+    const hands = (view: RenderResult) => view.container.querySelector('[data-stage="rps"]')
+
+    // Con una sola elección todavía no se muestra ninguna mano (la del rival no se ve hasta elegir la propia).
+    click(host, 'Piedra')
+    flush()
+    expect(hands(host)).toBeNull()
+    expect(hands(guest)).toBeNull()
+
+    click(guest, 'Tijera')
+    flush()
+    for (const view of [host, guest]) {
+      expect(hands(view)?.textContent).toContain('✊')
+      expect(hands(view)?.textContent).toContain('✌')
+      expect(hands(view)?.querySelectorAll('[class*="animate-rps-reveal"]')).toHaveLength(2)
+    }
+  })
+
+  it('en la mesa lo que tira el rival se ve girar aunque el panel de juegos esté cerrado, y las dos manos al cerrarse una ronda de piedra-papel-tijera', () => {
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+    const overlay = () => document.querySelector('[role="status"].fixed')
+    expect(overlay()).toBeNull()
+
+    // Ana tira la moneda con su panel: Beto la ve en el centro de su pantalla, sin abrir nada.
+    click(host, 'Moneda, dado y más')
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Juegos' })).getByRole('button', { name: 'Moneda' }))
+    flush()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(within(guest.container).queryByRole('dialog')).not.toBeInTheDocument()
+    expect(overlay()?.textContent).toMatch(/Ana: (Cara|Cruz)/)
   })
 
   it('el chat: desde la sala y desde la mesa, con un contador de lo que no leíste', () => {

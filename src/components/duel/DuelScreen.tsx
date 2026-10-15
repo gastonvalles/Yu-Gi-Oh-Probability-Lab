@@ -26,6 +26,7 @@ import { DuelDeckPicker, loadDuelDeck, readStoredDeck, type DuelDeck } from './D
 import { gameText, outcomeText, rpsName } from './game-text'
 import { artOfDrawId } from './duel-art'
 import { DuelOpening } from './DuelOpening'
+import { TossOverlay } from './toss-views'
 import { DUEL_AREAS, SideCells, sharedZoneCard, TheirHand, type DuelSideView } from './DuelTable'
 
 const NAME_KEY = 'ygo-lab:duel-name'
@@ -607,28 +608,27 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
       tools: <DuelTools snapshot={snapshot} myName={myName} games={duel} onSendChat={duel.sendChat} />,
       life: <DuelLife snapshot={snapshot} myName={myName} onChangeLife={duel.changeLife} onHalve={duel.halveLife} />,
-      header: (
-        <>
-          <DuelBar snapshot={snapshot} status={status} turn={turn} onToggleClock={duel.toggleClock} onRematch={duel.rematch} onLeave={onLeave} />
-          <TheirHand count={opponent.handCount ?? 0} />
-        </>
-      ),
+      header: <DuelBar snapshot={snapshot} status={status} turn={turn} theirHand={<TheirHand count={opponent.handCount ?? 0} />} onToggleClock={duel.toggleClock} onRematch={duel.rematch} onLeave={onLeave} />,
     }),
     [opponent, snapshot, status, myName, turn, duel, onLeave, attackTargets, theirs, announcement, notice, rivalName],
   )
 
   return (
-    <PracticeMat
-      session={session}
-      state={mine!}
-      cardsById={cardsById}
-      deckName={deckName}
-      onDispatch={duel.play}
-      onUndo={duel.undo}
-      onSeek={NOTHING}
-      onLoadCombo={NOTHING}
-      onNewHand={NOTHING}
-      duel={link}
-    />
+    <>
+      <PracticeMat
+        session={session}
+        state={mine!}
+        cardsById={cardsById}
+        deckName={deckName}
+        onDispatch={duel.play}
+        onUndo={duel.undo}
+        onSeek={NOTHING}
+        onLoadCombo={NOTHING}
+        onNewHand={NOTHING}
+        duel={link}
+      />
+      {/* Lo que tira el rival (moneda, dado, piedra-papel-tijera) se ve girar acá aunque el panel de juegos esté cerrado. */}
+      <TossOverlay snapshot={snapshot} myName={myName} />
+    </>
   )
 }

@@ -100,7 +100,7 @@ export function DuelTable({ mine, theirs, show = 'both', turn = 'mine', classNam
  */
 export function TheirHand({ count }: { count: number }) {
   return (
-    <div role="img" aria-label={t('duel.hand.theirs', { count })} className="flex h-9 shrink-0 justify-center min-[1101px]:h-14">
+    <div role="img" aria-label={t('duel.hand.theirs', { count })} className="flex h-9 shrink-0 justify-center min-[1101px]:h-11">
       {Array.from({ length: Math.min(count, 12) }, (_, index) => (
         <span key={index} className={cx('-ml-3 block aspect-[421/614] h-full overflow-hidden first:ml-0', CARD_SHADOW)}>
           <CardBack className="h-full" />

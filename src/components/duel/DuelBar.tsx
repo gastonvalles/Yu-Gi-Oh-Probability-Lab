@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 
 import { duelResult, type DuelResult } from '../../app/duel-games'
 import type { Duel, DuelSnapshot } from '../../app/duel-session'
@@ -45,6 +45,8 @@ interface DuelBarProps {
   snapshot: DuelSnapshot
   status: SocketStatus
   turn: 'mine' | 'theirs'
+  /** La mano del rival (sus dorsos): en el celular va abajo de los datos; en escritorio, en el medio de la misma fila. */
+  theirHand: ReactNode
   onToggleClock: () => void
   onRematch: () => void
   onLeave: () => void
@@ -55,7 +57,7 @@ interface DuelBarProps {
  * el turno con la fase en que va quien juega, y cómo va la conexión. Lo propio (tus puntos de vida, el chat, los dados, deshacer) está abajo, al alcance
  * del pulgar. Salir pide confirmación y queda en la esquina de arriba, lejos de donde se toca jugando.
  */
-export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLeave }: DuelBarProps) {
+export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRematch, onLeave }: DuelBarProps) {
   const now = useTick(1000)
   const [leaving, setLeaving] = useState(false)
   const { life, me, peerPresent } = snapshot
@@ -68,39 +70,47 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
   const phase = PHASES.find((entry) => entry.id === phaseId)?.name
 
   return (
-    <div className="grid gap-1.5 px-0.5 pt-1.5">
-      <div className="flex items-center gap-1.5">
-        <LifeTile name={rivalName} life={life.lp[me === 0 ? 1 : 0]} />
-        <button
-          type="button"
-          aria-label={`${t('duel.bar.clock', { time: clock })}. ${running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}`}
-          title={running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}
-          className="inline-flex h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-card border border-border-subtle bg-card-background px-2.5 text-micro font-semibold tabular-nums text-foreground focus-visible:outline-none focus-visible:shadow-focus"
-          onClick={onToggleClock}
-        >
-          <Icon name={running ? 'pause' : 'play'} size={14} />
-          {clock}
-        </button>
-        <IconButton tone="flat" size="sm" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} className="ml-auto" onClick={() => setLeaving(true)}>
+    // Celular: una fila con las vidas, el reloj y salir; abajo los turnos y la mano del rival. Escritorio: una sola fila con las vidas del rival y el reloj arriba a la izquierda, su mano en el centro (el del campo) y,
+    // arriba a la derecha, el turno y salir; tus vidas van en la esquina de enfrente, abajo a la derecha.
+    <div className="relative flex flex-wrap items-center gap-1.5 px-0.5 pt-1.5">
+      <LifeTile name={rivalName} life={life.lp[me === 0 ? 1 : 0]} />
+      <button
+        type="button"
+        aria-label={`${t('duel.bar.clock', { time: clock })}. ${running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}`}
+        title={running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}
+        className="inline-flex h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-card border border-border-subtle bg-card-background px-2.5 text-micro font-semibold tabular-nums text-foreground focus-visible:outline-none focus-visible:shadow-focus"
+        onClick={onToggleClock}
+      >
+        <Icon name={running ? 'pause' : 'play'} size={14} />
+        {clock}
+      </button>
+      {/* Escritorio: el turno y salir juntos a la derecha. Celular: salir al final de la primera fila, el turno en su propia fila y la mano del rival en la tercera (`contents` y `order` los acomodan). */}
+      <div className="contents min-[1101px]:ml-auto min-[1101px]:flex min-[1101px]:items-center min-[1101px]:gap-2">
+        <div className="order-2 flex basis-full flex-wrap items-center gap-1.5 min-[1101px]:order-none min-[1101px]:basis-auto min-[1101px]:flex-nowrap">
+          <span className="whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted">{t('practice.mat.turn', { turn: duelTurnNumber(snapshot.mine, snapshot.theirs?.state ?? null) })}</span>
+          <span className={cx('whitespace-nowrap rounded-full px-2.5 py-1 text-micro font-semibold', turn === 'mine' ? 'bg-accent/20 text-accent' : 'bg-tint/8 text-muted')}>
+            {turn === 'mine' ? t('duel.bar.yourTurn') : t('duel.bar.theirTurn', { name: rivalName })}
+            {phase ? <span data-testid="duel-phase">{` · ${phase}`}</span> : null}
+          </span>
+        </div>
+        <IconButton tone="flat" size="sm" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} className="order-1 ml-auto min-[1101px]:order-none min-[1101px]:ml-0" onClick={() => setLeaving(true)}>
           <Icon name="x" />
         </IconButton>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted">{t('practice.mat.turn', { turn: duelTurnNumber(snapshot.mine, snapshot.theirs?.state ?? null) })}</span>
-        <span className={cx('whitespace-nowrap rounded-full px-2.5 py-1 text-micro font-semibold', turn === 'mine' ? 'bg-accent/20 text-accent' : 'bg-tint/8 text-muted')}>
-          {turn === 'mine' ? t('duel.bar.yourTurn') : t('duel.bar.theirTurn', { name: rivalName })}
-          {phase ? <span data-testid="duel-phase">{` · ${phase}`}</span> : null}
-        </span>
-      </div>
+      <div className="order-3 flex basis-full justify-center min-[1101px]:absolute min-[1101px]:left-1/2 min-[1101px]:top-1.5 min-[1101px]:basis-auto min-[1101px]:-translate-x-1/2">{theirHand}</div>
 
       {status !== 'open' ? (
-        <Callout tone="warning" icon="alert">{STATUS_TEXT[status]()}</Callout>
+        <Callout className="order-4 basis-full" tone="warning" icon="alert">{STATUS_TEXT[status]()}</Callout>
       ) : !peerPresent ? (
-        <Callout tone="info">{t('duel.peer.absent')}</Callout>
+        <Callout className="order-4 basis-full" tone="info">{t('duel.peer.absent')}</Callout>
       ) : null}
 
-      {result ? <ResultBanner result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} /> : null}
+      {result ? (
+        <div className="order-4 basis-full">
+          <ResultBanner result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} />
+        </div>
+      ) : null}
 
       <ConfirmDialog
         isOpen={leaving}

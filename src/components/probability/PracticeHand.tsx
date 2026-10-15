@@ -125,8 +125,9 @@ function dropTargetAt(x: number, y: number, dragged: HTMLElement): { element: HT
 export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highlighted, highlightKind, muted, flash, targeted, selectedId, getDeckRect, dealsFromDeck, getField, onReorder, onTap, onDragOver, onDrop, className }: PracticeHandProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const width = useElementWidth(containerRef) || FALLBACK_WIDTH
-  const slots = Math.max(cards.length, sizeSlots)
-  const layout = computeHandLayout(width, slots, maxCardWidth, sizeSlots)
+  // El tamaño de la carta sale de la mano inicial (no cambia al jugar o robar), pero la separación, el abanico y el centrado salen de las cartas que hay: al salir una, las que quedan se vuelven a centrar.
+  const count = Math.max(1, cards.length)
+  const layout = computeHandLayout(width, count, maxCardWidth, sizeSlots)
   // La carta arrastrada: sólo cuál es. Dónde está se escribe en su `transform` por el ref, un cuadro por vez, sin pasar por React.
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const dragRef = useRef<{ id: string; pointerId: number; startX: number; startY: number; grabDx: number; moved: boolean; outside: string | null; element: HTMLElement } | null>(null)
@@ -311,8 +312,8 @@ export function PracticeHand({ cards, sizeSlots, maxCardWidth, fanDegrees, highl
     >
       {cards.map((card, index) => {
         const isDragged = draggedId === card.id
-        const angle = fanAngle(index, slots, fanDegrees)
-        const arch = Math.abs(index - (slots - 1) / 2) ** 2 * 1.6
+        const angle = fanAngle(index, count, fanDegrees)
+        const arch = Math.abs(index - (count - 1) / 2) ** 2 * 1.6
         // El lugar que le toca en el abanico; la carta arrastrada lo ignora (ver `HandCard`) y vuelve a él al soltarse.
         const transform = `translate3d(${slotLeft(layout, index)}px, ${TOP_ROOM + arch}px, 0) rotate(${angle}deg)`
         const flashing = flash?.id === card.id

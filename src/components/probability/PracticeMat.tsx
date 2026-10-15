@@ -1210,15 +1210,15 @@ export function PracticeMat({
           className="relative my-auto grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]"
           aria-label={t('practice.mat.field')}
           // En un duelo, las áreas de los dos campos (el estilo en línea gana a la clase de las áreas de uno solo); y en escritorio las cartas se achican hasta que las cinco filas y la mano entran en la pantalla.
-          style={duel ? ({ gridTemplateAreas: duel.areas, '--cell': 'max(3.5rem, min(8rem, calc((100dvh - 33.5rem) / 5.2)))' } as CSSProperties) : undefined}
+          style={duel ? ({ gridTemplateAreas: duel.areas, '--cell': 'max(3.5rem, min(8rem, calc((100dvh - 19.5rem) / 5)))' } as CSSProperties) : undefined}
         >
           {/* La mascota del duelo, una sola: en escritorio, en la esquina libre de arriba a la izquierda del campo; en el celular, parada sobre esa esquina, detrás de lo demás. */}
           {duel ? duel.opponent : <DuelMascot className="absolute bottom-full left-0 -z-10 mb-1 size-[4.5rem] min-[1101px]:static min-[1101px]:z-0 min-[1101px]:mb-0 min-[1101px]:size-[5.25rem] min-[1101px]:self-end min-[1101px]:justify-self-center min-[1101px]:[grid-area:1/1]" />}
           {cell('field', 0, 'fld')}
           {cell('emz', 0, 'emz1')}
           {cell('emz', 1, 'emz2')}
-          {/* Las seis fases, de a dos entre las zonas, como en DuelingBook: la actual encendida; tocar otra cambia de fase. En el celular van abajo, en la barra de pasos. */}
-          {isDesktop
+          {/* Las seis fases, de a dos entre las zonas, como en DuelingBook: la actual encendida; tocar otra cambia de fase. En el celular de la práctica van abajo, en la barra de pasos; en un duelo, entre las zonas también en el celular (abajo queda el lugar para las vidas y los botones, y la mesa entra sin scroll). */}
+          {isDesktop || duel
             ? [0, 2, 4].map((start, index) => (
                 <div key={start} role="group" aria-label={index === 0 ? t('practice.mat.phases') : undefined} className="grid grid-cols-2 gap-0.5 self-center min-[1101px]:gap-1" style={{ gridArea: `p${index + 1}` }}>
                   {PHASES.slice(start, start + 2).map((phase) => (
@@ -1282,7 +1282,7 @@ export function PracticeMat({
           <PracticeHand
             cards={handCards}
             sizeSlots={Math.max(session.initial.hand.length, 1)}
-            maxCardWidth={isDesktop ? 124 : 110}
+            maxCardWidth={isDesktop ? (duel ? 100 : 124) : duel ? 96 : 110}
             fanDegrees={2.2}
             highlighted={highlighted}
             highlightKind={highlightKind}
@@ -1334,26 +1334,28 @@ export function PracticeMat({
 
         {/* Abajo: en el celular las seis fases, solas y centradas (Deshacer está arriba y los pasos en la lista, así que ni Anterior / Siguiente ni la última jugada hacen falta). En escritorio las fases están entre las zonas.
             Eligiendo (Sacrificios, materiales) las fases se van para que entre lo que hay que tocar: la barra no cambia de alto, el campo no se mueve. */}
-        <div className="sticky bottom-0 z-30 grid gap-1 max-[1100px]:bg-background/85 max-[1100px]:backdrop-blur-sm">
-          {/* Duelo: lo que se toca seguido, abajo y a la derecha (el pulgar de quien juega con la derecha): deshacer, la ficha, los dados y el chat, todo a la derecha. */}
+        {/* En escritorio, en un duelo, esta barra sube sobre la franja de abajo de la mano (sólo tiene algo en las esquinas): la mano y el campo ganan ese alto, y el medio no ataja toques. */}
+        <div className={cx('sticky bottom-0 z-30 grid gap-1 max-[1100px]:bg-background/85 max-[1100px]:backdrop-blur-sm', duel && 'min-[1101px]:pointer-events-none min-[1101px]:-mt-11')}>
+          {/* Duelo: una sola fila abajo con tus vidas y los botones que se tocan seguido (deshacer, la ficha, los dados y el chat). Celular: las vidas a la izquierda y los botones a la derecha (el pulgar de quien juega
+              con la derecha). Escritorio: los botones a la izquierda y tus vidas en la esquina opuesta a las del rival. */}
           {duel && !choosing ? (
-            <div role="toolbar" aria-label={t('practice.mat.name')} className="flex items-center">
-              <span className="ml-auto flex items-center">
+            <div role="toolbar" aria-label={t('practice.mat.name')} className="flex items-center justify-between max-[1100px]:flex-row-reverse">
+              <span className="pointer-events-auto flex items-center">
                 {undoButton}
                 {tokenButton}
                 {duel.tools}
               </span>
+              <span className="pointer-events-auto">{duel.life}</span>
             </div>
           ) : null}
-          <div className="flex min-h-9 items-center justify-center gap-2">
-          {!isDesktop && !choosing ? (
+          <div className={cx('flex items-center justify-center gap-2', (choosing || (!duel && !isDesktop)) && 'min-h-9')}>
+          {!isDesktop && !duel && !choosing ? (
             <div role="group" aria-label={t('practice.mat.phases')} className="grid w-[13.5rem] flex-none grid-cols-6 gap-1">
               {PHASES.map((phase) => (
                 <PhaseButton key={phase.id} short={phase.short} name={phase.name} active={state.phase === phase.id} onPick={() => play({ type: 'phase', phase: phase.id, ...(duel ? { skipDraw: true as const } : {}) })} />
               ))}
             </div>
           ) : null}
-          {duel && !choosing ? duel.life : null}
           {/* El estado: eligiendo, pide lo que falta; si no, es sólo para el lector de pantalla (la última jugada y el contador ya están en la lista de pasos). */}
           <div className={cx('flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 px-1 text-micro text-muted', !choosing && 'sr-only')} role="status" aria-label={t('practice.mat.currentStep')}>
             {pickingText ? (

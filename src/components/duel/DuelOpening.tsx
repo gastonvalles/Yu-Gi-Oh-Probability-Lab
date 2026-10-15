@@ -2,11 +2,11 @@ import { RPS_PICKS, TOSS_METHODS, rpsOutcome } from '../../app/duel-games'
 import type { Duel, DuelSnapshot } from '../../app/duel-session'
 import type { Duelist } from '../../app/life-calculator'
 import { t } from '../../i18n'
-import { Coin } from '../life/Toss'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { methodName, outcomeText, rpsName } from './game-text'
+import { CoinStage, DiceStage, RpsStage } from './toss-views'
 
 /** Lo que la sala puede hacer antes de la mesa: estar listo, elegir con qué definir quién empieza, jugarlo y elegir ir primero o segundo. */
 export type OpeningActions = Pick<Duel, 'setReady' | 'chooseMethod' | 'callCoin' | 'throwDie' | 'pickRps' | 'chooseFirst'>
@@ -36,6 +36,8 @@ export function DuelOpening({ snapshot, myName, canReady, actions }: DuelOpening
         <PlayerCard caption={t('duel.opening.rival')} name={rival} ready={ready.theirs} />
       </ul>
 
+      {bothReady && !opening.ordered ? <Stage snapshot={snapshot} myName={myName} nameOf={nameOf} /> : null}
+
       {!bothReady ? (
         <div className="grid gap-1.5">
           <Button variant={ready.mine ? 'secondary' : 'primary'} icon={ready.mine ? undefined : 'check'} disabled={!ready.mine && !canReady} onClick={() => actions.setReady(!ready.mine)}>
@@ -61,6 +63,32 @@ export function DuelOpening({ snapshot, myName, canReady, actions }: DuelOpening
 }
 
 /** Uno de los dos jugadores: su nombre y, abajo, si ya está listo (la tarjeta se enciende). */
+/**
+ * Lo que se tiró para definir quién empieza, a la vista de los dos al mismo tiempo: los dados de cada uno (el del otro gira en tu pantalla cuando lo tira), la
+ * moneda con lo que salió y las dos manos de piedra-papel-tijera. Está fuera de los pasos para que no se vuelva a mover cuando pasa de uno al siguiente.
+ */
+function Stage({ snapshot, myName, nameOf }: { snapshot: DuelSnapshot; myName: string; nameOf: (player: Duelist) => string }) {
+  const { opening, games, rps, peerName } = snapshot
+
+  if (opening.method === 'die') {
+    return <DiceStage snapshot={snapshot} myName={myName} />
+  }
+
+  if (opening.method === 'rps' && rps.mine && rps.theirs) {
+    return <RpsStage mine={rps.mine} theirs={rps.theirs} myName={myName} rival={peerName ?? t('duel.bar.rival')} />
+  }
+
+  const coin = opening.method === 'coin' ? [...games].reverse().find((entry) => entry.game.kind === 'coin' && entry.game.call !== undefined) : undefined
+
+  if (coin && coin.game.kind === 'coin' && coin.game.call !== undefined) {
+    const word = (face: 0 | 1) => t(face === 0 ? 'shell.life.coin.heads' : 'shell.life.coin.tails')
+
+    return <CoinStage entry={{ ...coin, game: coin.game }} caption={t('duel.opening.coin.result', { name: nameOf(coin.from), call: word(coin.game.call), face: word(coin.game.face) })} />
+  }
+
+  return null
+}
+
 function PlayerCard({ caption, name, ready }: { caption: string; name: string; ready: boolean }) {
   return (
     <li data-ready={ready} className={cx('grid min-w-0 justify-items-center gap-1 rounded-card border px-2 py-3 text-center transition-colors', ready ? 'border-accent/60 bg-accent/10' : 'border-border-subtle bg-tint/5')}>
@@ -170,32 +198,15 @@ function TossStep({ snapshot, nameOf, actions }: StepProps) {
 }
 
 /** Ya se sabe quién elige (el que ganó o, en una revancha, el que perdió): él elige ir primero o segundo y el otro espera. */
-function ChooseStep({ snapshot, nameOf, actions }: StepProps) {
-  const { opening, me, games, peerName, rps } = snapshot
+function ChooseStep({ snapshot, actions }: StepProps) {
+  const { opening, me, peerName } = snapshot
   const chooser = opening.chooser as Duelist
   const rival = peerName ?? t('duel.bar.rival')
   const rival01: Duelist = me === 0 ? 1 : 0
   const rematch = opening.method === null
-  const coin = [...games].reverse().find((entry) => entry.game.kind === 'coin' && entry.game.call !== undefined)
-  const coinGame = coin?.game.kind === 'coin' ? coin.game : null
 
   return (
     <div className="grid gap-2" role="status">
-      {opening.method === 'coin' && coin && coinGame ? (
-        <div className="grid justify-items-center gap-1 [perspective:40rem]">
-          <Coin key={coin.id} face={coinGame.face} />
-          <p className="m-0 text-micro text-muted">
-            {t('duel.opening.coin.result', { name: nameOf(coin.from), call: t(coinGame.call === 0 ? 'shell.life.coin.heads' : 'shell.life.coin.tails'), face: t(coinGame.face === 0 ? 'shell.life.coin.heads' : 'shell.life.coin.tails') })}
-          </p>
-        </div>
-      ) : null}
-      {opening.method === 'die' && opening.dice.mine !== null && opening.dice.theirs !== null ? (
-        <p className="m-0 text-micro text-muted">{t('duel.opening.die.result', { mine: opening.dice.mine, theirs: opening.dice.theirs, name: rival })}</p>
-      ) : null}
-      {opening.method === 'rps' && rps.mine && rps.theirs ? (
-        <p className="m-0 text-micro text-muted">{t('duel.games.rps.versus', { mine: rpsName(rps.mine), theirs: rpsName(rps.theirs) })}</p>
-      ) : null}
-
       <p className="m-0 text-body font-semibold text-foreground">
         {chooser === me ? (rematch ? t('duel.opening.rematch') : t('duel.opening.won')) : rematch ? t('duel.opening.rematchRival', { name: rival }) : t('duel.opening.lost', { name: rival })}
       </p>
