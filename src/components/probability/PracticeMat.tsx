@@ -659,6 +659,12 @@ export function PracticeMat({
         return
       }
 
+      // "Al deck: al azar": la carta se pone en el deck y se baraja todo con una semilla nueva.
+      if (item.shuffleDeck && item.action.type === 'move') {
+        play({ ...item.action, shuffle: randomSeed() })
+        return
+      }
+
       const pick = (picking: Picking) => {
         setMenu(null)
 

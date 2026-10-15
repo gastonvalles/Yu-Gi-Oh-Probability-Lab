@@ -176,6 +176,31 @@ describe('la mesa de práctica', () => {
     expect(matReducer(state, { type: 'move', id: 'd1', to: 'hand' }).deck).toEqual(['b1', 'c1', 'e1', 'f1'])
   })
 
+  it('"Al deck" pregunta cómo (al azar, arriba o abajo): una carta de afuera se pone y se baraja todo el deck; una que ya estaba en el deck sólo cambia de lugar', () => {
+    const state = createMatState(DECK, EXTRA, 2)
+    expect(state.hand).toEqual(['a1', 'a2'])
+    expect(state.deck).toEqual(['b1', 'c1', 'd1', 'e1', 'f1'])
+
+    // El menú: una sola jugada que pregunta; "Al azar" lleva la marca para que la mesa le ponga la semilla.
+    const toDeck = listCardActions(state, 'a1', kindOf, nameOf).find((item) => item.label === 'Al deck')!
+    expect(toDeck.choices?.map((choice) => [choice.label, choice.shuffleDeck ?? false])).toEqual([['Al azar', true], ['Arriba', false], ['Abajo', false]])
+    // Mirando el deck, una carta de adentro sigue con Arriba / Abajo (no vuelve "al deck": ya está).
+    expect(listCardActions(state, 'c1', kindOf, nameOf).map((item) => item.label).slice(-2)).toEqual(['Arriba del deck', 'Abajo del deck'])
+
+    // Arriba y abajo, sin barajar.
+    expect(matReducer(state, { type: 'move', id: 'a1', to: 'deck' }).deck).toEqual(['a1', 'b1', 'c1', 'd1', 'e1', 'f1'])
+    expect(matReducer(state, { type: 'move', id: 'a1', to: 'deck-bottom' }).deck).toEqual(['b1', 'c1', 'd1', 'e1', 'f1', 'a1'])
+
+    // Al azar: se pone y se baraja TODO con la semilla (la carta incluida), y queda dicho.
+    const mixed = matReducer(state, { type: 'move', id: 'a1', to: 'deck', shuffle: 5 })
+    expect(mixed.hand).toEqual(['a2'])
+    expect(mixed.deck).toEqual(shuffleWithSeed(['a1', 'b1', 'c1', 'd1', 'e1', 'f1'], 5))
+    expect(describeMatAction(state, { type: 'move', id: 'a1', to: 'deck', shuffle: 5 }, nameOf)).toBe('Barajás A1 dentro del deck')
+    // Del campo también, y la misma semilla da el mismo deck en los dos lados.
+    const onField = run([{ type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }], state)
+    expect(matReducer(onField, { type: 'move', id: 'a1', to: 'deck', shuffle: 5 }).deck).toEqual(mixed.deck)
+  })
+
   it('la misma semilla baraja igual, y otra semilla distinto', () => {
     const items = Array.from({ length: 40 }, (_, index) => `c${index}`)
 
@@ -323,12 +348,11 @@ describe('la mesa de práctica', () => {
       'Target',
       'Descartar',
       'Desterrar',
-      'Arriba del deck',
-      'Abajo del deck',
+      'Al deck',
     ])
     // Una Magia se activa o se coloca; una Trampa sólo se coloca desde la mano.
-    expect(labels(start(), 'b1')).toEqual(['Activar', 'Colocar', 'Revelar', 'Target', 'Descartar', 'Desterrar', 'Arriba del deck', 'Abajo del deck'])
-    expect(labels(start(), 'd1')).toEqual(['Activar efecto', 'Colocar', 'Revelar', 'Target', 'Descartar', 'Desterrar', 'Arriba del deck', 'Abajo del deck'])
+    expect(labels(start(), 'b1')).toEqual(['Activar', 'Colocar', 'Revelar', 'Target', 'Descartar', 'Desterrar', 'Al deck'])
+    expect(labels(start(), 'd1')).toEqual(['Activar efecto', 'Colocar', 'Revelar', 'Target', 'Descartar', 'Desterrar', 'Al deck'])
     // "Activar efecto" de una Trampa en mano = sale boca arriba a la zona de Mágicas y Trampas (destella).
     expect(listCardActions(start(), 'd1', kindOf, nameOf)[0]!.action).toMatchObject({ type: 'place', zone: 'st', pos: 'atk' })
     // Desde el Extra sólo Invocación Especial; un Link no va a defensa.
@@ -361,13 +385,13 @@ describe('la mesa de práctica', () => {
       { type: 'place', id: 'c1', zone: 'mz', index: 1, pos: 'set' },
       { type: 'move', id: 'e1', to: 'gy' },
     ])
-    expect(labels(played, 'a1')).toEqual(['Activar efecto', 'Pasar a defensa', 'Poner boca abajo', 'Adjuntar a X1', 'Target', 'A la zona de Mágicas y Trampas', 'A la mano', 'Al cementerio', 'Desterrar', 'Arriba del deck', 'Abajo del deck'])
+    expect(labels(played, 'a1')).toEqual(['Activar efecto', 'Pasar a defensa', 'Poner boca abajo', 'Adjuntar a X1', 'Target', 'A la zona de Mágicas y Trampas', 'A la mano', 'Al cementerio', 'Desterrar', 'Al deck'])
     expect(labels(played, 'x1')).toEqual(['Activar efecto', 'Pasar a defensa', 'Poner boca abajo', 'Desacoplar A2', 'Target', 'A la zona de Mágicas y Trampas', 'A la mano', 'Al cementerio', 'Desterrar', 'Al Extra Deck'])
     expect(labels(played, 'a2')).toEqual(['Desacoplar al cementerio', 'Desterrar', 'A la mano'])
     // Boca abajo: Invocación por Volteo (a ataque) o voltear boca arriba (queda en defensa).
     expect(labels(played, 'c1').slice(0, 2)).toEqual(['Invocación por Volteo', 'Voltear boca arriba'])
     // Desde el cementerio: Invocación Especial (a una zona principal), a Mágicas/Trampas, a la mano, destierro y de vuelta al deck (arriba o abajo).
-    expect(labels(played, 'e1')).toEqual(['Invocación Especial', 'A la zona de Mágicas y Trampas', 'Activar efecto', 'A la mano', 'Target', 'Desterrar', 'Arriba del deck', 'Abajo del deck'])
+    expect(labels(played, 'e1')).toEqual(['Invocación Especial', 'A la zona de Mágicas y Trampas', 'Activar efecto', 'A la mano', 'Target', 'Desterrar', 'Al deck'])
     expect(listCardActions(played, 'e1', kindOf, nameOf)[0]!.choices?.[0]?.targets?.every((target) => target.zone === 'mz')).toBe(true)
     expect(labels(played, 'zzz')).toEqual([])
 

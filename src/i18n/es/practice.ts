@@ -65,6 +65,10 @@ export const practice = {
   'practice.deckMenu.revealTop': 'Revelar el tope',
   'practice.menu.deckTop': 'Arriba del deck',
   'practice.menu.deckBottom': 'Abajo del deck',
+  'practice.menu.toDeck': 'Al deck',
+  'practice.menu.deckRandom': 'Al azar',
+  'practice.menu.deckOnTop': 'Arriba',
+  'practice.menu.deckOnBottom': 'Abajo',
 
   // Menú del tope del deck.
   'practice.deckMenu.draw': 'Robar',
@@ -93,6 +97,7 @@ export const practice = {
   'practice.step.toExtra': '{card} vuelve al Extra Deck',
   'practice.step.deckTop': 'Ponés {card} arriba del deck',
   'practice.step.deckBottom': 'Ponés {card} abajo del deck',
+  'practice.step.deckShuffled': 'Barajás {card} dentro del deck',
   'practice.step.move': 'Movés {card}',
   'practice.step.moveZone': 'Movés {card} de zona',
   'practice.step.scale': 'Activás {card} como escala',

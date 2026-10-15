@@ -812,6 +812,20 @@ describe('la mesa de práctica', () => {
     }
   })
 
+  it('"Al deck" de una carta de la mano: pregunta si es al azar, arriba o abajo, y al azar la baraja adentro', () => {
+    render(<Harness />)
+
+    expect(screen.getByRole('button', { name: 'Main: 1' })).toBeInTheDocument()
+    tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Al deck' }))
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Al azar', 'Arriba', 'Abajo'])
+
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Al azar' }))
+    expect(screen.getByRole('button', { name: 'Main: 2' })).toBeInTheDocument()
+    expect(within(hand()).queryByRole('listitem', { name: 'Ash Blossom' })).not.toBeInTheDocument()
+    expect(within(status()).getByText('Barajás Ash Blossom dentro del deck')).toBeInTheDocument()
+  })
+
   it('desde el Extra, la Invocación Especial pide tocar los materiales en el campo y confirmar', () => {
     render(<Harness />)
 
