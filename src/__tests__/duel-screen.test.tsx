@@ -401,13 +401,13 @@ describe('la pantalla del duelo', () => {
   })
 
   /** Los dos adentro de la sala, con su nombre. */
-  function startDuel() {
-    const host = render(<DuelScreen {...screenProps()} />)
+  function startDuel(props: Partial<Parameters<typeof DuelScreen>[0]> = {}) {
+    const host = render(<DuelScreen {...screenProps(props)} />)
     typeInto(host, 'Tu nombre', 'Ana')
     click(host, 'Crear un duelo')
     const link = within(host.container).getByTestId('duel-link').textContent ?? ''
     window.history.replaceState(null, '', '#duel')
-    const guest = render(<DuelScreen {...screenProps()} />)
+    const guest = render(<DuelScreen {...screenProps(props)} />)
     typeInto(guest, 'Tu nombre', 'Beto')
     typeInto(guest, 'Enlace o código', link)
     click(guest, 'Unirme')
@@ -1010,6 +1010,67 @@ describe('la pantalla del duelo', () => {
     expect(view.getByText(/hacen falta 5 cartas en el Main y tu deck tiene 2/)).toBeInTheDocument()
     click(guest, 'Usar otro deck')
     expect(view.getByLabelText('ydke://… o el texto del .ydk')).toBeInTheDocument()
+  })
+
+  it('mientras la pantalla del duelo está abierta, la página lo marca (los avisos suben sobre la botonera en celular) y al salir lo saca', () => {
+    expect(document.body).not.toHaveAttribute('data-duel')
+
+    const view = render(<DuelScreen {...screenProps()} />)
+    expect(document.body).toHaveAttribute('data-duel')
+
+    view.unmount()
+    expect(document.body).not.toHaveAttribute('data-duel')
+  })
+
+  it('recargar la página en pleno duelo: quien recarga sigue con la misma mesa, sus vidas y de quién es el turno (no recibe otra mano) y el rival la ve', () => {
+    const { host, guest } = startDuel({ cardsById: monsters })
+    // El invitado empieza (Voy segundo del anfitrión): así el turno guardado se distingue del de arranque.
+    openTable(host, guest, 'guest')
+
+    const cardsOf = (view: RenderResult) => handOf(view).getAllByRole('listitem').map((card) => card.getAttribute('aria-label'))
+    const savedActions = () => (JSON.parse(sessionStorage.getItem(Object.keys(sessionStorage).find((key) => key.endsWith(':guest') && key.includes('duel-save'))!) ?? '{}') as { actions?: unknown[] }).actions?.length
+
+    const summoned = summonFirst(guest)
+    // Se guarda en el momento de jugar, no en la próxima vuelta.
+    expect(savedActions()).toBe(1)
+    flush()
+
+    click(guest, /Cambiar mis puntos de vida/)
+    fireEvent.click(screen.getByRole('button', { name: '1' }))
+    fireEvent.click(screen.getByRole('button', { name: '0' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Restar [0-9]/ }))
+    flush()
+    expect(within(guest.container).getByRole('button', { name: /Puntos de vida de Beto: 7\D?000/ })).toBeInTheDocument()
+
+    const hand = cardsOf(guest)
+    expect(hand).toHaveLength(4)
+    expect(within(guest.container).getByText('Tu turno')).toBeInTheDocument()
+
+    // La pestaña se recarga: se cierra la pantalla y se vuelve a abrir en la misma sala (el rol queda en la pestaña).
+    guest.unmount()
+    flush()
+    const reloaded = render(<DuelScreen {...screenProps({ cardsById: monsters })} />)
+    flush()
+    flush()
+
+    expect(cardsOf(reloaded)).toEqual(hand)
+    expect(zoneOf(reloaded, 'Zona de monstruo 1').getByLabelText(summoned)).toBeInTheDocument()
+    expect(within(reloaded.container).getByRole('button', { name: /Puntos de vida de Beto: 7\D?000/ })).toBeInTheDocument()
+    expect(within(reloaded.container).getByText('Tu turno')).toBeInTheDocument()
+    // El anfitrión sigue con su mano y ve la de quien recargó, con la carta invocada y las vidas de antes.
+    expect(handOf(host).getAllByRole('listitem')).toHaveLength(5)
+    expect(within(host.container).getAllByRole('img', { name: 'Mano del rival: 4' })).toHaveLength(1)
+    expect(within(host.container).getByRole('group', { name: /Puntos de vida de Beto: 7\D?000/ })).toBeInTheDocument()
+  })
+
+  it('salir del duelo a propósito borra lo guardado: volver a entrar a esa sala no reabre la mesa de antes', () => {
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+    expect(Object.keys(sessionStorage).some((key) => key.startsWith('ygo-lab:duel-save:'))).toBe(true)
+
+    click(guest, 'Salir del duelo')
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Salir del duelo' }))
+    expect(Object.keys(sessionStorage).some((key) => key.includes('ygo-lab:duel-save:') && key.endsWith(':guest'))).toBe(false)
   })
 
   it('recargar dentro de la sala con un deck pegado y el builder vacío: el deck guardado vuelve solo y se puede repartir', async () => {

@@ -174,7 +174,7 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
         <div className="flex flex-wrap items-center gap-1.5">
           <LifeTile name={nameOf(top)} life={topSide.lp ?? snapshot.settings?.lp ?? 0} />
           <span className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-card border border-border-subtle bg-card-background px-2.5 text-micro font-semibold tabular-nums text-foreground" aria-label={t('duel.bar.clock', { time: clock })}>
-            <Icon name={snapshot.clock.running ? 'play' : 'pause'} size={14} />
+            <Icon name={snapshot.clock.running ? 'pause' : 'play'} size={14} />
             {clock}
           </span>
           <span className="inline-flex items-center gap-1 rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold text-muted" title={t('duel.watch.readOnly')}>

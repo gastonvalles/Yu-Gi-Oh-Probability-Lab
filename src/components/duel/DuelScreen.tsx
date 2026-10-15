@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { buildDuelLink, DUEL_STEP, extractRoomCode, isWatchLink, parseDuelTarget } from '../../app/duel-link'
 import { cleanName } from '../../app/duel-protocol'
+import { clearDuelSave } from '../../app/duel-save'
 import { createRoomCode } from '../../app/duel-relay-rules'
 import type { Duel, DuelRole, DuelSnapshot } from '../../app/duel-session'
 import type { SocketStatus } from '../../app/duel-socket'
@@ -95,7 +96,16 @@ function showRoomInUrl(room: string | null, watch = false) {
  */
 export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, connect, connectSpectator }: DuelScreenProps) {
   // De momento las mascotas no aparecen en los duelos (ni en el lobby, la sala o la mesa): las que andan flotando esperan afuera.
-  useEffect(() => beginDuel(), [])
+  useEffect(() => {
+    // `data-duel` hace que, en celular, los avisos se dibujen arriba de la botonera (ver index.css).
+    document.body.dataset.duel = ''
+    const endDuel = beginDuel()
+
+    return () => {
+      delete document.body.dataset.duel
+      endDuel()
+    }
+  }, [])
   const [name, setName] = useState(() => readStored(() => localStorage, NAME_KEY) ?? '')
   const [intent, setIntent] = useState<Intent | null>(readIntent)
   const myName = cleanName(name) || t('duel.lobby.defaultName')
@@ -179,9 +189,12 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
   )
 
   const leave = useCallback(() => {
+    // Salir a propósito termina el duelo: lo guardado para recargar no tiene que volver a abrir esa mesa.
+    if (intent) clearDuelSave(intent.room)
+
     showRoomInUrl(null)
     setIntent(null)
-  }, [])
+  }, [intent])
 
   if (!intent) {
     return (

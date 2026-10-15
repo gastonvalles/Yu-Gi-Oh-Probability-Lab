@@ -69,7 +69,7 @@ Las cartas de la mesa llevan en su id la identidad de la carta (`card-123-2`), a
 
 ### Reconexión
 
-Safari en iOS suspende los WebSockets al bloquear la pantalla. El cliente reintenta con espera creciente, despierta con `visibilitychange` y `online`, y al volver pide un `sync`. Si el rival **recarga** la página, su mesa se pierde: vuelve a la sala y, si ya habían elegido quién empieza, sigue desde ahí y reparte otra mano. La tirada que define quién empieza también se repone al reconectar (con un mensaje perdido no queda trabada).
+Safari en iOS suspende los WebSockets al bloquear la pantalla. El cliente reintenta con espera creciente, despierta con `visibilitychange` y `online`, y al volver pide un `sync`. Si alguien **recarga** la página (o el navegador descarta la pestaña mientras se atiende otra aplicación), sigue con la misma mesa: lo propio se guarda en la pestaña (`sessionStorage`, por sala y rol, en `src/app/duel-save.ts`): la mesa de arranque y las jugadas (de ahí se arma de nuevo, el reductor es determinista), las vidas, el reloj y quién empezó. Al volver saluda con otra identidad (`sid`) y manda su mesa entera en el `sync`; el rival sigue viendo la de antes hasta que llega la nueva. No se guardan el chat ni el registro de juegos. Salir del duelo a propósito, o una revancha, borra lo guardado. Sin lo guardado (otra pestaña, almacenamiento bloqueado) se vuelve a la sala y se reparte otra mano. La tirada que define quién empieza también se repone al reconectar (con un mensaje perdido no queda trabada).
 
 ## Probarlo
 

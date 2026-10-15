@@ -54,7 +54,7 @@ export function DuelGames({ isOpen, onClose, snapshot, myName, actions }: DuelGa
           </div>
           {toss && (toss.game.kind === 'coin' || toss.game.kind === 'die') ? (
             <>
-              <div className="grid place-items-center [perspective:40rem]">{toss.game.kind === 'coin' ? <Coin key={toss.id} face={toss.game.face} /> : <Die key={toss.id} value={toss.game.value} />}</div>
+              <div className="grid place-items-center py-6 [perspective:40rem]">{toss.game.kind === 'coin' ? <Coin key={toss.id} face={toss.game.face} /> : <Die key={toss.id} value={toss.game.value} />}</div>
               <p aria-live="polite" className="m-0 text-center text-title font-bold text-foreground">
                 {t('duel.games.tossed', { name: nameOf(toss.from), result: tossResult(toss.game) })}
               </p>

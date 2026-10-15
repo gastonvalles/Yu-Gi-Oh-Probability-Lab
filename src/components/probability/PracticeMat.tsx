@@ -1273,6 +1273,17 @@ export function PracticeMat({
               className="absolute inset-0 z-30"
             />
           ) : null}
+          {/* El ataque del rival en un duelo: quién ataca a quién, en un cartelito sobre la fila de las fases (que en ese momento no se tocan: ataca el rival), así no tapa las vidas ni el reloj. Se va solo, como los otros avisos. */}
+          {announcement ? (
+            <span
+              key={announcement.key}
+              role="status"
+              className="pointer-events-none absolute left-1/2 top-1/2 z-30 w-max max-w-[92%] -translate-x-1/2 -translate-y-1/2 truncate rounded-full border-2 border-[color:rgb(var(--fx-rgb)/0.9)] bg-background/90 px-3.5 py-1 text-micro font-bold text-foreground shadow-[0_0_18px_rgb(var(--fx-rgb)/0.5)]"
+              style={fxVars('red')}
+            >
+              {announcement.caption}
+            </span>
+          ) : null}
           {duel?.notice ? <PhaseBanner key={duel.notice.key} phase={duel.notice.phase} turn={null} who={duel.notice.who} label={duel.notice.label} className="absolute inset-0 z-30" /> : null}
         </div>
 
@@ -1436,18 +1447,6 @@ export function PracticeMat({
 
       {/* Un ataque (el propio o el del rival): la espada cruza la mesa desde el atacante hasta su objetivo y se va sola. */}
       {strike ? <AttackFx key={strike.key} strike={strike} onDone={() => setStrike(null)} /> : null}
-
-      {/* El ataque del rival en un duelo: quién ataca a quién, en un cartelito arriba (se va solo, como los otros avisos). */}
-      {announcement ? (
-        <span
-          key={announcement.key}
-          role="status"
-          className="fixed left-1/2 top-[4.5rem] z-[120] w-max max-w-[92vw] -translate-x-1/2 truncate rounded-full border-2 border-[color:rgb(var(--fx-rgb)/0.9)] bg-background/90 px-3.5 py-1 text-micro font-bold text-foreground shadow-[0_0_18px_rgb(var(--fx-rgb)/0.5)]"
-          style={fxVars('red')}
-        >
-          {announcement.caption}
-        </span>
-      ) : null}
 
       {drag
         ? createPortal(

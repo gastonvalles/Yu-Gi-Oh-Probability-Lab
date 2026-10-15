@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { encodeMessage, type DuelSettings } from '../app/duel-protocol'
+import { saveOf } from '../app/duel-save'
 import { createDuel, type Duel } from '../app/duel-session'
 import { timerElapsed } from '../app/life-calculator'
 import { mapMatIds, openPublic } from '../app/mat-public'
@@ -325,6 +326,108 @@ describe('cuando algo falla', () => {
     expect(game.host.getSnapshot().life.lp[1]).toBe(7500)
     expect(game.host.getSnapshot().life.timer.running).toBe(true)
     expect(game.host.getSnapshot().theirs?.state).toEqual(masked(guestTable, reloaded.getSnapshot().mine!))
+  })
+
+  it('quien recarga con su mesa guardada sigue con ella, sus vidas y el reloj, y el rival lo ve igual', () => {
+    const game = setup()
+    startBoth(game)
+    game.guest.play({ type: 'draw', count: 1 })
+    game.guest.play({ type: 'draw', count: 1 })
+    game.guest.changeLife(-1500)
+    game.room.flush()
+
+    const before = game.guest.getSnapshot()
+    const save = saveOf(before)!
+
+    game.guestEnd.close()
+    const reloaded = createDuel(game.room.join(), { role: 'guest', name: 'Beto', now: () => game.clock.t, sid: 'guest-2', restore: save })
+    game.room.flush()
+
+    // No reparte otra mano: es la misma mesa, con las mismas jugadas, y los puntos de vida no vuelven a los de arranque cuando llega el saludo del anfitrión.
+    expect(reloaded.getSnapshot().mine).toEqual(before.mine)
+    expect(reloaded.getSnapshot().actions).toEqual(before.actions)
+    expect(reloaded.getSnapshot().life.lp).toEqual([8000, 6500])
+    expect(reloaded.getSnapshot()).toMatchObject({ starter: 0, opening: { ordered: true } })
+
+    // El anfitrión ve la mesa y las vidas de antes, y el invitado, la del anfitrión.
+    expect(game.host.getSnapshot().theirs?.state).toEqual(masked(guestTable, before.mine!))
+    expect(game.host.getSnapshot().life.lp[1]).toBe(6500)
+    expect(reloaded.getSnapshot().theirs?.state).toEqual(masked(hostTable, game.host.getSnapshot().mine!))
+
+    // Y se sigue jugando: la jugada nueva llega en orden.
+    reloaded.play({ type: 'draw', count: 1 })
+    game.room.flush()
+    expect(game.host.getSnapshot().theirs?.state).toEqual(masked(guestTable, reloaded.getSnapshot().mine!))
+    expect(reloaded.getSnapshot().actions).toHaveLength(3)
+  })
+
+  it('al que no recarga no se le cierra la mesa del rival mientras llega la nueva', () => {
+    const game = setup()
+    startBoth(game)
+    game.guest.play({ type: 'draw', count: 1 })
+    game.room.flush()
+
+    const save = saveOf(game.guest.getSnapshot())!
+    const seen: boolean[] = []
+
+    game.host.subscribe(() => seen.push(game.host.getSnapshot().theirs !== null))
+    game.guestEnd.close()
+    createDuel(game.room.join(), { role: 'guest', name: 'Beto', sid: 'guest-2', restore: save })
+    game.room.flush()
+
+    expect(seen.length).toBeGreaterThan(0)
+    expect(seen.every(Boolean)).toBe(true)
+  })
+
+  it('el reloj guardado sigue corriendo mientras la página estuvo cerrada', () => {
+    const game = setup()
+    startBoth(game)
+    game.host.toggleClock()
+    game.room.flush()
+
+    const save = saveOf(game.host.getSnapshot())!
+    game.hostEnd.close()
+    game.clock.t += 5_000
+    const reloaded = createDuel(game.room.join(), { role: 'host', name: 'Ana', now: () => game.clock.t, sid: 'host-2', restore: save })
+    game.room.flush()
+
+    expect(reloaded.getSnapshot().life.timer.running).toBe(true)
+    expect(timerElapsed(reloaded.getSnapshot().life.timer, game.clock.t)).toBe(5_000)
+  })
+
+  it('si lo guardado no se puede volver a armar, se ignora y no queda una mesa a medias', () => {
+    const game = setup()
+    startBoth(game)
+    const save = saveOf(game.guest.getSnapshot())!
+
+    game.guestEnd.close()
+    const broken = { ...save, initial: { ...save.initial, deck: undefined } } as unknown as typeof save
+    const reloaded = createDuel(game.room.join(), { role: 'guest', name: 'Beto', sid: 'guest-2', restore: broken })
+
+    expect(reloaded.getSnapshot()).toMatchObject({ mine: null, initial: null, actions: [] })
+  })
+
+  it('una ronda de piedra, papel o tijera terminada no vuelve a aparecer como "ya eligió" cuando el otro recarga; una a medias, sí', () => {
+    const game = setup()
+
+    game.host.pickRps('rock')
+    game.guest.pickRps('paper')
+    game.room.flush()
+    expect(game.host.getSnapshot().rps).toEqual({ mine: 'rock', theirs: 'paper' })
+
+    game.guestEnd.close()
+    const reloaded = createDuel(game.room.join(), { role: 'guest', name: 'Beto', sid: 'guest-2' })
+    game.room.flush()
+    expect(reloaded.getSnapshot().rps).toEqual({ mine: null, theirs: null })
+    expect(game.host.getSnapshot().rps).toEqual({ mine: null, theirs: null })
+
+    // A medias: el anfitrión eligió y el invitado todavía no. Si el invitado recarga, igual se entera.
+    game.host.pickRps('scissors')
+    game.room.flush()
+    reloaded.close()
+    const again = createDuel(game.room.join(), { role: 'guest', name: 'Beto', sid: 'guest-3' })
+    game.room.flush()
+    expect(again.getSnapshot().rps).toEqual({ mine: null, theirs: 'scissors' })
   })
 
   it('suscribirse avisa de cada cambio y se puede dejar de escuchar', () => {
