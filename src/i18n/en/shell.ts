@@ -39,7 +39,7 @@ export const shell: Translated<typeof es> = {
   'shell.step.export.needsMain': 'You need cards in Main.',
   'shell.step.meta.label': 'Tier lists',
   'shell.step.meta.title': 'Meta tier lists',
-  'shell.step.meta.detail': 'Tournament hand traps, decks and boardbreakers.',
+  'shell.step.meta.detail': 'Tournament hand traps and boardbreakers.',
   'shell.step.tournaments.label': 'Tournament decks',
   'shell.step.tournaments.title': 'Tournament decks',
   'shell.step.tournaments.detail': 'The decks that made the top, in full.',

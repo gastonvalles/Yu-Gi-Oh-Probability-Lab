@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  DECK_TREND_THRESHOLD,
   META_DECKS,
-  MIN_TIER_DECKS,
-  buildDeckTierReport,
   buildMetaDeckHash,
   buildMetaReport,
   buildTierListHash,
@@ -12,11 +9,9 @@ import {
   cardIdsOfKind,
   countCopies,
   countKindCopies,
-  deckTierOf,
   filterMetaDecks,
   kindsOf,
   loadMetaDecklist,
-  placementRank,
   projectShare,
   readMetaDeckIdFromHash,
   readTierListHash,
@@ -159,13 +154,13 @@ describe('tier list de hand traps del meta', () => {
     expect(projectShare(series([0.3, 0.2, 0.1, 0]), 0.05)).toMatchObject({ projectedShare: 0, trend: 'down' })
   })
 
-  it('cuánto tiene que cambiar para que suba o baje lo pone quien pregunta: las cartas piden 5 puntos y los decks, 2', () => {
+  it('cuánto tiene que cambiar para que suba o baje lo pone quien pregunta: por defecto, 5 puntos', () => {
     // Sube 1,5 puntos por semana: 3 en dos semanas.
     const slow = series([0.02, 0.035, 0.05, 0.065])
 
     expect(projectShare(slow, 0.05).trend).toBe('flat')
-    expect(projectShare(slow, 0.05, DECK_TREND_THRESHOLD).trend).toBe('up')
-    expect(projectShare(series([0.065, 0.05, 0.035, 0.02]), 0.05, DECK_TREND_THRESHOLD).trend).toBe('down')
+    expect(projectShare(slow, 0.05, 0.02).trend).toBe('up')
+    expect(projectShare(series([0.065, 0.05, 0.035, 0.02]), 0.05, 0.02).trend).toBe('down')
   })
 
   it('sin tres semanas con decks suficientes no proyecta nada', () => {
@@ -258,103 +253,6 @@ describe('tier lists de hand traps y de boardbreakers', () => {
   })
 })
 
-describe('tier list de decks del meta', () => {
-  const elf = (id: number, date: string, placement: string, cover: number | null): MetaDeck => ({ ...deck(id, 'Elfnote', date, []), placement, cover })
-  const tiers: MetaDecksData = {
-    ...data,
-    decks: [
-      elf(1, '2026-10-03', 'Top 16', 111),
-      elf(2, '2026-10-04', 'Winner', null),
-      elf(3, '2026-10-02', 'Top 8', 333),
-      // Un solo resultado: no hace meta (no entra), pero cuenta para el total de decks.
-      deck(4, 'Despia Branded', '2026-10-03', []),
-      // Otra región: no cuenta.
-      deck(5, 'Elfnote', '2026-10-03', [], [], 'ocg'),
-    ],
-  }
-
-  it('asigna el tier de un deck con pisos propios, más bajos que los de las cartas', () => {
-    expect(deckTierOf(0.5)).toBe('S')
-    expect(deckTierOf(0.08)).toBe('S')
-    // Se compara el porcentaje que se ve: 7,9% se muestra como 8%.
-    expect(deckTierOf(0.079)).toBe('S')
-    expect(deckTierOf(0.07)).toBe('A')
-    expect(deckTierOf(0.03)).toBe('B')
-    expect(deckTierOf(0.015)).toBe('B')
-    expect(deckTierOf(0.01)).toBe('C')
-    expect(deckTierOf(0.004)).toBe('D')
-  })
-
-  it('agrupa los decks por nombre y mide cada uno contra todos los decks de la región en la ventana', () => {
-    const report = buildDeckTierReport(tiers, 'tcg', 4)
-
-    expect(report.deckCount).toBe(4)
-    expect(report.decks.map((stat) => [stat.name, stat.decks, stat.share, stat.tier])).toEqual([['Elfnote', 3, 0.75, 'S']])
-    // Un nombre con menos de MIN_TIER_DECKS resultados queda afuera.
-    expect(MIN_TIER_DECKS).toBe(2)
-    expect(buildDeckTierReport(tiers, 'ocg', 4)).toMatchObject({ deckCount: 1, decks: [] })
-  })
-
-  it('ordena los resultados del mejor puesto al peor, y la portada es la del deck más nuevo que tenga una', () => {
-    const [elfnote] = buildDeckTierReport(tiers, 'tcg', 4).decks
-
-    expect(elfnote?.results.map((result) => [result.id, result.placement])).toEqual([
-      [2, 'Winner'],
-      [3, 'Top 8'],
-      [1, 'Top 16'],
-    ])
-    // El más nuevo (id 2) no trae portada: se toma la del siguiente.
-    expect(elfnote?.cover).toBe(111)
-  })
-
-  it('el orden de los puestos entiende campeón, finalista y Top N, y deja al final lo que no entiende', () => {
-    const order = ['Winner', 'Runner-Up', 'Top 4', 'Top 8', 'Top 16', 'Top 32'].map(placementRank)
-
-    expect(order).toEqual([...order].sort((left, right) => left - right))
-    expect(new Set(order).size).toBe(order.length)
-    expect(placementRank('1st Place')).toBe(placementRank('Winner'))
-    expect(placementRank('Finalist')).toBe(placementRank('Runner-Up'))
-    expect(placementRank(null)).toBe(99)
-    expect(placementRank('Swiss 5-3')).toBe(99)
-  })
-
-  it('con datos de varias semanas proyecta la tendencia del deck', () => {
-    const weekly = Array.from({ length: 8 }, (_, week) => week)
-    const rising: MetaDecksData = {
-      ...data,
-      decks: weekly.flatMap((week) => {
-        // Más Elfnote cada semana (de la más vieja a la más nueva), de 12 decks por semana.
-        const date = new Date(Date.parse('2026-10-07') - week * 7 * 86_400_000).toISOString().slice(0, 10)
-        const elfnotes = 8 - week
-
-        return Array.from({ length: 12 }, (_, index) => deck(week * 100 + index, index < elfnotes ? 'Elfnote' : `Otro ${index}`, date, []))
-      }),
-    }
-    const [elfnote] = buildDeckTierReport(rising, 'tcg', 4).decks
-
-    expect(elfnote?.trend).toBe('up')
-    expect(elfnote?.projectedShare).toBeGreaterThan(elfnote?.share ?? 1)
-  })
-
-  it('un deck que sube de a poco ya es tendencia (a una carta con ese cambio no le alcanzaría)', () => {
-    // Elfnote tiene 2 de cada 12 decks las cuatro semanas más viejas y 3 de cada 12 las cuatro más nuevas: la recta sube ~1,6 puntos por semana.
-    const slow: MetaDecksData = {
-      ...data,
-      decks: Array.from({ length: 8 }, (_, week) => week).flatMap((week) => {
-        const date = new Date(Date.parse('2026-10-07') - week * 7 * 86_400_000).toISOString().slice(0, 10)
-        const elfnotes = week < 4 ? 3 : 2
-
-        return Array.from({ length: 12 }, (_, index) => deck(week * 100 + index, index < elfnotes ? 'Elfnote' : `Otro ${index}`, date, []))
-      }),
-    }
-    const [elfnote] = buildDeckTierReport(slow, 'tcg', 4).decks
-
-    expect(elfnote?.name).toBe('Elfnote')
-    expect(elfnote?.trend).toBe('up')
-    expect(projectShare(elfnote?.weekly ?? [], elfnote?.share ?? 0).trend).toBe('flat')
-  })
-})
-
 describe('links directos', () => {
   it('arma y lee el link a un deck de torneo (y el de antes de separar las tier lists sigue andando)', () => {
     expect(buildMetaDeckHash(736578)).toBe('#tournaments?deck=736578')
@@ -383,13 +281,13 @@ describe('links directos', () => {
     expect(readTournamentsHash('#replays?deck=7')).toEqual({ deck: null, card: null, archetype: null })
   })
 
-  it('el link de las tier lists lleva la lista elegida; sin lista (o con una que no existe) es la de hand traps', () => {
+  it('el link de las tier lists lleva la lista elegida; sin lista (o con una que no existe, como la de decks de antes) es la de hand traps', () => {
     expect(buildTierListHash('handtrap')).toBe('#meta')
-    expect(buildTierListHash('deck')).toBe('#meta?list=deck')
     expect(buildTierListHash('boardbreaker')).toBe('#meta?list=boardbreaker')
 
     expect(readTierListHash('#meta?list=boardbreaker')).toBe('boardbreaker')
-    expect(readTierListHash('#meta?list=deck')).toBe('deck')
+    // El link de la lista de decks, que ya no existe, abre la de hand traps.
+    expect(readTierListHash('#meta?list=deck')).toBe('handtrap')
     expect(readTierListHash('#meta')).toBe('handtrap')
     expect(readTierListHash('#meta?list=otra')).toBe('handtrap')
     expect(readTierListHash('#tournaments?list=deck')).toBe('handtrap')
@@ -431,15 +329,6 @@ describe('src/data/meta-decks.json (lo que escribe scripts/sync-meta-decks.mjs)'
     expect(kinds.flat()).toContain('boardbreaker')
     expect(buildMetaReport(META_DECKS, 'tcg', 'both', 8, 'handtrap').cards.length).toBeGreaterThan(5)
     expect(buildMetaReport(META_DECKS, 'tcg', 'both', 8, 'boardbreaker').cards.length).toBeGreaterThan(3)
-  })
-
-  it('el tier list de decks tiene decks de las dos regiones, cada uno con sus resultados', () => {
-    for (const region of ['tcg', 'ocg'] as const) {
-      const report = buildDeckTierReport(META_DECKS, region, 8)
-
-      expect(report.decks.length).toBeGreaterThan(3)
-      expect(report.decks.every((stat) => stat.results.length >= MIN_TIER_DECKS && stat.results.every((result) => result.name === stat.name))).toBe(true)
-    }
   })
 
   it('las listas completas son del mismo snapshot: cada deck tiene la suya y sus cartas de los tier lists coinciden', async () => {
