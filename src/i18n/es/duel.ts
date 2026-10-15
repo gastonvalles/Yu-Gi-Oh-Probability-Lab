@@ -57,6 +57,7 @@ export const duel = {
   'duel.watch.full': 'Ya hay dos personas mirando este duelo.',
   'duel.watch.waitingPlayers': 'Todavía no hay jugadores en la sala…',
   'duel.watch.waitingStart': 'Esperando que {names} empiecen…',
+  'duel.watch.waitingRival': 'Esperando al rival de {name}…',
   'duel.watch.waitingStartNoNames': 'Esperando que los jugadores empiecen…',
   'duel.watch.turnOf': 'Turno de {name}',
   'duel.watch.playerAway': 'Falta un jugador',

@@ -96,7 +96,7 @@ function WaitingToWatch({ snapshot, online, onLeave }: { snapshot: SpectatorSnap
       {online ? null : <Callout tone="warning" icon="alert">{t('duel.status.reconnecting')}</Callout>}
       <p className="m-0 flex items-center gap-2 text-body text-foreground" role="status">
         <Icon name="user" size={16} />
-        {snapshot.players === 0 ? t('duel.watch.waitingPlayers') : names.length > 0 ? t('duel.watch.waitingStart', { names: names.join(t('duel.watch.and')) }) : t('duel.watch.waitingStartNoNames')}
+        {snapshot.players === 0 ? t('duel.watch.waitingPlayers') : names.length === 1 ? t('duel.watch.waitingRival', { name: names[0] }) : names.length > 1 ? t('duel.watch.waitingStart', { names: names.join(t('duel.watch.and')) }) : t('duel.watch.waitingStartNoNames')}
       </p>
       <p className="m-0 text-micro text-soft">{t('duel.watch.readOnly')}</p>
       <div>

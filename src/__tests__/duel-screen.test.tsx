@@ -872,6 +872,19 @@ describe('la pantalla del duelo', () => {
     expect(view.queryAllByRole('listitem', { name: /Mano/ })).toHaveLength(0)
   })
 
+  it('quien mira con un solo jugador en la sala espera a su rival, sin hablar de dos', () => {
+    const host = render(<DuelScreen {...screenProps()} />)
+    typeInto(host, 'Tu nombre', 'Ana')
+    click(host, 'Crear un duelo')
+    const room = extractRoomCode(window.location.hash)!
+    window.history.replaceState(null, '', `#duel?room=${room}&watch=1`)
+    const watcher = render(<DuelScreen {...screenProps({ mainIds: [], extraIds: [], cardsById: new Map() })} />)
+    flush()
+    flush()
+
+    expect(within(watcher.container).getByText('Esperando al rival de Ana…')).toBeInTheDocument()
+  })
+
   it('quien mira puede dar vuelta la mesa para verla desde el lado del otro jugador', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
