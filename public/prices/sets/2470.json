@@ -1,6 +1,6 @@
 [
 ["SDRR-EN001","Super Rare","1st Edition",0.3,196806,32476603,"Silverrokket Dragon"],
-["SDRR-EN002","Super Rare","1st Edition",0.29,196807,68464358,"Rokket Tracer"],
+["SDRR-EN002","Super Rare","1st Edition",0.28,196807,68464358,"Rokket Tracer"],
 ["SDRR-EN003","Common","1st Edition",1.87,196808,5969957,"Rokket Recharger"],
 ["SDRR-EN004","Common","1st Edition",0.43,196809,31353051,"Exploderokket Dragon"],
 ["SDRR-EN005","Super Rare","1st Edition",0.55,196810,67748760,"Absorouter Dragon"],
@@ -20,7 +20,7 @@
 ["SDRR-EN019","Common","1st Edition",0.34,196828,66752837,"Keeper of the Shrine"],
 ["SDRR-EN020","Common","1st Edition",0.24,196829,84899094,"World Chalice Guardragon"],
 ["SDRR-EN021","Common","1st Edition",0.21,196830,77558536,"Raiden, Hand of the Lightsworn"],
-["SDRR-EN022","Common","1st Edition",0.26,196831,30131474,"Borrel Supplier"],
+["SDRR-EN022","Common","1st Edition",0.27,196831,30131474,"Borrel Supplier"],
 ["SDRR-EN023","Common","1st Edition",0.41,196832,67526112,"Rapid Trigger"],
 ["SDRR-EN024","Common","1st Edition",0.2,196833,54458867,"Squib Draw"],
 ["SDRR-EN025","Common","1st Edition",0.87,196834,31443476,"Quick Launch"],
@@ -44,5 +44,5 @@
 ["SDRR-EN043","Ultra Rare","1st Edition",0.25,196859,29296344,"Quadborrel Dragon"],
 ["SDRR-EN044","Common","1st Edition",0.33,196861,31833038,"Borreload Dragon"],
 ["SDRR-EN045","Common","1st Edition",0.41,196862,49725936,"Triple Burst Dragon"],
-["SDRR-EN046","Common","1st Edition",0.17,196863,12023931,"Booster Dragon"]
+["SDRR-EN046","Common","1st Edition",0.18,196863,12023931,"Booster Dragon"]
 ]

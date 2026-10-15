@@ -1,6 +1,6 @@
 [
 ["SS02-ENA01","Common","1st Edition",0.66,183648,89631139,"Blue-Eyes White Dragon"],
-["SS02-ENA02","Common","1st Edition",0.18,183649,5053103,"Battle Ox"],
+["SS02-ENA02","Common","1st Edition",0.17,183649,5053103,"Battle Ox"],
 ["SS02-ENA03","Common","1st Edition",0.12,183650,24611934,"Ryu-Kishin Powered"],
 ["SS02-ENA04","Common","1st Edition",0.26,183651,17658803,"Luster Dragon #2"],
 ["SS02-ENA05","Common","1st Edition",0.29,183652,17985575,"Lord of D."],
@@ -33,7 +33,7 @@
 ["SS02-ENB12","Common","1st Edition",0.28,183676,60764581,"Stray Lambs"],
 ["SS02-ENB13","Common","1st Edition",0.37,183677,61854111,"Legendary Sword"],
 ["SS02-ENB14","Common","1st Edition",0.21,183678,86318356,"Sogen"],
-["SS02-ENB15","Common","1st Edition",0.39,183679,3493058,"Dicephoon"],
+["SS02-ENB15","Common","1st Edition",0.4,183679,3493058,"Dicephoon"],
 ["SS02-ENB16","Common","1st Edition",0.64,183680,74137509,"Graceful Dice"],
 ["SS02-ENB17","Common","1st Edition",0.63,183681,126218,"Skull Dice"],
 ["SS02-ENB18","Common","1st Edition",0.26,183682,37390589,"Kunai with Chain"],
@@ -55,7 +55,7 @@
 ["SS02-ENC09","Common","1st Edition",0.16,183695,40384720,"Sonic Shooter"],
 ["SS02-ENC10","Common","1st Edition",0.19,183696,90219263,"Elegant Egotist"],
 ["SS02-ENC11","Common","1st Edition",0.24,183697,12181376,"Triangle Ecstasy Spark"],
-["SS02-ENC12","Common","1st Edition",0.44,183698,63224564,"Cyber Shield"],
+["SS02-ENC12","Common","1st Edition",0.42,183698,63224564,"Cyber Shield"],
 ["SS02-ENC13","Common","1st Edition",0.21,183699,75782277,"Harpies' Hunting Ground"],
 ["SS02-ENC14","Common","1st Edition",0.53,183700,79965360,"Amazoness Heirloom"],
 ["SS02-ENC15","Common","1st Edition",0.37,183701,67987611,"Amazoness Archers"],
@@ -66,6 +66,6 @@
 ["SS02-ENCS2","Common","1st Edition",0.6,183643,300202008,"Flight of the Harpies"],
 ["SS02-ENCS3","Common","1st Edition",0.3,183644,300202009,"Tribal Synergy"],
 ["SS02-ENV01","Ultra Rare","1st Edition",0.62,183645,82382815,"Champion's Vigilance"],
-["SS02-ENV02","Ultra Rare","1st Edition",0.75,183646,33550694,"Fusion Gate"],
+["SS02-ENV02","Ultra Rare","1st Edition",0.74,183646,33550694,"Fusion Gate"],
 ["SS02-ENV03","Ultra Rare","1st Edition",0.73,183647,712559,"Amazoness Village"]
 ]

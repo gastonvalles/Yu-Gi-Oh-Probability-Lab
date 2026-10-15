@@ -15,7 +15,8 @@
 ["IOC-EN014","Super Rare","Unlimited",4.81,476935,16556849,"Freed the Brave Wanderer"],
 ["IOC-EN015","Common","Unlimited",0.67,476937,42541548,"Coach Goblin"],
 ["IOC-EN016","Common","Unlimited",null,476916,75946257,"Witch Doctor of Chaos"],
-["IOC-EN018","Super Rare","Unlimited",0.96,476939,47829960,"Chaosrider Gustaph"],
+["IOC-EN017","Common","Unlimited",0.19,476938,1434352,"Chaos Necromancer"],
+["IOC-EN018","Super Rare","Unlimited",0.85,476939,47829960,"Chaosrider Gustaph"],
 ["IOC-EN019","Common","Unlimited",0.2,476940,74823665,"Inferno"],
 ["IOC-EN020","Common","Unlimited",0.59,476941,218704,"Fenrir"],
 ["IOC-EN021","Common","Unlimited",1,476942,47606319,"Gigantes"],
@@ -107,5 +108,5 @@
 ["IOC-EN108","Common","Unlimited",null,477026,56769674,"DNA Transplant"],
 ["IOC-EN109","Rare","Unlimited",null,477027,83258273,"Robbin' Zombie"],
 ["IOC-EN110","Super Rare","Unlimited",6.5,477030,19252988,"Trap Jammer"],
-["IOC-EN111","Secret Rare","Unlimited",13.45,477031,56647086,"Invader of Darkness"]
+["IOC-EN111","Secret Rare","Unlimited",14.57,477031,56647086,"Invader of Darkness"]
 ]

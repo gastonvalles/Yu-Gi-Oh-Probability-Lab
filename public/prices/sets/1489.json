@@ -6,7 +6,7 @@
 ["SDGR-EN005","Common","1st Edition",0.42,93553,1045143,"Geargiano Mk-II"],
 ["SDGR-EN006","Common","1st Edition",0.39,93524,47030842,"Geargiaccelerator"],
 ["SDGR-EN007","Common","1st Edition",0.49,93525,73428497,"Geargiarsenal"],
-["SDGR-EN008","Common","1st Edition",1.19,93526,923596,"Geargiarmor"],
+["SDGR-EN008","Common","1st Edition",1.17,93526,923596,"Geargiarmor"],
 ["SDGR-EN009","Common","1st Edition",0.17,93527,41172955,"Green Gadget"],
 ["SDGR-EN010","Common","1st Edition",0.18,93528,86445415,"Red Gadget"],
 ["SDGR-EN011","Common","1st Edition",0.18,93554,13839120,"Yellow Gadget"],
@@ -32,6 +32,6 @@
 ["SDGR-EN031","Common","1st Edition",0.26,93548,68540059,"Metalmorph"],
 ["SDGR-EN032","Common","1st Edition",0.27,93549,12503902,"Rare Metalmorph"],
 ["SDGR-EN033","Common","1st Edition",0.33,93550,91597389,"Roll Out!"],
-["SDGR-EN034","Ultra Rare","1st Edition",0.3,93552,19891310,"Geargiagear Gigant XG"],
-["SDGR-EN035","Common","1st Edition",0.63,93551,28912357,"Gear Gigant X"]
+["SDGR-EN034","Ultra Rare","1st Edition",0.31,93552,19891310,"Geargiagear Gigant XG"],
+["SDGR-EN035","Common","1st Edition",0.61,93551,28912357,"Gear Gigant X"]
 ]
