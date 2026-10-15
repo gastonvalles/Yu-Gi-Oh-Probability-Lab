@@ -590,7 +590,9 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       mine = table
       sender = tracker
       ownIds = Object.fromEntries(Object.entries(open.sender.opaque).map(([real, opaque]) => [opaque, real]))
-      life = { ...life, lp: me === 0 ? [saved.lp, life.lp[1]] : [life.lp[0], saved.lp], timer: saved.timer }
+      const elapsed = Math.round(timerElapsed(saved.timer, saved.savedAt))
+
+      life = { ...life, lp: me === 0 ? [saved.lp, life.lp[1]] : [life.lp[0], saved.lp], timer: saved.timer.running ? { running: true, startedAt: now(), elapsedMs: elapsed } : { running: false, startedAt: 0, elapsedMs: elapsed } }
       lpRestored = true
       starter = saved.starter
       ordered = true

@@ -2,11 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { buildDuelLink, DUEL_STEP, extractRoomCode, isWatchLink, parseDuelTarget } from '../../app/duel-link'
 import { cleanName } from '../../app/duel-protocol'
-import { clearDuelSave } from '../../app/duel-save'
+import { clearDuelSave, findPausedDuel, savedRole, type PausedDuel } from '../../app/duel-save'
 import { createRoomCode } from '../../app/duel-relay-rules'
 import type { Duel, DuelRole, DuelSnapshot } from '../../app/duel-session'
 import type { SocketStatus } from '../../app/duel-socket'
-import { rpsOutcome } from '../../app/duel-games'
+import { duelResult, rpsOutcome } from '../../app/duel-games'
 import { duelTurnNumber, sharedPhase, whoseTurn } from '../../app/duel-turn'
 import { STARTING_LP } from '../../app/life-calculator'
 import { beginDuel } from '../../app/mascot'
@@ -23,6 +23,7 @@ import { Icon } from '../ui/Icon'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { DuelBar, DuelLife, DuelTools } from './DuelBar'
 import { DuelChat } from './DuelChat'
+import { DuelPause } from './DuelPause'
 import { DuelDeckPicker, loadDuelDeck, readStoredDeck, type DuelDeck } from './DuelDeckPicker'
 import { gameText, outcomeText, rpsName } from './game-text'
 import { artOfDrawId } from './duel-art'
@@ -70,6 +71,13 @@ function writeStored(storage: () => Storage, key: string, value: string) {
   }
 }
 
+/** Con qué rol se entra a una sala: el que se tenía en esta pestaña o, si se volvió desde otra (o desde el inicio del duelo), el de su duelo guardado; si no, invitado. */
+function roleFor(room: string): DuelRole {
+  const stored = readStored(() => sessionStorage, roleKey(room))
+
+  return stored === 'host' || stored === 'guest' ? stored : (savedRole(room) ?? 'guest')
+}
+
 /** La sala que pide el enlace con que se abrió la página, si hay una. */
 function intentOf(hash: string): Intent | null {
   const target = parseDuelTarget(hash)
@@ -78,7 +86,7 @@ function intentOf(hash: string): Intent | null {
     return null
   }
 
-  return target.watch ? { room: target.room, role: 'guest', watch: true } : { room: target.room, role: readStored(() => sessionStorage, roleKey(target.room)) === 'host' ? 'host' : 'guest' }
+  return target.watch ? { room: target.room, role: 'guest', watch: true } : { room: target.room, role: roleFor(target.room) }
 }
 
 function readIntent(): Intent | null {
@@ -188,12 +196,22 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
     [duel],
   )
 
+  // Salir deja el duelo en pausa: lo guardado (la mesa, las vidas, el reloj) sigue ahí para volver. Sólo si ya terminó (alguien se rindió o se quedó sin vidas) no hay nada que retomar.
+  const finished = snapshot ? duelResult(snapshot.life.lp, snapshot.conceded) !== null : false
   const leave = useCallback(() => {
-    // Salir a propósito termina el duelo: lo guardado para recargar no tiene que volver a abrir esa mesa.
-    if (intent) clearDuelSave(intent.room)
+    if (intent && finished) clearDuelSave(intent.room)
 
     showRoomInUrl(null)
     setIntent(null)
+  }, [intent, finished])
+
+  // El duelo en pausa de este navegador (si salió de uno), para volver desde el inicio del duelo.
+  const [paused, setPaused] = useState<PausedDuel | null>(findPausedDuel)
+
+  useEffect(() => {
+    if (!intent) {
+      setPaused(findPausedDuel())
+    }
   }, [intent])
 
   if (!intent) {
@@ -208,7 +226,13 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
         deckSize={deck.mainIds.length}
         minDeck={handSize}
         onCreate={() => enter(createRoomCode(), 'host')}
-        onJoin={(room, watch) => enter(room, 'guest', watch)}
+        onJoin={(room, watch) => enter(room, watch ? 'guest' : (savedRole(room) ?? 'guest'), watch)}
+        paused={paused}
+        onResume={() => paused && enter(paused.room, paused.role)}
+        onDropPaused={() => {
+          if (paused) clearDuelSave(paused.room)
+          setPaused(findPausedDuel())
+        }}
       />
     )
   }
@@ -239,6 +263,15 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
       <Screen>
         <p className="text-body text-muted">{t('duel.status.connecting')}</p>
       </Screen>
+    )
+  }
+
+  // Volvió a su mesa (la guardada) y el rival todavía no: el duelo está en pausa, no hay nada que preparar.
+  if (snapshot.mine && !snapshot.theirs && !snapshot.peerPresent) {
+    return (
+      <div className="h-full">
+        <DuelPause rival={snapshot.peerName ?? t('duel.bar.rival')} offline={status !== 'open'} onLeave={leave} />
+      </div>
     )
   }
 
@@ -283,9 +316,13 @@ interface DuelLobbyProps {
   onCreate: () => void
   /** Entrar a una sala: a jugar, o a mirar si el enlace pegado es de espectador. */
   onJoin: (room: string, watch: boolean) => void
+  /** Un duelo en pausa de este navegador, y cómo volver a él o dejarlo. */
+  paused: PausedDuel | null
+  onResume: () => void
+  onDropPaused: () => void
 }
 
-function DuelLobby({ name, onName, builder, imported, onImport, deckReady, deckSize, minDeck, onCreate, onJoin }: DuelLobbyProps) {
+function DuelLobby({ name, onName, builder, imported, onImport, deckReady, deckSize, minDeck, onCreate, onJoin, paused, onResume, onDropPaused }: DuelLobbyProps) {
   const [code, setCode] = useState('')
   const [invalid, setInvalid] = useState(false)
 
@@ -305,6 +342,23 @@ function DuelLobby({ name, onName, builder, imported, onImport, deckReady, deckS
         <Heading level="section">{t('duel.lobby.title')}</Heading>
         <p className="m-0 text-body text-muted">{t('duel.lobby.intro')}</p>
       </div>
+
+      {paused ? (
+        <div className="grid gap-2 rounded-card border border-primary/40 bg-card-background p-3">
+          <p className="m-0 flex items-center gap-2 text-body font-semibold text-foreground" role="status">
+            <Icon name="pause" size={16} />
+            {paused.rival ? t('duel.lobby.paused', { name: paused.rival }) : t('duel.lobby.pausedNoName')}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="primary" size="sm" onClick={onResume}>
+              {t('duel.lobby.resume')}
+            </Button>
+            <Button variant="tertiary" size="sm" onClick={onDropPaused}>
+              {t('duel.lobby.dropPaused')}
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       {deckReady ? null : <Callout tone="warning" icon="alert">{t('duel.lobby.needDeck', { count: deckSize, min: minDeck })}</Callout>}
 
@@ -493,6 +547,28 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
 const NOTHING = () => undefined
 
 /**
+ * El duelo en pausa detiene el reloj de la ronda: lo para quien se queda y lo retoma cuando vuelve el que faltaba. Sólo retoma si lo había parado él (un reloj que
+ * ya estaba pausado a mano sigue así).
+ */
+function useClockPause(duel: Duel, snapshot: DuelSnapshot, paused: boolean) {
+  const stopped = useRef(false)
+  const running = snapshot.life.timer.running
+
+  useEffect(() => {
+    if (paused && running) {
+      stopped.current = true
+      duel.toggleClock()
+    } else if (!paused && stopped.current) {
+      stopped.current = false
+
+      if (!running) {
+        duel.toggleClock()
+      }
+    }
+  }, [duel, paused, running])
+}
+
+/**
  * El reloj de la ronda arranca solo cuando los dos tienen su mano (lo pone en marcha el anfitrión y el invitado lo recibe): nadie tiene que acordarse de
  * apretar play. Sólo si el reloj está en cero y parado; si alguien ya lo pausó o lo reinició a mano, no se toca.
  */
@@ -666,6 +742,9 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   useGameToasts(snapshot, myName)
   useTurnDraw(duel, snapshot, turn)
   useAutoStartClock(duel, snapshot)
+  // Mientras falta uno de los dos el duelo está en pausa (el reloj también); terminado ya no hay nada que esperar.
+  const paused = !snapshot.peerPresent && duelResult(snapshot.life.lp, snapshot.conceded) === null
+  useClockPause(duel, snapshot, paused)
   const announcement = useRivalAttack(snapshot, cardsById)
   const notice = useRivalNotice(snapshot, turn)
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
@@ -689,9 +768,10 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       myTurn: turn === 'mine',
       tools: <DuelTools snapshot={snapshot} myName={myName} games={duel} onSendChat={duel.sendChat} />,
       life: <DuelLife snapshot={snapshot} myName={myName} onChangeLife={duel.changeLife} onHalve={duel.halveLife} />,
+      cover: paused ? <DuelPause rival={rivalName} offline={status !== 'open'} onLeave={onLeave} /> : undefined,
       header: <DuelBar snapshot={snapshot} status={status} turn={turn} theirHand={<TheirHand count={opponent.handCount ?? 0} />} onToggleClock={duel.toggleClock} onRematch={duel.rematch} onLeave={onLeave} />,
     }),
-    [opponent, snapshot, status, myName, turn, duel, onLeave, attackTargets, theirs, announcement, notice, rivalName, mine],
+    [opponent, snapshot, status, myName, turn, duel, onLeave, attackTargets, theirs, announcement, notice, rivalName, mine, paused],
   )
 
   return (

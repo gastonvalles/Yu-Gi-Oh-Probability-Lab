@@ -181,6 +181,12 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
             <Icon name="eye" size={14} />
             {t('duel.watch.badge')}
           </span>
+          {snapshot.players < 2 && !result ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2.5 py-1 text-micro font-semibold text-warning" role="status">
+              <Icon name="pause" size={14} />
+              {t('duel.watch.paused')}
+            </span>
+          ) : null}
           <IconButton tone="flat" size="sm" aria-label={t('duel.room.leave')} title={t('duel.room.leave')} className="ml-auto" onClick={onLeave}>
             <Icon name="x" />
           </IconButton>
