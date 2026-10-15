@@ -21,7 +21,7 @@ const TOAST_BASE =
 
 /** Un mensaje del rival: más grande y con su color (el celeste del rival), el mismo de sus vidas y de su globo en el chat. */
 const TOAST_RIVAL =
-  'flex max-w-[min(30rem,calc(100vw-1.5rem))] cursor-grab touch-pan-y select-none items-center gap-3.5 rounded-card border-2 border-info/70 bg-surface-raised py-3 pl-4 pr-5 text-lead font-semibold text-foreground shadow-[0_0_30px_rgb(var(--info-rgb)/0.45),0_14px_30px_rgba(0,0,0,0.5)] transition-[transform,opacity] animate-toast-in data-[dragging=true]:cursor-grabbing data-[dragging=true]:transition-none data-[visible=false]:animate-toast-out'
+  'flex max-w-[min(19rem,calc(100vw-1.5rem))] cursor-grab touch-pan-y select-none items-center gap-3.5 rounded-card border-2 border-info/70 bg-surface-raised py-3 pl-4 pr-5 text-lead font-semibold text-foreground shadow-[0_0_30px_rgb(var(--info-rgb)/0.45),0_14px_30px_rgba(0,0,0,0.5)] transition-[transform,opacity] animate-toast-in data-[dragging=true]:cursor-grabbing data-[dragging=true]:transition-none data-[visible=false]:animate-toast-out'
 
 /** Un mensaje que es sólo emojis (una reacción) se ve todavía más grande. */
 const onlyEmoji = (text: string) => /^[\p{Extended_Pictographic}\s]+$/u.test(text)
