@@ -1477,7 +1477,7 @@ export function PracticeMat({
           cards={stage.ids.map((id) => ({ id, name: cardOf(id).name, art: artOf(cardOf(id)) }))}
           caption={steps[stage.step - 1] ?? null}
           flip={stage.flip}
-          className={cx('absolute inset-y-0 left-0 right-0 z-[120]', !duel && 'min-[1101px]:right-[20rem]')}
+          className={cx('absolute inset-y-0 left-0 right-0 z-[120]', (!duel || Boolean(duel.aside)) && 'min-[1101px]:right-[20rem]')}
         />
       ) : null}
 
@@ -1488,14 +1488,15 @@ export function PracticeMat({
           kind={duel.rivalEffect.kind}
           cards={[{ id: duel.rivalEffect.id, name: '', art: duel.rivalEffect.art }]}
           caption={duel.rivalEffect.caption}
-          className="absolute inset-y-0 left-0 right-0 z-[120]"
+          className={cx('absolute inset-y-0 left-0 right-0 z-[120]', Boolean(duel.aside) && 'min-[1101px]:right-[20rem]')}
         />
       ) : null}
 
       {/* Un ataque (el propio o el del rival): la espada cruza la mesa desde el atacante hasta su objetivo y se va sola. */}
       {strike ? <AttackFx key={strike.key} strike={strike} onDone={() => setStrike(null)} /> : null}
 
-      {duel?.cover ? <div className="absolute inset-0 z-[140]">{duel.cover}</div> : null}
+      {/* La pausa y el final del duelo tapan la mesa, no el chat de al lado: se centran en su columna y el chat sigue a mano (un "gg" al terminar). */}
+      {duel?.cover ? <div className={cx('absolute inset-y-0 left-0 right-0 z-[140]', Boolean(duel.aside) && 'min-[1101px]:right-[20rem]')}>{duel.cover}</div> : null}
 
       {drag
         ? createPortal(

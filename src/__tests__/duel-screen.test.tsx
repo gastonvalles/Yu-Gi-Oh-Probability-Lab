@@ -406,6 +406,26 @@ describe('la pantalla del duelo', () => {
     expect(rivalCard()).toHaveAttribute('data-targeted', 'false')
   })
 
+  it('en escritorio lo que se centra en la mesa (la carta grande de un efecto del rival, y las tarjetas de pausa y de resultado) deja afuera la columna del chat; en el celular, no', () => {
+    const edge = 'min-[1101px]:right-[20rem]'
+
+    asDesktop()
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+    summonFirst(host)
+    flush()
+    tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
+    flush()
+    expect(guest.container.querySelector('[data-activation]')).toHaveClass(edge)
+
+    // Rendirse: la tarjeta del resultado tapa la mesa pero no el chat.
+    click(host, 'Rendirme')
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Rendirme' }))
+    flush()
+    expect(within(guest.container).getByRole('dialog', { name: '¡Ganaste!' }).parentElement).toHaveClass(edge)
+  })
+
   it('juegos: moneda, piedra-papel-tijera y quién empieza; los dos ven lo mismo y la elección del rival no se ve hasta elegir la propia', () => {
     const host = render(<DuelScreen {...screenProps()} />)
     typeInto(host, 'Tu nombre', 'Ana')
@@ -1402,6 +1422,10 @@ describe('la pantalla del duelo', () => {
     const bubble = (view: RenderResult, side: 'mine' | 'theirs') => view.container.querySelector(`[data-lp="${side}"] [role="status"]`)
 
     expect(bubble(host, 'theirs')).toBeNull()
+    // Las señales van arriba, en la fila del turno; la barra de abajo se queda con deshacer, la ficha, los juegos y el chat (con más botones el del chat se salía de la pantalla).
+    const toolbar = within(guest.container).getByRole('toolbar')
+    expect(within(toolbar).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Deshacer', 'Ficha', 'Moneda, dado y más', 'Chat', expect.stringMatching(/^Puntos de vida de/)])
+    expect(within(toolbar).queryByRole('button', { name: 'Pensando…' })).not.toBeInTheDocument()
 
     // Beto avisa que está pensando: lo ve junto a sus vidas (arriba, en la mesa de Ana, y abajo en la suya), en su color.
     fireEvent.click(within(guest.container).getByRole('button', { name: 'Pensando…' }))

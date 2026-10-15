@@ -17,6 +17,8 @@ const METHOD_NAME: Record<TossMethod, () => string> = {
 }
 
 export const rpsName = (pick: RpsPick) => RPS_NAME[pick]()
+/** La mano de cada elección: en los botones para elegir y cuando se muestran las dos. */
+export const RPS_GLYPH: Record<RpsPick, string> = { rock: '✊', paper: '✋', scissors: '✌️' }
 export const methodName = (method: TossMethod) => METHOD_NAME[method]()
 
 /** Cómo salió una ronda para mí. */

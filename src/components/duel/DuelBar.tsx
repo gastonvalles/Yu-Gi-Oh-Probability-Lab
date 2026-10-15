@@ -51,6 +51,8 @@ interface DuelBarProps {
   onLeave: () => void
   /** Rendirme: el duelo termina y gana el rival (se pide confirmar). */
   onConcede: () => void
+  /** Mandar una señal (pensando, todo bien): sólo en el celular, donde el chat no está a la vista; en escritorio no se pasa y los botones están en el chat. */
+  onSignal?: (text: string) => void
   /** Volver a conectarme a la sala ya: lo toca cualquiera de los dos si el duelo quedó en pausa por un aviso que no llegó, y el relay vuelve a decirle a cada uno si el otro está. */
   onReconnect: () => void
   /** La tarjeta del resultado está abierta sobre la mesa: la línea de arriba no la repite. */
@@ -64,7 +66,7 @@ interface DuelBarProps {
  * el turno con la fase en que va quien juega, y cómo va la conexión. Lo propio (tus puntos de vida, el chat, los dados, deshacer) está abajo, al alcance
  * del pulgar. Salir pide confirmación y queda en la esquina de arriba, lejos de donde se toca jugando.
  */
-export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRematch, onLeave, onConcede, onReconnect, resultOpen = false, rivalSignal = null }: DuelBarProps) {
+export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRematch, onLeave, onConcede, onReconnect, onSignal, resultOpen = false, rivalSignal = null }: DuelBarProps) {
   const now = useTick(1000)
   const [leaving, setLeaving] = useState(false)
   const [conceding, setConceding] = useState(false)
@@ -106,6 +108,27 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
             {turn === 'mine' ? t('duel.bar.yourTurn') : t('duel.bar.theirTurn', { name: rivalName })}
             {phase ? <span data-testid="duel-phase">{` · ${phase}`}</span> : null}
           </span>
+          {/* Las dos señales a la derecha de la fila del turno: siempre a mano, sin sacarle lugar al chat de la barra de abajo. */}
+          {onSignal ? (
+            <span className="ml-auto flex shrink-0 items-center gap-1.5">
+              {[
+                { emoji: '💭', label: t('duel.signal.thinking'), text: thinkingMessage() },
+                { emoji: '👍', label: t('duel.signal.good'), text: GOOD_MESSAGE },
+              ].map(({ emoji, label, text }) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  aria-label={label}
+                  title={label}
+                  disabled={!peerPresent}
+                  className="grid h-8 min-w-10 cursor-pointer place-items-center rounded-full bg-tint/8 px-2.5 text-lead leading-none transition-colors hover:bg-tint/16 focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-default disabled:opacity-40"
+                  onClick={() => onSignal(text)}
+                >
+                  <span aria-hidden="true">{emoji}</span>
+                </button>
+              ))}
+            </span>
+          ) : null}
         </div>
         <span className="order-1 ml-auto flex items-center min-[1101px]:order-none min-[1101px]:ml-0">
           {/* Reconectar también: lo tocan los dos, y el duelo sigue en cuanto el relay le dice a cada uno que el otro está. */}
@@ -188,17 +211,6 @@ export function DuelTools({ snapshot, myName, games, onSendChat, chatDocked = fa
 
   return (
     <>
-      {/* Las señales de siempre a mano (como en DuelingBook); en escritorio, con el chat fijo, están en el chat. */}
-      {chatDocked ? null : (
-        <>
-          <IconButton tone="flat" size="sm" aria-label={t('duel.signal.thinking')} title={t('duel.signal.thinking')} disabled={!snapshot.peerPresent} onClick={() => onSendChat(thinkingMessage())}>
-            <span aria-hidden="true" className="text-lead leading-none">💭</span>
-          </IconButton>
-          <IconButton tone="flat" size="sm" aria-label={t('duel.signal.good')} title={t('duel.signal.good')} disabled={!snapshot.peerPresent} onClick={() => onSendChat(GOOD_MESSAGE)}>
-            <span aria-hidden="true" className="text-lead leading-none">👍</span>
-          </IconButton>
-        </>
-      )}
       <IconButton tone="flat" size="sm" aria-label={t('duel.games.open')} title={t('duel.games.open')} onClick={() => setGamesOpen(true)}>
         <Icon name="dice" />
       </IconButton>

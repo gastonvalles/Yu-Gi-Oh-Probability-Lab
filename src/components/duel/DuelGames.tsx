@@ -9,7 +9,7 @@ import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
 import { Modal } from '../ui/Modal'
 import { overline } from '../ui/typography'
-import { gameText, outcomeText, rpsName, tossResult } from './game-text'
+import { RPS_GLYPH, gameText, outcomeText, rpsName, tossResult } from './game-text'
 
 /** Lo que el panel puede hacer: tirar, elegir y rendirse. */
 export type GameActions = Pick<Duel, 'throwCoin' | 'throwDie' | 'pickRps' | 'concede'>
@@ -143,7 +143,8 @@ export function DuelGames({ isOpen, onClose, snapshot, myName, actions }: DuelGa
 
 function RpsButton({ pick, disabled, onPick }: { pick: RpsPick; disabled: boolean; onPick: (pick: RpsPick) => void }) {
   return (
-    <Button variant="secondary" disabled={disabled} onClick={() => onPick(pick)}>
+    <Button variant="secondary" className="h-auto flex-col gap-0.5 py-2" disabled={disabled} onClick={() => onPick(pick)}>
+      <span aria-hidden="true" className="text-title leading-none">{RPS_GLYPH[pick]}</span>
       {rpsName(pick)}
     </Button>
   )
