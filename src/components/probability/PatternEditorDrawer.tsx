@@ -115,7 +115,7 @@ export function PatternEditorDrawer({
             <span className={cx('hidden text-micro min-[520px]:block', canSave ? 'text-muted' : 'text-warning-soft')}>{hint}</span>
           )}
           <div className="grid min-w-0 flex-1 grid-cols-2 gap-2 min-[520px]:flex min-[520px]:flex-none">
-            <Button variant="secondary" size="sm" fullWidth className="min-w-0 px-3 min-[520px]:w-auto min-[520px]:px-4" onClick={onClose}>
+            <Button variant="tertiary" size="sm" fullWidth className="min-w-0 px-3 min-[520px]:w-auto min-[520px]:px-4" onClick={onClose}>
               {t('common.cancel')}
             </Button>
             <Button variant="primary" size="sm" fullWidth disabled={!canSave} className="min-w-0 px-3 text-center min-[520px]:w-auto min-[520px]:px-4" onClick={onSave}>

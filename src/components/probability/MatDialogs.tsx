@@ -245,7 +245,7 @@ export function SaveComboDialog({ isOpen, defaultName, rename = false, onSave, o
         </label>
         {rename ? null : <p className="m-0 text-micro text-soft">{t('practice.dialog.saveNote')}</p>}
         <div className="flex justify-end gap-2">
-          <Button variant="secondary" size="sm" type="button" onClick={onClose}>
+          <Button variant="tertiary" size="sm" type="button" onClick={onClose}>
             {t('common.cancel')}
           </Button>
           <Button variant="primary" size="sm" type="submit" icon="save">

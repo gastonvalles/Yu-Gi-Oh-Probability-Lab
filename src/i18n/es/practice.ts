@@ -148,7 +148,7 @@ export const practice = {
   'practice.mat.phases': 'Fases',
   'practice.mat.mainDeck': 'Main Deck',
   'practice.mat.currentStep': 'Paso actual',
-  'practice.mat.confirm': 'Confirmar',
+  'practice.mat.confirm': 'Invocar',
   'practice.mat.pause': 'Pausar',
   'practice.mat.watchAgain': 'Ver de nuevo',
   'practice.mat.play': 'Reproducir',

@@ -369,7 +369,7 @@ function RenameBuildDialog({
       title={t('meta.compare.renameTitle')}
       footer={
         <>
-          <Button variant="secondary" size="sm" onClick={onCancel}>
+          <Button variant="tertiary" size="sm" onClick={onCancel}>
             {t('common.cancel')}
           </Button>
           <Button variant="primary" size="sm" disabled={!name.trim()} onClick={() => onConfirm(name)}>

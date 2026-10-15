@@ -365,7 +365,7 @@ export function ExportDeckPanel({
         subtitle={t('deck.export.modal.subtitle')}
         footer={
           <>
-            <Button variant="secondary" size="sm" disabled={busy} onClick={() => setDownloadOpen(false)}>
+            <Button variant="tertiary" size="sm" disabled={busy} onClick={() => setDownloadOpen(false)}>
               {t('common.cancel')}
             </Button>
             <Button

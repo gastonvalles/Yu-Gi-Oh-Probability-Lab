@@ -239,7 +239,7 @@ function ChooseStep({ snapshot, actions }: StepProps) {
         <>
           <p className="m-0 text-body text-muted">{t('duel.opening.choose')}</p>
           <div className="grid grid-cols-2 gap-2">
-            <Button variant="primary" onClick={() => actions.chooseFirst(me)}>
+            <Button variant="secondary" onClick={() => actions.chooseFirst(me)}>
               {t('duel.opening.first')}
             </Button>
             <Button variant="secondary" onClick={() => actions.chooseFirst(rival01)}>

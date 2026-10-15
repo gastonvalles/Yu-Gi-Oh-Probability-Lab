@@ -69,7 +69,7 @@ export const search = {
   'search.mobile.inputLabel': 'Nombre o texto de la carta',
   'search.mobile.placeholder': 'Nombre de la carta',
   'search.mobile.detailHint': 'tocá para ver detalle',
-  'search.mobile.loadMore': 'Cargar más resultados',
+  'search.mobile.loadMore': 'Ver más resultados',
   'search.mobile.added': 'Agregaste {name}',
   'search.mobile.viewResults': 'Ver resultados',
   'search.mobile.done': 'Listo',

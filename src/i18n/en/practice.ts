@@ -143,7 +143,7 @@ export const practice: Translated<typeof es> = {
   'practice.mat.phases': 'Phases',
   'practice.mat.mainDeck': 'Main Deck',
   'practice.mat.currentStep': 'Current step',
-  'practice.mat.confirm': 'Confirm',
+  'practice.mat.confirm': 'Summon',
   'practice.mat.pause': 'Pause',
   'practice.mat.watchAgain': 'Watch again',
   'practice.mat.play': 'Play',

@@ -258,7 +258,7 @@ describe('el armador en inglés', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Nibiru/ }))
     expect(screen.getByText('2 cards selected')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Clear' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Confirm' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Use selection' })).toBeEnabled()
   })
 
   it('el panel lateral: título, ayuda y botones', () => {

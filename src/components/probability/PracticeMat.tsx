@@ -1383,14 +1383,14 @@ export function PracticeMat({
             {pickingText ? (
               <>
                 <span className="min-w-0 flex-1 truncate font-semibold text-accent">{pickingText}</span>
+                <Button variant={counterMode !== null ? 'primary' : 'tertiary'} size="sm" className="min-h-8 px-2" onClick={() => { setPicking(null); setCounterMode(null) }}>
+                  {counterMode !== null ? t('practice.mat.pickDone') : t('common.cancel')}
+                </Button>
                 {picking?.kind === 'materials' ? (
                   <Button variant="primary" size="sm" className="min-h-8 px-3" disabled={picking.chosen.length === 0} onClick={confirmMaterials}>
                     {t('practice.mat.confirm')}
                   </Button>
                 ) : null}
-                <Button variant={counterMode !== null ? 'primary' : 'tertiary'} size="sm" className="min-h-8 px-2" onClick={() => { setPicking(null); setCounterMode(null) }}>
-                  {counterMode !== null ? t('practice.mat.pickDone') : t('common.cancel')}
-                </Button>
               </>
             ) : null}
             {!choosing && session.actions.length > 0 ? (
