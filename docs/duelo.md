@@ -14,7 +14,9 @@ El paso `#duel` ("Duelo con un amigo", en las herramientas del menú) **sólo se
    - **Atacar** / **Ataque directo** en la Battle Phase: la espada y el rayo van del atacante a la carta atacada o a las vidas, con un cartel arriba para el rival (la mesa no cuenta el daño).
    - El botón **+** agrega una ficha, o pone y quita contadores (tocando cartas hasta "Listo"; arrastrar el + sobre una carta le pone uno).
    - **Puntos de vida:** una hoja que sale de abajo con el teclado de la calculadora de LP (con menos de tres cifras se entiende en centenas), el resultado en vivo y "=" para aplicar; la mitad se aplica sola.
-   - **Chat:** un panel por la derecha con la mitad de la pantalla, mensajes rápidos y un contador de lo no leído.
+   - **Chat:** en el celular, un panel que se abre por la derecha con la mitad de la pantalla (botón abajo, con un contador de lo no leído); en escritorio está **siempre abierto** en una columna fija a la derecha de la mesa (`DuelChatPanel`). Mensajes rápidos o escritos.
+   - **Colores:** cada jugador tiene el suyo, el mismo en sus puntos de vida (borde y número) y en su globo del chat (y el nombre): el tuyo verde y el del rival celeste (`player-color.ts`). Quien mira ve al anfitrión en verde y al invitado en celeste, también al dar vuelta la mesa.
+   - **Rendirse** está a la vista: una bandera arriba, junto a salir, que pide confirmar ("Gana Ana. El duelo termina para los dos y se puede pedir la revancha"); sin rival o con el duelo terminado queda apagada. El panel de juegos sigue teniendo el suyo.
 4. **Panel "Juegos"** (el dado): moneda, dado, piedra-papel-tijera (el rival no ve tu elección hasta que elegís la tuya), rendirse (con confirmación) y un registro. Lo que tira el rival se ve girar en el centro aunque el panel esté cerrado.
 5. **Final**: pierde quien se queda sin puntos de vida o se rinde. El cartel del resultado trae la **revancha**: cuando los dos la piden, se limpia la mesa, los puntos y el reloj, y elige quién va primero quien perdió.
 

@@ -9,6 +9,8 @@ import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { cx } from '../ui/cx'
 import { FieldBox, fieldInline } from '../ui/FieldBox'
+import { Heading } from '../ui/Heading'
+import { PLAYER_COLOR } from './player-color'
 
 /** Avisos que se mandan con un toque, para no escribir: pensando, "¿respondés?", paso y gracias. */
 const QUICK = ['think', 'respond', 'pass', 'thanks'] as const
@@ -49,8 +51,8 @@ export function DuelChat({ snapshot, myName, onSend, fill = false }: DuelChatPro
           <li className="text-micro text-soft">{t('duel.chat.empty')}</li>
         ) : (
           chat.map((line) => (
-            <li key={line.id} data-from={line.from === me ? 'mine' : 'theirs'} className={cx('max-w-[88%] break-words rounded-card px-2.5 py-1 text-body text-foreground', line.from === me ? 'ml-auto bg-accent/20' : 'mr-auto bg-tint/8')}>
-              <span className="block text-micro font-semibold text-soft">{line.from === me ? myName : rival}</span>
+            <li key={line.id} data-from={line.from === me ? 'mine' : 'theirs'} className={cx('max-w-[88%] break-words rounded-card px-2.5 py-1 text-body text-foreground', line.from === me ? 'ml-auto' : 'mr-auto', PLAYER_COLOR[line.from === me ? 'mine' : 'theirs'].bubble)}>
+              <span className={cx('block text-micro font-semibold', PLAYER_COLOR[line.from === me ? 'mine' : 'theirs'].text)}>{line.from === me ? myName : rival}</span>
               {line.text}
             </li>
           ))
@@ -83,6 +85,20 @@ export function DuelChat({ snapshot, myName, onSend, fill = false }: DuelChatPro
         {peerPresent ? null : <p className="m-0 text-micro text-soft">{t('duel.chat.needRival')}</p>}
       </div>
     </div>
+  )
+}
+
+/** El chat fijo a la derecha de la mesa en escritorio: siempre abierto, con su título, a todo el alto. Siempre se lee (no hay contador ni avisos aparte). */
+export function DuelChatPanel({ snapshot, myName, onSend }: Omit<DuelChatProps, 'fill'>) {
+  useChatUnread(snapshot, true)
+
+  return (
+    <section aria-label={t('duel.chat.title', { name: snapshot.peerName ?? t('duel.bar.rival') })} className="flex h-full min-h-0 flex-col gap-2">
+      <Heading level="card">{t('duel.chat.title', { name: snapshot.peerName ?? t('duel.bar.rival') })}</Heading>
+      <div className="min-h-0 flex-1">
+        <DuelChat snapshot={snapshot} myName={myName} onSend={onSend} fill />
+      </div>
+    </section>
   )
 }
 
