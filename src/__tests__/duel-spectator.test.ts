@@ -248,6 +248,24 @@ describe('un espectador que llega con el duelo empezado', () => {
     game.room.flush()
     expect(game.host.getSnapshot().watchers).toBe(1)
   })
+
+  it('que un espectador se vaya no pausa el duelo: los jugadores se siguen viendo; sólo se pausa cuando sale uno de ellos', () => {
+    const game = startedDuel()
+    const { transport } = watch(game)
+
+    expect(game.host.getSnapshot()).toMatchObject({ peerPresent: true, watchers: 1 })
+    expect(game.guest.getSnapshot()).toMatchObject({ peerPresent: true, watchers: 1 })
+
+    transport.close()
+    game.room.flush()
+    expect(game.host.getSnapshot()).toMatchObject({ peerPresent: true, watchers: 0 })
+    expect(game.guest.getSnapshot()).toMatchObject({ peerPresent: true, watchers: 0 })
+
+    // Un jugador que se va, sí lo pausa (para el otro).
+    game.guestEnd.disconnect()
+    game.room.flush()
+    expect(game.host.getSnapshot().peerPresent).toBe(false)
+  })
 })
 
 describe('lo que el relay le avisa y le manda a un espectador', () => {
