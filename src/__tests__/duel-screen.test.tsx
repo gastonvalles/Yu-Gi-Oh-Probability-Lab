@@ -86,7 +86,7 @@ function openTable(host: RenderResult, guest: RenderResult, first: 'host' | 'gue
   flush()
   click(guest, 'Tijera')
   flush()
-  click(host, first === 'host' ? 'Voy primero' : 'Voy segundo')
+  click(host, first === 'host' ? 'Ir primero' : 'Ir segundo')
   // Cada uno reparte al enterarse (en un efecto) y lo que reparte le llega al otro en la vuelta siguiente.
   flush()
   flush()
@@ -206,7 +206,7 @@ describe('la pantalla del duelo', () => {
     click(guest, 'Tijera')
     flush()
     expect(within(guest.container).getByText('Ana está eligiendo quién va primero…')).toBeInTheDocument()
-    click(host, 'Voy primero')
+    click(host, 'Ir primero')
     flush()
     flush()
 
@@ -361,7 +361,7 @@ describe('la pantalla del duelo', () => {
 
     // La moneda: tira Ana, los dos ven el mismo resultado, con su nombre.
     open(host)
-    fireEvent.click(panel().getByRole('button', { name: 'Moneda' }))
+    fireEvent.click(panel().getByRole('button', { name: 'Tirar la moneda' }))
     flush()
     const tossed = panel().getByText(/^Ana: (Cara|Cruz)$/).textContent!.replace('Ana: ', '')
     close()
@@ -514,7 +514,7 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).queryByText(/se rindió/)).not.toBeInTheDocument()
     fireEvent.click(panel().getByRole('button', { name: 'Rendirme' }))
     expect(panel().getByText('¿Seguro? Gana Ana.')).toBeInTheDocument()
-    fireEvent.click(panel().getByRole('button', { name: 'Sí, rendirme' }))
+    fireEvent.click(panel().getByRole('button', { name: 'Rendirme' }))
     flush()
 
     expect(within(host.container).getByText('Beto se rindió. ¡Ganaste!')).toBeInTheDocument()
@@ -532,7 +532,7 @@ describe('la pantalla del duelo', () => {
     // De vuelta en la sala, elige quién va primero quien perdió (Beto), sin tirar nada: los dos ya estaban listos. Después cada uno reparte otra vez y el resultado se fue.
     expect(within(guest.container).getByText('Elegís vos, porque perdiste el duelo anterior.')).toBeInTheDocument()
     expect(within(host.container).getByText('Beto elige, porque perdió el duelo anterior.')).toBeInTheDocument()
-    click(guest, 'Voy segundo')
+    click(guest, 'Ir segundo')
     flush()
     flush()
     expect(within(host.container).getByText('Tu turno')).toBeInTheDocument()
@@ -681,7 +681,7 @@ describe('la pantalla del duelo', () => {
 
     // Ana tira la moneda con su panel: Beto la ve en el centro de su pantalla, sin abrir nada.
     click(host, 'Moneda, dado y más')
-    fireEvent.click(within(screen.getByRole('dialog', { name: 'Juegos' })).getByRole('button', { name: 'Moneda' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Juegos' })).getByRole('button', { name: 'Tirar la moneda' }))
     flush()
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(within(guest.container).queryByRole('dialog')).not.toBeInTheDocument()
@@ -1024,7 +1024,7 @@ describe('la pantalla del duelo', () => {
 
   it('recargar la página en pleno duelo: quien recarga sigue con la misma mesa, sus vidas y de quién es el turno (no recibe otra mano) y el rival la ve', () => {
     const { host, guest } = startDuel({ cardsById: monsters })
-    // El invitado empieza (Voy segundo del anfitrión): así el turno guardado se distingue del de arranque.
+    // El invitado empieza (Ir segundo del anfitrión): así el turno guardado se distingue del de arranque.
     openTable(host, guest, 'guest')
 
     const cardsOf = (view: RenderResult) => handOf(view).getAllByRole('listitem').map((card) => card.getAttribute('aria-label'))
@@ -1146,7 +1146,7 @@ describe('la pantalla del duelo', () => {
     // El invitado se rinde y sale: terminó, no hay nada que retomar.
     click(guest, /Moneda, dado y más/)
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Juegos' })).getByRole('button', { name: 'Rendirme' }))
-    fireEvent.click(within(screen.getByRole('dialog', { name: 'Juegos' })).getByRole('button', { name: 'Sí, rendirme' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Juegos' })).getByRole('button', { name: 'Rendirme' }))
     flush()
     fireEvent.keyDown(document, { key: 'Escape' })
     leaveDuel(guest)
@@ -1333,7 +1333,12 @@ describe('la pantalla del duelo', () => {
     leaveDuel(guest)
     expect(within(guest.container).getByText(/Tenés un duelo en pausa con/)).toBeInTheDocument()
 
+    // Sin duelo en pausa lo principal es crear uno; con uno en pausa lo principal es volver a él (una sola principal en la vista).
+    expect(within(guest.container).getByRole('button', { name: 'Crear un duelo' })).not.toHaveClass('bg-primary')
+    expect(within(guest.container).getByRole('button', { name: 'Volver al duelo' })).toHaveClass('bg-primary')
+
     click(guest, 'Dejar ese duelo')
+    expect(within(guest.container).getByRole('button', { name: 'Crear un duelo' })).toHaveClass('bg-primary')
     expect(within(guest.container).queryByText(/Tenés un duelo en pausa/)).not.toBeInTheDocument()
     expect(hasSave('guest')).toBe(false)
   })

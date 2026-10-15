@@ -54,7 +54,7 @@ export function RuleRenameDialog({ entry, onSave, onClose }: RuleRenameDialogPro
               {t('builder.rename.restore')}
             </Button>
           ) : null}
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="tertiary" onClick={onClose}>
             {t('common.cancel')}
           </Button>
           <Button variant="primary" type="submit" form={formId} disabled={!isChanged}>

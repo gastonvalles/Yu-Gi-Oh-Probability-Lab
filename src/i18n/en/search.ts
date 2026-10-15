@@ -66,7 +66,7 @@ export const search: Translated<typeof es> = {
   'search.mobile.inputLabel': 'Card name or text',
   'search.mobile.placeholder': 'Card name',
   'search.mobile.detailHint': 'tap for details',
-  'search.mobile.loadMore': 'Load more results',
+  'search.mobile.loadMore': 'Show more results',
   'search.mobile.added': 'You added {name}',
   'search.mobile.viewResults': 'View results',
   'search.mobile.done': 'Done',

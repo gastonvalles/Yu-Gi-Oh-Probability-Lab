@@ -57,7 +57,7 @@ export const roles: Translated<typeof es> = {
   'roles.status.review': 'Review',
 
   'roles.editor.line': '{summary} · ×{copies} in Main',
-  'roles.editor.confirm': 'Confirm',
+  'roles.editor.confirm': 'Confirm suggestion',
   'roles.editor.suggested': 'Suggested automatically: confirm it if it looks right.',
   'roles.fields.originAria': 'Origin',
   'roles.fields.originQuestion': 'Where does it fit in your plan?',

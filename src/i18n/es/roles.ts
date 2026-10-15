@@ -64,7 +64,7 @@ export const roles = {
 
   // Editor de una carta (modal de clasificar).
   'roles.editor.line': '{summary} · ×{copies} en el Main',
-  'roles.editor.confirm': 'Confirmar',
+  'roles.editor.confirm': 'Confirmar sugerencia',
   'roles.editor.suggested': 'Sugerida automáticamente: confirmala si te parece bien.',
   'roles.fields.originAria': 'Origen',
   'roles.fields.originQuestion': '¿Dónde encaja en tu plan?',

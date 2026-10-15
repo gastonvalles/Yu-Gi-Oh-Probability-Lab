@@ -174,14 +174,14 @@ export function DuelDeckPicker({ builder, imported, onImport }: DuelDeckPickerPr
             }}
           />
           <div className="flex flex-wrap gap-2">
-            <Button variant="primary" size="sm" disabled={status === 'loading' || text.trim() === ''} onClick={() => void load(text, true)}>
-              {t('duel.deck.use')}
+            <Button variant="tertiary" size="sm" onClick={() => setOpen(false)}>
+              {t('common.cancel')}
             </Button>
             <Button variant="secondary" size="sm" disabled={status === 'loading'} onClick={() => fileRef.current?.click()}>
               {t('duel.deck.file')}
             </Button>
-            <Button variant="tertiary" size="sm" onClick={() => setOpen(false)}>
-              {t('common.cancel')}
+            <Button variant="primary" size="sm" disabled={status === 'loading' || text.trim() === ''} onClick={() => void load(text, true)}>
+              {t('duel.deck.use')}
             </Button>
           </div>
         </div>

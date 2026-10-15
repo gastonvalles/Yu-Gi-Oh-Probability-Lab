@@ -696,10 +696,10 @@ describe('la mesa de práctica', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'En ataque' }))
 
     expect(within(status()).getByText('Tocá los materiales en el campo (0) y confirmá')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Confirmar' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Invocar' })).toBeDisabled()
     tap(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' }))
     expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom (Material)' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Invocar' }))
 
     // Quedan varias zonas para elegir, incluida la de Ash (que se va como material y sigue marcada): tocar a Ash elige esa zona.
     tap(within(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' })).getByRole('button', { name: 'Ash Blossom (Material)' }))

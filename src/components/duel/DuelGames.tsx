@@ -46,10 +46,10 @@ export function DuelGames({ isOpen, onClose, snapshot, myName, actions }: DuelGa
         <section className="grid gap-2" aria-label={`${t('duel.games.coin')} / ${t('duel.games.die')}`}>
           <div className="grid grid-cols-2 gap-2">
             <Button variant="secondary" disabled={!peerPresent} onClick={actions.throwCoin}>
-              {t('duel.games.coin')}
+              {t('duel.games.throwCoin')}
             </Button>
             <Button variant="secondary" disabled={!peerPresent} onClick={actions.throwDie}>
-              {t('duel.games.die')}
+              {t('duel.games.throwDie')}
             </Button>
           </div>
           {toss && (toss.game.kind === 'coin' || toss.game.kind === 'die') ? (
@@ -97,6 +97,9 @@ export function DuelGames({ isOpen, onClose, snapshot, myName, actions }: DuelGa
             <>
               <p className="m-0 text-body text-foreground">{t('duel.games.concede.confirm', { name: rival })}</p>
               <div className="grid grid-cols-2 gap-2">
+                <Button variant="tertiary" size="sm" onClick={() => setConceding(false)}>
+                  {t('common.cancel')}
+                </Button>
                 <Button
                   variant="primary"
                   color="danger"
@@ -108,9 +111,6 @@ export function DuelGames({ isOpen, onClose, snapshot, myName, actions }: DuelGa
                   }}
                 >
                   {t('duel.games.concede.yes')}
-                </Button>
-                <Button variant="secondary" size="sm" onClick={() => setConceding(false)}>
-                  {t('common.cancel')}
                 </Button>
               </div>
             </>

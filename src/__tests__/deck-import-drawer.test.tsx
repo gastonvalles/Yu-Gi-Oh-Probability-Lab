@@ -49,7 +49,7 @@ describe('el importador de decks', () => {
 
     expect(screen.getByRole('radiogroup', { name: 'Cómo importar' })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Archivo' })).toHaveAttribute('aria-checked', 'true')
-    expect(screen.getByRole('button', { name: 'Seleccionar archivo' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Elegir un archivo' })).toBeInTheDocument()
     // Los formatos se dicen con una frase (no con pastillas que parecen botones).
     expect(screen.getByText('Acepta archivos .txt, .json y .ydk')).toBeInTheDocument()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
@@ -61,7 +61,7 @@ describe('el importador de decks', () => {
     expect(screen.getByText(/Una carta por línea, con la cantidad adelante/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Limpiar' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Procesar texto' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Seleccionar archivo' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Elegir un archivo' })).not.toBeInTheDocument()
   })
 
   it('con un puntero táctil no se habla de arrastrar: las dos frases están y el CSS muestra la que corresponde', () => {
@@ -137,7 +137,7 @@ describe('el importador de decks', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Volver' }))
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Seleccionar archivo' })).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Elegir un archivo' })).toBeInTheDocument())
     expect(screen.queryByText(/Archivo seleccionado/)).not.toBeInTheDocument()
   })
 
@@ -146,7 +146,7 @@ describe('el importador de decks', () => {
 
     const dialog = screen.getByRole('dialog', { name: 'Importador de deck' })
     const close = within(dialog).getByRole('button', { name: 'Cerrar importador' })
-    const choose = within(dialog).getByRole('button', { name: 'Seleccionar archivo' })
+    const choose = within(dialog).getByRole('button', { name: 'Elegir un archivo' })
 
     choose.focus()
     fireEvent.keyDown(choose, { key: 'Tab' })

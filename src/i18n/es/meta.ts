@@ -160,7 +160,7 @@ export const meta = {
   'meta.deckModal.copyFailed': 'No se pudo copiar. El link es {url}',
   'meta.deckModal.reached': 'Llegó a {placement}',
   'meta.deckModal.at': 'en {tournament}',
-  'meta.deckModal.copyLink': 'Copiar link',
+  'meta.deckModal.copyLink': 'Copiar enlace',
   'meta.deckModal.loadInBuilder': 'Cargar en el builder',
   'meta.deckModal.replay': 'Replay: {label}',
   'meta.deckModal.loading': 'Cargando el deck',

@@ -352,11 +352,11 @@ function DuelLobby({ name, onName, builder, imported, onImport, deckReady, deckS
             {paused.rival ? t('duel.lobby.paused', { name: paused.rival }) : t('duel.lobby.pausedNoName')}
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button variant="primary" size="sm" onClick={onResume}>
-              {t('duel.lobby.resume')}
-            </Button>
             <Button variant="tertiary" size="sm" onClick={onDropPaused}>
               {t('duel.lobby.dropPaused')}
+            </Button>
+            <Button variant="primary" size="sm" onClick={onResume}>
+              {t('duel.lobby.resume')}
             </Button>
           </div>
         </div>
@@ -371,7 +371,8 @@ function DuelLobby({ name, onName, builder, imported, onImport, deckReady, deckS
       <DuelDeckPicker builder={builder} imported={imported} onImport={onImport} />
 
       <div className="grid gap-1.5">
-        <Button variant="primary" icon="link" disabled={!deckReady} onClick={onCreate}>
+        {/* Con un duelo en pausa, lo principal es volver a él: crear otro pasa a un segundo plano (una principal por vista). */}
+        <Button variant={paused ? 'secondary' : 'primary'} icon="link" disabled={!deckReady} onClick={onCreate}>
           {t('duel.lobby.create')}
         </Button>
         <p className="m-0 text-micro text-soft">{t('duel.lobby.createHint')}</p>

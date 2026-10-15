@@ -3,7 +3,10 @@ import type { ButtonHTMLAttributes } from 'react'
 import { cx, variants } from './cx'
 import { Icon, type IconName } from './Icon'
 
-/** primary: la acción principal de la vista (una sola) · secondary: acciones de apoyo (lavanda) · tertiary: sin caja · onBrand: sobre una tarjeta violeta. */
+/**
+ * primary: la acción principal del grupo (una sola, y al final del pie) · secondary: una alternativa que hace algo, o acciones de igual peso (lavanda) ·
+ * tertiary: lo que descarta o vuelve, sin caja (Cancelar, Volver) · onBrand: sobre una tarjeta violeta. Las reglas completas, en docs/design-system.md.
+ */
 export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'onBrand'
 type ButtonSize = 'sm' | 'md' | 'lg'
 /** brand: violeta de la app · danger: acciones que borran o no se pueden deshacer. */

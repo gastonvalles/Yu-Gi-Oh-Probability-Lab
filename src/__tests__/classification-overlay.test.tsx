@@ -129,7 +129,7 @@ describe('modal de clasificación (mismo marco que el detalle)', () => {
     const onConfirm = vi.fn()
     render(editor({ card: entry({ origin: 'engine', roles: ['starter'], needsReview: true }), onConfirm }))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar sugerencia' }))
     expect(onConfirm).toHaveBeenCalledWith(101)
   })
 
