@@ -98,6 +98,18 @@ describe('la mesa que se manda al rival no dice qué cartas son', () => {
     expect(game.play({ type: 'place', id: card, zone: 'mz', index: 0, pos: 'atk' }).reveal).toEqual({})
   })
 
+  it('agregar a la mano una carta del deck (buscarla) la muestra una vez; robar sigue siendo secreto', () => {
+    const game = duel()
+    const searched = 'card-1010-1'
+
+    expect(game.play({ type: 'draw', count: 1 }).reveal).toEqual({})
+    expect(game.play({ type: 'move', id: searched, to: 'hand', shuffle: 5 }).reveal).toEqual({ [game.opaque(searched)]: searched })
+    expect(game.mirror.known).toEqual({ [game.opaque(searched)]: searched })
+    // Una carta que ya estaba en la mano (o que vuelve de otro lado) no se muestra de nuevo.
+    expect(game.play({ type: 'move', id: searched, to: 'deck' }).reveal).toEqual({})
+    expect(game.play({ type: 'move', id: searched, to: 'hand' }).reveal).toEqual({})
+  })
+
   it('el destierro boca abajo es secreto y boca arriba no', () => {
     const game = duel()
 
@@ -205,7 +217,7 @@ describe('el espejo del rival', () => {
 // --- Sobre miles de jugadas al azar: el espejo no se desincroniza ni filtra, y no oculta lo que se ve ---
 
 // Qué ve el rival, escrito aparte de la implementación y a propósito simple.
-function visible(state: MatState, action?: MatAction): string[] {
+function visible(state: MatState, action?: MatAction, before?: MatState): string[] {
   const cards = [...state.gy, ...state.banished.filter((id) => !state.facedown.includes(id))]
 
   for (const placed of [...state.mz, ...state.emz, ...state.st, state.field]) {
@@ -215,6 +227,11 @@ function visible(state: MatState, action?: MatAction): string[] {
   }
 
   if (action && (action.type === 'reveal' || action.type === 'declare' || action.type === 'activate')) {
+    cards.push(action.id)
+  }
+
+  // Buscar una carta del deck y agregarla a la mano la muestra.
+  if (action && before && action.type === 'move' && action.to === 'hand' && before.deck.includes(action.id)) {
     cards.push(action.id)
   }
 
@@ -240,7 +257,7 @@ describe('sobre jugadas al azar', () => {
           effective[action.type] = (effective[action.type] ?? 0) + 1
         }
 
-        visible(game.state, action).forEach((id) => everVisible.add(id))
+        visible(game.state, action, before).forEach((id) => everVisible.add(id))
 
         // 1. Misma mesa que la de quien juega, con ids opacos.
         expect(game.mirror.state).toEqual(mapMatIds(game.state, game.opaque))
@@ -254,7 +271,7 @@ describe('sobre jugadas al azar', () => {
         expect(leaked, `jugada ${action.type} de la corrida ${run}`).toEqual([])
 
         // 3. Todo lo que el rival puede ver, lo conoce.
-        const unknown = visible(game.state, action).filter((id) => game.mirror.known[game.opaque(id)] !== id)
+        const unknown = visible(game.state, action, before).filter((id) => game.mirror.known[game.opaque(id)] !== id)
         expect(unknown, `jugada ${action.type} de la corrida ${run}`).toEqual([])
       }
     }

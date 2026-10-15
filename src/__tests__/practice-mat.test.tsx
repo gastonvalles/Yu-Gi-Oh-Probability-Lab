@@ -787,6 +787,31 @@ describe('la mesa de práctica', () => {
     })
   })
 
+  it('el segundo paso del menú ("¿En ataque o en defensa?") aparece en el mismo lugar que el menú que se tocó, aunque sea mucho más corto', () => {
+    const { offsetHeight, offsetWidth } = Object.getOwnPropertyDescriptors(HTMLElement.prototype)
+    const rect = Element.prototype.getBoundingClientRect
+    // jsdom no mide nada: cada línea del menú ocupa 30 px, y todo lo demás está a media pantalla (un menú largo cabe arriba de la carta, uno corto también: antes cada uno se pegaba a su manera).
+    Object.defineProperty(HTMLElement.prototype, 'offsetHeight', { configurable: true, get(this: HTMLElement) { return this.getAttribute('role') === 'menu' ? this.querySelectorAll('[role="menuitem"]').length * 30 + 40 : 0 } })
+    Object.defineProperty(HTMLElement.prototype, 'offsetWidth', { configurable: true, get: () => 208 })
+    Element.prototype.getBoundingClientRect = () => ({ left: 100, top: 560, right: 180, bottom: 700, width: 80, height: 140, x: 100, y: 560, toJSON: () => ({}) })
+
+    try {
+      render(<Harness />)
+      tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
+      const menu = () => screen.getByRole('menu')
+      const first = { left: menu().style.left, top: menu().style.top }
+      expect(within(menu()).getAllByRole('menuitem').length).toBeGreaterThan(5)
+
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Especial' }))
+      expect(within(menu()).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['En ataque', 'En defensa'])
+      expect({ left: menu().style.left, top: menu().style.top }).toEqual(first)
+    } finally {
+      Object.defineProperty(HTMLElement.prototype, 'offsetHeight', offsetHeight!)
+      Object.defineProperty(HTMLElement.prototype, 'offsetWidth', offsetWidth!)
+      Element.prototype.getBoundingClientRect = rect
+    }
+  })
+
   it('desde el Extra, la Invocación Especial pide tocar los materiales en el campo y confirmar', () => {
     render(<Harness />)
 
@@ -810,6 +835,28 @@ describe('la mesa de práctica', () => {
     expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Zeus' })).toBeInTheDocument()
     expect(within(status()).getByText('Invocación Xyz de Zeus (materiales: Ash Blossom)')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'GY: 0' })).toBeInTheDocument()
+  })
+
+  it('con las cinco zonas de monstruo y una Extra ocupadas, la Invocación del Extra con materiales deja elegir entre las zonas que se liberan: no se cae sola en la Extra libre', () => {
+    const cards = new Map(CARDS).set('card-8-1', { name: 'Hermes', apiCard: card(8, 'xyz') })
+    const initial = replayMat(createMatState(['card-1-1', 'card-2-1', 'card-3-1', 'card-4-1', 'card-5-1', 'card-6-1'], ['card-7-1', 'card-8-1'], 5), [
+      ...['card-1-1', 'card-2-1', 'card-3-1', 'card-4-1', 'card-5-1'].map((id, index) => ({ type: 'place', id, zone: 'mz', index, pos: 'atk' }) as const),
+      { type: 'place', id: 'card-8-1', zone: 'emz', index: 0, pos: 'atk', how: 'special' },
+    ])
+    render(<Harness initial={initial} cards={cards} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Extra: 1' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Extra · 1' })).getByRole('button', { name: 'Zeus' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Especial' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'En ataque' }))
+    tap(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Invocar' }))
+
+    // Antes: la única zona libre de ese momento (la Extra 2) se elegía sola. Ahora se elige: la de Ash, que se libera, y la Extra libre.
+    const freeExtra = screen.getByRole('button', { name: 'Zona extra de monstruo 2: elegir' })
+    expect(within(freeExtra).queryByRole('button', { name: 'Zeus' })).not.toBeInTheDocument()
+    tap(within(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' })).getByRole('button', { name: 'Ash Blossom (Material)' }))
+    expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Zeus' })).toBeInTheDocument()
   })
 
   describe('doble clic en el único material (escritorio)', () => {

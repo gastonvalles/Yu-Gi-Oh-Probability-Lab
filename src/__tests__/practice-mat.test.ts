@@ -7,6 +7,7 @@ import {
   createMatState,
   describeMatAction,
   describeMatSteps,
+  freeTargets,
   listCardActions,
   listDropActions,
   locateCard,
@@ -270,6 +271,43 @@ describe('la mesa de práctica', () => {
     const linkItem = listCardActions(two, 'x2', kindOf, nameOf)[0]!
     expect([linkItem.materials, linkItem.choices, linkItem.action.type]).toEqual([true, undefined, 'summon'])
     expect(listCardActions(start(), 'x1', kindOf, nameOf)[0]!.action.type).toBe('place')
+  })
+
+  describe('las Zonas Extra de un duelo (no son de nadie hasta que alguien invoca en una: la otra pasa a ser del rival)', () => {
+    const free = (state: MatState, rivalEmz?: boolean[]) => freeTargets(state, ['emz'], rivalEmz).map((target) => target.index)
+    const inEmz = (index: number, id = 'x1') => ({ type: 'place', id, zone: 'emz', index, pos: 'atk', how: 'special' }) as const
+
+    it('sin nadie en ninguna valen las dos; con un monstruo del rival, la que no es la suya; con uno propio, la otra es del rival', () => {
+      const empty = start()
+
+      // Solo (la práctica): valen las dos, sin regla.
+      expect(free(empty)).toEqual([0, 1])
+      expect(free(empty, [false, false])).toEqual([0, 1])
+      // La Zona Extra 0 del rival es la 1 de acá (están enfrentadas), y al revés.
+      expect(free(empty, [true, false])).toEqual([0])
+      expect(free(empty, [false, true])).toEqual([1])
+      // Ya tengo uno en la 0: la 1 es del rival, y yo no tengo otra.
+      const mine = run([inEmz(0)])
+      expect(free(mine, [false, false])).toEqual([])
+      // Si ese monstruo se va (se usa de material), vuelven a estar las dos.
+      expect(free(run([{ type: 'move', id: 'x1', to: 'gy' }], mine), [false, false])).toEqual([0, 1])
+    })
+
+    it('la Invocación del Extra con materiales se ofrece aunque no quede una zona libre (los materiales la liberan), y soltar una carta en una Zona Extra del rival no ofrece nada', () => {
+      const full = run([
+        ...['a1', 'a2', 'b1', 'c1', 'd1'].map((id, index) => ({ type: 'place', id, zone: 'mz', index, pos: 'atk' }) as const),
+        inEmz(0),
+      ])
+
+      // Cinco zonas de monstruo llenas y la Extra 1 bloqueada (hay un monstruo propio en la 0): antes no había salida y no se ofrecía.
+      const linkItem = listCardActions(full, 'x2', kindOf, nameOf, [], [false, false])[0]!
+      expect([linkItem.label, linkItem.materials, linkItem.targets]).toEqual(['Invocación Especial', true, []])
+
+      const empty = start()
+      expect(listDropActions(empty, 'x2', kindOf, nameOf, { zone: 'emz', index: 1 }, [false, false]).length).toBeGreaterThan(0)
+      // El rival ocupa su Zona Extra 0, que es la 1 de acá.
+      expect(listDropActions(empty, 'x2', kindOf, nameOf, { zone: 'emz', index: 1 }, [true, false])).toEqual([])
+    })
   })
 
   it('el menú ofrece lo que se puede hacer desde donde está la carta', () => {

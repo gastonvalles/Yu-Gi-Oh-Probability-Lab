@@ -64,6 +64,8 @@ const GHOST_CLICK_MS = 350
 export function CardMenu({ anchor, kicker, title, items, onInspect, onClose }: CardMenuProps) {
   const ref = useRef<HTMLDivElement | null>(null)
   const openedAtRef = useRef(0)
+  // La carta a la que se acomodó el menú la última vez: si cambia sólo lo que dice (el segundo paso, "¿En ataque o en defensa?") y no la carta, se queda donde estaba.
+  const placedForRef = useRef<DOMRect | null>(null)
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null)
   const open = anchor !== null
 
@@ -74,6 +76,7 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, onClose }: C
     const menu = ref.current
 
     if (!anchor || !menu) {
+      placedForRef.current = null
       setPosition(null)
       return
     }
@@ -86,8 +89,11 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, onClose }: C
     const left = Math.min(Math.max(anchor.left + anchor.width / 2 - width / 2, margin), Math.max(margin, window.innerWidth - width - margin))
     const above = anchor.top - height - 6
     const top = above >= margin ? above : Math.min(anchor.bottom + 6, Math.max(margin, window.innerHeight - height - margin))
+    const sameCard = placedForRef.current === anchor
 
-    setPosition({ left, top })
+    placedForRef.current = anchor
+    // El segundo paso aparece en el mismo lugar que el menú que se acaba de tocar (si es más corto o más largo "pegado a la carta" lo movía de lugar): misma esquina de arriba a la izquierda, sin salirse de la pantalla.
+    setPosition((current) => (sameCard && current ? { left: current.left, top: Math.min(Math.max(current.top, margin), Math.max(margin, window.innerHeight - height - margin)) } : { left, top }))
   }, [anchor, items.length])
 
   if (!open || typeof document === 'undefined') {

@@ -107,9 +107,14 @@ export function publicIds(state: MatState): Set<string> {
   return seen
 }
 
-/** Cartas que se muestran aunque la mesa no cambie: la jugada sólo queda anotada. */
-function shownBy(action: MatAction): string[] {
-  return action.type === 'reveal' || action.type === 'declare' || action.type === 'activate' ? [action.id] : []
+/**
+ * Cartas que se muestran aunque la mesa no cambie: la jugada sólo queda anotada. Agregar a la mano una carta que estaba en el deck (buscarla) también la muestra:
+ * el rival la ve entrar en la animación (robar sigue siendo secreto, no es una jugada de `move`).
+ */
+function shownBy(before: MatState, action: MatAction): string[] {
+  if (action.type === 'reveal' || action.type === 'declare' || action.type === 'activate') return [action.id]
+
+  return action.type === 'move' && action.to === 'hand' && before.deck.includes(action.id) ? [action.id] : []
 }
 
 /** Lado de quien juega: qué id opaco tiene cada carta y qué cartas ya conoce el rival. */
@@ -165,7 +170,7 @@ export function openPublic(initial: MatState): { sender: PublicSender; masked: M
  */
 export function encodeAct(sender: PublicSender, before: MatState, action: MatAction): { sender: PublicSender; wire: WireAct } {
   const visible = publicIds(matReducer(before, action))
-  shownBy(action).forEach((id) => visible.add(id))
+  shownBy(before, action).forEach((id) => visible.add(id))
 
   const { reveal, sent } = newlyVisible(sender, visible)
   const wire: WireAct = { action: mapActionIds(action, (id) => sender.opaque[id] ?? id), reveal }
