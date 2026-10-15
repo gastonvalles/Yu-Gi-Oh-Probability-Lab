@@ -107,7 +107,7 @@ describe('Comparar builds en inglés', () => {
     const first = render(
       <>
         <VerdictLine comparison={better} />
-        <DeckResults side="B" comparison={better} onlyDiffs onOnlyDiffsChange={() => {}} />
+        <DeckResults side="B" comparison={better} />
       </>,
     )
 
@@ -116,10 +116,9 @@ describe('Comparar builds en inglés', () => {
     expect(screen.getByText(/^Out of every 100 hands, B gives you \d+ good ones and A \d+\.$/)).toBeInTheDocument()
     expect(screen.getByText('out of every 100 hands are good')).toBeInTheDocument()
     expect(screen.getByRole('table', { name: 'Share of hands that meet each condition, in build B' })).toBeInTheDocument()
-    for (const text of ['See how many hands', 'Only differences (', 'Get going well (more is better)', 'Get stuck (less is better)']) {
+    for (const text of ['Going first:', 'Going second:', 'Get going well (more is better)', 'Get stuck (less is better)']) {
       expect(screen.getAllByText(text, { exact: false }).length).toBeGreaterThan(0)
     }
-    expect(screen.getByRole('switch', { name: 'Show only differences' })).toBeInTheDocument()
     first.unmount()
 
     const pending = [...OLD.slice(0, -1), { ...card('x', 1, []), origin: null }]
