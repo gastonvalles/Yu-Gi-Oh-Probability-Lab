@@ -32,7 +32,7 @@ Qué se protege, de qué, con qué, y qué queda en manos de quien administra la
 - Sólo devuelve `image/jpeg`, `image/png` o `image/webp` de hasta 2 MB, y sharp no achica nada de más de 4 megapíxeles. Lo que no cumple es un 502 que no se guarda en ninguna caché.
 
 **Relay**
-- Sólo orígenes permitidos (`ALLOWED_ORIGINS`), códigos de sala de 8 símbolos al azar (unos 40 bits), tope de 16 KB por mensaje, límite de ritmo por conexión, binarios prohibidos para los jugadores (los avisos del relay no se pueden falsificar), espectadores que no pueden mandar nada. Quien entra a mirar hace que los jugadores repitan su estado, pero con tope (una ráfaga corta y después uno cada dos segundos), así que entrar y salir sin parar no los hace inundar el relay. No guarda ni registra mensajes, códigos ni direcciones.
+- Sólo orígenes permitidos (`ALLOWED_ORIGINS`), códigos de sala de 8 símbolos al azar (unos 40 bits), tope de 16 KB por mensaje, límite de ritmo por conexión, binarios prohibidos para los jugadores (los avisos del relay no se pueden falsificar), espectadores que no pueden mandar nada. Quien entra a mirar hace que los jugadores repitan su estado, pero con tope por sala (una ráfaga corta y después uno cada dos segundos), y las entradas de espectadores también lo tienen: si entran en bucle, el relay los rechaza (429) y los jugadores no se llenan de pedidos. No guarda ni registra mensajes, códigos ni direcciones (el registro de cada petición está apagado).
 
 **Cadena de suministro**
 - Acciones de GitHub fijadas por commit; permisos de sólo lectura por defecto; `persist-credentials: false` en todos los checkouts.

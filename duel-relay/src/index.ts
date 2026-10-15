@@ -28,6 +28,7 @@ import {
  *
  * Un espectador no puede hacer nada: lo que mande se descarta y lo desconecta, salvo pedir que los jugadores repitan su estado
  * (`resync`, como mucho cada dos segundos), que es lo único que necesita para ponerse al día. Ningún mensaje suyo llega a los jugadores.
+ * Y entre todos los espectadores de una sala hay un tope de entradas y de pedidos de estado: un enlace de espectador usado en bucle no hace trabajar ni a los jugadores ni al relay.
  *
  * Usa la API de WebSockets con hibernación: entre mensajes la sala no consume. El latido (`ping`/`pong`)
  * lo contesta Cloudflare sin despertarla.
@@ -58,6 +59,9 @@ interface Env {
   ALLOWED_ORIGINS: string
 }
 
+/** Cuántos pedidos de estado de más tolera de un espectador antes de desconectarlo (un cliente de verdad pide cada dos segundos; uno que se pasa por un instante no se corta). */
+const MAX_SPECTATOR_STRIKES = 10
+
 /** Lo que se guarda de cada conexión (sobrevive a la hibernación). Las de antes de los espectadores no traen rol: son jugadores. */
 interface Attachment {
   participant?: string
@@ -77,6 +81,12 @@ export class DuelRoom extends DurableObject {
   // Se pierden si la sala hiberna: el límite de ritmo vuelve a empezar y lo cerrado ya no figura en la lista.
   private readonly limiters = new WeakMap<Socket, RateLimiter>()
   private readonly closing = new WeakSet<Socket>()
+  /** Pedidos de estado de más de cada espectador (ver `MAX_SPECTATOR_STRIKES`). */
+  private readonly strikes = new WeakMap<Socket, number>()
+  /** Cuántas veces, entre todos los espectadores, la sala les pide a los jugadores que repitan su estado: una ráfaga corta y después una cada `SPECTATOR_RESYNC_MS`. */
+  private readonly resyncs = new RateLimiter(Date.now(), 1000 / SPECTATOR_RESYNC_MS, 3)
+  /** Cuántos espectadores pueden entrar seguidos: pasado el tope se rechaza la conexión antes de abrirla (el cliente espera más cada vez que le falla). */
+  private readonly joins = new RateLimiter(Date.now(), 0.5, 6)
 
   constructor(
     private readonly state: RoomState,
@@ -153,6 +163,10 @@ export class DuelRoom extends DurableObject {
       return new Response('Bad request', { status: 400 })
     }
 
+    if (role === 'spectator' && !this.joins.allow(Date.now())) {
+      return new Response('Too many requests', { status: 429 })
+    }
+
     const { 0: client, 1: server } = new WebSocketPair()
 
     // Una conexión nueva de la misma persona reemplaza a la vieja, que puede estar colgada sin que nadie lo sepa; si juega, hereda su lugar entre los jugadores.
@@ -186,8 +200,8 @@ export class DuelRoom extends DurableObject {
       this.limiters.set(server, new RateLimiter(Date.now(), 1000 / SPECTATOR_RESYNC_MS, 2))
       console.log(JSON.stringify({ event: 'room_watched' }))
       this.deliver(server, encodeRelayFrame({ kind: 'players', count: this.players().length }))
-      // Los jugadores repiten su estado para que quien llega se ponga al día.
-      this.announceWatchers(true)
+      // Los jugadores repiten su estado para que quien llega se ponga al día (con tope: ver `resyncs`).
+      this.announceWatchers(this.resyncs.allow(Date.now()))
       return new Response(null, { status: 101, webSocket: client } as ResponseInit)
     }
 
@@ -222,7 +236,19 @@ export class DuelRoom extends DurableObject {
       const limiter = this.limiters.get(socket) ?? new RateLimiter(Date.now(), 1000 / SPECTATOR_RESYNC_MS, 2)
       this.limiters.set(socket, limiter)
 
-      if (limiter.allow(Date.now())) {
+      if (!limiter.allow(Date.now())) {
+        const strikes = (this.strikes.get(socket) ?? 0) + 1
+
+        this.strikes.set(socket, strikes)
+
+        if (strikes >= MAX_SPECTATOR_STRIKES) {
+          this.end(socket, 1008, 'rate')
+        }
+
+        return
+      }
+
+      if (this.resyncs.allow(Date.now())) {
         this.announceWatchers(true)
       }
 

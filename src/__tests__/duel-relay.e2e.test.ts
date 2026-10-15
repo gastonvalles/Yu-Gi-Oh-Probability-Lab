@@ -190,6 +190,58 @@ describe('el relay real', () => {
     second.ws.close(1000)
   })
 
+  it('un espectador que entra y sale sin parar se frena: pasado el tope no entra, y los jugadores no repiten su estado de más', async () => {
+    const room = createRoomCode()
+    const a = raw(room)
+    await until(() => a.frames.length === 1)
+    const b = raw(room)
+    await until(() => b.frames.length === 1)
+    let admitted = 0
+    let refused = 0
+
+    for (let index = 0; index < 14; index += 1) {
+      const watcher = raw(room, undefined, ORIGIN, 'spectator')
+      await until(() => watcher.opened || watcher.errored || watcher.closed !== undefined, 3000, 'respuesta a un espectador')
+
+      if (watcher.opened) {
+        admitted += 1
+        await until(() => watcher.frames.length >= 1, 3000, 'aviso al espectador')
+        watcher.ws.close(1000)
+        await until(() => watcher.closed !== undefined, 3000, 'cierre del espectador')
+      } else {
+        refused += 1
+      }
+    }
+
+    // Seis seguidas y a partir de ahí una cada dos segundos: de catorce intentos casi seguidos, la mayoría se rechaza.
+    expect(admitted).toBeGreaterThanOrEqual(6)
+    expect(admitted).toBeLessThanOrEqual(9)
+    expect(refused).toBeGreaterThanOrEqual(5)
+    // Y a los jugadores les piden el estado sólo en la ráfaga corta.
+    await wait(300)
+    expect(a.frames.filter((frame) => frame.kind === 'watchers' && frame.sync).length).toBeLessThanOrEqual(5)
+    a.ws.close(1000)
+    b.ws.close(1000)
+  })
+
+  it('un espectador que pide el estado sin parar termina desconectado', async () => {
+    const room = createRoomCode()
+    const a = raw(room)
+    await until(() => a.frames.length === 1)
+    const watcher = raw(room, undefined, ORIGIN, 'spectator')
+    await until(() => watcher.frames.length >= 1)
+
+    for (let index = 0; index < 40; index += 1) {
+      watcher.ws.send(SPECTATOR_RESYNC)
+    }
+
+    await until(() => watcher.closed !== undefined, 5000, 'corte por pedir de más')
+    expect(watcher.closed).toBe(1008)
+    // Los jugadores no se llenaron de pedidos: sólo la ráfaga del tope.
+    expect(a.frames.filter((frame) => frame.kind === 'watchers' && frame.sync).length).toBeLessThanOrEqual(5)
+    a.ws.close(1000)
+  })
+
   it('un jugador que reconecta con su identidad conserva su etiqueta para los espectadores', async () => {
     const room = createRoomCode()
     const pid = createParticipantId()
