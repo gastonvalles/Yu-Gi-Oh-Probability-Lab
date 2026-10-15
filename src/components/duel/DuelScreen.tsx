@@ -6,9 +6,10 @@ import { createRoomCode } from '../../app/duel-relay-rules'
 import type { Duel, DuelRole, DuelSnapshot } from '../../app/duel-session'
 import type { SocketStatus } from '../../app/duel-socket'
 import { rpsOutcome } from '../../app/duel-games'
-import { whoseTurn } from '../../app/duel-turn'
+import { duelTurnNumber, whoseTurn } from '../../app/duel-turn'
 import { STARTING_LP } from '../../app/life-calculator'
-import { createMatState, isToken, randomSeed, shuffleWithSeed } from '../../app/practice-mat'
+import { beginDuel } from '../../app/mascot'
+import { createMatState, isToken, PHASES, randomSeed, shuffleWithSeed } from '../../app/practice-mat'
 import { useDuel, type DuelConnect } from '../../app/use-duel'
 import type { MatSession } from '../../app/use-mat-session'
 import { showToastMessage } from '../../app/use-toast-message'
@@ -19,10 +20,13 @@ import { FieldBox, fieldInline } from '../ui/FieldBox'
 import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
-import { DuelBar } from './DuelBar'
+import { DuelBar, DuelLife, DuelTools } from './DuelBar'
+import { DuelChat } from './DuelChat'
 import { DuelDeckPicker, loadDuelDeck, readStoredDeck, type DuelDeck } from './DuelDeckPicker'
 import { gameText, outcomeText, rpsName } from './game-text'
 import { artOfDrawId } from './duel-art'
+import { DuelOpening } from './DuelOpening'
+import { TossOverlay } from './toss-views'
 import { DUEL_AREAS, SideCells, sharedZoneCard, TheirHand, type DuelSideView } from './DuelTable'
 
 const NAME_KEY = 'ygo-lab:duel-name'
@@ -77,6 +81,8 @@ function showRoomInUrl(room: string | null) {
  * reparten su mano; y después la mesa de práctica con el campo del rival arriba. No sabe de redes: `connect` (el relay) lo pone quien la usa.
  */
 export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, connect }: DuelScreenProps) {
+  // De momento las mascotas no aparecen en los duelos (ni en el lobby, la sala o la mesa): las que andan flotando esperan afuera.
+  useEffect(() => beginDuel(), [])
   const [name, setName] = useState(() => readStored(() => localStorage, NAME_KEY) ?? '')
   const [intent, setIntent] = useState<Intent | null>(readIntent)
   const myName = cleanName(name) || t('duel.lobby.defaultName')
@@ -109,6 +115,18 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
       cancelled = true
     }
   }, [builderTooSmall])
+
+  // Cuando ya se eligió quién va primero, cada uno reparte su mano solo (hace falta el deck y, del invitado, los ajustes del anfitrión).
+  const ordered = snapshot?.opening.ordered ?? false
+  const started = snapshot?.mine != null
+  const settingsKnown = snapshot ? snapshot.role === 'host' || snapshot.peerName !== null : false
+  const dealHand = snapshot?.settings.hand ?? handSize
+
+  useEffect(() => {
+    if (duel && ordered && !started && settingsKnown && deckReady) {
+      duel.start(createMatState(shuffleWithSeed(deck.mainIds, randomSeed()), deck.extraIds, dealHand))
+    }
+  }, [duel, ordered, started, settingsKnown, deckReady, deck, dealHand])
 
   // Pegar un enlace de duelo en la barra de direcciones (o abrirlo en esta misma pestaña) lleva a esa sala.
   useEffect(() => {
@@ -178,14 +196,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
 
   if (!snapshot.mine || !snapshot.theirs) {
     return (
-      <DuelRoom
-        snapshot={snapshot}
-        status={status}
-        room={intent.room}
-        deckReady={deckReady}
-        onStart={() => duel.start(createMatState(shuffleWithSeed(deck.mainIds, randomSeed()), deck.extraIds, snapshot.settings.hand))}
-        onLeave={leave}
-      />
+      <DuelRoom duel={duel} snapshot={snapshot} status={status} room={intent.room} myName={myName} deckReady={deckReady} onLeave={leave} />
     )
   }
 
@@ -299,15 +310,36 @@ function DuelLobby({ name, onName, lp, onLp, builder, imported, onImport, deckRe
   )
 }
 
-/** La sala hasta que los dos tienen su mano: el enlace para el rival, quién está y el botón de repartir. */
-function DuelRoom({ snapshot, status, room, deckReady, onStart, onLeave }: { snapshot: DuelSnapshot; status: SocketStatus; room: string; deckReady: boolean; onStart: () => void; onLeave: () => void }) {
+/** Cuánto espera quien entra por un enlace antes de pensar que el enlace venció (el anfitrión que lo creó ya debería estar adentro). */
+const EMPTY_ROOM_MS = 12_000
+
+/** Pasó `ms` mientras `active` sigue siendo cierto; al dejar de serlo (o al salir) vuelve a empezar. */
+function useWaited(ms: number, active: boolean): boolean {
+  const [waited, setWaited] = useState(false)
+
+  useEffect(() => {
+    if (!active) {
+      setWaited(false)
+      return
+    }
+
+    const id = setTimeout(() => setWaited(true), ms)
+    return () => clearTimeout(id)
+  }, [ms, active])
+
+  return waited
+}
+
+/** La sala hasta que los dos tienen su mano: el enlace para el rival, quién está listo, cómo se define quién empieza y el chat. */
+function DuelRoom({ duel, snapshot, status, room, myName, deckReady, onLeave }: { duel: Duel; snapshot: DuelSnapshot; status: SocketStatus; room: string; myName: string; deckReady: boolean; onLeave: () => void }) {
   const link = buildDuelLink(window.location.origin, window.location.pathname, room)
   const { peerPresent, peerName, role, incompatible, settings } = snapshot
-  const started = snapshot.mine !== null
-  // El invitado reparte con los ajustes del anfitrión: hasta que no llega su saludo, no.
+  // El invitado se prepara con los ajustes del anfitrión: hasta que no llega su saludo, no.
   const settingsKnown = role === 'host' || peerName !== null
-  const canStart = peerPresent && settingsKnown && !incompatible && deckReady && !started
+  const canReady = peerPresent && settingsKnown && !incompatible && deckReady
   const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
+  // Quien entra por un enlace y no encuentra a nadie, tras unos segundos, probablemente tiene un enlace vencido: se lo dice en vez de dejarlo esperando.
+  const emptyRoom = useWaited(EMPTY_ROOM_MS, role === 'guest' && !peerPresent && status === 'open')
 
   const copy = async () => {
     try {
@@ -346,22 +378,31 @@ function DuelRoom({ snapshot, status, room, deckReady, onStart, onLeave }: { sna
 
       {status !== 'open' ? <Callout tone="warning" icon="alert">{status === 'connecting' ? t('duel.status.connecting') : t('duel.status.reconnecting')}</Callout> : null}
       {incompatible ? <Callout tone="danger">{t('duel.room.incompatible')}</Callout> : null}
+      {emptyRoom ? <Callout tone="warning" icon="alert">{t('duel.room.expired')}</Callout> : null}
 
-      <p className="m-0 flex items-center gap-2 text-body text-foreground" role="status">
-        <Icon name="user" size={16} />
-        {!peerPresent ? t('duel.room.waitingPeer') : peerName ? t('duel.room.peerHere', { name: peerName }) : t('duel.room.peerHereNoName')}
-      </p>
+      {/* Con el rival adentro ya se ven los dos nombres en la tarjeta de cada uno: no hace falta decirlo otra vez. */}
+      {!peerPresent ? (
+        <>
+          <p className="m-0 flex items-center gap-2 text-body text-foreground" role="status">
+            <Icon name="user" size={16} />
+            {t('duel.room.waitingPeer')}
+          </p>
+          <p className="m-0 text-micro text-soft">{t('duel.room.settings', { lp: settings.lp, hand: settings.hand })}</p>
+        </>
+      ) : !settingsKnown ? (
+        <p className="m-0 text-micro text-soft">{t('duel.room.guestWaits')}</p>
+      ) : null}
 
-      {peerPresent && !settingsKnown ? <p className="m-0 text-micro text-soft">{t('duel.room.guestWaits')}</p> : <p className="m-0 text-micro text-soft">{t('duel.room.settings', { lp: settings.lp, hand: settings.hand })}</p>}
+      {peerPresent && settingsKnown && !incompatible ? <DuelOpening snapshot={snapshot} myName={myName} canReady={canReady} actions={duel} /> : null}
+
+      {peerPresent && !incompatible ? (
+        <section className="grid gap-2 rounded-card border border-border-subtle bg-card-background p-3" aria-label={t('duel.chat.open')}>
+          <Heading level="card">{t('duel.chat.open')}</Heading>
+          <DuelChat snapshot={snapshot} myName={myName} onSend={duel.sendChat} />
+        </section>
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
-        {started ? (
-          <p className="m-0 text-body text-muted" role="status">{t('duel.room.waitingTable')}</p>
-        ) : (
-          <Button variant="primary" icon="hand" disabled={!canStart} onClick={onStart}>
-            {t('duel.room.start')}
-          </Button>
-        )}
         <Button variant="tertiary" onClick={onLeave}>
           {t('duel.room.leave')}
         </Button>
@@ -394,24 +435,24 @@ function useAutoStartClock(duel: Duel, snapshot: DuelSnapshot) {
 }
 
 /**
- * La carta del turno se roba cuando empieza el turno propio, o sea cuando el rival pasa el suyo: así el segundo jugador roba en su primer turno
- * y quien pasa no roba de más antes de tiempo (la mesa, en un duelo, no roba sola al pasar). Pasar dos veces por lo mismo (el rival deshace y repite)
+ * La carta del turno se roba cuando empieza el turno propio, o sea cuando el rival llega a su End Phase: así el segundo jugador roba en su primer turno
+ * y quien termina no roba de más antes de tiempo (la mesa, en un duelo, no roba sola al pasar). Llegar dos veces a lo mismo (el rival deshace y repite)
  * no roba dos veces.
  */
 function useTurnDraw(duel: Duel, snapshot: DuelSnapshot, turn: 'mine' | 'theirs') {
-  const passes = (snapshot.mine?.turn ?? 1) - 1 + ((snapshot.theirs?.state.turn ?? 1) - 1)
-  const drawnAt = useRef(passes)
+  const number = duelTurnNumber(snapshot.mine, snapshot.theirs?.state ?? null)
+  const drawnAt = useRef(number)
 
   useEffect(() => {
-    if (passes > drawnAt.current) {
-      drawnAt.current = passes
+    if (number > drawnAt.current) {
+      drawnAt.current = number
 
       if (turn === 'mine') {
         duel.play({ type: 'draw', count: 1 })
         showToastMessage(t('duel.turn.drew'), 'info')
       }
     }
-  }, [passes, turn, duel])
+  }, [number, turn, duel])
 }
 
 /**
@@ -444,12 +485,12 @@ function useGameToasts(snapshot: DuelSnapshot, myName: string) {
   }, [outcome, rps.mine, rps.theirs])
 }
 
-/** Cuánto se queda el aviso del ataque del rival en el centro de la mesa. */
+/** Cuánto se queda el cartel del ataque del rival arriba de la mesa. */
 const ANNOUNCE_MS = 4000
 
 /**
- * El ataque que el rival acaba de hacer, para avisarlo grande en el centro: quién ataca (su monstruo) y a qué carta tuya, o que es directo.
- * Lo que ya había jugado antes de abrir la pantalla no se avisa, y deshacer tampoco.
+ * El ataque que el rival acaba de hacer, para avisarlo: el cartel de quién ataca a qué carta tuya (o que es directo) y, para que la mesa dibuje la espada,
+ * con qué monstruo suyo (su id opaco) y a cuál tuyo (tu id real). Lo que ya había jugado antes de abrir la pantalla no se avisa, y deshacer tampoco.
  */
 function useRivalAttack(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, MatCard>): DuelMatLink['announcement'] {
   const { theirs, ownIds, peerName } = snapshot
@@ -463,7 +504,7 @@ function useRivalAttack(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, M
 
     seen.current = acts?.length ?? 0
 
-    if (!acts || !theirs || acts.length <= before || last?.type !== 'attack') {
+    if (!acts || acts.length <= before || last?.type !== 'attack') {
       return
     }
 
@@ -473,16 +514,59 @@ function useRivalAttack(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, M
 
     setShown({
       key: Date.now(),
-      art: artOfDrawId(theirs.known[last.id]),
-      name: rival,
+      attackerId: last.id,
+      // Un objetivo que no se reconoce no es un ataque directo: se deja su id tal cual, que no está en la mesa, y la espada no sale.
+      targetId: last.target === undefined ? undefined : (mine ?? last.target),
       caption: last.target === undefined ? t('duel.announce.attackDirect', { name: rival }) : t('duel.announce.attack', { name: rival, target }),
     })
-  }, [acts, theirs, ownIds, peerName, cardsById])
+  }, [acts, ownIds, peerName, cardsById])
 
   useEffect(() => {
     if (!shown) return
 
     const id = setTimeout(() => setShown(undefined), ANNOUNCE_MS)
+    return () => clearTimeout(id)
+  }, [shown])
+
+  return shown
+}
+
+/** Cuánto se queda el cartel de la fase o del turno del rival. */
+const NOTICE_MS = 1400
+
+/**
+ * Lo que el rival avanza en su turno, para verlo sin mirar su campo: cada fase que pasa (con su nombre) y, cuando llega a su End Phase y empieza el tuyo, el cartel
+ * "Tu turno". Lo que ya había cuando se abrió la pantalla no se avisa, ni lo que se deshace sin cambiar de fase.
+ */
+function useRivalNotice(snapshot: DuelSnapshot, turn: 'mine' | 'theirs'): DuelMatLink['notice'] {
+  const phase = snapshot.theirs?.state.phase
+  const seen = useRef({ phase, turn })
+  const [shown, setShown] = useState<DuelMatLink['notice']>(undefined)
+  const rival = snapshot.peerName ?? t('duel.bar.rival')
+
+  useEffect(() => {
+    const before = seen.current
+
+    seen.current = { phase, turn }
+
+    if (phase === undefined || before.phase === undefined || before.phase === phase) {
+      return
+    }
+
+    const name = PHASES.find((entry) => entry.id === phase)?.name ?? phase
+
+    // Llegó a su End Phase y ahora te toca a vos; si no, una fase más de su turno.
+    if (before.turn === 'theirs' && turn === 'mine') {
+      setShown({ key: Date.now(), phase, who: `${rival} · ${name}`, label: t('duel.bar.yourTurn') })
+    } else {
+      setShown({ key: Date.now(), phase, who: rival })
+    }
+  }, [phase, turn, rival])
+
+  useEffect(() => {
+    if (!shown) return
+
+    const id = setTimeout(() => setShown(undefined), NOTICE_MS)
     return () => clearTimeout(id)
   }, [shown])
 
@@ -504,6 +588,8 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   useTurnDraw(duel, snapshot, turn)
   useAutoStartClock(duel, snapshot)
   const announcement = useRivalAttack(snapshot, cardsById)
+  const notice = useRivalNotice(snapshot, turn)
+  const rivalName = snapshot.peerName ?? t('duel.bar.rival')
   // A quiénes se puede atacar: los monstruos del rival en el campo, con el id que él les dio.
   const attackTargets = useMemo(
     () => (['mz', 'emz'] as const).flatMap((zone) => theirs!.state[zone].flatMap((placed, index) => (placed ? [{ id: placed.id, zone, index, faceDown: placed.pos === 'set' }] : []))),
@@ -518,38 +604,31 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       attackTargets,
       foreignKnown: theirs!.known,
       announcement,
-      header: (
-        <>
-          <DuelBar
-            snapshot={snapshot}
-            status={status}
-            myName={myName}
-            turn={turn}
-            onChangeLife={duel.changeLife}
-            onHalve={duel.halveLife}
-            onToggleClock={duel.toggleClock}
-            games={duel}
-            onLeave={onLeave}
-          />
-          <TheirHand count={opponent.handCount ?? 0} />
-        </>
-      ),
+      notice,
+      rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
+      tools: <DuelTools snapshot={snapshot} myName={myName} games={duel} onSendChat={duel.sendChat} />,
+      life: <DuelLife snapshot={snapshot} myName={myName} onChangeLife={duel.changeLife} onHalve={duel.halveLife} />,
+      header: <DuelBar snapshot={snapshot} status={status} turn={turn} theirHand={<TheirHand count={opponent.handCount ?? 0} />} onToggleClock={duel.toggleClock} onRematch={duel.rematch} onLeave={onLeave} />,
     }),
-    [opponent, snapshot, status, myName, turn, duel, onLeave, attackTargets, theirs, announcement],
+    [opponent, snapshot, status, myName, turn, duel, onLeave, attackTargets, theirs, announcement, notice, rivalName],
   )
 
   return (
-    <PracticeMat
-      session={session}
-      state={mine!}
-      cardsById={cardsById}
-      deckName={deckName}
-      onDispatch={duel.play}
-      onUndo={duel.undo}
-      onSeek={NOTHING}
-      onLoadCombo={NOTHING}
-      onNewHand={NOTHING}
-      duel={link}
-    />
+    <>
+      <PracticeMat
+        session={session}
+        state={mine!}
+        cardsById={cardsById}
+        deckName={deckName}
+        onDispatch={duel.play}
+        onUndo={duel.undo}
+        onSeek={NOTHING}
+        onLoadCombo={NOTHING}
+        onNewHand={NOTHING}
+        duel={link}
+      />
+      {/* Lo que tira el rival (moneda, dado, piedra-papel-tijera) se ve girar acá aunque el panel de juegos esté cerrado. */}
+      <TossOverlay snapshot={snapshot} myName={myName} />
+    </>
   )
 }

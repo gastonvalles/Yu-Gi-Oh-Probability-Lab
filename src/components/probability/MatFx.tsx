@@ -118,17 +118,18 @@ export function LandingBurst({ tone, flies }: { tone: LandingTone; flies: boolea
 
 /**
  * El cartel de una fase nueva (y del turno, si empieza otro): una banda violeta que cruza el campo y se apaga en los bordes, con el nombre de la
- * fase en grande y el turno arriba en verde. Nada más: las seis fases ya están en los botones de la mesa.
+ * fase en grande y el turno arriba en verde. Nada más: las seis fases ya están en los botones de la mesa. En un duelo, `label` cambia la frase grande
+ * ("Tu turno") y `who` dice de quién es la fase cuando no es tuya.
  */
-export function PhaseBanner({ phase, turn, className }: { phase: MatPhase; turn: number | null; className?: string }) {
-  const name = PHASES.find((entry) => entry.id === phase)?.name ?? phase
+export function PhaseBanner({ phase, turn, who, label, className }: { phase: MatPhase; turn: number | null; who?: string; label?: string; className?: string }) {
+  const name = label ?? PHASES.find((entry) => entry.id === phase)?.name ?? phase
 
   return (
     <div aria-hidden="true" data-fx="banner" className={cx('pointer-events-none grid place-items-center motion-reduce:hidden', className)}>
       <div className="relative grid w-full animate-fx-banner justify-items-center gap-1.5 bg-[linear-gradient(90deg,transparent,rgb(var(--primary-rgb)/0.5)_16%,rgb(var(--background-rgb)/0.92)_50%,rgb(var(--primary-rgb)/0.5)_84%,transparent)] py-3.5 shadow-[0_0_34px_rgb(var(--primary-rgb)/0.45)] min-[1101px]:py-5">
         <span className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgb(var(--accent-rgb))_22%,rgb(var(--accent-rgb))_78%,transparent)] shadow-[0_0_10px_rgb(var(--accent-rgb)/0.8)]" />
         <span className="absolute inset-x-0 bottom-0 h-px bg-[linear-gradient(90deg,transparent,rgb(var(--accent-rgb))_22%,rgb(var(--accent-rgb))_78%,transparent)] shadow-[0_0_10px_rgb(var(--accent-rgb)/0.8)]" />
-        {turn !== null ? <span className="animate-fx-banner-text text-micro font-bold uppercase tracking-[0.28em] text-accent">{t('practice.mat.turn', { turn })}</span> : null}
+        {turn !== null ? <span className="animate-fx-banner-text text-micro font-bold uppercase tracking-[0.28em] text-accent">{t('practice.mat.turn', { turn })}</span> : who ? <span className="animate-fx-banner-text text-micro font-bold uppercase tracking-[0.28em] text-accent">{who}</span> : null}
         <span className="animate-fx-banner-text text-title font-extrabold uppercase leading-none tracking-[0.22em] text-foreground [text-shadow:0_0_24px_rgb(var(--primary-hover-rgb))] min-[1101px]:text-stat">{name}</span>
       </div>
     </div>

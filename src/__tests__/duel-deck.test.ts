@@ -101,6 +101,7 @@ describe('el robo del turno en un duelo', () => {
     expect(duel.turn).toBe(2)
     expect(matReducer(duel, { type: 'draw', count: 1 }).hand).toHaveLength(6)
   })
+
 })
 
 describe('rendirse y la revancha entre dos jugadores', () => {

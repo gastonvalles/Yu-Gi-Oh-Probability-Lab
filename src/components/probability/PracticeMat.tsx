@@ -54,6 +54,7 @@ import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
+import { AttackFx, measureStrike, type Strike, type StrikeSpec } from './AttackFx'
 import { CardBack, CardMenu, PILE_TITLES, PileViewer, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { FX_CARD, FxFrame, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, TargetMark, fxVars } from './MatFx'
 import { cardIdOfDrawId } from './practice'
@@ -87,8 +88,18 @@ export interface DuelMatLink {
   attackTargets: ReadonlyArray<{ id: string; zone: 'mz' | 'emz'; index: number; faceDown: boolean }>
   /** id que dio el rival → carta real, de lo que ya mostró: así se nombra a quien se ataca. */
   foreignKnown: Readonly<Record<string, string>>
-  /** Lo que el rival acaba de hacer y se avisa grande en el centro (su ataque); cambiar `key` lo vuelve a mostrar. */
-  announcement?: { key: number; art: string | null; name: string; caption: string }
+  /** Los botones propios del duelo (dados y chat) y tus puntos de vida: van abajo, en la barra del pulgar, junto a deshacer, la ficha y las fases. */
+  tools: ReactNode
+  life: ReactNode
+  /** El cartel de lo que el rival avanzó (una fase suya, o que empieza tu turno); cambiar `key` lo vuelve a mostrar. */
+  notice?: { key: number; phase: MatPhase; who?: string; label?: string }
+  /** El texto del cartel cuando terminás tu turno y pasa al rival ("Turno de Ana"). */
+  rivalTurnLabel: string
+  /**
+   * Lo que el rival acaba de hacer y se avisa (su ataque): un cartel arriba con `caption` y la espada de su monstruo (`attackerId`, el id que él le dio) a tu carta
+   * (`targetId`, tu id real) o, sin `targetId`, a tu barra de vida; cambiar `key` lo vuelve a mostrar.
+   */
+  announcement?: { key: number; caption: string; attackerId: string; targetId?: string }
 }
 
 interface PracticeMatProps {
@@ -234,6 +245,9 @@ function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
 }
 
+/** Lo que hay que dibujar de un ataque: sus puntos en pantalla; nada si se pidió reducir el movimiento o no hay de dónde salir. */
+const strikeOf = (spec: StrikeSpec): Strike | null => (prefersReducedMotion() ? null : measureStrike(spec))
+
 export function PracticeMat({
   session,
   state,
@@ -359,6 +373,9 @@ export function PracticeMat({
   // Las cartas grandes del centro (activar, mostrar, declarar y, al reproducir un combo, lo que mueve cada paso) y el marco de la mano cuando recibe una carta.
   const [stage, setStage] = useState<{ ids: string[]; kind: SpotlightKind | ShowcaseKind; flip?: true; step: number; key: number } | null>(null)
   const [handFlash, setHandFlash] = useState<number | null>(null)
+  // El ataque que cruza la mesa (el propio o el del rival): se mide al empezar y `AttackFx` se saca solo al terminar.
+  const [strike, setStrike] = useState<Strike | null>(null)
+  const sectionRef = useRef<HTMLElement | null>(null)
 
   useEscapeKey(() => setPicking(null), picking !== null)
   useEscapeKey(() => setCounterMode(null), counterMode !== null)
@@ -409,6 +426,7 @@ export function PracticeMat({
       setLanding(null)
       setBanner(null)
       setHandFlash(null)
+      setStrike(null)
       return
     }
 
@@ -420,10 +438,14 @@ export function PracticeMat({
     const key = Date.now()
 
     if (effects.spotlight) setFlash({ ...effects.spotlight, key })
-    // Activar, mostrar y declarar agrandan la carta siempre; marcar un objetivo, nunca; y reproduciendo un combo, cada paso que mueve cartas las muestra.
+    // Atacar no agranda la carta: la espada va del atacante a su objetivo (a una carta del rival, o directo a su barra de vida; sin rival, al borde de la mesa).
+    if (action.type === 'attack') {
+      setStrike(strikeOf({ from: `[data-card-id="${action.id}"]`, to: action.target === undefined ? undefined : `[data-rival-card-id="${action.target}"]`, direct: 'theirs', bounds: sectionRef.current }))
+    }
+    // Activar, mostrar y declarar agrandan la carta siempre; marcar un objetivo o atacar, nunca; y reproduciendo un combo, cada paso que mueve cartas las muestra.
     // Un paso que no muestra nada saca las cartas del paso anterior (que seguirían con la línea de éste).
     setStage(
-      effects.spotlight && effects.spotlight.kind !== 'target'
+      effects.spotlight && effects.spotlight.kind !== 'target' && effects.spotlight.kind !== 'attack'
         ? { ids: [effects.spotlight.id], kind: effects.spotlight.kind, step: session.cursor, key }
         : effects.showcase && session.replay
           ? { ...effects.showcase, step: session.cursor, key }
@@ -433,6 +455,15 @@ export function PracticeMat({
     if (effects.banner) setBanner({ ...effects.banner, key })
     if (effects.hand) setHandFlash(key)
   }, [session.cursor, session.actions, session.initial, session.replay])
+
+  // El ataque del rival: la espada sale de su monstruo hacia la carta tuya atacada, o hacia tu barra de vida si es directo. `announcement` es el mismo objeto hasta que llega otro ataque.
+  const announcement = duel?.announcement
+
+  useEffect(() => {
+    if (announcement) {
+      setStrike(strikeOf({ from: `[data-rival-card-id="${announcement.attackerId}"]`, to: announcement.targetId === undefined ? undefined : `[data-card-id="${announcement.targetId}"]`, direct: 'mine', bounds: sectionRef.current }))
+    }
+  }, [announcement])
 
   // La mano: el orden que le dio el jugador, y el reparto de a una carta desde el mazo (que se baraja con cada mano nueva).
   const [handOrder, setHandOrder] = useState<string[]>([])
@@ -498,7 +529,6 @@ export function PracticeMat({
   const isDealt = dealt >= handTotal
 
   // Las cartas vuelan entre zonas con cada jugada (y al reproducir un combo).
-  const sectionRef = useRef<HTMLElement | null>(null)
   const artById = useCallback((id: string) => artOf(cardOf(id)), [cardOf])
   // Las cartas se miden de nuevo cuando todo quedó quieto (ver `useCardFlights`): si no, el reparto, una carta robada o buscada y la mano reacomodada
   // dejaban la medida de cuando todavía volaban, y la próxima jugada arrancaba de ahí (desde el mazo, con una carta gigante y estirada).
@@ -1112,6 +1142,33 @@ export function PracticeMat({
   // Eligiendo (una zona, Sacrificios, materiales o a quién ponerle contadores) las fases y el replay se van y el estado pide lo que falta.
   const choosing = picking !== null || counterMode !== null
 
+  // Deshacer, la ficha (o los contadores) y la lista de pasos: arriba en la práctica; en un duelo, abajo, donde llega el pulgar.
+  const undoButton = (
+    <IconButton tone="flat" size="sm" aria-label={t('practice.mat.undo')} title={t('practice.mat.undo')} disabled={session.cursor === 0} className="disabled:opacity-35" onClick={() => { setAutoplay(false); onUndo() }}>
+      <Icon name="undo" />
+    </IconButton>
+  )
+  // Ficha: se toca para elegir la posición (y la zona) o se arrastra a una zona de monstruo.
+  const tokenButton = (
+    <IconButton
+      tone="flat"
+      size="sm"
+      aria-label={t('practice.token.name')}
+      title={t('practice.token.create')}
+      className="touch-none select-none [-webkit-touch-callout:none]"
+      {...bind(tokenSource)}
+      onKeyDown={(event) => activate(event, () => handleTap(tokenSource, event.currentTarget.getBoundingClientRect()))}
+      onContextMenu={(event) => event.preventDefault()}
+    >
+      <Icon name="plus" />
+    </IconButton>
+  )
+  const stepsButton = (
+    <IconButton tone="flat" size="sm" aria-label={t('practice.mat.stepsAndCombos')} title={t('practice.mat.stepsAndCombos')} className="min-[1101px]:hidden" onClick={() => setPanelOpen(true)}>
+      <Icon name="list" />
+    </IconButton>
+  )
+
   return (
     <section
       ref={sectionRef}
@@ -1119,45 +1176,29 @@ export function PracticeMat({
       className={cx(
         // `select-none`: un arrastre que arranca entre dos cartas no debe pintar texto seleccionado por toda la mesa.
         // `relative isolate`: las cartas grandes del centro se acomodan sobre la mesa (no sobre la pantalla) y sus capas no se mezclan con las de afuera.
-        'relative isolate grid h-full min-h-0 select-none grid-rows-[auto_minmax(0,1fr)] [background:radial-gradient(120%_60%_at_50%_0%,rgb(var(--primary-rgb)/0.16),transparent_70%),rgb(var(--background-rgb))] min-[1101px]:grid-cols-[minmax(0,1fr)_20rem]',
+        'relative isolate grid h-full min-h-0 select-none grid-rows-[auto_minmax(0,1fr)] [background:radial-gradient(120%_60%_at_50%_0%,rgb(var(--primary-rgb)/0.16),transparent_70%),rgb(var(--background-rgb))]',
+        // Los pasos y combos son de la práctica: en un duelo la mesa ocupa todo el ancho.
+        !duel && 'min-[1101px]:grid-cols-[minmax(0,1fr)_20rem]',
         PRACTICE_PALETTE,
       )}
     >
-      {/* Barra: el turno a la izquierda y, a la derecha, nueva mano, deshacer, guardar, ficha y (en el celu) el panel. */}
-      <div className="col-start-1 row-start-1 flex items-center gap-1 px-2 pt-2 min-[1101px]:px-4 min-[1101px]:pt-3" role="toolbar" aria-label={t('practice.mat.name')}>
-        <span className="whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted" aria-label={t('practice.mat.turn', { turn: state.turn })}>
-          {t('practice.mat.turn', { turn: state.turn })}
-        </span>
-        {duel ? null : (
+      {/* Barra (práctica): el turno a la izquierda y, a la derecha, nueva mano, deshacer, guardar, ficha y (en el celu) el panel. En un duelo estos botones van abajo, junto a las fases (ver `dock`). */}
+      {duel ? null : (
+        <div className="col-start-1 row-start-1 flex items-center gap-1 px-2 pt-2 min-[1101px]:px-4 min-[1101px]:pt-3" role="toolbar" aria-label={t('practice.mat.name')}>
+          <span className="whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted" aria-label={t('practice.mat.turn', { turn: state.turn })}>
+            {t('practice.mat.turn', { turn: state.turn })}
+          </span>
           <IconButton tone="flat" size="sm" aria-label={t('practice.mat.newHand')} title={t('practice.mat.newHand')} className="ml-auto" onClick={onNewHand}>
             <Icon name="refresh" />
           </IconButton>
-        )}
-        <IconButton tone="flat" size="sm" aria-label={t('practice.mat.undo')} title={t('practice.mat.undo')} disabled={session.cursor === 0} className={cx('disabled:opacity-35', duel && 'ml-auto')} onClick={() => { setAutoplay(false); onUndo() }}>
-          <Icon name="undo" />
-        </IconButton>
-        {duel ? null : (
+          {undoButton}
           <IconButton tone="flat" size="sm" aria-label={t('practice.mat.saveCombo')} title={t('practice.mat.saveCombo')} disabled={session.cursor === 0} className="disabled:opacity-35" onClick={() => setSaving(true)}>
             <Icon name="save" />
           </IconButton>
-        )}
-        {/* Ficha: se toca para elegir la posición (y la zona) o se arrastra a una zona de monstruo. */}
-        <IconButton
-          tone="flat"
-          size="sm"
-          aria-label={t('practice.token.name')}
-          title={t('practice.token.create')}
-          className="touch-none select-none [-webkit-touch-callout:none]"
-          {...bind(tokenSource)}
-          onKeyDown={(event) => activate(event, () => handleTap(tokenSource, event.currentTarget.getBoundingClientRect()))}
-          onContextMenu={(event) => event.preventDefault()}
-        >
-          <Icon name="plus" />
-        </IconButton>
-        <IconButton tone="flat" size="sm" aria-label={t('practice.mat.stepsAndCombos')} title={t('practice.mat.stepsAndCombos')} className="min-[1101px]:hidden" onClick={() => setPanelOpen(true)}>
-          <Icon name="list" />
-        </IconButton>
-      </div>
+          {tokenButton}
+          {stepsButton}
+        </div>
+      )}
 
       <div className="col-start-1 row-start-2 flex min-h-0 flex-col gap-2 overflow-y-auto overflow-x-hidden px-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] min-[1101px]:px-4 min-[1101px]:pb-4 min-[1101px]:pt-2">
         {duel?.header}
@@ -1169,15 +1210,15 @@ export function PracticeMat({
           className="relative my-auto grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]"
           aria-label={t('practice.mat.field')}
           // En un duelo, las áreas de los dos campos (el estilo en línea gana a la clase de las áreas de uno solo); y en escritorio las cartas se achican hasta que las cinco filas y la mano entran en la pantalla.
-          style={duel ? ({ gridTemplateAreas: duel.areas, '--cell': 'max(3.5rem, min(8rem, calc((100dvh - 33.5rem) / 5.2)))' } as CSSProperties) : undefined}
+          style={duel ? ({ gridTemplateAreas: duel.areas, '--cell': 'max(3.5rem, min(8rem, calc((100dvh - 19.5rem) / 5)))' } as CSSProperties) : undefined}
         >
           {/* La mascota del duelo, una sola: en escritorio, en la esquina libre de arriba a la izquierda del campo; en el celular, parada sobre esa esquina, detrás de lo demás. */}
           {duel ? duel.opponent : <DuelMascot className="absolute bottom-full left-0 -z-10 mb-1 size-[4.5rem] min-[1101px]:static min-[1101px]:z-0 min-[1101px]:mb-0 min-[1101px]:size-[5.25rem] min-[1101px]:self-end min-[1101px]:justify-self-center min-[1101px]:[grid-area:1/1]" />}
           {cell('field', 0, 'fld')}
           {cell('emz', 0, 'emz1')}
           {cell('emz', 1, 'emz2')}
-          {/* Las seis fases, de a dos entre las zonas, como en DuelingBook: la actual encendida; tocar otra cambia de fase. En el celular van abajo, en la barra de pasos. */}
-          {isDesktop
+          {/* Las seis fases, de a dos entre las zonas, como en DuelingBook: la actual encendida; tocar otra cambia de fase. En el celular de la práctica van abajo, en la barra de pasos; en un duelo, entre las zonas también en el celular (abajo queda el lugar para las vidas y los botones, y la mesa entra sin scroll). */}
+          {isDesktop || duel
             ? [0, 2, 4].map((start, index) => (
                 <div key={start} role="group" aria-label={index === 0 ? t('practice.mat.phases') : undefined} className="grid grid-cols-2 gap-0.5 self-center min-[1101px]:gap-1" style={{ gridArea: `p${index + 1}` }}>
                   {PHASES.slice(start, start + 2).map((phase) => (
@@ -1219,7 +1260,18 @@ export function PracticeMat({
           {pileCell('banished', 'ban')}
 
           {/* Cambio de fase: el cartel se asoma en el medio del campo y se va agrandándose. */}
-          {banner ? <PhaseBanner key={banner.key} phase={banner.phase} turn={banner.turn} className="absolute inset-0 z-30" /> : null}
+          {banner ? (
+            <PhaseBanner
+              key={banner.key}
+              phase={banner.phase}
+              turn={duel ? null : banner.turn}
+              // En un duelo terminar el turno es llegar a la End Phase: el cartel dice que ahora juega el rival.
+              who={duel && banner.phase === 'end' ? PHASES.find((entry) => entry.id === 'end')?.name : undefined}
+              label={duel && banner.phase === 'end' ? duel.rivalTurnLabel : undefined}
+              className="absolute inset-0 z-30"
+            />
+          ) : null}
+          {duel?.notice ? <PhaseBanner key={duel.notice.key} phase={duel.notice.phase} turn={null} who={duel.notice.who} label={duel.notice.label} className="absolute inset-0 z-30" /> : null}
         </div>
 
         {/* Abajo del todo, como en la mesa real: la mano en abanico. Las salidas y problemas flotan sobre la mano en el celu, y van en el panel lateral en escritorio. */}
@@ -1230,7 +1282,7 @@ export function PracticeMat({
           <PracticeHand
             cards={handCards}
             sizeSlots={Math.max(session.initial.hand.length, 1)}
-            maxCardWidth={isDesktop ? 124 : 110}
+            maxCardWidth={isDesktop ? (duel ? 100 : 124) : duel ? 96 : 110}
             fanDegrees={2.2}
             highlighted={highlighted}
             highlightKind={highlightKind}
@@ -1282,8 +1334,22 @@ export function PracticeMat({
 
         {/* Abajo: en el celular las seis fases, solas y centradas (Deshacer está arriba y los pasos en la lista, así que ni Anterior / Siguiente ni la última jugada hacen falta). En escritorio las fases están entre las zonas.
             Eligiendo (Sacrificios, materiales) las fases se van para que entre lo que hay que tocar: la barra no cambia de alto, el campo no se mueve. */}
-        <div className="sticky bottom-0 z-30 flex min-h-9 items-center justify-center gap-2 max-[1100px]:bg-background/85 max-[1100px]:backdrop-blur-sm">
-          {!isDesktop && !choosing ? (
+        {/* En escritorio, en un duelo, esta barra sube sobre la franja de abajo de la mano (sólo tiene algo en las esquinas): la mano y el campo ganan ese alto, y el medio no ataja toques. */}
+        <div className={cx('sticky bottom-0 z-30 grid gap-1 max-[1100px]:bg-background/85 max-[1100px]:backdrop-blur-sm', duel && 'min-[1101px]:pointer-events-none min-[1101px]:-mt-11')}>
+          {/* Duelo: una sola fila abajo con tus vidas y los botones que se tocan seguido (deshacer, la ficha, los dados y el chat). Celular: las vidas a la izquierda y los botones a la derecha (el pulgar de quien juega
+              con la derecha). Escritorio: los botones a la izquierda y tus vidas en la esquina opuesta a las del rival. */}
+          {duel && !choosing ? (
+            <div role="toolbar" aria-label={t('practice.mat.name')} className="flex items-center justify-between max-[1100px]:flex-row-reverse">
+              <span className="pointer-events-auto flex items-center">
+                {undoButton}
+                {tokenButton}
+                {duel.tools}
+              </span>
+              <span className="pointer-events-auto">{duel.life}</span>
+            </div>
+          ) : null}
+          <div className={cx('flex items-center justify-center gap-2', (choosing || (!duel && !isDesktop)) && 'min-h-9')}>
+          {!isDesktop && !duel && !choosing ? (
             <div role="group" aria-label={t('practice.mat.phases')} className="grid w-[13.5rem] flex-none grid-cols-6 gap-1">
               {PHASES.map((phase) => (
                 <PhaseButton key={phase.id} short={phase.short} name={phase.name} active={state.phase === phase.id} onPick={() => play({ type: 'phase', phase: phase.id, ...(duel ? { skipDraw: true as const } : {}) })} />
@@ -1312,18 +1378,23 @@ export function PracticeMat({
             ) : null}
             {!choosing ? <span className="min-w-0 flex-1 truncate">{session.cursor === 0 ? (session.actions.length > 0 ? t('practice.mat.startingHand') : t('practice.mat.hint')) : steps[session.cursor - 1]}</span> : null}
           </div>
+          </div>
         </div>
       </div>
 
       {/* Panel lateral (escritorio): arriba los pasos y combos y abajo, a la altura de la mano, las salidas y problemas; la explicación del chip tocado crece hacia arriba sobre la lista. El detalle de una carta se abre desde su menú. */}
-      <aside className="hidden min-h-0 border-l border-border-subtle px-3 pb-3 pt-3 min-[1101px]:col-start-2 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col min-[1101px]:gap-3" aria-label={t('practice.mat.stepsAndCombos')}>
-        {panel}
-        {footer && isDealt && isDesktop ? <div className="flex-none animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
-      </aside>
+      {duel ? null : (
+        <>
+          <aside className="hidden min-h-0 border-l border-border-subtle px-3 pb-3 pt-3 min-[1101px]:col-start-2 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:flex min-[1101px]:flex-col min-[1101px]:gap-3" aria-label={t('practice.mat.stepsAndCombos')}>
+            {panel}
+            {footer && isDealt && isDesktop ? <div className="flex-none animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
+          </aside>
 
-      <Modal isOpen={panelOpen} onClose={() => setPanelOpen(false)} size="md" kicker={t('practice.mat.name')} title={t('practice.mat.stepsAndCombos')}>
-        {panel}
-      </Modal>
+          <Modal isOpen={panelOpen} onClose={() => setPanelOpen(false)} size="md" kicker={t('practice.mat.name')} title={t('practice.mat.stepsAndCombos')}>
+            {panel}
+          </Modal>
+        </>
+      )}
 
       <CardMenu
         anchor={menu?.rect ?? null}
@@ -1349,7 +1420,7 @@ export function PracticeMat({
 
       {inspected ? <CardDetailOverlay key={inspected.id} name={cardOf(inspected.id).name} card={cardOf(inspected.id).apiCard} origin={inspected.rect} onClose={() => setInspected(null)} /> : null}
 
-      {/* Activar, mostrar o declarar (y, al reproducir un combo, lo que mueve cada paso): las cartas aparecen grandes en el centro de la mesa, con su marco de color, su nombre y lo que pasó arriba, y se desvanecen. Marcar un objetivo no las agranda: ahí sólo cae la mira. En escritorio el centro es el del campo, sin el panel lateral (20 rem, como en la grilla de arriba). */}
+      {/* Activar, mostrar o declarar (y, al reproducir un combo, lo que mueve cada paso): las cartas aparecen grandes en el centro de la mesa, con su marco de color, su nombre y lo que pasó arriba, y se desvanecen. Marcar un objetivo o atacar no las agranda: ahí sólo cae la mira o cruza la espada. En escritorio el centro es el del campo, sin el panel lateral (20 rem, como en la grilla de arriba). */}
       {stage ? (
         <Spotlight
           key={stage.key}
@@ -1357,19 +1428,23 @@ export function PracticeMat({
           cards={stage.ids.map((id) => ({ id, name: cardOf(id).name, art: artOf(cardOf(id)) }))}
           caption={steps[stage.step - 1] ?? null}
           flip={stage.flip}
-          className="absolute inset-y-0 left-0 right-0 z-[120] min-[1101px]:right-[20rem]"
+          className={cx('absolute inset-y-0 left-0 right-0 z-[120]', !duel && 'min-[1101px]:right-[20rem]')}
         />
       ) : null}
 
-      {/* El ataque del rival en un duelo: su monstruo grande en el centro, con quién ataca a quién arriba (se va solo, como los otros avisos). */}
-      {duel?.announcement ? (
-        <Spotlight
-          key={duel.announcement.key}
-          kind="attack"
-          cards={[{ id: `rival-${duel.announcement.key}`, name: duel.announcement.name, art: duel.announcement.art }]}
-          caption={duel.announcement.caption}
-          className="absolute inset-y-0 left-0 right-0 z-[120] min-[1101px]:right-[20rem]"
-        />
+      {/* Un ataque (el propio o el del rival): la espada cruza la mesa desde el atacante hasta su objetivo y se va sola. */}
+      {strike ? <AttackFx key={strike.key} strike={strike} onDone={() => setStrike(null)} /> : null}
+
+      {/* El ataque del rival en un duelo: quién ataca a quién, en un cartelito arriba (se va solo, como los otros avisos). */}
+      {announcement ? (
+        <span
+          key={announcement.key}
+          role="status"
+          className="fixed left-1/2 top-[4.5rem] z-[120] w-max max-w-[92vw] -translate-x-1/2 truncate rounded-full border-2 border-[color:rgb(var(--fx-rgb)/0.9)] bg-background/90 px-3.5 py-1 text-micro font-bold text-foreground shadow-[0_0_18px_rgb(var(--fx-rgb)/0.5)]"
+          style={fxVars('red')}
+        >
+          {announcement.caption}
+        </span>
       ) : null}
 
       {drag

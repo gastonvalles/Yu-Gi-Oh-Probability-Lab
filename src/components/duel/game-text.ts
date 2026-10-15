@@ -1,8 +1,8 @@
-import type { GameEntry, RpsPick, SignalId } from '../../app/duel-games'
+import type { GameEntry, RpsPick, TossMethod } from '../../app/duel-games'
 import type { Duelist } from '../../app/life-calculator'
 import { t } from '../../i18n'
 
-/** Los textos de los juegos de la mesa: cada elección y cada señal, y cómo se cuenta cada cosa en el registro. */
+/** Los textos de los juegos de la mesa: cada elección, y cómo se cuenta cada cosa en el registro. */
 
 const RPS_NAME: Record<RpsPick, () => string> = {
   rock: () => t('duel.games.rps.rock'),
@@ -10,15 +10,14 @@ const RPS_NAME: Record<RpsPick, () => string> = {
   scissors: () => t('duel.games.rps.scissors'),
 }
 
-const SIGNAL_TEXT: Record<SignalId, () => string> = {
-  think: () => t('duel.games.signal.think'),
-  respond: () => t('duel.games.signal.respond'),
-  pass: () => t('duel.games.signal.pass'),
-  thanks: () => t('duel.games.signal.thanks'),
+const METHOD_NAME: Record<TossMethod, () => string> = {
+  coin: () => t('duel.opening.method.coin'),
+  die: () => t('duel.opening.method.die'),
+  rps: () => t('duel.opening.method.rps'),
 }
 
 export const rpsName = (pick: RpsPick) => RPS_NAME[pick]()
-export const signalText = (signal: SignalId) => SIGNAL_TEXT[signal]()
+export const methodName = (method: TossMethod) => METHOD_NAME[method]()
 
 /** Cómo salió una ronda para mí. */
 export const outcomeText = (outcome: 'win' | 'lose' | 'draw') => t(outcome === 'win' ? 'duel.games.rps.win' : outcome === 'lose' ? 'duel.games.rps.lose' : 'duel.games.rps.draw')
@@ -41,8 +40,8 @@ export function gameText(entry: GameEntry, nameOf: (player: Duelist) => string):
       return t('duel.games.log.rps', { name })
     case 'order':
       return t('duel.games.log.order', { name: nameOf(game.first) })
-    case 'signal':
-      return t('duel.games.log.signal', { name, signal: signalText(game.signal) })
+    case 'toss':
+      return t('duel.games.log.toss', { name, method: methodName(game.method).toLowerCase() })
     case 'concede':
       return t('duel.games.log.concede', { name })
     case 'rematch':

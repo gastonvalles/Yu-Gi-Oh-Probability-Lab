@@ -101,6 +101,18 @@ describe('la mesa del duelo', () => {
     expect(rotated('Zona de magia y trampa 2')).toBe(false)
   })
 
+  it('cada carta lleva el id con el que la busca la espada de un ataque: la propia por el suyo y la del rival por el que él le dio', () => {
+    const mine = play({ type: 'place', id: 'card-1000-1', zone: 'mz', index: 0, pos: 'atk' })
+    // El id que le dio el rival a su carta (en un duelo es opaco: `c3`) es el que lleva la zona; acá, como el resto de la prueba, uno de las cartas armadas.
+    const theirs = play({ type: 'place', id: 'card-1001-1', zone: 'mz', index: 2, pos: 'atk' })
+    render(<DuelTable mine={side(mine)} theirs={side(theirs, ['card-1001-1'])} />)
+
+    expect(zone('Zona de monstruo 1').querySelector('[data-card-id="card-1000-1"]')).not.toBeNull()
+    expect(zone('Zona de monstruo 1').querySelector('[data-rival-card-id]')).toBeNull()
+    expect(zone('Rival, Zona de monstruo 3').querySelector('[data-rival-card-id="card-1001-1"]')).not.toBeNull()
+    expect(zone('Rival, Zona de monstruo 3').querySelector('[data-card-id]')).toBeNull()
+  })
+
   it('las pilas muestran su cantidad, con la carta de arriba en el cementerio y el dorso en el Banish boca abajo', () => {
     const cards = play(
       { type: 'move', id: 'card-1000-1', to: 'gy' },

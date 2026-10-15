@@ -1257,6 +1257,36 @@ describe('la mesa de práctica', () => {
     expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' })).toBeInTheDocument()
   })
 
+  it('atacar no agranda la carta en el centro: la espada cruza la mesa desde el atacante, y pidiendo menos movimiento no se dibuja', () => {
+    render(<Harness />)
+
+    tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Battle Phase' }))
+    const attackDirectly = () => {
+      tap(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Ataque directo' }))
+    }
+
+    // Pidiendo menos movimiento (como en el resto de estas pruebas): el ataque se anota y la carta destella en su lugar, pero no hay espada ni carta grande.
+    attackDirectly()
+    expect(within(status()).getByText('Atacás directo con Ash Blossom')).toBeInTheDocument()
+    expect(document.querySelector('[data-fx="strike"]')).toBeNull()
+    expect(document.querySelector('[data-activation]')).toBeNull()
+
+    // Aceptando el movimiento: la espada sale del atacante; en la práctica no hay rival, así que el directo llega al borde de arriba de la mesa. Y sigue sin carta grande.
+    window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    attackDirectly()
+    expect(document.querySelector('[data-fx="strike"]')).not.toBeNull()
+    expect(document.querySelector('[data-kind="attack"]')).toBeNull()
+    expect(document.querySelector('[data-activation]')).toBeNull()
+
+    // Deshacer corta la espada que estaba en curso.
+    fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
+    expect(document.querySelector('[data-fx="strike"]')).toBeNull()
+  })
+
   describe('contadores', () => {
     const plusButton = () => screen.getByRole('button', { name: 'Ficha' })
     const rows = () => within(within(screen.getByRole('complementary', { name: 'Pasos y combos' })).getByRole('list', { name: 'Jugadas' })).getAllByRole('button')

@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { MAX_GAME_LOG, RPS_PICKS, addGame, rpsOutcome, type RpsPick } from '../app/duel-games'
 import { encodeMessage, parseMessage } from '../app/duel-protocol'
 import { createDuel } from '../app/duel-session'
-import { whoseTurn } from '../app/duel-turn'
-import { createMatState } from '../app/practice-mat'
+import { completedTurns, duelTurnNumber, whoseTurn } from '../app/duel-turn'
+import { createMatState, type MatState } from '../app/practice-mat'
 import { createMemoryRoom } from './support/memory-room'
 
 describe('piedra, papel o tijera', () => {
@@ -30,7 +30,7 @@ describe('piedra, papel o tijera', () => {
     let log = [] as ReturnType<typeof addGame>
 
     for (let id = 1; id <= MAX_GAME_LOG + 10; id += 1) {
-      log = addGame(log, { id, from: 0, game: { kind: 'signal', signal: 'pass' } })
+      log = addGame(log, { id, from: 0, game: { kind: 'rematch' } })
     }
 
     expect(log).toHaveLength(MAX_GAME_LOG)
@@ -48,7 +48,8 @@ describe('los juegos por la red', () => {
     { kind: 'rps', pick: 'paper' },
     { kind: 'rps', pick: null },
     { kind: 'order', first: 1 },
-    { kind: 'signal', signal: 'thanks' },
+    { kind: 'coin', face: 1, call: 0 },
+    { kind: 'toss', method: 'die' },
   ]
   const invalid = [
     { kind: 'coin', face: 2 },
@@ -59,7 +60,9 @@ describe('los juegos por la red', () => {
     { kind: 'rps', pick: 'lizard' },
     { kind: 'rps' },
     { kind: 'order', first: 2 },
-    { kind: 'signal', signal: 'insulto' },
+    { kind: 'coin', face: 1, call: 2 },
+    { kind: 'toss', method: 'dados' },
+    { kind: 'toss' },
     { kind: 'sorteo' },
     'coin',
     null,
@@ -90,6 +93,39 @@ function setup() {
   room.flush()
   return { room, hostEnd, guestEnd, host, guest, next }
 }
+
+describe('de quién es el turno', () => {
+  const at = (turn: number, phase: MatState['phase']): MatState => ({ ...hostTable, turn, phase })
+
+  it('terminar el turno es llegar a la End Phase: apenas lo hace uno, le toca al otro, sin botón ni cambiar de turno', () => {
+    // Empieza Ana (anfitriona): juega mientras ninguno haya terminado un turno.
+    expect(whoseTurn(0, at(1, 'main1'), at(1, 'draw'), 0)).toBe('mine')
+    expect(whoseTurn(1, at(1, 'draw'), at(1, 'main1'), 0)).toBe('theirs')
+
+    // Ana llega a su End Phase: ya le toca a Beto, aunque Ana no haya vuelto a su Draw Phase.
+    expect(whoseTurn(0, at(1, 'end'), at(1, 'draw'), 0)).toBe('theirs')
+    expect(whoseTurn(1, at(1, 'draw'), at(1, 'end'), 0)).toBe('mine')
+
+    // Ana vuelve a la Draw Phase (su turno 2) mientras Beto juega: sigue siendo de Beto.
+    expect(whoseTurn(1, at(1, 'main2'), at(2, 'draw'), 0)).toBe('mine')
+
+    // Beto también llega a su End Phase: otra vez Ana.
+    expect(whoseTurn(0, at(2, 'draw'), at(1, 'end'), 0)).toBe('mine')
+    // Con quien empieza al revés, es al revés.
+    expect(whoseTurn(0, at(1, 'draw'), at(1, 'draw'), 1)).toBe('theirs')
+  })
+
+  it('cuenta los turnos que terminó cada uno y en qué turno del duelo van', () => {
+    expect(completedTurns(null)).toBe(0)
+    expect(completedTurns(at(1, 'draw'))).toBe(0)
+    expect(completedTurns(at(1, 'end'))).toBe(1)
+    expect(completedTurns(at(2, 'draw'))).toBe(1)
+    expect(completedTurns(at(2, 'end'))).toBe(2)
+    expect(duelTurnNumber(at(1, 'draw'), at(1, 'draw'))).toBe(1)
+    expect(duelTurnNumber(at(1, 'end'), at(1, 'draw'))).toBe(2)
+    expect(duelTurnNumber(at(2, 'main1'), at(1, 'end'))).toBe(3)
+  })
+})
 
 describe('moneda y dado entre dos jugadores', () => {
   it('quien tira elige el resultado y los dos lo ven igual, con quién lo tiró', () => {
@@ -299,12 +335,4 @@ describe('quién empieza', () => {
     expect(whoseTurn(0, hostTable, { ...guestTable, turn: 2 }, 1)).toBe('mine')
   })
 
-  it('las señales llegan con quién las mandó', () => {
-    const { room, host, guest } = setup()
-
-    host.signal('respond')
-    room.flush()
-
-    expect(guest.getSnapshot().games.map(({ from, game }) => [from, game])).toEqual([[0, { kind: 'signal', signal: 'respond' }]])
-  })
 })

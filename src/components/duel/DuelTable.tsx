@@ -100,7 +100,7 @@ export function DuelTable({ mine, theirs, show = 'both', turn = 'mine', classNam
  */
 export function TheirHand({ count }: { count: number }) {
   return (
-    <div role="img" aria-label={t('duel.hand.theirs', { count })} className="flex h-9 shrink-0 justify-center min-[1101px]:h-14">
+    <div role="img" aria-label={t('duel.hand.theirs', { count })} className="flex h-9 shrink-0 justify-center min-[1101px]:h-11">
       {Array.from({ length: Math.min(count, 12) }, (_, index) => (
         <span key={index} className={cx('-ml-3 block aspect-[421/614] h-full overflow-hidden first:ml-0', CARD_SHADOW)}>
           <CardBack className="h-full" />
@@ -195,6 +195,8 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
   return (
     <div
       data-card-id={owner === 'mine' ? placed.id : undefined}
+      // La carta del rival, por el id (opaco) que él le dio: de ahí sale y a ahí llega la espada de un ataque.
+      data-rival-card-id={owner === 'theirs' ? placed.id : undefined}
       className={cx('absolute inset-x-0 top-0 mx-auto aspect-[421/614] overflow-hidden bg-input', CARD_SHADOW, spot === 'field' ? 'w-full' : 'w-[68.57%]', sideways && '[transform:rotate(90deg)]')}
     >
       <span className={cx('block h-full w-full', owner === 'mine' && faceDown && 'brightness-[0.4] saturate-[0.55]')}>

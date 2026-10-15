@@ -26,19 +26,19 @@ import { overline } from '../ui/typography'
 
 type Operator = '-' | '+'
 
-const MAX_DIGITS = 6
+export const MAX_DIGITS = 6
 /** El teclado de Neuron: operaciones en la primera columna, dígitos del 7 al 0 y ceros rápidos. */
-const KEYS = ['clear', '7', '8', '9', '+', '4', '5', '6', '-', '1', '2', '3', '÷2', '0', '00', '000'] as const
-type Key = (typeof KEYS)[number]
+export const KEYS = ['clear', '7', '8', '9', '+', '4', '5', '6', '-', '1', '2', '3', '÷2', '0', '00', '000'] as const
+export type Key = (typeof KEYS)[number]
 /** Últimos cinco minutos de la ronda: el reloj se pone naranja. */
 const ROUND_WARNING_MS = 5 * 60 * 1000
 /** Un color por duelista: el violeta de la app y el azul de las hand traps. */
 const ACCENT: Record<Duelist, string> = { 0: 'text-primary-soft', 1: 'text-(--info-soft)' }
 const BADGE: Record<Duelist, string> = { 0: 'bg-primary/25 text-primary-soft', 1: 'bg-[rgb(var(--info-rgb)/0.25)] text-(--info-soft)' }
 /** Teclas y acciones: grandes, sin retardo táctil y con respuesta inmediata al apretar. */
-const PRESSABLE =
+export const PRESSABLE =
   'touch-manipulation select-none rounded-control font-semibold text-foreground transition-[background-color,transform,color] duration-100 focus-visible:outline-none focus-visible:shadow-focus active:scale-[0.96] disabled:opacity-35 [-webkit-tap-highlight-color:transparent]'
-const KEY = cx(PRESSABLE, 'min-h-12 bg-lavender active:bg-lavender-hover @xl:min-h-10')
+export const KEY = cx(PRESSABLE, 'min-h-12 bg-lavender active:bg-lavender-hover @xl:min-h-10')
 
 /** A quién iba la última operación: al cerrar y volver a abrir la calculadora sigue elegido. */
 let lastSelected: Duelist = 0
