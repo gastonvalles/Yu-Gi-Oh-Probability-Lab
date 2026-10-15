@@ -112,6 +112,8 @@ describe('un espectador que llega con el duelo empezado', () => {
     // Deshacer también se ve (vuelve a la fase de antes de pasar a la Battle Phase).
     game.host.undo()
     game.room.flush()
+    game.guest.answerUndo(true)
+    game.room.flush()
     expect(spectator.getSnapshot().phase).toBe('draw')
 
     // Ana pasa el turno (End Phase y después la Draw Phase): ahora juega Beto.

@@ -116,6 +116,8 @@ export interface DuelMatLink {
   rivalFlights?: { state: MatState; artOf: (id: string) => string | null }
   /** Cuenta las veces que el rival tocó su deck o sumó una carta a su mano: cada vez que sube, su deck y su mano se barajan a la vista. */
   rivalShuffle?: number
+  /** Pedí volver atrás mi jugada y espero que el rival la permita: Deshacer queda apagado hasta que conteste. */
+  undoPending?: boolean
   /** Qué Zonas Extra ocupa el rival, cada una por su número (la 0 suya es la 1 de acá): una que ocupa él no se puede usar, ni la otra si ya hay un monstruo propio en una. */
   rivalEmz: readonly boolean[]
   /** Una capa que tapa toda la mesa (el duelo en pausa): nada de lo de abajo se toca mientras está. */
@@ -1237,7 +1239,7 @@ export function PracticeMat({
 
   // Deshacer, la ficha (o los contadores) y la lista de pasos: arriba en la práctica; en un duelo, abajo, donde llega el pulgar.
   const undoButton = (
-    <IconButton tone="flat" size="sm" aria-label={t('practice.mat.undo')} title={t('practice.mat.undo')} disabled={session.cursor === 0} className="disabled:opacity-35" onClick={() => { setAutoplay(false); onUndo() }}>
+    <IconButton tone="flat" size="sm" aria-label={t('practice.mat.undo')} title={duel?.undoPending ? t('duel.undo.waiting') : t('practice.mat.undo')} disabled={session.cursor === 0 || Boolean(duel?.undoPending)} className="disabled:opacity-35" onClick={() => { setAutoplay(false); onUndo() }}>
       <Icon name="undo" />
     </IconButton>
   )
