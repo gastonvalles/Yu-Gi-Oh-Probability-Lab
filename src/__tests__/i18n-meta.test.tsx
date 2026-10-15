@@ -106,12 +106,12 @@ describe('Comparar builds en inglés', () => {
     const first = render(<ComparisonReport comparison={better} isCurrentDeck={{ A: true, B: false }} onShowCards={() => {}} />)
 
     expect(screen.getByText('New is better')).toBeInTheDocument()
-    for (const text of ['Clean hands', 'What changes in the Main Deck', 'Where the difference shows', 'See how many hands']) {
-      expect(screen.getByText(text)).toBeInTheDocument()
+    for (const text of ['Which cards changed', 'How they differ', 'See how many hands', 'Get going well (more is better)', 'Get stuck (less is better)']) {
+      expect(screen.getAllByText(text).length).toBeGreaterThan(0)
     }
-    expect(screen.getAllByText('Role').length).toBeGreaterThan(0)
-    // Una barra por build (del turno elegido); cada una dice de qué build es.
-    expect(screen.getAllByLabelText(/^Clean hands of build [AB]: \d+\.\d%$/)).toHaveLength(2)
+    // La respuesta en lenguaje natural y la tabla, con su nombre.
+    expect(screen.getByText(/^Out of every 100 hands, B gives you \d+ good ones and A \d+\.$/)).toBeInTheDocument()
+    expect(screen.getByRole('table', { name: /Share of hands/ })).toBeInTheDocument()
     first.unmount()
 
     const pending = [...OLD.slice(0, -1), { ...card('x', 1, []), origin: null }]

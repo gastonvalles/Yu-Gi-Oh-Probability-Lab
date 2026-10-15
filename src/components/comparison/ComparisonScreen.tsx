@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { buildComparisonInputs, compareBuilds } from '../../app/build-comparison'
 import { useLabComputation } from '../probability/use-lab-computation'
@@ -16,8 +16,8 @@ import { DeckImportDrawer } from '../deck-mode/DeckImportDrawer'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { Button } from '../ui/Button'
 import { EmptyState } from '../ui/EmptyState'
+import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
-import { Segmented } from '../ui/Segmented'
 import { SideBadge } from './SideBadge'
 import { StepHero } from '../StepHero'
 import { StepPage } from '../ui/StepPage'
@@ -31,7 +31,6 @@ import { field } from '../ui/surfaces'
 const CURRENT = 'current'
 const SELECTION_KEY = 'ygo-lab:comparison-selection'
 
-type Tab = 'report' | 'cards'
 
 interface ResolvedBuild {
   source: string
@@ -71,7 +70,8 @@ export function ComparisonScreen() {
   const savedBuilds = useSavedBuilds()
   const { showToast } = useToastMessage()
   const [selection, setSelection] = useState(readSelection)
-  const [tab, setTab] = useState<Tab>('report')
+  const [decksOpen, setDecksOpen] = useState(false)
+  const decksRef = useRef<HTMLDetailsElement>(null)
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [renameTarget, setRenameTarget] = useState<{ id: string; name: string } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
@@ -165,6 +165,12 @@ export function ComparisonScreen() {
     showToast(t('meta.compare.toastImported', { name: build.name }), 'success')
   }
 
+  /** Abre los mazos de cada build (donde se clasifican las cartas) y baja hasta ellos. */
+  const showDecks = () => {
+    setDecksOpen(true)
+    requestAnimationFrame(() => decksRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+  }
+
   const handleCardClick = (build: ResolvedBuild) => (card: DeckCardInstance) => {
     const isPending = card.origin === null || card.roles.length === 0 || card.needsReview
     if (build.isSaved && isPending) {
@@ -253,32 +259,23 @@ export function ComparisonScreen() {
         </EmptyState>
       ) : (
         <>
-          <Segmented
-            label={t('meta.compare.view')}
-            value={tab}
-            onChange={setTab}
-            fullWidth
-            className="max-w-sm"
-            options={[
-              { value: 'report', label: t('meta.compare.tabReport') },
-              { value: 'cards', label: t('meta.compare.tabCards') },
-            ]}
-          />
+          {comparison ? (
+            <ComparisonReport comparison={comparison} isCurrentDeck={{ A: !buildA.isSaved, B: !buildB.isSaved }} onShowCards={showDecks} />
+          ) : null}
 
-          {tab === 'report' ? (
-            comparison ? (
-              <ComparisonReport
-                comparison={comparison}
-                isCurrentDeck={{ A: !buildA.isSaved, B: !buildB.isSaved }}
-                onShowCards={() => setTab('cards')}
-              />
-            ) : null
-          ) : (
-            <div className="grid min-w-0 gap-5 min-[1101px]:grid-cols-2 min-[1101px]:items-start">
-              <BuildDeckView side="A" name={buildA.name} zones={buildA.zones} deltaByCardId={deltaByCardId} onCardClick={handleCardClick(buildA)} />
-              <BuildDeckView side="B" name={buildB.name} zones={buildB.zones} deltaByCardId={deltaByCardId} onCardClick={handleCardClick(buildB)} />
-            </div>
-          )}
+          {/* Los mazos completos, para quien los quiera ver o clasificar cartas: plegados, no una pestaña aparte. */}
+          <details ref={decksRef} open={decksOpen} onToggle={(event) => setDecksOpen(event.currentTarget.open)} className="group grid min-w-0 gap-4">
+            <summary className="flex cursor-pointer list-none items-center gap-2 rounded-control text-body font-semibold text-muted focus-visible:outline-none focus-visible:shadow-focus [&::-webkit-details-marker]:hidden">
+              {t('meta.compare.decksTitle')}
+              <Icon name="chevron-down" size={16} className="text-soft transition-transform duration-200 group-open:rotate-180" />
+            </summary>
+            {decksOpen ? (
+              <div className="grid min-w-0 gap-5 min-[1101px]:grid-cols-2 min-[1101px]:items-start">
+                <BuildDeckView side="A" name={buildA.name} zones={buildA.zones} deltaByCardId={deltaByCardId} onCardClick={handleCardClick(buildA)} />
+                <BuildDeckView side="B" name={buildB.name} zones={buildB.zones} deltaByCardId={deltaByCardId} onCardClick={handleCardClick(buildB)} />
+              </div>
+            ) : null}
+          </details>
         </>
       )}
 
