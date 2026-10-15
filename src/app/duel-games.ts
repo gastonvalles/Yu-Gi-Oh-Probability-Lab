@@ -39,13 +39,20 @@ export interface ChatLine {
 export const MAX_CHAT_LENGTH = 200
 export const MAX_CHAT_LOG = 100
 
-/** Un mensaje del chat sin caracteres de control, sin espacios de más y con un largo razonable; vacío si no queda nada. */
-export const cleanChat = (text: string) =>
-  [...text]
-    .filter((char) => char.charCodeAt(0) >= 32 && char.charCodeAt(0) !== 127)
-    .join('')
-    .trim()
-    .slice(0, MAX_CHAT_LENGTH)
+/**
+ * Lo que un texto de otra persona no puede llevar: los controles (C0 y C1), los separadores de línea, el espacio de ancho cero y la marca de orden de bytes (el nombre "Ana" que no se ve),
+ * y las marcas que dan vuelta o aíslan la dirección del texto (una línea que se lee al revés, o que hace pasar un mensaje por otro). Se dejan el unidor y el separador de ancho cero
+ * (hacen falta en los emoji compuestos y en algunas escrituras).
+ */
+// Justamente lo que se quiere sacar son los caracteres de control.
+// eslint-disable-next-line no-control-regex
+const HIDDEN = /[\u0000-\u001f\u007f-\u009f\u200b\u2028\u2029\u202a-\u202e\u2060\u2066-\u2069\ufeff]/g
+
+/** El texto sin lo que esconde o da vuelta lo que se lee (ver `HIDDEN`). */
+export const stripHidden = (text: string) => text.replace(HIDDEN, '')
+
+/** Un mensaje del chat sin caracteres de control ni de los que dan vuelta el texto, sin espacios de más y con un largo razonable; vacío si no queda nada. */
+export const cleanChat = (text: string) => stripHidden(text).trim().slice(0, MAX_CHAT_LENGTH)
 
 /** Una entrada del registro: quién lo hizo y qué. `id` es creciente, sirve de clave. */
 export interface GameEntry {

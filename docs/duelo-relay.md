@@ -35,7 +35,7 @@ VITE_DUEL_RELAY_URL=ws://127.0.0.1:8788 npm test -- duel-relay.e2e
 2. Si tu sitio no es `yu-gi-oh-probability-lab.vercel.app`, ajustá `ALLOWED_ORIGINS` en `duel-relay/wrangler.jsonc` (separados por coma; `*` vale por letras, números y guiones, para los despliegues de prueba de Vercel).
 3. `npx wrangler@4 deploy`. Devuelve una dirección como `https://ygo-lab-duel-relay.<tu-subdominio>.workers.dev`.
 4. En Vercel, agregá la variable de entorno **`VITE_DUEL_RELAY_URL`** con esa dirección en `wss://` (`wss://ygo-lab-duel-relay.<tu-subdominio>.workers.dev`) y volvé a desplegar.
-5. Opcional: la política de seguridad de `vercel.json` permite `wss://*.workers.dev`; si querés, cambiá el comodín por tu dirección exacta.
+5. La política de seguridad de `vercel.json` permite sólo la dirección exacta del relay (`wss://ygo-lab-duel-relay.gastonvallesyeou.workers.dev`, en sus dos reglas): si publicás el Worker con otro nombre o subdominio, cambiala ahí (y `ALLOWED_ORIGINS` en `duel-relay/wrangler.jsonc` si cambia el sitio), o el navegador bloqueará la conexión.
 
 Al publicar una versión con espectadores, publicá **primero el relay**: un enlace de espectador abierto contra un relay anterior lo trataría como a un jugador (la app lo detecta y no lo usa, pero ocupa un lugar un instante).
 

@@ -1,4 +1,4 @@
-import { RPS_PICKS, TOSS_METHODS, cleanChat, type DuelGame, type TossMethod } from './duel-games'
+import { RPS_PICKS, TOSS_METHODS, cleanChat, stripHidden, type DuelGame, type TossMethod } from './duel-games'
 import { MAX_MESSAGE_BYTES } from './duel-relay-rules'
 import { MAX_LP, STARTING_LP } from './life-calculator'
 import type { WireAct } from './mat-public'
@@ -93,18 +93,22 @@ const MAX_CARDS = 200
 const MAX_COUNT = 1_000_000
 const MAX_CLOCK_MS = 1_000_000_000
 
-/** El nombre sin caracteres de control, sin espacios de más y con un largo razonable. */
-export const cleanName = (name: string) =>
-  [...name]
-    .filter((char) => char.charCodeAt(0) >= 32 && char.charCodeAt(0) !== 127)
-    .join('')
-    .trim()
-    .slice(0, MAX_NAME_LENGTH)
+/** El nombre sin caracteres de control ni de los que esconden o dan vuelta el texto, sin espacios de más y con un largo razonable. */
+export const cleanName = (name: string) => stripHidden(name).trim().slice(0, MAX_NAME_LENGTH)
 
 const isPlain = (value: unknown): value is Record<string, unknown> => isRecord(value) && !Array.isArray(value)
 const isInt = (value: unknown, min: number, max: number): value is number => typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max
 const isId = (value: unknown): value is string => typeof value === 'string' && value.length > 0 && value.length <= MAX_ID_LENGTH
-const isIds = (value: unknown, max = MAX_CARDS): value is string[] => Array.isArray(value) && value.length <= max && value.every(isId)
+/**
+ * Un id de carta como viaja entre los jugadores: opaco (`c12`, la identidad nunca viaja en el id) o de ficha (`token-3`). Nada más: un id como `constructor` o `__proto__`, usado
+ * después como clave de un objeto, devolvería algo heredado en vez de una carta y rompería a quien lo recibe.
+ */
+const CARD_ID = /^(?:c[0-9]{1,5}|token-[0-9]{1,4})$/
+/** La identidad real de una carta ya revelada (`card-123-2`: el número de YGOPRODeck y la copia). */
+const REAL_ID = /^card-[0-9]{1,12}-[0-9]{1,3}$/
+const isCardId = (value: unknown): value is string => typeof value === 'string' && CARD_ID.test(value)
+const isRealId = (value: unknown): value is string => typeof value === 'string' && REAL_ID.test(value)
+const isCardIds = (value: unknown, max = MAX_CARDS): value is string[] => Array.isArray(value) && value.length <= max && value.every(isCardId)
 const isSeed = (value: unknown): value is number => isInt(value, 0, 2 ** 32 - 1)
 const oneOf =
   <T extends string>(values: readonly T[]) =>
@@ -126,19 +130,19 @@ const actionChecks: Record<MatAction['type'], (action: Record<string, unknown>) 
   draw: (a) => isInt(a.count, 0, MAX_CARDS),
   mill: (a) => isInt(a.count, 0, MAX_CARDS),
   shuffle: (a) => isSeed(a.seed),
-  move: (a) => isId(a.id) && (isPile(a.to) || a.to === 'deck-bottom') && optional(a.faceDown, (v) => typeof v === 'boolean') && optional(a.shuffle, isSeed),
-  place: (a) => isId(a.id) && isSpot(a.zone) && isInt(a.index, 0, 4) && isPos(a.pos) && optional(a.how, oneOf(['normal', 'special', 'scale'])) && optional(a.shuffle, isSeed),
-  tribute: (a) => isId(a.id) && isIds(a.tributes, 10) && isZone(a.zone) && isInt(a.index, 0, 4) && isPos(a.pos),
-  summon: (a) => isId(a.id) && oneOf(['fusion', 'synchro', 'xyz', 'link'])(a.how) && isIds(a.materials, 10) && isZone(a.zone) && isInt(a.index, 0, 4) && isPos(a.pos),
-  attach: (a) => isId(a.id) && isId(a.to),
-  position: (a) => isId(a.id) && isPos(a.pos),
-  counter: (a) => isId(a.id) && isInt(a.delta, -1000, 1000),
+  move: (a) => isCardId(a.id) && (isPile(a.to) || a.to === 'deck-bottom') && optional(a.faceDown, (v) => typeof v === 'boolean') && optional(a.shuffle, isSeed),
+  place: (a) => isCardId(a.id) && isSpot(a.zone) && isInt(a.index, 0, 4) && isPos(a.pos) && optional(a.how, oneOf(['normal', 'special', 'scale'])) && optional(a.shuffle, isSeed),
+  tribute: (a) => isCardId(a.id) && isCardIds(a.tributes, 10) && isZone(a.zone) && isInt(a.index, 0, 4) && isPos(a.pos),
+  summon: (a) => isCardId(a.id) && oneOf(['fusion', 'synchro', 'xyz', 'link'])(a.how) && isCardIds(a.materials, 10) && isZone(a.zone) && isInt(a.index, 0, 4) && isPos(a.pos),
+  attach: (a) => isCardId(a.id) && isCardId(a.to),
+  position: (a) => isCardId(a.id) && isPos(a.pos),
+  counter: (a) => isCardId(a.id) && isInt(a.delta, -1000, 1000),
   token: (a) => isZone(a.zone) && isInt(a.index, 0, 4) && optional(a.pos, oneOf(['atk', 'def'])),
-  activate: (a) => isId(a.id) && optional(a.cost, oneOf(['discard', 'banish'])),
-  reveal: (a) => isId(a.id),
-  declare: (a) => isId(a.id),
-  target: (a) => isId(a.id),
-  attack: (a) => isId(a.id) && optional(a.target, isId),
+  activate: (a) => isCardId(a.id) && optional(a.cost, oneOf(['discard', 'banish'])),
+  reveal: (a) => isCardId(a.id),
+  declare: (a) => isCardId(a.id),
+  target: (a) => isCardId(a.id),
+  attack: (a) => isCardId(a.id) && optional(a.target, isCardId),
   phase: (a) => isPhase(a.phase) && optional(a.skipDraw, (v) => v === true),
 }
 
@@ -188,7 +192,7 @@ function parseKnown(value: unknown, max: number): Record<string, string> | null 
   }
 
   const entries = Object.entries(value)
-  return entries.length <= max && entries.every(([opaque, real]) => isId(opaque) && isId(real)) ? (Object.fromEntries(entries) as Record<string, string>) : null
+  return entries.length <= max && entries.every(([opaque, real]) => isCardId(opaque) && isRealId(real)) ? (Object.fromEntries(entries) as Record<string, string>) : null
 }
 
 function parseWire(value: unknown): WireAct | null {
@@ -202,7 +206,7 @@ function parseWire(value: unknown): WireAct | null {
 }
 
 function parsePlaced(value: unknown): Placed | null {
-  if (!isPlain(value) || !isId(value.id) || !isPos(value.pos) || !isInt(value.counters, 0, MAX_COUNT) || !isIds(value.materials, 20)) {
+  if (!isPlain(value) || !isCardId(value.id) || !isPos(value.pos) || !isInt(value.counters, 0, MAX_COUNT) || !isCardIds(value.materials, 20)) {
     return null
   }
 
@@ -227,7 +231,7 @@ function parseState(value: unknown): MatState | null {
   const { deck, extra, hand, gy, banished, facedown, targeted, mz, emz, st, field } = value
   const piles = [deck, extra, hand, gy, banished]
 
-  if (!piles.every((pile) => isIds(pile)) || (piles as string[][]).reduce((total, pile) => total + pile.length, 0) > MAX_CARDS) {
+  if (!piles.every((pile) => isCardIds(pile)) || (piles as string[][]).reduce((total, pile) => total + pile.length, 0) > MAX_CARDS) {
     return null
   }
 
@@ -236,7 +240,7 @@ function parseState(value: unknown): MatState | null {
   const parsedSt = parseSpots(st, 5)
   const parsedField = field === null ? null : parsePlaced(field)
 
-  if (!parsedMz || !parsedEmz || !parsedSt || (field !== null && !parsedField) || !isIds(facedown) || !isIds(targeted)) {
+  if (!parsedMz || !parsedEmz || !parsedSt || (field !== null && !parsedField) || !isCardIds(facedown) || !isCardIds(targeted)) {
     return null
   }
 
@@ -387,7 +391,7 @@ export function parseMessage(text: unknown): DuelMessage | null {
     case 'marks': {
       const piles = raw.piles
 
-      if (!isIds(raw.cards, MAX_MARKS) || !Array.isArray(piles) || piles.length > 5 || !piles.every(isPile) || new Set(piles).size !== piles.length) {
+      if (!isCardIds(raw.cards, MAX_MARKS) || !Array.isArray(piles) || piles.length > 5 || !piles.every(isPile) || new Set(piles).size !== piles.length) {
         return null
       }
 

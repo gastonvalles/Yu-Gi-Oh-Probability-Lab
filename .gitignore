@@ -13,3 +13,5 @@ coverage/
 Thumbs.db
 vitest-*.txt
 duel-relay/.wrangler/
+# Configuración local de las herramientas de trabajo (rutas, permisos): no es del proyecto.
+.claude/

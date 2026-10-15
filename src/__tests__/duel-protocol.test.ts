@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { MAX_MESSAGE_BYTES, encodeMessage, parseMessage, type DuelMessage } from '../app/duel-protocol'
+import { MAX_MESSAGE_BYTES, cleanName, encodeMessage, parseMessage, type DuelMessage } from '../app/duel-protocol'
+import { cleanChat } from '../app/duel-games'
 import { encodeAct, mirrorApply, openMirror, openPublic, senderKnown } from '../app/mat-public'
 import { createMatState, matReducer, type MatAction, type MatState } from '../app/practice-mat'
 import { random, randomAction } from './support/random-mat'
@@ -175,7 +176,86 @@ describe('contra mensajes alterados', () => {
 
     // La prueba no es vacía: muchas alteraciones se descartan y otras (un id cambiado por otro texto) siguen siendo válidas.
     expect(rejected).toBeGreaterThan(500)
-    expect(accepted).toBeGreaterThan(200)
+    // (Con ids de carta estrictos, "x" ya no es un id: pasan menos que antes.)
+    expect(accepted).toBeGreaterThan(100)
+  })
+})
+
+describe('contra un rival malicioso', () => {
+  const message = (value: unknown) => parseMessage(JSON.stringify(value))
+  const wire = (action: unknown, reveal: unknown = {}) => ({ t: 'act', n: 1, wire: { action, reveal } })
+
+  /** Ids que, usados como clave de un objeto común, devuelven algo heredado (una función) en vez de nada. */
+  const INHERITED = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueOf', 'prototype']
+
+  it('un id de carta sólo puede ser opaco (c12) o de ficha (token-3): nada que sea una propiedad de los objetos', () => {
+    for (const id of [...INHERITED, 'card-123-1', 'c', 'c1x', 'C1', 'c123456', 'token-', 'token-12345', ' c1', 'c1\n', '']) {
+      expect(message(wire({ type: 'reveal', id })), id).toBeNull()
+      expect(message(wire({ type: 'move', id, to: 'gy' })), id).toBeNull()
+      expect(message({ t: 'marks', cards: [id], piles: [] }), id).toBeNull()
+    }
+
+    expect(message(wire({ type: 'reveal', id: 'c12' }))).not.toBeNull()
+    expect(message(wire({ type: 'move', id: 'token-3', to: 'gy' }))).not.toBeNull()
+    expect(message({ t: 'marks', cards: ['c1', 'c99999'], piles: [] })).not.toBeNull()
+  })
+
+  it('tampoco en lo que nombra otras cartas (sacrificios, materiales, a qué se une, a quién se ataca) ni en la mesa entera', () => {
+    for (const id of INHERITED) {
+      expect(message(wire({ type: 'tribute', id: 'c1', tributes: [id], zone: 'mz', index: 0, pos: 'atk' }))).toBeNull()
+      expect(message(wire({ type: 'summon', id: 'c1', how: 'xyz', materials: [id], zone: 'mz', index: 0, pos: 'atk' }))).toBeNull()
+      expect(message(wire({ type: 'attach', id: 'c1', to: id }))).toBeNull()
+      expect(message(wire({ type: 'attack', id: 'c1', target: id }))).toBeNull()
+
+      const table = { deck: [], extra: [], hand: [id], gy: [], banished: [], mz: [null, null, null, null, null], emz: [null, null], st: [null, null, null, null, null], field: null, tokens: 0, phase: 'draw', turn: 1, facedown: [], targeted: [] }
+      expect(message({ t: 'sync', n: 0, known: {}, lp: 8000, lifeN: 0, state: table })).toBeNull()
+      expect(message({ t: 'sync', n: 0, known: {}, lp: 8000, lifeN: 0, state: { ...table, hand: [], mz: [{ id, pos: 'atk', counters: 0, materials: [] }, null, null, null, null] } })).toBeNull()
+      expect(message({ t: 'sync', n: 0, known: {}, lp: 8000, lifeN: 0, state: { ...table, hand: [], targeted: [id] } })).toBeNull()
+    }
+  })
+
+  it('lo revelado: la clave es un id opaco y el valor, una carta real (card-123-2); nada más', () => {
+    const known = (entries: Record<string, string>) => message({ t: 'sync', n: 0, known: entries, lp: 8000, lifeN: 0 })
+
+    expect(known({ c1: 'card-14558127-2' })).not.toBeNull()
+    expect(message(wire({ type: 'draw', count: 1 }, { c3: 'card-5-1' }))).not.toBeNull()
+
+    for (const key of INHERITED) {
+      expect(known({ [key]: 'card-1-1' }), key).toBeNull()
+      expect(message(wire({ type: 'draw', count: 1 }, { [key]: 'card-1-1' })), key).toBeNull()
+    }
+
+    for (const value of ['constructor', 'card-', 'card-1', 'card-x-1', 'token-1', 'c1', 'card-1-1; drop', 'https://evil.example/x.jpg', 'card-1234567890123-1']) {
+      expect(known({ c1: value }), value).toBeNull()
+    }
+  })
+
+  it('un mensaje con un id de carta heredado no llega a ningún lado: ni a la mesa del rival ni a lo que se revela', () => {
+    // El reflejo del rival sólo se arma con lo que pasó la revisión, así que una clave heredada nunca figura entre lo conocido.
+    const parsed = message({ t: 'sync', n: 0, known: { c1: 'card-9-1' }, lp: 8000, lifeN: 0 })
+
+    expect(parsed).not.toBeNull()
+    expect(parsed?.t === 'sync' && Object.keys(parsed.known)).toEqual(['c1'])
+  })
+})
+
+describe('nombres y chat de otra persona', () => {
+  const message = (value: unknown) => parseMessage(JSON.stringify(value))
+
+  it('no llevan controles, ni el espacio de ancho cero, ni las marcas que dan vuelta el texto', () => {
+    const hidden = '\u0000\u001f\u007f\u0085\u009f\u200b\u2028\u2029\u202a\u202b\u202c\u202d\u202e\u2060\u2066\u2067\u2068\u2069\ufeff'
+
+    expect(cleanName(`A${hidden}na`)).toBe('Ana')
+    expect(cleanName(`${hidden}`)).toBe('')
+    expect(cleanChat(`\u202egnirts${hidden} ok`)).toBe('gnirts ok')
+    expect(message({ t: 'hello', v: 1, sid: 'sid-1', role: 'host', name: `Ana\u202e\u200b` })).toMatchObject({ name: 'Ana' })
+    expect(message({ t: 'chat', n: 1, text: '\u202ehola\u200b' })).toMatchObject({ text: 'hola' })
+    expect(message({ t: 'chat', n: 1, text: '\u202e\u200b' })).toBeNull()
+  })
+
+  it('los emoji compuestos y el texto de escrituras que usan el unidor siguen enteros', () => {
+    expect(cleanChat('👨\u200d👩\u200d👧 ok')).toBe('👨\u200d👩\u200d👧 ok')
+    expect(cleanName('گچ\u200cپ')).toBe('گچ\u200cپ')
   })
 })
 
