@@ -80,57 +80,23 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
   const phase = PHASES.find((entry) => entry.id === phaseId)?.name
 
   return (
-    // Celular: una fila con las vidas, el reloj y salir; abajo los turnos y la mano del rival. Escritorio: una sola fila con las vidas del rival y el reloj arriba a la izquierda, su mano en el centro (el del campo) y,
-    // arriba a la derecha, el turno y salir; tus vidas van en la esquina de enfrente, abajo a la derecha.
+    // Celular: tres filas que no se parten (vidas + reloj + íconos; turno + señales; la mano del rival): si algo no entra, se achica en su fila en vez de caerse a otra. Escritorio: una sola fila con las vidas del rival
+    // y el reloj arriba a la izquierda, su mano en el centro (el del campo) y, arriba a la derecha, el turno y salir; tus vidas van en la esquina de enfrente, abajo a la derecha.
     <div className="relative flex flex-wrap items-center gap-1.5 px-0.5 pt-1.5">
-      <LifeTile name={rivalName} life={life.lp[me === 0 ? 1 : 0]} bubble={rivalSignal} />
-      <button
-        type="button"
-        aria-label={`${t('duel.bar.clock', { time: clock })}. ${running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}`}
-        title={running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}
-        className="inline-flex h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-card border border-border-subtle bg-card-background px-2.5 text-micro font-semibold tabular-nums text-foreground focus-visible:outline-none focus-visible:shadow-focus"
-        onClick={onToggleClock}
-      >
-        <Icon name={running ? 'pause' : 'play'} size={14} />
-        {clock}
-      </button>
-      {/* Escritorio: el turno y salir juntos a la derecha. Celular: salir al final de la primera fila, el turno en su propia fila y la mano del rival en la tercera (`contents` y `order` los acomodan). */}
-      <div className="contents min-[1101px]:ml-auto min-[1101px]:flex min-[1101px]:items-center min-[1101px]:gap-2">
-        <div className="order-2 flex basis-full flex-wrap items-center gap-1.5 min-[1101px]:order-none min-[1101px]:basis-auto min-[1101px]:flex-nowrap">
-          {snapshot.watchers > 0 ? (
-            <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted" title={t('duel.room.watchers', { count: snapshot.watchers })} aria-label={t('duel.room.watchers', { count: snapshot.watchers })}>
-              <Icon name="eye" size={14} />
-              {snapshot.watchers}
-            </span>
-          ) : null}
-          <span className="whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted">{t('practice.mat.turn', { turn: duelTurnNumber(snapshot.mine, snapshot.theirs?.state ?? null) })}</span>
-          <span className={cx('whitespace-nowrap rounded-full px-2.5 py-1 text-micro font-semibold', turn === 'mine' ? 'bg-accent/20 text-accent' : 'bg-tint/8 text-muted')}>
-            {turn === 'mine' ? t('duel.bar.yourTurn') : t('duel.bar.theirTurn', { name: rivalName })}
-            {phase ? <span data-testid="duel-phase">{` · ${phase}`}</span> : null}
-          </span>
-          {/* Las dos señales a la derecha de la fila del turno: siempre a mano, sin sacarle lugar al chat de la barra de abajo. */}
-          {onSignal ? (
-            <span className="ml-auto flex shrink-0 items-center gap-1.5">
-              {[
-                { emoji: '💭', label: t('duel.signal.thinking'), text: thinkingMessage() },
-                { emoji: '👍', label: t('duel.signal.good'), text: GOOD_MESSAGE },
-              ].map(({ emoji, label, text }) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  aria-label={label}
-                  title={label}
-                  disabled={!peerPresent}
-                  className="grid h-8 min-w-10 cursor-pointer place-items-center rounded-full bg-tint/8 px-2.5 text-lead leading-none transition-colors hover:bg-tint/16 focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-default disabled:opacity-40"
-                  onClick={() => onSignal(text)}
-                >
-                  <span aria-hidden="true">{emoji}</span>
-                </button>
-              ))}
-            </span>
-          ) : null}
-        </div>
-        <span className="order-1 ml-auto flex items-center min-[1101px]:order-none min-[1101px]:ml-0">
+      {/* `contents` en escritorio: sus piezas se acomodan en la fila de todo el ancho (`order`). En celular la vida es la que cede lugar si no entran los íconos. */}
+      <div className="flex basis-full items-center gap-1.5 min-[1101px]:contents [&>[data-lp]]:shrink">
+        <LifeTile name={rivalName} life={life.lp[me === 0 ? 1 : 0]} bubble={rivalSignal} />
+        <button
+          type="button"
+          aria-label={`${t('duel.bar.clock', { time: clock })}. ${running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}`}
+          title={running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}
+          className="inline-flex h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-card border border-border-subtle bg-card-background px-2.5 text-micro font-semibold tabular-nums text-foreground focus-visible:outline-none focus-visible:shadow-focus"
+          onClick={onToggleClock}
+        >
+          <Icon name={running ? 'pause' : 'play'} size={14} />
+          {clock}
+        </button>
+        <span className="-mr-2 ml-auto flex shrink-0 items-center min-[1101px]:order-2 min-[1101px]:ml-0.5 min-[1101px]:mr-0">
           {/* Reconectar también: lo tocan los dos, y el duelo sigue en cuanto el relay le dice a cada uno que el otro está. */}
           <IconButton tone="flat" size="sm" aria-label={t('duel.bar.reconnect')} title={t('duel.bar.reconnect')} onClick={onReconnect}>
             <Icon name="refresh" />
@@ -143,6 +109,42 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
             <Icon name="x" />
           </IconButton>
         </span>
+      </div>
+
+      {/* Escritorio: el turno a la derecha, pegado a los íconos. Celular: el turno y las señales en su fila, sin partirse (la fase se corta con puntos suspensivos si no entra). */}
+      <div className="order-2 flex min-w-0 basis-full items-center gap-1.5 min-[1101px]:order-1 min-[1101px]:ml-auto min-[1101px]:basis-auto">
+        {snapshot.watchers > 0 ? (
+          <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted" title={t('duel.room.watchers', { count: snapshot.watchers })} aria-label={t('duel.room.watchers', { count: snapshot.watchers })}>
+            <Icon name="eye" size={14} />
+            {snapshot.watchers}
+          </span>
+        ) : null}
+        <span className="shrink-0 whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted">{t('practice.mat.turn', { turn: duelTurnNumber(snapshot.mine, snapshot.theirs?.state ?? null) })}</span>
+        <span className={cx('min-w-0 truncate rounded-full px-2.5 py-1 text-micro font-semibold', turn === 'mine' ? 'bg-accent/20 text-accent' : 'bg-tint/8 text-muted')}>
+          {turn === 'mine' ? t('duel.bar.yourTurn') : t('duel.bar.theirTurn', { name: rivalName })}
+          {phase ? <span data-testid="duel-phase">{` · ${phase}`}</span> : null}
+        </span>
+        {/* Las dos señales a la derecha de la fila del turno: siempre a mano, sin sacarle lugar al chat de la barra de abajo. */}
+        {onSignal ? (
+          <span className="ml-auto flex shrink-0 items-center gap-1.5">
+            {[
+              { emoji: '💭', label: t('duel.signal.thinking'), text: thinkingMessage() },
+              { emoji: '👍', label: t('duel.signal.good'), text: GOOD_MESSAGE },
+            ].map(({ emoji, label, text }) => (
+              <button
+                key={emoji}
+                type="button"
+                aria-label={label}
+                title={label}
+                disabled={!peerPresent}
+                className="grid h-8 min-w-10 cursor-pointer place-items-center rounded-full bg-tint/8 px-2.5 text-lead leading-none transition-colors hover:bg-tint/16 focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-default disabled:opacity-40"
+                onClick={() => onSignal(text)}
+              >
+                <span aria-hidden="true">{emoji}</span>
+              </button>
+            ))}
+          </span>
+        ) : null}
       </div>
 
       <div className="order-3 flex basis-full justify-center min-[1101px]:absolute min-[1101px]:left-1/2 min-[1101px]:top-1.5 min-[1101px]:basis-auto min-[1101px]:-translate-x-1/2">{theirHand}</div>

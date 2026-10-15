@@ -1421,6 +1421,29 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).queryByRole('alertdialog', { name: 'Duelo en pausa' })).not.toBeInTheDocument()
   })
 
+  it('la barra de arriba no parte sus filas en celular: vida, reloj e íconos van juntos, y el turno con las señales; si no entra, se achica en vez de caerse a otra fila', () => {
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+
+    const bar = within(host.container)
+    const rowOf = (name: string | RegExp) => bar.getByRole('button', { name }).parentElement!.closest('div')!
+
+    // Vida, reloj y los tres íconos: la misma fila, que no se parte.
+    const top = rowOf(/^Reloj de la ronda/)
+    expect(top.contains(bar.getByRole('group', { name: /^Puntos de vida de / }))).toBe(true)
+    for (const name of ['Reconectar', 'Rendirme', 'Salir del duelo']) {
+      expect(top).toBe(rowOf(name))
+    }
+    expect(top).not.toHaveClass('flex-wrap')
+
+    // El turno y las dos señales: otra fila, que tampoco se parte.
+    const turn = rowOf('Todo bien')
+    expect(turn).toBe(rowOf('Pensando…'))
+    expect(turn).toHaveTextContent(/Turno 1/)
+    expect(turn).not.toHaveClass('flex-wrap')
+    expect(turn).not.toBe(top)
+  })
+
   it('en pausa también se puede salir desde el cartel; y quien vuelve con el enlace en otra pestaña sigue siendo quien era (anfitrión) con su mesa', () => {
     const { host, guest } = startDuel({ cardsById: monsters })
     openTable(host, guest)
