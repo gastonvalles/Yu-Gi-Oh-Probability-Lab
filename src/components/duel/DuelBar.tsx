@@ -7,6 +7,7 @@ import { duelTurnNumber } from '../../app/duel-turn'
 import { formatClock, interpretAmount, timerRemaining } from '../../app/life-calculator'
 import { PHASES } from '../../app/practice-mat'
 import { formatInteger } from '../../app/utils'
+import { KEYS, KEY, MAX_DIGITS, PRESSABLE, type Key } from '../life/LifeCalculatorScreen'
 import { t } from '../../i18n'
 import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
@@ -18,9 +19,6 @@ import { SideDrawer } from '../ui/SideDrawer'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { DuelChat, useChatUnread } from './DuelChat'
 import { DuelGames, type GameActions } from './DuelGames'
-
-/** Cambios de un toque a los puntos de vida; el resto, en el campo de monto. */
-const QUICK_AMOUNTS = [-1000, -500, -100, 100, 500, 1000] as const
 
 /** Un reloj de pared que se actualiza cada `ms` (el reloj de la ronda se calcula contra él). */
 function useTick(ms: number): number {
@@ -190,6 +188,7 @@ export function DuelLife({ snapshot, myName, onChangeLife, onHalve }: DuelLifePr
       <LifeDialog
         isOpen={open}
         life={lp}
+        name={myName || t('duel.bar.you')}
         onClose={() => setOpen(false)}
         onChange={(delta) => {
           onChangeLife(delta)
@@ -258,41 +257,91 @@ function LifeTile({ name, life, mine = false, onClick }: { name: string; life: n
   )
 }
 
-/** Cambiar los puntos de vida propios: montos de un toque, la mitad, o un monto escrito (menos de tres cifras se entiende en centenas, como en la calculadora). */
-function LifeDialog({ isOpen, life, onClose, onChange, onHalve }: { isOpen: boolean; life: number; onClose: () => void; onChange: (delta: number) => void; onHalve: () => void }) {
+/**
+ * Cambiar los puntos de vida propios con el teclado de la calculadora de LP (la misma disposición): se teclea el monto (con menos de tres cifras se entiende en
+ * centenas), se elige restar o sumar, la mitad se aplica sola y "=" lo confirma. Sale de abajo en el celular, donde llega el pulgar, y muestra cómo quedan los puntos.
+ */
+function LifeDialog({ isOpen, life, name, onClose, onChange, onHalve }: { isOpen: boolean; life: number; name: string; onClose: () => void; onChange: (delta: number) => void; onHalve: () => void }) {
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} size="keypad" title={t('duel.life.title')} ariaLabel={t('duel.life.title')}>
+      <LifeKeypad life={life} name={name} onChange={onChange} onHalve={onHalve} />
+    </Modal>
+  )
+}
+
+function LifeKeypad({ life, name, onChange, onHalve }: { life: number; name: string; onChange: (delta: number) => void; onHalve: () => void }) {
   const [digits, setDigits] = useState('')
+  const [operator, setOperator] = useState<'-' | '+'>('-')
   const amount = interpretAmount(digits)
+  const delta = operator === '-' ? -amount : amount
+  const result = Math.max(0, life + delta)
+
+  const press = (key: Key) => {
+    if (key === 'clear') {
+      setDigits('')
+    } else if (key === '+' || key === '-') {
+      setOperator(key)
+    } else if (key === '÷2') {
+      onHalve()
+    } else {
+      setDigits((current) => (current + key).slice(0, MAX_DIGITS))
+    }
+  }
+
+  // Con teclado físico (escritorio): números, borrar, signo y Enter.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey || event.altKey) return
+
+      if (/^\d$/.test(event.key)) setDigits((current) => (current + event.key).slice(0, MAX_DIGITS))
+      else if (event.key === 'Backspace') setDigits((current) => current.slice(0, -1))
+      else if (event.key === '+' || event.key === '-') setOperator(event.key)
+      else if (event.key === 'Enter' && amount > 0) onChange(delta)
+      else return
+
+      event.preventDefault()
+    }
+
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [amount, delta, onChange])
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="sm" title={t('duel.life.title')} subtitle={formatInteger(life)} ariaLabel={t('duel.life.title')}>
-      <div className="grid gap-3">
-        <div className="grid grid-cols-3 gap-2">
-          {QUICK_AMOUNTS.map((delta) => (
-            <Button key={delta} variant="secondary" size="sm" onClick={() => onChange(delta)}>
-              {delta > 0 ? `+${formatInteger(delta)}` : `−${formatInteger(-delta)}`}
-            </Button>
-          ))}
-        </div>
-        <Button variant="secondary" size="sm" onClick={onHalve}>
-          {t('duel.life.halve')}
-        </Button>
-        <div className="flex items-center gap-2">
-          <input
-            inputMode="numeric"
-            aria-label={t('duel.life.amount')}
-            placeholder={t('duel.life.amount')}
-            value={digits}
-            onChange={(event) => setDigits(event.target.value.replace(/\D/g, '').slice(0, 6))}
-            className="h-10 min-w-0 flex-1 rounded-card border border-border-subtle bg-card-background px-3 text-body font-semibold text-foreground outline-none placeholder:font-normal placeholder:text-soft focus:border-primary/60"
-          />
-          <Button variant="secondary" size="sm" disabled={amount === 0} aria-label={`−${formatInteger(amount)}`} onClick={() => onChange(-amount)}>
-            −
-          </Button>
-          <Button variant="primary" size="sm" disabled={amount === 0} aria-label={`+${formatInteger(amount)}`} onClick={() => onChange(amount)}>
-            +
-          </Button>
-        </div>
+    <div className="grid gap-3">
+      <div role="status" aria-live="polite" className="grid justify-items-center gap-0.5 rounded-card bg-tint/5 px-3 py-3">
+        <span className={cx('text-stat font-extrabold leading-none tabular-nums', digits ? (operator === '-' ? 'text-danger-soft' : 'text-success-soft') : 'text-accent')}>{formatInteger(digits ? result : life)}</span>
+        <span className="text-micro text-soft">{digits ? `${formatInteger(life)} ${operator === '-' ? '−' : '+'} ${formatInteger(amount)}` : t('duel.life.empty')}</span>
       </div>
-    </Modal>
+
+      <div className="grid grid-cols-4 gap-2" role="group" aria-label={t('shell.life.keypad')}>
+        {KEYS.map((key) => {
+          const isOperator = key === '+' || key === '-'
+          const active = isOperator && operator === key
+
+          return (
+            <button
+              key={key}
+              type="button"
+              className={cx(KEY, key === 'clear' ? 'text-lead' : 'text-[1.5rem]', active && (key === '-' ? 'bg-danger/25! text-danger-soft! active:bg-danger/35!' : 'bg-success/20! text-success-soft! active:bg-success/30!'))}
+              aria-label={key === '÷2' ? t('shell.life.key.half', { name }) : key === '-' ? t('shell.life.key.subtract') : key === '+' ? t('shell.life.key.add') : key === 'clear' ? t('shell.life.key.clearLabel') : undefined}
+              aria-pressed={isOperator ? active : undefined}
+              onClick={() => press(key)}
+            >
+              {key === '-' ? '−' : key === 'clear' ? t('shell.life.key.clear') : key}
+            </button>
+          )
+        })}
+      </div>
+
+      <button
+        type="button"
+        className={cx(PRESSABLE, 'min-h-14 bg-primary text-stat text-primary-foreground shadow-brand active:bg-primary-hover')}
+        disabled={amount === 0}
+        aria-label={t(operator === '-' ? 'duel.life.applySubtract' : 'duel.life.applyAdd', { amount: formatInteger(amount) })}
+        onClick={() => onChange(delta)}
+      >
+        =
+      </button>
+    </div>
   )
 }

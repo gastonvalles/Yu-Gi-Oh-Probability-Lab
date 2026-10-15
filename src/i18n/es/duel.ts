@@ -70,9 +70,9 @@ export const duel = {
 
   // Cambiar los puntos de vida.
   'duel.life.title': 'Mis puntos de vida',
-  'duel.life.amount': 'Monto',
-  'duel.life.apply': 'Aplicar',
-  'duel.life.halve': 'Mitad',
+  'duel.life.empty': 'Tecleá el monto',
+  'duel.life.applySubtract': 'Restar {amount}',
+  'duel.life.applyAdd': 'Sumar {amount}',
 
   // Moneda, dado, piedra-papel-tijera, quién va primero y señales (y su registro).
   'duel.games.open': 'Moneda, dado y más',

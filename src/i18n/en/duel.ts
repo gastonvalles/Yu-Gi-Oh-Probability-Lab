@@ -65,9 +65,9 @@ export const duel: Translated<typeof es> = {
   'duel.bar.leaveText': 'Your opponent stays in the room. If you come back with the same link, you deal a new hand.',
 
   'duel.life.title': 'My life points',
-  'duel.life.amount': 'Amount',
-  'duel.life.apply': 'Apply',
-  'duel.life.halve': 'Halve',
+  'duel.life.empty': 'Type the amount',
+  'duel.life.applySubtract': 'Subtract {amount}',
+  'duel.life.applyAdd': 'Add {amount}',
 
   'duel.games.open': 'Coin, die and more',
   'duel.games.title': 'Games',

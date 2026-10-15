@@ -213,7 +213,10 @@ describe('la pantalla del duelo', () => {
 
     // El anfitrión pierde 1000: el invitado lo ve en la tarjeta del rival.
     click(host, /Cambiar mis puntos de vida/)
-    fireEvent.click(screen.getByRole('button', { name: '−1000' }))
+    // Con menos de tres cifras se entiende en centenas: "10" es 1000. Restar es lo que viene elegido.
+    fireEvent.click(screen.getByRole('button', { name: '1' }))
+    fireEvent.click(screen.getByRole('button', { name: '0' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Restar [0-9]/ }))
     flush()
 
     expect(within(host.container).getByRole('button', { name: /Puntos de vida de Ana: 7\D?000/ })).toBeInTheDocument()
@@ -669,6 +672,49 @@ describe('la pantalla del duelo', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(within(guest.container).queryByRole('dialog')).not.toBeInTheDocument()
     expect(overlay()?.textContent).toMatch(/Ana: (Cara|Cruz)/)
+  })
+
+  it('puntos de vida: el teclado muestra cómo quedan antes de aplicar, resta o suma, y la mitad se aplica sola', () => {
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+    const sheet = () => within(screen.getByRole('dialog', { name: 'Mis puntos de vida' }))
+    const key = (name: string | RegExp) => fireEvent.click(sheet().getByRole('button', { name }))
+    const lifeOfAna = (view: RenderResult) => within(view.container).getByRole('group', { name: /Puntos de vida de Ana/ })
+
+    // "8" es 800: se ve cómo quedaría (8000 − 800 = 7200) y recién al confirmar cambia (y el rival lo ve).
+    click(host, /Cambiar mis puntos de vida/)
+    expect(sheet().getByText('Tecleá el monto')).toBeInTheDocument()
+    key('8')
+    expect(sheet().getByText(/8D?000 − 800/)).toBeInTheDocument()
+    expect(sheet().getByRole('status')).toHaveTextContent(/7D?200/)
+    expect(sheet().getByRole('button', { name: /^Restar 800/ })).toBeEnabled()
+    flush()
+    expect(lifeOfAna(guest)).toHaveAccessibleName(/8D?000/)
+    key(/^Restar 800/)
+    flush()
+    expect(lifeOfAna(guest)).toHaveAccessibleName(/7D?200/)
+
+    // Sumar: "+" y un monto; borrar deja el monto en cero y "=" deshabilitado.
+    click(host, /Cambiar mis puntos de vida/)
+    key('Sumar')
+    key('5')
+    key('00')
+    expect(sheet().getByRole('button', { name: /^Sumar 500/ })).toBeEnabled()
+    key('Borrar lo tecleado')
+    expect(sheet().getByText('Tecleá el monto')).toBeInTheDocument()
+    expect(sheet().getByRole('button', { name: /^Sumar 0/ })).toBeDisabled()
+    key('5')
+    key('00')
+    key(/^Sumar 500/)
+    flush()
+    expect(lifeOfAna(guest)).toHaveAccessibleName(/7D?700/)
+
+    // La mitad se aplica sola y cierra.
+    click(host, /Cambiar mis puntos de vida/)
+    key(/con la mitad/)
+    flush()
+    expect(lifeOfAna(guest)).toHaveAccessibleName(/3D?850/)
+    expect(screen.queryByRole('dialog', { name: 'Mis puntos de vida' })).not.toBeInTheDocument()
   })
 
   it('el chat: desde la sala y desde la mesa, con un contador de lo que no leíste', () => {
