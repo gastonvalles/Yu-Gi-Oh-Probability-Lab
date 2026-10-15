@@ -99,11 +99,10 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
   const [name, setName] = useState(() => readStored(() => localStorage, NAME_KEY) ?? '')
   const [intent, setIntent] = useState<Intent | null>(readIntent)
   const myName = cleanName(name) || t('duel.lobby.defaultName')
-  // Los puntos de vida los fija quien crea el duelo; el deck es el del builder o uno que se pega.
-  const [lp, setLp] = useState<number>(STARTING_LP)
+  // El deck es el del builder o uno que se pega; se juega siempre con los puntos de vida de siempre.
   const [imported, setImported] = useState<DuelDeck | null>(null)
   const deck = useMemo<DuelDeck>(() => imported ?? { name: deckName, mainIds, extraIds, cardsById }, [imported, deckName, mainIds, extraIds, cardsById])
-  const settings = useMemo(() => ({ lp, hand: handSize }), [lp, handSize])
+  const settings = useMemo(() => ({ lp: STARTING_LP, hand: handSize }), [handSize])
   const { duel, snapshot, status } = useDuel({ room: intent && !intent.watch ? intent.room : null, role: intent?.role ?? 'guest', name: myName, settings, connect })
   const deckReady = deck.mainIds.length >= handSize
 
@@ -179,8 +178,6 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
       <DuelLobby
         name={name}
         onName={setName}
-        lp={lp}
-        onLp={setLp}
         builder={{ name: deckName, mainIds, extraIds, cardsById }}
         imported={imported}
         onImport={setImported}
@@ -240,14 +237,9 @@ function Screen({ children }: { children: React.ReactNode }) {
   )
 }
 
-/** Los puntos de vida con los que se puede empezar: los de siempre y los del formato corto. */
-const LP_CHOICES = [8000, 4000] as const
-
 interface DuelLobbyProps {
   name: string
   onName: (name: string) => void
-  lp: number
-  onLp: (lp: number) => void
   builder: DuelDeck
   imported: DuelDeck | null
   onImport: (deck: DuelDeck | null) => void
@@ -259,7 +251,7 @@ interface DuelLobbyProps {
   onJoin: (room: string, watch: boolean) => void
 }
 
-function DuelLobby({ name, onName, lp, onLp, builder, imported, onImport, deckReady, deckSize, minDeck, onCreate, onJoin }: DuelLobbyProps) {
+function DuelLobby({ name, onName, builder, imported, onImport, deckReady, deckSize, minDeck, onCreate, onJoin }: DuelLobbyProps) {
   const [code, setCode] = useState('')
   const [invalid, setInvalid] = useState(false)
 
@@ -287,17 +279,6 @@ function DuelLobby({ name, onName, lp, onLp, builder, imported, onImport, deckRe
       </FieldBox>
 
       <DuelDeckPicker builder={builder} imported={imported} onImport={onImport} />
-
-      <div className="grid gap-1.5" role="group" aria-label={t('duel.lobby.lp')}>
-        <span className="text-micro font-semibold uppercase tracking-[0.04em] text-soft">{t('duel.lobby.lp')}</span>
-        <div className="flex gap-2">
-          {LP_CHOICES.map((choice) => (
-            <Button key={choice} variant="secondary" size="sm" aria-pressed={lp === choice} className={lp === choice ? 'ring-2 ring-primary' : undefined} onClick={() => onLp(choice)}>
-              {choice}
-            </Button>
-          ))}
-        </div>
-      </div>
 
       <div className="grid gap-1.5">
         <Button variant="primary" icon="link" disabled={!deckReady} onClick={onCreate}>

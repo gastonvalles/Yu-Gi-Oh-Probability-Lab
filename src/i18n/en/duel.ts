@@ -186,7 +186,6 @@ export const duel: Translated<typeof es> = {
   'duel.turn.passHint': 'Pass the turn',
   'duel.turn.drew': 'Your turn started: you drew a card.',
 
-  'duel.lobby.lp': 'Life points',
 
   'duel.deck.title': 'Your deck',
   'duel.deck.builder': 'The builder one: {name} ({count} cards in the Main)',

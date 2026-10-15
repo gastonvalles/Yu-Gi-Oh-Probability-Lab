@@ -194,7 +194,6 @@ export const duel = {
   'duel.turn.drew': 'Empezó tu turno: robaste una carta.',
 
   // Los puntos de vida con los que empieza el duelo (los fija quien lo crea).
-  'duel.lobby.lp': 'Puntos de vida',
 
   // Jugar con otro deck que el del builder (por ejemplo desde un celular).
   'duel.deck.title': 'Tu deck',

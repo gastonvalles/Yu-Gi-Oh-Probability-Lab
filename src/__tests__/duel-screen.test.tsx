@@ -400,11 +400,10 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).getByText('Tu turno')).toBeInTheDocument()
   })
 
-  /** Los dos adentro de la sala, con su nombre; si se pide, quien crea elige esos puntos de vida. */
-  function startDuel(options: { lp?: string } = {}) {
+  /** Los dos adentro de la sala, con su nombre. */
+  function startDuel() {
     const host = render(<DuelScreen {...screenProps()} />)
     typeInto(host, 'Tu nombre', 'Ana')
-    if (options.lp) fireEvent.click(within(host.container).getByRole('button', { name: options.lp }))
     click(host, 'Crear un duelo')
     const link = within(host.container).getByTestId('duel-link').textContent ?? ''
     window.history.replaceState(null, '', '#duel')
@@ -484,15 +483,21 @@ describe('la pantalla del duelo', () => {
     expect(names(guest).some((name) => /^Carta 20\d\d$/.test(name ?? ''))).toBe(false)
   })
 
-  it('puntos de vida: quien crea el duelo elige 8000 o 4000 y los dos empiezan con eso', () => {
-    const { host, guest } = startDuel({ lp: '4000' })
+  it('puntos de vida: no se elige, los dos empiezan siempre con 8000', () => {
+    window.history.replaceState(null, '', '#duel')
+    const lobby = render(<DuelScreen {...screenProps()} />)
+    expect(within(lobby.container).queryByText('Puntos de vida')).not.toBeInTheDocument()
+    expect(within(lobby.container).queryByRole('button', { name: '4000' })).not.toBeInTheDocument()
+    cleanup()
 
-    expect(within(host.container).getByText('Cada uno empieza con 4000 LP y una mano de 5 cartas.')).toBeInTheDocument()
-    expect(within(guest.container).getByText('Cada uno empieza con 4000 LP y una mano de 5 cartas.')).toBeInTheDocument()
+    const { host, guest } = startDuel()
+
+    expect(within(host.container).getByText('Cada uno empieza con 8000 LP y una mano de 5 cartas.')).toBeInTheDocument()
+    expect(within(guest.container).getByText('Cada uno empieza con 8000 LP y una mano de 5 cartas.')).toBeInTheDocument()
 
     openTable(host, guest)
-    expect(within(host.container).getByRole('button', { name: /Cambiar mis puntos de vida/ })).toHaveAccessibleName(/4\D?000/)
-    expect(within(guest.container).getByRole('group', { name: /Puntos de vida de Ana: 4\D?000/ })).toBeInTheDocument()
+    expect(within(host.container).getByRole('button', { name: /Cambiar mis puntos de vida/ })).toHaveAccessibleName(/8\D?000/)
+    expect(within(guest.container).getByRole('group', { name: /Puntos de vida de Ana: 8\D?000/ })).toBeInTheDocument()
   })
 
   it('rendirse: pide confirmación, termina el duelo para los dos y la revancha de los dos vuelve a la sala con todo de cero', () => {
