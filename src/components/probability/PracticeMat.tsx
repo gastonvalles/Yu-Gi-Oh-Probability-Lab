@@ -116,6 +116,8 @@ export interface DuelMatLink {
   rivalFlights?: { state: MatState; artOf: (id: string) => string | null }
   /** Cuenta las veces que el rival tocó su deck o sumó una carta a su mano: cada vez que sube, su deck y su mano se barajan a la vista. */
   rivalShuffle?: number
+  /** Qué Zonas Extra ocupa el rival, cada una por su número (la 0 suya es la 1 de acá): una que ocupa él no se puede usar, ni la otra si ya hay un monstruo propio en una. */
+  rivalEmz: readonly boolean[]
   /** Una capa que tapa toda la mesa (el duelo en pausa): nada de lo de abajo se toca mientras está. */
   cover?: ReactNode
   /** Un panel fijo a la derecha de la mesa, sólo en escritorio (el chat): la mesa le deja 20rem. */
@@ -384,6 +386,15 @@ export function PracticeMat({
   >(null)
   const [viewer, setViewer] = useState<MatPile | null>(null)
   const [inspected, setInspected] = useState<{ id: string; rect: DOMRect } | null>(null)
+  // La pausa y el final del duelo tapan la mesa: un menú o el detalle de una carta que estaba abierto se cierra, y el visor de una pila se esconde (sigue abierto: al cerrar el deck se baraja, y eso no es de la pausa).
+  const covered = Boolean(duel?.cover)
+
+  useEffect(() => {
+    if (covered) {
+      setMenu(null)
+      setInspected(null)
+    }
+  }, [covered])
   const [saving, setSaving] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   const [combos, setCombos] = useState<SavedCombo[]>(() => readSavedCombos())
@@ -663,13 +674,14 @@ export function PracticeMat({
         }
       }
 
+      // La zona se fija sólo si se soltó la carta en una: si no, se elige al final entre las que quedan libres contando las que se liberan (la única libre de antes no vale por sí sola).
       if (item.tributes && item.action.type === 'tribute') {
-        pick({ kind: 'tributes', label: item.label, required: item.tributes, chosen: [], action: item.action, zone: item.targets?.length === 1 ? item.targets[0] : undefined, dropped: dropped !== undefined })
+        pick({ kind: 'tributes', label: item.label, required: item.tributes, chosen: [], action: item.action, zone: dropped, dropped: dropped !== undefined })
         return
       }
 
       if (item.materials && item.action.type === 'summon') {
-        pick({ kind: 'materials', label: item.label, chosen: [], action: item.action, zone: item.targets?.length === 1 ? item.targets[0] : undefined, dropped: dropped !== undefined })
+        pick({ kind: 'materials', label: item.label, chosen: [], action: item.action, zone: dropped, dropped: dropped !== undefined })
         return
       }
 
@@ -697,7 +709,7 @@ export function PracticeMat({
   /** Con los Sacrificios o los materiales elegidos (que dejan el campo), la carta sale a la zona donde se soltó si sigue libre, a la única libre, o se elige una. */
   const summonAfter = (label: string, action: Extract<MatAction, { type: 'tribute' | 'summon' }>, removed: string[], dropped?: MatTarget) => {
     const after = removed.reduce((current, id) => matReducer(current, { type: 'move', id, to: 'gy' }), state)
-    const targets = freeTargets(after, monsterZones(action.type === 'summon'))
+    const targets = freeTargets(after, monsterZones(action.type === 'summon'), duel?.rivalEmz)
     const zone = dropped && targets.some((target) => target.zone === dropped.zone && target.index === dropped.index) ? dropped : targets.length === 1 ? targets[0] : null
 
     if (zone) play({ ...action, zone: zone.zone as 'mz' | 'emz', index: zone.index })
@@ -797,7 +809,11 @@ export function PracticeMat({
   const dropInto = useCallback(
     (id: string, zone: MatSpot, index: number) => {
       const drop = { zone, index }
-      const items = listDropActions(state, id, kindOf, nameOf, drop)
+
+      // Una Zona Extra que no se puede usar (la ocupa el rival, o ya hay un monstruo propio en la otra) no recibe cartas.
+      if (zone === 'emz' && !freeTargets(state, ['emz'], duel?.rivalEmz).some((free) => free.index === index)) return
+
+      const items = listDropActions(state, id, kindOf, nameOf, drop, duel?.rivalEmz)
       const [first] = items
       const anchor = sectionRef.current?.querySelector(`[data-drop="${dropIdOf(zone, index)}"]`) ?? sectionRef.current
 
@@ -811,7 +827,7 @@ export function PracticeMat({
         setMenu({ kind: 'card', id, rect: anchor.getBoundingClientRect(), drop, ask: items.length === 1 ? first : undefined })
       }
     },
-    [state, kindOf, nameOf, choose, onDispatch],
+    [state, kindOf, nameOf, choose, onDispatch, duel?.rivalEmz],
   )
 
   const handleDrop = useCallback(
@@ -990,10 +1006,10 @@ export function PracticeMat({
       ]
     }
 
-    const items = menu.drop ? listDropActions(state, menu.id, kindOf, nameOf, menu.drop) : listCardActions(state, menu.id, kindOf, nameOf, attackTargets)
+    const items = menu.drop ? listDropActions(state, menu.id, kindOf, nameOf, menu.drop, duel?.rivalEmz) : listCardActions(state, menu.id, kindOf, nameOf, attackTargets, duel?.rivalEmz)
 
     return items.map((item) => ({ label: item.label, onSelect: () => choose(item, menu.drop) }))
-  }, [menu, state, kindOf, nameOf, attackTargets, play, choose, summonToken])
+  }, [menu, state, kindOf, nameOf, attackTargets, play, choose, summonToken, duel?.rivalEmz])
 
   const menuCard = menu?.kind === 'card' ? cardOf(menu.id) : menu?.kind === 'token' && !menu.root ? TOKEN_CARD : null
   const menuWhere = menu?.kind === 'card' ? locateCard(state, menu.id) : null
@@ -1506,7 +1522,7 @@ export function PracticeMat({
       )}
 
       <CardMenu
-        anchor={menu?.rect ?? null}
+        anchor={covered ? null : (menu?.rect ?? null)}
         kicker={menuKicker}
         title={menuTitle}
         items={menuItems}
@@ -1517,7 +1533,7 @@ export function PracticeMat({
       {/* Una instancia por pila: cada visor arranca sin filtro (lo buscado en el deck no se hereda al abrir el cementerio, donde con pocas cartas el buscador ni se ve). */}
       <PileViewer
         key={viewer ?? 'closed'}
-        pile={viewer}
+        pile={covered ? null : viewer}
         ids={viewer ? state[viewer] : []}
         info={(id) => ({ name: cardOf(id).name, art: artOf(cardOf(id)), faceDown: state.facedown.includes(id) })}
         targeted={targetedIds}
@@ -1527,7 +1543,7 @@ export function PracticeMat({
 
       <SaveComboDialog key={String(saving)} isOpen={saving} defaultName={t('practice.combo.defaultName', { n: combos.length + 1 })} onSave={saveCombo} onClose={() => setSaving(false)} />
 
-      {inspected ? <CardDetailOverlay key={inspected.id} name={cardOf(inspected.id).name} card={cardOf(inspected.id).apiCard} origin={inspected.rect} onClose={() => setInspected(null)} /> : null}
+      {inspected && !covered ? <CardDetailOverlay key={inspected.id} name={cardOf(inspected.id).name} card={cardOf(inspected.id).apiCard} origin={inspected.rect} onClose={() => setInspected(null)} /> : null}
 
       {/* Activar, mostrar o declarar (y, al reproducir un combo, lo que mueve cada paso): las cartas aparecen grandes en el centro de la mesa, con su marco de color, su nombre y lo que pasó arriba, y se desvanecen. Marcar un objetivo o atacar no las agranda: ahí sólo cae la mira o cruza la espada. En escritorio el centro es el del campo, sin el panel lateral (20 rem, como en la grilla de arriba). */}
       {stage ? (

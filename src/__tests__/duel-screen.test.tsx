@@ -21,6 +21,8 @@ vi.mock('../ygoprodeck', () => ({
   fetchCardsByIds: vi.fn(async (ids: number[]) =>
     ids.filter((id) => id !== 999).map((id) => ({ ygoprodeckId: id, name: 'Carta ' + id, frameType: 'effect', cardType: 'Effect Monster', race: null, description: null, attribute: null, level: null, linkValue: null, atk: null, def: null, archetype: null, ygoprodeckUrl: null, imageUrl: null, imageUrlSmall: null })),
   ),
+  // El detalle de una carta pide también sus artes alternativos: acá no hay ninguno.
+  fetchCardArts: vi.fn(async () => []),
 }))
 
 const store = configureStore({ reducer: { settings: (state = { handSize: 5, deckFormat: 'unlimited' as const }) => state } })
@@ -574,6 +576,46 @@ describe('la pantalla del duelo', () => {
     expect(itemsOf('Banish: marcar')).toEqual(['Ver las cartas', 'Target'])
     fireEvent.click(screen.getByRole('menuitem', { name: 'Ver las cartas' }))
     expect(within(screen.getByRole('dialog', { name: 'Banish · 0' })).getByText('No hay cartas acá.')).toBeInTheDocument()
+  })
+
+  it('cuando Ana agrega a su mano una carta de su deck (la busca), Beto la ve de frente en la animación y no de dorso', () => {
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+
+    tap(within(host.container).getByRole('button', { name: /^Main: [0-9]+$/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ver el deck' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: /Main/ })).getAllByRole('button', { name: /^Monstruo/ })[0]!)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'A la mano' }))
+    flush()
+
+    const stage = guest.container.querySelector('[data-activation]')!
+    expect(stage).toHaveAttribute('data-kind', 'hand')
+    expect(within(guest.container).getByText('Ana lleva una carta a su mano')).toBeInTheDocument()
+    // La carta del frente tiene su imagen (la del dorso no la tendría).
+    expect(stage.querySelector('img')).not.toBeNull()
+  })
+
+  it('Beto puede ver el detalle de una carta de Ana que ya está a la vista (y de una boca abajo, no)', async () => {
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+    summonFirst(host)
+    flush()
+
+    // Tocar la carta de Ana abre su menú: marcarla y ver su detalle (que se pide por su número).
+    fireEvent.click(within(guest.container).getByRole('button', { name: 'Rival, Zona de monstruo 1: marcar' }))
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Target', 'Ver carta'])
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Ver carta' }))
+    await act(async () => {})
+    expect(screen.getByRole('dialog', { name: /^Detalle de Carta \d+$/ })).toBeInTheDocument()
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    // Una carta boca abajo no se sabe cuál es: sólo se puede marcar.
+    tap(handOf(host).getAllByRole('listitem')[0]!)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Colocar' }))
+    fireEvent.click(within(host.container).getByRole('button', { name: 'Zona de monstruo 2: elegir' }))
+    flush()
+    fireEvent.click(within(guest.container).getByRole('button', { name: 'Rival, Zona de monstruo 2: marcar' }))
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Target'])
   })
 
   it('juegos: moneda, piedra-papel-tijera y quién empieza; los dos ven lo mismo y la elección del rival no se ve hasta elegir la propia', () => {
@@ -1363,6 +1405,36 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).queryByRole('alertdialog', { name: 'Duelo en pausa' })).not.toBeInTheDocument()
     expect(within(host.container).getByRole('button', { name: /Pausar el reloj/ })).toBeInTheDocument()
     expect(within(guest.container).getByRole('button', { name: /Pausar el reloj/ })).toBeInTheDocument()
+  })
+
+  it('si el duelo entra en pausa con un cartel de opciones abierto (el de una carta del rival o el de una propia), no se ve, y no vuelve al seguir', () => {
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+
+    const pauseOf = () => within(guest.container).queryByRole('alertdialog', { name: 'Duelo en pausa' })
+
+    // El menú de lo del rival (su cementerio) abierto cuando Ana sale.
+    fireEvent.click(within(guest.container).getByRole('button', { name: 'GY: marcar' }))
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+    leaveDuel(host)
+    flush()
+    expect(pauseOf()).toBeInTheDocument()
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+
+    // Ana vuelve: el menú no reaparece.
+    click(host, 'Volver al duelo')
+    flush()
+    flush()
+    expect(pauseOf()).not.toBeInTheDocument()
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+
+    // Lo mismo con el menú de una carta propia.
+    tap(handOf(guest).getAllByRole('listitem')[0]!)
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+    leaveDuel(host)
+    flush()
+    expect(pauseOf()).toBeInTheDocument()
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
   it('en pausa se puede reconectar sin salir del duelo: si el aviso de que el rival está se perdió, se retoma con la mesa como estaba', () => {

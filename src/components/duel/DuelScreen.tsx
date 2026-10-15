@@ -29,6 +29,7 @@ import { isSignal } from './DuelChat'
 import { DuelChat } from './DuelChat'
 import { DuelChatPanel } from './DuelChat'
 import { DuelPause } from './DuelPause'
+import { RivalCardDetail } from './RivalCardDetail'
 import { ResultCard } from './DuelResult'
 import { DuelDeckPicker, loadDuelDeck, readStoredDeck, type DuelDeck } from './DuelDeckPicker'
 import { gameText, outcomeText, rpsName } from './game-text'
@@ -856,6 +857,8 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   const openMark = useCallback((target: MarkTarget, rect: DOMRect, place: string) => setMarkMenu({ target, rect, place }), [])
   // El cementerio y el destierro del rival son públicos: se pueden desplegar para ver (y marcar) sus cartas.
   const [rivalViewer, setRivalViewer] = useState<'gy' | 'banished' | null>(null)
+  // El detalle de una carta del rival que ya está a la vista (su id real, lo único que se sabe de ella).
+  const [rivalInspected, setRivalInspected] = useState<{ drawId: string; rect: DOMRect } | null>(null)
 
   // La mesa espera una "sesión" con la mano inicial y las jugadas; acá no hay combos ni repetición, así que el cursor está siempre al final.
   const session = useMemo<MatSession>(() => ({ initial: initial!, actions: [...actions], cursor: actions.length, names: {}, replay: false }), [initial, actions])
@@ -878,6 +881,15 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   useEffect(() => {
     if (result === null) setResultClosed(false)
   }, [result])
+  // Con la pausa o la tarjeta del final encima, un menú o un detalle que estaba abierto se cierra (y el visor de pila se esconde mientras).
+  const covered = paused || resultOpen
+
+  useEffect(() => {
+    if (covered) {
+      setMarkMenu(null)
+      setRivalInspected(null)
+    }
+  }, [covered])
   useClockPause(duel, snapshot, paused)
   const announcement = useRivalAttack(snapshot, cardsById)
   const signals = useSignals(snapshot)
@@ -896,6 +908,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       opponent: <SideCells side={opponent} owner="theirs" />,
       sharedZone: (index) => sharedZoneCard(opponent, index),
       attackTargets,
+      rivalEmz: theirs!.state.emz.map(Boolean),
       foreignKnown: theirs!.known,
       announcement,
       rivalEffect,
@@ -935,6 +948,8 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
         },
       ]
     : []
+  // De una carta del rival que ya mostró (a la vista en su campo, en su cementerio o destierro, o revelada) se puede ver el detalle.
+  const markedDrawId = markTarget && 'card' in markTarget ? theirs!.known[markTarget.card] : undefined
   const rivalCardName = t('duel.mark.rivalCard')
   const viewerTargeted = useMemo(() => new Set([...snapshot.marks.theirs.cards, ...theirs!.state.targeted]), [snapshot.marks.theirs.cards, theirs])
 
@@ -953,15 +968,16 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
         duel={link}
       />
       <CardMenu
-        anchor={markMenu?.rect ?? null}
+        anchor={covered ? null : (markMenu?.rect ?? null)}
         kicker={rivalName}
         title={markMenu?.place ?? ''}
         items={markItems}
+        onInspect={markMenu && markedDrawId !== undefined ? () => { setRivalInspected({ drawId: markedDrawId, rect: markMenu.rect }); setMarkMenu(null) } : undefined}
         onClose={() => setMarkMenu(null)}
       />
       <PileViewer
         key={rivalViewer ?? 'closed'}
-        pile={rivalViewer}
+        pile={covered ? null : rivalViewer}
         ids={rivalViewer ? theirs!.state[rivalViewer] : []}
         info={(id) => {
           const art = opponent.artOf(id)
@@ -973,6 +989,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
         onClose={() => setRivalViewer(null)}
         anonymous
       />
+      {rivalInspected && !covered ? <RivalCardDetail key={rivalInspected.drawId} drawId={rivalInspected.drawId} origin={rivalInspected.rect} onClose={() => setRivalInspected(null)} /> : null}
       {/* Lo que tira el rival (moneda, dado, piedra-papel-tijera) se ve girar acá aunque el panel de juegos esté cerrado. */}
       <TossOverlay snapshot={snapshot} myName={myName} />
     </>

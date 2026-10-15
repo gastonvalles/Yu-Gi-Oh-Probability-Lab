@@ -731,12 +731,20 @@ export function monsterZones(fromExtraDeck: boolean): readonly MatSpot[] {
   return fromExtraDeck ? ['mz', 'emz'] : ['mz']
 }
 
+/**
+ * Las dos Extra Monster Zones no son de nadie hasta que alguien invoca en una: ahí la otra pasa a ser del rival. Con `rivalEmz` (qué Zonas Extra ocupa el rival, cada una
+ * por su propio número: la 0 suya es la 1 mía) una Zona Extra no se puede usar si la ocupa el rival o si ya tengo un monstruo en la otra. Sin `rivalEmz` (la práctica sola) valen las dos.
+ */
+function extraZoneTaken(state: MatState, rivalEmz: readonly boolean[] | undefined, index: number): boolean {
+  return rivalEmz !== undefined && (rivalEmz[1 - index] === true || state.emz[1 - index] != null)
+}
+
 /** Zonas libres de esos tipos, en orden. */
-export function freeTargets(state: MatState, zones: readonly MatSpot[]): MatTarget[] {
+export function freeTargets(state: MatState, zones: readonly MatSpot[], rivalEmz?: readonly boolean[]): MatTarget[] {
   return zones.flatMap((zone): MatTarget[] =>
     zone === 'field'
       ? state.field ? [] : [{ zone, index: 0 }]
-      : state[zone].flatMap((placed, index): MatTarget[] => (placed ? [] : [{ zone, index }])),
+      : state[zone].flatMap((placed, index): MatTarget[] => (placed || (zone === 'emz' && extraZoneTaken(state, rivalEmz, index)) ? [] : [{ zone, index }])),
   )
 }
 
@@ -748,7 +756,7 @@ export function freeTargets(state: MatState, zones: readonly MatSpot[]): MatTarg
  * defensa; las fichas no se colocan boca abajo ni salen del campo; la Extra Monster Zone sólo se ofrece a lo que
  * viene del Extra Deck.
  */
-export function listCardActions(state: MatState, id: string, kindOf: (id: string) => MatCardKind, nameOf: (id: string) => string, attackTargets: readonly AttackTarget[] = []): MatMenuItem[] {
+export function listCardActions(state: MatState, id: string, kindOf: (id: string) => MatCardKind, nameOf: (id: string) => string, attackTargets: readonly AttackTarget[] = [], rivalEmz?: readonly boolean[]): MatMenuItem[] {
   const where = locateCard(state, id)
 
   if (!where) {
@@ -764,7 +772,7 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
   const banish = () => items.push(banishItem(id, t('practice.menu.banish')))
   /** Una jugada que saca la carta a una zona: la primera libre por defecto, y la lista para elegir otra. */
   const placeItem = (label: string, zones: readonly MatSpot[], pos: MatPos, how?: MatSummon): MatMenuItem | null => {
-    const targets = freeTargets(state, zones)
+    const targets = freeTargets(state, zones, rivalEmz)
     const first = targets[0]
 
     return first ? { label, action: { type: 'place', id, zone: first.zone, index: first.index, pos, how }, targets } : null
@@ -893,11 +901,12 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
 
     if (kind.monster && how && monstersOnField(state).length > 0) {
       // Desde el Extra: posición, después los materiales en el campo (con confirmación) y al final la zona (contando las que se liberan).
+      // Aunque ahora no haya una zona libre (o la única libre no se pueda usar), se ofrece: los materiales dejan zonas libres y la zona se elige al final, entre las que quedan.
       const summonItem = (label: string, pos: MatPos): MatMenuItem | null => {
-        const targets = freeTargets(state, zones)
-        const first = targets[0]
+        const targets = freeTargets(state, zones, rivalEmz)
+        const first = targets[0] ?? { zone: 'mz' as const, index: 0 }
 
-        return first ? { label, action: { type: 'summon', id, how, materials: [], zone: first.zone as MatZone, index: first.index, pos }, targets, materials: true } : null
+        return { label, action: { type: 'summon', id, how, materials: [], zone: first.zone as MatZone, index: first.index, pos }, targets, materials: true }
       }
 
       specialSummonItem(summonItem(t('practice.menu.attack'), 'atk'), summonItem(t('practice.menu.defense'), 'def'))
@@ -937,7 +946,7 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
  * Lo que se puede hacer con una carta soltada en una zona libre: el mismo menú que al tocarla (con las mismas preguntas después), sólo con
  * las jugadas que la sacan justo a esa zona, ya apuntadas a ella. Una pregunta que queda con una sola salida ya no pregunta.
  */
-export function listDropActions(state: MatState, id: string, kindOf: (id: string) => MatCardKind, nameOf: (id: string) => string, target: MatTarget): MatMenuItem[] {
+export function listDropActions(state: MatState, id: string, kindOf: (id: string) => MatCardKind, nameOf: (id: string) => string, target: MatTarget, rivalEmz?: readonly boolean[]): MatMenuItem[] {
   const aim = (item: MatMenuItem): MatMenuItem[] => {
     const { action } = item
 
@@ -955,5 +964,5 @@ export function listDropActions(state: MatState, id: string, kindOf: (id: string
     return []
   }
 
-  return listCardActions(state, id, kindOf, nameOf).flatMap(aim)
+  return listCardActions(state, id, kindOf, nameOf, [], rivalEmz).flatMap(aim)
 }
