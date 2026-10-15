@@ -1,3 +1,4 @@
+import type { MarkTarget, Marks } from '../../app/duel-protocol'
 import type { SpotlightKind } from '../../app/mat-effects'
 import { PHASES, type MatPile, type MatSpot, type MatState, type Placed } from '../../app/practice-mat'
 import { t } from '../../i18n'
@@ -26,6 +27,10 @@ export interface DuelSideView {
   handCount?: number
   /** La carta que acaba de destacarse (activada, mostrada, declarada o marcada como objetivo): destella un instante; cambiar `key` lo repite. */
   flash?: { id: string; key: number; kind: SpotlightKind }
+  /** Lo que el otro jugador marcó como objetivo de este lado: cartas (por su id) y pilas enteras. */
+  marks?: Marks
+  /** Marcar algo de este lado (el del rival, desde quien juega del otro): quien llama abre su menú pegado a `rect`, con `place` por título. Sin esto, la mesa es de sólo lectura. */
+  onMark?: (target: MarkTarget, rect: DOMRect, place: string) => void
 }
 
 /** Qué se dibuja: los dos campos, sólo el propio o sólo el del rival (para elegir entre uno y otro en una pantalla chica). */
@@ -98,18 +103,35 @@ export function DuelTable({ mine, theirs, show = 'both', turn = 'mine', classNam
   )
 }
 
+/** Un botón transparente sobre una carta o una pila del rival: se toca para marcarla como objetivo (el menú sale pegado). */
+function MarkButton({ label, onMark }: { label: string; onMark: (rect: DOMRect) => void }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      className="absolute inset-0 z-10 cursor-pointer rounded-none border-0 bg-transparent p-0 opacity-0 focus-visible:opacity-100 focus-visible:outline-none focus-visible:shadow-focus"
+      onClick={(event) => onMark((event.currentTarget.closest<HTMLElement>('[role="group"]') ?? event.currentTarget).getBoundingClientRect())}
+    />
+  )
+}
+
 /**
  * La mano del rival: sólo se ve cuántas cartas tiene, de dorso y encimadas. `shrink-0` es lo que la deja verse: va dentro de una columna que scrollea y,
  * como los dorsos miden un porcentaje del alto, sin él la columna la aplastaba a 0 px y sólo quedaban sus sombras, como puntitos.
  */
-export function TheirHand({ count }: { count: number }) {
+export function TheirHand({ count, marked = false, onMark }: { count: number; /** El otro jugador la marcó como objetivo. */ marked?: boolean; /** Tocarla para marcarla (sólo quien juega contra ese rival). */ onMark?: (rect: DOMRect) => void }) {
   return (
-    <div role="img" aria-label={t('duel.hand.theirs', { count })} data-rival-drop="hand" className="flex h-9 shrink-0 justify-center min-[1101px]:h-11">
-      {Array.from({ length: Math.min(count, 12) }, (_, index) => (
-        <span key={index} className={cx('-ml-3 block aspect-[421/614] h-full overflow-hidden first:ml-0', CARD_SHADOW)}>
-          <CardBack className="h-full" />
-        </span>
-      ))}
+    <div data-rival-drop="hand" data-targeted={marked ? 'true' : 'false'} className="relative shrink-0">
+      <div role="img" aria-label={t('duel.hand.theirs', { count })} className="flex h-9 justify-center min-[1101px]:h-11">
+        {Array.from({ length: Math.min(count, 12) }, (_, index) => (
+          <span key={index} className={cx('-ml-3 block aspect-[421/614] h-full overflow-hidden first:ml-0', CARD_SHADOW)}>
+            <CardBack className="h-full" />
+          </span>
+        ))}
+      </div>
+      {marked ? <TargetMark /> : null}
+      {onMark ? <MarkButton label={t('duel.mark.label', { place: PILE_TITLES.hand })} onMark={onMark} /> : null}
     </div>
   )
 }
@@ -193,7 +215,7 @@ function Zone({ area, spot, index, placed, side, owner }: { area: string; spot: 
 function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot: MatSpot; side: DuelSideView; owner: Owner; label: string }) {
   const art = side.artOf(placed.id)
   const flash = side.flash?.id === placed.id ? side.flash : null
-  const targeted = side.state.targeted.includes(placed.id)
+  const targeted = side.state.targeted.includes(placed.id) || (side.marks?.cards.includes(placed.id) ?? false)
   const faceDown = placed.pos === 'set'
   const sideways = spot !== 'st' && spot !== 'field' && placed.pos !== 'atk'
   const back = (owner === 'theirs' && faceDown) || art === null
@@ -215,6 +237,7 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
       </span>
       {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
       {targeted ? <TargetMark /> : null}
+      {side.onMark && owner === 'theirs' ? <MarkButton label={t('duel.mark.label', { place: label })} onMark={(rect) => side.onMark!({ card: placed.id }, rect, label)} /> : null}
       {placed.counters > 0 ? <span className="absolute left-0.5 top-0.5 z-2 rounded-full bg-warning px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-[#1a1204]">{placed.counters}</span> : null}
       {placed.materials.length > 0 ? <span className="absolute bottom-0.5 right-0.5 z-2 rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-primary-foreground">+{placed.materials.length}</span> : null}
     </div>
@@ -227,11 +250,17 @@ function Pile({ area, pile, side, owner }: { area: string; pile: Exclude<MatPile
   const top = pile === 'gy' || pile === 'banished' ? (cards[cards.length - 1] ?? null) : null
   const back = pile === 'deck' || pile === 'extra' ? cards.length > 0 : top !== null && side.state.facedown.includes(top)
   const art = top !== null && !back ? side.artOf(top) : null
+  // La pila entera marcada, o una carta de adentro marcada como objetivo (se vea o no): la mira queda sobre la pila. Y lo que destella (activar, marcar) adentro, también.
+  const marked = (side.marks?.piles.includes(pile) ?? false) || cards.some((id) => side.state.targeted.includes(id))
+  const flash = side.flash && cards.includes(side.flash.id) ? side.flash : null
 
   return (
-    <div role="group" aria-label={`${PILE_TITLES[pile]}: ${cards.length}`} title={PILE_TITLES[pile]} data-rival-drop={owner === 'theirs' ? pile : undefined} className={cx(CELL, 'overflow-hidden')} style={{ gridArea: area }}>
+    <div role="group" aria-label={`${PILE_TITLES[pile]}: ${cards.length}`} title={PILE_TITLES[pile]} data-rival-drop={owner === 'theirs' ? pile : undefined} data-targeted={marked ? 'true' : 'false'} data-flash={flash ? 'true' : 'false'} data-flash-kind={flash?.kind} className={cx(CELL, 'overflow-hidden', FX_CARD, '[--card-shadow:0_0_0_0_transparent]')} style={{ gridArea: area, ...fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red') }}>
       {cards.length > 0 ? (art ? <CardArt remoteUrl={art} name={PILE_TITLES[pile]} className="block h-full w-full object-cover" /> : <CardBack className="h-full" />) : null}
       <PileBadge label={PILE_TITLES[pile]} count={cards.length} />
+      {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
+      {marked ? <TargetMark /> : null}
+      {side.onMark && owner === 'theirs' ? <MarkButton label={t('duel.mark.label', { place: PILE_TITLES[pile] })} onMark={(rect) => side.onMark!({ pile }, rect, PILE_TITLES[pile])} /> : null}
     </div>
   )
 }

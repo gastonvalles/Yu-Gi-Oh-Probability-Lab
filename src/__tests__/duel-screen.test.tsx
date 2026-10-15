@@ -279,6 +279,10 @@ describe('la pantalla del duelo', () => {
     flush()
     click(host, 'Battle Phase')
     flush()
+    // Las invocaciones de recién traen su carta y su cartel; pasan solos.
+    act(() => {
+      vi.advanceTimersByTime(1100)
+    })
 
     // Cada barra de vida dice de quién es: a ahí llega la espada de un ataque directo.
     expect(host.container.querySelector('[data-lp="theirs"]')).toHaveAccessibleName(/Puntos de vida de Beto/)
@@ -356,6 +360,12 @@ describe('la pantalla del duelo', () => {
     const stage = () => guest.container.querySelector('[data-activation]')
     const ring = () => rivalCard().getAttribute('data-flash')
     const myMonster = () => tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
+    // Invocar también se anima, con su carta (de dorso: Beto todavía no la vio) y su cartel, como en un combo guardado.
+    expect(stage()).toHaveAttribute('data-kind', 'normal')
+    expect(within(guest.container).getByText('Ana hace una Invocación Normal')).toBeInTheDocument()
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
     expect(stage()).toBeNull()
     expect(ring()).toBe('false')
 
@@ -385,11 +395,12 @@ describe('la pantalla del duelo', () => {
       vi.advanceTimersByTime(1000)
     })
 
-    // Marcar un objetivo: no agranda la carta, sólo le pone el aro, y la mira se queda mientras esté marcada.
+    // Marcar un objetivo: la carta sale en el centro con su cartel, le queda el aro, y la mira se queda mientras esté marcada.
     myMonster()
     fireEvent.click(screen.getByRole('menuitem', { name: 'Target' }))
     flush()
-    expect(stage()).toBeNull()
+    expect(stage()).toHaveAttribute('data-kind', 'target')
+    expect(within(guest.container).getByText('Ana marca una carta como objetivo')).toBeInTheDocument()
     expect(rivalCard()).toHaveAttribute('data-flash-kind', 'target')
     expect(rivalCard()).toHaveAttribute('data-targeted', 'true')
     act(() => {
@@ -399,11 +410,22 @@ describe('la pantalla del duelo', () => {
     expect(rivalCard()).toHaveAttribute('data-targeted', 'true')
     expect(within(rivalCard()).getByRole('img', { name: 'Target' })).toBeInTheDocument()
 
+    // Mandar la carta al cementerio: su carta viaja (lo anima la mesa) y el cartel dice qué pasó, como en un combo guardado.
+    myMonster()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Al cementerio' }))
+    flush()
+    expect(stage()).toHaveAttribute('data-kind', 'gy')
+    expect(within(guest.container).getByText('Ana manda una carta al cementerio')).toBeInTheDocument()
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(stage()).toBeNull()
+
     // Deshacer lo de Ana no repite nada en la mesa de Beto.
     click(host, 'Deshacer')
     flush()
     expect(stage()).toBeNull()
-    expect(rivalCard()).toHaveAttribute('data-targeted', 'false')
+    expect(guest.container.querySelector('[data-rival-drop="gy"]')?.getAttribute('aria-label')).toBe('GY: 0')
   })
 
   it('en escritorio lo que se centra en la mesa (la carta grande de un efecto del rival, y las tarjetas de pausa y de resultado) deja afuera la columna del chat; en el celular, no', () => {
@@ -424,6 +446,51 @@ describe('la pantalla del duelo', () => {
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Rendirme' }))
     flush()
     expect(within(guest.container).getByRole('dialog', { name: '¡Ganaste!' }).parentElement).toHaveClass(edge)
+  })
+
+  it('el rival se puede marcar como objetivo: su carta del campo, su mano, su Main, su cementerio y su destierro; el dueño lo ve en lo suyo, y se quita igual', () => {
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+    summonFirst(host)
+    flush()
+
+    const markRival = (view: RenderResult, name: string, item: string) => {
+      fireEvent.click(within(view.container).getByRole('button', { name }))
+      fireEvent.click(screen.getByRole('menuitem', { name: item }))
+      flush()
+    }
+    const gyOf = (view: RenderResult) => view.container.querySelector('[data-drop="gy"]')!
+
+    // Su carta del campo: Beto la marca (menú pegado, una sola jugada) y Ana la ve en la suya; los dos con la mira.
+    fireEvent.click(within(guest.container).getByRole('button', { name: 'Rival, Zona de monstruo 1: marcar' }))
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Target' }))
+    flush()
+    expect(zoneOf(host, 'Zona de monstruo 1').getByRole('img', { name: 'Target' })).toBeInTheDocument()
+    expect(guest.container.querySelector('[data-rival-card-id]')).toHaveAttribute('data-targeted', 'true')
+
+    // Sus pilas y su mano: la mira queda sobre cada una, de los dos lados.
+    markRival(guest, 'GY: marcar', 'Target')
+    markRival(guest, 'Banish: marcar', 'Target')
+    markRival(guest, 'Main: marcar', 'Target')
+    markRival(guest, 'Mano: marcar', 'Target')
+    expect(gyOf(host)).toHaveAttribute('data-targeted', 'true')
+    expect(host.container.querySelector('[data-drop="banished"]')).toHaveAttribute('data-targeted', 'true')
+    expect(host.container.querySelector('[data-drop="deck"]')).toHaveAttribute('data-targeted', 'true')
+    expect(host.container.querySelector('[data-marked="hand"]')).not.toBeNull()
+    expect(guest.container.querySelector('[data-rival-drop="gy"]')).toHaveAttribute('data-targeted', 'true')
+    expect(guest.container.querySelector('[data-rival-drop="hand"]')).toHaveAttribute('data-targeted', 'true')
+
+    // Marcar de nuevo ofrece quitarla.
+    markRival(guest, 'GY: marcar', 'Quitar target')
+    markRival(guest, 'Mano: marcar', 'Quitar target')
+    expect(gyOf(host)).toHaveAttribute('data-targeted', 'false')
+    expect(host.container.querySelector('[data-marked="hand"]')).toBeNull()
+    expect(host.container.querySelector('[data-drop="banished"]')).toHaveAttribute('data-targeted', 'true')
+
+    // Y Ana también puede marcar lo de Beto (es de los dos lados).
+    markRival(host, 'Extra: marcar', 'Target')
+    expect(guest.container.querySelector('[data-drop="extra"]')).toHaveAttribute('data-targeted', 'true')
   })
 
   it('juegos: moneda, piedra-papel-tijera y quién empieza; los dos ven lo mismo y la elección del rival no se ve hasta elegir la propia', () => {

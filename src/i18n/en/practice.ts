@@ -60,6 +60,7 @@ export const practice: Translated<typeof es> = {
   'practice.menu.toHand': 'To hand',
   'practice.menu.toGy': 'To the Graveyard',
   'practice.menu.toExtra': 'To the Extra Deck',
+  'practice.deckMenu.revealTop': 'Reveal the top card',
   'practice.menu.deckTop': 'Top of the Deck',
   'practice.menu.deckBottom': 'Bottom of the Deck',
 

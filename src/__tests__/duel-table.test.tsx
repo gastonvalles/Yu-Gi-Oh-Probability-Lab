@@ -45,6 +45,26 @@ describe('la mesa del duelo', () => {
     expect(zone('Zona de monstruo 1').style.gridArea).toBe('m1')
   })
 
+  it('una pila del rival lleva la mira si adentro hay una carta marcada como objetivo, o si el otro la marcó entera, y el aro cuando algo suyo destella ahí', () => {
+    const id = 'card-1000-1'
+    const theirs = play({ type: 'move', id, to: 'gy' }, { type: 'target', id })
+    const { rerender: rerenderBare } = render(<DuelTable mine={side(start)} theirs={side(theirs)} />)
+    const rerender = (ui: ReactElement) => rerenderBare(<Provider store={store}>{ui}</Provider>)
+
+    expect(document.querySelector('[data-rival-drop="gy"]')).toHaveAttribute('data-targeted', 'true')
+    expect(document.querySelector('[data-rival-drop="banished"]')).toHaveAttribute('data-targeted', 'false')
+
+    rerender(<DuelTable mine={side(start)} theirs={{ ...side(start), marks: { cards: [], piles: ['banished'] }, flash: { id: 'card-1001-1', key: 1, kind: 'activate' } }} />)
+    expect(document.querySelector('[data-rival-drop="banished"]')).toHaveAttribute('data-targeted', 'true')
+    expect(document.querySelector('[data-rival-drop="gy"]')).toHaveAttribute('data-targeted', 'false')
+
+    // Algo de adentro de la pila destella (se mandó ahí o se activó ahí): la pila lleva el aro.
+    const flashing = play({ type: 'move', id: 'card-1001-1', to: 'gy' })
+    rerender(<DuelTable mine={side(start)} theirs={{ ...side(flashing), flash: { id: 'card-1001-1', key: 1, kind: 'activate' } }} />)
+    expect(document.querySelector('[data-rival-drop="gy"]')).toHaveAttribute('data-flash', 'true')
+    expect(document.querySelector('[data-rival-drop="banished"]')).toHaveAttribute('data-flash', 'false')
+  })
+
   it('las Zonas Extra son de los dos: la de la izquierda de uno es la de la derecha del otro', () => {
     const mine = play({ type: 'place', id: 'card-9001-1', zone: 'emz', index: 0, pos: 'atk' })
     const theirs = play({ type: 'place', id: 'card-9002-1', zone: 'emz', index: 0, pos: 'atk' })
@@ -134,7 +154,7 @@ describe('la mesa del duelo', () => {
 
     expect(hand.children).toHaveLength(5)
     // Va dentro de una columna que scrollea: sin `shrink-0` la columna la aplastaba a 0 px y sólo se veían sus sombras (en jsdom no hay layout, así que se cuida la clase).
-    expect(hand).toHaveClass('shrink-0')
+    expect(hand.parentElement).toHaveClass('shrink-0')
   })
 
   it('se puede mostrar un solo campo: el propio o el del rival, con las Zonas Extra en el medio', () => {

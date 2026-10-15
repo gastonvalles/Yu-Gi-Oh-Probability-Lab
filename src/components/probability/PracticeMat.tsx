@@ -37,6 +37,7 @@ import { mergeHandOrder } from '../../app/practice-hand-layout'
 import { createSavedCombo, readSavedCombos, renameSavedCombo, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
 import { supportsAdditiveAnimation } from '../../app/motion'
 import { matStepCards } from '../../app/mat-steps'
+import type { Marks } from '../../app/duel-protocol'
 import { useCardFlights } from '../../app/use-card-flights'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
@@ -104,10 +105,12 @@ export interface DuelMatLink {
    */
   announcement?: { key: number; caption: string; attackerId: string; targetId?: string }
   /**
-   * Lo que el rival acaba de destacar (activar, mostrar o declarar una carta; marcar un objetivo sólo le pone el aro a la carta, que dibuja la mesa del rival):
-   * la carta (`id`, el que él le dio) grande en el centro con su arte y `caption` arriba. Cambiar `key` lo vuelve a mostrar.
+   * Lo que el rival acaba de hacer y se anima (activar, mostrar, declarar o marcar una carta, invocar, mandar cartas al cementerio, al destierro, a la mano o al deck…), como en un combo
+   * guardado: las cartas (con el id que él les dio y su arte, o de dorso si no las mostró) grandes en el centro y `caption` arriba, que dice qué pasó. Cambiar `key` lo vuelve a mostrar.
    */
-  rivalEffect?: { key: number; id: string; kind: SpotlightKind; art: string | null; caption: string }
+  rivalEffect?: { key: number; kind: SpotlightKind | ShowcaseKind; cards: ReadonlyArray<{ id: string; art: string | null }>; flip?: boolean; caption: string }
+  /** Lo que el rival marcó como objetivo de mi lado (con mis ids reales): sus cartas y pilas enteras, la mano incluida, llevan la mira igual que lo que marqué yo. */
+  marksOnMine?: Marks
   /** La mesa del rival (con ids opacos) y el arte de lo que mostró: sus cartas vuelan de un lugar a otro (al cementerio, a la mano, al campo…) como las propias. */
   rivalFlights?: { state: MatState; artOf: (id: string) => string | null }
   /** Una capa que tapa toda la mesa (el duelo en pausa): nada de lo de abajo se toca mientras está. */
@@ -943,6 +946,7 @@ export function PracticeMat({
 
       return [
         { label: t('practice.deckMenu.draw'), onSelect: () => play({ type: 'draw', count: 1 }) },
+        { label: t('practice.deckMenu.revealTop'), onSelect: () => play({ type: 'reveal', id: top }) },
         { label: t('practice.deckMenu.mill'), onSelect: () => play({ type: 'mill', count: 1 }) },
         { label: t('practice.deckMenu.banishTop'), onSelect: () => choose(banishItem(top, t('practice.deckMenu.banishTop'))) },
         view,
@@ -1022,7 +1026,9 @@ export function PracticeMat({
   // Eligiendo la zona, los Sacrificios o materiales ya confirmados siguen marcados: su zona se libera y también se puede elegir.
   const leaving = picking?.kind === 'zone' ? (picking.action.type === 'tribute' ? picking.action.tributes : picking.action.type === 'summon' ? picking.action.materials : []) : []
   const chosenLabel = picking?.kind === 'materials' || (picking?.kind === 'zone' && picking.action.type === 'summon') ? t('practice.mat.chosenMaterial') : t('practice.mat.chosenTribute')
-  const targetedIds = useMemo(() => new Set(state.targeted), [state.targeted])
+  // Las cartas con la mira: las que marqué yo y las que marcó el rival (de las pilas enteras y de la mano, también se marca lo de adentro).
+  const rivalMarks = duel?.marksOnMine
+  const targetedIds = useMemo(() => new Set([...state.targeted, ...(rivalMarks?.cards ?? [])]), [state.targeted, rivalMarks])
   // La carta de la que se está viendo el menú lleva un marco celeste mientras tanto.
   const selectedId = menu?.kind === 'card' ? menu.id : null
 
@@ -1087,7 +1093,7 @@ export function PracticeMat({
     // El Extra se ve de dorso; una carta desterrada boca abajo también (el visor de la pila la muestra igual).
     const back = pile === 'extra' ? count > 0 : top !== null && state.facedown.includes(top)
     // Una carta marcada como objetivo adentro (se vea o no: no es siempre la de arriba) lleva la mira sobre la casilla.
-    const marked = state[pile].some((id) => targetedIds.has(id))
+    const marked = state[pile].some((id) => targetedIds.has(id)) || (rivalMarks?.piles.includes(pile) ?? false)
 
     return (
       <button
@@ -1274,6 +1280,7 @@ export function PracticeMat({
             title={t('practice.mat.mainDeck')}
             data-drop="deck"
             data-over="false"
+            data-targeted={rivalMarks?.piles.includes('deck') ? 'true' : 'false'}
             className={cx(CELL, state.deck.length > 0 && 'cursor-grab touch-none select-none [-webkit-touch-callout:none]', 'focus-visible:outline-none focus-visible:shadow-focus')}
             style={{ gridArea: 'deck' }}
             {...bind({ id: DECK_TOP, name: 'Deck', art: null, back: true })}
@@ -1289,6 +1296,7 @@ export function PracticeMat({
               </span>
             ) : null}
             <PileBadge label={PILE_TITLES.deck} count={state.deck.length} />
+            {rivalMarks?.piles.includes('deck') ? <TargetMark /> : null}
           </div>
           {pileCell('extra', 'extra')}
           {pileCell('gy', 'gy')}
@@ -1324,6 +1332,16 @@ export function PracticeMat({
         <div className="relative">
           {/* Celular: las salidas y problemas flotan justo arriba de la mano (el aire que queda abajo del campo): no ocupan lugar, así que el campo no se mueve cuando aparecen, se explican o se van. Sólo los chips y la explicación atajan toques. */}
           {footer && isDealt && !isDesktop ? <div className="pointer-events-none absolute inset-x-0 bottom-full z-10 px-1 pb-1.5 animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
+          {rivalMarks?.piles.includes('hand') ? (
+            <span
+              role="img"
+              aria-label={t('practice.card.targetMark')}
+              data-targeted="true"
+              data-marked="hand"
+              className="pointer-events-none absolute -inset-x-1 -top-1 bottom-0 z-20 animate-fx-lock rounded-card border-2 border-[color:rgb(var(--fx-rgb))] bg-[rgb(var(--fx-rgb)/0.08)] shadow-[0_0_22px_rgb(var(--fx-rgb)/0.6)] motion-reduce:animate-none"
+              style={fxVars('red')}
+            />
+          ) : null}
           <PracticeHand
             cards={handCards}
             sizeSlots={Math.max(session.initial.hand.length, 1)}
@@ -1487,12 +1505,13 @@ export function PracticeMat({
         />
       ) : null}
 
-      {/* Lo que destaca el rival (activar, mostrar, declarar): su carta aparece grande en el centro, como las tuyas. Marcar un objetivo sólo le pone el aro a su carta. */}
-      {duel?.rivalEffect && duel.rivalEffect.kind !== 'target' ? (
+      {/* Lo que hace el rival y se anima: sus cartas aparecen grandes en el centro con un cartel que dice qué pasó, como en un combo guardado. */}
+      {duel?.rivalEffect ? (
         <Spotlight
           key={duel.rivalEffect.key}
           kind={duel.rivalEffect.kind}
-          cards={[{ id: duel.rivalEffect.id, name: '', art: duel.rivalEffect.art }]}
+          cards={duel.rivalEffect.cards.map((card) => ({ id: card.id, name: '', art: card.art, back: card.art === null }))}
+          flip={duel.rivalEffect.flip}
           caption={duel.rivalEffect.caption}
           className={cx('absolute inset-y-0 left-0 right-0 z-[120]', Boolean(duel.aside) && 'min-[1101px]:right-[20rem]')}
         />

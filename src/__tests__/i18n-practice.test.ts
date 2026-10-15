@@ -73,7 +73,7 @@ describe('la mesa de práctica en inglés', () => {
   it('el menú de una carta ofrece las jugadas con su nombre oficial', () => {
     expect(labels(start(), 'a1')).toEqual(['Normal Summon', 'Set', 'Special Summon', 'Activate effect', 'Reveal', 'Target', 'Discard', 'Banish', 'Top of the Deck', 'Bottom of the Deck'])
     expect(listCardActions(start(), 'a1', kindOf, nameOf).find((item) => item.label === 'Special Summon')!.choices?.map((choice) => choice.label)).toEqual(['Attack', 'Defense'])
-    expect(labels(start(), 'x1')).toEqual(['Special Summon', 'To the Graveyard', 'Banish'])
+    expect(labels(start(), 'x1')).toEqual(['Special Summon', 'Reveal', 'To the Graveyard', 'Banish'])
     expect(listCardActions(start(), 'x1', kindOf, nameOf).find((item) => item.label === 'Banish')!.choices?.map((choice) => choice.label)).toEqual(['Face-up', 'Face-down'])
 
     const two = run([{ type: 'place', id: 'x1', zone: 'emz', index: 0, pos: 'atk' }, { type: 'place', id: 'a1', zone: 'mz', index: 0, pos: 'atk' }])
@@ -222,7 +222,7 @@ describe('la mesa dibujada en inglés', () => {
     expect(within(zone('Monster Zone 2')).getByRole('button', { name: 'Maxx C, Defense Position' })).toBeInTheDocument()
 
     tap(screen.getByRole('button', { name: 'Main: 1' }))
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Draw', 'Send to the Graveyard', 'Banish the top card', 'View the Deck', 'Shuffle'])
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Draw', 'Reveal the top card', 'Send to the Graveyard', 'Banish the top card', 'View the Deck', 'Shuffle'])
     expect(screen.getByRole('menu', { name: '1 card' })).toBeInTheDocument()
 
     // Desterrar pregunta cómo queda: boca arriba (la pila muestra la carta) o boca abajo (de dorso).

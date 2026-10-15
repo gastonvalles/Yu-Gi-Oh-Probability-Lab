@@ -62,6 +62,7 @@ export const practice = {
   'practice.menu.toHand': 'A la mano',
   'practice.menu.toGy': 'Al cementerio',
   'practice.menu.toExtra': 'Al Extra Deck',
+  'practice.deckMenu.revealTop': 'Revelar el tope',
   'practice.menu.deckTop': 'Arriba del deck',
   'practice.menu.deckBottom': 'Abajo del deck',
 

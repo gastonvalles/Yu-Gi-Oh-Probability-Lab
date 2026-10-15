@@ -911,6 +911,8 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
       add(t('practice.menu.toHand'), { type: 'move', id, to: 'hand' })
       target()
     }
+    // Del Deck o del Extra (que nadie ve) se puede mostrar una carta al rival sin moverla.
+    if (pile === 'deck' || pile === 'extra') add(t('practice.menu.reveal'), { type: 'reveal', id })
     if (pile !== 'gy') add(t('practice.menu.toGy'), { type: 'move', id, to: 'gy' })
     if (pile !== 'banished') banish()
   } else {
