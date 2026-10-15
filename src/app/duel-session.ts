@@ -26,6 +26,8 @@ export interface DuelTransport {
   onPeer(listener: (present: boolean) => void): () => void
   /** Cuántos espectadores hay y si alguno pide que repitas tu estado (llegó, o se perdió algo). Sin espectadores (una sala en memoria) no existe. */
   onWatchers?(listener: (count: number, needSync: boolean) => void): () => void
+  /** Tirar la conexión de ahora y abrir otra ya (sin esperar el reintento): así el relay vuelve a decir si el rival está. Una sala en memoria no la necesita. */
+  reconnect?(): void
   close(): void
 }
 
@@ -104,6 +106,8 @@ export interface Duel {
   concede(): void
   /** Pedir la revancha (o aceptarla si el rival la pidió). */
   rematch(): void
+  /** Volver a conectarme a la sala ya: lo que sigue en pausa por un aviso que no llegó se resuelve sin salir del duelo. */
+  reconnect(): void
   close(): void
 }
 
@@ -754,6 +758,10 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       chatId += 1
       chat = addChat(chat, { id: chatId, from: me, text: line })
       emit()
+    },
+
+    reconnect() {
+      transport.reconnect?.()
     },
 
     close() {

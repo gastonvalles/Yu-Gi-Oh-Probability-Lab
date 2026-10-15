@@ -12,8 +12,21 @@ import { FieldBox, fieldInline } from '../ui/FieldBox'
 import { Heading } from '../ui/Heading'
 import { PLAYER_COLOR } from './player-color'
 
-/** Avisos que se mandan con un toque, para no escribir: pensando, "¿respondés?", paso y gracias. */
-const QUICK = ['think', 'respond', 'pass', 'thanks'] as const
+/**
+ * Las dos señales rápidas que tiene DuelingBook: "pensando" y "todo bien" (👍). Viajan como mensajes de chat (el rival las reconoce por el emoji, en cualquier idioma) y,
+ * además, salen un instante como un globo junto a las vidas de quien las manda (ver `useSignals`).
+ */
+const THINKING = '💭'
+const GOOD = '👍'
+export const thinkingMessage = () => `${THINKING} ${t('duel.signal.thinking')}`
+export const GOOD_MESSAGE = GOOD
+export const isSignal = (text: string) => text === GOOD || text.startsWith(THINKING)
+
+/** El único aviso más que las señales: pasar la respuesta. */
+const QUICK = ['pass'] as const
+
+/** Un mensaje que es sólo emojis se ve grande, como una reacción. */
+const onlyEmoji = (text: string) => /^[\p{Extended_Pictographic}\s]+$/u.test(text)
 
 interface DuelChatProps {
   snapshot: DuelSnapshot
@@ -51,7 +64,7 @@ export function DuelChat({ snapshot, myName, onSend, fill = false }: DuelChatPro
           <li className="text-micro text-soft">{t('duel.chat.empty')}</li>
         ) : (
           chat.map((line) => (
-            <li key={line.id} data-from={line.from === me ? 'mine' : 'theirs'} className={cx('max-w-[88%] break-words rounded-card px-2.5 py-1 text-body text-foreground', line.from === me ? 'ml-auto' : 'mr-auto', PLAYER_COLOR[line.from === me ? 'mine' : 'theirs'].bubble)}>
+            <li key={line.id} data-from={line.from === me ? 'mine' : 'theirs'} className={cx('max-w-[88%] break-words rounded-card px-2.5 py-1 text-body text-foreground', onlyEmoji(line.text) && 'text-title leading-tight', line.from === me ? 'ml-auto' : 'mr-auto', PLAYER_COLOR[line.from === me ? 'mine' : 'theirs'].bubble)}>
               <span className={cx('block text-micro font-semibold', PLAYER_COLOR[line.from === me ? 'mine' : 'theirs'].text)}>{line.from === me ? myName : rival}</span>
               {line.text}
             </li>
@@ -60,7 +73,14 @@ export function DuelChat({ snapshot, myName, onSend, fill = false }: DuelChatPro
       </ol>
 
       <div className="grid gap-2">
-        <div role="group" aria-label={t('duel.chat.quickTitle')} className="flex flex-wrap gap-1.5">
+        {/* Una sola fila que se desliza con el dedo; en escritorio, que tiene el panel ancho, se acomoda en varias. */}
+        <div role="group" aria-label={t('duel.chat.quickTitle')} className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] min-[1101px]:flex-wrap min-[1101px]:overflow-visible min-[1101px]:pb-0 [&>*]:shrink-0">
+          <Button variant="secondary" size="sm" disabled={!peerPresent} onClick={() => send(thinkingMessage())}>
+            {thinkingMessage()}
+          </Button>
+          <Button variant="secondary" size="sm" aria-label={t('duel.signal.good')} title={t('duel.signal.good')} disabled={!peerPresent} onClick={() => send(GOOD_MESSAGE)}>
+            {GOOD_MESSAGE}
+          </Button>
           {QUICK.map((key) => (
             <Button key={key} variant="secondary" size="sm" disabled={!peerPresent} onClick={() => send(t(`duel.chat.quick.${key}`))}>
               {t(`duel.chat.quick.${key}`)}
@@ -121,7 +141,7 @@ export function useChatUnread(snapshot: DuelSnapshot, open: boolean): number {
     }
 
     for (const line of chat) {
-      if (line.id > seen.current && line.from !== me) {
+      if (line.id > seen.current && line.from !== me && !isSignal(line.text)) {
         showToastMessage(`${rival}: ${line.text}`, 'info')
       }
     }
@@ -129,5 +149,5 @@ export function useChatUnread(snapshot: DuelSnapshot, open: boolean): number {
     seen.current = Math.max(seen.current, last)
   }, [chat, last, me, open, rival])
 
-  return chat.filter((line) => line.id > read && line.from !== me).length
+  return chat.filter((line) => line.id > read && line.from !== me && !isSignal(line.text)).length
 }

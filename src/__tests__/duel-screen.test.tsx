@@ -159,6 +159,7 @@ describe('la pantalla del duelo', () => {
         listener(false)
         return () => {}
       },
+      reconnect: () => {},
       close: () => {},
     }
     const view = render(<DuelScreen {...screenProps({ connect: () => full })} />)
@@ -342,6 +343,67 @@ describe('la pantalla del duelo', () => {
     expect(flights()).toEqual({ from: ['50px,150px', '50px,350px'], to: ['50px,150px', '50px,350px'] })
     expect(host.container.querySelector('[data-rival-card-id]')).not.toBeNull()
     expect(document.querySelector('[data-kind="attack"]')).toBeNull()
+  })
+
+  it('lo que el rival activa, revela o marca como objetivo se ve igual que lo tuyo: su carta grande en el centro y el aro en su campo, y el objetivo queda marcado', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+    summonFirst(host)
+    flush()
+
+    const rivalCard = () => guest.container.querySelector<HTMLElement>('[data-rival-card-id]')!
+    const stage = () => guest.container.querySelector('[data-activation]')
+    const ring = () => rivalCard().getAttribute('data-flash')
+    const myMonster = () => tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
+    expect(stage()).toBeNull()
+    expect(ring()).toBe('false')
+
+    // Ana activa el efecto: Beto ve la carta de Ana grande en el centro, con un cartel, y el aro dorado en su campo; se van solos.
+    myMonster()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
+    flush()
+    expect(stage()).toHaveAttribute('data-kind', 'activate')
+    expect(within(guest.container).getByText('Ana activa una carta')).toBeInTheDocument()
+    expect(ring()).toBe('true')
+    expect(rivalCard()).toHaveAttribute('data-flash-kind', 'activate')
+    // Quien activa la ve a su manera (la suya ya se veía): sólo Beto ve la del rival.
+    expect(within(host.container).queryByText('Ana activa una carta')).not.toBeInTheDocument()
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(stage()).toBeNull()
+    expect(ring()).toBe('false')
+
+    // Revelar una carta de la mano: otro color y otro cartel (la mano del rival no se ve, así que no hay aro, sólo la carta en el centro).
+    tap(handOf(host).getAllByRole('listitem')[0]!)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Revelar' }))
+    flush()
+    expect(stage()).toHaveAttribute('data-kind', 'reveal')
+    expect(within(guest.container).getByText('Ana revela una carta')).toBeInTheDocument()
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+
+    // Marcar un objetivo: no agranda la carta, sólo le pone el aro, y la mira se queda mientras esté marcada.
+    myMonster()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Target' }))
+    flush()
+    expect(stage()).toBeNull()
+    expect(rivalCard()).toHaveAttribute('data-flash-kind', 'target')
+    expect(rivalCard()).toHaveAttribute('data-targeted', 'true')
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(ring()).toBe('false')
+    expect(rivalCard()).toHaveAttribute('data-targeted', 'true')
+    expect(within(rivalCard()).getByRole('img', { name: 'Target' })).toBeInTheDocument()
+
+    // Deshacer lo de Ana no repite nada en la mesa de Beto.
+    click(host, 'Deshacer')
+    flush()
+    expect(stage()).toBeNull()
+    expect(rivalCard()).toHaveAttribute('data-targeted', 'false')
   })
 
   it('juegos: moneda, piedra-papel-tijera y quién empieza; los dos ven lo mismo y la elección del rival no se ve hasta elegir la propia', () => {
@@ -532,8 +594,10 @@ describe('la pantalla del duelo', () => {
     fireEvent.click(panel().getByRole('button', { name: 'Rendirme' }))
     flush()
 
-    expect(within(host.container).getByText('Beto se rindió. ¡Ganaste!')).toBeInTheDocument()
-    expect(within(guest.container).getByText('Te rendiste.')).toBeInTheDocument()
+    const hostResult = within(within(host.container).getByRole('dialog', { name: '¡Ganaste!' }))
+    expect(hostResult.getByText('Beto se rindió.')).toBeInTheDocument()
+    const guestResult = within(within(guest.container).getByRole('dialog', { name: 'Perdiste' }))
+    expect(guestResult.getByText('Te rendiste.')).toBeInTheDocument()
 
     // Ana pide la revancha: Beto lo ve y la acepta.
     click(host, 'Revancha')
@@ -755,9 +819,20 @@ describe('la pantalla del duelo', () => {
     flush()
     expect(within(guest.container).getByText('Hola, ya entro')).toBeInTheDocument()
     // Un mensaje rápido va con un toque.
-    click(guest, '¿Querés responder?')
+    click(guest, 'Paso')
     flush()
-    expect(within(within(host.container).getByRole('log', { name: 'Chat con Beto' })).getByText('¿Querés responder?')).toBeInTheDocument()
+    expect(within(within(host.container).getByRole('log', { name: 'Chat con Beto' })).getByText('Paso')).toBeInTheDocument()
+
+    // Las dos señales de DuelingBook (pensando, todo bien) y un aviso más (paso): nada de una lista larga.
+    const quick = within(guest.container).getByRole('group', { name: 'Mensajes rápidos' })
+    expect(within(quick).getAllByRole('button').map((button) => button.getAttribute('aria-label') ?? button.textContent)).toEqual(['💭 Pensando…', 'Todo bien', 'Paso'])
+    click(guest, '💭 Pensando…')
+    fireEvent.click(within(quick).getByRole('button', { name: 'Todo bien' }))
+    flush()
+    const hostLog = within(host.container).getByRole('log', { name: 'Chat con Beto' })
+    expect(within(hostLog).getByText('💭 Pensando…', { exact: false })).not.toHaveClass('text-title')
+    // Un 👍 solo se ve grande, como una reacción.
+    expect(within(hostLog).getByText('👍', { exact: false })).toHaveClass('text-title')
 
     openTable(host, guest)
 
@@ -1080,7 +1155,8 @@ describe('la pantalla del duelo', () => {
 
   /** Sale del duelo desde la mesa (con la confirmación). */
   function leaveDuel(view: RenderResult) {
-    click(view, 'Salir del duelo')
+    // La de la barra es la primera (con el resultado en pantalla, la tarjeta tiene la suya debajo).
+    fireEvent.click(within(view.container).getAllByRole('button', { name: 'Salir del duelo' })[0]!)
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Salir del duelo' }))
   }
   const hasSave = (role: 'host' | 'guest') => Object.keys(localStorage).some((key) => key.startsWith('ygo-lab:duel-save:') && key.endsWith(`:${role}`))
@@ -1117,6 +1193,62 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).queryByRole('alertdialog', { name: 'Duelo en pausa' })).not.toBeInTheDocument()
     expect(within(host.container).getByRole('button', { name: /Pausar el reloj/ })).toBeInTheDocument()
     expect(within(guest.container).getByRole('button', { name: /Pausar el reloj/ })).toBeInTheDocument()
+  })
+
+  it('en pausa se puede reconectar sin salir del duelo: si el aviso de que el rival está se perdió, se retoma con la mesa como estaba', () => {
+    const ends: MemoryEnd[] = []
+    connect = () => {
+      const end = memory.join()
+      ends.push(end)
+      return asSocket(end)
+    }
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+    const summoned = summonFirst(host)
+    flush()
+
+    // El relay dijo que el rival no está y no lo repitió: la mesa queda tapada aunque el rival siga ahí.
+    act(() => ends[0]!.notify(false))
+    const pause = within(host.container).getByRole('alertdialog', { name: 'Duelo en pausa' })
+    expect(within(pause).getByRole('button', { name: 'Salir del duelo' })).toBeInTheDocument()
+
+    // Reconectar vuelve a pedirle al relay cómo está la sala (acá, la sala en memoria contesta que el rival está).
+    const reconnect = vi.spyOn(ends[0]!, 'reconnect').mockImplementation(() => ends[0]!.notify(true))
+    fireEvent.click(within(pause).getByRole('button', { name: 'Reconectar' }))
+    flush()
+
+    expect(reconnect).toHaveBeenCalledTimes(1)
+    expect(within(host.container).queryByRole('alertdialog', { name: 'Duelo en pausa' })).not.toBeInTheDocument()
+    expect(zoneOf(host, 'Zona de monstruo 1').getByLabelText(summoned)).toBeInTheDocument()
+  })
+
+  it('Reconectar está a la vista de los dos jugadores siempre, y si cualquiera lo toca el duelo sigue: aunque el que lo toque no vea ninguna pausa', () => {
+    const ends: MemoryEnd[] = []
+    connect = () => {
+      const end = memory.join()
+      ends.push(end)
+      return asSocket(end)
+    }
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+
+    // Los dos lo tienen en la barra, con la mesa a la vista.
+    expect(within(host.container).getByRole('button', { name: 'Reconectar' })).toBeInTheDocument()
+    expect(within(guest.container).getByRole('button', { name: 'Reconectar' })).toBeInTheDocument()
+
+    // Ana ve el duelo en pausa por un aviso perdido; Beto no ve nada raro y es él quien toca Reconectar: el relay le avisa de nuevo a los dos.
+    act(() => ends[0]!.notify(false))
+    expect(within(host.container).getByRole('alertdialog', { name: 'Duelo en pausa' })).toBeInTheDocument()
+    expect(within(guest.container).queryByRole('alertdialog', { name: 'Duelo en pausa' })).not.toBeInTheDocument()
+    const reconnect = vi.spyOn(ends[1]!, 'reconnect').mockImplementation(() => {
+      ends[0]!.notify(true)
+      ends[1]!.notify(true)
+    })
+    fireEvent.click(within(guest.container).getByRole('button', { name: 'Reconectar' }))
+    flush()
+
+    expect(reconnect).toHaveBeenCalledTimes(1)
+    expect(within(host.container).queryByRole('alertdialog', { name: 'Duelo en pausa' })).not.toBeInTheDocument()
   })
 
   it('en pausa también se puede salir desde el cartel; y quien vuelve con el enlace en otra pestaña sigue siendo quien era (anfitrión) con su mesa', () => {
@@ -1170,7 +1302,7 @@ describe('la pantalla del duelo', () => {
     expect(within(guest.container).queryByText(/Tenés un duelo en pausa/)).not.toBeInTheDocument()
 
     // Al anfitrión no le tapa la mesa una pausa: el duelo terminó y se sigue viendo el resultado.
-    expect(within(host.container).getByText('Beto se rindió. ¡Ganaste!')).toBeInTheDocument()
+    expect(within(host.container).getByText('Beto se rindió.')).toBeInTheDocument()
     expect(within(host.container).queryByRole('alertdialog', { name: 'Duelo en pausa' })).not.toBeInTheDocument()
 
     // El anfitrión sale también: el duelo (que ya terminó) tampoco queda.
@@ -1226,10 +1358,70 @@ describe('la pantalla del duelo', () => {
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Rendirme' }))
     flush()
 
-    expect(within(host.container).getByText('Beto se rindió. ¡Ganaste!')).toBeInTheDocument()
+    expect(within(host.container).getByText('Beto se rindió.')).toBeInTheDocument()
     expect(within(guest.container).getByText('Te rendiste.')).toBeInTheDocument()
     expect(within(guest.container).getByRole('button', { name: 'Rendirme' })).toBeDisabled()
     expect(within(host.container).getByRole('button', { name: 'Rendirme' })).toBeDisabled()
+  })
+
+  it('el final del duelo es una tarjeta al centro: título grande y motivo (sin puntos de vida), "Ver la mesa" la cierra y deja una línea arriba con la revancha', () => {
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+
+    // Beto se queda sin puntos de vida: 80 es 8000.
+    click(guest, /Cambiar mis puntos de vida/)
+    const sheet = () => within(screen.getByRole('dialog', { name: 'Mis puntos de vida' }))
+    fireEvent.click(sheet().getByRole('button', { name: '8' }))
+    fireEvent.click(sheet().getByRole('button', { name: '0' }))
+    fireEvent.click(sheet().getByRole('button', { name: /^Restar 8000/ }))
+    flush()
+
+    const lost = within(guest.container).getByRole('dialog', { name: 'Perdiste' })
+    expect(within(lost).getByText('Te quedaste sin puntos de vida.')).toBeInTheDocument()
+    const won = within(host.container).getByRole('dialog', { name: '¡Ganaste!' })
+    expect(within(won).getByText('Beto se quedó sin puntos de vida.')).toBeInTheDocument()
+    // Con la tarjeta abierta la revancha está una sola vez.
+    expect(within(host.container).getAllByRole('button', { name: 'Revancha' })).toHaveLength(1)
+
+    // Ver la mesa: la tarjeta se va y arriba queda el resultado en una línea, con la revancha.
+    fireEvent.click(within(won).getByRole('button', { name: 'Ver la mesa' }))
+    expect(within(host.container).queryByRole('dialog', { name: '¡Ganaste!' })).not.toBeInTheDocument()
+    expect(within(host.container).getByText('¡Ganaste!')).toBeInTheDocument()
+    expect(within(host.container).getAllByRole('button', { name: 'Revancha' })).toHaveLength(1)
+
+    // Desde la tarjeta también se sale.
+    fireEvent.click(within(lost).getByRole('button', { name: 'Salir del duelo' }))
+    expect(within(guest.container).queryByRole('dialog', { name: 'Perdiste' })).not.toBeInTheDocument()
+    expect(within(guest.container).getByRole('button', { name: 'Crear un duelo' })).toBeInTheDocument()
+  })
+
+  it('las señales de siempre (pensando, todo bien) están a mano en la mesa y salen como un globo junto a las vidas de quien las manda, que se va solo y no cuenta como mensaje sin leer', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+    const bubble = (view: RenderResult, side: 'mine' | 'theirs') => view.container.querySelector(`[data-lp="${side}"] [role="status"]`)
+
+    expect(bubble(host, 'theirs')).toBeNull()
+
+    // Beto avisa que está pensando: lo ve junto a sus vidas (arriba, en la mesa de Ana, y abajo en la suya), en su color.
+    fireEvent.click(within(guest.container).getByRole('button', { name: 'Pensando…' }))
+    flush()
+    expect(bubble(host, 'theirs')).toHaveTextContent('💭 Pensando…')
+    expect(bubble(guest, 'mine')).toHaveTextContent('💭 Pensando…')
+    expect(bubble(host, 'mine')).toBeNull()
+    expect(host.container.querySelector('[data-lp="theirs"]')).toHaveClass('border-info/50')
+    // Una señal no es un mensaje sin leer ni avisa aparte.
+    expect(within(host.container).getByRole('button', { name: 'Chat' })).toBeInTheDocument()
+
+    // Se va sola; y "todo bien" es un 👍.
+    act(() => {
+      vi.advanceTimersByTime(4000)
+    })
+    expect(bubble(host, 'theirs')).toBeNull()
+    fireEvent.click(within(host.container).getByRole('button', { name: 'Todo bien' }))
+    flush()
+    expect(bubble(guest, 'theirs')).toHaveTextContent('👍')
+    expect(within(guest.container).getByRole('button', { name: 'Chat' })).toBeInTheDocument()
   })
 
   it('en escritorio el chat está siempre abierto a la derecha: se escribe sin abrir nada y no hay botón para abrirlo', () => {
@@ -1278,7 +1470,7 @@ describe('la pantalla del duelo', () => {
 
     fireEvent.click(within(within(guest.container).getByRole('region', { name: 'Chat con Ana' })).getByRole('button', { name: 'Paso' }))
     flush()
-    fireEvent.click(within(within(host.container).getByRole('region', { name: 'Chat con Beto' })).getByRole('button', { name: '¡Gracias!' }))
+    fireEvent.click(within(within(host.container).getByRole('region', { name: 'Chat con Beto' })).getByRole('button', { name: 'Todo bien' }))
     flush()
 
     const colors = (view: RenderResult) => {
@@ -1296,13 +1488,13 @@ describe('la pantalla del duelo', () => {
 
       // El tuyo, verde: la casilla de tus vidas (borde y número) y tu globo, con tu nombre.
       expect(mineLife).toHaveClass('border-accent/50')
-      expect(mineLife.querySelector('span:last-child')).toHaveClass('text-accent')
+      expect(mineLife.querySelector('span.tabular-nums')).toHaveClass('text-accent')
       expect(mineLine).toHaveClass('bg-accent/20')
       expect(mineLine.querySelector('span')).toHaveClass('text-accent')
 
       // El del rival, celeste, también en sus dos lugares.
       expect(theirLife).toHaveClass('border-info/50')
-      expect(theirLife.querySelector('span:last-child')).toHaveClass('text-info-soft')
+      expect(theirLife.querySelector('span.tabular-nums')).toHaveClass('text-info-soft')
       expect(theirLine).toHaveClass('bg-info/20')
       expect(theirLine.querySelector('span')).toHaveClass('text-info-soft')
     }
@@ -1319,7 +1511,7 @@ describe('la pantalla del duelo', () => {
     flush()
 
     // Lo que escriben los dos (después de que quien mira entró: el chat anterior no se repite).
-    for (const [view, quick] of [[host, 'Paso'], [guest, '¡Gracias!']] as const) {
+    for (const [view, quick] of [[host, 'Paso'], [guest, 'Todo bien']] as const) {
       click(view, /^Chat/)
       fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: quick }))
       flush()

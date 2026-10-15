@@ -198,7 +198,7 @@ export function Spotlight({ kind, cards, caption, flip = false, className }: Spo
                   ) : null}
                 </div>
               </div>
-              <figcaption className="line-clamp-2 max-w-full bg-background/85 px-2 py-0.5 text-center text-micro font-bold text-foreground">{card.name}</figcaption>
+              {card.name ? <figcaption className="line-clamp-2 max-w-full bg-background/85 px-2 py-0.5 text-center text-micro font-bold text-foreground">{card.name}</figcaption> : null}
             </figure>
           ))}
         </div>

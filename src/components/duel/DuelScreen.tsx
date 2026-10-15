@@ -11,7 +11,8 @@ import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-m
 import { duelTurnNumber, sharedPhase, whoseTurn } from '../../app/duel-turn'
 import { STARTING_LP } from '../../app/life-calculator'
 import { beginDuel } from '../../app/mascot'
-import { createMatState, isToken, PHASES, randomSeed, shuffleWithSeed } from '../../app/practice-mat'
+import { matEffects } from '../../app/mat-effects'
+import { createMatState, isToken, PHASES, randomSeed, replayMat, shuffleWithSeed } from '../../app/practice-mat'
 import { useDuel, type DuelConnect, type SpectatorConnect } from '../../app/use-duel'
 import type { MatSession } from '../../app/use-mat-session'
 import { showToastMessage } from '../../app/use-toast-message'
@@ -23,9 +24,11 @@ import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { DuelBar, DuelLife, DuelTools } from './DuelBar'
+import { isSignal } from './DuelChat'
 import { DuelChat } from './DuelChat'
 import { DuelChatPanel } from './DuelChat'
 import { DuelPause } from './DuelPause'
+import { ResultCard } from './DuelResult'
 import { DuelDeckPicker, loadDuelDeck, readStoredDeck, type DuelDeck } from './DuelDeckPicker'
 import { gameText, outcomeText, rpsName } from './game-text'
 import { artOfDrawId } from './duel-art'
@@ -272,7 +275,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
   if (snapshot.mine && !snapshot.theirs && !snapshot.peerPresent) {
     return (
       <div className="h-full">
-        <DuelPause rival={snapshot.peerName ?? t('duel.bar.rival')} offline={status !== 'open'} onLeave={leave} />
+        <DuelPause rival={snapshot.peerName ?? t('duel.bar.rival')} offline={status !== 'open'} onLeave={leave} onReconnect={duel.reconnect} />
       </div>
     )
   }
@@ -689,6 +692,89 @@ function useRivalAttack(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, M
   return shown
 }
 
+/** Cuánto dura el destaque de una carta del rival (lo mismo que el de las propias). */
+const RIVAL_FX_MS = 950
+
+/**
+ * Lo que el rival destaca con su jugada (activar una carta, mostrarla, declararla o marcar un objetivo), para verlo igual que lo tuyo: la carta grande en el centro
+ * (con lo que él mostró de ella) y su aro en el campo. Cuenta sólo una jugada nueva a la vez: lo que llega de golpe (la mesa repuesta al reconectar) o se deshace no se repite.
+ */
+function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEffect']; flash: DuelSideView['flash'] } {
+  const { theirs, peerName } = snapshot
+  const acts = theirs?.acts
+  const seen = useRef(acts?.length ?? 0)
+  const [shown, setShown] = useState<DuelMatLink['rivalEffect']>(undefined)
+
+  useEffect(() => {
+    const before = seen.current
+
+    seen.current = acts?.length ?? 0
+
+    if (!theirs || !acts || acts.length !== before + 1) {
+      return
+    }
+
+    const action = acts[acts.length - 1]!
+    const { spotlight } = matEffects(replayMat(theirs.initial, acts, acts.length - 1), action)
+
+    // El ataque tiene su espada y su cartel (`useRivalAttack`).
+    if (!spotlight || spotlight.kind === 'attack') {
+      return
+    }
+
+    setShown({
+      key: Date.now(),
+      id: spotlight.id,
+      kind: spotlight.kind,
+      art: artOfDrawId(isToken(spotlight.id) ? spotlight.id : theirs.known[spotlight.id]),
+      caption: t(`duel.announce.${spotlight.kind}`, { name: peerName ?? t('duel.bar.rival') }),
+    })
+  }, [acts, theirs, peerName])
+
+  useEffect(() => {
+    if (!shown) return
+
+    const id = setTimeout(() => setShown(undefined), RIVAL_FX_MS)
+    return () => clearTimeout(id)
+  }, [shown])
+
+  const flash = useMemo(() => (shown ? { id: shown.id, key: shown.key, kind: shown.kind } : undefined), [shown])
+
+  return { effect: shown, flash }
+}
+
+/** Cuánto se queda el globo de "pensando" o "todo bien" junto a las vidas. */
+const SIGNAL_MS = 3500
+
+/** La última señal (pensando, todo bien) de cada jugador, que se ve un rato junto a sus vidas. Lo que ya estaba escrito al abrir la pantalla no cuenta. */
+function useSignals(snapshot: DuelSnapshot): { mine: string | null; theirs: string | null } {
+  const { chat, me } = snapshot
+  const last = chat.at(-1)?.id ?? 0
+  const seen = useRef(last)
+  const [shown, setShown] = useState<{ mine: string | null; theirs: string | null; key: number }>({ mine: null, theirs: null, key: 0 })
+
+  useEffect(() => {
+    const fresh = chat.filter((line) => line.id > seen.current && isSignal(line.text))
+
+    seen.current = Math.max(seen.current, last)
+
+    if (fresh.length > 0) {
+      const line = fresh[fresh.length - 1]!
+
+      setShown((current) => ({ ...current, [line.from === me ? 'mine' : 'theirs']: line.text, key: line.id }))
+    }
+  }, [chat, last, me])
+
+  useEffect(() => {
+    if (shown.mine === null && shown.theirs === null) return
+
+    const id = setTimeout(() => setShown((current) => ({ ...current, mine: null, theirs: null })), SIGNAL_MS)
+    return () => clearTimeout(id)
+  }, [shown])
+
+  return shown
+}
+
 /** Cuánto se queda el cartel de la fase o del turno del rival. */
 const NOTICE_MS = 1400
 
@@ -738,18 +824,28 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
 
   // La mesa espera una "sesión" con la mano inicial y las jugadas; acá no hay combos ni repetición, así que el cursor está siempre al final.
   const session = useMemo<MatSession>(() => ({ initial: initial!, actions: [...actions], cursor: actions.length, names: {}, replay: false }), [initial, actions])
+  const { effect: rivalEffect, flash: rivalFlash } = useRivalEffect(snapshot)
   const opponent = useMemo<DuelSideView>(
-    () => ({ state: theirs!.state, artOf: (id) => artOfDrawId(isToken(id) ? id : theirs!.known[id]), handCount: theirs!.state.hand.length }),
-    [theirs],
+    () => ({ state: theirs!.state, artOf: (id) => artOfDrawId(isToken(id) ? id : theirs!.known[id]), handCount: theirs!.state.hand.length, flash: rivalFlash }),
+    [theirs, rivalFlash],
   )
   const turn = whoseTurn(snapshot.me, mine, theirs!.state, snapshot.starter)
   useGameToasts(snapshot, myName)
   useTurnDraw(duel, snapshot, turn)
   useAutoStartClock(duel, snapshot)
   // Mientras falta uno de los dos el duelo está en pausa (el reloj también); terminado ya no hay nada que esperar.
-  const paused = !snapshot.peerPresent && duelResult(snapshot.life.lp, snapshot.conceded) === null
+  const result = duelResult(snapshot.life.lp, snapshot.conceded)
+  const paused = !snapshot.peerPresent && result === null
+  // Al terminar el duelo, la tarjeta del resultado tapa la mesa hasta que se la cierra para mirarla; con otra partida (la revancha) vuelve a salir.
+  const [resultClosed, setResultClosed] = useState(false)
+  const resultOpen = result !== null && !resultClosed
+
+  useEffect(() => {
+    if (result === null) setResultClosed(false)
+  }, [result])
   useClockPause(duel, snapshot, paused)
   const announcement = useRivalAttack(snapshot, cardsById)
+  const signals = useSignals(snapshot)
   const notice = useRivalNotice(snapshot, turn)
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
   // A quiénes se puede atacar: los monstruos del rival en el campo, con el id que él les dio.
@@ -766,6 +862,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       attackTargets,
       foreignKnown: theirs!.known,
       announcement,
+      rivalEffect,
       notice,
       rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
       phase: sharedPhase(turn, mine, theirs!.state) ?? 'draw',
@@ -773,11 +870,15 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       tools: <DuelTools snapshot={snapshot} myName={myName} games={duel} onSendChat={duel.sendChat} chatDocked={docked} />,
       // En escritorio el chat está siempre abierto a la derecha (en el celular, un panel que se abre desde el botón de abajo).
       aside: docked ? <DuelChatPanel snapshot={snapshot} myName={myName} onSend={duel.sendChat} /> : undefined,
-      life: <DuelLife snapshot={snapshot} myName={myName} onChangeLife={duel.changeLife} onHalve={duel.halveLife} />,
-      cover: paused ? <DuelPause rival={rivalName} offline={status !== 'open'} onLeave={onLeave} /> : undefined,
-      header: <DuelBar snapshot={snapshot} status={status} turn={turn} theirHand={<TheirHand count={opponent.handCount ?? 0} />} onToggleClock={duel.toggleClock} onRematch={duel.rematch} onLeave={onLeave} onConcede={duel.concede} />,
+      life: <DuelLife snapshot={snapshot} myName={myName} onChangeLife={duel.changeLife} onHalve={duel.halveLife} signal={signals.mine} />,
+      cover: paused ? (
+        <DuelPause rival={rivalName} offline={status !== 'open'} onLeave={onLeave} onReconnect={duel.reconnect} />
+      ) : result !== null && !resultClosed ? (
+        <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={duel.rematch} onLeave={onLeave} onClose={() => setResultClosed(true)} />
+      ) : undefined,
+      header: <DuelBar snapshot={snapshot} status={status} turn={turn} theirHand={<TheirHand count={opponent.handCount ?? 0} />} onToggleClock={duel.toggleClock} onRematch={duel.rematch} onLeave={onLeave} onConcede={duel.concede} onReconnect={duel.reconnect} resultOpen={resultOpen} rivalSignal={signals.theirs} />,
     }),
-    [opponent, snapshot, status, myName, turn, duel, onLeave, attackTargets, theirs, announcement, notice, rivalName, mine, paused, docked],
+    [opponent, snapshot, status, myName, turn, duel, onLeave, attackTargets, theirs, announcement, rivalEffect, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals],
   )
 
   return (

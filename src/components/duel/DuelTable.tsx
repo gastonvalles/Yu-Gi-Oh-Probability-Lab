@@ -1,7 +1,9 @@
+import type { SpotlightKind } from '../../app/mat-effects'
 import { PHASES, type MatPile, type MatSpot, type MatState, type Placed } from '../../app/practice-mat'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
+import { FX_CARD, FxFrame, SPOTLIGHT_TONE, TargetMark, fxVars } from '../probability/MatFx'
 import { CardBack, PILE_TITLES } from '../probability/MatDialogs'
 import { CELL, CELL_SQUARE, PENDULUM_GEM, PileBadge } from '../probability/PracticeMat'
 
@@ -22,6 +24,8 @@ export interface DuelSideView {
   artOf: (id: string) => string | null
   /** Cartas en la mano: la del rival no se ve, sólo cuántas son. */
   handCount?: number
+  /** La carta que acaba de destacarse (activada, mostrada, declarada o marcada como objetivo): destella un instante; cambiar `key` lo repite. */
+  flash?: { id: string; key: number; kind: SpotlightKind }
 }
 
 /** Qué se dibuja: los dos campos, sólo el propio o sólo el del rival (para elegir entre uno y otro en una pantalla chica). */
@@ -188,6 +192,8 @@ function Zone({ area, spot, index, placed, side, owner }: { area: string; spot: 
  */
 function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot: MatSpot; side: DuelSideView; owner: Owner; label: string }) {
   const art = side.artOf(placed.id)
+  const flash = side.flash?.id === placed.id ? side.flash : null
+  const targeted = side.state.targeted.includes(placed.id)
   const faceDown = placed.pos === 'set'
   const sideways = spot !== 'st' && spot !== 'field' && placed.pos !== 'atk'
   const back = (owner === 'theirs' && faceDown) || art === null
@@ -197,11 +203,18 @@ function CardOnZone({ placed, spot, side, owner, label }: { placed: Placed; spot
       data-card-id={owner === 'mine' ? placed.id : undefined}
       // La carta del rival, por el id (opaco) que él le dio: de ahí sale y a ahí llega la espada de un ataque.
       data-rival-card-id={owner === 'theirs' ? placed.id : undefined}
-      className={cx('absolute inset-x-0 top-0 mx-auto aspect-[421/614] overflow-hidden bg-input', CARD_SHADOW, spot === 'field' ? 'w-full' : 'w-[68.57%]', sideways && '[transform:rotate(90deg)]')}
+      // El aro de lo que acaba de hacer (activar, mostrar, declarar, marcar como objetivo) y la mira de lo que está marcado: igual que en las cartas propias.
+      style={fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red')}
+      data-flash={flash ? 'true' : 'false'}
+      data-flash-kind={flash?.kind}
+      data-targeted={targeted ? 'true' : 'false'}
+      className={cx('absolute inset-x-0 top-0 mx-auto aspect-[421/614] overflow-hidden bg-input [--card-shadow:0_6px_14px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]', CARD_SHADOW, FX_CARD, spot === 'field' ? 'w-full' : 'w-[68.57%]', sideways && '[transform:rotate(90deg)]')}
     >
       <span className={cx('block h-full w-full', owner === 'mine' && faceDown && 'brightness-[0.4] saturate-[0.55]')}>
         {back ? <CardBack className="h-full" /> : <CardArt remoteUrl={art} name={label} className="block h-full w-full object-cover" />}
       </span>
+      {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
+      {targeted ? <TargetMark /> : null}
       {placed.counters > 0 ? <span className="absolute left-0.5 top-0.5 z-2 rounded-full bg-warning px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-[#1a1204]">{placed.counters}</span> : null}
       {placed.materials.length > 0 ? <span className="absolute bottom-0.5 right-0.5 z-2 rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-extrabold leading-tight text-primary-foreground">+{placed.materials.length}</span> : null}
     </div>
