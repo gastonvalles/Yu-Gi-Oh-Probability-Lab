@@ -108,6 +108,8 @@ export interface DuelMatLink {
    * la carta (`id`, el que él le dio) grande en el centro con su arte y `caption` arriba. Cambiar `key` lo vuelve a mostrar.
    */
   rivalEffect?: { key: number; id: string; kind: SpotlightKind; art: string | null; caption: string }
+  /** La mesa del rival (con ids opacos) y el arte de lo que mostró: sus cartas vuelan de un lugar a otro (al cementerio, a la mano, al campo…) como las propias. */
+  rivalFlights?: { state: MatState; artOf: (id: string) => string | null }
   /** Una capa que tapa toda la mesa (el duelo en pausa): nada de lo de abajo se toca mientras está. */
   cover?: ReactNode
   /** Un panel fijo a la derecha de la mesa, sólo en escritorio (el chat): la mesa le deja 20rem. */
@@ -243,6 +245,8 @@ type Picking =
   | { kind: 'tributes'; label: string; required: number; chosen: string[]; action: Extract<MatAction, { type: 'tribute' }>; zone?: MatTarget; dropped?: boolean }
   /** Invocación desde el Extra: se tocan los materiales en el campo (los que sean) y se confirma con un botón. */
   | { kind: 'materials'; label: string; chosen: string[]; action: Extract<MatAction, { type: 'summon' }>; zone?: MatTarget; dropped?: boolean }
+
+const NO_ART = () => null
 
 const toggle = (list: string[], id: string) => (list.includes(id) ? list.filter((entry) => entry !== id) : [...list, id])
 
@@ -548,6 +552,8 @@ export function PracticeMat({
   // Las cartas se miden de nuevo cuando todo quedó quieto (ver `useCardFlights`): si no, el reparto, una carta robada o buscada y la mano reacomodada
   // dejaban la medida de cuando todavía volaban, y la próxima jugada arrancaba de ahí (desde el mazo, con una carta gigante y estirada).
   const { dealsFromDeck } = useCardFlights(sectionRef, state, artById, `${isDesktop}:${dealt}:${handOrder.join(',')}:${pendingId ?? ''}`)
+  // Las cartas del rival, con sus propias marcas en el DOM (`data-rival-card-id`, `data-rival-drop`).
+  useCardFlights(sectionRef, duel?.rivalFlights?.state ?? null, duel?.rivalFlights?.artOf ?? NO_ART, 'rival', 'theirs')
 
   // Reproducir un combo: las jugadas avanzan solas (arranca al cargarlo; cualquier jugada propia lo pausa), más rápido con el avance rápido.
   const [autoplay, setAutoplay] = useState(false)
