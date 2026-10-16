@@ -331,6 +331,11 @@ describe('el armazón', () => {
 
   it('lo flotante (botones, mascotas, avisos) deja libre la barra de abajo en el celular, y nada en la mesa a pantalla completa', () => {
     expect(shellInsetsFor(false, false)).toEqual({ left: 0, bottom: TAB_BAR_PX })
+
+    // Con la letra del navegador agrandada, la barra (4 rem) crece y lo reservado con ella.
+    document.documentElement.style.fontSize = '20px'
+    expect(shellInsetsFor(false, false)).toEqual({ left: 0, bottom: 80 })
+    document.documentElement.style.fontSize = ''
     expect(shellInsetsFor(false, false, false)).toEqual({ left: 0, bottom: 0 })
     // En escritorio manda el menú lateral y el pie, con barra o sin ella.
     expect(shellInsetsFor(false, true)).toEqual(shellInsetsFor(false, true, false))
