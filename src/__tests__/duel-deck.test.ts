@@ -17,18 +17,18 @@ const zone = (cards: number[]) => {
 const ydke = (main: number[], extra: number[] = [], side: number[] = []) => `ydke://${zone(main)}!${zone(extra)}!${zone(side)}!`
 
 describe('el deck de un duelo', () => {
-  it('lee un enlace ydke:// con el Main y el Extra (y deja el Side afuera)', () => {
-    expect(parseDuelDeck(ydke([14558127, 14558127, 23434538], [44508094], [5318639]))).toEqual({ main: [14558127, 14558127, 23434538], extra: [44508094] })
+  it('lee un enlace ydke:// con el Main y el Extra (con su Side, que no se juega pero sirve para el siding)', () => {
+    expect(parseDuelDeck(ydke([14558127, 14558127, 23434538], [44508094], [5318639]))).toEqual({ main: [14558127, 14558127, 23434538], extra: [44508094], side: [5318639] })
     // Con espacios alrededor y en mayúsculas el prefijo.
-    expect(parseDuelDeck(`  YDKE://${zone([1, 2])}!${zone([])}!!  `)).toEqual({ main: [1, 2], extra: [] })
+    expect(parseDuelDeck(`  YDKE://${zone([1, 2])}!${zone([])}!!  `)).toEqual({ main: [1, 2], extra: [], side: [] })
   })
 
   it('lee un .ydk: las zonas se separan con #main, #extra y !side, y los comentarios se ignoran', () => {
     const text = '#created by Ana\r\n#main\r\n14558127\r\n14558127\r\n23434538\r\n#extra\r\n44508094\r\n!side\r\n5318639\r\n'
 
-    expect(parseDuelDeck(text)).toEqual({ main: [14558127, 14558127, 23434538], extra: [44508094] })
+    expect(parseDuelDeck(text)).toEqual({ main: [14558127, 14558127, 23434538], extra: [44508094], side: [5318639] })
     // Sin encabezado, lo primero es el Main.
-    expect(parseDuelDeck('1\n2\n3')).toEqual({ main: [1, 2, 3], extra: [] })
+    expect(parseDuelDeck('1\n2\n3')).toEqual({ main: [1, 2, 3], extra: [], side: [] })
   })
 
   it('rechaza lo que no es un deck: vacío, sin Main, texto, números que no son cartas, enlaces rotos y textos enormes', () => {

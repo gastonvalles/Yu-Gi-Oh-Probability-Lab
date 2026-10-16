@@ -1,17 +1,19 @@
 /**
  * El deck con el que se juega un duelo cuando no es el del builder (por ejemplo, desde un celular que no tiene ninguno armado):
  * un enlace `ydke://` o el contenido de un archivo `.ydk`. Sólo importan los números de las cartas (los ids de YGOPRODeck): el
- * nombre y el arte se piden aparte. El Side Deck no se usa en un duelo.
+ * nombre y el arte se piden aparte. El Side Deck no se juega, pero sirve para el siding de un Match.
  */
 
 export interface DuelDeckCards {
   main: number[]
   extra: number[]
+  side: number[]
 }
 
 /** Topes generosos (un deck real tiene hasta 60 y 15): sólo evitan que un texto enorme llene la memoria. */
 const MAX_MAIN = 120
 const MAX_EXTRA = 30
+const MAX_SIDE = 30
 const MAX_CARD_ID = 2 ** 32 - 1
 
 const isCardId = (value: number) => Number.isInteger(value) && value > 0 && value <= MAX_CARD_ID
@@ -39,7 +41,7 @@ function decodeYdkeZone(zone: string): number[] | null {
 }
 
 function parseYdke(text: string): DuelDeckCards | null {
-  const [main, extra] = text.slice('ydke://'.length).split('!')
+  const [main, extra, side = ''] = text.slice('ydke://'.length).split('!')
 
   if (main === undefined || extra === undefined) {
     return null
@@ -47,8 +49,9 @@ function parseYdke(text: string): DuelDeckCards | null {
 
   const decodedMain = decodeYdkeZone(main)
   const decodedExtra = decodeYdkeZone(extra)
+  const decodedSide = decodeYdkeZone(side)
 
-  return decodedMain && decodedExtra ? { main: decodedMain, extra: decodedExtra } : null
+  return decodedMain && decodedExtra && decodedSide ? { main: decodedMain, extra: decodedExtra, side: decodedSide } : null
 }
 
 /** Un `.ydk`: `#main`, `#extra` y `!side` separan zonas; cada línea es el número de una carta (las que empiezan con `#` o `!` y no son una zona son comentarios). */
@@ -67,7 +70,7 @@ function parseYdk(text: string): DuelDeckCards | null {
     else if (!line.startsWith('#') && !line.startsWith('!')) return null
   }
 
-  return { main: zones.main, extra: zones.extra }
+  return { main: zones.main, extra: zones.extra, side: zones.side }
 }
 
 /** Las cartas del deck de un texto pegado o de un archivo; `null` si no es un formato conocido, está vacío o tiene números que no son cartas. */
@@ -80,11 +83,11 @@ export function parseDuelDeck(text: string): DuelDeckCards | null {
 
   const deck = trimmed.toLowerCase().startsWith('ydke://') ? parseYdke(trimmed) : parseYdk(trimmed)
 
-  if (!deck || deck.main.length === 0 || deck.main.length > MAX_MAIN || deck.extra.length > MAX_EXTRA) {
+  if (!deck || deck.main.length === 0 || deck.main.length > MAX_MAIN || deck.extra.length > MAX_EXTRA || deck.side.length > MAX_SIDE) {
     return null
   }
 
-  return [...deck.main, ...deck.extra].every(isCardId) ? deck : null
+  return [...deck.main, ...deck.extra, ...deck.side].every(isCardId) ? deck : null
 }
 
 /** Los ids de copia que usa la mesa (`card-14558127-2`): cada número de carta, con su cuenta de copias dentro de la zona. */

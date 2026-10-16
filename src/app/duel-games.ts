@@ -87,6 +87,35 @@ export function duelResult(lp: readonly number[], conceded: Duelist | null): Due
   return null
 }
 
+/** Cuántos duelos tiene que ganar alguien para ganar un Match (mejor de 3). */
+export const MATCH_TARGET = 2
+
+/** Cómo va un Match: cuántos duelos se jugaron y cuántos ganó cada uno (0 = anfitrión, 1 = invitado); sin contar el duelo que está en juego. */
+export interface Series {
+  played: number
+  wins: readonly [number, number]
+}
+
+export const NEW_SERIES: Series = { played: 0, wins: [0, 0] }
+
+/** El marcador de un Match con el resultado del duelo de ahora sumado, y quién ganó el Match si ya lo ganó alguien. */
+export function seriesScore(series: Series, result: DuelResult | null): { wins: readonly [number, number]; winner: Duelist | null } {
+  const wins: [number, number] = [series.wins[0], series.wins[1]]
+
+  if (result?.kind === 'loss') {
+    wins[result.loser === 0 ? 1 : 0] += 1
+  }
+
+  return { wins, winner: wins[0] >= MATCH_TARGET ? 0 : wins[1] >= MATCH_TARGET ? 1 : null }
+}
+
+/** El Match después de la revancha: suma el duelo que terminó, o vuelve a empezar si el Match ya estaba ganado. */
+export function advanceSeries(series: Series, result: DuelResult | null): Series {
+  const score = seriesScore(series, result)
+
+  return score.winner === null ? { played: series.played + 1, wins: score.wins } : { played: series.played + 1, wins: [0, 0] }
+}
+
 /** Cuántas entradas se guardan: el registro es de la mano, no un historial. */
 export const MAX_GAME_LOG = 40
 

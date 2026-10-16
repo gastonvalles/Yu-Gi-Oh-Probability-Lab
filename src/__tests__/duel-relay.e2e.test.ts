@@ -316,11 +316,11 @@ describe('el duelo completo por el relay real', () => {
 
     const hostTransport = make(0)
     const guestTransport = make(1)
-    const host = createDuel(hostTransport, { role: 'host', name: 'Ana', settings: { lp: 4000, hand: 5 } })
+    const host = createDuel(hostTransport, { role: 'host', name: 'Ana', settings: { lp: 4000, hand: 5, limitMin: 50, format: 'unlimited', match: false, siding: false } })
     const guest = createDuel(guestTransport, { role: 'guest', name: 'Beto' })
 
     await until(() => host.getSnapshot().peerName === 'Beto' && guest.getSnapshot().peerName === 'Ana', 15_000, 'apretón de manos')
-    expect(guest.getSnapshot().settings).toEqual({ lp: 4000, hand: 5 })
+    expect(guest.getSnapshot().settings).toEqual({ lp: 4000, hand: 5, limitMin: 50, format: 'unlimited', match: false, siding: false })
 
     host.start(hostTable)
     guest.start(guestTable)

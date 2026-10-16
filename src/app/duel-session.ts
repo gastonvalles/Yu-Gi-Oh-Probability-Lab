@@ -1,5 +1,5 @@
 import type { DuelSave } from './duel-save'
-import { addChat, addGame, cleanChat, coinWinner, dieWinner, duelResult, rpsOutcome, type ChatLine, type DuelGame, type GameEntry, type RpsPick, type TossMethod } from './duel-games'
+import { addChat, addGame, advanceSeries, cleanChat, coinWinner, dieWinner, duelResult, rpsOutcome, type ChatLine, NEW_SERIES, seriesScore, type DuelGame, type GameEntry, type Series, type RpsPick, type TossMethod } from './duel-games'
 import { RateLimiter } from './duel-relay-rules'
 import { DEFAULT_SETTINGS, MAX_MARKS, NO_MARKS, PROTOCOL_VERSION, cleanName, encodeMessage, parseMessage, type DuelMessage, type DuelSettings, type MarkTarget, type Marks, type OpeningWire } from './duel-protocol'
 import { createLifeState, lifeReducer, timerElapsed, type Duelist, type LifeState } from './life-calculator'
@@ -63,6 +63,8 @@ export interface DuelSnapshot {
   starter: Duelist
   /** Quién se rindió (0 = anfitrión, 1 = invitado), si alguien lo hizo. */
   conceded: Duelist | null
+  /** Cómo va el Match (si la sala es un Match): el marcador con el duelo de ahora sumado, el número del duelo y quién ganó el Match, si ya lo ganó alguien. */
+  series: { match: boolean; game: number; wins: readonly [number, number]; winner: Duelist | null }
   /** Quién pidió la revancha: cuando los dos la piden, la mesa se limpia y se vuelve a repartir. */
   rematch: { mine: boolean; theirs: boolean }
   /** Quién está listo para empezar: hasta que los dos lo están no se define quién va primero. */
@@ -180,6 +182,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   let starter: Duelist = 0
   let conceded: Duelist | null = null
   let rematch = { mine: false, theirs: false }
+  let series: Series = NEW_SERIES
   // Antes de la mesa: quién está listo, con qué se define quién empieza y cómo va, y el chat.
   let ready = { mine: false, theirs: false }
   let method: TossMethod | null = null
@@ -219,7 +222,13 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   const listeners = new Set<() => void>()
   let snapshot: DuelSnapshot
 
-  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent, peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult }, marks: { mine: marksOnMine, theirs: marksOnTheirs } })
+  const seriesView = (): DuelSnapshot['series'] => {
+    const score = seriesScore(series, settings.match ? duelResult(life.lp, conceded) : null)
+
+    return { match: settings.match, game: series.played + 1, wins: score.wins, winner: settings.match ? score.winner : null }
+  }
+
+  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent, peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult }, marks: { mine: marksOnMine, theirs: marksOnTheirs } })
 
   const emit = () => {
     snapshot = build()
@@ -276,7 +285,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     // Cómo va la tirada de quién empieza, para que un mensaje que se perdió (un celular en segundo plano) no la deje trabada.
     const opening: OpeningWire = ordered ? {} : { ...(method ? { method } : {}), ...(caller !== null ? { caller } : {}), ...(dice.mine !== null ? { die: dice.mine } : {}), ...(chooser !== null ? { chooser } : {}) }
 
-    send({ t: 'sync', ...table, lp: life.lp[me], lifeN, ready: ready.mine, ...(ordered ? { order: starter } : {}), ...(Object.keys(opening).length > 0 ? { opening } : {}), ...(role === 'host' ? { clock } : {}) })
+    send({ t: 'sync', ...table, lp: life.lp[me], lifeN, ready: ready.mine, ...(ordered ? { order: starter } : {}), ...(Object.keys(opening).length > 0 ? { opening } : {}), ...(settings.match ? { series } : {}), ...(role === 'host' ? { clock } : {}) })
 
     // Lo que marqué de su lado se repone junto con mi mesa (si recargó, no se acuerda).
     if (marksOnTheirs.cards.length > 0 || marksOnTheirs.piles.length > 0) {
@@ -407,6 +416,10 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     if (rematch.mine && rematch.theirs) {
       // Quien perdió elige quién va primero, sin tirar nada (con un empate, se vuelve a definir).
       const result = duelResult(life.lp, conceded)
+
+      if (settings.match) {
+        series = advanceSeries(series, result)
+      }
 
       chooser = result?.kind === 'loss' ? result.loser : null
       method = null
@@ -581,6 +594,11 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
           starter = message.order
           ordered = true
           ready = { mine: true, theirs: true }
+        }
+
+        // Cómo va el Match: lo toma de acá quien se perdió algún duelo (recargó); un marcador viejo nunca pisa a uno más nuevo.
+        if (message.series && settings.match && message.series.played > series.played) {
+          series = message.series
         }
 
         if (message.clock && role === 'guest') {

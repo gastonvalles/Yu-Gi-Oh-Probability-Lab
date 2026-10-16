@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { duelResult } from '../../app/duel-games'
+import { DEFAULT_LIMIT_MIN } from '../../app/duel-protocol'
 import type { SpectatorSide, SpectatorSnapshot } from '../../app/duel-spectator'
-import { formatClock, timerRemaining, type Duelist } from '../../app/life-calculator'
+import { duelClockMs, formatClock, type Duelist } from '../../app/life-calculator'
 import { isToken, PHASES } from '../../app/practice-mat'
 import { showToastMessage } from '../../app/use-toast-message'
 import { useSpectator, type SpectatorConnect } from '../../app/use-duel'
@@ -153,7 +154,7 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
   const nameOf = (player: Duelist) => snapshot.sides[player].name ?? (player === 0 ? t('duel.watch.host') : t('duel.watch.guest'))
   const unread = chatOpen ? 0 : Math.max(0, snapshot.chat.length - read)
   const phase = PHASES.find((entry) => entry.id === snapshot.phase)?.name
-  const clock = formatClock(timerRemaining(snapshot.clock, now))
+  const clock = formatClock(duelClockMs(snapshot.clock, now, snapshot.settings?.limitMin ?? DEFAULT_LIMIT_MIN))
   const result = snapshot.sides[0].lp !== null && snapshot.sides[1].lp !== null ? duelResult([snapshot.sides[0].lp, snapshot.sides[1].lp], snapshot.conceded) : null
 
   useGameToasts(snapshot)

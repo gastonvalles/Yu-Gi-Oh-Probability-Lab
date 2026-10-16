@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { RPS_PICKS, TOSS_METHODS, rpsOutcome } from '../../app/duel-games'
 import type { Duel, DuelSnapshot } from '../../app/duel-session'
 import type { Duelist } from '../../app/life-calculator'
+import { getDeckFormatLabel } from '../../app/deck-format'
 import { t } from '../../i18n'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
@@ -61,7 +62,11 @@ export function DuelOpening({ snapshot, myName, canReady, actions, rename }: Due
         <TossStep snapshot={snapshot} nameOf={nameOf} actions={actions} />
       )}
 
-      <p className="m-0 text-center text-micro text-soft">{t('duel.room.settings', { lp: snapshot.settings.lp, hand: snapshot.settings.hand })}</p>
+      <p className="m-0 text-center text-micro text-soft">{t('duel.room.settings', { lp: snapshot.settings.lp, hand: snapshot.settings.hand })}{' '}
+        {snapshot.settings.limitMin > 0 ? t('duel.room.limit', { min: snapshot.settings.limitMin }) : t('duel.room.noLimit')}
+        {snapshot.settings.format === 'unlimited' ? '' : ` ${t('duel.room.format', { name: getDeckFormatLabel(snapshot.settings.format) })}`}
+        {snapshot.settings.match ? ` ${t('duel.room.match')}` : ''}
+        {snapshot.settings.siding ? ` ${t('duel.room.siding')}` : ''}</p>
     </section>
   )
 }

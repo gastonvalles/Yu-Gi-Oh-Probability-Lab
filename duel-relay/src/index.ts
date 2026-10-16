@@ -9,14 +9,16 @@ import {
   PARTICIPANT_ID_PATTERN,
   PING,
   PONG,
+  RateLimiter,
+  RoomRegistry,
   ROOM_CODE_PATTERN,
   SPECTATOR_RESYNC,
   SPECTATOR_RESYNC_MS,
-  RateLimiter,
   byteLength,
   encodeRelayFrame,
   encodeSpectatorText,
   originAllowed,
+  parsePublicRoomInfo,
   type ParticipantRole,
 } from '../../src/app/duel-relay-rules'
 
@@ -54,6 +56,7 @@ interface RoomState {
 }
 
 interface Env {
+  ROOM_INDEX: { idFromName(name: string): unknown; get(id: unknown): { fetch(request: Request): Promise<Response> } }
   DUEL_ROOM: { idFromName(name: string): unknown; get(id: unknown): { fetch(request: Request): Promise<Response> } }
   /** Orígenes permitidos, separados por comas (`*` vale por letras, números y guiones). */
   ALLOWED_ORIGINS: string
@@ -318,9 +321,144 @@ export class DuelRoom extends DurableObject {
   }
 }
 
+/**
+ * La lista de salas públicas (ver `RoomRegistry`): un solo Durable Object, que guarda la lista entera en su almacenamiento entre pedidos (un objeto sin
+ * conexiones se descarga de la memoria). Sólo anota lo que el anfitrión manda para mostrar en el lobby (su nombre, el tipo, el formato y el reloj) y el código
+ * de la sala; no sabe nada de lo que pasa adentro. Con tope de salas, de ritmo por dirección (la dirección sólo se mira, no se guarda) y vencimiento.
+ */
+interface IndexStorage {
+  get<T>(key: string): Promise<T | undefined>
+  put(key: string, value: unknown): Promise<void>
+}
+
+const MAX_BODY_BYTES = 1024
+const TOKEN_PATTERN = /^[A-Za-z0-9]{16,64}$/
+/** Cuántas direcciones se recuerdan para el ritmo; pasado el tope se empieza de cero (un tope, no una lista de nadie). */
+const MAX_TRACKED_CLIENTS = 1000
+
+/** El JSON de un pedido, o null si no es un objeto. */
+function parseBody(text: string): Record<string, unknown> | null {
+  try {
+    const value: unknown = JSON.parse(text)
+
+    return typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : null
+  } catch {
+    return null
+  }
+}
+
+const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } })
+
+export class RoomIndex extends DurableObject {
+  private readonly clients = new Map<string, RateLimiter>()
+
+  private allowWrite(client: string): boolean {
+    if (this.clients.size >= MAX_TRACKED_CLIENTS) {
+      this.clients.clear()
+    }
+
+    // Una anotación cada cinco segundos y hasta cinco de golpe por dirección.
+    const limiter = this.clients.get(client) ?? new RateLimiter(Date.now(), 0.2, 5)
+
+    this.clients.set(client, limiter)
+    return limiter.allow(Date.now())
+  }
+
+  async fetch(request: Request): Promise<Response> {
+    const storage = (this as unknown as { ctx: { storage: IndexStorage } }).ctx.storage
+    const registry = new RoomRegistry((await storage.get<ConstructorParameters<typeof RoomRegistry>[0]>('rooms')) ?? [])
+    const url = new URL(request.url)
+    const now = Date.now()
+    const save = () => storage.put('rooms', registry.toJSON())
+
+    if (request.method === 'GET') {
+      const rooms = registry.list(now)
+
+      await save()
+      return json({ rooms })
+    }
+
+    if (!this.allowWrite(request.headers.get('CF-Connecting-IP') ?? 'unknown')) {
+      return json({ error: 'rate' }, 429)
+    }
+
+    const code = url.searchParams.get('room') ?? ''
+    const text = await request.text()
+
+    if (!ROOM_CODE_PATTERN.test(code) || byteLength(text) > MAX_BODY_BYTES) {
+      return json({ error: 'bad' }, 400)
+    }
+
+    const body = parseBody(text)
+
+    if (!body || typeof body.token !== 'string' || !TOKEN_PATTERN.test(body.token)) {
+      return json({ error: 'bad' }, 400)
+    }
+
+    if (url.pathname === '/rooms/close') {
+      const removed = registry.remove(code, body.token, now)
+
+      await save()
+      return json({ removed })
+    }
+
+    const info = parsePublicRoomInfo(body.info)
+
+    if (!info) {
+      return json({ error: 'bad' }, 400)
+    }
+
+    const result = registry.register(code, info, body.token, now)
+
+    await save()
+    return json({ result }, result === 'ok' ? 200 : 409)
+  }
+}
+
+/** Le pone a la respuesta el permiso para que la página (de un origen permitido) la lea: la lista se pide con `fetch` desde otra dirección. */
+function withCors(response: Response, origin: string | null): Response {
+  const headers = new Headers(response.headers)
+
+  if (origin) {
+    headers.set('Access-Control-Allow-Origin', origin)
+    headers.set('Vary', 'Origin')
+  }
+
+  return new Response(response.body, { status: response.status, headers })
+}
+
+/**
+ * Pedidos de la lista, de una página de un origen permitido: `GET /rooms` la lee y `POST /rooms?room=CODIGO` anota una sala; `POST /rooms/close?room=CODIGO` la baja.
+ * Los POST llevan el JSON como texto plano (así el navegador no hace una consulta previa, y se pueden mandar al cerrar la pestaña).
+ */
+async function handleRooms(request: Request, env: Env, url: URL): Promise<Response> {
+  const origin = request.headers.get('Origin')
+
+  if (!originAllowed(origin, env.ALLOWED_ORIGINS)) {
+    return new Response('Forbidden', { status: 403 })
+  }
+
+  const listing = request.method === 'GET' && url.pathname === '/rooms'
+  const writing = request.method === 'POST' && (url.pathname === '/rooms' || url.pathname === '/rooms/close')
+
+  if (!listing && !writing) {
+    return withCors(new Response('Not found', { status: 404 }), origin)
+  }
+
+  const index = env.ROOM_INDEX.get(env.ROOM_INDEX.idFromName('index'))
+  const forwarded = new Request(url.toString(), { method: request.method, headers: request.headers, body: writing ? await request.text() : undefined })
+
+  return withCors(await index.fetch(forwarded), origin)
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url)
+
+    if (url.pathname === '/rooms' || url.pathname === '/rooms/close') {
+      return handleRooms(request, env, url)
+    }
+
     const route = /^\/room\/([^/]+)$/.exec(url.pathname)
 
     if (!route) {

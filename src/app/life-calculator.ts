@@ -60,8 +60,13 @@ export function timerElapsed(timer: LifeTimer, now: number): number {
 }
 
 /** Lo que falta de la ronda (nunca menos de 0). */
-export function timerRemaining(timer: LifeTimer, now: number): number {
-  return Math.max(0, ROUND_LIMIT_MS - timerElapsed(timer, now))
+/** Lo que marca el reloj de un duelo: lo que falta para el límite que se eligió, o lo que va corrido si no hay límite (`limitMin` 0). */
+export function duelClockMs(timer: LifeTimer, now: number, limitMin: number): number {
+  return limitMin > 0 ? timerRemaining(timer, now, limitMin * 60_000) : timerElapsed(timer, now)
+}
+
+export function timerRemaining(timer: LifeTimer, now: number, limitMs: number = ROUND_LIMIT_MS): number {
+  return Math.max(0, limitMs - timerElapsed(timer, now))
 }
 
 /** mm:ss; pasada la hora, h:mm:ss. */

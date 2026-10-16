@@ -58,22 +58,22 @@ function startBoth(game: Game) {
 
 describe('el apretón de manos', () => {
   it('se ven, el invitado usa los ajustes del anfitrión y los dos arrancan con los mismos puntos de vida', () => {
-    const { host, guest } = setup({ lp: 4000, hand: 6 })
+    const { host, guest } = setup({ lp: 4000, hand: 6, limitMin: 50, format: 'unlimited', match: false, siding: false })
 
     expect(host.getSnapshot()).toMatchObject({ peerPresent: true, peerName: 'Beto', me: 0, incompatible: false })
-    expect(guest.getSnapshot()).toMatchObject({ peerPresent: true, peerName: 'Ana', me: 1, settings: { lp: 4000, hand: 6 }, incompatible: false })
+    expect(guest.getSnapshot()).toMatchObject({ peerPresent: true, peerName: 'Ana', me: 1, settings: { lp: 4000, hand: 6, limitMin: 50, format: 'unlimited', match: false, siding: false }, incompatible: false })
     expect(guest.getSnapshot().life.lp).toEqual([4000, 4000])
     expect(host.getSnapshot().life.lp).toEqual([4000, 4000])
   })
 
   it('los ajustes del duelo son del anfitrión: un saludo de invitado que los traiga no los cambia', () => {
-    const game = setup({ lp: 4000, hand: 6 })
+    const game = setup({ lp: 4000, hand: 6, limitMin: 50, format: 'unlimited', match: false, siding: false })
 
     // El anfitrión recibe, de quien se hace pasar por el invitado, ajustes válidos pero que no le corresponden.
     game.room.inject(game.hostEnd, JSON.stringify({ t: 'hello', v: PROTOCOL_VERSION, sid: 'guest-1', role: 'guest', name: 'Beto', settings: { lp: 1000, hand: 3 } }))
     game.room.flush()
 
-    expect(game.host.getSnapshot().settings).toEqual({ lp: 4000, hand: 6 })
+    expect(game.host.getSnapshot().settings).toEqual({ lp: 4000, hand: 6, limitMin: 50, format: 'unlimited', match: false, siding: false })
     expect(game.host.getSnapshot().life.lp).toEqual([4000, 4000])
   })
 
@@ -792,5 +792,68 @@ describe('los objetivos marcados del lado del otro', () => {
     for (const duel of [game.host, game.guest]) {
       expect(duel.getSnapshot().marks).toEqual({ mine: { cards: [], piles: [] }, theirs: { cards: [], piles: [] } })
     }
+  })
+})
+
+describe('un Match (mejor de 3)', () => {
+  const match: DuelSettings = { lp: 8000, hand: 5, limitMin: 50, format: 'unlimited', match: true, siding: false }
+  const view = (duel: Duel) => duel.getSnapshot().series
+  /** Los dos quieren seguir: la mesa se limpia y se vuelve a repartir. */
+  const next = (game: Game) => {
+    game.host.rematch()
+    game.guest.rematch()
+    game.room.flush()
+    startBoth(game)
+  }
+
+  it('lleva el marcador de los dos lados, y gana quien llega a 2 duelos', () => {
+    const game = setup(match)
+    startBoth(game)
+    expect(view(game.host)).toEqual({ match: true, game: 1, wins: [0, 0], winner: null })
+    expect(view(game.guest)).toEqual({ match: true, game: 1, wins: [0, 0], winner: null })
+
+    // El anfitrión se rinde: el invitado va 1–0 y el Match sigue.
+    game.host.concede()
+    game.room.flush()
+    expect(view(game.guest)).toMatchObject({ wins: [0, 1], winner: null })
+    next(game)
+    expect(view(game.host)).toEqual({ match: true, game: 2, wins: [0, 1], winner: null })
+    expect(view(game.guest)).toEqual({ match: true, game: 2, wins: [0, 1], winner: null })
+
+    // Otra vez: el invitado gana el Match, 2–0.
+    game.host.concede()
+    game.room.flush()
+    expect(view(game.host)).toMatchObject({ wins: [0, 2], winner: 1 })
+    expect(view(game.guest)).toMatchObject({ wins: [0, 2], winner: 1 })
+
+    // La revancha empieza otro Match de cero.
+    next(game)
+    expect(view(game.host)).toEqual({ match: true, game: 3, wins: [0, 0], winner: null })
+  })
+
+  it('un duelo suelto no tiene Match', () => {
+    const game = setup()
+    startBoth(game)
+    game.host.concede()
+    game.room.flush()
+
+    expect(view(game.host)).toMatchObject({ match: false, winner: null })
+  })
+
+  it('quien recarga recupera el marcador que lleva el rival', () => {
+    const game = setup(match)
+    startBoth(game)
+    game.host.concede()
+    next(game)
+    expect(view(game.host).wins).toEqual([0, 1])
+
+    // El invitado vuelve con una sesión nueva: el anfitrión le repite cómo va el Match en su sync.
+    const room = game.room
+    game.guestEnd.close?.()
+    const guestEnd = room.join()
+    const reloaded = createDuel(guestEnd, { role: 'guest', name: 'Beto', now: () => game.clock.t, sid: 'guest-2' })
+    room.flush()
+
+    expect(view(reloaded).wins).toEqual([0, 1])
   })
 })

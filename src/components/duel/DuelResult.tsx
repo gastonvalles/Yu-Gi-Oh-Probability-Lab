@@ -20,8 +20,35 @@ interface ResultView {
   note: string | null
 }
 
-/** Cómo terminó el duelo contado para quien lo mira: ganó, perdió o empató, y por qué (puntos de vida o rendición). */
+/** Lo que dice el botón de seguir: la revancha, o en un Match el siguiente duelo (o la revancha del Match si ya lo ganó alguien). */
+export function rematchLabel(snapshot: DuelSnapshot): string {
+  const { series } = snapshot
+
+  return !series.match ? t('duel.result.rematch') : series.winner !== null ? t('duel.result.rematchMatch') : t('duel.result.nextGame')
+}
+
+/** Cómo terminó el duelo contado para quien lo mira, y en un Match cómo va (o cómo terminó) el Match. */
 function viewOf(result: DuelResult, snapshot: DuelSnapshot, rival: string): ResultView {
+  const view = gameViewOf(result, snapshot, rival)
+  const { series, me } = snapshot
+
+  if (!series.match) {
+    return view
+  }
+
+  const score = t('duel.result.matchScore', { mine: series.wins[me], theirs: series.wins[me === 0 ? 1 : 0] })
+
+  if (series.winner === null) {
+    return { ...view, reason: `${view.reason} ${score}` }
+  }
+
+  return series.winner === me
+    ? { tone: 'win', icon: 'trophy', title: t('duel.result.matchWin'), reason: `${view.reason} ${score}`, note: view.note }
+    : { tone: 'lose', icon: 'trophy', title: t('duel.result.matchLose'), reason: `${view.reason} ${score}`, note: view.note }
+}
+
+/** Cómo terminó el duelo contado para quien lo mira: ganó, perdió o empató, y por qué (puntos de vida o rendición). */
+function gameViewOf(result: DuelResult, snapshot: DuelSnapshot, rival: string): ResultView {
   const { me, conceded, rematch } = snapshot
   const note = rematch.mine ? t('duel.result.rematchWaiting', { name: rival }) : rematch.theirs ? t('duel.result.rematchOffered', { name: rival }) : null
 
@@ -83,7 +110,7 @@ export function ResultCard({ result, snapshot, rival, onRematch, onLeave, onClos
           </Button>
           {snapshot.rematch.mine ? null : (
             <Button variant="primary" disabled={!snapshot.peerPresent} onClick={onRematch}>
-              {t('duel.result.rematch')}
+              {rematchLabel(snapshot)}
             </Button>
           )}
         </div>
@@ -109,7 +136,7 @@ export function ResultStrip({ result, snapshot, rival, onRematch }: ResultProps)
       </p>
       {snapshot.rematch.mine ? null : (
         <Button variant="primary" size="sm" disabled={!snapshot.peerPresent} onClick={onRematch}>
-          {t('duel.result.rematch')}
+          {rematchLabel(snapshot)}
         </Button>
       )}
     </div>

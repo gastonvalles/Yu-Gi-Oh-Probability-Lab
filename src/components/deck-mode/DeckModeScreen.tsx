@@ -7,6 +7,7 @@ import { buildActiveRuleSet } from '../../app/pattern-presets'
 import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
 import { createMatState, randomSeed, shuffleWithSeed } from '../../app/practice-mat'
 import { useMatSession } from '../../app/use-mat-session'
+import { createRoomsApi } from '../../app/duel-rooms'
 import { connectSpectatorToRelay, connectToRelay, duelRelayUrl } from '../../app/use-duel'
 import { t } from '../../i18n'
 import type { DeckCardInstance } from '../../app/model'
@@ -102,11 +103,11 @@ export function DeckModeScreen() {
   const isPracticeStep = activeStep === 'practice'
   const isDuelStep = activeStep === 'duel'
   // La práctica y el duelo juegan con las mismas copias del deck armado.
-  const matDeck = usePracticeDeck(controller.probability.derivedMainCards, controller.exportDeck.deckBuilder.extra)
+  const matDeck = usePracticeDeck(controller.probability.derivedMainCards, controller.exportDeck.deckBuilder.extra, controller.exportDeck.deckBuilder.side)
   // El duelo por enlace se ofrece sólo si la app sabe a qué relay conectarse (`VITE_DUEL_RELAY_URL`).
   const duelConnect = useMemo(() => {
     const url = duelRelayUrl()
-    return url ? { play: connectToRelay(url), watch: connectSpectatorToRelay(url) } : null
+    return url ? { play: connectToRelay(url), watch: connectSpectatorToRelay(url), rooms: createRoomsApi(url) } : null
   }, [])
   // La partida vive acá y no en la pantalla: salir de la práctica (a la calculadora, al builder) no pierde la mano ni el combo en curso.
   const practice = usePracticeSession({
@@ -285,7 +286,7 @@ export function DeckModeScreen() {
             {t('shell.nav.group.duel')}
           </Heading>
           {duelConnect ? (
-            <LazyDuelScreen handSize={controller.probability.handSize} mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} connect={duelConnect.play} connectSpectator={duelConnect.watch} />
+            <LazyDuelScreen handSize={controller.probability.handSize} mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} sideIds={matDeck.sideIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} connect={duelConnect.play} connectSpectator={duelConnect.watch} rooms={duelConnect.rooms} />
           ) : (
             <Callout tone="info" className="m-4">{t('duel.unavailable')}</Callout>
           )}
@@ -381,16 +382,18 @@ export function DeckModeScreen() {
 type PracticeScreenProps = ComponentProps<typeof LazyPracticeSection>
 
 /** Las copias del deck armado como las juega la mesa: ids de cada carta (`card-123-2`) del Main y del Extra, y cómo se llama cada una. */
-function usePracticeDeck(derivedMainCards: import('../../types').CardEntry[], extraZone: DeckCardInstance[]) {
+function usePracticeDeck(derivedMainCards: import('../../types').CardEntry[], extraZone: DeckCardInstance[], sideZone: DeckCardInstance[]) {
   const mainIds = useMemo(() => buildPracticeDeck(derivedMainCards).map((card) => card.drawId), [derivedMainCards])
   const extraCards = useMemo(() => buildPracticeDeck(deriveMainDeckCardsFromZone(extraZone)), [extraZone])
   const extraIds = useMemo(() => extraCards.map((card) => card.drawId), [extraCards])
+  const sideCards = useMemo(() => buildPracticeDeck(deriveMainDeckCardsFromZone(sideZone)), [sideZone])
+  const sideIds = useMemo(() => sideCards.map((card) => card.drawId), [sideCards])
   const cardsById = useMemo(
-    () => new Map([...buildPracticeDeck(derivedMainCards), ...extraCards].map((card) => [card.drawId, { name: card.name, apiCard: card.apiCard }])),
-    [derivedMainCards, extraCards],
+    () => new Map([...buildPracticeDeck(derivedMainCards), ...extraCards, ...sideCards].map((card) => [card.drawId, { name: card.name, apiCard: card.apiCard }])),
+    [derivedMainCards, extraCards, sideCards],
   )
 
-  return { mainIds, extraIds, cardsById }
+  return { mainIds, extraIds, sideIds, cardsById }
 }
 
 interface PracticeSessionInput {

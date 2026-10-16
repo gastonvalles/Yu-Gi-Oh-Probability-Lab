@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { buildDuelLink, DUEL_STEP, extractRoomCode, isWatchLink, parseDuelTarget } from '../../app/duel-link'
-import { cleanName, type MarkTarget } from '../../app/duel-protocol'
+import { getDeckFormatLabel } from '../../app/deck-format'
+import { deckFormatIssues } from '../../app/duel-format'
+import { cleanName, DEFAULT_DUEL_FORMAT, DEFAULT_LIMIT_MIN, DUEL_FORMATS, DUEL_LIMITS_MIN, type MarkTarget } from '../../app/duel-protocol'
+import { formatDataLoaded, loadFormatData } from '../../app/format-data'
+import type { DeckFormat } from '../../types'
 import { clearDuelSave, findPausedDuel, savedRole, type PausedDuel } from '../../app/duel-save'
-import { createRoomCode } from '../../app/duel-relay-rules'
+import { createParticipantId, createRoomCode } from '../../app/duel-relay-rules'
+import type { RoomsApi } from '../../app/duel-rooms'
 import type { Duel, DuelRole, DuelSnapshot } from '../../app/duel-session'
 import type { SocketStatus } from '../../app/duel-socket'
 import { duelResult, rpsOutcome } from '../../app/duel-games'
@@ -18,10 +23,14 @@ import type { MatSession } from '../../app/use-mat-session'
 import { showToastMessage } from '../../app/use-toast-message'
 import { t } from '../../i18n'
 import { Button } from '../ui/Button'
+import { Badge } from '../ui/Badge'
 import { Callout } from '../ui/Callout'
 import { FieldBox, fieldInline } from '../ui/FieldBox'
 import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
+import { IconButton } from '../ui/IconButton'
+import { Segmented } from '../ui/Segmented'
+import { Switch } from '../ui/Switch'
 import { CardMenu, PILE_TITLES, PileViewer } from '../probability/MatDialogs'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, DuelTools } from './DuelBar'
@@ -37,6 +46,8 @@ import { DuelDeckPicker, loadDuelDeck, readStoredDeck, type DuelDeck } from './D
 import { gameText, outcomeText, rpsName } from './game-text'
 import { artOfDrawId } from './duel-art'
 import { DuelOpening } from './DuelOpening'
+import { DuelOpenRooms, roomChips } from './DuelOpenRooms'
+import { DuelSiding } from './DuelSiding'
 import { SpectatorScreen } from './SpectatorScreen'
 import { TossOverlay } from './toss-views'
 import { DUEL_AREAS, SideCells, sharedZoneCard, TheirHand, type DuelSideView } from './DuelTable'
@@ -44,17 +55,32 @@ import { DUEL_AREAS, SideCells, sharedZoneCard, TheirHand, type DuelSideView } f
 const NAME_KEY = 'ygo-lab:duel-name'
 /** Quién creó cada sala (por pestaña): si se recarga la página, sigue siendo el anfitrión. */
 const roleKey = (room: string) => `ygo-lab:duel-role:${room}`
+/** Lo que eligió el anfitrión de cada sala (el reloj, el formato y si es un Match, por pestaña): si recarga la página, la sala sigue igual. */
+const optionsKey = (room: string) => `ygo-lab:duel-options:${room}`
+
+interface RoomOptions {
+  limitMin: number
+  format: DeckFormat
+  match: boolean
+  siding: boolean
+  /** Aparece en la lista de salas abiertas mientras espera rival. */
+  isPublic: boolean
+}
 
 interface DuelScreenProps {
   handSize: number
   /** Las copias del Main y del Extra del deck armado (`card-123-2`), y cómo se llaman. */
   mainIds: string[]
   extraIds: string[]
+  /** El Side Deck del builder: con él se hace el siding de un Match. */
+  sideIds?: string[]
   cardsById: ReadonlyMap<string, MatCard>
   deckName: string
   connect: DuelConnect
   /** Cómo entrar a mirar un duelo (sin esto, un enlace para mirar no se puede abrir). */
   connectSpectator?: SpectatorConnect
+  /** La lista de salas públicas del relay (sin esto, las salas son sólo por enlace). */
+  rooms?: RoomsApi
 }
 
 interface Intent {
@@ -87,6 +113,24 @@ function roleFor(room: string): DuelRole {
   return stored === 'host' || stored === 'guest' ? stored : (savedRole(room) ?? 'guest')
 }
 
+function optionsFor(room: string | undefined): RoomOptions {
+  let stored: Partial<RoomOptions> = {}
+
+  try {
+    stored = room ? (JSON.parse(readStored(() => sessionStorage, optionsKey(room)) ?? '{}') as Partial<RoomOptions>) : {}
+  } catch {
+    // Lo guardado no se entiende: valen los de siempre.
+  }
+
+  return {
+    limitMin: (DUEL_LIMITS_MIN as readonly number[]).includes(stored.limitMin ?? -1) ? (stored.limitMin as number) : DEFAULT_LIMIT_MIN,
+    format: (DUEL_FORMATS as readonly unknown[]).includes(stored.format) ? (stored.format as DeckFormat) : DEFAULT_DUEL_FORMAT,
+    match: stored.match === true,
+    siding: stored.match === true && stored.siding === true,
+    isPublic: stored.isPublic === true,
+  }
+}
+
 /** La sala que pide el enlace con que se abrió la página, si hay una. */
 function intentOf(hash: string): Intent | null {
   const target = parseDuelTarget(hash)
@@ -111,7 +155,7 @@ function showRoomInUrl(room: string | null, watch = false) {
  * El duelo por enlace: sin sala, el lobby (crear una o unirse con un código); en la sala, el enlace para el rival hasta que los dos
  * reparten su mano; y después la mesa de práctica con el campo del rival arriba. No sabe de redes: `connect` (el relay) lo pone quien la usa.
  */
-export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, connect, connectSpectator }: DuelScreenProps) {
+export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, deckName, connect, connectSpectator, rooms }: DuelScreenProps) {
   // De momento las mascotas no aparecen en los duelos (ni en el lobby, la sala o la mesa): las que andan flotando esperan afuera.
   useEffect(() => {
     // `data-duel` hace que, en celular, los avisos se dibujen arriba de la botonera (ver index.css).
@@ -128,8 +172,13 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
   const myName = cleanName(name) || t('duel.lobby.defaultName')
   // El deck es el del builder o uno que se pega; se juega siempre con los puntos de vida de siempre.
   const [imported, setImported] = useState<DuelDeck | null>(null)
-  const deck = useMemo<DuelDeck>(() => imported ?? { name: deckName, mainIds, extraIds, cardsById }, [imported, deckName, mainIds, extraIds, cardsById])
-  const settings = useMemo(() => ({ lp: STARTING_LP, hand: handSize }), [handSize])
+  // En un Match con siding, el deck de los duelos que siguen es el que quedó después de cambiar cartas (el rival no lo ve).
+  const [sided, setSided] = useState<DuelDeck | null>(null)
+  const [sidingOpen, setSidingOpen] = useState(false)
+  const deck = useMemo<DuelDeck>(() => sided ?? imported ?? { name: deckName, mainIds, extraIds, sideIds, cardsById }, [sided, imported, deckName, mainIds, extraIds, sideIds, cardsById])
+  const roomCode = intent?.room
+  const options = useMemo(() => optionsFor(roomCode), [roomCode])
+  const settings = useMemo(() => ({ lp: STARTING_LP, hand: handSize, limitMin: options.limitMin, format: options.format, match: options.match, siding: options.siding }), [handSize, options])
   const { duel, snapshot, status } = useDuel({ room: intent && !intent.watch ? intent.room : null, role: intent?.role ?? 'guest', name: myName, settings, connect })
   const deckReady = deck.mainIds.length >= handSize
 
@@ -161,6 +210,36 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
   const settingsKnown = snapshot ? snapshot.role === 'host' || snapshot.peerName !== null : false
   const dealHand = snapshot?.settings.hand ?? handSize
 
+  // Una sala pública está en la lista de salas abiertas mientras espera rival: se anota al crearla y se baja cuando llega el rival, al salir o al cerrar la pestaña.
+  const publicCode = rooms && intent && !intent.watch && intent.role === 'host' && options.isPublic ? intent.room : null
+  const awaitingRival = !snapshot?.peerPresent
+  const listing = useRef({ name: myName, settings })
+
+  listing.current = { name: myName, settings }
+
+  useEffect(() => {
+    if (!rooms || !publicCode || !awaitingRival) {
+      return
+    }
+
+    const token = createParticipantId()
+    const { name: host, settings: current } = listing.current
+    const unlist = () => rooms.unlist(publicCode, token)
+
+    void rooms.register(publicCode, { host, match: current.match, siding: current.siding, format: current.format, limitMin: current.limitMin }, token)
+    window.addEventListener('pagehide', unlist)
+
+    return () => {
+      window.removeEventListener('pagehide', unlist)
+      unlist()
+    }
+  }, [rooms, publicCode, awaitingRival])
+
+  // El siding se cierra solo cuando los dos aceptaron y la mesa se limpió para el duelo que sigue.
+  useEffect(() => {
+    if (!snapshot?.mine) setSidingOpen(false)
+  }, [snapshot?.mine])
+
   useEffect(() => {
     if (duel && ordered && !started && settingsKnown && deckReady) {
       duel.start(createMatState(shuffleWithSeed(deck.mainIds, randomSeed()), deck.extraIds, dealHand))
@@ -182,8 +261,12 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
   }, [])
 
   const enter = useCallback(
-    (room: string, role: DuelRole, watch = false) => {
+    (room: string, role: DuelRole, watch = false, options?: RoomOptions) => {
       writeStored(() => localStorage, NAME_KEY, cleanName(name))
+
+      if (options) {
+        writeStored(() => sessionStorage, optionsKey(room), JSON.stringify(options))
+      }
 
       if (!watch) {
         writeStored(() => sessionStorage, roleKey(room), role)
@@ -228,13 +311,18 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
       <DuelLobby
         name={name}
         onName={setName}
-        builder={{ name: deckName, mainIds, extraIds, cardsById }}
+        builder={{ name: deckName, mainIds, extraIds, sideIds, cardsById }}
         imported={imported}
         onImport={setImported}
         deckReady={deckReady}
         deckSize={deck.mainIds.length}
         minDeck={handSize}
-        onCreate={() => enter(createRoomCode(), 'host')}
+        onCreate={(options) => enter(createRoomCode(), 'host', false, options)}
+        onPlaySolo={() => {
+          window.location.hash = '#practice'
+        }}
+        soloReady={mainIds.length >= handSize}
+        rooms={rooms}
         onJoin={(room, watch) => enter(room, watch ? 'guest' : (savedRole(room) ?? 'guest'), watch)}
         paused={paused}
         onResume={() => paused && enter(paused.room, paused.role)}
@@ -295,13 +383,45 @@ export function DuelScreen({ handSize, mainIds, extraIds, cardsById, deckName, c
         name={name}
         onRename={rename}
         deckReady={deckReady}
-        deckPicker={{ builder: { name: deckName, mainIds, extraIds, cardsById }, imported, onImport: setImported, size: deck.mainIds.length, min: handSize }}
+        deckPicker={{ builder: { name: deckName, mainIds, extraIds, sideIds, cardsById }, imported, onImport: setImported, size: deck.mainIds.length, min: handSize }}
+        isPublic={rooms && intent.role === 'host' ? options.isPublic : null}
         onLeave={leave}
       />
     )
   }
 
-  return <DuelTableScreen duel={duel} snapshot={snapshot} status={status} myName={myName} cardsById={deck.cardsById} deckName={deck.name} onLeave={leave} />
+  // Terminado un duelo de un Match con siding, «Siguiente duelo» lleva a cambiar cartas antes de pedir la revancha; el Match ganado vuelve al deck de origen.
+  const siding = snapshot.settings.siding && snapshot.series.match && snapshot.series.winner === null
+  const rematch = () => {
+    if (snapshot.series.winner !== null) setSided(null)
+
+    if (siding && !snapshot.rematch.mine) {
+      setSidingOpen(true)
+    } else {
+      duel.rematch()
+    }
+  }
+
+  if (sidingOpen && siding) {
+    return (
+      <Screen>
+        <DuelSiding
+          deck={{ main: deck.mainIds, extra: deck.extraIds, side: deck.sideIds ?? [] }}
+          cardsById={deck.cardsById}
+          format={snapshot.settings.format}
+          rival={snapshot.peerName ?? t('duel.bar.rival')}
+          locked={snapshot.rematch.mine}
+          rivalReady={snapshot.rematch.theirs}
+          onReady={(next, nextCards) => {
+            setSided({ ...deck, mainIds: next.main, extraIds: next.extra, sideIds: next.side, cardsById: nextCards })
+            duel.rematch()
+          }}
+        />
+      </Screen>
+    )
+  }
+
+  return <DuelTableScreen duel={duel} snapshot={snapshot} status={status} myName={myName} cardsById={deck.cardsById} deckName={deck.name} onRematch={rematch} onLeave={leave} />
 }
 
 /** Lo que no es la mesa: una columna que scrollea, con el ancho de una pantalla de lectura. */
@@ -322,7 +442,13 @@ interface DuelLobbyProps {
   deckReady: boolean
   deckSize: number
   minDeck: number
-  onCreate: () => void
+  onCreate: (options: RoomOptions) => void
+  /** Jugar solo: la mesa de práctica, local y sin relay. */
+  onPlaySolo: () => void
+  /** Hay un deck armado en el builder (la práctica juega con ése). */
+  soloReady: boolean
+  /** La lista de salas públicas, si el relay la tiene. */
+  rooms?: RoomsApi
   /** Entrar a una sala: a jugar, o a mirar si el enlace pegado es de espectador. */
   onJoin: (room: string, watch: boolean) => void
   /** Un duelo en pausa de este navegador, y cómo volver a él o dejarlo. */
@@ -331,7 +457,8 @@ interface DuelLobbyProps {
   onDropPaused: () => void
 }
 
-function DuelLobby({ name, onName, builder, imported, onImport, deckReady, deckSize, minDeck, onCreate, onJoin, paused, onResume, onDropPaused }: DuelLobbyProps) {
+function DuelLobby({ name, onName, builder, imported, onImport, deckReady, deckSize, minDeck, onCreate, onPlaySolo, soloReady, rooms, onJoin, paused, onResume, onDropPaused }: DuelLobbyProps) {
+  const [creating, setCreating] = useState(false)
   const [code, setCode] = useState('')
   const [invalid, setInvalid] = useState(false)
 
@@ -343,6 +470,10 @@ function DuelLobby({ name, onName, builder, imported, onImport, deckReady, deckS
     } else {
       setInvalid(true)
     }
+  }
+
+  if (creating) {
+    return <CreateRoom soloReady={soloReady} canPublish={Boolean(rooms)} onBack={() => setCreating(false)} onSolo={onPlaySolo} onDuo={onCreate} />
   }
 
   return (
@@ -379,11 +510,13 @@ function DuelLobby({ name, onName, builder, imported, onImport, deckReady, deckS
 
       <div className="grid gap-1.5">
         {/* Con un duelo en pausa, lo principal es volver a él: crear otro pasa a un segundo plano (una principal por vista). */}
-        <Button variant={paused ? 'secondary' : 'primary'} icon="link" disabled={!deckReady} onClick={onCreate}>
+        <Button variant={paused ? 'secondary' : 'primary'} icon="link" disabled={!deckReady} onClick={() => setCreating(true)}>
           {t('duel.lobby.create')}
         </Button>
         <p className="m-0 text-micro text-soft">{t('duel.lobby.createHint')}</p>
       </div>
+
+      {rooms ? <DuelOpenRooms rooms={rooms} canJoin={deckReady} onJoin={(code) => onJoin(code, false)} /> : null}
 
       <div className="grid gap-1.5">
         <Heading level="card">{t('duel.lobby.join')}</Heading>
@@ -414,6 +547,136 @@ function DuelLobby({ name, onName, builder, imported, onImport, deckReady, deckS
           {invalid ? t('duel.lobby.joinInvalid') : t('duel.lobby.joinHint')}
         </p>
       </div>
+    </Screen>
+  )
+}
+
+/** El tiempo que viene elegido al crear una sala. */
+const CREATE_LIMIT_MIN = 40
+const CREATE_FORMAT: DeckFormat = 'tcg'
+
+type RoomMode = 'solo' | 'duo'
+
+interface CreateRoomProps {
+  soloReady: boolean
+  /** Hay lista de salas públicas: se puede elegir publicar la sala. */
+  canPublish: boolean
+  onBack: () => void
+  onSolo: () => void
+  onDuo: (options: RoomOptions) => void
+}
+
+/** Crear una sala: jugar solo (la práctica, local) o 1 vs 1 (por enlace) con el tiempo del reloj. El nombre y el deck se eligen en el inicio del duelo. */
+function CreateRoom({ soloReady, canPublish, onBack, onSolo, onDuo }: CreateRoomProps) {
+  const [mode, setMode] = useState<RoomMode>('duo')
+  const [limit, setLimit] = useState<number>(CREATE_LIMIT_MIN)
+  const [format, setFormat] = useState<DeckFormat>(CREATE_FORMAT)
+  const [match, setMatch] = useState(false)
+  const [siding, setSiding] = useState(false)
+  const [isPublic, setIsPublic] = useState(true)
+  const solo = mode === 'solo'
+
+  return (
+    <Screen>
+      <div className="flex items-center gap-2">
+        <IconButton tone="raised" size="md" aria-label={t('duel.create.back')} title={t('duel.create.back')} onClick={onBack}>
+          <Icon name="undo" size={18} />
+        </IconButton>
+        <Heading level="section">{t('duel.create.title')}</Heading>
+      </div>
+
+      <Segmented<RoomMode>
+        label={t('duel.create.mode')}
+        variant="cards"
+        fullWidth
+        value={mode}
+        onChange={setMode}
+        options={[
+          { value: 'solo', label: t('duel.create.solo') },
+          { value: 'duo', label: t('duel.create.duo') },
+        ]}
+      />
+
+      <p className="m-0 text-body text-muted">{solo ? t('duel.create.soloHint') : t('duel.create.duoHint')}</p>
+
+      {solo ? (
+        <Callout tone={soloReady ? 'info' : 'warning'} icon={soloReady ? 'info' : 'alert'}>
+          {soloReady ? t('duel.create.soloNote') : t('duel.create.soloNeedDeck')}
+        </Callout>
+      ) : (
+        <>
+          <div className="grid gap-1.5">
+            <span className="text-micro font-semibold uppercase text-soft">{t('duel.create.type')}</span>
+            <Segmented<'single' | 'match'>
+              label={t('duel.create.type')}
+              fullWidth
+              value={match ? 'match' : 'single'}
+              onChange={(value) => setMatch(value === 'match')}
+              options={[
+                { value: 'single', label: t('duel.create.single') },
+                { value: 'match', label: t('duel.create.match') },
+              ]}
+            />
+            <p className="m-0 text-micro text-soft">{match ? t('duel.create.matchHint') : t('duel.create.singleHint')}</p>
+            {match ? (
+              <div className="flex items-center justify-between gap-3 py-1">
+                <span className="grid min-w-0 gap-0.5">
+                  <span className="text-body font-semibold text-foreground">{t('duel.create.siding')}</span>
+                  <span className="text-micro text-soft">{t('duel.create.sidingHint')}</span>
+                </span>
+                <Switch checked={siding} onChange={setSiding} label={t('duel.create.siding')} />
+              </div>
+            ) : null}
+          </div>
+
+          <div className="grid gap-1.5">
+            <span className="text-micro font-semibold uppercase text-soft">{t('duel.create.time')}</span>
+            <Segmented<string>
+              label={t('duel.create.time')}
+              fullWidth
+              value={String(limit)}
+              onChange={(value) => setLimit(Number(value))}
+              options={DUEL_LIMITS_MIN.map((min) => ({ value: String(min), label: min === 0 ? t('duel.create.timeNone') : String(min) }))}
+            />
+            <p className="m-0 text-micro text-soft">{limit === 0 ? t('duel.create.timeNoneHint') : t('duel.create.timeHint', { min: limit })}</p>
+          </div>
+
+          <div className="grid gap-1.5">
+            <span className="text-micro font-semibold uppercase text-soft">{t('duel.create.format')}</span>
+            <FieldBox>
+              <select aria-label={t('duel.create.format')} value={format} onChange={(event) => setFormat(event.target.value as DeckFormat)} className={fieldInline}>
+                {DUEL_FORMATS.map((value) => (
+                  <option key={value} value={value}>
+                    {getDeckFormatLabel(value)}
+                  </option>
+                ))}
+              </select>
+            </FieldBox>
+            <p className="m-0 text-micro text-soft">{format === 'unlimited' ? t('duel.create.formatNoneHint') : t('duel.create.formatHint')}</p>
+          </div>
+
+          {canPublish ? (
+            <div className="grid gap-1.5">
+              <span className="text-micro font-semibold uppercase text-soft">{t('duel.create.visibility')}</span>
+              <Segmented<'public' | 'private'>
+                label={t('duel.create.visibility')}
+                fullWidth
+                value={isPublic ? 'public' : 'private'}
+                onChange={(value) => setIsPublic(value === 'public')}
+                options={[
+                  { value: 'public', label: t('duel.create.public') },
+                  { value: 'private', label: t('duel.create.private') },
+                ]}
+              />
+              <p className="m-0 text-micro text-soft">{isPublic ? t('duel.create.publicHint') : t('duel.create.privateHint')}</p>
+            </div>
+          ) : null}
+        </>
+      )}
+
+      <Button variant="primary" disabled={solo && !soloReady} onClick={() => (solo ? onSolo() : onDuo({ limitMin: limit, format, match, siding: match && siding, isPublic: canPublish && isPublic }))}>
+        {solo ? t('duel.create.startSolo') : t('duel.create.start')}
+      </Button>
     </Screen>
   )
 }
@@ -451,15 +714,29 @@ interface DuelRoomProps {
   deckReady: boolean
   /** Con qué deck se juega: se elige desde la sala porque quien entra por un enlace no pasó por el lobby. */
   deckPicker: { builder: DuelDeck; imported: DuelDeck | null; onImport: (deck: DuelDeck | null) => void; size: number; min: number }
+  /** Si la sala está en la lista de salas abiertas (sólo lo sabe el anfitrión, y sólo si el relay tiene la lista); `null` si no se sabe o no hay lista. */
+  isPublic: boolean | null
   onLeave: () => void
 }
 
-function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckReady, deckPicker, onLeave }: DuelRoomProps) {
+function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckReady, deckPicker, isPublic, onLeave }: DuelRoomProps) {
   const link = buildDuelLink(window.location.origin, window.location.pathname, room)
   const { peerPresent, peerName, role, incompatible, settings } = snapshot
   // El invitado se prepara con los ajustes del anfitrión: hasta que no llega su saludo, no.
   const settingsKnown = role === 'host' || peerName !== null
-  const canReady = peerPresent && settingsKnown && !incompatible && deckReady
+  // El formato de la sala se revisa en el deck de cada uno antes de dejarlo estar listo (el rival no ve el deck: es una revisión de cada lado). Edison y Genesys necesitan sus tablas: hasta que bajan no se sabe.
+  const roomDeck = deckPicker.imported ?? deckPicker.builder
+  const needsTables = settings.format === 'edison' || settings.format === 'genesys'
+  const [tablesLoaded, setTablesLoaded] = useState(formatDataLoaded)
+
+  useEffect(() => {
+    if (needsTables && !tablesLoaded) {
+      void loadFormatData().then(() => setTablesLoaded(true), () => undefined)
+    }
+  }, [needsTables, tablesLoaded])
+
+  const issues = useMemo(() => (needsTables && !tablesLoaded ? [] : deckFormatIssues([...roomDeck.mainIds, ...roomDeck.extraIds], roomDeck.cardsById, settings.format)), [roomDeck, settings.format, needsTables, tablesLoaded])
+  const canReady = peerPresent && settingsKnown && !incompatible && deckReady && issues.length === 0 && (!needsTables || tablesLoaded)
   const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
   // Quien entra por un enlace y no encuentra a nadie, tras unos segundos, probablemente tiene un enlace vencido: se lo dice en vez de dejarlo esperando.
   const emptyRoom = useWaited(EMPTY_ROOM_MS, role === 'guest' && !peerPresent && status === 'open')
@@ -482,6 +759,18 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
   return (
     <Screen>
       <Heading level="section">{t('duel.room.title')}</Heading>
+
+      <div className="grid gap-2 rounded-card border border-border-subtle bg-card-background p-3" data-testid="room-summary">
+        <p className="m-0 text-micro font-semibold uppercase tracking-[0.04em] text-soft">{t('duel.room.summary')}</p>
+        <span className="flex flex-wrap gap-1">
+          {[...(isPublic === null ? [] : [isPublic ? t('duel.create.public') : t('duel.create.private')]), ...roomChips(settings)].map((chip) => (
+            <Badge key={chip} size="sm">
+              {chip}
+            </Badge>
+          ))}
+        </span>
+        {isPublic === null ? null : <p className="m-0 text-micro text-soft">{isPublic ? t('duel.room.publicNote') : t('duel.room.privateNote')}</p>}
+      </div>
 
       {role === 'host' ? (
         <div className="grid gap-2 rounded-card border border-border-subtle bg-card-background p-3">
@@ -531,8 +820,18 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
       {peerPresent && settingsKnown && !incompatible ? <DuelOpening snapshot={snapshot} myName={myName} canReady={canReady} actions={duel} rename={{ value: name, onCommit: onRename }} /> : null}
 
       {/* El anfitrión ya eligió su deck en el lobby; quien llega por un enlace lo elige acá (y sin deck armado, es lo que lo deja estar listo). */}
-      {!snapshot.ready.mine && (role === 'guest' || !deckReady) ? (
+      {!snapshot.ready.mine && (role === 'guest' || !deckReady || issues.length > 0) ? (
         <div className="grid gap-2 rounded-card border border-border-subtle bg-card-background p-3">
+          {issues.length > 0 ? (
+            <Callout tone="warning" icon="alert">
+              <span className="grid gap-1">
+                <span>{t('duel.room.formatBlocked', { name: getDeckFormatLabel(settings.format) })}</span>
+                {issues.map((issue) => (
+                  <span key={issue}>{issue}</span>
+                ))}
+              </span>
+            </Callout>
+          ) : null}
           {deckReady ? null : <Callout tone="warning" icon="alert">{t('duel.lobby.needDeck', { count: deckPicker.size, min: deckPicker.min })}</Callout>}
           <DuelDeckPicker builder={deckPicker.builder} imported={deckPicker.imported} onImport={deckPicker.onImport} />
         </div>
@@ -873,7 +1172,7 @@ function useRivalNotice(snapshot: DuelSnapshot, turn: 'mine' | 'theirs'): DuelMa
 }
 
 /** La mesa de práctica con el campo del rival arriba: tus jugadas van al relay y las suyas llegan solas. */
-function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, onLeave }: { duel: Duel; snapshot: DuelSnapshot; status: SocketStatus; myName: string; cardsById: ReadonlyMap<string, MatCard>; deckName: string; onLeave: () => void }) {
+function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, onRematch, onLeave }: { duel: Duel; snapshot: DuelSnapshot; status: SocketStatus; myName: string; cardsById: ReadonlyMap<string, MatCard>; deckName: string; onRematch: () => void; onLeave: () => void }) {
   const { mine, initial, actions, theirs } = snapshot
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   // Tocar una carta o una pila del rival (o su mano) abre un menú con una sola jugada: marcarla (o quitarle la marca) como objetivo, y él lo ve en lo suyo.
@@ -956,11 +1255,11 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       cover: paused ? (
         <DuelPause rival={rivalName} offline={status !== 'open'} onLeave={onLeave} onReconnect={duel.reconnect} />
       ) : result !== null && !resultClosed ? (
-        <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={duel.rematch} onLeave={onLeave} onClose={() => setResultClosed(true)} />
+        <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} onLeave={onLeave} onClose={() => setResultClosed(true)} />
       ) : undefined,
-      header: <DuelBar snapshot={snapshot} status={status} turn={turn} theirHand={<TheirHand count={opponent.handCount ?? 0} marked={snapshot.marks.theirs.piles.includes('hand')} onMark={(rect) => openMark({ pile: 'hand' }, rect, PILE_TITLES.hand)} />} onToggleClock={duel.toggleClock} onRematch={duel.rematch} onLeave={onLeave} onConcede={duel.concede} onReconnect={duel.reconnect} chat={docked ? undefined : <DuelChatToggle snapshot={snapshot} myName={myName} onSendChat={duel.sendChat} feed={feed} open={chatOpen} onOpen={() => setChatOpen(true)} onClose={() => setChatOpen(false)} />} log={docked ? undefined : <DuelLogTicker snapshot={snapshot} myName={myName} feed={feed} onOpen={() => setChatOpen(true)} />} resultOpen={resultOpen} rivalSignal={signals.theirs} />,
+      header: <DuelBar snapshot={snapshot} status={status} turn={turn} theirHand={<TheirHand count={opponent.handCount ?? 0} marked={snapshot.marks.theirs.piles.includes('hand')} onMark={(rect) => openMark({ pile: 'hand' }, rect, PILE_TITLES.hand)} />} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onConcede={duel.concede} onReconnect={duel.reconnect} chat={docked ? undefined : <DuelChatToggle snapshot={snapshot} myName={myName} onSendChat={duel.sendChat} feed={feed} open={chatOpen} onOpen={() => setChatOpen(true)} onClose={() => setChatOpen(false)} />} log={docked ? undefined : <DuelLogTicker snapshot={snapshot} myName={myName} feed={feed} onOpen={() => setChatOpen(true)} />} resultOpen={resultOpen} rivalSignal={signals.theirs} />,
     }),
-    [opponent, snapshot, status, myName, turn, duel, onLeave, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, openMark, feed, chatOpen],
+    [opponent, snapshot, status, myName, turn, duel, onLeave, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, openMark, feed, chatOpen],
   )
 
   const markTarget = markMenu?.target

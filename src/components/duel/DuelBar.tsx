@@ -4,7 +4,7 @@ import { duelResult } from '../../app/duel-games'
 import type { Duel, DuelSnapshot } from '../../app/duel-session'
 import type { SocketStatus } from '../../app/duel-socket'
 import { duelTurnNumber } from '../../app/duel-turn'
-import { formatClock, interpretAmount, timerRemaining } from '../../app/life-calculator'
+import { duelClockMs, formatClock, interpretAmount } from '../../app/life-calculator'
 import { PHASES } from '../../app/practice-mat'
 import { KEYS, KEY, MAX_DIGITS, PRESSABLE, type Key } from '../life/LifeCalculatorScreen'
 import { t } from '../../i18n'
@@ -78,7 +78,7 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
   const { life, me, peerPresent } = snapshot
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
   const running = life.timer.running
-  const clock = formatClock(timerRemaining(life.timer, now))
+  const clock = formatClock(duelClockMs(life.timer, now, snapshot.settings.limitMin))
   const result = duelResult(life.lp, snapshot.conceded)
   // La fase que se ve es la de quien tiene el turno: así los dos saben en qué punto va.
   const phaseId = (turn === 'mine' ? snapshot.mine : snapshot.theirs?.state)?.phase
@@ -122,6 +122,11 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
           <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted" title={t('duel.room.watchers', { count: snapshot.watchers })} aria-label={t('duel.room.watchers', { count: snapshot.watchers })}>
             <Icon name="eye" size={14} />
             {snapshot.watchers}
+          </span>
+        ) : null}
+        {snapshot.series.match ? (
+          <span className="shrink-0 whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted" data-testid="duel-series">
+            {t('duel.series.chip', { game: snapshot.series.game, mine: snapshot.series.wins[me], theirs: snapshot.series.wins[me === 0 ? 1 : 0] })}
           </span>
         ) : null}
         <span className="shrink-0 whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted">{t('practice.mat.turn', { turn: duelTurnNumber(snapshot.mine, snapshot.theirs?.state ?? null) })}</span>
