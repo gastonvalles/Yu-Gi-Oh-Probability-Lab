@@ -1,4 +1,4 @@
-# Yu-Gi-Oh! Probability Lab
+# YGOUltraLab
 
 Deck builder visual + calculadora exacta de probabilidades para Yu-Gi-Oh!.
 La idea central es ayudar a entender deck building con un flujo simple: armás el deck, clasificás cada carta por origen y función, definís aperturas/problemas y medís consistencia.

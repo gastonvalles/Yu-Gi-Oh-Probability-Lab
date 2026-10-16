@@ -21,7 +21,7 @@ function readVercelHeaders(): Record<string, string> {
   )
 }
 
-const COPYRIGHT_BANNER = `/*! Yu-Gi-Oh! Probability Lab © ${new Date().getFullYear()} Gastón Valles. Todos los derechos reservados. Sitio no oficial: Yu-Gi-Oh! es una marca de Konami. */`
+const COPYRIGHT_BANNER = `/*! YGOUltraLab © ${new Date().getFullYear()} Gastón Valles. Todos los derechos reservados. Sitio no oficial: Yu-Gi-Oh! es una marca de Konami. */`
 
 /** En desarrollo y en `preview` las imágenes de las cartas pasan por Vite, como en producción pasan por la función `api/card-image`. */
 const CARD_IMAGE_PROXY = {

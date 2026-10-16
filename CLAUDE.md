@@ -1,4 +1,4 @@
-# YGO Probability Lab
+# YGOUltraLab
 
 ## Diseño
 
