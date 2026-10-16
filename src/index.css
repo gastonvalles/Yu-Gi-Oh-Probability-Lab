@@ -986,6 +986,9 @@
     --radius-chip: 999px;
     /* Alto del pie de la app (en escritorio va fijo abajo, en todas las pantallas). */
     --app-footer-height: 2.75rem;
+    /* La mesa vista desde arriba: el campo se inclina hacia atrás (lo lejano se achica) con una perspectiva suave; en escritorio, menos. */
+    --field-tilt: 26deg;
+    --field-perspective: 900px;
     /* El menú lateral al contraerse o abrirse: el ancho, los rótulos y lo flotante que lo sigue (mascota, botones) van con la misma duración y curva. */
     --sidebar-duration: 280ms;
     --sidebar-ease: cubic-bezier(0.22, 1, 0.36, 1);
@@ -1000,6 +1003,15 @@
     --zone-extra-border: transparent;
     --zone-side-background: rgb(var(--accent-rgb) / 0.09);
     --zone-side-border: transparent;
+  }
+}
+
+@layer theme {
+  @media (min-width: 1101px) {
+    :root {
+      --field-tilt: 20deg;
+      --field-perspective: 1300px;
+    }
   }
 }
 

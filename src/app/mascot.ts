@@ -78,7 +78,11 @@ function readActive(): MascotId[] {
       localStorage.setItem(mascotPositionKey(id), legacyPosition)
     }
 
-    return localStorage.getItem(LEGACY_ENABLED_KEY) === 'off' ? [] : [id]
+    // Quien nunca eligió nada y llega desde un celular o una tableta no las ve: dejan lugar al campo (se sacan desde Mascotas, en Herramientas).
+    const firstVisit = legacyId === null && legacyPosition === null && localStorage.getItem(LEGACY_ENABLED_KEY) === null
+    const narrow = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 1100px)').matches
+
+    return localStorage.getItem(LEGACY_ENABLED_KEY) === 'off' || (firstVisit && narrow) ? [] : [id]
   } catch {
     return ['cupsy']
   }

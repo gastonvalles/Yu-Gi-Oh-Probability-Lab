@@ -240,7 +240,6 @@ export const duel = {
   'duel.result.rematchWaiting': 'Esperando a {name}…',
   'duel.result.rematchOffered': '{name} quiere la revancha.',
   'duel.turn.passHint': 'Pasar el turno',
-  'duel.turn.pass': 'Pasar turno',
   'duel.turn.drew': 'Empezó tu turno: robaste una carta.',
 
   // Los puntos de vida con los que empieza el duelo (los fija quien lo crea).

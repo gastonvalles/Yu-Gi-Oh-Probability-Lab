@@ -63,7 +63,7 @@ import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PracticeMatPanel, type PanelStep } from './PracticeMatPanel'
 import { ReplayBar, type ReplayMark, type ReplaySpeed } from './ReplayBar'
-import { CARD_BACK, CARD_BACK_URL, PRACTICE_PALETTE } from './practice-styles'
+import { CARD_BACK, CARD_BACK_URL } from './practice-styles'
 
 export interface MatCard {
   name: string
@@ -1271,19 +1271,21 @@ export function PracticeMat({
   )
 
   // Pasar el turno: de cualquier fase pasa por la End Phase y vuelve a la Draw Phase (ahí sube la cuenta de turnos y el otro roba solo). Sólo lo toca quien tiene el turno.
-  const passTurn = duel ? (
+  // En la práctica el turno nuevo roba solo; en un duelo roba el otro (por eso va `skipDraw`).
+  const passTurn = (
     <Button
       variant="primary"
+      size={duel ? 'md' : 'sm'}
       iconEnd="arrow-right"
-      disabled={!duel.myTurn}
+      disabled={duel ? !duel.myTurn : false}
       onClick={() => {
         if (state.phase !== 'end') play({ type: 'phase', phase: 'end' })
-        play({ type: 'phase', phase: 'draw', skipDraw: true })
+        play({ type: 'phase', phase: 'draw', ...(duel ? { skipDraw: true as const } : {}) })
       }}
     >
-      {t('duel.turn.pass')}
+      {t('practice.mat.passTurn')}
     </Button>
-  ) : null
+  )
 
   return (
     <section
@@ -1295,7 +1297,6 @@ export function PracticeMat({
         'relative isolate grid h-full min-h-0 select-none grid-rows-[auto_minmax(0,1fr)] [background:radial-gradient(120%_60%_at_50%_0%,rgb(var(--primary-rgb)/0.16),transparent_70%),rgb(var(--background-rgb))]',
         // Los pasos y combos son de la práctica: en un duelo la mesa ocupa todo el ancho.
         (!duel || Boolean(duel.aside)) && 'min-[1101px]:grid-cols-[minmax(0,1fr)_20rem]',
-        PRACTICE_PALETTE,
       )}
     >
       {/* Barra (práctica): el turno a la izquierda y, a la derecha, nueva mano, deshacer, guardar, ficha y (en el celu) el panel. En un duelo estos botones van abajo, junto a las fases (ver `dock`). */}
@@ -1323,7 +1324,7 @@ export function PracticeMat({
         <div
           ref={fieldRef}
           // `my-auto`: el aire que sobra se reparte arriba y abajo del campo (ni pegado a la barra ni un hueco antes de la mano).
-          className="relative my-auto grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]"
+          className="relative my-auto grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [transform-origin:50%_100%] [transform:perspective(var(--field-perspective))_rotateX(var(--field-tilt))] [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]"
           aria-label={t('practice.mat.field')}
           // En un duelo, las áreas de los dos campos (el estilo en línea gana a la clase de las áreas de uno solo); y en escritorio las cartas se achican hasta que las cinco filas y la mano entran en la pantalla.
           style={duel ? ({ gridTemplateAreas: duel.areas, '--cell': 'max(3.5rem, min(8rem, calc((100dvh - 19.5rem) / 5)))' } as CSSProperties) : undefined}
@@ -1491,6 +1492,7 @@ export function PracticeMat({
             </div>
           ) : null}
           <div className={cx('flex items-center justify-center gap-2', (choosing || (!duel && !isDesktop)) && 'min-h-9')}>
+          {!duel && !choosing ? passTurn : null}
           {!isDesktop && !duel && !choosing ? (
             <div role="group" aria-label={t('practice.mat.phases')} className="grid w-[13.5rem] flex-none grid-cols-6 gap-1">
               {PHASES.map((phase) => (
