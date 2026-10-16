@@ -15,3 +15,5 @@ vitest-*.txt
 duel-relay/.wrangler/
 # Configuración local de las herramientas de trabajo (rutas, permisos): no es del proyecto.
 .claude/
+# Playwright CLI output (may contain credentials)
+.playwright-cli/
