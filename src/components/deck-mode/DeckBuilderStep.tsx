@@ -18,6 +18,7 @@ import { MobileCardSearch } from '../search/MobileCardSearch'
 import type { CardSearchActions, CardSearchViewState } from '../search/search-types'
 import type { DeckCopyActions } from '../card-detail/DeckCopyControls'
 import { StepHero } from '../StepHero'
+import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
 import { Icon } from '../ui/Icon'
@@ -33,6 +34,8 @@ import { FieldBox, fieldInline } from '../ui/FieldBox'
 
 interface DeckBuilderStepProps {
   deckBuilder: DeckBuilderState
+  /** Pasa al paso siguiente (Roles): el botón de abajo del celular. */
+  onNextStep?: () => void
   deckFormat: DeckFormat
   formatIssues: string[]
   genesysPointTotal: number | null
@@ -95,6 +98,7 @@ const DECK_ZONE_ITEMS: Array<{
 
 export function DeckBuilderStep({
   deckBuilder,
+  onNextStep,
   deckFormat,
   formatIssues,
   genesysPointTotal,
@@ -411,6 +415,9 @@ export function DeckBuilderStep({
                 placeholder={t('deck.builder.deckName')}
                 className={fieldInline}
               />
+              <Badge tone="neutral" size="sm" className="ml-2">
+                {t('deck.builder.mainCount', { count: deckBuilder.main.length })}
+              </Badge>
             </FieldBox>
             <FieldBox>
               <select
@@ -478,9 +485,6 @@ export function DeckBuilderStep({
               <IconButton tone="ghost" size="md" aria-label={t('deck.builder.clearAll')} title={t('deck.builder.clearAll')} disabled={totalDeckCardCount === 0} className="disabled:opacity-35" onClick={handleRequestClearAllDeckZones}>
                 <Icon name="trash" size={20} />
               </IconButton>
-              <Button variant="primary" size="sm" icon="search" className="ml-2 min-w-0 flex-1 pointer-coarse:min-h-10" onClick={() => setMobileSearchOpen(true)}>
-                {t('deck.builder.search')}
-              </Button>
             </div>
 
             {DECK_ZONE_ITEMS.map(({ zone, title }) => (
@@ -504,6 +508,18 @@ export function DeckBuilderStep({
             ))}
           </div>
         </article>
+      </div>
+
+      {/* Abajo, al alcance del pulgar: seguir al paso siguiente y buscar cartas (la principal, a la derecha). Queda fija sobre la barra de abajo. */}
+      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-30 -mx-gutter -mb-6 flex gap-2 border-t border-border-subtle bg-background/90 px-gutter py-3 backdrop-blur min-[1101px]:hidden">
+        {onNextStep ? (
+          <Button variant="secondary" size="md" className="min-w-0 flex-1" disabled={deckBuilder.main.length === 0} onClick={onNextStep}>
+            {t('deck.builder.next')}
+          </Button>
+        ) : null}
+        <Button variant="primary" size="md" icon="search" className="min-w-0 flex-1" onClick={() => setMobileSearchOpen(true)}>
+          {t('deck.builder.search')}
+        </Button>
       </div>
 
       {mobileSearchOpen ? (

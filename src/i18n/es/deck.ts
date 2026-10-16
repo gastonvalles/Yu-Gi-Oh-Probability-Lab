@@ -58,6 +58,8 @@ export const deck = {
   'deck.builder.sortAll': 'Ordenar todo',
   'deck.builder.clearAll': 'Vaciar todo',
   'deck.builder.search': 'Buscar cartas',
+  'deck.builder.next': 'Siguiente: Roles',
+  'deck.builder.mainCount': { one: '{count} carta', other: '{count} cartas' },
   'deck.builder.clearAllTitle': 'Vaciar todo el deck',
   'deck.builder.clearConfirm': {
     one: 'Se va a quitar {count} carta del deck. Esta acción no se puede deshacer.',

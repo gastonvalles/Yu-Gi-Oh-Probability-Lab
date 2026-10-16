@@ -59,6 +59,8 @@ export const deck: Translated<typeof es> = {
   'deck.builder.sortAll': 'Sort all',
   'deck.builder.clearAll': 'Clear all',
   'deck.builder.search': 'Search cards',
+  'deck.builder.next': 'Next: Roles',
+  'deck.builder.mainCount': { one: '{count} card', other: '{count} cards' },
   'deck.builder.clearAllTitle': 'Clear the whole deck',
   'deck.builder.clearConfirm': {
     one: "{count} card will be removed from the deck. This action can't be undone.",
