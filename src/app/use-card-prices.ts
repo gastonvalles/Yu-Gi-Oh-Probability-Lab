@@ -9,6 +9,13 @@ const cache = new Map<number, CardPrices>()
 /** Lo que se está pidiendo ahora: dos pantallas que piden la misma carta a la vez comparten el pedido. */
 const inFlight = new Map<number, Promise<CardPrices>>()
 
+/** Los precios de una carta, con la misma caché de la sesión que `useCardPrices` (el precio del deck pide todas las cartas juntas). */
+export function loadCardPrices(cardId: number): Promise<CardPrices> {
+  const cached = cache.get(cardId)
+
+  return cached ? Promise.resolve(cached) : request(cardId)
+}
+
 function request(cardId: number): Promise<CardPrices> {
   let pending = inFlight.get(cardId)
 

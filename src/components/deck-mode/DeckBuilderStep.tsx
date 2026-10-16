@@ -30,6 +30,7 @@ import { ProgressRing } from '../ui/ProgressRing'
 import { overline } from '../ui/typography'
 import { DeckBuilderClassicPreview } from './DeckBuilderClassicPreview'
 import { DeckImportDrawer } from './DeckImportDrawer'
+import { DeckPriceModal } from './DeckPriceModal'
 import { FieldBox, fieldInline } from '../ui/FieldBox'
 
 
@@ -145,6 +146,7 @@ export function DeckBuilderStep({
 }: DeckBuilderStepProps) {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const [importDrawerOpen, setImportDrawerOpen] = useState(false)
+  const [priceOpen, setPriceOpen] = useState(false)
   const [pendingClearAll, setPendingClearAll] = useState(false)
   const isDesktopDeckBuilder = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const formatLabel = getDeckFormatLabel(deckFormat)
@@ -298,6 +300,17 @@ export function DeckBuilderStep({
                   <IconButton
                     size="lg"
                     className="size-10"
+                    aria-label={t('deck.price.open')}
+                    title={t('deck.price.open')}
+                    onClick={() => setPriceOpen(true)}
+                    disabled={totalDeckCardCount === 0}
+                  >
+                    <Icon name="dollar" />
+                  </IconButton>
+
+                  <IconButton
+                    size="lg"
+                    className="size-10"
                     aria-label={t('deck.builder.sortAll')}
                     title={t('deck.builder.sortAll')}
                     onClick={onSortAllDeckZones}
@@ -397,6 +410,7 @@ export function DeckBuilderStep({
         />
 
         {clearAllDialog}
+        <DeckPriceModal isOpen={priceOpen} onClose={() => setPriceOpen(false)} deckBuilder={deckBuilder} />
       </section>
     )
   }
@@ -483,6 +497,9 @@ export function DeckBuilderStep({
               <IconButton tone="ghost" size="md" aria-label={t('deck.builder.import')} title={t('deck.builder.import')} onClick={() => setImportDrawerOpen(true)}>
                 <Icon name="upload" size={20} />
               </IconButton>
+              <IconButton tone="ghost" size="md" aria-label={t('deck.price.open')} title={t('deck.price.open')} disabled={totalDeckCardCount === 0} className="disabled:opacity-35" onClick={() => setPriceOpen(true)}>
+                <Icon name="dollar" size={20} />
+              </IconButton>
               <IconButton tone="ghost" size="md" aria-label={t('deck.builder.sortAll')} title={t('deck.builder.sortAll')} disabled={totalDeckCardCount < 2} className="disabled:opacity-35" onClick={onSortAllDeckZones}>
                 <Icon name="sort" size={20} />
               </IconButton>
@@ -563,6 +580,7 @@ export function DeckBuilderStep({
       />
 
       {clearAllDialog}
+      <DeckPriceModal isOpen={priceOpen} onClose={() => setPriceOpen(false)} deckBuilder={deckBuilder} />
     </section>
   )
 }
