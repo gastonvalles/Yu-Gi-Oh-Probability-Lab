@@ -2,12 +2,16 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 import {
+  MAX_PUBLIC_ROOMS,
   PARTICIPANT_ID_PATTERN,
+  PUBLIC_ROOM_TTL_MS,
   RATE_PER_SECOND,
   ROOM_CODE_ALPHABET,
   ROOM_CODE_PATTERN,
   RateLimiter,
+  RoomRegistry,
   byteLength,
+  parsePublicRoomInfo,
   createParticipantId,
   createRoomCode,
   encodeRelayFrame,
@@ -146,5 +150,63 @@ describe('el límite de ritmo', () => {
     expect(byteLength('abc')).toBe(3)
     expect(byteLength('añ')).toBe(3)
     expect(byteLength('🙂')).toBe(4)
+  })
+})
+
+describe('las salas públicas', () => {
+  const info = { host: 'Ana', match: true, siding: true, format: 'tcg', limitMin: 40 }
+  const token = 'abcdefghijklmnop'
+  const other = 'ponmlkjihgfedcba'
+
+  it('lo que manda un anfitrión se revisa: nombre limpio, formato y reloj de los que se ofrecen, y el siding sólo en un Match', () => {
+    expect(parsePublicRoomInfo(info)).toEqual(info)
+    expect(parsePublicRoomInfo({ ...info, host: '  Ana \n  Pérez\u0000 ' })).toMatchObject({ host: 'Ana Pérez' })
+    expect(parsePublicRoomInfo({ ...info, host: 'x'.repeat(100) })?.host).toHaveLength(40)
+    expect(parsePublicRoomInfo({ ...info, match: false })).toMatchObject({ siding: false })
+
+    for (const bad of [null, [], 'x', { ...info, host: '' }, { ...info, host: '   ' }, { ...info, host: 3 }, { ...info, format: 'otro' }, { ...info, limitMin: 41 }, { ...info, match: 'si' }, { ...info, siding: undefined }]) {
+      expect(parsePublicRoomInfo(bad), JSON.stringify(bad)).toBeNull()
+    }
+  })
+
+  it('anota salas, las lista de la más nueva a la más vieja (sin el token) y las baja con su token', () => {
+    const registry = new RoomRegistry()
+
+    expect(registry.register('AAAAAAA2', info, token, 1000)).toBe('ok')
+    expect(registry.register('BBBBBBB2', { ...info, host: 'Beto' }, other, 2000)).toBe('ok')
+    expect(registry.list(3000).map((room) => room.code)).toEqual(['BBBBBBB2', 'AAAAAAA2'])
+    expect(JSON.stringify(registry.list(3000))).not.toContain(token)
+
+    expect(registry.remove('AAAAAAA2', other, 3000)).toBe(false)
+    expect(registry.remove('AAAAAAA2', token, 3000)).toBe(true)
+    expect(registry.list(3000).map((room) => room.code)).toEqual(['BBBBBBB2'])
+  })
+
+  it('vencen a los 30 minutos y renovar con el mismo token no las estira; con otro token no se pisa la de otro', () => {
+    const registry = new RoomRegistry()
+
+    registry.register('AAAAAAA2', info, token, 0)
+    expect(registry.register('AAAAAAA2', { ...info, host: 'Ana R' }, other, 1000)).toBe('taken')
+    expect(registry.register('AAAAAAA2', { ...info, host: 'Ana R' }, token, 60_000)).toBe('ok')
+    expect(registry.list(60_000)[0]).toMatchObject({ host: 'Ana R', createdAt: 0 })
+
+    expect(registry.list(PUBLIC_ROOM_TTL_MS - 1)).toHaveLength(1)
+    expect(registry.list(PUBLIC_ROOM_TTL_MS)).toHaveLength(0)
+    // Vencida, el código queda libre para otro.
+    expect(registry.register('AAAAAAA2', info, other, PUBLIC_ROOM_TTL_MS)).toBe('ok')
+  })
+
+  it('la lista tiene tope y se recupera de lo guardado', () => {
+    const registry = new RoomRegistry()
+
+    for (let index = 0; index < MAX_PUBLIC_ROOMS; index += 1) {
+      expect(registry.register(`CODE${String(index).padStart(4, 'A')}`, info, token, index)).toBe('ok')
+    }
+
+    expect(registry.register('ZZZZZZZ2', info, token, 500)).toBe('full')
+    expect(registry.register('CODEAAA5', info, token, 500)).toBe('ok')
+
+    const restored = new RoomRegistry(JSON.parse(JSON.stringify(registry)) as ConstructorParameters<typeof RoomRegistry>[0])
+    expect(restored.list(500)).toHaveLength(MAX_PUBLIC_ROOMS)
   })
 })

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { MAX_GAME_LOG, RPS_PICKS, addGame, rpsOutcome, type RpsPick } from '../app/duel-games'
+import { MAX_GAME_LOG, NEW_SERIES, RPS_PICKS, addGame, advanceSeries, rpsOutcome, seriesScore, type RpsPick } from '../app/duel-games'
 import { encodeMessage, parseMessage } from '../app/duel-protocol'
 import { createDuel } from '../app/duel-session'
 import { completedTurns, duelTurnNumber, sharedPhase, whoseTurn } from '../app/duel-turn'
@@ -339,4 +339,19 @@ describe('quién empieza', () => {
     expect(whoseTurn(0, hostTable, { ...guestTable, turn: 2 }, 1)).toBe('mine')
   })
 
+})
+
+describe('el marcador de un Match', () => {
+  it('suma el duelo de ahora sin tocar lo ya jugado, y gana quien llega a 2', () => {
+    expect(seriesScore(NEW_SERIES, null)).toEqual({ wins: [0, 0], winner: null })
+    expect(seriesScore(NEW_SERIES, { kind: 'loss', loser: 0 })).toEqual({ wins: [0, 1], winner: null })
+    expect(seriesScore({ played: 1, wins: [1, 0] }, { kind: 'loss', loser: 1 })).toEqual({ wins: [2, 0], winner: 0 })
+    expect(seriesScore({ played: 1, wins: [1, 0] }, { kind: 'draw' })).toEqual({ wins: [1, 0], winner: null })
+  })
+
+  it('al seguir cuenta el duelo, y si el Match ya estaba ganado vuelve a empezar', () => {
+    expect(advanceSeries(NEW_SERIES, { kind: 'loss', loser: 1 })).toEqual({ played: 1, wins: [1, 0] })
+    expect(advanceSeries({ played: 1, wins: [1, 0] }, { kind: 'draw' })).toEqual({ played: 2, wins: [1, 0] })
+    expect(advanceSeries({ played: 2, wins: [1, 1] }, { kind: 'loss', loser: 0 })).toEqual({ played: 3, wins: [0, 0] })
+  })
 })

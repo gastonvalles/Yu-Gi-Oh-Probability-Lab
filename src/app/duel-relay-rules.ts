@@ -165,3 +165,119 @@ export class RateLimiter {
     return true
   }
 }
+
+/**
+ * Salas públicas: una lista de las salas abiertas que cualquiera puede ver en el lobby y entrar sin que le pasen un enlace. El relay no lee los mensajes
+ * de las salas, así que la lista es aparte (`RoomRegistry`, que guarda el Durable Object `RoomIndex`): el anfitrión anota su sala al crearla y la baja
+ * cuando llega el rival o se va; y una sala que nadie bajó (se cerró la pestaña) vence sola a los 30 minutos.
+ */
+
+/** Cuánto dura una sala en la lista. */
+export const PUBLIC_ROOM_TTL_MS = 30 * 60 * 1000
+/** Cuántas salas caben en la lista a la vez: con la lista llena, no se anotan más hasta que alguna se libere o venza. */
+export const MAX_PUBLIC_ROOMS = 100
+export const MAX_HOST_NAME = 40
+/** Los formatos que puede tener una sala pública (los del builder). */
+export const PUBLIC_ROOM_FORMATS = ['tcg', 'ocg', 'goat', 'edison', 'genesys', 'unlimited'] as const
+export const PUBLIC_ROOM_LIMITS_MIN = [0, 20, 40, 60, 90] as const
+
+/** Lo que se muestra de una sala pública antes de entrar. */
+export interface PublicRoomInfo {
+  host: string
+  match: boolean
+  siding: boolean
+  format: string
+  limitMin: number
+}
+
+export interface PublicRoom extends PublicRoomInfo {
+  code: string
+  /** Cuándo se anotó (milisegundos): de acá cuentan los 30 minutos. */
+  createdAt: number
+}
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)
+
+/** Lo que manda un anfitrión al anotar su sala, ya revisado (el nombre sin caracteres de control ni espacios de más); `null` si viene mal formado. */
+export function parsePublicRoomInfo(value: unknown): PublicRoomInfo | null {
+  if (!isPlainObject(value) || typeof value.host !== 'string' || typeof value.match !== 'boolean' || typeof value.siding !== 'boolean') {
+    return null
+  }
+
+  // eslint-disable-next-line no-control-regex
+  const host = value.host.replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, MAX_HOST_NAME)
+
+  if (host === '' || !(PUBLIC_ROOM_FORMATS as readonly unknown[]).includes(value.format) || !(PUBLIC_ROOM_LIMITS_MIN as readonly unknown[]).includes(value.limitMin)) {
+    return null
+  }
+
+  return { host, match: value.match, siding: value.match && value.siding, format: value.format as string, limitMin: value.limitMin as number }
+}
+
+interface RegistryEntry {
+  room: PublicRoom
+  /** Lo que prueba que quien baja una sala es quien la anotó: el código de una sala pública se ve en la lista, el token no. */
+  token: string
+}
+
+/**
+ * La lista de salas públicas. Pura y con la hora que se le da (no lee el reloj), para probarla; el Worker la guarda entera en el almacenamiento del Durable
+ * Object entre pedidos (`toJSON` / `RoomRegistry.from`).
+ */
+export class RoomRegistry {
+  private entries: Map<string, RegistryEntry>
+
+  constructor(entries: readonly RegistryEntry[] = []) {
+    this.entries = new Map(entries.map((entry) => [entry.room.code, entry]))
+  }
+
+  private purge(now: number) {
+    for (const [code, entry] of this.entries) {
+      if (now - entry.room.createdAt >= PUBLIC_ROOM_TTL_MS) {
+        this.entries.delete(code)
+      }
+    }
+  }
+
+  /** Anota una sala. Anotar de nuevo con el mismo token (el anfitrión que recargó) la renueva; con otro, no pisa la de otro. */
+  register(code: string, info: PublicRoomInfo, token: string, now: number): 'ok' | 'taken' | 'full' {
+    this.purge(now)
+
+    const current = this.entries.get(code)
+
+    if (current && current.token !== token) {
+      return 'taken'
+    }
+
+    if (!current && this.entries.size >= MAX_PUBLIC_ROOMS) {
+      return 'full'
+    }
+
+    // Renovar no estira la vida de la sala: sigue contando desde que se anotó la primera vez.
+    this.entries.set(code, { room: { ...info, code, createdAt: current?.room.createdAt ?? now }, token })
+    return 'ok'
+  }
+
+  /** Las salas abiertas, las más nuevas primero (sin los tokens). */
+  list(now: number): PublicRoom[] {
+    this.purge(now)
+
+    return [...this.entries.values()].map((entry) => entry.room).sort((a, b) => b.createdAt - a.createdAt)
+  }
+
+  /** Baja una sala si el token es el de quien la anotó. */
+  remove(code: string, token: string, now: number): boolean {
+    this.purge(now)
+
+    if (this.entries.get(code)?.token !== token) {
+      return false
+    }
+
+    this.entries.delete(code)
+    return true
+  }
+
+  toJSON(): RegistryEntry[] {
+    return [...this.entries.values()]
+  }
+}

@@ -4,10 +4,17 @@
   "main": "src/index.ts",
   "compatibility_date": "2025-09-01",
   "durable_objects": {
-    "bindings": [{ "name": "DUEL_ROOM", "class_name": "DuelRoom" }]
+    "bindings": [
+      { "name": "DUEL_ROOM", "class_name": "DuelRoom" },
+      { "name": "ROOM_INDEX", "class_name": "RoomIndex" }
+    ]
   },
   // Salas con almacenamiento SQLite: es el tipo que entra en el plan gratuito. No se guarda nada en él.
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["DuelRoom"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["DuelRoom"] },
+    // La lista de salas públicas (ver docs/duelo-relay.md): guarda sólo lo que se muestra en el lobby, y vence a los 30 minutos.
+    { "tag": "v2", "new_sqlite_classes": ["RoomIndex"] }
+  ],
   // Los registros guardan sólo los tres avisos de conteo del relay (room_opened, room_paired, room_watched): sin el registro de cada petición, que traería el código de la sala y la dirección de quien se conecta.
   "observability": { "enabled": true, "logs": { "enabled": true, "invocation_logs": false } },
   "vars": {

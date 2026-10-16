@@ -35,7 +35,7 @@ const open = openPublic(table)
 const placed = encodeAct(open.sender, table, { type: 'place', id: 'card-1000-1', zone: 'mz', index: 0, pos: 'atk' }).wire
 
 const samples: DuelMessage[] = [
-  { t: 'hello', v: 1, sid: 'abc123', role: 'host', name: 'Ana', settings: { lp: 8000, hand: 5 } },
+  { t: 'hello', v: 1, sid: 'abc123', role: 'host', name: 'Ana', settings: { lp: 8000, hand: 5, limitMin: 50, format: 'unlimited', match: false, siding: false } },
   { t: 'hello', v: 1, sid: 'abc123', role: 'guest', name: 'Beto' },
   { t: 'sync', n: 3, state: open.masked, known: { c1: 'card-1000-1' }, lp: 8000, lifeN: 2, clock: { running: true, elapsedMs: 1500 } },
   { t: 'sync', n: 0, state: open.masked, known: {}, lp: 8000, lifeN: 0 },
@@ -184,6 +184,18 @@ describe('contra mensajes alterados', () => {
 describe('contra un rival malicioso', () => {
   const message = (value: unknown) => parseMessage(JSON.stringify(value))
   const wire = (action: unknown, reveal: unknown = {}) => ({ t: 'act', n: 1, wire: { action, reveal } })
+
+  it('el tiempo del reloj de los ajustes: sin él vale el de siempre, y fuera de rango o mal escrito se rechaza', () => {
+    const hello = (settings: unknown) => ({ t: 'hello', v: 1, sid: 'abc123', role: 'host', name: 'Ana', settings })
+
+    expect(message(hello({ lp: 8000, hand: 5 }))).toMatchObject({ settings: { limitMin: 50, format: 'unlimited', match: false, siding: false } })
+    expect(message(hello({ lp: 8000, hand: 5, limitMin: 0 }))).toMatchObject({ settings: { limitMin: 0 } })
+    expect(message(hello({ lp: 8000, hand: 5, limitMin: 90 }))).toMatchObject({ settings: { limitMin: 90 } })
+
+    for (const limitMin of [-1, 181, 1.5, '40', null]) {
+      expect(message(hello({ lp: 8000, hand: 5, limitMin })), String(limitMin)).toBeNull()
+    }
+  })
 
   /** Ids que, usados como clave de un objeto común, devuelven algo heredado (una función) en vez de nada. */
   const INHERITED = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueOf', 'prototype']

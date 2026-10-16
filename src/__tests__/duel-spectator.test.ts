@@ -15,7 +15,7 @@ function setup() {
   const clock = { t: 10_000 }
   const hostEnd = room.join()
   const guestEnd = room.join()
-  const host = createDuel(hostEnd, { role: 'host', name: 'Ana', settings: { lp: 8000, hand: 5 }, now: () => clock.t, sid: 'host-1', random: () => 0.1 })
+  const host = createDuel(hostEnd, { role: 'host', name: 'Ana', settings: { lp: 8000, hand: 5, limitMin: 50, format: 'unlimited', match: false, siding: false }, now: () => clock.t, sid: 'host-1', random: () => 0.1 })
   const guest = createDuel(guestEnd, { role: 'guest', name: 'Beto', now: () => clock.t, sid: 'guest-1', random: () => 0.9 })
 
   room.flush()
@@ -63,7 +63,7 @@ describe('un espectador que llega con el duelo empezado', () => {
     expect(view.players).toBe(2)
     expect(view.sides.map((side) => side.name)).toEqual(['Ana', 'Beto'])
     expect(view.sides.map((side) => side.lp)).toEqual([6500, 8000])
-    expect(view.settings).toEqual({ lp: 8000, hand: 5 })
+    expect(view.settings).toEqual({ lp: 8000, hand: 5, limitMin: 50, format: 'unlimited', match: false, siding: false })
     expect(view).toMatchObject({ turn: 0, phase: 'main1', starter: 0 })
     // Ve de cada uno lo mismo que ve el otro jugador: ni la mano ni el deck de nadie.
     expect(view.sides[0].mirror?.state).toEqual(game.guest.getSnapshot().theirs?.state)

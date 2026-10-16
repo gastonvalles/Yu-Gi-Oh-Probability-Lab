@@ -16,6 +16,8 @@ export interface DuelDeck {
   name: string
   mainIds: string[]
   extraIds: string[]
+  /** El Side Deck, para el siding de un Match (sin esto, no hay con qué cambiar cartas). */
+  sideIds?: string[]
   cardsById: ReadonlyMap<string, MatCard>
 }
 
@@ -60,19 +62,20 @@ export async function loadDuelDeck(raw: string): Promise<DuelDeck | null> {
     return null
   }
 
-  const wanted = [...new Set([...parsed.main, ...parsed.extra])]
+  const wanted = [...new Set([...parsed.main, ...parsed.extra, ...parsed.side])]
   const chunks = Array.from({ length: Math.ceil(wanted.length / FETCH_CHUNK) }, (_, index) => wanted.slice(index * FETCH_CHUNK, (index + 1) * FETCH_CHUNK))
   const found = new Map<number, ApiCardSearchResult>((await Promise.all(chunks.map((chunk) => fetchCardsByIds(chunk)))).flat().map((card) => [card.ygoprodeckId, card]))
   const mainIds = duelCardIds(parsed.main)
   const extraIds = duelCardIds(parsed.extra)
+  const sideIds = duelCardIds(parsed.side)
   const cardsById = new Map<string, MatCard>()
 
-  for (const id of [...mainIds, ...extraIds]) {
+  for (const id of [...mainIds, ...extraIds, ...sideIds]) {
     const card = found.get(parseDerivedCardId(cardIdOfDrawId(id)) ?? -1)
     if (card) cardsById.set(id, { name: card.name, apiCard: card })
   }
 
-  return { name: t('duel.deck.importedName'), mainIds, extraIds, cardsById }
+  return { name: t('duel.deck.importedName'), mainIds, extraIds, sideIds, cardsById }
 }
 
 /**
@@ -112,7 +115,7 @@ export function DuelDeckPicker({ builder, imported, onImport }: DuelDeckPickerPr
   }
 
   // Las cartas del deck pegado que la búsqueda no reconoció (se juegan igual, sin nombre).
-  const unknown = imported ? imported.mainIds.length + imported.extraIds.length - imported.cardsById.size : 0
+  const unknown = imported ? [...imported.mainIds, ...imported.extraIds].filter((id) => !imported.cardsById.has(id)).length : 0
 
   return (
     <section className="grid gap-2" aria-label={t('duel.deck.title')}>

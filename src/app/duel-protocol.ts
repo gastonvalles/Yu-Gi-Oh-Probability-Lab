@@ -1,5 +1,6 @@
-import { RPS_PICKS, TOSS_METHODS, cleanChat, stripHidden, type DuelGame, type TossMethod } from './duel-games'
+import { RPS_PICKS, TOSS_METHODS, cleanChat, stripHidden, type DuelGame, type Series, type TossMethod } from './duel-games'
 import { MAX_MESSAGE_BYTES } from './duel-relay-rules'
+import type { DeckFormat } from '../types'
 import { MAX_LP, STARTING_LP } from './life-calculator'
 import type { WireAct } from './mat-public'
 import { PHASES, type MatAction, type MatPile, type MatPos, type MatSpot, type MatState, type Placed } from './practice-mat'
@@ -16,14 +17,30 @@ export const PROTOCOL_VERSION = 1
 /** Tope de un mensaje: lo fija `duel-relay-rules.ts` porque el relay también lo hace cumplir. */
 export { MAX_MESSAGE_BYTES }
 
+/** Con qué formato se revisa el deck de cada uno en una sala (los del builder: la banlist del TCG o del OCG, Goat, Edison, Genesys, o sin límite). Cómo se revisa se lee aparte, en `duel-format.ts`. */
+export const DUEL_FORMATS = ['tcg', 'ocg', 'goat', 'edison', 'genesys', 'unlimited'] as const satisfies readonly DeckFormat[]
+export const DEFAULT_DUEL_FORMAT: DeckFormat = 'unlimited'
+
 export interface DuelSettings {
   /** Puntos de vida con los que empieza cada uno. */
   lp: number
   /** Cartas de la mano inicial. */
   hand: number
+  /** Minutos del reloj de cada duelo (cuenta para atrás); 0 es sin límite: el reloj cuenta para adelante. */
+  limitMin: number
+  /** El formato con que se revisa el deck de cada uno al tocar «Estoy listo». */
+  format: DeckFormat
+  /** Un Match (mejor de 3) en vez de un solo duelo. */
+  match: boolean
+  /** En un Match, cambiar cartas entre el Main, el Extra y el Side entre un duelo y el siguiente. */
+  siding: boolean
 }
 
-export const DEFAULT_SETTINGS: DuelSettings = { lp: STARTING_LP, hand: 5 }
+/** Los tiempos que se ofrecen al crear la sala (0 = sin límite); 50, lo que dura una ronda de torneo, es el de siempre. */
+export const DUEL_LIMITS_MIN = [0, 20, 40, 60, 90] as const
+export const DEFAULT_LIMIT_MIN = 50
+
+export const DEFAULT_SETTINGS: DuelSettings = { lp: STARTING_LP, hand: 5, limitMin: DEFAULT_LIMIT_MIN, format: DEFAULT_DUEL_FORMAT, match: false, siding: false }
 
 /** Lo que alguien marca como objetivo del lado del otro: cartas (por el id con que su dueño las nombra) y pilas enteras (la mano, el deck, el Extra, el cementerio, lo desterrado). */
 export interface Marks {
@@ -69,7 +86,7 @@ interface ClockWire {
 export type DuelMessage =
   | { t: 'hello'; v: number; sid: string; role: 'host' | 'guest'; name: string; settings?: DuelSettings }
   /** `ready`, `order` (quién empieza, si ya se eligió) y `opening` (cómo va la tirada que lo define) hacen que quien vuelve a entrar, o perdió un mensaje, sepa en qué punto va el otro. */
-  | { t: 'sync'; n: number; state?: MatState; known: Record<string, string>; lp: number; lifeN: number; clock?: ClockWire; ready?: boolean; order?: 0 | 1; opening?: OpeningWire }
+  | { t: 'sync'; n: number; state?: MatState; known: Record<string, string>; lp: number; lifeN: number; clock?: ClockWire; ready?: boolean; order?: 0 | 1; opening?: OpeningWire; series?: Series }
   | { t: 'act'; n: number; wire: WireAct }
   | { t: 'undo'; n: number }
   | { t: 'undoAsk'; id: number }
@@ -267,7 +284,20 @@ function parseState(value: unknown): MatState | null {
 }
 
 function parseSettings(value: unknown): DuelSettings | null {
-  return isPlain(value) && isInt(value.lp, 1, MAX_LP) && isInt(value.hand, 0, 20) ? { lp: value.lp, hand: value.hand } : null
+  // Un anfitrión de una versión anterior no manda el tiempo: vale el de siempre.
+  if (!isPlain(value) || !isInt(value.lp, 1, MAX_LP) || !isInt(value.hand, 0, 20) || !optional(value.limitMin, (v) => isInt(v, 0, 180)) || !optional(value.format, (v) => (DUEL_FORMATS as readonly unknown[]).includes(v)) || !optional(value.match, (v) => typeof v === 'boolean') || !optional(value.siding, (v) => typeof v === 'boolean')) {
+    return null
+  }
+
+  return { lp: value.lp, hand: value.hand, limitMin: typeof value.limitMin === 'number' ? value.limitMin : DEFAULT_LIMIT_MIN, format: (value.format as DeckFormat | undefined) ?? DEFAULT_DUEL_FORMAT, match: value.match === true, siding: value.match === true && value.siding === true }
+}
+
+function parseSeries(value: unknown): Series | null {
+  if (!isPlain(value) || !isInt(value.played, 0, 50) || !Array.isArray(value.wins) || value.wins.length !== 2 || !value.wins.every((wins) => isInt(wins, 0, 50))) {
+    return null
+  }
+
+  return { played: value.played, wins: [value.wins[0] as number, value.wins[1] as number] }
 }
 
 function parseOpening(value: unknown): OpeningWire | null {
@@ -330,10 +360,11 @@ export function parseMessage(text: unknown): DuelMessage | null {
       const known = parseKnown(raw.known, MAX_CARDS)
       const clock = raw.clock === undefined ? undefined : parseClock(raw.clock)
 
+      const series = raw.series === undefined ? undefined : parseSeries(raw.series)
       const orderOk = raw.order === undefined || raw.order === 0 || raw.order === 1
       const opening = raw.opening === undefined ? undefined : parseOpening(raw.opening)
 
-      if (state === null || !known || clock === null || !isInt(raw.n, 0, MAX_COUNT) || !isInt(raw.lp, 0, MAX_LP) || !isInt(raw.lifeN, 0, MAX_COUNT) || !optional(raw.ready, (v) => typeof v === 'boolean') || !orderOk || opening === null) {
+      if (state === null || !known || clock === null || !isInt(raw.n, 0, MAX_COUNT) || !isInt(raw.lp, 0, MAX_LP) || !isInt(raw.lifeN, 0, MAX_COUNT) || !optional(raw.ready, (v) => typeof v === 'boolean') || !orderOk || opening === null || series === null) {
         return null
       }
 
@@ -348,6 +379,7 @@ export function parseMessage(text: unknown): DuelMessage | null {
         ...(typeof raw.ready === 'boolean' ? { ready: raw.ready } : {}),
         ...(raw.order === 0 || raw.order === 1 ? { order: raw.order } : {}),
         ...(opening && Object.keys(opening).length > 0 ? { opening } : {}),
+        ...(series ? { series } : {}),
       }
     }
 
