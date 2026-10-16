@@ -14,6 +14,7 @@ import type { DeckCardInstance } from '../../app/model'
 import type { SavedCombo } from '../../app/saved-combos'
 import { buildPracticeDeck } from '../probability/practice'
 import { CardDetailModal } from '../card-detail/CardDetailModal'
+import { StepErrorBoundary } from '../ui/StepErrorBoundary'
 import { DeckBuilderStep } from './DeckBuilderStep'
 import { LifeCalculatorFab } from '../life/LifeCalculatorFab'
 import { MascotsModal } from '../mascot/MascotsModal'
@@ -255,7 +256,9 @@ export function DeckModeScreen() {
 
       {activeStep === 'probability-lab' ? (
         <div id="probability-lab" className="min-w-0 min-[1101px]:min-h-full">
-          <LazyProbabilityPanel {...controller.probability} />
+          <StepErrorBoundary title={t('lab.error.title')} backLabel={t('lab.error.back')} onBack={() => handleStepChange('deck-builder')}>
+            <LazyProbabilityPanel {...controller.probability} />
+          </StepErrorBoundary>
         </div>
       ) : null}
 

@@ -140,6 +140,7 @@ export const shell = {
   'shell.error.title': 'Algo salió mal',
   'shell.error.description': 'La pantalla no se pudo dibujar. Tu deck y tus reglas siguen guardados en este navegador.',
   'shell.error.retry': 'Reintentar',
+  'shell.stepError.description': 'Tu deck y tus reglas siguen guardados en este navegador.',
 
   'shell.stepper.less': 'Uno menos',
   'shell.stepper.more': 'Uno más',
