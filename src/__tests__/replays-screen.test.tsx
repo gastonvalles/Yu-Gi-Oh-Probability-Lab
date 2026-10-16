@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { configureStore } from '@reduxjs/toolkit'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { Provider } from 'react-redux'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ReplaysScreen } from '../components/replays/ReplaysScreen'
 
@@ -174,5 +174,95 @@ describe('la pestaña Replays', () => {
     expect(screen.getByRole('dialog', { name: 'Elfnote' })).toBeInTheDocument()
     expect(window.location.hash).toBe('#replays')
     expect(await screen.findByText('No tengo la lista completa de este deck.')).toBeInTheDocument()
+  })
+})
+
+// Lo que devuelve /api/live: las transmisiones al aire de los canales oficiales.
+const LIVE = {
+  ok: true,
+  checkedAt: '2026-10-17T18:00:00.000Z',
+  streams: [
+    { id: 'NlQJc1ExxSA', channel: 'tcg', title: 'Yu-Gi-Oh! Championship Series - Houston, TX - Genesys Main Event - Day One', viewers: 6700 },
+    { id: 'c_qNh337rxA', channel: 'tcg', title: 'Yu-Gi-Oh! Championship Series - Houston, TX - Advanced ATTACK OF THE GIANT CARD!! - Day One', viewers: 1400 },
+  ],
+}
+const stubLive = (body: unknown) => vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(body), { status: 200 })))
+
+describe('las transmisiones en vivo', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.useRealTimers()
+  })
+
+  it('muestra arriba de los replays lo que está al aire, lo más visto primero, con la gente que mira y un botón para mirarlo', async () => {
+    stubLive(LIVE)
+    renderScreen()
+
+    const live = within(await screen.findByRole('region', { name: 'En vivo ahora' }))
+
+    expect(live.getByText('2 transmisiones de los canales oficiales de YouTube.')).toBeInTheDocument()
+    // Lo más visto primero (la lista ya viene ordenada y se respeta).
+    expect(live.getAllByRole('button', { name: /^Mirar en vivo: / }).map((button) => button.getAttribute('aria-label'))).toEqual(LIVE.streams.map((stream) => `Mirar en vivo: ${stream.title}`))
+    expect(live.getByText(/6,7\s*mil viendo/)).toBeInTheDocument()
+    expect(live.getAllByRole('button', { name: 'Mirar en vivo' })).toHaveLength(2)
+    // Los replays siguen ahí, debajo.
+    expect(screen.getByRole('radio', { name: 'Con deck del Meta' })).toBeInTheDocument()
+  })
+
+  it('se mira acá mismo: la ventana trae el reproductor sin cookies recién al reproducir y el link a YouTube', async () => {
+    stubLive(LIVE)
+    renderScreen()
+
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Mirar en vivo: .*Genesys Main Event/ }))[0]!)
+
+    const dialog = screen.getByRole('dialog')
+
+    expect(within(dialog).getByText('En vivo · Yu-Gi-Oh! TCG')).toBeInTheDocument()
+    expect(within(dialog).getByRole('link', { name: /Ver en YouTube/ })).toHaveAttribute('href', 'https://www.youtube.com/watch?v=NlQJc1ExxSA')
+    expect(dialog.querySelector('iframe')).toBeNull()
+
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Reproducir en vivo: / }))
+
+    expect(dialog.querySelector('iframe')?.getAttribute('src')).toBe('https://www.youtube-nocookie.com/embed/NlQJc1ExxSA?autoplay=1&rel=0&playsinline=1')
+  })
+
+  it('sin nada al aire no se dibuja nada (ni un aviso): no es un error', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true, checkedAt: 'ahora', streams: [] }), { status: 200 }))
+
+    vi.stubGlobal('fetch', fetchMock)
+    renderScreen()
+    await act(async () => {})
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/live', expect.anything())
+    expect(screen.queryByText('En vivo ahora')).not.toBeInTheDocument()
+    expect(screen.queryByText(/No pude revisar las transmisiones/)).not.toBeInTheDocument()
+  })
+
+  it('si no se pudo mirar qué hay en vivo, lo dice y deja los links a los canales (una lista vacía no se hace pasar por «no hay nada»)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new TypeError('sin red'))))
+    renderScreen()
+
+    const note = await screen.findByText(/No pude revisar las transmisiones en vivo ahora/)
+
+    expect(within(note.closest('p')!).getByRole('link', { name: 'Yu-Gi-Oh! TCG' })).toHaveAttribute('href', 'https://www.youtube.com/@OfficialYuGiOhTCG')
+    expect(within(note.closest('p')!).getByRole('link', { name: 'Yu-Gi-Oh! TCG Europe' })).toHaveAttribute('href', 'https://www.youtube.com/@YuGiOhCardEU')
+  })
+
+  it('vuelve a mirar cada minuto, así una transmisión que empieza aparece sin recargar', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true, checkedAt: 'ahora', streams: [] }), { status: 200 }))
+
+    vi.stubGlobal('fetch', fetchMock)
+    renderScreen()
+    await act(async () => {})
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    fetchMock.mockImplementation(async () => new Response(JSON.stringify(LIVE), { status: 200 }))
+    await act(async () => {
+      vi.advanceTimersByTime(60_000)
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(await screen.findByText('En vivo ahora')).toBeInTheDocument()
   })
 })

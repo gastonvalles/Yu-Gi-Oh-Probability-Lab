@@ -205,6 +205,16 @@ export const meta: Translated<typeof es> = {
   'meta.replays.modal.play': 'Play {label}',
   'meta.replays.modal.decksLabel': "The players' decks",
   'meta.replays.modal.noDeck': "Their deck isn't among the tournament decks.",
+  'meta.replays.help4': 'While one of those channels is live, it shows up above the list (checked every minute).',
+  'meta.live.title': 'Live now',
+  'meta.live.description': { one: '{count} stream from the official YouTube channels.', other: '{count} streams from the official YouTube channels.' },
+  'meta.live.badge': 'Live',
+  'meta.live.viewers': '{count} watching',
+  'meta.live.watch': 'Watch live',
+  'meta.live.watchLabel': 'Watch live: {title}',
+  'meta.live.modal.kicker': 'Live · {channel}',
+  'meta.live.modal.play': 'Play live: {title}',
+  'meta.live.unavailable': "Couldn't check the live streams right now. Check the <tcg>{tcg}</tcg> and <eu>{eu}</eu> channels on YouTube.",
 
   // Comparar builds
   'meta.compare.label': 'Compare builds',

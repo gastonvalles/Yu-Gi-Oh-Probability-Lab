@@ -8,6 +8,7 @@ Qué se protege, de qué, con qué, y qué queda en manos de quien administra la
 |---|---|---|
 | Sitio (Vercel) | HTML, JS y datos estáticos | código de terceros que se cuela en la página (XSS), datos externos que se renderizan |
 | `api/card-image` | función de Vercel: proxy de imágenes de YGOPRODeck | que se use de proxy abierto, que se abuse del ancho de banda o de las peticiones a YGOPRODeck |
+| `api/live` | función de Vercel: qué transmisiones en vivo hay en los canales oficiales de YouTube | que se use para golpear a YouTube, que un cambio de su página diga «no hay nada» cuando no se pudo mirar |
 | Relay del duelo (`duel-relay/`, Cloudflare Worker) | reenvía mensajes entre dos jugadores y hasta dos espectadores | abuso desde otras páginas, salas ajenas, mensajes enormes o a ráfagas |
 | Otro jugador | llega por el relay | mensajes mal formados o hechos a propósito para romper o engañar al cliente |
 | Repositorio y CI | GitHub Actions, Dependabot, despliegue automático a `main` | dependencias o acciones comprometidas, tokens expuestos, datos envenenados que se publican solos |
@@ -30,6 +31,12 @@ Qué se protege, de qué, con qué, y qué queda en manos de quien administra la
 - Sólo pide a YGOPRODeck rutas con la forma de una imagen de carta (`cards/14558127.jpg`, `cards/14558127_1.jpg`) o de un set (`sets/JUSH.jpg`); el host de destino es fijo y no se siguen redirecciones.
 - Sólo acepta los parámetros `path` y `w` (cualquier otro se rechaza antes de pedir nada, porque cada valor distinto sería una copia nueva en el CDN), y lo rechazado se recuerda unos minutos en el CDN.
 - Sólo devuelve `image/jpeg`, `image/png` o `image/webp` de hasta 2 MB, y sharp no achica nada de más de 4 megapíxeles. Lo que no cumple es un 502 que no se guarda en ninguna caché.
+
+**Transmisiones en vivo (`api/live`)**
+- Lee sólo las pestañas de transmisiones de los dos canales oficiales (direcciones fijas de `LIVE_CHANNELS`); nada del pedido llega a lo que se pide a YouTube, y cualquier parámetro se rechaza antes de pedir nada (cada valor distinto sería una copia nueva en el CDN).
+- El CDN guarda la respuesta 45 segundos y sirve la anterior mientras trae la nueva: YouTube recibe un par de pedidos por minuto sin importar cuánta gente abra los replays. Una lectura fallida se guarda 15 segundos.
+- Cada pedido a YouTube tiene tope de 6 segundos y de 6 MB; si una página no trae la lista de videos del canal (aviso de cookies, bloqueo, cambio de formato) la respuesta dice `ok: false` y no «no hay nada en vivo»: la app lo avisa y deja los links a los canales.
+- La app valida lo que vuelve (`parseLiveResponse`): sólo ids de video de 11 caracteres, canales conocidos y títulos con texto; los títulos se renderizan como texto y el reproductor y los links se arman sólo con el id validado.
 
 **Relay**
 - Sólo orígenes permitidos (`ALLOWED_ORIGINS`), códigos de sala de 8 símbolos al azar (unos 40 bits), tope de 16 KB por mensaje, límite de ritmo por conexión, binarios prohibidos para los jugadores (los avisos del relay no se pueden falsificar), espectadores que no pueden mandar nada. Quien entra a mirar hace que los jugadores repitan su estado, pero con tope por sala (una ráfaga corta y después uno cada dos segundos), y las entradas de espectadores también lo tienen: si entran en bucle, el relay los rechaza (429) y los jugadores no se llenan de pedidos. No guarda ni registra mensajes, códigos ni direcciones (el registro de cada petición está apagado).

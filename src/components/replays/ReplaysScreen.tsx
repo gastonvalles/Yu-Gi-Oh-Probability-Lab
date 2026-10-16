@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { META_DECKS, type MetaDeck } from '../../app/meta'
+import { useLiveStreams } from '../../app/use-live-streams'
 import {
   REPLAYS,
   buildReplaysHash,
@@ -31,6 +32,7 @@ import { Segmented } from '../ui/Segmented'
 import { StepPage } from '../ui/StepPage'
 import { choiceChip, filterChip } from '../ui/surfaces'
 import { overline } from '../ui/typography'
+import { LiveStreamsSection } from './LiveStreams'
 import { ReplayModal } from './ReplayModal'
 
 type Scope = 'meta' | 'all'
@@ -47,6 +49,8 @@ const channelLink = (key: ReplayChannel) => (text: string) => (
 
 export function ReplaysScreen() {
   const entries = useMemo(getReplayEntries, [])
+  // Lo que está al aire ahora en los canales oficiales: va arriba de los replays mientras haya algo.
+  const live = useLiveStreams()
   const [scope, setScope] = useState<Scope>('meta')
   const [query, setQuery] = useState('')
   const [limit, setLimit] = useState(REPLAYS_PER_PAGE)
@@ -102,6 +106,7 @@ export function ReplaysScreen() {
               <li>{t('meta.replays.help1')}</li>
               <li>{t('meta.replays.help2')}</li>
               <li>{t('meta.replays.help3')}</li>
+              <li>{t('meta.replays.help4')}</li>
             </ul>
           </div>
         }
@@ -115,6 +120,8 @@ export function ReplaysScreen() {
           </Badge>
         }
       />
+
+      <LiveStreamsSection state={live} />
 
       <Card id="replays-list">
         <SectionHeader
