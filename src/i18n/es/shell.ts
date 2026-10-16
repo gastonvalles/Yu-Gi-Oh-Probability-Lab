@@ -19,6 +19,8 @@ export const shell = {
   'shell.tone.progress': 'En progreso',
   'shell.tone.pending': 'Pendiente',
 
+  'shell.flow.label': 'Pasos del deck',
+  'shell.flow.progress': 'Paso {step} de {total}: {name}',
   'shell.step.deck.label': 'Deck',
   'shell.step.deck.title': 'Deck Builder',
   'shell.step.deck.ready': 'Base principal lista.',
