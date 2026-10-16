@@ -84,6 +84,9 @@
   --animate-die-spin: die-spin 1.4s cubic-bezier(0.15, 0.75, 0.3, 1) both;
   --animate-rule-in: rule-in var(--motion-duration) cubic-bezier(0.2, 1.3, 0.4, 1) both;
   --animate-sheet-up: sheet-up var(--motion-duration) ease-out both;
+  /* Los mensajes rápidos del duelo (🤔 y 👍): el botón rebota al apretarlo y su emoji sube y se desvanece. */
+  --animate-reaction-press: reaction-press 350ms cubic-bezier(0.3, 1.6, 0.5, 1);
+  --animate-reaction-rise: reaction-rise 800ms ease-out forwards;
   --animate-sheet-in: sheet-in var(--motion-duration) ease-out both;
   --animate-card-glow: card-glow var(--motion-duration) ease-out;
   /* Activar una carta o efecto en la mesa de práctica: la carta aparece grande en el centro de la pantalla, con brillo amarillo, y se desvanece (como en DuelingBook). */
@@ -282,6 +285,32 @@
     to {
       opacity: 1;
       transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes reaction-press {
+    0% {
+      transform: scale(1);
+    }
+
+    40% {
+      transform: scale(1.28) rotate(-8deg);
+    }
+
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes reaction-rise {
+    0% {
+      opacity: 1;
+      transform: translate(-50%, 0) scale(1);
+    }
+
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -4.5rem) scale(1.8);
     }
   }
 
@@ -883,62 +912,70 @@
   --color-danger-soft: var(--danger-soft);
   --color-info-soft: var(--info-soft);
   --color-handtrap: var(--handtrap);
+  --color-nav: var(--nav);
+  --color-nav-raised: var(--nav-raised);
+  --color-nav-active: var(--nav-active);
 }
 
 @layer theme {
   :root {
-    --background: #0a0816;
-    --background-rgb: 10 8 22;
-    --foreground: #eeeafc;
-    --foreground-rgb: 238 234 252;
-    --secondary: #130f2b;
-    --card-background: #130f2b;
-    --card-background-rgb: 19 15 43;
-    --border: #261e52;
-    --input: #1b1542;
-    --input-hover: #251d55;
-    --primary: #9b00ff;
-    --primary-rgb: 155 0 255;
-    --primary-hover: #b026ff;
-    --primary-hover-rgb: 176 38 255;
-    --primary-foreground: #ffffff;
-    --accent: #00ffa3;
-    --accent-rgb: 0 255 163;
-    --accent-foreground: #0a0816;
-    --destructive: #ef4444;
-    --destructive-rgb: 239 68 68;
+    --background: #150a24;
+    --background-rgb: 21 10 36;
+    --foreground: #fdffff;
+    --foreground-rgb: 253 255 255;
+    --secondary: #231238;
+    --card-background: #231238;
+    --card-background-rgb: 35 18 56;
+    --border: #3a2459;
+    --input: #2b1745;
+    --input-hover: #352052;
+    --primary: #8000cb;
+    --primary-rgb: 128 0 203;
+    --primary-hover: #9a26e0;
+    --primary-hover-rgb: 154 38 224;
+    --primary-foreground: #fdffff;
+    --accent: #c77dff;
+    --accent-rgb: 199 125 255;
+    --accent-foreground: #150a24;
+    --destructive: #da0000;
+    --destructive-rgb: 218 0 0;
 
     /* Superficies: lienzo < tarjeta < elevada < hover. */
-    --surface-raised: #1a1440;
-    --surface-hover: #251d55;
-    --border-subtle: rgb(var(--primary-soft-rgb) / 0.13);
+    --surface-raised: #2b1745;
+    --surface-hover: #352052;
+    --border-subtle: #2e1c4a;
     /* Violeta legible como texto sobre fondo oscuro (el de marca queda para rellenos). */
-    --primary-soft: #cf8dff;
-    --primary-soft-rgb: 207 141 255;
+    --primary-soft: #c77dff;
+    --primary-soft-rgb: 199 125 255;
     /* Lavanda oscura: el fondo de chips, botones secundarios y barras de navegación (la lavanda del diseño, sobre oscuro). */
-    --lavender: #1d1740;
+    --lavender: #2b1745;
     /* Lavanda al pasar el mouse: más clara que la base (el hover siempre aclara). */
-    --lavender-hover: #2d2368;
-    --info: #0087ff;
-    --info-rgb: 0 135 255;
+    --lavender-hover: #352052;
+    --info: #f7cb15;
+    --info-rgb: 247 203 21;
     /* Variantes claras de cada tono: texto e íconos sobre fondos teñidos (más contraste que el color base). */
-    --success-soft: #4df0b4;
-    --warning-soft: #ffb37a;
-    --danger-soft: #fca5a5;
-    --info-soft: #7cc2ff;
+    --success-soft: #6bf55c;
+    --warning-soft: #e0b3ff;
+    --danger-soft: #ff4d4d;
+    --info-soft: #ffd84d;
 
-    --handtrap: #3b82f6;
-    --handtrap-rgb: 59 130 246;
-    --success: #00ffa3;
-    --success-rgb: 0 255 163;
-    --warning: #ff9142;
-    --warning-rgb: 255 145 66;
-    --danger: #ef4444;
-    --danger-rgb: 239 68 68;
+    --handtrap: #c77dff;
+    --handtrap-rgb: 199 125 255;
+    --success: #1aef06;
+    --success-rgb: 26 239 6;
+    --warning: #c77dff;
+    --warning-rgb: 199 125 255;
+    --danger: #da0000;
+    --danger-rgb: 218 0 0;
+
+    /* Navegación: índigo con el destino activo en ámbar (el ámbar es sólo de la navegación, del rival y de la build B). */
+    --nav: #400065;
+    --nav-raised: #5a2a80;
+    --nav-active: #f7cb15;
 
     --text-main: var(--foreground);
-    --text-muted: #bfbbd9;
-    --text-soft: #9089b5;
+    --text-muted: #b4a2d4;
+    --text-soft: #9b86c4;
 
     --bg-canvas: var(--background);
     --border-strong: rgb(var(--primary-rgb) / 0.58);
@@ -949,12 +986,15 @@
     --radius-chip: 999px;
     /* Alto del pie de la app (en escritorio va fijo abajo, en todas las pantallas). */
     --app-footer-height: 2.75rem;
+    /* La mesa vista desde arriba: el campo se inclina hacia atrás (lo lejano se achica) con una perspectiva suave; en escritorio, menos. */
+    --field-tilt: 26deg;
+    --field-perspective: 900px;
     /* El menú lateral al contraerse o abrirse: el ancho, los rótulos y lo flotante que lo sigue (mascota, botones) van con la misma duración y curva. */
     --sidebar-duration: 280ms;
     --sidebar-ease: cubic-bezier(0.22, 1, 0.36, 1);
-    --app-scrollbar-track: #15112f;
-    --app-scrollbar-thumb: #4d447f;
-    --app-scrollbar-thumb-hover: #62589a;
+    --app-scrollbar-track: #1c0f30;
+    --app-scrollbar-thumb: #45296b;
+    --app-scrollbar-thumb-hover: #6a4b96;
 
     /* Cada zona se distingue por su tinte (sin marco): el borde sólo se enciende al arrastrar una carta encima. */
     --zone-main-background: rgb(var(--primary-rgb) / 0.14);
@@ -963,6 +1003,15 @@
     --zone-extra-border: transparent;
     --zone-side-background: rgb(var(--accent-rgb) / 0.09);
     --zone-side-border: transparent;
+  }
+}
+
+@layer theme {
+  @media (min-width: 1101px) {
+    :root {
+      --field-tilt: 20deg;
+      --field-perspective: 1300px;
+    }
   }
 }
 
@@ -992,7 +1041,7 @@
   }
 
   /*
-   * Manchas tenues de menta, amarillo y violeta sobre el negro. Van en una capa fija y compuesta por la GPU:
+   * Manchas tenues de violeta sobre el índigo profundo. Van en una capa fija y compuesta por la GPU:
    * con `background-attachment: fixed` en <html> el celular repinta todos los degradados en cada cuadro del scroll.
    */
   body::before {
@@ -1002,11 +1051,10 @@
     z-index: -1;
     pointer-events: none;
     background:
-      radial-gradient(46rem 26rem at -6% -8%, rgb(0 255 163 / 0.06), transparent 62%),
-      radial-gradient(44rem 24rem at 106% -6%, rgb(255 205 46 / 0.05), transparent 62%),
+      radial-gradient(46rem 26rem at -6% -8%, rgb(199 125 255 / 0.05), transparent 62%),
       radial-gradient(60rem 22rem at 50% -8%, rgb(var(--primary-rgb) / 0.3), transparent 70%),
       radial-gradient(56rem 30rem at 50% 118%, rgb(var(--primary-rgb) / 0.24), transparent 64%),
-      linear-gradient(180deg, var(--bg-canvas), #0f0a26);
+      linear-gradient(180deg, var(--bg-canvas), #1c0f30);
     transform: translateZ(0);
   }
 
@@ -1154,7 +1202,7 @@
 @layer utilities {
   @media (max-width: 1100px) {
     body[data-duel] .app-toaster {
-      bottom: calc(env(safe-area-inset-bottom, 0px) + 4.75rem) !important;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 7.5rem) !important;
     }
   }
 }

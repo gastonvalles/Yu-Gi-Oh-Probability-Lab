@@ -160,7 +160,7 @@ export function MobileCardSearch({
               <button
                 type="button"
                 aria-label={t('search.clearText')}
-                className="absolute right-0 top-0 grid h-11 w-11 place-items-center text-white transition-colors duration-150 hover:text-success focus-visible:text-success focus-visible:outline-none"
+                className="absolute right-0 top-0 grid h-11 w-11 place-items-center text-white transition-colors duration-150 hover:text-accent focus-visible:text-accent focus-visible:outline-none"
                 onClick={() => {
                   actions.onQueryChange('')
                   inputRef.current?.focus()
@@ -218,7 +218,7 @@ export function MobileCardSearch({
                 <span className="truncate text-foreground">
                   {chip.label}: {chip.value}
                 </span>
-                <CloseIcon className="h-3 w-3 shrink-0 text-white transition-colors duration-150 group-hover/chip:text-success" />
+                <CloseIcon className="h-3 w-3 shrink-0 text-white transition-colors duration-150 group-hover/chip:text-accent" />
               </button>
             ))}
           </div>

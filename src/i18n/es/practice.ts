@@ -78,6 +78,7 @@ export const practice = {
   'practice.deckMenu.shuffle': 'Barajar',
 
   // Texto de cada jugada (lista de pasos y barra de abajo).
+  'practice.mat.passTurn': 'Pasar turno',
   'practice.step.andShuffle': '{text} y barajás',
   'practice.step.draw': 'Robás {card}',
   'practice.step.drawCount': { one: 'Robás {count} carta', other: 'Robás {count} cartas' },

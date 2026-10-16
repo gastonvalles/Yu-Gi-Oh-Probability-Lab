@@ -10,11 +10,11 @@ import type { DeckFormat } from '../types'
 const ZONE_TITLES: Record<DeckZone, string> = { main: 'Main', extra: 'Extra', side: 'Side' }
 
 // Los mismos colores que el builder (src/index.css y deck-zone-styles.ts): la imagen es una captura de la pantalla.
-const ZONE_DOT: Record<DeckZone, string> = { main: '#9b00ff', extra: '#3b82f6', side: '#00ffa3' }
+const ZONE_DOT: Record<DeckZone, string> = { main: '#8000cb', extra: '#c77dff', side: '#6a4b96' }
 const ZONE_TINT: Record<DeckZone, string> = {
-  main: 'rgba(155, 0, 255, 0.14)',
-  extra: 'rgba(59, 130, 246, 0.13)',
-  side: 'rgba(0, 255, 163, 0.09)',
+  main: 'rgba(128, 0, 203, 0.14)',
+  extra: 'rgba(199, 125, 255, 0.13)',
+  side: 'rgba(199, 125, 255, 0.09)',
 }
 const TYPE_SWATCH: Record<string, string> = {
   monster: '#ff9142',
@@ -25,11 +25,11 @@ const TYPE_SWATCH: Record<string, string> = {
   synchro: '#3b82f6',
   link: '#3b82f6',
 }
-const PAGE_BACKGROUND = '#0a0816'
-const SURFACE_BASE = 'rgba(19, 15, 43, 0.6)'
-const TEXT_MAIN = '#eeeafc'
-const TEXT_MUTED = '#bfbbd9'
-const CARD_BACKGROUND = '#1b1542'
+const PAGE_BACKGROUND = '#150a24'
+const SURFACE_BASE = 'rgba(35, 18, 56, 0.6)'
+const TEXT_MAIN = '#fdffff'
+const TEXT_MUTED = '#b4a2d4'
+const CARD_BACKGROUND = '#2b1745'
 const SURFACE_RADIUS = 16
 // 150px lógicos × 2 = 300px por carta: cerca del tamaño nativo de card_small (268px).
 const EXPORT_RESOLUTION_SCALE = 2

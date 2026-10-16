@@ -1,11 +1,17 @@
 /** Armazón de la app: barra de pasos, pie, mascotas, avisos, calculadora de LP y los componentes de `ui/`. */
 export const shell = {
   'shell.nav.main': 'Navegación principal',
-  'shell.nav.open': 'Abrir el menú',
-  'shell.nav.close': 'Cerrar el menú',
+  'shell.brand.unofficial': 'Sitio no oficial',
+  'shell.sheet.close': 'Cerrar',
+  'shell.settings.title': 'Ajustes',
+  'shell.settings.language': 'Idioma',
+  'shell.settings.about': 'Acerca de',
+  'shell.nav.open': 'Abrir los ajustes',
+  'shell.nav.close': 'Cerrar los ajustes',
   'shell.nav.collapse': 'Contraer menú',
   'shell.nav.expand': 'Expandir menú',
   'shell.nav.group.deck': 'Tu deck',
+  'shell.nav.group.duel': 'Duelo',
   'shell.nav.group.tools': 'Herramientas',
   'shell.nav.group.discover': 'Descubrir',
 
@@ -51,7 +57,7 @@ export const shell = {
   'shell.step.banlists.title': 'Banlists históricas',
   'shell.step.banlists.detail': 'Las listas de prohibidas y limitadas del TCG y el OCG, una por una.',
 
-  'shell.practice.title': 'Práctica',
+  'shell.practice.title': 'Jugar solo',
 
   'shell.mascot.title': 'Mascotas',
   'shell.mascot.available': 'Mascotas disponibles',
@@ -91,8 +97,8 @@ export const shell = {
   'shell.life.clock.pause': 'Pausar el reloj de la ronda',
   'shell.life.clock.start': 'Poner a correr el reloj de la ronda',
   'shell.life.clock.hint': 'Cuenta regresiva de la ronda (50 minutos); suena al llegar a cero',
-  'shell.life.duelist.first': 'Duelista 1',
-  'shell.life.duelist.second': 'Duelista 2',
+  'shell.life.duelist.first': 'Vos',
+  'shell.life.duelist.second': 'Rival',
   'shell.life.duelist.selected': '{name}: {lp} LP. Elegido para la operación',
   'shell.life.duelist.choose': '{name}: {lp} LP. Elegir para la operación',
   'shell.life.operation.minus': '{name}: {lp} menos {amount}',

@@ -3,8 +3,9 @@ import type { ReactNode } from 'react'
 import type { MetaCardStat, MetaTier } from '../../app/meta'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
+import { cx } from '../ui/cx'
 import { TrendArrow } from './TrendArrow'
-import { TIER_ORDER, percent, tierColor, tierHint, tierLabel } from './meta-format'
+import { TIER_ORDER, percent, tierColor, tierHint, tierLabel, tierTextClass } from './meta-format'
 
 export type BoardView = 'now' | 'projected'
 
@@ -38,7 +39,7 @@ export function TierBoard({ rows, floors }: TierBoardProps) {
         // En mobile la etiqueta es angosta y los tiles van a todo el ancho; en pantallas grandes, en fila con ancho fijo.
         <div key={tier} className="grid min-h-[5.75rem] grid-cols-[3.5rem_minmax(0,1fr)] border-b border-border-subtle last:border-b-0 sm:grid-cols-[5.5rem_minmax(0,1fr)]">
           <div
-            className="grid place-items-center px-1 text-center text-micro font-bold text-[#1a1204] sm:text-body sm:font-semibold"
+            className={cx('grid place-items-center px-1 text-center text-micro font-bold sm:text-body sm:font-semibold', tierTextClass(tier))}
             style={{ backgroundColor: tierColor(tier) }}
             title={tierHint(tier, floors)}
           >

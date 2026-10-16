@@ -39,19 +39,20 @@ interface ParsedStoredGroupKey {
 }
 
 const ROLE_THEME_BY_KEY: Record<CardRole, ClassificationTheme> = {
-  starter: { color: '#9b00ff', rgb: '155 0 255' },
-  extender: { color: '#00ffa3', rgb: '0 255 163' },
-  enabler: { color: '#14b8a6', rgb: '20 184 166' },
-  handtrap: { color: '#3b82f6', rgb: '59 130 246' },
-  disruption: { color: '#2563eb', rgb: '37 99 235' },
-  boardbreaker: { color: '#f59e0b', rgb: '245 158 11' },
+  // Los roles son categorías, no estadísticas: van en la familia del violeta (el verde, el ámbar y el azul no son de la paleta); el rojo queda para lo que sale mal.
+  starter: { color: '#c77dff', rgb: '199 125 255' },
+  extender: { color: '#e0b3ff', rgb: '224 179 255' },
+  enabler: { color: '#9b6bff', rgb: '155 107 255' },
+  handtrap: { color: '#a78bfa', rgb: '167 139 250' },
+  disruption: { color: '#8f8cff', rgb: '143 140 255' },
+  boardbreaker: { color: '#e879f9', rgb: '232 121 249' },
   floodgate: { color: '#a855f7', rgb: '168 85 247' },
-  searcher: { color: '#06b6d4', rgb: '6 182 212' },
-  draw: { color: '#38bdf8', rgb: '56 189 248' },
-  recovery: { color: '#22c55e', rgb: '34 197 94' },
-  payoff: { color: '#10b981', rgb: '16 185 129' },
-  brick: { color: '#ef4444', rgb: '239 68 68' },
-  garnet: { color: '#b91c1c', rgb: '185 28 28' },
+  searcher: { color: '#d58cff', rgb: '213 140 255' },
+  draw: { color: '#b4a2d4', rgb: '180 162 212' },
+  recovery: { color: '#c4b5fd', rgb: '196 181 253' },
+  payoff: { color: '#d8b4fe', rgb: '216 180 254' },
+  brick: { color: '#ff4d4d', rgb: '255 77 77' },
+  garnet: { color: '#da0000', rgb: '218 0 0' },
 }
 
 const ORIGIN_THEME_BY_KEY: Record<CardOrigin, ClassificationTheme> = {

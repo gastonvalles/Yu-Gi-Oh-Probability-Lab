@@ -282,7 +282,7 @@ export function DeckModeScreen() {
       {activeStep === 'duel' ? (
         <div id="duel" className="h-full min-h-0 min-w-0">
           <Heading level="page" className="sr-only">
-            {t('duel.nav.title')}
+            {t('shell.nav.group.duel')}
           </Heading>
           {duelConnect ? (
             <LazyDuelScreen handSize={controller.probability.handSize} mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} connect={duelConnect.play} connectSpectator={duelConnect.watch} />

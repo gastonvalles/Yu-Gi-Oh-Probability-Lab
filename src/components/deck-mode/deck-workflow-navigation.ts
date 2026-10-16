@@ -188,22 +188,30 @@ interface AppNavTools {
   duel?: boolean
 }
 
-/** El menú de la app: los pasos del deck, las herramientas (la práctica es una pantalla; la calculadora y las mascotas abren un panel) y la referencia del meta. Lo ven el menú lateral y el cajón del celular. */
+/** El menú de la app, en cuatro grupos: Tu deck, Duelo (jugar solo y el duelo por enlace), Herramientas (la calculadora y las mascotas abren un panel) y Descubrir (la referencia del meta). Lo ven el menú lateral y la barra de abajo del celular. */
 export function buildAppNavGroups(steps: DeckModeNavigationItem[], tools: AppNavTools): NavGroup[] {
   const pick = (...keys: DeckWorkflowStepKey[]): NavItem[] => keys.flatMap((key) => steps.filter((step) => step.key === key))
 
   return [
-    { key: 'deck', label: t('shell.nav.group.deck'), items: pick('deck-builder', 'categorization', 'probability-lab', 'workspace', 'export') },
+    { key: 'deck', label: t('shell.nav.group.deck'), icon: 'cards' as const, items: pick('deck-builder', 'categorization', 'probability-lab', 'workspace', 'export') },
     {
-      key: 'tools',
-      label: t('shell.nav.group.tools'),
+      key: 'duel',
+      label: t('shell.nav.group.duel'),
+      icon: 'target' as const,
       items: [
         ...(tools.practice ? [{ key: 'practice', label: t('shell.practice.title'), title: t('shell.practice.title'), icon: 'hand' as const }] : []),
         ...(tools.duel ? [{ key: 'duel', label: t('duel.nav.title'), title: t('duel.nav.title'), icon: 'link' as const }] : []),
+      ],
+    },
+    {
+      key: 'tools',
+      label: t('shell.nav.group.tools'),
+      icon: 'sliders' as const,
+      items: [
         { key: 'life', label: t('shell.life.title'), title: t('shell.life.title'), icon: 'heart' as const },
         { key: 'mascots', label: t('shell.mascot.title'), title: t('shell.mascot.title'), icon: 'paw' as const },
       ],
     },
-    { key: 'discover', label: t('shell.nav.group.discover'), items: pick('meta', 'tournaments', 'replays', 'expansions', 'banlists') },
-  ]
+    { key: 'discover', label: t('shell.nav.group.discover'), icon: 'search' as const, items: pick('meta', 'tournaments', 'replays', 'expansions', 'banlists') },
+  ].filter((group) => group.items.length > 0)
 }

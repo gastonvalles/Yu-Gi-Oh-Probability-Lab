@@ -7,6 +7,8 @@ export const SIDEBAR_PX = { expanded: 240, collapsed: 76 } as const
 const DESKTOP_MIN_PX = 1101
 /** Sin haber elegido todavía, en una ventana más angosta que esto el menú arranca contraído: las pantallas no quedan apretadas. */
 const COMPACT_BELOW_PX = 1400
+/** La barra de abajo del celular (`MobileTabBar`: 4 rem, sin contar el borde seguro del teléfono). */
+export const TAB_BAR_PX = 64
 /** Lo que ocupa el pie abajo en escritorio (su alto, con un respiro). */
 const FOOTER_RESERVE_PX = 64
 const SIDEBAR_KEY = 'ygo-lab:sidebar-collapsed'
@@ -39,9 +41,11 @@ interface ShellInsets {
 
 export const NO_SHELL_INSETS: ShellInsets = { left: 0, bottom: 0 }
 
-/** En el celular no hay menú fijo ni pie fijo: no queda nada reservado. */
-export function shellInsetsFor(collapsed: boolean, desktop: boolean): ShellInsets {
-  return desktop ? { left: collapsed ? SIDEBAR_PX.collapsed : SIDEBAR_PX.expanded, bottom: FOOTER_RESERVE_PX } : NO_SHELL_INSETS
+/** En el celular no hay menú fijo ni pie fijo: sólo queda reservada la barra de abajo (que la mesa a pantalla completa esconde). */
+export function shellInsetsFor(collapsed: boolean, desktop: boolean, tabBar = true): ShellInsets {
+  if (desktop) return { left: collapsed ? SIDEBAR_PX.collapsed : SIDEBAR_PX.expanded, bottom: FOOTER_RESERVE_PX }
+
+  return tabBar ? { left: 0, bottom: TAB_BAR_PX } : NO_SHELL_INSETS
 }
 
 // Arranca ya con lo que va a ocupar al dibujarse (no hay que esperar a que el armazón avise): así los botones flotantes y la mascota

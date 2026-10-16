@@ -1,6 +1,6 @@
 /** Duelo por enlace: el menú, la sala, la mesa con los dos campos, la barra de puntos de vida y la conexión. */
 export const duel = {
-  'duel.nav.title': 'Duelo con un amigo',
+  'duel.nav.title': 'Nueva sala',
   'duel.unavailable': 'El duelo con un amigo todavía no está disponible en esta versión de la app.',
 
   // La mesa con los dos campos.
@@ -211,6 +211,8 @@ export const duel = {
 
   // El chat entre los dos.
   'duel.chat.open': 'Chat',
+  'duel.log.turn': 'Turno {turn} · {name}',
+  'duel.log.open': 'Abrir el registro de jugadas',
   'duel.chat.title': 'Chat con {name}',
   'duel.chat.empty': 'Escribile a tu rival para avisarle algo o decirle que podés responder.',
   'duel.chat.placeholder': 'Escribí un mensaje',
@@ -220,7 +222,6 @@ export const duel = {
   'duel.chat.quickTitle': 'Mensajes rápidos',
   'duel.signal.thinking': 'Pensando…',
   'duel.signal.good': 'Todo bien',
-  'duel.chat.quick.pass': 'Paso',
 
   // El turno y las fases del rival.
 

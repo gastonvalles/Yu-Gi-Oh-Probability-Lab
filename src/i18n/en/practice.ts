@@ -74,6 +74,7 @@ export const practice: Translated<typeof es> = {
   'practice.deckMenu.view': 'View the Deck',
   'practice.deckMenu.shuffle': 'Shuffle',
 
+  'practice.mat.passTurn': 'Pass turn',
   'practice.step.andShuffle': '{text} and shuffle',
   'practice.step.draw': 'You draw {card}',
   'practice.step.drawCount': { one: 'You draw {count} card', other: 'You draw {count} cards' },

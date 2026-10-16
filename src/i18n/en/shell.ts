@@ -3,11 +3,17 @@ import type { Translated } from '../types'
 
 export const shell: Translated<typeof es> = {
   'shell.nav.main': 'Main navigation',
-  'shell.nav.open': 'Open the menu',
-  'shell.nav.close': 'Close the menu',
+  'shell.brand.unofficial': 'Unofficial site',
+  'shell.sheet.close': 'Close',
+  'shell.settings.title': 'Settings',
+  'shell.settings.language': 'Language',
+  'shell.settings.about': 'About',
+  'shell.nav.open': 'Open settings',
+  'shell.nav.close': 'Close settings',
   'shell.nav.collapse': 'Collapse menu',
   'shell.nav.expand': 'Expand menu',
   'shell.nav.group.deck': 'Your deck',
+  'shell.nav.group.duel': 'Duel',
   'shell.nav.group.tools': 'Tools',
   'shell.nav.group.discover': 'Discover',
 
@@ -53,7 +59,7 @@ export const shell: Translated<typeof es> = {
   'shell.step.banlists.title': 'Historical banlists',
   'shell.step.banlists.detail': 'The TCG and OCG Forbidden & Limited lists, one by one.',
 
-  'shell.practice.title': 'Practice',
+  'shell.practice.title': 'Play solo',
 
   'shell.mascot.title': 'Mascots',
   'shell.mascot.available': 'Available mascots',
@@ -93,8 +99,8 @@ export const shell: Translated<typeof es> = {
   'shell.life.clock.pause': 'Pause the round clock',
   'shell.life.clock.start': 'Start the round clock',
   'shell.life.clock.hint': 'Round countdown (50 minutes); it sounds when it reaches zero',
-  'shell.life.duelist.first': 'Duelist 1',
-  'shell.life.duelist.second': 'Duelist 2',
+  'shell.life.duelist.first': 'You',
+  'shell.life.duelist.second': 'Opponent',
   'shell.life.duelist.selected': '{name}: {lp} LP. Selected for the operation',
   'shell.life.duelist.choose': '{name}: {lp} LP. Select for the operation',
   'shell.life.operation.minus': '{name}: {lp} minus {amount}',

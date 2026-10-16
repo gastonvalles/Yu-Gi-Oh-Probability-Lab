@@ -6,12 +6,12 @@ El catálogo vivo de todo esto (botones, navegación, títulos, íconos, assets 
 
 ## 1. Idea general
 
-- **Oscuro, plano y con aire.** Fondo índigo casi negro con manchas tenues de color, tarjetas apenas más claras, bordes finos. Sin brillos de adorno.
+- **Oscuro, plano y con aire.** Fondo índigo profundo (`#150A24`) con manchas tenues de violeta, tarjetas apenas más claras, bordes finos. Sin brillos de adorno.
 - **Sin grises.** Todas las superficies (fondo, tarjetas, campos, bordes, scrollbar) son de la familia índigo de la lavanda de marca; no hay grises neutros. Los velos translúcidos son violetas (`bg-tint/N`, `border-tint/N`), nunca `bg-white/N` ni `bg-black/N`.
 - **Dos niveles de caja, no tres.** Lienzo → tarjeta (`Card`) y nada más adentro: bloques, filas y totales se ordenan con espacio y líneas finas (`border-t border-border-subtle`, `divide-y`). Sólo se marcan al pasar el mouse, tocarlos o elegirlos. Un aviso dentro de una tarjeta (`Callout`) es un fondo teñido sin borde.
 - **Cada dato se dice una sola vez.** Un número, un rótulo o una instrucción no se repite en la misma pantalla (ni entre la pestaña, el encabezado y el contenido). Un subtítulo que repite el título, una leyenda fija en la navegación o un resumen que ya está debajo se borran. Los resúmenes de una sección sólo se ven con la sección plegada.
 - **Los porcentajes son círculos.** Un valor → `ProgressRing`; un reparto → `SegmentedRing`. No hay barras de progreso. Los anillos se llenan al aparecer (ver "Anillos").
-- **Base visual: el diseño de Figma "Task management & to-do list" adaptado al oscuro:** Lexend Deca, violeta `#9B00FF` y verde `#00FFA3` (los de la Práctica), chips y botones lavanda, anillos de progreso, tarjetas redondeadas y un menú con íconos rellenos/duotono.
+- **Base visual: el diseño de Figma "Task management & to-do list" adaptado al oscuro:** Lexend Deca y la paleta cerrada de YGOUltraLab (violeta real `#8000CB`, violeta claro `#C77DFF`, ámbar `#F7CB15`, verde `#1AEF06` y rojo `#DA0000`), chips y botones lavanda, anillos de progreso, tarjetas redondeadas y un menú con íconos rellenos/duotono.
 - **El color siempre significa algo** (ver tonos). Si no significa nada, va en gris.
 - **30/70:** un ícono + un número + un color dicen lo principal; el texto sólo completa.
 - **Mismo orden en toda pantalla:** encabezado (`StepHero`) → controles → tarjetas (`Card`) → detalle.
@@ -20,11 +20,11 @@ El catálogo vivo de todo esto (botones, navegación, títulos, íconos, assets 
 
 | Tono | Significa | Ejemplos |
 |---|---|---|
-| `brand` (violeta `#9B00FF`) | lo tuyo: acción principal, selección | botón primario, destino abierto del menú, chip elegido |
-| `success` (verde) | bien / listo | manos limpias, salida, regla cumplida |
-| `warning` (naranja `#FF9142`) | ojo / a medio hacer | falta clasificar, "Mejorable" |
-| `danger` (rojo) | mal / destructivo | problema, borrar, "Crítico" |
-| `info` (azul `#0087FF`) | dato o consejo | avisos, build B, nota "Sólido" |
+| `brand` (violeta `#8000CB`; como texto, violeta claro `#C77DFF`) | lo tuyo ("Vos"): acción principal, selección | botón primario, chip elegido, tu vida en el duelo |
+| `success` (verde `#1AEF06`) | bien / listo: sólo estadísticas y estados | manos limpias, salida, regla cumplida |
+| `warning` (violeta claro, chip neutro) | ojo / a medio hacer | falta clasificar, "Mejorable", "provisional" |
+| `danger` (rojo `#DA0000`; texto chico `#FF4D4D`) | mal / destructivo | problema, borrar, "Crítico" |
+| `info` (ámbar `#F7CB15`) | el rival y la build B (más la navegación: tokens `nav`) | rival en el duelo, build B, destino abierto del menú |
 | `neutral` (gris) | sin énfasis | conteos, etiquetas |
 
 Los roles de las cartas (starter, handtrap…) y los grupos (engine, non-engine…) tienen su paleta propia
@@ -37,7 +37,8 @@ Los roles de las cartas (starter, handtrap…) y los grupos (engine, non-engine�
   Nada de `text-[…]`. Cifras con `tabular-nums`.
 - **Radios:** `rounded-tag` 8 (etiquetas, estados) · `control` 12 (chips, botones chicos, campos) · `card` 16 (tarjetas, botón grande) · `panel` 24 (tarjeta destacada, diálogos) · `rounded-full` (píldoras y puntos).
 - **Elevación:** `shadow-card` · `shadow-overlay` · `shadow-focus` (anillo de foco, el mismo en todo) · `shadow-brand` (brillo violeta de la acción principal).
-- **Superficies (índigo, sin grises):** `background` `#0A0816` < `card-background` `#130F2B` < `surface-raised` / `input` `#1A1440`–`#1B1542` < `surface-hover` `#251D55`. Bordes: `border-border-subtle` (violeta al 13 %). `lavender` (`bg-lavender`) es el fondo de chips, botones secundarios y del destino abierto del menú; `lavender-light` (`#EEE9FF`) el botón sobre una tarjeta violeta.
+- **Superficies (índigo, sin grises):** `background` `#150A24` < `card-background` `#231238` < `surface-raised` / `input` `#2B1745` < `surface-hover` `#352052`. Bordes: `border` `#3A2459` y `border-border-subtle` (divisor `#2E1C4A`). Navegación: `nav` (índigo `#400065`), `nav-raised` (`#5A2A80`) y `nav-active` (ámbar): el ámbar es sólo de la navegación, del rival y de la build B. `lavender` (`bg-lavender`) es el fondo de chips, botones secundarios y del destino abierto del menú; `lavender-light` (`#EEE9FF`) el botón sobre una tarjeta violeta.
+- **La mesa vista desde arriba:** el campo (`PracticeMat`, también en el duelo) se inclina hacia atrás con una perspectiva suave (`--field-tilt` 26° en el celular y 20° en escritorio, `--field-perspective`): lo lejano (el campo del rival) se achica y lo cercano queda grande, al alcance del pulgar. Es sólo CSS (`transform: perspective() rotateX()` con origen abajo): el arrastre sigue funcionando porque se resuelve con `elementFromPoint`, que respeta la inclinación. La mano nunca se mete debajo de un menú ni de los controles: la barra de abajo del duelo es opaca.
 - **Margen móvil:** `px-gutter` (22 px).
 - **Ancho:** `max-w-content` (80rem) centrado en todas las pantallas menos el Builder (usa todo el ancho).
 - **Texto:** `text-foreground` → `text-muted` → `text-soft` (de más a menos importante). `*-soft` (p. ej. `text-primary-soft` `#CF8DFF`) para texto sobre fondos teñidos.
@@ -47,7 +48,7 @@ Los roles de las cartas (starter, handtrap…) y los grupos (engine, non-engine�
 | Componente | Para qué |
 |---|---|
 | `Button` | `primary` (violeta con brillo, una por grupo; ver "Botones: jerarquía y texto") · `secondary` (lavanda) · `tertiary` · `onBrand` (sobre tarjeta violeta); `color="danger"`; `icon` / `iconEnd`; `sm` 36 · `md` 44 · `lg` 50 (en táctil crecen solos). |
-| `IconButton` / `CloseButton` | acciones sólo con ícono (siempre con `aria-label`). **Un botón sin texto va sin fondo y siempre blanco**: el aviso de que se toca es que el ícono se pone verde (con un resplandor) al pasar el mouse, y verde se queda mientras está seleccionado (`aria-pressed`, `aria-selected` o `data-active="true"`); además, menos opacidad al apretar, el foco lleva el aro de siempre y deshabilitado se ve tenue. `tone` sólo cambia tamaño y forma: `raised` (barra de herramientas, por defecto) · `close` · `ghost` · `flat` · `outline` (redondo con borde fino). La excepción es `primary` (redondo violeta, la acción principal de una barra: reproducir) y los botones flotantes. Lo mismo vale para lo que no pasa por `IconButton`: los íconos de las redes del pie, la ⓘ de `InfoTip`, la flecha de contraer el menú, las X de los chips del buscador y los íconos de los destinos del menú lateral (blancos; verdes al pasar el mouse, y el destino abierto, verde y relleno). |
+| `IconButton` / `CloseButton` | acciones sólo con ícono (siempre con `aria-label`). **Un botón sin texto va sin fondo y siempre blanco**: el aviso de que se toca es que el ícono se pone violeta claro (`accent`, sin resplandor) al pasar el mouse, y violeta claro se queda mientras está seleccionado (`aria-pressed`, `aria-selected` o `data-active="true"`); además, menos opacidad al apretar, el foco lleva el aro de siempre y deshabilitado se ve tenue. `tone` sólo cambia tamaño y forma: `raised` (barra de herramientas, por defecto) · `close` · `ghost` · `flat` · `outline` (redondo con borde fino). La excepción es `primary` (redondo violeta, la acción principal de una barra: reproducir) y los botones flotantes. Lo mismo vale para lo que no pasa por `IconButton`: los íconos de las redes del pie, la ⓘ de `InfoTip`, la flecha de contraer el menú, las X de los chips del buscador y los íconos de los destinos del menú lateral (blancos; verdes al pasar el mouse, y el destino abierto, verde y relleno). |
 | `Card` | toda tarjeta: `level` card / **hero** (violeta, una por pantalla), `tone` (tarjeta teñida, como las "In Progress" del diseño), `padding`. Adentro no van más cajas. |
 | `ProgressRing` | anillo de progreso con el % al centro (44 px en listas, 76 px en una tarjeta destacada, 168 px como protagonista; `tone="onBrand"` sobre violeta; `color` para roles; `ticks` para marcar cortes; `delay` para escalonar varios). El entero del centro sale de `formatWholePercent`: 99,5 % se muestra ">99%" y 0,4 % "<1%", nunca un "100%" o "0%" que no lo es (el valor con decimal, `formatShortPercent`, va en el `label` y al lado). |
 | `SegmentedRing` | anillo repartido en tramos (limpias / con problema / sin salida; copias robadas 0-1-2-3+). Los tramos se llenan en orden y se resalta uno con `activeKey`. |

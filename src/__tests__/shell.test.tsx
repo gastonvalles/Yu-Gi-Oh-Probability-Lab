@@ -4,11 +4,13 @@ import '@testing-library/jest-dom'
 import { createRef } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { useShellInsets } from '../app/shell-layout'
+import { TAB_BAR_PX, shellInsetsFor, useShellInsets } from '../app/shell-layout'
 import { buildAppNavGroups, buildDeckWorkflowNavigationItems, isDeckWorkflowStepKey } from '../components/deck-mode/deck-workflow-navigation'
 import { AppFooter } from '../components/shell/AppFooter'
 import { AppShell } from '../components/shell/AppShell'
 import { AppSidebar } from '../components/shell/AppSidebar'
+import { GroupSheet } from '../components/shell/GroupSheet'
+import { MobileTabBar } from '../components/shell/MobileTabBar'
 import { MobileTopBar } from '../components/shell/MobileTopBar'
 import { NavDrawer } from '../components/shell/NavDrawer'
 import { SidebarNav } from '../components/shell/SidebarNav'
@@ -32,10 +34,11 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('el menú de la app', () => {
-  it('agrupa los destinos: los pasos del deck, las herramientas y la referencia', () => {
+  it('agrupa los destinos en cuatro grupos: los pasos del deck, el duelo, las herramientas y la referencia', () => {
     expect(GROUPS.map((group) => [group.label, group.items.map((item) => item.key)])).toEqual([
       ['Tu deck', ['deck-builder', 'categorization', 'probability-lab', 'workspace', 'export']],
-      ['Herramientas', ['practice', 'life', 'mascots']],
+      ['Duelo', ['practice']],
+      ['Herramientas', ['life', 'mascots']],
       ['Descubrir', ['meta', 'tournaments', 'replays', 'expansions', 'banlists']],
     ])
   })
@@ -46,20 +49,23 @@ describe('el menú de la app', () => {
   })
 
   it('la mesa de práctica sólo se ofrece con cartas en el Main; la calculadora de LP y las mascotas, siempre', () => {
-    expect(buildAppNavGroups(STEPS, { practice: false })[1]?.items.map((item) => item.key)).toEqual(['life', 'mascots'])
+    const sinPractica = buildAppNavGroups(STEPS, { practice: false })
+    // Sin práctica ni relay el grupo Duelo queda vacío y no se muestra.
+    expect(sinPractica.map((group) => group.key)).toEqual(['deck', 'tools', 'discover'])
+    expect(sinPractica.find((group) => group.key === 'tools')?.items.map((item) => item.key)).toEqual(['life', 'mascots'])
   })
 
   it('el duelo con un amigo es una pantalla del flujo (#duel) que el menú ofrece sólo donde hay un relay', () => {
     expect(isDeckWorkflowStepKey('duel')).toBe(true)
     // Sin relay (o sin decirlo) el menú no lo ofrece: es como estaba antes.
-    expect(GROUPS[1]?.items.map((item) => item.key)).toEqual(['practice', 'life', 'mascots'])
-    expect(buildAppNavGroups(STEPS, { practice: true, duel: true })[1]?.items.map((item) => item.key)).toEqual(['practice', 'duel', 'life', 'mascots'])
+    expect(GROUPS[1]?.items.map((item) => item.key)).toEqual(['practice'])
+    expect(buildAppNavGroups(STEPS, { practice: true, duel: true })[1]?.items.map((item) => item.key)).toEqual(['practice', 'duel'])
     // Es una herramienta que se juega aunque todavía no haya un deck armado (quien llega por el enlace lo ve y se le avisa).
-    expect(buildAppNavGroups(STEPS, { practice: false, duel: true })[1]?.items.map((item) => item.key)).toEqual(['duel', 'life', 'mascots'])
+    expect(buildAppNavGroups(STEPS, { practice: false, duel: true })[1]?.items.map((item) => item.key)).toEqual(['duel'])
   })
 
   it('las mascotas son una herramienta más del menú, con su patita, y no hay un botón suelto de mascotas abajo', () => {
-    const mascots = GROUPS[1]?.items.find((item) => item.key === 'mascots')
+    const mascots = GROUPS.find((group) => group.key === 'tools')?.items.find((item) => item.key === 'mascots')
 
     expect(mascots).toMatchObject({ label: 'Mascotas', icon: 'paw' })
     render(<AppSidebar groups={GROUPS} activeKey="export" onSelect={() => {}} collapsed={false} onToggleCollapsed={() => {}} />)
@@ -118,34 +124,66 @@ describe('el menú lateral', () => {
   })
 })
 
-describe('el cajón del celular', () => {
-  it('cerrado no existe; abierto es un diálogo con el mismo menú, enfoca adentro y se cierra con Escape, con el velo y con la X', () => {
+describe('el cajón de ajustes del celular', () => {
+  it('cerrado no existe; abierto es un diálogo con idioma, copia de seguridad y lo legal, enfoca adentro y se cierra con Escape, con el velo y con la X', () => {
     const onClose = vi.fn()
-    const { rerender } = render(<NavDrawer isOpen={false} onClose={onClose} onSelect={() => {}} groups={GROUPS} activeKey="export" />)
+    const { rerender } = render(<NavDrawer isOpen={false} onClose={onClose} />)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
-    rerender(<NavDrawer isOpen onClose={onClose} onSelect={() => {}} groups={GROUPS} activeKey="export" />)
-    const dialog = screen.getByRole('dialog', { name: 'Navegación principal' })
+    rerender(<NavDrawer isOpen onClose={onClose} />)
+    const dialog = screen.getByRole('dialog', { name: 'Ajustes' })
     expect(dialog).toHaveAttribute('aria-modal', 'true')
-    expect(within(dialog).getByRole('button', { name: /^Exportar deck/ })).toHaveAttribute('aria-current', 'page')
+    expect(within(dialog).getByRole('group', { name: 'Idioma' })).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Descargar copia' })).toBeInTheDocument()
+    expect(within(dialog).getByRole('link', { name: 'Privacidad y aviso legal' })).toBeInTheDocument()
+    // El menú de destinos ya no vive acá: está en la barra de abajo.
+    expect(within(dialog).queryByRole('button', { name: /^Exportar deck/ })).not.toBeInTheDocument()
     expect(dialog).toContainElement(document.activeElement as HTMLElement)
 
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Cerrar el menú' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cerrar los ajustes' }))
     expect(onClose).toHaveBeenCalledTimes(2)
     fireEvent.click(dialog.previousElementSibling as HTMLElement)
     expect(onClose).toHaveBeenCalledTimes(3)
   })
 
-  it('elegir un destino avisa cuál y cierra el cajón', () => {
+})
+
+describe('la barra de abajo del celular y su hoja', () => {
+  it('lleva un botón por grupo, marca en ámbar el del destino abierto y avisa cuál se abrió', () => {
+    const onOpen = vi.fn()
+    render(<MobileTabBar groups={GROUPS} activeKey="export" openKey={null} onOpen={onOpen} />)
+
+    const bar = screen.getByRole('navigation', { name: 'Navegación principal' })
+    expect(within(bar).getAllByRole('button').map((button) => button.textContent)).toEqual(['Tu deck', 'Duelo', 'Herramientas', 'Descubrir'])
+    expect(within(bar).getByRole('button', { name: 'Tu deck' })).toHaveClass('text-nav-active')
+    expect(within(bar).getByRole('button', { name: 'Descubrir' })).toHaveClass('text-foreground')
+
+    fireEvent.click(within(bar).getByRole('button', { name: 'Descubrir' }))
+    expect(onOpen).toHaveBeenCalledWith('discover')
+  })
+
+  it('la hoja cerrada no existe; abierta es un diálogo con las opciones del grupo, elegir una avisa cuál y se cierra con Escape y con el velo', () => {
     const onSelect = vi.fn()
     const onClose = vi.fn()
-    render(<NavDrawer isOpen onClose={onClose} onSelect={onSelect} groups={GROUPS} activeKey="export" />)
+    const discover = GROUPS.find((group) => group.key === 'discover') ?? null
+    const { rerender } = render(<GroupSheet group={null} activeKey="export" onSelect={onSelect} onClose={onClose} />)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /^Replays de torneo/ }))
-    expect(onSelect).toHaveBeenCalledWith('replays')
+    rerender(<GroupSheet group={discover} activeKey="replays" onSelect={onSelect} onClose={onClose} />)
+    const dialog = screen.getByRole('dialog', { name: 'Descubrir' })
+    expect(dialog).toHaveAttribute('aria-modal', 'true')
+    expect(within(dialog).getByRole('button', { name: /^Replays de torneo/ })).toHaveAttribute('aria-current', 'page')
+    expect(within(dialog).getByRole('button', { name: /^Replays de torneo/ })).toHaveClass('text-nav-active')
+
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Banlists/ }))
+    expect(onSelect).toHaveBeenCalledWith('banlists')
+
+    fireEvent.keyDown(window, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
+    fireEvent.click(dialog.previousElementSibling as HTMLElement)
+    expect(onClose).toHaveBeenCalledTimes(2)
   })
 })
 
@@ -154,13 +192,13 @@ describe('la barra de arriba, el pie y los títulos', () => {
     const onMenu = vi.fn()
     const { rerender } = render(<MobileTopBar menuOpen={false} onMenu={onMenu} />)
 
-    const button = screen.getByRole('button', { name: 'Abrir el menú' })
+    const button = screen.getByRole('button', { name: 'Abrir los ajustes' })
     expect(button).toHaveAttribute('aria-expanded', 'false')
     fireEvent.click(button)
     expect(onMenu).toHaveBeenCalledTimes(1)
 
     rerender(<MobileTopBar menuOpen onMenu={onMenu} />)
-    expect(screen.getByRole('button', { name: 'Abrir el menú' })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: 'Abrir los ajustes' })).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('el pie lleva la autoría, el aviso de sitio no oficial, las redes y la privacidad', () => {
@@ -200,7 +238,7 @@ describe('la barra de arriba, el pie y los títulos', () => {
 })
 
 describe('el armazón', () => {
-  it('lleva el contenido, el pie y el menú una sola vez; la hamburguesa abre el cajón y elegir cierra', () => {
+  it('lleva el contenido, el pie y el menú una sola vez; la hamburguesa abre los ajustes y la barra de abajo abre la hoja de un grupo: elegir cierra', () => {
     const onSelect = vi.fn()
     render(
       <AppShell groups={GROUPS} activeKey="categorization" onSelect={onSelect} contentScrollable>
@@ -210,11 +248,17 @@ describe('el armazón', () => {
 
     expect(screen.getByText('Contenido de la pantalla')).toBeInTheDocument()
     expect(screen.getAllByRole('contentinfo')).toHaveLength(1)
-    // El menú lateral y la barra de arriba están los dos en el DOM: el CSS muestra el que toca según el ancho.
-    expect(screen.getAllByRole('navigation', { name: 'Navegación principal' })).toHaveLength(1)
+    // El menú lateral y la barra de abajo están los dos en el DOM: el CSS muestra el que toca según el ancho.
+    expect(screen.getAllByRole('navigation', { name: 'Navegación principal' })).toHaveLength(2)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Abrir el menú' }))
-    const dialog = screen.getByRole('dialog', { name: 'Navegación principal' })
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir los ajustes' }))
+    expect(screen.getByRole('dialog', { name: 'Ajustes' })).toBeInTheDocument()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    const bar = screen.getAllByRole('navigation', { name: 'Navegación principal' })[1]!
+    fireEvent.click(within(bar).getByRole('button', { name: 'Tu deck' }))
+    const dialog = screen.getByRole('dialog', { name: 'Tu deck' })
     fireEvent.click(within(dialog).getByRole('button', { name: /^Probability Lab/ }))
     expect(onSelect).toHaveBeenCalledWith('probability-lab')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -248,6 +292,59 @@ describe('el armazón', () => {
     expect(screen.getByText('Pantalla')).toBeInTheDocument()
     expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument()
     expect(container.firstElementChild).toHaveClass('max-[1100px]:h-dvh', 'max-[1100px]:overflow-hidden')
+  })
+
+  it('la mesa a pantalla completa no lleva la barra de abajo: la hamburguesa abre los ajustes con el menú de destinos para poder irse', () => {
+    const onSelect = vi.fn()
+    render(
+      <AppShell groups={GROUPS} activeKey="practice" onSelect={onSelect} immersive>
+        <p>Mesa</p>
+      </AppShell>,
+    )
+
+    // Sólo queda el menú lateral (el CSS lo esconde en el celular): la barra de abajo no está.
+    expect(screen.getAllByRole('navigation', { name: 'Navegación principal' })).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir los ajustes' }))
+    const dialog = screen.getByRole('dialog', { name: 'Ajustes' })
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Probability Lab/ }))
+    expect(onSelect).toHaveBeenCalledWith('probability-lab')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('al cambiar de pantalla (también con el botón Atrás) la hoja y el cajón que estaban abiertos se cierran', () => {
+    const { rerender } = render(
+      <AppShell groups={GROUPS} activeKey="export" onSelect={() => {}} contentScrollable>
+        <p>Pantalla</p>
+      </AppShell>,
+    )
+
+    fireEvent.click(within(screen.getAllByRole('navigation', { name: 'Navegación principal' })[1]!).getByRole('button', { name: 'Descubrir' }))
+    expect(screen.getByRole('dialog', { name: 'Descubrir' })).toBeInTheDocument()
+
+    rerender(
+      <AppShell groups={GROUPS} activeKey="meta" onSelect={() => {}} contentScrollable>
+        <p>Pantalla</p>
+      </AppShell>,
+    )
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('lo flotante (botones, mascotas, avisos) deja libre la barra de abajo en el celular, y nada en la mesa a pantalla completa', () => {
+    expect(shellInsetsFor(false, false)).toEqual({ left: 0, bottom: TAB_BAR_PX })
+    expect(shellInsetsFor(false, false, false)).toEqual({ left: 0, bottom: 0 })
+    // En escritorio manda el menú lateral y el pie, con barra o sin ella.
+    expect(shellInsetsFor(false, true)).toEqual(shellInsetsFor(false, true, false))
+    expect(shellInsetsFor(false, true).left).toBeGreaterThan(0)
+  })
+
+  it('en escritorio la hoja y el cajón no existen: abiertos y escondidos atraparían el foco y bloquearían el scroll sin que se vea nada', () => {
+    window.matchMedia = ((query: string) => ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    const discover = GROUPS.find((group) => group.key === 'discover') ?? null
+    const { rerender } = render(<GroupSheet group={discover} activeKey="meta" onSelect={() => {}} onClose={() => {}} />)
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    rerender(<NavDrawer isOpen onClose={() => {}} />)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('sin haber elegido, arranca contraído en una ventana angosta y abierto en una ancha', () => {

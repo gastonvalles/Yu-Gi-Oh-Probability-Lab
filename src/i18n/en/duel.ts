@@ -2,7 +2,7 @@ import type { duel as es } from '../es/duel'
 import type { Translated } from '../types'
 
 export const duel: Translated<typeof es> = {
-  'duel.nav.title': 'Duel a friend',
+  'duel.nav.title': 'New room',
   'duel.unavailable': "Dueling a friend isn't available in this version of the app yet.",
 
   'duel.table.label': 'Duel table',
@@ -204,6 +204,8 @@ export const duel: Translated<typeof es> = {
   'duel.games.log.toss': '{name} chose {method} to decide who goes first',
 
   // The chat between the two.
+  'duel.log.turn': 'Turn {turn} · {name}',
+  'duel.log.open': 'Open the play log',
   'duel.chat.open': 'Chat',
   'duel.chat.title': 'Chat with {name}',
   'duel.chat.empty': 'Write to your rival to let them know something or that you can respond.',
@@ -214,7 +216,6 @@ export const duel: Translated<typeof es> = {
   'duel.chat.quickTitle': 'Quick messages',
   'duel.signal.thinking': 'Thinking…',
   'duel.signal.good': 'All good',
-  'duel.chat.quick.pass': 'Pass',
 
   // The turn and the rival's phases.
 

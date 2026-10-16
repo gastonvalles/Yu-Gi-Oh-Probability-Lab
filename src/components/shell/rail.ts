@@ -6,6 +6,9 @@
  */
 export const RAIL_SLOT = 'grid h-full w-13 shrink-0 place-items-center'
 
+/** El nombre de un grupo del menú: sobre el índigo se lee con el texto apagado (no el suave). */
+export const NAV_OVERLINE = 'text-micro font-semibold uppercase tracking-[0.08em] text-muted'
+
 /** Alto de una fila del menú (destino o flecha de contraer). */
 export const RAIL_ROW = 'h-10.5'
 

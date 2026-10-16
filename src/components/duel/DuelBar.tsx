@@ -15,10 +15,13 @@ import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
 import { SideDrawer } from '../ui/SideDrawer'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
-import { DuelChat, GOOD_MESSAGE, thinkingMessage, useChatUnread } from './DuelChat'
+import { DuelChat, useChatUnread } from './DuelChat'
+import type { FeedEntry } from './use-duel-feed'
 import { DuelGames, type GameActions } from './DuelGames'
 import { ResultStrip } from './DuelResult'
 import { PLAYER_COLOR, type PlayerSide } from './player-color'
+import { ReactionButtons } from './ReactionButtons'
+import { isSignal } from './signals'
 
 /** Un reloj de pared que se actualiza cada `ms` (el reloj de la ronda se calcula contra él). */
 function useTick(ms: number): number {
@@ -51,8 +54,10 @@ interface DuelBarProps {
   onLeave: () => void
   /** Rendirme: el duelo termina y gana el rival (se pide confirmar). */
   onConcede: () => void
-  /** Mandar una señal (pensando, todo bien): sólo en el celular, donde el chat no está a la vista; en escritorio no se pasa y los botones están en el chat. */
-  onSignal?: (text: string) => void
+  /** El botón del chat (sólo en el celular, donde no está a la vista): a la derecha de la fila del turno. En escritorio el chat está fijo y no se pasa. */
+  chat?: ReactNode
+  /** La línea del registro (sólo en el celular): lo último que pasó; tocarla abre el chat con el registro. */
+  log?: ReactNode
   /** Volver a conectarme a la sala ya: lo toca cualquiera de los dos si el duelo quedó en pausa por un aviso que no llegó, y el relay vuelve a decirle a cada uno si el otro está. */
   onReconnect: () => void
   /** La tarjeta del resultado está abierta sobre la mesa: la línea de arriba no la repite. */
@@ -66,7 +71,7 @@ interface DuelBarProps {
  * el turno con la fase en que va quien juega, y cómo va la conexión. Lo propio (tus puntos de vida, el chat, los dados, deshacer) está abajo, al alcance
  * del pulgar. Salir pide confirmación y queda en la esquina de arriba, lejos de donde se toca jugando.
  */
-export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRematch, onLeave, onConcede, onReconnect, onSignal, resultOpen = false, rivalSignal = null }: DuelBarProps) {
+export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRematch, onLeave, onConcede, onReconnect, chat, log, resultOpen = false, rivalSignal = null }: DuelBarProps) {
   const now = useTick(1000)
   const [leaving, setLeaving] = useState(false)
   const [conceding, setConceding] = useState(false)
@@ -124,30 +129,13 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
           {turn === 'mine' ? t('duel.bar.yourTurn') : t('duel.bar.theirTurn', { name: rivalName })}
           {phase ? <span data-testid="duel-phase">{` · ${phase}`}</span> : null}
         </span>
-        {/* Las dos señales a la derecha de la fila del turno: siempre a mano, sin sacarle lugar al chat de la barra de abajo. */}
-        {onSignal ? (
-          <span className="ml-auto flex shrink-0 items-center gap-1.5">
-            {[
-              { emoji: '💭', label: t('duel.signal.thinking'), text: thinkingMessage() },
-              { emoji: '👍', label: t('duel.signal.good'), text: GOOD_MESSAGE },
-            ].map(({ emoji, label, text }) => (
-              <button
-                key={emoji}
-                type="button"
-                aria-label={label}
-                title={label}
-                disabled={!peerPresent}
-                className="grid h-8 min-w-10 cursor-pointer place-items-center rounded-full bg-tint/8 px-2.5 text-lead leading-none transition-colors hover:bg-tint/16 focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-default disabled:opacity-40"
-                onClick={() => onSignal(text)}
-              >
-                <span aria-hidden="true">{emoji}</span>
-              </button>
-            ))}
-          </span>
-        ) : null}
+        {/* El chat a la derecha de la fila del turno (las dos reacciones, 🤔 y 👍, están abajo con el pulgar). */}
+        {chat ? <span className="ml-auto flex shrink-0 items-center">{chat}</span> : null}
       </div>
 
       <div className="order-3 flex basis-full justify-center min-[1101px]:absolute min-[1101px]:left-1/2 min-[1101px]:top-1.5 min-[1101px]:basis-auto min-[1101px]:-translate-x-1/2">{theirHand}</div>
+
+      {log ? <div className="order-3 basis-full min-[1101px]:hidden">{log}</div> : null}
 
       {status !== 'open' ? (
         <Callout className="order-4 basis-full" tone="warning" icon="alert">{STATUS_TEXT[status]()}</Callout>
@@ -195,48 +183,105 @@ interface DuelToolsProps {
   myName: string
   /** Moneda, dado, piedra-papel-tijera, quién empieza y rendirse. */
   games: GameActions
-  /** Escribirle al rival. */
+  /** Escribirle al rival (las reacciones viajan como mensajes). */
   onSendChat: Duel['sendChat']
-  /** El chat está fijo al costado (escritorio): no hay botón ni panel que abrir. */
+  /** El chat está fijo al costado (escritorio): las reacciones están en el chat y no se repiten abajo. */
   chatDocked?: boolean
 }
 
 /**
- * Los botones propios del duelo, abajo a la derecha (el pulgar de quien juega con la derecha): los dados y juegos, y el chat (con un contador de lo que no leíste),
- * que se abre como un panel por la derecha.
+ * Los botones propios del duelo, abajo a la derecha (el pulgar de quien juega con la derecha): los dados y juegos y las dos reacciones (🤔 y 👍), que son
+ * de lo más a mano. El chat está arriba (`DuelChatToggle`) o, en escritorio, fijo a la derecha de la mesa.
  */
 export function DuelTools({ snapshot, myName, games, onSendChat, chatDocked = false }: DuelToolsProps) {
   const [gamesOpen, setGamesOpen] = useState(false)
-  const [chatOpen, setChatOpen] = useState(false)
-  const unread = useChatUnread(snapshot, chatOpen || chatDocked)
-  const rivalName = snapshot.peerName ?? t('duel.bar.rival')
 
   return (
     <>
       <IconButton tone="flat" size="sm" aria-label={t('duel.games.open')} title={t('duel.games.open')} onClick={() => setGamesOpen(true)}>
         <Icon name="dice" />
       </IconButton>
-      {chatDocked ? null : (
+      {chatDocked ? null : <ReactionButtons onSend={onSendChat} disabled={!snapshot.peerPresent} />}
+
+      <DuelGames isOpen={gamesOpen} onClose={() => setGamesOpen(false)} snapshot={snapshot} myName={myName} actions={games} />
+    </>
+  )
+}
+
+interface DuelChatToggleProps {
+  snapshot: DuelSnapshot
+  myName: string
+  onSendChat: Duel['sendChat']
+  /** El registro del duelo mezclado con lo escrito. */
+  feed: readonly FeedEntry[]
+  /** Abierto o cerrado lo decide la pantalla: la línea del registro también lo abre. */
+  open: boolean
+  onOpen: () => void
+  onClose: () => void
+}
+
+/** El botón del chat del celular, con un contador de lo que no leíste, y el panel que se abre por la derecha (con el registro de jugadas). */
+export function DuelChatToggle({ snapshot, myName, onSendChat, feed, open, onOpen, onClose }: DuelChatToggleProps) {
+  const unread = useChatUnread(snapshot, open)
+  const rivalName = snapshot.peerName ?? t('duel.bar.rival')
+
+  return (
+    <>
       <span className="relative">
-        <IconButton tone="flat" size="sm" aria-label={unread > 0 ? `${t('duel.chat.open')} (${t('duel.chat.unread', { count: unread })})` : t('duel.chat.open')} title={t('duel.chat.open')} onClick={() => setChatOpen(true)}>
+        <IconButton tone="flat" size="sm" aria-label={unread > 0 ? `${t('duel.chat.open')} (${t('duel.chat.unread', { count: unread })})` : t('duel.chat.open')} title={t('duel.chat.open')} onClick={onOpen}>
           <Icon name="chat" />
         </IconButton>
         {unread > 0 ? (
-          <span aria-hidden="true" className="pointer-events-none absolute right-0 top-0 grid min-w-4 place-items-center rounded-full bg-accent px-1 text-[0.625rem] font-extrabold leading-4 text-[#06140e]">
+          <span aria-hidden="true" className="pointer-events-none absolute right-0 top-0 grid min-w-4 place-items-center rounded-full bg-accent px-1 text-[0.625rem] font-extrabold leading-4 text-accent-foreground">
             {unread}
           </span>
         ) : null}
       </span>
-      )}
 
-      {chatDocked ? null : (
-        <SideDrawer isOpen={chatOpen} onClose={() => setChatOpen(false)} title={t('duel.chat.title', { name: rivalName })}>
-          <DuelChat snapshot={snapshot} myName={myName} onSend={onSendChat} fill />
-        </SideDrawer>
-      )}
-
-      <DuelGames isOpen={gamesOpen} onClose={() => setGamesOpen(false)} snapshot={snapshot} myName={myName} actions={games} />
+      <SideDrawer isOpen={open} onClose={onClose} title={t('duel.chat.title', { name: rivalName })}>
+        <DuelChat snapshot={snapshot} myName={myName} onSend={onSendChat} feed={feed} fill />
+      </SideDrawer>
     </>
+  )
+}
+
+interface DuelLogTickerProps {
+  snapshot: DuelSnapshot
+  myName: string
+  feed: readonly FeedEntry[]
+  onOpen: () => void
+}
+
+/**
+ * Las dos últimas líneas del registro (lo último que pasó, con el punto del color de quien lo hizo), sobre el campo en el celular. Tocarla abre el chat con el registro entero.
+ * Sin nada que mostrar deja el lugar reservado.
+ */
+export function DuelLogTicker({ snapshot, myName, feed, onOpen }: DuelLogTickerProps) {
+  const rival = snapshot.peerName ?? t('duel.bar.rival')
+  const lines = feed
+    .flatMap((entry) => {
+      if (entry.kind === 'turn') return []
+      if (entry.kind === 'event') return [{ id: entry.id, side: entry.side, text: entry.text }]
+
+      return isSignal(entry.line.text) ? [] : [{ id: entry.id, side: entry.line.from === snapshot.me ? ('mine' as const) : ('theirs' as const), text: `${entry.line.from === snapshot.me ? myName : rival}: ${entry.line.text}` }]
+    })
+    .slice(-2)
+
+  // Sin nada todavía se reserva el lugar: la primera jugada no corre el campo (regla 7 del sistema de diseño).
+  if (lines.length === 0) return <div aria-hidden="true" className="min-h-11" />
+
+  return (
+    <button type="button" aria-label={`${t('duel.log.open')}: ${lines[lines.length - 1]!.text}`} className="flex min-h-11 w-full min-w-0 cursor-pointer items-center gap-2 rounded-control px-1 text-left focus-visible:outline-none focus-visible:shadow-focus" onClick={onOpen}>
+      <span className="grid min-w-0 flex-1 gap-0.5">
+        {lines.map((line) => (
+          <span key={line.id} className="flex min-w-0 items-center gap-2 text-micro text-muted">
+            <i aria-hidden="true" className={cx('size-1.5 shrink-0 rounded-full', line.side === 'mine' ? 'bg-accent' : 'bg-info')} />
+            <span className="min-w-0 truncate">{line.text}</span>
+          </span>
+        ))}
+      </span>
+      <Icon name="chevrons-left" size={16} className="shrink-0 rotate-90 text-soft" />
+    </button>
   )
 }
 
@@ -292,7 +337,7 @@ export function LifeTile({ name, life, mine = false, color, bubble = null, onCli
     </>
   )
   // Las dos vidas miden lo mismo (la del rival arriba, la tuya abajo).
-  const style = cx('relative flex h-11 w-36 shrink-0 items-center justify-between gap-2 rounded-card border bg-card-background px-2.5 text-left', tone.border)
+  const style = cx('relative flex h-11 w-32 shrink-0 items-center justify-between gap-2 rounded-card border bg-card-background px-2.5 text-left min-[1101px]:w-36', tone.border)
 
   return onClick ? (
     <button type="button" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${life}. ${t('duel.bar.changeLife')}`} className={cx(style, 'cursor-pointer focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>

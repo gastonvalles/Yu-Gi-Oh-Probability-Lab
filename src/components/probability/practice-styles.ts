@@ -1,11 +1,4 @@
 /**
- * Fondos propios de la práctica (el violeta #9B00FF y el verde #00FFA3 ya son los de toda la app).
- * Se publica como variables en la raíz de la práctica y la heredan todos sus elementos.
- */
-export const PRACTICE_PALETTE =
-  '[--warning:#f59e0b] [--warning-rgb:245_158_11] [--background:#0b0b0f] [--background-rgb:11_11_15] [--card-background:#12121a] [--card-background-rgb:18_18_26]'
-
-/**
  * Colores de los efectos de la mesa, como `r g b` para `rgb(var(--fx-rgb) / alfa)`: dorado para activar y para la Invocación Normal,
  * celeste para lo que se muestra y la Invocación Especial, rojo para el objetivo, violeta para declarar, la Fusión y el cementerio.
  */
