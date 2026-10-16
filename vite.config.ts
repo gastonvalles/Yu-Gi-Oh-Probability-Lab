@@ -33,6 +33,28 @@ const CARD_IMAGE_PROXY = {
   },
 }
 
+/**
+ * En desarrollo `/api/live` (una función de Vercel) la atiende Vite con el mismo código, así las transmisiones en vivo se ven sin desplegar.
+ * Sólo en `npm run dev`: el build y `preview` no la llevan (en producción la sirve Vercel).
+ */
+function liveApiDev(): Plugin {
+  return {
+    name: 'live-api-dev',
+    configureServer(server) {
+      server.middlewares.use('/api/live', (request, response) => {
+        void (async () => {
+          const { GET } = (await server.ssrLoadModule('/api/live.ts')) as { GET: (request: Request) => Promise<Response> }
+          const result = await GET(new Request(`http://localhost${request.originalUrl ?? '/api/live'}`))
+
+          response.statusCode = result.status
+          result.headers.forEach((value, key) => response.setHeader(key, value))
+          response.end(await result.text())
+        })()
+      })
+    },
+  }
+}
+
 /** Aviso de autoría al principio de cada archivo JS del build. Se agrega después de minificar, así ningún paso lo borra. */
 function copyrightBanner(): Plugin {
   return {
@@ -74,7 +96,7 @@ function publicAssetsList(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), copyrightBanner(), publicAssetsList()],
+  plugins: [react(), tailwindcss(), copyrightBanner(), publicAssetsList(), liveApiDev()],
   preview: {
     headers: readVercelHeaders(),
     proxy: CARD_IMAGE_PROXY,

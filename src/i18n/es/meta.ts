@@ -202,6 +202,16 @@ export const meta = {
   'meta.replays.modal.play': 'Reproducir {label}',
   'meta.replays.modal.decksLabel': 'Los decks de los jugadores',
   'meta.replays.modal.noDeck': 'Su deck no está entre los de torneo.',
+  'meta.replays.help4': 'Mientras hay una transmisión en vivo en esos canales, aparece arriba de la lista (se revisa cada minuto).',
+  'meta.live.title': 'En vivo ahora',
+  'meta.live.description': { one: '{count} transmisión de los canales oficiales de YouTube.', other: '{count} transmisiones de los canales oficiales de YouTube.' },
+  'meta.live.badge': 'En vivo',
+  'meta.live.viewers': '{count} viendo',
+  'meta.live.watch': 'Mirar en vivo',
+  'meta.live.watchLabel': 'Mirar en vivo: {title}',
+  'meta.live.modal.kicker': 'En vivo · {channel}',
+  'meta.live.modal.play': 'Reproducir en vivo: {title}',
+  'meta.live.unavailable': 'No pude revisar las transmisiones en vivo ahora. Mirá los canales <tcg>{tcg}</tcg> y <eu>{eu}</eu> en YouTube.',
 
   // Comparar builds
   'meta.compare.label': 'Comparar builds',

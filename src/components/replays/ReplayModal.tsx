@@ -1,16 +1,12 @@
-import { useState } from 'react'
-
 import type { MetaDeck } from '../../app/meta'
-import { REPLAYS, embedUrl, replayLabel, thumbnailUrl, watchUrl, type ReplayEntry } from '../../app/replays'
+import { REPLAYS, replayLabel, thumbnailUrl, watchUrl, type ReplayEntry } from '../../app/replays'
 import { t } from '../../i18n'
 import { Badge } from '../ui/Badge'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
 import { choiceChip } from '../ui/surfaces'
-
-const LINK_BUTTON =
-  'inline-flex min-h-9 items-center justify-center gap-2 rounded-control bg-lavender px-4 py-1.5 text-body font-semibold leading-tight text-foreground transition-colors duration-150 hover:bg-lavender-hover focus-visible:outline-none focus-visible:shadow-focus pointer-coarse:min-h-10'
+import { VideoPlayer, YOUTUBE_LINK_BUTTON } from './VideoPlayer'
 
 interface ReplayModalProps {
   entry: ReplayEntry | null
@@ -30,7 +26,6 @@ export function ReplayModal({ entry, onClose, onOpenDeck }: ReplayModalProps) {
 }
 
 function ReplayDialog({ entry, onClose, onOpenDeck }: { entry: ReplayEntry; onClose: () => void; onOpenDeck: (deck: MetaDeck) => void }) {
-  const [playing, setPlaying] = useState(false)
   const { video, event, stage, players } = entry
   const label = replayLabel(entry)
   const kicker = [event, stage?.label].filter(Boolean).join(' · ')
@@ -44,40 +39,20 @@ function ReplayDialog({ entry, onClose, onOpenDeck }: { entry: ReplayEntry; onCl
       kicker={kicker || undefined}
       title={label}
       footer={
-        <a href={watchUrl(video.id)} target="_blank" rel="noreferrer" className={LINK_BUTTON}>
+        <a href={watchUrl(video.id)} target="_blank" rel="noreferrer" className={YOUTUBE_LINK_BUTTON}>
           <Icon name="link" size={16} />
           {t('meta.replays.modal.watchOnYoutube')}
         </a>
       }
     >
       <div className="grid gap-4">
-        <div className="relative aspect-video w-full overflow-hidden rounded-card bg-black">
-          {playing ? (
-            <iframe
-              src={embedUrl(video.id)}
-              title={video.title}
-              className="absolute inset-0 size-full border-0"
-              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-              allowFullScreen
-              referrerPolicy="strict-origin-when-cross-origin"
-            />
-          ) : (
-            <button
-              type="button"
-              className="group absolute inset-0 block size-full focus-visible:outline-none focus-visible:shadow-focus"
-              aria-label={t('meta.replays.modal.play', { label })}
-              onClick={() => setPlaying(true)}
-            >
-              <img src={thumbnailUrl(video.id)} alt="" decoding="async" className="size-full object-cover" />
-              <span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-black/25 transition-colors duration-150 group-hover:bg-black/40">
-                <span className="grid size-16 place-items-center rounded-full bg-primary text-primary-foreground shadow-brand">
-                  <Icon name="play" size={28} variant="bold" />
-                </span>
-              </span>
-              <span className="absolute bottom-2 right-2 rounded-tag bg-black/80 px-1.5 py-0.5 text-micro font-semibold tabular-nums text-white">{video.duration}</span>
-            </button>
-          )}
-        </div>
+        <VideoPlayer
+          videoId={video.id}
+          title={video.title}
+          playLabel={t('meta.replays.modal.play', { label })}
+          thumbnail={thumbnailUrl(video.id)}
+          badge={<span className="absolute bottom-2 right-2 rounded-tag bg-black/80 px-1.5 py-0.5 text-micro font-semibold tabular-nums text-white">{video.duration}</span>}
+        />
 
         <ul className="m-0 grid list-none gap-2 p-0" aria-label={t('meta.replays.modal.decksLabel')}>
           {players.map((player, index) => (
