@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CardArtPicker } from '../components/card-detail/CardArtPicker'
 import { CardDetailModal } from '../components/card-detail/CardDetailModal'
+import { DeckBuilderClassicPreview } from '../components/deck-mode/DeckBuilderClassicPreview'
 import type { ApiCardSearchResult, CardArtOption } from '../ygoprodeck'
 
 const { arts, prices } = vi.hoisted(() => ({ arts: { current: [] as CardArtOption[] }, prices: { current: { status: 'idle' } as unknown } }))
@@ -127,6 +128,66 @@ describe('el detalle de la carta con las impresiones como artes (overframe, exte
 
     expect(screen.getByAltText('Blue-Eyes White Dragon').getAttribute('src')).toBe('https://tcgplayer-cdn.tcgplayer.com/product/706_400w.jpg')
     expect(screen.getByRole('button', { name: 'Arte 2 de 3' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('al cambiar de arte el panel dice de qué impresión es: su rareza, el set, el código, el arte especial y a cuánto está cada edición', () => {
+    prices.current = {
+      status: 'ready',
+      updated: '2026-10-11',
+      prices: [
+        { ...printing(706, 'Ultra Rare', 'Extended Art'), market: 25 },
+        { ...printing(706, 'Ultra Rare', 'Extended Art', 'Unlimited'), market: 12.5 },
+        { ...printing(705, 'Common', ''), set: 'Legend of Blue Eyes', code: 'LOB-EN001', market: null },
+      ],
+    }
+    open()
+
+    // Con el arte de siempre (el de YGOPRODeck) no hay impresión que mostrar.
+    const printingInfo = () => screen.getByRole('group', { name: 'Impresión de este arte', hidden: true })
+
+    expect(printingInfo()).toBeEmptyDOMElement()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Arte 2 de 3' }))
+
+    expect(printingInfo()).toHaveTextContent('Ultra Rare')
+    expect(printingInfo()).toHaveTextContent('Extended Art')
+    expect(printingInfo()).toHaveTextContent('MAZE-EN003 · Maze of Millennia')
+    expect(printingInfo()).toHaveTextContent(/1st Edition .*25[.,]00 · Unlimited .*12[.,]50/)
+
+    // Otra impresión: otra rareza, otro set y código, sin arte especial y sin precio.
+    fireEvent.click(screen.getByRole('button', { name: 'Arte 3 de 3' }))
+
+    expect(printingInfo()).toHaveTextContent('Common')
+    expect(printingInfo()).toHaveTextContent('LOB-EN001 · Legend of Blue Eyes')
+    expect(printingInfo()).toHaveTextContent('Sin precio')
+    expect(printingInfo()).not.toHaveTextContent('Ultra Rare')
+    expect(printingInfo()).not.toHaveTextContent('Extended Art')
+
+    // Volver al arte de YGOPRODeck lo deja sin impresión.
+    fireEvent.click(screen.getByRole('button', { name: 'Arte 1 de 3' }))
+    expect(printingInfo()).toBeEmptyDOMElement()
+  })
+
+  it('la vista previa del builder de escritorio también dice de qué impresión es el arte elegido', () => {
+    prices.current = {
+      status: 'ready',
+      updated: '2026-10-11',
+      prices: [{ ...printing(706, 'Ultra Rare', 'Extended Art'), market: 25 }, { ...printing(705, 'Secret Rare', ''), set: 'Legend of Blue Eyes', code: 'LOB-EN001', market: 99 }],
+    }
+    render(<DeckBuilderClassicPreview card={card} source="search" deckCopy={null} onAddToZone={() => {}} />)
+
+    const info = () => screen.getByRole('group', { name: 'Impresión de este arte', hidden: true })
+
+    expect(info()).toBeEmptyDOMElement()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Arte 2 de 3' }))
+    expect(info()).toHaveTextContent('Ultra Rare')
+    expect(info()).toHaveTextContent('Extended Art')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Arte 3 de 3' }))
+    expect(info()).toHaveTextContent('Secret Rare')
+    expect(info()).toHaveTextContent('LOB-EN001 · Legend of Blue Eyes')
+    expect(info()).not.toHaveTextContent('Ultra Rare')
   })
 
   it('una carta con una sola impresión y un solo arte no muestra selector', () => {

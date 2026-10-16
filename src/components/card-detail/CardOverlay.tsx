@@ -12,6 +12,7 @@ import { cx } from '../ui/cx'
 import { CloseButton } from '../ui/IconButton'
 import { CardArtPicker } from './CardArtPicker'
 import { CardPricesButton, CardPricesModal } from './CardPrices'
+import { PrintingInfo, SelectedPrintingContext, useSelectedPrinting } from './PrintingInfo'
 import { CardGlare, levelOut, tiltHandlers } from './card-tilt'
 
 const CLOSE_MS = 180
@@ -225,7 +226,8 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
           aria-label={panelLabel}
           onClick={(event) => event.stopPropagation()}
         >
-          {children}
+          {/* El panel dice de qué impresión es el arte que se ve: al cambiar de arte (otra rareza, otro set) cambia también lo que dice. */}
+          <SelectedPrintingContext.Provider value={(art as ArtChoice | undefined)?.printing}>{children}</SelectedPrintingContext.Provider>
         </section>
       </div>
 
@@ -247,6 +249,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
 
 /** Encabezado del panel: el nombre y, debajo, las líneas de contexto que haya (tipo y estadísticas, copias…). */
 export function CardPanelHeader({ title, lines }: { title: string; lines: ReadonlyArray<ReactNode> }) {
+  const printing = useSelectedPrinting()
   const visible = lines.filter((line) => line !== null && line !== undefined && line !== false && line !== '')
 
   return (
@@ -257,6 +260,7 @@ export function CardPanelHeader({ title, lines }: { title: string; lines: Readon
           {line}
         </p>
       ))}
+      <PrintingInfo printing={printing} className="mt-1" />
     </header>
   )
 }
