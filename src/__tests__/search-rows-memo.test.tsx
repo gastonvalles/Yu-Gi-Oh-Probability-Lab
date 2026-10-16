@@ -199,12 +199,13 @@ describe('las filas del buscador de celular', () => {
 
   it('cambiar el formato vuelve a dibujar las filas con la etiqueta del formato nuevo', () => {
     const { rerender } = render(<MobileCardSearch {...mobileProps({ search: searchState({ deckFormat: 'tcg' }) })} />)
-    expect(within(mobileRow('Carta 1')).getByText(/TCG/)).toBeInTheDocument()
+    // «N de M» dice el límite del formato: en TCG la carta es limitada (1) y en OCG no.
+    expect(within(mobileRow('Carta 1')).getByText('0 de 1')).toBeInTheDocument()
 
     renders.byName = {}
     rerender(<MobileCardSearch {...mobileProps({ search: searchState({ deckFormat: 'ocg' }) })} />)
 
     expect(renders.byName).toEqual(ONCE('Carta 1', 'Carta 2', 'Carta 3', 'Carta 4'))
-    expect(within(mobileRow('Carta 1')).queryByText(/TCG/)).not.toBeInTheDocument()
+    expect(within(mobileRow('Carta 1')).getByText('0 de 3')).toBeInTheDocument()
   })
 })

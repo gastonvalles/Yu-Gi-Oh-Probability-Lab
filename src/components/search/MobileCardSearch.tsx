@@ -5,7 +5,7 @@ import { useFocusTrap } from '../../app/use-focus-trap'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 
 import { buildCompactSearchDescription, formatSearchError } from '../../app/card-search'
-import { buildFormatLimitLabel } from '../../app/deck-format'
+import { buildFormatLimitLabel, getCardCopyLimit } from '../../app/deck-format'
 import type { DeckZone } from '../../app/model'
 import { useInfiniteScroll } from '../../app/use-infinite-scroll'
 import { formatInteger } from '../../app/utils'
@@ -26,7 +26,6 @@ import { QUICK_TYPE_OPTIONS, type SearchSortOrder } from './search-options'
 import type { CardSearchActions, CardSearchViewState } from './search-types'
 import { useSearchFilterContext } from './use-search-filter-context'
 import { Callout } from '../ui/Callout'
-import { CopiesBadge } from '../ui/CopiesBadge'
 import { choiceChip, field, filterChip } from '../ui/surfaces'
 
 interface MobileCardSearchProps {
@@ -353,6 +352,9 @@ const MobileResultRow = memo(function MobileResultRow({
   onAdd,
 }: MobileResultRowProps) {
   const formatLimitLabel = buildFormatLimitLabel(card, deckFormat)
+  const copyLimit = getCardCopyLimit(card, deckFormat)
+  // «N de M» ya dice el límite de copias: la etiqueta del formato sólo queda donde dice otra cosa (los puntos de Genesys o «prohibida»).
+  const showFormatLabel = formatLimitLabel !== null && (deckFormat === 'genesys' || copyLimit === 0)
 
   return (
     <li className={ROW}>
@@ -365,16 +367,17 @@ const MobileResultRow = memo(function MobileResultRow({
             limitCard={card}
             limitBadgeSize="sm"
           />
-          {copiesInDeck > 0 ? <CopiesBadge copies={copiesInDeck} placement="overlay" label={t('search.result.inDeck', { copies: copiesInDeck })} /> : null}
         </span>
         <span className="grid min-w-0 gap-0.5 text-left">
           <strong className="text-body font-semibold leading-tight wrap-anywhere text-foreground">{card.name}</strong>
           <span className="text-micro leading-tight wrap-anywhere text-muted">
             {buildCompactSearchDescription(card)}
           </span>
-          {formatLimitLabel ? <span className="text-micro text-soft">{formatLimitLabel}</span> : null}
+          {showFormatLabel ? <span className="text-micro text-soft">{formatLimitLabel}</span> : null}
         </span>
       </button>
+
+      <span className={cx('shrink-0 text-micro tabular-nums', isMaxed ? 'text-muted' : 'text-soft')}>{t('search.result.copies', { copies: copiesInDeck, limit: copyLimit })}</span>
 
       <button
         type="button"
@@ -386,7 +389,7 @@ const MobileResultRow = memo(function MobileResultRow({
         aria-label={isMaxed ? t('search.mobile.maxedAria', { name: card.name }) : t('search.result.addAria', { name: card.name })}
         onClick={() => onAdd(card)}
       >
-        {isMaxed ? <span className="text-micro font-semibold">{t('search.result.maxBadge')}</span> : justAdded ? <Icon name="check" strokeWidth={2} /> : <Icon name="plus" strokeWidth={2} />}
+        {justAdded ? <Icon name="check" strokeWidth={2} /> : <Icon name="plus" strokeWidth={2} />}
       </button>
     </li>
   )

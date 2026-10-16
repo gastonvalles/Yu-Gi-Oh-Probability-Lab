@@ -77,6 +77,7 @@ export const search: Translated<typeof es> = {
   'search.result.maxedAria': '{name}: maximum copies',
   'search.result.maxedShort': 'Maximum copies',
   'search.result.maxBadge': 'MAX',
+  'search.result.copies': '{copies} of {limit}',
   'search.result.addAria': 'Add {name} to deck',
   'search.result.addTitle': 'Add to deck',
 

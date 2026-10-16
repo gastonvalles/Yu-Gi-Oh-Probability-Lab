@@ -80,6 +80,7 @@ export const search = {
   'search.result.maxedAria': '{name}: máximo de copias',
   'search.result.maxedShort': 'Máximo de copias',
   'search.result.maxBadge': 'MÁX',
+  'search.result.copies': '{copies} de {limit}',
   'search.result.addAria': 'Agregar {name} al deck',
   'search.result.addTitle': 'Agregar al deck',
 
