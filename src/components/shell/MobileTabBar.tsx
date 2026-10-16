@@ -33,9 +33,10 @@ export function MobileTabBar({ groups, activeKey, openKey, onOpen, placement = '
             type="button"
             aria-haspopup="dialog"
             aria-expanded={open}
+            aria-current={hasActive ? 'true' : undefined}
             data-active={hasActive ? 'true' : undefined}
             className={cx(
-              'flex h-16 min-w-0 flex-1 flex-col items-center justify-center gap-1 text-micro font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus active:opacity-70 motion-reduce:transition-none',
+              'flex h-[calc(4rem-1px)] min-w-0 flex-1 flex-col items-center justify-center gap-1 text-micro font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus active:opacity-70 motion-reduce:transition-none',
               hasActive || open ? 'text-nav-active' : 'text-foreground',
             )}
             onClick={() => onOpen(group.key)}

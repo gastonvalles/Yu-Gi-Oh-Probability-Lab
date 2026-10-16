@@ -254,7 +254,7 @@ interface DuelLogTickerProps {
 
 /**
  * Las dos últimas líneas del registro (lo último que pasó, con el punto del color de quien lo hizo), sobre el campo en el celular. Tocarla abre el chat con el registro entero.
- * Sin nada que mostrar no ocupa lugar.
+ * Sin nada que mostrar deja el lugar reservado.
  */
 export function DuelLogTicker({ snapshot, myName, feed, onOpen }: DuelLogTickerProps) {
   const rival = snapshot.peerName ?? t('duel.bar.rival')
@@ -267,10 +267,11 @@ export function DuelLogTicker({ snapshot, myName, feed, onOpen }: DuelLogTickerP
     })
     .slice(-2)
 
-  if (lines.length === 0) return null
+  // Sin nada todavía se reserva el lugar: la primera jugada no corre el campo (regla 7 del sistema de diseño).
+  if (lines.length === 0) return <div aria-hidden="true" className="min-h-11" />
 
   return (
-    <button type="button" aria-label={t('duel.log.open')} className="flex min-h-11 w-full min-w-0 cursor-pointer items-center gap-2 rounded-control px-1 text-left focus-visible:outline-none focus-visible:shadow-focus" onClick={onOpen}>
+    <button type="button" aria-label={`${t('duel.log.open')}: ${lines[lines.length - 1]!.text}`} className="flex min-h-11 w-full min-w-0 cursor-pointer items-center gap-2 rounded-control px-1 text-left focus-visible:outline-none focus-visible:shadow-focus" onClick={onOpen}>
       <span className="grid min-w-0 flex-1 gap-0.5">
         {lines.map((line) => (
           <span key={line.id} className="flex min-w-0 items-center gap-2 text-micro text-muted">

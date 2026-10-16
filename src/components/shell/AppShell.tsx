@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useState, type ReactNode, type RefObject } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useState, type ReactNode, type RefObject } from 'react'
 
 import { NO_SHELL_INSETS, readSidebarCollapsed, setShellInsets, shellInsetsFor, writeSidebarCollapsed } from '../../app/shell-layout'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
@@ -44,6 +44,12 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
   const closeGroup = useCallback(() => setOpenGroupKey(null), [])
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
 
+  // Otra pantalla (también con el botón Atrás): la hoja y el cajón que estaban abiertos se cierran.
+  useEffect(() => {
+    setOpenGroupKey(null)
+    setDrawerOpen(false)
+  }, [activeKey])
+
   // Los botones flotantes (y las mascotas, mientras nadie las mueva) dejan libres el menú lateral (con su ancho de ahora) y el pie. En el celular no hay menú fijo.
   // Va en un layout effect para que el cambio (contraer el menú, girar la pantalla) se vea en el mismo cuadro; el valor del primer cuadro ya lo trae el módulo.
   useLayoutEffect(() => {
@@ -55,7 +61,7 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
   return (
     <div className={cx('min-h-dvh w-full min-w-0 overflow-x-clip min-[1101px]:grid min-[1101px]:h-dvh min-[1101px]:grid-cols-[auto_minmax(0,1fr)] min-[1101px]:overflow-hidden', immersive ? 'max-[1100px]:h-dvh max-[1100px]:overflow-hidden' : 'max-[1100px]:pb-[calc(4rem+env(safe-area-inset-bottom,0px))]')}>
       <AppSidebar groups={groups} activeKey={activeKey} onSelect={onSelect} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} className="max-[1100px]:hidden" />
-      <div className={cx('flex min-h-dvh min-w-0 flex-col min-[1101px]:min-h-0', immersive && 'max-[1100px]:h-dvh')}>
+      <div className={cx('flex min-w-0 flex-col min-[1101px]:min-h-0', immersive ? 'min-h-dvh max-[1100px]:h-dvh' : 'min-h-[calc(100dvh-4rem-env(safe-area-inset-bottom,0px))] min-[1101px]:min-h-0')}>
         <MobileTopBar menuOpen={drawerOpen} onMenu={() => setDrawerOpen(true)} className="min-[1101px]:hidden" />
         <div
           ref={contentScrollRef}
@@ -86,7 +92,7 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
           closeGroup()
         }}
       />
-      <NavDrawer isOpen={drawerOpen} onClose={closeDrawer} />
+      <NavDrawer isOpen={drawerOpen} onClose={closeDrawer} nav={immersive ? { groups, activeKey, onSelect } : undefined} />
     </div>
   )
 }

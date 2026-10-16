@@ -9,4 +9,4 @@ const GOOD = '👍'
 
 export const thinkingMessage = () => THINKING
 export const GOOD_MESSAGE = GOOD
-export const isSignal = (text: string) => text === GOOD || text.startsWith(THINKING) || text.startsWith(LEGACY_THINKING)
+export const isSignal = (text: string) => text === GOOD || text === THINKING || text.startsWith(LEGACY_THINKING)

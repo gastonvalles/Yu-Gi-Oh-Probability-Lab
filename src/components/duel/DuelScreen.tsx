@@ -476,7 +476,7 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
   }
 
   const share = () => {
-    void navigator.share({ title: t('duel.nav.title'), text: t('duel.room.shareText'), url: link }).catch(() => undefined)
+    void navigator.share({ title: 'YGOUltraLab', /* i18n-ignore: nombre propio */ text: t('duel.room.shareText'), url: link }).catch(() => undefined)
   }
 
   return (

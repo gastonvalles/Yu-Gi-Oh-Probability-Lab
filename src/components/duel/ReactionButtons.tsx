@@ -34,7 +34,7 @@ export function ReactionButtons({ onSend, disabled = false, className }: Reactio
           aria-label={label()}
           title={label()}
           disabled={disabled}
-          className="relative grid h-11 min-w-10 cursor-pointer place-items-center rounded-control border border-border bg-input px-2 text-title leading-none transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-default disabled:opacity-40"
+          className="relative grid h-11 min-w-11 cursor-pointer place-items-center rounded-control border border-border bg-input px-2 text-title leading-none transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-default disabled:opacity-40"
           onClick={() => {
             setBursts((current) => ({ ...current, [emoji]: (current[emoji] ?? 0) + 1 }))
             onSend(text())

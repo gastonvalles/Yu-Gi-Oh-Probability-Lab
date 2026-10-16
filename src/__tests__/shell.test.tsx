@@ -4,7 +4,7 @@ import '@testing-library/jest-dom'
 import { createRef } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { useShellInsets } from '../app/shell-layout'
+import { TAB_BAR_PX, shellInsetsFor, useShellInsets } from '../app/shell-layout'
 import { buildAppNavGroups, buildDeckWorkflowNavigationItems, isDeckWorkflowStepKey } from '../components/deck-mode/deck-workflow-navigation'
 import { AppFooter } from '../components/shell/AppFooter'
 import { AppShell } from '../components/shell/AppShell'
@@ -142,7 +142,7 @@ describe('el cajón de ajustes del celular', () => {
 
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Cerrar el menú' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cerrar los ajustes' }))
     expect(onClose).toHaveBeenCalledTimes(2)
     fireEvent.click(dialog.previousElementSibling as HTMLElement)
     expect(onClose).toHaveBeenCalledTimes(3)
@@ -192,13 +192,13 @@ describe('la barra de arriba, el pie y los títulos', () => {
     const onMenu = vi.fn()
     const { rerender } = render(<MobileTopBar menuOpen={false} onMenu={onMenu} />)
 
-    const button = screen.getByRole('button', { name: 'Abrir el menú' })
+    const button = screen.getByRole('button', { name: 'Abrir los ajustes' })
     expect(button).toHaveAttribute('aria-expanded', 'false')
     fireEvent.click(button)
     expect(onMenu).toHaveBeenCalledTimes(1)
 
     rerender(<MobileTopBar menuOpen onMenu={onMenu} />)
-    expect(screen.getByRole('button', { name: 'Abrir el menú' })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: 'Abrir los ajustes' })).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('el pie lleva la autoría, el aviso de sitio no oficial, las redes y la privacidad', () => {
@@ -251,7 +251,7 @@ describe('el armazón', () => {
     // El menú lateral y la barra de abajo están los dos en el DOM: el CSS muestra el que toca según el ancho.
     expect(screen.getAllByRole('navigation', { name: 'Navegación principal' })).toHaveLength(2)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Abrir el menú' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir los ajustes' }))
     expect(screen.getByRole('dialog', { name: 'Ajustes' })).toBeInTheDocument()
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -292,6 +292,59 @@ describe('el armazón', () => {
     expect(screen.getByText('Pantalla')).toBeInTheDocument()
     expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument()
     expect(container.firstElementChild).toHaveClass('max-[1100px]:h-dvh', 'max-[1100px]:overflow-hidden')
+  })
+
+  it('la mesa a pantalla completa no lleva la barra de abajo: la hamburguesa abre los ajustes con el menú de destinos para poder irse', () => {
+    const onSelect = vi.fn()
+    render(
+      <AppShell groups={GROUPS} activeKey="practice" onSelect={onSelect} immersive>
+        <p>Mesa</p>
+      </AppShell>,
+    )
+
+    // Sólo queda el menú lateral (el CSS lo esconde en el celular): la barra de abajo no está.
+    expect(screen.getAllByRole('navigation', { name: 'Navegación principal' })).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir los ajustes' }))
+    const dialog = screen.getByRole('dialog', { name: 'Ajustes' })
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Probability Lab/ }))
+    expect(onSelect).toHaveBeenCalledWith('probability-lab')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('al cambiar de pantalla (también con el botón Atrás) la hoja y el cajón que estaban abiertos se cierran', () => {
+    const { rerender } = render(
+      <AppShell groups={GROUPS} activeKey="export" onSelect={() => {}} contentScrollable>
+        <p>Pantalla</p>
+      </AppShell>,
+    )
+
+    fireEvent.click(within(screen.getAllByRole('navigation', { name: 'Navegación principal' })[1]!).getByRole('button', { name: 'Descubrir' }))
+    expect(screen.getByRole('dialog', { name: 'Descubrir' })).toBeInTheDocument()
+
+    rerender(
+      <AppShell groups={GROUPS} activeKey="meta" onSelect={() => {}} contentScrollable>
+        <p>Pantalla</p>
+      </AppShell>,
+    )
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('lo flotante (botones, mascotas, avisos) deja libre la barra de abajo en el celular, y nada en la mesa a pantalla completa', () => {
+    expect(shellInsetsFor(false, false)).toEqual({ left: 0, bottom: TAB_BAR_PX })
+    expect(shellInsetsFor(false, false, false)).toEqual({ left: 0, bottom: 0 })
+    // En escritorio manda el menú lateral y el pie, con barra o sin ella.
+    expect(shellInsetsFor(false, true)).toEqual(shellInsetsFor(false, true, false))
+    expect(shellInsetsFor(false, true).left).toBeGreaterThan(0)
+  })
+
+  it('en escritorio la hoja y el cajón no existen: abiertos y escondidos atraparían el foco y bloquearían el scroll sin que se vea nada', () => {
+    window.matchMedia = ((query: string) => ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    const discover = GROUPS.find((group) => group.key === 'discover') ?? null
+    const { rerender } = render(<GroupSheet group={discover} activeKey="meta" onSelect={() => {}} onClose={() => {}} />)
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    rerender(<NavDrawer isOpen onClose={() => {}} />)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('sin haber elegido, arranca contraído en una ventana angosta y abierto en una ancha', () => {

@@ -47,11 +47,14 @@ export function useDuelFeed({ snapshot, cardsById, rivalCaptions, turn, turnNumb
   const next = useRef(0)
   const seenChat = useRef(chat.at(-1)?.id ?? 0)
   const seenActions = useRef(actions.length)
+  // El turno más alto que ya se anotó: deshacer lo baja y volver a pasar lo sube, pero no se anota dos veces el mismo comienzo.
   const seenTurn = useRef(turnNumber)
   const seenCaptions = useRef(rivalCaptions.map((caption) => caption?.key ?? 0))
 
   const push = (...added: NewEntry[]) => {
-    setEntries((current) => [...current, ...added.map((entry) => ({ ...entry, id: `e${next.current++}` }) as FeedEntry)].slice(-MAX_ENTRIES))
+    const stamped = added.map((entry) => ({ ...entry, id: `e${next.current++}` }) as FeedEntry)
+
+    setEntries((current) => [...current, ...stamped].slice(-MAX_ENTRIES))
   }
 
   // Lo escrito: cada línea nueva del chat.
@@ -102,7 +105,7 @@ export function useDuelFeed({ snapshot, cardsById, rivalCaptions, turn, turnNumb
 
   // El comienzo de cada turno.
   useEffect(() => {
-    if (turnNumber === seenTurn.current) return
+    if (turnNumber <= seenTurn.current) return
 
     seenTurn.current = turnNumber
     push({ kind: 'turn', text: t('duel.log.turn', { turn: turnNumber, name: turn === 'mine' ? myName : rivalName }) })

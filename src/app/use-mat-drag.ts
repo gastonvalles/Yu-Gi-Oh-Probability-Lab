@@ -141,7 +141,8 @@ export function useMatDrag({ onDrop, onTap, onOver }: UseMatDragOptions) {
 
         session.moved = true
         const rect = session.element.getBoundingClientRect()
-        setDrag({ source: session.source, width: session.size?.width ?? rect.width, height: session.size?.height ?? rect.height })
+        // El tamaño de la carta, no el del rect: en el campo inclinado el rect sale achatado y la carta arrastrada saldría más ancha que alta.
+        setDrag({ source: session.source, width: session.size?.width ?? (session.element.offsetWidth || rect.width), height: session.size?.height ?? (session.element.offsetHeight || rect.height) })
       }
 
       pendingRef.current = { x: event.clientX, y: event.clientY }

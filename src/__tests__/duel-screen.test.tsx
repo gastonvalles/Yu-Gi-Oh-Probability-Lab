@@ -307,7 +307,7 @@ describe('la pantalla del duelo', () => {
     })
     const centers = (part: string) => [...document.querySelectorAll<HTMLElement>(`[data-fx="strike"] ${part}`)].map(({ parentElement }) => `${parentElement!.style.left},${parentElement!.style.top}`).sort()
     // El cartel del ataque (role=status) es pasajero; la línea del registro, en cambio, se queda: se busca el cartel.
-    const attackBanner = (view: RenderResult) => within(view.container).queryAllByText('Ana te ataca directo').find((element) => element.getAttribute('role') === 'status')
+    const attackBanner = (view: RenderResult, text = 'Ana te ataca directo') => within(view.container).queryAllByText(text).find((element) => element.getAttribute('role') === 'status')
     /** De dónde salen las espadas (en la mesa de cada uno) y adónde llegan. */
     const flights = () => ({ from: centers('.animate-fx-beam'), to: centers('.animate-fx-shock') })
 
@@ -318,7 +318,7 @@ describe('la pantalla del duelo', () => {
     expect(attackBanner(guest)).toBeDefined()
     expect(within(host.container).queryByText('Ana te ataca directo')).not.toBeInTheDocument()
     // Y queda anotado en el registro de Beto (la línea sobre el campo).
-    expect(within(guest.container).getByRole('button', { name: 'Abrir el registro de jugadas' })).toHaveTextContent('Ana te ataca directo')
+    expect(within(guest.container).getByRole('button', { name: /^Abrir el registro de jugadas: Ana te ataca directo/ })).toHaveTextContent('Ana te ataca directo')
     expect(strikes()).toHaveLength(2)
     // Ana la tira de su monstruo (50, 350) a la barra de vida del rival (50, 10); en la mesa de Beto, el monstruo de Ana (50, 150) cae sobre la barra propia (50, 510).
     expect(flights()).toEqual({ from: ['50px,150px', '50px,350px'], to: ['50px,10px', '50px,510px'] })
@@ -353,7 +353,7 @@ describe('la pantalla del duelo', () => {
     expect(choices[0]).toMatch(/^Rival, Zona de monstruo 1: Monstruo \d+$/)
     fireEvent.click(screen.getAllByRole('menuitem')[0]!)
     flush()
-    expect(within(guest.container).getAllByText(`Ana ataca a ${betoCard}`).length).toBeGreaterThan(0)
+    expect(attackBanner(guest, `Ana ataca a ${betoCard}`)).toBeDefined()
     // La espada llega a una carta: la del rival, por el id que él le dio (en la mesa de Ana), y la propia, por el suyo (en la de Beto).
     expect(strikes()).toHaveLength(2)
     // Se cruzan: la espada de Ana va de su monstruo (50, 350) al de Beto (50, 150), y en la mesa de Beto, al revés.
@@ -375,7 +375,7 @@ describe('la pantalla del duelo', () => {
     const myMonster = () => tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
     // Invocar también se anima, con su carta (de dorso: Beto todavía no la vio) y su cartel, como en un combo guardado.
     expect(stage()).toHaveAttribute('data-kind', 'normal')
-    expect(within(guest.container).getAllByText('Ana hace una Invocación Normal').length).toBeGreaterThan(0)
+    expect(guest.container.querySelector('[data-activation]')).toHaveTextContent('Ana hace una Invocación Normal')
     act(() => {
       vi.advanceTimersByTime(1000)
     })
@@ -387,7 +387,7 @@ describe('la pantalla del duelo', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
     flush()
     expect(stage()).toHaveAttribute('data-kind', 'activate')
-    expect(within(guest.container).getAllByText('Ana activa una carta').length).toBeGreaterThan(0)
+    expect(guest.container.querySelector('[data-activation]')).toHaveTextContent('Ana activa una carta')
     expect(ring()).toBe('true')
     expect(rivalCard()).toHaveAttribute('data-flash-kind', 'activate')
     // Quien activa la ve a su manera (la suya ya se veía): sólo Beto ve la del rival.
@@ -403,7 +403,7 @@ describe('la pantalla del duelo', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Revelar' }))
     flush()
     expect(stage()).toHaveAttribute('data-kind', 'reveal')
-    expect(within(guest.container).getAllByText('Ana revela una carta').length).toBeGreaterThan(0)
+    expect(guest.container.querySelector('[data-activation]')).toHaveTextContent('Ana revela una carta')
     act(() => {
       vi.advanceTimersByTime(1000)
     })
@@ -413,7 +413,7 @@ describe('la pantalla del duelo', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Target' }))
     flush()
     expect(stage()).toHaveAttribute('data-kind', 'target')
-    expect(within(guest.container).getAllByText('Ana marca una carta como objetivo').length).toBeGreaterThan(0)
+    expect(guest.container.querySelector('[data-activation]')).toHaveTextContent('Ana marca una carta como objetivo')
     expect(rivalCard()).toHaveAttribute('data-flash-kind', 'target')
     expect(rivalCard()).toHaveAttribute('data-targeted', 'true')
     act(() => {
@@ -428,7 +428,7 @@ describe('la pantalla del duelo', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Al cementerio' }))
     flush()
     expect(stage()).toHaveAttribute('data-kind', 'gy')
-    expect(within(guest.container).getAllByText('Ana manda una carta al cementerio').length).toBeGreaterThan(0)
+    expect(guest.container.querySelector('[data-activation]')).toHaveTextContent('Ana manda una carta al cementerio')
     act(() => {
       vi.advanceTimersByTime(1000)
     })
@@ -601,7 +601,7 @@ describe('la pantalla del duelo', () => {
 
     const stage = guest.container.querySelector('[data-activation]')!
     expect(stage).toHaveAttribute('data-kind', 'hand')
-    expect(within(guest.container).getAllByText('Ana lleva una carta a su mano').length).toBeGreaterThan(0)
+    expect(guest.container.querySelector('[data-activation]')).toHaveTextContent('Ana lleva una carta a su mano')
     // La carta del frente tiene su imagen (la del dorso no la tendría).
     expect(stage.querySelector('img')).not.toBeNull()
   })
@@ -1208,14 +1208,33 @@ describe('la pantalla del duelo', () => {
     fireEvent.click(guestChat().getByRole('button', { name: 'Enviar' }))
     flush()
     fireEvent.keyDown(document, { key: 'Escape' })
-    expect(within(host.container).getByRole('button', { name: 'Abrir el registro de jugadas' })).toHaveTextContent('Beto: Dale, mi turno')
+    expect(within(host.container).getByRole('button', { name: /^Abrir el registro de jugadas: Beto: Dale, mi turno/ })).toHaveTextContent('Beto: Dale, mi turno')
 
     // Tocarla abre el chat, con el comienzo del turno y lo escrito en el orden en que pasó.
-    click(host, 'Abrir el registro de jugadas')
+    click(host, /^Abrir el registro de jugadas/)
     const log = within(within(screen.getByRole('dialog', { name: 'Chat con Beto' })).getByRole('log'))
     const rows = log.getAllByRole('listitem').map((row) => row.textContent)
     expect(rows[0]).toBe('Turno 2 · Beto')
     expect(rows[1]).toContain('Dale, mi turno')
+  })
+
+  it('el registro no repite el comienzo de un turno al deshacer y volver a pasarlo, ni anota el turno que retrocede', () => {
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+
+    click(host, 'Pasar turno')
+    flush()
+    click(host, 'Deshacer')
+    flush()
+    allowUndo()
+    click(host, 'Pasar turno')
+    flush()
+
+    click(guest, 'Chat')
+    const rows = within(within(screen.getByRole('dialog', { name: 'Chat con Ana' })).getByRole('log'))
+      .getAllByRole('listitem')
+      .map((row) => row.textContent)
+    expect(rows.filter((text) => text?.startsWith('Turno'))).toEqual(['Turno 2 · Beto'])
   })
 
   it('mirar un duelo: el anfitrión da un enlace para espectadores y ve cuántos miran; son hasta dos', async () => {

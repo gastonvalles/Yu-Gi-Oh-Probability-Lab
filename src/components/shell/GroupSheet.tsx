@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { createPortal } from 'react-dom'
 
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useFocusTrap } from '../../app/use-focus-trap'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
 import { t } from '../../i18n'
@@ -23,13 +24,15 @@ interface GroupSheetProps {
  */
 export function GroupSheet({ group, activeKey, onSelect, onClose }: GroupSheetProps) {
   const panelRef = useRef<HTMLDivElement | null>(null)
-  const isOpen = group !== null
+  // En escritorio la hoja no existe (está el menú lateral): abierta y oculta atraparía el foco y bloquearía el scroll sin que se vea nada.
+  const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  const isOpen = group !== null && !desktop
 
   useFocusTrap(panelRef, isOpen)
   useEscapeKey(onClose, isOpen)
   useBodyScrollLock(isOpen)
 
-  if (!group || typeof document === 'undefined') {
+  if (!group || desktop || typeof document === 'undefined') {
     return null
   }
 
@@ -69,7 +72,7 @@ export function GroupSheet({ group, activeKey, onSelect, onClose }: GroupSheetPr
                   <Icon name={item.icon} size={22} variant={active ? 'bold' : 'bulk'} className="shrink-0 [--icon-cut:var(--nav-raised)]" />
                   <span aria-hidden="true" className="grid min-w-0 flex-1">
                     <span className={cx('truncate text-body', active ? 'font-semibold' : 'font-medium')}>{item.label}</span>
-                    {item.detail ? <span className="truncate text-micro text-muted">{item.detail}</span> : null}
+                    {item.detail ? <span className={cx('truncate text-micro', active ? 'text-foreground' : 'text-muted')}>{item.detail}</span> : null}
                   </span>
                 </button>
               </li>

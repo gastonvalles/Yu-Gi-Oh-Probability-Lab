@@ -63,10 +63,19 @@ const centerY = (rect: DOMRect) => rect.top + rect.height / 2
 const near = (a: DOMRect, b: DOMRect) => Math.abs(a.left - b.left) < 1 && Math.abs(a.top - b.top) < 1 && Math.abs(a.width - b.width) < 1
 
 /** FLIP: transformación que lleva el elemento desde donde estaba (`from`) hasta donde está (`to`); el tamaño se compara por el lado largo (las cartas de costado) y se acota por si la medición agarró una animación a medias. */
-function offset(from: DOMRect, to: DOMRect): string {
+function offset(from: DOMRect, to: DOMRect, local = { x: 1, y: 1 }): string {
   const scale = Math.min(3, Math.max(0.3, Math.max(from.width, from.height) / Math.max(1, to.width, to.height)))
 
-  return `translate(${centerX(from) - centerX(to)}px, ${centerY(from) - centerY(to)}px) scale(${scale})`
+  return `translate(${(centerX(from) - centerX(to)) / local.x}px, ${(centerY(from) - centerY(to)) / local.y}px) scale(${scale})`
+}
+
+/** Un elemento del campo inclinado (la mesa vista desde arriba) se dibuja más chico que su tamaño de layout: un desplazamiento medido en pantalla se divide por esa escala para que el vuelo arranque donde estaba la carta. */
+function localScale(element: HTMLElement, rect: DOMRect): { x: number; y: number } {
+  if (!element.closest('[data-tilted]')) return { x: 1, y: 1 }
+
+  const clamp = (value: number) => Math.min(1.5, Math.max(0.5, value))
+
+  return { x: clamp(rect.width / Math.max(1, element.offsetWidth)), y: clamp(rect.height / Math.max(1, element.offsetHeight)) }
 }
 
 /** La pila (o el Xyz) que recibe una carta se infla un instante cuando aterriza. */
@@ -149,7 +158,7 @@ export function useCardFlights(containerRef: RefObject<HTMLElement | null>, stat
       const base = getComputedStyle(element).transform
       const own = base === 'none' ? '' : ` ${base}`
 
-      element.animate([{ transform: `${offset(before, rect)}${own}` }, { transform: base }], { id: FLIGHT_ID, duration: FLIGHT_MS, easing: EASING })
+      element.animate([{ transform: `${offset(before, rect, localScale(element, rect))}${own}` }, { transform: base }], { id: FLIGHT_ID, duration: FLIGHT_MS, easing: EASING })
     }
 
     if (sameState) return

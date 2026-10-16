@@ -36,6 +36,7 @@ export function DuelChat({ snapshot, myName, onSend, fill = false, feed }: DuelC
   const rival = peerName ?? t('duel.bar.rival')
   const [text, setText] = useState('')
   const rows: readonly FeedEntry[] = feed ?? chat.map((line) => ({ id: `c${line.id}`, kind: 'chat' as const, line }))
+  const lastId = rows.at(-1)?.id
   const listRef = useRef<HTMLOListElement | null>(null)
 
   // Siempre se ve lo último.
@@ -45,7 +46,7 @@ export function DuelChat({ snapshot, myName, onSend, fill = false, feed }: DuelC
     if (list) {
       list.scrollTop = list.scrollHeight
     }
-  }, [rows.length])
+  }, [rows.length, lastId])
 
   const send = (message: string) => {
     onSend(message)

@@ -1202,7 +1202,7 @@
 @layer utilities {
   @media (max-width: 1100px) {
     body[data-duel] .app-toaster {
-      bottom: calc(env(safe-area-inset-bottom, 0px) + 4.75rem) !important;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 7.5rem) !important;
     }
   }
 }
