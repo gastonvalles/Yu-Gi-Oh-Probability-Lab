@@ -1,6 +1,6 @@
 {
-  "name": "Yu-Gi-Oh! Probability Lab",
-  "short_name": "Probability Lab",
+  "name": "YGOUltraLab",
+  "short_name": "YGOUltraLab",
   "description": "Deck builder y calculadora exacta de probabilidades para Yu-Gi-Oh!",
   "lang": "es",
   "start_url": "/",
