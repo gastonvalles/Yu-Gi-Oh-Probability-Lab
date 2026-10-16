@@ -105,6 +105,7 @@ export const search: Translated<typeof es> = {
   'search.zoom.aria': 'Large view of {name}',
   'search.arts.label': 'Card artworks',
   'search.arts.pick': 'Artwork {n} of {count}',
+  'search.printing.label': 'Printing of this artwork',
   'search.copies.inZone': { one: '<b>{count}</b> copy in {zone}', other: '<b>{count}</b> copies in {zone}' },
   'search.copies.removeOne': 'Remove one',
   'search.copies.addOne': 'Add one',

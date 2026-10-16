@@ -15,6 +15,7 @@ import { CardArtPicker } from '../card-detail/CardArtPicker'
 import { CardPricesButton, CardPricesModal } from '../card-detail/CardPrices'
 import { CardGlare, TILT_ART, TILT_PERSPECTIVE, tiltHandlers } from '../card-detail/card-tilt'
 import { CardZoom } from '../card-detail/CardZoom'
+import { PrintingInfo } from '../card-detail/PrintingInfo'
 import { DeckCopyControls, type DeckCopyActions } from '../card-detail/DeckCopyControls'
 import { Heading } from '../ui/Heading'
 import { Button } from '../ui/Button'
@@ -83,6 +84,9 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, onAddToZone 
           </div>
 
           <CardArtPicker arts={arts} selectedId={art?.id ?? null} onSelect={(artId) => setPicked({ cardId: card.ygoprodeckId, artId })} fallbackUrl={card.imageUrlSmall ?? card.imageUrl} />
+
+          {/* De qué impresión es el arte elegido: otra rareza, otro set. */}
+          <PrintingInfo printing={art?.printing} />
 
           {source === 'deck' && deckCopy ? <DeckCopyControls deckCopy={deckCopy} /> : null}
 

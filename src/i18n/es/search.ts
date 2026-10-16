@@ -110,6 +110,7 @@ export const search = {
   'search.zoom.aria': '{name} en grande',
   'search.arts.label': 'Artes de la carta',
   'search.arts.pick': 'Arte {n} de {count}',
+  'search.printing.label': 'Impresión de este arte',
   'search.copies.inZone': { one: '<b>{count}</b> copia en {zone}', other: '<b>{count}</b> copias en {zone}' },
   'search.copies.removeOne': 'Quitar una',
   'search.copies.addOne': 'Sumar una',
