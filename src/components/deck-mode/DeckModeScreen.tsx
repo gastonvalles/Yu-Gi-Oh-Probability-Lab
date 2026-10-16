@@ -238,7 +238,7 @@ export function DeckModeScreen() {
           {t('deck.builder.title')}
         </Heading>
       ) : null}
-      <DeckBuilderStep {...deckBuilderStep} />
+      <DeckBuilderStep {...deckBuilderStep} onNextStep={() => handleStepChange('categorization')} />
     </div>
   ) : (
     <section
