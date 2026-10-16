@@ -30,16 +30,16 @@ export function ConfirmDialog({
     <Modal
       isOpen={isOpen}
       onClose={onCancel}
-      size="sm"
+      size="keypad"
       role="alertdialog"
       kicker={t('lab.confirm.kicker')}
       title={title}
       footer={
         <>
-          <Button variant="tertiary" size="sm" onClick={onCancel}>
+          <Button variant="tertiary" size="md" onClick={onCancel}>
             {cancelLabel}
           </Button>
-          <Button variant={confirmVariant} color={confirmColor} size="sm" onClick={onConfirm}>
+          <Button variant={confirmVariant} color={confirmColor} size="md" onClick={onConfirm}>
             {confirmLabel}
           </Button>
         </>

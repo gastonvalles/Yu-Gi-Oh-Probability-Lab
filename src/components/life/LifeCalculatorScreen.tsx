@@ -366,7 +366,7 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
         isOpen={confirmReset}
         title={t('shell.life.resetDialog.title')}
         description={t('shell.life.resetDialog.description', { lp: STARTING_LP })}
-        confirmLabel={t('shell.life.reset')}
+        confirmLabel={t('shell.life.resetDialog.confirm')}
         confirmColor="danger"
         onCancel={() => setConfirmReset(false)}
         onConfirm={() => {

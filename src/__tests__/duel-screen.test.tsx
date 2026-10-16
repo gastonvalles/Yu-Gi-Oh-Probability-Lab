@@ -504,11 +504,11 @@ describe('la pantalla del duelo', () => {
 
     click(guest, 'Salir del duelo')
     // Confirmar es otra acción, en un diálogo: cancelar no saca a nadie.
-    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Seguir jugando' }))
     expect(within(guest.container).getByRole('button', { name: 'Salir del duelo' })).toBeInTheDocument()
 
     click(guest, 'Salir del duelo')
-    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Salir del duelo' }))
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Salir y dejar en pausa' }))
     expect(within(guest.container).getByRole('button', { name: 'Crear una sala' })).toBeInTheDocument()
   })
 
@@ -1802,7 +1802,7 @@ describe('la pantalla del duelo', () => {
   function leaveDuel(view: RenderResult) {
     // La de la barra es la primera (con el resultado en pantalla, la tarjeta tiene la suya debajo).
     fireEvent.click(within(view.container).getAllByRole('button', { name: 'Salir del duelo' })[0]!)
-    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Salir del duelo' }))
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Salir y dejar en pausa' }))
   }
   const hasSave = (role: 'host' | 'guest') => Object.keys(localStorage).some((key) => key.startsWith('ygo-lab:duel-save:') && key.endsWith(`:${role}`))
 
@@ -2084,12 +2084,12 @@ describe('la pantalla del duelo', () => {
 
     click(guest, 'Rendirme')
     // Cancelar no se rinde.
-    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Cancelar' }))
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Seguir jugando' }))
     flush()
     expect(within(host.container).queryByText(/se rindió/)).not.toBeInTheDocument()
 
     click(guest, 'Rendirme')
-    expect(within(screen.getByRole('alertdialog')).getByText('Gana Ana. El duelo termina para los dos y se puede pedir la revancha.')).toBeInTheDocument()
+    expect(within(screen.getByRole('alertdialog')).getByText('Perdés el duelo y Ana gana. Después podés pedir la revancha.')).toBeInTheDocument()
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Rendirme' }))
     flush()
 

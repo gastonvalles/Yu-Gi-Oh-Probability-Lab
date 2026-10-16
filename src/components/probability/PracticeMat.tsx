@@ -1631,7 +1631,7 @@ function PhaseButton({ short, name, active, rival = false, disabled = false, pas
       title={passes ? t('duel.turn.passHint') : name}
       disabled={disabled}
       className={cx(
-        'grid aspect-square w-full min-w-0 place-items-center rounded-full border text-[0.55rem] font-extrabold leading-none transition-[background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus min-[1101px]:text-micro disabled:cursor-not-allowed disabled:opacity-45',
+        'grid h-11 w-full min-w-0 place-items-center rounded-control border text-[0.55rem] font-extrabold leading-none transition-[background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus min-[1101px]:text-micro disabled:cursor-not-allowed disabled:opacity-45',
         active
           ? rival
             ? 'border-info bg-info text-accent-foreground'
