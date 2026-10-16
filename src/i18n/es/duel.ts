@@ -132,7 +132,10 @@ export const duel = {
   'duel.room.limit': 'El reloj de cada duelo es de {min} minutos.',
   'duel.room.noLimit': 'El reloj de cada duelo no tiene límite.',
   'duel.room.leave': 'Salir',
-  'duel.room.expired': 'No hay nadie en este duelo. Puede que el enlace haya vencido: pedile a tu rival que cree uno nuevo y te lo mande.',
+  'duel.gone.title': 'Ese enlace ya no funciona',
+  'duel.gone.text': 'La sala se cerró o ya tiene a sus dos jugadores. Pedile un enlace nuevo a quien te invitó.',
+  'duel.gone.retry': 'Probar otro enlace',
+  'duel.gone.create': 'Crear una sala',
   'duel.room.incompatible': 'Tu rival usa otra versión del duelo, o los dos crearon la sala: pedile que abra tu enlace.',
 
   // Mirar un duelo sin jugar (hasta dos espectadores, que no pueden hacer nada).

@@ -129,7 +129,10 @@ export const duel: Translated<typeof es> = {
   'duel.room.limit': 'The clock for each duel is {min} minutes.',
   'duel.room.noLimit': 'The clock for each duel has no limit.',
   'duel.room.leave': 'Leave',
-  'duel.room.expired': 'There is nobody in this duel. The link may have expired: ask your rival to create a new one and send it to you.',
+  'duel.gone.title': "That link doesn't work anymore",
+  'duel.gone.text': 'The room was closed or already has both players. Ask whoever invited you for a new link.',
+  'duel.gone.retry': 'Try another link',
+  'duel.gone.create': 'Create a room',
   'duel.room.incompatible': 'Your opponent is on another version of the duel, or you both created the room: ask them to open your link.',
 
   // Watching a duel without playing (up to two spectators, who cannot do anything).

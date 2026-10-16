@@ -419,8 +419,8 @@ describe('la pantalla del duelo', () => {
     }
     const view = render(<DuelScreen {...screenProps({ connect: () => full })} />)
 
-    expect(within(view.container).getByText('Esa sala ya tiene dos jugadores.')).toBeInTheDocument()
-    click(view, 'Salir')
+    expect(within(view.container).getByRole('heading', { name: 'Ese enlace ya no funciona' })).toBeInTheDocument()
+    click(view, 'Probar otro enlace')
     expect(within(view.container).getByRole('button', { name: 'Crear una sala' })).toBeInTheDocument()
     expect(window.location.hash).toBe('#duel')
   })
@@ -1605,6 +1605,26 @@ describe('la pantalla del duelo', () => {
     expect(log.getByText('¿respondés?')).toBeInTheDocument()
     expect(log.getByText('Ana')).toBeInTheDocument()
     expect(within(screen.getAllByRole('dialog').at(-1)!).queryByRole('textbox')).not.toBeInTheDocument()
+  })
+
+  it('un enlace de una sala vacía, tras unos segundos, dice que ya no funciona y deja crear una sala directo', () => {
+    vi.useFakeTimers()
+    window.history.replaceState(null, '', '#duel?room=K7QF2M9X')
+
+    const view = render(<DuelScreen {...screenProps()} />)
+    flush()
+
+    expect(within(view.container).queryByRole('heading', { name: 'Ese enlace ya no funciona' })).not.toBeInTheDocument()
+    act(() => {
+      vi.advanceTimersByTime(13_000)
+    })
+    expect(within(view.container).getByRole('heading', { name: 'Ese enlace ya no funciona' })).toBeInTheDocument()
+    expect(within(view.container).getByText(/ya tiene a sus dos jugadores/)).toBeInTheDocument()
+
+    // «Crear una sala» vuelve al lobby ya en ese paso.
+    click(view, 'Crear una sala')
+    expect(within(view.container).getByRole('heading', { name: 'Crear sala' })).toBeInTheDocument()
+    expect(window.location.hash).toBe('#duel')
   })
 
   it('Mirar un duelo: una pantalla propia donde se pega el enlace o el código y se entra de espectador, sin deck', () => {
