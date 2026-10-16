@@ -21,6 +21,8 @@ export const shell: Translated<typeof es> = {
   'shell.tone.progress': 'In progress',
   'shell.tone.pending': 'Pending',
 
+  'shell.flow.label': 'Deck steps',
+  'shell.flow.progress': 'Step {step} of {total}: {name}',
   'shell.step.deck.label': 'Deck',
   'shell.step.deck.title': 'Deck Builder',
   'shell.step.deck.ready': 'Main deck ready.',
