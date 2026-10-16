@@ -28,6 +28,8 @@ interface ExportDeckPanelProps {
   deckFormat: DeckFormat
   mainDeckCount: number
   onExport: (selection: DeckExportSelection) => Promise<void>
+  /** Vuelve al builder: el botón de abajo del celular. */
+  onBack?: () => void
 }
 
 /** La vista previa es chica: se dibuja a 1× y con menos calidad (el archivo descargado sigue a 2×). */
@@ -74,6 +76,7 @@ export function ExportDeckPanel({
   deckFormat,
   mainDeckCount,
   onExport,
+  onBack,
 }: ExportDeckPanelProps) {
   const [busy, setBusy] = useState(false)
   const [downloadOpen, setDownloadOpen] = useState(false)
@@ -170,7 +173,7 @@ export function ExportDeckPanel({
         subtitle={t('deck.export.subtitle')}
         side={(
           // Las opciones van en un modal: la página no las muestra de entrada.
-          <Button variant="primary" size="md" icon="download" disabled={busy} onClick={() => setDownloadOpen(true)}>
+          <Button variant="primary" size="md" icon="download" disabled={busy} className="max-[1100px]:hidden" onClick={() => setDownloadOpen(true)}>
             {busy ? t('deck.export.generating') : t('deck.export.download')}
           </Button>
         )}
@@ -179,6 +182,11 @@ export function ExportDeckPanel({
       <section className="grid min-w-0 gap-8 min-[1180px]:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)] min-[1180px]:items-start min-[1180px]:gap-10">
         <article className="grid min-w-0 content-start gap-4">
           <SectionHeader icon="image" title={t('deck.export.image.title')} description={t('deck.export.image.description')} />
+          {mainDeckCount > 0 ? (
+            <p className={cx('m-0', overline)}>
+              {t('deck.export.preview.label', { name: deckBuilder.deckName.trim() || t('deck.export.preview.unnamed'), main: deckBuilder.main.length, extra: deckBuilder.extra.length, side: deckBuilder.side.length })}
+            </p>
+          ) : null}
 
           {previewState === 'ready' && imagePreviewUrl ? (
             <img
@@ -342,6 +350,18 @@ export function ExportDeckPanel({
           ))}
         </div>
       </Modal>
+
+      {/* En el celular, abajo y al alcance del pulgar: volver al deck y descargar (la principal, a la derecha). */}
+      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-30 -mx-gutter -mb-6 flex gap-2 border-t border-border-subtle bg-background/90 px-gutter py-3 backdrop-blur min-[1101px]:hidden">
+        {onBack ? (
+          <Button variant="secondary" size="md" className="min-w-0 flex-1" onClick={onBack}>
+            {t('deck.export.back')}
+          </Button>
+        ) : null}
+        <Button variant="primary" size="md" icon="download" className="min-w-0 flex-1" disabled={busy || mainDeckCount === 0} onClick={() => setDownloadOpen(true)}>
+          {busy ? t('deck.export.generating') : t('deck.export.download')}
+        </Button>
+      </div>
     </StepPage>
   )
 }

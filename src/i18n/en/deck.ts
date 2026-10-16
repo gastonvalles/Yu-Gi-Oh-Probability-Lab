@@ -199,6 +199,9 @@ export const deck: Translated<typeof es> = {
   // --- Export: screen, files and preview
   'deck.export.title': 'Export your deck',
   'deck.export.subtitle': 'To share it, hand it in at a tournament or take it to Neuron.',
+  'deck.export.back': 'Back to the deck',
+  'deck.export.preview.label': 'Preview · {name} · {main} + {extra} + {side}',
+  'deck.export.preview.unnamed': 'Unnamed deck',
   'deck.export.download': 'Download',
   'deck.export.generating': 'Generating files...',
   'deck.export.image.title': 'Deck image',
