@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { buildDuelLink, DUEL_STEP, extractRoomCode, isWatchLink, parseDuelTarget } from '../../app/duel-link'
 import { getDeckFormatLabel } from '../../app/deck-format'
 import { deckFormatIssues } from '../../app/duel-format'
+import { MAIN_MINIMUM } from '../../app/duel-siding'
 import { cleanName, DEFAULT_DUEL_FORMAT, DEFAULT_LIMIT_MIN, DUEL_FORMATS, DUEL_LIMITS_MIN, type MarkTarget } from '../../app/duel-protocol'
 import { formatDataLoaded, loadFormatData } from '../../app/format-data'
 import type { DeckFormat } from '../../types'
@@ -866,7 +867,9 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
   }, [needsTables, tablesLoaded])
 
   const issues = useMemo(() => (needsTables && !tablesLoaded ? [] : deckFormatIssues([...roomDeck.mainIds, ...roomDeck.extraIds], roomDeck.cardsById, settings.format)), [roomDeck, settings.format, needsTables, tablesLoaded])
-  const canReady = peerPresent && settingsKnown && !incompatible && deckReady && issues.length === 0 && (!needsTables || tablesLoaded)
+  // Un duelo se juega con 40 cartas en el Main como mínimo (jugar solo, la práctica, no lo pide).
+  const mainShort = roomDeck.mainIds.length < MAIN_MINIMUM
+  const canReady = peerPresent && settingsKnown && !incompatible && deckReady && !mainShort && issues.length === 0 && (!needsTables || tablesLoaded)
   const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
   // Quien entra por un enlace y no encuentra a nadie, tras unos segundos, probablemente tiene un enlace vencido: se lo dice en vez de dejarlo esperando.
   const emptyRoom = useWaited(EMPTY_ROOM_MS, role === 'guest' && !peerPresent && status === 'open')
@@ -958,7 +961,7 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
       {peerPresent && settingsKnown && !incompatible ? <DuelOpening snapshot={snapshot} myName={myName} canReady={canReady} actions={duel} rename={{ value: name, onCommit: onRename }} /> : null}
 
       {/* El anfitrión ya eligió su deck en el lobby; quien llega por un enlace lo elige acá (y sin deck armado, es lo que lo deja estar listo). */}
-      {!snapshot.ready.mine && (role === 'guest' || !deckReady || issues.length > 0) ? (
+      {!snapshot.ready.mine && (role === 'guest' || !deckReady || mainShort || issues.length > 0) ? (
         <div className="grid gap-2 rounded-card border border-border-subtle bg-card-background p-3">
           {issues.length > 0 ? (
             <Callout tone="warning" icon="alert">
@@ -971,6 +974,7 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
             </Callout>
           ) : null}
           {deckReady ? null : <Callout tone="warning" icon="alert">{t('duel.lobby.needDeck', { count: deckPicker.size, min: deckPicker.min })}</Callout>}
+          {deckReady && mainShort ? <Callout tone="warning" icon="alert">{t('duel.room.mainShort', { count: roomDeck.mainIds.length, min: MAIN_MINIMUM })}</Callout> : null}
           <DuelDeckPicker builder={deckPicker.builder} imported={deckPicker.imported} onImport={deckPicker.onImport} />
         </div>
       ) : null}

@@ -112,6 +112,7 @@ export const duel = {
   'duel.room.guestWaits': 'Esperando los ajustes del anfitrión…',
   'duel.room.settings': 'Cada uno empieza con {lp} LP y una mano de {hand} cartas.',
   'duel.room.format': 'Formato: {name}.',
+  'duel.room.mainShort': 'Tu Main tiene {count} cartas y un duelo se juega con {min} como mínimo. Sumá cartas en el builder o pegá otro deck abajo:',
   'duel.room.formatBlocked': 'Tu deck no cumple el formato {name}. Cambialo en el builder o pegá otro abajo:',
   'duel.room.match': 'Es un Match: gana quien llegue a 2 duelos.',
   'duel.room.siding': 'Entre duelos se puede hacer siding.',
