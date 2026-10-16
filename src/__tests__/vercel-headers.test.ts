@@ -80,6 +80,8 @@ describe('seguridad del hosting (vercel.json)', () => {
       expect(connect).toContain("'self'")
       expect(connect).toContain('https://db.ygoprodeck.com')
       expect(sockets).toContain('wss://ygo-lab-duel-relay.gastonvallesyeou.workers.dev')
+      // La lista de salas públicas se pide por https al mismo relay: sin esto el navegador la bloquea y ninguna sala aparece.
+      expect(connect).toContain('https://ygo-lab-duel-relay.gastonvallesyeou.workers.dev')
       expect(sockets.filter((source) => source.includes('*'))).toEqual([])
       expect(sockets.filter((source) => source.endsWith('.workers.dev') && !source.includes('ygo-lab-duel-relay'))).toEqual([])
     }
