@@ -2,7 +2,7 @@ import type { duel as es } from '../es/duel'
 import type { Translated } from '../types'
 
 export const duel: Translated<typeof es> = {
-  'duel.nav.title': 'Duel a friend',
+  'duel.nav.title': 'New room',
   'duel.unavailable': "Dueling a friend isn't available in this version of the app yet.",
 
   'duel.table.label': 'Duel table',

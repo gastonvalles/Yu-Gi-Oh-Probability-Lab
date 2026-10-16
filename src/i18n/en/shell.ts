@@ -59,7 +59,7 @@ export const shell: Translated<typeof es> = {
   'shell.step.banlists.title': 'Historical banlists',
   'shell.step.banlists.detail': 'The TCG and OCG Forbidden & Limited lists, one by one.',
 
-  'shell.practice.title': 'Practice',
+  'shell.practice.title': 'Play solo',
 
   'shell.mascot.title': 'Mascots',
   'shell.mascot.available': 'Available mascots',

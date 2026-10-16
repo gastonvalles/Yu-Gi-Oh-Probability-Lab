@@ -57,7 +57,7 @@ export const shell = {
   'shell.step.banlists.title': 'Banlists históricas',
   'shell.step.banlists.detail': 'Las listas de prohibidas y limitadas del TCG y el OCG, una por una.',
 
-  'shell.practice.title': 'Práctica',
+  'shell.practice.title': 'Jugar solo',
 
   'shell.mascot.title': 'Mascotas',
   'shell.mascot.available': 'Mascotas disponibles',

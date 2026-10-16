@@ -1,6 +1,6 @@
 /** Duelo por enlace: el menú, la sala, la mesa con los dos campos, la barra de puntos de vida y la conexión. */
 export const duel = {
-  'duel.nav.title': 'Duelo con un amigo',
+  'duel.nav.title': 'Nueva sala',
   'duel.unavailable': 'El duelo con un amigo todavía no está disponible en esta versión de la app.',
 
   // La mesa con los dos campos.
