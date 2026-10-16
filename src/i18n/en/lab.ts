@@ -57,6 +57,8 @@ export const lab: Translated<typeof es> = {
   'lab.sheet.notTitle': 'What it does not say',
   'lab.sheet.notText': 'It is a reference: it is computed with your rules and the exact enumeration of every possible hand, and it does not guarantee the result of a duel.',
   'lab.sheet.howToRead': 'How to read these percentages',
+  'lab.error.title': 'Something went wrong in the Lab',
+  'lab.error.back': 'Go to the builder',
   'lab.score.overline': 'Playable hands with no problems',
   'lab.score.ringLabel': 'Clean hands: {percent} ({tone})',
   'lab.score.outOf100': 'out of every 100 hands are good',

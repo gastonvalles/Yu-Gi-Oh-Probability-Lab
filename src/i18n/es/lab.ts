@@ -58,6 +58,8 @@ export const lab = {
   'lab.sheet.notTitle': 'Lo que no dice',
   'lab.sheet.notText': 'Es una referencia: se calcula con tus reglas y la enumeración exacta de todas las manos posibles, y no garantiza el resultado de un duelo.',
   'lab.sheet.howToRead': 'Cómo leer estos porcentajes',
+  'lab.error.title': 'Algo salió mal en el Lab',
+  'lab.error.back': 'Ir al builder',
   'lab.score.overline': 'Manos jugables sin problemas',
   'lab.score.ringLabel': 'Manos limpias: {percent} ({tone})',
   'lab.score.outOf100': 'de cada 100 manos son buenas',

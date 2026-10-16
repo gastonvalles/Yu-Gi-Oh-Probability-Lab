@@ -142,6 +142,7 @@ export const shell: Translated<typeof es> = {
   'shell.error.title': 'Something went wrong',
   'shell.error.description': "The screen couldn't be drawn. Your deck and rules are still saved in this browser.",
   'shell.error.retry': 'Try again',
+  'shell.stepError.description': 'Your deck and rules are still saved in this browser.',
 
   'shell.stepper.less': 'One less',
   'shell.stepper.more': 'One more',
