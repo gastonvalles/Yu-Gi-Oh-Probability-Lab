@@ -31,7 +31,7 @@
 ["DP04-EN015","Common","Unlimited",0.43,26513,5318639,"Mystical Space Typhoon"],
 ["DP04-EN016","Common","1st Edition",0.31,26514,23171610,"Limiter Removal"],
 ["DP04-EN016","Common","Unlimited",0.12,26514,23171610,"Limiter Removal"],
-["DP04-EN017","Common","1st Edition",0.65,26515,95286165,"De-Fusion"],
+["DP04-EN017","Common","1st Edition",0.67,26515,95286165,"De-Fusion"],
 ["DP04-EN017","Common","Unlimited",0.39,26515,95286165,"De-Fusion"],
 ["DP04-EN018","Common","1st Edition",0.76,26516,31036355,"Creature Swap"],
 ["DP04-EN018","Common","Unlimited",0.22,26516,31036355,"Creature Swap"],
@@ -44,7 +44,7 @@
 ["DP04-EN022","Common","1st Edition",0.03,26520,3659803,"Overload Fusion"],
 ["DP04-EN022","Common","Unlimited",0.08,26520,3659803,"Overload Fusion"],
 ["DP04-EN023","Common","1st Edition",0.74,26521,77565204,"Future Fusion"],
-["DP04-EN023","Common","Unlimited",0.6,26521,77565204,"Future Fusion"],
+["DP04-EN023","Common","Unlimited",0.56,26521,77565204,"Future Fusion"],
 ["DP04-EN024","Super Rare","1st Edition",1.51,26522,73148972,"Ruthless Denial"],
 ["DP04-EN024","Super Rare","Unlimited",1,26522,73148972,"Ruthless Denial"],
 ["DP04-EN025","Common","1st Edition",0.29,26523,97077563,"Call of the Haunted"],
@@ -57,6 +57,6 @@
 ["DP04-EN028","Super Rare","Unlimited",0.4,26526,10537981,"Return Soul"],
 ["DP04-EN029","Ultra Rare","1st Edition",8.27,26527,46031686,"Damage Polarizer"],
 ["DP04-EN029","Ultra Rare","Unlimited",2.08,26527,46031686,"Damage Polarizer"],
-["DP04-EN030","Super Rare","1st Edition",1.43,26528,73026394,"Fusion Guard"],
+["DP04-EN030","Super Rare","1st Edition",1.49,26528,73026394,"Fusion Guard"],
 ["DP04-EN030","Super Rare","Unlimited",0.99,26528,73026394,"Fusion Guard"]
 ]

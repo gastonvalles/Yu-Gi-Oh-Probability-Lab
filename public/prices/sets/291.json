@@ -24,8 +24,8 @@
 ["YSD-EN012","Common","1st Edition",0.7,25132,31560081,"Magician of Faith"],
 ["YSD-EN012","Common","Unlimited",0.64,25132,31560081,"Magician of Faith"],
 ["YSD-EN013","Common","1st Edition",0.38,25133,40640057,"Kuriboh"],
-["YSD-EN013","Common","Unlimited",0.26,25133,40640057,"Kuriboh"],
-["YSD-EN014","Common","1st Edition",0.54,25134,51371017,"Princess of Tsurugi"],
+["YSD-EN013","Common","Unlimited",0.3,25133,40640057,"Kuriboh"],
+["YSD-EN014","Common","1st Edition",0.5,25134,51371017,"Princess of Tsurugi"],
 ["YSD-EN014","Common","Unlimited",0.2,25134,51371017,"Princess of Tsurugi"],
 ["YSD-EN015","Common","1st Edition",0.74,25135,31553716,"Spear Dragon"],
 ["YSD-EN015","Common","Unlimited",0.54,25135,31553716,"Spear Dragon"],
@@ -53,7 +53,7 @@
 ["YSD-EN026","Common","Unlimited",0.18,25146,79759861,"Tribute to the Doomed"],
 ["YSD-EN027","Common","1st Edition",3.22,25147,19613556,"Heavy Storm"],
 ["YSD-EN027","Common","Unlimited",4.61,25147,19613556,"Heavy Storm"],
-["YSD-EN028","Common","1st Edition",0.12,25148,95281259,"The Warrior Returning Alive"],
+["YSD-EN028","Common","1st Edition",0.13,25148,95281259,"The Warrior Returning Alive"],
 ["YSD-EN028","Common","Unlimited",0.29,25148,95281259,"The Warrior Returning Alive"],
 ["YSD-EN029","Common","1st Edition",0.58,25149,90928333,"Dark Factory of Mass Production"],
 ["YSD-EN029","Common","Unlimited",0.4,25149,90928333,"Dark Factory of Mass Production"],
@@ -65,9 +65,9 @@
 ["YSD-EN032","Common","Unlimited",0.35,25152,17814387,"Reinforcements"],
 ["YSD-EN033","Common","1st Edition",0.14,25153,44209392,"Castle Walls"],
 ["YSD-EN033","Common","Unlimited",0.1,25153,44209392,"Castle Walls"],
-["YSD-EN034","Common","1st Edition",0.1,25154,31785398,"Ready for Intercepting"],
+["YSD-EN034","Common","1st Edition",0.13,25154,31785398,"Ready for Intercepting"],
 ["YSD-EN034","Common","Unlimited",0.11,25154,31785398,"Ready for Intercepting"],
-["YSD-EN035","Common","1st Edition",0.43,25155,60082869,"Dust Tornado"],
+["YSD-EN035","Common","1st Edition",0.44,25155,60082869,"Dust Tornado"],
 ["YSD-EN035","Common","Unlimited",0.53,25155,60082869,"Dust Tornado"],
 ["YSD-EN036","Common","1st Edition",5.31,25156,83968380,"Jar of Greed"],
 ["YSD-EN036","Common","Unlimited",5.36,25156,83968380,"Jar of Greed"],
@@ -79,5 +79,5 @@
 ["YSD-EN039","Common","Unlimited",0.28,25159,51394546,"Cemetary Bomb"],
 ["YSD-EN040","Common","1st Edition",0.56,25160,62279055,"Magic Cylinder"],
 ["YSD-EN040","Common","Unlimited",0.56,25160,62279055,"Magic Cylinder"],
-["YSD-ENS01","Ultra Rare","Limited",7.78,25161,20721928,"Elemental HERO Sparkman"]
+["YSD-ENS01","Ultra Rare","Limited",7.99,25161,20721928,"Elemental HERO Sparkman"]
 ]

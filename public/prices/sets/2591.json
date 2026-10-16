@@ -23,9 +23,9 @@
 ["SDSH-EN011","Common","Unlimited",null,208961,95401059,"Shaddoll Zefracore"],
 ["SDSH-EN012","Common","1st Edition",0.72,208962,72989439,"Black Luster Soldier - Envoy of the Beginning"],
 ["SDSH-EN012","Common","Unlimited",0.93,208962,72989439,"Black Luster Soldier - Envoy of the Beginning"],
-["SDSH-EN013","Common","1st Edition",1.78,208963,102380,"Lava Golem"],
+["SDSH-EN013","Common","1st Edition",1.8,208963,102380,"Lava Golem"],
 ["SDSH-EN013","Common","Unlimited",1.12,208963,102380,"Lava Golem"],
-["SDSH-EN014","Common","1st Edition",0.36,208964,65192027,"Dark Armed Dragon"],
+["SDSH-EN014","Common","1st Edition",0.37,208964,65192027,"Dark Armed Dragon"],
 ["SDSH-EN014","Common","Unlimited",0.37,208964,65192027,"Dark Armed Dragon"],
 ["SDSH-EN015","Common","1st Edition",0.16,208965,42921475,"Fairy Tail - Sleeper"],
 ["SDSH-EN015","Common","Unlimited",0.6,208965,42921475,"Fairy Tail - Sleeper"],
@@ -57,7 +57,7 @@
 ["SDSH-EN028","Common","Unlimited",0.21,208991,1475311,"Allure of Darkness"],
 ["SDSH-EN029","Common","1st Edition",0.24,208992,81439173,"Foolish Burial"],
 ["SDSH-EN029","Common","Unlimited",0.22,208992,81439173,"Foolish Burial"],
-["SDSH-EN030","Common","1st Edition",0.22,208993,34959756,"Living Fossil"],
+["SDSH-EN030","Common","1st Edition",0.21,208993,34959756,"Living Fossil"],
 ["SDSH-EN030","Common","Unlimited",0.2,208993,34959756,"Living Fossil"],
 ["SDSH-EN031","Common","1st Edition",0.85,208994,67169062,"Pot of Avarice"],
 ["SDSH-EN031","Common","Unlimited",1.81,208994,67169062,"Pot of Avarice"],
@@ -87,7 +87,7 @@
 ["SDSH-EN043","Common","Unlimited",null,209006,19261966,"El Shaddoll Anoyatyllis"],
 ["SDSH-EN044","Common","1st Edition",0.24,209007,86938484,"Shaddoll Construct"],
 ["SDSH-EN044","Common","Unlimited",0.63,209007,86938484,"Shaddoll Construct"],
-["SDSH-EN045","Ultra Rare","1st Edition",0.34,209008,50907446,"El Shaddoll Apkallone"],
+["SDSH-EN045","Ultra Rare","1st Edition",0.35,209008,50907446,"El Shaddoll Apkallone"],
 ["SDSH-EN045","Ultra Rare","Unlimited",0.35,209008,50907446,"El Shaddoll Apkallone"],
 ["SDSH-EN046","Ultra Rare","1st Edition",0.21,209009,20366274,"El Shaddoll Construct"],
 ["SDSH-EN046","Ultra Rare","Unlimited",0.25,209009,20366274,"El Shaddoll Construct"],
@@ -96,5 +96,5 @@
 ["SDSH-EN048","Super Rare","1st Edition",0.33,209011,74822425,"El Shaddoll Shekhinaga"],
 ["SDSH-EN048","Super Rare","Unlimited",0.31,209011,74822425,"El Shaddoll Shekhinaga"],
 ["SDSH-EN049","Super Rare","1st Edition",0.63,209012,44394295,"Shaddoll Fusion"],
-["SDSH-EN049","Super Rare","Unlimited",1.43,209012,44394295,"Shaddoll Fusion"]
+["SDSH-EN049","Super Rare","Unlimited",1.24,209012,44394295,"Shaddoll Fusion"]
 ]
