@@ -4,26 +4,14 @@ import { MAX_CHAT_LENGTH } from '../../app/duel-games'
 import type { Duel, DuelSnapshot } from '../../app/duel-session'
 import { showRivalToast } from '../../app/use-toast-message'
 import { t } from '../../i18n'
-import { Button } from '../ui/Button'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { cx } from '../ui/cx'
 import { FieldBox, fieldInline } from '../ui/FieldBox'
 import { Heading } from '../ui/Heading'
 import { PLAYER_COLOR } from './player-color'
-
-/**
- * Las dos señales rápidas que tiene DuelingBook: "pensando" y "todo bien" (👍). Viajan como mensajes de chat (el rival las reconoce por el emoji, en cualquier idioma) y,
- * además, salen un instante como un globo junto a las vidas de quien las manda (ver `useSignals`).
- */
-const THINKING = '💭'
-const GOOD = '👍'
-export const thinkingMessage = () => `${THINKING} ${t('duel.signal.thinking')}`
-export const GOOD_MESSAGE = GOOD
-export const isSignal = (text: string) => text === GOOD || text.startsWith(THINKING)
-
-/** El único aviso más que las señales: pasar la respuesta. */
-const QUICK = ['pass'] as const
+import { ReactionButtons } from './ReactionButtons'
+import { isSignal } from './signals'
 
 /** Un mensaje que es sólo emojis se ve grande, como una reacción. */
 const onlyEmoji = (text: string) => /^[\p{Extended_Pictographic}\s]+$/u.test(text)
@@ -73,20 +61,8 @@ export function DuelChat({ snapshot, myName, onSend, fill = false }: DuelChatPro
       </ol>
 
       <div className="grid gap-2">
-        {/* Una sola fila que se desliza con el dedo; en escritorio, que tiene el panel ancho, se acomoda en varias. */}
-        <div role="group" aria-label={t('duel.chat.quickTitle')} className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] min-[1101px]:flex-wrap min-[1101px]:overflow-visible min-[1101px]:pb-0 [&>*]:shrink-0">
-          <Button variant="secondary" size="sm" disabled={!peerPresent} onClick={() => send(thinkingMessage())}>
-            {thinkingMessage()}
-          </Button>
-          <Button variant="secondary" size="sm" aria-label={t('duel.signal.good')} title={t('duel.signal.good')} disabled={!peerPresent} onClick={() => send(GOOD_MESSAGE)}>
-            {GOOD_MESSAGE}
-          </Button>
-          {QUICK.map((key) => (
-            <Button key={key} variant="secondary" size="sm" disabled={!peerPresent} onClick={() => send(t(`duel.chat.quick.${key}`))}>
-              {t(`duel.chat.quick.${key}`)}
-            </Button>
-          ))}
-        </div>
+        {/* Los dos mensajes rápidos, sólo con su emoji. */}
+        <ReactionButtons onSend={send} disabled={!peerPresent} />
 
         <form
           className="flex items-center gap-2"

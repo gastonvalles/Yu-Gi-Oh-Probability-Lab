@@ -214,7 +214,6 @@ export const duel: Translated<typeof es> = {
   'duel.chat.quickTitle': 'Quick messages',
   'duel.signal.thinking': 'Thinking…',
   'duel.signal.good': 'All good',
-  'duel.chat.quick.pass': 'Pass',
 
   // The turn and the rival's phases.
 
@@ -231,6 +230,7 @@ export const duel: Translated<typeof es> = {
   'duel.result.rematch': 'Rematch',
   'duel.result.rematchWaiting': 'Waiting for {name}…',
   'duel.result.rematchOffered': '{name} wants a rematch.',
+  'duel.turn.pass': 'Pass turn',
   'duel.turn.passHint': 'Pass the turn',
   'duel.turn.drew': 'Your turn started: you drew a card.',
 

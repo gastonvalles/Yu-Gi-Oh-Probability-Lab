@@ -24,8 +24,8 @@ import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
 import { CardMenu, PILE_TITLES, PileViewer } from '../probability/MatDialogs'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
-import { DuelBar, DuelLife, DuelTools } from './DuelBar'
-import { isSignal } from './DuelChat'
+import { DuelBar, DuelChatToggle, DuelLife, DuelTools } from './DuelBar'
+import { isSignal } from './signals'
 import { DuelChat } from './DuelChat'
 import { DuelChatPanel } from './DuelChat'
 import { DuelPause } from './DuelPause'
@@ -953,7 +953,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       ) : result !== null && !resultClosed ? (
         <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={duel.rematch} onLeave={onLeave} onClose={() => setResultClosed(true)} />
       ) : undefined,
-      header: <DuelBar snapshot={snapshot} status={status} turn={turn} theirHand={<TheirHand count={opponent.handCount ?? 0} marked={snapshot.marks.theirs.piles.includes('hand')} onMark={(rect) => openMark({ pile: 'hand' }, rect, PILE_TITLES.hand)} />} onToggleClock={duel.toggleClock} onRematch={duel.rematch} onLeave={onLeave} onConcede={duel.concede} onReconnect={duel.reconnect} onSignal={docked ? undefined : duel.sendChat} resultOpen={resultOpen} rivalSignal={signals.theirs} />,
+      header: <DuelBar snapshot={snapshot} status={status} turn={turn} theirHand={<TheirHand count={opponent.handCount ?? 0} marked={snapshot.marks.theirs.piles.includes('hand')} onMark={(rect) => openMark({ pile: 'hand' }, rect, PILE_TITLES.hand)} />} onToggleClock={duel.toggleClock} onRematch={duel.rematch} onLeave={onLeave} onConcede={duel.concede} onReconnect={duel.reconnect} chat={docked ? undefined : <DuelChatToggle snapshot={snapshot} myName={myName} onSendChat={duel.sendChat} />} resultOpen={resultOpen} rivalSignal={signals.theirs} />,
     }),
     [opponent, snapshot, status, myName, turn, duel, onLeave, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, openMark],
   )
