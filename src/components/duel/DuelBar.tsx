@@ -159,6 +159,7 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
         title={t('duel.bar.concedeTitle')}
         description={t('duel.bar.concedeText', { name: rivalName })}
         confirmLabel={t('duel.bar.concede')}
+        cancelLabel={t('duel.bar.keepPlaying')}
         confirmColor="danger"
         onCancel={() => setConceding(false)}
         onConfirm={() => {
@@ -171,7 +172,8 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
         isOpen={leaving}
         title={t('duel.bar.leaveTitle')}
         description={t('duel.bar.leaveText')}
-        confirmLabel={t('duel.bar.leave')}
+        confirmLabel={t('duel.bar.leaveConfirm')}
+        cancelLabel={t('duel.bar.keepPlaying')}
         confirmColor="danger"
         onCancel={() => setLeaving(false)}
         onConfirm={() => {
