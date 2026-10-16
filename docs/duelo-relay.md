@@ -28,7 +28,7 @@ En **Windows**, si falla con `SQLITE_CANTOPEN`, es el límite de 260 caracteres 
 Con el relay levantado, la prueba de integración (no corre en el CI) juega un duelo completo con una caída de la conexión y prueba a los espectadores (el límite de dos, que no puedan mandar, las etiquetas, el pedido de estado y los topes de entradas y de pedidos):
 
 ```bash
-VITE_DUEL_RELAY_URL=ws://127.0.0.1:8788 npm test -- duel-relay.e2e
+DUEL_RELAY_E2E_URL=ws://127.0.0.1:8788 npm test -- duel-relay.e2e
 ```
 
 ## Publicarlo (lo hacés vos, con tu cuenta de Cloudflare)

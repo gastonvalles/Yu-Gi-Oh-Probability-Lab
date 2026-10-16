@@ -1,5 +1,7 @@
 // Prueba de integración contra un relay REAL. Sólo corre si se le pasa la dirección (en el CI se omite):
-//   VITE_DUEL_RELAY_URL=ws://127.0.0.1:8788 npm test -- duel-relay.e2e
+//   DUEL_RELAY_E2E_URL=ws://127.0.0.1:8788 npm test -- duel-relay.e2e
+// No usa `VITE_DUEL_RELAY_URL` a propósito: esa variable vive en el `.env.local` de quien desarrolla el duelo, y con ella un `npm test` común intentaría
+// conectarse a un relay que puede no estar levantado.
 // con el relay levantado aparte (cd duel-relay && npx wrangler dev; ver docs/duelo-relay.md).
 import { beforeAll, describe as rawDescribe, expect, it } from 'vitest'
 
@@ -9,7 +11,7 @@ import { createSocketTransport, type SocketLike } from '../app/duel-socket'
 import { mapMatIds, openPublic } from '../app/mat-public'
 import { createMatState } from '../app/practice-mat'
 
-const RELAY = import.meta.env.VITE_DUEL_RELAY_URL ?? ''
+const RELAY = process.env.DUEL_RELAY_E2E_URL ?? ''
 const ORIGIN = 'http://localhost:5173'
 // Por internet cada conexión tarda cientos de milisegundos (y la primera de una sala, más): los tiempos son de red real, no de laboratorio.
 const describe = (name: string, body: () => void) => rawDescribe.skipIf(!RELAY)(name, { timeout: 30_000 }, body)

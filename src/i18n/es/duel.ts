@@ -55,6 +55,14 @@ export const duel = {
   'duel.lobby.createHint': 'Elegís si jugás solo o contra alguien, y el tiempo del reloj.',
 
   // Crear una sala: jugar solo o 1 vs 1.
+  'duel.watchRoom.open': 'Mirar un duelo',
+  'duel.watchRoom.title': 'Mirar un duelo',
+  'duel.watchRoom.link': 'Pegá el enlace del duelo',
+  'duel.watchRoom.placeholder': 'https://…',
+  'duel.watchRoom.paste': 'Pegar desde el portapapeles',
+  'duel.watchRoom.hint': 'Mirás la mesa en vivo, sin poder hacer nada. Pueden mirar hasta 2 personas por duelo.',
+  'duel.watchRoom.cancel': 'Cancelar',
+  'duel.watchRoom.start': 'Mirar el duelo',
   'duel.create.title': 'Crear sala',
   'duel.create.back': 'Volver al inicio del duelo',
   'duel.create.mode': 'Cómo querés jugar',

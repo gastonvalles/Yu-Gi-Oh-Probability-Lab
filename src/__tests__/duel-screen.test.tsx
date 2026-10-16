@@ -1607,6 +1607,34 @@ describe('la pantalla del duelo', () => {
     expect(within(screen.getAllByRole('dialog').at(-1)!).queryByRole('textbox')).not.toBeInTheDocument()
   })
 
+  it('Mirar un duelo: una pantalla propia donde se pega el enlace o el código y se entra de espectador, sin deck', () => {
+    const view = render(<DuelScreen {...screenProps({ mainIds: [], extraIds: [], cardsById: new Map() })} />)
+
+    click(view, 'Mirar un duelo')
+    expect(within(view.container).getByRole('heading', { name: 'Mirar un duelo' })).toBeInTheDocument()
+    expect(within(view.container).getByRole('button', { name: 'Mirar el duelo' })).toBeDisabled()
+
+    // Algo que no es un enlace se dice y no entra a ningún lado.
+    typeInto(view, 'Pegá el enlace del duelo', 'hola')
+    click(view, 'Mirar el duelo')
+    expect(within(view.container).getByRole('alert')).toHaveTextContent(/no parece un código de duelo/)
+    expect(window.location.hash).toBe('#duel')
+
+    // Un enlace común también entra a mirar (esta pantalla no es para jugar).
+    typeInto(view, 'Pegá el enlace del duelo', 'http://x.test/#duel?room=K7QF2M9X')
+    click(view, 'Mirar el duelo')
+    expect(window.location.hash).toBe('#duel?room=K7QF2M9X&watch=1')
+  })
+
+  it('Mirar un duelo se puede cancelar y vuelve al inicio del duelo', () => {
+    const view = render(<DuelScreen {...screenProps()} />)
+
+    click(view, 'Mirar un duelo')
+    click(view, 'Cancelar')
+
+    expect(within(view.container).getByRole('button', { name: 'Crear una sala' })).toBeInTheDocument()
+  })
+
   it('pegar un enlace para mirar entra de espectador aunque no haya deck, y uno común sigue pidiéndolo', () => {
     window.history.replaceState(null, '', '#duel')
     const view = render(<DuelScreen {...screenProps({ mainIds: [], extraIds: [], cardsById: new Map() })} />)

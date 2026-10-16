@@ -459,6 +459,7 @@ interface DuelLobbyProps {
 
 function DuelLobby({ name, onName, builder, imported, onImport, deckReady, deckSize, minDeck, onCreate, onPlaySolo, soloReady, rooms, onJoin, paused, onResume, onDropPaused }: DuelLobbyProps) {
   const [creating, setCreating] = useState(false)
+  const [watching, setWatching] = useState(false)
   const [code, setCode] = useState('')
   const [invalid, setInvalid] = useState(false)
 
@@ -470,6 +471,10 @@ function DuelLobby({ name, onName, builder, imported, onImport, deckReady, deckS
     } else {
       setInvalid(true)
     }
+  }
+
+  if (watching) {
+    return <WatchRoom onBack={() => setWatching(false)} onWatch={(room) => onJoin(room, true)} />
   }
 
   if (creating) {
@@ -547,6 +552,97 @@ function DuelLobby({ name, onName, builder, imported, onImport, deckReady, deckS
           {invalid ? t('duel.lobby.joinInvalid') : t('duel.lobby.joinHint')}
         </p>
       </div>
+
+      <Button variant="tertiary" icon="eye" onClick={() => setWatching(true)}>
+        {t('duel.watchRoom.open')}
+      </Button>
+    </Screen>
+  )
+}
+
+interface WatchRoomProps {
+  onBack: () => void
+  /** Entrar a mirar la sala del enlace (o el código) pegado. */
+  onWatch: (room: string) => void
+}
+
+/** Mirar un duelo: se pega el enlace (o el código) de una sala y se entra de espectador, sin deck ni nombre. La mesa se ve en vivo y no se puede tocar nada. */
+function WatchRoom({ onBack, onWatch }: WatchRoomProps) {
+  const [link, setLink] = useState('')
+  const [invalid, setInvalid] = useState(false)
+  const canPaste = typeof navigator !== 'undefined' && typeof navigator.clipboard?.readText === 'function'
+
+  const watch = () => {
+    const room = extractRoomCode(link)
+
+    if (room) {
+      onWatch(room)
+    } else {
+      setInvalid(true)
+    }
+  }
+
+  const paste = () => {
+    void navigator.clipboard
+      .readText()
+      .then((text) => {
+        setLink(text)
+        setInvalid(false)
+      })
+      .catch(() => undefined)
+  }
+
+  return (
+    <Screen>
+      <div className="flex items-center gap-2">
+        <IconButton tone="raised" size="md" aria-label={t('duel.create.back')} title={t('duel.create.back')} onClick={onBack}>
+          <Icon name="undo" size={18} />
+        </IconButton>
+        <Heading level="section">{t('duel.watchRoom.title')}</Heading>
+      </div>
+
+      <form
+        className="grid gap-4"
+        onSubmit={(event) => {
+          event.preventDefault()
+          watch()
+        }}
+      >
+        <div className="grid gap-1.5">
+          <span className="text-micro font-semibold uppercase text-soft">{t('duel.watchRoom.link')}</span>
+          <div className="flex items-center gap-2">
+            <FieldBox className="min-w-0 flex-1">
+              <input
+                aria-label={t('duel.watchRoom.link')}
+                placeholder={t('duel.watchRoom.placeholder')}
+                value={link}
+                onChange={(event) => {
+                  setLink(event.target.value)
+                  setInvalid(false)
+                }}
+                className={fieldInline}
+              />
+            </FieldBox>
+            {canPaste ? (
+              <IconButton type="button" tone="raised" size="md" aria-label={t('duel.watchRoom.paste')} title={t('duel.watchRoom.paste')} onClick={paste}>
+                <Icon name="file" size={18} />
+              </IconButton>
+            ) : null}
+          </div>
+          <p className={invalid ? 'm-0 text-micro text-danger' : 'm-0 text-micro text-soft'} role={invalid ? 'alert' : undefined}>
+            {invalid ? t('duel.lobby.joinInvalid') : t('duel.watchRoom.hint')}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button variant="tertiary" onClick={onBack}>
+            {t('duel.watchRoom.cancel')}
+          </Button>
+          <Button type="submit" variant="primary" icon="eye" disabled={link.trim() === ''}>
+            {t('duel.watchRoom.start')}
+          </Button>
+        </div>
+      </form>
     </Screen>
   )
 }
