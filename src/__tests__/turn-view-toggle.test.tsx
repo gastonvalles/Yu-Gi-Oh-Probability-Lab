@@ -97,15 +97,46 @@ describe('TurnViewToggle (isolation)', () => {
 
 describe('LabScoreCard', () => {
   it('muestra el KPI de la vista activa y, en promedio, el detalle por turno', () => {
-    const { rerender } = render(<LabScoreCard results={RESULTS} view="average" isRecalculating={false} />)
+    const { rerender } = render(<LabScoreCard results={RESULTS} view="average" isRecalculating={false} handSize={5} onOpenDisclaimer={() => {}} />)
 
     expect(screen.getByText('57.0%')).toBeInTheDocument()
     expect(screen.getByText('41.0%')).toBeInTheDocument()
     expect(screen.getByText('73.0%')).toBeInTheDocument()
 
-    rerender(<LabScoreCard results={RESULTS} view="second" isRecalculating={false} />)
+    rerender(<LabScoreCard results={RESULTS} view="second" isRecalculating={false} handSize={5} onOpenDisclaimer={() => {}} />)
     expect(screen.getAllByText('73.0%').length).toBeGreaterThan(0)
     expect(screen.getByRole('meter', { name: /^Manos limpias: 73\.0%/ })).toHaveAttribute('aria-valuenow', '73')
+  })
+})
+
+describe('la ficha «Cómo se calcula» del resultado', () => {
+  it('se abre con la ⓘ y cuenta las manos de cada turno, el promedio y lo que el número no dice', () => {
+    render(<LabScoreCard results={RESULTS} view="average" isRecalculating={false} handSize={5} onOpenDisclaimer={() => {}} />)
+
+    expect(screen.queryByRole('dialog', { name: 'Cómo se calcula' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Cómo se calcula: abrir la ficha' }))
+
+    const sheet = screen.getByRole('dialog', { name: 'Cómo se calcula' })
+    expect(sheet).toHaveTextContent('Una mano buena')
+    expect(sheet).toHaveTextContent('Yendo 1º · mano de 5')
+    expect(sheet).toHaveTextContent('Yendo 2º · mano de 6')
+    expect(sheet).toHaveTextContent('Promedio · la media de las dos')
+    expect(sheet).toHaveTextContent('57.0%')
+    expect(sheet).toHaveTextContent('Lo que no dice')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }))
+    expect(screen.queryByRole('dialog', { name: 'Cómo se calcula' })).not.toBeInTheDocument()
+  })
+
+  it('«Cómo leer estos porcentajes» cierra la ficha y abre el aviso', () => {
+    const onOpenDisclaimer = vi.fn()
+
+    render(<LabScoreCard results={RESULTS} view="average" isRecalculating={false} handSize={5} onOpenDisclaimer={onOpenDisclaimer} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Cómo se calcula: abrir la ficha' }))
+    fireEvent.click(screen.getByRole('button', { name: /Cómo leer estos porcentajes/ }))
+
+    expect(onOpenDisclaimer).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('dialog', { name: 'Cómo se calcula' })).not.toBeInTheDocument()
   })
 })
 

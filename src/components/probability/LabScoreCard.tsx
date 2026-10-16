@@ -1,11 +1,16 @@
+import { useState } from 'react'
+
 import type { LabResults } from '../../app/probability-lab'
 import { formatInteger, formatShortPercent, formatWholePercent } from '../../app/utils'
 import { t } from '../../i18n'
 import type { TurnView } from '../../types'
 import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
+import { Icon } from '../ui/Icon'
+import { IconButton } from '../ui/IconButton'
 import { ProgressRing } from '../ui/ProgressRing'
 import { overline } from '../ui/typography'
+import { LabScoreSheet } from './LabScoreSheet'
 import {
   KPI_THRESHOLDS,
   KPI_TONE,
@@ -18,13 +23,18 @@ interface LabScoreCardProps {
   results: LabResults
   view: TurnView
   isRecalculating: boolean
+  /** Las cartas de la mano yendo primero: la ficha cuenta las manos de cada turno. */
+  handSize: number
+  /** Abre el aviso de cómo leer los porcentajes (desde la ficha). */
+  onOpenDisclaimer: () => void
 }
 
 /** Las marcas del anillo son los cortes de la nota (40 %, 60 %, 85 %). */
 const THRESHOLD_TICKS = KPI_THRESHOLDS.map((threshold) => threshold.value)
 
 /** El resultado principal: % de manos limpias en un anillo grande, su nota (con color) y el detalle por turno. */
-export function LabScoreCard({ results, view, isRecalculating }: LabScoreCardProps) {
+export function LabScoreCard({ results, view, isRecalculating, handSize, onOpenDisclaimer }: LabScoreCardProps) {
+  const [sheetOpen, setSheetOpen] = useState(false)
   const current = results[view]
   const kpi = getKpiTone(current.cleanProbability)
   const tone = KPI_TONE[kpi]
@@ -36,7 +46,12 @@ export function LabScoreCard({ results, view, isRecalculating }: LabScoreCardPro
       className="order-1 grid content-start gap-5 transition-opacity duration-150 aria-busy:opacity-75 min-[1101px]:col-span-5 min-[1101px]:col-start-1"
       aria-busy={isRecalculating}
     >
-      <p className={cx('m-0', overline)}>{t('lab.score.overline')}</p>
+      <div className="flex items-start justify-between gap-2">
+        <p className={cx('m-0', overline)}>{t('lab.score.overline')}</p>
+        <IconButton tone="close" size="sm" className="-m-1.5 shrink-0" aria-label={t('lab.sheet.open')} title={t('lab.sheet.open')} onClick={() => setSheetOpen(true)}>
+          <Icon name="info" />
+        </IconButton>
+      </div>
 
       <div className="grid justify-items-center gap-5 min-[520px]:grid-cols-[auto_minmax(0,1fr)] min-[520px]:items-center min-[520px]:justify-items-start">
         <ProgressRing
@@ -66,6 +81,7 @@ export function LabScoreCard({ results, view, isRecalculating }: LabScoreCardPro
           </>
         )}
       </dl>
+      <LabScoreSheet isOpen={sheetOpen} onClose={() => setSheetOpen(false)} results={results} handSize={handSize} onOpenDisclaimer={onOpenDisclaimer} />
     </Card>
   )
 }

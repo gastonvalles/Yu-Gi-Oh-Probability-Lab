@@ -269,7 +269,7 @@ export function ProbabilityPanel({
           </div>
 
           {/* Desktop: resultado y reparto lado a lado (misma altura); roles y reglas a lo ancho. */}
-          <LabScoreCard results={results} view={activeTurnView} isRecalculating={lab.isStale} />
+          <LabScoreCard results={results} view={activeTurnView} isRecalculating={lab.isStale} handSize={handSize} onOpenDisclaimer={disclaimer.open} />
           <LabFailureBreakdown result={currentResult} />
           <LabSuggestion deckFormat={deckFormat} cards={derivedMainCards} checks={lab.allChecks} handSize={handSize} view={activeTurnView} result={currentResult} first={results.first} second={results.second} />
           <LabRoleDistribution
