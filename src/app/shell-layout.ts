@@ -7,8 +7,18 @@ export const SIDEBAR_PX = { expanded: 240, collapsed: 76 } as const
 const DESKTOP_MIN_PX = 1101
 /** Sin haber elegido todavía, en una ventana más angosta que esto el menú arranca contraído: las pantallas no quedan apretadas. */
 const COMPACT_BELOW_PX = 1400
-/** La barra de abajo del celular (`MobileTabBar`: 4 rem, sin contar el borde seguro del teléfono). */
+/** La barra de abajo del celular (`MobileTabBar`: 4 rem, sin contar el borde seguro del teléfono): 64 px con la letra de siempre. */
 export const TAB_BAR_PX = 64
+const TAB_BAR_REM = 4
+
+/** Lo que mide la barra de abajo ahora: 4 rem, así que crece con la letra del navegador agrandada (sin ventana, o sin un tamaño legible, vale `TAB_BAR_PX`). */
+export function tabBarPx(): number {
+  if (typeof window === 'undefined') return TAB_BAR_PX
+
+  const rem = Number.parseFloat(window.getComputedStyle(document.documentElement).fontSize)
+
+  return Number.isFinite(rem) && rem > 0 ? Math.round(TAB_BAR_REM * rem) : TAB_BAR_PX
+}
 /** Lo que ocupa el pie abajo en escritorio (su alto, con un respiro). */
 const FOOTER_RESERVE_PX = 64
 const SIDEBAR_KEY = 'ygo-lab:sidebar-collapsed'
@@ -45,7 +55,7 @@ export const NO_SHELL_INSETS: ShellInsets = { left: 0, bottom: 0 }
 export function shellInsetsFor(collapsed: boolean, desktop: boolean, tabBar = true): ShellInsets {
   if (desktop) return { left: collapsed ? SIDEBAR_PX.collapsed : SIDEBAR_PX.expanded, bottom: FOOTER_RESERVE_PX }
 
-  return tabBar ? { left: 0, bottom: TAB_BAR_PX } : NO_SHELL_INSETS
+  return tabBar ? { left: 0, bottom: tabBarPx() } : NO_SHELL_INSETS
 }
 
 // Arranca ya con lo que va a ocupar al dibujarse (no hay que esperar a que el armazón avise): así los botones flotantes y la mascota
