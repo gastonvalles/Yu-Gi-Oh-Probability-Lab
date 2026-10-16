@@ -16,10 +16,12 @@ import { Modal } from '../ui/Modal'
 import { SideDrawer } from '../ui/SideDrawer'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { DuelChat, useChatUnread } from './DuelChat'
+import type { FeedEntry } from './use-duel-feed'
 import { DuelGames, type GameActions } from './DuelGames'
 import { ResultStrip } from './DuelResult'
 import { PLAYER_COLOR, type PlayerSide } from './player-color'
 import { ReactionButtons } from './ReactionButtons'
+import { isSignal } from './signals'
 
 /** Un reloj de pared que se actualiza cada `ms` (el reloj de la ronda se calcula contra él). */
 function useTick(ms: number): number {
@@ -54,6 +56,8 @@ interface DuelBarProps {
   onConcede: () => void
   /** El botón del chat (sólo en el celular, donde no está a la vista): a la derecha de la fila del turno. En escritorio el chat está fijo y no se pasa. */
   chat?: ReactNode
+  /** La línea del registro (sólo en el celular): lo último que pasó; tocarla abre el chat con el registro. */
+  log?: ReactNode
   /** Volver a conectarme a la sala ya: lo toca cualquiera de los dos si el duelo quedó en pausa por un aviso que no llegó, y el relay vuelve a decirle a cada uno si el otro está. */
   onReconnect: () => void
   /** La tarjeta del resultado está abierta sobre la mesa: la línea de arriba no la repite. */
@@ -67,7 +71,7 @@ interface DuelBarProps {
  * el turno con la fase en que va quien juega, y cómo va la conexión. Lo propio (tus puntos de vida, el chat, los dados, deshacer) está abajo, al alcance
  * del pulgar. Salir pide confirmación y queda en la esquina de arriba, lejos de donde se toca jugando.
  */
-export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRematch, onLeave, onConcede, onReconnect, chat, resultOpen = false, rivalSignal = null }: DuelBarProps) {
+export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRematch, onLeave, onConcede, onReconnect, chat, log, resultOpen = false, rivalSignal = null }: DuelBarProps) {
   const now = useTick(1000)
   const [leaving, setLeaving] = useState(false)
   const [conceding, setConceding] = useState(false)
@@ -130,6 +134,8 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
       </div>
 
       <div className="order-3 flex basis-full justify-center min-[1101px]:absolute min-[1101px]:left-1/2 min-[1101px]:top-1.5 min-[1101px]:basis-auto min-[1101px]:-translate-x-1/2">{theirHand}</div>
+
+      {log ? <div className="order-3 basis-full min-[1101px]:hidden">{log}</div> : null}
 
       {status !== 'open' ? (
         <Callout className="order-4 basis-full" tone="warning" icon="alert">{STATUS_TEXT[status]()}</Callout>
@@ -206,18 +212,23 @@ interface DuelChatToggleProps {
   snapshot: DuelSnapshot
   myName: string
   onSendChat: Duel['sendChat']
+  /** El registro del duelo mezclado con lo escrito. */
+  feed: readonly FeedEntry[]
+  /** Abierto o cerrado lo decide la pantalla: la línea del registro también lo abre. */
+  open: boolean
+  onOpen: () => void
+  onClose: () => void
 }
 
-/** El botón del chat del celular, con un contador de lo que no leíste, y el panel que se abre por la derecha. */
-export function DuelChatToggle({ snapshot, myName, onSendChat }: DuelChatToggleProps) {
-  const [chatOpen, setChatOpen] = useState(false)
-  const unread = useChatUnread(snapshot, chatOpen)
+/** El botón del chat del celular, con un contador de lo que no leíste, y el panel que se abre por la derecha (con el registro de jugadas). */
+export function DuelChatToggle({ snapshot, myName, onSendChat, feed, open, onOpen, onClose }: DuelChatToggleProps) {
+  const unread = useChatUnread(snapshot, open)
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
 
   return (
     <>
       <span className="relative">
-        <IconButton tone="flat" size="sm" aria-label={unread > 0 ? `${t('duel.chat.open')} (${t('duel.chat.unread', { count: unread })})` : t('duel.chat.open')} title={t('duel.chat.open')} onClick={() => setChatOpen(true)}>
+        <IconButton tone="flat" size="sm" aria-label={unread > 0 ? `${t('duel.chat.open')} (${t('duel.chat.unread', { count: unread })})` : t('duel.chat.open')} title={t('duel.chat.open')} onClick={onOpen}>
           <Icon name="chat" />
         </IconButton>
         {unread > 0 ? (
@@ -227,10 +238,49 @@ export function DuelChatToggle({ snapshot, myName, onSendChat }: DuelChatToggleP
         ) : null}
       </span>
 
-      <SideDrawer isOpen={chatOpen} onClose={() => setChatOpen(false)} title={t('duel.chat.title', { name: rivalName })}>
-        <DuelChat snapshot={snapshot} myName={myName} onSend={onSendChat} fill />
+      <SideDrawer isOpen={open} onClose={onClose} title={t('duel.chat.title', { name: rivalName })}>
+        <DuelChat snapshot={snapshot} myName={myName} onSend={onSendChat} feed={feed} fill />
       </SideDrawer>
     </>
+  )
+}
+
+interface DuelLogTickerProps {
+  snapshot: DuelSnapshot
+  myName: string
+  feed: readonly FeedEntry[]
+  onOpen: () => void
+}
+
+/**
+ * Las dos últimas líneas del registro (lo último que pasó, con el punto del color de quien lo hizo), sobre el campo en el celular. Tocarla abre el chat con el registro entero.
+ * Sin nada que mostrar no ocupa lugar.
+ */
+export function DuelLogTicker({ snapshot, myName, feed, onOpen }: DuelLogTickerProps) {
+  const rival = snapshot.peerName ?? t('duel.bar.rival')
+  const lines = feed
+    .flatMap((entry) => {
+      if (entry.kind === 'turn') return []
+      if (entry.kind === 'event') return [{ id: entry.id, side: entry.side, text: entry.text }]
+
+      return isSignal(entry.line.text) ? [] : [{ id: entry.id, side: entry.line.from === snapshot.me ? ('mine' as const) : ('theirs' as const), text: `${entry.line.from === snapshot.me ? myName : rival}: ${entry.line.text}` }]
+    })
+    .slice(-2)
+
+  if (lines.length === 0) return null
+
+  return (
+    <button type="button" aria-label={t('duel.log.open')} className="flex min-h-11 w-full min-w-0 cursor-pointer items-center gap-2 rounded-control px-1 text-left focus-visible:outline-none focus-visible:shadow-focus" onClick={onOpen}>
+      <span className="grid min-w-0 flex-1 gap-0.5">
+        {lines.map((line) => (
+          <span key={line.id} className="flex min-w-0 items-center gap-2 text-micro text-muted">
+            <i aria-hidden="true" className={cx('size-1.5 shrink-0 rounded-full', line.side === 'mine' ? 'bg-accent' : 'bg-info')} />
+            <span className="min-w-0 truncate">{line.text}</span>
+          </span>
+        ))}
+      </span>
+      <Icon name="chevrons-left" size={16} className="shrink-0 rotate-90 text-soft" />
+    </button>
   )
 }
 

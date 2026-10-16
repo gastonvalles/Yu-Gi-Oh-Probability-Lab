@@ -211,6 +211,8 @@ export const duel = {
 
   // El chat entre los dos.
   'duel.chat.open': 'Chat',
+  'duel.log.turn': 'Turno {turn} · {name}',
+  'duel.log.open': 'Abrir el registro de jugadas',
   'duel.chat.title': 'Chat con {name}',
   'duel.chat.empty': 'Escribile a tu rival para avisarle algo o decirle que podés responder.',
   'duel.chat.placeholder': 'Escribí un mensaje',

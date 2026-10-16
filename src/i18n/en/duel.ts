@@ -204,6 +204,8 @@ export const duel: Translated<typeof es> = {
   'duel.games.log.toss': '{name} chose {method} to decide who goes first',
 
   // The chat between the two.
+  'duel.log.turn': 'Turn {turn} · {name}',
+  'duel.log.open': 'Open the play log',
   'duel.chat.open': 'Chat',
   'duel.chat.title': 'Chat with {name}',
   'duel.chat.empty': 'Write to your rival to let them know something or that you can respond.',
