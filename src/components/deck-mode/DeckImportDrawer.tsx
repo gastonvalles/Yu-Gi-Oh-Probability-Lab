@@ -13,6 +13,8 @@ import {
   buildDeckImportPreviewFromJson,
   buildDeckImportPreviewFromYdk,
   getDeckImportFileKind,
+  isYdkeLink,
+  pastedDeckAsYdk,
   type DeckImportConflict,
   type DeckImportPreview,
   type ImportedDeckEntry,
@@ -64,7 +66,7 @@ interface DeckImportDrawerProps {
 }
 
 /** Cómo se trae la lista: un archivo (.txt, .json, .ydk) o el texto pegado. */
-type ImportMethod = 'file' | 'text'
+type ImportMethod = 'file' | 'text' | 'link'
 
 const FILE_ACCEPT = '.txt,.json,.ydk,application/json,text/plain'
 /** Una lista de deck pesa unos pocos KB: por encima de esto no es una lista y sólo trabaría la pestaña. */
@@ -195,7 +197,7 @@ export function DeckImportDrawer({
   const [isProcessing, setIsProcessing] = useState(false)
   const [isReplaceConfirmOpen, setIsReplaceConfirmOpen] = useState(false)
   const [isDragActive, setIsDragActive] = useState(false)
-  const [method, setMethod] = useState<ImportMethod>('file')
+  const [method, setMethod] = useState<ImportMethod>('text')
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const asideRef = useRef<HTMLElement | null>(null)
@@ -206,8 +208,9 @@ export function DeckImportDrawer({
   const applyButtonLabel =
     target === 'comparison' ? t('deck.import.apply.compare') : hasExistingDeck ? t('deck.import.apply.replace') : t('deck.import.apply.import')
   const methodOptions: ReadonlyArray<{ value: ImportMethod; label: string }> = [
-    { value: 'file', label: t('deck.import.method.file') },
     { value: 'text', label: t('deck.import.pasteText') },
+    { value: 'file', label: t('deck.import.method.file') },
+    { value: 'link', label: t('deck.import.method.link') },
   ]
 
   useEffect(() => {
@@ -218,7 +221,7 @@ export function DeckImportDrawer({
       setIsProcessing(false)
       setIsReplaceConfirmOpen(false)
       setIsDragActive(false)
-      setMethod('file')
+      setMethod('text')
       setSelectedFileName(null)
     }
   }, [isOpen])
@@ -265,17 +268,38 @@ export function DeckImportDrawer({
     keepFocus()
 
     try {
+      // Un enlace `ydke://` (o un `.ydk` pegado) trae números de carta: se lee como el archivo. Si el enlace está roto, se dice.
+      const asYdk = pastedDeckAsYdk(trimmedValue)
+
+      if (asYdk === null && isYdkeLink(trimmedValue)) {
+        setPreview(null)
+        setFormError(t('deck.import.error.ydke'))
+        return
+      }
+
       const cards = await loadCardCatalog()
-      const nextPreview = buildDeckImportPreview({
-        cards,
-        deckFormat,
-        deckName: deckBuilder.deckName,
-        text: trimmedValue,
-        source: {
-          kind: 'text',
-          label: t('deck.import.source.pastedManually'),
-        },
-      })
+      const nextPreview =
+        asYdk === null
+          ? buildDeckImportPreview({
+              cards,
+              deckFormat,
+              deckName: deckBuilder.deckName,
+              text: trimmedValue,
+              source: {
+                kind: 'text',
+                label: t('deck.import.source.pastedManually'),
+              },
+            })
+          : buildDeckImportPreviewFromYdk({
+              cards,
+              deckFormat,
+              deckName: deckBuilder.deckName,
+              text: asYdk,
+              source: {
+                kind: 'ydk',
+                label: isYdkeLink(trimmedValue) ? t('deck.import.source.link') : 'YDK',
+              },
+            })
 
       handlePreviewResult(nextPreview, {
         emptyMessage: t('deck.import.error.noList'),
@@ -536,7 +560,7 @@ export function DeckImportDrawer({
                   ) : (
                     <div className="flex min-h-0 flex-1 flex-col gap-2.5">
                       <textarea
-                        aria-label={t('deck.import.listLabel')}
+                        aria-label={method === 'link' ? t('deck.import.linkLabel') : t('deck.import.listLabel')}
                         // Una lista real pesa unos pocos KB: el tope evita pegar un archivo gigante por error.
                         maxLength={MAX_IMPORT_TEXT_LENGTH}
                         value={inputValue}
@@ -545,11 +569,11 @@ export function DeckImportDrawer({
                           setPreview(null)
                           setFormError(null)
                         }}
-                        placeholder={'3 Ash Blossom & Joyous Spring\n3 Maxx "C"\n2 Called by the Grave\n\nExtra Deck:\n1 S:P Little Knight'}
-                        className={`${field} min-h-52 w-full flex-1 resize-none px-3 py-2 text-body leading-tight placeholder:text-soft`}
+                        placeholder={method === 'link' ? 'ydke://…' : '3 Ash Blossom & Joyous Spring\n3 Maxx "C"\n2 Called by the Grave\n\nExtra Deck:\n1 S:P Little Knight'}
+                        className={`${field} ${method === 'link' ? 'min-h-24' : 'min-h-52'} w-full flex-1 resize-none px-3 py-2 text-body leading-tight placeholder:text-soft`}
                       />
 
-                      <p className="m-0 text-micro text-soft">{t('deck.import.pasteHint')}</p>
+                      <p className="m-0 text-micro text-soft">{method === 'link' ? t('deck.import.linkHint') : t('deck.import.pasteHint')}</p>
 
                       <div className="flex flex-wrap items-center justify-end gap-2">
                         <Button

@@ -5,6 +5,7 @@ import { fromPortableConfig } from './app-state-codec'
 import { classifyCard, normalizeCardNameForLookup } from './classification-engine'
 import { getClassificationOverrides } from './classification-overrides'
 import { addSearchResultToZone, getAddSearchResultIssue } from './deck-builder'
+import { parseDuelDeck } from './duel-deck'
 import type { DeckBuilderState, DeckZone, PortableConfig } from './model'
 import { createInitialState } from './model'
 import { formatInteger, isRecord, normalizeSearchText } from './utils'
@@ -110,6 +111,25 @@ function parseYdk(text: string): { main: number[]; extra: number[]; side: number
   }
 
   return zones
+}
+
+/** ¿Es un enlace `ydke://`? (el que dan los simuladores y la extensión de Neuron). */
+export const isYdkeLink = (text: string) => /^ydke:\/\//i.test(text.trim())
+
+/**
+ * Lo pegado que en realidad es un deck por número de carta: un enlace `ydke://` o el contenido de un `.ydk` (`#main`, `#extra`, `!side`), devuelto como texto `.ydk`.
+ * `null` si es otra cosa (una lista por nombre) o si el enlace está roto.
+ */
+export function pastedDeckAsYdk(text: string): string | null {
+  const trimmed = text.trim()
+
+  if (isYdkeLink(trimmed)) {
+    const deck = parseDuelDeck(trimmed)
+
+    return deck ? ['#main', ...deck.main, '#extra', ...deck.extra, '!side', ...deck.side].join('\n') : null
+  }
+
+  return /^\s*#main\s*$/im.test(trimmed) ? trimmed : null
 }
 
 export function getDeckImportFileKind(fileName: string): DeckImportSourceKind | null {
