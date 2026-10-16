@@ -3,7 +3,6 @@ export const lab = {
   'lab.panel.title': 'Qué tan bien abre tu deck',
   'lab.panel.subtitle': 'Tus aperturas y problemas, con probabilidad exacta.',
   'lab.panel.quickCalculator': 'Calculadora rápida',
-  'lab.panel.howToRead': '¿Cómo leer estos %?',
   'lab.panel.emptyDeck.title': 'Cargá el Main Deck primero',
   'lab.panel.emptyDeck.body': 'Cuando tengas cartas en el Main Deck vas a ver el % de manos jugables y por qué fallan.',
   'lab.panel.calculating': 'Calculando las manos del deck',
@@ -42,7 +41,6 @@ export const lab = {
   'lab.kpi.good': 'Sólido',
   'lab.kpi.improvable': 'Mejorable',
   'lab.kpi.critical': 'Crítico',
-  'lab.handsOutOfTen': '{n} de cada 10 manos abren limpias',
   // "Pasa" cuando el sujeto es uno (una regla) y "Pasan" cuando son varios (manos): `count` elige el verbo.
   'lab.odds.almostAll': { one: 'Pasa en casi todas las manos{tail}.', other: 'Pasan en casi todas las manos{tail}.' },
   'lab.odds.most': { one: 'Pasa en {outOf} de cada 10 manos{tail}.', other: 'Pasan en {outOf} de cada 10 manos{tail}.' },
@@ -62,8 +60,10 @@ export const lab = {
   'lab.sheet.howToRead': 'Cómo leer estos porcentajes',
   'lab.score.overline': 'Manos jugables sin problemas',
   'lab.score.ringLabel': 'Manos limpias: {percent} ({tone})',
-  'lab.score.goingFirst': 'Yendo primero',
-  'lab.score.goingSecond': 'Yendo segundo',
+  'lab.score.outOf100': 'de cada 100 manos son buenas',
+  'lab.score.outOf100Hint': 'Arrancan y no se traban, según tus reglas.',
+  'lab.score.goingFirst': 'Yendo 1º',
+  'lab.score.goingSecond': 'Yendo 2º',
   'lab.score.possibleHands': 'Manos posibles',
   'lab.score.cleanHands': 'Manos limpias',
 

@@ -263,9 +263,6 @@ export function ProbabilityPanel({
               onChange={setActiveTurnView}
               details={{ first: formatCardCount(5), second: formatCardCount(6), average: '50/50' }}
             />
-            <Button variant="tertiary" size="sm" icon="info" onClick={disclaimer.open}>
-              {t('lab.panel.howToRead')}
-            </Button>
           </div>
 
           {/* Desktop: resultado y reparto lado a lado (misma altura); roles y reglas a lo ancho. */}
@@ -315,7 +312,7 @@ export function ProbabilityPanel({
         title={t('lab.panel.discard.title')}
       />
 
-      <LabDisclaimerDialog isOpen={disclaimer.isOpen} dismissible={disclaimer.isAcknowledged} onAcknowledge={disclaimer.acknowledge} />
+      <LabDisclaimerDialog isOpen={disclaimer.isOpen} onClose={disclaimer.close} />
 
       <QuickCalculator
         key={quickCalculator}
