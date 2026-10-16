@@ -20,6 +20,8 @@ export interface NavItem {
 export interface NavGroup {
   key: string
   label: string
+  /** El ícono del grupo en la barra de abajo del celular. */
+  icon: IconName
   items: NavItem[]
 }
 

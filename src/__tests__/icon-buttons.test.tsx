@@ -12,8 +12,8 @@ import { SocialLinks } from '../components/ui/SocialLinks'
 
 afterEach(cleanup)
 
-describe('los íconos blancos se ponen verdes al pasar el mouse y al seleccionarlos', () => {
-  it('un botón sin texto es blanco y sin fondo; verde al pasar el mouse y mientras está seleccionado, sea cual sea su forma', () => {
+describe('los íconos blancos se ponen violeta claro al pasar el mouse y al seleccionarlos', () => {
+  it('un botón sin texto es blanco y sin fondo; violeta claro al pasar el mouse y mientras está seleccionado, sea cual sea su forma', () => {
     render(
       <>
         {(['raised', 'close', 'ghost', 'flat', 'outline'] as const).map((tone) => (
@@ -26,10 +26,9 @@ describe('los íconos blancos se ponen verdes al pasar el mouse y al seleccionar
     )
 
     for (const button of screen.getAllByRole('button')) {
-      expect(button).toHaveClass('bg-transparent', 'text-white', 'hover:text-success', 'aria-pressed:text-success', 'data-[active=true]:text-success')
-      // El resplandor que acompaña al verde es verde, no blanco.
-      expect(button.className).toContain('hover:[&_svg]:drop-shadow-[0_0_6px_rgb(var(--success-rgb)/0.7)]')
-      expect(button.className).not.toContain('255_255_255')
+      expect(button).toHaveClass('bg-transparent', 'text-white', 'hover:text-accent', 'aria-pressed:text-accent', 'data-[active=true]:text-accent')
+      // Sin resplandor: el verde ya no es del hover y los brillos de adorno están fuera del sistema.
+      expect(button.className).not.toContain('drop-shadow')
     }
   })
 
@@ -44,7 +43,7 @@ describe('los íconos blancos se ponen verdes al pasar el mouse y al seleccionar
     expect(screen.getByRole('button', { name: 'reproducir' })).not.toHaveClass('text-white')
   })
 
-  it('las redes del pie y la ⓘ de las ayudas también: blancas, y verdes al pasar el mouse', () => {
+  it('las redes del pie y la ⓘ de las ayudas también: blancas, y violeta claro al pasar el mouse', () => {
     render(
       <>
         <SocialLinks />
@@ -53,10 +52,10 @@ describe('los íconos blancos se ponen verdes al pasar el mouse y al seleccionar
     )
 
     for (const link of screen.getAllByRole('link')) {
-      expect(link).toHaveClass('text-white', 'hover:text-success')
+      expect(link).toHaveClass('text-white', 'hover:text-accent')
     }
 
-    expect(screen.getByRole('button', { name: 'Ayuda' })).toHaveClass('text-white', 'hover:text-success', 'aria-expanded:text-success')
+    expect(screen.getByRole('button', { name: 'Ayuda' })).toHaveClass('text-white', 'hover:text-accent', 'aria-expanded:text-accent')
   })
 
   it('los destinos del menú: ícono y rótulo blancos; el ícono se pone ámbar al pasar el mouse, y el destino abierto va ámbar', () => {

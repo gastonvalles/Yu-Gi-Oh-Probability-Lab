@@ -25,7 +25,7 @@ const BASE =
 
 /** Lo común de los que van sin fondo: ícono blanco que se pone verde (con resplandor) al pasar el mouse o al estar seleccionado, más tenue al apretar o si está deshabilitado. */
 const BARE =
-  'bg-transparent text-white hover:text-success aria-pressed:text-success aria-selected:text-success data-[active=true]:text-success active:opacity-70 disabled:pointer-events-none disabled:opacity-40 [&_svg]:transition-[filter] [&_svg]:duration-150 hover:[&_svg]:drop-shadow-[0_0_6px_rgb(var(--success-rgb)/0.7)] aria-pressed:[&_svg]:drop-shadow-[0_0_6px_rgb(var(--success-rgb)/0.7)] data-[active=true]:[&_svg]:drop-shadow-[0_0_6px_rgb(var(--success-rgb)/0.7)]'
+  'bg-transparent text-white hover:text-accent aria-pressed:text-accent aria-selected:text-accent data-[active=true]:text-accent active:opacity-70 disabled:pointer-events-none disabled:opacity-40'
 
 const SIZES: Record<IconButtonTone, Record<IconButtonSize, string>> = {
   raised: { sm: 'size-9 [&_svg]:size-4', md: 'size-10 [&_svg]:size-[1.125rem]', lg: 'size-11 [&_svg]:size-5' },

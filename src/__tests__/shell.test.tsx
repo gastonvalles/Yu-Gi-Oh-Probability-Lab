@@ -9,6 +9,8 @@ import { buildAppNavGroups, buildDeckWorkflowNavigationItems, isDeckWorkflowStep
 import { AppFooter } from '../components/shell/AppFooter'
 import { AppShell } from '../components/shell/AppShell'
 import { AppSidebar } from '../components/shell/AppSidebar'
+import { GroupSheet } from '../components/shell/GroupSheet'
+import { MobileTabBar } from '../components/shell/MobileTabBar'
 import { MobileTopBar } from '../components/shell/MobileTopBar'
 import { NavDrawer } from '../components/shell/NavDrawer'
 import { SidebarNav } from '../components/shell/SidebarNav'
@@ -122,16 +124,20 @@ describe('el menú lateral', () => {
   })
 })
 
-describe('el cajón del celular', () => {
-  it('cerrado no existe; abierto es un diálogo con el mismo menú, enfoca adentro y se cierra con Escape, con el velo y con la X', () => {
+describe('el cajón de ajustes del celular', () => {
+  it('cerrado no existe; abierto es un diálogo con idioma, copia de seguridad y lo legal, enfoca adentro y se cierra con Escape, con el velo y con la X', () => {
     const onClose = vi.fn()
-    const { rerender } = render(<NavDrawer isOpen={false} onClose={onClose} onSelect={() => {}} groups={GROUPS} activeKey="export" />)
+    const { rerender } = render(<NavDrawer isOpen={false} onClose={onClose} />)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
-    rerender(<NavDrawer isOpen onClose={onClose} onSelect={() => {}} groups={GROUPS} activeKey="export" />)
-    const dialog = screen.getByRole('dialog', { name: 'Navegación principal' })
+    rerender(<NavDrawer isOpen onClose={onClose} />)
+    const dialog = screen.getByRole('dialog', { name: 'Ajustes' })
     expect(dialog).toHaveAttribute('aria-modal', 'true')
-    expect(within(dialog).getByRole('button', { name: /^Exportar deck/ })).toHaveAttribute('aria-current', 'page')
+    expect(within(dialog).getByRole('group', { name: 'Idioma' })).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Descargar copia' })).toBeInTheDocument()
+    expect(within(dialog).getByRole('link', { name: 'Privacidad y aviso legal' })).toBeInTheDocument()
+    // El menú de destinos ya no vive acá: está en la barra de abajo.
+    expect(within(dialog).queryByRole('button', { name: /^Exportar deck/ })).not.toBeInTheDocument()
     expect(dialog).toContainElement(document.activeElement as HTMLElement)
 
     fireEvent.keyDown(window, { key: 'Escape' })
@@ -142,14 +148,42 @@ describe('el cajón del celular', () => {
     expect(onClose).toHaveBeenCalledTimes(3)
   })
 
-  it('elegir un destino avisa cuál y cierra el cajón', () => {
+})
+
+describe('la barra de abajo del celular y su hoja', () => {
+  it('lleva un botón por grupo, marca en ámbar el del destino abierto y avisa cuál se abrió', () => {
+    const onOpen = vi.fn()
+    render(<MobileTabBar groups={GROUPS} activeKey="export" openKey={null} onOpen={onOpen} />)
+
+    const bar = screen.getByRole('navigation', { name: 'Navegación principal' })
+    expect(within(bar).getAllByRole('button').map((button) => button.textContent)).toEqual(['Tu deck', 'Duelo', 'Herramientas', 'Descubrir'])
+    expect(within(bar).getByRole('button', { name: 'Tu deck' })).toHaveClass('text-nav-active')
+    expect(within(bar).getByRole('button', { name: 'Descubrir' })).toHaveClass('text-foreground')
+
+    fireEvent.click(within(bar).getByRole('button', { name: 'Descubrir' }))
+    expect(onOpen).toHaveBeenCalledWith('discover')
+  })
+
+  it('la hoja cerrada no existe; abierta es un diálogo con las opciones del grupo, elegir una avisa cuál y se cierra con Escape y con el velo', () => {
     const onSelect = vi.fn()
     const onClose = vi.fn()
-    render(<NavDrawer isOpen onClose={onClose} onSelect={onSelect} groups={GROUPS} activeKey="export" />)
+    const discover = GROUPS.find((group) => group.key === 'discover') ?? null
+    const { rerender } = render(<GroupSheet group={null} activeKey="export" onSelect={onSelect} onClose={onClose} />)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /^Replays de torneo/ }))
-    expect(onSelect).toHaveBeenCalledWith('replays')
+    rerender(<GroupSheet group={discover} activeKey="replays" onSelect={onSelect} onClose={onClose} />)
+    const dialog = screen.getByRole('dialog', { name: 'Descubrir' })
+    expect(dialog).toHaveAttribute('aria-modal', 'true')
+    expect(within(dialog).getByRole('button', { name: /^Replays de torneo/ })).toHaveAttribute('aria-current', 'page')
+    expect(within(dialog).getByRole('button', { name: /^Replays de torneo/ })).toHaveClass('text-nav-active')
+
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Banlists/ }))
+    expect(onSelect).toHaveBeenCalledWith('banlists')
+
+    fireEvent.keyDown(window, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
+    fireEvent.click(dialog.previousElementSibling as HTMLElement)
+    expect(onClose).toHaveBeenCalledTimes(2)
   })
 })
 
@@ -204,7 +238,7 @@ describe('la barra de arriba, el pie y los títulos', () => {
 })
 
 describe('el armazón', () => {
-  it('lleva el contenido, el pie y el menú una sola vez; la hamburguesa abre el cajón y elegir cierra', () => {
+  it('lleva el contenido, el pie y el menú una sola vez; la hamburguesa abre los ajustes y la barra de abajo abre la hoja de un grupo: elegir cierra', () => {
     const onSelect = vi.fn()
     render(
       <AppShell groups={GROUPS} activeKey="categorization" onSelect={onSelect} contentScrollable>
@@ -214,11 +248,17 @@ describe('el armazón', () => {
 
     expect(screen.getByText('Contenido de la pantalla')).toBeInTheDocument()
     expect(screen.getAllByRole('contentinfo')).toHaveLength(1)
-    // El menú lateral y la barra de arriba están los dos en el DOM: el CSS muestra el que toca según el ancho.
-    expect(screen.getAllByRole('navigation', { name: 'Navegación principal' })).toHaveLength(1)
+    // El menú lateral y la barra de abajo están los dos en el DOM: el CSS muestra el que toca según el ancho.
+    expect(screen.getAllByRole('navigation', { name: 'Navegación principal' })).toHaveLength(2)
 
     fireEvent.click(screen.getByRole('button', { name: 'Abrir el menú' }))
-    const dialog = screen.getByRole('dialog', { name: 'Navegación principal' })
+    expect(screen.getByRole('dialog', { name: 'Ajustes' })).toBeInTheDocument()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    const bar = screen.getAllByRole('navigation', { name: 'Navegación principal' })[1]!
+    fireEvent.click(within(bar).getByRole('button', { name: 'Tu deck' }))
+    const dialog = screen.getByRole('dialog', { name: 'Tu deck' })
     fireEvent.click(within(dialog).getByRole('button', { name: /^Probability Lab/ }))
     expect(onSelect).toHaveBeenCalledWith('probability-lab')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()

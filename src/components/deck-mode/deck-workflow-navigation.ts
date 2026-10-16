@@ -193,10 +193,11 @@ export function buildAppNavGroups(steps: DeckModeNavigationItem[], tools: AppNav
   const pick = (...keys: DeckWorkflowStepKey[]): NavItem[] => keys.flatMap((key) => steps.filter((step) => step.key === key))
 
   return [
-    { key: 'deck', label: t('shell.nav.group.deck'), items: pick('deck-builder', 'categorization', 'probability-lab', 'workspace', 'export') },
+    { key: 'deck', label: t('shell.nav.group.deck'), icon: 'cards' as const, items: pick('deck-builder', 'categorization', 'probability-lab', 'workspace', 'export') },
     {
       key: 'duel',
       label: t('shell.nav.group.duel'),
+      icon: 'target' as const,
       items: [
         ...(tools.practice ? [{ key: 'practice', label: t('shell.practice.title'), title: t('shell.practice.title'), icon: 'hand' as const }] : []),
         ...(tools.duel ? [{ key: 'duel', label: t('duel.nav.title'), title: t('duel.nav.title'), icon: 'link' as const }] : []),
@@ -205,11 +206,12 @@ export function buildAppNavGroups(steps: DeckModeNavigationItem[], tools: AppNav
     {
       key: 'tools',
       label: t('shell.nav.group.tools'),
+      icon: 'sliders' as const,
       items: [
         { key: 'life', label: t('shell.life.title'), title: t('shell.life.title'), icon: 'heart' as const },
         { key: 'mascots', label: t('shell.mascot.title'), title: t('shell.mascot.title'), icon: 'paw' as const },
       ],
     },
-    { key: 'discover', label: t('shell.nav.group.discover'), items: pick('meta', 'tournaments', 'replays', 'expansions', 'banlists') },
+    { key: 'discover', label: t('shell.nav.group.discover'), icon: 'search' as const, items: pick('meta', 'tournaments', 'replays', 'expansions', 'banlists') },
   ].filter((group) => group.items.length > 0)
 }

@@ -2,6 +2,10 @@
 export const shell = {
   'shell.nav.main': 'Navegación principal',
   'shell.brand.unofficial': 'Sitio no oficial',
+  'shell.sheet.close': 'Cerrar',
+  'shell.settings.title': 'Ajustes',
+  'shell.settings.language': 'Idioma',
+  'shell.settings.about': 'Acerca de',
   'shell.nav.open': 'Abrir el menú',
   'shell.nav.close': 'Cerrar el menú',
   'shell.nav.collapse': 'Contraer menú',

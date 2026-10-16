@@ -5,8 +5,10 @@ import { ReplayBar, type ReplayMark, type ReplaySpeed } from '../../probability/
 import { AppFooter } from '../../shell/AppFooter'
 import { AppShell } from '../../shell/AppShell'
 import { AppSidebar } from '../../shell/AppSidebar'
-import { DrawerPanel, NavDrawer } from '../../shell/NavDrawer'
+import { GroupSheet } from '../../shell/GroupSheet'
+import { MobileTabBar } from '../../shell/MobileTabBar'
 import { MobileTopBar } from '../../shell/MobileTopBar'
+import { DrawerPanel, NavDrawer } from '../../shell/NavDrawer'
 import { Button } from '../../ui/Button'
 import { Card } from '../../ui/Card'
 import { StepHero } from '../../StepHero'
@@ -91,7 +93,7 @@ function DemoPage({ onExit }: { onExit: () => void }) {
   )
 }
 
-/** El menú (lateral en escritorio, cajón en el celular), la barra de arriba del celular y el pie: lo que arma `AppShell`. Todo sale de `src/components/shell/`. */
+/** El menú (lateral en escritorio; en el celular, la barra de abajo con sus hojas y el cajón de ajustes), la barra de arriba y el pie: lo que arma `AppShell`. Todo sale de `src/components/shell/`. */
 export function NavigationSection() {
   const groups = useMemo(
     () =>
@@ -104,11 +106,12 @@ export function NavigationSection() {
   const [active, setActive] = useState<string | null>('categorization')
   const [collapsed, setCollapsed] = useState(false)
   const [drawer, setDrawer] = useState(false)
+  const [sheetKey, setSheetKey] = useState<string | null>(null)
   const [shell, setShell] = useState(false)
 
   return (
     <div className="grid gap-4">
-      <Specimen title="Armazón completo" note={<>Prueba el <Tag>AppShell</Tag> a pantalla completa: menú lateral en escritorio, barra con hamburguesa y cajón en el celular (cambia con el ancho de la ventana, 1101 px). Archivo: <Tag>shell/AppShell.tsx</Tag></>}>
+      <Specimen title="Armazón completo" note={<>Prueba el <Tag>AppShell</Tag> a pantalla completa: menú lateral en escritorio; en el celular, barra de arriba con hamburguesa (cajón de ajustes) y barra de abajo con los cuatro grupos (cambia con el ancho de la ventana, 1101 px). Archivo: <Tag>shell/AppShell.tsx</Tag></>}>
         <Button variant="primary" icon="play" onClick={() => setShell(true)}>
           Probar el armazón
         </Button>
@@ -133,18 +136,35 @@ export function NavigationSection() {
           </div>
         </Specimen>
 
-        <Specimen title="Barra de arriba y cajón (celular)" layout="free" note={<>La hamburguesa abre el cajón, que lleva el mismo menú. Archivos: <Tag>shell/MobileTopBar.tsx</Tag> <Tag>shell/NavDrawer.tsx</Tag></>}>
+        <Specimen title="Barra de abajo y hoja (celular)" layout="free" note={<>Un botón por grupo; tocarlo abre una hoja con sus opciones y el grupo del destino abierto va en ámbar. Archivos: <Tag>shell/MobileTabBar.tsx</Tag> <Tag>shell/GroupSheet.tsx</Tag></>}>
+          <div className="grid gap-4">
+            <div className="w-full max-w-[23.4rem] overflow-hidden rounded-card border border-border-subtle">
+              <MobileTabBar groups={groups} activeKey={active} openKey={sheetKey} onOpen={setSheetKey} placement="inline" />
+            </div>
+            <GroupSheet
+              group={groups.find((group) => group.key === sheetKey) ?? null}
+              activeKey={active}
+              onClose={() => setSheetKey(null)}
+              onSelect={(key) => {
+                setActive(key)
+                setSheetKey(null)
+              }}
+            />
+          </div>
+        </Specimen>
+
+        <Specimen title="Barra de arriba y cajón de ajustes (celular)" layout="free" note={<>La hamburguesa abre el cajón: idioma, copia de seguridad y lo legal. Archivos: <Tag>shell/MobileTopBar.tsx</Tag> <Tag>shell/NavDrawer.tsx</Tag></>}>
           <div className="grid gap-4">
             <div className="w-full max-w-[23.4rem] overflow-hidden rounded-card border border-border-subtle">
               <MobileTopBar menuOpen={drawer} onMenu={() => setDrawer(true)} />
             </div>
             <div className="h-[34rem] w-full max-w-[20rem] overflow-hidden rounded-card border border-border-subtle">
-              <DrawerPanel groups={groups} activeKey={active} onSelect={setActive} onClose={() => {}} />
+              <DrawerPanel onClose={() => {}} />
             </div>
             <Button size="sm" onClick={() => setDrawer(true)}>
               Abrir el cajón de verdad
             </Button>
-            <NavDrawer isOpen={drawer} onClose={() => setDrawer(false)} groups={groups} activeKey={active} onSelect={setActive} />
+            <NavDrawer isOpen={drawer} onClose={() => setDrawer(false)} />
           </div>
         </Specimen>
       </SpecimenGrid>
