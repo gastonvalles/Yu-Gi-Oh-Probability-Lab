@@ -47,7 +47,6 @@ describe('lo que lee o elige la persona con las tablas de Genesys y Edison sin c
     expect(formatDataLoaded()).toBe(false)
 
     render(<DeckImportDrawer isOpen deckBuilder={EMPTY_DECK} deckFormat="unlimited" onApplyImport={onApplyImport} onClose={vi.fn()} />)
-    fireEvent.click(screen.getByRole('radio', { name: 'Archivo' }))
     fireEvent.change(document.querySelector('input[type="file"]') as HTMLInputElement, {
       target: { files: [new File([JSON.stringify(toPortableConfig(state))], 'Mi deck.json', { type: 'application/json' })] },
     })
