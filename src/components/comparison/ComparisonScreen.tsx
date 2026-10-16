@@ -22,6 +22,7 @@ import { StepHero } from '../StepHero'
 import { StepPage } from '../ui/StepPage'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { BuildBCardEditor } from './BuildBCardEditor'
+import { ComparisonOverview } from './ComparisonOverview'
 import { BuildNotes, VerdictLine, currentDeckName } from './ComparisonSummary'
 import { CompareStage } from './CompareStage'
 import { useSavedBuilds } from './use-saved-builds'
@@ -255,6 +256,7 @@ export function ComparisonScreen() {
               <BuildNotes side="A" build={comparison.a} canClassifyHere={!buildA.isSaved} />
               <BuildNotes side="B" build={comparison.b} canClassifyHere={!buildB.isSaved} />
               <VerdictLine comparison={comparison} />
+              <ComparisonOverview comparison={comparison} />
             </>
           ) : null}
 
