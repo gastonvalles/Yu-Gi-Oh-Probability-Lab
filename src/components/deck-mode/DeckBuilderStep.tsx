@@ -21,6 +21,7 @@ import { StepHero } from '../StepHero'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
+import { EmptyState } from '../ui/EmptyState'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Card } from '../ui/Card'
@@ -36,6 +37,8 @@ interface DeckBuilderStepProps {
   deckBuilder: DeckBuilderState
   /** Pasa al paso siguiente (Roles): el botón de abajo del celular. */
   onNextStep?: () => void
+  /** Va a los decks de torneo: la salida del deck vacío en el celular. */
+  onBrowseTournaments?: () => void
   deckFormat: DeckFormat
   formatIssues: string[]
   genesysPointTotal: number | null
@@ -99,6 +102,7 @@ const DECK_ZONE_ITEMS: Array<{
 export function DeckBuilderStep({
   deckBuilder,
   onNextStep,
+  onBrowseTournaments,
   deckFormat,
   formatIssues,
   genesysPointTotal,
@@ -486,6 +490,18 @@ export function DeckBuilderStep({
                 <Icon name="trash" size={20} />
               </IconButton>
             </div>
+
+            {/* El deck vacío dice qué hacer: buscar cartas (la acción de abajo) o cargar uno que ya ganó un torneo. */}
+            {totalDeckCardCount === 0 ? (
+              <EmptyState icon="cards" title={t('deck.builder.emptyTitle')} className="py-4">
+                {t('deck.builder.emptyText')}
+                {onBrowseTournaments ? (
+                  <Button variant="secondary" size="md" className="mt-3 w-full" onClick={onBrowseTournaments}>
+                    {t('deck.builder.emptyTournament')}
+                  </Button>
+                ) : null}
+              </EmptyState>
+            ) : null}
 
             {DECK_ZONE_ITEMS.map(({ zone, title }) => (
               <DeckZone

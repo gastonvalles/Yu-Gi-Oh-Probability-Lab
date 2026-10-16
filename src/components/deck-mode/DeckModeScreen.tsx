@@ -239,7 +239,7 @@ export function DeckModeScreen() {
           {t('deck.builder.title')}
         </Heading>
       ) : null}
-      <DeckBuilderStep {...deckBuilderStep} onNextStep={() => handleStepChange('categorization')} />
+      <DeckBuilderStep {...deckBuilderStep} onNextStep={() => handleStepChange('categorization')} onBrowseTournaments={() => handleStepChange('tournaments')} />
     </div>
   ) : (
     <section
