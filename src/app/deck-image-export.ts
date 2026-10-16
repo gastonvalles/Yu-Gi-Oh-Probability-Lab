@@ -103,7 +103,7 @@ export function downloadYdk(deckBuilder: DeckBuilderState): void {
 
 function buildYdkText(deckBuilder: DeckBuilderState): string {
   const lines = [
-    '#created by YGO Probability Lab',
+    '#created by YGOUltraLab',
     '#main',
     ...buildZoneYdkLines(deckBuilder.main),
     '#extra',

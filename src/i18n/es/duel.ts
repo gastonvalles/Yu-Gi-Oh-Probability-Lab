@@ -107,7 +107,7 @@ export const duel = {
   'duel.room.copy': 'Copiar enlace',
   'duel.room.copied': 'Enlace copiado',
   'duel.room.share': 'Compartir',
-  'duel.room.shareText': 'Te invito a un duelo en Probability Lab',
+  'duel.room.shareText': 'Te invito a un duelo en YGOUltraLab',
   'duel.room.waitingPeer': 'Esperando a tu rival…',
   'duel.room.guestWaits': 'Esperando los ajustes del anfitrión…',
   'duel.room.settings': 'Cada uno empieza con {lp} LP y una mano de {hand} cartas.',

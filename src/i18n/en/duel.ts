@@ -104,7 +104,7 @@ export const duel: Translated<typeof es> = {
   'duel.room.copy': 'Copy link',
   'duel.room.copied': 'Link copied',
   'duel.room.share': 'Share',
-  'duel.room.shareText': "I'm inviting you to a duel on Probability Lab",
+  'duel.room.shareText': "I'm inviting you to a duel on YGOUltraLab",
   'duel.room.waitingPeer': 'Waiting for your opponent…',
   'duel.room.guestWaits': "Waiting for the host's settings…",
   'duel.room.settings': 'Each of you starts with {lp} LP and a hand of {hand} cards.',

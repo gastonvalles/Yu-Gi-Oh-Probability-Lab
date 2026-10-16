@@ -8,5 +8,5 @@ export const common: Translated<typeof es> = {
   'common.save': 'Save',
   'common.language': 'Language',
   'common.siteDescription': 'Deck builder and exact probability calculator for Yu-Gi-Oh!: build your deck, classify cards and measure its consistency.',
-  'common.siteImageAlt': 'Probability Lab: deck builder and exact probability calculator for Yu-Gi-Oh!',
+  'common.siteImageAlt': 'YGOUltraLab: deck builder and exact probability calculator for Yu-Gi-Oh!',
 }

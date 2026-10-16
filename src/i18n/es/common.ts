@@ -6,5 +6,5 @@ export const common = {
   'common.save': 'Guardar',
   'common.language': 'Idioma',
   'common.siteDescription': 'Deck builder y calculadora exacta de probabilidades para Yu-Gi-Oh!: armá tu deck, clasificá cartas y medí su consistencia.',
-  'common.siteImageAlt': 'Probability Lab: deck builder y calculadora exacta de probabilidades para Yu-Gi-Oh!',
+  'common.siteImageAlt': 'YGOUltraLab: deck builder y calculadora exacta de probabilidades para Yu-Gi-Oh!',
 } as const

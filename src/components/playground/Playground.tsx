@@ -50,7 +50,7 @@ export default function Playground() {
     meta.name = 'robots'
     meta.content = 'noindex,nofollow'
     document.head.append(meta)
-    document.title = 'Playground · Probability Lab'
+    document.title = 'Playground · YGOUltraLab'
 
     return () => {
       meta.remove()
