@@ -196,6 +196,9 @@ export const deck = {
   // --- Exportar: pantalla, archivos y vista previa
   'deck.export.title': 'Exportá tu deck',
   'deck.export.subtitle': 'Para compartirlo, entregarlo en un torneo o llevarlo a Neuron.',
+  'deck.export.back': 'Volver al deck',
+  'deck.export.preview.label': 'Vista previa · {name} · {main} + {extra} + {side}',
+  'deck.export.preview.unnamed': 'Deck sin nombre',
   'deck.export.download': 'Descargar',
   'deck.export.generating': 'Generando archivos...',
   'deck.export.image.title': 'Imagen del deck',

@@ -264,7 +264,7 @@ export function DeckModeScreen() {
 
       {activeStep === 'export' ? (
         <div id="export" className="min-w-0 min-[1101px]:min-h-full">
-          <LazyExportDeckPanel {...controller.exportDeck} />
+          <LazyExportDeckPanel {...controller.exportDeck} onBack={() => handleStepChange('deck-builder')} />
         </div>
       ) : null}
 
