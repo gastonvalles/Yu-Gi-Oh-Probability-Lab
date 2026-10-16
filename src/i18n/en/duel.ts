@@ -109,6 +109,7 @@ export const duel: Translated<typeof es> = {
   'duel.room.guestWaits': "Waiting for the host's settings…",
   'duel.room.settings': 'Each of you starts with {lp} LP and a hand of {hand} cards.',
   'duel.room.format': 'Format: {name}.',
+  'duel.room.mainShort': 'Your Main has {count} cards and a duel is played with {min} at least. Add cards in the builder or paste another deck below:',
   'duel.room.formatBlocked': "Your deck doesn't meet the {name} format. Change it in the builder or paste another one below:",
   'duel.room.match': "It's a Match: first to win 2 duels wins.",
   'duel.room.siding': 'You can side between duels.',

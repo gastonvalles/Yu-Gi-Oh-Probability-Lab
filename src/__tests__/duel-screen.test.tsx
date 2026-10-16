@@ -49,7 +49,7 @@ const asSpectatorSocket = (spectator: MemorySpectator, status: SocketStatus = 'o
     },
   })
 
-const mainIds = Array.from({ length: 12 }, (_, index) => `card-${1000 + index}-1`)
+const mainIds = Array.from({ length: 40 }, (_, index) => `card-${1000 + index}-1`)
 const extraIds = ['card-9001-1']
 const cardsById = new Map([...mainIds, ...extraIds].map((id) => [id, { name: `Carta ${id}`, apiCard: null }]))
 
@@ -993,12 +993,12 @@ describe('la pantalla del duelo', () => {
     click(view, 'Usar este deck')
     expect(await within(view.container).findByText(/No reconozco ese deck/)).toBeInTheDocument()
 
-    // Un .ydk de verdad: 13 cartas en el Main (una que no existe) y 1 en el Extra; el Side no cuenta.
-    const ydk = ['#created by Ana', '#main', ...Array.from({ length: 12 }, (_, index) => String(1000 + index)), '999', '#extra', '9001', '!side', '5'].join('\n')
+    // Un .ydk de verdad: 41 cartas en el Main (una que no existe) y 1 en el Extra; el Side no cuenta.
+    const ydk = ['#created by Ana', '#main', ...Array.from({ length: 40 }, (_, index) => String(1000 + index)), '999', '#extra', '9001', '!side', '5'].join('\n')
     fireEvent.change(within(view.container).getByRole('textbox', { name: 'ydke://… o el texto del .ydk' }), { target: { value: ydk } })
     click(view, 'Usar este deck')
 
-    expect(await within(view.container).findByText('Deck importado: 13 cartas en el Main y 1 en el Extra')).toBeInTheDocument()
+    expect(await within(view.container).findByText('Deck importado: 41 cartas en el Main y 1 en el Extra')).toBeInTheDocument()
     expect(within(view.container).getByText(/1 cartas no se reconocieron/)).toBeInTheDocument()
     expect(within(view.container).getByRole('button', { name: 'Crear una sala' })).toBeEnabled()
     expect(localStorage.getItem('ygo-lab:duel-deck')).toContain('#main')
@@ -1012,7 +1012,7 @@ describe('la pantalla del duelo', () => {
     localStorage.setItem('ygo-lab:duel-deck', ydk)
     cleanup()
     const again = render(<DuelScreen {...screenProps(small)} />)
-    expect(await within(again.container).findByText('Deck importado: 13 cartas en el Main y 1 en el Extra')).toBeInTheDocument()
+    expect(await within(again.container).findByText('Deck importado: 41 cartas en el Main y 1 en el Extra')).toBeInTheDocument()
 
     // Y con un deck armado en el builder no se pisa solo.
     cleanup()
@@ -1020,8 +1020,23 @@ describe('la pantalla del duelo', () => {
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 30))
     })
-    expect(within(builder.container).getByText('El del builder: Mi deck (12 cartas en el Main)')).toBeInTheDocument()
+    expect(within(builder.container).getByText('El del builder: Mi deck (40 cartas en el Main)')).toBeInTheDocument()
     expect(within(builder.container).queryByText(/Deck importado/)).not.toBeInTheDocument()
+  })
+
+  it('un duelo se juega con 40 cartas en el Main como mínimo: con menos se dice y no se puede estar listo', () => {
+    const host = render(<DuelScreen {...screenProps()} />)
+    createRoom(host)
+    const link = within(host.container).getByTestId('duel-link').textContent ?? ''
+    window.history.replaceState(null, '', '#duel')
+    const guest = render(<DuelScreen {...screenProps({ mainIds: mainIds.slice(0, 39) })} />)
+    typeInto(guest, 'Enlace o código', link)
+    click(guest, 'Unirme')
+    flush()
+
+    expect(within(guest.container).getByText(/Tu Main tiene 39 cartas y un duelo se juega con 40 como mínimo/)).toBeInTheDocument()
+    expect(within(guest.container).getByRole('button', { name: 'Estoy listo' })).toBeDisabled()
+    expect(within(host.container).queryByText(/Tu Main tiene/)).not.toBeInTheDocument()
   })
 
   it('otro deck: la mano se reparte con las cartas del deck pegado, y el rival juega con las suyas', async () => {
@@ -1029,10 +1044,10 @@ describe('la pantalla del duelo', () => {
     const host = render(<DuelScreen {...screenProps(small)} />)
     typeInto(host, 'Tu nombre', 'Ana')
     click(host, 'Usar otro deck')
-    const ydk = ['#main', ...Array.from({ length: 12 }, (_, index) => String(2000 + index))].join('\n')
+    const ydk = ['#main', ...Array.from({ length: 40 }, (_, index) => String(2000 + index))].join('\n')
     fireEvent.change(within(host.container).getByRole('textbox', { name: 'ydke://… o el texto del .ydk' }), { target: { value: ydk } })
     click(host, 'Usar este deck')
-    await within(host.container).findByText('Deck importado: 12 cartas en el Main y 0 en el Extra')
+    await within(host.container).findByText('Deck importado: 40 cartas en el Main y 0 en el Extra')
     createRoom(host)
     const link = within(host.container).getByTestId('duel-link').textContent ?? ''
     window.history.replaceState(null, '', '#duel')
@@ -2275,7 +2290,7 @@ describe('la pantalla del duelo', () => {
   })
 
   it('recargar dentro de la sala con un deck pegado y el builder vacío: el deck guardado vuelve solo y se puede repartir', async () => {
-    const ydk = ['#main', ...Array.from({ length: 12 }, (_, index) => String(3000 + index))].join('\n')
+    const ydk = ['#main', ...Array.from({ length: 40 }, (_, index) => String(3000 + index))].join('\n')
     localStorage.setItem('ygo-lab:duel-deck', ydk)
 
     // Ana crea la sala; Beto (sin deck armado) llega a ella por la dirección, como al recargar la página.
