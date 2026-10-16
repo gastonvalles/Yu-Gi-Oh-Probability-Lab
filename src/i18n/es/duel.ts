@@ -55,6 +55,14 @@ export const duel = {
   'duel.lobby.createHint': 'Elegís si jugás solo o contra alguien, y el tiempo del reloj.',
 
   // Crear una sala: jugar solo o 1 vs 1.
+  'duel.watchRoom.open': 'Mirar un duelo',
+  'duel.watchRoom.title': 'Mirar un duelo',
+  'duel.watchRoom.link': 'Pegá el enlace del duelo',
+  'duel.watchRoom.placeholder': 'https://…',
+  'duel.watchRoom.paste': 'Pegar desde el portapapeles',
+  'duel.watchRoom.hint': 'Mirás la mesa en vivo, sin poder hacer nada. Pueden mirar hasta 2 personas por duelo.',
+  'duel.watchRoom.cancel': 'Cancelar',
+  'duel.watchRoom.start': 'Mirar el duelo',
   'duel.create.title': 'Crear sala',
   'duel.create.back': 'Volver al inicio del duelo',
   'duel.create.mode': 'Cómo querés jugar',
@@ -99,7 +107,7 @@ export const duel = {
   'duel.room.copy': 'Copiar enlace',
   'duel.room.copied': 'Enlace copiado',
   'duel.room.share': 'Compartir',
-  'duel.room.shareText': 'Te invito a un duelo en Probability Lab',
+  'duel.room.shareText': 'Te invito a un duelo en YGOUltraLab',
   'duel.room.waitingPeer': 'Esperando a tu rival…',
   'duel.room.guestWaits': 'Esperando los ajustes del anfitrión…',
   'duel.room.settings': 'Cada uno empieza con {lp} LP y una mano de {hand} cartas.',
@@ -124,7 +132,10 @@ export const duel = {
   'duel.room.limit': 'El reloj de cada duelo es de {min} minutos.',
   'duel.room.noLimit': 'El reloj de cada duelo no tiene límite.',
   'duel.room.leave': 'Salir',
-  'duel.room.expired': 'No hay nadie en este duelo. Puede que el enlace haya vencido: pedile a tu rival que cree uno nuevo y te lo mande.',
+  'duel.gone.title': 'Ese enlace ya no funciona',
+  'duel.gone.text': 'La sala se cerró o ya tiene a sus dos jugadores. Pedile un enlace nuevo a quien te invitó.',
+  'duel.gone.retry': 'Probar otro enlace',
+  'duel.gone.create': 'Crear una sala',
   'duel.room.incompatible': 'Tu rival usa otra versión del duelo, o los dos crearon la sala: pedile que abra tu enlace.',
 
   // Mirar un duelo sin jugar (hasta dos espectadores, que no pueden hacer nada).

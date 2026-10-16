@@ -297,8 +297,15 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
     setIntent(null)
   }, [intent, finished])
 
+  const leaveToCreate = () => {
+    setCreateNext(true)
+    leave()
+  }
+
   // El duelo en pausa de este navegador (si salió de uno), para volver desde el inicio del duelo.
   const [paused, setPaused] = useState<PausedDuel | null>(findPausedDuel)
+  // «Crear una sala» desde la pantalla de un enlace que no funciona: vuelve al lobby ya en ese paso.
+  const [createNext, setCreateNext] = useState(false)
 
   useEffect(() => {
     if (!intent) {
@@ -309,6 +316,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   if (!intent) {
     return (
       <DuelLobby
+        startInCreate={createNext}
         name={name}
         onName={setName}
         builder={{ name: deckName, mainIds, extraIds, sideIds, cardsById }}
@@ -348,9 +356,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   if (status === 'full') {
     return (
       <Screen>
-        <Callout tone="warning" icon="alert" action={<Button variant="secondary" size="sm" onClick={leave}>{t('duel.room.leave')}</Button>}>
-          {t('duel.status.full')}
-        </Callout>
+        <LinkGone onRetry={leave} onCreate={leaveToCreate} />
       </Screen>
     )
   }
@@ -386,6 +392,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
         deckPicker={{ builder: { name: deckName, mainIds, extraIds, sideIds, cardsById }, imported, onImport: setImported, size: deck.mainIds.length, min: handSize }}
         isPublic={rooms && intent.role === 'host' ? options.isPublic : null}
         onLeave={leave}
+        onLeaveToCreate={leaveToCreate}
       />
     )
   }
@@ -434,6 +441,8 @@ function Screen({ children }: { children: React.ReactNode }) {
 }
 
 interface DuelLobbyProps {
+  /** Abre ya en el paso «Crear una sala». */
+  startInCreate?: boolean
   name: string
   onName: (name: string) => void
   builder: DuelDeck
@@ -457,8 +466,9 @@ interface DuelLobbyProps {
   onDropPaused: () => void
 }
 
-function DuelLobby({ name, onName, builder, imported, onImport, deckReady, deckSize, minDeck, onCreate, onPlaySolo, soloReady, rooms, onJoin, paused, onResume, onDropPaused }: DuelLobbyProps) {
-  const [creating, setCreating] = useState(false)
+function DuelLobby({ startInCreate = false, name, onName, builder, imported, onImport, deckReady, deckSize, minDeck, onCreate, onPlaySolo, soloReady, rooms, onJoin, paused, onResume, onDropPaused }: DuelLobbyProps) {
+  const [creating, setCreating] = useState(startInCreate)
+  const [watching, setWatching] = useState(false)
   const [code, setCode] = useState('')
   const [invalid, setInvalid] = useState(false)
 
@@ -470,6 +480,10 @@ function DuelLobby({ name, onName, builder, imported, onImport, deckReady, deckS
     } else {
       setInvalid(true)
     }
+  }
+
+  if (watching) {
+    return <WatchRoom onBack={() => setWatching(false)} onWatch={(room) => onJoin(room, true)} />
   }
 
   if (creating) {
@@ -547,6 +561,97 @@ function DuelLobby({ name, onName, builder, imported, onImport, deckReady, deckS
           {invalid ? t('duel.lobby.joinInvalid') : t('duel.lobby.joinHint')}
         </p>
       </div>
+
+      <Button variant="tertiary" icon="eye" onClick={() => setWatching(true)}>
+        {t('duel.watchRoom.open')}
+      </Button>
+    </Screen>
+  )
+}
+
+interface WatchRoomProps {
+  onBack: () => void
+  /** Entrar a mirar la sala del enlace (o el código) pegado. */
+  onWatch: (room: string) => void
+}
+
+/** Mirar un duelo: se pega el enlace (o el código) de una sala y se entra de espectador, sin deck ni nombre. La mesa se ve en vivo y no se puede tocar nada. */
+function WatchRoom({ onBack, onWatch }: WatchRoomProps) {
+  const [link, setLink] = useState('')
+  const [invalid, setInvalid] = useState(false)
+  const canPaste = typeof navigator !== 'undefined' && typeof navigator.clipboard?.readText === 'function'
+
+  const watch = () => {
+    const room = extractRoomCode(link)
+
+    if (room) {
+      onWatch(room)
+    } else {
+      setInvalid(true)
+    }
+  }
+
+  const paste = () => {
+    void navigator.clipboard
+      .readText()
+      .then((text) => {
+        setLink(text)
+        setInvalid(false)
+      })
+      .catch(() => undefined)
+  }
+
+  return (
+    <Screen>
+      <div className="flex items-center gap-2">
+        <IconButton tone="raised" size="md" aria-label={t('duel.create.back')} title={t('duel.create.back')} onClick={onBack}>
+          <Icon name="undo" size={18} />
+        </IconButton>
+        <Heading level="section">{t('duel.watchRoom.title')}</Heading>
+      </div>
+
+      <form
+        className="grid gap-4"
+        onSubmit={(event) => {
+          event.preventDefault()
+          watch()
+        }}
+      >
+        <div className="grid gap-1.5">
+          <span className="text-micro font-semibold uppercase text-soft">{t('duel.watchRoom.link')}</span>
+          <div className="flex items-center gap-2">
+            <FieldBox className="min-w-0 flex-1">
+              <input
+                aria-label={t('duel.watchRoom.link')}
+                placeholder={t('duel.watchRoom.placeholder')}
+                value={link}
+                onChange={(event) => {
+                  setLink(event.target.value)
+                  setInvalid(false)
+                }}
+                className={fieldInline}
+              />
+            </FieldBox>
+            {canPaste ? (
+              <IconButton type="button" tone="raised" size="md" aria-label={t('duel.watchRoom.paste')} title={t('duel.watchRoom.paste')} onClick={paste}>
+                <Icon name="file" size={18} />
+              </IconButton>
+            ) : null}
+          </div>
+          <p className={invalid ? 'm-0 text-micro text-danger' : 'm-0 text-micro text-soft'} role={invalid ? 'alert' : undefined}>
+            {invalid ? t('duel.lobby.joinInvalid') : t('duel.watchRoom.hint')}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button variant="tertiary" onClick={onBack}>
+            {t('duel.watchRoom.cancel')}
+          </Button>
+          <Button type="submit" variant="primary" icon="eye" disabled={link.trim() === ''}>
+            {t('duel.watchRoom.start')}
+          </Button>
+        </div>
+      </form>
     </Screen>
   )
 }
@@ -681,6 +786,29 @@ function CreateRoom({ soloReady, canPublish, onBack, onSolo, onDuo }: CreateRoom
   )
 }
 
+/** Un enlace que ya no funciona (la sala se cerró o ya tiene a sus dos jugadores): lo dice y deja probar otro enlace o crear una sala. */
+function LinkGone({ onRetry, onCreate }: { onRetry: () => void; onCreate: () => void }) {
+  return (
+    <div className="grid justify-items-center gap-4 py-10 text-center">
+      <span className="grid size-14 place-items-center rounded-full bg-tint/8 text-muted">
+        <Icon name="alert" size={28} />
+      </span>
+      <div className="grid gap-1.5">
+        <h2 className="m-0 text-heading font-bold text-foreground">{t('duel.gone.title')}</h2>
+        <p className="m-0 text-body text-muted">{t('duel.gone.text')}</p>
+      </div>
+      <div className="grid w-full gap-2">
+        <Button variant="primary" onClick={onRetry}>
+          {t('duel.gone.retry')}
+        </Button>
+        <Button variant="tertiary" onClick={onCreate}>
+          {t('duel.gone.create')}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 /** Cuánto espera quien entra por un enlace antes de pensar que el enlace venció (el anfitrión que lo creó ya debería estar adentro). */
 const EMPTY_ROOM_MS = 12_000
 
@@ -717,9 +845,11 @@ interface DuelRoomProps {
   /** Si la sala está en la lista de salas abiertas (sólo lo sabe el anfitrión, y sólo si el relay tiene la lista); `null` si no se sabe o no hay lista. */
   isPublic: boolean | null
   onLeave: () => void
+  /** Salir y volver al lobby directo a «Crear una sala» (desde la pantalla de un enlace que ya no funciona). */
+  onLeaveToCreate: () => void
 }
 
-function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckReady, deckPicker, isPublic, onLeave }: DuelRoomProps) {
+function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckReady, deckPicker, isPublic, onLeave, onLeaveToCreate }: DuelRoomProps) {
   const link = buildDuelLink(window.location.origin, window.location.pathname, room)
   const { peerPresent, peerName, role, incompatible, settings } = snapshot
   // El invitado se prepara con los ajustes del anfitrión: hasta que no llega su saludo, no.
@@ -754,6 +884,15 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
 
   const share = () => {
     void navigator.share({ title: 'YGOUltraLab', /* i18n-ignore: nombre propio */ text: t('duel.room.shareText'), url: link }).catch(() => undefined)
+  }
+
+  // Quien entró por un enlace y no encuentra a nadie: probablemente el enlace venció (o la sala se cerró).
+  if (emptyRoom) {
+    return (
+      <Screen>
+        <LinkGone onRetry={onLeave} onCreate={onLeaveToCreate} />
+      </Screen>
+    )
   }
 
   return (
@@ -802,7 +941,6 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
         </p>
       ) : null}
       {incompatible ? <Callout tone="danger">{t('duel.room.incompatible')}</Callout> : null}
-      {emptyRoom ? <Callout tone="warning" icon="alert">{t('duel.room.expired')}</Callout> : null}
 
       {/* Con el rival adentro ya se ven los dos nombres en la tarjeta de cada uno: no hace falta decirlo otra vez. */}
       {!peerPresent ? (

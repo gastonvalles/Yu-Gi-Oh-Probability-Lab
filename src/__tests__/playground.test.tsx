@@ -45,7 +45,7 @@ describe('el catálogo /playground', () => {
     }
 
     expect(document.querySelector('meta[name="robots"]')).toHaveAttribute('content', 'noindex,nofollow')
-    expect(document.title).toBe('Playground · Probability Lab')
+    expect(document.title).toBe('Playground · YGOUltraLab')
   })
 
   it('muestra todos los íconos del set, en sus tres variantes, y un buscador', () => {
