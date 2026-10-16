@@ -46,7 +46,14 @@ anterior y **no están en el repo**: la copia publicada es la que vale.
 
 ## 5. Decisiones que siguen en pie
 
-- **Jugar solo** es una herramienta, no una sala.
+- **Jugar solo es una opción al crear la sala** (2026-10-16; reemplaza «es una herramienta, no una sala»): se elige entre
+  jugar solo o jugar contra alguien. Si se elige solo, la sala es privada (no entra ni mira nadie); es la mesa de Práctica de
+  hoy, local y sin relay.
+- **Salas públicas:** cualquiera que entre a la app ve las salas y se une a un duelo sin enviar ni recibir un código. Esa
+  pantalla falta diseñarla; el código sólo tiene el enlace de conexión (sin lista de salas ni en el relay).
+- **Pasar turno:** un solo toque, sin confirmar, al lado de la End Phase y apagado hasta llegar a ella.
+- **Menú de las cartas en el celular:** se mantiene el actual (una lista pegada a la carta: Normal Summon, Set… y Ver carta),
+  no la hoja de abajo de `MenuMano` / `MenuCampo` del lienzo, que quedó desactualizada en eso.
 - **Ámbar** sólo para la navegación, el rival y el build B. **Verde y rojo** sólo para estadísticas. El violeta es «Vos».
 - **Mascotas apagadas** por defecto la primera vez en el celular.
 - **Logo A** (anillo y carta) y el nombre **YGOUltraLab**.
@@ -59,12 +66,12 @@ anterior y **no están en el repo**: la copia publicada es la que vale.
 
 Necesita decisión de Gastón antes de tocarse (cambia comportamiento o protocolo):
 
-- **«Pasar turno» sin confirmación.** Un toque accidental le da el turno al rival, y deshacer le pide permiso a los dos.
-  Hacerlo en una sola acción cambia el protocolo del relay.
 - **Roles carta por carta** (cambia el flujo de clasificación).
 
 Sin migrar todavía, pero decidido:
 
+- La sala con la opción Jugar solo / Jugar contra alguien y la lista de salas públicas (diseñar el lobby; el relay necesita
+  un índice de salas).
 - El motor de arrastre y de vuelos con `motion` (empezar en `/playground` con un solo gesto).
 - Lab y Comparar a nivel de pantalla, y las hojas con chips de estado vivo.
 - «Mirar un duelo» como pantalla propia.
