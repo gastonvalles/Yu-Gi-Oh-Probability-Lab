@@ -67,6 +67,13 @@ const allowUndo = () => {
   flush()
 }
 const click = (view: RenderResult, name: string | RegExp, role: 'button' | 'menuitem' = 'button') => fireEvent.click(within(view.container).getByRole(role, { name }))
+/** Pasar el turno como se hace: llegar a la End Phase y tocar "Pasar turno" (que sólo se enciende ahí). */
+const passTurn = (view: RenderResult) => {
+  click(view, 'End Phase')
+  flush()
+  click(view, 'Pasar turno')
+  flush()
+}
 const pointer = { button: 0, pointerId: 1 }
 const tap = (element: HTMLElement) => {
   fireEvent.pointerDown(element, { ...pointer, clientX: 10, clientY: 10 })
@@ -1165,7 +1172,7 @@ describe('la pantalla del duelo', () => {
     expect(phaseButton(host, 'Battle Phase')).toHaveAttribute('aria-pressed', 'true')
   })
 
-  it('"Pasar turno" a mano: desde cualquier fase pasa por la End Phase y vuelve a la Draw Phase; sólo lo toca quien tiene el turno, y la fase va en el color de quien juega', () => {
+  it('"Pasar turno" se enciende recién en la End Phase y sólo para quien tiene el turno; un toque lo pasa, sin confirmar, y la fase va en el color de quien juega', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
 
@@ -1173,21 +1180,26 @@ describe('la pantalla del duelo', () => {
     const pass = (view: RenderResult) => within(view.container).getByRole('button', { name: 'Pasar turno' })
     const phaseButton = (view: RenderResult, name: string) => within(view.container).getByRole('button', { name })
 
-    // Ana (con el turno) lo puede tocar; Beto no. La fase actual de Ana va en violeta claro (lo tuyo) y la misma, vista por Beto, en ámbar (lo del rival).
-    expect(pass(host)).toBeEnabled()
+    // Ni Ana (con el turno) ni Beto lo pueden tocar antes de la End Phase. La fase actual de Ana va en violeta claro (lo tuyo) y la misma, vista por Beto, en ámbar (lo del rival).
+    expect(pass(host)).toBeDisabled()
     expect(pass(guest)).toBeDisabled()
     click(host, 'Main Phase 1')
     flush()
+    expect(pass(host)).toBeDisabled()
     expect(phaseButton(host, 'Main Phase 1')).toHaveClass('bg-accent')
     expect(phaseButton(guest, 'Main Phase 1')).toHaveClass('bg-info')
 
-    // Desde la Main Phase 1, un solo toque pasa por la End Phase y termina el turno: Beto lo ve y ahora el botón es de él.
+    // En la End Phase se enciende, sólo el de Ana. Un solo toque termina el turno: Beto lo ve y ahora el botón es de él (todavía apagado: le falta llegar a su End Phase).
+    click(host, 'End Phase')
+    flush()
+    expect(pass(host)).toBeEnabled()
+    expect(pass(guest)).toBeDisabled()
     click(host, 'Pasar turno')
     flush()
     expect(within(guest.container).getAllByText('Tu turno').length).toBeGreaterThan(0)
     expect(phase(guest)).toBe(' · Draw Phase')
     expect(pass(host)).toBeDisabled()
-    expect(pass(guest)).toBeEnabled()
+    expect(pass(guest)).toBeDisabled()
     expect(phaseButton(guest, 'Draw Phase')).toHaveClass('bg-accent')
     expect(phaseButton(host, 'Draw Phase')).toHaveClass('bg-info')
   })
@@ -1200,8 +1212,7 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).queryByRole('button', { name: 'Abrir el registro de jugadas' })).not.toBeInTheDocument()
 
     // Ana pasa el turno y Beto escribe: la línea de Ana muestra lo último escrito.
-    click(host, 'Pasar turno')
-    flush()
+    passTurn(host)
     click(guest, 'Chat')
     const guestChat = () => within(screen.getByRole('dialog', { name: 'Chat con Ana' }))
     fireEvent.change(guestChat().getByLabelText('Escribí un mensaje'), { target: { value: 'Dale, mi turno' } })
@@ -1222,8 +1233,7 @@ describe('la pantalla del duelo', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
 
-    click(host, 'Pasar turno')
-    flush()
+    passTurn(host)
     click(host, 'Deshacer')
     flush()
     allowUndo()

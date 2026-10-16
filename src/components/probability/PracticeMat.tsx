@@ -1270,21 +1270,26 @@ export function PracticeMat({
     </IconButton>
   )
 
-  // Pasar el turno: de cualquier fase pasa por la End Phase y vuelve a la Draw Phase (ahí sube la cuenta de turnos y el otro roba solo). Sólo lo toca quien tiene el turno.
-  // En la práctica el turno nuevo roba solo; en un duelo roba el otro (por eso va `skipDraw`).
+  // Las seis fases y, pegado a la End Phase, Pasar turno: se enciende al llegar a ella y de un toque vuelve a la Draw Phase (ahí sube la cuenta de turnos y el otro roba solo). Sólo lo toca quien tiene el turno.
+  // En la práctica el turno nuevo roba solo; en un duelo roba el otro (por eso va `skipDraw`). En un duelo la fase es la compartida, la de quien tiene el turno.
+  const phaseNow = duel ? duel.phase : state.phase
   const passTurn = (
     <Button
       variant="primary"
       size={duel ? 'md' : 'sm'}
       iconEnd="arrow-right"
-      disabled={duel ? !duel.myTurn : false}
-      onClick={() => {
-        if (state.phase !== 'end') play({ type: 'phase', phase: 'end' })
-        play({ type: 'phase', phase: 'draw', ...(duel ? { skipDraw: true as const } : {}) })
-      }}
+      disabled={phaseNow !== 'end' || (duel ? !duel.myTurn : false)}
+      onClick={() => play({ type: 'phase', phase: 'draw', ...(duel ? { skipDraw: true as const } : {}) })}
     >
       {t('practice.mat.passTurn')}
     </Button>
+  )
+  const phaseButtons = (
+    <div role="group" aria-label={t('practice.mat.phases')} className="grid w-[14.5rem] max-w-[calc(100%-9.5rem)] flex-none grid-cols-6 gap-1">
+      {PHASES.map((phase) => (
+        <PhaseButton key={phase.id} short={phase.short} name={phase.name} active={phaseNow === phase.id} rival={duel ? !duel.myTurn : false} disabled={duel ? !duel.myTurn : false} passes={duel?.myTurn === true && phase.id === 'draw' && state.phase === 'end'} onPick={() => play({ type: 'phase', phase: phase.id, ...(duel ? { skipDraw: true as const } : {}) })} />
+      ))}
+    </div>
   )
 
   return (
@@ -1334,16 +1339,6 @@ export function PracticeMat({
           {cell('field', 0, 'fld')}
           {cell('emz', 0, 'emz1')}
           {cell('emz', 1, 'emz2')}
-          {/* Las seis fases, de a dos entre las zonas, como en DuelingBook: la actual encendida; tocar otra cambia de fase. En el celular de la práctica van abajo, en la barra de pasos; en un duelo, entre las zonas también en el celular (abajo queda el lugar para las vidas y los botones, y la mesa entra sin scroll). */}
-          {isDesktop || duel
-            ? [0, 2, 4].map((start, index) => (
-                <div key={start} role="group" aria-label={index === 0 ? t('practice.mat.phases') : undefined} className="grid grid-cols-2 gap-0.5 self-center min-[1101px]:gap-1" style={{ gridArea: `p${index + 1}` }}>
-                  {PHASES.slice(start, start + 2).map((phase) => (
-                    <PhaseButton key={phase.id} short={phase.short} name={phase.name} active={(duel ? duel.phase : state.phase) === phase.id} rival={duel ? !duel.myTurn : false} disabled={duel ? !duel.myTurn : false} passes={duel?.myTurn === true && phase.id === 'draw' && state.phase === 'end'} onPick={() => play({ type: 'phase', phase: phase.id, ...(duel ? { skipDraw: true as const } : {}) })} />
-                  ))}
-                </div>
-              ))
-            : null}
           {state.mz.map((_, index) => cell('mz', index, `m${index + 1}`))}
           {state.st.map((_, index) => cell('st', index, `s${index + 1}`))}
 
@@ -1471,13 +1466,13 @@ export function PracticeMat({
           />
         ) : null}
 
-        {/* Abajo: en el celular las seis fases, solas y centradas (Deshacer está arriba y los pasos en la lista, así que ni Anterior / Siguiente ni la última jugada hacen falta). En escritorio las fases están entre las zonas.
+        {/* Abajo: las seis fases con Pasar turno pegado a la End Phase (Deshacer está arriba y los pasos en la lista, así que ni Anterior / Siguiente ni la última jugada hacen falta). En un duelo de escritorio van a la derecha, junto a tus vidas.
             Eligiendo (Sacrificios, materiales) las fases se van para que entre lo que hay que tocar: la barra no cambia de alto, el campo no se mueve. */}
         {/* En escritorio, en un duelo, esta barra sube sobre la franja de abajo de la mano (sólo tiene algo en las esquinas): la mano y el campo ganan ese alto, y el medio no ataja toques. */}
         <div className={cx('sticky bottom-0 z-30 grid gap-1 max-[1100px]:bg-background', duel && 'min-[1101px]:pointer-events-none min-[1101px]:-mt-11')}>
           {/* Duelo: una sola fila abajo con tus vidas y los botones que se tocan seguido (deshacer, la ficha, los dados y el chat). Celular: las vidas a la izquierda y los botones a la derecha (el pulgar de quien juega
               con la derecha). Escritorio: los botones a la izquierda y tus vidas en la esquina opuesta a las del rival. */}
-          {duel && !choosing && !isDesktop ? <div className="pointer-events-auto flex justify-end px-1">{passTurn}</div> : null}
+          {duel && !choosing && !isDesktop ? <div className="pointer-events-auto flex items-center justify-between gap-1 px-1">{phaseButtons}{passTurn}</div> : null}
           {duel && !choosing ? (
             <div role="toolbar" aria-label={t('practice.mat.name')} className="flex items-center justify-between max-[1100px]:flex-row-reverse">
               <span className="pointer-events-auto flex items-center">
@@ -1486,20 +1481,15 @@ export function PracticeMat({
                 {duel.tools}
               </span>
               <span className="pointer-events-auto flex items-center gap-2">
-                {duel.life}
+                {isDesktop ? phaseButtons : null}
                 {isDesktop ? passTurn : null}
+                {duel.life}
               </span>
             </div>
           ) : null}
           <div className={cx('flex items-center justify-center gap-2', (choosing || (!duel && !isDesktop)) && 'min-h-9')}>
+          {!duel && !choosing ? phaseButtons : null}
           {!duel && !choosing ? passTurn : null}
-          {!isDesktop && !duel && !choosing ? (
-            <div role="group" aria-label={t('practice.mat.phases')} className="grid w-[13.5rem] flex-none grid-cols-6 gap-1">
-              {PHASES.map((phase) => (
-                <PhaseButton key={phase.id} short={phase.short} name={phase.name} active={state.phase === phase.id} onPick={() => play({ type: 'phase', phase: phase.id })} />
-              ))}
-            </div>
-          ) : null}
           {/* El estado: eligiendo, pide lo que falta; si no, es sólo para el lector de pantalla (la última jugada y el contador ya están en la lista de pasos). */}
           <div
             // En un duelo de escritorio la barra de abajo no ataja toques (el medio es de la mano): lo que se está eligiendo es una cápsula centrada que sí los recibe, con Confirmar y Cancelar a mano.

@@ -205,21 +205,39 @@ describe('la mesa de práctica', () => {
     expect(within(status()).queryByText('1/1')).not.toBeInTheDocument()
   })
 
-  it('en escritorio las fases siguen entre las zonas del campo', () => {
+  it('en escritorio las fases también van abajo, en un solo grupo, y el campo no las lleva', () => {
     const matchMedia = window.matchMedia
     window.matchMedia = ((query: string) => ({ ...matchMedia(query), matches: query.includes('1101') })) as typeof window.matchMedia
 
     try {
       render(<Harness />)
 
-      expect(within(screen.getByLabelText('Campo')).getAllByRole('button', { name: /Phase( \d)?$/ })).toHaveLength(6)
-      expect(screen.getAllByRole('group', { name: 'Fases' })).toHaveLength(1)
+      expect(within(screen.getByLabelText('Campo')).queryByRole('button', { name: /Phase( \d)?$/ })).not.toBeInTheDocument()
+      expect(within(screen.getByRole('group', { name: 'Fases' })).getAllByRole('button')).toHaveLength(6)
 
       fireEvent.click(screen.getByRole('button', { name: 'Battle Phase' }))
       expect(screen.getByRole('button', { name: 'Battle Phase' })).toHaveAttribute('aria-pressed', 'true')
     } finally {
       window.matchMedia = matchMedia
     }
+  })
+
+  it('Pasar turno va pegado a las fases y se enciende recién en la End Phase: ahí un solo toque abre el turno siguiente', () => {
+    render(<Harness />)
+
+    const pass = () => screen.getByRole('button', { name: 'Pasar turno' })
+
+    expect(pass().previousElementSibling).toBe(screen.getByRole('group', { name: 'Fases' }))
+    expect(pass()).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Battle Phase' }))
+    expect(pass()).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'End Phase' }))
+    expect(pass()).toBeEnabled()
+    fireEvent.click(pass())
+    expect(screen.getByLabelText('Turno 2')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Draw Phase' })).toHaveAttribute('aria-pressed', 'true')
+    expect(pass()).toBeDisabled()
   })
 
   it('la lista de pasos no repite nada: los cambios de fase hacen de separador y abajo no sobran ni Anterior / Siguiente ni el contador ni la frase de la última jugada', () => {
