@@ -1,9 +1,13 @@
 // @vitest-environment jsdom
+import { configureStore } from '@reduxjs/toolkit'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
+import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { compareBuilds, type BuildComparison } from '../app/build-comparison'
+import { getDerivedCardId } from '../app/calculator-state'
+import type { DeckCardInstance } from '../app/model'
 import { createMatcherPattern } from '../app/pattern-factory'
 import { BuildNotes, VerdictLine } from '../components/comparison/ComparisonSummary'
 import { CompareStage } from '../components/comparison/CompareStage'
@@ -41,26 +45,47 @@ const renderPanels = (comparison: BuildComparison) =>
     </>,
   )
 const panel = (side: Side) => within(screen.getByTestId(side))
-const tableOf = (side: Side) => panel(side).getByRole('table', { name: `Share of hands that meet each condition, in build ${side}` })
-const rowsOf = (side: Side) => within(tableOf(side)).getAllByRole('row').filter((row) => row.querySelector('th[scope="row"]'))
-const labelOf = (row: Element) => row.querySelector('th[scope="row"] > span > span.text-foreground')?.textContent
-const valueOf = (row: Element) => Number(row.querySelector('td')!.textContent!.replace('Better', '').trim())
-const marked = (row: Element) => row.querySelector('td')!.textContent!.includes('Better')
-const rowNamed = (side: Side, name: string) => rowsOf(side).find((row) => labelOf(row) === name)!
+// Cada tarjeta de resultado trae su anillo (role meter): su nombre es la etiqueta de la fila y su texto, el número "de cada 100".
+const heroOf = (side: Side) => panel(side).getByRole('meter', { name: 'out of every 100 hands are good' })
+const START = 'Get going well (more is better)'
+const STUCK = 'Get stuck (less is better)'
+const cardsOf = (side: Side, group?: string) =>
+  [...screen.getByTestId(side).querySelectorAll('section[aria-label] li')].filter((item) => !group || item.closest('section')!.getAttribute('aria-label') === group)
+const labelOf = (item: Element) => item.querySelector('[role="meter"]')!.getAttribute('aria-label')
+const valueOf = (item: Element) => Number(item.querySelector('[role="meter"]')!.textContent)
+const marked = (item: Element) => item.textContent!.includes('Better')
+const cardNamed = (side: Side, name: string) => cardsOf(side).find((item) => labelOf(item) === name)!
 
 describe('resultados de un mazo: los suyos, solos, con todo a la vista', () => {
-  it('dice cuántas manos buenas da "de cada 100", y sólo el mazo mejor lleva ✓', () => {
+  it('el anillo grande dice cuántas manos buenas da "de cada 100", y sólo el mazo mejor lleva ✓', () => {
     const comparison = compare()
     renderPanels(comparison)
     const best: Side = comparison.verdict.kind === 'a' ? 'A' : 'B'
     const number = (side: Side) => Math.round(comparison.clean!.average[side === 'A' ? 'a' : 'b'] * 100)
 
     for (const side of ['A', 'B'] as const) {
-      const big = panel(side).getByText(String(number(side)))
+      const hero = heroOf(side)
 
-      expect(big.parentElement!.textContent).toContain('out of every 100 hands are good')
-      expect(big.parentElement!.textContent?.includes('Better'), side).toBe(side === best)
+      expect(hero).toHaveAttribute('aria-valuenow', String(number(side)))
+      expect(hero.parentElement!.textContent?.includes('Better'), side).toBe(side === best)
     }
+  })
+
+  it('al lado del anillo va cuánto más o menos da que el otro mazo (▲/▼ con los puntos, en verde si conviene)', () => {
+    const comparison = compare()
+    renderPanels(comparison)
+    const { a, b } = comparison.clean!.average
+    const points = (Math.abs(Math.round(b * 1000) - Math.round(a * 1000)) / 10).toFixed(1)
+    const best: Side = b > a ? 'B' : 'A'
+    const worst: Side = best === 'A' ? 'B' : 'A'
+    const heroBox = (side: Side) => heroOf(side).parentElement!
+
+    expect(heroBox(best).textContent).toContain(`▲ ${points}`)
+    expect(heroBox(best).textContent).toContain(`${points} points more than build ${worst}`)
+    expect(heroBox(worst).textContent).toContain(`▼ ${points}`)
+    expect(heroBox(worst).textContent).toContain(`${points} points less than build ${best}`)
+    expect(heroBox(best).innerHTML).toContain('text-success-soft')
+    expect(heroBox(worst).innerHTML).toContain('text-danger-soft')
   })
 
   it('las cantidades exactas de manos buenas están a la vista (sin desplegar nada) y son sólo de ese mazo, por turno', () => {
@@ -69,95 +94,115 @@ describe('resultados de un mazo: los suyos, solos, con todo a la vista', () => {
     const { first, second } = comparison.clean!
 
     for (const [side, key, totals] of [['A', 'countsA', [HANDS.a5, HANDS.a6]], ['B', 'countsB', [HANDS.b5, HANDS.b6]]] as const) {
-      const lines = [...screen.getByTestId(side).querySelector('ul')!.querySelectorAll('li')].map((line) => line.textContent)
+      const tiles = [...screen.getByTestId(side).querySelector('ul')!.querySelectorAll('li')]
 
-      expect(lines).toEqual([`Going first:${en(first[key]!.hands)} of ${en(totals[0])} hands`, `Going second:${en(second[key]!.hands)} of ${en(totals[1])} hands`])
+      expect(tiles).toHaveLength(2)
+      expect(tiles[0]!.textContent).toContain('Going first')
+      expect(tiles[0]!.textContent).toContain(`${en(first[key]!.hands)} of ${en(totals[0])} hands`)
+      expect(tiles[1]!.textContent).toContain('Going second')
+      expect(tiles[1]!.textContent).toContain(`${en(second[key]!.hands)} of ${en(totals[1])} hands`)
+      expect(within(tiles[0] as HTMLElement).getByRole('meter')).toBeInTheDocument()
     }
 
     expect(document.querySelector('details')).toBeNull()
   })
 
-  it('es una tabla de verdad, con su título, una columna del mazo y los grupos "arrancan bien" y "se traban"', () => {
+  it('las filas que cambian son tarjetas, con su título y los grupos "arrancan bien" y "se traban"', () => {
     renderPanels(compare())
 
     for (const side of ['A', 'B'] as const) {
-      const table = within(tableOf(side))
-
-      expect(table.getAllByRole('columnheader').map((header) => header.textContent)).toEqual(['out of every 100 hands…', side])
-      expect(table.getAllByRole('rowheader').length).toBeGreaterThan(3)
-      expect(within(table.getByText('Get stuck (less is better)').closest('tbody')!).getByText('Have Bricks')).toBeInTheDocument()
-      expect(within(table.getByText('Get going well (more is better)').closest('tbody')!).queryByText('Have Bricks')).toBeNull()
+      expect(panel(side).getByText('out of every 100 hands…')).toBeInTheDocument()
+      expect(cardsOf(side).length).toBeGreaterThan(3)
+      expect(cardsOf(side, STUCK).map(labelOf)).toContain('Have Bricks')
+      expect(cardsOf(side, START).map(labelOf)).not.toContain('Have Bricks')
     }
   })
 
-  it('cada fila trae las cantidades exactas de ese mazo por turno, a la vista, y no hay nada que desplegar', () => {
+  it('cada tarjeta trae las cantidades exactas de ese mazo por turno, a la vista, y no hay nada que desplegar', () => {
     renderPanels(compare())
 
     for (const [side, totals] of [['A', [HANDS.a5, HANDS.a6]], ['B', [HANDS.b5, HANDS.b6]]] as const) {
-      const row = rowNamed(side, 'Have Bricks')
+      const item = cardNamed(side, 'Have Bricks')
 
-      expect(row.textContent).toMatch(new RegExp(`Going first: .* of ${en(totals[0])} handsGoing second: .* of ${en(totals[1])} hands`))
-      expect(within(row as HTMLElement).queryByRole('button')).toBeNull()
+      expect(item.textContent).toMatch(new RegExp(`Going first: .* of ${en(totals[0])} handsGoing second: .* of ${en(totals[1])} hands`))
+      expect(within(item as HTMLElement).queryByRole('button')).toBeNull()
     }
   })
 
-  it('los dos mazos muestran las mismas filas en el mismo orden (para leerlas de lado a lado), y el ✓ va al mejor: el mayor en lo que se quiere tener y el menor en lo que traba', () => {
+  it('los dos mazos muestran las mismas tarjetas en el mismo orden (para leerlas de lado a lado), y el ✓ va al mejor: el mayor en lo que se quiere tener y el menor en lo que traba', () => {
     renderPanels(compare())
-    const a = rowsOf('A')
-    const b = rowsOf('B')
+    const a = cardsOf('A')
+    const b = cardsOf('B')
 
     expect(a.map(labelOf)).toEqual(b.map(labelOf))
     expect(a.length).toBeGreaterThan(3)
 
-    for (const [index, rowA] of a.entries()) {
-      const rowB = b[index]!
-      const higherIsBetter = !rowA.closest('tbody')!.textContent!.includes('Get stuck')
-      const [va, vb] = [valueOf(rowA), valueOf(rowB)]
+    for (const [index, cardA] of a.entries()) {
+      const cardB = b[index]!
+      const higherIsBetter = cardA.closest('section')!.getAttribute('aria-label') === START
+      const [va, vb] = [valueOf(cardA), valueOf(cardB)]
 
-      // Sólo hay filas que difieren, así que en cada una gana alguien (y sólo uno).
-      expect([marked(rowA), marked(rowB)], `${labelOf(rowA)}: ${va} / ${vb}`).toEqual(vb > va === higherIsBetter ? [false, true] : [true, false])
+      // Sólo hay tarjetas que difieren, así que en cada una gana alguien (y sólo uno).
+      expect([marked(cardA), marked(cardB)], `${labelOf(cardA)}: ${va} / ${vb}`).toEqual(vb > va === higherIsBetter ? [false, true] : [true, false])
     }
 
     // El caso que más se confunde: B tiene menos bricks (0 de 3) y es el mejor.
-    expect([marked(rowNamed('A', 'Have Bricks')), marked(rowNamed('B', 'Have Bricks'))]).toEqual([false, true])
+    expect([marked(cardNamed('A', 'Have Bricks')), marked(cardNamed('B', 'Have Bricks'))]).toEqual([false, true])
   })
 
   it('los números son "de cada 100" sin signo %', () => {
     renderPanels(compare())
 
-    for (const row of [...rowsOf('A'), ...rowsOf('B')]) {
-      expect(row.querySelector('td')!.textContent!.replace('Better', '').trim()).toMatch(/^\d+\.\d$/)
+    for (const item of [...cardsOf('A'), ...cardsOf('B')]) {
+      expect(item.querySelector('[role="meter"]')!.textContent).toMatch(/^\d+\.\d$/)
+    }
+  })
+
+  it('cada tarjeta dice cuánto se aparta del otro mazo: ▲/▼ con los puntos, y verde o rojo según convenga (en lo que traba, menos es mejor)', () => {
+    renderPanels(compare())
+
+    for (const side of ['A', 'B'] as const) {
+      for (const item of cardsOf(side)) {
+        const higherIsBetter = item.closest('section')!.getAttribute('aria-label') === START
+        const other = cardsOf(side === 'A' ? 'B' : 'A').find((candidate) => labelOf(candidate) === labelOf(item))!
+        const diff = valueOf(item) - valueOf(other)
+        const good = diff > 0 === higherIsBetter
+
+        expect(item.textContent, labelOf(item)!).toContain(diff > 0 ? '▲' : '▼')
+        expect(item.innerHTML.includes('text-success-soft'), labelOf(item)!).toBe(good)
+        expect(marked(item), labelOf(item)!).toBe(good)
+      }
     }
   })
 
   it('lo que no cambia no se muestra, y no hay un filtro para pedirlo: se están comparando', () => {
     const comparison = compare([], CLOSE_B)
     renderPanels(comparison)
-    const labels = rowsOf('A').map(labelOf)
+    const labels = cardsOf('A').map(labelOf)
 
     // Mismos roles y mismo tamaño: Bricks no cambia, así que no está en ninguno de los dos.
     expect(labels).not.toContain('Have Bricks')
-    expect(rowsOf('B').map(labelOf)).toEqual(labels)
+    expect(cardsOf('B').map(labelOf)).toEqual(labels)
     expect(labels).toContain('Basic opening')
-    for (const [index, rowA] of rowsOf('A').entries()) {
-      expect(Math.abs(valueOf(rowA) - valueOf(rowsOf('B')[index]!))).toBeGreaterThanOrEqual(0.5 - 1e-9)
+    for (const [index, cardA] of cardsOf('A').entries()) {
+      expect(Math.abs(valueOf(cardA) - valueOf(cardsOf('B')[index]!))).toBeGreaterThanOrEqual(0.5 - 1e-9)
     }
 
     expect(screen.queryByRole('switch')).toBeNull()
     expect(screen.queryByText(/Only differences/)).toBeNull()
   })
 
-  it('en cada grupo, las filas van de la mayor diferencia a la menor, y un rol que repite una regla no sale dos veces', () => {
+  it('en cada grupo, las tarjetas van de la mayor diferencia a la menor, y un rol que repite una regla no sale dos veces', () => {
     renderPanels(compare())
 
-    for (const group of ['Get going well (more is better)', 'Get stuck (less is better)']) {
-      const a = [...within(panel('A').getByText(group).closest('tbody')!).getAllByRole('row')].filter((row) => row.querySelector('th[scope="row"]'))
-      const b = [...within(panel('B').getByText(group).closest('tbody')!).getAllByRole('row')].filter((row) => row.querySelector('th[scope="row"]'))
-      const gaps = a.map((row, index) => Math.abs(valueOf(row) - valueOf(b[index]!)))
+    for (const group of [START, STUCK]) {
+      const a = cardsOf('A', group)
+      const b = cardsOf('B', group)
+      const gaps = a.map((item, index) => Math.abs(valueOf(item) - valueOf(b[index]!)))
 
       expect(gaps).toEqual([...gaps].sort((left, right) => right - left))
-      // Dos filas del mismo grupo con los mismos dos valores serían lo mismo dicho dos veces (un rol que repite una regla).
-      const pairs = a.map((row, index) => `${valueOf(row)}|${valueOf(b[index]!)}`)
+      // Dos tarjetas del mismo grupo con los mismos dos valores serían lo mismo dicho dos veces (un rol que repite una regla).
+      const pairs = a.map((item, index) => `${valueOf(item)}|${valueOf(b[index]!)}`)
       expect(new Set(pairs).size).toBe(pairs.length)
     }
   })
@@ -165,37 +210,37 @@ describe('resultados de un mazo: los suyos, solos, con todo a la vista', () => {
   it('una regla que vale para un solo turno lo dice y sólo trae las manos de ese turno', () => {
     const onlyFirst = createMatcherPattern('Solo mi 1º', 'opening', [{ matcher: { type: 'role', value: 'starter' }, quantity: 2, kind: 'include' }], { turnContext: 'first' })
     renderPanels(compare([onlyFirst]))
-    const row = rowNamed('A', 'Solo mi 1º')
+    const item = cardNamed('A', 'Solo mi 1º')
 
-    expect(row.textContent).toContain('First only')
-    expect(row.textContent).toContain('Going first:')
-    expect(row.textContent).not.toContain('Going second:')
+    expect(item.textContent).toContain('First only')
+    expect(item.textContent).toContain('Going first:')
+    expect(item.textContent).not.toContain('Going second:')
   })
 
   it('la regla que le falta una carta a un mazo se lo avisa a ese mazo y sólo a ese', () => {
     const withCard = createMatcherPattern('Con s3', 'opening', [{ matcher: { type: 'card', value: 's3' }, quantity: 1, kind: 'include' }])
     renderPanels(compare([withCard]))
 
-    expect(rowNamed('A', 'Con s3').textContent).toContain('This build is missing a card from the rule.')
-    expect(rowNamed('B', 'Con s3').textContent).not.toContain('missing a card')
+    expect(cardNamed('A', 'Con s3').textContent).toContain('This build is missing a card from the rule.')
+    expect(cardNamed('B', 'Con s3').textContent).not.toContain('missing a card')
   })
 
-  it('si no cambia nada, lo dice y no deja una tabla vacía ni un botón para ver lo que no cambia', () => {
+  it('si no cambia nada, lo dice y no deja listas vacías ni un botón para ver lo que no cambia', () => {
     const comparison = compareBuilds({ name: 'Alpha deck', cards: DECK_A }, { name: 'Beta deck', cards: DECK_A.map((entry) => ({ ...entry, id: `b-${entry.id}` })) }, RULES)
     renderPanels(comparison)
 
     expect(screen.getAllByText('Both builds perform the same')).toHaveLength(2)
     expect(screen.getAllByText('Nothing changes by more than 0.5 points, so there is nothing to compare.')).toHaveLength(2)
-    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.queryByRole('region')).toBeNull()
     expect(screen.queryByRole('button')).toBeNull()
   })
 
-  it('mientras se calcula, muestra una carga en vez de una tabla vacía', () => {
+  it('mientras se calcula, muestra una carga en vez de anillos vacíos', () => {
     const computing = compareBuilds({ name: 'Alpha deck', cards: DECK_A }, { name: 'Beta deck', cards: DECK_B }, RULES, { a: undefined, b: undefined })
     render(<DeckResults side="A" comparison={computing} />)
 
     expect(document.querySelector('[aria-busy="true"]')).not.toBeNull()
-    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.queryByRole('meter')).toBeNull()
   })
 })
 
@@ -221,6 +266,10 @@ describe('la respuesta y los avisos', () => {
   })
 })
 
+/** Una carta de la lista (sólo lo que la grilla lee). */
+const instance = (id: number, name: string, n = 0) =>
+  ({ instanceId: `${id}-${n}`, name, apiCard: { ygoprodeckId: id, imageUrl: null, imageUrlSmall: null }, origin: 'manual', roles: ['starter'], needsReview: false }) as unknown as DeckCardInstance
+
 describe('las dos listas con un VS en el medio', () => {
   const empty = { main: [], extra: [], side: [] }
   const stage = (comparison: BuildComparison | null = compare()) =>
@@ -236,13 +285,13 @@ describe('las dos listas con un VS en el medio', () => {
   const drawers = () => [...document.querySelectorAll('aside[aria-labelledby]')] as HTMLElement[]
   const scrim = () => document.querySelector('[data-results-scrim]') as HTMLElement
 
-  it('en escritorio se ven las dos listas con el VS en el medio (con un rótulo que dice para qué sirve), y los resultados no se ven hasta tocarlo', () => {
+  it('en escritorio se ven las dos listas con el VS en el medio (sólo "VS", sin rótulo), y los resultados no se ven hasta tocarlo', () => {
     stage()
     const [listA, listB] = ['Build A: Alpha deck', 'Build B: Beta deck'].map((name) => screen.getByRole('region', { name }))
 
     expect(vs()).toHaveTextContent('VS')
     expect(vs()).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.getByText('Results')).toBeInTheDocument()
+    expect(screen.queryByText('Results')).toBeNull()
     // El orden: lista A, VS, lista B.
     expect(listA!.compareDocumentPosition(vs()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(vs().compareDocumentPosition(listB!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
@@ -262,7 +311,7 @@ describe('las dos listas con un VS en el medio', () => {
 
     fireEvent.click(vs())
     expect(vs()).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByText('Close')).toBeInTheDocument()
+    expect(screen.queryByText('Close')).toBeNull()
     for (const drawer of [left, right]) {
       expect(drawer).not.toHaveAttribute('inert')
       expect(drawer.className).toContain('visible')
@@ -276,17 +325,20 @@ describe('las dos listas con un VS en el medio', () => {
     expect(left.className).toContain('shadow-[16px_0_48px')
     expect(right.className).toContain('shadow-[-16px_0_48px')
     expect(scrim().className).toContain('opacity-100')
-    // El de la izquierda es del mazo A y el de la derecha del B, cada uno con lo suyo.
+    // El de la izquierda es del mazo A y el de la derecha del B, cada uno con lo suyo (sus ▲/▼ se miden contra el otro).
     expect(within(left).getByRole('heading', { name: 'Alpha deck' })).toBeInTheDocument()
     expect(within(right).getByRole('heading', { name: 'Beta deck' })).toBeInTheDocument()
-    expect(within(left).getByRole('table', { name: /in build A$/ })).toBeInTheDocument()
-    expect(within(right).getByRole('table', { name: /in build B$/ })).toBeInTheDocument()
-    expect(within(left).queryByRole('table', { name: /in build B$/ })).toBeNull()
+    expect(within(left).getAllByRole('meter', { name: 'out of every 100 hands are good' })).toHaveLength(1)
+    expect(within(left).getAllByText(/build B$/).length).toBeGreaterThan(0)
+    expect(within(left).queryByText(/build A$/)).toBeNull()
+    expect(within(right).getAllByText(/build A$/).length).toBeGreaterThan(0)
+    expect(within(right).queryByText(/build B$/)).toBeNull()
 
     fireEvent.click(vs())
     expect(vs()).toHaveAttribute('aria-expanded', 'false')
-    expect(left.className).toContain('-translate-x-full')
-    expect(right.className).toContain('translate-x-full')
+    // Cerrados salen de la pantalla del todo (su ancho más lo que los separa del borde).
+    expect(left.className).toContain('-translate-x-[calc(100%+var(--edge,0px))]')
+    expect(right.className).toContain(' translate-x-[calc(100%+var(--edge,0px))]')
     expect(left).toHaveAttribute('inert')
     expect(scrim().className).toContain('opacity-0')
 
@@ -303,6 +355,42 @@ describe('las dos listas con un VS en el medio', () => {
     expect(vs()).toHaveAttribute('aria-expanded', 'false')
   })
 
+  it('los cajones se pegan al VS, uno a cada lado, del mismo ancho, y no lo tapan aunque el menú lateral le corra el centro a la página', () => {
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return (this.getAttribute('aria-label') === 'See each deck’s results' ? { left: 777, right: 853, width: 76 } : { left: 0, right: 0, width: 0 }) as DOMRect
+    })
+    Object.defineProperty(document.documentElement, 'clientWidth', { value: 1400, configurable: true })
+    stage()
+    fireEvent.click(vs())
+    const [left, right] = drawers() as [HTMLElement, HTMLElement]
+
+    // A la derecha del VS queda lo menos (1400 − 853 − 12 = 535): los dos miden eso, y cada uno termina a 12px del VS.
+    expect(left.style.width).toBe('535px')
+    expect(right.style.width).toBe('535px')
+    expect(left.style.left).toBe('230px')
+    expect(right.style.left).toBe('865px')
+    expect(Number.parseFloat(left.style.left) + 535).toBeLessThan(777)
+    expect(Number.parseFloat(right.style.left)).toBeGreaterThan(853)
+    // Para cerrarse salen del todo: A hacia la izquierda (lo que lo separa del borde), B hacia la derecha (nada: ya toca el borde).
+    expect(left.style.getPropertyValue('--edge')).toBe('230px')
+    expect(right.style.getPropertyValue('--edge')).toBe('0px')
+
+    rect.mockRestore()
+    Reflect.deleteProperty(document.documentElement, 'clientWidth')
+  })
+
+  it('abrir o cerrar los cajones no mueve las listas: la columna del medio es fija y el VS no cambia de contenido', () => {
+    stage()
+    const grid = screen.getByRole('region', { name: 'Build A: Alpha deck' }).parentElement!
+
+    // Una columna fija (no `auto`): lo que haya en el VS no le cambia el ancho a las listas.
+    expect(grid.className).toContain('min-[1101px]:grid-cols-[minmax(0,1fr)_5rem_minmax(0,1fr)]')
+    expect(vs().parentElement!.parentElement!.textContent).toBe('VS')
+    fireEvent.click(vs())
+    expect(grid.className).toContain('_5rem_')
+    expect(vs().parentElement!.parentElement!.textContent).toBe('VS')
+  })
+
   it('lo que no cambia no está en ninguno de los dos cajones', () => {
     stage(compare([], CLOSE_B))
     fireEvent.click(vs())
@@ -314,12 +402,12 @@ describe('las dos listas con un VS en el medio', () => {
     expect(within(right).getByText('Basic opening')).toBeInTheDocument()
   })
 
-  it('mientras no hay resultados, el VS abre igual y no hay tabla', () => {
+  it('mientras no hay resultados, el VS abre igual y no hay anillos', () => {
     stage(null)
     fireEvent.click(vs())
 
     expect(drawers()).toHaveLength(2)
-    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.queryByRole('meter')).toBeNull()
   })
 
   it('en el celular no hay cajones: el VS abre una hoja con los dos mazos uno debajo del otro', () => {
@@ -332,16 +420,93 @@ describe('las dos listas con un VS en el medio', () => {
 
     fireEvent.click(vs())
     const dialog = within(screen.getByRole('dialog'))
-    const tables = dialog.getAllByRole('table')
+    const [boxA, boxB] = ['Build A: Alpha deck', 'Build B: Beta deck'].map((name) => dialog.getByRole('region', { name }))
 
     expect(dialog.getByText('Results by deck')).toBeInTheDocument()
-    expect(tables).toHaveLength(2)
+    expect(within(boxA!).getAllByRole('meter', { name: 'out of every 100 hands are good' })).toHaveLength(1)
+    expect(within(boxB!).getAllByRole('meter', { name: 'out of every 100 hands are good' })).toHaveLength(1)
     // A arriba, B abajo.
-    expect(tables[0]!.compareDocumentPosition(tables[1]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(dialog.getByRole('region', { name: 'Build A: Alpha deck' })).toContainElement(tables[0]!)
-    expect(dialog.getByRole('region', { name: 'Build B: Beta deck' })).toContainElement(tables[1]!)
+    expect(boxA!.compareDocumentPosition(boxB!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(screen.queryByRole('dialog')).toBeNull()
   })
+})
+
+describe('las listas: contenedores a la par y cambios a la vista', () => {
+  const listOf = (build: { name: string; main: DeckCardInstance[]; extra?: DeckCardInstance[]; side?: DeckCardInstance[] }) => ({
+    name: build.name,
+    zones: { main: build.main, extra: build.extra ?? [], side: build.side ?? [] },
+    onCardClick: vi.fn(),
+  })
+  const stage = (a: ReturnType<typeof listOf>, b: ReturnType<typeof listOf>, deltaByCardId = new Map<string, number>()) =>
+    render(
+      <Provider store={configureStore({ reducer: { settings: (state = { handSize: 5, deckFormat: 'unlimited' }) => state } })}>
+        <CompareStage a={a} b={b} comparison={null} deltaByCardId={deltaByCardId} />
+      </Provider>,
+    )
+  const list = (side: 'A' | 'B') => screen.getByRole('region', { name: new RegExp(`^Build ${side}:`) })
+  const zoneLabels = (side: 'A' | 'B') => [...list(side).querySelectorAll('span.uppercase')].map((label) => label.textContent)
+
+  it('en escritorio las dos listas comparten las filas de la grilla: la misma zona queda a la par aunque un mazo tenga más cartas o no tenga extra', () => {
+    stage(listOf({ name: 'Alpha deck', main: [instance(1, 'Uno'), instance(2, 'Dos')] }), listOf({ name: 'Beta deck', main: [instance(1, 'Uno')], extra: [instance(3, 'Tres')] }))
+
+    // Encabezado + Main + Extra: tres filas compartidas (subgrid), cada lista en su columna, y el VS ocupa las mismas tres.
+    for (const [side, column] of [['A', '1'], ['B', '3']] as const) {
+      expect(list(side).style.gridTemplateRows).toBe('subgrid')
+      expect(list(side).style.gridRow).toBe('1 / span 3')
+      expect(list(side).style.gridColumn).toBe(column)
+    }
+    expect(vsBox().style.gridColumn).toBe('2')
+    expect(vsBox().style.gridRow).toBe('1 / span 3')
+    // A no tiene extra pero la muestra vacía: así su Main no queda corrido contra el del otro mazo.
+    expect(zoneLabels('A')).toEqual(['Main [2]', 'Extra [0]'])
+    expect(zoneLabels('B')).toEqual(['Main [1]', 'Extra [1]'])
+  })
+
+  it('en el celular cada lista va sola, sin filas compartidas y sin zonas vacías', () => {
+    desktop = false
+    stage(listOf({ name: 'Alpha deck', main: [instance(1, 'Uno')] }), listOf({ name: 'Beta deck', main: [instance(1, 'Uno')], extra: [instance(3, 'Tres')] }))
+
+    expect(list('A').style.gridTemplateRows).toBe('')
+    expect(zoneLabels('A')).toEqual(['Main [1]'])
+    expect(zoneLabels('B')).toEqual(['Main [1]', 'Extra [1]'])
+  })
+
+  it('las cartas que cambian se marcan fuerte (aro grueso y la cantidad en la primera copia: +N en B, −N en A) y las que no cambian se apagan', () => {
+    const [one, two] = [instance(1, 'Uno'), instance(2, 'Dos')]
+    const delta = new Map([[getDerivedCardId(1), 2], [getDerivedCardId(4), -1]])
+
+    stage(
+      listOf({ name: 'Alpha deck', main: [instance(4, 'Cuatro'), two] }),
+      listOf({ name: 'Beta deck', main: [one, instance(1, 'Uno', 1), instance(2, 'Dos', 1)] }),
+      delta,
+    )
+    const inB = within(list('B'))
+    const inA = within(list('A'))
+    const [firstCopy, secondCopy] = inB.getAllByTitle('Uno')
+
+    expect(firstCopy!.className).toContain('outline-[3px]')
+    expect(firstCopy!.className).toContain('outline-success')
+    expect(secondCopy!.className).toContain('outline-success')
+    // La cantidad va una sola vez por carta.
+    expect(within(firstCopy!).getByText('+2')).toBeInTheDocument()
+    expect(within(secondCopy!).queryByText('+2')).toBeNull()
+    expect(inB.getByTitle('Dos').className).toContain('opacity-40')
+    expect(inB.getByTitle('Dos').className).not.toContain('outline-success')
+    // A marca las que B saca, en rojo y con el signo menos.
+    expect(inA.getByTitle('Cuatro').className).toContain('outline-danger')
+    expect(within(inA.getByTitle('Cuatro')).getByText('−1')).toBeInTheDocument()
+    expect(inA.getByTitle('Dos').className).toContain('opacity-40')
+  })
+
+  it('si no hay ninguna diferencia, nada se apaga', () => {
+    stage(listOf({ name: 'Alpha deck', main: [instance(1, 'Uno')] }), listOf({ name: 'Beta deck', main: [instance(1, 'Uno', 1)] }))
+
+    expect(within(list('A')).getByTitle('Uno').className).not.toContain('opacity-40')
+  })
+
+  function vsBox() {
+    return screen.getByRole('button', { name: 'See each deck’s results' }).parentElement!.parentElement!
+  }
 })
