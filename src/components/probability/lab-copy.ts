@@ -40,12 +40,6 @@ export function getKpiTone(probability: number): KpiTone {
   return [...KPI_THRESHOLDS].reverse().find((threshold) => probability >= threshold.value)?.tone ?? 'critical'
 }
 
-/** "6 de cada 10 manos": más fácil de leer que un porcentaje con decimales. */
-export function buildHandsOutOfTen(probability: number): string {
-  const outOfTen = Math.round(probability * 10)
-  return t('lab.handsOutOfTen', { n: outOfTen })
-}
-
 /**
  * "Pasa en 1 de cada x manos (p%)"; si pasa en más de la mitad, "x de cada 10" (1 de cada 1 no tiene sentido).
  * `plural`: el sujeto son varios ("Manos sin ninguna salida") y el verbo concuerda ("Pasan en…").

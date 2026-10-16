@@ -7,7 +7,7 @@ import { createMatcherPattern } from '../app/pattern-factory'
 import { LabDisclaimerDialog } from '../components/probability/LabDisclaimerDialog'
 import { LabRuleList } from '../components/probability/LabRuleList'
 import { QuickCalculator } from '../components/probability/QuickCalculator'
-import { KPI_TONE_LABELS, buildHandsOutOfTen, formatOdds } from '../components/probability/lab-copy'
+import { KPI_TONE_LABELS, formatOdds } from '../components/probability/lab-copy'
 import { buildRuleEntryGroups, type RuleEntry } from '../components/probability/probability-lab-helpers'
 import { buildReadiness } from '../components/probability/use-probability-lab'
 import { applyLocale } from '../i18n'
@@ -57,7 +57,6 @@ describe('el Lab en inglés', () => {
     expect(formatOdds(0.62, false)).toBe('It happens in 6 out of 10 hands.')
     expect(formatOdds(0.999)).toBe('It happens in almost every hand (99.9%).')
     expect(formatOdds(0.5, true, true)).toBe('It happens in 1 out of 2 hands (50.0%).')
-    expect(buildHandsOutOfTen(0.62)).toBe('6 out of 10 hands open clean')
     // La tabla exportada se lee en el idioma de ese momento (getters), no en el de cuando se cargó el módulo.
     expect(Object.values(KPI_TONE_LABELS)).toEqual(['Excellent', 'Solid', 'Improvable', 'Critical'])
   })
@@ -86,7 +85,7 @@ describe('el Lab en inglés', () => {
   })
 
   it('el aviso resalta la parte en negrita y se puede reconocer', () => {
-    render(<LabDisclaimerDialog isOpen dismissible onAcknowledge={noop} />)
+    render(<LabDisclaimerDialog isOpen onClose={noop} />)
 
     expect(screen.getByText('not an irrefutable source').tagName).toBe('STRONG')
     expect(screen.getByText('your').tagName).toBe('STRONG')

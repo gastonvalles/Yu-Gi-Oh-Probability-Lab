@@ -11,13 +11,7 @@ import { IconButton } from '../ui/IconButton'
 import { ProgressRing } from '../ui/ProgressRing'
 import { overline } from '../ui/typography'
 import { LabScoreSheet } from './LabScoreSheet'
-import {
-  KPI_THRESHOLDS,
-  KPI_TONE,
-  KPI_TONE_LABELS,
-  buildHandsOutOfTen,
-  getKpiTone,
-} from './lab-copy'
+import { KPI_THRESHOLDS, KPI_TONE_LABELS, getKpiTone } from './lab-copy'
 
 interface LabScoreCardProps {
   results: LabResults
@@ -32,16 +26,21 @@ interface LabScoreCardProps {
 /** Las marcas del anillo son los cortes de la nota (40 %, 60 %, 85 %). */
 const THRESHOLD_TICKS = KPI_THRESHOLDS.map((threshold) => threshold.value)
 
-/** El resultado principal: % de manos limpias en un anillo grande, su nota (con color) y el detalle por turno. */
+/** El número de un anillo: «de cada 100», entero y sin el signo % (la unidad la dice la frase de al lado). */
+const per100 = (value: number) => formatWholePercent(value).replace('%', '')
+
+/**
+ * El resultado principal: cuántas manos de cada 100 son buenas, en un anillo grande violeta (la nota, «Sólido» o «Excelente», va en el nombre del anillo: el color no cambia con ella)
+ * y el detalle por turno.
+ */
 export function LabScoreCard({ results, view, isRecalculating, handSize, onOpenDisclaimer }: LabScoreCardProps) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const current = results[view]
   const kpi = getKpiTone(current.cleanProbability)
-  const tone = KPI_TONE[kpi]
 
   return (
     <Card
-      tone={tone}
+      tone="brand"
       padding="lg"
       className="order-1 grid content-start gap-5 transition-opacity duration-150 aria-busy:opacity-75 min-[1101px]:col-span-5 min-[1101px]:col-start-1"
       aria-busy={isRecalculating}
@@ -56,16 +55,19 @@ export function LabScoreCard({ results, view, isRecalculating, handSize, onOpenD
       <div className="grid justify-items-center gap-5 min-[520px]:grid-cols-[auto_minmax(0,1fr)] min-[520px]:items-center min-[520px]:justify-items-start">
         <ProgressRing
           value={current.cleanProbability}
-          tone={tone}
+          tone="brand"
           size={168}
           strokeWidth={14}
           ticks={THRESHOLD_TICKS}
           label={t('lab.score.ringLabel', { percent: formatShortPercent(current.cleanProbability), tone: KPI_TONE_LABELS[kpi] })}
         >
-          {formatShortPercent(current.cleanProbability)}
+          {per100(current.cleanProbability)}
         </ProgressRing>
 
-        <p className="m-0 text-lead font-semibold text-foreground">{buildHandsOutOfTen(current.cleanProbability)}.</p>
+        <div className="grid gap-1">
+          <p className="m-0 text-lead font-semibold text-foreground">{t('lab.score.outOf100')}</p>
+          <p className="m-0 text-body text-muted">{t('lab.score.outOf100Hint')}</p>
+        </div>
       </div>
 
       <dl className="m-0 grid grid-cols-2 gap-x-4 border-t border-border-subtle pt-4">
@@ -90,13 +92,12 @@ export function LabScoreCard({ results, view, isRecalculating, handSize, onOpenD
 function TurnRing({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex items-center gap-2.5">
-      <ProgressRing value={value} tone={KPI_TONE[getKpiTone(value)]} size={46} strokeWidth={5} delay={250} label={`${label}: ${formatShortPercent(value)}`}>
-        {formatWholePercent(value)}
+      <ProgressRing value={value} tone="brand" size={46} strokeWidth={5} delay={250} label={`${label}: ${formatShortPercent(value)}`}>
+        {per100(value)}
       </ProgressRing>
       <div className="grid gap-0.5">
         <dt className="text-micro text-muted">{label}</dt>
-        <dd className="m-0 text-lead font-semibold text-foreground tabular-nums">{formatShortPercent(value)}</dd>
-      </div>
+        </div>
     </div>
   )
 }

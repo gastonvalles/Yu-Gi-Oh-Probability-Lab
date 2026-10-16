@@ -99,12 +99,14 @@ describe('LabScoreCard', () => {
   it('muestra el KPI de la vista activa y, en promedio, el detalle por turno', () => {
     const { rerender } = render(<LabScoreCard results={RESULTS} view="average" isRecalculating={false} handSize={5} onOpenDisclaimer={() => {}} />)
 
-    expect(screen.getByText('57.0%')).toBeInTheDocument()
-    expect(screen.getByText('41.0%')).toBeInTheDocument()
-    expect(screen.getByText('73.0%')).toBeInTheDocument()
+    // El número es «de cada 100», entero y sin %: el grande es el promedio y cada turno lleva el suyo en su anillo.
+    expect(screen.getByText('de cada 100 manos son buenas')).toBeInTheDocument()
+    expect(screen.getByText('Arrancan y no se traban, según tus reglas.')).toBeInTheDocument()
+    expect(screen.getByRole('meter', { name: /^Manos limpias: 57.0%/ })).toHaveTextContent('57')
+    expect(screen.getByRole('meter', { name: /^Yendo 1º: 41.0%/ })).toHaveTextContent('41')
+    expect(screen.getByRole('meter', { name: /^Yendo 2º: 73.0%/ })).toHaveTextContent('73')
 
     rerender(<LabScoreCard results={RESULTS} view="second" isRecalculating={false} handSize={5} onOpenDisclaimer={() => {}} />)
-    expect(screen.getAllByText('73.0%').length).toBeGreaterThan(0)
     expect(screen.getByRole('meter', { name: /^Manos limpias: 73\.0%/ })).toHaveAttribute('aria-valuenow', '73')
   })
 })
