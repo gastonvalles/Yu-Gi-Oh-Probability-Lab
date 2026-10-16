@@ -38,7 +38,7 @@ export function AppSidebar({ groups, activeKey, onSelect, collapsed, onToggleCol
       data-collapsed={collapsed ? 'true' : 'false'}
       style={{ width: collapsed ? SIDEBAR_PX.collapsed : SIDEBAR_PX.expanded }}
       className={cx(
-        'group/sidebar flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-r border-border-subtle bg-card-background/70 transition-[width] duration-(--sidebar-duration) ease-(--sidebar-ease) motion-reduce:transition-none',
+        'group/sidebar flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-r border-nav-raised bg-nav transition-[width] duration-(--sidebar-duration) ease-(--sidebar-ease) motion-reduce:transition-none',
         className,
       )}
     >
@@ -48,14 +48,14 @@ export function AppSidebar({ groups, activeKey, onSelect, collapsed, onToggleCol
       <SidebarNav groups={groups} activeKey={activeKey} onSelect={onSelect} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pb-3 [scrollbar-width:thin]" />
       <div className="shrink-0 px-3 pb-3">
         {/* Contraído, el idioma se desvanece y no se pueden tocar ni enfocar; el renglón conserva su alto para que la flecha de abajo no se mueva. */}
-        <MenuTools className="border-t border-border-subtle pb-2 pt-3 transition-[opacity,visibility] duration-150 group-data-[collapsed=true]/sidebar:invisible group-data-[collapsed=true]/sidebar:opacity-0 motion-reduce:transition-none" />
+        <MenuTools className="border-t border-nav-raised pb-2 pt-3 transition-[opacity,visibility] duration-150 group-data-[collapsed=true]/sidebar:invisible group-data-[collapsed=true]/sidebar:opacity-0 motion-reduce:transition-none" />
         <button
           type="button"
           aria-expanded={!collapsed}
           aria-label={collapsed ? t('shell.nav.expand') : t('shell.nav.collapse')}
           title={collapsed ? t('shell.nav.expand') : undefined}
           className={cx(
-            'group/toggle flex w-full items-center rounded-control text-left text-body font-medium text-white transition-opacity duration-150 hover:[&_svg]:text-success hover:[&_svg]:drop-shadow-[0_0_6px_rgb(var(--success-rgb)/0.7)] focus-visible:outline-none focus-visible:shadow-focus active:opacity-70 motion-reduce:transition-none',
+            'group/toggle flex w-full items-center rounded-control text-left text-body font-medium text-white transition-opacity duration-150 hover:[&_svg]:text-nav-active focus-visible:outline-none focus-visible:shadow-focus active:opacity-70 motion-reduce:transition-none',
             RAIL_ROW,
           )}
           onClick={onToggleCollapsed}

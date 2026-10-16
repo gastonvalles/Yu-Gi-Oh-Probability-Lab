@@ -32,10 +32,11 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('el menú de la app', () => {
-  it('agrupa los destinos: los pasos del deck, las herramientas y la referencia', () => {
+  it('agrupa los destinos en cuatro grupos: los pasos del deck, el duelo, las herramientas y la referencia', () => {
     expect(GROUPS.map((group) => [group.label, group.items.map((item) => item.key)])).toEqual([
       ['Tu deck', ['deck-builder', 'categorization', 'probability-lab', 'workspace', 'export']],
-      ['Herramientas', ['practice', 'life', 'mascots']],
+      ['Duelo', ['practice']],
+      ['Herramientas', ['life', 'mascots']],
       ['Descubrir', ['meta', 'tournaments', 'replays', 'expansions', 'banlists']],
     ])
   })
@@ -46,20 +47,23 @@ describe('el menú de la app', () => {
   })
 
   it('la mesa de práctica sólo se ofrece con cartas en el Main; la calculadora de LP y las mascotas, siempre', () => {
-    expect(buildAppNavGroups(STEPS, { practice: false })[1]?.items.map((item) => item.key)).toEqual(['life', 'mascots'])
+    const sinPractica = buildAppNavGroups(STEPS, { practice: false })
+    // Sin práctica ni relay el grupo Duelo queda vacío y no se muestra.
+    expect(sinPractica.map((group) => group.key)).toEqual(['deck', 'tools', 'discover'])
+    expect(sinPractica.find((group) => group.key === 'tools')?.items.map((item) => item.key)).toEqual(['life', 'mascots'])
   })
 
   it('el duelo con un amigo es una pantalla del flujo (#duel) que el menú ofrece sólo donde hay un relay', () => {
     expect(isDeckWorkflowStepKey('duel')).toBe(true)
     // Sin relay (o sin decirlo) el menú no lo ofrece: es como estaba antes.
-    expect(GROUPS[1]?.items.map((item) => item.key)).toEqual(['practice', 'life', 'mascots'])
-    expect(buildAppNavGroups(STEPS, { practice: true, duel: true })[1]?.items.map((item) => item.key)).toEqual(['practice', 'duel', 'life', 'mascots'])
+    expect(GROUPS[1]?.items.map((item) => item.key)).toEqual(['practice'])
+    expect(buildAppNavGroups(STEPS, { practice: true, duel: true })[1]?.items.map((item) => item.key)).toEqual(['practice', 'duel'])
     // Es una herramienta que se juega aunque todavía no haya un deck armado (quien llega por el enlace lo ve y se le avisa).
-    expect(buildAppNavGroups(STEPS, { practice: false, duel: true })[1]?.items.map((item) => item.key)).toEqual(['duel', 'life', 'mascots'])
+    expect(buildAppNavGroups(STEPS, { practice: false, duel: true })[1]?.items.map((item) => item.key)).toEqual(['duel'])
   })
 
   it('las mascotas son una herramienta más del menú, con su patita, y no hay un botón suelto de mascotas abajo', () => {
-    const mascots = GROUPS[1]?.items.find((item) => item.key === 'mascots')
+    const mascots = GROUPS.find((group) => group.key === 'tools')?.items.find((item) => item.key === 'mascots')
 
     expect(mascots).toMatchObject({ label: 'Mascotas', icon: 'paw' })
     render(<AppSidebar groups={GROUPS} activeKey="export" onSelect={() => {}} collapsed={false} onToggleCollapsed={() => {}} />)

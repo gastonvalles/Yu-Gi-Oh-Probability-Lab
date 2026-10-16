@@ -59,7 +59,7 @@ describe('los íconos blancos se ponen verdes al pasar el mouse y al seleccionar
     expect(screen.getByRole('button', { name: 'Ayuda' })).toHaveClass('text-white', 'hover:text-success', 'aria-expanded:text-success')
   })
 
-  it('los destinos del menú: ícono y rótulo blancos; el ícono se pone verde al pasar el mouse, y el destino abierto va verde', () => {
+  it('los destinos del menú: ícono y rótulo blancos; el ícono se pone ámbar al pasar el mouse, y el destino abierto va ámbar', () => {
     const steps = buildDeckWorkflowNavigationItems({ mainDeckCount: 42, roleCardCount: 40, unclassifiedCardCount: 0, hasCompletedRoleStep: true, patternCount: 1 })
     render(<SidebarNav groups={buildAppNavGroups(steps, { practice: true })} activeKey="export" onSelect={() => {}} />)
 
@@ -68,9 +68,9 @@ describe('los íconos blancos se ponen verdes al pasar el mouse y al seleccionar
     const active = within(nav).getByRole('button', { name: /^Exportar deck/ })
 
     expect(inactive).toHaveClass('text-foreground')
-    expect(inactive.querySelector('svg')).toHaveClass('text-white', 'group-hover/item:text-success')
-    expect(active).toHaveClass('text-success')
-    expect(active.querySelector('svg')).toHaveClass('text-success')
+    expect(inactive.querySelector('svg')).toHaveClass('text-white', 'group-hover/item:text-nav-active')
+    expect(active).toHaveClass('text-nav-active')
+    expect(active.querySelector('svg')).toHaveClass('text-nav-active')
     expect(active.querySelector('svg')).not.toHaveClass('text-white')
   })
 })

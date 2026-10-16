@@ -3,9 +3,8 @@ import { useId } from 'react'
 import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
-import { overline } from '../ui/typography'
 import { navItemDescription, type NavGroup, type NavItem } from './nav-model'
-import { RAIL_LABEL, RAIL_LABEL_WIDTH, RAIL_ROW, RAIL_SLOT } from './rail'
+import { NAV_OVERLINE, RAIL_LABEL, RAIL_LABEL_WIDTH, RAIL_ROW, RAIL_SLOT } from './rail'
 
 interface SidebarNavProps {
   groups: NavGroup[]
@@ -22,7 +21,7 @@ const ITEM = cx(
 
 /**
  * La lista de destinos del menú, agrupada: es lo que se ve en el menú lateral (escritorio) y en el cajón del celular, así que un cambio
- * acá cambia los dos. Los íconos son blancos, como los de todo botón sin texto, y se ponen verdes al pasar el mouse; el destino abierto lleva fondo lavanda, ícono relleno y texto verdes. Cómo viene cada paso (listo, a medio hacer) va en el tooltip y en
+ * acá cambia los dos. Los íconos son blancos, como los de todo botón sin texto, y se ponen ámbar al pasar el mouse; el destino abierto lleva fondo índigo claro, ícono relleno y texto ámbar (el ámbar es de la navegación). Cómo viene cada paso (listo, a medio hacer) va en el tooltip y en
  * el nombre accesible, no en un punto de color: un punto suelto en el borde de un ícono se lee como una notificación.
  * Contraído (el menú lateral lo marca con `data-collapsed`), la misma lista se queda con los íconos: nada se vuelve a armar, los rótulos
  * sólo se desvanecen y el menú los recorta (ver `rail.ts`), así el cambio de ancho se anima sin que nada salte.
@@ -35,14 +34,14 @@ export function SidebarNav({ groups, activeKey, onSelect, className }: SidebarNa
       {groups.map((group, index) => (
         <div key={group.key} role="group" aria-labelledby={`${id}-${group.key}`} className="grid grid-cols-[minmax(0,1fr)] gap-0.5">
           {/* El renglón del nombre del grupo mide lo mismo con el menú abierto o contraído (contraído, sólo queda la línea). */}
-          <p id={`${id}-${group.key}`} className={cx(overline, 'm-0 flex items-end px-3 pb-1', index === 0 ? 'h-6' : 'h-9')}>
+          <p id={`${id}-${group.key}`} className={cx(NAV_OVERLINE, 'm-0 flex items-end px-3 pb-1', index === 0 ? 'h-6' : 'h-9')}>
             <span className="flex h-4 w-full items-center">
               <span className="min-w-0 max-w-40 overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-(--sidebar-duration) ease-(--sidebar-ease) group-data-[collapsed=true]/sidebar:max-w-0 group-data-[collapsed=true]/sidebar:opacity-0 motion-reduce:transition-none">
                 <span className="block pr-3">{group.label}</span>
               </span>
               <span
                 aria-hidden="true"
-                className={cx('h-px min-w-3 flex-1 bg-border-subtle transition-opacity duration-150 motion-reduce:transition-none', index === 0 && 'group-data-[collapsed=true]/sidebar:opacity-0')}
+                className={cx('h-px min-w-3 flex-1 bg-nav-raised transition-opacity duration-150 motion-reduce:transition-none', index === 0 && 'group-data-[collapsed=true]/sidebar:opacity-0')}
               />
             </span>
           </p>
@@ -67,7 +66,7 @@ function NavButton({ item, active, onSelect }: { item: NavItem; active: boolean;
       aria-current={active ? 'page' : undefined}
       aria-label={navItemDescription(item)}
       title={item.detail ? `${item.title}: ${item.detail}` : item.title}
-      className={cx(ITEM, active ? 'bg-lavender text-success' : 'text-foreground hover:bg-tint/5')}
+      className={cx(ITEM, active ? 'bg-nav-raised text-nav-active' : 'text-foreground hover:bg-nav-raised/60')}
       onClick={() => onSelect(item.key)}
     >
       <span className={RAIL_SLOT}>
@@ -76,8 +75,8 @@ function NavButton({ item, active, onSelect }: { item: NavItem; active: boolean;
           size={22}
           variant={active ? 'bold' : 'bulk'}
           className={cx(
-            'transition-[color,filter] duration-150 [--icon-cut:var(--lavender)]',
-            active ? 'text-success drop-shadow-[0_0_8px_rgb(var(--success-rgb)/0.55)]' : 'text-white group-hover/item:text-success group-hover/item:drop-shadow-[0_0_6px_rgb(var(--success-rgb)/0.6)]',
+            'transition-colors duration-150 [--icon-cut:var(--nav-raised)]',
+            active ? 'text-nav-active' : 'text-white group-hover/item:text-nav-active',
           )}
         />
       </span>

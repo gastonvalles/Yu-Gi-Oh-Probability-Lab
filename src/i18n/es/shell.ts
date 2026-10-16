@@ -1,11 +1,13 @@
 /** Armazón de la app: barra de pasos, pie, mascotas, avisos, calculadora de LP y los componentes de `ui/`. */
 export const shell = {
   'shell.nav.main': 'Navegación principal',
+  'shell.brand.unofficial': 'Sitio no oficial',
   'shell.nav.open': 'Abrir el menú',
   'shell.nav.close': 'Cerrar el menú',
   'shell.nav.collapse': 'Contraer menú',
   'shell.nav.expand': 'Expandir menú',
   'shell.nav.group.deck': 'Tu deck',
+  'shell.nav.group.duel': 'Duelo',
   'shell.nav.group.tools': 'Herramientas',
   'shell.nav.group.discover': 'Descubrir',
 

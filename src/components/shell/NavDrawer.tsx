@@ -22,13 +22,13 @@ interface DrawerPanelProps {
 /** Lo de adentro del cajón del celular: la marca con su X, los destinos (los mismos del menú lateral) y abajo el idioma. */
 export function DrawerPanel({ groups, activeKey, onSelect, onClose, className }: DrawerPanelProps) {
   return (
-    <div className={cx('flex h-full min-h-0 flex-col border-r border-border-subtle bg-card-background shadow-overlay', className)}>
+    <div className={cx('flex h-full min-h-0 flex-col border-r border-nav-raised bg-nav shadow-overlay', className)}>
       <div className="flex h-16 shrink-0 items-center justify-between gap-2 pl-5 pr-3 pt-[env(safe-area-inset-top,0px)]">
         <AppBrand />
         <CloseButton aria-label={t('shell.nav.close')} data-initial-focus="" onClick={onClose} />
       </div>
       <SidebarNav groups={groups} activeKey={activeKey} onSelect={onSelect} className="min-h-0 flex-1 overflow-y-auto px-3 pb-3" />
-      <MenuTools className="shrink-0 border-t border-border-subtle p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]" />
+      <MenuTools className="shrink-0 border-t border-nav-raised p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]" />
     </div>
   )
 }

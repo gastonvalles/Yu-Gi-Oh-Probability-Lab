@@ -3,11 +3,13 @@ import type { Translated } from '../types'
 
 export const shell: Translated<typeof es> = {
   'shell.nav.main': 'Main navigation',
+  'shell.brand.unofficial': 'Unofficial site',
   'shell.nav.open': 'Open the menu',
   'shell.nav.close': 'Close the menu',
   'shell.nav.collapse': 'Collapse menu',
   'shell.nav.expand': 'Expand menu',
   'shell.nav.group.deck': 'Your deck',
+  'shell.nav.group.duel': 'Duel',
   'shell.nav.group.tools': 'Tools',
   'shell.nav.group.discover': 'Discover',
 
