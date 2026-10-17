@@ -135,7 +135,7 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
   const [operator, setOperator] = useState<Operator>('-')
   const [digits, setDigits] = useState('')
   const [logOpen, setLogOpen] = useState(false)
-  const [tools, setTools] = useState<'coin' | 'die' | null>(null)
+  const [toolsOpen, setToolsOpen] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
   const { showToast } = useToastMessage()
   const now = useClock(state.timer.running)
@@ -146,6 +146,23 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
   const name = duelistName(selected)
 
   useWakeLock()
+
+  // Reiniciar las vidas borra el registro de la ronda: vive en el registro, no al pie de la calculadora.
+  const pristine = state.log.length === 0 && state.lp[0] === STARTING_LP && state.lp[1] === STARTING_LP
+  const resetButton = (
+    <Button
+      variant="tertiary"
+      color="danger"
+      size="sm"
+      disabled={pristine}
+      onClick={() => {
+        setLogOpen(false)
+        setConfirmReset(true)
+      }}
+    >
+      {t('shell.life.resetButton')}
+    </Button>
+  )
 
   const buzz = () => navigator.vibrate?.(12)
   const select = (player: Duelist) => {
@@ -184,7 +201,7 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
     // El contenedor y el que usa sus medidas (`@2xl:`) tienen que ser dos elementos: una consulta de contenedor sólo vale para lo que está adentro.
     <div className="@container h-full min-h-0" onPointerDown={unlockAudio}>
       <div
-        className="grid h-full min-h-0 gap-3 overflow-hidden bg-background px-gutter pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] pt-[calc(env(safe-area-inset-top,0px)+0.5rem)] [grid-template-areas:'head'_'lp'_'disp'_'quick'_'pad'_'foot'] [grid-template-columns:minmax(0,1fr)] [grid-template-rows:auto_auto_auto_auto_auto_minmax(0,1fr)] @2xl:[grid-template-areas:'head_head'_'lp_log'_'disp_log'_'pad_log'_'foot_quick'] @2xl:[grid-template-columns:minmax(0,1fr)_15rem] @2xl:[grid-template-rows:auto_auto_auto_minmax(0,1fr)_auto] @2xl:gap-x-5 @2xl:px-5"
+        className="grid h-full min-h-0 gap-3 overflow-hidden bg-background px-gutter pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] pt-[calc(env(safe-area-inset-top,0px)+0.5rem)] [grid-template-areas:'head'_'lp'_'disp'_'quick'_'pad'] [grid-template-columns:minmax(0,1fr)] [grid-template-rows:auto_auto_auto_auto_minmax(0,1fr)] @2xl:[grid-template-areas:'head_head'_'lp_log'_'disp_log'_'quick_log'_'pad_log'] @2xl:[grid-template-columns:minmax(0,1fr)_15rem] @2xl:[grid-template-rows:auto_auto_auto_auto_minmax(0,1fr)] @2xl:gap-x-5 @2xl:px-5"
       >
         <header className="flex items-center gap-1.5 [grid-area:head]">
           <Heading level="card" as="h2" className="min-w-0 flex-1 truncate">
@@ -204,6 +221,9 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
             <Icon name={state.timer.running ? 'pause' : 'play'} size={16} variant="bold" />
             {formatClock(remaining)}
           </button>
+          <IconButton tone="ghost" size="sm" aria-label={t('shell.life.tools.title')} title={t('shell.life.tools.title')} onClick={() => setToolsOpen(true)}>
+            <Icon name="dice" size={20} />
+          </IconButton>
           <IconButton
             tone="ghost"
             size="sm"
@@ -252,7 +272,7 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Los últimos cambios, para repetirlos con un toque sobre el duelista elegido. */}
-        <div className="flex min-h-11 flex-wrap items-center gap-1.5 [grid-area:quick] @2xl:content-end @2xl:justify-end" role="group" aria-label={t('shell.life.recent.label')}>
+        <div className="flex min-h-11 flex-wrap items-center gap-1.5 [grid-area:quick]" role="group" aria-label={t('shell.life.recent.label')}>
           {recent.length > 0 ? <span className={overline}>{t('shell.life.recent.title')}</span> : null}
           {recent.map((delta) => (
             <button
@@ -266,9 +286,22 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
               {Math.abs(delta)}
             </button>
           ))}
+          <Button
+            variant="secondary"
+            size="sm"
+            icon="undo"
+            className="ml-auto"
+            disabled={state.log.length === 0}
+            onClick={() => {
+              dispatchLife({ type: 'undo' })
+              buzz()
+            }}
+          >
+            {t('shell.life.undo')}
+          </Button>
         </div>
 
-        <div className="[grid-area:pad]">
+        <div className="min-h-0 [grid-area:pad]">
           <LpPad
             operator={operator}
             name={name}
@@ -279,35 +312,13 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5 self-end [grid-area:foot]">
-          <Button variant="secondary" size="sm" onClick={() => setTools('coin')}>
-            {t('shell.life.coin.button')}
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => setTools('die')}>
-            {t('shell.life.die.button')}
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={state.log.length === 0}
-            onClick={() => {
-              dispatchLife({ type: 'undo' })
-              buzz()
-            }}
-          >
-            {t('shell.life.undo')}
-          </Button>
-          <Button variant="tertiary" color="danger" size="sm" className="ml-auto" onClick={() => setConfirmReset(true)}>
-            {t('shell.life.resetButton')}
-          </Button>
-        </div>
-
         {/* Desde un ancho de diálogo, el registro va a la derecha, siempre a la vista; en el celular se abre desde el ícono de arriba. */}
         <aside aria-label={t('shell.life.log.title')} className="hidden min-h-0 flex-col [grid-area:log] @2xl:flex">
           <span className={cx(overline, 'mb-1.5')}>{t('shell.life.log.heading')}</span>
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             <LogList log={state.log} variant="aside" />
           </div>
+          {resetButton}
         </aside>
 
         <Modal
@@ -316,12 +327,13 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
           size="sheet"
           title={t('shell.life.log.title')}
           subtitle={t('shell.life.log.subtitle', { clock: formatClock(remaining), count: state.log.length })}
+          footer={resetButton}
         >
           <LogList log={state.log} variant="sheet" />
         </Modal>
 
-        <Modal isOpen={tools !== null} onClose={() => setTools(null)} size="sm" title={t('shell.life.tools.title')}>
-          {tools ? <ToolsPanel key={tools} start={tools} /> : null}
+        <Modal isOpen={toolsOpen} onClose={() => setToolsOpen(false)} size="sm" title={t('shell.life.tools.title')}>
+          <ToolsPanel />
         </Modal>
 
         <ConfirmDialog
@@ -421,10 +433,10 @@ function DuelistPanel({ player, lp, selected, onSelect }: { player: Duelist; lp:
 
 type Toss = { id: number; kind: 'coin'; face: 0 | 1 } | { id: number; kind: 'die'; value: number }
 
-/** Moneda y dado de seis caras: se tiran con animación y el resultado aparece cuando terminan de girar. Con `start`, ya viene tirado (lo que se tocó para abrirlo). */
-function ToolsPanel({ start }: { start: 'coin' | 'die' }) {
-  const [toss, setToss] = useState<Toss | null>(() => (start === 'coin' ? { id: 1, kind: 'coin', face: Math.random() < 0.5 ? 0 : 1 } : { id: 1, kind: 'die', value: 1 + Math.floor(Math.random() * 6) }))
-  const count = useRef(1)
+/** Moneda y dado de seis caras: se tiran con animación y el resultado aparece cuando terminan de girar. */
+function ToolsPanel() {
+  const [toss, setToss] = useState<Toss | null>(null)
+  const count = useRef(0)
   const coin = currentCoin()
 
   // Las dos caras se bajan al abrir el panel: la primera tirada no espera a las imágenes.
