@@ -58,6 +58,7 @@ import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
 import { AttackFx, measureStrike, type Strike, type StrikeSpec } from './AttackFx'
+import { CardSheet } from './CardSheet'
 import { CardBack, CardMenu, PILE_SHORT, PILE_TITLES, PileViewer, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { MatViewToggle } from './MatViewToggle'
 import { ShellMenuButton } from '../shell/ShellMenu'
@@ -1056,6 +1057,8 @@ export function PracticeMat({
             ? menuWhere.kind === 'pile' ? PILE_TITLES[menuWhere.pile] : menuWhere.kind === 'spot' ? ZONE_LABELS[menuWhere.spot] : t('practice.mat.materialOf', { name: nameOf(menuWhere.of) })
             : PILE_TITLES.deck
   const menuTitle = menuCard?.name ?? (menu?.kind === 'token' ? t('practice.token.plusTitle') : t('practice.mat.cardCount', { count: state.deck.length }))
+  // En el celular, una carta de la mano se abre en una hoja sobre la mano (la carta, su texto y las jugadas a un toque) y no en el menú pegado a ella. Lo soltado en una zona (`drop`), el campo y las pilas siguen con el menú.
+  const sheetCard = !isDesktop && menu?.kind === 'card' && !menu.drop && menuWhere?.kind === 'pile' && menuWhere.pile === 'hand' && menuCard !== null ? menuCard : null
 
   const saveCombo = (name: string) => {
     const combo = createSavedCombo({ name, deckName, initial: session.initial, actions: session.actions.slice(0, session.cursor), nameOf }, combos)
@@ -1114,7 +1117,8 @@ export function PracticeMat({
   const rivalMarks = duel?.marksOnMine
   const targetedIds = useMemo(() => new Set([...state.targeted, ...(rivalMarks?.cards ?? [])]), [state.targeted, rivalMarks])
   // La carta de la que se está viendo el menú lleva un marco celeste mientras tanto.
-  const selectedId = menu?.kind === 'card' ? menu.id : null
+  // Con la hoja abierta la carta tocada no se levanta en la mano: la hoja la tapa y la carta alzada quedaba encima de sus botones.
+  const selectedId = menu?.kind === 'card' && !sheetCard ? menu.id : null
 
   const cell = (spot: MatSpot, index: number, area: string) => {
     const placed = placedAt(state, spot, index)
@@ -1473,6 +1477,18 @@ export function PracticeMat({
         <div className="relative">
           {/* Celular: las salidas y problemas flotan justo arriba de la mano (el aire que queda abajo del campo): no ocupan lugar, así que el campo no se mueve cuando aparecen, se explican o se van. Sólo los chips y la explicación atajan toques. */}
           {footer && isDealt && !isDesktop ? <div className="pointer-events-none absolute inset-x-0 bottom-full z-10 px-1 pb-1.5 animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
+          {/* La hoja de la carta tocada: se apoya sobre la mano (no la mueve) y se va con la jugada, la X, Escape o al tocar otra carta. */}
+          {sheetCard && !covered && menu?.kind === 'card' ? (
+            <CardSheet
+              name={sheetCard.name}
+              art={artOf(sheetCard)}
+              apiCard={sheetCard.apiCard}
+              items={menuItems}
+              asking={menu.ask?.label}
+              onInspect={!menu.ask && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
+              onClose={() => setMenu(null)}
+            />
+          ) : null}
           {rivalMarks?.piles.includes('hand') ? (
             <span
               role="img"
@@ -1604,7 +1620,7 @@ export function PracticeMat({
       )}
 
       <CardMenu
-        anchor={covered ? null : (menu?.rect ?? null)}
+        anchor={covered || sheetCard ? null : (menu?.rect ?? null)}
         kicker={menuKicker}
         title={menuTitle}
         items={menuItems}
