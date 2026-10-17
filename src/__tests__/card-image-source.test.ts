@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { GET } from '../../api/card-image'
 import { cardImageSrc, cardImageWidthOf, resolveCardImageUpstream } from '../app/card-image-source'
+import { CARD_BACK, CARD_BACK_URL } from '../components/probability/practice-styles'
 
 describe('las imágenes de las cartas pasan por el proxy', () => {
   it('reescribe las de YGOPRODeck a /api/card-image y deja el resto como está', () => {
@@ -31,11 +32,16 @@ describe('las imágenes de las cartas pasan por el proxy', () => {
   })
 
   it('un nombre de archivo tiene que ser el número de una carta (con el sufijo de un arte alternativo) o el código de un set: nada inventado', () => {
-    const ok = ['cards/14558127.jpg', 'cards_small/14558127_1.jpg', 'cards_cropped/1.jpg', 'sets/JUSH.jpg', 'sets/SDWD.jpg', 'sets/LC5D.jpg']
-    const bad = ['cards/abc.jpg', 'cards/14558127x.jpg', 'cards/12345678901.jpg', 'cards/1_123.jpg', 'cards/1_a.jpg', 'cards/' + 'a'.repeat(40) + '.jpg', 'sets/J.jpg', 'sets/JUSH-EN.jpg', 'sets/ABCDEFGHIJKLM.jpg', 'sets/J_USH.jpg', 'cards/1.JPG', 'cards/.jpg', 'sets/..jpg']
+    const ok = ['cards/14558127.jpg', 'cards_small/14558127_1.jpg', 'cards_cropped/1.jpg', 'sets/JUSH.jpg', 'sets/SDWD.jpg', 'sets/LC5D.jpg', 'cards/back.jpg']
+    const bad = ['cards/abc.jpg', 'cards/14558127x.jpg', 'cards/12345678901.jpg', 'cards/1_123.jpg', 'cards/1_a.jpg', 'cards/' + 'a'.repeat(40) + '.jpg', 'sets/J.jpg', 'sets/JUSH-EN.jpg', 'sets/ABCDEFGHIJKLM.jpg', 'sets/J_USH.jpg', 'cards/1.JPG', 'cards/.jpg', 'sets/..jpg', 'cards_small/back.jpg', 'cards_cropped/back.jpg', 'cards/Back.jpg', 'cards/back2.jpg', 'cards/back.jpg.jpg']
 
     for (const path of ok) expect(resolveCardImageUpstream(`/api/card-image/${path}`), path).toBe(`https://images.ygoprodeck.com/images/${path}`)
     for (const path of bad) expect(resolveCardImageUpstream(`/api/card-image/${path}`), path).toBeNull()
+  })
+
+  it('el dorso de las cartas que dibuja la mesa (CARD_BACK_URL) pasa por el proxy: si lo rechazara, el deck y el Extra se verían vacíos en producción (en desarrollo Vite no filtra rutas)', () => {
+    expect(resolveCardImageUpstream(CARD_BACK_URL)).toBe('https://images.ygoprodeck.com/images/cards/back.jpg')
+    expect(CARD_BACK).toContain(`bg-[url(${CARD_BACK_URL})]`)
   })
 
   it('el proxy sólo pide a YGOPRODeck rutas de imagen válidas', () => {
