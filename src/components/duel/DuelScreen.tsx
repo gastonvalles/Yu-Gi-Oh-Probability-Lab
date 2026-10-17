@@ -36,7 +36,7 @@ import { Switch } from '../ui/Switch'
 import { CardMenu, PILE_TITLES, PileViewer } from '../probability/MatDialogs'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, DuelTools } from './DuelBar'
-import { isSignal } from './signals'
+import { GOOD_MESSAGE, isHold, isRelease, isSignal } from './signals'
 import { useDuelFeed } from './use-duel-feed'
 import { DuelChat } from './DuelChat'
 import { DuelChatPanel } from './DuelChat'
@@ -1324,6 +1324,63 @@ function useUndoNotices(snapshot: DuelSnapshot, rival: string) {
 const SIGNAL_MS = 3500
 
 /** La última señal (pensando, todo bien) de cada jugador, que se ve un rato junto a sus vidas. Lo que ya estaba escrito al abrir la pantalla no cuenta. */
+/** Cuánto dura como máximo un «Esperá» si nadie lo suelta: una espera olvidada no puede dejar el cartel puesto para siempre. */
+const HOLD_MAX_MS = 60_000
+
+/**
+ * Quién pidió esperar (✋) y sigue pidiéndolo. Una espera dura hasta que quien la pidió la suelta (👍, o tocando ✋ otra vez) o pasa el tope de seguridad (`HOLD_MAX_MS`): no se cancela
+ * por jugar, porque quien pidió esperar es quien decide cuándo seguir. Se arma sólo con lo que llega o se manda ahora (lo que ya estaba escrito al abrir la pantalla no la resucita) y
+ * se borra si el rival se va: no queda colgada hasta que vuelva.
+ */
+function useHolds(snapshot: DuelSnapshot): { mine: boolean; theirs: boolean } {
+  const { chat, me, peerPresent } = snapshot
+  const last = chat.at(-1)?.id ?? 0
+  const seen = useRef(last)
+  // La línea del chat que la pidió (sirve de identidad: pedirla de nuevo, o soltarla y pedirla, reinicia el tope).
+  const [since, setSince] = useState<{ mine: number | null; theirs: number | null }>({ mine: null, theirs: null })
+
+  useEffect(() => {
+    const fresh = chat.filter((line) => line.id > seen.current)
+
+    seen.current = Math.max(seen.current, last)
+
+    if (fresh.length === 0) return
+
+    setSince((current) => {
+      let next = current
+
+      for (const line of fresh) {
+        const side = line.from === me ? 'mine' : 'theirs'
+
+        if (isHold(line.text)) next = { ...next, [side]: line.id }
+        else if (isRelease(line.text) && next[side] !== null) next = { ...next, [side]: null }
+      }
+
+      return next
+    })
+  }, [chat, last, me])
+
+  useEffect(() => {
+    if (!peerPresent) setSince({ mine: null, theirs: null })
+  }, [peerPresent])
+
+  useEffect(() => {
+    if (since.mine === null) return
+
+    const id = setTimeout(() => setSince((current) => (current.mine === since.mine ? { ...current, mine: null } : current)), HOLD_MAX_MS)
+    return () => clearTimeout(id)
+  }, [since.mine])
+
+  useEffect(() => {
+    if (since.theirs === null) return
+
+    const id = setTimeout(() => setSince((current) => (current.theirs === since.theirs ? { ...current, theirs: null } : current)), HOLD_MAX_MS)
+    return () => clearTimeout(id)
+  }, [since.theirs])
+
+  return { mine: since.mine !== null, theirs: since.theirs !== null }
+}
+
 function useSignals(snapshot: DuelSnapshot): { mine: string | null; theirs: string | null } {
   const { chat, me } = snapshot
   const last = chat.at(-1)?.id ?? 0
@@ -1331,7 +1388,8 @@ function useSignals(snapshot: DuelSnapshot): { mine: string | null; theirs: stri
   const [shown, setShown] = useState<{ mine: string | null; theirs: string | null; key: number }>({ mine: null, theirs: null, key: 0 })
 
   useEffect(() => {
-    const fresh = chat.filter((line) => line.id > seen.current && isSignal(line.text))
+    // ✋ no sale como globo: es un pedido de atención y tiene su cartel (ver `useHolds`), no una reacción más.
+    const fresh = chat.filter((line) => line.id > seen.current && isSignal(line.text) && !isHold(line.text))
 
     seen.current = Math.max(seen.current, last)
 
@@ -1464,6 +1522,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   const rivalCaptions = useMemo(() => [rivalEffect, announcement], [rivalEffect, announcement])
   const feed = useDuelFeed({ snapshot, cardsById, rivalCaptions, turn, turnNumber: duelTurnNumber(mine, theirs!.state), rivalName: snapshot.peerName ?? t('duel.bar.rival'), myName })
   const signals = useSignals(snapshot)
+  const holds = useHolds(snapshot)
   useMarkNotice(snapshot)
   const notice = useRivalNotice(snapshot, turn)
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
@@ -1496,19 +1555,19 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
       phase: sharedPhase(turn, mine, theirs!.state) ?? 'draw',
       myTurn: turn === 'mine',
-      tools: <DuelTools snapshot={snapshot} myName={myName} games={duel} onSendChat={duel.sendChat} chatDocked={docked} />,
+      tools: <DuelTools snapshot={snapshot} myName={myName} games={duel} onSendChat={duel.sendChat} chatDocked={docked} holding={holds.mine} />,
       // En escritorio el chat está siempre abierto a la derecha (en el celular, un panel que se abre desde el botón de abajo).
-      aside: docked ? <DuelChatPanel snapshot={snapshot} myName={myName} onSend={duel.sendChat} feed={feed} /> : undefined,
+      aside: docked ? <DuelChatPanel snapshot={snapshot} myName={myName} onSend={duel.sendChat} feed={feed} holding={holds.mine} /> : undefined,
       life: <DuelLife snapshot={snapshot} myName={myName} onChangeLife={duel.changeLife} onHalve={duel.halveLife} signal={signals.mine} />,
       cover: paused ? (
         <DuelPause rival={rivalName} offline={status !== 'open'} onLeave={onLeave} onReconnect={duel.reconnect} />
       ) : result !== null && !resultClosed ? (
         <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} onLeave={onLeave} onClose={() => setResultClosed(true)} />
       ) : undefined,
-      header: <DuelBar snapshot={snapshot} status={status} turn={turn} theirHand={rivalHand} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onConcede={duel.concede} onReconnect={duel.reconnect} chat={docked ? undefined : <DuelChatToggle snapshot={snapshot} myName={myName} onSendChat={duel.sendChat} feed={feed} open={chatOpen} onOpen={() => setChatOpen(true)} onClose={() => setChatOpen(false)} />} log={docked ? undefined : <DuelLogTicker snapshot={snapshot} myName={myName} feed={feed} onOpen={() => setChatOpen(true)} />} resultOpen={resultOpen} rivalSignal={signals.theirs} />,
+      header: <DuelBar snapshot={snapshot} status={status} turn={turn} theirHand={rivalHand} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onConcede={duel.concede} onReconnect={duel.reconnect} chat={docked ? undefined : <DuelChatToggle snapshot={snapshot} myName={myName} onSendChat={duel.sendChat} feed={feed} open={chatOpen} onOpen={() => setChatOpen(true)} onClose={() => setChatOpen(false)} holding={holds.mine} />} log={docked ? undefined : <DuelLogTicker snapshot={snapshot} myName={myName} feed={feed} onOpen={() => setChatOpen(true)} />} resultOpen={resultOpen} rivalSignal={signals.theirs} hold={{ ...holds, onRelease: () => duel.sendChat(GOOD_MESSAGE) }} />,
       }
     },
-    [opponent, snapshot, status, myName, turn, duel, onLeave, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, openMark, feed, chatOpen],
+    [opponent, snapshot, status, myName, turn, duel, onLeave, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, holds, openMark, feed, chatOpen],
   )
 
   const markTarget = markMenu?.target

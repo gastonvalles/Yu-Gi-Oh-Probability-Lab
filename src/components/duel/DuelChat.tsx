@@ -25,13 +25,15 @@ interface DuelChatProps {
   fill?: boolean
   /** El registro del duelo mezclado con lo escrito, en orden (en la mesa). Sin él (la sala) sólo se ve lo escrito. */
   feed?: readonly FeedEntry[]
+  /** Pediste esperar y sigue pedido (ver `useHolds`): ✋ queda apretado. */
+  holding?: boolean
 }
 
 /**
  * El chat entre los dos: lo escrito (lo tuyo a la derecha) y, en la mesa, lo que hizo cada jugador entre medio (una línea con su punto de color y un separador por turno),
  * los mensajes rápidos y el campo para escribir. Sin el rival en la sala no se puede escribir.
  */
-export function DuelChat({ snapshot, myName, onSend, fill = false, feed }: DuelChatProps) {
+export function DuelChat({ snapshot, myName, onSend, fill = false, feed, holding = false }: DuelChatProps) {
   const { chat, peerPresent, peerName, me } = snapshot
   const rival = peerName ?? t('duel.bar.rival')
   const [text, setText] = useState('')
@@ -91,7 +93,7 @@ export function DuelChat({ snapshot, myName, onSend, fill = false, feed }: DuelC
 
       <div className="grid gap-2">
         {/* Los dos mensajes rápidos, sólo con su emoji. */}
-        <ReactionButtons onSend={send} disabled={!peerPresent} />
+        <ReactionButtons onSend={send} disabled={!peerPresent} holding={holding} />
 
         <form
           className="flex items-center gap-2"
@@ -114,14 +116,14 @@ export function DuelChat({ snapshot, myName, onSend, fill = false, feed }: DuelC
 }
 
 /** El chat fijo a la derecha de la mesa en escritorio: siempre abierto, con su título, a todo el alto. Siempre se lee (no hay contador ni avisos aparte). */
-export function DuelChatPanel({ snapshot, myName, onSend, feed }: Omit<DuelChatProps, 'fill'>) {
+export function DuelChatPanel({ snapshot, myName, onSend, feed, holding }: Omit<DuelChatProps, 'fill'>) {
   useChatUnread(snapshot, true)
 
   return (
     <section aria-label={t('duel.chat.title', { name: snapshot.peerName ?? t('duel.bar.rival') })} className="flex h-full min-h-0 flex-col gap-2">
       <Heading level="card">{t('duel.chat.title', { name: snapshot.peerName ?? t('duel.bar.rival') })}</Heading>
       <div className="min-h-0 flex-1">
-        <DuelChat snapshot={snapshot} myName={myName} onSend={onSend} feed={feed} fill />
+        <DuelChat snapshot={snapshot} myName={myName} onSend={onSend} feed={feed} holding={holding} fill />
       </div>
     </section>
   )
