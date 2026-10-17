@@ -1,6 +1,25 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { banlistsFile, buildBanlists, buildCardLookup, knownDates, listDate, listsNeedingDay, parseLflist, regionOf, wikiListDate, wikiTitles, withExactDates } from '../../scripts/sync-banlists.mjs'
+import {
+  applySupplements,
+  banlistsFile,
+  buildBanlists,
+  buildCardLookup,
+  buildNameLookup,
+  carriedLists,
+  fetchNewLists,
+  knownDates,
+  listDate,
+  listsNeedingDay,
+  parseLflist,
+  regionOf,
+  resolveWikiList,
+  upcomingWikiTitles,
+  wikiListCards,
+  wikiListDate,
+  wikiTitles,
+  withExactDates,
+} from '../../scripts/sync-banlists.mjs'
 
 const SAMPLE = `#[2026.10][2026.9 TCG]
 #[2026.5 TCG][2013.3.1]
@@ -172,5 +191,213 @@ describe('scripts/sync-banlists.mjs: de lflist.conf a las banlists', () => {
       '',
     ])
     expect(JSON.parse(text).cards['3']).toBe('Tres "con comillas"')
+  })
+})
+
+// Una página de Yugipedia como la de octubre de 2026: incompleta, con anotaciones tras // y nombres con comillas y ☆.
+const WIKI_PAGE = (head = '{{Incomplete}}\n\n', tail = '| no_longer_on_list = \n}}\n\n== References ==\n<references />') =>
+  head +
+  "These are the '''October 2026 Lists'''.<ref>{{cite web | url = https://x.test | title = Forbidden & Limited | date = October 16, 2026}}</ref>\n\n" +
+  '{{Limitation list\n| start_date        = October 19, 2026\n| end_date          = \n| medium            = TCG\n| prev              = September 2026 Lists (TCG)\n| next              =  \n' +
+  '| forbidden         = \nApollousa, Bow of the Goddess\nCalled by the Grave // prev::Limited\nMaliss P Dormouse // force-smw\n\n' +
+  '| limited           = \n"A Case for K9"\nCupsy☆Yummy\nPerfectron Hydradrive Dragon // unreleased::true; prev::Not yet released\n' +
+  '| semi_limited      = \nBranded in High Spirits\n' +
+  tail
+
+const CARDS = [
+  { id: 4280258, name: 'Apollousa, Bow of the Goddess' },
+  { id: 24224830, name: 'Called by the Grave' },
+  { id: 32061192, name: 'Maliss <P> Dormouse' },
+  { id: 1, name: '"A Case for K9"' },
+  { id: 2, name: 'Cupsy☆Yummy' },
+  { id: 3, name: 'Perfectron Hydradrive Dragon' },
+  { id: 4, name: 'Branded in High Spirits' },
+  { id: 5, name: 'Génesis Ü' },
+]
+
+describe('scripts/sync-banlists.mjs: listas nuevas de Yugipedia', () => {
+  it('se prueban las páginas de los meses siguientes a la última lista de cada región, también al pasar de año', () => {
+    const lists = [
+      { region: 'ocg', date: '2026-11' },
+      { region: 'tcg', date: '2026-09-21' },
+      { region: 'tcg', date: '2026-05-18' },
+    ]
+
+    expect(upcomingWikiTitles(lists).sort()).toEqual(
+      [
+        'October 2026 Lists (TCG)',
+        'November 2026 Lists (TCG)',
+        'December 2026 Lists (TCG)',
+        'December 2026 Lists (OCG)',
+        'January 2027 Lists (OCG)',
+        'February 2027 Lists (OCG)',
+      ].sort(),
+    )
+  })
+
+  it('de la plantilla salen los nombres de cada sección, sin las anotaciones ni las líneas en blanco, y si la página sigue incompleta', () => {
+    expect(wikiListCards(WIKI_PAGE())).toEqual({
+      region: 'tcg',
+      date: '2026-10-19',
+      partial: true,
+      forbidden: ['Apollousa, Bow of the Goddess', 'Called by the Grave', 'Maliss P Dormouse'],
+      limited: ['"A Case for K9"', 'Cupsy☆Yummy', 'Perfectron Hydradrive Dragon'],
+      semiLimited: ['Branded in High Spirits'],
+    })
+    // Sin {{Incomplete}} es una lista como cualquier otra, y la plantilla puede terminar justo después de semi_limited.
+    expect(wikiListCards(WIKI_PAGE('', '}}'))).toMatchObject({ partial: false, semiLimited: ['Branded in High Spirits'] })
+    expect(wikiListCards('Esta página lleva a: [[X]]')).toBeNull()
+  })
+
+  it('los nombres de la wiki se pasan a la carta de YGOPRODeck aunque cambien los < >, las tildes, las comillas curvas o ☆/★; sin carta o ambiguo no se resuelve', () => {
+    const find = buildNameLookup([...CARDS, { id: 6, name: 'Twin★Star' }, { id: 7, name: 'Twin☆Star' }])
+
+    expect(find('Maliss P Dormouse')).toEqual({ id: 32061192, name: 'Maliss <P> Dormouse' })
+    expect(find('Cupsy★Yummy')).toEqual({ id: 2, name: 'Cupsy☆Yummy' })
+    expect(find('"A Case for K9"')).toEqual({ id: 1, name: '"A Case for K9"' })
+    expect(find('“A Case for K9”')).toEqual({ id: 1, name: '"A Case for K9"' })
+    expect(find('genesis u')).toEqual({ id: 5, name: 'Génesis Ü' })
+    // Con el nombre exacto siempre se encuentra la suya; con otro parecido que podría ser cualquiera de las dos, ninguna.
+    expect(find('Twin☆Star')).toEqual({ id: 7, name: 'Twin☆Star' })
+    expect(find('Twin*Star')).toBeUndefined()
+    expect(find('Carta que no existe')).toBeUndefined()
+  })
+
+  it('la lista de la wiki queda con ids como una de lflist.conf, con la marca de incompleta y los nombres que no encontró', () => {
+    const find = buildNameLookup(CARDS.filter((card) => card.id !== 3))
+    const { list, unresolved } = resolveWikiList(wikiListCards(WIKI_PAGE()), find)
+
+    expect(list).toEqual({ region: 'tcg', date: '2026-10-19', partial: true, forbidden: [4280258, 24224830, 32061192], limited: [1, 2], semiLimited: [4] })
+    expect(unresolved).toEqual(['Perfectron Hydradrive Dragon'])
+
+    // La marca pasa a la lista final sólo si es verdadera: una lista completa queda como las demás.
+    const { lists } = buildBanlists([list, { ...list, region: 'ocg', partial: false }], buildCardLookup(CARDS))
+
+    expect(lists.find((entry: { region: string }) => entry.region === 'tcg')).toMatchObject({ partial: true })
+    expect('partial' in lists.find((entry: { region: string }) => entry.region === 'ocg')!).toBe(false)
+  })
+
+  it('el archivo trae la marca de incompleta en la línea de la lista, y sólo en esa', () => {
+    const text = banlistsFile(
+      {
+        lists: [
+          { region: 'tcg', date: '2026-09-21', forbidden: [2], limited: [], semiLimited: [] },
+          { region: 'tcg', date: '2026-10-19', forbidden: [2], limited: [3], semiLimited: [], partial: true },
+        ],
+        names: new Map([[2, 'Dos'], [3, 'Tres']]),
+      },
+      '2026-10-17',
+    )
+
+    expect(text.split('\n').slice(-5, -2)).toEqual([
+      '{"region":"tcg","date":"2026-09-21","forbidden":[2],"limited":[],"semiLimited":[]},',
+      '{"region":"tcg","date":"2026-10-19","forbidden":[2],"limited":[3],"semiLimited":[],"partial":true}',
+      ']',
+    ])
+  })
+
+  it('las listas del archivo anterior que lflist.conf todavía no trae se conservan; las que ya trae, no', () => {
+    const file = JSON.stringify({
+      lists: [
+        { region: 'tcg', date: '2026-09-21', forbidden: [1] },
+        { region: 'tcg', date: '2026-10-19', forbidden: [2], partial: true },
+        { region: 'ocg', date: '2026-10-01', forbidden: [3] },
+      ],
+    })
+
+    expect(carriedLists(file, parseLflist(SAMPLE)).map((list: { date: string }) => list.date)).toEqual(['2026-10-19'])
+    // Con la lista de octubre del TCG en lflist.conf, la de la wiki ya no hace falta.
+    expect(carriedLists(file, parseLflist(`${SAMPLE}!2026.10 TCG\n#forbidden\n1 0 --A\n`))).toEqual([])
+    expect(carriedLists('', parseLflist(SAMPLE))).toEqual([])
+  })
+})
+
+describe('scripts/sync-banlists.mjs: suplementos a mano', () => {
+  const list = { region: 'tcg', date: '2026-10-19', partial: true, forbidden: [1], limited: [2, 3], semiLimited: [4] }
+  const find = buildNameLookup([1, 2, 3, 4, 5].map((id) => ({ id, name: `Carta ${id}` })))
+  const supplement = { region: 'tcg', month: '2026-10', note: 'Parte 2', forbidden: ['Carta 2', 'Carta 5'], limited: ['Carta 4'], unlimited: ['Carta 3', 'Carta 99'] }
+
+  it('cada carta pasa al estado del suplemento y sale de los otros; lo que no se encuentra se cuenta', () => {
+    const { lists, unresolved, unused } = applySupplements([list], [supplement], find)
+
+    expect(lists).toEqual([{ ...list, forbidden: [1, 2, 5], limited: [4], semiLimited: [] }])
+    expect(unresolved).toEqual(['Carta 99'])
+    expect(unused).toEqual([])
+  })
+
+  it('aplicarlo dos veces da lo mismo, y una carta que ya está en ese estado no cambia nada', () => {
+    const once = applySupplements([list], [supplement], find).lists
+
+    expect(applySupplements(once, [supplement], find).lists).toEqual(once)
+    expect(applySupplements([list], [{ region: 'tcg', month: '2026-10', forbidden: ['Carta 1'] }], find).lists[0]).toEqual(list)
+  })
+
+  it('sólo toca la lista de su región y mes mientras sigue incompleta; con la página completa o de otro mes no hace nada y queda sin uso', () => {
+    const lists = [{ ...list, partial: false }, { ...list, region: 'ocg' }, { ...list, date: '2026-11-02' }]
+    const result = applySupplements(lists, [supplement], find)
+
+    expect(result.lists).toEqual(lists)
+    expect(result.unused).toEqual([supplement])
+  })
+})
+
+describe('scripts/sync-banlists.mjs: de Yugipedia a las listas nuevas', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  const find = buildNameLookup(CARDS)
+  // La última del TCG en lflist.conf es septiembre, con unas cuantas cartas (una página con muy pocas no sirve).
+  const septiembre = { region: 'tcg', date: '2026-09-21', forbidden: [4280258, 24224830], limited: [1, 2], semiLimited: [4] }
+  const lflist = [septiembre, { region: 'ocg', date: '2026-10-01', forbidden: [4280258], limited: [], semiLimited: [] }]
+  const wikiResponse = (...pages: string[]) => ({ ok: true, text: async () => JSON.stringify({ query: { pages: pages.map((content) => ({ revisions: [{ content }] })) } }) })
+
+  it('la página que existe se suma como lista del mes, incompleta, con los ids de las cartas', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(wikiResponse(WIKI_PAGE())))
+
+    const { lists, unresolved } = await fetchNewLists(lflist, null, find, [])
+
+    expect(lists).toEqual([{ region: 'tcg', date: '2026-10-19', partial: true, forbidden: [4280258, 24224830, 32061192], limited: [1, 2, 3], semiLimited: [4] }])
+    expect(unresolved).toEqual([])
+  })
+
+  it('con el suplemento la parte que la wiki todavía no tiene queda aplicada, y la lista sigue incompleta', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(wikiResponse(WIKI_PAGE())))
+
+    const { lists } = await fetchNewLists(lflist, null, find, [{ region: 'tcg', month: '2026-10', forbidden: ['"A Case for K9"'], limited: ['Branded in High Spirits'] }])
+
+    expect(lists[0]).toMatchObject({ partial: true, forbidden: [4280258, 24224830, 32061192, 1], limited: [2, 3, 4], semiLimited: [] })
+  })
+
+  it('si lflist.conf ya trae la lista de ese mes, la de la wiki (y el suplemento) se descartan', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(wikiResponse(WIKI_PAGE())))
+
+    const oficial = { region: 'tcg', date: '2026-10', forbidden: [4280258], limited: [], semiLimited: [] }
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+    const { lists } = await fetchNewLists([...lflist, oficial], null, find, [{ region: 'tcg', month: '2026-10', forbidden: ['Called by the Grave'] }])
+
+    expect(lists).toEqual([])
+    // El suplemento ya no hace falta y se avisa para que se pueda borrar.
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('Suplemento sin efecto'))
+    log.mockRestore()
+  })
+
+  it('una página que trae menos de la mitad de las cartas de la última lista no sirve y se salta', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(wikiResponse(WIKI_PAGE().replace(/\nCupsy☆Yummy|\n"A Case for K9"|\nCalled by the Grave[^\n]*|\nBranded in High Spirits|\nPerfectron[^\n]*/g, ''))))
+
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    expect((await fetchNewLists(lflist, null, find, [])).lists).toEqual([])
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it('si Yugipedia no responde, la lista del archivo anterior sigue (con los suplementos) en lugar de desaparecer', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('sin red')))
+
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const previous = JSON.stringify({ lists: [septiembre, { region: 'tcg', date: '2026-10-19', partial: true, forbidden: [4280258], limited: [], semiLimited: [] }] })
+    const { lists } = await fetchNewLists(lflist, previous, find, [{ region: 'tcg', month: '2026-10', forbidden: ['Called by the Grave'] }])
+
+    expect(lists).toEqual([{ region: 'tcg', date: '2026-10-19', partial: true, forbidden: [4280258, 24224830], limited: [], semiLimited: [] }])
+    warn.mockRestore()
   })
 })
