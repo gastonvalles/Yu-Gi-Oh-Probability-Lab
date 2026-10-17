@@ -179,7 +179,8 @@ export const MAX_PUBLIC_ROOMS = 100
 export const MAX_HOST_NAME = 40
 /** Los formatos que puede tener una sala pública (los del builder). */
 export const PUBLIC_ROOM_FORMATS = ['tcg', 'ocg', 'goat', 'edison', 'genesys', 'unlimited'] as const
-export const PUBLIC_ROOM_LIMITS_MIN = [0, 20, 40, 60, 90] as const
+/** Los relojes que puede tener una sala pública: los de hoy (50 o sin tiempo) y los que ofrecían las versiones de antes. */
+export const PUBLIC_ROOM_LIMITS_MIN = [0, 20, 40, 50, 60, 90] as const
 
 /** Cuánto puede pasar sin un latido del anfitrión (avisa cada minuto) para que un duelo en vivo deje de figurar. */
 export const LIVE_DUEL_TTL_MS = 3 * 60 * 1000
@@ -195,6 +196,8 @@ export interface PublicRoomInfo {
   siding: boolean
   format: string
   limitMin: number
+  /** Sólo en Genesys: el total de puntos que no puede pasar el deck de nadie en esa sala (de 1 a 999). */
+  genesysCap?: number
 }
 
 export interface PublicRoom extends PublicRoomInfo {
@@ -233,7 +236,10 @@ export function parsePublicRoomInfo(value: unknown): PublicRoomInfo | null {
     return null
   }
 
-  return { host, match: value.match, siding: value.match && value.siding, format: value.format as string, limitMin: value.limitMin as number }
+  // El tope de Genesys es opcional (un cliente de antes no lo manda) y sólo cuenta en Genesys: si viene mal, se ignora en vez de rechazar la sala.
+  const cap = value.format === 'genesys' && typeof value.genesysCap === 'number' && Number.isInteger(value.genesysCap) && value.genesysCap >= 1 && value.genesysCap <= 999 ? { genesysCap: value.genesysCap } : {}
+
+  return { host, match: value.match, siding: value.match && value.siding, format: value.format as string, limitMin: value.limitMin as number, ...cap }
 }
 
 interface RegistryEntry {
@@ -318,7 +324,7 @@ export class RoomRegistry {
     this.purge(now)
 
     return [...this.entries.values()]
-      .flatMap((entry) => (entry.live ? [{ host: entry.room.host, match: entry.room.match, siding: entry.room.siding, format: entry.room.format, limitMin: entry.room.limitMin, code: entry.room.code, watchers: entry.live.watchers, since: entry.live.since }] : []))
+      .flatMap((entry) => (entry.live ? [{ host: entry.room.host, match: entry.room.match, siding: entry.room.siding, format: entry.room.format, limitMin: entry.room.limitMin, ...(entry.room.genesysCap !== undefined ? { genesysCap: entry.room.genesysCap } : {}), code: entry.room.code, watchers: entry.live.watchers, since: entry.live.since }] : []))
       .sort((a, b) => b.since - a.since)
   }
 

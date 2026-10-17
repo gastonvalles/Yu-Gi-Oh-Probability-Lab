@@ -235,12 +235,11 @@ describe('las hojas del celular, como en el lienzo', () => {
     expect(within(dialog).getByRole('button', { name: /^Exportar/ })).toHaveTextContent('Estás acá')
   })
 
-  it('«Jugar»: entrenar solo, jugar online, mirar un duelo y entrar con un enlace, cada uno con su línea; con una sala en pausa, el aviso con «Volver»', () => {
+  it('«Jugar»: jugar online, mirar un duelo y entrar con un enlace (Entrenar solo está en el inicio de Jugar), cada uno con su línea; con una sala en pausa, el aviso con «Volver»', () => {
     const groups = buildAppNavGroups(STEPS, { practice: true, duel: true, paused: { room: 'ABCDEFGH', rival: 'Ana' } })
     const { dialog, onSelect } = sheet(groups, 'duel', 'duel')
 
     expect(within(dialog).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
-      'Entrenar soloTu mano de apertura, pasos y combos',
       'Jugar onlineEntrá a una sala, retá a un amigo o mirá un duelo',
       'Mirar un dueloPegá el enlace para mirar',
       'Entrar con un enlacePegá el enlace que te mandaron',

@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { getDeckFormatLabel } from '../../app/deck-format'
 import { extractRoomCode, isWatchLink, type DuelView } from '../../app/duel-link'
 import { pickRoom, readPrefs, writePrefs, type DuelPrefs, type RoomOptions } from '../../app/duel-prefs'
-import { DUEL_FORMATS, DUEL_LIMITS_MIN } from '../../app/duel-protocol'
+import { DUEL_FORMATS, DUEL_LIMIT_CHOICES, GENESYS_CAP_RANGE } from '../../app/duel-protocol'
 import { MAX_SPECTATORS, type LiveDuel, type PublicRoom } from '../../app/duel-relay-rules'
 import type { RoomsApi } from '../../app/duel-rooms'
 import type { PausedDuel } from '../../app/duel-save'
@@ -12,15 +12,17 @@ import type { DeckFormat } from '../../types'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
+import { cx } from '../ui/cx'
 import { FieldBox, fieldInline } from '../ui/FieldBox'
 import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
 import { Segmented } from '../ui/Segmented'
+import { Stepper } from '../ui/Stepper'
 import { Switch } from '../ui/Switch'
 import { DuelDeckPicker, type DuelDeck } from './DuelDeckPicker'
-import { REFRESH_MS, roomChips } from './room-chips'
+import { formatName, REFRESH_MS, roomChips } from './room-chips'
 
 /** Cuántas salas o duelos se ven antes de «Ver las N» (la pantalla se entiende en tres segundos: lo demás está a un toque). */
 const SHOWN = 3
@@ -51,7 +53,6 @@ interface PlayHomeProps {
   paused: PausedDuel | null
   onResume: () => void
   onDropPaused: () => void
-  onWatchLink: () => void
 }
 
 /** Hace cuánto espera una sala («hace 3 min»); la lista se vuelve a pedir sola cada 15 s, así que se va actualizando. */
@@ -61,7 +62,7 @@ function sinceLabel(createdAt: number): string {
   return min < 1 ? t('duel.arena.sinceNow') : t('duel.arena.since', { min })
 }
 
-const rulesLine = (prefs: DuelPrefs) => [getDeckFormatLabel(prefs.format), prefs.limitMin > 0 ? t('duel.play.timeMin', { min: prefs.limitMin }) : t('duel.play.timeNone'), prefs.match ? t('duel.play.typeMatch') : t('duel.play.typeSingle')].join(' · ')
+const rulesLine = (prefs: DuelPrefs) => [formatName(prefs.format, prefs.genesysCap), prefs.limitMin > 0 ? t('duel.play.timeMin', { min: prefs.limitMin }) : t('duel.play.timeNone'), prefs.match ? t('duel.play.typeMatch') : t('duel.play.typeSingle')].join(' · ')
 
 /** La arena: las salas que esperan rival y los duelos públicos en vivo. Sólo lo que dice el relay (nada se inventa) y, sin respuesta, nada: es un extra, no puede romper el inicio. */
 function useArena(rooms: RoomsApi | undefined) {
@@ -86,7 +87,7 @@ function useArena(rooms: RoomsApi | undefined) {
  * El inicio de Jugar: primero entrar (una acción principal, «Jugar ahora», con las reglas que se recuerdan), después lo que pasa en la arena (salas que esperan y duelos en vivo,
  * a un toque) y por último las otras formas de entrar. No es un formulario: nada es obligatorio antes del botón, y las reglas y el deck están a un toque.
  */
-export function PlayHome({ view, name, onName, builder, imported, onImport, deckReady, deckSize, minDeck, rooms, trainReady, onTrain, onOpenDuel, onJoin, paused, onResume, onDropPaused, onWatchLink }: PlayHomeProps) {
+export function PlayHome({ view, name, onName, builder, imported, onImport, deckReady, deckSize, minDeck, rooms, trainReady, onTrain, onOpenDuel, onJoin, paused, onResume, onDropPaused }: PlayHomeProps) {
   const [prefs, setPrefs] = useState<DuelPrefs>(() => readPrefs())
   const [search, setSearch] = useState<Search>(null)
   const [deckOpen, setDeckOpen] = useState(false)
@@ -167,11 +168,12 @@ export function PlayHome({ view, name, onName, builder, imported, onImport, deck
     onOpenDuel({ ...prefs, isPublic: false })
   }
 
-  const join = () => {
+  /** Con el código (o el enlace) pegado: entrar a jugar, o a mirar (sin deck ni nombre; vale para una sala pública o una privada). */
+  const join = (watch: boolean) => {
     const room = extractRoomCode(code)
 
     if (room) {
-      onJoin(room, isWatchLink(code))
+      onJoin(room, watch || isWatchLink(code))
     } else {
       setInvalid(true)
     }
@@ -258,25 +260,28 @@ export function PlayHome({ view, name, onName, builder, imported, onImport, deck
             className="grid gap-1.5"
             onSubmit={(event) => {
               event.preventDefault()
-              join()
+              join(false)
             }}
           >
-            <div className="flex items-center gap-2">
-              <FieldBox className="min-w-0 flex-1">
-                <input
-                  ref={codeRef}
-                  aria-label={t('duel.lobby.joinPlaceholder')}
-                  placeholder={t('duel.lobby.joinPlaceholder')}
-                  value={code}
-                  onChange={(event) => {
-                    setCode(event.target.value)
-                    setInvalid(false)
-                  }}
-                  className={fieldInline}
-                />
-              </FieldBox>
+            <FieldBox>
+              <input
+                ref={codeRef}
+                aria-label={t('duel.lobby.joinPlaceholder')}
+                placeholder={t('duel.lobby.joinPlaceholder')}
+                value={code}
+                onChange={(event) => {
+                  setCode(event.target.value)
+                  setInvalid(false)
+                }}
+                className={fieldInline}
+              />
+            </FieldBox>
+            <div className="grid grid-cols-2 gap-2">
               <Button type="submit" variant="secondary" disabled={(!deckReady && !isWatchLink(code)) || code.trim() === ''}>
                 {t('duel.lobby.joinAction')}
+              </Button>
+              <Button type="button" variant="secondary" icon="eye" disabled={code.trim() === ''} onClick={() => join(true)}>
+                {t('duel.arena.watch')}
               </Button>
             </div>
             <p className={invalid ? 'm-0 text-micro text-danger' : 'm-0 text-micro text-soft'} role={invalid ? 'alert' : undefined}>
@@ -379,9 +384,6 @@ export function PlayHome({ view, name, onName, builder, imported, onImport, deck
           {t('duel.play.train')}
         </Button>
         <p className="m-0 px-1 text-micro text-soft">{trainReady ? t('duel.play.trainHint') : t('duel.play.trainNeedDeck')}</p>
-        <Button variant="tertiary" icon="eye" className="justify-start" onClick={onWatchLink}>
-          {t('duel.play.watchLink')}
-        </Button>
       </div>
 
       <RulesSheet
@@ -422,10 +424,26 @@ interface RulesSheetProps {
   onOpen: (prefs: DuelPrefs, isPublic: boolean) => void
 }
 
-/** Las reglas del duelo en una hoja (no en una pantalla de formulario): se guardan para «Jugar ahora», o se abre un duelo ya con ellas, público o con enlace. */
+/** Un campo de la hoja: su nombre en mayúsculas chicas arriba y el control abajo (con una línea que aclara, sólo si hace falta). */
+function RuleField({ label, hint, className, children }: { label: string; hint?: string | null; className?: string; children: ReactNode }) {
+  return (
+    <div className={cx('grid content-start gap-1.5', className)}>
+      <span className="text-micro font-semibold uppercase text-soft">{label}</span>
+      {children}
+      {hint ? <p className="m-0 text-micro text-soft">{hint}</p> : null}
+    </div>
+  )
+}
+
+/**
+ * Las reglas del duelo en una hoja (no en una pantalla de formulario): se guardan para «Jugar ahora», o se abre un duelo ya con ellas, público o con enlace. Los campos van de a dos
+ * (tipo y tiempo, formato y quién entra) donde hay lugar y en una columna en el celular; cada uno con una sola línea de ayuda, y sólo cuando aclara algo. El tiempo es de 50 minutos o ninguno;
+ * en Genesys aparece el tope de puntos del deck.
+ */
 function RulesSheet({ isOpen, prefs, canPublish, canOpen, onClose, onSave, onOpen }: RulesSheetProps) {
   const [draft, setDraft] = useState<DuelPrefs>(prefs)
   const [isPublic, setIsPublic] = useState(true)
+  const set = (patch: Partial<DuelPrefs>) => setDraft((current) => ({ ...current, ...patch }))
 
   // Cada vez que se abre arranca de lo que está guardado.
   useEffect(() => {
@@ -433,6 +451,8 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, onClose, onSave, onOpe
       setDraft(prefs)
     }
   }, [isOpen, prefs])
+
+  const genesys = draft.format === 'genesys'
 
   return (
     <Modal
@@ -451,49 +471,43 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, onClose, onSave, onOpe
         </div>
       }
     >
-      <div className="grid gap-4">
-        <p className="m-0 text-micro text-soft">{t('duel.play.rulesHint')}</p>
-
-        <div className="grid gap-1.5">
-          <span className="text-micro font-semibold uppercase text-soft">{t('duel.create.type')}</span>
+      <div className="grid gap-x-4 gap-y-4 sm:grid-cols-2">
+        <RuleField label={t('duel.create.type')} hint={draft.match ? t('duel.create.matchHint') : null}>
           <Segmented<'single' | 'match'>
             label={t('duel.create.type')}
             fullWidth
             value={draft.match ? 'match' : 'single'}
-            onChange={(value) => setDraft((current) => ({ ...current, match: value === 'match', siding: value === 'match' && current.siding }))}
+            onChange={(value) => set({ match: value === 'match', siding: value === 'match' && draft.siding })}
             options={[
               { value: 'single', label: t('duel.create.single') },
               { value: 'match', label: t('duel.create.match') },
             ]}
           />
-          <p className="m-0 text-micro text-soft">{draft.match ? t('duel.create.matchHint') : t('duel.create.singleHint')}</p>
-          {draft.match ? (
-            <div className="flex items-center justify-between gap-3 py-1">
-              <span className="grid min-w-0 gap-0.5">
-                <span className="text-body font-semibold text-foreground">{t('duel.create.siding')}</span>
-                <span className="text-micro text-soft">{t('duel.create.sidingHint')}</span>
-              </span>
-              <Switch checked={draft.siding} onChange={(siding) => setDraft((current) => ({ ...current, siding }))} label={t('duel.create.siding')} />
-            </div>
-          ) : null}
-        </div>
+        </RuleField>
 
-        <div className="grid gap-1.5">
-          <span className="text-micro font-semibold uppercase text-soft">{t('duel.create.time')}</span>
+        <RuleField label={t('duel.create.time')}>
           <Segmented<string>
             label={t('duel.create.time')}
             fullWidth
             value={String(draft.limitMin)}
-            onChange={(value) => setDraft((current) => ({ ...current, limitMin: Number(value) }))}
-            options={DUEL_LIMITS_MIN.map((min) => ({ value: String(min), label: min === 0 ? t('duel.create.timeNone') : String(min) }))}
+            onChange={(value) => set({ limitMin: Number(value) })}
+            options={DUEL_LIMIT_CHOICES.map((min) => ({ value: String(min), label: min === 0 ? t('duel.play.timeNone') : t('duel.play.timeMin', { min }) }))}
           />
-          <p className="m-0 text-micro text-soft">{draft.limitMin === 0 ? t('duel.create.timeNoneHint') : t('duel.create.timeHint', { min: draft.limitMin })}</p>
-        </div>
+        </RuleField>
 
-        <div className="grid gap-1.5">
-          <span className="text-micro font-semibold uppercase text-soft">{t('duel.create.format')}</span>
+        {draft.match ? (
+          <div className="flex items-center justify-between gap-3 sm:col-span-2">
+            <span className="grid min-w-0 gap-0.5">
+              <span className="text-body font-semibold text-foreground">{t('duel.create.siding')}</span>
+              <span className="text-micro text-soft">{t('duel.create.sidingHint')}</span>
+            </span>
+            <Switch checked={draft.siding} onChange={(siding) => set({ siding })} label={t('duel.create.siding')} />
+          </div>
+        ) : null}
+
+        <RuleField label={t('duel.create.format')}>
           <FieldBox>
-            <select aria-label={t('duel.create.format')} value={draft.format} onChange={(event) => setDraft((current) => ({ ...current, format: event.target.value as DeckFormat }))} className={fieldInline}>
+            <select aria-label={t('duel.create.format')} value={draft.format} onChange={(event) => set({ format: event.target.value as DeckFormat })} className={fieldInline}>
               {DUEL_FORMATS.map((value) => (
                 <option key={value} value={value}>
                   {getDeckFormatLabel(value)}
@@ -501,12 +515,10 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, onClose, onSave, onOpe
               ))}
             </select>
           </FieldBox>
-          <p className="m-0 text-micro text-soft">{draft.format === 'unlimited' ? t('duel.create.formatNoneHint') : t('duel.create.formatHint')}</p>
-        </div>
+        </RuleField>
 
         {canPublish ? (
-          <div className="grid gap-1.5">
-            <span className="text-micro font-semibold uppercase text-soft">{t('duel.create.visibility')}</span>
+          <RuleField label={t('duel.create.visibility')} hint={isPublic ? t('duel.create.publicHint') : t('duel.create.privateHint')}>
             <Segmented<'public' | 'private'>
               label={t('duel.create.visibility')}
               fullWidth
@@ -517,11 +529,28 @@ function RulesSheet({ isOpen, prefs, canPublish, canOpen, onClose, onSave, onOpe
                 { value: 'private', label: t('duel.create.private') },
               ]}
             />
-            <p className="m-0 text-micro text-soft">{isPublic ? t('duel.create.publicHint') : t('duel.create.privateHint')}</p>
+          </RuleField>
+        ) : null}
+
+        {genesys ? (
+          <div className="flex items-center justify-between gap-3 sm:col-span-2">
+            <span className="grid min-w-0 gap-0.5">
+              <span className="text-body font-semibold text-foreground">{t('duel.create.genesysCap')}</span>
+              <span className="text-micro text-soft">{t('duel.create.genesysCapHint')}</span>
+            </span>
+            <Stepper
+              label={t('duel.create.genesysCap')}
+              value={draft.genesysCap}
+              min={GENESYS_CAP_RANGE.min}
+              max={GENESYS_CAP_RANGE.max}
+              step={10}
+              onChange={(value) => set({ genesysCap: value })}
+            />
           </div>
         ) : null}
       </div>
+
+      <p className="m-0 mt-4 text-micro text-soft">{draft.format === 'unlimited' ? t('duel.create.formatNoneHint') : t('duel.create.formatHint')}</p>
     </Modal>
   )
 }
-

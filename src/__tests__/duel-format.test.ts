@@ -32,6 +32,23 @@ describe('el formato de una sala', () => {
     expect(deckFormatIssues(['card-2-1', 'card-3-1', 'card-4-1'], cards, 'tcg')).toEqual([])
   })
 
+  it('en Genesys el deck no puede sumar más puntos que el tope de la sala (el oficial es 100 si no se pide otro)', () => {
+    const points = (ygoprodeckId: number, genesys: number) => ({ ygoprodeckId, banlist: { tcg: null, ocg: null, goat: null }, genesys: { points: genesys } }) as unknown as ApiCardReference
+    const deck = new Map([
+      ['card-10-1', { name: 'Una', apiCard: points(10, 30) }],
+      ['card-11-1', { name: 'Otra', apiCard: points(11, 30) }],
+      ['card-12-1', { name: 'Más', apiCard: points(12, 30) }],
+      ['card-13-1', { name: 'Y más', apiCard: points(13, 30) }],
+    ])
+    const ids = [...deck.keys()]
+
+    expect(deckFormatIssues(ids, deck, 'genesys').join(' ')).toMatch(/120/)
+    expect(deckFormatIssues(ids, deck, 'genesys', 100).join(' ')).toMatch(/120/)
+    expect(deckFormatIssues(ids, deck, 'genesys', 120)).toEqual([])
+    expect(deckFormatIssues(ids.slice(0, 3), deck, 'genesys')).toEqual([])
+    expect(deckFormatIssues(ids.slice(0, 3), deck, 'genesys', 60).join(' ')).toMatch(/90/)
+  })
+
   it('cada formato mira su propia lista', () => {
     expect(deckFormatIssues(['card-5-1'], cards, 'tcg')).toEqual([])
     expect(deckFormatIssues(['card-5-1'], cards, 'goat')).toHaveLength(1)

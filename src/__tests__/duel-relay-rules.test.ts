@@ -173,6 +173,31 @@ describe('las salas públicas', () => {
     }
   })
 
+  it('el reloj de hoy (50 minutos) y los de antes se aceptan, y el tope de Genesys sólo en Genesys: mal escrito se ignora y no rechaza la sala', () => {
+    expect(parsePublicRoomInfo({ ...info, limitMin: 50 })).toMatchObject({ limitMin: 50 })
+    expect(parsePublicRoomInfo({ ...info, limitMin: 0 })).toMatchObject({ limitMin: 0 })
+
+    expect(parsePublicRoomInfo({ ...info, format: 'genesys', genesysCap: 80 })).toMatchObject({ format: 'genesys', genesysCap: 80 })
+    expect(parsePublicRoomInfo({ ...info, format: 'tcg', genesysCap: 80 })).not.toHaveProperty('genesysCap')
+    expect(parsePublicRoomInfo({ ...info, format: 'genesys' })).not.toHaveProperty('genesysCap')
+
+    for (const genesysCap of [0, 1000, 1.5, '80', null]) {
+      expect(parsePublicRoomInfo({ ...info, format: 'genesys', genesysCap }), String(genesysCap)).toEqual(expect.not.objectContaining({ genesysCap: expect.anything() }))
+      expect(parsePublicRoomInfo({ ...info, format: 'genesys', genesysCap }), String(genesysCap)).not.toBeNull()
+    }
+  })
+
+  it('el tope de Genesys viaja en la lista de las que esperan y en la de los duelos en vivo', () => {
+    const registry = new RoomRegistry()
+    const genesys = { ...info, format: 'genesys', genesysCap: 80 }
+
+    registry.register('AAAAAAA2', genesys, token, 1000)
+    expect(registry.list(1500)[0]).toMatchObject({ genesysCap: 80 })
+    registry.markLive('AAAAAAA2', genesys, 1, token, 2000)
+    expect(registry.listLive(2500)[0]).toMatchObject({ format: 'genesys', genesysCap: 80 })
+    expect(registry.listLive(2500)[0]).not.toHaveProperty('token')
+  })
+
   it('anota salas, las lista de la más nueva a la más vieja (sin el token) y las baja con su token', () => {
     const registry = new RoomRegistry()
 
