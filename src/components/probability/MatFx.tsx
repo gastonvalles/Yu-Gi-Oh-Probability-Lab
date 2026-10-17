@@ -153,6 +153,8 @@ interface SpotlightProps {
   caption: string | null
   /** Las cartas salen del deck o del Extra: aparecen de dorso y se dan vuelta en 3D. */
   flip?: boolean
+  /** Se queda más tiempo (3 s en vez de 1): lo que el rival activa o muestra y es público, para que se alcance a leer la carta y su nombre. */
+  linger?: boolean
   /** Dónde se ubica (el padre dice sobre qué parte de la mesa se centran las cartas). */
   className?: string
 }
@@ -169,7 +171,7 @@ const STAGE_CARD_WIDTH = ['', 'w-[min(42cqw,13rem)]', 'w-[min(30cqw,10rem)]', 'w
  * línea que dice qué pasó. Se van solas. Se centran en el recuadro que les da el padre (`className`), y sus medidas (`cqw`) son las de ese
  * recuadro, no las de la pantalla.
  */
-export function Spotlight({ kind, cards, caption, flip = false, className }: SpotlightProps) {
+export function Spotlight({ kind, cards, caption, flip = false, linger = false, className }: SpotlightProps) {
   const tone = STAGE_TONE[kind]
   const shown = cards.slice(0, 4)
 
@@ -177,7 +179,7 @@ export function Spotlight({ kind, cards, caption, flip = false, className }: Spo
     <div data-activation={shown[0]?.id} data-kind={kind} aria-hidden="true" className={cx('pointer-events-none @container grid place-items-center overflow-hidden', className)} style={fxVars(tone)}>
       <span className="absolute left-1/2 top-1/2 aspect-square w-[min(100cqw,30rem)] -translate-x-1/2 -translate-y-1/2 animate-fx-stage rounded-full bg-[radial-gradient(circle,rgb(var(--fx-rgb)/0.6),rgb(var(--fx-rgb)/0.18)_42%,transparent_68%)] motion-reduce:hidden" />
       <span className="absolute left-1/2 top-1/2 aspect-square w-[min(56cqw,14rem)] -translate-x-1/2 -translate-y-1/2 animate-fx-shock rounded-full border-[3px] border-[color:rgb(var(--fx-rgb))] opacity-0 motion-reduce:hidden" />
-      <div className="relative animate-card-activate-center motion-reduce:animate-none">
+      <div className={cx('relative motion-reduce:animate-none', linger ? 'animate-card-activate-linger' : 'animate-card-activate-center')}>
         {caption ? (
           <span className="absolute bottom-full left-1/2 mb-3 max-w-[88cqw] -translate-x-1/2 truncate whitespace-nowrap rounded-full border-2 border-[color:rgb(var(--fx-rgb)/0.9)] bg-background/90 px-3.5 py-1 text-micro font-bold text-foreground shadow-[0_0_18px_rgb(var(--fx-rgb)/0.5)]">
             {caption}

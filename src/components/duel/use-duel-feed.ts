@@ -50,11 +50,15 @@ export function useDuelFeed({ snapshot, cardsById, rivalCaptions, turn, turnNumb
   // El turno más alto que ya se anotó: deshacer lo baja y volver a pasar lo sube, pero no se anota dos veces el mismo comienzo.
   const seenTurn = useRef(turnNumber)
   const seenCaptions = useRef(rivalCaptions.map((caption) => caption?.key ?? 0))
+  // Qué línea del registro es la de cada cartel y qué decía: si el cartel gana el nombre de la carta (llega después), la línea se corrige en vez de repetirse.
+  const captionLines = useRef<Array<{ id: string; text: string } | undefined>>([])
 
   const push = (...added: NewEntry[]) => {
     const stamped = added.map((entry) => ({ ...entry, id: `e${next.current++}` }) as FeedEntry)
 
     setEntries((current) => [...current, ...stamped].slice(-MAX_ENTRIES))
+
+    return stamped
   }
 
   // Lo escrito: cada línea nueva del chat.
@@ -89,18 +93,27 @@ export function useDuelFeed({ snapshot, cardsById, rivalCaptions, turn, turnNumb
     if (lines.length > 0) push(...lines)
   }, [actions, initial, cardsById])
 
-  // Lo que el rival hace y se avisa (con su nombre ya dentro del texto).
+  // Lo que el rival hace y se avisa (con su nombre ya dentro del texto). Si el mismo cartel gana después el nombre de la carta (se busca por su número), la línea se corrige.
   useEffect(() => {
-    const lines: NewEntry[] = []
-
     rivalCaptions.forEach((entry, index) => {
-      if (entry && entry.key !== seenCaptions.current[index]) {
+      if (!entry) return
+
+      if (entry.key !== seenCaptions.current[index]) {
         seenCaptions.current[index] = entry.key
-        lines.push({ kind: 'event', side: 'theirs', text: entry.caption })
+
+        const [line] = push({ kind: 'event', side: 'theirs', text: entry.caption })
+
+        captionLines.current[index] = line ? { id: line.id, text: entry.caption } : undefined
+        return
+      }
+
+      const known = captionLines.current[index]
+
+      if (known && known.text !== entry.caption) {
+        known.text = entry.caption
+        setEntries((current) => current.map((row) => (row.id === known.id && row.kind === 'event' ? { ...row, text: entry.caption } : row)))
       }
     })
-
-    if (lines.length > 0) push(...lines)
   }, [rivalCaptions])
 
   // El comienzo de cada turno.

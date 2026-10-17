@@ -7,6 +7,7 @@ import { MAIN_MINIMUM } from '../../app/duel-siding'
 import { cleanName, DEFAULT_DUEL_FORMAT, DEFAULT_LIMIT_MIN, DUEL_FORMATS, DUEL_LIMITS_MIN, type MarkTarget } from '../../app/duel-protocol'
 import { formatDataLoaded, loadFormatData } from '../../app/format-data'
 import type { DeckFormat } from '../../types'
+import { fetchCardsByIds } from '../../ygoprodeck'
 import { clearDuelSave, findPausedDuel, savedRole, type PausedDuel } from '../../app/duel-save'
 import { createParticipantId, createRoomCode } from '../../app/duel-relay-rules'
 import type { RoomsApi } from '../../app/duel-rooms'
@@ -46,7 +47,7 @@ import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { ResultCard } from './DuelResult'
 import { DuelDeckPicker, loadDuelDeck, readStoredDeck, type DuelDeck } from './DuelDeckPicker'
 import { gameText, outcomeText, rpsName } from './game-text'
-import { artOfDrawId } from './duel-art'
+import { artOfDrawId, passcodeOfDrawId } from './duel-art'
 import { DuelOpening } from './DuelOpening'
 import { DuelOpenRooms, roomChips } from './DuelOpenRooms'
 import { DuelSiding } from './DuelSiding'
@@ -1241,6 +1242,9 @@ function useRivalAttack(snapshot: DuelSnapshot, cardsById: ReadonlyMap<string, M
 
 /** Cuánto dura el destaque de una carta del rival (lo mismo que el de las propias). */
 const RIVAL_FX_MS = 950
+/** Lo que el rival activa, revela o declara y es público se queda más (la carta y su nombre se alcanzan a leer); sólo eso, el resto de lo que se anima dura lo de siempre. */
+const RIVAL_READ_MS = 3000
+const READABLE_KINDS: ReadonlySet<string> = new Set(['activate', 'reveal', 'declare'])
 
 /**
  * Lo que el rival hace y se anima, para verlo igual que en un combo guardado: sus cartas grandes en el centro (con lo que él mostró de ellas, o de dorso) y un cartel
@@ -1252,7 +1256,7 @@ function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEff
   const { theirs, peerName } = snapshot
   const acts = theirs?.acts
   const seen = useRef(acts?.length ?? 0)
-  const [shown, setShown] = useState<{ effect: NonNullable<DuelMatLink['rivalEffect']>; flashId?: string } | undefined>(undefined)
+  const [shown, setShown] = useState<{ effect: NonNullable<DuelMatLink['rivalEffect']>; flashId?: string; /** El número de YGOPRODeck de la carta, si es pública: sirve para ponerle el nombre. */ passcode?: number } | undefined>(undefined)
   // Las veces que el rival tocó su deck o sumó una carta a su mano (se baraja a la vista).
   const [shuffles, setShuffles] = useState(0)
 
@@ -1280,7 +1284,17 @@ function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEff
     const key = Date.now()
 
     if (spotlight && spotlight.kind !== 'attack') {
-      setShown({ effect: { key, kind: spotlight.kind, cards: [{ id: spotlight.id, art: artOf(spotlight.id) }], caption: t(`duel.announce.${spotlight.kind}`, { name: rival }) }, flashId: spotlight.id })
+      const art = artOf(spotlight.id)
+      // Sólo si la carta es pública para quien mira (el rival la mostró al activarla o revelarla): una boca abajo sigue de dorso y sin nombre.
+      const readable = READABLE_KINDS.has(spotlight.kind) && art !== null
+      const real = isToken(spotlight.id) ? undefined : theirs.known[spotlight.id]
+      const passcode = readable && real ? passcodeOfDrawId(real) : null
+
+      setShown({
+        effect: { key, kind: spotlight.kind, cards: [{ id: spotlight.id, art }], caption: t(`duel.announce.${spotlight.kind}`, { name: rival }), ...(readable ? { linger: true } : {}) },
+        flashId: spotlight.id,
+        ...(passcode === null ? {} : { passcode }),
+      })
     } else if (showcase) {
       setShown({ effect: { key, kind: showcase.kind, cards: showcase.ids.map((id) => ({ id, art: artOf(id) })), ...(showcase.flip ? { flip: true } : {}), caption: t(`duel.announce.show.${showcase.kind}`, { name: rival, count: showcase.ids.length }) } })
     }
@@ -1289,9 +1303,39 @@ function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEff
   useEffect(() => {
     if (!shown) return
 
-    const id = setTimeout(() => setShown(undefined), RIVAL_FX_MS)
+    const id = setTimeout(() => setShown(undefined), shown.effect.linger ? RIVAL_READ_MS : RIVAL_FX_MS)
     return () => clearTimeout(id)
   }, [shown])
+
+  // El nombre de lo que se activó (público): se busca por su número y, cuando llega, entra en el cartel y en el registro sin reiniciar la animación.
+  const rivalLabel = peerName ?? t('duel.bar.rival')
+
+  useEffect(() => {
+    if (shown?.passcode === undefined || shown.effect.cards[0]?.name) return
+
+    const { key } = shown.effect
+    // Sólo se lee lo que se activa, se revela o se declara (ver `READABLE_KINDS`).
+    const kind = shown.effect.kind as 'activate' | 'reveal' | 'declare'
+    let alive = true
+
+    fetchCardsByIds([shown.passcode])
+      .then((cards) => {
+        const name = cards[0]?.name
+
+        if (!alive || !name) return
+
+        setShown((current) =>
+          current && current.effect.key === key
+            ? { ...current, effect: { ...current.effect, cards: current.effect.cards.map((card) => ({ ...card, name })), caption: t(`duel.announce.named.${kind}`, { name: rivalLabel, card: name }) } }
+            : current,
+        )
+      })
+      .catch(() => {})
+
+    return () => {
+      alive = false
+    }
+  }, [shown, rivalLabel])
 
   const flash = useMemo(() => (shown?.flashId ? { id: shown.flashId, key: shown.effect.key, kind: shown.effect.kind as SpotlightKind } : undefined), [shown])
 
