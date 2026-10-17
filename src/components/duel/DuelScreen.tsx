@@ -456,7 +456,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
 /** Lo que no es la mesa: una columna que scrollea, con el ancho de una pantalla de lectura. */
 function Screen({ children, wide = false }: { children: React.ReactNode; /** Más ancha, para lo que lleva grillas de cartas (el siding). */ wide?: boolean }) {
   return (
-    <div className="h-full min-h-0 overflow-y-auto">
+    <div className="h-full min-h-0 overflow-y-auto max-[1100px]:overflow-visible">
       <div className={cx('mx-auto grid w-full content-start gap-4 px-4 py-6', wide ? 'max-w-5xl' : 'max-w-xl')}>{children}</div>
     </div>
   )
