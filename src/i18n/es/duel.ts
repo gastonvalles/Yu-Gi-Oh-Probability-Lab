@@ -18,6 +18,7 @@ export const duel = {
   'duel.mark.rivalCard': 'Carta del rival',
   'duel.undo.askTitle': '¿Permitís que {name} vuelva atrás su jugada?',
   'duel.undo.askText': '{name} quiere deshacer su última jugada. Si la permitís, su mesa vuelve a como estaba antes.',
+  'duel.undo.askShort': '{name} quiere volver atrás su jugada',
   'duel.undo.allow': 'Permitir',
   'duel.undo.deny': 'No permitir',
   'duel.undo.asking': 'Le pedís a {name} volver atrás tu jugada…',
