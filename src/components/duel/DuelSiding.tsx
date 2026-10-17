@@ -133,7 +133,7 @@ export function DuelSiding({ deck, cardsById, format, rival, locked, rivalReady,
       </div>
 
       {/* Arriba y fijo: ir a cada zona (el Side puede quedar bien abajo). */}
-      <nav aria-label={t('duel.siding.jump')} className="sticky top-0 z-10 -mx-4 grid grid-cols-3 gap-1.5 border-b border-border-subtle bg-background/90 px-4 py-2 backdrop-blur">
+      <nav aria-label={t('duel.siding.jump')} className="sticky top-0 z-10 -mx-4 grid grid-cols-3 gap-1.5 border-b border-border-subtle bg-background/90 px-4 py-2 backdrop-blur max-[1100px]:top-14">
         {SIDE_ZONES.map((zone) => (
           <Button
             key={zone}
@@ -161,7 +161,7 @@ export function DuelSiding({ deck, cardsById, format, rival, locked, rivalReady,
       ))}
 
       {/* Abajo, al alcance del pulgar, y fijo (el deck puede ser largo): lo que falta a la izquierda y «Listo», la acción, a la derecha. */}
-      <div className="sticky bottom-0 z-10 -mx-4 -mb-6 flex items-center justify-between gap-3 border-t border-border-subtle bg-background/90 px-4 py-3 backdrop-blur">
+      <div className="sticky bottom-0 z-10 -mx-4 -mb-6 flex items-center justify-between gap-3 border-t border-border-subtle bg-background/90 px-4 py-3 backdrop-blur max-[1100px]:bottom-[calc(4rem+env(safe-area-inset-bottom,0px))]">
         <div className="grid min-w-0 gap-0.5">
           {locked ? (
             <p className="m-0 text-body text-muted" role="status">
@@ -214,7 +214,7 @@ function SidingZone({ id: sectionId, zone, ids, cardsById, locked, onTap }: Sidi
   const style = ZONE_STYLES[zone]
 
   return (
-    <section id={sectionId} aria-label={ZONE_NAME[zone]()} className="grid w-full scroll-mt-16 gap-2">
+    <section id={sectionId} aria-label={ZONE_NAME[zone]()} className="grid w-full scroll-mt-28 gap-2">
       <DeckZoneHeader zone={zone} title={ZONE_NAME[zone]()} cards={knownCards(ids, cardsById)} count={ids.length} />
 
       <div

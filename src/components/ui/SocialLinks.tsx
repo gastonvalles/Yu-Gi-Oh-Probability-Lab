@@ -24,7 +24,7 @@ export function SiteCredit({ withDisclaimer = false, className }: { withDisclaim
 }
 
 /** Las redes del autor, en el pie de la app. */
-export function SocialLinks({ className }: { className?: string }) {
+export function SocialLinks({ className, size = 'md' }: { className?: string; /** `lg`: botones de 44 px (el cajón del celular). */ size?: 'md' | 'lg' }) {
   return (
     <nav aria-label={t('shell.social.label')} className={cx('flex items-center gap-1', className)}>
       {LINKS.map((link) => (
@@ -35,9 +35,9 @@ export function SocialLinks({ className }: { className?: string }) {
           rel="noreferrer"
           aria-label={t('shell.social.link', { network: link.label })}
           title={link.label}
-          className={ICON_LINK}
+          className={cx(ICON_LINK, size === 'lg' && 'size-11')}
         >
-          <Icon name={link.icon} size={20} />
+          <Icon name={link.icon} size={size === 'lg' ? 22 : 20} />
         </a>
       ))}
     </nav>

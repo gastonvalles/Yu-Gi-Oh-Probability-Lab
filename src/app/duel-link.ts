@@ -31,6 +31,16 @@ export function parseDuelTarget(hash: string): { room: string; watch: boolean } 
   return code ? { room: code, watch: params.get('watch') === '1' } : null
 }
 
+/** Con qué paso del lobby se abre el duelo (`#duel?view=create|watch|join`): lo que elige la hoja de Duelo del celular (Nueva sala, Mirar un duelo, Entrar con un enlace). */
+export type DuelView = 'create' | 'watch' | 'join'
+
+export function parseDuelView(hash: string): DuelView | null {
+  const [step = '', query = ''] = hash.replace(/^#/, '').split('?')
+  const view = step === DUEL_STEP ? new URLSearchParams(query).get('view') : null
+
+  return view === 'create' || view === 'watch' || view === 'join' ? view : null
+}
+
 /** La sala que pide el hash de la página (`#duel?room=CODE`), o null. */
 export function parseDuelHash(hash: string): string | null {
   return parseDuelTarget(hash)?.room ?? null

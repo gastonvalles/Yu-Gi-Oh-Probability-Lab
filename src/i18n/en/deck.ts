@@ -297,6 +297,8 @@ export const deck: Translated<typeof es> = {
   'deck.backup.title': 'Backup',
   'deck.backup.description':
     'Everything the app saves in this browser (deck, roles, rules, saved builds, combos and LP calculator) in one file, to take it to another browser or recover it after clearing your data.',
+  'deck.backup.saveCopy': 'Save a backup',
+  'deck.backup.restoreCopy': 'Restore a backup',
   'deck.backup.download': 'Download backup',
   'deck.backup.restore': 'Restore backup',
   'deck.backup.fileLabel': 'Backup file',

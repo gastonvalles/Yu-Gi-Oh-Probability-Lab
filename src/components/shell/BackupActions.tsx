@@ -7,12 +7,17 @@ import { useToastMessage } from '../../app/use-toast-message'
 import { formatDay, t } from '../../i18n'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { Button } from '../ui/Button'
+import { cx } from '../ui/cx'
+import { Icon } from '../ui/Icon'
+
+/** Una fila del cajón del celular: el ícono y lo que hace, de 48 px, con una línea fina arriba salvo la primera. */
+const LIST_ROW = 'flex h-12 w-full cursor-pointer items-center gap-3 border-t border-nav-raised text-left text-body font-medium text-foreground transition-colors duration-150 hover:text-accent focus-visible:outline-none focus-visible:shadow-focus'
 
 /**
  * Los dos botones de la copia de seguridad (bajar todo lo guardado en este navegador y restaurarlo desde un archivo), con el diálogo que pide
- * confirmar antes de pisar lo que hay. Los usan la pantalla de exportar y el cajón de ajustes del celular.
+ * confirmar antes de pisar lo que hay. Los usan la pantalla de exportar y el cajón de ajustes del celular (ahí, `variant="list"`: dos filas con su ícono).
  */
-export function BackupActions() {
+export function BackupActions({ variant = 'buttons' }: { variant?: 'buttons' | 'list' }) {
   // La copia elegida para restaurar, esperando la confirmación.
   const [pendingBackup, setPendingBackup] = useState<LabBackup | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
@@ -45,12 +50,27 @@ export function BackupActions() {
 
   return (
     <>
-      <Button size="sm" icon="download" onClick={downloadBackup}>
-        {t('deck.backup.download')}
-      </Button>
-      <Button size="sm" variant="tertiary" icon="upload" onClick={() => inputRef.current?.click()}>
-        {t('deck.backup.restore')}
-      </Button>
+      {variant === 'list' ? (
+        <>
+          <button type="button" className={cx(LIST_ROW, 'border-t-0')} onClick={downloadBackup}>
+            <Icon name="download" size={20} className="shrink-0" />
+            {t('deck.backup.saveCopy')}
+          </button>
+          <button type="button" className={LIST_ROW} onClick={() => inputRef.current?.click()}>
+            <Icon name="upload" size={20} className="shrink-0" />
+            {t('deck.backup.restoreCopy')}
+          </button>
+        </>
+      ) : (
+        <>
+          <Button size="sm" icon="download" onClick={downloadBackup}>
+            {t('deck.backup.download')}
+          </Button>
+          <Button size="sm" variant="tertiary" icon="upload" onClick={() => inputRef.current?.click()}>
+            {t('deck.backup.restore')}
+          </Button>
+        </>
+      )}
       <input
         ref={inputRef}
         type="file"

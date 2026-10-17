@@ -128,6 +128,7 @@ beforeEach(() => {
   sessionStorage.clear()
   window.history.replaceState(null, '', '#duel')
   HTMLElement.prototype.setPointerCapture = () => {}
+  HTMLElement.prototype.scrollIntoView = () => {}
   window.matchMedia = ((query: string) => ({ matches: query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
 })
 
@@ -1670,6 +1671,37 @@ describe('la pantalla del duelo', () => {
     typeInto(view, 'Pegá el enlace del duelo', 'http://x.test/#duel?room=K7QF2M9X')
     click(view, 'Mirar el duelo')
     expect(window.location.hash).toBe('#duel?room=K7QF2M9X&watch=1')
+  })
+
+  it('el menú del celular abre el lobby ya en el paso que se eligió (#duel?view=…), también si el duelo ya estaba abierto, y borra el pedido de la dirección', () => {
+    // Nueva sala: abre ya en «Crear sala».
+    window.history.replaceState(null, '', '#duel?view=create')
+    const created = render(<DuelScreen {...screenProps()} />)
+
+    expect(within(created.container).getByRole('heading', { name: 'Crear sala' })).toBeInTheDocument()
+    expect(window.location.hash).toBe('#duel')
+    created.unmount()
+
+    // Mirar un duelo, con el duelo ya abierto en el lobby (el pedido llega como un cambio de dirección).
+    window.history.replaceState(null, '', '#duel')
+    const view = render(<DuelScreen {...screenProps()} />)
+
+    expect(within(view.container).getByRole('heading', { name: 'Duelo con un amigo' })).toBeInTheDocument()
+    act(() => {
+      window.location.hash = '#duel?view=watch'
+      window.dispatchEvent(new HashChangeEvent('hashchange'))
+    })
+    expect(within(view.container).getByRole('heading', { name: 'Mirar un duelo' })).toBeInTheDocument()
+    expect(window.location.hash).toBe('#duel')
+    click(view, 'Volver al inicio del duelo')
+
+    // Entrar con un enlace: el campo del enlace recibe el foco.
+    act(() => {
+      window.location.hash = '#duel?view=join'
+      window.dispatchEvent(new HashChangeEvent('hashchange'))
+    })
+    expect(within(view.container).getByRole('textbox', { name: 'Enlace o código' })).toHaveFocus()
+    expect(window.location.hash).toBe('#duel')
   })
 
   it('Mirar un duelo se puede cancelar y vuelve al inicio del duelo', () => {

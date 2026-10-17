@@ -134,8 +134,19 @@ describe('el cajón de ajustes del celular', () => {
     const dialog = screen.getByRole('dialog', { name: 'Ajustes' })
     expect(dialog).toHaveAttribute('aria-modal', 'true')
     expect(within(dialog).getByRole('group', { name: 'Idioma' })).toBeInTheDocument()
-    expect(within(dialog).getByRole('button', { name: 'Descargar copia' })).toBeInTheDocument()
+    // Como en el lienzo: el idioma con los nombres completos, «Tus datos» como dos filas con ícono y, abajo, lo legal (sin un «Acerca de» aparte).
+    expect(within(within(dialog).getByRole('group', { name: 'Idioma' })).getAllByRole('button').map((button) => button.textContent)).toEqual(['Español', 'English'])
+    expect(within(dialog).getByText('Tus datos')).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Guardar copia de seguridad' })).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Restaurar una copia' })).toBeInTheDocument()
+    expect(within(dialog).queryByText('Acerca de')).not.toBeInTheDocument()
     expect(within(dialog).getByRole('link', { name: 'Privacidad y aviso legal' })).toBeInTheDocument()
+    expect(within(dialog).getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
+      'https://www.linkedin.com/in/gastonvalles/',
+      'https://www.instagram.com/gaston_valles/',
+      'https://github.com/gastonvalles',
+      '/privacidad.html',
+    ])
     // El menú de destinos ya no vive acá: está en la barra de abajo.
     expect(within(dialog).queryByRole('button', { name: /^Exportar deck/ })).not.toBeInTheDocument()
     expect(dialog).toContainElement(document.activeElement as HTMLElement)
@@ -173,7 +184,12 @@ describe('la barra de abajo del celular y su hoja', () => {
 
     rerender(<GroupSheet group={discover} activeKey="replays" onSelect={onSelect} onClose={onClose} />)
     const dialog = screen.getByRole('dialog', { name: 'Descubrir' })
-    expect(dialog).toHaveAttribute('aria-modal', 'true')
+    // No es modal: la barra de abajo queda a la vista y a mano (el velo y la hoja terminan arriba de ella).
+    expect(dialog).not.toHaveAttribute('aria-modal')
+    expect(dialog.parentElement).toHaveClass('bottom-[calc(4rem+env(safe-area-inset-bottom,0px))]')
+    // Sin X: se cierra con Escape, con el velo o tocando de nuevo el grupo. Cada destino lleva su nombre y una línea que explica.
+    expect(within(dialog).queryByRole('button', { name: 'Cerrar' })).not.toBeInTheDocument()
+    expect(dialog).toHaveTextContent('Los duelos de esos decks, en video')
     expect(within(dialog).getByRole('button', { name: /^Replays de torneo/ })).toHaveAttribute('aria-current', 'page')
     expect(within(dialog).getByRole('button', { name: /^Replays de torneo/ })).toHaveClass('text-nav-active')
 
@@ -184,6 +200,123 @@ describe('la barra de abajo del celular y su hoja', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
     fireEvent.click(dialog.previousElementSibling as HTMLElement)
     expect(onClose).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('las hojas del celular, como en el lienzo', () => {
+  const sheet = (groups: typeof GROUPS, key: string, activeKey: string, onSelect = vi.fn()) => {
+    render(<GroupSheet group={groups.find((group) => group.key === key) ?? null} activeKey={activeKey} onSelect={onSelect} onClose={() => {}} />)
+
+    return { dialog: screen.getByRole('dialog'), onSelect }
+  }
+
+  it('«Tu deck»: cada paso con su ícono y su estado a la derecha («Listo · 42» en verde, «3 sin clasificar», «Estás acá»), y el destino abierto en ámbar', () => {
+    const { dialog } = sheet(GROUPS, 'deck', 'probability-lab')
+    const row = (name: RegExp) => within(dialog).getByRole('button', { name })
+
+    expect(row(/^Deck Builder/)).toHaveTextContent('Listo · 42')
+    expect(within(row(/^Deck Builder/)).getByText('Listo · 42')).toHaveClass('bg-success')
+    expect(row(/^Categorización de roles/)).toHaveTextContent('3 sin clasificar')
+    expect(within(row(/^Categorización de roles/)).getByText('3 sin clasificar')).not.toHaveClass('bg-success')
+    expect(row(/^Probability Lab/)).toHaveTextContent('Estás acá')
+    expect(row(/^Probability Lab/)).toHaveClass('text-nav-active')
+    expect(row(/^Comparar/)).toHaveTextContent('0 builds')
+    expect(row(/^Exportar/)).toHaveTextContent('Imagen · PDF · YDK')
+  })
+
+  it('el estado de los pasos sale de lo guardado: las builds para comparar, las sugerencias sin confirmar y las reglas propias', () => {
+    const steps = buildDeckWorkflowNavigationItems({ mainDeckCount: 40, roleCardCount: 40, unclassifiedCardCount: 0, pendingReviewCount: 23, hasCompletedRoleStep: true, patternCount: 2, savedBuildCount: 2 })
+    const { dialog } = sheet(buildAppNavGroups(steps, { practice: true }), 'deck', 'export')
+
+    expect(within(dialog).getByRole('button', { name: /^Categorización de roles/ })).toHaveTextContent('23 sin confirmar')
+    expect(within(dialog).getByRole('button', { name: /^Probability Lab/ })).toHaveTextContent('2 reglas tuyas')
+    expect(within(dialog).getByRole('button', { name: /^Comparar/ })).toHaveTextContent('2 builds')
+    expect(within(dialog).getByRole('button', { name: /^Exportar/ })).toHaveTextContent('Estás acá')
+  })
+
+  it('«Duelo»: jugar solo, nueva sala, mirar un duelo y entrar con un enlace, cada uno con su línea; con una sala en pausa, el aviso con «Volver»', () => {
+    const groups = buildAppNavGroups(STEPS, { practice: true, duel: true, paused: { room: 'ABCDEFGH', rival: 'Ana' } })
+    const { dialog, onSelect } = sheet(groups, 'duel', 'duel')
+
+    expect(within(dialog).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'Jugar soloTu mano de apertura, pasos y combos',
+      'Nueva sala1 vs 1 con un amigo, por enlace, sin cuentas',
+      'Mirar un dueloPegá el enlace para mirar',
+      'Entrar con un enlacePegá el enlace que te mandaron',
+    ])
+    expect(within(dialog).getByRole('status')).toHaveTextContent('Sala en pausa con Ana')
+    expect(within(dialog).getByRole('status')).toHaveTextContent('Seguís desde donde quedó.')
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Volver' }))
+    expect(onSelect).toHaveBeenCalledWith('duel-resume')
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Mirar un duelo/ }))
+    expect(onSelect).toHaveBeenCalledWith('duel-watch')
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Entrar con un enlace/ }))
+    expect(onSelect).toHaveBeenCalledWith('duel-join')
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Nueva sala/ }))
+    expect(onSelect).toHaveBeenCalledWith('duel-create')
+  })
+
+  it('sin una sala en pausa no hay aviso, y sin relay el duelo ofrece sólo jugar solo', () => {
+    const withRelay = buildAppNavGroups(STEPS, { practice: true, duel: true })
+    const { dialog } = sheet(withRelay, 'duel', 'duel')
+
+    expect(within(dialog).queryByRole('status')).not.toBeInTheDocument()
+    cleanup()
+
+    const solo = sheet(buildAppNavGroups(STEPS, { practice: true }), 'duel', 'practice')
+
+    expect(within(solo.dialog).getAllByRole('listitem')).toHaveLength(1)
+  })
+
+  it('Herramientas y Descubrir llevan su rótulo y, de cada destino, el nombre con una línea que explica', () => {
+    const tools = sheet(GROUPS, 'tools', 'practice')
+
+    expect(tools.dialog).toHaveTextContent('Herramientas')
+    expect(tools.dialog).toHaveTextContent('Vidas, reloj de ronda, moneda y dado')
+    expect(tools.dialog).toHaveTextContent('Apagadas por defecto en el celular')
+  })
+
+  it('la barra de abajo: con una hoja abierta sólo el grupo de esa hoja va en ámbar, y la de arriba dice en qué pantalla estás', () => {
+    const { rerender } = render(<MobileTabBar groups={GROUPS} activeKey="probability-lab" openKey={null} onOpen={() => {}} />)
+    const tab = (name: string) => screen.getByRole('button', { name })
+
+    expect(tab('Tu deck')).toHaveClass('text-nav-active')
+    expect(tab('Descubrir')).toHaveClass('text-foreground')
+
+    rerender(<MobileTabBar groups={GROUPS} activeKey="probability-lab" openKey="discover" onOpen={() => {}} />)
+    expect(tab('Descubrir')).toHaveClass('text-nav-active')
+    expect(tab('Tu deck')).toHaveClass('text-foreground')
+    // La pantalla sigue siendo de «Tu deck»: se sigue anunciando.
+    expect(tab('Tu deck')).toHaveAttribute('aria-current', 'true')
+  })
+
+  it('la barra de arriba lleva el nombre de la pantalla (y la marca sólo si no hay)', () => {
+    const { rerender } = render(<MobileTopBar menuOpen={false} onMenu={() => {}} title="Lab" />)
+
+    expect(screen.getByText('Lab')).toBeInTheDocument()
+    expect(screen.queryByText('Sitio no oficial')).not.toBeInTheDocument()
+
+    rerender(<MobileTopBar menuOpen={false} onMenu={() => {}} />)
+    expect(screen.getByText('Sitio no oficial')).toBeInTheDocument()
+  })
+
+  it('tocar el mismo grupo de la barra de abajo cierra su hoja, y tocar otro la cambia', () => {
+    render(
+      <AppShell groups={GROUPS} activeKey="categorization" onSelect={() => {}}>
+        <p>Contenido</p>
+      </AppShell>,
+    )
+    const bar = screen.getAllByRole('navigation', { name: 'Navegación principal' })[1]!
+
+    fireEvent.click(within(bar).getByRole('button', { name: 'Tu deck' }))
+    expect(screen.getByRole('dialog', { name: 'Tu deck' })).toBeInTheDocument()
+    fireEvent.click(within(bar).getByRole('button', { name: 'Descubrir' }))
+    expect(screen.getByRole('dialog', { name: 'Descubrir' })).toBeInTheDocument()
+    fireEvent.click(within(bar).getByRole('button', { name: 'Descubrir' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    // La barra de arriba dice la pantalla de ahora.
+    expect(within(screen.getByRole('banner')).getByText('Roles')).toBeInTheDocument()
   })
 })
 

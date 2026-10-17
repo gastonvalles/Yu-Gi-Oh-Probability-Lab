@@ -98,8 +98,9 @@ export function NavigationSection() {
   const groups = useMemo(
     () =>
       buildAppNavGroups(
-        buildDeckWorkflowNavigationItems({ mainDeckCount: 42, roleCardCount: 40, unclassifiedCardCount: 3, hasCompletedRoleStep: false, patternCount: 0 }),
-        { practice: true },
+        buildDeckWorkflowNavigationItems({ mainDeckCount: 42, roleCardCount: 40, unclassifiedCardCount: 3, hasCompletedRoleStep: false, patternCount: 0, savedBuildCount: 2 }),
+        // El duelo con una sala en pausa: la hoja de Duelo muestra el aviso para volver a ella.
+        { practice: true, duel: true, paused: { room: 'K7QF2M9X', rival: 'Ana' } },
       ),
     [],
   )
@@ -136,7 +137,7 @@ export function NavigationSection() {
           </div>
         </Specimen>
 
-        <Specimen title="Barra de abajo y hoja (celular)" layout="free" note={<>Un botón por grupo; tocarlo abre una hoja con sus opciones y el grupo del destino abierto va en ámbar. Archivos: <Tag>shell/MobileTabBar.tsx</Tag> <Tag>shell/GroupSheet.tsx</Tag></>}>
+        <Specimen title="Barra de abajo y hoja (celular)" layout="free" note={<>Un botón por grupo; tocarlo abre una hoja que se apoya sobre la barra (el velo cubre sólo lo de arriba): «Tu deck» con el estado de cada paso a la derecha, «Duelo» con el aviso de la sala en pausa y las demás con una línea que explica cada destino. Con una hoja abierta sólo su grupo va en ámbar; tocar el mismo grupo la cierra. Archivos: <Tag>shell/MobileTabBar.tsx</Tag> <Tag>shell/GroupSheet.tsx</Tag></>}>
           <div className="grid gap-4">
             <div className="w-full max-w-[23.4rem] overflow-hidden rounded-card border border-border-subtle">
               <MobileTabBar groups={groups} activeKey={active} openKey={sheetKey} onOpen={setSheetKey} placement="inline" />
@@ -153,10 +154,10 @@ export function NavigationSection() {
           </div>
         </Specimen>
 
-        <Specimen title="Barra de arriba y cajón de ajustes (celular)" layout="free" note={<>La hamburguesa abre el cajón: idioma, copia de seguridad y lo legal. Archivos: <Tag>shell/MobileTopBar.tsx</Tag> <Tag>shell/NavDrawer.tsx</Tag></>}>
+        <Specimen title="Barra de arriba y cajón de ajustes (celular)" layout="free" note={<>La barra de arriba dice la pantalla; la hamburguesa abre el cajón: idioma (Español | English), «Tus datos» (guardar y restaurar la copia de seguridad) y, abajo, redes, privacidad y autoría. Archivos: <Tag>shell/MobileTopBar.tsx</Tag> <Tag>shell/NavDrawer.tsx</Tag></>}>
           <div className="grid gap-4">
             <div className="w-full max-w-[23.4rem] overflow-hidden rounded-card border border-border-subtle">
-              <MobileTopBar menuOpen={drawer} onMenu={() => setDrawer(true)} />
+              <MobileTopBar menuOpen={drawer} onMenu={() => setDrawer(true)} title="Lab" />
             </div>
             <div className="h-[34rem] w-full max-w-[20rem] overflow-hidden rounded-card border border-border-subtle">
               <DrawerPanel onClose={() => {}} />

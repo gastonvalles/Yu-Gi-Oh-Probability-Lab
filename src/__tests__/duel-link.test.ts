@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildDuelLink, extractRoomCode, parseDuelHash } from '../app/duel-link'
+import { buildDuelLink, extractRoomCode, parseDuelHash, parseDuelView } from '../app/duel-link'
 import { createRoomCode } from '../app/duel-relay-rules'
 import { createMatState } from '../app/practice-mat'
 import { whoseTurn } from '../app/duel-turn'
@@ -60,5 +60,17 @@ describe('de quién es el turno', () => {
   it('sin la mesa de alguno (todavía no repartió) cuenta como si estuviera en el primer turno', () => {
     expect(whoseTurn(0, null, null)).toBe('mine')
     expect(whoseTurn(1, null, at(2))).toBe('mine')
+  })
+})
+
+describe('el paso del lobby que pide el menú del celular', () => {
+  it('lee #duel?view=create|watch|join y nada más', () => {
+    expect(parseDuelView('#duel?view=create')).toBe('create')
+    expect(parseDuelView('#duel?view=watch')).toBe('watch')
+    expect(parseDuelView('#duel?view=join')).toBe('join')
+    expect(parseDuelView('#duel?view=otra')).toBeNull()
+    expect(parseDuelView('#duel')).toBeNull()
+    expect(parseDuelView('#practice?view=create')).toBeNull()
+    expect(parseDuelView('')).toBeNull()
   })
 })
