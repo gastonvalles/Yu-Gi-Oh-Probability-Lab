@@ -49,7 +49,8 @@ export function LpPad({ operator, name, amount, applyLabel, onKey, onApply }: Lp
   )
 
   return (
-    <div role="group" aria-label={t('shell.life.keypad')} className="grid grid-cols-[repeat(3,minmax(0,1fr))_4rem] gap-1.5">
+    <div role="group" aria-label={t('shell.life.keypad')} // Las cuatro filas se estiran con el alto que haya (sin un hueco debajo del teclado); sin alto de sobra miden lo de siempre.
+    className="grid h-full grid-cols-[repeat(3,minmax(0,1fr))_4rem] grid-rows-[repeat(4,minmax(3.5rem,1fr))] gap-1.5">
       {digit('7')}
       {digit('8')}
       {digit('9')}
