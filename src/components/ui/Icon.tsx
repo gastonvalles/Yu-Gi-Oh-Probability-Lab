@@ -64,6 +64,21 @@ const PATHS = {
       <path data-cut d="M12 9l6 6M18 9l-6 6" />
     </>
   ),
+  /** Pegar desde el portapapeles. */
+  clipboard: (
+    <>
+      <rect data-fill x="6" y="5" width="12" height="16" rx="2" />
+      <path d="M9 5V3.5h6V5" />
+    </>
+  ),
+  /** Un enlace que ya no funciona: el enlace tachado. */
+  'link-off': (
+    <>
+      <path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1" />
+      <path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" />
+      <path d="M4 4l16 16" />
+    </>
+  ),
   play: <path data-fill d="M7 4.8v14.4a1 1 0 0 0 1.5.86l12-7.2a1 1 0 0 0 0-1.72l-12-7.2A1 1 0 0 0 7 4.8z" />,
   pause: (
     <>
