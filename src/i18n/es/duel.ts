@@ -191,6 +191,7 @@ export const duel = {
   'duel.bar.clockPause': 'Pausar el reloj',
   'duel.bar.reconnect': 'Reconectar',
   'duel.bar.more': 'Más opciones del duelo',
+  'duel.bar.reconnectHint': 'Si el duelo quedó en pausa por un aviso que no llegó, esto vuelve a conectarte con la sala.',
   'duel.bar.leave': 'Salir del duelo',
   'duel.bar.concede': 'Rendirme',
   'duel.bar.concedeTitle': '¿Rendirte en este duelo?',

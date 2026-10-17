@@ -1271,15 +1271,17 @@ export function PracticeMat({
   const choosing = picking !== null || counterMode !== null
 
   // Deshacer, la ficha (o los contadores) y la lista de pasos: arriba en la práctica; en un duelo, abajo, donde llega el pulgar.
+  // En un duelo los botones de abajo van en cajas oscuras de 44 px (como en el diseño); en la práctica, arriba, sin caja.
+  const dockTone = duel ? 'tile' : 'flat'
   const undoButton = (
-    <IconButton tone="flat" size="sm" aria-label={t('practice.mat.undo')} title={duel?.undoPending ? t('duel.undo.waiting') : t('practice.mat.undo')} disabled={session.cursor === 0 || Boolean(duel?.undoPending)} className="disabled:opacity-35" onClick={() => { setAutoplay(false); onUndo() }}>
+    <IconButton tone={dockTone} size="sm" aria-label={t('practice.mat.undo')} title={duel?.undoPending ? t('duel.undo.waiting') : t('practice.mat.undo')} disabled={session.cursor === 0 || Boolean(duel?.undoPending)} className="disabled:opacity-35" onClick={() => { setAutoplay(false); onUndo() }}>
       <Icon name="undo" />
     </IconButton>
   )
   // Ficha: se toca para elegir la posición (y la zona) o se arrastra a una zona de monstruo.
   const tokenButton = (
     <IconButton
-      tone="flat"
+      tone={dockTone}
       size="sm"
       aria-label={t('practice.token.name')}
       title={t('practice.token.create')}
@@ -1694,13 +1696,13 @@ function PhaseButton({ short, name, active, rival = false, disabled = false, pas
       title={passes ? t('duel.turn.passHint') : name}
       disabled={disabled}
       className={cx(
-        // `before`: el área que se toca crece 2 px a cada lado (las seis fases están a 4 px una de otra): 37 × 44 en vez de 33 × 44, sin agrandar lo que se ve.
-        'relative grid h-11 w-full min-w-0 place-items-center rounded-control border text-[0.55rem] before:absolute before:-inset-x-0.5 before:inset-y-0 font-extrabold leading-none transition-[background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus min-[1101px]:text-micro disabled:cursor-not-allowed disabled:opacity-45',
+        // Círculos de hasta 36 px (la activa, un cuadrado redondeado violeta); `before`: el área que se toca crece 4 px por lado, a 44 px de alto, sin agrandar lo que se ve.
+        'relative grid aspect-square w-full max-w-9 min-w-0 place-items-center justify-self-center border text-[0.55rem] before:absolute before:-inset-x-0.5 before:-inset-y-1.5 font-extrabold leading-none transition-[background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus min-[1101px]:text-micro disabled:cursor-not-allowed disabled:opacity-45',
         active
           ? rival
-            ? 'border-info bg-info text-accent-foreground'
-            : 'border-accent bg-accent text-accent-foreground'
-          : 'border-tint/25 bg-transparent text-soft hover:bg-tint/10 hover:text-foreground disabled:hover:bg-transparent disabled:hover:text-soft',
+            ? 'rounded-control border-info bg-info text-accent-foreground'
+            : 'rounded-control border-accent bg-accent text-accent-foreground'
+          : 'rounded-full border-tint/25 bg-transparent text-soft hover:bg-tint/10 hover:text-foreground disabled:hover:bg-transparent disabled:hover:text-soft',
         passes && 'border-accent/80 text-foreground motion-safe:animate-fx-pick',
       )}
       onClick={onPick}

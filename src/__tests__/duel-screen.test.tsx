@@ -1902,9 +1902,8 @@ describe('la pantalla del duelo', () => {
 
   /** Sale del duelo desde la mesa (con la confirmación). */
   function leaveDuel(view: RenderResult) {
-    // La de la barra está detrás de «Más opciones» (con el resultado en pantalla, la tarjeta tiene la suya aparte).
-    fireEvent.click(within(view.container).getByRole('button', { name: 'Más opciones del duelo' }))
-    fireEvent.click(within(screen.getByRole('dialog', { name: 'Más opciones del duelo' })).getByRole('button', { name: 'Salir del duelo' }))
+    // La de la barra es la primera (con el resultado en pantalla, la tarjeta tiene la suya debajo).
+    fireEvent.click(within(view.container).getAllByRole('button', { name: 'Salir del duelo' })[0]!)
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Salir y dejar en pausa' }))
   }
   const hasSave = (role: 'host' | 'guest') => Object.keys(localStorage).some((key) => key.startsWith('ygo-lab:duel-save:') && key.endsWith(`:${role}`))
@@ -2038,13 +2037,12 @@ describe('la pantalla del duelo', () => {
     const bar = within(host.container)
     const rowOf = (name: string | RegExp) => bar.getByRole('button', { name }).parentElement!.closest('div')!
 
-    // Vida, reloj, la vista y «Más opciones» (que guarda Reconectar, Rendirme y Salir): la misma fila, que no se parte.
+    // Vida, reloj, la vista, rendirse, el engranaje (reconectar) y salir: la misma fila, que no se parte.
     const top = rowOf(/^Reloj de la ronda/)
     expect(top.contains(bar.getByRole('group', { name: /^Puntos de vida de / }))).toBe(true)
-    for (const name of ['Cambiar a la vista superior', 'Más opciones del duelo']) {
+    for (const name of ['Cambiar a la vista superior', 'Rendirme', 'Más opciones del duelo', 'Salir del duelo']) {
       expect(top).toBe(rowOf(name))
     }
-    expect(bar.queryByRole('button', { name: 'Rendirme' })).not.toBeInTheDocument()
     expect(top).not.toHaveClass('flex-wrap')
 
     // El turno: otra fila, que tampoco se parte (el chat bajó a la botonera de abajo).
