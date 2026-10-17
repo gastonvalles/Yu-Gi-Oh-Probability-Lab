@@ -1,7 +1,6 @@
 # Retomar el trabajo desde otra PC
 
-Para arrancar sin el chat ni la memoria de Claude de la PC anterior. Escrito el 2026-10-16 (de noche), con `main` en el PR #293
-(`ad8521d`). Es una foto: lo que cambió después está en `git log`. Reemplaza a la versión del PR #267.
+Para arrancar sin el chat ni la memoria de Claude de la PC anterior. Escrito el 2026-10-16 (de noche) y puesto al día el 2026-10-17 con la segunda tanda (PRs #295 a #305). Es una foto: lo que cambió después está en `git log`.
 
 ## 1. Dónde quedó
 
@@ -43,6 +42,14 @@ fidelidad dejó sin hacer (sección 6).
 
 **Replays en vivo** (#289): arriba de Replays, «En vivo ahora» con las transmisiones de los canales oficiales de YouTube
 (`api/live`, ver `docs/seguridad.md`).
+
+**Segunda tanda: Descubrir, táctiles, LP, hamburguesa, sala, espectador y mesa del celular (#295 a #305)**
+- Descubrir: **Replays** sobre el lienzo, un solo botón de 44 px («Ver deck» con un deck; «Ver decks» abre el replay, que lista los de cada jugador) junto a «fecha · N decks» (#295). **Banlists**: selector de fecha de 44 px con «Vigente» entre las flechas (el `<select>` real va encima, transparente, y oscuro en Windows), «Antes N» sobre la carta, cuatro columnas en el celular (#295, #300). **Expansiones**: «LEDE · enero 2026», búsqueda por código (#296). **Tier lists**: bloques sin caja, la cuenta y el piso de cada tier a la vista, y en escritorio el porcentaje y «▲ 1,4» debajo de la carta; «Contar en» dice Main · Side · Ambos (#296, #302). **Decks de torneo**: filas en el celular y tarjetas con portada en escritorio (#297). `theme-color` y el manifiesto usan `#150A24`.
+- **Táctiles de 44 px** (#298): con `pointer-coarse` (el mouse no cambia) miden 44 px `Button sm`, los `IconButton` raised/outline/ghost, `Segmented`, `SearchField`, `InfoTip`, las redes y la privacidad del pie y los selectores de Comparar. Se mide con un navegador en modo táctil (`isMobile` + `hasTouch`). Queda afuera la mesa (pilas, mano no jugable y fases de 34 × 44).
+- **Calculadora de LP** (#299): un solo teclado (`LpPad`: 7-8-9, 4-5-6, 1-2-3, ½ · 0 · borrar y la columna de − + =) para la herramienta y la hoja de vidas del duelo; tarjetas de duelista, «Reciente», Moneda · Dado · Deshacer · Reiniciar vidas; en escritorio, un diálogo de 760 px con el registro al costado.
+- **La hamburguesa abre el menú entero** (#301): el cajón del celular lleva los cuatro grupos con sus destinos y, abajo, los ajustes (antes era sólo ajustes y la navegación estaba nada más en la barra de abajo: Gastón lo reportó como bug). Misma tanda: revisión con las Web Interface Guidelines de Vercel (`…`, `text-balance`, `color-scheme: dark`, «Saltar al contenido»).
+- **Sala del duelo** (#303): pasos Invitar · Listos · Quién empieza, tu tarjeta y el lugar del rival desde el principio, Compartir · Copiar enlace, «Salir» arriba y, en escritorio, dos columnas con el chat al costado. **Espectador** (#305): chat de sólo lectura fijo al costado en escritorio; «Ese enlace ya no funciona» con el enlace tachado; «Mirar un duelo» con el portapapeles.
+- **Mesa del celular, según la imagen de referencia de Gastón** (#304): botón de la barra que alterna **Vista superior** (plana) y **Vista 3D** (inclinada, la de siempre; `ygo-lab:mat-view`), «Vos» en tus vidas, el turno como texto (violeta tuyo, ámbar del rival) con el registro debajo, pilas Deck · Extra · Cem. · Dest., zonas con borde sólido y velo violeta y las Zonas Extra con brillo.
 
 **En producción**
 - El **relay de Cloudflare** está desplegado con la lista de salas públicas
@@ -127,42 +134,29 @@ por tandas.
 
 ## 6. Pendiente
 
-**Necesita decisión de Gastón** (cambia comportamiento o protocolo; la recomendación es la que dio la auditoría y nunca se
-respondió):
-1. **Deck en escritorio:** la hoja es una columna con el panel «Carta elegida» de 300 px y un botón «Buscar cartas»; la app tiene
-   tres columnas con el buscador siempre abierto. Es el cambio estructural más grande. Recomendación: la hoja.
-2. **Exportar:** un formato a la vez (la hoja) o varios archivos juntos, con Neuron, TXT, JSON y la copia de seguridad (la app).
-   Recomendación: dejarlo como está.
-3. **Roles en el celular:** asistente carta por carta (la hoja) o lista más editor (la app), y «Confirmar las N» en bloque, que
-   pide un reducer nuevo. Recomendación: la hoja.
-4. **Torneos:** la lista en filas o en tarjetas con portada; el detalle compacto de 720 px o pantalla completa; y los filtros
-   Top 4, Top 8, Este mes y Con replay (lógica nueva en `src/app/meta`).
+**De la imagen de referencia de la mesa del celular** (Gastón la dejó el 2026-10-17: «como debe quedar la mesa en mobile»; ya está lo de la sección 1): faltan
+- el **avatar** en las casillas de vidas y el **engranaje** de la barra de arriba (no hay avatares ni ajustes de duelo todavía);
+- las **pilas apiladas** (Deck y Extra con aspecto de mazo, con el número grande) y la vista 3D con más perspectiva;
+- el **asa** (chevron) para abrir la mano;
+- la **hoja de la carta** al tocarla: imagen, nombre, tipo, texto y tres botones («Activar · Colocar · Mover a ▾»). Hoy el menú es la lista pegada a la carta y Gastón había decidido mantenerla: **hay que preguntarle** si la hoja reemplaza al menú;
+- el brillo azul neón de tu campo (acá sería violeta, por la paleta cerrada).
+
+**Necesita decisión de Gastón** (cambia comportamiento o protocolo; la recomendación es la que dio la auditoría y nunca se respondió):
+1. **Deck en escritorio:** la hoja es una columna con el panel «Carta elegida» de 300 px y un botón «Buscar cartas» (el buscador en un cajón); la app tiene tres columnas (la carta, el deck y el buscador siempre abierto a la derecha). Es el cambio estructural más grande y rompe el arrastre desde el buscador si el cajón tapa las zonas. Recomendación: la hoja.
+2. **Exportar:** un formato a la vez (la hoja) o varios archivos juntos, con Neuron, TXT, JSON y la copia de seguridad (la app). Recomendación: dejarlo como está.
+3. **Roles en el celular:** asistente carta por carta (la hoja) o lista más editor (la app), y «Confirmar las N» en bloque, que pide un reducer nuevo. Recomendación: la hoja.
+4. **Torneos:** los filtros Top 4, Top 8, Este mes y Con replay (lógica nueva en `src/app/meta`) y el detalle del deck como hoja o pantalla completa.
 5. **Tier lists en el celular:** ¿la hoja omitió a propósito el selector Hoy / Proyección y «Ajustar»?
 6. **Una sala «Solo» de verdad** (la hoja insinúa que se suma alguien después): protocolo nuevo, no hacer sin decidir.
-7. **Resultado provisional del Lab:** igualar la hoja pide calcular con las sugerencias (lógica grande); la versión barata es un
-   botón «Confirmar las N».
+7. **Resultado provisional del Lab:** igualar la hoja pide calcular con las sugerencias (lógica grande); la versión barata es un botón «Confirmar las N».
+8. **«Mirando · N» en el espectador:** el relay sólo le dice la cantidad de espectadores a los jugadores; mostrarla a quien mira cambia el protocolo.
 
-**Decidido, sin migrar todavía** (de la auditoría; cada ítem dice su hoja del lienzo, antes de tocarlo mirala):
-- **Descubrir:** Replays con un solo botón «Ver deck» de 44 px (hoy un chip de 28 px) junto a «fecha · N decks»; Banlists con el
-  selector de fecha de 44 px y «Vigente» entre flechas; Expansiones con el código («LEDE · enero 2026») y búsqueda por código;
-  Tier lists con el contador por tier y el umbral visibles (en el celular el tooltip no se ve) y, en escritorio, el porcentaje y
-  la tendencia ▲/▼ debajo de la carta; sacar las cajas dentro de tarjetas (Tier lists, Torneos, Replays: «un solo borde») y
-  alinear los textos con las hojas («Con deck», «Ambos», «Antes 1»).
-- **Duelo en escritorio:** el lobby, la sala y el espectador son una columna angosta (`Screen`, `max-w-xl`); las hojas usan dos
-  columnas y el chat lateral de 320 px (el del espectador, de sólo lectura). La sala sin la barra «Invitar · Listos · Quién
-  empieza» ni las tarjetas de jugador desde el principio («Vos» y «Esperando a tu rival…»). El espectador sin «Mirando · 2»
-  (hay que exponer `watchers` en `duel-spectator.ts`). Mirar un duelo con los íconos de la hoja (chevron, portapapeles) y las
-  acciones ancladas abajo; «Ese enlace ya no funciona» con el ícono de enlace tachado; el chat de la mesa con una sola entrada
-  (el ticker, con su ícono y su contador).
-- **Vidas y calculadora de LP:** el teclado con Restar / Sumar y los chips «Reciente»; el duelo y la calculadora en dos columnas
-  en escritorio.
-- **Táctiles de menos de 44 px** que marcó la auditoría: los botones chicos (`Button size="sm"`) y los selectores de Comparar;
-  medí antes de tocar (el #280 y el #293 ya subieron varios).
-- **Cosas chicas:** los colores del navegador (`theme-color` y el manifiesto: `#0b0b0f`) están fuera de la paleta (el fondo es
-  `#150A24`); un lugar para una acción en `MobileTopBar`; «Duelista 1 / 2» en lugar de Vos / Rival y un glosario de roles (críticas
-  de Impeccable).
-- **Opcionales del #267:** el teclado que tapa la botonera en el celular (hay que verlo en un teléfono con el teclado abierto) y la
-  escala inicial del vuelo fantasma.
+**Decidido, sin migrar todavía**
+- **Duelo en escritorio:** el lobby sigue en una columna angosta (la hoja `LobbyEscritorio` trae HTML roto); el chat de la mesa con una sola entrada (el ticker, con su ícono y su contador).
+- **Lab, Comparar y Roles a nivel de pantalla:** lo que las hojas traen y la app no tiene (ver las críticas de `.impeccable/critique/`).
+- **Cosas chicas:** un lugar para una acción en `MobileTopBar` (las hojas ponen ahí el reloj, el buscador o el registro); «Duelista 1 / 2» en lugar de Vos / Rival y un glosario de roles (críticas de Impeccable).
+- **Opcionales del #267:** el teclado que tapa la botonera en el celular (hay que verlo en un teléfono con el teclado abierto) y la escala inicial del vuelo fantasma.
+- **Táctiles de la mesa:** las pilas (40–42 px), «Mano no jugable» (32 px) y las fases (34 × 44): medir con un teléfono antes de tocar, el campo no se mueve.
 - **Replays:** las transmisiones que ya terminaron (VODs) no entran a la lista de Replays, sólo lo que está en vivo ahora.
 - El motor de arrastre y de vuelos con `motion` (empezar en `/playground` con un solo gesto).
 
@@ -194,6 +188,8 @@ respondió):
   pinta ni contesta capturas, así que dos pestañas de la misma ventana no alcanzan. La app en `localhost:5173` con el relay local
   (sección 2) y cada jugador con un deck importado (un `ydke://` o `.ydk` pegado sirve). Los tests de jsdom **no ven** el layout:
   hay que medir en un navegador.
+- **Tres jugadores en un solo Chromium headless:** `browser.newContext()` por jugador (cada uno con su almacenamiento) dentro de un mismo `run-code`; el anfitrión crea una sala **privada** y el invitado entra con `#duel?room=CÓDIGO`; el espectador, con `&watch=1`. Hace falta `.env.local` con `VITE_DUEL_RELAY_URL` y el dev server en el **puerto 5173** (el relay publicado sólo acepta ese origen). Nunca salas públicas: aparecen en «Salas abiertas» de producción.
+- **Objetivos táctiles:** un contexto `hasTouch: true, isMobile: true` y recorrer los pasos listando todo lo que mida menos de 44 px.
 - Los scripts de esa verificación vivían en una carpeta temporal y no están en el repo.
 
 ## 8. Lo que no viaja con el repo
