@@ -526,6 +526,20 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
 
   // El siding de un Match: no hay otra pantalla hasta tocar «Listo», tampoco al recargar o volver al duelo (ni la pausa, ni la sala, ni la mesa).
   if (sidingOpen && snapshot.mine && snapshot.series.winner === null) {
+    // Con un deck pegado (sin deck armado en el builder) las cartas tardan un momento en volver al recargar: sin ellas el siding partiría de un deck vacío.
+    if (builderTooSmall && imported === null) {
+      return (
+        <Screen>
+          <div className="flex items-center justify-between gap-3">
+            <p className="m-0 text-body text-muted" role="status">
+              {t('duel.siding.loading')}
+            </p>
+            <CloseButton size="md" aria-label={t('duel.room.leave')} title={t('duel.room.leave')} onClick={leave} />
+          </div>
+        </Screen>
+      )
+    }
+
     return (
       <Screen wide>
         <DuelSiding

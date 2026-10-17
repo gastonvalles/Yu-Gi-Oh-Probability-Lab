@@ -79,6 +79,12 @@ export function ButtonsSection() {
               Listo
             </Button>
           </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Tag>confirm</Tag>
+            <Button variant="primary" color="confirm" icon="check">
+              Listo (pasá el mouse)
+            </Button>
+          </div>
           <Button fullWidth icon="download">
             Ocupa todo el ancho
           </Button>

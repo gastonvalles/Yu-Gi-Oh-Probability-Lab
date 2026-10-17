@@ -503,26 +503,22 @@ describe('la pantalla del duelo', () => {
   }
 
   it('recargar durante el siding vuelve al siding, con las cartas como estaban: ni la pausa, ni la mesa, ni la sala; y ya listo, sigue esperando al rival', () => {
+    // Recarga Beto (el invitado): el rol de la pestaña es el último que entró.
     const { host, guest, props, counts } = startSiding()
 
-    fireEvent.click(within(host.container).getAllByRole('button', { name: 'Mover Monstruo 10001 al Side Deck' })[0]!)
-    expect(counts(host)).toEqual(['39', '1', '2'])
+    fireEvent.click(within(guest.container).getByRole('button', { name: 'Mover Carta del Side al Main Deck' }))
+    expect(counts(guest)).toEqual(['41', '1', '0'])
 
-    const sv = () => { const raw = Object.entries(localStorage).find(([k]) => k.includes('siding')); const d = raw ? JSON.parse(raw[1]).draft : null; return d ? d.lists.main.length + '/' + d.lists.side.length : 'sin' }
-    console.log('DBG antes', sv())
-    host.unmount()
-    console.log('DBG tras unmount', sv())
+    guest.unmount()
     flush()
-    console.log('DBG tras flush', sv())
     const reloaded = render(<DuelScreen {...screenProps(props)} />)
-    console.log('DBG tras render', sv())
     flush()
     flush()
 
     expect(within(reloaded.container).getByRole('heading', { name: 'Sidedeck' })).toBeInTheDocument()
     expect(within(reloaded.container).queryByRole('alertdialog', { name: 'Duelo en pausa' })).not.toBeInTheDocument()
     // Las cartas siguen donde se las dejó.
-    expect(counts(reloaded)).toEqual(['39', '1', '2'])
+    expect(counts(reloaded)).toEqual(['41', '1', '0'])
 
     click(reloaded, 'Listo')
     flush()
@@ -536,13 +532,13 @@ describe('la pantalla del duelo', () => {
     flush()
     expect(within(again.container).getByRole('heading', { name: 'Sidedeck' })).toBeInTheDocument()
     expect(within(again.container).getByText(/^Esperando a /)).toBeInTheDocument()
-    expect(within(guest.container).getByText('Ana ya está listo.')).toBeInTheDocument()
+    expect(within(host.container).getByText('Beto ya está listo.')).toBeInTheDocument()
 
-    // Cuando Beto está listo, sigue el duelo (con quien perdió eligiendo) y el siding se fue.
-    click(guest, 'Listo')
+    // Cuando Ana está lista, sigue el duelo (Beto, que perdió, elige quién va primero) y el siding se fue.
+    click(host, 'Listo')
     flush()
     flush()
-    expect(within(guest.container).getByText('Elegís vos, porque perdiste el duelo anterior.')).toBeInTheDocument()
+    expect(within(again.container).getByText('Elegís vos, porque perdiste el duelo anterior.')).toBeInTheDocument()
     expect(within(again.container).queryByRole('heading', { name: 'Sidedeck' })).not.toBeInTheDocument()
   })
 

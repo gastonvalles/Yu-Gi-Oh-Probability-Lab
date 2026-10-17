@@ -87,7 +87,7 @@ function zoneCards(zone: SideZone, ids: readonly string[], cardsById: ReadonlyMa
 export function DuelSiding({ deck, cardsById, format, genesysCap, rival, locked, rivalReady, saved, onProgress, onReady }: DuelSidingProps) {
   // Las copias de una carta quedan juntas en su zona (en el orden del deck de partida), también después de pasar de una zona a otra.
   const order = useMemo(() => deckOrder(deck), [deck])
-  const [lists, setLists] = useState<SideDeck>(() => (console.log('INIT', Boolean(saved), saved?.lists.main.length, saved?.lists.side.length), saved && sameCards(saved.lists, deck) ? saved.lists : { main: sortedZone(deck.main, order), extra: sortedZone(deck.extra, order), side: sortedZone(deck.side, order) }))
+  const [lists, setLists] = useState<SideDeck>(() => (saved && sameCards(saved.lists, deck) ? saved.lists : { main: sortedZone(deck.main, order), extra: sortedZone(deck.extra, order), side: sortedZone(deck.side, order) }))
   const problems = useMemo(() => sidingProblems(lists, { main: deck.main.length }, cardsById, format, genesysCap), [lists, deck.main.length, cardsById, format, genesysCap])
   const [deadline] = useState(() => (saved && sameCards(saved.lists, deck) ? saved.deadline : Date.now() + SIDING_MS))
   const [left, setLeft] = useState(() => Math.max(0, Math.min(SIDING_MS, deadline - Date.now())))

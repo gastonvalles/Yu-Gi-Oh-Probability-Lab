@@ -358,6 +358,7 @@ export const duel = {
   'duel.result.draw': 'Empate: los dos se quedaron sin puntos de vida.',
   'duel.siding.title': 'Sidedeck',
   'duel.siding.intro': 'Arrastrá una carta a otra zona o tocala para pasarla: del Main y del Extra va al Side, y del Side vuelve a su zona. Tu rival no ve nada. Cuando los dos estén listos empieza el duelo que sigue, con los cambios. Tenés 3 minutos: si se acaba el tiempo, se juega con tu deck como esté (o con el de antes, si no cumple).',
+  'duel.siding.loading': 'Cargando tu deck…',
   'duel.siding.time': 'Te quedan {time}',
   'duel.siding.zone.main': 'Main Deck',
   'duel.siding.zone.extra': 'Extra Deck',

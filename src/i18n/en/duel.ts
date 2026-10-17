@@ -350,6 +350,7 @@ export const duel: Translated<typeof es> = {
   'duel.result.draw': 'Draw: both of you ran out of life points.',
   'duel.siding.title': 'Sidedeck',
   'duel.siding.intro': "Drag a card to another zone or tap it to move it: from the Main and the Extra it goes to the Side, and from the Side it goes back to its zone. Your opponent sees nothing. When you're both ready, the next duel starts with the changes. You have 3 minutes: when time runs out, you play with your deck as it is (or the previous one, if it's not valid).",
+  'duel.siding.loading': 'Loading your deck…',
   'duel.siding.time': '{time} left',
   'duel.siding.zone.main': 'Main Deck',
   'duel.siding.zone.extra': 'Extra Deck',
