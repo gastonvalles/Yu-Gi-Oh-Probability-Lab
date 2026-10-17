@@ -1380,16 +1380,18 @@ export function PracticeMat({
       className={cx(
         // `select-none`: un arrastre que arranca entre dos cartas no debe pintar texto seleccionado por toda la mesa.
         // `relative isolate`: las cartas grandes del centro se acomodan sobre la mesa (no sobre la pantalla) y sus capas no se mezclan con las de afuera.
-        'relative isolate grid h-full min-h-0 select-none grid-rows-[auto_minmax(0,1fr)] [background:radial-gradient(120%_60%_at_50%_0%,rgb(var(--primary-rgb)/0.16),transparent_70%),rgb(var(--background-rgb))]',
+        // `grid-cols-[minmax(0,1fr)]`: la columna mide lo que mide la pantalla; sin eso crece hasta lo más ancho que tenga adentro (la barra de arriba) y en un celular chico se corta todo el lado derecho.
+        'relative isolate grid h-full min-h-0 select-none grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] [background:radial-gradient(120%_60%_at_50%_0%,rgb(var(--primary-rgb)/0.16),transparent_70%),rgb(var(--background-rgb))]',
         // Los pasos y combos son de la práctica: en un duelo la mesa ocupa todo el ancho.
         (!duel || Boolean(duel.aside)) && 'min-[1101px]:grid-cols-[minmax(0,1fr)_20rem]',
       )}
     >
       {/* Barra (práctica): el turno a la izquierda y, a la derecha, nueva mano, deshacer, guardar, ficha y (en el celu) el panel. En un duelo estos botones van abajo, junto a las fases (ver `dock`). */}
       {duel ? null : (
-        <div className="col-start-1 row-start-1 flex items-center gap-1 px-2 pt-2 min-[1101px]:px-4 min-[1101px]:pt-3" role="toolbar" aria-label={t('practice.mat.name')}>
+        // En un celular angosto los 7 botones (de 44 px) y el turno no entran en una fila: se achican (40 px hasta 419 px de ancho, 36 hasta 379 px) y, en uno muy chico (menos de 340 px), el turno se esconde.
+        <div className="col-start-1 row-start-1 flex items-center gap-1 px-2 pt-2 max-[419px]:gap-0.5 max-[419px]:px-1 max-[419px]:[&>button]:size-10! max-[379px]:[&>button]:size-9! min-[1101px]:px-4 min-[1101px]:pt-3" role="toolbar" aria-label={t('practice.mat.name')}>
           <ShellMenuButton className="-ml-1" />
-          <span className="whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted" aria-label={t('practice.mat.turn', { turn: state.turn })}>
+          <span className="whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted max-[339px]:hidden" aria-label={t('practice.mat.turn', { turn: state.turn })}>
             {t('practice.mat.turn', { turn: state.turn })}
           </span>
           <MatViewToggle className="ml-auto" />

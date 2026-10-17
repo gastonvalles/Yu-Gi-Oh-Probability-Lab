@@ -329,6 +329,15 @@ describe('la mesa de práctica', () => {
     expect(localStorage.getItem('ygo-lab:mat-view')).toBe('3d')
   })
 
+  it('en un celular angosto la mesa no se ensancha por su barra: la columna mide la pantalla y los botones se achican (jsdom no mide: se comprueban las clases que lo garantizan)', () => {
+    render(<Harness />)
+
+    // Sin esto la columna crece hasta lo más ancho que tenga adentro (la barra: ~402 px) y en un celular de 360 a 400 px se corta todo el lado derecho.
+    expect(screen.getByRole('region', { name: 'Mesa de práctica' }).className).toContain('grid-cols-[minmax(0,1fr)]')
+    expect(screen.getByRole('toolbar', { name: 'Mesa' }).className).toContain('max-[419px]:[&>button]:size-10!')
+    expect(screen.getByRole('toolbar', { name: 'Mesa' }).className).toContain('max-[379px]:[&>button]:size-9!')
+  })
+
   it('arrastrar una carta al cementerio la manda ahí; tocar el deck ofrece robar', () => {
     render(<Harness />)
 
