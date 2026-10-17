@@ -1,4 +1,4 @@
-import { memo, useRef, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { memo, useRef, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 
 import {
   buildDeckZoneVisualLayout,
@@ -35,6 +35,8 @@ interface DeckZoneProps {
   readOnly?: boolean
   /** Cartas con marco verde (por id de YGOPRODeck). */
   highlightedCardIds?: ReadonlySet<number>
+  /** Qué hace tocar una carta (p. ej. «Mover X al Side Deck»): con esto las cartas son botones que se usan con el teclado (Enter o espacio). */
+  cardAction?: (card: DeckCardInstance) => string
   onDeckCardPointerDown: (event: ReactPointerEvent<HTMLElement>, instanceId: string) => void
   onDeckCardClick: (instanceId: string) => void
   onRemoveCard: (instanceId: string) => void
@@ -53,6 +55,7 @@ export const DeckZone = memo(function DeckZone({
   selectedCardId = null,
   readOnly = false,
   highlightedCardIds,
+  cardAction,
   onDeckCardPointerDown,
   onDeckCardClick,
   onRemoveCard,
@@ -128,9 +131,26 @@ export const DeckZone = memo(function DeckZone({
     }
   }
 
+  // Con `cardAction`, la carta es un botón: se enfoca y se acciona con Enter o espacio, como con un toque.
+  const cardButton = (card: DeckCardInstance) =>
+    cardAction
+      ? {
+          role: 'button' as const,
+          tabIndex: 0,
+          'aria-label': cardAction(card),
+          onKeyDown: (event: ReactKeyboardEvent<HTMLElement>) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              onDeckCardClick(card.instanceId)
+            }
+          },
+        }
+      : {}
+
   const renderDeckCard = (card: DeckCardInstance, index: number) => (
     <article
       key={card.instanceId}
+      {...cardButton(card)}
       data-deck-zone={zone}
       data-deck-card-index={index}
       data-selected={selectedCardId !== null && card.apiCard.ygoprodeckId === selectedCardId ? 'true' : 'false'}
@@ -226,6 +246,7 @@ export const DeckZone = memo(function DeckZone({
         {cards.map((card, index) => (
           <article
             key={card.instanceId}
+            {...cardButton(card)}
             data-deck-zone={zone}
             data-deck-card-index={index}
             data-highlighted={highlightedCardIds?.has(card.apiCard.ygoprodeckId) ? 'true' : 'false'}

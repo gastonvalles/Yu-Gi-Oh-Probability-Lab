@@ -812,6 +812,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       starter = saved.starter
       ordered = true
       ready = { mine: true, theirs: true }
+      conceded = saved.conceded ?? null
+      rematch = { mine: saved.rematch === true, theirs: false }
     } catch {
       initial = null
       actions = []

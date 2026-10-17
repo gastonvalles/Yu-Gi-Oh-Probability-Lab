@@ -28,6 +28,15 @@ export interface SideCard {
 export const SIDE_LIMITS = { main: 60, extra: 15, side: 15 } as const
 export const MAIN_MINIMUM = 40
 
+/** Cómo distingue la pantalla cada copia de una zona al arrastrarla o tocarla: por su lugar (dos copias de una carta pueden compartir id). */
+export const sideInstanceId = (zone: SideZone, index: number) => `${zone}:${index}`
+
+export function parseSideInstance(instanceId: string): { zone: SideZone; index: number } | null {
+  const [zone = '', index = ''] = instanceId.split(':')
+
+  return (SIDE_ZONES as readonly string[]).includes(zone) && /^\d+$/.test(index) ? { zone: zone as SideZone, index: Number(index) } : null
+}
+
 /** La carta de una copia puede ir a esa zona: un monstruo del Extra Deck no va al Main ni al revés; el Side acepta todo. Sin datos de la carta, cualquier zona. */
 export function canGoTo(card: SideCard | undefined, zone: SideZone): boolean {
   return card?.apiCard ? isCardAllowedInDeckZone(card.apiCard, zone) : true

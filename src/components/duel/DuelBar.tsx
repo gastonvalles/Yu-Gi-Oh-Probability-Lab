@@ -56,6 +56,8 @@ interface DuelBarProps {
   onToggleClock: () => void
   onRematch: () => void
   onLeave: () => void
+  /** Salir de un duelo en curso es abandonarlo: se rinde y se sale (se pide confirmar). Sin esto, salir sólo deja el duelo en pausa. */
+  onAbandon?: () => void
   /** Rendirme: el duelo termina y gana el rival (se pide confirmar). */
   onConcede: () => void
   /** La línea del registro (sólo en el celular): lo último que pasó; tocarla abre el chat con el registro. */
@@ -142,7 +144,7 @@ const HEADER_ICON = 'size-10! max-[379px]:size-9!'
 /** Los avisos de la conexión y del rival se apoyan debajo de la barra (no la empujan): el campo no se mueve cuando aparecen o se van. */
 const ALERT_OVERLAY = 'absolute inset-x-0.5 top-full z-20 mt-1'
 
-export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRematch, onLeave, onConcede, onReconnect, log, resultOpen = false, rivalSignal = null, lane = null }: DuelBarProps) {
+export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRematch, onLeave, onAbandon, onConcede, onReconnect, log, resultOpen = false, rivalSignal = null, lane = null }: DuelBarProps) {
   const now = useTick(1000)
   const [leaving, setLeaving] = useState(false)
   const [conceding, setConceding] = useState(false)
@@ -156,6 +158,8 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
   const running = life.timer.running
   const clock = formatClock(duelClockMs(life.timer, now, snapshot.settings.limitMin))
   const result = duelResult(life.lp, snapshot.conceded)
+  // Con el rival presente y el duelo sin terminar, salir es abandonar: se pierde. Con el rival ausente (se cayó) o el duelo terminado, sólo se sale.
+  const abandoning = result === null && peerPresent && onAbandon !== undefined
   // La fase que se ve es la de quien tiene el turno: así los dos saben en qué punto va.
   const phaseId = (turn === 'mine' ? snapshot.mine : snapshot.theirs?.state)?.phase
   const phase = PHASES.find((entry) => entry.id === phaseId)?.name
@@ -275,15 +279,16 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
 
       <ConfirmDialog
         isOpen={leaving}
-        title={t('duel.bar.leaveTitle')}
-        description={t('duel.bar.leaveText')}
-        confirmLabel={t('duel.bar.leaveConfirm')}
+        title={abandoning ? t('duel.bar.abandonTitle') : t('duel.bar.leaveTitle')}
+        description={abandoning ? t('duel.bar.abandonText', { name: rivalName }) : result !== null ? t('duel.bar.leaveDoneText') : t('duel.bar.leaveText')}
+        confirmLabel={abandoning ? t('duel.bar.abandonConfirm') : result !== null ? t('duel.bar.leaveNow') : t('duel.bar.leaveConfirm')}
         cancelLabel={t('duel.bar.keepPlaying')}
         confirmColor="danger"
         onCancel={() => setLeaving(false)}
         onConfirm={() => {
           setLeaving(false)
-          onLeave()
+          if (abandoning) onAbandon?.()
+          else onLeave()
         }}
       />
     </div>

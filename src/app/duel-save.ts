@@ -1,5 +1,6 @@
 import { ROOM_CODE_PATTERN } from './duel-relay-rules'
 import type { DuelSnapshot } from './duel-session'
+import type { SideDeck } from './duel-siding'
 import type { Duelist, LifeTimer } from './life-calculator'
 import type { MatAction, MatState } from './practice-mat'
 
@@ -23,6 +24,10 @@ export interface DuelSave {
   savedAt: number
   /** Cómo se llama el rival, para decir con quién es el duelo en pausa. */
   rival: string | null
+  /** Quién se rindió (sin esto, un duelo que terminó rindiéndose se retomaría como si siguiera). Los guardados de antes no lo traen. */
+  conceded?: Duelist | null
+  /** Ya pedí la revancha (o toqué «Listo» en el siding): al volver se le repite al rival, que no se entera de otra forma. */
+  rematch?: boolean
 }
 
 const PREFIX = 'ygo-lab:duel-save:'
@@ -47,6 +52,8 @@ export function saveOf(snapshot: DuelSnapshot, now: number): DuelSave | null {
     starter: snapshot.starter,
     savedAt: now,
     rival: snapshot.peerName,
+    conceded: snapshot.conceded,
+    rematch: snapshot.rematch.mine,
   }
 }
 
@@ -90,7 +97,9 @@ export function parseSave(raw: string | null, role: 'host' | 'guest', now: numbe
       (save.starter !== 0 && save.starter !== 1) ||
       !isNumber(save.savedAt) ||
       now - save.savedAt > SAVE_TTL_MS ||
-      (save.rival !== null && typeof save.rival !== 'string')
+      (save.rival !== null && typeof save.rival !== 'string') ||
+      (save.conceded !== undefined && save.conceded !== null && save.conceded !== 0 && save.conceded !== 1) ||
+      (save.rematch !== undefined && typeof save.rematch !== 'boolean')
     ) {
       return null
     }
@@ -128,6 +137,8 @@ export function clearDuelSave(room: string): void {
   try {
     localStorage.removeItem(saveKey(room, 'host'))
     localStorage.removeItem(saveKey(room, 'guest'))
+    localStorage.removeItem(sidingKey(room, 'host'))
+    localStorage.removeItem(sidingKey(room, 'guest'))
   } catch {
     // Sin almacenamiento no hay nada que borrar.
   }
@@ -167,5 +178,70 @@ export function findPausedDuel(now = Date.now()): PausedDuel | null {
     return latest ? { room: latest.room, role: latest.role, rival: latest.rival } : null
   } catch {
     return null
+  }
+}
+
+/**
+ * El siding de un Match en curso: el deck que se está armando (o el que quedó) y si la pantalla del siding está abierta. Recargar la página o volver al duelo
+ * lleva otra vez a esa pantalla, con las cartas como estaban, y no se sale de ahí sin tocar «Listo».
+ */
+export interface SidingSave {
+  v: 1
+  role: 'host' | 'guest'
+  /** El deck con los cambios hechos hasta ahora (ids de copia seguidos, como los que usa la mesa), o null si todavía no se confirmó nada. */
+  deck: SideDeck | null
+  open: boolean
+  /** Lo que se está armando en la pantalla del siding (las cartas en cada zona) y cuándo se acaba el tiempo: recargar no reinicia ni el deck ni la cuenta. */
+  draft?: SidingDraft | null
+  savedAt: number
+}
+
+export interface SidingDraft {
+  lists: SideDeck
+  /** Date.now() en que se acaba el tiempo del siding. */
+  deadline: number
+}
+
+const SIDING_PREFIX = 'ygo-lab:duel-siding:'
+const sidingKey = (room: string, role: 'host' | 'guest') => `${SIDING_PREFIX}${room}:${role}`
+const COPY_ID = /^card-\d+-\d+$/
+const MAX_SIDING_CARDS = 200
+
+const isCopyList = (value: unknown): value is string[] => Array.isArray(value) && value.length <= MAX_SIDING_CARDS && value.every((entry) => typeof entry === 'string' && COPY_ID.test(entry))
+
+/** Lo guardado del siding de esta sala y este rol, si no venció y tiene la forma de un deck; si no, null. */
+export function readSidingSave(room: string, role: 'host' | 'guest', now = Date.now()): SidingSave | null {
+  try {
+    const raw = localStorage.getItem(sidingKey(room, role))
+    const data: unknown = raw === null ? null : JSON.parse(raw)
+
+    if (typeof data !== 'object' || data === null) {
+      return null
+    }
+
+    const save = data as Partial<SidingSave>
+    const deck = save.deck as Partial<SideDeck> | null | undefined
+    const validDeck = deck === null || (deck !== undefined && isCopyList(deck.main) && isCopyList(deck.extra) && isCopyList(deck.side))
+
+    const draft = save.draft as Partial<SidingDraft> | null | undefined
+    const lists = draft?.lists as Partial<SideDeck> | undefined
+    const validDraft = draft === undefined || draft === null || (isNumber(draft.deadline) && lists !== undefined && isCopyList(lists.main) && isCopyList(lists.extra) && isCopyList(lists.side))
+
+    return save.v === 1 && save.role === role && validDeck && validDraft && typeof save.open === 'boolean' && isNumber(save.savedAt) && now - save.savedAt <= SAVE_TTL_MS ? (save as SidingSave) : null
+  } catch {
+    return null
+  }
+}
+
+/** Guarda el siding de esta sala (o lo borra, si no hay nada que recordar: ni deck ni pantalla abierta). */
+export function writeSidingSave(room: string, role: 'host' | 'guest', save: { deck: SideDeck | null; open: boolean; draft?: SidingDraft | null } | null, now = Date.now()): void {
+  try {
+    if (save && (save.deck !== null || save.open)) {
+      localStorage.setItem(sidingKey(room, role), JSON.stringify({ v: 1, role, deck: save.deck, open: save.open, draft: save.open ? (save.draft ?? null) : null, savedAt: now } satisfies SidingSave))
+    } else {
+      localStorage.removeItem(sidingKey(room, role))
+    }
+  } catch {
+    // Sin almacenamiento no se recuerda.
   }
 }

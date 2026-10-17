@@ -9,8 +9,8 @@ import { Icon, type IconName } from './Icon'
  */
 export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'onBrand'
 type ButtonSize = 'sm' | 'md' | 'lg'
-/** brand: violeta de la app · danger: acciones que borran o no se pueden deshacer · success: lo que confirma que se está listo o bien (verde). */
-export type ButtonColor = 'brand' | 'danger' | 'success'
+/** brand: violeta de la app · danger: acciones que borran o no se pueden deshacer · success: lo que confirma que se está listo o bien (verde) · confirm: violeta que se vuelve verde al apuntarlo (dar un paso por hecho, como «Listo»). */
+export type ButtonColor = 'brand' | 'danger' | 'success' | 'confirm'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant
@@ -26,6 +26,7 @@ const FILLED: Record<ButtonColor, string> = {
   brand: 'bg-primary text-primary-foreground shadow-brand hover:bg-primary-hover',
   danger: 'bg-destructive text-white hover:brightness-110',
   success: 'bg-success-solid text-white shadow-[0_6px_16px_rgb(var(--success-rgb)/0.3)] hover:brightness-110',
+  confirm: 'bg-primary text-primary-foreground shadow-brand hover:bg-success-solid hover:text-white hover:shadow-[0_6px_16px_rgb(var(--success-rgb)/0.3)]',
 }
 
 /** Lavanda: relleno violeta oscuro con texto blanco; al pasar el mouse se aclara. */
@@ -33,18 +34,21 @@ const QUIET: Record<ButtonColor, string> = {
   brand: 'bg-lavender text-foreground hover:bg-lavender-hover',
   danger: 'bg-danger/20 text-white hover:bg-danger/30',
   success: 'bg-success/20 text-success-soft hover:bg-success/30',
+  confirm: 'bg-lavender text-foreground hover:bg-success/30',
 }
 
 const GHOST: Record<ButtonColor, string> = {
   brand: 'bg-transparent text-foreground hover:bg-tint/10',
   danger: 'bg-transparent text-danger-soft hover:bg-danger/12',
   success: 'bg-transparent text-success-soft hover:bg-success/12',
+  confirm: 'bg-transparent text-foreground hover:bg-success/12',
 }
 
 const ON_BRAND: Record<ButtonColor, string> = {
   brand: 'bg-lavender-light text-primary hover:bg-white',
   danger: 'bg-lavender-light text-primary hover:bg-white',
   success: 'bg-lavender-light text-primary hover:bg-white',
+  confirm: 'bg-lavender-light text-primary hover:bg-white',
 }
 
 const COLORS = { primary: FILLED, secondary: QUIET, tertiary: GHOST, onBrand: ON_BRAND } as const
