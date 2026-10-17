@@ -26,6 +26,7 @@ import { t } from '../../i18n'
 import { Button } from '../ui/Button'
 import { Badge } from '../ui/Badge'
 import { Callout } from '../ui/Callout'
+import { cx } from '../ui/cx'
 import { FieldBox, fieldInline } from '../ui/FieldBox'
 import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
@@ -412,7 +413,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
 
   if (sidingOpen && siding) {
     return (
-      <Screen>
+      <Screen wide>
         <DuelSiding
           deck={{ main: deck.mainIds, extra: deck.extraIds, side: deck.sideIds ?? [] }}
           cardsById={deck.cardsById}
@@ -433,10 +434,10 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
 }
 
 /** Lo que no es la mesa: una columna que scrollea, con el ancho de una pantalla de lectura. */
-function Screen({ children }: { children: React.ReactNode }) {
+function Screen({ children, wide = false }: { children: React.ReactNode; /** Más ancha, para lo que lleva grillas de cartas (el siding). */ wide?: boolean }) {
   return (
     <div className="h-full min-h-0 overflow-y-auto">
-      <div className="mx-auto grid w-full max-w-xl content-start gap-4 px-4 py-6">{children}</div>
+      <div className={cx('mx-auto grid w-full content-start gap-4 px-4 py-6', wide ? 'max-w-5xl' : 'max-w-xl')}>{children}</div>
     </div>
   )
 }

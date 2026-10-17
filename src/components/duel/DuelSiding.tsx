@@ -1,11 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react'
 
+import { deckOrder, renumberDeck, SIDE_ZONES, sidingProblems, sortedZone, tapTarget, type SideCard, type SideDeck, type SideZone, type SidingProblem } from '../../app/duel-siding'
 import { formatClock } from '../../app/life-calculator'
-import { canGoTo, moveCopy, renumberDeck, SIDE_ZONES, sidingProblems, type SideCard, type SideDeck, type SideZone, type SidingProblem } from '../../app/duel-siding'
-import type { DeckFormat } from '../../types'
+import type { DeckCardInstance } from '../../app/model'
+import { showToastMessage } from '../../app/use-toast-message'
 import { t } from '../../i18n'
+import type { DeckFormat } from '../../types'
+import { CardArt } from '../CardArt'
+import { DeckZoneHeader } from '../DeckZoneHeader'
+import { ZONE_STYLES, ZONE_SURFACE_MOBILE } from '../deck-zone-styles'
 import { Button } from '../ui/Button'
+import { prefersReducedMotion } from '../../app/motion'
 import { Callout } from '../ui/Callout'
+import { cx } from '../ui/cx'
 import { Heading } from '../ui/Heading'
 
 /** Cuánto tiempo hay para hacer siding: pasado el tiempo, el duelo sigue con el deck como esté (o con el de antes, si no cumple). */
@@ -45,40 +52,30 @@ function problemText(problem: SidingProblem): string {
   }
 }
 
-interface Group {
-  key: string
-  name: string
-  card: SideCard | undefined
-  /** Las posiciones de sus copias en la zona. */
-  indexes: number[]
-}
-
-/** Las copias de una zona agrupadas por carta, en el orden en que aparecen. */
-function groupsOf(ids: readonly string[], cardsById: ReadonlyMap<string, SideCard>): Group[] {
-  const groups = new Map<string, Group>()
-
-  ids.forEach((id, index) => {
+/** Las copias con los datos de su carta (las que no los tienen no se pueden contar por tipo: quedan en el conteo total y se ven con sus iniciales). */
+function knownCards(ids: readonly string[], cardsById: ReadonlyMap<string, SideCard>): DeckCardInstance[] {
+  return ids.flatMap((id, index) => {
     const card = cardsById.get(id)
-    const name = card?.name ?? id
-    const group = groups.get(name) ?? { key: name, name, card, indexes: [] }
 
-    group.indexes.push(index)
-    groups.set(name, group)
+    return card?.apiCard ? [{ instanceId: `${id}#${index}`, name: card.name, apiCard: card.apiCard, origin: null, roles: [], needsReview: false }] : []
   })
-
-  return [...groups.values()]
 }
 
 /**
- * El siding de un Match: tu Main, tu Extra y tu Side, y un botón por carta para pasarla de una zona a otra (como en el builder). El rival no ve nada.
- * Con el deck bien, «Listo» lo deja guardado; cuando los dos están listos empieza el siguiente duelo con los cambios.
+ * El siding de un Match: tu Main, tu Extra y tu Side como en el builder (las cartas con su arte, en la grilla de cada zona) y un toque en una carta la pasa de zona:
+ * del Main y del Extra al Side, y del Side a donde le toca. El rival no ve nada. Con el deck bien, «Listo» lo deja guardado; cuando los dos están listos empieza
+ * el siguiente duelo con los cambios.
  */
 export function DuelSiding({ deck, cardsById, format, rival, locked, rivalReady, onReady }: DuelSidingProps) {
-  const [lists, setLists] = useState<SideDeck>(deck)
+  // Las copias de una carta quedan juntas en su zona (en el orden del deck de partida), también después de pasar de una zona a otra.
+  const order = useMemo(() => deckOrder(deck), [deck])
+  const [lists, setLists] = useState<SideDeck>(() => ({ main: sortedZone(deck.main, order), extra: sortedZone(deck.extra, order), side: sortedZone(deck.side, order) }))
   const problems = useMemo(() => sidingProblems(lists, { main: deck.main.length }, cardsById, format), [lists, deck.main.length, cardsById, format])
   const [deadline] = useState(() => Date.now() + SIDING_MS)
   const [left, setLeft] = useState(SIDING_MS)
   const done = useRef(false)
+  const base = useId()
+  const zoneId = (zone: SideZone) => `${base}-${zone}`
   // Lo que se confirma si se acaba el tiempo: los cambios, si el deck cumple; si no, el deck con que se jugó.
   const onTime = useRef<SideDeck>(deck)
 
@@ -109,17 +106,45 @@ export function DuelSiding({ deck, cardsById, format, rival, locked, rivalReady,
     return () => window.clearInterval(id)
   }, [locked, deadline, cardsById, onReady])
 
+  /** Pasa la copia `index` de `from` a la zona que le toca y avisa adónde fue (la otra zona puede estar fuera de la pantalla). */
+  const tap = (from: SideZone, index: number) => {
+    const id = lists[from][index]
+
+    if (id === undefined) {
+      return
+    }
+
+    const card = cardsById.get(id)
+    const to = tapTarget(card, from)
+
+    setLists((current) => {
+      const picked = current[from][index]
+
+      return picked === undefined ? current : { ...current, [from]: current[from].filter((_, position) => position !== index), [to]: sortedZone([...current[to], picked], order) }
+    })
+    showToastMessage(t('duel.siding.moved', { name: card?.name ?? id, zone: ZONE_NAME[to]() }), 'info')
+  }
+
   return (
     <>
       <div className="grid gap-1">
         <Heading level="section">{t('duel.siding.title')}</Heading>
         <p className="m-0 text-body text-muted">{t('duel.siding.intro')}</p>
-        {locked ? null : (
-          <p className={left < 30_000 ? 'm-0 text-body font-semibold tabular-nums text-danger-soft' : 'm-0 text-body font-semibold tabular-nums text-foreground'} data-testid="siding-clock">
-            {t('duel.siding.time', { time: formatClock(left) })}
-          </p>
-        )}
       </div>
+
+      {/* Arriba y fijo: ir a cada zona (el Side puede quedar bien abajo). */}
+      <nav aria-label={t('duel.siding.jump')} className="sticky top-0 z-10 -mx-4 grid grid-cols-3 gap-1.5 border-b border-border-subtle bg-background/90 px-4 py-2 backdrop-blur">
+        {SIDE_ZONES.map((zone) => (
+          <Button
+            key={zone}
+            variant="secondary"
+            size="sm"
+            onClick={() => document.getElementById(zoneId(zone))?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' })}
+          >
+            {`${ZONE_NAME[zone]().replace(' Deck', '')} ${lists[zone].length}`}
+          </Button>
+        ))}
+      </nav>
 
       {problems.length > 0 ? (
         <Callout tone="warning" icon="alert">
@@ -131,48 +156,34 @@ export function DuelSiding({ deck, cardsById, format, rival, locked, rivalReady,
         </Callout>
       ) : null}
 
-      {SIDE_ZONES.map((zone) => {
-        const groups = groupsOf(lists[zone], cardsById)
+      {SIDE_ZONES.map((zone) => (
+        <SidingZone key={zone} id={zoneId(zone)} zone={zone} ids={lists[zone]} cardsById={cardsById} locked={locked} onTap={tap} />
+      ))}
 
-        return (
-          <section key={zone} aria-label={ZONE_NAME[zone]()} className="grid gap-2">
-            <Heading level="card">{`${ZONE_NAME[zone]()} · ${lists[zone].length}`}</Heading>
-            {groups.length === 0 ? (
-              <p className="m-0 text-micro text-soft">{t('duel.siding.empty')}</p>
-            ) : (
-              <ul className="m-0 grid list-none gap-1 p-0">
-                {groups.map((group) => (
-                  <li key={group.key} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border-subtle py-1.5">
-                    <span className="min-w-0 flex-1 text-body text-foreground">
-                      {group.name}
-                      <span className="ml-2 tabular-nums text-muted">{`×${group.indexes.length}`}</span>
-                    </span>
-                    <span className="flex flex-wrap gap-1.5">
-                      {SIDE_ZONES.filter((target) => target !== zone && canGoTo(group.card, target)).map((target) => (
-                        <Button
-                          key={target}
-                          variant="tertiary"
-                          size="sm"
-                          disabled={locked}
-                          aria-label={t('duel.siding.moveLabel', { name: group.name, zone: ZONE_NAME[target]() })}
-                          onClick={() => setLists((current) => moveCopy(current, zone, group.indexes[group.indexes.length - 1]!, target))}
-                        >
-                          {t('duel.siding.move', { zone: ZONE_NAME[target]() })}
-                        </Button>
-                      ))}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        )
-      })}
-
-      <div className="grid gap-1.5">
+      {/* Abajo, al alcance del pulgar, y fijo (el deck puede ser largo): lo que falta a la izquierda y «Listo», la acción, a la derecha. */}
+      <div className="sticky bottom-0 z-10 -mx-4 -mb-6 flex items-center justify-between gap-3 border-t border-border-subtle bg-background/90 px-4 py-3 backdrop-blur">
+        <div className="grid min-w-0 gap-0.5">
+          {locked ? (
+            <p className="m-0 text-body text-muted" role="status">
+              {t('duel.siding.waiting', { name: rival })}
+            </p>
+          ) : (
+            <>
+              <p className={left < 30_000 ? 'm-0 text-body font-semibold tabular-nums text-danger-soft' : 'm-0 text-body font-semibold tabular-nums text-foreground'} data-testid="siding-clock">
+                {t('duel.siding.time', { time: formatClock(left) })}
+              </p>
+              {rivalReady ? (
+                <p className="m-0 text-micro text-soft" role="status">
+                  {t('duel.siding.rivalReady', { name: rival })}
+                </p>
+              ) : null}
+            </>
+          )}
+        </div>
         <Button
           variant="primary"
           icon="check"
+          className="shrink-0"
           disabled={locked || problems.length > 0}
           onClick={() => {
             done.current = true
@@ -184,8 +195,59 @@ export function DuelSiding({ deck, cardsById, format, rival, locked, rivalReady,
         >
           {t('duel.siding.ready')}
         </Button>
-        {locked ? <p className="m-0 text-micro text-soft" role="status">{t('duel.siding.waiting', { name: rival })}</p> : rivalReady ? <p className="m-0 text-micro text-soft" role="status">{t('duel.siding.rivalReady', { name: rival })}</p> : null}
       </div>
     </>
+  )
+}
+
+interface SidingZoneProps {
+  id: string
+  zone: SideZone
+  ids: readonly string[]
+  cardsById: ReadonlyMap<string, SideCard>
+  locked: boolean
+  onTap: (zone: SideZone, index: number) => void
+}
+
+/** Una zona del deck: su encabezado (con el conteo por tipo) y sus cartas en la grilla del builder, cada una un botón que la pasa de zona. */
+function SidingZone({ id: sectionId, zone, ids, cardsById, locked, onTap }: SidingZoneProps) {
+  const style = ZONE_STYLES[zone]
+
+  return (
+    <section id={sectionId} aria-label={ZONE_NAME[zone]()} className="grid w-full scroll-mt-16 gap-2">
+      <DeckZoneHeader zone={zone} title={ZONE_NAME[zone]()} cards={knownCards(ids, cardsById)} count={ids.length} />
+
+      <div
+        className={ZONE_SURFACE_MOBILE}
+        style={{ '--zone-background': style.background, '--zone-border': style.border, minHeight: '4.5rem' } as CSSProperties}
+      >
+        {ids.map((id, index) => {
+          const card = cardsById.get(id)
+          const name = card?.name ?? id
+          const to = tapTarget(card, zone)
+
+          return (
+            <button
+              // Dos copias de una misma carta pueden compartir id (el Main y el Side numeran por separado): la posición las distingue.
+              key={`${id}#${index}`}
+              type="button"
+              disabled={locked}
+              title={name}
+              aria-label={t('duel.siding.moveLabel', { name, zone: ZONE_NAME[to]() })}
+              className={cx(
+                'relative block min-w-0 cursor-pointer touch-manipulation select-none bg-transparent p-0 transition-transform duration-100 [-webkit-tap-highlight-color:transparent]',
+                'focus-visible:z-1 focus-visible:outline-none focus-visible:shadow-focus enabled:active:scale-95 disabled:cursor-default disabled:opacity-60',
+                '[&_img]:pointer-events-none [&_img]:select-none',
+              )}
+              onClick={() => onTap(zone, index)}
+            >
+              <CardArt remoteUrl={card?.apiCard?.imageUrlSmall ?? card?.apiCard?.imageUrl ?? null} name={name} className="block aspect-[0.72] w-full min-w-0 bg-input object-cover" limitCard={card?.apiCard ?? null} />
+              <span className="sr-only">{name}</span>
+            </button>
+          )
+        })}
+        {ids.length === 0 ? <p className="col-span-full m-0 grid min-h-12 place-items-center text-body text-soft">{t('duel.siding.empty')}</p> : null}
+      </div>
+    </section>
   )
 }

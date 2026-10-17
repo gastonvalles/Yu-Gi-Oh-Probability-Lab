@@ -243,6 +243,15 @@ describe('la pantalla del duelo', () => {
     click(guest, 'Siguiente duelo')
 
     expect(within(host.container).getByRole('heading', { name: 'Siding' })).toBeInTheDocument()
+    // Como en el builder: las tres zonas con sus cartas, y arriba ir a cada una con lo que lleva.
+    const jump = within(within(host.container).getByRole('navigation', { name: 'Ir a una zona del deck' }))
+    expect(jump.getAllByRole('button').map((button) => button.textContent)).toEqual(['Main 40', 'Extra 1', 'Side 1'])
+    // Un toque en una carta del Main la pasa al Side; otro en el Side la devuelve.
+    fireEvent.click(within(host.container).getAllByRole('button', { name: 'Mover Carta card-1000-1 al Side Deck' })[0]!)
+    expect(jump.getAllByRole('button').map((button) => button.textContent)).toEqual(['Main 39', 'Extra 1', 'Side 2'])
+    expect(within(host.container).getByRole('region', { name: 'Side Deck' })).toHaveTextContent('Carta card-1000-1')
+    fireEvent.click(within(within(host.container).getByRole('region', { name: 'Side Deck' })).getByRole('button', { name: 'Mover Carta card-1000-1 al Main Deck' }))
+    expect(jump.getAllByRole('button').map((button) => button.textContent)).toEqual(['Main 40', 'Extra 1', 'Side 1'])
     expect(within(host.container).getByRole('region', { name: 'Side Deck' })).toHaveTextContent('Carta del Side')
     fireEvent.click(within(host.container).getByRole('button', { name: 'Mover Carta del Side al Main Deck' }))
     expect(within(host.container).getByRole('region', { name: 'Main Deck' })).toHaveTextContent('Carta del Side')

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { canGoTo, moveCopy, renumberDeck, sidingProblems, type SideCard, type SideDeck } from '../app/duel-siding'
+import { canGoTo, deckOrder, moveCopy, renumberDeck, sidingProblems, sortedZone, tapTarget, type SideCard, type SideDeck } from '../app/duel-siding'
 import type { ApiCardReference } from '../types'
 
 const card = (ygoprodeckId: number, frameType: string, tcg: 'forbidden' | null = null) =>
@@ -31,6 +31,26 @@ describe('el siding de un Match', () => {
     expect(canGoTo(cards.get('card-1-1'), 'extra')).toBe(false)
     expect(canGoTo(cards.get('card-3-1'), 'main')).toBe(true)
     expect(canGoTo(undefined, 'extra')).toBe(true)
+  })
+
+  it('un toque pasa la carta al Side desde el Main y el Extra, y del Side a la zona que le toca (el Main, o el Extra si es un monstruo del Extra Deck)', () => {
+    expect(tapTarget(cards.get('card-1-1'), 'main')).toBe('side')
+    expect(tapTarget(cards.get('card-2-1'), 'extra')).toBe('side')
+    expect(tapTarget(cards.get('card-3-1'), 'side')).toBe('main')
+    expect(tapTarget(cards.get('card-2-1'), 'side')).toBe('extra')
+    // Sin datos de la carta no se sabe: vuelve al Main.
+    expect(tapTarget(undefined, 'side')).toBe('main')
+  })
+
+  it('las copias de una carta quedan juntas en su zona, en el orden del deck de partida, aunque pasen de zona', () => {
+    const order = deckOrder(deck)
+
+    // card-1 (Monstruo) va primero en el deck, después card-2, card-3 y card-4.
+    expect([...order.entries()]).toEqual([['card-1', 0], ['card-2', 1], ['card-3', 2], ['card-4', 3]])
+    // Una copia que vuelve al Main se acomoda junto a las de su carta, no al final.
+    expect(sortedZone(['card-1-1', 'card-3-1', 'card-1-2'], order)).toEqual(['card-1-1', 'card-1-2', 'card-3-1'])
+    // Estable: dos copias de la misma carta conservan su orden; lo que no estaba en el deck de partida, al final.
+    expect(sortedZone(['card-9-1', 'card-1-2', 'card-1-1'], order)).toEqual(['card-1-2', 'card-1-1', 'card-9-1'])
   })
 
   it('dice qué le falta al deck: el Main no baja del mínimo (o de lo que se tenía), los topes y el formato', () => {
