@@ -337,17 +337,17 @@ describe('Replays en inglés', () => {
 
     expect(screen.getByRole('heading', { name: 'Replays' })).toBeInTheDocument()
     expect(screen.getByText('2 replays with at least one tournament deck, from newest to oldest. Tap one to watch it.')).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'With Meta deck' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('radio', { name: 'With deck' })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByRole('searchbox', { name: 'Search replays' })).toHaveAttribute('placeholder', 'Event, player or deck')
     expect(screen.getByText('YCS Paris 2026 · Final')).toBeInTheDocument()
     expect(screen.getByText('YCS Paris 2026 · Round 13')).toBeInTheDocument()
-    expect(screen.getByText('unidentified deck')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Watch the replay Timoti B. vs. Vladis B., YCS Paris 2026 · Final' })).toBeInTheDocument()
-    // Cada jugador con un deck de torneo tiene su botón para ver el detalle.
-    expect(screen.getAllByRole('button', { name: 'View deck Elfnote' })).toHaveLength(1)
-    expect(screen.getAllByText('View deck')).toHaveLength(3)
+    // Cada replay tiene un solo botón: con dos decks abre el replay («View decks») y con uno abre ese deck («View deck»).
+    expect(screen.getByRole('button', { name: 'View the decks of Timoti B. vs. Vladis B.' })).toHaveTextContent('View decks')
+    expect(screen.getAllByText('View deck')).toHaveLength(1)
+    expect(screen.getByText(/· 2 decks$/)).toBeInTheDocument()
 
-    const footer = view.container.querySelector('p.mt-4')!
+    const footer = view.container.querySelector('#replays-list > p:last-child')!
     expect(footer).toHaveTextContent('The videos are from the official Yu-Gi-Oh! TCG Europe and Yu-Gi-Oh! TCG YouTube channels.')
     expect(within(footer as HTMLElement).getByRole('link', { name: 'Yu-Gi-Oh! TCG Europe' })).toHaveAttribute('href', 'https://www.youtube.com/@YuGiOhCardEU')
     expect(within(footer as HTMLElement).getByRole('link', { name: 'Yu-Gi-Oh! TCG' })).toHaveAttribute('href', 'https://www.youtube.com/@OfficialYuGiOhTCG')

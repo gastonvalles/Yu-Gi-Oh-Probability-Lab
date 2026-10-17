@@ -2,10 +2,9 @@ import type { MetaDeck } from '../../app/meta'
 import { REPLAYS, replayLabel, thumbnailUrl, watchUrl, type ReplayEntry } from '../../app/replays'
 import { t } from '../../i18n'
 import { Badge } from '../ui/Badge'
-import { cx } from '../ui/cx'
+import { Button } from '../ui/Button'
 import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
-import { choiceChip } from '../ui/surfaces'
 import { VideoPlayer, YOUTUBE_LINK_BUTTON } from './VideoPlayer'
 
 interface ReplayModalProps {
@@ -72,15 +71,9 @@ function ReplayDialog({ entry, onClose, onOpenDeck }: { entry: ReplayEntry; onCl
                       {player.deck.placement}
                     </Badge>
                   ) : null}
-                  <button
-                    type="button"
-                    className={cx(choiceChip, 'h-7 shrink-0 gap-1 px-2.5 text-micro')}
-                    aria-label={t('meta.replays.viewDeckLabel', { deck: player.deck.name })}
-                    onClick={() => onOpenDeck(player.deck!)}
-                  >
-                    <Icon name="layers" size={13} />
+                  <Button variant="secondary" icon="layers" aria-label={t('meta.replays.viewDeckLabel', { deck: player.deck.name })} onClick={() => onOpenDeck(player.deck!)}>
                     {t('meta.replays.viewDeck')}
-                  </button>
+                  </Button>
                 </>
               ) : (
                 <span className="text-muted">{t('meta.replays.modal.noDeck')}</span>

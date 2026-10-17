@@ -38,7 +38,6 @@ describe('la pantalla de banlists', () => {
   it('abre en la lista vigente del TCG con lo que cambió, como el anuncio de Konami', () => {
     render(<BanlistsScreen />)
 
-    expect(screen.getByRole('heading', { name: 'Lista TCG de 21 de septiembre de 2026' })).toBeInTheDocument()
     expect(screen.getByText('21 cartas cambiaron respecto de la lista de 18 de mayo de 2026.')).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: 'Elegir la lista' })).toHaveDisplayValue('21 de septiembre de 2026')
     expect(screen.getByText('Vigente')).toBeInTheDocument()
@@ -46,6 +45,9 @@ describe('la pantalla de banlists', () => {
     expect(cardsIn('Prohibidas')).toHaveLength(8)
     expect(cardsIn('Prohibidas')[0]).toContain('Archlord Kristya')
     expect(cardsIn('Prohibidas')[0]).toContain('Antes: Ilimitada')
+    // Sobre la carta va el número de copias que se podía tener («Antes 3»); el estado entero lo lee el lector de pantalla.
+    expect(cardsIn('Prohibidas')[0]).toContain('Antes 3')
+    expect(cardsIn('Liberadas').find((text) => text.includes('Mind Master'))).toContain('Antes 0')
     expect(cardsIn('Prohibidas').find((text) => text.includes('Dimension Shifter'))).toContain('Antes: Limitada')
     expect(cardsIn('Limitadas')).toHaveLength(2)
     expect(cardsIn('Semi-limitadas')).toHaveLength(1)
@@ -62,19 +64,19 @@ describe('la pantalla de banlists', () => {
     expect(newer).toBeDisabled()
 
     fireEvent.click(older)
-    expect(screen.getByRole('heading', { name: 'Lista TCG de 18 de mayo de 2026' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Elegir la lista' })).toHaveDisplayValue('18 de mayo de 2026')
     expect(newer).toBeEnabled()
     expect(screen.queryByText('Vigente')).not.toBeInTheDocument()
 
     fireEvent.change(screen.getByRole('combobox', { name: 'Elegir la lista' }), { target: { value: '2011-09-01' } })
-    expect(screen.getByRole('heading', { name: 'Lista TCG de 1 de septiembre de 2011' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Elegir la lista' })).toHaveDisplayValue('1 de septiembre de 2011')
     expect(older).toBeDisabled()
     // La más vieja que hay no tiene anterior: todo lo que trae es nuevo.
     expect(screen.getByText(/Es la primera lista TCG que tenemos: trae \d+ cartas\./)).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Liberadas' })).not.toBeInTheDocument()
 
     fireEvent.click(newer)
-    expect(screen.getByRole('heading', { name: 'Lista TCG de 1 de marzo de 2012' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Elegir la lista' })).toHaveDisplayValue('1 de marzo de 2012')
   })
 
   it('la lista completa trae las prohibidas, limitadas y semi-limitadas de esa lista, sin las liberadas', () => {
@@ -97,7 +99,6 @@ describe('la pantalla de banlists', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Lista anterior' }))
     fireEvent.click(screen.getByRole('radio', { name: 'OCG' }))
 
-    expect(screen.getByRole('heading', { name: 'Lista OCG de 1 de octubre de 2026' })).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: 'Elegir la lista' })).toHaveDisplayValue('1 de octubre de 2026')
     expect(screen.getByText('Vigente')).toBeInTheDocument()
   })

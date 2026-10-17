@@ -18,20 +18,17 @@ import { formatInteger, normalizeSearchText } from '../../app/utils'
 import { t } from '../../i18n'
 import { tRich } from '../../i18n/rich'
 import { MetaDeckModal } from '../meta/MetaDeckModal'
-import { formatMetaDateFull } from '../meta/meta-format'
+import { formatMetaDate, formatMetaDateFull } from '../meta/meta-format'
 import { StepHero } from '../StepHero'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
-import { Card } from '../ui/Card'
-import { cx } from '../ui/cx'
 import { EmptyState } from '../ui/EmptyState'
+import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
 import { SearchField } from '../ui/SearchField'
-import { SectionHeader } from '../ui/SectionHeader'
 import { Segmented } from '../ui/Segmented'
 import { StepPage } from '../ui/StepPage'
-import { choiceChip, filterChip } from '../ui/surfaces'
-import { overline } from '../ui/typography'
+import { filterChip } from '../ui/surfaces'
 import { LiveStreamsSection } from './LiveStreams'
 import { ReplayModal } from './ReplayModal'
 
@@ -123,51 +120,48 @@ export function ReplaysScreen() {
 
       <LiveStreamsSection state={live} />
 
-      <Card id="replays-list">
-        <SectionHeader
-          icon="play"
-          title={t('meta.replays.listTitle')}
-          description={description}
-          actions={
-            <>
-              {filterDeck ? (
-                <button type="button" className={filterChip} onClick={() => navigate({ deck: null })} aria-label={t('meta.filter.clear', { name: filterDeck.name })}>
-                  <span className="truncate">{filterDeck.name}</span>
-                  <Icon name="x" size={12} strokeWidth={2.2} />
-                </button>
-              ) : (
-                <Segmented
-                  value={scope}
-                  onChange={(next) => {
-                    setScope(next)
-                    setLimit(REPLAYS_PER_PAGE)
-                  }}
-                  options={[
-                    { value: 'meta', label: t('meta.replays.scopeMeta'), count: metaCount },
-                    { value: 'all', label: t('meta.replays.scopeAll'), count: entries.length },
-                  ]}
-                  label={t('meta.replays.scopeLabel')}
-                  size="sm"
-                  className="max-[1100px]:w-full"
-                />
-              )}
-              <SearchField
-                label={t('meta.replays.searchLabel')}
-                value={query}
-                placeholder={t('meta.replays.searchPlaceholder')}
-                className="min-w-[14rem] flex-1 max-[1100px]:w-full"
-                onChange={(next) => {
-                  setQuery(next)
-                  setLimit(REPLAYS_PER_PAGE)
-                }}
-              />
-            </>
-          }
-        />
+      <section id="replays-list" aria-labelledby="replays-list-title" className="grid gap-4">
+        <Heading level="section" id="replays-list-title" className="sr-only">
+          {t('meta.replays.listTitle')}
+        </Heading>
+        <div className="flex flex-wrap items-center gap-2">
+          {filterDeck ? (
+            <button type="button" className={filterChip} onClick={() => navigate({ deck: null })} aria-label={t('meta.filter.clear', { name: filterDeck.name })}>
+              <span className="truncate">{filterDeck.name}</span>
+              <Icon name="x" size={12} strokeWidth={2.2} />
+            </button>
+          ) : (
+            <Segmented
+              value={scope}
+              onChange={(next) => {
+                setScope(next)
+                setLimit(REPLAYS_PER_PAGE)
+              }}
+              options={[
+                { value: 'meta', label: t('meta.replays.scopeMeta'), count: metaCount },
+                { value: 'all', label: t('meta.replays.scopeAll'), count: entries.length },
+              ]}
+              label={t('meta.replays.scopeLabel')}
+              variant="chips"
+              className="max-[1100px]:w-full"
+            />
+          )}
+          <SearchField
+            label={t('meta.replays.searchLabel')}
+            value={query}
+            placeholder={t('meta.replays.searchPlaceholder')}
+            className="min-w-[14rem] flex-1 max-[1100px]:w-full"
+            onChange={(next) => {
+              setQuery(next)
+              setLimit(REPLAYS_PER_PAGE)
+            }}
+          />
+        </div>
+        <p className="m-0 text-body text-muted">{description}</p>
 
         {visible.length > 0 ? (
           // `xl` (no `min-[1101px]`): con `sm:grid-cols-2` el arbitrario queda antes en el CSS y pierde, así que no pasaba de dos columnas.
-          <ul className="m-0 mt-3 grid list-none gap-3 p-0 sm:grid-cols-2 xl:grid-cols-3">
+          <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2 xl:grid-cols-3">
             {visible.slice(0, limit).map((entry) => (
               <li key={entry.video.id} className="min-w-0">
                 <ReplayCard entry={entry} onOpen={() => navigate({ video: entry.video.id })} onOpenDeck={setOpenedDeck} />
@@ -185,17 +179,17 @@ export function ReplaysScreen() {
         )}
 
         {visible.length > limit ? (
-          <div className="mt-4 flex justify-center">
+          <div className="flex justify-center">
             <Button variant="secondary" size="sm" onClick={() => setLimit((current) => current + REPLAYS_PER_PAGE)}>
               {t('meta.showMore', { count: formatInteger(Math.min(REPLAYS_PER_PAGE, visible.length - limit)) })}
             </Button>
           </div>
         ) : null}
 
-        <p className="m-0 mt-4 text-micro text-soft">
+        <p className="m-0 text-micro text-soft">
           {tRich('meta.replays.channels', { eu: channelLink('eu'), tcg: channelLink('tcg') }, { eu: REPLAYS.channels.eu.name, tcg: REPLAYS.channels.tcg.name })}
         </p>
-      </Card>
+      </section>
 
       <ReplayModal
         entry={opened}
@@ -211,11 +205,16 @@ export function ReplaysScreen() {
   )
 }
 
-/** La miniatura y el título abren el replay; el deck de cada jugador se abre con su propio botón (por eso va aparte, no dentro del otro). */
+/**
+ * La miniatura y el título abren el replay; abajo, «fecha · N decks» y un solo botón (el número y la acción, juntos): con un deck lo abre y con dos
+ * abre el replay, que lista el de cada jugador. El botón va aparte (no dentro de los otros dos) para no anidar botones.
+ */
 function ReplayCard({ entry, onOpen, onOpenDeck }: { entry: ReplayEntry; onOpen: () => void; onOpenDeck: (deck: MetaDeck) => void }) {
   const { video, event, stage, players } = entry
   const label = replayLabel(entry)
   const heading = [event, stage?.label].filter(Boolean).join(' · ')
+  const decks = players.flatMap((player) => (player.deck ? [player.deck] : []))
+  const facts = [formatMetaDate(video.date), decks.length > 0 ? t('meta.replays.decksCount', { count: decks.length }) : null].filter(Boolean).join(' · ')
 
   return (
     <article className="group grid h-full min-w-0 content-start overflow-hidden rounded-card border border-border-subtle bg-card-background transition-colors duration-150 hover:border-primary/60">
@@ -238,38 +237,24 @@ function ReplayCard({ entry, onOpen, onOpenDeck }: { entry: ReplayEntry; onOpen:
         </span>
       </button>
 
-      <div className="grid content-start gap-2 p-3">
+      <div className="grid content-start gap-3 p-3">
         <button type="button" className="grid min-w-0 gap-0.5 rounded-tag text-left focus-visible:outline-none focus-visible:shadow-focus" onClick={onOpen}>
-          {heading ? <span className={cx(overline, 'truncate')}>{heading}</span> : null}
-          <strong className="text-body font-semibold text-foreground">{label}</strong>
+          <strong className="text-body font-semibold text-foreground">{heading || label}</strong>
+          {heading ? <span className="truncate text-micro text-muted">{label}</span> : null}
         </button>
 
-        <ul className="m-0 grid list-none gap-1 p-0">
-          {players.map((player, index) => (
-            <li key={index} className="flex min-w-0 items-center gap-1.5 text-micro">
-              <Icon name="user" size={13} className="shrink-0 text-soft" />
-              <span className="shrink-0 font-semibold text-foreground">{player.name}</span>
-              {player.deck ? (
-                <>
-                  <span className="min-w-0 flex-1 truncate text-muted" title={player.deck.placement ? `${player.deck.name} · ${player.deck.placement}` : player.deck.name}>
-                    {player.deck.name}
-                  </span>
-                  <button
-                    type="button"
-                    className={cx(choiceChip, 'h-7 shrink-0 gap-1 px-2.5 text-micro')}
-                    aria-label={t('meta.replays.viewDeckLabel', { deck: player.deck.name })}
-                    onClick={() => onOpenDeck(player.deck!)}
-                  >
-                    <Icon name="layers" size={13} />
-                    {t('meta.replays.viewDeck')}
-                  </button>
-                </>
-              ) : (
-                <span className="truncate text-soft">{t('meta.replays.noDeck')}</span>
-              )}
-            </li>
-          ))}
-        </ul>
+        <div className="flex items-center justify-between gap-2">
+          <span className="min-w-0 truncate text-micro text-muted tabular-nums">{facts}</span>
+          {decks.length === 1 ? (
+            <Button variant="secondary" icon="layers" aria-label={t('meta.replays.viewDeckLabel', { deck: decks[0]!.name })} onClick={() => onOpenDeck(decks[0]!)}>
+              {t('meta.replays.viewDeck')}
+            </Button>
+          ) : decks.length > 1 ? (
+            <Button variant="secondary" icon="layers" aria-label={t('meta.replays.viewDecksLabel', { label })} onClick={onOpen}>
+              {t('meta.replays.viewDecks')}
+            </Button>
+          ) : null}
+        </div>
       </div>
     </article>
   )
