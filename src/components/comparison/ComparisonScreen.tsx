@@ -190,7 +190,7 @@ export function ComparisonScreen() {
         <label className="flex min-w-0 items-center gap-2.5">
           <SideBadge side={side} />
           <select
-            className={`${field} h-10 w-full min-w-0 px-3 text-body`}
+            className={`${field} h-10 w-full min-w-0 px-3 text-body pointer-coarse:h-11`}
             value={value ?? ''}
             aria-label={t('meta.compare.build', { side })}
             onChange={(event) => setSelection((current) => ({ ...current, [side.toLowerCase()]: event.target.value || null }))}

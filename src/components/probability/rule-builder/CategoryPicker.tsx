@@ -35,7 +35,7 @@ interface CategoryPickerProps {
 }
 
 const CHIP =
-  'inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border-subtle bg-tint/5 px-3.5 text-body font-semibold text-foreground transition-[background-color,border-color] [-webkit-tap-highlight-color:transparent] focus-visible:outline-none focus-visible:shadow-focus active:scale-[0.97] data-[active=true]:border-primary/55 data-[active=true]:bg-primary/20 [&_span]:text-micro [&_span]:font-medium [&_span]:text-muted'
+  'inline-flex min-h-10 pointer-coarse:min-h-11 items-center gap-1.5 rounded-full border border-border-subtle bg-tint/5 px-3.5 text-body font-semibold text-foreground transition-[background-color,border-color] [-webkit-tap-highlight-color:transparent] focus-visible:outline-none focus-visible:shadow-focus active:scale-[0.97] data-[active=true]:border-primary/55 data-[active=true]:bg-primary/20 [&_span]:text-micro [&_span]:font-medium [&_span]:text-muted'
 
 /** Fila: el estado (ninguna / algunas / todas las cartas elegidas) llega por data-state. */
 const ROW =

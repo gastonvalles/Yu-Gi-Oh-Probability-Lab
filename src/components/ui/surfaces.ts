@@ -36,7 +36,7 @@ export const choiceChip =
 
 /** Chip de un filtro activo del buscador: se toca para quitarlo. */
 export const filterChip =
-  'inline-flex max-w-full items-center gap-1.5 rounded-control bg-lavender px-3 py-1.5 text-micro font-semibold leading-none text-primary-soft transition-colors duration-150 hover:bg-primary/28 focus-visible:outline-none focus-visible:shadow-focus'
+  'inline-flex max-w-full items-center gap-1.5 rounded-control bg-lavender px-3 py-1.5 pointer-coarse:min-h-11 text-micro font-semibold leading-none text-primary-soft transition-colors duration-150 hover:bg-primary/28 focus-visible:outline-none focus-visible:shadow-focus'
 
 /** Fila clickeable de una lista (cartas, resultados). */
 export const listItem =

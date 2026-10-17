@@ -178,7 +178,7 @@ export function PileViewer({ pile, ids, info, targeted, onPick, onClose, anonymo
               placeholder={t('practice.dialog.searchCard')}
               autoComplete="off"
               data-initial-focus=""
-              className={cx(field, 'h-10 w-full pl-9 pr-3 text-body')}
+              className={cx(field, 'h-10 w-full pl-9 pr-3 text-body pointer-coarse:h-11')}
               onChange={(event) => setQuery(event.target.value)}
             />
           </label>

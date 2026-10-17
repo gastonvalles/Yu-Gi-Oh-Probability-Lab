@@ -152,7 +152,7 @@ function PriceList({ cardId, onOpenPrint }: { cardId: number; onOpenPrint: (pric
             value={query}
             placeholder={t('search.prices.searchLabel')}
             autoComplete="off"
-            className={cx(field, 'h-10 w-full pl-9 pr-3 text-body')}
+            className={cx(field, 'h-10 w-full pl-9 pr-3 text-body pointer-coarse:h-11')}
             onChange={(event) => setQuery(event.target.value)}
           />
         </label>

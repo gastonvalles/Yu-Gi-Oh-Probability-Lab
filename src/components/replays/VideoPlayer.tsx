@@ -5,7 +5,7 @@ import { Icon } from '../ui/Icon'
 
 /** El botón-link «Ver en YouTube» del pie de las ventanas de video. */
 export const YOUTUBE_LINK_BUTTON =
-  'inline-flex min-h-9 items-center justify-center gap-2 rounded-control bg-lavender px-4 py-1.5 text-body font-semibold leading-tight text-foreground transition-colors duration-150 hover:bg-lavender-hover focus-visible:outline-none focus-visible:shadow-focus pointer-coarse:min-h-10'
+  'inline-flex min-h-9 pointer-coarse:min-h-11 items-center justify-center gap-2 rounded-control bg-lavender px-4 py-1.5 text-body font-semibold leading-tight text-foreground transition-colors duration-150 hover:bg-lavender-hover focus-visible:outline-none focus-visible:shadow-focus pointer-coarse:min-h-10'
 
 interface VideoPlayerProps {
   videoId: string

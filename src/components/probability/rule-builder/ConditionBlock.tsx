@@ -26,7 +26,7 @@ interface ConditionBlockProps {
 
 /** Cada pieza de la "frase" de la condición: misma altura, separadas por una línea fina. */
 const SEGMENT =
-  'inline-flex min-h-10 items-center gap-1.5 px-3 text-body transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus'
+  'inline-flex min-h-10 pointer-coarse:min-h-11 items-center gap-1.5 px-3 text-body transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus'
 
 /**
  * Una condición se lee como una frase: [Al menos] [− 2 +] [copias] [de qué cartas].

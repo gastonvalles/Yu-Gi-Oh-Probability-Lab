@@ -14,7 +14,7 @@ interface SearchFieldProps {
   placeholder?: string
   /** Del contenedor: dónde va y qué ancho tiene. */
   className?: string
-  /** Del campo: alto y texto (por defecto, 36 px). */
+  /** Del campo: alto y texto (por defecto, 36 px; 44 con el dedo). */
   inputClassName?: string
 }
 
@@ -22,7 +22,7 @@ interface SearchFieldProps {
  * Un campo de búsqueda: siempre con la lupa a la izquierda, como todo lo que busca en la app (el buscador de cartas tiene el suyo, más grande),
  * y con una X para borrar lo escrito mientras haya algo (la del navegador va oculta: no se ve igual en todos y en el celular no está).
  */
-export function SearchField({ label, value, onChange, placeholder, className, inputClassName = 'h-9' }: SearchFieldProps) {
+export function SearchField({ label, value, onChange, placeholder, className, inputClassName = 'h-9 pointer-coarse:h-11' }: SearchFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const clear = () => {
     onChange('')
