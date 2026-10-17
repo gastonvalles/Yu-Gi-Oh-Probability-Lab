@@ -116,7 +116,8 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
           closeGroup()
         }}
       />
-      <NavDrawer isOpen={drawerOpen} onClose={closeDrawer} nav={immersive ? { groups, activeKey, onSelect } : undefined} />
+      {/* La hamburguesa abre el menú entero: los destinos (también con la barra de abajo a la vista, que a veces el navegador tapa) y, abajo, los ajustes. */}
+      <NavDrawer isOpen={drawerOpen} onClose={closeDrawer} nav={{ groups, activeKey, onSelect }} />
     </div>
   )
 }
