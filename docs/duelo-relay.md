@@ -16,6 +16,10 @@ El duelo por enlace junta a dos jugadores, cada uno en su dispositivo, por un **
 - **Salas públicas** (`GET /rooms`, `POST /rooms?room=CODIGO`, `POST /rooms/close?room=CODIGO`): una lista aparte de las salas abiertas, en un solo Durable Object (`RoomIndex`, con la lista entera en su almacenamiento; migración `v2`). El relay sigue sin leer las salas: el anfitrión anota la suya al crearla (su nombre, Single o Match, formato, reloj y siding, revisados con `parsePublicRoomInfo`) con un token que sólo él conoce, y la baja con ese token cuando llega el rival, sale o cierra la pestaña; la que nadie baja vence a los 30 minutos (`PUBLIC_ROOM_TTL_MS`). Tope de 100 salas, de ritmo por dirección (una anotación cada cinco segundos; la dirección sólo se mira, no se guarda) y sólo desde los orígenes de `ALLOWED_ORIGINS`. Los POST llevan el JSON como texto plano para no necesitar consulta previa de CORS. Lo que la lista trae del anfitrión (su nombre) lo escribe él: la app lo muestra como texto. Es la lógica de `RoomRegistry` (`duel-relay-rules.ts`, probada sin red); la app la lee con `duel-rooms.ts`.
 El código de la app que lo usa está en `src/app/duel-socket.ts` (cliente con reconexión) y `src/app/duel-relay-rules.ts` (lo que comparten los dos lados).
 
+## Estado
+
+Publicado el 2026-10-16 en `https://ygo-lab-duel-relay.gastonvallesyeou.workers.dev` con la lista de salas públicas (migración `v2`, PR #270); el sitio lo usa con `VITE_DUEL_RELAY_URL` cargada en Vercel (todos los entornos). Desde entonces `duel-relay/` no cambió: sólo hay que volver a publicarlo (`npx wrangler@4 deploy`) cuando cambie.
+
 ## Probarlo en tu máquina (sin cuenta)
 
 ```bash

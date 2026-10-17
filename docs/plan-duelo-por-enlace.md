@@ -1,6 +1,6 @@
 # Plan: duelo por enlace (celular ↔ PC)
 
-Estado: propuesta, sin código. Basado en el código de la rama `main` del 2026-10-14 y en el estudio de DuelingBook, Dueling Nexus y YGOPocket (`docs/referencia-ygopocket.md`).
+Estado: **implementado** (nota del 2026-10-16: el duelo por enlace, los espectadores, las salas públicas, el Match con siding y la reconexión ya están en `main`; cómo funciona hoy está en `docs/duelo.md` y `docs/duelo-relay.md`). Lo que sigue es la propuesta original, escrita sin código sobre la rama `main` del 2026-10-14 y el estudio de DuelingBook, Dueling Nexus y YGOPocket (`docs/referencia-ygopocket.md`); sirve para entender por qué se hizo así, no como estado actual.
 
 ## 1. Qué es y qué no es
 
