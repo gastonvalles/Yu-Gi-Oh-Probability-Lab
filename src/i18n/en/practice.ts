@@ -191,6 +191,7 @@ export const practice: Translated<typeof es> = {
 
   'practice.dialog.empty': 'There is nothing to do from here.',
   'practice.dialog.viewCard': 'View card',
+  'practice.sheet.more': 'More',
   'practice.dialog.searchCard': 'Search cards',
   'practice.dialog.noCards': 'No cards here.',
   'practice.dialog.noMatch': 'No card matches “{query}”.',
