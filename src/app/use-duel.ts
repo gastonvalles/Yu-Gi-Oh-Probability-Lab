@@ -62,7 +62,7 @@ export function useDuel({ room, role, name, settings, connect }: UseDuelInput): 
       // Sólo cuando algo de lo guardado cambió (las jugadas, las vidas o el reloj, la mesa de arranque): el chat y los avisos no pasan por acá.
       const now = duel.getSnapshot()
 
-      if (now.actions !== saved.actions || now.life !== saved.life || now.initial !== saved.initial) {
+      if (now.actions !== saved.actions || now.life !== saved.life || now.initial !== saved.initial || now.conceded !== saved.conceded || now.rematch.mine !== saved.rematch.mine) {
         saved = now
         writeDuelSave(room, now)
       }

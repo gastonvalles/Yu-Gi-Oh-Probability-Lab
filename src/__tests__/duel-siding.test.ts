@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { canGoTo, deckOrder, moveCopy, renumberDeck, sidingProblems, sortedZone, tapTarget, type SideCard, type SideDeck } from '../app/duel-siding'
+import { canGoTo, deckOrder, moveCopy, parseSideInstance, renumberDeck, sideInstanceId, sidingProblems, sortedZone, tapTarget, type SideCard, type SideDeck } from '../app/duel-siding'
 import type { ApiCardReference } from '../types'
 
 const card = (ygoprodeckId: number, frameType: string, tcg: 'forbidden' | null = null) =>
@@ -63,6 +63,15 @@ describe('el siding de un Match', () => {
     const withBanned = sidingProblems(moveCopy(deck, 'side', 1, 'main'), { main: 2 }, cards, 'tcg')
     expect(withBanned).toHaveLength(1)
     expect(withBanned[0]).toMatchObject({ kind: 'format' })
+  })
+
+  it('cada copia se distingue por su lugar en la zona (al arrastrarla o tocarla) y lo que no es un lugar no se entiende', () => {
+    expect(sideInstanceId('side', 3)).toBe('side:3')
+    expect(parseSideInstance('side:3')).toEqual({ zone: 'side', index: 3 })
+    expect(parseSideInstance(sideInstanceId('main', 0))).toEqual({ zone: 'main', index: 0 })
+    for (const wrong of ['', 'side', 'side:', 'side:x', 'mano:1', 'main:-1', ':2']) {
+      expect(parseSideInstance(wrong)).toBeNull()
+    }
   })
 
   it('al terminar renumera las copias para que cada una tenga su id y arrastra los datos de la carta', () => {

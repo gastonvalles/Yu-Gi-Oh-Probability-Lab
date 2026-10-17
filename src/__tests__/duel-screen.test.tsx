@@ -421,7 +421,7 @@ describe('la pantalla del duelo', () => {
 
   it('un Match con siding: entre duelo y duelo cada uno cambia cartas de su Side y, con los dos listos, sigue el duelo', () => {
     const sideIds = ['card-777-1']
-    const withSide = new Map([...cardsById, ['card-777-1', { name: 'Carta del Side', apiCard: null }]])
+    const withSide = new Map([...monsters, ['card-777-1', { name: 'Carta del Side', apiCard: effectMonster }]])
     const props = { sideIds, cardsById: withSide }
     const host = render(<DuelScreen {...screenProps(props)} />)
     typeInto(host, 'Tu nombre', 'Ana')
@@ -446,18 +446,20 @@ describe('la pantalla del duelo', () => {
     click(guest, 'Siguiente duelo')
 
     expect(within(host.container).getByRole('heading', { name: 'Sidedeck' })).toBeInTheDocument()
-    // Como en el builder: las tres zonas con sus cartas, y arriba ir a cada una con lo que lleva.
-    const jump = within(within(host.container).getByRole('navigation', { name: 'Ir a una zona del deck' }))
-    expect(jump.getAllByRole('button').map((button) => button.textContent)).toEqual(['Main 40', 'Extra 1', 'Side 1'])
+    // Como en el builder: las tres zonas con sus cartas, y sin botones para saltar de una a otra.
+    const zone = (name: 'main' | 'extra' | 'side') => host.container.querySelector<HTMLElement>(`[data-deck-zone="${name}"][data-deck-count]`)!
+    const counts = () => (['main', 'extra', 'side'] as const).map((name) => zone(name).dataset.deckCount)
+    expect(counts()).toEqual(['40', '1', '1'])
+    expect(within(host.container).queryByRole('navigation', { name: 'Ir a una zona del deck' })).not.toBeInTheDocument()
     // Un toque en una carta del Main la pasa al Side; otro en el Side la devuelve.
-    fireEvent.click(within(host.container).getAllByRole('button', { name: 'Mover Carta card-1000-1 al Side Deck' })[0]!)
-    expect(jump.getAllByRole('button').map((button) => button.textContent)).toEqual(['Main 39', 'Extra 1', 'Side 2'])
-    expect(within(host.container).getByRole('region', { name: 'Side Deck' })).toHaveTextContent('Carta card-1000-1')
-    fireEvent.click(within(within(host.container).getByRole('region', { name: 'Side Deck' })).getByRole('button', { name: 'Mover Carta card-1000-1 al Main Deck' }))
-    expect(jump.getAllByRole('button').map((button) => button.textContent)).toEqual(['Main 40', 'Extra 1', 'Side 1'])
-    expect(within(host.container).getByRole('region', { name: 'Side Deck' })).toHaveTextContent('Carta del Side')
-    fireEvent.click(within(host.container).getByRole('button', { name: 'Mover Carta del Side al Main Deck' }))
-    expect(within(host.container).getByRole('region', { name: 'Main Deck' })).toHaveTextContent('Carta del Side')
+    fireEvent.click(within(host.container).getAllByRole('button', { name: 'Mover Monstruo 10001 al Side Deck' })[0]!)
+    expect(counts()).toEqual(['39', '1', '2'])
+    expect(within(zone('side')).getByRole('button', { name: 'Mover Monstruo 10001 al Main Deck' })).toBeInTheDocument()
+    // Con el teclado también: la carta es un botón (Enter la pasa).
+    fireEvent.keyDown(within(zone('side')).getByRole('button', { name: 'Mover Monstruo 10001 al Main Deck' }), { key: 'Enter' })
+    expect(counts()).toEqual(['40', '1', '1'])
+    fireEvent.click(within(zone('side')).getByRole('button', { name: 'Mover Carta del Side al Main Deck' }))
+    expect(within(zone('main')).getByRole('button', { name: 'Mover Carta del Side al Side Deck' })).toBeInTheDocument()
 
     click(host, 'Listo')
     flush()
@@ -469,6 +471,98 @@ describe('la pantalla del duelo', () => {
     // Con los dos listos se limpia la mesa: elige quién va primero quien perdió (Beto) y el siding se fue.
     expect(within(guest.container).getByText('Elegís vos, porque perdiste el duelo anterior.')).toBeInTheDocument()
     expect(within(host.container).queryByRole('heading', { name: 'Sidedeck' })).not.toBeInTheDocument()
+  })
+
+  /** Un Match con siding hasta la pantalla del siding de Ana (la anfitriona): Beto se rindió y los dos tocaron «Siguiente duelo». */
+  function startSiding() {
+    const withSide = new Map([...monsters, ['card-777-1', { name: 'Carta del Side', apiCard: effectMonster }]])
+    const props = { sideIds: ['card-777-1'], cardsById: withSide }
+    const host = render(<DuelScreen {...screenProps(props)} />)
+    typeInto(host, 'Tu nombre', 'Ana')
+    openRules(host)
+    fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Match · mejor de 3' }))
+    fireEvent.click(within(rulesDialog()).getByRole('switch', { name: 'Sidedeck' }))
+    fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' }))
+    const link = within(host.container).getByTestId('duel-link').textContent ?? ''
+    window.history.replaceState(null, '', '#duel')
+    const guest = render(<DuelScreen {...screenProps(props)} />)
+    typeInto(guest, 'Tu nombre', 'Beto')
+    joinByLink(guest, link)
+    flush()
+    openTable(host, guest)
+    click(guest, 'Rendirme')
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Rendirme' }))
+    flush()
+    click(host, 'Siguiente duelo')
+    click(guest, 'Siguiente duelo')
+
+    const zone = (view: RenderResult, name: 'main' | 'extra' | 'side') => view.container.querySelector<HTMLElement>(`[data-deck-zone="${name}"][data-deck-count]`)!
+    const counts = (view: RenderResult) => (['main', 'extra', 'side'] as const).map((name) => zone(view, name).dataset.deckCount)
+
+    return { host, guest, props, counts }
+  }
+
+  it('recargar durante el siding vuelve al siding, con las cartas como estaban: ni la pausa, ni la mesa, ni la sala; y ya listo, sigue esperando al rival', () => {
+    // Recarga Beto (el invitado): el rol de la pestaña es el último que entró.
+    const { host, guest, props, counts } = startSiding()
+
+    fireEvent.click(within(guest.container).getByRole('button', { name: 'Mover Carta del Side al Main Deck' }))
+    expect(counts(guest)).toEqual(['41', '1', '0'])
+
+    guest.unmount()
+    flush()
+    const reloaded = render(<DuelScreen {...screenProps(props)} />)
+    flush()
+    flush()
+
+    expect(within(reloaded.container).getByRole('heading', { name: 'Sidedeck' })).toBeInTheDocument()
+    expect(within(reloaded.container).queryByRole('alertdialog', { name: 'Duelo en pausa' })).not.toBeInTheDocument()
+    // Las cartas siguen donde se las dejó.
+    expect(counts(reloaded)).toEqual(['41', '1', '0'])
+
+    click(reloaded, 'Listo')
+    flush()
+    expect(within(reloaded.container).getByText(/^Esperando a /)).toBeInTheDocument()
+
+    // Recargar ya listo: sigue esperando (el pedido quedó guardado y se le repite al rival).
+    reloaded.unmount()
+    flush()
+    const again = render(<DuelScreen {...screenProps(props)} />)
+    flush()
+    flush()
+    expect(within(again.container).getByRole('heading', { name: 'Sidedeck' })).toBeInTheDocument()
+    expect(within(again.container).getByText(/^Esperando a /)).toBeInTheDocument()
+    expect(within(host.container).getByText('Beto ya está listo.')).toBeInTheDocument()
+
+    // Cuando Ana está lista, sigue el duelo (Beto, que perdió, elige quién va primero) y el siding se fue.
+    click(host, 'Listo')
+    flush()
+    flush()
+    expect(within(again.container).getByText('Elegís vos, porque perdiste el duelo anterior.')).toBeInTheDocument()
+    expect(within(again.container).queryByRole('heading', { name: 'Sidedeck' })).not.toBeInTheDocument()
+  })
+
+  it('el siding no tiene salida: no hay botón de salir, sólo «Listo»', () => {
+    const { host } = startSiding()
+
+    expect(within(host.container).queryByRole('button', { name: /Salir/ })).not.toBeInTheDocument()
+    expect(within(host.container).getByRole('button', { name: 'Listo' })).toHaveClass('hover:bg-success-solid')
+  })
+
+  it('salir de un duelo en curso avisa que es abandonarlo: el rival gana, quien salió pierde y no queda nada en pausa', () => {
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+
+    click(guest, 'Salir del duelo')
+    const dialog = within(screen.getByRole('alertdialog'))
+    expect(dialog.getByText('¿Abandonar el duelo?')).toBeInTheDocument()
+    expect(dialog.getByText('Salir es abandonar: perdés el duelo automáticamente y Ana gana. No hay forma de volver a esta mesa.')).toBeInTheDocument()
+    fireEvent.click(dialog.getByRole('button', { name: 'Abandonar y perder' }))
+    flush()
+
+    expect(hasSave('guest')).toBe(false)
+    expect(within(guest.container).queryByText(/Tenés un duelo en pausa/)).not.toBeInTheDocument()
+    expect(within(host.container).getByRole('dialog', { name: '¡Ganaste!' })).toBeInTheDocument()
   })
 
   it('una sala pública se anota mientras espera; al llegar el rival pasa a «en vivo» (se avisa cada minuto, con cuántos la miran) y sólo se baja al salir', async () => {
@@ -647,7 +741,7 @@ describe('la pantalla del duelo', () => {
   it('el siding dura 3 minutos: se ve la cuenta y, al acabarse, queda listo solo con el deck como esté', () => {
     vi.useFakeTimers()
 
-    const withSide = new Map([...cardsById, ['card-777-1', { name: 'Carta del Side', apiCard: null }]])
+    const withSide = new Map([...monsters, ['card-777-1', { name: 'Carta del Side', apiCard: effectMonster }]])
     const props = { sideIds: ['card-777-1'], cardsById: withSide }
     const host = render(<DuelScreen {...screenProps(props)} />)
     typeInto(host, 'Tu nombre', 'Ana')
@@ -811,7 +905,7 @@ describe('la pantalla del duelo', () => {
     expect(within(guest.container).getByRole('button', { name: 'Más opciones del duelo' })).toBeInTheDocument()
 
     click(guest, 'Salir del duelo')
-    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Salir y dejar en pausa' }))
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Abandonar y perder' }))
     expect(within(guest.container).getByRole('button', { name: 'Jugar ahora' })).toBeInTheDocument()
   })
 
@@ -1358,7 +1452,10 @@ describe('la pantalla del duelo', () => {
   })
 
   /** Los dos adentro de la sala, con su nombre. */
+  let startedWith: Partial<Parameters<typeof DuelScreen>[0]> = {}
+
   function startDuel(props: Partial<Parameters<typeof DuelScreen>[0]> = {}) {
+    startedWith = props
     const host = render(<DuelScreen {...screenProps(props)} />)
     typeInto(host, 'Tu nombre', 'Ana')
     createRoom(host)
@@ -2367,11 +2464,18 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).getByRole('group', { name: /Puntos de vida de Beto: 7000/ })).toBeInTheDocument()
   })
 
-  /** Sale del duelo desde la mesa (con la confirmación). */
+  /** Sale del duelo desde la mesa (con la confirmación): en un duelo en curso es abandonarlo; terminado, sólo salir. */
   function leaveDuel(view: RenderResult) {
     // La de la barra es la primera (con el resultado en pantalla, la tarjeta tiene la suya debajo).
     fireEvent.click(within(view.container).getAllByRole('button', { name: 'Salir del duelo' })[0]!)
-    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Salir y dejar en pausa' }))
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: /^(Abandonar y perder|Salir)$/ }))
+  }
+
+  /** Cierra la pestaña en pleno duelo (o se cae la conexión) y vuelve a abrir la app: el duelo queda en pausa, con lo guardado, y se retoma desde el inicio del duelo. */
+  function closeTab(view: RenderResult) {
+    view.unmount()
+    window.history.replaceState(null, '', '#duel')
+    Object.assign(view, render(<DuelScreen {...screenProps(startedWith)} />))
   }
   const hasSave = (role: 'host' | 'guest') => Object.keys(localStorage).some((key) => key.startsWith('ygo-lab:duel-save:') && key.endsWith(`:${role}`))
 
@@ -2385,7 +2489,7 @@ describe('la pantalla del duelo', () => {
     const hand = cardsOf(guest)
     expect(within(host.container).getByRole('button', { name: /Pausar el reloj/ })).toBeInTheDocument()
 
-    leaveDuel(guest)
+    closeTab(guest)
     flush()
 
     // Quien salió está en el inicio del duelo, con su duelo en pausa a mano; lo guardado sigue.
@@ -2418,7 +2522,7 @@ describe('la pantalla del duelo', () => {
     // El menú de lo del rival (su cementerio) abierto cuando Ana sale.
     fireEvent.click(within(guest.container).getByRole('button', { name: 'GY: marcar' }))
     expect(screen.getByRole('menu')).toBeInTheDocument()
-    leaveDuel(host)
+    closeTab(host)
     flush()
     expect(pauseOf()).toBeInTheDocument()
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
@@ -2433,7 +2537,7 @@ describe('la pantalla del duelo', () => {
     // Lo mismo con el menú de una carta propia.
     tap(handOf(guest).getAllByRole('listitem')[0]!)
     expect(screen.getByRole('menu')).toBeInTheDocument()
-    leaveDuel(host)
+    closeTab(host)
     flush()
     expect(pauseOf()).toBeInTheDocument()
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
@@ -2532,7 +2636,7 @@ describe('la pantalla del duelo', () => {
     const hostKey = Object.keys(localStorage).find((key) => key.endsWith(':host'))!
     const hostSave = localStorage.getItem(hostKey)!
     localStorage.removeItem(hostKey)
-    leaveDuel(guest)
+    closeTab(guest)
     flush()
     localStorage.setItem(hostKey, hostSave)
     fireEvent.click(within(within(host.container).getByRole('alertdialog', { name: 'Duelo en pausa' })).getByRole('button', { name: 'Salir del duelo' }))
@@ -2595,7 +2699,7 @@ describe('la pantalla del duelo', () => {
     const hostKey = Object.keys(localStorage).find((key) => key.endsWith(':host'))!
     const hostSave = localStorage.getItem(hostKey)!
     localStorage.removeItem(hostKey)
-    leaveDuel(guest)
+    closeTab(guest)
     flush()
     localStorage.setItem(hostKey, hostSave)
     expect(within(watcher.container).getByText('En pausa')).toBeInTheDocument()
@@ -2657,7 +2761,7 @@ describe('la pantalla del duelo', () => {
     const hostKey = Object.keys(localStorage).find((key) => key.endsWith(':host'))!
     const hostSave = localStorage.getItem(hostKey)!
     localStorage.removeItem(hostKey)
-    leaveDuel(guest)
+    closeTab(guest)
     flush()
     localStorage.setItem(hostKey, hostSave)
     const notices = rowOf(view.getByText('En pausa'))
@@ -2966,7 +3070,7 @@ describe('la pantalla del duelo', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
 
-    leaveDuel(guest)
+    closeTab(guest)
     expect(within(guest.container).getByText(/Tenés un duelo en pausa con/)).toBeInTheDocument()
 
     // Sin duelo en pausa lo principal es crear uno; con uno en pausa lo principal es volver a él (una sola principal en la vista).

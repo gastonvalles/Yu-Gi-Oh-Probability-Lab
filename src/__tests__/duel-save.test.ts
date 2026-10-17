@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { SAVE_TTL_MS, clearDuelSave, findPausedDuel, parseSave, readDuelSave, saveOf, savedRole, writeDuelSave } from '../app/duel-save'
+import { SAVE_TTL_MS, clearDuelSave, findPausedDuel, parseSave, readDuelSave, readSidingSave, saveOf, savedRole, writeDuelSave, writeSidingSave } from '../app/duel-save'
 import { createDuel } from '../app/duel-session'
 import { createMatState } from '../app/practice-mat'
 import { createMemoryRoom } from './support/memory-room'
@@ -122,5 +122,71 @@ describe('lo guardado para recargar o para volver', () => {
     expect(localStorage.getItem('ygo-lab:duel-save:RSTUVWX4:host')).toBeNull()
     expect(localStorage.getItem('ygo-lab:duel-save:YZ23456A:host')).toBeNull()
     expect(localStorage.getItem('ygo-lab:duel-save:ABCDEFG2:host')).not.toBeNull()
+  })
+})
+
+describe('lo guardado para volver al siding', () => {
+  const deck = { main: ['card-1-1', 'card-2-1'], extra: ['card-3-1'], side: ['card-4-1'] }
+  const draft = { lists: { main: ['card-1-1'], extra: ['card-3-1'], side: ['card-4-1', 'card-2-1'] }, deadline: NOW + 60_000 }
+
+  it('se escribe y se lee por sala y por rol: el deck, si la pantalla está abierta, lo que se armaba y cuándo se acaba el tiempo', () => {
+    writeSidingSave('ROOM1234', 'host', { deck, open: true, draft }, NOW)
+
+    expect(readSidingSave('ROOM1234', 'host', NOW)).toEqual({ v: 1, role: 'host', deck, open: true, draft, savedAt: NOW })
+    expect(readSidingSave('ROOM1234', 'guest', NOW)).toBeNull()
+    expect(readSidingSave('OTHER123', 'host', NOW)).toBeNull()
+  })
+
+  it('cerrada la pantalla no se guarda lo que se armaba; sin deck ni pantalla abierta no queda nada', () => {
+    writeSidingSave('ROOM1234', 'host', { deck, open: false, draft }, NOW)
+    expect(readSidingSave('ROOM1234', 'host', NOW)).toMatchObject({ deck, open: false, draft: null })
+
+    writeSidingSave('ROOM1234', 'host', { deck: null, open: false }, NOW)
+    expect(readSidingSave('ROOM1234', 'host', NOW)).toBeNull()
+  })
+
+  it('vence con el duelo y lo que no tiene la forma de un deck no se usa', () => {
+    writeSidingSave('ROOM1234', 'host', { deck, open: true, draft }, NOW)
+    expect(readSidingSave('ROOM1234', 'host', NOW + SAVE_TTL_MS + 1)).toBeNull()
+
+    const key = 'ygo-lab:duel-siding:ROOM1234:host'
+    for (const wrong of ['{roto', JSON.stringify({ v: 1, role: 'host', deck: { main: ['<img>'], extra: [], side: [] }, open: true, savedAt: NOW }), JSON.stringify({ v: 1, role: 'host', deck: null, open: true, draft: { lists: { main: [], extra: [], side: [] }, deadline: 'ya' }, savedAt: NOW })]) {
+      localStorage.setItem(key, wrong)
+      expect(readSidingSave('ROOM1234', 'host', NOW)).toBeNull()
+    }
+  })
+
+  it('salir de la sala y dejarla terminada también borra el siding', () => {
+    writeSidingSave('ROOM1234', 'host', { deck, open: true }, NOW)
+    writeSidingSave('ROOM1234', 'guest', { deck, open: true }, NOW)
+    clearDuelSave('ROOM1234')
+
+    expect(readSidingSave('ROOM1234', 'host', NOW)).toBeNull()
+    expect(readSidingSave('ROOM1234', 'guest', NOW)).toBeNull()
+  })
+
+  it('un duelo que terminó rindiéndose y la revancha ya pedida se guardan y se retoman: sin eso, recargar borraba el resultado y el pedido', () => {
+    const room = createMemoryRoom()
+    const host = createDuel(room.join(), { role: 'host', name: 'Ana', sid: 'host-1' })
+    const guest = createDuel(room.join(), { role: 'guest', name: 'Beto', sid: 'guest-1' })
+
+    room.flush()
+    host.start(table)
+    room.flush()
+    guest.concede()
+    host.rematch()
+    room.flush()
+
+    const save = saveOf(host.getSnapshot(), NOW)
+
+    expect(save).toMatchObject({ conceded: 1, rematch: true })
+
+    const again = createDuel(createMemoryRoom().join(), { role: 'host', name: 'Ana', sid: 'host-2', restore: save! })
+
+    expect(again.getSnapshot().conceded).toBe(1)
+    expect(again.getSnapshot().rematch).toEqual({ mine: true, theirs: false })
+    // Un guardado de antes (sin estos datos) se sigue entendiendo.
+    expect(parseSave(JSON.stringify({ ...save, conceded: undefined, rematch: undefined }), 'host', NOW)).not.toBeNull()
+    expect(parseSave(JSON.stringify({ ...save, conceded: 7 }), 'host', NOW)).toBeNull()
   })
 })
