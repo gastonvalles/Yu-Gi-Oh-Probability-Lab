@@ -12,6 +12,7 @@ El catálogo vivo de todo esto (botones, navegación, títulos, íconos, assets 
 - **Cada dato se dice una sola vez.** Un número, un rótulo o una instrucción no se repite en la misma pantalla (ni entre la pestaña, el encabezado y el contenido). Un subtítulo que repite el título, una leyenda fija en la navegación o un resumen que ya está debajo se borran. Los resúmenes de una sección sólo se ven con la sección plegada.
 - **Los porcentajes son círculos.** Un valor → `ProgressRing`; un reparto → `SegmentedRing`. No hay barras de progreso. Los anillos se llenan al aparecer (ver "Anillos").
 - **Base visual: el diseño de Figma "Task management & to-do list" adaptado al oscuro:** Lexend Deca y la paleta cerrada de YGOUltraLab (violeta real `#8000CB`, violeta claro `#C77DFF`, ámbar `#F7CB15`, verde `#1AEF06` y rojo `#DA0000`), chips y botones lavanda, anillos de progreso, tarjetas redondeadas y un menú con íconos rellenos/duotono.
+- **Una excepción azul:** `field-mine` (`#2F6BFF`, `--field-mine-rgb`) es el borde con resplandor de **tus zonas de monstruo** en la mesa del duelo (el diseño de la mesa); no se usa en ningún otro lado.
 - **El color siempre significa algo** (ver tonos). Si no significa nada, va en gris.
 - **30/70:** un ícono + un número + un color dicen lo principal; el texto sólo completa.
 - **Mismo orden en toda pantalla:** encabezado (`StepHero`) → controles → tarjetas (`Card`) → detalle.
