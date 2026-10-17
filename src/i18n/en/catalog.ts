@@ -12,6 +12,7 @@ export const catalog: Translated<typeof es> = {
   'catalog.sets.cardsError': "Couldn't load this expansion's cards. Try again later.",
   'catalog.sets.listLabel': 'Expansions',
   'catalog.sets.searchLabel': 'Search expansions',
+  'catalog.sets.searchPlaceholder': 'Name or code',
   'catalog.sets.noExpansion': 'No expansion matches “{query}”.',
   'catalog.sets.noDate': 'No date',
   'catalog.sets.back': 'Back to expansions',
