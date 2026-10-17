@@ -39,7 +39,8 @@ import { percent, tierLabel } from './meta-format'
 
 type WindowWeeks = '2' | '4' | '8'
 
-const ZONE_LABEL_KEY = { both: 'meta.screen.zoneBoth', main: 'meta.screen.zoneMain', side: 'meta.screen.zoneSide' } as const satisfies Record<MetaZone, string>
+// En el orden del lienzo: Main · Side · Ambos.
+const ZONE_LABEL_KEY = { main: 'meta.screen.zoneMain', side: 'meta.screen.zoneSide', both: 'meta.screen.zoneBoth' } as const satisfies Record<MetaZone, string>
 const WINDOW_WEEKS: readonly WindowWeeks[] = ['2', '4', '8']
 const LISTS: readonly MetaList[] = ['handtrap', 'boardbreaker']
 const LIST_LABEL_KEY = { handtrap: 'meta.list.handtrap', boardbreaker: 'meta.list.boardbreaker' } as const satisfies Record<MetaList, string>
