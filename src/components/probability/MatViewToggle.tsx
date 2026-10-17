@@ -14,11 +14,11 @@ export function MatViewToggle({ className }: { className?: string }) {
 
   return (
     <IconButton
-      tone="flat"
+      tone="tile"
       size="sm"
       aria-label={t(to3d ? 'practice.view.to3d' : 'practice.view.toTop')}
       title={t(to3d ? 'practice.view.to3d' : 'practice.view.toTop')}
-      className={cx(view === '3d' && 'rounded-control ring-1 ring-primary-soft', className)}
+      className={cx(view === '3d' && 'border-info', className)}
       onClick={() => setMatView(to3d ? '3d' : 'top')}
     >
       <Icon name={view === '3d' ? 'cube' : 'view-top'} />

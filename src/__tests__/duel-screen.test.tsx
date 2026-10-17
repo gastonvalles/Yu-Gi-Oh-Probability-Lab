@@ -673,6 +673,43 @@ describe('la pantalla del duelo', () => {
     expect(document.querySelector('[data-kind="attack"]')).toBeNull()
   })
 
+  it('lo que el rival activa y es público se queda tres segundos con el nombre de la carta, en el cartel y en el registro (una línea, corregida); lo que no es público no se nombra', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+    summonFirst(host)
+    flush()
+    const stage = () => guest.container.querySelector('[data-activation]')
+
+    // Invocada, la carta todavía es un dorso para Beto: sin nombre, y dura lo de siempre.
+    expect(stage()!.querySelector('figcaption')).toBeNull()
+    expect(stage()!.querySelector('[class*="animate-card-activate-linger"]')).toBeNull()
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(stage()).toBeNull()
+
+    // Al activarla pasa a ser pública: se queda 3 s y, cuando se busca su nombre, el cartel y la carta lo llevan.
+    tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Activar efecto' }))
+    flush()
+    expect(stage()!.querySelector('[class*="animate-card-activate-linger"]')).not.toBeNull()
+    await act(async () => {})
+    expect(stage()).toHaveTextContent(/Ana activa Carta \d+/)
+    expect(stage()!.querySelector('figcaption')).toHaveTextContent(/^Carta \d+$/)
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+    expect(stage()).not.toBeNull()
+
+    // El registro tiene una sola línea de esa activación, ya con el nombre (no la genérica y otra más).
+    click(guest, /^Chat/)
+    const log = within(screen.getByRole('dialog')).getByRole('log')
+    expect(within(log).getAllByText(/Ana activa/)).toHaveLength(1)
+    expect(within(log).getByText(/Ana activa Carta \d+/)).toBeInTheDocument()
+    expect(within(log).queryByText('Ana activa una carta')).not.toBeInTheDocument()
+  })
+
   it('lo que el rival activa, revela o marca como objetivo se ve igual que lo tuyo: su carta grande en el centro y el aro en su campo, y el objetivo queda marcado', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const { host, guest } = startDuel({ cardsById: monsters })
@@ -703,8 +740,14 @@ describe('la pantalla del duelo', () => {
     expect(rivalCard()).toHaveAttribute('data-flash-kind', 'activate')
     // Quien activa la ve a su manera (la suya ya se veía): sólo Beto ve la del rival.
     expect(within(host.container).queryByText('Ana activa una carta')).not.toBeInTheDocument()
+    // Lo que se activa y es público se queda 3 s (el resto de lo que se anima, 1): pasado 1 s sigue y se va a los 3.
     act(() => {
       vi.advanceTimersByTime(1000)
+    })
+    expect(stage()).not.toBeNull()
+    expect(ring()).toBe('true')
+    act(() => {
+      vi.advanceTimersByTime(2100)
     })
     expect(stage()).toBeNull()
     expect(ring()).toBe('false')
@@ -1902,9 +1945,8 @@ describe('la pantalla del duelo', () => {
 
   /** Sale del duelo desde la mesa (con la confirmación). */
   function leaveDuel(view: RenderResult) {
-    // La de la barra está detrás de «Más opciones» (con el resultado en pantalla, la tarjeta tiene la suya aparte).
-    fireEvent.click(within(view.container).getByRole('button', { name: 'Más opciones del duelo' }))
-    fireEvent.click(within(screen.getByRole('dialog', { name: 'Más opciones del duelo' })).getByRole('button', { name: 'Salir del duelo' }))
+    // La de la barra es la primera (con el resultado en pantalla, la tarjeta tiene la suya debajo).
+    fireEvent.click(within(view.container).getAllByRole('button', { name: 'Salir del duelo' })[0]!)
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Salir y dejar en pausa' }))
   }
   const hasSave = (role: 'host' | 'guest') => Object.keys(localStorage).some((key) => key.startsWith('ygo-lab:duel-save:') && key.endsWith(`:${role}`))
@@ -2038,13 +2080,12 @@ describe('la pantalla del duelo', () => {
     const bar = within(host.container)
     const rowOf = (name: string | RegExp) => bar.getByRole('button', { name }).parentElement!.closest('div')!
 
-    // Vida, reloj, la vista y «Más opciones» (que guarda Reconectar, Rendirme y Salir): la misma fila, que no se parte.
+    // Vida, reloj, la vista, rendirse, el engranaje (reconectar) y salir: la misma fila, que no se parte.
     const top = rowOf(/^Reloj de la ronda/)
     expect(top.contains(bar.getByRole('group', { name: /^Puntos de vida de / }))).toBe(true)
-    for (const name of ['Cambiar a la vista superior', 'Más opciones del duelo']) {
+    for (const name of ['Cambiar a la vista superior', 'Rendirme', 'Más opciones del duelo', 'Salir del duelo']) {
       expect(top).toBe(rowOf(name))
     }
-    expect(bar.queryByRole('button', { name: 'Rendirme' })).not.toBeInTheDocument()
     expect(top).not.toHaveClass('flex-wrap')
 
     // El turno: otra fila, que tampoco se parte (el chat bajó a la botonera de abajo).

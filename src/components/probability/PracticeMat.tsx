@@ -117,7 +117,7 @@ export interface DuelMatLink {
    * Lo que el rival acaba de hacer y se anima (activar, mostrar, declarar o marcar una carta, invocar, mandar cartas al cementerio, al destierro, a la mano o al deck…), como en un combo
    * guardado: las cartas (con el id que él les dio y su arte, o de dorso si no las mostró) grandes en el centro y `caption` arriba, que dice qué pasó. Cambiar `key` lo vuelve a mostrar.
    */
-  rivalEffect?: { key: number; kind: SpotlightKind | ShowcaseKind; cards: ReadonlyArray<{ id: string; art: string | null }>; flip?: boolean; caption: string }
+  rivalEffect?: { key: number; kind: SpotlightKind | ShowcaseKind; cards: ReadonlyArray<{ id: string; art: string | null; name?: string }>; flip?: boolean; caption: string; linger?: boolean }
   /** Lo que el rival marcó como objetivo de mi lado (con mis ids reales): sus cartas y pilas enteras, la mano incluida, llevan la mira igual que lo que marqué yo. */
   marksOnMine?: Marks
   /** La mesa del rival (con ids opacos) y el arte de lo que mostró: sus cartas vuelan de un lugar a otro (al cementerio, a la mano, al campo…) como las propias. */
@@ -180,6 +180,9 @@ const NEXT_DEAL_MS = 55
 const CELL_TONE = {
   default: 'border border-solid border-primary/35 shadow-[inset_0_0_14px_rgb(var(--primary-rgb)/0.14)]',
   emz: 'border border-solid border-accent/70 shadow-[inset_0_0_16px_rgb(var(--accent-rgb)/0.3),0_0_14px_rgb(var(--accent-rgb)/0.28)]',
+  // Tus zonas de monstruo: azul con resplandor (lo único azul de la mesa). Las del rival, de un violeta cálido (su color es el ámbar).
+  mine: 'border-[1.5px] border-solid border-field-mine/80 bg-field-mine/10 shadow-[0_0_10px_rgb(var(--field-mine-rgb)/0.45),inset_0_0_14px_rgb(var(--field-mine-rgb)/0.2)]',
+  theirs: 'border border-solid border-info/45 bg-primary/10 shadow-[inset_0_0_14px_rgb(var(--info-rgb)/0.1)]',
 } as const
 
 /**
@@ -209,7 +212,10 @@ export const CELL = `aspect-[421/614] before:absolute before:-inset-1 ${cellLook
  */
 export const CELL_SQUARE = `aspect-square ${cellLook('default')}`
 /** La zona extra de monstruos: cuadrada como las otras, con su brillo. */
-export const CELL_EMZ = `aspect-square ${cellLook('emz')}`
+export const CELL_EMZ = `aspect-square cell-cross ${cellLook('emz')}`
+/** Tus zonas de monstruo (azul con resplandor) y las del rival (violeta cálido; las vacías de la 1.ª, 3.ª y 5.ª, con su X). */
+export const CELL_MINE = `aspect-square ${cellLook('mine')}`
+export const CELL_THEIRS = `aspect-square ${cellLook('theirs')}`
 /** El ancho de una carta como parte de su alto (421 × 614 px): una carta parada en una casilla cuadrada mide ese tanto de ancho. */
 const CARD_WIDTH_PER_HEIGHT = 421 / 614
 
@@ -1142,7 +1148,7 @@ export function PracticeMat({
         data-over="false"
         data-pick={pickableZone || pickableTribute ? 'true' : 'false'}
         data-chosen={chosen ? 'true' : 'false'}
-        className={spot === 'field' ? CELL : spot === 'emz' ? CELL_EMZ : CELL_SQUARE}
+        className={spot === 'field' ? CELL : spot === 'emz' ? CELL_EMZ : spot === 'mz' ? CELL_MINE : CELL_SQUARE}
         style={{ gridArea: area }}
         onClick={pickableZone ? () => pickZone(spot, index) : undefined}
         onKeyDown={pickableZone ? (event) => activate(event, () => pickZone(spot, index)) : undefined}
@@ -1275,15 +1281,17 @@ export function PracticeMat({
   const choosing = picking !== null || counterMode !== null
 
   // Deshacer, la ficha (o los contadores) y la lista de pasos: arriba en la práctica; en un duelo, abajo, donde llega el pulgar.
+  // En un duelo los botones de abajo van en cajas oscuras de 44 px (como en el diseño); en la práctica, arriba, sin caja.
+  const dockTone = duel ? 'tile' : 'flat'
   const undoButton = (
-    <IconButton tone="flat" size="sm" aria-label={t('practice.mat.undo')} title={duel?.undoPending ? t('duel.undo.waiting') : t('practice.mat.undo')} disabled={session.cursor === 0 || Boolean(duel?.undoPending)} className="disabled:opacity-35" onClick={() => { setAutoplay(false); onUndo() }}>
+    <IconButton tone={dockTone} size="sm" aria-label={t('practice.mat.undo')} title={duel?.undoPending ? t('duel.undo.waiting') : t('practice.mat.undo')} disabled={session.cursor === 0 || Boolean(duel?.undoPending)} className="disabled:opacity-35" onClick={() => { setAutoplay(false); onUndo() }}>
       <Icon name="undo" />
     </IconButton>
   )
   // Ficha: se toca para elegir la posición (y la zona) o se arrastra a una zona de monstruo.
   const tokenButton = (
     <IconButton
-      tone="flat"
+      tone={dockTone}
       size="sm"
       aria-label={t('practice.token.name')}
       title={t('practice.token.create')}
@@ -1660,8 +1668,9 @@ export function PracticeMat({
         <Spotlight
           key={duel.rivalEffect.key}
           kind={duel.rivalEffect.kind}
-          cards={duel.rivalEffect.cards.map((card) => ({ id: card.id, name: '', art: card.art, back: card.art === null }))}
+          cards={duel.rivalEffect.cards.map((card) => ({ id: card.id, name: card.name ?? '', art: card.art, back: card.art === null }))}
           flip={duel.rivalEffect.flip}
+          linger={duel.rivalEffect.linger}
           caption={duel.rivalEffect.caption}
           className={cx('absolute inset-y-0 left-0 right-0 z-[120]', Boolean(duel.aside) && 'min-[1101px]:right-[20rem]')}
         />
@@ -1710,13 +1719,13 @@ function PhaseButton({ short, name, active, rival = false, disabled = false, pas
       title={passes ? t('duel.turn.passHint') : name}
       disabled={disabled}
       className={cx(
-        // `before`: el área que se toca crece 2 px a cada lado (las seis fases están a 4 px una de otra): 37 × 44 en vez de 33 × 44, sin agrandar lo que se ve.
-        'relative grid h-11 w-full min-w-0 place-items-center rounded-control border text-[0.55rem] before:absolute before:-inset-x-0.5 before:inset-y-0 font-extrabold leading-none transition-[background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus min-[1101px]:text-micro disabled:cursor-not-allowed disabled:opacity-45',
+        // Círculos de hasta 36 px (la activa, un cuadrado redondeado violeta); `before`: el área que se toca crece 4 px por lado, a 44 px de alto, sin agrandar lo que se ve.
+        'relative grid aspect-square w-full max-w-9 min-w-0 place-items-center justify-self-center border text-[0.55rem] before:absolute before:-inset-x-0.5 before:-inset-y-1.5 font-extrabold leading-none transition-[background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus min-[1101px]:text-micro disabled:cursor-not-allowed disabled:opacity-45',
         active
           ? rival
-            ? 'border-info bg-info text-accent-foreground'
-            : 'border-accent bg-accent text-accent-foreground'
-          : 'border-tint/25 bg-transparent text-soft hover:bg-tint/10 hover:text-foreground disabled:hover:bg-transparent disabled:hover:text-soft',
+            ? 'rounded-control border-info bg-info text-accent-foreground'
+            : 'rounded-control border-accent bg-accent text-accent-foreground'
+          : 'rounded-full border-tint/25 bg-transparent text-soft hover:bg-tint/10 hover:text-foreground disabled:hover:bg-transparent disabled:hover:text-soft',
         passes && 'border-accent/80 text-foreground motion-safe:animate-fx-pick',
       )}
       onClick={onPick}
@@ -1737,7 +1746,7 @@ function activate(event: ReactKeyboardEvent<HTMLElement>, run: () => void) {
 export function PileBadge({ label, count }: { label: string; count: number }) {
   return (
     <span className="pointer-events-none absolute inset-0 z-2 grid place-content-center justify-items-center text-center leading-none">
-      <span className={cx('rounded-full px-1.5 py-0.5 text-body font-extrabold tabular-nums text-foreground min-[1101px]:text-lead', count > 0 && 'bg-background/70')}>{count}</span>
+      <span className={cx('rounded-full px-1.5 py-0.5 text-lead font-extrabold tabular-nums text-foreground min-[1101px]:text-title', count > 0 && 'bg-background/70')}>{count}</span>
       <span className="mt-0.5 text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-soft min-[1101px]:text-[0.6rem]">{label}</span>
     </span>
   )

@@ -6,7 +6,7 @@ import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
 import { FX_CARD, FxFrame, SPOTLIGHT_TONE, TargetMark, fxVars } from '../probability/MatFx'
 import { CardBack, PILE_SHORT, PILE_TITLES } from '../probability/MatDialogs'
-import { CELL, CELL_EMZ, CELL_SQUARE, PENDULUM_GEM, PileBadge } from '../probability/PracticeMat'
+import { CELL, CELL_EMZ, CELL_MINE, CELL_SQUARE, CELL_THEIRS, PENDULUM_GEM, PileBadge } from '../probability/PracticeMat'
 
 /**
  * La mesa del duelo: los dos campos en una sola grilla, como la mesa real. El rival arriba y espejado (su
@@ -201,7 +201,7 @@ function Zone({ area, spot, index, placed, side, owner }: { area: string; spot: 
   const gem = spot === 'st' ? PENDULUM_GEM[index] : undefined
 
   return (
-    <div role="group" aria-label={label} className={spot === 'field' ? CELL : CELL_SQUARE} style={{ gridArea: area }}>
+    <div role="group" aria-label={label} className={cx(spot === 'field' ? CELL : spot === 'mz' ? (owner === 'theirs' ? CELL_THEIRS : CELL_MINE) : CELL_SQUARE, spot === 'mz' && owner === 'theirs' && !placed && index % 2 === 0 && 'cell-cross')} style={{ gridArea: area }}>
       {gem && !placed ? <span aria-hidden="true" className={cx('absolute left-1/2 top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[3px]', gem)} /> : null}
       {spot === 'field' && !placed ? <span aria-hidden="true" className="absolute inset-0 grid place-items-center text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-soft min-[1101px]:text-[0.6rem]">{t('practice.zone.fieldLabel')}</span> : null}
       {placed ? <CardOnZone placed={placed} spot={spot} side={side} owner={owner} label={label} /> : null}

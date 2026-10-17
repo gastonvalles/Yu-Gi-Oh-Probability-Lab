@@ -17,7 +17,7 @@ import { Specimen, SpecimenGrid, Tag } from '../Specimen'
 
 const VARIANTS: ButtonVariant[] = ['primary', 'secondary', 'tertiary']
 const SIZES = ['sm', 'md', 'lg'] as const
-const ICON_TONES = ['raised', 'close', 'ghost', 'flat'] as const
+const ICON_TONES = ['raised', 'close', 'ghost', 'flat', 'tile'] as const
 const TONES = Object.keys(TONE) as Tone[]
 
 /** Los botones de la app y los controles que se tocan: todos salen de `src/components/ui/` (Button, IconButton, Segmented, Switch, Stepper, Badge, surfaces.ts). */

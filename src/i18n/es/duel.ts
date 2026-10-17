@@ -44,6 +44,9 @@ export const duel = {
   'duel.announce.reveal': '{name} revela una carta',
   'duel.announce.declare': '{name} declara una carta',
   'duel.announce.target': '{name} marca una carta como objetivo',
+  'duel.announce.named.activate': '{name} activa {card}',
+  'duel.announce.named.reveal': '{name} revela {card}',
+  'duel.announce.named.declare': '{name} declara {card}',
 
   // Antes de entrar a una sala.
   'duel.lobby.title': 'Duelo con un amigo',
@@ -191,6 +194,7 @@ export const duel = {
   'duel.bar.clockPause': 'Pausar el reloj',
   'duel.bar.reconnect': 'Reconectar',
   'duel.bar.more': 'Más opciones del duelo',
+  'duel.bar.reconnectHint': 'Si el duelo quedó en pausa por un aviso que no llegó, esto vuelve a conectarte con la sala.',
   'duel.bar.leave': 'Salir del duelo',
   'duel.bar.concede': 'Rendirme',
   'duel.bar.concedeTitle': '¿Rendirte en este duelo?',

@@ -10,10 +10,10 @@ type IconButtonSize = 'sm' | 'md' | 'lg'
  * resplandor) al pasar el mouse, y verde se queda mientras el botón está seleccionado (`aria-pressed`, `aria-selected` o `data-active`); un poco menos
  * de opacidad al apretar; el foco lleva el aro de siempre. El tono sólo cambia el tamaño y la forma:
  * raised: el de las barras de herramientas (por defecto) · close: la X de los encabezados · ghost: el de las zonas del deck (papelera, ordenar) ·
- * flat: el grande de la práctica · outline: redondo con borde (volver al principio de un replay).
+ * flat: el grande de la práctica · outline: redondo con borde (volver al principio de un replay) · tile: en una caja oscura de 44 px, el de la botonera de la mesa del duelo.
  * primary es la excepción: redondo violeta, la acción principal de una barra (reproducir).
  */
-type IconButtonTone = 'raised' | 'close' | 'ghost' | 'flat' | 'outline' | 'primary'
+type IconButtonTone = 'raised' | 'close' | 'ghost' | 'flat' | 'outline' | 'tile' | 'primary'
 
 interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: IconButtonSize
@@ -34,6 +34,7 @@ const SIZES: Record<IconButtonTone, Record<IconButtonSize, string>> = {
   ghost: { sm: 'size-8 pointer-coarse:size-11 [&_svg]:size-4', md: 'size-10 pointer-coarse:size-11 [&_svg]:size-5', lg: 'size-10 pointer-coarse:size-11 [&_svg]:size-5' },
   flat: { sm: 'size-11 [&_svg]:size-6', md: 'size-12 [&_svg]:size-7', lg: 'size-12 [&_svg]:size-7' },
   outline: { sm: 'size-9 pointer-coarse:size-11 [&_svg]:size-4', md: 'size-10 pointer-coarse:size-11 [&_svg]:size-[1.125rem]', lg: 'size-12 [&_svg]:size-5' },
+  tile: { sm: 'size-11 [&_svg]:size-5', md: 'size-11 [&_svg]:size-5', lg: 'size-12 [&_svg]:size-6' },
   primary: { sm: 'size-10 [&_svg]:size-[1.125rem]', md: 'size-12 [&_svg]:size-5', lg: 'size-14 [&_svg]:size-6' },
 }
 
@@ -46,6 +47,7 @@ const toneStyle = variants({
       ghost: cx('rounded-control', BARE),
       flat: cx('rounded-full [&_svg]:stroke-[1.3]', BARE),
       outline: cx('rounded-full border border-tint/30 hover:border-tint/60', BARE),
+      tile: cx('rounded-card border border-border-subtle bg-card-background [&_svg]:stroke-[1.5] hover:border-tint/40', BARE),
       primary: 'rounded-full bg-primary text-primary-foreground shadow-brand hover:bg-primary-hover active:translate-y-px disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none',
     },
   },

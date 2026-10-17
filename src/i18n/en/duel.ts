@@ -44,6 +44,9 @@ export const duel: Translated<typeof es> = {
   'duel.announce.reveal': '{name} reveals a card',
   'duel.announce.declare': '{name} declares a card',
   'duel.announce.target': '{name} targets a card',
+  'duel.announce.named.activate': '{name} activates {card}',
+  'duel.announce.named.reveal': '{name} reveals {card}',
+  'duel.announce.named.declare': '{name} declares {card}',
 
   'duel.lobby.title': 'Duel a friend',
   'duel.lobby.intro': 'Play the practice mat against another person, each on their own device. No accounts: you join with a link.',
@@ -186,6 +189,7 @@ export const duel: Translated<typeof es> = {
   'duel.bar.clockPause': 'Pause the clock',
   'duel.bar.reconnect': 'Reconnect',
   'duel.bar.more': 'More duel options',
+  'duel.bar.reconnectHint': 'If the duel paused because a notice never arrived, this reconnects you to the room.',
   'duel.bar.leave': 'Leave the duel',
   'duel.bar.concede': 'Surrender',
   'duel.bar.concedeTitle': 'Surrender this duel?',

@@ -93,6 +93,8 @@
   --animate-card-glow: card-glow var(--motion-duration) ease-out;
   /* Activar una carta o efecto en la mesa de práctica: la carta aparece grande en el centro de la pantalla, con brillo amarillo, y se desvanece (como en DuelingBook). */
   --animate-card-activate-center: card-activate-center 950ms ease-out both;
+  /* Lo que el rival activa, revela o declara y es público: la carta entra rápido y se queda 3 s para leerla (y su nombre) antes de irse; no ataja toques. */
+  --animate-card-activate-linger: card-activate-linger 3000ms ease-out both;
   /* El mazo de la mesa: tirón de la carta de arriba al repartir y barajado (las dos de abajo se abren a los costados). */
   --animate-pile-draw: pile-draw 200ms ease-out;
   --animate-riffle-left: riffle-left var(--motion-duration) ease-in-out;
@@ -382,6 +384,28 @@
 
     50% {
       transform: translate(11px, 1.5px) rotate(6deg);
+    }
+  }
+
+  @keyframes card-activate-linger {
+    0% {
+      opacity: 0;
+      transform: scale(0.55);
+    }
+
+    8% {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    88% {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    100% {
+      opacity: 0;
+      transform: scale(1.04);
     }
   }
 
@@ -820,6 +844,12 @@
  * le da la vuelta (::before, un degradé cónico recortado a un aro) y un reflejo que lo cruza una vez (::after, con `data-shine`).
  * Va adentro de la carta, así que no se corta con ella; el resplandor de afuera lo da el `box-shadow` de la carta.
  */
+/* Una casilla vacía con una X de trazos finos (las zonas del rival y las Zonas Extra, como en el diseño de la mesa): la carta que se apoya encima la tapa. */
+@utility cell-cross {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0L100 100M100 0L0 100' fill='none' stroke='%23c77dff' stroke-opacity='.5' stroke-width='1' stroke-dasharray='3 3' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+  background-size: 100% 100%;
+}
+
 @utility fx-frame {
   position: absolute;
   inset: 0;
@@ -913,6 +943,7 @@
   --color-warning-soft: var(--warning-soft);
   --color-danger-soft: var(--danger-soft);
   --color-info-soft: var(--info-soft);
+  --color-field-mine: var(--field-mine);
   --color-handtrap: var(--handtrap);
   --color-nav: var(--nav);
   --color-nav-raised: var(--nav-raised);
@@ -960,6 +991,9 @@
     --warning-soft: #e0b3ff;
     --danger-soft: #ff4d4d;
     --info-soft: #ffd84d;
+    /* El azul de tu campo: el único azul de la mesa (el del diseño de la mesa del duelo), el borde con resplandor de tus zonas de monstruo. */
+    --field-mine: #2f6bff;
+    --field-mine-rgb: 47 107 255;
 
     --handtrap: #c77dff;
     --handtrap-rgb: 199 125 255;
