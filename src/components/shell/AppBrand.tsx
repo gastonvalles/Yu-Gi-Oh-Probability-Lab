@@ -15,7 +15,7 @@ export function AppBrand({ className }: { className?: string }) {
         <rect x="9.5" y="8" width="9" height="12" fill="var(--foreground)" transform="rotate(-12 14 14)" />
       </svg>
       <span className={cx('grid min-w-0 whitespace-nowrap leading-tight', RAIL_LABEL)}>
-        <span className="truncate text-body font-bold tracking-[-0.01em] text-foreground">
+        <span translate="no" className="truncate text-body font-bold tracking-[-0.01em] text-foreground">
           YGO<span className="text-nav-active">Ultra</span>Lab
         </span>
         <span className="text-micro text-muted">{t('shell.brand.unofficial')}</span>

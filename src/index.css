@@ -1040,6 +1040,23 @@
   /* Color de base del lienzo; los degradados van en una capa fija propia (ver abajo). */
   html {
     background: var(--bg-canvas);
+    /* Lo nativo (barras de scroll, campos, listas desplegables) sale oscuro, como el resto. */
+    color-scheme: dark;
+  }
+
+  /* Un toque es un toque: sin la espera del doble toque para hacer zoom, y sin el destello gris del navegador (lo tocado ya responde con su propio estado). */
+  button,
+  a,
+  summary,
+  label,
+  select,
+  input,
+  textarea,
+  [role='button'],
+  [role='radio'],
+  [role='tab'] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   /*

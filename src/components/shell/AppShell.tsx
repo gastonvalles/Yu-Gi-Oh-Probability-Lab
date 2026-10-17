@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useState, type ReactNode, type
 
 import { NO_SHELL_INSETS, readSidebarCollapsed, setShellInsets, shellInsetsFor, writeSidebarCollapsed } from '../../app/shell-layout'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
+import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { AppFooter } from './AppFooter'
 import { FlowSteps } from './FlowSteps'
@@ -69,6 +70,14 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
 
   return (
     <div className={cx('min-h-dvh w-full min-w-0 overflow-x-clip min-[1101px]:grid min-[1101px]:h-dvh min-[1101px]:grid-cols-[auto_minmax(0,1fr)] min-[1101px]:overflow-hidden', immersive ? 'max-[1100px]:h-dvh max-[1100px]:overflow-hidden' : 'max-[1100px]:pb-[calc(4rem+env(safe-area-inset-bottom,0px))]')}>
+      {/* Es un botón y no un enlace: las rutas viajan en el hash, y un `href="#contenido"` cambiaría de pantalla. */}
+      <button
+        type="button"
+        className="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:left-3 focus-visible:top-3 focus-visible:z-300 focus-visible:rounded-control focus-visible:bg-primary focus-visible:px-4 focus-visible:py-2.5 focus-visible:text-body focus-visible:font-semibold focus-visible:text-primary-foreground focus-visible:shadow-focus focus-visible:outline-none"
+        onClick={() => document.getElementById('contenido')?.focus()}
+      >
+        {t('shell.skipToContent')}
+      </button>
       <AppSidebar groups={groups} activeKey={activeKey} onSelect={onSelect} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} className="max-[1100px]:hidden" />
       <div className={cx('flex min-w-0 flex-col min-[1101px]:min-h-0', immersive ? 'min-h-dvh max-[1100px]:h-dvh' : 'min-h-[calc(100dvh-4rem-env(safe-area-inset-bottom,0px))] min-[1101px]:min-h-0')}>
         <MobileTopBar menuOpen={drawerOpen} onMenu={() => setDrawerOpen(true)} title={screenTitle} className="min-[1101px]:hidden" />
@@ -86,7 +95,9 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
         >
           {/* En escritorio este envoltorio mide siempre lo que el recuadro (`min-h-0`: no crece con el contenido), así una pantalla puede ocupar justo ese alto con `h-full`
               y repartirlo entre columnas que scrollean por dentro; una pantalla más larga lo desborda y es el recuadro el que scrollea. En el celular crece con el contenido. */}
-          <div className={cx('w-full min-w-0 flex-1 min-[1101px]:min-h-0 [&>*]:min-w-0', !contentScrollable && 'min-h-0')}>{children}</div>
+          <div id="contenido" tabIndex={-1} className={cx('w-full min-w-0 flex-1 outline-none min-[1101px]:min-h-0 [&>*]:min-w-0', !contentScrollable && 'min-h-0')}>
+            {children}
+          </div>
         </div>
         {/* El pie queda afuera del recuadro que scrollea: en escritorio está siempre a la vista, abajo, con el mismo alto en todas las pantallas. */}
         {immersive ? null : <AppFooter className="min-[1101px]:py-2" />}
@@ -105,7 +116,8 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
           closeGroup()
         }}
       />
-      <NavDrawer isOpen={drawerOpen} onClose={closeDrawer} nav={immersive ? { groups, activeKey, onSelect } : undefined} />
+      {/* La hamburguesa abre el menú entero: los destinos (también con la barra de abajo a la vista, que a veces el navegador tapa) y, abajo, los ajustes. */}
+      <NavDrawer isOpen={drawerOpen} onClose={closeDrawer} nav={{ groups, activeKey, onSelect }} />
     </div>
   )
 }

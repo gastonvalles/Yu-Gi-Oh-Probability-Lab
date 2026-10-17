@@ -124,14 +124,14 @@ describe('el menú lateral', () => {
   })
 })
 
-describe('el cajón de ajustes del celular', () => {
+describe('el cajón del menú del celular', () => {
   it('cerrado no existe; abierto es un diálogo con idioma, copia de seguridad y lo legal, enfoca adentro y se cierra con Escape, con el velo y con la X', () => {
     const onClose = vi.fn()
     const { rerender } = render(<NavDrawer isOpen={false} onClose={onClose} />)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
     rerender(<NavDrawer isOpen onClose={onClose} />)
-    const dialog = screen.getByRole('dialog', { name: 'Ajustes' })
+    const dialog = screen.getByRole('dialog', { name: 'Menú' })
     expect(dialog).toHaveAttribute('aria-modal', 'true')
     expect(within(dialog).getByRole('group', { name: 'Idioma' })).toBeInTheDocument()
     // Como en el lienzo: el idioma con los nombres completos, «Tus datos» como dos filas con ícono y, abajo, lo legal (sin un «Acerca de» aparte).
@@ -147,13 +147,13 @@ describe('el cajón de ajustes del celular', () => {
       'https://github.com/gastonvalles',
       '/privacidad.html',
     ])
-    // El menú de destinos ya no vive acá: está en la barra de abajo.
+    // Sin destinos (no se los pasó): sólo los ajustes; con ellos, ver el armazón.
     expect(within(dialog).queryByRole('button', { name: /^Exportar deck/ })).not.toBeInTheDocument()
     expect(dialog).toContainElement(document.activeElement as HTMLElement)
 
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Cerrar los ajustes' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cerrar el menú' }))
     expect(onClose).toHaveBeenCalledTimes(2)
     fireEvent.click(dialog.previousElementSibling as HTMLElement)
     expect(onClose).toHaveBeenCalledTimes(3)
@@ -325,13 +325,13 @@ describe('la barra de arriba, el pie y los títulos', () => {
     const onMenu = vi.fn()
     const { rerender } = render(<MobileTopBar menuOpen={false} onMenu={onMenu} />)
 
-    const button = screen.getByRole('button', { name: 'Abrir los ajustes' })
+    const button = screen.getByRole('button', { name: 'Abrir el menú' })
     expect(button).toHaveAttribute('aria-expanded', 'false')
     fireEvent.click(button)
     expect(onMenu).toHaveBeenCalledTimes(1)
 
     rerender(<MobileTopBar menuOpen onMenu={onMenu} />)
-    expect(screen.getByRole('button', { name: 'Abrir los ajustes' })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: 'Abrir el menú' })).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('el pie lleva la autoría, el aviso de sitio no oficial, las redes y la privacidad', () => {
@@ -371,7 +371,7 @@ describe('la barra de arriba, el pie y los títulos', () => {
 })
 
 describe('el armazón', () => {
-  it('lleva el contenido, el pie y el menú una sola vez; la hamburguesa abre los ajustes y la barra de abajo abre la hoja de un grupo: elegir cierra', () => {
+  it('lleva el contenido, el pie y el menú una sola vez; la hamburguesa abre el menú y la barra de abajo abre la hoja de un grupo: elegir cierra', () => {
     const onSelect = vi.fn()
     render(
       <AppShell groups={GROUPS} activeKey="categorization" onSelect={onSelect} contentScrollable>
@@ -384,8 +384,8 @@ describe('el armazón', () => {
     // El menú lateral y la barra de abajo están los dos en el DOM: el CSS muestra el que toca según el ancho.
     expect(screen.getAllByRole('navigation', { name: 'Navegación principal' })).toHaveLength(2)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Abrir los ajustes' }))
-    expect(screen.getByRole('dialog', { name: 'Ajustes' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir el menú' }))
+    expect(screen.getByRole('dialog', { name: 'Menú' })).toBeInTheDocument()
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
@@ -427,7 +427,27 @@ describe('el armazón', () => {
     expect(container.firstElementChild).toHaveClass('max-[1100px]:h-dvh', 'max-[1100px]:overflow-hidden')
   })
 
-  it('la mesa a pantalla completa no lleva la barra de abajo: la hamburguesa abre los ajustes con el menú de destinos para poder irse', () => {
+  it('la hamburguesa abre el menú con los destinos de los cuatro grupos (aunque la barra de abajo esté), y elegir uno cierra el cajón', () => {
+    const onSelect = vi.fn()
+    render(
+      <AppShell groups={GROUPS} activeKey="categorization" onSelect={onSelect} contentScrollable>
+        <p>Pantalla</p>
+      </AppShell>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir el menú' }))
+    const dialog = screen.getByRole('dialog', { name: 'Menú' })
+
+    // Los destinos arriba y los ajustes debajo, en el mismo cajón.
+    expect(within(dialog).getByRole('button', { name: /^Exportar deck/ })).toBeInTheDocument()
+    expect(within(dialog).getByRole('group', { name: 'Idioma' })).toBeInTheDocument()
+
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Exportar deck/ }))
+    expect(onSelect).toHaveBeenCalledWith('export')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('la mesa a pantalla completa no lleva la barra de abajo: la hamburguesa abre el menú con los destinos para poder irse', () => {
     const onSelect = vi.fn()
     render(
       <AppShell groups={GROUPS} activeKey="practice" onSelect={onSelect} immersive>
@@ -437,8 +457,8 @@ describe('el armazón', () => {
 
     // Sólo queda el menú lateral (el CSS lo esconde en el celular): la barra de abajo no está.
     expect(screen.getAllByRole('navigation', { name: 'Navegación principal' })).toHaveLength(1)
-    fireEvent.click(screen.getByRole('button', { name: 'Abrir los ajustes' }))
-    const dialog = screen.getByRole('dialog', { name: 'Ajustes' })
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir el menú' }))
+    const dialog = screen.getByRole('dialog', { name: 'Menú' })
     fireEvent.click(within(dialog).getByRole('button', { name: /^Probability Lab/ }))
     expect(onSelect).toHaveBeenCalledWith('probability-lab')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()

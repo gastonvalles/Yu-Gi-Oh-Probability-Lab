@@ -15,7 +15,7 @@ import type { NavGroup } from './nav-model'
 import { NAV_OVERLINE } from './rail'
 import { SidebarNav } from './SidebarNav'
 
-/** El menú de destinos dentro del cajón: sólo cuando la pantalla no lleva barra de abajo (la mesa a pantalla completa) y la hamburguesa es la única salida. */
+/** El menú de destinos dentro del cajón: los mismos cuatro grupos de la barra de abajo y del menú lateral. En la mesa a pantalla completa (sin barra) es la única salida. */
 interface DrawerNav {
   groups: NavGroup[]
   activeKey: string | null
@@ -29,7 +29,7 @@ interface DrawerPanelProps {
 }
 
 /**
- * Lo de adentro del cajón de ajustes, como en el lienzo: la marca con su X, (sin barra de abajo) los destinos, el idioma (Español | English, de 44 px), «Tus datos» (guardar y restaurar la copia de
+ * Lo de adentro del cajón del menú: la marca con su X, los destinos, el idioma (Español | English, de 44 px), «Tus datos» (guardar y restaurar la copia de
  * seguridad) y, abajo, lo legal: las redes, la privacidad y la autoría con el aviso de sitio no oficial.
  */
 export function DrawerPanel({ onClose, nav, className }: DrawerPanelProps) {
@@ -86,7 +86,7 @@ interface NavDrawerProps {
   nav?: DrawerNav
 }
 
-/** El cajón de ajustes del celular: sale desde la izquierda sobre un velo; se cierra con la X, el velo y Escape. */
+/** El cajón del menú del celular (los destinos y los ajustes): sale desde la izquierda sobre un velo; se cierra con la X, el velo y Escape. */
 export function NavDrawer({ isOpen, onClose, nav }: NavDrawerProps) {
   const panelRef = useRef<HTMLDivElement | null>(null)
   // En escritorio el cajón no existe: abierto y oculto atraparía el foco y bloquearía el scroll.
