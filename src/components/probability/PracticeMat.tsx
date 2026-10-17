@@ -179,6 +179,9 @@ const NEXT_DEAL_MS = 55
 const CELL_TONE = {
   default: 'border border-solid border-primary/35 shadow-[inset_0_0_14px_rgb(var(--primary-rgb)/0.14)]',
   emz: 'border border-solid border-accent/70 shadow-[inset_0_0_16px_rgb(var(--accent-rgb)/0.3),0_0_14px_rgb(var(--accent-rgb)/0.28)]',
+  // Tus zonas de monstruo: azul con resplandor (lo único azul de la mesa). Las del rival, de un violeta cálido (su color es el ámbar).
+  mine: 'border-[1.5px] border-solid border-field-mine/80 bg-field-mine/10 shadow-[0_0_10px_rgb(var(--field-mine-rgb)/0.45),inset_0_0_14px_rgb(var(--field-mine-rgb)/0.2)]',
+  theirs: 'border border-solid border-info/45 bg-primary/10 shadow-[inset_0_0_14px_rgb(var(--info-rgb)/0.1)]',
 } as const
 
 /**
@@ -208,7 +211,10 @@ export const CELL = `aspect-[421/614] before:absolute before:-inset-1 ${cellLook
  */
 export const CELL_SQUARE = `aspect-square ${cellLook('default')}`
 /** La zona extra de monstruos: cuadrada como las otras, con su brillo. */
-export const CELL_EMZ = `aspect-square ${cellLook('emz')}`
+export const CELL_EMZ = `aspect-square cell-cross ${cellLook('emz')}`
+/** Tus zonas de monstruo (azul con resplandor) y las del rival (violeta cálido; las vacías de la 1.ª, 3.ª y 5.ª, con su X). */
+export const CELL_MINE = `aspect-square ${cellLook('mine')}`
+export const CELL_THEIRS = `aspect-square ${cellLook('theirs')}`
 /** El ancho de una carta como parte de su alto (421 × 614 px): una carta parada en una casilla cuadrada mide ese tanto de ancho. */
 const CARD_WIDTH_PER_HEIGHT = 421 / 614
 
@@ -1138,7 +1144,7 @@ export function PracticeMat({
         data-over="false"
         data-pick={pickableZone || pickableTribute ? 'true' : 'false'}
         data-chosen={chosen ? 'true' : 'false'}
-        className={spot === 'field' ? CELL : spot === 'emz' ? CELL_EMZ : CELL_SQUARE}
+        className={spot === 'field' ? CELL : spot === 'emz' ? CELL_EMZ : spot === 'mz' ? CELL_MINE : CELL_SQUARE}
         style={{ gridArea: area }}
         onClick={pickableZone ? () => pickZone(spot, index) : undefined}
         onKeyDown={pickableZone ? (event) => activate(event, () => pickZone(spot, index)) : undefined}
@@ -1724,7 +1730,7 @@ function activate(event: ReactKeyboardEvent<HTMLElement>, run: () => void) {
 export function PileBadge({ label, count }: { label: string; count: number }) {
   return (
     <span className="pointer-events-none absolute inset-0 z-2 grid place-content-center justify-items-center text-center leading-none">
-      <span className={cx('rounded-full px-1.5 py-0.5 text-body font-extrabold tabular-nums text-foreground min-[1101px]:text-lead', count > 0 && 'bg-background/70')}>{count}</span>
+      <span className={cx('rounded-full px-1.5 py-0.5 text-lead font-extrabold tabular-nums text-foreground min-[1101px]:text-title', count > 0 && 'bg-background/70')}>{count}</span>
       <span className="mt-0.5 text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-soft min-[1101px]:text-[0.6rem]">{label}</span>
     </span>
   )
