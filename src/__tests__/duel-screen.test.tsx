@@ -1347,14 +1347,16 @@ describe('la pantalla del duelo', () => {
     for (const button of within(quick).getAllByRole('button')) {
       // Sin texto: sólo el emoji (y, tras apretarlo, su copia que sube).
       expect(button.textContent).toMatch(/^\p{Extended_Pictographic}+$/u)
+      // Grandes: el emoji de 33 px en un botón de 56 (con el pulgar se acierta y se ve lo que se manda).
+      expect(button).toHaveClass('h-14', 'w-14', 'text-stat')
     }
     fireEvent.click(within(quick).getByRole('button', { name: 'Pensando…' }))
     fireEvent.click(within(quick).getByRole('button', { name: 'Todo bien' }))
     flush()
     const hostLog = within(host.container).getByRole('log', { name: 'Chat con Beto' })
     // Un emoji solo se ve grande, como una reacción.
-    expect(within(hostLog).getByText('🤔', { exact: false })).toHaveClass('text-title')
-    expect(within(hostLog).getAllByText('👍', { exact: false }).at(-1)).toHaveClass('text-title')
+    expect(within(hostLog).getByText('🤔', { exact: false })).toHaveClass('text-display')
+    expect(within(hostLog).getAllByText('👍', { exact: false }).at(-1)).toHaveClass('text-display')
 
     openTable(host, guest)
 
@@ -2147,6 +2149,9 @@ describe('la pantalla del duelo', () => {
     flush()
     expect(bubble(host, 'theirs')).toHaveTextContent('🤔')
     expect(bubble(guest, 'mine')).toHaveTextContent('🤔')
+    // El globo de un emoji solo lo dibuja grande (44 px), de los dos lados: el que mandás y el que manda el rival.
+    expect(bubble(host, 'theirs')).toHaveClass('text-display')
+    expect(bubble(guest, 'mine')).toHaveClass('text-display')
     expect(bubble(host, 'mine')).toBeNull()
     expect(host.container.querySelector('[data-lp="theirs"]')).toHaveClass('border-info/50')
     // Una señal no es un mensaje sin leer ni avisa aparte.

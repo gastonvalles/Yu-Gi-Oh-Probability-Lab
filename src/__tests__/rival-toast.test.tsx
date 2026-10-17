@@ -29,7 +29,7 @@ describe('el mensaje del rival como aviso', () => {
   it('una reacción (sólo emojis) se ve todavía más grande', () => {
     render(<AppToast id="a" visible message="👍" tone="info" rival="Beto" />)
 
-    expect(screen.getByText('👍')).toHaveClass('text-stat')
+    expect(screen.getByText('👍')).toHaveClass('text-display')
   })
 
   it('sale en la esquina de abajo a la derecha', () => {

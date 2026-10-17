@@ -90,7 +90,7 @@ export function AppToast({ id, visible, message, tone, rival }: AppToastProps) {
           <Icon name="chat" size={26} strokeWidth={2} className={cx('shrink-0', PLAYER_COLOR.theirs.text)} />
           <span className="grid min-w-0 gap-0.5">
             <span className={cx('truncate text-micro font-extrabold uppercase tracking-[0.08em]', PLAYER_COLOR.theirs.text)}>{rival}</span>
-            <span className={cx('break-words', onlyEmoji(message) ? 'text-stat leading-tight' : 'leading-snug')}>{message}</span>
+            <span className={cx('break-words', onlyEmoji(message) ? 'text-display leading-tight' : 'leading-snug')}>{message}</span>
           </span>
         </>
       )}
