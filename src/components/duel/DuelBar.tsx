@@ -5,10 +5,13 @@ import type { Duel, DuelSnapshot } from '../../app/duel-session'
 import type { SocketStatus } from '../../app/duel-socket'
 import { duelTurnNumber } from '../../app/duel-turn'
 import { duelClockMs, formatClock, interpretAmount } from '../../app/life-calculator'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { PHASES } from '../../app/practice-mat'
 import { MatViewToggle } from '../probability/MatViewToggle'
 import { LpPad, MAX_DIGITS, type PadKey } from '../life/LpPad'
 import { t } from '../../i18n'
+import { ShellMenuButton } from '../shell/ShellMenu'
+import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
@@ -72,10 +75,16 @@ interface DuelBarProps {
  * el turno con la fase en que va quien juega, y cómo va la conexión. Lo propio (tus puntos de vida, el chat, los dados, deshacer) está abajo, al alcance
  * del pulgar. Salir pide confirmación y queda en la esquina de arriba, lejos de donde se toca jugando.
  */
+/** Los avisos de la conexión y del rival se apoyan debajo de la barra (no la empujan): el campo no se mueve cuando aparecen o se van. */
+const ALERT_OVERLAY = 'absolute inset-x-0.5 top-full z-20 mt-1'
+
 export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRematch, onLeave, onConcede, onReconnect, chat, log, resultOpen = false, rivalSignal = null }: DuelBarProps) {
   const now = useTick(1000)
   const [leaving, setLeaving] = useState(false)
   const [conceding, setConceding] = useState(false)
+  // Reconectar, Rendirse y Salir se tocan poco (y los dos últimos arruinan un duelo si se aprietan sin querer): en el celular van juntos detrás de un solo botón; en escritorio, a la vista.
+  const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  const [moreOpen, setMoreOpen] = useState(false)
   const { life, me, peerPresent } = snapshot
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
   const running = life.timer.running
@@ -91,6 +100,8 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
     <div className="relative flex flex-wrap items-center gap-1.5 px-0.5 pt-1.5">
       {/* `contents` en escritorio: sus piezas se acomodan en la fila de todo el ancho (`order`). En celular la vida es la que cede lugar si no entran los íconos. */}
       <div className="flex basis-full items-center gap-1.5 min-[1101px]:contents [&>[data-lp]]:shrink">
+        {/* La hamburguesa del armazón va acá: una sola barra arriba, la de la mesa. */}
+        <ShellMenuButton className="-ml-2" />
         <LifeTile name={rivalName} life={life.lp[me === 0 ? 1 : 0]} bubble={rivalSignal} />
         <button
           type="button"
@@ -105,17 +116,25 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
         <span className="-mr-2 ml-auto flex shrink-0 items-center min-[1101px]:order-2 min-[1101px]:ml-0.5 min-[1101px]:mr-0">
           {/* Vista superior o 3D de la mesa, como en la referencia: entre el reloj y los íconos de salir. */}
           <MatViewToggle />
-          {/* Reconectar también: lo tocan los dos, y el duelo sigue en cuanto el relay le dice a cada uno que el otro está. */}
-          <IconButton tone="flat" size="sm" aria-label={t('duel.bar.reconnect')} title={t('duel.bar.reconnect')} onClick={onReconnect}>
-            <Icon name="refresh" />
-          </IconButton>
-          {/* Rendirse queda a la vista, junto a salir (arriba, lejos de donde se juega) y pide confirmar. Terminado el duelo, o sin rival, no hay a quién rendirse. */}
-          <IconButton tone="flat" size="sm" aria-label={t('duel.bar.concede')} title={t('duel.bar.concede')} className="disabled:opacity-35" disabled={Boolean(result) || !peerPresent} onClick={() => setConceding(true)}>
-            <Icon name="flag" />
-          </IconButton>
-          <IconButton tone="flat" size="sm" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} onClick={() => setLeaving(true)}>
-            <Icon name="x" />
-          </IconButton>
+          {docked ? (
+            <>
+              {/* Reconectar también: lo tocan los dos, y el duelo sigue en cuanto el relay le dice a cada uno que el otro está. */}
+              <IconButton tone="flat" size="sm" aria-label={t('duel.bar.reconnect')} title={t('duel.bar.reconnect')} onClick={onReconnect}>
+                <Icon name="refresh" />
+              </IconButton>
+              {/* Rendirse queda a la vista, junto a salir (arriba, lejos de donde se juega) y pide confirmar. Terminado el duelo, o sin rival, no hay a quién rendirse. */}
+              <IconButton tone="flat" size="sm" aria-label={t('duel.bar.concede')} title={t('duel.bar.concede')} className="disabled:opacity-35" disabled={Boolean(result) || !peerPresent} onClick={() => setConceding(true)}>
+                <Icon name="flag" />
+              </IconButton>
+              <IconButton tone="flat" size="sm" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} onClick={() => setLeaving(true)}>
+                <Icon name="x" />
+              </IconButton>
+            </>
+          ) : (
+            <IconButton tone="flat" size="sm" aria-label={t('duel.bar.more')} title={t('duel.bar.more')} aria-haspopup="dialog" aria-expanded={moreOpen} onClick={() => setMoreOpen(true)}>
+              <Icon name="more" />
+            </IconButton>
+          )}
         </span>
       </div>
 
@@ -144,12 +163,13 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
       {/* Lo que pasó va justo debajo del turno, como en la referencia; la mano del rival, después. */}
       {log ? <div className="order-3 basis-full min-[1101px]:hidden">{log}</div> : null}
 
-      <div className="order-3 flex basis-full justify-center min-[1101px]:absolute min-[1101px]:left-1/2 min-[1101px]:top-1.5 min-[1101px]:basis-auto min-[1101px]:-translate-x-1/2">{theirHand}</div>
+      {/* Escritorio: en el centro de la fila de arriba. En el celular la mano del rival va pegada arriba del campo (la pone la mesa: `rivalHand`). */}
+      {docked ? <div className="absolute left-1/2 top-1.5 -translate-x-1/2">{theirHand}</div> : null}
 
       {status !== 'open' ? (
-        <Callout className="order-4 basis-full" tone="warning" icon="alert">{STATUS_TEXT[status]()}</Callout>
+        <Callout className={ALERT_OVERLAY} tone="warning" icon="alert">{STATUS_TEXT[status]()}</Callout>
       ) : !peerPresent ? (
-        <Callout className="order-4 basis-full" tone="info">{t('duel.peer.absent')}</Callout>
+        <Callout className={ALERT_OVERLAY} tone="info">{t('duel.peer.absent')}</Callout>
       ) : null}
 
       {result && !resultOpen ? (
@@ -157,6 +177,20 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
           <ResultStrip result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} />
         </div>
       ) : null}
+
+      <Modal isOpen={moreOpen} onClose={() => setMoreOpen(false)} size="keypad" title={t('duel.bar.more')} ariaLabel={t('duel.bar.more')}>
+        <div className="grid gap-1">
+          <Button variant="tertiary" icon="refresh" className="justify-start" fullWidth onClick={() => { setMoreOpen(false); onReconnect() }}>
+            {t('duel.bar.reconnect')}
+          </Button>
+          <Button variant="tertiary" icon="flag" className="justify-start" fullWidth disabled={Boolean(result) || !peerPresent} onClick={() => { setMoreOpen(false); setConceding(true) }}>
+            {t('duel.bar.concede')}
+          </Button>
+          <Button variant="tertiary" icon="x" className="justify-start" fullWidth onClick={() => { setMoreOpen(false); setLeaving(true) }}>
+            {t('duel.bar.leave')}
+          </Button>
+        </div>
+      </Modal>
 
       <ConfirmDialog
         isOpen={conceding}

@@ -486,9 +486,10 @@ describe('la mesa de práctica', () => {
     // El menú se fue pero la carta sigue en la zona, esperando los Sacrificios.
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     expect(within(status()).getByText('Tocá 2 monstruos para sacrificar (0/2)')).toBeInTheDocument()
-    // Eligiendo, lo que falta sí se ve (y las fases se van para dejarle el lugar).
+    // Eligiendo, lo que falta sí se ve y se apoya sobre las fases, que no se van (siguen ocupando su lugar, quietas y sin recibir toques): el alto de la barra no cambia.
     expect(status()).not.toHaveClass('sr-only')
-    expect(screen.queryByRole('group', { name: 'Fases' })).not.toBeInTheDocument()
+    expect(status()).toHaveClass('absolute', 'inset-0')
+    expect(screen.getByRole('group', { name: 'Fases' }).closest('[inert]')).not.toBeNull()
     expect(waitingIn(mz3)).toHaveAttribute('data-card-id', 'card-8-1')
     expect(within(hand()).queryByRole('listitem', { name: 'Blue-Eyes' })).not.toBeInTheDocument()
 

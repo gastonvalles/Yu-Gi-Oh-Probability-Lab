@@ -67,7 +67,23 @@ const allowUndo = () => {
   fireEvent.click(screen.getByRole('button', { name: 'Permitir' }))
   flush()
 }
-const click = (view: RenderResult, name: string | RegExp, role: 'button' | 'menuitem' = 'button') => fireEvent.click(within(view.container).getByRole(role, { name }))
+/**
+ * En el celular, Reconectar, Rendirme y Salir del duelo van detrás de «Más opciones del duelo» (en escritorio están a la vista): abre la hoja y devuelve el botón.
+ * La hoja queda abierta; `closeMore` la cierra.
+ */
+const MORE_OPTIONS = ['Reconectar', 'Rendirme', 'Salir del duelo']
+const moreButton = (view: RenderResult, name: string): HTMLElement => {
+  const inline = within(view.container).queryByRole('button', { name })
+
+  if (inline) return inline
+
+  fireEvent.click(within(view.container).getByRole('button', { name: 'Más opciones del duelo' }))
+
+  return within(screen.getByRole('dialog', { name: 'Más opciones del duelo' })).getByRole('button', { name })
+}
+const closeMore = () => fireEvent.keyDown(document, { key: 'Escape' })
+const click = (view: RenderResult, name: string | RegExp, role: 'button' | 'menuitem' = 'button') =>
+  fireEvent.click(typeof name === 'string' && role === 'button' && MORE_OPTIONS.includes(name) ? moreButton(view, name) : within(view.container).getByRole(role, { name }))
 /** Crear una sala 1 vs 1 como se hace: abrir «Crear una sala» y confirmar (con el tiempo que viene elegido, o el que se pida). */
 const createRoom = (view: RenderResult, minutes?: string) => {
   click(view, 'Crear una sala')
@@ -548,7 +564,7 @@ describe('la pantalla del duelo', () => {
     click(guest, 'Salir del duelo')
     // Confirmar es otra acción, en un diálogo: cancelar no saca a nadie.
     fireEvent.click(screen.getByRole('button', { name: 'Seguir jugando' }))
-    expect(within(guest.container).getByRole('button', { name: 'Salir del duelo' })).toBeInTheDocument()
+    expect(within(guest.container).getByRole('button', { name: 'Más opciones del duelo' })).toBeInTheDocument()
 
     click(guest, 'Salir del duelo')
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Salir y dejar en pausa' }))
@@ -1881,8 +1897,9 @@ describe('la pantalla del duelo', () => {
 
   /** Sale del duelo desde la mesa (con la confirmación). */
   function leaveDuel(view: RenderResult) {
-    // La de la barra es la primera (con el resultado en pantalla, la tarjeta tiene la suya debajo).
-    fireEvent.click(within(view.container).getAllByRole('button', { name: 'Salir del duelo' })[0]!)
+    // La de la barra está detrás de «Más opciones» (con el resultado en pantalla, la tarjeta tiene la suya aparte).
+    fireEvent.click(within(view.container).getByRole('button', { name: 'Más opciones del duelo' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Más opciones del duelo' })).getByRole('button', { name: 'Salir del duelo' }))
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Salir y dejar en pausa' }))
   }
   const hasSave = (role: 'host' | 'guest') => Object.keys(localStorage).some((key) => key.startsWith('ygo-lab:duel-save:') && key.endsWith(`:${role}`))
@@ -1988,9 +2005,11 @@ describe('la pantalla del duelo', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
 
-    // Los dos lo tienen en la barra, con la mesa a la vista.
-    expect(within(host.container).getByRole('button', { name: 'Reconectar' })).toBeInTheDocument()
-    expect(within(guest.container).getByRole('button', { name: 'Reconectar' })).toBeInTheDocument()
+    // Los dos lo tienen a un toque (detrás de «Más opciones», con la mesa a la vista).
+    expect(moreButton(host, 'Reconectar')).toBeInTheDocument()
+    closeMore()
+    expect(moreButton(guest, 'Reconectar')).toBeInTheDocument()
+    closeMore()
 
     // Ana ve el duelo en pausa por un aviso perdido; Beto no ve nada raro y es él quien toca Reconectar: el relay le avisa de nuevo a los dos.
     act(() => ends[0]!.notify(false))
@@ -2000,26 +2019,27 @@ describe('la pantalla del duelo', () => {
       ends[0]!.notify(true)
       ends[1]!.notify(true)
     })
-    fireEvent.click(within(guest.container).getByRole('button', { name: 'Reconectar' }))
+    click(guest, 'Reconectar')
     flush()
 
     expect(reconnect).toHaveBeenCalledTimes(1)
     expect(within(host.container).queryByRole('alertdialog', { name: 'Duelo en pausa' })).not.toBeInTheDocument()
   })
 
-  it('la barra de arriba no parte sus filas en celular: vida, reloj e íconos van juntos, y el turno con el chat; si no entra, se achica en vez de caerse a otra fila', () => {
+  it('la barra de arriba no parte sus filas en celular: vida, reloj y los botones van juntos, y el turno con el chat; si no entra, se achica en vez de caerse a otra fila', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
 
     const bar = within(host.container)
     const rowOf = (name: string | RegExp) => bar.getByRole('button', { name }).parentElement!.closest('div')!
 
-    // Vida, reloj y los tres íconos: la misma fila, que no se parte.
+    // Vida, reloj, la vista y «Más opciones» (que guarda Reconectar, Rendirme y Salir): la misma fila, que no se parte.
     const top = rowOf(/^Reloj de la ronda/)
     expect(top.contains(bar.getByRole('group', { name: /^Puntos de vida de / }))).toBe(true)
-    for (const name of ['Reconectar', 'Rendirme', 'Salir del duelo']) {
+    for (const name of ['Cambiar a la vista superior', 'Más opciones del duelo']) {
       expect(top).toBe(rowOf(name))
     }
+    expect(bar.queryByRole('button', { name: 'Rendirme' })).not.toBeInTheDocument()
     expect(top).not.toHaveClass('flex-wrap')
 
     // El turno y el chat: otra fila, que tampoco se parte.
@@ -2184,7 +2204,8 @@ describe('la pantalla del duelo', () => {
   it('rendirse queda a la vista en la barra: pide confirmar, termina el duelo para los dos y después ya no hay a quién rendirse', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)
-    expect(within(guest.container).getByRole('button', { name: 'Rendirme' })).toBeEnabled()
+    expect(moreButton(guest, 'Rendirme')).toBeEnabled()
+    closeMore()
 
     click(guest, 'Rendirme')
     // Cancelar no se rinde.
@@ -2199,8 +2220,10 @@ describe('la pantalla del duelo', () => {
 
     expect(within(host.container).getByText('Beto se rindió.')).toBeInTheDocument()
     expect(within(guest.container).getByText('Te rendiste.')).toBeInTheDocument()
-    expect(within(guest.container).getByRole('button', { name: 'Rendirme' })).toBeDisabled()
-    expect(within(host.container).getByRole('button', { name: 'Rendirme' })).toBeDisabled()
+    expect(moreButton(guest, 'Rendirme')).toBeDisabled()
+    closeMore()
+    expect(moreButton(host, 'Rendirme')).toBeDisabled()
+    closeMore()
   })
 
   it('el final del duelo es una tarjeta al centro: título grande y motivo (sin puntos de vida), "Ver la mesa" la cierra y deja una línea arriba con la revancha', () => {
@@ -2301,11 +2324,11 @@ describe('la pantalla del duelo', () => {
     flush()
 
     const status = () => within(guest.container).getByRole('status', { name: 'Paso actual' })
-    expect(status()).not.toHaveClass('min-[1101px]:pointer-events-auto')
+    expect(status()).toHaveClass('sr-only')
 
     tap(within(guest.container).getByRole('button', { name: 'Ficha' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Poner contadores' }))
-    expect(status()).toHaveClass('min-[1101px]:pointer-events-auto')
+    expect(status()).toHaveClass('pointer-events-auto')
     expect(within(status()).getByRole('button', { name: 'Listo' })).toBeInTheDocument()
   })
 

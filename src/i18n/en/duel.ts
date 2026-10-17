@@ -185,6 +185,7 @@ export const duel: Translated<typeof es> = {
   'duel.bar.clockStart': 'Start the clock',
   'duel.bar.clockPause': 'Pause the clock',
   'duel.bar.reconnect': 'Reconnect',
+  'duel.bar.more': 'More duel options',
   'duel.bar.leave': 'Leave the duel',
   'duel.bar.concede': 'Surrender',
   'duel.bar.concedeTitle': 'Surrender this duel?',

@@ -111,7 +111,7 @@ function MarkButton({ label, onMark }: { label: string; onMark: (rect: DOMRect) 
       type="button"
       aria-label={label}
       title={label}
-      className="absolute inset-0 z-10 cursor-pointer rounded-none border-0 bg-transparent p-0 opacity-0 focus-visible:opacity-100 focus-visible:outline-none focus-visible:shadow-focus"
+      className="absolute inset-0 z-10 cursor-pointer rounded-none border-0 bg-transparent p-0 opacity-0 before:absolute before:-inset-1 focus-visible:opacity-100 focus-visible:outline-none focus-visible:shadow-focus"
       onClick={(event) => onMark((event.currentTarget.closest<HTMLElement>('[role="group"]') ?? event.currentTarget).getBoundingClientRect())}
     />
   )
@@ -256,7 +256,9 @@ function Pile({ area, pile, side, owner }: { area: string; pile: Exclude<MatPile
   const flash = side.flash && cards.includes(side.flash.id) ? side.flash : null
 
   return (
-    <div role="group" aria-label={`${PILE_TITLES[pile]}: ${cards.length}`} title={PILE_TITLES[pile]} data-rival-drop={owner === 'theirs' ? pile : undefined} data-targeted={marked ? 'true' : 'false'} data-flash={flash ? 'true' : 'false'} data-flash-kind={flash?.kind} className={cx(CELL, 'overflow-hidden', FX_CARD, '[--card-shadow:0_0_0_0_transparent]')} style={{ gridArea: area, ...fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red') }}>
+    <div role="group" aria-label={`${PILE_TITLES[pile]}: ${cards.length}`} title={PILE_TITLES[pile]} data-rival-drop={owner === 'theirs' ? pile : undefined} data-targeted={marked ? 'true' : 'false'} data-flash={flash ? 'true' : 'false'} data-flash-kind={flash?.kind} className={cx(CELL, FX_CARD, '[--card-shadow:0_0_0_0_transparent]')} style={{ gridArea: area, ...fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red') }}>
+      {/* El recorte va en un contenedor aparte: la casilla no recorta, así el área que se toca (`before` de `CELL` y del botón de marcar) puede salirse 4 px de ella. */}
+      <span className="absolute inset-0 overflow-hidden">
       {/* La carta de arriba del rival, como las de su campo, mira hacia él. */}
       {pile === 'deck' && owner === 'theirs' && cards.length > 0 ? (
         // El deck del rival, de capas como el propio: así se baraja a la vista cuando lo toca.
@@ -275,6 +277,7 @@ function Pile({ area, pile, side, owner }: { area: string; pile: Exclude<MatPile
       <PileBadge label={PILE_SHORT[pile]} count={cards.length} />
       {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
       {marked ? <TargetMark /> : null}
+      </span>
       {side.onMark && owner === 'theirs' ? <MarkButton label={t('duel.mark.label', { place: PILE_TITLES[pile] })} onMark={(rect) => side.onMark!({ pile }, rect, PILE_TITLES[pile])} /> : null}
     </div>
   )

@@ -43,6 +43,14 @@ const PATHS = {
       <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
     </>
   ),
+  /** Más opciones: tres puntos en fila. */
+  more: (
+    <>
+      <circle data-fill cx="5" cy="12" r="1.6" />
+      <circle data-fill cx="12" cy="12" r="1.6" />
+      <circle data-fill cx="19" cy="12" r="1.6" />
+    </>
+  ),
   /** La vista 3D de la mesa: un cubo. */
   cube: (
     <>

@@ -10,6 +10,7 @@ import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-m
 import { useSpectator, type SpectatorConnect } from '../../app/use-duel'
 import { t } from '../../i18n'
 import { Button } from '../ui/Button'
+import { ShellMenuButton } from '../shell/ShellMenu'
 import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
 import { Heading } from '../ui/Heading'
@@ -196,6 +197,7 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
         <div className="mx-auto grid w-full max-w-3xl content-start gap-2 px-2 py-2 min-[1101px]:px-4" data-testid="spectator-table">
           {/* Arriba, lo de quien está arriba; las vidas del de abajo en la esquina de enfrente, como en la mesa de los jugadores. Tres filas que no se parten (vida + reloj + salir; lo que se mira + el turno; avisos): si algo no entra se achica en su fila en vez de caerse a otra. */}
           <div className="flex items-center gap-1.5 [&>[data-lp]]:shrink">
+            <ShellMenuButton className="-ml-2" />
             <LifeTile name={nameOf(top)} life={topSide.lp ?? snapshot.settings?.lp ?? 0} color={top === 0 ? 'mine' : 'theirs'} />
             <span className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-card border border-border-subtle bg-card-background px-2.5 text-micro font-semibold tabular-nums text-foreground" aria-label={t('duel.bar.clock', { time: clock })}>
               <Icon name={snapshot.clock.running ? 'pause' : 'play'} size={14} />

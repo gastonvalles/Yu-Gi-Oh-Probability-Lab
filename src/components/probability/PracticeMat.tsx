@@ -60,6 +60,7 @@ import { Modal } from '../ui/Modal'
 import { AttackFx, measureStrike, type Strike, type StrikeSpec } from './AttackFx'
 import { CardBack, CardMenu, PILE_SHORT, PILE_TITLES, PileViewer, SaveComboDialog, type MenuItem } from './MatDialogs'
 import { MatViewToggle } from './MatViewToggle'
+import { ShellMenuButton } from '../shell/ShellMenu'
 import { FX_CARD, FxFrame, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, TargetMark, fxVars } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
@@ -86,8 +87,10 @@ export interface DuelMatLink {
   opponent: ReactNode
   /** La carta del rival que ocupa, vista desde acá, la Zona Extra `index` (0 = izquierda); null si no hay. */
   sharedZone: (index: number) => ReactNode
-  /** Arriba del campo: la barra del duelo y la mano del rival. */
+  /** Arriba del campo: la barra del duelo (y, en escritorio, la mano del rival, en el centro de su fila). */
   header: ReactNode
+  /** La mano del rival en el celular: pegada arriba del campo (no en la barra), así las dos se quedan juntas cuando sobra alto. */
+  rivalHand?: ReactNode
   /** Los monstruos del rival en el campo (con el id que él les dio) y dónde están: a cuáles se puede atacar. */
   attackTargets: ReadonlyArray<{ id: string; zone: 'mz' | 'emz'; index: number; faceDown: boolean }>
   /** id que dio el rival → carta real, de lo que ya mostró: así se nombra a quien se ataca. */
@@ -192,8 +195,11 @@ const cellLook = (tone: keyof typeof CELL_TONE) => [
   'motion-reduce:animate-none motion-reduce:after:hidden motion-reduce:data-[pick=true]:shadow-[0_0_0_2px_rgb(var(--accent-rgb)/0.75),0_0_16px_rgb(var(--accent-rgb)/0.45)]',
 ].join(' ')
 
-/** La zona de campo y las pilas (las columnas de los costados): del tamaño justo de una carta, que nunca se acuesta. */
-export const CELL = `aspect-[421/614] ${cellLook('default')}`
+/**
+ * La zona de campo y las pilas (las columnas de los costados): del tamaño justo de una carta, que nunca se acuesta. Son angostas (38 px en un celular chico): el área que se toca crece 4 px a cada lado
+ * (`before`, justo hasta la casilla vecina, que está a 4 px) sin agrandar lo que se ve.
+ */
+export const CELL = `aspect-[421/614] before:absolute before:-inset-1 ${cellLook('default')}`
 /**
  * Las zonas del centro (monstruos, Mágicas y Trampas, Zonas Extra) son cuadradas, del lado largo de una carta: la carta entra parada (el alto de la casilla)
  * o acostada en defensa (el ancho de la casilla) con el mismo tamaño y sin salirse, así que dos cartas en defensa vecinas no se pisan ni se achican.
@@ -1180,13 +1186,16 @@ export function PracticeMat({
         data-over="false"
         data-targeted={marked ? 'true' : 'false'}
         // `rounded-none`: el reset global le da a todo <button> el radio de los controles, y una casilla no va redondeada.
-        className={cx(CELL, 'cursor-pointer overflow-hidden rounded-none bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus', FX_CARD, '[--card-shadow:0_0_0_0_transparent]')}
+        className={cx(CELL, 'cursor-pointer rounded-none bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus', FX_CARD, '[--card-shadow:0_0_0_0_transparent]')}
         style={{ gridArea: area, ...fxVars('red') }}
         onClick={() => setViewer(pile)}
       >
-        {back ? <span className={CARD_BACK} /> : top ? <CardArt remoteUrl={artOf(cardOf(top))} name={cardOf(top).name} className="block h-full w-full object-cover" /> : null}
-        <PileBadge label={PILE_SHORT[pile]} count={count} />
-        {marked ? <TargetMark /> : null}
+        {/* El recorte va en un contenedor aparte: el botón no recorta, así el área que se toca (`before` de `CELL`) puede salirse 4 px de la casilla. */}
+        <span className="absolute inset-0 overflow-hidden">
+          {back ? <span className={CARD_BACK} /> : top ? <CardArt remoteUrl={artOf(cardOf(top))} name={cardOf(top).name} className="block h-full w-full object-cover" /> : null}
+          <PileBadge label={PILE_SHORT[pile]} count={count} />
+          {marked ? <TargetMark /> : null}
+        </span>
       </button>
     )
   }
@@ -1307,6 +1316,40 @@ export function PracticeMat({
     </div>
   )
 
+  // El estado: eligiendo, pide lo que falta; si no, es sólo para el lector de pantalla (la última jugada y el contador ya están en la lista de pasos).
+  // Eligiendo se apoya sobre la fila de abajo que ese momento no se usa (`absolute inset-0`): no suma ni quita alto. En un duelo de escritorio es una cápsula centrada que sí recibe toques (la barra de abajo no los ataja: el medio es de la mano).
+  const status = (
+    <div
+      className={cx(
+        'flex min-w-0 items-center gap-2 px-1 text-micro text-muted',
+        choosing ? 'pointer-events-auto absolute inset-0 z-10' : 'sr-only',
+        choosing && duel && 'min-[1101px]:inset-auto min-[1101px]:left-1/2 min-[1101px]:top-1/2 min-[1101px]:w-max min-[1101px]:max-w-full min-[1101px]:-translate-x-1/2 min-[1101px]:-translate-y-1/2 min-[1101px]:rounded-card min-[1101px]:border min-[1101px]:border-border-subtle min-[1101px]:bg-card-background min-[1101px]:px-3 min-[1101px]:py-1.5 min-[1101px]:shadow-card',
+      )}
+      role="status"
+      aria-label={t('practice.mat.currentStep')}
+    >
+      {pickingText ? (
+        <>
+          <span className="line-clamp-2 min-w-0 flex-1 font-semibold leading-tight text-accent">{pickingText}</span>
+          <Button variant={counterMode !== null ? 'primary' : 'tertiary'} size="sm" className="px-3" onClick={() => { setPicking(null); setCounterMode(null) }}>
+            {counterMode !== null ? t('practice.mat.pickDone') : t('common.cancel')}
+          </Button>
+          {picking?.kind === 'materials' ? (
+            <Button variant="primary" size="sm" className="px-3" disabled={picking.chosen.length === 0} onClick={confirmMaterials}>
+              {t('practice.mat.confirm')}
+            </Button>
+          ) : null}
+        </>
+      ) : null}
+      {!choosing && session.actions.length > 0 ? (
+        <span className="font-semibold tabular-nums text-foreground">
+          {session.cursor}/{session.actions.length}
+        </span>
+      ) : null}
+      {!choosing ? <span className="min-w-0 flex-1 truncate">{session.cursor === 0 ? (session.actions.length > 0 ? t('practice.mat.startingHand') : t('practice.mat.hint')) : steps[session.cursor - 1]}</span> : null}
+    </div>
+  )
+
   return (
     <section
       ref={sectionRef}
@@ -1322,6 +1365,7 @@ export function PracticeMat({
       {/* Barra (práctica): el turno a la izquierda y, a la derecha, nueva mano, deshacer, guardar, ficha y (en el celu) el panel. En un duelo estos botones van abajo, junto a las fases (ver `dock`). */}
       {duel ? null : (
         <div className="col-start-1 row-start-1 flex items-center gap-1 px-2 pt-2 min-[1101px]:px-4 min-[1101px]:pt-3" role="toolbar" aria-label={t('practice.mat.name')}>
+          <ShellMenuButton className="-ml-1" />
           <span className="whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted" aria-label={t('practice.mat.turn', { turn: state.turn })}>
             {t('practice.mat.turn', { turn: state.turn })}
           </span>
@@ -1340,17 +1384,23 @@ export function PracticeMat({
 
       <div className="col-start-1 row-start-2 flex min-h-0 flex-col gap-2 overflow-y-auto overflow-x-hidden px-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] min-[1101px]:px-4 min-[1101px]:pb-4 min-[1101px]:pt-2">
         {duel?.header}
+        {/* Celular: la mano del rival y el campo van juntos, pegados a tu mano y a la botonera (la zona del pulgar). El alto que sobra queda arriba, entre la barra y el rival: ahí sólo hay aire (y los avisos que se apoyan encima), y
+            no se reparte arriba y abajo del campo, así que éste no cambia de lugar respecto de la mano cuando la ventana cambia de alto (la barra de direcciones del navegador). Escritorio: sin envoltorio y el campo se centra. */}
+        <div className="flex flex-col gap-2 max-[1100px]:mt-auto min-[1101px]:contents">
+        {!isDesktop && view === 'top' ? duel?.rivalHand : null}
         {/* El campo en todos los tamaños: a la izquierda la zona de campo y el Extra Deck; a la derecha, de arriba abajo, destierro, cementerio y deck (como pidió Gastón: el Banish arriba del GY); las fases y las zonas extra entre medio.
             Las cinco columnas del centro son cuadradas (una carta acostada entra en su zona sin pisar a la vecina) y las de los costados miden lo justo de una carta (0,6857 de una del centro), así que todas las cartas miden lo mismo. */}
         <div
           ref={fieldRef}
-          // `my-auto`: el aire que sobra se reparte arriba y abajo del campo (ni pegado a la barra ni un hueco antes de la mano).
+          // Escritorio: `my-auto` reparte el aire que sobra arriba y abajo del campo (ni pegado a la barra ni un hueco antes de la mano).
           data-tilted={view === '3d' ? 'true' : undefined}
-          className={cx("relative my-auto grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [transform-origin:50%_100%] [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]", view === '3d' && '[transform:perspective(var(--field-perspective))_rotateX(var(--field-tilt))]')}
+          className={cx("relative grid min-[1101px]:my-auto grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [transform-origin:50%_100%] [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]", view === '3d' && '[transform:perspective(var(--field-perspective))_rotateX(var(--field-tilt))]')}
           aria-label={t('practice.mat.field')}
           // En un duelo, las áreas de los dos campos (el estilo en línea gana a la clase de las áreas de uno solo); y en escritorio las cartas se achican hasta que las cinco filas y la mano entran en la pantalla.
           style={duel ? ({ gridTemplateAreas: duel.areas, '--cell': 'max(3.5rem, min(8rem, calc((100dvh - 19.5rem) / 5)))' } as CSSProperties) : undefined}
         >
+          {/* Vista 3D (celular): la mano del rival se apoya en el borde de arriba del campo, inclinada con él; ahí no ocupa lugar propio (el campo inclinado deja ese aire arriba). */}
+          {!isDesktop && view === '3d' && duel?.rivalHand ? <div className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2">{duel.rivalHand}</div> : null}
           {/* La mascota del duelo, una sola: en escritorio, en la esquina libre de arriba a la izquierda del campo; en el celular, parada sobre esa esquina, detrás de lo demás. */}
           {duel ? duel.opponent : <DuelMascot className="absolute bottom-full left-0 -z-10 mb-1 size-[4.5rem] min-[1101px]:static min-[1101px]:z-0 min-[1101px]:mb-0 min-[1101px]:size-[5.25rem] min-[1101px]:self-end min-[1101px]:justify-self-center min-[1101px]:[grid-area:1/1]" />}
           {cell('field', 0, 'fld')}
@@ -1413,6 +1463,7 @@ export function PracticeMat({
             </span>
           ) : null}
           {duel?.notice ? <PhaseBanner key={duel.notice.key} phase={duel.notice.phase} turn={null} who={duel.notice.who} label={duel.notice.label} className="absolute inset-0 z-30" /> : null}
+        </div>
         </div>
 
         {/* Abajo del todo, como en la mesa real: la mano en abanico. Las salidas y problemas flotan sobre la mano en el celu, y van en el panel lateral en escritorio. */}
@@ -1484,57 +1535,50 @@ export function PracticeMat({
         ) : null}
 
         {/* Abajo: las seis fases con Pasar turno pegado a la End Phase (Deshacer está arriba y los pasos en la lista, así que ni Anterior / Siguiente ni la última jugada hacen falta). En un duelo de escritorio van a la derecha, junto a tus vidas.
-            Eligiendo (Sacrificios, materiales) las fases se van para que entre lo que hay que tocar: la barra no cambia de alto, el campo no se mueve. */}
+            Eligiendo (una zona, Sacrificios, materiales, contadores) ninguna fila se saca: la que no se usa queda invisible y quieta, y lo que falta elegir se apoya encima (`status`). El alto de la barra es siempre el mismo, así el campo y la mano no se corren. */}
         {/* En escritorio, en un duelo, esta barra sube sobre la franja de abajo de la mano (sólo tiene algo en las esquinas): la mano y el campo ganan ese alto, y el medio no ataja toques. */}
         <div className={cx('sticky bottom-0 z-30 grid gap-1 max-[1100px]:bg-background', duel && 'min-[1101px]:pointer-events-none min-[1101px]:-mt-11')}>
-          {/* Duelo: una sola fila abajo con tus vidas y los botones que se tocan seguido (deshacer, la ficha, los dados y el chat). Celular: las vidas a la izquierda y los botones a la derecha (el pulgar de quien juega
+          {/* Duelo: una sola fila abajo con tus vidas y los botones que se tocan seguido (deshacer, la ficha, los dados y las reacciones). Celular: las vidas a la izquierda y los botones a la derecha (el pulgar de quien juega
               con la derecha). Escritorio: los botones a la izquierda y tus vidas en la esquina opuesta a las del rival. */}
-          {duel && !choosing && !isDesktop ? <div className="pointer-events-auto flex items-center justify-between gap-1 px-1">{phaseButtons}{passTurn}</div> : null}
-          {duel && !choosing ? (
-            <div role="toolbar" aria-label={t('practice.mat.name')} className="flex items-center justify-between max-[1100px]:flex-row-reverse">
-              <span className="pointer-events-auto flex items-center">
-                {undoButton}
-                {tokenButton}
-                {duel.tools}
-              </span>
-              <span className="pointer-events-auto flex items-center gap-2">
-                {isDesktop ? phaseButtons : null}
-                {isDesktop ? passTurn : null}
-                {duel.life}
-              </span>
+          {duel && !isDesktop ? (
+            <div className="relative">
+              <div inert={choosing} className={cx('pointer-events-auto flex items-center justify-between gap-1 px-1', choosing && 'invisible')}>
+                {phaseButtons}
+                {passTurn}
+              </div>
+              {status}
             </div>
           ) : null}
-          <div className={cx('flex items-center justify-center gap-2', (choosing || (!duel && !isDesktop)) && 'min-h-9')}>
-          {!duel && !choosing ? phaseButtons : null}
-          {!duel && !choosing ? passTurn : null}
-          {/* El estado: eligiendo, pide lo que falta; si no, es sólo para el lector de pantalla (la última jugada y el contador ya están en la lista de pasos). */}
-          <div
-            // En un duelo de escritorio la barra de abajo no ataja toques (el medio es de la mano): lo que se está eligiendo es una cápsula centrada que sí los recibe, con Confirmar y Cancelar a mano.
-            className={cx('flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 px-1 text-micro text-muted', !choosing && 'sr-only', choosing && duel && 'min-[1101px]:pointer-events-auto min-[1101px]:flex-none min-[1101px]:flex-nowrap min-[1101px]:rounded-card min-[1101px]:border min-[1101px]:border-border-subtle min-[1101px]:bg-card-background min-[1101px]:px-3 min-[1101px]:py-1.5 min-[1101px]:shadow-card')}
-            role="status"
-            aria-label={t('practice.mat.currentStep')}
-          >
-            {pickingText ? (
-              <>
-                <span className="min-w-0 flex-1 truncate font-semibold text-accent">{pickingText}</span>
-                <Button variant={counterMode !== null ? 'primary' : 'tertiary'} size="sm" className="min-h-8 px-2" onClick={() => { setPicking(null); setCounterMode(null) }}>
-                  {counterMode !== null ? t('practice.mat.pickDone') : t('common.cancel')}
-                </Button>
-                {picking?.kind === 'materials' ? (
-                  <Button variant="primary" size="sm" className="min-h-8 px-3" disabled={picking.chosen.length === 0} onClick={confirmMaterials}>
-                    {t('practice.mat.confirm')}
-                  </Button>
-                ) : null}
-              </>
-            ) : null}
-            {!choosing && session.actions.length > 0 ? (
-              <span className="font-semibold tabular-nums text-foreground">
-                {session.cursor}/{session.actions.length}
-              </span>
-            ) : null}
-            {!choosing ? <span className="min-w-0 flex-1 truncate">{session.cursor === 0 ? (session.actions.length > 0 ? t('practice.mat.startingHand') : t('practice.mat.hint')) : steps[session.cursor - 1]}</span> : null}
-          </div>
-          </div>
+          {duel ? (
+            <div className="relative">
+              <div
+                role="toolbar"
+                aria-label={t('practice.mat.name')}
+                inert={choosing}
+                className={cx('flex items-center justify-between max-[1100px]:flex-row-reverse', choosing && 'max-[1100px]:opacity-35 min-[1101px]:invisible')}
+              >
+                <span className="pointer-events-auto flex items-center">
+                  {undoButton}
+                  {tokenButton}
+                  {duel.tools}
+                </span>
+                <span className="pointer-events-auto flex items-center gap-2">
+                  {isDesktop ? phaseButtons : null}
+                  {isDesktop ? passTurn : null}
+                  {duel.life}
+                </span>
+              </div>
+              {isDesktop ? status : null}
+            </div>
+          ) : (
+            <div className="relative">
+              <div inert={choosing} className={cx('flex items-center justify-center gap-2', choosing && 'invisible')}>
+                {phaseButtons}
+                {passTurn}
+              </div>
+              {status}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1648,7 +1692,8 @@ function PhaseButton({ short, name, active, rival = false, disabled = false, pas
       title={passes ? t('duel.turn.passHint') : name}
       disabled={disabled}
       className={cx(
-        'grid h-11 w-full min-w-0 place-items-center rounded-control border text-[0.55rem] font-extrabold leading-none transition-[background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus min-[1101px]:text-micro disabled:cursor-not-allowed disabled:opacity-45',
+        // `before`: el área que se toca crece 2 px a cada lado (las seis fases están a 4 px una de otra): 37 × 44 en vez de 33 × 44, sin agrandar lo que se ve.
+        'relative grid h-11 w-full min-w-0 place-items-center rounded-control border text-[0.55rem] before:absolute before:-inset-x-0.5 before:inset-y-0 font-extrabold leading-none transition-[background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus min-[1101px]:text-micro disabled:cursor-not-allowed disabled:opacity-45',
         active
           ? rival
             ? 'border-info bg-info text-accent-foreground'
