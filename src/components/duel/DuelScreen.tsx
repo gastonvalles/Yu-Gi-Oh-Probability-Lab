@@ -9,7 +9,7 @@ import { formatDataLoaded, loadFormatData } from '../../app/format-data'
 import type { DeckFormat } from '../../types'
 import { fetchCardsByIds } from '../../ygoprodeck'
 import { clearDuelSave, findPausedDuel, savedRole, type PausedDuel } from '../../app/duel-save'
-import { createParticipantId, createRoomCode } from '../../app/duel-relay-rules'
+import { createParticipantId, createRoomCode, LIVE_HEARTBEAT_MS } from '../../app/duel-relay-rules'
 import type { RoomsApi } from '../../app/duel-rooms'
 import type { Duel, DuelRole, DuelSnapshot } from '../../app/duel-session'
 import type { SocketStatus } from '../../app/duel-socket'
@@ -216,30 +216,71 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   const settingsKnown = snapshot ? snapshot.role === 'host' || snapshot.peerName !== null : false
   const dealHand = snapshot?.settings.hand ?? handSize
 
-  // Una sala pública está en la lista de salas abiertas mientras espera rival: se anota al crearla y se baja cuando llega el rival, al salir o al cerrar la pestaña.
+  // Una sala pública está en la lista de salas abiertas mientras espera rival (se anota al crearla). Cuando llega el rival pasa a la de los duelos en vivo y su anfitrión lo avisa cada minuto,
+  // con cuántos lo miran; si el relay no lo entiende (uno de antes), se baja como siempre al llegar el rival. Se baja al salir o al cerrar la pestaña, y una sala privada nunca se anota.
   const publicCode = rooms && intent && !intent.watch && intent.role === 'host' && options.isPublic ? intent.room : null
   const awaitingRival = !snapshot?.peerPresent
+  const watchers = snapshot?.watchers ?? 0
   const listing = useRef({ name: myName, settings })
 
   listing.current = { name: myName, settings }
 
+  // Lo que prueba que quien baja la sala es quien la anotó: uno por sala, no uno por cada vez que cambia de lista.
+  const publicToken = useMemo(() => (publicCode ? createParticipantId() : ''), [publicCode])
+
   useEffect(() => {
-    if (!rooms || !publicCode || !awaitingRival) {
+    if (!rooms || !publicCode) {
       return
     }
 
-    const token = createParticipantId()
-    const { name: host, settings: current } = listing.current
-    const unlist = () => rooms.unlist(publicCode, token)
+    const unlist = () => rooms.unlist(publicCode, publicToken)
 
-    void rooms.register(publicCode, { host, match: current.match, siding: current.siding, format: current.format, limitMin: current.limitMin }, token)
     window.addEventListener('pagehide', unlist)
 
     return () => {
       window.removeEventListener('pagehide', unlist)
       unlist()
     }
-  }, [rooms, publicCode, awaitingRival])
+  }, [rooms, publicCode, publicToken])
+
+  useEffect(() => {
+    if (!rooms || !publicCode || !awaitingRival) {
+      return
+    }
+
+    const { name: host, settings: current } = listing.current
+
+    void rooms.register(publicCode, { host, match: current.match, siding: current.siding, format: current.format, limitMin: current.limitMin }, publicToken)
+  }, [rooms, publicCode, publicToken, awaitingRival])
+
+  useEffect(() => {
+    if (!rooms || !publicCode || awaitingRival) {
+      return
+    }
+
+    const { name: host, settings: current } = listing.current
+    const info = { host, match: current.match, siding: current.siding, format: current.format, limitMin: current.limitMin }
+    let alive = true
+
+    const beat = () => {
+      void rooms.live(publicCode, info, watchers, publicToken).then((registered) => {
+        // El relay no lo registró (uno de antes, o sin red): no queda anotada como si esperara; se baja y no se insiste.
+        if (!registered && alive) {
+          alive = false
+          window.clearInterval(timer)
+          rooms.unlist(publicCode, publicToken)
+        }
+      })
+    }
+
+    beat()
+    const timer = window.setInterval(beat, LIVE_HEARTBEAT_MS)
+
+    return () => {
+      alive = false
+      window.clearInterval(timer)
+    }
+  }, [rooms, publicCode, publicToken, awaitingRival, watchers])
 
   // Sólo la mesa es a pantalla completa; antes de ella y entre un duelo y el siguiente (lobby, sala, siding, pausa) la app lleva su barra de abajo en el celular.
   const inSiding = sidingOpen && Boolean(snapshot?.settings.siding && snapshot.series.match && snapshot.series.winner === null)

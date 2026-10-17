@@ -181,6 +181,13 @@ export const MAX_HOST_NAME = 40
 export const PUBLIC_ROOM_FORMATS = ['tcg', 'ocg', 'goat', 'edison', 'genesys', 'unlimited'] as const
 export const PUBLIC_ROOM_LIMITS_MIN = [0, 20, 40, 60, 90] as const
 
+/** Cuánto puede pasar sin un latido del anfitrión (avisa cada minuto) para que un duelo en vivo deje de figurar. */
+export const LIVE_DUEL_TTL_MS = 3 * 60 * 1000
+/** Y el tope de cuánto figura un mismo duelo en vivo aunque siga latiendo (un Match largo dura menos). */
+export const LIVE_DUEL_MAX_MS = 4 * 60 * 60 * 1000
+/** Cada cuánto avisa el anfitrión que su duelo público sigue en vivo. */
+export const LIVE_HEARTBEAT_MS = 60 * 1000
+
 /** Lo que se muestra de una sala pública antes de entrar. */
 export interface PublicRoomInfo {
   host: string
@@ -194,6 +201,21 @@ export interface PublicRoom extends PublicRoomInfo {
   code: string
   /** Cuándo se anotó (milisegundos): de acá cuentan los 30 minutos. */
   createdAt: number
+}
+
+/**
+ * Un duelo público que se está jugando: el mismo `PublicRoomInfo` (el anfitrión, el formato, el reloj) sin el nombre de nadie más (quien entró a una sala pública no
+ * aceptó figurar en una lista), cuántos lo miran (hasta dos: el tope de espectadores del relay) y desde cuándo está en vivo. Los duelos privados nunca llegan acá.
+ */
+export interface LiveDuel extends PublicRoomInfo {
+  code: string
+  watchers: number
+  since: number
+}
+
+/** Cuántos miran, de lo que avisa el anfitrión: un entero de 0 hasta el tope de espectadores; `null` si no lo es. */
+export function parseWatchers(value: unknown): number | null {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= MAX_SPECTATORS ? value : null
 }
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -218,6 +240,8 @@ interface RegistryEntry {
   room: PublicRoom
   /** Lo que prueba que quien baja una sala es quien la anotó: el código de una sala pública se ve en la lista, el token no. */
   token: string
+  /** Si el duelo ya empezó (llegó el rival) y su anfitrión sigue avisándolo: cuántos miran, desde cuándo y cuándo fue el último aviso. Sin esto, la sala espera rival. */
+  live?: { watchers: number; since: number; seenAt: number }
 }
 
 /**
@@ -233,7 +257,10 @@ export class RoomRegistry {
 
   private purge(now: number) {
     for (const [code, entry] of this.entries) {
-      if (now - entry.room.createdAt >= PUBLIC_ROOM_TTL_MS) {
+      // Una sala que espera vence a los 30 minutos; un duelo en vivo, cuando su anfitrión deja de avisar (o pasa el tope).
+      const expired = entry.live ? now - entry.live.seenAt >= LIVE_DUEL_TTL_MS || now - entry.live.since >= LIVE_DUEL_MAX_MS : now - entry.room.createdAt >= PUBLIC_ROOM_TTL_MS
+
+      if (expired) {
         this.entries.delete(code)
       }
     }
@@ -253,16 +280,46 @@ export class RoomRegistry {
       return 'full'
     }
 
-    // Renovar no estira la vida de la sala: sigue contando desde que se anotó la primera vez.
-    this.entries.set(code, { room: { ...info, code, createdAt: current?.room.createdAt ?? now }, token })
+    // Renovar no estira la vida de la sala: sigue contando desde que se anotó la primera vez. Si venía en vivo y el rival se fue, vuelve a esperar rival (y a contar sus 30 minutos).
+    this.entries.set(code, { room: { ...info, code, createdAt: current && !current.live ? current.room.createdAt : now }, token })
     return 'ok'
   }
 
-  /** Las salas abiertas, las más nuevas primero (sin los tokens). */
+  /**
+   * El anfitrión de una sala pública avisa que su duelo está en vivo (llegó el rival) y cuántos lo miran. Pasa la sala de la lista de las que esperan a la de los duelos en vivo;
+   * lo repite cada minuto (si deja de avisar, vence). Con otro token no se pisa la de otro; sin sala anotada (venció, o el Worker se reinició) la crea.
+   */
+  markLive(code: string, info: PublicRoomInfo, watchers: number, token: string, now: number): 'ok' | 'taken' | 'full' {
+    this.purge(now)
+
+    const current = this.entries.get(code)
+
+    if (current && current.token !== token) {
+      return 'taken'
+    }
+
+    if (!current && this.entries.size >= MAX_PUBLIC_ROOMS) {
+      return 'full'
+    }
+
+    this.entries.set(code, { room: { ...info, code, createdAt: current?.room.createdAt ?? now }, token, live: { watchers, since: current?.live?.since ?? now, seenAt: now } })
+    return 'ok'
+  }
+
+  /** Las salas que esperan rival, las más nuevas primero (sin los tokens). Los duelos en vivo no están acá: un cliente que no los conoce los trataría como salas a las que entrar. */
   list(now: number): PublicRoom[] {
     this.purge(now)
 
-    return [...this.entries.values()].map((entry) => entry.room).sort((a, b) => b.createdAt - a.createdAt)
+    return [...this.entries.values()].filter((entry) => !entry.live).map((entry) => entry.room).sort((a, b) => b.createdAt - a.createdAt)
+  }
+
+  /** Los duelos públicos en vivo, los que empezaron hace menos primero (sin los tokens). */
+  listLive(now: number): LiveDuel[] {
+    this.purge(now)
+
+    return [...this.entries.values()]
+      .flatMap((entry) => (entry.live ? [{ host: entry.room.host, match: entry.room.match, siding: entry.room.siding, format: entry.room.format, limitMin: entry.room.limitMin, code: entry.room.code, watchers: entry.live.watchers, since: entry.live.since }] : []))
+      .sort((a, b) => b.since - a.since)
   }
 
   /** Baja una sala si el token es el de quien la anotó. */

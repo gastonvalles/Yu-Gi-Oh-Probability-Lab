@@ -19,6 +19,7 @@ import {
   encodeSpectatorText,
   originAllowed,
   parsePublicRoomInfo,
+  parseWatchers,
   type ParticipantRole,
 } from '../../src/app/duel-relay-rules'
 
@@ -372,10 +373,12 @@ export class RoomIndex extends DurableObject {
     const save = () => storage.put('rooms', registry.toJSON())
 
     if (request.method === 'GET') {
+      // `rooms`: las que esperan rival (lo único que lee un cliente de antes). `live`: los duelos públicos que se están jugando, aparte para que ese cliente no los tome por salas a las que entrar.
       const rooms = registry.list(now)
+      const live = registry.listLive(now)
 
       await save()
-      return json({ rooms })
+      return json({ rooms, live })
     }
 
     if (!this.allowWrite(request.headers.get('CF-Connecting-IP') ?? 'unknown')) {
@@ -408,6 +411,20 @@ export class RoomIndex extends DurableObject {
       return json({ error: 'bad' }, 400)
     }
 
+    // El duelo está en vivo: la sala pasa de las que esperan a las que se juegan, con cuántos la miran (lo que avisa su anfitrión, revisado).
+    if (url.pathname === '/rooms/live') {
+      const watchers = parseWatchers(body.watchers)
+
+      if (watchers === null) {
+        return json({ error: 'bad' }, 400)
+      }
+
+      const live = registry.markLive(code, info, watchers, body.token, now)
+
+      await save()
+      return json({ result: live }, live === 'ok' ? 200 : 409)
+    }
+
     const result = registry.register(code, info, body.token, now)
 
     await save()
@@ -428,7 +445,8 @@ function withCors(response: Response, origin: string | null): Response {
 }
 
 /**
- * Pedidos de la lista, de una página de un origen permitido: `GET /rooms` la lee y `POST /rooms?room=CODIGO` anota una sala; `POST /rooms/close?room=CODIGO` la baja.
+ * Pedidos de la lista, de una página de un origen permitido: `GET /rooms` la lee (`{ rooms, live }`) y `POST /rooms?room=CODIGO` anota una sala; `POST /rooms/live?room=CODIGO` avisa que su duelo está en vivo
+ * (y cuántos lo miran); `POST /rooms/close?room=CODIGO` la baja.
  * Los POST llevan el JSON como texto plano (así el navegador no hace una consulta previa, y se pueden mandar al cerrar la pestaña).
  */
 async function handleRooms(request: Request, env: Env, url: URL): Promise<Response> {
@@ -439,7 +457,7 @@ async function handleRooms(request: Request, env: Env, url: URL): Promise<Respon
   }
 
   const listing = request.method === 'GET' && url.pathname === '/rooms'
-  const writing = request.method === 'POST' && (url.pathname === '/rooms' || url.pathname === '/rooms/close')
+  const writing = request.method === 'POST' && (url.pathname === '/rooms' || url.pathname === '/rooms/close' || url.pathname === '/rooms/live')
 
   if (!listing && !writing) {
     return withCors(new Response('Not found', { status: 404 }), origin)
@@ -455,7 +473,7 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url)
 
-    if (url.pathname === '/rooms' || url.pathname === '/rooms/close') {
+    if (url.pathname === '/rooms' || url.pathname === '/rooms/close' || url.pathname === '/rooms/live') {
       return handleRooms(request, env, url)
     }
 

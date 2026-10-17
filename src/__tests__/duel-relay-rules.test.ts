@@ -2,6 +2,9 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 import {
+  LIVE_DUEL_MAX_MS,
+  LIVE_DUEL_TTL_MS,
+  LIVE_HEARTBEAT_MS,
   MAX_PUBLIC_ROOMS,
   PARTICIPANT_ID_PATTERN,
   PUBLIC_ROOM_TTL_MS,
@@ -12,6 +15,7 @@ import {
   RoomRegistry,
   byteLength,
   parsePublicRoomInfo,
+  parseWatchers,
   createParticipantId,
   createRoomCode,
   encodeRelayFrame,
@@ -208,5 +212,101 @@ describe('las salas públicas', () => {
 
     const restored = new RoomRegistry(JSON.parse(JSON.stringify(registry)) as ConstructorParameters<typeof RoomRegistry>[0])
     expect(restored.list(500)).toHaveLength(MAX_PUBLIC_ROOMS)
+  })
+})
+
+describe('los duelos públicos en vivo', () => {
+  const info = { host: 'Ana', match: false, siding: false, format: 'tcg', limitMin: 40 }
+  const token = 'abcdefghijklmnop'
+  const other = 'ponmlkjihgfedcba'
+
+  it('cuántos miran: un entero de 0 hasta el tope de espectadores, y nada más', () => {
+    expect([0, 1, 2].map(parseWatchers)).toEqual([0, 1, 2])
+
+    for (const bad of [-1, 3, 1.5, '1', null, undefined, NaN]) {
+      expect(parseWatchers(bad), String(bad)).toBeNull()
+    }
+  })
+
+  it('al llegar el rival la sala pasa de las que esperan a las que se juegan, sin el token ni el nombre de nadie más', () => {
+    const registry = new RoomRegistry()
+
+    registry.register('AAAAAAA2', info, token, 1000)
+    expect(registry.list(2000)).toHaveLength(1)
+    expect(registry.listLive(2000)).toEqual([])
+
+    expect(registry.markLive('AAAAAAA2', info, 1, token, 5000)).toBe('ok')
+    // Ya no está entre las que esperan (un cliente de antes la tomaría por una sala a la que entrar).
+    expect(registry.list(5000)).toEqual([])
+    expect(registry.listLive(5000)).toEqual([{ ...info, code: 'AAAAAAA2', watchers: 1, since: 5000 }])
+    expect(JSON.stringify(registry.listLive(5000))).not.toContain(token)
+  })
+
+  it('con otro token no se pisa la sala de otro; sin sala anotada (venció) se crea; con la lista llena no entra', () => {
+    const registry = new RoomRegistry()
+
+    registry.register('AAAAAAA2', info, token, 0)
+    expect(registry.markLive('AAAAAAA2', info, 0, other, 10)).toBe('taken')
+    expect(registry.markLive('BBBBBBB2', info, 0, other, 10)).toBe('ok')
+    expect(registry.listLive(10).map((duel) => duel.code)).toEqual(['BBBBBBB2'])
+
+    const full = new RoomRegistry()
+
+    for (let index = 0; index < MAX_PUBLIC_ROOMS; index += 1) {
+      full.register(`CODE${String(index).padStart(4, 'A')}`, info, token, index)
+    }
+
+    expect(full.markLive('ZZZZZZZ2', info, 0, other, 500)).toBe('full')
+  })
+
+  it('sigue en vivo mientras su anfitrión avisa (desde cuándo no cambia) y vence a los 3 minutos sin avisos o a las 4 horas', () => {
+    const registry = new RoomRegistry()
+
+    registry.markLive('AAAAAAA2', info, 0, token, 0)
+    expect(registry.markLive('AAAAAAA2', info, 2, token, 60_000)).toBe('ok')
+    expect(registry.listLive(60_000)[0]).toMatchObject({ watchers: 2, since: 0 })
+
+    expect(registry.listLive(60_000 + LIVE_DUEL_TTL_MS - 1)).toHaveLength(1)
+    expect(registry.listLive(60_000 + LIVE_DUEL_TTL_MS)).toHaveLength(0)
+
+    // Aunque siga avisando, no figura para siempre.
+    const long = new RoomRegistry()
+
+    long.markLive('AAAAAAA2', info, 0, token, 0)
+    for (let at = LIVE_HEARTBEAT_MS; at < LIVE_DUEL_MAX_MS; at += LIVE_HEARTBEAT_MS) long.markLive('AAAAAAA2', info, 0, token, at)
+    expect(long.listLive(LIVE_DUEL_MAX_MS - 1)).toHaveLength(1)
+    expect(long.listLive(LIVE_DUEL_MAX_MS)).toHaveLength(0)
+  })
+
+  it('si el rival se va, la sala vuelve a esperar (con sus 30 minutos desde ahí); y salir la baja de las dos listas', () => {
+    const registry = new RoomRegistry()
+
+    registry.register('AAAAAAA2', info, token, 0)
+    registry.markLive('AAAAAAA2', info, 0, token, 40 * 60_000)
+    expect(registry.register('AAAAAAA2', info, token, 41 * 60_000)).toBe('ok')
+    expect(registry.listLive(41 * 60_000)).toEqual([])
+    expect(registry.list(41 * 60_000)).toEqual([{ ...info, code: 'AAAAAAA2', createdAt: 41 * 60_000 }])
+
+    registry.markLive('AAAAAAA2', info, 0, token, 42 * 60_000)
+    expect(registry.remove('AAAAAAA2', other, 42 * 60_000)).toBe(false)
+    expect(registry.remove('AAAAAAA2', token, 42 * 60_000)).toBe(true)
+    expect(registry.listLive(42 * 60_000)).toEqual([])
+  })
+
+  it('lo guardado se recupera con los duelos en vivo, y lo guardado de antes (sin `live`) sigue valiendo como salas que esperan', () => {
+    const registry = new RoomRegistry()
+
+    registry.register('AAAAAAA2', info, token, 0)
+    registry.markLive('BBBBBBB2', info, 1, other, 0)
+
+    const restored = new RoomRegistry(JSON.parse(JSON.stringify(registry)) as ConstructorParameters<typeof RoomRegistry>[0])
+
+    expect(restored.list(10).map((room) => room.code)).toEqual(['AAAAAAA2'])
+    expect(restored.listLive(10).map((duel) => duel.code)).toEqual(['BBBBBBB2'])
+
+    const old = new RoomRegistry([{ room: { ...info, code: 'CCCCCCC2', createdAt: 0 }, token }])
+
+    expect(old.list(10)).toHaveLength(1)
+    expect(old.listLive(10)).toEqual([])
   })
 })
