@@ -31,7 +31,7 @@ import { FieldBox, fieldInline } from '../ui/FieldBox'
 import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
-import { IconButton } from '../ui/IconButton'
+import { CloseButton, IconButton } from '../ui/IconButton'
 import { CardMenu, PILE_TITLES, PileViewer } from '../probability/MatDialogs'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, DuelTools, type LaneNotice } from './DuelBar'
@@ -864,9 +864,7 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
               {t('duel.chat.open')}
             </Button>
           )}
-          <Button variant="secondary" onClick={onLeave}>
-            {t('duel.room.leave')}
-          </Button>
+          <CloseButton size="md" aria-label={t('duel.room.leave')} title={t('duel.room.leave')} onClick={onLeave} />
         </div>
       </div>
 

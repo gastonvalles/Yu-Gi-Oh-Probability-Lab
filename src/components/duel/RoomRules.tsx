@@ -8,8 +8,8 @@ interface RoomRulesProps {
   settings: DuelSettings
   /** Si la sala figura en la arena: sólo lo sabe el anfitrión (y sólo con la lista de salas); `null` si no se sabe. */
   isPublic: boolean | null
-  /** Cuántas personas miran ahora (las dos que juegan lo ven). */
-  watchers: number
+  /** Cuántas personas miran ahora (las dos que juegan lo ven); sin dato (quien mira no lo sabe), la fila no va. */
+  watchers?: number
 }
 
 /**
@@ -26,7 +26,7 @@ export function RoomRules({ settings, isPublic, watchers }: RoomRulesProps) {
     [t('duel.rules.life'), String(settings.lp)],
     [t('duel.rules.hand'), String(settings.hand)],
     ...(isPublic === null ? [] : ([[t('duel.create.visibility'), isPublic ? t('duel.create.public') : t('duel.create.private')]] as const)),
-    [t('duel.rules.watching'), t('duel.rules.watchingValue', { count: watchers, max: MAX_SPECTATORS })],
+    ...(watchers === undefined ? [] : ([[t('duel.rules.watching'), t('duel.rules.watchingValue', { count: watchers, max: MAX_SPECTATORS })]] as const)),
   ]
 
   return (

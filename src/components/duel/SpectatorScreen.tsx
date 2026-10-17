@@ -9,19 +9,19 @@ import { showToastMessage } from '../../app/use-toast-message'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useSpectator, type SpectatorConnect } from '../../app/use-duel'
 import { t } from '../../i18n'
-import { Button } from '../ui/Button'
 import { ShellMenuButton } from '../shell/ShellMenu'
 import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
 import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
-import { IconButton } from '../ui/IconButton'
+import { CloseButton, IconButton } from '../ui/IconButton'
 import { SideDrawer } from '../ui/SideDrawer'
 import { LifeTile } from './DuelBar'
 import { PLAYER_COLOR } from './player-color'
 import { artOfDrawId } from './duel-art'
 import { DuelTable, TheirHand, type DuelSideView } from './DuelTable'
 import { gameText } from './game-text'
+import { RoomRules } from './RoomRules'
 
 /**
  * Un duelo visto desde afuera: las dos mesas, las vidas de los dos, el reloj, de quién es el turno y en qué fase va, el chat y lo que se tira. Sólo se mira: no hay
@@ -58,7 +58,7 @@ export function SpectatorScreen({ room, connect, onLeave }: SpectatorScreenProps
   if (status === 'full') {
     return (
       <Screen>
-        <Callout tone="warning" icon="alert" action={<Button variant="secondary" size="sm" onClick={onLeave}>{t('duel.room.leave')}</Button>}>
+        <Callout tone="warning" icon="alert" action={<CloseButton size="sm" aria-label={t('duel.room.leave')} title={t('duel.room.leave')} onClick={onLeave} />}>
           {t('duel.watch.full')}
         </Callout>
       </Screen>
@@ -68,7 +68,7 @@ export function SpectatorScreen({ room, connect, onLeave }: SpectatorScreenProps
   if (status === 'unsupported') {
     return (
       <Screen>
-        <Callout tone="warning" icon="alert" action={<Button variant="secondary" size="sm" onClick={onLeave}>{t('duel.room.leave')}</Button>}>
+        <Callout tone="warning" icon="alert" action={<CloseButton size="sm" aria-label={t('duel.room.leave')} title={t('duel.room.leave')} onClick={onLeave} />}>
           {t('duel.status.unsupported')}
         </Callout>
       </Screen>
@@ -90,24 +90,50 @@ export function SpectatorScreen({ room, connect, onLeave }: SpectatorScreenProps
   return <WatchTable snapshot={snapshot} online={status === 'open'} onLeave={onLeave} />
 }
 
-/** Todavía no hay dos mesas: quiénes están y qué se espera. */
+/** Todavía no hay dos mesas (están en la sala): quiénes son y si ya están listos, las reglas, lo que tiran para definir quién empieza y lo que escriben, todo de sólo lectura. */
 function WaitingToWatch({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot; online: boolean; onLeave: () => void }) {
   const names = snapshot.sides.flatMap((side) => (side.name ? [side.name] : []))
+  const nameOf = (player: Duelist) => snapshot.sides[player].name ?? (player === 0 ? t('duel.watch.host') : t('duel.watch.guest'))
 
   return (
     <Screen>
-      <Heading level="section">{t('duel.watch.title')}</Heading>
+      <div className="flex items-center justify-between gap-3">
+        <Heading level="section">{t('duel.watch.title')}</Heading>
+        <CloseButton size="md" aria-label={t('duel.room.leave')} title={t('duel.room.leave')} onClick={onLeave} />
+      </div>
       {online ? null : <Callout tone="warning" icon="alert">{t('duel.status.reconnecting')}</Callout>}
       <p className="m-0 flex items-center gap-2 text-body text-foreground" role="status">
         <Icon name="user" size={16} />
         {snapshot.players === 0 ? t('duel.watch.waitingPlayers') : names.length === 1 ? t('duel.watch.waitingRival', { name: names[0] }) : names.length > 1 ? t('duel.watch.waitingStart', { names: names.join(t('duel.watch.and')) }) : t('duel.watch.waitingStartNoNames')}
       </p>
+
+      <ul className="m-0 grid list-none grid-cols-2 gap-2 p-0">
+        {snapshot.sides.map((side, index) => (
+          <li key={index} data-ready={side.ready} className={cx('grid min-w-0 justify-items-center gap-1 rounded-card border px-2 py-3 text-center', side.ready ? 'border-success/60 bg-success/10' : 'border-border-subtle bg-card-background')}>
+            <span className="text-micro font-semibold uppercase text-soft">{index === 0 ? t('duel.watch.host') : t('duel.watch.guest')}</span>
+            <span className="max-w-full truncate text-body font-bold text-foreground">{side.name ?? t('duel.watch.playerAway')}</span>
+            {side.name ? (
+              <span className={cx('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-micro font-semibold', side.ready ? 'bg-success/20 text-success-soft' : 'bg-tint/8 text-muted')}>
+                {side.ready ? <Icon name="check" size={12} /> : null}
+                {side.ready ? t('duel.opening.ready') : t('duel.opening.notReady')}
+              </span>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+
+      {snapshot.settings ? <RoomRules settings={snapshot.settings} isPublic={null} /> : null}
+
+      <section aria-label={t('duel.watch.chat')} className="grid gap-2 rounded-card border border-border-subtle bg-card-background p-3">
+        <div className="flex items-baseline justify-between gap-2">
+          <Heading level="card">{t('duel.watch.chat')}</Heading>
+          <span className="text-micro text-muted">{t('duel.watch.readOnlyShort')}</span>
+        </div>
+        <div className="h-56">
+          <WatchChat snapshot={snapshot} nameOf={nameOf} />
+        </div>
+      </section>
       <p className="m-0 text-micro text-soft">{t('duel.watch.readOnly')}</p>
-      <div>
-        <Button variant="tertiary" onClick={onLeave}>
-          {t('duel.room.leave')}
-        </Button>
-      </div>
     </Screen>
   )
 }
@@ -145,15 +171,22 @@ function useGameToasts(snapshot: SpectatorSnapshot) {
 function WatchChat({ snapshot, nameOf }: { snapshot: SpectatorSnapshot; nameOf: (player: Duelist) => string }) {
   return (
     <ol role="log" aria-label={t('duel.watch.chat')} className="m-0 grid h-full min-h-0 list-none content-start gap-1.5 overflow-y-auto p-0">
-      {snapshot.chat.length === 0 ? (
+      {snapshot.feed.length === 0 ? (
         <li className="text-micro text-soft">{t('duel.watch.chatEmpty')}</li>
       ) : (
-        snapshot.chat.map((line) => (
-          <li key={line.id} data-from={line.from === 0 ? 'host' : 'guest'} className={cx('break-words rounded-card px-2.5 py-1 text-body text-foreground', PLAYER_COLOR[line.from === 0 ? 'mine' : 'theirs'].bubble)}>
-            <span className={cx('block text-micro font-semibold', PLAYER_COLOR[line.from === 0 ? 'mine' : 'theirs'].text)}>{nameOf(line.from)}</span>
-            {line.text}
-          </li>
-        ))
+        snapshot.feed.map((item) =>
+          item.kind === 'game' ? (
+            // Lo que tiraron (moneda, dado, piedra-papel-tijera, quién empieza): una línea de aviso, no un mensaje de nadie.
+            <li key={`g${item.entry.id}`} data-event="game" className="px-1 text-center text-micro text-soft">
+              {gameText(item.entry, nameOf)}
+            </li>
+          ) : (
+            <li key={`c${item.line.id}`} data-from={item.line.from === 0 ? 'host' : 'guest'} className={cx('break-words rounded-card px-2.5 py-1 text-body text-foreground', PLAYER_COLOR[item.line.from === 0 ? 'mine' : 'theirs'].bubble)}>
+              <span className={cx('block text-micro font-semibold', PLAYER_COLOR[item.line.from === 0 ? 'mine' : 'theirs'].text)}>{nameOf(item.line.from)}</span>
+              {item.line.text}
+            </li>
+          ),
+        )
       )}
     </ol>
   )
@@ -166,7 +199,7 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
   // Desde qué lado se mira: abajo, el anfitrión (o el invitado, dando vuelta la mesa).
   const [flipped, setFlipped] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
-  const [read, setRead] = useState(snapshot.chat.length)
+  const [read, setRead] = useState(snapshot.feed.length)
   const bottom: Duelist = flipped ? 1 : 0
   const top: Duelist = flipped ? 0 : 1
   const bottomSide = snapshot.sides[bottom]
@@ -174,7 +207,7 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
   const bottomView = useMemo(() => sideView(bottomSide), [bottomSide])
   const topView = useMemo(() => sideView(topSide), [topSide])
   const nameOf = (player: Duelist) => snapshot.sides[player].name ?? (player === 0 ? t('duel.watch.host') : t('duel.watch.guest'))
-  const unread = chatOpen ? 0 : Math.max(0, snapshot.chat.length - read)
+  const unread = chatOpen ? 0 : Math.max(0, snapshot.feed.length - read)
   const phase = PHASES.find((entry) => entry.id === snapshot.phase)?.name
   const clock = formatClock(duelClockMs(snapshot.clock, now, snapshot.settings?.limitMin ?? DEFAULT_LIMIT_MIN))
   const result = snapshot.sides[0].lp !== null && snapshot.sides[1].lp !== null ? duelResult([snapshot.sides[0].lp, snapshot.sides[1].lp], snapshot.conceded) : null
@@ -183,9 +216,9 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
 
   useEffect(() => {
     if (chatOpen) {
-      setRead(snapshot.chat.length)
+      setRead(snapshot.feed.length)
     }
-  }, [chatOpen, snapshot.chat.length])
+  }, [chatOpen, snapshot.feed.length])
 
   if (!bottomView || !topView) {
     return null

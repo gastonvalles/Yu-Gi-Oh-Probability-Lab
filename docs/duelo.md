@@ -49,9 +49,10 @@ Es para jugar con amigos: no está pensado contra quien mire el tráfico de red 
 
 ## Mirar un duelo (espectadores)
 
-La sala del anfitrión tiene un segundo enlace, "Copiar enlace para mirar" (`#duel?room=CODIGO&watch=1`). **Hasta dos personas** pueden mirar a la vez; un tercero ve "ya hay dos mirando". Los jugadores ven cuántos los miran (un ojo con el número arriba) y quién mira no necesita deck ni nombre.
+La sala del anfitrión tiene un segundo enlace, "Copiar enlace para mirar" (`#duel?room=CODIGO&watch=1`). **Hasta dos personas** pueden mirar a la vez; un tercero ve "ya hay dos mirando". Los dos jugadores ven cuántos los miran (la fila «Mirando 1 de 2» de la ficha de reglas de la sala, y un ojo con el número en la mesa) y quién mira no necesita deck ni nombre.
 
 - **Ve** las dos mesas como las ve cada rival (la mano y el deck de nadie, lo boca abajo de dorso), las vidas, el reloj, de quién es el turno y en qué fase va, lo que tiran los jugadores y el chat de los dos (para leer). Puede dar vuelta la mesa para mirar desde el lado del otro jugador.
+- **Antes de la mesa** (mientras los jugadores están en la sala; `WaitingToWatch`) ve **quiénes están y si ya tocaron «Estoy listo»** (la tarjeta del que está listo, en verde), la **ficha de reglas** y el **chat junto con lo que tiran** (moneda, dado, piedra-papel-tijera, quién empieza): un solo registro de sólo lectura en el orden en que pasó (`feed` en `SpectatorSnapshot`: chat y `games` juntos). En la mesa, ese mismo registro está en la hoja del chat (en el celular) o al costado (en escritorio), y lo que tiran sigue avisando con un toast.
 - **No puede hacer nada:** no hay jugadas, ni campo para escribir, ni botones que cambien algo. Además lo impone el relay: lo que mande un espectador no llega a los jugadores y lo desconecta. Lo único que se le acepta es pedir que los jugadores repitan su estado (cuando llega o se le pierde algo), como mucho cada dos segundos.
 
 Cómo funciona: el relay le manda el texto de los dos jugadores, cada mensaje precedido de quién lo mandó (0 o 1, lo asigna el relay). La pantalla lleva cada lado como lo lleva el rival (`src/app/duel-spectator.ts`): un `sync` abre la mesa, las jugadas se aplican en orden y, si falta alguna, pide el estado. Al entrar un espectador, el relay avisa a los jugadores, que repiten su saludo y su mesa.

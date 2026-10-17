@@ -46,7 +46,7 @@ export function DuelOpening({ snapshot, myName, canReady, actions, rename }: Due
 
       {!bothReady ? (
         <div className="grid gap-1.5">
-          <Button variant={ready.mine ? 'secondary' : 'primary'} icon={ready.mine ? undefined : 'check'} disabled={!ready.mine && !canReady} onClick={() => actions.setReady(!ready.mine)}>
+          <Button variant={ready.mine ? 'secondary' : 'primary'} color={ready.mine ? 'brand' : 'success'} icon={ready.mine ? undefined : 'check'} disabled={!ready.mine && !canReady} onClick={() => actions.setReady(!ready.mine)}>
             {ready.mine ? t('duel.opening.readyCancel') : t('duel.opening.readyAction')}
           </Button>
           <p className="m-0 text-micro text-soft" role="status">
@@ -96,10 +96,10 @@ function Stage({ snapshot, myName, nameOf }: { snapshot: DuelSnapshot; myName: s
 
 function PlayerCard({ caption, name, ready, rename }: { caption: string; name: string; ready: boolean; rename?: DuelOpeningProps['rename'] }) {
   return (
-    <li data-ready={ready} className={cx('grid min-w-0 justify-items-center gap-1 rounded-card border px-2 py-3 text-center transition-colors', ready ? 'border-accent/60 bg-accent/10' : 'border-border-subtle bg-tint/5')}>
+    <li data-ready={ready} className={cx('grid min-w-0 justify-items-center gap-1 rounded-card border px-2 py-3 text-center transition-colors', ready ? 'border-success/60 bg-success/10' : 'border-border-subtle bg-tint/5')}>
       <span className="text-micro font-semibold uppercase tracking-[0.04em] text-soft">{caption}</span>
       {rename ? <NameInput value={rename.value} onCommit={rename.onCommit} /> : <span className="max-w-full truncate text-body font-bold text-foreground">{name}</span>}
-      <span className={cx('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-micro font-semibold', ready ? 'bg-accent/20 text-accent' : 'bg-tint/8 text-muted')}>
+      <span className={cx('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-micro font-semibold', ready ? 'bg-success/20 text-success-soft' : 'bg-tint/8 text-muted')}>
         {ready ? <Icon name="check" size={12} /> : null}
         {ready ? t('duel.opening.ready') : t('duel.opening.notReady')}
       </span>

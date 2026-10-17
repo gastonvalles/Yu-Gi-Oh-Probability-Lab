@@ -1940,6 +1940,54 @@ describe('la pantalla del duelo', () => {
     expect(() => memory.spectate()).toThrow()
   })
 
+  it('quien mira una sala antes de que empiece el duelo ve quiénes están y si están listos, las reglas, y lo que escriben y tiran los jugadores', () => {
+    const { host, guest } = startDuel()
+    const room = extractRoomCode(window.location.hash)!
+
+    window.history.replaceState(null, '', `#duel?room=${room}&watch=1`)
+    const watcher = render(<DuelScreen {...screenProps({ mainIds: [], extraIds: [], cardsById: new Map() })} />)
+    flush()
+    flush()
+    const view = within(watcher.container)
+    const seat = (name: string) => view.getByText(name).closest('li')!
+
+    // Quiénes están, y si ya tocaron «Estoy listo» (en verde).
+    expect(seat('Ana')).toHaveAttribute('data-ready', 'false')
+    expect(seat('Beto')).toHaveAttribute('data-ready', 'false')
+    expect(within(view.getByTestId('room-summary')).getByText('Single')).toBeInTheDocument()
+
+    click(host, 'Estoy listo')
+    flush()
+    expect(seat('Ana')).toHaveAttribute('data-ready', 'true')
+    expect(seat('Ana')).toHaveClass('border-success/60')
+    expect(seat('Beto')).toHaveAttribute('data-ready', 'false')
+
+    // El chat de los jugadores y lo que tiran, juntos y de sólo lectura.
+    click(host, 'Chat')
+    const chat = within(screen.getByRole('dialog', { name: 'Chat' }))
+    fireEvent.change(chat.getByLabelText('Escribí un mensaje'), { target: { value: 'Suerte' } })
+    fireEvent.click(chat.getByRole('button', { name: 'Enviar' }))
+    flush()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    click(guest, 'Estoy listo')
+    flush()
+    click(host, 'Piedra, papel o tijera')
+    flush()
+
+    const log = within(view.getByRole('log', { name: 'Chat de los jugadores' }))
+    expect(log.getByText('Suerte')).toBeInTheDocument()
+    expect(log.getByText(/eligió piedra, papel o tijera/)).toBeInTheDocument()
+    expect(view.queryByRole('textbox')).not.toBeInTheDocument()
+  })
+
+  it('«Salir» es una X (en la sala, en la pausa, en el resultado y mirando), nunca un botón con la palabra', () => {
+    const { host } = startDuel()
+    const leave = within(host.container).getByRole('button', { name: 'Salir' })
+
+    expect(leave).toHaveTextContent('')
+    expect(leave.querySelector('svg')).not.toBeNull()
+  })
+
   it('quien mira entra con el enlace de espectador, sin deck ni nombre, ve a los dos jugadores y no puede tocar nada', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)

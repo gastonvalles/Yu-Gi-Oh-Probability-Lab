@@ -6,6 +6,7 @@ import { t } from '../../i18n'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Icon, type IconName } from '../ui/Icon'
+import { CloseButton } from '../ui/IconButton'
 
 type Tone = 'win' | 'lose' | 'draw'
 
@@ -90,7 +91,8 @@ export function ResultCard({ result, snapshot, rival, onRematch, onLeave, onClos
 
   return (
     <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="grid h-full place-items-center bg-background/80 p-5 backdrop-blur-sm">
-      <div className={cx('grid w-full max-w-xs animate-sheet-in justify-items-center gap-3 rounded-card border px-5 py-6 text-center shadow-[0_18px_48px_rgba(0,0,0,0.45)] motion-reduce:animate-none', tone.card)}>
+      <div className={cx('relative grid w-full max-w-xs animate-sheet-in justify-items-center gap-3 rounded-card border px-5 py-6 text-center shadow-[0_18px_48px_rgba(0,0,0,0.45)] motion-reduce:animate-none', tone.card)}>
+        <CloseButton size="sm" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} className="absolute right-1 top-1" onClick={onLeave} />
         <span className={cx('grid size-14 place-items-center rounded-full', tone.badge)}>
           <Icon name={view.icon} size={28} />
         </span>
@@ -104,9 +106,6 @@ export function ResultCard({ result, snapshot, rival, onRematch, onLeave, onClos
         <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
           <Button variant="tertiary" onClick={onClose}>
             {t('duel.result.viewTable')}
-          </Button>
-          <Button variant="tertiary" onClick={onLeave}>
-            {t('duel.bar.leave')}
           </Button>
           {snapshot.rematch.mine ? null : (
             <Button variant="primary" disabled={!snapshot.peerPresent} onClick={onRematch}>
