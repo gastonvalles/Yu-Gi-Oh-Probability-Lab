@@ -20,9 +20,11 @@ import { showToastMessage, type ToastTone } from './use-toast-message'
 let state: LifeState = readLifeState()
 const listeners = new Set<() => void>()
 let alarms: ReturnType<typeof setTimeout>[] = []
-/** Al llegar a cero, la alarma se repite cada tanto hasta que se reinicia el reloj. */
+/** Al llegar a cero, la alarma se repite cada tanto; se calla sola, con un toque en cualquier parte o al cambiar el reloj. */
 let endAlarm: ReturnType<typeof setInterval> | null = null
 const END_ALARM_EVERY_MS = 3000
+/** Cuántas veces suena en total (la primera y las repeticiones): un teléfono que vibra sin parar es insoportable. */
+const END_ALARM_TIMES = 3
 let audio: AudioContext | null = null
 
 export type RoundCue = 'ten' | 'five' | 'end'
@@ -161,18 +163,40 @@ function soundCue(kind: RoundCue): void {
   navigator.vibrate?.(cue.vibrate)
 }
 
-function stopEndAlarm(): void {
+/** Deja de repetir la alarma (lo que ya empezó a sonar o vibrar termina solo). */
+function clearEndAlarm(): void {
   if (endAlarm !== null) {
     clearInterval(endAlarm)
     endAlarm = null
+    document.removeEventListener('pointerdown', stopEndAlarm, true)
   }
 }
 
-/** La alarma del final suena una y otra vez hasta que el reloj se reinicia (cualquier cambio del reloj la corta). */
+/** Corta la alarma, también la vibración en curso: lo hace el primer toque en cualquier parte y cualquier cambio del reloj. */
+function stopEndAlarm(): void {
+  if (endAlarm !== null) {
+    clearEndAlarm()
+    navigator.vibrate?.(0)
+  }
+}
+
+/** La alarma del final suena tres veces (`END_ALARM_TIMES`) y se calla sola (o antes, con el primer toque en cualquier parte o al cambiar el reloj). */
 function startEndAlarm(): void {
   stopEndAlarm()
   playCue('end')
-  endAlarm = setInterval(() => soundCue('end'), END_ALARM_EVERY_MS)
+
+  let left = END_ALARM_TIMES - 1
+
+  endAlarm = setInterval(() => {
+    soundCue('end')
+    left -= 1
+
+    // La última repetición termina de vibrar: sólo se deja de repetir, no se corta.
+    if (left === 0) {
+      clearEndAlarm()
+    }
+  }, END_ALARM_EVERY_MS)
+  document.addEventListener('pointerdown', stopEndAlarm, true)
 }
 
 /** Los avisos se programan para el instante justo (10 y 5 minutos antes, y el final), esté abierta la pantalla que esté. */

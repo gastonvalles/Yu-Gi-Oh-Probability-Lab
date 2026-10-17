@@ -3,13 +3,24 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { banlistsOf } from '../app/banlists'
+import { banlistsOf, type Banlist } from '../app/banlists'
 import { cardSmallImageUrl } from '../app/card-prices'
 import { setMetaRegion } from '../app/use-meta-region'
 import { BanlistsScreen } from '../components/banlists/BanlistsScreen'
 
 // El arte real lee el store (el aviso de la banlist): acá sólo importa qué carta es, y se anota cada vez que se dibuja una.
-const { fetchCardsByIds, drawnArt } = vi.hoisted(() => ({ fetchCardsByIds: vi.fn(), drawnArt: [] as Array<string | null> }))
+const { fetchCardsByIds, drawnArt, injected } = vi.hoisted(() => ({ fetchCardsByIds: vi.fn(), drawnArt: [] as Array<string | null>, injected: { tcg: null as Banlist[] | null } }))
+
+// «Hoy» es el 17 de octubre de 2026 (la lista del 19 todavía no rige); y una prueba puede reemplazar las listas del TCG por otras armadas a mano.
+vi.mock('../app/banlists', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../app/banlists')>()
+
+  return {
+    ...original,
+    banlistsOf: (region: 'tcg' | 'ocg') => (region === 'tcg' && injected.tcg) || original.banlistsOf(region),
+    isUpcoming: (list: Banlist) => original.isUpcoming(list, '2026-10-17'),
+  }
+})
 
 vi.mock('../components/CardArt', () => ({
   CardArt: ({ remoteUrl }: { remoteUrl: string | null }) => {
@@ -24,6 +35,7 @@ vi.mock('../ygoprodeck', async (importOriginal) => ({ ...(await importOriginal<t
 
 beforeEach(() => {
   drawnArt.length = 0
+  injected.tcg = null
   setMetaRegion('tcg')
   fetchCardsByIds.mockReset()
   fetchCardsByIds.mockResolvedValue([])
@@ -33,14 +45,28 @@ afterEach(cleanup)
 
 const section = (name: string) => screen.getByRole('region', { name })
 const cardsIn = (name: string) => within(section(name)).getAllByRole('listitem').map((item) => item.textContent ?? '')
+const picker = () => screen.getByRole('combobox', { name: 'Elegir la lista' })
+// Las pruebas con datos reales se paran en la lista de septiembre de 2026 (la última que rige hoy): no cambia aunque lleguen listas nuevas.
+const openSeptember = () => fireEvent.change(picker(), { target: { value: '2026-09-21' } })
 
 describe('la pantalla de banlists', () => {
-  it('abre en la lista vigente del TCG con lo que cambió, como el anuncio de Konami', () => {
+  it('abre en la lista más nueva, que si todavía no rige se dice «Próxima» y no «Vigente»', () => {
+    injected.tcg = banlistsOf('tcg').filter((entry) => entry.date <= '2026-10-19')
     render(<BanlistsScreen />)
 
+    expect(picker()).toHaveDisplayValue(/^19 de octubre de 2026/)
+    expect(screen.getByText('Próxima')).toBeInTheDocument()
+    expect(screen.queryByText('Vigente')).not.toBeInTheDocument()
+  })
+
+  it('la lista vigente del TCG muestra lo que cambió, como el anuncio de Konami', () => {
+    render(<BanlistsScreen />)
+    openSeptember()
+
     expect(screen.getByText('21 cartas cambiaron respecto de la lista de 18 de mayo de 2026.')).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'Elegir la lista' })).toHaveDisplayValue('21 de septiembre de 2026')
+    expect(picker()).toHaveDisplayValue('21 de septiembre de 2026')
     expect(screen.getByText('Vigente')).toBeInTheDocument()
+    expect(screen.queryByText('Próxima')).not.toBeInTheDocument()
 
     expect(cardsIn('Prohibidas')).toHaveLength(8)
     expect(cardsIn('Prohibidas')[0]).toContain('Archlord Kristya')
@@ -64,8 +90,12 @@ describe('la pantalla de banlists', () => {
     expect(newer).toBeDisabled()
 
     fireEvent.click(older)
-    expect(screen.getByRole('combobox', { name: 'Elegir la lista' })).toHaveDisplayValue('18 de mayo de 2026')
+    expect(screen.getByRole('combobox', { name: 'Elegir la lista' })).toHaveDisplayValue('21 de septiembre de 2026')
     expect(newer).toBeEnabled()
+    expect(screen.getByText('Vigente')).toBeInTheDocument()
+
+    fireEvent.click(older)
+    expect(screen.getByRole('combobox', { name: 'Elegir la lista' })).toHaveDisplayValue('18 de mayo de 2026')
     expect(screen.queryByText('Vigente')).not.toBeInTheDocument()
 
     fireEvent.change(screen.getByRole('combobox', { name: 'Elegir la lista' }), { target: { value: '2011-09-01' } })
@@ -105,6 +135,7 @@ describe('la pantalla de banlists', () => {
 
   it('el buscador filtra las cartas por nombre en las secciones, y avisa si ninguna coincide', () => {
     render(<BanlistsScreen />)
+    openSeptember()
 
     fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar una carta en esta lista' }), { target: { value: 'kristya' } })
 
@@ -120,6 +151,7 @@ describe('la pantalla de banlists', () => {
       { ygoprodeckId: 59509952, name: 'Archlord Kristya', cardType: 'Effect Monster', frameType: 'effect', description: 'Si controlás…', race: 'Fairy', attribute: 'LIGHT', level: 8, linkValue: null, atk: '2700', def: '2000', archetype: null, ygoprodeckUrl: null, imageUrl: null, imageUrlSmall: null, banlist: { tcg: null, ocg: null, goat: null }, genesys: { points: null } },
     ])
     render(<BanlistsScreen />)
+    openSeptember()
 
     fireEvent.click(screen.getByRole('button', { name: 'Ver el detalle de Archlord Kristya' }))
 
@@ -128,6 +160,57 @@ describe('la pantalla de banlists', () => {
     expect(within(dialog).getByText('TCG · 21 de septiembre de 2026 · Prohibida')).toBeInTheDocument()
     expect(fetchCardsByIds).toHaveBeenCalledWith([59509952], expect.anything())
     await waitFor(() => expect(within(dialog).getByText('Si controlás…')).toBeInTheDocument())
+  })
+})
+
+describe('las listas que se anuncian en partes', () => {
+  const september = banlistsOf('tcg').find((entry) => entry.date === '2026-09-21')!
+  const history = banlistsOf('tcg').filter((entry) => entry.date <= '2026-09-21')
+  // La de septiembre sin su primera prohibida: respecto de ella, esa carta figura como liberada.
+  const withDate = (date: string, partial: boolean): Banlist => ({ ...september, date, forbidden: september.forbidden.slice(1), ...(partial ? { partial: true } : {}) })
+
+  it('una lista en partes que todavía no rige avisa que es lo anunciado hasta ahora, desde cuándo rige, y lleva «En partes» junto a la fecha', () => {
+    injected.tcg = [withDate('2026-10-19', true), ...history]
+    render(<BanlistsScreen />)
+
+    expect(picker()).toHaveDisplayValue('19 de octubre de 2026 · En partes')
+    expect(screen.getByText('Próxima')).toBeInTheDocument()
+    expect(screen.getByText('Lista en partes')).toBeInTheDocument()
+    expect(screen.getByText('Se anunció una parte de la lista del TCG que rige desde el 19 de octubre de 2026; el resto se publica en los próximos días y se suma solo.')).toBeInTheDocument()
+    // Sigue mostrando los cambios contra la anterior.
+    expect(cardsIn('Liberadas')).toHaveLength(1)
+    // Además de la opción del selector, la etiqueta junto a la fecha.
+    expect(screen.getByText('En partes', { selector: 'span' })).toBeInTheDocument()
+  })
+
+  it('el aviso es sólo de la lista en partes: al pasar a la anterior desaparece, y vuelve al volver', () => {
+    injected.tcg = [withDate('2026-10-19', true), ...history]
+    render(<BanlistsScreen />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lista anterior' }))
+    expect(screen.queryByText('Lista en partes')).not.toBeInTheDocument()
+    expect(screen.queryByText('En partes', { selector: 'span' })).not.toBeInTheDocument()
+    expect(screen.getByText('Vigente')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lista siguiente' }))
+    expect(screen.getByText('Lista en partes')).toBeInTheDocument()
+  })
+
+  it('una lista en partes que ya rige es «Vigente» y «En partes»; una completa que todavía no rige es sólo «Próxima»', () => {
+    injected.tcg = [withDate('2026-10-10', true), ...history]
+
+    const { unmount } = render(<BanlistsScreen />)
+
+    expect(screen.getByText('Vigente')).toBeInTheDocument()
+    expect(screen.getByText('Lista en partes')).toBeInTheDocument()
+    unmount()
+
+    injected.tcg = [withDate('2026-10-19', false), ...history]
+    render(<BanlistsScreen />)
+
+    expect(screen.getByText('Próxima')).toBeInTheDocument()
+    expect(screen.queryByText('Lista en partes')).not.toBeInTheDocument()
+    expect(screen.queryByText('En partes', { selector: 'span' })).not.toBeInTheDocument()
   })
 })
 

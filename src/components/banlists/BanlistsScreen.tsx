@@ -6,6 +6,7 @@ import {
   banlistsOf,
   diffBanlists,
   formatBanlistDate,
+  isUpcoming,
   listedCards,
   type Banlist,
   type BanlistRegion,
@@ -20,6 +21,7 @@ import { StepHero } from '../StepHero'
 import { TiltCard } from '../card-detail/TiltCard'
 import { CardArt } from '../CardArt'
 import { Badge } from '../ui/Badge'
+import { Callout } from '../ui/Callout'
 import { Card } from '../ui/Card'
 import { EmptyState } from '../ui/EmptyState'
 import { Icon } from '../ui/Icon'
@@ -110,6 +112,8 @@ export function BanlistsScreen() {
     return null
   }
 
+  // Las listas que se anunciaron y todavía no rigen van antes de la vigente: la vigente es la primera que ya rige.
+  const status = isUpcoming(list) ? t('catalog.banlists.upcoming') : index === lists.findIndex((candidate) => !isUpcoming(candidate)) ? t('catalog.banlists.current') : null
   const pick = (nextIndex: number) => setPicked({ region, date: lists[nextIndex]!.date })
   const total = sections.reduce((sum, section) => sum + section.entries.length, 0)
 
@@ -139,7 +143,16 @@ export function BanlistsScreen() {
             {/* La fecha y su estado se ven en el medio; el <select> de verdad (que deja saltar a cualquier lista) va encima, transparente. */}
             <div className="relative grid h-11 min-w-0 flex-1 content-center justify-items-center rounded-control text-center focus-within:shadow-focus min-[700px]:w-64 min-[700px]:flex-none">
               <strong className="max-w-full truncate text-body font-semibold text-foreground">{formatBanlistDate(list.date)}</strong>
-              {index === 0 ? <span className="text-micro text-muted">{t('catalog.banlists.current')}</span> : null}
+              {status || list.partial ? (
+                <span className="flex items-center justify-center gap-1.5 text-micro text-muted">
+                  {status}
+                  {list.partial ? (
+                    <Badge tone="warning" size="sm">
+                      {t('catalog.banlists.partial')}
+                    </Badge>
+                  ) : null}
+                </span>
+              ) : null}
               <select
                 className="absolute inset-0 size-full cursor-pointer appearance-none rounded-control opacity-0 [color-scheme:dark] focus-visible:outline-none [&_option]:bg-secondary [&_option]:text-foreground"
                 value={list.date}
@@ -148,7 +161,7 @@ export function BanlistsScreen() {
               >
                 {lists.map((option) => (
                   <option key={option.date} value={option.date}>
-                    {formatBanlistDate(option.date)}
+                    {option.partial ? `${formatBanlistDate(option.date)} · ${t('catalog.banlists.partial')}` : formatBanlistDate(option.date)}
                   </option>
                 ))}
               </select>
@@ -169,6 +182,12 @@ export function BanlistsScreen() {
             className="min-[700px]:ml-auto min-[700px]:w-fit"
           />
         </div>
+
+        {list.partial ? (
+          <Callout tone="warning" icon="calendar" title={t('catalog.banlists.partialTitle')}>
+            {t('catalog.banlists.partialNote', { region: list.region.toUpperCase(), date: formatBanlistDate(list.date) })}
+          </Callout>
+        ) : null}
 
         <p className="m-0 text-body text-muted" aria-live="polite">
           {summary(view, list, previous, total)}

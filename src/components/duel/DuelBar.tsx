@@ -138,8 +138,8 @@ function HoldBanner({ hold, rivalName }: { hold: Extract<LaneNotice, { kind: 'ho
   )
 }
 
-/** Los íconos sueltos de la barra de arriba (la vista, rendirse, el engranaje y salir): 40 px cada uno (36 en un celular muy angosto) para que entren con la hamburguesa, las vidas y el reloj. */
-const HEADER_ICON = 'size-10! max-[379px]:size-9!'
+/** Los íconos sueltos de la barra de arriba (la vista, rendirse, el engranaje y salir): 40 px cada uno (36 en un celular angosto, 32 en uno de 320 px) para que entren con la hamburguesa, las vidas y el reloj. */
+const HEADER_ICON = 'size-10! max-[379px]:size-9! max-[339px]:size-8!'
 
 /** Los avisos de la conexión y del rival se apoyan debajo de la barra (no la empujan): el campo no se mueve cuando aparecen o se van. */
 const ALERT_OVERLAY = 'absolute inset-x-0.5 top-full z-20 mt-1'
@@ -169,15 +169,15 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
     // y el reloj arriba a la izquierda, su mano en el centro (el del campo) y, arriba a la derecha, el turno y salir; tus vidas van en la esquina de enfrente, abajo a la derecha.
     <div className="relative flex flex-wrap items-center gap-1.5 px-0.5 pt-1.5">
       {/* `contents` en escritorio: sus piezas se acomodan en la fila de todo el ancho (`order`). En celular la vida es la que cede lugar si no entran los íconos. */}
-      <div className="flex basis-full items-center gap-1.5 min-[1101px]:contents [&>[data-lp]]:shrink">
+      <div className="flex basis-full items-center gap-1.5 max-[339px]:gap-1 min-[1101px]:contents [&>[data-lp]]:shrink">
         {/* La hamburguesa del armazón va acá: una sola barra arriba, la de la mesa. */}
-        <ShellMenuButton className="-ml-2 size-10!" />
+        <ShellMenuButton className="-ml-2 size-10! max-[339px]:size-8!" />
         <LifeTile name={rivalName} life={life.lp[me === 0 ? 1 : 0]} bubble={rivalSignal} />
         <button
           type="button"
           aria-label={`${t('duel.bar.clock', { time: clock })}. ${running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}`}
           title={running ? t('duel.bar.clockPause') : t('duel.bar.clockStart')}
-          className="inline-flex h-11 min-w-0 shrink cursor-pointer items-center gap-1.5 rounded-card border border-border-subtle bg-card-background px-2 text-micro font-semibold tabular-nums text-foreground focus-visible:outline-none focus-visible:shadow-focus min-[1101px]:shrink-0 min-[1101px]:px-2.5"
+          className="inline-flex h-11 min-w-0 shrink cursor-pointer items-center gap-1.5 rounded-card border border-border-subtle bg-card-background px-2 text-micro font-semibold tabular-nums text-foreground focus-visible:outline-none focus-visible:shadow-focus max-[339px]:px-1.5 max-[339px]:[&>svg]:hidden min-[1101px]:shrink-0 min-[1101px]:px-2.5"
           onClick={onToggleClock}
         >
           {/* El cronómetro; en pausa, la pausa (el estado se ve sin tocar). */}
@@ -463,7 +463,7 @@ export function LifeTile({ name, label, life, mine = false, color, bubble = null
   )
   // Las dos vidas miden lo mismo (la del rival arriba, la tuya abajo).
   // El nombre arriba y el número abajo (apilados): la casilla ocupa lo justo y deja lugar a los íconos de al lado.
-  const style = cx('relative flex h-14 shrink-0 flex-col items-start justify-center gap-1 rounded-card border bg-card-background px-3 text-left', big ? 'min-w-28' : 'min-w-20', tone.border)
+  const style = cx('relative flex h-14 shrink-0 flex-col items-start justify-center gap-1 rounded-card border bg-card-background px-3 text-left max-[339px]:px-2', big ? 'min-w-28' : 'min-w-20 max-[339px]:min-w-16', tone.border)
 
   return onClick ? (
     <button type="button" data-lp={side} aria-label={`${t('duel.bar.lifeOf', { name })}: ${life}. ${t('duel.bar.changeLife')}`} className={cx(style, 'cursor-pointer focus-visible:outline-none focus-visible:shadow-focus')} onClick={onClick}>
