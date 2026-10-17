@@ -45,6 +45,17 @@ describe('el botón flotante de la calculadora de LP', () => {
     expect(onOpen).toHaveBeenCalledTimes(1)
   })
 
+  it('en la mesa de un duelo no aparece, aunque el reloj de la ronda corra: ahí está el reloj del duelo y el botón lo duplicaría y le competiría', () => {
+    startRound()
+
+    const { rerender } = render(<LifeCalculatorFab open={false} onOpen={() => {}} onClose={() => {}} hidden />)
+
+    expect(screen.queryByRole('button', { name: FAB })).not.toBeInTheDocument()
+
+    rerender(<LifeCalculatorFab open={false} onOpen={() => {}} onClose={() => {}} hidden={false} />)
+    expect(screen.getByRole('button', { name: FAB })).toBeInTheDocument()
+  })
+
   it('con la calculadora abierta no está, aunque el reloj siga corriendo; al cerrarla vuelve', () => {
     startRound()
 

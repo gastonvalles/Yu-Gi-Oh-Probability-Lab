@@ -392,7 +392,7 @@ export function DeckModeScreen() {
       ) : null}
 
       {/* Calculadora de LP: se abre desde el menú; mientras corre el reloj de la ronda, un botón flotante vuelve a ella desde cualquier otra pantalla. */}
-      <LifeCalculatorFab open={lifeOpen} onOpen={() => setLifeOpen(true)} onClose={() => setLifeOpen(false)} />
+      <LifeCalculatorFab open={lifeOpen} onOpen={() => setLifeOpen(true)} onClose={() => setLifeOpen(false)} hidden={duelTable} />
 
       {/* Las mascotas: se abre desde el menú y deja sacar hasta tres a la vez. */}
       <MascotsModal isOpen={mascotsOpen} onClose={() => setMascotsOpen(false)} />
