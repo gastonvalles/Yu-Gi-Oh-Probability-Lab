@@ -107,7 +107,7 @@ export function buildFormatLimitLabel(card: ApiCardReference | ApiCardSearchResu
   return getCardLimitIndicator(card, format)?.label ?? null
 }
 
-export function buildDeckFormatIssues(deckBuilder: DeckBuilderState, format: DeckFormat): string[] {
+export function buildDeckFormatIssues(deckBuilder: DeckBuilderState, format: DeckFormat, genesysCap: number = GENESYS_POINT_CAP): string[] {
   if (format === 'unlimited') {
     return []
   }
@@ -163,8 +163,8 @@ export function buildDeckFormatIssues(deckBuilder: DeckBuilderState, format: Dec
 
   const pointTotal = calculateGenesysDeckPointTotal(deckBuilder)
 
-  if (pointTotal > GENESYS_POINT_CAP) {
-    genesysIssues.push(t('deck.issue.genesysOverCap', { points: formatInteger(pointTotal), cap: formatInteger(GENESYS_POINT_CAP) }))
+  if (pointTotal > genesysCap) {
+    genesysIssues.push(t('deck.issue.genesysOverCap', { points: formatInteger(pointTotal), cap: formatInteger(genesysCap) }))
   }
 
   return genesysIssues

@@ -92,7 +92,7 @@ export type SidingProblem =
  * Lo que le falta al deck para poder jugar el siguiente duelo. El Main no baja de 40 (ni de las cartas con que se empezó, si eran menos: así un deck
  * de prueba también puede hacer siding) ni pasa de 60; el Extra y el Side, hasta 15; y las cartas, las reglas del formato de la sala.
  */
-export function sidingProblems(deck: SideDeck, original: { main: number }, cardsById: ReadonlyMap<string, SideCard>, format: DeckFormat): SidingProblem[] {
+export function sidingProblems(deck: SideDeck, original: { main: number }, cardsById: ReadonlyMap<string, SideCard>, format: DeckFormat, genesysCap?: number): SidingProblem[] {
   const problems: SidingProblem[] = []
   const min = Math.min(MAIN_MINIMUM, original.main)
 
@@ -101,7 +101,7 @@ export function sidingProblems(deck: SideDeck, original: { main: number }, cards
   if (deck.extra.length > SIDE_LIMITS.extra) problems.push({ kind: 'extra-big', max: SIDE_LIMITS.extra, count: deck.extra.length })
   if (deck.side.length > SIDE_LIMITS.side) problems.push({ kind: 'side-big', max: SIDE_LIMITS.side, count: deck.side.length })
 
-  for (const text of deckFormatIssues([...deck.main, ...deck.extra, ...deck.side], cardsById, format)) {
+  for (const text of deckFormatIssues([...deck.main, ...deck.extra, ...deck.side], cardsById, format, genesysCap)) {
     problems.push({ kind: 'format', text })
   }
 

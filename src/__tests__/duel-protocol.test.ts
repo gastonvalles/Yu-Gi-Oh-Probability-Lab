@@ -197,6 +197,20 @@ describe('contra un rival malicioso', () => {
     }
   })
 
+  it('el tope de puntos de Genesys de los ajustes: sólo cuenta en Genesys, y fuera de rango o mal escrito se rechaza', () => {
+    const hello = (settings: unknown) => ({ t: 'hello', v: 1, sid: 'abc123', role: 'host', name: 'Ana', settings })
+
+    expect(message(hello({ lp: 8000, hand: 5, format: 'genesys', genesysCap: 80 }))).toMatchObject({ settings: { format: 'genesys', genesysCap: 80 } })
+    // Un anfitrión de antes no lo manda: queda sin tope propio (vale el oficial al revisar el deck).
+    expect(message(hello({ lp: 8000, hand: 5, format: 'genesys' }))).toMatchObject({ settings: { format: 'genesys' } })
+    expect((message(hello({ lp: 8000, hand: 5, format: 'genesys' })) as { settings: object }).settings).not.toHaveProperty('genesysCap')
+    expect((message(hello({ lp: 8000, hand: 5, format: 'tcg', genesysCap: 80 })) as { settings: object }).settings).not.toHaveProperty('genesysCap')
+
+    for (const genesysCap of [0, 1000, 1.5, '80', null]) {
+      expect(message(hello({ lp: 8000, hand: 5, format: 'genesys', genesysCap })), String(genesysCap)).toBeNull()
+    }
+  })
+
   /** Ids que, usados como clave de un objeto común, devuelven algo heredado (una función) en vez de nada. */
   const INHERITED = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueOf', 'prototype']
 

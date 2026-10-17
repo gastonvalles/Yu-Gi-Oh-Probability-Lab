@@ -11,9 +11,9 @@ interface DuelDeckCard {
 
 /**
  * Lo que le sobra a un deck para jugar con un formato, en palabras (las mismas del builder: prohibidas, copias de más, cartas fuera de Edison, puntos de Genesys…).
- * Va el Main y el Extra juntos; vacío si cumple o si el formato no limita nada. Las copias sin datos de carta no cuentan (no hay con qué revisarlas).
+ * En Genesys, `genesysCap` es el tope de puntos que pidió la sala (el oficial si no se manda). Va el Main y el Extra juntos; vacío si cumple o si el formato no limita nada. Las copias sin datos de carta no cuentan (no hay con qué revisarlas).
  */
-export function deckFormatIssues(copyIds: readonly string[], cardsById: ReadonlyMap<string, DuelDeckCard>, format: DeckFormat): string[] {
+export function deckFormatIssues(copyIds: readonly string[], cardsById: ReadonlyMap<string, DuelDeckCard>, format: DeckFormat, genesysCap?: number): string[] {
   const main: DeckCardInstance[] = []
 
   copyIds.forEach((id, index) => {
@@ -24,5 +24,5 @@ export function deckFormatIssues(copyIds: readonly string[], cardsById: Readonly
     }
   })
 
-  return buildDeckFormatIssues({ deckName: '', main, extra: [], side: [], isEditingDeck: false }, format)
+  return buildDeckFormatIssues({ deckName: '', main, extra: [], side: [], isEditingDeck: false }, format, genesysCap)
 }
