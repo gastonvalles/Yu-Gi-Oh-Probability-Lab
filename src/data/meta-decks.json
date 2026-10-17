@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-16T11:38:03.960Z",
+  "fetchedAt": "2026-10-17T10:58:18.436Z",
   "windowDays": 56,
   "source": "https://ygoprodeck.com/deck-search/",
   "cards": {
@@ -648,7 +648,7 @@
       "name": "Droll & Lock Bird",
       "image": "https://images.ygoprodeck.com/images/cards_small/94145021.jpg",
       "ban": {
-        "tcg": "semi-limited",
+        "tcg": "limited",
         "ocg": "limited"
       },
       "kinds": [
@@ -1375,8 +1375,6 @@
     {"id":730062,"region":"tcg","name":"Angelechy Elfnote","date":"2026-08-29","tournament":"Belo Horizonte WCQ Regional","placement":"Top 4","players":80,"player":"Dante Farrenkopf","cover":42410161,"url":"angelechy-elfnote-730062","main":[[70088809,3],[14558127,3],[73642296,2],[94145021,2],[97268402,3]],"side":[[42141493,3]]},
     {"id":730054,"region":"tcg","name":"Kewl Tune","date":"2026-08-29","tournament":"Belo Horizonte WCQ Regional","placement":"Top 8","players":80,"player":"Gabriel Maia","cover":22850702,"url":"kewl-tune-730054","main":[[14558127,3],[59438930,3],[73642296,3],[97268402,3],[94145021,2],[10045474,3],[97045737,3]],"side":[[42141493,3],[84192580,3],[24508238,3],[15693423,3]]},
     {"id":730052,"region":"tcg","name":"Elfnote","date":"2026-08-29","tournament":"Belo Horizonte WCQ Regional","placement":"Top 4","players":80,"player":"Luan Nogueira","cover":74203495,"url":"elfnote-730052","main":[[70088809,2],[33854624,1],[42141493,3],[84192580,2],[14558127,3],[73642296,2],[59438930,2],[94145021,2]],"side":[[38814750,1],[74203495,2],[102380,3],[73642296,1],[6637331,1],[18144506,1],[14532163,2]]},
-    {"id":729671,"region":"tcg","name":"@Ignister Maliss","date":"2026-08-23","tournament":"Hamburg WCQ Regional","placement":"Top 8","players":57,"player":"Yavuz Secer","cover":71278040,"url":"ignister-maliss-729671","main":[[91800273,1],[42141493,3],[14558127,3],[73642296,2],[94145021,2],[33854624,1],[6637331,1],[10045474,2],[40366667,3]],"side":[[84192580,3],[24508238,2]]},
-    {"id":728245,"region":"ocg","name":"Toon","date":"2026-08-22","tournament":"Suzhou Aitao Play Card Game","placement":"Winner","players":48,"player":null,"cover":29436665,"url":"toon-728245","main":[[84192580,3],[42141493,2],[14558127,2],[59438930,2],[38814750,1],[23434538,1],[94145021,1],[91800273,1],[40366667,2]],"side":[[42141493,1],[2729965,2],[66236707,3],[23002292,1]]},
-    {"id":728241,"region":"ocg","name":"Ars Magna Power Patron","date":"2026-08-22","tournament":"Suzhou Aitao Play Card Game","placement":"Top 4","players":48,"player":null,"cover":51669847,"url":"ars-magna-power-patron-728241","main":[[14558127,2],[42141493,3],[84192580,2],[94145021,1],[23434538,1]],"side":[[84192580,1],[38814750,1],[27204311,1],[66236707,2],[2729965,1]]}
+    {"id":729671,"region":"tcg","name":"@Ignister Maliss","date":"2026-08-23","tournament":"Hamburg WCQ Regional","placement":"Top 8","players":57,"player":"Yavuz Secer","cover":71278040,"url":"ignister-maliss-729671","main":[[91800273,1],[42141493,3],[14558127,3],[73642296,2],[94145021,2],[33854624,1],[6637331,1],[10045474,2],[40366667,3]],"side":[[84192580,3],[24508238,2]]}
   ]
 }

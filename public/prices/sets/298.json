@@ -10,7 +10,7 @@
 ["SDY-005","Common","1st Edition",3.76,22611,32452818,"Beaver Warrior"],
 ["SDY-005","Common","Unlimited",0.32,22611,32452818,"Beaver Warrior"],
 ["SDY-006","Ultra Rare","1st Edition",249.99,22612,46986414,"Dark Magician"],
-["SDY-006","Ultra Rare","Unlimited",32.67,22612,46986414,"Dark Magician"],
+["SDY-006","Ultra Rare","Unlimited",33.59,22612,46986414,"Dark Magician"],
 ["SDY-007","Common","1st Edition",13.98,22613,6368038,"Gaia The Fierce Knight"],
 ["SDY-007","Common","Unlimited",0.55,22613,6368038,"Gaia The Fierce Knight"],
 ["SDY-008","Common","1st Edition",7.49,22614,28279543,"Curse of Dragon"],
@@ -30,7 +30,7 @@
 ["SDY-015","Common","1st Edition",2.54,22621,16972957,"Doma The Angel of Silence"],
 ["SDY-015","Common","Unlimited",0.22,22621,16972957,"Doma The Angel of Silence"],
 ["SDY-016","Common","1st Edition",6.48,22622,48365709,"Ansatsu"],
-["SDY-016","Common","Unlimited",0.53,22622,48365709,"Ansatsu"],
+["SDY-016","Common","Unlimited",0.52,22622,48365709,"Ansatsu"],
 ["SDY-017","Common","1st Edition",1.68,22623,36304921,"Witty Phantom"],
 ["SDY-017","Common","Unlimited",0.25,22623,36304921,"Witty Phantom"],
 ["SDY-018","Common","1st Edition",7.24,22624,41218256,"Claw Reacher"],
@@ -44,7 +44,7 @@
 ["SDY-022","Common","1st Edition",1.93,22628,53129443,"Dark Hole"],
 ["SDY-022","Common","Unlimited",0.4,22628,53129443,"Dark Hole"],
 ["SDY-023","Common","1st Edition",3.2,22629,84257640,"Dian Keto the Cure Master"],
-["SDY-023","Common","Unlimited",0.38,22629,84257640,"Dian Keto the Cure Master"],
+["SDY-023","Common","Unlimited",0.4,22629,84257640,"Dian Keto the Cure Master"],
 ["SDY-024","Common","1st Edition",13.4,22630,93221206,"Ancient Elf"],
 ["SDY-024","Common","Unlimited",0.31,22630,93221206,"Ancient Elf"],
 ["SDY-025","Common","1st Edition",2.55,22631,46474915,"Magical Ghost"],
@@ -55,7 +55,7 @@
 ["SDY-027","Common","Unlimited",0.27,22633,4206964,"Trap Hole"],
 ["SDY-028","Common","1st Edition",2.71,22634,83887306,"Two-Pronged Attack"],
 ["SDY-028","Common","Unlimited",0.29,22634,83887306,"Two-Pronged Attack"],
-["SDY-029","Common","1st Edition",4.53,22635,19159413,"De-Spell"],
+["SDY-029","Common","1st Edition",4.33,22635,19159413,"De-Spell"],
 ["SDY-029","Common","Unlimited",0.56,22635,19159413,"De-Spell"],
 ["SDY-030","Common","1st Edition",4.68,22636,83764719,"Monster Reborn"],
 ["SDY-030","Common","Unlimited",0.64,22636,83764719,"Monster Reborn"],
@@ -98,5 +98,5 @@
 ["SDY-049","Common","1st Edition",3.12,22655,44209392,"Castle Walls"],
 ["SDY-049","Common","Unlimited",0.33,22655,44209392,"Castle Walls"],
 ["SDY-050","Common","1st Edition",2.2,22656,80604092,"Ultimate Offering"],
-["SDY-050","Common","Unlimited",0.44,22656,80604092,"Ultimate Offering"]
+["SDY-050","Common","Unlimited",0.45,22656,80604092,"Ultimate Offering"]
 ]

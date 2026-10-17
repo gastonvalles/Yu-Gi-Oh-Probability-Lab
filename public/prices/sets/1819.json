@@ -1,5 +1,5 @@
 [
-["SRL-000","Secret Rare","Unlimited",42.66,237602,53183600,"Blue-Eyes Toon Dragon"],
+["SRL-000","Secret Rare","Unlimited",42.49,237602,53183600,"Blue-Eyes Toon Dragon"],
 ["SRL-001","Common","Unlimited",0.21,120589,36039163,"Penguin Knight"],
 ["SRL-002","Ultra Rare","Unlimited",10.49,120590,40619825,"Axe of Despair"],
 ["SRL-003","Super Rare","Unlimited",0.94,120591,65169794,"Black Pendant"],
@@ -28,7 +28,7 @@
 ["SRL-026","Super Rare","Unlimited",0.64,120614,3056267,"Invader of the Throne"],
 ["SRL-027","Common","Unlimited",0.11,120615,91996584,"Whiptail Crow"],
 ["SRL-028","Common","Unlimited",0.29,120616,3797883,"Slot Machine"],
-["SRL-029","Ultra Rare","Unlimited",11.94,120617,64631466,"Relinquished"],
+["SRL-029","Ultra Rare","Unlimited",13.08,120617,64631466,"Relinquished"],
 ["SRL-030","Common","Unlimited",0.12,120618,65570596,"Red Archery Girl"],
 ["SRL-031","Common","Unlimited",0.57,120619,16762927,"Gravekeeper's Servant"],
 ["SRL-032","Common","Unlimited",0.13,120620,12470447,"Curse of Fiend"],
@@ -38,7 +38,7 @@
 ["SRL-036","Ultra Rare","Unlimited",8.33,120624,45986603,"Snatch Steal"],
 ["SRL-037","Common","Unlimited",0.2,120625,81380218,"Chorus of Sanctuary"],
 ["SRL-038","Super Rare","Unlimited",1.75,120626,17375316,"Confiscation"],
-["SRL-039","Ultra Rare","Unlimited",16.86,120627,44763025,"Delinquent Duo"],
+["SRL-039","Ultra Rare","Unlimited",16.7,120627,44763025,"Delinquent Duo"],
 ["SRL-040","Common","Unlimited",0.25,120628,80168720,"Darkness Approaches"],
 ["SRL-041","Common","Unlimited",0.25,120629,17653779,"Fairy's Hand Mirror"],
 ["SRL-042","Common","Unlimited",0.25,120630,43641473,"Tailor of the Fickle"],
@@ -102,5 +102,5 @@
 ["SRL-100","Common","Unlimited",0.29,120688,81777047,"Luminous Spark"],
 ["SRL-101","Common","Unlimited",0.28,120689,18161786,"Mystic Plasma Zone"],
 ["SRL-102","Super Rare","Unlimited",6.63,120690,44656491,"Messenger of Peace"],
-["SRL-103","Secret Rare","Unlimited",8.03,120691,66516792,"Serpent Night Dragon"]
+["SRL-103","Secret Rare","Unlimited",7.98,120691,66516792,"Serpent Night Dragon"]
 ]
