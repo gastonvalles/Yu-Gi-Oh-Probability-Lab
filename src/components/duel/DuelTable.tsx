@@ -6,7 +6,7 @@ import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
 import { FX_CARD, FxFrame, SPOTLIGHT_TONE, TargetMark, fxVars } from '../probability/MatFx'
 import { CardBack, PILE_SHORT, PILE_TITLES } from '../probability/MatDialogs'
-import { CELL, CELL_SQUARE, PENDULUM_GEM, PileBadge } from '../probability/PracticeMat'
+import { CELL, CELL_EMZ, CELL_SQUARE, PENDULUM_GEM, PileBadge } from '../probability/PracticeMat'
 
 /**
  * La mesa del duelo: los dos campos en una sola grilla, como la mesa real. El rival arriba y espejado (su
@@ -160,7 +160,7 @@ function SharedZone({ area, index, mine, theirs }: { area: string; index: number
   const label = conflict ? t('duel.zone.conflict', { zone: zoneLabel('mine', 'emz', index) }) : zoneLabel('mine', 'emz', index)
 
   return (
-    <div role="group" aria-label={label} className={cx(CELL_SQUARE, conflict && 'border-solid border-danger')} style={{ gridArea: area }}>
+    <div role="group" aria-label={label} className={cx(conflict ? CELL_SQUARE : CELL_EMZ, conflict && 'border-solid border-danger')} style={{ gridArea: area }}>
       {own ? <CardOnZone placed={own} spot="emz" side={mine} owner="mine" label={label} /> : other ? <CardOnZone placed={other} spot="emz" side={theirs} owner="theirs" label={label} /> : null}
       {conflict ? <span aria-hidden="true" className="absolute right-0.5 top-0.5 z-2 grid size-4 place-items-center rounded-full bg-danger text-[0.6rem] font-extrabold leading-none text-white">!</span> : null}
     </div>

@@ -168,11 +168,21 @@ const FIRST_DEAL_MS = 90
 const NEXT_DEAL_MS = 55
 
 /**
- * Lo que tiene toda casilla del campo o de una pila: borde punteado; se enciende con una carta arrastrada encima y respira en verde cuando se está eligiendo.
+ * El borde y el velo de una casilla vacía: una línea fina violeta con un velo adentro (la zona se lee como un lugar, no como un hueco). La zona extra de monstruos, que es de los
+ * dos, lleva el violeta claro con un brillo, para distinguirla de lejos.
+ */
+const CELL_TONE = {
+  default: 'border border-solid border-primary/35 shadow-[inset_0_0_14px_rgb(var(--primary-rgb)/0.14)]',
+  emz: 'border border-solid border-accent/70 shadow-[inset_0_0_16px_rgb(var(--accent-rgb)/0.3),0_0_14px_rgb(var(--accent-rgb)/0.28)]',
+} as const
+
+/**
+ * Lo que tiene toda casilla del campo o de una pila: su borde y velo (ver `CELL_TONE`); se enciende con una carta arrastrada encima y se resalta cuando se está eligiendo.
  * La forma va aparte: ver `CELL` y `CELL_SQUARE`.
  */
-const CELL_LOOK = [
-  'relative min-w-0 border border-dashed border-tint/20 transition-[color,background-color,border-color,box-shadow] duration-150',
+const cellLook = (tone: keyof typeof CELL_TONE) => [
+  'relative min-w-0 transition-[color,background-color,border-color,box-shadow] duration-150',
+  CELL_TONE[tone],
   // Con una carta arrastrada encima: borde parejo, relleno y resplandor violeta.
   'data-[over=true]:border-solid data-[over=true]:border-primary-hover data-[over=true]:bg-primary/25 data-[over=true]:shadow-[0_0_0_2px_rgb(var(--primary-hover-rgb)/0.55),0_0_24px_rgb(var(--primary-hover-rgb)/0.6),inset_0_0_18px_rgb(var(--primary-hover-rgb)/0.35)]',
   // Una zona que se puede elegir respira en verde y un aro se le expande desde el borde.
@@ -183,12 +193,14 @@ const CELL_LOOK = [
 ].join(' ')
 
 /** La zona de campo y las pilas (las columnas de los costados): del tamaño justo de una carta, que nunca se acuesta. */
-export const CELL = `aspect-[421/614] ${CELL_LOOK}`
+export const CELL = `aspect-[421/614] ${cellLook('default')}`
 /**
  * Las zonas del centro (monstruos, Mágicas y Trampas, Zonas Extra) son cuadradas, del lado largo de una carta: la carta entra parada (el alto de la casilla)
  * o acostada en defensa (el ancho de la casilla) con el mismo tamaño y sin salirse, así que dos cartas en defensa vecinas no se pisan ni se achican.
  */
-export const CELL_SQUARE = `aspect-square ${CELL_LOOK}`
+export const CELL_SQUARE = `aspect-square ${cellLook('default')}`
+/** La zona extra de monstruos: cuadrada como las otras, con su brillo. */
+export const CELL_EMZ = `aspect-square ${cellLook('emz')}`
 /** El ancho de una carta como parte de su alto (421 × 614 px): una carta parada en una casilla cuadrada mide ese tanto de ancho. */
 const CARD_WIDTH_PER_HEIGHT = 421 / 614
 
@@ -1117,7 +1129,7 @@ export function PracticeMat({
         data-over="false"
         data-pick={pickableZone || pickableTribute ? 'true' : 'false'}
         data-chosen={chosen ? 'true' : 'false'}
-        className={spot === 'field' ? CELL : CELL_SQUARE}
+        className={spot === 'field' ? CELL : spot === 'emz' ? CELL_EMZ : CELL_SQUARE}
         style={{ gridArea: area }}
         onClick={pickableZone ? () => pickZone(spot, index) : undefined}
         onKeyDown={pickableZone ? (event) => activate(event, () => pickZone(spot, index)) : undefined}
