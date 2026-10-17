@@ -66,9 +66,19 @@ interface DuelBarProps {
   resultOpen?: boolean
   /** La señal del rival que está a la vista (pensando, continuá, esperá): sale como un globo junto a sus vidas. */
   rivalSignal?: string | null
-  /** Quién pidió esperar (ver `useHolds`) y cómo soltar la propia: sale como un cartel en la línea del registro. */
-  hold?: { mine: boolean; theirs: boolean; onRelease: () => void }
+  /** Lo que se apoya sobre la línea del registro (la misma fila, sin sumar alto: el campo no se mueve): un pedido de esperar o de volver atrás, o cómo terminó el tuyo. */
+  lane?: LaneNotice | null
 }
+
+/**
+ * Los avisos de atención entre los dos jugadores, que nunca bloquean nada (antes el permiso para volver atrás era un diálogo que tapaba la mesa). Uno a la vez, el más urgente primero:
+ * el pedido del rival de volver atrás (hay que contestar), el tuyo (esperando), cómo terminó, y los «Esperá».
+ */
+export type LaneNotice =
+  | { kind: 'hold'; mine: boolean; theirs: boolean; onRelease: () => void }
+  | { kind: 'undoAsked'; onAllow: () => void; onDeny: () => void }
+  | { kind: 'undoAsking' }
+  | { kind: 'undoResult'; result: 'denied' | 'expired' }
 
 /**
  * Lo de arriba de la mesa en un duelo, que es lo del rival y lo que se mira sin tocar: sus puntos de vida, el reloj de la ronda (tocarlo lo pausa),
@@ -79,7 +89,31 @@ interface DuelBarProps {
  * El cartel de «Esperá»: el del rival (ámbar, lleno: hay que atenderlo) o el tuyo (violeta claro, con cómo soltarlo). Es un aviso entre dos personas: no tapa el campo ni la mano,
  * no se cierra solo antes de tiempo (dura hasta que se suelta, ver `useHolds`) y no bloquea nada.
  */
-function HoldBanner({ hold, rivalName }: { hold: NonNullable<DuelBarProps['hold']>; rivalName: string }) {
+function LaneBanner({ lane, rivalName }: { lane: LaneNotice; rivalName: string }) {
+  if (lane.kind === 'hold') return <HoldBanner hold={lane} rivalName={rivalName} />
+
+  const asked = lane.kind === 'undoAsked'
+
+  return (
+    <div role="status" data-lane={lane.kind} className={cx('absolute inset-0 flex items-center gap-2 rounded-card border bg-card-background px-3 text-micro font-semibold leading-tight', asked ? 'border-info text-foreground' : 'border-border-subtle text-muted')}>
+      <span className="line-clamp-2 min-w-0 flex-1">
+        {lane.kind === 'undoAsked' ? t('duel.undo.askShort', { name: rivalName }) : lane.kind === 'undoAsking' ? t('duel.undo.asking', { name: rivalName }) : t(lane.result === 'denied' ? 'duel.undo.denied' : 'duel.undo.expired', { name: rivalName })}
+      </span>
+      {lane.kind === 'undoAsked' ? (
+        <>
+          <Button variant="tertiary" size="sm" className="px-2" onClick={lane.onDeny}>
+            {t('duel.undo.deny')}
+          </Button>
+          <Button variant="primary" size="sm" className="px-3" onClick={lane.onAllow}>
+            {t('duel.undo.allow')}
+          </Button>
+        </>
+      ) : null}
+    </div>
+  )
+}
+
+function HoldBanner({ hold, rivalName }: { hold: Extract<LaneNotice, { kind: 'hold' }>; rivalName: string }) {
   const rival = hold.theirs
 
   return (
@@ -108,7 +142,7 @@ const HEADER_ICON = 'size-10! max-[379px]:size-9!'
 /** Los avisos de la conexión y del rival se apoyan debajo de la barra (no la empujan): el campo no se mueve cuando aparecen o se van. */
 const ALERT_OVERLAY = 'absolute inset-x-0.5 top-full z-20 mt-1'
 
-export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRematch, onLeave, onConcede, onReconnect, log, resultOpen = false, rivalSignal = null, hold }: DuelBarProps) {
+export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRematch, onLeave, onConcede, onReconnect, log, resultOpen = false, rivalSignal = null, lane = null }: DuelBarProps) {
   const now = useTick(1000)
   const [leaving, setLeaving] = useState(false)
   const [conceding, setConceding] = useState(false)
@@ -116,7 +150,7 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const [moreOpen, setMoreOpen] = useState(false)
   // Si los dos pidieron esperar se ve el del rival (el que hay que atender); el tuyo queda apretado abajo.
-  const holding = Boolean(hold && (hold.theirs || hold.mine))
+  const holding = lane !== null
   const { life, me, peerPresent } = snapshot
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
   const running = life.timer.running
@@ -190,13 +224,13 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
           <div inert={holding} className={cx(holding && 'invisible')}>
             {log}
           </div>
-          {holding ? <HoldBanner hold={hold!} rivalName={rivalName} /> : null}
+          {lane ? <LaneBanner lane={lane} rivalName={rivalName} /> : null}
         </div>
       ) : null}
       {/* Escritorio (sin línea del registro): el mismo cartel, centrado debajo de la barra. */}
       {docked && holding ? (
         <div className="absolute left-1/2 top-full z-20 mt-1 h-11 w-[min(24rem,100%)] -translate-x-1/2">
-          <HoldBanner hold={hold!} rivalName={rivalName} />
+          {lane ? <LaneBanner lane={lane} rivalName={rivalName} /> : null}
         </div>
       ) : null}
 
