@@ -67,7 +67,7 @@ import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PracticeMatPanel, type PanelStep } from './PracticeMatPanel'
 import { ReplayBar, type ReplayMark, type ReplaySpeed } from './ReplayBar'
-import { CARD_BACK, CARD_BACK_URL } from './practice-styles'
+import { CARD_BACK, CARD_BACK_URL, pileEdge } from './practice-styles'
 
 export interface MatCard {
   name: string
@@ -1211,6 +1211,7 @@ export function PracticeMat({
         style={{ gridArea: area, ...fxVars('red') }}
         onClick={() => setViewer(pile)}
       >
+        {pile === 'extra' ? <span aria-hidden="true" data-pile-edge className="pointer-events-none absolute inset-0" style={pileEdge(count)} /> : null}
         {/* El recorte va en un contenedor aparte: el botón no recorta, así el área que se toca (`before` de `CELL`) puede salirse 4 px de la casilla. */}
         <span className="absolute inset-0 overflow-hidden">
           {back ? <span className={CARD_BACK} /> : top ? <CardArt remoteUrl={artOf(cardOf(top))} name={cardOf(top).name} className="block h-full w-full object-cover" /> : null}
@@ -1450,6 +1451,8 @@ export function PracticeMat({
             onKeyDown={(event) => activate(event, () => setMenu({ kind: 'deck', rect: event.currentTarget.getBoundingClientRect() }))}
             onContextMenu={(event) => event.preventDefault()}
           >
+            {/* El grosor del deck, debajo: se afina al robar. */}
+            <span aria-hidden="true" data-pile-edge className="pointer-events-none absolute inset-0" style={pileEdge(state.deck.length)} />
             {state.deck.length > 0 ? (
               <span key={shuffleKey} className="absolute inset-0">
                 <span className={cx(CARD_BACK, '[transform:translate(-3px,3px)]', shuffleKey > 0 && 'animate-riffle-left motion-reduce:animate-none')} />
@@ -1574,7 +1577,8 @@ export function PracticeMat({
         {/* Abajo: las seis fases con Pasar turno pegado a la End Phase (Deshacer está arriba y los pasos en la lista, así que ni Anterior / Siguiente ni la última jugada hacen falta). En un duelo de escritorio van a la derecha, junto a tus vidas.
             Eligiendo (una zona, Sacrificios, materiales, contadores) ninguna fila se saca: la que no se usa queda invisible y quieta, y lo que falta elegir se apoya encima (`status`). El alto de la barra es siempre el mismo, así el campo y la mano no se corren. */}
         {/* En escritorio, en un duelo, esta barra sube sobre la franja de abajo de la mano (sólo tiene algo en las esquinas): la mano y el campo ganan ese alto, y el medio no ataja toques. */}
-        <div className={cx('sticky bottom-0 z-30 grid gap-1 max-[1100px]:bg-background', duel && 'min-[1101px]:pointer-events-none min-[1101px]:-mt-11')}>
+        {/* Las fases y los botones van siempre arriba de la mano: una carta recién robada o seleccionada (z 50) no los tapa; sólo la que se arrastra (z 100) pasa por encima. */}
+        <div className={cx('sticky bottom-0 z-55 grid gap-1 max-[1100px]:bg-background', duel && 'min-[1101px]:pointer-events-none min-[1101px]:-mt-11')}>
           {/* Duelo: una sola fila abajo con tus vidas y los botones que se tocan seguido (deshacer, la ficha, los dados y las reacciones). Celular: las vidas a la izquierda y los botones a la derecha (el pulgar de quien juega
               con la derecha). Escritorio: los botones a la izquierda y tus vidas en la esquina opuesta a las del rival. */}
           {duel && !isDesktop ? (

@@ -338,6 +338,14 @@ describe('la mesa de práctica', () => {
     expect(screen.getByRole('toolbar', { name: 'Mesa' }).className).toContain('max-[379px]:[&>button]:size-9!')
   })
 
+  it('las fases y los botones de abajo van arriba de la mano: una carta seleccionada o recién robada (z 50) no los tapa', () => {
+    render(<Harness />)
+
+    const dock = screen.getByRole('group', { name: 'Fases' }).closest('[class*="sticky"]')
+
+    expect(dock).toHaveClass('z-55')
+  })
+
   it('arrastrar una carta al cementerio la manda ahí; tocar el deck ofrece robar', () => {
     render(<Harness />)
 
@@ -379,7 +387,7 @@ describe('la mesa de práctica', () => {
 
     try {
       // Las capas del deck se arman de nuevo (otro elemento) cada vez que se baraja.
-      const layers = () => screen.getByRole('button', { name: 'Main: 1' }).querySelector(':scope > span.absolute')
+      const layers = () => screen.getByRole('button', { name: 'Main: 1' }).querySelector(':scope > span.absolute:not([data-pile-edge])')
       const before = layers()
 
       // Barajar: el deck se vuelve a armar con su animación y la mano se baraja carta por carta.

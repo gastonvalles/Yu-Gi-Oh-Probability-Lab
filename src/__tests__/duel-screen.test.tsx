@@ -2590,26 +2590,30 @@ describe('la pantalla del duelo', () => {
     expect(within(guest.container).getByRole('button', { name: 'Jugar ahora' })).toBeInTheDocument()
   })
 
-  it('las señales de abajo (✋ esperá y 👍 continuá) están a mano del pulgar y salen como un globo junto a las vidas de quien las manda, que se va solo y no cuenta como mensaje sin leer', () => {
+  it('las señales de abajo (✋ esperá y 👍 continuá) están a mano del pulgar y las tuyas salen como un globo junto a tus vidas y las del rival, grandes en el medio de la pantalla (celular); se van solas y no cuentan como mensaje sin leer', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const { host, guest } = startDuel()
     openTable(host, guest)
     const bubble = (view: RenderResult, side: 'mine' | 'theirs') => view.container.querySelector(`[data-lp="${side}"] [role="status"]`)
 
-    expect(bubble(host, 'theirs')).toBeNull()
+    const rivalEmoji = (view: RenderResult) => within(view.container).queryByTestId('rival-emoji')
+
+    expect(rivalEmoji(host)).toBeNull()
     // Abajo, con el pulgar: deshacer, el + (la ficha, los contadores y los juegos), el chat y las dos señales. Los dados ya no tienen botón: están dentro del +.
     const toolbar = within(guest.container).getByRole('toolbar')
     expect(within(toolbar).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Deshacer', 'Ficha', 'Chat', 'Esperá', 'Continuá', expect.stringMatching(/^Puntos de vida de/)])
     expect(within(toolbar).queryByRole('button', { name: 'Moneda, dado y más' })).not.toBeInTheDocument()
 
-    // Beto avisa que continúa: lo ve junto a sus vidas (arriba, en la mesa de Ana, y abajo en la suya), en su color.
+    // Beto avisa que continúa: lo suyo se ve como un globo junto a sus vidas; en el celular el de su rival (Ana) no es un globito chico: el emoji sale grande en el medio de la pantalla.
     fireEvent.click(within(guest.container).getByRole('button', { name: 'Continuá' }))
     flush()
-    expect(bubble(host, 'theirs')).toHaveTextContent('👍')
     expect(bubble(guest, 'mine')).toHaveTextContent('👍')
-    // El globo de un emoji solo lo dibuja grande (44 px), de los dos lados: el que mandás y el que manda el rival.
-    expect(bubble(host, 'theirs')).toHaveClass('text-display')
     expect(bubble(guest, 'mine')).toHaveClass('text-display')
+    expect(bubble(host, 'theirs')).toBeNull()
+    expect(rivalEmoji(host)).toHaveTextContent('👍')
+    expect(rivalEmoji(host)).toHaveTextContent('Beto')
+    expect(rivalEmoji(host)?.querySelector('[aria-hidden]')?.getAttribute('style')).toContain('clamp(7rem')
+    expect(rivalEmoji(guest)).toBeNull()
     expect(bubble(host, 'mine')).toBeNull()
     expect(host.container.querySelector('[data-lp="theirs"]')).toHaveClass('border-info/50')
     // Una señal no es un mensaje sin leer ni avisa aparte.
@@ -2619,10 +2623,10 @@ describe('la pantalla del duelo', () => {
     act(() => {
       vi.advanceTimersByTime(4000)
     })
-    expect(bubble(host, 'theirs')).toBeNull()
+    expect(rivalEmoji(host)).toBeNull()
     fireEvent.click(within(host.container).getByRole('button', { name: 'Continuá' }))
     flush()
-    expect(bubble(guest, 'theirs')).toHaveTextContent('👍')
+    expect(rivalEmoji(guest)).toHaveTextContent('👍')
     expect(within(guest.container).getByRole('button', { name: 'Chat' })).toBeInTheDocument()
   })
 

@@ -7,6 +7,7 @@ import { cx } from '../ui/cx'
 import { FX_CARD, FxFrame, SPOTLIGHT_TONE, TargetMark, fxVars } from '../probability/MatFx'
 import { CardBack, PILE_SHORT, PILE_TITLES } from '../probability/MatDialogs'
 import { CELL, CELL_EMZ, CELL_SQUARE, PENDULUM_GEM, PileBadge } from '../probability/PracticeMat'
+import { pileEdge } from '../probability/practice-styles'
 
 /**
  * La mesa del duelo: los dos campos en una sola grilla, como la mesa real. El rival arriba y espejado (su
@@ -259,6 +260,8 @@ function Pile({ area, pile, side, owner }: { area: string; pile: Exclude<MatPile
 
   return (
     <div role="group" aria-label={`${PILE_TITLES[pile]}: ${cards.length}`} title={PILE_TITLES[pile]} data-rival-drop={owner === 'theirs' ? pile : undefined} data-pointed={side.point?.pile === pile ? 'true' : undefined} data-targeted={marked ? 'true' : 'false'} data-flash={flash ? 'true' : 'false'} data-flash-kind={flash?.kind} className={cx(CELL, FX_CARD, '[--card-shadow:0_0_0_0_transparent]')} style={{ gridArea: area, ...fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red') }}>
+      {/* El grosor del deck y del Extra (los de arriba, del rival, hacia arriba: del lado de afuera del campo). */}
+      {pile === 'deck' || pile === 'extra' ? <span aria-hidden="true" data-pile-edge className="pointer-events-none absolute inset-0" style={pileEdge(cards.length, owner === 'theirs')} /> : null}
       {/* El recorte va en un contenedor aparte: la casilla no recorta, así el área que se toca (`before` de `CELL` y del botón de marcar) puede salirse 4 px de ella. */}
       <span className="absolute inset-0 overflow-hidden">
       {/* La carta de arriba del rival, como las de su campo, mira hacia él. */}
