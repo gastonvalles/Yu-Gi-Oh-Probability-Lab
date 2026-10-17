@@ -1105,7 +1105,7 @@ describe('la mesa de práctica', () => {
     expect(spotlight()).toHaveTextContent('Declarás Called by the Grave')
   })
 
-  it('al reproducir un combo cada paso que mueve cartas las muestra grandes con su nombre y lo que pasó; las que salen del deck se dan vuelta; en vivo, no', () => {
+  it('al reproducir un combo cada paso que mueve cartas las muestra grandes con su nombre y lo que pasó (menos el cementerio y el destierro, que sólo van al registro); las que salen del deck se dan vuelta; en vivo, no', () => {
     // Mano: Ash, Maxx C, Called, Nibiru, Droll; el deck guarda a Imperm.
     render(<Harness actions={[{ type: 'draw', count: 1 }, { type: 'move', id: 'card-2-1', to: 'gy' }]} />)
 
@@ -1119,11 +1119,10 @@ describe('la mesa de práctica', () => {
     expect(spotlight()?.querySelector('.animate-fx-flip-in')).not.toBeNull()
     expect(document.querySelector('[data-fx="hand"]')).not.toBeNull()
 
-    // De la mano al cementerio: se ve la carta (que ya estaba a la vista, sin darse vuelta) y su paso.
+    // De la mano al cementerio es la única jugada que no se muestra grande: la carta viaja a su pila, el paso queda en el registro y el centro se despeja.
     fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
-    expect(spotlight()).toHaveAttribute('data-kind', 'gy')
-    expect(spotlight()).toHaveTextContent('Maxx C')
-    expect(spotlight()?.querySelector('.animate-fx-flip-in')).toBeNull()
+    expect(spotlight()).toBeNull()
+    expect(within(status()).getByText('Maxx C va al cementerio')).toBeInTheDocument()
   })
 
   it('deshacer corta lo que estaba en curso: la carta grande del paso y el destello de la zona', () => {

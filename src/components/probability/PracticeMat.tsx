@@ -117,7 +117,7 @@ export interface DuelMatLink {
    * Lo que el rival acaba de hacer y se anima (activar, mostrar, declarar o marcar una carta, invocar, mandar cartas al cementerio, al destierro, a la mano o al deck…), como en un combo
    * guardado: las cartas (con el id que él les dio y su arte, o de dorso si no las mostró) grandes en el centro y `caption` arriba, que dice qué pasó. Cambiar `key` lo vuelve a mostrar.
    */
-  rivalEffect?: { key: number; kind: SpotlightKind | ShowcaseKind; cards: ReadonlyArray<{ id: string; art: string | null; name?: string }>; flip?: boolean; caption: string; linger?: boolean }
+  rivalEffect?: { key: number; kind: SpotlightKind | ShowcaseKind; /** Sólo va al registro: no se dibuja en el centro (el cementerio y el destierro). */ quiet?: true; cards: ReadonlyArray<{ id: string; art: string | null; name?: string }>; flip?: boolean; caption: string; linger?: boolean }
   /** Lo que el rival marcó como objetivo de mi lado (con mis ids reales): sus cartas y pilas enteras, la mano incluida, llevan la mira igual que lo que marqué yo. */
   marksOnMine?: Marks
   /** Lo que se está señalando de mi lado (el rival, o yo): una carta mía o una pila; late un rato. */
@@ -1673,7 +1673,7 @@ export function PracticeMat({
       ) : null}
 
       {/* Lo que hace el rival y se anima: sus cartas aparecen grandes en el centro con un cartel que dice qué pasó, como en un combo guardado. */}
-      {duel?.rivalEffect ? (
+      {duel?.rivalEffect && !duel.rivalEffect.quiet ? (
         <Spotlight
           key={duel.rivalEffect.key}
           kind={duel.rivalEffect.kind}

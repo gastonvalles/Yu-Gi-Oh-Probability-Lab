@@ -111,25 +111,26 @@ describe('los efectos de una jugada', () => {
     })
   })
 
-  it('robar o mandar al cementerio muestra todas las cartas del tope, de dorso; y una carta que entra a la mano la enmarca', () => {
+  it('robar muestra todas las cartas del tope, de dorso, y una carta que entra a la mano la enmarca; mandar las del tope al cementerio no se muestra grande', () => {
     expect(matEffects(start(), { type: 'draw', count: 1 })).toEqual({ showcase: { ids: ['e1'], kind: 'hand', flip: true }, hand: true, shuffle: true })
     expect(matEffects(start(), { type: 'draw', count: 2 })).toEqual({ showcase: { ids: ['e1', 'f1'], kind: 'hand', flip: true }, hand: true, shuffle: true })
     // Con menos cartas que las pedidas, sólo las que hay; con el deck vacío, nada.
     expect(matEffects(start(), { type: 'draw', count: 5 })).toMatchObject({ showcase: { ids: ['e1', 'f1'] } })
     expect(matEffects(after([{ type: 'mill', count: 2 }]), { type: 'draw', count: 1 })).toEqual({})
 
-    expect(matEffects(start(), { type: 'mill', count: 2 })).toEqual({ showcase: { ids: ['e1', 'f1'], kind: 'gy', flip: true }, shuffle: true })
+    // El cementerio y el destierro son la única jugada que no se muestra grande: sólo se anotan (`quiet`).
+    expect(matEffects(start(), { type: 'mill', count: 2 })).toEqual({ quiet: { ids: ['e1', 'f1'], kind: 'gy' }, shuffle: true })
   })
 
-  it('mover una carta muestra a dónde va (de dorso sólo si sale del deck o del Extra) y devolverla a la mano enmarca la mano', () => {
-    expect(matEffects(start(), { type: 'move', id: 'a1', to: 'gy' })).toEqual({ showcase: { ids: ['a1'], kind: 'gy' } })
-    expect(matEffects(start(), { type: 'move', id: 'a1', to: 'banished', faceDown: true })).toEqual({ showcase: { ids: ['a1'], kind: 'banish' } })
+  it('mover una carta muestra a dónde va (de dorso sólo si sale del deck o del Extra; al cementerio o al destierro no se muestra grande) y devolverla a la mano enmarca la mano', () => {
+    expect(matEffects(start(), { type: 'move', id: 'a1', to: 'gy' })).toEqual({ quiet: { ids: ['a1'], kind: 'gy' } })
+    expect(matEffects(start(), { type: 'move', id: 'a1', to: 'banished', faceDown: true })).toEqual({ quiet: { ids: ['a1'], kind: 'banish' } })
     expect(matEffects(start(), { type: 'move', id: 'a1', to: 'extra' })).toEqual({ showcase: { ids: ['a1'], kind: 'extra' } })
     expect(matEffects(start(), { type: 'move', id: 'a1', to: 'deck' })).toEqual({ showcase: { ids: ['a1'], kind: 'deck' }, shuffle: true })
     expect(matEffects(start(), { type: 'move', id: 'a1', to: 'deck-bottom' })).toEqual({ showcase: { ids: ['a1'], kind: 'deck' }, shuffle: true })
     // Buscar en el deck y sacar del Extra: salen de dorso.
     expect(matEffects(start(), { type: 'move', id: 'e1', to: 'hand' })).toEqual({ showcase: { ids: ['e1'], kind: 'hand', flip: true }, hand: true, shuffle: true })
-    expect(matEffects(start(), { type: 'move', id: 'x1', to: 'gy' })).toEqual({ showcase: { ids: ['x1'], kind: 'gy', flip: true } })
+    expect(matEffects(start(), { type: 'move', id: 'x1', to: 'gy' })).toEqual({ quiet: { ids: ['x1'], kind: 'gy' } })
     // Volver a la mano desde el campo.
     expect(matEffects(after([place('a1', 0)]), { type: 'move', id: 'a1', to: 'hand' })).toEqual({ showcase: { ids: ['a1'], kind: 'hand' }, hand: true, shuffle: true })
     // Una carta que no existe, o una ficha que deja el campo, no muestran nada.

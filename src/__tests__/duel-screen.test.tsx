@@ -1011,16 +1011,15 @@ describe('la pantalla del duelo', () => {
     expect(rivalCard()).toHaveAttribute('data-targeted', 'true')
     expect(within(rivalCard()).getByRole('img', { name: 'Target' })).toBeInTheDocument()
 
-    // Mandar la carta al cementerio: su carta viaja (lo anima la mesa) y el cartel dice qué pasó, como en un combo guardado.
+    // Mandar la carta al cementerio es la única jugada que no se muestra grande: su carta viaja (lo anima la mesa), no sale cartel ni carta en el centro, y la línea queda en el registro.
     myMonster()
     fireEvent.click(screen.getByRole('menuitem', { name: 'Al cementerio' }))
     flush()
-    expect(stage()).toHaveAttribute('data-kind', 'gy')
-    expect(guest.container.querySelector('[data-activation]')).toHaveTextContent('Ana manda una carta al cementerio')
-    act(() => {
-      vi.advanceTimersByTime(1000)
-    })
     expect(stage()).toBeNull()
+    expect(guest.container.querySelector('[data-activation]')).toBeNull()
+    click(guest, /^Chat/)
+    expect(within(within(screen.getByRole('dialog')).getByRole('log')).getByText('Ana manda una carta al cementerio')).toBeInTheDocument()
+    fireEvent.keyDown(document, { key: 'Escape' })
 
     // Deshacer lo de Ana no repite nada en la mesa de Beto.
     click(host, 'Deshacer')
