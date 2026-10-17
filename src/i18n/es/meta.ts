@@ -33,7 +33,7 @@ export const meta = {
   'meta.screen.weeksLabel': 'Cuántas semanas de decks se cuentan',
   'meta.screen.viewLabel': 'Tier list de hoy o proyección a {ahead} semanas',
   'meta.screen.weeksOption': '{count} sem.',
-  'meta.screen.zoneBoth': 'Main + Side',
+  'meta.screen.zoneBoth': 'Ambos',
   'meta.screen.zoneMain': 'Main',
   'meta.screen.zoneSide': 'Side',
   'meta.screen.viewNow': 'Hoy',

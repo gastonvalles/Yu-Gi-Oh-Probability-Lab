@@ -35,7 +35,7 @@ export const meta: Translated<typeof es> = {
   'meta.screen.weeksLabel': 'How many weeks of decks to count',
   'meta.screen.viewLabel': 'Tier list for today or {ahead}-week projection',
   'meta.screen.weeksOption': '{count} wks',
-  'meta.screen.zoneBoth': 'Main + Side',
+  'meta.screen.zoneBoth': 'Both',
   'meta.screen.zoneMain': 'Main',
   'meta.screen.zoneSide': 'Side',
   'meta.screen.viewNow': 'Today',
