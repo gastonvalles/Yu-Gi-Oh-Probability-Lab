@@ -58,8 +58,6 @@ interface DuelBarProps {
   onLeave: () => void
   /** Rendirme: el duelo termina y gana el rival (se pide confirmar). */
   onConcede: () => void
-  /** El botón del chat (sólo en el celular, donde no está a la vista): a la derecha de la fila del turno. En escritorio el chat está fijo y no se pasa. */
-  chat?: ReactNode
   /** La línea del registro (sólo en el celular): lo último que pasó; tocarla abre el chat con el registro. */
   log?: ReactNode
   /** Volver a conectarme a la sala ya: lo toca cualquiera de los dos si el duelo quedó en pausa por un aviso que no llegó, y el relay vuelve a decirle a cada uno si el otro está. */
@@ -107,7 +105,7 @@ function HoldBanner({ hold, rivalName }: { hold: NonNullable<DuelBarProps['hold'
 /** Los avisos de la conexión y del rival se apoyan debajo de la barra (no la empujan): el campo no se mueve cuando aparecen o se van. */
 const ALERT_OVERLAY = 'absolute inset-x-0.5 top-full z-20 mt-1'
 
-export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRematch, onLeave, onConcede, onReconnect, chat, log, resultOpen = false, rivalSignal = null, hold }: DuelBarProps) {
+export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRematch, onLeave, onConcede, onReconnect, log, resultOpen = false, rivalSignal = null, hold }: DuelBarProps) {
   const now = useTick(1000)
   const [leaving, setLeaving] = useState(false)
   const [conceding, setConceding] = useState(false)
@@ -187,8 +185,6 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
           {turn === 'mine' ? t('duel.bar.yourTurn') : t('duel.bar.theirTurn', { name: rivalName })}
           {phase ? <span data-testid="duel-phase">{` · ${phase}`}</span> : null}
         </span>
-        {/* El chat a la derecha de la fila del turno (las dos reacciones, 🤔 y 👍, están abajo con el pulgar). */}
-        {chat ? <span className="ml-auto flex shrink-0 items-center">{chat}</span> : null}
       </div>
 
       {/* Lo que pasó va justo debajo del turno, como en la referencia; la mano del rival, después. Un pedido de esperar se apoya sobre esa línea (la misma fila, sin sumar alto: el campo no se mueve). */}
@@ -278,23 +274,24 @@ interface DuelToolsProps {
   chatDocked?: boolean
   /** Pediste esperar y sigue pedido: ✋ queda apretado. */
   holding?: boolean
+  /** El botón del chat (sólo en el celular, donde no está a la vista): va entre el + y las señales, al alcance del pulgar. */
+  chat?: ReactNode
+  /** La hoja de la moneda, el dado y los juegos (la abre el + de la mesa). */
+  gamesOpen: boolean
+  onGamesClose: () => void
 }
 
 /**
- * Los botones propios del duelo, abajo a la derecha (el pulgar de quien juega con la derecha): los dados y juegos y las dos reacciones (🤔 y 👍), que son
- * de lo más a mano. El chat está arriba (`DuelChatToggle`) o, en escritorio, fijo a la derecha de la mesa.
+ * Los botones propios del duelo, abajo a la derecha (el pulgar de quien juega con la derecha): el chat y las dos señales (✋ Esperá y 👍 Continuá), que son de lo más a mano.
+ * En escritorio el chat está fijo a la derecha de la mesa y las señales van en él. La moneda, el dado y los juegos están dentro del + (su hoja se arma acá).
  */
-export function DuelTools({ snapshot, myName, games, onSendChat, chatDocked = false, holding = false }: DuelToolsProps) {
-  const [gamesOpen, setGamesOpen] = useState(false)
-
+export function DuelTools({ snapshot, myName, games, onSendChat, chatDocked = false, holding = false, chat, gamesOpen, onGamesClose }: DuelToolsProps) {
   return (
     <>
-      <IconButton tone="flat" size="sm" aria-label={t('duel.games.open')} title={t('duel.games.open')} onClick={() => setGamesOpen(true)}>
-        <Icon name="dice" />
-      </IconButton>
+      {chat}
       {chatDocked ? null : <ReactionButtons set="dock" onSend={onSendChat} disabled={!snapshot.peerPresent} holding={holding} />}
 
-      <DuelGames isOpen={gamesOpen} onClose={() => setGamesOpen(false)} snapshot={snapshot} myName={myName} actions={games} />
+      <DuelGames isOpen={gamesOpen} onClose={onGamesClose} snapshot={snapshot} myName={myName} actions={games} />
     </>
   )
 }
