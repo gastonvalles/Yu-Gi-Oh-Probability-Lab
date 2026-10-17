@@ -1,4 +1,4 @@
-import { PILE_LAYER_DIM, PILE_LAYER_PX, CARD_BACK, pileDepth } from './practice-styles'
+import { PILE_LAYER_DIM, PILE_LAYER_PCT, CARD_BACK, pileDepth } from './practice-styles'
 
 /**
  * El volumen de una pila de cartas (el deck y el Extra): capas de dorso, una por cada seis cartas (hasta 8), cada una un poco más abajo y más oscura que la de arriba, como
@@ -18,7 +18,7 @@ export function PileStack({ count, up = false }: { count: number; up?: boolean }
         // La más lejana primero: cada capa nueva va encima de la anterior.
         const layer = depth - index
 
-        return <span key={layer} className={CARD_BACK} style={{ transform: `translateY(${(up ? -1 : 1) * layer * PILE_LAYER_PX}px)`, filter: `brightness(${1 - layer * PILE_LAYER_DIM})` }} />
+        return <span key={layer} className={CARD_BACK} style={{ transform: `translateY(${(up ? -1 : 1) * layer * PILE_LAYER_PCT}%)`, filter: `brightness(${1 - layer * PILE_LAYER_DIM})` }} />
       })}
     </span>
   )

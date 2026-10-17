@@ -25,8 +25,8 @@ export const RULE_COLOR = {
 /** Cuántas capas de dorso se apilan debajo de una pila: una por cada seis cartas, hasta 8 (un deck de 48 o más). Sin cartas, ninguna. */
 export const pileDepth = (count: number): number => (count <= 0 ? 0 : Math.min(8, Math.max(1, Math.ceil(count / 6))))
 
-/** Cuánto asoma cada capa de la pila (px) y cuánto más oscura es que la de arriba. */
-export const PILE_LAYER_PX = 1.25
+/** Cuánto asoma cada capa de la pila (% del alto de la carta: crece con la casilla, en el celular y en escritorio) y cuánto más oscura es que la de arriba. */
+export const PILE_LAYER_PCT = 2
 export const PILE_LAYER_DIM = 0.07
 
 /**

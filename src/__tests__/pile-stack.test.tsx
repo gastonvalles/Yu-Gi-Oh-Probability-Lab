@@ -8,7 +8,7 @@ import { pileDepth } from '../components/probability/practice-styles'
 import { IconButton } from '../components/ui/IconButton'
 
 const layers = (container: HTMLElement) => [...container.querySelectorAll<HTMLElement>('[data-pile-edge] > span')]
-const offset = (layer: HTMLElement) => Number(/translateY\((-?[\d.]+)px\)/.exec(layer.style.transform)?.[1])
+const offset = (layer: HTMLElement) => Number(/translateY\((-?[\d.]+)%\)/.exec(layer.style.transform)?.[1])
 const dim = (layer: HTMLElement) => Number(/brightness\(([\d.]+)\)/.exec(layer.style.filter)?.[1])
 
 describe('el volumen de las pilas de cartas', () => {
@@ -24,7 +24,7 @@ describe('el volumen de las pilas de cartas', () => {
 
     expect(stack).toHaveLength(7)
     // Del fondo al frente: asoman cada vez menos y son cada vez más claras (la de arriba de todo es la carta de la pila).
-    expect(stack.map(offset)).toEqual([8.75, 7.5, 6.25, 5, 3.75, 2.5, 1.25])
+    expect(stack.map(offset)).toEqual([14, 12, 10, 8, 6, 4, 2])
     expect(stack.map(dim)).toEqual([...stack.map(dim)].sort((a, b) => a - b))
     expect(Math.min(...stack.map(dim))).toBeGreaterThan(0.4)
     // Cada capa es un dorso de carta (la imagen), no una línea de color.
@@ -34,7 +34,7 @@ describe('el volumen de las pilas de cartas', () => {
   it('la pila del rival asoma hacia arriba (del lado de afuera del campo) y sin cartas no hay nada', () => {
     const { container } = render(<PileStack count={12} up />)
 
-    expect(layers(container).map(offset)).toEqual([-2.5, -1.25])
+    expect(layers(container).map(offset)).toEqual([-4, -2])
     expect(render(<PileStack count={0} />).container.querySelector('[data-pile-edge]')).toBeNull()
   })
 })
