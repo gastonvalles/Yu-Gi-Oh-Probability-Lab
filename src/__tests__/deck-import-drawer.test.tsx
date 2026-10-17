@@ -176,7 +176,7 @@ describe('el importador de decks', () => {
 
     // Mientras carga los controles no están: el foco ya está en el panel, y el aviso es neutro.
     expect(dialog).toHaveFocus()
-    expect(screen.getByText('Procesando...')).toBeInTheDocument()
+    expect(screen.getByText('Procesando…')).toBeInTheDocument()
     expect(screen.queryByText('Procesando archivo')).not.toBeInTheDocument()
 
     await screen.findByText('Todo listo para aplicar el import')

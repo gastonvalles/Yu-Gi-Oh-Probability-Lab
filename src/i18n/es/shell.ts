@@ -118,6 +118,7 @@ export const shell = {
   'shell.mascot.restDialog.cancel': 'Seguir jugando',
   'shell.mascot.restToast': '{name} se fue a descansar. Para que vuelva, abrí Mascotas en el menú.',
 
+  'shell.skipToContent': 'Saltar al contenido',
   'shell.life.title': 'Calculadora de LP',
   'shell.life.close': 'Cerrar la calculadora',
   'shell.life.reset': 'Reiniciar',

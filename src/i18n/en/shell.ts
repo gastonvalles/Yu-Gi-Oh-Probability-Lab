@@ -120,6 +120,7 @@ export const shell: Translated<typeof es> = {
   'shell.mascot.restDialog.cancel': 'Keep playing',
   'shell.mascot.restToast': '{name} went to rest. To bring it back, open Mascots in the menu.',
 
+  'shell.skipToContent': 'Skip to content',
   'shell.life.title': 'LP calculator',
   'shell.life.close': 'Close the calculator',
   'shell.life.reset': 'Reset',
