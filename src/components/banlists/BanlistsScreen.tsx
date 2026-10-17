@@ -141,7 +141,7 @@ export function BanlistsScreen() {
               <strong className="max-w-full truncate text-body font-semibold text-foreground">{formatBanlistDate(list.date)}</strong>
               {index === 0 ? <span className="text-micro text-muted">{t('catalog.banlists.current')}</span> : null}
               <select
-                className="absolute inset-0 size-full cursor-pointer appearance-none rounded-control opacity-0 focus-visible:outline-none"
+                className="absolute inset-0 size-full cursor-pointer appearance-none rounded-control opacity-0 [color-scheme:dark] focus-visible:outline-none [&_option]:bg-secondary [&_option]:text-foreground"
                 value={list.date}
                 aria-label={t('catalog.banlists.pickLabel')}
                 onChange={(event) => setPicked({ region, date: event.target.value })}
