@@ -21,15 +21,12 @@ import { TiltCard } from '../card-detail/TiltCard'
 import { CardArt } from '../CardArt'
 import { Badge } from '../ui/Badge'
 import { Card } from '../ui/Card'
-import { cx } from '../ui/cx'
 import { EmptyState } from '../ui/EmptyState'
-import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { SearchField } from '../ui/SearchField'
 import { Segmented } from '../ui/Segmented'
 import { StepPage } from '../ui/StepPage'
-import { field } from '../ui/surfaces'
 import type { Tone } from '../ui/tone'
 import { BanlistCardModal } from './BanlistCardModal'
 
@@ -55,6 +52,8 @@ const STATUS_KEY = {
   unlimited: 'catalog.banlists.status.unlimited',
 } as const satisfies Record<BanlistStatus, string>
 const STATUS_TONE: Record<BanlistStatus, Tone> = { forbidden: 'danger', limited: 'warning', 'semi-limited': 'info', unlimited: 'success' }
+/** Cuántas copias se podían tener en cada estado: es lo que dice la etiqueta «Antes N» sobre la carta. */
+const COPIES: Record<BanlistStatus, number> = { forbidden: 0, limited: 1, 'semi-limited': 2, unlimited: 3 }
 
 /** Una carta de una sección: lo que se muestra y, en los cambios, cómo estaba antes. */
 interface Entry {
@@ -132,25 +131,32 @@ export function BanlistsScreen() {
       />
 
       <Card className="grid gap-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <IconButton tone="raised" size="md" aria-label={t('catalog.banlists.older')} title={t('catalog.banlists.older')} disabled={index >= lists.length - 1} onClick={() => pick(index + 1)}>
-            <Icon name="chevron-left" />
-          </IconButton>
-          <select
-            className={cx(field, 'h-10 min-w-0 flex-1 px-3 text-body min-[700px]:max-w-72')}
-            value={list.date}
-            aria-label={t('catalog.banlists.pickLabel')}
-            onChange={(event) => setPicked({ region, date: event.target.value })}
-          >
-            {lists.map((option) => (
-              <option key={option.date} value={option.date}>
-                {formatBanlistDate(option.date)}
-              </option>
-            ))}
-          </select>
-          <IconButton tone="raised" size="md" aria-label={t('catalog.banlists.newer')} title={t('catalog.banlists.newer')} disabled={index <= 0} onClick={() => pick(index - 1)}>
-            <Icon name="chevron-right" />
-          </IconButton>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-3">
+          <div className="flex min-w-0 flex-1 items-center justify-between gap-1 min-[700px]:flex-none">
+            <IconButton tone="raised" size="lg" aria-label={t('catalog.banlists.older')} title={t('catalog.banlists.older')} disabled={index >= lists.length - 1} onClick={() => pick(index + 1)}>
+              <Icon name="chevron-left" />
+            </IconButton>
+            {/* La fecha y su estado se ven en el medio; el <select> de verdad (que deja saltar a cualquier lista) va encima, transparente. */}
+            <div className="relative grid h-11 min-w-0 flex-1 content-center justify-items-center rounded-control text-center focus-within:shadow-focus min-[700px]:w-64 min-[700px]:flex-none">
+              <strong className="max-w-full truncate text-body font-semibold text-foreground">{formatBanlistDate(list.date)}</strong>
+              {index === 0 ? <span className="text-micro text-muted">{t('catalog.banlists.current')}</span> : null}
+              <select
+                className="absolute inset-0 size-full cursor-pointer appearance-none rounded-control opacity-0 focus-visible:outline-none"
+                value={list.date}
+                aria-label={t('catalog.banlists.pickLabel')}
+                onChange={(event) => setPicked({ region, date: event.target.value })}
+              >
+                {lists.map((option) => (
+                  <option key={option.date} value={option.date}>
+                    {formatBanlistDate(option.date)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <IconButton tone="raised" size="lg" aria-label={t('catalog.banlists.newer')} title={t('catalog.banlists.newer')} disabled={index <= 0} onClick={() => pick(index - 1)}>
+              <Icon name="chevron-right" />
+            </IconButton>
+          </div>
           <Segmented
             value={view}
             onChange={setView}
@@ -159,20 +165,14 @@ export function BanlistsScreen() {
               { value: 'full', label: t('catalog.banlists.viewFull') },
             ]}
             label={t('catalog.banlists.viewLabel')}
-            size="sm"
-            className="max-[699px]:w-full min-[700px]:ml-auto"
+            fullWidth
+            className="min-[700px]:ml-auto min-[700px]:w-fit"
           />
         </div>
 
-        <div className="grid gap-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <Heading level="section" as="h2">
-              {t('catalog.banlists.listTitle', { region: region.toUpperCase(), date: formatBanlistDate(list.date) })}
-            </Heading>
-            {index === 0 ? <Badge tone="success">{t('catalog.banlists.current')}</Badge> : null}
-          </div>
-          <p className="m-0 text-body text-muted">{summary(view, list, previous, total)}</p>
-        </div>
+        <p className="m-0 text-body text-muted" aria-live="polite">
+          {summary(view, list, previous, total)}
+        </p>
 
         <SearchField label={t('catalog.banlists.searchLabel')} placeholder={t('catalog.banlists.searchLabel')} value={query} onChange={setQuery} className="min-[700px]:max-w-80" />
 
@@ -185,9 +185,9 @@ export function BanlistsScreen() {
                 <Badge tone={STATUS_TONE[status]} dot>
                   {t(TITLE_KEY[status])}
                 </Badge>
-                <span className="text-micro font-semibold text-soft tabular-nums">{formatInteger(entries.length)}</span>
+                <Badge size="sm">{formatInteger(entries.length)}</Badge>
               </div>
-              <ul className="m-0 grid list-none grid-cols-3 gap-x-2.5 gap-y-3 p-0 min-[560px]:grid-cols-4 min-[820px]:grid-cols-5 min-[1101px]:grid-cols-6 min-[1300px]:grid-cols-8">
+              <ul className="m-0 grid list-none grid-cols-4 gap-x-2 gap-y-3 p-0 min-[560px]:grid-cols-5 min-[820px]:grid-cols-6 min-[1101px]:grid-cols-8 min-[1300px]:grid-cols-10">
                 {entries.map((entry) => (
                   <BanlistTile key={entry.cardId} entry={entry} status={status} onOpen={open} />
                 ))}
@@ -212,11 +212,20 @@ const BanlistTile = memo(function BanlistTile({ entry, status, onOpen }: { entry
         className="group grid w-full content-start gap-1.5 rounded-tag text-left focus-visible:outline-none focus-visible:shadow-focus"
         onClick={() => onOpen(entry.cardId, status)}
       >
-        <TiltCard className="aspect-[421/614] rounded-tag bg-input shadow-card">
-          <CardArt remoteUrl={cardSmallImageUrl(entry.cardId)} name="" className="block h-full w-full object-cover" />
-        </TiltCard>
+        <span className="relative block">
+          <TiltCard className="aspect-[421/614] rounded-tag bg-input shadow-card">
+            <CardArt remoteUrl={cardSmallImageUrl(entry.cardId)} name="" className="block h-full w-full object-cover" />
+          </TiltCard>
+          {entry.from ? (
+            <>
+              <span aria-hidden="true" className="pointer-events-none absolute bottom-0.5 left-0.5 inline-flex h-4 items-center rounded-tag bg-black/85 px-1.5 text-micro font-bold tabular-nums text-white">
+                {t('catalog.banlists.wasCopies', { count: COPIES[entry.from] })}
+              </span>
+              <span className="sr-only">{t('catalog.banlists.was', { status: t(STATUS_KEY[entry.from]) })}</span>
+            </>
+          ) : null}
+        </span>
         <span className="line-clamp-2 text-micro font-semibold text-foreground [overflow-wrap:anywhere]">{banlistCardName(entry.cardId)}</span>
-        {entry.from ? <span className="text-micro text-muted">{t('catalog.banlists.was', { status: t(STATUS_KEY[entry.from]) })}</span> : null}
       </button>
     </li>
   )

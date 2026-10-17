@@ -42,7 +42,6 @@ export const catalog: Translated<typeof es> = {
   'catalog.banlists.viewLabel': 'What to show',
   'catalog.banlists.viewChanges': 'Changes',
   'catalog.banlists.viewFull': 'Full list',
-  'catalog.banlists.listTitle': '{region} list of {date}',
   'catalog.banlists.changesSummary': { one: '{n} card changed from the {date} list.', other: '{n} cards changed from the {date} list.' },
   'catalog.banlists.firstSummary': { one: "It's the first {region} list we have: it has {n} card.", other: "It's the first {region} list we have: it has {n} cards." },
   'catalog.banlists.fullSummary': { one: '{n} card on the list.', other: '{n} cards on the list.' },
@@ -58,6 +57,7 @@ export const catalog: Translated<typeof es> = {
   'catalog.banlists.status.semiLimited': 'Semi-Limited',
   'catalog.banlists.status.unlimited': 'Unlimited',
   'catalog.banlists.was': 'Was: {status}',
+  'catalog.banlists.wasCopies': 'Was {count}',
   'catalog.banlists.openCard': 'View details for {name}',
   'catalog.banlists.cardContext': '{region} · {date} · {status}',
 }
