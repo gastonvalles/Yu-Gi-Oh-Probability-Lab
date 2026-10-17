@@ -994,7 +994,7 @@ describe('la mesa de práctica', () => {
     const ash = () => within(zone('Zona de monstruo 1')).getByRole('button', { name: /^Ash Blossom/ })
     const isMaterial = (button: HTMLElement) => button.getAttribute('aria-label')?.includes('(Material)')
 
-    it('dos toques seguidos al único material lo confirman, sin tocar el botón', () => {
+    it('dos toques seguidos al único material lo confirman, sin tocar el botón, pero la casilla se elige', () => {
       const matchMedia = window.matchMedia
       asDesktop()
 
@@ -1004,9 +1004,67 @@ describe('la mesa de práctica', () => {
         expect(within(status()).getByText('Con un solo material, doble clic en él para invocar')).toBeInTheDocument()
         tap(ash())
 
-        // Se siguió como al confirmar: quedan zonas para elegir y Ash va como material.
+        // Se siguió como al confirmar: confirma el material pero no invoca solo, la mesa espera que se toque la casilla (también la de Ash, que se liberó).
+        expect(within(status()).getByText(/^Tocá la zona para/)).toBeInTheDocument()
+        expect(within(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' })).queryByRole('button', { name: 'Zeus' })).not.toBeInTheDocument()
         tap(within(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' })).getByRole('button', { name: 'Ash Blossom (Material)' }))
         expect(within(status()).getByText('Invocación Xyz de Zeus (materiales: Ash Blossom)')).toBeInTheDocument()
+      } finally {
+        window.matchMedia = matchMedia
+      }
+    })
+
+    it('el click que el navegador manda tras el segundo toque no elige la casilla del material: la casilla la elige el jugador', () => {
+      const matchMedia = window.matchMedia
+      asDesktop()
+
+      try {
+        startXyz()
+        const material = ash()
+        tap(material)
+        tap(material)
+        // El segundo toque confirmó y la mesa ya pide zona: el click que le sigue cae en la carta (dentro de su casilla) y no tiene que invocar ahí.
+        fireEvent.click(material)
+
+        expect(within(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' })).queryByRole('button', { name: 'Zeus' })).not.toBeInTheDocument()
+        expect(within(status()).getByText(/^Tocá la zona para/)).toBeInTheDocument()
+
+        // Elegir a mano otra casilla sí invoca ahí.
+        fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 3: elegir' }))
+        expect(within(zone('Zona de monstruo 3')).getByRole('button', { name: 'Zeus' })).toBeInTheDocument()
+        expect(within(status()).getByText('Invocación Xyz de Zeus (materiales: Ash Blossom)')).toBeInTheDocument()
+      } finally {
+        window.matchMedia = matchMedia
+      }
+    })
+
+    it('con una sola casilla libre al liberarse el material, el doble clic tampoco la elige: queda esperando que se toque', () => {
+      const matchMedia = window.matchMedia
+      asDesktop()
+
+      try {
+        const cards = new Map(CARDS).set('card-8-1', { name: 'Hermes', apiCard: card(8, 'xyz') }).set('card-9-1', { name: 'Atlas', apiCard: card(9, 'xyz') })
+        // Cinco zonas de monstruo y las dos Zonas Extra ocupadas: al irse Ash queda sólo su casilla.
+        const initial = replayMat(createMatState(['card-1-1', 'card-2-1', 'card-3-1', 'card-4-1', 'card-5-1', 'card-6-1'], ['card-7-1', 'card-8-1', 'card-9-1'], 5), [
+          ...['card-1-1', 'card-2-1', 'card-3-1', 'card-4-1', 'card-5-1'].map((id, index) => ({ type: 'place', id, zone: 'mz', index, pos: 'atk' }) as const),
+          { type: 'place', id: 'card-8-1', zone: 'emz', index: 0, pos: 'atk', how: 'special' },
+          { type: 'place', id: 'card-9-1', zone: 'emz', index: 1, pos: 'atk', how: 'special' },
+        ])
+        render(<Harness initial={initial} cards={cards} />)
+
+        fireEvent.click(screen.getByRole('button', { name: 'Extra: 1' }))
+        fireEvent.click(within(screen.getByRole('dialog', { name: 'Extra · 1' })).getByRole('button', { name: 'Zeus' }))
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Especial' }))
+        fireEvent.click(screen.getByRole('menuitem', { name: 'En ataque' }))
+        const material = ash()
+        tap(material)
+        tap(material)
+
+        // Antes se invocaba solo en la única casilla libre (la del material).
+        expect(within(status()).getByText(/^Tocá la zona para/)).toBeInTheDocument()
+        expect(within(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' })).queryByRole('button', { name: 'Zeus' })).not.toBeInTheDocument()
+        tap(within(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' })).getByRole('button', { name: 'Ash Blossom (Material)' }))
+        expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Zeus' })).toBeInTheDocument()
       } finally {
         window.matchMedia = matchMedia
       }
