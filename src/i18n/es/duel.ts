@@ -44,6 +44,9 @@ export const duel = {
   'duel.announce.reveal': '{name} revela una carta',
   'duel.announce.declare': '{name} declara una carta',
   'duel.announce.target': '{name} marca una carta como objetivo',
+  'duel.announce.named.activate': '{name} activa {card}',
+  'duel.announce.named.reveal': '{name} revela {card}',
+  'duel.announce.named.declare': '{name} declara {card}',
 
   // Antes de entrar a una sala.
   'duel.lobby.title': 'Duelo con un amigo',

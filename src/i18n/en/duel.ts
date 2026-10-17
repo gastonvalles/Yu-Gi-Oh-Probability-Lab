@@ -44,6 +44,9 @@ export const duel: Translated<typeof es> = {
   'duel.announce.reveal': '{name} reveals a card',
   'duel.announce.declare': '{name} declares a card',
   'duel.announce.target': '{name} targets a card',
+  'duel.announce.named.activate': '{name} activates {card}',
+  'duel.announce.named.reveal': '{name} reveals {card}',
+  'duel.announce.named.declare': '{name} declares {card}',
 
   'duel.lobby.title': 'Duel a friend',
   'duel.lobby.intro': 'Play the practice mat against another person, each on their own device. No accounts: you join with a link.',

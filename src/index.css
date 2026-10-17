@@ -93,6 +93,8 @@
   --animate-card-glow: card-glow var(--motion-duration) ease-out;
   /* Activar una carta o efecto en la mesa de práctica: la carta aparece grande en el centro de la pantalla, con brillo amarillo, y se desvanece (como en DuelingBook). */
   --animate-card-activate-center: card-activate-center 950ms ease-out both;
+  /* Lo que el rival activa, revela o declara y es público: la carta entra rápido y se queda 3 s para leerla (y su nombre) antes de irse; no ataja toques. */
+  --animate-card-activate-linger: card-activate-linger 3000ms ease-out both;
   /* El mazo de la mesa: tirón de la carta de arriba al repartir y barajado (las dos de abajo se abren a los costados). */
   --animate-pile-draw: pile-draw 200ms ease-out;
   --animate-riffle-left: riffle-left var(--motion-duration) ease-in-out;
@@ -382,6 +384,28 @@
 
     50% {
       transform: translate(11px, 1.5px) rotate(6deg);
+    }
+  }
+
+  @keyframes card-activate-linger {
+    0% {
+      opacity: 0;
+      transform: scale(0.55);
+    }
+
+    8% {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    88% {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    100% {
+      opacity: 0;
+      transform: scale(1.04);
     }
   }
 

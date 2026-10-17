@@ -14,6 +14,11 @@ export function artOfDrawId(drawId: string | undefined): string | null {
   if (drawId === undefined) return null
   if (isToken(drawId)) return TOKEN_ART
 
-  const passcode = parseDerivedCardId(cardIdOfDrawId(drawId))
+  const passcode = passcodeOfDrawId(drawId)
   return passcode === null ? null : `https://images.ygoprodeck.com/images/cards_small/${passcode}.jpg`
+}
+
+/** El número de YGOPRODeck de una carta real (`card-14558127-2` → 14558127); `null` si no es una (una ficha, o un id que no se reconoce). */
+export function passcodeOfDrawId(drawId: string): number | null {
+  return isToken(drawId) ? null : parseDerivedCardId(cardIdOfDrawId(drawId))
 }
