@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { buildDuelLink, DUEL_STEP, extractRoomCode, parseDuelTarget, parseDuelView, type DuelView } from '../../app/duel-link'
 import { deckFormatIssues } from '../../app/duel-format'
 import { MAIN_MINIMUM } from '../../app/duel-siding'
-import { cleanName, DEFAULT_DUEL_FORMAT, DEFAULT_LIMIT_MIN, DUEL_FORMATS, type MarkTarget } from '../../app/duel-protocol'
+import { cleanName, DEFAULT_DUEL_FORMAT, DEFAULT_LIMIT_MIN, DUEL_FORMATS, sameName, uniqueName, type MarkTarget } from '../../app/duel-protocol'
 import { formatDataLoaded, loadFormatData } from '../../app/format-data'
 import type { DeckFormat } from '../../types'
 import { fetchCardsByIds } from '../../ygoprodeck'
@@ -25,12 +25,12 @@ import type { MatSession } from '../../app/use-mat-session'
 import { showToastMessage } from '../../app/use-toast-message'
 import { t } from '../../i18n'
 import { Button } from '../ui/Button'
-import { Badge } from '../ui/Badge'
 import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
 import { FieldBox, fieldInline } from '../ui/FieldBox'
 import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
+import { Modal } from '../ui/Modal'
 import { IconButton } from '../ui/IconButton'
 import { CardMenu, PILE_TITLES, PileViewer } from '../probability/MatDialogs'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
@@ -46,8 +46,9 @@ import { DuelDeckPicker, loadDuelDeck, readStoredDeck, type DuelDeck } from './D
 import { gameText, outcomeText, rpsName } from './game-text'
 import { artOfDrawId, passcodeOfDrawId } from './duel-art'
 import { DuelOpening } from './DuelOpening'
+import { RoomRules } from './RoomRules'
 import { PlayHome } from './PlayHome'
-import { formatName, roomChips } from './room-chips'
+import { formatName } from './room-chips'
 import { DuelSiding } from './DuelSiding'
 import { SpectatorScreen } from './SpectatorScreen'
 import { TossOverlay } from './toss-views'
@@ -331,14 +332,37 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   )
 
   // Quien entra por un enlace no pasó por el lobby: el nombre se cambia (y se le avisa al rival) desde la sala.
+  const peerName = snapshot?.peerName ?? null
+  const isGuest = snapshot?.role === 'guest'
   const rename = useCallback(
     (value: string) => {
+      const clean = cleanName(value) || t('duel.lobby.defaultName')
+
+      // Los dos jugadores no pueden llamarse igual: el nombre del rival no se acepta (y el campo vuelve al que estaba).
+      if (sameName(clean, peerName)) {
+        showToastMessage(t('duel.room.nameTaken'), 'error')
+        return false
+      }
+
       setName(value)
       writeStored(() => localStorage, NAME_KEY, cleanName(value))
-      duel?.rename(cleanName(value) || t('duel.lobby.defaultName'))
+      duel?.rename(clean)
+      return true
     },
-    [duel],
+    [duel, peerName],
   )
+
+  // Quien llega a una sala y se llama igual que el anfitrión pasa a llamarse con un número al final (sin tocar el nombre que tiene guardado en el navegador).
+  useEffect(() => {
+    if (!duel || !isGuest || peerName === null || !sameName(myName, peerName)) {
+      return
+    }
+
+    const next = uniqueName(myName, peerName)
+
+    setName(next)
+    duel.rename(next)
+  }, [duel, isGuest, myName, peerName])
 
   // Salir deja el duelo en pausa: lo guardado (la mesa, las vidas, el reloj) sigue ahí para volver. Sólo si ya terminó (alguien se rindió o se quedó sin vidas) no hay nada que retomar.
   const finished = snapshot ? duelResult(snapshot.life.lp, snapshot.conceded) !== null : false
@@ -411,10 +435,11 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
     )
   }
 
+  // La sala ya tiene a sus dos jugadores: no es un enlace roto, se puede mirar (sin deck ni nombre).
   if (status === 'full') {
     return (
       <Screen>
-        <LinkGone onRetry={leave} onCreate={leaveToCreate} />
+        <RoomFull onWatch={() => enter(intent.room, 'guest', true)} onRetry={leave} />
       </Screen>
     )
   }
@@ -681,6 +706,27 @@ function WatchRoom({ onBack, onWatch }: WatchRoomProps) {
   )
 }
 
+/** La sala ya tiene a sus dos jugadores: lo dice y deja mirar el duelo (sin deck ni nombre) o probar otro enlace. */
+function RoomFull({ onWatch, onRetry }: { onWatch: () => void; onRetry: () => void }) {
+  return (
+    <div className="grid justify-items-center gap-4 py-10 text-center">
+      <Icon name="eye" size={40} className="text-muted" />
+      <div className="grid gap-1.5">
+        <h2 className="m-0 text-heading font-bold text-foreground">{t('duel.full.title')}</h2>
+        <p className="m-0 text-body text-muted">{t('duel.full.text')}</p>
+      </div>
+      <div className="grid w-full gap-2">
+        <Button variant="primary" icon="eye" onClick={onWatch}>
+          {t('duel.full.watch')}
+        </Button>
+        <Button variant="tertiary" onClick={onRetry}>
+          {t('duel.gone.retry')}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 /** Un enlace que ya no funciona (la sala se cerró o ya tiene a sus dos jugadores): lo dice y deja probar otro enlace o crear una sala. */
 function LinkGone({ onRetry, onCreate }: { onRetry: () => void; onCreate: () => void }) {
   return (
@@ -731,7 +777,7 @@ interface DuelRoomProps {
   myName: string
   /** El nombre como se escribió (vacío si no hay) y cómo cambiarlo. */
   name: string
-  onRename: (name: string) => void
+  onRename: (name: string) => boolean
   deckReady: boolean
   /** Con qué deck se juega: se elige desde la sala porque quien entra por un enlace no pasó por el lobby. */
   deckPicker: { builder: DuelDeck; imported: DuelDeck | null; onImport: (deck: DuelDeck | null) => void; size: number; min: number }
@@ -766,6 +812,9 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
   const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
   // Quien entra por un enlace y no encuentra a nadie, tras unos segundos, probablemente tiene un enlace vencido: se lo dice en vez de dejarlo esperando.
   const emptyRoom = useWaited(EMPTY_ROOM_MS, role === 'guest' && !peerPresent && status === 'open')
+
+  const [chatOpen, setChatOpen] = useState(false)
+  const [deckOpen, setDeckOpen] = useState(false)
 
   const copy = async (watch = false) => {
     const text = watch ? buildDuelLink(window.location.origin, window.location.pathname, room, true) : link
@@ -807,23 +856,18 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
         ) : undefined
       }
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="grid min-w-0 gap-1.5">
-          <Heading level="section">{t('duel.room.title')}</Heading>
-          <div className="grid gap-1" data-testid="room-summary">
-            <span className="flex flex-wrap gap-1">
-              {[...(isPublic === null ? [] : [isPublic ? t('duel.create.public') : t('duel.create.private')]), ...roomChips(settings)].map((chip) => (
-                <Badge key={chip} size="sm">
-                  {chip}
-                </Badge>
-              ))}
-            </span>
-            {isPublic === null ? null : <p className="m-0 text-micro text-soft">{isPublic ? t('duel.room.publicNote') : t('duel.room.privateNote')}</p>}
-          </div>
+      <div className="flex items-center justify-between gap-3">
+        <Heading level="section">{t('duel.room.title')}</Heading>
+        <div className="flex items-center gap-2">
+          {docked ? null : (
+            <Button variant="secondary" icon="chat" aria-haspopup="dialog" onClick={() => setChatOpen(true)}>
+              {t('duel.chat.open')}
+            </Button>
+          )}
+          <Button variant="secondary" onClick={onLeave}>
+            {t('duel.room.leave')}
+          </Button>
         </div>
-        <Button variant="secondary" onClick={onLeave}>
-          {t('duel.room.leave')}
-        </Button>
       </div>
 
       <RoomSteps step={step} />
@@ -852,12 +896,6 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
       ) : null}
 
       {status !== 'open' ? <Callout tone="warning" icon="alert">{status === 'connecting' ? t('duel.status.connecting') : t('duel.status.reconnecting')}</Callout> : null}
-      {snapshot.watchers > 0 ? (
-        <p className="m-0 flex items-center gap-2 text-micro text-soft" role="status">
-          <Icon name="eye" size={14} />
-          {t('duel.room.watchers', { count: snapshot.watchers })}
-        </p>
-      ) : null}
       {incompatible ? <Callout tone="danger">{t('duel.room.incompatible')}</Callout> : null}
 
       {/* Los dos jugadores desde el principio: con el rival adentro la tarjeta de cada uno es la de DuelOpening; antes, la tuya y un lugar que espera. */}
@@ -870,9 +908,6 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
                 <span className="text-micro font-semibold uppercase tracking-[0.04em] text-accent">{t('duel.opening.you')}</span>
               </span>
               <strong className="truncate text-lead font-semibold text-foreground">{myName || t('duel.opening.you')}</strong>
-              <span className="truncate text-micro text-muted">
-                {t('duel.room.deckLine', { name: roomDeck.name, main: roomDeck.mainIds.length, extra: roomDeck.extraIds.length })}
-              </span>
             </li>
             <li className="grid min-h-24 content-center justify-items-center gap-2 rounded-card border border-dashed border-border p-3 text-center">
               <p className="m-0 text-body text-muted" role="status">
@@ -885,7 +920,6 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
               </span>
             </li>
           </ul>
-          <p className="m-0 text-micro text-soft">{t('duel.room.settings', { lp: settings.lp, hand: settings.hand })}</p>
         </>
       ) : !settingsKnown ? (
         <p className="m-0 text-micro text-soft">{t('duel.room.guestWaits')}</p>
@@ -893,31 +927,47 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
 
       {peerPresent && settingsKnown && !incompatible ? <DuelOpening snapshot={snapshot} myName={myName} canReady={canReady} actions={duel} rename={{ value: name, onCommit: onRename }} /> : null}
 
-      {/* El anfitrión ya eligió su deck en el lobby; quien llega por un enlace lo elige acá (y sin deck armado, es lo que lo deja estar listo). */}
-      {!snapshot.ready.mine && (role === 'guest' || !deckReady || mainShort || issues.length > 0) ? (
-        <div className="grid gap-2 rounded-card border border-border-subtle bg-card-background p-3">
-          {issues.length > 0 ? (
-            <Callout tone="warning" icon="alert">
-              <span className="grid gap-1">
-                <span>{t('duel.room.formatBlocked', { name: formatName(settings.format, settings.genesysCap) })}</span>
-                {issues.map((issue) => (
-                  <span key={issue}>{issue}</span>
-                ))}
-              </span>
-            </Callout>
-          ) : null}
-          {deckReady ? null : <Callout tone="warning" icon="alert">{t('duel.lobby.needDeck', { count: deckPicker.size, min: deckPicker.min })}</Callout>}
-          {deckReady && mainShort ? <Callout tone="warning" icon="alert">{t('duel.room.mainShort', { count: roomDeck.mainIds.length, min: MAIN_MINIMUM })}</Callout> : null}
-          <DuelDeckPicker builder={deckPicker.builder} imported={deckPicker.imported} onImport={deckPicker.onImport} />
+      {/* Tu deck: el del builder o el que pegaste (quien llega por un enlace no pasó por el lobby). Se cambia en la hoja «Tu deck» mientras no estés listo; si no cumple, lo que falta se dice acá. */}
+      <section aria-label={t('duel.room.deckTitle')} className="grid gap-2 rounded-card border border-border-subtle bg-card-background p-3">
+        <div className="flex items-center justify-between gap-3">
+          <span className="grid min-w-0 gap-0.5">
+            <span className="text-micro font-semibold uppercase text-soft">{t('duel.room.deckTitle')}</span>
+            <span className="truncate text-body font-semibold text-foreground">
+              {deckReady ? t('duel.room.deckLine', { name: roomDeck.name, main: roomDeck.mainIds.length, extra: roomDeck.extraIds.length }) : t('duel.play.deckNone')}
+            </span>
+          </span>
+          {snapshot.ready.mine ? null : (
+            <Button variant="secondary" size="sm" icon="cards" aria-haspopup="dialog" onClick={() => setDeckOpen(true)}>
+              {t('duel.room.deckChange')}
+            </Button>
+          )}
         </div>
-      ) : null}
+        {!snapshot.ready.mine && issues.length > 0 ? (
+          <Callout tone="warning" icon="alert">
+            <span className="grid gap-1">
+              <span>{t('duel.room.formatBlocked', { name: formatName(settings.format, settings.genesysCap) })}</span>
+              {issues.map((issue) => (
+                <span key={issue}>{issue}</span>
+              ))}
+            </span>
+          </Callout>
+        ) : null}
+        {!snapshot.ready.mine && !deckReady ? <Callout tone="warning" icon="alert">{t('duel.lobby.needDeck', { count: deckPicker.size, min: deckPicker.min })}</Callout> : null}
+        {!snapshot.ready.mine && deckReady && mainShort ? <Callout tone="warning" icon="alert">{t('duel.room.mainShort', { count: roomDeck.mainIds.length, min: MAIN_MINIMUM })}</Callout> : null}
+      </section>
 
-      {!docked && peerPresent && !incompatible ? (
-        <section className="grid gap-2 rounded-card border border-border-subtle bg-card-background p-3" aria-label={t('duel.chat.open')}>
-          <Heading level="card">{t('duel.chat.open')}</Heading>
-          {chat}
-        </section>
-      ) : null}
+      <RoomRules settings={settings} isPublic={isPublic} watchers={snapshot.watchers} />
+
+      <Modal isOpen={deckOpen} onClose={() => setDeckOpen(false)} size="md" title={t('duel.play.deckTitle')}>
+        <DuelDeckPicker builder={deckPicker.builder} imported={deckPicker.imported} onImport={deckPicker.onImport} />
+      </Modal>
+
+      {/* El chat en el celular: siempre a un toque (también antes de que entre el rival), en una hoja. */}
+      {docked ? null : (
+        <Modal isOpen={chatOpen} onClose={() => setChatOpen(false)} size="md" title={t('duel.chat.open')}>
+          {peerPresent && !incompatible ? chat : <p className="m-0 py-6 text-center text-body text-muted">{t('duel.room.chatWaiting')}</p>}
+        </Modal>
+      )}
     </Screen>
   )
 }

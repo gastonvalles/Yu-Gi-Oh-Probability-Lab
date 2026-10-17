@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { RPS_PICKS, TOSS_METHODS, rpsOutcome } from '../../app/duel-games'
 import type { Duel, DuelSnapshot } from '../../app/duel-session'
 import type { Duelist } from '../../app/life-calculator'
-import { formatName } from './room-chips'
+import { MAX_NAME_LENGTH } from '../../app/duel-protocol'
 import { t } from '../../i18n'
 import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
@@ -21,7 +21,8 @@ interface DuelOpeningProps {
   canReady: boolean
   actions: OpeningActions
   /** Mi nombre tal como lo escribí (vacío si no puse uno) y cómo cambiarlo: se edita en mi tarjeta hasta que toco "Estoy listo". */
-  rename?: { value: string; onCommit: (name: string) => void }
+  /** `onCommit` devuelve `false` si el nombre no se aceptó (el del rival): el campo vuelve al que estaba. */
+  rename?: { value: string; onCommit: (name: string) => boolean | void }
 }
 
 /**
@@ -62,11 +63,6 @@ export function DuelOpening({ snapshot, myName, canReady, actions, rename }: Due
         <TossStep snapshot={snapshot} nameOf={nameOf} actions={actions} />
       )}
 
-      <p className="m-0 text-center text-micro text-soft">{t('duel.room.settings', { lp: snapshot.settings.lp, hand: snapshot.settings.hand })}{' '}
-        {snapshot.settings.limitMin > 0 ? t('duel.room.limit', { min: snapshot.settings.limitMin }) : t('duel.room.noLimit')}
-        {snapshot.settings.format === 'unlimited' ? '' : ` ${t('duel.room.format', { name: formatName(snapshot.settings.format, snapshot.settings.genesysCap) })}`}
-        {snapshot.settings.match ? ` ${t('duel.room.match')}` : ''}
-        {snapshot.settings.siding ? ` ${t('duel.room.siding')}` : ''}</p>
     </section>
   )
 }
@@ -112,17 +108,22 @@ function PlayerCard({ caption, name, ready, rename }: { caption: string; name: s
 }
 
 /** El nombre propio, editable: se manda al rival al salir del campo (o con Enter), no en cada letra. */
-function NameInput({ value, onCommit }: { value: string; onCommit: (name: string) => void }) {
+function NameInput({ value, onCommit }: { value: string; onCommit: (name: string) => boolean | void }) {
   const [draft, setDraft] = useState(value)
+
+  // Si el nombre cambia desde afuera (el invitado que llega con el mismo nombre que el anfitrión pasa a llevar un número), el campo lo sigue.
+  useEffect(() => setDraft(value), [value])
 
   return (
     <input
       aria-label={t('duel.lobby.name')}
       placeholder={t('duel.lobby.defaultName')}
-      maxLength={40}
+      maxLength={MAX_NAME_LENGTH}
       value={draft}
       onChange={(event) => setDraft(event.target.value)}
-      onBlur={() => onCommit(draft)}
+      onBlur={() => {
+        if (onCommit(draft) === false) setDraft(value)
+      }}
       onKeyDown={(event) => {
         if (event.key === 'Enter') event.currentTarget.blur()
       }}

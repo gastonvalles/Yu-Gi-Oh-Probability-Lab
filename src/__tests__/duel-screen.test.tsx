@@ -413,7 +413,7 @@ describe('la pantalla del duelo', () => {
     joinByLink(guest, link)
     flush()
 
-    expect(within(guest.container).getByText(/Es un Match: gana quien llegue a 2 duelos/)).toBeInTheDocument()
+    expect(within(within(guest.container).getByTestId('room-summary')).getByText('Match')).toBeInTheDocument()
     openTable(host, guest)
     expect(within(host.container).getByTestId('duel-series')).toHaveTextContent('Duelo 1 · 0–0')
     expect(within(guest.container).getByTestId('duel-series')).toHaveTextContent('Duelo 1 · 0–0')
@@ -561,7 +561,7 @@ describe('la pantalla del duelo', () => {
     expect(rooms.live).not.toHaveBeenCalled()
   })
 
-  it('al crear la sala se ve un resumen: pública o privada, el tipo, el formato y el reloj', () => {
+  it('al crear la sala se ve la ficha de reglas: pública o privada, el tipo, el formato, el reloj, las vidas y cuántos miran', () => {
     const rooms = fakeRooms()
     const host = render(<DuelScreen {...screenProps({ rooms })} />)
 
@@ -573,7 +573,8 @@ describe('la pantalla del duelo', () => {
     for (const chip of ['Pública', 'Match', 'TCG', '50 min']) {
       expect(summary.getByText(chip)).toBeInTheDocument()
     }
-    expect(summary.getByText(/Está en la lista de salas abiertas/)).toBeInTheDocument()
+    expect(summary.getByText('0 de 2')).toBeInTheDocument()
+    expect(summary.getByText('8000')).toBeInTheDocument()
   })
 
   it('una sala privada no se anota', () => {
@@ -701,7 +702,7 @@ describe('la pantalla del duelo', () => {
     expect(window.location.hash).toBe('#duel')
   })
 
-  it('una sala llena se dice y deja salir', () => {
+  it('una sala llena se dice, deja probar otro enlace y, en vez de un callejón sin salida, deja mirar el duelo sin deck', () => {
     window.history.replaceState(null, '', '#duel?room=K7QF2M9X')
     const full: SocketTransport = {
       status: 'full',
@@ -720,7 +721,7 @@ describe('la pantalla del duelo', () => {
     }
     const view = render(<DuelScreen {...screenProps({ connect: () => full })} />)
 
-    expect(within(view.container).getByRole('heading', { name: 'Ese enlace ya no funciona' })).toBeInTheDocument()
+    expect(within(view.container).getByRole('heading', { name: 'La sala ya está completa' })).toBeInTheDocument()
     click(view, 'Probar otro enlace')
     expect(within(view.container).getByRole('button', { name: 'Jugar ahora' })).toBeInTheDocument()
     expect(window.location.hash).toBe('#duel')
@@ -1465,8 +1466,13 @@ describe('la pantalla del duelo', () => {
 
     const { host, guest } = startDuel()
 
-    expect(within(host.container).getByText('Cada uno empieza con 8000 LP y una mano de 5 cartas. El reloj de cada duelo es de 50 minutos. Formato: TCG.')).toBeInTheDocument()
-    expect(within(guest.container).getByText('Cada uno empieza con 8000 LP y una mano de 5 cartas. El reloj de cada duelo es de 50 minutos. Formato: TCG.')).toBeInTheDocument()
+    for (const view of [host, guest]) {
+      const rules = within(within(view.container).getByTestId('room-summary'))
+
+      expect(rules.getByText('Vida inicial').nextElementSibling).toHaveTextContent('8000')
+      expect(rules.getByText('Mano inicial').nextElementSibling).toHaveTextContent('5')
+      expect(rules.getByText('Tiempo').nextElementSibling).toHaveTextContent('50 min')
+    }
 
     openTable(host, guest)
     expect(within(host.container).getByRole('button', { name: /Cambiar mis puntos de vida/ })).toHaveAccessibleName(/8000/)
@@ -1728,18 +1734,24 @@ describe('la pantalla del duelo', () => {
   it('el chat: desde la sala y desde la mesa, con un contador de lo que no leíste', () => {
     const { host, guest } = startDuel()
 
-    // En la sala el chat está a la vista.
-    fireEvent.change(within(host.container).getByLabelText('Escribí un mensaje'), { target: { value: 'Hola, ya entro' } })
-    click(host, 'Enviar')
-    flush()
-    expect(within(guest.container).getByText('Hola, ya entro')).toBeInTheDocument()
-    // Un mensaje rápido va con un toque.
-    click(guest, 'Continuá')
-    flush()
-    expect(within(within(host.container).getByRole('log', { name: 'Chat con Beto' })).getByText('👍')).toBeInTheDocument()
+    // En la sala el chat está siempre a un toque (también antes de que entre el rival), en una hoja que se abre desde «Chat».
+    const roomChat = (view: RenderResult) => {
+      click(view, 'Chat')
 
-    // Las señales, sólo con su emoji (🤔 pensando, ✋ esperá, 👍 continuá): nada de una lista larga ni de texto.
-    const quick = within(guest.container).getByRole('group', { name: 'Mensajes rápidos' })
+      return within(screen.getByRole('dialog', { name: 'Chat' }))
+    }
+    const closeChat = () => fireEvent.keyDown(document, { key: 'Escape' })
+
+    let inChat = roomChat(host)
+    fireEvent.change(inChat.getByLabelText('Escribí un mensaje'), { target: { value: 'Hola, ya entro' } })
+    fireEvent.click(inChat.getByRole('button', { name: 'Enviar' }))
+    flush()
+    closeChat()
+    inChat = roomChat(guest)
+    expect(inChat.getByText('Hola, ya entro')).toBeInTheDocument()
+
+    // Un mensaje rápido va con un toque. Las señales, sólo con su emoji (🤔 pensando, ✋ esperá, 👍 continuá): nada de una lista larga ni de texto.
+    const quick = inChat.getByRole('group', { name: 'Mensajes rápidos' })
     expect(within(quick).getAllByRole('button').map((button) => button.getAttribute('aria-label') ?? button.textContent)).toEqual(['Pensando…', 'Esperá', 'Continuá'])
     for (const button of within(quick).getAllByRole('button')) {
       // Sin texto: sólo el emoji (y, tras apretarlo, su copia que sube).
@@ -1750,10 +1762,13 @@ describe('la pantalla del duelo', () => {
     fireEvent.click(within(quick).getByRole('button', { name: 'Pensando…' }))
     fireEvent.click(within(quick).getByRole('button', { name: 'Continuá' }))
     flush()
-    const hostLog = within(host.container).getByRole('log', { name: 'Chat con Beto' })
+    closeChat()
+
+    const hostLog = roomChat(host).getByRole('log', { name: 'Chat con Beto' })
     // Un emoji solo se ve grande, como una reacción.
     expect(within(hostLog).getByText('🤔', { exact: false })).toHaveClass('text-display')
     expect(within(hostLog).getAllByText('👍', { exact: false }).at(-1)).toHaveClass('text-display')
+    closeChat()
 
     openTable(host, guest)
 
@@ -1904,21 +1919,24 @@ describe('la pantalla del duelo', () => {
   it('mirar un duelo: el anfitrión da un enlace para espectadores y ve cuántos miran; son hasta dos', async () => {
     const written: string[] = []
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (text: string) => void written.push(text) } })
-    const { host } = startDuel()
+    const { host, guest } = startDuel()
+    const watching = (view: RenderResult) => within(within(view.container).getByTestId('room-summary')).getByText('Mirando').nextElementSibling
 
-    expect(within(host.container).queryByText(/mirando/)).not.toBeInTheDocument()
+    expect(watching(host)).toHaveTextContent('0 de 2')
     await act(async () => {
       click(host, 'Copiar enlace para mirar')
     })
     expect(written.at(-1)).toMatch(/#duel\?room=[A-Z0-9]{8}&watch=1$/)
 
-    // Alguien entra a mirar: el anfitrión lo ve; con dos, no entra un tercero.
+    // Alguien entra a mirar: los dos jugadores lo ven en la ficha de la sala; con dos, no entra un tercero.
     memory.spectate()
     flush()
-    expect(within(host.container).getByText('1 mirando')).toBeInTheDocument()
+    expect(watching(host)).toHaveTextContent('1 de 2')
+    expect(watching(guest)).toHaveTextContent('1 de 2')
     memory.spectate()
     flush()
-    expect(within(host.container).getByText('2 mirando')).toBeInTheDocument()
+    expect(watching(host)).toHaveTextContent('2 de 2')
+    expect(watching(guest)).toHaveTextContent('2 de 2')
     expect(() => memory.spectate()).toThrow()
   })
 
@@ -2164,8 +2182,76 @@ describe('la pantalla del duelo', () => {
     click(guest, 'Estoy listo')
     flush()
     expect(guestView.queryByLabelText('Tu nombre')).not.toBeInTheDocument()
-    expect(guestView.queryByRole('region', { name: 'Tu deck' })).not.toBeInTheDocument()
+    expect(guestView.queryByRole('button', { name: 'Cambiar deck' })).not.toBeInTheDocument()
     expect(within(host.container).getByText('Listo')).toBeInTheDocument()
+  })
+
+  it('los dos jugadores no pueden llamarse igual: el invitado que llega con el mismo nombre pasa a llamarse con un número, y el nombre del rival no se acepta', () => {
+    const { host, guest } = startDuel()
+    // Ana (anfitrión) y Beto (invitado) ya están en la sala.
+    const guestInput = within(guest.container).getByLabelText('Tu nombre')
+
+    // El invitado quiere llamarse como el anfitrión: no se acepta, avisa y el campo vuelve al que estaba.
+    fireEvent.change(guestInput, { target: { value: ' ana ' } })
+    fireEvent.blur(guestInput)
+    flush()
+    expect(within(host.container).queryByText('ana')).not.toBeInTheDocument()
+    expect(guestInput).toHaveValue('Beto')
+    expect(within(host.container).getByText('Beto')).toBeInTheDocument()
+  })
+
+  it('un nombre tiene hasta 20 caracteres', () => {
+    const view = render(<DuelScreen {...screenProps()} />)
+
+    expect(within(view.container).getByLabelText('Tu nombre')).toHaveAttribute('maxlength', '20')
+  })
+
+  it('quien llega con el mismo nombre que el anfitrión pasa a llamarse con un número (sin tocar el nombre guardado)', () => {
+    const host = render(<DuelScreen {...screenProps()} />)
+    typeInto(host, 'Tu nombre', 'Ana')
+    createRoom(host)
+    const link = within(host.container).getByTestId('duel-link').textContent ?? ''
+    window.history.replaceState(null, '', '#duel')
+    const guest = render(<DuelScreen {...screenProps()} />)
+    typeInto(guest, 'Tu nombre', 'ANA')
+    joinByLink(guest, link)
+    flush()
+    flush()
+
+    expect(within(guest.container).getByLabelText('Tu nombre')).toHaveValue('ANA 2')
+    expect(within(host.container).getByText('ANA 2')).toBeInTheDocument()
+    expect(localStorage.getItem('ygo-lab:duel-name')).toBe('ANA')
+  })
+
+  it('en el celular el chat de la sala está siempre a un toque, también antes de que entre el rival', () => {
+    const host = render(<DuelScreen {...screenProps()} />)
+    createRoom(host)
+
+    click(host, 'Chat')
+    expect(within(screen.getByRole('dialog', { name: 'Chat' })).getByText('Cuando entre tu rival, acá se hablan.')).toBeInTheDocument()
+  })
+
+  it('en una sala llena «Mirar el duelo» entra de espectador, sin deck', () => {
+    window.history.replaceState(null, '', '#duel?room=K7QF2M9X')
+    const full: SocketTransport = {
+      status: 'full',
+      onStatus: (listener) => {
+        listener('full')
+        return () => {}
+      },
+      send: () => {},
+      onMessage: () => () => {},
+      onPeer: (listener) => {
+        listener(false)
+        return () => {}
+      },
+      reconnect: () => {},
+      close: () => {},
+    }
+    const view = render(<DuelScreen {...screenProps({ connect: () => full, mainIds: [], extraIds: [], cardsById: new Map() })} />)
+
+    click(view, 'Mirar el duelo')
+    expect(window.location.hash).toBe('#duel?room=K7QF2M9X&watch=1')
   })
 
   it('quien entra por un enlace sin deck lo ve explicado y puede elegir uno ahí mismo', () => {
@@ -2174,8 +2260,9 @@ describe('la pantalla del duelo', () => {
 
     expect(view.getByRole('button', { name: 'Estoy listo' })).toBeDisabled()
     expect(view.getByText(/hacen falta 5 cartas en el Main y tu deck tiene 2/)).toBeInTheDocument()
-    click(guest, 'Usar otro deck')
-    expect(view.getByLabelText('ydke://… o el texto del .ydk')).toBeInTheDocument()
+    click(guest, 'Cambiar deck')
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Tu deck' })).getByRole('button', { name: 'Usar otro deck' }))
+    expect(within(screen.getByRole('dialog', { name: 'Tu deck' })).getByLabelText('ydke://… o el texto del .ydk')).toBeInTheDocument()
   })
 
   it('mientras la pantalla del duelo está abierta, la página lo marca (los avisos suben sobre la botonera en celular) y al salir lo saca', () => {
