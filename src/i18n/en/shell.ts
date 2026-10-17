@@ -177,6 +177,8 @@ export const shell: Translated<typeof es> = {
 
   'shell.stepper.less': 'One less',
   'shell.stepper.more': 'One more',
+  'shell.stepper.lessBy': 'Subtract {step}',
+  'shell.stepper.moreBy': 'Add {step}',
   'shell.copies': { one: '{n} copy', other: '{n} copies' },
   'shell.fab.dragHint': '{label} (drag to move it)',
   'shell.stepHero.help': 'What “{title}” does',

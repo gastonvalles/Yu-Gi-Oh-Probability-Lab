@@ -1,17 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { buildDuelLink, DUEL_STEP, extractRoomCode, parseDuelTarget, parseDuelView, type DuelView } from '../../app/duel-link'
-import { getDeckFormatLabel } from '../../app/deck-format'
 import { deckFormatIssues } from '../../app/duel-format'
 import { MAIN_MINIMUM } from '../../app/duel-siding'
-import { cleanName, DEFAULT_DUEL_FORMAT, DEFAULT_LIMIT_MIN, DUEL_FORMATS, DUEL_LIMITS_MIN, type MarkTarget } from '../../app/duel-protocol'
+import { cleanName, DEFAULT_DUEL_FORMAT, DEFAULT_LIMIT_MIN, DUEL_FORMATS, type MarkTarget } from '../../app/duel-protocol'
 import { formatDataLoaded, loadFormatData } from '../../app/format-data'
 import type { DeckFormat } from '../../types'
 import { fetchCardsByIds } from '../../ygoprodeck'
 import { clearDuelSave, findPausedDuel, savedRole, type PausedDuel } from '../../app/duel-save'
 import { createParticipantId, createRoomCode, LIVE_HEARTBEAT_MS } from '../../app/duel-relay-rules'
 import type { RoomsApi } from '../../app/duel-rooms'
-import type { RoomOptions } from '../../app/duel-prefs'
+import { validGenesysCap, type RoomOptions } from '../../app/duel-prefs'
 import type { Duel, DuelRole, DuelSnapshot } from '../../app/duel-session'
 import type { SocketStatus } from '../../app/duel-socket'
 import { duelResult, rpsOutcome } from '../../app/duel-games'
@@ -48,7 +47,7 @@ import { gameText, outcomeText, rpsName } from './game-text'
 import { artOfDrawId, passcodeOfDrawId } from './duel-art'
 import { DuelOpening } from './DuelOpening'
 import { PlayHome } from './PlayHome'
-import { roomChips } from './room-chips'
+import { formatName, roomChips } from './room-chips'
 import { DuelSiding } from './DuelSiding'
 import { SpectatorScreen } from './SpectatorScreen'
 import { TossOverlay } from './toss-views'
@@ -118,10 +117,12 @@ function optionsFor(room: string | undefined): RoomOptions {
   }
 
   return {
-    limitMin: (DUEL_LIMITS_MIN as readonly number[]).includes(stored.limitMin ?? -1) ? (stored.limitMin as number) : DEFAULT_LIMIT_MIN,
+    // Cualquier reloj que el protocolo acepta (una sala de antes pudo tener otro); lo que se ofrece hoy son 50 minutos o sin tiempo.
+    limitMin: typeof stored.limitMin === 'number' && Number.isInteger(stored.limitMin) && stored.limitMin >= 0 && stored.limitMin <= 180 ? stored.limitMin : DEFAULT_LIMIT_MIN,
     format: (DUEL_FORMATS as readonly unknown[]).includes(stored.format) ? (stored.format as DeckFormat) : DEFAULT_DUEL_FORMAT,
     match: stored.match === true,
     siding: stored.match === true && stored.siding === true,
+    genesysCap: validGenesysCap(stored.genesysCap),
     isPublic: stored.isPublic === true,
   }
 }
@@ -175,7 +176,10 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   const deck = useMemo<DuelDeck>(() => sided ?? imported ?? { name: deckName, mainIds, extraIds, sideIds, cardsById }, [sided, imported, deckName, mainIds, extraIds, sideIds, cardsById])
   const roomCode = intent?.room
   const options = useMemo(() => optionsFor(roomCode), [roomCode])
-  const settings = useMemo(() => ({ lp: STARTING_LP, hand: handSize, limitMin: options.limitMin, format: options.format, match: options.match, siding: options.siding }), [handSize, options])
+  const settings = useMemo(
+    () => ({ lp: STARTING_LP, hand: handSize, limitMin: options.limitMin, format: options.format, ...(options.format === 'genesys' ? { genesysCap: options.genesysCap } : {}), match: options.match, siding: options.siding }),
+    [handSize, options],
+  )
   const { duel, snapshot, status } = useDuel({ room: intent && !intent.watch ? intent.room : null, role: intent?.role ?? 'guest', name: myName, settings, connect })
   const deckReady = deck.mainIds.length >= handSize
 
@@ -241,7 +245,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
 
     const { name: host, settings: current } = listing.current
 
-    void rooms.register(publicCode, { host, match: current.match, siding: current.siding, format: current.format, limitMin: current.limitMin }, publicToken)
+    void rooms.register(publicCode, { host, match: current.match, siding: current.siding, format: current.format, limitMin: current.limitMin, ...(current.genesysCap !== undefined ? { genesysCap: current.genesysCap } : {}) }, publicToken)
   }, [rooms, publicCode, publicToken, awaitingRival])
 
   useEffect(() => {
@@ -250,7 +254,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
     }
 
     const { name: host, settings: current } = listing.current
-    const info = { host, match: current.match, siding: current.siding, format: current.format, limitMin: current.limitMin }
+    const info = { host, match: current.match, siding: current.siding, format: current.format, limitMin: current.limitMin, ...(current.genesysCap !== undefined ? { genesysCap: current.genesysCap } : {}) }
     let alive = true
 
     const beat = () => {
@@ -470,6 +474,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
           deck={{ main: deck.mainIds, extra: deck.extraIds, side: deck.sideIds ?? [] }}
           cardsById={deck.cardsById}
           format={snapshot.settings.format}
+          genesysCap={snapshot.settings.genesysCap}
           rival={snapshot.peerName ?? t('duel.bar.rival')}
           locked={snapshot.rematch.mine}
           rivalReady={snapshot.rematch.theirs}
@@ -584,7 +589,6 @@ function DuelLobby({ startInCreate = false, view = null, onViewHandled, name, on
         paused={paused}
         onResume={onResume}
         onDropPaused={onDropPaused}
-        onWatchLink={() => setWatching(true)}
       />
     </Screen>
   )
@@ -755,7 +759,7 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
     }
   }, [needsTables, tablesLoaded])
 
-  const issues = useMemo(() => (needsTables && !tablesLoaded ? [] : deckFormatIssues([...roomDeck.mainIds, ...roomDeck.extraIds], roomDeck.cardsById, settings.format)), [roomDeck, settings.format, needsTables, tablesLoaded])
+  const issues = useMemo(() => (needsTables && !tablesLoaded ? [] : deckFormatIssues([...roomDeck.mainIds, ...roomDeck.extraIds], roomDeck.cardsById, settings.format, settings.genesysCap)), [roomDeck, settings.format, settings.genesysCap, needsTables, tablesLoaded])
   // Un duelo se juega con 40 cartas en el Main como mínimo (jugar solo, la práctica, no lo pide).
   const mainShort = roomDeck.mainIds.length < MAIN_MINIMUM
   const canReady = peerPresent && settingsKnown && !incompatible && deckReady && !mainShort && issues.length === 0 && (!needsTables || tablesLoaded)
@@ -895,7 +899,7 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
           {issues.length > 0 ? (
             <Callout tone="warning" icon="alert">
               <span className="grid gap-1">
-                <span>{t('duel.room.formatBlocked', { name: getDeckFormatLabel(settings.format) })}</span>
+                <span>{t('duel.room.formatBlocked', { name: formatName(settings.format, settings.genesysCap) })}</span>
                 {issues.map((issue) => (
                   <span key={issue}>{issue}</span>
                 ))}

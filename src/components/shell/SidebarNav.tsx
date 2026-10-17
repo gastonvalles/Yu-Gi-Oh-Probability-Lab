@@ -47,7 +47,7 @@ export function SidebarNav({ groups, activeKey, onSelect, className }: SidebarNa
           </p>
           {/* `minmax(0, 1fr)`: la columna no crece por lo que mide un rótulo (si no, contraído cada fila seguiría midiendo lo mismo que abierta). */}
           <ul className="m-0 grid list-none grid-cols-[minmax(0,1fr)] gap-0.5 p-0">
-            {group.items.map((item) => (
+            {group.items.filter((item) => !item.hidden).map((item) => (
               <li key={item.key} className="min-w-0">
                 <NavButton item={item} active={item.key === activeKey} onSelect={onSelect} />
               </li>

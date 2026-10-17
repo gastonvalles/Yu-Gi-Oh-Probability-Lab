@@ -67,7 +67,7 @@ export function GroupSheet({ group, activeKey, onSelect, onClose }: GroupSheetPr
   }
 
   const status = group.sheet === 'status'
-  const rows = group.sheetItems ?? group.items
+  const rows = (group.sheetItems ?? group.items).filter((item) => !item.hidden)
   const notice = group.sheetNotice
 
   return createPortal(

@@ -84,28 +84,43 @@ export function CardSheet({ name, art, apiCard, items, asking, onInspect, onClos
               </Button>
             ) : null}
             {rest.length > 0 ? (
-              <Button role="menuitem" aria-haspopup="menu" aria-expanded={moreOpen} variant="secondary" iconEnd="chevron-down" className="px-2" onClick={() => setMoreOpen((open) => !open)}>
-                {t('practice.sheet.more')}
-              </Button>
+              <div className="relative grid">
+                <Button
+                  role="menuitem"
+                  aria-haspopup="menu"
+                  aria-expanded={moreOpen}
+                  variant="secondary"
+                  iconEnd={moreOpen ? 'chevron-up' : 'chevron-down'}
+                  className="px-2 aria-expanded:shadow-[inset_0_0_0_2px_rgb(var(--primary-rgb)/0.9)]"
+                  onClick={() => setMoreOpen((open) => !open)}
+                >
+                  {t('practice.sheet.more')}
+                </Button>
+                {/* El globo sale justo encima de «Más», alineado a su borde derecho y con una cola que lo señala; lo que sale de «Más» está siempre en el árbol pero invisible hasta abrirlo. */}
+                <div
+                  role="none"
+                  className={cx(
+                    'absolute bottom-full right-0 z-10 mb-3 grid w-[150%] min-w-40 origin-bottom-right gap-2 rounded-panel border-2 border-primary/70 bg-card-background p-2 shadow-overlay',
+                    moreOpen ? 'animate-pop motion-reduce:animate-none' : 'pointer-events-none invisible',
+                  )}
+                >
+                  {rest.map((item) => (
+                    <button
+                      key={item.label}
+                      type="button"
+                      role="menuitem"
+                      className="flex min-h-11 w-full cursor-pointer items-center rounded-control border border-border-subtle bg-surface-raised px-3 text-left text-body font-bold text-foreground hover:border-primary/60 focus-visible:outline-none focus-visible:shadow-focus"
+                      onClick={item.onSelect}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                  <i aria-hidden="true" className="absolute -bottom-[7px] right-[33.333%] size-3 translate-x-1/2 rotate-45 border-b-2 border-r-2 border-primary/70 bg-card-background" />
+                </div>
+              </div>
             ) : null}
           </div>
         )}
-
-        {rest.length > 0 && asking === undefined ? (
-          <div role="none" className={cx('absolute bottom-full right-0 z-10 mb-2 grid w-56 gap-0.5 rounded-card border border-border bg-card-background p-1 shadow-overlay', moreOpen ? 'animate-pop motion-reduce:animate-none' : 'pointer-events-none invisible')}>
-            {rest.map((item) => (
-              <button
-                key={item.label}
-                type="button"
-                role="menuitem"
-                className="flex min-h-11 w-full cursor-pointer items-center rounded-control border-0 bg-transparent px-3 text-left text-body font-semibold text-foreground hover:bg-tint/10 focus-visible:outline-none focus-visible:shadow-focus"
-                onClick={item.onSelect}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        ) : null}
       </div>
     </section>
   )

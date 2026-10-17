@@ -16,6 +16,8 @@ export interface NavItem {
   tone?: NavTone
   /** La línea corta que dice qué hay adentro, bajo el nombre, en la hoja del celular (los grupos que no llevan estado). */
   blurb?: string
+  /** No se dibuja en el menú ni en la hoja, pero sigue marcando su grupo como abierto (se llega desde otra pantalla: «Entrenar solo» está en el inicio de Jugar). */
+  hidden?: boolean
   /** El estado a la derecha del nombre en la hoja del celular («Listo · 40», «23 sin confirmar»); `ok` lo pinta en verde. */
   pill?: { label: string; ok?: boolean }
 }

@@ -175,6 +175,8 @@ export const shell = {
 
   'shell.stepper.less': 'Uno menos',
   'shell.stepper.more': 'Uno más',
+  'shell.stepper.lessBy': 'Restar {step}',
+  'shell.stepper.moreBy': 'Sumar {step}',
   'shell.copies': { one: '{n} copia', other: '{n} copias' },
   'shell.fab.dragHint': '{label} (arrastralo para moverlo)',
   'shell.stepHero.help': 'Qué hace “{title}”',

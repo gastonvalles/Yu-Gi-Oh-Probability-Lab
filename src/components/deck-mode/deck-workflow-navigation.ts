@@ -224,14 +224,15 @@ interface AppNavTools {
 }
 
 /**
- * El menú de la app, en cuatro grupos: Tu deck, Jugar (entrenar solo y el duelo en línea), Herramientas (la calculadora y las mascotas abren un panel) y Descubrir (la referencia del meta).
+ * El menú de la app, en cuatro grupos: Tu deck, Jugar (el duelo en línea; «Entrenar solo» está en su inicio, y es la única entrada sin relay), Herramientas (la calculadora y las mascotas abren un panel) y Descubrir (la referencia del meta).
  * Lo ven el menú lateral y la barra de abajo del celular. La hoja del celular de cada grupo se dibuja como en el lienzo: los pasos del deck con su estado a la derecha; el duelo, las
- * herramientas y Descubrir con una línea que explica cada una. Jugar ofrece ahí cuatro entradas (entrenar solo, jugar online, mirar un duelo y entrar con un enlace) y, si hay un duelo en pausa, un aviso para volver a él.
+ * herramientas y Descubrir con una línea que explica cada una. Jugar ofrece ahí tres entradas (jugar online, mirar un duelo y entrar con un enlace) y, si hay un duelo en pausa, un aviso para volver a él.
  */
 export function buildAppNavGroups(steps: DeckModeNavigationItem[], tools: AppNavTools): NavGroup[] {
   const pick = (...keys: DeckWorkflowStepKey[]): NavItem[] => keys.flatMap((key) => steps.filter((step) => step.key === key))
   const entry = (key: string, label: string, blurb: string): NavItem => ({ key, label, title: label, icon: 'link' as const, blurb })
-  const practice: NavItem[] = tools.practice ? [{ key: 'practice', label: t('shell.practice.title'), title: t('shell.practice.title'), icon: 'hand' as const, blurb: t('shell.blurb.practice') }] : []
+  // Con el duelo en línea, «Entrenar solo» está en el inicio de Jugar: el menú no lo repite (queda oculto, para que el grupo siga marcado en la práctica).
+  const practice: NavItem[] = tools.practice ? [{ key: 'practice', label: t('shell.practice.title'), title: t('shell.practice.title'), icon: 'hand' as const, blurb: t('shell.blurb.practice'), ...(tools.duel ? { hidden: true } : {}) }] : []
   const paused = tools.duel ? tools.paused ?? null : null
 
   return [

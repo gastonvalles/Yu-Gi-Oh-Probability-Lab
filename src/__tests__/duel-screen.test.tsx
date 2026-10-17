@@ -219,24 +219,71 @@ describe('la pantalla del duelo', () => {
   it('las reglas se recuerdan: «Guardar reglas» las deja para la próxima vez y se ven en el renglón del inicio', () => {
     const view = render(<DuelScreen {...screenProps()} />)
 
-    expect(within(view.container).getByRole('button', { name: /^Reglas del duelo · TCG · 40 min · Single/ })).toBeInTheDocument()
+    expect(within(view.container).getByRole('button', { name: /^Reglas del duelo · TCG · 50 min · Single/ })).toBeInTheDocument()
     openRules(view)
     fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Match · mejor de 3' }))
-    fireEvent.click(within(rulesDialog()).getByRole('radio', { name: '20' }))
+    fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Sin tiempo' }))
     fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Guardar reglas' }))
 
-    expect(within(view.container).getByRole('button', { name: /^Reglas del duelo · TCG · 20 min · Match/ })).toBeInTheDocument()
-    expect(JSON.parse(localStorage.getItem('ygo-lab:duel-prefs') ?? '{}')).toMatchObject({ limitMin: 20, match: true, format: 'tcg' })
+    expect(within(view.container).getByRole('button', { name: /^Reglas del duelo · TCG · Sin tiempo · Match/ })).toBeInTheDocument()
+    expect(JSON.parse(localStorage.getItem('ygo-lab:duel-prefs') ?? '{}')).toMatchObject({ limitMin: 0, match: true, format: 'tcg' })
 
     // Otra visita al inicio las encuentra, y el duelo que se abre con «Jugar ahora» las usa.
     view.unmount()
     const again = render(<DuelScreen {...screenProps()} />)
 
-    expect(within(again.container).getByRole('button', { name: /^Reglas del duelo · TCG · 20 min · Match/ })).toBeInTheDocument()
+    expect(within(again.container).getByRole('button', { name: /^Reglas del duelo · TCG · Sin tiempo · Match/ })).toBeInTheDocument()
     click(again, 'Jugar ahora')
     const summary = within(within(again.container).getByTestId('room-summary'))
     expect(summary.getByText('Match')).toBeInTheDocument()
-    expect(summary.getByText('20 min')).toBeInTheDocument()
+    expect(summary.getByText('Sin tiempo')).toBeInTheDocument()
+  })
+
+  it('el tiempo tiene dos opciones, 50 minutos o sin tiempo, y el tope de puntos de Genesys sólo aparece con Genesys', () => {
+    const view = render(<DuelScreen {...screenProps()} />)
+
+    openRules(view)
+    expect(within(rulesDialog()).getAllByRole('radio', { name: /min$|Sin tiempo/ }).map((radio) => radio.getAttribute('aria-label') ?? radio.textContent)).toEqual(['50 min', 'Sin tiempo'])
+    expect(within(rulesDialog()).queryByRole('group', { name: 'Puntos máximos' })).not.toBeInTheDocument()
+
+    fireEvent.change(within(rulesDialog()).getByRole('combobox', { name: 'Formato' }), { target: { value: 'genesys' } })
+    const cap = within(rulesDialog()).getByRole('group', { name: 'Puntos máximos' })
+    expect(within(cap).getByRole('textbox', { name: 'Puntos máximos' })).toHaveValue('100')
+
+    fireEvent.click(within(cap).getByRole('button', { name: 'Restar 10' }))
+    expect(within(cap).getByRole('textbox', { name: 'Puntos máximos' })).toHaveValue('90')
+    fireEvent.change(within(cap).getByRole('textbox', { name: 'Puntos máximos' }), { target: { value: '130' } })
+    fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Guardar reglas' }))
+
+    expect(within(view.container).getByRole('button', { name: /^Reglas del duelo · Genesys 130 pts · 50 min · Single/ })).toBeInTheDocument()
+    expect(JSON.parse(localStorage.getItem('ygo-lab:duel-prefs') ?? '{}')).toMatchObject({ format: 'genesys', genesysCap: 130 })
+  })
+
+  it('una sala de Genesys lleva su tope: se anota en la lista con él y se ve en la sala', async () => {
+    const rooms = fakeRooms()
+    const host = render(<DuelScreen {...screenProps({ rooms })} />)
+    typeInto(host, 'Tu nombre', 'Ana')
+
+    openRules(host)
+    fireEvent.change(within(rulesDialog()).getByRole('combobox', { name: 'Formato' }), { target: { value: 'genesys' } })
+    fireEvent.change(within(rulesDialog()).getByRole('textbox', { name: 'Puntos máximos' }), { target: { value: '80' } })
+    fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' }))
+    await act(async () => {})
+
+    expect(rooms.register).toHaveBeenCalledWith(expect.any(String), { host: 'Ana', match: false, siding: false, format: 'genesys', limitMin: 50, genesysCap: 80 }, expect.any(String))
+    expect(within(within(host.container).getByTestId('room-summary')).getByText('80 pts')).toBeInTheDocument()
+  })
+
+  it('con un código se entra a jugar o a mirar: «Mirar» sirve para una sala pública o una privada y no pide deck', () => {
+    const view = render(<DuelScreen {...screenProps({ mainIds: [], extraIds: [], cardsById: new Map() })} />)
+
+    click(view, 'Tengo un código')
+    expect(within(view.container).getByRole('button', { name: 'Mirar' })).toBeDisabled()
+    typeInto(view, 'Enlace o código', 'K7QF2M9X')
+    expect(within(view.container).getByRole('button', { name: 'Unirme' })).toBeDisabled()
+    click(view, 'Mirar')
+
+    expect(window.location.hash).toBe('#duel?room=K7QF2M9X&watch=1')
   })
 
   it('«Jugar ahora» sin relay abre una sala con enlace y las reglas que vienen elegidas', () => {
@@ -249,8 +296,8 @@ describe('la pantalla del duelo', () => {
   })
 
   it('«Jugar ahora» entra a una sala pública compatible (mismo formato y tipo) en lugar de abrir otra', async () => {
-    const mismatch = { code: 'AAAAAAAA', host: 'Dani', match: true, siding: false, format: 'tcg', limitMin: 40, createdAt: 1 }
-    const fit = { code: 'K7QF2M9X', host: 'Carla', match: false, siding: false, format: 'tcg', limitMin: 40, createdAt: 2 }
+    const mismatch = { code: 'AAAAAAAA', host: 'Dani', match: true, siding: false, format: 'tcg', limitMin: 50, createdAt: 1 }
+    const fit = { code: 'K7QF2M9X', host: 'Carla', match: false, siding: false, format: 'tcg', limitMin: 50, createdAt: 2 }
     const rooms = fakeRooms([mismatch, fit])
     const view = render(<DuelScreen {...screenProps({ rooms })} />)
 
@@ -262,7 +309,7 @@ describe('la pantalla del duelo', () => {
   })
 
   it('«Jugar ahora» sin sala compatible abre la tuya, pública y con tus reglas; y al cancelar (salir) se baja de la lista con su token', async () => {
-    const other = { code: 'AAAAAAAA', host: 'Dani', match: false, siding: false, format: 'edison', limitMin: 40, createdAt: 1 }
+    const other = { code: 'AAAAAAAA', host: 'Dani', match: false, siding: false, format: 'edison', limitMin: 50, createdAt: 1 }
     const rooms = fakeRooms([other])
     const view = render(<DuelScreen {...screenProps({ rooms })} />)
     typeInto(view, 'Tu nombre', 'Ana')
@@ -274,7 +321,7 @@ describe('la pantalla del duelo', () => {
     const room = extractRoomCode(window.location.hash)!
     expect(room).not.toBe('AAAAAAAA')
     expect(rooms.register).toHaveBeenCalledTimes(1)
-    expect(rooms.register).toHaveBeenCalledWith(room, { host: 'Ana', match: false, siding: false, format: 'tcg', limitMin: 40 }, expect.stringMatching(/^[A-Za-z0-9]{16}$/))
+    expect(rooms.register).toHaveBeenCalledWith(room, { host: 'Ana', match: false, siding: false, format: 'tcg', limitMin: 50 }, expect.stringMatching(/^[A-Za-z0-9]{16}$/))
     const token = rooms.register.mock.calls[0]![2]
 
     // Cancelar la espera: salir de la sala la baja de la lista.
@@ -298,8 +345,8 @@ describe('la pantalla del duelo', () => {
   it('el tiempo que elige el anfitrión llega al rival y cambia el reloj', () => {
     const host = render(<DuelScreen {...screenProps()} />)
 
-    createRoom(host, '20')
-    expect(within(within(host.container).getByTestId('room-summary')).getByText('20 min')).toBeInTheDocument()
+    createRoom(host, 'Sin tiempo')
+    expect(within(within(host.container).getByTestId('room-summary')).getByText('Sin tiempo')).toBeInTheDocument()
   })
 
   it('la sala dice en qué paso va (Invitar · Listos · Quién empieza) y muestra desde el principio tu tarjeta y el lugar que espera al rival', () => {
@@ -434,7 +481,7 @@ describe('la pantalla del duelo', () => {
     fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' }))
     const link = within(host.container).getByTestId('duel-link').textContent ?? ''
     const room = extractRoomCode(link)!
-    const info = { host: 'Ana', match: false, siding: false, format: 'tcg', limitMin: 40 }
+    const info = { host: 'Ana', match: false, siding: false, format: 'tcg', limitMin: 50 }
 
     expect(rooms.register).toHaveBeenCalledTimes(1)
     expect(rooms.register).toHaveBeenCalledWith(room, info, expect.stringMatching(/^[A-Za-z0-9]{16}$/))
@@ -523,7 +570,7 @@ describe('la pantalla del duelo', () => {
     fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' }))
 
     const summary = within(within(host.container).getByTestId('room-summary'))
-    for (const chip of ['Pública', 'Match', 'TCG', '40 min']) {
+    for (const chip of ['Pública', 'Match', 'TCG', '50 min']) {
       expect(summary.getByText(chip)).toBeInTheDocument()
     }
     expect(summary.getByText(/Está en la lista de salas abiertas/)).toBeInTheDocument()
@@ -542,14 +589,14 @@ describe('la pantalla del duelo', () => {
   })
 
   it('la arena muestra las salas abiertas y se entra a una con un toque, sin pegar un enlace', async () => {
-    const open = { code: 'K7QF2M9X', host: 'Carla', match: true, siding: true, format: 'tcg', limitMin: 40, createdAt: Date.now() }
+    const open = { code: 'K7QF2M9X', host: 'Carla', match: true, siding: true, format: 'tcg', limitMin: 50, createdAt: Date.now() }
     const rooms = fakeRooms([open])
     const view = render(<DuelScreen {...screenProps({ rooms })} />)
 
     const section = within(await within(view.container).findByRole('region', { name: 'En la arena ahora' }))
     expect(await section.findByText('Carla')).toBeInTheDocument()
     expect(section.getByText('1 sala esperando rival')).toBeInTheDocument()
-    for (const chip of ['Match', 'TCG', '40 min', 'Siding']) {
+    for (const chip of ['Match', 'TCG', '50 min', 'Siding']) {
       expect(section.getByText(chip)).toBeInTheDocument()
     }
 
@@ -559,7 +606,7 @@ describe('la pantalla del duelo', () => {
 
   it('la arena muestra los duelos en vivo con cuántos los miran, se entra a mirar con un toque y uno lleno no deja mirar', async () => {
     const live = [
-      { code: 'LIVEAAAA', host: 'Eli', match: false, siding: false, format: 'tcg', limitMin: 40, watchers: 1, since: Date.now() },
+      { code: 'LIVEAAAA', host: 'Eli', match: false, siding: false, format: 'tcg', limitMin: 50, watchers: 1, since: Date.now() },
       { code: 'LIVEBBBB', host: 'Fede', match: true, siding: false, format: 'tcg', limitMin: 0, watchers: 2, since: Date.now() },
     ]
     const view = render(<DuelScreen {...screenProps({ rooms: fakeRooms([], live) })} />)
@@ -1418,8 +1465,8 @@ describe('la pantalla del duelo', () => {
 
     const { host, guest } = startDuel()
 
-    expect(within(host.container).getByText('Cada uno empieza con 8000 LP y una mano de 5 cartas. El reloj de cada duelo es de 40 minutos. Formato: TCG.')).toBeInTheDocument()
-    expect(within(guest.container).getByText('Cada uno empieza con 8000 LP y una mano de 5 cartas. El reloj de cada duelo es de 40 minutos. Formato: TCG.')).toBeInTheDocument()
+    expect(within(host.container).getByText('Cada uno empieza con 8000 LP y una mano de 5 cartas. El reloj de cada duelo es de 50 minutos. Formato: TCG.')).toBeInTheDocument()
+    expect(within(guest.container).getByText('Cada uno empieza con 8000 LP y una mano de 5 cartas. El reloj de cada duelo es de 50 minutos. Formato: TCG.')).toBeInTheDocument()
 
     openTable(host, guest)
     expect(within(host.container).getByRole('button', { name: /Cambiar mis puntos de vida/ })).toHaveAccessibleName(/8000/)
@@ -1995,9 +2042,9 @@ describe('la pantalla del duelo', () => {
   })
 
   it('Mirar un duelo: una pantalla propia donde se pega el enlace o el código y se entra de espectador, sin deck', () => {
+    window.history.replaceState(null, '', '#duel?view=watch')
     const view = render(<DuelScreen {...screenProps({ mainIds: [], extraIds: [], cardsById: new Map() })} />)
 
-    click(view, 'Mirar con un enlace')
     expect(within(view.container).getByRole('heading', { name: 'Mirar un duelo' })).toBeInTheDocument()
     expect(within(view.container).getByRole('button', { name: 'Mirar el duelo' })).toBeDisabled()
 
@@ -2045,9 +2092,9 @@ describe('la pantalla del duelo', () => {
   })
 
   it('Mirar un duelo se puede cancelar y vuelve al inicio del duelo', () => {
+    window.history.replaceState(null, '', '#duel?view=watch')
     const view = render(<DuelScreen {...screenProps()} />)
 
-    click(view, 'Mirar con un enlace')
     click(view, 'Cancelar')
 
     expect(within(view.container).getByRole('button', { name: 'Jugar ahora' })).toBeInTheDocument()
