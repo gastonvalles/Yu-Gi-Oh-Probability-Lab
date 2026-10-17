@@ -33,6 +33,43 @@ export function canGoTo(card: SideCard | undefined, zone: SideZone): boolean {
   return card?.apiCard ? isCardAllowedInDeckZone(card.apiCard, zone) : true
 }
 
+/**
+ * A dónde va una carta al tocarla: del Main y del Extra, al Side; del Side, a la zona que le toca (el Main o, si es un monstruo del Extra Deck, el Extra).
+ * Un toque en el mismo lugar la devuelve: así se hace siding sin arrastrar (en el celular, con el dedo).
+ */
+export function tapTarget(card: SideCard | undefined, from: SideZone): SideZone {
+  if (from !== 'side') {
+    return 'side'
+  }
+
+  return canGoTo(card, 'main') ? 'main' : 'extra'
+}
+
+/** La carta que hay detrás de un id de copia (`card-123-2` → `card-123`). */
+const cardKeyOf = (id: string) => id.replace(/-\d+$/, '')
+
+/** En qué lugar va cada carta (`card-123`) en el deck con que se empezó, Main, Extra y Side juntos: con eso las copias de una carta quedan juntas en su zona aunque pasen de una a otra. */
+export function deckOrder(deck: SideDeck): Map<string, number> {
+  const order = new Map<string, number>()
+
+  for (const id of [...deck.main, ...deck.extra, ...deck.side]) {
+    const key = cardKeyOf(id)
+
+    if (!order.has(key)) {
+      order.set(key, order.size)
+    }
+  }
+
+  return order
+}
+
+/** Las copias de una zona en el orden del deck de partida (`deckOrder`); las que no estaban, al final. Estable: las copias de una misma carta conservan su orden. */
+export function sortedZone(ids: readonly string[], order: ReadonlyMap<string, number>): string[] {
+  const rank = (id: string) => order.get(cardKeyOf(id)) ?? order.size
+
+  return ids.map((id, index) => ({ id, index })).sort((a, b) => rank(a.id) - rank(b.id) || a.index - b.index).map((entry) => entry.id)
+}
+
 /** El mismo deck con la copia `index` de `from` pasada a `to` (al final de esa zona). Un movimiento que no es posible devuelve el mismo deck. */
 export function moveCopy(deck: SideDeck, from: SideZone, index: number, to: SideZone): SideDeck {
   const id = deck[from][index]
@@ -70,9 +107,6 @@ export function sidingProblems(deck: SideDeck, original: { main: number }, cards
 
   return problems
 }
-
-/** La carta que hay detrás de un id de copia (`card-123-2` → `card-123`). */
-const cardKeyOf = (id: string) => id.replace(/-\d+$/, '')
 
 /**
  * Los mismos zonas con ids de copia nuevos y seguidos (`card-123-1`, `card-123-2`…) contando el Main y el Extra juntos, y los datos de cada uno: al pasar

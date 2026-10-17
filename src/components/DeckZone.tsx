@@ -4,21 +4,19 @@ import {
   buildDeckZoneVisualLayout,
   DESKTOP_COMPACT_MAIN_EXPAND_THRESHOLD,
 } from '../app/deck-zone-layout'
-import { buildDeckZoneTypeCounts } from '../app/deck-presentation'
 import type { DeckCardInstance, DeckZone as DeckZoneType } from '../app/model'
 import type { DeckDropIndicatorState } from '../app/use-deck-pointer-drag'
-import { formatInteger } from '../app/utils'
 import { t } from '../i18n'
 import { CardArt } from './CardArt'
-import { Heading } from './ui/Heading'
+import { DeckZoneHeader } from './DeckZoneHeader'
 import {
   DECK_CARD_CLASSIC,
   MAIN_ROW_GRID,
   MAIN_ROW_OVERLAP,
   RAIL_ROW,
   RAIL_ROW_OVERLAP,
+  ZONE_STYLES,
   ZONE_SURFACE_MOBILE,
-  ZONE_TYPE_SWATCH,
   deckCardMobile,
 } from './deck-zone-styles'
 import { cx } from './ui/cx'
@@ -42,24 +40,6 @@ interface DeckZoneProps {
   onRemoveCard: (instanceId: string) => void
 }
 
-const ZONE_STYLES: Record<DeckZoneType, { background: string; border: string; dot: string }> = {
-  main: {
-    background: 'var(--zone-main-background)',
-    border: 'var(--zone-main-border)',
-    dot: 'rgb(var(--primary-rgb))',
-  },
-  extra: {
-    background: 'var(--zone-extra-background)',
-    border: 'var(--zone-extra-border)',
-    dot: 'rgb(var(--handtrap-rgb))',
-  },
-  side: {
-    background: 'var(--zone-side-background)',
-    border: 'var(--zone-side-border)',
-    dot: 'rgb(var(--accent-rgb))',
-  },
-}
-
 /** Memoizada: durante un arrastre sólo se re-renderiza la zona cuyo estado cambia. */
 export const DeckZone = memo(function DeckZone({
   zone,
@@ -78,7 +58,6 @@ export const DeckZone = memo(function DeckZone({
   onRemoveCard,
 }: DeckZoneProps) {
   const lastPointerTypeRef = useRef<string>('mouse')
-  const zoneTypeCounts = buildDeckZoneTypeCounts(zone, cards)
   const visualLayout = desktopCompact
     ? buildDeckZoneVisualLayout(
         zone,
@@ -127,7 +106,6 @@ export const DeckZone = memo(function DeckZone({
         overflow: 'hidden',
       }) as CSSProperties
     : null
-  const cardCountLabel = formatInteger(cards.length)
   const classicRailRowStyle = isClassicRailZone
     ? ({
         '--classic-rail-card-count': String(Math.max(cards.length, 1)),
@@ -172,33 +150,7 @@ export const DeckZone = memo(function DeckZone({
     </article>
   )
 
-  /** Encabezado de la zona (igual en escritorio y celular): título con conteo y cantidad por tipo con su color. */
-  const zoneHeader = (className: string) => (
-    <div className={cx('flex min-w-0 items-center justify-between gap-3 px-0.5', className)}>
-      <div className="flex min-w-0 items-center gap-2.5">
-        <span className="size-2.5 shrink-0 rounded-full" style={{ background: zoneStyle.dot }} aria-hidden="true" />
-        <Heading level="section" as="h3" className="whitespace-nowrap">
-          {title.replace(' Deck', '')} <span className="font-medium text-muted tabular-nums">[{cardCountLabel}]</span>
-        </Heading>
-      </div>
-      <div className="ml-auto flex min-w-0 items-center gap-2">
-        {zoneTypeCounts.length > 0 ? (
-          <div className="flex flex-none items-center gap-3">
-            {zoneTypeCounts.map((entry) => (
-              <span
-                key={entry.kind}
-                className="inline-flex items-center gap-1.5 text-body font-semibold text-muted tabular-nums"
-                title={`${formatInteger(entry.count)} ${entry.label}`}
-              >
-                <span className={cx('size-2.5 rounded-tag', ZONE_TYPE_SWATCH[entry.kind])} aria-hidden="true" />
-                {formatInteger(entry.count)}
-              </span>
-            ))}
-          </div>
-        ) : null}
-      </div>
-    </div>
-  )
+  const zoneHeader = (className: string) => <DeckZoneHeader zone={zone} title={title} cards={cards} className={className} />
 
   if (isClassicBuilder) {
     return (

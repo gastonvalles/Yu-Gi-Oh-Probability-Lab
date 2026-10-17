@@ -9,4 +9,6 @@ const GOOD = '👍'
 
 export const thinkingMessage = () => THINKING
 export const GOOD_MESSAGE = GOOD
+/** Las dos señales de un emoji solo (sin el 💭 con texto de antes): se dibujan grandes, como una reacción. */
+export const isEmojiSignal = (text: string) => text === GOOD || text === THINKING
 export const isSignal = (text: string) => text === GOOD || text === THINKING || text.startsWith(LEGACY_THINKING)

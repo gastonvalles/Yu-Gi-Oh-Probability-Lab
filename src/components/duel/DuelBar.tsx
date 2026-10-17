@@ -21,7 +21,7 @@ import { DuelGames, type GameActions } from './DuelGames'
 import { ResultStrip } from './DuelResult'
 import { PLAYER_COLOR, type PlayerSide } from './player-color'
 import { ReactionButtons } from './ReactionButtons'
-import { isSignal } from './signals'
+import { isEmojiSignal, isSignal } from './signals'
 
 /** Un reloj de pared que se actualiza cada `ms` (el reloj de la ronda se calcula contra él). */
 function useTick(ms: number): number {
@@ -337,7 +337,7 @@ export function LifeTile({ name, life, mine = false, color, bubble = null, onCli
       <span className="min-w-0 truncate text-micro font-semibold uppercase tracking-[0.04em] text-soft">{name}</span>
       <span className={cx('shrink-0 text-title font-extrabold leading-tight tabular-nums', tone.text)}>{life}</span>
       {bubble ? (
-        <span role="status" className={cx('pointer-events-none absolute z-30 w-max max-w-[16rem] animate-pop truncate rounded-card border bg-card-background px-2.5 py-1 text-body font-semibold normal-case tracking-normal text-foreground shadow-[0_8px_20px_rgba(0,0,0,0.4)] motion-reduce:animate-none', tone.border, mine ? 'bottom-full right-0 mb-1.5' : 'left-0 top-full mt-1.5')}>
+        <span role="status" className={cx('pointer-events-none absolute z-30 w-max max-w-[16rem] animate-pop rounded-card border bg-card-background normal-case tracking-normal text-foreground shadow-[0_8px_20px_rgba(0,0,0,0.4)] motion-reduce:animate-none', isEmojiSignal(bubble) ? 'px-3 py-1 text-display leading-none' : 'truncate px-2.5 py-1 text-body font-semibold', tone.border, mine ? 'bottom-full right-0 mb-1.5' : 'left-0 top-full mt-1.5')}>
           {bubble}
         </span>
       ) : null}
