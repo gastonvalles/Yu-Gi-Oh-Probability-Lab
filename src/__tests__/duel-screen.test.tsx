@@ -81,6 +81,11 @@ const moreButton = (view: RenderResult, name: string): HTMLElement => {
 
   return within(screen.getByRole('dialog', { name: 'Más opciones del duelo' })).getByRole('button', { name })
 }
+/** La moneda, el dado y los juegos están dentro del + (el botón «Ficha»): se abre su menú y se elige. */
+const openGames = (view: RenderResult) => {
+  tap(within(view.container).getByRole('button', { name: 'Ficha' }))
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Moneda, dado y más' }))
+}
 const closeMore = () => fireEvent.keyDown(document, { key: 'Escape' })
 const click = (view: RenderResult, name: string | RegExp, role: 'button' | 'menuitem' = 'button') =>
   fireEvent.click(typeof name === 'string' && role === 'button' && MORE_OPTIONS.includes(name) ? moreButton(view, name) : within(view.container).getByRole(role, { name }))
@@ -981,7 +986,7 @@ describe('la pantalla del duelo', () => {
     openTable(host, guest)
 
     const panel = () => within(screen.getByRole('dialog', { name: 'Juegos' }))
-    const open = (view: RenderResult) => click(view, 'Moneda, dado y más')
+    const open = (view: RenderResult) => openGames(view)
     const close = () => fireEvent.keyDown(document, { key: 'Escape' })
 
     // La moneda: tira Ana, los dos ven el mismo resultado, con su nombre.
@@ -1160,7 +1165,7 @@ describe('la pantalla del duelo', () => {
     const panel = () => within(screen.getByRole('dialog', { name: 'Juegos' }))
     const close = () => fireEvent.keyDown(document, { key: 'Escape' })
 
-    click(guest, 'Moneda, dado y más')
+    openGames(guest)
     fireEvent.click(panel().getByRole('button', { name: 'Rendirme' }))
     // Cancelar no se rinde.
     fireEvent.click(panel().getByRole('button', { name: 'Cancelar' }))
@@ -1336,7 +1341,7 @@ describe('la pantalla del duelo', () => {
     expect(overlay()).toBeNull()
 
     // Ana tira la moneda con su panel: Beto la ve en el centro de su pantalla, sin abrir nada.
-    click(host, 'Moneda, dado y más')
+    openGames(host)
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Juegos' })).getByRole('button', { name: 'Tirar la moneda' }))
     flush()
     fireEvent.keyDown(document, { key: 'Escape' })
@@ -2042,9 +2047,10 @@ describe('la pantalla del duelo', () => {
     expect(bar.queryByRole('button', { name: 'Rendirme' })).not.toBeInTheDocument()
     expect(top).not.toHaveClass('flex-wrap')
 
-    // El turno y el chat: otra fila, que tampoco se parte.
-    const turn = rowOf('Chat')
+    // El turno: otra fila, que tampoco se parte (el chat bajó a la botonera de abajo).
+    const turn = bar.getByText(/^Turno 1$/).closest('div')!
     expect(turn).toHaveTextContent(/Turno 1/)
+    expect(within(turn).queryByRole('button', { name: 'Chat' })).not.toBeInTheDocument()
     expect(turn).not.toHaveClass('flex-wrap')
     expect(turn).not.toBe(top)
   })
@@ -2089,7 +2095,7 @@ describe('la pantalla del duelo', () => {
     openTable(host, guest)
 
     // El invitado se rinde y sale: terminó, no hay nada que retomar.
-    click(guest, /Moneda, dado y más/)
+    openGames(guest)
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Juegos' })).getByRole('button', { name: 'Rendirme' }))
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Juegos' })).getByRole('button', { name: 'Rendirme' }))
     flush()
@@ -2264,10 +2270,10 @@ describe('la pantalla del duelo', () => {
     const bubble = (view: RenderResult, side: 'mine' | 'theirs') => view.container.querySelector(`[data-lp="${side}"] [role="status"]`)
 
     expect(bubble(host, 'theirs')).toBeNull()
-    // Las dos señales van abajo, a la derecha, con deshacer, la ficha y los juegos; el chat sube a la fila del turno (con más botones abajo se salía de la pantalla).
+    // Abajo, con el pulgar: deshacer, el + (la ficha, los contadores y los juegos), el chat y las dos señales. Los dados ya no tienen botón: están dentro del +.
     const toolbar = within(guest.container).getByRole('toolbar')
-    expect(within(toolbar).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Deshacer', 'Ficha', 'Moneda, dado y más', 'Esperá', 'Continuá', expect.stringMatching(/^Puntos de vida de/)])
-    expect(within(toolbar).queryByRole('button', { name: 'Chat' })).not.toBeInTheDocument()
+    expect(within(toolbar).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Deshacer', 'Ficha', 'Chat', 'Esperá', 'Continuá', expect.stringMatching(/^Puntos de vida de/)])
+    expect(within(toolbar).queryByRole('button', { name: 'Moneda, dado y más' })).not.toBeInTheDocument()
 
     // Beto avisa que continúa: lo ve junto a sus vidas (arriba, en la mesa de Ana, y abajo en la suya), en su color.
     fireEvent.click(within(guest.container).getByRole('button', { name: 'Continuá' }))

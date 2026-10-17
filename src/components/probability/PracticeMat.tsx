@@ -95,8 +95,10 @@ export interface DuelMatLink {
   attackTargets: ReadonlyArray<{ id: string; zone: 'mz' | 'emz'; index: number; faceDown: boolean }>
   /** id que dio el rival → carta real, de lo que ya mostró: así se nombra a quien se ataca. */
   foreignKnown: Readonly<Record<string, string>>
-  /** Los botones propios del duelo (dados y chat) y tus puntos de vida: van abajo, en la barra del pulgar, junto a deshacer, la ficha y las fases. */
+  /** Los botones propios del duelo (el chat y las señales) y tus puntos de vida: van abajo, en la barra del pulgar, junto a deshacer, el + y las fases. */
   tools: ReactNode
+  /** Lo que el + ofrece además de la ficha y los contadores en un duelo (la moneda, el dado y los juegos): cada uno abre lo suyo. */
+  plusItems?: ReadonlyArray<{ label: string; onSelect: () => void }>
   life: ReactNode
   /** El cartel de lo que el rival avanzó (una fase suya, o que empieza tu turno); cambiar `key` lo vuelve a mostrar. */
   notice?: { key: number; phase: MatPhase; who?: string; label?: string }
@@ -930,7 +932,7 @@ export function PracticeMat({
       if (source.id === NEW_TOKEN) {
         setPicking(null)
         setCounterMode(null)
-        if (freeTargets(state, monsterZones(false)).length > 0 || fieldCards(state).length > 0) setMenu({ kind: 'token', rect, root: true })
+        if (freeTargets(state, monsterZones(false)).length > 0 || fieldCards(state).length > 0 || (duel?.plusItems?.length ?? 0) > 0) setMenu({ kind: 'token', rect, root: true })
         return
       }
 
@@ -942,7 +944,7 @@ export function PracticeMat({
 
       openCard(source.id, rect)
     },
-    [state, openCard],
+    [state, openCard, duel?.plusItems?.length],
   )
 
   // La zona bajo una carta arrastrada (de la mesa o de la mano) se enciende por el DOM, no por el estado: si no, cada zona que se cruza dibujaba la mesa entera.
@@ -997,6 +999,7 @@ export function PracticeMat({
       if (freeTargets(state, monsterZones(false)).length > 0) root.push({ label: t('practice.menu.plusToken'), onSelect: () => setMenu({ kind: 'token', rect: menu.rect }) })
       if (fieldCards(state).length > 0) root.push({ label: t('practice.menu.plusCounter'), onSelect: () => { setMenu(null); setCounterMode(1) } })
       if (fieldCards(state).some((placed) => placed.counters > 0)) root.push({ label: t('practice.menu.minusCounter'), onSelect: () => { setMenu(null); setCounterMode(-1) } })
+      for (const item of duel?.plusItems ?? []) root.push({ label: item.label, onSelect: () => { setMenu(null); item.onSelect() } })
 
       return root
     }
@@ -1038,7 +1041,7 @@ export function PracticeMat({
     const items = menu.drop ? listDropActions(state, menu.id, kindOf, nameOf, menu.drop, duel?.rivalEmz) : listCardActions(state, menu.id, kindOf, nameOf, attackTargets, duel?.rivalEmz)
 
     return items.map((item) => ({ label: item.label, onSelect: () => choose(item, menu.drop) }))
-  }, [menu, state, kindOf, nameOf, attackTargets, play, choose, summonToken, duel?.rivalEmz])
+  }, [menu, state, kindOf, nameOf, attackTargets, play, choose, summonToken, duel?.rivalEmz, duel?.plusItems])
 
   const menuCard = menu?.kind === 'card' ? cardOf(menu.id) : menu?.kind === 'token' && !menu.root ? TOKEN_CARD : null
   const menuWhere = menu?.kind === 'card' ? locateCard(state, menu.id) : null
@@ -1384,9 +1387,8 @@ export function PracticeMat({
 
       <div className="col-start-1 row-start-2 flex min-h-0 flex-col gap-2 overflow-y-auto overflow-x-hidden px-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] min-[1101px]:px-4 min-[1101px]:pb-4 min-[1101px]:pt-2">
         {duel?.header}
-        {/* Celular: la mano del rival y el campo van juntos, pegados a tu mano y a la botonera (la zona del pulgar). El alto que sobra queda arriba, entre la barra y el rival: ahí sólo hay aire (y los avisos que se apoyan encima), y
-            no se reparte arriba y abajo del campo, así que éste no cambia de lugar respecto de la mano cuando la ventana cambia de alto (la barra de direcciones del navegador). Escritorio: sin envoltorio y el campo se centra. */}
-        <div className="flex flex-col gap-2 max-[1100px]:mt-auto min-[1101px]:contents">
+        {/* Celular: la mano del rival y el campo van juntos y centrados: el alto que sobra se reparte arriba y abajo (ni pegado a la barra ni un hueco antes de tu mano). Escritorio: sin envoltorio y el campo se centra. */}
+        <div className="flex flex-col gap-2 max-[1100px]:my-auto min-[1101px]:contents">
         {!isDesktop && view === 'top' ? duel?.rivalHand : null}
         {/* El campo en todos los tamaños: a la izquierda la zona de campo y el Extra Deck; a la derecha, de arriba abajo, destierro, cementerio y deck (como pidió Gastón: el Banish arriba del GY); las fases y las zonas extra entre medio.
             Las cinco columnas del centro son cuadradas (una carta acostada entra en su zona sin pisar a la vecina) y las de los costados miden lo justo de una carta (0,6857 de una del centro), así que todas las cartas miden lo mismo. */}

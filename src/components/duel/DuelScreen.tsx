@@ -1519,6 +1519,8 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   const announcement = useRivalAttack(snapshot, cardsById)
   // El registro de jugadas (con el chat): lo que hizo cada uno, el comienzo de cada turno y lo escrito. Se abre desde el botón del chat o desde la línea sobre el campo.
   const [chatOpen, setChatOpen] = useState(false)
+  // La moneda, el dado y los juegos: se abren desde el + de la mesa.
+  const [gamesOpen, setGamesOpen] = useState(false)
   const rivalCaptions = useMemo(() => [rivalEffect, announcement], [rivalEffect, announcement])
   const feed = useDuelFeed({ snapshot, cardsById, rivalCaptions, turn, turnNumber: duelTurnNumber(mine, theirs!.state), rivalName: snapshot.peerName ?? t('duel.bar.rival'), myName })
   const signals = useSignals(snapshot)
@@ -1555,7 +1557,20 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
       phase: sharedPhase(turn, mine, theirs!.state) ?? 'draw',
       myTurn: turn === 'mine',
-      tools: <DuelTools snapshot={snapshot} myName={myName} games={duel} onSendChat={duel.sendChat} chatDocked={docked} holding={holds.mine} />,
+      tools: (
+        <DuelTools
+          snapshot={snapshot}
+          myName={myName}
+          games={duel}
+          onSendChat={duel.sendChat}
+          chatDocked={docked}
+          holding={holds.mine}
+          chat={docked ? undefined : <DuelChatToggle snapshot={snapshot} myName={myName} onSendChat={duel.sendChat} feed={feed} open={chatOpen} onOpen={() => setChatOpen(true)} onClose={() => setChatOpen(false)} holding={holds.mine} />}
+          gamesOpen={gamesOpen}
+          onGamesClose={() => setGamesOpen(false)}
+        />
+      ),
+      plusItems: [{ label: t('duel.games.open'), onSelect: () => setGamesOpen(true) }],
       // En escritorio el chat está siempre abierto a la derecha (en el celular, un panel que se abre desde el botón de abajo).
       aside: docked ? <DuelChatPanel snapshot={snapshot} myName={myName} onSend={duel.sendChat} feed={feed} holding={holds.mine} /> : undefined,
       life: <DuelLife snapshot={snapshot} myName={myName} onChangeLife={duel.changeLife} onHalve={duel.halveLife} signal={signals.mine} />,
@@ -1564,10 +1579,10 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       ) : result !== null && !resultClosed ? (
         <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} onLeave={onLeave} onClose={() => setResultClosed(true)} />
       ) : undefined,
-      header: <DuelBar snapshot={snapshot} status={status} turn={turn} theirHand={rivalHand} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onConcede={duel.concede} onReconnect={duel.reconnect} chat={docked ? undefined : <DuelChatToggle snapshot={snapshot} myName={myName} onSendChat={duel.sendChat} feed={feed} open={chatOpen} onOpen={() => setChatOpen(true)} onClose={() => setChatOpen(false)} holding={holds.mine} />} log={docked ? undefined : <DuelLogTicker snapshot={snapshot} myName={myName} feed={feed} onOpen={() => setChatOpen(true)} />} resultOpen={resultOpen} rivalSignal={signals.theirs} hold={{ ...holds, onRelease: () => duel.sendChat(GOOD_MESSAGE) }} />,
+      header: <DuelBar snapshot={snapshot} status={status} turn={turn} theirHand={rivalHand} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onConcede={duel.concede} onReconnect={duel.reconnect} log={docked ? undefined : <DuelLogTicker snapshot={snapshot} myName={myName} feed={feed} onOpen={() => setChatOpen(true)} />} resultOpen={resultOpen} rivalSignal={signals.theirs} hold={{ ...holds, onRelease: () => duel.sendChat(GOOD_MESSAGE) }} />,
       }
     },
-    [opponent, snapshot, status, myName, turn, duel, onLeave, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, holds, openMark, feed, chatOpen],
+    [opponent, snapshot, status, myName, turn, duel, onLeave, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, holds, openMark, feed, chatOpen, gamesOpen],
   )
 
   const markTarget = markMenu?.target
