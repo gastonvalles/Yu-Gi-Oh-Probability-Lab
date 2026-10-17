@@ -177,6 +177,39 @@ describe('la pantalla del duelo', () => {
     expect(within(within(host.container).getByTestId('room-summary')).getByText('20 min')).toBeInTheDocument()
   })
 
+  it('la sala dice en qué paso va (Invitar · Listos · Quién empieza) y muestra desde el principio tu tarjeta y el lugar que espera al rival', () => {
+    const host = render(<DuelScreen {...screenProps()} />)
+    typeInto(host, 'Tu nombre', 'Ana')
+    createRoom(host)
+
+    const view = within(host.container)
+    const steps = view.getByRole('list', { name: 'Pasos de la sala' })
+
+    expect(within(steps).getAllByRole('listitem').map((item) => item.textContent)).toEqual(['Invitar', 'Listos', 'Quién empieza'])
+    expect(within(steps).getByText('Invitar').closest('li')).toHaveAttribute('aria-current', 'step')
+    // Tu tarjeta con tu deck y, al lado, el lugar del rival.
+    expect(view.getByText('Ana')).toBeInTheDocument()
+    expect(view.getByText(/\d+ \+ \d+/)).toBeInTheDocument()
+    expect(view.getByText('Esperando a tu rival…')).toBeInTheDocument()
+    // La principal («Copiar enlace») va antes que el enlace para mirar, que es sin caja y va al final de la fila.
+    const labels = view.getAllByRole('button').map((button) => button.textContent)
+    expect(labels).toContain('Copiar enlace')
+    expect(labels.indexOf('Copiar enlace')).toBeLessThan(labels.indexOf('Copiar enlace para mirar'))
+  })
+
+  it('con el rival adentro el paso es «Listos» y con los dos listos, «Quién empieza»', () => {
+    const { host, guest } = startDuel()
+    const current = (view: RenderResult) => within(within(view.container).getByRole('list', { name: 'Pasos de la sala' })).getAllByRole('listitem').find((item) => item.getAttribute('aria-current') === 'step')?.textContent
+
+    expect(current(host)).toBe('Listos')
+    expect(current(guest)).toBe('Listos')
+
+    click(host, 'Estoy listo')
+    click(guest, 'Estoy listo')
+    flush()
+    expect(current(host)).toBe('Quién empieza')
+  })
+
   it('con un formato, un deck que no lo cumple no puede estar listo y se dice qué carta sobra', () => {
     const host = render(<DuelScreen {...screenProps()} />)
     typeInto(host, 'Tu nombre', 'Ana')
