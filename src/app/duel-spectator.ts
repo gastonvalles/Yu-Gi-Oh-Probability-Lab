@@ -1,4 +1,4 @@
-import { addChat, addGame, type ChatLine, type DuelGame, type GameEntry } from './duel-games'
+import { addChat, addGame, advanceSeries, duelResult, NEW_SERIES, seriesScore, type ChatLine, type DuelGame, type GameEntry, type Series } from './duel-games'
 import { PROTOCOL_VERSION, parseMessage, type DuelMessage, type DuelSettings } from './duel-protocol'
 import { sharedPhase, whoseTurn } from './duel-turn'
 import type { Duelist, LifeTimer } from './life-calculator'
@@ -32,6 +32,23 @@ export type FeedItem = { kind: 'chat'; line: ChatLine } | { kind: 'game'; entry:
 /** Cuántas líneas del registro se guardan. */
 export const MAX_FEED = 150
 
+/** Cómo terminó el duelo que se mira, y si con eso terminó todo (un duelo suelto, o el que define un Match) o el Match sigue. */
+export interface SpectatorEnd {
+  /** Quién ganó (0 = anfitrión, 1 = invitado); null si empataron. */
+  winner: Duelist | null
+  /** Por qué: se quedó sin puntos de vida, se rindió, o se quedaron sin puntos los dos. */
+  reason: 'life' | 'conceded' | 'draw'
+  /** Quién perdió (null si empataron). */
+  loser: Duelist | null
+  /** Es un duelo de un Match, con el marcador al terminar este duelo. */
+  match: boolean
+  wins: readonly [number, number]
+  /** Con esto se terminó lo que se miraba: no hay más duelos que seguir (un duelo suelto, o el Match ya definido). */
+  over: boolean
+  /** Quién ganó el Match, si este duelo lo definió. */
+  matchWinner: Duelist | null
+}
+
 export interface SpectatorSnapshot {
   /** Los ajustes del duelo (puntos de vida y mano), del saludo del anfitrión. */
   settings: DuelSettings | null
@@ -49,6 +66,8 @@ export interface SpectatorSnapshot {
   feed: readonly FeedItem[]
   /** Quién se rindió, si alguien lo hizo. */
   conceded: Duelist | null
+  /** Cómo terminó el duelo, si ya terminó (hasta que los dos pidan la revancha). */
+  end: SpectatorEnd | null
   /** Las dos mesas ya llegaron: se puede mirar el duelo. */
   live: boolean
   /** De quién es el turno (0 = anfitrión, 1 = invitado) y en qué fase va, mientras haya mesas. */
@@ -108,11 +127,41 @@ export function createSpectator(transport: SpectatorTransport, options: Spectato
   let chatId = 0
   let feed: FeedItem[] = []
   let conceded: Duelist | null = null
+  let series: Series = NEW_SERIES
   const rematch: [boolean, boolean] = [false, false]
   let lastRequest = -Infinity
 
   const listeners = new Set<() => void>()
   let snapshot: SpectatorSnapshot
+
+  /** Cómo terminó el duelo (si terminó), con el Match: igual que lo cuentan los jugadores, pero visto desde afuera. */
+  const endOf = (): SpectatorEnd | null => {
+    const [host, guest] = sides
+
+    if (host.lp === null || guest.lp === null) {
+      return null
+    }
+
+    const result = duelResult([host.lp, guest.lp], conceded)
+
+    if (!result) {
+      return null
+    }
+
+    const match = Boolean(settings?.match)
+    const score = match ? seriesScore(series, result) : null
+    const loser = result.kind === 'loss' ? result.loser : null
+
+    return {
+      winner: loser === null ? null : loser === 0 ? 1 : 0,
+      reason: result.kind === 'draw' ? 'draw' : conceded !== null ? 'conceded' : 'life',
+      loser,
+      match,
+      wins: score?.wins ?? [0, 0],
+      over: score ? score.winner !== null : true,
+      matchWinner: score?.winner ?? null,
+    }
+  }
 
   const build = (): SpectatorSnapshot => {
     const [host, guest] = sides
@@ -129,6 +178,7 @@ export function createSpectator(transport: SpectatorTransport, options: Spectato
       chat,
       feed,
       conceded,
+      end: endOf(),
       live,
       turn,
       phase: live && turn !== null ? (sharedPhase(turn === 0 ? 'mine' : 'theirs', host.mirror!.state, guest.mirror!.state) ?? null) : null,
@@ -187,9 +237,17 @@ export function createSpectator(transport: SpectatorTransport, options: Spectato
 
     // Los dos quieren la revancha: se empieza de cero (las mesas nuevas llegan en sus `sync`).
     if (rematch[0] && rematch[1]) {
+      // En un Match el duelo que terminó se suma al marcador (antes de limpiar quién se rindió).
+      if (settings?.match && sides[0].lp !== null && sides[1].lp !== null) {
+        series = advanceSeries(series, duelResult([sides[0].lp, sides[1].lp], conceded))
+      }
+
       rematch[0] = false
       rematch[1] = false
       conceded = null
+      // Los puntos de vida del duelo que terminó ya no valen: los nuevos llegan con la mesa nueva (así no se ve terminar dos veces el mismo duelo).
+      setSide(0, { lp: null })
+      setSide(1, { lp: null })
     }
   }
 
@@ -246,6 +304,11 @@ export function createSpectator(transport: SpectatorTransport, options: Spectato
 
         if (message.order !== undefined) {
           starter = message.order
+        }
+
+        // El marcador del Match lo llevan los jugadores: vale el más avanzado.
+        if (message.series && settings?.match && message.series.played > series.played) {
+          series = message.series
         }
 
         return

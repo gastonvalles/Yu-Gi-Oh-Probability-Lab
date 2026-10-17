@@ -46,6 +46,7 @@ import { DuelDeckPicker, loadDuelDeck, readStoredDeck, type DuelDeck } from './D
 import { gameText, outcomeText, rpsName } from './game-text'
 import { artOfDrawId, passcodeOfDrawId } from './duel-art'
 import { DuelOpening } from './DuelOpening'
+import { TurnOrderBanner } from './DuelBanner'
 import { RoomRules } from './RoomRules'
 import { PlayHome } from './PlayHome'
 import { formatName } from './room-chips'
@@ -1575,6 +1576,18 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   )
   const turn = whoseTurn(snapshot.me, mine, theirs!.state, snapshot.starter)
   useGameToasts(snapshot, myName)
+  // El cartel del comienzo: cuando se reparte la mesa de un duelo nuevo (no al volver a una con jugadas hechas), los dos ven si van primero o segundo.
+  const [firstBanner, setFirstBanner] = useState<boolean | null>(null)
+  const bannerFor = useRef<typeof initial>(null)
+
+  useEffect(() => {
+    if (initial && bannerFor.current !== initial) {
+      bannerFor.current = initial
+
+      if (actions.length === 0) setFirstBanner(snapshot.starter === snapshot.me)
+    }
+  }, [initial, actions.length, snapshot.starter, snapshot.me])
+  const hideBanner = useCallback(() => setFirstBanner(null), [])
   useTurnDraw(duel, snapshot, turn)
   useAutoStartClock(duel, snapshot)
   // Mientras falta uno de los dos el duelo está en pausa (el reloj también); terminado ya no hay nada que esperar.
@@ -1743,6 +1756,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       {rivalInspected && !covered ? <RivalCardDetail key={rivalInspected.drawId} drawId={rivalInspected.drawId} origin={rivalInspected.rect} onClose={() => setRivalInspected(null)} /> : null}
       {/* Lo que tira el rival (moneda, dado, piedra-papel-tijera) se ve girar acá aunque el panel de juegos esté cerrado. */}
       <TossOverlay snapshot={snapshot} myName={myName} />
+      {firstBanner !== null ? <TurnOrderBanner key={snapshot.starter + '-' + snapshot.series.game} first={firstBanner} rival={rivalName} onDone={hideBanner} /> : null}
       {docked ? null : <RivalEmoji burst={signals.burst} name={rivalName} />}
     </>
   )

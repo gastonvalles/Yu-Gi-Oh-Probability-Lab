@@ -10,12 +10,12 @@ const hostTable = createMatState(Array.from({ length: 12 }, (_, index) => `card-
 const guestTable = createMatState(Array.from({ length: 12 }, (_, index) => `card-${5000 + index}-1`), ['card-5900-1'], 5)
 
 /** Dos jugadores en la sala, listos para empezar. */
-function setup() {
+function setup(match = false) {
   const room = createMemoryRoom()
   const clock = { t: 10_000 }
   const hostEnd = room.join()
   const guestEnd = room.join()
-  const host = createDuel(hostEnd, { role: 'host', name: 'Ana', settings: { lp: 8000, hand: 5, limitMin: 50, format: 'unlimited', match: false, siding: false }, now: () => clock.t, sid: 'host-1', random: () => 0.1 })
+  const host = createDuel(hostEnd, { role: 'host', name: 'Ana', settings: { lp: 8000, hand: 5, limitMin: 50, format: 'unlimited', match, siding: false }, now: () => clock.t, sid: 'host-1', random: () => 0.1 })
   const guest = createDuel(guestEnd, { role: 'guest', name: 'Beto', now: () => clock.t, sid: 'guest-1', random: () => 0.9 })
 
   room.flush()
@@ -23,8 +23,8 @@ function setup() {
 }
 
 /** Un duelo ya empezado: los dos con su mano y listos, el anfitrión empezando. */
-function startedDuel() {
-  const game = setup()
+function startedDuel(match = false) {
+  const game = setup(match)
 
   game.host.setReady(true)
   game.guest.setReady(true)
@@ -320,5 +320,61 @@ describe('lo que el relay le avisa y le manda a un espectador', () => {
     expect(parseSpectatorText('1')).toBeNull()
     expect(parseSpectatorText('')).toBeNull()
     expect(SPECTATOR_RESYNC).toBe('resync')
+  })
+})
+
+describe('cómo termina el duelo para quien mira', () => {
+  it('un duelo suelto: quién ganó y por qué (rendición o puntos de vida), y que con eso se terminó lo que se miraba', () => {
+    const game = startedDuel()
+    const { spectator } = watch(game)
+
+    expect(spectator.getSnapshot().end).toBeNull()
+
+    game.guest.concede()
+    game.room.flush()
+    expect(spectator.getSnapshot().end).toEqual({ winner: 0, reason: 'conceded', loser: 1, match: false, wins: [0, 0], over: true, matchWinner: null })
+
+    const byLife = startedDuel()
+    const other = watch(byLife)
+
+    byLife.host.changeLife(-8000)
+    byLife.room.flush()
+    expect(other.spectator.getSnapshot().end).toMatchObject({ winner: 1, reason: 'life', loser: 0, over: true })
+  })
+
+  it('si se quedan sin puntos los dos a la vez es un empate, sin ganador', () => {
+    const game = startedDuel()
+    const { spectator } = watch(game)
+
+    game.host.changeLife(-8000)
+    game.guest.changeLife(-8000)
+    game.room.flush()
+    expect(spectator.getSnapshot().end).toMatchObject({ winner: null, loser: null, reason: 'draw', over: true })
+  })
+
+  it('en un Match, un duelo no termina lo que se miraba: el marcador va sumando, y con la revancha el cartel se va hasta que termina el Match', () => {
+    const game = startedDuel(true)
+    const { spectator } = watch(game)
+
+    game.guest.concede()
+    game.room.flush()
+    expect(spectator.getSnapshot().end).toMatchObject({ winner: 0, match: true, wins: [1, 0], over: false, matchWinner: null })
+
+    // Los dos piden seguir: el duelo que terminó deja de verse como terminado (y no se cuenta dos veces).
+    game.host.rematch()
+    game.guest.rematch()
+    game.room.flush()
+    expect(spectator.getSnapshot().end).toBeNull()
+
+    // Segundo duelo: gana el anfitrión otra vez y define el Match.
+    game.guest.chooseFirst(0)
+    game.room.flush()
+    game.host.start(hostTable)
+    game.guest.start(guestTable)
+    game.room.flush()
+    expect(spectator.getSnapshot().end).toBeNull()
+    game.guest.concede()
+    game.room.flush()
+    expect(spectator.getSnapshot().end).toMatchObject({ winner: 0, wins: [2, 0], over: true, matchWinner: 0 })
   })
 })
