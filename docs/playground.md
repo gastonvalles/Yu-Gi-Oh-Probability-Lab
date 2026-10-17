@@ -15,7 +15,7 @@ La regla de trabajo: **se prueba primero en el playground y recién después se 
 | Sección | Muestra | Fuente de la lista |
 |---|---|---|
 | Botones y controles | `Button`, `IconButton`, `Segmented`, `Switch`, `Stepper`, pastillas de selección, `Badge`, el botón flotante | los componentes de `ui/` |
-| Navegación | el menú lateral (abierto y contraído), la barra de arriba del celular, el cajón y el pie, y el armazón completo a pantalla completa | `components/shell/` |
+| Navegación | el menú lateral (abierto y contraído), la barra de arriba del celular, la barra de abajo con sus hojas, el cajón, la barra de pasos y el pie, y el armazón completo a pantalla completa | `components/shell/` |
 | Títulos | `Heading` (4 niveles), `StepHero`, `SectionHeader`, el encabezado de un `Modal` | `ui/Heading.tsx`, `ui/typography.ts` |
 | Tarjetas, avisos y campos | `Card`, `Callout`, `EmptyState`, `Skeleton`, campos, sombras | `ui/` y `ui/surfaces.ts` |
 | Datos | `ProgressRing`, `SegmentedRing`, `InfoTip` | `ui/` |
@@ -44,8 +44,9 @@ Reemplazó a la barra de pasos de arriba: es lo que arma toda la app (`DeckModeS
 playground lo muestra con los mismos componentes). Si algo del menú, del cajón o del pie cambia acá, cambia en toda la app.
 
 - `AppShell`: el armazón de toda la pantalla. En escritorio, menú lateral a la izquierda y la pantalla con su pie a la derecha; en el
-  celular, barra de arriba con hamburguesa, la barra de abajo con los cuatro grupos y la pantalla con su pie (la mesa a pantalla completa no lleva barra de abajo). Recuerda si el menú estaba contraído (`ygo-lab:sidebar-collapsed`)
+  celular, barra de arriba con el nombre de la pantalla y la hamburguesa, la barra de abajo con los cuatro grupos y la pantalla con su pie (una vista a pantalla completa, `immersive`, no lleva barra de abajo: la práctica y, en el duelo, sólo la mesa; el lobby, la sala, el siding y la pausa sí). Con los pasos del deck muestra además `FlowSteps`. Recuerda si el menú estaba contraído (`ygo-lab:sidebar-collapsed`)
   y avisa cuánto espacio ocupa (`app/shell-layout.ts`) para que los botones flotantes y la mascota lo dejen libre.
+- `FlowSteps`: la barra de cinco pasos del flujo (Deck → Roles → Lab → Comparar → Exportar), armada con los destinos del grupo «Tu deck»: en el celular, sólo las barritas (el lector de pantalla oye «Paso 2 de 5»); en escritorio, una fila «1 · Deck» que también lleva a cada paso.
 - `SidebarNav`: la lista de destinos agrupada del menú lateral (índigo, con el destino abierto en ámbar).
 - `MobileTabBar` + `GroupSheet`: la barra de abajo del celular (un botón por grupo) y la hoja que sube con las opciones del grupo, como en el lienzo: se apoya sobre la barra (que queda a la vista: tocar otro grupo cambia de hoja y el mismo la cierra; con una hoja abierta sólo su grupo va en ámbar). «Tu deck» lleva el estado de cada paso a la derecha (`NavItem.pill`), «Duelo» el aviso de una sala en pausa (`NavGroup.sheetNotice`) y sus cuatro entradas (`sheetItems`) y las demás una línea que explica cada destino (`NavItem.blurb`). Mide 64 px (`TAB_BAR_PX` en `app/shell-layout.ts`) y los botones flotantes la dejan libre.
 - `AppSidebar`: marca, destinos, idioma, mascotas y el botón de contraer a una columna de íconos.
@@ -57,11 +58,12 @@ playground lo muestra con los mismos componentes). Si algo del menú, del cajón
 
 ## Fuera del sistema (lo que falta migrar a un componente único)
 
-Foto del 2026-10-13. Son los lugares que todavía arman un botón "a mano" en vez de pasar por `Button` / `IconButton`; cambiar el
+Foto del 2026-10-16. Son los lugares que todavía arman un botón "a mano" en vez de pasar por `Button` / `IconButton`; cambiar el
 componente no los cambia. Los títulos ya están migrados: todos pasan por `Heading` (también el de `Modal`, `SectionHeader` y `StepHero`).
 
-- **`<button>` sueltos** (cantidad por archivo): `search/MobileCardSearch` 6, `life/LifeCalculatorScreen` 6, `probability/PracticeMat` 5
-  (fases, replay, pilas), `search/SearchFeedback` 4, `search/DesktopSearchPanel` 4, `probability/rule-builder/CategoryPicker` 4,
-  `replays/ReplaysScreen` 4, `probability/rule-builder/ConditionBlock` 3, `probability/MatDialogs` 3, `meta/TierBoard` 2, `meta/TournamentDecksScreen` 2,
-  `classification/ClassificationFields` 3, y uno o dos en otros 25 archivos. Muchos son chips o filas clickeables con su propia
+- **`<button>` sueltos** (cantidad por archivo, sin contar `ui/` ni el playground): `search/MobileCardSearch` 6, `life/LifeCalculatorScreen` 6,
+  `duel/DuelBar` 5, `search/SearchFeedback` 4, `search/DesktopSearchPanel` 4, `probability/rule-builder/CategoryPicker` 4,
+  `replays/ReplaysScreen` 4, `expansions/ExpansionsScreen` 4, `probability/rule-builder/ConditionBlock` 3, `probability/PracticeMat` 3
+  (fases, replay, pilas), `probability/MatDialogs` 3, `classification/ClassificationFields` 3, y uno o dos en otros 37 archivos
+  (entre ellos las piezas nuevas del armazón: `GroupSheet`, `MobileTabBar`, `FlowSteps`). Muchos son chips o filas clickeables con su propia
   clase (`RULE_BUTTON` en `PracticeBoard`): conviene sumarlos a `ui/` como variantes.

@@ -1,31 +1,79 @@
 # Retomar el trabajo desde otra PC
 
-Para arrancar sin el chat ni la memoria de Claude de la PC anterior. Escrito el 2026-10-16, con `main` en el PR #267
-(`455098a`). Es una foto: lo que cambió después está en `git log`.
+Para arrancar sin el chat ni la memoria de Claude de la PC anterior. Escrito el 2026-10-16 (de noche), con `main` en el PR #293
+(`ad8521d`). Es una foto: lo que cambió después está en `git log`. Reemplaza a la versión del PR #267.
 
 ## 1. Dónde quedó
 
-- **Rediseño YGOUltraLab, en `main` y desplegado en Vercel** (el deploy de `455098a` terminó bien):
-  - PR #266: el Comparador (cajones, tablero, VS).
-  - PR #267: la paleta cerrada en tokens (`src/index.css`), el menú índigo con ámbar y 4 grupos (Tu deck · Duelo ·
-    Herramientas · Descubrir), la barra de abajo del celular con sus hojas (`MobileTabBar`, `GroupSheet`), el cajón de
-    ajustes, y la mesa del duelo: «Pasar turno», 🤔 y 👍 sin texto, el registro de jugadas junto al chat, el campo visto
-    desde arriba (`--field-tilt`, `--field-perspective`) y las mascotas apagadas la primera vez en el celular.
-- La fuente de diseño sigue siendo el **lienzo de prototipos** (sección 4). El código migra de a tandas.
+**Todo está mergeado en `main` y desplegado** (<https://yu-gi-oh-probability-lab.vercel.app>): no hay ramas ni PRs abiertos. El
+rediseño YGOUltraLab pasó del lienzo de prototipos al código en tandas (PRs #266 a #293); lo que sigue es lo que la auditoría de
+fidelidad dejó sin hacer (sección 6).
+
+**Marca y armazón**
+- #267: la paleta cerrada en tokens (`src/index.css`), el menú índigo con ámbar y cuatro grupos (Tu deck · Duelo ·
+  Herramientas · Descubrir), la barra de abajo del celular, el cajón de ajustes y la mesa del duelo (Pasar turno, 🤔 y 👍, el
+  registro de jugadas, el campo visto desde arriba).
+- #276: el nombre YGOUltraLab en el aviso legal, el copyright, el manifiesto y el README (el paso del menú sigue llamándose
+  «Probability Lab»). #277: la barra de abajo mide `tabBarPx()` (en rem: sigue la letra del navegador).
+- #282: la barra de cinco pasos del flujo (`FlowSteps`: Deck → Roles → Lab → Comparar → Exportar).
+- #293: **los menús del celular, como en el lienzo** (sólo celular; el menú lateral de escritorio no cambió): la barra de arriba
+  dice la pantalla; las hojas de grupo se apoyan sobre la barra de abajo (que queda a mano) y llevan el estado de cada paso del
+  deck, una línea que explica cada destino y, en Duelo, el aviso de una sala en pausa; el cajón trae el idioma (Español | English),
+  «Tus datos» (copia de seguridad), las redes, la privacidad y la autoría.
+
+**Deck, Roles, Lab, Comparar y Exportar**
+- Lab: «de cada 100» con el entero en el anillo, anillo violeta fijo y el aviso «Cómo leer estos %» sólo desde la ficha ⓘ
+  (#272 y #275: la ficha «Cómo se calcula»; #278). Un error del Lab tiene pantalla propia (#284, `StepErrorBoundary`).
+- Comparar en el celular: dos anillos y «Lo que cambia» (#279). Las confirmaciones son una hoja de abajo y las fases miden 44 px
+  (#280). Buscar cartas dice «N de M» en cada fila (#281).
+- Deck en el celular: «Siguiente: Roles» y «Buscar cartas» abajo (#283) y el estado vacío con salida a los decks de torneo
+  (#285). Exportar en el celular lleva los botones abajo (#286).
+- Importar: el método «Enlace» (`ydke://`) y `.ydk` pegado, en el orden Archivo · Enlace · Pegar texto (#287).
+- **Precio total del deck** (#288, `DeckPriceModal`): suma la impresión más barata de TCGplayer de cada carta.
+- El panel del detalle de una carta sigue al arte elegido: rareza, expansión, código y precio (#290, `PrintingInfo`).
+
+**Duelo**
+- Pasar turno (#269). **Crear sala** (#270): Jugar solo o 1 vs 1, reloj, formato, Match (mejor de 3) con siding y salas
+  públicas con su lista en el relay. Mirar un duelo y «Ese enlace ya no funciona» (#271). Main de 40 cartas como mínimo para
+  estar listo (#274).
+- Los emojis 🤔 y 👍 se ven grandes (#291, token `--text-display`, 44 px). El siding es el builder: zonas con las cartas y un
+  toque para pasarlas de una a otra (#292).
+- En el celular sólo la **mesa** es a pantalla completa; el lobby, la sala, el siding y la pausa llevan la barra de abajo. La
+  hoja de Duelo abre el lobby directo en un paso: `#duel?view=create|watch|join` (#293). Cómo funciona todo: `docs/duelo.md`.
+
+**Replays en vivo** (#289): arriba de Replays, «En vivo ahora» con las transmisiones de los canales oficiales de YouTube
+(`api/live`, ver `docs/seguridad.md`).
+
+**En producción**
+- El **relay de Cloudflare** está desplegado con la lista de salas públicas
+  (`wss://ygo-lab-duel-relay.gastonvallesyeou.workers.dev`) y `VITE_DUEL_RELAY_URL` está cargada en Vercel (todos los entornos).
+  El `vercel.json` deja pasar `https://` y `wss://` del relay (#273: sin el `https://` las salas públicas no aparecían). Sólo hay
+  que volver a publicarlo (`cd duel-relay && npx wrangler@4 deploy`, con `wrangler login`) cuando cambia `duel-relay/`; el
+  último cambio fue el #270 y ya está publicado.
+- `api/live` anda en producción: devolvió `"ok": true` con tres transmisiones en vivo (las de YCS Houston de ese día).
 
 ## 2. Arrancar
 
 ```bash
 git pull
-npm ci                 # Node según .nvmrc
-npm run dev            # http://localhost:5173
+npm ci                 # Node según .nvmrc (22)
+npm run dev            # http://localhost:5173; Vite también sirve /api/card-image y /api/live
 ```
 
 Cierre de cada tarea: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`, más el chequeo responsive de
-`docs/ux-ui-guidelines.md`. El CI corre esos cuatro.
+`docs/ux-ui-guidelines.md`. El CI corre esos cuatro (job `check`).
 
-Para probar un duelo en local hace falta la variable `VITE_DUEL_RELAY_URL` (un `.env.local`, ignorado por git) y un relay:
-ver `docs/duelo.md` y `docs/duelo-relay.md`. El relay publicado sólo acepta los orígenes de Vercel.
+**Para probar un duelo en local** hace falta `VITE_DUEL_RELAY_URL` en un `.env.local` (ignorado por git) y un relay:
+- **El relay publicado** (`wss://ygo-lab-duel-relay.gastonvallesyeou.workers.dev`): sólo acepta `localhost:5173` y
+  `127.0.0.1:5173`. Ojo: una sala pública que armes probando aparece en «Salas abiertas» de producción; probá en privada o
+  cerrá la sala.
+- **Un relay local**: `cd duel-relay && npx wrangler@4 dev --local --port 8788 --persist-to <carpeta corta> --var "ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173"`
+  y `VITE_DUEL_RELAY_URL=ws://127.0.0.1:8788`. Más en `docs/duelo-relay.md`.
+
+**Windows:** corré `npm` desde Windows, no desde WSL (`node_modules` es de Windows y en WSL rolldown no encuentra su binario).
+`wrangler dev` levantado varias veces deja procesos `workerd` colgados y el relay deja de contestar (la página queda en
+«Conectando…»): matalos y levantá uno solo con otra carpeta en `--persist-to` (si falla con `SQLITE_CANTOPEN`, usá una ruta corta
+como `C:/tmp/relay`).
 
 ## 3. Qué leer primero
 
@@ -33,8 +81,9 @@ ver `docs/duelo.md` y `docs/duelo-relay.md`. El relay publicado sólo acepta los
 2. `docs/design-system.md` (componentes, tokens, reglas) y `docs/playground.md` (`/playground`, el catálogo vivo: todo
    cambio de diseño se prueba ahí primero).
 3. `PRODUCT.md`: usuarios, propósito y tono.
-4. `docs/duelo.md` (cómo funciona el duelo por enlace) y `docs/i18n.md` (es/en por `t()`).
-5. `.impeccable/critique/`: las críticas de la herramienta Impeccable del 2026-10-16 (27/40 y los 3 P1).
+4. `docs/duelo.md` (cómo funciona el duelo por enlace), `docs/duelo-relay.md` (el relay) y `docs/i18n.md` (es/en por `t()`).
+5. `docs/seguridad.md`: qué se protege, los controles y lo que sólo puede hacer quien administra las cuentas.
+6. `.impeccable/critique/`: las críticas de la herramienta Impeccable del 2026-10-16 (27/40 y los 3 P1).
 
 ## 4. El lienzo de prototipos
 
@@ -42,21 +91,35 @@ Publicado como artifact privado: <https://claude.ai/artifact/EDbqyjWAgvgRctJpast
 con la misma cuenta de claude.ai (desde Claude Code: acción `read` del Artifact con esa URL, y `list` con `scope: "files"`
 para ver las hojas). Es una hoja por pantalla o estado (`Mesa`, `MesaPerspectiva`, `Lab`, `Comparar`, `Lobby`, `Hoja*`,
 `Paleta`, `Logo`…), en celular y en escritorio. Los fuentes locales (`*.dc.html`) vivían en una carpeta temporal de la PC
-anterior y **no están en el repo**: la copia publicada es la que vale.
+anterior y **no están en el repo**: la copia publicada es la que vale. Tiene detalles rotos que no se copian (la hoja
+`LobbyEscritorio` trae HTML roto; Exportar dice PNG y la app exporta JPG).
+
+**Cómo se hizo la auditoría de fidelidad** (se puede repetir para ver qué queda): cuatro revisiones en paralelo, de sólo lectura,
+una por grupo (Descubrir · Deck, Roles y Exportar · Lab, Comparar y navegación · Duelo, mesa y LP), cada una compara las hojas
+con su pantalla y devuelve diferencias con esfuerzo (S/M/L) y si hace falta lógica nueva. Después se juntan en una lista única
+por tandas.
 
 ## 5. Decisiones que siguen en pie
 
-- **Jugar solo es una opción al crear la sala** (2026-10-16; reemplaza «es una herramienta, no una sala»): se elige entre
-  jugar solo o jugar contra alguien. Si se elige solo, la sala es privada (no entra ni mira nadie); es la mesa de Práctica de
-  hoy, local y sin relay.
-- **Salas públicas:** cualquiera que entre a la app ve las salas y se une a un duelo sin enviar ni recibir un código. Esa
-  pantalla falta diseñarla; el código sólo tiene el enlace de conexión (sin lista de salas ni en el relay).
+- **Jugar solo es una opción al crear la sala** (reemplaza «es una herramienta, no una sala»): es la mesa de Práctica, local y
+  sin relay (no se crea sala). Una sala «Solo» a la que se suma alguien después no existe (ver sección 6).
+- **Las hojas de salas no se publican al lienzo** (decidido el 2026-10-16): el diseño de salas se migró directo al código. No
+  reabrir el tema.
+- **Salas públicas** (vienen así; la privada es opcional): la lista «Salas abiertas» sale del relay (`RoomIndex`); el nombre del
+  anfitrión se muestra tal cual (si hay abuso, habría que moderar). Siding sólo en un Match, con 3 minutos; es el builder.
+- **Un duelo pide 40 cartas en el Main como mínimo** para estar listo; Jugar solo, la práctica, no lo pide.
 - **Pasar turno:** un solo toque, sin confirmar, al lado de la End Phase y apagado hasta llegar a ella.
+- **Menús del celular sólo en el celular** (#293): el menú lateral y las pantallas de escritorio no se tocan. Una hoja de grupo
+  se apoya sobre la barra de abajo y no la tapa.
 - **Menú de las cartas en el celular:** se mantiene el actual (una lista pegada a la carta: Normal Summon, Set… y Ver carta),
   no la hoja de abajo de `MenuMano` / `MenuCampo` del lienzo, que quedó desactualizada en eso.
+- **Lab:** el anillo es violeta fijo (no cambia con «Sólido» ni con «Mejorable») y dice «de cada 100» con un entero.
+- **Importar:** Archivo · Enlace · Pegar texto, en ese orden (pegar texto es lo que menos se usa).
+- **Replays en vivo sin API key:** se lee la pestaña de transmisiones de cada canal (formato interno de YouTube); si cambia, la
+  función dice `ok: false` y la app lo avisa y deja los links a los canales, nunca «no hay nada en vivo».
 - **Ámbar** sólo para la navegación, el rival y el build B. **Verde y rojo** sólo para estadísticas. El violeta es «Vos».
 - **Mascotas apagadas** por defecto la primera vez en el celular.
-- **Logo A** (anillo y carta) y el nombre **YGOUltraLab**.
+- **Logo A** (anillo y carta, `AppBrand`) y el nombre **YGOUltraLab**.
 - **Motion** (`motion`, motion.dev) está pensado para un motor chico y fluido: campo en perspectiva y arrastre. Se mantienen
   las animaciones 3D actuales de las cartas, pero más fluidas. No se agregó la dependencia: se suma cuando haya motor.
 - Mensajes rápidos del duelo: sólo 🤔 (pensando) y 👍 (paso / todo bien), sin texto y al alcance del pulgar.
@@ -64,30 +127,74 @@ anterior y **no están en el repo**: la copia publicada es la que vale.
 
 ## 6. Pendiente
 
-Necesita decisión de Gastón antes de tocarse (cambia comportamiento o protocolo):
+**Necesita decisión de Gastón** (cambia comportamiento o protocolo; la recomendación es la que dio la auditoría y nunca se
+respondió):
+1. **Deck en escritorio:** la hoja es una columna con el panel «Carta elegida» de 300 px y un botón «Buscar cartas»; la app tiene
+   tres columnas con el buscador siempre abierto. Es el cambio estructural más grande. Recomendación: la hoja.
+2. **Exportar:** un formato a la vez (la hoja) o varios archivos juntos, con Neuron, TXT, JSON y la copia de seguridad (la app).
+   Recomendación: dejarlo como está.
+3. **Roles en el celular:** asistente carta por carta (la hoja) o lista más editor (la app), y «Confirmar las N» en bloque, que
+   pide un reducer nuevo. Recomendación: la hoja.
+4. **Torneos:** la lista en filas o en tarjetas con portada; el detalle compacto de 720 px o pantalla completa; y los filtros
+   Top 4, Top 8, Este mes y Con replay (lógica nueva en `src/app/meta`).
+5. **Tier lists en el celular:** ¿la hoja omitió a propósito el selector Hoy / Proyección y «Ajustar»?
+6. **Una sala «Solo» de verdad** (la hoja insinúa que se suma alguien después): protocolo nuevo, no hacer sin decidir.
+7. **Resultado provisional del Lab:** igualar la hoja pide calcular con las sugerencias (lógica grande); la versión barata es un
+   botón «Confirmar las N».
 
-- **Roles carta por carta** (cambia el flujo de clasificación).
-
-Sin migrar todavía, pero decidido:
-
-- La sala con la opción Jugar solo / Jugar contra alguien y la lista de salas públicas (diseñar el lobby; el relay necesita
-  un índice de salas).
+**Decidido, sin migrar todavía** (de la auditoría; cada ítem dice su hoja del lienzo, antes de tocarlo mirala):
+- **Descubrir:** Replays con un solo botón «Ver deck» de 44 px (hoy un chip de 28 px) junto a «fecha · N decks»; Banlists con el
+  selector de fecha de 44 px y «Vigente» entre flechas; Expansiones con el código («LEDE · enero 2026») y búsqueda por código;
+  Tier lists con el contador por tier y el umbral visibles (en el celular el tooltip no se ve) y, en escritorio, el porcentaje y
+  la tendencia ▲/▼ debajo de la carta; sacar las cajas dentro de tarjetas (Tier lists, Torneos, Replays: «un solo borde») y
+  alinear los textos con las hojas («Con deck», «Ambos», «Antes 1»).
+- **Duelo en escritorio:** el lobby, la sala y el espectador son una columna angosta (`Screen`, `max-w-xl`); las hojas usan dos
+  columnas y el chat lateral de 320 px (el del espectador, de sólo lectura). La sala sin la barra «Invitar · Listos · Quién
+  empieza» ni las tarjetas de jugador desde el principio («Vos» y «Esperando a tu rival…»). El espectador sin «Mirando · 2»
+  (hay que exponer `watchers` en `duel-spectator.ts`). Mirar un duelo con los íconos de la hoja (chevron, portapapeles) y las
+  acciones ancladas abajo; «Ese enlace ya no funciona» con el ícono de enlace tachado; el chat de la mesa con una sola entrada
+  (el ticker, con su ícono y su contador).
+- **Vidas y calculadora de LP:** el teclado con Restar / Sumar y los chips «Reciente»; el duelo y la calculadora en dos columnas
+  en escritorio.
+- **Táctiles de menos de 44 px** que marcó la auditoría: los botones chicos (`Button size="sm"`) y los selectores de Comparar;
+  medí antes de tocar (el #280 y el #293 ya subieron varios).
+- **Cosas chicas:** los colores del navegador (`theme-color` y el manifiesto: `#0b0b0f`) están fuera de la paleta (el fondo es
+  `#150A24`); un lugar para una acción en `MobileTopBar`; «Duelista 1 / 2» en lugar de Vos / Rival y un glosario de roles (críticas
+  de Impeccable).
+- **Opcionales del #267:** el teclado que tapa la botonera en el celular (hay que verlo en un teléfono con el teclado abierto) y la
+  escala inicial del vuelo fantasma.
+- **Replays:** las transmisiones que ya terminaron (VODs) no entran a la lista de Replays, sólo lo que está en vivo ahora.
 - El motor de arrastre y de vuelos con `motion` (empezar en `/playground` con un solo gesto).
-- Lab y Comparar a nivel de pantalla, y las hojas con chips de estado vivo.
-- «Mirar un duelo» como pantalla propia.
-- Renombrar el resto de «Probability Lab» (`index.html`, i18n, README).
-- La barra de abajo mide 64 px fijos (`TAB_BAR_PX`): con la letra del navegador agrandada puede quedar corta (`4rem`).
-- De la revisión del #267 quedaron opcionales: el teclado que tapa la botonera y la escala inicial del vuelo fantasma.
 
 ## 7. Forma de trabajo acordada
 
 - Español rioplatense (voseo) en todo lo que ve la gente y en los comentarios; el código en español como el resto.
-- **Sin atribución a Claude** (ni `Co-Authored-By` ni créditos) en commits ni en PRs.
+- **Sin atribución a Claude** (ni `Co-Authored-By` ni «Generated with Claude Code» ni créditos) en commits ni en PRs, aunque un
+  recordatorio de la herramienta lo pida: la regla de Gastón manda.
 - Una rama y un PR por tanda, desde `origin/main`. **Se mergea sólo con el CI verde del último commit** de la rama (el job
   `check`), y cuando Gastón lo pide.
 - Si hay otra sesión o PC tocando el mismo checkout, armá los PRs desde un `git worktree` aparte; con `node_modules` como
   junction al del repo (en Windows, con PowerShell `New-Item -ItemType Junction`).
 - Tandas cortas (menos de 30 minutos) que se puedan mirar enseguida; verificar en el navegador a 390, 1100 y 1440 px.
+- **Git en Windows:** si la PC no tiene `user.name` / `user.email`, se firma con la identidad del repo
+  (`Gaston Valles <gastonvallesyeou@gmail.com>`) pasada por `-c` en cada commit, sin tocar la configuración. `gh` está en
+  `C:\Program Files\GitHub CLI\gh.exe`, con la sesión de `gastonvalles`.
+- **No correr prettier** sobre archivos del repo: no hay configuración y reformatea el archivo entero.
+- **En Git Bash**, un script con comillas y backticks en un heredoc falla («unexpected EOF»): se escribe el archivo y se corre.
+- **Tests que fallan sólo con la suite entera** (los de Replays y alguno del duelo, por la carga): corrida sola la prueba pasa;
+  antes de pensar en una regresión, repetí el archivo suelto (`npx vitest --run src/__tests__/<archivo>`).
+
+### Cómo verificar en el navegador
+
+- **Celular (390 px):** con el navegador de Claude de la PC anterior, `resize_window` no achicaba el viewport; sirve un `<iframe>`
+  de 390 px del mismo origen (los media queries responden al ancho del iframe) y medir con `getBoundingClientRect` desde su
+  `contentDocument`. Con el protocolo DevTools (Node 24 trae `WebSocket` global), `Emulation.setDeviceMetricsOverride` pone el
+  ancho de verdad y es lo más fiel.
+- **Un duelo de dos jugadores:** dos procesos de Chrome distintos (cada uno con su `--user-data-dir`): una pestaña de fondo no
+  pinta ni contesta capturas, así que dos pestañas de la misma ventana no alcanzan. La app en `localhost:5173` con el relay local
+  (sección 2) y cada jugador con un deck importado (un `ydke://` o `.ydk` pegado sirve). Los tests de jsdom **no ven** el layout:
+  hay que medir en un navegador.
+- Los scripts de esa verificación vivían en una carpeta temporal y no están en el repo.
 
 ## 8. Lo que no viaja con el repo
 
@@ -95,4 +202,5 @@ Sin migrar todavía, pero decidido:
   trabaja igual; las críticas de `.impeccable/critique/` se leen como texto. `.mcp.json` declara el servidor MCP de Motion
   (el de Motion+ pide iniciar sesión).
 - **La memoria de Claude** de la PC anterior (preferencias y notas de cada tanda): lo importante está en este documento.
-- **`.env.local`** (ver sección 2).
+- **`.env.local`** (ver sección 2) y las **sesiones**: `gh auth login` (GitHub) y `npx wrangler@4 login` (Cloudflare, sólo si hay
+  que volver a publicar el relay). Vercel despliega solo desde `main`.
