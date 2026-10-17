@@ -1,3 +1,4 @@
+import type { DeckZone as DeckZoneType } from '../app/model'
 import { cx } from './ui/cx'
 
 /**
@@ -63,3 +64,22 @@ export const RAIL_ROW =
   'flex h-full min-h-0 items-start overflow-hidden [&>*]:w-[10%] [&>*]:flex-none'
 export const RAIL_ROW_OVERLAP =
   '[&>*+*]:ml-[calc((100%-10%*var(--classic-rail-card-count))/(var(--classic-rail-card-count)-1))]'
+
+/** Los colores de cada zona del deck (fondo, borde y el punto del título). */
+export const ZONE_STYLES: Record<DeckZoneType, { background: string; border: string; dot: string }> = {
+  main: {
+    background: 'var(--zone-main-background)',
+    border: 'var(--zone-main-border)',
+    dot: 'rgb(var(--primary-rgb))',
+  },
+  extra: {
+    background: 'var(--zone-extra-background)',
+    border: 'var(--zone-extra-border)',
+    dot: 'rgb(var(--handtrap-rgb))',
+  },
+  side: {
+    background: 'var(--zone-side-background)',
+    border: 'var(--zone-side-border)',
+    dot: 'rgb(var(--accent-rgb))',
+  },
+}
