@@ -269,7 +269,27 @@ describe('la mesa de práctica', () => {
     const toolbar = screen.getByRole('toolbar', { name: 'Mesa' })
 
     expect(toolbar.firstElementChild).toBe(screen.getByLabelText('Turno 1'))
-    expect(screen.getByRole('button', { name: 'Nueva mano' })).toHaveClass('ml-auto')
+    // Los botones de la barra van a la derecha: el primero es el de la vista (superior o 3D).
+    expect(screen.getByRole('button', { name: 'Cambiar a la vista superior' })).toHaveClass('ml-auto')
+  })
+
+  it('la vista de la mesa: en 3D el campo va inclinado; con «Cambiar a la vista superior» queda plano y el botón dice a cuál vuelve; se recuerda', () => {
+    localStorage.removeItem('ygo-lab:mat-view')
+    render(<Harness />)
+
+    const field = screen.getByLabelText('Campo')
+
+    expect(field).toHaveAttribute('data-tilted', 'true')
+    expect(field.className).toContain('rotateX')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cambiar a la vista superior' }))
+    expect(field).not.toHaveAttribute('data-tilted')
+    expect(field.className).not.toContain('rotateX')
+    expect(localStorage.getItem('ygo-lab:mat-view')).toBe('top')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cambiar a la vista 3D' }))
+    expect(field).toHaveAttribute('data-tilted', 'true')
+    expect(localStorage.getItem('ygo-lab:mat-view')).toBe('3d')
   })
 
   it('arrastrar una carta al cementerio la manda ahí; tocar el deck ofrece robar', () => {

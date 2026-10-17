@@ -43,6 +43,20 @@ const PATHS = {
       <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
     </>
   ),
+  /** La vista 3D de la mesa: un cubo. */
+  cube: (
+    <>
+      <path data-fill d="M12 3 4 7.5v9L12 21l8-4.5v-9z" />
+      <path data-cut d="M4 7.5 12 12l8-4.5M12 12v9" />
+    </>
+  ),
+  /** La vista superior de la mesa: dos planos uno sobre otro. */
+  'view-top': (
+    <>
+      <rect data-fill x="3.5" y="7" width="12" height="13" rx="2" />
+      <path d="M8 3.5h10.5a2 2 0 0 1 2 2V16" />
+    </>
+  ),
   /** Borrar (la tecla del teclado de LP): una etiqueta con una cruz. */
   backspace: (
     <>

@@ -40,6 +40,7 @@ import { matStepCards } from '../../app/mat-steps'
 import type { Marks } from '../../app/duel-protocol'
 import { riffle } from '../../app/shuffle-fx'
 import { useCardFlights } from '../../app/use-card-flights'
+import { useMatView } from '../../app/mat-view'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
 import { showToastMessage } from '../../app/use-toast-message'
@@ -57,7 +58,8 @@ import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
 import { AttackFx, measureStrike, type Strike, type StrikeSpec } from './AttackFx'
-import { CardBack, CardMenu, PILE_TITLES, PileViewer, SaveComboDialog, type MenuItem } from './MatDialogs'
+import { CardBack, CardMenu, PILE_SHORT, PILE_TITLES, PileViewer, SaveComboDialog, type MenuItem } from './MatDialogs'
+import { MatViewToggle } from './MatViewToggle'
 import { FX_CARD, FxFrame, LandingBurst, PhaseBanner, SPOTLIGHT_TONE, Spotlight, TargetMark, fxVars } from './MatFx'
 import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
@@ -166,11 +168,21 @@ const FIRST_DEAL_MS = 90
 const NEXT_DEAL_MS = 55
 
 /**
- * Lo que tiene toda casilla del campo o de una pila: borde punteado; se enciende con una carta arrastrada encima y respira en verde cuando se está eligiendo.
+ * El borde y el velo de una casilla vacía: una línea fina violeta con un velo adentro (la zona se lee como un lugar, no como un hueco). La zona extra de monstruos, que es de los
+ * dos, lleva el violeta claro con un brillo, para distinguirla de lejos.
+ */
+const CELL_TONE = {
+  default: 'border border-solid border-primary/35 shadow-[inset_0_0_14px_rgb(var(--primary-rgb)/0.14)]',
+  emz: 'border border-solid border-accent/70 shadow-[inset_0_0_16px_rgb(var(--accent-rgb)/0.3),0_0_14px_rgb(var(--accent-rgb)/0.28)]',
+} as const
+
+/**
+ * Lo que tiene toda casilla del campo o de una pila: su borde y velo (ver `CELL_TONE`); se enciende con una carta arrastrada encima y se resalta cuando se está eligiendo.
  * La forma va aparte: ver `CELL` y `CELL_SQUARE`.
  */
-const CELL_LOOK = [
-  'relative min-w-0 border border-dashed border-tint/20 transition-[color,background-color,border-color,box-shadow] duration-150',
+const cellLook = (tone: keyof typeof CELL_TONE) => [
+  'relative min-w-0 transition-[color,background-color,border-color,box-shadow] duration-150',
+  CELL_TONE[tone],
   // Con una carta arrastrada encima: borde parejo, relleno y resplandor violeta.
   'data-[over=true]:border-solid data-[over=true]:border-primary-hover data-[over=true]:bg-primary/25 data-[over=true]:shadow-[0_0_0_2px_rgb(var(--primary-hover-rgb)/0.55),0_0_24px_rgb(var(--primary-hover-rgb)/0.6),inset_0_0_18px_rgb(var(--primary-hover-rgb)/0.35)]',
   // Una zona que se puede elegir respira en verde y un aro se le expande desde el borde.
@@ -181,12 +193,14 @@ const CELL_LOOK = [
 ].join(' ')
 
 /** La zona de campo y las pilas (las columnas de los costados): del tamaño justo de una carta, que nunca se acuesta. */
-export const CELL = `aspect-[421/614] ${CELL_LOOK}`
+export const CELL = `aspect-[421/614] ${cellLook('default')}`
 /**
  * Las zonas del centro (monstruos, Mágicas y Trampas, Zonas Extra) son cuadradas, del lado largo de una carta: la carta entra parada (el alto de la casilla)
  * o acostada en defensa (el ancho de la casilla) con el mismo tamaño y sin salirse, así que dos cartas en defensa vecinas no se pisan ni se achican.
  */
-export const CELL_SQUARE = `aspect-square ${CELL_LOOK}`
+export const CELL_SQUARE = `aspect-square ${cellLook('default')}`
+/** La zona extra de monstruos: cuadrada como las otras, con su brillo. */
+export const CELL_EMZ = `aspect-square ${cellLook('emz')}`
 /** El ancho de una carta como parte de su alto (421 × 614 px): una carta parada en una casilla cuadrada mide ese tanto de ancho. */
 const CARD_WIDTH_PER_HEIGHT = 421 / 614
 
@@ -414,6 +428,7 @@ export function PracticeMat({
   // El ataque que cruza la mesa (el propio o el del rival): se mide al empezar y `AttackFx` se saca solo al terminar.
   const [strike, setStrike] = useState<Strike | null>(null)
   const sectionRef = useRef<HTMLElement | null>(null)
+  const view = useMatView()
 
   useEscapeKey(() => setPicking(null), picking !== null)
   useEscapeKey(() => setCounterMode(null), counterMode !== null)
@@ -1114,7 +1129,7 @@ export function PracticeMat({
         data-over="false"
         data-pick={pickableZone || pickableTribute ? 'true' : 'false'}
         data-chosen={chosen ? 'true' : 'false'}
-        className={spot === 'field' ? CELL : CELL_SQUARE}
+        className={spot === 'field' ? CELL : spot === 'emz' ? CELL_EMZ : CELL_SQUARE}
         style={{ gridArea: area }}
         onClick={pickableZone ? () => pickZone(spot, index) : undefined}
         onKeyDown={pickableZone ? (event) => activate(event, () => pickZone(spot, index)) : undefined}
@@ -1170,7 +1185,7 @@ export function PracticeMat({
         onClick={() => setViewer(pile)}
       >
         {back ? <span className={CARD_BACK} /> : top ? <CardArt remoteUrl={artOf(cardOf(top))} name={cardOf(top).name} className="block h-full w-full object-cover" /> : null}
-        <PileBadge label={PILE_TITLES[pile]} count={count} />
+        <PileBadge label={PILE_SHORT[pile]} count={count} />
         {marked ? <TargetMark /> : null}
       </button>
     )
@@ -1310,7 +1325,8 @@ export function PracticeMat({
           <span className="whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted" aria-label={t('practice.mat.turn', { turn: state.turn })}>
             {t('practice.mat.turn', { turn: state.turn })}
           </span>
-          <IconButton tone="flat" size="sm" aria-label={t('practice.mat.newHand')} title={t('practice.mat.newHand')} className="ml-auto" onClick={onNewHand}>
+          <MatViewToggle className="ml-auto" />
+          <IconButton tone="flat" size="sm" aria-label={t('practice.mat.newHand')} title={t('practice.mat.newHand')} onClick={onNewHand}>
             <Icon name="refresh" />
           </IconButton>
           {undoButton}
@@ -1329,7 +1345,8 @@ export function PracticeMat({
         <div
           ref={fieldRef}
           // `my-auto`: el aire que sobra se reparte arriba y abajo del campo (ni pegado a la barra ni un hueco antes de la mano).
-          data-tilted="true" className="relative my-auto grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [transform-origin:50%_100%] [transform:perspective(var(--field-perspective))_rotateX(var(--field-tilt))] [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]"
+          data-tilted={view === '3d' ? 'true' : undefined}
+          className={cx("relative my-auto grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [transform-origin:50%_100%] [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]", view === '3d' && '[transform:perspective(var(--field-perspective))_rotateX(var(--field-tilt))]')}
           aria-label={t('practice.mat.field')}
           // En un duelo, las áreas de los dos campos (el estilo en línea gana a la clase de las áreas de uno solo); y en escritorio las cartas se achican hasta que las cinco filas y la mano entran en la pantalla.
           style={duel ? ({ gridTemplateAreas: duel.areas, '--cell': 'max(3.5rem, min(8rem, calc((100dvh - 19.5rem) / 5)))' } as CSSProperties) : undefined}
@@ -1366,7 +1383,7 @@ export function PracticeMat({
                 <span key={dealt} className={cx(CARD_BACK, 'animate-pile-draw motion-reduce:animate-none')} />
               </span>
             ) : null}
-            <PileBadge label={PILE_TITLES.deck} count={state.deck.length} />
+            <PileBadge label={PILE_SHORT.deck} count={state.deck.length} />
             {rivalMarks?.piles.includes('deck') ? <TargetMark /> : null}
           </div>
           {pileCell('extra', 'extra')}

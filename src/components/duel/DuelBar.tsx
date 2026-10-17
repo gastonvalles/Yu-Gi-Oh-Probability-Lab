@@ -6,6 +6,7 @@ import type { SocketStatus } from '../../app/duel-socket'
 import { duelTurnNumber } from '../../app/duel-turn'
 import { duelClockMs, formatClock, interpretAmount } from '../../app/life-calculator'
 import { PHASES } from '../../app/practice-mat'
+import { MatViewToggle } from '../probability/MatViewToggle'
 import { LpPad, MAX_DIGITS, type PadKey } from '../life/LpPad'
 import { t } from '../../i18n'
 import { Callout } from '../ui/Callout'
@@ -102,6 +103,8 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
           {clock}
         </button>
         <span className="-mr-2 ml-auto flex shrink-0 items-center min-[1101px]:order-2 min-[1101px]:ml-0.5 min-[1101px]:mr-0">
+          {/* Vista superior o 3D de la mesa, como en la referencia: entre el reloj y los íconos de salir. */}
+          <MatViewToggle />
           {/* Reconectar también: lo tocan los dos, y el duelo sigue en cuanto el relay le dice a cada uno que el otro está. */}
           <IconButton tone="flat" size="sm" aria-label={t('duel.bar.reconnect')} title={t('duel.bar.reconnect')} onClick={onReconnect}>
             <Icon name="refresh" />
@@ -130,7 +133,7 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
           </span>
         ) : null}
         <span className="shrink-0 whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted">{t('practice.mat.turn', { turn: duelTurnNumber(snapshot.mine, snapshot.theirs?.state ?? null) })}</span>
-        <span className={cx('min-w-0 truncate rounded-full px-2.5 py-1 text-micro font-semibold', turn === 'mine' ? 'bg-accent/20 text-accent' : 'bg-tint/8 text-muted')}>
+        <span className={cx('min-w-0 truncate text-body font-bold', turn === 'mine' ? 'text-accent' : 'text-info-soft')}>
           {turn === 'mine' ? t('duel.bar.yourTurn') : t('duel.bar.theirTurn', { name: rivalName })}
           {phase ? <span data-testid="duel-phase">{` · ${phase}`}</span> : null}
         </span>
@@ -138,9 +141,10 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
         {chat ? <span className="ml-auto flex shrink-0 items-center">{chat}</span> : null}
       </div>
 
-      <div className="order-3 flex basis-full justify-center min-[1101px]:absolute min-[1101px]:left-1/2 min-[1101px]:top-1.5 min-[1101px]:basis-auto min-[1101px]:-translate-x-1/2">{theirHand}</div>
-
+      {/* Lo que pasó va justo debajo del turno, como en la referencia; la mano del rival, después. */}
       {log ? <div className="order-3 basis-full min-[1101px]:hidden">{log}</div> : null}
+
+      <div className="order-3 flex basis-full justify-center min-[1101px]:absolute min-[1101px]:left-1/2 min-[1101px]:top-1.5 min-[1101px]:basis-auto min-[1101px]:-translate-x-1/2">{theirHand}</div>
 
       {status !== 'open' ? (
         <Callout className="order-4 basis-full" tone="warning" icon="alert">{STATUS_TEXT[status]()}</Callout>
@@ -308,7 +312,7 @@ export function DuelLife({ snapshot, myName, onChangeLife, onHalve, signal = nul
 
   return (
     <>
-      <LifeTile name={myName || t('duel.bar.you')} life={lp} mine bubble={signal} onClick={() => setOpen(true)} />
+      <LifeTile name={myName || t('duel.bar.you')} label={t('duel.bar.you')} life={lp} mine bubble={signal} onClick={() => setOpen(true)} />
       <LifeDialog
         isOpen={open}
         life={lp}
@@ -328,13 +332,13 @@ export function DuelLife({ snapshot, myName, onChangeLife, onHalve, signal = nul
 }
 
 /** Los puntos de vida de uno: su nombre y el número grande. Los propios son un botón que abre el cambio. */
-export function LifeTile({ name, life, mine = false, color, bubble = null, onClick }: { name: string; life: number; mine?: boolean; /** Un aviso que sale un instante junto a las vidas, con el color de su dueño: el rival, debajo; el propio, arriba. */ bubble?: string | null; /** De qué jugador es el color (por defecto, el tuyo si es "mine"): quien mira pone el suyo a cada uno. */ color?: PlayerSide; onClick?: () => void }) {
+export function LifeTile({ name, label, life, mine = false, color, bubble = null, onClick }: { name: string; /** Lo que se ve en la casilla, si no es el nombre (tus vidas dicen «Vos»; el nombre queda para el lector de pantalla). */ label?: string; life: number; mine?: boolean; /** Un aviso que sale un instante junto a las vidas, con el color de su dueño: el rival, debajo; el propio, arriba. */ bubble?: string | null; /** De qué jugador es el color (por defecto, el tuyo si es "mine"): quien mira pone el suyo a cada uno. */ color?: PlayerSide; onClick?: () => void }) {
   // `data-lp`: a qué casilla va la espada de un ataque directo (ver `measureStrike`).
   const side = mine ? 'mine' : 'theirs'
   const tone = PLAYER_COLOR[color ?? side]
   const body = (
     <>
-      <span className="min-w-0 truncate text-micro font-semibold uppercase tracking-[0.04em] text-soft">{name}</span>
+      <span className="min-w-0 truncate text-micro font-semibold uppercase tracking-[0.04em] text-soft">{label ?? name}</span>
       <span className={cx('shrink-0 text-title font-extrabold leading-tight tabular-nums', tone.text)}>{life}</span>
       {bubble ? (
         <span role="status" className={cx('pointer-events-none absolute z-30 w-max max-w-[16rem] animate-pop rounded-card border bg-card-background normal-case tracking-normal text-foreground shadow-[0_8px_20px_rgba(0,0,0,0.4)] motion-reduce:animate-none', isEmojiSignal(bubble) ? 'px-3 py-1 text-display leading-none' : 'truncate px-2.5 py-1 text-body font-semibold', tone.border, mine ? 'bottom-full right-0 mb-1.5' : 'left-0 top-full mt-1.5')}>
