@@ -203,6 +203,7 @@ export const duel = {
   // Cambiar los puntos de vida.
   'duel.life.title': 'Mis puntos de vida',
   'duel.life.empty': 'Tecleá el monto',
+  'duel.life.footnote': 'Con menos de tres cifras se entiende en centenas (18 = 1800).',
   'duel.life.applySubtract': 'Restar {amount}',
   'duel.life.applyAdd': 'Sumar {amount}',
 

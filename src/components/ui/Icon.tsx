@@ -43,6 +43,13 @@ const PATHS = {
       <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
     </>
   ),
+  /** Borrar (la tecla del teclado de LP): una etiqueta con una cruz. */
+  backspace: (
+    <>
+      <path data-fill d="M20 6H8l-5 6 5 6h12z" />
+      <path data-cut d="M12 9l6 6M18 9l-6 6" />
+    </>
+  ),
   play: <path data-fill d="M7 4.8v14.4a1 1 0 0 0 1.5.86l12-7.2a1 1 0 0 0 0-1.72l-12-7.2A1 1 0 0 0 7 4.8z" />,
   pause: (
     <>

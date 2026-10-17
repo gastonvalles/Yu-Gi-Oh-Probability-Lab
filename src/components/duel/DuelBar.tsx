@@ -6,7 +6,7 @@ import type { SocketStatus } from '../../app/duel-socket'
 import { duelTurnNumber } from '../../app/duel-turn'
 import { duelClockMs, formatClock, interpretAmount } from '../../app/life-calculator'
 import { PHASES } from '../../app/practice-mat'
-import { KEYS, KEY, MAX_DIGITS, PRESSABLE, type Key } from '../life/LifeCalculatorScreen'
+import { LpPad, MAX_DIGITS, type PadKey } from '../life/LpPad'
 import { t } from '../../i18n'
 import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
@@ -376,9 +376,9 @@ function LifeKeypad({ life, name, onChange, onHalve }: { life: number; name: str
   const delta = operator === '-' ? -amount : amount
   const result = Math.max(0, life + delta)
 
-  const press = (key: Key) => {
-    if (key === 'clear') {
-      setDigits('')
+  const press = (key: PadKey) => {
+    if (key === 'back') {
+      setDigits((current) => current.slice(0, -1))
     } else if (key === '+' || key === '-') {
       setOperator(key)
     } else if (key === '÷2') {
@@ -408,40 +408,15 @@ function LifeKeypad({ life, name, onChange, onHalve }: { life: number; name: str
 
   return (
     <div className="grid gap-3">
-      <div role="status" aria-live="polite" className="grid justify-items-center gap-0.5 rounded-card bg-tint/5 px-3 py-3">
-        <span className={cx('text-stat font-extrabold leading-none tabular-nums', digits ? (operator === '-' ? 'text-danger-soft' : 'text-success-soft') : 'text-accent')}>{digits ? result : life}</span>
-        <span className="text-micro text-soft">{digits ? `${life} ${operator === '-' ? '−' : '+'} ${amount}` : t('duel.life.empty')}</span>
+      {/* Cómo queda: a la izquierda la cuenta («8000 − 1800»), a la derecha el resultado. */}
+      <div role="status" aria-live="polite" className="flex min-h-16 items-center justify-between gap-3 rounded-control border border-border bg-input px-3.5">
+        <span className="min-w-0 truncate text-body text-muted tabular-nums">{digits ? `${life} ${operator === '-' ? '−' : '+'} ${amount}` : t('duel.life.empty')}</span>
+        <strong className={cx('shrink-0 text-stat font-bold leading-none tabular-nums', digits ? (operator === '-' ? 'text-danger-soft' : 'text-success-soft') : 'text-accent')}>{digits ? result : life}</strong>
       </div>
 
-      <div className="grid grid-cols-4 gap-2" role="group" aria-label={t('shell.life.keypad')}>
-        {KEYS.map((key) => {
-          const isOperator = key === '+' || key === '-'
-          const active = isOperator && operator === key
+      <LpPad operator={operator} name={name} amount={amount} applyLabel={t(operator === '-' ? 'duel.life.applySubtract' : 'duel.life.applyAdd', { amount })} onKey={press} onApply={() => onChange(delta)} />
 
-          return (
-            <button
-              key={key}
-              type="button"
-              className={cx(KEY, key === 'clear' ? 'text-lead' : 'text-[1.5rem]', active && (key === '-' ? 'bg-danger/25! text-danger-soft! active:bg-danger/35!' : 'bg-success/20! text-success-soft! active:bg-success/30!'))}
-              aria-label={key === '÷2' ? t('shell.life.key.half', { name }) : key === '-' ? t('shell.life.key.subtract') : key === '+' ? t('shell.life.key.add') : key === 'clear' ? t('shell.life.key.clearLabel') : undefined}
-              aria-pressed={isOperator ? active : undefined}
-              onClick={() => press(key)}
-            >
-              {key === '-' ? '−' : key === 'clear' ? t('shell.life.key.clear') : key}
-            </button>
-          )
-        })}
-      </div>
-
-      <button
-        type="button"
-        className={cx(PRESSABLE, 'min-h-14 bg-primary text-stat text-primary-foreground shadow-brand active:bg-primary-hover')}
-        disabled={amount === 0}
-        aria-label={t(operator === '-' ? 'duel.life.applySubtract' : 'duel.life.applyAdd', { amount })}
-        onClick={() => onChange(delta)}
-      >
-        =
-      </button>
+      <p className="m-0 text-center text-micro text-soft">{t('duel.life.footnote')}</p>
     </div>
   )
 }

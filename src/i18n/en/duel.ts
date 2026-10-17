@@ -196,6 +196,7 @@ export const duel: Translated<typeof es> = {
   'duel.watch.paused': 'Paused',
 
   'duel.life.title': 'My life points',
+  'duel.life.footnote': 'With fewer than three digits it reads as hundreds (18 = 1800).',
   'duel.life.empty': 'Type the amount',
   'duel.life.applySubtract': 'Subtract {amount}',
   'duel.life.applyAdd': 'Add {amount}',
