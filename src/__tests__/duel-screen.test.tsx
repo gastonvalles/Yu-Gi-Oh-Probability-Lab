@@ -2045,6 +2045,79 @@ describe('la pantalla del duelo', () => {
     expect(within(watcher.container).getByText('Esperando al rival de Ana…')).toBeInTheDocument()
   })
 
+  it('al empezar el duelo los dos ven en el medio de la pantalla si van primero o segundo; el cartel no tapa la mesa y se va solo', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+
+    const banner = (view: RenderResult) => within(view.container).getByTestId('turn-banner')
+    expect(banner(host)).toHaveAttribute('data-turn', 'first')
+    expect(within(banner(host)).getByRole('heading', { name: 'Vas primero' })).toBeInTheDocument()
+    expect(banner(guest)).toHaveAttribute('data-turn', 'second')
+    expect(within(banner(guest)).getByRole('heading', { name: 'Vas segundo' })).toBeInTheDocument()
+    expect(within(banner(guest)).getByText('Empieza Ana. Tu turno viene después.')).toBeInTheDocument()
+    // La medalla es 3D (un número en un disco de metal) y no recibe toques: la mesa se puede usar mientras tanto.
+    expect(banner(host).querySelector('[data-medal="first"]')).not.toBeNull()
+    expect(banner(host)).toHaveClass('pointer-events-none')
+
+    act(() => {
+      vi.advanceTimersByTime(3000)
+    })
+    expect(within(host.container).queryByTestId('turn-banner')).not.toBeInTheDocument()
+    expect(within(guest.container).queryByTestId('turn-banner')).not.toBeInTheDocument()
+  })
+
+  it('el final es un cartel con una medalla 3D: ganar es ámbar con rayos y confeti; perder es roja, se agrieta y no lleva confeti', () => {
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+    click(guest, 'Rendirme')
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Rendirme' }))
+    flush()
+
+    const won = within(host.container).getByRole('dialog', { name: '¡Ganaste!' })
+    const lost = within(guest.container).getByRole('dialog', { name: 'Perdiste' })
+
+    expect(within(won).getByTestId('result-hero')).toHaveAttribute('data-tone', 'win')
+    expect(won.querySelector('[data-medal="win"]')).not.toBeNull()
+    expect(won.querySelector('.medal-rays')).not.toBeNull()
+    expect(won.querySelector('[data-fx="confetti"]')).not.toBeNull()
+    expect(within(lost).getByTestId('result-hero')).toHaveAttribute('data-tone', 'lose')
+    expect(lost.querySelector('[data-medal="lose"] path')).not.toBeNull()
+    expect(lost.querySelector('[data-fx="confetti"]')).toBeNull()
+    // Los botones de siempre siguen: ver la mesa y la revancha.
+    expect(within(won).getByRole('button', { name: 'Revancha' })).toBeInTheDocument()
+  })
+
+  it('quien mira ve el final con un cartel (quién ganó y por qué) y, terminado el duelo, vuelve solo al inicio', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+    const room = extractRoomCode(window.location.hash)!
+    window.history.replaceState(null, '', `#duel?room=${room}&watch=1`)
+    const watcher = render(<DuelScreen {...screenProps({ mainIds: [], extraIds: [], cardsById: new Map() })} />)
+    flush()
+    flush()
+
+    expect(within(watcher.container).queryByTestId('watch-result')).not.toBeInTheDocument()
+
+    click(guest, 'Rendirme')
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Rendirme' }))
+    flush()
+
+    const end = within(watcher.container).getByRole('dialog', { name: 'Ganó Ana' })
+    expect(within(end).getByText('Beto se rindió.')).toBeInTheDocument()
+    expect(end.querySelector('[data-medal="win"]')).not.toBeNull()
+    expect(within(end).getByRole('button', { name: 'Volver al inicio' })).toBeInTheDocument()
+
+    // Se terminó lo que miraba: a los pocos segundos vuelve al inicio.
+    expect(within(watcher.container).getByTestId('spectator-table')).toBeInTheDocument()
+    act(() => {
+      vi.advanceTimersByTime(8500)
+    })
+    expect(within(watcher.container).queryByTestId('spectator-table')).not.toBeInTheDocument()
+    expect(within(watcher.container).queryByTestId('watch-result')).not.toBeInTheDocument()
+  })
+
   it('quien mira puede dar vuelta la mesa para verla desde el lado del otro jugador', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)

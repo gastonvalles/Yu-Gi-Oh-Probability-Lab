@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { duelResult } from '../../app/duel-games'
 import { DEFAULT_LIMIT_MIN } from '../../app/duel-protocol'
@@ -16,6 +16,7 @@ import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
 import { CloseButton, IconButton } from '../ui/IconButton'
 import { SideDrawer } from '../ui/SideDrawer'
+import { WatchResultBanner } from './DuelBanner'
 import { LifeTile } from './DuelBar'
 import { PLAYER_COLOR } from './player-color'
 import { artOfDrawId } from './duel-art'
@@ -214,6 +215,15 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
 
   useGameToasts(snapshot)
 
+  // El cartel del final: una vez por cada final (con la revancha, el siguiente vuelve a salir).
+  const [endSeen, setEndSeen] = useState(false)
+  const closeEnd = useCallback(() => setEndSeen(true), [])
+  const hasEnd = snapshot.end !== null
+
+  useEffect(() => {
+    if (!hasEnd) setEndSeen(false)
+  }, [hasEnd])
+
   useEffect(() => {
     if (chatOpen) {
       setRead(snapshot.feed.length)
@@ -226,6 +236,7 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
 
   return (
     <div className={cx("h-full min-h-0", docked ? "flex" : "overflow-y-auto")}>
+      {snapshot.end && !endSeen ? <WatchResultBanner end={snapshot.end} nameOf={nameOf} onLeave={onLeave} onClose={closeEnd} /> : null}
       <div className={cx(docked && "min-w-0 flex-1 overflow-y-auto")}>
         <div className="mx-auto grid w-full max-w-3xl content-start gap-2 px-2 py-2 min-[1101px]:px-4" data-testid="spectator-table">
           {/* Arriba, lo de quien está arriba; las vidas del de abajo en la esquina de enfrente, como en la mesa de los jugadores. Tres filas que no se parten (vida + reloj + salir; lo que se mira + el turno; avisos): si algo no entra se achica en su fila en vez de caerse a otra. */}

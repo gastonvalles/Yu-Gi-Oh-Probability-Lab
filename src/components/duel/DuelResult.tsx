@@ -7,6 +7,8 @@ import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Icon, type IconName } from '../ui/Icon'
 import { CloseButton } from '../ui/IconButton'
+import { ResultHero } from './DuelBanner'
+import { medalVars } from './DuelMedal'
 
 type Tone = 'win' | 'lose' | 'draw'
 
@@ -81,28 +83,18 @@ interface ResultProps {
 }
 
 /**
- * El final del duelo, al centro de la mesa: cómo te fue en grande, por qué y qué sigue (revancha, salir o mirar cómo quedó la mesa).
- * Quien ya pidió la revancha ve que espera a su rival; si el rival la pidió, "Revancha" la acepta.
+ * El final del duelo, al centro de la mesa: la medalla en 3D (ganar o perder pesa más que cualquier otro cartel), cómo te fue en grande, por qué y qué sigue
+ * (revancha, salir o mirar cómo quedó la mesa). Quien ya pidió la revancha ve que espera a su rival; si el rival la pidió, "Revancha" la acepta.
  */
 export function ResultCard({ result, snapshot, rival, onRematch, onLeave, onClose }: ResultProps & { onLeave: () => void; onClose: () => void }) {
   const view = viewOf(result, snapshot, rival)
-  const tone = TONE[view.tone]
   const titleId = useId()
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="grid h-full place-items-center bg-background/80 p-5 backdrop-blur-sm">
-      <div className={cx('relative grid w-full max-w-xs animate-sheet-in justify-items-center gap-3 rounded-card border px-5 py-6 text-center shadow-[0_18px_48px_rgba(0,0,0,0.45)] motion-reduce:animate-none', tone.card)}>
-        <CloseButton size="sm" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} className="absolute right-1 top-1" onClick={onLeave} />
-        <span className={cx('grid size-14 place-items-center rounded-full', tone.badge)}>
-          <Icon name={view.icon} size={28} />
-        </span>
-        <h2 id={titleId} className={cx('m-0 text-stat font-extrabold', tone.text)}>
-          {view.title}
-        </h2>
-        <p role="status" className="m-0 text-body text-foreground">
-          {view.reason}
-        </p>
-        {view.note ? <p className="m-0 text-micro text-muted">{view.note}</p> : null}
+    <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="relative grid h-full place-items-center overflow-hidden bg-background/85 p-5 backdrop-blur-sm" style={medalVars(view.tone)}>
+      <span aria-hidden="true" className="pointer-events-none absolute inset-0 animate-banner-rise bg-[radial-gradient(circle_at_50%_36%,rgb(var(--medal-rgb)/0.3),transparent_62%)] motion-reduce:animate-none" style={{ animationDelay: '0ms' }} />
+      <CloseButton size="sm" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} className="absolute right-2 top-2" onClick={onLeave} />
+      <ResultHero tone={view.tone} icon={view.icon} title={view.title} reason={view.reason} note={view.note} titleId={titleId}>
         <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
           <Button variant="tertiary" onClick={onClose}>
             {t('duel.result.viewTable')}
@@ -113,7 +105,7 @@ export function ResultCard({ result, snapshot, rival, onRematch, onLeave, onClos
             </Button>
           )}
         </div>
-      </div>
+      </ResultHero>
     </div>
   )
 }

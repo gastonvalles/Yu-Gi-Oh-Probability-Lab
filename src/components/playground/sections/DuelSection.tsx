@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react'
 
 import { PILE_TITLES, CardBack } from '../../probability/MatDialogs'
+import { ResultHero, TurnOrderBanner } from '../../duel/DuelBanner'
+import { DuelMedal, type MedalTone } from '../../duel/DuelMedal'
+import { Button } from '../../ui/Button'
 import { DuelTable, type DuelSideView } from '../../duel/DuelTable'
 import { CardArt } from '../../CardArt'
 import { Icon } from '../../ui/Icon'
@@ -56,7 +59,64 @@ export function DuelSection() {
         />
         <DuelTable mine={duel.mine} theirs={duel.theirs} show={view} turn={view} />
       </Specimen>
+
+      <BannerSamples />
     </SpecimenGrid>
+  )
+}
+
+const MEDALS: Array<{ tone: MedalTone; label: string; numeral?: string; icon?: 'trophy' | 'flag' | 'swap' }> = [
+  { tone: 'first', label: 'first · vas primero', numeral: '1' },
+  { tone: 'second', label: 'second · vas segundo', numeral: '2' },
+  { tone: 'win', label: 'win · ganaste', icon: 'trophy' },
+  { tone: 'lose', label: 'lose · perdiste', icon: 'flag' },
+  { tone: 'draw', label: 'draw · empate', icon: 'swap' },
+]
+
+/** Los carteles 3D del duelo: la medalla en sus cinco colores, el final (ganar pesa más que perder) y el cartel del comienzo, que se ve dos segundos y se va. */
+function BannerSamples() {
+  const [run, setRun] = useState(0)
+  const [first, setFirst] = useState<boolean | null>(null)
+
+  return (
+    <Specimen
+      title="D · Carteles del duelo"
+      layout="column"
+      className="col-span-full"
+      note={
+        <>
+          La medalla 3D (<Tag>DuelMedal</Tag>, una pila de discos con aro y disco) y los carteles que la usan: el del comienzo (<Tag>TurnOrderBanner</Tag>, para los dos) y el del final (<Tag>ResultHero</Tag>, en la tarjeta del resultado y para quien mira). El color del metal dice qué pasó; con <Tag>prefers-reduced-motion</Tag> quedan quietos. Archivos: <Tag>duel/DuelMedal.tsx</Tag>, <Tag>duel/DuelBanner.tsx</Tag>.
+        </>
+      }
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="secondary" icon="refresh" onClick={() => setRun((count) => count + 1)}>
+          Repetir las animaciones
+        </Button>
+        <Button variant="secondary" onClick={() => setFirst(true)}>
+          Cartel: vas primero
+        </Button>
+        <Button variant="secondary" onClick={() => setFirst(false)}>
+          Cartel: vas segundo
+        </Button>
+      </div>
+      <div key={run} className="grid gap-8 py-4">
+        <div className="flex flex-wrap items-start justify-center gap-10">
+          {MEDALS.map((medal) => (
+            <div key={medal.tone} className="grid justify-items-center gap-2">
+              <DuelMedal tone={medal.tone} size="md" numeral={medal.numeral} icon={medal.icon} />
+              <Tag>{medal.label}</Tag>
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(16rem,1fr))] justify-items-center gap-6">
+          <ResultHero tone="win" icon="trophy" title="¡Ganaste!" reason="Beto se rindió." />
+          <ResultHero tone="lose" icon="flag" title="Perdiste" reason="Te rendiste." />
+          <ResultHero tone="draw" icon="swap" title="Empate" reason="Los dos se quedaron sin puntos de vida." />
+        </div>
+      </div>
+      {first !== null ? <TurnOrderBanner key={String(first)} first={first} rival="Beto" onDone={() => setFirst(null)} /> : null}
+    </Specimen>
   )
 }
 
