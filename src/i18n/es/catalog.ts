@@ -10,6 +10,7 @@ export const catalog = {
   'catalog.sets.cardsError': 'No pude traer las cartas de esta expansión. Probá de nuevo más tarde.',
   'catalog.sets.listLabel': 'Expansiones',
   'catalog.sets.searchLabel': 'Buscar expansión',
+  'catalog.sets.searchPlaceholder': 'Nombre o código',
   'catalog.sets.noExpansion': 'Ninguna expansión coincide con “{query}”.',
   'catalog.sets.noDate': 'Sin fecha',
   'catalog.sets.back': 'Volver a las expansiones',

@@ -23,7 +23,6 @@ import { t } from '../../i18n'
 import { StepHero } from '../StepHero'
 import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
-import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
 import { EmptyState } from '../ui/EmptyState'
 import { Icon, type IconName } from '../ui/Icon'
@@ -122,7 +121,7 @@ export function TierListsScreen() {
 
       <Segmented value={list} onChange={changeList} options={listOptions} label={t('meta.screen.listLabel')} fullWidth={!isDesktop} className="min-[1101px]:min-w-[26rem]" />
 
-      <Card>
+      <section className="min-w-0">
         <SectionHeader
           icon={LIST_ICON[list]}
           title={t(LIST_TITLE_KEY[list])}
@@ -168,7 +167,7 @@ export function TierListsScreen() {
             }))}
           />
         )}
-      </Card>
+      </section>
 
       <Modal
         isOpen={adjustOpen && !isDesktop}

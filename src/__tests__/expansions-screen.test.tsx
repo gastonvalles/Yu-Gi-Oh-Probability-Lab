@@ -104,6 +104,21 @@ describe('la pantalla de expansiones', () => {
     expect(screen.getByText('Ninguna expansión coincide con “zzz”.')).toBeInTheDocument()
   })
 
+  it('cada fila dice el código y el mes y año de salida, y el buscador también encuentra una expansión por su código', async () => {
+    mediaQuery(false)
+    render(<ExpansionsScreen />)
+
+    const nav = await screen.findByRole('navigation', { name: 'Expansiones' })
+
+    expect(within(nav).getByText('MAZE · enero 2024')).toBeInTheDocument()
+    expect(within(nav).getByText('LOB · marzo 2002')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar expansión' }), { target: { value: 'lob' } })
+
+    expect(within(nav).getAllByRole('button')).toHaveLength(1)
+    expect(within(nav).getByText('Legend of Blue-Eyes White Dragon')).toBeInTheDocument()
+  })
+
   it('en escritorio se abre sola la más nueva, con sus cartas por código, rareza, edición y precio', async () => {
     render(<ExpansionsScreen />)
 

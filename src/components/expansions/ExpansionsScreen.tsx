@@ -4,7 +4,7 @@ import { compareRarities, readExpansionsHash, type Expansion, type ExpansionCard
 import { useExpansionCards, useExpansions } from '../../app/use-expansions'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { formatInteger, formatUsd } from '../../app/utils'
-import { formatDay, t } from '../../i18n'
+import { dateLocale, formatDay, perLocale, t } from '../../i18n'
 import { StepHero } from '../StepHero'
 import { PrintingArt } from '../card-detail/PrintingArt'
 import { TiltCard } from '../card-detail/TiltCard'
@@ -36,6 +36,21 @@ const normalize = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, ''
 /** "2026-10-09" → "09/10/2026" (en inglés, "Oct 9, 2026"). Sin fecha, "Sin fecha". */
 function dayText(date: string): string {
   return date ? formatDay(new Date(`${date}T00:00:00Z`), 'UTC') : t('catalog.sets.noDate')
+}
+
+const monthYear = perLocale((tag) => new Intl.DateTimeFormat(tag, { month: 'long', year: 'numeric', timeZone: 'UTC' }))
+
+/** "2026-01-09" → "enero 2026" ("January 2026"): el mes y el año de salida, sin el "de" del español. Sin fecha, nada. */
+function monthText(date: string): string {
+  if (!date) {
+    return ''
+  }
+
+  return monthYear(dateLocale())
+    .formatToParts(new Date(`${date}T00:00:00Z`))
+    .filter((part) => part.type === 'month' || part.type === 'year')
+    .map((part) => part.value)
+    .join(' ')
 }
 
 /**
@@ -116,15 +131,18 @@ const ExpansionRow = memo(function ExpansionRow({ expansion, active, buttonRef, 
       type="button"
       ref={buttonRef}
       aria-current={active ? 'true' : undefined}
-      className={cx(listItem, 'grid w-full grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-2.5 px-2.5 py-2 text-left aria-[current=true]:bg-primary/15')}
+      className={cx(
+        listItem,
+        'group grid min-h-18 w-full grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 px-2.5 py-2 text-left aria-[current=true]:bg-primary/15 min-[1101px]:min-h-16 min-[1101px]:grid-cols-[2.25rem_minmax(0,1fr)]',
+      )}
       onClick={() => onPick(expansion.id)}
     >
-      <PackArt code={expansion.code} className="h-12 w-9 rounded-tag" />
+      <PackArt code={expansion.code} className="h-14 w-10 rounded-tag min-[1101px]:h-12.5 min-[1101px]:w-9" />
       <span className="grid min-w-0 gap-0.5">
-        <span className="truncate text-body font-semibold text-foreground">{expansion.name}</span>
-        <span className="text-micro text-muted">{dayText(expansion.date)}</span>
+        <span className="truncate text-body font-semibold text-foreground group-aria-[current=true]:text-nav-active">{expansion.name}</span>
+        <span className="truncate text-micro text-muted">{[expansion.code, monthText(expansion.date)].filter(Boolean).join(' · ') || t('catalog.sets.noDate')}</span>
       </span>
-      <Badge size="sm">{formatInteger(expansion.count)}</Badge>
+      <Icon name="chevron-right" size={18} className="text-muted min-[1101px]:hidden" />
     </button>
   )
 })
@@ -141,7 +159,7 @@ function ExpansionList({ expansions, activeId, onPick }: { expansions: Expansion
 
   const groups = useMemo(() => {
     const words = query.split(/\s+/).map(normalize).filter(Boolean)
-    const visible = expansions.filter((expansion) => expansion.count > 0 && words.every((word) => normalize(expansion.name).includes(word)))
+    const visible = expansions.filter((expansion) => expansion.count > 0 && words.every((word) => normalize(expansion.name).includes(word) || normalize(expansion.code).includes(word)))
     const byYear = new Map<string, Expansion[]>()
 
     for (const expansion of visible) {
@@ -155,7 +173,7 @@ function ExpansionList({ expansions, activeId, onPick }: { expansions: Expansion
 
   return (
     <section className={cx(surface.card, 'grid min-w-0 content-start gap-3 p-3 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_minmax(0,1fr)]')}>
-      <SearchField label={t('catalog.sets.searchLabel')} placeholder={t('catalog.sets.searchLabel')} value={query} onChange={setQuery} />
+      <SearchField label={t('catalog.sets.searchLabel')} placeholder={t('catalog.sets.searchPlaceholder')} value={query} onChange={setQuery} />
       <nav aria-label={t('catalog.sets.listLabel')} className="grid max-h-[70dvh] content-start gap-3 overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin] min-[1101px]:max-h-none min-[1101px]:min-h-0">
         {groups.map(([year, items]) => (
           <section key={year} className="grid gap-0.5">

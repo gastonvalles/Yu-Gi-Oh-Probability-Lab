@@ -49,6 +49,11 @@ export function percent(value: number): string {
 const tournamentDay = perLocale((tag) => new Intl.DateTimeFormat(tag, { day: 'numeric', month: 'short', timeZone: 'UTC' }))
 const oneDecimal = perLocale((tag) => new Intl.NumberFormat(tag, { minimumFractionDigits: 1, maximumFractionDigits: 1 }))
 
+/** "1,4": cuántos puntos se espera que cambie la presencia de una carta en los decks, con un decimal: el número de la ▲ / ▼ junto a ella. */
+export function trendPoints(stat: Pick<MetaCardStat, 'share' | 'projectedShare'>): string {
+  return oneDecimal(numberLocale()).format(Math.abs(stat.projectedShare - stat.share) * 100)
+}
+
 /** "8 oct" / "Oct 8": el día de un torneo (son días en UTC). */
 export function formatMetaDate(date: string): string {
   return tournamentDay(dateLocale()).format(new Date(date)).replace('.', '')
