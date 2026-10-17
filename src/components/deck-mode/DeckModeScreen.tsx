@@ -106,7 +106,7 @@ export function DeckModeScreen() {
   const isCategorizationStep = activeStep === 'categorization'
   const isPracticeStep = activeStep === 'practice'
   const isDuelStep = activeStep === 'duel'
-  // En el duelo sólo la mesa es a pantalla completa (sin pie ni barra de abajo); el lobby, la sala y el siding llevan el armazón de siempre.
+  // En el celular sólo la mesa del duelo es a pantalla completa (sin pie ni barra de abajo); el lobby, la sala y el siding llevan el armazón de siempre. En escritorio no cambia: el duelo ocupa todo.
   const [duelTable, setDuelTable] = useState(false)
   // La práctica y el duelo juegan con las mismas copias del deck armado.
   const matDeck = usePracticeDeck(controller.probability.derivedMainCards, controller.exportDeck.deckBuilder.extra, controller.exportDeck.deckBuilder.side)
@@ -364,7 +364,7 @@ export function DeckModeScreen() {
 
   return (
     <>
-      <AppShell groups={navGroups} activeKey={activeStep} onSelect={handleNavSelect} onSheetOpen={refreshSheetData} contentScrollable={!isDeckBuilderStep && !isPracticeStep && !isDuelStep} immersive={isPracticeStep || (isDuelStep && duelTable)} contentScrollRef={contentScrollRef}>
+      <AppShell groups={navGroups} activeKey={activeStep} onSelect={handleNavSelect} onSheetOpen={refreshSheetData} contentScrollable={!isDeckBuilderStep && !isPracticeStep && !isDuelStep} immersive={isPracticeStep || (isDuelStep && (duelTable || isDesktopDeckBuilder))} contentScrollRef={contentScrollRef}>
         {mainContent}
       </AppShell>
 
