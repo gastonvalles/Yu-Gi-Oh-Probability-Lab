@@ -850,6 +850,48 @@
   background-size: 100% 100%;
 }
 
+/* Lo que se señala (no es un objetivo: ése lleva la mira roja y se queda): un aro claro que late un rato y se va solo; con movimiento reducido, un aro quieto mientras dura. */
+[data-pointed='true'] {
+  z-index: 6;
+  animation: point-pulse 2500ms ease-out both;
+}
+
+@keyframes point-pulse {
+  0% {
+    box-shadow:
+      0 0 0 0 rgb(var(--foreground-rgb) / 0),
+      0 0 0 0 rgb(var(--accent-rgb) / 0);
+  }
+
+  10%,
+  75% {
+    box-shadow:
+      0 0 0 3px rgb(var(--foreground-rgb) / 0.95),
+      0 0 22px 6px rgb(var(--accent-rgb) / 0.75);
+  }
+
+  40% {
+    box-shadow:
+      0 0 0 5px rgb(var(--foreground-rgb) / 0.7),
+      0 0 30px 10px rgb(var(--accent-rgb) / 0.55);
+  }
+
+  100% {
+    box-shadow:
+      0 0 0 0 rgb(var(--foreground-rgb) / 0),
+      0 0 0 0 rgb(var(--accent-rgb) / 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-pointed='true'] {
+    animation: none;
+    box-shadow:
+      0 0 0 3px rgb(var(--foreground-rgb) / 0.95),
+      0 0 18px 4px rgb(var(--accent-rgb) / 0.7);
+  }
+}
+
 @utility fx-frame {
   position: absolute;
   inset: 0;

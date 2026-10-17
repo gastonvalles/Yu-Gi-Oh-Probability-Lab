@@ -120,6 +120,10 @@ export interface DuelMatLink {
   rivalEffect?: { key: number; kind: SpotlightKind | ShowcaseKind; cards: ReadonlyArray<{ id: string; art: string | null; name?: string }>; flip?: boolean; caption: string; linger?: boolean }
   /** Lo que el rival marcó como objetivo de mi lado (con mis ids reales): sus cartas y pilas enteras, la mano incluida, llevan la mira igual que lo que marqué yo. */
   marksOnMine?: Marks
+  /** Lo que se está señalando de mi lado (el rival, o yo): una carta mía o una pila; late un rato. */
+  pointed?: { card?: string; pile?: MatPile } | null
+  /** Señalar una carta mía a la vista en el campo (se ve en las dos pantallas un rato; no es una jugada). */
+  point?: (id: string) => void
   /** La mesa del rival (con ids opacos) y el arte de lo que mostró: sus cartas vuelan de un lugar a otro (al cementerio, a la mano, al campo…) como las propias. */
   rivalFlights?: { state: MatState; artOf: (id: string) => string | null }
   /** Cuenta las veces que el rival tocó su deck o sumó una carta a su mano: cada vez que sube, su deck y su mano se barajan a la vista. */
@@ -1047,8 +1051,19 @@ export function PracticeMat({
 
     const items = menu.drop ? listDropActions(state, menu.id, kindOf, nameOf, menu.drop, duel?.rivalEmz) : listCardActions(state, menu.id, kindOf, nameOf, attackTargets, duel?.rivalEmz)
 
-    return items.map((item) => ({ label: item.label, onSelect: () => choose(item, menu.drop) }))
-  }, [menu, state, kindOf, nameOf, attackTargets, play, choose, summonToken, duel?.rivalEmz, duel?.plusItems])
+    const mapped: MenuItem[] = items.map((item) => ({ label: item.label, onSelect: () => choose(item, menu.drop) }))
+    const point = duel?.point
+
+    // Una carta mía a la vista en el campo se puede señalar: un aro que late un rato en las dos pantallas. Comunica, no es una jugada (no cambia la mesa ni queda en los pasos), y va junto a Target.
+    if (point && !menu.drop && locateCard(state, menu.id)?.kind === 'spot') {
+      const item: MenuItem = { label: t('duel.point.label'), onSelect: () => { setMenu(null); point(menu.id) } }
+      const targetAt = mapped.findIndex((entry) => entry.label === t('practice.menu.target') || entry.label === t('practice.menu.untarget'))
+
+      mapped.splice(targetAt >= 0 ? targetAt : mapped.length, 0, item)
+    }
+
+    return mapped
+  }, [menu, state, kindOf, nameOf, attackTargets, play, choose, summonToken, duel?.rivalEmz, duel?.plusItems, duel?.point])
 
   const menuCard = menu?.kind === 'card' ? cardOf(menu.id) : menu?.kind === 'token' && !menu.root ? TOKEN_CARD : null
   const menuWhere = menu?.kind === 'card' ? locateCard(state, menu.id) : null
@@ -1148,6 +1163,7 @@ export function PracticeMat({
         data-over="false"
         data-pick={pickableZone || pickableTribute ? 'true' : 'false'}
         data-chosen={chosen ? 'true' : 'false'}
+        data-pointed={placed !== null && duel?.pointed?.card === placed.id ? 'true' : undefined}
         className={spot === 'field' ? CELL : spot === 'emz' ? CELL_EMZ : spot === 'mz' ? CELL_MINE : CELL_SQUARE}
         style={{ gridArea: area }}
         onClick={pickableZone ? () => pickZone(spot, index) : undefined}
@@ -1198,6 +1214,7 @@ export function PracticeMat({
         data-drop={pile}
         data-over="false"
         data-targeted={marked ? 'true' : 'false'}
+        data-pointed={duel?.pointed?.pile === pile ? 'true' : undefined}
         // `rounded-none`: el reset global le da a todo <button> el radio de los controles, y una casilla no va redondeada.
         className={cx(CELL, 'cursor-pointer rounded-none bg-transparent p-0 text-left focus-visible:outline-none focus-visible:shadow-focus', FX_CARD, '[--card-shadow:0_0_0_0_transparent]')}
         style={{ gridArea: area, ...fxVars('red') }}
@@ -1433,6 +1450,7 @@ export function PracticeMat({
             data-drop="deck"
             data-over="false"
             data-targeted={rivalMarks?.piles.includes('deck') ? 'true' : 'false'}
+            data-pointed={duel?.pointed?.pile === 'deck' ? 'true' : undefined}
             className={cx(CELL, state.deck.length > 0 && 'cursor-grab touch-none select-none [-webkit-touch-callout:none]', 'focus-visible:outline-none focus-visible:shadow-focus')}
             style={{ gridArea: 'deck' }}
             {...bind({ id: DECK_TOP, name: 'Deck', art: null, back: true })}
@@ -1482,7 +1500,7 @@ export function PracticeMat({
 
         {/* Abajo del todo, como en la mesa real: la mano en abanico. Las salidas y problemas flotan sobre la mano en el celu, y van en el panel lateral en escritorio. */}
         {/* Cuando la mano recibe una carta (robada, buscada o devuelta), se enmarca un instante en celeste. */}
-        <div className="relative">
+        <div className="relative" data-pointed={duel?.pointed?.pile === 'hand' ? 'true' : undefined}>
           {/* Celular: las salidas y problemas flotan justo arriba de la mano (el aire que queda abajo del campo): no ocupan lugar, así que el campo no se mueve cuando aparecen, se explican o se van. Sólo los chips y la explicación atajan toques. */}
           {footer && isDealt && !isDesktop ? <div className="pointer-events-none absolute inset-x-0 bottom-full z-10 px-1 pb-1.5 animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
           {/* La hoja de la carta tocada: se apoya sobre la mano (no la mueve) y se va con la jugada, la X, Escape o al tocar otra carta. */}

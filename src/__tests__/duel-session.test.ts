@@ -857,3 +857,91 @@ describe('un Match (mejor de 3)', () => {
     expect(view(reloaded).wins).toEqual([0, 1])
   })
 })
+
+describe('señalar', () => {
+  /** Ana pone su primera carta de la mano en el campo; Beto la ve con el id opaco que ella le dio. */
+  function withFieldCard() {
+    const game = setup()
+
+    startBoth(game)
+    game.host.play({ type: 'place', id: hostMain[0]!, zone: 'mz', index: 0, pos: 'atk', how: 'normal' })
+    game.room.flush()
+
+    return { ...game, opaque: game.guest.getSnapshot().theirs!.state.mz[0]!.id }
+  }
+
+  it('señalar una carta o una pila del rival la muestra en lo suyo (con sus ids reales) y en lo propio, sin tocar la mesa, las jugadas ni las marcas', () => {
+    const game = withFieldCard()
+    const before = game.host.getSnapshot().actions.length
+
+    game.guest.ping({ card: game.opaque }, 'theirs')
+    game.room.flush()
+
+    expect(game.host.getSnapshot().ping).toEqual({ n: 1, side: 'mine', card: hostMain[0] })
+    expect(game.guest.getSnapshot().ping).toEqual({ n: 1, side: 'theirs', card: game.opaque })
+    // Es un aviso, no una jugada ni un objetivo.
+    expect(game.host.getSnapshot().actions).toHaveLength(before)
+    expect(game.host.getSnapshot().marks.mine).toEqual({ cards: [], piles: [] })
+    expect(game.guest.getSnapshot().marks.theirs).toEqual({ cards: [], piles: [] })
+
+    game.clock.t += 400
+    game.guest.ping({ pile: 'hand' }, 'theirs')
+    game.room.flush()
+    expect(game.host.getSnapshot().ping).toEqual({ n: 2, side: 'mine', pile: 'hand' })
+  })
+
+  it('señalar una carta propia a la vista: el rival la ve en el campo de su rival, con el id opaco, nunca con la identidad', () => {
+    const game = withFieldCard()
+
+    game.host.ping({ card: hostMain[0]! }, 'mine')
+    game.room.flush()
+
+    expect(game.host.getSnapshot().ping).toEqual({ n: 1, side: 'mine', card: hostMain[0] })
+    expect(game.guest.getSnapshot().ping).toEqual({ n: 1, side: 'theirs', card: game.opaque })
+    expect(JSON.stringify(game.guest.getSnapshot().ping)).not.toContain(hostMain[0]!)
+  })
+
+  it('no se señala la mano ni el deck de nadie (una carta sólo si está a la vista en el campo), ni lo que no existe, ni con el rival fuera', () => {
+    const game = withFieldCard()
+
+    game.host.ping({ card: hostMain[1]! }, 'mine')
+    game.guest.ping({ card: 'no-existe' }, 'theirs')
+    game.guest.ping({ card: 'c99999' }, 'theirs')
+    game.room.flush()
+    expect(game.host.getSnapshot().ping).toBeNull()
+    expect(game.guest.getSnapshot().ping).toBeNull()
+
+    game.hostEnd.disconnect()
+    game.room.flush()
+    game.clock.t += 400
+    game.guest.ping({ pile: 'gy' }, 'theirs')
+    expect(game.guest.getSnapshot().ping).toBeNull()
+  })
+
+  it('no se puede señalar sin parar (uno cada 300 ms) y un aviso viejo o repetido no cuenta', () => {
+    const game = withFieldCard()
+
+    game.guest.ping({ pile: 'gy' }, 'theirs')
+    game.guest.ping({ pile: 'banished' }, 'theirs')
+    game.room.flush()
+    expect(game.host.getSnapshot().ping).toEqual({ n: 1, side: 'mine', pile: 'gy' })
+
+    game.clock.t += 301
+    game.guest.ping({ pile: 'banished' }, 'theirs')
+    game.room.flush()
+    expect(game.host.getSnapshot().ping).toEqual({ n: 2, side: 'mine', pile: 'banished' })
+  })
+
+  it('no se repone al reconectar: quien vuelve no ve lo que se señaló antes', () => {
+    const game = withFieldCard()
+
+    game.guest.ping({ card: game.opaque }, 'theirs')
+    game.room.flush()
+    expect(game.host.getSnapshot().ping).not.toBeNull()
+
+    game.hostEnd.close()
+    const reloaded = createDuel(game.room.join(), { role: 'host', name: 'Ana', now: () => game.clock.t, sid: 'host-2' })
+    game.room.flush()
+    expect(reloaded.getSnapshot().ping).toBeNull()
+  })
+})

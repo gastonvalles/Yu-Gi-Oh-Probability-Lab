@@ -290,3 +290,24 @@ describe('las marcas de objetivo', () => {
     expect(parse({ t: 'marks', cards: [], piles: ['hand', 'deck', 'extra', 'gy', 'banished', 'hand'] })).toBeNull()
   })
 })
+
+describe('señalar', () => {
+  const parse = (value: unknown) => parseMessage(JSON.stringify(value))
+
+  it('llega una carta (id opaco) o una pila, de su lado o del mío', () => {
+    expect(parse({ t: 'ping', n: 1, at: 'yours', card: 'c7' })).toEqual({ t: 'ping', n: 1, at: 'yours', card: 'c7' })
+    expect(parse({ t: 'ping', n: 2, at: 'mine', card: 'token-3' })).toEqual({ t: 'ping', n: 2, at: 'mine', card: 'token-3' })
+    expect(parse({ t: 'ping', n: 3, at: 'yours', pile: 'hand' })).toEqual({ t: 'ping', n: 3, at: 'yours', pile: 'hand' })
+  })
+
+  it('lo mal formado se descarta: las dos cosas o ninguna, ids que no son ids, pilas que no existen, de quién es, el número', () => {
+    expect(parse({ t: 'ping', n: 1, at: 'yours' })).toBeNull()
+    expect(parse({ t: 'ping', n: 1, at: 'yours', card: 'c1', pile: 'gy' })).toBeNull()
+    expect(parse({ t: 'ping', n: 1, at: 'yours', card: 'card-123-1' })).toBeNull()
+    expect(parse({ t: 'ping', n: 1, at: 'yours', card: '__proto__' })).toBeNull()
+    expect(parse({ t: 'ping', n: 1, at: 'yours', pile: 'mz' })).toBeNull()
+    expect(parse({ t: 'ping', n: 1, at: 'theirs', card: 'c1' })).toBeNull()
+    expect(parse({ t: 'ping', n: 0, at: 'yours', card: 'c1' })).toBeNull()
+    expect(parse({ t: 'ping', at: 'yours', card: 'c1' })).toBeNull()
+  })
+})

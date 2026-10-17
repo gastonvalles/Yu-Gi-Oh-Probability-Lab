@@ -4,7 +4,7 @@ import { RateLimiter } from './duel-relay-rules'
 import { DEFAULT_SETTINGS, MAX_MARKS, NO_MARKS, PROTOCOL_VERSION, cleanName, encodeMessage, parseMessage, type DuelMessage, type DuelSettings, type MarkTarget, type Marks, type OpeningWire } from './duel-protocol'
 import { createLifeState, lifeReducer, timerElapsed, type Duelist, type LifeState } from './life-calculator'
 import { encodeAct, mapMatIds, mirrorApply, mirrorUndo, openMirror, openPublic, senderKnown, type Mirror, type PublicSender } from './mat-public'
-import { allMatIds, locateCard, matReducer, replayMat, type MatAction, type MatState } from './practice-mat'
+import { allMatIds, locateCard, matReducer, replayMat, type MatAction, type MatPile, type MatState } from './practice-mat'
 
 /**
  * Un duelo por enlace, del lado de uno de los dos jugadores: mi mesa (la real), la del rival (un espejo
@@ -85,6 +85,11 @@ export interface DuelSnapshot {
   undo: { asking: boolean; asked: boolean; result: { n: number; kind: 'denied' | 'expired' } | null }
   /** Lo marcado como objetivo: `mine`, lo que el rival marcó de mi lado (con mis ids reales); `theirs`, lo que yo marqué del suyo (con los ids que él les dio). */
   marks: { mine: Marks; theirs: Marks }
+  /**
+   * Lo último que alguien señaló (el rival o yo), para mostrarlo un rato: `side` es de qué lado de MI pantalla está (`mine` o `theirs`) y la carta, con los ids de ese lado (los reales si es mío;
+   * los que él les dio si es suyo). `n` cuenta los avisos (cambia con cada uno, aunque señale lo mismo). No es estado de la mesa: no se guarda ni se repone.
+   */
+  ping: { n: number; side: 'mine' | 'theirs'; card?: string; pile?: MatPile } | null
 }
 
 export interface Duel {
@@ -121,6 +126,8 @@ export interface Duel {
   rematch(): void
   /** Marcar (o desmarcar) como objetivo algo del lado del rival: una carta suya (por el id que él le dio) o una de sus pilas, la mano incluida. Él lo ve en lo suyo. */
   toggleMark(target: MarkTarget): void
+  /** Señalar algo un instante, de mi lado (`mine`: una carta mía a la vista) o del suyo (`theirs`): los dos lo ven un rato y nada más (no cambia la mesa ni queda en las jugadas). */
+  ping(target: MarkTarget, at: 'mine' | 'theirs'): void
   /** Volver a conectarme a la sala ya: lo que sigue en pausa por un aviso que no llegó se resuelve sin salir del duelo. */
   reconnect(): void
   close(): void
@@ -194,6 +201,11 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   let chatId = 0
   let chatN = 0
   let watchers = 0
+  // Lo que se señala: los míos (para no repetir uno), el último que le oí y el último que se muestra (el mío o el suyo). Nada de esto se guarda ni se repone.
+  let pingN = 0
+  let pingAt = 0
+  let pingSeq = 0
+  let lastPing: DuelSnapshot['ping'] = null
   // Los objetivos que cada uno marcó del lado del otro. Lo que marqué yo lo repongo cuando el otro vuelve (viaja con mi `sync`); lo suyo llega con su mensaje.
   let marksOnMine: Marks = NO_MARKS
   let marksOnTheirs: Marks = NO_MARKS
@@ -217,6 +229,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   let peerClockN = 0
   let peerGameN = 0
   let peerChatN = 0
+  let peerPingN = 0
   let awaitingSync = false
 
   const listeners = new Set<() => void>()
@@ -228,7 +241,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     return { match: settings.match, game: series.played + 1, wins: score.wins, winner: settings.match ? score.winner : null }
   }
 
-  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent, peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult }, marks: { mine: marksOnMine, theirs: marksOnTheirs } })
+  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent, peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, ping: lastPing })
 
   const emit = () => {
     snapshot = build()
@@ -509,6 +522,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     peerClockN = 0
     peerGameN = 0
     peerChatN = 0
+    peerPingN = 0
     marksOnMine = NO_MARKS
     // (lo que yo marqué de su lado se queda: sus ids opacos no cambian al recargar con su mesa guardada, y se le repone con mi `sync`)
     // Una ronda terminada no se le repite al que vuelve (le diría que el rival "ya eligió"); una a medias sí, para que la pueda terminar.
@@ -694,6 +708,38 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
         }
 
         return
+
+      case 'ping': {
+        if (message.n <= peerPingN) {
+          return
+        }
+
+        peerPingN = message.n
+
+        if (message.at === 'yours') {
+          // Algo de mi lado: su id opaco se vuelve mi carta real (si no es mía, no cuenta).
+          const real = message.card === undefined ? undefined : ownIds[message.card]
+
+          if (message.card !== undefined && real === undefined) {
+            return
+          }
+
+          pingSeq += 1
+          lastPing = { n: pingSeq, side: 'mine', ...(real !== undefined ? { card: real } : { pile: message.pile! }) }
+          return
+        }
+
+        // Algo de su lado: una carta sólo si está a la vista en su campo (la de su mano no se señala: no se sabe cuál es), o una pila.
+        const where = message.card === undefined || !theirs ? null : locateCard(theirs.state, message.card)
+
+        if (!theirs || (message.card !== undefined && where?.kind !== 'spot')) {
+          return
+        }
+
+        pingSeq += 1
+        lastPing = { n: pingSeq, side: 'theirs', ...(message.card !== undefined ? { card: message.card } : { pile: message.pile! }) }
+        return
+      }
 
       case 'marks':
         // Sus ids opacos se vuelven mis cartas reales; los que no son míos no cuentan.
@@ -957,6 +1003,33 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
 
     reconnect() {
       transport.reconnect?.()
+    },
+
+    ping(target, at) {
+      // Sin rival no hay a quién señalarle nada; y una carta, sólo si está a la vista en el campo de ese lado (no se señala la mano ni el deck de nadie). Uno cada 300 ms como mucho.
+      if (!peerPresent || now() - pingAt < 300) {
+        return
+      }
+
+      if ('card' in target) {
+        const state = at === 'mine' ? mine : theirs?.state
+
+        if (!state || locateCard(state, target.card)?.kind !== 'spot' || (at === 'mine' && !sender)) {
+          return
+        }
+      } else if (at === 'theirs' && !theirs) {
+        return
+      }
+
+      pingAt = now()
+      pingN += 1
+      // Mi carta viaja con su id opaco (la identidad nunca viaja en un aviso); lo suyo, con el id que él le dio.
+      const card = 'card' in target ? (at === 'mine' ? (sender!.opaque[target.card] ?? target.card) : target.card) : undefined
+
+      send({ t: 'ping', n: pingN, at: at === 'mine' ? 'mine' : 'yours', ...(card !== undefined ? { card } : { pile: (target as { pile: MatPile }).pile }) })
+      pingSeq += 1
+      lastPing = { n: pingSeq, side: at, ...target }
+      emit()
     },
 
     toggleMark(target) {
