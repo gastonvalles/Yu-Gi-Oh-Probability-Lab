@@ -14,6 +14,7 @@ import {
   RateLimiter,
   RoomRegistry,
   byteLength,
+  cleanPlayerName,
   parsePublicRoomInfo,
   parseWatchers,
   createParticipantId,
@@ -265,6 +266,29 @@ describe('los duelos públicos en vivo', () => {
     expect(registry.list(5000)).toEqual([])
     expect(registry.listLive(5000)).toEqual([{ ...info, code: 'AAAAAAA2', watchers: 1, since: 5000 }])
     expect(JSON.stringify(registry.listLive(5000))).not.toContain(token)
+  })
+
+  it('de un duelo en vivo se publica también contra quién juega el anfitrión (el nombre limpio de quien entró a la sala pública), y se renueva con cada aviso', () => {
+    const registry = new RoomRegistry()
+
+    registry.register('AAAAAAA2', info, token, 1000)
+    expect(registry.markLive('AAAAAAA2', info, 0, token, 5000, 'Beto')).toBe('ok')
+    expect(registry.listLive(5000)[0]).toMatchObject({ guest: 'Beto', since: 5000 })
+    // Cambió de nombre: el siguiente aviso lo trae.
+    expect(registry.markLive('AAAAAAA2', info, 1, token, 6000, 'Beto 2')).toBe('ok')
+    expect(registry.listLive(6000)[0]).toMatchObject({ guest: 'Beto 2', watchers: 1, since: 5000 })
+    // Sin nombre (un anfitrión de antes), no hay rival que mostrar.
+    expect(registry.markLive('AAAAAAA2', info, 1, token, 7000)).toBe('ok')
+    expect(registry.listLive(7000)[0]).not.toHaveProperty('guest')
+    // Una sala que espera rival nunca lo lleva.
+    registry.register('BBBBBBB2', info, other, 8000)
+    expect(registry.list(8000)[0]).not.toHaveProperty('guest')
+  })
+
+  it('el nombre de un jugador se limpia: sin caracteres de control ni espacios de más, hasta 40 caracteres; lo que no es un texto, vacío', () => {
+    expect(cleanPlayerName('  Be\u0000to \n  Pérez ')).toBe('Beto Pérez')
+    expect(cleanPlayerName('x'.repeat(100))).toHaveLength(40)
+    expect([3, null, undefined, {}].map(cleanPlayerName)).toEqual(['', '', '', ''])
   })
 
   it('con otro token no se pisa la sala de otro; sin sala anotada (venció) se crea; con la lista llena no entra', () => {

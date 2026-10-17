@@ -16,6 +16,7 @@ import {
   SPECTATOR_RESYNC_MS,
   byteLength,
   encodeRelayFrame,
+  cleanPlayerName,
   encodeSpectatorText,
   originAllowed,
   parsePublicRoomInfo,
@@ -419,7 +420,9 @@ export class RoomIndex extends DurableObject {
         return json({ error: 'bad' }, 400)
       }
 
-      const live = registry.markLive(code, info, watchers, body.token, now)
+      // Contra quién juega: el nombre del rival del anfitrión (opcional: un cliente de antes no lo manda), limpio como el del anfitrión.
+      const guest = cleanPlayerName(body.guest) || undefined
+      const live = registry.markLive(code, info, watchers, body.token, now, guest)
 
       await save()
       return json({ result: live }, live === 'ok' ? 200 : 409)

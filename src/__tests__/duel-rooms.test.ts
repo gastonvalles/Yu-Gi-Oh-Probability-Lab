@@ -56,6 +56,12 @@ describe('los duelos en vivo desde la página', () => {
     expect(parseLiveDuels(null)).toEqual([])
   })
 
+  it('el rival de un duelo en vivo se lee con su nombre limpio (y sin él, el duelo se muestra igual)', () => {
+    expect(parseLiveDuels({ live: [{ ...live, guest: '  Ana\u0000  María ' }] })).toEqual([{ ...live, guest: 'Ana María' }])
+    expect(parseLiveDuels({ live: [{ ...live, guest: 7 }] })).toEqual([live])
+    expect(parseLiveDuels({ live: [live] })[0]).not.toHaveProperty('guest')
+  })
+
   it('pide las dos listas de una vez; con un relay de antes (sin `live`) no hay duelos en vivo que mostrar', async () => {
     const news = createRoomsApi('wss://relay.test', (async () => new Response(JSON.stringify({ rooms: [room], live: [live] }))) as unknown as typeof fetch)
 
@@ -83,6 +89,9 @@ describe('los duelos en vivo desde la página', () => {
 
     await expect(registers.live('K7QF2M9X', info, 2, token)).resolves.toBe(true)
     expect(calls[0]).toEqual(['https://relay.test/rooms/live?room=K7QF2M9X', JSON.stringify({ token, info, watchers: 2 })])
+    // Con el nombre de quien juega contra el anfitrión.
+    await expect(registers.live('K7QF2M9X', info, 2, token, 'Ana')).resolves.toBe(true)
+    expect(calls[1]).toEqual(['https://relay.test/rooms/live?room=K7QF2M9X', JSON.stringify({ token, info, watchers: 2, guest: 'Ana' })])
 
     const full = createRoomsApi('wss://relay.test', (async () => new Response(JSON.stringify({ result: 'full' }), { status: 409 })) as unknown as typeof fetch)
     const old = createRoomsApi('wss://relay.test', (async () => new Response('ygo-lab duel relay', { status: 200 })) as unknown as typeof fetch)

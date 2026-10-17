@@ -497,7 +497,8 @@ describe('la pantalla del duelo', () => {
 
     // Llegó el rival: la sala deja de esperar y pasa a los duelos en vivo (sin bajarla), con el mismo token.
     expect(rooms.live).toHaveBeenCalledTimes(1)
-    expect(rooms.live).toHaveBeenCalledWith(room, info, 0, token)
+    // El anfitrión avisa también contra quién juega (el nombre de quien entró).
+    expect(rooms.live).toHaveBeenCalledWith(room, info, 0, token, 'Beto')
     expect(rooms.unlist).not.toHaveBeenCalled()
 
     // Lo avisa cada minuto mientras dura.
@@ -606,14 +607,16 @@ describe('la pantalla del duelo', () => {
 
   it('la arena muestra los duelos en vivo con cuántos los miran, se entra a mirar con un toque y uno lleno no deja mirar', async () => {
     const live = [
-      { code: 'LIVEAAAA', host: 'Eli', match: false, siding: false, format: 'tcg', limitMin: 50, watchers: 1, since: Date.now() },
+      { code: 'LIVEAAAA', host: 'Eli', guest: 'Gus', match: false, siding: false, format: 'tcg', limitMin: 50, watchers: 1, since: Date.now() },
       { code: 'LIVEBBBB', host: 'Fede', match: true, siding: false, format: 'tcg', limitMin: 0, watchers: 2, since: Date.now() },
     ]
     const view = render(<DuelScreen {...screenProps({ rooms: fakeRooms([], live) })} />)
 
     const section = within(await within(view.container).findByRole('region', { name: 'En la arena ahora' }))
     expect(await section.findByText('2 duelos en vivo')).toBeInTheDocument()
-    expect(section.getByText('Eli está jugando')).toBeInTheDocument()
+    // Quiénes se enfrentan (de un anfitrión de antes, que no manda el rival, sólo se sabe quién juega).
+    expect(section.getByText('Eli vs Gus')).toBeInTheDocument()
+    expect(section.getByText('Fede está jugando')).toBeInTheDocument()
     expect(section.getByText('Mirando 1 de 2')).toBeInTheDocument()
     expect(section.getByRole('button', { name: 'Mirar el duelo de Fede' })).toBeDisabled()
 
