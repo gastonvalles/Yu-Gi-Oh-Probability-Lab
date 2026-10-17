@@ -52,8 +52,10 @@ export function ReactionButtons({ onSend, disabled = false, className, set = 'ch
             title={pressed ? t('duel.hold.release') : label()}
             disabled={disabled}
             className={cx(
-              'relative grid h-14 w-14 cursor-pointer place-items-center rounded-control border bg-input px-0 text-stat leading-none transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-default disabled:opacity-40',
-              pressed ? 'border-accent bg-accent/20' : 'border-border',
+              'relative grid cursor-pointer place-items-center border px-0 leading-none transition-colors focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-default disabled:opacity-40',
+              // La botonera de abajo: cajas oscuras de 44 px con el emoji a 24 px (como el resto de la botonera); el chat, grandes (56 px, emoji de 33).
+              set === 'dock' ? 'size-11 rounded-card bg-card-background text-title hover:border-tint/40' : 'h-14 w-14 rounded-control bg-input text-stat hover:bg-surface-hover',
+              pressed ? 'border-accent bg-accent/20' : set === 'dock' ? 'border-border-subtle' : 'border-border',
             )}
             onClick={() => {
               setBursts((current) => ({ ...current, [emoji]: (current[emoji] ?? 0) + 1 }))
