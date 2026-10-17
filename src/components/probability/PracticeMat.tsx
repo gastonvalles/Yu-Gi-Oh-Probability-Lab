@@ -67,7 +67,8 @@ import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PracticeMatPanel, type PanelStep } from './PracticeMatPanel'
 import { ReplayBar, type ReplayMark, type ReplaySpeed } from './ReplayBar'
-import { CARD_BACK, CARD_BACK_URL, pileEdge } from './practice-styles'
+import { PileStack } from './PileStack'
+import { CARD_BACK, CARD_BACK_URL } from './practice-styles'
 
 export interface MatCard {
   name: string
@@ -1211,7 +1212,7 @@ export function PracticeMat({
         style={{ gridArea: area, ...fxVars('red') }}
         onClick={() => setViewer(pile)}
       >
-        {pile === 'extra' ? <span aria-hidden="true" data-pile-edge className="pointer-events-none absolute inset-0" style={pileEdge(count)} /> : null}
+        {pile === 'extra' ? <PileStack count={count} /> : null}
         {/* El recorte va en un contenedor aparte: el botón no recorta, así el área que se toca (`before` de `CELL`) puede salirse 4 px de la casilla. */}
         <span className="absolute inset-0 overflow-hidden">
           {back ? <span className={CARD_BACK} /> : top ? <CardArt remoteUrl={artOf(cardOf(top))} name={cardOf(top).name} className="block h-full w-full object-cover" /> : null}
@@ -1452,7 +1453,7 @@ export function PracticeMat({
             onContextMenu={(event) => event.preventDefault()}
           >
             {/* El grosor del deck, debajo: se afina al robar. */}
-            <span aria-hidden="true" data-pile-edge className="pointer-events-none absolute inset-0" style={pileEdge(state.deck.length)} />
+            <PileStack count={state.deck.length} />
             {state.deck.length > 0 ? (
               <span key={shuffleKey} className="absolute inset-0">
                 <span className={cx(CARD_BACK, '[transform:translate(-3px,3px)]', shuffleKey > 0 && 'animate-riffle-left motion-reduce:animate-none')} />

@@ -1,5 +1,3 @@
-import type { CSSProperties } from 'react'
-
 /**
  * Colores de los efectos de la mesa, como `r g b` para `rgb(var(--fx-rgb) / alfa)`: dorado para activar y para la Invocación Normal,
  * celeste para lo que se muestra y la Invocación Especial, rojo para el objetivo, violeta para declarar, la Fusión y el cementerio.
@@ -24,18 +22,12 @@ export const RULE_COLOR = {
   problem: '[--rule-color:rgb(var(--danger-rgb))]',
 } as const
 
-/**
- * El grosor de una pila de cartas (el deck y el Extra): un canto por cada seis cartas, hasta 10 px (un deck de 60), asomando debajo de la pila (o arriba, la del rival: del lado de afuera
- * del campo, donde no pisa a las demás). Así un deck de 40 se ve más grueso que uno de 15 y se va afinando al robar. Sin cartas, nada. Los cantos alternan claro y oscuro, como los de un mazo.
- */
-export function pileEdge(count: number, up = false): CSSProperties | undefined {
-  if (count <= 0) return undefined
+/** Cuántas capas de dorso se apilan debajo de una pila: una por cada seis cartas, hasta 8 (un deck de 48 o más). Sin cartas, ninguna. */
+export const pileDepth = (count: number): number => (count <= 0 ? 0 : Math.min(8, Math.max(1, Math.ceil(count / 6))))
 
-  const depth = Math.min(10, Math.max(1, Math.ceil(count / 6)))
-  const sign = up ? -1 : 1
-
-  return { boxShadow: Array.from({ length: depth }, (_, index) => `0 ${sign * (index + 1)}px 0 rgb(var(--foreground-rgb) / ${index % 2 === 0 ? 0.55 : 0.18})`).join(',') }
-}
+/** Cuánto asoma cada capa de la pila (% del alto de la carta: crece con la casilla, en el celular y en escritorio) y cuánto más oscura es que la de arriba. */
+export const PILE_LAYER_PCT = 2
+export const PILE_LAYER_DIM = 0.07
 
 /**
  * El dorso por defecto de una carta de Yu-Gi-Oh!: la imagen `cards/back.jpg` de YGOPRODeck, que sale por el mismo proxy que las

@@ -427,7 +427,7 @@ describe('la pantalla del duelo', () => {
     typeInto(host, 'Tu nombre', 'Ana')
     openRules(host)
     fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Match · mejor de 3' }))
-    fireEvent.click(within(rulesDialog()).getByRole('switch', { name: 'Cambiar cartas entre duelos' }))
+    fireEvent.click(within(rulesDialog()).getByRole('switch', { name: 'Sidedeck' }))
     fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' }))
     const link = within(host.container).getByTestId('duel-link').textContent ?? ''
     window.history.replaceState(null, '', '#duel')
@@ -445,7 +445,7 @@ describe('la pantalla del duelo', () => {
     click(host, 'Siguiente duelo')
     click(guest, 'Siguiente duelo')
 
-    expect(within(host.container).getByRole('heading', { name: 'Siding' })).toBeInTheDocument()
+    expect(within(host.container).getByRole('heading', { name: 'Sidedeck' })).toBeInTheDocument()
     // Como en el builder: las tres zonas con sus cartas, y arriba ir a cada una con lo que lleva.
     const jump = within(within(host.container).getByRole('navigation', { name: 'Ir a una zona del deck' }))
     expect(jump.getAllByRole('button').map((button) => button.textContent)).toEqual(['Main 40', 'Extra 1', 'Side 1'])
@@ -468,7 +468,7 @@ describe('la pantalla del duelo', () => {
 
     // Con los dos listos se limpia la mesa: elige quién va primero quien perdió (Beto) y el siding se fue.
     expect(within(guest.container).getByText('Elegís vos, porque perdiste el duelo anterior.')).toBeInTheDocument()
-    expect(within(host.container).queryByRole('heading', { name: 'Siding' })).not.toBeInTheDocument()
+    expect(within(host.container).queryByRole('heading', { name: 'Sidedeck' })).not.toBeInTheDocument()
   })
 
   it('una sala pública se anota mientras espera; al llegar el rival pasa a «en vivo» (se avisa cada minuto, con cuántos la miran) y sólo se baja al salir', async () => {
@@ -598,7 +598,7 @@ describe('la pantalla del duelo', () => {
     const section = within(await within(view.container).findByRole('region', { name: 'En la arena ahora' }))
     expect(await section.findByText('Carla')).toBeInTheDocument()
     expect(section.getByText('1 sala esperando rival')).toBeInTheDocument()
-    for (const chip of ['Match', 'TCG', '50 min', 'Siding']) {
+    for (const chip of ['Match', 'TCG', '50 min', 'Sidedeck']) {
       expect(section.getByText(chip)).toBeInTheDocument()
     }
 
@@ -653,7 +653,7 @@ describe('la pantalla del duelo', () => {
     typeInto(host, 'Tu nombre', 'Ana')
     openRules(host)
     fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Match · mejor de 3' }))
-    fireEvent.click(within(rulesDialog()).getByRole('switch', { name: 'Cambiar cartas entre duelos' }))
+    fireEvent.click(within(rulesDialog()).getByRole('switch', { name: 'Sidedeck' }))
     fireEvent.click(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' }))
     const link = within(host.container).getByTestId('duel-link').textContent ?? ''
     window.history.replaceState(null, '', '#duel')

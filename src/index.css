@@ -982,6 +982,7 @@
   --color-tint: var(--primary-soft);
   --color-info: var(--info);
   --color-success-soft: var(--success-soft);
+  --color-success-solid: var(--success-solid);
   --color-warning-soft: var(--warning-soft);
   --color-danger-soft: var(--danger-soft);
   --color-info-soft: var(--info-soft);
@@ -1041,6 +1042,8 @@
     --handtrap-rgb: 199 125 255;
     --success: #1aef06;
     --success-rgb: 26 239 6;
+    /* El verde de un botón lleno con texto blanco: el verde de la paleta con 45 % de negro (el blanco sobre el verde claro no se lee). */
+    --success-solid: color-mix(in srgb, #1aef06 55%, black);
     --warning: #c77dff;
     --warning-rgb: 199 125 255;
     --danger: #da0000;
