@@ -349,7 +349,7 @@ export function PlayHome({ view, name, onName, builder, imported, onImport, deck
                       return (
                         <li key={duel.code} className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-card border border-border-subtle bg-card-background px-3 py-2.5">
                           <span className="grid min-w-0 flex-1 gap-1">
-                            <span className="truncate text-body font-semibold text-foreground">{t('duel.arena.isPlaying', { name: duel.host })}</span>
+                            <span className="truncate text-body font-semibold text-foreground">{duel.guest ? t('duel.arena.versus', { host: duel.host, guest: duel.guest }) : t('duel.arena.isPlaying', { name: duel.host })}</span>
                             <span className="flex flex-wrap items-center gap-1">
                               {roomChips(duel).map((chip) => (
                                 <Badge key={chip} size="sm">

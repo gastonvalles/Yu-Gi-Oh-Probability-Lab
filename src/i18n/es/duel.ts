@@ -87,6 +87,7 @@ export const duel = {
   'duel.arena.sinceNow': 'recién',
   'duel.arena.live': 'Duelos en vivo',
   'duel.arena.isPlaying': '{name} está jugando',
+  'duel.arena.versus': '{host} vs {guest}',
   'duel.arena.watch': 'Mirar',
   'duel.arena.watchLabel': 'Mirar el duelo de {name}',
   'duel.arena.watchers': 'Mirando {count} de {max}',

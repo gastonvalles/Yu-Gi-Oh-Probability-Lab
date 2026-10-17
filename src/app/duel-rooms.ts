@@ -1,4 +1,4 @@
-import { ROOM_CODE_PATTERN, parsePublicRoomInfo, parseWatchers, type LiveDuel, type PublicRoom, type PublicRoomInfo } from './duel-relay-rules'
+import { ROOM_CODE_PATTERN, cleanPlayerName, parsePublicRoomInfo, parseWatchers, type LiveDuel, type PublicRoom, type PublicRoomInfo } from './duel-relay-rules'
 
 /**
  * Las salas públicas desde la página: leer la lista del relay (para el lobby), anotar la propia y bajarla. Todo lo que llega del relay es dato de otro:
@@ -14,7 +14,7 @@ export interface RoomsApi {
    * El anfitrión de una sala pública avisa que su duelo está en vivo y cuántos lo miran (se repite cada minuto). Devuelve si el relay lo registró: con uno de antes, o sin red, no, y entonces
    * la sala se baja de la lista (como siempre al llegar el rival) en vez de quedar anotada como si esperara.
    */
-  live(code: string, info: PublicRoomInfo, watchers: number, token: string): Promise<boolean>
+  live(code: string, info: PublicRoomInfo, watchers: number, token: string, guest?: string): Promise<boolean>
   /** Anota la sala propia. `token` prueba que quien la baja es quien la anotó. Devuelve si quedó anotada. */
   register(code: string, info: PublicRoomInfo, token: string): Promise<boolean>
   /** Baja la sala propia (mejor esfuerzo: si no llega, vence sola a los 30 minutos). */
@@ -53,7 +53,9 @@ export function parseLiveDuels(value: unknown): LiveDuel[] {
     const info = raw ? parsePublicRoomInfo(raw) : null
     const watchers = raw ? parseWatchers(raw.watchers) : null
 
-    return raw && info && watchers !== null && typeof raw.code === 'string' && ROOM_CODE_PATTERN.test(raw.code) && typeof raw.since === 'number' ? [{ ...info, code: raw.code, watchers, since: raw.since }] : []
+    const guest = raw ? cleanPlayerName(raw.guest) : ''
+
+    return raw && info && watchers !== null && typeof raw.code === 'string' && ROOM_CODE_PATTERN.test(raw.code) && typeof raw.since === 'number' ? [{ ...info, code: raw.code, watchers, since: raw.since, ...(guest ? { guest } : {}) }] : []
   })
 }
 
@@ -84,9 +86,9 @@ export function createRoomsApi(relayUrl: string, fetchImpl: typeof fetch = (...a
       return (await overview()).rooms
     },
     overview,
-    async live(code, info, watchers, token) {
+    async live(code, info, watchers, token, guest) {
       try {
-        const response = await post('/rooms/live', code, { token, info, watchers })
+        const response = await post('/rooms/live', code, { token, info, watchers, ...(guest ? { guest } : {}) })
 
         // Un relay de antes contesta 200 a cualquier ruta que no conoce (con un texto, no con `{ result: 'ok' }`): sólo cuenta que lo registró de verdad.
         return response.ok && ((await response.json()) as { result?: unknown }).result === 'ok'

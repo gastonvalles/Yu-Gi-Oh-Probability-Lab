@@ -217,6 +217,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   const publicCode = rooms && intent && !intent.watch && intent.role === 'host' && options.isPublic ? intent.room : null
   const awaitingRival = !snapshot?.peerPresent
   const watchers = snapshot?.watchers ?? 0
+  const guestName = snapshot?.peerName ?? undefined
   const listing = useRef({ name: myName, settings })
 
   listing.current = { name: myName, settings }
@@ -259,7 +260,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
     let alive = true
 
     const beat = () => {
-      void rooms.live(publicCode, info, watchers, publicToken).then((registered) => {
+      void rooms.live(publicCode, info, watchers, publicToken, guestName).then((registered) => {
         // El relay no lo registró (uno de antes, o sin red): no queda anotada como si esperara; se baja y no se insiste.
         if (!registered && alive) {
           alive = false
@@ -276,7 +277,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
       alive = false
       window.clearInterval(timer)
     }
-  }, [rooms, publicCode, publicToken, awaitingRival, watchers])
+  }, [rooms, publicCode, publicToken, awaitingRival, watchers, guestName])
 
   // Sólo la mesa es a pantalla completa; antes de ella y entre un duelo y el siguiente (lobby, sala, siding, pausa) la app lleva su barra de abajo en el celular.
   const inSiding = sidingOpen && Boolean(snapshot?.settings.siding && snapshot.series.match && snapshot.series.winner === null)

@@ -48,7 +48,7 @@ describe('el Worker: la lista de salas y los duelos en vivo', () => {
     expect(list.rooms).toHaveLength(1)
     expect(list.live).toEqual([])
 
-    const live = await index.call('POST', '/rooms/live?room=K7QF2M9X', { token, info, watchers: 1 })
+    const live = await index.call('POST', '/rooms/live?room=K7QF2M9X', { token, info, watchers: 1, guest: 'Beto' })
     expect(live.status).toBe(200)
     expect(live.body).toEqual({ result: 'ok' })
 
@@ -56,9 +56,10 @@ describe('el Worker: la lista de salas y los duelos en vivo', () => {
     // Un cliente de antes sólo lee `rooms`: ya no la ve (no la toma por una sala a la que entrar).
     expect(list.rooms).toEqual([])
     expect(list.live).toEqual([expect.objectContaining({ code: 'K7QF2M9X', host: 'Ana', watchers: 1 })])
-    // Sin el token, y sin el nombre de nadie más.
+    // Sin el token; con el nombre del rival del anfitrión (lo único más que se publica de quien entró).
     expect(JSON.stringify(list)).not.toContain(token)
-    expect(Object.keys((list.live as object[])[0]!).sort()).toEqual(['code', 'format', 'host', 'limitMin', 'match', 'siding', 'since', 'watchers'])
+    expect(Object.keys((list.live as object[])[0]!).sort()).toEqual(['code', 'format', 'guest', 'host', 'limitMin', 'match', 'siding', 'since', 'watchers'])
+    expect((list.live as Array<{ guest?: string }>)[0]!.guest).toBe('Beto')
   })
 
   it('el aviso se revisa: cuántos miran (0 a 2), un token con forma, la sala y un nombre bien formado; y con otro token no se pisa la de otro', async () => {

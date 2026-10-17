@@ -214,6 +214,8 @@ export interface LiveDuel extends PublicRoomInfo {
   code: string
   watchers: number
   since: number
+  /** Contra quién juega el anfitrión: el nombre que puso quien entró a la sala pública (sin él, un anfitrión de antes que no lo manda). */
+  guest?: string
 }
 
 /** Cuántos miran, de lo que avisa el anfitrión: un entero de 0 hasta el tope de espectadores; `null` si no lo es. */
@@ -223,14 +225,19 @@ export function parseWatchers(value: unknown): number | null {
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)
 
+/** El nombre de un jugador, sin caracteres de control ni espacios de más y de hasta `MAX_HOST_NAME`; vacío si no es un texto. */
+export function cleanPlayerName(value: unknown): string {
+  // eslint-disable-next-line no-control-regex
+  return typeof value === 'string' ? value.replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, MAX_HOST_NAME) : ''
+}
+
 /** Lo que manda un anfitrión al anotar su sala, ya revisado (el nombre sin caracteres de control ni espacios de más); `null` si viene mal formado. */
 export function parsePublicRoomInfo(value: unknown): PublicRoomInfo | null {
   if (!isPlainObject(value) || typeof value.host !== 'string' || typeof value.match !== 'boolean' || typeof value.siding !== 'boolean') {
     return null
   }
 
-  // eslint-disable-next-line no-control-regex
-  const host = value.host.replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, MAX_HOST_NAME)
+  const host = cleanPlayerName(value.host)
 
   if (host === '' || !(PUBLIC_ROOM_FORMATS as readonly unknown[]).includes(value.format) || !(PUBLIC_ROOM_LIMITS_MIN as readonly unknown[]).includes(value.limitMin)) {
     return null
@@ -246,8 +253,8 @@ interface RegistryEntry {
   room: PublicRoom
   /** Lo que prueba que quien baja una sala es quien la anotó: el código de una sala pública se ve en la lista, el token no. */
   token: string
-  /** Si el duelo ya empezó (llegó el rival) y su anfitrión sigue avisándolo: cuántos miran, desde cuándo y cuándo fue el último aviso. Sin esto, la sala espera rival. */
-  live?: { watchers: number; since: number; seenAt: number }
+  /** Si el duelo ya empezó (llegó el rival) y su anfitrión sigue avisándolo: cuántos miran, desde cuándo y cuándo fue el último aviso, y el nombre del rival. Sin esto, la sala espera rival. */
+  live?: { watchers: number; since: number; seenAt: number; guest?: string }
 }
 
 /**
@@ -295,7 +302,7 @@ export class RoomRegistry {
    * El anfitrión de una sala pública avisa que su duelo está en vivo (llegó el rival) y cuántos lo miran. Pasa la sala de la lista de las que esperan a la de los duelos en vivo;
    * lo repite cada minuto (si deja de avisar, vence). Con otro token no se pisa la de otro; sin sala anotada (venció, o el Worker se reinició) la crea.
    */
-  markLive(code: string, info: PublicRoomInfo, watchers: number, token: string, now: number): 'ok' | 'taken' | 'full' {
+  markLive(code: string, info: PublicRoomInfo, watchers: number, token: string, now: number, guest?: string): 'ok' | 'taken' | 'full' {
     this.purge(now)
 
     const current = this.entries.get(code)
@@ -308,7 +315,7 @@ export class RoomRegistry {
       return 'full'
     }
 
-    this.entries.set(code, { room: { ...info, code, createdAt: current?.room.createdAt ?? now }, token, live: { watchers, since: current?.live?.since ?? now, seenAt: now } })
+    this.entries.set(code, { room: { ...info, code, createdAt: current?.room.createdAt ?? now }, token, live: { watchers, since: current?.live?.since ?? now, seenAt: now, ...(guest ? { guest } : {}) } })
     return 'ok'
   }
 
@@ -324,7 +331,7 @@ export class RoomRegistry {
     this.purge(now)
 
     return [...this.entries.values()]
-      .flatMap((entry) => (entry.live ? [{ host: entry.room.host, match: entry.room.match, siding: entry.room.siding, format: entry.room.format, limitMin: entry.room.limitMin, ...(entry.room.genesysCap !== undefined ? { genesysCap: entry.room.genesysCap } : {}), code: entry.room.code, watchers: entry.live.watchers, since: entry.live.since }] : []))
+      .flatMap((entry) => (entry.live ? [{ host: entry.room.host, match: entry.room.match, siding: entry.room.siding, format: entry.room.format, limitMin: entry.room.limitMin, ...(entry.room.genesysCap !== undefined ? { genesysCap: entry.room.genesysCap } : {}), code: entry.room.code, watchers: entry.live.watchers, since: entry.live.since, ...(entry.live.guest ? { guest: entry.live.guest } : {}) }] : []))
       .sort((a, b) => b.since - a.since)
   }
 
