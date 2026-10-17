@@ -4,7 +4,8 @@ import type { BanlistStatus } from '../types'
 
 /**
  * Las banlists históricas del TCG y del OCG: cada lista, completa, con sus cartas prohibidas, limitadas y semi-limitadas (por id de YGOPRODeck), desde
- * 2011 (TCG) y 2013 (OCG). Las baja todos los días `scripts/sync-banlists.mjs` de `lflist.conf` de YGOPro. Lo que no está en una lista es ilimitado.
+ * 2011 (TCG) y 2013 (OCG). Las baja todos los días `scripts/sync-banlists.mjs` de `lflist.conf` de YGOPro, y de Yugipedia las que todavía no están ahí (las
+ * del TCG se anuncian en partes durante varios días: `partial`). Lo que no está en una lista es ilimitado.
  */
 
 export type BanlistRegion = 'tcg' | 'ocg'
@@ -16,6 +17,8 @@ export interface Banlist {
   forbidden: number[]
   limited: number[]
   semiLimited: number[]
+  /** Es una lista que se anuncia en partes y todavía faltan algunas: lo que trae es lo anunciado hasta ahora. */
+  partial?: boolean
 }
 
 interface BanlistsData {
@@ -28,6 +31,12 @@ const data = banlistsJson as BanlistsData
 
 /** El día en que se bajaron las listas. */
 export const BANLISTS_FETCHED_AT = data.fetchedAt
+
+/** AAAA-MM-DD de hoy. */
+const today = () => new Date().toISOString().slice(0, 10)
+
+/** La lista se anunció pero todavía no rige (entra en vigencia en una fecha futura). Una con sólo el mes rige desde el día 1. */
+export const isUpcoming = (list: Banlist, now: string = today()): boolean => (list.date.length > 7 ? list.date : `${list.date}-01`) > now
 
 const byRegion = new Map<BanlistRegion, Banlist[]>()
 

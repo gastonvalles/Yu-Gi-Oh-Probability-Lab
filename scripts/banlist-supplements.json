@@ -1,0 +1,24 @@
+[
+  {
+    "region": "tcg",
+    "month": "2026-10",
+    "note": "Parte 1 del anuncio del YCS Houston (16 de octubre de 2026)",
+    "forbidden": ["Amorphage Goliath", "Amorphage Sloth", "Aerial Eater", "Albion the Branded Dragon", "Zenna's Deceiving Doll Maidens", "Called by the Grave"],
+    "limited": ["Droll & Lock Bird", "Perfectron Hydradrive Dragon"]
+  },
+  {
+    "region": "tcg",
+    "month": "2026-10",
+    "note": "Parte 2 del anuncio del YCS Houston (17 de octubre de 2026)",
+    "forbidden": [
+      "Charmer Quartet in Bloom",
+      "Beelze of the Diabolic Dragons",
+      "Trishula, Dragon of the Ice Barrier",
+      "XX-Saber Gottoms",
+      "D/D/D Wave High King Caesar",
+      "Secret Village of the Spellcasters",
+      "Anti-Spell Fragrance"
+    ],
+    "limited": ["Branded Opening"]
+  }
+]
