@@ -740,11 +740,11 @@ export function PracticeMat({
     play({ ...picking.action, zone, index })
   }
 
-  /** Con los Sacrificios o los materiales elegidos (que dejan el campo), la carta sale a la zona donde se soltó si sigue libre, a la única libre, o se elige una. */
+  /** Con los Sacrificios o los materiales elegidos (que dejan el campo), la carta sale a la zona donde se soltó (si sigue libre) o la mesa pide elegir una: confirmar (botón, doble clic) nunca decide la casilla, ni siquiera si queda una sola libre. */
   const summonAfter = (label: string, action: Extract<MatAction, { type: 'tribute' | 'summon' }>, removed: string[], dropped?: MatTarget) => {
     const after = removed.reduce((current, id) => matReducer(current, { type: 'move', id, to: 'gy' }), state)
     const targets = freeTargets(after, monsterZones(action.type === 'summon'), duel?.rivalEmz)
-    const zone = dropped && targets.some((target) => target.zone === dropped.zone && target.index === dropped.index) ? dropped : targets.length === 1 ? targets[0] : null
+    const zone = dropped && targets.some((target) => target.zone === dropped.zone && target.index === dropped.index) ? dropped : null
 
     if (zone) play({ ...action, zone: zone.zone as 'mz' | 'emz', index: zone.index })
     else if (targets.length > 0) setPicking({ kind: 'zone', label, action, targets })
@@ -1158,7 +1158,8 @@ export function PracticeMat({
         data-pointed={placed !== null && duel?.pointed?.card === placed.id ? 'true' : undefined}
         className={spot === 'field' ? CELL : spot === 'emz' ? CELL_EMZ : CELL_SQUARE}
         style={{ gridArea: area }}
-        onClick={pickableZone ? () => pickZone(spot, index) : undefined}
+        // Una carta se elige con su toque (`openCard`); su click, que el navegador manda después, no: si no, el que cierra el doble clic de los materiales caería en la casilla del material, ya pidiendo zona, e invocaría ahí.
+        onClick={pickableZone ? (event) => { if (!(event.target as Element).closest('[data-card-id]')) pickZone(spot, index) } : undefined}
         onKeyDown={pickableZone ? (event) => activate(event, () => pickZone(spot, index)) : undefined}
       >
         {gem && !placed ? <span aria-hidden="true" className={cx('absolute left-1/2 top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[3px]', gem)} /> : null}
