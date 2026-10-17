@@ -12,6 +12,7 @@ import type { SocketStatus, SocketTransport, SpectatorSocket } from '../app/duel
 import type { DuelConnect } from '../app/use-duel'
 import { LifeTile } from '../components/duel/DuelBar'
 import type { RoomsApi } from '../app/duel-rooms'
+import type { PublicRoom } from '../app/duel-relay-rules'
 import { DuelScreen } from '../components/duel/DuelScreen'
 import { applyLocale } from '../i18n'
 import type { ApiCardReference } from '../types'
@@ -27,6 +28,15 @@ vi.mock('../ygoprodeck', () => ({
 }))
 
 const store = configureStore({ reducer: { settings: (state = { handSize: 5, deckFormat: 'unlimited' as const }) => state } })
+
+/** Las salas públicas del relay, de mentira: lo que esperan, lo que se juega y cada aviso del anfitrión. */
+const fakeRooms = (list: PublicRoom[] = []) => ({
+  list: vi.fn(async () => list),
+  overview: vi.fn(async () => ({ rooms: list, live: [] })),
+  register: vi.fn<RoomsApi['register']>(async () => true),
+  live: vi.fn<RoomsApi['live']>(async () => true),
+  unlist: vi.fn<RoomsApi['unlist']>(),
+})
 
 /** Cada pantalla en su propio contenedor: las dos conviven en el mismo documento, como dos pestañas. */
 const render = (ui: ReactElement): RenderResult => renderBare(<Provider store={store}>{ui}</Provider>, { container: document.body.appendChild(document.createElement('div')) })
@@ -323,8 +333,9 @@ describe('la pantalla del duelo', () => {
     expect(within(host.container).queryByRole('heading', { name: 'Siding' })).not.toBeInTheDocument()
   })
 
-  it('una sala pública se anota en la lista mientras espera, y se baja cuando llega el rival', async () => {
-    const rooms = { list: vi.fn(async () => []), register: vi.fn<RoomsApi['register']>(async () => true), unlist: vi.fn<RoomsApi['unlist']>() }
+  it('una sala pública se anota mientras espera; al llegar el rival pasa a «en vivo» (se avisa cada minuto, con cuántos la miran) y sólo se baja al salir', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    const rooms = fakeRooms()
     const host = render(<DuelScreen {...screenProps({ rooms })} />)
     typeInto(host, 'Tu nombre', 'Ana')
     click(host, 'Crear una sala')
@@ -332,10 +343,13 @@ describe('la pantalla del duelo', () => {
     click(host, 'Crear sala')
     const link = within(host.container).getByTestId('duel-link').textContent ?? ''
     const room = extractRoomCode(link)!
+    const info = { host: 'Ana', match: false, siding: false, format: 'tcg', limitMin: 40 }
 
     expect(rooms.register).toHaveBeenCalledTimes(1)
-    expect(rooms.register).toHaveBeenCalledWith(room, { host: 'Ana', match: false, siding: false, format: 'tcg', limitMin: 40 }, expect.stringMatching(/^[A-Za-z0-9]{16}$/))
+    expect(rooms.register).toHaveBeenCalledWith(room, info, expect.stringMatching(/^[A-Za-z0-9]{16}$/))
+    expect(rooms.live).not.toHaveBeenCalled()
     expect(rooms.unlist).not.toHaveBeenCalled()
+    const token = rooms.register.mock.calls[0]![2]
 
     window.history.replaceState(null, '', '#duel')
     const guest = render(<DuelScreen {...screenProps()} />)
@@ -344,11 +358,76 @@ describe('la pantalla del duelo', () => {
     click(guest, 'Unirme')
     flush()
 
-    expect(rooms.unlist).toHaveBeenCalledWith(room, rooms.register.mock.calls[0]![2])
+    // Llegó el rival: la sala deja de esperar y pasa a los duelos en vivo (sin bajarla), con el mismo token.
+    expect(rooms.live).toHaveBeenCalledTimes(1)
+    expect(rooms.live).toHaveBeenCalledWith(room, info, 0, token)
+    expect(rooms.unlist).not.toHaveBeenCalled()
+
+    // Lo avisa cada minuto mientras dura.
+    act(() => {
+      vi.advanceTimersByTime(60_000)
+    })
+    expect(rooms.live).toHaveBeenCalledTimes(2)
+
+    // Al salir de la sala se baja, con el mismo token.
+    host.unmount()
+    expect(rooms.unlist).toHaveBeenCalledWith(room, token)
+  })
+
+  it('si el relay no registra el duelo en vivo (uno de antes, o sin red), la sala se baja al llegar el rival como siempre, y no se insiste', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    const rooms = fakeRooms()
+
+    rooms.live.mockResolvedValue(false)
+
+    const host = render(<DuelScreen {...screenProps({ rooms })} />)
+    typeInto(host, 'Tu nombre', 'Ana')
+    click(host, 'Crear una sala')
+    click(host, 'Crear sala')
+    const link = within(host.container).getByTestId('duel-link').textContent ?? ''
+    const room = extractRoomCode(link)!
+    const token = rooms.register.mock.calls[0]![2]
+
+    window.history.replaceState(null, '', '#duel')
+    const guest = render(<DuelScreen {...screenProps()} />)
+    typeInto(guest, 'Tu nombre', 'Beto')
+    typeInto(guest, 'Enlace o código', link)
+    click(guest, 'Unirme')
+    flush()
+    await act(async () => {})
+
+    expect(rooms.live).toHaveBeenCalledTimes(1)
+    expect(rooms.unlist).toHaveBeenCalledWith(room, token)
+
+    act(() => {
+      vi.advanceTimersByTime(180_000)
+    })
+    expect(rooms.live).toHaveBeenCalledTimes(1)
+  })
+
+  it('una sala privada nunca se anota ni se avisa como duelo en vivo', async () => {
+    const rooms = fakeRooms()
+    const host = render(<DuelScreen {...screenProps({ rooms })} />)
+    typeInto(host, 'Tu nombre', 'Ana')
+    click(host, 'Crear una sala')
+    fireEvent.click(within(host.container).getByRole('radio', { name: 'Privada' }))
+    click(host, 'Crear sala')
+    const link = within(host.container).getByTestId('duel-link').textContent ?? ''
+
+    window.history.replaceState(null, '', '#duel')
+    const guest = render(<DuelScreen {...screenProps()} />)
+    typeInto(guest, 'Tu nombre', 'Beto')
+    typeInto(guest, 'Enlace o código', link)
+    click(guest, 'Unirme')
+    flush()
+    await act(async () => {})
+
+    expect(rooms.register).not.toHaveBeenCalled()
+    expect(rooms.live).not.toHaveBeenCalled()
   })
 
   it('al crear la sala se ve un resumen: pública o privada, el tipo, el formato y el reloj', () => {
-    const rooms = { list: vi.fn(async () => []), register: vi.fn<RoomsApi['register']>(async () => true), unlist: vi.fn<RoomsApi['unlist']>() }
+    const rooms = fakeRooms()
     const host = render(<DuelScreen {...screenProps({ rooms })} />)
 
     click(host, 'Crear una sala')
@@ -363,7 +442,7 @@ describe('la pantalla del duelo', () => {
   })
 
   it('una sala privada no se anota', () => {
-    const rooms = { list: vi.fn(async () => []), register: vi.fn<RoomsApi['register']>(async () => true), unlist: vi.fn<RoomsApi['unlist']>() }
+    const rooms = fakeRooms()
     const host = render(<DuelScreen {...screenProps({ rooms })} />)
 
     click(host, 'Crear una sala')
@@ -376,7 +455,7 @@ describe('la pantalla del duelo', () => {
 
   it('el lobby muestra las salas abiertas y se entra a una con un toque, sin pegar un enlace', async () => {
     const open = { code: 'K7QF2M9X', host: 'Carla', match: true, siding: true, format: 'tcg', limitMin: 40, createdAt: 1 }
-    const rooms = { list: vi.fn(async () => [open]), register: vi.fn<RoomsApi['register']>(async () => true), unlist: vi.fn<RoomsApi['unlist']>() }
+    const rooms = fakeRooms([open])
     const view = render(<DuelScreen {...screenProps({ rooms })} />)
 
     const section = within(await within(view.container).findByRole('region', { name: 'Salas abiertas' }))
@@ -390,13 +469,13 @@ describe('la pantalla del duelo', () => {
   })
 
   it('sin salas abiertas el lobby lo dice, y sin deck no se puede entrar a una', async () => {
-    const rooms = { list: vi.fn(async () => []), register: vi.fn<RoomsApi['register']>(async () => true), unlist: vi.fn<RoomsApi['unlist']>() }
+    const rooms = fakeRooms()
     const view = render(<DuelScreen {...screenProps({ rooms })} />)
 
     expect(await within(view.container).findByText(/No hay salas abiertas ahora/)).toBeInTheDocument()
 
     const open = { code: 'K7QF2M9X', host: 'Carla', match: false, siding: false, format: 'unlimited', limitMin: 0, createdAt: 1 }
-    const noDeck = render(<DuelScreen {...screenProps({ rooms: { ...rooms, list: async () => [open] }, mainIds: mainIds.slice(0, 2) })} />)
+    const noDeck = render(<DuelScreen {...screenProps({ rooms: fakeRooms([open]), mainIds: mainIds.slice(0, 2) })} />)
 
     expect(await within(noDeck.container).findByRole('button', { name: 'Unirme a la sala de Carla' })).toBeDisabled()
   })

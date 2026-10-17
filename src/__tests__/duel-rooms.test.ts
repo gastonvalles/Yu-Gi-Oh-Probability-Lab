@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { createRoomsApi, httpUrlOf, parsePublicRooms } from '../app/duel-rooms'
+import { createRoomsApi, httpUrlOf, parseLiveDuels, parsePublicRooms } from '../app/duel-rooms'
 
 const room = { code: 'K7QF2M9X', host: 'Ana', match: true, siding: false, format: 'tcg', limitMin: 40, createdAt: 1000 }
 const info = { host: 'Ana', match: true, siding: false, format: 'tcg', limitMin: 40 }
@@ -43,5 +43,55 @@ describe('las salas públicas desde la página', () => {
     await expect(down.list()).resolves.toEqual([])
     await expect(down.register('K7QF2M9X', info, token)).resolves.toBe(false)
     expect(() => down.unlist('K7QF2M9X', token)).not.toThrow()
+  })
+})
+
+describe('los duelos en vivo desde la página', () => {
+  const live = { code: 'M3QX7K2P', host: 'Beto', match: false, siding: false, format: 'tcg', limitMin: 40, watchers: 1, since: 5000 }
+
+  it('de lo que contesta el relay sólo se muestran los duelos en vivo bien formados (cuántos miran, hasta dos)', () => {
+    expect(parseLiveDuels({ rooms: [], live: [live, { ...live, code: 'mal' }, { ...live, watchers: 3 }, { ...live, watchers: '1' }, { ...live, since: 'ayer' }, { ...live, host: '' }, null, 'x'] })).toEqual([live])
+    expect(parseLiveDuels({ rooms: [] })).toEqual([])
+    expect(parseLiveDuels({ live: 'no' })).toEqual([])
+    expect(parseLiveDuels(null)).toEqual([])
+  })
+
+  it('pide las dos listas de una vez; con un relay de antes (sin `live`) no hay duelos en vivo que mostrar', async () => {
+    const news = createRoomsApi('wss://relay.test', (async () => new Response(JSON.stringify({ rooms: [room], live: [live] }))) as unknown as typeof fetch)
+
+    await expect(news.overview()).resolves.toEqual({ rooms: [room], live: [live] })
+    await expect(news.list()).resolves.toEqual([room])
+
+    const old = createRoomsApi('wss://relay.test', (async () => new Response(JSON.stringify({ rooms: [room] }))) as unknown as typeof fetch)
+
+    await expect(old.overview()).resolves.toEqual({ rooms: [room], live: [] })
+
+    const down = createRoomsApi('wss://relay.test', (async () => {
+      throw new Error('sin red')
+    }) as unknown as typeof fetch)
+
+    await expect(down.overview()).resolves.toEqual({ rooms: [], live: [] })
+  })
+
+  it('avisa el duelo en vivo con su token y cuántos lo miran; sólo cuenta si el relay lo registró de verdad (uno de antes contesta 200 a lo que no conoce)', async () => {
+    const calls: Array<[string, string | undefined]> = []
+    const registers = createRoomsApi('wss://relay.test', (async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push([String(input), init?.body as string | undefined])
+
+      return new Response(JSON.stringify({ result: 'ok' }), { status: 200 })
+    }) as unknown as typeof fetch)
+
+    await expect(registers.live('K7QF2M9X', info, 2, token)).resolves.toBe(true)
+    expect(calls[0]).toEqual(['https://relay.test/rooms/live?room=K7QF2M9X', JSON.stringify({ token, info, watchers: 2 })])
+
+    const full = createRoomsApi('wss://relay.test', (async () => new Response(JSON.stringify({ result: 'full' }), { status: 409 })) as unknown as typeof fetch)
+    const old = createRoomsApi('wss://relay.test', (async () => new Response('ygo-lab duel relay', { status: 200 })) as unknown as typeof fetch)
+    const down = createRoomsApi('wss://relay.test', (async () => {
+      throw new Error('sin red')
+    }) as unknown as typeof fetch)
+
+    await expect(full.live('K7QF2M9X', info, 0, token)).resolves.toBe(false)
+    await expect(old.live('K7QF2M9X', info, 0, token)).resolves.toBe(false)
+    await expect(down.live('K7QF2M9X', info, 0, token)).resolves.toBe(false)
   })
 })
