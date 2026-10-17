@@ -35,7 +35,7 @@ import { CloseButton, IconButton } from '../ui/IconButton'
 import { CardMenu, PILE_TITLES, PileViewer } from '../probability/MatDialogs'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, DuelTools, type LaneNotice } from './DuelBar'
-import { GOOD_MESSAGE, isHold, isRelease, isSignal } from './signals'
+import { GOOD_MESSAGE, isEmojiSignal, isHold, isRelease, isSignal } from './signals'
 import { useDuelFeed } from './use-duel-feed'
 import { DuelChat } from './DuelChat'
 import { DuelChatPanel } from './DuelChat'
@@ -1337,17 +1337,26 @@ function useHolds(snapshot: DuelSnapshot): { mine: boolean; theirs: boolean } {
   return { mine: since.mine !== null, theirs: since.theirs !== null }
 }
 
-function useSignals(snapshot: DuelSnapshot): { mine: string | null; theirs: string | null } {
+/** Lo último que tocó el rival (cualquier emoji de señal, también ✋): se muestra grande en el medio de la pantalla un momento. */
+const BURST_MS = 2200
+
+function useSignals(snapshot: DuelSnapshot): { mine: string | null; theirs: string | null; burst: { emoji: string; key: number } | null } {
   const { chat, me } = snapshot
   const last = chat.at(-1)?.id ?? 0
   const seen = useRef(last)
   const [shown, setShown] = useState<{ mine: string | null; theirs: string | null; key: number }>({ mine: null, theirs: null, key: 0 })
+  const [burst, setBurst] = useState<{ emoji: string; key: number } | null>(null)
 
   useEffect(() => {
     // ✋ no sale como globo: es un pedido de atención y tiene su cartel (ver `useHolds`), no una reacción más.
     const fresh = chat.filter((line) => line.id > seen.current && isSignal(line.text) && !isHold(line.text))
+    const rivalEmoji = chat.filter((line) => line.id > seen.current && line.from !== me && isEmojiSignal(line.text)).at(-1)
 
     seen.current = Math.max(seen.current, last)
+
+    if (rivalEmoji) {
+      setBurst({ emoji: rivalEmoji.text, key: rivalEmoji.id })
+    }
 
     if (fresh.length > 0) {
       const line = fresh[fresh.length - 1]!
@@ -1363,7 +1372,32 @@ function useSignals(snapshot: DuelSnapshot): { mine: string | null; theirs: stri
     return () => clearTimeout(id)
   }, [shown])
 
-  return shown
+  useEffect(() => {
+    if (burst === null) return
+
+    const id = setTimeout(() => setBurst(null), BURST_MS)
+    return () => clearTimeout(id)
+  }, [burst])
+
+  return useMemo(() => ({ ...shown, burst }), [shown, burst])
+}
+
+/**
+ * El emoji que toca el rival, grande y en el medio de la pantalla (en el celular: ahí no se ve un globito chico junto a sus vidas). No toca nada y se va solo.
+ */
+function RivalEmoji({ burst, name }: { burst: { emoji: string; key: number } | null; name: string }) {
+  if (burst === null) return null
+
+  return (
+    <div key={burst.key} data-testid="rival-emoji" role="status" aria-label={`${name}: ${burst.emoji}`} className="pointer-events-none fixed inset-0 z-60 grid place-items-center">
+      <span className="grid justify-items-center gap-1 animate-pop motion-reduce:animate-none">
+        <span aria-hidden="true" style={{ fontSize: 'clamp(7rem, 38vw, 12rem)' }} className="leading-none drop-shadow-[0_8px_24px_rgba(0,0,0,0.55)]">
+          {burst.emoji}
+        </span>
+        <span className="rounded-full bg-card-background/90 px-3 py-1 text-body font-semibold text-foreground">{name}</span>
+      </span>
+    </div>
+  )
 }
 
 /** Cuando el rival marca algo de tu lado (una carta, tu mano, el cementerio…), un aviso: sobre una pila o la mano la mira se ve poco y puede pasar desapercibida. */
@@ -1553,7 +1587,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       ) : result !== null && !resultClosed ? (
         <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} onLeave={onLeave} onClose={() => setResultClosed(true)} />
       ) : undefined,
-      header: <DuelBar snapshot={snapshot} status={status} turn={turn} theirHand={rivalHand} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onConcede={duel.concede} onReconnect={duel.reconnect} log={docked ? undefined : <DuelLogTicker snapshot={snapshot} myName={myName} feed={feed} onOpen={() => setChatOpen(true)} />} resultOpen={resultOpen} rivalSignal={signals.theirs} lane={lane} />,
+      header: <DuelBar snapshot={snapshot} status={status} turn={turn} theirHand={rivalHand} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onConcede={duel.concede} onReconnect={duel.reconnect} log={docked ? undefined : <DuelLogTicker snapshot={snapshot} myName={myName} feed={feed} onOpen={() => setChatOpen(true)} />} resultOpen={resultOpen} rivalSignal={!docked && signals.theirs !== null && isEmojiSignal(signals.theirs) ? null : signals.theirs} lane={lane} />,
       }
     },
     [opponent, snapshot, status, myName, turn, duel, onLeave, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, holds, lane, pointed, openMark, feed, chatOpen, gamesOpen],
@@ -1620,6 +1654,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       {rivalInspected && !covered ? <RivalCardDetail key={rivalInspected.drawId} drawId={rivalInspected.drawId} origin={rivalInspected.rect} onClose={() => setRivalInspected(null)} /> : null}
       {/* Lo que tira el rival (moneda, dado, piedra-papel-tijera) se ve girar acá aunque el panel de juegos esté cerrado. */}
       <TossOverlay snapshot={snapshot} myName={myName} />
+      {docked ? null : <RivalEmoji burst={signals.burst} name={rivalName} />}
     </>
   )
 }

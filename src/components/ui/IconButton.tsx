@@ -10,7 +10,7 @@ type IconButtonSize = 'sm' | 'md' | 'lg'
  * resplandor) al pasar el mouse, y verde se queda mientras el botón está seleccionado (`aria-pressed`, `aria-selected` o `data-active`); un poco menos
  * de opacidad al apretar; el foco lleva el aro de siempre. El tono sólo cambia el tamaño y la forma:
  * raised: el de las barras de herramientas (por defecto) · close: la X de los encabezados · ghost: el de las zonas del deck (papelera, ordenar) ·
- * flat: el grande de la práctica · outline: redondo con borde (volver al principio de un replay) · tile: en una caja oscura de 44 px, el de la botonera de la mesa del duelo.
+ * flat: el grande de la práctica · outline: redondo con borde (volver al principio de un replay) · tile: en una caja oscura de 44 px y sin borde, el de la botonera de la mesa del duelo.
  * primary es la excepción: redondo violeta, la acción principal de una barra (reproducir).
  */
 type IconButtonTone = 'raised' | 'close' | 'ghost' | 'flat' | 'outline' | 'tile' | 'primary'
@@ -47,7 +47,7 @@ const toneStyle = variants({
       ghost: cx('rounded-control', BARE),
       flat: cx('rounded-full [&_svg]:stroke-[1.3]', BARE),
       outline: cx('rounded-full border border-tint/30 hover:border-tint/60', BARE),
-      tile: cx('rounded-card border border-border-subtle bg-card-background [&_svg]:stroke-[1.5] hover:border-tint/40', BARE),
+      tile: cx('rounded-card bg-card-background [&_svg]:stroke-[1.5]', BARE),
       primary: 'rounded-full bg-primary text-primary-foreground shadow-brand hover:bg-primary-hover active:translate-y-px disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none',
     },
   },

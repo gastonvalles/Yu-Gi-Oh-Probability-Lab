@@ -85,16 +85,28 @@ describe('la calculadora de LP', () => {
     expect(screen.getByRole('button', { name: 'Deshacer' })).toBeDisabled()
   })
 
-  it('«Moneda» y «Dado» abren el panel con la tirada ya hecha', () => {
+  it('la moneda, el dado y los avisos son un solo botón de arriba que abre un panel (no tres botones abajo que abrían lo mismo)', () => {
     renderScreen()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Moneda' }))
-    expect(within(screen.getByRole('dialog', { name: 'Moneda, dado y avisos' })).getByText(/^(Cara|Cruz)$/)).toBeInTheDocument()
-    fireEvent.keyDown(document, { key: 'Escape' })
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Moneda' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Dado' })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Dado' }))
-    expect(within(screen.getByRole('dialog', { name: 'Moneda, dado y avisos' })).getByText(/^Salió [1-6]$/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Moneda, dado y avisos' }))
+    const panel = () => within(screen.getByRole('dialog', { name: 'Moneda, dado y avisos' }))
+    expect(panel().getByText('Tocá para tirar.')).toBeInTheDocument()
+
+    fireEvent.click(panel().getByRole('button', { name: 'Moneda' }))
+    expect(panel().getByText(/^(Cara|Cruz)$/)).toBeInTheDocument()
+
+    fireEvent.click(panel().getByRole('button', { name: 'Dado' }))
+    expect(panel().getByText(/^Salió [1-6]$/)).toBeInTheDocument()
+  })
+
+  it('Deshacer está junto a los últimos cambios y los avisos de la ronda siguen en el panel', () => {
+    renderScreen()
+
+    const recent = within(screen.getByRole('group', { name: 'Repetir un cambio reciente' }))
+    expect(recent.getByRole('button', { name: 'Deshacer' })).toBeDisabled()
   })
 
   it('el registro: al costado a la vista y, desde el ícono, en una hoja; «Reiniciar vidas» pide confirmar', () => {
@@ -109,6 +121,8 @@ describe('la calculadora de LP', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ver el registro del duelo' }))
     const sheet = within(screen.getByRole('dialog', { name: 'Registro del duelo' }))
     expect(sheet.getByText('Vos')).toBeInTheDocument()
+    // Reiniciar las vidas vive en el registro (borra la ronda): al pie de la hoja en el celular, y al costado en escritorio.
+    expect(sheet.getByRole('button', { name: 'Reiniciar vidas' })).toBeEnabled()
     fireEvent.keyDown(document, { key: 'Escape' })
 
     fireEvent.click(screen.getByRole('button', { name: 'Reiniciar vidas' }))

@@ -67,7 +67,7 @@ import { cardIdOfDrawId } from './practice'
 import { PracticeHand, type HandCardData } from './PracticeHand'
 import { PracticeMatPanel, type PanelStep } from './PracticeMatPanel'
 import { ReplayBar, type ReplayMark, type ReplaySpeed } from './ReplayBar'
-import { CARD_BACK, CARD_BACK_URL } from './practice-styles'
+import { CARD_BACK, CARD_BACK_URL, pileEdge } from './practice-styles'
 
 export interface MatCard {
   name: string
@@ -1211,6 +1211,7 @@ export function PracticeMat({
         style={{ gridArea: area, ...fxVars('red') }}
         onClick={() => setViewer(pile)}
       >
+        {pile === 'extra' ? <span aria-hidden="true" data-pile-edge className="pointer-events-none absolute inset-0" style={pileEdge(count)} /> : null}
         {/* El recorte va en un contenedor aparte: el botón no recorta, así el área que se toca (`before` de `CELL`) puede salirse 4 px de la casilla. */}
         <span className="absolute inset-0 overflow-hidden">
           {back ? <span className={CARD_BACK} /> : top ? <CardArt remoteUrl={artOf(cardOf(top))} name={cardOf(top).name} className="block h-full w-full object-cover" /> : null}
@@ -1380,16 +1381,18 @@ export function PracticeMat({
       className={cx(
         // `select-none`: un arrastre que arranca entre dos cartas no debe pintar texto seleccionado por toda la mesa.
         // `relative isolate`: las cartas grandes del centro se acomodan sobre la mesa (no sobre la pantalla) y sus capas no se mezclan con las de afuera.
-        'relative isolate grid h-full min-h-0 select-none grid-rows-[auto_minmax(0,1fr)] [background:radial-gradient(120%_60%_at_50%_0%,rgb(var(--primary-rgb)/0.16),transparent_70%),rgb(var(--background-rgb))]',
+        // `grid-cols-[minmax(0,1fr)]`: la columna mide lo que mide la pantalla; sin eso crece hasta lo más ancho que tenga adentro (la barra de arriba) y en un celular chico se corta todo el lado derecho.
+        'relative isolate grid h-full min-h-0 select-none grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] [background:radial-gradient(120%_60%_at_50%_0%,rgb(var(--primary-rgb)/0.16),transparent_70%),rgb(var(--background-rgb))]',
         // Los pasos y combos son de la práctica: en un duelo la mesa ocupa todo el ancho.
         (!duel || Boolean(duel.aside)) && 'min-[1101px]:grid-cols-[minmax(0,1fr)_20rem]',
       )}
     >
       {/* Barra (práctica): el turno a la izquierda y, a la derecha, nueva mano, deshacer, guardar, ficha y (en el celu) el panel. En un duelo estos botones van abajo, junto a las fases (ver `dock`). */}
       {duel ? null : (
-        <div className="col-start-1 row-start-1 flex items-center gap-1 px-2 pt-2 min-[1101px]:px-4 min-[1101px]:pt-3" role="toolbar" aria-label={t('practice.mat.name')}>
+        // En un celular angosto los 7 botones (de 44 px) y el turno no entran en una fila: se achican (40 px hasta 419 px de ancho, 36 hasta 379 px) y, en uno muy chico (menos de 340 px), el turno se esconde.
+        <div className="col-start-1 row-start-1 flex items-center gap-1 px-2 pt-2 max-[419px]:gap-0.5 max-[419px]:px-1 max-[419px]:[&>button]:size-10! max-[379px]:[&>button]:size-9! min-[1101px]:px-4 min-[1101px]:pt-3" role="toolbar" aria-label={t('practice.mat.name')}>
           <ShellMenuButton className="-ml-1" />
-          <span className="whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted" aria-label={t('practice.mat.turn', { turn: state.turn })}>
+          <span className="whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted max-[339px]:hidden" aria-label={t('practice.mat.turn', { turn: state.turn })}>
             {t('practice.mat.turn', { turn: state.turn })}
           </span>
           <MatViewToggle className="ml-auto" />
@@ -1448,6 +1451,8 @@ export function PracticeMat({
             onKeyDown={(event) => activate(event, () => setMenu({ kind: 'deck', rect: event.currentTarget.getBoundingClientRect() }))}
             onContextMenu={(event) => event.preventDefault()}
           >
+            {/* El grosor del deck, debajo: se afina al robar. */}
+            <span aria-hidden="true" data-pile-edge className="pointer-events-none absolute inset-0" style={pileEdge(state.deck.length)} />
             {state.deck.length > 0 ? (
               <span key={shuffleKey} className="absolute inset-0">
                 <span className={cx(CARD_BACK, '[transform:translate(-3px,3px)]', shuffleKey > 0 && 'animate-riffle-left motion-reduce:animate-none')} />
@@ -1572,7 +1577,8 @@ export function PracticeMat({
         {/* Abajo: las seis fases con Pasar turno pegado a la End Phase (Deshacer está arriba y los pasos en la lista, así que ni Anterior / Siguiente ni la última jugada hacen falta). En un duelo de escritorio van a la derecha, junto a tus vidas.
             Eligiendo (una zona, Sacrificios, materiales, contadores) ninguna fila se saca: la que no se usa queda invisible y quieta, y lo que falta elegir se apoya encima (`status`). El alto de la barra es siempre el mismo, así el campo y la mano no se corren. */}
         {/* En escritorio, en un duelo, esta barra sube sobre la franja de abajo de la mano (sólo tiene algo en las esquinas): la mano y el campo ganan ese alto, y el medio no ataja toques. */}
-        <div className={cx('sticky bottom-0 z-30 grid gap-1 max-[1100px]:bg-background', duel && 'min-[1101px]:pointer-events-none min-[1101px]:-mt-11')}>
+        {/* Las fases y los botones van siempre arriba de la mano: una carta recién robada o seleccionada (z 50) no los tapa; sólo la que se arrastra (z 100) pasa por encima. */}
+        <div className={cx('sticky bottom-0 z-55 grid gap-1 max-[1100px]:bg-background', duel && 'min-[1101px]:pointer-events-none min-[1101px]:-mt-11')}>
           {/* Duelo: una sola fila abajo con tus vidas y los botones que se tocan seguido (deshacer, la ficha, los dados y las reacciones). Celular: las vidas a la izquierda y los botones a la derecha (el pulgar de quien juega
               con la derecha). Escritorio: los botones a la izquierda y tus vidas en la esquina opuesta a las del rival. */}
           {duel && !isDesktop ? (
