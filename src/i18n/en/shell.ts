@@ -18,7 +18,7 @@ export const shell: Translated<typeof es> = {
   'shell.pill.builds': { one: '{count} build', other: '{count} builds' },
   'shell.pill.exportFormats': 'Image · PDF · YDK',
   'shell.blurb.practice': 'Your opening hand, steps and combos',
-  'shell.blurb.create': '1 vs 1 with a friend, by link, no accounts',
+  'shell.blurb.play': 'Join a room, challenge a friend or watch a duel',
   'shell.blurb.watch': 'Paste the link to watch',
   'shell.blurb.join': 'Paste the link you were sent',
   'shell.blurb.life': 'Life points, round clock, coin and dice',
@@ -41,7 +41,7 @@ export const shell: Translated<typeof es> = {
   'shell.nav.collapse': 'Collapse menu',
   'shell.nav.expand': 'Expand menu',
   'shell.nav.group.deck': 'Your deck',
-  'shell.nav.group.duel': 'Duel',
+  'shell.nav.group.duel': 'Play',
   'shell.nav.group.tools': 'Tools',
   'shell.nav.group.discover': 'Discover',
 
@@ -89,7 +89,7 @@ export const shell: Translated<typeof es> = {
   'shell.step.banlists.title': 'Historical banlists',
   'shell.step.banlists.detail': 'The TCG and OCG Forbidden & Limited lists, one by one.',
 
-  'shell.practice.title': 'Play solo',
+  'shell.practice.title': 'Train solo',
 
   'shell.mascot.title': 'Mascots',
   'shell.mascot.available': 'Available mascots',

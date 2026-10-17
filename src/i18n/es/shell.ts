@@ -16,7 +16,7 @@ export const shell = {
   'shell.pill.builds': { one: '{count} build', other: '{count} builds' },
   'shell.pill.exportFormats': 'Imagen · PDF · YDK',
   'shell.blurb.practice': 'Tu mano de apertura, pasos y combos',
-  'shell.blurb.create': '1 vs 1 con un amigo, por enlace, sin cuentas',
+  'shell.blurb.play': 'Entrá a una sala, retá a un amigo o mirá un duelo',
   'shell.blurb.watch': 'Pegá el enlace para mirar',
   'shell.blurb.join': 'Pegá el enlace que te mandaron',
   'shell.blurb.life': 'Vidas, reloj de ronda, moneda y dado',
@@ -39,7 +39,7 @@ export const shell = {
   'shell.nav.collapse': 'Contraer menú',
   'shell.nav.expand': 'Expandir menú',
   'shell.nav.group.deck': 'Tu deck',
-  'shell.nav.group.duel': 'Duelo',
+  'shell.nav.group.duel': 'Jugar',
   'shell.nav.group.tools': 'Herramientas',
   'shell.nav.group.discover': 'Descubrir',
 
@@ -87,7 +87,7 @@ export const shell = {
   'shell.step.banlists.title': 'Banlists históricas',
   'shell.step.banlists.detail': 'Las listas de prohibidas y limitadas del TCG y el OCG, una por una.',
 
-  'shell.practice.title': 'Jugar solo',
+  'shell.practice.title': 'Entrenar solo',
 
   'shell.mascot.title': 'Mascotas',
   'shell.mascot.available': 'Mascotas disponibles',

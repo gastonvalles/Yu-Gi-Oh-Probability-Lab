@@ -240,8 +240,8 @@ export function DeckModeScreen() {
     (key: string) => {
       if (key === 'life') setLifeOpen(true)
       else if (key === 'mascots') setMascotsOpen(true)
-      // La hoja de Duelo del celular: el paso del lobby que pide cada entrada (el duelo lo lee de la dirección) o volver al duelo en pausa.
-      else if (key === 'duel-create' || key === 'duel-watch' || key === 'duel-join') window.location.hash = `#duel?view=${key.slice('duel-'.length)}`
+      // La hoja de Jugar del celular: el paso del lobby que pide cada entrada (el duelo lo lee de la dirección) o volver al duelo en pausa.
+      else if (key === 'duel-watch' || key === 'duel-join') window.location.hash = `#duel?view=${key.slice('duel-'.length)}`
       else if (key === 'duel-resume') window.location.hash = pausedDuel ? `#duel?room=${pausedDuel.room}` : '#duel'
       else if (isDeckWorkflowStepKey(key)) handleStepChange(key)
     },
