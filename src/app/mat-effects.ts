@@ -9,12 +9,20 @@ export type SpotlightKind = 'activate' | 'target' | 'reveal' | 'declare' | 'atta
 /** A dónde van las cartas de un paso al reproducir un combo (las invocaciones, cómo llegan): da el color del cartel del centro. */
 export type ShowcaseKind = 'hand' | 'gy' | 'banish' | 'extra' | 'deck' | 'attach' | LandingTone
 
+/** A dónde van las cartas que se mandan en silencio: al cementerio o al destierro. */
+export type QuietKind = 'gy' | 'banish'
+
 /** Lo que se ve además del movimiento de las cartas cuando se hace una jugada (los vuelos los dibuja `use-card-flights`). */
 export interface MatEffects {
   /** La carta que destella. Salvo la que se marca como objetivo, se muestra además grande en el centro de la pantalla. */
   spotlight?: { id: string; kind: SpotlightKind }
   /** Sólo al reproducir un combo: las cartas que cambian de lugar en este paso, grandes en el centro con lo que pasó; `flip` si salen del deck o del Extra (se dan vuelta en 3D desde el dorso). */
   showcase?: { ids: string[]; kind: ShowcaseKind; flip?: true }
+  /**
+   * Cartas que van al cementerio o al destierro: es la única jugada que **no** se muestra grande (ni en un combo ni en el duelo). La mesa las anima viajando a su pila y el
+   * registro las anota; el rival, que no las ve en el centro, las lee en su registro.
+   */
+  quiet?: { ids: string[]; kind: QuietKind }
   /** Una carta que cae en una zona de monstruo: `flies` es que llega volando desde otro lado (el destello espera a que aterrice). */
   landing?: { spot: MatSpot; index: number; tone: LandingTone; flies: boolean }
   /** Cambio de fase: el cartel. `turn` sólo cuando empieza otro turno. */
@@ -27,8 +35,8 @@ export interface MatEffects {
 
 const isMonsterZone = (spot: MatSpot) => spot === 'mz' || spot === 'emz'
 
-/** A qué pila va una carta movida, para el color del cartel del centro. */
-const SHOWCASE_OF_PILE = { hand: 'hand', gy: 'gy', banished: 'banish', extra: 'extra', deck: 'deck', 'deck-bottom': 'deck' } as const
+/** A qué pila va una carta movida (menos el cementerio y el destierro, que no se muestran: ver `quiet`), para el color del cartel del centro. */
+const SHOWCASE_OF_PILE = { hand: 'hand', extra: 'extra', deck: 'deck', 'deck-bottom': 'deck' } as const
 
 /**
  * Qué efectos acompañan a una jugada. Es puro (lo usa la mesa con cada paso que avanza, jugado o reproducido) y mira el estado de
@@ -48,6 +56,7 @@ function effectsOf(before: MatState, after: MatState, action: MatAction): MatEff
   const exists = (id: string) => locateCard(before, id) !== null
   const changed = after !== before
   /** Las cartas del paso para mostrar; las que salen del deck o del Extra estaban boca abajo, así que se muestran dándose vuelta. */
+  const quiet = (ids: string[], kind: QuietKind): Pick<MatEffects, 'quiet'> => ({ quiet: { ids, kind } })
   const show = (ids: string[], kind: ShowcaseKind): Pick<MatEffects, 'showcase'> => {
     const hidden = ids.some((id) => {
       const where = locateCard(before, id)
@@ -79,12 +88,15 @@ function effectsOf(before: MatState, after: MatState, action: MatAction): MatEff
     case 'mill': {
       const milled = after.gy.slice(before.gy.length)
 
-      return milled.length > 0 ? show(milled, 'gy') : {}
+      return milled.length > 0 ? quiet(milled, 'gy') : {}
     }
 
     case 'move':
       // Una ficha que deja el campo desaparece: no hay carta que mostrar.
-      return changed && !isToken(action.id) ? show([action.id], SHOWCASE_OF_PILE[action.to]) : {}
+      if (!changed || isToken(action.id)) return {}
+
+      // Al cementerio o al destierro no se muestra grande: va al registro.
+      return action.to === 'gy' || action.to === 'banished' ? quiet([action.id], action.to === 'gy' ? 'gy' : 'banish') : show([action.id], SHOWCASE_OF_PILE[action.to])
 
     case 'attach':
       return changed ? show([action.id], 'attach') : {}

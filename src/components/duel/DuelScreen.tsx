@@ -1090,7 +1090,7 @@ function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEff
     }
 
     const action = acts[acts.length - 1]!
-    const { spotlight, showcase, shuffle } = matEffects(replayMat(theirs.initial, acts, acts.length - 1), action)
+    const { spotlight, showcase, quiet, shuffle } = matEffects(replayMat(theirs.initial, acts, acts.length - 1), action)
 
     if (shuffle) {
       setShuffles((count) => count + 1)
@@ -1117,6 +1117,9 @@ function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEff
       })
     } else if (showcase) {
       setShown({ effect: { key, kind: showcase.kind, cards: showcase.ids.map((id) => ({ id, art: artOf(id) })), ...(showcase.flip ? { flip: true } : {}), caption: t(`duel.announce.show.${showcase.kind}`, { name: rival, count: showcase.ids.length }) } })
+    } else if (quiet) {
+      // Al cementerio o al destierro no se muestra grande: el efecto no se dibuja (`quiet`), pero su línea entra al registro como las demás.
+      setShown({ effect: { key, kind: quiet.kind, quiet: true, cards: quiet.ids.map((id) => ({ id, art: artOf(id) })), caption: t(`duel.announce.show.${quiet.kind}`, { name: rival, count: quiet.ids.length }) } })
     }
   }, [acts, theirs, peerName])
 
