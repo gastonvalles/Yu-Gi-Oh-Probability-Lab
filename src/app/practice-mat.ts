@@ -914,6 +914,9 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     if (pile === 'deck') add(t('practice.menu.toHand'), { type: 'move', id, to: 'hand' })
     // Las Mágicas de Campo se activan directo desde el Deck (hay efectos que lo piden).
     if (pile === 'deck' && kind.fieldSpell) placeIn(t('practice.menu.activate'), ['field'], 'atk')
+    // Colocar boca abajo directo desde el Deck (hay efectos que piden "Colocar 1 carta de tu Deck"): Mágicas y Trampas a su zona (la de Campo, a la suya) y monstruos a una Zona de Monstruo.
+    if (pile === 'deck' && (kind.spell || kind.trap)) placeIn(t('practice.menu.set'), kind.fieldSpell ? ['field'] : ['st'], 'set')
+    else if (pile === 'deck' && kind.monster) placeIn(t('practice.menu.set'), zones, 'set')
 
     const how = pile === 'extra' ? extraSummonOf(kind) : null
 

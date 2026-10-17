@@ -424,6 +424,17 @@ describe('la mesa de práctica', () => {
     expect(listCardActions(inDeck, 'f1', withField, nameOf).slice(0, 2).map((item) => [item.label, item.action.type === 'place' && item.action.zone])).toEqual([['A la mano', false], ['Activar', 'field']])
     expect(listCardActions(inDeck, 'b1', withField, nameOf).map((item) => item.label)).not.toContain('Activar')
 
+    // Colocar boca abajo directo desde el Deck: la Mágica o Trampa a su zona (la de Campo, a la de campo) y el monstruo a una Zona de Monstruo; la carta sale sin revelarse.
+    const setOf = (state: MatState, id: string) => listCardActions(state, id, withField, nameOf).find((item) => item.label === 'Colocar')
+    expect(setOf(inDeck, 'f1')?.action).toMatchObject({ type: 'place', id: 'f1', zone: 'field', pos: 'set' })
+    expect(setOf(inDeck, 'b1')?.action).toMatchObject({ type: 'place', id: 'b1', zone: 'st', pos: 'set' })
+    const monsterInDeck = matReducer(start(), { type: 'move', id: 'a1', to: 'deck' })
+    expect(setOf(monsterInDeck, 'a1')?.action).toMatchObject({ type: 'place', id: 'a1', zone: 'mz', pos: 'set' })
+    expect(describeMatAction(monsterInDeck, setOf(monsterInDeck, 'a1')!.action, nameOf)).toBe('Colocás A1 boca abajo')
+    expect(describeMatAction(inDeck, setOf(inDeck, 'b1')!.action, nameOf)).toBe('Colocás B1')
+    // Desde el Extra no: los monstruos del Extra no se colocan.
+    expect(listCardActions(start(), 'x1', withField, nameOf).map((item) => item.label)).not.toContain('Colocar')
+
     // Sin zonas de monstruo libres no se ofrece invocar.
     const fillers: MatAction[] = [
       ...[0, 1, 2, 3, 4].map((index): MatAction => ({ type: 'token', zone: 'mz', index })),
