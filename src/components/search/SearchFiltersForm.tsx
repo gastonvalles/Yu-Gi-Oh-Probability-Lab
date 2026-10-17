@@ -12,7 +12,7 @@ const FILTER_FIELD = `${field} min-h-9 w-full min-w-0 px-2.5 py-1.5 text-body gr
 const LEGEND = `mb-2 p-0 ${overline}`
 const DENSE_CHIPS =
   'grid grid-cols-[repeat(auto-fill,minmax(2.25rem,1fr))] gap-1.5 group-data-[layout=mobile]/filters:grid-cols-[repeat(auto-fill,minmax(2.6rem,1fr))]'
-const CHIP_BASE = `${choiceChip} min-h-8 text-micro group-data-[layout=mobile]/filters:min-h-10 group-data-[layout=mobile]/filters:text-body`
+const CHIP_BASE = `${choiceChip} min-h-8 text-micro group-data-[layout=mobile]/filters:min-h-11 group-data-[layout=mobile]/filters:text-body`
 const CHIP = `${CHIP_BASE} px-3`
 const CHIP_DENSE = `${CHIP_BASE} px-0`
 
@@ -57,7 +57,7 @@ export function SearchFiltersForm({
         </span>
         <button
           type="button"
-          className="min-h-9 rounded-full border border-border-subtle bg-transparent px-4 text-body font-semibold text-foreground transition-[border-color,background-color] duration-150 group-data-[layout=mobile]/filters:min-h-10 enabled:hover:bg-tint/6 disabled:cursor-default disabled:text-soft disabled:opacity-60 focus-visible:outline-none focus-visible:shadow-focus"
+          className="min-h-9 pointer-coarse:min-h-11 rounded-full border border-border-subtle bg-transparent px-4 text-body font-semibold text-foreground transition-[border-color,background-color] duration-150 group-data-[layout=mobile]/filters:min-h-10 enabled:hover:bg-tint/6 disabled:cursor-default disabled:text-soft disabled:opacity-60 focus-visible:outline-none focus-visible:shadow-focus"
           disabled={activeFilterCount === 0} onClick={onClearFilters}>
           {t('search.filters.clear')}
         </button>

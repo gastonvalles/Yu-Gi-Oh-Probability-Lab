@@ -78,7 +78,7 @@ export function Segmented<T extends string>({ value, onChange, options, label, v
               'grid min-w-0 content-center justify-items-center gap-0.5 font-semibold transition-[background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:shadow-focus',
               look.base,
               active ? (option.tone && variant === 'track' ? TONE_ON[option.tone] : look.on) : look.off,
-              size === 'md' ? 'min-h-10 text-body' : 'min-h-9 text-micro',
+              size === 'md' ? 'min-h-10 text-body pointer-coarse:min-h-11' : 'min-h-9 text-micro pointer-coarse:min-h-11',
               variant === 'cards' && size === 'md' && 'py-2',
             )}
             onClick={() => onChange(option.value)}

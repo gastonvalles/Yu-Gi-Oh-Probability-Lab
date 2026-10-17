@@ -30,7 +30,7 @@ export function LabSection({ title, icon, summary, actions, defaultOpenOnMobile 
         {isMobile ? (
           <button
             type="button"
-            className="flex min-h-10 flex-[1_1_100%] items-center justify-between gap-3 rounded-control text-left focus-visible:outline-none focus-visible:shadow-focus"
+            className="flex min-h-10 pointer-coarse:min-h-11 flex-[1_1_100%] items-center justify-between gap-3 rounded-control text-left focus-visible:outline-none focus-visible:shadow-focus"
             aria-expanded={isOpen}
             aria-controls={contentId}
             onClick={() => setIsOpenOnMobile((current) => !current)}

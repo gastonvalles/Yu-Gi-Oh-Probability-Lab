@@ -238,7 +238,7 @@ function ReplayCard({ entry, onOpen, onOpenDeck }: { entry: ReplayEntry; onOpen:
       </button>
 
       <div className="grid content-start gap-3 p-3">
-        <button type="button" className="grid min-w-0 gap-0.5 rounded-tag text-left focus-visible:outline-none focus-visible:shadow-focus" onClick={onOpen}>
+        <button type="button" className="grid min-w-0 content-center gap-0.5 rounded-tag text-left pointer-coarse:min-h-11 focus-visible:outline-none focus-visible:shadow-focus" onClick={onOpen}>
           <strong className="text-body font-semibold text-foreground">{heading || label}</strong>
           {heading ? <span className="truncate text-micro text-muted">{label}</span> : null}
         </button>
