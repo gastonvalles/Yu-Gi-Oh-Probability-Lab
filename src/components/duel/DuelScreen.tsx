@@ -36,14 +36,13 @@ import { Segmented } from '../ui/Segmented'
 import { Switch } from '../ui/Switch'
 import { CardMenu, PILE_TITLES, PileViewer } from '../probability/MatDialogs'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
-import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, DuelTools } from './DuelBar'
+import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, DuelTools, type LaneNotice } from './DuelBar'
 import { GOOD_MESSAGE, isHold, isRelease, isSignal } from './signals'
 import { useDuelFeed } from './use-duel-feed'
 import { DuelChat } from './DuelChat'
 import { DuelChatPanel } from './DuelChat'
 import { DuelPause } from './DuelPause'
 import { RivalCardDetail } from './RivalCardDetail'
-import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { ResultCard } from './DuelResult'
 import { DuelDeckPicker, loadDuelDeck, readStoredDeck, type DuelDeck } from './DuelDeckPicker'
 import { gameText, outcomeText, rpsName } from './game-text'
@@ -1342,26 +1341,30 @@ function useRivalEffect(snapshot: DuelSnapshot): { effect: DuelMatLink['rivalEff
   return { effect: shown?.effect, flash, shuffles }
 }
 
-/** Los avisos del permiso para volver atrás: le pedí al rival (queda esperando), no lo permitió o no contestó. Quien lo recibe ve el cartel, no un aviso. */
-function useUndoNotices(snapshot: DuelSnapshot, rival: string) {
-  const { asking, result } = snapshot.undo
-  const wasAsking = useRef(asking)
+/** Cuánto se queda, sobre la línea del registro, cómo terminó tu pedido de volver atrás (no lo permitió, o no contestó). */
+const UNDO_RESULT_MS = 4000
+
+/** Cómo terminó tu último pedido de volver atrás, un rato (lo que ya había al abrir la pantalla no cuenta). */
+function useUndoResult(snapshot: DuelSnapshot): { kind: 'denied' | 'expired'; n: number } | null {
+  const { result } = snapshot.undo
   const seen = useRef(result?.n ?? 0)
-
-  useEffect(() => {
-    if (asking && !wasAsking.current) {
-      showToastMessage(t('duel.undo.asking', { name: rival }), 'info')
-    }
-
-    wasAsking.current = asking
-  }, [asking, rival])
+  const [shown, setShown] = useState<{ kind: 'denied' | 'expired'; n: number } | null>(null)
 
   useEffect(() => {
     if (result && result.n > seen.current) {
       seen.current = result.n
-      showToastMessage(t(result.kind === 'denied' ? 'duel.undo.denied' : 'duel.undo.expired', { name: rival }), result.kind === 'denied' ? 'warning' : 'info')
+      setShown({ kind: result.kind, n: result.n })
     }
-  }, [result, rival])
+  }, [result])
+
+  useEffect(() => {
+    if (!shown) return
+
+    const id = setTimeout(() => setShown(null), UNDO_RESULT_MS)
+    return () => clearTimeout(id)
+  }, [shown])
+
+  return shown
 }
 
 /** Cuánto se queda el globo de "pensando" o "todo bien" junto a las vidas. */
@@ -1572,7 +1575,21 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   useMarkNotice(snapshot)
   const notice = useRivalNotice(snapshot, turn)
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
-  useUndoNotices(snapshot, rivalName)
+  const undoResult = useUndoResult(snapshot)
+  // El aviso de atención que se apoya sobre la línea del registro, uno a la vez y el más urgente primero: el permiso que el rival pide (sin diálogo: no tapa la mesa), el tuyo, cómo terminó, y los «Esperá».
+  const lane = useMemo<LaneNotice | null>(
+    () =>
+      snapshot.undo.asked
+        ? { kind: 'undoAsked', onAllow: () => duel.answerUndo(true), onDeny: () => duel.answerUndo(false) }
+        : snapshot.undo.asking
+          ? { kind: 'undoAsking' }
+          : undoResult
+            ? { kind: 'undoResult', result: undoResult.kind }
+            : holds.theirs || holds.mine
+              ? { kind: 'hold', mine: holds.mine, theirs: holds.theirs, onRelease: () => duel.sendChat(GOOD_MESSAGE) }
+              : null,
+    [snapshot.undo.asked, snapshot.undo.asking, undoResult, holds.mine, holds.theirs, duel],
+  )
   // A quiénes se puede atacar: los monstruos del rival en el campo, con el id que él les dio.
   const attackTargets = useMemo(
     () => (['mz', 'emz'] as const).flatMap((zone) => theirs!.state[zone].flatMap((placed, index) => (placed ? [{ id: placed.id, zone, index, faceDown: placed.pos === 'set' }] : []))),
@@ -1623,10 +1640,10 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       ) : result !== null && !resultClosed ? (
         <ResultCard result={result} snapshot={snapshot} rival={rivalName} onRematch={onRematch} onLeave={onLeave} onClose={() => setResultClosed(true)} />
       ) : undefined,
-      header: <DuelBar snapshot={snapshot} status={status} turn={turn} theirHand={rivalHand} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onConcede={duel.concede} onReconnect={duel.reconnect} log={docked ? undefined : <DuelLogTicker snapshot={snapshot} myName={myName} feed={feed} onOpen={() => setChatOpen(true)} />} resultOpen={resultOpen} rivalSignal={signals.theirs} hold={{ ...holds, onRelease: () => duel.sendChat(GOOD_MESSAGE) }} />,
+      header: <DuelBar snapshot={snapshot} status={status} turn={turn} theirHand={rivalHand} onToggleClock={duel.toggleClock} onRematch={onRematch} onLeave={onLeave} onConcede={duel.concede} onReconnect={duel.reconnect} log={docked ? undefined : <DuelLogTicker snapshot={snapshot} myName={myName} feed={feed} onOpen={() => setChatOpen(true)} />} resultOpen={resultOpen} rivalSignal={signals.theirs} lane={lane} />,
       }
     },
-    [opponent, snapshot, status, myName, turn, duel, onLeave, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, holds, openMark, feed, chatOpen, gamesOpen],
+    [opponent, snapshot, status, myName, turn, duel, onLeave, onRematch, attackTargets, theirs, announcement, rivalEffect, rivalShuffle, notice, rivalName, mine, paused, docked, result, resultOpen, resultClosed, signals, holds, lane, openMark, feed, chatOpen, gamesOpen],
   )
 
   const markTarget = markMenu?.target
@@ -1684,16 +1701,6 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
         onPick={(id, rect) => openMark({ card: id }, rect, rivalCardName)}
         onClose={() => setRivalViewer(null)}
         anonymous
-      />
-      {/* El rival quiere volver atrás su jugada: hay que contestar. Cerrarlo (Escape, tocar afuera) es no permitir. */}
-      <ConfirmDialog
-        isOpen={snapshot.undo.asked && !covered}
-        title={t('duel.undo.askTitle', { name: rivalName })}
-        description={t('duel.undo.askText', { name: rivalName })}
-        cancelLabel={t('duel.undo.deny')}
-        confirmLabel={t('duel.undo.allow')}
-        onCancel={() => duel.answerUndo(false)}
-        onConfirm={() => duel.answerUndo(true)}
       />
       {rivalInspected && !covered ? <RivalCardDetail key={rivalInspected.drawId} drawId={rivalInspected.drawId} origin={rivalInspected.rect} onClose={() => setRivalInspected(null)} /> : null}
       {/* Lo que tira el rival (moneda, dado, piedra-papel-tijera) se ve girar acá aunque el panel de juegos esté cerrado. */}

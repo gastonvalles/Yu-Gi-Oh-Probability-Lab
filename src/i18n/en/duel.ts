@@ -18,6 +18,7 @@ export const duel: Translated<typeof es> = {
   'duel.mark.rivalCard': "Opponent's card",
   'duel.undo.askTitle': 'Let {name} take back their play?',
   'duel.undo.askText': '{name} wants to undo their last play. If you allow it, their table goes back to how it was.',
+  'duel.undo.askShort': '{name} wants to take back their play',
   'duel.undo.allow': 'Allow',
   'duel.undo.deny': "Don't allow",
   'duel.undo.asking': 'You asked {name} to take back your play…',

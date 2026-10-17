@@ -983,7 +983,8 @@ describe('la pantalla del duelo', () => {
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Target'])
   })
 
-  it('Deshacer le pide permiso al rival: él ve un cartel para permitirlo o no, y quien pidió espera con Deshacer apagado y la jugada sigue hasta que se lo permitan', () => {
+  it('Deshacer le pide permiso al rival: él ve un aviso sobre la línea del registro (no un diálogo que tapa la mesa) para permitirlo o no, y quien pidió espera con Deshacer apagado y la jugada sigue hasta que se lo permitan', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const { host, guest } = startDuel({ cardsById: monsters })
     openTable(host, guest)
     summonFirst(host)
@@ -996,14 +997,24 @@ describe('la pantalla del duelo', () => {
     // Ana espera (sin poder pedirlo de nuevo) y su jugada sigue; Beto ve el cartel.
     expect(within(host.container).getByRole('button', { name: 'Deshacer' })).toBeDisabled()
     expect(monsterCards()).toHaveLength(1)
-    const ask = within(screen.getByRole('alertdialog'))
-    expect(ask.getByText('¿Permitís que Ana vuelva atrás su jugada?')).toBeInTheDocument()
-    expect(ask.getByText('Ana quiere deshacer su última jugada. Si la permitís, su mesa vuelve a como estaba antes.')).toBeInTheDocument()
+    const lane = (view: RenderResult, kind: string) => view.container.querySelector<HTMLElement>(`[data-lane="${kind}"]`)
+    // Sin diálogo: nada tapa la mesa. El aviso se apoya sobre la línea del registro (la misma fila: no suma alto).
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(lane(guest, 'undoAsked')).toHaveTextContent('Ana quiere volver atrás su jugada')
+    expect(lane(guest, 'undoAsked')!.parentElement).toHaveClass('relative', 'basis-full')
+    // Quien pidió ve que espera, en el mismo lugar.
+    expect(lane(host, 'undoAsking')).toHaveTextContent('Le pedís a Beto volver atrás tu jugada…')
+    const ask = within(lane(guest, 'undoAsked')!)
 
-    // No lo permite: el cartel se va, Ana puede volver a pedir y su jugada sigue en la mesa.
+    // No lo permite: el aviso se va, Ana ve que no se lo permitió, puede volver a pedir y su jugada sigue en la mesa.
     fireEvent.click(ask.getByRole('button', { name: 'No permitir' }))
     flush()
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(lane(guest, 'undoAsked')).toBeNull()
+    expect(lane(host, 'undoResult')).toHaveTextContent('Beto no permitió volver atrás tu jugada.')
+    act(() => {
+      vi.advanceTimersByTime(4500)
+    })
+    expect(lane(host, 'undoResult')).toBeNull()
     expect(within(host.container).getByRole('button', { name: 'Deshacer' })).toBeEnabled()
     expect(monsterCards()).toHaveLength(1)
 
