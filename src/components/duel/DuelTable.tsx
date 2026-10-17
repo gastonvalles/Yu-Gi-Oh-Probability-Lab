@@ -5,7 +5,7 @@ import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
 import { FX_CARD, FxFrame, SPOTLIGHT_TONE, TargetMark, fxVars } from '../probability/MatFx'
-import { CardBack, PILE_TITLES } from '../probability/MatDialogs'
+import { CardBack, PILE_SHORT, PILE_TITLES } from '../probability/MatDialogs'
 import { CELL, CELL_SQUARE, PENDULUM_GEM, PileBadge } from '../probability/PracticeMat'
 
 /**
@@ -272,7 +272,7 @@ function Pile({ area, pile, side, owner }: { area: string; pile: Exclude<MatPile
           </span>
         </>
       ) : cards.length > 0 ? (art ? <CardArt remoteUrl={art} name={PILE_TITLES[pile]} className={cx('block h-full w-full object-cover', owner === 'theirs' && 'rotate-180')} /> : <CardBack className={cx('h-full', owner === 'theirs' && 'rotate-180')} />) : null}
-      <PileBadge label={PILE_TITLES[pile]} count={cards.length} />
+      <PileBadge label={PILE_SHORT[pile]} count={cards.length} />
       {flash && flash.kind !== 'target' ? <FxFrame key={flash.key} tone={SPOTLIGHT_TONE[flash.kind]} shine /> : null}
       {marked ? <TargetMark /> : null}
       {side.onMark && owner === 'theirs' ? <MarkButton label={t('duel.mark.label', { place: PILE_TITLES[pile] })} onMark={(rect) => side.onMark!({ pile }, rect, PILE_TITLES[pile])} /> : null}

@@ -6,6 +6,13 @@ export const practice = {
   'practice.pile.hand': 'Mano',
   'practice.pile.gy': 'GY',
   'practice.pile.banished': 'Banish',
+  'practice.pile.short.deck': 'Deck',
+  'practice.pile.short.extra': 'Extra',
+  'practice.pile.short.hand': 'Mano',
+  'practice.pile.short.gy': 'Cem.',
+  'practice.pile.short.banished': 'Dest.',
+  'practice.view.toTop': 'Cambiar a la vista superior',
+  'practice.view.to3d': 'Cambiar a la vista 3D',
 
   'practice.zone.mz': 'Zona de monstruo',
   'practice.zone.emz': 'Zona extra de monstruo',

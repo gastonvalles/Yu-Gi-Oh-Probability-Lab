@@ -17,6 +17,15 @@ import { FX_CARD, TargetMark, fxVars } from './MatFx'
 import { CARD_BACK } from './practice-styles'
 
 /** Nombres de las casillas, los mismos que usa el builder (Main / Extra) y los del juego en inglés para las pilas. El texto se arma al leerlo, en el idioma de ese momento. */
+/** El rótulo corto de cada pila sobre su casilla (la mesa es chica): Deck · Extra · Cem. · Dest. */
+export const PILE_SHORT: Record<MatPile, string> = {
+  get deck() { return t('practice.pile.short.deck') },
+  get extra() { return t('practice.pile.short.extra') },
+  get hand() { return t('practice.pile.short.hand') },
+  get gy() { return t('practice.pile.short.gy') },
+  get banished() { return t('practice.pile.short.banished') },
+}
+
 export const PILE_TITLES: Record<MatPile, string> = {
   get deck() { return t('practice.pile.deck') },
   get extra() { return t('practice.pile.extra') },

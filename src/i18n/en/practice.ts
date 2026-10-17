@@ -7,6 +7,13 @@ export const practice: Translated<typeof es> = {
   'practice.pile.hand': 'Hand',
   'practice.pile.gy': 'GY',
   'practice.pile.banished': 'Banish',
+  'practice.pile.short.deck': 'Deck',
+  'practice.pile.short.extra': 'Extra',
+  'practice.pile.short.hand': 'Hand',
+  'practice.pile.short.gy': 'GY',
+  'practice.pile.short.banished': 'Banish',
+  'practice.view.toTop': 'Switch to the top view',
+  'practice.view.to3d': 'Switch to the 3D view',
 
   'practice.zone.mz': 'Monster Zone',
   'practice.zone.emz': 'Extra Monster Zone',
