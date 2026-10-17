@@ -30,6 +30,8 @@ export interface DuelSideView {
   flash?: { id: string; key: number; kind: SpotlightKind }
   /** Lo que el otro jugador marcó como objetivo de este lado: cartas (por su id) y pilas enteras. */
   marks?: Marks
+  /** Lo que se está señalando de este lado (el rival, o yo): una carta (por su id) o una pila; late un rato. */
+  point?: { card?: string; pile?: MatPile } | null
   /** Marcar algo de este lado (el del rival, desde quien juega del otro): quien llama abre su menú pegado a `rect`, con `place` por título. Sin esto, la mesa es de sólo lectura. */
   onMark?: (target: MarkTarget, rect: DOMRect, place: string) => void
 }
@@ -121,9 +123,9 @@ function MarkButton({ label, onMark }: { label: string; onMark: (rect: DOMRect) 
  * La mano del rival: sólo se ve cuántas cartas tiene, de dorso y encimadas. `shrink-0` es lo que la deja verse: va dentro de una columna que scrollea y,
  * como los dorsos miden un porcentaje del alto, sin él la columna la aplastaba a 0 px y sólo quedaban sus sombras, como puntitos.
  */
-export function TheirHand({ count, marked = false, onMark }: { count: number; /** El otro jugador la marcó como objetivo. */ marked?: boolean; /** Tocarla para marcarla (sólo quien juega contra ese rival). */ onMark?: (rect: DOMRect) => void }) {
+export function TheirHand({ count, marked = false, pointed = false, onMark }: { count: number; /** El otro jugador la marcó como objetivo. */ marked?: boolean; /** Se la está señalando ahora (late un rato). */ pointed?: boolean; /** Tocarla para marcarla (sólo quien juega contra ese rival). */ onMark?: (rect: DOMRect) => void }) {
   return (
-    <div data-rival-drop="hand" data-targeted={marked ? 'true' : 'false'} className="relative shrink-0">
+    <div data-rival-drop="hand" data-targeted={marked ? 'true' : 'false'} data-pointed={pointed ? 'true' : undefined} className="relative shrink-0">
       <div role="img" aria-label={t('duel.hand.theirs', { count })} className="flex h-9 justify-center min-[1101px]:h-11">
         {Array.from({ length: Math.min(count, 12) }, (_, index) => (
           <span key={index} className={cx('-ml-3 block aspect-[421/614] h-full overflow-hidden first:ml-0', CARD_SHADOW)}>
@@ -201,7 +203,7 @@ function Zone({ area, spot, index, placed, side, owner }: { area: string; spot: 
   const gem = spot === 'st' ? PENDULUM_GEM[index] : undefined
 
   return (
-    <div role="group" aria-label={label} className={cx(spot === 'field' ? CELL : spot === 'mz' ? (owner === 'theirs' ? CELL_THEIRS : CELL_MINE) : CELL_SQUARE, spot === 'mz' && owner === 'theirs' && !placed && index % 2 === 0 && 'cell-cross')} style={{ gridArea: area }}>
+    <div role="group" aria-label={label} data-pointed={placed !== null && side.point?.card === placed.id ? 'true' : undefined} className={cx(spot === 'field' ? CELL : spot === 'mz' ? (owner === 'theirs' ? CELL_THEIRS : CELL_MINE) : CELL_SQUARE, spot === 'mz' && owner === 'theirs' && !placed && index % 2 === 0 && 'cell-cross')} style={{ gridArea: area }}>
       {gem && !placed ? <span aria-hidden="true" className={cx('absolute left-1/2 top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[3px]', gem)} /> : null}
       {spot === 'field' && !placed ? <span aria-hidden="true" className="absolute inset-0 grid place-items-center text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-soft min-[1101px]:text-[0.6rem]">{t('practice.zone.fieldLabel')}</span> : null}
       {placed ? <CardOnZone placed={placed} spot={spot} side={side} owner={owner} label={label} /> : null}
@@ -256,7 +258,7 @@ function Pile({ area, pile, side, owner }: { area: string; pile: Exclude<MatPile
   const flash = side.flash && cards.includes(side.flash.id) ? side.flash : null
 
   return (
-    <div role="group" aria-label={`${PILE_TITLES[pile]}: ${cards.length}`} title={PILE_TITLES[pile]} data-rival-drop={owner === 'theirs' ? pile : undefined} data-targeted={marked ? 'true' : 'false'} data-flash={flash ? 'true' : 'false'} data-flash-kind={flash?.kind} className={cx(CELL, FX_CARD, '[--card-shadow:0_0_0_0_transparent]')} style={{ gridArea: area, ...fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red') }}>
+    <div role="group" aria-label={`${PILE_TITLES[pile]}: ${cards.length}`} title={PILE_TITLES[pile]} data-rival-drop={owner === 'theirs' ? pile : undefined} data-pointed={side.point?.pile === pile ? 'true' : undefined} data-targeted={marked ? 'true' : 'false'} data-flash={flash ? 'true' : 'false'} data-flash-kind={flash?.kind} className={cx(CELL, FX_CARD, '[--card-shadow:0_0_0_0_transparent]')} style={{ gridArea: area, ...fxVars(flash ? SPOTLIGHT_TONE[flash.kind] : 'red') }}>
       {/* El recorte va en un contenedor aparte: la casilla no recorta, así el área que se toca (`before` de `CELL` y del botón de marcar) puede salirse 4 px de ella. */}
       <span className="absolute inset-0 overflow-hidden">
       {/* La carta de arriba del rival, como las de su campo, mira hacia él. */}

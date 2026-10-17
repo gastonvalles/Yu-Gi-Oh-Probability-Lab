@@ -80,6 +80,8 @@ interface ClockWire {
  * - `game`: moneda, dado, piedra-papel-tijera o quién va primero (no cambian la mesa; `n` cuenta los míos para no repetir ninguno).
  * - `ready`: estoy listo (o ya no) para empezar el duelo; también viaja en el `sync`.
  * - `chat`: una línea del chat (`n` cuenta las mías para no repetir ninguna).
+ * - `ping`: señalo algo un instante (una carta por su id opaco, o una pila), de mi lado (`mine`) o del lado de quien lo recibe (`yours`). Sólo comunica: no toca la mesa, no entra en las jugadas ni en Deshacer,
+ *   no se repone al reconectar y quien lo recibe lo muestra un rato y se olvida. `n` cuenta los míos para no repetir ninguno.
  * - `marks`: todo lo que tengo marcado como objetivo del lado de quien lo recibe (cartas por su id opaco, y pilas); siempre el conjunto entero, así repetirlo no cambia nada y reconectar lo repone.
  * - `resync`: me perdí algo, mandame un `sync`.
  */
@@ -98,6 +100,7 @@ export type DuelMessage =
   | { t: 'ready'; ready: boolean }
   | { t: 'chat'; n: number; text: string }
   | { t: 'marks'; cards: string[]; piles: MatPile[] }
+  | { t: 'ping'; n: number; at: 'yours' | 'mine'; card?: string; pile?: MatPile }
   | { t: 'resync' }
 
 export function encodeMessage(message: DuelMessage): string {
@@ -418,6 +421,18 @@ export function parseMessage(text: unknown): DuelMessage | null {
       const text = typeof raw.text === 'string' ? cleanChat(raw.text) : ''
 
       return text !== '' && isInt(raw.n, 1, MAX_COUNT) ? { t: 'chat', n: raw.n, text } : null
+    }
+
+    case 'ping': {
+      const hasCard = raw.card !== undefined
+      const hasPile = raw.pile !== undefined
+
+      // Una carta o una pila, nunca las dos ni ninguna; la carta, con su id opaco.
+      if (!isInt(raw.n, 1, MAX_COUNT) || (raw.at !== 'yours' && raw.at !== 'mine') || hasCard === hasPile || (hasCard && !isCardId(raw.card)) || (hasPile && !isPile(raw.pile))) {
+        return null
+      }
+
+      return { t: 'ping', n: raw.n, at: raw.at, ...(hasCard ? { card: raw.card as string } : { pile: raw.pile as MatPile }) }
     }
 
     case 'marks': {

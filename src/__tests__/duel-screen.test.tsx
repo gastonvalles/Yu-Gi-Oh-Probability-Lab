@@ -919,11 +919,11 @@ describe('la pantalla del duelo', () => {
     }
 
     // Lo público se despliega; lo secreto, sólo se marca.
-    expect(itemsOf('Main: marcar')).toEqual(['Target'])
+    expect(itemsOf('Main: marcar')).toEqual(['Señalar', 'Target'])
     fireEvent.keyDown(document, { key: 'Escape' })
-    expect(itemsOf('Mano: marcar')).toEqual(['Target'])
+    expect(itemsOf('Mano: marcar')).toEqual(['Señalar', 'Target'])
     fireEvent.keyDown(document, { key: 'Escape' })
-    expect(itemsOf('GY: marcar')).toEqual(['Ver las cartas', 'Target'])
+    expect(itemsOf('GY: marcar')).toEqual(['Ver las cartas', 'Señalar', 'Target'])
 
     // El cementerio de Ana, con su carta (por su arte: no se sabe cómo se llama), y se la puede marcar.
     fireEvent.click(screen.getByRole('menuitem', { name: 'Ver las cartas' }))
@@ -938,7 +938,7 @@ describe('la pantalla del duelo', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
 
     // El destierro también se despliega (vacío).
-    expect(itemsOf('Banish: marcar')).toEqual(['Ver las cartas', 'Target'])
+    expect(itemsOf('Banish: marcar')).toEqual(['Ver las cartas', 'Señalar', 'Target'])
     fireEvent.click(screen.getByRole('menuitem', { name: 'Ver las cartas' }))
     expect(within(screen.getByRole('dialog', { name: 'Banish · 0' })).getByText('No hay cartas acá.')).toBeInTheDocument()
   })
@@ -968,7 +968,7 @@ describe('la pantalla del duelo', () => {
 
     // Tocar la carta de Ana abre su menú: marcarla y ver su detalle (que se pide por su número).
     fireEvent.click(within(guest.container).getByRole('button', { name: 'Rival, Zona de monstruo 1: marcar' }))
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Target', 'Ver carta'])
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Señalar', 'Target', 'Ver carta'])
     fireEvent.click(screen.getByRole('menuitem', { name: 'Ver carta' }))
     await act(async () => {})
     expect(screen.getByRole('dialog', { name: /^Detalle de Carta \d+$/ })).toBeInTheDocument()
@@ -980,7 +980,44 @@ describe('la pantalla del duelo', () => {
     fireEvent.click(within(host.container).getByRole('button', { name: 'Zona de monstruo 2: elegir' }))
     flush()
     fireEvent.click(within(guest.container).getByRole('button', { name: 'Rival, Zona de monstruo 2: marcar' }))
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Target'])
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Señalar', 'Target'])
+  })
+
+  it('Señalar es temporal y distinto de Target: un aro que late un rato en las dos pantallas, sin dejar marca ni jugada, y se va solo; también se señala una carta propia del campo', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+    summonFirst(host)
+    flush()
+    act(() => {
+      vi.advanceTimersByTime(1500)
+    })
+    const ring = (view: RenderResult) => view.container.querySelector('[data-pointed="true"]')
+
+    expect(ring(host)).toBeNull()
+    expect(ring(guest)).toBeNull()
+
+    // Beto señala la carta de Ana: la ve en su zona (y Beto, en la de ella); no queda marcada como objetivo.
+    fireEvent.click(within(guest.container).getByRole('button', { name: 'Rival, Zona de monstruo 1: marcar' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Señalar' }))
+    flush()
+    expect(ring(host)).toHaveAttribute('data-drop', 'mz:0')
+    expect(ring(guest)).toHaveAttribute('aria-label', 'Rival, Zona de monstruo 1')
+    expect(host.container.querySelector('[data-targeted="true"]')).toBeNull()
+
+    // Late un rato y se va solo (también con el chat y las jugadas siguiendo).
+    act(() => {
+      vi.advanceTimersByTime(2600)
+    })
+    expect(ring(host)).toBeNull()
+    expect(ring(guest)).toBeNull()
+
+    // Ana señala su propia carta del campo: está entre las jugadas de la carta, y Beto la ve en el campo de su rival.
+    tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Señalar' }))
+    flush()
+    expect(ring(host)).toHaveAttribute('data-drop', 'mz:0')
+    expect(ring(guest)).toHaveAttribute('aria-label', 'Rival, Zona de monstruo 1')
   })
 
   it('Deshacer le pide permiso al rival: él ve un aviso sobre la línea del registro (no un diálogo que tapa la mesa) para permitirlo o no, y quien pidió espera con Deshacer apagado y la jugada sigue hasta que se lo permitan', () => {
