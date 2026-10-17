@@ -38,7 +38,7 @@ fidelidad dejó sin hacer (sección 6).
 - Los emojis 🤔 y 👍 se ven grandes (#291, token `--text-display`, 44 px). El siding es el builder: zonas con las cartas y un
   toque para pasarlas de una a otra (#292).
 - En el celular sólo la **mesa** es a pantalla completa; el lobby, la sala, el siding y la pausa llevan la barra de abajo. La
-  hoja de Duelo abre el lobby directo en un paso: `#duel?view=create|watch|join` (#293). Cómo funciona todo: `docs/duelo.md`.
+  hoja de Jugar (antes «Duelo») abre el lobby directo en un paso: `#duel?view=watch|join` (#293); el inicio de Jugar (`PlayHome`) tiene «Jugar ahora», reglas guardadas y la arena con salas y duelos en vivo. Cómo funciona todo: `docs/duelo.md`.
 
 **Replays en vivo** (#289): arriba de Replays, «En vivo ahora» con las transmisiones de los canales oficiales de YouTube
 (`api/live`, ver `docs/seguridad.md`).

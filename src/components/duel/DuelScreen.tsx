@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { buildDuelLink, DUEL_STEP, extractRoomCode, isWatchLink, parseDuelTarget, parseDuelView, type DuelView } from '../../app/duel-link'
+import { buildDuelLink, DUEL_STEP, extractRoomCode, parseDuelTarget, parseDuelView, type DuelView } from '../../app/duel-link'
 import { getDeckFormatLabel } from '../../app/deck-format'
 import { deckFormatIssues } from '../../app/duel-format'
 import { MAIN_MINIMUM } from '../../app/duel-siding'
@@ -11,6 +11,7 @@ import { fetchCardsByIds } from '../../ygoprodeck'
 import { clearDuelSave, findPausedDuel, savedRole, type PausedDuel } from '../../app/duel-save'
 import { createParticipantId, createRoomCode, LIVE_HEARTBEAT_MS } from '../../app/duel-relay-rules'
 import type { RoomsApi } from '../../app/duel-rooms'
+import type { RoomOptions } from '../../app/duel-prefs'
 import type { Duel, DuelRole, DuelSnapshot } from '../../app/duel-session'
 import type { SocketStatus } from '../../app/duel-socket'
 import { duelResult, rpsOutcome } from '../../app/duel-games'
@@ -32,8 +33,6 @@ import { FieldBox, fieldInline } from '../ui/FieldBox'
 import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
-import { Segmented } from '../ui/Segmented'
-import { Switch } from '../ui/Switch'
 import { CardMenu, PILE_TITLES, PileViewer } from '../probability/MatDialogs'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, DuelTools, type LaneNotice } from './DuelBar'
@@ -48,7 +47,8 @@ import { DuelDeckPicker, loadDuelDeck, readStoredDeck, type DuelDeck } from './D
 import { gameText, outcomeText, rpsName } from './game-text'
 import { artOfDrawId, passcodeOfDrawId } from './duel-art'
 import { DuelOpening } from './DuelOpening'
-import { DuelOpenRooms, roomChips } from './DuelOpenRooms'
+import { PlayHome } from './PlayHome'
+import { roomChips } from './room-chips'
 import { DuelSiding } from './DuelSiding'
 import { SpectatorScreen } from './SpectatorScreen'
 import { TossOverlay } from './toss-views'
@@ -59,15 +59,6 @@ const NAME_KEY = 'ygo-lab:duel-name'
 const roleKey = (room: string) => `ygo-lab:duel-role:${room}`
 /** Lo que eligió el anfitrión de cada sala (el reloj, el formato y si es un Match, por pestaña): si recarga la página, la sala sigue igual. */
 const optionsKey = (room: string) => `ygo-lab:duel-options:${room}`
-
-interface RoomOptions {
-  limitMin: number
-  format: DeckFormat
-  match: boolean
-  siding: boolean
-  /** Aparece en la lista de salas abiertas mientras espera rival. */
-  isPublic: boolean
-}
 
 interface DuelScreenProps {
   handSize: number
@@ -556,126 +547,45 @@ interface DuelLobbyProps {
 }
 
 function DuelLobby({ startInCreate = false, view = null, onViewHandled, name, onName, builder, imported, onImport, deckReady, deckSize, minDeck, onCreate, onPlaySolo, soloReady, rooms, onJoin, paused, onResume, onDropPaused }: DuelLobbyProps) {
-  const [creating, setCreating] = useState(startInCreate || view === 'create')
   const [watching, setWatching] = useState(view === 'watch')
-  const joinRef = useRef<HTMLInputElement | null>(null)
 
-  // Lo que pide el menú (Nueva sala, Mirar un duelo, Entrar con un enlace) se aplica una vez, también si el lobby ya estaba abierto.
+  // Lo que pide el menú (Nueva sala, Mirar un duelo, Entrar con un enlace) se aplica una vez, también si el lobby ya estaba abierto. Crear y entrar los atiende el inicio de Jugar.
   useEffect(() => {
     if (view === null) {
       return
     }
 
-    if (view === 'create') setCreating(true)
-    else if (view === 'watch') setWatching(true)
+    if (view === 'watch') setWatching(true)
 
     onViewHandled?.()
   }, [view, onViewHandled])
-
-  // «Entrar con un enlace»: el campo ya está en el lobby; se lo lleva a la vista con el foco para pegar.
-  useEffect(() => {
-    if (view === 'join') {
-      joinRef.current?.scrollIntoView({ block: 'center' })
-      joinRef.current?.focus({ preventScroll: true })
-    }
-  }, [view])
-  const [code, setCode] = useState('')
-  const [invalid, setInvalid] = useState(false)
-
-  const join = () => {
-    const room = extractRoomCode(code)
-
-    if (room) {
-      onJoin(room, isWatchLink(code))
-    } else {
-      setInvalid(true)
-    }
-  }
 
   if (watching) {
     return <WatchRoom onBack={() => setWatching(false)} onWatch={(room) => onJoin(room, true)} />
   }
 
-  if (creating) {
-    return <CreateRoom soloReady={soloReady} canPublish={Boolean(rooms)} onBack={() => setCreating(false)} onSolo={onPlaySolo} onDuo={onCreate} />
-  }
-
   return (
     <Screen>
-      <div className="grid gap-1">
-        <Heading level="section">{t('duel.lobby.title')}</Heading>
-        <p className="m-0 text-body text-muted">{t('duel.lobby.intro')}</p>
-      </div>
-
-      {paused ? (
-        <div className="grid gap-2 rounded-card border border-primary/40 bg-card-background p-3">
-          <p className="m-0 flex items-center gap-2 text-body font-semibold text-foreground" role="status">
-            <Icon name="pause" size={16} />
-            {paused.rival ? t('duel.lobby.paused', { name: paused.rival }) : t('duel.lobby.pausedNoName')}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="tertiary" size="sm" onClick={onDropPaused}>
-              {t('duel.lobby.dropPaused')}
-            </Button>
-            <Button variant="primary" size="sm" onClick={onResume}>
-              {t('duel.lobby.resume')}
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
-      {deckReady ? null : <Callout tone="warning" icon="alert">{t('duel.lobby.needDeck', { count: deckSize, min: minDeck })}</Callout>}
-
-      <FieldBox>
-        <input aria-label={t('duel.lobby.name')} placeholder={t('duel.lobby.namePlaceholder')} maxLength={40} value={name} onChange={(event) => onName(event.target.value)} className={fieldInline} />
-      </FieldBox>
-
-      <DuelDeckPicker builder={builder} imported={imported} onImport={onImport} />
-
-      <div className="grid gap-1.5">
-        {/* Con un duelo en pausa, lo principal es volver a él: crear otro pasa a un segundo plano (una principal por vista). */}
-        <Button variant={paused ? 'secondary' : 'primary'} icon="link" disabled={!deckReady} onClick={() => setCreating(true)}>
-          {t('duel.lobby.create')}
-        </Button>
-        <p className="m-0 text-micro text-soft">{t('duel.lobby.createHint')}</p>
-      </div>
-
-      {rooms ? <DuelOpenRooms rooms={rooms} canJoin={deckReady} onJoin={(code) => onJoin(code, false)} /> : null}
-
-      <div className="grid gap-1.5">
-        <Heading level="card">{t('duel.lobby.join')}</Heading>
-        <form
-          className="flex items-center gap-2"
-          onSubmit={(event) => {
-            event.preventDefault()
-            join()
-          }}
-        >
-          <FieldBox className="min-w-0 flex-1">
-            <input
-              ref={joinRef}
-              aria-label={t('duel.lobby.joinPlaceholder')}
-              placeholder={t('duel.lobby.joinPlaceholder')}
-              value={code}
-              onChange={(event) => {
-                setCode(event.target.value)
-                setInvalid(false)
-              }}
-              className={fieldInline}
-            />
-          </FieldBox>
-          <Button type="submit" variant="secondary" disabled={(!deckReady && !isWatchLink(code)) || code.trim() === ''}>
-            {t('duel.lobby.joinAction')}
-          </Button>
-        </form>
-        <p className={invalid ? 'm-0 text-micro text-danger' : 'm-0 text-micro text-soft'} role={invalid ? 'alert' : undefined}>
-          {invalid ? t('duel.lobby.joinInvalid') : t('duel.lobby.joinHint')}
-        </p>
-      </div>
-
-      <Button variant="tertiary" icon="eye" onClick={() => setWatching(true)}>
-        {t('duel.watchRoom.open')}
-      </Button>
+      <PlayHome
+        view={startInCreate ? 'create' : view}
+        name={name}
+        onName={onName}
+        builder={builder}
+        imported={imported}
+        onImport={onImport}
+        deckReady={deckReady}
+        deckSize={deckSize}
+        minDeck={minDeck}
+        rooms={rooms}
+        trainReady={soloReady}
+        onTrain={onPlaySolo}
+        onOpenDuel={onCreate}
+        onJoin={onJoin}
+        paused={paused}
+        onResume={onResume}
+        onDropPaused={onDropPaused}
+        onWatchLink={() => setWatching(true)}
+      />
     </Screen>
   )
 }
@@ -763,136 +673,6 @@ function WatchRoom({ onBack, onWatch }: WatchRoomProps) {
           </Button>
         </div>
       </form>
-    </Screen>
-  )
-}
-
-/** El tiempo que viene elegido al crear una sala. */
-const CREATE_LIMIT_MIN = 40
-const CREATE_FORMAT: DeckFormat = 'tcg'
-
-type RoomMode = 'solo' | 'duo'
-
-interface CreateRoomProps {
-  soloReady: boolean
-  /** Hay lista de salas públicas: se puede elegir publicar la sala. */
-  canPublish: boolean
-  onBack: () => void
-  onSolo: () => void
-  onDuo: (options: RoomOptions) => void
-}
-
-/** Crear una sala: jugar solo (la práctica, local) o 1 vs 1 (por enlace) con el tiempo del reloj. El nombre y el deck se eligen en el inicio del duelo. */
-function CreateRoom({ soloReady, canPublish, onBack, onSolo, onDuo }: CreateRoomProps) {
-  const [mode, setMode] = useState<RoomMode>('duo')
-  const [limit, setLimit] = useState<number>(CREATE_LIMIT_MIN)
-  const [format, setFormat] = useState<DeckFormat>(CREATE_FORMAT)
-  const [match, setMatch] = useState(false)
-  const [siding, setSiding] = useState(false)
-  const [isPublic, setIsPublic] = useState(true)
-  const solo = mode === 'solo'
-
-  return (
-    <Screen>
-      <div className="flex items-center gap-2">
-        <IconButton tone="raised" size="md" aria-label={t('duel.create.back')} title={t('duel.create.back')} onClick={onBack}>
-          <Icon name="chevron-left" size={18} />
-        </IconButton>
-        <Heading level="section">{t('duel.create.title')}</Heading>
-      </div>
-
-      <Segmented<RoomMode>
-        label={t('duel.create.mode')}
-        variant="cards"
-        fullWidth
-        value={mode}
-        onChange={setMode}
-        options={[
-          { value: 'solo', label: t('duel.create.solo') },
-          { value: 'duo', label: t('duel.create.duo') },
-        ]}
-      />
-
-      <p className="m-0 text-body text-muted">{solo ? t('duel.create.soloHint') : t('duel.create.duoHint')}</p>
-
-      {solo ? (
-        <Callout tone={soloReady ? 'info' : 'warning'} icon={soloReady ? 'info' : 'alert'}>
-          {soloReady ? t('duel.create.soloNote') : t('duel.create.soloNeedDeck')}
-        </Callout>
-      ) : (
-        <>
-          <div className="grid gap-1.5">
-            <span className="text-micro font-semibold uppercase text-soft">{t('duel.create.type')}</span>
-            <Segmented<'single' | 'match'>
-              label={t('duel.create.type')}
-              fullWidth
-              value={match ? 'match' : 'single'}
-              onChange={(value) => setMatch(value === 'match')}
-              options={[
-                { value: 'single', label: t('duel.create.single') },
-                { value: 'match', label: t('duel.create.match') },
-              ]}
-            />
-            <p className="m-0 text-micro text-soft">{match ? t('duel.create.matchHint') : t('duel.create.singleHint')}</p>
-            {match ? (
-              <div className="flex items-center justify-between gap-3 py-1">
-                <span className="grid min-w-0 gap-0.5">
-                  <span className="text-body font-semibold text-foreground">{t('duel.create.siding')}</span>
-                  <span className="text-micro text-soft">{t('duel.create.sidingHint')}</span>
-                </span>
-                <Switch checked={siding} onChange={setSiding} label={t('duel.create.siding')} />
-              </div>
-            ) : null}
-          </div>
-
-          <div className="grid gap-1.5">
-            <span className="text-micro font-semibold uppercase text-soft">{t('duel.create.time')}</span>
-            <Segmented<string>
-              label={t('duel.create.time')}
-              fullWidth
-              value={String(limit)}
-              onChange={(value) => setLimit(Number(value))}
-              options={DUEL_LIMITS_MIN.map((min) => ({ value: String(min), label: min === 0 ? t('duel.create.timeNone') : String(min) }))}
-            />
-            <p className="m-0 text-micro text-soft">{limit === 0 ? t('duel.create.timeNoneHint') : t('duel.create.timeHint', { min: limit })}</p>
-          </div>
-
-          <div className="grid gap-1.5">
-            <span className="text-micro font-semibold uppercase text-soft">{t('duel.create.format')}</span>
-            <FieldBox>
-              <select aria-label={t('duel.create.format')} value={format} onChange={(event) => setFormat(event.target.value as DeckFormat)} className={fieldInline}>
-                {DUEL_FORMATS.map((value) => (
-                  <option key={value} value={value}>
-                    {getDeckFormatLabel(value)}
-                  </option>
-                ))}
-              </select>
-            </FieldBox>
-            <p className="m-0 text-micro text-soft">{format === 'unlimited' ? t('duel.create.formatNoneHint') : t('duel.create.formatHint')}</p>
-          </div>
-
-          {canPublish ? (
-            <div className="grid gap-1.5">
-              <span className="text-micro font-semibold uppercase text-soft">{t('duel.create.visibility')}</span>
-              <Segmented<'public' | 'private'>
-                label={t('duel.create.visibility')}
-                fullWidth
-                value={isPublic ? 'public' : 'private'}
-                onChange={(value) => setIsPublic(value === 'public')}
-                options={[
-                  { value: 'public', label: t('duel.create.public') },
-                  { value: 'private', label: t('duel.create.private') },
-                ]}
-              />
-              <p className="m-0 text-micro text-soft">{isPublic ? t('duel.create.publicHint') : t('duel.create.privateHint')}</p>
-            </div>
-          ) : null}
-        </>
-      )}
-
-      <Button variant="primary" disabled={solo && !soloReady} onClick={() => (solo ? onSolo() : onDuo({ limitMin: limit, format, match, siding: match && siding, isPublic: canPublish && isPublic }))}>
-        {solo ? t('duel.create.startSolo') : t('duel.create.start')}
-      </Button>
     </Screen>
   )
 }

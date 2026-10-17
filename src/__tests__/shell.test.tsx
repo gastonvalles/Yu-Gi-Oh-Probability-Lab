@@ -38,7 +38,7 @@ describe('el menú de la app', () => {
   it('agrupa los destinos en cuatro grupos: los pasos del deck, el duelo, las herramientas y la referencia', () => {
     expect(GROUPS.map((group) => [group.label, group.items.map((item) => item.key)])).toEqual([
       ['Tu deck', ['deck-builder', 'categorization', 'probability-lab', 'workspace', 'export']],
-      ['Duelo', ['practice']],
+      ['Jugar', ['practice']],
       ['Herramientas', ['life', 'mascots']],
       ['Descubrir', ['meta', 'tournaments', 'replays', 'expansions', 'banlists']],
     ])
@@ -51,7 +51,7 @@ describe('el menú de la app', () => {
 
   it('la mesa de práctica sólo se ofrece con cartas en el Main; la calculadora de LP y las mascotas, siempre', () => {
     const sinPractica = buildAppNavGroups(STEPS, { practice: false })
-    // Sin práctica ni relay el grupo Duelo queda vacío y no se muestra.
+    // Sin práctica ni relay el grupo Jugar queda vacío y no se muestra.
     expect(sinPractica.map((group) => group.key)).toEqual(['deck', 'tools', 'discover'])
     expect(sinPractica.find((group) => group.key === 'tools')?.items.map((item) => item.key)).toEqual(['life', 'mascots'])
   })
@@ -168,7 +168,7 @@ describe('la barra de abajo del celular y su hoja', () => {
     render(<MobileTabBar groups={GROUPS} activeKey="export" openKey={null} onOpen={onOpen} />)
 
     const bar = screen.getByRole('navigation', { name: 'Navegación principal' })
-    expect(within(bar).getAllByRole('button').map((button) => button.textContent)).toEqual(['Tu deck', 'Duelo', 'Herramientas', 'Descubrir'])
+    expect(within(bar).getAllByRole('button').map((button) => button.textContent)).toEqual(['Tu deck', 'Jugar', 'Herramientas', 'Descubrir'])
     expect(within(bar).getByRole('button', { name: 'Tu deck' })).toHaveClass('text-nav-active')
     expect(within(bar).getByRole('button', { name: 'Descubrir' })).toHaveClass('text-foreground')
 
@@ -235,13 +235,13 @@ describe('las hojas del celular, como en el lienzo', () => {
     expect(within(dialog).getByRole('button', { name: /^Exportar/ })).toHaveTextContent('Estás acá')
   })
 
-  it('«Duelo»: jugar solo, nueva sala, mirar un duelo y entrar con un enlace, cada uno con su línea; con una sala en pausa, el aviso con «Volver»', () => {
+  it('«Jugar»: entrenar solo, jugar online, mirar un duelo y entrar con un enlace, cada uno con su línea; con una sala en pausa, el aviso con «Volver»', () => {
     const groups = buildAppNavGroups(STEPS, { practice: true, duel: true, paused: { room: 'ABCDEFGH', rival: 'Ana' } })
     const { dialog, onSelect } = sheet(groups, 'duel', 'duel')
 
     expect(within(dialog).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
-      'Jugar soloTu mano de apertura, pasos y combos',
-      'Nueva sala1 vs 1 con un amigo, por enlace, sin cuentas',
+      'Entrenar soloTu mano de apertura, pasos y combos',
+      'Jugar onlineEntrá a una sala, retá a un amigo o mirá un duelo',
       'Mirar un dueloPegá el enlace para mirar',
       'Entrar con un enlacePegá el enlace que te mandaron',
     ])
@@ -254,11 +254,11 @@ describe('las hojas del celular, como en el lienzo', () => {
     expect(onSelect).toHaveBeenCalledWith('duel-watch')
     fireEvent.click(within(dialog).getByRole('button', { name: /^Entrar con un enlace/ }))
     expect(onSelect).toHaveBeenCalledWith('duel-join')
-    fireEvent.click(within(dialog).getByRole('button', { name: /^Nueva sala/ }))
-    expect(onSelect).toHaveBeenCalledWith('duel-create')
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Jugar online/ }))
+    expect(onSelect).toHaveBeenCalledWith('duel')
   })
 
-  it('sin una sala en pausa no hay aviso, y sin relay el duelo ofrece sólo jugar solo', () => {
+  it('sin una sala en pausa no hay aviso, y sin relay Jugar ofrece sólo entrenar solo', () => {
     const withRelay = buildAppNavGroups(STEPS, { practice: true, duel: true })
     const { dialog } = sheet(withRelay, 'duel', 'duel')
 

@@ -224,9 +224,9 @@ interface AppNavTools {
 }
 
 /**
- * El menú de la app, en cuatro grupos: Tu deck, Duelo (jugar solo y el duelo por enlace), Herramientas (la calculadora y las mascotas abren un panel) y Descubrir (la referencia del meta).
+ * El menú de la app, en cuatro grupos: Tu deck, Jugar (entrenar solo y el duelo en línea), Herramientas (la calculadora y las mascotas abren un panel) y Descubrir (la referencia del meta).
  * Lo ven el menú lateral y la barra de abajo del celular. La hoja del celular de cada grupo se dibuja como en el lienzo: los pasos del deck con su estado a la derecha; el duelo, las
- * herramientas y Descubrir con una línea que explica cada una. El duelo ofrece ahí cuatro entradas (jugar solo, nueva sala, mirar un duelo y entrar con un enlace) y, si hay un duelo en pausa, un aviso para volver a él.
+ * herramientas y Descubrir con una línea que explica cada una. Jugar ofrece ahí cuatro entradas (entrenar solo, jugar online, mirar un duelo y entrar con un enlace) y, si hay un duelo en pausa, un aviso para volver a él.
  */
 export function buildAppNavGroups(steps: DeckModeNavigationItem[], tools: AppNavTools): NavGroup[] {
   const pick = (...keys: DeckWorkflowStepKey[]): NavItem[] => keys.flatMap((key) => steps.filter((step) => step.key === key))
@@ -245,7 +245,7 @@ export function buildAppNavGroups(steps: DeckModeNavigationItem[], tools: AppNav
       sheetItems: [
         ...practice,
         ...(tools.duel
-          ? [entry('duel-create', t('duel.nav.title'), t('shell.blurb.create')), entry('duel-watch', t('duel.watchRoom.open'), t('shell.blurb.watch')), entry('duel-join', t('shell.duel.join'), t('shell.blurb.join'))]
+          ? [entry('duel', t('duel.nav.title'), t('shell.blurb.play')), entry('duel-watch', t('duel.watchRoom.open'), t('shell.blurb.watch')), entry('duel-join', t('shell.duel.join'), t('shell.blurb.join'))]
           : []),
       ],
       sheetNotice: paused
