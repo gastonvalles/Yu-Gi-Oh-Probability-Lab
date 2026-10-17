@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { getDeckFormatLabel } from '../../app/deck-format'
 import { extractRoomCode, isWatchLink, type DuelView } from '../../app/duel-link'
 import { pickRoom, readPrefs, writePrefs, type DuelPrefs, type RoomOptions } from '../../app/duel-prefs'
-import { DUEL_FORMATS, DUEL_LIMIT_CHOICES, GENESYS_CAP_RANGE } from '../../app/duel-protocol'
+import { DUEL_FORMATS, DUEL_LIMIT_CHOICES, GENESYS_CAP_RANGE, MAX_NAME_LENGTH } from '../../app/duel-protocol'
 import { MAX_SPECTATORS, type LiveDuel, type PublicRoom } from '../../app/duel-relay-rules'
 import type { RoomsApi } from '../../app/duel-rooms'
 import type { PausedDuel } from '../../app/duel-save'
@@ -220,7 +220,7 @@ export function PlayHome({ view, name, onName, builder, imported, onImport, deck
       {/* Vos: el nombre (como te ve tu rival) y el deck, en una línea. El deck se cambia en una hoja; sin deck, la acción principal lleva a elegirlo. */}
       <div className="flex items-center gap-2">
         <FieldBox className="min-w-0 flex-1">
-          <input aria-label={t('duel.lobby.name')} placeholder={t('duel.lobby.namePlaceholder')} maxLength={40} value={name} onChange={(event) => onName(event.target.value)} className={fieldInline} />
+          <input aria-label={t('duel.lobby.name')} placeholder={t('duel.lobby.namePlaceholder')} maxLength={MAX_NAME_LENGTH} value={name} onChange={(event) => onName(event.target.value)} className={fieldInline} />
         </FieldBox>
         <Button variant="secondary" size="sm" icon="cards" className="max-w-[58%] shrink-0" aria-haspopup="dialog" onClick={() => setDeckOpen(true)}>
           <span className="truncate">{deckReady ? `${deckName} · ${deckSize}` : t('duel.play.deckNone')}</span>

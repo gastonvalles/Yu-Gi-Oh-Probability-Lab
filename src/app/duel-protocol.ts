@@ -113,13 +113,27 @@ export function encodeMessage(message: DuelMessage): string {
 }
 
 const MAX_ID_LENGTH = 100
-const MAX_NAME_LENGTH = 40
+/** Cuántos caracteres puede tener el nombre de un jugador (se ve en las vidas, en el chat y en la arena). */
+export const MAX_NAME_LENGTH = 20
 const MAX_CARDS = 200
 const MAX_COUNT = 1_000_000
 const MAX_CLOCK_MS = 1_000_000_000
 
 /** El nombre sin caracteres de control ni de los que esconden o dan vuelta el texto, sin espacios de más y con un largo razonable. */
 export const cleanName = (name: string) => stripHidden(name).trim().slice(0, MAX_NAME_LENGTH)
+
+/** Si dos nombres son el mismo (sin mirar mayúsculas ni espacios de los costados): en una sala los dos jugadores no pueden llamarse igual. */
+export const sameName = (a: string, b: string | null | undefined): boolean => b !== null && b !== undefined && a.trim().toLowerCase() === b.trim().toLowerCase()
+
+/** El nombre con un número al final para que no coincida con el del rival (cabe en el límite: se acorta el nombre, no el número). */
+export const uniqueName = (name: string, taken: string): string => {
+  for (let n = 2; ; n++) {
+    const suffix = ` ${n}`
+    const candidate = `${name.slice(0, MAX_NAME_LENGTH - suffix.length).trimEnd()}${suffix}`
+
+    if (!sameName(candidate, taken)) return candidate
+  }
+}
 
 const isPlain = (value: unknown): value is Record<string, unknown> => isRecord(value) && !Array.isArray(value)
 const isInt = (value: unknown, min: number, max: number): value is number => typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max

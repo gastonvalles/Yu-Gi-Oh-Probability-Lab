@@ -99,11 +99,11 @@ describe('los mensajes del duelo', () => {
     expect(parseMessage(changed(message, path, value))).toBeNull()
   })
 
-  it('el nombre se limpia: sin caracteres de control y con un largo razonable', () => {
+  it('el nombre se limpia: sin caracteres de control y con 20 caracteres como máximo', () => {
     const hello = parseMessage(changed(sample('hello'), ['name'], `  An\u0000a\n${'z'.repeat(100)}  `))
 
     expect(hello).toMatchObject({ t: 'hello' })
-    expect((hello as Extract<DuelMessage, { t: 'hello' }>).name).toBe(`Ana${'z'.repeat(37)}`)
+    expect((hello as Extract<DuelMessage, { t: 'hello' }>).name).toBe(`Ana${'z'.repeat(17)}`)
     expect(parseMessage(changed(sample('hello'), ['name'], 7))).toBeNull()
   })
 

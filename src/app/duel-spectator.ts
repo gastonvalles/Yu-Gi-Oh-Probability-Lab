@@ -26,6 +26,12 @@ export interface SpectatorSide {
   ready: boolean
 }
 
+/** Una línea del registro que ve quien mira: lo que escribieron los jugadores y lo que tiraron (moneda, dado, piedra-papel-tijera, quién empieza), en el orden en que pasó. */
+export type FeedItem = { kind: 'chat'; line: ChatLine } | { kind: 'game'; entry: GameEntry }
+
+/** Cuántas líneas del registro se guardan. */
+export const MAX_FEED = 150
+
 export interface SpectatorSnapshot {
   /** Los ajustes del duelo (puntos de vida y mano), del saludo del anfitrión. */
   settings: DuelSettings | null
@@ -39,6 +45,8 @@ export interface SpectatorSnapshot {
   clock: LifeTimer
   games: readonly GameEntry[]
   chat: readonly ChatLine[]
+  /** El chat y lo que tiraron, juntos y en orden (lo que se ve en la hoja del chat y en la pantalla de espera). */
+  feed: readonly FeedItem[]
   /** Quién se rindió, si alguien lo hizo. */
   conceded: Duelist | null
   /** Las dos mesas ya llegaron: se puede mirar el duelo. */
@@ -98,6 +106,7 @@ export function createSpectator(transport: SpectatorTransport, options: Spectato
   let gameId = 0
   let chat: ChatLine[] = []
   let chatId = 0
+  let feed: FeedItem[] = []
   let conceded: Duelist | null = null
   const rematch: [boolean, boolean] = [false, false]
   let lastRequest = -Infinity
@@ -118,6 +127,7 @@ export function createSpectator(transport: SpectatorTransport, options: Spectato
       clock,
       games,
       chat,
+      feed,
       conceded,
       live,
       turn,
@@ -145,6 +155,7 @@ export function createSpectator(transport: SpectatorTransport, options: Spectato
   const log = (from: Duelist, game: DuelGame) => {
     gameId += 1
     games = addGame(games, { id: gameId, from, game })
+    feed = [...feed, { kind: 'game' as const, entry: games.at(-1)! }].slice(-MAX_FEED)
   }
 
   const applyGame = (from: Duelist, game: DuelGame) => {
@@ -297,6 +308,7 @@ export function createSpectator(transport: SpectatorTransport, options: Spectato
           mine.chatN = message.n
           chatId += 1
           chat = addChat(chat, { id: chatId, from: role, text: message.text })
+          feed = [...feed, { kind: 'chat' as const, line: chat.at(-1)! }].slice(-MAX_FEED)
         }
 
         return

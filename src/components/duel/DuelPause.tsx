@@ -1,6 +1,7 @@
 import { t } from '../../i18n'
 import { Button } from '../ui/Button'
 import { Icon } from '../ui/Icon'
+import { CloseButton } from '../ui/IconButton'
 
 interface DuelPauseProps {
   /** Cómo se llama el rival (el que salió). */
@@ -18,7 +19,8 @@ interface DuelPauseProps {
  */
 export function DuelPause({ rival, offline, onLeave, onReconnect }: DuelPauseProps) {
   return (
-    <div role="alertdialog" aria-modal="true" aria-label={t('duel.pause.title')} className="grid h-full place-items-center bg-background/85 p-6 backdrop-blur-sm">
+    <div role="alertdialog" aria-modal="true" aria-label={t('duel.pause.title')} className="relative grid h-full place-items-center bg-background/85 p-6 backdrop-blur-sm">
+      <CloseButton size="md" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} className="absolute right-3 top-3" onClick={onLeave} />
       <div className="grid max-w-xs justify-items-center gap-3 text-center">
         <span className="grid size-12 place-items-center rounded-full bg-tint/10 text-foreground">
           <Icon name="pause" size={24} />
@@ -28,9 +30,6 @@ export function DuelPause({ rival, offline, onLeave, onReconnect }: DuelPausePro
           {offline ? t('duel.pause.offline') : t('duel.pause.rival', { name: rival })}
         </p>
         <div className="flex flex-wrap items-center justify-center gap-2">
-          <Button variant="tertiary" onClick={onLeave}>
-            {t('duel.bar.leave')}
-          </Button>
           <Button variant="primary" icon="refresh" onClick={onReconnect}>
             {t('duel.pause.reconnect')}
           </Button>

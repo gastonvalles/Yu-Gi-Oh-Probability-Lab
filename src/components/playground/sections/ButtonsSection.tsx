@@ -70,6 +70,15 @@ export function ButtonsSection() {
               Descartar
             </Button>
           </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Tag>success</Tag>
+            <Button variant="primary" color="success" icon="check">
+              Estoy listo
+            </Button>
+            <Button variant="secondary" color="success">
+              Listo
+            </Button>
+          </div>
           <Button fullWidth icon="download">
             Ocupa todo el ancho
           </Button>

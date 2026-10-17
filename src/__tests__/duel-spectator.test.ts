@@ -87,6 +87,36 @@ describe('un espectador que llega con el duelo empezado', () => {
     expect(spectator.getSnapshot().live).toBe(true)
   })
 
+  it('en la sala (antes de la mesa) ve quiénes están, si están listos, y el chat y lo que tiran juntos y en orden', () => {
+    const game = setup()
+    const { spectator } = watch(game)
+
+    expect(spectator.getSnapshot().live).toBe(false)
+    expect(spectator.getSnapshot().sides.map((side) => [side.name, side.ready])).toEqual([
+      ['Ana', false],
+      ['Beto', false],
+    ])
+
+    game.host.setReady(true)
+    game.host.sendChat('suerte')
+    game.guest.setReady(true)
+    game.guest.sendChat('igual')
+    game.room.flush()
+    game.host.chooseMethod('rps')
+    game.room.flush()
+
+    const view = spectator.getSnapshot()
+
+    expect(view.live).toBe(false)
+    expect(view.sides.map((side) => side.ready)).toEqual([true, true])
+    // El chat y lo que tiraron, en el orden en que pasó.
+    expect(view.feed.map((item) => (item.kind === 'chat' ? ['chat', item.line.text] : ['game', item.entry.game.kind]))).toEqual([
+      ['chat', 'suerte'],
+      ['chat', 'igual'],
+      ['game', 'toss'],
+    ])
+  })
+
   it('sigue el duelo en vivo: jugadas, deshacer, vidas, reloj, chat, lo que se tiró y el cambio de turno', () => {
     const game = startedDuel()
     const { spectator } = watch(game)
