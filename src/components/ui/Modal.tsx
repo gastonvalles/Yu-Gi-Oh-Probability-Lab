@@ -28,9 +28,9 @@ const SIZE_CLASS: Record<ModalSize, string> = {
   sheet: 'w-[min(70rem,100%)] h-[min(46rem,calc(100dvh-2rem))] min-[1101px]:h-[min(33rem,calc(100dvh-2rem))] max-sm:h-[min(94dvh,52rem)] max-sm:w-full max-sm:rounded-b-none max-sm:border-b-0',
   /** Una hoja chica que en el celular sale de abajo (al alcance del pulgar) y ocupa lo que lleva: un teclado, una elección. En escritorio, un diálogo común. */
   keypad: 'w-[min(26rem,100%)] max-sm:w-full max-sm:rounded-b-none max-sm:border-b-0',
-  /** La calculadora de LP: toda la pantalla en el celular (sin margen ni bordes); en escritorio, un panel del tamaño de un celular. */
+  /** La calculadora de LP: toda la pantalla en el celular (sin margen ni bordes); en escritorio, un diálogo de 760 px (la calculadora y el registro, lado a lado). */
   screen:
-    'max-[1100px]:h-dvh max-[1100px]:max-h-dvh! max-[1100px]:w-full max-[1100px]:rounded-none! max-[1100px]:border-0! min-[1101px]:h-[min(52rem,calc(100dvh-2rem))] min-[1101px]:w-[26rem]',
+    'max-[1100px]:h-dvh max-[1100px]:max-h-dvh! max-[1100px]:w-full max-[1100px]:rounded-none! max-[1100px]:border-0! min-[1101px]:h-[min(38rem,calc(100dvh-2rem))] min-[1101px]:w-[min(47.5rem,100%)]',
 }
 
 interface ModalProps {
