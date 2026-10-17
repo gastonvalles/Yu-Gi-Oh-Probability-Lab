@@ -2115,6 +2115,29 @@ describe('la pantalla del duelo', () => {
     expect(within(watcher.container).queryByText('En pausa')).not.toBeInTheDocument()
   })
 
+  it('en escritorio quien mira ve el chat de los jugadores fijo al costado, de sólo lectura y sin botón para abrirlo', () => {
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+    const room = Object.keys(localStorage).find((key) => key.endsWith(':host'))!.split(':')[2]
+    const matchMedia = window.matchMedia
+
+    window.matchMedia = ((query: string) => ({ matches: query.includes('1101'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    window.history.replaceState(null, '', `#duel?room=${room}&watch=1`)
+    const watcher = render(<DuelScreen {...screenProps({ mainIds: [], extraIds: [], cardsById: new Map() })} />)
+    flush()
+    flush()
+
+    const view = within(watcher.container)
+
+    expect(view.getByRole('complementary', { name: 'Chat de los jugadores' })).toBeInTheDocument()
+    expect(view.getByText('Los espectadores no pueden escribir.')).toBeInTheDocument()
+    expect(view.getByRole('log', { name: 'Chat de los jugadores' })).toBeInTheDocument()
+    expect(view.queryByRole('button', { name: /Chat de los jugadores/ })).not.toBeInTheDocument()
+    expect(view.queryByRole('textbox')).not.toBeInTheDocument()
+
+    window.matchMedia = matchMedia
+  })
+
   it('la pantalla de quien mira no parte sus filas en celular: vida, reloj y salir juntos; "Mirando" con el turno; los avisos aparte', () => {
     const { host, guest } = startDuel()
     openTable(host, guest)

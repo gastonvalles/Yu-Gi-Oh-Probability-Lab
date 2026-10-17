@@ -675,7 +675,7 @@ function WatchRoom({ onBack, onWatch }: WatchRoomProps) {
     <Screen>
       <div className="flex items-center gap-2">
         <IconButton tone="raised" size="md" aria-label={t('duel.create.back')} title={t('duel.create.back')} onClick={onBack}>
-          <Icon name="undo" size={18} />
+          <Icon name="chevron-left" size={18} />
         </IconButton>
         <Heading level="section">{t('duel.watchRoom.title')}</Heading>
       </div>
@@ -704,7 +704,7 @@ function WatchRoom({ onBack, onWatch }: WatchRoomProps) {
             </FieldBox>
             {canPaste ? (
               <IconButton type="button" tone="raised" size="md" aria-label={t('duel.watchRoom.paste')} title={t('duel.watchRoom.paste')} onClick={paste}>
-                <Icon name="file" size={18} />
+                <Icon name="clipboard" size={18} />
               </IconButton>
             ) : null}
           </div>
@@ -755,7 +755,7 @@ function CreateRoom({ soloReady, canPublish, onBack, onSolo, onDuo }: CreateRoom
     <Screen>
       <div className="flex items-center gap-2">
         <IconButton tone="raised" size="md" aria-label={t('duel.create.back')} title={t('duel.create.back')} onClick={onBack}>
-          <Icon name="undo" size={18} />
+          <Icon name="chevron-left" size={18} />
         </IconButton>
         <Heading level="section">{t('duel.create.title')}</Heading>
       </div>
@@ -860,9 +860,7 @@ function CreateRoom({ soloReady, canPublish, onBack, onSolo, onDuo }: CreateRoom
 function LinkGone({ onRetry, onCreate }: { onRetry: () => void; onCreate: () => void }) {
   return (
     <div className="grid justify-items-center gap-4 py-10 text-center">
-      <span className="grid size-14 place-items-center rounded-full bg-tint/8 text-muted">
-        <Icon name="alert" size={28} />
-      </span>
+      <Icon name="link-off" size={40} className="text-muted" />
       <div className="grid gap-1.5">
         <h2 className="m-0 text-heading font-bold text-foreground">{t('duel.gone.title')}</h2>
         <p className="m-0 text-body text-muted">{t('duel.gone.text')}</p>

@@ -6,6 +6,7 @@ import type { SpectatorSide, SpectatorSnapshot } from '../../app/duel-spectator'
 import { duelClockMs, formatClock, type Duelist } from '../../app/life-calculator'
 import { isToken, PHASES } from '../../app/practice-mat'
 import { showToastMessage } from '../../app/use-toast-message'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useSpectator, type SpectatorConnect } from '../../app/use-duel'
 import { t } from '../../i18n'
 import { Button } from '../ui/Button'
@@ -139,8 +140,28 @@ function useGameToasts(snapshot: SpectatorSnapshot) {
   }, [games, sides])
 }
 
+/** Lo que escribieron los jugadores, de sólo lectura: en la hoja del celular y en la columna del costado de escritorio. */
+function WatchChat({ snapshot, nameOf }: { snapshot: SpectatorSnapshot; nameOf: (player: Duelist) => string }) {
+  return (
+    <ol role="log" aria-label={t('duel.watch.chat')} className="m-0 grid h-full min-h-0 list-none content-start gap-1.5 overflow-y-auto p-0">
+      {snapshot.chat.length === 0 ? (
+        <li className="text-micro text-soft">{t('duel.watch.chatEmpty')}</li>
+      ) : (
+        snapshot.chat.map((line) => (
+          <li key={line.id} data-from={line.from === 0 ? 'host' : 'guest'} className={cx('break-words rounded-card px-2.5 py-1 text-body text-foreground', PLAYER_COLOR[line.from === 0 ? 'mine' : 'theirs'].bubble)}>
+            <span className={cx('block text-micro font-semibold', PLAYER_COLOR[line.from === 0 ? 'mine' : 'theirs'].text)}>{nameOf(line.from)}</span>
+            {line.text}
+          </li>
+        ))
+      )}
+    </ol>
+  )
+}
+
 function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot; online: boolean; onLeave: () => void }) {
   const now = useTick(1000)
+  // En escritorio el chat va fijo al costado (como el de los jugadores); en el celular, en una hoja que se abre con el ícono.
+  const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   // Desde qué lado se mira: abajo, el anfitrión (o el invitado, dando vuelta la mesa).
   const [flipped, setFlipped] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
@@ -170,90 +191,96 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
   }
 
   return (
-    <div className="h-full min-h-0 overflow-y-auto">
-      <div className="mx-auto grid w-full max-w-3xl content-start gap-2 px-2 py-2 min-[1101px]:px-4" data-testid="spectator-table">
-        {/* Arriba, lo de quien está arriba; las vidas del de abajo en la esquina de enfrente, como en la mesa de los jugadores. Tres filas que no se parten (vida + reloj + salir; lo que se mira + el turno; avisos): si algo no entra se achica en su fila en vez de caerse a otra. */}
-        <div className="flex items-center gap-1.5 [&>[data-lp]]:shrink">
-          <LifeTile name={nameOf(top)} life={topSide.lp ?? snapshot.settings?.lp ?? 0} color={top === 0 ? 'mine' : 'theirs'} />
-          <span className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-card border border-border-subtle bg-card-background px-2.5 text-micro font-semibold tabular-nums text-foreground" aria-label={t('duel.bar.clock', { time: clock })}>
-            <Icon name={snapshot.clock.running ? 'pause' : 'play'} size={14} />
-            {clock}
-          </span>
-          <IconButton tone="flat" size="sm" aria-label={t('duel.room.leave')} title={t('duel.room.leave')} className="-mr-2 ml-auto shrink-0" onClick={onLeave}>
-            <Icon name="x" />
-          </IconButton>
-        </div>
-
-        <div className="flex min-w-0 items-center gap-1.5">
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold text-muted" title={t('duel.watch.readOnly')}>
-            <Icon name="eye" size={14} />
-            {t('duel.watch.badge')}
-          </span>
-          {snapshot.turn !== null ? (
-            <span className="min-w-0 truncate rounded-full bg-accent/20 px-2.5 py-1 text-micro font-semibold text-accent">
-              {t('duel.watch.turnOf', { name: nameOf(snapshot.turn) })}
-              {phase ? <span data-testid="duel-phase">{` · ${phase}`}</span> : null}
+    <div className={cx("h-full min-h-0", docked ? "flex" : "overflow-y-auto")}>
+      <div className={cx(docked && "min-w-0 flex-1 overflow-y-auto")}>
+        <div className="mx-auto grid w-full max-w-3xl content-start gap-2 px-2 py-2 min-[1101px]:px-4" data-testid="spectator-table">
+          {/* Arriba, lo de quien está arriba; las vidas del de abajo en la esquina de enfrente, como en la mesa de los jugadores. Tres filas que no se parten (vida + reloj + salir; lo que se mira + el turno; avisos): si algo no entra se achica en su fila en vez de caerse a otra. */}
+          <div className="flex items-center gap-1.5 [&>[data-lp]]:shrink">
+            <LifeTile name={nameOf(top)} life={topSide.lp ?? snapshot.settings?.lp ?? 0} color={top === 0 ? 'mine' : 'theirs'} />
+            <span className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-card border border-border-subtle bg-card-background px-2.5 text-micro font-semibold tabular-nums text-foreground" aria-label={t('duel.bar.clock', { time: clock })}>
+              <Icon name={snapshot.clock.running ? 'pause' : 'play'} size={14} />
+              {clock}
             </span>
-          ) : null}
-        </div>
+            <IconButton tone="flat" size="sm" aria-label={t('duel.room.leave')} title={t('duel.room.leave')} className="-mr-2 ml-auto shrink-0" onClick={onLeave}>
+              <Icon name="x" />
+            </IconButton>
+          </div>
 
-        {snapshot.players < 2 || !online ? (
           <div className="flex min-w-0 items-center gap-1.5">
-            {snapshot.players < 2 && !result ? (
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-warning/15 px-2.5 py-1 text-micro font-semibold text-warning" role="status">
-                <Icon name="pause" size={14} />
-                {t('duel.watch.paused')}
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold text-muted" title={t('duel.watch.readOnly')}>
+              <Icon name="eye" size={14} />
+              {t('duel.watch.badge')}
+            </span>
+            {snapshot.turn !== null ? (
+              <span className="min-w-0 truncate rounded-full bg-accent/20 px-2.5 py-1 text-micro font-semibold text-accent">
+                {t('duel.watch.turnOf', { name: nameOf(snapshot.turn) })}
+                {phase ? <span data-testid="duel-phase">{` · ${phase}`}</span> : null}
               </span>
             ) : null}
-            {online ? null : <span className="min-w-0 truncate text-micro text-warning">{t('duel.status.reconnecting')}</span>}
-            {snapshot.players < 2 ? <span className="min-w-0 truncate text-micro text-warning">{t('duel.watch.playerAway')}</span> : null}
           </div>
-        ) : null}
 
-        {result ? (
-          <Callout tone="info" icon="trophy">
-            <span role="status">{result.kind === 'draw' ? t('duel.result.draw') : t('duel.watch.won', { name: nameOf(result.loser === 0 ? 1 : 0) })}</span>
-          </Callout>
-        ) : null}
-
-        {/* En escritorio las cartas se achican hasta que entran las cinco filas, las dos manos y las barras en la pantalla (en el celular el ancho las fija). */}
-        <DuelTable mine={bottomView} theirs={topView} turn={snapshot.turn === bottom ? 'mine' : 'theirs'} className="[--cell:max(3rem,min(7rem,calc((100dvh-17rem)/5.2)))]" />
-        <TheirHand count={bottomView.handCount ?? 0} />
-
-        <div className="flex items-center justify-between gap-2">
-          <span className="flex items-center">
-            <IconButton tone="flat" size="sm" aria-label={t('duel.watch.flip')} title={t('duel.watch.flip')} onClick={() => setFlipped((current) => !current)}>
-              <Icon name="swap" />
-            </IconButton>
-            <span className="relative">
-              <IconButton tone="flat" size="sm" aria-label={unread > 0 ? `${t('duel.watch.chat')} (${t('duel.chat.unread', { count: unread })})` : t('duel.watch.chat')} title={t('duel.watch.chat')} onClick={() => setChatOpen(true)}>
-                <Icon name="chat" />
-              </IconButton>
-              {unread > 0 ? (
-                <span aria-hidden="true" className="pointer-events-none absolute right-0 top-0 grid min-w-4 place-items-center rounded-full bg-accent px-1 text-[0.625rem] font-extrabold leading-4 text-[#06140e]">
-                  {unread}
+          {snapshot.players < 2 || !online ? (
+            <div className="flex min-w-0 items-center gap-1.5">
+              {snapshot.players < 2 && !result ? (
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-warning/15 px-2.5 py-1 text-micro font-semibold text-warning" role="status">
+                  <Icon name="pause" size={14} />
+                  {t('duel.watch.paused')}
                 </span>
               ) : null}
+              {online ? null : <span className="min-w-0 truncate text-micro text-warning">{t('duel.status.reconnecting')}</span>}
+              {snapshot.players < 2 ? <span className="min-w-0 truncate text-micro text-warning">{t('duel.watch.playerAway')}</span> : null}
+            </div>
+          ) : null}
+
+          {result ? (
+            <Callout tone="info" icon="trophy">
+              <span role="status">{result.kind === 'draw' ? t('duel.result.draw') : t('duel.watch.won', { name: nameOf(result.loser === 0 ? 1 : 0) })}</span>
+            </Callout>
+          ) : null}
+
+          {/* En escritorio las cartas se achican hasta que entran las cinco filas, las dos manos y las barras en la pantalla (en el celular el ancho las fija). */}
+          <DuelTable mine={bottomView} theirs={topView} turn={snapshot.turn === bottom ? 'mine' : 'theirs'} className="[--cell:max(3rem,min(7rem,calc((100dvh-17rem)/5.2)))]" />
+          <TheirHand count={bottomView.handCount ?? 0} />
+
+          <div className="flex items-center justify-between gap-2">
+            <span className="flex items-center">
+              <IconButton tone="flat" size="sm" aria-label={t('duel.watch.flip')} title={t('duel.watch.flip')} onClick={() => setFlipped((current) => !current)}>
+                <Icon name="swap" />
+              </IconButton>
+              {docked ? null : (
+                <span className="relative">
+                  <IconButton tone="flat" size="sm" aria-label={unread > 0 ? `${t('duel.watch.chat')} (${t('duel.chat.unread', { count: unread })})` : t('duel.watch.chat')} title={t('duel.watch.chat')} onClick={() => setChatOpen(true)}>
+                    <Icon name="chat" />
+                  </IconButton>
+                  {unread > 0 ? (
+                    <span aria-hidden="true" className="pointer-events-none absolute right-0 top-0 grid min-w-4 place-items-center rounded-full bg-accent px-1 text-[0.625rem] font-extrabold leading-4 text-[#06140e]">
+                      {unread}
+                    </span>
+                  ) : null}
+                </span>
+              )}
             </span>
-          </span>
-          <LifeTile name={nameOf(bottom)} life={bottomSide.lp ?? snapshot.settings?.lp ?? 0} mine color={bottom === 0 ? 'mine' : 'theirs'} />
+            <LifeTile name={nameOf(bottom)} life={bottomSide.lp ?? snapshot.settings?.lp ?? 0} mine color={bottom === 0 ? 'mine' : 'theirs'} />
+          </div>
         </div>
       </div>
 
-      <SideDrawer isOpen={chatOpen} onClose={() => setChatOpen(false)} title={t('duel.watch.chat')}>
-        <ol role="log" aria-label={t('duel.watch.chat')} className="m-0 grid h-full min-h-0 list-none content-start gap-1.5 overflow-y-auto p-0">
-          {snapshot.chat.length === 0 ? (
-            <li className="text-micro text-soft">{t('duel.watch.chatEmpty')}</li>
-          ) : (
-            snapshot.chat.map((line) => (
-              <li key={line.id} data-from={line.from === 0 ? 'host' : 'guest'} className={cx('break-words rounded-card px-2.5 py-1 text-body text-foreground', PLAYER_COLOR[line.from === 0 ? 'mine' : 'theirs'].bubble)}>
-                <span className={cx('block text-micro font-semibold', PLAYER_COLOR[line.from === 0 ? 'mine' : 'theirs'].text)}>{nameOf(line.from)}</span>
-                {line.text}
-              </li>
-            ))
-          )}
-        </ol>
-      </SideDrawer>
+      {docked ? (
+        <aside aria-label={t("duel.watch.chat")} className="flex w-80 shrink-0 flex-col border-l border-border-subtle bg-card-background">
+          <div className="flex items-baseline justify-between gap-2 border-b border-border-subtle px-4 py-3">
+            <Heading level="card">{t("duel.watch.chat")}</Heading>
+            <span className="text-micro text-muted">{t("duel.watch.readOnlyShort")}</span>
+          </div>
+          <div className="min-h-0 flex-1 overflow-hidden px-4 py-3">
+            <WatchChat snapshot={snapshot} nameOf={nameOf} />
+          </div>
+          <p className="m-0 border-t border-border-subtle px-4 py-3 text-micro text-muted">{t("duel.watch.noWrite")}</p>
+        </aside>
+      ) : (
+        <SideDrawer isOpen={chatOpen} onClose={() => setChatOpen(false)} title={t("duel.watch.chat")}>
+          <WatchChat snapshot={snapshot} nameOf={nameOf} />
+        </SideDrawer>
+      )}
     </div>
   )
 }

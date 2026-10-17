@@ -161,6 +161,8 @@ export const duel: Translated<typeof es> = {
   'duel.watch.flip': 'View from the other side',
   'duel.watch.chat': "Players' chat",
   'duel.watch.chatEmpty': "They haven't written anything yet.",
+  'duel.watch.readOnlyShort': 'Read only',
+  'duel.watch.noWrite': 'Spectators cannot write.',
   'duel.watch.and': ' and ',
   'duel.watch.host': 'Host',
   'duel.watch.guest': 'Guest',

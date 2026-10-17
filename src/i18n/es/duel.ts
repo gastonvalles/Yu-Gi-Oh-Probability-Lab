@@ -164,6 +164,8 @@ export const duel = {
   'duel.watch.flip': 'Ver desde el otro lado',
   'duel.watch.chat': 'Chat de los jugadores',
   'duel.watch.chatEmpty': 'Todavía no escribieron nada.',
+  'duel.watch.readOnlyShort': 'Sólo lectura',
+  'duel.watch.noWrite': 'Los espectadores no pueden escribir.',
   'duel.watch.and': ' y ',
   'duel.watch.host': 'Anfitrión',
   'duel.watch.guest': 'Invitado',
