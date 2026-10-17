@@ -178,24 +178,18 @@ const FIRST_DEAL_MS = 90
 const NEXT_DEAL_MS = 55
 
 /**
- * El borde y el velo de una casilla vacía: una línea fina violeta con un velo adentro (la zona se lee como un lugar, no como un hueco). La zona extra de monstruos, que es de los
- * dos, lleva el violeta claro con un brillo, para distinguirla de lejos.
+ * El borde y el velo de una casilla vacía: una línea fina de un gris sutil (`field-line`) con un velo parejo, para que la zona se lea como un lugar y no como un hueco.
+ * Todas las casillas son iguales —las tuyas, las del rival, las pilas y las Zonas Extra—: no hay zonas de otro color; el color queda para lo que pasa (elegir, soltar una carta).
  */
-const CELL_TONE = {
-  default: 'border border-solid border-primary/35 shadow-[inset_0_0_14px_rgb(var(--primary-rgb)/0.14)]',
-  emz: 'border border-solid border-accent/70 shadow-[inset_0_0_16px_rgb(var(--accent-rgb)/0.3),0_0_14px_rgb(var(--accent-rgb)/0.28)]',
-  // Tus zonas de monstruo: azul con resplandor (lo único azul de la mesa). Las del rival, de un violeta cálido (su color es el ámbar).
-  mine: 'border-[1.5px] border-solid border-field-mine/80 bg-field-mine/10 shadow-[0_0_10px_rgb(var(--field-mine-rgb)/0.45),inset_0_0_14px_rgb(var(--field-mine-rgb)/0.2)]',
-  theirs: 'border border-solid border-info/45 bg-primary/10 shadow-[inset_0_0_14px_rgb(var(--info-rgb)/0.1)]',
-} as const
+const CELL_LOOK = 'border border-solid border-field-line/30 bg-field-line/[0.06]'
 
 /**
- * Lo que tiene toda casilla del campo o de una pila: su borde y velo (ver `CELL_TONE`); se enciende con una carta arrastrada encima y se resalta cuando se está eligiendo.
+ * Lo que tiene toda casilla del campo o de una pila: su borde y velo (ver `CELL_LOOK`); se enciende con una carta arrastrada encima y se resalta cuando se está eligiendo.
  * La forma va aparte: ver `CELL` y `CELL_SQUARE`.
  */
-const cellLook = (tone: keyof typeof CELL_TONE) => [
+const cellLook = () => [
   'relative min-w-0 transition-[color,background-color,border-color,box-shadow] duration-150',
-  CELL_TONE[tone],
+  CELL_LOOK,
   // Con una carta arrastrada encima: borde parejo, relleno y resplandor violeta.
   'data-[over=true]:border-solid data-[over=true]:border-primary-hover data-[over=true]:bg-primary/25 data-[over=true]:shadow-[0_0_0_2px_rgb(var(--primary-hover-rgb)/0.55),0_0_24px_rgb(var(--primary-hover-rgb)/0.6),inset_0_0_18px_rgb(var(--primary-hover-rgb)/0.35)]',
   // Una zona que se puede elegir respira en verde y un aro se le expande desde el borde.
@@ -209,17 +203,14 @@ const cellLook = (tone: keyof typeof CELL_TONE) => [
  * La zona de campo y las pilas (las columnas de los costados): del tamaño justo de una carta, que nunca se acuesta. Son angostas (38 px en un celular chico): el área que se toca crece 4 px a cada lado
  * (`before`, justo hasta la casilla vecina, que está a 4 px) sin agrandar lo que se ve.
  */
-export const CELL = `aspect-[421/614] before:absolute before:-inset-1 ${cellLook('default')}`
+export const CELL = `aspect-[421/614] before:absolute before:-inset-1 ${cellLook()}`
 /**
  * Las zonas del centro (monstruos, Mágicas y Trampas, Zonas Extra) son cuadradas, del lado largo de una carta: la carta entra parada (el alto de la casilla)
  * o acostada en defensa (el ancho de la casilla) con el mismo tamaño y sin salirse, así que dos cartas en defensa vecinas no se pisan ni se achican.
  */
-export const CELL_SQUARE = `aspect-square ${cellLook('default')}`
-/** La zona extra de monstruos: cuadrada como las otras, con su brillo. */
-export const CELL_EMZ = `aspect-square cell-cross ${cellLook('emz')}`
-/** Tus zonas de monstruo (azul con resplandor) y las del rival (violeta cálido; las vacías de la 1.ª, 3.ª y 5.ª, con su X). */
-export const CELL_MINE = `aspect-square ${cellLook('mine')}`
-export const CELL_THEIRS = `aspect-square ${cellLook('theirs')}`
+export const CELL_SQUARE = `aspect-square ${cellLook()}`
+/** La zona extra de monstruos: cuadrada como las otras, con su X de trazos finos. */
+export const CELL_EMZ = `aspect-square cell-cross ${cellLook()}`
 /** El ancho de una carta como parte de su alto (421 × 614 px): una carta parada en una casilla cuadrada mide ese tanto de ancho. */
 const CARD_WIDTH_PER_HEIGHT = 421 / 614
 
@@ -1164,7 +1155,7 @@ export function PracticeMat({
         data-pick={pickableZone || pickableTribute ? 'true' : 'false'}
         data-chosen={chosen ? 'true' : 'false'}
         data-pointed={placed !== null && duel?.pointed?.card === placed.id ? 'true' : undefined}
-        className={spot === 'field' ? CELL : spot === 'emz' ? CELL_EMZ : spot === 'mz' ? CELL_MINE : CELL_SQUARE}
+        className={spot === 'field' ? CELL : spot === 'emz' ? CELL_EMZ : CELL_SQUARE}
         style={{ gridArea: area }}
         onClick={pickableZone ? () => pickZone(spot, index) : undefined}
         onKeyDown={pickableZone ? (event) => activate(event, () => pickZone(spot, index)) : undefined}
