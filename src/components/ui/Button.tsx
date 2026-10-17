@@ -25,7 +25,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const FILLED: Record<ButtonColor, string> = {
   brand: 'bg-primary text-primary-foreground shadow-brand hover:bg-primary-hover',
   danger: 'bg-destructive text-white hover:brightness-110',
-  success: 'bg-success text-background shadow-[0_6px_16px_rgb(var(--success-rgb)/0.3)] hover:brightness-110',
+  success: 'bg-success-solid text-white shadow-[0_6px_16px_rgb(var(--success-rgb)/0.3)] hover:brightness-110',
 }
 
 /** Lavanda: relleno violeta oscuro con texto blanco; al pasar el mouse se aclara. */
