@@ -21,6 +21,8 @@ interface AppShellProps {
   contentScrollRef?: RefObject<HTMLDivElement | null>
   /** false: la pantalla ocupa todo el alto (el builder) y adentro tiene sus propios scrolls; true: scrollea el recuadro de la pantalla. El pie va fijo abajo en los dos. */
   contentScrollable?: boolean
+  /** Avisa al abrirse la hoja de un grupo en el celular: quien arma el menú puede releer lo que cambió desde la última vez (una sala que se dejó en pausa, las builds guardadas). */
+  onSheetOpen?: (groupKey: string) => void
   /** Vista completa (la práctica): sin pie y, en el celular, del alto exacto de la ventana (nada de scroll de página); la pantalla se reparte ese alto. */
   immersive?: boolean
 }
@@ -31,7 +33,7 @@ interface AppShellProps {
  * idioma, copia de seguridad y legales), la barra de abajo con los cuatro grupos (cada uno abre una hoja con sus opciones) y la pantalla con su pie
  * al final, en el scroll de la página. Se arma una sola vez: las pantallas sólo ponen su contenido adentro.
  */
-export function AppShell({ groups, activeKey, onSelect, children, contentScrollRef, contentScrollable = false, immersive = false }: AppShellProps) {
+export function AppShell({ groups, activeKey, onSelect, children, contentScrollRef, contentScrollable = false, immersive = false, onSheetOpen }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(readSidebarCollapsed)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [openGroupKey, setOpenGroupKey] = useState<string | null>(null)
@@ -44,6 +46,10 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
   const closeDrawer = useCallback(() => setDrawerOpen(false), [])
   const closeGroup = useCallback(() => setOpenGroupKey(null), [])
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  // La barra de arriba del celular dice en qué pantalla estás (como en el lienzo); sin pantalla conocida, la marca.
+  // (El inicio del duelo es «Nueva sala» en el menú lateral, pero la pantalla es la del grupo: «Duelo».)
+  const activeGroup = groups.find((group) => group.items.some((item) => item.key === activeKey))
+  const screenTitle = activeKey === 'duel' ? activeGroup?.label : activeGroup?.items.find((item) => item.key === activeKey)?.label
   // Los cinco pasos del deck llevan su barra de progreso; las demás pantallas, no.
   const flowGroup = groups.find((group) => group.key === 'deck' && group.items.some((item) => item.key === activeKey)) ?? null
 
@@ -65,7 +71,7 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
     <div className={cx('min-h-dvh w-full min-w-0 overflow-x-clip min-[1101px]:grid min-[1101px]:h-dvh min-[1101px]:grid-cols-[auto_minmax(0,1fr)] min-[1101px]:overflow-hidden', immersive ? 'max-[1100px]:h-dvh max-[1100px]:overflow-hidden' : 'max-[1100px]:pb-[calc(4rem+env(safe-area-inset-bottom,0px))]')}>
       <AppSidebar groups={groups} activeKey={activeKey} onSelect={onSelect} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} className="max-[1100px]:hidden" />
       <div className={cx('flex min-w-0 flex-col min-[1101px]:min-h-0', immersive ? 'min-h-dvh max-[1100px]:h-dvh' : 'min-h-[calc(100dvh-4rem-env(safe-area-inset-bottom,0px))] min-[1101px]:min-h-0')}>
-        <MobileTopBar menuOpen={drawerOpen} onMenu={() => setDrawerOpen(true)} className="min-[1101px]:hidden" />
+        <MobileTopBar menuOpen={drawerOpen} onMenu={() => setDrawerOpen(true)} title={screenTitle} className="min-[1101px]:hidden" />
         {flowGroup ? <FlowSteps group={flowGroup} activeKey={activeKey} onSelect={onSelect} className="shrink-0 min-[1101px]:px-8 min-[1101px]:pt-4" /> : null}
         <div
           ref={contentScrollRef}
@@ -86,7 +92,10 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
         {immersive ? null : <AppFooter className="min-[1101px]:py-2" />}
       </div>
       {/* La mesa a pantalla completa (práctica y duelo) trae sus propios controles abajo: sin barra. */}
-      {immersive ? null : <MobileTabBar groups={groups} activeKey={activeKey} openKey={openGroupKey} onOpen={setOpenGroupKey} className="min-[1101px]:hidden" />}
+      {immersive ? null : <MobileTabBar groups={groups} activeKey={activeKey} openKey={openGroupKey} onOpen={(key) => {
+          if (openGroupKey !== key) onSheetOpen?.(key)
+          setOpenGroupKey((current) => (current === key ? null : key))
+        }} className="min-[1101px]:hidden" />}
       <GroupSheet
         group={groups.find((group) => group.key === openGroupKey) ?? null}
         activeKey={activeKey}

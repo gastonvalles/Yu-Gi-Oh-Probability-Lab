@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { buildDuelLink, DUEL_STEP, extractRoomCode, isWatchLink, parseDuelTarget } from '../../app/duel-link'
+import { buildDuelLink, DUEL_STEP, extractRoomCode, isWatchLink, parseDuelTarget, parseDuelView, type DuelView } from '../../app/duel-link'
 import { getDeckFormatLabel } from '../../app/deck-format'
 import { deckFormatIssues } from '../../app/duel-format'
 import { MAIN_MINIMUM } from '../../app/duel-siding'
@@ -82,6 +82,8 @@ interface DuelScreenProps {
   connectSpectator?: SpectatorConnect
   /** La lista de salas públicas del relay (sin esto, las salas son sólo por enlace). */
   rooms?: RoomsApi
+  /** Avisa si la pantalla de ahora es una mesa (la del duelo o la del espectador), que ocupa todo el alto; el resto (el lobby, la sala, el siding, la pausa) deja la barra de abajo del celular. */
+  onImmersiveChange?: (immersive: boolean) => void
 }
 
 interface Intent {
@@ -156,7 +158,7 @@ function showRoomInUrl(room: string | null, watch = false) {
  * El duelo por enlace: sin sala, el lobby (crear una o unirse con un código); en la sala, el enlace para el rival hasta que los dos
  * reparten su mano; y después la mesa de práctica con el campo del rival arriba. No sabe de redes: `connect` (el relay) lo pone quien la usa.
  */
-export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, deckName, connect, connectSpectator, rooms }: DuelScreenProps) {
+export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, deckName, connect, connectSpectator, rooms, onImmersiveChange }: DuelScreenProps) {
   // De momento las mascotas no aparecen en los duelos (ni en el lobby, la sala o la mesa): las que andan flotando esperan afuera.
   useEffect(() => {
     // `data-duel` hace que, en celular, los avisos se dibujen arriba de la botonera (ver index.css).
@@ -170,6 +172,8 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   }, [])
   const [name, setName] = useState(() => readStored(() => localStorage, NAME_KEY) ?? '')
   const [intent, setIntent] = useState<Intent | null>(readIntent)
+  // El paso del lobby que pidió la hoja de Duelo del celular (`#duel?view=…`): se aplica una vez y se borra de la dirección.
+  const [view, setView] = useState<DuelView | null>(() => (typeof window === 'undefined' ? null : parseDuelView(window.location.hash)))
   const myName = cleanName(name) || t('duel.lobby.defaultName')
   // El deck es el del builder o uno que se pega; se juega siempre con los puntos de vida de siempre.
   const [imported, setImported] = useState<DuelDeck | null>(null)
@@ -236,6 +240,15 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
     }
   }, [rooms, publicCode, awaitingRival])
 
+  // Sólo la mesa es a pantalla completa; antes de ella y entre un duelo y el siguiente (lobby, sala, siding, pausa) la app lleva su barra de abajo en el celular.
+  const inSiding = sidingOpen && Boolean(snapshot?.settings.siding && snapshot.series.match && snapshot.series.winner === null)
+  const onTable = intent !== null && (intent.watch === true || Boolean(duel && snapshot?.mine && snapshot.theirs && !inSiding))
+
+  useEffect(() => {
+    onImmersiveChange?.(onTable)
+  }, [onTable, onImmersiveChange])
+  useEffect(() => () => onImmersiveChange?.(false), [onImmersiveChange])
+
   // El siding se cierra solo cuando los dos aceptaron y la mesa se limpió para el duelo que sigue.
   useEffect(() => {
     if (!snapshot?.mine) setSidingOpen(false)
@@ -250,6 +263,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   // Pegar un enlace de duelo en la barra de direcciones (o abrirlo en esta misma pestaña) lleva a esa sala.
   useEffect(() => {
     const onHashChange = () => {
+      setView(parseDuelView(window.location.hash))
       const next = intentOf(window.location.hash)
 
       if (next) {
@@ -318,6 +332,12 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
     return (
       <DuelLobby
         startInCreate={createNext}
+        view={view}
+        onViewHandled={() => {
+          setView(null)
+
+          if (parseDuelView(window.location.hash)) window.history.replaceState(null, '', `#${DUEL_STEP}`)
+        }}
         name={name}
         onName={setName}
         builder={{ name: deckName, mainIds, extraIds, sideIds, cardsById }}
@@ -444,6 +464,9 @@ function Screen({ children }: { children: React.ReactNode }) {
 interface DuelLobbyProps {
   /** Abre ya en el paso «Crear una sala». */
   startInCreate?: boolean
+  /** El paso que pidió el menú del celular: crear una sala, mirar un duelo o entrar con un enlace (el campo del enlace recibe el foco). */
+  view?: DuelView | null
+  onViewHandled?: () => void
   name: string
   onName: (name: string) => void
   builder: DuelDeck
@@ -467,9 +490,30 @@ interface DuelLobbyProps {
   onDropPaused: () => void
 }
 
-function DuelLobby({ startInCreate = false, name, onName, builder, imported, onImport, deckReady, deckSize, minDeck, onCreate, onPlaySolo, soloReady, rooms, onJoin, paused, onResume, onDropPaused }: DuelLobbyProps) {
-  const [creating, setCreating] = useState(startInCreate)
-  const [watching, setWatching] = useState(false)
+function DuelLobby({ startInCreate = false, view = null, onViewHandled, name, onName, builder, imported, onImport, deckReady, deckSize, minDeck, onCreate, onPlaySolo, soloReady, rooms, onJoin, paused, onResume, onDropPaused }: DuelLobbyProps) {
+  const [creating, setCreating] = useState(startInCreate || view === 'create')
+  const [watching, setWatching] = useState(view === 'watch')
+  const joinRef = useRef<HTMLInputElement | null>(null)
+
+  // Lo que pide el menú (Nueva sala, Mirar un duelo, Entrar con un enlace) se aplica una vez, también si el lobby ya estaba abierto.
+  useEffect(() => {
+    if (view === null) {
+      return
+    }
+
+    if (view === 'create') setCreating(true)
+    else if (view === 'watch') setWatching(true)
+
+    onViewHandled?.()
+  }, [view, onViewHandled])
+
+  // «Entrar con un enlace»: el campo ya está en el lobby; se lo lleva a la vista con el foco para pegar.
+  useEffect(() => {
+    if (view === 'join') {
+      joinRef.current?.scrollIntoView({ block: 'center' })
+      joinRef.current?.focus({ preventScroll: true })
+    }
+  }, [view])
   const [code, setCode] = useState('')
   const [invalid, setInvalid] = useState(false)
 
@@ -544,6 +588,7 @@ function DuelLobby({ startInCreate = false, name, onName, builder, imported, onI
         >
           <FieldBox className="min-w-0 flex-1">
             <input
+              ref={joinRef}
               aria-label={t('duel.lobby.joinPlaceholder')}
               placeholder={t('duel.lobby.joinPlaceholder')}
               value={code}

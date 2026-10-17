@@ -297,6 +297,8 @@ export const deck = {
   'deck.backup.title': 'Copia de seguridad',
   'deck.backup.description':
     'Todo lo que la app guarda en este navegador (deck, roles, reglas, builds guardados, combos y calculadora de LP) en un archivo, para llevarlo a otro navegador o recuperarlo después de borrar los datos.',
+  'deck.backup.saveCopy': 'Guardar copia de seguridad',
+  'deck.backup.restoreCopy': 'Restaurar una copia',
   'deck.backup.download': 'Descargar copia',
   'deck.backup.restore': 'Restaurar copia',
   'deck.backup.fileLabel': 'Archivo de la copia',

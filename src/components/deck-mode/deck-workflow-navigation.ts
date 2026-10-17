@@ -17,14 +17,22 @@ export interface DeckModeNavigationItem {
   detail: string
   tone: NavTone
   disabled: boolean
+  /** La línea corta de la hoja del celular (los pasos de referencia). */
+  blurb?: string
+  /** El estado de la hoja del celular (los pasos del deck). */
+  pill?: { label: string; ok?: boolean }
 }
 
 interface DeckWorkflowNavigationSnapshot {
   mainDeckCount: number
   roleCardCount: number
   unclassifiedCardCount: number
+  /** Las cartas con roles sugeridos que todavía no se confirmaron (lo que dice «N sin confirmar» en la hoja del celular). */
+  pendingReviewCount?: number
   hasCompletedRoleStep: boolean
   patternCount: number
+  /** Las builds guardadas para comparar (el estado de «Comparar» en la hoja del celular). */
+  savedBuildCount?: number
 }
 
 const WORKFLOW_STEP_KEYS: readonly DeckWorkflowStepKey[] = [
@@ -50,12 +58,18 @@ export function buildDeckWorkflowNavigationItems({
   mainDeckCount,
   roleCardCount,
   unclassifiedCardCount,
+  pendingReviewCount = 0,
   hasCompletedRoleStep,
   patternCount,
+  savedBuildCount = 0,
 }: DeckWorkflowNavigationSnapshot): DeckModeNavigationItem[] {
   return [
     {
       key: 'deck-builder',
+      pill:
+        mainDeckCount >= 40
+          ? { label: t('shell.pill.deckReady', { count: formatInteger(mainDeckCount) }), ok: true }
+          : { label: mainDeckCount > 0 ? t('shell.pill.deckMissing', { count: formatInteger(mainDeckCount) }) : t('shell.pill.deckEmpty') },
       step: '1',
       label: t('shell.step.deck.label'),
       title: t('shell.step.deck.title'),
@@ -71,6 +85,17 @@ export function buildDeckWorkflowNavigationItems({
     },
     {
       key: 'categorization',
+      pill: {
+        label:
+          roleCardCount === 0
+            ? t('shell.pill.rolesNeedMain')
+            : unclassifiedCardCount > 0
+              ? t('shell.pill.rolesMissing', { count: unclassifiedCardCount })
+              : pendingReviewCount > 0
+                ? t('shell.pill.rolesReview', { count: pendingReviewCount })
+                : t('shell.pill.rolesDone'),
+        ok: roleCardCount > 0 && unclassifiedCardCount === 0 && pendingReviewCount === 0,
+      },
       step: '2',
       label: t('shell.step.roles.label'),
       title: t('shell.step.roles.title'),
@@ -91,6 +116,7 @@ export function buildDeckWorkflowNavigationItems({
     },
     {
       key: 'probability-lab',
+      pill: { label: !hasCompletedRoleStep ? t('shell.pill.labFirst') : patternCount > 0 ? t('shell.pill.labRules', { count: patternCount }) : t('shell.pill.labBase') },
       step: '3',
       label: t('shell.step.lab.label'),
       title: t('shell.step.lab.title'),
@@ -105,6 +131,7 @@ export function buildDeckWorkflowNavigationItems({
     },
     {
       key: 'workspace',
+      pill: { label: t('shell.pill.builds', { count: savedBuildCount }) },
       step: '4',
       label: t('shell.step.compare.label'),
       title: t('shell.step.compare.title'),
@@ -115,6 +142,7 @@ export function buildDeckWorkflowNavigationItems({
     },
     {
       key: 'export',
+      pill: { label: t('shell.pill.exportFormats') },
       step: '5',
       label: t('shell.step.export.label'),
       title: t('shell.step.export.title'),
@@ -126,6 +154,7 @@ export function buildDeckWorkflowNavigationItems({
     // No es un paso del deck: es la referencia del meta para armarlo (las tier lists). Siempre se puede abrir.
     {
       key: 'meta',
+      blurb: t('shell.blurb.meta'),
       step: '6',
       label: t('shell.step.meta.label'),
       title: t('shell.step.meta.title'),
@@ -137,6 +166,7 @@ export function buildDeckWorkflowNavigationItems({
     // También es referencia, y va aparte de las tier lists: los decks que llegaron al top de los torneos, completos.
     {
       key: 'tournaments',
+      blurb: t('shell.blurb.tournaments'),
       step: '7',
       label: t('shell.step.tournaments.label'),
       title: t('shell.step.tournaments.title'),
@@ -148,6 +178,7 @@ export function buildDeckWorkflowNavigationItems({
     // Y los duelos de torneo de esos decks, en video.
     {
       key: 'replays',
+      blurb: t('shell.blurb.replays'),
       step: '8',
       label: t('shell.step.replays.label'),
       title: t('shell.step.replays.title'),
@@ -159,6 +190,7 @@ export function buildDeckWorkflowNavigationItems({
     // Y el catálogo: las cartas de cada expansión con su rareza y su precio.
     {
       key: 'expansions',
+      blurb: t('shell.blurb.expansions'),
       step: '9',
       label: t('shell.step.expansions.label'),
       title: t('shell.step.expansions.title'),
@@ -170,6 +202,7 @@ export function buildDeckWorkflowNavigationItems({
     // Y las listas de prohibidas y limitadas de todas las épocas, del TCG y del OCG.
     {
       key: 'banlists',
+      blurb: t('shell.blurb.banlists'),
       step: '10',
       label: t('shell.step.banlists.label'),
       title: t('shell.step.banlists.title'),
@@ -183,35 +216,57 @@ export function buildDeckWorkflowNavigationItems({
 
 /** Qué herramientas se pueden usar ahora: la práctica (una pantalla entera) necesita cartas en el Main. */
 interface AppNavTools {
+  /** El duelo en pausa de este navegador: la hoja del celular ofrece volver a él. */
+  paused?: { room: string; rival: string | null } | null
   practice: boolean
   /** El duelo por enlace sólo se ofrece donde hay un relay al que conectarse. */
   duel?: boolean
 }
 
-/** El menú de la app, en cuatro grupos: Tu deck, Duelo (jugar solo y el duelo por enlace), Herramientas (la calculadora y las mascotas abren un panel) y Descubrir (la referencia del meta). Lo ven el menú lateral y la barra de abajo del celular. */
+/**
+ * El menú de la app, en cuatro grupos: Tu deck, Duelo (jugar solo y el duelo por enlace), Herramientas (la calculadora y las mascotas abren un panel) y Descubrir (la referencia del meta).
+ * Lo ven el menú lateral y la barra de abajo del celular. La hoja del celular de cada grupo se dibuja como en el lienzo: los pasos del deck con su estado a la derecha; el duelo, las
+ * herramientas y Descubrir con una línea que explica cada una. El duelo ofrece ahí cuatro entradas (jugar solo, nueva sala, mirar un duelo y entrar con un enlace) y, si hay un duelo en pausa, un aviso para volver a él.
+ */
 export function buildAppNavGroups(steps: DeckModeNavigationItem[], tools: AppNavTools): NavGroup[] {
   const pick = (...keys: DeckWorkflowStepKey[]): NavItem[] => keys.flatMap((key) => steps.filter((step) => step.key === key))
+  const entry = (key: string, label: string, blurb: string): NavItem => ({ key, label, title: label, icon: 'link' as const, blurb })
+  const practice: NavItem[] = tools.practice ? [{ key: 'practice', label: t('shell.practice.title'), title: t('shell.practice.title'), icon: 'hand' as const, blurb: t('shell.blurb.practice') }] : []
+  const paused = tools.duel ? tools.paused ?? null : null
 
   return [
-    { key: 'deck', label: t('shell.nav.group.deck'), icon: 'cards' as const, items: pick('deck-builder', 'categorization', 'probability-lab', 'workspace', 'export') },
+    { key: 'deck', label: t('shell.nav.group.deck'), icon: 'cards' as const, sheet: 'status' as const, items: pick('deck-builder', 'categorization', 'probability-lab', 'workspace', 'export') },
     {
       key: 'duel',
       label: t('shell.nav.group.duel'),
       icon: 'target' as const,
-      items: [
-        ...(tools.practice ? [{ key: 'practice', label: t('shell.practice.title'), title: t('shell.practice.title'), icon: 'hand' as const }] : []),
-        ...(tools.duel ? [{ key: 'duel', label: t('duel.nav.title'), title: t('duel.nav.title'), icon: 'link' as const }] : []),
+      sheet: 'description' as const,
+      items: [...practice, ...(tools.duel ? [{ key: 'duel', label: t('duel.nav.title'), title: t('duel.nav.title'), icon: 'link' as const }] : [])],
+      sheetItems: [
+        ...practice,
+        ...(tools.duel
+          ? [entry('duel-create', t('duel.nav.title'), t('shell.blurb.create')), entry('duel-watch', t('duel.watchRoom.open'), t('shell.blurb.watch')), entry('duel-join', t('shell.duel.join'), t('shell.blurb.join'))]
+          : []),
       ],
+      sheetNotice: paused
+        ? {
+            title: paused.rival ? t('shell.paused.title', { name: paused.rival }) : t('shell.paused.titleNoName'),
+            text: t('shell.paused.text'),
+            actionLabel: t('shell.paused.resume'),
+            actionKey: 'duel-resume',
+          }
+        : undefined,
     },
     {
       key: 'tools',
       label: t('shell.nav.group.tools'),
       icon: 'sliders' as const,
+      sheet: 'description' as const,
       items: [
-        { key: 'life', label: t('shell.life.title'), title: t('shell.life.title'), icon: 'heart' as const },
-        { key: 'mascots', label: t('shell.mascot.title'), title: t('shell.mascot.title'), icon: 'paw' as const },
+        { key: 'life', label: t('shell.life.title'), title: t('shell.life.title'), icon: 'heart' as const, blurb: t('shell.blurb.life') },
+        { key: 'mascots', label: t('shell.mascot.title'), title: t('shell.mascot.title'), icon: 'paw' as const, blurb: t('shell.blurb.mascots') },
       ],
     },
-    { key: 'discover', label: t('shell.nav.group.discover'), icon: 'search' as const, items: pick('meta', 'tournaments', 'replays', 'expansions', 'banlists') },
+    { key: 'discover', label: t('shell.nav.group.discover'), icon: 'search' as const, sheet: 'description' as const, items: pick('meta', 'tournaments', 'replays', 'expansions', 'banlists') },
   ].filter((group) => group.items.length > 0)
 }

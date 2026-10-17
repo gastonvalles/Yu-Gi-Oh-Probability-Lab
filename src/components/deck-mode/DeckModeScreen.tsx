@@ -8,6 +8,8 @@ import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
 import { createMatState, randomSeed, shuffleWithSeed } from '../../app/practice-mat'
 import { useMatSession } from '../../app/use-mat-session'
 import { createRoomsApi } from '../../app/duel-rooms'
+import { findPausedDuel } from '../../app/duel-save'
+import { readSavedBuilds } from '../../app/saved-builds'
 import { connectSpectatorToRelay, connectToRelay, duelRelayUrl } from '../../app/use-duel'
 import { t } from '../../i18n'
 import type { DeckCardInstance } from '../../app/model'
@@ -84,6 +86,7 @@ export function DeckModeScreen() {
   const mainDeckCount = controller.deckBuilderStep.deckBuilder.main.length
   const roleCards = controller.roles.cards
   const unclassifiedCardCount = useMemo(() => countUnclassifiedCards(roleCards), [roleCards])
+  const pendingReviewCount = useMemo(() => countCardsPendingReview(roleCards), [roleCards])
   const hasCompletedRoleStep = useMemo(() => isClassificationStepComplete(roleCards), [roleCards])
   const patternCount = controller.probability.patterns.length
   const [lifeOpen, setLifeOpen] = useState(false)
@@ -103,6 +106,8 @@ export function DeckModeScreen() {
   const isCategorizationStep = activeStep === 'categorization'
   const isPracticeStep = activeStep === 'practice'
   const isDuelStep = activeStep === 'duel'
+  // En el duelo sólo la mesa es a pantalla completa (sin pie ni barra de abajo); el lobby, la sala y el siding llevan el armazón de siempre.
+  const [duelTable, setDuelTable] = useState(false)
   // La práctica y el duelo juegan con las mismas copias del deck armado.
   const matDeck = usePracticeDeck(controller.probability.derivedMainCards, controller.exportDeck.deckBuilder.extra, controller.exportDeck.deckBuilder.side)
   // El duelo por enlace se ofrece sólo si la app sabe a qué relay conectarse (`VITE_DUEL_RELAY_URL`).
@@ -198,33 +203,49 @@ export function DeckModeScreen() {
       setActiveStep(nextStep)
     }
   }, [])
+  // Lo que dice la hoja de «Tu deck» del celular de Comparar (cuántas builds hay guardadas) y la de Duelo (si hay una sala en pausa) se lee de lo guardado al cambiar de pantalla.
+  const [savedBuildCount, setSavedBuildCount] = useState(() => readSavedBuilds().length)
+  const [pausedDuel, setPausedDuel] = useState(findPausedDuel)
+  const refreshSheetData = useCallback(() => {
+    setSavedBuildCount(readSavedBuilds().length)
+    setPausedDuel(findPausedDuel())
+  }, [])
+
+  useEffect(refreshSheetData, [activeStep, refreshSheetData])
   const navigationItems = useMemo(
     () =>
       buildDeckWorkflowNavigationItems({
         mainDeckCount,
         roleCardCount: roleCards.length,
         unclassifiedCardCount,
+        pendingReviewCount,
         hasCompletedRoleStep,
         patternCount,
+        savedBuildCount,
       }),
     [
       hasCompletedRoleStep,
       mainDeckCount,
       patternCount,
+      pendingReviewCount,
       roleCards.length,
+      savedBuildCount,
       unclassifiedCardCount,
     ],
   )
   const deckBuilderStep = controller.deckBuilderStep
   // El menú: los pasos del deck, las herramientas (la práctica es una pantalla; la calculadora y las mascotas abren un panel encima) y la referencia. La práctica necesita cartas en el Main.
-  const navGroups = useMemo(() => buildAppNavGroups(navigationItems, { practice: mainDeckCount > 0, duel: duelConnect !== null }), [navigationItems, mainDeckCount, duelConnect])
+  const navGroups = useMemo(() => buildAppNavGroups(navigationItems, { practice: mainDeckCount > 0, duel: duelConnect !== null, paused: pausedDuel }), [navigationItems, mainDeckCount, duelConnect, pausedDuel])
   const handleNavSelect = useCallback(
     (key: string) => {
       if (key === 'life') setLifeOpen(true)
       else if (key === 'mascots') setMascotsOpen(true)
+      // La hoja de Duelo del celular: el paso del lobby que pide cada entrada (el duelo lo lee de la dirección) o volver al duelo en pausa.
+      else if (key === 'duel-create' || key === 'duel-watch' || key === 'duel-join') window.location.hash = `#duel?view=${key.slice('duel-'.length)}`
+      else if (key === 'duel-resume') window.location.hash = pausedDuel ? `#duel?room=${pausedDuel.room}` : '#duel'
       else if (isDeckWorkflowStepKey(key)) handleStepChange(key)
     },
-    [handleStepChange],
+    [handleStepChange, pausedDuel],
   )
   useEffect(() => {
     preloadHeavySteps()
@@ -289,7 +310,7 @@ export function DeckModeScreen() {
             {t('shell.nav.group.duel')}
           </Heading>
           {duelConnect ? (
-            <LazyDuelScreen handSize={controller.probability.handSize} mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} sideIds={matDeck.sideIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} connect={duelConnect.play} connectSpectator={duelConnect.watch} rooms={duelConnect.rooms} />
+            <LazyDuelScreen handSize={controller.probability.handSize} mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} sideIds={matDeck.sideIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} connect={duelConnect.play} connectSpectator={duelConnect.watch} rooms={duelConnect.rooms} onImmersiveChange={setDuelTable} />
           ) : (
             <Callout tone="info" className="m-4">{t('duel.unavailable')}</Callout>
           )}
@@ -343,7 +364,7 @@ export function DeckModeScreen() {
 
   return (
     <>
-      <AppShell groups={navGroups} activeKey={activeStep} onSelect={handleNavSelect} contentScrollable={!isDeckBuilderStep && !isPracticeStep && !isDuelStep} immersive={isPracticeStep || isDuelStep} contentScrollRef={contentScrollRef}>
+      <AppShell groups={navGroups} activeKey={activeStep} onSelect={handleNavSelect} onSheetOpen={refreshSheetData} contentScrollable={!isDeckBuilderStep && !isPracticeStep && !isDuelStep} immersive={isPracticeStep || (isDuelStep && duelTable)} contentScrollRef={contentScrollRef}>
         {mainContent}
       </AppShell>
 

@@ -47,9 +47,9 @@ playground lo muestra con los mismos componentes). Si algo del menú, del cajón
   celular, barra de arriba con hamburguesa, la barra de abajo con los cuatro grupos y la pantalla con su pie (la mesa a pantalla completa no lleva barra de abajo). Recuerda si el menú estaba contraído (`ygo-lab:sidebar-collapsed`)
   y avisa cuánto espacio ocupa (`app/shell-layout.ts`) para que los botones flotantes y la mascota lo dejen libre.
 - `SidebarNav`: la lista de destinos agrupada del menú lateral (índigo, con el destino abierto en ámbar).
-- `MobileTabBar` + `GroupSheet`: la barra de abajo del celular (un botón por grupo) y la hoja que sube con las opciones del grupo. Mide 64 px (`TAB_BAR_PX` en `app/shell-layout.ts`) y los botones flotantes la dejan libre.
+- `MobileTabBar` + `GroupSheet`: la barra de abajo del celular (un botón por grupo) y la hoja que sube con las opciones del grupo, como en el lienzo: se apoya sobre la barra (que queda a la vista: tocar otro grupo cambia de hoja y el mismo la cierra; con una hoja abierta sólo su grupo va en ámbar). «Tu deck» lleva el estado de cada paso a la derecha (`NavItem.pill`), «Duelo» el aviso de una sala en pausa (`NavGroup.sheetNotice`) y sus cuatro entradas (`sheetItems`) y las demás una línea que explica cada destino (`NavItem.blurb`). Mide 64 px (`TAB_BAR_PX` en `app/shell-layout.ts`) y los botones flotantes la dejan libre.
 - `AppSidebar`: marca, destinos, idioma, mascotas y el botón de contraer a una columna de íconos.
-- `MobileTopBar` + `NavDrawer` (`DrawerPanel` por dentro): la hamburguesa y el cajón de ajustes (idioma, copia de seguridad con `BackupActions` y lo legal; foco atrapado, Escape, velo).
+- `MobileTopBar` + `NavDrawer` (`DrawerPanel` por dentro): el nombre de la pantalla con la hamburguesa y el cajón de ajustes del lienzo: idioma (`LanguageSwitcher variant="segmented"`, Español | English), «Tus datos» (`BackupActions variant="list"`) y abajo las redes (`SocialLinks size="lg"`), la privacidad y la autoría; foco atrapado, Escape, velo.
 - `AppFooter`: autoría, aviso de sitio no oficial, redes y privacidad.
 - `nav-model.ts`: los tipos (`NavGroup`, `NavItem`) y `buildAppNavGroups` (en `deck-workflow-navigation.ts`) arma los grupos de la app:
   **Tu deck** (Deck · Roles · Lab · Comparar · Exportar), **Duelo** (Práctica y el duelo por enlace; si no hay ninguno, el grupo no se muestra),

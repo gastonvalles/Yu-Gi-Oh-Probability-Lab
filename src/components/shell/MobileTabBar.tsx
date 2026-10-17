@@ -24,8 +24,9 @@ export function MobileTabBar({ groups, activeKey, openKey, onOpen, placement = '
   return (
     <nav aria-label={t('shell.nav.main')} className={cx('flex border-t border-nav-raised bg-nav pb-[env(safe-area-inset-bottom,0px)]', placement === 'fixed' && 'fixed inset-x-0 bottom-0 z-40', className)}>
       {groups.map((group) => {
-        const hasActive = group.items.some((item) => item.key === activeKey)
         const open = openKey === group.key
+        // Con una hoja abierta el ámbar es del grupo de esa hoja; sin hoja, del grupo de la pantalla en que estás.
+        const hasActive = openKey === null ? group.items.some((item) => item.key === activeKey) : open
 
         return (
           <button
@@ -33,11 +34,11 @@ export function MobileTabBar({ groups, activeKey, openKey, onOpen, placement = '
             type="button"
             aria-haspopup="dialog"
             aria-expanded={open}
-            aria-current={hasActive ? 'true' : undefined}
+            aria-current={group.items.some((item) => item.key === activeKey) ? 'true' : undefined}
             data-active={hasActive ? 'true' : undefined}
             className={cx(
               'flex h-[calc(4rem-1px)] min-w-0 flex-1 flex-col items-center justify-center gap-1 text-micro font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus active:opacity-70 motion-reduce:transition-none',
-              hasActive || open ? 'text-nav-active' : 'text-foreground',
+              hasActive ? 'text-nav-active' : 'text-foreground',
             )}
             onClick={() => onOpen(group.key)}
           >
