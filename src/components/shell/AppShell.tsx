@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useState, type ReactNode, type RefObject } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState, type ReactNode, type RefObject } from 'react'
 
 import { NO_SHELL_INSETS, readSidebarCollapsed, setShellInsets, shellInsetsFor, writeSidebarCollapsed } from '../../app/shell-layout'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
@@ -12,6 +12,7 @@ import { MobileTabBar } from './MobileTabBar'
 import { MobileTopBar } from './MobileTopBar'
 import type { NavGroup } from './nav-model'
 import { NavDrawer } from './NavDrawer'
+import { ShellMenuContext, type ShellMenu } from './ShellMenu'
 
 interface AppShellProps {
   groups: NavGroup[]
@@ -45,6 +46,17 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
     })
   }, [])
   const closeDrawer = useCallback(() => setDrawerOpen(false), [])
+  const openDrawer = useCallback(() => setDrawerOpen(true), [])
+  // Una pantalla a pantalla completa puede traer su propia hamburguesa (`ShellMenuButton`): entonces la barra de arriba sobra y el alto es para la mesa.
+  const [menuClaims, setMenuClaims] = useState(0)
+  const claimMenu = useCallback(() => {
+    setMenuClaims((count) => count + 1)
+
+    return () => setMenuClaims((count) => count - 1)
+  }, [])
+  // Sin la barra de arriba (la mesa trae su hamburguesa), el contenido respeta solo la zona segura de arriba: la barra lo hacía con su `pt`.
+  const ownMenu = immersive && menuClaims > 0
+  const menu = useMemo<ShellMenu>(() => ({ open: openDrawer, isOpen: drawerOpen, claim: claimMenu }), [openDrawer, drawerOpen, claimMenu])
   const closeGroup = useCallback(() => setOpenGroupKey(null), [])
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   // La barra de arriba del celular dice en qué pantalla estás (como en el lienzo); sin pantalla conocida, la marca.
@@ -79,8 +91,8 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
         {t('shell.skipToContent')}
       </button>
       <AppSidebar groups={groups} activeKey={activeKey} onSelect={onSelect} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} className="max-[1100px]:hidden" />
-      <div className={cx('flex min-w-0 flex-col min-[1101px]:min-h-0', immersive ? 'min-h-dvh max-[1100px]:h-dvh' : 'min-h-[calc(100dvh-4rem-env(safe-area-inset-bottom,0px))] min-[1101px]:min-h-0')}>
-        <MobileTopBar menuOpen={drawerOpen} onMenu={() => setDrawerOpen(true)} title={screenTitle} className="min-[1101px]:hidden" />
+      <div className={cx('flex min-w-0 flex-col min-[1101px]:min-h-0', immersive ? 'min-h-dvh max-[1100px]:h-dvh' : 'min-h-[calc(100dvh-4rem-env(safe-area-inset-bottom,0px))] min-[1101px]:min-h-0', ownMenu && 'max-[1100px]:pt-[env(safe-area-inset-top,0px)]')}>
+        {ownMenu ? null : <MobileTopBar menuOpen={drawerOpen} onMenu={openDrawer} title={screenTitle} className="min-[1101px]:hidden" />}
         {flowGroup ? <FlowSteps group={flowGroup} activeKey={activeKey} onSelect={onSelect} className="shrink-0 min-[1101px]:px-8 min-[1101px]:pt-4" /> : null}
         <div
           ref={contentScrollRef}
@@ -96,7 +108,7 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
           {/* En escritorio este envoltorio mide siempre lo que el recuadro (`min-h-0`: no crece con el contenido), así una pantalla puede ocupar justo ese alto con `h-full`
               y repartirlo entre columnas que scrollean por dentro; una pantalla más larga lo desborda y es el recuadro el que scrollea. En el celular crece con el contenido. */}
           <div id="contenido" tabIndex={-1} className={cx('w-full min-w-0 flex-1 outline-none min-[1101px]:min-h-0 [&>*]:min-w-0', !contentScrollable && 'min-h-0')}>
-            {children}
+            <ShellMenuContext.Provider value={menu}>{children}</ShellMenuContext.Provider>
           </div>
         </div>
         {/* El pie queda afuera del recuadro que scrollea: en escritorio está siempre a la vista, abajo, con el mismo alto en todas las pantallas. */}

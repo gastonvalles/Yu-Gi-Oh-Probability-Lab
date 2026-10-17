@@ -190,6 +190,7 @@ export const duel = {
   'duel.bar.clockStart': 'Iniciar el reloj',
   'duel.bar.clockPause': 'Pausar el reloj',
   'duel.bar.reconnect': 'Reconectar',
+  'duel.bar.more': 'Más opciones del duelo',
   'duel.bar.leave': 'Salir del duelo',
   'duel.bar.concede': 'Rendirme',
   'duel.bar.concedeTitle': '¿Rendirte en este duelo?',

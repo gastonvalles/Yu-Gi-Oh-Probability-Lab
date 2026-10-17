@@ -13,6 +13,7 @@ import { GroupSheet } from '../components/shell/GroupSheet'
 import { MobileTabBar } from '../components/shell/MobileTabBar'
 import { MobileTopBar } from '../components/shell/MobileTopBar'
 import { NavDrawer } from '../components/shell/NavDrawer'
+import { ShellMenuButton } from '../components/shell/ShellMenu'
 import { SidebarNav } from '../components/shell/SidebarNav'
 import { Heading } from '../components/ui/Heading'
 
@@ -462,6 +463,38 @@ describe('el armazón', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: /^Probability Lab/ }))
     expect(onSelect).toHaveBeenCalledWith('probability-lab')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('la mesa a pantalla completa que trae su propia hamburguesa reemplaza la barra de arriba: una sola barra, y el botón abre el mismo menú', () => {
+    const onSelect = vi.fn()
+    const { rerender } = render(
+      <AppShell groups={GROUPS} activeKey="practice" onSelect={onSelect} immersive>
+        <p>Mesa</p>
+      </AppShell>,
+    )
+
+    // Sin hamburguesa propia, la barra del armazón sigue ahí (no se pierde la forma de abrir el menú).
+    expect(screen.getByRole('banner')).toBeInTheDocument()
+
+    rerender(
+      <AppShell groups={GROUPS} activeKey="practice" onSelect={onSelect} immersive>
+        <ShellMenuButton />
+      </AppShell>,
+    )
+
+    expect(screen.queryByRole('banner')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir el menú' }))
+    expect(screen.getByRole('dialog', { name: 'Menú' })).toBeInTheDocument()
+  })
+
+  it('una pantalla común (sin vista completa) mantiene su barra de arriba aunque tenga el botón del menú', () => {
+    render(
+      <AppShell groups={GROUPS} activeKey="categorization" onSelect={() => {}} contentScrollable>
+        <ShellMenuButton />
+      </AppShell>,
+    )
+
+    expect(screen.getByRole('banner')).toBeInTheDocument()
   })
 
   it('al cambiar de pantalla (también con el botón Atrás) la hoja y el cajón que estaban abiertos se cierran', () => {
