@@ -24,7 +24,7 @@ export function AppFooter({ className }: { className?: string }) {
           href={t('shell.legal.page')}
           target="_blank"
           rel="noreferrer"
-          className="order-3 rounded-control px-1 text-micro text-muted underline-offset-2 transition-colors duration-150 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:shadow-focus min-[1101px]:order-none"
+          className="order-3 inline-flex items-center rounded-control px-1 text-micro text-muted underline-offset-2 pointer-coarse:min-h-11 transition-colors duration-150 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:shadow-focus min-[1101px]:order-none"
         >
           {t('shell.legal.label')}
         </a>

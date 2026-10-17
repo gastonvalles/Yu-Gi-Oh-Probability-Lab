@@ -99,7 +99,7 @@ export function QuickCalculator({ isOpen, onClose, deckSize, handSize }: QuickCa
           <label className="inline-flex items-center gap-1.5">
             {tRich('lab.quick.reverse', {
               field: () => (
-                <input type="number" inputMode="numeric" min={1} max={100} value={target} aria-label={t('lab.quick.targetPercent')} className={cx(field, 'h-9 w-16 px-2 text-center text-body tabular-nums')} onChange={(event) => setTarget(event.target.value)} />
+                <input type="number" inputMode="numeric" min={1} max={100} value={target} aria-label={t('lab.quick.targetPercent')} className={cx(field, 'h-9 pointer-coarse:h-11 w-16 px-2 text-center text-body tabular-nums')} onChange={(event) => setTarget(event.target.value)} />
               ),
             })}
           </label>

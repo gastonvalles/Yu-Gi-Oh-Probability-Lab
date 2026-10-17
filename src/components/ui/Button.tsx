@@ -51,7 +51,7 @@ const buttonStyle = variants({
   base: 'inline-flex shrink-0 items-center justify-center gap-2 font-semibold leading-tight transition-[background-color,color,box-shadow,transform] duration-150 focus-visible:outline-none focus-visible:shadow-focus active:translate-y-px disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none',
   variants: {
     size: {
-      sm: 'min-h-9 rounded-control px-4 py-1.5 text-body pointer-coarse:min-h-10',
+      sm: 'min-h-9 rounded-control px-4 py-1.5 text-body pointer-coarse:min-h-11',
       md: 'min-h-11 rounded-control px-5 py-2 text-body',
       lg: 'min-h-12.5 rounded-card px-6 py-2.5 text-lead',
     },

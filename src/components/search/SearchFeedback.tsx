@@ -16,11 +16,11 @@ const EMPTY_TEXT: Record<FeedbackLayout, string> = {
 }
 const EMPTY_ACTION: Record<FeedbackLayout, string> = {
   desktop: 'min-h-9 text-body',
-  mobile: 'min-h-10 text-body',
+  mobile: 'min-h-11 text-body',
 }
 const RECENT_CHIP: Record<FeedbackLayout, string> = {
   desktop: 'min-h-8 text-body',
-  mobile: 'min-h-10 text-body',
+  mobile: 'min-h-11 text-body',
 }
 const EMPTY_ACTION_BASE = `${choiceChip} px-4 text-foreground`
 const EMPTY_BOX = 'grid content-start justify-items-center px-4 py-8 text-center'

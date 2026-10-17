@@ -219,7 +219,7 @@ export function ExportDeckPanel({
                 <details key={section.key} open className="group grid gap-1">
                   <summary
                     className={cx(
-                      'm-0 flex cursor-pointer list-none items-baseline justify-between gap-2 rounded-control border-b border-border-subtle pb-1.5 focus-visible:outline-none focus-visible:shadow-focus [&::-webkit-details-marker]:hidden',
+                      'm-0 flex cursor-pointer list-none items-baseline justify-between gap-2 rounded-control border-b border-border-subtle pb-1.5 pointer-coarse:min-h-11 pointer-coarse:items-center focus-visible:outline-none focus-visible:shadow-focus [&::-webkit-details-marker]:hidden',
                       overline,
                     )}
                   >

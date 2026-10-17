@@ -28,12 +28,12 @@ const BARE =
   'bg-transparent text-white hover:text-accent aria-pressed:text-accent aria-selected:text-accent data-[active=true]:text-accent active:opacity-70 disabled:pointer-events-none disabled:opacity-40'
 
 const SIZES: Record<IconButtonTone, Record<IconButtonSize, string>> = {
-  raised: { sm: 'size-9 [&_svg]:size-4', md: 'size-10 [&_svg]:size-[1.125rem]', lg: 'size-11 [&_svg]:size-5' },
+  raised: { sm: 'size-9 pointer-coarse:size-11 [&_svg]:size-4', md: 'size-10 pointer-coarse:size-11 [&_svg]:size-[1.125rem]', lg: 'size-11 [&_svg]:size-5' },
   // En táctil los chicos crecen a 44 px (área mínima recomendada) sin cambiar el ícono.
   close: { sm: 'size-8 pointer-coarse:size-11 [&_svg]:size-4', md: 'size-9 pointer-coarse:size-11 [&_svg]:size-[1.125rem]', lg: 'size-10 [&_svg]:size-5' },
-  ghost: { sm: 'size-8 pointer-coarse:size-11 [&_svg]:size-4', md: 'size-10 [&_svg]:size-5', lg: 'size-10 [&_svg]:size-5' },
+  ghost: { sm: 'size-8 pointer-coarse:size-11 [&_svg]:size-4', md: 'size-10 pointer-coarse:size-11 [&_svg]:size-5', lg: 'size-10 pointer-coarse:size-11 [&_svg]:size-5' },
   flat: { sm: 'size-11 [&_svg]:size-6', md: 'size-12 [&_svg]:size-7', lg: 'size-12 [&_svg]:size-7' },
-  outline: { sm: 'size-9 [&_svg]:size-4', md: 'size-10 [&_svg]:size-[1.125rem]', lg: 'size-12 [&_svg]:size-5' },
+  outline: { sm: 'size-9 pointer-coarse:size-11 [&_svg]:size-4', md: 'size-10 pointer-coarse:size-11 [&_svg]:size-[1.125rem]', lg: 'size-12 [&_svg]:size-5' },
   primary: { sm: 'size-10 [&_svg]:size-[1.125rem]', md: 'size-12 [&_svg]:size-5', lg: 'size-14 [&_svg]:size-6' },
 }
 
