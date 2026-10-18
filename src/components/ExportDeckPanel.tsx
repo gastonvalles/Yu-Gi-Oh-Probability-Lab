@@ -46,7 +46,7 @@ const EXTENSION_LINKS = [
 ] as const
 const KONAMI_DB_URL = 'https://www.db.yugioh-card.com/yugiohdb/?request_locale=en'
 const STEP = 'grid content-start gap-2 rounded-card bg-tint/5 p-3'
-const LINK = 'font-semibold text-primary-soft underline-offset-2 hover:underline'
+const LINK = 'inline-flex min-h-11 items-center font-semibold text-primary-soft underline-offset-2 hover:underline'
 
 /** Lo que se tildó la última vez: una comodidad, si no se puede leer se vuelve a todo tildado. */
 function readSelection(): DeckExportSelection {

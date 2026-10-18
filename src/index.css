@@ -27,7 +27,7 @@
 @theme {
   /* Tipografía: Lexend Deca y 6 tamaños (11 · 14 · 19 · 24 · 33 · 44), cada uno con su interlineado. Sin tamaños sueltos en los componentes. */
   --font-sans: 'Lexend Deca', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --text-micro: 0.6875rem;
+  --text-micro: 0.75rem;
   --text-micro--line-height: 1rem;
   --text-body: 0.875rem;
   --text-body--line-height: 1.375rem;
