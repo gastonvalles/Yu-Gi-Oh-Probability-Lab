@@ -21,6 +21,20 @@ import {
 } from './deck-zone-styles'
 import { cx } from './ui/cx'
 
+/** Al quitar una carta con el teclado, el foco pasa a la que ocupa su lugar (o a la última de la zona): si no, se pierde en el `<body>` y el siguiente Tab arranca desde arriba de la página. */
+function keepFocusAfterRemoving(card: HTMLElement) {
+  const zone = card.closest('section')
+  const cardsOf = () => (zone ? [...zone.querySelectorAll<HTMLElement>('[role="button"][data-deck-card-index]')] : [])
+  const position = cardsOf().indexOf(card)
+
+  // Las demás cartas siguen siendo las mismas (cada una con su `key`): se las vuelve a leer cuando ya se quitó la carta.
+  requestAnimationFrame(() => {
+    const rest = cardsOf()
+
+    rest[Math.min(Math.max(position, 0), rest.length - 1)]?.focus()
+  })
+}
+
 interface DeckZoneProps {
   zone: DeckZoneType
   title: string
@@ -147,6 +161,7 @@ export const DeckZone = memo(function DeckZone({
               onDeckCardClick(card.instanceId)
             } else if (keyboardRemove && !readOnly && (event.key === 'Delete' || event.key === 'Backspace')) {
               event.preventDefault()
+              keepFocusAfterRemoving(event.currentTarget)
               onRemoveCard(card.instanceId)
             }
           },

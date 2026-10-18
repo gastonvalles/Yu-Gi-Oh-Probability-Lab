@@ -46,10 +46,6 @@ export const deck = {
   'deck.classic.shortcut.add': 'agregar',
   'deck.classic.shortcut.removeKeys': 'Clic derecho',
   'deck.classic.shortcut.remove': 'quitar del deck',
-  'deck.classic.shortcut.tabKeys': 'Tab + Enter',
-  'deck.classic.shortcut.tab': 'recorrer y ver cada carta',
-  'deck.classic.shortcut.deleteKeys': 'Supr',
-  'deck.classic.shortcut.delete': 'quitar la carta enfocada',
 
   // --- Pantalla del Deck Builder
   'deck.builder.title': 'Armá tu deck',

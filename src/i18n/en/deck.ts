@@ -47,10 +47,6 @@ export const deck: Translated<typeof es> = {
   'deck.classic.shortcut.add': 'add',
   'deck.classic.shortcut.removeKeys': 'Right-click',
   'deck.classic.shortcut.remove': 'remove from deck',
-  'deck.classic.shortcut.tabKeys': 'Tab + Enter',
-  'deck.classic.shortcut.tab': 'move through and view each card',
-  'deck.classic.shortcut.deleteKeys': 'Delete',
-  'deck.classic.shortcut.delete': 'remove the focused card',
 
   // --- Deck Builder screen
   'deck.builder.title': 'Build your deck',
