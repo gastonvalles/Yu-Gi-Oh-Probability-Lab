@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
-import { META_DECKS, buildTournamentsHash, filterMetaDecks, readTournamentsHash, type MetaDeck, type MetaDeckFilter } from '../../app/meta'
+import { META_DECKS, buildTournamentsHash, countPlacements, filterMetaDecks, metaPlacements, readTournamentsHash, type MetaDeck, type MetaDeckFilter } from '../../app/meta'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useAppSelector } from '../../app/store-hooks'
 import { setMetaRegion, useMetaRegion } from '../../app/use-meta-region'
@@ -10,6 +10,7 @@ import { t } from '../../i18n'
 import { StepHero } from '../StepHero'
 import { Button } from '../ui/Button'
 import { EmptyState } from '../ui/EmptyState'
+import { FilterChips } from '../ui/FilterChips'
 import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
 import { SearchField } from '../ui/SearchField'
@@ -41,6 +42,7 @@ export function TournamentDecksScreen() {
   const region = useMetaRegion(link.deck?.region ?? (deckFormat === 'ocg' ? 'ocg' : 'tcg'))
   const [filter, setFilter] = useState<MetaDeckFilter | null>(link.filter)
   const [query, setQuery] = useState('')
+  const [placements, setPlacements] = useState<string[]>([])
   const [deckLimit, setDeckLimit] = useState(DECKS_PER_PAGE)
   const [selectedDeck, setSelectedDeck] = useState<MetaDeck | null>(link.deck)
 
@@ -88,7 +90,15 @@ export function TournamentDecksScreen() {
     syncHash(selectedDeck, null)
   }
 
-  const decks = useMemo(() => filterMetaDecks(META_DECKS.decks, { ...filter, region, text: query }), [filter, region, query])
+  // Los chips de puesto son siempre los mismos (los de todos los decks): la fila no cambia de forma al buscar. Cada uno cuenta lo que daría con lo demás que está filtrado.
+  const allPlacements = useMemo(() => metaPlacements(META_DECKS.decks), [])
+  const matching = useMemo(() => filterMetaDecks(META_DECKS.decks, { ...filter, region, text: query }), [filter, region, query])
+  const placementCounts = useMemo(() => countPlacements(matching), [matching])
+  const decks = useMemo(() => filterMetaDecks(matching, { placements }), [matching, placements])
+  const togglePlacement = (placement: string) => {
+    setPlacements((current) => (current.includes(placement) ? current.filter((item) => item !== placement) : [...current, placement]))
+    setDeckLimit(DECKS_PER_PAGE)
+  }
   const filteredCardName = filter?.cardId === undefined ? undefined : META_DECKS.cards[String(filter.cardId)]?.name
   const filterLabel =
     filter?.archetype ??
@@ -142,8 +152,27 @@ export function TournamentDecksScreen() {
             }}
           />
         </div>
+        {allPlacements.length > 0 ? (
+          <FilterChips
+            label={t('meta.tournaments.placementLabel')}
+            all={t('meta.tournaments.placementAll')}
+            allActive={placements.length === 0}
+            onAll={() => {
+              setPlacements([])
+              setDeckLimit(DECKS_PER_PAGE)
+            }}
+            chips={allPlacements.map((placement) => ({
+              key: placement,
+              name: placement,
+              count: placementCounts.get(placement) ?? 0,
+              active: placements.includes(placement),
+              onToggle: () => togglePlacement(placement),
+              disabled: !placements.includes(placement) && !placementCounts.has(placement),
+            }))}
+          />
+        ) : null}
         <p className="m-0 text-body text-muted">
-          {t(filterLabel ? 'meta.tournaments.decksFiltered' : 'meta.tournaments.decksAll', {
+          {t(filterLabel || placements.length > 0 ? 'meta.tournaments.decksFiltered' : 'meta.tournaments.decksAll', {
             count: decks.length,
             n: formatInteger(decks.length),
             region: region.toUpperCase(),

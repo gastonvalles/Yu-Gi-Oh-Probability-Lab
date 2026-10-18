@@ -43,20 +43,33 @@ describe('la tarjeta de un deck de torneo (escritorio)', () => {
     const badge = within(card).getByText('Top 8')
     const button = within(card).getByRole('button', { name: 'Ver el deck Ars Magna Elfnote' })
 
-    expect(badge.parentElement).toBe(button.parentElement)
-    expect(button.parentElement).toHaveClass('border-t', 'border-border-subtle')
+    const row = button.parentElement
+
+    expect(badge.closest('.border-t')).toBe(row)
+    expect(row).toHaveClass('border-t', 'border-border-subtle')
 
     fireEvent.click(button)
 
     expect(onOpen).toHaveBeenCalledTimes(1)
   })
 
-  it('lo que es de la ficha no está en la tarjeta: ni la cantidad de jugadores ni el Side', () => {
+  it('la cantidad de jugadores del torneo se ve a simple vista, pegada al puesto (le da sentido: «Top 8 de 200»); el Side es de la ficha', () => {
     render(<MetaDeckTile deck={DECK} layout="card" onOpen={() => {}} />)
 
-    expect(screen.queryByText(/200/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/jugadores/)).not.toBeInTheDocument()
+    const players = screen.getByText(/jugadores/)
+
+    expect(players).toHaveTextContent('de 200 jugadores')
+    // El número va en claro y está en el mismo grupo que la etiqueta del puesto.
+    expect(within(players).getByText('200')).toHaveClass('text-foreground')
+    expect(players.parentElement).toBe(screen.getByText('Top 8').parentElement)
     expect(screen.queryByText(/Side/)).not.toBeInTheDocument()
+  })
+
+  it('sin la cantidad de jugadores no dice nada de ella', () => {
+    render(<MetaDeckTile deck={{ ...DECK, players: null }} layout="card" onOpen={() => {}} />)
+
+    expect(screen.queryByText(/jugadores/)).not.toBeInTheDocument()
+    expect(screen.getByText('Top 8')).toBeInTheDocument()
   })
 
   it('un solo botón para el teclado y los lectores de pantalla: la portada abre el deck con el mouse y queda fuera del orden de tabulación', () => {

@@ -3,6 +3,7 @@ import { coverArtUrl, type MetaDeck } from '../../app/meta'
 import { countReplaysOfDeck } from '../../app/replays'
 import { formatInteger } from '../../app/utils'
 import { t } from '../../i18n'
+import { tRich } from '../../i18n/rich'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { Heading } from '../ui/Heading'
@@ -109,7 +110,7 @@ function MetaDeckCard({ deck, onOpen }: Omit<MetaDeckTileProps, 'layout'>) {
         </span>
       </div>
 
-      {/* Lo que da contexto, en un grupo: dónde y cuándo, y lo que lleva en el Main (el Side, al abrir el deck). La cantidad de jugadores y el Side van en la ficha. */}
+      {/* Lo que da contexto, en un grupo: dónde y cuándo, y lo que lleva en el Main (el Side, al abrir el deck). */}
       <div className="grid gap-1 text-micro text-muted">
         {context ? (
           <p className="m-0 truncate" title={context}>
@@ -128,15 +129,20 @@ function MetaDeckCard({ deck, onOpen }: Omit<MetaDeckTileProps, 'layout'>) {
         ) : null}
       </div>
 
-      {/* El dato que decide y la acción que le sigue, juntos y abajo. */}
+      {/* El dato que decide y la acción que le sigue, juntos y abajo: el puesto, con entre cuántos jugadores fue (le da sentido), y el botón. */}
       <div className="flex items-center justify-between gap-2 border-t border-border-subtle pt-3">
-        {deck.placement ? (
-          <Badge tone={look.tone} icon={look.icon}>
-            {deck.placement}
-          </Badge>
-        ) : (
-          <span />
-        )}
+        <div className="grid min-w-0 justify-items-start gap-1">
+          {deck.placement ? (
+            <Badge tone={look.tone} icon={look.icon}>
+              {deck.placement}
+            </Badge>
+          ) : null}
+          {deck.players !== null ? (
+            <span className="text-micro text-muted tabular-nums">
+              {tRich('meta.deck.ofPlayers', { b: (text) => <strong className="font-semibold text-foreground">{text}</strong> }, { players: formatInteger(deck.players) })}
+            </span>
+          ) : null}
+        </div>
         <Button variant="secondary" icon="layers" aria-label={t('meta.tournaments.viewDeckLabel', { name: deck.name })} onClick={onOpen}>
           {t('meta.tournaments.viewDeck')}
         </Button>

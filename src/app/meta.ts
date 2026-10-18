@@ -150,6 +150,8 @@ export interface MetaDeckFilter {
   archetype?: string
   /** Texto libre: nombre del deck, torneo, puesto o jugador (sin distinguir mayúsculas ni tildes). */
   text?: string
+  /** Los puestos que se piden («Winner», «Top 8»…): el deck tiene que haber llegado a alguno de ellos. Sin ninguno, todos. */
+  placements?: readonly string[]
 }
 
 /** Cuántas semanas hacia adelante se prolonga la tendencia. */
@@ -412,8 +414,41 @@ export function filterMetaDecks(decks: readonly MetaDeck[], filter: MetaDeckFilt
       (filter.region === undefined || deck.region === filter.region) &&
       (filter.archetype === undefined || deck.name === filter.archetype) &&
       (filter.cardId === undefined || hasCard(deck, filter.cardId)) &&
+      (!filter.placements?.length || (deck.placement !== null && filter.placements.includes(deck.placement))) &&
       (words.length === 0 || matchesWords(deck, words)),
   )
+}
+
+/** De mejor a peor puesto: «Winner» 1, «Runner-Up» 2, «Top N» N; lo que no se reconoce va al final. */
+export function placementRank(placement: string): number {
+  const normalized = placement.trim().toLowerCase()
+
+  if (normalized === 'winner') return 1
+  if (normalized === 'runner-up') return 2
+
+  const top = /^top\s*(\d+)$/.exec(normalized)
+
+  return top ? Number(top[1]) : Number.POSITIVE_INFINITY
+}
+
+/** Los puestos que aparecen en los decks, del campeón para abajo (los que no se reconocen, al final y por orden alfabético): son los chips del filtro. */
+export function metaPlacements(decks: readonly MetaDeck[]): string[] {
+  const found = new Set(decks.flatMap((deck) => (deck.placement ? [deck.placement] : [])))
+
+  return [...found].sort((a, b) => placementRank(a) - placementRank(b) || a.localeCompare(b))
+}
+
+/** Cuántos decks hay por puesto (los que no tienen puesto no cuentan). */
+export function countPlacements(decks: readonly MetaDeck[]): Map<string, number> {
+  const counts = new Map<string, number>()
+
+  for (const deck of decks) {
+    if (deck.placement) {
+      counts.set(deck.placement, (counts.get(deck.placement) ?? 0) + 1)
+    }
+  }
+
+  return counts
 }
 
 /** Todas las palabras buscadas tienen que aparecer, en cualquier orden y en cualquiera de los campos. */
