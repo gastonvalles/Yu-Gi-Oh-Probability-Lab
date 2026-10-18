@@ -38,6 +38,8 @@ export function LabSuggestion({ cards, checks, deckFormat, handSize, view, resul
   }
 
   const best = state.analysis.best
+  // Sin ningún Starter ninguna mano abre: el número sale en cero y hay que decir por qué (si no, parece un error de la cuenta).
+  const noStarter = culprit.kind === 'no-opening' && !cards.some((card) => card.roles.includes('starter'))
 
   return (
     <Card className="order-2 grid content-start gap-4 min-[1101px]:order-3 min-[1101px]:col-span-5 min-[1101px]:col-start-1" aria-label={t('lab.suggestion.label')}>
@@ -45,6 +47,7 @@ export function LabSuggestion({ cards, checks, deckFormat, handSize, view, resul
         <p className={cx('m-0', overline, TONE.danger.text)}>{t('lab.suggestion.overline')}</p>
         <strong className="text-lead font-semibold leading-tight text-foreground [overflow-wrap:anywhere]">{culprit.name}</strong>
         <p className={supportText}>{describeCulprit(culprit)}</p>
+        {noStarter ? <p className={supportText}>{t('lab.suggestion.noStarter')}</p> : null}
       </header>
 
       {best ? (

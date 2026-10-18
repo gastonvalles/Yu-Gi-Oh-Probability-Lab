@@ -7,6 +7,7 @@ import type { ApiCardSearchResult } from '../ygoprodeck'
 import { getClassificationOverrides } from './classification-overrides'
 import {
   addSearchResultToZone,
+  confirmAllClassifications,
   confirmClassificationForCard,
   reclassifyAll,
   moveDeckCard,
@@ -92,6 +93,9 @@ const deckBuilderSlice = createSlice({
     confirmDeckCardClassification(state, action: PayloadAction<number>) {
       return confirmClassificationForCard(state, action.payload)
     },
+    confirmAllDeckCardClassifications(state) {
+      return confirmAllClassifications(state)
+    },
     setIsEditingDeck(state, action: PayloadAction<boolean>) {
       state.isEditingDeck = action.payload
     },
@@ -107,6 +111,7 @@ const deckBuilderSlice = createSlice({
 
 export const {
   addSearchResultToDeckZone,
+  confirmAllDeckCardClassifications,
   confirmDeckCardClassification,
   reclassifyAllCards,
   resuggestAllCards,

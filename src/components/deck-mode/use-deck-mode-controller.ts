@@ -13,6 +13,7 @@ import {
 import {
   addSearchResultToDeckZone,
   clearAllDeckZones,
+  confirmAllDeckCardClassifications,
   confirmDeckCardClassification,
   moveDeckCardInBuilder,
   sortAllDeckZones,
@@ -526,6 +527,10 @@ export function useDeckModeController() {
     [dispatch],
   )
 
+  const handleConfirmAllClassifications = useCallback(() => {
+    dispatch(confirmAllDeckCardClassifications())
+  }, [dispatch])
+
   const handleDeckFormatChange = useCallback(
     async (deckFormat: RootState['settings']['deckFormat']) => {
       // Edison y Genesys validan el deck con sus tablas: si todavía no bajaron (se piden en un momento ocioso), el cambio las espera. Si no se pueden bajar, cambia igual.
@@ -684,6 +689,7 @@ export function useDeckModeController() {
       onSetOrigin: handleSetOrigin,
       onToggleRole: handleToggleRole,
       onConfirmClassification: handleConfirmClassification,
+      onConfirmAllClassifications: handleConfirmAllClassifications,
     },
     roles: {
       cards: derivedMainCards,

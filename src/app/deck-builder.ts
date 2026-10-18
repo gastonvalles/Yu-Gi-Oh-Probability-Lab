@@ -298,6 +298,30 @@ export function confirmClassificationForCard(
   return hasAnyChange ? nextDeckBuilder : deckBuilder
 }
 
+/**
+ * Confirma de una vez todas las sugerencias que ya tienen origen y roles (lo mismo que confirmar una por una, con cada una guardada como lo que el usuario decidió).
+ * Las que todavía no tienen origen o roles no se tocan: hay que decidirlas a mano.
+ */
+export function confirmAllClassifications(deckBuilder: DeckBuilderState): DeckBuilderState {
+  const nextDeckBuilder = cloneDeckBuilder(deckBuilder)
+  const zones: DeckZone[] = ['main', 'extra', 'side']
+  let hasAnyChange = false
+
+  for (const zone of zones) {
+    for (const card of nextDeckBuilder[zone]) {
+      if (!card.needsReview || card.origin === null || card.roles.length === 0) {
+        continue
+      }
+
+      card.needsReview = false
+      saveClassificationOverride(card.name, { origin: card.origin, roles: [...card.roles] })
+      hasAnyChange = true
+    }
+  }
+
+  return hasAnyChange ? nextDeckBuilder : deckBuilder
+}
+
 export function reclassifyAll(
   deckBuilder: DeckBuilderState,
   overrides?: ReadonlyMap<string, ClassificationSuggestion>,

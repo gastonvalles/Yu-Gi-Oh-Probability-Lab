@@ -108,6 +108,8 @@ export const lab: Translated<typeof es> = {
   'lab.pending.count': { one: '{n} card still open', other: '{n} cards still open' },
   'lab.pending.none': 'No cards left',
   'lab.pending.help': "{message} Tap a card, sort it out right here, and when you're done the Lab calculates on its own.",
+  'lab.suggestion.noStarter': 'No card in your deck has the Starter role, and without a Starter no hand opens. Mark which ones open in Roles.',
+  'lab.pending.confirmAll': { one: 'Confirm the suggestion and measure', other: 'Confirm all {count} suggestions and measure' },
   'lab.pending.closeEditor': 'Close the editor to see the result.',
   'lab.pending.ringLabel': 'Classified cards',
   'lab.readiness.noOrigin': 'Some cards have no origin.',
