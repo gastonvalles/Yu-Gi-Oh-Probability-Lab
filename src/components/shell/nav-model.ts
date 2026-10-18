@@ -57,5 +57,6 @@ export function navToneLabel(tone: NavTone): string {
 
 /** "Deck Builder. Listo. Base principal lista.": lo que anuncia un lector de pantalla de un destino del menú. */
 export function navItemDescription(item: NavItem): string {
-  return [item.title, item.tone ? navToneLabel(item.tone) : null, item.detail].filter(Boolean).join('. ')
+  // Sólo los pasos del deck dicen cómo vienen («Listo», «Pendiente»): una referencia (las tier lists, las banlists) no es un paso y no está «pendiente». Las que traen su línea que explica (`blurb`) no son pasos.
+  return [item.title, item.tone && !item.blurb ? navToneLabel(item.tone) : null, item.detail].filter(Boolean).join('. ')
 }

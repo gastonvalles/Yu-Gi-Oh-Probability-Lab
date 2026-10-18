@@ -29,7 +29,7 @@ export function LabScoreSheet({ isOpen, onClose, results, handSize, onOpenDiscla
     <Modal isOpen={isOpen} onClose={onClose} size="keypad" title={t('lab.sheet.title')}>
       <div className="grid gap-4">
         <div className="grid gap-1">
-          <Heading level="card">{t('lab.sheet.goodTitle')}</Heading>
+          <Heading level="card" as="h2">{t('lab.sheet.goodTitle')}</Heading>
           <p className="m-0 text-body text-muted">{t('lab.sheet.goodText')}</p>
         </div>
 
@@ -46,7 +46,7 @@ export function LabScoreSheet({ isOpen, onClose, results, handSize, onOpenDiscla
         </div>
 
         <div className="grid gap-1">
-          <Heading level="card">{t('lab.sheet.notTitle')}</Heading>
+          <Heading level="card" as="h2">{t('lab.sheet.notTitle')}</Heading>
           <p className="m-0 text-body text-muted">{t('lab.sheet.notText')}</p>
         </div>
 

@@ -60,7 +60,7 @@ function GroupHeading({ type, cards }: { type: CardTypeKey; cards: CardEntry[] }
   const copies = cards.reduce((total, card) => total + card.copies, 0)
 
   return (
-    <Heading level="kicker" as="h3" className="flex items-center gap-2 leading-none">
+    <Heading level="kicker" as="h2" className="flex items-center gap-2 leading-none">
       <span className="text-muted">{CARD_TYPE_LABEL[type].plural}</span>
       <span className="tabular-nums">{t('roles.queue.groupCount', { cards: cards.length, count: copies })}</span>
       <span className="h-px flex-1 bg-border-subtle" aria-hidden="true" />

@@ -47,6 +47,10 @@ export const deck: Translated<typeof es> = {
   'deck.classic.shortcut.add': 'add',
   'deck.classic.shortcut.removeKeys': 'Right-click',
   'deck.classic.shortcut.remove': 'remove from deck',
+  'deck.classic.shortcut.tabKeys': 'Tab + Enter',
+  'deck.classic.shortcut.tab': 'move through and view each card',
+  'deck.classic.shortcut.deleteKeys': 'Delete',
+  'deck.classic.shortcut.delete': 'remove the focused card',
 
   // --- Deck Builder screen
   'deck.builder.title': 'Build your deck',
@@ -89,6 +93,7 @@ export const deck: Translated<typeof es> = {
     one: '{count} issue for {format}',
     other: '{count} issues for {format}',
   },
+  'deck.card.keyboard': '{name}. Enter for details, Delete to remove it from the deck.',
   'deck.builder.issues.more': '+ {count} more',
   // The next list (not in effect yet) tightens cards that are already in the deck: it is legal today, this is a heads-up to start changing it.
   'deck.builder.upcoming.title': {

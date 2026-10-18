@@ -365,7 +365,7 @@ describe('la mesa de práctica', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
     fireEvent.click(screen.getByRole('button', { name: 'Battle Phase' }))
 
-    const list = within(screen.getByRole('complementary', { name: 'Pasos y combos' })).getByRole('list', { name: 'Jugadas' })
+    const list = within(screen.getByRole('region', { name: 'Pasos y combos' })).getByRole('list', { name: 'Jugadas' })
     const rows = within(list).getAllByRole('button')
 
     // De la última a la primera, con la frase de siempre (sin insignias ni encabezados que la repitan); el cambio de fase es el separador.
@@ -730,7 +730,7 @@ describe('la mesa de práctica', () => {
     const dialog = screen.getByRole('dialog', { name: 'Guardar combo' })
     fireEvent.change(within(dialog).getByRole('textbox', { name: 'Nombre' }), { target: { value: 'Uno' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Guardar' }))
-    const aside = screen.getByRole('complementary', { name: 'Pasos y combos' })
+    const aside = screen.getByRole('region', { name: 'Pasos y combos' })
     fireEvent.click(within(aside).getByRole('radio', { name: 'Combos' }))
     fireEvent.click(within(aside).getByRole('button', { name: 'Cargar Uno' }))
     expect(screen.getByRole('button', { name: 'Pausar' })).toBeInTheDocument()
@@ -1701,7 +1701,7 @@ describe('la mesa de práctica', () => {
     expect(JSON.parse(localStorage.getItem('ygo-lab:practice-combos') ?? '[]')).toHaveLength(1)
 
     // El panel lateral lista el combo; cargarlo vuelve a la mano inicial y se avanza con Siguiente.
-    const aside = screen.getByRole('complementary', { name: 'Pasos y combos' })
+    const aside = screen.getByRole('region', { name: 'Pasos y combos' })
     fireEvent.click(within(aside).getByRole('radio', { name: 'Combos' }))
     expect(within(aside).getByText('Línea básica')).toBeInTheDocument()
     fireEvent.click(within(aside).getByRole('button', { name: 'Cargar Línea básica' }))
@@ -1751,7 +1751,7 @@ describe('la mesa de práctica', () => {
     fireEvent.change(within(saving).getByRole('textbox', { name: 'Nombre' }), { target: { value: 'Línea básica' } })
     fireEvent.click(within(saving).getByRole('button', { name: 'Guardar' }))
 
-    const aside = screen.getByRole('complementary', { name: 'Pasos y combos' })
+    const aside = screen.getByRole('region', { name: 'Pasos y combos' })
     fireEvent.click(within(aside).getByRole('radio', { name: 'Combos' }))
 
     // El nombre lleva todo el ancho de la fila (las acciones van abajo, no al lado) y, si se corta, se lee entero en el título.
@@ -1797,7 +1797,7 @@ describe('la mesa de práctica', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Ataque directo' }))
 
     expect(within(status()).getByText('Atacás directo con Ash Blossom')).toBeInTheDocument()
-    const list = within(screen.getByRole('complementary', { name: 'Pasos y combos' })).getByRole('list', { name: 'Jugadas' })
+    const list = within(screen.getByRole('region', { name: 'Pasos y combos' })).getByRole('list', { name: 'Jugadas' })
     expect(within(list).getAllByRole('button')[0]).toHaveTextContent('Atacás directo con Ash Blossom')
     // La carta sigue donde estaba: atacar no la mueve.
     expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' })).toBeInTheDocument()
@@ -1835,7 +1835,7 @@ describe('la mesa de práctica', () => {
 
   describe('contadores', () => {
     const plusButton = () => screen.getByRole('button', { name: 'Ficha' })
-    const rows = () => within(within(screen.getByRole('complementary', { name: 'Pasos y combos' })).getByRole('list', { name: 'Jugadas' })).getAllByRole('button')
+    const rows = () => within(within(screen.getByRole('region', { name: 'Pasos y combos' })).getByRole('list', { name: 'Jugadas' })).getAllByRole('button')
 
     /** Ash Blossom invocada en la zona 1: devuelve su carta. */
     function summon() {
