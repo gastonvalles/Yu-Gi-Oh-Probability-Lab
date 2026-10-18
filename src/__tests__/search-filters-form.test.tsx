@@ -4,21 +4,15 @@ import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { DEFAULT_CARD_SEARCH_FILTERS, type CardSearchFilters } from '../app/card-search'
+import { DesktopSearchPanel } from '../components/search/DesktopSearchPanel'
 import { MobileCardSearch } from '../components/search/MobileCardSearch'
-import { SearchFiltersForm } from '../components/search/SearchFiltersForm'
+import { SearchFiltersDrawer } from '../components/search/SearchFiltersDrawer'
 import type { CardSearchViewState } from '../components/search/search-types'
-import { useSearchFilterContext } from '../components/search/use-search-filter-context'
 import { SideDrawer } from '../components/ui/SideDrawer'
 import type { DeckFormat } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 
 vi.mock('../components/CardArt', () => ({ CardArt: () => <i /> }))
-
-function Form({ filters = DEFAULT_CARD_SEARCH_FILTERS, format = 'tcg', activeFilterCount = 0, onClear = () => {} }: { filters?: CardSearchFilters; format?: DeckFormat; activeFilterCount?: number; onClear?: () => void }) {
-  const context = useSearchFilterContext(filters, format, () => {})
-
-  return <SearchFiltersForm id="filters" layout="desktop" filters={filters} context={context} activeFilterCount={activeFilterCount} onFilterChange={() => {}} onClearFilters={onClear} />
-}
 
 beforeEach(() => {
   window.scrollTo = () => {}
@@ -28,77 +22,165 @@ beforeEach(() => {
 
 afterEach(cleanup)
 
-const before = (a: HTMLElement, b: HTMLElement) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+interface DrawerOptions {
+  filters?: Partial<CardSearchFilters>
+  deckFormat?: DeckFormat
+  activeFilterCount?: number
+  resultCount?: number | null
+  hasMore?: boolean
+}
 
-describe('los filtros de la búsqueda', () => {
-  it('van de lo que más se usa a lo que menos: las prohibidas, el atributo y el nivel, el arquetipo y, plegado, lo demás', () => {
-    render(<Form filters={{ ...DEFAULT_CARD_SEARCH_FILTERS, quickType: 'monster' }} />)
+function openDrawer({ filters = {}, deckFormat = 'tcg', activeFilterCount = 0, resultCount = null, hasMore = false }: DrawerOptions = {}) {
+  const onFilterChange = vi.fn()
+  const onClearFilters = vi.fn()
+  const onClose = vi.fn()
 
-    const legal = screen.getByText('Ocultar prohibidas')
-    const attribute = screen.getByText('Atributo')
-    const archetype = screen.getByText('Arquetipo')
-    const more = screen.getByRole('button', { name: 'Más filtros' })
+  render(
+    <SearchFiltersDrawer
+      isOpen
+      onClose={onClose}
+      filters={{ ...DEFAULT_CARD_SEARCH_FILTERS, ...filters }}
+      deckFormat={deckFormat}
+      activeFilterCount={activeFilterCount}
+      resultCount={resultCount}
+      hasMore={hasMore}
+      onFilterChange={onFilterChange}
+      onClearFilters={onClearFilters}
+    />,
+  )
 
-    expect(before(legal, attribute)).toBe(true)
-    expect(before(attribute, archetype)).toBe(true)
-    expect(before(archetype, more)).toBe(true)
+  return { onFilterChange, onClearFilters, onClose, dialog: screen.getByRole('dialog', { name: 'Filtros' }) }
+}
+
+describe('el cajón de filtros', () => {
+  it('muestra las secciones en el orden pedido: marco, atributo, mágicas y trampas, tipo, habilidades, limitación, efecto y estadísticas', () => {
+    const { dialog } = openDrawer()
+
+    // El primer título es el del cajón («Filtros»); después, las secciones.
+    expect(within(dialog).getAllByRole('heading', { level: 3 }).slice(1).map((heading) => heading.textContent)).toEqual([
+      'Marco',
+      'Atributo',
+      'Mágicas y Trampas',
+      'Tipo',
+      'Habilidades',
+      'Limitación',
+      'Efecto',
+      'Estadísticas',
+    ])
+    // El arquetipo es un campo, arriba de todo.
+    expect(within(dialog).getByLabelText('Arquetipo')).toBeInTheDocument()
   })
 
-  it('«Más filtros» arranca plegado, se abre y se cierra, y anuncia su estado', () => {
-    render(<Form filters={{ ...DEFAULT_CARD_SEARCH_FILTERS, quickType: 'monster' }} />)
+  it('cada grupo de chips es de elección múltiple: un toque suma, otro toque sobre el elegido lo quita, y se anuncia con aria-pressed', () => {
+    const { dialog, onFilterChange } = openDrawer({ filters: { frames: ['fusion'] } })
 
-    const more = screen.getByRole('button', { name: 'Más filtros' })
+    expect(within(dialog).getByRole('button', { name: 'Fusión' })).toHaveAttribute('aria-pressed', 'true')
+    expect(within(dialog).getByRole('button', { name: 'Xyz' })).toHaveAttribute('aria-pressed', 'false')
 
-    expect(more).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByText(/^Texto del efecto/)).not.toBeInTheDocument()
-    expect(screen.queryByText('Tipo de monstruo')).not.toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Xyz' }))
+    expect(onFilterChange).toHaveBeenLastCalledWith({ frames: ['fusion', 'xyz'] })
 
-    fireEvent.click(more)
-
-    expect(more).toHaveAttribute('aria-expanded', 'true')
-    expect(more).toHaveAttribute('aria-controls', 'filters-more')
-    expect(screen.getByText(/^Texto del efecto/)).toBeInTheDocument()
-    expect(screen.getByText('Tipo de monstruo')).toBeInTheDocument()
-
-    fireEvent.click(more)
-
-    expect(screen.queryByText('Tipo de monstruo')).not.toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Fusión' }))
+    expect(onFilterChange).toHaveBeenLastCalledWith({ frames: [] })
   })
 
-  it('arranca abierto, con cuántos hay puestos, si alguno de los plegados ya está puesto', () => {
-    render(<Form filters={{ ...DEFAULT_CARD_SEARCH_FILTERS, quickType: 'monster', description: 'add 1', race: 'Zombie' }} activeFilterCount={2} />)
+  it('los demás grupos llevan sus valores: atributo, subtipo de mágica o trampa, tipo de monstruo, habilidad, límite y efecto', () => {
+    const { dialog, onFilterChange } = openDrawer()
+    const press = (name: string) => fireEvent.click(within(dialog).getByRole('button', { name }))
 
-    const more = screen.getByRole('button', { name: /Más filtros/ })
-
-    expect(more).toHaveAttribute('aria-expanded', 'true')
-    expect(within(more).getByText('2')).toBeInTheDocument()
-    expect(screen.getByText(/^Texto del efecto/)).toBeInTheDocument()
+    press('DARK')
+    expect(onFilterChange).toHaveBeenLastCalledWith({ attributes: ['DARK'] })
+    press('Mágica de Juego Rápido')
+    expect(onFilterChange).toHaveBeenLastCalledWith({ spellTrapKinds: ['spell:Quick-Play'] })
+    press('Dragon')
+    expect(onFilterChange).toHaveBeenLastCalledWith({ races: ['Dragon'] })
+    press('Volteo')
+    expect(onFilterChange).toHaveBeenLastCalledWith({ abilities: ['flip'] })
+    press('Semi-limitada')
+    expect(onFilterChange).toHaveBeenLastCalledWith({ limits: ['semi-limited'] })
+    press('Desterrar')
+    expect(onFilterChange).toHaveBeenLastCalledWith({ effects: ['banish'] })
   })
 
-  it('«Limpiar filtros» sólo está cuando hay filtros, sin caja, y el renglón de arriba no cambia de alto', () => {
-    const onClear = vi.fn()
-    const { rerender } = render(<Form onClear={onClear} />)
+  it('el efecto se explica (según el texto de la carta, en inglés) y se puede escribir también un texto libre', () => {
+    const { dialog, onFilterChange } = openDrawer()
 
-    expect(screen.getByText('Sin filtros activos')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Limpiar filtros' })).not.toBeInTheDocument()
-    expect(screen.getByText('Sin filtros activos').parentElement).toHaveClass('min-h-9')
+    expect(within(dialog).getByText(/Según lo que dice el texto de la carta/)).toBeInTheDocument()
 
-    rerender(<Form onClear={onClear} activeFilterCount={2} />)
+    fireEvent.change(within(dialog).getByLabelText('Texto del efecto (inglés)'), { target: { value: 'add 1' } })
+    expect(onFilterChange).toHaveBeenLastCalledWith({ description: 'add 1' })
+  })
 
-    expect(screen.getByText('2 filtros activos')).toBeInTheDocument()
+  it('las estadísticas son cotas mínima y máxima que sólo aceptan dígitos', () => {
+    const { dialog, onFilterChange } = openDrawer({ filters: { atk: { min: '', max: '3000' } } })
 
-    const clear = screen.getByRole('button', { name: 'Limpiar filtros' })
+    fireEvent.change(within(dialog).getByLabelText('ATK, mínimo'), { target: { value: '2a5' } })
+    expect(onFilterChange).toHaveBeenLastCalledWith({ atk: { min: '25', max: '3000' } })
+
+    fireEvent.change(within(dialog).getByLabelText('DEF, máximo'), { target: { value: '1700' } })
+    expect(onFilterChange).toHaveBeenLastCalledWith({ def: { min: '', max: '1700' } })
+
+    fireEvent.change(within(dialog).getByLabelText('Nivel / Rango / Link, mínimo'), { target: { value: '4' } })
+    expect(onFilterChange).toHaveBeenLastCalledWith({ level: { min: '4', max: '' } })
+  })
+
+  it('la limitación sólo está en los formatos con lista de prohibidas, con «Ocultar prohibidas»; los puntos son de Genesys', () => {
+    const tcg = openDrawer()
+
+    expect(within(tcg.dialog).getByRole('heading', { name: 'Limitación' })).toBeInTheDocument()
+    fireEvent.click(within(tcg.dialog).getByRole('switch', { name: 'Ocultar prohibidas en TCG' }))
+    expect(tcg.onFilterChange).toHaveBeenLastCalledWith({ legalOnly: true })
+    expect(within(tcg.dialog).queryByLabelText('Puntos Genesys, mínimo')).not.toBeInTheDocument()
+
+    cleanup()
+
+    for (const format of ['unlimited', 'genesys'] as const) {
+      const other = openDrawer({ deckFormat: format })
+
+      expect(within(other.dialog).queryByRole('heading', { name: 'Limitación' })).not.toBeInTheDocument()
+      expect(within(other.dialog).queryByLabelText('Puntos Genesys, mínimo') !== null).toBe(format === 'genesys')
+      cleanup()
+    }
+  })
+
+  it('abajo: «Limpiar filtros» sólo si hay filtros (sin caja), y volver a los resultados, que dice cuántos son', () => {
+    const none = openDrawer({ resultCount: 14 })
+
+    expect(within(none.dialog).queryByRole('button', { name: 'Limpiar filtros' })).not.toBeInTheDocument()
+    fireEvent.click(within(none.dialog).getByRole('button', { name: 'Ver 14 resultados' }))
+    expect(none.onClose).toHaveBeenCalledTimes(1)
+
+    cleanup()
+
+    const some = openDrawer({ activeFilterCount: 2, resultCount: 14, hasMore: true })
+    const clear = within(some.dialog).getByRole('button', { name: 'Limpiar filtros' })
 
     expect(clear).not.toHaveClass('border')
     fireEvent.click(clear)
-
-    expect(onClear).toHaveBeenCalledTimes(1)
+    expect(some.onClearFilters).toHaveBeenCalledTimes(1)
+    expect(within(some.dialog).getByRole('button', { name: 'Ver 14+ resultados' })).toBeInTheDocument()
   })
 
-  it('sin lista de prohibidas en el formato (libre), el interruptor no está', () => {
-    render(<Form format="unlimited" />)
+  it('el botón de volver dice «resultado» con uno, y sólo «Ver resultados» mientras busca o si no hay ninguno', () => {
+    const one = openDrawer({ resultCount: 1 })
 
-    expect(screen.queryByText('Ocultar prohibidas')).not.toBeInTheDocument()
+    expect(within(one.dialog).getByRole('button', { name: 'Ver 1 resultado' })).toBeInTheDocument()
+    cleanup()
+
+    for (const resultCount of [null, 0]) {
+      const empty = openDrawer({ resultCount })
+
+      expect(within(empty.dialog).getByRole('button', { name: 'Ver resultados' })).toBeInTheDocument()
+      cleanup()
+    }
+  })
+
+  it('Escape lo cierra', () => {
+    const { onClose } = openDrawer()
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -108,56 +190,63 @@ const card = (ygoprodeckId: number, name: string): ApiCardSearchResult => ({
   banlist: { tcg: null, ocg: null, goat: null }, genesys: { points: null },
 })
 
-describe('el botón de volver de los filtros del celular', () => {
-  const search = (overrides: Partial<CardSearchViewState>): CardSearchViewState => ({
-    deckFormat: 'unlimited', query: 'carta', status: 'success', results: [card(1, 'Carta 1'), card(2, 'Carta 2'), card(3, 'Carta 3')], rawResultCount: 3, errorMessage: '', hasMore: false,
-    isLoadingMore: false, filters: DEFAULT_CARD_SEARCH_FILTERS, activeFilterCount: 0, hasSearchCriteria: true, maxedOutResultIds: new Set(), ...overrides,
-  })
-  const open = (overrides: Partial<CardSearchViewState>) => {
-    render(
-      <MobileCardSearch
-        search={search(overrides)}
-        actions={{ onQueryChange: vi.fn(), onFilterChange: vi.fn(), onClearFilters: vi.fn(), onLoadMore: vi.fn() }}
-        deckCopyCounts={new Map()}
-        zoneCounts={{ main: 0, extra: 0, side: 0 }}
-        onAddCard={() => true}
-        onOpenDetail={() => {}}
-        onClose={() => {}}
-      />,
-    )
-    fireEvent.click(screen.getByRole('button', { name: 'Filtros' }))
+const searchState = (overrides: Partial<CardSearchViewState> = {}): CardSearchViewState => ({
+  deckFormat: 'unlimited', query: 'carta', status: 'success', results: [card(1, 'Carta 1'), card(2, 'Carta 2'), card(3, 'Carta 3')], rawResultCount: 3, errorMessage: '', hasMore: false,
+  isLoadingMore: false, filters: DEFAULT_CARD_SEARCH_FILTERS, activeFilterCount: 0, hasSearchCriteria: true, maxedOutResultIds: new Set(), ...overrides,
+})
+const searchActions = () => ({ onQueryChange: vi.fn(), onFilterChange: vi.fn(), onClearFilters: vi.fn(), onLoadMore: vi.fn() })
+
+describe('el panel de búsqueda: sólo el campo y un botón de filtros', () => {
+  const panels = {
+    escritorio: (overrides: Partial<CardSearchViewState> = {}) =>
+      render(<DesktopSearchPanel search={searchState(overrides)} actions={searchActions()} deckCopyCounts={new Map()} activeDragSearchCardId={null} selectedCardId={null} onResultClick={() => {}} onAddCard={() => true} onResultPointerDown={() => {}} />),
+    celular: (overrides: Partial<CardSearchViewState> = {}) =>
+      render(<MobileCardSearch search={searchState(overrides)} actions={searchActions()} deckCopyCounts={new Map()} zoneCounts={{ main: 0, extra: 0, side: 0 }} onAddCard={() => true} onOpenDetail={() => {}} onClose={() => {}} />),
   }
 
-  it('dice cuántos resultados dan los filtros, con «+» si hay más por traer', () => {
-    open({})
+  for (const [name, mount] of Object.entries(panels)) {
+    it(`${name}: no hay chips de tipo (el marco se elige en el cajón) y el botón de filtros abre el cajón con la cuenta de resultados`, () => {
+      mount()
 
-    expect(screen.getByRole('button', { name: 'Ver 3 resultados' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Monstruos' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('group', { name: 'Tipo de carta' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog', { name: 'Filtros' })).not.toBeInTheDocument()
 
-    cleanup()
-    open({ hasMore: true })
+      fireEvent.click(screen.getByRole('button', { name: 'Filtros' }))
 
-    expect(screen.getByRole('button', { name: 'Ver 3+ resultados' })).toBeInTheDocument()
-  })
+      const dialog = screen.getByRole('dialog', { name: 'Filtros' })
 
-  it('con uno dice «resultado», y mientras busca o si no hay ninguno, sólo «Ver resultados»', () => {
-    open({ results: [card(1, 'Carta 1')] })
+      expect(within(dialog).getByRole('button', { name: 'Ver 3 resultados' })).toBeInTheDocument()
 
-    expect(screen.getByRole('button', { name: 'Ver 1 resultado' })).toBeInTheDocument()
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Ver 3 resultados' }))
 
-    cleanup()
-    open({ status: 'loading' })
+      expect(screen.queryByRole('dialog', { name: 'Filtros' })).not.toBeInTheDocument()
+    })
 
-    expect(screen.getByRole('button', { name: 'Ver resultados' })).toBeInTheDocument()
+    it(`${name}: con el total que da el catálogo, el cajón y la barra de resultados lo dicen sin «+» aunque se vea sólo la primera página`, () => {
+      mount({ totalCount: 1044, hasMore: true })
 
-    cleanup()
-    open({ results: [] })
+      expect(screen.getByText(/1044/)).toBeInTheDocument()
 
-    expect(screen.getByRole('button', { name: 'Ver resultados' })).toBeInTheDocument()
-  })
+      fireEvent.click(screen.getByRole('button', { name: 'Filtros' }))
+
+      expect(within(screen.getByRole('dialog', { name: 'Filtros' })).getByRole('button', { name: 'Ver 1044 resultados' })).toBeInTheDocument()
+    })
+
+    it(`${name}: los filtros puestos aparecen como chips (uno por grupo) y sólo entonces`, () => {
+      const filters = { ...DEFAULT_CARD_SEARCH_FILTERS, frames: ['fusion', 'xyz'] }
+
+      mount({ filters, activeFilterCount: 1 })
+
+      const chip = screen.getByRole('button', { name: /Marco/ })
+
+      expect(chip).toHaveTextContent('Marco: Fusión, Xyz')
+    })
+  }
 })
 
 describe('el cajón lateral', () => {
-  it('por defecto mide la mitad de la pantalla y lleva relleno; el de la búsqueda mide la columna del builder y no lleva relleno (el panel trae el suyo)', () => {
+  it('por defecto mide la mitad de la pantalla y lleva relleno; el de la búsqueda mide la columna del builder y el de los filtros una hoja, los dos sin relleno (lo de adentro trae el suyo)', () => {
     const { rerender } = render(
       <SideDrawer isOpen onClose={() => {}} title="Chat">
         <p>contenido</p>
@@ -175,6 +264,15 @@ describe('el cajón lateral', () => {
 
     expect(screen.getByRole('dialog')).toHaveClass('w-[max(22.5rem,calc((100vw-15rem)*0.3))]')
     expect(screen.getByRole('dialog')).not.toHaveClass('w-1/2')
+    expect(screen.getByText('contenido').parentElement).toHaveClass('p-0')
+
+    rerender(
+      <SideDrawer isOpen onClose={() => {}} title="Filtros" size="sheet">
+        <p>contenido</p>
+      </SideDrawer>,
+    )
+
+    expect(screen.getByRole('dialog')).toHaveClass('w-[min(100vw,28rem)]')
     expect(screen.getByText('contenido').parentElement).toHaveClass('p-0')
   })
 })

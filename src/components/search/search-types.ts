@@ -9,6 +9,8 @@ export interface CardSearchViewState {
   status: 'idle' | 'loading' | 'success' | 'error'
   results: ApiCardSearchResult[]
   rawResultCount: number
+  /** Cuántas cartas da la búsqueda en total, si lo sabe (la resuelve el catálogo entero; la API trae de a páginas). */
+  totalCount?: number | null
   errorMessage: string
   hasMore: boolean
   isLoadingMore: boolean

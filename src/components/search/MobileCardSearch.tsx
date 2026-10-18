@@ -19,15 +19,15 @@ import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
 import { Skeleton } from '../ui/Skeleton'
 import { SearchEmptyState, SearchResultsToolbar, SearchStart } from './SearchFeedback'
-import { SearchFiltersForm } from './SearchFiltersForm'
+import { SearchFiltersDrawer } from './SearchFiltersDrawer'
 import { SearchFiltersToggle } from './SearchFiltersToggle'
 import { useRecentSearches } from './recent-searches'
 import { sortVisibleSearchResults } from './search-model'
-import { QUICK_TYPE_OPTIONS, type SearchSortOrder } from './search-options'
+import type { SearchSortOrder } from './search-options'
 import type { CardSearchActions, CardSearchViewState } from './search-types'
 import { useSearchFilterContext } from './use-search-filter-context'
 import { Callout } from '../ui/Callout'
-import { choiceChip, field, filterChip } from '../ui/surfaces'
+import { field, filterChip } from '../ui/surfaces'
 
 interface MobileCardSearchProps {
   search: CardSearchViewState
@@ -64,16 +64,9 @@ export function MobileCardSearch({
   const [lastAdded, setLastAdded] = useState<{ id: number; name: string } | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
   const resultsRef = useRef<HTMLDivElement | null>(null)
-  const filterContext = useSearchFilterContext(filters, search.deckFormat, actions.onFilterChange)
+  const filterContext = useSearchFilterContext(filters, search.deckFormat)
   const sortedResults = useMemo(() => sortVisibleSearchResults(search.results, sortOrder), [search.results, sortOrder])
-  const showResults = search.hasSearchCriteria && !filtersOpen
-  // Con los filtros abiertos la lista no se ve: el botón de volver dice cuántos resultados dan (con «+» si hay más por traer).
-  const viewResultsLabel =
-    !search.hasSearchCriteria || status !== 'success' || sortedResults.length === 0
-      ? t('search.mobile.viewResults')
-      : search.hasMore
-        ? t('search.mobile.viewResultsMore', { n: formatInteger(sortedResults.length) })
-        : t('search.mobile.viewResultsCount', { count: sortedResults.length, n: formatInteger(sortedResults.length) })
+  const showResults = search.hasSearchCriteria
   const recentSearches = useRecentSearches()
 
   useEffect(() => {
@@ -178,24 +171,11 @@ export function MobileCardSearch({
             ) : null}
           </label>
 
-          <SearchFiltersToggle open={filtersOpen} activeCount={search.activeFilterCount} controls="mobile-search-filters" className="size-11" onToggle={() => setFiltersOpen((current) => !current)} />
+          <SearchFiltersToggle open={filtersOpen} activeCount={search.activeFilterCount} className="size-11" onToggle={() => setFiltersOpen((current) => !current)} />
         </form>
 
-        <div className={CHIP_ROW} role="group" aria-label={t('search.label.cardType')}>
-          {QUICK_TYPE_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              className={`${choiceChip} min-h-9 shrink-0 px-4 text-body`}
-              aria-pressed={filters.quickType === option.value}
-              onClick={() => actions.onFilterChange({ quickType: option.value })}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-
-        {!filtersOpen && filterContext.activeFilterChips.length > 0 ? (
+        {/* Sólo cuando hay filtros puestos: cuáles son, cada uno con su forma de quitarlo. Sin filtros, el encabezado es el campo y el botón. */}
+        {filterContext.activeFilterChips.length > 0 ? (
           <div className={CHIP_ROW}>
             {filterContext.activeFilterChips.map((chip) => (
               <button
@@ -215,20 +195,7 @@ export function MobileCardSearch({
         ) : null}
       </header>
 
-      {filtersOpen ? (
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3">
-          <SearchFiltersForm
-            id="mobile-search-filters"
-            layout="mobile"
-            filters={filters}
-            context={filterContext}
-            activeFilterCount={search.activeFilterCount}
-            onFilterChange={actions.onFilterChange}
-            onClearFilters={actions.onClearFilters}
-          />
-        </div>
-      ) : (
-        <div
+      <div
           ref={resultsRef}
           className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-2"
           onTouchStart={dismissKeyboard}
@@ -264,8 +231,8 @@ export function MobileCardSearch({
             <>
               <SearchResultsToolbar
                 layout="mobile"
-                count={sortedResults.length}
-                hasMore={search.hasMore}
+                count={search.totalCount ?? sortedResults.length}
+                hasMore={search.totalCount == null && search.hasMore}
                 sortOrder={sortOrder}
                 onSortOrderChange={setSortOrder}
                 hint={t('search.mobile.detailHint')}
@@ -293,7 +260,18 @@ export function MobileCardSearch({
             </>
           )}
         </div>
-      )}
+
+      <SearchFiltersDrawer
+        isOpen={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        filters={filters}
+        deckFormat={search.deckFormat}
+        activeFilterCount={search.activeFilterCount}
+        resultCount={search.hasSearchCriteria && status === 'success' ? (search.totalCount ?? sortedResults.length) : null}
+        hasMore={search.totalCount == null && search.hasMore}
+        onFilterChange={actions.onFilterChange}
+        onClearFilters={actions.onClearFilters}
+      />
 
       <footer className="flex items-center gap-3 border-t border-border-subtle px-3 pb-[max(0.6rem,env(safe-area-inset-bottom))] pt-2">
         <p className="m-0 min-w-0 flex-1 text-body leading-tight text-muted" aria-live="polite">
@@ -307,15 +285,9 @@ export function MobileCardSearch({
             </>
           )}
         </p>
-        {filtersOpen ? (
-          <Button variant="primary" size="md" onClick={() => setFiltersOpen(false)}>
-            {viewResultsLabel}
-          </Button>
-        ) : (
-          <Button variant="primary" size="md" onClick={onClose}>
-            {t('search.mobile.done')}
-          </Button>
-        )}
+        <Button variant="primary" size="md" onClick={onClose}>
+          {t('search.mobile.done')}
+        </Button>
       </footer>
     </div>,
     document.body,

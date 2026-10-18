@@ -1,63 +1,25 @@
-import type { SearchQuickTypeFilter } from '../../app/card-search'
+import { ABILITY_KEYS, EFFECT_KEYS, FRAME_KEYS, LIMIT_KEYS, SPELL_TRAP_KINDS } from '../../app/card-filters'
 import { t } from '../../i18n'
+import type { MessageArgs, MessageKey } from '../../i18n/types'
+
+/** Las claves de mensajes que no piden parámetros: las únicas que sirven de rótulo fijo de una opción. */
+type PlainMessageKey = { [K in MessageKey]: MessageArgs<K> extends [] ? K : never }[MessageKey]
 
 export interface FilterOption {
   value: string
   label: string
 }
 
-export interface FilterOptionGroup {
-  label: string
-  options: FilterOption[]
-}
-
-export interface QuickTypeMeta {
-  exactTypeLabel: string
-  raceLabel: string
-  levelLabel: string
-  showAttribute: boolean
-  showLevel: boolean
-}
-
 export type SearchSortOrder = 'default' | 'name-asc' | 'name-desc'
 
-// Los rótulos son getters: el texto se arma al leerlo (en el idioma de ese momento), no al evaluar el módulo.
-export const QUICK_TYPE_OPTIONS: Array<{ value: SearchQuickTypeFilter; label: string }> = [
-  { value: 'all', get label() { return t('search.type.all') } },
-  { value: 'monster', get label() { return t('search.type.monsters') } },
-  { value: 'spell', get label() { return t('search.type.spells') } },
-  { value: 'trap', get label() { return t('search.type.traps') } },
-]
-
-export const QUICK_TYPE_META: Record<SearchQuickTypeFilter, QuickTypeMeta> = {
-  all: {
-    get exactTypeLabel() { return t('search.label.exactType') },
-    get raceLabel() { return t('search.label.raceOrSubtype') },
-    get levelLabel() { return t('search.label.levelOrRank') },
-    showAttribute: true,
-    showLevel: true,
-  },
-  monster: {
-    get exactTypeLabel() { return t('search.label.monsterType') },
-    get raceLabel() { return t('search.label.race') },
-    get levelLabel() { return t('search.label.levelOrRank') },
-    showAttribute: true,
-    showLevel: true,
-  },
-  spell: {
-    get exactTypeLabel() { return t('search.label.cardType') },
-    get raceLabel() { return t('search.label.subtype') },
-    get levelLabel() { return t('search.label.levelOrRank') },
-    showAttribute: false,
-    showLevel: false,
-  },
-  trap: {
-    get exactTypeLabel() { return t('search.label.cardType') },
-    get raceLabel() { return t('search.label.subtype') },
-    get levelLabel() { return t('search.label.levelOrRank') },
-    showAttribute: false,
-    showLevel: false,
-  },
+/** Una opción con su rótulo como getter: el texto se arma al leerlo (en el idioma de ese momento), no al evaluar el módulo. */
+function option(value: string, key: PlainMessageKey): FilterOption {
+  return {
+    value,
+    get label() {
+      return t(key)
+    },
+  }
 }
 
 export const SEARCH_SORT_OPTIONS: Array<{ value: SearchSortOrder; label: string }> = [
@@ -66,149 +28,106 @@ export const SEARCH_SORT_OPTIONS: Array<{ value: SearchSortOrder; label: string 
   { value: 'name-desc', get label() { return t('search.sort.nameDesc') } },
 ]
 
-export const ATTRIBUTE_OPTIONS: FilterOption[] = [
-  { value: '', get label() { return t('search.filters.any') } },
-  { value: 'DARK', label: 'DARK' },
-  { value: 'LIGHT', label: 'LIGHT' },
-  { value: 'FIRE', label: 'FIRE' },
-  { value: 'WATER', label: 'WATER' },
-  { value: 'EARTH', label: 'EARTH' },
-  { value: 'WIND', label: 'WIND' },
-  { value: 'DIVINE', label: 'DIVINE' },
-]
+// Los rótulos salen del catálogo de textos por clave: una clave que falta no compila.
+const FRAME_LABELS = {
+  normal: 'search.frame.normal',
+  effect: 'search.frame.effect',
+  fusion: 'search.frame.fusion',
+  ritual: 'search.frame.ritual',
+  synchro: 'search.frame.synchro',
+  xyz: 'search.frame.xyz',
+  pendulum: 'search.frame.pendulum',
+  link: 'search.frame.link',
+  spell: 'search.frame.spell',
+  trap: 'search.frame.trap',
+} as const satisfies Record<(typeof FRAME_KEYS)[number], PlainMessageKey>
 
-const MONSTER_EXACT_TYPE_OPTIONS: FilterOption[] = [
-  { value: 'Normal Monster', label: 'Normal Monster' },
-  { value: 'Normal Tuner Monster', label: 'Normal Tuner Monster' },
-  { value: 'Effect Monster', label: 'Effect Monster' },
-  { value: 'Tuner Monster', label: 'Tuner Monster' },
-  { value: 'Flip Monster', label: 'Flip Monster' },
-  { value: 'Flip Effect Monster', label: 'Flip Effect Monster' },
-  { value: 'Spirit Monster', label: 'Spirit Monster' },
-  { value: 'Union Effect Monster', label: 'Union Effect Monster' },
-  { value: 'Gemini Monster', label: 'Gemini Monster' },
-  { value: 'Pendulum Effect Monster', label: 'Pendulum Effect Monster' },
-  { value: 'Pendulum Normal Monster', label: 'Pendulum Normal Monster' },
-  { value: 'Pendulum Effect Ritual Monster', label: 'Pendulum Effect Ritual Monster' },
-  { value: 'Pendulum Tuner Effect Monster', label: 'Pendulum Tuner Effect Monster' },
-  { value: 'Ritual Monster', label: 'Ritual Monster' },
-  { value: 'Ritual Effect Monster', label: 'Ritual Effect Monster' },
-  { value: 'Toon Monster', label: 'Toon Monster' },
-  { value: 'Fusion Monster', label: 'Fusion Monster' },
-  { value: 'Synchro Monster', label: 'Synchro Monster' },
-  { value: 'Synchro Tuner Monster', label: 'Synchro Tuner Monster' },
-  { value: 'Synchro Pendulum Effect Monster', label: 'Synchro Pendulum Effect Monster' },
-  { value: 'XYZ Monster', label: 'XYZ Monster' },
-  { value: 'XYZ Pendulum Effect Monster', label: 'XYZ Pendulum Effect Monster' },
-  { value: 'Link Monster', label: 'Link Monster' },
-  { value: 'Pendulum Flip Effect Monster', label: 'Pendulum Flip Effect Monster' },
-  { value: 'Pendulum Effect Fusion Monster', label: 'Pendulum Effect Fusion Monster' },
-]
+const KIND_LABELS = {
+  'spell:Normal': 'search.kind.spellNormal',
+  'spell:Field': 'search.kind.spellField',
+  'spell:Equip': 'search.kind.spellEquip',
+  'spell:Continuous': 'search.kind.spellContinuous',
+  'spell:Quick-Play': 'search.kind.spellQuickPlay',
+  'spell:Ritual': 'search.kind.spellRitual',
+  'trap:Normal': 'search.kind.trapNormal',
+  'trap:Continuous': 'search.kind.trapContinuous',
+  'trap:Counter': 'search.kind.trapCounter',
+} as const satisfies Record<(typeof SPELL_TRAP_KINDS)[number], PlainMessageKey>
 
-const SPELL_TRAP_EXACT_TYPE_OPTIONS: FilterOption[] = [
-  { value: 'Spell Card', label: 'Spell Card' },
-  { value: 'Trap Card', label: 'Trap Card' },
-]
+const ABILITY_LABELS = {
+  toon: 'search.ability.toon',
+  gemini: 'search.ability.gemini',
+  union: 'search.ability.union',
+  spirit: 'search.ability.spirit',
+  tuner: 'search.ability.tuner',
+  flip: 'search.ability.flip',
+  'non-effect': 'search.ability.nonEffect',
+} as const satisfies Record<(typeof ABILITY_KEYS)[number], PlainMessageKey>
 
-const OTHER_EXACT_TYPE_OPTIONS: FilterOption[] = [
-  { value: 'Skill Card', label: 'Skill Card' },
-  { value: 'Token', label: 'Token' },
-]
+const LIMIT_LABELS = {
+  forbidden: 'search.limit.forbidden',
+  limited: 'search.limit.limited',
+  'semi-limited': 'search.limit.semiLimited',
+  unlimited: 'search.limit.unlimited',
+} as const satisfies Record<(typeof LIMIT_KEYS)[number], PlainMessageKey>
 
-const MONSTER_RACE_OPTIONS: FilterOption[] = [
-  { value: 'Aqua', label: 'Aqua' },
-  { value: 'Beast', label: 'Beast' },
-  { value: 'Beast-Warrior', label: 'Beast-Warrior' },
-  { value: 'Creator God', label: 'Creator God' },
-  { value: 'Cyberse', label: 'Cyberse' },
-  { value: 'Dinosaur', label: 'Dinosaur' },
-  { value: 'Divine-Beast', label: 'Divine-Beast' },
-  { value: 'Dragon', label: 'Dragon' },
-  { value: 'Fairy', label: 'Fairy' },
-  { value: 'Fiend', label: 'Fiend' },
-  { value: 'Fish', label: 'Fish' },
-  { value: 'Illusion', label: 'Illusion' },
-  { value: 'Insect', label: 'Insect' },
-  { value: 'Machine', label: 'Machine' },
-  { value: 'Plant', label: 'Plant' },
-  { value: 'Psychic', label: 'Psychic' },
-  { value: 'Pyro', label: 'Pyro' },
-  { value: 'Reptile', label: 'Reptile' },
-  { value: 'Rock', label: 'Rock' },
-  { value: 'Sea Serpent', label: 'Sea Serpent' },
-  { value: 'Spellcaster', label: 'Spellcaster' },
-  { value: 'Thunder', label: 'Thunder' },
-  { value: 'Warrior', label: 'Warrior' },
-  { value: 'Winged Beast', label: 'Winged Beast' },
-  { value: 'Wyrm', label: 'Wyrm' },
-  { value: 'Zombie', label: 'Zombie' },
-]
+const EFFECT_LABELS = {
+  search: 'search.effect.search',
+  draw: 'search.effect.draw',
+  'special-summon': 'search.effect.specialSummon',
+  banish: 'search.effect.banish',
+  graveyard: 'search.effect.graveyard',
+  'back-to-hand': 'search.effect.backToHand',
+  'back-to-deck': 'search.effect.backToDeck',
+  'destroy-monster': 'search.effect.destroyMonster',
+  'destroy-spell-trap': 'search.effect.destroySpellTrap',
+  negate: 'search.effect.negate',
+  token: 'search.effect.token',
+  control: 'search.effect.control',
+  damage: 'search.effect.damage',
+  recover: 'search.effect.recover',
+} as const satisfies Record<(typeof EFFECT_KEYS)[number], PlainMessageKey>
 
-const SPELL_RACE_OPTIONS: FilterOption[] = [
-  { value: 'Normal', label: 'Normal' },
-  { value: 'Continuous', label: 'Continuous' },
-  { value: 'Equip', label: 'Equip' },
-  { value: 'Field', label: 'Field' },
-  { value: 'Quick-Play', label: 'Quick-Play' },
-  { value: 'Ritual', label: 'Ritual' },
-]
+/** Los grupos del cajón de filtros, en el orden en que se muestran. */
+export const FRAME_OPTIONS: FilterOption[] = FRAME_KEYS.map((key) => option(key, FRAME_LABELS[key]))
+export const SPELL_TRAP_OPTIONS: FilterOption[] = SPELL_TRAP_KINDS.map((key) => option(key, KIND_LABELS[key]))
+export const ABILITY_OPTIONS: FilterOption[] = ABILITY_KEYS.map((key) => option(key, ABILITY_LABELS[key]))
+export const LIMIT_OPTIONS: FilterOption[] = LIMIT_KEYS.map((key) => option(key, LIMIT_LABELS[key]))
+export const EFFECT_OPTIONS: FilterOption[] = EFFECT_KEYS.map((key) => option(key, EFFECT_LABELS[key]))
 
-const TRAP_RACE_OPTIONS: FilterOption[] = [
-  { value: 'Normal', label: 'Normal' },
-  { value: 'Continuous', label: 'Continuous' },
-  { value: 'Counter', label: 'Counter' },
-]
+export const ATTRIBUTE_OPTIONS: FilterOption[] = ['DARK', 'LIGHT', 'FIRE', 'WATER', 'EARTH', 'WIND', 'DIVINE'].map((value) => ({ value, label: value }))
 
-export function getExactTypeFilterGroups(quickType: SearchQuickTypeFilter): FilterOptionGroup[] {
-  if (quickType === 'monster') {
-    return [{ label: t('search.type.monsters'), options: MONSTER_EXACT_TYPE_OPTIONS }]
-  }
+/** Los tipos de monstruo (Dragón, Guerrero…) con el nombre del juego, que es el de la carta. */
+export const MONSTER_RACE_OPTIONS: FilterOption[] = [
+  'Aqua',
+  'Beast',
+  'Beast-Warrior',
+  'Creator God',
+  'Cyberse',
+  'Dinosaur',
+  'Divine-Beast',
+  'Dragon',
+  'Fairy',
+  'Fiend',
+  'Fish',
+  'Illusion',
+  'Insect',
+  'Machine',
+  'Plant',
+  'Psychic',
+  'Pyro',
+  'Reptile',
+  'Rock',
+  'Sea Serpent',
+  'Spellcaster',
+  'Thunder',
+  'Warrior',
+  'Winged Beast',
+  'Wyrm',
+  'Zombie',
+].map((value) => ({ value, label: value }))
 
-  if (quickType === 'spell') {
-    return [
-      {
-        label: t('search.type.spells'),
-        options: SPELL_TRAP_EXACT_TYPE_OPTIONS.filter((option) => option.value === 'Spell Card'),
-      },
-    ]
-  }
-
-  if (quickType === 'trap') {
-    return [
-      {
-        label: t('search.type.traps'),
-        options: SPELL_TRAP_EXACT_TYPE_OPTIONS.filter((option) => option.value === 'Trap Card'),
-      },
-    ]
-  }
-
-  return [
-    { label: t('search.type.monsters'), options: MONSTER_EXACT_TYPE_OPTIONS },
-    { label: 'Spell / Trap', options: SPELL_TRAP_EXACT_TYPE_OPTIONS },
-    { label: t('search.type.other'), options: OTHER_EXACT_TYPE_OPTIONS },
-  ]
-}
-
-export function getRaceFilterGroups(quickType: SearchQuickTypeFilter): FilterOptionGroup[] {
-  if (quickType === 'spell') {
-    return [{ label: t('search.type.spells'), options: SPELL_RACE_OPTIONS }]
-  }
-
-  if (quickType === 'trap') {
-    return [{ label: t('search.type.traps'), options: TRAP_RACE_OPTIONS }]
-  }
-
-  if (quickType === 'monster') {
-    return [{ label: t('search.type.monsters'), options: MONSTER_RACE_OPTIONS }]
-  }
-
-  return [
-    { label: t('search.type.monsters'), options: MONSTER_RACE_OPTIONS },
-    { label: t('search.type.spells'), options: SPELL_RACE_OPTIONS },
-    { label: t('search.type.traps'), options: TRAP_RACE_OPTIONS },
-  ]
-}
-
-export function collectFilterValues(groups: FilterOptionGroup[]): Set<string> {
-  return new Set(groups.flatMap((group) => group.options.map((option) => option.value)))
+/** El rótulo de un valor de un grupo (para el chip del filtro activo); si no se conoce, el valor tal cual. */
+export function labelOf(options: FilterOption[], value: string): string {
+  return options.find((candidate) => candidate.value === value)?.label ?? value
 }

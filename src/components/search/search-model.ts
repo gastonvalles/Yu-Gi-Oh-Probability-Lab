@@ -1,8 +1,20 @@
-import type { CardSearchFilters } from '../../app/card-search'
+import type { CardSearchFilters, NumberRange } from '../../app/card-search'
+import { EMPTY_RANGE, formatHasLimits, isRangeActive } from '../../app/card-filters'
 import { t } from '../../i18n'
 import type { DeckFormat } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
-import { collectFilterValues, type FilterOptionGroup, type SearchSortOrder } from './search-options'
+import {
+  ABILITY_OPTIONS,
+  ATTRIBUTE_OPTIONS,
+  EFFECT_OPTIONS,
+  FRAME_OPTIONS,
+  LIMIT_OPTIONS,
+  MONSTER_RACE_OPTIONS,
+  SPELL_TRAP_OPTIONS,
+  labelOf,
+  type FilterOption,
+  type SearchSortOrder,
+} from './search-options'
 import type { CardSearchActions, CardSearchViewState } from './search-types'
 
 export interface ActiveFilterChip {
@@ -60,122 +72,72 @@ function getSearchTypePriority(card: ApiCardSearchResult): number {
   return 3
 }
 
-export function buildSanitizedFilterUpdates({
-  filters,
-  exactTypeGroups,
-  raceGroups,
-  formatAllowsLegalityFilter,
-  showAttribute,
-  showLevel,
-}: {
-  filters: CardSearchFilters
-  exactTypeGroups: FilterOptionGroup[]
-  raceGroups: FilterOptionGroup[]
-  formatAllowsLegalityFilter: boolean
-  showAttribute: boolean
-  showLevel: boolean
-}): Partial<CardSearchFilters> | null {
-  const updates: Partial<CardSearchFilters> = {}
-  const validExactTypes = collectFilterValues(exactTypeGroups)
-  const validRaces = collectFilterValues(raceGroups)
+/** Una cota dicha corta: «2500–3000», «≥ 2500», «≤ 1800». */
+function describeRange(range: NumberRange): string {
+  const min = range.min.trim()
+  const max = range.max.trim()
 
-  if (filters.exactType.trim().length > 0 && !validExactTypes.has(filters.exactType)) {
-    updates.exactType = ''
-  }
-
-  if (filters.race.trim().length > 0 && !validRaces.has(filters.race)) {
-    updates.race = ''
-  }
-
-  if (!showAttribute && filters.attribute.trim().length > 0) {
-    updates.attribute = ''
-  }
-
-  if (!showLevel && filters.level.trim().length > 0) {
-    updates.level = ''
-  }
-
-  if (!formatAllowsLegalityFilter && filters.legalOnly) {
-    updates.legalOnly = false
-  }
-
-  return Object.keys(updates).length > 0 ? updates : null
+  return min !== '' && max !== '' ? `${min}–${max}` : min !== '' ? `≥ ${min}` : `≤ ${max}`
 }
 
+/**
+ * Los filtros puestos, uno por grupo (un chip por «Marco», uno por «Atributo»…): el chip dice qué se eligió y al tocarlo se vacía el grupo entero. Sólo cuentan los
+ * de lo que el formato tiene (sin lista de prohibidas no hay «Limitación»; los puntos son de Genesys).
+ */
 export function buildActiveFilterChips({
   filters,
-  formatAllowsLegalityFilter,
+  deckFormat,
   formatLabel,
-  raceLabel,
 }: {
   filters: CardSearchFilters
-  formatAllowsLegalityFilter: boolean
+  deckFormat: DeckFormat
   formatLabel: string
-  raceLabel: string
 }): ActiveFilterChip[] {
   const chips: ActiveFilterChip[] = []
+  const add = (key: string, label: string, value: string, updates: Partial<CardSearchFilters>) => chips.push({ key, label, value, updates })
+  const group = (key: keyof CardSearchFilters, label: string, options: FilterOption[]) => {
+    const values = filters[key] as string[]
+
+    if (values.length > 0) {
+      add(key, label, values.map((value) => labelOf(options, value)).join(', '), { [key]: [] })
+    }
+  }
+  const range = (key: 'level' | 'atk' | 'def' | 'genesysPoints', label: string) => {
+    if (isRangeActive(filters[key])) {
+      add(key, label, describeRange(filters[key]), { [key]: EMPTY_RANGE })
+    }
+  }
 
   if (filters.archetype.trim().length > 0) {
-    chips.push({
-      key: 'archetype',
-      label: t('search.filters.archetype'),
-      value: filters.archetype.trim(),
-      updates: { archetype: '' },
-    })
+    add('archetype', t('search.filters.archetype'), filters.archetype.trim(), { archetype: '' })
   }
+
+  group('frames', t('search.filters.frame'), FRAME_OPTIONS)
+  group('attributes', t('search.filters.attribute'), ATTRIBUTE_OPTIONS)
+  group('spellTrapKinds', t('search.filters.spellTrap'), SPELL_TRAP_OPTIONS)
+  group('races', t('search.filters.monsterType'), MONSTER_RACE_OPTIONS)
+  group('abilities', t('search.filters.abilities'), ABILITY_OPTIONS)
+
+  if (formatHasLimits(deckFormat)) {
+    group('limits', t('search.filters.limit'), LIMIT_OPTIONS)
+
+    if (filters.legalOnly) {
+      add('legal-only', t('search.chip.legality'), t('search.chip.noBanned', { format: formatLabel }), { legalOnly: false })
+    }
+  }
+
+  group('effects', t('search.filters.effect'), EFFECT_OPTIONS)
 
   if (filters.description.trim().length > 0) {
-    chips.push({
-      key: 'description',
-      label: t('search.chip.effectText'),
-      value: filters.description.trim(),
-      updates: { description: '' },
-    })
+    add('description', t('search.chip.effectText'), filters.description.trim(), { description: '' })
   }
 
-  if (filters.exactType.trim().length > 0) {
-    chips.push({
-      key: 'exact-type',
-      label: t('search.chip.type'),
-      value: filters.exactType.trim(),
-      updates: { exactType: '' },
-    })
-  }
+  range('level', t('search.filters.level'))
+  range('atk', 'ATK')
+  range('def', 'DEF')
 
-  if (filters.attribute.trim().length > 0) {
-    chips.push({
-      key: 'attribute',
-      label: t('search.filters.attribute'),
-      value: filters.attribute.trim(),
-      updates: { attribute: '' },
-    })
-  }
-
-  if (filters.race.trim().length > 0) {
-    chips.push({
-      key: 'race',
-      label: raceLabel,
-      value: filters.race.trim(),
-      updates: { race: '' },
-    })
-  }
-
-  if (filters.level.trim().length > 0) {
-    chips.push({
-      key: 'level',
-      label: t('search.chip.level'),
-      value: filters.level.trim(),
-      updates: { level: '' },
-    })
-  }
-
-  if (formatAllowsLegalityFilter && filters.legalOnly) {
-    chips.push({
-      key: 'legal-only',
-      label: t('search.chip.legality'),
-      value: t('search.chip.noBanned', { format: formatLabel }),
-      updates: { legalOnly: false },
-    })
+  if (deckFormat === 'genesys') {
+    range('genesysPoints', t('search.filters.genesys'))
   }
 
   return chips
@@ -188,6 +150,7 @@ export interface CardSearchSource {
   status: CardSearchViewState['status']
   visibleSearchResults: ApiCardSearchResult[]
   loadedSearchResultCount: number
+  totalSearchResultCount?: number | null
   errorMessage: string
   hasMore: boolean
   isLoadingMore: boolean
@@ -209,6 +172,7 @@ export function buildCardSearchProps(source: CardSearchSource): { search: CardSe
       status: source.status,
       results: source.visibleSearchResults,
       rawResultCount: source.loadedSearchResultCount,
+      totalCount: source.totalSearchResultCount ?? null,
       errorMessage: source.errorMessage,
       hasMore: source.hasMore,
       isLoadingMore: source.isLoadingMore,

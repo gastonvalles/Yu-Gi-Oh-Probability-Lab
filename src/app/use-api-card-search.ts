@@ -7,6 +7,7 @@ import {
   buildSearchableCardIndexInSlices,
   DEFAULT_CARD_SEARCH_FILTERS,
   hasCardSearchRequestCriteria,
+  hasLocalCardSearchCriteria,
   searchCardCatalog,
   sortSearchResults,
   type CardSearchFilters,
@@ -33,6 +34,8 @@ interface ApiCardSearchController {
   visibleSearchResults: ApiCardSearchResult[]
   activeFilterCount: number
   hasSearchCriteria: boolean
+  /** Cuántas cartas da la búsqueda en total, cuando la resuelve el catálogo entero (la API trae de a páginas y no lo sabe): lo que dice «Ver 1.044 resultados». */
+  totalResultCount: number | null
   isLoadingMore: boolean
   clearFilters: () => void
   setQuery: (value: string) => void
@@ -63,16 +66,16 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
       deckFormat,
       apiSearch.query,
       searchFilters.archetype,
-      searchFilters.attribute,
+      searchFilters.attributes,
       searchFilters.description,
-      searchFilters.exactType,
-      searchFilters.level,
-      searchFilters.race,
+      searchFilters.races,
     ],
   )
+  // Criterio hay si lo hay para la API (nombre, arquetipo, un atributo o un tipo) o si hay filtros que sólo entiende el catálogo (marco, efecto, estadísticas…).
+  const hasLocalCriteria = useMemo(() => hasLocalCardSearchCriteria(searchFilters, deckFormat), [deckFormat, searchFilters])
   const hasSearchCriteria = useMemo(
-    () => hasCardSearchRequestCriteria(remoteSearchRequest),
-    [remoteSearchRequest],
+    () => hasCardSearchRequestCriteria(remoteSearchRequest) || hasLocalCriteria,
+    [hasLocalCriteria, remoteSearchRequest],
   )
   const activeFilterCount = useMemo(
     () => buildCardSearchActiveFilterCount(searchFilters, deckFormat),
@@ -315,6 +318,15 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
       page: 0,
     }))
 
+    // Sin nada que la API entienda (sólo marco, efecto, estadísticas…) no hay a quién preguntarle: se espera al catálogo, y si no baja, se avisa.
+    if (!hasCardSearchRequestCriteria(remoteSearchRequest)) {
+      if (cardCatalogStatus === 'error') {
+        setApiSearch((current) => ({ ...current, status: 'error', errorMessage: t('search.ygoprodeck.requestError') }))
+      }
+
+      return
+    }
+
     searchDebounceTimerRef.current = window.setTimeout(() => {
       void runApiSearch(remoteSearchRequest, 0)
     }, SEARCH_DEBOUNCE_MS)
@@ -323,6 +335,7 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
       window.clearTimeout(searchDebounceTimerRef.current)
     }
   }, [
+    cardCatalogStatus,
     hasSearchCriteria,
     remoteSearchRequest,
     runApiSearch,
@@ -423,6 +436,7 @@ export function useApiCardSearch(deckFormat: DeckFormat): ApiCardSearchControlle
     visibleSearchResults,
     activeFilterCount,
     hasSearchCriteria,
+    totalResultCount: shouldUseLocalSearch && rankedLocalResults ? rankedLocalResults.length : null,
     isLoadingMore: shouldUseLocalSearch ? false : isLoadingMore,
     clearFilters,
     setQuery,

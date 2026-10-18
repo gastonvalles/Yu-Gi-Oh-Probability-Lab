@@ -1,19 +1,19 @@
 import { t } from '../i18n'
 import type { ApiCardReference, DeckFormat } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
+import { compileLocalCardFilters, effectMaskOf, EMPTY_RANGE, formatHasLimits, isRangeActive, type LocalCardFilters, type NumberRange } from './card-filters'
 import { SEARCH_MIN_QUERY_LENGTH } from './model'
 import { getCardCopyLimit } from './deck-format'
 import { normalizeSearchText } from './utils'
 
-export type SearchQuickTypeFilter = 'all' | 'monster' | 'spell' | 'trap'
+export type { NumberRange } from './card-filters'
 
-export interface CardSearchFilters {
-  quickType: SearchQuickTypeFilter
+/**
+ * Lo que se filtra en el cajón de filtros. Los chips (marco, atributo, tipo…) son listas: dentro de un grupo vale cualquiera, entre grupos tienen que cumplirse todos
+ * (ver `card-filters.ts`). Los de texto —arquetipo y texto del efecto— y «ocultar prohibidas» se resuelven acá.
+ */
+export interface CardSearchFilters extends LocalCardFilters {
   archetype: string
-  exactType: string
-  attribute: string
-  race: string
-  level: string
   description: string
   legalOnly: boolean
 }
@@ -33,14 +33,10 @@ export interface SearchableCardIndexEntry {
   normalizedName: string
   normalizedDescription: string
   normalizedArchetype: string
-  normalizedCardType: string
-  normalizedAttribute: string
-  normalizedRace: string
-  normalizedLevel: string
+  /** Qué efectos dice el texto de la carta (`effectMaskOf`), calculado una sola vez al armar el índice: filtrar por efecto es un AND, no una pasada de expresiones por carta. */
+  effectMask: number
   /** `getSearchTypeRank` de la carta: monstruo, mágica, trampa u otra. */
   typeRank: number
-  /** Qué filtros rápidos cumple, un bit por tipo (`QUICK_TYPE_BITS`). */
-  quickTypes: number
   /** Posición por nombre y, si empatan, por id: reemplaza a `localeCompare` al ordenar. Se completa al cerrar el índice. */
   nameRank: number
 }
@@ -50,8 +46,6 @@ interface SearchMatch {
   score: number
 }
 
-const QUICK_TYPE_BITS = { monster: 1, spell: 2, trap: 4 } as const
-
 // Misma regla que `localeCompare` sin argumentos, pero con el Collator armado una sola vez.
 const nameCollator = new Intl.Collator()
 
@@ -59,14 +53,20 @@ const nameCollator = new Intl.Collator()
 const INDEX_SLICE_MS = 8
 
 export const DEFAULT_CARD_SEARCH_FILTERS: CardSearchFilters = {
-  quickType: 'all',
   archetype: '',
-  exactType: '',
-  attribute: '',
-  race: '',
-  level: '',
   description: '',
   legalOnly: false,
+  frames: [],
+  attributes: [],
+  spellTrapKinds: [],
+  races: [],
+  abilities: [],
+  limits: [],
+  effects: [],
+  level: EMPTY_RANGE,
+  atk: EMPTY_RANGE,
+  def: EMPTY_RANGE,
+  genesysPoints: EMPTY_RANGE,
 }
 
 export function buildCompactSearchDescription(card: ApiCardReference | ApiCardSearchResult): string {
@@ -90,15 +90,8 @@ function buildIndexEntry(card: ApiCardSearchResult): SearchableCardIndexEntry {
     normalizedName: normalizeSearchText(card.name),
     normalizedDescription: normalizeSearchText(card.description ?? ''),
     normalizedArchetype: normalizeSearchText(card.archetype ?? ''),
-    normalizedCardType: normalizeSearchText(card.cardType),
-    normalizedAttribute: normalizeSearchText(card.attribute ?? ''),
-    normalizedRace: normalizeSearchText(card.race ?? ''),
-    normalizedLevel: normalizeSearchText(card.level === null ? '' : String(card.level)),
+    effectMask: effectMaskOf(card.description),
     typeRank: getSearchTypeRank(card),
-    quickTypes:
-      (matchesQuickTypeFilter(card, 'monster') ? QUICK_TYPE_BITS.monster : 0) |
-      (matchesQuickTypeFilter(card, 'spell') ? QUICK_TYPE_BITS.spell : 0) |
-      (matchesQuickTypeFilter(card, 'trap') ? QUICK_TYPE_BITS.trap : 0),
     nameRank: 0,
   }
 }
@@ -147,6 +140,9 @@ export async function buildSearchableCardIndexInSlices(
   return rankIndexByName(entries)
 }
 
+/** «Ocultar prohibidas»: sólo vale en los formatos que tienen lista (en el libre y en Genesys no hay nada que ocultar). */
+const hidesBanned = (filters: CardSearchFilters, deckFormat: DeckFormat) => filters.legalOnly && formatHasLimits(deckFormat)
+
 export function searchCardCatalog(
   searchIndex: SearchableCardIndexEntry[],
   query: string,
@@ -155,69 +151,27 @@ export function searchCardCatalog(
 ): ApiCardSearchResult[] {
   const normalizedQuery = normalizeSearchText(query)
   const normalizedArchetypeFilter = normalizeSearchText(filters.archetype)
-  const normalizedExactTypeFilter = normalizeSearchText(filters.exactType)
-  const normalizedAttributeFilter = normalizeSearchText(filters.attribute)
-  const normalizedRaceFilter = normalizeSearchText(filters.race)
-  const normalizedLevelFilter = normalizeSearchText(filters.level)
   const normalizedDescriptionFilter = normalizeSearchText(filters.description)
-  const quickTypeBit = filters.quickType === 'all' ? 0 : QUICK_TYPE_BITS[filters.quickType]
+  const matchesLocal = compileLocalCardFilters(filters, deckFormat)
+  const hideBanned = hidesBanned(filters, deckFormat)
   const rankedMatches: SearchMatch[] = []
 
   for (const entry of searchIndex) {
     const { card } = entry
 
-    if (quickTypeBit !== 0 && (entry.quickTypes & quickTypeBit) === 0) {
+    if (normalizedArchetypeFilter.length > 0 && entry.normalizedArchetype !== normalizedArchetypeFilter) {
       continue
     }
 
-    if (
-      normalizedArchetypeFilter.length > 0 &&
-      entry.normalizedArchetype !== normalizedArchetypeFilter
-    ) {
+    if (normalizedDescriptionFilter.length > 0 && !entry.normalizedDescription.includes(normalizedDescriptionFilter)) {
       continue
     }
 
-    if (
-      normalizedExactTypeFilter.length > 0 &&
-      entry.normalizedCardType !== normalizedExactTypeFilter
-    ) {
+    if (matchesLocal && !matchesLocal(card, entry.effectMask)) {
       continue
     }
 
-    if (
-      normalizedAttributeFilter.length > 0 &&
-      entry.normalizedAttribute !== normalizedAttributeFilter
-    ) {
-      continue
-    }
-
-    if (
-      normalizedRaceFilter.length > 0 &&
-      entry.normalizedRace !== normalizedRaceFilter
-    ) {
-      continue
-    }
-
-    if (
-      normalizedLevelFilter.length > 0 &&
-      entry.normalizedLevel !== normalizedLevelFilter
-    ) {
-      continue
-    }
-
-    if (
-      normalizedDescriptionFilter.length > 0 &&
-      !entry.normalizedDescription.includes(normalizedDescriptionFilter)
-    ) {
-      continue
-    }
-
-    if (
-      filters.legalOnly &&
-      deckFormat !== 'unlimited' &&
-      deckFormat !== 'genesys' &&
-      getCardCopyLimit(card, deckFormat) === 0
-    ) {
+    if (hideBanned && getCardCopyLimit(card, deckFormat) === 0) {
       continue
     }
 
@@ -268,6 +222,15 @@ export function sortSearchResults(
   })
 }
 
+/** Lo único del cajón que la API entiende: el arquetipo y, si hay uno solo elegido, el atributo y el tipo de monstruo. Lo demás se filtra acá, con los datos de la carta. */
+function remoteFilterValues(filters: CardSearchFilters): Pick<CardSearchRequest, 'archetype' | 'attribute' | 'race'> {
+  return {
+    archetype: filters.archetype.trim(),
+    attribute: filters.attributes.length === 1 ? (filters.attributes[0] ?? '') : '',
+    race: filters.races.length === 1 ? (filters.races[0] ?? '') : '',
+  }
+}
+
 export function buildRemoteCardSearchRequest(
   query: string,
   filters: CardSearchFilters,
@@ -275,7 +238,8 @@ export function buildRemoteCardSearchRequest(
 ): CardSearchRequest {
   const trimmedQuery = query.trim()
   const trimmedDescription = filters.description.trim()
-  const hasRemoteFilters = hasRemoteCardSearchFilters(filters)
+  const remote = remoteFilterValues(filters)
+  const hasRemoteFilters = remote.archetype.length > 0 || remote.attribute.length > 0 || remote.race.length > 0
 
   // Si no hay query pero hay description, usar description como query para buscar
   const effectiveQuery =
@@ -287,11 +251,9 @@ export function buildRemoteCardSearchRequest(
 
   return {
     query: effectiveQuery,
-    archetype: filters.archetype.trim(),
-    exactType: filters.exactType.trim(),
-    attribute: filters.attribute.trim(),
-    race: filters.race.trim(),
-    level: filters.level.trim(),
+    ...remote,
+    exactType: '',
+    level: '',
     format: '',
   }
 }
@@ -307,87 +269,49 @@ export function hasCardSearchRequestCriteria(request: CardSearchRequest): boolea
   ].some((value) => normalizeSearchText(value).length > 0)
 }
 
+/** ¿Hay filtros que sólo se pueden resolver con los datos de la carta (marco, límite, efecto, estadísticas…)? Sin la API que los entienda, la búsqueda necesita el catálogo. */
+export function hasLocalCardSearchCriteria(filters: CardSearchFilters, deckFormat: DeckFormat): boolean {
+  return compileLocalCardFilters(filters, deckFormat) !== null || hidesBanned(filters, deckFormat)
+}
+
+/** Cuántos filtros hay puestos, contando cada grupo de chips o de cotas como uno (es lo que dice la insignia del botón de filtros). */
 export function buildCardSearchActiveFilterCount(
   filters: CardSearchFilters,
   deckFormat: DeckFormat,
 ): number {
-  let count = 0
+  const ranges: NumberRange[] = [filters.level, filters.atk, filters.def, ...(deckFormat === 'genesys' ? [filters.genesysPoints] : [])]
+  const groups = [filters.frames, filters.attributes, filters.spellTrapKinds, filters.races, filters.abilities, filters.effects, ...(formatHasLimits(deckFormat) ? [filters.limits] : [])]
 
-  if (filters.quickType !== 'all') {
-    count += 1
-  }
-
-  if (filters.archetype.trim().length > 0) {
-    count += 1
-  }
-
-  if (filters.exactType.trim().length > 0) {
-    count += 1
-  }
-
-  if (filters.attribute.trim().length > 0) {
-    count += 1
-  }
-
-  if (filters.race.trim().length > 0) {
-    count += 1
-  }
-
-  if (filters.level.trim().length > 0) {
-    count += 1
-  }
-
-  if (filters.description.trim().length > 0) {
-    count += 1
-  }
-
-  if (filters.legalOnly && deckFormat !== 'unlimited' && deckFormat !== 'genesys') {
-    count += 1
-  }
-
-  return count
+  return (
+    (filters.archetype.trim().length > 0 ? 1 : 0) +
+    (filters.description.trim().length > 0 ? 1 : 0) +
+    (hidesBanned(filters, deckFormat) ? 1 : 0) +
+    groups.filter((group) => group.length > 0).length +
+    ranges.filter(isRangeActive).length
+  )
 }
 
+/** Lo que se aplica a las cartas que ya devolvió la API (mientras el catálogo no está): todo menos lo que la API ya resolvió con el arquetipo. */
 export function applyLocalCardSearchFilters(
   results: ApiCardSearchResult[],
   filters: CardSearchFilters,
   deckFormat: DeckFormat,
 ): ApiCardSearchResult[] {
   const descriptionFilter = normalizeSearchText(filters.description)
+  const matchesLocal = compileLocalCardFilters(filters, deckFormat)
+  const hideBanned = hidesBanned(filters, deckFormat)
 
   return results.filter((card) => {
-    if (!matchesQuickTypeFilter(card, filters.quickType)) {
+    if (descriptionFilter.length > 0 && !normalizeSearchText(card.description ?? '').includes(descriptionFilter)) {
       return false
     }
 
-    if (
-      descriptionFilter.length > 0 &&
-      !normalizeSearchText(card.description ?? '').includes(descriptionFilter)
-    ) {
+    if (matchesLocal && !matchesLocal(card)) {
       return false
     }
 
-    if (
-      filters.legalOnly &&
-      deckFormat !== 'unlimited' &&
-      deckFormat !== 'genesys' &&
-      getCardCopyLimit(card, deckFormat) === 0
-    ) {
-      return false
-    }
-
-    return true
+    return !hideBanned || getCardCopyLimit(card, deckFormat) !== 0
   })
-}
-
-function hasRemoteCardSearchFilters(filters: CardSearchFilters): boolean {
-  return (
-    filters.archetype.trim().length > 0 ||
-    filters.exactType.trim().length > 0 ||
-    filters.attribute.trim().length > 0 ||
-    filters.race.trim().length > 0 ||
-    filters.level.trim().length > 0
-  )
 }
 
 function compareSearchMatches(left: SearchMatch, right: SearchMatch): number {
@@ -462,28 +386,4 @@ function getSearchTypeRank(card: ApiCardReference | ApiCardSearchResult): number
   }
 
   return 3
-}
-
-function matchesQuickTypeFilter(
-  card: ApiCardReference | ApiCardSearchResult,
-  quickType: SearchQuickTypeFilter,
-): boolean {
-  if (quickType === 'all') {
-    return true
-  }
-
-  const cardType = typeof card.cardType === 'string' ? card.cardType.toLowerCase() : ''
-  if (quickType === 'monster') {
-    return cardType.includes('monster')
-  }
-
-  if (quickType === 'spell') {
-    return cardType.includes('spell')
-  }
-
-  if (quickType === 'trap') {
-    return cardType.includes('trap')
-  }
-
-  return false
 }
