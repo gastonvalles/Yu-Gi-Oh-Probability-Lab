@@ -1,3 +1,7 @@
+import { useRef } from 'react'
+import { createPortal } from 'react-dom'
+
+import { useFocusTrap } from '../../app/use-focus-trap'
 import { useEscapeKey } from '../../app/use-overlay'
 import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
@@ -6,12 +10,18 @@ import { Button } from '../ui/Button'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { CloseButton } from '../ui/IconButton'
-import type { MenuItem } from './MatDialogs'
+import { overline } from '../ui/typography'
+import { GHOST_CLICK_MS, type MenuItem } from './MatDialogs'
+import { CARD_BACK } from './practice-styles'
 
 interface CardSheetProps {
   name: string
+  /** Dónde está la carta (la zona, la pila) o de quién es: va arriba del nombre. */
+  kicker?: string
   art: string | null
-  apiCard: ApiCardReference | null
+  /** Sin imagen (el deck, una carta del rival que no mostró): se dibuja el dorso. */
+  back?: boolean
+  apiCard?: ApiCardReference | null
   /** Las jugadas de la carta, en el orden del menú de siempre: las que no son de apoyo (`utility`) son las jugadas del juego; las de apoyo, lo de abajo. */
   items: readonly MenuItem[]
   /** El segundo paso de una jugada («¿En ataque o en defensa?»): sus opciones salen en lugar de las jugadas. */
@@ -25,75 +35,100 @@ interface CardSheetProps {
 const MAX_PLAYS_PER_ROW = 3
 
 /**
- * La hoja de una carta de la mano (celular): sale de abajo sobre la mano, con la carta (su texto está en la lupa), su nombre y su tipo, y **todas las jugadas a un toque, sin menús que abrir**: arriba las del juego (Invocación Normal, Colocar, Activar…; la primera, llena) y abajo las de apoyo (revelar, target, descartar,
- * desterrar, al deck) en una grilla de botones chicos. Se apoya sobre la mano (`absolute`, sin mover nada) y no tapa la botonera de abajo; elegir una jugada la cierra y la mesa pide lo que
- * falta (la zona). Las jugadas son las mismas de `listCardActions`: sólo cambia cómo se ofrecen.
+ * El menú de una carta en el celular (en escritorio es `CardMenu`, pegado a la carta): una hoja que sale de abajo con la carta (su texto está en la lupa), su nombre y dónde está, y **todas las jugadas a un toque,
+ * sin menús que abrir**: arriba las del juego (Invocación Normal, Colocar, Activar…; la primera, llena) y abajo las de apoyo (revelar, target, descartar, desterrar, al deck) en una grilla de botones chicos.
+ * Va sobre todo lo demás (un visor de pila, por ejemplo) con un fondo que la cierra al tocar afuera, y también con la X o Escape; elegir una jugada la cierra y la mesa pide lo que falta (la zona).
+ * Las jugadas son las mismas de `listCardActions`: sólo cambia cómo se ofrecen.
  */
-export function CardSheet({ name, art, apiCard, items, asking, onInspect, onClose }: CardSheetProps) {
+export function CardSheet({ name, kicker, art, back = false, apiCard = null, items, asking, onInspect, onClose }: CardSheetProps) {
+  const ref = useRef<HTMLElement | null>(null)
+  const openedAtRef = useRef(performance.now())
   const plays = items.filter((item) => !item.utility)
   const support = items.filter((item) => item.utility)
 
   useEscapeKey(onClose)
+  useFocusTrap(ref)
 
-  return (
-    <section aria-label={name} className="absolute inset-x-0 bottom-0 z-40 animate-sheet-in rounded-t-panel border border-b-0 border-border bg-card-background px-3 pb-3 pt-2 shadow-overlay motion-reduce:animate-none">
-      <span aria-hidden="true" className="mx-auto mb-2 block h-1 w-10 rounded-full bg-primary-soft/50" />
-      <CloseButton size="sm" aria-label={t('common.close')} className="absolute right-1 top-1" onClick={onClose} />
+  // El click que el celular manda al soltar el dedo sobre la carta llega después de abrir la hoja y cae en el fondo recién montado: un instante no lo cierra.
+  const closeFromBackdrop = () => {
+    if (performance.now() - openedAtRef.current >= GHOST_CLICK_MS) {
+      onClose()
+    }
+  }
 
-      <div className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-3">
-        <figure className="relative m-0 aspect-[421/614] w-full overflow-hidden rounded-card bg-input">
-          <CardArt remoteUrl={art} name={name} className="block h-full w-full object-cover" />
-          {onInspect ? (
-            <button
-              type="button"
-              aria-label={t('practice.dialog.viewCard')}
-              title={t('practice.dialog.viewCard')}
-              className="absolute inset-0 grid place-items-end justify-items-end p-0.5 text-white focus-visible:outline-none focus-visible:shadow-focus"
-              onClick={onInspect}
-            >
-              <span className="grid size-5 place-items-center rounded-full border border-border-subtle bg-background/85"><Icon name="search" size={12} /></span>
-            </button>
-          ) : null}
-        </figure>
-        <div className="min-w-0 pr-8">
-          <h3 className="m-0 line-clamp-2 text-lead font-bold leading-tight text-foreground">{name}</h3>
-          {apiCard?.cardType ? <p className="m-0 mt-0.5 text-body font-semibold text-accent">{apiCard.cardType}</p> : null}
-        </div>
-      </div>
+  if (typeof document === 'undefined') {
+    return null
+  }
 
-      {/* Las jugadas: `role="menu"` y cada una un `menuitem`, como en el menú pegado a la carta. */}
-      <div role="menu" aria-label={name} className="mt-3 grid gap-2">
-        {asking !== undefined ? (
-          <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.max(1, items.length)}, minmax(0, 1fr))` }}>
-            {items.map((item, index) => (
-              <Button key={item.label} role="menuitem" variant={index === 0 ? 'primary' : 'secondary'} className="px-2!" onClick={item.onSelect}>
-                {item.label}
-              </Button>
-            ))}
+  return createPortal(
+    <>
+      <div aria-hidden="true" className="fixed inset-0 z-210" onClick={closeFromBackdrop} />
+      <section
+        ref={ref}
+        aria-label={name}
+        tabIndex={-1}
+        className="fixed inset-x-0 bottom-0 z-210 animate-sheet-in rounded-t-panel border border-b-0 border-border bg-card-background px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-overlay outline-none motion-reduce:animate-none"
+      >
+        <span aria-hidden="true" className="mx-auto mb-2 block h-1 w-10 rounded-full bg-primary-soft/50" />
+        <CloseButton size="sm" aria-label={t('common.close')} className="absolute right-1 top-1" onClick={onClose} />
+
+        <div className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-3">
+          <figure className="relative m-0 aspect-[421/614] w-full overflow-hidden rounded-card bg-input">
+            {back ? <span className={CARD_BACK} /> : <CardArt remoteUrl={art} name={name} className="block h-full w-full object-cover" />}
+            {onInspect ? (
+              <button
+                type="button"
+                aria-label={t('practice.dialog.viewCard')}
+                title={t('practice.dialog.viewCard')}
+                className="absolute inset-0 grid place-items-end justify-items-end p-0.5 text-white focus-visible:outline-none focus-visible:shadow-focus"
+                onClick={onInspect}
+              >
+                <span className="grid size-5 place-items-center rounded-full border border-border-subtle bg-background/85"><Icon name="search" size={12} /></span>
+              </button>
+            ) : null}
+          </figure>
+          <div className="min-w-0 pr-8">
+            {kicker ? <p className={cx('m-0', overline)}>{kicker}</p> : null}
+            <h3 className="m-0 line-clamp-2 text-lead font-bold leading-tight text-foreground">{name}</h3>
+            {apiCard?.cardType ? <p className="m-0 mt-0.5 text-body font-semibold text-accent">{apiCard.cardType}</p> : null}
           </div>
-        ) : (
-          <>
-            {plays.length > 0 ? (
-              <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(plays.length, plays.length > MAX_PLAYS_PER_ROW ? 2 : MAX_PLAYS_PER_ROW)}, minmax(0, 1fr))` }}>
-                {plays.map((item, index) => (
-                  <Button key={item.label} role="menuitem" variant={index === 0 ? 'primary' : 'secondary'} className={cx('px-2!', plays.length % 2 === 1 && plays.length > MAX_PLAYS_PER_ROW && index === plays.length - 1 && 'col-span-2')} onClick={item.onSelect}>
-                    {item.label}
-                  </Button>
-                ))}
-              </div>
-            ) : null}
-            {support.length > 0 ? (
-              <div className="grid grid-cols-3 gap-2">
-                {support.map((item) => (
-                  <Button key={item.label} role="menuitem" variant="tertiary" size="sm" className="min-w-0 border border-border-subtle px-1!" onClick={item.onSelect}>
-                    {item.label}
-                  </Button>
-                ))}
-              </div>
-            ) : null}
-          </>
-        )}
-      </div>
-    </section>
+        </div>
+
+        {/* Las jugadas: `role="menu"` y cada una un `menuitem`, como en el menú pegado a la carta. */}
+        <div role="menu" aria-label={name} className="mt-3 grid gap-2">
+          {asking !== undefined ? (
+            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.max(1, items.length)}, minmax(0, 1fr))` }}>
+              {items.map((item, index) => (
+                <Button key={item.label} role="menuitem" variant={index === 0 ? 'primary' : 'secondary'} className="px-2!" data-initial-focus={index === 0 ? '' : undefined} onClick={item.onSelect}>
+                  {item.label}
+                </Button>
+              ))}
+            </div>
+          ) : (
+            <>
+              {plays.length > 0 ? (
+                <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(plays.length, plays.length > MAX_PLAYS_PER_ROW ? 2 : MAX_PLAYS_PER_ROW)}, minmax(0, 1fr))` }}>
+                  {plays.map((item, index) => (
+                    <Button key={item.label} role="menuitem" variant={index === 0 ? 'primary' : 'secondary'} className={cx('px-2!', plays.length % 2 === 1 && plays.length > MAX_PLAYS_PER_ROW && index === plays.length - 1 && 'col-span-2')} data-initial-focus={index === 0 ? '' : undefined} onClick={item.onSelect}>
+                      {item.label}
+                    </Button>
+                  ))}
+                </div>
+              ) : null}
+              {support.length > 0 ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {support.map((item, index) => (
+                    <Button key={item.label} role="menuitem" variant="tertiary" size="sm" className="min-w-0 border border-border-subtle px-1!" data-initial-focus={plays.length === 0 && index === 0 ? '' : undefined} onClick={item.onSelect}>
+                      {item.label}
+                    </Button>
+                  ))}
+                </div>
+              ) : null}
+            </>
+          )}
+        </div>
+      </section>
+    </>,
+    document.body,
   )
 }

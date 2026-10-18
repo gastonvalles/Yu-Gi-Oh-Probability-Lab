@@ -151,6 +151,8 @@ interface DuelOptions {
 
 /** Cuánto espera mi pedido de volver atrás una respuesta del rival antes de cancelarse. */
 const UNDO_WAIT_MS = 30_000
+/** Cuánto dura un objetivo que marqué del lado del rival: pasado el plazo se quita solo (en los dos lados). */
+const MARK_MS = 5000
 /**
  * Cuánto repito mi saludo y mi mesa porque entró un espectador: una ráfaga de `WATCHER_SYNC_BURST` seguidas (entra uno y pide el estado de nuevo) y después una cada `WATCHER_SYNC_MS`.
  * Un espectador que entra y sale a toda velocidad no me hace mandar mi estado sin parar (y el relay, que cuenta mis mensajes, no me corta).
@@ -284,6 +286,24 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       marksOnTheirs = { cards, piles }
       sendMarks()
     }
+  }
+
+  const markKey = (target: MarkTarget) => ('card' in target ? `c:${target.card}` : `p:${target.pile}`)
+  const markTimers = new Map<string, ReturnType<typeof setTimeout>>()
+
+  /** Quita un objetivo que marqué (si sigue marcado) y se lo avisa al otro: lo usa tanto el toque que lo desmarca como su plazo. */
+  const dropMark = (target: MarkTarget) => {
+    const key = markKey(target)
+    clearTimeout(markTimers.get(key))
+    markTimers.delete(key)
+
+    if ('card' in target ? !marksOnTheirs.cards.includes(target.card) : !marksOnTheirs.piles.includes(target.pile)) {
+      return
+    }
+
+    marksOnTheirs = 'card' in target ? { ...marksOnTheirs, cards: marksOnTheirs.cards.filter((id) => id !== target.card) } : { ...marksOnTheirs, piles: marksOnTheirs.piles.filter((pile) => pile !== target.pile) }
+    sendMarks()
+    emit()
   }
 
   /** Mi estado de ahora: la mesa (si ya empecé), mis puntos de vida y, del anfitrión, el reloj. */
@@ -1066,25 +1086,35 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
         return
       }
 
-      const key = 'card' in target ? `c:${target.card}` : `p:${target.pile}`
+      const key = markKey(target)
+
+      // Tocar un objetivo que ya está marcado lo quita.
+      if ('card' in target ? marksOnTheirs.cards.includes(target.card) : marksOnTheirs.piles.includes(target.pile)) {
+        dropMark(target)
+        return
+      }
 
       if ('card' in target) {
-        if (!marksOnTheirs.cards.includes(target.card) && (marksOnTheirs.cards.length >= MAX_MARKS || !allMatIds(theirs.state).includes(target.card))) {
+        if (marksOnTheirs.cards.length >= MAX_MARKS || !allMatIds(theirs.state).includes(target.card)) {
           return
         }
 
-        marksOnTheirs = { ...marksOnTheirs, cards: marksOnTheirs.cards.includes(target.card) ? marksOnTheirs.cards.filter((id) => id !== target.card) : [...marksOnTheirs.cards, target.card] }
+        marksOnTheirs = { ...marksOnTheirs, cards: [...marksOnTheirs.cards, target.card] }
       } else {
-        marksOnTheirs = { ...marksOnTheirs, piles: marksOnTheirs.piles.includes(target.pile) ? marksOnTheirs.piles.filter((pile) => pile !== target.pile) : [...marksOnTheirs.piles, target.pile] }
+        marksOnTheirs = { ...marksOnTheirs, piles: [...marksOnTheirs.piles, target.pile] }
       }
 
       markSigns = { ...markSigns, [key]: signOf(theirs.state, target) }
 
       sendMarks()
       emit()
+      clearTimeout(markTimers.get(key))
+      markTimers.set(key, setTimeout(() => dropMark(target), MARK_MS))
     },
 
     close() {
+      markTimers.forEach((timer) => clearTimeout(timer))
+      markTimers.clear()
       dropUndoAsk(false)
       stopMessages()
       stopPeer()
