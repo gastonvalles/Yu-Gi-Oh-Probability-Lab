@@ -233,7 +233,7 @@ npm run lint         # ESLint: reglas de hooks, variables sin uso y lo recomenda
 npm run sync:genesys # actualiza los puntos de Genesys
 npm run sync:meta    # actualiza los Tournament Meta Decks (el workflow sync-meta-decks lo hace solo cada día)
 npm run sync:prices  # baja los precios de TCGplayer a public/prices, indexados por carta y por expansión (el mismo workflow, también cada día)
-npm run sync:banlists # baja las banlists históricas del TCG y del OCG a src/data/banlists.json (el mismo workflow, también cada día)
+npm run sync:banlists # baja las banlists históricas del TCG y del OCG a src/data/banlists.json (el mismo workflow, también cada día; y el workflow sync-banlists la vuelve a mirar cada tres horas, para las listas que se anuncian en partes)
 npm run sync:replays # baja los replays de torneo de los canales de YouTube a src/data/replays.json (el workflow sync-replays lo hace solo cada día)
 ```
 
