@@ -105,6 +105,8 @@ export const search = {
   'search.detail.panel': 'Texto de la carta',
   'search.detail.effect': 'Efecto',
   'search.detail.noText': 'Sin texto disponible.',
+  'search.detail.previous': 'Carta anterior',
+  'search.detail.next': 'Carta siguiente',
   'search.overlay.backToDetail': 'Volver al detalle',
   'search.overlay.zoomIn': 'Ver la carta en grande',
   'search.zoom.aria': '{name} en grande',

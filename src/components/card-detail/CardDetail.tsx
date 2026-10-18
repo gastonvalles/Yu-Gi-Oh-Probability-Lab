@@ -1,3 +1,4 @@
+import type { CardNavigation } from '../../app/card-neighbors'
 import type { DeckZone } from '../../app/model'
 import type { DeckFormat } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
@@ -11,11 +12,12 @@ interface CardDetailProps {
   deckFormat: DeckFormat
   showActions?: boolean
   deckCopy?: DeckCopyActions | null
+  navigation?: CardNavigation | null
   onAddToZone: (zone: DeckZone) => boolean
   onClose: () => void
 }
 
-export function CardDetail({ card, deckFormat, showActions = true, deckCopy = null, onAddToZone, onClose }: CardDetailProps) {
+export function CardDetail({ card, deckFormat, showActions = true, deckCopy = null, navigation = null, onAddToZone, onClose }: CardDetailProps) {
   const actionEntries = showActions ? buildZoneActionEntries(card) : []
   const metadata = [
     card.archetype,
@@ -27,6 +29,7 @@ export function CardDetail({ card, deckFormat, showActions = true, deckCopy = nu
       name={card.name}
       card={card}
       metadata={metadata}
+      navigation={navigation}
       onClose={onClose}
       actions={actionEntries.length > 0 || deckCopy ? (
         <>

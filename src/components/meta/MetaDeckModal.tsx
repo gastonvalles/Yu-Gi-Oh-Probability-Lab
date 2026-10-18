@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { cardImageSrc } from '../../app/card-image-source'
+import { buildZoneNavigation } from '../../app/card-neighbors'
 import { replaceDeckBuilder } from '../../app/deck-builder-slice'
 import { buildDeckImportPreviewFromYdk } from '../../app/deck-import'
 import {
@@ -79,6 +80,8 @@ export function MetaDeckModal({ deck, onClose, onOpenDeck }: MetaDeckModalProps)
   const [load, setLoad] = useState<LoadState>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
   const [selectedCard, setSelectedCard] = useState<ApiCardSearchResult | null>(null)
+  // La copia de la que salió el detalle: de ella sale la zona por la que se pasa de carta con las flechas.
+  const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null)
   const [confirmReplace, setConfirmReplace] = useState(false)
   // El replay que se ve encima del deck (sus videos están en el encabezado).
   const [replay, setReplay] = useState<ReplayEntry | null>(null)
@@ -172,12 +175,19 @@ export function MetaDeckModal({ deck, onClose, onOpenDeck }: MetaDeckModalProps)
     }
 
     const [zone] = instanceId.split(':') as [DeckZoneKey]
-    const card = load.deck.zones[zone]?.find((instance) => instance.instanceId === instanceId)?.apiCard as ApiCardSearchResult | undefined
+    const instance = load.deck.zones[zone]?.find((candidate) => candidate.instanceId === instanceId)
 
-    if (card) {
-      setSelectedCard(card)
+    if (instance) {
+      openInstance(instance)
     }
   }
+
+  const openInstance = (instance: DeckCardInstance) => {
+    setSelectedCard(instance.apiCard as ApiCardSearchResult)
+    setSelectedInstanceId(instance.instanceId)
+  }
+  const [selectedZone] = (selectedInstanceId ?? '').split(':') as [DeckZoneKey]
+  const selectedZoneCards = load.status === 'ready' ? load.deck.zones[selectedZone] : undefined
 
   const replays = replaysOfDeck(deck.id)
   // Cada pedazo es una frase suelta y van en el mismo orden en los dos idiomas: "Llegó a Top 8 en YCS Paris (500 jugadores)".
@@ -328,6 +338,7 @@ export function MetaDeckModal({ deck, onClose, onOpenDeck }: MetaDeckModalProps)
         card={selectedCard}
         deckFormat={deckFormat}
         isOpen={!isDesktop && selectedCard !== null}
+        navigation={selectedInstanceId && selectedZoneCards ? buildZoneNavigation(selectedZoneCards, selectedInstanceId, openInstance) : null}
         showActions={false}
         onAddToZone={() => false}
         onClose={() => setSelectedCard(null)}

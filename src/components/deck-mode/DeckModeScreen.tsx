@@ -379,6 +379,7 @@ export function DeckModeScreen() {
           isOpen={controller.deckBuilderStep.isCardDetailOpen}
           showActions={controller.deckBuilderStep.selectedDetailSource !== 'deck'}
           deckCopy={controller.deckBuilderStep.selectedDeckCopyActions}
+          navigation={controller.deckBuilderStep.selectedDetailNavigation}
           onAddToZone={(zone) =>
             controller.deckBuilderStep.selectedDetailCard
               ? controller.deckBuilderStep.onAddSearchResultToZone(
