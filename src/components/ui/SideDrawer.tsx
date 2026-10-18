@@ -9,19 +9,19 @@ import { Heading } from './Heading'
 import { CloseButton } from './IconButton'
 import { surface } from './surfaces'
 
-type SideDrawerSize = 'half' | 'column' | 'sheet'
+type SideDrawerSize = 'half' | 'column'
 
 /**
- * half: la mitad de la pantalla (con un mínimo para que en el celular entre lo que lleva) · column: el ancho de la columna de búsqueda del builder (el 30 % de lo que queda con
- * el menú abierto, con mínimo de 360 px) · sheet: una hoja de formulario, que en el celular ocupa todo el ancho y en escritorio 28 rem (los filtros de la búsqueda).
+ * Dos anchos y nada más, así dos cajones que se abren uno sobre otro (la búsqueda y sus filtros) se cubren justo.
+ * column: el ancho de la columna de búsqueda del builder (el 30 % de lo que queda con el menú abierto, con mínimo de 360 px; en el celular, todo el ancho): la búsqueda global,
+ * sus filtros y todo lo que se arma como un formulario · half: la mitad de la pantalla (con un mínimo para que en el celular entre lo que lleva): el chat.
  */
 const PANEL_SIZE: Record<SideDrawerSize, string> = {
   half: 'w-1/2 min-w-[15rem]',
-  column: 'w-[max(22.5rem,calc((100vw-15rem)*0.3))] max-w-full',
-  sheet: 'w-[min(100vw,28rem)]',
+  column: 'w-[max(22.5rem,calc((100vw-15rem)*0.3))] max-w-full max-sm:w-full',
 }
-/** En `column` y `sheet` lo de adentro trae su propio relleno (el panel del builder, el formulario de filtros). */
-const BODY_PADDING: Record<SideDrawerSize, string> = { half: 'p-3', column: 'p-0', sheet: 'p-0' }
+/** En `column` lo de adentro trae su propio relleno (el panel del builder, el formulario de filtros). */
+const BODY_PADDING: Record<SideDrawerSize, string> = { half: 'p-3', column: 'p-0' }
 
 interface SideDrawerProps {
   isOpen: boolean
