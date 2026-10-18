@@ -98,12 +98,25 @@ export type MatAction =
    * no se terminó todavía, y la carta se roba cuando empieza el turno propio.
    */
   | { type: 'phase'; phase: MatPhase; skipDraw?: true }
+  /**
+   * Control de un monstruo (duelo): `give` lo saca de mi campo (los materiales van a mi cementerio) para que lo tenga el rival, o lo devuelve si era de él (su id lleva `f.`);
+   * `take` pone en mi campo una carta de él (con su id `f.…`); `regain` me devuelve una carta mía que el rival tenía (al campo o a una pila). Lo que hace uno, el otro lo
+   * completa solo en su mesa (`auto`: la jugada de respuesta, que no vuelve a provocar otra). Ver `mat-control.ts`.
+   */
+  | { type: 'give'; id: string; auto?: true }
+  | { type: 'take'; id: string; zone: 'mz'; index: number; pos: MatPos; auto?: true }
+  | { type: 'regain'; id: string; to: MatPile | 'deck-bottom' | 'mz'; index?: number; pos?: MatPos; faceDown?: boolean; auto?: true }
 
 const ZONE_SIZES: Record<MatZone, number> = { mz: 5, emz: 2, st: 5 }
 
 const TOKEN_PREFIX = 'token-'
 
 export const isToken = (id: string) => id.startsWith(TOKEN_PREFIX)
+
+/** El prefijo de una carta del rival que yo controlo (`f.c12`: la `c12` es el id con que su dueño la llama por la red). Al salir del campo vuelve a su dueño, no va a mis pilas. */
+export const FOREIGN_PREFIX = 'f.'
+
+export const isForeignId = (id: string) => id.startsWith(FOREIGN_PREFIX)
 
 export function createMatState(deck: readonly string[], extra: readonly string[], handSize: number): MatState {
   return {
@@ -240,7 +253,8 @@ function removeEverywhere(source: MatState, id: string): { state: MatState; plac
 
 /** Al dejar el campo, los materiales Xyz van al cementerio (las fichas desaparecen). */
 function dropMaterials(state: MatState, placed: Placed | null): MatState {
-  const materials = placed?.materials.filter((id) => !isToken(id)) ?? []
+  // Las fichas desaparecen y las cartas del rival no se quedan en mi cementerio (vuelven a su dueño).
+  const materials = placed?.materials.filter((id) => !isToken(id) && !isForeignId(id)) ?? []
   return materials.length === 0 ? state : { ...state, gy: [...state.gy, ...materials] }
 }
 
@@ -286,8 +300,8 @@ export function matReducer(state: MatState, action: MatAction): MatState {
       const bare = dropMaterials(removed.state, removed.placed)
       const next = mixIn ? bare : reshuffled(bare, action.shuffle)
 
-      // Una ficha fuera del campo deja de existir.
-      if (isToken(action.id)) {
+      // Una ficha fuera del campo deja de existir; una carta del rival vuelve a su dueño (sale de mi mesa sin entrar a mis pilas).
+      if (isToken(action.id) || isForeignId(action.id)) {
         return next
       }
 
@@ -428,6 +442,55 @@ export function matReducer(state: MatState, action: MatAction): MatState {
 
       const marked = state.targeted.includes(action.id)
       return { ...state, targeted: marked ? state.targeted.filter((card) => card !== action.id) : [...state.targeted, action.id] }
+    }
+
+    case 'give': {
+      const where = locateCard(state, action.id)
+
+      // Sólo se da un monstruo del campo (una ficha tampoco).
+      if (where?.kind !== 'spot' || (where.spot !== 'mz' && where.spot !== 'emz') || isToken(action.id)) {
+        return state
+      }
+
+      const removed = removeEverywhere(state, action.id)
+
+      return dropMaterials(removed.state, removed.placed)
+    }
+
+    case 'take': {
+      const free = action.zone === 'mz' && Number.isInteger(action.index) && action.index >= 0 && action.index < ZONE_SIZES.mz && !state.mz[action.index]
+
+      if (!isForeignId(action.id) || !free || locateCard(state, action.id)) {
+        return state
+      }
+
+      return withPlaced(state, 'mz', action.index, { id: action.id, pos: action.pos, counters: 0, materials: [] })
+    }
+
+    case 'regain': {
+      // Una carta mía que ya no está en mi mesa (la tenía el rival).
+      if (isForeignId(action.id) || isToken(action.id) || locateCard(state, action.id)) {
+        return state
+      }
+
+      if (action.to === 'mz') {
+        const index = action.index
+
+        if (index === undefined || !Number.isInteger(index) || index < 0 || index >= ZONE_SIZES.mz || state.mz[index]) {
+          return state
+        }
+
+        return withPlaced(state, 'mz', index, { id: action.id, pos: action.pos ?? 'atk', counters: 0, materials: [] })
+      }
+
+      if (action.to === 'deck') {
+        return { ...state, deck: [action.id, ...state.deck] }
+      }
+
+      const pile = action.to === 'deck-bottom' ? 'deck' : action.to
+      const facedown = action.to === 'banished' && action.faceDown ? [...state.facedown, action.id] : state.facedown
+
+      return { ...state, [pile]: [...state[pile], action.id], facedown }
     }
 
     case 'phase': {
@@ -592,6 +655,15 @@ function describePlay(before: MatState, action: MatAction, name: (id: string) =>
       return t('practice.step.phase', { phase })
     }
 
+    case 'give':
+      return t(isForeignId(action.id) ? 'practice.step.giveBack' : action.auto ? 'practice.step.taken' : 'practice.step.give', { card: name(action.id) })
+
+    case 'take':
+      return t(action.auto ? 'practice.step.receive' : 'practice.step.take', { card: name(action.id) })
+
+    case 'regain':
+      return t(action.to === 'mz' && !action.auto ? 'practice.step.regainControl' : 'practice.step.regain', { card: name(action.id) })
+
     case 'counter': {
       const from = locateCard(before, action.id)
       const counters = Math.max(0, (from?.kind === 'spot' ? from.placed.counters : 0) + Math.trunc(action.delta))
@@ -702,6 +774,12 @@ export interface AttackTarget {
   label: string
 }
 
+/** En un duelo: a quién se le puede dar el control de un monstruo y si tiene dónde ponerlo (sin una zona de monstruo libre, no se ofrece). */
+export interface ControlOffer {
+  rival: string
+  rivalHasRoom: boolean
+}
+
 export interface MatMenuItem {
   label: string
   /** La jugada; si hay `targets`, apunta a la primera zona libre y la mesa deja elegir otra. */
@@ -774,7 +852,7 @@ export function freeTargets(state: MatState, zones: readonly MatSpot[], rivalEmz
  * defensa; las fichas no se colocan boca abajo ni salen del campo; la Extra Monster Zone sólo se ofrece a lo que
  * viene del Extra Deck.
  */
-export function listCardActions(state: MatState, id: string, kindOf: (id: string) => MatCardKind, nameOf: (id: string) => string, attackTargets: readonly AttackTarget[] = [], rivalEmz?: readonly boolean[]): MatMenuItem[] {
+export function listCardActions(state: MatState, id: string, kindOf: (id: string) => MatCardKind, nameOf: (id: string) => string, attackTargets: readonly AttackTarget[] = [], rivalEmz?: readonly boolean[], control?: ControlOffer): MatMenuItem[] {
   const where = locateCard(state, id)
 
   if (!where) {
@@ -849,6 +927,11 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     if (isToken(id)) {
       add(t('practice.menu.removeToken'), { type: 'move', id, to: 'gy' })
       return items
+    }
+
+    // Dar el control de un monstruo (o devolverlo a su dueño): sólo en un duelo y si el rival tiene una zona de monstruo libre.
+    if (control?.rivalHasRoom && (spot === 'mz' || spot === 'emz')) {
+      add(t(isForeignId(id) ? 'practice.menu.returnControl' : 'practice.menu.giveControl', { name: control.rival }), { type: 'give', id })
     }
 
     // Un monstruo puede pasar a la zona de Mágicas y Trampas (los que se tratan como Mágicas de Equipo o Continuas).

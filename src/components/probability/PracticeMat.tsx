@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 
 import { parseDerivedCardId } from '../../app/calculator-state'
 import { matEffects, type LandingTone, type ShowcaseKind, type SpotlightKind } from '../../app/mat-effects'
+import { opaqueOfForeign } from '../../app/mat-control'
 import { isOpaqueId } from '../../app/mat-public'
 import {
   allMatIds,
@@ -10,8 +11,10 @@ import {
   banishItem,
   cardKindOf,
   describeMatSteps,
+  type ControlOffer,
   fieldCards,
   freeTargets,
+  isForeignId,
   isToken,
   listCardActions,
   listDropActions,
@@ -131,6 +134,10 @@ export interface DuelMatLink {
   rivalShuffle?: number
   /** Pedí volver atrás mi jugada y espero que el rival la permita: Deshacer queda apagado hasta que conteste. */
   undoPending?: boolean
+  /** Mi última jugada cambió de manos un monstruo (el rival ya la completó en su mesa): no se deshace. */
+  undoBlocked?: boolean
+  /** A quién se le puede dar el control de un monstruo y si tiene dónde ponerlo. */
+  control?: ControlOffer
   /** Qué Zonas Extra ocupa el rival, cada una por su número (la 0 suya es la 1 de acá): una que ocupa él no se puede usar, ni la otra si ya hay un monstruo propio en una. */
   rivalEmz: readonly boolean[]
   /** Una capa que tapa toda la mesa (el duelo en pausa): nada de lo de abajo se toca mientras está. */
@@ -335,8 +342,8 @@ export function PracticeMat({
     (shown: string): MatCard => {
       if (isToken(shown)) return TOKEN_CARD
 
-      // Un id del rival (el objetivo de un ataque) se resuelve por la carta que él mostró; si no mostró ninguna, no se sabe cuál es.
-      const id = duel && isOpaqueId(shown) ? duel.foreignKnown[shown] : shown
+      // Un id del rival (el objetivo de un ataque, o una carta suya que controlo: `f.c12`) se resuelve por la carta que él mostró; si no mostró ninguna, no se sabe cuál es.
+      const id = duel && isOpaqueId(shown) ? duel.foreignKnown[shown] : duel && isForeignId(shown) ? duel.foreignKnown[opaqueOfForeign(shown)] : shown
       if (id === undefined) return RIVAL_MONSTER
 
       const known = cardsById.get(id) ?? byCardId.get(cardIdOfDrawId(id))
@@ -351,7 +358,7 @@ export function PracticeMat({
 
   useEffect(() => {
     // Con los monstruos del rival a los que se puede atacar, también sus nombres (los de su deck no están en `cardsById`).
-    const rivals = duel ? duel.attackTargets.flatMap((target) => duel.foreignKnown[target.id] ?? []) : []
+    const rivals = duel ? [...duel.attackTargets.map((target) => duel.foreignKnown[target.id]), ...allMatIds(state).filter(isForeignId).map((id) => duel.foreignKnown[opaqueOfForeign(id)])].flatMap((id) => id ?? []) : []
     const missing = [...new Set([...allMatIds(state), ...rivals].map(cardIdOfDrawId))]
       .filter((cardId) => !byCardId.has(cardId))
       .map(parseDerivedCardId)
@@ -1041,7 +1048,7 @@ export function PracticeMat({
       ]
     }
 
-    const items = menu.drop ? listDropActions(state, menu.id, kindOf, nameOf, menu.drop, duel?.rivalEmz) : listCardActions(state, menu.id, kindOf, nameOf, attackTargets, duel?.rivalEmz)
+    const items = menu.drop ? listDropActions(state, menu.id, kindOf, nameOf, menu.drop, duel?.rivalEmz) : listCardActions(state, menu.id, kindOf, nameOf, attackTargets, duel?.rivalEmz, duel?.control)
 
     const mapped: MenuItem[] = items.map((item) => ({ label: item.label, onSelect: () => choose(item, menu.drop) }))
     const point = duel?.point
@@ -1055,7 +1062,7 @@ export function PracticeMat({
     }
 
     return mapped
-  }, [menu, state, kindOf, nameOf, attackTargets, play, choose, summonToken, duel?.rivalEmz, duel?.plusItems, duel?.point])
+  }, [menu, state, kindOf, nameOf, attackTargets, play, choose, summonToken, duel?.rivalEmz, duel?.control, duel?.plusItems, duel?.point])
 
   const menuCard = menu?.kind === 'card' ? cardOf(menu.id) : menu?.kind === 'token' && !menu.root ? TOKEN_CARD : null
   const menuWhere = menu?.kind === 'card' ? locateCard(state, menu.id) : null
@@ -1295,7 +1302,7 @@ export function PracticeMat({
   // En un duelo los botones de abajo van en cajas oscuras de 44 px (como en el diseño); en la práctica, arriba, sin caja.
   const dockTone = duel ? 'tile' : 'flat'
   const undoButton = (
-    <IconButton tone={dockTone} size="sm" aria-label={t('practice.mat.undo')} title={duel?.undoPending ? t('duel.undo.waiting') : t('practice.mat.undo')} disabled={session.cursor === 0 || Boolean(duel?.undoPending)} className="disabled:opacity-35" onClick={() => { setAutoplay(false); onUndo() }}>
+    <IconButton tone={dockTone} size="sm" aria-label={t('practice.mat.undo')} title={duel?.undoPending ? t('duel.undo.waiting') : t('practice.mat.undo')} disabled={session.cursor === 0 || Boolean(duel?.undoPending) || Boolean(duel?.undoBlocked)} className="disabled:opacity-35" onClick={() => { setAutoplay(false); onUndo() }}>
       <Icon name="undo" />
     </IconButton>
   )
