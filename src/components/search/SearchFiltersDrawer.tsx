@@ -2,16 +2,17 @@ import { useId, type ReactNode } from 'react'
 
 import { formatHasLimits } from '../../app/card-filters'
 import type { CardSearchFilters, NumberRange } from '../../app/card-search'
+import { getDeckFormatLabel } from '../../app/deck-format'
 import { formatInteger } from '../../app/utils'
 import { t } from '../../i18n'
 import type { DeckFormat } from '../../types'
 import { Button } from '../ui/Button'
-import { Switch } from '../ui/Switch'
+import { MultiSelect } from '../ui/MultiSelect'
 import { SideDrawer } from '../ui/SideDrawer'
+import { Switch } from '../ui/Switch'
 import { cx } from '../ui/cx'
-import { choiceChip, field } from '../ui/surfaces'
+import { field } from '../ui/surfaces'
 import { overline } from '../ui/typography'
-import { getDeckFormatLabel } from '../../app/deck-format'
 import {
   ABILITY_OPTIONS,
   ATTRIBUTE_OPTIONS,
@@ -20,10 +21,8 @@ import {
   LIMIT_OPTIONS,
   MONSTER_RACE_OPTIONS,
   SPELL_TRAP_OPTIONS,
-  type FilterOption,
 } from './search-options'
 
-const CHIP = cx(choiceChip, 'min-h-8 px-3 text-micro pointer-coarse:min-h-11 pointer-coarse:text-body')
 const INPUT = cx(field, 'min-h-9 w-full min-w-0 px-2.5 py-1.5 text-body pointer-coarse:min-h-11')
 
 interface SearchFiltersDrawerProps {
@@ -49,12 +48,10 @@ export function viewResultsLabel(resultCount: number | null, hasMore: boolean): 
   return hasMore ? t('search.mobile.viewResultsMore', { n: formatInteger(resultCount) }) : t('search.mobile.viewResultsCount', { count: resultCount, n: formatInteger(resultCount) })
 }
 
-const toggle = (values: string[], value: string) => (values.includes(value) ? values.filter((item) => item !== value) : [...values, value])
-
 /**
- * Los filtros de la búsqueda, en un cajón que se abre desde el botón de al lado del campo (el panel de búsqueda queda con sólo el campo y ese botón). Las secciones van
- * en este orden: marco, atributo, mágicas y trampas, tipo, habilidades, limitación, efecto y estadísticas; arriba, el arquetipo. Cada grupo de chips es de elección
- * múltiple (dentro del grupo vale cualquiera; entre grupos, todos). Abajo, limpiar y volver a los resultados diciendo cuántos son.
+ * Los filtros de la búsqueda, en un cajón que se abre desde el botón de al lado del campo (el panel de búsqueda queda con sólo el campo y ese botón). Arriba, el arquetipo;
+ * después, un selector desplegable por filtro, en este orden: marco, atributo, mágicas y trampas, tipo, habilidades, limitación y efecto; y las estadísticas, con mínimo y
+ * máximo. Cada desplegable es de elección múltiple (dentro de un filtro vale cualquiera; entre filtros, todos). Abajo, limpiar y volver a los resultados diciendo cuántos son.
  */
 export function SearchFiltersDrawer({ isOpen, onClose, filters, deckFormat, activeFilterCount, resultCount, hasMore, onFilterChange, onClearFilters }: SearchFiltersDrawerProps) {
   const limitsAvailable = formatHasLimits(deckFormat)
@@ -63,8 +60,8 @@ export function SearchFiltersDrawer({ isOpen, onClose, filters, deckFormat, acti
   return (
     <SideDrawer isOpen={isOpen} onClose={onClose} title={t('search.filters.title')} size="sheet">
       <div className="flex h-full min-h-0 flex-col">
-        <div className="grid min-h-0 flex-1 content-start gap-5 overflow-y-auto overscroll-contain px-4 py-4 [scrollbar-width:thin]">
-          <label className="grid gap-1">
+        <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto overscroll-contain px-4 py-4 [scrollbar-width:thin]">
+          <label className="grid gap-1.5">
             <span className={overline}>{t('search.filters.archetype')}</span>
             <input
               type="text"
@@ -77,14 +74,15 @@ export function SearchFiltersDrawer({ isOpen, onClose, filters, deckFormat, acti
             />
           </label>
 
-          <ChipSection title={t('search.filters.frame')} options={FRAME_OPTIONS} selected={filters.frames} onChange={(frames) => onFilterChange({ frames })} />
-          <ChipSection title={t('search.filters.attribute')} options={ATTRIBUTE_OPTIONS} selected={filters.attributes} onChange={(attributes) => onFilterChange({ attributes })} />
-          <ChipSection title={t('search.filters.spellTrap')} options={SPELL_TRAP_OPTIONS} selected={filters.spellTrapKinds} onChange={(spellTrapKinds) => onFilterChange({ spellTrapKinds })} />
-          <ChipSection title={t('search.filters.monsterType')} options={MONSTER_RACE_OPTIONS} selected={filters.races} onChange={(races) => onFilterChange({ races })} />
-          <ChipSection title={t('search.filters.abilities')} options={ABILITY_OPTIONS} selected={filters.abilities} onChange={(abilities) => onFilterChange({ abilities })} />
+          <MultiSelect label={t('search.filters.frame')} options={FRAME_OPTIONS} selected={filters.frames} onChange={(frames) => onFilterChange({ frames })} />
+          <MultiSelect label={t('search.filters.attribute')} options={ATTRIBUTE_OPTIONS} selected={filters.attributes} onChange={(attributes) => onFilterChange({ attributes })} />
+          <MultiSelect label={t('search.filters.spellTrap')} options={SPELL_TRAP_OPTIONS} selected={filters.spellTrapKinds} onChange={(spellTrapKinds) => onFilterChange({ spellTrapKinds })} />
+          <MultiSelect label={t('search.filters.monsterType')} options={MONSTER_RACE_OPTIONS} selected={filters.races} onChange={(races) => onFilterChange({ races })} />
+          <MultiSelect label={t('search.filters.abilities')} options={ABILITY_OPTIONS} selected={filters.abilities} onChange={(abilities) => onFilterChange({ abilities })} />
 
           {limitsAvailable ? (
-            <Section title={t('search.filters.limit')}>
+            <div className="grid gap-3">
+              <MultiSelect label={t('search.filters.limit')} options={LIMIT_OPTIONS} selected={filters.limits} onChange={(limits) => onFilterChange({ limits })} />
               <div className="flex items-center justify-between gap-3">
                 <span className="grid min-w-0 gap-0.5">
                   <strong className="text-body font-semibold text-foreground">{t('search.filters.hideBanned')}</strong>
@@ -92,12 +90,12 @@ export function SearchFiltersDrawer({ isOpen, onClose, filters, deckFormat, acti
                 </span>
                 <Switch checked={filters.legalOnly} label={t('search.filters.hideBannedIn', { format: formatLabel })} onChange={(legalOnly) => onFilterChange({ legalOnly })} />
               </div>
-              <Chips options={LIMIT_OPTIONS} selected={filters.limits} onChange={(limits) => onFilterChange({ limits })} />
-            </Section>
+            </div>
           ) : null}
 
-          <Section title={t('search.filters.effect')} hint={t('search.filters.effectHint')}>
-            <Chips options={EFFECT_OPTIONS} selected={filters.effects} onChange={(effects) => onFilterChange({ effects })} />
+          <div className="grid gap-2">
+            <MultiSelect label={t('search.filters.effect')} options={EFFECT_OPTIONS} selected={filters.effects} onChange={(effects) => onFilterChange({ effects })} />
+            <p className="m-0 text-micro text-soft">{t('search.filters.effectHint')}</p>
             <label className="grid gap-1">
               <span className="text-micro font-semibold text-muted">{t('search.filters.effectText')}</span>
               <input
@@ -110,7 +108,7 @@ export function SearchFiltersDrawer({ isOpen, onClose, filters, deckFormat, acti
                 className={INPUT}
               />
             </label>
-          </Section>
+          </div>
 
           <Section title={t('search.filters.stats')}>
             <RangeField label={t('search.filters.level')} range={filters.level} onChange={(level) => onFilterChange({ level })} />
@@ -136,8 +134,8 @@ export function SearchFiltersDrawer({ isOpen, onClose, filters, deckFormat, acti
   )
 }
 
-/** Una sección del cajón: su título (como el de las del cajón de los menús) y, abajo, lo que lleva; las separa una línea fina, no una caja. */
-function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+/** Una sección con su título (las estadísticas, que no son un desplegable) y, arriba, una línea fina que la separa; no una caja. */
+function Section({ title, children }: { title: string; children: ReactNode }) {
   const id = useId()
 
   return (
@@ -145,30 +143,8 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
       <h3 id={id} className={cx(overline, 'm-0')}>
         {title}
       </h3>
-      {hint ? <p className="m-0 text-micro text-soft">{hint}</p> : null}
       {children}
     </section>
-  )
-}
-
-function ChipSection({ title, options, selected, onChange }: { title: string; options: FilterOption[]; selected: string[]; onChange: (values: string[]) => void }) {
-  return (
-    <Section title={title}>
-      <Chips options={options} selected={selected} onChange={onChange} />
-    </Section>
-  )
-}
-
-/** Chips de elección múltiple: un toque suma, otro toque sobre el elegido lo quita. */
-function Chips({ options, selected, onChange }: { options: FilterOption[]; selected: string[]; onChange: (values: string[]) => void }) {
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {options.map((option) => (
-        <button key={option.value} type="button" className={CHIP} aria-pressed={selected.includes(option.value)} onClick={() => onChange(toggle(selected, option.value))}>
-          {option.label}
-        </button>
-      ))}
-    </div>
   )
 }
 
@@ -177,7 +153,7 @@ function RangeField({ label, range, onChange }: { label: string; range: NumberRa
   const digits = (value: string) => value.replace(/\D/g, '')
 
   return (
-    <div className="grid grid-cols-[9rem_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2">
+    <div className="grid grid-cols-[10rem_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2">
       <span className="text-body font-semibold text-foreground">{label}</span>
       <input
         type="text"

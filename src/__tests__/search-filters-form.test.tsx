@@ -53,53 +53,80 @@ function openDrawer({ filters = {}, deckFormat = 'tcg', activeFilterCount = 0, r
 }
 
 describe('el cajón de filtros', () => {
-  it('muestra las secciones en el orden pedido: marco, atributo, mágicas y trampas, tipo, habilidades, limitación, efecto y estadísticas', () => {
+  it('muestra los filtros en el orden pedido —marco, atributo, mágicas y trampas, tipo, habilidades, limitación y efecto—, cada uno en un desplegable, y las estadísticas', () => {
     const { dialog } = openDrawer()
+    const triggers = within(dialog).getAllByRole('button').filter((button) => button.hasAttribute('aria-expanded'))
 
-    // El primer título es el del cajón («Filtros»); después, las secciones.
-    expect(within(dialog).getAllByRole('heading', { level: 3 }).slice(1).map((heading) => heading.textContent)).toEqual([
-      'Marco',
-      'Atributo',
-      'Mágicas y Trampas',
-      'Tipo',
-      'Habilidades',
-      'Limitación',
-      'Efecto',
-      'Estadísticas',
-    ])
+    expect(triggers.map((trigger) => trigger.previousElementSibling?.textContent)).toEqual(['Marco', 'Atributo', 'Mágicas y Trampas', 'Tipo', 'Habilidades', 'Limitación', 'Efecto'])
+    // Todos arrancan cerrados y dicen «Cualquiera»; el único título de sección es el de las estadísticas.
+    expect(triggers.every((trigger) => trigger.getAttribute('aria-expanded') === 'false')).toBe(true)
+    expect(within(dialog).getByRole('button', { name: 'Marco Cualquiera' })).toBeInTheDocument()
+    expect(within(dialog).getAllByRole('heading', { level: 3 }).slice(1).map((heading) => heading.textContent)).toEqual(['Estadísticas'])
     // El arquetipo es un campo, arriba de todo.
     expect(within(dialog).getByLabelText('Arquetipo')).toBeInTheDocument()
   })
 
-  it('cada grupo de chips es de elección múltiple: un toque suma, otro toque sobre el elegido lo quita, y se anuncia con aria-pressed', () => {
+  it('cada filtro es un desplegable de elección múltiple: el campo dice qué hay elegido, se abre con una lista de casillas, un toque suma y otro quita', () => {
     const { dialog, onFilterChange } = openDrawer({ filters: { frames: ['fusion'] } })
+    const trigger = within(dialog).getByRole('button', { name: 'Marco Fusión' })
 
-    expect(within(dialog).getByRole('button', { name: 'Fusión' })).toHaveAttribute('aria-pressed', 'true')
-    expect(within(dialog).getByRole('button', { name: 'Xyz' })).toHaveAttribute('aria-pressed', 'false')
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    expect(within(dialog).queryByRole('checkbox', { name: 'Xyz' })).not.toBeInTheDocument()
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Xyz' }))
+    fireEvent.click(trigger)
+
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    expect(within(dialog).getByRole('checkbox', { name: 'Fusión' })).toBeChecked()
+    expect(within(dialog).getByRole('checkbox', { name: 'Xyz' })).not.toBeChecked()
+
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Xyz' }))
     expect(onFilterChange).toHaveBeenLastCalledWith({ frames: ['fusion', 'xyz'] })
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Fusión' }))
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Fusión' }))
     expect(onFilterChange).toHaveBeenLastCalledWith({ frames: [] })
+
+    fireEvent.click(trigger)
+
+    expect(within(dialog).queryByRole('checkbox', { name: 'Xyz' })).not.toBeInTheDocument()
   })
 
-  it('los demás grupos llevan sus valores: atributo, subtipo de mágica o trampa, tipo de monstruo, habilidad, límite y efecto', () => {
+  it('los demás desplegables llevan sus valores: atributo, subtipo de mágica o trampa, tipo de monstruo, habilidad, límite y efecto', () => {
     const { dialog, onFilterChange } = openDrawer()
-    const press = (name: string) => fireEvent.click(within(dialog).getByRole('button', { name }))
+    const choose = (group: string, option: string) => {
+      fireEvent.click(within(dialog).getByRole('button', { name: new RegExp(`^${group} `) }))
+      fireEvent.click(within(dialog).getByRole('checkbox', { name: option }))
+    }
 
-    press('DARK')
+    choose('Atributo', 'DARK')
     expect(onFilterChange).toHaveBeenLastCalledWith({ attributes: ['DARK'] })
-    press('Mágica de Juego Rápido')
+    choose('Mágicas y Trampas', 'Mágica de Juego Rápido')
     expect(onFilterChange).toHaveBeenLastCalledWith({ spellTrapKinds: ['spell:Quick-Play'] })
-    press('Dragon')
+    choose('Tipo', 'Dragon')
     expect(onFilterChange).toHaveBeenLastCalledWith({ races: ['Dragon'] })
-    press('Volteo')
+    choose('Habilidades', 'Volteo')
     expect(onFilterChange).toHaveBeenLastCalledWith({ abilities: ['flip'] })
-    press('Semi-limitada')
+    choose('Limitación', 'Semi-limitada')
     expect(onFilterChange).toHaveBeenLastCalledWith({ limits: ['semi-limited'] })
-    press('Desterrar')
+    choose('Efecto', 'Desterrar')
     expect(onFilterChange).toHaveBeenLastCalledWith({ effects: ['banish'] })
+  })
+
+  it('Escape cierra la lista desplegada y no el cajón; con la lista cerrada, cierra el cajón', () => {
+    const { dialog, onClose } = openDrawer()
+    const trigger = within(dialog).getByRole('button', { name: 'Atributo Cualquiera' })
+
+    fireEvent.click(trigger)
+    expect(within(dialog).getByRole('checkbox', { name: 'DARK' })).toBeInTheDocument()
+
+    fireEvent.keyDown(within(dialog).getByRole('checkbox', { name: 'DARK' }), { key: 'Escape' })
+
+    expect(within(dialog).queryByRole('checkbox', { name: 'DARK' })).not.toBeInTheDocument()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(trigger).toHaveFocus()
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 
   it('el efecto se explica (según el texto de la carta, en inglés) y se puede escribir también un texto libre', () => {
@@ -127,7 +154,7 @@ describe('el cajón de filtros', () => {
   it('la limitación sólo está en los formatos con lista de prohibidas, con «Ocultar prohibidas»; los puntos son de Genesys', () => {
     const tcg = openDrawer()
 
-    expect(within(tcg.dialog).getByRole('heading', { name: 'Limitación' })).toBeInTheDocument()
+    expect(within(tcg.dialog).getByRole('button', { name: 'Limitación Cualquiera' })).toBeInTheDocument()
     fireEvent.click(within(tcg.dialog).getByRole('switch', { name: 'Ocultar prohibidas en TCG' }))
     expect(tcg.onFilterChange).toHaveBeenLastCalledWith({ legalOnly: true })
     expect(within(tcg.dialog).queryByLabelText('Puntos Genesys, mínimo')).not.toBeInTheDocument()
@@ -137,7 +164,7 @@ describe('el cajón de filtros', () => {
     for (const format of ['unlimited', 'genesys'] as const) {
       const other = openDrawer({ deckFormat: format })
 
-      expect(within(other.dialog).queryByRole('heading', { name: 'Limitación' })).not.toBeInTheDocument()
+      expect(within(other.dialog).queryByRole('button', { name: 'Limitación Cualquiera' })).not.toBeInTheDocument()
       expect(within(other.dialog).queryByLabelText('Puntos Genesys, mínimo') !== null).toBe(format === 'genesys')
       cleanup()
     }
