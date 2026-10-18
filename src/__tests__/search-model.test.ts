@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { DEFAULT_CARD_SEARCH_FILTERS } from '../app/card-search'
 import {
   buildActiveFilterChips,
+  buildCardSearchProps,
   buildSanitizedFilterUpdates,
   sortVisibleSearchResults,
 } from '../components/search/search-model'
@@ -65,5 +66,39 @@ describe('chips de filtros activos', () => {
       ['archetype', 'Blue-Eyes', { archetype: '' }],
       ['legal-only', 'Sin prohibidas en TCG', { legalOnly: false }],
     ])
+  })
+})
+
+describe('buildCardSearchProps', () => {
+  it('agrupa lo que sabe el controlador del deck en el estado y las acciones que reciben los paneles (el builder y el buscador global)', () => {
+    const onQueryChange = vi.fn()
+    const onSearchFiltersChange = vi.fn()
+    const onClearSearchFilters = vi.fn()
+    const onLoadMoreResults = vi.fn()
+    const visibleSearchResults = [card(1, 'Ash Blossom & Joyous Spring', 'Effect Monster')]
+    const maxedOutSearchResultIds = new Set([1])
+    const { search, actions } = buildCardSearchProps({
+      deckFormat: 'tcg',
+      query: 'ash',
+      status: 'success',
+      visibleSearchResults,
+      loadedSearchResultCount: 3,
+      errorMessage: '',
+      hasMore: true,
+      isLoadingMore: false,
+      searchFilters: DEFAULT_CARD_SEARCH_FILTERS,
+      activeFilterCount: 0,
+      hasSearchCriteria: true,
+      maxedOutSearchResultIds,
+      onQueryChange,
+      onSearchFiltersChange,
+      onClearSearchFilters,
+      onLoadMoreResults,
+    })
+
+    expect(search).toMatchObject({ deckFormat: 'tcg', query: 'ash', status: 'success', rawResultCount: 3, hasMore: true, hasSearchCriteria: true, filters: DEFAULT_CARD_SEARCH_FILTERS })
+    expect(search.results).toBe(visibleSearchResults)
+    expect(search.maxedOutResultIds).toBe(maxedOutSearchResultIds)
+    expect(actions).toEqual({ onQueryChange, onFilterChange: onSearchFiltersChange, onClearFilters: onClearSearchFilters, onLoadMore: onLoadMoreResults })
   })
 })

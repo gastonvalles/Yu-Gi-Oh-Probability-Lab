@@ -24,6 +24,8 @@ export const shell: Translated<typeof es> = {
   'shell.blurb.life': 'Life points, round clock, coin and dice',
   'shell.blurb.export': 'Image, PDF and YDK, for the tournament or the simulator',
   'shell.blurb.mascots': 'Off by default on phones',
+  'shell.blurb.search': 'Look up a card without leaving this screen. Shortcut: /',
+  'shell.search.title': 'Search cards',
   'shell.blurb.meta': 'Hand traps and boardbreakers from tournaments',
   'shell.blurb.tournaments': 'The ones that made the top, complete',
   'shell.blurb.replays': 'The duels of those decks, on video',

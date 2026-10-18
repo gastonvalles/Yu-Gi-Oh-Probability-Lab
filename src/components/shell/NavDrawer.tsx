@@ -11,7 +11,7 @@ import { LanguageSwitcher } from '../ui/LanguageSwitcher'
 import { SiteCredit, SocialLinks } from '../ui/SocialLinks'
 import { AppBrand } from './AppBrand'
 import { BackupActions } from './BackupActions'
-import { mascotsNavItem, type NavGroup } from './nav-model'
+import { mascotsNavItem, searchNavItem, type NavGroup } from './nav-model'
 import { NAV_OVERLINE } from './rail'
 import { NavButton, SidebarNav } from './SidebarNav'
 
@@ -20,6 +20,8 @@ interface DrawerNav {
   groups: NavGroup[]
   activeKey: string | null
   onSelect: (key: string) => void
+  /** Hay buscador de cartas en esta pantalla. */
+  searchAvailable?: boolean
 }
 
 interface DrawerPanelProps {
@@ -42,6 +44,18 @@ export function DrawerPanel({ onClose, nav, className }: DrawerPanelProps) {
         <CloseButton aria-label={t('shell.nav.close')} data-initial-focus="" onClick={onClose} />
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-3">
+        {nav?.searchAvailable ? (
+          <div className="-mx-2 -mb-3">
+            <NavButton
+              item={searchNavItem()}
+              active={false}
+              onSelect={(key) => {
+                nav.onSelect(key)
+                onClose()
+              }}
+            />
+          </div>
+        ) : null}
         {nav ? (
           <SidebarNav
             groups={nav.groups}

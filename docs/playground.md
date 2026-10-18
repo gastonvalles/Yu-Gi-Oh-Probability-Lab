@@ -48,12 +48,13 @@ playground lo muestra con los mismos componentes). Si algo del menú, del cajón
   y avisa cuánto espacio ocupa (`app/shell-layout.ts`) para que los botones flotantes y la mascota lo dejen libre.
 - `SidebarNav`: la lista de destinos agrupada del menú lateral (índigo, con el destino abierto en ámbar).
 - `MobileTabBar` + `GroupSheet`: la barra de abajo del celular (un botón por grupo) y la hoja que sube con las opciones del grupo, como en el lienzo: se apoya sobre la barra (que queda a la vista: tocar otro grupo cambia de hoja y el mismo la cierra; con una hoja abierta sólo su grupo va en ámbar). «Tu deck» lleva el estado de cada paso a la derecha (`NavItem.pill`), «Duelo» el aviso de una sala en pausa (`NavGroup.sheetNotice`) y sus cuatro entradas (`sheetItems`) y las demás una línea que explica cada destino (`NavItem.blurb`). Mide 64 px (`TAB_BAR_PX` en `app/shell-layout.ts`) y los botones flotantes la dejan libre.
-- `AppSidebar`: marca, destinos, idioma, mascotas y el botón de contraer a una columna de íconos.
+- `AppSidebar`: marca, la fila de «Buscar cartas» (si la pantalla la ofrece), destinos, idioma, mascotas y el botón de contraer a una columna de íconos.
 - `MobileTopBar` + `NavDrawer` (`DrawerPanel` por dentro): el nombre de la pantalla con la hamburguesa y el cajón de ajustes del lienzo: idioma (`LanguageSwitcher variant="segmented"`, Español | English), «Tus datos» (`BackupActions variant="list"`) y abajo las redes (`SocialLinks size="lg"`), la privacidad y la autoría; foco atrapado, Escape, velo.
 - `AppFooter`: autoría, aviso de sitio no oficial, redes y privacidad.
 - `nav-model.ts`: los tipos (`NavGroup`, `NavItem`) y `buildAppNavGroups` (en `deck-workflow-navigation.ts`) arma los grupos de la app:
   **Tu deck** (el recorrido del Lab: Deck · Roles · Lab · Comparar), **Jugar** (Práctica · Duelo con un amigo · Calculadora de LP · Exportar, que es sacar el deck para el torneo o el simulador), **Descubrir** (Tier lists · Decks de torneo · Replays) y **Cartas** (Expansiones · Banlists).
   Las mascotas (`mascotsNavItem`) no están en un grupo: van abajo del menú lateral y en el cajón del celular, y abren su panel.
+  Lo mismo la búsqueda de cartas (`searchNavItem`, `onSelect('search')`): una fila arriba de los grupos del menú lateral y del cajón, y un botón de 44 px a la derecha de `MobileTopBar` (`onSearch`); el armazón la muestra con `searchAvailable`.
 
 ## Fuera del sistema (lo que falta migrar a un componente único)
 

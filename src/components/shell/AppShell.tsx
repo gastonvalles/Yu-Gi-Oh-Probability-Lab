@@ -26,6 +26,8 @@ interface AppShellProps {
   onSheetOpen?: (groupKey: string) => void
   /** Vista completa (la práctica): sin pie y, en el celular, del alto exacto de la ventana (nada de scroll de página); la pantalla se reparte ese alto. */
   immersive?: boolean
+  /** Hay buscador de cartas en esta pantalla (todas menos el builder, que ya tiene el suyo, y el duelo): aparece en el menú lateral, la barra de arriba y el cajón del celular, y abre `onSelect('search')`. */
+  searchAvailable?: boolean
 }
 
 /**
@@ -34,7 +36,7 @@ interface AppShellProps {
  * idioma, copia de seguridad y legales), la barra de abajo con los cuatro grupos (cada uno abre una hoja con sus opciones) y la pantalla con su pie
  * al final, en el scroll de la página. Se arma una sola vez: las pantallas sólo ponen su contenido adentro.
  */
-export function AppShell({ groups, activeKey, onSelect, children, contentScrollRef, contentScrollable = false, immersive = false, onSheetOpen }: AppShellProps) {
+export function AppShell({ groups, activeKey, onSelect, children, contentScrollRef, contentScrollable = false, immersive = false, onSheetOpen, searchAvailable = false }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(readSidebarCollapsed)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [openGroupKey, setOpenGroupKey] = useState<string | null>(null)
@@ -57,6 +59,7 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
   const ownMenu = immersive && menuClaims > 0
   const menu = useMemo<ShellMenu>(() => ({ open: openDrawer, isOpen: drawerOpen, claim: claimMenu }), [openDrawer, drawerOpen, claimMenu])
   const closeGroup = useCallback(() => setOpenGroupKey(null), [])
+  const openSearch = useCallback(() => onSelect('search'), [onSelect])
   const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   // La barra de arriba del celular dice en qué pantalla estás (como en el lienzo); sin pantalla conocida, la marca.
   // (El inicio del duelo es «Nueva sala» en el menú lateral, pero la pantalla es la del grupo: «Duelo».)
@@ -87,9 +90,9 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
       >
         {t('shell.skipToContent')}
       </button>
-      <AppSidebar groups={groups} activeKey={activeKey} onSelect={onSelect} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} className="max-[1100px]:hidden" />
+      <AppSidebar groups={groups} activeKey={activeKey} onSelect={onSelect} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} searchAvailable={searchAvailable} className="max-[1100px]:hidden" />
       <div className={cx('flex min-w-0 flex-col min-[1101px]:min-h-0', immersive ? 'min-h-dvh max-[1100px]:h-dvh' : 'min-h-[calc(100dvh-4rem-env(safe-area-inset-bottom,0px))] min-[1101px]:min-h-0', ownMenu && 'max-[1100px]:pt-[env(safe-area-inset-top,0px)]')}>
-        {ownMenu ? null : <MobileTopBar menuOpen={drawerOpen} onMenu={openDrawer} title={screenTitle} className="min-[1101px]:hidden" />}
+        {ownMenu ? null : <MobileTopBar menuOpen={drawerOpen} onMenu={openDrawer} title={screenTitle} onSearch={searchAvailable ? openSearch : undefined} className="min-[1101px]:hidden" />}
         <div
           ref={contentScrollRef}
           className={cx(
@@ -125,7 +128,7 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
         }}
       />
       {/* La hamburguesa abre el menú entero: los destinos (también con la barra de abajo a la vista, que a veces el navegador tapa) y, abajo, los ajustes. */}
-      <NavDrawer isOpen={drawerOpen} onClose={closeDrawer} nav={{ groups, activeKey, onSelect }} />
+      <NavDrawer isOpen={drawerOpen} onClose={closeDrawer} nav={{ groups, activeKey, onSelect, searchAvailable }} />
     </div>
   )
 }

@@ -22,6 +22,8 @@ export const shell = {
   'shell.blurb.life': 'Vidas, reloj de ronda, moneda y dado',
   'shell.blurb.export': 'Imagen, PDF y YDK, para el torneo o el simulador',
   'shell.blurb.mascots': 'Apagadas por defecto en el celular',
+  'shell.blurb.search': 'Buscá una carta sin salir de esta pantalla. Atajo: /',
+  'shell.search.title': 'Buscar cartas',
   'shell.blurb.meta': 'Hand traps y boardbreakers de los torneos',
   'shell.blurb.tournaments': 'Los que llegaron al top, completos',
   'shell.blurb.replays': 'Los duelos de esos decks, en video',
