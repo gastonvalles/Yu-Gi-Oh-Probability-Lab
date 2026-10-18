@@ -197,6 +197,40 @@ export async function fetchExpansionCards(expansionId: number, get: GetJson = ge
   }))
 }
 
+/** Una carta que salió de buscar en Expansiones. `code` es el de la impresión que coincidió (vacío si se buscó por nombre). */
+export interface CardHit {
+  cardId: number
+  name: string
+  code: string
+}
+
+/** Un código para comparar: sin signos ni mayúsculas y con la letra O como cero (TCGplayer tiene códigos con la O de «LAVD-ENO01» donde la carta dice «LAVD-EN001»: se encuentran con cualquiera de las dos). */
+const codeKey = (code: string) => normalize(code).replace(/o/g, '0')
+
+/** Cuántas expansiones se miran como máximo para un código: un prefijo repetido (varias ediciones del mismo set) no dispara decenas de pedidos. */
+const MAX_CODE_SETS = 4
+
+/**
+ * Las cartas cuyo código de impresión empieza con lo escrito ("LAVD-EN001", "lobeen00"), sin importar mayúsculas ni signos: el prefijo ("LAVD") dice en qué
+ * expansiones mirar, y de cada una sale el archivo que la pantalla ya pide al abrirla. Una por carta, con el primer código que coincide, en el orden del archivo.
+ * Escribir sólo el prefijo no da nada (eso ya lo encuentra la lista de expansiones).
+ */
+export async function findCardsByCode(expansions: Expansion[], query: string, get: GetJson = getJson): Promise<CardHit[]> {
+  const typed = codeKey(query)
+  const sets = expansions.filter((expansion) => expansion.code && typed.length > codeKey(expansion.code).length && typed.startsWith(codeKey(expansion.code))).slice(0, MAX_CODE_SETS)
+  const hits = new Map<number, CardHit>()
+
+  for (const cards of await Promise.all(sets.map((set) => fetchExpansionCards(set.id, get)))) {
+    for (const card of cards) {
+      if (!hits.has(card.cardId) && codeKey(card.code).startsWith(typed)) {
+        hits.set(card.cardId, { cardId: card.cardId, name: card.name, code: card.code })
+      }
+    }
+  }
+
+  return [...hits.values()]
+}
+
 /**
  * La imagen de una impresión: la del producto en TCGplayer, que es el escaneo de esa carta tal cual salió (las overframe, las de arte extendido y las
  * alternativas se ven distintas; YGOPRODeck sólo tiene el arte de siempre). 200 px de ancho para las grillas, 400 para la carta grande.

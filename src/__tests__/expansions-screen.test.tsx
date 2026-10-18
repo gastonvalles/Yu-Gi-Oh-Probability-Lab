@@ -10,9 +10,9 @@ import { ExpansionsScreen } from '../components/expansions/ExpansionsScreen'
 // El arte real lee el store (el aviso de la banlist): acá sólo importa qué carta es.
 vi.mock('../components/CardArt', () => ({ CardArt: ({ remoteUrl }: { remoteUrl: string | null }) => <img alt="" src={remoteUrl ?? ''} /> }))
 
-const { fetchCardsByIds } = vi.hoisted(() => ({ fetchCardsByIds: vi.fn() }))
+const { fetchCardsByIds, searchCards } = vi.hoisted(() => ({ fetchCardsByIds: vi.fn(), searchCards: vi.fn() }))
 
-vi.mock('../ygoprodeck', async (importOriginal) => ({ ...(await importOriginal<typeof import('../ygoprodeck')>()), fetchCardsByIds }))
+vi.mock('../ygoprodeck', async (importOriginal) => ({ ...(await importOriginal<typeof import('../ygoprodeck')>()), fetchCardsByIds, searchCards }))
 
 const INDEX = {
   updated: '2026-10-11',
@@ -41,6 +41,17 @@ const SETS: Record<number, unknown[]> = {
   4: [['PROMO-EN001', 'Promo', 'Limited', 1, 41, 200, 'Carta de promo']],
 }
 
+// Las impresiones de una carta (los archivos por carta, con 4 archivos): [código, rareza, edición, mercado, producto, id de la expansión]
+const DARK_MAGICIAN = 46986414
+const CARD_SHARDS: Record<number, unknown> = {
+  [DARK_MAGICIAN % 4]: {
+    [DARK_MAGICIAN]: [
+      ['LOB-EN002', 'Super Rare', 'Unlimited', 12.5, 12, 1],
+      ['MAZE-EN010', 'Ultra Rare', '1st Edition', 3, 25, 2],
+    ],
+  },
+}
+
 let requested: string[]
 
 function mediaQuery(desktop: boolean) {
@@ -57,15 +68,19 @@ beforeEach(() => {
       requested.push(url)
 
       const set = /\/sets\/(\d+)\.json$/.exec(url)
+      const card = /\/cards\/(\d+)\.json$/.exec(url)
 
       if (url.endsWith('/prices/index.json')) return { ok: true, status: 200, json: async () => INDEX }
       if (set && SETS[Number(set[1])]) return { ok: true, status: 200, json: async () => SETS[Number(set[1])] }
+      if (card) return { ok: true, status: 200, json: async () => CARD_SHARDS[Number(card[1])] ?? {} }
 
       return { ok: false, status: 404, json: async () => ({}) }
     }),
   )
   fetchCardsByIds.mockReset()
   fetchCardsByIds.mockResolvedValue([])
+  searchCards.mockReset()
+  searchCards.mockResolvedValue({ results: [], hasMore: false })
 })
 
 afterEach(() => {
@@ -93,15 +108,16 @@ describe('la pantalla de expansiones', () => {
     mediaQuery(false)
     render(<ExpansionsScreen />)
 
-    fireEvent.change(await screen.findByRole('searchbox', { name: 'Buscar expansión' }), { target: { value: 'blue eyes' } })
+    fireEvent.change(await screen.findByRole('searchbox', { name: 'Buscar expansión o carta' }), { target: { value: 'blue eyes' } })
 
     const nav = screen.getByRole('navigation', { name: 'Expansiones' })
 
     expect(within(nav).getAllByRole('button')).toHaveLength(1)
     expect(within(nav).getByText('Legend of Blue-Eyes White Dragon')).toBeInTheDocument()
 
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar expansión' }), { target: { value: 'zzz' } })
-    expect(screen.getByText('Ninguna expansión coincide con “zzz”.')).toBeInTheDocument()
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar expansión o carta' }), { target: { value: 'zzz' } })
+    // Con tres letras o más también se busca una carta: el aviso espera a que lleguen las cartas (si no hubiera ninguna).
+    expect(await screen.findByText('Ninguna expansión ni carta coincide con “zzz”.')).toBeInTheDocument()
   })
 
   it('cada fila dice el código y el mes y año de salida, y el buscador también encuentra una expansión por su código', async () => {
@@ -113,7 +129,7 @@ describe('la pantalla de expansiones', () => {
     expect(within(nav).getByText('MAZE · enero 2024')).toBeInTheDocument()
     expect(within(nav).getByText('LOB · marzo 2002')).toBeInTheDocument()
 
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar expansión' }), { target: { value: 'lob' } })
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar expansión o carta' }), { target: { value: 'lob' } })
 
     expect(within(nav).getAllByRole('button')).toHaveLength(1)
     expect(within(nav).getByText('Legend of Blue-Eyes White Dragon')).toBeInTheDocument()
@@ -506,5 +522,89 @@ describe('el detalle recorre las impresiones tal como se ven', () => {
 
     expect(screen.queryByRole('button', { name: 'Carta siguiente' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Carta anterior' })).toBeInTheDocument()
+  })
+})
+
+describe('buscar una carta en el buscador de expansiones', () => {
+  const searchbox = () => screen.getByRole('searchbox', { name: 'Buscar expansión o carta' })
+
+  afterEach(() => {
+    window.history.replaceState(null, '', '#')
+  })
+
+  it('el nombre de una carta la ofrece arriba de la lista, y tocarla abre sus impresiones por expansión con el precio de cada una', async () => {
+    searchCards.mockResolvedValue({ results: [{ ygoprodeckId: DARK_MAGICIAN, name: 'Dark Magician' }], hasMore: false })
+    render(<ExpansionsScreen />)
+    await screen.findByRole('navigation', { name: 'Expansiones' })
+
+    fireEvent.change(searchbox(), { target: { value: 'dark mag' } })
+
+    const nav = screen.getByRole('navigation', { name: 'Expansiones' })
+    const hit = await within(nav).findByRole('button', { name: /Dark Magician/ })
+
+    expect(searchCards).toHaveBeenCalledWith({ query: 'dark mag' }, 8)
+    expect(within(nav).getByRole('heading', { name: 'Cartas' })).toBeInTheDocument()
+    expect(within(hit).getByText('Ver impresiones y precios')).toBeInTheDocument()
+
+    fireEvent.click(hit)
+
+    const dialog = await screen.findByRole('dialog')
+
+    expect(await within(dialog).findByText('Legend of Blue-Eyes White Dragon')).toBeInTheDocument()
+    expect(within(dialog).getByText('Maze of Millennia')).toBeInTheDocument()
+    expect(within(dialog).getByText(/12[.,]50/)).toBeInTheDocument()
+  })
+
+  it('tocar una impresión de la hoja lleva a esa expansión con la carta iluminada, y la búsqueda se limpia para no esconderla', async () => {
+    searchCards.mockResolvedValue({ results: [{ ygoprodeckId: DARK_MAGICIAN, name: 'Dark Magician' }], hasMore: false })
+    render(<ExpansionsScreen />)
+    await screen.findByRole('navigation', { name: 'Expansiones' })
+
+    fireEvent.change(searchbox(), { target: { value: 'dark mag' } })
+    fireEvent.click(await within(screen.getByRole('navigation', { name: 'Expansiones' })).findByRole('button', { name: /Dark Magician/ }))
+    fireEvent.click(await within(await screen.findByRole('dialog')).findByRole('button', { name: /LOB-EN002/ }))
+
+    expect(await screen.findByRole('heading', { name: 'Legend of Blue-Eyes White Dragon', level: 2 })).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(searchbox()).toHaveValue('')
+    expect(window.location.hash).toBe('#expansions?set=1&print=12')
+  })
+
+  it('el código de una impresión también la encuentra, con ese código a la vista y sin buscarla por nombre', async () => {
+    render(<ExpansionsScreen />)
+    await screen.findByRole('navigation', { name: 'Expansiones' })
+
+    fireEvent.change(searchbox(), { target: { value: 'lob-en002' } })
+
+    const hit = await within(screen.getByRole('navigation', { name: 'Expansiones' })).findByRole('button', { name: /Dark Magician/ })
+
+    expect(within(hit).getByText('LOB-EN002')).toBeInTheDocument()
+    expect(searchCards).not.toHaveBeenCalled()
+  })
+
+  it('con menos de tres letras no se busca ninguna carta, y si no coincide ni una expansión ni una carta, lo dice', async () => {
+    render(<ExpansionsScreen />)
+    await screen.findByRole('navigation', { name: 'Expansiones' })
+
+    fireEvent.change(searchbox(), { target: { value: 'bl' } })
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    expect(searchCards).not.toHaveBeenCalled()
+
+    fireEvent.change(searchbox(), { target: { value: 'zzz' } })
+
+    expect(await screen.findByText('Ninguna expansión ni carta coincide con “zzz”.')).toBeInTheDocument()
+    expect(searchCards).toHaveBeenCalledWith({ query: 'zzz' }, 8)
+  })
+
+  it('si la búsqueda de cartas falla, el buscador de expansiones sigue funcionando', async () => {
+    searchCards.mockRejectedValue(new Error('sin red'))
+    render(<ExpansionsScreen />)
+    await screen.findByRole('navigation', { name: 'Expansiones' })
+
+    fireEvent.change(searchbox(), { target: { value: 'maze' } })
+
+    expect(await screen.findByRole('button', { name: /Maze of Millennia/ })).toBeInTheDocument()
+    await waitFor(() => expect(searchCards).toHaveBeenCalled())
+    expect(screen.queryByRole('heading', { name: 'Cartas' })).not.toBeInTheDocument()
   })
 })
