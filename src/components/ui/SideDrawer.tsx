@@ -9,18 +9,29 @@ import { Heading } from './Heading'
 import { CloseButton } from './IconButton'
 import { surface } from './surfaces'
 
+type SideDrawerSize = 'half' | 'column'
+
+/** half: la mitad de la pantalla (con un mínimo para que en el celular entre lo que lleva) · column: el ancho de la columna de búsqueda del builder (el 30 % de lo que queda con el menú abierto, con mínimo de 360 px). */
+const PANEL_SIZE: Record<SideDrawerSize, string> = {
+  half: 'w-1/2 min-w-[15rem]',
+  column: 'w-[max(22.5rem,calc((100vw-15rem)*0.3))] max-w-full',
+}
+/** En `column` lo de adentro trae su propio relleno (es el mismo panel del builder). */
+const BODY_PADDING: Record<SideDrawerSize, string> = { half: 'p-3', column: 'p-0' }
+
 interface SideDrawerProps {
   isOpen: boolean
   onClose: () => void
   title: ReactNode
   children: ReactNode
+  size?: SideDrawerSize
 }
 
 /**
  * Un panel que entra por la derecha y ocupa la mitad de la pantalla (con un mínimo para que en el celular entre lo que lleva), sobre un velo que deja ver lo de atrás:
  * para algo que se consulta mientras se juega, como el chat. Se monta en <body>; se cierra con la X, el velo o Escape.
  */
-export function SideDrawer({ isOpen, onClose, title, children }: SideDrawerProps) {
+export function SideDrawer({ isOpen, onClose, title, children, size = 'half' }: SideDrawerProps) {
   const titleId = useId()
   const panelRef = useRef<HTMLDivElement | null>(null)
 
@@ -41,7 +52,7 @@ export function SideDrawer({ isOpen, onClose, title, children }: SideDrawerProps
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={cx('relative flex h-full w-1/2 min-w-[15rem] animate-side-drawer flex-col overflow-hidden rounded-r-none border-r-0 outline-none motion-reduce:animate-none', surface.panel)}
+        className={cx('relative flex h-full animate-side-drawer flex-col overflow-hidden rounded-r-none border-r-0 outline-none motion-reduce:animate-none', PANEL_SIZE[size], surface.panel)}
       >
         <header className="flex items-start justify-between gap-2 border-b border-border-subtle px-3 py-3">
           <Heading level="card" id={titleId}>
@@ -49,7 +60,7 @@ export function SideDrawer({ isOpen, onClose, title, children }: SideDrawerProps
           </Heading>
           <CloseButton size="sm" aria-label={t('common.close')} onClick={onClose} />
         </header>
-        <div className="min-h-0 flex-1 overflow-hidden p-3">{children}</div>
+        <div className={cx('min-h-0 flex-1 overflow-hidden', BODY_PADDING[size])}>{children}</div>
       </div>
     </div>,
     document.body,

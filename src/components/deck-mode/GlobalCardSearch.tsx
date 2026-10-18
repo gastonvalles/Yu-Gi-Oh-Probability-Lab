@@ -42,7 +42,7 @@ export function GlobalCardSearch({ step, onClose }: GlobalCardSearchProps) {
   }
 
   return (
-    <SideDrawer isOpen onClose={onClose} title={t('shell.search.title')}>
+    <SideDrawer isOpen onClose={onClose} title={t('shell.search.title')} size="column">
       <div className="flex h-full min-h-0 flex-col">
         <DesktopSearchPanel
           search={search}

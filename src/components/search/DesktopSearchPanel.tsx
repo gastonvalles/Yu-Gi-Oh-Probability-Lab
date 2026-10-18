@@ -12,6 +12,7 @@ import { Icon } from '../ui/Icon'
 import { Skeleton } from '../ui/Skeleton'
 import { SearchEmptyState, SearchResultsToolbar, SearchStart } from './SearchFeedback'
 import { SearchFiltersForm } from './SearchFiltersForm'
+import { SearchFiltersToggle } from './SearchFiltersToggle'
 import { useRecentSearches } from './recent-searches'
 import { sortVisibleSearchResults } from './search-model'
 import { QUICK_TYPE_OPTIONS, type SearchSortOrder } from './search-options'
@@ -32,7 +33,7 @@ interface DesktopSearchPanelProps {
   onResultPointerDown: (event: ReactPointerEvent<HTMLElement>, apiCardId: number) => void
 }
 
-const TYPE_BUTTON = `${choiceChip} px-3.5 py-1.5 text-body leading-none`
+const TYPE_BUTTON = `${choiceChip} px-2.5 py-1.5 text-body leading-none`
 
 const RESULTS_GRID = 'grid min-h-0 grid-cols-2 content-start gap-2 p-2'
 
@@ -123,6 +124,7 @@ export function DesktopSearchPanel({
   return (
     <article className="flex h-full min-h-0 flex-col overflow-hidden min-[1101px]:h-full">
       <div className="grid gap-3 border-b border-border-subtle p-3">
+        <div className="flex items-center gap-2">
         <label className="relative block min-w-0 flex-1">
           <span className="sr-only">{t('search.desktop.searchByName')}</span>
           <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 z-1 -translate-y-1/2 text-soft" />
@@ -155,8 +157,10 @@ export function DesktopSearchPanel({
             <span className="pointer-events-none absolute right-11 top-1/2 -mt-2 size-4 animate-spin rounded-full border-2 border-foreground/20 border-t-primary" />
           ) : null}
         </label>
+        <SearchFiltersToggle open={filtersOpen} activeCount={search.activeFilterCount} controls="advanced-search-filters" className="size-10 pointer-coarse:size-11" onToggle={() => setFiltersOpen((current) => !current)} />
+        </div>
 
-        <div className="flex flex-wrap gap-2" role="group" aria-label={t('search.label.cardType')}>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('search.label.cardType')}>
           {QUICK_TYPE_OPTIONS.map((option) => (
             <button
               key={option.value}
@@ -168,22 +172,6 @@ export function DesktopSearchPanel({
               {option.label}
             </button>
           ))}
-
-          <button
-            type="button"
-            className={cx(TYPE_BUTTON, 'ml-auto gap-1.5')}
-            aria-pressed={filtersOpen || search.activeFilterCount > 0}
-            aria-expanded={filtersOpen}
-            aria-controls="advanced-search-filters"
-            title={t('search.filters.title')}
-            onClick={() => setFiltersOpen((current) => !current)}
-          >
-            <Icon name="sliders" size={14} />
-            <span className="sr-only">{t('search.filters.title')}</span>
-            {search.activeFilterCount > 0 ? (
-              <span className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-primary px-1 text-micro font-bold text-white">{search.activeFilterCount}</span>
-            ) : null}
-          </button>
         </div>
 
         {!filtersOpen && filterContext.activeFilterChips.length > 0 ? (
@@ -208,7 +196,7 @@ export function DesktopSearchPanel({
 
       <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
         {filtersOpen ? (
-          <div className="max-h-[min(22rem,45vh)] overflow-y-auto border-b border-border-subtle p-3 [scrollbar-width:thin]">
+          <div className="max-h-[min(28rem,60vh)] overflow-y-auto border-b border-border-subtle p-3 [scrollbar-width:thin]">
             <SearchFiltersForm
               id="advanced-search-filters"
               layout="desktop"
