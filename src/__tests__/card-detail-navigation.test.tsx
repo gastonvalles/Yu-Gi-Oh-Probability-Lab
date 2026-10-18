@@ -58,36 +58,36 @@ function swipe(from: [number, number], to: [number, number], pointerType = 'touc
 }
 
 describe('el detalle pasa a la carta anterior y a la siguiente', () => {
-  it('con las flechas: cambia la carta y el panel sin cerrar, y las apaga en la primera y en la última', () => {
+  it('con las flechas: cambia la carta y el panel sin cerrar, y no las muestra hacia el lado donde no hay carta (la primera y la última)', () => {
     const onClose = vi.fn()
     render(<Harness onClose={onClose} />)
 
     opened('Alfa')
-    expect(previous()).toBeDisabled()
-    expect(next()).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'Carta anterior' })).not.toBeInTheDocument()
+    expect(next()).toBeInTheDocument()
 
     fireEvent.click(next())
     opened('Beta')
     expect(screen.getByRole('heading', { name: 'Beta' })).toBeInTheDocument()
     expect(screen.getByText('Texto de Beta.')).toBeInTheDocument()
-    expect(previous()).toBeEnabled()
-    expect(next()).toBeEnabled()
+    expect(previous()).toBeInTheDocument()
+    expect(next()).toBeInTheDocument()
 
     fireEvent.click(next())
     opened('Gamma')
-    expect(next()).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Carta siguiente' })).not.toBeInTheDocument()
 
     fireEvent.click(previous())
     opened('Beta')
     expect(onClose).not.toHaveBeenCalled()
   })
 
-  it('una flecha apagada no deja pasar el toque al fondo: no cierra el detalle', () => {
+  it('tocar una flecha (o el lugar que la rodea) no deja pasar el toque al fondo: no cierra el detalle', () => {
     const onClose = vi.fn()
     render(<Harness onClose={onClose} />)
 
-    fireEvent.click(previous().parentElement!)
-    fireEvent.click(previous())
+    fireEvent.click(next().parentElement!)
+    fireEvent.click(next())
     expect(onClose).not.toHaveBeenCalled()
   })
 
@@ -210,20 +210,20 @@ describe('las flechas del panel de la carta del builder de escritorio', () => {
     <DeckBuilderClassicPreview card={CARDS[1]!} source="search" deckCopy={null} navigation={navigation} onAddToZone={() => {}} />
   )
 
-  it('pasan a la anterior y a la siguiente, y quedan apagadas donde no hay', () => {
+  it('pasan a la anterior y a la siguiente, y no se muestran donde no hay', () => {
     const onNext = vi.fn()
     render(panel({ onPrevious: null, onNext }))
 
-    expect(previous()).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Carta anterior' })).not.toBeInTheDocument()
     fireEvent.click(next())
     expect(onNext).toHaveBeenCalledOnce()
   })
 
-  it('con la lista sin la carta abierta (la búsqueda cambió) siguen ahí, apagadas, para que lo de abajo no se corra', () => {
+  it('con la lista sin la carta abierta (la búsqueda cambió) no hay flechas, pero el lugar de los costados queda para que la carta no cambie de tamaño', () => {
     render(panel(null))
 
-    expect(previous()).toBeDisabled()
-    expect(next()).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Carta anterior' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Carta siguiente' })).not.toBeInTheDocument()
   })
 
   it('quien no tiene lista (los decks de torneo) no lleva la fila', () => {

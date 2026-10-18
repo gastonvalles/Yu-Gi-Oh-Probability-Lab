@@ -269,14 +269,14 @@ describe('el detalle recorre la lista tal como se ve', () => {
 
     fireEvent.click(screen.getByRole('button', { name: `Ver el detalle de ${prohibidas[0]}` }))
     expect(await screen.findByRole('dialog', { name: new RegExp(prohibidas[0]!) })).toBeInTheDocument()
-    // Es la primera de la lista: no hay anterior.
-    expect(screen.getByRole('button', { name: 'Carta anterior' })).toBeDisabled()
+    // Es la primera de la lista: no hay anterior, y la flecha no se muestra.
+    expect(screen.queryByRole('button', { name: 'Carta anterior' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Carta siguiente' }))
     const second = await screen.findByRole('dialog', { name: new RegExp(prohibidas[1]!) })
 
     expect(within(second).getByText('TCG · 21 de septiembre de 2026 · Prohibida')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Carta anterior' })).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'Carta anterior' })).toBeInTheDocument()
     expect(screen.getAllByRole('dialog')).toHaveLength(1)
 
     // La última de las prohibidas sigue con la primera de las limitadas, y el estado que dice el detalle es el de esa carta.
