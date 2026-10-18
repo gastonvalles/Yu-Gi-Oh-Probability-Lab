@@ -167,7 +167,7 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
   return (
     // Celular: tres filas que no se parten (vidas + reloj + íconos; turno + señales; la mano del rival): si algo no entra, se achica en su fila en vez de caerse a otra. Escritorio: una sola fila con las vidas del rival
     // y el reloj arriba a la izquierda, su mano en el centro (el del campo) y, arriba a la derecha, el turno y salir; tus vidas van en la esquina de enfrente, abajo a la derecha.
-    <div className="relative flex flex-wrap items-center gap-1.5 px-0.5 pt-1.5">
+    <div className="relative flex flex-wrap items-center gap-1.5 px-0.5 pt-1.5 min-[1101px]:flex-nowrap">
       {/* `contents` en escritorio: sus piezas se acomodan en la fila de todo el ancho (`order`). En celular la vida es la que cede lugar si no entran los íconos. */}
       <div className="flex basis-full items-center gap-1.5 max-[339px]:gap-1 min-[1101px]:contents [&>[data-lp]]:shrink">
         {/* La hamburguesa del armazón va acá: una sola barra arriba, la de la mesa. */}
@@ -184,7 +184,7 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
           <Icon name={running ? 'timer' : 'pause'} size={16} />
           {clock}
         </button>
-        <span className="-mr-2 ml-auto flex shrink-0 items-center min-[1101px]:order-2 min-[1101px]:ml-0.5 min-[1101px]:mr-0">
+        <span className="-mr-2 ml-auto flex shrink-0 items-center min-[1101px]:order-3 min-[1101px]:ml-0.5 min-[1101px]:mr-0">
           {/* Vista superior o 3D de la mesa, como en la referencia: entre el reloj y los íconos de salir. */}
           <MatViewToggle className={HEADER_ICON} />
           {/* Rendirse queda a la vista, junto a salir (arriba, lejos de donde se juega) y pide confirmar. Terminado el duelo, o sin rival, no hay a quién rendirse. */}
@@ -202,7 +202,7 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
       </div>
 
       {/* Escritorio: el turno a la derecha, pegado a los íconos. Celular: el turno y las señales en su fila, sin partirse (la fase se corta con puntos suspensivos si no entra). */}
-      <div className="order-2 flex min-w-0 basis-full items-center gap-1.5 min-[1101px]:order-1 min-[1101px]:ml-auto min-[1101px]:basis-auto">
+      <div className="order-2 flex min-w-0 basis-full items-center gap-1.5 min-[1101px]:order-2 min-[1101px]:ml-auto min-[1101px]:basis-auto">
         {snapshot.watchers > 0 ? (
           <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted" title={t('duel.room.watchers', { count: snapshot.watchers })} aria-label={t('duel.room.watchers', { count: snapshot.watchers })}>
             <Icon name="eye" size={14} />
@@ -238,8 +238,12 @@ export function DuelBar({ snapshot, status, turn, theirHand, onToggleClock, onRe
         </div>
       ) : null}
 
-      {/* Escritorio: en el centro de la fila de arriba. En el celular la mano del rival va pegada arriba del campo (la pone la mesa: `rivalHand`). */}
-      {docked ? <div className="absolute left-1/2 top-1.5 -translate-x-1/2">{theirHand}</div> : null}
+      {/* Escritorio: en el centro de lo que queda libre de la fila de arriba (entre el reloj y el turno), con su ancho reservado: si la columna se angosta, el turno se corta con puntos suspensivos y no se pisan. En el celular la mano del rival va pegada arriba del campo (la pone la mesa: `rivalHand`). */}
+      {docked ? (
+        <div className="relative order-1 min-w-28 flex-1 self-stretch">
+          <div className="absolute left-1/2 top-0 -translate-x-1/2">{theirHand}</div>
+        </div>
+      ) : null}
 
       {status !== 'open' ? (
         <Callout className={ALERT_OVERLAY} tone="warning" icon="alert">{STATUS_TEXT[status]()}</Callout>
