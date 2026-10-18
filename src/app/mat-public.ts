@@ -85,6 +85,12 @@ export function mapActionIds(action: MatAction, map: IdMap): MatAction {
     case 'attach':
       return { ...action, id: map(action.id), to: map(action.to) }
 
+    // Control: una carta mía viaja con su id opaco; una del rival ya lleva el id con que su dueño la llama (`f.c12`) y no se renombra (`map` sólo conoce mis cartas).
+    case 'give':
+    case 'take':
+    case 'regain':
+      return { ...action, id: map(action.id) }
+
     default: {
       const unreachable: never = action
       return unreachable

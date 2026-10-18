@@ -129,6 +129,13 @@ function effectsOf(before: MatState, after: MatState, action: MatAction): MatEff
       // La ficha aparece de la nada: no hay vuelo que esperar.
       return changed ? { landing: { spot: action.zone, index: action.index, tone: 'special', flies: false } } : {}
 
+    // Un monstruo que cambia de manos aparece en su zona con un destello (no vuela: viene del campo del otro, que ya lo vio salir).
+    case 'take':
+      return changed ? { landing: { spot: 'mz', index: action.index, tone: 'special', flies: false } } : {}
+
+    case 'regain':
+      return changed && action.to === 'mz' && action.index !== undefined ? { landing: { spot: 'mz', index: action.index, tone: 'special', flies: false } } : {}
+
     case 'position': {
       const where = locateCard(before, action.id)
 

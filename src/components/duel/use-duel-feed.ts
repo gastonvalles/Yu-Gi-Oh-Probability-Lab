@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 
 import type { ChatLine } from '../../app/duel-games'
 import type { DuelSnapshot } from '../../app/duel-session'
-import { describeMatAction, replayMat } from '../../app/practice-mat'
+import { opaqueOfForeign } from '../../app/mat-control'
+import { describeMatAction, isForeignId, replayMat } from '../../app/practice-mat'
 import { t } from '../../i18n'
+import { cardIdOfDrawId } from '../probability/practice'
 import type { MatCard } from '../probability/PracticeMat'
 import type { PlayerSide } from './player-color'
 
@@ -79,7 +81,14 @@ export function useDuelFeed({ snapshot, cardsById, rivalCaptions, turn, turnNumb
 
     if (!initial || actions.length <= before) return
 
-    const nameOf = (id: string) => cardsById.get(id)?.name ?? t('duel.announce.yourCard')
+    // Una carta del rival que controlo (`f.c12`) se llama por la que él mostró, si es de las de mi deck (por su número); si no, no se sabe el nombre acá.
+    const foreignName = (id: string) => {
+      const real = snapshot.theirs?.known[opaqueOfForeign(id)]
+      const same = real === undefined ? undefined : [...cardsById].find(([drawId]) => cardIdOfDrawId(drawId) === cardIdOfDrawId(real))
+
+      return same?.[1].name ?? t('duel.mark.rivalCard')
+    }
+    const nameOf = (id: string) => (isForeignId(id) ? foreignName(id) : (cardsById.get(id)?.name ?? t('duel.announce.yourCard')))
     const lines: NewEntry[] = []
 
     for (let index = before; index < actions.length; index += 1) {
@@ -91,7 +100,7 @@ export function useDuelFeed({ snapshot, cardsById, rivalCaptions, turn, turnNumb
     }
 
     if (lines.length > 0) push(...lines)
-  }, [actions, initial, cardsById])
+  }, [actions, initial, cardsById, snapshot.theirs?.known])
 
   // Lo que el rival hace y se avisa (con su nombre ya dentro del texto). Si el mismo cartel gana después el nombre de la carta (se busca por su número), la línea se corrige.
   useEffect(() => {

@@ -139,10 +139,10 @@ const isPlain = (value: unknown): value is Record<string, unknown> => isRecord(v
 const isInt = (value: unknown, min: number, max: number): value is number => typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max
 const isId = (value: unknown): value is string => typeof value === 'string' && value.length > 0 && value.length <= MAX_ID_LENGTH
 /**
- * Un id de carta como viaja entre los jugadores: opaco (`c12`, la identidad nunca viaja en el id) o de ficha (`token-3`). Nada más: un id como `constructor` o `__proto__`, usado
+ * Un id de carta como viaja entre los jugadores: opaco (`c12`, la identidad nunca viaja en el id), de una carta del rival que se controla (`f.c12`: el id opaco de su dueño con el prefijo `f.`) o de ficha (`token-3`). Nada más: un id como `constructor` o `__proto__`, usado
  * después como clave de un objeto, devolvería algo heredado en vez de una carta y rompería a quien lo recibe.
  */
-const CARD_ID = /^(?:c[0-9]{1,5}|token-[0-9]{1,4})$/
+const CARD_ID = /^(?:c[0-9]{1,5}|f\.c[0-9]{1,5}|token-[0-9]{1,4})$/
 /** La identidad real de una carta ya revelada (`card-123-2`: el número de YGOPRODeck y la copia). */
 const REAL_ID = /^card-[0-9]{1,12}-[0-9]{1,3}$/
 const isCardId = (value: unknown): value is string => typeof value === 'string' && CARD_ID.test(value)
@@ -183,6 +183,10 @@ const actionChecks: Record<MatAction['type'], (action: Record<string, unknown>) 
   target: (a) => isCardId(a.id),
   attack: (a) => isCardId(a.id) && optional(a.target, isCardId),
   phase: (a) => isPhase(a.phase) && optional(a.skipDraw, (v) => v === true),
+  give: (a) => isCardId(a.id) && optional(a.auto, (v) => v === true),
+  take: (a) => isCardId(a.id) && a.zone === 'mz' && isInt(a.index, 0, 4) && isPos(a.pos) && optional(a.auto, (v) => v === true),
+  regain: (a) =>
+    isCardId(a.id) && (isPile(a.to) || a.to === 'deck-bottom' || a.to === 'mz') && optional(a.index, (v) => isInt(v, 0, 4)) && optional(a.pos, isPos) && optional(a.faceDown, (v) => typeof v === 'boolean') && optional(a.auto, (v) => v === true),
 }
 
 function parseAction(value: unknown): MatAction | null {

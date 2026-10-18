@@ -15,6 +15,8 @@ export const duel: Translated<typeof es> = {
   'duel.announce.attack': '{name} attacks {target}',
   'duel.announce.attackDirect': '{name} attacks you directly',
   'duel.mark.view': 'View the cards',
+  'duel.mark.takeControl': 'Take control',
+  'duel.mark.regainControl': 'Regain control',
   'duel.mark.rivalCard': "Opponent's card",
   'duel.undo.askTitle': 'Let {name} take back their play?',
   'duel.undo.askText': '{name} wants to undo their last play. If you allow it, their table goes back to how it was.',
