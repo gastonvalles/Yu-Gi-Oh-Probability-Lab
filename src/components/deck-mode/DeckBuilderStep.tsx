@@ -16,7 +16,7 @@ import { DeckZone } from '../DeckZone'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { DesktopSearchPanel } from '../search/DesktopSearchPanel'
 import { MobileCardSearch } from '../search/MobileCardSearch'
-import type { CardSearchActions, CardSearchViewState } from '../search/search-types'
+import { buildCardSearchProps } from '../search/search-model'
 import type { CardNavigation } from '../../app/card-neighbors'
 import type { DeckCopyActions } from '../card-detail/DeckCopyControls'
 import { StepHero } from '../StepHero'
@@ -214,26 +214,24 @@ export function DeckBuilderStep({
     />
   )
 
-  const search: CardSearchViewState = {
+  const { search, actions: searchActions } = buildCardSearchProps({
     deckFormat,
     query,
     status,
-    results: visibleSearchResults,
-    rawResultCount: loadedSearchResultCount,
+    visibleSearchResults,
+    loadedSearchResultCount,
     errorMessage,
     hasMore,
     isLoadingMore,
-    filters: searchFilters,
+    searchFilters,
     activeFilterCount,
     hasSearchCriteria,
-    maxedOutResultIds: maxedOutSearchResultIds,
-  }
-  const searchActions: CardSearchActions = {
+    maxedOutSearchResultIds,
     onQueryChange,
-    onFilterChange: onSearchFiltersChange,
-    onClearFilters: onClearSearchFilters,
-    onLoadMore: onLoadMoreResults,
-  }
+    onSearchFiltersChange,
+    onClearSearchFilters,
+    onLoadMoreResults,
+  })
 
   // Cada zona recibe el id arrastrado sólo si la carta es suya: las demás conservan sus props y no se re-renderizan.
   const dragIdFor = (zone: DeckZoneType) =>
@@ -614,7 +612,7 @@ export function DeckBuilderStep({
 
 // Copias por id, pero contadas por nombre: dos artes de la misma carta (ids distintos) son la misma carta,
 // igual que para el límite de copias.
-function countDeckCopiesByCardId(deckBuilder: DeckBuilderState): Map<number, number> {
+export function countDeckCopiesByCardId(deckBuilder: DeckBuilderState): Map<number, number> {
   const cards = [...deckBuilder.main, ...deckBuilder.extra, ...deckBuilder.side]
   const countsByName = new Map<string, number>()
 

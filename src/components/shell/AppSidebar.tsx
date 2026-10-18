@@ -4,7 +4,7 @@ import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { LanguageSwitcher } from '../ui/LanguageSwitcher'
 import { AppBrand } from './AppBrand'
-import { mascotsNavItem, type NavGroup } from './nav-model'
+import { mascotsNavItem, searchNavItem, type NavGroup } from './nav-model'
 import { RAIL_LABEL, RAIL_ROW, RAIL_SLOT } from './rail'
 import { NavButton, SidebarNav } from './SidebarNav'
 
@@ -14,6 +14,8 @@ interface AppSidebarProps {
   onSelect: (key: string) => void
   collapsed: boolean
   onToggleCollapsed: () => void
+  /** Hay buscador de cartas en esta pantalla: la fila de «Buscar cartas» va arriba de los grupos. */
+  searchAvailable?: boolean
   className?: string
 }
 
@@ -32,7 +34,7 @@ export function MenuTools({ className }: { className?: string }) {
  * (ver `rail.ts`): el ícono de cada fila no se mueve, los rótulos se desvanecen y el menú los recorta, y el ancho se anima con una sola curva
  * (`--sidebar-duration` y `--sidebar-ease`, las mismas con las que se corren la mascota y los botones flotantes).
  */
-export function AppSidebar({ groups, activeKey, onSelect, collapsed, onToggleCollapsed, className }: AppSidebarProps) {
+export function AppSidebar({ groups, activeKey, onSelect, collapsed, onToggleCollapsed, searchAvailable = false, className }: AppSidebarProps) {
   return (
     <aside
       data-collapsed={collapsed ? 'true' : 'false'}
@@ -45,6 +47,11 @@ export function AppSidebar({ groups, activeKey, onSelect, collapsed, onToggleCol
       <div className="flex h-16 shrink-0 items-center px-5">
         <AppBrand />
       </div>
+      {searchAvailable ? (
+        <div className="shrink-0 px-3 pb-2">
+          <NavButton item={searchNavItem()} active={false} onSelect={onSelect} />
+        </div>
+      ) : null}
       <SidebarNav groups={groups} activeKey={activeKey} onSelect={onSelect} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pb-3 [scrollbar-width:thin]" />
       <div className="shrink-0 px-3 pb-3">
         {/* Las preferencias, bajo una sola línea: las mascotas (una fila como las de los destinos, que se queda en la columna de íconos al contraer) y el idioma. */}

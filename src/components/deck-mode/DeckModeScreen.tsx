@@ -18,6 +18,7 @@ import { buildPracticeDeck } from '../probability/practice'
 import { CardDetailModal } from '../card-detail/CardDetailModal'
 import { StepErrorBoundary } from '../ui/StepErrorBoundary'
 import { DeckBuilderStep } from './DeckBuilderStep'
+import { GlobalCardSearch } from './GlobalCardSearch'
 import { LifeCalculatorFab } from '../life/LifeCalculatorFab'
 import { MascotsModal } from '../mascot/MascotsModal'
 import { AppShell } from '../shell/AppShell'
@@ -91,6 +92,7 @@ export function DeckModeScreen() {
   const patternCount = controller.probability.patterns.length
   const [lifeOpen, setLifeOpen] = useState(false)
   const [mascotsOpen, setMascotsOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
   const recommendedStep = useMemo(
     () => getRecommendedStep(mainDeckCount, hasCompletedRoleStep, patternCount),
     [hasCompletedRoleStep, mainDeckCount, patternCount],
@@ -106,6 +108,9 @@ export function DeckModeScreen() {
   const isCategorizationStep = activeStep === 'categorization'
   const isPracticeStep = activeStep === 'practice'
   const isDuelStep = activeStep === 'duel'
+  // El buscador de cartas está en todas las pantallas menos el builder (que ya lo trae) y el duelo (que no se interrumpe).
+  const searchAvailable = !isDeckBuilderStep && !isDuelStep
+  const searchActive = searchOpen && searchAvailable
   // En el celular sólo la mesa del duelo es a pantalla completa (sin pie ni barra de abajo); el lobby, la sala y el siding llevan el armazón de siempre. En escritorio no cambia: el duelo ocupa todo.
   const [duelTable, setDuelTable] = useState(false)
   // La práctica y el duelo juegan con las mismas copias del deck armado.
@@ -198,6 +203,33 @@ export function DeckModeScreen() {
     }
   }, [activeStep, closeCardDetail])
 
+  // El buscador se cierra al cambiar de pantalla; `/` y Ctrl/Cmd+K lo abren (salvo escribiendo en un campo o con otro diálogo abierto).
+  useEffect(() => {
+    setSearchOpen(false)
+  }, [activeStep])
+
+  useEffect(() => {
+    if (!searchAvailable) {
+      return
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target
+      const typing = target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+      const slash = event.key === '/' && !event.ctrlKey && !event.metaKey && !event.altKey && !typing
+      const palette = event.key.toLowerCase() === 'k' && (event.ctrlKey || event.metaKey)
+
+      if ((slash || palette) && !document.querySelector('[aria-modal="true"]')) {
+        event.preventDefault()
+        setSearchOpen(true)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [searchAvailable])
+
   const handleStepChange = useCallback((nextStep: DeckWorkflowStepKey) => {
     if (nextStep !== activeStepRef.current) {
       setActiveStep(nextStep)
@@ -240,6 +272,7 @@ export function DeckModeScreen() {
     (key: string) => {
       if (key === 'life') setLifeOpen(true)
       else if (key === 'mascots') setMascotsOpen(true)
+      else if (key === 'search') setSearchOpen(true)
       // La hoja de Jugar del celular: el paso del lobby que pide cada entrada (el duelo lo lee de la dirección) o volver al duelo en pausa.
       else if (key === 'duel-watch' || key === 'duel-join') window.location.hash = `#duel?view=${key.slice('duel-'.length)}`
       else if (key === 'duel-resume') window.location.hash = pausedDuel ? `#duel?room=${pausedDuel.room}` : '#duel'
@@ -364,7 +397,7 @@ export function DeckModeScreen() {
 
   return (
     <>
-      <AppShell groups={navGroups} activeKey={activeStep} onSelect={handleNavSelect} onSheetOpen={refreshSheetData} contentScrollable={!isDeckBuilderStep && !isPracticeStep && !isDuelStep} immersive={isPracticeStep || (isDuelStep && (duelTable || isDesktopDeckBuilder))} contentScrollRef={contentScrollRef}>
+      <AppShell groups={navGroups} activeKey={activeStep} onSelect={handleNavSelect} onSheetOpen={refreshSheetData} contentScrollable={!isDeckBuilderStep && !isPracticeStep && !isDuelStep} immersive={isPracticeStep || (isDuelStep && (duelTable || isDesktopDeckBuilder))} contentScrollRef={contentScrollRef} searchAvailable={searchAvailable}>
         {mainContent}
       </AppShell>
 
@@ -372,7 +405,9 @@ export function DeckModeScreen() {
         overlay={controller.feedback.dragOverlay}
         overlayRef={controller.feedback.dragOverlayRef}
       />
-      {!isDesktopDeckBuilder ? (
+      {searchActive ? <GlobalCardSearch step={deckBuilderStep} onClose={() => setSearchOpen(false)} /> : null}
+      {/* El detalle va encima: en el celular siempre, y en escritorio cuando se abre desde el buscador global (en el builder es la vista previa de la columna). */}
+      {!isDesktopDeckBuilder || searchActive ? (
         <CardDetailModal
           card={controller.deckBuilderStep.selectedDetailCard}
           deckFormat={controller.deckBuilderStep.deckFormat}

@@ -1,7 +1,9 @@
 import type { CardSearchFilters } from '../../app/card-search'
 import { t } from '../../i18n'
+import type { DeckFormat } from '../../types'
 import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { collectFilterValues, type FilterOptionGroup, type SearchSortOrder } from './search-options'
+import type { CardSearchActions, CardSearchViewState } from './search-types'
 
 export interface ActiveFilterChip {
   key: string
@@ -177,4 +179,49 @@ export function buildActiveFilterChips({
   }
 
   return chips
+}
+
+/** Lo que el controlador del deck sabe de la búsqueda: los paneles de escritorio y del celular lo reciben agrupado en el estado y las acciones. */
+export interface CardSearchSource {
+  deckFormat: DeckFormat
+  query: string
+  status: CardSearchViewState['status']
+  visibleSearchResults: ApiCardSearchResult[]
+  loadedSearchResultCount: number
+  errorMessage: string
+  hasMore: boolean
+  isLoadingMore: boolean
+  searchFilters: CardSearchFilters
+  activeFilterCount: number
+  hasSearchCriteria: boolean
+  maxedOutSearchResultIds: Set<number>
+  onQueryChange: (value: string) => void
+  onSearchFiltersChange: (updates: Partial<CardSearchFilters>) => void
+  onClearSearchFilters: () => void
+  onLoadMoreResults: () => void
+}
+
+export function buildCardSearchProps(source: CardSearchSource): { search: CardSearchViewState; actions: CardSearchActions } {
+  return {
+    search: {
+      deckFormat: source.deckFormat,
+      query: source.query,
+      status: source.status,
+      results: source.visibleSearchResults,
+      rawResultCount: source.loadedSearchResultCount,
+      errorMessage: source.errorMessage,
+      hasMore: source.hasMore,
+      isLoadingMore: source.isLoadingMore,
+      filters: source.searchFilters,
+      activeFilterCount: source.activeFilterCount,
+      hasSearchCriteria: source.hasSearchCriteria,
+      maxedOutResultIds: source.maxedOutSearchResultIds,
+    },
+    actions: {
+      onQueryChange: source.onQueryChange,
+      onFilterChange: source.onSearchFiltersChange,
+      onClearFilters: source.onClearSearchFilters,
+      onLoadMore: source.onLoadMoreResults,
+    },
+  }
 }

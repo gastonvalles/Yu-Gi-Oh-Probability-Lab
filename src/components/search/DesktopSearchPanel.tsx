@@ -129,6 +129,7 @@ export function DesktopSearchPanel({
           <input
             ref={inputRef}
             type="search"
+            data-initial-focus
             value={query}
             onChange={(event) => actions.onQueryChange(event.target.value)}
             onKeyDown={(event) => {

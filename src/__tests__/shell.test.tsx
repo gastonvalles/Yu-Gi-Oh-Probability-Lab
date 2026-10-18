@@ -10,7 +10,7 @@ import { AppFooter } from '../components/shell/AppFooter'
 import { AppShell } from '../components/shell/AppShell'
 import { AppSidebar } from '../components/shell/AppSidebar'
 import { GroupSheet } from '../components/shell/GroupSheet'
-import { mascotsNavItem } from '../components/shell/nav-model'
+import { mascotsNavItem, searchNavItem } from '../components/shell/nav-model'
 import { MobileTabBar } from '../components/shell/MobileTabBar'
 import { MobileTopBar } from '../components/shell/MobileTopBar'
 import { NavDrawer } from '../components/shell/NavDrawer'
@@ -79,6 +79,40 @@ describe('el menú de la app', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^Mascotas/ }))
     expect(onSelect).toHaveBeenCalledWith('mascots')
+  })
+
+  it('el buscador de cartas es una fila del menú arriba de los grupos, un botón de la barra de arriba y una fila del cajón: sólo donde la pantalla lo ofrece', () => {
+    const onSelect = vi.fn()
+    const onClose = vi.fn()
+
+    expect(searchNavItem()).toMatchObject({ key: 'search', label: 'Buscar cartas', icon: 'search' })
+
+    const { rerender } = render(<AppShell groups={GROUPS} activeKey="export" onSelect={onSelect}><p>pantalla</p></AppShell>)
+
+    expect(screen.queryByRole('button', { name: /^Buscar cartas/ })).toBeNull()
+
+    rerender(<AppShell groups={GROUPS} activeKey="export" onSelect={onSelect} searchAvailable><p>pantalla</p></AppShell>)
+
+    // El menú lateral y la barra de arriba (cada una se muestra según el ancho); la fila del menú no es un destino: va fuera de la navegación.
+    const entries = screen.getAllByRole('button', { name: /^Buscar cartas/ })
+
+    expect(entries).toHaveLength(2)
+    const aside = within(document.querySelector('aside') as HTMLElement)
+
+    expect(aside.getByRole('navigation', { name: 'Navegación principal' })).not.toContainElement(aside.getByRole('button', { name: /^Buscar cartas/ }))
+
+    for (const entry of entries) fireEvent.click(entry)
+
+    expect(onSelect.mock.calls).toEqual([['search'], ['search']])
+
+    // El cajón del celular: la única entrada en la mesa de práctica, que no lleva barra de arriba.
+    onSelect.mockClear()
+    cleanup()
+    render(<NavDrawer isOpen onClose={onClose} nav={{ groups: GROUPS, activeKey: 'practice', onSelect, searchAvailable: true }} />)
+    fireEvent.click(screen.getByRole('button', { name: /^Buscar cartas/ }))
+
+    expect(onSelect).toHaveBeenCalledWith('search')
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 
   it('el destino abierto lleva aria-current, elegir otro avisa cuál, y cómo viene cada paso se dice con palabras (no con un punto de color)', () => {
