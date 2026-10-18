@@ -44,6 +44,8 @@ interface MatCardInfo {
 export interface MenuItem {
   label: string
   onSelect: () => void
+  /** Una jugada de apoyo (revelar, target, descartar, desterrar, devolver al deck o al Extra): la hoja de la mano las pone aparte de las jugadas del juego, todas a la vista. */
+  utility?: boolean
 }
 
 interface CardMenuProps {

@@ -97,8 +97,8 @@ describe('la mesa de práctica', () => {
     tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
 
     expect(screen.getByRole('menu', { name: 'Ash Blossom' })).toBeInTheDocument()
-    // En el celular la carta de la mano se abre en una hoja: la primera jugada llena, la segunda y «Más» con el resto (la Especial entre ellas; la posición sólo se pregunta, después, en la Especial).
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent).slice(0, 4)).toEqual(['Invocación Normal', 'Colocar', 'Más', 'Invocación Especial'])
+    // En el celular la carta de la mano se abre en una hoja con TODAS las jugadas a un toque, sin menús que abrir: primero las del juego (la primera, llena; la posición sólo se pregunta, después, en la Especial) y después las de apoyo.
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Invocación Normal', 'Colocar', 'Invocación Especial', 'Activar efecto', 'Revelar', 'Target', 'Descartar', 'Desterrar', 'Al deck'])
     fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
     expect(screen.queryByRole('menu', { name: 'Ash Blossom' })).not.toBeInTheDocument()
     expect(within(status()).getByText('Tocá la zona para Invocación Normal')).toBeInTheDocument()
@@ -170,7 +170,7 @@ describe('la mesa de práctica', () => {
     }
   })
 
-  it('en el celular una carta de la mano se abre en una hoja con su texto y las jugadas: la primera y la segunda como botones, el resto en «Más», y la X la cierra', () => {
+  it('en el celular una carta de la mano se abre en una hoja con su texto y todas las jugadas a la vista (las del juego y, aparte, las de apoyo), sin «Más»; la X la cierra', () => {
     render(<Harness />)
     tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
 
@@ -180,10 +180,16 @@ describe('la mesa de práctica', () => {
     // Se apoya sobre la mano (no la mueve): está dentro de lo que envuelve a la mano.
     expect(sheet).toHaveClass('absolute', 'bottom-0')
     expect(sheet.parentElement).toContainElement(hand())
-    const more = within(sheet).getByRole('menuitem', { name: 'Más' })
-    expect(more).toHaveAttribute('aria-expanded', 'false')
-    fireEvent.click(more)
-    expect(more).toHaveAttribute('aria-expanded', 'true')
+    expect(within(sheet).queryByRole('menuitem', { name: 'Más' })).not.toBeInTheDocument()
+    // Las jugadas del juego, en una fila (la primera llena); las de apoyo, en una grilla chica debajo: todas se ven y se tocan sin abrir nada.
+    const plays = ['Invocación Normal', 'Colocar', 'Invocación Especial', 'Activar efecto'].map((name) => within(sheet).getByRole('menuitem', { name }))
+    const support = ['Revelar', 'Target', 'Descartar', 'Desterrar', 'Al deck'].map((name) => within(sheet).getByRole('menuitem', { name }))
+
+    expect(plays[0]).toHaveClass('bg-primary')
+    expect(new Set(plays.map((item) => item.parentElement)).size).toBe(1)
+    expect(new Set(support.map((item) => item.parentElement)).size).toBe(1)
+    expect(support[0]!.parentElement).not.toBe(plays[0]!.parentElement)
+    expect(support.every((item) => item.checkVisibility?.() !== false)).toBe(true)
 
     fireEvent.click(within(sheet).getByRole('button', { name: 'Cerrar' }))
     expect(screen.queryByRole('region', { name: 'Ash Blossom' })).not.toBeInTheDocument()
@@ -197,6 +203,16 @@ describe('la mesa de práctica', () => {
     const sheet = screen.getByRole('region', { name: 'Ash Blossom' })
     expect(within(sheet).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['En ataque', 'En defensa'])
     expect(within(sheet).queryByRole('menuitem', { name: 'Más' })).not.toBeInTheDocument()
+  })
+
+  it('una jugada de apoyo es un solo toque: Descartar manda la carta al cementerio y cierra la hoja', () => {
+    render(<Harness />)
+    tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
+
+    fireEvent.click(within(screen.getByRole('region', { name: 'Ash Blossom' })).getByRole('menuitem', { name: 'Descartar' }))
+
+    expect(screen.queryByRole('region', { name: 'Ash Blossom' })).not.toBeInTheDocument()
+    expect(within(hand()).getAllByRole('listitem')).toHaveLength(4)
   })
 
   it('las seis fases van arriba del campo; tocar una la enciende y queda anotada, y de la End Phase a la Draw Phase cambia el turno', () => {

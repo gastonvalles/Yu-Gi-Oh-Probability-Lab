@@ -206,10 +206,10 @@ describe('la mesa dibujada en inglés', () => {
     expect(status()).toHaveTextContent('Drag a card to a zone or tap it to see what you can do.')
 
     tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
-    // En el celular la carta de la mano se abre en la hoja: las dos primeras jugadas, «More» y el resto.
+    // En el celular la carta de la mano se abre en la hoja con todas las jugadas a la vista: las del juego y, aparte, las de apoyo (no hay «More»).
     expect(screen.getByRole('menu', { name: 'Ash Blossom' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'View card' })).toBeInTheDocument()
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent).slice(0, 4)).toEqual(['Normal Summon', 'Set', 'More', 'Special Summon'])
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent).slice(0, 4)).toEqual(['Normal Summon', 'Set', 'Special Summon', 'Activate effect'])
     fireEvent.click(screen.getByRole('menuitem', { name: 'Normal Summon' }))
     expect(status()).toHaveTextContent('Tap the zone for Normal Summon')
     fireEvent.click(screen.getByRole('button', { name: 'Choose Monster Zone 1' }))
