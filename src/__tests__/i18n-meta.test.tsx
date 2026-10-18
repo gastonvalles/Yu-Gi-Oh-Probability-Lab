@@ -243,8 +243,10 @@ describe('Meta en inglés', () => {
     expect(screen.getByRole('heading', { name: 'Tournament decks' })).toBeInTheDocument()
     expect(screen.getByText('The 3 TCG decks from the last 8 weeks, from newest to oldest. Tap one to see it in full.')).toBeInTheDocument()
     expect(screen.getByRole('searchbox', { name: 'Search decks' })).toHaveAttribute('placeholder', 'Deck, event or player')
-    // Cada deck dice «torneo · fecha · puesto» y, en la tarjeta grande, quién lo jugó y entre cuántos.
-    expect(screen.getAllByText(/\(500 players\)/).length).toBeGreaterThan(0)
+    // La tarjeta grande dice el nombre, quién lo jugó, «torneo · fecha», el puesto y el botón que abre el deck; entre cuántos jugadores fue va en la ficha del deck.
+    expect(screen.getByRole('button', { name: 'View the Elfnote deck' })).toHaveTextContent('View deck')
+    expect(screen.getAllByText('Timoti Baggio').length).toBeGreaterThan(0)
+    expect(screen.queryByText(/players\)/)).not.toBeInTheDocument()
     expect(view.container.querySelector('[title="Date of the last deck update"]')).toHaveTextContent(/^Updated [A-Z][a-z]{2} \d{1,2}, 2026$/)
 
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search decks' }), { target: { value: 'elfnote' } })

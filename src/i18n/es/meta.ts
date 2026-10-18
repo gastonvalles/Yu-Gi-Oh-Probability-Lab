@@ -20,6 +20,9 @@ export const meta = {
   'meta.filter.clear': 'Quitar el filtro {name}',
   'meta.showMore': 'Ver {count} más',
   'meta.deck.players': '({players} jugadores)',
+  'meta.deck.kindHandtraps': 'hand traps',
+  'meta.deck.kindBoardbreakers': 'boardbreakers',
+  'meta.deck.mainCopies': 'Copias en el Main. El Side, al abrir el deck.',
   'meta.deck.handtraps': 'Hand traps: {main} en Main · {side} en Side',
   'meta.deck.boardbreakers': 'Boardbreakers: {main} en Main · {side} en Side',
 
@@ -122,6 +125,8 @@ export const meta = {
   'meta.tournaments.filterCard': 'Con {name}',
   'meta.tournaments.filterThatCard': 'Con esa carta',
   'meta.tournaments.deckGone': 'Ese deck ya no está entre los de las últimas semanas.',
+  'meta.tournaments.viewDeck': 'Ver deck',
+  'meta.tournaments.viewDeckLabel': 'Ver el deck {name}',
   'meta.tournaments.hasReplays': { one: 'Tiene un replay', other: 'Tiene {count} replays' },
 
   // Un deck de torneo

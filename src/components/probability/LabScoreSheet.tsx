@@ -3,6 +3,8 @@ import { formatInteger, formatShortPercent } from '../../app/utils'
 import { t } from '../../i18n'
 import { Heading } from '../ui/Heading'
 import { Modal } from '../ui/Modal'
+import { cx } from '../ui/cx'
+import { textLink } from '../ui/typography'
 
 interface LabScoreSheetProps {
   isOpen: boolean
@@ -52,7 +54,7 @@ export function LabScoreSheet({ isOpen, onClose, results, handSize, onOpenDiscla
 
         <button
           type="button"
-          className="inline-flex min-h-11 items-center justify-self-start text-body text-accent hover:underline focus-visible:outline-none focus-visible:shadow-focus"
+          className={cx('inline-flex min-h-11 items-center justify-self-start text-body', textLink)}
           onClick={() => {
             onClose()
             onOpenDisclaimer()

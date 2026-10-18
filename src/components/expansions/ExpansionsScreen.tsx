@@ -24,7 +24,7 @@ import { Segmented } from '../ui/Segmented'
 import { Skeleton } from '../ui/Skeleton'
 import { StepPage } from '../ui/StepPage'
 import { choiceChip, listItem, surface } from '../ui/surfaces'
-import { overline } from '../ui/typography'
+import { overline, textLink } from '../ui/typography'
 import { ExpansionCardModal } from './ExpansionCardModal'
 import { PackArt } from './PackArt'
 
@@ -316,10 +316,10 @@ const PrintTile = memo(function PrintTile({ card, highlighted, liRef, onOpen }: 
           target="_blank"
           rel="noreferrer"
           aria-label={t('catalog.sets.openProduct', { name: card.name })}
-          className="mt-0.5 inline-flex items-center gap-1.5 justify-self-start text-body font-semibold tabular-nums text-foreground no-underline transition-colors hover:text-success focus-visible:outline-none focus-visible:shadow-focus"
+          className={cx('mt-0.5 inline-flex items-center gap-1.5 justify-self-start text-body tabular-nums', textLink)}
         >
           {card.market === null ? t('search.prices.noPrice') : formatUsd(card.market)}
-          <Icon name="link" size={13} className="text-soft" />
+          <Icon name="link" size={13} />
         </a>
       </div>
     </li>

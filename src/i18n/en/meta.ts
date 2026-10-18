@@ -22,6 +22,9 @@ export const meta: Translated<typeof es> = {
   'meta.filter.clear': 'Remove the {name} filter',
   'meta.showMore': 'Show {count} more',
   'meta.deck.players': '({players} players)',
+  'meta.deck.kindHandtraps': 'hand traps',
+  'meta.deck.kindBoardbreakers': 'boardbreakers',
+  'meta.deck.mainCopies': 'Copies in the Main Deck. The Side Deck is in the open deck.',
   'meta.deck.handtraps': 'Hand traps: {main} in Main · {side} in Side',
   'meta.deck.boardbreakers': 'Boardbreakers: {main} in Main · {side} in Side',
 
@@ -124,6 +127,8 @@ export const meta: Translated<typeof es> = {
   'meta.tournaments.filterCard': 'With {name}',
   'meta.tournaments.filterThatCard': 'With that card',
   'meta.tournaments.deckGone': 'That deck is no longer among the decks of the last few weeks.',
+  'meta.tournaments.viewDeck': 'View deck',
+  'meta.tournaments.viewDeckLabel': 'View the {name} deck',
   'meta.tournaments.hasReplays': { one: 'Has a replay', other: 'Has {count} replays' },
 
   // Un deck de torneo

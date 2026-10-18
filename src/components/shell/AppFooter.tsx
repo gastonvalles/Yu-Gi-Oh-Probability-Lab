@@ -1,6 +1,7 @@
 import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { SiteCredit, SocialLinks } from '../ui/SocialLinks'
+import { textLink } from '../ui/typography'
 
 /**
  * Abajo de toda pantalla: la autoría y el aviso de que el sitio no es oficial, las redes del autor y la página de privacidad.
@@ -24,7 +25,7 @@ export function AppFooter({ className }: { className?: string }) {
           href={t('shell.legal.page')}
           target="_blank"
           rel="noreferrer"
-          className="order-3 inline-flex items-center rounded-control px-1 text-micro text-muted underline-offset-2 pointer-coarse:min-h-11 transition-colors duration-150 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:shadow-focus min-[1101px]:order-none"
+          className={cx('order-3 inline-flex items-center rounded-control px-1 text-micro pointer-coarse:min-h-11 min-[1101px]:order-none', textLink)}
         >
           {t('shell.legal.label')}
         </a>

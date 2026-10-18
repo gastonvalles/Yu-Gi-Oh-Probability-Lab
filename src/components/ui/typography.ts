@@ -12,3 +12,9 @@ export const cardTitle = 'm-0 text-balance text-body font-semibold text-foregrou
 
 /** Texto de apoyo bajo un título. */
 export const supportText = 'm-0 text-body text-muted'
+
+/**
+ * Un hipervínculo (el enlace que sale a otra página o abre otra cosa, sea `<a>` o un botón que se lee como enlace): siempre ámbar, el color de lo
+ * destacado, y subrayado al pasar el mouse o enfocarlo. El que lo usa le suma el tamaño del texto y, si va solo, el alto táctil (`min-h-11`).
+ */
+export const textLink = 'font-semibold text-info-soft underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none focus-visible:shadow-focus'
