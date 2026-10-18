@@ -100,7 +100,7 @@ export function CardTile({ stat, share, onOpen }: TileProps<MetaCardStat>) {
       <span className="hidden min-[1101px]:grid min-[1101px]:gap-0.5">
         <b className="text-body font-semibold tabular-nums text-foreground">{percent(share)}</b>
         {stat.trend === 'flat' ? null : (
-          <span className={cx('text-micro font-semibold tabular-nums', look.tone === 'success' ? 'text-success' : 'text-danger')}>
+          <span className={cx('text-micro font-semibold tabular-nums', look.tone === 'success' ? 'text-success' : 'text-danger-soft')}>
             <span aria-hidden="true">{stat.trend === 'up' ? '▲' : '▼'} </span>
             <span className="sr-only">{look.label} </span>
             {trendPoints(stat)}

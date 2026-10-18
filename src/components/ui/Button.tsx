@@ -25,7 +25,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const FILLED: Record<ButtonColor, string> = {
   brand: 'bg-primary text-primary-foreground hover:bg-primary-hover',
   danger: 'bg-destructive text-white hover:brightness-110',
-  success: 'bg-success-solid text-white shadow-[0_6px_16px_rgb(var(--success-rgb)/0.3)] hover:brightness-110',
+  success: 'bg-success-solid text-white hover:brightness-110',
   confirm: 'bg-primary text-primary-foreground hover:bg-success-solid hover:text-white',
 }
 
