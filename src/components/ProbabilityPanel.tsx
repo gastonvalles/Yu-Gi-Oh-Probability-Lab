@@ -52,6 +52,7 @@ interface ProbabilityPanelProps {
   onSetOrigin: (ygoprodeckId: number, origin: CardOrigin) => void
   onToggleRole: (ygoprodeckId: number, role: CardRole) => void
   onConfirmClassification: (ygoprodeckId: number) => void
+  onConfirmAllClassifications: () => void
 }
 
 type DrawerMode = 'custom-create' | 'edit'
@@ -70,6 +71,7 @@ export function ProbabilityPanel({
   onSetOrigin,
   onToggleRole,
   onConfirmClassification,
+  onConfirmAllClassifications,
 }: ProbabilityPanelProps) {
   const lab = useProbabilityLab(derivedMainCards, patterns, disabledGenericRuleIds, handSize, isEditingDeck, systemRuleNames)
   const [activeTurnView, setActiveTurnView] = useState<TurnView>('average')
@@ -245,6 +247,7 @@ export function ProbabilityPanel({
           onSetOrigin={onSetOrigin}
           onToggleRole={onToggleRole}
           onConfirm={onConfirmClassification}
+          onConfirmAll={onConfirmAllClassifications}
           onEditingChange={setIsClassifyingPending}
         />
       ) : lab.computation?.status === 'blocked' ? (

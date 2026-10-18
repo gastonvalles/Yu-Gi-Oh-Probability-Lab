@@ -7,6 +7,7 @@ import type { CardEntry, CardOrigin, CardRole } from '../../types'
 import { ClassificationEditor } from '../classification/ClassificationEditor'
 import { ClassificationQueue } from '../classification/ClassificationQueue'
 import { compareCardsForQueue } from '../classification/classification-model'
+import { Button } from '../ui/Button'
 import { Heading } from '../ui/Heading'
 import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
@@ -19,6 +20,8 @@ interface LabPendingClassificationProps {
   onSetOrigin: (ygoprodeckId: number, origin: CardOrigin) => void
   onToggleRole: (ygoprodeckId: number, role: CardRole) => void
   onConfirm: (ygoprodeckId: number) => void
+  /** Da por buenas todas las sugerencias (las que ya tienen origen y roles) de un toque. */
+  onConfirmAll: () => void
   /** Avisa si hay una carta abierta: el Lab mantiene esta vista hasta que se cierra, aunque ya no falte nada. */
   onEditingChange: (editing: boolean) => void
 }
@@ -29,7 +32,7 @@ const isPending = (card: CardEntry) => !isCardFullyClassified(card) || card.need
  * El Lab no calcula hasta que todas las cartas estén clasificadas: en vez de una pestaña vacía,
  * muestra las que faltan y se resuelven acá mismo. Al terminar, el Lab calcula solo.
  */
-export function LabPendingClassification({ cards, message, onSetOrigin, onToggleRole, onConfirm, onEditingChange }: LabPendingClassificationProps) {
+export function LabPendingClassification({ cards, message, onSetOrigin, onToggleRole, onConfirm, onConfirmAll, onEditingChange }: LabPendingClassificationProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const isEditing = selectedId !== null
 
@@ -48,6 +51,8 @@ export function LabPendingClassification({ cards, message, onSetOrigin, onToggle
   const previous = index > 0 ? visible[index - 1] : null
   const next = index >= 0 && index < visible.length - 1 ? visible[index + 1] : null
   const classified = cards.length - pendingCount
+  // Las sugerencias que sólo esperan un «sí»: completas pero sin confirmar. Las que les falta origen o roles hay que decidirlas.
+  const suggestions = useMemo(() => cards.filter((card) => card.needsReview && isCardFullyClassified(card)).length, [cards])
 
   return (
     <div className="grid min-w-0 content-start gap-3">
@@ -67,6 +72,12 @@ export function LabPendingClassification({ cards, message, onSetOrigin, onToggle
         </div>
         <ProgressRing value={cards.length > 0 ? classified / cards.length : 0} tone={pendingCount > 0 ? 'warning' : 'success'} size={76} strokeWidth={8} label={t('lab.pending.ringLabel')} />
       </Card>
+
+      {suggestions > 0 && !isEditing ? (
+        <Button variant="primary" icon="check" onClick={onConfirmAll}>
+          {t('lab.pending.confirmAll', { count: suggestions })}
+        </Button>
+      ) : null}
 
       <ClassificationQueue cards={visible} selectedId={selectedId} onSelect={setSelectedId} />
 

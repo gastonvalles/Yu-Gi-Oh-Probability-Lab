@@ -7,7 +7,7 @@ import {
   getCardRoleDefinition,
   serializeGroupKey,
 } from '../app/deck-groups'
-import { reclassifyAllCards, resuggestAllCards } from '../app/deck-builder-slice'
+import { confirmAllDeckCardClassifications, reclassifyAllCards, resuggestAllCards } from '../app/deck-builder-slice'
 import {
   isCardFullyClassified,
   isCardMissingOrigin,
@@ -395,6 +395,8 @@ export function DeckRolesPanel({
   // Una carta cuenta como "lista" cuando está completa y confirmada: es la misma cuenta que usa el Lab.
   const pendingReviewCards = useMemo(() => completeCards.filter((card) => card.needsReview), [completeCards])
   const readyCount = completeCards.length - pendingReviewCards.length
+  // Sólo faltan confirmar sugerencias (todo tiene origen y roles): el banner ofrece «Confirmar» y «Revisar», dos botones.
+  const suggestionsOnly = unclassifiedCards.length === 0 && pendingReviewCards.length > 0
   const classifiedShare = sortedCards.length > 0 ? readyCount / sortedCards.length : 0
   const selectedCardIndexInFullList = selectedCard
     ? stableNavigationCards.findIndex((card) => card.id === selectedCard.id)
@@ -580,16 +582,22 @@ export function DeckRolesPanel({
                     ? t('roles.panel.confirmSuggestions', { count: pendingReviewCards.length })
                     : t('roles.panel.allDone')}
             </p>
-            <div className="col-span-2 flex items-center gap-2 min-[1101px]:col-span-1 min-[1101px]:col-start-3 min-[1101px]:w-72">
+            {/* Con dos acciones (confirmar todas y revisar) la columna mide lo que miden los botones, que no parten su texto; en el celular, si no entran en una fila, la principal pasa a la de abajo. */}
+            <div className={cx('col-span-2 flex flex-wrap items-center gap-2 min-[1101px]:col-span-1 min-[1101px]:col-start-3', suggestionsOnly ? 'min-[1101px]:w-auto min-[1101px]:flex-nowrap' : 'min-[1101px]:w-72')}>
               {unclassifiedCards.length > 0 ? (
                 <Button variant="onBrand" size={buttonSize} icon="tag" className="flex-1" onClick={() => dispatch(reclassifyAllCards())}>
                   {t('roles.panel.classifyAll')}
                 </Button>
               ) : pendingReviewCards.length > 0 ? (
-                // Abre la primera sugerencia; desde ahí "Siguiente" recorre el resto.
-                <Button variant="onBrand" size={buttonSize} icon="check" className="flex-1" onClick={() => handleCardSelection(pendingReviewCards[0]!.id)}>
-                  {t('roles.panel.reviewSuggestions')}
-                </Button>
+                <>
+                  {/* Revisar una por una abre la primera sugerencia (desde ahí «Siguiente» recorre el resto); confirmar todas las da por buenas de un toque. La principal va al final. */}
+                  <Button variant="tertiary" size={buttonSize} className="flex-1 basis-40 whitespace-nowrap text-primary-foreground" onClick={() => handleCardSelection(pendingReviewCards[0]!.id)}>
+                    {t('roles.panel.reviewSuggestions')}
+                  </Button>
+                  <Button variant="onBrand" size={buttonSize} icon="check" className="flex-1 basis-48 whitespace-nowrap" onClick={() => dispatch(confirmAllDeckCardClassifications())}>
+                    {t('roles.panel.confirmAll', { count: pendingReviewCards.length })}
+                  </Button>
+                </>
               ) : onOpenLab ? (
                 <Button variant="onBrand" size={buttonSize} iconEnd="arrow-right" className="flex-1" onClick={onOpenLab}>
                   {t('roles.panel.goToLab')}

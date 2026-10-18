@@ -110,6 +110,8 @@ export const lab = {
   'lab.pending.count': { one: '{n} carta por cerrar', other: '{n} cartas por cerrar' },
   'lab.pending.none': 'Ya no falta ninguna carta',
   'lab.pending.help': '{message} Tocá una carta, resolvela acá mismo y cuando termines el Lab calcula solo.',
+  'lab.suggestion.noStarter': 'Ninguna carta de tu deck tiene el rol Starter, y sin un Starter ninguna mano abre. Marcá cuáles abren en Roles.',
+  'lab.pending.confirmAll': { one: 'Confirmar la sugerencia y medir', other: 'Confirmar las {count} sugerencias y medir' },
   'lab.pending.closeEditor': 'Cerrá el editor para ver el resultado.',
   'lab.pending.ringLabel': 'Cartas clasificadas',
   'lab.readiness.noOrigin': 'Hay cartas sin origen.',
