@@ -180,20 +180,18 @@ describe('la mesa de práctica', () => {
     // Sale de abajo, sobre todo lo demás (también sobre el visor de una pila).
     expect(sheet).toHaveClass('fixed', 'bottom-0')
     expect(within(sheet).queryByRole('menuitem', { name: 'Más' })).not.toBeInTheDocument()
-    // Las jugadas del juego, en una fila (la primera llena); las de apoyo, en una grilla chica debajo: todas se ven y se tocan sin abrir nada.
+    // Las jugadas del juego primero y las de apoyo después, todas en la misma grilla: todas se ven y se tocan sin abrir nada.
     const plays = ['Invocación Normal', 'Colocar', 'Invocación Especial', 'Activar efecto'].map((name) => within(sheet).getByRole('menuitem', { name }))
     const support = ['Revelar', 'Target', 'Descartar', 'Desterrar', 'Al deck'].map((name) => within(sheet).getByRole('menuitem', { name }))
 
-    // Todos los botones son iguales (mismo estilo y mismo alto), de a dos por fila; el que sobra ocupa la fila entera; las de apoyo van aparte, bajo una línea.
+    // Todos los botones son iguales (mismo estilo y mismo alto), de a dos por fila y en una sola grilla (el mismo aire entre todos); el que sobra ocupa la fila entera.
     const all = [...plays, ...support]
     const style = (item: HTMLElement) => item.className.replace('col-span-2', '').split(' ').filter(Boolean).join(' ')
     expect(all.every((item) => style(item) === style(all[0]!))).toBe(true)
     expect(all.some((item) => item.classList.contains('bg-primary'))).toBe(false)
-    expect(new Set(plays.map((item) => item.parentElement)).size).toBe(1)
-    expect(new Set(support.map((item) => item.parentElement)).size).toBe(1)
-    expect(support[0]!.parentElement).not.toBe(plays[0]!.parentElement)
-    expect(plays[0]!.parentElement).toHaveClass('grid-cols-2')
-    expect(support[0]!.parentElement!.parentElement).toHaveClass('border-t')
+    expect(new Set(all.map((item) => item.parentElement)).size).toBe(1)
+    expect(plays[0]!.parentElement).toHaveClass('grid-cols-2', 'gap-2')
+    expect(sheet.querySelector('.border-t')).toBeNull()
     // Cinco de apoyo: el último ocupa la fila entera en vez de dejar un hueco.
     expect(support[4]).toHaveClass('col-span-2')
     expect(plays[3]).not.toHaveClass('col-span-2')

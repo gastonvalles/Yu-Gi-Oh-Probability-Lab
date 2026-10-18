@@ -31,8 +31,8 @@ interface CardSheetProps {
   onClose: () => void
 }
 
-/** Una grilla de dos columnas de botones iguales (mismo estilo, mismo alto); si sobra uno, ocupa la fila entera. */
-function Options({ items, focusFirst }: { items: readonly MenuItem[]; focusFirst: boolean }) {
+/** Una sola grilla de dos columnas de botones iguales (mismo estilo, mismo alto) y siempre el mismo aire entre todos (`gap-2`, también entre las jugadas y las de apoyo); si sobra uno, ocupa la fila entera. */
+function Options({ items }: { items: readonly MenuItem[] }) {
   return (
     <div className="grid grid-cols-2 gap-2">
       {items.map((item, index) => (
@@ -41,7 +41,7 @@ function Options({ items, focusFirst }: { items: readonly MenuItem[]; focusFirst
           role="menuitem"
           variant="secondary"
           className={cx('min-w-0 px-2!', items.length % 2 === 1 && index === items.length - 1 && 'col-span-2')}
-          data-initial-focus={focusFirst && index === 0 ? '' : undefined}
+          data-initial-focus={index === 0 ? '' : undefined}
           onClick={item.onSelect}
         >
           {item.label}
@@ -53,7 +53,7 @@ function Options({ items, focusFirst }: { items: readonly MenuItem[]; focusFirst
 
 /**
  * El menú de una carta en el celular (en escritorio es `CardMenu`, pegado a la carta): una hoja que sale de abajo con la carta (su texto está en la lupa), su nombre y dónde está, y **todas las jugadas a un toque,
- * sin menús que abrir**, en botones todos iguales y de a dos por fila: arriba las del juego (Invocación Normal, Colocar, Activar…) y, separadas por una línea, las de apoyo (revelar, target, descartar, desterrar, al deck).
+ * sin menús que abrir**, en botones todos iguales, de a dos por fila y siempre con el mismo aire entre ellos: primero las del juego (Invocación Normal, Colocar, Activar…) y a continuación las de apoyo (revelar, target, descartar, desterrar, al deck).
  * Va sobre todo lo demás (un visor de pila, por ejemplo) con un fondo que la cierra al tocar afuera, y también con la X o Escape; elegir una jugada la cierra y la mesa pide lo que falta (la zona).
  * Las jugadas son las mismas de `listCardActions`: sólo cambia cómo se ofrecen.
  */
@@ -120,20 +120,9 @@ export function CardSheet({ name, kicker, art, back = false, apiCard = null, ite
           </div>
         </div>
 
-        {/* Las jugadas: `role="menu"` y cada una un `menuitem`, como en el menú pegado a la carta. */}
-        <div role="menu" aria-label={name} className="mt-3 grid gap-2">
-          {asking !== undefined ? (
-            <Options items={items} focusFirst />
-          ) : (
-            <>
-              {plays.length > 0 ? <Options items={plays} focusFirst /> : null}
-              {support.length > 0 ? (
-                <div className={cx(plays.length > 0 && 'border-t border-border-subtle pt-2')}>
-                  <Options items={support} focusFirst={plays.length === 0} />
-                </div>
-              ) : null}
-            </>
-          )}
+        {/* Las jugadas, `role="menu"`, y cada una un `menuitem`, como en el menú pegado a la carta: las del juego primero y las de apoyo después, todas en la misma grilla. */}
+        <div role="menu" aria-label={name} className="mt-3">
+          <Options items={asking !== undefined ? items : [...plays, ...support]} />
         </div>
       </section>
     </>,
