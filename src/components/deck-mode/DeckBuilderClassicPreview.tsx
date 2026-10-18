@@ -31,8 +31,6 @@ const ZONE_SHORT_LABEL: Record<DeckZone, string> = { main: 'Main', extra: 'Extra
 const SHORTCUTS = [
   { keys: 'deck.classic.shortcut.addKeys', label: 'deck.classic.shortcut.add' },
   { keys: 'deck.classic.shortcut.removeKeys', label: 'deck.classic.shortcut.remove' },
-  { keys: 'deck.classic.shortcut.tabKeys', label: 'deck.classic.shortcut.tab' },
-  { keys: 'deck.classic.shortcut.deleteKeys', label: 'deck.classic.shortcut.delete' },
 ] as const
 
 interface DeckBuilderClassicPreviewProps {

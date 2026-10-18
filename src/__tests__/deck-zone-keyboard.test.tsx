@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { configureStore } from '@reduxjs/toolkit'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
+import { useState } from 'react'
 import { Provider } from 'react-redux'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -63,6 +64,41 @@ describe('las cartas del deck con teclado', () => {
     expect(onRemoveCard).toHaveBeenCalledWith('i2')
     fireEvent.keyDown(screen.getByRole('button', { name: /^Carta 1\./ }), { key: 'Backspace' })
     expect(onRemoveCard).toHaveBeenCalledWith('i1')
+  })
+
+  it('al quitar una con Supr el foco pasa a la que ocupa su lugar (la última si era la última), no se pierde en el body', async () => {
+    const three = [1, 2, 3].map((id) => ({ instanceId: `i${id}`, name: `Carta ${id}`, apiCard: apiCard(id), origin: null, roles: [], needsReview: false }))
+
+    function Zone() {
+      const [current, setCurrent] = useState(three)
+
+      return (
+        <Provider store={store}>
+          <DeckZone
+            zone="main"
+            title="Main Deck"
+            cards={current}
+            activeDragInstanceId={null}
+            cardAction={(card) => `${card.name}. Supr para quitarla.`}
+            keyboardRemove
+            onDeckCardPointerDown={() => {}}
+            onDeckCardClick={() => {}}
+            onRemoveCard={(id) => setCurrent((cards_) => cards_.filter((card) => card.instanceId !== id))}
+          />
+        </Provider>
+      )
+    }
+
+    render(<Zone />)
+    const second = screen.getByRole('button', { name: /^Carta 2\./ })
+
+    second.focus()
+    fireEvent.keyDown(second, { key: 'Delete' })
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Carta 3\./ })).toHaveFocus())
+
+    // La última de la zona: el foco retrocede a la que queda antes.
+    fireEvent.keyDown(screen.getByRole('button', { name: /^Carta 3\./ }), { key: 'Delete' })
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Carta 1\./ })).toHaveFocus())
   })
 
   it('sin pedirlo (otras pantallas), Supr no quita nada', () => {
