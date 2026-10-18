@@ -77,12 +77,12 @@ describe('el armazón de la app en inglés', () => {
 
   it('los avisos y nombres que arma la lógica salen en inglés', () => {
     expect(() => parseBackup('no es json')).toThrow('El archivo no es un JSON válido.')
-    expect(duelistName(1)).toBe('Rival')
+    expect(duelistName(1)).toBe('Duelista 2')
 
     applyLocale('en')
 
     expect(() => parseBackup('no es json')).toThrow('The file is not valid JSON.')
     expect(() => parseBackup('{}')).toThrow('The file is not a backup of this app.')
-    expect(duelistName(1)).toBe('Opponent')
+    expect(duelistName(1)).toBe('Duelist 2')
   })
 })
