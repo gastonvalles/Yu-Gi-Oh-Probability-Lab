@@ -1,5 +1,5 @@
 [
-["SDMA-EN001","Common","1st Edition",0.45,38453,38445524,"Gil Garth"],
+["SDMA-EN001","Common","1st Edition",0.41,38453,38445524,"Gil Garth"],
 ["SDMA-EN001","Common","Unlimited",null,38453,38445524,"Gil Garth"],
 ["SDMA-EN002","Common","1st Edition",0.45,38454,83011278,"Mystic Tomato"],
 ["SDMA-EN002","Common","Unlimited",0.15,38454,83011278,"Mystic Tomato"],
@@ -24,9 +24,9 @@
 ["SDMA-EN012","Common","Unlimited",null,38464,99877698,"Gravekeeper's Cannonholder"],
 ["SDMA-EN013","Common","1st Edition",0.26,38465,25262697,"Gravekeeper's Assailant"],
 ["SDMA-EN013","Common","Unlimited",null,38465,25262697,"Gravekeeper's Assailant"],
-["SDMA-EN014","Ultra Rare","1st Edition",2.42,38466,102380,"Lava Golem"],
+["SDMA-EN014","Ultra Rare","1st Edition",2.46,38466,102380,"Lava Golem"],
 ["SDMA-EN014","Ultra Rare","Unlimited",0.99,38466,102380,"Lava Golem"],
-["SDMA-EN015","Common","1st Edition",0.29,38467,99050989,"Drillago"],
+["SDMA-EN015","Common","1st Edition",0.31,38467,99050989,"Drillago"],
 ["SDMA-EN015","Common","Unlimited",null,38467,99050989,"Drillago"],
 ["SDMA-EN016","Common","1st Edition",0.25,38468,52090844,"Bowganian"],
 ["SDMA-EN016","Common","Unlimited",0.15,38468,52090844,"Bowganian"],
@@ -67,7 +67,7 @@
 ["SDMA-EN035","Common","1st Edition",0.21,38487,1224927,"Malevolent Catastrophe"],
 ["SDMA-EN035","Common","Unlimited",null,38487,1224927,"Malevolent Catastrophe"],
 ["SDMA-EN036","Common","1st Edition",2.06,38488,5562461,"Dark Illusion"],
-["SDMA-EN037","Ultra Rare","1st Edition",0.53,38489,89194033,"Mystical Beast of Serket"],
+["SDMA-EN037","Ultra Rare","1st Edition",0.5,38489,89194033,"Mystical Beast of Serket"],
 ["SDMA-EN038","Ultra Rare","1st Edition",0.51,38490,29762407,"Temple of the Kings"],
 ["SDMA-EN038","Ultra Rare","Unlimited",0.5,38490,29762407,"Temple of the Kings"]
 ]

@@ -1,12 +1,12 @@
 [
 ["DP10-EN001","Common","1st Edition",0.22,39197,36472900,"Sonic Chick"],
-["DP10-EN001","Common","Unlimited",0.27,39197,36472900,"Sonic Chick"],
+["DP10-EN001","Common","Unlimited",0.28,39197,36472900,"Sonic Chick"],
 ["DP10-EN002","Common","1st Edition",0.58,39198,28859794,"Shield Wing"],
 ["DP10-EN002","Common","Unlimited",0.64,39198,28859794,"Shield Wing"],
 ["DP10-EN003","Common","1st Edition",0.15,39199,68543408,"Stardust Xiaolong"],
-["DP10-EN003","Common","Unlimited",0.35,39199,68543408,"Stardust Xiaolong"],
+["DP10-EN003","Common","Unlimited",0.13,39199,68543408,"Stardust Xiaolong"],
 ["DP10-EN004","Common","1st Edition",0.22,39200,56286179,"Drill Synchron"],
-["DP10-EN004","Common","Unlimited",0.36,39200,56286179,"Drill Synchron"],
+["DP10-EN004","Common","Unlimited",0.24,39200,56286179,"Drill Synchron"],
 ["DP10-EN005","Common","1st Edition",0.11,39201,51047350,"Card Breaker"],
 ["DP10-EN005","Common","Unlimited",0.16,39201,51047350,"Card Breaker"],
 ["DP10-EN006","Common","1st Edition",0.15,39202,88032368,"Second Booster"],
@@ -16,7 +16,7 @@
 ["DP10-EN008","Common","1st Edition",0.3,39204,34257001,"Dash Warrior"],
 ["DP10-EN008","Common","Unlimited",0.19,39204,34257001,"Dash Warrior"],
 ["DP10-EN009","Common","1st Edition",0.13,39205,60741115,"Damage Eater"],
-["DP10-EN009","Common","Unlimited",0.11,39205,60741115,"Damage Eater"],
+["DP10-EN009","Common","Unlimited",0.21,39205,60741115,"Damage Eater"],
 ["DP10-EN010","Common","1st Edition",0.24,39206,96146814,"A/D Changer"],
 ["DP10-EN010","Common","Unlimited",0.36,39206,96146814,"A/D Changer"],
 ["DP10-EN011","Common","1st Edition",0.26,39207,23535429,"Stronghold Guardian"],
@@ -31,7 +31,7 @@
 ["DP10-EN015","Super Rare","Unlimited",0.45,39211,89235196,"Big One Warrior"],
 ["DP10-EN016","Super Rare","1st Edition",0.73,39212,14017402,"Dragon Knight Draco-Equiste"],
 ["DP10-EN016","Super Rare","Unlimited",0.36,39212,14017402,"Dragon Knight Draco-Equiste"],
-["DP10-EN017","Rare","1st Edition",1.85,39213,7841112,"Majestic Star Dragon"],
+["DP10-EN017","Rare","1st Edition",1.92,39213,7841112,"Majestic Star Dragon"],
 ["DP10-EN017","Rare","Unlimited",1.73,39213,7841112,"Majestic Star Dragon"],
 ["DP10-EN018","Rare","1st Edition",0.89,39214,3429238,"Drill Warrior"],
 ["DP10-EN018","Rare","Unlimited",0.82,39214,3429238,"Drill Warrior"],
@@ -58,5 +58,5 @@
 ["DP10-EN029","Rare","1st Edition",0.24,39225,88513608,"Card of Sacrifice"],
 ["DP10-EN029","Rare","Unlimited",0.21,39225,88513608,"Card of Sacrifice"],
 ["DP10-EN030","Super Rare","1st Edition",0.57,39226,14507213,"Synchro Material"],
-["DP10-EN030","Super Rare","Unlimited",0.41,39226,14507213,"Synchro Material"]
+["DP10-EN030","Super Rare","Unlimited",0.43,39226,14507213,"Synchro Material"]
 ]

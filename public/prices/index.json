@@ -1,4 +1,4 @@
-{"updated":"2026-10-17","shards":256,"groups":[
+{"updated":"2026-10-18","shards":256,"groups":[
 [126,"2003 Collectors Tin","2003-09-01",6,"BPT"],
 [127,"2004 Collectors Tin","2004-09-01",6,"CT1"],
 [128,"2005 Collectors Tin","2005-09-01",6,"CT2"],
@@ -41,7 +41,7 @@
 [176,"Destiny Board Traveler Promo","2004-09-26",3,"DBT"],
 [178,"Duel Master's Guide","2003-10-28",1,"DMG"],
 [179,"Duel Terminal - Preview","2009-06-20",21,"DTP1"],
-[182,"Duelist League Promo","2003-01-01",720,"DL09"],
+[182,"Duelist League Promo","2003-01-01",719,"DL09"],
 [183,"Duelist of the Roses","2003-02-16",3,"DOR"],
 [184,"Duelist Pack: Yugi","2009-07-11",60,"DPYG"],
 [185,"Duelist Pack 10: Yusei 3","2011-01-25",60,"DP10"],
@@ -138,7 +138,7 @@
 [294,"Starter Deck: Kaiba","2002-03-29",100,"SDK"],
 [295,"Starter Deck: Kaiba Evolution","2004-03-01",100,"SKE"],
 [296,"Starter Deck: Pegasus","2003-03-30",100,"SDP"],
-[297,"Starter Deck: Syrus Truesdale","2007-07-05",79,"YSDS"],
+[297,"Starter Deck: Syrus Truesdale","2007-07-05",80,"YSDS"],
 [298,"Starter Deck: Yugi","2002-03-29",100,"SDY"],
 [299,"Starter Deck: Yugi Evolution","2004-03-01",100,"SYE"],
 [300,"Starter Deck: Dawn of the Xyz","2011-07-12",43,"YS11"],
@@ -507,9 +507,9 @@
 [22881,"Legend of Blue Eyes White Dragon (Worldwide English)","2005-10-05",126,"LOB"],
 [22882,"Metal Raiders (Worldwide English)","2004-12-01",144,"MRD"],
 [22883,"Pharaoh's Servant (Worldwide English)","2002-10-20",101,"PSV"],
-[22884,"Labyrinth of Nightmare (Worldwide English)","2003-03-01",102,"LON"],
-[22885,"Legacy of Darkness (Worldwide English)","2004-12-01",92,"LOD"],
-[22886,"Dark Crisis (Worldwide English)","2007-12-12",87,"DCR"],
+[22884,"Labyrinth of Nightmare (Worldwide English)","2003-03-01",103,"LON"],
+[22885,"Legacy of Darkness (Worldwide English)","2004-12-01",93,"LOD"],
+[22886,"Dark Crisis (Worldwide English)","2007-12-12",86,"DCR"],
 [22887,"Invasion of Chaos (Worldwide English)","2007-06-25",111,"IOC"],
 [22895,"Legendary Collection: 25th Anniversary Edition","2023-04-21",4,"LC01"],
 [22896,"Cyberstorm Access","2023-05-05",105,"CYAC"],
@@ -596,6 +596,6 @@
 [24703,"Limited Pack World Championship 2026","2026-08-29",87,"26LP"],
 [24704,"Ultimate Tournament Pack 1","2026-07-08",49,"UP01"],
 [24707,"Magnificent Monsters","2026-09-04",219,"MAMO"],
-[24789,"Winner's Pack 2026-2027","2026-07-15",94,"WI26"],
-[24815,"Beyond the Brave","2026-10-09",129,"BETB"]
+[24789,"Winner's Pack 2026-2027","2026-07-15",95,"WI26"],
+[24815,"Beyond the Brave","2026-10-09",130,"BETB"]
 ]}
