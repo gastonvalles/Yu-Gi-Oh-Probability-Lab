@@ -612,11 +612,12 @@ function Screen({ children, wide = false, aside }: { children: React.ReactNode; 
     <div className="h-full min-h-0 overflow-y-auto max-[1100px]:overflow-visible">
       {aside ? (
         <div className="mx-auto grid w-full max-w-5xl content-start items-start gap-6 px-8 py-6 min-[1101px]:grid-cols-[minmax(0,1fr)_20rem]">
-          <div className="grid min-w-0 content-start gap-4">{children}</div>
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-4">{children}</div>
           {aside}
         </div>
       ) : (
-        <div className={cx('mx-auto grid w-full content-start gap-4 px-4 py-6', wide ? 'max-w-5xl' : 'max-w-xl')}>{children}</div>
+        /* Una sola columna que se puede achicar (`minmax(0, 1fr)`): con la pista automática, un botón que no cabe a 320 px ensancha toda la columna y se corta del lado derecho. */
+        <div className={cx('mx-auto grid w-full grid-cols-[minmax(0,1fr)] content-start gap-4 px-4 py-6', wide ? 'max-w-5xl' : 'max-w-xl')}>{children}</div>
       )}
     </div>
   )

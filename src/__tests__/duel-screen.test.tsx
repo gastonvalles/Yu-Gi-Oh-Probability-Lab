@@ -733,6 +733,15 @@ describe('la pantalla del duelo', () => {
     expect(await within(noDeck.container).findByRole('button', { name: 'Entrar a la sala de Carla' })).toBeDisabled()
   })
 
+  it('la columna del lobby y de la sala se puede achicar: a 320 px un botón que no cabe no ensancha todo y lo corta del lado derecho', () => {
+    const view = render(<DuelScreen {...screenProps()} />)
+    // Una sola columna `minmax(0, 1fr)` (con la pista automática, el contenido más ancho decide el ancho de toda la columna).
+    const column = view.container.querySelector('[class*="max-w-xl"][class*="grid"]')
+
+    expect(column).not.toBeNull()
+    expect(column!.className).toContain('grid-cols-[minmax(0,1fr)]')
+  })
+
   it('sin relay no hay arena: el inicio de Jugar no muestra una lista que no puede llenar', () => {
     const view = render(<DuelScreen {...screenProps()} />)
 

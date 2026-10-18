@@ -228,7 +228,7 @@ export function PlayHome({ view, name, onName, builder, imported, onImport, deck
       </div>
 
       {/* La acción principal. Una sola por vista: con un duelo en pausa, volver a él es lo principal. */}
-      <div className="grid gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
         <Button variant={paused ? 'secondary' : 'primary'} size="lg" icon="play" fullWidth aria-busy={busy} disabled={busy} onClick={() => void playNow()}>
           {deckReady ? t('duel.play.now') : t('duel.play.needDeck')}
         </Button>
