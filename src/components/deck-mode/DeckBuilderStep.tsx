@@ -16,6 +16,7 @@ import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { DesktopSearchPanel } from '../search/DesktopSearchPanel'
 import { MobileCardSearch } from '../search/MobileCardSearch'
 import type { CardSearchActions, CardSearchViewState } from '../search/search-types'
+import type { CardNavigation } from '../../app/card-neighbors'
 import type { DeckCopyActions } from '../card-detail/DeckCopyControls'
 import { StepHero } from '../StepHero'
 import { Badge } from '../ui/Badge'
@@ -63,6 +64,8 @@ interface DeckBuilderStepProps {
   selectedDetailCard: ApiCardSearchResult | null
   selectedDetailSource: 'search' | 'deck' | null
   selectedDeckCopyActions: DeckCopyActions | null
+  /** Pasar a la carta anterior y a la siguiente de donde se abrió el detalle (resultados de la búsqueda o zona del deck). */
+  selectedDetailNavigation: CardNavigation | null
   onSortAllDeckZones: () => void
   onClearAllDeckZones: () => void
   onRemoveDeckCard: (instanceId: string) => void
@@ -127,6 +130,7 @@ export function DeckBuilderStep({
   selectedDetailCard,
   selectedDetailSource,
   selectedDeckCopyActions,
+  selectedDetailNavigation,
   onSortAllDeckZones,
   onClearAllDeckZones,
   onRemoveDeckCard,
@@ -234,6 +238,7 @@ export function DeckBuilderStep({
             card={previewCard}
             source={selectedDetailSource}
             deckCopy={selectedDeckCopyActions}
+            navigation={selectedDetailNavigation}
             onAddToZone={(zone) => {
               if (previewCard) {
                 onAddSearchResultToZone(previewCard.ygoprodeckId, zone)

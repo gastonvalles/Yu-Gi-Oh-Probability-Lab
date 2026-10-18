@@ -3,6 +3,7 @@ import { addChat, addGame, advanceSeries, cleanChat, coinWinner, dieWinner, duel
 import { RateLimiter } from './duel-relay-rules'
 import { DEFAULT_SETTINGS, MAX_MARKS, NO_MARKS, PROTOCOL_VERSION, cleanName, encodeMessage, parseMessage, type DuelMessage, type DuelSettings, type MarkTarget, type Marks, type OpeningWire } from './duel-protocol'
 import { createLifeState, lifeReducer, timerElapsed, type Duelist, type LifeState } from './life-calculator'
+import { CONTROL_ACTIONS, controlReactions } from './mat-control'
 import { encodeAct, mapMatIds, mirrorApply, mirrorUndo, openMirror, openPublic, senderKnown, type Mirror, type PublicSender } from './mat-public'
 import { allMatIds, locateCard, matReducer, replayMat, type MatAction, type MatPile, type MatState } from './practice-mat'
 
@@ -82,7 +83,7 @@ export interface DuelSnapshot {
    * El permiso para volver atrás una jugada: `asking`, pedí deshacer la mía y espero la respuesta del rival; `asked`, el rival pide deshacer la suya y tengo que contestar;
    * `result`, cómo terminó mi último pedido si no se permitió (`n` cuenta los resultados, para avisar una sola vez cada uno).
    */
-  undo: { asking: boolean; asked: boolean; result: { n: number; kind: 'denied' | 'expired' } | null }
+  undo: { asking: boolean; asked: boolean; result: { n: number; kind: 'denied' | 'expired' } | null; /** Mi última jugada cambió el control de un monstruo: la otra mesa ya la completó y no se puede deshacer. */ blocked: boolean }
   /** Lo marcado como objetivo: `mine`, lo que el rival marcó de mi lado (con mis ids reales); `theirs`, lo que yo marqué del suyo (con los ids que él les dio). */
   marks: { mine: Marks; theirs: Marks }
   /**
@@ -241,7 +242,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     return { match: settings.match, game: series.played + 1, wins: score.wins, winner: settings.match ? score.winner : null }
   }
 
-  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent, peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, ping: lastPing })
+  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent, peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult, blocked: lastIsControl() }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, ping: lastPing })
 
   const emit = () => {
     snapshot = build()
@@ -461,9 +462,30 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     }
   }
 
+  /** Mi última jugada pasó un monstruo de una mesa a la otra: no se deshace (la otra mesa ya la completó por su cuenta). */
+  const lastIsControl = () => {
+    const last = actions.at(-1)
+
+    return last !== undefined && CONTROL_ACTIONS.has(last.type)
+  }
+
+  /** Juega una jugada en mi mesa y se la cuenta al rival (la usan `play` y las respuestas automáticas del control de un monstruo). */
+  const commit = (action: MatAction) => {
+    if (!mine || !sender) {
+      return
+    }
+
+    const sent = encodeAct(sender, mine, action)
+
+    sender = sent.sender
+    mine = matReducer(mine, action)
+    actions = [...actions, action]
+    send({ t: 'act', n: actions.length, wire: sent.wire })
+  }
+
   /** Deshace mi última jugada y se lo cuenta al rival. */
   const applyUndo = () => {
-    if (!initial || actions.length === 0) {
+    if (!initial || actions.length === 0 || lastIsControl()) {
       return
     }
 
@@ -625,9 +647,18 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
         if (!theirs) {
           requestSync()
         } else if (message.n === peerSeq + 1) {
+          const previous = theirs.state
+
           theirs = mirrorApply(theirs, message.wire)
           peerSeq = message.n
           pruneMarks()
+
+          // Si cambió de manos un monstruo, mi mesa lo completa sola (tomarlo, soltarlo o recibirlo de vuelta).
+          if (mine && sender) {
+            for (const reaction of controlReactions({ mine, ownIds, before: previous, after: theirs.state, action: message.wire.action })) {
+              commit(reaction)
+            }
+          }
         } else if (message.n > peerSeq) {
           requestSync()
         }
@@ -853,17 +884,12 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       // Si estaba esperando permiso para volver atrás, hacer otra jugada lo cancela (el permiso sería para otra jugada que la que se quería deshacer).
       dropUndoAsk(true)
 
-      const sent = encodeAct(sender, mine, action)
-
-      sender = sent.sender
-      mine = matReducer(mine, action)
-      actions = [...actions, action]
-      send({ t: 'act', n: actions.length, wire: sent.wire })
+      commit(action)
       emit()
     },
 
     undo() {
-      if (!initial || actions.length === 0 || undoAsking !== null) {
+      if (!initial || actions.length === 0 || undoAsking !== null || lastIsControl()) {
         return
       }
 

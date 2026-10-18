@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 
 import { deriveMainDeckCardsFromZone } from '../../app/calculator-state'
+import { buildCardNavigation, buildZoneNavigation, neighborsAt, type CardNavigation } from '../../app/card-neighbors'
 import {
   DECK_ZONE_LIMITS,
   findDeckCard,
@@ -271,6 +272,12 @@ export function useDeckModeController() {
     setSelectedDeckInstanceId(null)
   }, [])
 
+  const openDeckCardDetail = useCallback((deckCard: DeckCardInstance) => {
+    setSelectedDetailCard(buildDetailCardFromDeckCard(deckCard))
+    setSelectedDetailSource('deck')
+    setSelectedDeckInstanceId(deckCard.instanceId)
+  }, [])
+
   const handleDeckCardClick = useCallback(
     (instanceId: string) => {
       if (consumeSuppressedPointerClick()) {
@@ -283,12 +290,73 @@ export function useDeckModeController() {
         return
       }
 
-      setSelectedDetailCard(buildDetailCardFromDeckCard(deckCard))
-      setSelectedDetailSource('deck')
-      setSelectedDeckInstanceId(instanceId)
+      openDeckCardDetail(deckCard)
     },
-    [consumeSuppressedPointerClick],
+    [consumeSuppressedPointerClick, openDeckCardDetail],
   )
+
+  // «Siguiente» en la última carta cargada pide más resultados y, cuando llegan, pasa a la primera nueva.
+  const [advanceFromCardId, setAdvanceFromCardId] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (advanceFromCardId === null || isLoadingMore) {
+      return
+    }
+
+    const index = visibleSearchResults.findIndex((card) => card.ygoprodeckId === advanceFromCardId)
+    const next = visibleSearchResults[index + 1]
+
+    setAdvanceFromCardId(null)
+
+    if (next && selectedDetailCard?.ygoprodeckId === advanceFromCardId) {
+      openCardDetail(next.ygoprodeckId)
+    }
+  }, [advanceFromCardId, isLoadingMore, openCardDetail, selectedDetailCard?.ygoprodeckId, visibleSearchResults])
+
+  // Las flechas del detalle: la carta anterior y la siguiente de donde se lo abrió (los resultados de la búsqueda tal como se ven, o la zona del deck
+  // —tres copias de una carta son una sola parada—).
+  const selectedDetailNavigation = useMemo<CardNavigation | null>(() => {
+    if (!selectedDetailCard) {
+      return null
+    }
+
+    if (selectedDetailSource === 'deck') {
+      const zone = selectedDeckInstanceId ? findDeckCardZone(deckBuilder, selectedDeckInstanceId) : null
+
+      return zone && selectedDeckInstanceId ? buildZoneNavigation(deckBuilder[zone], selectedDeckInstanceId, openDeckCardDetail) : null
+    }
+
+    const cardId = selectedDetailCard.ygoprodeckId
+    const index = visibleSearchResults.findIndex((card) => card.ygoprodeckId === cardId)
+
+    if (index < 0) {
+      return null
+    }
+
+    const canLoadMore = apiSearch.hasMore && !isLoadingMore
+
+    return buildCardNavigation(
+      neighborsAt(visibleSearchResults, index),
+      (card) => openCardDetail(card.ygoprodeckId),
+      canLoadMore
+        ? () => {
+            setAdvanceFromCardId(cardId)
+            loadMoreResults()
+          }
+        : null,
+    )
+  }, [
+    apiSearch.hasMore,
+    deckBuilder,
+    isLoadingMore,
+    loadMoreResults,
+    openCardDetail,
+    openDeckCardDetail,
+    selectedDeckInstanceId,
+    selectedDetailCard,
+    selectedDetailSource,
+    visibleSearchResults,
+  ])
 
   const handleAddSearchResultToZone = useCallback(
     (apiCardId: number, zone: DeckZone, options: { silent?: boolean } = {}) => {
@@ -569,6 +637,7 @@ export function useDeckModeController() {
       selectedDetailCard,
       selectedDetailSource,
       selectedDeckCopyActions,
+      selectedDetailNavigation,
       isCardDetailOpen: selectedDetailCard !== null,
       onSortAllDeckZones: handleSortAllDeckZones,
       onClearAllDeckZones: handleClearAllDeckZones,

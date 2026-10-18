@@ -100,6 +100,8 @@ export const search: Translated<typeof es> = {
   'search.detail.panel': 'Card text',
   'search.detail.effect': 'Effect',
   'search.detail.noText': 'No text available.',
+  'search.detail.previous': 'Previous card',
+  'search.detail.next': 'Next card',
   'search.overlay.backToDetail': 'Back to details',
   'search.overlay.zoomIn': 'View card larger',
   'search.zoom.aria': 'Large view of {name}',

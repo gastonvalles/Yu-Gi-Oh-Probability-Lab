@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
+import type { CardNavigation } from '../../app/card-neighbors'
 import { UI_ANIMATION_MS, prefersReducedMotion } from '../../app/motion'
 import { useCardArtOptions, type ArtChoice } from '../../app/use-card-art-options'
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
@@ -8,8 +9,9 @@ import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
 import { Heading } from '../ui/Heading'
+import { Icon } from '../ui/Icon'
 import { cx } from '../ui/cx'
-import { CloseButton } from '../ui/IconButton'
+import { CloseButton, IconButton } from '../ui/IconButton'
 import { CardArtPicker } from './CardArtPicker'
 import { CardPricesButton, CardPricesModal } from './CardPrices'
 import { PrintingInfo, SelectedPrintingContext, useSelectedPrinting } from './PrintingInfo'
@@ -17,6 +19,12 @@ import { CardGlare, levelOut, tiltHandlers } from './card-tilt'
 
 const CLOSE_MS = 180
 const EASE = 'cubic-bezier(0.2, 0.9, 0.25, 1)'
+/** Lo que la carta nueva tarda en aparecer al pasar a otra, y cuánto se desliza desde el lado de donde viene. */
+const SWITCH_MS = 180
+const SWITCH_SLIDE_PX = 28
+/** Cuánto hay que arrastrar el dedo de costado sobre la carta para que cuente como deslizar, y cuánto más ancho que alto tiene que ser. */
+const SWIPE_MIN_PX = 48
+const SWIPE_RATIO = 1.5
 
 interface CardOverlayProps {
   /** Texto accesible del diálogo ("Detalle de X", "Clasificar X"). */
@@ -33,6 +41,12 @@ interface CardOverlayProps {
   artOverlay?: ReactNode
   /** El arte con el que se abre (p. ej. el de la impresión que se tocó en una expansión): arranca elegido y se ve de entrada. */
   initialArt?: Pick<ArtChoice, 'id' | 'imageUrl'>
+  /**
+   * Pasar a la carta anterior y a la siguiente de la lista de la que se abrió (sin cerrar): dos flechas a los costados de la carta, ← y → del teclado y,
+   * en el celular, deslizar la carta de costado. Quien tiene la lista cambia `card` (y el panel que le pasa); el marco se queda y sólo acomoda lo suyo:
+   * el arte elegido vuelve al primero, el panel al principio y la carta nueva aparece con un fundido. Sin esto, o sin ningún vecino, no hay flechas.
+   */
+  navigation?: CardNavigation | null
   onClose: () => void
   /** Contenido del panel: `CardPanelHeader`, `CardPanelBody` y, si hace falta, `CardPanelFooter`. */
   children: ReactNode
@@ -74,7 +88,7 @@ export function CardOverlay(props: CardOverlayProps) {
   )
 }
 
-function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, tall = false, artOverlay = null, initialArt, onOpenPrices = null, onClose, children }: CardOverlayProps & { onOpenPrices?: (() => void) | null }) {
+function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, tall = false, artOverlay = null, initialArt, navigation = null, onOpenPrices = null, onClose, children }: CardOverlayProps & { onOpenPrices?: (() => void) | null }) {
   const rootRef = useRef<HTMLDivElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLElement>(null)
@@ -83,9 +97,22 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
   const [zoomed, setZoomed] = useState(false)
   const animationsRef = useRef<Animation[]>([])
   // Los artes de la carta (los de YGOPRODeck y las impresiones: llegan después de abrir) y cuál se ve.
-  const arts = useCardArtOptions(card?.ygoprodeckId ?? null, name)
+  const cardId = card?.ygoprodeckId ?? null
+  const arts = useCardArtOptions(cardId, name)
   const [artId, setArtId] = useState<string | null>(initialArt?.id ?? null)
+  // Al pasar a otra carta (flechas del detalle, o quien lo tiene abierto la cambia) —o a otra impresión de la misma, en Expansiones— el arte elegido era
+  // del anterior: vuelve al primero (o al arte con el que se abre).
+  const shownKey = `${cardId}|${initialArt?.id ?? ''}`
+  const [lastKey, setLastKey] = useState(shownKey)
+  if (lastKey !== shownKey) {
+    setLastKey(shownKey)
+    setArtId(initialArt?.id ?? null)
+  }
   const art = arts.find((option) => option.id === artId) ?? (initialArt && artId === initialArt.id ? initialArt : undefined)
+  // Hacia dónde se fue en el último pase (1: siguiente, -1: anterior), para que la carta nueva venga de ese lado.
+  const directionRef = useRef<1 | -1 | 0>(0)
+  const swipeRef = useRef<{ x: number; y: number } | null>(null)
+  const swipedRef = useRef(false)
 
   useBodyScrollLock(true)
 
@@ -122,6 +149,46 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
       }
     }
   }, [])
+
+  // Al aparecer otra carta en el mismo marco: el panel vuelve arriba, el foco no se pierde (si estaba en algo que ya no está o quedó apagado, pasa al panel) y la
+  // carta nueva llega con un fundido desde el lado al que se fue. No corre al abrir: de eso se ocupa el vuelo de arriba.
+  const previousKey = useRef(shownKey)
+  useLayoutEffect(() => {
+    if (previousKey.current === shownKey) return
+    previousKey.current = shownKey
+
+    const direction = directionRef.current
+    const panel = panelRef.current
+    const art = cardRef.current
+    const focused = document.activeElement
+    directionRef.current = 0
+
+    panel?.querySelectorAll('[data-initial-focus]').forEach((body) => {
+      body.scrollTop = 0
+    })
+
+    if (!focused || !rootRef.current?.contains(focused) || (focused instanceof HTMLButtonElement && focused.disabled)) {
+      ;(panel?.querySelector<HTMLElement>('[data-initial-focus]') ?? panel)?.focus({ preventScroll: true })
+    }
+
+    if (art && panel && typeof art.animate === 'function' && !prefersReducedMotion()) {
+      const options = { duration: SWITCH_MS, easing: 'ease-out' } as const
+
+      animationsRef.current.push(
+        art.animate([{ opacity: 0, transform: `translateX(${direction * SWITCH_SLIDE_PX}px)` }, { opacity: 1, transform: 'none' }], options),
+        panel.animate([{ opacity: 0 }, { opacity: 1 }], options),
+      )
+    }
+  }, [shownKey])
+
+  const goTo = (direction: 'previous' | 'next') => {
+    const step = direction === 'previous' ? navigation?.onPrevious : navigation?.onNext
+
+    if (!step || closingRef.current) return
+    directionRef.current = direction === 'next' ? 1 : -1
+    step()
+  }
+  const hasNavigation = Boolean(navigation && (navigation.onPrevious || navigation.onNext))
 
   const close = () => {
     if (closingRef.current) return
@@ -162,6 +229,18 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
       aria-label={ariaLabel}
       onClick={() => (zoomed ? setZoomed(false) : close())}
       onKeyDown={(event) => {
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+          // Con una tecla de edición o dentro de un campo de texto, las flechas son del cursor.
+          const editing = event.target instanceof HTMLElement && event.target.closest('input, textarea, select, [contenteditable="true"]')
+
+          if (hasNavigation && !editing && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+            event.preventDefault()
+            goTo(event.key === 'ArrowLeft' ? 'previous' : 'next')
+          }
+
+          return
+        }
+
         if (event.key !== 'Tab') return
         const focusable = Array.from(rootRef.current?.querySelectorAll<HTMLElement>('*') ?? [])
           .filter((element) => element.tabIndex >= 0 && !element.matches(':disabled'))
@@ -185,14 +264,44 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
         <div className="pointer-events-none relative max-w-full flex-none">
           <div
             ref={cardRef}
-            className="group/art pointer-events-auto relative aspect-[421/614] h-(--detail-art-height) max-w-full flex-none cursor-zoom-in overflow-hidden shadow-[0_24px_50px_rgb(0_0_0/0.6),0_0_0_1px_rgb(255_255_255/0.12),0_0_40px_rgb(var(--primary-rgb)/0.3)] transition-[height,rotate] duration-(--motion-duration) ease-[cubic-bezier(0.2,0.9,0.25,1)] group-data-[zoomed=true]:h-[min(94dvh,calc((100vw-2rem)*614/421))]"
+            className={cx(
+              'group/art pointer-events-auto relative aspect-[421/614] h-(--detail-art-height) max-w-full flex-none cursor-zoom-in overflow-hidden shadow-[0_24px_50px_rgb(0_0_0/0.6),0_0_0_1px_rgb(255_255_255/0.12),0_0_40px_rgb(var(--primary-rgb)/0.3)] transition-[height,rotate] duration-(--motion-duration) ease-[cubic-bezier(0.2,0.9,0.25,1)] group-data-[zoomed=true]:h-[min(94dvh,calc((100vw-2rem)*614/421))]',
+              // Con vecinos, el dedo de costado es de la carta (deslizar) y sólo el vertical queda para el navegador.
+              hasNavigation && 'touch-pan-y',
+            )}
             role="button"
             tabIndex={-1}
             aria-label={zoomed ? t('search.overlay.backToDetail') : t('search.overlay.zoomIn')}
             // La inclinación en 3D (ver card-tilt), también con la carta agrandada.
             {...tiltHandlers}
+            onPointerDown={(event) => {
+              swipedRef.current = false
+              swipeRef.current = hasNavigation && event.pointerType === 'touch' ? { x: event.clientX, y: event.clientY } : null
+            }}
+            onPointerUp={(event) => {
+              const start = swipeRef.current
+              swipeRef.current = null
+
+              if (!start) return
+              const dx = event.clientX - start.x
+              const dy = event.clientY - start.y
+
+              if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < Math.abs(dy) * SWIPE_RATIO) return
+              swipedRef.current = true
+              goTo(dx < 0 ? 'next' : 'previous')
+            }}
+            onPointerCancel={() => {
+              swipeRef.current = null
+            }}
             onClick={(event) => {
               event.stopPropagation()
+
+              // Lo que deja un deslizamiento no es un toque: no agranda la carta.
+              if (swipedRef.current) {
+                swipedRef.current = false
+                return
+              }
+
               levelOut(event.currentTarget)
               setZoomed((current) => !current)
             }}
@@ -216,6 +325,13 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
           {onOpenPrices ? (
             <div className="pointer-events-auto absolute -right-12 bottom-0 group-data-[zoomed=true]:hidden">
               <CardPricesButton onClick={onOpenPrices} />
+            </div>
+          ) : null}
+          {/* Las flechas van afuera de la carta y de lo que va a sus costados (artes y precios), en el centro del alto de la carta: en el celular, en los bordes de la pantalla. */}
+          {hasNavigation ? (
+            <div className="pointer-events-none absolute left-1/2 top-0 flex h-full w-[min(100vw,calc(100%+12.5rem))] -translate-x-1/2 items-center justify-between pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] group-data-[zoomed=true]:hidden">
+              <CardStepButton direction="previous" disabled={!navigation?.onPrevious} onStep={() => goTo('previous')} />
+              <CardStepButton direction="next" disabled={!navigation?.onNext} onStep={() => goTo('next')} />
             </div>
           ) : null}
         </div>
@@ -242,8 +358,28 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
           close()
         }}
       />
+
+      {/* Al pasar de carta el lector de pantalla oye cuál es. */}
+      {hasNavigation ? (
+        <p className="sr-only" aria-live="polite">
+          {name}
+        </p>
+      ) : null}
     </div>,
     document.body,
+  )
+}
+
+/** Una flecha del detalle (anterior o siguiente): 44 px de toque. Apagada en la punta de la lista, y aun así no deja pasar el clic al fondo (cerraría el detalle). */
+function CardStepButton({ direction, disabled, onStep }: { direction: 'previous' | 'next'; disabled: boolean; onStep: () => void }) {
+  const label = t(direction === 'previous' ? 'search.detail.previous' : 'search.detail.next')
+
+  return (
+    <div className="pointer-events-auto" onClick={(event) => event.stopPropagation()}>
+      <IconButton size="lg" aria-label={label} title={label} disabled={disabled} onClick={onStep}>
+        <Icon name={direction === 'previous' ? 'chevron-left' : 'chevron-right'} />
+      </IconButton>
+    </div>
   )
 }
 

@@ -11,6 +11,7 @@ import {
   type Banlist,
   type BanlistRegion,
 } from '../../app/banlists'
+import { buildCardNavigation, neighborsAt } from '../../app/card-neighbors'
 import { cardSmallImageUrl } from '../../app/card-prices'
 import { setMetaRegion, useMetaRegion } from '../../app/use-meta-region'
 import { formatInteger, normalizeSearchText } from '../../app/utils'
@@ -107,6 +108,13 @@ export function BanlistsScreen() {
     [sections, words],
   )
   const open = useCallback((cardId: number, status: BanlistStatus) => setOpened({ cardId, status }), [])
+  // Las cartas tal como se ven, sección por sección: de ahí salen la anterior y la siguiente del detalle.
+  const openable = useMemo(() => visible.flatMap(({ status, entries }) => entries.map((entry) => ({ cardId: entry.cardId, status }))), [visible])
+  const navigation = useMemo(() => {
+    const at = opened ? openable.findIndex((item) => item.cardId === opened.cardId && item.status === opened.status) : -1
+
+    return at < 0 ? null : buildCardNavigation(neighborsAt(openable, at), setOpened)
+  }, [opened, openable])
 
   if (!list) {
     return null
@@ -216,7 +224,7 @@ export function BanlistsScreen() {
         )}
       </Card>
 
-      <BanlistCardModal cardId={opened?.cardId ?? null} list={list} status={opened ? t(STATUS_KEY[opened.status]) : ''} onClose={() => setOpened(null)} />
+      <BanlistCardModal cardId={opened?.cardId ?? null} list={list} status={opened ? t(STATUS_KEY[opened.status]) : ''} navigation={navigation} onClose={() => setOpened(null)} />
     </StepPage>
   )
 }

@@ -1300,7 +1300,7 @@ describe('la pantalla del duelo', () => {
 
     // Tocar la carta de Ana abre su menú: marcarla y ver su detalle (que se pide por su número).
     fireEvent.click(within(guest.container).getByRole('button', { name: 'Rival, Zona de monstruo 1: marcar' }))
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Señalar', 'Target', 'Ver carta'])
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Señalar', 'Target', 'Tomar el control', 'Ver carta'])
     fireEvent.click(screen.getByRole('menuitem', { name: 'Ver carta' }))
     await act(async () => {})
     expect(screen.getByRole('dialog', { name: /^Detalle de Carta \d+$/ })).toBeInTheDocument()
@@ -2214,6 +2214,52 @@ describe('la pantalla del duelo', () => {
     })
     expect(within(watcher.container).queryByTestId('spectator-table')).not.toBeInTheDocument()
     expect(within(watcher.container).queryByTestId('watch-result')).not.toBeInTheDocument()
+  })
+
+  it('el control de un monstruo: Ana lo da desde su menú, Beto lo recibe solo en su campo y lo puede devolver; y Beto puede tomar uno de Ana desde el menú de su carta', () => {
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+
+    const myMonster = (view: RenderResult) => tap(zoneOf(view, 'Zona de monstruo 1').getAllByRole('button')[0]!)
+    const occupied = (view: RenderResult, zone: number) => zoneOf(view, `Zona de monstruo ${zone}`).queryAllByRole('button').length > 0
+
+    summonFirst(host)
+    flush()
+
+    // El menú del monstruo propio ofrece dar el control (al rival, por su nombre).
+    myMonster(host)
+    expect(screen.getByRole('menuitem', { name: 'Dar el control a Beto' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Dar el control a Beto' }))
+    flush()
+
+    expect(occupied(host, 1)).toBe(false)
+    expect(occupied(guest, 1)).toBe(true)
+    // Ana lo ve en el campo de Beto, con su carta, y el paso no se puede deshacer.
+    expect(within(host.container).getByRole('button', { name: 'Rival, Zona de monstruo 1: marcar' })).toBeInTheDocument()
+    expect(within(host.container).getByRole('button', { name: 'Deshacer' })).toBeDisabled()
+    expect(within(guest.container).getByRole('button', { name: 'Deshacer' })).toBeDisabled()
+
+    // Beto lo tiene: su menú ofrece devolverlo (en vez de dar el control).
+    myMonster(guest)
+    expect(screen.getByRole('menuitem', { name: 'Devolver el control a Ana' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Dar el control a Ana' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Devolver el control a Ana' }))
+    flush()
+    expect(occupied(guest, 1)).toBe(false)
+    expect(occupied(host, 1)).toBe(true)
+
+    // Beto toma el monstruo de Ana desde el menú de su carta en el campo de ella.
+    fireEvent.click(within(guest.container).getByRole('button', { name: 'Rival, Zona de monstruo 1: marcar' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Tomar el control' }))
+    flush()
+    expect(occupied(host, 1)).toBe(false)
+    expect(occupied(guest, 1)).toBe(true)
+    // Ana ve que se lo llevaron y puede recuperarlo.
+    fireEvent.click(within(host.container).getByRole('button', { name: 'Rival, Zona de monstruo 1: marcar' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Recuperar el control' }))
+    flush()
+    expect(occupied(host, 1)).toBe(true)
+    expect(occupied(guest, 1)).toBe(false)
   })
 
   it('quien mira puede dar vuelta la mesa para verla desde el lado del otro jugador', () => {

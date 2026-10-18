@@ -16,6 +16,8 @@ export const duel = {
   'duel.announce.attackDirect': '{name} te ataca directo',
   'duel.mark.view': 'Ver las cartas',
   'duel.emoji.close': '{name}: {emoji}. Tocá para cerrar',
+  'duel.mark.takeControl': 'Tomar el control',
+  'duel.mark.regainControl': 'Recuperar el control',
   'duel.mark.rivalCard': 'Carta del rival',
   'duel.undo.askTitle': '¿Permitís que {name} vuelva atrás su jugada?',
   'duel.undo.askText': '{name} quiere deshacer su última jugada. Si la permitís, su mesa vuelve a como estaba antes.',
