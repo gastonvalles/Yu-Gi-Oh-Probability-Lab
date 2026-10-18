@@ -1,8 +1,12 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 
 import type { CardSearchFilters } from '../../app/card-search'
 import { t } from '../../i18n'
+import { Badge } from '../ui/Badge'
+import { Button } from '../ui/Button'
+import { Icon } from '../ui/Icon'
 import { Switch } from '../ui/Switch'
+import { cx } from '../ui/cx'
 import { ATTRIBUTE_OPTIONS, type FilterOption, type FilterOptionGroup } from './search-options'
 import type { SearchFilterContext } from './use-search-filter-context'
 import { choiceChip, field } from '../ui/surfaces'
@@ -34,6 +38,11 @@ interface SearchFiltersFormProps {
   onClearFilters: () => void
 }
 
+/**
+ * Los filtros de la búsqueda, de lo que más se usa a lo que menos: arriba, ocultar las prohibidas del formato, el atributo y el nivel (los que valen para el tipo
+ * elegido) y el arquetipo; los demás (tipo exacto, raza y texto del efecto) se pliegan en «Más filtros», que arranca abierto si alguno está puesto. «Limpiar
+ * filtros» sólo está cuando hay algo que limpiar (sin caja: descarta).
+ */
 export function SearchFiltersForm({
   id,
   layout,
@@ -44,6 +53,9 @@ export function SearchFiltersForm({
   onClearFilters,
 }: SearchFiltersFormProps) {
   const { quickTypeMeta } = context
+  const moreCount = [filters.exactType, filters.race, filters.description].filter((value) => value.trim() !== '').length
+  const [moreOpen, setMoreOpen] = useState(moreCount > 0)
+  const moreId = `${id}-more`
 
   return (
     <div
@@ -51,58 +63,31 @@ export function SearchFiltersForm({
       className="group/filters grid gap-4 p-3.5"
       data-layout={layout}
     >
-      <div className="flex items-center justify-between gap-2.5 border-b border-border-subtle pb-3 text-micro font-semibold text-muted">
+      {/* El renglón no cambia de alto cuando aparece el botón de limpiar: nada se corre. */}
+      <div className="flex min-h-9 items-center justify-between gap-2.5 border-b border-border-subtle pb-3 text-micro font-semibold text-muted pointer-coarse:min-h-11">
         <span>
           {activeFilterCount > 0 ? t('search.filters.active', { count: activeFilterCount }) : t('search.filters.none')}
         </span>
-        <button
-          type="button"
-          className="min-h-9 pointer-coarse:min-h-11 rounded-full border border-border-subtle bg-transparent px-4 text-body font-semibold text-foreground transition-[border-color,background-color] duration-150 group-data-[layout=mobile]/filters:min-h-10 enabled:hover:bg-tint/6 disabled:cursor-default disabled:text-soft disabled:opacity-60 focus-visible:outline-none focus-visible:shadow-focus"
-          disabled={activeFilterCount === 0} onClick={onClearFilters}>
-          {t('search.filters.clear')}
-        </button>
+        {activeFilterCount > 0 ? (
+          <Button variant="tertiary" size="sm" onClick={onClearFilters}>
+            {t('search.filters.clear')}
+          </Button>
+        ) : null}
       </div>
 
-      <FilterGroup title={t('search.filters.groupSearch')}>
-        <Field label={t('search.filters.archetype')}>
-          <input
-            type="text"
-            value={filters.archetype}
-            onChange={(event) => onFilterChange({ archetype: event.target.value })}
-            placeholder="Blue-Eyes"
-            autoComplete="off"
-            spellCheck={false}
-            className={FILTER_FIELD}
+      {context.formatAllowsLegalityFilter ? (
+        <div className="flex items-center justify-between gap-3 py-1">
+          <span className="grid min-w-0 gap-0.5">
+            <strong className="text-body font-semibold text-foreground">{t('search.filters.hideBanned')}</strong>
+            <small className="text-micro text-soft">{t('search.filters.basedOn', { format: context.formatLabel })}</small>
+          </span>
+          <Switch
+            checked={filters.legalOnly}
+            label={t('search.filters.hideBannedIn', { format: context.formatLabel })}
+            onChange={(legalOnly) => onFilterChange({ legalOnly })}
           />
-        </Field>
-
-        <Field label={t('search.filters.effectText')}>
-          <input
-            type="text"
-            value={filters.description}
-            onChange={(event) => onFilterChange({ description: event.target.value })}
-            placeholder="add 1"
-            autoComplete="off"
-            spellCheck={false}
-            className={FILTER_FIELD}
-          />
-        </Field>
-      </FilterGroup>
-
-      <FilterGroup title={t('search.filters.groupTraits')}>
-        <Field label={quickTypeMeta.exactTypeLabel}>
-          <GroupedSelect
-            value={filters.exactType}
-            groups={context.exactTypeGroups}
-            onChange={(exactType) => onFilterChange({ exactType })}
-          />
-        </Field>
-
-        <Field label={quickTypeMeta.raceLabel}>
-          <GroupedSelect value={filters.race} groups={context.raceGroups} onChange={(race) => onFilterChange({ race })} />
-        </Field>
-
-      </FilterGroup>
+        </div>
+      ) : null}
 
       {quickTypeMeta.showAttribute ? (
         <ChipGroup
@@ -123,19 +108,63 @@ export function SearchFiltersForm({
         />
       ) : null}
 
-      {context.formatAllowsLegalityFilter ? (
-        <div className="flex items-center justify-between gap-3 py-1">
-          <span className="grid min-w-0 gap-0.5">
-            <strong className="text-body font-semibold text-foreground">{t('search.filters.hideBanned')}</strong>
-            <small className="text-micro text-soft">{t('search.filters.basedOn', { format: context.formatLabel })}</small>
+      <Field label={t('search.filters.archetype')}>
+        <input
+          type="text"
+          value={filters.archetype}
+          onChange={(event) => onFilterChange({ archetype: event.target.value })}
+          placeholder="Blue-Eyes"
+          autoComplete="off"
+          spellCheck={false}
+          className={FILTER_FIELD}
+        />
+      </Field>
+
+      <div className="grid gap-3 border-t border-border-subtle pt-1">
+        <button
+          type="button"
+          aria-expanded={moreOpen}
+          aria-controls={moreId}
+          className="flex min-h-11 w-full items-center justify-between gap-2 rounded-control px-1 text-left text-body font-semibold text-foreground focus-visible:outline-none focus-visible:shadow-focus"
+          onClick={() => setMoreOpen((current) => !current)}
+        >
+          <span className="inline-flex items-center gap-2">
+            {t('search.filters.more')}
+            {moreCount > 0 ? <Badge tone="brand" size="sm">{moreCount}</Badge> : null}
           </span>
-          <Switch
-            checked={filters.legalOnly}
-            label={t('search.filters.hideBannedIn', { format: context.formatLabel })}
-            onChange={(legalOnly) => onFilterChange({ legalOnly })}
-          />
-        </div>
-      ) : null}
+          <Icon name="chevron-down" size={18} className={cx('text-muted transition-transform duration-150 motion-reduce:transition-none', moreOpen && 'rotate-180')} />
+        </button>
+
+        {moreOpen ? (
+          <div id={moreId} className="grid gap-3">
+            <div className="grid grid-cols-2 gap-x-2.5 gap-y-2 max-[379px]:grid-cols-1">
+              <Field label={quickTypeMeta.exactTypeLabel}>
+                <GroupedSelect
+                  value={filters.exactType}
+                  groups={context.exactTypeGroups}
+                  onChange={(exactType) => onFilterChange({ exactType })}
+                />
+              </Field>
+
+              <Field label={quickTypeMeta.raceLabel}>
+                <GroupedSelect value={filters.race} groups={context.raceGroups} onChange={(race) => onFilterChange({ race })} />
+              </Field>
+            </div>
+
+            <Field label={t('search.filters.effectText')}>
+              <input
+                type="text"
+                value={filters.description}
+                onChange={(event) => onFilterChange({ description: event.target.value })}
+                placeholder="add 1"
+                autoComplete="off"
+                spellCheck={false}
+                className={FILTER_FIELD}
+              />
+            </Field>
+          </div>
+        ) : null}
+      </div>
     </div>
   )
 }
@@ -170,15 +199,6 @@ function ChipGroup({
           </button>
         ))}
       </div>
-    </fieldset>
-  )
-}
-
-function FilterGroup({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <fieldset className="m-0 grid min-w-0 gap-2 border-0 p-0">
-      <legend className={LEGEND}>{title}</legend>
-      <div className="grid grid-cols-2 gap-x-2.5 gap-y-2 max-[379px]:grid-cols-1">{children}</div>
     </fieldset>
   )
 }

@@ -20,6 +20,7 @@ import { cx } from '../ui/cx'
 import { Skeleton } from '../ui/Skeleton'
 import { SearchEmptyState, SearchResultsToolbar, SearchStart } from './SearchFeedback'
 import { SearchFiltersForm } from './SearchFiltersForm'
+import { SearchFiltersToggle } from './SearchFiltersToggle'
 import { useRecentSearches } from './recent-searches'
 import { sortVisibleSearchResults } from './search-model'
 import { QUICK_TYPE_OPTIONS, type SearchSortOrder } from './search-options'
@@ -66,6 +67,13 @@ export function MobileCardSearch({
   const filterContext = useSearchFilterContext(filters, search.deckFormat, actions.onFilterChange)
   const sortedResults = useMemo(() => sortVisibleSearchResults(search.results, sortOrder), [search.results, sortOrder])
   const showResults = search.hasSearchCriteria && !filtersOpen
+  // Con los filtros abiertos la lista no se ve: el botón de volver dice cuántos resultados dan (con «+» si hay más por traer).
+  const viewResultsLabel =
+    !search.hasSearchCriteria || status !== 'success' || sortedResults.length === 0
+      ? t('search.mobile.viewResults')
+      : search.hasMore
+        ? t('search.mobile.viewResultsMore', { n: formatInteger(sortedResults.length) })
+        : t('search.mobile.viewResultsCount', { count: sortedResults.length, n: formatInteger(sortedResults.length) })
   const recentSearches = useRecentSearches()
 
   useEffect(() => {
@@ -170,24 +178,7 @@ export function MobileCardSearch({
             ) : null}
           </label>
 
-          <button
-            type="button"
-            className={cx(
-              'relative grid size-11 shrink-0 place-items-center rounded-control border text-foreground focus-visible:outline-none focus-visible:shadow-focus',
-              filtersOpen || search.activeFilterCount > 0
-                ? 'border-primary/55 bg-primary/20'
-                : 'border-border-subtle bg-surface-raised',
-            )}
-            aria-expanded={filtersOpen}
-            aria-controls="mobile-search-filters"
-            onClick={() => setFiltersOpen((current) => !current)}
-          >
-            <Icon name="sliders" />
-            <span className="sr-only">{t('search.filters.title')}</span>
-            {search.activeFilterCount > 0 ? (
-              <span className="absolute -right-1.5 -top-1.5 grid h-4.5 min-w-4.5 place-items-center rounded-full bg-primary px-1 text-micro font-bold text-white">{formatInteger(search.activeFilterCount)}</span>
-            ) : null}
-          </button>
+          <SearchFiltersToggle open={filtersOpen} activeCount={search.activeFilterCount} controls="mobile-search-filters" className="size-11" onToggle={() => setFiltersOpen((current) => !current)} />
         </form>
 
         <div className={CHIP_ROW} role="group" aria-label={t('search.label.cardType')}>
@@ -318,7 +309,7 @@ export function MobileCardSearch({
         </p>
         {filtersOpen ? (
           <Button variant="primary" size="md" onClick={() => setFiltersOpen(false)}>
-            {t('search.mobile.viewResults')}
+            {viewResultsLabel}
           </Button>
         ) : (
           <Button variant="primary" size="md" onClick={onClose}>
