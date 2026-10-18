@@ -59,7 +59,7 @@ export function SearchFiltersDrawer({ isOpen, onClose, filters, deckFormat, acti
   const formatLabel = getDeckFormatLabel(deckFormat)
 
   return (
-    <SideDrawer isOpen={isOpen} onClose={onClose} title={t('search.filters.title')} size="sheet">
+    <SideDrawer isOpen={isOpen} onClose={onClose} title={t('search.filters.title')} size="column">
       <div className="flex h-full min-h-0 flex-col">
         <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto overscroll-contain px-4 py-4 [scrollbar-width:thin]">
           <label className="grid gap-1.5">

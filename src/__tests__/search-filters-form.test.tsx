@@ -281,7 +281,7 @@ describe('el panel de búsqueda: sólo el campo y un botón de filtros', () => {
 })
 
 describe('el cajón lateral', () => {
-  it('por defecto mide la mitad de la pantalla y lleva relleno; el de la búsqueda mide la columna del builder y el de los filtros una hoja, los dos sin relleno (lo de adentro trae el suyo)', () => {
+  it('por defecto mide la mitad de la pantalla y lleva relleno; el de la búsqueda (y el de los filtros) mide la columna del builder, sin relleno (lo de adentro trae el suyo)', () => {
     const { rerender } = render(
       <SideDrawer isOpen onClose={() => {}} title="Chat">
         <p>contenido</p>
@@ -301,13 +301,18 @@ describe('el cajón lateral', () => {
     expect(screen.getByRole('dialog')).not.toHaveClass('w-1/2')
     expect(screen.getByText('contenido').parentElement).toHaveClass('p-0')
 
-    rerender(
-      <SideDrawer isOpen onClose={() => {}} title="Filtros" size="sheet">
+    // El cajón de los filtros mide lo mismo que el de la búsqueda sobre el que se abre (y en el celular, todo el ancho): se cubren justo.
+    expect(screen.getByRole('dialog')).toHaveClass('max-sm:w-full')
+  })
+
+  it('el cajón de los filtros usa el mismo tamaño que el de la búsqueda: nunca asoma uno por el costado del otro', () => {
+    render(
+      <SideDrawer isOpen onClose={() => {}} title="Filtros" size="column">
         <p>contenido</p>
       </SideDrawer>,
     )
 
-    expect(screen.getByRole('dialog')).toHaveClass('w-[min(100vw,28rem)]')
+    expect(screen.getByRole('dialog')).toHaveClass('w-[max(22.5rem,calc((100vw-15rem)*0.3))]')
     expect(screen.getByText('contenido').parentElement).toHaveClass('p-0')
   })
 })
