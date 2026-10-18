@@ -10,6 +10,7 @@ import { AppFooter } from '../components/shell/AppFooter'
 import { AppShell } from '../components/shell/AppShell'
 import { AppSidebar } from '../components/shell/AppSidebar'
 import { GroupSheet } from '../components/shell/GroupSheet'
+import { mascotsNavItem } from '../components/shell/nav-model'
 import { MobileTabBar } from '../components/shell/MobileTabBar'
 import { MobileTopBar } from '../components/shell/MobileTopBar'
 import { NavDrawer } from '../components/shell/NavDrawer'
@@ -35,13 +36,15 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('el menú de la app', () => {
-  it('agrupa los destinos en cuatro grupos: los pasos del deck, el duelo, las herramientas y la referencia', () => {
+  it('agrupa los destinos en cuatro grupos, uno por lo que se viene a hacer: el recorrido del Lab, jugar (con la calculadora y exportar), ver lo que gana y mirar las cartas', () => {
     expect(GROUPS.map((group) => [group.label, group.items.map((item) => item.key)])).toEqual([
-      ['Tu deck', ['deck-builder', 'categorization', 'probability-lab', 'workspace', 'export']],
-      ['Jugar', ['practice']],
-      ['Herramientas', ['life', 'mascots']],
-      ['Descubrir', ['meta', 'tournaments', 'replays', 'expansions', 'banlists']],
+      ['Tu deck', ['deck-builder', 'categorization', 'probability-lab', 'workspace']],
+      ['Jugar', ['practice', 'life', 'export']],
+      ['Descubrir', ['meta', 'tournaments', 'replays']],
+      ['Cartas', ['expansions', 'banlists']],
     ])
+    // Las mascotas son una preferencia, no un destino: no están en ningún grupo.
+    expect(GROUPS.flatMap((group) => group.items).some((item) => item.key === 'mascots')).toBe(false)
   })
 
   it('la práctica es una pantalla del flujo (#practice) y no un panel que se abre encima: elegirla en el menú cambia de paso', () => {
@@ -49,28 +52,33 @@ describe('el menú de la app', () => {
     expect(isDeckWorkflowStepKey('life')).toBe(false)
   })
 
-  it('la mesa de práctica sólo se ofrece con cartas en el Main; la calculadora de LP y las mascotas, siempre', () => {
+  it('la mesa de práctica sólo se ofrece con cartas en el Main; la calculadora de LP y exportar, siempre', () => {
     const sinPractica = buildAppNavGroups(STEPS, { practice: false })
-    // Sin práctica ni relay el grupo Jugar queda vacío y no se muestra.
-    expect(sinPractica.map((group) => group.key)).toEqual(['deck', 'tools', 'discover'])
-    expect(sinPractica.find((group) => group.key === 'tools')?.items.map((item) => item.key)).toEqual(['life', 'mascots'])
+    // Sin práctica ni relay, Jugar se queda con la calculadora y exportar.
+    expect(sinPractica.map((group) => group.key)).toEqual(['deck', 'duel', 'discover', 'cards'])
+    expect(sinPractica.find((group) => group.key === 'duel')?.items.map((item) => item.key)).toEqual(['life', 'export'])
   })
 
   it('el duelo con un amigo es una pantalla del flujo (#duel) que el menú ofrece sólo donde hay un relay', () => {
     expect(isDeckWorkflowStepKey('duel')).toBe(true)
     // Sin relay (o sin decirlo) el menú no lo ofrece: es como estaba antes.
-    expect(GROUPS[1]?.items.map((item) => item.key)).toEqual(['practice'])
-    expect(buildAppNavGroups(STEPS, { practice: true, duel: true })[1]?.items.map((item) => item.key)).toEqual(['practice', 'duel'])
+    expect(GROUPS[1]?.items.map((item) => item.key)).toEqual(['practice', 'life', 'export'])
+    expect(buildAppNavGroups(STEPS, { practice: true, duel: true })[1]?.items.map((item) => item.key)).toEqual(['practice', 'duel', 'life', 'export'])
     // Es una herramienta que se juega aunque todavía no haya un deck armado (quien llega por el enlace lo ve y se le avisa).
-    expect(buildAppNavGroups(STEPS, { practice: false, duel: true })[1]?.items.map((item) => item.key)).toEqual(['duel'])
+    expect(buildAppNavGroups(STEPS, { practice: false, duel: true })[1]?.items.map((item) => item.key)).toEqual(['duel', 'life', 'export'])
   })
 
-  it('las mascotas son una herramienta más del menú, con su patita, y no hay un botón suelto de mascotas abajo', () => {
-    const mascots = GROUPS.find((group) => group.key === 'tools')?.items.find((item) => item.key === 'mascots')
+  it('las mascotas son una preferencia, como el idioma: una fila con su patita abajo del menú (la misma de los destinos, no un botón suelto) que abre su panel', () => {
+    const onSelect = vi.fn()
 
-    expect(mascots).toMatchObject({ label: 'Mascotas', icon: 'paw' })
-    render(<AppSidebar groups={GROUPS} activeKey="export" onSelect={() => {}} collapsed={false} onToggleCollapsed={() => {}} />)
-    expect(screen.getAllByRole('button', { name: 'Mascotas' })).toHaveLength(1)
+    expect(mascotsNavItem()).toMatchObject({ key: 'mascots', label: 'Mascotas', icon: 'paw' })
+    render(<AppSidebar groups={GROUPS} activeKey="export" onSelect={onSelect} collapsed={false} onToggleCollapsed={() => {}} />)
+    // Una sola, y fuera de la lista de grupos.
+    expect(screen.getAllByRole('button', { name: /^Mascotas/ })).toHaveLength(1)
+    expect(screen.getByRole('navigation', { name: 'Navegación principal' })).not.toContainElement(screen.getByRole('button', { name: /^Mascotas/ }))
+
+    fireEvent.click(screen.getByRole('button', { name: /^Mascotas/ }))
+    expect(onSelect).toHaveBeenCalledWith('mascots')
   })
 
   it('el destino abierto lleva aria-current, elegir otro avisa cuál, y cómo viene cada paso se dice con palabras (no con un punto de color)', () => {
@@ -81,7 +89,7 @@ describe('el menú de la app', () => {
     expect(within(nav).getByRole('button', { name: /^Categorización de roles/ })).toHaveAttribute('aria-current', 'page')
     expect(within(nav).getByRole('button', { name: /^Deck Builder/ })).not.toHaveAttribute('aria-current')
     // Cada grupo se anuncia por su nombre.
-    expect(within(nav).getByRole('group', { name: 'Herramientas' })).toBeInTheDocument()
+    expect(within(nav).getByRole('group', { name: 'Cartas' })).toBeInTheDocument()
 
     // Listo, a medio hacer y pendiente: lo anuncian el nombre accesible y el tooltip; un punto de color en el borde del ícono parecería una notificación.
     expect(within(nav).getByRole('button', { name: /^Deck Builder. Listo/ })).toBeInTheDocument()
@@ -160,15 +168,44 @@ describe('el cajón del menú del celular', () => {
     expect(onClose).toHaveBeenCalledTimes(3)
   })
 
+  it('con los destinos trae las mascotas bajo «Personalizar» (una fila, como el idioma): abre su panel y cierra el cajón', () => {
+    const onClose = vi.fn()
+    const onSelect = vi.fn()
+    render(<NavDrawer isOpen onClose={onClose} nav={{ groups: GROUPS, activeKey: 'export', onSelect }} />)
+
+    const dialog = screen.getByRole('dialog', { name: 'Menú' })
+    const personalize = within(dialog).getByRole('heading', { name: 'Personalizar' }).closest('section')!
+    expect(within(personalize).getAllByRole('button')).toHaveLength(1)
+
+    fireEvent.click(within(personalize).getByRole('button', { name: /^Mascotas/ }))
+    expect(onSelect).toHaveBeenCalledWith('mascots')
+    expect(onClose).toHaveBeenCalledTimes(1)
+    // Los destinos, en cuatro grupos, y las mascotas una sola vez.
+    expect(within(dialog).getAllByRole('button', { name: /^Mascotas/ })).toHaveLength(1)
+    expect(within(dialog).getByRole('group', { name: 'Cartas' })).toBeInTheDocument()
+  })
+
+  it('no hay barra de pasos arriba de las pantallas del deck: se llega a cada paso desde el menú', () => {
+    render(
+      <AppShell groups={GROUPS} activeKey="categorization" onSelect={() => {}}>
+        <p>Contenido</p>
+      </AppShell>,
+    )
+
+    expect(screen.queryByRole('navigation', { name: 'Pasos del deck' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Paso 2 de 5: Roles')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^2 · Roles/ })).not.toBeInTheDocument()
+  })
+
 })
 
 describe('la barra de abajo del celular y su hoja', () => {
   it('lleva un botón por grupo, marca en ámbar el del destino abierto y avisa cuál se abrió', () => {
     const onOpen = vi.fn()
-    render(<MobileTabBar groups={GROUPS} activeKey="export" openKey={null} onOpen={onOpen} />)
+    render(<MobileTabBar groups={GROUPS} activeKey="categorization" openKey={null} onOpen={onOpen} />)
 
     const bar = screen.getByRole('navigation', { name: 'Navegación principal' })
-    expect(within(bar).getAllByRole('button').map((button) => button.textContent)).toEqual(['Tu deck', 'Jugar', 'Herramientas', 'Descubrir'])
+    expect(within(bar).getAllByRole('button').map((button) => button.textContent)).toEqual(['Tu deck', 'Jugar', 'Descubrir', 'Cartas'])
     expect(within(bar).getByRole('button', { name: 'Tu deck' })).toHaveClass('text-nav-active')
     expect(within(bar).getByRole('button', { name: 'Descubrir' })).toHaveClass('text-foreground')
 
@@ -194,8 +231,8 @@ describe('la barra de abajo del celular y su hoja', () => {
     expect(within(dialog).getByRole('button', { name: /^Replays de torneo/ })).toHaveAttribute('aria-current', 'page')
     expect(within(dialog).getByRole('button', { name: /^Replays de torneo/ })).toHaveClass('text-nav-active')
 
-    fireEvent.click(within(dialog).getByRole('button', { name: /^Banlists/ }))
-    expect(onSelect).toHaveBeenCalledWith('banlists')
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Tier lists/ }))
+    expect(onSelect).toHaveBeenCalledWith('meta')
 
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
@@ -222,20 +259,20 @@ describe('las hojas del celular, como en el lienzo', () => {
     expect(row(/^Probability Lab/)).toHaveTextContent('Estás acá')
     expect(row(/^Probability Lab/)).toHaveClass('text-nav-active')
     expect(row(/^Comparar/)).toHaveTextContent('0 builds')
-    expect(row(/^Exportar/)).toHaveTextContent('Imagen · PDF · YDK')
+    // Exportar no es parte del recorrido del Lab: no está en esta hoja (está en Jugar).
+    expect(within(dialog).queryByRole('button', { name: /^Exportar/ })).not.toBeInTheDocument()
   })
 
   it('el estado de los pasos sale de lo guardado: las builds para comparar, las sugerencias sin confirmar y las reglas propias', () => {
     const steps = buildDeckWorkflowNavigationItems({ mainDeckCount: 40, roleCardCount: 40, unclassifiedCardCount: 0, pendingReviewCount: 23, hasCompletedRoleStep: true, patternCount: 2, savedBuildCount: 2 })
-    const { dialog } = sheet(buildAppNavGroups(steps, { practice: true }), 'deck', 'export')
+    const { dialog } = sheet(buildAppNavGroups(steps, { practice: true }), 'deck', 'workspace')
 
     expect(within(dialog).getByRole('button', { name: /^Categorización de roles/ })).toHaveTextContent('23 sin confirmar')
     expect(within(dialog).getByRole('button', { name: /^Probability Lab/ })).toHaveTextContent('2 reglas tuyas')
-    expect(within(dialog).getByRole('button', { name: /^Comparar/ })).toHaveTextContent('2 builds')
-    expect(within(dialog).getByRole('button', { name: /^Exportar/ })).toHaveTextContent('Estás acá')
+    expect(within(dialog).getByRole('button', { name: /^Comparar/ })).toHaveTextContent('Estás acá')
   })
 
-  it('«Jugar»: jugar online, mirar un duelo y entrar con un enlace (Entrenar solo está en el inicio de Jugar), cada uno con su línea; con una sala en pausa, el aviso con «Volver»', () => {
+  it('«Jugar»: jugar online, mirar un duelo, entrar con un enlace (Entrenar solo está en el inicio de Jugar), la calculadora de LP y exportar el deck, cada uno con su línea; con una sala en pausa, el aviso con «Volver»', () => {
     const groups = buildAppNavGroups(STEPS, { practice: true, duel: true, paused: { room: 'ABCDEFGH', rival: 'Ana' } })
     const { dialog, onSelect } = sheet(groups, 'duel', 'duel')
 
@@ -243,6 +280,8 @@ describe('las hojas del celular, como en el lienzo', () => {
       'Jugar onlineEntrá a una sala, retá a un amigo o mirá un duelo',
       'Mirar un dueloPegá el enlace para mirar',
       'Entrar con un enlacePegá el enlace que te mandaron',
+      'Calculadora de LPVidas, reloj de ronda, moneda y dado',
+      'ExportarImagen, PDF y YDK, para el torneo o el simulador',
     ])
     expect(within(dialog).getByRole('status')).toHaveTextContent('Sala en pausa con Ana')
     expect(within(dialog).getByRole('status')).toHaveTextContent('Seguís desde donde quedó.')
@@ -255,9 +294,13 @@ describe('las hojas del celular, como en el lienzo', () => {
     expect(onSelect).toHaveBeenCalledWith('duel-join')
     fireEvent.click(within(dialog).getByRole('button', { name: /^Jugar online/ }))
     expect(onSelect).toHaveBeenCalledWith('duel')
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Calculadora de LP/ }))
+    expect(onSelect).toHaveBeenCalledWith('life')
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Exportar deck/ }))
+    expect(onSelect).toHaveBeenCalledWith('export')
   })
 
-  it('sin una sala en pausa no hay aviso, y sin relay Jugar ofrece sólo entrenar solo', () => {
+  it('sin una sala en pausa no hay aviso, y sin relay Jugar ofrece entrenar solo, la calculadora y exportar', () => {
     const withRelay = buildAppNavGroups(STEPS, { practice: true, duel: true })
     const { dialog } = sheet(withRelay, 'duel', 'duel')
 
@@ -266,15 +309,23 @@ describe('las hojas del celular, como en el lienzo', () => {
 
     const solo = sheet(buildAppNavGroups(STEPS, { practice: true }), 'duel', 'practice')
 
-    expect(within(solo.dialog).getAllByRole('listitem')).toHaveLength(1)
+    expect(within(solo.dialog).getAllByRole('listitem')).toHaveLength(3)
   })
 
-  it('Herramientas y Descubrir llevan su rótulo y, de cada destino, el nombre con una línea que explica', () => {
-    const tools = sheet(GROUPS, 'tools', 'practice')
+  it('Descubrir y Cartas llevan su rótulo y, de cada destino, el nombre con una línea que explica', () => {
+    const discover = sheet(GROUPS, 'discover', 'practice')
 
-    expect(tools.dialog).toHaveTextContent('Herramientas')
-    expect(tools.dialog).toHaveTextContent('Vidas, reloj de ronda, moneda y dado')
-    expect(tools.dialog).toHaveTextContent('Apagadas por defecto en el celular')
+    expect(discover.dialog).toHaveTextContent('Descubrir')
+    expect(discover.dialog).toHaveTextContent('Hand traps y boardbreakers de los torneos')
+    expect(discover.dialog).toHaveTextContent('Los duelos de esos decks, en video')
+    expect(discover.dialog).not.toHaveTextContent('Banlists')
+    cleanup()
+
+    const cards = sheet(GROUPS, 'cards', 'practice')
+
+    expect(cards.dialog).toHaveTextContent('Cartas')
+    expect(cards.dialog).toHaveTextContent('Sus cartas con rareza y precio')
+    expect(cards.dialog).toHaveTextContent('Prohibidas y limitadas, lista por lista')
   })
 
   it('la barra de abajo: con una hoja abierta sólo el grupo de esa hoja va en ámbar, y la de arriba dice en qué pantalla estás', () => {

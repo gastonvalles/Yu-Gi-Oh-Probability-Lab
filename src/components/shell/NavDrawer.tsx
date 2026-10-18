@@ -11,9 +11,9 @@ import { LanguageSwitcher } from '../ui/LanguageSwitcher'
 import { SiteCredit, SocialLinks } from '../ui/SocialLinks'
 import { AppBrand } from './AppBrand'
 import { BackupActions } from './BackupActions'
-import type { NavGroup } from './nav-model'
+import { mascotsNavItem, type NavGroup } from './nav-model'
 import { NAV_OVERLINE } from './rail'
-import { SidebarNav } from './SidebarNav'
+import { NavButton, SidebarNav } from './SidebarNav'
 
 /** El menú de destinos dentro del cajón: los mismos cuatro grupos de la barra de abajo y del menú lateral. En la mesa a pantalla completa (sin barra) es la única salida. */
 interface DrawerNav {
@@ -29,7 +29,7 @@ interface DrawerPanelProps {
 }
 
 /**
- * Lo de adentro del cajón del menú: la marca con su X, los destinos, el idioma (Español | English, de 44 px), «Tus datos» (guardar y restaurar la copia de
+ * Lo de adentro del cajón del menú: la marca con su X, los destinos, las mascotas, el idioma (Español | English, de 44 px), «Tus datos» (guardar y restaurar la copia de
  * seguridad) y, abajo, lo legal: las redes, la privacidad y la autoría con el aviso de sitio no oficial.
  */
 export function DrawerPanel({ onClose, nav, className }: DrawerPanelProps) {
@@ -52,6 +52,23 @@ export function DrawerPanel({ onClose, nav, className }: DrawerPanelProps) {
             }}
             className="-mx-2"
           />
+        ) : null}
+        {nav ? (
+          <section aria-labelledby={`${id}-personalize`} className="grid gap-2">
+            <h2 id={`${id}-personalize`} className={cx(NAV_OVERLINE, 'm-0')}>
+              {t('shell.settings.personalize')}
+            </h2>
+            <div className="-mx-2">
+              <NavButton
+                item={mascotsNavItem()}
+                active={false}
+                onSelect={(key) => {
+                  nav.onSelect(key)
+                  onClose()
+                }}
+              />
+            </div>
+          </section>
         ) : null}
         <section aria-labelledby={`${id}-language`} className="grid gap-2">
           <h2 id={`${id}-language`} className={cx(NAV_OVERLINE, 'm-0')}>

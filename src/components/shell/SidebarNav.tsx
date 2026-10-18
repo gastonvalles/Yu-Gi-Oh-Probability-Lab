@@ -59,7 +59,7 @@ export function SidebarNav({ groups, activeKey, onSelect, className }: SidebarNa
   )
 }
 
-function NavButton({ item, active, onSelect }: { item: NavItem; active: boolean; onSelect: (key: string) => void }) {
+export function NavButton({ item, active, onSelect }: { item: NavItem; active: boolean; onSelect: (key: string) => void }) {
   return (
     <button
       type="button"

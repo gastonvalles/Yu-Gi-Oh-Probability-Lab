@@ -14,7 +14,8 @@ fidelidad dejó sin hacer (sección 6).
   registro de jugadas, el campo visto desde arriba).
 - #276: el nombre YGOUltraLab en el aviso legal, el copyright, el manifiesto y el README (el paso del menú sigue llamándose
   «Probability Lab»). #277: la barra de abajo mide `tabBarPx()` (en rem: sigue la letra del navegador).
-- #282: la barra de cinco pasos del flujo (`FlowSteps`: Deck → Roles → Lab → Comparar → Exportar).
+- #282: la barra de cinco pasos del flujo (`FlowSteps`). **Se sacó el 2026-10-18** (Gastón: «elimina esto»); a cada paso se llega desde el menú.
+- 2026-10-18: **el menú se reagrupó** por lo que se viene a hacer: Tu deck (el recorrido del Lab: Deck · Roles · Lab · Comparar) · Jugar (con la Calculadora de LP, que se usa jugando, y Exportar, que es llevar el deck al torneo o al simulador: no es parte del Lab) · Descubrir (Tier lists, Decks de torneo, Replays) · Cartas (Expansiones, Banlists). Se fue el grupo «Herramientas» (juntaba dos cosas que no se parecían) y las mascotas pasaron a ser una preferencia: una fila abajo del menú, con el idioma, y en el cajón del celular bajo «Personalizar».
 - #293: **los menús del celular, como en el lienzo** (sólo celular; el menú lateral de escritorio no cambió): la barra de arriba
   dice la pantalla; las hojas de grupo se apoyan sobre la barra de abajo (que queda a mano) y llevan el estado de cada paso del
   deck, una línea que explica cada destino y, en Duelo, el aviso de una sala en pausa; el cajón trae el idioma (Español | English),

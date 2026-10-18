@@ -4,9 +4,9 @@ import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { LanguageSwitcher } from '../ui/LanguageSwitcher'
 import { AppBrand } from './AppBrand'
-import type { NavGroup } from './nav-model'
+import { mascotsNavItem, type NavGroup } from './nav-model'
 import { RAIL_LABEL, RAIL_ROW, RAIL_SLOT } from './rail'
-import { SidebarNav } from './SidebarNav'
+import { NavButton, SidebarNav } from './SidebarNav'
 
 interface AppSidebarProps {
   groups: NavGroup[]
@@ -17,7 +17,7 @@ interface AppSidebarProps {
   className?: string
 }
 
-/** Abajo del todo del menú (y del cajón del celular): el idioma. Las mascotas son una herramienta más del menú (abren su modal). */
+/** Abajo del todo del menú (y del cajón del celular): el idioma. Las mascotas van arriba de esto, como una preferencia más (abren su modal). */
 export function MenuTools({ className }: { className?: string }) {
   return (
     <div className={cx('flex items-center justify-between gap-2', className)}>
@@ -47,8 +47,12 @@ export function AppSidebar({ groups, activeKey, onSelect, collapsed, onToggleCol
       </div>
       <SidebarNav groups={groups} activeKey={activeKey} onSelect={onSelect} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pb-3 [scrollbar-width:thin]" />
       <div className="shrink-0 px-3 pb-3">
+        {/* Las preferencias, bajo una sola línea: las mascotas (una fila como las de los destinos, que se queda en la columna de íconos al contraer) y el idioma. */}
+        <div className="border-t border-nav-raised pt-2">
+          <NavButton item={mascotsNavItem()} active={false} onSelect={onSelect} />
+        </div>
         {/* Contraído, el idioma se desvanece y no se pueden tocar ni enfocar; el renglón conserva su alto para que la flecha de abajo no se mueva. */}
-        <MenuTools className="border-t border-nav-raised pb-2 pt-3 transition-[opacity,visibility] duration-150 group-data-[collapsed=true]/sidebar:invisible group-data-[collapsed=true]/sidebar:opacity-0 motion-reduce:transition-none" />
+        <MenuTools className="pb-2 pt-2 transition-[opacity,visibility] duration-150 group-data-[collapsed=true]/sidebar:invisible group-data-[collapsed=true]/sidebar:opacity-0 motion-reduce:transition-none" />
         <button
           type="button"
           aria-expanded={!collapsed}

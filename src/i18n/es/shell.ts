@@ -1,4 +1,4 @@
-/** Armazón de la app: barra de pasos, pie, mascotas, avisos, calculadora de LP y los componentes de `ui/`. */
+/** Armazón de la app: menú, pie, mascotas, avisos, calculadora de LP y los componentes de `ui/`. */
 export const shell = {
   'shell.nav.main': 'Navegación principal',
   'shell.brand.unofficial': 'Sitio no oficial',
@@ -20,6 +20,7 @@ export const shell = {
   'shell.blurb.watch': 'Pegá el enlace para mirar',
   'shell.blurb.join': 'Pegá el enlace que te mandaron',
   'shell.blurb.life': 'Vidas, reloj de ronda, moneda y dado',
+  'shell.blurb.export': 'Imagen, PDF y YDK, para el torneo o el simulador',
   'shell.blurb.mascots': 'Apagadas por defecto en el celular',
   'shell.blurb.meta': 'Hand traps y boardbreakers de los torneos',
   'shell.blurb.tournaments': 'Los que llegaron al top, completos',
@@ -33,6 +34,7 @@ export const shell = {
   'shell.paused.resume': 'Volver',
   'shell.settings.data': 'Tus datos',
   'shell.settings.title': 'Menú',
+  'shell.settings.personalize': 'Personalizar',
   'shell.settings.language': 'Idioma',
   'shell.nav.open': 'Abrir el menú',
   'shell.nav.close': 'Cerrar el menú',
@@ -40,15 +42,13 @@ export const shell = {
   'shell.nav.expand': 'Expandir menú',
   'shell.nav.group.deck': 'Tu deck',
   'shell.nav.group.duel': 'Jugar',
-  'shell.nav.group.tools': 'Herramientas',
+  'shell.nav.group.cards': 'Cartas',
   'shell.nav.group.discover': 'Descubrir',
 
   'shell.tone.complete': 'Listo',
   'shell.tone.progress': 'En progreso',
   'shell.tone.pending': 'Pendiente',
 
-  'shell.flow.label': 'Pasos del deck',
-  'shell.flow.progress': 'Paso {step} de {total}: {name}',
   'shell.step.deck.label': 'Deck',
   'shell.step.deck.title': 'Deck Builder',
   'shell.step.deck.ready': 'Base principal lista.',
