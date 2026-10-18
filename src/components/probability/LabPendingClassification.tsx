@@ -59,7 +59,7 @@ export function LabPendingClassification({ cards, message, onSetOrigin, onToggle
       <Card tone={pendingCount > 0 ? 'warning' : 'success'} className="flex items-center justify-between gap-4">
         <div className="grid min-w-0 gap-0.5">
           <p className={cx('m-0', overline)}>{pendingCount > 0 ? t('lab.pending.overline') : t('lab.pending.allDone')}</p>
-          <Heading level="section" as="h3" className="leading-tight">
+          <Heading level="section" className="leading-tight">
             {pendingCount > 0
               ? t('lab.pending.count', { count: pendingCount, n: formatInteger(pendingCount) })
               : t('lab.pending.none')}

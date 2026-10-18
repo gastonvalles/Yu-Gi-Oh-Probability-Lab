@@ -22,7 +22,7 @@ export function DeckZoneHeader({ zone, title, cards, count = cards.length, class
     <div className={cx('flex min-w-0 items-center justify-between gap-3 px-0.5', className)}>
       <div className="flex min-w-0 items-center gap-2.5">
         <span className="size-2.5 shrink-0 rounded-full" style={{ background: ZONE_STYLES[zone].dot }} aria-hidden="true" />
-        <Heading level="section" as="h3" className="whitespace-nowrap">
+        <Heading level="section" className="whitespace-nowrap">
           {title.replace(' Deck', '')} <span className="font-medium text-muted tabular-nums">[{formatInteger(count)}]</span>
         </Heading>
       </div>

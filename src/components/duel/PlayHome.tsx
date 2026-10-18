@@ -295,7 +295,7 @@ export function PlayHome({ view, name, onName, builder, imported, onImport, deck
       {rooms ? (
         <section aria-label={t('duel.arena.title')} className="grid gap-2">
           <div className="flex items-center justify-between gap-2">
-            <Heading level="card">{t('duel.arena.title')}</Heading>
+            <Heading level="card" as="h2">{t('duel.arena.title')}</Heading>
             <IconButton tone="raised" size="sm" aria-label={t('duel.arena.refresh')} title={t('duel.arena.refresh')} onClick={refresh}>
               <Icon name="refresh" />
             </IconButton>
@@ -341,7 +341,7 @@ export function PlayHome({ view, name, onName, builder, imported, onImport, deck
 
               {shownLive.length > 0 ? (
                 <div className="grid gap-2">
-                  <Heading level="card">{t('duel.arena.live')}</Heading>
+                  <Heading level="card" as="h2">{t('duel.arena.live')}</Heading>
                   <ul className="m-0 grid list-none gap-2 p-0">
                     {shownLive.map((duel) => {
                       const full = duel.watchers >= MAX_SPECTATORS

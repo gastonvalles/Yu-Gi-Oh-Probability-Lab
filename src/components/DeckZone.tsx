@@ -37,6 +37,8 @@ interface DeckZoneProps {
   highlightedCardIds?: ReadonlySet<number>
   /** Qué hace tocar una carta (p. ej. «Mover X al Side Deck»): con esto las cartas son botones que se usan con el teclado (Enter o espacio). */
   cardAction?: (card: DeckCardInstance) => string
+  /** Con teclado, Supr o Retroceso sobre una carta enfocada la quita del deck (lo mismo que el clic derecho). Sólo el builder: en otras pantallas `onRemoveCard` no es quitar. */
+  keyboardRemove?: boolean
   onDeckCardPointerDown: (event: ReactPointerEvent<HTMLElement>, instanceId: string) => void
   onDeckCardClick: (instanceId: string) => void
   onRemoveCard: (instanceId: string) => void
@@ -56,6 +58,7 @@ export const DeckZone = memo(function DeckZone({
   readOnly = false,
   highlightedCardIds,
   cardAction,
+  keyboardRemove = false,
   onDeckCardPointerDown,
   onDeckCardClick,
   onRemoveCard,
@@ -142,13 +145,16 @@ export const DeckZone = memo(function DeckZone({
             if (event.key === 'Enter' || event.key === ' ') {
               event.preventDefault()
               onDeckCardClick(card.instanceId)
+            } else if (keyboardRemove && !readOnly && (event.key === 'Delete' || event.key === 'Backspace')) {
+              event.preventDefault()
+              onRemoveCard(card.instanceId)
             }
           },
         }
       : {}
 
   const renderDeckCard = (card: DeckCardInstance, index: number) => (
-    <article
+    <div
       key={card.instanceId}
       {...cardButton(card)}
       data-deck-zone={zone}
@@ -167,7 +173,7 @@ export const DeckZone = memo(function DeckZone({
         className="block h-auto w-full min-w-0 bg-input"
         limitCard={card.apiCard}
       />
-    </article>
+    </div>
   )
 
   const zoneHeader = (className: string) => <DeckZoneHeader zone={zone} title={title} cards={cards} className={className} />
@@ -244,7 +250,7 @@ export const DeckZone = memo(function DeckZone({
         } as CSSProperties}
       >
         {cards.map((card, index) => (
-          <article
+          <div
             key={card.instanceId}
             {...cardButton(card)}
             data-deck-zone={zone}
@@ -261,7 +267,7 @@ export const DeckZone = memo(function DeckZone({
               className="block aspect-[0.72] w-full min-w-0 bg-input object-cover"
               limitCard={card.apiCard}
             />
-          </article>
+          </div>
         ))}
       </div>
     </section>

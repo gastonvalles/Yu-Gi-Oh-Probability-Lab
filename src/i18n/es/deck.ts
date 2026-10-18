@@ -46,6 +46,10 @@ export const deck = {
   'deck.classic.shortcut.add': 'agregar',
   'deck.classic.shortcut.removeKeys': 'Clic derecho',
   'deck.classic.shortcut.remove': 'quitar del deck',
+  'deck.classic.shortcut.tabKeys': 'Tab + Enter',
+  'deck.classic.shortcut.tab': 'recorrer y ver cada carta',
+  'deck.classic.shortcut.deleteKeys': 'Supr',
+  'deck.classic.shortcut.delete': 'quitar la carta enfocada',
 
   // --- Pantalla del Deck Builder
   'deck.builder.title': 'Armá tu deck',
@@ -88,6 +92,7 @@ export const deck = {
     one: '{count} ajuste para {format}',
     other: '{count} ajustes para {format}',
   },
+  'deck.card.keyboard': '{name}. Enter para ver el detalle, Supr para quitarla del deck.',
   'deck.builder.issues.more': '+ {count} más',
   // La próxima lista (todavía no rige) vuelve más estrictas cartas que ya están en el deck: hoy es legal, es para ir cambiándolo.
   'deck.builder.upcoming.title': {

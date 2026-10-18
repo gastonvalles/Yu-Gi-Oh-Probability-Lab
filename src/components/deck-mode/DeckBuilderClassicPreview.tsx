@@ -31,6 +31,8 @@ const ZONE_SHORT_LABEL: Record<DeckZone, string> = { main: 'Main', extra: 'Extra
 const SHORTCUTS = [
   { keys: 'deck.classic.shortcut.addKeys', label: 'deck.classic.shortcut.add' },
   { keys: 'deck.classic.shortcut.removeKeys', label: 'deck.classic.shortcut.remove' },
+  { keys: 'deck.classic.shortcut.tabKeys', label: 'deck.classic.shortcut.tab' },
+  { keys: 'deck.classic.shortcut.deleteKeys', label: 'deck.classic.shortcut.delete' },
 ] as const
 
 interface DeckBuilderClassicPreviewProps {
@@ -57,13 +59,13 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, navigation, 
   const artUrl = art?.imageUrl ?? card?.imageUrl ?? null
 
   return (
-    <aside className="flex h-full max-h-full min-h-0 flex-col gap-3 overflow-y-auto overflow-x-hidden overscroll-contain border-r border-border-subtle bg-card-background/50 px-4 pb-4 pt-4 [scrollbar-gutter:stable] [scrollbar-width:thin] [&>*]:shrink-0">
+    <div className="flex h-full max-h-full min-h-0 flex-col gap-3 overflow-y-auto overflow-x-hidden overscroll-contain border-r border-border-subtle bg-card-background/50 px-4 pb-4 pt-4 [scrollbar-gutter:stable] [scrollbar-width:thin] [&>*]:shrink-0">
       {card ? (
         <>
           {/* El botón de precios va al lado del nombre y no sobre la carta: ella se inclina en 3D y el botón no tiene que moverse con ella. */}
           <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-1">
             <span aria-hidden="true" />
-            <Heading level="section" as="h3" className="text-center leading-tight">
+            <Heading level="section" className="text-center leading-tight">
               {card.name}
             </Heading>
             <CardPricesButton className="justify-self-end" onClick={() => setPricesOpen(true)} />
@@ -160,6 +162,6 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, navigation, 
           </ul>
         </div>
       )}
-    </aside>
+    </div>
   )
 }

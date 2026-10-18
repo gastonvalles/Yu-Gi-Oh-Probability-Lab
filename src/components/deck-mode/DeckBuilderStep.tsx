@@ -1,9 +1,9 @@
-import { useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react'
 
 import { banlistStatusLabel, formatBanlistDate } from '../../app/banlists'
 import { buildUpcomingLimitNotes, getDeckFormatLabel } from '../../app/deck-format'
 import { getDesktopCompactDeckColumnCount } from '../../app/deck-zone-layout'
-import type { DeckBuilderState, DeckZone as DeckZoneType } from '../../app/model'
+import type { DeckBuilderState, DeckCardInstance, DeckZone as DeckZoneType } from '../../app/model'
 import type { DeckDropIndicatorState } from '../../app/use-deck-pointer-drag'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useBodyScrollLock } from '../../app/use-overlay'
@@ -162,6 +162,8 @@ export function DeckBuilderStep({
   const hasHiddenIssues = formatIssues.length > visibleFormatIssues.length
   const showGenesysPoints = deckFormat === 'genesys' && genesysPointTotal !== null && genesysPointCap !== null
   const showFormatIssues = deckFormat !== 'genesys' && formatIssues.length > 0
+  // Cada carta del deck se enfoca con Tab: el nombre dice qué hace Enter (ver el detalle) y Supr (quitarla).
+  const deckCardAction = useCallback((card: DeckCardInstance) => t('deck.card.keyboard', { name: card.name }), [])
   const upcomingLimits = useMemo(() => buildUpcomingLimitNotes(deckBuilder, deckFormat), [deckBuilder, deckFormat])
   // La próxima banlist (todavía no rige) vuelve más estrictas cartas del deck: aviso, no error (hoy el deck es legal). Va en el celular y en escritorio.
   const upcomingNote = upcomingLimits ? (
@@ -370,6 +372,8 @@ export function DeckBuilderStep({
                     desktopCompactColumnCount={desktopCompactColumnCount}
                     variant="classic-builder"
                     selectedCardId={selectedCardId}
+                    cardAction={deckCardAction}
+                    keyboardRemove
                     onDeckCardPointerDown={onDeckCardPointerDown}
                     onDeckCardClick={onDeckCardClick}
                     onRemoveCard={onRemoveDeckCard}
@@ -406,7 +410,7 @@ export function DeckBuilderStep({
             </div>
           </article>
 
-          <aside className="min-h-0 overflow-hidden border-l border-border-subtle bg-card-background/50 p-0 min-[1101px]:flex min-[1101px]:h-full min-[1101px]:max-h-full min-[1101px]:flex-col">
+          <div className="min-h-0 overflow-hidden border-l border-border-subtle bg-card-background/50 p-0 min-[1101px]:flex min-[1101px]:h-full min-[1101px]:max-h-full min-[1101px]:flex-col">
             <DesktopSearchPanel
               search={search}
               actions={searchActions}
@@ -417,7 +421,7 @@ export function DeckBuilderStep({
               onAddCard={onAddSearchResultToDefaultZone}
               onResultPointerDown={handleSearchCardPointerDown}
             />
-          </aside>
+          </div>
         </div>
 
         <DeckImportDrawer
@@ -555,6 +559,8 @@ export function DeckBuilderStep({
                       ? 'invalid'
                       : 'idle'
                 }
+                cardAction={deckCardAction}
+                keyboardRemove
                 onDeckCardPointerDown={onDeckCardPointerDown}
                 onDeckCardClick={onDeckCardClick}
                 onRemoveCard={onRemoveDeckCard}

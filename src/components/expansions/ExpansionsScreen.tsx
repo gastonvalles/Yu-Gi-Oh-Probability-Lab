@@ -178,7 +178,7 @@ function ExpansionList({ expansions, activeId, onPick }: { expansions: Expansion
       <nav aria-label={t('catalog.sets.listLabel')} className="grid max-h-[70dvh] content-start gap-3 overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin] min-[1101px]:max-h-none min-[1101px]:min-h-0">
         {groups.map(([year, items]) => (
           <section key={year} className="grid gap-0.5">
-            <h3 className={cx(overline, 'px-1')}>{year || t('catalog.sets.noDate')}</h3>
+            <h2 className={cx(overline, 'px-1')}>{year || t('catalog.sets.noDate')}</h2>
             {items.map((expansion) => (
               <ExpansionRow
                 key={expansion.id}
