@@ -217,6 +217,21 @@ describe('la pantalla del duelo', () => {
     expect(extractRoomCode(window.location.hash)).toBeNull()
   })
 
+  it('avisa si es el lobby (ahí está el buscador de cartas de la app) o ya la sala: sin sala es lobby, con sala no, y al irse de la pantalla deja de serlo', () => {
+    const onLobbyChange = vi.fn()
+    const view = render(<DuelScreen {...screenProps({ onLobbyChange })} />)
+
+    expect(onLobbyChange).toHaveBeenLastCalledWith(true)
+
+    createRoom(view)
+
+    expect(onLobbyChange).toHaveBeenLastCalledWith(false)
+
+    view.unmount()
+
+    expect(onLobbyChange).toHaveBeenLastCalledWith(false)
+  })
+
   it('las reglas se recuerdan: «Guardar reglas» las deja para la próxima vez y se ven en el renglón del inicio', () => {
     const view = render(<DuelScreen {...screenProps()} />)
 

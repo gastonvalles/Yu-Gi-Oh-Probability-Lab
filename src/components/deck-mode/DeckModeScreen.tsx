@@ -108,9 +108,6 @@ export function DeckModeScreen() {
   const isCategorizationStep = activeStep === 'categorization'
   const isPracticeStep = activeStep === 'practice'
   const isDuelStep = activeStep === 'duel'
-  // El buscador de cartas está en todas las pantallas menos el builder (que ya lo trae) y el duelo (que no se interrumpe).
-  const searchAvailable = !isDeckBuilderStep && !isDuelStep
-  const searchActive = searchOpen && searchAvailable
   // En el celular sólo la mesa del duelo es a pantalla completa (sin pie ni barra de abajo); el lobby, la sala y el siding llevan el armazón de siempre. En escritorio no cambia: el duelo ocupa todo.
   const [duelTable, setDuelTable] = useState(false)
   // La práctica y el duelo juegan con las mismas copias del deck armado.
@@ -120,6 +117,11 @@ export function DeckModeScreen() {
     const url = duelRelayUrl()
     return url ? { play: connectToRelay(url), watch: connectSpectatorToRelay(url), rooms: createRoomsApi(url) } : null
   }, [])
+  // El buscador de cartas está siempre, también en el lobby del duelo, salvo donde estorba o ya está: el builder (trae el suyo), la práctica y la sala o la mesa de un duelo.
+  // El lobby avisa que lo es (`onLobbyChange`); hasta que lo hace —mientras baja la pantalla del duelo— cuenta como duelo, así el buscador no aparece un momento y se va.
+  const [duelLobby, setDuelLobby] = useState(false)
+  const searchAvailable = !isDeckBuilderStep && !isPracticeStep && (!isDuelStep || duelConnect === null || duelLobby)
+  const searchActive = searchOpen && searchAvailable
   // La partida vive acá y no en la pantalla: salir de la práctica (a la calculadora, al builder) no pierde la mano ni el combo en curso.
   const practice = usePracticeSession({
     active: isPracticeStep,
@@ -207,6 +209,13 @@ export function DeckModeScreen() {
   useEffect(() => {
     setSearchOpen(false)
   }, [activeStep])
+
+  // Si el buscador deja de estar disponible estando abierto (el lobby pasó a sala), se cierra: al volver al lobby no reaparece solo.
+  useEffect(() => {
+    if (!searchAvailable) {
+      setSearchOpen(false)
+    }
+  }, [searchAvailable])
 
   useEffect(() => {
     if (!searchAvailable) {
@@ -343,7 +352,7 @@ export function DeckModeScreen() {
             {t('shell.nav.group.duel')}
           </Heading>
           {duelConnect ? (
-            <LazyDuelScreen handSize={controller.probability.handSize} mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} sideIds={matDeck.sideIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} connect={duelConnect.play} connectSpectator={duelConnect.watch} rooms={duelConnect.rooms} onImmersiveChange={setDuelTable} />
+            <LazyDuelScreen handSize={controller.probability.handSize} mainIds={matDeck.mainIds} extraIds={matDeck.extraIds} sideIds={matDeck.sideIds} cardsById={matDeck.cardsById} deckName={controller.exportDeck.deckName} connect={duelConnect.play} connectSpectator={duelConnect.watch} rooms={duelConnect.rooms} onImmersiveChange={setDuelTable} onLobbyChange={setDuelLobby} />
           ) : (
             <Callout tone="info" className="m-4">{t('duel.unavailable')}</Callout>
           )}
