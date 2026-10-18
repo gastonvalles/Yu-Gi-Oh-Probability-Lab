@@ -4,7 +4,9 @@ import type { ApiCardSearchResult, ApiSearchPage } from './types'
 
 // El catálogo completo (~14.600 cartas) se guarda ya procesado: leerlo cuesta una fracción de bajar, parsear y clasificar los ~21 MB crudos en cada visita.
 // Subí la versión si cambia lo que devuelve el parser o la forma de ApiCardSearchResult: lo guardado no se vuelve a pasar por el parser.
-const CATALOG_CACHE_NAME = 'ygoprodeck-catalog-v1'
+const CATALOG_CACHE_NAME = 'ygoprodeck-catalog-v2'
+// La copia de antes (sin escala, año ni formatos): se borra al guardar la primera página nueva.
+const OLD_CATALOG_CACHE_NAMES = ['ygoprodeck-catalog-v1']
 // Donde client.ts guardaba las páginas crudas del catálogo, junto con las fichas sueltas de los modales.
 const RAW_CACHE_NAME = 'ygoprodeck-cardinfo-v1'
 
@@ -67,7 +69,7 @@ export async function writeCatalogPage(offset: number, { results, hasMore }: Api
     return
   }
 
-  // Con la copia procesada a salvo, las páginas crudas de antes (~21 MB) sobran. Con una vez por sesión alcanza.
+  // Con la copia procesada a salvo, las páginas crudas de antes (~21 MB) y la copia de la versión anterior sobran. Con una vez por sesión alcanza.
   if (!rawPagesDropped) {
     rawPagesDropped = true
     void dropRawCatalogPages()
@@ -76,6 +78,10 @@ export async function writeCatalogPage(offset: number, { results, hasMore }: Api
 
 async function dropRawCatalogPages(): Promise<void> {
   try {
+    for (const name of OLD_CATALOG_CACHE_NAMES) {
+      await caches.delete(name)
+    }
+
     const cache = await openCache(RAW_CACHE_NAME)
 
     if (!cache) {

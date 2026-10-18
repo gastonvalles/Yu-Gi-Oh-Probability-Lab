@@ -56,6 +56,16 @@ describe('chips de filtros activos', () => {
     expect(chips[1]?.updates).toEqual({ atk: EMPTY_RANGE })
   })
 
+  it('el pool de cartas, la escala de Péndulo y el año también tienen chip (y se quitan solos)', () => {
+    const chips = chipsOf({ pools: ['tcg-only', 'master-duel'], scale: { min: '', max: '3' }, year: { min: '2019', max: '2021' } })
+
+    expect(chips.map((chip) => [chip.key, chip.label, chip.value, chip.updates])).toEqual([
+      ['pools', 'Pool de cartas', 'Solo TCG, Master Duel', { pools: [] }],
+      ['scale', 'Escala de Péndulo', '≤ 3', { scale: EMPTY_RANGE }],
+      ['year', 'Año de salida', '2019–2021', { year: EMPTY_RANGE }],
+    ])
+  })
+
   it('sólo cuentan los filtros del formato: sin lista de prohibidas no hay limitación ni «sin prohibidas»; los puntos son de Genesys', () => {
     expect(chipsOf({ limits: ['forbidden'], legalOnly: true }, 'unlimited')).toEqual([])
     expect(chipsOf({ limits: ['forbidden'] }, 'tcg').map((chip) => [chip.label, chip.value])).toEqual([['Limitación', 'Prohibida']])

@@ -8,7 +8,7 @@ import {
   sortSearchResults,
   type CardSearchFilters,
 } from '../app/card-search'
-import { abilitiesOf, EFFECT_PATTERNS, frameOf, limitOf, spellTrapKindOf, type EffectKey } from '../app/card-filters'
+import { abilitiesOf, frameOf, limitOf, matchesEffect, spellTrapKindOf, type EffectKey } from '../app/card-filters'
 import { getCardCopyLimit } from '../app/deck-format'
 import { normalizeSearchText } from '../app/utils'
 import type { BanlistStatus, DeckFormat } from '../types'
@@ -65,6 +65,14 @@ const within = (value: number | null, range: { min: string; max: string }) => {
 }
 const stat = (value: string | null) => (value === null || Number.isNaN(Number(value)) ? null : Number(value))
 const same = (left: string | null, right: string) => (left ?? '').toLowerCase() === right.toLowerCase()
+// Los bits de `POOL_BITS` escritos a mano: tcg 1, ocg 2, master-duel 4, duel-links 8, speed-duel 16.
+const inPool = (card: ApiCardSearchResult, key: string) => {
+  const pools = card.pools ?? 0
+  const tcg = (pools & 1) !== 0
+  const ocg = (pools & 2) !== 0
+
+  return key === 'tcg' ? tcg : key === 'ocg' ? ocg : key === 'tcg-only' ? tcg && !ocg : key === 'ocg-only' ? ocg && !tcg : (pools & ({ 'master-duel': 4, 'duel-links': 8, 'speed-duel': 16 }[key] ?? 0)) !== 0
+}
 
 /** Los filtros de chips, cotas y efectos, uno por uno y de la forma más directa: lo que el filtro compilado y la máscara de efectos tienen que seguir dando. */
 function naiveLocalMatch(card: ApiCardSearchResult, filters: CardSearchFilters, deckFormat: DeckFormat): boolean {
@@ -77,10 +85,13 @@ function naiveLocalMatch(card: ApiCardSearchResult, filters: CardSearchFilters, 
     (filters.races.length === 0 || (isMonster(card) && filters.races.some((value) => same(card.race, value)))) &&
     (filters.abilities.length === 0 || filters.abilities.some((ability) => (abilitiesOf(card) as string[]).includes(ability))) &&
     (filters.limits.length === 0 || !hasLimits || filters.limits.includes(limitOf(card, deckFormat))) &&
-    (filters.effects.length === 0 || filters.effects.some((key) => EFFECT_PATTERNS[key as EffectKey].test(card.description ?? ''))) &&
+    (filters.pools.length === 0 || filters.pools.some((key) => inPool(card, key))) &&
+    (filters.effects.length === 0 || filters.effects.some((key) => matchesEffect(key as EffectKey, card.description))) &&
     within(isMonster(card) ? (card.level ?? card.linkValue) : null, filters.level) &&
     within(stat(card.atk), filters.atk) &&
     within(stat(card.def), filters.def) &&
+    within(card.scale ?? null, filters.scale) &&
+    within(card.year ?? null, filters.year) &&
     (deckFormat !== 'genesys' || within(card.genesys.points, filters.genesysPoints))
   )
 }
@@ -185,16 +196,18 @@ const BASE_CATALOG: ApiCardSearchResult[] = [
 
 // Estadísticas de algunas cartas de arriba (con «?» y sin datos, para las cotas).
 const STATS: Record<number, Partial<ApiCardSearchResult>> = {
-  1: { atk: '3000', def: '2500', genesys: { points: 8 } },
-  2: { atk: '4500', def: '3800' },
-  3: { atk: '2500', def: '2100' },
-  4: { atk: '2000', def: '1700' },
-  5: { atk: '2500', def: '2100' },
   6: { atk: '2400', def: '2000' },
   7: { atk: '2500', def: '1500' },
   20: { atk: '1000', def: '600' },
   26: { atk: '2300' },
   30: { atk: '?', def: '?' },
+  // Escala, año y formatos (tcg 1, ocg 2, master-duel 4, duel-links 8, speed-duel 16) de algunas: el resto queda sin datos, como una carta que no vino del catálogo.
+  1: { atk: '3000', def: '2500', genesys: { points: 8 }, year: 2002, pools: 1 | 2 | 4 },
+  2: { atk: '4500', def: '3800', year: 2004, pools: 1 | 2 | 8 },
+  3: { atk: '2500', def: '2100', year: 2019, pools: 1 },
+  4: { atk: '2000', def: '1700', year: 2019, pools: 2 },
+  5: { atk: '2500', def: '2100', year: 2021, pools: 2 | 4 },
+  40: { scale: 1, year: 2014, pools: 1 | 2 },
 }
 const CATALOG: ApiCardSearchResult[] = BASE_CATALOG.map((entry) => ({ ...entry, ...STATS[entry.ygoprodeckId] }))
 
@@ -230,6 +243,14 @@ const FILTERS: Array<Partial<CardSearchFilters>> = [
   { effects: ['destroy-spell-trap', 'destroy-monster', 'negate'] },
   { effects: ['special-summon'], attributes: ['EARTH', 'WIND'] },
   { genesysPoints: range('3', '5') },
+  { pools: ['tcg'] },
+  { pools: ['tcg-only'] },
+  { pools: ['ocg-only', 'master-duel'] },
+  { pools: ['duel-links', 'speed-duel'], frames: ['effect', 'normal'] },
+  { scale: range('0', '3') },
+  { scale: range('', '1'), frames: ['pendulum'] },
+  { year: range('2019', '') },
+  { year: range('2002', '2004'), pools: ['tcg'] },
   { archetype: 'blue-eyes' },
   { archetype: 'Évocateur' },
   { archetype: 'evocateur' },
@@ -312,6 +333,9 @@ describe('búsqueda local en el catálogo', () => {
       atk: fc.constantFrom(null, '0', '?', '1500', '2500'),
       def: fc.constantFrom(null, '?', '1000', '2000'),
       points: fc.constantFrom(null, 1, 3, 5),
+      scale: fc.constantFrom(undefined, null, 0, 1, 4, 8),
+      year: fc.constantFrom(undefined, null, 2002, 2014, 2019, 2023),
+      pools: fc.constantFrom(undefined, 0, 1, 2, 3, 4, 8, 16, 3 | 4),
       archetype: fc.constantFrom(null, 'Blue-Eyes', 'Dark Magician', 'Évocateur'),
       banlist: fc.record({ tcg: status, ocg: status, goat: status }),
     })
@@ -326,6 +350,9 @@ describe('búsqueda local en el catálogo', () => {
         atk: spec.atk,
         def: spec.def,
         genesys: { points: spec.points },
+        ...(spec.scale !== undefined ? { scale: spec.scale } : {}),
+        ...(spec.year !== undefined ? { year: spec.year } : {}),
+        ...(spec.pools !== undefined ? { pools: spec.pools } : {}),
         archetype: spec.archetype,
         banlist: spec.banlist,
       }),
@@ -347,10 +374,13 @@ describe('búsqueda local en el catálogo', () => {
     races: subset(['dragon', 'Warrior', 'Spellcaster']),
     abilities: subset(['toon', 'flip', 'tuner', 'non-effect']),
     limits: subset(['forbidden', 'limited', 'semi-limited', 'unlimited']),
+    pools: subset(['tcg', 'ocg', 'tcg-only', 'ocg-only', 'master-duel', 'duel-links', 'speed-duel']),
     effects: subset(['banish', 'draw', 'search', 'special-summon', 'destroy-monster', 'destroy-spell-trap', 'negate', 'graveyard']),
     level: rangeArbitrary,
     atk: rangeArbitrary,
     def: rangeArbitrary,
+    scale: rangeArbitrary,
+    year: fc.constantFrom(range('', ''), range('', ''), range('2005', ''), range('', '2014'), range('2002', '2019'), range('2023', '2023')),
     genesysPoints: rangeArbitrary,
   })
 

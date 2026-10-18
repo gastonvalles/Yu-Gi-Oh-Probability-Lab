@@ -1,9 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import genesysCardData from '../data/genesys-card-data.json'
+import { POOL_BITS } from '../ygoprodeck/release'
 import type { ApiCardSearchResult } from '../ygoprodeck/types'
 
-const CATALOG_CACHE = 'ygoprodeck-catalog-v1'
+const CATALOG_CACHE = 'ygoprodeck-catalog-v2'
+// La copia de la versión anterior (sin escala, año ni formatos): no se lee y se borra al guardar la primera página.
+const OLD_CATALOG_CACHE = 'ygoprodeck-catalog-v1'
 const RAW_CACHE = 'ygoprodeck-cardinfo-v1'
 const PAGE_URL = (offset: number) => `https://db.ygoprodeck.com/__catalog/v1?offset=${offset}`
 const RAW_CATALOG_URL = (offset: number) => `https://db.ygoprodeck.com/api/v7/cardinfo.php?num=1000&offset=${offset}`
@@ -32,6 +35,7 @@ function stubCaches(failPut = false) {
         delete: async (request: Request) => store.delete(request.url),
       }
     },
+    delete: async (name: string) => stores.delete(name),
   })
 
   return stores
@@ -146,6 +150,19 @@ describe('catalog-cache', () => {
     expect([...stores.get(CATALOG_CACHE)!.keys()]).toEqual([PAGE_URL(0)])
   })
 
+  it('la copia procesada de la versión anterior no se lee y se borra al guardar la primera página nueva', async () => {
+    const stores = stubCaches()
+    stores.set(OLD_CATALOG_CACHE, new Map([[PAGE_URL(0), JSON.stringify({ savedAt: Date.now(), hasMore: false, results: [card(9, 'Vieja')] })]]))
+    const { readCatalogPage, writeCatalogPage } = await import('../ygoprodeck/catalog-cache')
+
+    expect(await readCatalogPage(0)).toBeNull()
+
+    await writeCatalogPage(0, { results: [card(1, 'Una')], hasMore: true })
+
+    await vi.waitFor(() => expect(stores.has(OLD_CATALOG_CACHE)).toBe(false))
+    expect(stores.has(CATALOG_CACHE)).toBe(true)
+  })
+
   it('si no pudo guardar la procesada, las crudas quedan (siguen sirviendo sin red)', async () => {
     const stores = stubCaches(true)
     stores.set(RAW_CACHE, new Map([[RAW_CATALOG_URL(0), '{}']]))
@@ -162,6 +179,8 @@ describe('loadCardCatalog con la copia procesada', () => {
   const rawCard = (id: number, name: string) => ({
     id, name, type: 'Effect Monster', frameType: 'effect', desc: `Texto de ${name}`, race: 'Zombie', attribute: 'FIRE', level: 3, atk: 0, def: 1800,
     card_images: [{ id, image_url: `https://images.ygoprodeck.com/images/cards/${id}.jpg`, image_url_small: `https://images.ygoprodeck.com/images/cards_small/${id}.jpg` }],
+    // Sólo la primera trae escala y los datos de `misc=yes`: las demás, como una respuesta que no los pidió.
+    ...(id === 1 ? { scale: 4, misc_info: [{ tcg_date: '2002-03-08', ocg_date: '2001-12-01', formats: ['TCG', 'OCG', 'Edison'] }] } : {}),
   })
   const PAGES: Record<number, unknown> = {
     0: { data: [rawCard(1, RATED_NAME), rawCard(2, 'Ash Blossom & Joyous Spring')], meta: { rows_remaining: 1 } },
@@ -189,6 +208,11 @@ describe('loadCardCatalog con la copia procesada', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(first.map((entry) => entry.ygoprodeckId)).toEqual([1, 2, 3])
     expect(first[0]!.genesys.points).toBe(RATED_POINTS)
+    // El catálogo se pide con `misc=yes` (año y formatos) y la escala, el año y los formatos de una carta quedan en la copia; sin esos datos, la carta no lleva los campos.
+    expect(fetchMock.mock.calls.every(([url]) => new URL(String(url)).searchParams.get('misc') === 'yes')).toBe(true)
+    expect(first[0]).toMatchObject({ scale: 4, year: 2001, pools: POOL_BITS.tcg | POOL_BITS.ocg })
+    expect(first[1]).not.toHaveProperty('year')
+    expect(first[1]).not.toHaveProperty('scale')
     expect([...stores.get(CATALOG_CACHE)!.keys()]).toEqual([PAGE_URL(0), PAGE_URL(2)])
     await vi.waitFor(() => expect([...stores.get(RAW_CACHE)!.keys()]).toEqual([RAW_CARD_URL]))
 

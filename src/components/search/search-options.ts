@@ -1,4 +1,4 @@
-import { ABILITY_KEYS, EFFECT_KEYS, FRAME_KEYS, LIMIT_KEYS, SPELL_TRAP_KINDS } from '../../app/card-filters'
+import { ABILITY_KEYS, EFFECT_KEYS, FRAME_KEYS, LIMIT_KEYS, POOL_KEYS, SPELL_TRAP_KINDS } from '../../app/card-filters'
 import { t } from '../../i18n'
 import type { MessageArgs, MessageKey } from '../../i18n/types'
 
@@ -71,6 +71,16 @@ const LIMIT_LABELS = {
   unlimited: 'search.limit.unlimited',
 } as const satisfies Record<(typeof LIMIT_KEYS)[number], PlainMessageKey>
 
+const POOL_LABELS = {
+  tcg: 'search.pool.tcg',
+  ocg: 'search.pool.ocg',
+  'tcg-only': 'search.pool.tcgOnly',
+  'ocg-only': 'search.pool.ocgOnly',
+  'master-duel': 'search.pool.masterDuel',
+  'duel-links': 'search.pool.duelLinks',
+  'speed-duel': 'search.pool.speedDuel',
+} as const satisfies Record<(typeof POOL_KEYS)[number], PlainMessageKey>
+
 const EFFECT_LABELS = {
   search: 'search.effect.search',
   draw: 'search.effect.draw',
@@ -93,6 +103,7 @@ export const FRAME_OPTIONS: FilterOption[] = FRAME_KEYS.map((key) => option(key,
 export const SPELL_TRAP_OPTIONS: FilterOption[] = SPELL_TRAP_KINDS.map((key) => option(key, KIND_LABELS[key]))
 export const ABILITY_OPTIONS: FilterOption[] = ABILITY_KEYS.map((key) => option(key, ABILITY_LABELS[key]))
 export const LIMIT_OPTIONS: FilterOption[] = LIMIT_KEYS.map((key) => option(key, LIMIT_LABELS[key]))
+export const POOL_OPTIONS: FilterOption[] = POOL_KEYS.map((key) => option(key, POOL_LABELS[key]))
 export const EFFECT_OPTIONS: FilterOption[] = EFFECT_KEYS.map((key) => option(key, EFFECT_LABELS[key]))
 
 export const ATTRIBUTE_OPTIONS: FilterOption[] = ['DARK', 'LIGHT', 'FIRE', 'WATER', 'EARTH', 'WIND', 'DIVINE'].map((value) => ({ value, label: value }))

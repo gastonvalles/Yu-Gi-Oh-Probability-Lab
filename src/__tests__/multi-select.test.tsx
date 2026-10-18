@@ -37,10 +37,10 @@ function Harness({ initial = [], onChange = () => {} }: { initial?: string[]; on
 }
 
 describe('el selector desplegable de elección múltiple', () => {
-  it('cerrado dice qué hay elegido: «Cualquiera» sin nada, los nombres con uno o dos y la cuenta con más', () => {
+  it('cerrado dice qué hay elegido: «Elegir» sin nada, los nombres con uno o dos y la cuenta con más', () => {
     const { rerender } = render(<MultiSelect label="Letras" options={OPTIONS} selected={[]} onChange={() => {}} />)
 
-    expect(screen.getByRole('button', { name: 'Letras Cualquiera' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Letras Elegir' })).toBeInTheDocument()
 
     rerender(<MultiSelect label="Letras" options={OPTIONS} selected={['a']} onChange={() => {}} />)
     expect(screen.getByRole('button', { name: 'Letras Alfa' })).toBeInTheDocument()
@@ -56,7 +56,7 @@ describe('el selector desplegable de elección múltiple', () => {
     applyLocale('en')
     const { rerender } = render(<MultiSelect label="Letters" options={OPTIONS} selected={[]} onChange={() => {}} />)
 
-    expect(screen.getByRole('button', { name: 'Letters Any' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Letters Select' })).toBeInTheDocument()
 
     rerender(<MultiSelect label="Letters" options={OPTIONS} selected={['a', 'b', 'c']} onChange={() => {}} />)
     expect(screen.getByRole('button', { name: 'Letters 3 selected' })).toBeInTheDocument()
@@ -83,7 +83,7 @@ describe('el selector desplegable de elección múltiple', () => {
     const onChange = vi.fn()
 
     render(<Harness onChange={onChange} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Letras Cualquiera' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Letras Elegir' }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'Gamma' }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'Alfa' }))
 
@@ -110,7 +110,7 @@ describe('el selector desplegable de elección múltiple', () => {
       </div>,
     )
 
-    const trigger = screen.getByRole('button', { name: 'Letras Cualquiera' })
+    const trigger = screen.getByRole('button', { name: 'Letras Elegir' })
 
     fireEvent.click(trigger)
     fireEvent.keyDown(screen.getByRole('checkbox', { name: 'Alfa' }), { key: 'Escape' })

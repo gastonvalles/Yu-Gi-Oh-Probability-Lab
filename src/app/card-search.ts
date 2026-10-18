@@ -62,11 +62,14 @@ export const DEFAULT_CARD_SEARCH_FILTERS: CardSearchFilters = {
   races: [],
   abilities: [],
   limits: [],
+  pools: [],
   effects: [],
   level: EMPTY_RANGE,
   atk: EMPTY_RANGE,
   def: EMPTY_RANGE,
+  scale: EMPTY_RANGE,
   genesysPoints: EMPTY_RANGE,
+  year: EMPTY_RANGE,
 }
 
 export function buildCompactSearchDescription(card: ApiCardReference | ApiCardSearchResult): string {
@@ -279,8 +282,8 @@ export function buildCardSearchActiveFilterCount(
   filters: CardSearchFilters,
   deckFormat: DeckFormat,
 ): number {
-  const ranges: NumberRange[] = [filters.level, filters.atk, filters.def, ...(deckFormat === 'genesys' ? [filters.genesysPoints] : [])]
-  const groups = [filters.frames, filters.attributes, filters.spellTrapKinds, filters.races, filters.abilities, filters.effects, ...(formatHasLimits(deckFormat) ? [filters.limits] : [])]
+  const ranges: NumberRange[] = [filters.level, filters.atk, filters.def, filters.scale, filters.year, ...(deckFormat === 'genesys' ? [filters.genesysPoints] : [])]
+  const groups = [filters.frames, filters.attributes, filters.spellTrapKinds, filters.races, filters.abilities, filters.pools, filters.effects, ...(formatHasLimits(deckFormat) ? [filters.limits] : [])]
 
   return (
     (filters.archetype.trim().length > 0 ? 1 : 0) +

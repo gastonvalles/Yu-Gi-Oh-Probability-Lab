@@ -21,6 +21,8 @@ interface SearchCardsOptions {
   race?: string
   level?: string
   format?: string
+  /** `yes` pide además las fechas de salida y los formatos de cada carta (+17 % de peso: sólo el catálogo los necesita). */
+  misc?: string
 }
 
 // Nombre del parámetro de la API de YGOPRODeck para cada filtro de búsqueda.
@@ -32,6 +34,7 @@ const SEARCH_PARAM_BY_OPTION: Record<keyof SearchCardsOptions, string> = {
   race: 'race',
   level: 'level',
   format: 'format',
+  misc: 'misc',
 }
 
 export async function searchCards(
@@ -99,7 +102,7 @@ async function loadCatalogPage(offset: number): Promise<ApiSearchPage> {
 
   try {
     // Sin persistForMs: lo que se guarda es la página procesada (catalog-cache), no los ~1,5 MB crudos.
-    const page = await searchCards({}, CARD_CATALOG_PAGE_SIZE, offset)
+    const page = await searchCards({ misc: 'yes' }, CARD_CATALOG_PAGE_SIZE, offset)
     await writeCatalogPage(offset, page)
     return page
   } catch (error) {

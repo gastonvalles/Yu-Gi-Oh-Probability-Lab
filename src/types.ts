@@ -63,6 +63,11 @@ export interface ApiCardReference {
   attribute: string | null
   level: number | null
   linkValue: number | null
+  /** La escala de Péndulo (0–13); sólo los monstruos de Péndulo la traen. */
+  scale?: number | null
+  /** Año de la primera salida (TCG u OCG) y formatos en los que está (`POOL_BITS`): los trae el catálogo, que se pide con `misc=yes`; no las cartas sueltas de una búsqueda. */
+  year?: number | null
+  pools?: number
   atk: string | null
   def: string | null
   archetype: string | null

@@ -10,6 +10,7 @@ import {
   FRAME_OPTIONS,
   LIMIT_OPTIONS,
   MONSTER_RACE_OPTIONS,
+  POOL_OPTIONS,
   SPELL_TRAP_OPTIONS,
   labelOf,
   type FilterOption,
@@ -102,7 +103,7 @@ export function buildActiveFilterChips({
       add(key, label, values.map((value) => labelOf(options, value)).join(', '), { [key]: [] })
     }
   }
-  const range = (key: 'level' | 'atk' | 'def' | 'genesysPoints', label: string) => {
+  const range = (key: 'level' | 'atk' | 'def' | 'scale' | 'year' | 'genesysPoints', label: string) => {
     if (isRangeActive(filters[key])) {
       add(key, label, describeRange(filters[key]), { [key]: EMPTY_RANGE })
     }
@@ -126,6 +127,7 @@ export function buildActiveFilterChips({
     }
   }
 
+  group('pools', t('search.filters.pool'), POOL_OPTIONS)
   group('effects', t('search.filters.effect'), EFFECT_OPTIONS)
 
   if (filters.description.trim().length > 0) {
@@ -135,6 +137,8 @@ export function buildActiveFilterChips({
   range('level', t('search.filters.level'))
   range('atk', 'ATK')
   range('def', 'DEF')
+  range('scale', t('search.filters.scale'))
+  range('year', t('search.filters.year'))
 
   if (deckFormat === 'genesys') {
     range('genesysPoints', t('search.filters.genesys'))
