@@ -794,6 +794,8 @@ export interface MatMenuItem {
   materials?: true
   /** Mandar la carta al deck "al azar": la mesa le pone la semilla al elegirla (se pone y se baraja todo el deck). */
   shuffleDeck?: true
+  /** Una jugada de apoyo (revelar, target, descartar, desterrar, devolver al deck o al Extra), no una jugada del juego: la hoja de la mano las ofrece aparte, todas a un toque. */
+  utility?: true
 }
 
 /**
@@ -864,8 +866,10 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
   const zones = monsterZones(pile === 'extra')
   const items: MatMenuItem[] = []
   const add = (label: string, action: MatAction) => items.push({ label, action })
-  const target = () => add(state.targeted.includes(id) ? t('practice.menu.untarget') : t('practice.menu.target'), { type: 'target', id })
-  const banish = () => items.push(banishItem(id, t('practice.menu.banish')))
+  /** Una jugada de apoyo: no es una jugada del juego (invocar, colocar, activar). */
+  const addUtility = (label: string, action: MatAction) => items.push({ label, action, utility: true })
+  const target = () => addUtility(state.targeted.includes(id) ? t('practice.menu.untarget') : t('practice.menu.target'), { type: 'target', id })
+  const banish = () => items.push({ ...banishItem(id, t('practice.menu.banish')), utility: true })
   /** Una jugada que saca la carta a una zona: la primera libre por defecto, y la lista para elegir otra. */
   const placeItem = (label: string, zones: readonly MatSpot[], pos: MatPos, how?: MatSummon): MatMenuItem | null => {
     const targets = freeTargets(state, zones, rivalEmz)
@@ -988,9 +992,9 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
 
     // Un efecto de monstruo desde la mano (hand trap): se activa (destella) y después la carta va a donde diga el costo.
     if (kind.monster && kind.effect) add(t('practice.menu.activateEffect'), { type: 'activate', id })
-    add(t('practice.menu.reveal'), { type: 'reveal', id })
+    addUtility(t('practice.menu.reveal'), { type: 'reveal', id })
     target()
-    add(t('practice.menu.discard'), { type: 'move', id, to: 'gy' })
+    addUtility(t('practice.menu.discard'), { type: 'move', id, to: 'gy' })
     banish()
   } else if (pile) {
     // Deck, Extra, cementerio o destierro.
@@ -1025,7 +1029,7 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
       target()
     }
     // Del Deck o del Extra (que nadie ve) se puede mostrar una carta al rival sin moverla.
-    if (pile === 'deck' || pile === 'extra') add(t('practice.menu.reveal'), { type: 'reveal', id })
+    if (pile === 'deck' || pile === 'extra') addUtility(t('practice.menu.reveal'), { type: 'reveal', id })
     if (pile !== 'gy') add(t('practice.menu.toGy'), { type: 'move', id, to: 'gy' })
     if (pile !== 'banished') banish()
   } else {
@@ -1035,7 +1039,7 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
     banish()
   }
 
-  if (kind.extra && pile !== 'extra') add(t('practice.menu.toExtra'), { type: 'move', id, to: 'extra' })
+  if (kind.extra && pile !== 'extra') addUtility(t('practice.menu.toExtra'), { type: 'move', id, to: 'extra' })
 
   // Arriba/abajo del deck desde cualquier lado (mano, campo, cementerio, destierro): los mismos nombres en todos los menús.
   if (!kind.extra) {
@@ -1045,13 +1049,14 @@ export function listCardActions(state: MatState, id: string, kindOf: (id: string
       add(t('practice.menu.deckBottom'), { type: 'move', id, to: 'deck-bottom' })
     } else {
       // Una carta de afuera vuelve al deck: al azar (se baraja adentro), arriba o abajo; es una sola jugada del menú que pregunta cómo.
-      items.push(
-        askItem(t('practice.menu.toDeck'), [
+      items.push({
+        ...askItem(t('practice.menu.toDeck'), [
           { label: t('practice.menu.deckRandom'), action: { type: 'move', id, to: 'deck' }, shuffleDeck: true },
           { label: t('practice.menu.deckOnTop'), action: { type: 'move', id, to: 'deck' } },
           { label: t('practice.menu.deckOnBottom'), action: { type: 'move', id, to: 'deck-bottom' } },
         ]),
-      )
+        utility: true,
+      })
     }
   }
 

@@ -207,7 +207,6 @@ export const practice = {
   // Visor de pilas y diálogo de guardar combo.
   'practice.dialog.empty': 'No hay nada para hacer desde acá.',
   'practice.dialog.viewCard': 'Ver carta',
-  'practice.sheet.more': 'Más',
   'practice.dialog.searchCard': 'Buscar carta',
   'practice.dialog.noCards': 'No hay cartas acá.',
   'practice.dialog.noMatch': 'Ninguna carta coincide con “{query}”.',

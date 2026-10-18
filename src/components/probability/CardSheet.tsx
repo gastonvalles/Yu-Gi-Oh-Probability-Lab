@@ -1,5 +1,3 @@
-import { useState } from 'react'
-
 import { useEscapeKey } from '../../app/use-overlay'
 import { t } from '../../i18n'
 import type { ApiCardReference } from '../../types'
@@ -14,7 +12,7 @@ interface CardSheetProps {
   name: string
   art: string | null
   apiCard: ApiCardReference | null
-  /** Las jugadas de la carta, en el orden del menú de siempre: las dos primeras son los botones y el resto, lo que sale de «Más». */
+  /** Las jugadas de la carta, en el orden del menú de siempre: las que no son de apoyo (`utility`) son las jugadas del juego; las de apoyo, lo de abajo. */
   items: readonly MenuItem[]
   /** El segundo paso de una jugada («¿En ataque o en defensa?»): sus opciones salen en lugar de las jugadas. */
   asking?: string
@@ -23,14 +21,17 @@ interface CardSheetProps {
   onClose: () => void
 }
 
+/** Cuántas jugadas del juego caben en una fila: con más, van de a dos. */
+const MAX_PLAYS_PER_ROW = 3
+
 /**
- * La hoja de una carta de la mano (celular): sale de abajo sobre la mano, con la carta, su nombre, su tipo y su texto, y las jugadas a un toque (la primera, llena;
- * la segunda; y «Más» con el resto). Reemplaza al menú pegado a la carta, que tapaba lo que se quería leer. Se apoya sobre la mano (`absolute`, sin mover nada) y
- * no tapa la botonera de abajo; elegir una jugada la cierra y la mesa pide lo que falta (la zona). Las jugadas son las mismas de `listCardActions`: sólo cambia cómo se ofrecen.
+ * La hoja de una carta de la mano (celular): sale de abajo sobre la mano, con la carta (su texto está en la lupa), su nombre y su tipo, y **todas las jugadas a un toque, sin menús que abrir**: arriba las del juego (Invocación Normal, Colocar, Activar…; la primera, llena) y abajo las de apoyo (revelar, target, descartar,
+ * desterrar, al deck) en una grilla de botones chicos. Se apoya sobre la mano (`absolute`, sin mover nada) y no tapa la botonera de abajo; elegir una jugada la cierra y la mesa pide lo que
+ * falta (la zona). Las jugadas son las mismas de `listCardActions`: sólo cambia cómo se ofrecen.
  */
 export function CardSheet({ name, art, apiCard, items, asking, onInspect, onClose }: CardSheetProps) {
-  const [moreOpen, setMoreOpen] = useState(false)
-  const [main, second, ...rest] = items
+  const plays = items.filter((item) => !item.utility)
+  const support = items.filter((item) => item.utility)
 
   useEscapeKey(onClose)
 
@@ -39,7 +40,7 @@ export function CardSheet({ name, art, apiCard, items, asking, onInspect, onClos
       <span aria-hidden="true" className="mx-auto mb-2 block h-1 w-10 rounded-full bg-primary-soft/50" />
       <CloseButton size="sm" aria-label={t('common.close')} className="absolute right-1 top-1" onClick={onClose} />
 
-      <div className="grid grid-cols-[5.25rem_minmax(0,1fr)] gap-3">
+      <div className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-3">
         <figure className="relative m-0 aspect-[421/614] w-full overflow-hidden rounded-card bg-input">
           <CardArt remoteUrl={art} name={name} className="block h-full w-full object-cover" />
           {onInspect ? (
@@ -47,79 +48,50 @@ export function CardSheet({ name, art, apiCard, items, asking, onInspect, onClos
               type="button"
               aria-label={t('practice.dialog.viewCard')}
               title={t('practice.dialog.viewCard')}
-              className="absolute bottom-1 right-1 grid size-9 place-items-center rounded-full border border-border-subtle bg-background/85 text-white focus-visible:outline-none focus-visible:shadow-focus"
+              className="absolute inset-0 grid place-items-end justify-items-end p-0.5 text-white focus-visible:outline-none focus-visible:shadow-focus"
               onClick={onInspect}
             >
-              <Icon name="search" size={16} />
+              <span className="grid size-5 place-items-center rounded-full border border-border-subtle bg-background/85"><Icon name="search" size={12} /></span>
             </button>
           ) : null}
         </figure>
         <div className="min-w-0 pr-8">
           <h3 className="m-0 line-clamp-2 text-lead font-bold leading-tight text-foreground">{name}</h3>
           {apiCard?.cardType ? <p className="m-0 mt-0.5 text-body font-semibold text-accent">{apiCard.cardType}</p> : null}
-          {apiCard?.description ? <p className="m-0 mt-1 line-clamp-5 text-micro text-muted">{apiCard.description}</p> : null}
         </div>
       </div>
 
-      {/* Las jugadas: `role="menu"` y cada una un `menuitem`, como en el menú pegado a la carta. Lo que sale de «Más» está siempre en el árbol pero invisible hasta abrirlo (no se enfoca ni se lee). */}
-      <div role="menu" aria-label={name} className="relative mt-3">
+      {/* Las jugadas: `role="menu"` y cada una un `menuitem`, como en el menú pegado a la carta. */}
+      <div role="menu" aria-label={name} className="mt-3 grid gap-2">
         {asking !== undefined ? (
           <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.max(1, items.length)}, minmax(0, 1fr))` }}>
             {items.map((item, index) => (
-              <Button key={item.label} role="menuitem" variant={index === 0 ? 'primary' : 'secondary'} className="px-2" onClick={item.onSelect}>
+              <Button key={item.label} role="menuitem" variant={index === 0 ? 'primary' : 'secondary'} className="px-2!" onClick={item.onSelect}>
                 {item.label}
               </Button>
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-2">
-            {main ? (
-              <Button role="menuitem" variant="primary" className="px-2" onClick={main.onSelect}>
-                {main.label}
-              </Button>
-            ) : null}
-            {second ? (
-              <Button role="menuitem" variant="secondary" className="px-2" onClick={second.onSelect}>
-                {second.label}
-              </Button>
-            ) : null}
-            {rest.length > 0 ? (
-              <div className="relative grid">
-                <Button
-                  role="menuitem"
-                  aria-haspopup="menu"
-                  aria-expanded={moreOpen}
-                  variant="secondary"
-                  iconEnd={moreOpen ? 'chevron-up' : 'chevron-down'}
-                  className="px-2 aria-expanded:shadow-[inset_0_0_0_2px_rgb(var(--primary-rgb)/0.9)]"
-                  onClick={() => setMoreOpen((open) => !open)}
-                >
-                  {t('practice.sheet.more')}
-                </Button>
-                {/* El globo sale justo encima de «Más», alineado a su borde derecho y con una cola que lo señala; lo que sale de «Más» está siempre en el árbol pero invisible hasta abrirlo. */}
-                <div
-                  role="none"
-                  className={cx(
-                    'absolute bottom-full right-0 z-10 mb-3 grid w-[150%] min-w-40 origin-bottom-right gap-2 rounded-panel border-2 border-primary/70 bg-card-background p-2 shadow-overlay',
-                    moreOpen ? 'animate-pop motion-reduce:animate-none' : 'pointer-events-none invisible',
-                  )}
-                >
-                  {rest.map((item) => (
-                    <button
-                      key={item.label}
-                      type="button"
-                      role="menuitem"
-                      className="flex min-h-11 w-full cursor-pointer items-center rounded-control border border-border-subtle bg-surface-raised px-3 text-left text-body font-bold text-foreground hover:border-primary/60 focus-visible:outline-none focus-visible:shadow-focus"
-                      onClick={item.onSelect}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                  <i aria-hidden="true" className="absolute -bottom-[7px] right-[33.333%] size-3 translate-x-1/2 rotate-45 border-b-2 border-r-2 border-primary/70 bg-card-background" />
-                </div>
+          <>
+            {plays.length > 0 ? (
+              <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(plays.length, plays.length > MAX_PLAYS_PER_ROW ? 2 : MAX_PLAYS_PER_ROW)}, minmax(0, 1fr))` }}>
+                {plays.map((item, index) => (
+                  <Button key={item.label} role="menuitem" variant={index === 0 ? 'primary' : 'secondary'} className={cx('px-2!', plays.length % 2 === 1 && plays.length > MAX_PLAYS_PER_ROW && index === plays.length - 1 && 'col-span-2')} onClick={item.onSelect}>
+                    {item.label}
+                  </Button>
+                ))}
               </div>
             ) : null}
-          </div>
+            {support.length > 0 ? (
+              <div className="grid grid-cols-3 gap-2">
+                {support.map((item) => (
+                  <Button key={item.label} role="menuitem" variant="tertiary" size="sm" className="min-w-0 border border-border-subtle px-1!" onClick={item.onSelect}>
+                    {item.label}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
+          </>
         )}
       </div>
     </section>
