@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildExpansionsHash, cardSmallImageUrl, compareRarities, printImageUrl, fetchCardPrices, fetchExpansionCards, fetchExpansions, filterPrintings, readExpansionsHash, setImageUrl, type PrintingPrice, type PriceRow } from '../app/card-prices'
+import { buildExpansionsHash, cardSmallImageUrl, compareRarities, printImageUrl, fetchCardPrices, fetchExpansionCards, fetchExpansions, filterPrintings, findCardsByCode, readExpansionsHash, setImageUrl, type PrintingPrice, type PriceRow } from '../app/card-prices'
 
 const row = (code: string, rarity: string, edition: string, market: number | null, productId: number, groupId: number, variant?: string): PriceRow => (variant ? [code, rarity, edition, market, productId, groupId, variant] : [code, rarity, edition, market, productId, groupId])
 
@@ -227,5 +227,52 @@ describe('el link a una impresión en Expansiones', () => {
     expect(readExpansionsHash('#expansions')).toEqual({ expansion: null, print: null })
     expect(readExpansionsHash('#expansions?set=abc&print=-4')).toEqual({ expansion: null, print: null })
     expect(readExpansionsHash('#expansions?set=1.5&print=0')).toEqual({ expansion: null, print: null })
+  })
+})
+
+describe('findCardsByCode', () => {
+  const expansion = (id: number, code: string) => ({ id, name: code, date: '2002-03-08', count: 2, code })
+  const expansions = [expansion(1, 'LOB'), expansion(2, 'MAZE'), expansion(3, '')]
+  const sets: Record<number, unknown[]> = {
+    1: [
+      ['LOB-EN001', 'Ultra Rare', '1st Edition', 900, 11, 89631139, 'Blue-Eyes White Dragon'],
+      ['LOB-EN002', 'Super Rare', 'Unlimited', 12.5, 12, 46986414, 'Dark Magician'],
+    ],
+    2: [
+      ['MAZE-EN001', 'Rare', 'Unlimited', 0.5, 21, 100, 'Mulcharmy Purulia'],
+      ['MAZE-EN001', 'Ultra Rare', 'Unlimited', 4, 22, 100, 'Mulcharmy Purulia', 'Extended Art'],
+    ],
+  }
+  const urls: string[] = []
+  const get = async (url: string) => {
+    urls.push(url)
+
+    return sets[Number(/sets\/(\d+)\.json/.exec(url)![1])]
+  }
+
+  it('encuentra por el código completo o por su comienzo, sin importar mayúsculas ni signos', async () => {
+    expect((await findCardsByCode(expansions, 'LOB-EN002', get)).map((hit) => [hit.name, hit.code])).toEqual([['Dark Magician', 'LOB-EN002']])
+    expect((await findCardsByCode(expansions, 'lob en00', get)).map((hit) => hit.name)).toEqual(['Blue-Eyes White Dragon', 'Dark Magician'])
+  })
+
+  it('devuelve una sola vez cada carta aunque tenga varias impresiones con ese código', async () => {
+    expect(await findCardsByCode(expansions, 'maze-en001', get)).toEqual([{ cardId: 100, name: 'Mulcharmy Purulia', code: 'MAZE-EN001' }])
+  })
+
+  it('la O y el cero valen lo mismo: «LAVD-ENO01», como lo trae TCGplayer, se encuentra con «LAVD-EN001» y al revés', async () => {
+    sets[4] = [['LAVD-ENO01', 'Common', '1st Edition', 0.4, 31, 94, 'Droll & Lock Bird']]
+
+    const lavd = [expansion(4, 'LAVD')]
+
+    expect((await findCardsByCode(lavd, 'LAVD-EN001', get)).map((hit) => [hit.name, hit.code])).toEqual([['Droll & Lock Bird', 'LAVD-ENO01']])
+    expect((await findCardsByCode(lavd, 'lavd-eno01', get)).map((hit) => hit.name)).toEqual(['Droll & Lock Bird'])
+  })
+
+  it('sólo el prefijo del set, o un prefijo que no es de ninguna expansión, no pide ni encuentra nada (eso lo hace la lista)', async () => {
+    urls.length = 0
+
+    expect(await findCardsByCode(expansions, 'lob', get)).toEqual([])
+    expect(await findCardsByCode(expansions, 'zzz-en001', get)).toEqual([])
+    expect(urls).toEqual([])
   })
 })

@@ -1,12 +1,15 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type Ref } from 'react'
 
 import { buildCardNavigation, neighborsAt } from '../../app/card-neighbors'
-import { compareRarities, readExpansionsHash, type Expansion, type ExpansionCard } from '../../app/card-prices'
+import { cardSmallImageUrl, compareRarities, readExpansionsHash, type CardHit, type Expansion, type ExpansionCard } from '../../app/card-prices'
+import { useCardHits } from '../../app/use-card-hits'
 import { useExpansionCards, useExpansions } from '../../app/use-expansions'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { formatInteger, formatUsd } from '../../app/utils'
 import { dateLocale, formatDay, perLocale, t } from '../../i18n'
+import { CardArt } from '../CardArt'
 import { StepHero } from '../StepHero'
+import { CardPricesModal } from '../card-detail/CardPrices'
 import { PrintingArt } from '../card-detail/PrintingArt'
 import { TiltCard } from '../card-detail/TiltCard'
 import { Badge } from '../ui/Badge'
@@ -148,9 +151,30 @@ const ExpansionRow = memo(function ExpansionRow({ expansion, active, buttonRef, 
   )
 })
 
-/** Las expansiones agrupadas por año de salida (las más nuevas primero), con un buscador por nombre. */
+/** Una carta que salió de buscar: su arte, su nombre y, si se buscó por código, el de la impresión. Tocarla abre las impresiones y precios de la carta. */
+function CardHitRow({ hit, onPick }: { hit: CardHit; onPick: (hit: CardHit) => void }) {
+  return (
+    <button type="button" className={cx(listItem, 'grid min-h-18 w-full grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 px-2.5 py-2 text-left min-[1101px]:min-h-16 min-[1101px]:grid-cols-[2.25rem_minmax(0,1fr)_auto]')} onClick={() => onPick(hit)}>
+      <span className="block aspect-[421/614] overflow-hidden rounded-tag bg-input">
+        <CardArt remoteUrl={cardSmallImageUrl(hit.cardId)} name={hit.name} className="object-cover" />
+      </span>
+      <span className="grid min-w-0 gap-0.5">
+        <span className="truncate text-body font-semibold text-foreground">{hit.name}</span>
+        <span className="truncate text-micro text-muted">{hit.code || t('catalog.sets.cardHitHint')}</span>
+      </span>
+      <Icon name="dollar" size={18} className="text-muted" />
+    </button>
+  )
+}
+
+/**
+ * Las expansiones agrupadas por año de salida (las más nuevas primero), con un buscador por nombre o código de la expansión y también de una carta: arriba
+ * de la lista salen las cartas que coinciden, y tocar una abre la hoja de precios con todas sus impresiones (la misma del detalle de carta).
+ */
 function ExpansionList({ expansions, activeId, onPick }: { expansions: Expansion[]; activeId: number | null; onPick: (id: number) => void }) {
   const [query, setQuery] = useState('')
+  const [priced, setPriced] = useState<CardHit | null>(null)
+  const cardHits = useCardHits(query, expansions)
   const activeRef = useRef<HTMLButtonElement>(null)
 
   // Si se llega a una expansión desde afuera (los precios de una carta), la lista se mueve hasta ella.
@@ -175,7 +199,15 @@ function ExpansionList({ expansions, activeId, onPick }: { expansions: Expansion
   return (
     <section className={cx(surface.card, 'grid min-w-0 content-start gap-3 p-3 min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[auto_minmax(0,1fr)]')}>
       <SearchField label={t('catalog.sets.searchLabel')} placeholder={t('catalog.sets.searchPlaceholder')} value={query} onChange={setQuery} />
-      <nav aria-label={t('catalog.sets.listLabel')} className="grid max-h-[70dvh] content-start gap-3 overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin] min-[1101px]:max-h-none min-[1101px]:min-h-0">
+      <nav aria-label={t('catalog.sets.listLabel')} aria-busy={cardHits.status === 'loading'} className="grid max-h-[70dvh] content-start gap-3 overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin] min-[1101px]:max-h-none min-[1101px]:min-h-0">
+        {cardHits.hits.length > 0 ? (
+          <section aria-label={t('catalog.sets.cardHits')} className="grid gap-0.5">
+            <h2 className={cx(overline, 'px-1')}>{t('catalog.sets.cardHits')}</h2>
+            {cardHits.hits.map((hit) => (
+              <CardHitRow key={hit.cardId} hit={hit} onPick={setPriced} />
+            ))}
+          </section>
+        ) : null}
         {groups.map(([year, items]) => (
           <section key={year} className="grid gap-0.5">
             <h2 className={cx(overline, 'px-1')}>{year || t('catalog.sets.noDate')}</h2>
@@ -190,8 +222,21 @@ function ExpansionList({ expansions, activeId, onPick }: { expansions: Expansion
             ))}
           </section>
         ))}
-        {groups.length === 0 ? <p className="m-0 px-1 py-3 text-body text-muted">{t('catalog.sets.noExpansion', { query: query.trim() })}</p> : null}
+        {groups.length === 0 && cardHits.hits.length === 0 && cardHits.status !== 'loading' ? <p className="m-0 px-1 py-3 text-body text-muted">{t('catalog.sets.noExpansion', { query: query.trim() })}</p> : null}
       </nav>
+      {priced ? (
+        <CardPricesModal
+          cardId={priced.cardId}
+          name={priced.name}
+          isOpen
+          onClose={() => setPriced(null)}
+          // Tocar una impresión cambia el hash y la pantalla abre esa expansión: la búsqueda ya cumplió y no debe esconderla de la lista.
+          onGoToPrint={() => {
+            setPriced(null)
+            setQuery('')
+          }}
+        />
+      ) : null}
     </section>
   )
 }

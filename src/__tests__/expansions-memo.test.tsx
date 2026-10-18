@@ -95,7 +95,7 @@ describe('la lista de expansiones', () => {
     await screen.findByRole('button', { name: 'Ver el detalle de Carta 1' })
 
     renders.packs = 0
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar expansión' }), { target: { value: 'r' } })
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar expansión o carta' }), { target: { value: 'r' } })
 
     // "Segunda" no tiene ninguna "r": se va. Las otras tres se quedan tal cual.
     expect(list().getAllByRole('button')).toHaveLength(3)
