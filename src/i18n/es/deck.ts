@@ -89,6 +89,12 @@ export const deck = {
     other: '{count} ajustes para {format}',
   },
   'deck.builder.issues.more': '+ {count} más',
+  // La próxima lista (todavía no rige) vuelve más estrictas cartas que ya están en el deck: hoy es legal, es para ir cambiándolo.
+  'deck.builder.upcoming.title': {
+    one: 'El {date} entra la próxima lista de {format}: {count} carta de tu deck cambia',
+    other: 'El {date} entra la próxima lista de {format}: {count} cartas de tu deck cambian',
+  },
+  'deck.builder.upcoming.card': '{name}: de {from} a {to}',
 
   // --- Avisos del builder y de la exportación
   'deck.toast.storageFull': 'El navegador no tiene espacio para guardar tus cambios. Exportá el deck para no perderlo.',
