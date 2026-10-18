@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render as renderBare, screen, within, type Ren
 import '@testing-library/jest-dom'
 import type { ReactElement } from 'react'
 import { Provider } from 'react-redux'
+import { toast } from 'react-hot-toast'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { extractRoomCode } from '../app/duel-link'
@@ -2905,7 +2906,7 @@ describe('la pantalla del duelo', () => {
     expect(within(guest.container).getByRole('button', { name: 'Jugar ahora' })).toBeInTheDocument()
   })
 
-  it('las señales de abajo (✋ esperá y 👍 continuá) están a mano del pulgar y las tuyas salen como un globo junto a tus vidas y las del rival, grandes en el medio de la pantalla (celular); se van solas y no cuentan como mensaje sin leer', () => {
+  it('las señales de abajo (✋ esperá y 👍 continuá) están a mano del pulgar; las tuyas salen como un globo junto a tus vidas y las del rival, en el celular, como un mensaje más en la línea del registro (no en toda la pantalla)', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const { host, guest } = startDuel()
     openTable(host, guest)
@@ -2919,30 +2920,79 @@ describe('la pantalla del duelo', () => {
     expect(within(toolbar).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Deshacer', 'Ficha', 'Chat', 'Esperá', 'Continuá', expect.stringMatching(/^Puntos de vida de/)])
     expect(within(toolbar).queryByRole('button', { name: 'Moneda, dado y más' })).not.toBeInTheDocument()
 
-    // Beto avisa que continúa: lo suyo se ve como un globo junto a sus vidas; en el celular el de su rival (Ana) no es un globito chico: el emoji sale grande en el medio de la pantalla.
+    // Beto avisa que continúa: lo suyo se ve como un globo junto a sus vidas; en el celular el de su rival (Ana) sale como un mensaje entrante (el aviso de abajo a la derecha, con su nombre), no en toda la pantalla.
+    const custom = vi.spyOn(toast, 'custom').mockReturnValue('t')
+    const incoming = () => custom.mock.calls.map(([render]) => (render as (instance: { id: string; visible: boolean }) => ReactElement)({ id: 't', visible: true }).props as { message: string; rival?: string })
+
     fireEvent.click(within(guest.container).getByRole('button', { name: 'Continuá' }))
     flush()
     expect(bubble(guest, 'mine')).toHaveTextContent('👍')
     expect(bubble(guest, 'mine')).toHaveClass('text-display')
     expect(bubble(host, 'theirs')).toBeNull()
-    expect(rivalEmoji(host)).toHaveTextContent('👍')
-    expect(rivalEmoji(host)).toHaveTextContent('Beto')
-    expect(rivalEmoji(host)?.querySelector('[aria-hidden]')?.getAttribute('style')).toContain('clamp(7rem')
+    expect(rivalEmoji(host)).toBeNull()
+    expect(incoming()).toEqual([expect.objectContaining({ message: '👍', rival: 'Beto' })])
+    expect(custom).toHaveBeenLastCalledWith(expect.any(Function), expect.objectContaining({ position: 'bottom-right' }))
+    // Lo tuyo no avisa (ya sale junto a tus vidas), y la mesa no recibe nada encima.
     expect(rivalEmoji(guest)).toBeNull()
     expect(bubble(host, 'mine')).toBeNull()
-    expect(host.container.querySelector('[data-lp="theirs"]')).toHaveClass('border-info/50')
-    // Una señal no es un mensaje sin leer ni avisa aparte.
+    // Una señal no es un mensaje sin leer.
     expect(within(host.container).getByRole('button', { name: 'Chat' })).toBeInTheDocument()
 
-    // Se va sola; y "continuá" es un 👍.
+    // El globo de Beto se va solo; y «continuá» es un 👍 que le llega a Beto como a Ana.
     act(() => {
       vi.advanceTimersByTime(4000)
     })
-    expect(rivalEmoji(host)).toBeNull()
+    expect(bubble(guest, 'mine')).toBeNull()
     fireEvent.click(within(host.container).getByRole('button', { name: 'Continuá' }))
     flush()
-    expect(rivalEmoji(guest)).toHaveTextContent('👍')
+    expect(incoming().at(-1)).toMatchObject({ message: '👍', rival: 'Ana' })
     expect(within(guest.container).getByRole('button', { name: 'Chat' })).toBeInTheDocument()
+
+    // ✋ no avisa así: tiene su propio cartel.
+    const before = custom.mock.calls.length
+
+    fireEvent.click(within(guest.container).getByRole('button', { name: 'Esperá' }))
+    flush()
+    expect(custom.mock.calls).toHaveLength(before)
+    expect(host.container.querySelector('[data-hold]')).not.toBeNull()
+  })
+
+  it('en escritorio el emoji del rival sale grande en el medio de la pantalla, no tapa la mesa y desaparece al tocarlo (o solo, a los pocos segundos)', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    asDesktop()
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+    const rivalEmoji = (view: RenderResult) => within(view.container).queryByTestId('rival-emoji')
+    const bubble = (view: RenderResult, side: 'mine' | 'theirs') => view.container.querySelector(`[data-lp="${side}"] [role="status"]`)
+
+    expect(rivalEmoji(host)).toBeNull()
+    fireEvent.click(within(guest.container).getByRole('button', { name: 'Continuá' }))
+    flush()
+
+    expect(rivalEmoji(host)).toHaveTextContent('👍')
+    expect(rivalEmoji(host)).toHaveTextContent('Beto')
+    expect(rivalEmoji(host)?.querySelector('[aria-hidden]')?.getAttribute('style')).toContain('clamp(7rem')
+    // El emoji se muestra en el medio y el globo junto a las vidas del rival no se repite.
+    expect(bubble(host, 'theirs')).toBeNull()
+    expect(rivalEmoji(guest)).toBeNull()
+    // Sólo el emoji recibe toques: el resto de la pantalla (la mesa) sigue usable.
+    expect(rivalEmoji(host)).toHaveClass('pointer-events-none')
+    const emoji = within(rivalEmoji(host)!).getByRole('button', { name: 'Beto: 👍. Tocá para cerrar' })
+    expect(emoji).toHaveClass('pointer-events-auto')
+
+    // Al tocarlo, desaparece.
+    fireEvent.click(emoji)
+    expect(rivalEmoji(host)).toBeNull()
+
+    // Otro, que nadie toca, se va solo.
+    fireEvent.click(within(guest.container).getByRole('button', { name: 'Esperá' }))
+    fireEvent.click(within(guest.container).getByRole('button', { name: 'Continuá' }))
+    flush()
+    expect(rivalEmoji(host)).toHaveTextContent('👍')
+    act(() => {
+      vi.advanceTimersByTime(3000)
+    })
+    expect(rivalEmoji(host)).toBeNull()
   })
 
   it('✋ Esperá es un pedido de atención y no una reacción: el rival ve un cartel hasta que se suelta, jugar no lo cancela y 👍 o tocar ✋ otra vez lo suelta', () => {
