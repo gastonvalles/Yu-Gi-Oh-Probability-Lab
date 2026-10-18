@@ -229,7 +229,7 @@ describe('la mesa dibujada en inglés', () => {
 
     // Desterrar pregunta cómo queda: boca arriba (la pila muestra la carta) o boca abajo (de dorso).
     fireEvent.click(screen.getByRole('menuitem', { name: 'Banish the top card' }))
-    expect(screen.getByRole('menu', { name: '1 card' })).toHaveTextContent('Banish the top card')
+    expect(screen.getByRole('region', { name: '1 card' })).toHaveTextContent('Banish the top card')
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Face-up', 'Face-down'])
     fireEvent.click(screen.getByRole('menuitem', { name: 'Face-up' }))
     expect(status()).toHaveTextContent(/You banish Imperm$/)

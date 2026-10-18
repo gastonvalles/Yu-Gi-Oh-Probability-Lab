@@ -694,6 +694,41 @@ describe('los objetivos marcados del lado del otro', () => {
     expect(game.host.getSnapshot().marks.mine).toEqual({ cards: [], piles: ['hand'] })
   })
 
+  it('un objetivo dura cinco segundos y se quita solo, en los dos lados; marcarlo de nuevo da el plazo entero otra vez', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+
+    try {
+      const game = withFieldCard()
+
+      game.guest.toggleMark({ card: game.opaque })
+      game.guest.toggleMark({ pile: 'gy' })
+      game.room.flush()
+      vi.advanceTimersByTime(4000)
+      game.room.flush()
+      expect(game.host.getSnapshot().marks.mine).toEqual({ cards: [hostMain[0]], piles: ['gy'] })
+
+      vi.advanceTimersByTime(1100)
+      game.room.flush()
+      expect(game.guest.getSnapshot().marks.theirs).toEqual({ cards: [], piles: [] })
+      expect(game.host.getSnapshot().marks.mine).toEqual({ cards: [], piles: [] })
+
+      // Quitarla a mano y volver a marcar: el plazo del primer toque no la corta antes de tiempo.
+      game.guest.toggleMark({ pile: 'gy' })
+      vi.advanceTimersByTime(3000)
+      game.guest.toggleMark({ pile: 'gy' })
+      game.guest.toggleMark({ pile: 'gy' })
+      game.room.flush()
+      vi.advanceTimersByTime(3000)
+      game.room.flush()
+      expect(game.host.getSnapshot().marks.mine.piles).toEqual(['gy'])
+      vi.advanceTimersByTime(2100)
+      game.room.flush()
+      expect(game.host.getSnapshot().marks.mine.piles).toEqual([])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('no se marca lo que no es del rival ni nada si el rival no está', () => {
     const game = withFieldCard()
 

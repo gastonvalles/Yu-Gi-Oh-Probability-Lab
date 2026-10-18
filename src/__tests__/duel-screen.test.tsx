@@ -1309,8 +1309,8 @@ describe('la pantalla del duelo', () => {
 
     // Tocar la carta de Ana abre su menú: marcarla y ver su detalle (que se pide por su número).
     fireEvent.click(within(guest.container).getByRole('button', { name: 'Rival, Zona de monstruo 1: marcar' }))
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Señalar', 'Target', 'Tomar el control', 'Ver carta'])
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Ver carta' }))
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Tomar el control', 'Señalar', 'Target'])
+    fireEvent.click(screen.getByRole('button', { name: 'Ver carta' }))
     await act(async () => {})
     expect(screen.getByRole('dialog', { name: /^Detalle de Carta \d+$/ })).toBeInTheDocument()
     fireEvent.keyDown(document, { key: 'Escape' })

@@ -297,6 +297,8 @@ const DOUBLE_CLICK_MS = 400
 
 /** Reproducción de un combo: cuánto espera entre jugadas a velocidad normal (a 2× espera la mitad; a 0,5×, el doble). */
 const AUTOPLAY_MS = 1400
+/** Cuánto dura una marca de objetivo (Target) sobre una carta: pasado el plazo se quita sola. */
+const TARGET_MS = 5000
 
 /** `data-drop` y nombre de una zona de la mesa. */
 const dropIdOf = (spot: MatSpot, index: number) => (spot === 'field' ? 'field' : `${spot}:${index}`)
@@ -590,10 +592,14 @@ export function PracticeMat({
 
   // Si la mesa cambia por debajo de lo que esperaba una elección (deshacer, un paso del panel, un arrastre, otro combo), el menú y los Sacrificios o
   // materiales que se estaban eligiendo ya no valen: se cancelan. Jugar desde el menú ya los cierra por su cuenta.
+  // Una marca de objetivo que se quita sola (ver `TARGET_MS`) es una jugada más, pero no mueve nada: no cancela lo que se estaba eligiendo.
+  const lastType = session.actions[session.cursor - 1]?.type
   useEffect(() => {
+    if (lastType === 'target') return
+
     setMenu(null)
     setPicking(null)
-  }, [session.cursor, session.initial])
+  }, [session.cursor, session.initial, lastType])
 
   // Va después del efecto del paso (que lee la anterior): al jugarse, la carta ya no está esperando.
   useEffect(() => {
@@ -641,6 +647,43 @@ export function PracticeMat({
   useEffect(() => {
     if (menu || picking || counterMode !== null) setAutoplay(false)
   }, [menu, picking, counterMode])
+
+  // Una marca de objetivo dura `TARGET_MS` y se quita sola, con la misma jugada que la saca a mano (así el rival también la ve irse). Si se está repasando un combo, no se toca.
+  const dispatchRef = useRef(onDispatch)
+  const targetTimers = useRef(new Map<string, number>())
+  const idle = session.cursor === session.actions.length && !autoplay
+
+  useEffect(() => {
+    dispatchRef.current = onDispatch
+  }, [onDispatch])
+
+  useEffect(() => {
+    const timers = targetTimers.current
+
+    for (const [id, timer] of timers) {
+      if (!idle || !state.targeted.includes(id)) {
+        window.clearTimeout(timer)
+        timers.delete(id)
+      }
+    }
+
+    if (!idle) return
+
+    for (const id of state.targeted) {
+      if (!timers.has(id)) {
+        timers.set(id, window.setTimeout(() => { timers.delete(id); dispatchRef.current({ type: 'target', id }) }, TARGET_MS))
+      }
+    }
+  }, [state.targeted, idle])
+
+  useEffect(() => {
+    const timers = targetTimers.current
+
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer))
+      timers.clear()
+    }
+  }, [])
 
   const closeViewer = useCallback(() => {
     // Después de mirar el deck sin sacar nada se baraja, como en la mesa real (y la jugada queda anotada).
@@ -1040,11 +1083,11 @@ export function PracticeMat({
 
       return [
         { label: t('practice.deckMenu.draw'), onSelect: () => play({ type: 'draw', count: 1 }) },
-        { label: t('practice.deckMenu.revealTop'), onSelect: () => play({ type: 'reveal', id: top }) },
-        { label: t('practice.deckMenu.mill'), onSelect: () => play({ type: 'mill', count: 1 }) },
-        { label: t('practice.deckMenu.banishTop'), onSelect: () => choose(banishItem(top, t('practice.deckMenu.banishTop'))) },
-        view,
-        { label: t('practice.deckMenu.shuffle'), onSelect: () => play({ type: 'shuffle', seed: randomSeed() }) },
+        { label: t('practice.deckMenu.revealTop'), onSelect: () => play({ type: 'reveal', id: top }), utility: true },
+        { label: t('practice.deckMenu.mill'), onSelect: () => play({ type: 'mill', count: 1 }), utility: true },
+        { label: t('practice.deckMenu.banishTop'), onSelect: () => choose(banishItem(top, t('practice.deckMenu.banishTop'))), utility: true },
+        { ...view, utility: true },
+        { label: t('practice.deckMenu.shuffle'), onSelect: () => play({ type: 'shuffle', seed: randomSeed() }), utility: true },
       ]
     }
 
@@ -1055,7 +1098,7 @@ export function PracticeMat({
 
     // Una carta mía a la vista en el campo se puede señalar: un aro que late un rato en las dos pantallas. Comunica, no es una jugada (no cambia la mesa ni queda en los pasos), y va junto a Target.
     if (point && !menu.drop && locateCard(state, menu.id)?.kind === 'spot') {
-      const item: MenuItem = { label: t('duel.point.label'), onSelect: () => { setMenu(null); point(menu.id) } }
+      const item: MenuItem = { label: t('duel.point.label'), onSelect: () => { setMenu(null); point(menu.id) }, utility: true }
       const targetAt = mapped.findIndex((entry) => entry.label === t('practice.menu.target') || entry.label === t('practice.menu.untarget'))
 
       mapped.splice(targetAt >= 0 ? targetAt : mapped.length, 0, item)
@@ -1077,8 +1120,8 @@ export function PracticeMat({
             ? menuWhere.kind === 'pile' ? PILE_TITLES[menuWhere.pile] : menuWhere.kind === 'spot' ? ZONE_LABELS[menuWhere.spot] : t('practice.mat.materialOf', { name: nameOf(menuWhere.of) })
             : PILE_TITLES.deck
   const menuTitle = menuCard?.name ?? (menu?.kind === 'token' ? t('practice.token.plusTitle') : t('practice.mat.cardCount', { count: state.deck.length }))
-  // En el celular, una carta de la mano se abre en una hoja sobre la mano (la carta, su texto y las jugadas a un toque) y no en el menú pegado a ella. Lo soltado en una zona (`drop`), el campo y las pilas siguen con el menú.
-  const sheetCard = !isDesktop && menu?.kind === 'card' && !menu.drop && menuWhere?.kind === 'pile' && menuWhere.pile === 'hand' && menuCard !== null ? menuCard : null
+  // En el celular todo menú de la mesa (una carta de la mano, del campo o de una pila, lo soltado en una zona, el deck, el +) es una hoja de abajo con las jugadas a un toque (`CardSheet`); en escritorio, el menú pegado a la carta (`CardMenu`).
+  const sheeted = !isDesktop && menu !== null && !covered
 
   const saveCombo = (name: string) => {
     const combo = createSavedCombo({ name, deckName, initial: session.initial, actions: session.actions.slice(0, session.cursor), nameOf }, combos)
@@ -1137,8 +1180,8 @@ export function PracticeMat({
   const rivalMarks = duel?.marksOnMine
   const targetedIds = useMemo(() => new Set([...state.targeted, ...(rivalMarks?.cards ?? [])]), [state.targeted, rivalMarks])
   // La carta de la que se está viendo el menú lleva un marco celeste mientras tanto.
-  // Con la hoja abierta la carta tocada no se levanta en la mano: la hoja la tapa y la carta alzada quedaba encima de sus botones.
-  const selectedId = menu?.kind === 'card' && !sheetCard ? menu.id : null
+  // En el celular la hoja tapa la mano: una carta de la mano no se levanta (quedaba encima de los botones); la del campo sí lleva el marco.
+  const selectedId = menu?.kind === 'card' && !(!isDesktop && menuWhere?.kind === 'pile' && menuWhere.pile === 'hand') ? menu.id : null
 
   const cell = (spot: MatSpot, index: number, area: string) => {
     const placed = placedAt(state, spot, index)
@@ -1508,18 +1551,6 @@ export function PracticeMat({
         <div className="relative" data-pointed={duel?.pointed?.pile === 'hand' ? 'true' : undefined}>
           {/* Celular: las salidas y problemas flotan justo arriba de la mano (el aire que queda abajo del campo): no ocupan lugar, así que el campo no se mueve cuando aparecen, se explican o se van. Sólo los chips y la explicación atajan toques. */}
           {footer && isDealt && !isDesktop ? <div className="pointer-events-none absolute inset-x-0 bottom-full z-10 px-1 pb-1.5 animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
-          {/* La hoja de la carta tocada: se apoya sobre la mano (no la mueve) y se va con la jugada, la X, Escape o al tocar otra carta. */}
-          {sheetCard && !covered && menu?.kind === 'card' ? (
-            <CardSheet
-              name={sheetCard.name}
-              art={artOf(sheetCard)}
-              apiCard={sheetCard.apiCard}
-              items={menuItems}
-              asking={menu.ask?.label}
-              onInspect={!menu.ask && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
-              onClose={() => setMenu(null)}
-            />
-          ) : null}
           {rivalMarks?.piles.includes('hand') ? (
             <span
               role="img"
@@ -1651,8 +1682,23 @@ export function PracticeMat({
         </>
       )}
 
+      {/* Celular: la hoja se va con la jugada, la X, Escape o al tocar afuera. */}
+      {sheeted && menu ? (
+        <CardSheet
+          name={menuTitle}
+          kicker={menuKicker}
+          art={menuCard ? artOf(menuCard) : null}
+          back={menuCard === null}
+          apiCard={menuCard?.apiCard ?? null}
+          items={menuItems}
+          asking={menu.kind !== 'token' ? menu.ask?.label : undefined}
+          onInspect={menu.kind === 'card' && !menu.ask && !menu.drop && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
+          onClose={() => setMenu(null)}
+        />
+      ) : null}
+
       <CardMenu
-        anchor={covered || sheetCard ? null : (menu?.rect ?? null)}
+        anchor={covered || sheeted ? null : (menu?.rect ?? null)}
         kicker={menuKicker}
         title={menuTitle}
         items={menuItems}

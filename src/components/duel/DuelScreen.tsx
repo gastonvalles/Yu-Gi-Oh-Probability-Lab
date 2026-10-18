@@ -33,6 +33,7 @@ import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
 import { CloseButton, IconButton } from '../ui/IconButton'
+import { CardSheet } from '../probability/CardSheet'
 import { CardMenu, PILE_TITLES, PileViewer } from '../probability/MatDialogs'
 import { PracticeMat, type DuelMatLink, type MatCard } from '../probability/PracticeMat'
 import { DuelBar, DuelChatToggle, DuelLife, DuelLogTicker, DuelTools, type LaneNotice } from './DuelBar'
@@ -1720,15 +1721,16 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       : []
   const markItems = markTarget
     ? [
-        ...(markPile ? [{ label: t('duel.mark.view'), onSelect: () => { setRivalViewer(markPile); setMarkMenu(null) } }] : []),
-        // Señalar (comunica un rato, sin dejar nada) y Target (la marca de objetivo, que se queda): son cosas distintas.
-        { label: t('duel.point.label'), onSelect: () => { duel.ping(markTarget, 'theirs'); setMarkMenu(null) } },
+        ...(markPile ? [{ label: t('duel.mark.view'), onSelect: () => { setRivalViewer(markPile); setMarkMenu(null) }, utility: true }] : []),
+        // Señalar (comunica un rato, sin dejar nada) y Target (la marca de objetivo, que dura unos segundos): son cosas parecidas pero no iguales.
+        { label: t('duel.point.label'), onSelect: () => { duel.ping(markTarget, 'theirs'); setMarkMenu(null) }, utility: true },
         {
           label: t(marked ? 'practice.menu.untarget' : 'practice.menu.target'),
           onSelect: () => {
             duel.toggleMark(markTarget)
             setMarkMenu(null)
           },
+          utility: true,
         },
         ...controlItems,
       ]
@@ -1752,8 +1754,20 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
         onNewHand={NOTHING}
         duel={link}
       />
+      {/* Celular: la hoja de abajo; escritorio: el menú pegado a la carta. */}
+      {!docked && markMenu && !covered ? (
+        <CardSheet
+          name={markMenu.place}
+          kicker={rivalName}
+          art={markedDrawId !== undefined ? artOfDrawId(markedDrawId) : null}
+          back={markedDrawId === undefined || artOfDrawId(markedDrawId) === null}
+          items={markItems}
+          onInspect={markedDrawId !== undefined ? () => { setRivalInspected({ drawId: markedDrawId, rect: markMenu.rect }); setMarkMenu(null) } : undefined}
+          onClose={() => setMarkMenu(null)}
+        />
+      ) : null}
       <CardMenu
-        anchor={covered ? null : (markMenu?.rect ?? null)}
+        anchor={covered || !docked ? null : (markMenu?.rect ?? null)}
         kicker={rivalName}
         title={markMenu?.place ?? ''}
         items={markItems}

@@ -177,9 +177,8 @@ describe('la mesa de práctica', () => {
     const sheet = screen.getByRole('region', { name: 'Ash Blossom' })
     expect(within(sheet).getByRole('heading', { name: 'Ash Blossom' })).toBeInTheDocument()
     expect(within(sheet).getByRole('button', { name: 'Ver carta' })).toBeInTheDocument()
-    // Se apoya sobre la mano (no la mueve): está dentro de lo que envuelve a la mano.
-    expect(sheet).toHaveClass('absolute', 'bottom-0')
-    expect(sheet.parentElement).toContainElement(hand())
+    // Sale de abajo, sobre todo lo demás (también sobre el visor de una pila).
+    expect(sheet).toHaveClass('fixed', 'bottom-0')
     expect(within(sheet).queryByRole('menuitem', { name: 'Más' })).not.toBeInTheDocument()
     // Las jugadas del juego, en una fila (la primera llena); las de apoyo, en una grilla chica debajo: todas se ven y se tocan sin abrir nada.
     const plays = ['Invocación Normal', 'Colocar', 'Invocación Especial', 'Activar efecto'].map((name) => within(sheet).getByRole('menuitem', { name }))
@@ -193,6 +192,45 @@ describe('la mesa de práctica', () => {
 
     fireEvent.click(within(sheet).getByRole('button', { name: 'Cerrar' }))
     expect(screen.queryByRole('region', { name: 'Ash Blossom' })).not.toBeInTheDocument()
+  })
+
+  it('en el celular tocar afuera de la hoja la cierra (no el click fantasma de justo después de abrirla), y vale para una carta del campo, el deck y la mano', () => {
+    vi.useFakeTimers({ toFake: ['performance', 'setTimeout', 'clearTimeout', 'Date'] })
+
+    try {
+      render(<Harness />)
+      const backdrop = () => screen.getByRole('region', { name: 'Ash Blossom' }).previousElementSibling!
+
+      // Mano: el click que el celular manda al soltar el dedo no la cierra; un toque afuera, más tarde, sí.
+      tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
+      fireEvent.click(backdrop())
+      expect(screen.getByRole('region', { name: 'Ash Blossom' })).toBeInTheDocument()
+      vi.advanceTimersByTime(400)
+      fireEvent.click(backdrop())
+      expect(screen.queryByRole('region', { name: 'Ash Blossom' })).not.toBeInTheDocument()
+
+      // Campo: la carta de la zona abre la hoja (no el menú pegado) y afuera la cierra.
+      tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Invocación Normal' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Zona de monstruo 1: elegir' }))
+      vi.advanceTimersByTime(400)
+      tap(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ash Blossom' }))
+      expect(screen.getByRole('region', { name: 'Ash Blossom' })).toBeInTheDocument()
+      expect(screen.queryAllByRole('menu')).toHaveLength(1)
+      vi.advanceTimersByTime(400)
+      fireEvent.click(backdrop())
+      expect(screen.queryByRole('region', { name: 'Ash Blossom' })).not.toBeInTheDocument()
+
+      // Deck: la hoja trae el dorso y robar es la jugada; los demás, de apoyo.
+      tap(screen.getByRole('button', { name: /^Main: [0-9]+/ }))
+      const deck = screen.getByRole('region', { name: /carta/ })
+      expect(within(deck).getByRole('menuitem', { name: 'Robar' })).toHaveClass('bg-primary')
+      vi.advanceTimersByTime(400)
+      fireEvent.click(deck.previousElementSibling!)
+      expect(screen.queryByRole('region', { name: /carta/ })).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('el segundo paso de una jugada («¿En ataque o en defensa?») sale en la hoja, en lugar de las jugadas', () => {
@@ -474,14 +512,15 @@ describe('la mesa de práctica', () => {
     expect(waitingIn(mz1)?.querySelector('[data-fx="frame"]')).not.toBeNull()
     expect(within(hand()).queryByRole('listitem', { name: 'Ash Blossom' })).not.toBeInTheDocument()
     expect(within(hand()).getAllByRole('listitem')).toHaveLength(4)
-    const menu = screen.getByRole('menu', { name: 'Ash Blossom' })
-    expect(within(menu).getByText('Zona de monstruo 1')).toBeInTheDocument()
+    const sheet = screen.getByRole('region', { name: 'Ash Blossom' })
+    const menu = within(sheet).getByRole('menu', { name: 'Ash Blossom' })
+    expect(within(sheet).getByText('Zona de monstruo 1')).toBeInTheDocument()
     expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Invocación Normal', 'Colocar', 'Invocación Especial'])
 
-    // La posición se pregunta después, en el mismo menú, y la carta sigue en la zona.
+    // La posición se pregunta después, en la misma hoja, y la carta sigue en la zona.
     fireEvent.click(within(menu).getByRole('menuitem', { name: 'Invocación Especial' }))
     const question = screen.getByRole('menu', { name: 'Ash Blossom' })
-    expect(within(question).getByText('Invocación Especial')).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Ash Blossom' })).getByText('Invocación Especial')).toBeInTheDocument()
     expect(within(question).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['En ataque', 'En defensa'])
     expect(waitingIn(mz1)).not.toBeNull()
     fireEvent.click(within(question).getByRole('menuitem', { name: 'En defensa' }))
@@ -699,7 +738,7 @@ describe('la mesa de práctica', () => {
     fireEvent.pointerUp(plus, { ...pointer, clientX: 80, clientY: 120 })
 
     const dropped = screen.getByRole('menu', { name: 'Ficha' })
-    expect(within(dropped).getByText('Zona de monstruo 4')).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Ficha' })).getByText('Zona de monstruo 4')).toBeInTheDocument()
     expect(within(dropped).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['En ataque', 'En defensa'])
     fireEvent.click(within(dropped).getByRole('menuitem', { name: 'En ataque' }))
     expect(within(zone('Zona de monstruo 4')).getByRole('button', { name: 'Ficha' })).toBeInTheDocument()
@@ -719,7 +758,7 @@ describe('la mesa de práctica', () => {
     expect(within(screen.getByRole('menu', { name: 'Agregar' })).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Ficha', 'Poner contadores'])
     fireEvent.click(screen.getByRole('menuitem', { name: 'Ficha' }))
     const menu = screen.getByRole('menu', { name: 'Ficha' })
-    expect(within(menu).getByText('Invocación Especial')).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Ficha' })).getByText('Invocación Especial')).toBeInTheDocument()
     fireEvent.click(within(menu).getByRole('menuitem', { name: 'En defensa' }))
     expect(within(status()).getByText('Tocá la zona para la ficha')).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: /: elegir$/ })).toHaveLength(4)
@@ -729,9 +768,9 @@ describe('la mesa de práctica', () => {
     expect(within(token).getByRole('img', { name: 'Ficha' })).toHaveAttribute('src', '/api/card-image/cards_small/73915052.jpg')
     expect(within(status()).getByText('Ficha en defensa, zona 1')).toBeInTheDocument()
 
-    // Como en DuelingBook: mover, target, pasar a ataque y quitar.
+    // Como en DuelingBook: pasar a ataque, quitar y target (en la hoja del celular, las jugadas primero y el apoyo, el target, abajo).
     tap(token)
-    expect(within(screen.getByRole('menu', { name: 'Ficha' })).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Pasar a ataque', 'Target', 'Quitar la ficha'])
+    expect(within(screen.getByRole('menu', { name: 'Ficha' })).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Pasar a ataque', 'Quitar la ficha', 'Target'])
     fireEvent.click(screen.getByRole('menuitem', { name: 'Pasar a ataque' }))
     expect(within(zone('Zona de monstruo 1')).getByRole('button', { name: 'Ficha' })).toBeInTheDocument()
   })
@@ -1286,6 +1325,34 @@ describe('la mesa de práctica', () => {
       })
       expect(document.querySelector('[data-fx="landing"]')).toBeNull()
       expect(document.querySelector('[data-fx="banner"]')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('un target se quita solo a los cinco segundos, con la jugada de quitarlo (así el rival también lo ve irse), y no cierra la hoja de otra carta que se esté mirando', () => {
+    vi.useFakeTimers({ toFake: ['performance', 'setTimeout', 'clearTimeout', 'Date'] })
+
+    try {
+      render(<Harness />)
+
+      tap(within(hand()).getByRole('listitem', { name: 'Maxx C' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Target' }))
+      expect(within(hand()).getByRole('listitem', { name: 'Maxx C (target)' })).toBeInTheDocument()
+
+      // A los tres segundos sigue ahí; se abre la hoja de otra carta, y cuando la marca se va, la hoja queda.
+      act(() => {
+        vi.advanceTimersByTime(3000)
+      })
+      expect(within(hand()).getByRole('listitem', { name: 'Maxx C (target)' })).toBeInTheDocument()
+      tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
+      act(() => {
+        vi.advanceTimersByTime(2100)
+      })
+      expect(within(hand()).queryByRole('listitem', { name: 'Maxx C (target)' })).not.toBeInTheDocument()
+      expect(within(hand()).getByRole('listitem', { name: 'Maxx C' })).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'Ash Blossom' })).toBeInTheDocument()
+      expect(within(status()).getByText('Sacás el target de Maxx C')).toBeInTheDocument()
     } finally {
       vi.useRealTimers()
     }

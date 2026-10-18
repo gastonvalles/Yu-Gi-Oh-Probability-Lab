@@ -66,7 +66,7 @@ const MENU_ITEM =
  * En el celular, el click que el navegador sintetiza al soltar el dedo llega DESPUÉS del `pointerup` que
  * abrió el menú y cae sobre el fondo recién montado: durante este lapso el fondo no cierra el menú.
  */
-const GHOST_CLICK_MS = 350
+export const GHOST_CLICK_MS = 350
 
 /**
  * Menú de jugadas pegado a la carta, como en DuelingBook: una línea por jugada, sin diálogo en el
