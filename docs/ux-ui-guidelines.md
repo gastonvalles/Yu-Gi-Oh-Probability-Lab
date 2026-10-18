@@ -39,7 +39,7 @@ Convenciones de este repo al leer un pedido:
   (`Skeleton`, `aria-busy`) y éxito (toast o `Callout` en `success`).
 - **Tokens, no valores sueltos:** colores por tono (`ui/tone.ts`: el color siempre significa algo; si no significa nada, va en
   gris), tipografía de seis pasos (`text-micro` … `text-display`, nunca `text-[…]`), radios `rounded-tag/control/card/panel`,
-  sombras `shadow-card/overlay/focus/brand`. Tailwind sólo con clases literales: variantes con `variants()` / `cx()`.
+  sombras `shadow-card/overlay/focus` (sin brillos de adorno). Tailwind sólo con clases literales: variantes con `variants()` / `cx()`.
 - **Componentes con variantes y props tipadas.** Antes de escribir clases sueltas se busca el componente en
   `src/components/ui/` y en `/playground`; si falta una variante, se agrega al componente (y su muestra al playground), no se
   copia el markup. Los botones siguen `docs/design-system.md` ("Botones: jerarquía y texto", chequeado por

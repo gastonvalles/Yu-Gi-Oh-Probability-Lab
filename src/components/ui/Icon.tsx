@@ -215,12 +215,6 @@ const PATHS = {
       <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
     </>
   ),
-  sparkles: (
-    <>
-      <path d="m10 3.5 1.7 4.8 4.8 1.7-4.8 1.7L10 16.5l-1.7-4.8L3.5 10l4.8-1.7z" />
-      <path d="m18 14.5.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" />
-    </>
-  ),
   chart: <path d="M5 20v-8M12 20V5M19 20v-5" />,
 
   // — Acciones —

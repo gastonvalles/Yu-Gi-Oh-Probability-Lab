@@ -99,7 +99,7 @@ export function TitlesSection() {
           <Button size="sm" onClick={() => setModal(true)}>
             Abrir un diálogo
           </Button>
-          <Modal isOpen={modal} onClose={() => setModal(false)} size="sm" kicker="Sobretítulo" icon="sparkles" title="Título del diálogo" subtitle="El subtítulo explica en una línea." footer={<Button onClick={() => setModal(false)}>Entendido</Button>}>
+          <Modal isOpen={modal} onClose={() => setModal(false)} size="sm" kicker="Sobretítulo" icon="tag" title="Título del diálogo" subtitle="El subtítulo explica en una línea." footer={<Button onClick={() => setModal(false)}>Entendido</Button>}>
             <p className="m-0 text-body text-muted">El contenido del diálogo.</p>
           </Modal>
         </Specimen>

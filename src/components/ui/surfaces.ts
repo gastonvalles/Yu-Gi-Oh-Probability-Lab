@@ -12,7 +12,7 @@ import { TONE } from './tone'
 export const surface = {
   /** Contenedor flotante grande (modal, drawer). */
   panel: 'rounded-panel border border-border-subtle bg-card-background shadow-overlay',
-  card: 'rounded-card border border-border-subtle bg-card-background bg-linear-to-b from-primary/8 to-transparent shadow-card',
+  card: 'rounded-card border border-border-subtle bg-card-background shadow-card',
   /** Contenedor de cada paso: sólo ordena (las tarjetas de adentro son las que tienen fondo). */
   stepShell: '',
   cardSuccess: cx('rounded-card border shadow-card', TONE.success.wash),

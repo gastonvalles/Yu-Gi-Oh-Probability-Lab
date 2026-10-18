@@ -64,7 +64,7 @@ export function LpPad({ operator, name, amount, applyLabel, onKey, onApply }: Lp
       {digit('3')}
       <button
         type="button"
-        className={cx(PRESSABLE, 'row-span-2 border border-primary bg-primary text-stat text-primary-foreground shadow-brand active:bg-primary-hover')}
+        className={cx(PRESSABLE, 'row-span-2 border border-primary bg-primary text-stat text-primary-foreground active:bg-primary-hover')}
         disabled={amount === 0}
         aria-label={applyLabel}
         onClick={onApply}

@@ -192,7 +192,7 @@ function StepButton({ active, past = false, step, index, onClick }: { active: bo
         'grid w-full grid-cols-[1.5rem_2.5rem_minmax(0,1fr)] items-center gap-2 rounded-control px-2 py-1.5 text-left text-body transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus',
         // El cambio de fase separa las jugadas de cada fase: es la frase de siempre, en versalitas y de otro color.
         'data-[divider=true]:text-micro data-[divider=true]:font-bold data-[divider=true]:uppercase data-[divider=true]:tracking-wide',
-        active ? 'bg-primary text-primary-foreground shadow-brand' : past ? 'text-foreground hover:bg-tint/10 data-[divider=true]:text-accent' : 'text-muted hover:bg-tint/10 data-[divider=true]:text-accent/80',
+        active ? 'bg-primary text-primary-foreground' : past ? 'text-foreground hover:bg-tint/10 data-[divider=true]:text-accent' : 'text-muted hover:bg-tint/10 data-[divider=true]:text-accent/80',
       )}
       onClick={onClick}
     >

@@ -320,7 +320,7 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
 
       <button
         type="button"
-        className={cx(PRESSABLE, 'min-h-[5.25rem] rounded-none bg-primary text-stat text-primary-foreground shadow-brand active:bg-primary-hover [grid-area:eq] @xl:min-h-14')}
+        className={cx(PRESSABLE, 'min-h-[5.25rem] rounded-none bg-primary text-stat text-primary-foreground active:bg-primary-hover [grid-area:eq] @xl:min-h-14')}
         disabled={amount === 0}
         aria-label={t(operator === '-' ? 'shell.life.apply.subtract' : 'shell.life.apply.add', { amount, name })}
         onClick={() => applyDelta(operator === '-' ? -amount : amount)}

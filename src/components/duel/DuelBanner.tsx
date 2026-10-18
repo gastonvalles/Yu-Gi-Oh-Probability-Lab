@@ -102,7 +102,7 @@ export function WatchResultBanner({ end, nameOf, onLeave, onClose }: { end: Spec
   const score = end.match ? ` ${t('duel.watch.end.score', { a: end.wins[0], b: end.wins[1] })}${end.over ? '' : ` ${t('duel.watch.end.next')}`}` : ''
 
   return (
-    <div role="dialog" aria-modal="true" aria-label={title} data-testid="watch-result" className="fixed inset-0 z-65 grid place-items-center overflow-hidden bg-background/85 p-5 backdrop-blur-sm" style={medalVars(winner === null ? 'draw' : 'win')}>
+    <div role="dialog" aria-modal="true" aria-label={title} data-testid="watch-result" className="fixed inset-0 z-65 grid place-items-center overflow-hidden bg-background/85 p-5" style={medalVars(winner === null ? 'draw' : 'win')}>
       <span aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_36%,rgb(var(--medal-rgb)/0.3),transparent_62%)]" />
       <ResultHero tone={winner === null ? 'draw' : 'win'} icon={winner === null ? 'swap' : 'trophy'} title={title} reason={`${why}${score}`}>
         {end.over ? (

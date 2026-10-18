@@ -169,7 +169,7 @@ export function ButtonsSection() {
                 {tone}
               </Badge>
             ))}
-            <Badge tone="brand" shape={shape} icon="sparkles">
+            <Badge tone="brand" shape={shape} icon="tag">
               Con ícono
             </Badge>
             <Badge tone="success" size="sm" shape={shape}>

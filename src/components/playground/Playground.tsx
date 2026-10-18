@@ -34,7 +34,7 @@ const SECTIONS: PlaygroundSection[] = [
   { id: 'datos', title: 'Datos', icon: 'chart', description: 'Anillos de progreso y repartidos, y la explicación a pedido.', Component: DataSection },
   { id: 'dialogos', title: 'Diálogos y avisos', icon: 'info', description: 'Modal en todos sus tamaños y los avisos (toast).', Component: DialogsSection },
   { id: 'duelo', title: 'Duelo por enlace', icon: 'layers', description: 'Los dos campos del duelo: tres formas de verlos en el celular.', Component: DuelSection },
-  { id: 'iconos', title: 'Íconos', icon: 'sparkles', description: 'Todo el set, en sus tres variantes.', Component: IconsSection },
+  { id: 'iconos', title: 'Íconos', icon: 'cube', description: 'Todo el set, en sus tres variantes.', Component: IconsSection },
   { id: 'assets', title: 'Assets', icon: 'image', description: 'Los archivos de public/, la marca, las fuentes y las imágenes de cartas.', Component: AssetsSection },
   { id: 'tokens', title: 'Tokens del diseño', icon: 'sliders', description: 'Colores, radios, sombras y tipografías, leídos de index.css.', Component: TokensSection },
 ]
@@ -60,7 +60,7 @@ export default function Playground() {
 
   return (
     <div className="min-h-dvh w-full min-w-0 bg-transparent text-foreground">
-      <header className="sticky top-0 z-40 border-b border-border-subtle bg-background/90 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b border-border-subtle bg-background">
         <div className="mx-auto flex max-w-content flex-wrap items-center gap-x-4 gap-y-2 px-gutter py-3 min-[1101px]:px-6">
           <Icon name="sliders" size={22} className="text-primary-soft" />
           <Heading level="page" as="h1">

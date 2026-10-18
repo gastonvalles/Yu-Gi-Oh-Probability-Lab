@@ -352,7 +352,7 @@ export function ExportDeckPanel({
       </Modal>
 
       {/* En el celular, abajo y al alcance del pulgar: volver al deck y descargar (la principal, a la derecha). */}
-      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-30 -mx-gutter -mb-6 flex gap-2 border-t border-border-subtle bg-background/90 px-gutter py-3 backdrop-blur min-[1101px]:hidden">
+      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-30 -mx-gutter -mb-6 flex gap-2 border-t border-border-subtle bg-background px-gutter py-3 min-[1101px]:hidden">
         {onBack ? (
           <Button variant="secondary" size="md" className="min-w-0 flex-1" onClick={onBack}>
             {t('deck.export.back')}

@@ -48,7 +48,7 @@ const toneStyle = variants({
       flat: cx('rounded-full [&_svg]:stroke-[1.3]', BARE),
       outline: cx('rounded-full border border-tint/30 hover:border-tint/60', BARE),
       tile: cx('rounded-card bg-card-background [&_svg]:stroke-[1.5]', BARE),
-      primary: 'rounded-full bg-primary text-primary-foreground shadow-brand hover:bg-primary-hover active:translate-y-px disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none',
+      primary: 'rounded-full bg-primary text-primary-foreground hover:bg-primary-hover active:translate-y-px disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none',
     },
   },
   defaults: { tone: 'raised' },
