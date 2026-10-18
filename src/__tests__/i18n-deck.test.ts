@@ -28,7 +28,8 @@ const ASH: ApiCardSearchResult = {
   race: 'Zombie', attribute: 'FIRE', level: 3, linkValue: null, atk: '0', def: '1800', archetype: null, ygoprodeckUrl: null,
   imageUrl: null, imageUrlSmall: null, banlist: { tcg: null, ocg: null, goat: null }, genesys: { points: null },
 }
-const withBanlist = (tcg: 'forbidden' | 'limited' | 'semi-limited'): ApiCardSearchResult => ({ ...ASH, banlist: { tcg, ocg: null, goat: null } })
+// Con un número que no figura en ninguna banlist del sitio: el estado sale de la carta (si figurara, saldría de la lista que rige).
+const withBanlist = (tcg: 'forbidden' | 'limited' | 'semi-limited'): ApiCardSearchResult => ({ ...ASH, ygoprodeckId: 99999999, banlist: { tcg, ocg: null, goat: null } })
 
 function inDeck(card: ApiCardSearchResult, copies: number, extra: Partial<DeckCardInstance> = {}): DeckCardInstance[] {
   return Array.from({ length: copies }, (_, index) => ({
