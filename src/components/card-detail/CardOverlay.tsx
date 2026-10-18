@@ -330,8 +330,9 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
           {/* Las flechas van afuera de la carta y de lo que va a sus costados (artes y precios), en el centro del alto de la carta: en el celular, en los bordes de la pantalla. */}
           {hasNavigation ? (
             <div className="pointer-events-none absolute left-1/2 top-0 flex h-full w-[min(100vw,calc(100%+12.5rem))] -translate-x-1/2 items-center justify-between pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] group-data-[zoomed=true]:hidden">
-              <CardStepButton direction="previous" disabled={!navigation?.onPrevious} onStep={() => goTo('previous')} />
-              <CardStepButton direction="next" disabled={!navigation?.onNext} onStep={() => goTo('next')} />
+              {/* Hacia el lado donde no hay carta, la flecha no se muestra (queda su lugar vacío: la otra sigue en su borde). */}
+              {navigation?.onPrevious ? <CardStepButton direction="previous" onStep={() => goTo('previous')} /> : <span />}
+              {navigation?.onNext ? <CardStepButton direction="next" onStep={() => goTo('next')} /> : <span />}
             </div>
           ) : null}
         </div>
@@ -370,13 +371,13 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
   )
 }
 
-/** Una flecha del detalle (anterior o siguiente): 44 px de toque. Apagada en la punta de la lista, y aun así no deja pasar el clic al fondo (cerraría el detalle). */
-function CardStepButton({ direction, disabled, onStep }: { direction: 'previous' | 'next'; disabled: boolean; onStep: () => void }) {
+/** Una flecha del detalle (anterior o siguiente): 44 px de toque. En la punta de la lista no se muestra (quien la usa sólo la pone si hay a dónde ir). */
+function CardStepButton({ direction, onStep }: { direction: 'previous' | 'next'; onStep: () => void }) {
   const label = t(direction === 'previous' ? 'search.detail.previous' : 'search.detail.next')
 
   return (
     <div className="pointer-events-auto" onClick={(event) => event.stopPropagation()}>
-      <IconButton size="lg" aria-label={label} title={label} disabled={disabled} onClick={onStep}>
+      <IconButton size="lg" aria-label={label} title={label} onClick={onStep}>
         <Icon name={direction === 'previous' ? 'chevron-left' : 'chevron-right'} />
       </IconButton>
     </div>

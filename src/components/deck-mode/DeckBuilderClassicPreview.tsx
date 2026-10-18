@@ -37,7 +37,7 @@ interface DeckBuilderClassicPreviewProps {
   card: ApiCardSearchResult | null
   source: 'search' | 'deck' | null
   deckCopy: DeckCopyActions | null
-  /** Pasar a la carta anterior y a la siguiente de la lista de la que salió (el builder). Sin la prop no hay flechas; con `null` quedan apagadas, así lo de abajo no se corre. */
+  /** Pasar a la carta anterior y a la siguiente de la lista de la que salió (el builder): las flechas van a los costados de la carta y, hacia el lado donde no hay carta, no se muestran. Sin la prop no hay flechas ni lugar para ellas; con `null` (la búsqueda cambió y la carta ya no está en la lista) el lugar queda, vacío, así la carta no cambia de tamaño. */
   navigation?: CardNavigation | null
   onAddToZone: (zone: DeckZone) => void
 }
@@ -69,24 +69,24 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, navigation, 
             <CardPricesButton className="justify-self-end" onClick={() => setPricesOpen(true)} />
           </div>
 
-          {navigation !== undefined ? (
-            <div className="flex justify-center gap-2">
-              <IconButton size="lg" aria-label={t('search.detail.previous')} title={t('search.detail.previous')} disabled={!navigation?.onPrevious} onClick={() => navigation?.onPrevious?.()}>
-                <Icon name="chevron-left" />
-              </IconButton>
-              <IconButton size="lg" aria-label={t('search.detail.next')} title={t('search.detail.next')} disabled={!navigation?.onNext} onClick={() => navigation?.onNext?.()}>
-                <Icon name="chevron-right" />
-              </IconButton>
-            </div>
-          ) : null}
+          {/* Las flechas van a los costados de la carta, centradas en su alto; la carta ocupa la columna del medio (con o sin flechas). */}
+          <div className={cx('grid min-h-0 items-center', navigation !== undefined ? 'grid-cols-[2.25rem_minmax(0,1fr)_2.25rem] gap-1' : 'grid-cols-1')}>
+            {navigation !== undefined ? (
+              <div className="flex justify-center">
+                {navigation?.onPrevious ? (
+                  <IconButton size="sm" aria-label={t('search.detail.previous')} title={t('search.detail.previous')} onClick={() => navigation.onPrevious?.()}>
+                    <Icon name="chevron-left" />
+                  </IconButton>
+                ) : null}
+              </div>
+            ) : null}
 
-          {/* La carta se inclina en 3D hacia el mouse (como en el detalle): la perspectiva va en el contenedor y la inclinación en la carta. */}
-          <div className="grid min-h-0 justify-items-center">
+            {/* La carta se inclina en 3D hacia el mouse (como en el detalle): la perspectiva va en el contenedor y la inclinación en la carta. */}
+            <div className="grid min-h-0 justify-items-center">
             <div
               className={cx(
                 'relative',
-                // La fila de flechas le saca su alto (3.5 rem) a lo que le queda a la carta.
-                navigation !== undefined ? 'w-[min(100%,max(9rem,calc((100dvh-var(--app-footer-height)-32.5rem)*0.72)))]' : 'w-[min(100%,max(9rem,calc((100dvh-var(--app-footer-height)-29rem)*0.72)))]',
+                'w-[min(100%,max(9rem,calc((100dvh-var(--app-footer-height)-29rem)*0.72)))]',
                 TILT_PERSPECTIVE,
               )}
             >
@@ -103,6 +103,17 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, navigation, 
                 <CardGlare />
               </div>
             </div>
+            </div>
+
+            {navigation !== undefined ? (
+              <div className="flex justify-center">
+                {navigation?.onNext ? (
+                  <IconButton size="sm" aria-label={t('search.detail.next')} title={t('search.detail.next')} onClick={() => navigation.onNext?.()}>
+                    <Icon name="chevron-right" />
+                  </IconButton>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           <CardArtPicker arts={arts} selectedId={art?.id ?? null} onSelect={(artId) => setPicked({ cardId: card.ygoprodeckId, artId })} fallbackUrl={card.imageUrlSmall ?? card.imageUrl} />
