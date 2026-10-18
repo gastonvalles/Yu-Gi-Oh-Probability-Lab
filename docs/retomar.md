@@ -31,6 +31,7 @@ fidelidad dejó sin hacer (sección 6).
 - **Precio total del deck** (#288, `DeckPriceModal`): suma la impresión más barata de TCGplayer de cada carta.
 - El panel del detalle de una carta sigue al arte elegido: rareza, expansión, código y precio (#290, `PrintingInfo`).
 - El detalle de una carta pasa a la anterior y a la siguiente de su lista con flechas, ← →, y deslizando en el celular (`navigation` de `CardOverlay`, lógica pura en `app/card-neighbors.ts`): builder, decks de torneo (celular), Banlists y Expansiones.
+- **Los límites de copias del builder salen de las banlists del sitio** (`src/data/banlists.json`, la misma de la pantalla Banlists), no de la carta de la API: `getCardCopyLimit` (`deck-format.ts`) usa `currentStatus` de `app/banlists.ts` —la lista más nueva que **ya rige** por fecha— para TCG y OCG, y sólo lo que nunca figuró en una lista (y GOAT, Edison) sigue con lo que trae la carta. Así una banlist nueva se aplica sola el día en que entra, sin esperar a YGOPRODeck y también en los decks guardados. La **próxima** lista (todavía no rige) no cambia el estado de hoy: avisa en el builder, en celular y escritorio, con un `Callout` («El 19 de octubre entra la próxima lista de TCG: N cartas de tu deck cambian», `buildUpcomingLimitNotes`), sólo para las que se vuelven más estrictas y sin ser un error del deck (hoy es legal).
 
 **Duelo**
 - Pasar turno (#269). **Crear sala** (#270): Jugar solo o 1 vs 1, reloj, formato, Match (mejor de 3) con siding y salas

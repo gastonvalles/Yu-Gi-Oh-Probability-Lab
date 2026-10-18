@@ -1,5 +1,5 @@
 import banlistsJson from '../data/banlists.json'
-import { dateLocale, perLocale } from '../i18n'
+import { dateLocale, perLocale, t } from '../i18n'
 import type { BanlistStatus } from '../types'
 
 /**
@@ -52,6 +52,34 @@ export function banlistsOf(region: BanlistRegion): Banlist[] {
   return lists
 }
 
+/** La lista que rige hoy en una región: la más nueva que ya entró en vigencia. */
+export const activeBanlist = (region: BanlistRegion, now: string = today()): Banlist | null => banlistsOf(region).find((list) => !isUpcoming(list, now)) ?? null
+
+/** La que viene: la más cercana que todavía no rige (las listas van de la más nueva a la más vieja). */
+export const nextBanlist = (region: BanlistRegion, now: string = today()): Banlist | null => banlistsOf(region).filter((list) => isUpcoming(list, now)).at(-1) ?? null
+
+/**
+ * Cómo está hoy una carta que figura en las listas, según la lista que rige (la de hoy, no la que viene). Una carta que nunca figuró en ninguna da `null`: lo decide otra fuente
+ * (la API de YGOPRODeck). Es el estado que se usa para armar el deck: la API tarda en cambiarlo cuando sale una lista nueva, y la pantalla de Banlists ya lo muestra.
+ */
+export function currentStatus(region: BanlistRegion, cardId: number, now: string = today()): BanlistStatus | null {
+  return String(cardId) in data.cards ? statusIn(activeBanlist(region, now), cardId) : null
+}
+
+/** Lo que le pasa a una carta cuando entre la próxima lista: el día y a qué estado pasa; `null` si no cambia (o no hay próxima). */
+export function upcomingChange(region: BanlistRegion, cardId: number, now: string = today()): { date: string; from: BanlistStatus; to: BanlistStatus } | null {
+  const next = nextBanlist(region, now)
+
+  if (!next || !(String(cardId) in data.cards)) {
+    return null
+  }
+
+  const from = statusIn(activeBanlist(region, now), cardId)
+  const to = statusIn(next, cardId)
+
+  return from === to ? null : { date: next.date, from, to }
+}
+
 /** El nombre (en inglés, como lo da YGOPRODeck) de una carta de las listas. */
 export const banlistCardName = (cardId: number): string => data.cards[String(cardId)] ?? String(cardId)
 
@@ -63,6 +91,16 @@ export function statusIn(list: Banlist | null, cardId: number): BanlistStatus {
 
   return 'unlimited'
 }
+
+const STATUS_KEY = {
+  forbidden: 'catalog.banlists.status.forbidden',
+  limited: 'catalog.banlists.status.limited',
+  'semi-limited': 'catalog.banlists.status.semiLimited',
+  unlimited: 'catalog.banlists.status.unlimited',
+} as const
+
+/** "Prohibida", "Limitada", "Semi-limitada" o "Ilimitada", en el idioma de ahora. */
+export const banlistStatusLabel = (status: BanlistStatus): string => t(STATUS_KEY[status])
 
 const byName = (a: number, b: number) => banlistCardName(a).localeCompare(banlistCardName(b), 'en')
 

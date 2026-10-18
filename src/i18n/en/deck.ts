@@ -90,6 +90,12 @@ export const deck: Translated<typeof es> = {
     other: '{count} issues for {format}',
   },
   'deck.builder.issues.more': '+ {count} more',
+  // The next list (not in effect yet) tightens cards that are already in the deck: it is legal today, this is a heads-up to start changing it.
+  'deck.builder.upcoming.title': {
+    one: 'The next {format} list takes effect on {date}: {count} card in your deck changes',
+    other: 'The next {format} list takes effect on {date}: {count} cards in your deck change',
+  },
+  'deck.builder.upcoming.card': '{name}: from {from} to {to}',
 
   // --- Builder and export notices
   'deck.toast.storageFull': "Your browser has no space left to save your changes. Export the deck so you don't lose it.",

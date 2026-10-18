@@ -1,6 +1,7 @@
 import { useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react'
 
-import { getDeckFormatLabel } from '../../app/deck-format'
+import { banlistStatusLabel, formatBanlistDate } from '../../app/banlists'
+import { buildUpcomingLimitNotes, getDeckFormatLabel } from '../../app/deck-format'
 import { getDesktopCompactDeckColumnCount } from '../../app/deck-zone-layout'
 import type { DeckBuilderState, DeckZone as DeckZoneType } from '../../app/model'
 import type { DeckDropIndicatorState } from '../../app/use-deck-pointer-drag'
@@ -161,6 +162,17 @@ export function DeckBuilderStep({
   const hasHiddenIssues = formatIssues.length > visibleFormatIssues.length
   const showGenesysPoints = deckFormat === 'genesys' && genesysPointTotal !== null && genesysPointCap !== null
   const showFormatIssues = deckFormat !== 'genesys' && formatIssues.length > 0
+  const upcomingLimits = useMemo(() => buildUpcomingLimitNotes(deckBuilder, deckFormat), [deckBuilder, deckFormat])
+  // La próxima banlist (todavía no rige) vuelve más estrictas cartas del deck: aviso, no error (hoy el deck es legal). Va en el celular y en escritorio.
+  const upcomingNote = upcomingLimits ? (
+    <Callout tone="warning" icon="calendar" title={t('deck.builder.upcoming.title', { count: upcomingLimits.notes.length, date: formatBanlistDate(upcomingLimits.date), format: formatLabel })}>
+      <ul className="m-0 grid list-none gap-1 p-0">
+        {upcomingLimits.notes.map((note) => (
+          <li key={note.name}>{t('deck.builder.upcoming.card', { name: note.name, from: banlistStatusLabel(note.from), to: banlistStatusLabel(note.to) })}</li>
+        ))}
+      </ul>
+    </Callout>
+  ) : null
   const desktopCompactColumnCount = getDesktopCompactDeckColumnCount(
     'main',
     deckBuilder.main.length,
@@ -337,6 +349,8 @@ export function DeckBuilderStep({
                 </div>
               </div>
 
+              {upcomingNote}
+
               {DECK_ZONE_ITEMS.map(({ zone, title }) => {
                 const zoneNode = (
                   <DeckZone
@@ -492,6 +506,8 @@ export function DeckBuilderStep({
           </ul>
         </Callout>
       ) : null}
+
+      {upcomingNote}
 
       <div className="grid items-start gap-3">
         <article className="w-full min-h-0 self-start">

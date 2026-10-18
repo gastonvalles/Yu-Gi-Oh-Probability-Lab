@@ -1,6 +1,7 @@
 import { t } from '../i18n'
 import type { ApiCardReference, BanlistStatus, DeckFormat } from '../types'
 import type { ApiCardSearchResult } from '../ygoprodeck'
+import { currentStatus, upcomingChange } from './banlists'
 import { GENESYS_POINT_CAP, calculateGenesysDeckPointTotal } from './genesys-format'
 import { EDISON_FORMAT_LABEL, getEdisonCardCopyLimit, getEdisonCardStatus, isEdisonCardInPool } from './edison-format'
 import type { DeckBuilderState, DeckZone } from './model'
@@ -22,14 +23,19 @@ export function getCardCopyLimit(card: ApiCardReference | ApiCardSearchResult, f
     return getEdisonCardCopyLimit(card)
   }
 
-  const status =
-    format === 'tcg'
-      ? card.banlist?.tcg ?? null
-      : format === 'ocg'
-        ? card.banlist?.ocg ?? null
-        : card.banlist?.goat ?? null
+  return mapBanlistStatusToCopyLimit(statusOf(card, format))
+}
 
-  return mapBanlistStatusToCopyLimit(status)
+/**
+ * El estado de la carta en el formato. TCG y OCG salen de las listas del sitio (las mismas de la pantalla de Banlists, con su fecha de entrada en vigencia): la API de YGOPRODeck tarda
+ * en cambiar el estado cuando sale una lista, y un deck guardado lleva el viejo. Lo que nunca figuró en una lista, y GOAT, siguen saliendo de la carta.
+ */
+function statusOf(card: ApiCardReference | ApiCardSearchResult, format: DeckFormat): BanlistStatus | null {
+  if (format === 'tcg' || format === 'ocg') {
+    return currentStatus(format, card.ygoprodeckId) ?? card.banlist?.[format] ?? null
+  }
+
+  return card.banlist?.goat ?? null
 }
 
 export function getDeckFormatLabel(format: DeckFormat): string {
@@ -168,6 +174,42 @@ export function buildDeckFormatIssues(deckBuilder: DeckBuilderState, format: Dec
   }
 
   return genesysIssues
+}
+
+export interface UpcomingLimitNote {
+  name: string
+  from: BanlistStatus
+  to: BanlistStatus
+}
+
+/**
+ * Las cartas del deck que se vuelven más estrictas (de limitada a prohibida, por ejemplo) cuando entre la próxima lista del formato, y el día en que entra. No son errores
+ * (hoy el deck es legal): es el aviso para ir cambiándolas. Sólo TCG y OCG tienen listas con fecha.
+ */
+export function buildUpcomingLimitNotes(deckBuilder: DeckBuilderState, format: DeckFormat): { date: string; notes: UpcomingLimitNote[] } | null {
+  if (format !== 'tcg' && format !== 'ocg') {
+    return null
+  }
+
+  const seen = new Set<string>()
+  const notes: UpcomingLimitNote[] = []
+  let date = ''
+
+  for (const zone of ['main', 'extra', 'side'] as const) {
+    for (const card of deckBuilder[zone]) {
+      const key = normalizeCardName(card.name)
+      const change = seen.has(key) ? null : upcomingChange(format, card.apiCard.ygoprodeckId)
+
+      seen.add(key)
+
+      if (change && mapBanlistStatusToCopyLimit(change.to) < mapBanlistStatusToCopyLimit(change.from)) {
+        date = change.date
+        notes.push({ name: card.name, from: change.from, to: change.to })
+      }
+    }
+  }
+
+  return notes.length > 0 ? { date, notes } : null
 }
 
 function mapBanlistStatusToCopyLimit(status: BanlistStatus | null): number {
