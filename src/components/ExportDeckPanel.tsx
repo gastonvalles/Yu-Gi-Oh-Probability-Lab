@@ -21,7 +21,7 @@ import { Modal } from './ui/Modal'
 import { SectionHeader } from './ui/SectionHeader'
 import { Skeleton } from './ui/Skeleton'
 import { Switch } from './ui/Switch'
-import { overline } from './ui/typography'
+import { overline, textLink } from './ui/typography'
 
 interface ExportDeckPanelProps {
   deckBuilder: DeckBuilderState
@@ -46,7 +46,7 @@ const EXTENSION_LINKS = [
 ] as const
 const KONAMI_DB_URL = 'https://www.db.yugioh-card.com/yugiohdb/?request_locale=en'
 const STEP = 'grid content-start gap-2 rounded-card bg-tint/5 p-3'
-const LINK = 'inline-flex min-h-11 items-center font-semibold text-primary-soft underline-offset-2 hover:underline'
+const LINK = cx('inline-flex min-h-11 items-center', textLink)
 
 /** Lo que se tildó la última vez: una comodidad, si no se puede leer se vuelve a todo tildado. */
 function readSelection(): DeckExportSelection {

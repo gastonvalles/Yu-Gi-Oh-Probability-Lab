@@ -117,6 +117,8 @@ de a uno y en este orden; el ejemplo visual es la hoja "Lenguaje · tarjetas" de
    la izquierda, el botón a la derecha. Orden de lectura: título y subtítulo, imagen, y abajo número + acción. Una sola acción
    principal por tarjeta (ver "Botones: jerarquía y texto" en `docs/design-system.md`).
 
+Dónde ya se aplica: el resultado del Lab, la tarjeta de Comparar, los replays y la **tarjeta de los decks de torneo** (`MetaDeckTile`: nombre y jugador, portada, contexto agrupado y, abajo, el puesto junto al botón «Ver deck»; el número de jugadores y el Side, en la ficha). Una tarjeta con la misma letra chica en cuatro renglones seguidos (como era esa) rompe el movimiento 2: se agrupa lo que va junto, se jerarquiza lo que decide y se manda a la ficha lo demás.
+
 Para revisar una tarjeta: contá los bordes (si hay más de uno, sacá uno); tapá los textos y mirá si se distinguen los grupos
 sólo por el aire; buscá letra chica y preguntate si decide algo; y verificá que el botón quede pegado al número que lo motiva.
 

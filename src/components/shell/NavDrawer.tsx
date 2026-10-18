@@ -14,6 +14,7 @@ import { BackupActions } from './BackupActions'
 import { mascotsNavItem, searchNavItem, type NavGroup } from './nav-model'
 import { NAV_OVERLINE } from './rail'
 import { NavButton, SidebarNav } from './SidebarNav'
+import { textLink } from '../ui/typography'
 
 /** El menú de destinos dentro del cajón: los mismos cuatro grupos de la barra de abajo y del menú lateral. En la mesa a pantalla completa (sin barra) es la única salida. */
 interface DrawerNav {
@@ -101,7 +102,7 @@ export function DrawerPanel({ onClose, nav, className }: DrawerPanelProps) {
         {/* Lo legal va abajo del todo (el resto lo empuja con `mt-auto`). */}
         <div className="mt-auto grid gap-2">
           <SocialLinks size="lg" className="-ml-2" />
-          <a href={t('shell.legal.page')} target="_blank" rel="noreferrer" className="inline-flex min-h-11 w-fit items-center rounded-control text-body text-muted underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:shadow-focus">
+          <a href={t('shell.legal.page')} target="_blank" rel="noreferrer" className={cx('inline-flex min-h-11 w-fit items-center rounded-control text-body', textLink)}>
             {t('shell.legal.label')}
           </a>
           <SiteCredit withDisclaimer />

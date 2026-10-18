@@ -31,6 +31,7 @@ import { StepPage } from '../ui/StepPage'
 import { filterChip } from '../ui/surfaces'
 import { LiveStreamsSection } from './LiveStreams'
 import { ReplayModal } from './ReplayModal'
+import { textLink } from '../ui/typography'
 
 type Scope = 'meta' | 'all'
 
@@ -39,7 +40,7 @@ const CHANNEL_BADGE: Record<ReplayChannel, string> = { eu: 'EU', tcg: 'TCG' }
 
 /** El nombre de un canal, como link a su página de YouTube. */
 const channelLink = (key: ReplayChannel) => (text: string) => (
-  <a href={REPLAYS.channels[key].url} target="_blank" rel="noreferrer" className="font-semibold text-primary-soft underline-offset-2 hover:underline">
+  <a href={REPLAYS.channels[key].url} target="_blank" rel="noreferrer" className={textLink}>
     {text}
   </a>
 )

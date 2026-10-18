@@ -8,6 +8,7 @@ import { tRich } from '../../i18n/rich'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
 import { cx } from '../ui/cx'
+import { textLink } from '../ui/typography'
 import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
 import { SectionHeader } from '../ui/SectionHeader'
@@ -32,7 +33,7 @@ function LiveBadge({ className }: { className?: string }) {
 
 /** El nombre de un canal, como link a su página de YouTube. */
 const channelLink = (key: 'eu' | 'tcg') => (text: string) => (
-  <a href={REPLAYS.channels[key].url} target="_blank" rel="noreferrer" className="font-semibold text-primary-soft underline-offset-2 hover:underline">
+  <a href={REPLAYS.channels[key].url} target="_blank" rel="noreferrer" className={textLink}>
     {text}
   </a>
 )

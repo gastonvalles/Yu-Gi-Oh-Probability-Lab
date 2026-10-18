@@ -1,15 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 
-import { cardImageSrc } from '../../app/card-image-source'
-import { META_DECKS, buildTournamentsHash, coverArtUrl, filterMetaDecks, readTournamentsHash, type MetaDeck, type MetaDeckFilter } from '../../app/meta'
-import { countReplaysOfDeck } from '../../app/replays'
+import { META_DECKS, buildTournamentsHash, filterMetaDecks, readTournamentsHash, type MetaDeck, type MetaDeckFilter } from '../../app/meta'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useAppSelector } from '../../app/store-hooks'
 import { setMetaRegion, useMetaRegion } from '../../app/use-meta-region'
 import { useToastMessage } from '../../app/use-toast-message'
 import { formatInteger } from '../../app/utils'
 import { t } from '../../i18n'
 import { StepHero } from '../StepHero'
-import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { EmptyState } from '../ui/EmptyState'
 import { Heading } from '../ui/Heading'
@@ -18,8 +16,8 @@ import { SearchField } from '../ui/SearchField'
 import { StepPage } from '../ui/StepPage'
 import { filterChip } from '../ui/surfaces'
 import { MetaDeckModal } from './MetaDeckModal'
+import { MetaDeckTile } from './MetaDeckTile'
 import { MetaHeroSide } from './MetaHeroSide'
-import { deckCardCounts, formatMetaDate } from './meta-format'
 
 const DECKS_PER_PAGE = 24
 
@@ -37,6 +35,7 @@ function readLink(): { requestedDeck: number | null; deck: MetaDeck | null; filt
 export function TournamentDecksScreen() {
   const deckFormat = useAppSelector((state) => state.settings.deckFormat)
   const { showToast } = useToastMessage()
+  const isDesktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const [link] = useState(readLink)
   // Arranca en la región del deck que pide el link o, si no, en la del formato del builder; después se cambia desde el encabezado.
   const region = useMetaRegion(link.deck?.region ?? (deckFormat === 'ocg' ? 'ocg' : 'tcg'))
@@ -154,7 +153,7 @@ export function TournamentDecksScreen() {
         {decks.length > 0 ? (
           <div className="grid gap-2 min-[560px]:grid-cols-2 min-[1101px]:grid-cols-3 min-[1101px]:gap-3 min-[1300px]:grid-cols-4">
             {decks.slice(0, deckLimit).map((deck) => (
-              <MetaDeckTile key={deck.id} deck={deck} onOpen={() => openDeck(deck)} />
+              <MetaDeckTile key={deck.id} deck={deck} layout={isDesktop ? 'card' : 'row'} onOpen={() => openDeck(deck)} />
             ))}
           </div>
         ) : (
@@ -173,55 +172,5 @@ export function TournamentDecksScreen() {
 
       <MetaDeckModal deck={selectedDeck} onClose={() => openDeck(null)} onOpenDeck={openDeck} />
     </StepPage>
-  )
-}
-
-/**
- * Un deck de torneo. En el celular es una fila (la portada chica, el nombre, «torneo · fecha · puesto» y el chevron); desde 1101 px, una tarjeta con la portada
- * arriba, el nombre, lo mismo debajo y cuántos hand traps y boardbreakers lleva. Una sola caja por deck, sobre el lienzo.
- */
-function MetaDeckTile({ deck, onOpen }: { deck: MetaDeck; onOpen: () => void }) {
-  const replays = countReplaysOfDeck(deck.id)
-  const replaysLabel = t('meta.tournaments.hasReplays', { count: replays })
-  const facts = [deck.tournament, formatMetaDate(deck.date), deck.placement].filter(Boolean).join(' · ')
-  // Quién lo jugó y entre cuántos, sólo en la tarjeta grande: en la fila del celular no entra.
-  const who = [deck.player, deck.players === null ? '' : t('meta.deck.players', { players: formatInteger(deck.players) })].filter(Boolean).join(' ')
-
-  return (
-    <button
-      type="button"
-      className="group relative grid min-w-0 grid-cols-[2.75rem_minmax(0,1fr)_auto] items-center gap-3 rounded-card border border-border-subtle bg-card-background p-3 text-left transition-colors duration-150 hover:border-primary/60 focus-visible:outline-none focus-visible:shadow-focus min-[1101px]:grid-cols-1 min-[1101px]:content-start min-[1101px]:items-start min-[1101px]:gap-2 min-[1101px]:p-2.5"
-      onClick={onOpen}
-    >
-      <span className="relative block h-[3.8rem] w-11 overflow-hidden rounded-tag bg-input min-[1101px]:aspect-[16/10] min-[1101px]:h-auto min-[1101px]:w-full">
-        {deck.cover ? (
-          <img src={cardImageSrc(coverArtUrl(deck.cover), 512)} alt="" aria-hidden="true" loading="lazy" decoding="async" className="size-full object-cover" />
-        ) : (
-          <span aria-hidden="true" className="grid size-full place-items-center text-primary-soft/70">
-            <Icon name="layers" size={20} />
-          </span>
-        )}
-      </span>
-      <span className="grid min-w-0 gap-0.5">
-        <strong className="truncate text-body font-semibold text-foreground">{deck.name}</strong>
-        <span className="truncate text-micro text-muted">{facts}</span>
-        {who ? <span className="hidden truncate text-micro text-muted min-[1101px]:block">{who}</span> : null}
-        {deckCardCounts(deck).map(({ kind, text: counts }) => (
-          <span key={kind} className="hidden text-micro text-soft tabular-nums min-[1101px]:block">
-            {counts}
-          </span>
-        ))}
-      </span>
-      {/* Tiene replays: se ven al abrir el deck. En el celular van junto al chevron; en escritorio, flotando arriba a la derecha de la portada. */}
-      <span className="flex items-center gap-2 min-[1101px]:absolute min-[1101px]:right-4 min-[1101px]:top-4">
-        {replays > 0 ? (
-          <Badge tone="brand" icon="play" size="sm" title={replaysLabel}>
-            <span aria-hidden="true">{replays}</span>
-            <span className="sr-only">{replaysLabel}</span>
-          </Badge>
-        ) : null}
-        <Icon name="chevron-right" size={18} className="text-muted min-[1101px]:hidden" />
-      </span>
-    </button>
   )
 }

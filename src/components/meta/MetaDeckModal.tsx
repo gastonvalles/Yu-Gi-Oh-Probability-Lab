@@ -35,6 +35,8 @@ import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
 import { Skeleton } from '../ui/Skeleton'
 import { deckCardCounts, formatMetaDate } from './meta-format'
+import { cx } from '../ui/cx'
+import { textLink } from '../ui/typography'
 
 /** Las cartas de un deck de torneo no cambian: un día en el dispositivo evita volver a pedirlas. */
 const DECK_CARDS_PERSIST_MS = 24 * 60 * 60 * 1000
@@ -267,7 +269,7 @@ export function MetaDeckModal({ deck, onClose, onOpenDeck }: MetaDeckModalProps)
                 <button
                   key={entry.video.id}
                   type="button"
-                  className="inline-flex min-w-0 max-w-full items-center gap-1 font-semibold text-primary-soft underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus"
+                  className={cx('inline-flex min-w-0 max-w-full items-center gap-1', textLink)}
                   onClick={() => setReplay(entry)}
                 >
                   <Icon name="play" size={13} variant="bold" className="shrink-0" />

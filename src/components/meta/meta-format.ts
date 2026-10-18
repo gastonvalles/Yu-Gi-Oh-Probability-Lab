@@ -103,3 +103,13 @@ export function deckCardCounts(deck: Pick<MetaDeck, 'main' | 'side'>): Array<{ k
       : [{ kind: 'boardbreaker' as const, text: t('meta.deck.boardbreakers', { main: formatInteger(boardbreakers.main), side: formatInteger(boardbreakers.side) }) }]),
   ]
 }
+
+/** Cuántos hand traps y boardbreakers lleva un deck en el Main (para la tarjeta, que no tiene lugar para el Side): sin el tipo que no lleva ninguno. */
+export function deckKindCounts(deck: Pick<MetaDeck, 'main'>): Array<{ kind: MetaCardKind; count: number }> {
+  return (['handtrap', 'boardbreaker'] as const).map((kind) => ({ kind, count: countKindCopies(deck.main, kind) })).filter(({ count }) => count > 0)
+}
+
+/** El puesto en una etiqueta: sólo el campeón se destaca (ámbar, «dato destacado», con la copa); el color significa algo, así que el resto va sin él. */
+export function placementLook(placement: string | null): { tone: 'info' | 'neutral'; icon?: 'trophy' } {
+  return placement?.trim().toLowerCase() === 'winner' ? { tone: 'info', icon: 'trophy' } : { tone: 'neutral' }
+}
