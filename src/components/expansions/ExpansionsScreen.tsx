@@ -17,13 +17,14 @@ import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
 import { EmptyState } from '../ui/EmptyState'
+import { FilterChips, type FilterChip } from '../ui/FilterChips'
 import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
 import { SearchField } from '../ui/SearchField'
 import { Segmented } from '../ui/Segmented'
 import { Skeleton } from '../ui/Skeleton'
 import { StepPage } from '../ui/StepPage'
-import { choiceChip, listItem, surface } from '../ui/surfaces'
+import { listItem, surface } from '../ui/surfaces'
 import { overline, textLink } from '../ui/typography'
 import { ExpansionCardModal } from './ExpansionCardModal'
 import { PackArt } from './PackArt'
@@ -254,34 +255,6 @@ function countBy(cards: readonly ExpansionCard[], key: (card: ExpansionCard) => 
   }
 
   return [...counts]
-}
-
-/** Un chip de filtro: su nombre y cuántas impresiones tiene. */
-interface FilterChip {
-  key: string
-  name: string
-  count: number
-  active: boolean
-  onToggle: () => void
-}
-
-/** La fila de chips para filtrar: "Todas" (que apaga los filtros) y después un chip por cada rareza y por cada arte distinto, cada uno con su cuenta. */
-function FilterChips({ label, all, allActive, onAll, chips }: { label: string; all: string; allActive: boolean; onAll: () => void; chips: FilterChip[] }) {
-  const chipClass = cx(choiceChip, 'h-7 gap-1.5 px-2.5 text-micro')
-
-  return (
-    <div role="group" aria-label={label} className="flex flex-wrap gap-1.5">
-      <button type="button" aria-pressed={allActive} className={chipClass} onClick={onAll}>
-        {all}
-      </button>
-      {chips.map((chip) => (
-        <button key={chip.key} type="button" aria-pressed={chip.active} aria-label={`${chip.name} ${chip.count}`} className={chipClass} onClick={chip.onToggle}>
-          {chip.name}
-          <span className="text-soft tabular-nums">{formatInteger(chip.count)}</span>
-        </button>
-      ))}
-    </div>
-  )
 }
 
 /** Una impresión de la expansión: la carta entera con su código, rareza, edición y precio abajo. Con `memo`, "Mostrar más" y cada letra del buscador sólo dibujan las que se suman o cambian. */
