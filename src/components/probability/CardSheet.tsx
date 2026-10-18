@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import { useFocusTrap } from '../../app/use-focus-trap'
@@ -31,23 +31,49 @@ interface CardSheetProps {
   onClose: () => void
 }
 
-/** Cuántas jugadas del juego caben en una fila: con más, van de a dos. */
-const MAX_PLAYS_PER_ROW = 3
+/** Una grilla de dos columnas de botones iguales (mismo estilo, mismo alto); si sobra uno, ocupa la fila entera. */
+function Options({ items, focusFirst }: { items: readonly MenuItem[]; focusFirst: boolean }) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {items.map((item, index) => (
+        <Button
+          key={item.label}
+          role="menuitem"
+          variant="secondary"
+          className={cx('min-w-0 px-2!', items.length % 2 === 1 && index === items.length - 1 && 'col-span-2')}
+          data-initial-focus={focusFirst && index === 0 ? '' : undefined}
+          onClick={item.onSelect}
+        >
+          {item.label}
+        </Button>
+      ))}
+    </div>
+  )
+}
 
 /**
  * El menú de una carta en el celular (en escritorio es `CardMenu`, pegado a la carta): una hoja que sale de abajo con la carta (su texto está en la lupa), su nombre y dónde está, y **todas las jugadas a un toque,
- * sin menús que abrir**: arriba las del juego (Invocación Normal, Colocar, Activar…; la primera, llena) y abajo las de apoyo (revelar, target, descartar, desterrar, al deck) en una grilla de botones chicos.
+ * sin menús que abrir**, en botones todos iguales y de a dos por fila: arriba las del juego (Invocación Normal, Colocar, Activar…) y, separadas por una línea, las de apoyo (revelar, target, descartar, desterrar, al deck).
  * Va sobre todo lo demás (un visor de pila, por ejemplo) con un fondo que la cierra al tocar afuera, y también con la X o Escape; elegir una jugada la cierra y la mesa pide lo que falta (la zona).
  * Las jugadas son las mismas de `listCardActions`: sólo cambia cómo se ofrecen.
  */
 export function CardSheet({ name, kicker, art, back = false, apiCard = null, items, asking, onInspect, onClose }: CardSheetProps) {
   const ref = useRef<HTMLElement | null>(null)
   const openedAtRef = useRef(performance.now())
+  // La hoja se abre al levantar el dedo de la carta (el `pointerup`) y sale justo debajo del dedo: el click que el celular manda después caería en una de sus jugadas y la haría sin querer
+  // («la primera vez que toco una carta me ofrece una acción rápida»). Un instante no atiende toques; el click fantasma pasa de largo (al fondo, que tampoco lo atiende todavía).
+  const [armed, setArmed] = useState(false)
   const plays = items.filter((item) => !item.utility)
   const support = items.filter((item) => item.utility)
 
   useEscapeKey(onClose)
   useFocusTrap(ref)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setArmed(true), GHOST_CLICK_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [])
 
   // El click que el celular manda al soltar el dedo sobre la carta llega después de abrir la hoja y cae en el fondo recién montado: un instante no lo cierra.
   const closeFromBackdrop = () => {
@@ -67,7 +93,7 @@ export function CardSheet({ name, kicker, art, back = false, apiCard = null, ite
         ref={ref}
         aria-label={name}
         tabIndex={-1}
-        className="fixed inset-x-0 bottom-0 z-210 animate-sheet-in rounded-t-panel border border-b-0 border-border bg-card-background px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-overlay outline-none motion-reduce:animate-none"
+        className={cx('fixed inset-x-0 bottom-0 z-210 animate-sheet-in rounded-t-panel border border-b-0 border-border bg-card-background px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-overlay outline-none motion-reduce:animate-none', !armed && 'pointer-events-none')}
       >
         <span aria-hidden="true" className="mx-auto mb-2 block h-1 w-10 rounded-full bg-primary-soft/50" />
         <CloseButton size="sm" aria-label={t('common.close')} className="absolute right-1 top-1" onClick={onClose} />
@@ -97,31 +123,13 @@ export function CardSheet({ name, kicker, art, back = false, apiCard = null, ite
         {/* Las jugadas: `role="menu"` y cada una un `menuitem`, como en el menú pegado a la carta. */}
         <div role="menu" aria-label={name} className="mt-3 grid gap-2">
           {asking !== undefined ? (
-            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.max(1, items.length)}, minmax(0, 1fr))` }}>
-              {items.map((item, index) => (
-                <Button key={item.label} role="menuitem" variant={index === 0 ? 'primary' : 'secondary'} className="px-2!" data-initial-focus={index === 0 ? '' : undefined} onClick={item.onSelect}>
-                  {item.label}
-                </Button>
-              ))}
-            </div>
+            <Options items={items} focusFirst />
           ) : (
             <>
-              {plays.length > 0 ? (
-                <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(plays.length, plays.length > MAX_PLAYS_PER_ROW ? 2 : MAX_PLAYS_PER_ROW)}, minmax(0, 1fr))` }}>
-                  {plays.map((item, index) => (
-                    <Button key={item.label} role="menuitem" variant={index === 0 ? 'primary' : 'secondary'} className={cx('px-2!', plays.length % 2 === 1 && plays.length > MAX_PLAYS_PER_ROW && index === plays.length - 1 && 'col-span-2')} data-initial-focus={index === 0 ? '' : undefined} onClick={item.onSelect}>
-                      {item.label}
-                    </Button>
-                  ))}
-                </div>
-              ) : null}
+              {plays.length > 0 ? <Options items={plays} focusFirst /> : null}
               {support.length > 0 ? (
-                <div className="grid grid-cols-3 gap-2">
-                  {support.map((item, index) => (
-                    <Button key={item.label} role="menuitem" variant="tertiary" size="sm" className="min-w-0 border border-border-subtle px-1!" data-initial-focus={plays.length === 0 && index === 0 ? '' : undefined} onClick={item.onSelect}>
-                      {item.label}
-                    </Button>
-                  ))}
+                <div className={cx(plays.length > 0 && 'border-t border-border-subtle pt-2')}>
+                  <Options items={support} focusFirst={plays.length === 0} />
                 </div>
               ) : null}
             </>

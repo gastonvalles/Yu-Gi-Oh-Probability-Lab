@@ -184,10 +184,19 @@ describe('la mesa de práctica', () => {
     const plays = ['Invocación Normal', 'Colocar', 'Invocación Especial', 'Activar efecto'].map((name) => within(sheet).getByRole('menuitem', { name }))
     const support = ['Revelar', 'Target', 'Descartar', 'Desterrar', 'Al deck'].map((name) => within(sheet).getByRole('menuitem', { name }))
 
-    expect(plays[0]).toHaveClass('bg-primary')
+    // Todos los botones son iguales (mismo estilo y mismo alto), de a dos por fila; el que sobra ocupa la fila entera; las de apoyo van aparte, bajo una línea.
+    const all = [...plays, ...support]
+    const style = (item: HTMLElement) => item.className.replace('col-span-2', '').split(' ').filter(Boolean).join(' ')
+    expect(all.every((item) => style(item) === style(all[0]!))).toBe(true)
+    expect(all.some((item) => item.classList.contains('bg-primary'))).toBe(false)
     expect(new Set(plays.map((item) => item.parentElement)).size).toBe(1)
     expect(new Set(support.map((item) => item.parentElement)).size).toBe(1)
     expect(support[0]!.parentElement).not.toBe(plays[0]!.parentElement)
+    expect(plays[0]!.parentElement).toHaveClass('grid-cols-2')
+    expect(support[0]!.parentElement!.parentElement).toHaveClass('border-t')
+    // Cinco de apoyo: el último ocupa la fila entera en vez de dejar un hueco.
+    expect(support[4]).toHaveClass('col-span-2')
+    expect(plays[3]).not.toHaveClass('col-span-2')
     expect(support.every((item) => item.checkVisibility?.() !== false)).toBe(true)
 
     fireEvent.click(within(sheet).getByRole('button', { name: 'Cerrar' }))
@@ -224,10 +233,29 @@ describe('la mesa de práctica', () => {
       // Deck: la hoja trae el dorso y robar es la jugada; los demás, de apoyo.
       tap(screen.getByRole('button', { name: /^Main: [0-9]+/ }))
       const deck = screen.getByRole('region', { name: /carta/ })
-      expect(within(deck).getByRole('menuitem', { name: 'Robar' })).toHaveClass('bg-primary')
+      expect(within(deck).getByRole('menuitem', { name: 'Robar' })).not.toHaveClass('bg-primary')
       vi.advanceTimersByTime(400)
       fireEvent.click(deck.previousElementSibling!)
       expect(screen.queryByRole('region', { name: /carta/ })).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('la hoja no atiende toques el primer instante: el click que el celular manda al levantar el dedo de la carta no hace una jugada sin querer', () => {
+    vi.useFakeTimers({ toFake: ['performance', 'setTimeout', 'clearTimeout', 'Date'] })
+
+    try {
+      render(<Harness />)
+      tap(within(hand()).getByRole('listitem', { name: 'Ash Blossom' }))
+
+      const sheet = () => screen.getByRole('region', { name: 'Ash Blossom' })
+      expect(sheet()).toHaveClass('pointer-events-none')
+
+      act(() => {
+        vi.advanceTimersByTime(400)
+      })
+      expect(sheet()).not.toHaveClass('pointer-events-none')
     } finally {
       vi.useRealTimers()
     }
