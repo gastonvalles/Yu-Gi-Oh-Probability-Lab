@@ -20,10 +20,10 @@ interface MultiSelectProps {
   className?: string
 }
 
-/** Lo que dice el campo cerrado: «Cualquiera» sin nada elegido, los nombres si son uno o dos y la cuenta si son más. */
+/** Lo que dice el campo cerrado: un «Elegir» tenue sin nada elegido (no dice «Cualquiera»: parecería una opción marcada), los nombres si son uno o dos y la cuenta si son más. */
 function summarize(chosen: readonly MultiSelectOption[]): string {
   if (chosen.length === 0) {
-    return t('common.selectAny')
+    return t('common.selectPlaceholder')
   }
 
   return chosen.length <= 2 ? chosen.map((option) => option.label).join(', ') : t('common.selectCount', { count: chosen.length })

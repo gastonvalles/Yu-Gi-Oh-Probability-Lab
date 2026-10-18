@@ -1,4 +1,6 @@
 import type { ApiCardReference, DeckFormat } from '../types'
+import { POOL_BITS } from '../ygoprodeck/release'
+import { EFFECT_BIT, effectMaskOf } from './card-effects'
 import { getCardCopyLimit } from './deck-format'
 
 /**
@@ -30,28 +32,22 @@ export type LimitKey = (typeof LIMIT_KEYS)[number]
 /** Mágicas y trampas por su subtipo: `spell:Quick-Play`, `trap:Counter`… (el subtipo viene en la raza de la carta). */
 export const SPELL_TRAP_KINDS = ['spell:Normal', 'spell:Field', 'spell:Equip', 'spell:Continuous', 'spell:Quick-Play', 'spell:Ritual', 'trap:Normal', 'trap:Continuous', 'trap:Counter'] as const
 
-/**
- * Efectos por lo que dice el texto de la carta (en inglés). Son heurísticas sobre el texto: aciertan en lo común y pueden dejar afuera una carta con una redacción
- * rara o sumar una que lo menciona de pasada; por eso la pantalla los llama «según el texto de la carta».
- */
-export const EFFECT_PATTERNS = {
-  search: /\badd\b[^.]*\bfrom your deck\b[^.]*\bto your hand\b/i,
-  draw: /\bdraws?\b[^.]*\bcards?\b/i,
-  'special-summon': /\bspecial summon/i,
-  banish: /\bbanish/i,
-  graveyard: /\b(graveyard|gy)\b/i,
-  'back-to-hand': /\breturn(s|ed)?\b[^.]*\bto the hand\b/i,
-  'back-to-deck': /\b(return(s|ed)?|shuffle)\b[^.]*\b(into|to) the (extra )?deck\b/i,
-  'destroy-monster': /\bdestroy\b[^.]*\bmonsters?\b/i,
-  'destroy-spell-trap': /\bdestroy\b[^.]*\b(spells?|traps?)\b/i,
-  negate: /\bnegat(e|es|ed|ing)\b/i,
-  token: /\btokens?\b/i,
-  control: /\btake control\b/i,
-  damage: /\binflict\b[^.]*\bdamage\b/i,
-  recover: /\bgain\b[^.]*\bLP\b/i,
-} as const satisfies Record<string, RegExp>
-export type EffectKey = keyof typeof EFFECT_PATTERNS
-export const EFFECT_KEYS = Object.keys(EFFECT_PATTERNS) as EffectKey[]
+// Los efectos, por lo que dice el texto de la carta, los resuelve `card-effects.ts` (con la medición de cuánto aciertan en `docs/auditoria-motor-efectos.md`).
+export { EFFECT_KEYS, effectMaskOf, matchesEffect, type EffectKey } from './card-effects'
+
+/** De dónde se juega la carta: en qué formatos está. «Sólo TCG» y «sólo OCG» son las que existen en uno y no en el otro. */
+export const POOL_KEYS = ['tcg', 'ocg', 'tcg-only', 'ocg-only', 'master-duel', 'duel-links', 'speed-duel'] as const
+export type PoolKey = (typeof POOL_KEYS)[number]
+
+const POOL_TESTS: Record<PoolKey, (pools: number) => boolean> = {
+  tcg: (pools) => (pools & POOL_BITS.tcg) !== 0,
+  ocg: (pools) => (pools & POOL_BITS.ocg) !== 0,
+  'tcg-only': (pools) => (pools & POOL_BITS.tcg) !== 0 && (pools & POOL_BITS.ocg) === 0,
+  'ocg-only': (pools) => (pools & POOL_BITS.ocg) !== 0 && (pools & POOL_BITS.tcg) === 0,
+  'master-duel': (pools) => (pools & POOL_BITS['master-duel']) !== 0,
+  'duel-links': (pools) => (pools & POOL_BITS['duel-links']) !== 0,
+  'speed-duel': (pools) => (pools & POOL_BITS['speed-duel']) !== 0,
+}
 
 /** Los filtros de esta capa (los de texto —nombre, arquetipo, texto del efecto— y «ocultar prohibidas» los resuelve `card-search`). */
 export interface LocalCardFilters {
@@ -61,14 +57,17 @@ export interface LocalCardFilters {
   races: string[]
   abilities: string[]
   limits: string[]
+  pools: string[]
   effects: string[]
   level: NumberRange
   atk: NumberRange
   def: NumberRange
+  scale: NumberRange
   genesysPoints: NumberRange
+  year: NumberRange
 }
 
-type FilterableCard = Pick<ApiCardReference, 'frameType' | 'cardType' | 'race' | 'attribute' | 'level' | 'linkValue' | 'atk' | 'def' | 'description' | 'banlist' | 'genesys'>
+type FilterableCard = Pick<ApiCardReference, 'frameType' | 'cardType' | 'race' | 'attribute' | 'level' | 'linkValue' | 'atk' | 'def' | 'description' | 'banlist' | 'genesys' | 'scale' | 'year' | 'pools'>
 
 const isMonster = (card: Pick<ApiCardReference, 'cardType'>) => card.cardType.toLowerCase().includes('monster')
 
@@ -143,24 +142,7 @@ function statOf(value: string | null): number | null {
 /** Los textos de un grupo de chips, sin importar mayúsculas: la API dice «DARK» y «Quick-Play»; las opciones, lo mismo, pero no se confía en eso. */
 const lower = (values: readonly string[]) => values.map((value) => value.toLowerCase())
 
-/** Un bit por efecto, en el orden de `EFFECT_KEYS` (son menos de 16): la carta guarda cuáles cumple y filtrar por efecto es un AND. */
-const EFFECT_BIT: Record<string, number> = Object.fromEntries(EFFECT_KEYS.map((key, index) => [key, 1 << index]))
-
-/** Qué efectos dice el texto de la carta, como máscara de bits. Cuesta una pasada de expresiones por carta: el índice del catálogo la hace una sola vez (en rebanadas), no en cada búsqueda. */
-export function effectMaskOf(description: string | null): number {
-  const text = description ?? ''
-  let mask = 0
-
-  for (const key of EFFECT_KEYS) {
-    if (EFFECT_PATTERNS[key].test(text)) {
-      mask |= EFFECT_BIT[key]!
-    }
-  }
-
-  return mask
-}
-
-/** Cómo se pregunta por una carta: sin el `effectMask` lo calcula del texto; el índice del catálogo lo trae hecho. */
+/** Cómo se pregunta por una carta: sin el `effectMask` lo calcula del texto; el índice del catálogo lo trae hecho (y ahí cuesta una sola vez, en rebanadas, no en cada búsqueda). */
 export type LocalCardPredicate = (card: FilterableCard, effectMask?: number) => boolean
 
 /**
@@ -174,10 +156,11 @@ export function compileLocalCardFilters(filters: LocalCardFilters, deckFormat: D
   const races = new Set(lower(filters.races))
   const abilities = new Set<string>(filters.abilities)
   const limits = formatHasLimits(deckFormat) ? new Set<string>(filters.limits) : new Set<string>()
-  const wanted = filters.effects.reduce((mask, key) => mask | (EFFECT_BIT[key] ?? 0), 0)
+  const pools = POOL_KEYS.filter((key) => filters.pools.includes(key)).map((key) => POOL_TESTS[key])
+  const wanted = filters.effects.reduce((mask, key) => mask | (EFFECT_BIT[key as keyof typeof EFFECT_BIT] ?? 0), 0)
   const useGenesys = deckFormat === 'genesys' && isRangeActive(filters.genesysPoints)
-  const active =
-    frames.size > 0 || attributes.size > 0 || kinds.size > 0 || races.size > 0 || abilities.size > 0 || limits.size > 0 || wanted !== 0 || isRangeActive(filters.level) || isRangeActive(filters.atk) || isRangeActive(filters.def) || useGenesys
+  const useRange = [filters.level, filters.atk, filters.def, filters.scale, filters.year].some(isRangeActive)
+  const active = frames.size > 0 || attributes.size > 0 || kinds.size > 0 || races.size > 0 || abilities.size > 0 || limits.size > 0 || pools.length > 0 || wanted !== 0 || useRange || useGenesys
 
   if (!active) {
     return null
@@ -208,6 +191,11 @@ export function compileLocalCardFilters(filters: LocalCardFilters, deckFormat: D
       return false
     }
 
+    // Una carta que llegó sin los formatos (no vino del catálogo) no se puede ubicar en ninguno: queda afuera.
+    if (pools.length > 0 && !pools.some((test) => test(card.pools ?? 0))) {
+      return false
+    }
+
     if (wanted !== 0 && (wanted & (effectMask ?? effectMaskOf(card.description))) === 0) {
       return false
     }
@@ -217,6 +205,10 @@ export function compileLocalCardFilters(filters: LocalCardFilters, deckFormat: D
     }
 
     if (!inRange(statOf(card.atk), filters.atk) || !inRange(statOf(card.def), filters.def)) {
+      return false
+    }
+
+    if (!inRange(card.scale ?? null, filters.scale) || !inRange(card.year ?? null, filters.year)) {
       return false
     }
 

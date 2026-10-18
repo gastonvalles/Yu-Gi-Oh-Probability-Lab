@@ -20,6 +20,7 @@ import {
   FRAME_OPTIONS,
   LIMIT_OPTIONS,
   MONSTER_RACE_OPTIONS,
+  POOL_OPTIONS,
   SPELL_TRAP_OPTIONS,
 } from './search-options'
 
@@ -50,8 +51,8 @@ export function viewResultsLabel(resultCount: number | null, hasMore: boolean): 
 
 /**
  * Los filtros de la búsqueda, en un cajón que se abre desde el botón de al lado del campo (el panel de búsqueda queda con sólo el campo y ese botón). Arriba, el arquetipo;
- * después, un selector desplegable por filtro, en este orden: marco, atributo, mágicas y trampas, tipo, habilidades, limitación y efecto; y las estadísticas, con mínimo y
- * máximo. Cada desplegable es de elección múltiple (dentro de un filtro vale cualquiera; entre filtros, todos). Abajo, limpiar y volver a los resultados diciendo cuántos son.
+ * después, un selector desplegable por filtro, en este orden: marco, atributo, mágicas y trampas, tipo, habilidades, limitación, pool de cartas y efecto; y las
+ * estadísticas (nivel, ATK, DEF, escala de Péndulo, puntos de Genesys y año de salida), con mínimo y máximo. Cada desplegable es de elección múltiple (dentro de un filtro vale cualquiera; entre filtros, todos). Abajo, limpiar y volver a los resultados diciendo cuántos son.
  */
 export function SearchFiltersDrawer({ isOpen, onClose, filters, deckFormat, activeFilterCount, resultCount, hasMore, onFilterChange, onClearFilters }: SearchFiltersDrawerProps) {
   const limitsAvailable = formatHasLimits(deckFormat)
@@ -93,6 +94,8 @@ export function SearchFiltersDrawer({ isOpen, onClose, filters, deckFormat, acti
             </div>
           ) : null}
 
+          <MultiSelect label={t('search.filters.pool')} options={POOL_OPTIONS} selected={filters.pools} onChange={(pools) => onFilterChange({ pools })} />
+
           <div className="grid gap-2">
             <MultiSelect label={t('search.filters.effect')} options={EFFECT_OPTIONS} selected={filters.effects} onChange={(effects) => onFilterChange({ effects })} />
             <p className="m-0 text-micro text-soft">{t('search.filters.effectHint')}</p>
@@ -114,7 +117,9 @@ export function SearchFiltersDrawer({ isOpen, onClose, filters, deckFormat, acti
             <RangeField label={t('search.filters.level')} range={filters.level} onChange={(level) => onFilterChange({ level })} />
             <RangeField label="ATK" range={filters.atk} onChange={(atk) => onFilterChange({ atk })} />
             <RangeField label="DEF" range={filters.def} onChange={(def) => onFilterChange({ def })} />
+            <RangeField label={t('search.filters.scale')} range={filters.scale} onChange={(scale) => onFilterChange({ scale })} />
             {deckFormat === 'genesys' ? <RangeField label={t('search.filters.genesys')} range={filters.genesysPoints} onChange={(genesysPoints) => onFilterChange({ genesysPoints })} /> : null}
+            <RangeField label={t('search.filters.year')} range={filters.year} onChange={(year) => onFilterChange({ year })} />
           </Section>
         </div>
 

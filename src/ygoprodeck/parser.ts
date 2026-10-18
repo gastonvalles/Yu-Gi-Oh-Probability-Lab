@@ -1,5 +1,6 @@
 import { t } from '../i18n'
 import type { BanlistStatus, CardBanlistInfo } from '../types'
+import { readRelease } from './release'
 import type { ApiCardSearchResult, ApiSearchPage, CardArtOption } from './types'
 
 export function parseSearchResponse(payload: unknown): ApiSearchPage {
@@ -56,6 +57,7 @@ function parseCard(entry: unknown, index: number): ApiCardSearchResult {
     attribute: readOptionalString(entry.attribute),
     level: readOptionalInteger(entry.level),
     linkValue: readOptionalInteger(entry.linkval),
+    ...readPendulumAndRelease(entry),
     atk: readOptionalStat(entry.atk),
     def: readOptionalStat(entry.def),
     archetype: readOptionalString(entry.archetype),
@@ -67,6 +69,14 @@ function parseCard(entry: unknown, index: number): ApiCardSearchResult {
       points: null,
     },
   }
+}
+
+/** La escala (sólo los Péndulos la traen) y, si la respuesta se pidió con `misc=yes`, el año y los formatos. Lo que no vino no se escribe: la carta queda sin el campo. */
+function readPendulumAndRelease(entry: Record<string, unknown>): Pick<ApiCardSearchResult, 'scale' | 'year' | 'pools'> {
+  const scale = readOptionalInteger(entry.scale)
+  const release = readRelease(entry.misc_info)
+
+  return { ...(scale !== null ? { scale } : {}), ...(release ?? {}) }
 }
 
 function readBanlistInfo(value: unknown): CardBanlistInfo {

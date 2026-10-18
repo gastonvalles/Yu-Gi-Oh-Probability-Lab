@@ -14,15 +14,17 @@ import {
   spellTrapKindOf,
   type EffectKey,
   type LocalCardFilters,
+  type PoolKey,
 } from '../app/card-filters'
 import type { ApiCardReference } from '../types'
+import { POOL_BITS } from '../ygoprodeck/release'
 
 const card = (overrides: Partial<ApiCardReference> = {}): ApiCardReference => ({
   ygoprodeckId: 1, cardType: 'Effect Monster', frameType: 'effect', description: null, race: 'Dragon', attribute: 'DARK', level: 4, linkValue: null,
   atk: '1800', def: '1000', archetype: null, ygoprodeckUrl: null, imageUrl: null, imageUrlSmall: null, banlist: { tcg: null, ocg: null, goat: null }, genesys: { points: null }, ...overrides,
 })
 
-const NO_FILTERS: LocalCardFilters = { frames: [], attributes: [], spellTrapKinds: [], races: [], abilities: [], limits: [], effects: [], level: EMPTY_RANGE, atk: EMPTY_RANGE, def: EMPTY_RANGE, genesysPoints: EMPTY_RANGE }
+const NO_FILTERS: LocalCardFilters = { frames: [], attributes: [], spellTrapKinds: [], races: [], abilities: [], limits: [], pools: [], effects: [], level: EMPTY_RANGE, atk: EMPTY_RANGE, def: EMPTY_RANGE, scale: EMPTY_RANGE, genesysPoints: EMPTY_RANGE, year: EMPTY_RANGE }
 const withFilters = (updates: Partial<LocalCardFilters>): LocalCardFilters => ({ ...NO_FILTERS, ...updates })
 
 describe('el marco de la carta', () => {
@@ -187,5 +189,55 @@ describe('filtros compilados', () => {
     expect(matchesLocalCardFilters(card({ genesys: { points: 4 } }), points, 'genesys')).toBe(true)
     expect(matchesLocalCardFilters(card({ genesys: { points: 9 } }), points, 'genesys')).toBe(false)
     expect(matchesLocalCardFilters(card({ genesys: { points: 9 } }), points, 'tcg')).toBe(true)
+  })
+
+  it('la escala de Péndulo sólo la tienen los péndulos: con cota, una carta sin escala queda afuera (también la escala 0)', () => {
+    const scale = withFilters({ scale: { min: '0', max: '1' } })
+
+    expect(matchesLocalCardFilters(card({ scale: 0 }), scale, 'tcg')).toBe(true)
+    expect(matchesLocalCardFilters(card({ scale: 1 }), scale, 'tcg')).toBe(true)
+    expect(matchesLocalCardFilters(card({ scale: 8 }), scale, 'tcg')).toBe(false)
+    expect(matchesLocalCardFilters(card(), scale, 'tcg')).toBe(false)
+    expect(matchesLocalCardFilters(card({ scale: null }), scale, 'tcg')).toBe(false)
+  })
+
+  it('el año es el de la primera salida; una carta sin año (una ficha, o una que no vino del catálogo) queda afuera cuando hay cota', () => {
+    const since = withFilters({ year: { min: '2020', max: '' } })
+
+    expect(matchesLocalCardFilters(card({ year: 2020 }), since, 'tcg')).toBe(true)
+    expect(matchesLocalCardFilters(card({ year: 2019 }), since, 'tcg')).toBe(false)
+    expect(matchesLocalCardFilters(card({ year: null }), since, 'tcg')).toBe(false)
+    expect(matchesLocalCardFilters(card(), since, 'tcg')).toBe(false)
+    expect(matchesLocalCardFilters(card({ year: 2002 }), withFilters({ year: { min: '2002', max: '2002' } }), 'tcg')).toBe(true)
+  })
+
+  describe('el pool de cartas', () => {
+    const TCG = POOL_BITS.tcg
+    const OCG = POOL_BITS.ocg
+    const inPool = (pools: PoolKey[], card_: Partial<ApiCardReference>) => matchesLocalCardFilters(card(card_), withFilters({ pools }), 'tcg')
+
+    it('dentro del grupo vale cualquiera; «sólo TCG» y «sólo OCG» son las que existen en uno y no en el otro', () => {
+      expect(inPool(['tcg'], { pools: TCG | OCG })).toBe(true)
+      expect(inPool(['tcg'], { pools: OCG })).toBe(false)
+      expect(inPool(['tcg-only'], { pools: TCG })).toBe(true)
+      expect(inPool(['tcg-only'], { pools: TCG | OCG })).toBe(false)
+      expect(inPool(['ocg-only'], { pools: OCG })).toBe(true)
+      expect(inPool(['ocg-only'], { pools: TCG | OCG })).toBe(false)
+      expect(inPool(['tcg-only', 'ocg-only'], { pools: OCG })).toBe(true)
+    })
+
+    it('Master Duel, Duel Links y Speed Duel tienen su bit', () => {
+      expect(inPool(['master-duel'], { pools: POOL_BITS['master-duel'] })).toBe(true)
+      expect(inPool(['master-duel'], { pools: TCG })).toBe(false)
+      expect(inPool(['duel-links'], { pools: POOL_BITS['duel-links'] | TCG })).toBe(true)
+      expect(inPool(['speed-duel'], { pools: POOL_BITS['duel-links'] })).toBe(false)
+      expect(inPool(['speed-duel'], { pools: POOL_BITS['speed-duel'] })).toBe(true)
+    })
+
+    it('una carta sin formatos (no vino del catálogo, o no está en ninguno) queda afuera', () => {
+      expect(inPool(['tcg'], {})).toBe(false)
+      expect(inPool(['tcg-only'], { pools: 0 })).toBe(false)
+      expect(inPool([], {})).toBe(true)
+    })
   })
 })
