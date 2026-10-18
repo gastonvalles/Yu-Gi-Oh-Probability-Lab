@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type Ref } from 'react'
 
+import { buildCardNavigation, neighborsAt } from '../../app/card-neighbors'
 import { compareRarities, readExpansionsHash, type Expansion, type ExpansionCard } from '../../app/card-prices'
 import { useExpansionCards, useExpansions } from '../../app/use-expansions'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
@@ -308,6 +309,12 @@ function ExpansionDetail({ expansion, updated, highlight, onBack }: { expansion:
     return sort === 'price' ? [...matching].sort((a, b) => (b.market ?? -1) - (a.market ?? -1)) : matching
   }, [cards, query, rarity, variant, sort])
   const distinct = useMemo(() => new Set(cards.map((card) => card.cardId)).size, [cards])
+  // Cada impresión es una parada: el detalle pasa a la anterior y a la siguiente de las que se ven (con el filtro y el orden de ahora).
+  const navigation = useMemo(() => {
+    const at = opened ? rows.indexOf(opened) : -1
+
+    return at < 0 ? null : buildCardNavigation(neighborsAt(rows, at), setOpened)
+  }, [opened, rows])
   const filtersChanged = () => setShown(PAGE_SIZE)
   // La impresión iluminada tiene que estar entre las que se ven (hay expansiones con más de 800) y a la vista, en el medio del recuadro.
   const highlightedAt = highlight === null ? -1 : rows.findIndex((card) => card.productId === highlight)
@@ -420,7 +427,7 @@ function ExpansionDetail({ expansion, updated, highlight, onBack }: { expansion:
         )}
       </div>
 
-      <ExpansionCardModal item={opened} onClose={() => setOpened(null)} />
+      <ExpansionCardModal item={opened} navigation={navigation} onClose={() => setOpened(null)} />
     </section>
   )
 }

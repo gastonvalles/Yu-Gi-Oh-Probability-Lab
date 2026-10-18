@@ -464,3 +464,47 @@ describe('las etiquetas largas no pisan a la carta de al lado', () => {
     expect(tile).toBeTruthy()
   })
 })
+
+describe('el detalle recorre las impresiones tal como se ven', () => {
+  const detail = () => screen.findByRole('dialog', { name: /^Detalle de/ })
+  const bigArt = (dialog: HTMLElement) => within(dialog).getByRole('button', { name: 'Ver la carta en grande' }).querySelector('img')!.getAttribute('src')
+
+  it('pasa a la impresión anterior y a la siguiente: cambia el código, la rareza y el arte, aunque sea la misma carta', async () => {
+    render(<ExpansionsScreen />)
+
+    const buttons = await screen.findAllByRole('button', { name: 'Ver el detalle de Mulcharmy Purulia' })
+
+    fireEvent.click(buttons[0]!)
+
+    let dialog = await detail()
+
+    expect(within(dialog).getByText('MAZE-EN001 · Rare · Unlimited')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Carta anterior' })).toBeDisabled()
+    expect(bigArt(dialog)).toBe('https://tcgplayer-cdn.tcgplayer.com/product/21_400w.jpg')
+
+    // La siguiente es otra impresión de la misma carta: el arte elegido es el de ella, no el de la anterior.
+    fireEvent.click(screen.getByRole('button', { name: 'Carta siguiente' }))
+    dialog = await detail()
+    expect(within(dialog).getByText('MAZE-EN001 · Ultra Rare · Extended Art · Unlimited')).toBeInTheDocument()
+    expect(bigArt(dialog)).toBe('https://tcgplayer-cdn.tcgplayer.com/product/22_400w.jpg')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Carta siguiente' }))
+    dialog = await screen.findByRole('dialog', { name: /Ash Blossom/ })
+    expect(within(dialog).getByText('MAZE-EN002 · Common · Unlimited')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Carta anterior' }))
+    dialog = await detail()
+    expect(bigArt(dialog)).toBe('https://tcgplayer-cdn.tcgplayer.com/product/22_400w.jpg')
+    expect(screen.getAllByRole('dialog')).toHaveLength(1)
+  })
+
+  it('la última impresión de la lista no tiene siguiente', async () => {
+    render(<ExpansionsScreen />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Ver el detalle de Maxx "C"' }))
+    await detail()
+
+    expect(screen.getByRole('button', { name: 'Carta siguiente' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Carta anterior' })).toBeEnabled()
+  })
+})

@@ -256,3 +256,49 @@ describe('las cartas de las banlists', () => {
     expect(art.style.rotate).toBe('')
   })
 })
+
+describe('el detalle recorre la lista tal como se ve', () => {
+  const tiles = (name: string) => within(section(name)).getAllByRole('button').map((button) => button.getAttribute('aria-label')!.replace('Ver el detalle de ', ''))
+
+  it('pasa a la carta anterior y a la siguiente sin cerrarse, y de una sección a la que sigue', async () => {
+    render(<BanlistsScreen />)
+    openSeptember()
+
+    const prohibidas = tiles('Prohibidas')
+    const limitadas = tiles('Limitadas')
+
+    fireEvent.click(screen.getByRole('button', { name: `Ver el detalle de ${prohibidas[0]}` }))
+    expect(await screen.findByRole('dialog', { name: new RegExp(prohibidas[0]!) })).toBeInTheDocument()
+    // Es la primera de la lista: no hay anterior.
+    expect(screen.getByRole('button', { name: 'Carta anterior' })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Carta siguiente' }))
+    const second = await screen.findByRole('dialog', { name: new RegExp(prohibidas[1]!) })
+
+    expect(within(second).getByText('TCG · 21 de septiembre de 2026 · Prohibida')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Carta anterior' })).toBeEnabled()
+    expect(screen.getAllByRole('dialog')).toHaveLength(1)
+
+    // La última de las prohibidas sigue con la primera de las limitadas, y el estado que dice el detalle es el de esa carta.
+    fireEvent.click(screen.getByRole('button', { name: 'Carta anterior' }))
+    for (let step = 0; step < prohibidas.length - 1; step++) fireEvent.click(screen.getByRole('button', { name: 'Carta siguiente' }))
+    expect(await screen.findByRole('dialog', { name: new RegExp(prohibidas.at(-1)!) })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Carta siguiente' }))
+    const first = await screen.findByRole('dialog', { name: new RegExp(limitadas[0]!) })
+
+    expect(within(first).getByText('TCG · 21 de septiembre de 2026 · Limitada')).toBeInTheDocument()
+  })
+
+  it('con un filtro que deja una sola carta no hay a dónde pasar, así que no hay flechas', async () => {
+    render(<BanlistsScreen />)
+    openSeptember()
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar una carta en esta lista' }), { target: { value: 'Archlord' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ver el detalle de Archlord Kristya' }))
+    await screen.findByRole('dialog', { name: /Archlord Kristya/ })
+
+    expect(screen.queryByRole('button', { name: 'Carta anterior' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Carta siguiente' })).not.toBeInTheDocument()
+  })
+})

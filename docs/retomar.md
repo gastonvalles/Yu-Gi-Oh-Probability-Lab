@@ -30,6 +30,7 @@ fidelidad dejó sin hacer (sección 6).
 - Importar: el método «Enlace» (`ydke://`) y `.ydk` pegado, en el orden Archivo · Enlace · Pegar texto (#287).
 - **Precio total del deck** (#288, `DeckPriceModal`): suma la impresión más barata de TCGplayer de cada carta.
 - El panel del detalle de una carta sigue al arte elegido: rareza, expansión, código y precio (#290, `PrintingInfo`).
+- El detalle de una carta pasa a la anterior y a la siguiente de su lista con flechas, ← →, y deslizando en el celular (`navigation` de `CardOverlay`, lógica pura en `app/card-neighbors.ts`): builder, decks de torneo (celular), Banlists y Expansiones.
 
 **Duelo**
 - Pasar turno (#269). **Crear sala** (#270): Jugar solo o 1 vs 1, reloj, formato, Match (mejor de 3) con siding y salas

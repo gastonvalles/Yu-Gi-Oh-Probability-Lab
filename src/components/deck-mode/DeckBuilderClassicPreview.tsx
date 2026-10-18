@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import type { CardNavigation } from '../../app/card-neighbors'
 import {
   buildClassicCardDetailHeader,
   buildClassicCardLevelLine,
@@ -20,6 +21,7 @@ import { DeckCopyControls, type DeckCopyActions } from '../card-detail/DeckCopyC
 import { Heading } from '../ui/Heading'
 import { Button } from '../ui/Button'
 import { Icon } from '../ui/Icon'
+import { IconButton } from '../ui/IconButton'
 import { cx } from '../ui/cx'
 
 /** Nombre corto de la zona para los botones de agregar (el texto completo queda en el tooltip y en lectores de pantalla). */
@@ -35,10 +37,12 @@ interface DeckBuilderClassicPreviewProps {
   card: ApiCardSearchResult | null
   source: 'search' | 'deck' | null
   deckCopy: DeckCopyActions | null
+  /** Pasar a la carta anterior y a la siguiente de la lista de la que salió (el builder). Sin la prop no hay flechas; con `null` quedan apagadas, así lo de abajo no se corre. */
+  navigation?: CardNavigation | null
   onAddToZone: (zone: DeckZone) => void
 }
 
-export function DeckBuilderClassicPreview({ card, source, deckCopy, onAddToZone }: DeckBuilderClassicPreviewProps) {
+export function DeckBuilderClassicPreview({ card, source, deckCopy, navigation, onAddToZone }: DeckBuilderClassicPreviewProps) {
   const detailHeader = card ? buildClassicCardDetailHeader(card) : null
   const levelLine = card ? buildClassicCardLevelLine(card) : null
   const statLine = card ? buildClassicCardStatLine(card) : null
@@ -65,9 +69,27 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, onAddToZone 
             <CardPricesButton className="justify-self-end" onClick={() => setPricesOpen(true)} />
           </div>
 
+          {navigation !== undefined ? (
+            <div className="flex justify-center gap-2">
+              <IconButton size="lg" aria-label={t('search.detail.previous')} title={t('search.detail.previous')} disabled={!navigation?.onPrevious} onClick={() => navigation?.onPrevious?.()}>
+                <Icon name="chevron-left" />
+              </IconButton>
+              <IconButton size="lg" aria-label={t('search.detail.next')} title={t('search.detail.next')} disabled={!navigation?.onNext} onClick={() => navigation?.onNext?.()}>
+                <Icon name="chevron-right" />
+              </IconButton>
+            </div>
+          ) : null}
+
           {/* La carta se inclina en 3D hacia el mouse (como en el detalle): la perspectiva va en el contenedor y la inclinación en la carta. */}
           <div className="grid min-h-0 justify-items-center">
-            <div className={cx('relative w-[min(100%,max(9rem,calc((100dvh-var(--app-footer-height)-29rem)*0.72)))]', TILT_PERSPECTIVE)}>
+            <div
+              className={cx(
+                'relative',
+                // La fila de flechas le saca su alto (3.5 rem) a lo que le queda a la carta.
+                navigation !== undefined ? 'w-[min(100%,max(9rem,calc((100dvh-var(--app-footer-height)-32.5rem)*0.72)))]' : 'w-[min(100%,max(9rem,calc((100dvh-var(--app-footer-height)-29rem)*0.72)))]',
+                TILT_PERSPECTIVE,
+              )}
+            >
               <div className={cx('relative', TILT_ART)} {...tiltHandlers}>
                 <button
                   type="button"
