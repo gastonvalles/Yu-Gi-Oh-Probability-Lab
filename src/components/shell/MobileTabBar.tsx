@@ -16,7 +16,7 @@ interface MobileTabBarProps {
 }
 
 /**
- * La barra de abajo del celular: un botón por grupo (Tu deck · Duelo · Herramientas · Descubrir). Tocar uno abre su hoja (`GroupSheet`) con las
+ * La barra de abajo del celular: un botón por grupo (Tu deck · Jugar · Descubrir · Cartas). Tocar uno abre su hoja (`GroupSheet`) con las
  * opciones. Es índigo y el grupo del destino abierto va en ámbar, igual que el menú lateral. Mide 64 px (más el borde seguro del teléfono):
  * `AppShell` deja ese espacio libre abajo y se lo avisa a los botones flotantes (`TAB_BAR_PX` en `app/shell-layout.ts`).
  */

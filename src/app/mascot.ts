@@ -79,7 +79,7 @@ function readActive(): MascotId[] {
       localStorage.setItem(mascotPositionKey(id), legacyPosition)
     }
 
-    // Quien nunca eligió nada y llega desde un celular o una tableta no las ve: dejan lugar al campo (se sacan desde Mascotas, en Herramientas).
+    // Quien nunca eligió nada y llega desde un celular o una tableta no las ve: dejan lugar al campo (se sacan desde Mascotas, abajo en el menú).
     const firstVisit = legacyId === null && legacyPosition === null && localStorage.getItem(LEGACY_ENABLED_KEY) === null
     const narrow = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && !window.matchMedia(DESKTOP_DECK_BUILDER_MEDIA_QUERY).matches
 

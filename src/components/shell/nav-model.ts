@@ -39,6 +39,11 @@ export interface NavGroup {
   sheetNotice?: { title: string; text: string; actionLabel: string; actionKey: string }
 }
 
+/**
+ * Las mascotas no son un destino sino una preferencia (como el idioma): no van en un grupo del menú sino abajo, y abren su panel (`onSelect('mascots')`). Lo usan el menú lateral y el cajón del celular.
+ */
+export const mascotsNavItem = (): NavItem => ({ key: 'mascots', label: t('shell.mascot.title'), title: t('shell.mascot.title'), icon: 'paw', detail: t('shell.blurb.mascots') })
+
 const TONE_LABEL_KEY = {
   complete: 'shell.tone.complete',
   progress: 'shell.tone.progress',

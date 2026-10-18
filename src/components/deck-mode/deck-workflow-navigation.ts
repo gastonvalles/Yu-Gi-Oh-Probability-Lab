@@ -224,9 +224,11 @@ interface AppNavTools {
 }
 
 /**
- * El menú de la app, en cuatro grupos: Tu deck, Jugar (el duelo en línea; «Entrenar solo» está en su inicio, y es la única entrada sin relay), Herramientas (la calculadora y las mascotas abren un panel) y Descubrir (la referencia del meta).
- * Lo ven el menú lateral y la barra de abajo del celular. La hoja del celular de cada grupo se dibuja como en el lienzo: los pasos del deck con su estado a la derecha; el duelo, las
- * herramientas y Descubrir con una línea que explica cada una. Jugar ofrece ahí tres entradas (jugar online, mirar un duelo y entrar con un enlace) y, si hay un duelo en pausa, un aviso para volver a él.
+ * El menú de la app, en cuatro grupos, uno por lo que se viene a hacer: **Tu deck** (el recorrido del Lab: armarlo, clasificar sus cartas, medirlo y comparar builds), **Jugar** (el duelo en línea, «Entrenar solo»
+ * —en su inicio, la única entrada sin relay—, la calculadora de LP y exportar el deck, que es para llevarlo a un torneo o a un simulador), **Descubrir** (lo que gana en los torneos: tier lists, decks y replays) y **Cartas** (la referencia: expansiones y banlists). Las mascotas no son un destino sino
+ * una preferencia: van abajo, con el idioma (menú lateral y cajón del celular), y abren su panel.
+ * Lo ven el menú lateral y la barra de abajo del celular. La hoja del celular de cada grupo se dibuja como en el lienzo: los pasos del deck con su estado a la derecha; el duelo, Descubrir
+ * y Cartas con una línea que explica cada una. Jugar ofrece ahí jugar online, mirar un duelo, entrar con un enlace, la calculadora y exportar y, si hay un duelo en pausa, un aviso para volver a él.
  */
 export function buildAppNavGroups(steps: DeckModeNavigationItem[], tools: AppNavTools): NavGroup[] {
   const pick = (...keys: DeckWorkflowStepKey[]): NavItem[] => keys.flatMap((key) => steps.filter((step) => step.key === key))
@@ -234,20 +236,25 @@ export function buildAppNavGroups(steps: DeckModeNavigationItem[], tools: AppNav
   // Con el duelo en línea, «Entrenar solo» está en el inicio de Jugar: el menú no lo repite (queda oculto, para que el grupo siga marcado en la práctica).
   const practice: NavItem[] = tools.practice ? [{ key: 'practice', label: t('shell.practice.title'), title: t('shell.practice.title'), icon: 'hand' as const, blurb: t('shell.blurb.practice'), ...(tools.duel ? { hidden: true } : {}) }] : []
   const paused = tools.duel ? tools.paused ?? null : null
+  const life: NavItem = { key: 'life', label: t('shell.life.title'), title: t('shell.life.title'), icon: 'heart' as const, blurb: t('shell.blurb.life') }
+  // Exportar no es parte del recorrido del Lab (Deck → Roles → Lab → Comparar): es sacar el deck para llevarlo a un torneo (la lista en PDF) o a un simulador (YDK), así que va con Jugar.
+  const exportDeck: NavItem[] = pick('export').map((item) => ({ ...item, blurb: t('shell.blurb.export') }))
 
   return [
-    { key: 'deck', label: t('shell.nav.group.deck'), icon: 'cards' as const, sheet: 'status' as const, items: pick('deck-builder', 'categorization', 'probability-lab', 'workspace', 'export') },
+    { key: 'deck', label: t('shell.nav.group.deck'), icon: 'cards' as const, sheet: 'status' as const, items: pick('deck-builder', 'categorization', 'probability-lab', 'workspace') },
     {
       key: 'duel',
       label: t('shell.nav.group.duel'),
       icon: 'target' as const,
       sheet: 'description' as const,
-      items: [...practice, ...(tools.duel ? [{ key: 'duel', label: t('duel.nav.title'), title: t('duel.nav.title'), icon: 'link' as const }] : [])],
+      items: [...practice, ...(tools.duel ? [{ key: 'duel', label: t('duel.nav.title'), title: t('duel.nav.title'), icon: 'link' as const }] : []), life, ...exportDeck],
       sheetItems: [
         ...practice,
         ...(tools.duel
           ? [entry('duel', t('duel.nav.title'), t('shell.blurb.play')), entry('duel-watch', t('duel.watchRoom.open'), t('shell.blurb.watch')), entry('duel-join', t('shell.duel.join'), t('shell.blurb.join'))]
           : []),
+        life,
+        ...exportDeck,
       ],
       sheetNotice: paused
         ? {
@@ -258,16 +265,7 @@ export function buildAppNavGroups(steps: DeckModeNavigationItem[], tools: AppNav
           }
         : undefined,
     },
-    {
-      key: 'tools',
-      label: t('shell.nav.group.tools'),
-      icon: 'sliders' as const,
-      sheet: 'description' as const,
-      items: [
-        { key: 'life', label: t('shell.life.title'), title: t('shell.life.title'), icon: 'heart' as const, blurb: t('shell.blurb.life') },
-        { key: 'mascots', label: t('shell.mascot.title'), title: t('shell.mascot.title'), icon: 'paw' as const, blurb: t('shell.blurb.mascots') },
-      ],
-    },
-    { key: 'discover', label: t('shell.nav.group.discover'), icon: 'search' as const, sheet: 'description' as const, items: pick('meta', 'tournaments', 'replays', 'expansions', 'banlists') },
+    { key: 'discover', label: t('shell.nav.group.discover'), icon: 'search' as const, sheet: 'description' as const, items: pick('meta', 'tournaments', 'replays') },
+    { key: 'cards', label: t('shell.nav.group.cards'), icon: 'package' as const, sheet: 'description' as const, items: pick('expansions', 'banlists') },
   ].filter((group) => group.items.length > 0)
 }

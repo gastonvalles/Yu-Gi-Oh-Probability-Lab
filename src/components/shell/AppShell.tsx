@@ -5,7 +5,6 @@ import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-m
 import { t } from '../../i18n'
 import { cx } from '../ui/cx'
 import { AppFooter } from './AppFooter'
-import { FlowSteps } from './FlowSteps'
 import { AppSidebar } from './AppSidebar'
 import { GroupSheet } from './GroupSheet'
 import { MobileTabBar } from './MobileTabBar'
@@ -63,8 +62,6 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
   // (El inicio del duelo es «Nueva sala» en el menú lateral, pero la pantalla es la del grupo: «Duelo».)
   const activeGroup = groups.find((group) => group.items.some((item) => item.key === activeKey))
   const screenTitle = activeKey === 'duel' ? activeGroup?.label : activeGroup?.items.find((item) => item.key === activeKey)?.label
-  // Los cinco pasos del deck llevan su barra de progreso; las demás pantallas, no.
-  const flowGroup = groups.find((group) => group.key === 'deck' && group.items.some((item) => item.key === activeKey)) ?? null
 
   // Otra pantalla (también con el botón Atrás): la hoja y el cajón que estaban abiertos se cierran.
   useEffect(() => {
@@ -93,7 +90,6 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
       <AppSidebar groups={groups} activeKey={activeKey} onSelect={onSelect} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} className="max-[1100px]:hidden" />
       <div className={cx('flex min-w-0 flex-col min-[1101px]:min-h-0', immersive ? 'min-h-dvh max-[1100px]:h-dvh' : 'min-h-[calc(100dvh-4rem-env(safe-area-inset-bottom,0px))] min-[1101px]:min-h-0', ownMenu && 'max-[1100px]:pt-[env(safe-area-inset-top,0px)]')}>
         {ownMenu ? null : <MobileTopBar menuOpen={drawerOpen} onMenu={openDrawer} title={screenTitle} className="min-[1101px]:hidden" />}
-        {flowGroup ? <FlowSteps group={flowGroup} activeKey={activeKey} onSelect={onSelect} className="shrink-0 min-[1101px]:px-8 min-[1101px]:pt-4" /> : null}
         <div
           ref={contentScrollRef}
           className={cx(
