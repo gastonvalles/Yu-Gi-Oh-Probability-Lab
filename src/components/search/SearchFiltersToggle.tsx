@@ -7,21 +7,19 @@ interface SearchFiltersToggleProps {
   open: boolean
   /** Cuántos filtros hay puestos: se dice en una insignia sobre el botón (y el botón se pinta de violeta aunque esté cerrado). */
   activeCount: number
-  /** El panel de filtros que abre y cierra. */
-  controls: string
   onToggle: () => void
   /** El tamaño lo da el que lo usa (`size-10` en escritorio, `size-11` en el celular). */
   className: string
 }
 
-/** El botón de los filtros, al lado del campo de búsqueda (el mismo en escritorio y en el celular): un ícono con la cuenta de filtros puestos. */
-export function SearchFiltersToggle({ open, activeCount, controls, onToggle, className }: SearchFiltersToggleProps) {
+/** El botón que abre el cajón de filtros, al lado del campo de búsqueda (el mismo en escritorio y en el celular): un ícono con la cuenta de filtros puestos. */
+export function SearchFiltersToggle({ open, activeCount, onToggle, className }: SearchFiltersToggleProps) {
   return (
     <button
       type="button"
       title={t('search.filters.title')}
+      aria-haspopup="dialog"
       aria-expanded={open}
-      aria-controls={controls}
       className={cx(
         'relative grid shrink-0 place-items-center rounded-control border text-foreground focus-visible:outline-none focus-visible:shadow-focus',
         open || activeCount > 0 ? 'border-primary/55 bg-primary/20' : 'border-border-subtle bg-surface-raised',

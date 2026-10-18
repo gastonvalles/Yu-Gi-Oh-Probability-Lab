@@ -15,7 +15,7 @@ import { getCardPrimaryStatus } from '../components/classification/classificatio
 import { DeckRolesPanel } from '../components/DeckRolesPanel'
 import { SearchResultsToolbar, SearchStart } from '../components/search/SearchFeedback'
 import { buildActiveFilterChips } from '../components/search/search-model'
-import { getExactTypeFilterGroups, QUICK_TYPE_META, QUICK_TYPE_OPTIONS } from '../components/search/search-options'
+import { ABILITY_OPTIONS, EFFECT_OPTIONS, FRAME_OPTIONS, LIMIT_OPTIONS, SPELL_TRAP_OPTIONS } from '../components/search/search-options'
 import { applyLocale } from '../i18n'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 import { requestCardInfo } from '../ygoprodeck/client'
@@ -71,12 +71,14 @@ describe('catálogo en inglés: buscador', () => {
     expect(formatSearchError('boom')).toBe("Couldn't complete the search.")
     expect(buildCompactSearchDescription(apiCard)).toBe('Effect Monster · Archetype: Mulcharmy')
 
-    expect(QUICK_TYPE_OPTIONS.map((option) => option.label)).toEqual(['All', 'Monsters', 'Spells', 'Traps'])
-    expect([QUICK_TYPE_META.monster.exactTypeLabel, QUICK_TYPE_META.monster.raceLabel, QUICK_TYPE_META.spell.raceLabel]).toEqual(['Monster card type', 'Race', 'Subtype'])
-    expect(getExactTypeFilterGroups('all').map((group) => group.label)).toEqual(['Monsters', 'Spell / Trap', 'Other'])
+    expect(FRAME_OPTIONS.map((option) => option.label)).toEqual(['Normal', 'Effect', 'Fusion', 'Ritual', 'Synchro', 'Xyz', 'Pendulum', 'Link', 'Spell', 'Trap'])
+    expect(SPELL_TRAP_OPTIONS.map((option) => option.label)).toEqual(['Normal Spell', 'Field Spell', 'Equip Spell', 'Continuous Spell', 'Quick-Play Spell', 'Ritual Spell', 'Normal Trap', 'Continuous Trap', 'Counter Trap'])
+    expect(ABILITY_OPTIONS.map((option) => option.label)).toEqual(['Toon', 'Gemini', 'Union', 'Spirit', 'Tuner', 'Flip', 'Non-Effect'])
+    expect(LIMIT_OPTIONS.map((option) => option.label)).toEqual(['Forbidden', 'Limited', 'Semi-Limited', 'Unlimited'])
+    expect(EFFECT_OPTIONS.map((option) => option.label).slice(0, 4)).toEqual(['Search the Deck', 'Draw', 'Special Summon', 'Banish'])
 
-    const chips = buildActiveFilterChips({ filters: { ...DEFAULT_CARD_SEARCH_FILTERS, archetype: 'Blue-Eyes', legalOnly: true }, formatAllowsLegalityFilter: true, formatLabel: 'TCG', raceLabel: 'Race' })
-    expect(chips.map((chip) => `${chip.label}: ${chip.value}`)).toEqual(['Archetype: Blue-Eyes', 'Legality: No forbidden cards in TCG'])
+    const chips = buildActiveFilterChips({ filters: { ...DEFAULT_CARD_SEARCH_FILTERS, archetype: 'Blue-Eyes', legalOnly: true, frames: ['xyz'] }, deckFormat: 'tcg', formatLabel: 'TCG' })
+    expect(chips.map((chip) => `${chip.label}: ${chip.value}`)).toEqual(['Archetype: Blue-Eyes', 'Frame: Xyz', 'Legality: No forbidden cards in TCG'])
   })
 
   it('las condiciones de monstruo siguen a "monster": una frase que cambia de orden entre idiomas', () => {

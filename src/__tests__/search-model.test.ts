@@ -1,13 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { DEFAULT_CARD_SEARCH_FILTERS } from '../app/card-search'
+import { EMPTY_RANGE } from '../app/card-filters'
 import {
   buildActiveFilterChips,
   buildCardSearchProps,
-  buildSanitizedFilterUpdates,
   sortVisibleSearchResults,
 } from '../components/search/search-model'
-import { getExactTypeFilterGroups, getRaceFilterGroups, QUICK_TYPE_META } from '../components/search/search-options'
 import type { ApiCardSearchResult } from '../ygoprodeck'
 
 function card(ygoprodeckId: number, name: string, cardType: string): ApiCardSearchResult {
@@ -26,46 +25,42 @@ describe('sortVisibleSearchResults', () => {
   })
 })
 
-describe('buildSanitizedFilterUpdates', () => {
-  it('limpia raza, atributo y nivel que no aplican al pasar a Magias', () => {
-    const filters = { ...DEFAULT_CARD_SEARCH_FILTERS, quickType: 'spell' as const, race: 'Dragon', attribute: 'DARK', level: '4' }
-
-    expect(
-      buildSanitizedFilterUpdates({
-        filters,
-        exactTypeGroups: getExactTypeFilterGroups('spell'),
-        raceGroups: getRaceFilterGroups('spell'),
-        formatAllowsLegalityFilter: true,
-        showAttribute: QUICK_TYPE_META.spell.showAttribute,
-        showLevel: QUICK_TYPE_META.spell.showLevel,
-      }),
-    ).toEqual({ race: '', attribute: '', level: '' })
-  })
-
-  it('no propone cambios si todo es válido', () => {
-    expect(
-      buildSanitizedFilterUpdates({
-        filters: DEFAULT_CARD_SEARCH_FILTERS,
-        exactTypeGroups: getExactTypeFilterGroups('all'),
-        raceGroups: getRaceFilterGroups('all'),
-        formatAllowsLegalityFilter: false,
-        showAttribute: true,
-        showLevel: true,
-      }),
-    ).toBeNull()
-  })
-})
-
 describe('chips de filtros activos', () => {
-  const filters = { ...DEFAULT_CARD_SEARCH_FILTERS, archetype: ' Blue-Eyes ', legalOnly: true }
+  const chipsOf = (updates: Partial<typeof DEFAULT_CARD_SEARCH_FILTERS>, deckFormat: 'tcg' | 'unlimited' | 'genesys' = 'tcg') =>
+    buildActiveFilterChips({ filters: { ...DEFAULT_CARD_SEARCH_FILTERS, ...updates }, deckFormat, formatLabel: 'TCG' })
 
-  it('cada chip sabe cómo quitarse', () => {
-    const chips = buildActiveFilterChips({ filters, formatAllowsLegalityFilter: true, formatLabel: 'TCG', raceLabel: 'Raza' })
+  it('sin filtros no hay chips', () => {
+    expect(chipsOf({})).toEqual([])
+  })
 
-    expect(chips.map((chip) => [chip.key, chip.value, chip.updates])).toEqual([
-      ['archetype', 'Blue-Eyes', { archetype: '' }],
-      ['legal-only', 'Sin prohibidas en TCG', { legalOnly: false }],
+  it('cada chip sabe cómo quitarse, y hay uno por grupo (no uno por valor)', () => {
+    const chips = chipsOf({ archetype: ' Blue-Eyes ', legalOnly: true, frames: ['fusion', 'xyz'], attributes: ['DARK', 'LIGHT'], effects: ['banish'] })
+
+    expect(chips.map((chip) => [chip.key, chip.label, chip.value, chip.updates])).toEqual([
+      ['archetype', 'Arquetipo', 'Blue-Eyes', { archetype: '' }],
+      ['frames', 'Marco', 'Fusión, Xyz', { frames: [] }],
+      ['attributes', 'Atributo', 'DARK, LIGHT', { attributes: [] }],
+      ['legal-only', 'Legalidad', 'Sin prohibidas en TCG', { legalOnly: false }],
+      ['effects', 'Efecto', 'Desterrar', { effects: [] }],
     ])
+  })
+
+  it('las cotas se dicen cortas: «2500–3000», «≥ 2500», «≤ 4»', () => {
+    const chips = chipsOf({ atk: { min: '2500', max: '3000' }, def: { min: '2500', max: '' }, level: { min: '', max: '4' } })
+
+    expect(chips.map((chip) => [chip.label, chip.value])).toEqual([
+      ['Nivel / Rango / Link', '≤ 4'],
+      ['ATK', '2500–3000'],
+      ['DEF', '≥ 2500'],
+    ])
+    expect(chips[1]?.updates).toEqual({ atk: EMPTY_RANGE })
+  })
+
+  it('sólo cuentan los filtros del formato: sin lista de prohibidas no hay limitación ni «sin prohibidas»; los puntos son de Genesys', () => {
+    expect(chipsOf({ limits: ['forbidden'], legalOnly: true }, 'unlimited')).toEqual([])
+    expect(chipsOf({ limits: ['forbidden'] }, 'tcg').map((chip) => [chip.label, chip.value])).toEqual([['Limitación', 'Prohibida']])
+    expect(chipsOf({ genesysPoints: { min: '3', max: '' } }, 'tcg')).toEqual([])
+    expect(chipsOf({ genesysPoints: { min: '3', max: '' } }, 'genesys').map((chip) => [chip.label, chip.value])).toEqual([['Puntos Genesys', '≥ 3']])
   })
 })
 

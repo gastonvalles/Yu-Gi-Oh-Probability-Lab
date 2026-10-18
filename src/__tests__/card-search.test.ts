@@ -8,6 +8,7 @@ import {
   sortSearchResults,
   type CardSearchFilters,
 } from '../app/card-search'
+import { abilitiesOf, EFFECT_PATTERNS, frameOf, limitOf, spellTrapKindOf, type EffectKey } from '../app/card-filters'
 import { getCardCopyLimit } from '../app/deck-format'
 import { normalizeSearchText } from '../app/utils'
 import type { BanlistStatus, DeckFormat } from '../types'
@@ -52,10 +53,36 @@ function legacyCompare(left: ApiCardSearchResult, right: ApiCardSearchResult, qu
   )
 }
 
-function legacyQuickType(card: ApiCardSearchResult, quickType: CardSearchFilters['quickType']): boolean {
-  const cardType = card.cardType.toLowerCase()
+const isMonster = (card: ApiCardSearchResult) => card.cardType.toLowerCase().includes('monster')
+const bound = (text: string) => (text.trim() === '' ? null : Number(text))
+const within = (value: number | null, range: { min: string; max: string }) => {
+  const min = bound(range.min)
+  const max = bound(range.max)
 
-  return quickType === 'all' || cardType.includes(quickType)
+  if (min === null && max === null) return true
+
+  return value !== null && !Number.isNaN(value) && (min === null || value >= min) && (max === null || value <= max)
+}
+const stat = (value: string | null) => (value === null || Number.isNaN(Number(value)) ? null : Number(value))
+const same = (left: string | null, right: string) => (left ?? '').toLowerCase() === right.toLowerCase()
+
+/** Los filtros de chips, cotas y efectos, uno por uno y de la forma más directa: lo que el filtro compilado y la máscara de efectos tienen que seguir dando. */
+function naiveLocalMatch(card: ApiCardSearchResult, filters: CardSearchFilters, deckFormat: DeckFormat): boolean {
+  const hasLimits = deckFormat !== 'unlimited' && deckFormat !== 'genesys'
+
+  return (
+    (filters.frames.length === 0 || filters.frames.includes(frameOf(card))) &&
+    (filters.attributes.length === 0 || filters.attributes.some((value) => same(card.attribute, value))) &&
+    (filters.spellTrapKinds.length === 0 || filters.spellTrapKinds.some((value) => same(spellTrapKindOf(card), value))) &&
+    (filters.races.length === 0 || (isMonster(card) && filters.races.some((value) => same(card.race, value)))) &&
+    (filters.abilities.length === 0 || filters.abilities.some((ability) => (abilitiesOf(card) as string[]).includes(ability))) &&
+    (filters.limits.length === 0 || !hasLimits || filters.limits.includes(limitOf(card, deckFormat))) &&
+    (filters.effects.length === 0 || filters.effects.some((key) => EFFECT_PATTERNS[key as EffectKey].test(card.description ?? ''))) &&
+    within(isMonster(card) ? (card.level ?? card.linkValue) : null, filters.level) &&
+    within(stat(card.atk), filters.atk) &&
+    within(stat(card.def), filters.def) &&
+    (deckFormat !== 'genesys' || within(card.genesys.points, filters.genesysPoints))
+  )
 }
 
 function legacySearch(
@@ -66,22 +93,14 @@ function legacySearch(
 ): ApiCardSearchResult[] {
   const query = legacyNormalize(rawQuery)
   const archetype = legacyNormalize(filters.archetype)
-  const exactType = legacyNormalize(filters.exactType)
-  const attribute = legacyNormalize(filters.attribute)
-  const race = legacyNormalize(filters.race)
-  const level = legacyNormalize(filters.level)
   const description = legacyNormalize(filters.description)
 
   return cards
     .filter(
       (card) =>
-        legacyQuickType(card, filters.quickType) &&
         (archetype.length === 0 || legacyNormalize(card.archetype ?? '') === archetype) &&
-        (exactType.length === 0 || legacyNormalize(card.cardType) === exactType) &&
-        (attribute.length === 0 || legacyNormalize(card.attribute ?? '') === attribute) &&
-        (race.length === 0 || legacyNormalize(card.race ?? '') === race) &&
-        (level.length === 0 || legacyNormalize(card.level === null ? '' : String(card.level)) === level) &&
         (description.length === 0 || legacyNormalize(card.description ?? '').includes(description)) &&
+        naiveLocalMatch(card, filters, deckFormat) &&
         !(
           filters.legalOnly &&
           deckFormat !== 'unlimited' &&
@@ -116,10 +135,10 @@ function card(id: number, name: string, extra: Partial<ApiCardSearchResult> = {}
   }
 }
 
-const SPELL = { cardType: 'Normal Spell Card', frameType: 'spell' }
-const TRAP = { cardType: 'Normal Trap Card', frameType: 'trap' }
+const SPELL = { cardType: 'Normal Spell Card', frameType: 'spell', race: 'Normal' }
+const TRAP = { cardType: 'Normal Trap Card', frameType: 'trap', race: 'Normal' }
 
-const CATALOG: ApiCardSearchResult[] = [
+const BASE_CATALOG: ApiCardSearchResult[] = [
   card(1, 'Blue-Eyes White Dragon', { attribute: 'LIGHT', race: 'Dragon', level: 8, archetype: 'Blue-Eyes', description: 'This legendary dragon is a powerful engine of destruction.', banlist: { tcg: 'unlimited', ocg: 'limited', goat: 'forbidden' } }),
   card(2, 'Blue-Eyes Ultimate Dragon', { attribute: 'LIGHT', race: 'Dragon', level: 12, archetype: 'Blue-Eyes', cardType: 'Fusion Monster', frameType: 'fusion' }),
   card(3, 'Dark Magician', { attribute: 'DARK', race: 'Spellcaster', level: 7, archetype: 'Dark Magician', description: 'The ultimate wizard in terms of attack and defense.' }),
@@ -128,7 +147,7 @@ const CATALOG: ApiCardSearchResult[] = [
   card(6, 'Red-Eyes Black Dragon', { attribute: 'DARK', race: 'Dragon', level: 7, archetype: 'Red-Eyes' }),
   card(7, 'Dragon Ruler of Blue Eyes', { attribute: 'WIND', race: 'Dragon', level: 7, description: 'Destroy this card to Special Summon a Dragon.' }),
   card(8, 'Pot of Greed', { ...SPELL, banlist: { tcg: 'forbidden', ocg: 'forbidden', goat: 'forbidden' }, description: 'Draw 2 cards.' }),
-  card(9, 'Mystical Space Typhoon', { cardType: 'Quick-Play Spell Card', frameType: 'spell', description: 'Destroy 1 Spell/Trap on the field.' }),
+  card(9, 'Mystical Space Typhoon', { cardType: 'Quick-Play Spell Card', frameType: 'spell', race: 'Quick-Play', description: 'Destroy 1 Spell/Trap on the field.' }),
   card(10, 'Mirror Force', { ...TRAP, banlist: { tcg: 'limited', ocg: null, goat: 'limited' }, description: 'Destroy all your opponent\'s Attack Position monsters.' }),
   card(11, 'Señor del Dragón', { attribute: 'EARTH', race: 'Beast', level: 4, description: 'Un monstruo con diéresis: Zürich.' }),
   card(12, 'Évocateur Über', { attribute: 'EARTH', race: 'Warrior', level: 4, archetype: 'Évocateur' }),
@@ -153,7 +172,31 @@ const CATALOG: ApiCardSearchResult[] = [
   // Para 'blue eyes': los dos "contienen" la consulta (240); si "palabra" valiera para consultas de varias palabras, el segundo pasaría al primer lugar.
   card(31, 'Alpha Superblue Eyes'),
   card(32, 'Zeta Blue Eyes'),
+  // Para los filtros de habilidades, de efecto y de estadísticas.
+  card(33, 'Toon Dragon', { cardType: 'Toon Monster', attribute: 'DARK', race: 'Dragon', level: 4, atk: '1800', def: '1200', description: 'Banish this card from your GY: Draw 1 card.', genesys: { points: 3 } }),
+  card(34, 'Flip Warrior', { cardType: 'Flip Effect Monster', attribute: 'EARTH', race: 'Warrior', level: 4, atk: '1600', def: '1000', description: 'FLIP: Destroy 1 Spell/Trap on the field.' }),
+  card(35, 'Vanilla Fairy', { cardType: 'Normal Monster', frameType: 'normal', attribute: 'LIGHT', race: 'Fairy', level: 3, atk: '1200', def: '1000' }),
+  card(36, 'Tuner Beast', { cardType: 'Tuner Monster', attribute: 'EARTH', race: 'Beast', level: 2, atk: '500', def: '0', description: 'You can Special Summon this card from your hand. Take control of 1 monster your opponent controls.', genesys: { points: 5 } }),
+  card(37, 'Counter Hole', { cardType: 'Counter Trap Card', frameType: 'trap', race: 'Counter', description: 'When a monster effect is activated: Negate the activation, and if you do, destroy it.' }),
+  card(38, 'Spirit Token Maker', { cardType: 'Spirit Monster', attribute: 'WIND', race: 'Fairy', level: 4, atk: '?', def: '?', description: 'Special Summon 1 Token. Add 1 Spirit monster from your Deck to your hand.' }),
+  card(39, 'Gemini Fighter', { cardType: 'Gemini Monster', attribute: 'EARTH', race: 'Warrior', level: 4, atk: '1900', def: '1700' }),
+  card(40, 'Pendulum Sage', { cardType: 'Pendulum Normal Monster', frameType: 'normal_pendulum', attribute: 'LIGHT', race: 'Spellcaster', level: 6, atk: '2000', def: '1500' }),
 ]
+
+// Estadísticas de algunas cartas de arriba (con «?» y sin datos, para las cotas).
+const STATS: Record<number, Partial<ApiCardSearchResult>> = {
+  1: { atk: '3000', def: '2500', genesys: { points: 8 } },
+  2: { atk: '4500', def: '3800' },
+  3: { atk: '2500', def: '2100' },
+  4: { atk: '2000', def: '1700' },
+  5: { atk: '2500', def: '2100' },
+  6: { atk: '2400', def: '2000' },
+  7: { atk: '2500', def: '1500' },
+  20: { atk: '1000', def: '600' },
+  26: { atk: '2300' },
+  30: { atk: '?', def: '?' },
+}
+const CATALOG: ApiCardSearchResult[] = BASE_CATALOG.map((entry) => ({ ...entry, ...STATS[entry.ygoprodeckId] }))
 
 const QUERIES = [
   'dragon', 'dr', 'Dragon', 'DRAGON', 'blue-eyes', 'blue eyes', 'blue', 'eyes', 'dark mag', 'dark magician', 'magician', 'senor', 'señor',
@@ -161,25 +204,40 @@ const QUERIES = [
   'ra', 'of', 'the dark', 'a', 'fullwidth', 'sangan', '1500', 'zurich', '',
 ]
 
+const range = (min: string, max: string) => ({ min, max })
 const FILTERS: Array<Partial<CardSearchFilters>> = [
   {},
-  { quickType: 'monster' },
-  { quickType: 'spell' },
-  { quickType: 'trap' },
-  { exactType: 'Normal Spell Card' },
-  { exactType: 'normal spell card' },
-  { attribute: 'dark' },
-  { attribute: 'DARK', race: 'spellcaster' },
-  { race: 'Dragon', level: '7' },
-  { level: '8', quickType: 'monster' },
+  { frames: ['effect'] },
+  { frames: ['spell', 'trap'] },
+  { frames: ['pendulum'] },
+  { frames: ['normal', 'link', 'fusion'] },
+  { spellTrapKinds: ['spell:Normal'] },
+  { spellTrapKinds: ['spell:Quick-Play', 'trap:Counter'] },
+  { attributes: ['dark'] },
+  { attributes: ['DARK', 'LIGHT'], races: ['spellcaster'] },
+  { races: ['Dragon'], level: range('7', '7') },
+  { level: range('8', ''), frames: ['normal', 'effect', 'fusion'] },
+  { level: range('', '4') },
+  { atk: range('2500', '') },
+  { atk: range('1000', '2000'), def: range('', '1700') },
+  { abilities: ['toon', 'flip'] },
+  { abilities: ['non-effect'] },
+  { abilities: ['tuner', 'spirit', 'gemini'] },
+  { limits: ['forbidden'] },
+  { limits: ['limited', 'semi-limited'], legalOnly: true },
+  { effects: ['banish'] },
+  { effects: ['draw', 'search'] },
+  { effects: ['destroy-spell-trap', 'destroy-monster', 'negate'] },
+  { effects: ['special-summon'], attributes: ['EARTH', 'WIND'] },
+  { genesysPoints: range('3', '5') },
   { archetype: 'blue-eyes' },
   { archetype: 'Évocateur' },
   { archetype: 'evocateur' },
   { description: 'dragon' },
   { description: 'DESTRUCTION' },
   { legalOnly: true },
-  { legalOnly: true, quickType: 'monster', attribute: 'light' },
-  { description: 'destroy', quickType: 'spell', legalOnly: true },
+  { legalOnly: true, frames: ['effect'], attributes: ['light'] },
+  { description: 'destroy', frames: ['spell'], legalOnly: true },
 ]
 
 const FORMATS: DeckFormat[] = ['tcg', 'ocg', 'goat', 'edison', 'unlimited', 'genesys']
@@ -225,12 +283,19 @@ describe('búsqueda local en el catálogo', () => {
     ['Effect Monster', 'effect'],
     ['Normal Monster', 'normal'],
     ['Normal Spell Card', 'spell'],
+    ['Quick-Play Spell Card', 'spell'],
     ['Normal Trap Card', 'trap'],
+    ['Counter Trap Card', 'trap'],
     ['Skill Card', 'skill'],
     ['Token', 'token'],
     ['Link Monster', 'link'],
+    ['Toon Monster', 'effect'],
+    ['Flip Effect Monster', 'effect'],
+    ['Normal Tuner Monster', 'normal'],
+    ['Pendulum Effect Monster', 'effect_pendulum'],
     ['Normal Spell Card', 'monster'],
   ]
+  const EFFECT_TEXTS = ['Banish 1 card.', 'Draw 2 cards.', 'Add 1 monster from your Deck to your hand.', 'Special Summon 1 Token.', 'Destroy 1 Spell/Trap.', 'Negate the activation.', 'Destroy 1 monster.', 'Send 1 card to the GY.']
   const status = fc.constantFrom<BanlistStatus | null>(null, 'forbidden', 'limited', 'semi-limited', 'unlimited')
   const nameArbitrary = fc
     .array(fc.tuple(fc.constantFrom(...WORDS), fc.constantFrom(' ', ' ', ' ', '  ', ' ')), { minLength: 1, maxLength: 4 })
@@ -240,10 +305,13 @@ describe('búsqueda local en el catálogo', () => {
       id: fc.nat(20),
       name: nameArbitrary,
       type: fc.constantFrom(...TYPES),
-      description: fc.option(fc.array(fc.constantFrom(...WORDS), { maxLength: 6 }).map((words) => words.join(' ')), { nil: null }),
+      description: fc.option(fc.array(fc.constantFrom(...WORDS, ...EFFECT_TEXTS), { maxLength: 6 }).map((words) => words.join(' ')), { nil: null }),
       attribute: fc.constantFrom(null, 'DARK', 'LIGHT', 'EARTH'),
-      race: fc.constantFrom(null, 'Dragon', 'Spellcaster', 'Warrior'),
+      race: fc.constantFrom(null, 'Dragon', 'Spellcaster', 'Warrior', 'Normal', 'Quick-Play', 'Counter'),
       level: fc.constantFrom(null, 1, 4, 7, 8),
+      atk: fc.constantFrom(null, '0', '?', '1500', '2500'),
+      def: fc.constantFrom(null, '?', '1000', '2000'),
+      points: fc.constantFrom(null, 1, 3, 5),
       archetype: fc.constantFrom(null, 'Blue-Eyes', 'Dark Magician', 'Évocateur'),
       banlist: fc.record({ tcg: status, ocg: status, goat: status }),
     })
@@ -255,6 +323,9 @@ describe('búsqueda local en el catálogo', () => {
         attribute: spec.attribute,
         race: spec.race,
         level: spec.level,
+        atk: spec.atk,
+        def: spec.def,
+        genesys: { points: spec.points },
         archetype: spec.archetype,
         banlist: spec.banlist,
       }),
@@ -264,15 +335,23 @@ describe('búsqueda local en el catálogo', () => {
     fc.constantFrom(...WORDS).chain((word) => fc.nat(word.length).map((length) => word.slice(0, length))),
     fc.string({ maxLength: 5 }),
   )
+  const subset = <T extends string>(values: T[]) => fc.subarray(values, { maxLength: 2 })
+  const rangeArbitrary = fc.constantFrom(range('', ''), range('', ''), range('1', ''), range('', '4'), range('2', '8'), range('1000', '2500'), range('', '2000'), range('?', ''))
   const filtersArbitrary = fc.record({
-    quickType: fc.constantFrom<CardSearchFilters['quickType']>('all', 'all', 'monster', 'spell', 'trap'),
     archetype: fc.constantFrom('', '', 'blue-eyes', 'Évocateur', 'evocateur'),
-    exactType: fc.constantFrom('', '', 'Normal Spell Card', 'effect monster'),
-    attribute: fc.constantFrom('', '', 'dark', 'LIGHT'),
-    race: fc.constantFrom('', '', 'dragon', 'Warrior'),
-    level: fc.constantFrom('', '', '4', '7'),
     description: fc.constantFrom('', '', 'dragon', 'señor', 'dark of'),
     legalOnly: fc.boolean(),
+    frames: subset(['normal', 'effect', 'fusion', 'pendulum', 'link', 'spell', 'trap']),
+    attributes: subset(['dark', 'LIGHT', 'EARTH']),
+    spellTrapKinds: subset(['spell:Normal', 'spell:Quick-Play', 'trap:Counter', 'trap:Normal']),
+    races: subset(['dragon', 'Warrior', 'Spellcaster']),
+    abilities: subset(['toon', 'flip', 'tuner', 'non-effect']),
+    limits: subset(['forbidden', 'limited', 'semi-limited', 'unlimited']),
+    effects: subset(['banish', 'draw', 'search', 'special-summon', 'destroy-monster', 'destroy-spell-trap', 'negate', 'graveyard']),
+    level: rangeArbitrary,
+    atk: rangeArbitrary,
+    def: rangeArbitrary,
+    genesysPoints: rangeArbitrary,
   })
 
   it('con catálogos al azar (nombres repetidos, ids repetidos, tipos cruzados) sigue dando el orden de antes', () => {

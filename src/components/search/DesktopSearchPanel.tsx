@@ -11,16 +11,16 @@ import { CloseButton, CloseIcon } from '../ui/IconButton'
 import { Icon } from '../ui/Icon'
 import { Skeleton } from '../ui/Skeleton'
 import { SearchEmptyState, SearchResultsToolbar, SearchStart } from './SearchFeedback'
-import { SearchFiltersForm } from './SearchFiltersForm'
+import { SearchFiltersDrawer } from './SearchFiltersDrawer'
 import { SearchFiltersToggle } from './SearchFiltersToggle'
 import { useRecentSearches } from './recent-searches'
 import { sortVisibleSearchResults } from './search-model'
-import { QUICK_TYPE_OPTIONS, type SearchSortOrder } from './search-options'
+import type { SearchSortOrder } from './search-options'
 import type { CardSearchActions, CardSearchViewState } from './search-types'
 import { useSearchFilterContext } from './use-search-filter-context'
 import { Callout } from '../ui/Callout'
 import { CopiesBadge } from '../ui/CopiesBadge'
-import { choiceChip, field, filterChip } from '../ui/surfaces'
+import { field, filterChip } from '../ui/surfaces'
 
 interface DesktopSearchPanelProps {
   search: CardSearchViewState
@@ -33,7 +33,6 @@ interface DesktopSearchPanelProps {
   onResultPointerDown: (event: ReactPointerEvent<HTMLElement>, apiCardId: number) => void
 }
 
-const TYPE_BUTTON = `${choiceChip} px-2.5 py-1.5 text-body leading-none`
 
 const RESULTS_GRID = 'grid min-h-0 grid-cols-2 content-start gap-2 p-2'
 
@@ -73,12 +72,12 @@ export function DesktopSearchPanel({
   onResultPointerDown,
 }: DesktopSearchPanelProps) {
   const { filters, query, status } = search
-  const [filtersOpen, setFiltersOpen] = useState(search.activeFilterCount > 0)
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [sortOrder, setSortOrder] = useState<SearchSortOrder>('default')
   const resultsRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [lastAddedId, setLastAddedId] = useState<number | null>(null)
-  const filterContext = useSearchFilterContext(filters, search.deckFormat, actions.onFilterChange)
+  const filterContext = useSearchFilterContext(filters, search.deckFormat)
   const sortedResults = useMemo(() => sortVisibleSearchResults(search.results, sortOrder), [search.results, sortOrder])
   const recentSearches = useRecentSearches()
 
@@ -118,7 +117,7 @@ export function DesktopSearchPanel({
     containerRef: resultsRef,
     canLoadMore: search.hasSearchCriteria && status === 'success' && !search.isLoadingMore && search.hasMore,
     onLoadMore: actions.onLoadMore,
-    layoutKey: `${sortedResults.length}:${filtersOpen}`,
+    layoutKey: sortedResults.length,
   })
 
   return (
@@ -157,24 +156,11 @@ export function DesktopSearchPanel({
             <span className="pointer-events-none absolute right-11 top-1/2 -mt-2 size-4 animate-spin rounded-full border-2 border-foreground/20 border-t-primary" />
           ) : null}
         </label>
-        <SearchFiltersToggle open={filtersOpen} activeCount={search.activeFilterCount} controls="advanced-search-filters" className="size-10 pointer-coarse:size-11" onToggle={() => setFiltersOpen((current) => !current)} />
+        <SearchFiltersToggle open={filtersOpen} activeCount={search.activeFilterCount} className="size-10 pointer-coarse:size-11" onToggle={() => setFiltersOpen((current) => !current)} />
         </div>
 
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('search.label.cardType')}>
-          {QUICK_TYPE_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              className={TYPE_BUTTON}
-              aria-pressed={filters.quickType === option.value}
-              onClick={() => actions.onFilterChange({ quickType: option.value })}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-
-        {!filtersOpen && filterContext.activeFilterChips.length > 0 ? (
+        {/* Sólo cuando hay filtros puestos: cuáles son, cada uno con su forma de quitarlo. Sin filtros, el panel es el campo y el botón. */}
+        {filterContext.activeFilterChips.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {filterContext.activeFilterChips.map((chip) => (
               <button
@@ -194,21 +180,19 @@ export function DesktopSearchPanel({
         ) : null}
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
-        {filtersOpen ? (
-          <div className="max-h-[min(28rem,60vh)] overflow-y-auto border-b border-border-subtle p-3 [scrollbar-width:thin]">
-            <SearchFiltersForm
-              id="advanced-search-filters"
-              layout="desktop"
-              filters={filters}
-              context={filterContext}
-              activeFilterCount={search.activeFilterCount}
-              onFilterChange={actions.onFilterChange}
-              onClearFilters={actions.onClearFilters}
-            />
-          </div>
-        ) : null}
+      <SearchFiltersDrawer
+        isOpen={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        filters={filters}
+        deckFormat={search.deckFormat}
+        activeFilterCount={search.activeFilterCount}
+        resultCount={search.hasSearchCriteria && status === 'success' ? (search.totalCount ?? sortedResults.length) : null}
+        hasMore={search.totalCount == null && search.hasMore}
+        onFilterChange={actions.onFilterChange}
+        onClearFilters={actions.onClearFilters}
+      />
 
+      <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] overflow-hidden">
         <div className="grid min-h-0 grid-rows-[minmax(0,1fr)] overflow-hidden">
           {search.hasSearchCriteria ? (
             status === 'error' ? (
@@ -233,8 +217,8 @@ export function DesktopSearchPanel({
             ) : (
               <div ref={resultsRef} className="h-full min-h-0 overflow-y-auto [scrollbar-width:thin]">
               <SearchResultsToolbar
-                count={sortedResults.length}
-                hasMore={search.hasMore}
+                count={search.totalCount ?? sortedResults.length}
+                hasMore={search.totalCount == null && search.hasMore}
                 sortOrder={sortOrder}
                 onSortOrderChange={setSortOrder}
               />

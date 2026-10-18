@@ -139,6 +139,9 @@ describe('búsqueda local del catálogo (hook)', () => {
 
     const ranked = expectedRanking('dragon')
 
+    // El catálogo sabe cuántas son en total aunque se muestre sólo la primera página; la API (mientras el catálogo no está) no lo sabe.
+    expect(result.current.totalResultCount).toBe(ranked.length)
+
     vi.mocked(searchCardCatalog).mockClear()
     act(() => result.current.loadMoreResults())
     expect(idsOf(result.current.visibleSearchResults)).toEqual(idsOf(ranked.slice(0, 30)))
@@ -153,7 +156,7 @@ describe('búsqueda local del catálogo (hook)', () => {
     const first = result.current
 
     act(() => result.current.setQuery('dragon'))
-    act(() => result.current.updateSearchFilters({ attribute: 'DARK' }))
+    act(() => result.current.updateSearchFilters({ attributes: ['DARK'] }))
     rerender()
 
     expect(result.current.setQuery).toBe(first.setQuery)

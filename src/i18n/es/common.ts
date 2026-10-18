@@ -5,6 +5,8 @@ export const common = {
   'common.delete': 'Borrar',
   'common.save': 'Guardar',
   'common.language': 'Idioma',
+  'common.selectAny': 'Cualquiera',
+  'common.selectCount': { one: '{count} elegido', other: '{count} elegidos' },
   'common.siteDescription': 'Deck builder y calculadora exacta de probabilidades para Yu-Gi-Oh!: armá tu deck, clasificá cartas y medí su consistencia.',
   'common.siteImageAlt': 'YGOUltraLab: deck builder y calculadora exacta de probabilidades para Yu-Gi-Oh!',
 } as const

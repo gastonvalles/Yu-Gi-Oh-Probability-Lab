@@ -54,6 +54,8 @@ interface DeckBuilderStepProps {
   errorMessage: string
   hasMore: boolean
   loadedSearchResultCount: number
+  /** Cuántas cartas da la búsqueda en total, si lo sabe (la resuelve el catálogo entero). */
+  totalSearchResultCount?: number | null
   searchFilters: CardSearchFilters
   activeFilterCount: number
   hasSearchCriteria: boolean
@@ -120,6 +122,7 @@ export function DeckBuilderStep({
   errorMessage,
   hasMore,
   loadedSearchResultCount,
+  totalSearchResultCount,
   searchFilters,
   activeFilterCount,
   hasSearchCriteria,
@@ -220,6 +223,7 @@ export function DeckBuilderStep({
     status,
     visibleSearchResults,
     loadedSearchResultCount,
+    totalSearchResultCount,
     errorMessage,
     hasMore,
     isLoadingMore,

@@ -1,9 +1,12 @@
+import { useState } from 'react'
+
 import { Button } from '../../ui/Button'
 import { Callout } from '../../ui/Callout'
 import { Card } from '../../ui/Card'
 import { cx } from '../../ui/cx'
 import { EmptyState } from '../../ui/EmptyState'
 import { FieldBox, fieldInline } from '../../ui/FieldBox'
+import { MultiSelect } from '../../ui/MultiSelect'
 import { SearchField } from '../../ui/SearchField'
 import { Skeleton } from '../../ui/Skeleton'
 import { field, surface } from '../../ui/surfaces'
@@ -14,6 +17,8 @@ const TONES = Object.keys(TONE) as Tone[]
 
 /** Tarjetas, avisos, estados vacíos, esqueletos y campos: las superficies de la app. */
 export function SurfacesSection() {
+  const [picked, setPicked] = useState<string[]>([])
+
   return (
     <div className="grid gap-4">
       <SpecimenGrid min="22rem">
@@ -67,7 +72,7 @@ export function SurfacesSection() {
           </div>
         </Specimen>
 
-        <Specimen title="Campos" layout="column" note={<>Clases de <Tag>ui/surfaces.ts</Tag> (<Tag>field</Tag>), <Tag>ui/FieldBox.tsx</Tag> (campo en tarjeta de una línea: sin etiqueta, el valor o el placeholder dicen qué es) y <Tag>ui/SearchField.tsx</Tag> (todo campo de búsqueda lleva la lupa).</>}>
+        <Specimen title="Campos" layout="column" note={<>Clases de <Tag>ui/surfaces.ts</Tag> (<Tag>field</Tag>), <Tag>ui/FieldBox.tsx</Tag> (campo en tarjeta de una línea: sin etiqueta, el valor o el placeholder dicen qué es) y <Tag>ui/SearchField.tsx</Tag> (todo campo de búsqueda lleva la lupa) y <Tag>ui/MultiSelect.tsx</Tag> (selector desplegable de elección múltiple: el campo dice qué hay elegido y se abre con una lista de casillas).</>}>
           <input aria-label="Texto" placeholder="Campo de texto" className={cx(field, 'h-11 w-full px-3 text-body')} />
           <select aria-label="Opciones" className={cx(field, 'h-11 w-full px-3 text-body')}>
             <option>Un select</option>
@@ -78,6 +83,17 @@ export function SurfacesSection() {
             <input aria-label="Nombre del deck" placeholder="Nombre del deck" className={fieldInline} />
           </FieldBox>
           <SearchField label="Buscar" value="" onChange={() => {}} placeholder="Campo de búsqueda: siempre con lupa" />
+          <MultiSelect
+            label="Selector múltiple"
+            options={[
+              { value: 'fusion', label: 'Fusión' },
+              { value: 'synchro', label: 'Sincro' },
+              { value: 'xyz', label: 'Xyz' },
+              { value: 'link', label: 'Enlace' },
+            ]}
+            selected={picked}
+            onChange={setPicked}
+          />
         </Specimen>
       </SpecimenGrid>
 
