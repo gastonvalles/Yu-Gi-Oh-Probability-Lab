@@ -11,7 +11,7 @@ import { FieldBox, fieldInline } from '../ui/FieldBox'
 import { Heading } from '../ui/Heading'
 import { PLAYER_COLOR } from './player-color'
 import { ReactionButtons } from './ReactionButtons'
-import { isSignal } from './signals'
+import { isEmojiSignal, isHold, isSignal } from './signals'
 import type { FeedEntry } from './use-duel-feed'
 
 /** Un mensaje que es sólo emojis se ve grande, como una reacción. */
@@ -148,7 +148,8 @@ export function useChatUnread(snapshot: DuelSnapshot, open: boolean): number {
     }
 
     for (const line of chat) {
-      if (line.id > seen.current && line.from !== me && !isSignal(line.text)) {
+      // Las reacciones del rival (🤔 y 👍) salen como un mensaje más; ✋ no: tiene su propio cartel.
+      if (line.id > seen.current && line.from !== me && (!isSignal(line.text) || (isEmojiSignal(line.text) && !isHold(line.text)))) {
         showRivalToast(rival, line.text)
       }
     }
