@@ -498,7 +498,7 @@ export function DeckBuilderStep({
           <div className="grid gap-4">
             {/* La barra del deck: tres íconos (con su nombre en el tooltip y en lectores de pantalla) y, a la misma altura, el buscador. Queda fija
                 debajo de la barra de arriba del celular: así se vuelve a buscar sin subir a lo largo de todo el deck. */}
-            <div className="sticky top-14 z-30 -mx-gutter flex items-center gap-1 border-b border-border-subtle bg-background/85 px-gutter py-2 backdrop-blur min-[1101px]:hidden">
+            <div className="sticky top-14 z-30 -mx-gutter flex items-center gap-1 border-b border-border-subtle bg-background px-gutter py-2 min-[1101px]:hidden">
               <IconButton tone="ghost" size="md" aria-label={t('deck.builder.import')} title={t('deck.builder.import')} onClick={() => setImportDrawerOpen(true)}>
                 <Icon name="upload" size={20} />
               </IconButton>
@@ -549,7 +549,7 @@ export function DeckBuilderStep({
       </div>
 
       {/* Abajo, al alcance del pulgar: seguir al paso siguiente y buscar cartas (la principal, a la derecha). Queda fija sobre la barra de abajo. */}
-      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-30 -mx-gutter -mb-6 flex gap-2 border-t border-border-subtle bg-background/90 px-gutter py-3 backdrop-blur min-[1101px]:hidden">
+      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-30 -mx-gutter -mb-6 flex gap-2 border-t border-border-subtle bg-background px-gutter py-3 min-[1101px]:hidden">
         {onNextStep ? (
           <Button variant="secondary" size="md" className="min-w-0 flex-1" disabled={deckBuilder.main.length === 0} onClick={onNextStep}>
             {t('deck.builder.next')}

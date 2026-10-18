@@ -582,7 +582,7 @@ export function DeckRolesPanel({
             </p>
             <div className="col-span-2 flex items-center gap-2 min-[1101px]:col-span-1 min-[1101px]:col-start-3 min-[1101px]:w-72">
               {unclassifiedCards.length > 0 ? (
-                <Button variant="onBrand" size={buttonSize} icon="sparkles" className="flex-1" onClick={() => dispatch(reclassifyAllCards())}>
+                <Button variant="onBrand" size={buttonSize} icon="tag" className="flex-1" onClick={() => dispatch(reclassifyAllCards())}>
                   {t('roles.panel.classifyAll')}
                 </Button>
               ) : pendingReviewCards.length > 0 ? (

@@ -148,7 +148,7 @@ export function LabRuleList({
             entries={visible(liveCustom)}
             emptyState={
               liveCustom.length === 0 ? (
-                <EmptyState icon="sparkles" title={t('lab.rules.custom.emptyTitle')} className="py-6">
+                <EmptyState icon="list" title={t('lab.rules.custom.emptyTitle')} className="py-6">
                   {t('lab.rules.custom.emptyExamples')}
                 </EmptyState>
               ) : (

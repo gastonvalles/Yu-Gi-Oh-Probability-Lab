@@ -19,7 +19,7 @@ interface DuelPauseProps {
  */
 export function DuelPause({ rival, offline, onLeave, onReconnect }: DuelPauseProps) {
   return (
-    <div role="alertdialog" aria-modal="true" aria-label={t('duel.pause.title')} className="relative grid h-full place-items-center bg-background/85 p-6 backdrop-blur-sm">
+    <div role="alertdialog" aria-modal="true" aria-label={t('duel.pause.title')} className="relative grid h-full place-items-center bg-background/85 p-6">
       <CloseButton size="md" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} className="absolute right-3 top-3" onClick={onLeave} />
       <div className="grid max-w-xs justify-items-center gap-3 text-center">
         <span className="grid size-12 place-items-center rounded-full bg-tint/10 text-foreground">

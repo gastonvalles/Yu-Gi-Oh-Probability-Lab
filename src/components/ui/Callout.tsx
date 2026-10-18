@@ -16,7 +16,7 @@ interface CalloutProps {
 
 const DEFAULT_ICON: Record<Tone, IconName> = {
   neutral: 'info',
-  brand: 'sparkles',
+  brand: 'info',
   success: 'check-circle',
   warning: 'alert',
   danger: 'alert',

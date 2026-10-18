@@ -40,7 +40,7 @@ export function VideoPlayer({ videoId, title, playLabel, thumbnail, badge }: Vid
         <button type="button" className="group absolute inset-0 block size-full focus-visible:outline-none focus-visible:shadow-focus" aria-label={playLabel} onClick={() => setPlaying(true)}>
           <img src={thumbnail} alt="" decoding="async" className="size-full object-cover" />
           <span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-black/25 transition-colors duration-150 group-hover:bg-black/40">
-            <span className="grid size-16 place-items-center rounded-full bg-primary text-primary-foreground shadow-brand">
+            <span className="grid size-16 place-items-center rounded-full bg-primary text-primary-foreground">
               <Icon name="play" size={28} variant="bold" />
             </span>
           </span>

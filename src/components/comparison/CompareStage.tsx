@@ -155,7 +155,7 @@ function VsButton({ open, controls, onToggle, buttonRef, style }: { open: boolea
           aria-controls={controls}
           onClick={onToggle}
           className={cx(
-            'grid size-[4.5rem] cursor-pointer place-items-center rounded-full border-0 bg-primary text-lead font-bold tracking-wide text-primary-foreground shadow-brand ring-4 outline-none transition-[transform,box-shadow] duration-200 hover:scale-105 focus-visible:shadow-focus motion-reduce:transition-none',
+            'grid size-[4.5rem] cursor-pointer place-items-center rounded-full border-0 bg-primary text-lead font-bold tracking-wide text-primary-foreground ring-4 outline-none transition-shadow duration-200 focus-visible:shadow-focus motion-reduce:transition-none',
             open ? 'scale-105 ring-primary/60' : 'ring-primary/25',
           )}
         >

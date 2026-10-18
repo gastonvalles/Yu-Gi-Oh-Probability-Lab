@@ -235,7 +235,7 @@ export function DuelSiding({ deck, cardsById, format, genesysCap, rival, locked,
       <DeckModeDragOverlay overlay={dragOverlay} overlayRef={dragOverlayRef} />
 
       {/* Abajo, al alcance del pulgar, y fijo (el deck puede ser largo): lo que falta a la izquierda y «Listo», la acción, a la derecha. */}
-      <div className="sticky bottom-0 z-10 -mx-4 -mb-6 flex items-center justify-between gap-3 border-t border-border-subtle bg-background/90 px-4 py-3 backdrop-blur max-[1100px]:bottom-[calc(4rem+env(safe-area-inset-bottom,0px))]">
+      <div className="sticky bottom-0 z-10 -mx-4 -mb-6 flex items-center justify-between gap-3 border-t border-border-subtle bg-background px-4 py-3 max-[1100px]:bottom-[calc(4rem+env(safe-area-inset-bottom,0px))]">
         <div className="grid min-w-0 gap-0.5">
           {locked ? (
             <p className="m-0 text-body text-muted" role="status">

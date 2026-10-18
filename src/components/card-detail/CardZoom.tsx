@@ -29,7 +29,7 @@ export function CardZoom({ card, name, fallbackUrl = null, onClose }: CardZoomPr
       role="dialog"
       aria-modal="true"
       aria-label={t('search.zoom.aria', { name })}
-      className={cx('fixed inset-0 z-250 grid cursor-zoom-out place-items-center bg-background/90 p-4 backdrop-blur-[8px] animate-dialog-enter motion-reduce:animate-none', TILT_PERSPECTIVE)}
+      className={cx('fixed inset-0 z-250 grid cursor-zoom-out place-items-center bg-background/90 p-4 animate-dialog-enter motion-reduce:animate-none', TILT_PERSPECTIVE)}
       onClick={onClose}
     >
       <div

@@ -25,7 +25,7 @@ export function LanguageSwitcher({ className, variant = 'chips' }: { className?:
           className={cx(
             'transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-focus',
             segmented ? 'h-11 rounded-tag px-2 text-body font-medium' : 'h-8 min-w-9 rounded-[0.55rem] px-2 text-micro font-semibold uppercase',
-            locale === current ? (segmented ? 'bg-primary font-semibold text-primary-foreground' : 'bg-primary text-primary-foreground shadow-brand') : 'text-foreground/85 hover:bg-tint/10',
+            locale === current ? (segmented ? 'bg-primary font-semibold text-primary-foreground' : 'bg-primary text-primary-foreground') : 'text-foreground/85 hover:bg-tint/10',
           )}
           onClick={() => setLocale(locale)}
         >

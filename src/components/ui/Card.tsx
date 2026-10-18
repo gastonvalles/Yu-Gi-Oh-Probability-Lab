@@ -19,8 +19,8 @@ interface CardProps extends HTMLAttributes<HTMLElement> {
 }
 
 const LEVEL: Record<CardLevel, string> = {
-  card: 'rounded-card border border-border-subtle bg-card-background bg-linear-to-b from-primary/8 to-transparent shadow-card',
-  hero: 'rounded-panel bg-primary text-primary-foreground shadow-brand',
+  card: 'rounded-card border border-border-subtle bg-card-background shadow-card',
+  hero: 'rounded-panel bg-primary text-primary-foreground',
 }
 
 const PADDING: Record<CardPadding, string> = {

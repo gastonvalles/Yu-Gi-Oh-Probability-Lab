@@ -82,7 +82,7 @@ export function SurfacesSection() {
       </SpecimenGrid>
 
       <Specimen title="Elevación" note={<>Las sombras del tema (<Tag>--shadow-*</Tag> en <Tag>index.css</Tag>; Tailwind no las deja leer como variables, por eso esta lista es a mano: si se suma una, se suma acá).</>}>
-        {['shadow-card', 'shadow-overlay', 'shadow-brand', 'shadow-focus'].map((name) => (
+        {['shadow-card', 'shadow-overlay', 'shadow-focus'].map((name) => (
           <div key={name} className={cx(name, 'grid h-20 w-40 place-items-center rounded-card bg-card-background p-2 text-center text-micro text-foreground')}>
             {name}
           </div>

@@ -42,17 +42,17 @@ const TONE_ON = {
 const ITEM: Record<SegmentedVariant, { base: string; on: string; off: string }> = {
   track: {
     base: 'rounded-lg px-3',
-    on: 'bg-primary text-primary-foreground shadow-brand',
+    on: 'bg-primary text-primary-foreground',
     off: 'text-foreground/85 hover:bg-tint/10',
   },
   chips: {
     base: 'rounded-control px-4',
-    on: 'bg-primary text-primary-foreground shadow-brand',
+    on: 'bg-primary text-primary-foreground',
     off: 'bg-lavender text-foreground hover:bg-lavender-hover',
   },
   cards: {
     base: 'rounded-card border px-3',
-    on: 'border-transparent bg-primary text-primary-foreground shadow-brand',
+    on: 'border-transparent bg-primary text-primary-foreground',
     off: 'border-border-subtle bg-card-background text-foreground hover:bg-surface-hover',
   },
 }

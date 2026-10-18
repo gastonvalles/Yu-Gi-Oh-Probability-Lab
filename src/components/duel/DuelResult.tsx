@@ -91,7 +91,7 @@ export function ResultCard({ result, snapshot, rival, onRematch, onLeave, onClos
   const titleId = useId()
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="relative grid h-full place-items-center overflow-hidden bg-background/85 p-5 backdrop-blur-sm" style={medalVars(view.tone)}>
+    <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="relative grid h-full place-items-center overflow-hidden bg-background/85 p-5" style={medalVars(view.tone)}>
       <span aria-hidden="true" className="pointer-events-none absolute inset-0 animate-banner-rise bg-[radial-gradient(circle_at_50%_36%,rgb(var(--medal-rgb)/0.3),transparent_62%)] motion-reduce:animate-none" style={{ animationDelay: '0ms' }} />
       <CloseButton size="sm" aria-label={t('duel.bar.leave')} title={t('duel.bar.leave')} className="absolute right-2 top-2" onClick={onLeave} />
       <ResultHero tone={view.tone} icon={view.icon} title={view.title} reason={view.reason} note={view.note} titleId={titleId}>

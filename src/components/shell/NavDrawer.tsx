@@ -104,7 +104,7 @@ export function NavDrawer({ isOpen, onClose, nav }: NavDrawerProps) {
   return createPortal(
     // Sólo en celular y tableta: si la ventana se ensancha con el cajón abierto, el menú lateral toma su lugar.
     <div className="fixed inset-0 z-150 min-[1101px]:hidden">
-      <div aria-hidden="true" className="absolute inset-0 animate-nav-scrim bg-background/70 backdrop-blur-[2px] motion-reduce:animate-none" onClick={onClose} />
+      <div aria-hidden="true" className="absolute inset-0 animate-nav-scrim bg-background/70 motion-reduce:animate-none" onClick={onClose} />
       <div ref={panelRef} role="dialog" aria-modal="true" aria-label={t('shell.settings.title')} tabIndex={-1} className="relative h-full w-[min(20rem,78vw)] animate-nav-drawer outline-none motion-reduce:animate-none">
         <DrawerPanel onClose={onClose} nav={nav} />
       </div>

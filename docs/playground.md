@@ -25,7 +25,7 @@ La regla de trabajo: **se prueba primero en el playground y recién después se 
 | Assets | los archivos de `public/` por carpeta, la marca, las fuentes y las imágenes de cartas | módulo `virtual:public-assets` (plugin de `vite.config.ts`: lee la carpeta; una imagen nueva aparece sola) |
 | Tokens del diseño | colores, radios, tamaños de texto, tipografías, medidas y animaciones | se leen de las hojas de estilo (`:root`): una variable nueva de `index.css` aparece sola |
 
-Lo único anotado a mano son las **sombras** (`shadow-card`, `shadow-overlay`, `shadow-brand`, `shadow-focus`): Tailwind no deja leerlas
+Lo único anotado a mano son las **sombras** (`shadow-card`, `shadow-overlay`, `shadow-focus`): Tailwind no deja leerlas
 como variables. Si se suma una, se suma en `SurfacesSection.tsx`.
 
 ## Cómo cambiar algo en toda la app tocando un solo componente
