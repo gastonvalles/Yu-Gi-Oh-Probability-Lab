@@ -1,0 +1,54 @@
+name: Sync banlists
+
+# Las banlists se anuncian en partes durante unos días (Yugipedia las va completando a lo largo del día): la baja diaria de `sync-meta-decks` llega tarde. Mientras tanto
+# se vuelve a mirar cada pocas horas, sólo las banlists, y, si hay novedades, el commit a main dispara el deploy en Vercel.
+on:
+  schedule:
+    - cron: '35 */3 * * *'
+  workflow_dispatch:
+
+# Escribe en el repo (sólo el archivo de datos).
+permissions:
+  contents: write
+
+# El mismo grupo que la baja diaria: nunca corren juntas (las dos escriben en main).
+concurrency: sync-meta-decks
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      # Acciones fijadas por commit (no por tag movible): lo que corre es exactamente lo que se revisó.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Los pasos que bajan datos corren código de dependencias: sin credencial guardada en `.git`. El push usa el token por separado, en su propio paso.
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # Sin scripts de instalación: ninguna dependencia necesita correr código al instalarse (ver `.npmrc`).
+      - run: npm ci --ignore-scripts
+
+      # Si lflist.conf, Yugipedia o YGOPRODeck fallan, las banlists quedan como estaban.
+      - run: npm run sync:banlists
+        continue-on-error: true
+
+      - name: Commit si cambió
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git add src/data/banlists.json
+          if git diff --cached --quiet; then
+            echo "Sin cambios."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Banlists al $(date -u +%Y-%m-%d\ %H:%M) UTC"
+          # El checkout no dejó la credencial guardada: el token se usa recién acá, sólo para este push.
+          auth=$(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)
+          echo "::add-mask::$auth"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:main
