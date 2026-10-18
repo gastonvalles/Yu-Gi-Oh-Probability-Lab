@@ -26,7 +26,7 @@ interface AppShellProps {
   onSheetOpen?: (groupKey: string) => void
   /** Vista completa (la práctica): sin pie y, en el celular, del alto exacto de la ventana (nada de scroll de página); la pantalla se reparte ese alto. */
   immersive?: boolean
-  /** Hay buscador de cartas en esta pantalla (todas menos el builder, que ya tiene el suyo, y el duelo): aparece en el menú lateral, la barra de arriba y el cajón del celular, y abre `onSelect('search')`. */
+  /** Hay buscador de cartas en esta pantalla (todas menos el builder, que ya tiene el suyo, la práctica y la sala o la mesa de un duelo; el lobby sí): aparece en el menú lateral, la barra de arriba y el cajón del celular, y abre `onSelect('search')`. */
   searchAvailable?: boolean
 }
 

@@ -17,7 +17,7 @@ interface GlobalCardSearchProps {
 function ignorePointerDown() {}
 
 /**
- * El buscador de cartas encima de cualquier pantalla que no sea el builder (que ya lo trae) ni el duelo: en el celular, la hoja a pantalla completa
+ * El buscador de cartas encima de cualquier pantalla que no sea el builder (que ya lo trae), la práctica ni un duelo (la sala y la mesa; el lobby sí lo tiene): en el celular, la hoja a pantalla completa
  * de siempre; en escritorio, el mismo panel del builder en un cajón por la derecha. Agregar una carta la suma al deck de siempre; el detalle de una
  * carta se abre encima (`CardDetailModal`, que `DeckModeScreen` monta para esto). No se arrastra: el deck no está a la vista.
  */

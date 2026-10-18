@@ -45,7 +45,7 @@ export interface NavGroup {
 export const mascotsNavItem = (): NavItem => ({ key: 'mascots', label: t('shell.mascot.title'), title: t('shell.mascot.title'), icon: 'paw', detail: t('shell.blurb.mascots') })
 
 /**
- * La búsqueda de cartas no es un destino sino una herramienta que se abre encima de cualquier pantalla (menos el duelo): `onSelect('search')`.
+ * La búsqueda de cartas no es un destino sino una herramienta que se abre encima de cualquier pantalla (menos el builder, la práctica y un duelo): `onSelect('search')`.
  */
 export const searchNavItem = (): NavItem => ({ key: 'search', label: t('shell.search.title'), title: t('shell.search.title'), icon: 'search', detail: t('shell.blurb.search') })
 

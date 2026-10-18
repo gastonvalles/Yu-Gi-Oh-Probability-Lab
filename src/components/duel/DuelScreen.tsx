@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import { buildDuelLink, DUEL_STEP, extractRoomCode, parseDuelTarget, parseDuelView, type DuelView } from '../../app/duel-link'
 import { deckFormatIssues } from '../../app/duel-format'
@@ -79,6 +79,8 @@ interface DuelScreenProps {
   rooms?: RoomsApi
   /** Avisa si la pantalla de ahora es una mesa (la del duelo o la del espectador), que ocupa todo el alto; el resto (el lobby, la sala, el siding, la pausa) deja la barra de abajo del celular. */
   onImmersiveChange?: (immersive: boolean) => void
+  /** Avisa si la pantalla de ahora es el lobby (sin sala: crear una, unirse o mirar) o ya es la sala o el duelo. El buscador de cartas de la app está en el lobby y no en la sala ni en la mesa. */
+  onLobbyChange?: (inLobby: boolean) => void
 }
 
 interface Intent {
@@ -176,7 +178,7 @@ function showRoomInUrl(room: string | null, watch = false) {
  * El duelo por enlace: sin sala, el lobby (crear una o unirse con un código); en la sala, el enlace para el rival hasta que los dos
  * reparten su mano; y después la mesa de práctica con el campo del rival arriba. No sabe de redes: `connect` (el relay) lo pone quien la usa.
  */
-export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, deckName, connect, connectSpectator, rooms, onImmersiveChange }: DuelScreenProps) {
+export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, deckName, connect, connectSpectator, rooms, onImmersiveChange, onLobbyChange }: DuelScreenProps) {
   // De momento las mascotas no aparecen en los duelos (ni en el lobby, la sala o la mesa): las que andan flotando esperan afuera.
   useEffect(() => {
     // `data-duel` hace que, en celular, los avisos se dibujen arriba de la botonera (ver index.css).
@@ -344,6 +346,12 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
     onImmersiveChange?.(onTable)
   }, [onTable, onImmersiveChange])
   useEffect(() => () => onImmersiveChange?.(false), [onImmersiveChange])
+
+  // Sin sala es el lobby; con sala (también mirando, en pausa o entre dos duelos de un Match) ya es un duelo. En un layout effect: el menú no muestra el buscador ni un cuadro de más.
+  useLayoutEffect(() => {
+    onLobbyChange?.(intent === null)
+  }, [intent, onLobbyChange])
+  useEffect(() => () => onLobbyChange?.(false), [onLobbyChange])
 
   // El siding se cierra solo cuando los dos aceptaron y la mesa se limpió para el duelo que sigue (no antes: al recargar, la mesa tarda en volver y no por eso se sale).
   const hadTable = useRef(false)
