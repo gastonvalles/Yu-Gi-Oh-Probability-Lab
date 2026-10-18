@@ -15,6 +15,7 @@ export const duel: Translated<typeof es> = {
   'duel.announce.attack': '{name} attacks {target}',
   'duel.announce.attackDirect': '{name} attacks you directly',
   'duel.mark.view': 'View the cards',
+  'duel.emoji.close': '{name}: {emoji}. Tap to close',
   'duel.mark.takeControl': 'Take control',
   'duel.mark.regainControl': 'Regain control',
   'duel.mark.rivalCard': "Opponent's card",

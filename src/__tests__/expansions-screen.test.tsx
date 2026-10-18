@@ -479,7 +479,7 @@ describe('el detalle recorre las impresiones tal como se ven', () => {
     let dialog = await detail()
 
     expect(within(dialog).getByText('MAZE-EN001 · Rare · Unlimited')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Carta anterior' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Carta anterior' })).not.toBeInTheDocument()
     expect(bigArt(dialog)).toBe('https://tcgplayer-cdn.tcgplayer.com/product/21_400w.jpg')
 
     // La siguiente es otra impresión de la misma carta: el arte elegido es el de ella, no el de la anterior.
@@ -504,7 +504,7 @@ describe('el detalle recorre las impresiones tal como se ven', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Ver el detalle de Maxx "C"' }))
     await detail()
 
-    expect(screen.getByRole('button', { name: 'Carta siguiente' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Carta anterior' })).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'Carta siguiente' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Carta anterior' })).toBeInTheDocument()
   })
 })
