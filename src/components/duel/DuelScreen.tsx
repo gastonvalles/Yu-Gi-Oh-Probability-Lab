@@ -961,6 +961,8 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
         </div>
       </div>
 
+      {role === 'guest' && peerName ? <p className="m-0 text-lead font-semibold text-foreground">{t('duel.room.invitedBy', { name: peerName })}</p> : null}
+
       <RoomSteps step={step} />
 
       {role === 'host' ? (
@@ -976,7 +978,7 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
                 {t('duel.room.share')}
               </Button>
             ) : null}
-            <Button variant="primary" icon="link" onClick={() => void copy()}>
+            <Button variant={peerPresent ? 'secondary' : 'primary'} icon="link" onClick={() => void copy()}>
               {t('duel.room.copy')}
             </Button>
             <Button variant="tertiary" icon="eye" className="min-[700px]:ml-auto" onClick={() => void copy(true)}>
@@ -1027,9 +1029,13 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
               {deckReady ? t('duel.room.deckLine', { name: roomDeck.name, main: roomDeck.mainIds.length, extra: roomDeck.extraIds.length }) : t('duel.play.deckNone')}
             </span>
           </span>
-          {snapshot.ready.mine ? null : (
+          {snapshot.ready.mine ? null : deckReady ? (
             <Button variant="secondary" size="sm" icon="cards" aria-haspopup="dialog" onClick={() => setDeckOpen(true)}>
               {t('duel.room.deckChange')}
+            </Button>
+          ) : (
+            <Button variant="primary" icon="cards" aria-haspopup="dialog" onClick={() => setDeckOpen(true)}>
+              {t('duel.room.deckChoose')}
             </Button>
           )}
         </div>
@@ -1043,7 +1049,7 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
             </span>
           </Callout>
         ) : null}
-        {!snapshot.ready.mine && !deckReady ? <Callout tone="warning" icon="alert">{t('duel.lobby.needDeck', { count: deckPicker.size, min: deckPicker.min })}</Callout> : null}
+        {!snapshot.ready.mine && !deckReady ? <Callout tone="warning" icon="alert">{t('duel.room.needDeck', { count: deckPicker.size, min: deckPicker.min })}</Callout> : null}
         {!snapshot.ready.mine && deckReady && mainShort ? <Callout tone="warning" icon="alert">{t('duel.room.mainShort', { count: roomDeck.mainIds.length, min: MAIN_MINIMUM })}</Callout> : null}
       </section>
 

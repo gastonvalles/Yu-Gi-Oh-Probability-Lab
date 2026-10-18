@@ -2531,13 +2531,21 @@ describe('la pantalla del duelo', () => {
     expect(window.location.hash).toBe('#duel?room=K7QF2M9X&watch=1')
   })
 
-  it('quien entra por un enlace sin deck lo ve explicado y puede elegir uno ahí mismo', () => {
-    const { guest } = arriveByLink({ mainIds: mainIds.slice(0, 2), extraIds: [], cardsById: new Map() })
+  it('quien entra por un enlace sin deck lee quién lo invitó, ve explicado qué falta y tiene un solo botón principal para elegir uno ahí mismo', () => {
+    const { host, guest } = arriveByLink({ mainIds: mainIds.slice(0, 2), extraIds: [], cardsById: new Map() })
     const view = within(guest.container)
 
+    expect(view.getByText('Ana te invitó a un duelo')).toBeInTheDocument()
     expect(view.getByRole('button', { name: 'Estoy listo' })).toBeDisabled()
-    expect(view.getByText(/hacen falta 5 cartas en el Main y tu deck tiene 2/)).toBeInTheDocument()
-    click(guest, 'Cambiar deck')
+    // Dice qué hacer sin mandar a un «abajo» que no existe, y el botón dice lo que hace (no «Cambiar deck» a quien no tiene).
+    expect(view.getByText(/hacen falta 5 cartas en el Main y tu deck tiene 2\. Elegí un deck/)).toBeInTheDocument()
+    expect(view.queryByText(/abajo/)).not.toBeInTheDocument()
+    expect(view.queryByRole('button', { name: 'Cambiar deck' })).not.toBeInTheDocument()
+    expect(view.getByRole('button', { name: 'Elegir mi deck' })).toHaveClass('bg-primary')
+    // El anfitrión no lee «te invitó»: con el rival adentro, copiar el enlace deja de ser el botón principal.
+    expect(within(host.container).queryByText(/te invitó a un duelo/)).not.toBeInTheDocument()
+    expect(within(host.container).getByRole('button', { name: 'Copiar enlace' })).not.toHaveClass('bg-primary')
+    click(guest, 'Elegir mi deck')
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Tu deck' })).getByRole('button', { name: 'Usar otro deck' }))
     expect(within(screen.getByRole('dialog', { name: 'Tu deck' })).getByLabelText('ydke://… o el texto del .ydk')).toBeInTheDocument()
   })
