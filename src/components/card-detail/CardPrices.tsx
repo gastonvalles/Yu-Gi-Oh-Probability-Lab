@@ -44,7 +44,7 @@ export function CardPricesButton({ onClick, className }: { onClick: () => void; 
       // Un $ blanco, sin círculo, que se ilumina en ámbar al tocarlo.
       className={cx('hover:text-info! active:text-info! focus-visible:text-info!', className)}
       onClick={(event) => {
-        // Está sobre un fondo que se cierra al tocarlo (y al lado de una carta que se agranda): acá sólo se abren los precios.
+        // Está sobre el fondo del detalle y al lado de una carta que se agranda al tocarla: acá sólo se abren los precios.
         event.stopPropagation()
         onClick()
       }}

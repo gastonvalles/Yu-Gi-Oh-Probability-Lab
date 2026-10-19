@@ -118,7 +118,7 @@ export function CardArtPicker({ arts, selectedId, onSelect, fallbackUrl = null, 
               selected ? 'border-success opacity-100 shadow-[0_0_8px_rgb(var(--success-rgb)/0.55)]' : 'border-tint/25 opacity-70 hover:border-tint/60 hover:opacity-100',
             )}
             onClick={(event) => {
-              // Está encima del fondo del detalle, que se cierra al tocarlo: acá sólo se cambia de arte.
+              // Está encima del fondo del detalle (que al tocarlo desagranda la carta): acá sólo se cambia de arte.
               event.stopPropagation()
               onSelect(art.id)
             }}
