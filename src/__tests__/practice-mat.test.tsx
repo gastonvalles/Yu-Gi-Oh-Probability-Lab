@@ -756,7 +756,8 @@ describe('la mesa de práctica', () => {
     const mz4 = zone('Zona de monstruo 4')
     document.elementFromPoint = () => mz4
     document.elementsFromPoint = () => [mz4]
-    const plus = within(screen.getByRole('toolbar', { name: 'Mesa' })).getByRole('button', { name: 'Ficha' })
+    // El + va al medio del campo (entre las dos Zonas Extra), ya no en la barra de arriba.
+    const plus = screen.getByRole('button', { name: 'Ficha' })
     fireEvent.pointerDown(plus, { ...pointer, clientX: 10, clientY: 10 })
     fireEvent.pointerMove(plus, { ...pointer, clientX: 40, clientY: 60 })
     fireEvent.pointerMove(plus, { ...pointer, clientX: 80, clientY: 120 })
@@ -902,7 +903,8 @@ describe('la mesa de práctica', () => {
     it('desde la mesa (la ficha): lo mismo, y las pilas se encienden igual que las zonas', () => {
       render(<Harness />)
 
-      const plus = within(screen.getByRole('toolbar', { name: 'Mesa' })).getByRole('button', { name: 'Ficha' })
+      // El + va al medio del campo (entre las dos Zonas Extra), ya no en la barra de arriba.
+    const plus = screen.getByRole('button', { name: 'Ficha' })
       over(zone('Zona de monstruo 4'))
       fireEvent.pointerDown(plus, { ...pointer, clientX: 10, clientY: 10 })
       fireEvent.pointerMove(plus, { ...pointer, clientX: 40, clientY: 60 })

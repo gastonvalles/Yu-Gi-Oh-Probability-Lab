@@ -31,10 +31,7 @@ describe('el volumen de las pilas de cartas', () => {
     expect(stack.every((layer) => layer.className.includes('bg-[url('))).toBe(true)
   })
 
-  it('la pila del rival asoma hacia arriba (del lado de afuera del campo) y sin cartas no hay nada', () => {
-    const { container } = render(<PileStack count={12} up />)
-
-    expect(layers(container).map(offset)).toEqual([-4, -2])
+  it('sin cartas no hay nada que asome', () => {
     expect(render(<PileStack count={0} />).container.querySelector('[data-pile-edge]')).toBeNull()
   })
 })

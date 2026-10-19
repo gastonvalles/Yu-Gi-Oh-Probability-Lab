@@ -3319,7 +3319,8 @@ describe('la pantalla del duelo', () => {
     expect(within(guest.container).queryByRole('button', { name: 'Pasar turno' })).not.toBeInTheDocument()
     const plus = within(guest.container).getByRole('button', { name: 'Ficha' })
     expect(toolbar).not.toContainElement(plus)
-    expect(plus.parentElement).toHaveStyle({ gridArea: 'p1' })
+    // El + va al medio del campo (entre las dos Zonas Extra) y el reloj de turnos donde estaba el +.
+    expect(plus.parentElement).toHaveStyle({ gridArea: 'p2' })
     expect(phaseChip(guest).parentElement).toHaveStyle({ gridArea: 'p3' })
     expect(within(toolbar).queryByRole('button', { name: 'Moneda, dado y más' })).not.toBeInTheDocument()
 
