@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { buildAppNavGroups, buildDeckWorkflowNavigationItems } from '../../deck-mode/deck-workflow-navigation'
 import { ReplayBar, type ReplayMark, type ReplaySpeed } from '../../probability/ReplayBar'
+import { AppNavbar } from '../../shell/AppNavbar'
 import { AppShell } from '../../shell/AppShell'
 import { AppSidebar } from '../../shell/AppSidebar'
+import { FeatureSearch } from '../../shell/FeatureSearch'
 import { GroupSheet } from '../../shell/GroupSheet'
 import { MobileTabBar } from '../../shell/MobileTabBar'
 import { MobileTopBar } from '../../shell/MobileTopBar'
@@ -109,6 +111,7 @@ export function NavigationSection() {
   const [drawer, setDrawer] = useState(false)
   const [sheetKey, setSheetKey] = useState<string | null>(null)
   const [shell, setShell] = useState(false)
+  const [finding, setFinding] = useState(false)
 
   return (
     <div className="grid gap-4">
@@ -124,6 +127,22 @@ export function NavigationSection() {
           </AppShell>
         </div>
       ) : null}
+
+      <Specimen
+        title="Barra de arriba y buscador de la app (escritorio)"
+        layout="free"
+        note={<>Como la de YouTube: a la izquierda la hamburguesa (contrae el menú lateral; se ilumina en ámbar) con la marca; en el centro el buscador de la app (<Tag>FeatureSearch</Tag>: escribís «vidas», «pdf», «banlist»… y lleva a la pantalla o abre la herramienta; entre los resultados están las cartas) y a la derecha las mascotas y el idioma, que ya no están en el menú lateral. También se abre con <Tag>/</Tag> y <Tag>Ctrl+K</Tag>; en el celular, con la lupa de la barra de arriba. No está en la práctica ni en la mesa de un duelo. Archivos: <Tag>shell/AppNavbar.tsx</Tag> <Tag>shell/FeatureSearch.tsx</Tag> <Tag>shell/feature-search.ts</Tag></>}
+      >
+        <div className="grid gap-3">
+          <div className="overflow-hidden rounded-card border border-border-subtle">
+            <AppNavbar collapsed={collapsed} onToggleCollapsed={() => setCollapsed((current) => !current)} onSearch={() => setFinding(true)} onMascots={() => {}} />
+          </div>
+          <Button variant="secondary" size="sm" icon="search" className="w-fit" onClick={() => setFinding(true)}>
+            Abrir el buscador
+          </Button>
+          <FeatureSearch isOpen={finding} onClose={() => setFinding(false)} groups={groups} activeKey={active} cardsAvailable onSelect={(key) => setActive(key)} />
+        </div>
+      </Specimen>
 
       <SpecimenGrid min="24rem">
         <Specimen title="Menú lateral (escritorio)" layout="free" note={<>Reemplaza la barra de arriba, armado como el de YouTube: arriba, fija, la hamburguesa (siempre a la vista; contrae y abre el menú) con la marca; lo demás scrollea con la barra fina de <Tag>scroll-yt</Tag> (aparece sólo con el mouse encima) y termina en las redes y la privacidad. Contraído, el ícono de cada fila no se mueve y los rótulos se desvanecen (probalo con la hamburguesa). Archivos: <Tag>shell/AppSidebar.tsx</Tag> <Tag>shell/SidebarNav.tsx</Tag> <Tag>shell/SidebarLegal.tsx</Tag></>}>

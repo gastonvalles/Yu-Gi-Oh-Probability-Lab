@@ -86,7 +86,7 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, navigation, 
             <div
               className={cx(
                 'relative',
-                'w-[min(100%,max(9rem,calc((100dvh-29rem)*0.72)))]',
+                'w-[min(100%,max(9rem,calc((100dvh-32.5rem)*0.72)))]',
                 TILT_PERSPECTIVE,
               )}
             >

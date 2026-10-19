@@ -16,6 +16,8 @@ interface MiniGuideProps {
   onSelect: (key: string) => void
   /** Hay buscador de cartas en esta pantalla: la fila de «Buscar» va arriba de los grupos. */
   searchAvailable?: boolean
+  /** Las mascotas van en la mini guía (sin barra de arriba); con ella, viven en la barra. */
+  mascots?: boolean
 }
 
 /** Un botón de la mini guía: el ícono arriba y su nombre abajo, como la guía contraída de YouTube. El grupo en el que estás va en ámbar con el ícono relleno. */
@@ -42,7 +44,7 @@ function MiniItem({ icon, label, active = false, expanded, onClick }: { icon: Ic
  * Lo que se ve del menú lateral contraído, como la guía contraída de YouTube: pocos botones grandes con su nombre debajo (Buscar, los cuatro grupos y las mascotas) en lugar de una fila de íconos sin rótulo.
  * Tocar un grupo abre a su derecha una lista con sus destinos (`GroupFlyout`); elegir uno cierra la lista y va a él.
  */
-export function MiniGuide({ groups, activeKey, onSelect, searchAvailable = false }: MiniGuideProps) {
+export function MiniGuide({ groups, activeKey, onSelect, searchAvailable = false, mascots: showMascots = true }: MiniGuideProps) {
   const [open, setOpen] = useState<{ key: string; top: number } | null>(null)
   const group = open ? groups.find((entry) => entry.key === open.key) : undefined
   const search = searchNavItem()
@@ -66,7 +68,7 @@ export function MiniGuide({ groups, activeKey, onSelect, searchAvailable = false
             }}
           />
         ))}
-        <MiniItem icon={mascots.icon} label={mascots.label} onClick={() => onSelect(mascots.key)} />
+        {showMascots ? <MiniItem icon={mascots.icon} label={mascots.label} onClick={() => onSelect(mascots.key)} /> : null}
       </nav>
       {group && open ? (
         <GroupFlyout
