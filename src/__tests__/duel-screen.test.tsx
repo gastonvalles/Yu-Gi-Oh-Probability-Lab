@@ -928,7 +928,7 @@ describe('la pantalla del duelo', () => {
     expect(rooms.live).not.toHaveBeenCalled()
   })
 
-  it('al crear la sala se ve la ficha de reglas: pública o privada, el tipo, el formato, el reloj, las vidas y cuántos miran', () => {
+  it('al crear la sala se ve la ficha de reglas: pública o privada, el tipo, el formato, el reloj y cuántos miran (la vida y la mano inicial no se dicen en TCG)', () => {
     const rooms = fakeRooms()
     const host = render(<DuelScreen {...screenProps({ rooms })} />)
 
@@ -941,7 +941,9 @@ describe('la pantalla del duelo', () => {
       expect(summary.getByText(chip)).toBeInTheDocument()
     }
     expect(summary.getByText('0 de 2')).toBeInTheDocument()
-    expect(summary.getByText('8000')).toBeInTheDocument()
+    // En TCG (y OCG) la vida y la mano inicial son siempre las mismas: no hace falta comunicarlas.
+    expect(summary.queryByText('Vida inicial')).not.toBeInTheDocument()
+    expect(summary.queryByText('Mano inicial')).not.toBeInTheDocument()
     // Todo lo de quien mira lleva un ojo: la fila de los espectadores también.
     expect(summary.getByText('Mirando').querySelector('svg')).not.toBeNull()
   })
@@ -1848,8 +1850,9 @@ describe('la pantalla del duelo', () => {
     for (const view of [host, guest]) {
       const rules = within(within(view.container).getByTestId('room-summary'))
 
-      expect(rules.getByText('Vida inicial').nextElementSibling).toHaveTextContent('8000')
-      expect(rules.getByText('Mano inicial').nextElementSibling).toHaveTextContent('5')
+      // Sin la vida ni la mano inicial: en TCG son siempre las mismas y no se comunican.
+      expect(rules.queryByText('Vida inicial')).not.toBeInTheDocument()
+      expect(rules.queryByText('Mano inicial')).not.toBeInTheDocument()
       expect(rules.getByText('Tiempo').nextElementSibling).toHaveTextContent('50 min')
     }
 

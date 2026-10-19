@@ -168,6 +168,7 @@ export const practice = {
   'practice.mat.name': 'Mesa',
   'practice.mat.label': 'Mesa de práctica',
   'practice.mat.newHand': 'Nueva mano',
+  'practice.mat.exit': 'Volver a Jugar',
   'practice.mat.undo': 'Deshacer',
   'practice.mat.saveCombo': 'Guardar combo',
   'practice.mat.stepsAndCombos': 'Pasos y combos',

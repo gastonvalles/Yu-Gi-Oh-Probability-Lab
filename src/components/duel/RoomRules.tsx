@@ -3,7 +3,9 @@ import type { DuelSettings } from '../../app/duel-protocol'
 import { MAX_SPECTATORS } from '../../app/duel-relay-rules'
 import { GENESYS_POINT_CAP } from '../../app/genesys-format'
 import { t } from '../../i18n'
+import { cx } from '../ui/cx'
 import { Icon, type IconName } from '../ui/Icon'
+import { TONE } from '../ui/tone'
 
 interface RoomRulesProps {
   settings: DuelSettings
@@ -14,7 +16,7 @@ interface RoomRulesProps {
 }
 
 /**
- * Las reglas de la sala en una ficha, en un solo lugar y a la vista de los dos jugadores: cómo se juega (tipo, formato, tiempo, vidas, mano), quién puede entrar y cuántos miran.
+ * Las reglas de la sala en una ficha, en un solo lugar y a la vista de los dos jugadores: cómo se juega (tipo, formato, tiempo, y las vidas y la mano sólo si no son las de TCG y OCG), quién puede entrar y cuántos miran.
  * Reemplaza a las pastillas y a las frases sueltas de antes: cada dato se dice una sola vez.
  */
 export function RoomRules({ settings, isPublic, watchers }: RoomRulesProps) {
@@ -26,14 +28,14 @@ export function RoomRules({ settings, isPublic, watchers }: RoomRulesProps) {
     ...(settings.format === 'genesys' ? ([[t('duel.create.genesysCap'), t('duel.rooms.genesysCap', { points: settings.genesysCap ?? GENESYS_POINT_CAP })]] as const) : []),
     [t('duel.rules.time'), settings.limitMin > 0 ? t('duel.rooms.limit', { min: settings.limitMin }) : t('duel.rooms.noLimit')],
     [t('duel.rules.turn'), (settings.turnMin ?? 0) > 0 ? t('duel.rules.turnValue', { bank: settings.turnMin ?? 0, bonus: settings.turnBonusMin ?? 0 }) : t('duel.rules.turnNone')],
-    [t('duel.rules.life'), String(settings.lp)],
-    [t('duel.rules.hand'), String(settings.hand)],
+    // La vida y la mano inicial no hace falta decirlas en TCG y OCG (siempre son las mismas); en los otros formatos sí.
+    ...(settings.format === 'tcg' || settings.format === 'ocg' ? [] : ([[t('duel.rules.life'), String(settings.lp)], [t('duel.rules.hand'), String(settings.hand)]] as const)),
     ...(isPublic === null ? [] : ([[t('duel.create.visibility'), isPublic ? t('duel.create.public') : t('duel.create.private')]] as const)),
     ...(watchers === undefined ? [] : ([[t('duel.rules.watching'), t('duel.rules.watchingValue', { count: watchers, max: MAX_SPECTATORS }), 'eye']] as const)),
   ]
 
   return (
-    <section aria-label={t('duel.rules.title')} data-testid="room-summary" className="grid gap-2 rounded-card border border-border-subtle bg-card-background p-3">
+    <section aria-label={t('duel.rules.title')} data-testid="room-summary" className={cx('grid gap-2 rounded-card border p-3', TONE.neutral.wash)}>
       <h3 className="m-0 text-micro font-semibold uppercase text-soft">{t('duel.rules.title')}</h3>
       <dl className="m-0 grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
         {rows.map(([label, value, icon]) => (

@@ -181,6 +181,8 @@ interface PracticeMatProps {
   onSeek: (step: number) => void
   onLoadCombo: (combo: SavedCombo) => void
   onNewHand: () => void
+  /** Volver a la pantalla de antes (Jugar): sin esto la práctica no tiene salida más que el menú. Sólo en la práctica (el duelo trae la suya en su barra). */
+  onExit?: () => void
   /** Debajo de la mano: las salidas y problemas de la mano inicial (aparece cuando terminó de repartirse). */
   footer?: ReactNode
   /** Cartas (por id) que brillan: las que cumplen la salida o el problema tocado. */
@@ -345,6 +347,7 @@ export function PracticeMat({
   onSeek,
   onLoadCombo,
   onNewHand,
+  onExit,
   footer,
   highlighted = EMPTY_IDS,
   highlightKind = null,
@@ -1524,7 +1527,12 @@ export function PracticeMat({
         // En un celular angosto los 7 botones (de 44 px) y el turno no entran en una fila: se achican (40 px hasta 419 px de ancho, 36 hasta 379 px) y, en uno muy chico (menos de 340 px), el turno se esconde.
         <div className="col-start-1 row-start-1 flex items-center gap-1 px-2 pt-2 max-[419px]:gap-0.5 max-[419px]:px-1 max-[419px]:[&>button]:size-10! max-[379px]:[&>button]:size-9! min-[1101px]:px-4 min-[1101px]:pt-3" role="toolbar" aria-label={t('practice.mat.name')}>
           <ShellMenuButton className="-ml-1" />
-          <span className="whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted max-[339px]:hidden" aria-label={t('practice.mat.turn', { turn: state.turn })}>
+          {onExit ? (
+            <IconButton tone="flat" size="sm" aria-label={t('practice.mat.exit')} title={t('practice.mat.exit')} onClick={onExit}>
+              <Icon name="chevron-left" />
+            </IconButton>
+          ) : null}
+          <span className="whitespace-nowrap rounded-full bg-tint/8 px-2.5 py-1 text-micro font-semibold tabular-nums text-muted max-[419px]:hidden" aria-label={t('practice.mat.turn', { turn: state.turn })}>
             {t('practice.mat.turn', { turn: state.turn })}
           </span>
           <MatViewToggle className="ml-auto" />
