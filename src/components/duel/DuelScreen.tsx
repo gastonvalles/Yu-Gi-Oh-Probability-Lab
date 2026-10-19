@@ -383,9 +383,13 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
       setView(parseDuelView(window.location.hash))
       const next = intentOf(window.location.hash)
 
-      if (next) {
-        setIntent((current) => (current?.room === next.room && Boolean(current.watch) === Boolean(next.watch) ? current : next))
-      }
+      // Si la dirección ya no tiene sala (atrás del navegador, un enlace pegado sin sala), se sale de la que había: si no, la sala sigue
+      // viva para la app (su conexión, el aviso a la lista de salas abiertas) aunque la dirección diga que no hay ninguna.
+      setIntent((current) => {
+        if (!next) return current === null ? current : null
+
+        return current?.room === next.room && Boolean(current.watch) === Boolean(next.watch) ? current : next
+      })
     }
 
     window.addEventListener('hashchange', onHashChange)

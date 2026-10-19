@@ -467,6 +467,26 @@ describe('la pantalla del duelo', () => {
     expect(window.location.hash).toBe('#duel')
   })
 
+  it('si la dirección pierde la sala por afuera (atrás del navegador, no el botón Salir) también se sale: se baja de la lista y no sigue conectado', async () => {
+    const rooms = fakeRooms()
+    const view = render(<DuelScreen {...screenProps({ rooms })} />)
+
+    click(view, 'Jugar ahora')
+    await act(async () => {})
+
+    const room = extractRoomCode(window.location.hash)!
+    const token = rooms.register.mock.calls[0]![2]
+
+    // Atrás del navegador (o pegar un enlace sin sala): cambia la dirección sin pasar por «Salir».
+    act(() => {
+      window.history.replaceState(null, '', '#duel')
+      window.dispatchEvent(new HashChangeEvent('hashchange'))
+    })
+
+    expect(rooms.unlist).toHaveBeenCalledWith(room, token)
+    expect(within(view.container).getByRole('button', { name: 'Jugar ahora' })).toBeInTheDocument()
+  })
+
   it('«Retar a un amigo» abre una sala privada con el enlace, aunque haya relay: nunca se anota en la lista', async () => {
     const rooms = fakeRooms()
     const view = render(<DuelScreen {...screenProps({ rooms })} />)
