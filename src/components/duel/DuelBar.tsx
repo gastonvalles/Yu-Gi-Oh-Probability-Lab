@@ -30,7 +30,6 @@ import type { FeedEntry } from './use-duel-feed'
 import { DuelGames, type GameActions } from './DuelGames'
 import { ResultStrip } from './DuelResult'
 import { PLAYER_COLOR, type PlayerSide } from './player-color'
-import { ReactionButtons } from './ReactionButtons'
 import { isEmojiSignal, isSignal } from './signals'
 
 /** Un reloj de pared que se actualiza cada `ms` (el reloj de la ronda se calcula contra él). */
@@ -398,11 +397,7 @@ interface DuelToolsProps {
   myName: string
   /** Moneda, dado, piedra-papel-tijera, quién empieza y rendirse. */
   games: GameActions
-  /** Escribirle al rival (las reacciones viajan como mensajes). */
-  onSendChat: Duel['sendChat']
-  /** El chat está fijo al costado (escritorio): las reacciones están en el chat y no se repiten abajo. */
-  chatDocked?: boolean
-  /** El botón del chat (sólo en el celular, donde no está a la vista): va entre el + y las señales, al alcance del pulgar. */
+  /** El botón del chat (sólo en el celular, donde no está a la vista): al final de la botonera, a la derecha, al alcance del pulgar. */
   chat?: ReactNode
   /** La hoja de la moneda, el dado y los juegos (la abre el + de la mesa). */
   gamesOpen: boolean
@@ -410,14 +405,13 @@ interface DuelToolsProps {
 }
 
 /**
- * Los botones propios del duelo, abajo a la derecha (el pulgar de quien juega con la derecha): el chat y la señal 👍 Continuá, que es de lo más a mano.
- * En escritorio el chat está fijo a la derecha de la mesa y las señales van en él. La moneda, el dado y los juegos están dentro del + (su hoja se arma acá).
+ * Los botones propios del duelo, abajo a la derecha (el pulgar de quien juega con la derecha): el chat. Las reacciones (🤔 y 👍) van centradas debajo de la mano en el celular (`DuelMatLink.reactions`) y en el chat en escritorio.
+ * En escritorio el chat está fijo a la derecha de la mesa. La moneda, el dado y los juegos están dentro del + (su hoja se arma acá).
  */
-export function DuelTools({ snapshot, myName, games, onSendChat, chatDocked = false, chat, gamesOpen, onGamesClose }: DuelToolsProps) {
+export function DuelTools({ snapshot, myName, games, chat, gamesOpen, onGamesClose }: DuelToolsProps) {
   return (
     <>
       {chat}
-      {chatDocked ? null : <ReactionButtons set="dock" onSend={onSendChat} disabled={!snapshot.peerPresent} />}
 
       <DuelGames isOpen={gamesOpen} onClose={onGamesClose} snapshot={snapshot} myName={myName} actions={games} />
     </>
@@ -444,7 +438,7 @@ export function DuelChatToggle({ snapshot, myName, onSendChat, feed, open, onOpe
   return (
     <>
       <span className="relative">
-        <IconButton tone="flat" size="sm" aria-label={unread > 0 ? `${t('duel.chat.open')} (${t('duel.chat.unread', { count: unread })})` : t('duel.chat.open')} title={t('duel.chat.open')} onClick={onOpen}>
+        <IconButton tone="flat" size="sm" aria-label={unread > 0 ? `${t('duel.chat.open')} (${t('duel.chat.unread', { count: unread })})` : t('duel.chat.open')} title={t('duel.chat.open')} aria-expanded={open} className="hover:text-info! active:text-info! aria-expanded:text-info!" onClick={onOpen}>
           <Icon name="chat" />
         </IconButton>
         {unread > 0 ? (

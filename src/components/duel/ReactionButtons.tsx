@@ -14,9 +14,9 @@ const REACTIONS = {
   good: { emoji: '👍', label: () => t('duel.signal.good'), text: () => GOOD_MESSAGE },
 } as const
 
-/** La botonera de abajo lleva sólo lo que se necesita ya (continuá); el chat, la sala y la mesa, las dos. Sin ✋ Esperá (Gastón, 2026-10-18 y 2026-10-19: «elimina totalmente esto»). */
+/** La botonera de abajo del celular (debajo de la mano), el chat, la sala y la mesa: las dos. Sin ✋ Esperá (Gastón, 2026-10-18 y 2026-10-19: «elimina totalmente esto»). */
 const SETS = {
-  dock: ['good'],
+  dock: ['thinking', 'good'],
   chat: ['thinking', 'good'],
 } as const satisfies Record<string, readonly (keyof typeof REACTIONS)[]>
 

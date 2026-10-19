@@ -132,7 +132,7 @@ por tandas.
 - **Salas públicas** (vienen así; la privada es opcional): la lista «Salas abiertas» sale del relay (`RoomIndex`); el nombre del
   anfitrión se muestra tal cual (si hay abuso, habría que moderar). Siding sólo en un Match, con 3 minutos; es el builder.
 - **Un duelo pide 40 cartas en el Main como mínimo** para estar listo; Jugar solo, la práctica, no lo pide.
-- **Pasar turno:** un solo toque, sin confirmar, al lado de la End Phase y apagado hasta llegar a ella.
+- **Pasar turno:** en escritorio aparece sólo en la End Phase, justo debajo del botón de las fases, de un solo toque; en el celular no hay botón: el botón de la End Phase pregunta «¿Terminar tu turno?» (2026-10-19).
 - **Menús del celular sólo en el celular** (#293): el menú lateral y las pantallas de escritorio no se tocan. Una hoja de grupo
   se apoya sobre la barra de abajo y no la tapa.
 - **Menú de las cartas en el celular:** se mantiene el actual (una lista pegada a la carta: Normal Summon, Set… y Ver carta),

@@ -46,12 +46,15 @@ export interface MenuItem {
   onSelect: () => void
   /** Una jugada de apoyo (revelar, target, descartar, desterrar, devolver al deck o al Extra): la hoja de la mano las pone aparte de las jugadas del juego, todas a la vista. */
   utility?: boolean
+  /** La opción que ya está elegida (la fase de ahora): se marca, sin repetirla en otro lado. */
+  current?: boolean
 }
 
 interface CardMenuProps {
   /** Dónde está la carta (o el deck) que se tocó: el menú sale pegado, arriba si hay lugar. */
   anchor: DOMRect | null
   kicker: string
+  /** Sin título (vacío) el menú sólo lleva el sobretítulo: las fases no repiten el nombre de la de ahora. */
   title: string
   items: MenuItem[]
   /** "Ver carta": abre el detalle (va al final, aparte de las jugadas). */
@@ -122,7 +125,7 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, onClose }: C
       <div
         ref={ref}
         role="menu"
-        aria-label={title}
+        aria-label={title || kicker}
         tabIndex={-1}
         className={cx(surface.panel, 'absolute max-h-[min(calc(100dvh-1rem),34rem)] w-[13rem] overflow-y-auto py-1 outline-none animate-pop motion-reduce:animate-none', position ? 'visible' : 'invisible')}
         style={position ?? { left: 0, top: 0 }}
@@ -130,12 +133,14 @@ export function CardMenu({ anchor, kicker, title, items, onInspect, onClose }: C
       >
         <div className="grid gap-0.5 px-3 pb-1.5 pt-1.5">
           <p className={cx('m-0', overline)}>{kicker}</p>
-          <p className="m-0 truncate text-body font-semibold text-foreground" title={title}>
-            {title}
-          </p>
+          {title ? (
+            <p className="m-0 truncate text-body font-semibold text-foreground" title={title}>
+              {title}
+            </p>
+          ) : null}
         </div>
         {items.map((item, index) => (
-          <button key={item.label} type="button" role="menuitem" className={MENU_ITEM} data-initial-focus={index === 0 ? '' : undefined} onClick={item.onSelect}>
+          <button key={item.label} type="button" role="menuitem" aria-current={item.current ? 'true' : undefined} className={cx(MENU_ITEM, item.current && 'font-bold text-info!')} data-initial-focus={index === 0 ? '' : undefined} onClick={item.onSelect}>
             {item.label}
           </button>
         ))}

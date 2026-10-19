@@ -358,6 +358,14 @@ const PATHS = {
     </>
   ),
 
+  /** Sólo el signo de dólar, sin la moneda: el botón de precios del detalle de una carta. */
+  'dollar-sign': (
+    <>
+      <path d="M16 8.4c-.5-1.2-1.8-2-4-2-2.3 0-3.8 1.1-3.8 2.7 0 1.5 1.5 2.3 3.8 2.8 2.4.5 3.9 1.2 3.9 3 0 1.8-1.7 2.9-3.9 2.9-2.1 0-3.6-.8-4.2-2.2" />
+      <path d="M12 3.5v3M12 17.5v3" />
+    </>
+  ),
+
   // — Torneos (tarjetas del meta) —
   trophy: (
     <>

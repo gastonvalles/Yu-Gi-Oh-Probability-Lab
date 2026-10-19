@@ -28,6 +28,8 @@ interface CardSheetProps {
   asking?: string
   /** Ver la carta entera (el detalle). */
   onInspect?: () => void
+  /** Sin carta: sólo el encabezado con el título (las fases). */
+  plain?: boolean
   onClose: () => void
 }
 
@@ -39,7 +41,8 @@ function Options({ items }: { items: readonly MenuItem[] }) {
         <Button
           key={item.label}
           role="menuitem"
-          variant="secondary"
+          aria-current={item.current ? 'true' : undefined}
+          variant={item.current ? 'primary' : 'secondary'}
           className={cx('min-w-0 px-2!', items.length % 2 === 1 && index === items.length - 1 && 'col-span-2')}
           data-initial-focus={index === 0 ? '' : undefined}
           onClick={item.onSelect}
@@ -57,7 +60,7 @@ function Options({ items }: { items: readonly MenuItem[] }) {
  * Va sobre todo lo demás (un visor de pila, por ejemplo) con un fondo que la cierra al tocar afuera, y también con la X o Escape; elegir una jugada la cierra y la mesa pide lo que falta (la zona).
  * Las jugadas son las mismas de `listCardActions`: sólo cambia cómo se ofrecen.
  */
-export function CardSheet({ name, kicker, art, back = false, apiCard = null, items, asking, onInspect, onClose }: CardSheetProps) {
+export function CardSheet({ name, kicker, art, back = false, apiCard = null, items, asking, onInspect, plain = false, onClose }: CardSheetProps) {
   const ref = useRef<HTMLElement | null>(null)
   const openedAtRef = useRef(performance.now())
   // La hoja se abre al levantar el dedo de la carta (el `pointerup`) y sale justo debajo del dedo: el click que el celular manda después caería en una de sus jugadas y la haría sin querer
@@ -98,8 +101,8 @@ export function CardSheet({ name, kicker, art, back = false, apiCard = null, ite
         <span aria-hidden="true" className="mx-auto mb-2 block h-1 w-10 rounded-full bg-primary-soft/50" />
         <CloseButton size="sm" aria-label={t('common.close')} className="absolute right-1 top-1" onClick={onClose} />
 
-        <div className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-3">
-          <figure className="relative m-0 aspect-[421/614] w-full overflow-hidden rounded-card bg-input">
+        <div className={cx('grid items-center gap-3', plain ? 'grid-cols-[minmax(0,1fr)]' : 'grid-cols-[2.75rem_minmax(0,1fr)]')}>
+          {plain ? null : <figure className="relative m-0 aspect-[421/614] w-full overflow-hidden rounded-card bg-input">
             {back ? <span className={CARD_BACK} /> : <CardArt remoteUrl={art} name={name} className="block h-full w-full object-cover" />}
             {onInspect ? (
               <button
@@ -112,7 +115,7 @@ export function CardSheet({ name, kicker, art, back = false, apiCard = null, ite
                 <span className="grid size-5 place-items-center rounded-full border border-border-subtle bg-background/85"><Icon name="search" size={12} /></span>
               </button>
             ) : null}
-          </figure>
+          </figure>}
           <div className="min-w-0 pr-8">
             {kicker ? <p className={cx('m-0', overline)}>{kicker}</p> : null}
             <h3 className="m-0 line-clamp-2 text-lead font-bold leading-tight text-foreground">{name}</h3>

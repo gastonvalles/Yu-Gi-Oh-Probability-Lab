@@ -60,6 +60,7 @@ import { CardArt } from '../CardArt'
 import { CardDetailOverlay } from '../card-detail/CardDetailOverlay'
 import { DuelMascot } from '../mascot/Mascot'
 import { Button } from '../ui/Button'
+import { ConfirmDialog } from './ConfirmDialog'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
@@ -115,6 +116,8 @@ export interface DuelMatLink {
   attackTargets: ReadonlyArray<{ id: string; zone: 'mz' | 'emz'; index: number; faceDown: boolean }>
   /** id que dio el rival → carta real, de lo que ya mostró: así se nombra a quien se ataca. */
   foreignKnown: Readonly<Record<string, string>>
+  /** Celular: las reacciones rápidas (🤔 y 👍), centradas debajo de la mano. */
+  reactions?: ReactNode
   /** Los botones propios del duelo (el chat y las señales) y tus puntos de vida: van abajo, en la barra del pulgar, junto a deshacer, el + y las fases. */
   tools: ReactNode
   /** Lo que el + ofrece además de la ficha y los contadores en un duelo (la moneda, el dado y los juegos): cada uno abre lo suyo. */
@@ -470,6 +473,8 @@ export function PracticeMat({
     onActivity?.(activity)
   }, [activity, onActivity])
   // Poner o quitar contadores: las cartas del campo se encienden y cada toque suma o resta uno, hasta tocar "Listo" (no es un `picking` porque sigue después de cada jugada).
+  // Celular: la pregunta de terminar el turno (se abre al tocar el botón de la End Phase).
+  const [endingTurn, setEndingTurn] = useState(false)
   const [counterMode, setCounterMode] = useState<1 | -1 | null>(null)
   // La carta que acaba de destacarse (activada, mostrada, declarada o marcada como objetivo) destella un instante; la `key` repite el destello si pasa dos veces seguidas.
   const [flash, setFlash] = useState<{ id: string; key: number; kind: SpotlightKind } | null>(null)
@@ -1101,10 +1106,13 @@ export function PracticeMat({
       const current = duel ? duel.phase : state.phase
 
       return PHASES.map((phase) => ({
-        label: phase.id === current ? `${phase.name} ·` : phase.name,
+        label: phase.name,
+        current: phase.id === current,
         onSelect: () => {
           setMenu(null)
           play({ type: 'phase', phase: phase.id, ...(duel ? { skipDraw: true as const } : {}) })
+          // En el celular no hay «Pasar turno»: llegar a la End Phase pregunta si se termina el turno.
+          if (duel && !isDesktop && phase.id === 'end') setEndingTurn(true)
         },
       }))
     }
@@ -1169,7 +1177,7 @@ export function PracticeMat({
     }
 
     return mapped
-  }, [menu, state, kindOf, nameOf, attackTargets, play, choose, summonToken, duel])
+  }, [menu, state, kindOf, nameOf, attackTargets, play, choose, summonToken, duel, isDesktop])
 
   const menuCard = menu?.kind === 'card' ? cardOf(menu.id) : menu?.kind === 'token' && !menu.root ? TOKEN_CARD : null
   const menuWhere = menu?.kind === 'card' ? locateCard(state, menu.id) : null
@@ -1185,7 +1193,8 @@ export function PracticeMat({
           : menuWhere
             ? menuWhere.kind === 'pile' ? PILE_TITLES[menuWhere.pile] : menuWhere.kind === 'spot' ? ZONE_LABELS[menuWhere.spot] : t('practice.mat.materialOf', { name: nameOf(menuWhere.of) })
             : PILE_TITLES.deck
-  const menuTitle = menuCard?.name ?? (menu?.kind === 'phases' ? (PHASES.find((phase) => phase.id === (duel ? duel.phase : state.phase))?.name ?? '') : menu?.kind === 'token' ? t('practice.token.plusTitle') : t('practice.mat.cardCount', { count: state.deck.length }))
+  // Las fases no llevan título: el nombre de la de ahora ya está en la lista, marcado.
+  const menuTitle = menuCard?.name ?? (menu?.kind === 'phases' ? '' : menu?.kind === 'token' ? t('practice.token.plusTitle') : t('practice.mat.cardCount', { count: state.deck.length }))
   // En el celular todo menú de la mesa (una carta de la mano, del campo o de una pila, lo soltado en una zona, el deck, el +) es una hoja de abajo con las jugadas a un toque (`CardSheet`); en escritorio, el menú pegado a la carta (`CardMenu`).
   const sheeted = !isDesktop && menu !== null && !covered
 
@@ -1565,7 +1574,7 @@ export function PracticeMat({
           {/* El +: a la altura del reloj de turnos, entre el Banish del rival y la Zona Extra de monstruos (la casilla `p1`); del otro lado del reloj, el botón de la fase de ahora, que al tocarlo muestra todas (`p3`, entre la otra Zona Extra y tu Banish). */}
           {duel ? <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p1' }}>{tokenButton}</div> : null}
           {duel ? (
-            <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p3' }}>
+            <div className="relative grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p3' }}>
               <button
                 type="button"
                 aria-label={`${t('practice.mat.phases')}: ${PHASES.find((phase) => phase.id === phaseNow)?.name ?? ''}`}
@@ -1574,12 +1583,29 @@ export function PracticeMat({
                 disabled={!duel.myTurn}
                 className={cx(
                   'grid size-11 place-items-center rounded-control border text-micro font-extrabold leading-none transition-colors focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-default',
-                  duel.myTurn ? 'cursor-pointer border-accent bg-accent text-accent-foreground hover:bg-primary-soft' : 'border-info bg-info text-accent-foreground',
+                  // Ámbar cuando el turno es tuyo (es lo que se toca), violeta cuando es del rival.
+                  duel.myTurn ? 'cursor-pointer border-info bg-info text-accent-foreground hover:bg-info-soft' : 'border-accent bg-accent text-accent-foreground',
                 )}
-                onClick={(event) => setMenu({ kind: 'phases', rect: event.currentTarget.getBoundingClientRect() })}
+                onClick={(event) => {
+                  // En el celular, en la End Phase el botón pregunta si se termina el turno (no hay «Pasar turno»); antes, muestra las fases.
+                  if (!isDesktop && phaseNow === 'end') setEndingTurn(true)
+                  else setMenu({ kind: 'phases', rect: event.currentTarget.getBoundingClientRect() })
+                }}
               >
                 {PHASES.find((phase) => phase.id === phaseNow)?.short}
               </button>
+              {/* En escritorio, «Pasar turno» no está hasta llegar a la End Phase y entonces aparece justo debajo del botón de las fases (encima de la zona de abajo, sin correr nada). */}
+              {isDesktop && duel.myTurn && phaseNow === 'end' ? (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  iconEnd="arrow-right"
+                  className="absolute left-1/2 top-[calc(50%+1.75rem)] z-20 -translate-x-1/2 whitespace-nowrap"
+                  onClick={() => play({ type: 'phase', phase: 'draw', skipDraw: true })}
+                >
+                  {t('practice.mat.passTurn')}
+                </Button>
+              ) : null}
             </div>
           ) : null}
           {cell('field', 0, 'fld')}
@@ -1666,7 +1692,7 @@ export function PracticeMat({
           <PracticeHand
             cards={handCards}
             sizeSlots={Math.max(session.initial.hand.length, 1)}
-            maxCardWidth={isDesktop ? (duel ? 100 : 124) : duel ? 96 : 110}
+            maxCardWidth={isDesktop ? (duel ? 100 : 124) : duel ? 84 : 110}
             fanDegrees={2.2}
             highlighted={highlighted}
             highlightKind={highlightKind}
@@ -1726,8 +1752,8 @@ export function PracticeMat({
               con la derecha). Escritorio: los botones a la izquierda y tus vidas en la esquina opuesta a las del rival. */}
           {duel && !isDesktop ? (
             <div className="relative">
-              <div inert={choosing} className={cx('pointer-events-auto flex items-center justify-end gap-1 px-1', choosing && 'invisible')}>
-                {passTurn}
+              <div inert={choosing} className={cx('pointer-events-auto flex min-h-11 items-center justify-center gap-1 px-1', choosing && 'invisible')}>
+                {duel.reactions}
               </div>
               {status}
             </div>
@@ -1745,13 +1771,8 @@ export function PracticeMat({
                   {duel.tools}
                 </span>
                 <span className={cx('pointer-events-auto flex items-center gap-2', rails && 'flex-col-reverse items-end')}>
-                  {/* Deshacer y Pasar turno, juntos abajo a la derecha (las fases están en el botón del centro del campo; en el celular, Deshacer queda en la botonera de abajo y Pasar turno en su fila). Con laterales, tus vidas arriba de los dos. */}
-                  {isDesktop ? (
-                    <span className="flex items-center gap-2">
-                      {undoButton}
-                      {passTurn}
-                    </span>
-                  ) : null}
+                  {/* Deshacer, abajo a la derecha, junto a tus vidas (las fases y, en la End Phase, Pasar turno están en el centro del campo; en el celular, Deshacer queda en la botonera de abajo). */}
+                  {isDesktop ? undoButton : null}
                   {duel.life}
                 </span>
               </div>
@@ -1791,8 +1812,9 @@ export function PracticeMat({
       {/* Celular: la hoja se va con la jugada, la X, Escape o al tocar afuera. */}
       {sheeted && menu ? (
         <CardSheet
-          name={menuTitle}
-          kicker={menuKicker}
+          name={menu.kind === 'phases' ? menuKicker : menuTitle}
+          kicker={menu.kind === 'phases' ? undefined : menuKicker}
+          plain={menu.kind === 'phases'}
           art={menuCard ? artOf(menuCard) : null}
           back={menuCard === null}
           apiCard={menuCard?.apiCard ?? null}
@@ -1800,6 +1822,22 @@ export function PracticeMat({
           asking={menu.kind !== 'token' && menu.kind !== 'phases' ? menu.ask?.label : undefined}
           onInspect={menu.kind === 'card' && !menu.ask && !menu.drop && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
           onClose={() => setMenu(null)}
+        />
+      ) : null}
+
+      {/* Celular: sin «Pasar turno», la End Phase pregunta si se termina el turno. «Seguir jugando» deja todo como está; para pasar el turno hay que volver a tocar el botón de la End Phase. */}
+      {duel ? (
+        <ConfirmDialog
+          isOpen={endingTurn && !isDesktop && !covered && duel.myTurn && phaseNow === 'end'}
+          title={t('practice.mat.endTurnTitle')}
+          description={t('practice.mat.endTurnText', { name: duel.control?.rival ?? t('duel.bar.rival') })}
+          confirmLabel={t('practice.mat.endTurnConfirm')}
+          cancelLabel={t('duel.bar.keepPlaying')}
+          onCancel={() => setEndingTurn(false)}
+          onConfirm={() => {
+            setEndingTurn(false)
+            play({ type: 'phase', phase: 'draw', skipDraw: true })
+          }}
         />
       ) : null}
 
