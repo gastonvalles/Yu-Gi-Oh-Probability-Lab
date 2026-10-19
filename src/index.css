@@ -1132,12 +1132,6 @@
  * le da la vuelta (::before, un degradé cónico recortado a un aro) y un reflejo que lo cruza una vez (::after, con `data-shine`).
  * Va adentro de la carta, así que no se corta con ella; el resplandor de afuera lo da el `box-shadow` de la carta.
  */
-/* Una casilla vacía con una X de trazos finos (las zonas del rival y las Zonas Extra, como en el diseño de la mesa): la carta que se apoya encima la tapa. */
-@utility cell-cross {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0L100 100M100 0L0 100' fill='none' stroke='%23ffffff' stroke-opacity='.6' stroke-width='1' stroke-dasharray='3 3' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
-  background-size: 100% 100%;
-}
-
 /*
  * El scroll del menú lateral, como el de YouTube: sin pista ni flechas y con un pulgar claro, redondeado y fino (8 px, con 2 px de aire a cada lado) pegado al borde derecho, que sólo se ve
  * mientras el mouse está encima (o hay foco adentro) y se aclara al tocarlo. La barra ocupa siempre su lugar (12 px, `scrollbar-gutter`): al aparecer no corre nada. Las dos propiedades estándar

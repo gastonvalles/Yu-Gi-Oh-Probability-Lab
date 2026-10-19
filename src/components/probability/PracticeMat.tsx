@@ -245,8 +245,6 @@ export const CELL = `aspect-[421/614] before:absolute before:-inset-1 ${cellLook
 export const CELL_MONSTER = `aspect-square ${cellLook(CELL_LOOK_MONSTER)}`
 /** Mágicas y Trampas (y las escalas de péndulo): la casilla es cuadrada para que quepa igual, pero su línea es la de la carta parada. */
 export const CELL_SPELL = `aspect-square ${cellLook(CELL_LOOK_SPELL)}`
-/** La zona extra de monstruos: cuadrada como las otras, con su X de trazos finos. */
-export const CELL_EMZ = `aspect-square cell-cross ${cellLook(CELL_LOOK_MONSTER)}`
 
 /**
  * Las líneas de una zona del centro, como las del tapete (Gastón, 2026-10-19: «nos faltan las líneas del campo»): la carta **parada** (del alto de la casilla) y, en las de monstruos, la carta **acostada** (del ancho)
@@ -1373,7 +1371,7 @@ export function PracticeMat({
         data-pick={pickableZone || pickableTribute ? 'true' : 'false'}
         data-chosen={chosen ? 'true' : 'false'}
         data-pointed={placed !== null && duel?.pointed?.card === placed.id ? 'true' : undefined}
-        className={spot === 'field' ? CELL : spot === 'emz' ? CELL_EMZ : spot === 'st' ? CELL_SPELL : CELL_MONSTER}
+        className={spot === 'field' ? CELL : spot === 'st' ? CELL_SPELL : CELL_MONSTER}
         style={{ gridArea: area }}
         // Una carta se elige con su toque (`openCard`); su click, que el navegador manda después, no: si no, el que cierra el doble clic de los materiales caería en la casilla del material, ya pidiendo zona, e invocaría ahí.
         onClick={pickableZone ? (event) => { if (!(event.target as Element).closest('[data-card-id]')) pickZone(spot, index) } : undefined}
