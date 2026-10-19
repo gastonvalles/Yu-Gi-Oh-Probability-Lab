@@ -78,8 +78,8 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, navigation, 
             <CardPricesButton className="justify-self-end" onClick={() => setPricesOpen(true)} />
           </div>
 
-          {/* Las flechas van a los costados de la carta, centradas en su alto; la carta ocupa la columna del medio (con o sin flechas). */}
-          <div className={cx('grid min-h-0 items-center', navigation !== undefined ? 'grid-cols-[2.25rem_minmax(0,1fr)_2.25rem] gap-1' : 'grid-cols-1')}>
+          {/* De izquierda a derecha: la flecha de la carta anterior, la galería de artes en vertical (Gastón, 2026-10-19: «la galería de artes debe ser vertical y estar a la izquierda de la carta»), la carta y la flecha de la siguiente, centradas en el alto de la carta. La columna de la galería está siempre (vacía si la carta tiene un solo arte): la carta no cambia de tamaño ni de lugar de una a otra. */}
+          <div className={cx('grid min-h-0 items-center gap-1', navigation !== undefined ? 'grid-cols-[2.25rem_2.5rem_minmax(0,1fr)_2.25rem]' : 'grid-cols-[2.5rem_minmax(0,1fr)_2.5rem]')}>
             {navigation !== undefined ? (
               <div className="flex justify-center">
                 {navigation?.onPrevious ? (
@@ -89,6 +89,11 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, navigation, 
                 ) : null}
               </div>
             ) : null}
+
+            {/* Las miniaturas de los artes, en una franja de 2,5 rem pegada a la carta: la elección vale sólo para esta carta. Afuera de la carta que se inclina, así no se mueve con ella. */}
+            <div className="flex min-h-0 w-10 flex-col self-stretch">
+              <CardArtPicker arts={arts} selectedId={art?.id ?? null} onSelect={(artId) => setPicked({ cardId: card.ygoprodeckId, artId })} fallbackUrl={card.imageUrlSmall ?? card.imageUrl} direction="column" className="max-h-full" />
+            </div>
 
             {/* La carta se inclina en 3D hacia el mouse (como en el detalle): la perspectiva va en el contenedor y la inclinación en la carta. */}
             <div className="grid min-h-0 justify-items-center">
@@ -141,32 +146,37 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, navigation, 
                   </IconButton>
                 ) : null}
               </div>
-            ) : null}
+            ) : (
+              <span aria-hidden="true" />
+            )}
           </div>
-
-          <CardArtPicker arts={arts} selectedId={art?.id ?? null} onSelect={(artId) => setPicked({ cardId: card.ygoprodeckId, artId })} fallbackUrl={card.imageUrlSmall ?? card.imageUrl} />
 
           {/* De qué impresión es el arte elegido: otra rareza, otro set. */}
           <PrintingInfo printing={art?.printing} />
-
-          {source === 'deck' && deckCopy ? <DeckCopyControls deckCopy={deckCopy} /> : null}
-
-          {source === 'search' ? (
-            // Uno al lado del otro (Main o Extra, y Side): con el texto corto entran en una fila.
-            <div className="flex gap-2">
-              {buildZoneActionEntries(card).map((entry) => (
-                <Button key={entry.zone} variant={entry.variant} size="sm" icon="plus" className="min-w-0 flex-1" aria-label={entry.label} title={entry.label} onClick={() => onAddToZone(entry.zone)}>
-                  {ZONE_SHORT_LABEL[entry.zone]}
-                </Button>
-              ))}
-            </div>
-          ) : null}
 
           <article className="grid min-h-48 flex-[1_0_auto] content-start gap-2 border-t border-border-subtle pt-3 text-foreground">
             {detailHeader ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{detailHeader}</p> : null}
             {condensedStatLine ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{condensedStatLine}</p> : null}
             {card.description ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{card.description}</p> : null}
           </article>
+
+          {/* Los botones son lo último del componente, debajo de la descripción (Gastón, 2026-10-19), y quedan pegados al borde de abajo al desplazar: con una descripción larga no hay que bajar para sumar o quitar una copia. */}
+          {(source === 'deck' && deckCopy) || source === 'search' ? (
+            <div className="sticky bottom-0 z-10 -mx-4 -mb-4 grid gap-2 border-t border-border-subtle bg-card-background px-4 pb-4 pt-3">
+              {source === 'deck' && deckCopy ? <DeckCopyControls deckCopy={deckCopy} /> : null}
+
+              {source === 'search' ? (
+                // Uno al lado del otro (Main o Extra, y Side): con el texto corto entran en una fila.
+                <div className="flex gap-2">
+                  {buildZoneActionEntries(card).map((entry) => (
+                    <Button key={entry.zone} variant={entry.variant} size="sm" icon="plus" className="min-w-0 flex-1" aria-label={entry.label} title={entry.label} onClick={() => onAddToZone(entry.zone)}>
+                      {ZONE_SHORT_LABEL[entry.zone]}
+                    </Button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           {zoomed ? <CardZoom card={{ ...card, imageUrl: artUrl }} fallbackUrl={card.imageUrl} name={card.name} navigation={navigation} onClose={() => setZoomed(false)} /> : null}
           <CardPricesModal cardId={card.ygoprodeckId} name={card.name} isOpen={pricesOpen} onClose={() => setPricesOpen(false)} onGoToPrint={() => setPricesOpen(false)} />
         </>
