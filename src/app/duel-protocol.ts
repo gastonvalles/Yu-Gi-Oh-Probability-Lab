@@ -93,8 +93,9 @@ interface ClockWire {
  * - `hello`: quién soy (`sid` cambia si recargo la página: el otro lado empieza de cero con mis números). Sólo el anfitrión manda los ajustes.
  * - `sync`: mi mesa de ahora (enmascarada, si ya la empecé), todo lo que ya sabés de ella, mis puntos de vida y, si soy el anfitrión, el reloj; sirve para arrancar, reconectar y reparar.
  * - `act` / `undo`: una jugada mía o el "volver atrás". `n` es la cantidad de jugadas que tengo después de ella.
- * - `undoAsk` / `undoAnswer` / `undoCancel`: antes de volver atrás una jugada se le pide permiso al otro (`id` cuenta mis pedidos): él contesta con `ok` y, si lo permite, recién ahí mando el `undo`;
- *   si me arrepiento (o pasa mucho sin respuesta) lo cancelo y su cartel se va.
+ * - `undoAsk` / `undoPull` / `undoAnswer` / `undoCancel`: Deshacer vuelve atrás la última jugada de la mesa, sea de quien sea, y antes se le pide permiso al otro (`id` cuenta mis pedidos).
+ *   `undoAsk`: la última jugada es mía; él contesta con `ok` y, si lo permite, recién ahí mando el `undo`. `undoPull`: la última jugada es suya; si lo permite, él la deshace y me manda su `undo`, y me confirma con `ok`.
+ *   Si me arrepiento (o pasa mucho sin respuesta) lo cancelo y su cartel se va.
  * - `life` / `clock`: mis puntos de vida (siempre el valor, no el cambio) y el reloj compartido.
  * - `turnClock`: lo que me queda en el reloj de turnos al pasar el turno (ver `duel-clock.ts`): mi palabra corrige la cuenta que el otro lado hace por su cuenta.
  * - `game`: moneda, dado, piedra-papel-tijera o quién va primero (no cambian la mesa; `n` cuenta los míos para no repetir ninguno).
@@ -113,6 +114,7 @@ export type DuelMessage =
   | { t: 'act'; n: number; wire: WireAct }
   | { t: 'undo'; n: number }
   | { t: 'undoAsk'; id: number }
+  | { t: 'undoPull'; id: number }
   | { t: 'undoAnswer'; id: number; ok: boolean }
   | { t: 'undoCancel'; id: number }
   | { t: 'life'; n: number; lp: number }
@@ -456,6 +458,9 @@ export function parseMessage(text: unknown): DuelMessage | null {
 
     case 'undoAsk':
       return isInt(raw.id, 1, MAX_COUNT) ? { t: 'undoAsk', id: raw.id } : null
+
+    case 'undoPull':
+      return isInt(raw.id, 1, MAX_COUNT) ? { t: 'undoPull', id: raw.id } : null
 
     case 'undoAnswer':
       return isInt(raw.id, 1, MAX_COUNT) && typeof raw.ok === 'boolean' ? { t: 'undoAnswer', id: raw.id, ok: raw.ok } : null

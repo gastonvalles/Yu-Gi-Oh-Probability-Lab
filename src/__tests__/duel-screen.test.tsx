@@ -1680,17 +1680,17 @@ describe('la pantalla del duelo', () => {
     const lane = (view: RenderResult, kind: string) => view.container.querySelector<HTMLElement>(`[data-lane="${kind}"]`)
     // Sin diálogo: nada tapa la mesa. El aviso se apoya sobre la línea del registro (la misma fila: no suma alto).
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    expect(lane(guest, 'undoAsked')).toHaveTextContent('Ana quiere volver atrás su jugada')
+    expect(lane(guest, 'undoAsked')).toHaveTextContent('Ana quiere volver atrás la última jugada')
     expect(lane(guest, 'undoAsked')!.parentElement).toHaveClass('relative', 'basis-full')
     // Quien pidió ve que espera, en el mismo lugar.
-    expect(lane(host, 'undoAsking')).toHaveTextContent('Le pedís a Beto volver atrás tu jugada…')
+    expect(lane(host, 'undoAsking')).toHaveTextContent('Le pedís a Beto volver atrás la última jugada…')
     const ask = within(lane(guest, 'undoAsked')!)
 
     // No lo permite: el aviso se va, Ana ve que no se lo permitió, puede volver a pedir y su jugada sigue en la mesa.
     fireEvent.click(ask.getByRole('button', { name: 'No permitir' }))
     flush()
     expect(lane(guest, 'undoAsked')).toBeNull()
-    expect(lane(host, 'undoResult')).toHaveTextContent('Beto no permitió volver atrás tu jugada.')
+    expect(lane(host, 'undoResult')).toHaveTextContent('Beto no permitió volver atrás la jugada.')
     act(() => {
       vi.advanceTimersByTime(4500)
     })
@@ -1704,6 +1704,31 @@ describe('la pantalla del duelo', () => {
     allowUndo()
     expect(monsterCards()).toHaveLength(0)
     expect(guest.container.querySelector('[data-rival-card-id]')).toBeNull()
+  })
+
+  it('Deshacer es de la mesa y no de cada uno: Beto, que no jugó nada, puede deshacer la última jugada de Ana (con su permiso), y Ana ve el pedido sobre la línea del registro', () => {
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+    summonFirst(host)
+    flush()
+    const lane = (view: RenderResult, kind: string) => view.container.querySelector<HTMLElement>(`[data-lane="${kind}"]`)
+
+    // Beto no tiene jugadas propias y aun así puede pedirlo: la última de la mesa es de Ana.
+    expect(within(guest.container).getByRole('button', { name: 'Deshacer' })).toBeEnabled()
+    click(guest, 'Deshacer')
+    flush()
+
+    expect(within(guest.container).getByRole('button', { name: 'Deshacer' })).toBeDisabled()
+    expect(lane(guest, 'undoAsking')).toHaveTextContent('Le pedís a Ana volver atrás la última jugada…')
+    expect(lane(host, 'undoAsked')).toHaveTextContent('Beto quiere volver atrás la última jugada')
+    expect(zoneOf(host, 'Zona de monstruo 1').queryAllByRole('button')).toHaveLength(1)
+
+    // Ana lo permite: la deshace ella en su mesa y Beto lo ve en la del rival.
+    allowUndo()
+    expect(zoneOf(host, 'Zona de monstruo 1').queryAllByRole('button')).toHaveLength(0)
+    expect(guest.container.querySelector('[data-rival-card-id]')).toBeNull()
+    expect(within(host.container).getByRole('button', { name: 'Deshacer' })).toBeDisabled()
+    expect(within(guest.container).getByRole('button', { name: 'Deshacer' })).toBeDisabled()
   })
 
   it('juegos: moneda, piedra-papel-tijera y quién empieza; los dos ven lo mismo y la elección del rival no se ve hasta elegir la propia', () => {
