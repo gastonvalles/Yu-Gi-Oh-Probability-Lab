@@ -337,20 +337,22 @@ describe('Replays en inglés', () => {
     expect(spanish?.search).toContain('ronda 13')
   })
 
-  it('la pestaña se dibuja en inglés: descripción con plural, filtros, jugadores sin deck y los dos canales con su link', () => {
+  it('la pestaña se dibuja en inglés: chips con su cuenta, jugadores sin deck y los dos canales con su link', () => {
     applyLocale('en')
     const view = renderInStore(<ReplaysScreen />)
 
     expect(screen.getByRole('heading', { name: 'Replays' })).toBeInTheDocument()
-    expect(screen.getByText('2 replays with at least one tournament deck, from newest to oldest. Tap one to watch it.')).toBeInTheDocument()
+    // La cuenta está en los chips (no hay una frase que la repita): con deck 2, todos 3 y el torneo.
     expect(screen.getByRole('radio', { name: 'With deck' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('radio', { name: 'With deck' })).toHaveTextContent('2')
+    expect(screen.getByRole('radio', { name: 'All' })).toHaveTextContent('3')
     expect(screen.getByRole('searchbox', { name: 'Search replays' })).toHaveAttribute('placeholder', 'Event, player or deck')
     expect(screen.getByText('YCS Paris 2026 · Final')).toBeInTheDocument()
     expect(screen.getByText('YCS Paris 2026 · Round 13')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Watch the replay Timoti B. vs. Vladis B., YCS Paris 2026 · Final' })).toBeInTheDocument()
-    // Cada replay tiene un solo botón: con dos decks abre el replay («View decks») y con uno abre ese deck («View deck»).
-    expect(screen.getByRole('button', { name: 'View the decks of Timoti B. vs. Vladis B.' })).toHaveTextContent('View decks')
-    expect(screen.getAllByText('View deck')).toHaveLength(1)
+    // Los decks están en los tres puntos de cada video: con dos decks abre el replay («View decks») y con uno abre ese deck («View deck»).
+    fireEvent.click(screen.getByRole('button', { name: 'More options for Timoti B. vs. Vladis B.' }))
+    expect(screen.getByRole('menuitem', { name: 'View the decks of Timoti B. vs. Vladis B.' })).toBeInTheDocument()
     expect(screen.getByText(/· 2 decks$/)).toBeInTheDocument()
 
     const footer = view.container.querySelector('#replays-list > p:last-child')!
@@ -359,18 +361,17 @@ describe('Replays en inglés', () => {
     expect(within(footer as HTMLElement).getByRole('link', { name: 'Yu-Gi-Oh! TCG' })).toHaveAttribute('href', 'https://www.youtube.com/@OfficialYuGiOhTCG')
 
     fireEvent.click(screen.getByRole('radio', { name: 'All' }))
-    expect(screen.getByText('3 replays from the channels, from newest to oldest. Tap one to watch it.')).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'All' })).toHaveAttribute('aria-checked', 'true')
 
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search replays' }), { target: { value: 'no existe' } })
     expect(screen.getByText('No replays match that')).toBeInTheDocument()
   })
 
-  it('con un deck elegido la descripción nombra el deck y el torneo, y el plural elige la forma', () => {
+  it('con un deck elegido queda sólo su chip (se quita con un toque), sin los chips de siempre', () => {
     applyLocale('en')
     window.history.replaceState(null, '', '#replays?deck=101')
     renderInStore(<ReplaysScreen />)
 
-    expect(screen.getByText('1 Elfnote replay at YCS Paris, from newest to oldest.')).toBeInTheDocument()
     expect(screen.queryByRole('radio', { name: 'All' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Remove the Elfnote filter' })).toBeInTheDocument()
   })

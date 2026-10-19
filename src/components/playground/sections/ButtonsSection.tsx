@@ -8,6 +8,8 @@ import { cx } from '../../ui/cx'
 import { DraggableFab } from '../../ui/DraggableFab'
 import { Icon } from '../../ui/Icon'
 import { CloseButton, IconButton } from '../../ui/IconButton'
+import { OverflowMenu } from '../../ui/OverflowMenu'
+import { ScrollRow } from '../../ui/ScrollRow'
 import { Segmented } from '../../ui/Segmented'
 import { choiceChip, filterChip } from '../../ui/surfaces'
 import { Stepper } from '../../ui/Stepper'
@@ -121,6 +123,19 @@ export function ButtonsSection() {
           <Segmented label="Pastillas" variant="chips" value={chips} onChange={setChips} options={options} />
           <Segmented label="Tarjetas" variant="cards" value={cards} onChange={setCards} options={options.map((option) => ({ ...option, detail: '5 cartas · 57%' }))} />
           <Segmented label="Chico" variant="track" size="sm" value={track} onChange={setTrack} options={options} />
+        </Specimen>
+
+        <Specimen
+          title="Fila de chips y menú ⋯"
+          note={<>Como la fila de categorías y los tres puntos de un video de YouTube: los chips en una sola fila que scrollea de costado (`variant="scroll"` dentro de un <Tag>ScrollRow</Tag>, con flechas y degradé donde se corta) y el menú de acciones de segundo plano de una tarjeta. Archivos: <Tag>ui/ScrollRow.tsx</Tag> <Tag>ui/OverflowMenu.tsx</Tag></>}
+          layout="column"
+        >
+          <div className="w-full max-w-md">
+            <ScrollRow>
+              <Segmented label="Torneo" variant="scroll" value={chips} onChange={setChips} options={[...options, { value: 'ycs', label: 'YCS Paris 2026', count: 18 }, { value: 'wcq', label: 'WCQ Brussels 2026 · Genesys', count: 12 }, { value: 'na', label: 'North American WCQ', count: 1 }]} />
+            </ScrollRow>
+          </div>
+          <OverflowMenu label="Más opciones" items={[{ label: 'Ver deck Elfnote', icon: 'layers', onSelect: () => {} }]} />
         </Specimen>
 
         <Specimen title="Switch y Stepper" note={<>Archivos: <Tag>ui/Switch.tsx</Tag> <Tag>ui/Stepper.tsx</Tag></>}>

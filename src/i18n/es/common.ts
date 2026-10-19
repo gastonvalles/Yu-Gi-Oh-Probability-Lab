@@ -1,5 +1,7 @@
 /** Textos que sirven en cualquier parte (botones genéricos, el sitio, el idioma). Cada área tiene su propio archivo y prefijo. */
 export const common = {
+  'common.scrollBack': 'Ver lo anterior',
+  'common.scrollForward': 'Ver lo que sigue',
   'common.cancel': 'Cancelar',
   'common.close': 'Cerrar',
   'common.delete': 'Borrar',

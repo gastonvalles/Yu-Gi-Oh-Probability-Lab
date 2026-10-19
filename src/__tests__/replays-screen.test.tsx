@@ -56,6 +56,12 @@ function renderScreen() {
 
 /** Las tarjetas de los replays: la pantalla entera también es un <article>, que las contiene. */
 const cards = () => screen.getAllByRole('article').filter((article) => !article.querySelector('article'))
+/** Los decks de un replay están en sus tres puntos (⋯): se abre el menú y se elige. */
+const openMenu = (card: HTMLElement) => fireEvent.click(within(card).getByRole('button', { name: /^Más opciones de / }))
+const pick = (card: HTMLElement, name: string) => {
+  openMenu(card)
+  fireEvent.click(within(card).getByRole('menuitem', { name }))
+}
 
 beforeEach(() => {
   window.history.replaceState(null, '', '#replays')
@@ -63,25 +69,43 @@ beforeEach(() => {
 })
 
 describe('la pestaña Replays', () => {
-  it('muestra los replays con un deck del Meta, con «fecha · N decks» y un solo botón para verlos, y "Todos" suma el resto', () => {
+  it('muestra los replays con un deck del Meta, con «fecha · N decks» y los decks en los tres puntos, y "Todos" suma el resto; los chips traen la cuenta y los torneos', () => {
     renderScreen()
 
     expect(screen.getByRole('radio', { name: 'Con deck' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('radio', { name: 'Con deck' })).toHaveTextContent('2')
+    expect(screen.getByRole('radio', { name: 'Todos' })).toHaveTextContent('3')
     expect(cards()).toHaveLength(2)
 
     const final = within(cards()[0]!)
     expect(final.getByText('YCS Paris 2026 · Final')).toBeInTheDocument()
     expect(final.getByText('Timoti B. vs. Vladis B.')).toBeInTheDocument()
-    // Con dos decks, un solo botón (abre el replay, que lista el deck de cada jugador); los decks no se repiten en la tarjeta.
+    // Con dos decks, una sola opción en los tres puntos (abre el replay, que lista el deck de cada jugador); los decks no se repiten en la tarjeta.
     expect(final.getByText(/· 2 decks$/)).toBeInTheDocument()
-    expect(final.getByRole('button', { name: 'Ver los decks de Timoti B. vs. Vladis B.' })).toHaveTextContent('Ver decks')
+    expect(final.queryByRole('menu')).not.toBeInTheDocument()
+    openMenu(cards()[0]!)
+    expect(final.getAllByRole('menuitem')).toHaveLength(1)
+    expect(final.getByRole('menuitem', { name: 'Ver los decks de Timoti B. vs. Vladis B.' })).toBeInTheDocument()
     expect(final.queryByText('Elfnote')).not.toBeInTheDocument()
+    // Escape cierra el menú.
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(final.queryByRole('menu')).not.toBeInTheDocument()
     // El otro replay: Usama B. no tiene deck en el Meta, Pascal K. sí: un deck, un botón que abre ese deck.
     expect(within(cards()[1]!).getByText(/· 1 deck$/)).toBeInTheDocument()
-    expect(within(cards()[1]!).getAllByRole('button', { name: /^Ver deck/ })).toHaveLength(1)
-    expect(within(cards()[1]!).getByRole('button', { name: 'Ver deck Sky Striker' })).toHaveTextContent('Ver deck')
+    openMenu(cards()[1]!)
+    expect(within(cards()[1]!).getAllByRole('menuitem')).toHaveLength(1)
+    expect(within(cards()[1]!).getByRole('menuitem', { name: 'Ver deck Sky Striker' })).toBeInTheDocument()
+    // Tocar afuera lo cierra.
+    fireEvent.pointerDown(document.body)
+    expect(within(cards()[1]!).queryByRole('menu')).not.toBeInTheDocument()
 
+    // «Todos» suma el replay sin deck del Meta, que no tiene tres puntos.
     fireEvent.click(screen.getByRole('radio', { name: 'Todos' }))
+    expect(cards()).toHaveLength(3)
+    expect(within(cards()[2]!).queryByRole('button', { name: /^Más opciones de / })).not.toBeInTheDocument()
+
+    // Un torneo es un chip más: deja sólo sus replays.
+    fireEvent.click(screen.getByRole('radio', { name: /YCS Paris 2026/ }))
     expect(cards()).toHaveLength(3)
   })
 
@@ -142,7 +166,7 @@ describe('la pestaña Replays', () => {
   it('con un solo deck, "Ver deck" lo abre directo, sin pasar por el replay', async () => {
     renderScreen()
 
-    fireEvent.click(within(cards()[1]!).getByRole('button', { name: 'Ver deck Sky Striker' }))
+    pick(cards()[1]!, 'Ver deck Sky Striker')
 
     expect(screen.getAllByRole('dialog')).toHaveLength(1)
     expect(screen.getByRole('dialog', { name: 'Sky Striker' })).toBeInTheDocument()
@@ -153,7 +177,7 @@ describe('la pestaña Replays', () => {
   it('"Ver decks" abre el replay y de ahí el detalle del deck de cada jugador, sin salir de los replays, con sus videos ahí mismo', async () => {
     renderScreen()
 
-    fireEvent.click(within(cards()[0]!).getByRole('button', { name: 'Ver los decks de Timoti B. vs. Vladis B.' }))
+    pick(cards()[0]!, 'Ver los decks de Timoti B. vs. Vladis B.')
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Timoti B. vs. Vladis B.' })).getByRole('button', { name: 'Ver deck Elfnote' }))
 
     const deck = screen.getByRole('dialog', { name: 'Elfnote' })

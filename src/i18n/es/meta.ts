@@ -171,22 +171,6 @@ export const meta = {
   'meta.replays.help3': 'Muchos duelos son de jugadores cuyo deck no está en el Meta: con “Todos” los ves igual.',
   'meta.replays.updatedTitle': 'Fecha de la última actualización de los replays',
   'meta.replays.listTitle': 'Replays de torneo',
-  'meta.replays.descriptionDeck': {
-    one: '{count} replay de {deck}, de lo más nuevo a lo más viejo.',
-    other: '{count} replays de {deck}, de lo más nuevo a lo más viejo.',
-  },
-  'meta.replays.descriptionDeckTournament': {
-    one: '{count} replay de {deck} en {tournament}, de lo más nuevo a lo más viejo.',
-    other: '{count} replays de {deck} en {tournament}, de lo más nuevo a lo más viejo.',
-  },
-  'meta.replays.descriptionMeta': {
-    one: '{count} replay con al menos un deck de torneo, de lo más nuevo a lo más viejo. Tocá uno para verlo.',
-    other: '{count} replays con al menos un deck de torneo, de lo más nuevo a lo más viejo. Tocá uno para verlo.',
-  },
-  'meta.replays.descriptionAll': {
-    one: '{count} replay de los canales, de lo más nuevo a lo más viejo. Tocá uno para verlo.',
-    other: '{count} replays de los canales, de lo más nuevo a lo más viejo. Tocá uno para verlo.',
-  },
   'meta.replays.scopeLabel': 'Qué replays mostrar',
   'meta.replays.scopeMeta': 'Con deck',
   'meta.replays.scopeAll': 'Todos',
@@ -201,6 +185,7 @@ export const meta = {
   'meta.replays.watch': 'Ver el replay {label}',
   'meta.replays.watchWithHeading': 'Ver el replay {label}, {heading}',
   'meta.replays.decksCount': { one: '{count} deck', other: '{count} decks' },
+  'meta.replays.moreOptions': 'Más opciones de {label}',
   'meta.replays.viewDeck': 'Ver deck',
   'meta.replays.viewDeckLabel': 'Ver deck {deck}',
   'meta.replays.viewDecks': 'Ver decks',

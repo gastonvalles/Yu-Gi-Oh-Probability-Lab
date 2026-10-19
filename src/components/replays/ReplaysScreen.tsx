@@ -14,6 +14,7 @@ import {
   type ReplayChannel,
   type ReplayEntry,
 } from '../../app/replays'
+import { useInfiniteList } from '../../app/use-infinite-list'
 import { formatInteger, normalizeSearchText } from '../../app/utils'
 import { t } from '../../i18n'
 import { tRich } from '../../i18n/rich'
@@ -22,21 +23,29 @@ import { formatMetaDate, formatMetaDateFull } from '../meta/meta-format'
 import { StepHero } from '../StepHero'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
+import { cx } from '../ui/cx'
 import { EmptyState } from '../ui/EmptyState'
 import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
+import { OverflowMenu, type OverflowItem } from '../ui/OverflowMenu'
+import { ScrollRow } from '../ui/ScrollRow'
 import { SearchField } from '../ui/SearchField'
 import { Segmented } from '../ui/Segmented'
+import { Skeleton } from '../ui/Skeleton'
 import { StepPage } from '../ui/StepPage'
 import { filterChip } from '../ui/surfaces'
 import { LiveStreamsSection } from './LiveStreams'
 import { ReplayModal } from './ReplayModal'
 import { textLink } from '../ui/typography'
 
-type Scope = 'meta' | 'all'
+/** Lo que muestra la fila de chips (una sola a la vez, como las categorías de YouTube): los de un deck del Meta, todos, o los de un torneo. */
+type Topic = 'meta' | 'all' | `event:${string}`
 
+/** Cuántos replays se suman cada vez que el final se acerca a la pantalla (tres columnas × cuatro filas llenan una pantalla). */
 const REPLAYS_PER_PAGE = 12
 const CHANNEL_BADGE: Record<ReplayChannel, string> = { eu: 'EU', tcg: 'TCG' }
+/** El círculo del canal (como el avatar del canal en YouTube): un color por canal. */
+const CHANNEL_AVATAR: Record<ReplayChannel, string> = { eu: 'bg-info/20 text-info-soft', tcg: 'bg-primary/25 text-primary-soft' }
 
 /** El nombre de un canal, como link a su página de YouTube. */
 const channelLink = (key: ReplayChannel) => (text: string) => (
@@ -49,9 +58,8 @@ export function ReplaysScreen() {
   const entries = useMemo(getReplayEntries, [])
   // Lo que está al aire ahora en los canales oficiales: va arriba de los replays mientras haya algo.
   const live = useLiveStreams()
-  const [scope, setScope] = useState<Scope>('meta')
+  const [topic, setTopic] = useState<Topic>('meta')
   const [query, setQuery] = useState('')
-  const [limit, setLimit] = useState(REPLAYS_PER_PAGE)
   // El replay abierto y el deck filtrado viven en el hash (`#replays?video=…&deck=…`): se pueden copiar y pegar.
   const [link, setLink] = useState(() => readReplaysHash(window.location.hash))
   // El deck de un jugador, abierto en su detalle sin salir de los replays.
@@ -69,13 +77,24 @@ export function ReplaysScreen() {
 
   const filterDeck = useMemo(() => (link.deck === null ? null : (META_DECKS.decks.find((deck) => deck.id === link.deck) ?? null)), [link.deck])
   const metaCount = useMemo(() => entries.filter(hasMetaDeck).length, [entries])
+  // Los torneos que hay, del más nuevo al más viejo (los replays ya vienen así), con cuántos replays tiene cada uno.
+  const events = useMemo(() => {
+    const counts = new Map<string, number>()
+
+    for (const entry of entries) {
+      if (entry.event) counts.set(entry.event, (counts.get(entry.event) ?? 0) + 1)
+    }
+
+    return [...counts].map(([name, count]) => ({ name, count }))
+  }, [entries])
   const visible = useMemo(() => {
     const searched = normalizeSearchText(query).split(' ').filter(Boolean)
+    const inTopic = (entry: ReplayEntry) => (topic === 'all' ? true : topic === 'meta' ? hasMetaDeck(entry) : entry.event === topic.slice('event:'.length))
 
-    return entries.filter(
-      (entry) => (filterDeck ? playsDeck(entry, filterDeck.id) : scope === 'all' || hasMetaDeck(entry)) && searched.every((word) => entry.search.includes(word)),
-    )
-  }, [entries, filterDeck, scope, query])
+    return entries.filter((entry) => (filterDeck ? playsDeck(entry, filterDeck.id) : inTopic(entry)) && searched.every((word) => entry.search.includes(word)))
+  }, [entries, filterDeck, topic, query])
+  // Scroll infinito: se muestran de a una página y, al acercarse al final, se suma la que sigue. Otro filtro o búsqueda vuelve a la primera.
+  const { limit, hasMore, loadMore, sentinel } = useInfiniteList(visible.length, REPLAYS_PER_PAGE, `${topic}|${query}|${filterDeck?.id ?? ''}`)
   const opened = useMemo(() => entries.find((entry) => entry.video.id === link.video) ?? null, [entries, link.video])
 
   const navigate = (next: { video?: string | null; deck?: number | null }) => {
@@ -85,14 +104,8 @@ export function ReplaysScreen() {
     window.history.replaceState(null, '', buildReplaysHash(target))
   }
 
-  const description = filterDeck
-    ? filterDeck.tournament
-      ? t('meta.replays.descriptionDeckTournament', { count: visible.length, deck: filterDeck.name, tournament: filterDeck.tournament })
-      : t('meta.replays.descriptionDeck', { count: visible.length, deck: filterDeck.name })
-    : t(scope === 'meta' ? 'meta.replays.descriptionMeta' : 'meta.replays.descriptionAll', { count: visible.length })
-
   return (
-    <StepPage as="article">
+    <StepPage as="article" wide>
       <StepHero
         title={t('meta.replays.title')}
         icon="play"
@@ -125,44 +138,41 @@ export function ReplaysScreen() {
         <Heading level="section" id="replays-list-title" className="sr-only">
           {t('meta.replays.listTitle')}
         </Heading>
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Arriba, como la fila de categorías de YouTube: los chips (una fila que scrollea de costado) y el buscador. En el celular el buscador va primero. */}
+        <div className="grid gap-3 min-[1101px]:grid-cols-[minmax(0,1fr)_auto] min-[1101px]:items-center min-[1101px]:gap-4">
           {filterDeck ? (
-            <button type="button" className={filterChip} onClick={() => navigate({ deck: null })} aria-label={t('meta.filter.clear', { name: filterDeck.name })}>
-              <span className="truncate">{filterDeck.name}</span>
-              <Icon name="x" size={12} strokeWidth={2.2} />
-            </button>
+            <div className="flex">
+              <button type="button" className={filterChip} onClick={() => navigate({ deck: null })} aria-label={t('meta.filter.clear', { name: filterDeck.name })}>
+                <span className="truncate">{filterDeck.name}</span>
+                <Icon name="x" size={12} strokeWidth={2.2} />
+              </button>
+            </div>
           ) : (
-            <Segmented
-              value={scope}
-              onChange={(next) => {
-                setScope(next)
-                setLimit(REPLAYS_PER_PAGE)
-              }}
-              options={[
-                { value: 'meta', label: t('meta.replays.scopeMeta'), count: metaCount },
-                { value: 'all', label: t('meta.replays.scopeAll'), count: entries.length },
-              ]}
-              label={t('meta.replays.scopeLabel')}
-              variant="chips"
-              className="max-[1100px]:w-full"
-            />
+            <ScrollRow>
+              <Segmented
+                value={topic}
+                onChange={setTopic}
+                options={[
+                  { value: 'meta', label: t('meta.replays.scopeMeta'), count: metaCount },
+                  { value: 'all', label: t('meta.replays.scopeAll'), count: entries.length },
+                  ...events.map((event) => ({ value: `event:${event.name}` as const, label: event.name, count: event.count })),
+                ]}
+                label={t('meta.replays.scopeLabel')}
+                variant="scroll"
+              />
+            </ScrollRow>
           )}
           <SearchField
             label={t('meta.replays.searchLabel')}
             value={query}
             placeholder={t('meta.replays.searchPlaceholder')}
-            className="min-w-[14rem] flex-1 max-[1100px]:w-full"
-            onChange={(next) => {
-              setQuery(next)
-              setLimit(REPLAYS_PER_PAGE)
-            }}
+            className="min-w-[14rem] max-[1100px]:order-first min-[1101px]:w-72"
+            onChange={setQuery}
           />
         </div>
-        <p className="m-0 text-body text-muted">{description}</p>
 
         {visible.length > 0 ? (
-          // `xl` (no `min-[1101px]`): con `sm:grid-cols-2` el arbitrario queda antes en el CSS y pierde, así que no pasaba de dos columnas.
-          <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2 xl:grid-cols-3">
+          <ul className={GRID}>
             {visible.slice(0, limit).map((entry) => (
               <li key={entry.video.id} className="min-w-0">
                 <ReplayCard entry={entry} onOpen={() => navigate({ video: entry.video.id })} onOpenDeck={setOpenedDeck} />
@@ -175,16 +185,31 @@ export function ReplaysScreen() {
           </EmptyState>
         ) : (
           <EmptyState icon="search" title={t('meta.replays.noMatchTitle')}>
-            {scope === 'meta' && !filterDeck && query.trim() === '' ? t('meta.replays.noMatchMeta') : t('meta.replays.noMatchTry')}
+            {topic === 'meta' && !filterDeck && query.trim() === '' ? t('meta.replays.noMatchMeta') : t('meta.replays.noMatchTry')}
           </EmptyState>
         )}
 
-        {visible.length > limit ? (
-          <div className="flex justify-center">
-            <Button variant="secondary" size="sm" onClick={() => setLimit((current) => current + REPLAYS_PER_PAGE)}>
+        {/* El final de lo mostrado: cuando se acerca a la pantalla se cargan más (mientras tanto, una fila de lugares vacíos, como YouTube). Sin scrollear (lector de pantalla, teclado) está el botón. */}
+        {hasMore ? (
+          <>
+            <div ref={sentinel} aria-hidden="true" className={GRID}>
+              {[0, 1, 2].map((slot) => (
+                <div key={slot} className={cx('grid content-start gap-3', slot === 1 && 'max-sm:hidden', slot === 2 && 'hidden xl:grid')}>
+                  <Skeleton radius="panel" className="aspect-video w-full" />
+                  <div className="flex gap-3">
+                    <Skeleton radius="chip" className="size-9 shrink-0" />
+                    <div className="grid flex-1 content-start gap-2">
+                      <Skeleton className="h-4 w-4/5" />
+                      <Skeleton className="h-3 w-3/5" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Button variant="secondary" size="sm" className="sr-only focus-visible:not-sr-only focus-visible:justify-self-center" onClick={loadMore}>
               {t('meta.showMore', { count: formatInteger(Math.min(REPLAYS_PER_PAGE, visible.length - limit)) })}
             </Button>
-          </div>
+          </>
         ) : null}
 
         <p className="m-0 text-micro text-soft">
@@ -206,9 +231,12 @@ export function ReplaysScreen() {
   )
 }
 
+/** La grilla de videos (y la de lugares vacíos de abajo): una columna en el celular, dos y tres después (`xl`, no `min-[1101px]`: con `sm:grid-cols-2` el arbitrario queda antes en el CSS y pierde). */
+const GRID = 'm-0 grid list-none gap-x-4 gap-y-8 p-0 sm:grid-cols-2 xl:grid-cols-3'
+
 /**
- * La miniatura y el título abren el replay; abajo, «fecha · N decks» y un solo botón (el número y la acción, juntos): con un deck lo abre y con dos
- * abre el replay, que lista el de cada jugador. El botón va aparte (no dentro de los otros dos) para no anidar botones.
+ * Un video, como en YouTube: la miniatura (con la duración) y debajo, sin caja, el círculo del canal, el título (el torneo y la instancia), los jugadores y «fecha · N decks», con los tres puntos (⋯)
+ * a la derecha si el replay tiene decks del Meta: ahí está «Ver deck» (con un deck lo abre y con dos abre el replay, que lista el de cada jugador). La miniatura y el texto abren el replay.
  */
 function ReplayCard({ entry, onOpen, onOpenDeck }: { entry: ReplayEntry; onOpen: () => void; onOpenDeck: (deck: MetaDeck) => void }) {
   const { video, event, stage, players } = entry
@@ -216,46 +244,41 @@ function ReplayCard({ entry, onOpen, onOpenDeck }: { entry: ReplayEntry; onOpen:
   const heading = [event, stage?.label].filter(Boolean).join(' · ')
   const decks = players.flatMap((player) => (player.deck ? [player.deck] : []))
   const facts = [formatMetaDate(video.date), decks.length > 0 ? t('meta.replays.decksCount', { count: decks.length }) : null].filter(Boolean).join(' · ')
+  const actions: OverflowItem[] =
+    decks.length === 1
+      ? [{ label: t('meta.replays.viewDeckLabel', { deck: decks[0]!.name }), icon: 'layers', onSelect: () => onOpenDeck(decks[0]!) }]
+      : decks.length > 1
+        ? [{ label: t('meta.replays.viewDecksLabel', { label }), icon: 'layers', onSelect: onOpen }]
+        : []
 
   return (
-    <article className="group grid h-full min-w-0 content-start overflow-hidden rounded-card border border-border-subtle bg-card-background transition-colors duration-150 hover:border-primary/60">
+    <article className="group grid min-w-0 content-start gap-3">
       <button
         type="button"
-        className="relative block aspect-video w-full overflow-hidden bg-input focus-visible:outline-none focus-visible:shadow-focus"
+        className="relative block aspect-video w-full overflow-hidden rounded-card bg-input focus-visible:outline-none focus-visible:shadow-focus"
         aria-label={heading ? t('meta.replays.watchWithHeading', { label, heading }) : t('meta.replays.watch', { label })}
         onClick={onOpen}
       >
         {/* La miniatura de YouTube es 4:3 con barras negras arriba y abajo: `object-cover` en 16:9 las recorta. */}
-        <img src={thumbnailUrl(video.id)} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
-        <span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-black/15 transition-colors duration-150 group-hover:bg-black/35">
-          <span className="grid size-11 place-items-center rounded-full bg-primary/90 text-primary-foreground">
-            <Icon name="play" size={20} variant="bold" />
+        <img src={thumbnailUrl(video.id)} alt="" loading="lazy" decoding="async" className="size-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03] motion-reduce:transition-none" />
+        <span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-black/0 transition-colors duration-200 group-hover:bg-black/25">
+          <span className="grid size-12 scale-90 place-items-center rounded-full bg-primary/90 text-primary-foreground opacity-0 transition-[opacity,transform] duration-200 group-hover:scale-100 group-hover:opacity-100 motion-reduce:transition-none">
+            <Icon name="play" size={22} variant="bold" />
           </span>
         </span>
-        <span className="absolute bottom-1.5 right-1.5 rounded-tag bg-black/80 px-1.5 py-0.5 text-micro font-semibold tabular-nums text-white">{video.duration}</span>
-        <span className="absolute left-1.5 top-1.5 rounded-full bg-black/75 px-2 py-0.5 text-micro font-semibold text-white" title={REPLAYS.channels[video.channel].name}>
-          {CHANNEL_BADGE[video.channel]}
-        </span>
+        <span className="absolute bottom-2 right-2 rounded-tag bg-black/80 px-1.5 py-0.5 text-micro font-semibold tabular-nums text-white">{video.duration}</span>
       </button>
 
-      <div className="grid content-start gap-3 p-3">
-        <button type="button" className="grid min-w-0 content-center gap-0.5 rounded-tag text-left pointer-coarse:min-h-11 focus-visible:outline-none focus-visible:shadow-focus" onClick={onOpen}>
-          <strong className="text-body font-semibold text-foreground">{heading || label}</strong>
+      <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-start gap-3">
+        <span aria-hidden="true" title={REPLAYS.channels[video.channel].name} className={cx('grid size-9 place-items-center rounded-full text-micro font-extrabold', CHANNEL_AVATAR[video.channel])}>
+          {CHANNEL_BADGE[video.channel]}
+        </span>
+        <button type="button" className="grid min-w-0 content-start gap-0.5 rounded-tag text-left focus-visible:outline-none focus-visible:shadow-focus" onClick={onOpen}>
+          <strong className="line-clamp-2 text-body font-semibold leading-snug text-foreground">{heading || label}</strong>
           {heading ? <span className="truncate text-micro text-muted">{label}</span> : null}
+          <span className="truncate text-micro text-muted tabular-nums">{facts}</span>
         </button>
-
-        <div className="flex items-center justify-between gap-2">
-          <span className="min-w-0 truncate text-micro text-muted tabular-nums">{facts}</span>
-          {decks.length === 1 ? (
-            <Button variant="secondary" icon="layers" aria-label={t('meta.replays.viewDeckLabel', { deck: decks[0]!.name })} onClick={() => onOpenDeck(decks[0]!)}>
-              {t('meta.replays.viewDeck')}
-            </Button>
-          ) : decks.length > 1 ? (
-            <Button variant="secondary" icon="layers" aria-label={t('meta.replays.viewDecksLabel', { label })} onClick={onOpen}>
-              {t('meta.replays.viewDecks')}
-            </Button>
-          ) : null}
-        </div>
+        {actions.length > 0 ? <OverflowMenu label={t('meta.replays.moreOptions', { label })} items={actions} className="-mr-1.5 -mt-1" /> : null}
       </div>
     </article>
   )
