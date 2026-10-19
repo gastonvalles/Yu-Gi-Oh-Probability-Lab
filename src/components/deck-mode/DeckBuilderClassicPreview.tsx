@@ -100,7 +100,7 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, navigation, 
               )}
             >
               <div
-                className={cx('relative aspect-[421/614] [perspective:900px]', TILT_ART)}
+                className={cx('relative aspect-[421/614]', TILT_ART)}
                 title={t('search.flip.title')}
                 onPointerDown={(event) => {
                   tiltHandlers.onPointerDown(event)
@@ -114,7 +114,7 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, navigation, 
                 onPointerUp={flip.onPointerUp}
                 onPointerCancel={flip.onPointerCancel}
               >
-                <CardFlip turns={flip.turns} flipperRef={flip.flipperRef}>
+                <CardFlip turns={flip.turns} flipperRef={flip.flipperRef} loadBack={flip.loadBack}>
                   <button
                     type="button"
                     aria-label={t('deck.classic.zoom')}

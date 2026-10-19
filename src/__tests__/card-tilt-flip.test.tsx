@@ -160,7 +160,7 @@ describe('dar vuelta la carta, con un gesto', () => {
       </CardFlip>,
     )
     expect(flipperElement).toHaveAttribute('data-flipped', 'true')
-    expect(flipperElement.style.transform).toBe('rotateX(180deg)')
+    expect(flipperElement.style.transform).toBe('perspective(2200px) rotateX(180deg)')
     expect(front).toHaveAttribute('aria-hidden', 'true')
     expect(back).not.toHaveAttribute('aria-hidden')
   })
@@ -173,13 +173,13 @@ describe('dar vuelta la carta, con un gesto', () => {
     fireEvent.pointerDown(carta, { pointerId: 1, pointerType: "touch", clientX: 70, clientY: 180 })
     fireEvent.pointerMove(carta, { pointerId: 1, pointerType: "touch", clientX: 70, clientY: 100 })
     // A mitad de arrastre (80 de 160 px) va a medio giro y sin transición: sigue al dedo.
-    expect(flipper().style.transform).toBe('rotateX(90deg)')
+    expect(flipper().style.transform).toBe('perspective(2200px) rotateX(90deg)')
     expect(flipper().style.transition).toBe('none')
 
     fireEvent.pointerMove(carta, { pointerId: 1, pointerType: "touch", clientX: 70, clientY: 20 })
     fireEvent.pointerUp(carta, { pointerId: 1, pointerType: "touch", clientX: 70, clientY: 20 })
     expect(flipper()).toHaveAttribute('data-flipped', 'true')
-    expect(flipper().style.transform).toBe('rotateX(180deg)')
+    expect(flipper().style.transform).toBe('perspective(2200px) rotateX(180deg)')
     expect(flipper().style.transition).toBe('')
   })
 
@@ -188,7 +188,7 @@ describe('dar vuelta la carta, con un gesto', () => {
 
     drag(20, 180)
     expect(flipper()).toHaveAttribute('data-flipped', 'true')
-    expect(flipper().style.transform).toBe('rotateX(-180deg)')
+    expect(flipper().style.transform).toBe('perspective(2200px) rotateX(-180deg)')
 
     // De vuelta al frente con otro arrastre hacia abajo… y uno corto no la mueve.
     drag(20, 180)

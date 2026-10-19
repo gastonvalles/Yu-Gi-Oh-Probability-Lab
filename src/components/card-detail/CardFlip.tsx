@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react'
 
 import { t } from '../../i18n'
-import { CARD_BACK } from '../probability/practice-styles'
+import { CARD_BACK, CARD_BACK_HD_URL } from '../probability/practice-styles'
 import { levelOut } from './card-tilt'
 
 /** Cuánto hay que arrastrar la carta, en partes de su alto, para darla vuelta entera (medio giro por cada 0,8 de alto). */
@@ -12,6 +12,12 @@ const FLICK_SPEED = 0.6
 /** Lo que hay que arrastrar antes de que cuente como el gesto (y no como un toque), y cuánto más vertical que horizontal tiene que ser (la horizontal es de deslizar a la carta de al lado). */
 const START_PX = 10
 const VERTICAL_RATIO = 1.3
+/**
+ * La perspectiva del giro (px), propia de la carta (`perspective()` dentro del mismo `transform`): grande, para que al inclinarse la parte que se acerca a la cámara no se agrande de más (con 900 px la carta a 45° crecía
+ * un 80 % y se cortaba contra el borde de su marco).
+ */
+const FLIP_PERSPECTIVE = 2200
+const flipTransform = (degrees: number) => `perspective(${FLIP_PERSPECTIVE}px) rotateX(${degrees}deg)`
 /** Cuántas veces se avisa del gesto con una pista (después ya se sabe). */
 const HINT_TIMES = 3
 const HINT_KEY = 'ygo-lab:flip-hint'
@@ -35,6 +41,8 @@ interface Drag {
  */
 export function useCardFlip() {
   const [turns, setTurns] = useState(0)
+  // El dorso en alta se baja recién cuando la carta se empieza a dar vuelta (pesa ~220 KB): hasta entonces alcanza el de YGOPRODeck, que ya está en la mesa.
+  const [backNeeded, setBackNeeded] = useState(false)
   const flipperRef = useRef<HTMLDivElement | null>(null)
   const turnsRef = useRef(0)
   const dragRef = useRef<Drag | null>(null)
@@ -68,7 +76,7 @@ export function useCardFlip() {
 
     if (flipper) {
       flipper.style.transition = ''
-      flipper.style.transform = `rotateX(${next * 180}deg)`
+      flipper.style.transform = flipTransform(next * 180)
     }
 
     turnsRef.current = next
@@ -79,8 +87,13 @@ export function useCardFlip() {
     turns,
     flipped: Math.abs(turns) % 2 === 1,
     flipperRef,
+    /** Ya se empezó a dar vuelta: hay que bajar el dorso en alta. */
+    loadBack: backNeeded || turns !== 0,
     /** Un giro más (la tecla F). */
-    flip: useCallback(() => setTurns((current) => current + 1), []),
+    flip: useCallback(() => {
+      setBackNeeded(true)
+      setTurns((current) => current + 1)
+    }, []),
     /** Vuelve al frente (al pasar a otra carta). */
     reset: useCallback(() => setTurns(0), []),
     consumeClick: () => {
@@ -107,6 +120,7 @@ export function useCardFlip() {
         if (Math.abs(dy) < START_PX || Math.abs(dy) < Math.abs(dx) * VERTICAL_RATIO) return
 
         drag.active = true
+        setBackNeeded(true)
         // Mientras gira con el dedo, la inclinación hacia el puntero se apaga y la carta sigue al puntero aunque se salga de ella.
         levelOut(event.currentTarget)
 
@@ -121,7 +135,7 @@ export function useCardFlip() {
 
       drag.angle = (-dy / (drag.height * SPAN)) * 180
 
-      if (flipperRef.current) flipperRef.current.style.transform = `rotateX(${turnsRef.current * 180 + drag.angle}deg)`
+      if (flipperRef.current) flipperRef.current.style.transform = flipTransform(turnsRef.current * 180 + drag.angle)
     },
     onPointerUp: (event: ReactPointerEvent<HTMLElement>) => finish(event, false),
     onPointerCancel: (event: ReactPointerEvent<HTMLElement>) => finish(event, true),
@@ -129,24 +143,37 @@ export function useCardFlip() {
 }
 
 /**
- * La carta grande, dada vuelta: el frente y, del otro lado, el dorso de YGOPRODeck (el mismo de la mesa). Gira en 3D sobre su eje horizontal (la perspectiva es la del elemento que la contiene:
- * `TILT_PERSPECTIVE` o `[perspective:900px]`), `turns` medios giros; el gesto que la mueve es `useCardFlip`. No tiene tamaño propio: llena a quien la contiene.
+ * La carta grande, dada vuelta: el frente y, del otro lado, el dorso (el de YGOPRODeck, y en alta apenas se empieza a dar vuelta). Gira en 3D sobre su eje horizontal con su propia perspectiva (`FLIP_PERSPECTIVE`:
+ * el marco que la contiene no la recorta, cada cara se recorta a sí misma), `turns` medios giros; el gesto que la mueve es `useCardFlip`. No tiene tamaño propio: llena a quien la contiene.
  */
-export function CardFlip({ turns, flipperRef, children }: { turns: number; flipperRef: RefObject<HTMLDivElement | null>; children: ReactNode }) {
+export function CardFlip({ turns, flipperRef, loadBack = false, children }: { turns: number; flipperRef: RefObject<HTMLDivElement | null>; /** Bajar el dorso en alta (`useCardFlip().loadBack`). */ loadBack?: boolean; children: ReactNode }) {
   const flipped = Math.abs(turns) % 2 === 1
 
   return (
     <div
       ref={flipperRef}
       className="absolute inset-0 transition-transform duration-500 ease-[cubic-bezier(0.2,0.9,0.25,1)] [transform-style:preserve-3d] motion-reduce:transition-none"
-      style={{ transform: `rotateX(${turns * 180}deg)` }}
+      style={{ transform: flipTransform(turns * 180) }}
       data-flipped={flipped ? 'true' : 'false'}
     >
-      <div className="absolute inset-0 [backface-visibility:hidden]" aria-hidden={flipped || undefined}>
+      <div className="absolute inset-0 overflow-hidden [backface-visibility:hidden]" aria-hidden={flipped || undefined}>
         {children}
       </div>
-      <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateX(180deg)]" aria-hidden={flipped ? undefined : true}>
+      <div className="absolute inset-0 overflow-hidden [backface-visibility:hidden] [transform:rotateX(180deg)]" aria-hidden={flipped ? undefined : true}>
         <span className={`${CARD_BACK} z-0`} />
+        {/* El dorso en alta se funde encima del de siempre cuando termina de bajar. */}
+        {loadBack ? (
+          <img
+            src={CARD_BACK_HD_URL}
+            alt=""
+            draggable={false}
+            decoding="async"
+            className="absolute inset-0 z-1 block size-full object-cover opacity-0 transition-opacity duration-300 motion-reduce:transition-none"
+            onLoad={(event) => {
+              event.currentTarget.style.opacity = '1'
+            }}
+          />
+        ) : null}
       </div>
     </div>
   )
