@@ -263,6 +263,8 @@ export const deck = {
   'deck.export.modal.downloadAll': 'Descargar todo',
   'deck.export.modal.downloadSome': 'Descargar {files}',
   'deck.export.modal.emptyHint': 'Agregá cartas al Main Deck para poder descargar.',
+  'deck.export.modal.selectAll': 'Marcar todo',
+  'deck.export.modal.selectNone': 'Desmarcar todo',
 
   // --- Exportar: errores al armar los archivos
   'deck.export.error.image': 'No pude generar la imagen del deck.',

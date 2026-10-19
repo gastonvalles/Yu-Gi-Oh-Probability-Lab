@@ -339,6 +339,15 @@ export function ExportDeckPanel({
       >
         <div className="grid gap-1">
           {mainDeckCount === 0 ? <p className="m-0 px-2 pb-2 text-body text-warning-soft">{t('deck.export.modal.emptyHint')}</p> : null}
+          {/* Todo o lo que se elija: un toque marca o desmarca todos los archivos. */}
+          <Button
+            variant="tertiary"
+            size="sm"
+            className="justify-self-start"
+            onClick={() => setSelection(Object.fromEntries(DECK_EXPORT_FILES.map((file) => [file.key, selectedCount < DECK_EXPORT_FILES.length])) as unknown as DeckExportSelection)}
+          >
+            {selectedCount === DECK_EXPORT_FILES.length ? t('deck.export.modal.selectNone') : t('deck.export.modal.selectAll')}
+          </Button>
           {DECK_EXPORT_FILES.map((file) => (
             <label key={file.key} className="flex cursor-pointer items-center justify-between gap-3 rounded-control px-2 py-2 transition-colors hover:bg-tint/5">
               <span className="grid min-w-0 gap-0.5">
