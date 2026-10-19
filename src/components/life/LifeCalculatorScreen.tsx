@@ -96,7 +96,7 @@ export interface DuelLifeBinding {
   onToggleClock: () => void
 }
 
-export function LifeCalculatorScreen({ onClose, duel }: { onClose: () => void; duel?: DuelLifeBinding }) {
+export function LifeCalculatorScreen({ onClose, duel }: { /** Con `onClose` la calculadora es un modal (la del duelo): lleva su X. Sin él es una vista de la app y se sale por el menú. */ onClose?: () => void; duel?: DuelLifeBinding }) {
   const stored = useLifeState()
   const state = duel ? duel.state : stored
   // El de la izquierda y el de la derecha: en un duelo, yo y mi rival; solo, el Duelista 1 y el 2.
@@ -227,9 +227,11 @@ export function LifeCalculatorScreen({ onClose, duel }: { onClose: () => void; d
               <Icon name="dice" size={20} />
             </IconButton>
           )}
-          <IconButton tone="ghost" aria-label={t('shell.life.close')} onClick={onClose}>
-            <Icon name="x" size={20} />
-          </IconButton>
+          {onClose ? (
+            <IconButton tone="ghost" aria-label={t('shell.life.close')} onClick={onClose}>
+              <Icon name="x" size={20} />
+            </IconButton>
+          ) : null}
         </div>
       </header>
 

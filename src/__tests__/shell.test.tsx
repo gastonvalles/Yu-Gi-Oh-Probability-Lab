@@ -46,9 +46,10 @@ describe('el menú de la app', () => {
     expect(GROUPS.flatMap((group) => group.items).some((item) => item.key === 'mascots')).toBe(false)
   })
 
-  it('la práctica es una pantalla del flujo (#practice) y no un panel que se abre encima: elegirla en el menú cambia de paso', () => {
+  it('la práctica y la calculadora de LP son pantallas del flujo (#practice, #life) y no un panel que se abre encima: elegirlas en el menú cambia de paso; las mascotas sí abren un panel', () => {
     expect(isDeckWorkflowStepKey('practice')).toBe(true)
-    expect(isDeckWorkflowStepKey('life')).toBe(false)
+    expect(isDeckWorkflowStepKey('life')).toBe(true)
+    expect(isDeckWorkflowStepKey('mascots')).toBe(false)
   })
 
   it('la mesa de práctica sólo se ofrece con cartas en el Main; la calculadora de LP y exportar, siempre', () => {

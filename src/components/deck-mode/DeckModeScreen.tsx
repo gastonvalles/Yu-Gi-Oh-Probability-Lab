@@ -40,6 +40,7 @@ import {
   LazyDuelScreen,
   LazyExpansionsScreen,
   LazyExportDeckPanel,
+  LazyLifeCalculatorScreen,
   LazyPracticeSection,
   LazyProbabilityPanel,
   LazyReplaysScreen,
@@ -91,7 +92,6 @@ export function DeckModeScreen() {
   const pendingReviewCount = useMemo(() => countCardsPendingReview(roleCards), [roleCards])
   const hasCompletedRoleStep = useMemo(() => isClassificationStepComplete(roleCards), [roleCards])
   const patternCount = controller.probability.patterns.length
-  const [lifeOpen, setLifeOpen] = useState(false)
   const [mascotsOpen, setMascotsOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const recommendedStep = useMemo(
@@ -115,6 +115,7 @@ export function DeckModeScreen() {
   const isCategorizationStep = activeStep === 'categorization'
   const isPracticeStep = activeStep === 'practice'
   const isDuelStep = activeStep === 'duel'
+  const isLifeStep = activeStep === 'life'
   // En el celular sólo la mesa del duelo es a pantalla completa (sin pie ni barra de abajo); el lobby, la sala y el siding llevan el armazón de siempre. En escritorio no cambia: el duelo ocupa todo.
   const [duelTable, setDuelTable] = useState(false)
   // La práctica y el duelo juegan con las mismas copias del deck armado.
@@ -286,8 +287,7 @@ export function DeckModeScreen() {
   const navGroups = useMemo(() => buildAppNavGroups(navigationItems, { practice: mainDeckCount > 0, duel: duelConnect !== null, paused: pausedDuel }), [navigationItems, mainDeckCount, duelConnect, pausedDuel])
   const handleNavSelect = useCallback(
     (key: string) => {
-      if (key === 'life') setLifeOpen(true)
-      else if (key === 'mascots') setMascotsOpen(true)
+      if (key === 'mascots') setMascotsOpen(true)
       else if (key === 'search') setSearchOpen(true)
       // La hoja de Jugar del celular: el paso del lobby que pide cada entrada (el duelo lo lee de la dirección) o volver al duelo en pausa.
       else if (key === 'duel-watch' || key === 'duel-join') window.location.hash = `#duel?view=${key.slice('duel-'.length)}`
@@ -315,7 +315,7 @@ export function DeckModeScreen() {
     <section
       className={cx(
         'grid content-start',
-        isCategorizationStep ? 'h-full min-h-0' : isPracticeStep || isDuelStep ? 'h-full min-h-0 grid-rows-[minmax(0,1fr)]' : 'min-h-full min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[minmax(0,1fr)]',
+        isCategorizationStep ? 'h-full min-h-0' : isPracticeStep || isDuelStep || isLifeStep ? 'h-full min-h-0 grid-rows-[minmax(0,1fr)]' : 'min-h-full min-[1101px]:h-full min-[1101px]:min-h-0 min-[1101px]:grid-rows-[minmax(0,1fr)]',
       )}
     >
       {activeStep === 'categorization' ? (
@@ -350,6 +350,15 @@ export function DeckModeScreen() {
             {t('shell.practice.title')}
           </Heading>
           {practice ? <LazyPracticeSection {...practice} /> : <Callout tone="info" className="m-4">{t('practice.section.needCards')}</Callout>}
+        </div>
+      ) : null}
+
+      {activeStep === 'life' ? (
+        <div id="life" className="mx-auto h-full min-h-0 w-full min-w-0 max-w-2xl">
+          <Heading level="page" className="sr-only">
+            {t('shell.life.title')}
+          </Heading>
+          <LazyLifeCalculatorScreen />
         </div>
       ) : null}
 
@@ -404,7 +413,7 @@ export function DeckModeScreen() {
         // La pantalla nueva aparece (fundido) donde va a quedar: nada se desliza ni cambia de lugar.
         'min-w-0 animate-step-in motion-reduce:animate-none',
         // En escritorio toda pantalla mide el recuadro del armazón (sin pie): una más alta lo desborda y scrollea; una que reparte el alto entre columnas (Expansiones) lo usa justo.
-        isDeckBuilderStep || isCategorizationStep || isPracticeStep || isDuelStep ? 'h-full min-h-0' : 'min-h-full min-[1101px]:h-full min-[1101px]:min-h-0',
+        isDeckBuilderStep || isCategorizationStep || isPracticeStep || isDuelStep || isLifeStep ? 'h-full min-h-0' : 'min-h-full min-[1101px]:h-full min-[1101px]:min-h-0',
       )}
     >
       <Suspense fallback={null}>{stepContent}</Suspense>
@@ -413,7 +422,7 @@ export function DeckModeScreen() {
 
   return (
     <>
-      <AppShell groups={navGroups} activeKey={activeStep} onSelect={handleNavSelect} onSheetOpen={refreshSheetData} contentScrollable={!isDeckBuilderStep && !isPracticeStep && !isDuelStep} immersive={isPracticeStep || (isDuelStep && (duelTable || isDesktopDeckBuilder))} contentScrollRef={contentScrollRef} searchAvailable={searchAvailable}>
+      <AppShell groups={navGroups} activeKey={activeStep} onSelect={handleNavSelect} onSheetOpen={refreshSheetData} contentScrollable={!isDeckBuilderStep && !isPracticeStep && !isDuelStep && !isLifeStep} immersive={isPracticeStep || (isDuelStep && (duelTable || isDesktopDeckBuilder))} contentScrollRef={contentScrollRef} searchAvailable={searchAvailable}>
         {mainContent}
       </AppShell>
 
@@ -443,8 +452,8 @@ export function DeckModeScreen() {
         />
       ) : null}
 
-      {/* Calculadora de LP: se abre desde el menú; mientras corre el reloj de la ronda, un botón flotante vuelve a ella desde cualquier otra pantalla. */}
-      <LifeCalculatorFab open={lifeOpen} onOpen={() => setLifeOpen(true)} onClose={() => setLifeOpen(false)} hidden={duelTable} />
+      {/* Calculadora de LP: es una vista (se abre desde el menú); mientras corre el reloj de la ronda, un botón flotante lleva a ella desde cualquier otra pantalla. */}
+      <LifeCalculatorFab onOpen={() => handleStepChange('life')} hidden={duelTable || isLifeStep} />
 
       {/* Las mascotas: se abre desde el menú y deja sacar hasta tres a la vez. */}
       <MascotsModal isOpen={mascotsOpen} onClose={() => setMascotsOpen(false)} />

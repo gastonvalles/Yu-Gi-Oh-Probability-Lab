@@ -6,9 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { dispatchLife } from '../app/life-store'
 import { LifeCalculatorFab } from '../components/life/LifeCalculatorFab'
 
-// La calculadora entera no es lo que se prueba acá.
-vi.mock('../components/deck-mode/lazy-steps', () => ({ LazyLifeCalculatorScreen: () => <p>Calculadora abierta</p> }))
-
 const FAB = /^Calculadora de LP\. Quedan/
 
 beforeEach(() => {
@@ -27,16 +24,16 @@ const startRound = () => act(() => dispatchLife({ type: 'timer-toggle', now: Dat
 
 describe('el botón flotante de la calculadora de LP', () => {
   it('sin el reloj de la ronda corriendo no hay botón: la calculadora se abre desde el menú', () => {
-    render(<LifeCalculatorFab open={false} onOpen={() => {}} onClose={() => {}} />)
+    render(<LifeCalculatorFab onOpen={() => {}} />)
 
     expect(screen.queryByRole('button', { name: /Calculadora de LP/ })).not.toBeInTheDocument()
   })
 
-  it('con el reloj corriendo y la calculadora cerrada aparece, con lo que queda de la ronda, y tocarlo la abre', () => {
+  it('con el reloj corriendo y fuera de la calculadora aparece, con lo que queda de la ronda, y tocarlo lleva a ella', () => {
     const onOpen = vi.fn()
 
     startRound()
-    render(<LifeCalculatorFab open={false} onOpen={onOpen} onClose={() => {}} />)
+    render(<LifeCalculatorFab onOpen={onOpen} />)
 
     const fab = screen.getByRole('button', { name: FAB })
 
@@ -48,29 +45,28 @@ describe('el botón flotante de la calculadora de LP', () => {
   it('en la mesa de un duelo no aparece, aunque el reloj de la ronda corra: ahí está el reloj del duelo y el botón lo duplicaría y le competiría', () => {
     startRound()
 
-    const { rerender } = render(<LifeCalculatorFab open={false} onOpen={() => {}} onClose={() => {}} hidden />)
+    const { rerender } = render(<LifeCalculatorFab onOpen={() => {}} hidden />)
 
     expect(screen.queryByRole('button', { name: FAB })).not.toBeInTheDocument()
 
-    rerender(<LifeCalculatorFab open={false} onOpen={() => {}} onClose={() => {}} hidden={false} />)
+    rerender(<LifeCalculatorFab onOpen={() => {}} hidden={false} />)
     expect(screen.getByRole('button', { name: FAB })).toBeInTheDocument()
   })
 
-  it('con la calculadora abierta no está, aunque el reloj siga corriendo; al cerrarla vuelve', () => {
+  it('dentro de la calculadora (una vista) no está, aunque el reloj siga corriendo; al salir de ella vuelve', () => {
     startRound()
 
-    const { rerender } = render(<LifeCalculatorFab open onOpen={() => {}} onClose={() => {}} />)
+    const { rerender } = render(<LifeCalculatorFab onOpen={() => {}} hidden />)
 
-    expect(screen.getByText('Calculadora abierta')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: FAB })).not.toBeInTheDocument()
 
-    rerender(<LifeCalculatorFab open={false} onOpen={() => {}} onClose={() => {}} />)
+    rerender(<LifeCalculatorFab onOpen={() => {}} hidden={false} />)
     expect(screen.getByRole('button', { name: FAB })).toBeInTheDocument()
   })
 
   it('al pausar el reloj el botón se va', () => {
     startRound()
-    render(<LifeCalculatorFab open={false} onOpen={() => {}} onClose={() => {}} />)
+    render(<LifeCalculatorFab onOpen={() => {}} />)
     expect(screen.getByRole('button', { name: FAB })).toBeInTheDocument()
 
     startRound()
