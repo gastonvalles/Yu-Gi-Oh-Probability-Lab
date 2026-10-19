@@ -754,7 +754,7 @@ function DuelLobby({ startInCreate = false, view = null, onViewHandled, name, on
   }
 
   return (
-    <Screen>
+    <Screen wide={Boolean(rooms)}>
       <PlayHome
         view={startInCreate ? 'create' : view}
         name={name}
