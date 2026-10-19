@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import { useBodyScrollLock, useEscapeKey } from '../../app/use-overlay'
@@ -6,6 +7,7 @@ import type { ApiCardReference } from '../../types'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
 import { CloseButton } from '../ui/IconButton'
+import { CardFlip, CardFlipButton } from './CardFlip'
 import { CardGlare, TILT_ART, TILT_PERSPECTIVE, tiltHandlers } from './card-tilt'
 
 interface CardZoomProps {
@@ -23,6 +25,7 @@ interface CardZoomProps {
 export function CardZoom({ card, name, fallbackUrl = null, onClose }: CardZoomProps) {
   useBodyScrollLock(true)
   useEscapeKey(onClose)
+  const [flipped, setFlipped] = useState(false)
 
   return createPortal(
     <div
@@ -33,11 +36,14 @@ export function CardZoom({ card, name, fallbackUrl = null, onClose }: CardZoomPr
       onClick={onClose}
     >
       <div
-        className={cx('relative aspect-[421/614] h-[min(94dvh,calc((100vw-2rem)*614/421))] max-w-full overflow-hidden shadow-[0_24px_50px_rgb(0_0_0/0.6),0_0_0_1px_rgb(255_255_255/0.12),0_0_40px_rgb(var(--primary-rgb)/0.3)]', TILT_ART)}
+        className={cx('relative aspect-[421/614] h-[min(94dvh,calc((100vw-2rem)*614/421))] max-w-full overflow-hidden [perspective:900px] shadow-[0_24px_50px_rgb(0_0_0/0.6),0_0_0_1px_rgb(255_255_255/0.12),0_0_40px_rgb(var(--primary-rgb)/0.3)]', TILT_ART)}
         {...tiltHandlers}
       >
-        <CardArt remoteUrl={card.imageUrl ?? card.imageUrlSmall ?? null} fallbackUrl={fallbackUrl} name={name} className="block h-full w-full bg-input object-contain" limitCard={card} limitBadgeSize="lg" />
+        <CardFlip flipped={flipped}>
+          <CardArt remoteUrl={card.imageUrl ?? card.imageUrlSmall ?? null} fallbackUrl={fallbackUrl} name={name} className="block h-full w-full bg-input object-contain" limitCard={card} limitBadgeSize="lg" />
+        </CardFlip>
         <CardGlare />
+        <CardFlipButton flipped={flipped} onToggle={() => setFlipped((current) => !current)} />
       </div>
       <CloseButton
         tone="flat"

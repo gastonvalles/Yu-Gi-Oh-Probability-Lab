@@ -183,6 +183,7 @@ export const DeckZone = memo(function DeckZone({
       onContextMenu={(event) => handleCardContextMenu(event, card.instanceId)}
     >
       <CardArt
+        tilt
         remoteUrl={card.apiCard.imageUrlSmall ?? card.apiCard.imageUrl}
         name={card.name}
         className="block h-auto w-full min-w-0 bg-input"
@@ -277,6 +278,7 @@ export const DeckZone = memo(function DeckZone({
             onContextMenu={(event) => handleCardContextMenu(event, card.instanceId)}
           >
             <CardArt
+              tilt
               remoteUrl={card.apiCard.imageUrlSmall ?? card.apiCard.imageUrl}
               name={card.name}
               className="block aspect-[0.72] w-full min-w-0 bg-input object-cover"

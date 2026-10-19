@@ -94,6 +94,7 @@ const QueueTile = memo(function QueueTile({
     >
       <div className={cx(queueArt(active), 'aspect-[268/391] w-11 bg-input')}>
         <CardArt
+          tilt
           remoteUrl={card.apiCard?.imageUrlSmall ?? card.apiCard?.imageUrl ?? null}
           name={card.name}
           className="block h-full w-full object-cover"

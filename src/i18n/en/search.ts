@@ -160,6 +160,8 @@ export const search: Translated<typeof es> = {
   'search.detail.next': 'Next card',
   'search.overlay.backToDetail': 'Back to details',
   'search.overlay.zoomIn': 'View card larger',
+  'search.flip.back': 'Flip: see the back',
+  'search.flip.front': 'Flip: see the front',
   'search.zoom.aria': 'Large view of {name}',
   'search.arts.label': 'Card artworks',
   'search.arts.pick': 'Artwork {n} of {count}',

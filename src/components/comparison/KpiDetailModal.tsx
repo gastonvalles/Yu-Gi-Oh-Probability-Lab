@@ -73,6 +73,7 @@ export function KpiDetailModal({
                   >
                     <span className="relative block w-[40px]">
                       <CardArt
+                        tilt
                         remoteUrl={card.imageUrlSmall}
                         name={card.name}
                         className="block h-auto w-full bg-input"

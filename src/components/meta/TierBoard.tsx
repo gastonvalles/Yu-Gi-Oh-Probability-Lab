@@ -75,7 +75,7 @@ export function CardTile({ stat, share, onOpen }: TileProps<MetaCardStat>) {
       onClick={() => onOpen(stat)}
     >
       <span className="relative block aspect-[421/614] w-full overflow-hidden rounded-none bg-input">
-        <CardArt remoteUrl={stat.image} name={stat.name} className="h-full w-full object-cover" />
+        <CardArt tilt remoteUrl={stat.image} name={stat.name} className="h-full w-full object-cover" />
         <span className="absolute inset-x-0 bottom-0 bg-black/70 py-0.5 text-center text-micro font-bold tabular-nums text-white">{percent(share)}</span>
         <TrendArrow trend={stat.trend} size={32} className="absolute right-0 top-0" />
       </span>

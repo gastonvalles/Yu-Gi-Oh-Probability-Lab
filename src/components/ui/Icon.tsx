@@ -260,6 +260,14 @@ const PATHS = {
       <path d="M20 4v4.5h-4.5" />
     </>
   ),
+  /** Dar vuelta una carta: la carta con una flecha que gira por debajo. */
+  flip: (
+    <>
+      <path d="M8 3.5h8a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 13V5A1.5 1.5 0 0 1 8 3.5z" />
+      <path d="M4 17.2c2.2 2.1 5 3.1 8 3.1s5.8-1 8-3.1" />
+      <path d="M20.2 20.4v-3.6h-3.6" />
+    </>
+  ),
   sort: <path d="M4 6.5h16M4 12h11M4 17.5h6" />,
   save: <path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4.5L5 21V4.5a1 1 0 0 1 1-1z" />,
   swap: (

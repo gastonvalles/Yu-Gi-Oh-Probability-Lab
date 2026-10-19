@@ -130,7 +130,7 @@ export function TierMakerAddCards({ list, deckCards, onAdd }: TierMakerAddCardsP
                   className="group relative block aspect-[421/614] w-full cursor-pointer overflow-hidden rounded-none bg-input focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-default"
                   onClick={() => onAdd([fromResult(card)])}
                 >
-                  <CardArt remoteUrl={card.imageUrlSmall ?? card.imageUrl ?? null} name={card.name} className={cx('h-full w-full object-cover transition-opacity duration-150 motion-reduce:transition-none', inList && 'opacity-40')} />
+                  <CardArt tilt remoteUrl={card.imageUrlSmall ?? card.imageUrl ?? null} name={card.name} className={cx('h-full w-full object-cover transition-opacity duration-150 motion-reduce:transition-none', inList && 'opacity-40')} />
                   <span aria-hidden="true" className={cx('absolute right-1 top-1 grid size-6 place-items-center rounded-full text-white', inList ? 'bg-success-solid' : 'bg-primary')}>
                     <Icon name={inList ? 'check' : 'plus'} size={14} />
                   </span>

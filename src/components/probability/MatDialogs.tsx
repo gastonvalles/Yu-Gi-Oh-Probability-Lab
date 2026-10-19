@@ -220,7 +220,7 @@ export function PileViewer({ pile, ids, info, targeted, onPick, onClose, anonymo
                     className={cx('relative block aspect-[421/614] w-full overflow-hidden bg-input shadow-[0_4px_10px_rgba(0,0,0,0.4)] [--card-shadow:0_4px_10px_rgba(0,0,0,0.4)]', FX_CARD)}
                     style={fxVars('red')}
                   >
-                    {card.faceDown ? <span className={CARD_BACK} /> : <CardArt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />}
+                    {card.faceDown ? <span className={CARD_BACK} /> : <CardArt tilt remoteUrl={card.art} name={card.name} className="block h-full w-full object-cover" />}
                     {targeted.has(card.id) ? <TargetMark /> : null}
                   </span>
                   {anonymous ? null : <span className="truncate text-micro text-foreground">{label}</span>}

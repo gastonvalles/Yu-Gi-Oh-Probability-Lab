@@ -97,6 +97,7 @@ export function BuildDeckView({ side, name, zones, deltaByCardId, onCardClick, a
                   onClick={() => onCardClick(card)}
                 >
                   <CardArt
+                    tilt
                     remoteUrl={card.apiCard.imageUrlSmall ?? card.apiCard.imageUrl}
                     name={card.name}
                     className="block aspect-[0.72] w-full bg-input object-cover"

@@ -101,7 +101,7 @@ export function TierMakerBoard({ list, selectedId, onSelect, onMove, onRemoveCar
             setOver(null)
           }}
         >
-          <CardArt remoteUrl={card.image} name={card.name} className="pointer-events-none h-full w-full object-cover" />
+          <CardArt tilt remoteUrl={card.image} name={card.name} className="pointer-events-none h-full w-full object-cover" />
         </div>
       </li>
     )
@@ -143,7 +143,7 @@ export function TierMakerBoard({ list, selectedId, onSelect, onMove, onRemoveCar
         >
           <span className="flex min-w-0 max-w-full items-center gap-2 pr-1">
             <span className="block aspect-[421/614] h-12 shrink-0 overflow-hidden bg-input">
-              <CardArt remoteUrl={selected.image} name={selected.name} className="h-full w-full object-cover" />
+              <CardArt tilt remoteUrl={selected.image} name={selected.name} className="h-full w-full object-cover" />
             </span>
             <span className="min-w-0 truncate text-body font-semibold text-foreground">{t('meta.maker.selected', { name: selected.name })}</span>
           </span>

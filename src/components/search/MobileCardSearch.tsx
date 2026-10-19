@@ -324,6 +324,7 @@ const MobileResultRow = memo(function MobileResultRow({
       <button type="button" className={cx(ROW_MAIN, isMaxed && 'opacity-55')} onClick={() => onOpenDetail(card.ygoprodeckId)}>
         <span className="relative w-13 shrink-0">
           <CardArt
+            tilt
             remoteUrl={card.imageUrlSmall ?? card.imageUrl}
             name={card.name}
             className="block aspect-[0.72] w-13 bg-input object-cover"

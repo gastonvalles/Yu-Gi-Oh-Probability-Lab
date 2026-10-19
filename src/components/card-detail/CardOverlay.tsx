@@ -16,6 +16,7 @@ import { CloseButton, IconButton } from '../ui/IconButton'
 import { CardArtPicker } from './CardArtPicker'
 import { CardPricesButton, CardPricesModal } from './CardPrices'
 import { PrintingInfo, SelectedPrintingContext, useSelectedPrinting } from './PrintingInfo'
+import { CardFlip, CardFlipButton } from './CardFlip'
 import { CardGlare, levelOut, tiltHandlers } from './card-tilt'
 
 const CLOSE_MS = 180
@@ -112,9 +113,12 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
   // del anterior: vuelve al primero (o al arte con el que se abre).
   const shownKey = `${cardId}|${initialArt?.id ?? ''}`
   const [lastKey, setLastKey] = useState(shownKey)
+  // Dar vuelta la carta (ver el dorso): también vuelve al frente al pasar a otra.
+  const [flipped, setFlipped] = useState(false)
   if (lastKey !== shownKey) {
     setLastKey(shownKey)
     setArtId(initialArt?.id ?? null)
+    setFlipped(false)
   }
   const art = arts.find((option) => option.id === artId) ?? (initialArt && artId === initialArt.id ? initialArt : undefined)
   // Hacia dónde se fue en el último pase (1: siguiente, -1: anterior), para que la carta nueva venga de ese lado.
@@ -273,7 +277,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
           <div
             ref={cardRef}
             className={cx(
-              'group/art pointer-events-auto relative aspect-[421/614] h-(--detail-art-height) max-w-full flex-none cursor-zoom-in overflow-hidden shadow-[0_24px_50px_rgb(0_0_0/0.6),0_0_0_1px_rgb(255_255_255/0.12),0_0_40px_rgb(var(--primary-rgb)/0.3)] transition-[height,rotate] duration-(--motion-duration) ease-[cubic-bezier(0.2,0.9,0.25,1)] group-data-[zoomed=true]:h-[min(94dvh,calc((100vw-2rem)*614/421))]',
+              'group/art pointer-events-auto relative aspect-[421/614] h-(--detail-art-height) max-w-full flex-none cursor-zoom-in overflow-hidden [perspective:900px] shadow-[0_24px_50px_rgb(0_0_0/0.6),0_0_0_1px_rgb(255_255_255/0.12),0_0_40px_rgb(var(--primary-rgb)/0.3)] transition-[height,rotate] duration-(--motion-duration) ease-[cubic-bezier(0.2,0.9,0.25,1)] group-data-[zoomed=true]:h-[min(94dvh,calc((100vw-2rem)*614/421))]',
               // Con vecinos, el dedo de costado es de la carta (deslizar) y sólo el vertical queda para el navegador.
               hasNavigation && 'touch-pan-y',
             )}
@@ -283,6 +287,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
             // La inclinación en 3D (ver card-tilt), también con la carta agrandada.
             {...tiltHandlers}
             onPointerDown={(event) => {
+              tiltHandlers.onPointerDown(event)
               swipedRef.current = false
               swipeRef.current = hasNavigation && event.pointerType === 'touch' ? { x: event.clientX, y: event.clientY } : null
             }}
@@ -314,16 +319,19 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
               setZoomed((current) => !current)
             }}
           >
-            <CardArt
-              remoteUrl={art?.imageUrl ?? card?.imageUrl ?? card?.imageUrlSmall ?? null}
-              fallbackUrl={card?.imageUrl ?? card?.imageUrlSmall ?? null}
-              name={name}
-              className="block h-full w-full bg-input object-contain"
-              limitCard={card}
-              limitBadgeSize="lg"
-            />
+            <CardFlip flipped={flipped}>
+              <CardArt
+                remoteUrl={art?.imageUrl ?? card?.imageUrl ?? card?.imageUrlSmall ?? null}
+                fallbackUrl={card?.imageUrl ?? card?.imageUrlSmall ?? null}
+                name={name}
+                className="block h-full w-full bg-input object-contain"
+                limitCard={card}
+                limitBadgeSize="lg"
+              />
+            </CardFlip>
             <CardGlare />
             {artOverlay ? <div className="absolute right-2 top-2 z-1">{artOverlay}</div> : null}
+            <CardFlipButton flipped={flipped} onToggle={() => setFlipped((current) => !current)} />
           </div>
           {arts.length > 1 ? (
             <div className="pointer-events-auto absolute inset-y-0 -left-12 flex w-10 flex-col justify-start group-data-[zoomed=true]:hidden">
