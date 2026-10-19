@@ -23,6 +23,7 @@ import { firstFreeMonsterZone, foreignOf, opaqueOfForeign } from '../../app/mat-
 import { createMatState, isForeignId, isToken, PHASES, randomSeed, replayMat, shuffleWithSeed, type MatPile } from '../../app/practice-mat'
 import { setDuelFullscreen } from '../../app/duel-fullscreen'
 import { useChatSound } from '../../app/use-chat-sound'
+import { useDuelSounds } from '../../app/use-duel-sounds'
 import { useDuel, type DuelConnect, type SpectatorConnect } from '../../app/use-duel'
 import type { MatSession } from '../../app/use-mat-session'
 import { showToastMessage } from '../../app/use-toast-message'
@@ -373,6 +374,8 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
 
   // Cada mensaje de los jugadores, tuyo o del rival, hace un sonido sutil (quien mira no lo escucha).
   useChatSound(intent?.watch ? undefined : snapshot?.chat, snapshot?.me)
+  // Y cada jugada de la mesa (tuya y del rival), los puntos de vida, la moneda, el dado y el resultado (con la mesa abierta; los sonidos se apagan en «Más opciones»).
+  useDuelSounds(onTable && !intent?.watch ? snapshot : null)
 
   // El siding se cierra solo cuando los dos aceptaron y la mesa se limpió para el duelo que sigue (no antes: al recargar, la mesa tarda en volver y no por eso se sale).
   const hadTable = useRef(false)
