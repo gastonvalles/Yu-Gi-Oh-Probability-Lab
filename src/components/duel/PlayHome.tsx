@@ -15,10 +15,11 @@ import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
 import { FieldBox, fieldInline } from '../ui/FieldBox'
 import { Heading } from '../ui/Heading'
-import { Icon } from '../ui/Icon'
+import { Icon, type IconName } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
 import { Segmented } from '../ui/Segmented'
+import { TONE, type Tone } from '../ui/tone'
 import { Stepper } from '../ui/Stepper'
 import { Switch } from '../ui/Switch'
 import { DuelDeckPicker, type DuelDeck } from './DuelDeckPicker'
@@ -53,6 +54,35 @@ interface PlayHomeProps {
   paused: PausedDuel | null
   onResume: () => void
   onDropPaused: () => void
+}
+
+/**
+ * Una baldosa del lobby (como las de un menú de juego): un ícono en una chapa del color de su tono, el nombre y una línea que dice qué hace, sobre una tarjeta teñida. El color dice qué clase de entrada es
+ * (violeta: lo tuyo, un amigo; ámbar: entrar con un dato; verde: entrenar sin riesgo; gris: las reglas). El nombre accesible es el título (o `label`): la línea de abajo es de apoyo.
+ */
+function LobbyTile({ tone, icon, title, hint, label, disabled = false, expanded, popup = false, onClick }: { tone: Tone; icon: IconName; title: string; hint: string; label?: string; disabled?: boolean; expanded?: boolean; popup?: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-label={label ?? title}
+      aria-expanded={expanded}
+      aria-haspopup={popup ? 'dialog' : undefined}
+      disabled={disabled}
+      className={cx(
+        'group grid min-h-28 min-w-0 cursor-pointer content-between justify-items-start gap-3 rounded-card border p-3 text-left transition-[border-color,transform,opacity] duration-150 focus-visible:outline-none focus-visible:shadow-focus enabled:hover:border-tint/40 enabled:active:scale-[0.98] disabled:cursor-default disabled:opacity-45 motion-reduce:transition-none motion-reduce:enabled:active:scale-100',
+        TONE[tone].wash,
+      )}
+      onClick={onClick}
+    >
+      <span className={cx('grid size-10 place-items-center rounded-control border', TONE[tone].tint, TONE[tone].text)}>
+        <Icon name={icon} size={22} />
+      </span>
+      <span className="grid min-w-0 max-w-full gap-0.5">
+        <strong className="truncate text-body font-bold text-foreground">{title}</strong>
+        <span className="line-clamp-2 text-micro text-muted">{hint}</span>
+      </span>
+    </button>
+  )
 }
 
 /** Hace cuánto espera una sala («hace 3 min»); la lista se vuelve a pedir sola cada 15 s, así que se va actualizando. */
@@ -195,9 +225,6 @@ export function PlayHome({ view, name, onName, builder, imported, onImport, deck
 
   return (
     <>
-      {/* El título «Jugar» ya está en la barra de arriba (y es el h1 de la pantalla): acá sólo la línea que invita. */}
-      <p className="m-0 text-lead text-muted">{t('duel.play.subtitle')}</p>
-
       {paused ? (
         <div className="grid gap-2 rounded-card border border-primary/40 bg-card-background p-3">
           <p className="m-0 flex items-center gap-2 text-body font-semibold text-foreground" role="status">
@@ -227,69 +254,64 @@ export function PlayHome({ view, name, onName, builder, imported, onImport, deck
         </Button>
       </div>
 
-      {/* La acción principal. Una sola por vista: con un duelo en pausa, volver a él es lo principal. */}
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
-        <Button variant={paused ? 'secondary' : 'primary'} size="lg" icon="play" fullWidth aria-busy={busy} disabled={busy} onClick={() => void playNow()}>
-          {deckReady ? t('duel.play.now') : t('duel.play.needDeck')}
-        </Button>
-        <p className="m-0 min-h-5 text-micro text-muted" role="status" aria-live="polite">
+      {/* La portada, como el banner de un lobby de juego: el titular, lo que va a pasar y la acción principal (una sola por vista: con un duelo en pausa, volver a él es lo principal). */}
+      <section aria-label={t('duel.play.subtitle')} className={cx('relative isolate grid gap-3 overflow-hidden rounded-panel border p-4 min-[1101px]:p-5', TONE.brand.wash)}>
+        {/* Tres cartas en abanico, de adorno: lo que se juega, sin ocupar lugar. */}
+        <span aria-hidden="true" className="pointer-events-none absolute -right-3 -top-2 -z-10 flex h-full items-center opacity-60">
+          <i className="-mr-8 h-24 w-16 -rotate-12 rounded-tag border border-primary/50 bg-primary/20" />
+          <i className="-mr-8 h-24 w-16 rotate-0 rounded-tag border border-info/50 bg-info/15" />
+          <i className="h-24 w-16 rotate-12 rounded-tag border border-success/50 bg-success/15" />
+        </span>
+        <h2 className="m-0 max-w-[16rem] text-title font-extrabold leading-tight text-foreground">{t('duel.play.subtitle')}</h2>
+        <p className="m-0 min-h-5 max-w-[18rem] text-body text-muted" role="status" aria-live="polite">
           {deckReady ? statusText : ''}
         </p>
-        <button
-          type="button"
-          aria-haspopup="dialog"
-          className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-2 rounded-control border border-border-subtle bg-transparent px-3 text-left text-body text-muted hover:border-tint/40 focus-visible:outline-none focus-visible:shadow-focus"
-          onClick={() => setRulesOpen(true)}
-        >
-          <span className="min-w-0 truncate">
-            <span className="text-soft">{t('duel.play.rules')} ·</span>{' '}
-            <span className="font-semibold text-foreground">{rulesLine(prefs)}</span>
-          </span>
-          <Icon name="chevron-right" size={16} />
-        </button>
-        <div className="grid grid-cols-2 gap-2">
-          <Button variant="secondary" icon="link" disabled={busy || !deckReady} onClick={challenge}>
-            {t('duel.play.friend')}
-          </Button>
-          <Button variant="secondary" icon="tag" aria-expanded={codeOpen} onClick={() => setCodeOpen((open) => !open)}>
-            {t('duel.play.code')}
-          </Button>
-        </div>
-        {codeOpen ? (
-          <form
-            className="grid gap-1.5"
-            onSubmit={(event) => {
-              event.preventDefault()
-              join(false)
-            }}
-          >
-            <FieldBox>
-              <input
-                ref={codeRef}
-                aria-label={t('duel.lobby.joinPlaceholder')}
-                placeholder={t('duel.lobby.joinPlaceholder')}
-                value={code}
-                onChange={(event) => {
-                  setCode(event.target.value)
-                  setInvalid(false)
-                }}
-                className={fieldInline}
-              />
-            </FieldBox>
-            <div className="grid grid-cols-2 gap-2">
-              <Button type="submit" variant="secondary" disabled={(!deckReady && !isWatchLink(code)) || code.trim() === ''}>
-                {t('duel.lobby.joinAction')}
-              </Button>
-              <Button type="button" variant="secondary" icon="eye" disabled={code.trim() === ''} onClick={() => join(true)}>
-                {t('duel.arena.watch')}
-              </Button>
-            </div>
-            <p className={invalid ? 'm-0 text-micro text-danger' : 'm-0 text-micro text-soft'} role={invalid ? 'alert' : undefined}>
-              {invalid ? t('duel.lobby.joinInvalid') : t('duel.lobby.joinHint')}
-            </p>
-          </form>
-        ) : null}
+        <Button variant={paused ? 'secondary' : 'primary'} size="lg" icon="play" className="w-fit max-[420px]:w-full" aria-busy={busy} disabled={busy} onClick={() => void playNow()}>
+          {deckReady ? t('duel.play.now') : t('duel.play.needDeck')}
+        </Button>
+      </section>
+
+      {/* Las otras formas de entrar, en cuatro baldosas: un amigo, un código, entrenar y las reglas (que se recuerdan). */}
+      <div className="grid grid-cols-2 gap-3">
+        <LobbyTile tone="brand" icon="link" title={t('duel.play.friend')} hint={t('duel.play.friendHint')} disabled={busy || !deckReady} onClick={challenge} />
+        <LobbyTile tone="info" icon="tag" title={t('duel.play.code')} hint={t('duel.play.codeHint')} expanded={codeOpen} onClick={() => setCodeOpen((open) => !open)} />
+        <LobbyTile tone="success" icon="hand" title={t('duel.play.train')} hint={trainReady ? t('duel.play.trainHint') : t('duel.play.trainNeedDeck')} disabled={!trainReady} onClick={onTrain} />
+        <LobbyTile tone="neutral" icon="gear" title={t('duel.play.rules')} hint={rulesLine(prefs)} label={`${t('duel.play.rules')} · ${rulesLine(prefs)}`} popup onClick={() => setRulesOpen(true)} />
       </div>
+      {codeOpen ? (
+        <form
+          className="grid gap-1.5"
+          onSubmit={(event) => {
+            event.preventDefault()
+            join(false)
+          }}
+        >
+          <FieldBox>
+            <input
+              ref={codeRef}
+              aria-label={t('duel.lobby.joinPlaceholder')}
+              placeholder={t('duel.lobby.joinPlaceholder')}
+              value={code}
+              onChange={(event) => {
+                setCode(event.target.value)
+                setInvalid(false)
+              }}
+              className={fieldInline}
+            />
+          </FieldBox>
+          <div className="grid grid-cols-2 gap-2">
+            <Button type="submit" variant="secondary" disabled={(!deckReady && !isWatchLink(code)) || code.trim() === ''}>
+              {t('duel.lobby.joinAction')}
+            </Button>
+            <Button type="button" variant="secondary" icon="eye" disabled={code.trim() === ''} onClick={() => join(true)}>
+              {t('duel.arena.watch')}
+            </Button>
+          </div>
+          <p className={invalid ? 'm-0 text-micro text-danger' : 'm-0 text-micro text-soft'} role={invalid ? 'alert' : undefined}>
+            {invalid ? t('duel.lobby.joinInvalid') : t('duel.lobby.joinHint')}
+          </p>
+        </form>
+      ) : null}
 
       {/* La arena: lo que dice el relay, nada más. Con salas o duelos, a un toque; sin nada, lo dice y empuja a abrir la tuya. */}
       {rooms ? (
@@ -381,13 +403,6 @@ export function PlayHome({ view, name, onName, builder, imported, onImport, deck
           )}
         </section>
       ) : null}
-
-      <div className="grid gap-1 border-t border-border-subtle pt-3">
-        <Button variant="tertiary" icon="hand" className="justify-start" disabled={!trainReady} onClick={onTrain}>
-          {t('duel.play.train')}
-        </Button>
-        <p className="m-0 px-1 text-micro text-soft">{trainReady ? t('duel.play.trainHint') : t('duel.play.trainNeedDeck')}</p>
-      </div>
 
       <RulesSheet
         isOpen={rulesOpen}
