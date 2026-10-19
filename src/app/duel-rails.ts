@@ -23,6 +23,26 @@ const CLASSIC_CHROME_PX = 30.45 * REM_PX
 const CELL_MIN_PX = 3.5 * REM_PX
 const CELL_MAX_PX = 12 * REM_PX
 
+/**
+ * Lo que se reserva de ancho a los dos costados al agrandar la vista 3D con laterales: sólo el aire. Lo ancho del campo es su borde de abajo, que queda entre las vidas de abajo y las manos, y arriba, donde están
+ * los laterales, la perspectiva lo angosta: no se tocan.
+ */
+export const RAILS_SIDE_RESERVE_PX = 2 * (RAIL_GAP_PX + 32)
+
+/** Cuánto se puede agrandar a lo sumo la vista 3D (más que eso las cartas pasan a verse mal de grandes). */
+export const FIELD_ZOOM_MAX = 1.6
+
+/**
+ * Cuánto agrandar la vista 3D del campo para que ocupe el lugar que tiene (Gastón, 2026-10-19: «no se aprovecha el alto, la profundidad ni el ancho general de la vista»): la inclinación le saca alto y
+ * perspectiva le achica el fondo, así que el campo queda chico en una columna grande. `width` y `height` son lo que ocupa a tamaño natural (el borde de abajo, que no se mueve, y el de arriba ya achicado) y
+ * `availWidth` y `availHeight` lo que tiene a disposición (el alto, hacia arriba desde el borde de abajo). Se agranda parejo, hasta donde entra a lo ancho y a lo alto, sin achicarlo nunca.
+ */
+export function fieldZoom({ width, height, availWidth, availHeight }: { width: number; height: number; availWidth: number; availHeight: number }): number {
+  if (!(width > 0) || !(height > 0)) return 1
+
+  return Math.min(FIELD_ZOOM_MAX, Math.max(1, Math.min(availWidth / width, availHeight / height)))
+}
+
 /** Cuánto mide la casilla del campo con la barra arriba y abajo, en una columna de ese alto (px). */
 export function classicCell(height: number): number {
   return Math.min(CELL_MAX_PX, Math.max(CELL_MIN_PX, (height - CLASSIC_CHROME_PX) / 5))

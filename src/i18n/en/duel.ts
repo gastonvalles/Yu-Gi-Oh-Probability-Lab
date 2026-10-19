@@ -249,6 +249,7 @@ export const duel: Translated<typeof es> = {
   'duel.bar.yourTurn': 'Your turn',
   'duel.bar.theirTurn': "{name}'s turn",
   'duel.bar.lifeOf': "{name}'s life points",
+  'duel.bar.lifeMeter': "{name}'s life: {percent}% of the starting points",
   'duel.bar.openCalculator': 'Open the life calculator',
   'duel.bar.clock': 'Round clock: {time}',
   'duel.bar.clockStart': 'Start the clock',
