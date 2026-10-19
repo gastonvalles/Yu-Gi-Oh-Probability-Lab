@@ -100,7 +100,7 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, navigation, 
               )}
             >
               <div
-                className={cx('relative aspect-[421/614]', TILT_ART)}
+                className={cx('relative aspect-[421/614] touch-none', TILT_ART)}
                 title={t('search.flip.title')}
                 onPointerDown={(event) => {
                   tiltHandlers.onPointerDown(event)
@@ -167,7 +167,7 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, navigation, 
             {condensedStatLine ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{condensedStatLine}</p> : null}
             {card.description ? <p className="m-0 whitespace-pre-wrap text-body text-foreground">{card.description}</p> : null}
           </article>
-          {zoomed ? <CardZoom card={{ ...card, imageUrl: artUrl }} fallbackUrl={card.imageUrl} name={card.name} onClose={() => setZoomed(false)} /> : null}
+          {zoomed ? <CardZoom card={{ ...card, imageUrl: artUrl }} fallbackUrl={card.imageUrl} name={card.name} navigation={navigation} onClose={() => setZoomed(false)} /> : null}
           <CardPricesModal cardId={card.ygoprodeckId} name={card.name} isOpen={pricesOpen} onClose={() => setPricesOpen(false)} onGoToPrint={() => setPricesOpen(false)} />
         </>
       ) : (

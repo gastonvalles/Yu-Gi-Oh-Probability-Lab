@@ -103,7 +103,7 @@ describe('la carta se inclina en 3D', () => {
   })
 })
 
-/** Una carta que se da vuelta con un gesto: arrastrada de costado. Ancha de 140 px (el giro entero pide 112 px de arrastre). */
+/** Una carta que se gira con un gesto: arrastrada hacia donde sea. De 140 × 200 px (el giro entero pide 112 px de arrastre de costado o 160 de arriba abajo). */
 let consumeClick: () => boolean
 
 function FlippableCard() {
@@ -129,106 +129,161 @@ function FlippableCard() {
   )
 }
 
-const flipper = () => screen.getByTestId("carta").firstElementChild as HTMLElement
+const flipper = () => screen.getByTestId('carta').firstElementChild as HTMLElement
 
-const drag = (from: number, to: number, y = 100) => {
-  const carta = screen.getByTestId("carta")
+/** Arrastra la carta de un punto a otro (con un solo movimiento, como un tirón: la velocidad la fija el reloj de la prueba). */
+const drag = (from: [number, number], to: [number, number]) => {
+  const carta = screen.getByTestId('carta')
 
-  fireEvent.pointerDown(carta, { pointerId: 1, pointerType: "touch", clientX: from, clientY: y })
-  fireEvent.pointerMove(carta, { pointerId: 1, pointerType: "touch", clientX: to, clientY: y })
-  fireEvent.pointerUp(carta, { pointerId: 1, pointerType: "touch", clientX: to, clientY: y })
+  fireEvent.pointerDown(carta, { pointerId: 1, pointerType: 'touch', clientX: from[0], clientY: from[1] })
+  fireEvent.pointerMove(carta, { pointerId: 1, pointerType: 'touch', clientX: to[0], clientY: to[1] })
+  fireEvent.pointerUp(carta, { pointerId: 1, pointerType: 'touch', clientX: to[0], clientY: to[1] })
 }
 
-describe('dar vuelta la carta, con un gesto', () => {
-  it('el dorso va del otro lado: el frente se esconde a los lectores de pantalla al darla vuelta', () => {
+describe('girar la carta, con un gesto, en todas las direcciones', () => {
+  it('el dorso va del otro lado: el frente se esconde a los lectores de pantalla al darla vuelta, sobre cualquier eje', () => {
     const ref = { current: null }
     const { container, rerender } = render(
-      <CardFlip turns={0} flipperRef={ref}>
+      <CardFlip turns={{ x: 0, y: 0 }} flipperRef={ref}>
         <span>frente</span>
       </CardFlip>,
     )
     const flipperElement = container.firstElementChild as HTMLElement
     const [front, back] = Array.from(flipperElement.children)
+    const show = (x: number, y: number) =>
+      rerender(
+        <CardFlip turns={{ x, y }} flipperRef={ref}>
+          <span>frente</span>
+        </CardFlip>,
+      )
 
     expect(flipperElement).toHaveAttribute('data-flipped', 'false')
     expect(front).not.toHaveAttribute('aria-hidden')
     expect(back).toHaveAttribute('aria-hidden', 'true')
 
-    rerender(
-      <CardFlip turns={1} flipperRef={ref}>
-        <span>frente</span>
-      </CardFlip>,
-    )
+    show(0, 1)
     expect(flipperElement).toHaveAttribute('data-flipped', 'true')
-    expect(flipperElement.style.transform).toBe('perspective(3000px) rotateY(180deg)')
+    expect(flipperElement.style.transform).toBe('perspective(3000px) rotateX(0deg) rotateY(180deg)')
     expect(front).toHaveAttribute('aria-hidden', 'true')
     expect(back).not.toHaveAttribute('aria-hidden')
+
+    // De arriba abajo también muestra el dorso; con los dos ejes dados vuelta, otra vez el frente.
+    show(1, 0)
+    expect(flipperElement).toHaveAttribute('data-flipped', 'true')
+    expect(flipperElement.style.transform).toBe('perspective(3000px) rotateX(180deg) rotateY(0deg)')
+    show(1, 1)
+    expect(flipperElement).toHaveAttribute('data-flipped', 'false')
   })
 
-  it('arrastrarla hacia la derecha la gira siguiendo al dedo y, al soltarla de la mitad en adelante, queda del otro lado', () => {
+  it('arrastrarla hacia la derecha la gira de costado siguiendo al dedo y, al soltarla de la mitad en adelante, queda del otro lado', () => {
     render(<FlippableCard />)
 
-    const carta = screen.getByTestId("carta")
+    const carta = screen.getByTestId('carta')
 
-    fireEvent.pointerDown(carta, { pointerId: 1, pointerType: "touch", clientX: 20, clientY: 100 })
-    fireEvent.pointerMove(carta, { pointerId: 1, pointerType: "touch", clientX: 76, clientY: 100 })
+    fireEvent.pointerDown(carta, { pointerId: 1, pointerType: 'touch', clientX: 20, clientY: 100 })
+    fireEvent.pointerMove(carta, { pointerId: 1, pointerType: 'touch', clientX: 76, clientY: 100 })
     // A mitad de arrastre (56 de 112 px) va a medio giro y sin transición: sigue al dedo.
-    expect(flipper().style.transform).toBe('perspective(3000px) rotateY(90deg)')
+    expect(flipper().style.transform).toBe('perspective(3000px) rotateX(0deg) rotateY(90deg)')
     expect(flipper().style.transition).toBe('none')
 
-    fireEvent.pointerMove(carta, { pointerId: 1, pointerType: "touch", clientX: 132, clientY: 100 })
-    fireEvent.pointerUp(carta, { pointerId: 1, pointerType: "touch", clientX: 132, clientY: 100 })
+    fireEvent.pointerMove(carta, { pointerId: 1, pointerType: 'touch', clientX: 132, clientY: 100 })
+    fireEvent.pointerUp(carta, { pointerId: 1, pointerType: 'touch', clientX: 132, clientY: 100 })
     expect(flipper()).toHaveAttribute('data-flipped', 'true')
-    expect(flipper().style.transform).toBe('perspective(3000px) rotateY(180deg)')
+    expect(flipper().style.transform).toBe('perspective(3000px) rotateX(0deg) rotateY(180deg)')
     expect(flipper().style.transition).toBe('')
   })
 
-  it('hacia la izquierda la da vuelta hacia el otro lado; un arrastre corto la deja como estaba; un tirón rápido la da vuelta aunque sea corto', () => {
+  it('de arriba abajo también: arrastrarla hacia arriba la gira sobre su eje horizontal (hacia abajo, al revés) y la deja del otro lado', () => {
     render(<FlippableCard />)
 
-    drag(132, 20)
+    const carta = screen.getByTestId('carta')
+
+    fireEvent.pointerDown(carta, { pointerId: 1, pointerType: 'touch', clientX: 70, clientY: 180 })
+    fireEvent.pointerMove(carta, { pointerId: 1, pointerType: 'touch', clientX: 70, clientY: 100 })
+    // 80 de 160 px: medio giro sobre X, sin tocar el otro eje.
+    expect(flipper().style.transform).toBe('perspective(3000px) rotateX(90deg) rotateY(0deg)')
+
+    fireEvent.pointerMove(carta, { pointerId: 1, pointerType: 'touch', clientX: 70, clientY: 20 })
+    fireEvent.pointerUp(carta, { pointerId: 1, pointerType: 'touch', clientX: 70, clientY: 20 })
     expect(flipper()).toHaveAttribute('data-flipped', 'true')
-    expect(flipper().style.transform).toBe('perspective(3000px) rotateY(-180deg)')
+    expect(flipper().style.transform).toBe('perspective(3000px) rotateX(180deg) rotateY(0deg)')
 
-    // De vuelta al frente con otro arrastre hacia la izquierda… y uno corto no la mueve.
-    drag(132, 20)
+    // Hacia abajo gira para el otro lado.
+    drag([70, 20], [70, 180])
     expect(flipper()).toHaveAttribute('data-flipped', 'false')
-    drag(100, 80)
-    expect(flipper()).toHaveAttribute('data-flipped', 'false')
+    expect(flipper().style.transform).toBe('perspective(3000px) rotateX(0deg) rotateY(0deg)')
+    drag([70, 20], [70, 180])
+    expect(flipper().style.transform).toBe('perspective(3000px) rotateX(-180deg) rotateY(0deg)')
+  })
 
-    // Un tirón de 40 px (menos de un tercio de giro) pero en un instante: la da vuelta.
-    drag(20, 60)
+  it('en diagonal gira los dos ejes a la vez; y al soltar cada eje termina en su medio giro más cercano', () => {
+    render(<FlippableCard />)
+
+    const carta = screen.getByTestId('carta')
+
+    fireEvent.pointerDown(carta, { pointerId: 1, pointerType: 'touch', clientX: 20, clientY: 180 })
+    fireEvent.pointerMove(carta, { pointerId: 1, pointerType: 'touch', clientX: 76, clientY: 100 })
+    expect(flipper().style.transform).toBe('perspective(3000px) rotateX(90deg) rotateY(90deg)')
+
+    // Suelta con el costado pasado la mitad (a 3/4 de giro) y el de arriba abajo corto (a 1/4): queda dada vuelta de costado y no de arriba abajo.
+    fireEvent.pointerMove(carta, { pointerId: 1, pointerType: 'touch', clientX: 104, clientY: 160 })
+    fireEvent.pointerUp(carta, { pointerId: 1, pointerType: 'touch', clientX: 104, clientY: 160 })
+    expect(flipper().style.transform).toBe('perspective(3000px) rotateX(0deg) rotateY(180deg)')
     expect(flipper()).toHaveAttribute('data-flipped', 'true')
   })
 
-  it('lo vertical no es el gesto (desplaza la pantalla), un toque tampoco, y el clic que deja un arrastre no cuenta como toque', () => {
+  it('hacia la izquierda la gira hacia el otro lado; un arrastre corto la deja como estaba; un tirón rápido la da vuelta aunque sea corto, también de arriba abajo', () => {
     render(<FlippableCard />)
 
-    const carta = screen.getByTestId("carta")
+    drag([132, 100], [20, 100])
+    expect(flipper()).toHaveAttribute('data-flipped', 'true')
+    expect(flipper().style.transform).toBe('perspective(3000px) rotateX(0deg) rotateY(-180deg)')
 
-    fireEvent.pointerDown(carta, { pointerId: 1, pointerType: "touch", clientX: 70, clientY: 20 })
-    fireEvent.pointerMove(carta, { pointerId: 1, pointerType: "touch", clientX: 78, clientY: 140 })
-    fireEvent.pointerUp(carta, { pointerId: 1, pointerType: "touch", clientX: 78, clientY: 140 })
+    // De vuelta al frente con otro arrastre hacia la izquierda… y uno corto no la mueve.
+    drag([132, 100], [20, 100])
+    expect(flipper()).toHaveAttribute('data-flipped', 'false')
+    drag([100, 100], [80, 100])
+    drag([100, 100], [100, 85])
+    expect(flipper()).toHaveAttribute('data-flipped', 'false')
+
+    // Un tirón de 40 px (menos de un tercio de giro) pero en un instante: la da vuelta, de costado o de arriba abajo.
+    drag([20, 100], [60, 100])
+    expect(flipper()).toHaveAttribute('data-flipped', 'true')
+    drag([70, 60], [70, 100])
+    expect(flipper()).toHaveAttribute('data-flipped', 'false')
+  })
+
+  it('un toque no es el gesto, y el clic que deja un arrastre (hacia donde sea) no cuenta como toque', () => {
+    render(<FlippableCard />)
+
+    const carta = screen.getByTestId('carta')
+
+    fireEvent.pointerDown(carta, { pointerId: 1, pointerType: 'touch', clientX: 70, clientY: 100 })
+    fireEvent.pointerUp(carta, { pointerId: 1, pointerType: 'touch', clientX: 72, clientY: 101 })
     expect(flipper()).toHaveAttribute('data-flipped', 'false')
     expect(consumeClick()).toBe(false)
 
-    drag(20, 132)
+    drag([20, 100], [132, 100])
     expect(flipper()).toHaveAttribute('data-flipped', 'true')
     expect(consumeClick()).toBe(true)
     // Una sola vez: el toque siguiente sí cuenta.
     expect(consumeClick()).toBe(false)
+
+    drag([70, 180], [70, 20])
+    expect(consumeClick()).toBe(true)
   })
+
   it('la pista del gesto sale las primeras tres veces y después ya no', () => {
     window.localStorage.clear()
 
     for (let time = 0; time < 3; time += 1) {
       const { unmount } = render(<FlipHint />)
 
-      expect(screen.getByText('↔ Deslizá para dar vuelta')).toBeInTheDocument()
+      expect(screen.getByText('✥ Arrastrá para girarla')).toBeInTheDocument()
       unmount()
     }
 
     render(<FlipHint />)
-    expect(screen.queryByText(/Deslizá para dar vuelta/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Arrastrá para girarla/)).not.toBeInTheDocument()
   })
 })
