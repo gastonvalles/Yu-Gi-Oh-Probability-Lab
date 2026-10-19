@@ -22,6 +22,9 @@ import { applyLocale, t } from '../i18n'
 import type { ApiCardReference, CardEntry, CardRole } from '../types'
 
 // Datos propios: los de verdad cambian todos los días con el workflow.
+// El cambio de pestaña muestra lugares vacíos un segundo (probado en su propio archivo): acá no se espera.
+vi.mock('../app/use-brief-loading', () => ({ BRIEF_LOADING_MS: 1000, useBriefLoading: () => false }))
+
 vi.mock('../data/replays.json', () => ({
   default: {
     fetchedAt: '2026-10-12T07:00:00.000Z',
@@ -347,8 +350,8 @@ describe('Replays en inglés', () => {
     expect(screen.getByRole('radio', { name: 'With deck' })).toHaveTextContent('2')
     expect(screen.getByRole('radio', { name: 'All' })).toHaveTextContent('3')
     expect(screen.getByRole('searchbox', { name: 'Search replays' })).toHaveAttribute('placeholder', 'Event, player or deck')
-    expect(screen.getByText('YCS Paris 2026 · Final')).toBeInTheDocument()
-    expect(screen.getByText('YCS Paris 2026 · Round 13')).toBeInTheDocument()
+    expect(screen.getByText('Final · Timoti B. vs. Vladis B.')).toBeInTheDocument()
+    expect(screen.getByText('Round 13 · Usama B. vs. Pascal K.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Watch the replay Timoti B. vs. Vladis B., YCS Paris 2026 · Final' })).toBeInTheDocument()
     // Los decks están en los tres puntos de cada video: con dos decks abre el replay («View decks») y con uno abre ese deck («View deck»).
     fireEvent.click(screen.getByRole('button', { name: 'More options for Timoti B. vs. Vladis B.' }))
