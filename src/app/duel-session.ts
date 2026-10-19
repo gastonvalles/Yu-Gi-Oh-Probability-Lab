@@ -2,7 +2,7 @@ import type { DuelSave } from './duel-save'
 import { addChat, addGame, advanceSeries, cleanChat, coinWinner, dieWinner, duelFinished, duelResult, rpsOutcome, type ChatLine, NEW_SERIES, seriesScore, type DuelGame, type GameEntry, type Series, type RpsPick, type TossMethod } from './duel-games'
 import { freshTurnClock, runTurnClock, setTurnBank, startTurn, turnTimeLeft, type TurnClock } from './duel-clock'
 import { RateLimiter } from './duel-relay-rules'
-import { DEFAULT_SETTINGS, MAX_MARKS, NO_MARKS, PROTOCOL_VERSION, cleanName, encodeMessage, parseMessage, type DuelMessage, type DuelSettings, type MarkTarget, type Marks, type OpeningWire } from './duel-protocol'
+import { DEFAULT_SETTINGS, MAX_MARKS, NO_MARKS, type Activity, PROTOCOL_VERSION, cleanName, encodeMessage, parseMessage, type DuelMessage, type DuelSettings, type MarkTarget, type Marks, type OpeningWire } from './duel-protocol'
 import { duelTurnNumber, whoseTurn } from './duel-turn'
 import { createLifeState, lifeReducer, timerElapsed, type Duelist, type LifeState } from './life-calculator'
 import { CONTROL_ACTIONS, controlReactions } from './mat-control'
@@ -83,6 +83,8 @@ export interface DuelSnapshot {
   opening: { method: TossMethod | null; caller: Duelist | null; dice: { mine: number | null; theirs: number | null }; chooser: Duelist | null; ordered: boolean }
   /** El reloj de turnos (5 minutos por jugador y 2 más cada vez que el rival pasa el turno): público, lo que le queda a cada uno sale de `turnTimeLeft`. */
   turnClock: TurnClock
+  /** Lo que el rival está haciendo y se ve (mira una pila, elige cómo jugar una carta); null si nada. */
+  peerLook: Activity | null
   /** Lo que se escribieron los dos, de más viejo a más nuevo. */
   chat: readonly ChatLine[]
   /** Cuántos espectadores están mirando (hasta dos): sólo miran, no pueden hacer nada. */
@@ -131,6 +133,8 @@ export interface Duel {
   sendChat(text: string): void
   /** Rendirme: el duelo termina y gana el rival. */
   concede(): void
+  /** Lo que estoy haciendo y el rival ve (mirar mi deck, mi Extra Deck…), o `null` si nada. Sólo comunica; repetir lo mismo no manda nada. */
+  look(at: Activity | null): void
   /** Pedir la revancha (o aceptarla si el rival la pidió). */
   rematch(): void
   /** Marcar (o desmarcar) como objetivo algo del lado del rival: una carta suya (por el id que él le dio) o una de sus pilas, la mano incluida. Él lo ve en lo suyo. */
@@ -254,6 +258,9 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   let clockTurnNo: number | null = null
   let clockOwner: Duelist = 0
   let pendingBanks: readonly [number, number] | null = null
+  // Lo que hace cada uno y se ve (mirar una pila, elegir cómo jugar): lo suyo llega con su mensaje y lo mío se le repone cuando vuelve.
+  let peerLook: Activity | null = null
+  let myLook: Activity | null = null
   let expiryTimer: ReturnType<typeof setTimeout> | null = null
 
   const listeners = new Set<() => void>()
@@ -265,7 +272,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     return { match: settings.match, game: series.played + 1, wins: score.wins, winner: settings.match ? score.winner : null }
   }
 
-  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent: peerPresent && !stranger && (peerGreeted || !finishedForGood()), peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, timeUp: concededOnTime, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult, blocked: lastIsControl() }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, turnClock, ping: lastPing })
+  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent: peerPresent && !stranger && (peerGreeted || !finishedForGood()), peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, timeUp: concededOnTime, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult, blocked: lastIsControl() }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, turnClock, peerLook: peerPresent && !stranger ? peerLook : null, ping: lastPing })
 
   /**
    * Pone el reloj de turnos al día con la mesa: cuándo cambia el turno (el que pasa publica lo que le queda, y a quien le toca se le suman los 2 minutos), de quién corre y si está parado
@@ -662,6 +669,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
    * (en cuanto me salude me la manda): si no, a quien no recargó se le cerraría la mesa un instante y se le volvería a repartir la mano.
    */
   const forgetPeer = () => {
+    peerLook = null
     undoAsked = null
     dropUndoAsk(false)
     peerSeq = 0
@@ -914,6 +922,10 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
         return
       }
 
+      case 'look':
+        peerLook = message.at
+        return
+
       case 'marks':
         // Sus ids opacos se vuelven mis cartas reales; los que no son míos no cuentan.
         marksOnMine = { cards: message.cards.flatMap((id) => (ownIds[id] === undefined ? [] : [ownIds[id]!])), piles: message.piles }
@@ -941,6 +953,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     if (!present) {
       stranger = false
       peerGreeted = false
+      peerLook = null
     }
     // Un pedido de volver atrás no sobrevive a que el otro salga o vuelva.
     undoAsked = null
@@ -948,6 +961,9 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
 
     if (present) {
       sendHello()
+
+      // Si estaba mirando algo, el que llega se entera.
+      if (myLook !== null) send({ t: 'look', at: myLook })
     }
 
     emit()
@@ -1145,6 +1161,18 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
 
     concede() {
       playGame({ kind: 'concede' })
+    },
+
+    look(at) {
+      if (at === myLook) {
+        return
+      }
+
+      myLook = at
+
+      if (peerPresent) {
+        send({ t: 'look', at })
+      }
     },
 
     rematch() {

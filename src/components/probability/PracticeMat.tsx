@@ -40,7 +40,7 @@ import { mergeHandOrder } from '../../app/practice-hand-layout'
 import { createSavedCombo, readSavedCombos, renameSavedCombo, writeSavedCombos, type SavedCombo } from '../../app/saved-combos'
 import { supportsAdditiveAnimation } from '../../app/motion'
 import { matStepCards } from '../../app/mat-steps'
-import type { Marks } from '../../app/duel-protocol'
+import type { Activity, Marks } from '../../app/duel-protocol'
 import { riffle } from '../../app/shuffle-fx'
 import { useCardFlights } from '../../app/use-card-flights'
 import { useMatView } from '../../app/mat-view'
@@ -157,6 +157,8 @@ export interface DuelMatLink {
   cover?: ReactNode
   /** Un panel fijo a la derecha de la mesa, sólo en escritorio (el chat): la mesa le deja 20rem. */
   aside?: ReactNode
+  /** Lo que estoy haciendo y el rival tiene que ver (mirar mi deck, mi Extra Deck, mi cementerio o lo desterrado; elegir cómo jugar una carta); `null` si nada. Se llama sólo cuando cambia. */
+  onActivity?: (activity: Activity | null) => void
   /** El reloj de turnos: va en el centro del campo, entre las dos Zonas Extra (la casilla `p2`, que en un duelo no lleva nada). */
   clock?: ReactNode
 }
@@ -452,6 +454,13 @@ export function PracticeMat({
   const [panelOpen, setPanelOpen] = useState(false)
   const [combos, setCombos] = useState<SavedCombo[]>(() => readSavedCombos())
   const [picking, setPicking] = useState<Picking | null>(null)
+  // Lo que se hace y el rival ve: mirar una pila (el visor abierto) o elegir cómo jugar una carta (materiales, Sacrificios, zona).
+  const activity: Activity | null = viewer !== null && viewer !== 'hand' ? viewer : picking !== null ? 'choosing' : null
+  const onActivity = duel?.onActivity
+
+  useEffect(() => {
+    onActivity?.(activity)
+  }, [activity, onActivity])
   // Poner o quitar contadores: las cartas del campo se encienden y cada toque suma o resta uno, hasta tocar "Listo" (no es un `picking` porque sigue después de cada jugada).
   const [counterMode, setCounterMode] = useState<1 | -1 | null>(null)
   // La carta que acaba de destacarse (activada, mostrada, declarada o marcada como objetivo) destella un instante; la `key` repite el destello si pasa dos veces seguidas.

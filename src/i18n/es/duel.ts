@@ -372,6 +372,11 @@ export const duel = {
   'duel.chat.quickTitle': 'Mensajes rápidos',
   'duel.signal.thinking': 'Pensando…',
   'duel.signal.good': 'Continuá',
+  'duel.look.deck': '{name} está buscando en su Deck',
+  'duel.look.extra': '{name} está mirando su Extra Deck',
+  'duel.look.gy': '{name} está mirando su cementerio',
+  'duel.look.banished': '{name} está mirando sus cartas desterradas',
+  'duel.look.choosing': '{name} está eligiendo cómo jugar una carta',
   'duel.turnClock.label': 'Reloj de turnos: a {turn} le quedan {left}; a {other}, {otherLeft}',
 
   // El turno y las fases del rival.

@@ -68,6 +68,10 @@ export const NO_MARKS: Marks = { cards: [], piles: [] }
 /** Algo que se puede marcar del lado del rival. */
 export type MarkTarget = { card: string } | { pile: MatPile }
 
+/** Lo que alguien está haciendo y el otro puede ver: mirando su deck, su Extra Deck, su cementerio o lo desterrado, o eligiendo cómo jugar una carta (materiales, zona, Sacrificios). `null` es nada de eso. */
+export const ACTIVITIES = ['deck', 'extra', 'gy', 'banished', 'choosing'] as const
+export type Activity = (typeof ACTIVITIES)[number]
+
 /** Cuántas cartas se pueden tener marcadas a la vez. */
 export const MAX_MARKS = 30
 
@@ -98,6 +102,7 @@ interface ClockWire {
  * - `chat`: una línea del chat (`n` cuenta las mías para no repetir ninguna).
  * - `ping`: señalo algo un instante (una carta por su id opaco, o una pila), de mi lado (`mine`) o del lado de quien lo recibe (`yours`). Sólo comunica: no toca la mesa, no entra en las jugadas ni en Deshacer,
  *   no se repone al reconectar y quien lo recibe lo muestra un rato y se olvida. `n` cuenta los míos para no repetir ninguno.
+ * - `look`: lo que estoy haciendo (mirar una pila, elegir cómo jugar una carta) o `null` si nada: sólo comunica, no toca la mesa; quien lo recibe lo muestra mientras dure y se olvida cuando me voy.
  * - `marks`: todo lo que tengo marcado como objetivo del lado de quien lo recibe (cartas por su id opaco, y pilas); siempre el conjunto entero, así repetirlo no cambia nada y reconectar lo repone.
  * - `resync`: me perdí algo, mandame un `sync`.
  */
@@ -118,6 +123,7 @@ export type DuelMessage =
   | { t: 'chat'; n: number; text: string }
   | { t: 'marks'; cards: string[]; piles: MatPile[] }
   | { t: 'ping'; n: number; at: 'yours' | 'mine'; card?: string; pile?: MatPile }
+  | { t: 'look'; at: Activity | null }
   | { t: 'resync' }
 
 export function encodeMessage(message: DuelMessage): string {
@@ -491,6 +497,9 @@ export function parseMessage(text: unknown): DuelMessage | null {
 
       return { t: 'ping', n: raw.n, at: raw.at, ...(hasCard ? { card: raw.card as string } : { pile: raw.pile as MatPile }) }
     }
+
+    case 'look':
+      return raw.at === null ? { t: 'look', at: null } : (ACTIVITIES as readonly unknown[]).includes(raw.at) ? { t: 'look', at: raw.at as Activity } : null
 
     case 'marks': {
       const piles = raw.piles

@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 
 import { duelResult } from '../../app/duel-games'
+import type { Activity } from '../../app/duel-protocol'
 import type { Duel, DuelSnapshot } from '../../app/duel-session'
 import type { SocketStatus } from '../../app/duel-socket'
 import { duelTurnNumber } from '../../app/duel-turn'
@@ -74,9 +75,10 @@ interface DuelBarProps {
 
 /**
  * Los avisos de atención entre los dos jugadores, que nunca bloquean nada (antes el permiso para volver atrás era un diálogo que tapaba la mesa). Uno a la vez, el más urgente primero:
- * el pedido del rival de volver atrás (hay que contestar), el tuyo (esperando) y cómo terminó.
+ * el pedido del rival de volver atrás (hay que contestar), el tuyo (esperando), cómo terminó y, lo último, lo que está haciendo el rival (mira su deck o su Extra Deck, elige cómo jugar una carta).
  */
 export type LaneNotice =
+  | { kind: 'looking'; what: Activity }
   | { kind: 'undoAsked'; onAllow: () => void; onDeny: () => void }
   | { kind: 'undoAsking' }
   | { kind: 'undoResult'; result: 'denied' | 'expired' }
@@ -86,8 +88,26 @@ export type LaneNotice =
  * el turno con la fase en que va quien juega, y cómo va la conexión. Lo propio (tus puntos de vida, el chat, los dados, deshacer) está abajo, al alcance
  * del pulgar. Salir pide confirmación y queda en la esquina de arriba, lejos de donde se toca jugando.
  */
+/** Qué dice el aviso de lo que hace el rival, según lo que sea. */
+const LOOK_TEXT = {
+  deck: 'duel.look.deck',
+  extra: 'duel.look.extra',
+  gy: 'duel.look.gy',
+  banished: 'duel.look.banished',
+  choosing: 'duel.look.choosing',
+} as const satisfies Record<Activity, string>
+
 /** El aviso sobre la línea del registro: el pedido de volver atrás (del rival, o el tuyo) y cómo terminó. No tapa el campo ni la mano y no bloquea nada. */
 function LaneBanner({ lane, rivalName }: { lane: LaneNotice; rivalName: string }) {
+  if (lane.kind === 'looking') {
+    return (
+      <div role="status" data-lane="looking" className="absolute inset-0 flex items-center gap-2 rounded-card border border-border-subtle bg-card-background px-3 text-micro font-semibold leading-tight text-muted">
+        <Icon name="eye" size={16} className="shrink-0 text-info-soft" />
+        <span className="line-clamp-2 min-w-0 flex-1">{t(LOOK_TEXT[lane.what], { name: rivalName })}</span>
+      </div>
+    )
+  }
+
   const asked = lane.kind === 'undoAsked'
 
   return (
