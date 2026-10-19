@@ -10,7 +10,7 @@ interface MobileTopBarProps {
   onMenu: () => void
   /** El nombre de la pantalla (lo que dice el menú: «Lab», «Replays»); sin él, la marca. */
   title?: string
-  /** Abre el buscador de cartas; sin él (el builder ya tiene el suyo, el duelo no busca) no hay botón. */
+  /** Abre el buscador de la app (pantallas, herramientas y cartas); sin él no hay botón. */
   onSearch?: () => void
   className?: string
 }
@@ -24,7 +24,7 @@ export function MobileTopBar({ menuOpen, onMenu, title, onSearch, className }: M
       </IconButton>
       {title ? <span className="min-w-0 flex-1 truncate text-lead font-bold text-foreground">{title}</span> : <AppBrand />}
       {onSearch ? (
-        <IconButton aria-label={t('shell.search.title')} className="ml-auto" onClick={onSearch}>
+        <IconButton aria-label={t('shell.find.open')} aria-haspopup="dialog" className="ml-auto" onClick={onSearch}>
           <Icon name="search" size={22} />
         </IconButton>
       ) : null}

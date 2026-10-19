@@ -213,7 +213,7 @@ export function DeckModeScreen() {
     }
   }, [activeStep, closeCardDetail])
 
-  // El buscador se cierra al cambiar de pantalla; `/` y Ctrl/Cmd+K lo abren (salvo escribiendo en un campo o con otro diálogo abierto).
+  // El buscador de cartas se cierra al cambiar de pantalla. Se abre desde el buscador de la app (`/` y Ctrl/Cmd+K, en el armazón) o su resultado «Buscar cartas».
   useEffect(() => {
     setSearchOpen(false)
   }, [activeStep])
@@ -223,28 +223,6 @@ export function DeckModeScreen() {
     if (!searchAvailable) {
       setSearchOpen(false)
     }
-  }, [searchAvailable])
-
-  useEffect(() => {
-    if (!searchAvailable) {
-      return
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const target = event.target
-      const typing = target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
-      const slash = event.key === '/' && !event.ctrlKey && !event.metaKey && !event.altKey && !typing
-      const palette = event.key.toLowerCase() === 'k' && (event.ctrlKey || event.metaKey)
-
-      if ((slash || palette) && !document.querySelector('[aria-modal="true"]')) {
-        event.preventDefault()
-        setSearchOpen(true)
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-
-    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [searchAvailable])
 
   const handleStepChange = useCallback((nextStep: DeckWorkflowStepKey) => {
@@ -422,7 +400,7 @@ export function DeckModeScreen() {
 
   return (
     <>
-      <AppShell groups={navGroups} activeKey={activeStep} onSelect={handleNavSelect} onSheetOpen={refreshSheetData} contentScrollable={!isDeckBuilderStep && !isPracticeStep && !isDuelStep && !isLifeStep} immersive={isPracticeStep || (isDuelStep && (duelTable || isDesktopDeckBuilder))} contentScrollRef={contentScrollRef} searchAvailable={searchAvailable}>
+      <AppShell groups={navGroups} activeKey={activeStep} onSelect={handleNavSelect} onSheetOpen={refreshSheetData} contentScrollable={!isDeckBuilderStep && !isPracticeStep && !isDuelStep && !isLifeStep} immersive={isPracticeStep || (isDuelStep && (duelTable || isDesktopDeckBuilder))} navbar={!(isPracticeStep || (isDuelStep && duelTable))} contentScrollRef={contentScrollRef} searchAvailable={searchAvailable}>
         {mainContent}
       </AppShell>
 
