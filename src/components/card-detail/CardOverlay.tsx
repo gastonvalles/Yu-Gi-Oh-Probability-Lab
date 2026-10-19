@@ -325,11 +325,6 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
               <CardArtPicker arts={arts} selectedId={art?.id ?? null} onSelect={setArtId} fallbackUrl={card?.imageUrlSmall ?? card?.imageUrl ?? null} direction="column" className="max-h-full" />
             </div>
           ) : null}
-          {onOpenPrices ? (
-            <div className="pointer-events-auto absolute -right-12 bottom-0 group-data-[zoomed=true]:hidden">
-              <CardPricesButton onClick={onOpenPrices} />
-            </div>
-          ) : null}
           {/* Las flechas van afuera de la carta y de lo que va a sus costados (artes y precios), en el centro del alto de la carta: en el celular, en los bordes de la pantalla. */}
           {hasNavigation && !wide ? (
             <div className="pointer-events-none absolute left-1/2 top-0 flex h-full w-[min(100vw,calc(100%+12.5rem))] -translate-x-1/2 items-center justify-between pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] group-data-[zoomed=true]:hidden">
@@ -354,6 +349,12 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
         >
           {/* El panel dice de qué impresión es el arte que se ve: al cambiar de arte (otra rareza, otro set) cambia también lo que dice. */}
           <SelectedPrintingContext.Provider value={(art as ArtChoice | undefined)?.printing}>{children}</SelectedPrintingContext.Provider>
+          {/* El $ de los precios, en la esquina de abajo a la derecha del texto de la carta: en el flujo, abajo del todo, así no tapa el texto ni las acciones. */}
+          {onOpenPrices ? (
+            <div className="-mb-2 -mr-2 flex flex-none justify-end">
+              <CardPricesButton onClick={onOpenPrices} />
+            </div>
+          ) : null}
         </section>
       </div>
 

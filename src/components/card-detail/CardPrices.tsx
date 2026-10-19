@@ -41,14 +41,15 @@ export function CardPricesButton({ onClick, className }: { onClick: () => void; 
       size="lg"
       aria-label={t('search.prices.button')}
       title={t('search.prices.button')}
-      className={className}
+      // Un $ blanco, sin círculo, que se ilumina en ámbar al tocarlo.
+      className={cx('hover:text-info! active:text-info! focus-visible:text-info!', className)}
       onClick={(event) => {
         // Está sobre un fondo que se cierra al tocarlo (y al lado de una carta que se agranda): acá sólo se abren los precios.
         event.stopPropagation()
         onClick()
       }}
     >
-      <Icon name="dollar" />
+      <Icon name="dollar-sign" size={24} strokeWidth={2} />
     </IconButton>
   )
 }

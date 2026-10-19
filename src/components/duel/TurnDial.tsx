@@ -54,7 +54,7 @@ export function TurnDial({ clock, owner, me, names }: TurnDialProps) {
 
   return (
     <div role="timer" aria-label={label} data-testid="turn-dial" data-owner={owner} data-urgent={urgent ? 'true' : undefined} className="pointer-events-none relative grid size-full place-items-center">
-      <div className="relative aspect-square h-[78%] max-h-full">
+      <div className="relative aspect-square h-[62%] max-h-full min-[1101px]:h-[78%]">
         <svg viewBox="0 0 100 100" className="size-full -rotate-90" aria-hidden="true">
           <circle cx="50" cy="50" r={RADIUS} fill="none" strokeWidth="8" className="stroke-tint/12" />
           {ended ? null : (
