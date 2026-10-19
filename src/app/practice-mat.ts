@@ -72,7 +72,7 @@ export type MatAction =
   | { type: 'place'; id: string; zone: MatSpot; index: number; pos: MatPos; how?: MatSummon; shuffle?: number }
   /** Invocación Normal (o Colocar) de un monstruo de Nivel 5+: los sacrificios van al cementerio y la carta sale a la zona. */
   | { type: 'tribute'; id: string; tributes: string[]; zone: MatZone; index: number; pos: MatPos }
-  /** Invocación desde el Extra Deck con materiales del campo: Fusión, Sincronía y Enlace los mandan al cementerio; Xyz los pone debajo. */
+  /** Invocación desde el Extra Deck, con materiales del campo o sin ninguno: Fusión, Sincronía y Enlace los mandan al cementerio; Xyz los pone debajo. Sin materiales sale igual (como cualquier Invocación Especial). */
   | { type: 'summon'; id: string; how: ExtraSummon; materials: string[]; zone: MatZone; index: number; pos: MatPos }
   /** Pone la carta como material Xyz debajo de otra que está en el campo. */
   | { type: 'attach'; id: string; to: string }
@@ -396,7 +396,7 @@ export function matReducer(state: MatState, action: MatAction): MatState {
     }
 
     case 'summon': {
-      if (action.materials.length === 0 || !state.extra.includes(action.id) || action.materials.includes(action.id)) {
+      if (!state.extra.includes(action.id) || action.materials.includes(action.id)) {
         return state
       }
 
@@ -605,6 +605,9 @@ function describePlay(before: MatState, action: MatAction, name: (id: string) =>
     case 'summon': {
       const params = { summon: t(SUMMON_NAME_KEY[action.how]), card: name(action.id), materials: listNames(action.materials.map(name)) }
 
+      // Sin materiales es una Invocación Especial a secas.
+      if (action.materials.length === 0) return t(action.pos === 'def' ? 'practice.step.summonNoneDefense' : 'practice.step.summonNone', params)
+
       return t(action.pos === 'def' ? 'practice.step.summonDefense' : 'practice.step.summon', params)
     }
 
@@ -790,7 +793,7 @@ export interface MatMenuItem {
   tributes?: number
   /** Segundo paso del menú (p. ej. "¿En ataque o en defensa?"): la jugada es la del hijo elegido. */
   choices?: MatMenuItem[]
-  /** Invocación desde el Extra: primero se eligen los materiales en el campo y se confirma con un botón. */
+  /** Invocación desde el Extra: se pueden elegir materiales en el campo (los que sean, o ninguno) y se confirma con un botón, o se toca una casilla libre para invocar ahí. */
   materials?: true
   /** Mandar la carta al deck "al azar": la mesa le pone la semilla al elegirla (se pone y se baraja todo el deck). */
   shuffleDeck?: true

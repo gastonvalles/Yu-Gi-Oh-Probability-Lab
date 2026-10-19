@@ -300,7 +300,7 @@ const artOf = (card: MatCard) => card.art ?? card.apiCard?.imageUrlSmall ?? card
 type Picking =
   | { kind: 'zone'; label: string; action: Extract<MatAction, { type: 'place' | 'token' | 'tribute' | 'summon' }>; targets: MatTarget[] }
   | { kind: 'tributes'; label: string; required: number; chosen: string[]; action: Extract<MatAction, { type: 'tribute' }>; zone?: MatTarget; dropped?: boolean }
-  /** Invocación desde el Extra: se tocan los materiales en el campo (los que sean) y se confirma con un botón. */
+  /** Invocación desde el Extra: se tocan los materiales en el campo (los que sean, o ninguno) y se confirma con un botón; o se toca una casilla libre, iluminada, para invocar ahí. */
   | { kind: 'materials'; label: string; chosen: string[]; action: Extract<MatAction, { type: 'summon' }>; zone?: MatTarget; dropped?: boolean }
 
 const NO_ART = () => null
@@ -807,6 +807,12 @@ export function PracticeMat({
   )
 
   const pickZone = (zone: MatSpot, index: number) => {
+    // Invocando desde el Extra, tocar una casilla libre invoca ahí con los materiales que haya (o sin ninguno).
+    if (picking?.kind === 'materials') {
+      if (!picking.zone && (zone === 'mz' || zone === 'emz')) summonAfter(picking.label, { ...picking.action, materials: picking.chosen }, picking.chosen, { zone, index })
+      return
+    }
+
     if (picking?.kind !== 'zone') return
 
     if (picking.action.type === 'token' || picking.action.type === 'tribute' || picking.action.type === 'summon') {
@@ -857,7 +863,8 @@ export function PracticeMat({
   }
 
   const confirmMaterials = () => {
-    if (picking?.kind === 'materials' && picking.chosen.length > 0) summonAfter(picking.label, { ...picking.action, materials: picking.chosen }, picking.chosen, picking.zone)
+    // Sin materiales también se invoca: los materiales son una opción, no un requisito.
+    if (picking?.kind === 'materials') summonAfter(picking.label, { ...picking.action, materials: picking.chosen }, picking.chosen, picking.zone)
   }
 
   /** La ficha en esa posición: en la zona donde se soltó, en la única libre, o la mesa pide tocar una zona (de las principales: una ficha no viene del Extra). */
@@ -1200,6 +1207,8 @@ export function PracticeMat({
   const choosingOnField = picking?.kind === 'tributes' || picking?.kind === 'materials' || counterMode !== null
   // Para Sacrificios y materiales, los monstruos; para un contador, cualquier carta del campo (y, al quitar, las que tienen).
   const tributeCandidates = counterMode !== null ? fieldCards(state).filter((placed) => counterMode > 0 || placed.counters > 0).map((placed) => placed.id) : choosingOnField ? monstersOnField(state) : []
+  // Eligiendo materiales (y si la carta no se soltó ya en una zona), las casillas libres se iluminan: tocar una invoca ahí, con los materiales que haya o sin ninguno.
+  const materialZones = picking?.kind === 'materials' && !picking.zone ? freeTargets(state, monsterZones(true), duel?.rivalEmz) : []
   // Eligiendo la zona, los Sacrificios o materiales ya confirmados siguen marcados: su zona se libera y también se puede elegir.
   const leaving = picking?.kind === 'zone' ? (picking.action.type === 'tribute' ? picking.action.tributes : picking.action.type === 'summon' ? picking.action.materials : []) : []
   const chosenLabel = picking?.kind === 'materials' || (picking?.kind === 'zone' && picking.action.type === 'summon') ? t('practice.mat.chosenMaterial') : t('practice.mat.chosenTribute')
@@ -1218,7 +1227,7 @@ export function PracticeMat({
     const drop = dropIdOf(spot, index)
     const label = zoneLabelOf(spot, index)
     const gem = spot === 'st' ? PENDULUM_GEM[index] : undefined
-    const pickableZone = picking?.kind === 'zone' && picking.targets.some((target) => target.zone === spot && target.index === index)
+    const pickableZone = (picking?.kind === 'zone' && picking.targets.some((target) => target.zone === spot && target.index === index)) || materialZones.some((target) => target.zone === spot && target.index === index)
     const pickableTribute = choosingOnField && placed !== null && tributeCandidates.includes(placed.id)
     const chosen = placed !== null && (((picking?.kind === 'tributes' || picking?.kind === 'materials') && picking.chosen.includes(placed.id)) || leaving.includes(placed.id))
 
@@ -1438,7 +1447,7 @@ export function PracticeMat({
             {counterMode !== null ? t('practice.mat.pickDone') : t('common.cancel')}
           </Button>
           {picking?.kind === 'materials' ? (
-            <Button variant="primary" size="sm" className="px-3" disabled={picking.chosen.length === 0} onClick={confirmMaterials}>
+            <Button variant="primary" size="sm" className="px-3" onClick={confirmMaterials}>
               {t('practice.mat.confirm')}
             </Button>
           ) : null}

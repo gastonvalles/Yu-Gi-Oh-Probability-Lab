@@ -73,7 +73,10 @@ describe('los efectos de una jugada', () => {
       showcase: { ids: ['x1'], kind: 'xyz', flip: true },
     })
     expect(matEffects(field, { type: 'summon', id: 'x2', how: 'link', materials: ['a1'], zone: 'mz', index: 2, pos: 'atk' })).toMatchObject({ landing: { tone: 'link' } })
-    expect(matEffects(field, { type: 'summon', id: 'x1', how: 'fusion', materials: [], zone: 'emz', index: 0, pos: 'atk' })).toEqual({})
+    // Sin materiales también se invoca (los materiales son una opción): sale con el color de su tipo.
+    expect(matEffects(field, { type: 'summon', id: 'x1', how: 'fusion', materials: [], zone: 'emz', index: 0, pos: 'atk' })).toMatchObject({ landing: { tone: 'fusion' } })
+    // Una carta que no está en el Extra no se invoca desde ahí: sin efecto.
+    expect(matEffects(field, { type: 'summon', id: 'a1', how: 'fusion', materials: [], zone: 'emz', index: 0, pos: 'atk' })).toEqual({})
 
     expect(matEffects(field, { type: 'tribute', id: 'c1', tributes: ['a1', 'a2'], zone: 'mz', index: 4, pos: 'atk' })).toEqual({
       landing: { spot: 'mz', index: 4, tone: 'normal', flies: true },
