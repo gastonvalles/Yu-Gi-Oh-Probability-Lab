@@ -178,6 +178,7 @@ por tandas.
 - Invocar del Extra Deck sin materiales (siguen siendo una opción y se iluminan las casillas).
 - **Barra y mesa del duelo (#379–#383):** reloj de turnos, mensajes de lo que hace el rival (mira su deck, su Extra…), las fases en un solo botón junto al reloj de turnos, el + a su altura, deshacer junto a Pasar turno, ventana grande, y el detalle de la carta en escritorio (carta a la izquierda, texto a la derecha).
 - **Sonidos del duelo (#384):** efectos hechos con osciladores para cada jugada, vidas, dado, moneda y resultado (los del rival también), con interruptor en «Más opciones» (`app/sfx.ts`).
+- **Menú lateral como el de YouTube (2026-10-19):** hamburguesa fija arriba que abre y contrae el menú (siempre a la vista), todo lo demás scrollea con la barra `scroll-yt`, y al final van las tres redes, la privacidad y la autoría (`SidebarLegal`); **se eliminó el pie `AppFooter` de todas las vistas** (en el celular lo legal sigue en el cajón). Ver `docs/design-system.md`.
 - **Laterales del campo (#385):** en escritorio ancho, vidas, relojes, turno, íconos, avisos y toasts van a los costados del campo (`app/duel-rails.ts`, `app/toast-box.ts`); en una ventana angosta sigue la barra de siempre. Lo que se anima sobre el campo (cartel de fase, cartas grandes del rival, espada, moneda) sigue encima.
 
 **Para hacer (2026-10-19)**

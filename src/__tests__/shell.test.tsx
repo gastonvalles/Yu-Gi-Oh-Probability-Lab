@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { TAB_BAR_PX, shellInsetsFor, useShellInsets } from '../app/shell-layout'
 import { buildAppNavGroups, buildDeckWorkflowNavigationItems, isDeckWorkflowStepKey } from '../components/deck-mode/deck-workflow-navigation'
-import { AppFooter } from '../components/shell/AppFooter'
 import { AppShell } from '../components/shell/AppShell'
 import { AppSidebar } from '../components/shell/AppSidebar'
 import { GroupSheet } from '../components/shell/GroupSheet'
@@ -154,16 +153,55 @@ describe('el menú lateral', () => {
 
     const aside = document.querySelector('aside')
     expect(aside).toHaveAttribute('data-collapsed', 'false')
-    // Abierto lleva el idioma.
+    // Abierto lleva el idioma y la hamburguesa, arriba, anuncia que el menú está abierto.
     expect(screen.getByRole('group', { name: 'Idioma' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Contraer menú' })).toHaveAttribute('aria-expanded', 'true')
     fireEvent.click(screen.getByRole('button', { name: 'Contraer menú' }))
     expect(onToggle).toHaveBeenCalledTimes(1)
 
     rerender(<AppSidebar groups={GROUPS} activeKey="export" onSelect={() => {}} collapsed onToggleCollapsed={onToggle} />)
     expect(aside).toHaveAttribute('data-collapsed', 'true')
-    // Contraído el idioma se desvanece y no se puede tocar ni enfocar (el renglón conserva su alto: la flecha de abajo no se mueve).
+    // Contraído el idioma se desvanece y no se puede tocar ni enfocar (el renglón conserva su alto); la hamburguesa sigue a la vista.
     expect(screen.getByRole('group', { name: 'Idioma' }).parentElement).toHaveClass('group-data-[collapsed=true]/sidebar:invisible', 'group-data-[collapsed=true]/sidebar:opacity-0')
     expect(screen.getByRole('button', { name: 'Expandir menú' })).toHaveAttribute('aria-expanded', 'false')
+  })
+})
+
+describe('el menú lateral, como el de YouTube', () => {
+  it('la hamburguesa va arriba de lo que scrollea, fuera de él, y no se va al contraer; lo que scrollea tiene la barra fina de YouTube', () => {
+    const { rerender } = render(<AppSidebar groups={GROUPS} activeKey="export" onSelect={() => {}} collapsed={false} onToggleCollapsed={() => {}} />)
+
+    const burger = () => screen.getByRole('button', { name: /^(Contraer|Expandir) menú$/ })
+    const scroller = document.querySelector('.scroll-yt')!
+
+    expect(scroller).toHaveClass('overflow-y-auto')
+    expect(scroller).not.toContainElement(burger())
+    expect(scroller).toContainElement(screen.getByRole('navigation', { name: 'Navegación principal' }))
+    // La marca está al lado de la hamburguesa y se desvanece al contraer; la hamburguesa no.
+    expect(burger().closest('div')!.lastElementChild).toHaveClass('group-data-[collapsed=true]/sidebar:invisible', 'group-data-[collapsed=true]/sidebar:opacity-0')
+
+    rerender(<AppSidebar groups={GROUPS} activeKey="export" onSelect={() => {}} collapsed onToggleCollapsed={() => {}} />)
+    expect(burger()).toHaveAccessibleName('Expandir menú')
+    expect(burger()).toBeVisible()
+  })
+
+  it('al final del menú van las redes arriba y la privacidad debajo, con la autoría; contraído se desvanece y no se puede tocar; el menú no tiene botón de contraer abajo', () => {
+    render(<AppSidebar groups={GROUPS} activeKey="export" onSelect={() => {}} collapsed={false} onToggleCollapsed={() => {}} />)
+
+    const scroller = document.querySelector('.scroll-yt')!
+    const legal = scroller.lastElementChild as HTMLElement
+
+    expect(legal).toHaveClass('mt-auto', 'group-data-[collapsed=true]/sidebar:invisible', 'group-data-[collapsed=true]/sidebar:opacity-0')
+    expect(within(legal).getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
+      'https://www.linkedin.com/in/gastonvalles/',
+      'https://www.instagram.com/gaston_valles/',
+      'https://github.com/gastonvalles',
+      '/privacidad.html',
+    ])
+    expect(legal).toHaveTextContent(`© ${new Date().getFullYear()} Gastón Valles`)
+    expect(legal).toHaveTextContent('Sitio no oficial. Yu-Gi-Oh! es una marca de Konami.')
+    // Una sola hamburguesa: la de arriba (antes había una flecha de contraer al final del menú).
+    expect(screen.getAllByRole('button', { name: 'Contraer menú' })).toHaveLength(1)
   })
 })
 
@@ -405,7 +443,7 @@ describe('las hojas del celular, como en el lienzo', () => {
   })
 })
 
-describe('la barra de arriba, el pie y los títulos', () => {
+describe('la barra de arriba y los títulos', () => {
   it('la hamburguesa anuncia si el menú está abierto', () => {
     const onMenu = vi.fn()
     const { rerender } = render(<MobileTopBar menuOpen={false} onMenu={onMenu} />)
@@ -417,20 +455,6 @@ describe('la barra de arriba, el pie y los títulos', () => {
 
     rerender(<MobileTopBar menuOpen onMenu={onMenu} />)
     expect(screen.getByRole('button', { name: 'Abrir el menú' })).toHaveAttribute('aria-expanded', 'true')
-  })
-
-  it('el pie lleva la autoría, el aviso de sitio no oficial, las redes y la privacidad', () => {
-    render(<AppFooter />)
-
-    const footer = screen.getByRole('contentinfo')
-    expect(footer).toHaveTextContent(`© ${new Date().getFullYear()} Gastón Valles`)
-    expect(footer).toHaveTextContent('Sitio no oficial. Yu-Gi-Oh! es una marca de Konami.')
-    expect(within(footer).getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
-      'https://www.linkedin.com/in/gastonvalles/',
-      'https://www.instagram.com/gaston_valles/',
-      'https://github.com/gastonvalles',
-      '/privacidad.html',
-    ])
   })
 
   it('cada nivel de título es su etiqueta, con el estilo de su nivel', () => {
@@ -456,7 +480,7 @@ describe('la barra de arriba, el pie y los títulos', () => {
 })
 
 describe('el armazón', () => {
-  it('lleva el contenido, el pie y el menú una sola vez; la hamburguesa abre el menú y la barra de abajo abre la hoja de un grupo: elegir cierra', () => {
+  it('lleva el contenido y el menú una sola vez, sin pie; la hamburguesa abre el menú y la barra de abajo abre la hoja de un grupo: elegir cierra', () => {
     const onSelect = vi.fn()
     render(
       <AppShell groups={GROUPS} activeKey="categorization" onSelect={onSelect} contentScrollable>
@@ -465,7 +489,7 @@ describe('el armazón', () => {
     )
 
     expect(screen.getByText('Contenido de la pantalla')).toBeInTheDocument()
-    expect(screen.getAllByRole('contentinfo')).toHaveLength(1)
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument()
     // El menú lateral y la barra de abajo están los dos en el DOM: el CSS muestra el que toca según el ancho.
     expect(screen.getAllByRole('navigation', { name: 'Navegación principal' })).toHaveLength(2)
 
@@ -482,7 +506,7 @@ describe('el armazón', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('el pie queda afuera del recuadro que scrollea, y el envoltorio de la pantalla no crece con el contenido: la pantalla scrollea y el pie queda fijo', () => {
+  it('el envoltorio de la pantalla no crece con el contenido: la pantalla scrollea dentro de su recuadro', () => {
     const scrollRef = createRef<HTMLDivElement>()
 
     render(
@@ -495,12 +519,11 @@ describe('el armazón', () => {
 
     expect(scroller).toHaveClass('min-[1101px]:overflow-y-auto')
     expect(scroller).toContainElement(screen.getByText('Pantalla'))
-    expect(scroller).not.toContainElement(screen.getByRole('contentinfo'))
     // El envoltorio de la pantalla mide lo que el recuadro en escritorio, así una pantalla puede ocupar justo ese alto (`h-full`).
     expect(screen.getByText('Pantalla').parentElement).toHaveClass('min-[1101px]:min-h-0')
   })
 
-  it('una vista completa (la práctica) no lleva pie y, en el celular, mide justo el alto de la ventana: no hay scroll de página', () => {
+  it('una vista completa (la práctica), en el celular, mide justo el alto de la ventana: no hay scroll de página', () => {
     const { container } = render(
       <AppShell groups={GROUPS} activeKey="practice" onSelect={() => {}} immersive>
         <p>Pantalla</p>
@@ -508,7 +531,6 @@ describe('el armazón', () => {
     )
 
     expect(screen.getByText('Pantalla')).toBeInTheDocument()
-    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument()
     expect(container.firstElementChild).toHaveClass('max-[1100px]:h-dvh', 'max-[1100px]:overflow-hidden')
   })
 
@@ -607,7 +629,7 @@ describe('el armazón', () => {
     expect(shellInsetsFor(false, false)).toEqual({ left: 0, bottom: 80 })
     document.documentElement.style.fontSize = ''
     expect(shellInsetsFor(false, false, false)).toEqual({ left: 0, bottom: 0 })
-    // En escritorio manda el menú lateral y el pie, con barra o sin ella.
+    // En escritorio manda el menú lateral (no hay pie), con barra o sin ella.
     expect(shellInsetsFor(false, true)).toEqual(shellInsetsFor(false, true, false))
     expect(shellInsetsFor(false, true).left).toBeGreaterThan(0)
   })
@@ -664,7 +686,7 @@ describe('el armazón', () => {
     expect(document.querySelector('aside')).toHaveAttribute('data-collapsed', 'true')
   })
 
-  it('avisa cuánto espacio ocupa (menú lateral y pie) para que los botones flotantes y la mascota lo dejen libre', () => {
+  it('avisa cuánto espacio ocupa (el menú lateral) para que los botones flotantes y la mascota lo dejen libre', () => {
     // Ventana de escritorio: el corte de 1101 px de la app.
     window.matchMedia = ((query: string) => ({ matches: query === '(min-width: 1101px)', media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
 
@@ -681,11 +703,11 @@ describe('el armazón', () => {
       </>,
     )
 
-    expect(screen.getByTestId('insets')).toHaveTextContent('{"left":240,"bottom":64}')
+    expect(screen.getByTestId('insets')).toHaveTextContent('{"left":240,"bottom":0}')
     act(() => {
       fireEvent.click(screen.getByRole('button', { name: 'Contraer menú' }))
     })
-    expect(screen.getByTestId('insets')).toHaveTextContent('{"left":76,"bottom":64}')
+    expect(screen.getByTestId('insets')).toHaveTextContent('{"left":76,"bottom":0}')
     unmount()
 
     // Sin armazón montado no queda nada reservado.

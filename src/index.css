@@ -1063,6 +1063,53 @@
   background-size: 100% 100%;
 }
 
+/*
+ * El scroll del menú lateral, como el de YouTube: sin pista ni flechas y con un pulgar claro, redondeado y fino (8 px, con 2 px de aire a cada lado) pegado al borde derecho, que sólo se ve
+ * mientras el mouse está encima (o hay foco adentro) y se aclara al tocarlo. La barra ocupa siempre su lugar (12 px, `scrollbar-gutter`): al aparecer no corre nada. Las dos propiedades estándar
+ * vuelven a `auto` para que Chrome y Safari dibujen el pulgar con `::-webkit-scrollbar` (si no lo ignoran); Firefox, que no los tiene, usa la barra fina con los mismos colores.
+ */
+@utility scroll-yt {
+  scrollbar-gutter: stable;
+  scrollbar-width: auto;
+  scrollbar-color: auto;
+
+  &::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    min-height: 3rem;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    background-clip: content-box;
+  }
+
+  &:is(:hover, :focus-within)::-webkit-scrollbar-thumb {
+    background: rgb(var(--foreground-rgb) / 0.3);
+    background-clip: content-box;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--foreground-rgb) / 0.5);
+    background-clip: content-box;
+  }
+
+  @supports not selector(::-webkit-scrollbar) {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+
+    &:is(:hover, :focus-within) {
+      scrollbar-color: rgb(var(--foreground-rgb) / 0.3) transparent;
+    }
+  }
+}
+
 /* Lo que se señala (no es un objetivo: ése lleva la mira roja y se queda): un aro claro que late un rato y se va solo; con movimiento reducido, un aro quieto mientras dura. */
 [data-pointed='true'] {
   z-index: 6;
@@ -1312,8 +1359,6 @@
     --radius-card: 1rem;
     --radius-panel: 1.5rem;
     --radius-chip: 999px;
-    /* Alto del pie de la app (en escritorio va fijo abajo, en todas las pantallas). */
-    --app-footer-height: 2.75rem;
     /* La mesa vista desde arriba: el campo se inclina hacia atrás (lo lejano se achica) con una perspectiva suave; en escritorio, menos. */
     --field-tilt: 26deg;
     --field-perspective: 900px;

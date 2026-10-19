@@ -5,7 +5,6 @@ import { useDuelFullscreen } from '../../app/duel-fullscreen'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
 import { cx } from '../ui/cx'
-import { AppFooter } from './AppFooter'
 import { AppSidebar } from './AppSidebar'
 import { GroupSheet } from './GroupSheet'
 import { MobileTabBar } from './MobileTabBar'
@@ -21,21 +20,20 @@ interface AppShellProps {
   children: ReactNode
   /** El contenedor que scrollea en escritorio (para volver arriba al cambiar de pantalla). */
   contentScrollRef?: RefObject<HTMLDivElement | null>
-  /** false: la pantalla ocupa todo el alto (el builder) y adentro tiene sus propios scrolls; true: scrollea el recuadro de la pantalla. El pie va fijo abajo en los dos. */
+  /** false: la pantalla ocupa todo el alto (el builder) y adentro tiene sus propios scrolls; true: scrollea el recuadro de la pantalla. */
   contentScrollable?: boolean
   /** Avisa al abrirse la hoja de un grupo en el celular: quien arma el menú puede releer lo que cambió desde la última vez (una sala que se dejó en pausa, las builds guardadas). */
   onSheetOpen?: (groupKey: string) => void
-  /** Vista completa (la práctica): sin pie y, en el celular, del alto exacto de la ventana (nada de scroll de página); la pantalla se reparte ese alto. */
+  /** Vista completa (la práctica): en el celular, del alto exacto de la ventana (nada de scroll de página); la pantalla se reparte ese alto. */
   immersive?: boolean
   /** Hay buscador de cartas en esta pantalla (todas menos el builder, que ya tiene el suyo, la práctica y la sala o la mesa de un duelo; el lobby sí): aparece en el menú lateral, la barra de arriba y el cajón del celular, y abre `onSelect('search')`. */
   searchAvailable?: boolean
 }
 
 /**
- * El armazón de toda la app: en escritorio, el menú lateral a la izquierda y, a la derecha, la pantalla y el pie fijo abajo (en todas, la
- * pantalla ocupa el mismo alto y es ella la que scrollea); en el celular, la barra de arriba con la hamburguesa (que abre el cajón de ajustes:
- * idioma, copia de seguridad y legales), la barra de abajo con los cuatro grupos (cada uno abre una hoja con sus opciones) y la pantalla con su pie
- * al final, en el scroll de la página. Se arma una sola vez: las pantallas sólo ponen su contenido adentro.
+ * El armazón de toda la app: en escritorio, el menú lateral a la izquierda (con la hamburguesa que lo abre y lo contrae, y al final las redes y la privacidad) y, a la derecha, la pantalla (en todas ocupa
+ * el mismo alto y es ella la que scrollea); en el celular, la barra de arriba con la hamburguesa (que abre el cajón de ajustes: idioma, copia de seguridad y legales), la barra de abajo con los cuatro
+ * grupos (cada uno abre una hoja con sus opciones) y la pantalla. No hay pie en ninguna vista. Se arma una sola vez: las pantallas sólo ponen su contenido adentro.
  */
 export function AppShell({ groups, activeKey, onSelect, children, contentScrollRef, contentScrollable = false, immersive = false, onSheetOpen, searchAvailable = false }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(readSidebarCollapsed)
@@ -113,8 +111,6 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
             <ShellMenuContext.Provider value={menu}>{children}</ShellMenuContext.Provider>
           </div>
         </div>
-        {/* El pie queda afuera del recuadro que scrollea: en escritorio está siempre a la vista, abajo, con el mismo alto en todas las pantallas. */}
-        {immersive ? null : <AppFooter className="min-[1101px]:py-2" />}
       </div>
       {/* La mesa a pantalla completa (práctica y duelo) trae sus propios controles abajo: sin barra. */}
       {immersive ? null : <MobileTabBar groups={groups} activeKey={activeKey} openKey={openGroupKey} onOpen={(key) => {

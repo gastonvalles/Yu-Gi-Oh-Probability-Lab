@@ -1,5 +1,5 @@
 /**
- * La geometría del menú lateral, para que contraerlo no mueva nada: el ícono de cada fila (y la marca, y la flecha de contraer) vive en una
+ * La geometría del menú lateral, para que contraerlo no mueva nada: el ícono de cada fila (y el de la hamburguesa) vive en una
  * columna de 52 px que es lo que queda a la vista contraído (76 px de menú menos los 12 px de relleno de cada lado), así que el ícono está en
  * el mismo lugar abierto y cerrado; el rótulo va a su derecha y el menú, que recorta lo que sobra, lo va tapando o mostrando al cambiar de
  * ancho. Las filas miden lo mismo en los dos estados, así tampoco se corre nada hacia arriba o hacia abajo.
@@ -9,7 +9,7 @@ export const RAIL_SLOT = 'grid h-full w-13 shrink-0 place-items-center'
 /** El nombre de un grupo del menú: sobre el índigo se lee con el texto apagado (no el suave). */
 export const NAV_OVERLINE = 'text-micro font-semibold uppercase tracking-[0.08em] text-muted'
 
-/** Alto de una fila del menú (destino o flecha de contraer). */
+/** Alto de una fila del menú (destino). */
 export const RAIL_ROW = 'h-10.5'
 
 /** Un rótulo del menú: ancho fijo (nada se reacomoda ni se trunca mientras el menú cambia de ancho) y se desvanece al contraer, rápido, y vuelve un poco después de que el menú empezó a abrirse. */

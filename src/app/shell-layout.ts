@@ -19,8 +19,6 @@ export function tabBarPx(): number {
 
   return Number.isFinite(rem) && rem > 0 ? Math.round(TAB_BAR_REM * rem) : TAB_BAR_PX
 }
-/** Lo que ocupa el pie abajo en escritorio (su alto, con un respiro). */
-const FOOTER_RESERVE_PX = 64
 const SIDEBAR_KEY = 'ygo-lab:sidebar-collapsed'
 
 export function readSidebarCollapsed(): boolean {
@@ -43,7 +41,7 @@ export function writeSidebarCollapsed(collapsed: boolean): void {
   }
 }
 
-/** Lo que el armazón deja ocupado en la pantalla (px): el menú lateral a la izquierda y el pie abajo. */
+/** Lo que el armazón deja ocupado en la pantalla (px): el menú lateral a la izquierda y, en el celular, la barra de abajo. */
 interface ShellInsets {
   left: number
   bottom: number
@@ -51,9 +49,9 @@ interface ShellInsets {
 
 export const NO_SHELL_INSETS: ShellInsets = { left: 0, bottom: 0 }
 
-/** En el celular no hay menú fijo ni pie fijo: sólo queda reservada la barra de abajo (que la mesa a pantalla completa esconde). */
+/** En escritorio sólo está el menú lateral (no hay pie); en el celular no hay menú fijo: sólo queda reservada la barra de abajo (que la mesa a pantalla completa esconde). */
 export function shellInsetsFor(collapsed: boolean, desktop: boolean, tabBar = true): ShellInsets {
-  if (desktop) return { left: collapsed ? SIDEBAR_PX.collapsed : SIDEBAR_PX.expanded, bottom: FOOTER_RESERVE_PX }
+  if (desktop) return { left: collapsed ? SIDEBAR_PX.collapsed : SIDEBAR_PX.expanded, bottom: 0 }
 
   return tabBar ? { left: 0, bottom: tabBarPx() } : NO_SHELL_INSETS
 }
