@@ -40,6 +40,8 @@ interface DeckBuilderStepProps {
   deckBuilder: DeckBuilderState
   /** Pasa al paso siguiente (Roles): el botón de abajo del celular. */
   onNextStep?: () => void
+  /** Se llegó desde Jugar (el lobby o la sala): vuelve a donde se estaba. */
+  onBackToPlay?: () => void
   /** Va a los decks de torneo: la salida del deck vacío en el celular. */
   onBrowseTournaments?: () => void
   deckFormat: DeckFormat
@@ -109,6 +111,7 @@ const DECK_ZONE_ITEMS: Array<{
 export function DeckBuilderStep({
   deckBuilder,
   onNextStep,
+  onBackToPlay,
   onBrowseTournaments,
   deckFormat,
   formatIssues,
@@ -314,6 +317,11 @@ export function DeckBuilderStep({
                 </div>
 
                 <div className="flex items-center gap-2">
+                  {onBackToPlay ? (
+                    <Button variant="tertiary" size="md" icon="chevron-left" className="whitespace-nowrap" onClick={onBackToPlay}>
+                      {t('deck.builder.backToPlay')}
+                    </Button>
+                  ) : null}
                   <Button variant="secondary" size="md" icon="upload" className="whitespace-nowrap" onClick={() => setImportDrawerOpen(true)}>
                     {t('deck.builder.importDeck')}
                   </Button>
@@ -574,7 +582,11 @@ export function DeckBuilderStep({
 
       {/* Abajo, al alcance del pulgar: seguir al paso siguiente y buscar cartas (la principal, a la derecha). Queda fija sobre la barra de abajo. */}
       <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-30 -mx-gutter -mb-6 flex gap-2 border-t border-border-subtle bg-background px-gutter py-3 min-[1101px]:hidden">
-        {onNextStep ? (
+        {onBackToPlay ? (
+          <Button variant="secondary" size="md" icon="chevron-left" className="min-w-0 flex-1 whitespace-nowrap" onClick={onBackToPlay}>
+            {t('deck.builder.backToPlay')}
+          </Button>
+        ) : onNextStep ? (
           <Button variant="secondary" size="md" className="min-w-0 flex-1" disabled={deckBuilder.main.length === 0} onClick={onNextStep}>
             {t('deck.builder.next')}
           </Button>

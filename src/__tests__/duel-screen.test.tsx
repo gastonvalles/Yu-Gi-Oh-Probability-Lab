@@ -8,6 +8,7 @@ import { toast } from 'react-hot-toast'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { extractRoomCode } from '../app/duel-link'
+import { readPlayReturn } from '../app/play-return'
 import { createDuel } from '../app/duel-session'
 import { RIFFLE_MS } from '../app/shuffle-fx'
 import type { SocketStatus, SocketTransport, SpectatorSocket } from '../app/duel-socket'
@@ -133,7 +134,6 @@ const createRoom = (view: RenderResult, minutes?: string, visibility?: 'Pública
 }
 /** El deck con que se juega se elige en una hoja («Tu deck»), que se abre desde el renglón del nombre del deck. */
 const openDeck = (view: RenderResult) => click(view, /^(Sin deck|.+ · \d+)$/)
-const deckDialog = () => within(screen.getByRole('dialog', { name: 'Tu deck' }))
 /** Entrar con un enlace o un código: el campo está detrás de «Tengo un código». */
 const joinByLink = (view: RenderResult, link: string) => {
   if (!within(view.container).queryByRole('textbox', { name: 'Enlace o código' })) click(view, 'Tengo un código')
@@ -259,9 +259,20 @@ describe('la pantalla del duelo', () => {
     expect(within(rulesDialog()).getByRole('button', { name: 'Abrir duelo' })).toBeDisabled()
     closeMore()
 
-    // La acción principal no queda muerta: lleva a elegir el deck.
+    // La acción principal no queda muerta: lleva al builder, a elegir (y tocar) las cartas del deck.
     click(view, 'Elegí tu deck para jugar')
-    expect(screen.getByRole('dialog', { name: 'Tu deck' })).toBeInTheDocument()
+    expect(window.location.hash).toBe('#deck-builder')
+    expect(screen.queryByRole('dialog', { name: 'Tu deck' })).not.toBeInTheDocument()
+  })
+
+  it('toda referencia al deck lleva al builder (no a un selector): el deck del lobby se abre ahí y el builder recuerda dónde volver', () => {
+    const view = render(<DuelScreen {...screenProps()} />)
+
+    openDeck(view)
+
+    expect(window.location.hash).toBe('#deck-builder')
+    expect(readPlayReturn()).toBe('#duel')
+    expect(screen.queryByRole('dialog', { name: 'Tu deck' })).not.toBeInTheDocument()
   })
 
   it('al crear una sala se elige Single, Match o Solo; Solo esconde lo del rival y entra a la mesa sin crear sala', () => {
@@ -1749,55 +1760,6 @@ describe('la pantalla del duelo', () => {
     return { host, guest }
   }
 
-  it('otro deck: se pega un .ydk, se buscan las cartas y se juega con ese; se recuerda y, sin deck armado, se vuelve a usar solo', async () => {
-    const small = { mainIds: mainIds.slice(0, 2), extraIds: [], cardsById: new Map() }
-    const view = render(<DuelScreen {...screenProps(small)} />)
-
-    expect(within(view.container).getByRole('button', { name: 'Retar a un amigo' })).toBeDisabled()
-    openDeck(view)
-    fireEvent.click(deckDialog().getByRole('button', { name: 'Usar otro deck' }))
-
-    // Algo que no es un deck se dice y no cambia nada.
-    fireEvent.change(deckDialog().getByRole('textbox', { name: 'ydke://… o el texto del .ydk' }), { target: { value: 'Dark Magician x3' } })
-    fireEvent.click(deckDialog().getByRole('button', { name: 'Usar este deck' }))
-    expect(await deckDialog().findByText(/No reconozco ese deck/)).toBeInTheDocument()
-
-    // Un .ydk de verdad: 41 cartas en el Main (una que no existe) y 1 en el Extra; el Side no cuenta.
-    const ydk = ['#created by Ana', '#main', ...Array.from({ length: 40 }, (_, index) => String(1000 + index)), '999', '#extra', '9001', '!side', '5'].join('\n')
-    fireEvent.change(deckDialog().getByRole('textbox', { name: 'ydke://… o el texto del .ydk' }), { target: { value: ydk } })
-    fireEvent.click(deckDialog().getByRole('button', { name: 'Usar este deck' }))
-
-    expect(await deckDialog().findByText('Deck importado: 41 cartas en el Main y 1 en el Extra')).toBeInTheDocument()
-    expect(deckDialog().getByText(/1 cartas no se reconocieron/)).toBeInTheDocument()
-    expect(localStorage.getItem('ygo-lab:duel-deck')).toContain('#main')
-    closeMore()
-    expect(within(view.container).getByRole('button', { name: 'Retar a un amigo' })).toBeEnabled()
-
-    // Volver al del builder quita el importado y lo olvida.
-    openDeck(view)
-    fireEvent.click(deckDialog().getByRole('button', { name: 'Volver al deck del builder' }))
-    closeMore()
-    expect(within(view.container).getByRole('button', { name: 'Retar a un amigo' })).toBeDisabled()
-    expect(localStorage.getItem('ygo-lab:duel-deck')).toBeNull()
-
-    // Con un deck guardado y el builder vacío, la pantalla lo usa sola al abrir.
-    localStorage.setItem('ygo-lab:duel-deck', ydk)
-    cleanup()
-    const again = render(<DuelScreen {...screenProps(small)} />)
-    openDeck(again)
-    expect(await deckDialog().findByText('Deck importado: 41 cartas en el Main y 1 en el Extra')).toBeInTheDocument()
-
-    // Y con un deck armado en el builder no se pisa solo.
-    cleanup()
-    const builder = render(<DuelScreen {...screenProps()} />)
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 30))
-    })
-    openDeck(builder)
-    expect(deckDialog().getByText('El del builder: Mi deck (40 cartas en el Main)')).toBeInTheDocument()
-    expect(deckDialog().queryByText(/Deck importado/)).not.toBeInTheDocument()
-  })
-
   it('un duelo se juega con 40 cartas en el Main como mínimo: con menos se dice y no se puede estar listo', () => {
     const host = render(<DuelScreen {...screenProps()} />)
     createRoom(host)
@@ -1810,32 +1772,6 @@ describe('la pantalla del duelo', () => {
     expect(within(guest.container).getByText(/Tu Main tiene 39 cartas y un duelo se juega con 40 como mínimo/)).toBeInTheDocument()
     expect(within(guest.container).getByRole('button', { name: 'Estoy listo' })).toBeDisabled()
     expect(within(host.container).queryByText(/Tu Main tiene/)).not.toBeInTheDocument()
-  })
-
-  it('otro deck: la mano se reparte con las cartas del deck pegado, y el rival juega con las suyas', async () => {
-    const small = { mainIds: mainIds.slice(0, 2), extraIds: [], cardsById: new Map() }
-    const host = render(<DuelScreen {...screenProps(small)} />)
-    typeInto(host, 'Tu nombre', 'Ana')
-    openDeck(host)
-    fireEvent.click(deckDialog().getByRole('button', { name: 'Usar otro deck' }))
-    const ydk = ['#main', ...Array.from({ length: 40 }, (_, index) => String(2000 + index))].join('\n')
-    fireEvent.change(deckDialog().getByRole('textbox', { name: 'ydke://… o el texto del .ydk' }), { target: { value: ydk } })
-    fireEvent.click(deckDialog().getByRole('button', { name: 'Usar este deck' }))
-    await deckDialog().findByText('Deck importado: 40 cartas en el Main y 0 en el Extra')
-    closeMore()
-    createRoom(host)
-    const link = within(host.container).getByTestId('duel-link').textContent ?? ''
-    window.history.replaceState(null, '', '#duel')
-    const guest = render(<DuelScreen {...screenProps()} />)
-    typeInto(guest, 'Tu nombre', 'Beto')
-    joinByLink(guest, link)
-    flush()
-    openTable(host, guest)
-
-    const names = (view: RenderResult) => handOf(view).getAllByRole('listitem').map((card) => card.getAttribute('aria-label'))
-    expect(names(host)).toHaveLength(5)
-    expect(names(host).every((name) => /^Carta 20\d\d$/.test(name ?? ''))).toBe(true)
-    expect(names(guest).some((name) => /^Carta 20\d\d$/.test(name ?? ''))).toBe(false)
   })
 
   it('puntos de vida: no se elige, los dos empiezan siempre con 8000', () => {
@@ -2946,9 +2882,10 @@ describe('la pantalla del duelo', () => {
     // El anfitrión no lee «te invitó»: con el rival adentro, copiar el enlace deja de ser el botón principal.
     expect(within(host.container).queryByText(/te invitó a un duelo/)).not.toBeInTheDocument()
     expect(within(host.container).getByRole('button', { name: 'Copiar enlace' })).not.toHaveClass('bg-primary')
+    // Elegir el deck lleva al builder y, de vuelta, a la misma sala.
     click(guest, 'Elegir mi deck')
-    fireEvent.click(within(screen.getByRole('dialog', { name: 'Tu deck' })).getByRole('button', { name: 'Usar otro deck' }))
-    expect(within(screen.getByRole('dialog', { name: 'Tu deck' })).getByLabelText('ydke://… o el texto del .ydk')).toBeInTheDocument()
+    expect(window.location.hash).toBe('#deck-builder')
+    expect(readPlayReturn()?.startsWith('#duel?room=')).toBe(true)
   })
 
   it('mientras la pantalla del duelo está abierta, la página lo marca (los avisos suben sobre la botonera en celular) y al salir lo saca', () => {
@@ -3580,28 +3517,6 @@ describe('la pantalla del duelo', () => {
     expect(within(guest.container).getByRole('button', { name: 'Jugar ahora' })).toHaveClass('bg-primary')
     expect(within(guest.container).queryByText(/Tenés un duelo en pausa/)).not.toBeInTheDocument()
     expect(hasSave('guest')).toBe(false)
-  })
-
-  it('recargar dentro de la sala con un deck pegado y el builder vacío: el deck guardado vuelve solo y se puede repartir', async () => {
-    const ydk = ['#main', ...Array.from({ length: 40 }, (_, index) => String(3000 + index))].join('\n')
-    localStorage.setItem('ygo-lab:duel-deck', ydk)
-
-    // Ana crea la sala; Beto (sin deck armado) llega a ella por la dirección, como al recargar la página.
-    const host = render(<DuelScreen {...screenProps()} />)
-    typeInto(host, 'Tu nombre', 'Ana')
-    createRoom(host)
-    const room = extractRoomCode(within(host.container).getByTestId('duel-link').textContent ?? '')!
-    sessionStorage.removeItem('ygo-lab:duel-role:' + room)
-    const guest = render(<DuelScreen {...screenProps({ mainIds: mainIds.slice(0, 2), extraIds: [], cardsById: new Map() })} />)
-    flush()
-
-    // Sin deck todavía no puede estar listo; cuando vuelve el guardado, sí.
-    expect(within(guest.container).getByRole('button', { name: 'Estoy listo' })).toBeDisabled()
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 30))
-    })
-    flush()
-    expect(within(guest.container).getByRole('button', { name: 'Estoy listo' })).toBeEnabled()
   })
 
   it('sin laterales la barra es la de siempre: el turno y la fase en una línea arriba', () => {

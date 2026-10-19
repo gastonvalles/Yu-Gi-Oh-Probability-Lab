@@ -71,6 +71,7 @@ export const deck: Translated<typeof es> = {
   'deck.builder.clearAll': 'Clear all',
   'deck.builder.search': 'Search cards',
   'deck.builder.next': 'Next: Roles',
+  'deck.builder.backToPlay': 'Back to Play',
   'deck.builder.emptyTitle': 'Build your first deck',
   'deck.builder.emptyText': 'Search for cards or load one that already won a tournament.',
   'deck.builder.emptyTournament': 'Load a tournament deck',

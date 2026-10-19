@@ -1,5 +1,6 @@
 import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps } from 'react'
 
+import { clearPlayReturn, readPlayReturn } from '../../app/play-return'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { countUnclassifiedCards, countCardsMissingOrigin, countCardsMissingRoles, countCardsPendingReview, isClassificationStepComplete } from '../../app/role-step'
 import { curatePatterns } from '../../app/pattern-curation'
@@ -105,6 +106,12 @@ export function DeckModeScreen() {
     return getStepFromHash(window.location.hash) ?? recommendedStep
   })
   const isDeckBuilderStep = activeStep === 'deck-builder'
+  // Si se llegó al builder desde Jugar (el lobby o la sala), ofrece volver a donde se estaba; volver a Jugar borra el recuerdo.
+  const [playReturn, setPlayReturn] = useState<string | null>(() => readPlayReturn())
+  useEffect(() => {
+    if (activeStep === 'duel') clearPlayReturn()
+    setPlayReturn(activeStep === 'duel' ? null : readPlayReturn())
+  }, [activeStep])
   const isCategorizationStep = activeStep === 'categorization'
   const isPracticeStep = activeStep === 'practice'
   const isDuelStep = activeStep === 'duel'
@@ -302,7 +309,7 @@ export function DeckModeScreen() {
           {t('deck.builder.title')}
         </Heading>
       ) : null}
-      <DeckBuilderStep {...deckBuilderStep} onNextStep={() => handleStepChange('categorization')} onBrowseTournaments={() => handleStepChange('tournaments')} />
+      <DeckBuilderStep {...deckBuilderStep} onNextStep={() => handleStepChange('categorization')} onBrowseTournaments={() => handleStepChange('tournaments')} onBackToPlay={playReturn ? () => (window.location.hash = playReturn) : undefined} />
     </div>
   ) : (
     <section

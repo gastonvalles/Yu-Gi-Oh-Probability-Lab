@@ -70,6 +70,7 @@ export const deck = {
   'deck.builder.clearAll': 'Vaciar todo',
   'deck.builder.search': 'Buscar cartas',
   'deck.builder.next': 'Siguiente: Roles',
+  'deck.builder.backToPlay': 'Volver a Jugar',
   'deck.builder.emptyTitle': 'Armá tu primer deck',
   'deck.builder.emptyText': 'Buscá cartas o cargá uno que ya ganó un torneo.',
   'deck.builder.emptyTournament': 'Cargar un deck de torneo',
