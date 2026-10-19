@@ -42,6 +42,7 @@ import { supportsAdditiveAnimation } from '../../app/motion'
 import { matStepCards } from '../../app/mat-steps'
 import { DuelRailsContext, RAILS_SIDE_RESERVE_PX, fieldZoom, railsFit } from '../../app/duel-rails'
 import type { Activity, Marks } from '../../app/duel-protocol'
+import { playSfx } from '../../app/sfx'
 import { riffle } from '../../app/shuffle-fx'
 import { useCardFlights } from '../../app/use-card-flights'
 import { useMatView } from '../../app/mat-view'
@@ -202,9 +203,9 @@ const UNKNOWN_CARD: MatCard = { get name() { return t('practice.card.unknown') }
 const RIVAL_MONSTER: MatCard = { get name() { return t('practice.attack.rivalMonster') }, apiCard: null }
 const EMPTY_IDS: ReadonlySet<string> = new Set()
 
-/** Pausa antes de repartir la primera carta (mientras el mazo se baraja) y entre carta y carta. */
-const FIRST_DEAL_MS = 90
-const NEXT_DEAL_MS = 55
+/** Pausa antes de repartir la primera carta (el mazo se baraja antes: `riffle-*` dura 640 ms y se reparte cuando ya se golpeó contra la mesa) y entre carta y carta (el ritmo de quien reparte). */
+const FIRST_DEAL_MS = 560
+const NEXT_DEAL_MS = 105
 
 /**
  * El borde y el velo de una casilla vacía: una línea fina **blanca** (`field-line`, como el campo de referencia: Gastón, 2026-10-19) con un velo parejo, para que la zona se lea como un lugar y no como un hueco.
@@ -646,18 +647,24 @@ export function PracticeMat({
       field.style.removeProperty('--field-zoom')
     }
   }, [fieldNode, view, isDesktop, isDuel, rails])
+  // El reparto de una mano nueva suena (el barajado y una carta por vez); las cartas que se suman después, por una jugada, ya suenan con ella.
+  const initialDealRef = useRef(true)
+
   useEffect(() => {
+    initialDealRef.current = true
     setHandOrder([])
     setDealt(0)
     setShuffleKey((key) => key + 1)
     setPicking(null)
     setCounterMode(null)
+    playSfx('shuffle')
   }, [session.initial])
 
   const handTotal = state.hand.length
 
   useEffect(() => {
     if (dealt >= handTotal) {
+      initialDealRef.current = false
       return
     }
 
@@ -666,7 +673,13 @@ export function PracticeMat({
       return
     }
 
-    const timer = window.setTimeout(() => setDealt((count) => count + 1), dealt === 0 ? FIRST_DEAL_MS : NEXT_DEAL_MS)
+    const timer = window.setTimeout(
+      () => {
+        if (initialDealRef.current) playSfx('draw')
+        setDealt((count) => count + 1)
+      },
+      dealt === 0 ? FIRST_DEAL_MS : NEXT_DEAL_MS,
+    )
     return () => window.clearTimeout(timer)
   }, [dealt, handTotal])
 
@@ -1686,7 +1699,7 @@ export function PracticeMat({
             {/* El grosor del deck, debajo: se afina al robar. */}
             <PileStack count={state.deck.length} />
             {state.deck.length > 0 ? (
-              <span key={shuffleKey} className="absolute inset-0">
+              <span key={shuffleKey} className={cx('absolute inset-0', shuffleKey > 0 && 'animate-riffle-lift motion-reduce:animate-none')}>
                 <span className={cx(CARD_BACK, '[transform:translate(-3px,3px)]', shuffleKey > 0 && 'animate-riffle-left motion-reduce:animate-none')} />
                 <span className={cx(CARD_BACK, '[transform:translate(-1.5px,1.5px)]', shuffleKey > 0 && 'animate-riffle-right motion-reduce:animate-none')} />
                 {/* Cada carta repartida le da un tirón a la de arriba. */}

@@ -17,7 +17,6 @@ import {
   type HandLayout,
 } from '../../app/practice-hand-layout'
 import type { SpotlightKind } from '../../app/mat-effects'
-import { UI_ANIMATION_MS } from '../../app/motion'
 import { useElementWidth } from '../../app/use-element-width'
 import { t } from '../../i18n'
 import type { ApiCardReference, PatternKind } from '../../types'
@@ -31,6 +30,8 @@ const TOP_ROOM = 8
 /** Espacio bajo las cartas: el abanico baja en los extremos y las cartas inclinadas sobresalen. */
 const FAN_ROOM = 22
 const DRAG_THRESHOLD = 6
+/** Cuánto tarda una carta en llegar a la mano desde el mazo al repartir (sale, se da vuelta arriba, aterriza con un rebote). */
+const DEAL_MS = 460
 /** Ancho por defecto mientras el contenedor no se midió (p. ej. en tests). */
 const FALLBACK_WIDTH = 340
 
@@ -421,20 +422,25 @@ function HandCard({
     // La carta se da vuelta en el aire, en 3D: sale mostrando el dorso, a mitad de camino queda de canto (ahí se cambia el dorso por la cara)
     // y termina de abrirse del otro lado. Todos los pasos llevan las mismas funciones, en el mismo orden, para que se interpolen una por una.
     const spin = (position: string, degrees: number) => `perspective(700px) ${position} rotateY(${degrees}deg)`
-    const midPosition = `translate3d(${(fromX + toX) / 2}px, ${Math.min(fromY, toY) - 18}px, 0) rotate(-6deg) scale(1)`
+    // Arriba, a mitad de camino: más alta y un poco más grande (se acerca a la cámara al darse vuelta).
+    const midPosition = `translate3d(${(fromX + toX) / 2}px, ${Math.min(fromY, toY) - 34}px, 0) rotate(-4deg) scale(1.12)`
+    // Aterriza con un rebote: pasa un poco de su lugar (más abajo-arriba y con un grado más de giro) y se asienta. Sin el giro del abanico (no parsea), llega directo.
+    const fan = /rotate\((-?[\d.]+)deg\)/.exec(finalTransform)
+    const bounce = fan ? `translate3d(${toX}px, ${toY - 7}px, 0) rotate(${Number(fan[1]) + 1.5}deg) scale(1.03)` : `${finalTransform} scale(1)`
 
     const flight = element.animate(
       [
-        { transform: spin(`translate3d(${fromX}px, ${fromY}px, 0) rotate(-14deg) scale(${startScale})`, 0), opacity: 0.9 },
-        { transform: spin(midPosition, 90), opacity: 1, offset: 0.5 },
-        { transform: spin(midPosition, -90), opacity: 1, offset: 0.5 },
+        { transform: spin(`translate3d(${fromX}px, ${fromY}px, 0) rotate(-16deg) scale(${startScale})`, 0), opacity: 0.9, boxShadow: '0 0 0 rgb(0 0 0 / 0)', easing: 'cubic-bezier(0.3, 0.1, 0.4, 1)' },
+        { transform: spin(midPosition, 90), opacity: 1, offset: 0.42, boxShadow: '0 22px 30px rgb(0 0 0 / 0.5)' },
+        { transform: spin(midPosition, -90), opacity: 1, offset: 0.42, boxShadow: '0 22px 30px rgb(0 0 0 / 0.5)', easing: 'cubic-bezier(0.3, 0, 0.2, 1)' },
+        { transform: spin(bounce, 0), opacity: 1, offset: 0.82, boxShadow: '0 12px 20px rgb(0 0 0 / 0.4)', easing: 'ease-out' },
         { transform: spin(`${finalTransform} scale(1)`, 0), opacity: 1 },
       ],
-      { duration: UI_ANIMATION_MS, easing: 'cubic-bezier(0.22, 0.9, 0.3, 1)', fill: 'backwards' },
+      { duration: DEAL_MS, fill: 'backwards' },
     )
     const flip = back.animate(
-      [{ opacity: 1 }, { opacity: 1, offset: 0.49 }, { opacity: 0, offset: 0.5 }, { opacity: 0 }],
-      { duration: UI_ANIMATION_MS, fill: 'both' },
+      [{ opacity: 1 }, { opacity: 1, offset: 0.41 }, { opacity: 0, offset: 0.42 }, { opacity: 0 }],
+      { duration: DEAL_MS, fill: 'both' },
     )
 
     return () => {
