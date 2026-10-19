@@ -10,6 +10,12 @@ import { createMatcherPattern } from '../app/pattern-factory'
 import { createMatState, type MatState } from '../app/practice-mat'
 import { useMatSession } from '../app/use-mat-session'
 import { buildPracticeDeck, evaluatePracticeHand } from '../components/probability/practice'
+
+/** La fase de ahora es un solo botón en el medio del campo (el mismo que en un duelo): al tocarlo muestra las seis y elegir una pasa a ella. */
+const goToPhase = (name: string) => {
+  fireEvent.click(screen.getByRole('button', { name: /^Fases:/ }))
+  fireEvent.click(screen.getByRole('menuitem', { name }))
+}
 import { PracticeSection } from '../components/probability/PracticeSection'
 import type { CardEntry, CardRole } from '../types'
 
@@ -156,7 +162,7 @@ describe('la práctica integrada en la mesa', () => {
     expect(within(hand()).getByRole('listitem', { name: 'Starter' })).toHaveAttribute('data-glow', 'true')
 
     // Cambiar de fase ya es empezar a jugar.
-    fireEvent.click(screen.getByRole('button', { name: 'Battle Phase' }))
+    goToPhase('Battle Phase')
     expect(screen.queryByRole('list', { name: 'Salidas' })).not.toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Salida básica' })).not.toBeInTheDocument()
     expect(within(hand()).getByRole('listitem', { name: 'Starter' })).toHaveAttribute('data-glow', 'false')
@@ -170,7 +176,7 @@ describe('la práctica integrada en la mesa', () => {
 
     expect(within(hand()).getAllByRole('listitem', { name: 'Relleno' })[0]).toHaveAttribute('data-muted', 'true')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Battle Phase' }))
+    goToPhase('Battle Phase')
     expect(within(hand()).getAllByRole('listitem', { name: 'Relleno' })[0]).toHaveAttribute('data-muted', 'false')
     expect(screen.queryByRole('button', { name: 'Mano no jugable' })).not.toBeInTheDocument()
   })
@@ -204,8 +210,11 @@ describe('la práctica integrada en la mesa', () => {
     const mounted = evaluations()
 
     for (const phase of ['Battle Phase', 'Main Phase 2', 'End Phase']) {
-      fireEvent.click(screen.getByRole('button', { name: phase }))
+      goToPhase(phase)
     }
+
+    // En el celular, la End Phase pregunta si se termina el turno: se sigue jugando.
+    fireEvent.click(screen.getByRole('button', { name: 'Seguir jugando' }))
 
     fireEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
     expect(evaluations()).toBe(mounted)
