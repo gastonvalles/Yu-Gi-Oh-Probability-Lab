@@ -1078,7 +1078,7 @@
  */
 @utility stagger {
   & > * {
-    animation: stagger-in 380ms var(--ease-out-soft) both;
+    animation: stagger-in 380ms var(--ease-out-soft) backwards;
   }
   & > :nth-child(2) {
     animation-delay: calc(1 * var(--stagger-step));
