@@ -22,7 +22,6 @@ import { Segmented } from '../ui/Segmented'
 import { TONE, type Tone } from '../ui/tone'
 import { Stepper } from '../ui/Stepper'
 import { Switch } from '../ui/Switch'
-import { DuelDeckPicker, type DuelDeck } from './DuelDeckPicker'
 import { LobbyBanner } from './LobbyBanner'
 import { formatName, REFRESH_MS, roomChips } from './room-chips'
 
@@ -37,9 +36,10 @@ interface PlayHomeProps {
   view: DuelView | null
   name: string
   onName: (name: string) => void
-  builder: DuelDeck
-  imported: DuelDeck | null
-  onImport: (deck: DuelDeck | null) => void
+  /** El nombre del deck armado en el builder. */
+  deckName: string
+  /** Ver o armar el deck: toda referencia al deck va al builder (el lobby no lo cambia acá). */
+  onOpenBuilder: () => void
   deckReady: boolean
   deckSize: number
   minDeck: number
@@ -118,10 +118,9 @@ function useArena(rooms: RoomsApi | undefined) {
  * El inicio de Jugar: primero entrar (una acción principal, «Jugar ahora», con las reglas que se recuerdan), después lo que pasa en la arena (salas que esperan y duelos en vivo,
  * a un toque) y por último las otras formas de entrar. No es un formulario: nada es obligatorio antes del botón, y las reglas y el deck están a un toque.
  */
-export function PlayHome({ view, name, onName, builder, imported, onImport, deckReady, deckSize, minDeck, rooms, trainReady, onTrain, onOpenDuel, onJoin, paused, onResume, onDropPaused }: PlayHomeProps) {
+export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckReady, deckSize, minDeck, rooms, trainReady, onTrain, onOpenDuel, onJoin, paused, onResume, onDropPaused }: PlayHomeProps) {
   const [prefs, setPrefs] = useState<DuelPrefs>(() => readPrefs())
   const [search, setSearch] = useState<Search>(null)
-  const [deckOpen, setDeckOpen] = useState(false)
   const [rulesOpen, setRulesOpen] = useState(false)
   const [codeOpen, setCodeOpen] = useState(false)
   const [code, setCode] = useState('')
@@ -159,13 +158,12 @@ export function PlayHome({ view, name, onName, builder, imported, onImport, deck
   }, [codeOpen])
 
   const busy = search !== null
-  const deckName = imported?.name ?? builder.name
   const format = getDeckFormatLabel(prefs.format)
 
   // «Jugar ahora»: busca una sala pública compatible y entra; si no hay, abre una pública con las reglas que se recuerdan. Todo es lo que pasa de verdad, sin esperas de mentira.
   const playNow = async () => {
     if (!deckReady) {
-      setDeckOpen(true)
+      onOpenBuilder()
       return
     }
 
@@ -245,12 +243,12 @@ export function PlayHome({ view, name, onName, builder, imported, onImport, deck
 
       {deckReady ? null : <Callout tone="warning" icon="alert">{t('duel.lobby.needDeck', { count: deckSize, min: minDeck })}</Callout>}
 
-      {/* Vos: el nombre (como te ve tu rival) y el deck, en una línea. El deck se cambia en una hoja; sin deck, la acción principal lleva a elegirlo. */}
+      {/* Vos: el nombre (como te ve tu rival) y el deck, en una línea. El deck lleva al builder (tocarlo, o la acción principal sin deck): ahí se tocan las cartas antes de jugar. */}
       <div className="flex items-center gap-2">
         <FieldBox className="min-w-0 flex-1">
           <input aria-label={t('duel.lobby.name')} placeholder={t('duel.lobby.namePlaceholder')} maxLength={MAX_NAME_LENGTH} value={name} onChange={(event) => onName(event.target.value)} className={fieldInline} />
         </FieldBox>
-        <Button variant="secondary" size="sm" icon="cards" className="max-w-[58%] shrink-0" aria-haspopup="dialog" onClick={() => setDeckOpen(true)}>
+        <Button variant="secondary" size="sm" icon="cards" className="max-w-[58%] shrink-0" onClick={onOpenBuilder}>
           <span className="truncate">{deckReady ? `${deckName} · ${deckSize}` : t('duel.play.deckNone')}</span>
         </Button>
       </div>
@@ -422,9 +420,6 @@ export function PlayHome({ view, name, onName, builder, imported, onImport, deck
         }}
       />
 
-      <Modal isOpen={deckOpen} onClose={() => setDeckOpen(false)} size="md" title={t('duel.play.deckTitle')}>
-        <DuelDeckPicker builder={builder} imported={imported} onImport={onImport} />
-      </Modal>
     </>
   )
 }

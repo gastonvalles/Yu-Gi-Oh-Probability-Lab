@@ -28,6 +28,7 @@ import { useDuel, type DuelConnect, type SpectatorConnect } from '../../app/use-
 import type { MatSession } from '../../app/use-mat-session'
 import { showToastMessage } from '../../app/use-toast-message'
 import { useWakeLock } from '../../app/use-wake-lock'
+import { openBuilderFromPlay } from '../../app/play-return'
 import { t } from '../../i18n'
 import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
@@ -51,7 +52,7 @@ import { DuelChatPanel } from './DuelChat'
 import { DuelPause } from './DuelPause'
 import { RivalCardDetail } from './RivalCardDetail'
 import { ResultCard } from './DuelResult'
-import { DuelDeckPicker, loadDuelDeck, readStoredDeck, type DuelDeck } from './DuelDeckPicker'
+import type { DuelDeck } from './duel-deck-type'
 import { gameText, outcomeText, rpsName } from './game-text'
 import { artOfDrawId, passcodeOfDrawId } from './duel-art'
 import { DuelOpening } from './DuelOpening'
@@ -207,8 +208,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   // El paso del lobby que pidió la hoja de Duelo del celular (`#duel?view=…`): se aplica una vez y se borra de la dirección.
   const [view, setView] = useState<DuelView | null>(() => (typeof window === 'undefined' ? null : parseDuelView(window.location.hash)))
   const myName = cleanName(name) || t('duel.lobby.defaultName')
-  // El deck es el del builder o uno que se pega; se juega siempre con los puntos de vida de siempre.
-  const [imported, setImported] = useState<DuelDeck | null>(null)
+  // El deck es siempre el del builder (Gastón: toda referencia al deck lleva al builder); se juega con los puntos de vida de siempre.
   // En un Match con siding, el deck de los duelos que siguen es el que quedó después de cambiar cartas (el rival no lo ve). Se guarda con la sala: recargar vuelve al siding, con las cartas como estaban.
   const [sidingState, setSidingState] = useState<SidingState>(() => storedSiding(intent))
   const sidingKey = sidingKeyOf(intent)
@@ -237,7 +237,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   const setSided = (next: SideDeck | null) => updateSiding({ deck: next })
   const setSidingOpen = (open: boolean) => updateSiding(open ? { open } : { open, draft: null })
   const deck = useMemo<DuelDeck>(() => {
-    const base = imported ?? { name: deckName, mainIds, extraIds, sideIds, cardsById }
+    const base = { name: deckName, mainIds, extraIds, sideIds, cardsById }
 
     if (!sided) return base
 
@@ -245,7 +245,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
     const restored = renumberDeck(sided, base.cardsById)
 
     return { ...base, mainIds: restored.deck.main, extraIds: restored.deck.extra, sideIds: restored.deck.side, cardsById: restored.cardsById }
-  }, [sided, imported, deckName, mainIds, extraIds, sideIds, cardsById])
+  }, [sided, deckName, mainIds, extraIds, sideIds, cardsById])
   const roomCode = intent?.room
   const options = useMemo(() => optionsFor(roomCode), [roomCode])
   const settings = useMemo(
@@ -254,28 +254,6 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
   )
   const { duel, snapshot, status } = useDuel({ room: intent && !intent.watch ? intent.room : null, role: intent?.role ?? 'guest', name: myName, settings, connect })
   const deckReady = deck.mainIds.length >= handSize
-
-  // Sin deck armado (un celular que nunca abrió el builder), el último deck pegado se vuelve a usar solo: también al recargar dentro de la sala, por eso va acá y no en el lobby.
-  const builderTooSmall = mainIds.length < handSize
-  useEffect(() => {
-    const stored = readStoredDeck()
-
-    if (!builderTooSmall || stored === null) {
-      return
-    }
-
-    let cancelled = false
-
-    void loadDuelDeck(stored)
-      .then((loaded) => {
-        if (loaded && !cancelled) setImported((current) => current ?? loaded)
-      })
-      .catch(() => undefined)
-
-    return () => {
-      cancelled = true
-    }
-  }, [builderTooSmall])
 
   // Cuando ya se eligió quién va primero, cada uno reparte su mano solo (hace falta el deck y, del invitado, los ajustes del anfitrión).
   const ordered = snapshot?.opening.ordered ?? false
@@ -520,9 +498,8 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
         }}
         name={name}
         onName={setName}
-        builder={{ name: deckName, mainIds, extraIds, sideIds, cardsById }}
-        imported={imported}
-        onImport={setImported}
+        deckName={deckName}
+        onOpenBuilder={openBuilderFromPlay}
         deckReady={deckReady}
         deckSize={deck.mainIds.length}
         minDeck={handSize}
@@ -582,20 +559,6 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
 
   // El siding de un Match: no hay otra pantalla hasta tocar «Listo», tampoco al recargar o volver al duelo (ni la pausa, ni la sala, ni la mesa).
   if (sidingOpen && snapshot.mine && snapshot.series.winner === null) {
-    // Con un deck pegado (sin deck armado en el builder) las cartas tardan un momento en volver al recargar: sin ellas el siding partiría de un deck vacío.
-    if (builderTooSmall && imported === null) {
-      return (
-        <Screen>
-          <div className="flex items-center justify-between gap-3">
-            <p className="m-0 text-body text-muted" role="status">
-              {t('duel.siding.loading')}
-            </p>
-            <CloseButton size="md" aria-label={t('duel.room.leave')} title={t('duel.room.leave')} onClick={leave} />
-          </div>
-        </Screen>
-      )
-    }
-
     return (
       <Screen wide>
         <DuelSiding
@@ -637,7 +600,7 @@ export function DuelScreen({ handSize, mainIds, extraIds, sideIds, cardsById, de
         name={name}
         onRename={rename}
         deckReady={deckReady}
-        deckPicker={{ builder: { name: deckName, mainIds, extraIds, sideIds, cardsById }, imported, onImport: setImported, size: deck.mainIds.length, min: handSize }}
+        deck={{ name: deckName, mainIds: deck.mainIds, extraIds: deck.extraIds, cardsById: deck.cardsById, size: deck.mainIds.length, min: handSize, onOpenBuilder: openBuilderFromPlay }}
         isPublic={rooms && intent.role === 'host' ? options.isPublic : null}
         onLeave={leave}
         onLeaveToCreate={leaveToCreate}
@@ -751,9 +714,9 @@ interface DuelLobbyProps {
   onViewHandled?: () => void
   name: string
   onName: (name: string) => void
-  builder: DuelDeck
-  imported: DuelDeck | null
-  onImport: (deck: DuelDeck | null) => void
+  deckName: string
+  /** Ver o armar el deck: va al builder (con «Volver a Jugar»). */
+  onOpenBuilder: () => void
   deckReady: boolean
   deckSize: number
   minDeck: number
@@ -772,7 +735,7 @@ interface DuelLobbyProps {
   onDropPaused: () => void
 }
 
-function DuelLobby({ startInCreate = false, view = null, onViewHandled, name, onName, builder, imported, onImport, deckReady, deckSize, minDeck, onCreate, onPlaySolo, soloReady, rooms, onJoin, paused, onResume, onDropPaused }: DuelLobbyProps) {
+function DuelLobby({ startInCreate = false, view = null, onViewHandled, name, onName, deckName, onOpenBuilder, deckReady, deckSize, minDeck, onCreate, onPlaySolo, soloReady, rooms, onJoin, paused, onResume, onDropPaused }: DuelLobbyProps) {
   const [watching, setWatching] = useState(view === 'watch')
 
   // Lo que pide el menú (Nueva sala, Mirar un duelo, Entrar con un enlace) se aplica una vez, también si el lobby ya estaba abierto. Crear y entrar los atiende el inicio de Jugar.
@@ -796,9 +759,8 @@ function DuelLobby({ startInCreate = false, view = null, onViewHandled, name, on
         view={startInCreate ? 'create' : view}
         name={name}
         onName={onName}
-        builder={builder}
-        imported={imported}
-        onImport={onImport}
+        deckName={deckName}
+        onOpenBuilder={onOpenBuilder}
         deckReady={deckReady}
         deckSize={deckSize}
         minDeck={minDeck}
@@ -975,8 +937,8 @@ interface DuelRoomProps {
   name: string
   onRename: (name: string) => boolean
   deckReady: boolean
-  /** Con qué deck se juega: se elige desde la sala porque quien entra por un enlace no pasó por el lobby. */
-  deckPicker: { builder: DuelDeck; imported: DuelDeck | null; onImport: (deck: DuelDeck | null) => void; size: number; min: number }
+  /** Con qué deck se juega: el del builder, al que se va desde la sala (quien entra por un enlace no pasó por el lobby). */
+  deck: { name: string; mainIds: string[]; extraIds: string[]; cardsById: ReadonlyMap<string, MatCard>; size: number; min: number; onOpenBuilder: () => void }
   /** Si la sala está en la lista de salas abiertas (sólo lo sabe el anfitrión, y sólo si el relay tiene la lista); `null` si no se sabe o no hay lista. */
   isPublic: boolean | null
   onLeave: () => void
@@ -984,14 +946,14 @@ interface DuelRoomProps {
   onLeaveToCreate: () => void
 }
 
-function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckReady, deckPicker, isPublic, onLeave, onLeaveToCreate }: DuelRoomProps) {
+function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckReady, deck: deckInfo, isPublic, onLeave, onLeaveToCreate }: DuelRoomProps) {
   const link = buildDuelLink(window.location.origin, window.location.pathname, room)
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const { peerPresent, peerName, role, incompatible, settings } = snapshot
   // El invitado se prepara con los ajustes del anfitrión: hasta que no llega su saludo, no.
   const settingsKnown = role === 'host' || peerName !== null
   // El formato de la sala se revisa en el deck de cada uno antes de dejarlo estar listo (el rival no ve el deck: es una revisión de cada lado). Edison y Genesys necesitan sus tablas: hasta que bajan no se sabe.
-  const roomDeck = deckPicker.imported ?? deckPicker.builder
+  const roomDeck = deckInfo
   const needsTables = settings.format === 'edison' || settings.format === 'genesys'
   const [tablesLoaded, setTablesLoaded] = useState(formatDataLoaded)
 
@@ -1010,7 +972,6 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
   const emptyRoom = useWaited(EMPTY_ROOM_MS, role === 'guest' && !peerPresent && status === 'open')
 
   const [chatOpen, setChatOpen] = useState(false)
-  const [deckOpen, setDeckOpen] = useState(false)
 
   const copy = async (watch = false) => {
     const text = watch ? buildDuelLink(window.location.origin, window.location.pathname, room, true) : link
@@ -1140,11 +1101,11 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
             </span>
           </span>
           {snapshot.ready.mine ? null : deckReady ? (
-            <Button variant="secondary" size="sm" icon="cards" aria-haspopup="dialog" onClick={() => setDeckOpen(true)}>
+            <Button variant="secondary" size="sm" icon="cards" onClick={deckInfo.onOpenBuilder}>
               {t('duel.room.deckChange')}
             </Button>
           ) : (
-            <Button variant="primary" icon="cards" aria-haspopup="dialog" onClick={() => setDeckOpen(true)}>
+            <Button variant="primary" icon="cards" onClick={deckInfo.onOpenBuilder}>
               {t('duel.room.deckChoose')}
             </Button>
           )}
@@ -1159,15 +1120,11 @@ function DuelRoom({ duel, snapshot, status, room, myName, name, onRename, deckRe
             </span>
           </Callout>
         ) : null}
-        {!snapshot.ready.mine && !deckReady ? <Callout tone="warning" icon="alert">{t('duel.room.needDeck', { count: deckPicker.size, min: deckPicker.min })}</Callout> : null}
+        {!snapshot.ready.mine && !deckReady ? <Callout tone="warning" icon="alert">{t('duel.room.needDeck', { count: deckInfo.size, min: deckInfo.min })}</Callout> : null}
         {!snapshot.ready.mine && deckReady && mainShort ? <Callout tone="warning" icon="alert">{t('duel.room.mainShort', { count: roomDeck.mainIds.length, min: MAIN_MINIMUM })}</Callout> : null}
       </section>
 
       <RoomRules settings={settings} isPublic={isPublic} watchers={snapshot.watchers} />
-
-      <Modal isOpen={deckOpen} onClose={() => setDeckOpen(false)} size="md" title={t('duel.play.deckTitle')}>
-        <DuelDeckPicker builder={deckPicker.builder} imported={deckPicker.imported} onImport={deckPicker.onImport} />
-      </Modal>
 
       {/* El chat en el celular: siempre a un toque (también antes de que entre el rival), en una hoja. */}
       {docked ? null : (

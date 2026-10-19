@@ -71,7 +71,6 @@ export const duel = {
   'duel.play.trainHint': 'Tu mesa, sin rival.',
   'duel.play.trainNeedDeck': 'Para entrenar hace falta un deck armado en el builder.',
   'duel.play.deckNone': 'Sin deck',
-  'duel.play.deckTitle': 'Tu deck',
   'duel.play.rules': 'Reglas del duelo',
   'duel.play.rulesSave': 'Guardar reglas',
   'duel.play.rulesOpen': 'Abrir duelo',
@@ -138,7 +137,7 @@ export const duel = {
   'duel.lobby.joinPlaceholder': 'Enlace o código',
   'duel.lobby.joinAction': 'Unirme',
   'duel.lobby.joinInvalid': 'Ese no parece un código de duelo: son 8 letras y números.',
-  'duel.lobby.needDeck': 'Para repartir la mano hacen falta {min} cartas en el Main y tu deck tiene {count}: armalo en el builder o pegá abajo un enlace ydke:// o un archivo .ydk.',
+  'duel.lobby.needDeck': 'Para repartir la mano hacen falta {min} cartas en el Main y tu deck tiene {count}: armalo en el builder (ahí también podés importar un enlace ydke:// o un archivo .ydk).',
 
   // La sala, hasta que los dos tienen su mano.
   'duel.rules.title': 'Reglas',
@@ -158,7 +157,7 @@ export const duel = {
   'duel.room.deckTitle': 'Tu deck',
   'duel.room.deckChange': 'Cambiar deck',
   'duel.room.deckChoose': 'Elegir mi deck',
-  'duel.room.needDeck': 'Para repartir la mano hacen falta {min} cartas en el Main y tu deck tiene {count}. Elegí un deck: el del builder, un enlace ydke:// o un archivo .ydk.',
+  'duel.room.needDeck': 'Para repartir la mano hacen falta {min} cartas en el Main y tu deck tiene {count}. Elegí un deck en el builder (ahí podés importar un enlace ydke:// o un archivo .ydk).',
   'duel.room.invitedBy': '{name} te invitó a un duelo',
   'duel.full.title': 'La sala ya está completa',
   'duel.full.text': 'Sus dos jugadores ya están adentro. Podés mirar el duelo (no hace falta deck) o probar con otro enlace.',
@@ -397,7 +396,6 @@ export const duel = {
   'duel.result.draw': 'Empate: los dos se quedaron sin puntos de vida.',
   'duel.siding.title': 'Sidedeck',
   'duel.siding.intro': 'Arrastrá una carta a otra zona o tocala para pasarla: del Main y del Extra va al Side, y del Side vuelve a su zona. Tu rival no ve nada. Cuando los dos estén listos empieza el duelo que sigue, con los cambios. Tenés 3 minutos: si se acaba el tiempo, se juega con tu deck como esté (o con el de antes, si no cumple).',
-  'duel.siding.loading': 'Cargando tu deck…',
   'duel.siding.time': 'Te quedan {time}',
   'duel.siding.zone.main': 'Main Deck',
   'duel.siding.zone.extra': 'Extra Deck',
@@ -427,18 +425,4 @@ export const duel = {
   // Los puntos de vida con los que empieza el duelo (los fija quien lo crea).
 
   // Jugar con otro deck que el del builder (por ejemplo desde un celular).
-  'duel.deck.title': 'Tu deck',
-  'duel.deck.builder': 'El del builder: {name} ({count} cartas en el Main)',
-  'duel.deck.imported': 'Deck importado: {main} cartas en el Main y {extra} en el Extra',
-  'duel.deck.importedName': 'Deck importado',
-  'duel.deck.useOther': 'Usar otro deck',
-  'duel.deck.hint': 'Pegá un enlace ydke:// o el contenido de un archivo .ydk, o elegí el archivo.',
-  'duel.deck.placeholder': 'ydke://… o el texto del .ydk',
-  'duel.deck.file': 'Elegir un archivo',
-  'duel.deck.use': 'Usar este deck',
-  'duel.deck.loading': 'Buscando las cartas…',
-  'duel.deck.invalid': 'No reconozco ese deck: pegá un enlace ydke:// o el contenido de un archivo .ydk.',
-  'duel.deck.failed': 'No pude buscar las cartas ahora. Probá de nuevo en un momento.',
-  'duel.deck.unknown': '{count} cartas no se reconocieron: se juegan igual, sin nombre.',
-  'duel.deck.back': 'Volver al deck del builder',
 } as const
