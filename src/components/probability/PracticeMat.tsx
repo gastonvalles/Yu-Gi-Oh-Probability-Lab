@@ -433,12 +433,12 @@ export function PracticeMat({
 
   const nameOf = useCallback((id: string) => cardOf(id).name, [cardOf])
   const kindOf = useCallback((id: string) => (isToken(id) ? TOKEN_KIND : cardKindOf(cardOf(id).apiCard)), [cardOf])
-  // A quiénes se puede atacar (en un duelo): los monstruos del rival, nombrados por su zona y, si los mostró, por la carta.
+  // A quiénes se puede atacar (en un duelo): los monstruos del rival en el campo, nombrados sólo por su carta (Gastón, 2026-10-19: «solo el nombre»); si no la mostró, «Boca abajo». También se eligen tocándolos en el campo.
   const attackTargets = useMemo<AttackTarget[]>(
     () =>
-      (duel?.attackTargets ?? []).map(({ id, zone, index, faceDown }) => ({
+      (duel?.attackTargets ?? []).map(({ id, faceDown }) => ({
         id,
-        label: t('practice.attack.target', { zone: t('duel.zone.theirs', { zone: zoneLabelOf(zone, index) }), name: faceDown ? t('practice.attack.faceDown') : nameOf(id) }),
+        label: faceDown ? t('practice.attack.faceDown') : nameOf(id),
       })),
     [duel, nameOf],
   )
@@ -865,6 +865,49 @@ export function PracticeMat({
     },
     [onDispatch, viewer, closeViewer, searching],
   )
+
+  // Eligiendo a quién atacar (el segundo paso de «Atacar»): el menú no tapa la mesa y se toca el monstruo del rival en el campo; los que se pueden atacar laten (`data-attack-target`, ver index.css).
+  const attackAsk = menu?.kind === 'card' && menu.ask?.choices?.some((choice) => choice.action.type === 'attack') ? menu : null
+  const attackerId = attackAsk?.id ?? null
+
+  useEffect(() => {
+    const section = sectionRef.current
+
+    if (!attackerId || !section) return
+
+    const marked = attackTargets.flatMap((target) => {
+      const card = section.querySelector<HTMLElement>(`[data-rival-card-id="${CSS.escape(target.id)}"]`)
+
+      card?.setAttribute('data-attack-target', 'true')
+
+      return card ? [card] : []
+    })
+
+    // Un toque en un monstruo del rival lo ataca (antes que su menú de Señalar y Target); un toque en otra carta suya cierra este menú, que no tiene nada que ver.
+    const onClick = (event: MouseEvent) => {
+      const card = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-rival-card-id]') : null
+
+      if (!card) return
+
+      const target = attackTargets.find((entry) => entry.id === card.dataset.rivalCardId)
+
+      if (!target) {
+        setMenu(null)
+        return
+      }
+
+      event.stopPropagation()
+      event.preventDefault()
+      play({ type: 'attack', id: attackerId, target: target.id })
+    }
+
+    section.addEventListener('click', onClick, true)
+
+    return () => {
+      section.removeEventListener('click', onClick, true)
+      marked.forEach((card) => card.removeAttribute('data-attack-target'))
+    }
+  }, [attackerId, attackTargets, play])
 
   /** Una jugada del menú: con Sacrificios primero se eligen; si puede salir a varias zonas, la mesa pide elegir una (como "Choose Zones" en DuelingBook). */
   const choose = useCallback(
@@ -1911,6 +1954,7 @@ export function PracticeMat({
           items={menuItems}
           asking={menu.kind !== 'token' && menu.kind !== 'phases' ? menu.ask?.label : undefined}
           onInspect={menu.kind === 'card' && !menu.ask && !menu.drop && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
+          passThrough={attackAsk !== null}
           onClose={() => setMenu(null)}
         />
       ) : null}
@@ -1935,6 +1979,7 @@ export function PracticeMat({
         title={menuTitle}
         items={menuItems}
         onInspect={menu?.kind === 'card' && !menu.ask && !menu.drop && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
+        passThrough={attackAsk !== null}
         onClose={() => setMenu(null)}
       />
 

@@ -1750,3 +1750,18 @@
     }
   }
 }
+
+/*
+ * Eligiendo a quién atacar, los monstruos del rival que se pueden atacar laten como una zona que se puede elegir (`PracticeMat` les pone `data-attack-target` mientras el menú de «Atacar» está abierto).
+ * Con movimiento reducido queda el aro quieto.
+ */
+[data-attack-target='true'] {
+  cursor: pointer;
+  box-shadow: 0 0 0 2px rgb(var(--accent-rgb) / 0.9), 0 0 16px 2px rgb(var(--accent-rgb) / 0.55);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-attack-target='true'] {
+    animation: fx-pick 1.5s ease-in-out infinite;
+  }
+}
