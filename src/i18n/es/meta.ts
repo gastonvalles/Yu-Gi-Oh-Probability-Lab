@@ -185,6 +185,7 @@ export const meta = {
   'meta.replays.watch': 'Ver el replay {label}',
   'meta.replays.watchWithHeading': 'Ver el replay {label}, {heading}',
   'meta.replays.decksCount': { one: '{count} deck', other: '{count} decks' },
+  'meta.replays.loading': 'Actualizando los replays',
   'meta.replays.moreOptions': 'Más opciones de {label}',
   'meta.replays.viewDeck': 'Ver deck',
   'meta.replays.viewDeckLabel': 'Ver deck {deck}',

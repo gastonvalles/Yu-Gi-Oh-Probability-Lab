@@ -14,6 +14,7 @@ import {
   type ReplayChannel,
   type ReplayEntry,
 } from '../../app/replays'
+import { useBriefLoading } from '../../app/use-brief-loading'
 import { useInfiniteList } from '../../app/use-infinite-list'
 import { formatInteger, normalizeSearchText } from '../../app/utils'
 import { t } from '../../i18n'
@@ -95,6 +96,8 @@ export function ReplaysScreen() {
   }, [entries, filterDeck, topic, query])
   // Scroll infinito: se muestran de a una página y, al acercarse al final, se suma la que sigue. Otro filtro o búsqueda vuelve a la primera.
   const { limit, hasMore, loadMore, sentinel } = useInfiniteList(visible.length, REPLAYS_PER_PAGE, `${topic}|${query}|${filterDeck?.id ?? ''}`)
+  // Al cambiar de pestaña (de chip) se ven los lugares vacíos un segundo, como cuando YouTube trae otra categoría: así se nota que la lista se actualizó.
+  const refreshing = useBriefLoading(topic)
   const opened = useMemo(() => entries.find((entry) => entry.video.id === link.video) ?? null, [entries, link.video])
 
   const navigate = (next: { video?: string | null; deck?: number | null }) => {
@@ -171,7 +174,13 @@ export function ReplaysScreen() {
           />
         </div>
 
-        {visible.length > 0 ? (
+        {refreshing ? (
+          <div role="status" aria-label={t('meta.replays.loading')} aria-busy="true" className={GRID}>
+            {Array.from({ length: Math.min(REPLAYS_PER_PAGE, Math.max(visible.length, 3), 6) }, (_, slot) => (
+              <ReplaySkeleton key={slot} className={cx(slot >= 1 && 'max-sm:hidden', slot >= 4 && 'sm:max-xl:hidden')} />
+            ))}
+          </div>
+        ) : visible.length > 0 ? (
           <ul className={GRID}>
             {visible.slice(0, limit).map((entry) => (
               <li key={entry.video.id} className="min-w-0">
@@ -190,20 +199,11 @@ export function ReplaysScreen() {
         )}
 
         {/* El final de lo mostrado: cuando se acerca a la pantalla se cargan más (mientras tanto, una fila de lugares vacíos, como YouTube). Sin scrollear (lector de pantalla, teclado) está el botón. */}
-        {hasMore ? (
+        {hasMore && !refreshing ? (
           <>
             <div ref={sentinel} aria-hidden="true" className={GRID}>
               {[0, 1, 2].map((slot) => (
-                <div key={slot} className={cx('grid content-start gap-3', slot === 1 && 'max-sm:hidden', slot === 2 && 'hidden xl:grid')}>
-                  <Skeleton radius="panel" className="aspect-video w-full" />
-                  <div className="flex gap-3">
-                    <Skeleton radius="chip" className="size-9 shrink-0" />
-                    <div className="grid flex-1 content-start gap-2">
-                      <Skeleton className="h-4 w-4/5" />
-                      <Skeleton className="h-3 w-3/5" />
-                    </div>
-                  </div>
-                </div>
+                <ReplaySkeleton key={slot} className={cx(slot === 1 && 'max-sm:hidden', slot === 2 && 'hidden xl:grid')} />
               ))}
             </div>
             <Button variant="secondary" size="sm" className="sr-only focus-visible:not-sr-only focus-visible:justify-self-center" onClick={loadMore}>
@@ -234,16 +234,34 @@ export function ReplaysScreen() {
 /** La grilla de videos (y la de lugares vacíos de abajo): una columna en el celular, dos y tres después (`xl`, no `min-[1101px]`: con `sm:grid-cols-2` el arbitrario queda antes en el CSS y pierde). */
 const GRID = 'm-0 grid list-none gap-x-4 gap-y-8 p-0 sm:grid-cols-2 xl:grid-cols-3'
 
+/** El lugar vacío de un video (la miniatura, el círculo y las dos líneas): lo que se ve al traer más y al cambiar de pestaña. */
+function ReplaySkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cx('grid content-start gap-3', className)}>
+      <Skeleton radius="panel" className="aspect-video w-full" />
+      <div className="flex gap-3">
+        <Skeleton radius="chip" className="size-9 shrink-0" />
+        <div className="grid flex-1 content-start gap-2">
+          <Skeleton className="h-4 w-4/5" />
+          <Skeleton className="h-3 w-3/5" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /**
- * Un video, como en YouTube: la miniatura (con la duración) y debajo, sin caja, el círculo del canal, el título (el torneo y la instancia), los jugadores y «fecha · N decks», con los tres puntos (⋯)
- * a la derecha si el replay tiene decks del Meta: ahí está «Ver deck» (con un deck lo abre y con dos abre el replay, que lista el de cada jugador). La miniatura y el texto abren el replay.
+ * Un video, como en YouTube: la miniatura (con la duración) y debajo, sin caja, el círculo del canal y **dos líneas**: el título (la instancia y los jugadores) y, apagada, «torneo · fecha · N decks»; con los
+ * tres puntos (⋯) a la derecha si el replay tiene decks del Meta. Al pasar el mouse (o enfocarlo) el video se destaca con un fondo detrás, que se pasa un poco de los bordes (no mueve nada), para saber cuál es: ahí está «Ver deck» (con un deck lo abre y con dos abre el replay, que lista el de cada jugador). La miniatura y el texto abren el replay.
  */
 function ReplayCard({ entry, onOpen, onOpenDeck }: { entry: ReplayEntry; onOpen: () => void; onOpenDeck: (deck: MetaDeck) => void }) {
   const { video, event, stage, players } = entry
   const label = replayLabel(entry)
   const heading = [event, stage?.label].filter(Boolean).join(' · ')
   const decks = players.flatMap((player) => (player.deck ? [player.deck] : []))
-  const facts = [formatMetaDate(video.date), decks.length > 0 ? t('meta.replays.decksCount', { count: decks.length }) : null].filter(Boolean).join(' · ')
+  // Dos líneas, como YouTube: arriba la instancia y los jugadores; abajo el torneo, la fecha y los decks.
+  const title = [stage?.label, label].filter(Boolean).join(' · ')
+  const facts = [event, formatMetaDate(video.date), decks.length > 0 ? t('meta.replays.decksCount', { count: decks.length }) : null].filter(Boolean).join(' · ')
   const actions: OverflowItem[] =
     decks.length === 1
       ? [{ label: t('meta.replays.viewDeckLabel', { deck: decks[0]!.name }), icon: 'layers', onSelect: () => onOpenDeck(decks[0]!) }]
@@ -252,7 +270,7 @@ function ReplayCard({ entry, onOpen, onOpenDeck }: { entry: ReplayEntry; onOpen:
         : []
 
   return (
-    <article className="group grid min-w-0 content-start gap-3">
+    <article className="group relative isolate grid min-w-0 content-start gap-3 before:absolute before:-inset-3 before:-z-10 before:rounded-panel before:bg-tint/10 before:opacity-0 before:transition-opacity before:duration-150 hover:before:opacity-100 focus-within:before:opacity-100 motion-reduce:before:transition-none">
       <button
         type="button"
         className="relative block aspect-video w-full overflow-hidden rounded-card bg-input focus-visible:outline-none focus-visible:shadow-focus"
@@ -260,7 +278,7 @@ function ReplayCard({ entry, onOpen, onOpenDeck }: { entry: ReplayEntry; onOpen:
         onClick={onOpen}
       >
         {/* La miniatura de YouTube es 4:3 con barras negras arriba y abajo: `object-cover` en 16:9 las recorta. */}
-        <img src={thumbnailUrl(video.id)} alt="" loading="lazy" decoding="async" className="size-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03] motion-reduce:transition-none" />
+        <img src={thumbnailUrl(video.id)} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
         <span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-black/0 transition-colors duration-200 group-hover:bg-black/25">
           <span className="grid size-12 scale-90 place-items-center rounded-full bg-primary/90 text-primary-foreground opacity-0 transition-[opacity,transform] duration-200 group-hover:scale-100 group-hover:opacity-100 motion-reduce:transition-none">
             <Icon name="play" size={22} variant="bold" />
@@ -274,8 +292,7 @@ function ReplayCard({ entry, onOpen, onOpenDeck }: { entry: ReplayEntry; onOpen:
           {CHANNEL_BADGE[video.channel]}
         </span>
         <button type="button" className="grid min-w-0 content-start gap-0.5 rounded-tag text-left focus-visible:outline-none focus-visible:shadow-focus" onClick={onOpen}>
-          <strong className="line-clamp-2 text-body font-semibold leading-snug text-foreground">{heading || label}</strong>
-          {heading ? <span className="truncate text-micro text-muted">{label}</span> : null}
+          <strong className="line-clamp-2 text-body font-semibold leading-snug text-foreground">{title || label}</strong>
           <span className="truncate text-micro text-muted tabular-nums">{facts}</span>
         </button>
         {actions.length > 0 ? <OverflowMenu label={t('meta.replays.moreOptions', { label })} items={actions} className="-mr-1.5 -mt-1" /> : null}

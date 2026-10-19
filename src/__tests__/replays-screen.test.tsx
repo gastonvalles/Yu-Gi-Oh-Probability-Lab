@@ -7,6 +7,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ReplaysScreen } from '../components/replays/ReplaysScreen'
 
+// Al cambiar de chip la lista muestra lugares vacíos un segundo (`useBriefLoading`, probado aparte): acá se controla con una bandera.
+const { refreshing } = vi.hoisted(() => ({ refreshing: { value: false } }))
+
+vi.mock('../app/use-brief-loading', () => ({ BRIEF_LOADING_MS: 1000, useBriefLoading: () => refreshing.value }))
+
 // Datos propios: los de verdad cambian todos los días con el workflow.
 vi.mock('../data/replays.json', () => ({
   default: {
@@ -64,11 +69,32 @@ const pick = (card: HTMLElement, name: string) => {
 }
 
 beforeEach(() => {
+  refreshing.value = false
   window.history.replaceState(null, '', '#replays')
   window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
 })
 
 describe('la pestaña Replays', () => {
+  it('al cambiar de pestaña se ven los lugares vacíos en vez de los videos mientras se actualiza', () => {
+    refreshing.value = true
+    renderScreen()
+
+    expect(screen.getByRole('status', { name: 'Actualizando los replays' })).toHaveAttribute('aria-busy', 'true')
+    expect(document.querySelector('#replays-list ul')).toBeNull()
+  })
+
+  it('cada video tiene dos líneas de texto y se destaca con un fondo al pasar el mouse (o al enfocarlo), que no mueve nada', () => {
+    renderScreen()
+
+    const card = cards()[0]!
+    const text = within(card).getByRole('button', { name: /Final · Timoti B. vs. Vladis B./ })
+
+    // Dos líneas: el título y «torneo · fecha · decks».
+    expect(text.children).toHaveLength(2)
+    // El fondo es un pseudo-elemento detrás del video (no cambia el alto ni el lugar de nada), más ancho que él.
+    expect(card).toHaveClass('relative', 'isolate', 'before:absolute', 'before:-inset-3', 'hover:before:opacity-100', 'focus-within:before:opacity-100')
+  })
+
   it('muestra los replays con un deck del Meta, con «fecha · N decks» y los decks en los tres puntos, y "Todos" suma el resto; los chips traen la cuenta y los torneos', () => {
     renderScreen()
 
@@ -78,8 +104,9 @@ describe('la pestaña Replays', () => {
     expect(cards()).toHaveLength(2)
 
     const final = within(cards()[0]!)
-    expect(final.getByText('YCS Paris 2026 · Final')).toBeInTheDocument()
-    expect(final.getByText('Timoti B. vs. Vladis B.')).toBeInTheDocument()
+    // Dos líneas de texto, como YouTube: la instancia y los jugadores arriba; el torneo, la fecha y los decks abajo.
+    expect(final.getByText('Final · Timoti B. vs. Vladis B.')).toBeInTheDocument()
+    expect(final.getByText(/^YCS Paris 2026 · .* · 2 decks$/)).toBeInTheDocument()
     // Con dos decks, una sola opción en los tres puntos (abre el replay, que lista el deck de cada jugador); los decks no se repiten en la tarjeta.
     expect(final.getByText(/· 2 decks$/)).toBeInTheDocument()
     expect(final.queryByRole('menu')).not.toBeInTheDocument()
@@ -114,7 +141,7 @@ describe('la pestaña Replays', () => {
 
     fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar replays' }), { target: { value: 'sky striker' } })
     expect(cards()).toHaveLength(1)
-    expect(within(cards()[0]!).getByText('Usama B. vs. Pascal K.')).toBeInTheDocument()
+    expect(within(cards()[0]!).getByText('Ronda 13 · Usama B. vs. Pascal K.')).toBeInTheDocument()
 
     fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar replays' }), { target: { value: 'no existe' } })
     expect(screen.getByText('Ningún replay con eso')).toBeInTheDocument()
@@ -154,7 +181,7 @@ describe('la pestaña Replays', () => {
     renderScreen()
 
     expect(cards()).toHaveLength(1)
-    expect(within(cards()[0]!).getByText('Timoti B. vs. Vladis B.')).toBeInTheDocument()
+    expect(within(cards()[0]!).getByText('Final · Timoti B. vs. Vladis B.')).toBeInTheDocument()
     // Con un deck elegido no hay selector de "Con deck / Todos": el filtro se quita con su chip.
     expect(screen.queryByRole('radio', { name: 'Todos' })).not.toBeInTheDocument()
 

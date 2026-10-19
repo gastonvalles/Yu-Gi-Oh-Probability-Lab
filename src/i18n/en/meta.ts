@@ -188,6 +188,7 @@ export const meta: Translated<typeof es> = {
   'meta.replays.watch': 'Watch the replay {label}',
   'meta.replays.watchWithHeading': 'Watch the replay {label}, {heading}',
   'meta.replays.decksCount': { one: '{count} deck', other: '{count} decks' },
+  'meta.replays.loading': 'Updating the replays',
   'meta.replays.moreOptions': 'More options for {label}',
   'meta.replays.viewDeck': 'View deck',
   'meta.replays.viewDeckLabel': 'View deck {deck}',
