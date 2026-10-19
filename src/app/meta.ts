@@ -152,7 +152,14 @@ export interface MetaDeckFilter {
   text?: string
   /** Los puestos que se piden («Winner», «Top 8»…): el deck tiene que haber llegado a alguno de ellos. Sin ninguno, todos. */
   placements?: readonly string[]
+  /** Sólo los decks de ese mes (`YYYY-MM`, como empieza la fecha del torneo): «este mes» es el de la última actualización de los datos. */
+  month?: string
+  /** Sólo estos decks (por id): los que tienen replay, por ejemplo. */
+  ids?: ReadonlySet<number>
 }
+
+/** El mes (`YYYY-MM`) de la última actualización de los datos: «este mes» de los decks de torneo (la fecha de cada deck es la de su torneo, en UTC como el snapshot). */
+export const metaMonth = (data: Pick<MetaDecksData, 'fetchedAt'> = META_DECKS): string => data.fetchedAt.slice(0, 7)
 
 /** Cuántas semanas hacia adelante se prolonga la tendencia. */
 export const PROJECTION_WEEKS = 2
@@ -415,6 +422,8 @@ export function filterMetaDecks(decks: readonly MetaDeck[], filter: MetaDeckFilt
       (filter.archetype === undefined || deck.name === filter.archetype) &&
       (filter.cardId === undefined || hasCard(deck, filter.cardId)) &&
       (!filter.placements?.length || (deck.placement !== null && filter.placements.includes(deck.placement))) &&
+      (filter.month === undefined || deck.date.startsWith(filter.month)) &&
+      (filter.ids === undefined || filter.ids.has(deck.id)) &&
       (words.length === 0 || matchesWords(deck, words)),
   )
 }
