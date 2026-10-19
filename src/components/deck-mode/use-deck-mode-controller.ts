@@ -268,6 +268,12 @@ export function useDeckModeController() {
     [resolveSearchResult, visibleSearchResults],
   )
 
+  // Una carta que no salió de la búsqueda del builder (la encontró el buscador de la app): se abre su detalle sin más.
+  const openFoundCard = useCallback((card: ApiCardSearchResult) => {
+    setSelectedDetailCard(card)
+    setSelectedDetailSource('search')
+  }, [])
+
   const closeCardDetail = useCallback(() => {
     setSelectedDetailCard(null)
     setSelectedDetailSource(null)
@@ -620,6 +626,7 @@ export function useDeckModeController() {
   )
 
   return {
+    openFoundCard,
     deckBuilderStep: {
       deckBuilder,
       deckFormat: settings.deckFormat,

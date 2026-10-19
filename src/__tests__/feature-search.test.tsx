@@ -7,6 +7,18 @@ import { buildAppNavGroups, buildDeckWorkflowNavigationItems } from '../componen
 import { FeatureSearch } from '../components/shell/FeatureSearch'
 import { buildFindEntries, filterFindEntries, normalize } from '../components/shell/feature-search'
 
+// El buscador trae cartas y expansiones de la red: en las pruebas, lo que se le dice.
+const finderApi = vi.hoisted(() => ({ cards: [] as unknown[] }))
+
+vi.mock('../ygoprodeck', () => ({
+  searchCards: vi.fn(async () => ({ results: finderApi.cards, hasMore: false })),
+  fetchCardsByIds: vi.fn(async () => finderApi.cards),
+}))
+vi.mock('../app/card-prices', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../app/card-prices')>()),
+  fetchExpansions: vi.fn(async () => ({ expansions: [{ id: 7, name: 'Legend of Blue Eyes White Dragon', date: '2002-03-08', count: 126, code: 'LOB' }], updated: '' })),
+  fetchExpansionCards: vi.fn(async () => []),
+}))
 const STEPS = buildDeckWorkflowNavigationItems({ mainDeckCount: 42, roleCardCount: 40, unclassifiedCardCount: 3, hasCompletedRoleStep: false, patternCount: 0 })
 const GROUPS = buildAppNavGroups(STEPS, { practice: true, duel: true })
 
@@ -14,6 +26,7 @@ const labels = (entries: ReturnType<typeof filterFindEntries>) => entries.map((e
 
 beforeEach(() => {
   Element.prototype.scrollIntoView = () => {}
+  finderApi.cards = []
 })
 
 afterEach(cleanup)
@@ -104,20 +117,56 @@ describe('el buscador de la app', () => {
     expect(onSelect).toHaveBeenCalledWith('life')
   })
 
-  it('sin resultados lo dice y, donde hay buscador, ofrece buscar cartas; sin buscador no ofrece nada', () => {
+  it('«Buscar … entre las cartas» lleva lo que se escribió; sin buscador de cartas no se ofrece y, sin nada, lo dice', async () => {
     const { input, onSelect } = open()
 
     fireEvent.change(input, { target: { value: 'zzzz' } })
-    expect(screen.getByText('No encontré nada con «zzzz».')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /Buscar «cartas» por nombre/ }))
-    expect(onSelect).toHaveBeenCalledWith('search')
+    fireEvent.click(await screen.findByRole('button', { name: /Buscar «zzzz» entre las cartas/ }))
+    expect(onSelect).toHaveBeenCalledWith('search', 'zzzz')
 
     cleanup()
 
     const noCards = open({ cardsAvailable: false })
 
     fireEvent.change(noCards.input, { target: { value: 'zzzz' } })
-    expect(screen.queryByRole('button', { name: /Buscar «cartas»/ })).not.toBeInTheDocument()
+    expect(await screen.findByText('No encontré nada con «zzzz».')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /entre las cartas/ })).not.toBeInTheDocument()
+  })
+
+  it('una carta escrita sale con su arte, antes que las expansiones, y al tocarla se abre su detalle', async () => {
+    const card = { ygoprodeckId: 46986414, name: 'Dark Magician', cardType: 'Normal Monster', archetype: 'Dark Magician', imageUrl: null, imageUrlSmall: null }
+
+    finderApi.cards = [card]
+
+    const onOpenCard = vi.fn()
+    const { input, onSelect, onClose } = open({ onOpenCard })
+
+    fireEvent.change(input, { target: { value: 'dark magician' } })
+    fireEvent.click((await screen.findByText('Normal Monster · Dark Magician')).closest('button')!)
+
+    expect(onOpenCard).toHaveBeenCalledWith(card)
+    expect(onSelect).not.toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('sin quien abra el detalle, la carta lleva al buscador de cartas con su nombre escrito', async () => {
+    finderApi.cards = [{ ygoprodeckId: 1, name: 'Dark Magician', cardType: 'Normal Monster', archetype: 'Dark Magician', imageUrl: null, imageUrlSmall: null }]
+
+    const { input, onSelect } = open()
+
+    fireEvent.change(input, { target: { value: 'dark mag' } })
+    fireEvent.click((await screen.findByText('Normal Monster · Dark Magician')).closest('button')!)
+
+    expect(onSelect).toHaveBeenCalledWith('search', 'Dark Magician')
+  })
+
+  it('un código de expansión lleva a su expansión', async () => {
+    const { input } = open()
+
+    fireEvent.change(input, { target: { value: 'lob-' } })
+    fireEvent.click(within(await screen.findByRole('option', { name: /Legend of Blue Eyes White Dragon/ })).getByRole('button'))
+
+    expect(window.location.hash).toBe('#expansions?set=7')
   })
 
   it('cerrado no existe', () => {
