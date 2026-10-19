@@ -273,6 +273,68 @@ describe('girar la carta, con un gesto, en todas las direcciones', () => {
     expect(consumeClick()).toBe(true)
   })
 
+  it('el brillo va pegado al frente de la carta (gira con ella y se esconde con el dorso), no suelto afuera donde quedaba flotando', () => {
+    const { container } = render(
+      <CardFlip turns={{ x: 0, y: 0 }} flipperRef={{ current: null }}>
+        <span>frente</span>
+      </CardFlip>,
+    )
+    const [front, back] = Array.from((container.firstElementChild as HTMLElement).children)
+
+    expect(front!.querySelector('[class*="glare"]')).not.toBeNull()
+    expect(back!.querySelector('[class*="glare"]')).toBeNull()
+  })
+
+  it('mientras se arrastra, la inclinación hacia el mouse (y su brillo) queda apagada aunque el mouse siga moviéndose; al soltar vuelve a seguirlo', () => {
+    function Both() {
+      const flip = useCardFlip()
+
+      return (
+        <div
+          data-testid="carta"
+          ref={(element) => {
+            if (element) element.getBoundingClientRect = () => ({ height: 200, width: 140, top: 0, left: 0, right: 140, bottom: 200, x: 0, y: 0, toJSON: () => ({}) })
+          }}
+          onPointerDown={(event) => {
+            tiltHandlers.onPointerDown(event)
+            flip.onPointerDown(event)
+          }}
+          onPointerMove={(event) => {
+            tiltHandlers.onPointerMove(event)
+            flip.onPointerMove(event)
+          }}
+          onPointerUp={flip.onPointerUp}
+          onPointerCancel={flip.onPointerCancel}
+        >
+          <CardFlip turns={flip.turns} flipperRef={flip.flipperRef}>
+            <span>frente</span>
+          </CardFlip>
+        </div>
+      )
+    }
+
+    render(<Both />)
+
+    const carta = screen.getByTestId('carta')
+    const mouse = { pointerId: 1, pointerType: 'mouse', buttons: 1 }
+
+    // Pasando por encima, sin arrastrar, se inclina hacia el mouse.
+    fireEvent.pointerMove(carta, { ...mouse, buttons: 0, clientX: 90, clientY: 100 })
+    expect(carta.dataset.tilting).toBe('true')
+
+    fireEvent.pointerDown(carta, { ...mouse, button: 0, clientX: 70, clientY: 100 })
+    fireEvent.pointerMove(carta, { ...mouse, clientX: 100, clientY: 100 })
+    expect(carta.dataset.tilting).toBe('false')
+    // Cada movimiento del mouse la volvería a encender: tiene que seguir apagada.
+    fireEvent.pointerMove(carta, { ...mouse, clientX: 110, clientY: 104 })
+    fireEvent.pointerMove(carta, { ...mouse, clientX: 120, clientY: 106 })
+    expect(carta.dataset.tilting).toBe('false')
+
+    fireEvent.pointerUp(carta, { ...mouse, buttons: 0, clientX: 120, clientY: 106 })
+    fireEvent.pointerMove(carta, { ...mouse, buttons: 0, clientX: 90, clientY: 100 })
+    expect(carta.dataset.tilting).toBe('true')
+  })
+
   it('la pista del gesto sale las primeras tres veces y después ya no', () => {
     window.localStorage.clear()
 

@@ -14,7 +14,7 @@ import { CardArt } from '../CardArt'
 import { buildZoneActionEntries } from '../card-detail/card-zone-actions'
 import { CardArtPicker } from '../card-detail/CardArtPicker'
 import { CardPricesButton, CardPricesModal } from '../card-detail/CardPrices'
-import { CardGlare, TILT_ART, TILT_PERSPECTIVE, tiltHandlers } from '../card-detail/card-tilt'
+import { TILT_ART, TILT_PERSPECTIVE, tiltHandlers } from '../card-detail/card-tilt'
 import { CardFlip, useCardFlip } from '../card-detail/CardFlip'
 import { CardZoom } from '../card-detail/CardZoom'
 import { PrintingInfo } from '../card-detail/PrintingInfo'
@@ -133,7 +133,6 @@ export function DeckBuilderClassicPreview({ card, source, deckCopy, navigation, 
                     <CardArt remoteUrl={artUrl} fallbackUrl={card.imageUrl} name={card.name} className="h-full w-full bg-transparent object-contain shadow-none" limitCard={card} limitBadgeSize="lg" />
                   </button>
                 </CardFlip>
-                <CardGlare />
               </div>
             </div>
             </div>

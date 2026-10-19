@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPoi
 
 import { t } from '../../i18n'
 import { CARD_BACK, CARD_BACK_HD_URL } from '../probability/practice-styles'
-import { levelOut } from './card-tilt'
+import { CardGlare, levelOut } from './card-tilt'
 
 /** Cuánto hay que arrastrar la carta, en partes de su ancho (o de su alto), para darla vuelta entera (medio giro por cada 0,8). */
 const SPAN = 0.8
@@ -144,8 +144,6 @@ export function useCardFlip() {
 
         drag.active = true
         setBackNeeded(true)
-        // Mientras gira con el dedo, la inclinación hacia el puntero se apaga y la carta sigue al puntero aunque se salga de ella.
-        levelOut(event.currentTarget)
 
         try {
           event.currentTarget.setPointerCapture(event.pointerId)
@@ -156,6 +154,8 @@ export function useCardFlip() {
         if (flipperRef.current) flipperRef.current.style.transition = 'none'
       }
 
+      // Mientras gira con el dedo, la inclinación hacia el puntero se apaga (y su brillo) y la carta sigue al puntero aunque se salga de ella: cada movimiento del mouse la volvería a encender, por eso se apaga en cada uno.
+      levelOut(event.currentTarget)
       drag.angle = { x: -(dy / (drag.height * SPAN)) * 180, y: (dx / (drag.width * SPAN)) * 180 }
 
       if (flipperRef.current) flipperRef.current.style.transform = flipTransform(turnsRef.current.x * 180 + drag.angle.x, turnsRef.current.y * 180 + drag.angle.y)
@@ -185,6 +185,8 @@ export function CardFlip({ turns, flipperRef, loadBack = false, shadow = true, c
     >
       <div className={`absolute inset-0 overflow-hidden [backface-visibility:hidden] ${face}`} aria-hidden={flipped || undefined}>
         {children}
+        {/* El brillo que sigue al puntero va pegado al frente (gira con él y se esconde con el dorso): afuera quedaba flotando, plano, donde estaba la carta. */}
+        <CardGlare />
       </div>
       <div className={`absolute inset-0 overflow-hidden [backface-visibility:hidden] [transform:rotateY(180deg)] ${face}`} aria-hidden={flipped ? undefined : true}>
         <span className={`${CARD_BACK} z-0`} />
