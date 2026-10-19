@@ -46,7 +46,6 @@ import { riffle } from '../../app/shuffle-fx'
 import { useCardFlights } from '../../app/use-card-flights'
 import { useMatView } from '../../app/mat-view'
 import { useElementSize } from '../../app/use-element-width'
-import { useFieldCell } from '../../app/use-grid-cell'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { useEscapeKey } from '../../app/use-overlay'
 import { showToastMessage } from '../../app/use-toast-message'
@@ -91,15 +90,11 @@ export interface MatCard {
  * (la barra con los puntos de vida y la mano del rival) y la carta del rival que ocupa una Zona Extra compartida. En un duelo no hay mano nueva
  * ni combos guardados, y la mascota no se sienta en el campo. Lo arma la pantalla del duelo: la mesa no sabe nada de la red.
  */
-/**
- * Cuánto de una casilla de magias y trampas pueden tapar las manos (Gastón: no más del 30 %). La del rival toca el borde de su zona con el centro del abanico (28 %); la tuya, con el abanico levantado
- * (`TOP_ROOM`) y la perspectiva, tapa en la práctica un 27 % de lo que se ve de la casilla (medido a 1440, 1280, 1100 y 390 px).
- */
-const RIVAL_HAND_OVERLAP = 0.28
-const HAND_OVERLAP = 0.32
-/** El aire entre el campo y la mano (`gap-2`) y el que la mano deja sobre sus cartas (`TOP_ROOM` de `PracticeHand`): la mano sube esa distancia más lo que tapa. */
+/** El aire entre el campo y la mano (`gap-2`) y el que la mano deja sobre sus cartas (`TOP_ROOM` de `PracticeHand`): la mano sube la primera distancia y queda separada del campo por la segunda. */
 const MAT_GAP = 8
 const HAND_TOP_ROOM = 8
+/** Escritorio: cuánto se separa del campo la mano del rival (arriba). Las manos nunca tapan el campo (Gastón, 2026-10-19: «ya no quiero que las cartas tapen la mesa nunca»). */
+const DESKTOP_HAND_GAP = 8
 /** Celular: cuánto se separan las manos del campo (la del rival sube, la tuya baja) sin moverlo: se corren con `transform` y `margin` de un elemento absoluto, que no cambian el alto de lo que se centra. */
 const MOBILE_HAND_GAP = 14
 
@@ -593,18 +588,9 @@ export function PracticeMat({
   const [shuffleKey, setShuffleKey] = useState(0)
   const deckRef = useRef<HTMLDivElement | null>(null)
   const fieldRef = useRef<HTMLDivElement | null>(null)
-  // En un duelo las dos manos se apoyan sobre la zona de magias y trampas de cada uno: hasta `HAND_OVERLAP` del alto de una casilla (las casillas son cuadradas: su alto es su ancho).
-  const [fieldNode, setFieldNode] = useState<HTMLDivElement | null>(null)
   const setField = useCallback((node: HTMLDivElement | null) => {
     fieldRef.current = node
-    setFieldNode(node)
   }, [])
-  const fieldCell = useFieldCell(fieldNode, view)
-  // La mano del rival va en el plano del campo (se inclina con él): su tope es una parte de la casilla. La tuya queda derecha, así que cuenta lo que se ve de la casilla.
-  // Sólo en escritorio: en el celular (Gastón, 2026-10-19) las manos no tapan nada del campo, la del rival queda arriba de él y la tuya abajo.
-  const rivalHandOverlap = duel && isDesktop ? Math.floor(fieldCell.layout * RIVAL_HAND_OVERLAP) : 0
-  const handOverlap = duel && isDesktop ? Math.floor(fieldCell.visible * HAND_OVERLAP) : 0
-
   useEffect(() => {
     setHandOrder([])
     setDealt(0)
@@ -1551,8 +1537,9 @@ export function PracticeMat({
       <div
         ref={columnRef}
         // Con laterales: una grilla de tres columnas (lateral, campo, lateral) y tres filas (arriba, el medio que se estira y abajo); el campo ocupa las tres. `--cell-h` es la casilla que deja el alto: sin la barra de arriba ni la de abajo sobran 17,25 rem.
-        style={rails ? ({ '--cell-h': 'max(3.5rem, min(9.5rem, calc((100dvh - 17.25rem) / 5)))' } as CSSProperties) : undefined}
+        style={rails ? ({ '--cell-h': 'max(3.5rem, min(12rem, calc((100dvh - 22.95rem) / 5)))' } as CSSProperties) : undefined}
         className={cx(
+          !duel && '@container',
           'col-start-1 row-start-2 min-h-0 overflow-y-auto overflow-x-hidden px-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] min-[1101px]:px-4 min-[1101px]:pb-4 min-[1101px]:pt-2',
           rails ? 'grid grid-cols-[minmax(13rem,1fr)_minmax(0,calc(var(--cell-h)*6.3714+3rem))_minmax(13rem,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] gap-x-4' : 'flex flex-col gap-2',
         )}
@@ -1568,14 +1555,14 @@ export function PracticeMat({
           ref={setField}
           // Escritorio: `my-auto` reparte el aire que sobra arriba y abajo del campo (ni pegado a la barra ni un hueco antes de la mano). En el celular, de arriba, el campo deja lugar a la mano del rival (que se apoya en su borde de arriba).
           data-tilted={view === '3d' ? 'true' : undefined}
-          className={cx(!duel && 'min-[1101px]:my-auto', "relative grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [transform-origin:50%_100%] [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]", view === '3d' && '[transform:perspective(var(--field-perspective))_rotateX(var(--field-tilt))]')}
+          className={cx(!duel && 'min-[1101px]:my-auto min-[1101px]:[--cell:max(8rem,min(calc((100cqw-3rem)/6.3714),calc((100dvh-22rem)/3.2),15rem))]', "relative grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [transform-origin:50%_100%] [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]", view === '3d' && '[transform:perspective(var(--field-perspective))_rotateX(var(--field-tilt))_scaleY(var(--field-stretch))]')}
           aria-label={t('practice.mat.field')}
           // En un duelo, las áreas de los dos campos (el estilo en línea gana a la clase de las áreas de uno solo); y en escritorio las cartas se achican hasta que las cinco filas, la mano y la barra de abajo (con su propia fila: 23,5 rem de alto de lo que no es campo) entran en la pantalla.
-          style={duel ? ({ gridTemplateAreas: duel.areas, '--cell': rails ? 'max(3.5rem, min(var(--cell-h), calc((100cqw - 3rem) / 6.3714)))' : 'max(3.5rem, min(9.5rem, calc((100dvh - 24.75rem) / 5)))', ...(duel.rivalHand ? { marginTop: Math.max(0, (isDesktop ? THEIR_HAND.desktop.room : THEIR_HAND.mobile.room) - rivalHandOverlap) } : null) } as CSSProperties) : undefined}
+          style={duel ? ({ gridTemplateAreas: duel.areas, '--cell': rails ? 'max(3.5rem, min(var(--cell-h), calc((100cqw - 3rem) / 6.3714)))' : 'max(3.5rem, min(12rem, calc((100dvh - 30.45rem) / 5)))', ...(duel.rivalHand ? { marginTop: isDesktop ? THEIR_HAND.desktop.room + DESKTOP_HAND_GAP : THEIR_HAND.mobile.room } : null) } as CSSProperties) : undefined}
         >
-          {/* La mano del rival se apoya en el borde de arriba del campo (inclinada con él en la vista 3D), tapando hasta el 28 % de su zona de magias y trampas. */}
+          {/* La mano del rival queda arriba del borde del campo (inclinada con él en la vista 3D), sin tapar nada de él. */}
           {duel?.rivalHand ? (
-            <div className="absolute bottom-full left-1/2 z-10 -translate-x-1/2" style={{ marginBottom: isDesktop ? -rivalHandOverlap : MOBILE_HAND_GAP }}>
+            <div className="absolute bottom-full left-1/2 z-10 -translate-x-1/2" style={{ marginBottom: isDesktop ? DESKTOP_HAND_GAP : MOBILE_HAND_GAP }}>
               {duel.rivalHand}
             </div>
           ) : null}
@@ -1687,7 +1674,7 @@ export function PracticeMat({
 
         {/* Abajo del todo, como en la mesa real: la mano en abanico. Las salidas y problemas flotan sobre la mano en el celu, y van en el panel lateral en escritorio. */}
         {/* Cuando la mano recibe una carta (robada, buscada o devuelta), se enmarca un instante en celeste. */}
-        <div className={cx('relative', duel && 'pointer-events-none z-10')} style={duel ? { marginTop: -(handOverlap + MAT_GAP + HAND_TOP_ROOM), ...(isDesktop ? null : { transform: `translateY(${MOBILE_HAND_GAP}px)` }) } : undefined} data-pointed={duel?.pointed?.pile === 'hand' ? 'true' : undefined}>
+        <div className={cx('relative', duel && 'pointer-events-none z-10')} style={duel ? { marginTop: isDesktop ? -MAT_GAP : -(MAT_GAP + HAND_TOP_ROOM), ...(isDesktop ? null : { transform: `translateY(${MOBILE_HAND_GAP}px)` }) } : undefined} data-pointed={duel?.pointed?.pile === 'hand' ? 'true' : undefined}>
           {/* Celular: las salidas y problemas flotan justo arriba de la mano (el aire que queda abajo del campo): no ocupan lugar, así que el campo no se mueve cuando aparecen, se explican o se van. Sólo los chips y la explicación atajan toques. */}
           {footer && isDealt && !isDesktop ? <div className="pointer-events-none absolute inset-x-0 bottom-full z-10 px-1 pb-1.5 animate-sheet-in motion-reduce:animate-none">{footer}</div> : null}
           {rivalMarks?.piles.includes('hand') ? (
