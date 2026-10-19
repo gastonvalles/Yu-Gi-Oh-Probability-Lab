@@ -47,7 +47,7 @@ export const DECK_CARD_CLASSIC = [
 /** Color del cuadradito de cada tipo de carta en el encabezado de la zona. */
 export const ZONE_TYPE_SWATCH: Record<string, string> = {
   monster: 'bg-warning',
-  spell: 'bg-accent',
+  spell: 'bg-success',
   trap: 'bg-[rgb(236_72_153)]',
   fusion: 'bg-[rgb(148_163_184)]',
   xyz: 'bg-[rgb(148_163_184)]',
@@ -84,6 +84,6 @@ export const ZONE_STYLES: Record<DeckZoneType, { background: string; border: str
   side: {
     background: 'var(--zone-side-background)',
     border: 'var(--zone-side-border)',
-    dot: 'rgb(var(--accent-rgb))',
+    dot: 'rgb(var(--success-rgb))',
   },
 }

@@ -39,25 +39,25 @@ interface ParsedStoredGroupKey {
 }
 
 const ROLE_THEME_BY_KEY: Record<CardRole, ClassificationTheme> = {
-  // Los roles son categorías, no estadísticas: van en la familia del violeta (el verde, el ámbar y el azul no son de la paleta); el rojo queda para lo que sale mal.
+  // Los roles son categorías: cada uno con su color (trece tonos del violeta no se distinguen). El Starter, el rol que más se mira, lleva el violeta de marca; el rojo queda para lo que sale mal.
   starter: { color: '#c77dff', rgb: '199 125 255' },
-  extender: { color: '#e0b3ff', rgb: '224 179 255' },
-  enabler: { color: '#9b6bff', rgb: '155 107 255' },
-  handtrap: { color: '#a78bfa', rgb: '167 139 250' },
-  disruption: { color: '#8f8cff', rgb: '143 140 255' },
-  boardbreaker: { color: '#e879f9', rgb: '232 121 249' },
+  extender: { color: '#00ffa3', rgb: '0 255 163' },
+  enabler: { color: '#14b8a6', rgb: '20 184 166' },
+  handtrap: { color: '#3b82f6', rgb: '59 130 246' },
+  disruption: { color: '#2563eb', rgb: '37 99 235' },
+  boardbreaker: { color: '#f7cb15', rgb: '247 203 21' },
   floodgate: { color: '#a855f7', rgb: '168 85 247' },
-  searcher: { color: '#d58cff', rgb: '213 140 255' },
-  draw: { color: '#b4a2d4', rgb: '180 162 212' },
-  recovery: { color: '#c4b5fd', rgb: '196 181 253' },
-  payoff: { color: '#d8b4fe', rgb: '216 180 254' },
+  searcher: { color: '#06b6d4', rgb: '6 182 212' },
+  draw: { color: '#38bdf8', rgb: '56 189 248' },
+  recovery: { color: '#22c55e', rgb: '34 197 94' },
+  payoff: { color: '#10b981', rgb: '16 185 129' },
   brick: { color: '#ff4d4d', rgb: '255 77 77' },
   garnet: { color: '#da0000', rgb: '218 0 0' },
 }
 
 const ORIGIN_THEME_BY_KEY: Record<CardOrigin, ClassificationTheme> = {
   engine: { color: 'var(--primary)', rgb: 'var(--primary-rgb)' },
-  non_engine: { color: 'var(--accent)', rgb: 'var(--accent-rgb)' },
+  non_engine: { color: 'var(--success)', rgb: 'var(--success-rgb)' },
 }
 
 export function createOriginGroupKey(value: CardOrigin): Extract<GroupKey, { type: 'origin' }> {

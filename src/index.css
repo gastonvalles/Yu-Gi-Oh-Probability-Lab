@@ -1263,25 +1263,27 @@
     --info-rgb: 247 203 21;
     /* Variantes claras de cada tono: texto e íconos sobre fondos teñidos (más contraste que el color base). */
     --success-soft: #6bf55c;
-    --warning-soft: #e0b3ff;
+    --warning-soft: #ffd84d;
     --danger-soft: #ff4d4d;
     --info-soft: #ffd84d;
     /* El gris sutil de las líneas que delimitan las casillas de la mesa (todas iguales, sin zonas de otro color). */
     --field-line: #a8a6bb;
     --field-line-rgb: 168 166 187;
 
-    --handtrap: #c77dff;
-    --handtrap-rgb: 199 125 255;
+    /* El Extra Deck y los monstruos Sincro y Enlace: el azul de siempre (las zonas del deck son categorías y se distinguen por color). */
+    --handtrap: #3b82f6;
+    --handtrap-rgb: 59 130 246;
     --success: #1aef06;
     --success-rgb: 26 239 6;
     /* El verde de un botón lleno con texto blanco: el verde de la paleta con 45 % de negro (el blanco sobre el verde claro no se lee). */
     --success-solid: color-mix(in srgb, #1aef06 55%, black);
-    --warning: #c77dff;
-    --warning-rgb: 199 125 255;
+    /* Ojo / a medio hacer: ámbar de la paleta (el violeta es de lo tuyo: acción principal y selección). */
+    --warning: #f7cb15;
+    --warning-rgb: 247 203 21;
     --danger: #da0000;
     --danger-rgb: 218 0 0;
 
-    /* Navegación: índigo con el destino activo en ámbar (el ámbar es sólo de la navegación, del rival y de la build B). */
+    /* Navegación: índigo con el destino activo en ámbar (el ámbar es de la navegación, del rival, de la build B, de los hipervínculos y del «ojo»: `warning`). */
     --nav: #400065;
     --nav-raised: #5a2a80;
     --nav-active: #f7cb15;
@@ -1314,7 +1316,7 @@
     --zone-main-border: transparent;
     --zone-extra-background: rgb(var(--handtrap-rgb) / 0.13);
     --zone-extra-border: transparent;
-    --zone-side-background: rgb(var(--accent-rgb) / 0.09);
+    --zone-side-background: rgb(var(--success-rgb) / 0.09);
     --zone-side-border: transparent;
   }
 }
