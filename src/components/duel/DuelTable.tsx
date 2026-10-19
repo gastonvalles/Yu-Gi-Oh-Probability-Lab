@@ -9,7 +9,7 @@ import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
 import { FX_CARD, FxFrame, SPOTLIGHT_TONE, TargetMark, fxVars } from '../probability/MatFx'
 import { CardBack, PILE_SHORT, PILE_TITLES } from '../probability/MatDialogs'
-import { CELL, CELL_EMZ, CELL_SQUARE, PENDULUM_GEM, PileBadge } from '../probability/PracticeMat'
+import { CELL, CELL_EMZ, CELL_MONSTER, CELL_SPELL, PENDULUM_GEM, PileBadge, ZoneLines } from '../probability/PracticeMat'
 import { PileStack } from '../probability/PileStack'
 
 /**
@@ -183,7 +183,8 @@ function SharedZone({ area, index, mine, theirs }: { area: string; index: number
   const label = conflict ? t('duel.zone.conflict', { zone: zoneLabel('mine', 'emz', index) }) : zoneLabel('mine', 'emz', index)
 
   return (
-    <div role="group" aria-label={label} className={cx(conflict ? CELL_SQUARE : CELL_EMZ, conflict && 'border-solid border-danger')} style={{ gridArea: area }}>
+    <div role="group" aria-label={label} className={cx(conflict ? CELL_MONSTER : CELL_EMZ, conflict && 'border-solid border-danger')} style={{ gridArea: area }}>
+      <ZoneLines kind="monster" />
       {own ? <CardOnZone placed={own} spot="emz" side={mine} owner="mine" label={label} /> : other ? <CardOnZone placed={other} spot="emz" side={theirs} owner="theirs" label={label} /> : null}
       {conflict ? <span aria-hidden="true" className="absolute right-0.5 top-0.5 z-2 grid size-4 place-items-center rounded-full bg-danger text-[0.6rem] font-extrabold leading-none text-white">!</span> : null}
     </div>
@@ -224,7 +225,8 @@ function Zone({ area, spot, index, placed, side, owner }: { area: string; spot: 
   const gem = spot === 'st' ? PENDULUM_GEM[index] : undefined
 
   return (
-    <div role="group" aria-label={label} data-pointed={placed !== null && side.point?.card === placed.id ? 'true' : undefined} className={spot === 'field' ? CELL : CELL_SQUARE} style={{ gridArea: area }}>
+    <div role="group" aria-label={label} data-pointed={placed !== null && side.point?.card === placed.id ? 'true' : undefined} className={spot === 'field' ? CELL : spot === 'st' ? CELL_SPELL : CELL_MONSTER} style={{ gridArea: area }}>
+      {spot === 'field' ? null : <ZoneLines kind={spot === 'st' ? 'spell' : 'monster'} />}
       {gem && !placed ? <span aria-hidden="true" className={cx('absolute left-1/2 top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[3px]', gem)} /> : null}
       {spot === 'field' && !placed ? <span aria-hidden="true" className="absolute inset-0 grid place-items-center text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-soft min-[1101px]:text-[0.6rem]">{t('practice.zone.fieldLabel')}</span> : null}
       {placed ? <CardOnZone placed={placed} spot={spot} side={side} owner={owner} label={label} /> : null}

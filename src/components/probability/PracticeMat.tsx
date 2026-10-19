@@ -213,14 +213,17 @@ const NEXT_DEAL_MS = 105
  * Todas las casillas son iguales —las tuyas, las del rival, las pilas y las Zonas Extra—: no hay zonas de otro color; el color queda para lo que pasa (elegir, soltar una carta).
  */
 const CELL_LOOK = 'border border-solid border-field-line/55 bg-field-line/[0.05]'
+/** Las zonas del centro no se dibujan con el borde de su casilla cuadrada sino con las líneas de la carta (`ZoneLines`, como el tapete): el borde queda invisible (y se enciende al elegir o soltar una carta) y las de monstruos llevan el velo en toda la casilla. */
+const CELL_LOOK_MONSTER = 'border border-solid border-transparent bg-field-line/[0.05]'
+const CELL_LOOK_SPELL = 'border border-solid border-transparent'
 
 /**
  * Lo que tiene toda casilla del campo o de una pila: su borde y velo (ver `CELL_LOOK`); se enciende con una carta arrastrada encima y se resalta cuando se está eligiendo.
- * La forma va aparte: ver `CELL` y `CELL_SQUARE`.
+ * La forma va aparte: ver `CELL`, `CELL_MONSTER` y `CELL_SPELL`.
  */
-const cellLook = () => [
+const cellLook = (look: string = CELL_LOOK) => [
   'relative min-w-0 transition-[color,background-color,border-color,box-shadow] duration-150',
-  CELL_LOOK,
+  look,
   // Con una carta arrastrada encima: borde parejo, relleno y resplandor violeta.
   'data-[over=true]:border-solid data-[over=true]:border-primary-hover data-[over=true]:bg-primary/25 data-[over=true]:shadow-[0_0_0_2px_rgb(var(--primary-hover-rgb)/0.55),0_0_24px_rgb(var(--primary-hover-rgb)/0.6),inset_0_0_18px_rgb(var(--primary-hover-rgb)/0.35)]',
   // Una zona que se puede elegir respira en verde y un aro se le expande desde el borde.
@@ -239,9 +242,24 @@ export const CELL = `aspect-[421/614] before:absolute before:-inset-1 ${cellLook
  * Las zonas del centro (monstruos, Mágicas y Trampas, Zonas Extra) son cuadradas, del lado largo de una carta: la carta entra parada (el alto de la casilla)
  * o acostada en defensa (el ancho de la casilla) con el mismo tamaño y sin salirse, así que dos cartas en defensa vecinas no se pisan ni se achican.
  */
-export const CELL_SQUARE = `aspect-square ${cellLook()}`
+export const CELL_MONSTER = `aspect-square ${cellLook(CELL_LOOK_MONSTER)}`
+/** Mágicas y Trampas (y las escalas de péndulo): la casilla es cuadrada para que quepa igual, pero su línea es la de la carta parada. */
+export const CELL_SPELL = `aspect-square ${cellLook(CELL_LOOK_SPELL)}`
 /** La zona extra de monstruos: cuadrada como las otras, con su X de trazos finos. */
-export const CELL_EMZ = `aspect-square cell-cross ${cellLook()}`
+export const CELL_EMZ = `aspect-square cell-cross ${cellLook(CELL_LOOK_MONSTER)}`
+
+/**
+ * Las líneas de una zona del centro, como las del tapete (Gastón, 2026-10-19: «nos faltan las líneas del campo»): la carta **parada** (del alto de la casilla) y, en las de monstruos, la carta **acostada** (del ancho)
+ * cruzadas en el medio, que juntas hacen la cruz de cada Main Monster Zone y de las Zonas Extra; las de Mágicas y Trampas, sólo la parada. Va adentro de la casilla, debajo de la carta, y no recibe toques.
+ */
+export function ZoneLines({ kind }: { kind: 'monster' | 'spell' }) {
+  return (
+    <span aria-hidden="true" className="pointer-events-none absolute inset-0 z-0">
+      <span className={cx('absolute inset-y-0 left-1/2 w-[68.57%] -translate-x-1/2 border border-field-line/70', kind === 'spell' && 'bg-field-line/[0.05]')} />
+      {kind === 'monster' ? <span className="absolute inset-x-0 top-1/2 h-[68.57%] -translate-y-1/2 border border-field-line/70" /> : null}
+    </span>
+  )
+}
 /** El ancho de una carta como parte de su alto (421 × 614 px): una carta parada en una casilla cuadrada mide ese tanto de ancho. */
 const CARD_WIDTH_PER_HEIGHT = 421 / 614
 
@@ -1355,12 +1373,13 @@ export function PracticeMat({
         data-pick={pickableZone || pickableTribute ? 'true' : 'false'}
         data-chosen={chosen ? 'true' : 'false'}
         data-pointed={placed !== null && duel?.pointed?.card === placed.id ? 'true' : undefined}
-        className={spot === 'field' ? CELL : spot === 'emz' ? CELL_EMZ : CELL_SQUARE}
+        className={spot === 'field' ? CELL : spot === 'emz' ? CELL_EMZ : spot === 'st' ? CELL_SPELL : CELL_MONSTER}
         style={{ gridArea: area }}
         // Una carta se elige con su toque (`openCard`); su click, que el navegador manda después, no: si no, el que cierra el doble clic de los materiales caería en la casilla del material, ya pidiendo zona, e invocaría ahí.
         onClick={pickableZone ? (event) => { if (!(event.target as Element).closest('[data-card-id]')) pickZone(spot, index) } : undefined}
         onKeyDown={pickableZone ? (event) => activate(event, () => pickZone(spot, index)) : undefined}
       >
+        {spot === 'field' ? null : <ZoneLines kind={spot === 'st' ? 'spell' : 'monster'} />}
         {gem && !placed ? <span aria-hidden="true" className={cx('absolute left-1/2 top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[3px]', gem)} /> : null}
         {spot === 'field' && !placed ? <span aria-hidden="true" className="absolute inset-0 grid place-items-center text-[0.5rem] font-semibold uppercase tracking-[0.04em] text-soft min-[1101px]:text-[0.6rem]">{t('practice.zone.fieldLabel')}</span> : null}
         {shown ? (
@@ -2015,7 +2034,7 @@ interface PlacedCardProps {
 
 /**
  * Carta en una zona del campo: es tuya, así que boca abajo se ve su imagen atenuada (como en DuelingBook); en defensa o
- * colocada en una zona de monstruo se acuesta a su tamaño y dentro de su casilla (cuadrada, ver `CELL_SQUARE`): sin achicarse ni pisar a la
+ * colocada en una zona de monstruo se acuesta a su tamaño y dentro de su casilla (cuadrada, ver `CELL_MONSTER`): sin achicarse ni pisar a la
  * de al lado; contadores, materiales y objetivo como etiquetas. Al darla vuelta se angosta y se abre; los contadores y los materiales rebotan al cambiar.
  */
 function PlacedCard({ placed, spot, card, dragging, flash, glow, glowKind, dim, chosen, targeted, selected, pending, bind, onOpen }: PlacedCardProps) {
