@@ -232,7 +232,7 @@ export function ReplaysScreen() {
 }
 
 /** La grilla de videos (y la de lugares vacíos de abajo): una columna en el celular, dos y tres después (`xl`, no `min-[1101px]`: con `sm:grid-cols-2` el arbitrario queda antes en el CSS y pierde). */
-const GRID = 'm-0 grid list-none gap-x-4 gap-y-8 p-0 sm:grid-cols-2 xl:grid-cols-3'
+const GRID = 'stagger m-0 grid list-none gap-x-4 gap-y-8 p-0 sm:grid-cols-2 xl:grid-cols-3'
 
 /** El lugar vacío de un video (la miniatura, el círculo y las dos líneas): lo que se ve al traer más y al cambiar de pestaña. */
 function ReplaySkeleton({ className }: { className?: string }) {
@@ -278,7 +278,7 @@ function ReplayCard({ entry, onOpen, onOpenDeck }: { entry: ReplayEntry; onOpen:
         onClick={onOpen}
       >
         {/* La miniatura de YouTube es 4:3 con barras negras arriba y abajo: `object-cover` en 16:9 las recorta. */}
-        <img src={thumbnailUrl(video.id)} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
+        <img src={thumbnailUrl(video.id)} alt="" loading="lazy" decoding="async" className="parallax-media size-full object-cover" />
         <span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-black/0 transition-colors duration-200 group-hover:bg-black/25">
           <span className="grid size-12 scale-90 place-items-center rounded-full bg-primary/90 text-primary-foreground opacity-0 transition-[opacity,transform] duration-200 group-hover:scale-100 group-hover:opacity-100 motion-reduce:transition-none">
             <Icon name="play" size={22} variant="bold" />

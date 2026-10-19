@@ -214,7 +214,7 @@ export function BanlistsScreen() {
                 </Badge>
                 <Badge size="sm">{formatInteger(entries.length)}</Badge>
               </div>
-              <ul className="m-0 grid list-none grid-cols-4 gap-x-2 gap-y-3 p-0 min-[560px]:grid-cols-5 min-[820px]:grid-cols-6 min-[1101px]:grid-cols-8 min-[1300px]:grid-cols-10">
+              <ul className="stagger m-0 grid list-none grid-cols-4 gap-x-2 gap-y-3 p-0 min-[560px]:grid-cols-5 min-[820px]:grid-cols-6 min-[1101px]:grid-cols-8 min-[1300px]:grid-cols-10">
                 {entries.map((entry) => (
                   <BanlistTile key={entry.cardId} entry={entry} status={status} onOpen={open} />
                 ))}

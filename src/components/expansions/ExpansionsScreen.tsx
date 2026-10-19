@@ -421,7 +421,7 @@ function ExpansionDetail({ expansion, updated, highlight, onBack }: { expansion:
               <EmptyState icon="search" title={t('catalog.sets.noMatch')} />
             ) : (
               // Las cartas enteras una al lado de la otra, cada una con su código, rareza, edición y precio abajo.
-              <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-x-3 gap-y-5 p-0">
+              <ul className="stagger m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-x-3 gap-y-5 p-0">
                 {rows.slice(0, visibleCount).map((card) => (
                   <PrintTile
                     key={`${card.code}-${card.cardId}-${card.rarity}-${card.edition}-${card.url}`}

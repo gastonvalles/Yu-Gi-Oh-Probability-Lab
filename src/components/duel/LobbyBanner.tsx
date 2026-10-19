@@ -23,7 +23,7 @@ export function LobbyBanner({ title, actions, children, art = true, className }:
   return (
     <section aria-label={title} className={cx('relative isolate grid gap-3 overflow-hidden rounded-panel border p-4 min-[1101px]:p-5', TONE.brand.wash, className)}>
       {art ? (
-        <span aria-hidden="true" className="pointer-events-none absolute -right-3 -top-2 -z-10 flex h-full items-center opacity-60">
+        <span aria-hidden="true" className="parallax-slow pointer-events-none absolute -right-3 -top-2 -z-10 flex h-full items-center opacity-60">
           <i className="-mr-8 h-24 w-16 -rotate-12 rounded-tag border border-primary/50 bg-primary/20" />
           <i className="-mr-8 h-24 w-16 rotate-0 rounded-tag border border-info/50 bg-info/15" />
           <i className="h-24 w-16 rotate-12 rounded-tag border border-success/50 bg-success/15" />

@@ -96,7 +96,7 @@ export function GroupSheet({ group, activeKey, onSelect, onClose }: GroupSheetPr
         ) : !notice && group.key !== 'duel' ? (
           <span className={cx(NAV_OVERLINE, 'px-1 pb-1.5')}>{group.label}</span>
         ) : null}
-        <ul className="m-0 grid list-none p-0">
+        <ul className="stagger m-0 grid list-none p-0 [--stagger-step:40ms]">
           {rows.map((item, index) => (
             <li key={item.key} className={cx('min-w-0', index > 0 && 'border-t border-nav-raised/60')}>
               <SheetRow item={item} status={status} active={item.key === activeKey} onSelect={onSelect} />
