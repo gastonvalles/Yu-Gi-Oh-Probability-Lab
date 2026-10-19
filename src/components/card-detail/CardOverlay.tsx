@@ -113,7 +113,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
   // del anterior: vuelve al primero (o al arte con el que se abre).
   const shownKey = `${cardId}|${initialArt?.id ?? ''}`
   const [lastKey, setLastKey] = useState(shownKey)
-  // Dar vuelta la carta (ver el dorso) arrastrándola hacia arriba o abajo, o con la tecla F: también vuelve al frente al pasar a otra.
+  // Girar la carta (ver el dorso) arrastrándola hacia donde sea, o dar vuelta con la tecla F: también vuelve al frente al pasar a otra.
   const flip = useCardFlip()
   if (lastKey !== shownKey) {
     setLastKey(shownKey)
@@ -316,8 +316,8 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
             ref={cardRef}
             className={cx(
               'group/art pointer-events-auto relative aspect-[421/614] h-(--detail-art-height) max-w-full flex-none cursor-zoom-in transition-[height,rotate] duration-(--motion-duration) ease-[cubic-bezier(0.2,0.9,0.25,1)] group-data-[zoomed=true]:h-[min(94dvh,calc((100vw-2rem)*614/421))]',
-              // El dedo de costado es de la carta (la da vuelta); lo vertical queda para el navegador.
-              'touch-pan-y',
+              // El dedo es de la carta (la gira hacia donde se arrastre): sobre ella no desplaza la pantalla.
+              'touch-none',
             )}
             role="button"
             tabIndex={-1}
@@ -424,7 +424,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
 }
 
 /** Una flecha del detalle (anterior o siguiente): 44 px de toque. En la punta de la lista no se muestra (quien la usa sólo la pone si hay a dónde ir). */
-function CardStepButton({ direction, onStep }: { direction: 'previous' | 'next'; onStep: () => void }) {
+export function CardStepButton({ direction, onStep }: { direction: 'previous' | 'next'; onStep: () => void }) {
   const label = t(direction === 'previous' ? 'search.detail.previous' : 'search.detail.next')
 
   return (

@@ -51,4 +51,67 @@ describe('la carta en grande', () => {
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(2)
   })
+
+  it('con vecinos lleva las flechas a los costados (y ← → también); hacia el lado donde no hay carta la flecha no se muestra, y ninguna cierra el zoom', () => {
+    const onPrevious = vi.fn()
+    const onNext = vi.fn()
+    const onClose = vi.fn()
+
+    render(
+      <Provider store={store}>
+        <CardZoom card={card} name="Maxx" navigation={{ onPrevious, onNext }} onClose={onClose} />
+      </Provider>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Carta anterior' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Carta siguiente' }))
+    expect(onPrevious).toHaveBeenCalledTimes(1)
+    expect(onNext).toHaveBeenCalledTimes(1)
+
+    fireEvent.keyDown(window, { key: 'ArrowLeft' })
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+    expect(onPrevious).toHaveBeenCalledTimes(2)
+    expect(onNext).toHaveBeenCalledTimes(2)
+    // Con una tecla de edición, las flechas no pasan de carta.
+    fireEvent.keyDown(window, { key: 'ArrowRight', ctrlKey: true })
+    expect(onNext).toHaveBeenCalledTimes(2)
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('en la punta de la lista no hay flecha hacia ese lado, y sin vecinos no hay ninguna', () => {
+    const { rerender } = render(
+      <Provider store={store}>
+        <CardZoom card={card} name="Maxx" navigation={{ onPrevious: null, onNext: () => {} }} onClose={() => {}} />
+      </Provider>,
+    )
+
+    expect(screen.queryByRole('button', { name: 'Carta anterior' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Carta siguiente' })).toBeInTheDocument()
+
+    rerender(
+      <Provider store={store}>
+        <CardZoom card={card} name="Maxx" onClose={() => {}} />
+      </Provider>,
+    )
+    expect(screen.queryByRole('button', { name: /^Carta (anterior|siguiente)$/ })).not.toBeInTheDocument()
+  })
+
+  it('al pasar a otra carta vuelve al frente (la que se había dado vuelta no queda del otro lado)', () => {
+    const view = render(
+      <Provider store={store}>
+        <CardZoom card={card} name="Maxx" onClose={() => {}} />
+      </Provider>,
+    )
+    const flipped = () => view.container.ownerDocument.querySelector('[data-flipped]')?.getAttribute('data-flipped')
+
+    fireEvent.keyDown(window, { key: 'f' })
+    expect(flipped()).toBe('true')
+
+    view.rerender(
+      <Provider store={store}>
+        <CardZoom card={{ ...card, ygoprodeckId: 2 }} name="Otra" onClose={() => {}} />
+      </Provider>,
+    )
+    expect(flipped()).toBe('false')
+  })
 })
