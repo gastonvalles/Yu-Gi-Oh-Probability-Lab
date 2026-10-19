@@ -251,6 +251,8 @@ export const duel: Translated<typeof es> = {
   'duel.bar.clock': 'Round clock: {time}',
   'duel.bar.clockStart': 'Start the clock',
   'duel.bar.clockPause': 'Pause the clock',
+  'duel.bar.sounds': 'Duel sounds',
+  'duel.bar.soundsHint': 'Plays, life points, dice and chat: yours and the rival’s.',
   'duel.bar.reconnect': 'Reconnect',
   'duel.bar.more': 'More duel options',
   'duel.bar.reconnectHint': 'If the duel paused because a notice never arrived, this reconnects you to the room.',

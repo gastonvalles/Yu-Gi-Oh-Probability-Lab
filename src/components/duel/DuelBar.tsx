@@ -5,6 +5,7 @@ import { toggleDuelFullscreen, useDuelFullscreen } from '../../app/duel-fullscre
 import type { Activity } from '../../app/duel-protocol'
 import type { Duel, DuelSnapshot } from '../../app/duel-session'
 import type { SocketStatus } from '../../app/duel-socket'
+import { setSoundsOn, useSoundsOn } from '../../app/sound-prefs'
 import { duelTurnNumber } from '../../app/duel-turn'
 import { duelClockMs, formatClock, interpretAmount } from '../../app/life-calculator'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
@@ -20,6 +21,7 @@ import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
 import { SideDrawer } from '../ui/SideDrawer'
+import { Switch } from '../ui/Switch'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
 import { DuelChat, useChatUnread } from './DuelChat'
 import type { FeedEntry } from './use-duel-feed'
@@ -155,6 +157,7 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
   // Reconectar, Rendirse y Salir se tocan poco (y los dos últimos arruinan un duelo si se aprietan sin querer): en el celular van juntos detrás de un solo botón; en escritorio, a la vista.
   const docked = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
   const bigWindow = useDuelFullscreen()
+  const sounds = useSoundsOn()
   const [moreOpen, setMoreOpen] = useState(false)
   // Con un aviso puesto sobre la línea del registro, esa línea no se ve (la misma fila: el campo no se mueve).
   const laneOpen = lane !== null
@@ -271,12 +274,22 @@ export function DuelBar({ snapshot, status, turn, onToggleClock, onRematch, onLe
       ) : null}
 
       <Modal isOpen={moreOpen} onClose={() => setMoreOpen(false)} size="keypad" title={t('duel.bar.more')} ariaLabel={t('duel.bar.more')}>
-        <div className="grid gap-2">
+        <div className="grid gap-4">
+          {/* Los sonidos del duelo (jugadas, vidas, chat): se recuerdan en este navegador. */}
+          <div className="flex items-center justify-between gap-3">
+            <span className="grid min-w-0 gap-0.5">
+              <span className="text-body font-semibold text-foreground">{t('duel.bar.sounds')}</span>
+              <span className="text-micro text-soft">{t('duel.bar.soundsHint')}</span>
+            </span>
+            <Switch checked={sounds} onChange={setSoundsOn} label={t('duel.bar.sounds')} />
+          </div>
           {/* Reconectar también: lo tocan los dos, y el duelo sigue en cuanto el relay le dice a cada uno que el otro está. */}
-          <Button variant="tertiary" icon="refresh" className="justify-start" fullWidth onClick={() => { setMoreOpen(false); onReconnect() }}>
-            {t('duel.bar.reconnect')}
-          </Button>
-          <p className="m-0 px-1 text-micro text-soft">{t('duel.bar.reconnectHint')}</p>
+          <div className="grid gap-2">
+            <Button variant="tertiary" icon="refresh" className="justify-start" fullWidth onClick={() => { setMoreOpen(false); onReconnect() }}>
+              {t('duel.bar.reconnect')}
+            </Button>
+            <p className="m-0 px-1 text-micro text-soft">{t('duel.bar.reconnectHint')}</p>
+          </div>
         </div>
       </Modal>
 

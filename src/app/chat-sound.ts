@@ -1,4 +1,5 @@
 import { audioContext } from './audio'
+import { soundsOn } from './sound-prefs'
 
 /** Tonos: frecuencia (Hz) y duración (s), uno tras otro. El tuyo es un golpecito grave; el del rival, dos notas que suben (se distinguen sin mirar). */
 const TONES: Record<'mine' | 'theirs', ReadonlyArray<readonly [number, number]>> = {
@@ -16,7 +17,7 @@ const GAIN = 0.045
 export function playChatSound(side: 'mine' | 'theirs'): void {
   const audio = audioContext()
 
-  if (!audio) {
+  if (!audio || !soundsOn()) {
     return
   }
 
