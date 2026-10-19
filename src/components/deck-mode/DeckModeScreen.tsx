@@ -276,18 +276,23 @@ export function DeckModeScreen() {
     ],
   )
   const deckBuilderStep = controller.deckBuilderStep
+  const onCardQuery = deckBuilderStep.onQueryChange
   // El menú: los pasos del deck, las herramientas (la práctica es una pantalla; la calculadora y las mascotas abren un panel encima) y la referencia. La práctica necesita cartas en el Main.
   const navGroups = useMemo(() => buildAppNavGroups(navigationItems, { practice: mainDeckCount > 0, duel: duelConnect !== null, paused: pausedDuel }), [navigationItems, mainDeckCount, duelConnect, pausedDuel])
   const handleNavSelect = useCallback(
-    (key: string) => {
+    (key: string, detail?: string) => {
       if (key === 'mascots') setMascotsOpen(true)
-      else if (key === 'search') setSearchOpen(true)
+      // «Buscar … entre las cartas» del buscador de la app: se abre el de cartas con lo que se había escrito.
+      else if (key === 'search') {
+        if (detail) onCardQuery(detail)
+        setSearchOpen(true)
+      }
       // La hoja de Jugar del celular: el paso del lobby que pide cada entrada (el duelo lo lee de la dirección) o volver al duelo en pausa.
       else if (key === 'duel-watch' || key === 'duel-join') window.location.hash = `#duel?view=${key.slice('duel-'.length)}`
       else if (key === 'duel-resume') window.location.hash = pausedDuel ? `#duel?room=${pausedDuel.room}` : '#duel'
       else if (isDeckWorkflowStepKey(key)) handleStepChange(key)
     },
-    [handleStepChange, pausedDuel],
+    [handleStepChange, pausedDuel, onCardQuery],
   )
   useEffect(() => {
     preloadHeavySteps()
@@ -421,7 +426,7 @@ export function DeckModeScreen() {
 
   return (
     <>
-      <AppShell groups={navGroups} activeKey={activeStep} onSelect={handleNavSelect} onSheetOpen={refreshSheetData} contentScrollable={!isDeckBuilderStep && !isPracticeStep && !isDuelStep && !isLifeStep} immersive={isPracticeStep || (isDuelStep && (duelTable || isDesktopDeckBuilder))} navbar={!(isPracticeStep || (isDuelStep && duelTable))} contentScrollRef={contentScrollRef} searchAvailable={searchAvailable}>
+      <AppShell groups={navGroups} activeKey={activeStep} onSelect={handleNavSelect} onOpenCard={controller.openFoundCard} onSheetOpen={refreshSheetData} contentScrollable={!isDeckBuilderStep && !isPracticeStep && !isDuelStep && !isLifeStep} immersive={isPracticeStep || (isDuelStep && (duelTable || isDesktopDeckBuilder))} navbar={!(isPracticeStep || (isDuelStep && duelTable))} contentScrollRef={contentScrollRef} searchAvailable={searchAvailable}>
         {mainContent}
       </AppShell>
 
@@ -431,7 +436,7 @@ export function DeckModeScreen() {
       />
       {searchActive ? <GlobalCardSearch step={deckBuilderStep} onClose={() => setSearchOpen(false)} /> : null}
       {/* El detalle va encima: en el celular siempre, y en escritorio cuando se abre desde el buscador global (en el builder es la vista previa de la columna). */}
-      {!isDesktopDeckBuilder || searchActive ? (
+      {!isDesktopDeckBuilder || searchActive || !isDeckBuilderStep ? (
         <CardDetailModal
           card={controller.deckBuilderStep.selectedDetailCard}
           deckFormat={controller.deckBuilderStep.deckFormat}

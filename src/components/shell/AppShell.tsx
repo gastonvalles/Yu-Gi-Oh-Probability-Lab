@@ -4,6 +4,7 @@ import { NO_SHELL_INSETS, readSidebarCollapsed, setShellInsets, shellInsetsFor, 
 import { useDuelFullscreen } from '../../app/duel-fullscreen'
 import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
 import { t } from '../../i18n'
+import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { cx } from '../ui/cx'
 import { AppNavbar } from './AppNavbar'
 import { AppSidebar } from './AppSidebar'
@@ -18,7 +19,10 @@ import { ShellMenuContext, type ShellMenu } from './ShellMenu'
 interface AppShellProps {
   groups: NavGroup[]
   activeKey: string | null
-  onSelect: (key: string) => void
+  /** `detail`: lo que se escribió en el buscador de la app al elegir «Buscar … entre las cartas» (el buscador de cartas se abre con eso escrito). */
+  onSelect: (key: string, detail?: string) => void
+  /** Abre el detalle de una carta que encontró el buscador de la app. */
+  onOpenCard?: (card: ApiCardSearchResult) => void
   children: ReactNode
   /** El contenedor que scrollea en escritorio (para volver arriba al cambiar de pantalla). */
   contentScrollRef?: RefObject<HTMLDivElement | null>
@@ -39,7 +43,7 @@ interface AppShellProps {
  * el mismo alto y es ella la que scrollea); en el celular, la barra de arriba con la hamburguesa (que abre el cajón de ajustes: idioma, copia de seguridad y legales), la barra de abajo con los cuatro
  * grupos (cada uno abre una hoja con sus opciones) y la pantalla. No hay pie en ninguna vista. Se arma una sola vez: las pantallas sólo ponen su contenido adentro.
  */
-export function AppShell({ groups, activeKey, onSelect, children, contentScrollRef, contentScrollable = false, immersive = false, navbar = !immersive, onSheetOpen, searchAvailable = false }: AppShellProps) {
+export function AppShell({ groups, activeKey, onSelect, onOpenCard, children, contentScrollRef, contentScrollable = false, immersive = false, navbar = !immersive, onSheetOpen, searchAvailable = false }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(readSidebarCollapsed)
   // Con el duelo en ventana grande, el menú lateral no está (el duelo ocupa toda la pantalla).
   const bigWindow = useDuelFullscreen()
@@ -162,7 +166,7 @@ export function AppShell({ groups, activeKey, onSelect, children, contentScrollR
       {/* La hamburguesa abre el menú entero: los destinos (también con la barra de abajo a la vista, que a veces el navegador tapa) y, abajo, los ajustes. */}
       <NavDrawer isOpen={drawerOpen} onClose={closeDrawer} nav={{ groups, activeKey, onSelect }} />
       {/* El buscador de la app: pantallas, herramientas y (donde hay buscador) cartas. */}
-      <FeatureSearch isOpen={findOpen} onClose={closeFind} groups={groups} activeKey={activeKey} cardsAvailable={searchAvailable} onSelect={onSelect} />
+      <FeatureSearch isOpen={findOpen} onClose={closeFind} groups={groups} activeKey={activeKey} cardsAvailable={searchAvailable} onSelect={onSelect} onOpenCard={onOpenCard} />
     </div>
   )
 }

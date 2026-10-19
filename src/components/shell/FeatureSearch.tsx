@@ -1,12 +1,16 @@
 import { useEffect, useId, useMemo, useState, type KeyboardEvent } from 'react'
 
+import { cardImageSrc } from '../../app/card-image-source'
 import { t } from '../../i18n'
+import type { ApiCardSearchResult } from '../../ygoprodeck'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { Modal } from '../ui/Modal'
 import { buildFindEntries, filterFindEntries, type FindEntry } from './feature-search'
+import { cardResult, findDeckResults, findReplayResults, FINDER_MIN_LENGTH, setCodePrefix, type FinderAction, type FinderResult } from './finder-sources'
 import type { NavGroup } from './nav-model'
 import { NAV_OVERLINE } from './rail'
+import { useFinderData } from './use-finder-data'
 
 interface FeatureSearchProps {
   isOpen: boolean
@@ -16,9 +20,31 @@ interface FeatureSearchProps {
   activeKey: string | null
   /** Hay buscador de cartas en esta pantalla: entre los resultados está «Buscar cartas». */
   cardsAvailable: boolean
-  /** Ir al resultado: la misma clave que el menú. */
-  onSelect: (key: string) => void
+  /** Ir al resultado: la misma clave que el menú (con lo escrito, para «Buscar cartas»). */
+  onSelect: (key: string, detail?: string) => void
+  /** Abrir el detalle de una carta encontrada. Sin esto, la carta lleva al buscador de cartas con su nombre escrito. */
+  onOpenCard?: (card: ApiCardSearchResult) => void
 }
+
+/** Una fila de la lista: lo que se ve y qué hace al elegirla. */
+interface FinderRow {
+  id: string
+  label: string
+  hint: string
+  group: string
+  icon: FindEntry['icon']
+  card?: ApiCardSearchResult
+  /** La clave del destino del menú, si es una pantalla: la que dice «Estás acá». */
+  featureKey?: string
+  action: FinderAction
+}
+
+/** Cuántas pantallas o herramientas se listan a lo sumo al escribir (las cartas, decks y replays vienen después). */
+const FEATURE_LIMIT = 6
+
+const featureRow = (entry: FindEntry): FinderRow => ({ id: `feature:${entry.key}`, label: entry.label, hint: entry.hint, group: entry.group, icon: entry.icon, featureKey: entry.key, action: { type: 'select', key: entry.key } })
+
+const resultRow = (result: FinderResult): FinderRow => ({ id: result.id, label: result.label, hint: result.hint, group: result.group, icon: result.icon, card: result.card, action: result.action })
 
 /** Las filas de un grupo bajo su nombre (sin nada escrito) en el orden del menú. */
 function groupEntries(entries: FindEntry[]): Array<{ group: string; entries: FindEntry[] }> {
@@ -35,18 +61,41 @@ function groupEntries(entries: FindEntry[]): Array<{ group: string; entries: Fin
 }
 
 /**
- * El buscador de la app: escribís lo que querés hacer («vidas», «pdf», «mirar un duelo», «banlist») y lleva a esa pantalla o abre esa herramienta; entre los resultados están también las cartas
- * (Buscar cartas) donde hay buscador. Sin nada escrito lista todo como el menú, por grupos. Es un combobox: flechas para recorrer, Enter para ir, Escape para cerrar. Lo abren la barra de arriba
- * (escritorio), la lupa de la barra del celular y las teclas `/` y Ctrl/Cmd+K.
+ * El buscador de la app, un superbuscador: escribís lo que sea y lleva a eso. Una pantalla o herramienta («vidas», «pdf», «mirar un duelo»), una carta (por su nombre o su id; se abre su detalle),
+ * una expansión (por nombre o por código: «LOB», «LOB-EN001» —la impresión con su rareza y precio—), un deck de torneo (por su nombre, el torneo, el puesto o quien lo jugó) o un replay (los jugadores,
+ * el torneo). Al final, «Buscar … entre las cartas» abre el buscador de cartas con lo escrito. Sin nada escrito lista las pantallas como el menú, por grupos. Es un combobox: flechas para recorrer, Enter para
+ * ir, Escape para cerrar. Lo abren la barra de arriba (escritorio), la lupa de la barra del celular y las teclas `/` y Ctrl/Cmd+K.
  */
-export function FeatureSearch({ isOpen, onClose, groups, activeKey, cardsAvailable, onSelect }: FeatureSearchProps) {
+export function FeatureSearch({ isOpen, onClose, groups, activeKey, cardsAvailable, onSelect, onOpenCard }: FeatureSearchProps) {
   const id = useId()
   const [query, setQuery] = useState('')
   const [highlight, setHighlight] = useState(0)
+  const text = query.trim()
   const entries = useMemo(() => buildFindEntries(groups, { cards: cardsAvailable }), [groups, cardsAvailable])
-  const results = useMemo(() => filterFindEntries(entries, query), [entries, query])
-  const listed = query.trim() === '' ? groupEntries(results) : null
-  const current = results[Math.min(highlight, results.length - 1)]
+  const features = useMemo(() => filterFindEntries(entries, query), [entries, query])
+  const data = useFinderData(query, isOpen)
+  const listed = text === '' ? groupEntries(features) : null
+  const rows = useMemo<FinderRow[]>(() => {
+    if (text === '') {
+      return features.map(featureRow)
+    }
+
+    const searchable = text.length >= FINDER_MIN_LENGTH
+    // Un código («LOB-EN00») va primero a su expansión y sus impresiones; lo demás es, antes que nada, una carta (las expansiones con ese nombre vienen después).
+    const codeLike = setCodePrefix(text) !== null
+    const sets = data.sets.map(resultRow)
+
+    return [
+      ...features.slice(0, FEATURE_LIMIT).map(featureRow),
+      ...(codeLike ? sets : []),
+      ...data.cards.map((card) => resultRow(cardResult(card))),
+      ...(codeLike ? [] : sets),
+      ...(searchable ? findDeckResults(text).map(resultRow) : []),
+      ...(searchable ? findReplayResults(text).map(resultRow) : []),
+      ...(searchable && cardsAvailable ? [{ id: 'cards-search', label: t('shell.find.inCards', { query: text }), hint: t('shell.find.cardsHint'), group: t('shell.find.group.cards'), icon: 'search' as const, action: { type: 'select' as const, key: 'search', detail: text } }] : []),
+    ]
+  }, [text, features, data.sets, data.cards, cardsAvailable])
+  const current = rows[Math.min(highlight, rows.length - 1)]
 
   // Cada vez que se abre arranca limpio.
   useEffect(() => {
@@ -58,47 +107,60 @@ export function FeatureSearch({ isOpen, onClose, groups, activeKey, cardsAvailab
 
   // La fila elegida con las flechas siempre queda a la vista.
   useEffect(() => {
-    if (isOpen && current) document.getElementById(`${id}-${current.key}`)?.scrollIntoView?.({ block: 'nearest' })
+    if (isOpen && current) document.getElementById(`${id}-${current.id}`)?.scrollIntoView?.({ block: 'nearest' })
   }, [isOpen, current, id])
 
   if (!isOpen) {
     return null
   }
 
-  const go = (entry: FindEntry) => {
-    onSelect(entry.key)
+  const go = (row: FinderRow) => {
+    const { action } = row
+
+    if (action.type === 'select') {
+      if (action.detail === undefined) onSelect(action.key)
+      else onSelect(action.key, action.detail)
+    } else if (action.type === 'card') {
+      // Sin quien abra el detalle (la pantalla no lo tiene), la carta lleva al buscador de cartas con su nombre ya escrito.
+      if (onOpenCard) onOpenCard(action.card)
+      else onSelect('search', action.card.name)
+    } else {
+      window.location.hash = action.hash
+    }
+
     onClose()
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (results.length === 0) {
+    if (rows.length === 0) {
       return
     }
 
     if (event.key === 'ArrowDown') {
       event.preventDefault()
-      setHighlight((index) => (index + 1) % results.length)
+      setHighlight((index) => (index + 1) % rows.length)
     } else if (event.key === 'ArrowUp') {
       event.preventDefault()
-      setHighlight((index) => (index - 1 + results.length) % results.length)
+      setHighlight((index) => (index - 1 + rows.length) % rows.length)
     } else if (event.key === 'Home') {
       event.preventDefault()
       setHighlight(0)
     } else if (event.key === 'End') {
       event.preventDefault()
-      setHighlight(results.length - 1)
+      setHighlight(rows.length - 1)
     } else if (event.key === 'Enter' && current) {
       event.preventDefault()
       go(current)
     }
   }
 
-  const row = (entry: FindEntry, showGroup: boolean) => {
-    const selected = entry.key === current?.key
-    const here = entry.key === activeKey
+  const row = (item: FinderRow, showGroup: boolean) => {
+    const selected = item.id === current?.id
+    const here = item.featureKey !== undefined && item.featureKey === activeKey
+    const art = item.card?.imageUrlSmall ?? item.card?.imageUrl ?? null
 
     return (
-      <li key={entry.key} id={`${id}-${entry.key}`} role="option" aria-selected={selected} className="min-w-0">
+      <li key={item.id} id={`${id}-${item.id}`} role="option" aria-selected={selected} className="min-w-0">
         <button
           type="button"
           tabIndex={-1}
@@ -106,15 +168,21 @@ export function FeatureSearch({ isOpen, onClose, groups, activeKey, cardsAvailab
             'flex min-h-12 w-full min-w-0 items-center gap-3 rounded-control px-3 py-2 text-left transition-colors duration-100 focus-visible:outline-none motion-reduce:transition-none',
             selected ? 'bg-nav-raised text-nav-active' : 'text-foreground',
           )}
-          onMouseMove={() => setHighlight(results.findIndex((candidate) => candidate.key === entry.key))}
-          onClick={() => go(entry)}
+          onMouseMove={() => setHighlight(rows.findIndex((candidate) => candidate.id === item.id))}
+          onClick={() => go(item)}
         >
-          <Icon name={entry.icon} size={20} className="shrink-0" />
+          {item.card ? (
+            <span className="block h-11 w-8 shrink-0 overflow-hidden bg-input">
+              {art ? <img src={cardImageSrc(art)} alt="" loading="lazy" decoding="async" draggable={false} className="block h-full w-full rounded-none! object-cover" /> : null}
+            </span>
+          ) : (
+            <Icon name={item.icon} size={20} className="shrink-0" />
+          )}
           <span className="grid min-w-0 flex-1">
-            <span className="truncate text-body font-semibold">{entry.label}</span>
-            {entry.hint ? <span className="truncate text-micro font-normal text-muted">{entry.hint}</span> : null}
+            <span className="truncate text-body font-semibold">{item.label}</span>
+            {item.hint ? <span className="truncate text-micro font-normal text-muted">{item.hint}</span> : null}
           </span>
-          {here ? <span className="shrink-0 rounded-full bg-nav-raised px-2.5 py-1 text-micro font-semibold text-white">{t('shell.sheet.here')}</span> : showGroup ? <span className="shrink-0 text-micro text-muted">{entry.group}</span> : null}
+          {here ? <span className="shrink-0 rounded-full bg-nav-raised px-2.5 py-1 text-micro font-semibold text-white">{t('shell.sheet.here')}</span> : showGroup ? <span className="shrink-0 text-micro text-muted">{item.group}</span> : null}
         </button>
       </li>
     )
@@ -130,7 +198,7 @@ export function FeatureSearch({ isOpen, onClose, groups, activeKey, cardsAvailab
             role="combobox"
             aria-expanded="true"
             aria-controls={`${id}-list`}
-            aria-activedescendant={current ? `${id}-${current.key}` : undefined}
+            aria-activedescendant={current ? `${id}-${current.id}` : undefined}
             aria-autocomplete="list"
             autoComplete="off"
             spellCheck={false}
@@ -148,10 +216,10 @@ export function FeatureSearch({ isOpen, onClose, groups, activeKey, cardsAvailab
         </div>
 
         <p className="sr-only" role="status" aria-live="polite">
-          {t('shell.find.results', { count: results.length })}
+          {data.busy ? t('shell.find.searching') : t('shell.find.results', { count: rows.length })}
         </p>
 
-        <ul id={`${id}-list`} role="listbox" aria-label={t('shell.find.title')} className="m-0 grid min-h-0 flex-1 list-none content-start gap-0.5 overflow-y-auto p-2">
+        <ul id={`${id}-list`} role="listbox" aria-label={t('shell.find.title')} aria-busy={data.busy || undefined} className="m-0 grid min-h-0 flex-1 list-none content-start gap-0.5 overflow-y-auto p-2">
           {listed
             ? listed.map(({ group, entries: inGroup }) => (
                 <li key={group} role="presentation" className="grid gap-0.5">
@@ -159,21 +227,22 @@ export function FeatureSearch({ isOpen, onClose, groups, activeKey, cardsAvailab
                     {group}
                   </span>
                   <ul role="presentation" className="m-0 grid list-none gap-0.5 p-0">
-                    {inGroup.map((entry) => row(entry, false))}
+                    {inGroup.map((entry) => row(featureRow(entry), false))}
                   </ul>
                 </li>
               ))
-            : results.map((entry) => row(entry, true))}
+            : rows.map((item) => row(item, true))}
         </ul>
 
-        {results.length === 0 ? (
+        {data.busy ? (
+          <p className="m-0 px-5 pb-4 text-micro text-muted" aria-hidden="true">
+            {t('shell.find.searching')}
+          </p>
+        ) : null}
+
+        {rows.length === 0 && !data.busy ? (
           <div className="grid gap-2 px-5 pb-6 text-body text-muted">
-            <p className="m-0">{t('shell.find.empty', { query: query.trim() })}</p>
-            {cardsAvailable ? (
-              <button type="button" className="w-fit cursor-pointer rounded-control border-0 bg-transparent p-0 text-body font-semibold text-nav-active underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus" onClick={() => go({ key: 'search', label: '', group: '', hint: '', icon: 'search', keywords: '' })}>
-                {t('shell.find.tryCards')}
-              </button>
-            ) : null}
+            <p className="m-0">{t('shell.find.empty', { query: text })}</p>
           </div>
         ) : null}
       </div>
