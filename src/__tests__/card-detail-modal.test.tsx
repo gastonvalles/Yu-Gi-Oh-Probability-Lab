@@ -154,3 +154,35 @@ describe('detalle compartido de cartas', () => {
     expect(document.body.style.overflow).toBe('')
   })
 })
+
+describe('el detalle de una carta según el ancho', () => {
+  const stubWidth = (desktop: boolean) =>
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: desktop, media: query, addEventListener: () => undefined, removeEventListener: () => undefined, addListener: () => undefined, removeListener: () => undefined }))
+
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('en escritorio la carta va a la izquierda y el texto a la derecha, con el mismo alto que la carta', () => {
+    stubWidth(true)
+    render(<CardDetailOverlay name={card.name} card={card} onClose={vi.fn()} />)
+
+    const panel = screen.getByRole('region', { name: 'Texto de la carta' }).closest('section')!
+    const row = panel.parentElement!
+
+    expect(row).toHaveClass('flex-row')
+    expect(panel).toHaveClass('h-(--detail-art-height)', 'flex-1')
+    expect(panel).not.toHaveClass('h-(--detail-panel-height)')
+    // La carta es lo primero (a la izquierda) y el texto lo último (a la derecha).
+    expect(row.firstElementChild).toContainElement(screen.getByRole('img', { name: card.name }))
+    expect(row.lastElementChild).toBe(panel)
+  })
+
+  it('en el celular sigue siendo la carta arriba y el texto abajo', () => {
+    stubWidth(false)
+    render(<CardDetailOverlay name={card.name} card={card} onClose={vi.fn()} />)
+
+    const panel = screen.getByRole('region', { name: 'Texto de la carta' }).closest('section')!
+
+    expect(panel.parentElement).toHaveClass('flex-col')
+    expect(panel).toHaveClass('h-(--detail-panel-height)')
+  })
+})
