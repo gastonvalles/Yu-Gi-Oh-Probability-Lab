@@ -72,15 +72,16 @@ export function GroupSheet({ group, activeKey, onSelect, onClose }: GroupSheetPr
   const notice = group.sheetNotice
 
   return createPortal(
-    // Sólo en celular y tableta: si la ventana se ensancha con la hoja abierta, el menú lateral toma su lugar. Termina arriba de la barra de abajo (4 rem), que no se tapa.
-    <div className="fixed inset-x-0 top-0 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-150 min-[1101px]:hidden">
+    // Sólo en celular y tableta: si la ventana se ensancha con la hoja abierta, el menú lateral toma su lugar. La hoja sigue por **debajo** de la barra de abajo (que con la hoja abierta se pone arriba de ella): así no hay un borde
+    // que pegar —en un teléfono real, con píxeles fraccionarios, un borde contra otro dejaba una línea fina por donde se veía la pantalla de atrás—.
+    <div className="fixed inset-0 z-150 min-[1101px]:hidden">
       <div aria-hidden="true" className="absolute inset-0" onClick={onClose} />
       <div
         ref={panelRef}
         role="dialog"
         aria-label={group.label}
         tabIndex={-1}
-        className="absolute inset-x-0 bottom-0 grid max-h-full animate-sheet-up gap-1 overflow-y-auto overscroll-contain rounded-t-panel border-t border-nav-raised bg-nav px-4 pb-3.5 pt-2.5 outline-none motion-reduce:animate-none"
+        className="absolute inset-x-0 bottom-0 grid max-h-full animate-sheet-up gap-1 overflow-y-auto overscroll-contain rounded-t-panel border-t border-nav-raised bg-nav px-4 pb-[calc(4rem+env(safe-area-inset-bottom,0px)+0.875rem)] pt-2.5 outline-none motion-reduce:animate-none"
       >
         <span aria-hidden="true" className="mx-auto mb-1.5 block h-1 w-9 rounded-full bg-nav-raised" />
         {notice ? (
