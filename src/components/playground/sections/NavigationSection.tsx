@@ -2,13 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { buildAppNavGroups, buildDeckWorkflowNavigationItems } from '../../deck-mode/deck-workflow-navigation'
 import { ReplayBar, type ReplayMark, type ReplaySpeed } from '../../probability/ReplayBar'
-import { AppFooter } from '../../shell/AppFooter'
 import { AppShell } from '../../shell/AppShell'
 import { AppSidebar } from '../../shell/AppSidebar'
 import { GroupSheet } from '../../shell/GroupSheet'
 import { MobileTabBar } from '../../shell/MobileTabBar'
 import { MobileTopBar } from '../../shell/MobileTopBar'
 import { DrawerPanel, NavDrawer } from '../../shell/NavDrawer'
+import { SidebarLegal } from '../../shell/SidebarLegal'
 import { Button } from '../../ui/Button'
 import { Card } from '../../ui/Card'
 import { StepHero } from '../../StepHero'
@@ -126,7 +126,7 @@ export function NavigationSection() {
       ) : null}
 
       <SpecimenGrid min="24rem">
-        <Specimen title="Menú lateral (escritorio)" layout="free" note={<>Reemplaza la barra de arriba. Contraído, el ícono de cada fila no se mueve y los rótulos se desvanecen (probalo con la flecha de abajo). Archivos: <Tag>shell/AppSidebar.tsx</Tag> <Tag>shell/SidebarNav.tsx</Tag></>}>
+        <Specimen title="Menú lateral (escritorio)" layout="free" note={<>Reemplaza la barra de arriba, armado como el de YouTube: arriba, fija, la hamburguesa (siempre a la vista; contrae y abre el menú) con la marca; lo demás scrollea con la barra fina de <Tag>scroll-yt</Tag> (aparece sólo con el mouse encima) y termina en las redes y la privacidad. Contraído, el ícono de cada fila no se mueve y los rótulos se desvanecen (probalo con la hamburguesa). Archivos: <Tag>shell/AppSidebar.tsx</Tag> <Tag>shell/SidebarNav.tsx</Tag> <Tag>shell/SidebarLegal.tsx</Tag></>}>
           <div className="flex flex-wrap items-start gap-4">
             <div className="h-[38rem] overflow-hidden rounded-card border border-border-subtle">
               <AppSidebar groups={groups} activeKey={active} onSelect={setActive} collapsed={collapsed} onToggleCollapsed={() => setCollapsed((current) => !current)} />
@@ -181,16 +181,9 @@ export function NavigationSection() {
         </div>
       </Specimen>
 
-      <Specimen title="Pie" layout="free" note={<>Autoría, aviso de sitio no oficial, redes y privacidad; va abajo de toda pantalla. Archivo: <Tag>shell/AppFooter.tsx</Tag></>}>
-        <div className="grid gap-4">
-          <div className="overflow-x-auto rounded-card border border-border-subtle">
-            <div className="min-w-[68rem]">
-              <AppFooter className="min-[1101px]:px-6" />
-            </div>
-          </div>
-          <div className="w-full max-w-[23.4rem] overflow-hidden rounded-card border border-border-subtle">
-            <AppFooter />
-          </div>
+      <Specimen title="Final del menú" layout="free" note={<>Las tres redes del autor arriba y, debajo, la privacidad y el aviso legal, con la autoría y el aviso de sitio no oficial; va al final de lo que scrollea del menú lateral (no hay pie en ninguna pantalla). Con el menú contraído se desvanece. Archivo: <Tag>shell/SidebarLegal.tsx</Tag></>}>
+        <div className="w-60 overflow-hidden rounded-card border border-border-subtle bg-nav">
+          <SidebarLegal className="border-t-0" />
         </div>
       </Specimen>
     </div>
