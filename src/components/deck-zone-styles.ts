@@ -29,7 +29,7 @@ const HIGHLIGHTED = 'data-[highlighted=true]:inset-ring-2 data-[highlighted=true
 const KEYBOARD_FOCUS = 'focus-visible:z-1 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-solid focus-visible:outline-foreground'
 
 export function deckCardMobile(dragging: boolean): string {
-  return cx(TOUCH, MARCHING_ANTS, HIGHLIGHTED, KEYBOARD_FOCUS, 'cursor-grab', dragging && 'opacity-35')
+  return cx(TOUCH, MARCHING_ANTS, HIGHLIGHTED, KEYBOARD_FOCUS, 'cursor-grab motion-safe:animate-card-in', dragging && 'opacity-35')
 }
 
 /** Carta en el builder clásico de desktop: contorno punteado al pasar / arrastrar y marco al elegirla. */
@@ -38,6 +38,7 @@ export const DECK_CARD_CLASSIC = [
   MARCHING_ANTS,
   HIGHLIGHTED,
   KEYBOARD_FOCUS,
+  'motion-safe:animate-card-in',
   'cursor-pointer outline-2 -outline-offset-2 outline-dashed outline-foreground/0 transition-[outline-color] duration-150 hover:z-1 hover:outline-foreground/75',
   'data-[selected=true]:shadow-[inset_0_0_0_1.5px_rgb(var(--primary-rgb)/0.56)] data-[selected=true]:hover:outline-primary/85',
   'data-[dragging=true]:bg-tint/6 data-[dragging=true]:outline-foreground/75',

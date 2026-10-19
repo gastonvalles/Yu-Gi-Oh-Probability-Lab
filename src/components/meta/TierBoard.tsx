@@ -40,7 +40,7 @@ interface TierBoardProps {
  */
 export function TierBoard({ rows, floors }: TierBoardProps) {
   return (
-    <div className="mt-3 grid gap-0.5">
+    <div className="stagger mt-3 grid gap-0.5 [--stagger-step:60ms]">
       {rows.map(({ tier, tiles }) => (
         <TierStrip key={tier} label={tier} color={tierColor(tier)} ariaLabel={`${tierLabel(tier)}: ${tierHint(tier, floors)}`} title={`${tierHint(tier, floors)} · ${formatInteger(tiles.length)}`}>
           {tiles.map(({ key, tile }) => (
