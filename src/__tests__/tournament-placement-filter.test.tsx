@@ -23,6 +23,9 @@ vi.mock('../data/meta-decks.json', () => {
   }
 })
 
+// Al cambiar de filtro la lista muestra lugares vacíos un segundo (como en los replays): acá se prueba lo que queda después.
+vi.mock('../app/use-brief-loading', () => ({ BRIEF_LOADING_MS: 0, useBriefLoading: () => false }))
+
 beforeEach(() => {
   window.history.replaceState(null, '', '#tournaments')
   window.matchMedia = ((query: string) => ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia

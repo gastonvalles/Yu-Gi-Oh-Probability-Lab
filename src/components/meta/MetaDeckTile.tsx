@@ -6,8 +6,10 @@ import { t } from '../../i18n'
 import { tRich } from '../../i18n/rich'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
+import { cx } from '../ui/cx'
 import { Heading } from '../ui/Heading'
 import { Icon } from '../ui/Icon'
+import { Skeleton } from '../ui/Skeleton'
 import { deckKindCounts, formatMetaDate, placementLook } from './meta-format'
 
 interface MetaDeckTileProps {
@@ -53,6 +55,42 @@ function ReplaysBadge({ deckId }: { deckId: number }) {
  */
 export function MetaDeckTile({ deck, layout, onOpen }: MetaDeckTileProps) {
   return layout === 'card' ? <MetaDeckCard deck={deck} onOpen={onOpen} /> : <MetaDeckRow deck={deck} onOpen={onOpen} />
+}
+
+/**
+ * El lugar vacío de un deck (lo que se ve al traer más y al cambiar de filtro): las mismas medidas de la tarjeta (cuatro filas: nombre, portada, contexto, puesto y botón; comparten las filas de la grilla
+ * como las tarjetas de verdad) o de la fila del celular, así nada salta cuando llega el contenido.
+ */
+export function MetaDeckSkeleton({ layout, className }: { layout: 'row' | 'card'; className?: string }) {
+  return layout === 'card' ? (
+    <div aria-hidden="true" className={cx('row-span-4 grid min-w-0 grid-rows-subgrid rounded-card border border-border-subtle bg-card-background p-3', className)}>
+      <div className="grid min-w-0 content-start gap-1.5">
+        <Skeleton className="h-5 w-4/5" />
+        <Skeleton className="h-3 w-2/5" />
+      </div>
+      <Skeleton radius="control" className="aspect-[16/10] w-full" />
+      <div className="grid content-start gap-1.5">
+        <Skeleton className="h-3 w-3/5" />
+        <Skeleton className="h-3 w-2/5" />
+      </div>
+      <div className="flex items-center justify-between gap-2 border-t border-border-subtle pt-3">
+        <div className="grid gap-1.5">
+          <Skeleton radius="chip" className="h-6 w-20" />
+          <Skeleton className="h-3 w-16" />
+        </div>
+        <Skeleton className="h-11 w-24" />
+      </div>
+    </div>
+  ) : (
+    <div aria-hidden="true" className={cx('grid min-w-0 grid-cols-[2.75rem_minmax(0,1fr)_auto] items-center gap-3 rounded-card border border-border-subtle bg-card-background p-3', className)}>
+      <Skeleton radius="control" className="h-[3.8rem] w-11" />
+      <div className="grid gap-1.5">
+        <Skeleton className="h-4 w-3/5" />
+        <Skeleton className="h-3 w-4/5" />
+      </div>
+      <Skeleton className="size-5" />
+    </div>
+  )
 }
 
 function MetaDeckRow({ deck, onOpen }: Omit<MetaDeckTileProps, 'layout'>) {

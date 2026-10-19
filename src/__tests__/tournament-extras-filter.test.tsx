@@ -26,6 +26,9 @@ vi.mock('../data/meta-decks.json', () => {
 // Los decks con replay (302 y 304): el cruce de verdad se prueba en replays.test.ts.
 vi.mock('../app/replays', async (importOriginal) => ({ ...(await importOriginal<typeof import('../app/replays')>()), deckIdsWithReplay: () => new Set([302, 304]) }))
 
+// Al cambiar de filtro la lista muestra lugares vacíos un segundo (como en los replays): acá se prueba lo que queda después.
+vi.mock('../app/use-brief-loading', () => ({ BRIEF_LOADING_MS: 0, useBriefLoading: () => false }))
+
 beforeEach(() => {
   window.history.replaceState(null, '', '#tournaments')
   window.matchMedia = ((query: string) => ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
