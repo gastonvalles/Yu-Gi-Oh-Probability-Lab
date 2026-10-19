@@ -231,3 +231,35 @@ describe('el límite de tiempo por turno se activa, se apaga y se personaliza al
     expect(hello({ lp: 8000, hand: 5, turnMin: 7, turnBonusMin: -1 })).toBeNull()
   })
 })
+
+describe('lo que el rival está haciendo (mirar su deck, su Extra Deck…)', () => {
+  it('el otro lo ve mientras dura, se borra al terminar y se le repone si vuelve', () => {
+    const { room, host, guest } = table()
+
+    guest.look('extra')
+    room.flush()
+    expect(host.getSnapshot().peerLook).toBe('extra')
+    expect(guest.getSnapshot().peerLook).toBeNull()
+
+    guest.look('deck')
+    room.flush()
+    expect(host.getSnapshot().peerLook).toBe('deck')
+
+    guest.look(null)
+    room.flush()
+    expect(host.getSnapshot().peerLook).toBeNull()
+
+    // Los dos lo ven del otro, y repetir lo mismo no manda nada de nuevo.
+    host.look('gy')
+    host.look('gy')
+    room.flush()
+    expect(guest.getSnapshot().peerLook).toBe('gy')
+  })
+
+  it('un mensaje de actividad que no es una de las conocidas se descarta, y `null` vale', () => {
+    expect(parseMessage(JSON.stringify({ t: 'look', at: 'choosing' }))).toEqual({ t: 'look', at: 'choosing' })
+    expect(parseMessage(JSON.stringify({ t: 'look', at: null }))).toEqual({ t: 'look', at: null })
+    expect(parseMessage(JSON.stringify({ t: 'look', at: 'hand' }))).toBeNull()
+    expect(parseMessage(JSON.stringify({ t: 'look' }))).toBeNull()
+  })
+})

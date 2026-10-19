@@ -2113,6 +2113,29 @@ describe('la pantalla del duelo', () => {
     expect(within(screen.getAllByRole('dialog', { name: 'Chat con Ana' }).at(-1)!).getByText('¿Respondés a mi invocación?')).toBeInTheDocument()
   })
 
+  it('si el rival mira su Extra Deck o su deck se ve sobre la línea del registro mientras lo mira, y se va cuando termina', () => {
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+
+    expect(within(host.container).queryByText(/está mirando/)).not.toBeInTheDocument()
+
+    fireEvent.click(within(guest.container).getByRole('button', { name: /^Extra: \d+/ }))
+    flush()
+    expect(within(host.container).getByText('Beto está mirando su Extra Deck')).toBeInTheDocument()
+
+    // Y él, lo mismo conmigo.
+    expect(within(guest.container).queryByText(/está mirando/)).not.toBeInTheDocument()
+    fireEvent.click(within(host.container).getByRole('button', { name: /^GY: \d+/ }))
+    flush()
+    expect(within(guest.container).getByText('Ana está mirando su cementerio')).toBeInTheDocument()
+
+    // Al cerrar el visor, el aviso se va.
+    fireEvent.keyDown(document, { key: 'Escape' })
+    fireEvent.keyDown(document, { key: 'Escape' })
+    flush()
+    expect(within(host.container).queryByText('Beto está mirando su Extra Deck')).not.toBeInTheDocument()
+  })
+
   it('el chat: lo que llega entra con su animación y lo que ya estaba al abrirlo se ve quieto', () => {
     const { host, guest } = startDuel()
     const closeChat = () => fireEvent.keyDown(document, { key: 'Escape' })

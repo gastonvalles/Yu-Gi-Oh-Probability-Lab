@@ -1670,7 +1670,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
   const notice = useRivalNotice(snapshot, turn)
   const rivalName = snapshot.peerName ?? t('duel.bar.rival')
   const undoResult = useUndoResult(snapshot)
-  // El aviso de atención que se apoya sobre la línea del registro, uno a la vez y el más urgente primero: el permiso que el rival pide (sin diálogo: no tapa la mesa), el tuyo y cómo terminó.
+  // El aviso de atención que se apoya sobre la línea del registro, uno a la vez y el más urgente primero: el permiso que el rival pide (sin diálogo: no tapa la mesa), el tuyo, cómo terminó y, lo último, lo que está haciendo el rival (mira una pila, elige cómo jugar).
   const lane = useMemo<LaneNotice | null>(
     () =>
       snapshot.undo.asked
@@ -1679,8 +1679,10 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
           ? { kind: 'undoAsking' }
           : undoResult
             ? { kind: 'undoResult', result: undoResult.kind }
-            : null,
-    [snapshot.undo.asked, snapshot.undo.asking, undoResult, duel],
+            : snapshot.peerLook !== null
+              ? { kind: 'looking', what: snapshot.peerLook }
+              : null,
+    [snapshot.undo.asked, snapshot.undo.asking, undoResult, snapshot.peerLook, duel],
   )
   // A quiénes se puede atacar: los monstruos del rival en el campo, con el id que él les dio.
   const attackTargets = useMemo(
@@ -1712,6 +1714,7 @@ function DuelTableScreen({ duel, snapshot, status, myName, cardsById, deckName, 
       rivalFlights: { state: opponent.state, artOf: opponent.artOf },
       notice,
       rivalTurnLabel: t('duel.bar.theirTurn', { name: rivalName }),
+      onActivity: duel.look,
       clock: (snapshot.settings.turnMin ?? 0) > 0 ? <TurnDial clock={snapshot.turnClock} owner={turn === 'mine' ? snapshot.me : snapshot.me === 0 ? 1 : 0} me={snapshot.me} names={snapshot.me === 0 ? [myName, rivalName] : [rivalName, myName]} /> : undefined,
       phase: sharedPhase(turn, mine, theirs!.state) ?? 'draw',
       myTurn: turn === 'mine',
