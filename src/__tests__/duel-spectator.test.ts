@@ -11,12 +11,12 @@ const hostTable = createMatState(Array.from({ length: 12 }, (_, index) => `card-
 const guestTable = createMatState(Array.from({ length: 12 }, (_, index) => `card-${5000 + index}-1`), ['card-5900-1'], 5)
 
 /** Dos jugadores en la sala, listos para empezar. */
-function setup(match = false) {
+function setup(match = false, turnClock = false) {
   const room = createMemoryRoom()
   const clock = { t: 10_000 }
   const hostEnd = room.join()
   const guestEnd = room.join()
-  const host = createDuel(hostEnd, { role: 'host', name: 'Ana', settings: { lp: 8000, hand: 5, limitMin: 50, format: 'unlimited', match, siding: false }, now: () => clock.t, sid: 'host-1', random: () => 0.1 })
+  const host = createDuel(hostEnd, { role: 'host', name: 'Ana', settings: { lp: 8000, hand: 5, limitMin: 50, format: 'unlimited', match, siding: false, ...(turnClock ? { turnMin: 7, turnBonusMin: 3 } : {}) }, now: () => clock.t, sid: 'host-1', random: () => 0.1 })
   const guest = createDuel(guestEnd, { role: 'guest', name: 'Beto', now: () => clock.t, sid: 'guest-1', random: () => 0.9 })
 
   room.flush()
@@ -24,8 +24,8 @@ function setup(match = false) {
 }
 
 /** Un duelo ya empezado: los dos con su mano y listos, el anfitrión empezando. */
-function startedDuel(match = false) {
-  const game = setup(match)
+function startedDuel(match = false, turnClock = false) {
+  const game = setup(match, turnClock)
 
   game.host.setReady(true)
   game.guest.setReady(true)
@@ -382,7 +382,7 @@ describe('cómo termina el duelo para quien mira', () => {
 
 describe('el reloj de turnos que ve quien mira', () => {
   it('lleva la cuenta de los dos jugadores: corre el de quien tiene el turno, y al pasarlo se suman 2 minutos al otro', () => {
-    const game = startedDuel()
+    const game = startedDuel(false, true)
     const { spectator } = watch(game)
     const left = (who: 0 | 1) => turnTimeLeft(spectator.getSnapshot().turnClock, who, game.clock.t)
 

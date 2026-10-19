@@ -278,7 +278,7 @@ function WatchTable({ snapshot, online, onLeave }: { snapshot: SpectatorSnapshot
 
           <div className="flex min-w-0 items-center gap-1.5 empty:hidden">
             {/* El reloj de turnos es público: lo que le queda a cada jugador; el que corre, resaltado (y en rojo cuando falta poco). */}
-            {snapshot.turn !== null ? (
+            {snapshot.turn !== null && (snapshot.settings?.turnMin ?? 0) > 0 ? (
               <span role="timer" aria-label={t('duel.turnClock.label', { turn: nameOf(snapshot.turn), left: formatTurnTime(turnTimeLeft(snapshot.turnClock, snapshot.turn, now)), other: nameOf(snapshot.turn === 0 ? 1 : 0), otherLeft: formatTurnTime(turnTimeLeft(snapshot.turnClock, snapshot.turn === 0 ? 1 : 0, now)) })} data-testid="turn-times" className="inline-flex min-w-0 items-center gap-1 text-micro font-semibold tabular-nums">
                 {([0, 1] as const).map((side) => {
                   const left = turnTimeLeft(snapshot.turnClock, side, now)

@@ -45,7 +45,7 @@ export function gameText(entry: GameEntry, nameOf: (player: Duelist) => string):
     case 'toss':
       return t('duel.games.log.toss', { name, method: methodName(game.method).toLowerCase() })
     case 'concede':
-      return t('duel.games.log.concede', { name })
+      return t(game.timeout ? 'duel.games.log.timeout' : 'duel.games.log.concede', { name })
     case 'rematch':
       return t('duel.games.log.rematch', { name })
   }

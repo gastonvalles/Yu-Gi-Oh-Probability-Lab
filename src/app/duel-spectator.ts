@@ -38,7 +38,7 @@ export interface SpectatorEnd {
   /** Quién ganó (0 = anfitrión, 1 = invitado); null si empataron. */
   winner: Duelist | null
   /** Por qué: se quedó sin puntos de vida, se rindió, o se quedaron sin puntos los dos. */
-  reason: 'life' | 'conceded' | 'draw'
+  reason: 'life' | 'conceded' | 'time' | 'draw'
   /** Quién perdió (null si empataron). */
   loser: Duelist | null
   /** Es un duelo de un Match, con el marcador al terminar este duelo. */
@@ -130,6 +130,7 @@ export function createSpectator(transport: SpectatorTransport, options: Spectato
   let chatId = 0
   let feed: FeedItem[] = []
   let conceded: Duelist | null = null
+  let concededOnTime = false
   let series: Series = NEW_SERIES
   const rematch: [boolean, boolean] = [false, false]
   let lastRequest = -Infinity
@@ -161,7 +162,7 @@ export function createSpectator(transport: SpectatorTransport, options: Spectato
 
     return {
       winner: loser === null ? null : loser === 0 ? 1 : 0,
-      reason: result.kind === 'draw' ? 'draw' : conceded !== null ? 'conceded' : 'life',
+      reason: result.kind === 'draw' ? 'draw' : conceded !== null ? (concededOnTime ? 'time' : 'conceded') : 'life',
       loser,
       match,
       wins: score?.wins ?? [0, 0],
@@ -196,10 +197,13 @@ export function createSpectator(transport: SpectatorTransport, options: Spectato
   /** Pone el reloj de turnos al día con las dos mesas: cuándo cambia el turno, de quién corre y si está parado (sin los dos jugadores o con el duelo terminado no corre). */
   const tickTurnClock = () => {
     const [host, guest] = sides
+    const bankMs = (settings?.turnMin ?? 0) * 60_000
+    const bonusMs = (settings?.turnBonusMin ?? 0) * 60_000
 
-    if (!host.mirror || !guest.mirror) {
-      if (clockTurnNo !== null) {
-        turnClock = freshTurnClock()
+    // Sin límite por turno (o sin las dos mesas) no hay reloj.
+    if (bankMs === 0 || !host.mirror || !guest.mirror) {
+      if (clockTurnNo !== null || turnClock.running !== null || turnClock.banks[0] !== bankMs) {
+        turnClock = freshTurnClock(bankMs)
         clockTurnNo = null
         pendingBanks = null
       }
@@ -212,11 +216,11 @@ export function createSpectator(transport: SpectatorTransport, options: Spectato
     const owner: Duelist = whoseTurn(0, host.mirror.state, guest.mirror.state, starter) === 'mine' ? 0 : 1
 
     if (clockTurnNo === null) {
-      turnClock = startTurn({ ...turnClock, banks: pendingBanks ?? turnClock.banks, running: null, at }, owner, at, false)
+      turnClock = startTurn({ ...turnClock, banks: pendingBanks ?? turnClock.banks, running: null, at }, owner, at, 0)
     } else if (no > clockTurnNo) {
-      turnClock = startTurn(turnClock, owner, at, true)
+      turnClock = startTurn(turnClock, owner, at, bonusMs)
     } else if (no < clockTurnNo) {
-      turnClock = startTurn(no === 1 ? freshTurnClock() : turnClock, owner, at, false)
+      turnClock = startTurn(no === 1 ? freshTurnClock(bankMs) : turnClock, owner, at, 0)
     }
 
     clockTurnNo = no
@@ -268,6 +272,7 @@ export function createSpectator(transport: SpectatorTransport, options: Spectato
       }
 
       conceded = from
+      concededOnTime = game.timeout === true
     }
 
     if (game.kind === 'rematch') {
@@ -290,6 +295,7 @@ export function createSpectator(transport: SpectatorTransport, options: Spectato
       rematch[0] = false
       rematch[1] = false
       conceded = null
+      concededOnTime = false
       // Los puntos de vida del duelo que terminó ya no valen: los nuevos llegan con la mesa nueva (así no se ve terminar dos veces el mismo duelo).
       setSide(0, { lp: null })
       setSide(1, { lp: null })

@@ -13,13 +13,26 @@ const room = (code: string, patch: Partial<PublicRoom> = {}): PublicRoom => ({ c
 
 describe('las reglas que se recuerdan', () => {
   it('sin nada guardado valen las de siempre: TCG, 50 minutos, un solo duelo', () => {
-    expect(DEFAULT_PREFS).toEqual({ limitMin: 50, format: 'tcg', match: false, siding: false, genesysCap: 100 })
+    expect(DEFAULT_PREFS).toEqual({ limitMin: 50, turnLimit: true, turnMin: 7, turnBonusMin: 3, format: 'tcg', match: false, siding: false, genesysCap: 100 })
     expect(readPrefs(memory)).toEqual(DEFAULT_PREFS)
+  })
+
+  it('el límite por turno se recuerda aunque esté apagado, y lo guardado que no vale (minutos fuera de rango) vuelve a los de siempre', () => {
+    const storage = memory()
+
+    storage.setItem(PREFS_KEY, JSON.stringify({ turnLimit: false, turnMin: 12, turnBonusMin: 4 }))
+    expect(readPrefs(() => storage)).toMatchObject({ turnLimit: false, turnMin: 12, turnBonusMin: 4 })
+
+    storage.setItem(PREFS_KEY, JSON.stringify({ turnLimit: true, turnMin: 0, turnBonusMin: 99 }))
+    expect(readPrefs(() => storage)).toMatchObject({ turnLimit: true, turnMin: 7, turnBonusMin: 3 })
+
+    storage.setItem(PREFS_KEY, JSON.stringify({ turnMin: 'mucho' }))
+    expect(readPrefs(() => storage)).toMatchObject({ turnLimit: true, turnMin: 7, turnBonusMin: 3 })
   })
 
   it('lo que se guarda vuelve igual; el siding sólo vale en un Match', () => {
     const storage = memory()
-    const prefs: DuelPrefs = { limitMin: 0, format: 'genesys', match: true, siding: true, genesysCap: 80 }
+    const prefs: DuelPrefs = { limitMin: 0, turnLimit: false, turnMin: 10, turnBonusMin: 2, format: 'genesys', match: true, siding: true, genesysCap: 80 }
 
     writePrefs(prefs, () => storage)
     expect(readPrefs(() => storage)).toEqual(prefs)

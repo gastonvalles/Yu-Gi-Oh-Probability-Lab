@@ -25,6 +25,7 @@ export function RoomRules({ settings, isPublic, watchers }: RoomRulesProps) {
     [t('duel.rules.format'), getDeckFormatLabel(settings.format)],
     ...(settings.format === 'genesys' ? ([[t('duel.create.genesysCap'), t('duel.rooms.genesysCap', { points: settings.genesysCap ?? GENESYS_POINT_CAP })]] as const) : []),
     [t('duel.rules.time'), settings.limitMin > 0 ? t('duel.rooms.limit', { min: settings.limitMin }) : t('duel.rooms.noLimit')],
+    [t('duel.rules.turn'), (settings.turnMin ?? 0) > 0 ? t('duel.rules.turnValue', { bank: settings.turnMin ?? 0, bonus: settings.turnBonusMin ?? 0 }) : t('duel.rules.turnNone')],
     [t('duel.rules.life'), String(settings.lp)],
     [t('duel.rules.hand'), String(settings.hand)],
     ...(isPublic === null ? [] : ([[t('duel.create.visibility'), isPublic ? t('duel.create.public') : t('duel.create.private')]] as const)),

@@ -32,6 +32,10 @@ export interface DuelSettings {
   format: DeckFormat
   /** Sólo en Genesys: el total de puntos que las cartas del deck no pueden pasar (vale `GENESYS_POINT_CAP` si no se manda: un anfitrión de antes no lo manda). */
   genesysCap?: number
+  /** Reloj de turnos (ver `duel-clock.ts`): los minutos con que arranca la reserva de cada jugador; 0 o sin dato es sin límite por turno. */
+  turnMin?: number
+  /** Los minutos que se suman a la reserva de quien recibe el turno (con `turnMin` en 0 no cuenta). */
+  turnBonusMin?: number
   /** Un Match (mejor de 3) en vez de un solo duelo. */
   match: boolean
   /** En un Match, cambiar cartas entre el Main, el Extra y el Side entre un duelo y el siguiente. */
@@ -45,7 +49,13 @@ export const DEFAULT_LIMIT_MIN = 50
 /** Los puntos máximos de Genesys que se pueden pedir al crear la sala (el oficial es 100). */
 export const GENESYS_CAP_RANGE = { min: 10, max: 500 } as const
 
-export const DEFAULT_SETTINGS: DuelSettings = { lp: STARTING_LP, hand: 5, limitMin: DEFAULT_LIMIT_MIN, format: DEFAULT_DUEL_FORMAT, match: false, siding: false }
+/** El reloj de turnos que se puede pedir al crear la sala (el protocolo acepta hasta 60 y 30 minutos de más): lo que viene elegido son 7 minutos y 3 de más. */
+export const TURN_MIN_RANGE = { min: 1, max: 30 } as const
+export const TURN_BONUS_RANGE = { min: 0, max: 10 } as const
+export const DEFAULT_TURN_MIN = 7
+export const DEFAULT_TURN_BONUS_MIN = 3
+
+export const DEFAULT_SETTINGS: DuelSettings = { lp: STARTING_LP, hand: 5, limitMin: DEFAULT_LIMIT_MIN, format: DEFAULT_DUEL_FORMAT, turnMin: DEFAULT_TURN_MIN, turnBonusMin: DEFAULT_TURN_BONUS_MIN, match: false, siding: false }
 
 /** Lo que alguien marca como objetivo del lado del otro: cartas (por el id con que su dueño las nombra) y pilas enteras (la mano, el deck, el Extra, el cementerio, lo desterrado). */
 export interface Marks {
@@ -223,7 +233,7 @@ function parseGame(value: unknown): DuelGame | null {
     case 'order':
       return value.first === 0 || value.first === 1 ? { kind: 'order', first: value.first } : null
     case 'concede':
-      return { kind: 'concede' }
+      return value.timeout === true ? { kind: 'concede', timeout: true } : { kind: 'concede' }
     case 'rematch':
       return { kind: 'rematch' }
     default:
@@ -313,7 +323,7 @@ function parseState(value: unknown): MatState | null {
 
 function parseSettings(value: unknown): DuelSettings | null {
   // Un anfitrión de una versión anterior no manda el tiempo: vale el de siempre.
-  if (!isPlain(value) || !isInt(value.lp, 1, MAX_LP) || !isInt(value.hand, 0, 20) || !optional(value.limitMin, (v) => isInt(v, 0, 180)) || !optional(value.format, (v) => (DUEL_FORMATS as readonly unknown[]).includes(v)) || !optional(value.genesysCap, (v) => isInt(v, 1, 999)) || !optional(value.match, (v) => typeof v === 'boolean') || !optional(value.siding, (v) => typeof v === 'boolean')) {
+  if (!isPlain(value) || !isInt(value.lp, 1, MAX_LP) || !isInt(value.hand, 0, 20) || !optional(value.turnMin, (v) => isInt(v, 0, 60)) || !optional(value.turnBonusMin, (v) => isInt(v, 0, 30)) || !optional(value.limitMin, (v) => isInt(v, 0, 180)) || !optional(value.format, (v) => (DUEL_FORMATS as readonly unknown[]).includes(v)) || !optional(value.genesysCap, (v) => isInt(v, 1, 999)) || !optional(value.match, (v) => typeof v === 'boolean') || !optional(value.siding, (v) => typeof v === 'boolean')) {
     return null
   }
 
@@ -324,6 +334,8 @@ function parseSettings(value: unknown): DuelSettings | null {
     hand: value.hand,
     limitMin: typeof value.limitMin === 'number' ? value.limitMin : DEFAULT_LIMIT_MIN,
     format,
+    // Un anfitrión de una versión anterior no manda el reloj de turnos: sin dato es sin límite por turno.
+    ...(typeof value.turnMin === 'number' ? { turnMin: value.turnMin, turnBonusMin: typeof value.turnBonusMin === 'number' && value.turnMin > 0 ? value.turnBonusMin : 0 } : {}),
     // El tope sólo cuenta en Genesys.
     ...(format === 'genesys' && typeof value.genesysCap === 'number' ? { genesysCap: value.genesysCap } : {}),
     match: value.match === true,

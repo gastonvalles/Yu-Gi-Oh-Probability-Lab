@@ -68,6 +68,8 @@ export interface DuelSnapshot {
   starter: Duelist
   /** Quién se rindió (0 = anfitrión, 1 = invitado), si alguien lo hizo. */
   conceded: Duelist | null
+  /** Esa rendición fue porque se le acabó el tiempo del reloj de turnos. */
+  timeUp: boolean
   /** Cómo va el Match (si la sala es un Match): el marcador con el duelo de ahora sumado, el número del duelo y quién ganó el Match, si ya lo ganó alguien. */
   series: { match: boolean; game: number; wins: readonly [number, number]; winner: Duelist | null }
   /** Quién pidió la revancha: cuando los dos la piden, la mesa se limpia y se vuelve a repartir. */
@@ -203,6 +205,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   let rps: { mine: RpsPick | null; theirs: RpsPick | null } = { mine: null, theirs: null }
   let starter: Duelist = 0
   let conceded: Duelist | null = null
+  let concededOnTime = false
   let rematch = { mine: false, theirs: false }
   let series: Series = NEW_SERIES
   // Antes de la mesa: quién está listo, con qué se define quién empieza y cómo va, y el chat.
@@ -251,6 +254,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   let clockTurnNo: number | null = null
   let clockOwner: Duelist = 0
   let pendingBanks: readonly [number, number] | null = null
+  let expiryTimer: ReturnType<typeof setTimeout> | null = null
 
   const listeners = new Set<() => void>()
   let snapshot: DuelSnapshot
@@ -261,16 +265,25 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     return { match: settings.match, game: series.played + 1, wins: score.wins, winner: settings.match ? score.winner : null }
   }
 
-  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent: peerPresent && !stranger && (peerGreeted || !finishedForGood()), peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult, blocked: lastIsControl() }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, turnClock, ping: lastPing })
+  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent: peerPresent && !stranger && (peerGreeted || !finishedForGood()), peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, timeUp: concededOnTime, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult, blocked: lastIsControl() }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, turnClock, ping: lastPing })
 
   /**
    * Pone el reloj de turnos al día con la mesa: cuándo cambia el turno (el que pasa publica lo que le queda, y a quien le toca se le suman los 2 minutos), de quién corre y si está parado
    * (sin dos mesas, sin el rival o con el duelo terminado no corre nada). Una mesa nueva (revancha) lo empieza de cero.
    */
   const tickTurnClock = () => {
-    if (!mine || !theirs) {
-      if (clockTurnNo !== null) {
-        turnClock = freshTurnClock()
+    const bankMs = (settings.turnMin ?? 0) * 60_000
+    const bonusMs = (settings.turnBonusMin ?? 0) * 60_000
+
+    // Sin límite por turno (o sin dos mesas) no hay reloj: nada corre ni se avisa.
+    if (bankMs === 0 || !mine || !theirs) {
+      if (expiryTimer !== null) {
+        clearTimeout(expiryTimer)
+        expiryTimer = null
+      }
+
+      if (clockTurnNo !== null || turnClock.running !== null || turnClock.banks[0] !== bankMs) {
+        turnClock = freshTurnClock(bankMs)
         clockTurnNo = null
         pendingBanks = null
       }
@@ -283,17 +296,17 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     const owner: Duelist = whoseTurn(me, mine, theirs.state, starter) === 'mine' ? me : peer
 
     if (clockTurnNo === null) {
-      turnClock = startTurn({ ...turnClock, banks: pendingBanks ?? turnClock.banks, running: null, at }, owner, at, false)
+      turnClock = startTurn({ ...turnClock, banks: pendingBanks ?? turnClock.banks, running: null, at }, owner, at, 0)
     } else if (no > clockTurnNo) {
       // Pasó el turno: quien lo pasó dice lo que le queda (corrige la cuenta del otro lado) y a quien le toca se le suman los 2 minutos.
       if (clockOwner === me) {
         send({ t: 'turnClock', bank: Math.round(turnTimeLeft(turnClock, me, at)) })
       }
 
-      turnClock = startTurn(turnClock, owner, at, true)
+      turnClock = startTurn(turnClock, owner, at, bonusMs)
     } else if (no < clockTurnNo) {
       // Una mesa nueva (el turno vuelve a 1) empieza de cero; volver atrás un pase sólo devuelve el turno (sin sumar nada).
-      turnClock = startTurn(no === 1 ? freshTurnClock() : turnClock, owner, at, false)
+      turnClock = startTurn(no === 1 ? freshTurnClock(bankMs) : turnClock, owner, at, 0)
     }
 
     clockTurnNo = no
@@ -305,6 +318,24 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
 
     if (turnClock.running !== running) {
       turnClock = runTurnClock(turnClock, running, at)
+    }
+
+    // Quien se queda sin tiempo pierde: el dispositivo de ese jugador se rinde por él (el del rival sólo espera su aviso: cada uno es dueño de su reloj).
+    if (expiryTimer !== null) {
+      clearTimeout(expiryTimer)
+      expiryTimer = null
+    }
+
+    if (turnClock.running === me) {
+      expiryTimer = setTimeout(expire, turnTimeLeft(turnClock, me, at) + 50)
+    }
+  }
+
+  const expire = () => {
+    expiryTimer = null
+
+    if (turnClock.running === me && turnTimeLeft(turnClock, me, now()) <= 0 && duelResult(life.lp, conceded) === null) {
+      playGame({ kind: 'concede', timeout: true })
     }
   }
 
@@ -505,6 +536,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       }
 
       conceded = from
+      concededOnTime = game.timeout === true
     }
 
     if (game.kind === 'rematch') {
@@ -549,6 +581,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       awaitingSync = false
       life = { ...createLifeState(), lp: [settings.lp, settings.lp] }
       conceded = null
+      concededOnTime = false
       rematch = { mine: false, theirs: false }
       rps = { mine: null, theirs: null }
     }
@@ -973,6 +1006,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
 
   /** Cierra todo: deja de escuchar y suelta la conexión; con `endRoom`, avisándole al relay que la sala se da por terminada (se cierra para todos). */
   const shutdown = (endRoom: boolean) => {
+    if (expiryTimer !== null) clearTimeout(expiryTimer)
+    expiryTimer = null
     markTimers.forEach((timer) => clearTimeout(timer))
     markTimers.clear()
     dropUndoAsk(false)

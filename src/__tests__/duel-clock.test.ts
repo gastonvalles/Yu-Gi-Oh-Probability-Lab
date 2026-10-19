@@ -1,14 +1,14 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { TURN_BANK_MS, TURN_BONUS_MS, formatTurnTime, freshTurnClock, runTurnClock, setTurnBank, startTurn, turnTimeLeft } from '../app/duel-clock'
-import { PROTOCOL_VERSION, encodeMessage, parseMessage } from '../app/duel-protocol'
+import { DEFAULT_SETTINGS, PROTOCOL_VERSION, encodeMessage, parseMessage, type DuelSettings } from '../app/duel-protocol'
 import { createDuel, type Duel } from '../app/duel-session'
 import { createMatState } from '../app/practice-mat'
 import { createMemoryRoom } from './support/memory-room'
 
 describe('el reloj de turnos (la cuenta)', () => {
   it('arranca con 5 minutos para cada uno y sólo baja el de quien corre', () => {
-    const clock = startTurn(freshTurnClock(), 0, 1000, false)
+    const clock = startTurn(freshTurnClock(), 0, 1000, 0)
 
     expect(turnTimeLeft(clock, 0, 1000)).toBe(TURN_BANK_MS)
     expect(turnTimeLeft(clock, 0, 1000 + 40_000)).toBe(TURN_BANK_MS - 40_000)
@@ -16,20 +16,20 @@ describe('el reloj de turnos (la cuenta)', () => {
   })
 
   it('al empezar el turno de quien recibe el pase se le suman 2 minutos a lo que le quede, y el que pasó se queda con lo suyo', () => {
-    let clock = startTurn(freshTurnClock(), 0, 0, false)
+    let clock = startTurn(freshTurnClock(), 0, 0, 0)
 
-    clock = startTurn(clock, 1, 60_000, true)
+    clock = startTurn(clock, 1, 60_000, TURN_BONUS_MS)
     expect(turnTimeLeft(clock, 0, 60_000)).toBe(TURN_BANK_MS - 60_000)
     expect(turnTimeLeft(clock, 1, 60_000)).toBe(TURN_BANK_MS + TURN_BONUS_MS)
 
     // Vuelve el turno al primero: otros 2 minutos, sobre lo que le quedaba.
-    clock = startTurn(clock, 0, 100_000, true)
+    clock = startTurn(clock, 0, 100_000, TURN_BONUS_MS)
     expect(turnTimeLeft(clock, 0, 100_000)).toBe(TURN_BANK_MS - 60_000 + TURN_BONUS_MS)
     expect(turnTimeLeft(clock, 1, 100_000)).toBe(TURN_BANK_MS + TURN_BONUS_MS - 40_000)
   })
 
   it('no baja de cero, y parado no corre', () => {
-    const clock = startTurn(freshTurnClock(), 0, 0, false)
+    const clock = startTurn(freshTurnClock(), 0, 0, 0)
 
     expect(turnTimeLeft(clock, 0, TURN_BANK_MS * 3)).toBe(0)
 
@@ -40,7 +40,7 @@ describe('el reloj de turnos (la cuenta)', () => {
   })
 
   it('lo que dice su dueño al pasar corrige la cuenta', () => {
-    const clock = setTurnBank(startTurn(freshTurnClock(), 1, 0, false), 0, 123_000, 5_000)
+    const clock = setTurnBank(startTurn(freshTurnClock(), 1, 0, 0), 0, 123_000, 5_000)
 
     expect(turnTimeLeft(clock, 0, 5_000)).toBe(123_000)
     expect(turnTimeLeft(clock, 1, 5_000)).toBe(TURN_BANK_MS - 5_000)
@@ -69,10 +69,10 @@ describe('el reloj de turnos en el protocolo', () => {
 const hostTable = createMatState(Array.from({ length: 20 }, (_, index) => `card-${1000 + index}-1`), [], 5)
 const guestTable = createMatState(Array.from({ length: 20 }, (_, index) => `card-${5000 + index}-1`), [], 5)
 
-function table() {
+function table(settings: Partial<DuelSettings> = {}) {
   const room = createMemoryRoom()
   const time = { t: 10_000 }
-  const host = createDuel(room.join(), { role: 'host', name: 'Ana', now: () => time.t, sid: 'host-1' })
+  const host = createDuel(room.join(), { role: 'host', name: 'Ana', settings: { ...DEFAULT_SETTINGS, ...settings }, now: () => time.t, sid: 'host-1' })
   const guest = createDuel(room.join(), { role: 'guest', name: 'Beto', now: () => time.t, sid: 'guest-1' })
 
   room.flush()
@@ -132,5 +132,102 @@ describe('el reloj de turnos en un duelo', () => {
     time.t += 60_000
     expect(left(host, 0, time.t)).toBe(frozen)
     expect(frozen).toBe(TURN_BANK_MS - 10_000)
+  })
+})
+
+describe('quien se queda sin tiempo pierde el duelo', () => {
+  it('arrancan con 7 minutos y a quien recibe el turno se le suman 3', () => {
+    expect(TURN_BANK_MS).toBe(7 * 60_000)
+    expect(TURN_BONUS_MS).toBe(3 * 60_000)
+  })
+
+  it('al llegar a cero el dispositivo de ese jugador se rinde por él: pierde, gana el rival y los dos ven que fue por el tiempo', () => {
+    vi.useFakeTimers()
+    const { room, time, host, guest } = table()
+
+    // Ana (que empieza) piensa casi todo su tiempo y todavía no perdió.
+    const almost = TURN_BANK_MS - 1000
+    time.t += almost
+    vi.advanceTimersByTime(almost)
+    room.flush()
+    expect(host.getSnapshot().conceded).toBeNull()
+
+    // Se le acaba: se rinde sola.
+    time.t += 1100
+    vi.advanceTimersByTime(1100)
+    room.flush()
+
+    expect(host.getSnapshot()).toMatchObject({ conceded: 0, timeUp: true })
+    expect(guest.getSnapshot()).toMatchObject({ conceded: 0, timeUp: true })
+    expect(host.getSnapshot().games.at(-1)?.game).toEqual({ kind: 'concede', timeout: true })
+    vi.useRealTimers()
+  })
+
+  it('pasar el turno a tiempo evita perder: el tiempo de quien recibe el turno corre, no el de quien pasó', () => {
+    vi.useFakeTimers()
+    const { room, time, host, guest } = table()
+
+    time.t += 60_000
+    vi.advanceTimersByTime(60_000)
+    host.play({ type: 'phase', phase: 'end' })
+    host.play({ type: 'phase', phase: 'draw' })
+    room.flush()
+
+    // Ahora corre el reloj de Beto: pasa el tiempo que Ana tenía y nadie pierde.
+    time.t += TURN_BANK_MS - 60_000 + 5000
+    vi.advanceTimersByTime(TURN_BANK_MS - 60_000 + 5000)
+    room.flush()
+    expect(host.getSnapshot().conceded).toBeNull()
+    expect(guest.getSnapshot().conceded).toBeNull()
+    vi.useRealTimers()
+  })
+
+  it('un cierre por tiempo viaja y se lee; uno común (sin `timeout`) sigue siendo una rendición', () => {
+    expect(parseMessage(JSON.stringify({ t: 'game', n: 1, game: { kind: 'concede', timeout: true } }))).toMatchObject({ game: { kind: 'concede', timeout: true } })
+    expect(parseMessage(JSON.stringify({ t: 'game', n: 1, game: { kind: 'concede' } }))).toMatchObject({ game: { kind: 'concede' } })
+    expect(parseMessage(JSON.stringify({ t: 'game', n: 1, game: { kind: 'concede' } }))).not.toHaveProperty('game.timeout')
+  })
+})
+
+describe('el límite de tiempo por turno se activa, se apaga y se personaliza al crear la sala', () => {
+  it('apagado (0 minutos) no hay reloj: no corre, no se avisa y nadie pierde por tiempo', () => {
+    vi.useFakeTimers()
+    const { room, time, host, guest } = table({ turnMin: 0, turnBonusMin: 0 })
+
+    time.t += 60 * 60_000
+    vi.advanceTimersByTime(60 * 60_000)
+    host.play({ type: 'phase', phase: 'end' })
+    host.play({ type: 'phase', phase: 'draw' })
+    room.flush()
+
+    expect(host.getSnapshot().turnClock.running).toBeNull()
+    expect(guest.getSnapshot().turnClock.running).toBeNull()
+    expect(host.getSnapshot().conceded).toBeNull()
+    expect(guest.getSnapshot().conceded).toBeNull()
+    vi.useRealTimers()
+  })
+
+  it('con minutos propios, la reserva y los minutos de más son los de la sala (también para el invitado, que los toma del anfitrión)', () => {
+    const { room, time, host, guest } = table({ turnMin: 3, turnBonusMin: 1 })
+
+    expect(left(host, 0, time.t)).toBe(3 * 60_000)
+    expect(left(guest, 1, time.t)).toBe(3 * 60_000)
+
+    host.play({ type: 'phase', phase: 'end' })
+    host.play({ type: 'phase', phase: 'draw' })
+    room.flush()
+
+    expect(left(guest, 1, time.t)).toBe(4 * 60_000)
+    expect(left(host, 1, time.t)).toBe(4 * 60_000)
+  })
+
+  it('los ajustes viajan: sin dato (un anfitrión de antes) es sin límite por turno, y los minutos fuera de rango se descartan', () => {
+    const hello = (settings: unknown) => parseMessage(JSON.stringify({ t: 'hello', v: PROTOCOL_VERSION, sid: 'abc123', role: 'host', name: 'Ana', settings }))
+
+    expect(hello({ lp: 8000, hand: 5 })).not.toHaveProperty('settings.turnMin')
+    expect(hello({ lp: 8000, hand: 5, turnMin: 10, turnBonusMin: 2 })).toMatchObject({ settings: { turnMin: 10, turnBonusMin: 2 } })
+    expect(hello({ lp: 8000, hand: 5, turnMin: 0, turnBonusMin: 5 })).toMatchObject({ settings: { turnMin: 0, turnBonusMin: 0 } })
+    expect(hello({ lp: 8000, hand: 5, turnMin: 61 })).toBeNull()
+    expect(hello({ lp: 8000, hand: 5, turnMin: 7, turnBonusMin: -1 })).toBeNull()
   })
 })

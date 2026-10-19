@@ -86,7 +86,7 @@ function TurnDialSamples() {
       className="col-span-full"
       note={
         <>
-          5 minutos por jugador, y 2 más cada vez que el rival pasa el turno. Va en el centro del campo, entre las dos Zonas Extra (<Tag>duel.clock</Tag> de <Tag>PracticeMat</Tag>). Archivo: <Tag>duel/TurnDial.tsx</Tag>; la cuenta, <Tag>app/duel-clock.ts</Tag>.
+          7 minutos por jugador, y 3 más cada vez que el rival pasa el turno; quien llega a cero pierde el duelo. Va en el centro del campo, entre las dos Zonas Extra (<Tag>duel.clock</Tag> de <Tag>PracticeMat</Tag>). Archivo: <Tag>duel/TurnDial.tsx</Tag>; la cuenta, <Tag>app/duel-clock.ts</Tag>.
         </>
       }
     >

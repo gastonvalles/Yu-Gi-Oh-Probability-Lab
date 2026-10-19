@@ -230,6 +230,26 @@ describe('la pantalla del duelo', () => {
     expect(extractRoomCode(window.location.hash)).toBeNull()
   })
 
+  it('en las reglas, el límite de tiempo por turno se enciende, se apaga y se personaliza: viene encendido con 7 minutos y 3 de más, y apagado esconde los minutos', () => {
+    const view = render(<DuelScreen {...screenProps()} />)
+
+    openRules(view)
+
+    const turn = within(rulesDialog()).getByRole('switch', { name: 'Límite de tiempo por turno' })
+
+    expect(turn).toBeChecked()
+    expect(within(within(rulesDialog()).getByRole('group', { name: 'Minutos de cada jugador' })).getByRole('textbox')).toHaveDisplayValue('7')
+    expect(within(within(rulesDialog()).getByRole('group', { name: 'Minutos de más al recibir el turno' })).getByRole('textbox')).toHaveDisplayValue('3')
+
+    fireEvent.click(turn)
+    expect(turn).not.toBeChecked()
+    expect(within(rulesDialog()).queryByRole('group', { name: 'Minutos de cada jugador' })).not.toBeInTheDocument()
+
+    // Con Solo (sin rival) no hay reloj de turnos que elegir.
+    fireEvent.click(within(rulesDialog()).getByRole('radio', { name: 'Solo' }))
+    expect(within(rulesDialog()).queryByRole('switch', { name: 'Límite de tiempo por turno' })).not.toBeInTheDocument()
+  })
+
   it('Solo no se recuerda: al volver a abrir las reglas vuelve el tipo de antes, y sin deck armado no se puede jugar solo', () => {
     const view = render(<DuelScreen {...screenProps({ mainIds: mainIds.slice(0, 3) })} />)
 
