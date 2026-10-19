@@ -14,8 +14,8 @@ interface RivalCardDetailProps {
   onClose: () => void
 }
 
-/** El detalle de una carta del rival que ya está a la vista: se pide por su número de YGOPRODeck, y hasta que llega se ve sólo "Carta del rival". */
-export function RivalCardDetail({ drawId, origin, onClose }: RivalCardDetailProps) {
+/** La carta real de lo que el rival ya mostró (`card-123-2`): se pide por su número de YGOPRODeck y, hasta que llega, es null. */
+export function useRivalCard(drawId: string): ApiCardSearchResult | null {
   const ygoId = parseDerivedCardId(cardIdOfDrawId(drawId))
   const [card, setCard] = useState<ApiCardSearchResult | null>(null)
 
@@ -34,6 +34,13 @@ export function RivalCardDetail({ drawId, origin, onClose }: RivalCardDetailProp
       alive = false
     }
   }, [ygoId])
+
+  return card
+}
+
+/** El detalle de una carta del rival que ya está a la vista: se pide por su número de YGOPRODeck, y hasta que llega se ve sólo "Carta del rival". */
+export function RivalCardDetail({ drawId, origin, onClose }: RivalCardDetailProps) {
+  const card = useRivalCard(drawId)
 
   return <CardDetailOverlay name={card?.name ?? t('duel.mark.rivalCard')} card={card} origin={origin} onClose={onClose} />
 }

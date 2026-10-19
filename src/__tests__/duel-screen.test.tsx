@@ -1637,6 +1637,46 @@ describe('la pantalla del duelo', () => {
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Señalar', 'Target'])
   })
 
+  it('en escritorio, tocar una carta (tuya o del rival) la muestra en el detalle fijo de la izquierda, que está siempre desde el principio; en el celular no hay detalle fijo', async () => {
+    asDesktop()
+    const { host, guest } = startDuel({ cardsById: monsters })
+    openTable(host, guest)
+    const dock = (view: RenderResult) => within(view.container).getByRole('region', { name: 'Detalle de la carta' })
+
+    // Está desde el principio, vacío: la mesa no se corre al tocar la primera carta.
+    expect(dock(host)).toHaveTextContent('Tocá una carta para ver su detalle acá.')
+
+    // Tocar una carta propia del campo la muestra a la izquierda (además de abrir su menú de siempre).
+    summonFirst(host)
+    flush()
+    tap(zoneOf(host, 'Zona de monstruo 1').getAllByRole('button')[0]!)
+    expect(within(dock(host)).getByRole('heading', { name: /^Monstruo \d+$/ })).toBeInTheDocument()
+    expect(screen.getAllByRole('menuitem').length).toBeGreaterThan(0)
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    // Una carta del rival que ya mostró: su detalle se pide por su número y queda a la izquierda de quien la tocó.
+    expect(dock(guest)).toHaveTextContent('Tocá una carta para ver su detalle acá.')
+    fireEvent.click(within(guest.container).getByRole('button', { name: 'Rival, Zona de monstruo 1: marcar' }))
+    await act(async () => {})
+    expect(within(dock(guest)).getByRole('heading', { name: /^Carta \d+$/ })).toBeInTheDocument()
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    // Una boca abajo no se sabe cuál es: se dice así, sin inventar nada.
+    tap(handOf(host).getAllByRole('listitem')[0]!)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Colocar' }))
+    fireEvent.click(within(host.container).getByRole('button', { name: 'Zona de monstruo 2: elegir' }))
+    flush()
+    fireEvent.click(within(guest.container).getByRole('button', { name: 'Rival, Zona de monstruo 2: marcar' }))
+    expect(within(dock(guest)).getByRole('heading', { name: 'Carta boca abajo' })).toBeInTheDocument()
+  })
+
+  it('en el celular no hay detalle fijo a la izquierda (la hoja de la carta ya la muestra)', () => {
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+
+    expect(within(host.container).queryByRole('region', { name: 'Detalle de la carta' })).not.toBeInTheDocument()
+  })
+
   it('Señalar es temporal y distinto de Target: un aro que late un rato en las dos pantallas, sin dejar marca ni jugada, y se va solo; también se señala una carta propia del campo', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const { host, guest } = startDuel({ cardsById: monsters })
@@ -3340,7 +3380,7 @@ describe('la pantalla del duelo', () => {
 
   /** Una pantalla de escritorio (a partir de 1101 px): ahí el chat va fijo a la derecha. */
   const asDesktop = () => {
-    window.matchMedia = ((query: string) => ({ matches: query.includes('1101') || query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query.includes('1101') || query.includes('1440') || query.includes('reduce'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia
   }
 
   it('rendirse queda a la vista en la barra: pide confirmar, termina el duelo para los dos y después ya no hay a quién rendirse', () => {
