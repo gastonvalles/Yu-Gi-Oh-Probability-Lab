@@ -29,7 +29,7 @@ fidelidad dejó sin hacer (sección 6).
   (#272 y #275: la ficha «Cómo se calcula»; #278). Un error del Lab tiene pantalla propia (#284, `StepErrorBoundary`).
 - Comparar en el celular: dos anillos y «Lo que cambia» (#279). Las confirmaciones son una hoja de abajo y las fases miden 44 px
   (#280). Buscar cartas dice «N de M» en cada fila (#281).
-- Deck en el celular: «Siguiente: Roles» y «Buscar cartas» abajo (#283) y el estado vacío con salida a los decks de torneo
+- Deck en el celular: el estado vacío con salida a los decks de torneo (**la barra de abajo con «Siguiente: Roles» y «Buscar cartas» del #283 se sacó el 2026-10-19**, Gastón: «no es necesaria»: se busca con la lupa de la barra de arriba —«Buscar cartas» en el buscador de la app— y el siguiente paso está en el menú; el nombre del deck ya no lleva la cuenta de cartas, la dice el Main; «Volver a Jugar» va arriba del encabezado). **La barra de abajo del celular ya no sale blanca** (`viewport-fit=cover`: la página llega hasta el borde y la barra índigo pinta la zona del gesto del teléfono, `env(safe-area-inset-bottom)`); las cuatro hojas de la barra se midieron pegadas a ella (0 px de hueco a 390, 360 y 320 px de ancho)
   (#285). Exportar en el celular lleva los botones abajo (#286).
 - Importar: el método «Enlace» (`ydke://`) y `.ydk` pegado, en el orden Archivo · Enlace · Pegar texto (#287).
 - **Precio total del deck** (#288, `DeckPriceModal`): suma la impresión más barata de TCGplayer de cada carta.

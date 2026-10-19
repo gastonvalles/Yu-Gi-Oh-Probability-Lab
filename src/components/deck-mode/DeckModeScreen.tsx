@@ -142,7 +142,8 @@ export function DeckModeScreen() {
   // El buscador de cartas está siempre, también en el lobby del duelo, salvo donde estorba o ya está: el builder (trae el suyo), la práctica y la sala o la mesa de un duelo.
   // El lobby avisa que lo es (`onLobbyChange`); hasta que lo hace —mientras baja la pantalla del duelo— cuenta como duelo, así el buscador no aparece un momento y se va.
   const [duelLobby, setDuelLobby] = useState(false)
-  const searchAvailable = !isDeckBuilderStep && !isPracticeStep && (!isDuelStep || duelConnect === null || duelLobby)
+  // En el celular el builder ya no lleva su propio botón de buscar: la lupa de la barra de arriba abre la búsqueda de cartas, como en las demás pantallas. En escritorio el builder trae el buscador a un costado.
+  const searchAvailable = (!isDeckBuilderStep || !isDesktopDeckBuilder) && !isPracticeStep && (!isDuelStep || duelConnect === null || duelLobby)
   const searchActive = searchOpen && searchAvailable
   // La partida vive acá y no en la pantalla: salir de la práctica (a la calculadora, al builder) no pierde la mano ni el combo en curso.
   const practice = usePracticeSession({
@@ -301,7 +302,7 @@ export function DeckModeScreen() {
           {t('deck.builder.title')}
         </Heading>
       ) : null}
-      <DeckBuilderStep {...deckBuilderStep} onNextStep={() => handleStepChange('categorization')} onBrowseTournaments={() => handleStepChange('tournaments')} onBackToPlay={playReturn ? () => (window.location.hash = playReturn) : undefined} />
+      <DeckBuilderStep {...deckBuilderStep} onBrowseTournaments={() => handleStepChange('tournaments')} onBackToPlay={playReturn ? () => (window.location.hash = playReturn) : undefined} />
     </div>
   ) : (
     <section
