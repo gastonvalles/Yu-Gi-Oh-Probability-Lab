@@ -31,7 +31,7 @@ const card = {
 } as ApiCardReference
 
 describe('la carta en grande', () => {
-  it('se cierra tocando en cualquier lado, con la X o con Escape', () => {
+  it('se cierra sólo con la X o con Escape: un clic suelto no la cierra', () => {
     const onClose = vi.fn()
     render(
       <Provider store={store}>
@@ -42,12 +42,13 @@ describe('la carta en grande', () => {
     const dialog = screen.getByRole('dialog', { name: 'Maxx en grande' })
 
     fireEvent.click(dialog)
-    expect(onClose).toHaveBeenCalledTimes(1)
+    fireEvent.click(dialog.firstElementChild!)
+    expect(onClose).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }))
-    expect(onClose).toHaveBeenCalledTimes(2)
+    expect(onClose).toHaveBeenCalledTimes(1)
 
     fireEvent.keyDown(window, { key: 'Escape' })
-    expect(onClose).toHaveBeenCalledTimes(3)
+    expect(onClose).toHaveBeenCalledTimes(2)
   })
 })

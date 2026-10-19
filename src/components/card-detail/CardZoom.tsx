@@ -19,8 +19,8 @@ interface CardZoomProps {
 }
 
 /**
- * La carta en grande, sola sobre el fondo (como al tocarla en el detalle del celular). Se cierra tocando
- * en cualquier lado, con la X o con Escape; si hay un modal abajo, Escape cierra primero este.
+ * La carta en grande, sola sobre el fondo (como al tocarla en el detalle del celular). Se cierra sólo con la X o con Escape
+ * (un clic suelto no la cierra, para poder inspeccionarla en 3D); si hay un modal abajo, Escape cierra primero este.
  */
 export function CardZoom({ card, name, fallbackUrl = null, onClose }: CardZoomProps) {
   useBodyScrollLock(true)
@@ -44,8 +44,7 @@ export function CardZoom({ card, name, fallbackUrl = null, onClose }: CardZoomPr
       role="dialog"
       aria-modal="true"
       aria-label={t('search.zoom.aria', { name })}
-      className={cx('fixed inset-0 z-250 grid cursor-zoom-out place-items-center bg-background/90 p-4 animate-dialog-enter motion-reduce:animate-none', TILT_PERSPECTIVE)}
-      onClick={onClose}
+      className={cx('fixed inset-0 z-250 grid place-items-center bg-background/90 p-4 animate-dialog-enter motion-reduce:animate-none', TILT_PERSPECTIVE)}
     >
       <div
         className={cx('relative aspect-[421/614] h-[min(94dvh,calc((100vw-2rem)*614/421))] max-w-full touch-pan-y', TILT_ART)}
@@ -62,10 +61,6 @@ export function CardZoom({ card, name, fallbackUrl = null, onClose }: CardZoomPr
         onPointerLeave={tiltHandlers.onPointerLeave}
         onPointerUp={flip.onPointerUp}
         onPointerCancel={flip.onPointerCancel}
-        // Lo que deja un arrastre (dar vuelta la carta) no es un toque: no cierra el zoom.
-        onClick={(event) => {
-          if (flip.consumeClick()) event.stopPropagation()
-        }}
       >
         <CardFlip turns={flip.turns} flipperRef={flip.flipperRef} loadBack={flip.loadBack}>
           <CardArt remoteUrl={card.imageUrl ?? card.imageUrlSmall ?? null} fallbackUrl={fallbackUrl} name={name} className="block h-full w-full bg-input object-contain" limitCard={card} limitBadgeSize="lg" />

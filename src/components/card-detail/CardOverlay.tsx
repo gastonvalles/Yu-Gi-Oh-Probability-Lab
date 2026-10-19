@@ -99,7 +99,7 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
   const closingRef = useRef(false)
   // En escritorio sobra ancho: la carta a la izquierda y el panel a la derecha, del mismo alto (en el celular, uno sobre el otro).
   const wide = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
-  // Tocar la carta la agranda al máximo; tocarla de nuevo (o el fondo) vuelve al panel.
+  // Tocar la carta la agranda al máximo; tocarla de nuevo (o el fondo) vuelve al panel. El detalle sólo se cierra con la X (o Escape): un clic suelto no lo cierra, para poder inspeccionar la carta en 3D.
   const [zoomed, setZoomed] = useState(false)
   // Un pie con botones lleva el $ en su fila; sin pie, el $ va solo abajo a la derecha del texto.
   const [hasFooter, setHasFooter] = useState(false)
@@ -262,14 +262,13 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
         swipeRef.current = null
       }}
       onClick={() => {
-        // Lo que deja un deslizamiento no es un toque: no cierra.
+        // Lo que deja un deslizamiento no es un toque.
         if (swipedRef.current) {
           swipedRef.current = false
           return
         }
 
         if (zoomed) setZoomed(false)
-        else close()
       }}
       onKeyDown={(event) => {
         if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
