@@ -17,7 +17,7 @@ import { CardArtPicker } from './CardArtPicker'
 import { CardPricesButton, CardPricesModal } from './CardPrices'
 import { PrintingInfo, SelectedPrintingContext, useSelectedPrinting } from './PrintingInfo'
 import { CardFlip, FlipHint, useCardFlip } from './CardFlip'
-import { CardGlare, levelOut, tiltHandlers } from './card-tilt'
+import { levelOut, tiltHandlers } from './card-tilt'
 
 const CLOSE_MS = 180
 /** Cómo se abren los precios desde adentro del panel: el pie con botones (Anterior / Siguiente) lleva el $ en su misma fila y avisa que está para que el panel no dibuje otro. */
@@ -356,7 +356,6 @@ function CardOverlayFrame({ ariaLabel, panelLabel, name, card, origin = null, ta
                 limitBadgeSize="lg"
               />
             </CardFlip>
-            <CardGlare />
             {artOverlay ? <div className="absolute right-2 top-2 z-1">{artOverlay}</div> : null}
             <FlipHint />
           </div>

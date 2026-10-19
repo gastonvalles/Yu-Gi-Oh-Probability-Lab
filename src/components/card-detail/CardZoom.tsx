@@ -10,7 +10,7 @@ import { cx } from '../ui/cx'
 import { CloseButton } from '../ui/IconButton'
 import { CardFlip, FlipHint, useCardFlip } from './CardFlip'
 import { CardStepButton } from './CardOverlay'
-import { CardGlare, TILT_ART, TILT_PERSPECTIVE, tiltHandlers } from './card-tilt'
+import { TILT_ART, TILT_PERSPECTIVE, tiltHandlers } from './card-tilt'
 
 interface CardZoomProps {
   card: ApiCardReference
@@ -83,7 +83,6 @@ export function CardZoom({ card, name, fallbackUrl = null, navigation = null, on
         <CardFlip turns={flip.turns} flipperRef={flip.flipperRef} loadBack={flip.loadBack}>
           <CardArt remoteUrl={card.imageUrl ?? card.imageUrlSmall ?? null} fallbackUrl={fallbackUrl} name={name} className="block h-full w-full bg-input object-contain" limitCard={card} limitBadgeSize="lg" />
         </CardFlip>
-        <CardGlare />
         <FlipHint />
       </div>
       {/* Las flechas van a los costados de la pantalla, a la altura del centro de la carta; hacia el lado donde no hay carta no se muestra (queda su lugar vacío: la otra sigue en su borde). */}
