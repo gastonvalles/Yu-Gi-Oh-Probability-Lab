@@ -53,7 +53,7 @@ export function TierBoard({ rows, floors }: TierBoardProps) {
             <span className="ml-auto min-w-0 truncate text-micro text-muted">{tierHint(tier, floors)}</span>
           </div>
           <div
-            className={cx('hidden size-16 place-items-center px-1 text-center text-micro font-bold leading-tight min-[1101px]:grid', tierTextClass(tier))}
+            className={cx('hidden size-16 place-items-center px-1 text-center text-micro font-bold leading-tight min-[1101px]:grid', tierTextClass())}
             style={{ backgroundColor: tierColor(tier) }}
             title={`${tierHint(tier, floors)} · ${formatInteger(tiles.length)}`}
           >

@@ -10,8 +10,8 @@ export const TREND_LOOK: Record<MetaTrend, { tone: 'success' | 'danger' | 'neutr
 }
 
 const TIER_LABEL_KEY = { S: 'meta.tier.s', A: 'meta.tier.a', B: 'meta.tier.b', C: 'meta.tier.c', D: 'meta.tier.d' } as const satisfies Record<MetaTier, string>
-// Una rampa de violetas, de la S (violeta claro) a la D (el más oscuro): el ámbar es de la navegación y el verde y el rojo de las estadísticas.
-const TIER_COLOR: Record<MetaTier, string> = { S: '#c77dff', A: '#8000cb', B: '#5a2a80', C: '#45296b', D: '#352052' }
+// Los colores clásicos de las tier lists, de la S (rojo) a la D (verde): así la reconoce cualquiera. Una rampa de violetas se leía como una sola mancha.
+const TIER_COLOR: Record<MetaTier, string> = { S: '#ff7f7f', A: '#ffbf7f', B: '#ffdf7f', C: '#ffff7f', D: '#bfff7f' }
 
 export const TIER_ORDER: readonly MetaTier[] = ['S', 'A', 'B', 'C', 'D']
 
@@ -23,9 +23,9 @@ export function tierColor(tier: MetaTier): string {
   return TIER_COLOR[tier]
 }
 
-/** El color del rótulo sobre ese fondo: oscuro sobre el violeta claro de la S, blanco sobre el resto. */
-export function tierTextClass(tier: MetaTier): string {
-  return tier === 'S' ? 'text-accent-foreground' : 'text-foreground'
+/** El color del rótulo sobre ese fondo: oscuro (todos los fondos son claros). */
+export function tierTextClass(): string {
+  return 'text-accent-foreground'
 }
 
 /** Qué pide un tier: sus pisos son los de la lista (los decks se reparten el meta en porcentajes mucho más bajos que las cartas). */

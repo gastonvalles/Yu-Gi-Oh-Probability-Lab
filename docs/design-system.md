@@ -23,13 +23,20 @@ El catálogo vivo de todo esto (botones, navegación, títulos, íconos, assets 
 |---|---|---|
 | `brand` (violeta `#8000CB`; como texto, violeta claro `#C77DFF`) | lo tuyo ("Vos"): acción principal, selección | botón primario, chip elegido, tu vida en el duelo |
 | `success` (verde `#1AEF06`) | bien / listo: sólo estadísticas y estados | manos limpias, salida, regla cumplida |
-| `warning` (violeta claro, chip neutro) | ojo / a medio hacer | falta clasificar, "Mejorable", "provisional" |
+| `warning` (ámbar `#F7CB15`; texto `#FFD84D`) | ojo / a medio hacer | falta clasificar, "Mejorable", "provisional", manos con problema, el tipo Monstruo en el encabezado de una zona |
 | `danger` (rojo `#DA0000`; texto chico `#FF4D4D`) | mal / destructivo | problema, borrar, "Crítico" |
 | `info` (ámbar `#F7CB15`) | el rival y la build B (más la navegación: tokens `nav`) y los hipervínculos (`textLink`) | rival en el duelo, build B, destino abierto del menú, enlaces a otra página |
 | `neutral` (gris) | sin énfasis | conteos, etiquetas |
 
 Los roles de las cartas (starter, handtrap…) y los grupos (engine, non-engine…) tienen su paleta propia
 (`--role-color`), no usan estos tonos. La literal de cada tono está en `ui/tone.ts`.
+
+**El violeta es de lo tuyo, no de todo** (Gastón, 2026-10-19: «hemos perdido colores y hay demasiadas cosas en violeta»): las categorías que
+hay que distinguir de un vistazo llevan **un color cada una**, no trece tonos del mismo violeta. Los roles (`deck-groups.ts`: Starter violeta,
+Extender menta, Handtrap azul, Boardbreaker ámbar, Brick y Garnet rojos…) y los grupos (Engine violeta, Non-Engine verde), las tres zonas del
+deck (Main violeta, Extra azul `--handtrap`, Side verde), los tipos de carta del encabezado de la zona (Monstruo ámbar, Magia verde, Trampa rosa)
+y los tiers (los clásicos, de la S roja a la D verde: `meta-format.ts`). El violeta queda para la acción principal, la selección y "vos".
+Antes de pintar algo de violeta, preguntate si no es una categoría que merece su color.
 
 ## 3. Tokens
 
