@@ -92,6 +92,7 @@ export const duel: Translated<typeof es> = {
   'duel.arena.live': 'Live duels',
   'duel.arena.isPlaying': '{name} is playing',
   'duel.arena.versus': '{host} vs {guest}',
+  'duel.arena.seats': '{count} of 2 players',
   'duel.arena.watch': 'Watch',
   'duel.arena.watchLabel': "Watch {name}'s duel",
   'duel.arena.watchers': 'Watching {count} of {max}',

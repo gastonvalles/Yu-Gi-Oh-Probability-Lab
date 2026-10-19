@@ -1,32 +1,26 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { getDeckFormatLabel } from '../../app/deck-format'
 import { extractRoomCode, isWatchLink, type DuelView } from '../../app/duel-link'
 import { pickRoom, readPrefs, writePrefs, type DuelPrefs, type RoomOptions } from '../../app/duel-prefs'
 import { DUEL_FORMATS, DUEL_LIMIT_CHOICES, GENESYS_CAP_RANGE, MAX_NAME_LENGTH, TURN_BONUS_RANGE, TURN_MIN_RANGE } from '../../app/duel-protocol'
-import { MAX_SPECTATORS, type LiveDuel, type PublicRoom } from '../../app/duel-relay-rules'
 import type { RoomsApi } from '../../app/duel-rooms'
 import type { PausedDuel } from '../../app/duel-save'
 import { t } from '../../i18n'
 import type { DeckFormat } from '../../types'
-import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { Callout } from '../ui/Callout'
 import { cx } from '../ui/cx'
 import { FieldBox, fieldInline } from '../ui/FieldBox'
-import { Heading } from '../ui/Heading'
 import { Icon, type IconName } from '../ui/Icon'
-import { IconButton } from '../ui/IconButton'
 import { Modal } from '../ui/Modal'
 import { Segmented } from '../ui/Segmented'
 import { TONE, type Tone } from '../ui/tone'
 import { Stepper } from '../ui/Stepper'
 import { Switch } from '../ui/Switch'
 import { LobbyBanner } from './LobbyBanner'
-import { formatName, REFRESH_MS, roomChips } from './room-chips'
-
-/** Cuántas salas o duelos se ven antes de «Ver las N» (la pantalla se entiende en tres segundos: lo demás está a un toque). */
-const SHOWN = 3
+import { ArenaPanel } from './ArenaPanel'
+import { formatName } from './room-chips'
 
 /** Lo que dice la búsqueda de «Jugar ahora» mientras pasa de verdad: se busca, se entra o se abre la tuya. */
 type Search = { kind: 'searching' } | { kind: 'joining'; name: string } | { kind: 'opening' } | null
@@ -86,33 +80,7 @@ function LobbyTile({ tone, icon, title, hint, label, disabled = false, expanded,
   )
 }
 
-/** Hace cuánto espera una sala («hace 3 min»); la lista se vuelve a pedir sola cada 15 s, así que se va actualizando. */
-function sinceLabel(createdAt: number): string {
-  const min = Math.floor((Date.now() - createdAt) / 60_000)
-
-  return min < 1 ? t('duel.arena.sinceNow') : t('duel.arena.since', { min })
-}
-
 const rulesLine = (prefs: DuelPrefs) => [formatName(prefs.format, prefs.genesysCap), prefs.limitMin > 0 ? t('duel.play.timeMin', { min: prefs.limitMin }) : t('duel.play.timeNone'), prefs.match ? t('duel.play.typeMatch') : t('duel.play.typeSingle')].join(' · ')
-
-/** La arena: las salas que esperan rival y los duelos públicos en vivo. Sólo lo que dice el relay (nada se inventa) y, sin respuesta, nada: es un extra, no puede romper el inicio. */
-function useArena(rooms: RoomsApi | undefined) {
-  const [arena, setArena] = useState<{ rooms: PublicRoom[]; live: LiveDuel[] } | null>(null)
-
-  const refresh = useCallback(() => {
-    if (rooms) void rooms.overview().then(setArena)
-  }, [rooms])
-
-  useEffect(() => {
-    refresh()
-
-    const id = window.setInterval(refresh, REFRESH_MS)
-
-    return () => window.clearInterval(id)
-  }, [refresh])
-
-  return { arena, refresh }
-}
 
 /**
  * El inicio de Jugar: primero entrar (una acción principal, «Jugar ahora», con las reglas que se recuerdan), después lo que pasa en la arena (salas que esperan y duelos en vivo,
@@ -125,10 +93,8 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
   const [codeOpen, setCodeOpen] = useState(false)
   const [code, setCode] = useState('')
   const [invalid, setInvalid] = useState(false)
-  const [expanded, setExpanded] = useState(false)
   const codeRef = useRef<HTMLInputElement | null>(null)
   const alive = useRef(true)
-  const { arena, refresh } = useArena(rooms)
 
   useEffect(() => {
     alive.current = true
@@ -217,184 +183,95 @@ export function PlayHome({ view, name, onName, deckName, onOpenBuilder, deckRead
           ? t('duel.play.opening', { format })
           : t('duel.play.nowHint')
 
-  const waiting = arena?.rooms ?? []
-  const live = arena?.live ?? []
-  const shownWaiting = expanded ? waiting : waiting.slice(0, SHOWN)
-  const shownLive = expanded ? live : live.slice(0, SHOWN)
-
   return (
     <>
-      {paused ? (
-        <div className="grid gap-2 rounded-card border border-primary/40 bg-card-background p-3">
-          <p className="m-0 flex items-center gap-2 text-body font-semibold text-foreground" role="status">
-            <Icon name="pause" size={16} />
-            {paused.rival ? t('duel.lobby.paused', { name: paused.rival }) : t('duel.lobby.pausedNoName')}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="tertiary" size="sm" onClick={onDropPaused}>
-              {t('duel.lobby.dropPaused')}
-            </Button>
-            <Button variant="primary" size="sm" onClick={onResume}>
-              {t('duel.lobby.resume')}
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
-      {deckReady ? null : <Callout tone="warning" icon="alert">{t('duel.lobby.needDeck', { count: deckSize, min: minDeck })}</Callout>}
-
-      {/* Vos: el nombre (como te ve tu rival) y el deck, en una línea. El deck lleva al builder (tocarlo, o la acción principal sin deck): ahí se tocan las cartas antes de jugar. */}
-      <div className="flex items-center gap-2">
-        <FieldBox className="min-w-0 flex-1">
-          <input aria-label={t('duel.lobby.name')} placeholder={t('duel.lobby.namePlaceholder')} maxLength={MAX_NAME_LENGTH} value={name} onChange={(event) => onName(event.target.value)} className={fieldInline} />
-        </FieldBox>
-        <Button variant="secondary" size="sm" icon="cards" className="max-w-[58%] shrink-0" onClick={onOpenBuilder}>
-          <span className="truncate">{deckReady ? `${deckName} · ${deckSize}` : t('duel.play.deckNone')}</span>
-        </Button>
-      </div>
-
-      {/* La portada, como el banner de un lobby de juego: el titular, lo que va a pasar y la acción principal (una sola por vista: con un duelo en pausa, volver a él es lo principal). */}
-      <LobbyBanner title={t('duel.play.subtitle')}>
-        <p className="m-0 min-h-5 max-w-[18rem] text-body text-muted" role="status" aria-live="polite">
-          {deckReady ? statusText : ''}
-        </p>
-        <Button variant={paused ? 'secondary' : 'primary'} size="lg" icon="play" className="w-fit max-[420px]:w-full" aria-busy={busy} disabled={busy} onClick={() => void playNow()}>
-          {deckReady ? t('duel.play.now') : t('duel.play.needDeck')}
-        </Button>
-      </LobbyBanner>
-
-      {/* Las otras formas de entrar, en cuatro baldosas: un amigo, un código, entrenar y las reglas (que se recuerdan). */}
-      <div className="grid grid-cols-2 gap-3">
-        <LobbyTile tone="brand" icon="link" title={t('duel.play.friend')} hint={t('duel.play.friendHint')} disabled={busy || !deckReady} onClick={challenge} />
-        <LobbyTile tone="info" icon="tag" title={t('duel.play.code')} hint={t('duel.play.codeHint')} expanded={codeOpen} onClick={() => setCodeOpen((open) => !open)} />
-        <LobbyTile tone="success" icon="hand" title={t('duel.play.train')} hint={trainReady ? t('duel.play.trainHint') : t('duel.play.trainNeedDeck')} disabled={!trainReady} onClick={onTrain} />
-        <LobbyTile tone="neutral" icon="gear" title={t('duel.play.rules')} hint={rulesLine(prefs)} label={`${t('duel.play.rules')} · ${rulesLine(prefs)}`} popup onClick={() => setRulesOpen(true)} />
-      </div>
-      {codeOpen ? (
-        <form
-          className="grid gap-1.5"
-          onSubmit={(event) => {
-            event.preventDefault()
-            join(false)
-          }}
-        >
-          <FieldBox>
-            <input
-              ref={codeRef}
-              aria-label={t('duel.lobby.joinPlaceholder')}
-              placeholder={t('duel.lobby.joinPlaceholder')}
-              value={code}
-              onChange={(event) => {
-                setCode(event.target.value)
-                setInvalid(false)
-              }}
-              className={fieldInline}
-            />
-          </FieldBox>
-          <div className="grid grid-cols-2 gap-2">
-            <Button type="submit" variant="secondary" disabled={(!deckReady && !isWatchLink(code)) || code.trim() === ''}>
-              {t('duel.lobby.joinAction')}
-            </Button>
-            <Button type="button" variant="secondary" icon="eye" disabled={code.trim() === ''} onClick={() => join(true)}>
-              {t('duel.arena.watch')}
-            </Button>
-          </div>
-          <p className={invalid ? 'm-0 text-micro text-danger' : 'm-0 text-micro text-soft'} role={invalid ? 'alert' : undefined}>
-            {invalid ? t('duel.lobby.joinInvalid') : t('duel.lobby.joinHint')}
-          </p>
-        </form>
-      ) : null}
-
-      {/* La arena: lo que dice el relay, nada más. Con salas o duelos, a un toque; sin nada, lo dice y empuja a abrir la tuya. */}
-      {rooms ? (
-        <section aria-label={t('duel.arena.title')} className="grid gap-2">
-          <div className="flex items-center justify-between gap-2">
-            <Heading level="card" as="h2">{t('duel.arena.title')}</Heading>
-            <IconButton tone="raised" size="sm" aria-label={t('duel.arena.refresh')} title={t('duel.arena.refresh')} onClick={refresh}>
-              <Icon name="refresh" />
-            </IconButton>
-          </div>
-
-          {arena === null ? (
-            <p className="m-0 text-micro text-soft" aria-busy="true">
-              {t('duel.arena.loading')}
-            </p>
-          ) : waiting.length === 0 && live.length === 0 ? (
-            <p className="m-0 text-micro text-soft">{t('duel.arena.empty')}</p>
-          ) : (
-            <>
-              <p className="m-0 flex items-center gap-2 text-micro text-muted" role="status">
-                <i aria-hidden="true" className="size-2 shrink-0 rounded-full bg-accent" />
-                {[waiting.length > 0 ? t('duel.arena.waiting', { count: waiting.length }) : null, live.length > 0 ? t('duel.arena.playing', { count: live.length }) : null].filter(Boolean).join(' · ')}
+      <div className="grid items-start gap-4 min-[1101px]:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-4">
+          {paused ? (
+            <div className="grid gap-2 rounded-card border border-primary/40 bg-card-background p-3">
+              <p className="m-0 flex items-center gap-2 text-body font-semibold text-foreground" role="status">
+                <Icon name="pause" size={16} />
+                {paused.rival ? t('duel.lobby.paused', { name: paused.rival }) : t('duel.lobby.pausedNoName')}
               </p>
-
-              {shownWaiting.length > 0 ? (
-                <ul className="m-0 grid list-none gap-2 p-0">
-                  {shownWaiting.map((room) => (
-                    <li key={room.code} className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-card border border-border-subtle bg-card-background px-3 py-2.5">
-                      <span className="grid min-w-0 flex-1 gap-1">
-                        <span className="flex items-baseline gap-2">
-                          <span className="truncate text-body font-semibold text-foreground">{room.host}</span>
-                          <span className="shrink-0 text-micro text-soft">{sinceLabel(room.createdAt)}</span>
-                        </span>
-                        <span className="flex flex-wrap gap-1">
-                          {roomChips(room).map((chip) => (
-                            <Badge key={chip} size="sm">
-                              {chip}
-                            </Badge>
-                          ))}
-                        </span>
-                      </span>
-                      <Button variant="secondary" size="sm" aria-label={t('duel.arena.enterLabel', { name: room.host })} disabled={busy || !deckReady} onClick={() => onJoin(room.code, false)}>
-                        {t('duel.arena.enter')}
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-
-              {shownLive.length > 0 ? (
-                <div className="grid gap-2">
-                  <Heading level="card" as="h2">{t('duel.arena.live')}</Heading>
-                  <ul className="m-0 grid list-none gap-2 p-0">
-                    {shownLive.map((duel) => {
-                      const full = duel.watchers >= MAX_SPECTATORS
-
-                      return (
-                        <li key={duel.code} className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-card border border-border-subtle bg-card-background px-3 py-2.5">
-                          <span className="grid min-w-0 flex-1 gap-1">
-                            <span className="truncate text-body font-semibold text-foreground">{duel.guest ? t('duel.arena.versus', { host: duel.host, guest: duel.guest }) : t('duel.arena.isPlaying', { name: duel.host })}</span>
-                            <span className="flex flex-wrap items-center gap-1">
-                              {roomChips(duel).map((chip) => (
-                                <Badge key={chip} size="sm">
-                                  {chip}
-                                </Badge>
-                              ))}
-                              <span className="inline-flex items-center gap-1 text-micro text-soft">
-                                <Icon name="eye" size={14} />
-                                {t('duel.arena.watchers', { count: duel.watchers, max: MAX_SPECTATORS })}
-                              </span>
-                            </span>
-                          </span>
-                          <Button variant="secondary" size="sm" icon="eye" aria-label={t('duel.arena.watchLabel', { name: duel.host })} disabled={full} onClick={() => onJoin(duel.code, true)}>
-                            {full ? t('duel.arena.full') : t('duel.arena.watch')}
-                          </Button>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                </div>
-              ) : null}
-
-              {waiting.length > SHOWN || live.length > SHOWN ? (
-                <Button variant="tertiary" size="sm" aria-expanded={expanded} onClick={() => setExpanded((open) => !open)}>
-                  {expanded ? t('duel.arena.less') : t('duel.arena.more', { count: waiting.length + live.length })}
+              <div className="flex flex-wrap gap-2">
+                <Button variant="tertiary" size="sm" onClick={onDropPaused}>
+                  {t('duel.lobby.dropPaused')}
                 </Button>
-              ) : null}
-            </>
-          )}
-        </section>
-      ) : null}
+                <Button variant="primary" size="sm" onClick={onResume}>
+                  {t('duel.lobby.resume')}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {deckReady ? null : <Callout tone="warning" icon="alert">{t('duel.lobby.needDeck', { count: deckSize, min: minDeck })}</Callout>}
+
+          {/* Vos: el nombre (como te ve tu rival) y el deck, en una línea. El deck lleva al builder (tocarlo, o la acción principal sin deck): ahí se tocan las cartas antes de jugar. */}
+          <div className="flex items-center gap-2">
+            <FieldBox className="min-w-0 flex-1">
+              <input aria-label={t('duel.lobby.name')} placeholder={t('duel.lobby.namePlaceholder')} maxLength={MAX_NAME_LENGTH} value={name} onChange={(event) => onName(event.target.value)} className={fieldInline} />
+            </FieldBox>
+            <Button variant="secondary" size="sm" icon="cards" className="max-w-[58%] shrink-0" onClick={onOpenBuilder}>
+              <span className="truncate">{deckReady ? `${deckName} · ${deckSize}` : t('duel.play.deckNone')}</span>
+            </Button>
+          </div>
+
+          {/* La portada, como el banner de un lobby de juego: el titular, lo que va a pasar y la acción principal (una sola por vista: con un duelo en pausa, volver a él es lo principal). */}
+          <LobbyBanner title={t('duel.play.subtitle')}>
+            <p className="m-0 min-h-5 max-w-[18rem] text-body text-muted" role="status" aria-live="polite">
+              {deckReady ? statusText : ''}
+            </p>
+            <Button variant={paused ? 'secondary' : 'primary'} size="lg" icon="play" className="w-fit max-[420px]:w-full" aria-busy={busy} disabled={busy} onClick={() => void playNow()}>
+              {deckReady ? t('duel.play.now') : t('duel.play.needDeck')}
+            </Button>
+          </LobbyBanner>
+
+          {/* Las otras formas de entrar, en cuatro baldosas: un amigo, un código, entrenar y las reglas (que se recuerdan). */}
+          <div className="grid grid-cols-2 gap-3">
+            <LobbyTile tone="brand" icon="link" title={t('duel.play.friend')} hint={t('duel.play.friendHint')} disabled={busy || !deckReady} onClick={challenge} />
+            <LobbyTile tone="info" icon="tag" title={t('duel.play.code')} hint={t('duel.play.codeHint')} expanded={codeOpen} onClick={() => setCodeOpen((open) => !open)} />
+            <LobbyTile tone="success" icon="hand" title={t('duel.play.train')} hint={trainReady ? t('duel.play.trainHint') : t('duel.play.trainNeedDeck')} disabled={!trainReady} onClick={onTrain} />
+            <LobbyTile tone="neutral" icon="gear" title={t('duel.play.rules')} hint={rulesLine(prefs)} label={`${t('duel.play.rules')} · ${rulesLine(prefs)}`} popup onClick={() => setRulesOpen(true)} />
+          </div>
+          {codeOpen ? (
+            <form
+              className="grid gap-1.5"
+              onSubmit={(event) => {
+                event.preventDefault()
+                join(false)
+              }}
+            >
+              <FieldBox>
+                <input
+                  ref={codeRef}
+                  aria-label={t('duel.lobby.joinPlaceholder')}
+                  placeholder={t('duel.lobby.joinPlaceholder')}
+                  value={code}
+                  onChange={(event) => {
+                    setCode(event.target.value)
+                    setInvalid(false)
+                  }}
+                  className={fieldInline}
+                />
+              </FieldBox>
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="submit" variant="secondary" disabled={(!deckReady && !isWatchLink(code)) || code.trim() === ''}>
+                  {t('duel.lobby.joinAction')}
+                </Button>
+                <Button type="button" variant="secondary" icon="eye" disabled={code.trim() === ''} onClick={() => join(true)}>
+                  {t('duel.arena.watch')}
+                </Button>
+              </div>
+              <p className={invalid ? 'm-0 text-micro text-danger' : 'm-0 text-micro text-soft'} role={invalid ? 'alert' : undefined}>
+                {invalid ? t('duel.lobby.joinInvalid') : t('duel.lobby.joinHint')}
+              </p>
+            </form>
+          ) : null}
+        </div>
+
+        {/* La arena, al costado en escritorio (debajo en el celular): una tarjeta por sala que espera y por duelo en vivo. Sólo lo que dice el relay; sin relay no hay arena. */}
+        {rooms ? <ArenaPanel rooms={rooms} busy={busy} deckReady={deckReady} onJoin={onJoin} /> : null}
+      </div>
 
       <RulesSheet
         isOpen={rulesOpen}
