@@ -99,8 +99,13 @@ const openGames = (view: RenderResult) => {
   fireEvent.click(screen.getByRole('menuitem', { name: 'Moneda, dado y más' }))
 }
 const closeMore = () => fireEvent.keyDown(document, { key: 'Escape' })
+const PHASE_NAMES = ['Draw Phase', 'Standby Phase', 'Main Phase 1', 'Battle Phase', 'Main Phase 2', 'End Phase']
+/** El botón de la fase de ahora (en el centro del campo): al tocarlo muestra las fases. */
+const phaseChip = (view: RenderResult) => within(view.container).getByRole('button', { name: /^Fases:/ })
 const click = (view: RenderResult, name: string | RegExp, role: 'button' | 'menuitem' = 'button') =>
-  fireEvent.click(typeof name === 'string' && role === 'button' && MORE_OPTIONS.includes(name) ? moreButton(view, name) : within(view.container).getByRole(role, { name }))
+  typeof name === 'string' && role === 'button' && PHASE_NAMES.includes(name)
+    ? (fireEvent.click(phaseChip(view)), fireEvent.click(screen.getByRole('menuitem', { name: new RegExp(`^${name}`) })))
+    : fireEvent.click(typeof name === 'string' && role === 'button' && MORE_OPTIONS.includes(name) ? moreButton(view, name) : within(view.container).getByRole(role, { name }))
 const typeInto = (view: RenderResult, label: string, value: string) => fireEvent.change(within(view.container).getByLabelText(label), { target: { value } })
 /** La hoja «Reglas del duelo» (está en un portal, fuera de la pantalla): se abre desde el renglón de las reglas del inicio de Jugar. */
 const openRules = (view: RenderResult) => click(view, /^Reglas del duelo/)
@@ -2183,10 +2188,10 @@ describe('la pantalla del duelo', () => {
     expect(banner(guest)).toContain('Main Phase 1')
 
     // Las fases son una sola para los dos y sólo las toca quien tiene el turno: Beto las ve (encendidas igual que Ana) pero no puede cambiarlas.
-    const phaseButton = (view: RenderResult, name: string) => within(view.container).getByRole('button', { name })
-    expect(phaseButton(guest, 'Main Phase 1')).toBeDisabled()
-    expect(phaseButton(guest, 'Main Phase 1')).toHaveAttribute('aria-pressed', 'true')
-    expect(phaseButton(host, 'Main Phase 1')).toBeEnabled()
+    expect(phaseChip(guest)).toBeDisabled()
+    expect(phaseChip(guest)).toHaveAccessibleName('Fases: Main Phase 1')
+    expect(phaseChip(guest)).toHaveTextContent('M1')
+    expect(phaseChip(host)).toBeEnabled()
 
     // La End Phase se juega: llegar a ella no pasa el turno ni le hace robar a Beto.
     const handOfGuest = handOf(guest).getAllByRole('listitem').length
@@ -2195,10 +2200,10 @@ describe('la pantalla del duelo', () => {
     expect(phase(guest)).toBe(' · End Phase')
     expect(within(guest.container).queryByText('Tu turno')).not.toBeInTheDocument()
     expect(handOf(guest).getAllByRole('listitem')).toHaveLength(handOfGuest)
-    expect(phaseButton(guest, 'Draw Phase')).toBeDisabled()
-    expect(phaseButton(guest, 'End Phase')).toHaveAttribute('aria-pressed', 'true')
-    // Para Ana, la Draw Phase es ahora pasar el turno (se lo dice).
-    expect(phaseButton(host, 'Draw Phase')).toHaveAttribute('title', 'Pasar el turno')
+    expect(phaseChip(guest)).toBeDisabled()
+    expect(phaseChip(guest)).toHaveAccessibleName('Fases: End Phase')
+    // Para Ana, ahora «Pasar turno» está encendido (y la Draw Phase del menú también pasa el turno).
+    expect(within(host.container).getByRole('button', { name: 'Pasar turno' })).toBeEnabled()
 
     // Ana toca la Draw Phase: ahí sí pasa el turno, Beto ve el cartel y roba, y ahora las fases son de él.
     click(host, 'Draw Phase')
@@ -2210,14 +2215,35 @@ describe('la pantalla del duelo', () => {
     expect(banner(guest)).toContain('Tu turno')
     expect(banner(host)).toContain('Turno de Beto')
     expect(handOf(guest).getAllByRole('listitem')).toHaveLength(handOfGuest + 1)
-    expect(phaseButton(host, 'Main Phase 1')).toBeDisabled()
-    expect(phaseButton(guest, 'Main Phase 1')).toBeEnabled()
+    expect(phaseChip(host)).toBeDisabled()
+    expect(phaseChip(guest)).toBeEnabled()
 
     // Y Beto juega su turno: Ana lo ve fase por fase.
     click(guest, 'Battle Phase')
     flush()
     expect(phase(host)).toBe(' · Battle Phase')
-    expect(phaseButton(host, 'Battle Phase')).toHaveAttribute('aria-pressed', 'true')
+    expect(phaseChip(host)).toHaveAccessibleName('Fases: Battle Phase')
+  })
+
+  it('las fases son un solo botón en el centro del campo (la fase de ahora): al tocarlo muestra las seis y elegir una pasa a ella; sin el turno no abre', () => {
+    const { host, guest } = startDuel()
+    openTable(host, guest)
+
+    // No hay seis botones sueltos: el botón dice la fase de ahora y, tocado, ofrece todas.
+    expect(within(host.container).queryByRole('button', { name: 'Battle Phase' })).not.toBeInTheDocument()
+    expect(phaseChip(host)).toHaveTextContent('DP')
+    fireEvent.click(phaseChip(host))
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Draw Phase ·', 'Standby Phase', 'Main Phase 1', 'Battle Phase', 'Main Phase 2', 'End Phase'])
+
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Battle Phase' }))
+    flush()
+    expect(phaseChip(host)).toHaveTextContent('BP')
+    expect(phaseChip(guest)).toHaveTextContent('BP')
+    expect(screen.queryByRole('menuitem')).not.toBeInTheDocument()
+
+    // Quien no tiene el turno ve la fase pero no abre nada.
+    fireEvent.click(phaseChip(guest))
+    expect(screen.queryByRole('menuitem')).not.toBeInTheDocument()
   })
 
   it('"Pasar turno" se enciende recién en la End Phase y sólo para quien tiene el turno; un toque lo pasa, sin confirmar, y la fase va en el color de quien juega', () => {
@@ -2226,7 +2252,6 @@ describe('la pantalla del duelo', () => {
 
     const phase = (view: RenderResult) => within(view.container).getByTestId('duel-phase').textContent
     const pass = (view: RenderResult) => within(view.container).getByRole('button', { name: 'Pasar turno' })
-    const phaseButton = (view: RenderResult, name: string) => within(view.container).getByRole('button', { name })
 
     // Ni Ana (con el turno) ni Beto lo pueden tocar antes de la End Phase. La fase actual de Ana va en violeta claro (lo tuyo) y la misma, vista por Beto, en ámbar (lo del rival).
     expect(pass(host)).toBeDisabled()
@@ -2234,8 +2259,8 @@ describe('la pantalla del duelo', () => {
     click(host, 'Main Phase 1')
     flush()
     expect(pass(host)).toBeDisabled()
-    expect(phaseButton(host, 'Main Phase 1')).toHaveClass('bg-accent')
-    expect(phaseButton(guest, 'Main Phase 1')).toHaveClass('bg-info')
+    expect(phaseChip(host)).toHaveClass('bg-accent')
+    expect(phaseChip(guest)).toHaveClass('bg-info')
 
     // En la End Phase se enciende, sólo el de Ana. Un solo toque termina el turno: Beto lo ve y ahora el botón es de él (todavía apagado: le falta llegar a su End Phase).
     click(host, 'End Phase')
@@ -2248,8 +2273,8 @@ describe('la pantalla del duelo', () => {
     expect(phase(guest)).toBe(' · Draw Phase')
     expect(pass(host)).toBeDisabled()
     expect(pass(guest)).toBeDisabled()
-    expect(phaseButton(guest, 'Draw Phase')).toHaveClass('bg-accent')
-    expect(phaseButton(host, 'Draw Phase')).toHaveClass('bg-info')
+    expect(phaseChip(guest)).toHaveClass('bg-accent')
+    expect(phaseChip(host)).toHaveClass('bg-info')
   })
 
   it('el registro del duelo: lo escrito, el comienzo de cada turno y lo que hizo cada uno van en orden en el chat, y la línea sobre el campo muestra lo último y lo abre', () => {
@@ -3247,9 +3272,13 @@ describe('la pantalla del duelo', () => {
     const rivalEmoji = (view: RenderResult) => within(view.container).queryByTestId('rival-emoji')
 
     expect(rivalEmoji(host)).toBeNull()
-    // Abajo, con el pulgar: deshacer, el + (la ficha, los contadores y los juegos), el chat y la señal. Los dados ya no tienen botón: están dentro del +.
+    // Abajo, con el pulgar: deshacer, el chat y la señal. El + (la ficha, los contadores y los juegos) ya no está en la botonera: va en el campo, a la altura del reloj de turnos, entre el Banish del rival y la Zona Extra de monstruos; del otro lado del reloj, el botón de la fase.
     const toolbar = within(guest.container).getByRole('toolbar')
-    expect(within(toolbar).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Deshacer', 'Ficha', 'Chat', 'Continuá', expect.stringMatching(/^Puntos de vida de/)])
+    expect(within(toolbar).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Deshacer', 'Chat', 'Continuá', expect.stringMatching(/^Puntos de vida de/)])
+    const plus = within(guest.container).getByRole('button', { name: 'Ficha' })
+    expect(toolbar).not.toContainElement(plus)
+    expect(plus.parentElement).toHaveStyle({ gridArea: 'p1' })
+    expect(phaseChip(guest).parentElement).toHaveStyle({ gridArea: 'p3' })
     expect(within(toolbar).queryByRole('button', { name: 'Moneda, dado y más' })).not.toBeInTheDocument()
 
     // Beto avisa que continúa: lo suyo se ve como un globo junto a sus vidas; en el celular el de su rival (Ana) sale como un mensaje entrante (el aviso de abajo a la derecha, con su nombre), no en toda la pantalla.

@@ -437,6 +437,8 @@ export function PracticeMat({
     /** La ficha: sale en ataque o en defensa, en la zona donde se soltó (`zone`) o en la que se elija después. */
     /** Desde el botón +: primero qué agregar (`root`: una ficha o un contador) y, de la ficha, la posición; soltada en una zona libre, directo la posición. */
     | { kind: 'token'; rect: DOMRect; zone?: MatTarget; root?: true }
+    /** Las fases de un duelo: el botón de la fase de ahora las muestra (cambiar de fase es elegir una). */
+    | { kind: 'phases'; rect: DOMRect }
     | null
   >(null)
   const [viewer, setViewer] = useState<MatPile | null>(null)
@@ -767,7 +769,7 @@ export function PracticeMat({
     (item: MatMenuItem, dropped?: MatTarget) => {
       // Segundo paso del menú ("¿En ataque o en defensa?"): la pregunta se muestra en el mismo menú.
       if (item.choices) {
-        setMenu((current) => (current && current.kind !== 'token' ? { ...current, ask: item } : current))
+        setMenu((current) => (current && current.kind !== 'token' && current.kind !== 'phases' ? { ...current, ask: item } : current))
         return
       }
 
@@ -1088,6 +1090,19 @@ export function PracticeMat({
   const menuItems: MenuItem[] = useMemo(() => {
     if (!menu) return []
 
+    // Las fases: elegir una es pasar a ella (la Draw Phase después de la End Phase es pasar el turno). Sólo lo hace quien tiene el turno (el botón no abre si no es el tuyo).
+    if (menu.kind === 'phases') {
+      const current = duel ? duel.phase : state.phase
+
+      return PHASES.map((phase) => ({
+        label: phase.id === current ? `${phase.name} ·` : phase.name,
+        onSelect: () => {
+          setMenu(null)
+          play({ type: 'phase', phase: phase.id, ...(duel ? { skipDraw: true as const } : {}) })
+        },
+      }))
+    }
+
     // El + tocado: una ficha (pregunta la posición después) o poner / quitar un contador (sólo si hay cartas a las que ponérselo o quitárselo).
     if (menu.kind === 'token' && menu.root) {
       const root: MenuItem[] = []
@@ -1148,12 +1163,14 @@ export function PracticeMat({
     }
 
     return mapped
-  }, [menu, state, kindOf, nameOf, attackTargets, play, choose, summonToken, duel?.rivalEmz, duel?.control, duel?.plusItems, duel?.point])
+  }, [menu, state, kindOf, nameOf, attackTargets, play, choose, summonToken, duel])
 
   const menuCard = menu?.kind === 'card' ? cardOf(menu.id) : menu?.kind === 'token' && !menu.root ? TOKEN_CARD : null
   const menuWhere = menu?.kind === 'card' ? locateCard(state, menu.id) : null
   const menuKicker =
-    menu?.kind === 'token'
+    menu?.kind === 'phases'
+      ? t('practice.mat.phases')
+      : menu?.kind === 'token'
       ? menu.root ? t('practice.mat.name') : menu.zone ? zoneLabelOf(menu.zone.zone, menu.zone.index) : t('practice.menu.specialSummon')
       : menu?.ask
         ? menu.ask.label
@@ -1162,7 +1179,7 @@ export function PracticeMat({
           : menuWhere
             ? menuWhere.kind === 'pile' ? PILE_TITLES[menuWhere.pile] : menuWhere.kind === 'spot' ? ZONE_LABELS[menuWhere.spot] : t('practice.mat.materialOf', { name: nameOf(menuWhere.of) })
             : PILE_TITLES.deck
-  const menuTitle = menuCard?.name ?? (menu?.kind === 'token' ? t('practice.token.plusTitle') : t('practice.mat.cardCount', { count: state.deck.length }))
+  const menuTitle = menuCard?.name ?? (menu?.kind === 'phases' ? (PHASES.find((phase) => phase.id === (duel ? duel.phase : state.phase))?.name ?? '') : menu?.kind === 'token' ? t('practice.token.plusTitle') : t('practice.mat.cardCount', { count: state.deck.length }))
   // En el celular todo menú de la mesa (una carta de la mano, del campo o de una pila, lo soltado en una zona, el deck, el +) es una hoja de abajo con las jugadas a un toque (`CardSheet`); en escritorio, el menú pegado a la carta (`CardMenu`).
   const sheeted = !isDesktop && menu !== null && !covered
 
@@ -1520,7 +1537,7 @@ export function PracticeMat({
           className={cx(!duel && 'min-[1101px]:my-auto', "relative grid grid-cols-[minmax(0,0.6857fr)_repeat(5,minmax(0,1fr))_minmax(0,0.6857fr)] gap-1 [transform-origin:50%_100%] [grid-template-areas:'._p1_emz1_p2_emz2_p3_ban'_'fld_m1_m2_m3_m4_m5_gy'_'extra_s1_s2_s3_s4_s5_deck'] min-[1101px]:justify-center min-[1101px]:gap-2 min-[1101px]:grid-cols-[minmax(0,calc(var(--cell,8rem)*0.6857))_repeat(5,minmax(0,var(--cell,8rem)))_minmax(0,calc(var(--cell,8rem)*0.6857))]", view === '3d' && '[transform:perspective(var(--field-perspective))_rotateX(var(--field-tilt))]')}
           aria-label={t('practice.mat.field')}
           // En un duelo, las áreas de los dos campos (el estilo en línea gana a la clase de las áreas de uno solo); y en escritorio las cartas se achican hasta que las cinco filas, la mano y la barra de abajo (con su propia fila: 23,5 rem de alto de lo que no es campo) entran en la pantalla.
-          style={duel ? ({ gridTemplateAreas: duel.areas, '--cell': 'max(3.5rem, min(8rem, calc((100dvh - 23.5rem) / 5)))', ...(!isDesktop && view === 'top' && duel.rivalHand ? { marginTop: Math.max(0, THEIR_HAND.mobile.room - rivalHandOverlap) } : null) } as CSSProperties) : undefined}
+          style={duel ? ({ gridTemplateAreas: duel.areas, '--cell': 'max(3.5rem, min(9.5rem, calc((100dvh - 24.75rem) / 5)))', ...(duel.rivalHand ? { marginTop: Math.max(0, (isDesktop ? THEIR_HAND.desktop.room : THEIR_HAND.mobile.room) - rivalHandOverlap) } : null) } as CSSProperties) : undefined}
         >
           {/* La mano del rival se apoya en el borde de arriba del campo (inclinada con él en la vista 3D), tapando hasta el 28 % de su zona de magias y trampas. */}
           {duel?.rivalHand ? (
@@ -1531,6 +1548,26 @@ export function PracticeMat({
           {/* La mascota del duelo, una sola: en escritorio, en la esquina libre de arriba a la izquierda del campo; en el celular, parada sobre esa esquina, detrás de lo demás. */}
           {duel ? duel.opponent : <DuelMascot className="absolute bottom-full left-0 -z-10 mb-1 size-[4.5rem] min-[1101px]:static min-[1101px]:z-0 min-[1101px]:mb-0 min-[1101px]:size-[5.25rem] min-[1101px]:self-end min-[1101px]:justify-self-center min-[1101px]:[grid-area:1/1]" />}
           {duel?.clock ? <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p2' }}>{duel.clock}</div> : null}
+          {/* El +: a la altura del reloj de turnos, entre el Banish del rival y la Zona Extra de monstruos (la casilla `p1`); del otro lado del reloj, el botón de la fase de ahora, que al tocarlo muestra todas (`p3`, entre la otra Zona Extra y tu Banish). */}
+          {duel ? <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p1' }}>{tokenButton}</div> : null}
+          {duel ? (
+            <div className="grid min-h-0 min-w-0 place-items-center" style={{ gridArea: 'p3' }}>
+              <button
+                type="button"
+                aria-label={`${t('practice.mat.phases')}: ${PHASES.find((phase) => phase.id === phaseNow)?.name ?? ''}`}
+                aria-haspopup="menu"
+                aria-expanded={menu?.kind === 'phases'}
+                disabled={!duel.myTurn}
+                className={cx(
+                  'grid size-11 place-items-center rounded-control border text-micro font-extrabold leading-none transition-colors focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-default',
+                  duel.myTurn ? 'cursor-pointer border-accent bg-accent text-accent-foreground hover:bg-primary-soft' : 'border-info bg-info text-accent-foreground',
+                )}
+                onClick={(event) => setMenu({ kind: 'phases', rect: event.currentTarget.getBoundingClientRect() })}
+              >
+                {PHASES.find((phase) => phase.id === phaseNow)?.short}
+              </button>
+            </div>
+          ) : null}
           {cell('field', 0, 'fld')}
           {cell('emz', 0, 'emz1')}
           {cell('emz', 1, 'emz2')}
@@ -1675,8 +1712,7 @@ export function PracticeMat({
               con la derecha). Escritorio: los botones a la izquierda y tus vidas en la esquina opuesta a las del rival. */}
           {duel && !isDesktop ? (
             <div className="relative">
-              <div inert={choosing} className={cx('pointer-events-auto flex items-center justify-between gap-1 px-1', choosing && 'invisible')}>
-                {phaseButtons}
+              <div inert={choosing} className={cx('pointer-events-auto flex items-center justify-end gap-1 px-1', choosing && 'invisible')}>
                 {passTurn}
               </div>
               {status}
@@ -1691,12 +1727,12 @@ export function PracticeMat({
                 className={cx('flex items-center justify-between max-[1100px]:flex-row-reverse', choosing && 'max-[1100px]:opacity-35 min-[1101px]:invisible')}
               >
                 <span className="pointer-events-auto flex items-center">
-                  {undoButton}
-                  {tokenButton}
+                  {isDesktop ? null : undoButton}
                   {duel.tools}
                 </span>
                 <span className="pointer-events-auto flex items-center gap-2">
-                  {isDesktop ? phaseButtons : null}
+                  {/* Deshacer y Pasar turno, juntos abajo a la derecha (las fases están en el botón del centro del campo; en el celular, Deshacer queda en la botonera de abajo y Pasar turno en su fila). */}
+                  {isDesktop ? undoButton : null}
                   {isDesktop ? passTurn : null}
                   {duel.life}
                 </span>
@@ -1743,7 +1779,7 @@ export function PracticeMat({
           back={menuCard === null}
           apiCard={menuCard?.apiCard ?? null}
           items={menuItems}
-          asking={menu.kind !== 'token' ? menu.ask?.label : undefined}
+          asking={menu.kind !== 'token' && menu.kind !== 'phases' ? menu.ask?.label : undefined}
           onInspect={menu.kind === 'card' && !menu.ask && !menu.drop && !isToken(menu.id) ? () => { setInspected({ id: menu.id, rect: menu.rect }); setMenu(null) } : undefined}
           onClose={() => setMenu(null)}
         />
