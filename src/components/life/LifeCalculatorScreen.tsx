@@ -5,15 +5,17 @@ import { currentCoin } from '../../app/cosmetics'
 import {
   ROUND_LIMIT_MS,
   STARTING_LP,
+  duelClockMs,
   duelistName,
   formatClock,
   interpretAmount,
   recentAmounts,
   timerRemaining,
   type Duelist,
+  type LifeState,
 } from '../../app/life-calculator'
 import { dispatchLife, playCue, useClock, useLifeState, type RoundCue } from '../../app/life-store'
-import { prefersReducedMotion } from '../../app/motion'
+import { useAnimatedNumber, useLpFlash } from '../../app/life-effects'
 import { useToastMessage } from '../../app/use-toast-message'
 import { t } from '../../i18n'
 import { ConfirmDialog } from '../probability/ConfirmDialog'
@@ -43,64 +45,6 @@ export const KEY = cx(PRESSABLE, 'min-h-12 rounded-none bg-lavender active:bg-la
 
 /** A quién iba la última operación: al cerrar y volver a abrir la calculadora sigue elegido. */
 let lastSelected: Duelist = 0
-
-/** El número de LP se mueve hasta el valor nuevo en vez de saltar (salvo con movimiento reducido). */
-function useAnimatedNumber(target: number): number {
-  const [shown, setShown] = useState(target)
-  const shownRef = useRef(target)
-
-  useEffect(() => {
-    const from = shownRef.current
-
-    if (from === target || prefersReducedMotion()) {
-      shownRef.current = target
-      setShown(target)
-      return
-    }
-
-    const start = performance.now()
-    const duration = 320
-    let frame = 0
-    const step = (time: number) => {
-      const progress = Math.min(1, (time - start) / duration)
-      const eased = 1 - (1 - progress) ** 3
-      const value = Math.round(from + (target - from) * eased)
-
-      shownRef.current = value
-      setShown(value)
-
-      if (progress < 1) {
-        frame = requestAnimationFrame(step)
-      }
-    }
-
-    frame = requestAnimationFrame(step)
-
-    return () => cancelAnimationFrame(frame)
-  }, [target])
-
-  return shown
-}
-
-/** Al cambiar, el LP se pinta un momento de verde (subió) o rojo (bajó). */
-function useLpFlash(lp: number): 'up' | 'down' | null {
-  const [flash, setFlash] = useState<'up' | 'down' | null>(null)
-  const previous = useRef(lp)
-
-  useEffect(() => {
-    if (previous.current === lp) {
-      return
-    }
-
-    setFlash(lp > previous.current ? 'up' : 'down')
-    previous.current = lp
-    const id = window.setTimeout(() => setFlash(null), 900)
-
-    return () => window.clearTimeout(id)
-  }, [lp])
-
-  return flash
-}
 
 /** Mientras la calculadora está abierta la pantalla no se apaga (si el sistema lo permite). */
 function useWakeLock(): void {
@@ -135,9 +79,32 @@ function useWakeLock(): void {
   }, [])
 }
 
-export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
-  const state = useLifeState()
-  const [selected, setSelected] = useState<Duelist>(() => lastSelected)
+/**
+ * La calculadora abierta desde un duelo (sin salir de él): en lugar del estado del dispositivo usa el del duelo, que se replica con el rival, así los dos ven los mismos números. Cada uno maneja
+ * sólo sus propias vidas (el otro panel se ve pero no se elige), el reloj es el de la ronda del duelo (se pausa o se arranca para los dos) y no hay reiniciar, deshacer ni moneda y dado (el duelo trae los suyos).
+ */
+export interface DuelLifeBinding {
+  state: LifeState
+  /** Quién soy (0 = anfitrión, 1 = invitado): mis vidas van a la izquierda y son las únicas que se eligen. */
+  me: Duelist
+  /** Cómo se llama cada uno (0 = anfitrión, 1 = invitado). */
+  names: readonly [string, string]
+  /** Los minutos de la ronda (0 = sin límite: el reloj cuenta para adelante). */
+  limitMin: number
+  onChange: (delta: number) => void
+  onHalve: () => void
+  onToggleClock: () => void
+}
+
+export function LifeCalculatorScreen({ onClose, duel }: { onClose: () => void; duel?: DuelLifeBinding }) {
+  const stored = useLifeState()
+  const state = duel ? duel.state : stored
+  // El de la izquierda y el de la derecha: en un duelo, yo y mi rival; solo, el Duelista 1 y el 2.
+  const order: readonly [Duelist, Duelist] = duel ? [duel.me, duel.me === 0 ? 1 : 0] : [0, 1]
+  const nameOf = (player: Duelist) => (duel ? duel.names[player] : duelistName(player))
+  const editable = (player: Duelist) => !duel || player === duel.me
+  const limited = !duel || duel.limitMin > 0
+  const [selected, setSelected] = useState<Duelist>(() => (duel ? duel.me : lastSelected))
   const [operator, setOperator] = useState<Operator>('-')
   const [digits, setDigits] = useState('')
   const [logOpen, setLogOpen] = useState(false)
@@ -145,17 +112,19 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
   const [confirmReset, setConfirmReset] = useState(false)
   const { showToast } = useToastMessage()
   const now = useClock(state.timer.running)
-  const remaining = timerRemaining(state.timer, now)
+  const remaining = duel ? duelClockMs(state.timer, now, duel.limitMin) : timerRemaining(state.timer, now)
+  const finished = !duel && remaining === 0
   const amount = interpretAmount(digits)
   const lp = state.lp[selected]
   const recent = recentAmounts(state.log)
-  const name = duelistName(selected)
+  const name = nameOf(selected)
 
   useWakeLock()
 
   const buzz = () => navigator.vibrate?.(12)
   const select = (player: Duelist) => {
-    lastSelected = player
+    if (!editable(player)) return
+    if (!duel) lastSelected = player
     setSelected(player)
   }
   const applyDelta = (delta: number) => {
@@ -163,7 +132,8 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
       return
     }
 
-    dispatchLife({ type: 'change', player: selected, delta, now: Date.now() })
+    if (duel) duel.onChange(delta)
+    else dispatchLife({ type: 'change', player: selected, delta, now: Date.now() })
     setDigits('')
     setOperator('-')
     buzz()
@@ -175,7 +145,8 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
     } else if (key === '+' || key === '-') {
       setOperator(key)
     } else if (key === '÷2') {
-      dispatchLife({ type: 'halve', player: selected, now: Date.now() })
+      if (duel) duel.onHalve()
+      else dispatchLife({ type: 'halve', player: selected, now: Date.now() })
       setDigits('')
       buzz()
     } else {
@@ -184,8 +155,32 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
   }
   const toggleClock = () => {
     unlockAudio()
+
+    if (duel) {
+      duel.onToggleClock()
+      return
+    }
+
     dispatchLife(remaining === 0 ? { type: 'timer-reset' } : { type: 'timer-toggle', now: Date.now() })
   }
+
+  // Con teclado (escritorio): los números teclean el monto, Borrar saca un dígito, + y − eligen la operación y Enter la aplica.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey || event.altKey) return
+
+      if (/^\d$/.test(event.key)) setDigits((current) => (current + event.key).slice(0, MAX_DIGITS))
+      else if (event.key === 'Backspace') setDigits((current) => current.slice(0, -1))
+      else if (event.key === '+' || event.key === '-') setOperator(event.key)
+      else if (event.key === 'Enter' && amount > 0) applyDelta(operator === '-' ? -amount : amount)
+      else return
+
+      event.preventDefault()
+    }
+
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
 
   return (
     <div
@@ -200,34 +195,38 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
               type="button"
               className={cx(
                 'inline-flex touch-manipulation select-none items-center gap-1.5 text-title font-semibold tabular-nums [-webkit-tap-highlight-color:transparent]',
-                remaining === 0 ? 'text-danger-soft' : remaining <= ROUND_WARNING_MS ? 'text-warning' : 'text-foreground',
+                limited && remaining === 0 ? 'text-danger-soft' : limited && remaining <= ROUND_WARNING_MS ? 'text-warning' : 'text-foreground',
               )}
-              aria-label={remaining === 0 ? t('shell.life.clock.reset') : state.timer.running ? t('shell.life.clock.pause') : t('shell.life.clock.start')}
+              aria-label={finished ? t('shell.life.clock.reset') : state.timer.running ? t('shell.life.clock.pause') : t('shell.life.clock.start')}
               title={t('shell.life.clock.hint')}
               onClick={toggleClock}
             >
               <Icon name={state.timer.running ? 'pause' : 'play'} size={22} variant="bold" />
               {formatClock(remaining)}
             </button>
-            <IconButton
-              tone="ghost"
-              size="sm"
-              aria-label={t('shell.life.clock.reset')}
-              disabled={!state.timer.running && remaining === ROUND_LIMIT_MS}
-              className="disabled:opacity-35"
-              onClick={() => dispatchLife({ type: 'timer-reset' })}
-            >
-              <Icon name="timer" size={18} />
-            </IconButton>
+            {duel ? null : (
+              <IconButton
+                tone="ghost"
+                size="sm"
+                aria-label={t('shell.life.clock.reset')}
+                disabled={!state.timer.running && remaining === ROUND_LIMIT_MS}
+                className="disabled:opacity-35"
+                onClick={() => dispatchLife({ type: 'timer-reset' })}
+              >
+                <Icon name="timer" size={18} />
+              </IconButton>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-1">
           <IconButton tone="ghost" aria-label={t('shell.life.log.open')} onClick={() => setLogOpen(true)}>
             <Icon name="list" size={20} />
           </IconButton>
-          <IconButton tone="ghost" aria-label={t('shell.life.tools.title')} onClick={() => setToolsOpen(true)}>
-            <Icon name="dice" size={20} />
-          </IconButton>
+          {duel ? null : (
+            <IconButton tone="ghost" aria-label={t('shell.life.tools.title')} onClick={() => setToolsOpen(true)}>
+              <Icon name="dice" size={20} />
+            </IconButton>
+          )}
           <IconButton tone="ghost" aria-label={t('shell.life.close')} onClick={onClose}>
             <Icon name="x" size={20} />
           </IconButton>
@@ -236,20 +235,24 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
 
       {/* Los dos LP lado a lado; en el medio, reiniciar y deshacer, como en Neuron. Se toca un duelista para elegir a quién va la operación. */}
       <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 [grid-area:lp]">
-        <DuelistPanel player={0} lp={state.lp[0]} selected={selected === 0} onSelect={() => select(0)} />
+        <DuelistPanel position={0} name={nameOf(order[0])} lp={state.lp[order[0]]} selected={selected === order[0]} disabled={!editable(order[0])} onSelect={() => select(order[0])} />
         <div className="grid justify-items-center gap-1">
-          <MiddleAction icon="refresh" label={t('shell.life.reset')} onClick={() => setConfirmReset(true)} />
-          <MiddleAction
-            icon="undo"
-            label={t('shell.life.undo')}
-            disabled={state.log.length === 0}
-            onClick={() => {
-              dispatchLife({ type: 'undo' })
-              buzz()
-            }}
-          />
+          {duel ? null : (
+            <>
+              <MiddleAction icon="refresh" label={t('shell.life.reset')} onClick={() => setConfirmReset(true)} />
+              <MiddleAction
+                icon="undo"
+                label={t('shell.life.undo')}
+                disabled={state.log.length === 0}
+                onClick={() => {
+                  dispatchLife({ type: 'undo' })
+                  buzz()
+                }}
+              />
+            </>
+          )}
         </div>
-        <DuelistPanel player={1} lp={state.lp[1]} selected={selected === 1} onSelect={() => select(1)} />
+        <DuelistPanel position={1} name={nameOf(order[1])} lp={state.lp[order[1]]} selected={selected === order[1]} disabled={!editable(order[1])} onSelect={() => select(order[1])} />
       </div>
 
       {/* La operación en curso: LP del elegido, signo y cantidad; con menos de tres dígitos los ceros de las centenas van apagados. */}
@@ -270,7 +273,7 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
             </>
           ) : null}
         </output>
-        <span className={cx('shrink-0 rounded-tag px-2 py-0.5 text-micro font-semibold', BADGE[selected])}>{name}</span>
+        <span className={cx('shrink-0 rounded-tag px-2 py-0.5 text-micro font-semibold', BADGE[order[0] === selected ? 0 : 1])}>{name}</span>
       </div>
 
       {/* Los últimos cambios, para repetirlos con un toque sobre el duelista elegido. */}
@@ -343,8 +346,8 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
             {state.log
               .map((entry, index) => (
                 <li key={index} className="grid grid-cols-[3.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-control bg-tint/5 px-3 py-2 text-body tabular-nums">
-                  <span className="text-muted">{formatClock(Math.max(0, ROUND_LIMIT_MS - entry.at))}</span>
-                  <span className="truncate font-semibold text-foreground">{duelistName(entry.player)}</span>
+                  <span className="text-muted">{formatClock(duel ? (duel.limitMin > 0 ? Math.max(0, duel.limitMin * 60_000 - entry.at) : entry.at) : Math.max(0, ROUND_LIMIT_MS - entry.at))}</span>
+                  <span className="truncate font-semibold text-foreground">{nameOf(entry.player)}</span>
                   <span>
                     <span className={entry.delta < 0 ? 'text-danger-soft' : 'text-success-soft'}>
                       {entry.delta < 0 ? '−' : '+'}
@@ -359,9 +362,11 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
         )}
       </Modal>
 
-      <Modal isOpen={toolsOpen} onClose={() => setToolsOpen(false)} size="sm" title={t('shell.life.tools.title')}>
-        <ToolsPanel />
-      </Modal>
+      {duel ? null : (
+        <Modal isOpen={toolsOpen} onClose={() => setToolsOpen(false)} size="sm" title={t('shell.life.tools.title')}>
+          <ToolsPanel />
+        </Modal>
+      )}
 
       <ConfirmDialog
         isOpen={confirmReset}
@@ -382,17 +387,19 @@ export function LifeCalculatorScreen({ onClose }: { onClose: () => void }) {
   )
 }
 
-function DuelistPanel({ player, lp, selected, onSelect }: { player: Duelist; lp: number; selected: boolean; onSelect: () => void }) {
+/** Un duelista: su número grande (que se mueve y se pinta de verde o rojo al cambiar) y su nombre. `position` es dónde está (0 izquierda, 1 derecha: da el color y la flecha); `disabled`, el del rival en un duelo: se ve, no se elige. */
+function DuelistPanel({ position, name, lp, selected, disabled = false, onSelect }: { position: 0 | 1; name: string; lp: number; selected: boolean; disabled?: boolean; onSelect: () => void }) {
   const shown = useAnimatedNumber(lp)
   const flash = useLpFlash(lp)
-  const name = duelistName(player)
 
   return (
     <button
       type="button"
-      aria-pressed={selected}
-      aria-label={t(selected ? 'shell.life.duelist.selected' : 'shell.life.duelist.choose', { name, lp })}
-      className={cx(PRESSABLE, '@container grid min-w-0 content-center justify-items-center gap-1 rounded-card px-1 py-3 @xl:py-1', selected ? 'bg-card-background/70' : 'bg-transparent')}
+      aria-pressed={disabled ? undefined : selected}
+      aria-label={disabled ? `${name}: ${lp} LP` : t(selected ? 'shell.life.duelist.selected' : 'shell.life.duelist.choose', { name, lp })}
+      aria-disabled={disabled || undefined}
+      data-player={position}
+      className={cx(PRESSABLE, '@container grid min-w-0 content-center justify-items-center gap-1 rounded-card px-1 py-3 @xl:py-1', selected ? 'bg-card-background/70' : 'bg-transparent', disabled && 'cursor-default active:scale-100')}
       onClick={onSelect}
     >
       <strong
@@ -401,15 +408,15 @@ function DuelistPanel({ player, lp, selected, onSelect }: { player: Duelist; lp:
         style={{ '--digits': Math.max(3, String(lp).length) } as CSSProperties}
         className={cx(
           'max-w-full text-[clamp(2rem,calc(152cqw/var(--digits)),4.25rem)] font-bold leading-none tracking-tight tabular-nums transition-colors duration-200',
-          flash === 'up' ? 'text-success' : flash === 'down' ? 'text-danger' : lp === 0 ? 'text-danger-soft' : selected ? ACCENT[player] : 'text-soft',
+          flash === 'up' ? 'text-success' : flash === 'down' ? 'text-danger' : lp === 0 ? 'text-danger-soft' : selected || disabled ? ACCENT[position] : 'text-soft',
         )}
       >
         {shown}
       </strong>
-      <span className={cx('text-lead font-semibold', selected ? 'text-foreground' : 'text-soft')}>
-        {player === 1 ? '« ' : null}
+      <span className={cx('max-w-full truncate text-lead font-semibold', selected || disabled ? 'text-foreground' : 'text-soft')}>
+        {position === 1 ? '« ' : null}
         {name}
-        {player === 0 ? ' »' : null}
+        {position === 0 ? ' »' : null}
       </span>
     </button>
   )
