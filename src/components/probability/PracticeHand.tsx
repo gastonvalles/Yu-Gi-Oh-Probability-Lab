@@ -36,7 +36,7 @@ const FALLBACK_WIDTH = 340
 
 /** Carta de la mano: el estado (arrastre, brillo, atenuada, destello, objetivo) llega por data-attributes. */
 const HAND_CARD = [
-  'absolute left-0 top-0 cursor-grab touch-none select-none overflow-hidden outline-none will-change-transform',
+  'pointer-events-auto absolute left-0 top-0 cursor-grab touch-none select-none overflow-hidden outline-none will-change-transform',
   '[-webkit-touch-callout:none] [-webkit-user-select:none]',
   '[--card-shadow:0_8px_18px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]',
   'shadow-[0_8px_18px_rgba(0,0,0,0.45),0_0_0_1px_rgb(var(--foreground-rgb)/0.1)]',

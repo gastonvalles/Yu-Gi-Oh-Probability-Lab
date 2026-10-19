@@ -1,6 +1,9 @@
 import type { MarkTarget, Marks } from '../../app/duel-protocol'
 import type { SpotlightKind } from '../../app/mat-effects'
+import { computeHandLayout, fanAngle } from '../../app/practice-hand-layout'
 import { PHASES, type MatPile, type MatSpot, type MatState, type Placed } from '../../app/practice-mat'
+import { DESKTOP_DECK_BUILDER_MEDIA_QUERY, useMediaQuery } from '../../app/use-media-query'
+import { THEIR_FAN_RISE, THEIR_HAND } from './their-hand'
 import { t } from '../../i18n'
 import { CardArt } from '../CardArt'
 import { cx } from '../ui/cx'
@@ -121,18 +124,34 @@ function MarkButton({ label, onMark }: { label: string; onMark: (rect: DOMRect) 
 }
 
 /**
- * La mano del rival: sólo se ve cuántas cartas tiene, de dorso y encimadas. `shrink-0` es lo que la deja verse: va dentro de una columna que scrollea y,
- * como los dorsos miden un porcentaje del alto, sin él la columna la aplastaba a 0 px y sólo quedaban sus sombras, como puntitos.
+ * La mano del rival: sólo se ve cuántas cartas tiene, de dorso, en abanico y encimadas como las nuestras pero espejadas (el centro más cerca del campo y los extremos más lejos). `shrink-0` es lo que la deja verse: va dentro de una columna que scrollea y,
+ * como la mano reserva su alto, sin él la columna la aplastaba a 0 px y sólo quedaban sus sombras, como puntitos.
  */
 export function TheirHand({ count, marked = false, pointed = false, onMark }: { count: number; /** El otro jugador la marcó como objetivo. */ marked?: boolean; /** Se la está señalando ahora (late un rato). */ pointed?: boolean; /** Tocarla para marcarla (sólo quien juega contra ese rival). */ onMark?: (rect: DOMRect) => void }) {
+  const desktop = useMediaQuery(DESKTOP_DECK_BUILDER_MEDIA_QUERY)
+  const { cardWidth, maxWidth, room } = desktop ? THEIR_HAND.desktop : THEIR_HAND.mobile
+  const shown = Math.min(count, 12)
+  // El tamaño sale de una mano de 5 y no cambia al jugar; la separación sí (con más cartas se juntan más).
+  const layout = computeHandLayout(maxWidth, Math.max(1, shown), cardWidth, 5)
+  const span = layout.cardWidth + layout.step * Math.max(0, shown - 1)
+  const height = Math.round(layout.cardHeight)
+
   return (
-    <div data-rival-drop="hand" data-targeted={marked ? 'true' : 'false'} data-pointed={pointed ? 'true' : undefined} className="relative shrink-0">
-      <div role="img" aria-label={t('duel.hand.theirs', { count })} className="flex h-9 justify-center min-[1101px]:h-11">
-        {Array.from({ length: Math.min(count, 12) }, (_, index) => (
-          <span key={index} className={cx('-ml-3 block aspect-[421/614] h-full overflow-hidden first:ml-0', CARD_SHADOW)}>
-            <CardBack className="h-full" />
-          </span>
-        ))}
+    <div data-rival-drop="hand" data-targeted={marked ? 'true' : 'false'} data-pointed={pointed ? 'true' : undefined} className="relative shrink-0" style={{ width: Math.max(span, layout.cardWidth), height: room }}>
+      <div role="img" aria-label={t('duel.hand.theirs', { count })} className="absolute inset-0">
+        {Array.from({ length: shown }, (_, index) => {
+          const arch = Math.abs(index - (shown - 1) / 2) ** 2 * THEIR_FAN_RISE
+
+          return (
+            <span
+              key={index}
+              className={cx('absolute bottom-0 left-0 block overflow-hidden', CARD_SHADOW)}
+              style={{ width: layout.cardWidth, height, transform: `translate(${index * layout.step}px, ${-arch}px) rotate(${-fanAngle(index, shown, 2.2)}deg)` }}
+            >
+              <CardBack className="h-full" />
+            </span>
+          )
+        })}
       </div>
       {marked ? <TargetMark /> : null}
       {onMark ? <MarkButton label={t('duel.mark.label', { place: PILE_TITLES.hand })} onMark={onMark} /> : null}
