@@ -8,7 +8,7 @@ import { createLifeState, lifeReducer, timerElapsed, type Duelist, type LifeStat
 import { isEmojiSignal } from './duel-signals'
 import { CONTROL_ACTIONS, controlReactions } from './mat-control'
 import { encodeAct, mapMatIds, mirrorApply, mirrorUndo, openMirror, openPublic, senderKnown, type Mirror, type PublicSender } from './mat-public'
-import { allMatIds, locateCard, matReducer, replayMat, type MatAction, type MatPile, type MatState } from './practice-mat'
+import { allMatIds, locateCard, matReducer, replayMat, type MatAction, type MatPhase, type MatPile, type MatState } from './practice-mat'
 
 /**
  * Un duelo por enlace, del lado de uno de los dos jugadores: mi mesa (la real), la del rival (un espejo
@@ -97,6 +97,11 @@ export interface DuelSnapshot {
    * `result`, cómo terminó mi último pedido si no se permitió (`n` cuenta los resultados, para avisar una sola vez cada uno); `available`, hay una jugada que deshacer (la última de los dos).
    */
   undo: { asking: boolean; asked: boolean; result: { n: number; kind: 'denied' | 'expired' } | null; available: boolean; /** La última jugada cambió el control de un monstruo: la otra mesa ya la completó y no se puede deshacer. */ blocked: boolean }
+  /**
+   * Pasar de fase le pregunta al rival si no va a hacer nada más en la que se deja: `asking`, la fase a la que quiero pasar y espero la respuesta; `asked`, la fase a la que el rival quiere pasar (y si es terminar su turno)
+   * y tengo que contestar; `result`, las veces que el rival me pidió jugar antes (`n` cuenta, para avisar una sola vez cada una).
+   */
+  pass: { asking: MatPhase | null; asked: { phase: MatPhase; endsTurn: boolean } | null; result: { n: number } | null }
   /** Lo marcado como objetivo: `mine`, lo que el rival marcó de mi lado (con mis ids reales); `theirs`, lo que yo marqué del suyo (con los ids que él les dio). */
   marks: { mine: Marks; theirs: Marks }
   /**
@@ -112,6 +117,10 @@ export interface Duel {
   /** Mi mesa de arranque (deck mezclado y mano repartida); se la mando al rival ya enmascarada. */
   start(initial: MatState): void
   play(action: MatAction): void
+  /** Pasar de fase (con el turno mío): si el rival está, primero se le pregunta si no va a hacer nada más en la fase que dejo; pasa si dice que sí o si no contesta a tiempo (`PHASE_WAIT_MS`), y no si quiere jugar antes. */
+  askPhase(action: Extract<MatAction, { type: 'phase' }>): void
+  /** Contestar la pregunta del rival: `true`, dejarlo pasar; `false`, voy a jugar antes. */
+  answerPhase(allow: boolean): void
   /** Volver atrás la última jugada de la mesa, sea mía o del rival: si el rival está, primero se le pide permiso (si lo permite, se deshace; si no, no). */
   undo(): void
   /** Contestar el pedido del rival de volver atrás la última jugada. */
@@ -168,6 +177,8 @@ interface DuelOptions {
 
 /** Cuánto espera mi pedido de volver atrás una respuesta del rival antes de cancelarse. */
 const UNDO_WAIT_MS = 30_000
+/** Cuánto espero la respuesta del rival a si no va a hacer nada más antes de pasar de fase: sin respuesta, la fase pasa (callar es no tener nada que jugar). */
+export const PHASE_WAIT_MS = 6000
 /** De quién es una jugada de la mesa, vista desde acá. */
 type Mover = 'me' | 'peer'
 /** Quién deshace: `push`, quien pide (la última jugada es suya); `pull`, quien contesta. */
@@ -253,6 +264,12 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
   let undoTimer: ReturnType<typeof setTimeout> | null = null
   let undoAsked: number | null = null
   let undoResult: { n: number; kind: 'denied' | 'expired' } | null = null
+  // Pasar de fase: mi pregunta en curso (su número, la jugada que espera y su reloj), la que me hace el rival y las veces que me pidió jugar antes.
+  let phaseAskN = 0
+  let phaseAsking: { id: number; action: Extract<MatAction, { type: 'phase' }> } | null = null
+  let phaseTimer: ReturnType<typeof setTimeout> | null = null
+  let phaseAsked: { id: number; phase: MatPhase; endsTurn: boolean } | null = null
+  let phaseResult: { n: number } | null = null
   // Con `push` la jugada a deshacer es de quien pide; con `pull`, de quien contesta (la última de la mesa es suya).
   let undoAskingKind: UndoKind = 'push'
   let undoAskedKind: UndoKind = 'push'
@@ -287,7 +304,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     return { match: settings.match, game: series.played + 1, wins: score.wins, winner: settings.match ? score.winner : null }
   }
 
-  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent: peerPresent && !stranger && (peerGreeted || !finishedForGood()), peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, timeUp: concededOnTime, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, emoteReadyAt: emoteAt === null ? 0 : emoteAt + EMOTE_GAP_MS, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult, available: undoTarget() !== null, blocked: undoBlocked() }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, turnClock, peerLook: peerPresent && !stranger ? peerLook : null, ping: lastPing })
+  const build = (): DuelSnapshot => ({ role, me, settings, peerPresent: peerPresent && !stranger && (peerGreeted || !finishedForGood()), peerName, incompatible, mine, initial, ownIds, actions, moves: actions.length, theirs, life, games, rps, starter, conceded, timeUp: concededOnTime, series: seriesView(), rematch, ready, opening: { method, caller, dice, chooser, ordered }, chat, emoteReadyAt: emoteAt === null ? 0 : emoteAt + EMOTE_GAP_MS, watchers, undo: { asking: undoAsking !== null, asked: undoAsked !== null, result: undoResult, available: undoTarget() !== null, blocked: undoBlocked() }, pass: { asking: phaseAsking?.action.phase ?? null, asked: phaseAsked, result: phaseResult }, marks: { mine: marksOnMine, theirs: marksOnTheirs }, turnClock, peerLook: peerPresent && !stranger ? peerLook : null, ping: lastPing })
 
   /**
    * Pone el reloj de turnos al día con la mesa: cuándo cambia el turno (el que pasa publica lo que le queda, y a quien le toca se le suman los 2 minutos), de quién corre y si está parado
@@ -720,6 +737,46 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     undoAsking = null
   }
 
+  /** Dejo de esperar la respuesta a mi pregunta de pasar de fase (con `notify`, el cartel del rival se va). */
+  const dropPhaseAsk = (notify: boolean) => {
+    if (phaseAsking === null) {
+      return
+    }
+
+    if (phaseTimer !== null) {
+      clearTimeout(phaseTimer)
+      phaseTimer = null
+    }
+
+    if (notify) {
+      send({ t: 'phaseCancel', id: phaseAsking.id })
+    }
+
+    phaseAsking = null
+  }
+
+  /** El rival no tiene nada más que hacer (o no contestó, o se fue): la fase pasa. */
+  const passPhase = (notify: boolean) => {
+    const asking = phaseAsking
+
+    if (asking === null) {
+      return
+    }
+
+    dropPhaseAsk(notify)
+    commit(asking.action)
+  }
+
+  /** El rival quiere jugar antes (me lo dijo, o jugó): la fase no pasa y me entero. */
+  const holdPhase = (notify: boolean) => {
+    if (phaseAsking === null) {
+      return
+    }
+
+    dropPhaseAsk(notify)
+    phaseResult = { n: (phaseResult?.n ?? 0) + 1 }
+  }
+
   /** Un juego mío: se anota en mi registro y viaja. Con el rival ausente no se hace (no lo vería). */
   const playGame = (game: DuelGame) => {
     if (!peerPresent) {
@@ -874,6 +931,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
           theirs = mirrorApply(theirs, message.wire)
           peerSeq = message.n
           pruneMarks()
+          // Si el rival juega mientras le pregunto, no había terminado: la fase no pasa.
+          holdPhase(true)
 
           // Si cambió de manos un monstruo, mi mesa lo completa sola (tomarlo, soltarlo o recibirlo de vuelta).
           if (mine && sender) {
@@ -930,6 +989,29 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       case 'undoCancel':
         if (undoAsked === message.id) {
           undoAsked = null
+        }
+
+        return
+
+      case 'phaseAsk':
+        phaseAsked = { id: message.id, phase: message.phase, endsTurn: message.phase === 'draw' && theirs?.state.phase === 'end' }
+        return
+
+      case 'phaseAnswer':
+        // Sólo vale la respuesta a mi pregunta de ahora: una vieja (cancelada, o ya jugué otra cosa) no pasa nada.
+        if (phaseAsking !== null && message.id === phaseAsking.id) {
+          if (message.ok) {
+            passPhase(false)
+          } else {
+            holdPhase(false)
+          }
+        }
+
+        return
+
+      case 'phaseCancel':
+        if (phaseAsked?.id === message.id) {
+          phaseAsked = null
         }
 
         return
@@ -1041,9 +1123,11 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       peerGreeted = false
       peerLook = null
     }
-    // Un pedido de volver atrás no sobrevive a que el otro salga o vuelva.
+    // Un pedido de volver atrás no sobrevive a que el otro salga o vuelva; una pregunta de pasar de fase tampoco (la fase pasa: no hay a quién esperar).
     undoAsked = null
     dropUndoAsk(false)
+    phaseAsked = null
+    passPhase(false)
 
     if (present) {
       sendHello()
@@ -1113,6 +1197,7 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
     markTimers.forEach((timer) => clearTimeout(timer))
     markTimers.clear()
     dropUndoAsk(false)
+    dropPhaseAsk(false)
     stopMessages()
     stopPeer()
     stopWatchers?.()
@@ -1150,10 +1235,52 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
         return
       }
 
-      // Si estaba esperando permiso para volver atrás, hacer otra jugada lo cancela (el permiso sería para otra jugada que la que se quería deshacer).
+      // Si estaba esperando permiso para volver atrás, hacer otra jugada lo cancela (el permiso sería para otra jugada que la que se quería deshacer); y si estaba preguntando por pasar de fase, también.
       dropUndoAsk(true)
+      dropPhaseAsk(true)
 
       commit(action)
+      emit()
+    },
+
+    askPhase(action) {
+      if (!mine || !sender) {
+        return
+      }
+
+      // Sin el rival en la sala, o sin cambiar de fase, no hay a quién preguntarle ni qué: es una jugada más.
+      if (!peerPresent || action.phase === mine.phase) {
+        dropUndoAsk(true)
+        dropPhaseAsk(true)
+        commit(action)
+        emit()
+        return
+      }
+
+      dropUndoAsk(true)
+      dropPhaseAsk(true)
+      phaseAskN += 1
+
+      const id = phaseAskN
+
+      phaseAsking = { id, action }
+      send({ t: 'phaseAsk', id, phase: action.phase })
+      phaseTimer = setTimeout(() => {
+        if (phaseAsking?.id === id) {
+          passPhase(true)
+          emit()
+        }
+      }, PHASE_WAIT_MS)
+      emit()
+    },
+
+    answerPhase(allow) {
+      if (phaseAsked === null) {
+        return
+      }
+
+      send({ t: 'phaseAnswer', id: phaseAsked.id, ok: allow })
+      phaseAsked = null
       emit()
     },
 
@@ -1163,6 +1290,8 @@ export function createDuel(transport: DuelTransport, options: DuelOptions): Duel
       if (target === null || undoAsking !== null || lastIsControl(target)) {
         return
       }
+
+      dropPhaseAsk(true)
 
       // Solo en la sala no hay a quién pedirle permiso; con el rival ahí, se le pregunta y se deshace si lo permite.
       if (!peerPresent) {
